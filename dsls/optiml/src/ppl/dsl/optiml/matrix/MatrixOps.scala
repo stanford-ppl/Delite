@@ -107,7 +107,7 @@ trait MatrixOpsExp extends ppl.dsl.optila.matrix.MatrixOpsExp with MatrixOps wit
 
 trait MatrixOpsExpOpt extends ppl.dsl.optila.matrix.MatrixOpsExpOpt with MatrixOpsExp {
   this: OptiMLExp =>
-
+  
   // override def matrix_numrows[A:Manifest](x: Exp[Matrix[A]])(implicit ctx: SourceContext) = x match {
   //   //case Def(TrainingSetObjectFromMat(x,y)) => matrix_numrows(x) // TODO: move to TrainingSetOpsExpOpt ?
   //   case _ => super.matrix_numrows(x)
@@ -117,6 +117,17 @@ trait MatrixOpsExpOpt extends ppl.dsl.optila.matrix.MatrixOpsExpOpt with MatrixO
   //   //case Def(TrainingSetObjectFromMat(x,y)) => matrix_numcols(x) // TODO: move to TrainingSetOpsExpOpt ?
   //   case _ => super.matrix_numcols(x)
   // }
+}
+
+trait DenseMatrixOpsExpOpt extends ppl.dsl.optila.matrix.DenseMatrixOpsExpOpt {
+  this: OptiMLExp =>
+  
+  override def densematrix_multiply[A:Manifest:Arith](x: Rep[DenseMatrix[A]], y: Rep[DenseMatrix[A]])(implicit ctx: SourceContext) = (x,y) match {
+    case (Def(IndexVector2Construct(lrows, lcols, f, fi, fj, fres)), Def(IndexVector2Construct(rrows, rcols, g, gi, gj, gres))) =>
+      // Predef.println("found matrix constructor multiply")
+      super.densematrix_multiply(x,y)
+    case _ => super.densematrix_multiply(x,y)
+  }  
 }
 
 

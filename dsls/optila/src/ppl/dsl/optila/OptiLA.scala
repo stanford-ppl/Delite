@@ -12,7 +12,9 @@ import ppl.delite.framework.codegen.cuda.TargetCuda
 import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.opencl.TargetOpenCL
 import ppl.delite.framework.codegen.delite.overrides._
+import ppl.delite.framework.transform.DeliteTransform
 import ppl.delite.framework.ops._
+import ppl.delite.framework.{Interfaces,InterfacesExp}
 import ppl.dsl.optila.extern._
 import ppl.dsl.optila.vector._
 import ppl.dsl.optila.matrix._
@@ -98,7 +100,7 @@ trait OptiLACCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
 /**
  * This the trait that every OptiLA application must extend.
  */
-trait OptiLA extends OptiLAScalaOpsPkg with DeliteCollectionOps with DeliteArrayOps
+trait OptiLA extends Interfaces with OptiLAScalaOpsPkg with DeliteCollectionOps with DeliteArrayOps
   with GenericDefs with LanguageOps with ArithOps with CloneableOps with HasMinMaxOps
   with VectorOps with DenseVectorOps with SparseVectorOps with RangeVectorOps with DenseVectorViewOps with SparseVectorViewOps //with MatrixRowOps with MatrixColOps
   with MatrixOps with MatrixBuildableOps with DenseMatrixOps with SparseMatrixOps with SparseMatrixBuildableOps
@@ -127,7 +129,7 @@ trait OptiLACompiler extends OptiLA with OptiLAUtilities
 /**
  * These are the corresponding IR nodes for OptiLA.
  */
-trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsExp with DeliteArrayOpsExp with VariantsOpsExp 
+trait OptiLAExp extends OptiLACompiler with InterfacesExp with OptiLAScalaOpsPkgExp with DeliteOpsExp with DeliteArrayOpsExp with VariantsOpsExp 
   with LanguageOpsExp with ArithOpsExpOpt with CloneableOpsExp
   with VectorOpsExpOpt with DenseVectorOpsExpOpt with SparseVectorOpsExp with RangeVectorOpsExp with DenseVectorViewOpsExpOpt with SparseVectorViewOpsExpOpt //with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
   with MatrixOpsExpOpt with DenseMatrixOpsExpOpt with SparseMatrixOpsExp with SparseMatrixBuildableOpsExp
@@ -135,7 +137,7 @@ trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsE
   with ExceptionOpsExp
   // -- choice of sparse matrix repr
   with SparseMatrixCSROpsExp with SparseMatrixCOOOpsExp with SparseVectorViewCSROpsExp
-  with ExpressionsOpt with DeliteAllOverridesExp {
+  with ExpressionsOpt with DeliteTransform with DeliteAllOverridesExp {
 
   // this: OptiLAApplicationRunner => why doesn't this work?
   this: DeliteApplication with OptiLAApplication with OptiLAExp => // can't be OptiLAApplication right now because code generators depend on stuff inside DeliteApplication (via IR)

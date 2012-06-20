@@ -4,7 +4,7 @@ import java.io.{FileWriter, File, PrintWriter}
 import scala.collection.mutable.{Map => MMap}
 import scala.tools.nsc.io._
 import scala.virtualization.lms.common.{BaseExp, Base}
-import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
+import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen, Transforming}
 
 import analysis.{MockStream, TraversalAnalysis}
 import codegen.c.TargetC
@@ -14,10 +14,14 @@ import codegen.opencl.TargetOpenCL
 import codegen.scala.TargetScala
 import codegen.Target
 import ops.DeliteOpsExp
+import transform.DeliteTransform
 
-trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
+trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransform {  
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
 
+  /*
+   * code generators
+   */
   def getCodeGenPkg(t: DeliteApplicationTarget) : GenericFatCodegen{val IR: DeliteApplication.this.type}
 
   lazy val scalaTarget = new TargetScala{val IR: DeliteApplication.this.type = DeliteApplication.this}
@@ -42,13 +46,20 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
 
   // generators created by getCodeGenPkg will use the 'current' scope of the deliteGenerator as global scope
   val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
-                                               val generators = DeliteApplication.this.generators }
+                                               val generators = DeliteApplication.this.generators; }
 
+
+  /*
+   * analyses
+   */
   lazy val analyses: List[TraversalAnalysis{ val IR: DeliteApplication.this.type }] = List()
   
   // Store and retrieve
   val analysisResults = MMap[String,Any]()
-
+   
+  /*
+   * misc state
+   */
   var args: Rep[Array[String]] = _
 
   var staticDataMap: Map[String,_] = _
@@ -90,6 +101,9 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       }
     }
     reset
+    
+    // set transformers to be applied before codegen
+    deliteGenerator.transformers = transformers
     
     //System.out.println("Staging application")
     

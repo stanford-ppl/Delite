@@ -61,7 +61,7 @@ trait VectorOps extends Variables {
    
   // clients that can handle multiple kinds of vector must accept an Interface[Vector[T]],  not a Rep[Vector[T]]
   class VInterface[A:Manifest](val ops: VecOpsCls[A]) extends DCInterface[Vector[A],A] {// clients use Interface[Vector]
-    override def toString = "VInterface(" + ops.elem.toString + "  [manifest: " + ops.mA.toString + "])"
+    override def toString = "VInterface(" + ops.elem.toString + "  [" + ops.mA.toString + "])"
   }
 
   // then we convert from a Interface[Vector[T]] to an interfaceVecToOpsCls, providing all of the original vector methods  
@@ -506,8 +506,8 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp {
   case class VectorClone[A:Manifest,VA<:Vector[A]:Manifest](x: Interface[Vector[A]])(implicit val b: VectorBuilder[A,VA])
     extends DeliteOpSingleWithManifest[A,VA](reifyEffectsHere(vector_clone_impl[A,VA](x)))
 
-  case class VectorPPrint[A](x: Interface[Vector[A]])(block: Block[Unit]) // stupid limitation...
-    extends DeliteOpSingleTask(block)
+  case class VectorPPrint[A](x: Interface[Vector[A]])(val b: Block[Unit]) // stupid limitation...
+    extends DeliteOpSingleTask(b)
     // reifyEffects(densevector_pprint_impl[A](x))
 
   case class VectorMkString[A:Manifest](x: Interface[Vector[A]], sep: Exp[String])
@@ -1132,7 +1132,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp {
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     // implemented via method on real data structure
-    case VectorObjectRange(start, end, stride, isRow) => reflectPure(VectorObjectRange(start,end,stride,isRow))(mtype(manifest[A]),implicitly[SourceContext])
+    case VectorObjectRange(start, end, stride, isRow) => reflectPure(VectorObjectRange(f(start),f(end),f(stride),f(isRow)))(mtype(manifest[A]),implicitly[SourceContext])
     
     // implemented as DeliteOpSingleTask and DeliteOpLoop    
     case e@VectorEquals(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorEquals(f(x),f(y))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
@@ -1238,7 +1238,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp {
     case Reflect(e@VectorFlatMap(x,m), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorFlatMap(f(x),f(m))(e.mA,e.mB,e.mVB,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorMutableMap(x,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorMutableMap(f(x),f(g))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorMutableZipWith(x,y,func), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorMutableZipWith(f(x),f(y),f(func))(e.mA,e.mB), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@VectorPPrint(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorPPrint(f(x))(f(e.block)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorPPrint(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorPPrint(f(x))(f(e.b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
 
     // allocations
     case Reflect(e@VectorObjectRange(s,o,d,r), u, es) => reflectMirrored(Reflect(VectorObjectRange(f(s),f(o),f(d),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))

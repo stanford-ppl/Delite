@@ -37,8 +37,6 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
    */  
   def rmsd_centered(realLen: Rep[Int], xCentered: Interface[Vector[XYZ]], yCentered: Interface[Vector[XYZ]], gx: Rep[Float], gy: Rep[Float]) = {
     // compute the inner product matrix 
-    // FIXME: numpy simply reinterprets the input 2d vector as matrix. 
-    // the c++ computes the matrix product in a vectorized fashion.
     // println("+++STAGING MARKER: entering perf critical")
     val mX = (0::3, 0::realLen) { (i,j) => if (i == 0) xCentered(j).x else if (i == 1) xCentered(j).y else xCentered(j).z } // inline transpose
     val mY = (0::realLen, 0::3) { (i,j) => if (j == 0) yCentered(i).x else if (j == 1) yCentered(i).y else yCentered(i).z }
@@ -46,31 +44,20 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
     val M = mX * mY
 
     // form the 4x4 symmetric Key matrix K
-    val K = DenseMatrix[Float](4,4)
-    K(0,0) = M(0,0) + M(1,1) + M(2,2)
-    K(0,1) = M(1,2)-M(2,1)
-    K(0,2) = M(2,0)-M(0,2)
-    K(0,3) = M(0,1)-M(1,0)
-    K(1,1) = M(0,0)-M(1,1)-M(2,2)
-    K(1,2) = M(0,1)+M(1,0)    
-    K(1,3) = M(2,0)+M(0,2)
-    K(2,2) = -1f*M(0,0)+M(1,1)-M(2,2)
-    K(2,3) = M(1,2)+M(2,1)  
-    K(3,3) = -1f*M(0,0) - M(1,1) + M(2,2)   
-    
-    // -- performance testing impact of not allocating the K matrix (appears pretty negligible)
-    // could potentially rewrite the applies to go to the underlying allocation 
-    // val k00 = M(0,0) + M(1,1) + M(2,2)
-    // val k01 = M(1,2)-M(2,1)
-    // val k02 = M(2,0)-M(0,2)
-    // val k03 = M(0,1)-M(1,0)
-    // val k11 = M(0,0)-M(1,1)-M(2,2)
-    // val k12 = M(0,1)+M(1,0)    
-    // val k13 = M(2,0)+M(0,2)
-    // val k22 = -1f*M(0,0)+M(1,1)-M(2,2)
-    // val k23 = M(1,2)+M(2,1)  
-    // val k33 = -1f*M(0,0) - M(1,1) + M(2,2)   
-    
+    val k00 = M(0,0) + M(1,1) + M(2,2)
+    val k01 = M(1,2)-M(2,1)
+    val k02 = M(2,0)-M(0,2)
+    val k03 = M(0,1)-M(1,0)
+    val k11 = M(0,0)-M(1,1)-M(2,2)
+    val k12 = M(0,1)+M(1,0)    
+    val k13 = M(2,0)+M(0,2)
+    val k22 = -1f*M(0,0)+M(1,1)-M(2,2)
+    val k23 = M(1,2)+M(2,1)  
+    val k33 = -1f*M(0,0) - M(1,1) + M(2,2)   
+    val K = DenseMatrix(DenseVector(k00, k01, k02, k03),
+                        DenseVector(k01, k11, k12, k13),
+                        DenseVector(k02, k12, k22, k23),
+                        DenseVector(k03, k13, k23, k33))
     
     // coefficients of the characteristic polynomial
     val c2 = -2f*square(M).sum
@@ -332,28 +319,28 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
     if (args.length < 1) printUsage()
     val pathToTheoData = args(0).trim()
     
-    if (args.length > 1) {
-      if (args(1) == "+perf") {
-        // test rmsd performance
-        println("-- testing RMSD performance")
-        //val frame = Vector[XYZ](10,true).map(e => ((randomGaussian.floatValue,randomGaussian.floatValue,randomGaussian.floatValue)))
-        //val traj = Matrix[XYZ](50000,10).mapRows(e => Vector[XYZ](10,true).map(e=>((randomGaussian.floatValue,randomGaussian.floatValue,randomGaussian.floatValue))))
-        val frame = readVector[XYZ](pathToTheoData + "_benchmark_frame.dat", v => ((v(0).toFloat,v(1).toFloat,v(2).toFloat)), ",")
-        val traj = readMatrix[XYZ](pathToTheoData + "_benchmark_traj.dat", line => lineToXYZ(line))
-        // println("frame(0): ")
-        // println(frame(0).x + "," + frame(0).y + "," + frame(0).z)
-        // println("traj(0,0): ")
-        // println(traj(0,0).x + "," + traj(0,0).y + "," + traj(0,0).z)      
-        tic()
-        val out = (0::traj.numRows) { i =>
-          rmsd(frame, traj(i))
-        }
-        toc(out)      
-        println("-- test finished")
-        println("out.length: " + out.length)
-        out(0::10).pprint
-      }
-      else if (args(1) == "+perftheo") {
+    // if (args.length > 1) {
+    //   if (args(1) == "+perf") {
+    //     // test rmsd performance
+    //     println("-- testing RMSD performance")
+    //     //val frame = Vector[XYZ](10,true).map(e => ((randomGaussian.floatValue,randomGaussian.floatValue,randomGaussian.floatValue)))
+    //     //val traj = Matrix[XYZ](50000,10).mapRows(e => Vector[XYZ](10,true).map(e=>((randomGaussian.floatValue,randomGaussian.floatValue,randomGaussian.floatValue))))
+    //     val frame = readVector[XYZ](pathToTheoData + "_benchmark_frame.dat", v => ((v(0).toFloat,v(1).toFloat,v(2).toFloat)), ",")
+    //     val traj = readMatrix[XYZ](pathToTheoData + "_benchmark_traj.dat", line => lineToXYZ(line))
+    //     // println("frame(0): ")
+    //     // println(frame(0).x + "," + frame(0).y + "," + frame(0).z)
+    //     // println("traj(0,0): ")
+    //     // println(traj(0,0).x + "," + traj(0,0).y + "," + traj(0,0).z)      
+    //     tic()
+    //     val out = (0::traj.numRows) { i =>
+    //       rmsd(frame, traj(i))
+    //     }
+    //     toc(out)      
+    //     println("-- test finished")
+    //     println("out.length: " + out.length)
+    //     out(0::10).pprint
+    //   }
+    //   else if (args(1) == "+perftheo") {
         println("-- testing RMSD performance with theo values")
         val frameNumAtoms = readVector(pathToTheoData + "_benchmark_frames_theo_numAtoms.dat")
         val frameTheoData = new Record {
@@ -381,58 +368,58 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
         println("-- test finished")
         println("out.length: " + out.length)
         out(0::10).pprint                
-      }
-    }
-    else {
-      
-    // option 1: load Theo data from the trajectory data created from the Python script
-    // val theoData = theo(args(0))
-    
-    // option 2: read Theo data created from the Python script (filenames by convention)    
-    val nAtoms = readVector(pathToTheoData + "_numAtoms.dat")
-    val theoData = new Record {
-      val XYZData = readMatrix[XYZ](pathToTheoData + "_xyz.dat", line => lineToXYZ(line))
-      val G = readVector[Float](pathToTheoData + "_G.dat", l => l(0).toFloat)
-      val numAtoms = nAtoms(0).AsInstanceOf[Int]
-      val numAtomsWithPadding = nAtoms(1).AsInstanceOf[Int]      
-    }
-    
-    /*
-     * input testing
-     */     
-    /*
-    println("theoData -- ")
-    println("numAtoms: " + theoData.numAtoms)
-    println("numAtomsWithPadding: " + theoData.numAtomsWithPadding)
-    println("G.length: " + theoData.G.length)
-    // -- problem with applyDynamic
-    val G = theoData.G
-    println("G(0): " + G(0))
-    val XYZData = theoData.XYZData
-    println("XYZData dims: " + theoData.XYZData.numRows + " x " + theoData.XYZData.numCols)
-    println("XYZData(0,0): " + XYZData(0,0).x + "," + XYZData(0,0).y + "," + XYZData(0,0).z)
-    exit(0)    
-    */
-    
-    /*
-     * run clarans clustering
-     *
-     * The execution time is mostly set by num_local_minima and max_neighbors
-     * (lower numbers go faster). The execution time should be roughly
-     * to num_local_minima, and scales worse with max_neighbors
-     *
-     * Also, as you scale to bigger num_local_minima and max_neighbors, the percentage
-     * of the execution time spent in the C extension code goes up.
-     */    
-    tic()
-    val numClusters = 100
-    val centers = clarans(theoData, numClusters, 5, 5)
-    toc(centers)
-    
-    println("found " + numClusters + " centers with kcenters")
-    centers.pprint
-    
-    }
+    //   }
+    // }
+    // else {
+    //   
+    // // option 1: load Theo data from the trajectory data created from the Python script
+    // // val theoData = theo(args(0))
+    // 
+    // // option 2: read Theo data created from the Python script (filenames by convention)    
+    // val nAtoms = readVector(pathToTheoData + "_numAtoms.dat")
+    // val theoData = new Record {
+    //   val XYZData = readMatrix[XYZ](pathToTheoData + "_xyz.dat", line => lineToXYZ(line))
+    //   val G = readVector[Float](pathToTheoData + "_G.dat", l => l(0).toFloat)
+    //   val numAtoms = nAtoms(0).AsInstanceOf[Int]
+    //   val numAtomsWithPadding = nAtoms(1).AsInstanceOf[Int]      
+    // }
+    // 
+    // /*
+    //  * input testing
+    //  */     
+    // /*
+    // println("theoData -- ")
+    // println("numAtoms: " + theoData.numAtoms)
+    // println("numAtomsWithPadding: " + theoData.numAtomsWithPadding)
+    // println("G.length: " + theoData.G.length)
+    // // -- problem with applyDynamic
+    // val G = theoData.G
+    // println("G(0): " + G(0))
+    // val XYZData = theoData.XYZData
+    // println("XYZData dims: " + theoData.XYZData.numRows + " x " + theoData.XYZData.numCols)
+    // println("XYZData(0,0): " + XYZData(0,0).x + "," + XYZData(0,0).y + "," + XYZData(0,0).z)
+    // exit(0)    
+    // */
+    // 
+    // /*
+    //  * run clarans clustering
+    //  *
+    //  * The execution time is mostly set by num_local_minima and max_neighbors
+    //  * (lower numbers go faster). The execution time should be roughly
+    //  * to num_local_minima, and scales worse with max_neighbors
+    //  *
+    //  * Also, as you scale to bigger num_local_minima and max_neighbors, the percentage
+    //  * of the execution time spent in the C extension code goes up.
+    //  */    
+    // tic()
+    // val numClusters = 100
+    // val centers = clarans(theoData, numClusters, 5, 5)
+    // toc(centers)
+    // 
+    // println("found " + numClusters + " centers with kcenters")
+    // centers.pprint
+    // 
+    // }
   }
   
 }

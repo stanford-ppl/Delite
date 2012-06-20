@@ -7,6 +7,7 @@ import ppl.dsl.optila.{OptiLALift, OptiLACompiler, OptiLA}
 
 trait DenseVectorImplOps { this: OptiLA =>
   def densevector_obj_fromseq_impl[A:Manifest](xs: Rep[Seq[A]]): Rep[DenseVector[A]]
+  def densevector_obj_fromunliftedseq_impl[A:Manifest](xs: Seq[Rep[A]]): Rep[DenseVector[A]]
   def densevector_obj_ones_impl(length: Rep[Int]): Rep[DenseVector[Double]]
   def densevector_obj_onesf_impl(length: Rep[Int]): Rep[DenseVector[Float]]
   //def densevector_obj_zeros_impl(length: Rep[Int]): Rep[DenseVector[Double]]
@@ -44,6 +45,13 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
       v(i) = xs(i)
     }
     v.unsafeImmutable
+  }
+  
+  def densevector_obj_fromunliftedseq_impl[A:Manifest](xs: Seq[Rep[A]]) = {
+    val out = densevector_obj_new[A](unit(0),unit(true))
+    // interpreted (not lifted)
+    xs.foreach { out += _ }
+    out.unsafeImmutable // return immutable object    
   }
 
   def densevector_obj_ones_impl(length: Rep[Int]) = DenseVector[Double](length, true) mmap { e => 1. } 

@@ -353,7 +353,11 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class MatrixDeterminant22[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]) extends DeliteOpSingleTask[A](reifyEffects(optila_matrix_determinant22_impl(x)))
   case class MatrixDeterminant33[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]) extends DeliteOpSingleTask[A](reifyEffects(optila_matrix_determinant33_impl(x)))
   case class MatrixDeterminant44[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]) extends DeliteOpSingleTask[A](reifyEffects(optila_matrix_determinant44_impl(x)))
-  case class MatrixDeterminant[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]) extends DeliteOpSingleTask[A](reifyEffects(optila_matrix_determinant_impl(x)))
+  case class MatrixDeterminant[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]) extends DeliteOpSingleTask[A](reifyEffects(optila_matrix_determinant_impl(x))) {
+    val m = manifest[A]
+    val a = implicitly[Arith[A]]
+    val n = implicitly[Numeric[A]]
+  }
   
   def optila_determinant[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]) = x.ops.elem.asInstanceOf[Rep[Matrix[A]]] match {
     case Def(s@Reflect(DenseMatrixObjectNew(Const(a),Const(b)), u, es)) if context.contains(s) && (a == 2) && (b == 2) => reflectPure(MatrixDeterminant22(x))
@@ -453,6 +457,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     case e@MatrixDistanceAbs(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceAbs(f(x),f(y))(e.m,e.a))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixDistanceEuc(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceEuc(f(x),f(y))(e.m,e.a))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixDistanceSquare(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceSquare(f(x),f(y))(e.m,e.a))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@MatrixDeterminant(x) => reflectPure(new { override val original = Some(f,e) } with MatrixDeterminant(f(x))(e.m,e.a,e.n))(mtype(manifest[A]),implicitly[SourceContext])
+    case Reflect(e@MatrixDeterminant(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixDeterminant(f(x))(e.m,e.a,e.n), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(ProfileStart(deps), u, es) => reflectMirrored(Reflect(ProfileStart(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(ProfileStop(deps), u, es) => reflectMirrored(Reflect(ProfileStop(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)

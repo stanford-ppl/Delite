@@ -3,7 +3,7 @@ package ppl.delite.framework.codegen.delite
 import generators.{DeliteGenTaskGraph}
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
 import scala.virtualization.lms.internal._
-import scala.virtualization.lms.common.{BaseGenStaticData, StaticDataExp}
+import scala.virtualization.lms.common.{BaseGenStaticData, StaticDataExp, WorklistTransformer}
 import ppl.delite.framework.{Config, DeliteApplication}
 import collection.mutable.{ListBuffer}
 import collection.mutable.HashMap
@@ -19,11 +19,14 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
 
   // these are the target-specific kernel generators (e.g. scala, cuda, etc.)
   type Generator = GenericFatCodegen{val IR: DeliteCodegen.this.IR.type}
-  val generators : List[Generator]
+  val generators: List[Generator]
 
+  // should be set by DeliteApplication if there are any transformations to be run before codegen
+  var transformers: List[WorklistTransformer{val IR: DeliteCodegen.this.IR.type}] = Nil
+  
   // per kernel, used by DeliteGenTaskGraph
-  var controlDeps : List[Sym[Any]] = _
-  var emittedNodes : List[Sym[Any]] = _
+  var controlDeps: List[Sym[Any]] = _
+  var emittedNodes: List[Sym[Any]] = _
 
   // global, used by DeliteGenTaskGraph
   var kernelMutatingDeps = Map[Sym[Any],List[Sym[Any]]]() // from kernel to its mutating deps
@@ -114,8 +117,39 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): List[(Sym[Any],Any)] = {
 
     val x = fresh[A]
-    val y = reifyEffects(f(x))
+    val b = reifyEffects(f(x)) // transformers only get registrations at this point, while the IR is being constructed
 
+    // transformer and us are sharing the same IR object, so we share the same defs...
+    // if (transformers.length > 0) {
+    //   IR.globalDefs = Nil // reset graph, transformer will build anew
+    // }
+    
+    // printlog("-- apply transformations")
+    Predef.println("-- apply transformations")
+    Predef.println("Transformers: " + transformers)    
+    Predef.println("Block before transformation: " + b)
+    var curBlock = b
+    val maxTransformIter = 3 // TODO: make configurable
+    for (t <- transformers) {
+      Predef.println("  map: " + t.nextSubst)
+      var i = 0
+      while (!t.isDone && i < maxTransformIter) {
+        Predef.println("iter: " + i)
+        curBlock = t.runOnce(curBlock)
+        i += 1
+      }
+      if (i == maxTransformIter) printlog("  warning: transformer " + t + " did not converge in " + maxTransformIter + " iterations")
+    }
+    Predef.println("-- done transforming")
+    Predef.println("Block after transformation: " + curBlock)
+    
+    val y = curBlock
+    
+    Predef.println("-- get dependent stuff 6")
+    val testsym = (globalDefs.filter(e => e match { case TP(sym, rhs) => sym.id == 6; case _ => false }))(0)
+    val l = getDependentStuff(testsym.lhs)
+    for (e <- l) Predef.println(e)
+    
     val sA = mA.toString
     val sB = mB.toString
 

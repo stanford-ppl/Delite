@@ -30,12 +30,7 @@ trait DenseVectorOps extends Variables {
   object DenseVector {
     def apply[A:Manifest](len: Int, isRow: Boolean)(implicit ctx: SourceContext) = densevector_obj_new(unit(len), unit(isRow)) // needed to resolve ambiguities
     def apply[A](len: Rep[Int], isRow: Rep[Boolean])(implicit mA: Manifest[A], o: Overloaded1, ctx: SourceContext) = densevector_obj_new(len, isRow)
-    def apply[A](xs: Rep[A]*)(implicit mA: Manifest[A], o: Overloaded2, ctx: SourceContext) = {
-      val out = densevector_obj_new[A](unit(0),unit(true))
-      // interpreted (not lifted)
-      xs.foreach { out += _ }
-      out.unsafeImmutable // return immutable object
-    }
+    def apply[A](xs: Rep[A]*)(implicit mA: Manifest[A], o: Overloaded2, ctx: SourceContext) = densevector_obj_fromunliftedseq(xs)
     def fromSeq[A:Manifest](xs: Rep[Seq[A]])(implicit o: Overloaded3, ctx: SourceContext) = densevector_obj_fromseq(xs)
     
     def ones(len: Rep[Int])(implicit ctx: SourceContext) = densevector_obj_ones(len)
@@ -112,6 +107,7 @@ trait DenseVectorOps extends Variables {
   // object defs
   def densevector_obj_new[A:Manifest](len: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext): Rep[DenseVector[A]]
   def densevector_obj_fromseq[A:Manifest](xs: Rep[Seq[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]]
+  def densevector_obj_fromunliftedseq[A:Manifest](xs: Seq[Rep[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]]
   def densevector_obj_ones(len: Rep[Int])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
   def densevector_obj_onesf(len: Rep[Int])(implicit ctx: SourceContext): Rep[DenseVector[Float]]
   def densevector_obj_zeros(len: Rep[Int])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
@@ -184,6 +180,9 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
   
   case class DenseVectorObjectFromSeq[A:Manifest](xs: Exp[Seq[A]])
     extends DeliteOpSingleWithManifest[A,DenseVector[A]](reifyEffectsHere(densevector_obj_fromseq_impl(xs)))
+
+  case class DenseVectorObjectFromUnliftedSeq[A:Manifest](xs: Seq[Exp[A]])
+    extends DeliteOpSingleWithManifest[A,DenseVector[A]](reifyEffectsHere(densevector_obj_fromunliftedseq_impl(xs)))  
 
   case class DenseVectorObjectOnes(len: Exp[Int])
     extends DeliteOpSingleTask(reifyEffectsHere(densevector_obj_ones_impl(len)))
@@ -271,6 +270,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
 
   def densevector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectMutable(DenseVectorNew[A](len, isRow)) //XXX
   def densevector_obj_fromseq[A:Manifest](xs: Exp[Seq[A]])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectFromSeq(xs)) //XXX
+  def densevector_obj_fromunliftedseq[A:Manifest](xs: Seq[Exp[A]])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectFromUnliftedSeq(xs)) 
   def densevector_obj_ones(len: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectOnes(len))
   def densevector_obj_onesf(len: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectOnesF(len))
   def densevector_obj_zeros(len: Exp[Int])(implicit ctx: SourceContext) = densevector_zero_double(len,unit(true)) //reflectPure(DenseVectorObjectZeros(len))
@@ -382,6 +382,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
     
     // delite ops
     case e@DenseVectorObjectFromSeq(xs) => reflectPure(new { override val original = Some(f,e) } with DenseVectorObjectFromSeq(f(xs))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@DenseVectorObjectFromUnliftedSeq(xs) => reflectPure(new { override val original = Some(f,e) } with DenseVectorObjectFromUnliftedSeq(f(xs))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@DenseVectorObjectOnes(x) => reflectPure(new { override val original = Some(f,e) } with DenseVectorObjectOnes(f(x)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@DenseVectorObjectOnesF(x) => reflectPure(new { override val original = Some(f,e) } with DenseVectorObjectOnesF(f(x)))(mtype(manifest[A]),implicitly[SourceContext])    
     case e@DenseVectorObjectZeros(x) => reflectPure(new { override val original = Some(f,e) } with DenseVectorObjectZeros(f(x)))(mtype(manifest[A]),implicitly[SourceContext])
@@ -535,22 +536,32 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
   }
   
   // and this one also helps in the example:
-  def densevector_optimize_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext): Option[Exp[A]] = x match {
-    case Def(DenseVectorObjectZeros(l)) => Some(unit(0.0).asInstanceOf[Exp[A]])
-    case Def(DenseVectorObjectOnes(l)) => Some(unit(1.0).asInstanceOf[Exp[A]])
-    //case Def(DenseVectorObjectRange(s,e,d,r)) => Some((s + n*d).asInstanceOf[Exp[A]])
-    case Def(s@DenseVectorEmptyDouble()) => throw new IndexOutOfBoundsException(s + " has no elements")
-    case Def(s@DenseVectorEmptyFloat()) => throw new IndexOutOfBoundsException(s + " has no elements")
-    case Def(s@DenseVectorEmptyInt()) => throw new IndexOutOfBoundsException(s + " has no elements")
-    case Def(s@DenseVectorEmpty()) => throw new IndexOutOfBoundsException(s + " has no elements")
-    case Def(DenseVectorZeroDouble(l,r)) => Some(Const(0.0).asInstanceOf[Exp[A]])
-    case Def(DenseVectorZeroFloat(l,r)) => Some(Const(0f).asInstanceOf[Exp[A]])
-    case Def(DenseVectorZeroInt(l,r)) => Some(Const(0).asInstanceOf[Exp[A]])
-    case Def(DenseVectorTrans(x)) => Some(densevector_apply(x,n))
-    case _ => None
+  def densevector_optimize_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext): Option[Exp[A]] = {
+    val out = (x,n) match {
+      case (Def(DenseVectorObjectFromUnliftedSeq(xs)), Const(a)) => Some(xs(a))
+      case _ => None
+    }
+    
+    if (out.isDefined) out
+    else {
+      x match {
+        case Def(DenseVectorObjectZeros(l)) => Some(unit(0.0).asInstanceOf[Exp[A]])
+        case Def(DenseVectorObjectOnes(l)) => Some(unit(1.0).asInstanceOf[Exp[A]])
+        //case Def(DenseVectorObjectRange(s,e,d,r)) => Some((s + n*d).asInstanceOf[Exp[A]])
+        case Def(s@DenseVectorEmptyDouble()) => throw new IndexOutOfBoundsException(s + " has no elements")
+        case Def(s@DenseVectorEmptyFloat()) => throw new IndexOutOfBoundsException(s + " has no elements")
+        case Def(s@DenseVectorEmptyInt()) => throw new IndexOutOfBoundsException(s + " has no elements")
+        case Def(s@DenseVectorEmpty()) => throw new IndexOutOfBoundsException(s + " has no elements")
+        case Def(DenseVectorZeroDouble(l,r)) => Some(Const(0.0).asInstanceOf[Exp[A]])
+        case Def(DenseVectorZeroFloat(l,r)) => Some(Const(0f).asInstanceOf[Exp[A]])
+        case Def(DenseVectorZeroInt(l,r)) => Some(Const(0).asInstanceOf[Exp[A]])
+        case Def(DenseVectorTrans(x)) => Some(densevector_apply(x,n))
+        case _ => None
+      }
+    }
   }
   
-  override def densevector_apply[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
+  override def densevector_apply[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int])(implicit ctx: SourceContext) = { 
     densevector_optimize_apply(x.asInstanceOf[Exp[DeliteCollection[A]]],n) getOrElse super.densevector_apply(x,n)
   }
   

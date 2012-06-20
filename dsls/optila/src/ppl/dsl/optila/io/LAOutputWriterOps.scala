@@ -1,13 +1,16 @@
 package ppl.dsl.optila.io
 
-import ppl.dsl.optila.{Vector,Matrix}
 import java.io.{PrintWriter}
-import ppl.delite.framework.DeliteApplication
-import scala.virtualization.lms.common.Base
 import scala.reflect.SourceContext
+import scala.virtualization.lms.common.Base
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.delite.framework.{Interfaces,InterfacesExp}
+import ppl.dsl.optila.{Vector,Matrix}
 
 trait LAOutputWriterOps extends Base {
+  this: Interfaces =>
+  
   // file format is m lines with n floats per line, each float separated by whitespaces
   // (same as matlab .dat)
   
@@ -20,7 +23,7 @@ trait LAOutputWriterOps extends Base {
   def obj_laoutput_write_vector[A:Manifest](v: Interface[Vector[A]], filename: Rep[String], conv: Rep[A] => Rep[Double])(implicit ctx: SourceContext): Rep[Unit]
 }
 
-trait LAOutputWriterOpsExp extends LAOutputWriterOps { this: LAOutputWriterImplOps with DeliteOpsExp =>
+trait LAOutputWriterOpsExp extends LAOutputWriterOps { this: LAOutputWriterImplOps with InterfacesExp with DeliteOpsExp =>
   case class LAOutputWrite[A:Manifest](m: Interface[Matrix[A]], filename: Exp[String], conv: Exp[A] => Exp[Double]) extends DeliteOpSingleTask(reifyEffects(laoutput_write_impl(m,filename,conv)))
   case class LAOutputWriteVector[A:Manifest](v: Interface[Vector[A]], filename: Exp[String], conv: Exp[A] => Exp[Double]) extends DeliteOpSingleTask(reifyEffects(laoutput_write_vector_impl(v,filename,conv)))
   

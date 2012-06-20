@@ -46,7 +46,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     def original: Option[(Transformer,Def[_])] = None // we should have type OpType, really but then it needs to be specified in mirror (why?)
     def copyOrElse[B](f: OpType => B)(e: => B): B = original.map(p=>f(p._2.asInstanceOf[OpType])).getOrElse(e)
     def copyTransformedOrElse[B](f: OpType => Exp[B])(e: => Exp[B]): Exp[B] = original.map(p=>p._1(f(p._2.asInstanceOf[OpType]))).getOrElse(e)
-    def copyTransformedBlockOrElse[B](f: OpType => Block[B])(e: => Block[B]): Block[B] = original.map(p=>p._1(f(p._2.asInstanceOf[OpType]))).getOrElse(e)
+    def copyTransformedBlockOrElse[B:Manifest](f: OpType => Block[B])(e: => Block[B]): Block[B] = original.map(p=>p._1(f(p._2.asInstanceOf[OpType]))).getOrElse(e)
 
 /*
     consider z1 = VectorPlus(a,b), which could be something like z1 = Block(z2); z2 = loop(a.size) { i => a(i) + b(i) }
@@ -86,7 +86,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    *
    * @param  block   the task to execute; must be reified if it contains effectful operations!
    */
-  class DeliteOpSingleTask[A](block0: => Block[A], val requireInputs: Boolean = false) extends DeliteOp[A] {
+  class DeliteOpSingleTask[A:Manifest](block0: => Block[A], val requireInputs: Boolean = false) extends DeliteOp[A] {
     type OpType <: DeliteOpSingleTask[A]
     final lazy val block: Block[A] = copyTransformedBlockOrElse(_.block)(block0)
   }
@@ -113,7 +113,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   /**
    * The base class for most data parallel Delite ops.
    */
-  abstract class DeliteOpLoop[A] extends AbstractLoop[A] with DeliteOp[A] {
+  abstract class DeliteOpLoop[A:Manifest] extends AbstractLoop[A] with DeliteOp[A] {
     type OpType <: DeliteOpLoop[A]
     def copyBodyOrElse(e: => Def[A]): Def[A] = original.map(p=>mirrorLoopBody(p._2.asInstanceOf[OpType].body,p._1)).getOrElse(e)
     final lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(fresh[Int]).asInstanceOf[Sym[Int]]
@@ -123,17 +123,19 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     
   // for use in loops:
 
-  case class DeliteForeachElem[A](
+  case class DeliteForeachElem[A:Manifest](
     func: Block[A],
     sync: Block[List[Any]] // FIXME: don't want to create lists at runtime...
     // TODO: this is sort of broken right now, re-enable when we figure out how to make this work without emitting dependencies twice
     //cond: List[Exp[Boolean]] = Nil
-  ) extends Def[Unit]
+  ) extends Def[Unit] {
+    val mA = manifest[A]
+  }
   
   // used only for ParBuffer operations
   // dc_append, dc_set_logical_size, dc_alloc, and dc_copy only need to be
   // overridden if the DeliteParallelStrategy is ParBuffer
-  case class DeliteBufferElem[A, I <: DeliteCollection[A], CA <: DeliteCollection[A]](
+  case class DeliteBufferElem[A:Manifest, I <: DeliteCollection[A]:Manifest, CA <: DeliteCollection[A]:Manifest](
     // -- bound vars
     aV: Sym[I],
     iV: Sym[Int],
@@ -144,9 +146,13 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     setSize: Block[Unit],
     allocRaw: Block[I],
     copyRaw: Block[Unit]    
-  )
+  ) {
+    val mA = manifest[A]
+    val mI = manifest[I]
+    val mCA = manifest[CA]
+  }
   
-  case class DeliteCollectElem[A, I <: DeliteCollection[A], CA <: DeliteCollection[A]]( 
+  case class DeliteCollectElem[A:Manifest, I <: DeliteCollection[A]:Manifest, CA <: DeliteCollection[A]:Manifest]( 
     // -- bound vars
     eV: Sym[A],
     sV: Sym[Int],            
@@ -160,19 +166,25 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     cond: List[Block[Boolean]] = Nil,
     par: DeliteParallelStrategy,
     buf: DeliteBufferElem[A,I,CA]
-  ) extends Def[CA]
+  ) extends Def[CA] {
+    val mA = manifest[A]
+    val mI = manifest[I]
+    val mCA = manifest[CA]
+  }
 
   
-  case class DeliteReduceElem[A](
+  case class DeliteReduceElem[A:Manifest](
     func: Block[A],
     cond: List[Block[Boolean]] = Nil,
     zero: Block[A],
     rV: (Sym[A], Sym[A]),
     rFunc: Block[A],
     stripFirst: Boolean
-  ) extends Def[A]
+  ) extends Def[A] {
+    val mA = manifest[A]
+  }
 
-  case class DeliteReduceTupleElem[A,B](
+  case class DeliteReduceTupleElem[A:Manifest,B:Manifest](
     func: (Block[A],Block[B]),
     cond: List[Block[Boolean]] = Nil,
     zero: (Block[A],Block[B]),
@@ -181,7 +193,10 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     rFuncPar: (Block[A],Block[B]),
     rFuncSeq: (Block[A],Block[B]),
     stripFirst: Boolean
-  ) extends Def[A]
+  ) extends Def[A] {
+    val mA = manifest[A]
+    val mB = manifest[B]
+  }
 
 
 
@@ -806,12 +821,25 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case x: DeliteOpSingleTask[_] =>
       x.block
       super.reflectEffect(d,u)
-    //case x: DeliteOpLoop[_] => 
-    //  x.body  //  <-- not lazy
-    //  super.reflectEffect(d,u)
+    case x: DeliteOpLoop[_] => 
+      val z = x.body  //  <-- not lazy
+      super.reflectEffect(d,u)
     case _ =>
       super.reflectEffect(d,u)
   }
+  
+  // HACK lazy val bites again: must make sure that block is evaluated!
+  override def reflectMirrored[A:Manifest](zd: Reflect[A]): Exp[A] = zd match {
+    case Reflect(x:DeliteOpSingleTask[_], u, es) =>
+      x.block
+      super.reflectMirrored(zd)
+    case Reflect(x: DeliteOpLoop[_], u, es) => 
+      val z = x.body  //  <-- somehow not always evaluated? lazy val extends a strict val, what are the semantics?
+      super.reflectMirrored(zd)
+    case _ =>
+      super.reflectMirrored(zd)
+  }
+  
 
   // what about this: enable?
   // override def reflectMutable[A:Manifest](d: Def[A]): Exp[A] = d match {
@@ -834,55 +862,59 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
   override def mirrorFatDef[A:Manifest](d: Def[A], f: Transformer)(implicit ctx: SourceContext): Def[A] = mirrorLoopBody(d,f) // TODO: cleanup
 
-  def mirrorLoopBody[A](d: Def[A], f: Transformer): Def[A] = {
+  def mirrorLoopBody[A:Manifest](d: Def[A], f: Transformer): Def[A] = {
+    // should this be the default apply in Transforming? note we need a manifest! but the default in Transforming seems wrong otherwise... better to catch early
+    // def fb[B:Manifest](b: Block[B]) = if (f.hasContext) reifyEffects(f.reflectBlock(b)) else f(b)
+    def fb[B:Manifest](b: Block[B]) = f(b)
+    
     d match {
       case e: DeliteCollectElem[a,i,ca] => 
-        DeliteCollectElem[a,i,ca]( // need to be a case class for equality (do we rely on equality?)          
+        (DeliteCollectElem[a,i,ca]( // need to be a case class for equality (do we rely on equality?)          
           eV = f(e.eV).asInstanceOf[Sym[a]],        
           sV = f(e.sV).asInstanceOf[Sym[Int]],
           allocVal = f(e.allocVal).asInstanceOf[Sym[i]],
-          allocN = f(e.allocN),
-          func = f(e.func),
-          update = f(e.update),
-          finalizer = f(e.finalizer),
-          cond = e.cond.map(f(_)), //f(e.cond)
+          allocN = fb(e.allocN)(e.mI),
+          func = fb(e.func)(e.mA),
+          update = fb(e.update)(manifest[Unit]),
+          finalizer = fb(e.finalizer)(e.mCA),
+          cond = e.cond.map(fb(_)(manifest[Boolean])), //f(e.cond)
           par = e.par,
           buf = DeliteBufferElem[a,i,ca](
             iV = f(e.buf.iV).asInstanceOf[Sym[Int]],
             iV2 = f(e.buf.iV2).asInstanceOf[Sym[Int]],
             aV = f(e.buf.aV).asInstanceOf[Sym[i]],
-            append = f(e.buf.append),
-            setSize = f(e.buf.setSize),
-            allocRaw = f(e.buf.allocRaw),
-            copyRaw = f(e.buf.copyRaw)          
-          )
-        ).asInstanceOf[Def[A]]
+            append = fb(e.buf.append)(manifest[Boolean]),
+            setSize = fb(e.buf.setSize)(manifest[Unit]),
+            allocRaw = fb(e.buf.allocRaw)(e.mI),
+            copyRaw = fb(e.buf.copyRaw)(manifest[Unit])          
+          )(e.mA,e.mI,e.mCA)
+        )(e.mA,e.mI,e.mCA)).asInstanceOf[Def[A]]
       case e: DeliteForeachElem[a] => 
-        DeliteForeachElem[a](
-          func = f(e.func),
+        (DeliteForeachElem[a](
+          func = fb(e.func)(e.mA),
           sync = f(e.sync)
 //          cond = f(e.cond)
-        ).asInstanceOf[Def[A]] // reasonable?
+        )(e.mA)).asInstanceOf[Def[A]] // reasonable?
       case e: DeliteReduceElem[a] => 
-        DeliteReduceElem[a](
-          func = f(e.func),
-          cond = e.cond.map(f(_)),//f(e.cond),
-          zero = f(e.zero),
+        (DeliteReduceElem[a](
+          func = fb(e.func)(e.mA),
+          cond = e.cond.map(fb(_)(manifest[Boolean])),//f(e.cond),
+          zero = fb(e.zero)(e.mA),
           rV = (f(e.rV._1).asInstanceOf[Sym[a]], f(e.rV._2).asInstanceOf[Sym[a]]), // need to transform bound vars ??
-          rFunc = f(e.rFunc),
+          rFunc = fb(e.rFunc)(e.mA),
           stripFirst = e.stripFirst
-        ).asInstanceOf[Def[A]]
+        )(e.mA)).asInstanceOf[Def[A]]
       case e: DeliteReduceTupleElem[a,b] =>
-        DeliteReduceTupleElem[a,b](
-          func = (f(e.func._1),f(e.func._2)),
-          cond = e.cond.map(f(_)),//f(e.cond),
-          zero = (f(e.zero._1),f(e.zero._2)),
+        (DeliteReduceTupleElem[a,b](
+          func = (fb(e.func._1)(e.mA),fb(e.func._2)(e.mB)),
+          cond = e.cond.map(fb(_)(manifest[Boolean])),//f(e.cond),
+          zero = (fb(e.zero._1)(e.mA),fb(e.zero._2)(e.mB)),
           rVPar = ((f(e.rVPar._1._1).asInstanceOf[Sym[a]], f(e.rVPar._1._2).asInstanceOf[Sym[b]]),(f(e.rVPar._2._1).asInstanceOf[Sym[a]], f(e.rVPar._2._2).asInstanceOf[Sym[b]])), // need to transform bound vars ??
           rVSeq = ((f(e.rVSeq._1._1).asInstanceOf[Sym[a]], f(e.rVSeq._1._2).asInstanceOf[Sym[b]]),(f(e.rVSeq._2._1).asInstanceOf[Sym[a]], f(e.rVSeq._2._2).asInstanceOf[Sym[b]])), // need to transform bound vars ??
-          rFuncPar = (f(e.rFuncPar._1),f(e.rFuncPar._2)),
-          rFuncSeq = (f(e.rFuncSeq._1),f(e.rFuncSeq._2)),
+          rFuncPar = (fb(e.rFuncPar._1)(e.mA),fb(e.rFuncPar._2)(e.mB)),
+          rFuncSeq = (fb(e.rFuncSeq._1)(e.mA),fb(e.rFuncSeq._2)(e.mB)),
           stripFirst = e.stripFirst
-        ).asInstanceOf[Def[A]]
+        )(e.mA,e.mB)).asInstanceOf[Def[A]]
     }
   }
   
@@ -890,6 +922,21 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   //////////////
   // dependencies
 
+  /* is this necessary or not? does not appear to effect anything yet. */
+  override def blocks(e: Any): List[Block[Any]] = e match {
+    case s: DeliteOpSingleTask[_] => blocks(s.block)
+    case e: DeliteOpExternal[_] =>  super.blocks(e) ::: blocks(e.allocVal) 
+    case op: DeliteCollectElem[_,_,_] => blocks(op.func) ::: blocks(op.update) ::: blocks(op.cond) ::: blocks(op.allocN) ::: blocks(op.finalizer) ::: blocks(op.buf) 
+    case op: DeliteBufferElem[_,_,_] => blocks(op.append) ::: blocks(op.setSize) ::: blocks(op.allocRaw) ::: blocks(op.copyRaw)
+//    case op: DeliteForeachElem[_] => blocks(op.func) ::: blocks(op.cond) ::: blocks(op.sync)
+    case op: DeliteForeachElem[_] => blocks(op.func) ::: blocks(op.sync)
+    case op: DeliteReduceElem[_] => blocks(op.func) ::: blocks(op.cond) ::: blocks(op.zero) ::: blocks(op.rFunc)
+    case op: DeliteReduceTupleElem[_,_] => blocks(op.func) ::: blocks(op.cond) ::: blocks(op.zero) ::: blocks(op.rFuncSeq) ::: blocks(op.rFuncPar) // should be ok for tuples...
+    case foreach: DeliteOpForeach2[_,_] => blocks(foreach.func) ::: blocks(foreach.sync)
+    case foreach: DeliteOpForeachBounded[_,_,_] => blocks(foreach.func) ::: blocks(foreach.sync)
+    case _ => super.blocks(e)
+  }  
+  
   override def syms(e: Any): List[Sym[Any]] = e match { //TR TODO: question -- is alloc a dependency (should be part of result) or a definition (should not)???
                                                         // aks: answer -- we changed it to be internal to the op to make things easier for CUDA. not sure if that still needs
                                                         // to be the case. similar question arises for sync
