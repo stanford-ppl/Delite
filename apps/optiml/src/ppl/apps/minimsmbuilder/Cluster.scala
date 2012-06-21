@@ -37,40 +37,26 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
    */  
   def rmsd_centered(realLen: Rep[Int], xCentered: Interface[Vector[XYZ]], yCentered: Interface[Vector[XYZ]], gx: Rep[Float], gy: Rep[Float]) = {
     // compute the inner product matrix 
-    // FIXME: numpy simply reinterprets the input 2d vector as matrix. 
-    // the c++ computes the matrix product in a vectorized fashion.
     // println("+++STAGING MARKER: entering perf critical")
     val mX = (0::3, 0::realLen) { (i,j) => if (i == 0) xCentered(j).x else if (i == 1) xCentered(j).y else xCentered(j).z } // inline transpose
     val mY = (0::realLen, 0::3) { (i,j) => if (j == 0) yCentered(i).x else if (j == 1) yCentered(i).y else yCentered(i).z }
-    //val mY = Matrix(y.map(e => DenseVector(e.x,e.y,e.z)))
     val M = mX * mY
-
+    
     // form the 4x4 symmetric Key matrix K
-    val K = DenseMatrix[Float](4,4)
-    K(0,0) = M(0,0) + M(1,1) + M(2,2)
-    K(0,1) = M(1,2)-M(2,1)
-    K(0,2) = M(2,0)-M(0,2)
-    K(0,3) = M(0,1)-M(1,0)
-    K(1,1) = M(0,0)-M(1,1)-M(2,2)
-    K(1,2) = M(0,1)+M(1,0)    
-    K(1,3) = M(2,0)+M(0,2)
-    K(2,2) = -1f*M(0,0)+M(1,1)-M(2,2)
-    K(2,3) = M(1,2)+M(2,1)  
-    K(3,3) = -1f*M(0,0) - M(1,1) + M(2,2)   
-    
-    // -- performance testing impact of not allocating the K matrix (appears pretty negligible)
-    // could potentially rewrite the applies to go to the underlying allocation 
-    // val k00 = M(0,0) + M(1,1) + M(2,2)
-    // val k01 = M(1,2)-M(2,1)
-    // val k02 = M(2,0)-M(0,2)
-    // val k03 = M(0,1)-M(1,0)
-    // val k11 = M(0,0)-M(1,1)-M(2,2)
-    // val k12 = M(0,1)+M(1,0)    
-    // val k13 = M(2,0)+M(0,2)
-    // val k22 = -1f*M(0,0)+M(1,1)-M(2,2)
-    // val k23 = M(1,2)+M(2,1)  
-    // val k33 = -1f*M(0,0) - M(1,1) + M(2,2)   
-    
+    val k00 = M(0,0) + M(1,1) + M(2,2)
+    val k01 = M(1,2)-M(2,1)
+    val k02 = M(2,0)-M(0,2)
+    val k03 = M(0,1)-M(1,0)
+    val k11 = M(0,0)-M(1,1)-M(2,2)
+    val k12 = M(0,1)+M(1,0)    
+    val k13 = M(2,0)+M(0,2)
+    val k22 = -1f*M(0,0)+M(1,1)-M(2,2)
+    val k23 = M(1,2)+M(2,1)  
+    val k33 = -1f*M(0,0) - M(1,1) + M(2,2)   
+    val K = DenseMatrix(DenseVector(k00, k01, k02, k03),
+                        DenseVector(k01, k11, k12, k13),
+                        DenseVector(k02, k12, k22, k23),
+                        DenseVector(k03, k13, k23, k33))
     
     // coefficients of the characteristic polynomial
     val c2 = -2f*square(M).sum
@@ -78,12 +64,6 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
 
     // 4x4 determinant of the K matrix
     val c0 = det(K)
-    // val c0 =  k01*k01*k23*k23   - k22*k33*k01*k01   + 2*k33*k01*k02*k12 -
-    //           2*k01*k02*k13*k23 - 2*k01*k03*k12*k23 + 2*k22*k01*k03*k13 +
-    //           k02*k02*k13*k13   - k11*k33*k02*k02   - 2*k02*k03*k12*k13 + 
-    //           2*k11*k02*k03*k23 + k03*k03*k12*k12   - k11*k22*k03*k03 -
-    //           k00*k33*k12*k12   + 2*k00*k12*k13*k23 - k00*k22*k13*k13 -
-    //           k00*k11*k23*k23   + k00*k11*k22*k33;
     
     // println("c0: " + c0)
     // println("c1: " + c1)
@@ -372,7 +352,7 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
         val a = frameTheoData.XYZData
         val b = trajTheoData.XYZData    
         val ga = frameTheoData.G
-        val gb = trajTheoData.G              
+        val gb = trajTheoData.G          
         tic()
         val out = (0::b.numRows) { i =>
           rmsd_centered(frameTheoData.numAtoms, a(0), b(i), ga(0), gb(i))

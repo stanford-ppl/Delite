@@ -348,7 +348,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     stream.println("  \"controlDeps\":[" + makeString(controlDeps) + "],")
     stream.println("  \"antiDeps\":[" + makeString(antiDeps) + "],")
     if (remap(thenp.tp) != remap(elsep.tp))
-      throw new RuntimeException("Delite conditional with different then and else return types: " + remap(thenp.tp) + " and " + remap(elsep.tp))
+      throw new RuntimeException("Delite conditional with different then and else return types: " + thenp + ", " + remap(thenp.tp) + " and " + elsep + ", " + remap(elsep.tp))
     
     val returnTypesStr = for (gen <- generators) yield {
       try {

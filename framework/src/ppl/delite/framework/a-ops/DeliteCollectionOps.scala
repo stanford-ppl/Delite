@@ -5,8 +5,9 @@ import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.Interfaces
 
-trait DeliteCollectionOps extends Variables {
+trait DeliteCollectionOps extends Interfaces with Variables {
     
   // AKS: Is DCInterfaceOps still useful for anything? Are they meant to guarantee that dc_* static call will succeed?
   // should this be split into read and write interfaces?

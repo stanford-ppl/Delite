@@ -28,13 +28,19 @@ trait LAInputReaderOpsExp extends LAInputReaderOps with BaseFatExp {
   this: OptiLAExp with LAInputReaderImplOps with TupleOpsExp =>
   
   case class LAInputReadMatrix[Elem:Manifest](filename: Exp[String], schemaBldr: Exp[String] => Exp[Elem], delim: Exp[String])
-    extends DeliteOpSingleTask(reifyEffects(lainput_read_matrix_impl(filename, schemaBldr, delim)))
+    extends DeliteOpSingleWithManifest[Elem,DenseMatrix[Elem]](reifyEffects(lainput_read_matrix_impl(filename, schemaBldr, delim)))
   
   case class LAInputReadVector[Row:Manifest](filename: Exp[String], schemaBldr: Exp[DenseVector[String]] => Exp[Row], delim: Exp[String])
-    extends DeliteOpSingleTask(reifyEffects(lainput_read_vector_impl(filename, schemaBldr, delim)))
+    extends DeliteOpSingleWithManifest[Row,DenseVector[Row]](reifyEffects(lainput_read_vector_impl(filename, schemaBldr, delim)))
   
   def obj_lainput_read_matrix[Elem:Manifest](filename: Exp[String], schemaBldr: Exp[String] => Exp[Elem], delim: Exp[String])(implicit ctx: SourceContext) = reflectEffect(LAInputReadMatrix(filename, schemaBldr, delim))
   def obj_lainput_read_vector[Row:Manifest](filename: Exp[String], schemaBldr: Exp[DenseVector[String]] => Exp[Row], delim: Exp[String])(implicit ctx: SourceContext) = reflectEffect(LAInputReadVector(filename, schemaBldr, delim))  
+  
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
+    case Reflect(d@LAInputReadVector(fn,s,delim), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,d) } with LAInputReadVector(f(fn),f(s),f(delim))(d.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(d@LAInputReadMatrix(fn,s,delim), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,d) } with LAInputReadMatrix(f(fn),f(s),f(delim))(d.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e,f)
+  }).asInstanceOf[Exp[A]]  
 }
 
 

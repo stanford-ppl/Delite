@@ -16,7 +16,7 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
 
   case class DeliteWhile(cond: Block[Boolean], body: Block[Unit]) extends DeliteOpWhileLoop
 
-  override def __whileDo(cond: => Exp[Boolean], body: => Rep[Unit])(implicit ctx: SourceContext) {
+  override def __whileDo(cond: => Exp[Boolean], body: => Rep[Unit])(implicit ctx: SourceContext): Rep[Unit] = {
     //val c = reifyEffects(cond)
     //val a = reifyEffects(body)
     // TODO: reflectEffect(new While(c, a) with DeliteOpWhile))
@@ -50,8 +50,12 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
   }
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case DeliteWhile(c,b) => reflectPure(DeliteWhile(f(c),f(b)))(mtype(manifest[A]), implicitly[SourceContext])
-    case Reflect(DeliteWhile(c,b), u, es) => reflectMirrored(Reflect(DeliteWhile(f(c),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DeliteWhile(cond, block), u, es) => {
+      if (f.hasContext) 
+        __whileDo(f.reflectBlock(cond), f.reflectBlock(block))
+      else
+        reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteWhile(f(cond),f(block)), mapOver(f,u), f(es)))(mtype(manifest[A]))      
+      }
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 

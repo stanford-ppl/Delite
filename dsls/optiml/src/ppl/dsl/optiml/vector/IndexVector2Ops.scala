@@ -4,6 +4,7 @@ import java.io.PrintWriter
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
 import scala.reflect.SourceContext
 import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.transform.LoweringTransform
 import ppl.dsl.optiml._
 
 trait IndexVector2Ops extends Base { this: OptiML =>
@@ -78,7 +79,7 @@ trait IndexVector2Ops extends Base { this: OptiML =>
   // def indexvector2_colind(x: Rep[IndexVector2]): Interface[IndexVector]
 }
 
-trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLExp =>
+trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp with LoweringTransform { this: OptiMLExp =>
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
@@ -88,7 +89,16 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   // case class IndexVector2IsWildcard() extends Def[IndexVector]
   // case class IndexVector2RowInd(x: Exp[IndexVector2]) extends Def[IndexVector]
   // case class IndexVector2ColInd(x: Exp[IndexVector2]) extends Def[IndexVector]
-
+  
+  
+  ////////////////////////////////
+  // composite: to be transformed  
+  
+  // we keep the unwrapped function f around so that it cna be used directly in rewrites
+  case class IndexVector2Construct[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], f: (Exp[Int],Exp[Int]) => Exp[A], block: Block2[Int,Int,A]) extends Def[DenseMatrix[A]]{
+    val m = manifest[A]
+  }
+  
   ////////////////////////////////
   // implemented via delite ops
 
@@ -125,7 +135,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
 //  case class IndexVector2ConstructCols[A:Manifest](in: Exp[IndexVector], block: Exp[Int] => Exp[Vector[A]], out: Exp[Matrix[A]])
 //    extends DeliteOpForeach[Int]
 
-  case class IndexVector2Construct[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: (Exp[Int],Exp[Int]) => Exp[A], out: Exp[DenseMatrix[A]])
+  case class IndexVector2ConstructMutable[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: (Exp[Int],Exp[Int]) => Exp[A], out: Exp[DenseMatrix[A]])
     extends DeliteOpForeach[Int] {
   
     val in = rowInd.ops.elem.asInstanceOf[Exp[Vector[Int]]]
@@ -206,11 +216,14 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
 //  def indexvector2_construct[A:Manifest](x: IndexVector2, block: (Exp[Int],Exp[Int]) => Exp[A]): Exp[Matrix[A]] = {
   
   def indexvector2_construct[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: (Exp[Int],Exp[Int]) => Exp[A]): Exp[DenseMatrix[A]] = {
-    //Matrix(IndexVector2Construct(x, block))
-    val out = DenseMatrix[A](rowInd.length, colInd.length)
-    reflectWrite(out)(IndexVector2Construct(rowInd,colInd,block,out)) 
-    out.unsafeImmutable
+    // in order for the transformation to be successful, we have to evaluate block to expose (free) dependencies    
+    reflectPure(IndexVector2Construct(rowInd,colInd,block,block))
+    
+    // val out = DenseMatrix[A](rowInd.length, colInd.length)
+    // reflectWrite(out)(IndexVector2ConstructMutable(rowInd,colInd,block,out)) 
+    // out.unsafeImmutable
   }
+  
   // def indexvector2_rowind(x: Exp[IndexVector2]) = x match {
   //   case Def(IndexVector2New(rowInd, colInd)) => rowInd
   //   case _ => reflectPure(IndexVector2RowInd(x))
@@ -220,11 +233,29 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   //   case _ => reflectPure(IndexVector2ColInd(x))
   // }
 
+
+  //////////////
+  // transforms
+  
+  override def onCreate[A:Manifest](s: Sym[A], d: Def[A]) = d match {
+    case c@IndexVector2Construct(rowInd,colInd,f,blk) => 
+      s.atPhase(deviceIndependentLowering) {
+        val t = deviceIndependentLowering
+        val out = DenseMatrix(t(rowInd).length, t(colInd).length)(c.m,implicitly[SourceContext])
+        // make sure that we transform the symbolically evaluated blk, and not the original lambda
+        reflectWrite(out)(IndexVector2ConstructMutable(t(rowInd), t(colInd), t(blk), out)(c.m))
+        // don't forget - have to be explicit with manifests inside transformers
+        (object_unsafe_immutable(out)(out.tp,implicitly[SourceContext])).asInstanceOf[Exp[A]]              
+      }
+    case _ => super.onCreate(s,d)
+  }
+          
+  
   //////////////
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case Reflect(e@IndexVector2Construct(r,c,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2Construct(f(r),f(c),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@IndexVector2ConstructMutable(r,c,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructMutable(f(r),f(c),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@IndexVector2ConstructRows(in,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructRows(f(in),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??

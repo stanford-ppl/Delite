@@ -3,7 +3,7 @@ package ppl.delite.framework.codegen.delite
 import generators.{DeliteGenTaskGraph}
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
 import scala.virtualization.lms.internal._
-import scala.virtualization.lms.common.{BaseGenStaticData, StaticDataExp}
+import scala.virtualization.lms.common.{BaseGenStaticData, StaticDataExp, WorklistTransformer}
 import ppl.delite.framework.{Config, DeliteApplication}
 import collection.mutable.{ListBuffer}
 import collection.mutable.HashMap
@@ -19,11 +19,14 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
 
   // these are the target-specific kernel generators (e.g. scala, cuda, etc.)
   type Generator = GenericFatCodegen{val IR: DeliteCodegen.this.IR.type}
-  val generators : List[Generator]
+  val generators: List[Generator]
 
+  // should be set by DeliteApplication if there are any transformations to be run before codegen
+  var transformers: List[WorklistTransformer{val IR: DeliteCodegen.this.IR.type}] = Nil
+  
   // per kernel, used by DeliteGenTaskGraph
-  var controlDeps : List[Sym[Any]] = _
-  var emittedNodes : List[Sym[Any]] = _
+  var controlDeps: List[Sym[Any]] = _
+  var emittedNodes: List[Sym[Any]] = _
 
   // global, used by DeliteGenTaskGraph
   var kernelMutatingDeps = Map[Sym[Any],List[Sym[Any]]]() // from kernel to its mutating deps
@@ -111,11 +114,33 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     stream.println("] }")
   }
   
+  def runTransformations[A:Manifest](b: Block[A]): Block[A] = {
+    printlog("DeliteCodegen: applying transformations")
+    printlog("  Transformers: " + transformers)    
+    printlog("  Block before transformation: " + b)
+    var curBlock = b
+    val maxTransformIter = 3 // TODO: make configurable
+    for (t <- transformers) {
+      printlog("  map: " + t.nextSubst)
+      var i = 0
+      while (!t.isDone && i < maxTransformIter) {
+        printlog("iter: " + i)
+        curBlock = t.runOnce(curBlock)
+        i += 1
+      }
+      if (i == maxTransformIter) printlog("  warning: transformer " + t + " did not converge in " + maxTransformIter + " iterations")
+    }
+    printlog("DeliteCodegen: done transforming")
+    printlog("  Block after transformation: " + curBlock) 
+    curBlock   
+  }
+  
   def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): List[(Sym[Any],Any)] = {
 
     val x = fresh[A]
-    val y = reifyEffects(f(x))
-
+    val b = reifyEffects(f(x)) // transformers only get registrations at this point, while the IR is being constructed    
+    val y = runTransformations(b)
+    
     val sA = mA.toString
     val sB = mB.toString
 
