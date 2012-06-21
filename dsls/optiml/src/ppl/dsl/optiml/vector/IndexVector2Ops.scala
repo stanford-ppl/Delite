@@ -94,12 +94,8 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp with LoweringTra
   ////////////////////////////////
   // composite: to be transformed  
   
-  // b is needed to get the right dependencies
-  // case class IndexVector2Construct[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: (Exp[Int],Exp[Int]) => Exp[A], b: Block[A]) extends Def[DenseMatrix[A]]{
-  //   val m = manifest[A]
-  // }
-
-  case class IndexVector2Construct[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: (Exp[Int],Exp[Int]) => Exp[A], blockArg1: Sym[Int], blockArg2: Sym[Int], blockRes: Block[A]) extends Def[DenseMatrix[A]]{
+  // we keep the unwrapped function f around so that it cna be used directly in rewrites
+  case class IndexVector2Construct[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], f: (Exp[Int],Exp[Int]) => Exp[A], block: Block2[Int,Int,A]) extends Def[DenseMatrix[A]]{
     val m = manifest[A]
   }
   
@@ -220,9 +216,8 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp with LoweringTra
 //  def indexvector2_construct[A:Manifest](x: IndexVector2, block: (Exp[Int],Exp[Int]) => Exp[A]): Exp[Matrix[A]] = {
   
   def indexvector2_construct[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: (Exp[Int],Exp[Int]) => Exp[A]): Exp[DenseMatrix[A]] = {
-    // in order for the transformation to be successful, we have to evaluate block to expose (free) dependencies!
-    val (arg1, arg2) = (fresh[Int],fresh[Int])
-    reflectPure(IndexVector2Construct(rowInd,colInd,block,arg1,arg2,reifyEffects(block(arg1,arg2))))
+    // in order for the transformation to be successful, we have to evaluate block to expose (free) dependencies    
+    reflectPure(IndexVector2Construct(rowInd,colInd,block,block))
     
     // val out = DenseMatrix[A](rowInd.length, colInd.length)
     // reflectWrite(out)(IndexVector2ConstructMutable(rowInd,colInd,block,out)) 
@@ -238,22 +233,18 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp with LoweringTra
   //   case _ => reflectPure(IndexVector2ColInd(x))
   // }
 
-  override def boundSyms(e: Any): List[Sym[Any]] = e match {
-    case IndexVector2Construct(ri,ci,f,a1,a2,b) => scala.List(a1,a2) ::: effectSyms(b)
-    case _ => super.boundSyms(e)
-  }
 
   //////////////
   // transforms
   
   override def onCreate[A:Manifest](s: Sym[A], d: Def[A]) = d match {
-    case c@IndexVector2Construct(rowInd,colInd,f,blockArg1,blockArg2,blockRes) => 
+    case c@IndexVector2Construct(rowInd,colInd,f,blk) => 
       s.atPhase(deviceIndependentLowering) {
         val t = deviceIndependentLowering
         val out = DenseMatrix(t(rowInd).length, t(colInd).length)(c.m,implicitly[SourceContext])
-        // make sure that we transform the application of block as well, and transform the bound symbols we create back to its original arguments!
-        reflectWrite(out)(IndexVector2ConstructMutable(t(rowInd), t(colInd), { (x,y) => t.subst ++= scala.List(blockArg1 -> x, blockArg2 -> y); t.reflectBlock(blockRes) }, out)(c.m))
-        // don't forget - have to be explicit with manifests inside transformers!
+        // make sure that we transform the symbolically evaluated blk, and not the original lambda
+        reflectWrite(out)(IndexVector2ConstructMutable(t(rowInd), t(colInd), t(blk), out)(c.m))
+        // don't forget - have to be explicit with manifests inside transformers
         (object_unsafe_immutable(out)(out.tp,implicitly[SourceContext])).asInstanceOf[Exp[A]]              
       }
     case _ => super.onCreate(s,d)

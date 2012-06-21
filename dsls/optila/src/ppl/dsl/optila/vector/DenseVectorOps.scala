@@ -510,7 +510,7 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
     //case Def(DenseVectorMutableTrans(a)) => a.length
     //case Def(DenseVectorConcatenate(a,b)) => a.length + b.length   
     case Def(DenseVectorSort(a)) => a.length
-      
+    case Def(DenseVectorObjectFromUnliftedSeq(xs)) => Const(xs.length)
     case _ => 
       //printerr("could not short-circuit call to " + x.toString + ".length")
       //printerr(findDefinition(x.asInstanceOf[Sym[DenseVector[A]]]))
@@ -530,6 +530,7 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
     case Def(DenseVectorZeroDouble(l,r)) => r
     case Def(DenseVectorZeroFloat(l,r)) => r
     case Def(DenseVectorZeroInt(l,r)) => r
+    case Def(DenseVectorObjectFromUnliftedSeq(xs)) => Const(true)
     //case Def(Reflect(DenseVectorObjectZeros(l,r), _)) => r    
     //case Def(DenseVectorObjectRange(s,e,d,r)) => r
     case _ => super.densevector_isrow(x)

@@ -516,12 +516,14 @@ trait DenseMatrixOpsExpOpt extends DenseMatrixOpsExp {
   override def densematrix_numrows[A:Manifest](x: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = x match {
     case Def(s@Reflect(DenseMatrixObjectNew(rows,cols), u, es)) if context.contains(s) => rows // only if not modified! // TODO: check writes
     case Def(DenseMatrixObjectNew(rows,cols)) => rows
+    case Def(DenseMatrixObjectFromVec(v)) => v.length
     case _ => super.densematrix_numrows(x)
   }
   
   override def densematrix_numcols[A:Manifest](x: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = x match {
     case Def(s@Reflect(DenseMatrixObjectNew(rows,cols), u, es)) if context.contains(s) => cols // only if not modified! // TODO: check writes
     case Def(DenseMatrixObjectNew(rows,cols)) => cols
+    case Def(DenseMatrixObjectFromVec(Def(DenseVectorObjectFromUnliftedSeq(xs)))) => Const(xs.length)
     case _ => super.densematrix_numcols(x)
   }  
 }
