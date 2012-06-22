@@ -59,7 +59,7 @@ def run(deg, params, opts):
     java_opts = java_opts + " -Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) + " -Ddelite.gpus=" + opts.num_gpus + " -Ddelite.runs=" + opts.num_runs
     
     if opts.profile == True:
-        java_opts = java_opts + " -Dstats.output.dir=profile -Dstats.dump.component=prof -Ddelite.debug.profile=true"
+        java_opts = java_opts + " -Dprofile.output.dir=profile -Dprofile.dump=true -Ddelite.debug.profile=true"
 
     # add classpaths
     cp = " -cp "

@@ -254,7 +254,6 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
         vprint("  swapping " + oldMedoid + " for " + trialMedoid + "... ")
         
         val distanceToTrial = oneToAll(ptraj, ptraj, trialMedoid)
-        vprint(" ++ ")
         val assignedToTrial = (0::distanceToTrial.length) filter { i => distanceToTrial(i) < distanceToCurrent(i) }
         // println("assignedToTrial:")
         // assignedToTrial.pprint
@@ -267,7 +266,6 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
         val ambiguous = (0::newAssignments.length) filter { i => newAssignments(i) == oldMedoid && distanceToTrial(i) >= distanceToCurrent(i) }
         // println("ambiguous:")
         // ambiguous.pprint
-        vprint(" ** ")
         for (l <- ambiguous) {
           val d = oneToAll(ptraj, pMedoids, l)
           val argmin = d.minIndex
@@ -276,7 +274,6 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
         }
         
         val newCost = sum(newDistances)
-        vprint(" -- ")
         if (newCost < currentCost) {
           vprint("Accept\\n")
           medoids = newMedoids.unsafeImmutable

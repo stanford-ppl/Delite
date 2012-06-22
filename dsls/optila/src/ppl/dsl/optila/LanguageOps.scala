@@ -275,11 +275,15 @@ trait LanguageOps extends Base { this: OptiLA =>
    *   Profiling
    */
   // lightweight profiling, matlab style
-  def tic(deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_start(deps)
-  def toc(deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_stop(deps)
+  def tic(deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_start(unit("app"),deps)
+  def tic(component: Rep[String], deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_start(component, deps)
+  def toc(deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_stop(unit("app"),deps)
+  def toc(component: Rep[String], deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_stop(component, deps)
+  def time(deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_time(deps)
 
-  def profile_start(deps: Seq[Rep[Any]])(implicit ctx: SourceContext): Rep[Unit]
-  def profile_stop(deps: Seq[Rep[Any]])(implicit ctx: SourceContext): Rep[Unit]
+  def profile_start(component: Rep[String], deps: Seq[Rep[Any]])(implicit ctx: SourceContext): Rep[Unit]
+  def profile_stop(component: Rep[String], deps: Seq[Rep[Any]])(implicit ctx: SourceContext): Rep[Unit]
+  def profile_time(deps: Seq[Rep[Any]])(implicit ctx: SourceContext): Rep[Double]
 }
 
 trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
@@ -440,12 +444,13 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    *   Profiling
    */
-  case class ProfileStart(deps: List[Exp[Any]]) extends Def[Unit]
-  case class ProfileStop(deps: List[Exp[Any]]) extends Def[Unit]
+  case class ProfileStart(component: Exp[String], deps: List[Exp[Any]]) extends Def[Unit]
+  case class ProfileStop(component: Exp[String], deps: List[Exp[Any]]) extends Def[Unit]
+  case class ProfileTime(deps: List[Exp[Any]]) extends Def[Double]
 
-  def profile_start(deps: Seq[Exp[Any]])(implicit ctx: SourceContext) = reflectEffect(ProfileStart(deps.toList))
-  def profile_stop(deps: Seq[Exp[Any]])(implicit ctx: SourceContext) = reflectEffect(ProfileStop(deps.toList))
-  
+  def profile_start(component: Exp[String], deps: Seq[Exp[Any]])(implicit ctx: SourceContext) = reflectEffect(ProfileStart(component, deps.toList))
+  def profile_stop(component: Exp[String], deps: Seq[Exp[Any]])(implicit ctx: SourceContext) = reflectEffect(ProfileStop(component, deps.toList))
+  def profile_time(deps: Seq[Exp[Any]])(implicit ctx: SourceContext) = reflectEffect(ProfileTime(deps.toList))
   
   /**
    * Mirroring
@@ -461,8 +466,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     case Reflect(RandIntMax(max), u, es) => reflectMirrored(Reflect(RandIntMax(f(max)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@RandElem(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with RandElem(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@MatrixDeterminant(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixDeterminant(f(x))(e.m,e.a,e.n), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(ProfileStart(deps), u, es) => reflectMirrored(Reflect(ProfileStart(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(ProfileStop(deps), u, es) => reflectMirrored(Reflect(ProfileStop(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(ProfileStart(c,deps), u, es) => reflectMirrored(Reflect(ProfileStart(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(ProfileStop(c,deps), u, es) => reflectMirrored(Reflect(ProfileStop(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(ProfileTime(deps), u, es) => reflectMirrored(Reflect(ProfileTime(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }
@@ -495,8 +501,9 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
       case RandReseed() => emitValDef(sym, "{ generated.scala.Global.randRef.setSeed(generated.scala.Global.INITIAL_SEED);" +
                                            "   generated.scala.Global.intRandRef.setSeed(generated.scala.Global.INITIAL_SEED); }")
       case IdentityHashCode(x) => emitValDef(sym, "System.identityHashCode(" + quote(x) + ")")
-      case ProfileStart(deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)")
-      case ProfileStop(deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
+      case ProfileStart(c,deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(" + quote(c) + ", false)")
+      case ProfileStop(c,deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(" + quote(c) + ", false)")
+      case ProfileTime(deps) => emitValDef(sym, "System.currentTimeMillis()/1000.0")
       case _ => super.emitNode(sym, rhs)
     }
   }

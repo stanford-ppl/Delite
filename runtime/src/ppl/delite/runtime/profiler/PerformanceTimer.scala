@@ -163,18 +163,26 @@ object PerformanceTimer
     }
   }
 
-  def print(component: String, globalStart: Long, globalStartNanos: Long) {
-    // special case for component == "prof"
-    if (component == "prof") {
-      Profiler.writeProfile(globalStart, globalStartNanos, stats)
-    } else {
-      val timeStr = times.get(component) map { time =>
-        "[METRICS]: Latest time for component " + component + ": " +  (time.last / 1000000).formatted("%.6f") + "s"
-      }
-      println(timeStr getOrElse "[METRICS]: No data for component " + component)
+  def printAll(globalStart: Long, globalStartNanos: Long) {
+    var components = times.keys
+    components = components filterNot { e => e == "eop" || e.startsWith("x") && e.drop(1).forall(n => n >= 0 || n <= 9) } // don't print synthetic components added for profiling
+    for (c <- components) {
+      print(c, globalStart, globalStartNanos)
     }
   }
+  
+  def print(component: String, globalStart: Long, globalStartNanos: Long) {  
+    val timeStr = times.get(component) map { time =>
+      "[METRICS]: Latest time for component " + component + ": " +  (time.last / 1000000).formatted("%.6f") + "s"
+    }
+    println(timeStr getOrElse "[METRICS]: No data for component " + component)
+  }
 
+  def dumpProfile(globalStart: Long, globalStartNanos: Long) {    
+    Profiler.writeProfile(globalStart, globalStartNanos, stats)
+  }
+  
+  // AKS: what is printProfile for? it is confusingly named since it doesn't appear to use the Profiler.
   def printProfile(globalStart: Long) {
     def inSecs(v: Long) = (v.toDouble / 1000d).formatted("%.6f")
     
@@ -196,7 +204,10 @@ object PerformanceTimer
   }
 
   def dumpStats(component: String) {
-    val directory = Profiler.getOrCreateOutputDirectory()
+    val directory = new File(Config.statsOutputDirectory)
+    if (directory.exists == false) directory.mkdirs
+    else if (directory.isDirectory == false)
+      throw new RuntimeException("statsOutputDirectory doesn't refer to a directory")      
     val timesFile = new File(directory.getCanonicalPath + File.separator  + Config.statsOutputFilename)
     if(Config.dumpStatsOverwrite == false && timesFile.exists)
       throw new RuntimeException("stats file " + timesFile + " already exists")

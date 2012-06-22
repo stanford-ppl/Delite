@@ -62,11 +62,14 @@ object Config {
    val dumpStats: Boolean = getProperty("stats.dump", "false") != "false"
    val dumpStatsComponent: String = getProperty("stats.dump.component", "all")
    val dumpStatsOverwrite: Boolean = getProperty("stats.dump.overwrite", "false") != "false"
-
+       
    val statsOutputDirectory: String = getProperty("stats.output.dir", "")
    if(dumpStats && statsOutputDirectory == "") error("stats.dump option enabled but did not provide a statsOutputDirectory")
 
    val statsOutputFilename: String = getProperty("stats.output.filename", "")
    if(dumpStats && statsOutputFilename == "") error("stats.dump option enabled but did not provide a statsOutputFilename")
 
+   val dumpProfile: Boolean = getProperty("profile.dump", "false") != "false"   
+   val profileOutputDirectory: String = getProperty("profile.output.dir", "")
+   if(dumpProfile && profileOutputDirectory == "") error("profile.dump option enabled but did not provide a profileOutputDirectory")   
 }

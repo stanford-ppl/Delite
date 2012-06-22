@@ -265,8 +265,8 @@ def loadParams(options):
  
 def expand(param):
     if len(param) > 0:
-      if (param[0] == '$'):
-          return props['apps.data'] + "/" +  param[1:len(param)]
+      if (param[0:5] == '$data'):
+          return props['apps.data'] + "/" +  param[6:len(param)]
     return param   
     
 
