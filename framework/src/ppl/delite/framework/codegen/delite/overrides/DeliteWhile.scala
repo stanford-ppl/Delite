@@ -74,13 +74,16 @@ trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {
     case DeliteWhile(c,b) =>
       //val save = deliteKernel
       //deliteKernel = false
-      stream.print("val " + quote(sym) + " = while ({")
+      // wrapping while loops in methods appears to slow things down 
+      // stream.println("def " + quote(sym) + "_while = ")
+      stream.println("val " + quote(sym) + " = while ({")
       emitBlock(c)
       stream.print(quote(getBlockResult(c)))
       stream.println("}) {")
       emitBlock(b)
       stream.println(quote(getBlockResult(b)))
       stream.println("}")
+      // stream.println("val " + quote(sym) + " = " + quote(sym) + "_while")
       //deliteKernel = save
 
     case _ => super.emitNode(sym, rhs)

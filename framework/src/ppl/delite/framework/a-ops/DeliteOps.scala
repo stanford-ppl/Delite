@@ -1684,30 +1684,27 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case s:DeliteOpSingleTask[_] => {
       //printlog("EMIT single "+s)
-      //val save = deliteKernel
-      //deliteKernel = false
+      // always wrap single tasks in methods to reduce JIT compilation unit size 
       val b = s.block
-      if (!deliteKernel) {
-        // straight-line
-        stream.println("val " + quote(sym) + " = { " + "// " + s)
-        emitBlock(b)
-        stream.println(quote(getBlockResult(b)))
-        stream.println("}")
-      }
-      else {
-        // method wrapper
-        stream.println("def " + quote(sym) + "_block = { ")
-        emitBlock(b)
-        stream.println(quote(getBlockResult(b)))
-        stream.println("}")
-        stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
-      }
-      //deliteKernel = save
+      stream.println("def " + quote(sym) + "_block = { ")
+      emitBlock(b)
+      stream.println(quote(getBlockResult(b)))
+      stream.println("}")
+      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
     }
     case op: AbstractLoop[_] => 
       // TODO: we'd like to always have fat loops but currently they are not allowed to have effects
+      // if inline, wrap thin loops in methods to reduce JIT compilation unit size 
+      if (!deliteKernel) {
+        stream.println("def " + quote(sym) + "_thin = {")
+      }
       stream.println("// a *thin* loop follows: " + quote(sym))
       emitFatNode(List(sym), SimpleFatLoop(op.size, op.v, List(op.body)))
+      if (!deliteKernel) {
+        stream.println(quote(sym))
+        stream.println("}")
+        stream.println("val " + quote(sym) + " = " + quote(sym) + "_thin")
+      }
     case foreach:DeliteOpForeach2[_,_] => {
       if (deliteKernel == false){
         //stream.println("def " + quote(sym) + "_block = {")
