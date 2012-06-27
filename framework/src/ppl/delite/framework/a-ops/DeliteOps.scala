@@ -10,7 +10,7 @@ import ppl.delite.framework.Config
 import ppl.delite.framework.extern.lib._
 
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
-trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with IfThenElseFatExp
+trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with FunctionBlocksExp with IfThenElseFatExp
     with VariantsOpsExp with DeliteCollectionOpsExp
     with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp with ArrayOpsExp with StaticDataExp {  
   
@@ -326,13 +326,16 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     //val size: Exp[Int] // could be dc_size(in), but we want type-specific pattern matching to work
     def func: Exp[A] => Exp[B]
     
+    // bound var for map function, may be required by transformers
+    lazy val fin: Exp[A] = copyTransformedOrElse(_.fin)(dc_apply(in,v))    
+    
     // loop
-    lazy val body: Def[CB] = copyBodyOrElse(DeliteCollectElem[B,I,CB](
+    lazy val body: Def[CB] = copyBodyOrElse(DeliteCollectElem[B,I,CB](  
       eV = this.eV,     
       sV = this.sV,      
       allocVal = this.allocVal,      
       allocN = reifyEffects(this.alloc(sV)),
-      func = reifyEffects(this.func(dc_apply(in,v))),
+      func = reifyEffects(this.func(fin)),
       update = reifyEffects(dc_update(allocVal,v,eV)),
       finalizer = reifyEffects(this.finalizer(allocVal)),
       par = dc_parallelization(allocVal, false),
@@ -345,7 +348,12 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
         allocRaw = reifyEffects(dc_alloc[B,I](allocVal,sV)),
         copyRaw = reifyEffects(dc_copy(aV,iV,allocVal,iV2,sV))        
       )
-    ))    
+    ))
+    
+    val dmA = manifest[A]
+    val dmB = manifest[B]
+    val dmI = manifest[I]
+    val dmCB = manifest[CB]
   }
     
   /**
@@ -391,7 +399,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
         allocRaw = reifyEffects(dc_alloc[B,I](allocVal,sV)),
         copyRaw = reifyEffects(dc_copy(aV,iV,allocVal,iV2,sV))        
       )      
-    ))
+    ))    
   }  
   
   /**
@@ -427,13 +435,16 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val inB: Exp[DeliteCollection[B]]
     def func: (Exp[A], Exp[B]) => Exp[R]
     
+    // bound var for map function, may be required by transformers
+    lazy val fin: (Exp[A],Exp[B]) = (copyTransformedOrElse(_.fin._1)(dc_apply(inA,v)),copyTransformedOrElse(_.fin._2)(dc_apply(inB,v)))
+    
     // loop
     lazy val body: Def[CR] = copyBodyOrElse(DeliteCollectElem[R,I,CR](
       eV = this.eV,    
       sV = this.sV,      
       allocVal = this.allocVal,
       allocN = reifyEffects(this.alloc(sV)),
-      func = reifyEffects(this.func(dc_apply(inA,v), dc_apply(inB,v))),
+      func = reifyEffects(this.func(fin._1,fin._2)),
       update = reifyEffects(dc_update(allocVal,v,eV)),
       finalizer = reifyEffects(this.finalizer(allocVal)),
       par = dc_parallelization(allocVal, false),
@@ -447,12 +458,18 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
         copyRaw = reifyEffects(dc_copy(aV,iV,allocVal,iV2,sV))        
       )      
     ))
+    
+    val dmA = manifest[A]
+    val dmB = manifest[B]
+    val dmR = manifest[R]
+    val dmI = manifest[I]
+    val dmCR = manifest[CR]        
   }
   
     
   abstract class DeliteOpReduceLike[A:Manifest] extends DeliteOpLoop[A] {
     type OpType <: DeliteOpReduceLike[A]
-    final lazy protected val rV: (Sym[A],Sym[A]) = copyOrElse(_.rV)((reflectMutableSym(fresh[A]), fresh[A])) // TODO: transform vars??
+    final lazy val rV: (Sym[A],Sym[A]) = copyOrElse(_.rV)((reflectMutableSym(fresh[A]), fresh[A])) // TODO: transform vars??
     val mutable: Boolean = false
     // TODO: should reflectMutableSym only be called if we're actually mutating the accumulator?
   }
@@ -481,6 +498,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       rFunc = reifyEffects(this.func(rV._1, rV._2)),
       stripFirst = !isPrimitiveType(manifest[A]) && !this.mutable
     ))
+    
+    val dmA = manifest[A]
   }
   
   

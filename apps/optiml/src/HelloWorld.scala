@@ -5,13 +5,191 @@ trait HelloWorld extends OptiMLApplication {
     // hello world has been co-opted into a faster compiling, temporary scratch space
     // for tests that haven't been made into scalatests yet
     
-    //println("hello world")
+    // println("hello world")
     
+    // sparse matrix specialization testing
+    val m1b = SparseMatrix[Double](10000,10000)
+    m1b(1000,1000) = 500
+    m1b(5000,5000) = 1000
+    val m1 = m1b.finish
+    
+    // -- specialized maps
+    
+    tic("mapSpec")
+    val a1 = m1 map { e => e } // should be specialized
+    toc("mapSpec", a1)
+    println("a1(1000,1000): " + a1(1000,1000))
+    
+    tic("mapSpec2")
+    val a2 = m1 map { e => 0. } // should be specialized
+    toc("mapSpec2", a2)
+    println("a2(1000,1000): " + a2(1000,1000))
+    
+    // fast because most of the time we are adding zeros (e is usually 0)
+    tic("mapNoSpec")
+    val a3 = m1 map { e => if (random[Double] < 0.99999) e else 0.0 } // should NOT be specialized
+    toc("mapNoSpec", a3)
+    println("a3(1000,1000): " + a3(1000,1000))
+    println("a3.nnz: " + a3.nnz)
+    
+    // very slow (~30s) because we are densifying a sparse representation - this should never be done
+    // however, this shows that we scale incredibly poorly with nnz - need to investigate performance on structures that are ~50% sparse?
+    // is most of the time in the parallel op, or in the COOtoCSR conversion?  --> guess is COOtoCSR conversion, should be optimized
+    // tic("mapNoSpec2")
+    // val a4 = m1 map { e => 1. } // should NOT be specialized
+    // toc("mapNoSpec2", a4)
+    // println("a4(1000,1000): " + a4(1000,1000))
+    // println("a4.nnz: " + a4.nnz)
+    
+    
+    // -- specialized zips
+    
+    val m2b = SparseMatrix[Double](10000,10000)        
+    m2b(1000,1000) = 50
+    m2b(7000,7000) = 2
+    val m2 = m2b.finish
+        
+    tic("matZipLeftSpec")
+    val mz1 = m1.zip(m2) { (a,b) => a } // should be specialized 
+    toc("matZipLeftSpec",mz1)
+    println("mz1(1000,1000): " + mz1(1000,1000))
+    println("mz1(5000,5000): " + mz1(5000,5000))
+    println("mz1(7000,7000): " + mz1(7000,7000))    
+    
+    tic("matZipAddNoSpec")
+    val mz2 = m1.zip(m2) { (a,b) => if (random[Double] > .5) a else b } // should NOT be specialized 
+    toc("matZipAddNoSpec",mz2)
+    println("mz2(1000,1000): " + mz2(1000,1000))
+    println("mz2(5000,1000): " + mz2(5000,5000))    
+    
+    tic("matZipAddSpec")
+    val mz3 = m1+m2 // should be specialized 
+    toc("matZipAddSpec",mz3)
+    println("mz3(1000): " + mz3(1000,1000))
+    println("mz3(5000): " + mz3(5000,5000)) 
+    println("mz3(7000): " + mz3(7000,7000))       
+    println("mz3 nnz: " + mz3.nnz) 
+    
+    tic("matZipMult")
+    val mz4 = m1*:*m2 // should be specialized 
+    toc("matZipMult",mz4)
+    println("mz4(1000): " + mz4(1000,1000))
+    println("mz4(5000): " + mz4(5000,5000)) 
+    println("mz4(7000): " + mz4(7000,7000))            
+    println("mz4 nnz: " + mz4.nnz)
+    
+    // -- specialized reduces
+    tic("matRedSpec")
+    val r1 = m1.sum // should be specialized
+    toc("matRedSpec", r1)
+    println("r1: " + r1)
+    
+    tic("matRedNoSpec")
+    val r2 = m1.min  // should NOT be specialized (how should we actually implement this?)
+    toc("matRedNoSpec",r2)
+    println("r2: " + r2)    
+    
+    
+    // sparse vector specialization testing
+    /*
+    val v = SparseVector[Double](1000000,true)
+    v(1000) = 1
+    v(5000) = 2
+        
+    // --- specialized maps
+    
+    tic("v2")
+    val v2 = v.map(e => e) // should be specialized
+    toc("v2",v2)
+    println("v2(1000): " + v2(1000))
+    println("v2(1001): " + v2(1001))
+    // v2.pprint
+    
+    tic("v3")
+    val v3 = v.map(e => 0.) // should be specialized
+    toc("v3",v3)
+    // v3.pprint
+    
+    tic("v4")
+    val v4 = v.map(e => 1.) // should NOT be specialized 
+    toc("v4",v4)
+    
+    tic("v5")
+    val v5 = v.mapNZ(e => 1.) 
+    toc("v5",v5)
+    
+    tic("scalarMult")
+    val v6 = v*5 // should be specialized
+    toc("scalarMult", v6)
+    println("v6(1000): " + v6(1000))
+    println("v6(1001): " + v6(1001))
+    // v5.pprint
+    
+    tic("scalarAdd")
+    val v7 = v+5 // should NOT be specialized
+    toc("scalarAdd", v7)
+    println("v7(1000): " + v7(1000))
+    println("v7(1001): " + v7(1001))    
+    // v6.pprint
+    
+    val free = Vector.ones(10)
+    
+    tic("scalarMultFreeVar")
+    val v8 = v*free(2)// should be specialized
+    toc("scalarMultFreeVar", v8)
+    println("v8(1000): " + v8(1000))
+    println("v8(1001): " + v8(1001))
+    
+    // --- specialized zips
+    
+    val y = SparseVector[Double](1000000,true)
+    y(1000) = 99
+    y(9000) = -99
+    
+    tic("zipMult")
+    val z1 = v*y // should be specialized 
+    toc("zipMult",z1)
+    println("z1(1000): " + z1(1000))
+    println("z1(5000): " + z1(5000))    
+    
+    tic("zipAddSpec")
+    val z2 = v+y // should be specialized 
+    toc("zipAddSpec",z2)
+    println("z2(1000): " + z2(1000))
+    println("z2(5000): " + z2(5000))    
+    
+    tic("zipAddNoSpec")
+    val z3 = v.zip(y) { (a,b) => a + b + 1 } // should NOT be specialized 
+    toc("zipAddNoSpec",z3)
+    println("z3(1000): " + z3(1000))
+    println("z3(5000): " + z3(5000))    
+    
+    tic("zipLeftSpec")
+    val z4 = v.zip(y) { (a,b) => a } // should be specialized 
+    toc("zipLeftSpec",z4)
+    println("z4(1000): " + z4(1000))
+    println("z4(5000): " + z4(5000))    
+     
+     
+    // --- specialized reduces
+    tic("sum")
+    val a = v.sum // should be specialized
+    toc("sum",a)
+    println("a: " + a)
+    
+    tic("redNoSpec")
+    val a2 = v.reduce((a,b) => a+b+1)  // should NOT be specialized
+    toc("redNoSpec",a2)
+    println("a2: " + a2)
+    */
+    
+    /*
     val tri1 = utriangle(4)
     tri1.pprint
     
     val tri2 = utriangle(4,false)
     tri2.pprint
+    */
     
     // matrix bulk operations with changed views
     /*

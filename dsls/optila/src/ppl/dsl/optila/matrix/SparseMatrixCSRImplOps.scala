@@ -2,6 +2,7 @@ package ppl.dsl.optila.matrix
 
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
+import ppl.delite.framework.datastructures.DeliteArray
 import ppl.dsl.optila._
 
 /**
@@ -32,7 +33,7 @@ trait SparseMatrixCSRImplOps extends SparseMatrixImplOps {
   }
   
   def sparsematrix_update_impl[A:Manifest](m: Rep[SparseMatrix[A]], i: Rep[Int], j: Rep[Int], y: Rep[A]): Rep[Unit] = {
-    warn("possible performance problem - writing to a sparse matrix CSR representation")    
+    warn("performance: writing to a sparse matrix CSR representation")    
     
     val offRaw = sparsematrix_csr_find_offset(m,i,j)    
     if (offRaw > -1) darray_unsafe_update(sparsematrix_csr_raw_data(m), offRaw, y)
@@ -80,6 +81,166 @@ trait SparseMatrixCSRImplOps extends SparseMatrixImplOps {
     sparsematrix_set_nnz(m, m.nnz + len)
   }
 
+  def sparsematrix_csr_rowindices_impl(rowPtr: Rep[DeliteArray[Int]]) = {
+    // for each data index, compute the row associated with it
+  
+    // ex.: 8 rows
+    // rowPtr: 0 0 0 1 1 5 5 10
+    // colIndex 0 is row 2
+    //        1-4 is row 4
+    //        5-9 is row 6  
+    //         10 is row 7
+    
+    val nnz = rowPtr(rowPtr.length-1)
+    val rows = DeliteArray[Int](nnz)      
+    var i = 0
+    var oldRow = rowPtr(0)
+    while (i < rowPtr.length) {
+      val nextRow = rowPtr(i)
+      if (nextRow != oldRow) {
+        for (j <- oldRow until nextRow) {
+          rows(j) = i-1
+        }
+      }
+      oldRow = nextRow
+      i += 1
+    }
+    rows
+  }    
+  
+  def sparsematrix_csr_zip_nz_union_impl[A:Manifest,B:Manifest,R:Manifest](ma: Rep[SparseMatrix[A]], mb: Rep[SparseMatrix[B]], f: (Rep[A],Rep[B]) => Rep[R]): Rep[SparseMatrix[R]] = {
+    val dataA = sparsematrix_csr_raw_data(ma)
+    val colIndicesA = sparsematrix_csr_raw_colindices(ma)
+    val rowPtrA = sparsematrix_csr_raw_rowptr(ma)
+    val dataB = sparsematrix_csr_raw_data(mb)
+    val colIndicesB = sparsematrix_csr_raw_colindices(mb)
+    val rowPtrB = sparsematrix_csr_raw_rowptr(mb)         
+    
+    val outRowPtr = DeliteArray[Int](ma.numRows+1)
+    val outColIndices = DeliteArray[Int](ma.nnz + mb.nnz) // upper bound
+    val outData = DeliteArray[R](ma.nnz + mb.nnz)
+    
+    // TODO: how can we parallelize this efficiently?
+    // -- sequential version, build the output in one loop
+    var oldRowA = rowPtrA(0)
+    var oldRowB = rowPtrB(0)
+    var nnz = 0
+    var i = 0
+    
+    while (i < ma.numRows) {
+      // union of colIndicesA and colIndicesB at row i
+      if (rowPtrA(i) != oldRowA || rowPtrB(i) != oldRowB) {
+        // add to output from either A or B, maintaining sorted order
+        var aIdx = oldRowA
+        var bIdx = oldRowB
+        while (aIdx < rowPtrA(i) || bIdx < rowPtrB(i)) {
+          if (aIdx < rowPtrA(i) && bIdx < rowPtrB(i)) {
+            // both A and B defined at this part of the row
+            if (colIndicesA(aIdx) < colIndicesB(bIdx)) {                
+              outColIndices(nnz) = colIndicesA(aIdx)
+              outData(nnz) = f(dataA(aIdx),defaultValue[B])
+              aIdx += 1
+            } 
+            else if (colIndicesA(aIdx) > colIndicesB(bIdx)) {
+              outColIndices(nnz) = colIndicesB(bIdx)
+              outData(nnz) = f(defaultValue[A],dataB(bIdx))
+              bIdx += 1                
+            }
+            else {
+              outColIndices(nnz) = colIndicesA(aIdx) // doesn't matter
+              outData(nnz) = f(dataA(aIdx),dataB(bIdx))
+              aIdx += 1
+              bIdx += 1                                
+            }
+          }
+          else if (aIdx < rowPtrA(i)) {
+            // only A defined at this part of the row
+            outColIndices(nnz) = colIndicesA(aIdx)
+            outData(nnz) = f(dataA(aIdx), defaultValue[B])  
+            aIdx += 1                          
+          }
+          else if (bIdx < rowPtrB(i)) {
+            // only B defined at this part of the row
+            outColIndices(nnz) = colIndicesB(bIdx)
+            outData(nnz) = f(defaultValue[A], dataB(bIdx))                            
+            bIdx += 1
+          }
+          nnz += 1
+        }
+        outRowPtr(i) = nnz                
+      }
+      oldRowA = rowPtrA(i)
+      oldRowB = rowPtrB(i)
+      i += 1
+    }
+    outRowPtr(ma.numRows) = nnz      
+    
+    val out = sparsematrix_csr_new[R](ma.numRows, ma.numCols)
+    sparsematrix_csr_set_raw_colindices(out, outColIndices.unsafeImmutable)
+    sparsematrix_csr_set_raw_data(out, outData.unsafeImmutable)
+    sparsematrix_csr_set_raw_rowptr(out, outRowPtr.unsafeImmutable)
+    sparsematrix_set_nnz(out, outRowPtr(ma.numRows))
+    out.unsafeImmutable
+  }
+  
+  def sparsematrix_csr_zip_nz_intersection_impl[A:Manifest,B:Manifest,R:Manifest](ma: Rep[SparseMatrix[A]], mb: Rep[SparseMatrix[B]], f: (Rep[A],Rep[B]) => Rep[R]): Rep[SparseMatrix[R]] = {
+    val dataA = sparsematrix_csr_raw_data(ma)
+    val colIndicesA = sparsematrix_csr_raw_colindices(ma)
+    val rowPtrA = sparsematrix_csr_raw_rowptr(ma)
+    val dataB = sparsematrix_csr_raw_data(mb)
+    val colIndicesB = sparsematrix_csr_raw_colindices(mb)
+    val rowPtrB = sparsematrix_csr_raw_rowptr(mb)         
+    
+    val outRowPtr = DeliteArray[Int](ma.numRows+1)
+    val outColIndices = DeliteArray[Int](min(ma.nnz, mb.nnz)) 
+    val outData = DeliteArray[R](min(ma.nnz,mb.nnz))
+    
+    // TODO: how can we parallelize this efficiently?
+    // -- sequential version, build the output in one loop
+    var oldRowA = rowPtrA(0)
+    var oldRowB = rowPtrB(0)
+    var nnz = 0
+    var i = 0
+    
+    while (i < ma.numRows) {
+      // intersection of colIndicesA and colIndicesB at row i
+      if (rowPtrA(i) != oldRowA && rowPtrB(i) != oldRowB) {
+        // add to output from A and B, maintaining sorted order
+        var aIdx = oldRowA
+        var bIdx = oldRowB
+        while (aIdx < rowPtrA(i) && bIdx < rowPtrB(i)) {
+          // both A and B defined at this part of the row
+          if (colIndicesA(aIdx) < colIndicesB(bIdx)) {                
+            aIdx += 1
+          } 
+          else if (colIndicesA(aIdx) > colIndicesB(bIdx)) {
+            bIdx += 1                
+          }
+          else {
+            outColIndices(nnz) = colIndicesA(aIdx) // doesn't matter
+            outData(nnz) = f(dataA(aIdx),dataB(bIdx))
+            aIdx += 1
+            bIdx += 1                                
+            nnz += 1
+          }
+        }
+        outRowPtr(i) = nnz                
+      }
+      oldRowA = rowPtrA(i)
+      oldRowB = rowPtrB(i)
+      i += 1
+    }
+    outRowPtr(ma.numRows) = nnz      
+    
+    val out = sparsematrix_csr_new[R](ma.numRows, ma.numCols)
+    sparsematrix_csr_set_raw_colindices(out, outColIndices.unsafeImmutable)
+    sparsematrix_csr_set_raw_data(out, outData.unsafeImmutable)
+    sparsematrix_csr_set_raw_rowptr(out, outRowPtr.unsafeImmutable)
+    sparsematrix_set_nnz(out, outRowPtr(ma.numRows))
+    out.unsafeImmutable
+  }
+  
+  
   /*  
   // TODO: try/catch, case, in embedded implementation? we need to lift these still.
   def sparsematrix_inverse_impl[A:Manifest](m: Rep[SparseMatrix[A]])(implicit conv: Rep[A] => Rep[Double]): Rep[SparseMatrix[Double]] = {

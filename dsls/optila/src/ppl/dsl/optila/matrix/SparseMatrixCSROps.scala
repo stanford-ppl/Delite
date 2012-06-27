@@ -12,6 +12,7 @@ import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.datastructures.DeliteArray
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
+import ppl.delite.framework.transform.LoweringTransform
 import ppl.delite.framework.Config
 import ppl.delite.framework.extern.lib._
 import ppl.delite.framework.Util._
@@ -30,7 +31,7 @@ trait SparseMatrixCSRCompilerOps extends SparseMatrixOps {
   def sparsematrix_csr_set_raw_rowptr[A:Manifest](x: Rep[SparseMatrix[A]], newVal: Rep[DeliteArray[Int]])(implicit ctx: SourceContext): Rep[Unit]
 }
 
-trait SparseMatrixCSROpsExp extends SparseMatrixCSRCompilerOps with DeliteCollectionOpsExp with VariablesExp {
+trait SparseMatrixCSROpsExp extends SparseMatrixCSRCompilerOps with DeliteCollectionOpsExp with VariablesExp with SparseTransform {
   this: SparseMatrixCSRImplOps with OptiLAExp  =>
   
   //////////////////////////////////////////////////
@@ -43,7 +44,20 @@ trait SparseMatrixCSROpsExp extends SparseMatrixCSRCompilerOps with DeliteCollec
   case class SparseMatrixCSRSetRawData[A:Manifest](x: Exp[SparseMatrix[A]], newVal: Exp[DeliteArray[A]]) extends DefWithManifest[A,Unit]
   case class SparseMatrixCSRSetRawColIndices[A:Manifest](x: Exp[SparseMatrix[A]], newVal: Exp[DeliteArray[Int]]) extends DefWithManifest[A,Unit]
   case class SparseMatrixCSRSetRawRowPtr[A:Manifest](x: Exp[SparseMatrix[A]], newVal: Exp[DeliteArray[Int]]) extends DefWithManifest[A,Unit]
-    
+
+  case class SparseMatrixCSRRowIndices(rowPtr: Rep[DeliteArray[Int]])
+    extends DeliteOpSingleTask[DeliteArray[Int]](reifyEffectsHere(sparsematrix_csr_rowindices_impl(rowPtr)))
+  
+  case class SparseMatrixCSRZipNZUnion[A:Manifest,B:Manifest,R:Manifest](ma: Rep[SparseMatrix[A]], mb: Rep[SparseMatrix[B]], f: (Rep[A],Rep[B]) => Rep[R])
+    extends DeliteOpSingleTask[SparseMatrix[R]](reifyEffectsHere(sparsematrix_csr_zip_nz_union_impl(ma, mb, f)))
+
+  case class SparseMatrixCSRZipNZIntersection[A:Manifest,B:Manifest,R:Manifest](ma: Rep[SparseMatrix[A]], mb: Rep[SparseMatrix[B]], f: (Rep[A],Rep[B]) => Rep[R])
+    extends DeliteOpSingleTask[SparseMatrix[R]](reifyEffectsHere(sparsematrix_csr_zip_nz_intersection_impl(ma, mb, f)))
+  
+  def sparsematrix_csr_rowindices(rowPtr: Rep[DeliteArray[Int]]) = reflectPure(SparseMatrixCSRRowIndices(rowPtr))
+  def sparsematrix_csr_zip_nz_union[A:Manifest,B:Manifest,R:Manifest](ma: Rep[SparseMatrix[A]], mb: Rep[SparseMatrix[B]], f: (Rep[A],Rep[B]) => Rep[R]) = reflectPure(SparseMatrixCSRZipNZUnion(ma,mb,f))
+  def sparsematrix_csr_zip_nz_intersection[A:Manifest,B:Manifest,R:Manifest](ma: Rep[SparseMatrix[A]], mb: Rep[SparseMatrix[B]], f: (Rep[A],Rep[B]) => Rep[R]) = reflectPure(SparseMatrixCSRZipNZIntersection(ma,mb,f))
+      
   //////////////////
   // internal
 
@@ -54,6 +68,83 @@ trait SparseMatrixCSROpsExp extends SparseMatrixCSRCompilerOps with DeliteCollec
   def sparsematrix_csr_set_raw_data[A:Manifest](x: Exp[SparseMatrix[A]], data: Exp[DeliteArray[A]])(implicit ctx: SourceContext) = reflectWrite(x)(SparseMatrixCSRSetRawData(x,data))
   def sparsematrix_csr_set_raw_colindices[A:Manifest](x: Exp[SparseMatrix[A]], newVal: Exp[DeliteArray[Int]])(implicit ctx: SourceContext) = reflectWrite(x)(SparseMatrixCSRSetRawColIndices(x,newVal))
   def sparsematrix_csr_set_raw_rowptr[A:Manifest](x: Exp[SparseMatrix[A]], newVal: Exp[DeliteArray[Int]])(implicit ctx: SourceContext) = reflectWrite(x)(SparseMatrixCSRSetRawRowPtr(x,newVal))
+  
+  
+  /////////////////////////////////////////
+  // data parallel ops on underlying arrays
+   
+  def sparsematrix_mapnz[A:Manifest,B:Manifest](x: Exp[SparseMatrix[A]], f: Exp[A] => Exp[B]) = {
+    val out = sparsematrix_csr_new[B](x.numRows, x.numCols)
+    sparsematrix_csr_set_raw_data(out, sparsematrix_csr_raw_data(x).map(f))
+    x match {
+      case Def(Reflect(_, u, _)) if mustMutable(u) => 
+        sparsematrix_csr_set_raw_colindices(out, sparsematrix_csr_raw_colindices(x).Clone)
+        sparsematrix_csr_set_raw_rowptr(out, sparsematrix_csr_raw_rowptr(x).Clone)
+      case _ => 
+        sparsematrix_csr_set_raw_colindices(out, sparsematrix_csr_raw_colindices(x))  
+        sparsematrix_csr_set_raw_rowptr(out, sparsematrix_csr_raw_rowptr(x))
+    }    
+    sparsematrix_set_nnz(out, x.nnz)
+    out.unsafeImmutable
+  }  
+  
+  def sparsematrix_zipnz[A:Manifest,B:Manifest,R:Manifest](ma: Exp[SparseMatrix[A]], mb: Exp[SparseMatrix[B]], f: (Exp[A],Exp[B]) => Exp[R], side: SparseZipWithSpecialization): Exp[SparseMatrix[R]] = side match {
+    case SparseLeft =>
+      // need to zip only places where ma is non-zero
+      val colIndices = sparsematrix_csr_raw_colindices(ma)   
+      val rowPtr = sparsematrix_csr_raw_rowptr(ma)   
+      val data = sparsematrix_csr_raw_data(ma)
+      // this essentially converts from CSR back to COO format - do we need this step?
+      // means binary ops are now O(numRows + nnz) instead of just O(nnz) ...      
+      val rowIndices = sparsematrix_csr_rowindices(rowPtr)      
+      val outData = darray_range(unit(0),colIndices.length).map(i => f(data(i), mb(rowIndices(i),colIndices(i))))
+      val out = sparsematrix_csr_new[R](ma.numRows, ma.numCols)
+      sparsematrix_csr_set_raw_data(out, outData)
+      ma match {
+        case Def(Reflect(_, u, _)) if mustMutable(u) => 
+          sparsematrix_csr_set_raw_colindices(out, colIndices.Clone)
+          sparsematrix_csr_set_raw_rowptr(out, rowPtr.Clone)
+        case _ => 
+          sparsematrix_csr_set_raw_colindices(out, colIndices.unsafeImmutable)  
+          sparsematrix_csr_set_raw_rowptr(out, rowPtr.unsafeImmutable)
+      }                
+      sparsematrix_set_nnz(out, ma.nnz)
+      out.unsafeImmutable
+                
+    case SparseRight =>
+      // need to zip only places where mb is non-zero
+      val colIndices = sparsematrix_csr_raw_colindices(mb)   
+      val rowPtr = sparsematrix_csr_raw_rowptr(mb)   
+      val data = sparsematrix_csr_raw_data(mb)
+      val rowIndices = sparsematrix_csr_rowindices(rowPtr)      
+      val outData = darray_range(unit(0),colIndices.length).map(i => f(ma(rowIndices(i),colIndices(i)), data(i)))
+      val out = sparsematrix_csr_new[R](mb.numRows, mb.numCols)
+      sparsematrix_csr_set_raw_data(out, outData)
+      mb match {
+        case Def(Reflect(_, u, _)) if mustMutable(u) => 
+          sparsematrix_csr_set_raw_colindices(out, colIndices.Clone)
+          sparsematrix_csr_set_raw_rowptr(out, rowPtr.Clone)
+        case _ => 
+          sparsematrix_csr_set_raw_colindices(out, colIndices.unsafeImmutable)  
+          sparsematrix_csr_set_raw_rowptr(out, rowPtr.unsafeImmutable)
+      }                
+      sparsematrix_set_nnz(out, mb.nnz)
+      out.unsafeImmutable
+
+    case SparseUnion =>    
+      // need to zip only places where either ma or mb are non-zero    
+      sparsematrix_csr_zip_nz_union(ma,mb,f)
+                     
+    case SparseIntersect =>
+      // need to zip only places where both ma and mb are non-zero
+      
+      // could be parallelized much more straightforwardly than union, but is the overhead worth it? (how large does nnz have to be?)
+      sparsematrix_csr_zip_nz_intersection(ma,mb,f)
+  }
+  
+  def sparsematrix_reducenz[A:Manifest](x: Exp[SparseMatrix[A]], f: (Exp[A],Exp[A]) => Exp[A], zero: Exp[A]) = {
+    sparsematrix_csr_raw_data(x).reduce(f, zero) // need to trim? any extra values should have no effect..
+  }  
   
   //////////////
   // mirroring
@@ -74,6 +165,42 @@ trait SparseMatrixCSROpsExp extends SparseMatrixCSRCompilerOps with DeliteCollec
     case Reflect(e@SparseMatrixCSRSetRawRowPtr(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCSRSetRawRowPtr(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))       
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??  
+  
+  
+  //////////////
+  // transforms
+    
+  def sparsematrix_mapnz_manifest[A:Manifest,B:Manifest] = sparsematrix_mapnz[A,B] _
+  def sparsematrix_zipnz_manifest[A:Manifest,B:Manifest,R:Manifest] = sparsematrix_zipnz[A,B,R] _
+  def sparsematrix_reducenz_manifest[A:Manifest] = sparsematrix_reducenz[A] _
+  
+  override def onCreate[A:Manifest](s: Sym[A], d: Def[A]) = d match {    
+    // map         
+    case e:DeliteOpMapI[_,_,_,_] if (isSparseMat(e.in)) =>
+      specializeSparseMap(s, e, asSparseMat(e.in), sparsematrix_mapnz_manifest(e.dmA,e.dmB))(e.dmA,e.dmB).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
+    case Reflect(e:DeliteOpMapI[_,_,_,_], u, es) if (isSparseMat(e.in)) =>
+      reflectSpecialized(specializeSparseMap(s, e, asSparseMat(e.in), sparsematrix_mapnz_manifest(e.dmA,e.dmB))(e.dmA,e.dmB), u, es)(super.onCreate(s,d))
+        
+    // zip
+    case e:DeliteOpZipWithI[_,_,_,_,_] if (isSparseMat(e.inA) && isSparseMat(e.inB)) =>
+      specializeSparseZip(s, e, asSparseMat(e.inA), asSparseMat(e.inB), sparsematrix_zipnz_manifest(e.dmA,e.dmB,e.dmR))(e.dmA,e.dmB,e.dmR).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
+    case Reflect(e:DeliteOpZipWithI[_,_,_,_,_], u, es) if (isSparseMat(e.inA) && isSparseMat(e.inB)) =>
+      reflectSpecialized(specializeSparseZip(s, e, asSparseMat(e.inA), asSparseMat(e.inB), sparsematrix_zipnz_manifest(e.dmA,e.dmB,e.dmR))(e.dmA,e.dmB,e.dmR), u, es)(super.onCreate(s,d))
+      
+    // reduce  
+    case e:DeliteOpReduce[_] if (isSparseMat(e.in)) =>
+      specializeSparseReduce(s, e, asSparseMat(e.in), sparsematrix_reducenz_manifest(e.dmA))(e.dmA).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
+    case Reflect(e:DeliteOpReduce[_], u, es) if (isSparseMat(e.in)) =>
+      reflectSpecialized(specializeSparseReduce(s, e, asSparseMat(e.in), sparsematrix_reducenz_manifest(e.dmA))(e.dmA), u, es)(super.onCreate(s,d))
+    
+    // TODO: filter
+    // MapReduce, ReduceFold, .. ?
+    
+    // what about dense-sparse, sparse-dense?
+    
+    case _ => super.onCreate(s,d)
+  }
+     
 }
 
 trait ScalaGenSparseMatrixCSROps extends ScalaGenBase {

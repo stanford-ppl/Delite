@@ -1029,7 +1029,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   def matrix_maprows[A:Manifest,B:Manifest,I<:MatrixBuildable[B]:Manifest,MB<:Matrix[B]:Manifest](x: Interface[Matrix[A]], f: Interface[Vector[A]] => Interface[Vector[B]])(implicit b: MatrixBuilder[B,I,MB], ctx: SourceContext) = {
     // with the current representation of MapRows, this won't work for sparse matrices in parallel because the writes to the COO matrix are not disjoint!
     // (we need a more generalized map interface to express this directly as a Map)
-    if (isSparseMat(x.ops.elem)) {
+    if (isSparseMat(x.ops.elem.asInstanceOf[Exp[DeliteCollection[A]]])) {
       reflectPure(MatrixMapRowsSequential[A,B,I,MB](x,f))
     }
     else {

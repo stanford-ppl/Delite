@@ -451,21 +451,46 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
 
 trait ArithOpsExpOpt extends ArithOpsExp {
   this: OptiLAExp =>
-
+  
+  def unbox[T:Manifest](n: java.lang.Number): T = {
+    val mD = manifest[Double]
+    val mF = manifest[Float]
+    val mI = manifest[Int]
+    val mL = manifest[Long]
+    manifest[T] match {
+      case `mD` => n.doubleValue().asInstanceOf[T]
+      case `mF` => n.floatValue().asInstanceOf[T]
+      case `mI` => n.intValue().asInstanceOf[T]
+      case `mL` => n.longValue().asInstanceOf[T]
+    }
+  }
+  
   override def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T])(implicit ctx: SourceContext) : Exp[T] = (lhs,rhs) match {
-    case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].plus(x,y))
+    case (Const(x), Const(y)) => 
+      // weird java class cast exception inside numeric while unboxing java.lang.Integer          
+      val a = if (x.isInstanceOf[java.lang.Number]) unbox(x.asInstanceOf[java.lang.Number]) else x
+      val b = if (y.isInstanceOf[java.lang.Number]) unbox(y.asInstanceOf[java.lang.Number]) else y    
+      unit(implicitly[Numeric[T]].plus(a,b))
     case (Const(0 | 0.0 | 0.0f | -0.0 | -0.0f), y) => y
     case (y, Const(0 | 0.0 | 0.0f | -0.0 | -0.0f)) => y
     case _ => super.arith_plus(lhs, rhs)
   }
+  
   override def arith_minus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T])(implicit ctx: SourceContext) : Exp[T] = (lhs,rhs) match {
-    case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].minus(x,y))
+    case (Const(x), Const(y)) => 
+      val a = if (x.isInstanceOf[java.lang.Number]) unbox(x.asInstanceOf[java.lang.Number]) else x
+      val b = if (y.isInstanceOf[java.lang.Number]) unbox(y.asInstanceOf[java.lang.Number]) else y    
+      unit(implicitly[Numeric[T]].minus(a,b))
     case (Const(0 | 0.0 | 0.0f | -0.0 | -0.0f), y) => y
     case (y, Const(0 | 0.0 | 0.0f | -0.0 | -0.0f)) => y
     case _ => super.arith_minus(lhs, rhs)
   }
+  
   override def arith_times[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T])(implicit ctx: SourceContext) : Exp[T] = (lhs,rhs) match {
-    case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].times(x,y))
+    case (Const(x), Const(y)) => 
+      val a = if (x.isInstanceOf[java.lang.Number]) unbox(x.asInstanceOf[java.lang.Number]) else x
+      val b = if (y.isInstanceOf[java.lang.Number]) unbox(y.asInstanceOf[java.lang.Number]) else y
+      unit(implicitly[Numeric[T]].times(a,b))
     case (Const(0 | 0.0 | 0.0f | -0.0 | -0.0f), _) => lhs
     case (_, Const(0 | 0.0 | 0.0f | -0.0 | -0.0f)) => rhs
 //    case (Const(1 | 1.0 | 1.0f), y) => y //TODO: careful about type promotion!

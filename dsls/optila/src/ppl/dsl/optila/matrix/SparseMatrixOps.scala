@@ -199,7 +199,7 @@ trait SparseMatrixOpsExp extends SparseMatrixCompilerOps with DeliteCollectionOp
     throw new UnsupportedOperationException("tbd")
     //reflectPure(SparseMatrixInverse(x))
   }  
-
+  
   //////////////////
   // internal
 
@@ -211,8 +211,8 @@ trait SparseMatrixOpsExp extends SparseMatrixCompilerOps with DeliteCollectionOp
   /////////////////////
   // delite collection
   
-  def isSparseMat[A](x: Exp[Any])(implicit ctx: SourceContext) = isSubtype(x.tp.erasure,classOf[SparseMatrix[A]])  
-  def asSparseMat[A](x: Exp[Any])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[SparseMatrix[A]]]
+  def isSparseMat[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.tp.erasure,classOf[SparseMatrix[A]])  
+  def asSparseMat[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[SparseMatrix[A]]]
   
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
     if (isSparseMat(x)) asSparseMat(x).size
@@ -253,7 +253,7 @@ trait SparseMatrixOpsExp extends SparseMatrixCompilerOps with DeliteCollectionOp
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
   
-  
+    
   /////////////////////
   // aliases and sharing
 

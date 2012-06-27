@@ -10,6 +10,7 @@ import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.datastructures.DeliteArray
+import ppl.delite.framework.transform.LoweringTransform
 import ppl.delite.framework.Util._
 import ppl.dsl.optila._
 
@@ -134,7 +135,7 @@ trait SparseVectorCompilerOps extends SparseVectorOps {
   }  
 }
 
-trait SparseVectorOpsExp extends SparseVectorOps with DeliteCollectionOpsExp {
+trait SparseVectorOpsExp extends SparseVectorOps with DeliteCollectionOpsExp with SparseTransform {
 
   this: SparseVectorImplOps with OptiLAExp =>
 
@@ -240,6 +241,7 @@ trait SparseVectorOpsExp extends SparseVectorOps with DeliteCollectionOpsExp {
   def sparsevector_clear[A:Manifest](x: Exp[SparseVector[A]])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorClear(x))
   def sparsevector_times_matrix[A:Manifest:Arith](x: Exp[SparseVector[A]], y: Exp[SparseMatrix[A]])(implicit ctx: SourceContext) = reflectPure(SparseVectorTimesMatrix(x,y))
   def sparsevector_sort[A:Manifest:Ordering](x: Exp[SparseVector[A]])(implicit ctx: SourceContext) = reflectPure(SparseVectorSort(x))
+  
   def sparsevector_mapnz[A:Manifest,B:Manifest](x: Exp[SparseVector[A]], f: Exp[A] => Exp[B]) = {
     // example specialized sparse op: operates directly on the underlying value array (could be represented as a lowering)
     val out = SparseVector[B](x.length, x.isRow)
@@ -251,6 +253,71 @@ trait SparseVectorOpsExp extends SparseVectorOps with DeliteCollectionOpsExp {
     sparsevector_set_nnz(out, x.nnz)
     out.unsafeImmutable
   }
+  
+  def sparsevector_zipnz[A:Manifest,B:Manifest,R:Manifest](va: Exp[SparseVector[A]], vb: Exp[SparseVector[B]], f: (Exp[A],Exp[B]) => Exp[R], side: SparseZipWithSpecialization): Exp[SparseVector[R]] = side match {
+    case SparseLeft =>
+      // need to zip only places where va is non-zero
+      val indices = sparsevector_raw_indices(va)      
+      val dataA = sparsevector_raw_data(va)
+      val outData = darray_range(unit(0),indices.length).map(i => f(dataA(i), vb(indices(i))))
+      val out = SparseVector[R](va.length, va.isRow)
+      sparsevector_set_raw_data(out, outData)
+      va match {
+        case Def(Reflect(_, u, _)) if mustMutable(u) => sparsevector_set_raw_indices(out, indices.Clone)
+        case _ => sparsevector_set_raw_indices(out, indices.unsafeImmutable)  
+      }                
+      sparsevector_set_nnz(out, va.nnz)
+      out.unsafeImmutable
+            
+    case SparseRight =>
+      // need to zip only places where vb is non-zero
+      val indices = sparsevector_raw_indices(vb)     
+      val dataB = sparsevector_raw_data(vb) 
+      val outData = darray_range(unit(0),indices.length).map(i => f(va(indices(i)), dataB(i)))
+      val out = SparseVector[R](va.length, va.isRow)
+      sparsevector_set_raw_data(out, outData)
+      vb match {
+        case Def(Reflect(_, u, _)) if mustMutable(u) => sparsevector_set_raw_indices(out, indices.Clone)
+        case _ => sparsevector_set_raw_indices(out, indices.unsafeImmutable)  
+      }          
+      sparsevector_set_nnz(out, vb.nnz)
+      out.unsafeImmutable
+      
+    case SparseUnion =>    
+      // need to zip only places where either va or vb are non-zero
+      // take is required because raw_indices is allowed to grow beyond nnz as a buffer; could easily be removed by implementing our own version of union if it matters
+      val outIndices = (sparsevector_raw_indices(va).take(va.nnz) union sparsevector_raw_indices(vb).take(vb.nnz)).sort 
+      val outData = outIndices.map(e => f(va(e),vb(e))) // would like to access underlying raw_data directly, but we need to maintain the original index from indices
+      // val outData = outIndices.map(e => f(sparsevector_raw_data(va)(e),sparsevector_raw_data(vb)(e)))
+      val out = SparseVector[R](va.length, va.isRow)
+      sparsevector_set_raw_indices(out, outIndices.unsafeImmutable)
+      sparsevector_set_raw_data(out, outData)
+      sparsevector_set_nnz(out, outData.length)
+      out.unsafeImmutable
+      
+    case SparseIntersect =>
+      // need to zip only places where both va and vb are non-zero
+      val outIndices = (sparsevector_raw_indices(va).take(va.nnz) intersect sparsevector_raw_indices(vb).take(vb.nnz)).sort 
+      val outData = outIndices.map(e => f(va(e),vb(e))) // would like to access underlying raw_data directly, but we need to maintain the original index from indices
+      // val outData = outIndices.map(e => f(sparsevector_raw_data(va)(e),sparsevector_raw_data(vb)(e)))
+      val out = SparseVector[R](va.length, va.isRow)
+      sparsevector_set_raw_indices(out, outIndices.unsafeImmutable)
+      sparsevector_set_raw_data(out, outData)
+      sparsevector_set_nnz(out, outData.length)
+      out.unsafeImmutable      
+  }
+  
+  def sparsevector_reducenz[A:Manifest](x: Exp[SparseVector[A]], f: (Exp[A],Exp[A]) => Exp[A], zero: Exp[A]) = {
+    sparsevector_raw_data(x).reduce(f, zero) // need to trim? any extra values should have no effect.. (could also use a view with a shortened length)
+  }
+
+  // def sparsevector_filternz[A:Manifest,B:Manifest](x: Exp[SparseVector[A]], f: (Exp[A] => Exp[B], cond: Exp[A] => Exp[Boolean]) = {
+  //   val out = SparseVector[B](unit(0), x.isRow)
+  //   val outData = darray_mapfilter(sparsevector_raw_data(x).take(x.nnz), f, cond)
+  //   sparsevector_set_raw_data(out, outData)
+  //   // how do we get the indices? we don't know which were removed...
+  //   // would ideally like to filter the indices directly, but the function we have access to is defined on A's..
+  // }
   
   /////////////
   // internal
@@ -367,7 +434,43 @@ trait SparseVectorOpsExp extends SparseVectorOps with DeliteCollectionOpsExp {
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 
-
+  
+  //////////////
+  // transforms
+  
+  // hacks to get the right function types after erasure in onCreate
+  def sparsevector_mapnz_manifest[A:Manifest,B:Manifest] = sparsevector_mapnz[A,B] _
+  def sparsevector_zipnz_manifest[A:Manifest,B:Manifest,R:Manifest] = sparsevector_zipnz[A,B,R] _
+  def sparsevector_reducenz_manifest[A:Manifest] = sparsevector_reducenz[A] _
+  
+  override def onCreate[A:Manifest](s: Sym[A], d: Def[A]) = d match {    
+    // map         
+    case e:DeliteOpMap[_,_,_] if (isSparseVec(e.in)) =>
+      specializeSparseMap(s, e, asSparseVec(e.in), sparsevector_mapnz_manifest(e.dmA,e.dmB))(e.dmA,e.dmB).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
+    case Reflect(e:DeliteOpMap[_,_,_], u, es) if (isSparseVec(e.in)) =>
+      reflectSpecialized(specializeSparseMap(s, e, asSparseVec(e.in), sparsevector_mapnz_manifest(e.dmA,e.dmB))(e.dmA,e.dmB), u, es)(super.onCreate(s,d))
+        
+    // zip
+    case e:DeliteOpZipWith[_,_,_,_] if (isSparseVec(e.inA) && isSparseVec(e.inB)) =>
+      specializeSparseZip(s, e, asSparseVec(e.inA), asSparseVec(e.inB), sparsevector_zipnz_manifest(e.dmA,e.dmB,e.dmR))(e.dmA,e.dmB,e.dmR).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
+    case Reflect(e:DeliteOpZipWith[_,_,_,_], u, es) if (isSparseVec(e.inA) && isSparseVec(e.inB)) =>
+      reflectSpecialized(specializeSparseZip(s, e, asSparseVec(e.inA), asSparseVec(e.inB), sparsevector_zipnz_manifest(e.dmA,e.dmB,e.dmR))(e.dmA,e.dmB,e.dmR), u, es)(super.onCreate(s,d))
+      
+    // reduce  
+    case e:DeliteOpReduce[_] if (isSparseVec(e.in)) =>
+      specializeSparseReduce(s, e, asSparseVec(e.in), sparsevector_reducenz_manifest(e.dmA))(e.dmA).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
+    case Reflect(e:DeliteOpReduce[_], u, es) if (isSparseVec(e.in)) =>
+      reflectSpecialized(specializeSparseReduce(s, e, asSparseVec(e.in), sparsevector_reducenz_manifest(e.dmA))(e.dmA), u, es)(super.onCreate(s,d))
+    
+    // TODO: filter
+    // MapReduce, ReduceFold, .. ?
+    
+    // what about dense-sparse, sparse-dense?
+    
+    case _ => super.onCreate(s,d)
+  }
+  
+  
   /////////////////////
   // aliases and sharing
 
