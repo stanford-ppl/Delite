@@ -7,3 +7,7 @@
 .highlight .n { color:#b08000; } /* Numeric constant */
 .highlight .s { color:#bf0303; } /* String constant */
 .highlight .i { color:#800000; font-style: italic } /* Input parameter */
+
+.highlightmath  { background: #e6e6ff }
+.highlightmath .k { font-weight: bold } /* Keyword */
+.highlightmath .c { color: #333399 } /* Comment */

@@ -50,8 +50,8 @@
     <span class="k">val</span> x = <span class="f">variable</span>()
     <span class="k">val</span> y = <span class="f">variable</span>()
     <span class="k">val</span> z = <span class="f">variable</span>()
-    <span class="f">min</span>(<span class="f">min</span>(x,y),z) &lt;= <span class="n">5</span>
-    <span class="f">max</span>(<span class="f">max</span>(x,y),z) &gt;= <span class="n">0</span>
+    <span class="f">min</span>(<span class="f">min</span>(x,y),z) &gt;= <span class="n">0</span>
+    <span class="f">max</span>(<span class="f">max</span>(x,y),z) &lt;= <span class="n">5</span>
     <span class="k">val</span> J = <span class="f">inv</span>(x) + <span class="f">max</span>(y,z)
     <span class="f">minimize</span> (J) <span class="f">over</span> (x,y,z)
     <span class="f">println</span>(<span class="s">&quot;x = &quot;</span> + <span class="f">resolve</span>(x))
@@ -121,8 +121,8 @@
         </p>
         <div class="highlight"><code class="scala">
 <pre>
-    <span class="f">min</span>(<span class="f">min</span>(x,y),z) &lt;= <span class="n">5</span>
-    <span class="f">max</span>(<span class="f">max</span>(x,y),z) &gt;= <span class="n">0</span>
+    <span class="f">min</span>(<span class="f">min</span>(x,y),z) &gt;= <span class="n">0</span>
+    <span class="f">max</span>(<span class="f">max</span>(x,y),z) &lt;= <span class="n">5</span>
 </pre>
         </code></div>
         <p>
@@ -133,7 +133,7 @@
           <code>min</code>, which can be invoked with OptiCVX expressions as arguments.
         </p>
         <p>
-          OptiCVX enforces the diciplened convex programming rules here, so any expression
+          OptiCVX enforces the disciplined convex programming rules here, so any expression
           appearing on the left of a <code>&lt;=</code> must be convex, and any expression
           appearing on the right must be concave.  OptiCVX keeps track of the vexity of all
           expressions at staging time, so there is no walk-time overhead incurred by

@@ -52,7 +52,7 @@
         these can be found at their respective websites.</p>
         <br>
         <div id="warn">
-          <p> Delite currently requires a pre-release version of <a href="http://typesafe.artifactoryonline.com/typesafe/ivy-snapshots/org.scala-tools.sbt/sbt-launch/0.11.3-20120125-052127/sbt-launch.jar">sbt.</a> 
+          <p> Delite currently requires a pre-release version of <a href="/Delite/dists/sbt/0.12.0-Beta2/sbt-launch.jar">sbt.</a> 
           <br><br>Download this jar and place it in an executable location, e.g. <code>~/bin/</code>. As with other versions of sbt, you will also need a simple shell script to run the jar. Create an executable script named 'sbt' in the same directory, containing the following line (our recommended parameters for running Delite):
           <br><br>
           <code>java -Xmx2g -XX:MaxPermSize=1g -XX:ReservedCodeCacheSize=128m -jar `dirname $0`/sbt-launch.jar "$@"</code>
@@ -74,13 +74,13 @@ git clone git://github.com/TiarkRompf/virtualization-lms-core.git</code></pre></
         
         <p>Next, we need to compile LMS so Delite can use it. From the same directory where we ran <code>git clone</code>, type </p> 
         <div class="highlight"><pre><code class="bash">cd virtualization-lms-core
-git checkout optiml-alpha
+git checkout optiml-beta
 sbt publish-local
 </code></pre></div>
 
         <p> Now we are ready to compile and run Delite. Navigate back to the Delite directory and checkout the correct branch: </p>
 <div class="highlight"><pre><code class="bash">cd ../Delite
-git checkout optiml-alpha
+git checkout optiml-beta
 sbt clean
 </code></pre></div>
 
