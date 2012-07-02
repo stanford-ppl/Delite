@@ -3,6 +3,46 @@ import ppl.dsl.optiml._
 object ScratchpadRunner extends OptiMLApplicationRunner with Scratchpad
 trait Scratchpad extends OptiMLApplication { 
   def main() = {
+    
+    // multiloop unwrapping 
+    
+    // -- test collect
+    /*
+    val x = (0::1000) { i =>
+      val y = (0::100) { _*2 }
+      y.sum
+    }
+    println(x(0))
+    */
+    
+    val x = (0::10) { i =>
+      val y = (0::2) { x => 
+        // println("blah") // should preclude GPU gen
+        x*i         
+      }
+      y(1)
+    }
+    println(x(2))
+    
+    // -- test foreach
+    /*
+    for (i <- 0::10) {
+      val y = (0::5){ x => /*println("blah");*/ x*i }
+      println(y.sum)
+    }
+    */
+        
+    // -- test reduce
+    /*
+    val v = DenseVector[Double](1,2,3,4,5)
+    v.reduce( (a,b) = {
+      val y = (0::10){ _*a+b }
+      println(y.sum)
+      y.sum
+    })
+    */
+    
+    /*
     // sparse matrix specialization testing
     val m1b = SparseMatrix[Double](10000,10000)
     m1b(1000,1000) = 500
@@ -84,7 +124,8 @@ trait Scratchpad extends OptiMLApplication {
     val r2 = m1.min  // should NOT be specialized (how should we actually implement this?)
     toc("matRedNoSpec",r2)
     println("r2: " + r2)    
-  
+    */
+    
     // sparse vector specialization testing
     /*
     val v = SparseVector[Double](1000000,true)

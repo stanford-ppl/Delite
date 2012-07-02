@@ -198,7 +198,7 @@ trait ScalaGenDenseVectorViewOps extends BaseGenDenseVectorViewOps with ScalaGen
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case v@DenseVectorViewNew(x,start,stride,length,isRow) => emitValDef(sym, "new DenseVectorView[" + remap(v.mA) + "](" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ")")
+    case v@DenseVectorViewNew(x,start,stride,length,isRow) => emitValDef(sym, "new " + remap("DenseVectorView[" + remap(v.mA) + "]") + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ")")
     case DenseVectorViewApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
     case DenseVectorViewUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
     case DenseVectorViewLength(x)    => emitValDef(sym, quote(x) + "._length")

@@ -2,10 +2,11 @@ package ppl.delite.framework.codegen.delite.overrides
 
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.transform.MultiloopTransformOuter
 
 // you can pick and choose your overrides, these are provided for convenience
-trait DeliteAllOverridesExp extends DeliteIfThenElseExp /*with DeliteOpMap*/ with DeliteWhileExp {
-  this: DeliteOpsExp =>
+trait DeliteAllOverridesExp extends DeliteIfThenElseExp /*with DeliteOpMap*/ with DeliteWhileExp with MultiloopTransformOuter {
+  this: DeliteApplication with DeliteOpsExp =>
 }
 
 trait DeliteScalaGenAllOverrides extends DeliteScalaGenVariables with DeliteScalaGenIfThenElse /*with DeliteScalaGenRange*/ with DeliteScalaGenWhile  {

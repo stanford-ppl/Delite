@@ -16,15 +16,12 @@ trait SparseTransform extends LoweringTransform {
   private val t = deviceIndependentLowering // all sparse transformations happen at this phase
   
   def reflectSpecialized[A:Manifest](spec: Option[Exp[Any]], u: Summary, es: List[Exp[Any]])(orElse: => Exp[A]): Exp[A] = {
-    // do we need reflectMirrored here? 
     // spec.map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)          
     if (spec.isDefined) {
-      // co-opt ObjectUnsafeImmutable as a dummy Def wrapper for the transformed Reflect
-      reflectMirrored(Reflect(ObjectUnsafeImmutable(spec.get.asInstanceOf[Exp[A]]), mapOver(t,u), t(es)))(mtype(manifest[A]))        
+      reflectTransformed(t,spec.get.asInstanceOf[Exp[A]],u,es)
     }
     else orElse
   }
-  
   
   // -- map
   
@@ -39,7 +36,7 @@ trait SparseTransform extends LoweringTransform {
         // not ideal: we would like to use the BlockN interface
         // the issue is that storing an explicit Block1 inside DeliteOpMap creates complications by having two versions of the evaluated function around
         // in particular, we end up applying the Block1 transformed function twice, which creates two substitutions for the original bound var (with only the first valid) (see FunctionBlocks.scala)
-        mapnz(t(x), { a => val save = t.subst; t.subst += (e.fin -> a); val out = t.reflectBlock(repr); t.subst = save; out })
+        mapnz(t(x), { a => transformBlockWithBound(t, repr, scala.List(e.fin -> a)) })
       })
     }        
     else {
@@ -80,7 +77,7 @@ trait SparseTransform extends LoweringTransform {
         
     if (side != SparseNone) {
       Some(s.atPhase(t) {                        
-        zipnz(t(xA), t(xB), { (a,b) => val save = t.subst; t.subst ++= scala.List(e.fin._1 -> a, e.fin._2 -> b); val out = t.reflectBlock(repr); t.subst = save; out }, side)        
+        zipnz(t(xA), t(xB), { (a,b) => transformBlockWithBound(t, repr, scala.List(e.fin._1 -> a, e.fin._2 -> b)) }, side)        
       })
     }        
     else {
@@ -101,7 +98,7 @@ trait SparseTransform extends LoweringTransform {
     val test = reifyEffects(f(y,defaultValue[A]))
     if (test.res == y) {
       Some(s.atPhase(t) {                        
-        reducenz(t(x), { (a,b) => val save = t.subst; t.subst ++= scala.List(e.rV._1 -> a, e.rV._2 -> b); val out = t.reflectBlock(repr); t.subst = save; out }, t(e.zero))        
+        reducenz(t(x), { (a,b) => transformBlockWithBound(t, repr, scala.List(e.rV._1 -> a, e.rV._2 -> b)) }, t(e.zero))        
       })
     }        
     else {

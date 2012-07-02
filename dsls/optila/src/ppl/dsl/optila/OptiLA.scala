@@ -12,7 +12,7 @@ import ppl.delite.framework.codegen.cuda.TargetCuda
 import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.opencl.TargetOpenCL
 import ppl.delite.framework.codegen.delite.overrides._
-import ppl.delite.framework.transform.DeliteTransform
+import ppl.delite.framework.transform._
 import ppl.delite.framework.ops._
 import ppl.delite.framework.{Interfaces,InterfacesExp}
 import ppl.dsl.optila.extern._
