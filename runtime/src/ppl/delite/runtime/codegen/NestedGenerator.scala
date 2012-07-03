@@ -86,34 +86,26 @@ abstract class GPUNestedGenerator(nested: OP_Nested, location: Int, target: Targ
     val metadata = nested.getGPUMetadata(target)
 
     for ((in, sym) <- nested.getInputs) {
-      if (!first) out.append(',')
-      first = false
-      out.append(resultType(in,sym))
-      out.append(ref(in,sym))
-      out.append(' ')
-      out.append(getSymGPU(sym))
-      if ((nested.getMutableInputs contains (in,sym)) && (in.scheduledResource != nested.scheduledResource)) {
-        out.append(',')
-        out.append(getJNIType(in.outputType(sym)))
-        out.append(' ')
-        out.append(getSymCPU(sym))
+      if (metadata.inputs.contains((in,sym))) {
+        if (!first) out.append(',')
+        first = false
+        out.append(metadata.inputs((in,sym)).resultType)
+        out.append("* ")
+        out.append(getSymGPU(sym))
+        if ((nested.getMutableInputs. contains (in,sym)) && (in.getConsumers.filter(_.scheduledResource!=in.scheduledResource).nonEmpty)) {
+          out.append(',')
+          out.append(getJNIType(in.outputType(sym)))
+          out.append(' ')
+          out.append(getSymCPU(sym))
+        }
       }
-    }
-
-    def resultType(op: DeliteOP, sym: String) = {
-      if (metadata.inputs.contains(op,sym))
-        metadata.inputs(op,sym).resultType
-      else if (isPrimitiveType(op.outputType(sym)))
-        getCPrimitiveType(op.outputType(sym))
-      else
-        error("op " + op.id + " with return type " + op.outputType + " does not have a known C type")
-    }
-
-    def ref(op: DeliteOP, sym: String) = {
-      if (isPrimitiveType(op.outputType(sym))) "&"
-      else "*"
-      //if (op.supportsTarget(target)) "*"
-      //else "&"
+      else if (isPrimitiveType(in.outputType(sym))) {
+        if (!first) out.append(',')
+        first = false
+        out.append(getCPrimitiveType(in.outputType(sym)))
+        out.append(' ')
+        out.append(getSymGPU(sym))
+      }
     }
   }
 }
