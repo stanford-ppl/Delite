@@ -1,10 +1,10 @@
 package ppl.delite.runtime.codegen
 
-import java.util.ArrayDeque
 import ppl.delite.runtime.graph.ops._
 import collection.mutable.ArrayBuffer
 import java.lang.annotation.Target
 import ppl.delite.runtime.graph.targets.{OS, OPData, Targets}
+import ppl.delite.runtime.scheduler.OpList
 
 /**
  * Author: Kevin J. Brown
@@ -34,7 +34,7 @@ import ppl.delite.runtime.graph.targets.{OS, OPData, Targets}
 
 trait GPUExecutableGenerator {
 
-  protected def addKernelCalls(schedule: ArrayDeque[DeliteOP], location: Int, available: ArrayBuffer[(DeliteOP,String)], awaited: ArrayBuffer[DeliteOP], syncList: ArrayBuffer[DeliteOP], out: StringBuilder)(implicit aliases:AliasTable[(DeliteOP,String)])
+  protected def addKernelCalls(schedule: OpList, location: Int, available: ArrayBuffer[(DeliteOP,String)], awaited: ArrayBuffer[DeliteOP], syncList: ArrayBuffer[DeliteOP], out: StringBuilder)(implicit aliases:AliasTable[(DeliteOP,String)])
 
   protected def executableName: String
 
@@ -175,11 +175,11 @@ trait GPUExecutableGenerator {
   }
 
   protected def emitCppHeader: String
-  protected def emitCppBody(schedule: ArrayDeque[DeliteOP], location: Int, syncList: ArrayBuffer[DeliteOP]): String
+  protected def emitCppBody(schedule: OpList, location: Int, syncList: ArrayBuffer[DeliteOP]): String
 
 }
 
-
+/*
 class GPUScalaExecutableGenerator(target: Targets.Value) extends ExecutableGenerator {
 
   protected def executableName = "Executable"
@@ -243,3 +243,4 @@ class GPUScalaExecutableGenerator(target: Targets.Value) extends ExecutableGener
     }
   }
 }
+*/

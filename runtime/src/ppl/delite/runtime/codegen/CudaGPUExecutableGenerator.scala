@@ -1,9 +1,9 @@
 package ppl.delite.runtime.codegen
 
-import java.util.ArrayDeque
 import ppl.delite.runtime.graph.ops._
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.targets.{OPData, Targets}
+import ppl.delite.runtime.scheduler.OpList
 
 trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
 
@@ -25,7 +25,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     out.toString
   }
 
-  protected def emitCppBody(schedule: ArrayDeque[DeliteOP], location: Int, syncList: ArrayBuffer[DeliteOP]): String = {
+  protected def emitCppBody(schedule: OpList, location: Int, syncList: ArrayBuffer[DeliteOP]): String = {
     val out = new StringBuilder //the output string
     implicit val aliases = new AliasTable[(DeliteOP,String)]
 
@@ -85,13 +85,11 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
 
 
 
-  protected def addKernelCalls(schedule: ArrayDeque[DeliteOP], location: Int, available: ArrayBuffer[(DeliteOP,String)], awaited: ArrayBuffer[DeliteOP], syncList: ArrayBuffer[DeliteOP], out: StringBuilder)(implicit aliases:AliasTable[(DeliteOP,String)]) {
+  protected def addKernelCalls(schedule: OpList, location: Int, available: ArrayBuffer[(DeliteOP,String)], awaited: ArrayBuffer[DeliteOP], syncList: ArrayBuffer[DeliteOP], out: StringBuilder)(implicit aliases:AliasTable[(DeliteOP,String)]) {
     //available: list of ops with data currently on gpu, have a "g" symbol
     //awaited: list of ops synchronized with but data only resides on cpu, have a "c" symbol
     val getterList = new ArrayBuffer[String]
-    val iter = schedule.iterator
-    while (iter.hasNext) {
-      val op = iter.next
+    for (op <- schedule) {
       //add to available & awaited lists
       if (op.isInstanceOf[OP_Nested])
         available += Pair(op,op.id.replaceAll("_"+op.scheduledResource,""))
@@ -568,9 +566,9 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
 
   protected def makeNestedFunction(op: DeliteOP, location: Int) {
     op match {
-      case c: OP_Condition => new CudaGPUConditionGenerator(c, location).makeExecutable()
-      case w: OP_While => new CudaGPUWhileGenerator(w, location).makeExecutable()
-      case v: OP_Variant => new CudaGPUVariantGenerator(v, location).makeExecutable()
+      //case c: OP_Condition => new CudaGPUConditionGenerator(c, location).makeExecutable()
+      //case w: OP_While => new CudaGPUWhileGenerator(w, location).makeExecutable()
+      //case v: OP_Variant => new CudaGPUVariantGenerator(v, location).makeExecutable()
       case err => error("Unrecognized nested OP type: " + err.getClass.getSimpleName)
     }
   }

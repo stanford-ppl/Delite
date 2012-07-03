@@ -55,9 +55,8 @@ class ThreadPool(numThreads: Int) {
   def submitAll(schedule: StaticSchedule) {
     assert(pool.length == schedule.resources.length)
     for (i <- 0 until pool.length) {
-      val iter = schedule.resources(i).iterator
-      while (iter.hasNext) {
-        pool(i).queue.put(iter.next)
+      for (exec <- schedule.resources(i)) {
+        pool(i).queue.put(exec)
       }
     }
   }

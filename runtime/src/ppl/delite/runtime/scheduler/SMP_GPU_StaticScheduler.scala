@@ -8,7 +8,6 @@ package ppl.delite.runtime.scheduler
 
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.DeliteTaskGraph
-import java.util.ArrayDeque
 import ppl.delite.runtime.graph.ops.{OP_Nested, DeliteOP}
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.cost._
@@ -35,7 +34,7 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with GPULoopCostMode
 
   protected def scheduleFlat(graph: DeliteTaskGraph, sequential: Boolean) {
     assert(numGPUs > 0)
-    val opQueue = new ArrayDeque[DeliteOP]
+    val opQueue = new OpList
     val schedule = PartialSchedule(numCPUs + numGPUs)
     enqueueRoots(graph, opQueue)
     while (!opQueue.isEmpty) {

@@ -1,12 +1,10 @@
 package ppl.delite.runtime.codegen
 
-import java.util.ArrayDeque
 import ppl.delite.runtime.graph.ops._
 import collection.mutable.ArrayBuffer
-import java.io.File
-import sun.net.www.content.image.x_xbitmap
 import ppl.delite.runtime.graph.targets.{OPData, Targets}
 import ppl.delite.runtime._
+import scheduler.OpList
 
 trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
 
@@ -30,7 +28,7 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
     out.toString
   }
 
-  protected def emitCppBody(schedule: ArrayDeque[DeliteOP], location: Int, syncList: ArrayBuffer[DeliteOP]): String = {
+  protected def emitCppBody(schedule: OpList, location: Int, syncList: ArrayBuffer[DeliteOP]): String = {
     val out = new StringBuilder //the output string
     implicit val aliases = new AliasTable[(DeliteOP,String)]
 
@@ -153,13 +151,11 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
 
 
   //TODO: have multiple command queues for separate data transfers
-  protected def addKernelCalls(schedule: ArrayDeque[DeliteOP], location: Int, available: ArrayBuffer[(DeliteOP,String)], awaited: ArrayBuffer[DeliteOP], syncList: ArrayBuffer[DeliteOP], out: StringBuilder)(implicit aliases:AliasTable[(DeliteOP,String)]) {
+  protected def addKernelCalls(schedule: OpList, location: Int, available: ArrayBuffer[(DeliteOP,String)], awaited: ArrayBuffer[DeliteOP], syncList: ArrayBuffer[DeliteOP], out: StringBuilder)(implicit aliases:AliasTable[(DeliteOP,String)]) {
     //available: list of ops with data currently on gpu, have a "g" symbol
     //awaited: list of ops synchronized with but data only resides on cpu, have a "c" symbol
     val getterList = new ArrayBuffer[String]
-    val iter = schedule.iterator
-    while (iter.hasNext) {
-      val op = iter.next
+    for (op <- schedule) {
       //add to available & awaited lists
       if (op.isInstanceOf[OP_Nested])
         available += Pair(op,op.id.replaceAll("_"+op.scheduledResource,""))
@@ -699,9 +695,9 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
 
   protected def makeNestedFunction(op: DeliteOP, location: Int) {
     op match {
-      case c: OP_Condition => new OpenCLGPUConditionGenerator(c, location).makeExecutable()
-      case w: OP_While => new OpenCLGPUWhileGenerator(w, location).makeExecutable()
-      case v: OP_Variant => new OpenCLGPUVariantGenerator(v, location).makeExecutable()
+      //case c: OP_Condition => new OpenCLGPUConditionGenerator(c, location).makeExecutable()
+      //case w: OP_While => new OpenCLGPUWhileGenerator(w, location).makeExecutable()
+      //case v: OP_Variant => new OpenCLGPUVariantGenerator(v, location).makeExecutable()
       case err => error("Unrecognized nested OP type: " + err.getClass.getSimpleName)
     }
   }

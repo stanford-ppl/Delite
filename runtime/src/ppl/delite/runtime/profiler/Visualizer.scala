@@ -77,13 +77,8 @@ object Visualizer {
     // output schedule
     println("original schedule")
     for (res <- 0 until Profiler.graph.get.schedule.numResources) {
-      // convert ArrayDequeue to List
-      val dequeue = Profiler.graph.get.schedule(res)
-      var l: List[DeliteOP] = List()
-      val iter = dequeue.iterator()
-      while (iter.hasNext()) l :::= List(iter.next())
-      
-      println(res + ": " + l.map(_.id).mkString(","))
+      val list = Profiler.graph.get.schedule(res).toArray
+      println(res + ": " + list.map(_.id).mkString(","))
     }
   }
   
@@ -112,9 +107,7 @@ object Visualizer {
     
     var sortedTimings: List[Timing] = List()
     for (res <- 0 until Profiler.graph.get.schedule.numResources) {
-      val iter = Profiler.graph.get.schedule(res).iterator()
-      while (iter.hasNext()) {
-        val op = iter.next()
+      for (op <- Profiler.graph.get.schedule(res)) {
         timings.find(_.component == op.id) match {
           case None =>
             /* do nothing */

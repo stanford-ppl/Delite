@@ -1,7 +1,7 @@
 package ppl.delite.runtime.codegen.kernels.scala
 
 import ppl.delite.runtime.graph.ops.OP_MultiLoop
-import ppl.delite.runtime.codegen.{ExecutableGenerator, ScalaCompile}
+import ppl.delite.runtime.codegen.{ScalaExecutableGenerator, ScalaCompile}
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.Config
 
@@ -53,7 +53,7 @@ object MultiLoop_SMP_Array_Generator {
 
   private def writeHeader(out: StringBuilder, master: OP_MultiLoop, idx: Int, kernelPath: String) {
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
-    ExecutableGenerator.writePath(kernelPath, out)
+    ScalaExecutableGenerator.writePath(kernelPath, out)
     out.append("object ")
     out.append(kernelName(master, idx))
     out.append(" {\n")
@@ -170,7 +170,7 @@ object MultiLoop_SMP_Array_Header_Generator {
   }
 
   private def writeObject(out: StringBuilder, op: OP_MultiLoop, kernelPath: String) {
-    ExecutableGenerator.writePath(kernelPath, out)
+    ScalaExecutableGenerator.writePath(kernelPath, out)
     out.append("object ")
     out.append(kernelName(op))
     out.append(" {\n")

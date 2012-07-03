@@ -4,7 +4,7 @@ import ppl.delite.runtime.graph.targets.Targets
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.scheduler.PartialSchedule
 import ppl.delite.runtime.graph.ops.DeliteOP
-
+/*
 trait GPUMainGenerator extends GPUExecutableGenerator {
   val compiler: CCompile
   val tgt: Targets.Value
@@ -45,3 +45,4 @@ object OpenCLMainGenerator extends GPUMainGenerator with OpenCLGPUExecutableGene
   val compiler = OpenCLCompile
   val tgt = Targets.OpenCL
 }
+*/

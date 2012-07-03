@@ -1,7 +1,6 @@
 package ppl.delite.runtime.scheduler
 
 import ppl.delite.runtime.graph.DeliteTaskGraph
-import java.util.ArrayDeque
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.graph.ops._
@@ -37,7 +36,7 @@ final class GPUOnlyStaticScheduler extends StaticScheduler with ParallelUtilizat
   protected def scheduleFlat(graph: DeliteTaskGraph) = scheduleFlat(graph, false)
 
   protected def scheduleFlat(graph: DeliteTaskGraph, sequential: Boolean) {
-    val opQueue = new ArrayDeque[DeliteOP]
+    val opQueue = new OpList
     val schedule = PartialSchedule(2)
     enqueueRoots(graph, opQueue)
     while (!opQueue.isEmpty) {

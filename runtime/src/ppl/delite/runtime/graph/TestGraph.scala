@@ -11,7 +11,7 @@ import ops._
  * Stanford University
  */
 
-class TestGraph extends ForeachGraph { //test choice
+class TestGraph extends SingleGraph { //test choice
   val EOP = new EOP
   EOP.addDependency(_result._1)
   _result._1.addConsumer(EOP)

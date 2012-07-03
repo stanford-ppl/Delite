@@ -26,14 +26,14 @@ abstract class OP_Nested extends DeliteOP {
     functionName = name
   }
 
-  protected final class GetterOp(val id: String, resource: Int, dependencies: Seq[DeliteOP], inputs: Seq[DeliteOP]) extends DeliteOP {
+  protected final class GetterOp(val id: String, resource: Int, dependencies: Seq[DeliteOP], inputs: Seq[(DeliteOP,String)]) extends DeliteOP {
 
     for (dep <- dependencies) {
       this.addDependency(dep)
       dep.addConsumer(this)
     }
-    for (in <- inputs.reverse) {
-      this.addInput(in, in.getOutputs.head)
+    for ((in,sym) <- inputs.reverse) {
+      this.addInput(in, sym)
     }
     scheduledResource = resource
 

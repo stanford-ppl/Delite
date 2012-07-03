@@ -1,6 +1,6 @@
 package ppl.delite.runtime.codegen.kernels.cuda
 
-import ppl.delite.runtime.codegen.{CudaGPUExecutableGenerator, CudaCompile, CudaMainGenerator}
+import ppl.delite.runtime.codegen.{CudaGPUExecutableGenerator, CudaCompile}
 import tools.nsc.io._
 import ppl.delite.runtime.graph.ops.{OP_Executable, DeliteOP, OP_MultiLoop}
 import ppl.delite.runtime.graph.targets.{OPData, Targets}

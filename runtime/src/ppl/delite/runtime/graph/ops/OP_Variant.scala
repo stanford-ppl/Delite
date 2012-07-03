@@ -44,7 +44,7 @@ class OP_Variant(val id: String, private[graph] val outputTypesMap: Map[Targets.
 
         //add special consumer ops
         if (r.outputType != "Unit") { //returns result and isReturner
-          variantGraph.schedule(idx).add(new GetterOp(id+"v_"+idx, idx, Seq(variantGraph.result._1), Seq(variantGraph.result._1))) //get result on returner chunk
+          variantGraph.schedule(idx).add(new GetterOp(id+"v_"+idx, idx, Seq(variantGraph.result._1), Seq(variantGraph.result))) //get result on returner chunk
         }
         r
       }

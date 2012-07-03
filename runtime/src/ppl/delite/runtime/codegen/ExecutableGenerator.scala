@@ -1,10 +1,9 @@
 package ppl.delite.runtime.codegen
 
 import ppl.delite.runtime.graph.ops._
-import ppl.delite.runtime.scheduler.PartialSchedule
+import ppl.delite.runtime.scheduler.{OpList, PartialSchedule}
 import ppl.delite.runtime.Config
-import java.util.ArrayDeque
-import collection.mutable.{ArrayBuffer, HashSet}
+import sync.ScalaSyncGenerator
 
 /**
  * Author: Kevin J. Brown
@@ -27,88 +26,84 @@ import collection.mutable.{ArrayBuffer, HashSet}
  *    outputs that the scheduler has restricted to this resource are kept local 
  */
 
-abstract class ExecutableGenerator {
+trait ExecutableGenerator {
 
-  def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
-    for (i <- 0 until schedule.numResources) {
-      val src = makeExecutable(schedule(i), i, kernelPath)
-      ScalaCompile.addSource(src, executableName + i)
+  protected val out: StringBuilder = new StringBuilder
+  val location: Int
+  val kernelPath: String
+
+  def makeExecutable(ops: OpList) {
+    writeHeader()
+    writeMethodHeader()
+    addKernelCalls(ops)
+    writeMethodFooter()
+    writeFooter()
+
+    addSource(out.toString)
+  }
+
+  protected def addKernelCalls(resource: OpList) {
+    for (op <- resource) {
+      if (op.isInstanceOf[OP_Nested] || op.isInstanceOf[Sync]) //runtime responsible for implementation
+        makeNestedFunction(op)
+      writeFunctionCall(op)
     }
   }
 
-  protected def makeExecutable(resource: ArrayDeque[DeliteOP], location: Int, kernelPath: String) = {
-    val out = new StringBuilder //the output string
-    val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
+  def executableName: String = executableName(location)
+  def executableName(location: Int): String
 
-    //the header
-    writeHeader(out, location, kernelPath)
+  protected def addSource(source: String)
 
-    //the run method
-    out.append("def run() {\n")
-    addKernelCalls(resource, location, out, new ArrayBuffer[DeliteOP], syncList)
-    out.append('}')
-    out.append('\n')
+  protected def makeNestedFunction(op: DeliteOP)
+  protected def writeFunctionCall(op: DeliteOP)
 
-    //the sync methods/objects
-    addSync(syncList, out)
+  protected def writeHeader()
+  protected def writeMethodHeader()
 
-    //an accessor method for the object
-    addAccessor(out)
+  protected def writeFooter()
+  protected def writeMethodFooter()
 
-    //the footer
-    out.append('}')
-    out.append('\n')
+}
 
-    out.toString
+trait ScalaExecutableGenerator extends ExecutableGenerator {
+
+  protected def addSource(source: String) {
+    ScalaCompile.addSource(source, executableName)
   }
 
-  protected def writeHeader(out: StringBuilder, location: Int, kernelPath: String) {
+  protected def writeHeader() {
     out.append("import ppl.delite.runtime.codegen.DeliteExecutable\n") //base trait
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
-    out.append("import java.util.concurrent.locks._\n") //locking primitives
-    ExecutableGenerator.writePath(kernelPath, out) //package of scala kernels
-    out.append("object Executable")
-    out.append(location)
+    ScalaExecutableGenerator.writePath(kernelPath, out) //package of scala kernels
+    out.append("object ")
+    out.append(executableName)
     out.append(" extends DeliteExecutable {\n")
   }
 
-  protected def addKernelCalls(resource: ArrayDeque[DeliteOP], location: Int, out: StringBuilder, available: ArrayBuffer[DeliteOP], syncList: ArrayBuffer[DeliteOP]) {
-    val iter = resource.iterator
-    while (iter.hasNext) { //foreach op
-      val op = iter.next
-      //add to available list
-      available += op
-
-      if (op.isInstanceOf[OP_Nested]) makeNestedFunction(op, location)
-
-      //get dependencies
-      for (dep <- op.getDependencies) {
-        if (!available.contains(dep)) { //this dependency does not yet exist on this resource
-          //add to available list
-          available += dep
-          //write getter(s) for dep output(s)
-          for (sym <- dep.getOutputs)
-            writeGetter(dep, sym, location, out)
-        }
-      }
-
-      //write the function call:
-      writeFunctionCall(op, out)
-
-      //write the setter:
-      var addSetter = false
-      for (cons <- op.getConsumers) {
-        if (cons.scheduledResource != location) addSetter = true //only add setter if output will be consumed by another resource
-      }
-      if (addSetter) {
-        syncList += op //add op to list that needs sync generation
-        for (sym <- op.getOutputs)
-          writeSetter(op, sym, out)
-      }
-    }
+  protected def writeMethodHeader() {
+    out.append("def run() {\n")
   }
 
-  protected def writeFunctionCall(op: DeliteOP, out: StringBuilder) {
+  protected def writeMethodFooter() {
+    out.append("}\n")
+  }
+
+  protected def writeFooter() {
+    addAccessor() //provides a reference to the object instance
+    out.append("}\n") //end object
+  }
+
+  //TODO: can/should this be factored out? need some kind of factory for each target
+  //TODO: why is multiloop codegen handled differently?
+  protected def makeNestedFunction(op: DeliteOP) = op match {
+    case c: OP_Condition => new ScalaConditionGenerator(c, location, kernelPath).makeExecutable()
+    case w: OP_While => new ScalaWhileGenerator(w, location, kernelPath).makeExecutable()
+    case v: OP_Variant => new ScalaVariantGenerator(v, location, kernelPath).makeExecutable()
+    case err => sys.error("Unrecognized OP type: " + err.getClass.getSimpleName)
+  }
+
+  protected def writeFunctionCall(op: DeliteOP) {
     def returnsResult = op.outputType(op.getOutputs.head) == op.outputType
     def resultName = if (returnsResult) getSym(op, op.getOutputs.head) else "op_" + getSym(op, op.id)
 
@@ -147,154 +142,30 @@ abstract class ExecutableGenerator {
     }
   }
 
-  protected def writeGetter(dep: DeliteOP, sym: String, location: Int, out: StringBuilder) {
-    out.append("val ")
-    out.append(getSym(dep, sym))
-    out.append(" : ")
-    out.append(dep.outputType(sym))
-    out.append(" = ")
-    out.append(executableName)
-    out.append(dep.scheduledResource)
-    out.append(".get")
-    out.append(location)
-    out.append('_')
-    out.append(getSym(dep, sym))
-    out.append('\n')
-  }
-
-  protected def executableName: String
-
-  protected def writeSetter(op: DeliteOP, sym: String, out: StringBuilder) {
-    out.append(getSync(op, sym))
-    out.append(".set(")
-    out.append(getSym(op, sym))
-    out.append(')')
-    out.append('\n')
-  }
-
-  protected def makeNestedFunction(op: DeliteOP, location: Int) {
-    op match {
-      case c: OP_Condition => new ConditionGenerator(c, location).makeExecutable()
-      case w: OP_While => new WhileGenerator(w, location).makeExecutable()
-      case v: OP_Variant => new VariantGenerator(v, location).makeExecutable()
-      case err => error("Unrecognized nested OP type: " + err.getClass.getSimpleName)
-    }
-  }
-
-  protected def addSync(list: ArrayBuffer[DeliteOP], out: StringBuilder) {
-    for (op <- list) {
-      for (sym <- op.getOutputs) {
-        //add a public get method
-        writePublicGet(op, sym, out)
-        //add a private sync object
-        writeSyncObject(op, sym, out)
-      }
-    }
-  }
-
-  protected def writePublicGet(op: DeliteOP, sym: String, out: StringBuilder) {
-    val consumerSet = calculateConsumerSet(op)
-    for (location <- consumerSet) {
-      out.append("def get")
-      out.append(location)
-      out.append('_')
-      out.append(getSym(op, sym))
-      out.append(" : ")
-      out.append(op.outputType(sym))
-      out.append(" = ")
-      out.append(getSync(op, sym))
-      out.append(".get")
-      out.append(location)
-      out.append('\n')
-    }
-  }
-
-  protected def writeSyncObject(op: DeliteOP, sym: String, out: StringBuilder) {
-    //the header
-    out.append("private object ")
-    out.append(getSync(op, sym))
-    out.append( " {\n")
-
-    //the state
-    val consumerSet = calculateConsumerSet(op)
-    val numConsumers = consumerSet.size
-
-    out.append("private var count : Int = 0\n")
-    for (cons <- consumerSet) {
-      out.append("private var takeIndex")
-      out.append(cons)
-      out.append(" : Int = 0\n")
-    }
-    out.append("private var putIndex : Int = 0\n")
-    out.append("private var _result : ")
-    out.append(op.outputType(sym))
-    out.append(" = _\n")
-
-    out.append("private val lock = new ReentrantLock\n")
-    out.append("private val notEmpty = lock.newCondition\n")
-    out.append("private val notFull = lock.newCondition\n")
-
-    //the getters
-    for (cons <- consumerSet) {
-      out.append("def get")
-      out.append(cons)
-      out.append(" : ")
-      out.append(op.outputType(sym))
-      out.append(" = { val takeIndex = takeIndex")
-      out.append(cons)
-      out.append("; val lock = this.lock; lock.lock; try { while (takeIndex == putIndex) { notEmpty.await }; extract")
-      out.append(cons)
-      out.append(" } finally { lock.unlock } }\n")
-
-      out.append("private def extract")
-      out.append(cons)
-      out.append(" : ")
-      out.append(op.outputType(sym))
-      out.append(" = { val res = _result; takeIndex")
-      out.append(cons)
-      out.append("+= 1; count -= 1; if (count == 0) { _result = null.asInstanceOf[")
-      out.append(op.outputType(sym))
-      out.append("]; notFull.signal }; res }\n")
-    }
-
-    //the setter
-    out.append("def set(result : ")
-    out.append(op.outputType(sym))
-    out.append(") { val lock = this.lock; lock.lock; try { while (count != 0) { notFull.await }; insert(result) } finally { lock.unlock } }\n")
-
-    out.append("private def insert(result: ")
-    out.append(op.outputType(sym))
-    out.append(") { _result = result; count = ")
-    out.append(numConsumers)
-    out.append("; putIndex += 1; notEmpty.signalAll }\n")
-
-    //the footer
-    out.append('}')
-    out.append('\n')
-  }
-
-  protected def calculateConsumerSet(op: DeliteOP) = {
-    val consumerSet = HashSet.empty[Int]
-    for (cons <- op.getConsumers) consumerSet += cons.scheduledResource
-    consumerSet -= op.scheduledResource
-    consumerSet
-  }
-
   protected def getSym(op: DeliteOP, name: String): String = {
     "x"+name
   }
 
-  protected def getSync(op: DeliteOP, name: String): String = {
-    "Result"+name
-  }
-
-  protected def addAccessor(out: StringBuilder) {
+  protected def addAccessor() {
     out.append("def self = this\n")
   }
 
 }
 
-object ExecutableGenerator {
+class ScalaMainExecutableGenerator(val location: Int, val kernelPath: String)
+  extends ScalaExecutableGenerator with ScalaSyncGenerator {
+
+  def executableName(location: Int) = "Executable" + location
+}
+
+object ScalaExecutableGenerator {
+
+  def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
+    for (i <- 0 until schedule.numResources) {
+      new ScalaMainExecutableGenerator(i, kernelPath).makeExecutable(schedule(i))
+    }
+  }
+
   private[codegen] def writePath(kernelPath: String, out: StringBuilder) {
     if (kernelPath == "") return
     out.append("import generated.scala._\n")

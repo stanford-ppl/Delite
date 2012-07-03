@@ -2,7 +2,6 @@ package ppl.delite.runtime.scheduler
 
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.ops._
-import java.util.ArrayDeque
 import ppl.delite.runtime.cost._
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.targets.Targets
@@ -32,7 +31,7 @@ trait StaticScheduler {
 
   protected def scheduleSequential(graph: DeliteTaskGraph)
 
-  protected def enqueueRoots(graph: DeliteTaskGraph, opQueue: ArrayDeque[DeliteOP]) {
+  protected def enqueueRoots(graph: DeliteTaskGraph, opQueue: OpList) {
     for (op <- graph.ops) {
       if (!op.isSchedulable) {//if not already in opQueue (protects against same consumer appearing in list multiple times)
         op.processSchedulable

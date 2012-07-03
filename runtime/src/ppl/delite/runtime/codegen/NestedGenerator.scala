@@ -14,37 +14,50 @@ import java.lang.annotation.Target
  * Stanford University
  */
 
-abstract class NestedGenerator(nested: OP_Nested, location: Int) extends ExecutableGenerator {
+trait NestedGenerator extends ExecutableGenerator {
 
-  protected val baseId = nested.id.slice(0, nested.id.indexOf('_'))
+  val nested: OP_Nested
+
+  protected def baseId = nested.id.slice(0, nested.id.indexOf('_'))
 
   protected def updateOP() {
-    nested.setExecutableName(kernelName)
+    nested.setExecutableName(executableName)
   }
 
-  protected def kernelName = executableName + location
+  def makeExecutable()
 
-  override protected def getSym(op: DeliteOP, name: String) = NestedCommon.getSym(baseId, op, name)
-  override protected def getSync(op: DeliteOP, name: String) = NestedCommon.getSync(baseId, op, name)
+  protected def writeMethodHeader()
 
-  protected def writeHeader(location: Int, out: StringBuilder) {
+  protected def writeInputs()
+
+  protected def writeOutput(op: DeliteOP, name: String, newLine: Boolean = true)
+  protected def writeValue(value: String, newLine: Boolean = true)
+
+}
+
+trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator {
+
+  override protected def writeHeader() {
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
-    out.append("import java.util.concurrent.locks._\n") //locking primitives
-    ExecutableGenerator.writePath(nested.nestedGraphs(0).kernelPath, out) //package of scala kernels
+    ScalaExecutableGenerator.writePath(kernelPath, out) //package of scala kernels
     out.append("object ")
-    out.append(kernelName)
+    out.append(executableName)
     out.append(" {\n")
   }
 
-  protected def writeMethodHeader(out: StringBuilder) {
+  override protected def writeMethodHeader() {
     out.append("def apply(")
-    writeInputs(out)
+    writeInputs()
     out.append("): ")
     out.append(nested.outputType)
     out.append(" = {\n")
   }
 
-  protected def writeInputs(out: StringBuilder) {
+  override protected def writeFooter() {
+    out.append("}\n")
+  }
+
+  protected def writeInputs() {
     var first = true
     for ((op,sym) <- nested.getInputs) {
       if (!first) out.append(", ")
@@ -54,17 +67,28 @@ abstract class NestedGenerator(nested: OP_Nested, location: Int) extends Executa
       out.append(op.outputType(sym))
     }
   }
-}
 
+  protected def writeOutput(op: DeliteOP, name: String, newLine: Boolean = true) {
+    out.append(getSym(op, name))
+    if (newLine) out.append('\n')
+  }
+
+  protected def writeValue(value: String, newLine: Boolean = true) {
+    out.append(value)
+    if (newLine) out.append('\n')
+  }
+
+}
+/*
 abstract class GPUNestedGenerator(nested: OP_Nested, location: Int, target: Targets.Value) extends GPUExecutableGenerator {
 
   protected val baseId = nested.id.slice(0, nested.id.indexOf('_'))
 
   protected def updateOP() {
-    nested.setExecutableName(kernelName)
+    nested.setExecutableName(executableName)
   }
 
-  protected def kernelName = executableName + location
+  protected def executableName = executableName + location
 
   override protected def getScalaSym(op: DeliteOP, name: String) = NestedCommon.getSym(baseId, op, name)
 
@@ -74,7 +98,7 @@ abstract class GPUNestedGenerator(nested: OP_Nested, location: Int, target: Targ
     // GPU nested block can only return when both condition branches are returned by GPU,
     // meaning that the return object will be a pointer type
     if(nested.outputType != "Unit") out.append('*')
-    out.append(kernelName)
+    out.append(executableName)
     out.append('(')
     writeInputs(out)
     out.append(") {\n")
@@ -131,21 +155,17 @@ abstract class GPUScalaNestedGenerator(nested: OP_Nested, location: Int, target:
     out.toString
   }
 
-  protected def kernelName = executableName + location
+  protected def executableName = executableName + location
 
   override protected def getSym(op: DeliteOP, name: String) = NestedCommon.getSym(baseId, op, name)
   override protected def getSync(op: DeliteOP, name: String) = NestedCommon.getSync(baseId, op, name)
 
   protected def writeHeader(location: Int, out: StringBuilder) {
     out.append("import java.util.concurrent.locks._\n") //locking primitives
-    ExecutableGenerator.writePath(nested.nestedGraphs(0).kernelPath, out) //package of scala kernels
+    ScalaExecutableGenerator.writePath(nested.nestedGraphs(0).kernelPath, out) //package of scala kernels
     out.append("object ")
-    out.append(kernelName)
+    out.append(executableName)
     out.append(" {\n")
   }
-}
+}*/
 
-private [codegen] object NestedCommon { //TODO: traits?
-  def getSym(baseId: String, op: DeliteOP, name: String) = "x" + baseId + "_" + name
-  def getSync(baseId: String, op: DeliteOP, name: String) = "Result_" + baseId + "_" + name
-}

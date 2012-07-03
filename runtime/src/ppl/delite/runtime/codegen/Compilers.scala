@@ -1,9 +1,9 @@
 package ppl.delite.runtime.codegen
 
-import java.util.ArrayDeque
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.scheduler.{StaticSchedule, PartialSchedule}
 import ppl.delite.runtime.Config
+import ppl.delite.runtime.graph.ops.Sync
 
 /**
  * Author: Kevin J. Brown
@@ -23,13 +23,14 @@ object Compilers {
     val numGPUs = Config.numGPUs
     val schedule = graph.schedule
     assert((numThreads + numGPUs) == schedule.numResources)
-    MainGenerator.makeExecutables(schedule.slice(0,numThreads), graph.kernelPath)
+    Sync.addSync(graph)
+    ScalaExecutableGenerator.makeExecutables(schedule.slice(0,numThreads), graph.kernelPath)
     for (i <- 0 until numGPUs) {
-      if (Config.useOpenCL){
+      /* if (Config.useOpenCL){
         OpenCLMainGenerator.makeExecutable(schedule.slice(numThreads+i, numThreads+i+1), graph.kernelPath)
       }
       else
-        CudaMainGenerator.makeExecutable(schedule.slice(numThreads+i, numThreads+i+1), graph.kernelPath)
+        CudaMainGenerator.makeExecutable(schedule.slice(numThreads+i, numThreads+i+1), graph.kernelPath) */
     }
 
     if (Config.printSources) { //DEBUG option
@@ -43,16 +44,13 @@ object Compilers {
     if (Config.useOpenCL) OpenCLCompile.compile() else CudaCompile.compile()
     val classLoader = ScalaCompile.compile
 
-    val queues = new Array[ArrayDeque[DeliteExecutable]](schedule.numResources)
+    val queues = StaticSchedule(schedule.numResources)
     for (i <- 0 until schedule.numResources) {
       val cls = classLoader.loadClass("Executable"+i) //load the Executable class
       val executable = cls.getMethod("self").invoke(null).asInstanceOf[DeliteExecutable] //retrieve the singleton instance
-
-      queues(i) = new ArrayDeque[DeliteExecutable]
-      queues(i).add(executable)
+      queues(i) += executable
     }
-
-    new StaticSchedule(queues)
+    queues
   }
 
 }
