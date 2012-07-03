@@ -17,7 +17,7 @@ trait Scratchpad extends OptiMLApplication {
     
     val x = (0::10) { i =>
       val y = (0::2) { x => 
-        // println("blah") // should preclude GPU gen
+        println("blah") // should preclude GPU gen
         x*i         
       }
       y(1)

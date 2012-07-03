@@ -2,7 +2,7 @@ package ppl.delite.framework.transform
 
 import java.io._
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.AbstractSubstTransformer
+import scala.virtualization.lms.internal.{AbstractSubstTransformer,Transforming}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.datastruct.scala.DeliteCollection
@@ -10,20 +10,23 @@ import ppl.delite.framework.Config
 
 /**
  * Transform nested multiloops by selecting a dimension to parallelize for the GPU.
- * Different traits represent different policies / implementations.
  */
 
-/* Useful methods for manipulating multiloops regardless of policy */
-trait GenericMultiloopTransform extends DeliteTransform 
+trait MultiloopTransformExp extends DeliteTransform 
   with DeliteApplication with DeliteOpsExp 
   with BooleanOpsExp with MiscOpsExp with StringOpsExp with ObjectOpsExp with PrimitiveOpsExp
   with LiftString with LiftBoolean with LiftPrimitives { // may want to use self-types instead of mix-in to decrease risk of accidental inclusion
   
-  this: DeliteApplication =>
+  self =>
   
   val cudaGen = getCodeGenPkg(cudaTarget) // use a fresh CUDA generator to avoid any interference
-     
-  private val t = deviceDependentLowering
+
+  /*
+   * This selects which multiloop transformer (policy) to use. TODO: make configurable
+   */
+  // private val t = deviceDependentLowering
+  private val t = new MultiloopTransformOuter { val IR: self.type = self }
+  appendTransformer(t)
   
   def isGPUable(block: Block[Any]): Boolean = {
     try {
@@ -33,26 +36,32 @@ trait GenericMultiloopTransform extends DeliteTransform
     catch {
       case _ => return false
     }
+    // Predef.println("found GPUable collect elem: " + block)
     true
   }
   
   def blockContainsGPUableCollect(block: Block[Any]) = {
     var foundCollect = false
+    // Predef.println("unwrapping block: " + block)
     t.focusBlock(block) {
       t.focusExactScope(block) { levelScope => 
+        // for (e <- levelScope) Predef.println("  examining stm: " + e)
         foundCollect = levelScope.filter(_.rhs.isInstanceOf[DeliteOpLoop[Any]])
                                  .filter(_.rhs.asInstanceOf[DeliteOpLoop[Any]].body.isInstanceOf[DeliteCollectElem[_,_,_]])
                                  .exists(e=>isGPUable(e.rhs.asInstanceOf[DeliteOpLoop[Any]].body.asInstanceOf[DeliteCollectElem[_,_,_]].func))
       }
-    }
+    }    
     foundCollect    
   }
   
-  def loopContainsGPUableCollect(l: DeliteOpLoop[_]) = l.body match {
-    case e:DeliteCollectElem[_,_,_] => blockContainsGPUableCollect(e.func)
-    case e:DeliteForeachElem[_] => blockContainsGPUableCollect(e.func)
-    case e:DeliteReduceElem[_] => blockContainsGPUableCollect(e.func) || blockContainsGPUableCollect(e.rFunc)
-    case _ => false
+  def loopContainsGPUableCollect(l: DeliteOpLoop[_]) = {
+    // Predef.println("examining loop: " + l); 
+    l.body match {
+      case e:DeliteCollectElem[_,_,_] => blockContainsGPUableCollect(e.func)
+      case e:DeliteForeachElem[_] => blockContainsGPUableCollect(e.func)
+      case e:DeliteReduceElem[_] => blockContainsGPUableCollect(e.func) || blockContainsGPUableCollect(e.rFunc)
+      case _ => false
+    }
   }
     
   def transformCollectToWhile[A:Manifest,I<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest](s: Sym[_], loop: DeliteOpLoop[_], e: DeliteCollectElem[A,I,CA]): Exp[CA] = {
@@ -85,7 +94,7 @@ trait GenericMultiloopTransform extends DeliteTransform
       finalizer(res).unsafeImmutable 
     }       
     
-    s.asInstanceOf[Sym[CA]].atPhase(t) {
+    // s.asInstanceOf[Sym[CA]].atPhase(t) {
         collectToWhile(      
           t(loop.size),
           {sz => transformBlockWithBound(t, e.allocN, List(e.sV -> sz))},
@@ -95,7 +104,7 @@ trait GenericMultiloopTransform extends DeliteTransform
           {(col,n,x) => transformBlockWithBound(t, e.buf.append, List(e.allocVal -> col, loop.v -> n, e.eV -> x))},                
           {(col,sz) => transformBlockWithBound(t, e.buf.setSize, List(e.allocVal -> col, e.sV -> sz))},                
           {col => transformBlockWithBound(t, e.finalizer, List(e.allocVal -> col))})
-    }
+    // }
   }  
   
   def transformForeachToWhile[A:Manifest](s: Sym[_], loop: DeliteOpLoop[_], e: DeliteForeachElem[A]): Exp[Unit] = {
@@ -110,11 +119,11 @@ trait GenericMultiloopTransform extends DeliteTransform
       }
     }       
     
-    s.asInstanceOf[Sym[Unit]].atPhase(t) {
+    // s.asInstanceOf[Sym[Unit]].atPhase(t) {
         foreachToWhile(      
           t(loop.size),
           {n => transformBlockWithBound(t, e.func, List(loop.v -> n))})
-    }
+    // }
   }  
   
   def transformReduceToWhile[A:Manifest](s: Sym[_], loop: DeliteOpLoop[_], e: DeliteReduceElem[A]): Exp[A] = {
@@ -147,7 +156,7 @@ trait GenericMultiloopTransform extends DeliteTransform
       acc.unsafeImmutable      
     }       
     
-    s.asInstanceOf[Sym[A]].atPhase(t) {
+    // s.asInstanceOf[Sym[A]].atPhase(t) {
         reduceToWhile(      
           t(loop.size),
           {n => transformBlockWithBound(t, e.func, List(loop.v -> n))},                          
@@ -156,30 +165,42 @@ trait GenericMultiloopTransform extends DeliteTransform
           {(a,b) => transformBlockWithBound(t, e.rFunc, List(e.rV._1 -> a, e.rV._2 -> b))},                
           e.stripFirst,
           loop.asInstanceOf[DeliteOpReduceLike[_]].mutable)
-    }
+    // }
   }  
   
 }
 
 /* Always parallelize inner multiloop, if GPUable */ 
 // should this happen before or after fusion?
-// should we be using something more like NestedBlockTransformer inside TestMiscTransform to find the nested multiloop? 
-trait MultiloopTransformOuter extends GenericMultiloopTransform {  
-  override def onCreate[A:Manifest](s: Sym[A], d: Def[A]) = d match {    
-    case l:DeliteOpLoop[_] if Config.generateCUDA && loopContainsGPUableCollect(l) => l.body match {
-      case e:DeliteCollectElem[_,_,_] => (transformCollectToWhile(s,l,e)(e.mA,e.mI,e.mCA)).asInstanceOf[Exp[A]]
-      case e:DeliteForeachElem[_] => (transformForeachToWhile(s,l,e)(e.mA)).asInstanceOf[Exp[A]]
-      case e:DeliteReduceElem[_] => (transformReduceToWhile(s,l,e)(e.mA)).asInstanceOf[Exp[A]]
-      case _ => super.onCreate(s,d)
-    }
+trait MultiloopTransformOuter extends ForwardPassTransformer {  
+  val IR: LoopsFatExp with IfThenElseFatExp with MultiloopTransformExp
+  import IR._
+  
+  var inMultiloop = false
     
-    case Reflect(l:DeliteOpLoop[_],u,es) if Config.generateCUDA && loopContainsGPUableCollect(l) => l.body match {
-      case e:DeliteCollectElem[_,_,_] => reflectTransformed(deviceDependentLowering, (transformCollectToWhile(s,l,e)(e.mA,e.mI,e.mCA)).asInstanceOf[Exp[A]], u, es) 
-      case e:DeliteForeachElem[_] => reflectTransformed(deviceDependentLowering, (transformForeachToWhile(s,l,e)(e.mA)).asInstanceOf[Exp[A]], u, es) 
-      case e:DeliteReduceElem[_] => reflectTransformed(deviceDependentLowering, (transformReduceToWhile(s,l,e)(e.mA)).asInstanceOf[Exp[A]], u, es)       
-      case _ => super.onCreate(s,d)
-    } 
-       
-    case _ => super.onCreate(s,d)
+  override def transformStm(stm: Stm): Exp[Any] = stm match {
+    case TP(s,l:DeliteOpLoop[_]) if (Config.generateCUDA && !inMultiloop && loopContainsGPUableCollect(l)) => 
+      inMultiloop = true
+      val newSym = l.body match {
+        case e:DeliteCollectElem[_,_,_] => (transformCollectToWhile(s,l,e)(e.mA,e.mI,e.mCA))
+        case e:DeliteForeachElem[_] => (transformForeachToWhile(s,l,e)(e.mA))
+        case e:DeliteReduceElem[_] => (transformReduceToWhile(s,l,e)(e.mA))
+        case _ => s
+      }      
+      inMultiloop = false
+      newSym
+      
+    case TP(s,Reflect(l:DeliteOpLoop[_], u, es)) if (Config.generateCUDA && !inMultiloop && loopContainsGPUableCollect(l)) =>
+      inMultiloop = true
+      val newSym = l.body match {
+        case e:DeliteCollectElem[a,i,c] => reflectTransformed(this.asInstanceOf[IR.Transformer], (transformCollectToWhile(s,l,e)(e.mA,e.mI,e.mCA)), u, es)(e.mCA) // cast needed why?
+        case e:DeliteForeachElem[_] => reflectTransformed(this.asInstanceOf[IR.Transformer], (transformForeachToWhile(s,l,e)(e.mA)), u, es) 
+        case e:DeliteReduceElem[a] => reflectTransformed(this.asInstanceOf[IR.Transformer], (transformReduceToWhile(s,l,e)(e.mA)), u, es)(e.mA)       
+        case _ => s        
+      }
+      inMultiloop = false
+      newSym
+      
+    case _ => super.transformStm(stm)
   }
 }
