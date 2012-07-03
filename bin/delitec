@@ -28,6 +28,7 @@ def main():
     parser.add_option("--nb", dest="no_blas", action="store_true", default=False, help="disable blas calls")
     parser.add_option("--nf", dest="no_fusion", action="store_true", default=False, help="disables op fusion")
     parser.add_option("--gpu", dest="gpu", action="store_true", default=False, help="enables gpu generation")
+    parser.add_option("--cpp", dest="cpp", action="store_true", default=False, help="enables cpp generation")
     parser.add_option("-p", "--profile", dest="profile", action="store_true", default=False, help="enables application profiling")
     parser.add_option("--debug", dest="debug", action="store_true", default=False, help="enables verbose compiler output")
     parser.add_option("--Xdebug", dest="xdebug", action="store_true", default=False, help="enables LMS debug output; for compiler writers only")
@@ -68,6 +69,8 @@ def stage(runner, params, opts):
         java_opts = java_opts + " -Ddelite.extern.blas"
     if opts.gpu == True:
         java_opts = java_opts + " -Ddelite.generate.cuda -Ddelite.generate.opencl"
+    if opts.cpp == True:
+        java_opts = java_opts + " -Ddelite.generate.cpp"
     if opts.no_fusion == True:
         java_opts = java_opts + " -Ddelite.enable.fusion=false"
     if opts.profile == True:
