@@ -2022,4 +2022,32 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with GPUGenDeliteOps
 
 trait OpenCLGenDeliteOps extends OpenCLGenLoopsFat with GPUGenDeliteOps
 
-trait CGenDeliteOps extends CGenEffect with BaseGenDeliteOps
+trait CGenDeliteOps extends CGenLoopsFat with BaseGenDeliteOps {
+  import IR._
+
+  override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef) = rhs match {
+    case op: AbstractFatLoop =>
+      throw new GenerationFailedException("CGen: DeliteOps not supported yet.")
+    case _ => super.emitFatNode(symList, rhs)
+  }
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case s:DeliteOpSingleTask[_] => {
+      val b = s.block
+      if (!deliteKernel) {  //In the process of generating operations for deliteKernel type kernels (allow SingleTask to be inlined)
+        emitBlock(b)
+        if(!isVoidType(sym.tp)) stream.println("%s %s = %s;".format(remap(sym.tp),quote(sym),quote(getBlockResult(b))))
+      }
+      else {
+    	  throw new GenerationFailedException("CGen: DeliteOpSingleTask is not GPUable")
+      }
+    }
+
+    case op: AbstractLoop[_] =>
+      // TODO: we'd like to always have fat loops but currently they are not allowed to have effects
+      stream.println("// a *thin* loop follows: " + quote(sym))
+      emitFatNode(List(sym), SimpleFatLoop(op.size, op.v, List(op.body)))
+
+    case _ => super.emitNode(sym,rhs)
+  }
+}

@@ -322,11 +322,6 @@ trait CudaGenDeliteArrayOps extends CudaGenEffect {
     case "DeliteArray" => "DeliteArray<" + remap(m.typeArguments(0)) + ">"
     case _ => super.remap(m)
   }
-
-  override def isObjectType[A](m: Manifest[A]) : Boolean = m.erasure.getSimpleName match {
-      case "DeliteArray" => true
-      case _ => super.isObjectType(m)
-  }
 }
 
 trait OpenCLGenDeliteArrayOps extends OpenCLGenEffect {
@@ -348,11 +343,6 @@ trait OpenCLGenDeliteArrayOps extends OpenCLGenEffect {
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
     case "DeliteArray" => "DeliteArray_" + remap(m.typeArguments(0))
     case _ => super.remap(m)
-  }
-
-  override def isObjectType[A](m: Manifest[A]) : Boolean = m.erasure.getSimpleName match {
-      case "DeliteArray" => true
-      case _ => super.isObjectType(m)
   }
 
 }

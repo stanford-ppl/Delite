@@ -6,7 +6,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.virtualization.lms.common.{BaseExp, Base, SynchronizedArrayBufferOps}
 import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
 
-import codegen.c.TargetC
+import codegen.cpp.TargetCpp
 import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
 import codegen.opencl.TargetOpenCL

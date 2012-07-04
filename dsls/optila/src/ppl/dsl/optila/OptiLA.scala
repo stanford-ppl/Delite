@@ -9,7 +9,7 @@ import ppl.delite.framework.datastructures._
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
-import ppl.delite.framework.codegen.c.TargetC
+import ppl.delite.framework.codegen.cpp.TargetCpp
 import ppl.delite.framework.codegen.opencl.TargetOpenCL
 import ppl.delite.framework.codegen.delite.overrides._
 import ppl.delite.framework.transform._
@@ -91,9 +91,10 @@ trait OptiLAOpenCLCodeGenPkg extends OpenCLGenDSLOps with OpenCLGenImplicitOps w
   { val IR: OptiLAScalaOpsPkgExp  }
 
 trait OptiLACCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderingOps
+  with CGenEqual with CGenIfThenElse with CGenVariables with CGenWhile with CGenFunctions
   with CGenStringOps with CGenRangeOps with CGenIOOps with CGenArrayOps with CGenBooleanOps
-  with CGenPrimitiveOps with CGenMiscOps with CGenFunctions with CGenEqual with CGenIfThenElse
-  with CGenVariables with CGenWhile with CGenListOps with CGenSeqOps with CGenObjectOps
+  with CGenPrimitiveOps with CGenMiscOps
+  with CGenListOps with CGenSeqOps with CGenMathOps with CGenCastingOps with CGenSetOps with CGenObjectOps
   with CGenSynchronizedArrayBufferOps with CGenHashMapOps with CGenIterableOps with CGenArrayBufferOps
   { val IR: OptiLAScalaOpsPkgExp  }
 
@@ -147,7 +148,7 @@ trait OptiLAExp extends OptiLACompiler with InterfacesExp with OptiLAScalaOpsPkg
       case _:TargetScala => new OptiLACodeGenScala{val IR: OptiLAExp.this.type = OptiLAExp.this}
       case _:TargetCuda => new OptiLACodeGenCuda{val IR: OptiLAExp.this.type = OptiLAExp.this}
       case _:TargetOpenCL => new OptiLACodeGenOpenCL{val IR: OptiLAExp.this.type = OptiLAExp.this}
-      case _:TargetC => new OptiLACodeGenC{val IR: OptiLAExp.this.type = OptiLAExp.this}
+      case _:TargetCpp => new OptiLACodeGenC{val IR: OptiLAExp.this.type = OptiLAExp.this}
       case _ => err("optila does not support this target")
     }
   }  
@@ -312,6 +313,7 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
     }
   }
 
+  /*
   override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
     case "ppl.dsl.optila.DenseVector[Int]" => true
     case "ppl.dsl.optila.DenseVector[Long]" => true
@@ -351,6 +353,7 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
     case "DeliteArray<int>" | "DeliteArray<long>" | "DeliteArray<float>" | "DeliteArray<double>" | "DeliteArray<bool>" => delitearrayCopyMutableInputDtoH(sym)
     case _ => super.copyMutableInputDtoH(sym)
   }
+  */
 
   override def getDSLHeaders: String = {
     val out = new StringBuilder
@@ -405,6 +408,7 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
     }
   }
 
+  /*
   override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
     case "ppl.dsl.optila.DenseVector[Int]" => true
     case "ppl.dsl.optila.DenseVector[Long]" => true
@@ -456,6 +460,7 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
       Map("isRow"->Manifest.Boolean, "start"->Manifest.Int, "stride"->Manifest.Int, "end"->Manifest.Int)
     case _ => super.unpackObject(sym)
   }
+  */
 
   override def getDSLHeaders: String = {
     val out = new StringBuilder
@@ -468,9 +473,9 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
   }
 }
 
-trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenDeliteOps 
-  with CGenArithOps with CGenVectorOps with CGenDenseVectorOps with CGenMatrixOps with CGenDenseMatrixOps //with CGenMatrixRowOps
-  with CGenVariantsOps with DeliteCGenAllOverrides
+trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenDeliteOps
+  with CGenArithOps with CGenVectorOps with CGenDenseVectorOps /*with CGenDenseVectorViewOps*/ with CGenMatrixOps with CGenDenseMatrixOps //with CGenMatrixRowOps
+  with DeliteCGenAllOverrides with DeliteCppHostTransfer
 {
   val IR: DeliteApplication with OptiLAExp
   import IR._

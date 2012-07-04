@@ -16,7 +16,7 @@ object Config {
   var degFilename = getProperty("delite.deg.filename", "out.deg")
   var opfusionEnabled = getProperty("delite.enable.fusion", "true") != "false"
   var generateCUDA = getProperty("delite.generate.cuda", "false") != "false"
-  var generateC = getProperty("delite.generate.c", "false") != "false"
+  var generateCpp = getProperty("delite.generate.cpp", "false") != "false"
   var generateOpenCL = getProperty("delite.generate.opencl", "false") != "false"
   var homeDir = getProperty("delite.home.dir", System.getProperty("user.dir"))
   var buildDir = getProperty("delite.build.dir", "generated")

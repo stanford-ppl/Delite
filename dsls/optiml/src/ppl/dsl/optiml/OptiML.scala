@@ -8,7 +8,7 @@ import ppl.delite.framework.{Config, DeliteApplication, DeliteInteractive, Delit
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
-import ppl.delite.framework.codegen.c.TargetC
+import ppl.delite.framework.codegen.cpp.TargetCpp
 import ppl.delite.framework.codegen.opencl.TargetOpenCL
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteOpenCLGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
@@ -137,7 +137,7 @@ trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp 
       case _:TargetScala => new OptiMLCodeGenScala{val IR: OptiMLExp.this.type = OptiMLExp.this}
       case _:TargetCuda => new OptiMLCodeGenCuda{val IR: OptiMLExp.this.type = OptiMLExp.this}
       case _:TargetOpenCL => new OptiMLCodeGenOpenCL{val IR: OptiMLExp.this.type = OptiMLExp.this}
-      case _:TargetC => new OptiMLCodeGenC{val IR: OptiMLExp.this.type = OptiMLExp.this} 
+      case _:TargetCpp => new OptiMLCodeGenC{val IR: OptiMLExp.this.type = OptiMLExp.this}
       case _ => err("optiml does not support this target")
     }
   }
@@ -303,7 +303,7 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
       case _ => super.remap(m)
     }
   }
-
+  /*
   override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
     case "ppl.dsl.optiml.datastruct.scala.IndexVector" => true
     case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Double]" => true
@@ -328,6 +328,7 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
     case "TrainingSet<double,int>" => trainingSetCopyMutableInputDtoH(sym)
     case _ => super.copyMutableInputDtoH(sym)
   }
+  */
 
   override def getDSLHeaders: String = {
     val out = new StringBuilder
@@ -345,13 +346,14 @@ trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase wit
 {
   val IR: DeliteApplication with OptiMLExp
   import IR._
-
+  /*
   override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
     //case "ppl.dsl.optiml.IndexVector" => true
     //case "ppl.dsl.optiml.TrainingSet[Double, Double]" => true
     //case "ppl.dsl.optiml.TrainingSet[Double, Int]" => true
     case _ => super.isObjectType(m)
   }
+  */
 
   override def remap[A](m: Manifest[A]) : String = m.toString match {
     //case "ppl.dsl.optiml.IndexVector" => "IndexVector"
@@ -360,6 +362,7 @@ trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase wit
     case _ => super.remap(m)
   }
 
+  /*
   override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "IndexVector" => indexVectorCopyInputHtoD(sym)
     case "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" => trainingSetCopyInputHtoD(sym)
@@ -381,6 +384,7 @@ trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase wit
       Map("numRows"->Manifest.Int, "numCols"->Manifest.Int, "data"->dataArrayType1.arrayManifest, "data_labels"->dataArrayType2.arrayManifest)
     case _ => super.unpackObject(sym)
   }
+  */
 
   override def getDSLHeaders: String = {
     val out = new StringBuilder

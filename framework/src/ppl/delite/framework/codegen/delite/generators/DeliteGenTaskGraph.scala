@@ -90,7 +90,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
 
     if (!skipEmission) for (gen <- generators) {
       val sep = java.io.File.separator
-      val buildPath = Config.buildDir + sep + (if(gen.toString=="c") "cuda" else gen) + sep + "kernels" + sep
+      val buildPath = Config.buildDir + sep + gen + sep + "kernels" + sep
       val outDir = new File(buildPath); outDir.mkdirs()
       val outFile = new File(buildPath + kernelName + "." + gen.kernelFileExt)
       val kstream = new PrintWriter(outFile)
