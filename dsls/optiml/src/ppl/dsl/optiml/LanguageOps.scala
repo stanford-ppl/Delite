@@ -613,6 +613,18 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }).asInstanceOf[Exp[A]] // why??
 }
 
+trait LanguageOpsExpOpt extends LanguageOpsExp {
+  this: OptiMLExp with LanguageImplOps =>
+  
+  override def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A])(implicit ctx: SourceContext) = {
+    val test = fresh[Int]
+    reifyEffects(block(test)).res match {
+      case Const(x) if x == 0 => unit(0.asInstanceOf[A])
+      case _ => super.optiml_sum(start,end,block)
+    }
+  }
+}
+  
 trait BaseGenLanguageOps extends GenericFatCodegen {
   val IR: LanguageOpsExp
   import IR._

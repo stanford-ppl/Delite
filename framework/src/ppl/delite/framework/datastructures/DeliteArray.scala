@@ -31,6 +31,7 @@ trait DeliteArrayOps extends StringOps {
     def intersect(rhs: Rep[DeliteArray[T]]) = darray_intersect(da,rhs)
     def take(n: Rep[Int]) = darray_take(da,n)
     def sort = darray_sort(da)
+    def toSeq = darray_toseq(da)
   }
     
   implicit def darrayToString[A:Manifest](x: Rep[DeliteArray[A]]): Rep[String] = "[ " + repDArrayToDArrayOps(x).mkString(unit(" ")) + " ]"
@@ -51,6 +52,7 @@ trait DeliteArrayOps extends StringOps {
   def darray_take[A:Manifest](lhs: Rep[DeliteArray[A]], n: Rep[Int]): Rep[DeliteArray[A]]
   def darray_sort[A:Manifest](lhs: Rep[DeliteArray[A]]): Rep[DeliteArray[A]]
   def darray_range(st: Rep[Int], en: Rep[Int]): Rep[DeliteArray[Int]]
+  def darray_toseq[A:Manifest](a: Rep[DeliteArray[A]]): Rep[Seq[A]]
 }
 
 trait DeliteArrayCompilerOps extends DeliteArrayOps {
@@ -83,6 +85,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteCollectionOpsE
   case class DeliteArrayTake[T:Manifest](lhs: Exp[DeliteArray[T]], n: Exp[Int]) extends DefWithManifest[T,DeliteArray[T]]
   case class DeliteArraySort[T:Manifest](da: Exp[DeliteArray[T]]) extends DefWithManifest[T,DeliteArray[T]]
   case class DeliteArrayRange(st: Exp[Int], en: Exp[Int]) extends Def[DeliteArray[Int]]
+  case class DeliteArrayToSeq[A:Manifest](x: Exp[DeliteArray[A]]) extends Def[Seq[A]]
   
   //////////////////
   // delite ops
@@ -164,6 +167,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteCollectionOpsE
   def darray_sort[A:Manifest](lhs: Exp[DeliteArray[A]]) = reflectPure(DeliteArraySort(lhs))
   def darray_range(st: Exp[Int], en: Exp[Int]) = reflectPure(DeliteArrayRange(st,en))
   def darray_mapfilter[A:Manifest,B:Manifest](lhs: Exp[DeliteArray[A]], map: Exp[A] => Exp[B], cond: Exp[A] => Exp[Boolean]) = reflectPure(DeliteArrayMapFilter(lhs,map,cond))
+  def darray_toseq[A:Manifest](a: Exp[DeliteArray[A]]) = DeliteArrayToSeq(a)
   
   /////////////
   // internal
@@ -182,6 +186,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteCollectionOpsE
     (e match {
       case DeliteArrayLength(a) => darray_length(f(a))
       case DeliteArrayApply(a,x) => darray_apply(f(a),f(x))
+      case e@DeliteArrayTake(a,x) => darray_take(f(a),f(x))(e.mA)
       case e@DeliteArrayCopy(a,ap,d,dp,l) => toAtom(DeliteArrayCopy(f(a),f(ap),f(d),f(dp),f(l))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
       case e@DeliteArrayMap(in,g) => reflectPure(new { override val original = Some(f,e) } with DeliteArrayMap(f(in),f(g))(e.dmA,e.dmB))(mtype(manifest[A]),implicitly[SourceContext])      
       case e@DeliteArrayReduce(in,g,z) => reflectPure(new { override val original = Some(f,e) } with DeliteArrayReduce(f(in),f(g),f(z))(e.dmA))(mtype(manifest[A]),implicitly[SourceContext])
@@ -293,6 +298,7 @@ trait ScalaGenDeliteArrayOps extends ScalaGenEffect {
       stream.println("}")    
     case DeliteArrayRange(st,en) =>
       emitValDef(sym, "Array.range(" + quote(st) + "," + quote(en) + ")")
+    case DeliteArrayToSeq(a) => emitValDef(sym, quote(a) + ".toSeq")
     case _ => super.emitNode(sym, rhs)
   }
   

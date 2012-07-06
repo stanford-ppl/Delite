@@ -120,7 +120,7 @@ trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities wit
  * These are the corresponding IR nodes for OptiML.
  */
 trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp with RecordOpsExp
-  with LanguageOpsExp with ApplicationOpsExp with LBPOpsExp 
+  with LanguageOpsExpOpt with ApplicationOpsExp with LBPOpsExp 
   with MLInputReaderOpsExp with MLOutputWriterOpsExp
   with VectorOpsExpOpt with MatrixOpsExpOpt with DenseMatrixOpsExpOpt 
   with IndexVectorOpsExp with IndexVectorDenseOpsExpOpt with IndexVectorRangeOpsExp with IndexVector2OpsExp with IndexVectorTriangularOpsExp

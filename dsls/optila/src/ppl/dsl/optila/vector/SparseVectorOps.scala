@@ -319,6 +319,7 @@ trait SparseVectorOpsExp extends SparseVectorOps with DeliteCollectionOpsExp wit
   //   // would ideally like to filter the indices directly, but the function we have access to is defined on A's..
   // }
   
+    
   /////////////
   // internal
   
@@ -442,7 +443,7 @@ trait SparseVectorOpsExp extends SparseVectorOps with DeliteCollectionOpsExp wit
   def sparsevector_mapnz_manifest[A:Manifest,B:Manifest] = sparsevector_mapnz[A,B] _
   def sparsevector_zipnz_manifest[A:Manifest,B:Manifest,R:Manifest] = sparsevector_zipnz[A,B,R] _
   def sparsevector_reducenz_manifest[A:Manifest] = sparsevector_reducenz[A] _
-  
+    
   override def onCreate[A:Manifest](s: Sym[A], d: Def[A]) = d match {    
     // map         
     case e:DeliteOpMap[_,_,_] if (isSparseVec(e.in)) =>
