@@ -8,6 +8,7 @@ import ppl.delite.runtime.graph.targets.Targets
  */
 
 class OP_Condition(val id: String, private[graph] val outputTypesMap: Map[Targets.Value, Map[String,String]],
+                   private[graph] val inputTypesMap: Map[Targets.Value, Map[String,String]],
                    val predicateGraph: DeliteTaskGraph, val predicateValue: String,
                    val thenGraph: DeliteTaskGraph, val thenValue: String,
                    val elseGraph: DeliteTaskGraph, val elseValue: String, val isReturner: Boolean)
@@ -16,16 +17,16 @@ class OP_Condition(val id: String, private[graph] val outputTypesMap: Map[Target
   def nestedGraphs = Seq(predicateGraph, thenGraph, elseGraph)
 
   def returner(indices: Seq[Int]) = {
-    /*
+
     if (thenGraph.result._1 != null && !thenGraph.result._1.isInstanceOf[OP_Input])
       thenGraph.result._1.scheduledResource
     else if (elseGraph.result._1 != null && !elseGraph.result._1.isInstanceOf[OP_Input])
       elseGraph.result._1.scheduledResource
     else indices(0)
-    */
+
     // Returner is always 0 (assuming the index 0 is CPU)
     //TODO: Change this so that GPU can also be the returner
-    indices(0)
+    //indices(0)
   }
 
   /**
@@ -37,7 +38,7 @@ class OP_Condition(val id: String, private[graph] val outputTypesMap: Map[Target
     val chunks =
       for (idx <- indices) yield {
         val resultMap = if (idx == returnerIdx) outputTypesMap else Targets.unitTypes(id+"_"+idx)
-        val r = new OP_Condition(id+"_"+idx, resultMap, predicateGraph, predicateValue,
+        val r = new OP_Condition(id+"_"+idx, resultMap, inputTypesMap, predicateGraph, predicateValue,
         thenGraph, thenValue, elseGraph, elseValue, idx == returnerIdx)
         r.dependencies = dependencies
         r.inputList = inputList
@@ -58,6 +59,7 @@ class OP_Condition(val id: String, private[graph] val outputTypesMap: Map[Target
       }
 
     graph.replaceOp(this, returnOp)
+    for (idx <- indices) refineInputDeps(chunks(idx), graph, idx)
     chunks
   }
 

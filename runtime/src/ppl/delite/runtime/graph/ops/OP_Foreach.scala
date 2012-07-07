@@ -12,7 +12,7 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
  * Stanford University
  */
 
-class OP_Foreach(val id: String, func: String, private[graph] val outputTypesMap: Map[Targets.Value,Map[String,String]]) extends OP_Executable {
+class OP_Foreach(val id: String, func: String, private[graph] val outputTypesMap: Map[Targets.Value,Map[String,String]], private[graph] val inputTypesMap: Map[Targets.Value,Map[String,String]]) extends OP_Executable {
 
   final def isDataParallel = true
 
@@ -32,7 +32,7 @@ class OP_Foreach(val id: String, func: String, private[graph] val outputTypesMap
    * Chunks require same dependency & input lists
    */
   def chunk(i: Int): OP_Foreach = {
-    val r = new OP_Foreach(id+"_"+i, function, Targets.unitTypes(id+"_"+i, outputTypesMap)) //chunks all return Unit
+    val r = new OP_Foreach(id+"_"+i, function, Targets.unitTypes(id+"_"+i, outputTypesMap), inputTypesMap) //chunks all return Unit
     r.inputList = inputList
     r.dependencies = dependencies //lists are immutable so can be shared
     r.consumers = consumers
@@ -42,7 +42,7 @@ class OP_Foreach(val id: String, func: String, private[graph] val outputTypesMap
   }
 
   def header(kernel: String, graph: DeliteTaskGraph): OP_Single = {
-    val h = new OP_Single(id+"_h", kernel, Map(Targets.Scala->Map(id+"_h"->kernel,"functionReturn"->kernel)))
+    val h = new OP_Single(id+"_h", kernel, Map(Targets.Scala->Map(id+"_h"->kernel,"functionReturn"->kernel)), inputTypesMap)
     //header assumes all inputs of map
     h.dependencies = dependencies
     h.inputList = inputList

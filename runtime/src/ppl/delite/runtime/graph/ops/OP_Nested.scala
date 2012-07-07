@@ -38,10 +38,21 @@ abstract class OP_Nested extends DeliteOP {
     scheduledResource = resource
 
     private[graph] val outputTypesMap = Targets.unitTypes(id)
+    private[graph] val inputTypesMap = Map[Targets.Value,Map[String,String]]()
     def task = null
     def isDataParallel = false
   }
 
   final def isDataParallel = false
 
+  // Refining input dependencies
+  // TODO: also refine other deps
+  def refineInputDeps(nested: OP_Nested, graph:DeliteTaskGraph, idx: Int) {
+    val internalOps = nested.nestedGraphs.flatMap(_.schedule(idx).toArray)
+    var validInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (DeliteTaskGraph.getOp(sym)(graph), sym)
+    validInputs ++= (for ((op,sym) <- nested.nestedGraphs.map(_.result); if (op.isInstanceOf[OP_Input] && op.scheduledResource==idx)) yield (DeliteTaskGraph.getOp(sym)(graph), sym))
+    for (in <- nested.getInputs if !validInputs.contains(in)) {
+      nested.removeInput(in._1, in._2)
+    }
+  }
 }

@@ -23,9 +23,10 @@ object Config {
     else if (p1 != null) p1 else if (p2 != null) p2 else default
   }
 
-  val numThreads: Int = getProperty("delite.threads", "1").toInt
-  val numGPUs: Int = getProperty("delite.gpus", "0").toInt
-  val useOpenCL: Boolean = getProperty("delite.use.opencl", "false") != "false"
+  val numThreads: Int = getProperty("delite.threads", "1").toInt  /* scala target threads */
+  val numCpp: Int = getProperty("delite.cpp", "0").toInt         /* cpp target threads */
+  val numCuda: Int = getProperty("delite.cuda", "0").toInt        /* cuda target threads */
+  val numOpenCL: Int = getProperty("delite.opencl", "0").toInt    /* opencl target threads */
   val scheduler: String = getProperty("delite.scheduler", "default")
   val executor: String = getProperty("delite.executor", "default")
   val numRuns: Int = getProperty("delite.runs", "1").toInt
@@ -62,14 +63,14 @@ object Config {
    val dumpStats: Boolean = getProperty("stats.dump", "false") != "false"
    val dumpStatsComponent: String = getProperty("stats.dump.component", "all")
    val dumpStatsOverwrite: Boolean = getProperty("stats.dump.overwrite", "false") != "false"
-       
+
    val statsOutputDirectory: String = getProperty("stats.output.dir", "")
    if(dumpStats && statsOutputDirectory == "") error("stats.dump option enabled but did not provide a statsOutputDirectory")
 
    val statsOutputFilename: String = getProperty("stats.output.filename", "")
    if(dumpStats && statsOutputFilename == "") error("stats.dump option enabled but did not provide a statsOutputFilename")
 
-   val dumpProfile: Boolean = getProperty("profile.dump", "false") != "false"   
+   val dumpProfile: Boolean = getProperty("profile.dump", "false") != "false"
    val profileOutputDirectory: String = getProperty("profile.output.dir", "")
-   if(dumpProfile && profileOutputDirectory == "") error("profile.dump option enabled but did not provide a profileOutputDirectory")   
+   if(dumpProfile && profileOutputDirectory == "") error("profile.dump option enabled but did not provide a profileOutputDirectory")
 }

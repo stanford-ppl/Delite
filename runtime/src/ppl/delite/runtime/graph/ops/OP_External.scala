@@ -2,7 +2,7 @@ package ppl.delite.runtime.graph.ops
 
 import ppl.delite.runtime.graph.targets._
 
-class OP_External(val id: String, kernel: String, private[graph] val outputTypesMap: Map[Targets.Value, Map[String,String]]) extends OP_Executable {
+class OP_External(val id: String, kernel: String, private[graph] val outputTypesMap: Map[Targets.Value, Map[String,String]], private[graph] val inputTypesMap: Map[Targets.Value, Map[String,String]]) extends OP_Executable {
 
   final def isDataParallel = false
 

@@ -34,12 +34,26 @@ object OpHelper {
     case other => error("OP type not recognized: " + other.getClass.getSimpleName)
   }
 
-  def splitGPU(op: DeliteOP) = op match {
-    case multi: OP_MultiLoop => if(Config.useOpenCL) opencl.MultiLoop_GPU_Array_Generator.makeChunk(multi)
-                                else cuda.MultiLoop_GPU_Array_Generator.makeChunk(multi)
+  def splitAcc(op: DeliteOP) = op match {
+    case multi: OP_MultiLoop => scheduledTarget(multi) match {
+      case Targets.Scala => throw new RuntimeException("scheduling error!")
+      case Targets.Cpp => throw new RuntimeException("multiloop for Cpp is not supported yet!")
+      case Targets.Cuda => cuda.MultiLoop_GPU_Array_Generator.makeChunk(multi)
+      case Targets.OpenCL => opencl.MultiLoop_GPU_Array_Generator.makeChunk(multi)
+    }
     case foreach: OP_Foreach => foreach.setKernelName(foreach.function); foreach
     case single: OP_Single => error("OP Single cannot be split")
     case external: OP_External => error("OP External cannot be split")
     case other => error("OP type not recognized: " + other.getClass.getSimpleName)
+  }
+
+  def scheduledTarget(op: DeliteOP):Targets.Value = scheduledTarget(op.scheduledResource)
+
+  def scheduledTarget(location: Int):Targets.Value = {
+    if(location < Config.numThreads) Targets.Scala
+    else if (location < Config.numThreads+Config.numCpp) Targets.Cpp
+    else if (location < Config.numThreads+Config.numCpp+Config.numCuda) Targets.Cuda
+    else if (location < Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL) Targets.OpenCL
+    else throw new RuntimeException("Cannot find a target for resource ID " + location)
   }
 }

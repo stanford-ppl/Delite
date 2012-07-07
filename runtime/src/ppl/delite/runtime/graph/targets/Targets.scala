@@ -1,5 +1,7 @@
 package ppl.delite.runtime.graph.targets
 
+import ppl.delite.runtime.codegen.hosts.Hosts
+
 /**
  * Author: Kevin J. Brown
  * Date: Dec 4, 2010
@@ -13,7 +15,7 @@ object Targets extends Enumeration {
   val Scala = Value("scala")
   val Cuda = Value("cuda")
   val OpenCL = Value("opencl")
-  val C = Value("c")
+  val Cpp = Value("cpp")
 
   val GPU = List(Cuda, OpenCL)
 
@@ -24,7 +26,7 @@ object Targets extends Enumeration {
     case "scala" => Scala
     case "cuda" => Cuda
     case "opencl" => OpenCL
-    case "c" => C
+    case "cpp" => Cpp
     case _ => throw new IllegalArgumentException("unsupported target: " + s)
   }
 
@@ -58,7 +60,7 @@ object Targets extends Enumeration {
       case Scala => "Unit"
       case Cuda => "void"
       case OpenCL => "void"
-      case C => "void"
+      case Cpp => "void"
     }
   }
 
@@ -72,4 +74,15 @@ object Targets extends Enumeration {
     }
   }
   */
+
+  def getHostType(target: Value): Hosts.Value = {
+    target match {
+      case Targets.Scala => Hosts.Scala
+      case Targets.Cpp => Hosts.Cpp
+      case Targets.Cuda => Hosts.Cpp
+      case Targets.OpenCL => Hosts.Cpp
+      case _ => throw new RuntimeException("Cannot find a host type for target " + target)
+    }
+  }
+
 }

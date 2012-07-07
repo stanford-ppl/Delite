@@ -1,10 +1,11 @@
 package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
-import ppl.delite.runtime.graph.ops.{DeliteOP, OP_While}
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.scheduler.OpList
-import sync.ScalaSyncGenerator
+import ppl.delite.runtime.graph.ops._
+import ppl.delite.runtime.codegen.hosts.Hosts
+import sync._
 
 /**
  * Author: Kevin J. Brown
@@ -24,17 +25,19 @@ trait WhileGenerator extends NestedGenerator {
     updateOP()
     //header
     writeHeader()
-    writeMethodHeader()
 
     //while condition
     if (whileLoop.predicateValue == "") {
-      beginFunction()
+      beginFunction(whileLoop.getInputs)
       addKernelCalls(whileLoop.predicateGraph.schedule(location))
+      writeReturn(false)
       writeOutput(whileLoop.predicateGraph.result._1, whileLoop.predicateGraph.result._2)
       endFunction()
-      beginWhile(callFunction())
+      writeMethodHeader()
+      beginWhile(callFunction(whileLoop.getInputs))
     }
     else {
+      writeMethodHeader()
       beginWhile(whileLoop.predicateValue)
     }
 
@@ -47,16 +50,31 @@ trait WhileGenerator extends NestedGenerator {
     writeMethodFooter()
     writeFooter()
 
+    writeSyncObject()
+
     addSource(out.toString)
   }
 
   protected def beginWhile(predicate: String)
   protected def endWhile()
 
-  protected def beginFunction()
+  protected def beginFunction(inputs: Seq[(DeliteOP,String)])
   protected def endFunction()
-  protected def callFunction(): String
+  protected def callFunction(inputs: Seq[(DeliteOP,String)]): String
 
+  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Hosts.Value) = {
+    host match {
+      case Hosts.Scala => new ScalaWhileGenerator(whileLoop, location, kernelPath) with ScalaSyncObjectGenerator {
+        protected val sync = syncs
+        override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
+      }
+      case Hosts.Cpp => new CppWhileGenerator(whileLoop, location, kernelPath) with CppSyncObjectGenerator {
+        protected val sync = syncs
+        override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
+      }
+      case _ => throw new RuntimeException("Unknown Host type " + host.toString)
+    }
+  }
 }
 
 class ScalaWhileGenerator(val whileLoop: OP_While, val location: Int, val kernelPath: String)
@@ -72,15 +90,19 @@ class ScalaWhileGenerator(val whileLoop: OP_While, val location: Int, val kernel
     out.append("}\n")
   }
 
-  protected def beginFunction() {
-    out.append("def predicate(): Boolean = {\n")
+  protected def beginFunction(inputs: Seq[(DeliteOP,String)]) {
+    out.append("def predicate(")
+    writeInputs(inputs)
+    out.append("): Boolean = {\n")
   }
 
   protected def endFunction() {
     out.append("}\n")
   }
 
-  protected def callFunction() = "predicate()"
+  protected def callFunction(inputs: Seq[(DeliteOP,String)]) = {
+    "predicate(" + inputs.map(i=>getSym(i._1,i._2)).mkString(",") + ")"
+  }
 
   override protected def getSym(op: DeliteOP, name: String) = WhileCommon.getSym(whileLoop, baseId, op, name)
   override protected def getSync(op: DeliteOP, name: String) = WhileCommon.getSync(whileLoop, baseId, op, name)
@@ -88,6 +110,46 @@ class ScalaWhileGenerator(val whileLoop: OP_While, val location: Int, val kernel
   def executableName(location: Int) = "While_" + baseId + "_" + location
 
 }
+
+class CppWhileGenerator(val whileLoop: OP_While, val location: Int, val kernelPath: String)
+  extends WhileGenerator with CppNestedGenerator with CppSyncGenerator {
+
+  protected def beginWhile(predicate: String) {
+    out.append("while (")
+    out.append(predicate)
+    out.append(") {\n")
+  }
+
+  protected def endWhile() {
+    out.append("}\n")
+  }
+
+  protected def beginFunction(inputs: Seq[(DeliteOP,String)]) {
+    out.append("bool predicate(")
+    writeInputs(inputs)
+    out.append(") {\n")
+    val locationsRecv = nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Receive])).map(_.asInstanceOf[Receive].sender.from.scheduledResource).toSet
+    val locations = if (nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Send])).nonEmpty) Set(location) union locationsRecv
+                    else locationsRecv
+    writeJNIInitializer(locations)
+  }
+
+  protected def endFunction() {
+    out.append("}\n")
+  }
+
+  protected def callFunction(inputs: Seq[(DeliteOP,String)]) = {
+    "predicate(" + inputs.map(i=>getSymHost(i._1,i._2)).mkString(",") + ")"
+  }
+
+  override protected def getSym(op: DeliteOP, name: String) = WhileCommon.getSym(whileLoop, baseId, op, name)
+  override protected def getSync(op: DeliteOP, name: String) = WhileCommon.getSync(whileLoop, baseId, op, name)
+
+  def executableName(location: Int) = "While_" + baseId + "_" + location
+
+
+}
+
 /*
 class CudaGPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUWhileGenerator(whileLoop, location, Targets.Cuda) with CudaGPUExecutableGenerator {
   def makeExecutable() {

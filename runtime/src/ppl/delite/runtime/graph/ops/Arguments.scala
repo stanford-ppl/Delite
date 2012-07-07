@@ -24,6 +24,7 @@ object Arguments {
 final class Arguments(val id: String) extends OP_Executable {
 
   val outputTypesMap = Map(Targets.Scala->Map(id -> "Array[java.lang.String]", "functionReturn"->"Array[java.lang.String]"))
+  val inputTypesMap: Map[Targets.Value, Map[String,String]] = Map()
 
   def isDataParallel = false
 

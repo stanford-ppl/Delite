@@ -1,10 +1,10 @@
 package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
-import ppl.delite.runtime.graph.ops.{DeliteOP, OP_Condition}
-import ppl.delite.runtime.graph.targets.{OPData, Targets}
 import ppl.delite.runtime.scheduler.OpList
-import sync.ScalaSyncGenerator
+import ppl.delite.runtime.graph.ops.{Send, DeliteOP, OP_Condition}
+import sync._
+import ppl.delite.runtime.codegen.hosts.Hosts
 
 /**
  * Author: Kevin J. Brown
@@ -43,22 +43,36 @@ trait ConditionGenerator extends NestedGenerator {
     beginThenBlock()
     if (condition.thenValue == "") {
       addKernelCalls(condition.thenGraph.schedule(location))
-      if (hasOutput) writeOutput(condition.thenGraph.result._1, condition.thenGraph.result._2)
+      if (hasOutput) {
+        writeReturn(false)
+        writeOutput(condition.thenGraph.result._1, condition.thenGraph.result._2)
+      }
     }
-    else if (hasOutput) writeValue(condition.thenValue)
+    else if (hasOutput) {
+      writeReturn(false)
+      writeValue(condition.thenValue)
+    }
     endThenBlock()
 
     //else block
     beginElseBlock()
     if (condition.elseValue == "") {
       addKernelCalls(condition.elseGraph.schedule(location))
-      if (hasOutput) writeOutput(condition.elseGraph.result._1, condition.elseGraph.result._2)
+      if (hasOutput) {
+        writeReturn(false)
+        writeOutput(condition.elseGraph.result._1, condition.elseGraph.result._2)
+      }
     }
-    else if (hasOutput) writeValue(condition.elseValue)
+    else if (hasOutput) {
+      writeReturn(false)
+      writeValue(condition.elseValue)
+    }
     endElseBlock()
 
     writeMethodFooter()
     writeFooter()
+
+    writeSyncObject()
 
     addSource(out.toString)
   }
@@ -71,6 +85,20 @@ trait ConditionGenerator extends NestedGenerator {
 
   protected def beginElseBlock()
   protected def endElseBlock()
+
+  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Hosts.Value) = {
+    host match {
+      case Hosts.Scala => new ScalaConditionGenerator(condition, location, kernelPath) with ScalaSyncObjectGenerator {
+        protected val sync = syncs
+        override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
+      }
+      case Hosts.Cpp => new CppConditionGenerator(condition, location, kernelPath) with CppSyncObjectGenerator {
+        protected val sync = syncs
+        override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
+      }
+      case _ => throw new RuntimeException("Unknown Host type " + host.toString)
+    }
+  }
 
 }
 
@@ -107,6 +135,41 @@ class ScalaConditionGenerator(val condition: OP_Condition, val location: Int, va
   def executableName(location: Int) = "Condition_" + baseId + "_" + location
 
 }
+
+class CppConditionGenerator(val condition: OP_Condition, val location: Int, val kernelPath: String)
+  extends ConditionGenerator with CppNestedGenerator with CppSyncGenerator {
+
+
+  protected def beginConditionBlock() {
+    out.append("if (")
+  }
+
+  protected def endConditionBlock() {
+    out.append(')')
+  }
+
+  protected def beginThenBlock() {
+    out.append(" {\n")
+  }
+
+  protected def endThenBlock() {
+    out.append("}\n")
+  }
+
+  protected def beginElseBlock() {
+    out.append("else {\n")
+  }
+
+  protected def endElseBlock() {
+    out.append("}\n")
+  }
+
+  override protected def getSym(op: DeliteOP, name: String) = ConditionCommon.getSym(condition, baseId, op, name)
+  override protected def getSync(op: DeliteOP, name: String) = ConditionCommon.getSync(condition, baseId, op, name)
+
+  def executableName(location: Int) = "Condition_" + baseId + "_" + location
+}
+
 /*
 class CudaGPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUConditionGenerator(condition, location, Targets.Cuda) with CudaGPUExecutableGenerator {
   def makeExecutable() {

@@ -7,20 +7,21 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
   val IR: Expressions
   import IR._
 
-  override def emitSend(sym: Sym[Any], host: Hosts.Value): String = {
+  override def emitSend(sym: Sym[Any], host: Hosts.Value): (String,String) = {
     if (host == Hosts.JVM) {
         remap(sym.tp) match {
           case "DeliteArray<bool>" | "DeliteArray<char>" | "DeliteArray<CHAR>" | "DeliteArray<short>" | "DeliteArray<int>" | "DeiteArray<long>" | "DeliteArray<float>" | "DeliteArray<double>" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
-            out.append("jobject sendCPPtoJVM_%s(JNIEnv *env, %s *%s) {\n".format(quote(sym),remap(sym.tp),quote(sym)))
+            val signature = "jobject sendCPPtoJVM_%s(JNIEnv *env, %s *%s)".format(quote(sym),remap(sym.tp),quote(sym))
+            out.append(signature + " {\n")
             out.append("\tj%sArray arr = env->New%sArray(%s->length);\n".format(remapToJNI(typeArg).toLowerCase,remapToJNI(typeArg),quote(sym)))
             out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical((j%sArray)arr,0);\n".format(remapToJNI(typeArg).toLowerCase,remapToJNI(typeArg).toLowerCase,remapToJNI(typeArg).toLowerCase))
             out.append("\tmemcpy(dataPtr, %s->data, %s->length*sizeof(%s));\n".format(quote(sym),quote(sym),remap(typeArg)))
             out.append("\tenv->ReleasePrimitiveArrayCritical((j%sArray)arr, dataPtr, 0);\n".format(remapToJNI(typeArg).toLowerCase))
             out.append("\treturn arr;\n")
             out.append("}\n")
-            out.toString
+            (signature+";\n", out.toString)
           case _ => super.emitSend(sym, host)
         }
     }
@@ -32,13 +33,14 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
     }
   }
 
-  override def emitRecv(sym: Sym[Any], host: Hosts.Value): String = {
+  override def emitRecv(sym: Sym[Any], host: Hosts.Value): (String,String) = {
     if (host == Hosts.JVM) {
         remap(sym.tp) match {
           case "DeliteArray<bool>" | "DeliteArray<char>" | "DeliteArray<CHAR>" | "DeliteArray<short>" | "DeliteArray<int>" | "DeiteArray<long>" | "DeliteArray<float>" | "DeliteArray<double>" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
-            out.append("%s *recvCPPfromJVM_%s(JNIEnv *env, jobject obj) {\n".format(remap(sym.tp),quote(sym)))
+            val signature = "%s *recvCPPfromJVM_%s(JNIEnv *env, jobject obj) {\n".format(remap(sym.tp),quote(sym))
+            out.append(signature + " {\n")
             out.append("\tint length = env->GetArrayLength((j%sArray)obj);\n".format(remapToJNI(typeArg).toLowerCase))
             out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical((j%sArray)obj,0);\n".format(remapToJNI(typeArg).toLowerCase,remapToJNI(typeArg).toLowerCase,remapToJNI(typeArg).toLowerCase))
             out.append("\t%s *%s = new %s(length);\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
@@ -46,7 +48,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\tenv->ReleasePrimitiveArrayCritical((j%sArray)obj, dataPtr, 0);\n".format(remapToJNI(typeArg).toLowerCase))
             out.append("\treturn %s;\n".format(quote(sym)))
             out.append("}\n")
-            out.toString
+            (signature+";\n", out.toString)
           case _ => super.emitRecv(sym, host)
         }
     }
@@ -58,7 +60,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
     }
   }
 
-  override def emitUpdated(sym: Sym[Any], host: Hosts.Value): String = {
+  override def emitRecvUpdate(sym: Sym[Any], host: Hosts.Value): (String,String) = {
     if (host == Hosts.JVM) {
       throw new Exception("CppHostTransfer: Unknown host " + host.toString)
     }
@@ -70,20 +72,21 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
     }
   }
 
-  override def emitUpdate(sym: Sym[Any], host: Hosts.Value): String = {
+  override def emitSendUpdate(sym: Sym[Any], host: Hosts.Value): (String,String) = {
     if (host == Hosts.JVM) {
         remap(sym.tp) match {
           case "DeliteArray<bool>" | "DeliteArray<char>" | "DeliteArray<CHAR>" | "DeliteArray<short>" | "DeliteArray<int>" | "DeiteArray<long>" | "DeliteArray<float>" | "DeliteArray<double>" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
-            out.append("void updateCPPtoJVM_%s(JNIEnv *env, jobject obj, %s *%s) {\n".format(quote(sym),remap(sym.tp),quote(sym)))
+            val signature = "void updateCPPtoJVM_%s(JNIEnv *env, jobject obj, %s *%s) {\n".format(quote(sym),remap(sym.tp),quote(sym))
+            out.append(signature + " {\n")
             out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical((j%sArray)obj,0);\n".format(remapToJNI(typeArg).toLowerCase,remapToJNI(typeArg).toLowerCase,remapToJNI(typeArg).toLowerCase))
             out.append("\tmemcpy(dataPtr, %s->data, %s->length*sizeof(%s));\n".format(quote(sym),quote(sym),remap(typeArg)))
             out.append("\tenv->ReleasePrimitiveArrayCritical((j%sArray)obj, dataPtr, 0);\n".format(remapToJNI(typeArg).toLowerCase))
             //out.append("\treturn arr;\n")
             out.append("}\n")
-            out.toString
-          case _ => super.emitUpdate(sym, host)
+            (signature+";\n", out.toString)
+          case _ => super.emitSendUpdate(sym, host)
         }
     }
     else if (host == Hosts.CPP) {

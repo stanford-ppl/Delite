@@ -1,9 +1,3 @@
-/*
- * Pervasive Parallelism Laboratory (PPL)
- * Stanford University
- *
- */
-
 package ppl.delite.runtime.scheduler
 
 import ppl.delite.runtime.Config
@@ -12,18 +6,14 @@ import ppl.delite.runtime.graph.ops.{OP_Nested, DeliteOP}
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.cost._
 
-/**
- * @author Kevin J. Brown
- */
 
-final class SMP_GPU_StaticScheduler extends StaticScheduler with GPULoopCostModel {
+final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilizationCostModel {
 
   private val numCPUs = Config.numThreads
-  private val numGPUs = Config.numCuda + Config.numOpenCL
-  private val gpu = numCPUs
+  private val numAccs = Config.numCpp + Config.numCuda + Config.numOpenCL
 
   def schedule(graph: DeliteTaskGraph) {
-    assert(numGPUs <= 1)
+    assert(numAccs <= 1)
     //traverse nesting & schedule sub-graphs, starting with outermost graph
     scheduleFlat(graph)
   }
@@ -33,14 +23,14 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with GPULoopCostMode
   protected def scheduleFlat(graph: DeliteTaskGraph) = scheduleFlat(graph, false)
 
   protected def scheduleFlat(graph: DeliteTaskGraph, sequential: Boolean) {
-    assert(numGPUs > 0)
+    assert(numAccs > 0)
     val opQueue = new OpList
-    val schedule = PartialSchedule(numCPUs + numGPUs)
+    val schedule = PartialSchedule(numCPUs + numAccs)
     enqueueRoots(graph, opQueue)
     while (!opQueue.isEmpty) {
       val op = opQueue.remove
       if (sequential)
-        addSequential(op, graph, schedule, gpu)
+        addSequential(op, graph, schedule, numCPUs)
       else
         scheduleOne(op, graph, schedule)
       enqueueRoots(graph, opQueue)
@@ -51,17 +41,17 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with GPULoopCostMode
 
   protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
     op match {
-      case c: OP_Nested => addNested(c, graph, schedule, Range(0, numCPUs + numGPUs))
+      case c: OP_Nested => addNested(c, graph, schedule, Range(0, numCPUs + numAccs))
       case _ => {
-        if (scheduleOnGPU(op)) { //schedule on GPU resource
+        if (scheduleOnAcc(op)) {
           if (op.isDataParallel)
-            splitGPU(op, schedule)
+            splitAcc(op, schedule)
           else {
-            scheduleOn(op, schedule, gpu)
+            scheduleOn(op, schedule, numCPUs)
           }
         }
-        else if (op.variant != null && numGPUs > 0) { //kernel could be partially GPUable
-          addNested(op.variant, graph, schedule, Range(0, numCPUs + numGPUs))
+        else if (op.variant != null && numAccs > 0) {
+          addNested(op.variant, graph, schedule, Range(0, numCPUs + numAccs))
         }
         else { //schedule on CPU resource
           if (op.isDataParallel)
@@ -96,14 +86,22 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with GPULoopCostMode
   }
 
   override protected def split(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resourceList: Seq[Int]) {
-      if(resourceList == Seq(gpu)) splitGPU(op, schedule)
-      else super.split(op, graph, schedule, resourceList)
+    if(resourceList == Seq(numCPUs)) splitAcc(op, schedule)
+    else super.split(op, graph, schedule, resourceList)
   }
   
-  private def splitGPU(op: DeliteOP, schedule: PartialSchedule) {
-    op.scheduledResource = gpu // TODO: Check if this is okay (Need to set this because MultiLoop GPU generator needs to know the resource ID of this op)
+  private def splitAcc(op: DeliteOP, schedule: PartialSchedule) {
+    assert(false, "data-parallel op is not supported yet for native ops")
+    op.scheduledResource = numCPUs // TODO: Check if this is okay (Need to set this because MultiLoop GPU generator needs to know the resource ID of this op)
     val chunk = OpHelper.splitAcc(op)
-    scheduleOn(chunk, schedule, gpu)
+    scheduleOn(chunk, schedule, numCPUs)
+  }
+
+  private def scheduleOnAcc(op:DeliteOP) = {
+    if (!op.supportsTarget(Targets.Cuda) && !op.supportsTarget(Targets.OpenCL) && !op.supportsTarget(Targets.Cpp))
+      false
+    else
+      true
   }
 
 }

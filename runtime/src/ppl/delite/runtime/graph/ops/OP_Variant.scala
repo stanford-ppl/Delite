@@ -12,7 +12,7 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
  * Stanford University
  */
 
-class OP_Variant(val id: String, private[graph] val outputTypesMap: Map[Targets.Value,Map[String,String]], superOp: DeliteOP, val variantGraph: DeliteTaskGraph)
+class OP_Variant(val id: String, private[graph] val outputTypesMap: Map[Targets.Value,Map[String,String]], private[graph] val inputTypesMap: Map[Targets.Value,Map[String,String]], superOp: DeliteOP, val variantGraph: DeliteTaskGraph)
   extends OP_Nested {
 
   def returner(indices: Seq[Int]) = {
@@ -33,7 +33,7 @@ class OP_Variant(val id: String, private[graph] val outputTypesMap: Map[Targets.
     val chunks =
       for (idx <- indices) yield {
         val resultMap = if (idx == returnerIdx) outputTypesMap else Targets.unitTypes(id+"_"+idx)
-        val r = new OP_Variant(id+"_"+idx, resultMap, superOp, variantGraph)
+        val r = new OP_Variant(id+"_"+idx, resultMap, inputTypesMap, superOp, variantGraph)
         r.dependencies = superOp.dependencies
         r.inputList = superOp.inputList
         r.consumers = superOp.consumers
@@ -50,6 +50,7 @@ class OP_Variant(val id: String, private[graph] val outputTypesMap: Map[Targets.
       }
 
     graph.replaceOp(superOp, returnOp)
+    for (idx <- indices) refineInputDeps(chunks(idx), graph, idx)
     chunks
   }
 

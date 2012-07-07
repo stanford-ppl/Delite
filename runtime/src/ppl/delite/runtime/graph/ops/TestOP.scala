@@ -18,6 +18,7 @@ class TestOP(kernel: String)(deps: DeliteOP*) extends OP_Executable {
   def id = System.identityHashCode(this).toString
 
   private[graph] val outputTypesMap = Map(Targets.Scala -> Map(id -> "Unit", "functionReturn" -> "Unit"))
+  private[graph] val inputTypesMap = Map(Targets.Scala -> Map(id -> "Unit", "functionReturn" -> "Unit"))
 
   //initialize
   for (dep <- deps) {
@@ -32,10 +33,11 @@ class TestOP(kernel: String)(deps: DeliteOP*) extends OP_Executable {
 }
 
 class TestSingle[T: Manifest](kernel: String)(deps: DeliteOP*)(inputs: DeliteOP*)
-        extends OP_Single("", kernel, null) {
+        extends OP_Single("", kernel, null, null) {
 
   override val id = System.identityHashCode(this).toString
   override private[graph] val outputTypesMap = Map(Targets.Scala -> Map(id -> manifest[T].toString, "functionReturn" -> manifest[T].toString))
+  override private[graph] val inputTypesMap = Map(Targets.Scala -> Map(id -> manifest[T].toString, "functionReturn" -> manifest[T].toString))
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -49,10 +51,11 @@ class TestSingle[T: Manifest](kernel: String)(deps: DeliteOP*)(inputs: DeliteOP*
 }
 
 class TestForeach(func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP*)
-        extends OP_Foreach("", func, null) {
+        extends OP_Foreach("", func, null, null) {
 
   override val id = System.identityHashCode(this).toString
   override private[graph] val outputTypesMap = Map(Targets.Scala -> Map(id -> "Unit", "functionReturn" -> "Unit"))
+  override private[graph] val inputTypesMap = Map(Targets.Scala -> Map(id -> "Unit", "functionReturn" -> "Unit"))
 
   for (dep <- deps) {
     this.addDependency(dep)

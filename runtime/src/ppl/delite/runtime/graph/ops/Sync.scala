@@ -188,6 +188,7 @@ abstract class Sync extends DeliteOP {
   def isDataParallel = false
   def task = null
   private[graph] val outputTypesMap = null
+  private[graph] val inputTypesMap = null
 }
 
 abstract class Send extends Sync {

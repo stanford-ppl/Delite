@@ -59,7 +59,7 @@ trait GPULoopCostModel extends AbstractCostModel {
           result &= gpuOnly(op)
       }
       result
-    case _ => op.supportsTarget(Targets.Cuda) || op.supportsTarget(Targets.C)
+    case _ => op.supportsTarget(Targets.Cuda) || op.supportsTarget(Targets.Cpp)
   }
 
   def shouldParallelize(op: OP_MultiLoop, sizeDict: Map[String, Int]) = true

@@ -24,6 +24,7 @@ class EOP extends OP_Executable {
    */
 
   val outputTypesMap = Map(Targets.Scala->Map(id -> "Unit", "functionReturn"->"Unit"))
+  val inputTypesMap = Map[Targets.Value,Map[String,String]]()
 
   def isDataParallel = false
 
