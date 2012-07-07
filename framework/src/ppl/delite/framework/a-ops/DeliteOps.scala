@@ -787,16 +787,22 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
   def summarizeBody[A](d: Def[A]) = d match {
     case e: DeliteForeachElem[_] => summarizeEffects(e.func).star
-    case e: DeliteCollectElem[_,_,_] => summarizeEffects(e.func).star
+    case e: DeliteCollectElem[_,_,_] => 
+      val ec = if (e.cond.nonEmpty) e.cond.map(summarizeEffects).reduce((s1,s2) => s1 andThen s2) else Pure()      
+      val ef = summarizeEffects(e.func)
+      // ef.star
+      ef.star andAlso ec // should be (ef andAlso ec).star? there is an issue with orElse setting resAlloc to false
     //case e: DeliteReduceElem[_] => (summarizeEffects(e.func) andThen summarizeEffects(e.rFunc)).star
     case e: DeliteReduceElem[_] => 
       // explicitly remove writes to the accumulator -- can we generalize this somehow?
       def clean(xs: List[Sym[Any]]) = xs.filterNot(_ == e.rV._1)
       val ef = summarizeEffects(e.func)
       val er = summarizeEffects(e.rFunc)
+      val ec = if (e.cond.nonEmpty) e.cond.map(summarizeEffects).reduce((s1,s2) => s1 andThen s2) else Pure()      
       val er2 = er.copy(mayRead = clean(er.mayRead), mstRead = clean(er.mstRead), 
                         mayWrite = clean(er.mayWrite), mstWrite = clean(er.mstWrite))
-      (ef andThen er2).star // not 100% correct
+      // (ef andThen er2).star // not 100% correct
+      (ef andThen er2).star andAlso ec // not 100% correct
     case e: DeliteReduceTupleElem[_,_] =>
       // explicitly remove writes to the accumulator -- can we generalize this somehow?
       def cleanP(xs: List[Sym[Any]]) = xs.filterNot(x => x == e.rVPar._1._1 || x == e.rVPar._1._2)
