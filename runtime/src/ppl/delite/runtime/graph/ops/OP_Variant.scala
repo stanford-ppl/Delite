@@ -50,7 +50,8 @@ class OP_Variant(val id: String, private[graph] val outputTypesMap: Map[Targets.
       }
 
     graph.replaceOp(superOp, returnOp)
-    for (idx <- indices) refineInputDeps(chunks(idx), graph, idx)
+    for (i <- 0 until indices.length)
+      refineInputDeps(chunks(i), graph, indices(i))
     chunks
   }
 

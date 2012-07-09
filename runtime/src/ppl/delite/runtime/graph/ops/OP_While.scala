@@ -43,7 +43,8 @@ class OP_While(val id: String,
       }
 
     graph.replaceOp(this, chunks(0))
-    for (idx <- indices) refineInputDeps(chunks(idx), graph, idx)
+    for (i <- 0 until indices.length)
+      refineInputDeps(chunks(i), graph, indices(i))
     chunks
   }
 }

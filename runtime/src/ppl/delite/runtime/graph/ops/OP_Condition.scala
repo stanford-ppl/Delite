@@ -59,7 +59,8 @@ class OP_Condition(val id: String, private[graph] val outputTypesMap: Map[Target
       }
 
     graph.replaceOp(this, returnOp)
-    for (idx <- indices) refineInputDeps(chunks(idx), graph, idx)
+    for (i <- 0 until indices.length)
+      refineInputDeps(chunks(i), graph, indices(i))
     chunks
   }
 
