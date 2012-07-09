@@ -13,7 +13,7 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
   private val numAccs = Config.numCpp + Config.numCuda + Config.numOpenCL
 
   def schedule(graph: DeliteTaskGraph) {
-    assert(numAccs <= 1)
+    //assert(numAccs <= 1)
     //traverse nesting & schedule sub-graphs, starting with outermost graph
     scheduleFlat(graph)
   }
@@ -47,7 +47,7 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
           if (op.isDataParallel)
             splitAcc(op, schedule)
           else {
-            scheduleOn(op, schedule, numCPUs)
+            roundrobin(op, schedule)
           }
         }
         else if (op.variant != null && numAccs > 0) {
@@ -64,6 +64,12 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
   }
 
   private var nextThread = 0
+
+  private var rrIdx = 0
+  private def roundrobin(op: DeliteOP, schedule: PartialSchedule) {
+    scheduleOn(op, schedule, numCPUs + rrIdx)
+    rrIdx = (rrIdx + 1) % numAccs
+  }
 
   private def cluster(op: DeliteOP, schedule: PartialSchedule) {
     //look for best place to put this op (simple nearest-neighbor clustering)

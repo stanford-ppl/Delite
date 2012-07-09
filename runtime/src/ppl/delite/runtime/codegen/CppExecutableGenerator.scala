@@ -34,7 +34,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     out.append(" {\n")
     out.append("env" + location + " = jnienv;\n")
 
-    val locations = Range.inclusive(0,location).toSet
+    val locations = Range(0,Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL).toSet
     writeJNIInitializer(locations)
   }
 
