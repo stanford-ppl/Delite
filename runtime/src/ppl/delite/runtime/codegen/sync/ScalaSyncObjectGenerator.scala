@@ -2,6 +2,9 @@ package ppl.delite.runtime.codegen.sync
 
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.codegen.ScalaExecutableGenerator
+import ppl.delite.runtime.codegen.hosts.Hosts
+import ppl.delite.runtime.scheduler.OpHelper._
+import ppl.delite.runtime.graph.targets._
 
 trait ScalaSyncObjectGenerator extends SyncObjectGenerator with ScalaExecutableGenerator {
 
@@ -20,7 +23,10 @@ trait ScalaSyncObjectGenerator extends SyncObjectGenerator with ScalaExecutableG
     }
   }
 
-  private def consumerSet(sender: Send) = sender.receivers.map(_.to.scheduledResource)
+  //private def consumerSet(sender: Send) = sender.receivers.map(_.to.scheduledResource)
+  private def consumerSet(sender: Send) =
+    if (Targets.getHostType(scheduledTarget(sender.from))==Hosts.Cpp) sender.receivers.map(_.to).filter(op=>Targets.getHostType(scheduledTarget(op))==Hosts.Scala).map(_.scheduledResource)
+    else sender.receivers.map(_.to.scheduledResource)
 
   private def writePublicGet(sender: Send, symName: String, syncName: String, outputType: String) {
     val locations = consumerSet(sender)

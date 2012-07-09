@@ -25,10 +25,10 @@ trait SyncGenerator {
     case _ => throw new IllegalArgumentException("Unrecognized Sync type: " + s)
   }
 
-  protected def sendView(s: SendView) { notYetImplemented(s) }
-  protected def receiveView(s: ReceiveView) { notYetImplemented(s) }
-  protected def sendSignal(s: Notify) { notYetImplemented(s) }
-  protected def awaitSignal(s: Await) { notYetImplemented(s) }
+  protected def sendView(s: SendView) { } //{ notYetImplemented(s) }
+  protected def receiveView(s: ReceiveView) { } //{ notYetImplemented(s) }
+  protected def sendSignal(s: Notify) { } //notYetImplemented(s)
+  protected def awaitSignal(s: Await) { } //notYetImplemented(s) }
 
   private def notYetImplemented(s: Sync) = throw new RuntimeException(s + " sync is not currently implemented")
 

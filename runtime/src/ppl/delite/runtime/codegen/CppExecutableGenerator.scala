@@ -7,6 +7,7 @@ import ppl.delite.runtime.codegen.hosts.Hosts
 import ppl.delite.runtime.graph.targets.{OS, Targets}
 import collection.mutable.ArrayBuffer
 import sync._
+import ppl.delite.runtime.graph.DeliteTaskGraph
 
 trait CppExecutableGenerator extends ExecutableGenerator {
 
@@ -135,14 +136,30 @@ object CppExecutableGenerator {
   val syncObjects = ArrayBuffer[String]()
   syncObjects.append("#include <pthread.h>\n")
 
-  def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
+  var typesMap = Map[Targets.Value, Map[String,String]]()
 
+  //TODO: Remove this not to use global structure for type information
+  def collectInputTypesMap(graph: DeliteTaskGraph) {
+    for (resource <- graph.schedule; op <- resource) {
+      if (op.getInputTypesMap != null)
+        typesMap = DeliteTaskGraph.combineTypesMap(List(op.getInputTypesMap,typesMap))
+      if (op.getOutputTypesMap != null)
+        typesMap = DeliteTaskGraph.combineTypesMap(List(op.getOutputTypesMap,typesMap))
+
+      if (op.isInstanceOf[OP_Nested]) {
+        for (subgraph <- op.asInstanceOf[OP_Nested].nestedGraphs) {
+          collectInputTypesMap(subgraph)
+        }
+      }
+    }
+  }
+
+  def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
     for (i <- 0 until schedule.numResources) {
       println("starting creation of dev " + i + " among " + schedule.numResources + " resources")
       new CppMainExecutableGenerator(Config.numThreads+i, kernelPath).makeExecutable(schedule(i)) // native execution plan
       new ScalaNativeExecutableGenerator(Config.numThreads+i, kernelPath).makeExecutable          // JNI launcher scala source
     }
-
     // Register header file for the Cpp sync objects
     CppCompile.addHeader(syncObjects.mkString(""),"cppSyncObjects")
   }

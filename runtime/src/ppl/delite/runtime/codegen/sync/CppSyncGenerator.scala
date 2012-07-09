@@ -32,9 +32,9 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
       writeSetter(s.from, s.sym)
       syncList += s
     }
-    else {
+    //else {
       super.sendView(s)  // TODO: always call super? (when multiple receivers have different host types)
-    }
+    //}
   }
 
   override protected def sendSignal(s: Notify) {
@@ -42,9 +42,9 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
       writeNotifier(s.from)
       syncList += s
     }
-    else {
+    //else {
       super.sendSignal(s)  // TODO: always call super? (when multiple receivers have different host types)
-    }
+    //}
   }
 
   private def writeGetter(dep: DeliteOP, sym: String, to: DeliteOP) {
@@ -69,8 +69,8 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     out.append("\",\"()")
     out.append(getJNIOutputType(dep.outputType(Targets.Scala,sym)))
     out.append("\"));\n")
-    println("inputtypesmap for " + location + ", " + to + ":" + to.printInputTypesMap)
-    out.append("%s %s = recvCPPfromJVM_%s(env%s,%s);\n".format(to.inputType(Targets.Cpp,sym),getSymHost(dep,sym),sym,location,getSymCPU(sym)))
+    out.append("%s %s = recvCPPfromJVM_%s(env%s,%s);\n".format(CppExecutableGenerator.typesMap(Targets.Cpp)(sym),getSymHost(dep,sym),sym,location,getSymCPU(sym)))
+    //out.append("%s %s = recvCPPfromJVM_%s(env%s,%s);\n".format(to.inputType(Targets.Cpp,sym),getSymHost(dep,sym),sym,location,getSymCPU(sym)))
   }
 
   private def writeAwaiter(dep: DeliteOP) {
@@ -115,7 +115,9 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     out.append(location)
     out.append("->CallStaticVoidMethod(cls")
     out.append(location)
-    out.append(",env->GetStaticMethodID(cls")
+    out.append(",env")
+    out.append(location)
+    out.append("->GetStaticMethodID(cls")
     out.append(location)
     out.append(",\"set_")
     out.append(getOpSym(op))
@@ -157,9 +159,9 @@ trait CppToCppSync extends SyncGenerator with CppExecutableGenerator with JNIFun
       writeSetter(s.from, s.sym)
       syncList += s
     }
-    else {
+    //else {
       super.sendView(s)  // TODO: always call super? (when multiple receivers have different host types)
-    }
+    //}
   }
 
   override protected def sendSignal(s: Notify) {
@@ -167,13 +169,13 @@ trait CppToCppSync extends SyncGenerator with CppExecutableGenerator with JNIFun
       writeNotifier(s.from)
       syncList += s
     }
-    else {
+    //else {
       super.sendSignal(s)  // TODO: always call super? (when multiple receivers have different host types)
-    }
+    //}
   }
 
   private def writeGetter(dep: DeliteOP, sym: String, to: DeliteOP) {
-    out.append(to.inputType(Targets.Cpp,sym))
+    out.append(CppExecutableGenerator.typesMap(Targets.Cpp)(sym))
     out.append(' ')
     out.append(getSymHost(dep, sym))
     out.append(" = ")

@@ -36,6 +36,9 @@ object Compilers {
     Sync.addSync(graph)
     ScalaExecutableGenerator.makeExecutables(schedule.slice(0,Config.numThreads), graph.kernelPath)
 
+    // Hack to collect global inputTypesMap (TODO: Get rid of this)
+    CppExecutableGenerator.collectInputTypesMap(graph)
+
     CppExecutableGenerator.makeExecutables(schedule.slice(Config.numThreads, Config.numThreads+Config.numCpp), graph.kernelPath)
 
     /*

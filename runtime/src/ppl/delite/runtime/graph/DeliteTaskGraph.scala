@@ -249,7 +249,7 @@ object DeliteTaskGraph {
     inputTypesMap
   }
 
-  def combineInputTypesMap(inMaps: List[Map[Targets.Value,Map[String,String]]]): Map[Targets.Value, Map[String,String]] = {
+  def combineTypesMap(inMaps: List[Map[Targets.Value,Map[String,String]]]): Map[Targets.Value, Map[String,String]] = {
     val targetSet = inMaps.flatMap(_.keySet)
     targetSet.map(target => (target,inMaps.flatMap(_.get(target)).reduceLeft(_ ++ _))).toMap
   }
@@ -323,7 +323,7 @@ object DeliteTaskGraph {
     var ifInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
     ifInputs ++= (for ((op,sym) <- Seq(predGraph.result, thenGraph.result, elseGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
     val ifMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
-    val inputTypesMap = combineInputTypesMap(internalOps.map(_.inputTypesMap).toList ++ Seq(predGraph.result, thenGraph.result, elseGraph.result).filter(_._1.isInstanceOf[OP_Input]).map(_._1.outputTypesMap).toList)
+    val inputTypesMap = combineTypesMap(internalOps.map(_.inputTypesMap).toList ++ Seq(predGraph.result, thenGraph.result, elseGraph.result).filter(_._1.isInstanceOf[OP_Input]).map(_._1.outputTypesMap).toList)
 
     val conditionOp = new OP_Condition(id, resultMap, inputTypesMap, predGraph, predValue, thenGraph, thenValue, elseGraph, elseValue, true)
     conditionOp.dependencies = ifDeps
@@ -370,7 +370,7 @@ object DeliteTaskGraph {
     var whileInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
     whileInputs ++= (for ((op,sym) <- Seq(predGraph.result, bodyGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
     val whileMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
-    val inputTypesMap = combineInputTypesMap(internalOps.map(_.inputTypesMap).toList ++ Seq(predGraph.result, bodyGraph.result).filter(_._1.isInstanceOf[OP_Input]).map(_._1.outputTypesMap).toList)
+    val inputTypesMap = combineTypesMap(internalOps.map(_.inputTypesMap).toList ++ Seq(predGraph.result, bodyGraph.result).filter(_._1.isInstanceOf[OP_Input]).map(_._1.outputTypesMap).toList)
 
     val whileOp = new OP_While(id, inputTypesMap, predGraph, predValue, bodyGraph, bodyValue)
     whileOp.dependencies = whileDeps
@@ -412,7 +412,7 @@ object DeliteTaskGraph {
     var graphInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
     graphInputs ++= (for ((op,sym) <- Seq(bodyGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
     val graphMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
-    val inputTypesMap = combineInputTypesMap(internalOps.map(_.inputTypesMap).toList)
+    val inputTypesMap = combineTypesMap(internalOps.map(_.inputTypesMap).toList)
 
     val graphOp = new OP_Variant(id, resultMap, inputTypesMap, null, bodyGraph)
     graphOp.dependencies = graphDeps
