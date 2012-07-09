@@ -69,7 +69,11 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     out.append("\",\"()")
     out.append(getJNIOutputType(dep.outputType(Targets.Scala,sym)))
     out.append("\"));\n")
-    out.append("%s %s = recvCPPfromJVM_%s(env%s,%s);\n".format(CppExecutableGenerator.typesMap(Targets.Cpp)(sym),getSymHost(dep,sym),sym,location,getSymCPU(sym)))
+    if (isPrimitiveType(dep.outputType(sym)))
+      out.append("%s %s = recvCPPfromJVM_%s(env%s,%s);\n".format(CppExecutableGenerator.typesMap(Targets.Cpp)(sym),getSymHost(dep,sym),sym,location,getSymCPU(sym)))
+    else
+    out.append("%s *%s = recvCPPfromJVM_%s(env%s,%s);\n".format(CppExecutableGenerator.typesMap(Targets.Cpp)(sym),getSymHost(dep,sym),sym,location,getSymCPU(sym)))
+
     //out.append("%s %s = recvCPPfromJVM_%s(env%s,%s);\n".format(to.inputType(Targets.Cpp,sym),getSymHost(dep,sym),sym,location,getSymCPU(sym)))
   }
 
@@ -177,6 +181,7 @@ trait CppToCppSync extends SyncGenerator with CppExecutableGenerator with JNIFun
   private def writeGetter(dep: DeliteOP, sym: String, to: DeliteOP) {
     out.append(CppExecutableGenerator.typesMap(Targets.Cpp)(sym))
     out.append(' ')
+    if (!isPrimitiveType(dep.outputType(sym))) out.append(" *")
     out.append(getSymHost(dep, sym))
     out.append(" = ")
     out.append("get")
@@ -313,19 +318,5 @@ trait JNIFuncs {
     case "Byte" => "char"
     //case r if r.startsWith("generated.scala.Ref[") => getCPrimitiveType(r.slice(20,r.length-1))
     case other => error(other + " is not a primitive type")
-  }
-
-  protected def isPrimitiveType(scalaType: String): Boolean = scalaType match {
-    case "Unit" => true
-    case "Int" => true
-    case "Long" => true
-    case "Float" => true
-    case "Double" => true
-    case "Boolean" => true
-    case "Short" => true
-    case "Char" => true
-    case "Byte" => true
-    //case r if r.startsWith("generated.scala.Ref[") => isPrimitiveType(r.slice(20,r.length-1))
-    case _ => false
   }
 }

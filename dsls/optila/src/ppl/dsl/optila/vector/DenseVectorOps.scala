@@ -686,14 +686,23 @@ trait CGenDenseVectorOps extends BaseGenDenseVectorOps with CGenFat {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case DenseVectorApply(x, n) =>
-      emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
-    case DenseVectorUpdate(x,n,y) =>
-      stream.println("%s.update(%s,%s);".format(quote(x),quote(n),quote(y)))
-    case DenseVectorLength(x)    =>
-      emitValDef(sym, quote(x) + ".length")
-    case DenseVectorIsRow(x)     =>
-      emitValDef(sym, quote(x) + ".isRow")
+    case v@DenseVectorNew(length, isRow) => stream.println("%s *%s = new %s(%s, %s);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow)))
+    case DenseVectorApply(x,n) => emitValDef(sym, quote(x) + "->data[" + quote(n) + "]")
+    case DenseVectorUpdate(x,n,y) => stream.println(quote(x) + "->data[" + quote(n) + "] = " + quote(y) + ";")
+    case DenseVectorLength(x) => emitValDef(sym, quote(x) + "->length")
+    case DenseVectorIsRow(x) => emitValDef(sym, quote(x) + "->isRow")
+    case DenseVectorRawData(x) => emitValDef(sym, quote(x) + "->data")
+    case DenseVectorSetLength(x,v) => emitValDef(sym, quote(x) + "->length = " + quote(v))
+    case DenseVectorSetIsRow(x,v) => emitValDef(sym, quote(x) + "->isRow = " + quote(v))
+    case DenseVectorSetRawData(x,v) => emitValDef(sym, quote(x) + "->data = " + quote(v))
+
+    case DenseVectorZeroDouble(length, isRow) => stream.println("%s *%s = new %s(%s, %s)".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow))) // + remap("generated.scala.DenseVector[Double]")+"(" + quote(length) + ", " + quote(isRow) + ")")
+    case DenseVectorZeroFloat(length, isRow) => stream.println("%s *%s = new %s(%s, %s)".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow))) // + remap("generated.scala.DenseVector[Float]")+"(" + quote(length) + ", " + quote(isRow) + ")")
+    case DenseVectorZeroInt(length, isRow) => stream.println("%s *%s = new %s(%s, %s)".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow))) // + remap("generated.scala.DenseVector[Int]")+"(" + quote(length) + ", " + quote(isRow) + ")")
+    case DenseVectorEmptyDouble() => stream.println("%s *%s = new %s(0, true)".format(remap(sym.tp),quote(sym),remap(sym.tp))) // + remap("generated.scala.DenseVector[Double]")+"(0,true)")
+    case DenseVectorEmptyFloat() => stream.println("%s *%s = new %s(0, true)".format(remap(sym.tp),quote(sym),remap(sym.tp))) // + remap("generated.scala.DenseVector[Float]")+"(0,true)")
+    case DenseVectorEmptyInt() => stream.println("%s *%s = new %s(0, true)".format(remap(sym.tp),quote(sym),remap(sym.tp))) // // + remap("generated.scala.DenseVector[Int]")+"(0,true)")
+    case v@DenseVectorEmpty() => stream.println("%s *%s = new %s(0, true)".format(remap(sym.tp),quote(sym),remap(sym.tp))) // + remap("generated.scala.DenseVector[" + remap(v.mA) + "]")+"(0,true)")
 
     case _ => super.emitNode(sym, rhs)
   }

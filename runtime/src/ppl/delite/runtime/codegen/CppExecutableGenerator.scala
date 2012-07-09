@@ -86,6 +86,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     if (op.outputType != "Unit") {
       out.append(op.outputType(Targets.Cpp))
       out.append(' ')
+      if (!isPrimitiveType(op.outputType)) out.append(" *")
       out.append(getSymHost(op,op.id))
       out.append(" = ")
     }
@@ -109,6 +110,20 @@ trait CppExecutableGenerator extends ExecutableGenerator {
 
   protected def writeSyncObject() {  }
 
+
+  protected def isPrimitiveType(scalaType: String): Boolean = scalaType match {
+    case "Unit" => true
+    case "Int" => true
+    case "Long" => true
+    case "Float" => true
+    case "Double" => true
+    case "Boolean" => true
+    case "Short" => true
+    case "Char" => true
+    case "Byte" => true
+    //case r if r.startsWith("generated.scala.Ref[") => isPrimitiveType(r.slice(20,r.length-1))
+    case _ => false
+  }
 }
 
 class CppMainExecutableGenerator(val location: Int, val kernelPath: String)
@@ -135,6 +150,7 @@ object CppExecutableGenerator {
 
   val syncObjects = ArrayBuffer[String]()
   syncObjects.append("#include <pthread.h>\n")
+  syncObjects.append("#include \"cppHeader.hpp\"\n")
 
   var typesMap = Map[Targets.Value, Map[String,String]]()
 

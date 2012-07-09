@@ -186,7 +186,13 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
             returnTypes += new Pair[String,String](gen.toString,"generated.scala.Ref[" + gen.remap(sym.head.tp) + "]") {
               override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
             }
-          } else {
+          }
+          else if (resultIsVar && gen.toString=="cpp") {
+            returnTypes += new Pair[String,String](gen.toString,"Ref<" + gen.remap(sym.head.tp) + ">") {
+              override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+            }
+          }
+          else {
             returnTypes += new Pair[String,String](gen.toString,gen.remap(sym.head.tp)) {
               override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
             }

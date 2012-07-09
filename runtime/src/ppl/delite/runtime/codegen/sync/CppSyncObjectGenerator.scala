@@ -12,9 +12,11 @@ trait CppSyncObjectGenerator extends SyncObjectGenerator with CppExecutableGener
     for (sender <- sync) {
       sender match {
         case s: SendView =>
-          writePublicGet(s, getSym(s.from, s.sym), getSync(s.from, s.sym), s.from.outputType(Targets.Cpp,s.sym))
-          SyncObject(s, getSync(s.from, s.sym), s.from.outputType(Targets.Cpp,s.sym))
-          writePublicSet(s, getSym(s.from, s.sym), getSync(s.from, s.sym), s.from.outputType(Targets.Cpp,s.sym))
+          val outputType = if (isPrimitiveType(s.from.outputType(s.sym))) s.from.outputType(Targets.Cpp,s.sym)
+                           else s.from.outputType(Targets.Cpp,s.sym) + " *"
+          writePublicGet(s, getSym(s.from, s.sym), getSync(s.from, s.sym), outputType)
+          SyncObject(s, getSync(s.from, s.sym), outputType)
+          writePublicSet(s, getSym(s.from, s.sym), getSync(s.from, s.sym), outputType)
         case s: Notify =>
           writePublicGet(s, getOpSym(s.from), getOpSync(s.from), "void")
           SyncObject(s, getOpSync(s.from), "void")

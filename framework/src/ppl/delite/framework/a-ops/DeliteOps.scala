@@ -2033,14 +2033,15 @@ trait CGenDeliteOps extends CGenLoopsFat with BaseGenDeliteOps {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case s:DeliteOpSingleTask[_] => {
+      //printlog("EMIT single "+s)
+      // always wrap single tasks in methods to reduce JIT compilation unit size
       val b = s.block
-      if (!deliteKernel) {  //In the process of generating operations for deliteKernel type kernels (allow SingleTask to be inlined)
-        emitBlock(b)
-        if(!isVoidType(sym.tp)) stream.println("%s %s = %s;".format(remap(sym.tp),quote(sym),quote(getBlockResult(b))))
-      }
-      else {
-    	  throw new GenerationFailedException("CGen: DeliteOpSingleTask is not GPUable")
-      }
+      emitBlock(b)
+      if (isVoidType(sym.tp)) { }
+      else if (isPrimitiveType(sym.tp))
+        stream.println(remap(sym.tp) + " " + quote(sym) + " = " + quote(getBlockResult(b)) + ";")
+      else
+        stream.println(remap(sym.tp) + " *" + quote(sym) + " = " + quote(getBlockResult(b)) + ";")
     }
 
     case op: AbstractLoop[_] =>

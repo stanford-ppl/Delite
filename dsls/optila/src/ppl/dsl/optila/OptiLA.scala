@@ -474,13 +474,54 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
 }
 
 trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenDeliteOps
-  with CGenArithOps with CGenVectorOps with CGenDenseVectorOps /*with CGenDenseVectorViewOps*/ with CGenMatrixOps with CGenDenseMatrixOps //with CGenMatrixRowOps
-  with DeliteCGenAllOverrides with DeliteCppHostTransfer
+  with CGenArithOps with CGenVectorOps with CGenDenseVectorOps with CGenDenseVectorViewOps with CGenMatrixOps with CGenDenseMatrixOps //with CGenMatrixRowOps
+  with DeliteCGenAllOverrides with DeliteCppHostTransfer with OptiLACppHostTransfer
 {
   val IR: DeliteApplication with OptiLAExp
   import IR._
 
-  override def remap[A](m: Manifest[A]) : String = m.toString match {
-    case _ => super.remap(m)
+  override def remap[A](m: Manifest[A]) : String = {
+    m.toString match {
+      case "ppl.dsl.optila.DenseVector[Int]" => "DenseVector<int>"
+      case "ppl.dsl.optila.DenseVector[Long]" => "DenseVector<long>"
+      case "ppl.dsl.optila.DenseVector[Float]" => "DenseVector<float>"
+      case "ppl.dsl.optila.DenseVector[Double]" => "DenseVector<double>"
+      case "ppl.dsl.optila.DenseVector[Boolean]" => "DenseVector<bool>"
+      case "ppl.dsl.optila.DenseMatrix[Int]" => "DenseMatrix<int>"
+      case "ppl.dsl.optila.DenseMatrix[Long]" => "DenseMatrix<long>"
+      case "ppl.dsl.optila.DenseMatrix[Float]" => "DenseMatrix<float>"
+      case "ppl.dsl.optila.DenseMatrix[Double]" => "DenseMatrix<double>"
+      case "ppl.dsl.optila.DenseMatrix[Boolean]" => "DenseMatrix<bool>"
+      //case "ppl.dsl.optila.RangeVector" => "RangeVector"
+      //case "ppl.dsl.optila.DenseVectorView[Int]" => "DenseVectorView<int>"
+      //case "ppl.dsl.optila.DenseVectorView[Long]" => "DenseVectorView<long>"
+      //case "ppl.dsl.optila.DenseVectorView[Float]" => "DenseVectorView<float>"
+      //case "ppl.dsl.optila.DenseVectorView[Double]" => "DenseVectorView<double>"
+      //case "ppl.dsl.optila.DenseVectorView[Boolean]" => "DenseVectorView<bool>"
+      //case "ppl.dsl.optila.MatrixRow[Int]" => "DenseVectorView<int>"
+      //case "ppl.dsl.optila.MatrixRow[Long]" => "DenseVectorView<long>"
+      //case "ppl.dsl.optila.MatrixRow[Float]" => "DenseVectorView<float>"
+      //case "ppl.dsl.optila.MatrixRow[Double]" => "DenseVectorView<double>"
+      //case "ppl.dsl.optila.MatrixRow[Boolean]" => "DenseVectorView<bool>"
+      //case "Array[Int]" => "DeliteArray<int> *"
+      //case "Array[Long]" => "DeliteArray<long> *"
+      //case "Array[Float]" => "DeliteArray<float> *"
+      //case "Array[Double]" => "DeliteArray<double> *"
+      //case "Array[Boolean]" => "DeliteArray<bool> *"
+      case _ => super.remap(m)
+    }
+  }
+
+  override def getDSLHeaders: String = {
+    val out = new StringBuilder
+    out.append("#include <float.h>\n")
+    out.append("#include \"Ref.h\"\n")
+    out.append("#include \"DeliteArray.h\"\n")
+    out.append("#include \"DenseVector.h\"\n")
+    out.append("#include \"RangeVector.h\"\n")
+    out.append("#include \"DeliteArray.h\"\n")
+    out.append("#include \"DenseMatrix.h\"\n")
+    //out.append("#include \"library.h\"\n") // external library
+    out.toString
   }
 }

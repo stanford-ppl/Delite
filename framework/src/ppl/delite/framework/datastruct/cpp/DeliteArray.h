@@ -1,6 +1,7 @@
 #ifndef _DELITEARRAY_H_
 #define _DELITEARRAY_H_
 
+#include <stdlib.h>
 template <class T>
 class DeliteArray {
 public:
@@ -13,7 +14,7 @@ public:
         data = (T *)malloc(length*sizeof(T));
     }
 
-    DeliteArray(int _length, T *_data) {
+    DeliteArray(T *_data, int _length) {
         length = _length;
         data = _data;
     }

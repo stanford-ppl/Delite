@@ -95,8 +95,10 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
 
   def generateMethodSignature(): String = {
     val str = new StringBuilder
+    str.append("#include \"cppHeader.hpp\"\n")
     str.append(nested.outputType(Targets.Cpp))
     str.append(' ')
+    if (!isPrimitiveType(nested.outputType) && nested.outputType!="Unit") out.append(" *")
     str.append(executableName)
     str.append('(')
     str.append(generateInputs())
@@ -124,7 +126,8 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
     for ((op,sym) <- inputs) {
       if (!first) str.append(", ")
       first = false
-      str.append(nested.inputType(Targets.Cpp,sym))
+      str.append(CppExecutableGenerator.typesMap(Targets.Cpp)(sym))
+      if (!isPrimitiveType(op.outputType(sym))) str.append(" *")
       str.append(' ')
       str.append(getSymHost(op, sym))
     }

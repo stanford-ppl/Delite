@@ -589,6 +589,15 @@ trait CGenDenseMatrixOps extends CGenBase {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case m@DenseMatrixObjectNew(numRows, numCols) => stream.println("%s *%s = new %s(%s,%s);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(numRows),quote(numCols)))
+    case DenseMatrixNumRows(x)  => emitValDef(sym, quote(x) + "->numRows")
+    case DenseMatrixNumCols(x)  => emitValDef(sym, quote(x) + "->numCols")
+    case DenseMatrixRawApply(x,i) => emitValDef(sym, quote(x) + "->data[" + quote(i) + "];")
+    case DenseMatrixRawUpdate(x,i,y) => stream.println(quote(x) + "->data[" + quote(i) + "] = "  + quote(y))
+    case DenseMatrixRawData(x) => emitValDef(sym, quote(x) + "->data")  // getBlockResult necessary?? should it be everywhere?
+    case DenseMatrixSetNumRows(x,v) => stream.println(quote(x) + "->numRows = " + quote(v))
+    case DenseMatrixSetNumCols(x,v) => stream.println(quote(x) + "->numCols = " + quote(v))
+    case DenseMatrixSetRawData(x,data) => stream.println(quote(x) + "->data = " + quote(data))
     case _ => super.emitNode(sym, rhs)
   }
 }
