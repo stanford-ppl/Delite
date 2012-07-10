@@ -16,11 +16,13 @@ def main():
     parser = OptionParser(usage)
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose")
     parser.add_option("-t", "--threads", dest="num_threads", default="1", help="num execution threads e.g. 4")
-    parser.add_option("--cpp", dest="num_cpp", default="0", help="enable cpp execution")
-    parser.add_option("--cuda", dest="num_cuda", default="0", help="enable cuda execution")
-    parser.add_option("--opencl", dest="num_opencl", default="0", help="enable opencl execution")
+    parser.add_option("--cpp", dest="num_cpp", default="0", help="number of cpp execution threads")
+    parser.add_option("--cuda", dest="num_cuda", default="0", help="number of cuda execution threads")
+    parser.add_option("--opencl", dest="num_opencl", default="0", help="number of opencl execution threads")
     parser.add_option("-r", "--runs", dest="num_runs", default="1", type="string", help="the number of times the runtime will execute the applications")
     parser.add_option("-p", "--profile", dest="profile", action="store_true", default=False, help="enables application profiling")
+    parser.add_option("--executor", dest="executor", default="default", type="string", help="the type of executor")
+    parser.add_option("--scheduler", dest="scheduler", default="default", type="string", help="the type of scheduler")
 
     (opts, args) = parser.parse_args()
     if len(args) < 1:
@@ -58,7 +60,7 @@ def run(deg, params, opts):
     ld_library_path.append(build_dir+"/libraries")
     os.putenv("LD_LIBRARY_PATH", ":".join(ld_library_path))
 
-    java_opts = java_opts + " -Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) + " -Ddelite.cpp=" + opts.num_cpp + " -Ddelite.cuda=" + opts.num_cuda + " -Ddelite.opencl=" + opts.num_opencl + " -Ddelite.runs=" + opts.num_runs
+    java_opts = java_opts + " -Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) + " -Ddelite.cpp=" + opts.num_cpp + " -Ddelite.cuda=" + opts.num_cuda + " -Ddelite.opencl=" + opts.num_opencl + " -Ddelite.runs=" + opts.num_runs + " -Ddelite.executor=" + opts.executor + " -Ddelite.scheduler=" + opts.scheduler
     
     if opts.profile == True:
         java_opts = java_opts + " -Dprofile.output.dir=profile -Dprofile.dump=true -Ddelite.debug.profile=true"
