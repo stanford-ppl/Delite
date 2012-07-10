@@ -172,7 +172,6 @@ object CppExecutableGenerator {
 
   def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
     for (i <- 0 until schedule.numResources) {
-      println("starting creation of dev " + i + " among " + schedule.numResources + " resources")
       new CppMainExecutableGenerator(Config.numThreads+i, kernelPath).makeExecutable(schedule(i)) // native execution plan
       new ScalaNativeExecutableGenerator(Config.numThreads+i, kernelPath).makeExecutable          // JNI launcher scala source
     }

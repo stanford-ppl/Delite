@@ -23,6 +23,7 @@ def main():
     parser.add_option("-p", "--profile", dest="profile", action="store_true", default=False, help="enables application profiling")
     parser.add_option("--executor", dest="executor", default="default", type="string", help="the type of executor")
     parser.add_option("--scheduler", dest="scheduler", default="default", type="string", help="the type of scheduler")
+    parser.add_option("--noregen", dest="no_regen", action="store_true", default=False, help="Disables regeration of runtime execution plans")
 
     (opts, args) = parser.parse_args()
     if len(args) < 1:
@@ -61,6 +62,9 @@ def run(deg, params, opts):
     os.putenv("LD_LIBRARY_PATH", ":".join(ld_library_path))
 
     java_opts = java_opts + " -Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) + " -Ddelite.cpp=" + opts.num_cpp + " -Ddelite.cuda=" + opts.num_cuda + " -Ddelite.opencl=" + opts.num_opencl + " -Ddelite.runs=" + opts.num_runs + " -Ddelite.executor=" + opts.executor + " -Ddelite.scheduler=" + opts.scheduler
+    
+    if opts.no_regen == True:
+        java_opts = java_opts + " -Ddelite.debug.noregenerate"
     
     if opts.profile == True:
         java_opts = java_opts + " -Dprofile.output.dir=profile -Dprofile.dump=true -Ddelite.debug.profile=true"

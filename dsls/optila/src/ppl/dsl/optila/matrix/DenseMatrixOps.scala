@@ -594,7 +594,7 @@ trait CGenDenseMatrixOps extends CGenBase {
     case DenseMatrixNumCols(x)  => emitValDef(sym, quote(x) + "->numCols")
     case DenseMatrixRawApply(x,i) => emitValDef(sym, quote(x) + "->data[" + quote(i) + "];")
     case DenseMatrixRawUpdate(x,i,y) => stream.println(quote(x) + "->data[" + quote(i) + "] = "  + quote(y))
-    case DenseMatrixRawData(x) => emitValDef(sym, quote(x) + "->data")  // getBlockResult necessary?? should it be everywhere?
+    case DenseMatrixRawData(x) => stream.println("%s *%s = %s;".format(remap(sym.tp), quote(sym), quote(x) + "->data"))  // getBlockResult necessary?? should it be everywhere?
     case DenseMatrixSetNumRows(x,v) => stream.println(quote(x) + "->numRows = " + quote(v))
     case DenseMatrixSetNumCols(x,v) => stream.println(quote(x) + "->numCols = " + quote(v))
     case DenseMatrixSetRawData(x,data) => stream.println(quote(x) + "->data = " + quote(data))
