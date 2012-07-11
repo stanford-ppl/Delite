@@ -88,7 +88,8 @@ trait MatrixOpsExp extends ppl.dsl.optila.matrix.MatrixOpsExp with MatrixOps wit
   def sparsematrix_nz_row_indices[A:Manifest](x: Rep[SparseMatrix[A]])(implicit ctx: SourceContext) = reflectPure(SparseMatrixNZRowIndices(x))
   
   def sparsematrix_maprowstovecnz[A:Manifest,B:Manifest](x: Exp[SparseMatrix[A]], f: Exp[Int] => Exp[B], isRow: Exp[Boolean]) = {
-    val outIndices = densevector_raw_data(x.nzRowIndices).take(x.nzRowIndices.length) // trim
+    val indices = x.nzRowIndices
+    val outIndices = densevector_raw_data(indices).take(indices.length) // trim
     val outData = outIndices.map(f)     
     val out = SparseVector[B](x.numRows, isRow)
     sparsevector_set_raw_indices(out, outIndices.unsafeImmutable)

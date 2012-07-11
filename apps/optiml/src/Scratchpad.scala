@@ -15,20 +15,40 @@ trait Scratchpad extends OptiMLApplication {
       }
     }
     
-    val simsB = SparseMatrix[Double](1000,1000)
+    
+    val simsB = SparseMatrix[Double](10000,10000)
+    /*
     simsB(100,100) = 75
     simsB(500,500) = 150
     val sims = simsB.finish
+    */
+    
+    var i = 0
+    while (i < simsB.numRows) {
+      if (random[Double] < .05) {
+        var j = 0
+        while (j < simsB.numCols) {
+          if (random[Double] < .05) {
+            simsB(i,j) = random[Double]*1000
+          }
+          j += 1
+        }
+     }
+     i += 1
+    }
+    val sims = simsB.finish   
+    println("sims nnz: " + sims.nnz) 
     
     val ratingsB = DenseMatrix[Int](0,0)
-    ratingsB.insertCol(0, 0::1000) // user ids
-    ratingsB.insertCol(1, Vector.rand(1000).map(e=>(e*1000).AsInstanceOf[Int])) // rating user id
-    ratingsB.insertCol(2, Vector.rand(1000).map(e=>(e*10).AsInstanceOf[Int])) // rating, 0 to 10
+    ratingsB.insertCol(0, 0::10000) // user ids
+    ratingsB.insertCol(1, Vector.rand(10000).map(e=>(e*1000).AsInstanceOf[Int])) // rating user id
+    ratingsB.insertCol(2, Vector.rand(10000).map(e=>(e*10).AsInstanceOf[Int])) // rating, 0 to 10
     val ratings = ratingsB.unsafeImmutable
     
     tic()
-    val p = preferences(500, ratings, sims)
+    val p = preferences(0, ratings, sims)
     toc(p)
+    println("p nnz: " + p.nnz)
     
     // multiloop unwrapping 
     

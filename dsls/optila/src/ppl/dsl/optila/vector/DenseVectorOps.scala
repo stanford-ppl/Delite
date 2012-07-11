@@ -276,8 +276,8 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
   def densevector_obj_onesf(len: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectOnesF(len))
   def densevector_obj_zeros(len: Exp[Int])(implicit ctx: SourceContext) = densevector_zero_double(len,unit(true)) //reflectPure(DenseVectorObjectZeros(len))
   def densevector_obj_zerosf(len: Exp[Int])(implicit ctx: SourceContext) = densevector_zero_float(len,unit(true))//reflectPure(DenseVectorObjectZerosF(len))
-  def densevector_obj_rand(len: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectRand(len))
-  def densevector_obj_randf(len: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectRandF(len))
+  def densevector_obj_rand(len: Exp[Int])(implicit ctx: SourceContext) = reflectEffect(DenseVectorObjectRand(len))
+  def densevector_obj_randf(len: Exp[Int])(implicit ctx: SourceContext) = reflectEffect(DenseVectorObjectRandF(len))
   def densevector_obj_uniform(start: Exp[Double], step_size: Exp[Double], end: Exp[Double], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectUniform(start, step_size, end, isRow))
   def densevector_obj_flatten[A:Manifest](pieces: Exp[DenseVector[DenseVector[A]]])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectFlatten(pieces))  
 

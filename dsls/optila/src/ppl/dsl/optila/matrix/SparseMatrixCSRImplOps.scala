@@ -38,7 +38,6 @@ trait SparseMatrixCSRImplOps extends SparseMatrixImplOps {
     val offRaw = sparsematrix_csr_find_offset(m,i,j)    
     if (offRaw > -1) darray_unsafe_update(sparsematrix_csr_raw_data(m), offRaw, y)
     else {
-      // TODO AKS: test this
       if (y != defaultValue[A]) {
         val off = ~offRaw
         sparsematrix_csr_insertspace(m, off, 1)
@@ -46,7 +45,7 @@ trait SparseMatrixCSRImplOps extends SparseMatrixImplOps {
         darray_unsafe_update(sparsematrix_csr_raw_data(m), off, y)     
         val rowPtr = sparsematrix_csr_raw_rowptr(m)
         // have to increment every element of rowPtr
-        for (row <- i until rowPtr.length) {
+        for (row <- i+1 until rowPtr.length) {
           darray_unsafe_update(rowPtr,row,rowPtr(row)+1)
         }
       }
