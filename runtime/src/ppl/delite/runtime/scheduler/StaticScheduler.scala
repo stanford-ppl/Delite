@@ -47,10 +47,9 @@ trait StaticScheduler {
     else
       scheduleOne(header, graph, schedule)
 
-    for (i <- resourceList) {
-      val chunk = OpHelper.split(op, i, resourceList.length, graph.kernelPath)
-      scheduleOn(chunk, schedule, i)
-    }
+      val chunks = OpHelper.split(op, resourceList.length, graph.kernelPath)
+      for (i <- resourceList)
+        scheduleOn(chunks(i), schedule, i)
   }
 
 	protected def addSequential(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resource: Int) {
