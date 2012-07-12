@@ -26,7 +26,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
   }
 
   private def mutating(kernelContext: State, sym: Sym[Any]) : List[Sym[Any]] = kernelContext flatMap {
-    //case Def(Mutation(x,effects)) => if (syms(x) contains sym) List(sym) else Nil
     case Def(Reflect(x,u,effects)) => if (mayWrite(u,List(sym))) List(sym) else Nil
     case _ => Nil
   }
@@ -34,6 +33,13 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = emitAnyNode(List(sym), rhs)
   override def emitFatNode(sym: List[Sym[Any]], rhs: FatDef) = emitAnyNode(sym, rhs)
 
+  var effectWrapper: Option[Sym[Any]] = None 
+  private def withEffectWrapper(r: Sym[Any])(block: => Unit) = {
+    effectWrapper = Some(r)
+    block
+    effectWrapper = None
+  }
+  
   private def emitAnyNode(sym: List[Sym[Any]], rhs: Any): Unit = {
     assert(generators.length >= 1)
 
@@ -50,10 +56,16 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     rhs match {
       case Reflect(s, u, effects) =>
         //controlDeps = effects; // <---  now handling control deps here...!! <--- would like to, but need to hand *precise* schedule to runtime
-        super.emitNode(sym(0), rhs.asInstanceOf[Def[Any]]); return
+        withEffectWrapper(sym(0)) {
+          super.emitNode(sym(0), rhs.asInstanceOf[Def[Any]])
+        }
+        return
       case Reify(s, u, effects) =>
         //controlDeps = effects
-        super.emitNode(sym(0), rhs.asInstanceOf[Def[Any]]); return
+        withEffectWrapper(sym(0)) {
+          super.emitNode(sym(0), rhs.asInstanceOf[Def[Any]])
+        } 
+        return
       case NewVar(x) => resultIsVar = true // if sym is a NewVar, we must mangle the result type
       case e: DeliteOpExternal[_] => external = true
       case _ => // continue and attempt to generate kernel
@@ -231,19 +243,27 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
       sys.error(msg)
     }
 
-    val outputs = sym
-    
-    
+    val outputs = sym      
     val inputs = deliteInputs
 
-    // effectful operations inside kernel
+    // visible kernel effects
+    val outerKernelEffects = effectWrapper match {
+      case Some(Def(Reflect(x,u,es))) => List(effectWrapper.get)
+      case Some(Def(Reify(x,u,es))) => es
+      case _ => Nil
+    }        
+    // internal kernel effects (that might write to free variables)
+    // ideally these would always be propagated up and internalKernelEffects should not be needed,
+    // but i don't think that's always happening now... so this is effectively a safety net
     val defs = rhs match {
       case op:AbstractFatLoop => op.body
       case d: Def[Any] => List(d)
-    }
-    val kernelContext = getEffectsBlock(defs)
-
-    // kernel inputs mutated by any effectful operation inside kernel
+    }        
+    val internalKernelEffects = getEffectsBlock(defs)
+            
+    val kernelContext = outerKernelEffects ++ internalKernelEffects
+        
+    // kernel inputs mutated by any visible effectful operation inside kernel
     val inMutating = (inputs flatMap { mutating(kernelContext, _) }).distinct
 
     // additional data deps: for each of my inputs, look at the kernels already generated and see if any of them

@@ -233,27 +233,11 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
 
  /**
   * Return a list of all effectful operations rooted at start.
-  */
+  */  
   def getEffectsBlock(start: Def[Any]): List[Sym[Any]] = {
-    //val g = generators(0) // skip ifGenAgree for now...
-
-    // val deps = g.blocks(start) // can optimize by adding a syms-like function that only returns blocks (but more invasive)
-//    val deps = g.syms(start)
-//    val nodes = deps flatMap { b =>
-//      g.focusBlock(b) {
-//        g.focusExactScope(b) { _.flatMap { e =>
-//          val eff = e.sym match {
-//            case Def(Reflect(x, u, effects)) => List(e.sym): List[Sym[Any]]
-//            case _ => Nil
-//          }
-//          eff ::: getEffectsBlock(e.rhs)
-//        }}
-//      }
-//    }
     val nodes = boundSyms(start) filter { case Def(Reflect(x, u, effects)) => true; case _ => false }
     nodes.distinct
   }
-
 
   def getEffectsBlock(defs: List[Def[Any]]): List[Sym[Any]] = {
     defs flatMap { getEffectsBlock(_) } distinct
