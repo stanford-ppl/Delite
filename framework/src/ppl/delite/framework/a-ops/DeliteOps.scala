@@ -1160,7 +1160,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   def emitClass(name: String)(body: => Unit)
   def emitValDef(name: String, tpe: String, init: String): Unit
   def emitVarDef(name: String, tpe: String, init: String): Unit
-  def emitAbstractFatLoopHeader(kernelName: String, actType: String): Unit
+  def emitAbstractFatLoopHeader(className: String, actType: String): Unit
   def emitAbstractFatLoopFooter(): Unit
 
   def emitCollectElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteCollectElem[_,_,_], prefixSym: String = "") {
@@ -1745,8 +1745,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     stream.println("var " + name + ": " + tpe + " = " + init)
   }
 
-  def emitAbstractFatLoopHeader(kernelName: String, actType: String) {
-    stream.println("val " + kernelName + " = new generated.scala.DeliteOpMultiLoop[" + actType + "] {"/*}*/)
+  def emitAbstractFatLoopHeader(className: String, actType: String) {
+    stream.println("val " + className + " = new generated.scala.DeliteOpMultiLoop[" + actType + "] {"/*}*/)
   }
 
   def emitAbstractFatLoopFooter() {
@@ -2124,9 +2124,14 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   }
 
   def emitClass(name: String)(body: => Unit) {
+    stream.println("#ifndef __" + name + "__")
+    stream.println("#define __" + name + "__")
+    stream.println("#include \"cppHeader.hpp\"")
     stream.println("class " + name + " {")
+    stream.println("public:")
     body
     stream.println("};")
+    stream.println("#endif")
   }
 
   def emitValDef(name: String, tpe: String, init: String) {
@@ -2141,13 +2146,31 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
     }
   }
 
-  def emitAbstractFatLoopHeader(kernelName: String, actType: String) {
-    stream.println("class DeliteOpMultiLoop_" + kernelName + "{")
+  def emitAbstractFatLoopHeader(className: String, actType: String) {
+    stream.println("#ifndef __" + kernelName + "__")
+    stream.println("#define __" + kernelName + "__")
+    stream.println("class " + "kernel_" + kernelName + "{")
     stream.println("public:")
+    emitFieldsAndConstructor()
   }
 
   def emitAbstractFatLoopFooter() {
     stream.println("};")
+    stream.println("#endif")
+  }
+
+  private def emitFieldsAndConstructor() {
+    val fields = kernelInputVals.map(i => deref(remap(i.tp)) + " " + quote(i)) ++ kernelInputVars.map(i => deref("Ref<" + remap(i.tp) + ">") + quote(i))
+    val constructorInputs = kernelInputVals.map(i => deref(remap(i.tp)) + " _" + quote(i)) ++ kernelInputVars.map(i => deref("Ref<" + remap(i.tp) + ">") + " _" + quote(i))
+
+    //print fields
+    stream.println(fields.map(_ + ";\n"))
+
+    //print constructor
+    stream.println(kernelName + "(" + constructorInputs.mkString(",") + ") {")
+    stream.println((kernelInputVals++kernelInputVars).map(i => quote(i) + " = _" + quote(i) + ";\n").mkString(""))
+    stream.println("}")
+    stream.println
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
