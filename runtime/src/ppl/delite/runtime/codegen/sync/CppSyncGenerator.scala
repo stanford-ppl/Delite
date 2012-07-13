@@ -70,9 +70,9 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     out.append(getJNIOutputType(dep.outputType(Targets.Scala,sym)))
     out.append("\"));\n")
     if (isPrimitiveType(dep.outputType(sym)))
-      out.append("%s %s = recvCPPfromJVM_%s(env%s,%s);\n".format(CppExecutableGenerator.typesMap(Targets.Cpp)(sym),getSymHost(dep,sym),sym,location,getSymCPU(sym)))
+      out.append("%s %s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(CppExecutableGenerator.typesMap(Targets.Cpp)(sym),getSymHost(dep,sym),sym,location,getSymCPU(sym)))
     else
-    out.append("%s *%s = recvCPPfromJVM_%s(env%s,%s);\n".format(CppExecutableGenerator.typesMap(Targets.Cpp)(sym),getSymHost(dep,sym),sym,location,getSymCPU(sym)))
+    out.append("%s *%s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(CppExecutableGenerator.typesMap(Targets.Cpp)(sym),getSymHost(dep,sym),sym,location,getSymCPU(sym)))
 
     //out.append("%s %s = recvCPPfromJVM_%s(env%s,%s);\n".format(to.inputType(Targets.Cpp,sym),getSymHost(dep,sym),sym,location,getSymCPU(sym)))
   }

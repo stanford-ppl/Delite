@@ -37,7 +37,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
     val out = x.mutable()
     out.trim()
     val data = densevector_raw_data(out.unsafeImmutable)
-    val (sortedArray, sortedIndices) = array_sortwithindex(data)   
+    val (sortedArray, sortedIndices) = darray_sortwithindex(data)   
     densevector_set_raw_data(out, sortedArray)        
     val outIndices = indexvector_obj_new(x.length,x.isRow)
     densevector_set_raw_data(outIndices,sortedIndices)

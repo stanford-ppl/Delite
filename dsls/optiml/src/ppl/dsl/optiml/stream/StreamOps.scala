@@ -61,7 +61,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   // implemented via method on real data structure
 
   case class StreamObjectNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int], chunkSize: Exp[Int],
-                                         func: Exp[(Int,Int) => A], isPure: Exp[Boolean]) extends Def[Stream[A]] {
+                                         func: Exp[((Int,Int)) => A], isPure: Exp[Boolean]) extends Def[Stream[A]] {
     val mA = manifest[A]
   }
   case class StreamIsPure[A:Manifest](x: Exp[Stream[A]]) extends Def[Boolean]
@@ -129,9 +129,9 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   // object interface
 
   def stream_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int], func: (Rep[Int],Rep[Int]) => Rep[A])(implicit ctx: SourceContext) = {
-    val y = doLambda2(func)
+    val y = fun(func)
     val isPure = y match {
-      case Def(Lambda2(a,b,c,Block(Def(Reify(d,u,es))))) => false
+      case Def(Lambda(a,b,Block(Def(Reify(d,u,es))))) => false
       case _ => true
     }
     // Streams are only mutable from an implementation standpoint (they hold underlying state)
@@ -217,9 +217,9 @@ trait StreamOpsExpOpt extends StreamOpsExp {
     case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, func, isPure)/*,_,_)*/) => chunkSize
   }
 
-  def stream_stfunc[A:Manifest](x: Exp[Stream[A]]) = x match {
-    case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, Def(Lambda2(stfunc,_,_,_)), Const(true))/*,_,_)*/) => stfunc
-  }
+  // def stream_stfunc[A:Manifest](x: Exp[Stream[A]]) = x match {
+  //   case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, Def(Lambda2(stfunc,_,_,_)), Const(true))/*,_,_)*/) => stfunc
+  // }
     
 /*
   case class StreamRowFusable[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends DeliteOpLoop[StreamRow[A]] {
@@ -249,7 +249,8 @@ trait StreamOpsExpOpt extends StreamOpsExp {
   //def updateViewWithArray[A:Manifest](a: Exp[Array[A]], v: Exp[StreamRow[A]]): Exp[StreamRow[A]] = { vectorview_update_impl(v, a); v }
   
   abstract case class StreamChunkRowFusable[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends DeliteOpLoop[StreamRow[A]]
-
+  
+  /*
   override def stream_init_and_chunk_row[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]): Exp[StreamRow[A]] = st match {
 
     case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, Def(Lambda2(stfunc,_,_,_)), Const(true))/*,_,_)*/) =>
@@ -285,6 +286,7 @@ trait StreamOpsExpOpt extends StreamOpsExp {
       
     case _ => super.stream_init_and_chunk_row(st,row,offset)
   }
+  */
   
 }
 

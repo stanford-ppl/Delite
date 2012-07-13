@@ -26,6 +26,7 @@ object Config {
   var cacheSyms = getProperty("delite.cache.syms","false") != "false"
   var collectStencil = System.getProperty("deliszt.stencil.enabled", "false") == "true"
   var printGlobals = System.getProperty("delite.print_globals.enabled", "false") == "true"  
+  val optimize = getProperty("delite.optimize", "0").toInt
 
   //Print generationFailedException info
   val dumpException: Boolean = getProperty("delite.dump.exception", "false") != "false"

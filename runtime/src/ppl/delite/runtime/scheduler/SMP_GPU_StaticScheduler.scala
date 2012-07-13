@@ -102,7 +102,7 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with GPULoopCostMode
   
   private def splitGPU(op: DeliteOP, schedule: PartialSchedule) {
     op.scheduledResource = gpu // TODO: Check if this is okay (Need to set this because MultiLoop GPU generator needs to know the resource ID of this op)
-    val chunk = OpHelper.split(op, 1, "")(0)
+    val chunk = OpHelper.split(op, 1, "", OpHelper.scheduledTarget(op))(0)
     scheduleOn(chunk, schedule, gpu)
   }
 

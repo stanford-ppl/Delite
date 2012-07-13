@@ -52,7 +52,7 @@ trait OptiLALift extends LiftVariables with LiftEquals with LiftString with Lift
 }
 
 trait OptiLAScalaOpsPkg extends Base
-  with Equal with IfThenElse with Variables with While with Functions
+  with Equal with IfThenElse with Variables with While with TupledFunctions
   with ImplicitOps with OrderingOps with StringOps
   with BooleanOps with PrimitiveOps with MiscOps with TupleOps
   with CastingOps with ObjectOps with IOOps

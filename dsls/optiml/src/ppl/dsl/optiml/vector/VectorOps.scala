@@ -5,6 +5,7 @@ import java.io.{PrintWriter}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.datastructures.DeliteArray
 import scala.reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
@@ -121,7 +122,7 @@ trait VectorOps extends ppl.dsl.optila.vector.VectorOps {
   
   // internal   
   // this is here and not in ArrayOps because it is not a typical member of Scala's array
-  def array_sortwithindex[A:Manifest](x: Rep[Array[A]])(implicit ctx: SourceContext): (Rep[Array[A]], Rep[Array[Int]])
+  def darray_sortwithindex[A:Manifest](x: Rep[DeliteArray[A]])(implicit ctx: SourceContext): (Rep[DeliteArray[A]], Rep[DeliteArray[Int]])
 }
 
 trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps with VariablesExp with BaseFatExp {
@@ -159,7 +160,7 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
     def m = manifest[A]  
   }
   
-  case class ArraySortWithIndex[T:Manifest](x: Exp[Array[T]]) extends Def[(Array[T],Array[Int])] {
+  case class DeliteArraySortWithIndex[T:Manifest](x: Exp[DeliteArray[T]]) extends Def[(DeliteArray[T],DeliteArray[Int])] {
     val m = manifest[T]
   }  
   
@@ -191,9 +192,9 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
   def vector_apply_indices[A:Manifest,VA:Manifest](x: Interface[Vector[A]], indices: Interface[IndexVector])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorApplyIndices[A,VA](x,indices))
   def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Interface[IndexVector], y: Exp[A])(implicit ctx: SourceContext) = reflectWrite(x.ops.elem)(VectorUpdateIndices(x,i,y))
   def vector_find_override[A:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(VectorFindOverride(x, pred))
-  def array_sortwithindex[A:Manifest](x: Rep[Array[A]])(implicit ctx: SourceContext) = t2(reflectPure(ArraySortWithIndex(x)))
+  def darray_sortwithindex[A:Manifest](x: Rep[DeliteArray[A]])(implicit ctx: SourceContext) = t2(reflectPure(DeliteArraySortWithIndex(x)))
   def densevector_sortwithindex[A:Manifest](x: Rep[DenseVector[A]])(implicit ctx: SourceContext) = t2(reflectPure(DenseVectorSortWithIndex(x)))
-
+  
   //////////////
   // mirroring
 
@@ -288,7 +289,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case a@ArraySortWithIndex(x) => 
+    case a@DeliteArraySortWithIndex(x) => 
       stream.println("val " + quote(sym) + " = {")
       stream.println("val in = " + quote(x))
       stream.println("val indices = (0 until in.length).toArray.sortWith((a,b) => in(a) < in(b))")

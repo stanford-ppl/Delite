@@ -7,9 +7,11 @@ import scala.virtualization.lms.common.{VariablesExp, Variables}
 import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase, CGenBase, OpenCLGenBase}
 import scala.virtualization.lms.internal.{GenerationFailedException}
 import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.Config
 import ppl.delite.framework.extern.lib._
+import ppl.dsl.optila.SparseTransform
 import ppl.dsl.optiml._
 
 trait OptiMLDenseMatrixOps extends ppl.dsl.optila.matrix.DenseMatrixOps {
@@ -56,7 +58,7 @@ trait MatrixOps extends ppl.dsl.optila.matrix.MatrixOps  {
   def sparsematrix_nz_row_indices[A:Manifest](x: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[IndexVectorDense]
 }
 
-trait MatrixOpsExp extends ppl.dsl.optila.matrix.MatrixOpsExp with MatrixOps with VariablesExp {
+trait MatrixOpsExp extends ppl.dsl.optila.matrix.MatrixOpsExp with MatrixOps with VariablesExp with SparseTransform {
   this: OptiMLExp  =>
  
   ////////////////////////////////
@@ -85,6 +87,17 @@ trait MatrixOpsExp extends ppl.dsl.optila.matrix.MatrixOpsExp with MatrixOps wit
 
   def sparsematrix_nz_row_indices[A:Manifest](x: Rep[SparseMatrix[A]])(implicit ctx: SourceContext) = reflectPure(SparseMatrixNZRowIndices(x))
   
+  def sparsematrix_maprowstovecnz[A:Manifest,B:Manifest](x: Exp[SparseMatrix[A]], f: Exp[Int] => Exp[B], isRow: Exp[Boolean]) = {
+    val indices = x.nzRowIndices
+    val outIndices = densevector_raw_data(indices).take(indices.length) // trim
+    val outData = outIndices.map(f)     
+    val out = SparseVector[B](x.numRows, isRow)
+    sparsevector_set_raw_indices(out, outIndices.unsafeImmutable)
+    sparsevector_set_raw_data(out, outData)
+    sparsevector_set_nnz(out, outData.length)
+    out.unsafeImmutable          
+  }
+  
   //////////////
   // mirroring
 
@@ -92,12 +105,48 @@ trait MatrixOpsExp extends ppl.dsl.optila.matrix.MatrixOpsExp with MatrixOps wit
     case e@MatrixApplyRowIndices(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixApplyRowIndices(f(x),f(y))(e.mA,e.mB,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])  
     case e@MatrixApplyColIndices(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixApplyColIndices(f(x),f(y))(e.mA,e.mB,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])      
     case e@MatrixApplyBlockIndices(x,r,c) => reflectPure(new { override val original = Some(f,e) } with MatrixApplyBlockIndices(f(x),f(r),f(c))(e.mA,e.mB,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])        
+    case e@SparseMatrixNZRowIndices(x) => reflectPure(new { override val original = Some(f,e) } with SparseMatrixNZRowIndices(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])        
     case Reflect(e@MatrixApplyRowIndices(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixApplyRowIndices(f(x),f(y))(e.mA,e.mB,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case Reflect(e@MatrixApplyColIndices(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixApplyColIndices(f(x),f(y))(e.mA,e.mB,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case Reflect(e@MatrixApplyBlockIndices(x,r,c), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixApplyBlockIndices(f(x),f(r),f(c))(e.mA,e.mB,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))        
+    case Reflect(e@SparseMatrixNZRowIndices(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixNZRowIndices(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))        
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 
+  //////////////
+  // transforms
+  
+  def specializeSparseMapRows[A:Manifest,B:Manifest](s: Sym[Any], e: MatrixMapRowsToVec[A,B,_], x: Exp[SparseMatrix[A]], rowFunc: Interface[Vector[A]] => Exp[B], isRow: Exp[Boolean]): Option[Exp[Any]] = {
+    val default = ZeroVector[A](x.numRows, true) 
+    val test = reifyEffects(rowFunc(default))
+    val repr = e.body.asInstanceOf[DeliteCollectElem[B,_,_]].func
+    if (test.res == defaultValue[B]) {  
+      val t = deviceIndependentLowering
+      Some(s.atPhase(t) {                        
+        // TODO: repr still slices the input x by non-zero row (still operates on the sparse structure)
+        // any way to operate only on the dense csr arrays? (pretty tricky, since rowFunc is defined on Interface[Vector[A]]))
+        sparsematrix_maprowstovecnz(t(x), { a => transformBlockWithBound(t, repr, scala.List(e.fin -> a)) }, t(isRow))
+      })
+    }        
+    else {
+      warn("performance: mapRows function " + repr + " operates on zero values of sparse object " + findDefinition(x.asInstanceOf[Sym[Any]]).get.toString) // TODO: context for v
+      None
+    }          
+  }
+  
+  // hacks for manifest
+  // def isSparseMatAny[A:Manifest](x: Exp[Any]) = isSparseMat(x.asInstanceOf[Exp[DeliteCollection[A]]])
+  // def asSparseMatAny[A:Manifest](x: Exp[Any]) = asSparseMat(x.asInstanceOf[Exp[DeliteCollection[A]]])
+  
+  override def onCreate[A:Manifest](s: Sym[A], d: Def[A]) = d match {    
+    case e@MatrixMapRowsToVec(x,rf,isrow) if (Config.optimize > 0 && isSparseMat(x.ops.elem.asInstanceOf[Exp[DeliteCollection[Any]]])) =>
+      specializeSparseMapRows(s, e, asSparseMat(x.ops.elem.asInstanceOf[Exp[DeliteCollection[Any]]]), rf, isrow)(e.mA,e.mB).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
+    case Reflect(e@MatrixMapRowsToVec(x,rf,isrow), u, es) if (Config.optimize > 0 && isSparseMat(x.ops.elem.asInstanceOf[Exp[DeliteCollection[Any]]])) =>
+      reflectSpecialized(specializeSparseMapRows(s, e, asSparseMat(x.ops.elem.asInstanceOf[Exp[DeliteCollection[Any]]]), rf, isrow)(e.mA,e.mB), u, es)(super.onCreate(s,d))    
+      
+    case _ => super.onCreate(s,d)
+  }
+  
   
 }
 

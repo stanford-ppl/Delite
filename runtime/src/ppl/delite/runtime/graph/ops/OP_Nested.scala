@@ -37,8 +37,8 @@ abstract class OP_Nested extends DeliteOP {
     }
     scheduledResource = resource
 
-    private[graph] val outputTypesMap = Targets.unitTypes(id)
-    private[graph] val inputTypesMap = Map[Targets.Value,Map[String,String]]()
+    private[graph] var outputTypesMap = Targets.unitTypes(id)
+    private[graph] var inputTypesMap = Map[Targets.Value,Map[String,String]]()
     def task = null
     def isDataParallel = false
   }

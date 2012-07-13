@@ -57,7 +57,7 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
 
   protected def writeFunctionCall(op: DeliteOP) {
     def returnsResult = op.outputType(op.getOutputs.head) == op.outputType
-    def resultName = if (returnsResult) getSym(op, op.getOutputs.head) else "op_" + getSym(op, op.id)
+    def resultName = if (returnsResult) getSym(op, op.getOutputs.head) else getOpSym(op)
 
     if (op.task == null) return //dummy op
     if (Config.profile && !op.isInstanceOf[OP_MultiLoop])

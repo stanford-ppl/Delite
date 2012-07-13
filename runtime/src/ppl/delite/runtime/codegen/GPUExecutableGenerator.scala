@@ -132,7 +132,7 @@ trait GPUExecutableGenerator {
     case "Short" => "short"
     case "Char" => "char"
     case "Byte" => "char"
-    case r if r.startsWith("generated.scala.Ref[") => getCPrimitiveType(r.slice(20,r.length-1))
+    //case r if r.startsWith("generated.scala.Ref[") => getCPrimitiveType(r.slice(20,r.length-1))
     case other => error(other + " is not a primitive type")
   }
 
@@ -146,7 +146,7 @@ trait GPUExecutableGenerator {
     case "Short" => true
     case "Char" => true
     case "Byte" => true
-    case r if r.startsWith("generated.scala.Ref[") => isPrimitiveType(r.slice(20,r.length-1))
+    //case r if r.startsWith("generated.scala.Ref[") => isPrimitiveType(r.slice(20,r.length-1))
     case _ => false
   }
 

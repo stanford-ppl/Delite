@@ -105,9 +105,7 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     out.append("PerformanceTimer.stopChunked(\""+master.id+"\", "+chunkIdx+")\n")
   }
 
-  protected def kernelName() = {
-    "MultiLoop_SMP_Array_" + master.id + "_Chunk_" + chunkIdx
-  }
+  protected def kernelName = "MultiLoop_" + master.id + "_Chunk_" + chunkIdx
 
 }
 
@@ -148,7 +146,7 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
       out.append(input.outputType(name))
     }
     out.append(") = new ")
-    out.append(kernelName)
+    out.append(className)
     out.append("(")
     for (i <- 0 until inIdx) {
       if (i > 0) out.append(", ")
@@ -160,7 +158,7 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
 
   protected def writeClass() {
     out.append("final class ")
-    out.append(kernelName)
+    out.append(className)
     out.append("(")
     var inIdx = 0
     var first = true
@@ -224,8 +222,8 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
     out.append(" = false }\n")
   }
 
-  protected def kernelName = {
-    "MultiLoop_SMP_Array_Header_" + op.id
-  }
+  protected def className = "MultiLoopHeader_" + op.id
+
+  protected def kernelName = className
 
 }

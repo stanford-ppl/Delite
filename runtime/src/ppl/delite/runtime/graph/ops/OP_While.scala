@@ -8,7 +8,7 @@ import ppl.delite.runtime.graph.targets.Targets
  */
 
 class OP_While(val id: String,
-               val inputTypesMap: Map[Targets.Value, Map[String,String]],
+               var inputTypesMap: Map[Targets.Value, Map[String,String]],
                val predicateGraph: DeliteTaskGraph, val predicateValue: String,
                val bodyGraph: DeliteTaskGraph, val bodyValue: String,
                outputSymbol: String = null)
@@ -16,7 +16,7 @@ class OP_While(val id: String,
 
   def nestedGraphs = Seq(predicateGraph, bodyGraph)
 
-  private[graph] val outputTypesMap = if (outputSymbol == null) Targets.unitTypes(id) else Targets.unitTypes(outputSymbol)
+  private[graph] var outputTypesMap = if (outputSymbol == null) Targets.unitTypes(id) else Targets.unitTypes(outputSymbol)
 
   /**
    * creates a While chunk for each requested resource and destroys the original

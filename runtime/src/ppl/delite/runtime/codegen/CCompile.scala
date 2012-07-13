@@ -26,7 +26,6 @@ trait CCompile extends CodeCache {
   val binCacheHome = cacheHome + "bin" + sep + "runtime" + sep
 
   private val headerBuffer = new ArrayBuffer[(String, String)]
-  private val kernelsList = new ArrayBuffer[String]
 
   def headers = headerBuffer.map(_._2)
 
@@ -35,10 +34,6 @@ trait CCompile extends CodeCache {
   def addHeader(source: String, name: String) {
     if (!headerBuffer.contains((source, name+".h")))
       headerBuffer += Pair(source, name+".h")
-  }
-
-  def addKernelsList(kernelName: String) {
-    kernelsList += kernelName
   }
 
   protected def loadConfig(f: String): CompilerConfig = {
@@ -60,12 +55,13 @@ trait CCompile extends CodeCache {
   def compile() {
     if (sourceBuffer.length == 0) return
     cacheRuntimeSources((sourceBuffer ++ headerBuffer).toArray)
-    
+    val kernelsList = Directory(sourceCacheHome + "kernels").deepFiles.withFilter(_.extension == ext).map(_.name)
+
     if (modules.exists(_.needsCompile)) {
       val includes = modules.map(m => config.headerPrefix + sourceCacheHome + m.name).toArray
       val libs = Directory(deliteLibs).files.withFilter(f => f.extension == OS.libExt).map(_.path).toArray
       val paths = includes ++ config.headerDir ++ Array(config.headerPrefix + "runtime" + sep + target) ++ config.libs ++ libs
-      val sources = (sourceBuffer.map(s => sourceCacheHome + "runtime" + sep + s._2) ++ kernelsList.map(k => sourceCacheHome + "kernels" + sep + k + ".cpp") ++ List(sourceCacheHome + "kernels" + sep + "helperFuncs.cpp")).toArray
+      val sources = (sourceBuffer.map(s => sourceCacheHome + "runtime" + sep + s._2) ++ kernelsList.map(k => sourceCacheHome + "kernels" + sep + k)).toArray
       val dest = binCacheHome + target + "Host." + OS.libExt
 
       compile(dest, sources, paths)
@@ -78,7 +74,6 @@ trait CCompile extends CodeCache {
     Path(destination).parent.createDirectory()
     val output = Array(outputSwitch, destination)
     val args = Array(config.compiler) ++ paths ++ compileFlags ++ output ++ sources
-    
     val process = Runtime.getRuntime.exec(args)
     process.waitFor
     checkError(process, args)

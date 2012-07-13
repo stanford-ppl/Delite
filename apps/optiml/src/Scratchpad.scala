@@ -4,6 +4,52 @@ object ScratchpadRunner extends OptiMLApplicationRunner with Scratchpad
 trait Scratchpad extends OptiMLApplication { 
   def main() = {
     
+    // can be representation transparent using new Struct inheritance support?
+    // ratings: Rep[Matrix[Int]], sims: Rep[Matrix[Double]], check tags on dispatch?
+    // abstract interface (Ops) forwards to a dispatch method in OpsExp?
+    def preferences(user: Rep[Int], ratings: Rep[DenseMatrix[Int]], sims: Rep[SparseMatrix[Double]]) = {
+      sims.mapRowsToVector { testProfile => // each row is a unique profile
+        val num = sum(0, ratings.numRows) { i => testProfile(ratings(i,1))*ratings(i,2) }
+        val den = sum(0, ratings.numRows) { i => abs(testProfile(ratings(i,1))) }
+        num/(den+1)
+      }
+    }
+    
+    
+    val simsB = SparseMatrix[Double](10000,10000)
+    /*
+    simsB(100,100) = 75
+    simsB(500,500) = 150
+    val sims = simsB.finish
+    */
+    
+    var i = 0
+    while (i < simsB.numRows) {
+      if (random[Double] < .05) {
+        var j = 0
+        while (j < simsB.numCols) {
+          if (random[Double] < .05) {
+            simsB(i,j) = random[Double]*1000
+          }
+          j += 1
+        }
+     }
+     i += 1
+    }
+    val sims = simsB.finish   
+    println("sims nnz: " + sims.nnz) 
+    
+    val ratingsB = DenseMatrix[Int](0,0)
+    ratingsB.insertCol(0, 0::10000) // user ids
+    ratingsB.insertCol(1, Vector.rand(10000).map(e=>(e*1000).AsInstanceOf[Int])) // rating user id
+    ratingsB.insertCol(2, Vector.rand(10000).map(e=>(e*10).AsInstanceOf[Int])) // rating, 0 to 10
+    val ratings = ratingsB.unsafeImmutable
+    
+    tic()
+    val p = preferences(0, ratings, sims)
+    toc(p)
+    println("p nnz: " + p.nnz)
+    
     // multiloop unwrapping 
     
     // -- test collect
@@ -15,14 +61,16 @@ trait Scratchpad extends OptiMLApplication {
     println(x(0))
     */
     
+    /*
     val x = (0::10) { i =>
       val y = (0::2) { x => 
-        // println("blah") // should preclude GPU gen
+        println("blah") // should preclude GPU gen
         x*i         
       }
       y(1)
     }
     println(x(2))
+    */
     
     // -- test foreach
     /*

@@ -1,5 +1,6 @@
 package ppl.delite.runtime.codegen
 
+import kernels.cpp.CppMultiLoopHeaderGenerator
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.scheduler.{OpList, PartialSchedule}
 import ppl.delite.runtime.Config
@@ -21,6 +22,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     out.append("#include <jni.h>\n") //jni
     out.append("#include \"cppSyncObjects.h\"\n")
     out.append("#include \"cppHeader.hpp\"\n")
+    out.append("#include \""+CppMultiLoopHeaderGenerator.headerFile+".h\"\n")
     out.append("extern JNIEnv* env" + location + ";\n")
   }
 
@@ -80,22 +82,26 @@ trait CppExecutableGenerator extends ExecutableGenerator {
 
   protected def writeFunctionCall(op: DeliteOP) {
     def returnsResult = op.outputType(op.getOutputs.head) == op.outputType
-    def resultName = if (returnsResult) getSym(op, op.getOutputs.head) else "op_" + getSym(op, op.id)
+    def resultName = if (returnsResult) getSymHost(op, op.getOutputs.head) else getOpSym(op)
 
     if (op.task == null) return //dummy op
     if (op.outputType != "Unit") {
       out.append(op.outputType(Targets.Cpp))
       out.append(' ')
-      if (!isPrimitiveType(op.outputType)) out.append(" *")
-      out.append(getSymHost(op,op.id))
+      if (!isPrimitiveType(op.outputType)) out.append('*')
+      out.append(resultName)
       out.append(" = ")
     }
     out.append(op.task) //kernel name
-    out.append('(')
-    out.append(op.getInputs.map(i=>getSymHost(i._1,i._2)).mkString(","))
-    out.append(");\n")
-    if (!op.isInstanceOf[OP_Nested])
-      CppCompile.addKernelsList(op.id)
+    out.append(op.getInputs.map(i=>getSymHost(i._1,i._2)).mkString("(",",",");\n"))
+
+    if (!returnsResult) {
+      for (name <- op.getOutputs) {
+        out.append(op.outputType(Targets.Cpp, name))
+        if (!isPrimitiveType(op.outputType(name))) out.append('*')
+        out.append(" " + getSymHost(op,name) + " = " + resultName + "->" + name + ";\n")
+      }
+    }
   }
 
   protected def getSymCPU(name: String): String = {
@@ -110,20 +116,8 @@ trait CppExecutableGenerator extends ExecutableGenerator {
 
   protected def writeSyncObject() {  }
 
+  protected def isPrimitiveType(scalaType: String) = CppExecutableGenerator.isPrimitiveType(scalaType)
 
-  protected def isPrimitiveType(scalaType: String): Boolean = scalaType match {
-    case "Unit" => true
-    case "Int" => true
-    case "Long" => true
-    case "Float" => true
-    case "Double" => true
-    case "Boolean" => true
-    case "Short" => true
-    case "Char" => true
-    case "Byte" => true
-    //case r if r.startsWith("generated.scala.Ref[") => isPrimitiveType(r.slice(20,r.length-1))
-    case _ => false
-  }
 }
 
 class CppMainExecutableGenerator(val location: Int, val kernelPath: String)
@@ -149,8 +143,10 @@ class CppMainExecutableGenerator(val location: Int, val kernelPath: String)
 object CppExecutableGenerator {
 
   val syncObjects = ArrayBuffer[String]()
-  syncObjects.append("#include <pthread.h>\n")
-  syncObjects.append("#include \"cppHeader.hpp\"\n")
+  syncObjects += "#include <pthread.h>\n"
+  syncObjects += "#include \"cppHeader.hpp\"\n"
+  syncObjects += "#include \""+CppMultiLoopHeaderGenerator.headerFile+".h\"\n"
+
 
   var typesMap = Map[Targets.Value, Map[String,String]]()
 
@@ -177,6 +173,21 @@ object CppExecutableGenerator {
     }
     // Register header file for the Cpp sync objects
     CppCompile.addHeader(syncObjects.mkString(""),"cppSyncObjects")
+    CppMultiLoopHeaderGenerator.createHeaderFile()
+  }
+
+  def isPrimitiveType(scalaType: String): Boolean = scalaType match {
+    case "Unit" => true
+    case "Int" => true
+    case "Long" => true
+    case "Float" => true
+    case "Double" => true
+    case "Boolean" => true
+    case "Short" => true
+    case "Char" => true
+    case "Byte" => true
+    //case r if r.startsWith("generated.scala.Ref[") => isPrimitiveType(r.slice(20,r.length-1))
+    case _ => false
   }
 
 }

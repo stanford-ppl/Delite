@@ -162,16 +162,17 @@ trait MultiLoop_SMP_Array_Header_Generator {
 
     //add header for compilation
     val src = out.toString
-    addSource(src, kernelName)
+    addSource(src, className)
 
     //return header OP
-    op.header(kernelName, graph)
+    op.header(kernelName, className, graph)
   }
 
   protected def writeHeader()
   protected def writeFooter()
   protected def writeSync(key: String)
   protected def kernelName: String
+  protected def className: String
   protected def addSource(source: String, name: String)
 
 }

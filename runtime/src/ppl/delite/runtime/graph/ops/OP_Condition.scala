@@ -7,8 +7,8 @@ import ppl.delite.runtime.graph.targets.Targets
  *
  */
 
-class OP_Condition(val id: String, private[graph] val outputTypesMap: Map[Targets.Value, Map[String,String]],
-                   private[graph] val inputTypesMap: Map[Targets.Value, Map[String,String]],
+class OP_Condition(val id: String, private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]],
+                   private[graph] var inputTypesMap: Map[Targets.Value, Map[String,String]],
                    val predicateGraph: DeliteTaskGraph, val predicateValue: String,
                    val thenGraph: DeliteTaskGraph, val thenValue: String,
                    val elseGraph: DeliteTaskGraph, val elseValue: String, val isReturner: Boolean)

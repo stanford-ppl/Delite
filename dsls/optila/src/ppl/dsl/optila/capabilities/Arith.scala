@@ -464,10 +464,16 @@ trait ArithOpsExpOpt extends ArithOpsExp {
       case `mL` => n.longValue().asInstanceOf[T]
     }
   }
-  
+
+  override def arith_abs[T:Manifest:Numeric](lhs: Exp[T])(implicit ctx: SourceContext): Exp[T] = lhs match {
+    case Const(x) => 
+      // weird java class cast exception inside numeric while unboxing java.lang.Integer              
+      val a = if (x.isInstanceOf[java.lang.Number]) unbox(x.asInstanceOf[java.lang.Number]) else x
+      unit(implicitly[Numeric[T]].abs(a))
+    case _ => super.arith_abs(lhs)
+  }
   override def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T])(implicit ctx: SourceContext) : Exp[T] = (lhs,rhs) match {
     case (Const(x), Const(y)) => 
-      // weird java class cast exception inside numeric while unboxing java.lang.Integer          
       val a = if (x.isInstanceOf[java.lang.Number]) unbox(x.asInstanceOf[java.lang.Number]) else x
       val b = if (y.isInstanceOf[java.lang.Number]) unbox(y.asInstanceOf[java.lang.Number]) else y    
       unit(implicitly[Numeric[T]].plus(a,b))
@@ -497,6 +503,11 @@ trait ArithOpsExpOpt extends ArithOpsExp {
 //    case (y, Const(1 | 1.0 | 1.0f)) => y
     case _ => super.arith_times(lhs, rhs)
   }
+  
+  override def arith_fractional_divide[T:Manifest:Fractional](lhs: Exp[T], rhs: Exp[T])(implicit ctx: SourceContext) : Exp[T] = (lhs,rhs) match {
+    case (Const(0 | 0.0 | 0.0f | -0.0 | -0.0f), _) => lhs  // TODO: shouldn't match on 0 / 0 ?
+    case _ => super.arith_fractional_divide(lhs, rhs)
+  }  
 }
 
 

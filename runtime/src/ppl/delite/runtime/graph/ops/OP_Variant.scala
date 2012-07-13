@@ -12,7 +12,7 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
  * Stanford University
  */
 
-class OP_Variant(val id: String, private[graph] val outputTypesMap: Map[Targets.Value,Map[String,String]], private[graph] val inputTypesMap: Map[Targets.Value,Map[String,String]], superOp: DeliteOP, val variantGraph: DeliteTaskGraph)
+class OP_Variant(val id: String, private[graph] var outputTypesMap: Map[Targets.Value,Map[String,String]], private[graph] var inputTypesMap: Map[Targets.Value,Map[String,String]], superOp: DeliteOP, val variantGraph: DeliteTaskGraph)
   extends OP_Nested {
 
   def returner(indices: Seq[Int]) = {

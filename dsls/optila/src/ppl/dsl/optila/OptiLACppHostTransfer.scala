@@ -116,7 +116,7 @@ trait OptiLACppHostTransfer extends CppHostTransfer {
           case "DenseVector<bool>" | "DenseVector<char>" | "DenseVector<CHAR>" | "DenseVector<short>" | "DenseVector<int>" | "DenseVector<long>" | "DenseVector<float>" | "DenseVector<double>" |
                "DenseMatrix<bool>" | "DenseMatrix<char>" | "DenseMatrix<CHAR>" | "DenseMatrix<short>" | "DenseMatrix<int>" | "DenseMatrix<long>" | "DenseMatrix<float>" | "DenseMatrix<double>" =>
             val out = new StringBuilder
-            val signature = "jobject sendCPPtoJVM_%s(JNIEnv *env, %s *%s)".format(quote(sym),remap(sym.tp),quote(sym))
+            val signature = "jobject sendViewCPPtoJVM_%s(JNIEnv *env, %s *%s)".format(quote(sym),remap(sym.tp),quote(sym))
             out.append(signature + " {\n")
             out.append("//Cannot Implement this!")
             out.append("}\n")
@@ -139,7 +139,7 @@ trait OptiLACppHostTransfer extends CppHostTransfer {
           case "DenseVector<bool>" | "DenseVector<char>" | "DenseVector<CHAR>" | "DenseVector<short>" | "DenseVector<int>" | "DenseVector<long>" | "DenseVector<float>" | "DenseVector<double>" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
-            val signature = "%s *recvCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remap(sym.tp),quote(sym))
+            val signature = "%s *recvViewCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remap(sym.tp),quote(sym))
             out.append(signature + " {\n")
             out.append("\tjclass cls = env->GetObjectClass(obj);\n")
             out.append("\tjmethodID mid_length = env->GetMethodID(cls,\"_length\",\"()I\");\n")
@@ -156,7 +156,7 @@ trait OptiLACppHostTransfer extends CppHostTransfer {
           case "DenseMatrix<bool>" | "DenseMatrix<char>" | "DenseMatrix<CHAR>" | "DenseMatrix<short>" | "DenseMatrix<int>" | "DenseMatrix<long>" | "DenseMatrix<float>" | "DenseMatrix<double>" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
-            val signature = "%s *recvCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remap(sym.tp),quote(sym))
+            val signature = "%s *recvView	CPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remap(sym.tp),quote(sym))
             out.append(signature + " {\n")
             out.append("\tjclass cls = env->GetObjectClass(obj);\n")
             out.append("\tjmethodID mid_length = env->GetMethodID(cls,\"_numRows\",\"()I\");\n")

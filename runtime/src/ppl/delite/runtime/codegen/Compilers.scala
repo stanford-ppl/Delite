@@ -1,5 +1,6 @@
 package ppl.delite.runtime.codegen
 
+import kernels.cpp.CppMultiLoopHeaderGenerator
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.ops.Sync
@@ -38,7 +39,6 @@ object Compilers {
 
     // Hack to collect global inputTypesMap (TODO: Get rid of this)
     CppExecutableGenerator.collectInputTypesMap(graph)
-
     CppExecutableGenerator.makeExecutables(schedule.slice(Config.numThreads, Config.numThreads+Config.numCpp), graph.kernelPath)
 
     /*

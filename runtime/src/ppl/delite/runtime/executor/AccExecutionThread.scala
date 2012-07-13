@@ -37,14 +37,14 @@ class AccExecutionThread(deviceNum: Int) extends ExecutionThread {
       System.load(path)
     }
 
-    if (deviceNum < Config.numCpp + Config.numCuda) {
+    if (deviceNum > Config.numCpp && deviceNum < Config.numCpp + Config.numCuda) {
       loadGPU("cuda", CudaCompile)
     }
-    else if (deviceNum < Config.numCpp + Config.numCuda + Config.numOpenCL) {
+    else if (deviceNum > Config.numCpp + Config.numCuda) {
       loadGPU("opencl", OpenCLCompile)
     }
-    else
-      throw new RuntimeException("Cannot load unknown device ID " + deviceNum)
+    //else
+    //  throw new RuntimeException("Cannot load unknown device ID " + deviceNum)
   }
 
 }

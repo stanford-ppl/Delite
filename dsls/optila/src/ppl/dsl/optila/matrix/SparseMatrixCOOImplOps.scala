@@ -2,6 +2,7 @@ package ppl.dsl.optila.matrix
 
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
+import ppl.delite.framework.datastructures.DeliteArray
 import ppl.dsl.optila._
 
  /*
@@ -17,17 +18,65 @@ trait SparseMatrixCOOImplOps extends SparseMatrixBuildableImplOps {
   ///////////////
   // kernels
   
-  def sparsematrix_coo_to_csr_impl[A:Manifest](m: Rep[SparseMatrixBuildable[A]]): Rep[SparseMatrix[A]] = {        
+  /*
+   * Sparsematrix COO -> CSR conversion
+   */
+      
+  def sparsematrix_coo_to_csr_impl[A:Manifest](m: Rep[SparseMatrixBuildable[A]]): Rep[SparseMatrix[A]] = {            
+    if (sparsematrix_coo_ordered(m.nnz, sparsematrix_coo_raw_rowindices(m),sparsematrix_coo_raw_colindices(m)))
+      sparsematrix_coo_to_csr_ordered(m)
+    else 
+      sparsematrix_coo_to_csr_unordered(m)
+  }
+  
+  protected def sparsematrix_coo_ordered(nnz: Rep[Int], rowIndices: Rep[DeliteArray[Int]], colIndices: Rep[DeliteArray[Int]]) = {
+    var i = 0
+    var lastRow = 0
+    var lastCol = 0
+    var outOfOrder = false
+    while (i < nnz && !outOfOrder) {
+      if (rowIndices(i) < lastRow)
+        outOfOrder = true
+      if (rowIndices(i) == lastRow && colIndices(i) < lastCol)
+        outOfOrder = true
+      lastRow = rowIndices(i)
+      lastCol = colIndices(i)
+      i += 1
+    }    
+    !outOfOrder
+  }
+  
+  protected def sparsematrix_coo_to_csr_ordered[A:Manifest](m: Rep[SparseMatrixBuildable[A]]): Rep[SparseMatrix[A]] = {        
     val data = sparsematrix_coo_raw_data(m)
     val rowIndices = sparsematrix_coo_raw_rowindices(m)
     val colIndices = sparsematrix_coo_raw_colindices(m)
     
+    val dataOut = DeliteArray[A](m.nnz)
+    val colIndicesOut = DeliteArray[Int](m.nnz)
+    val rowPtrOut = DeliteArray[Int](m.numRows+1)    
+    
+    var i = 0
+    while (i < m.nnz) {      
+      darray_unsafe_update(colIndicesOut, i, colIndices(i))
+      darray_unsafe_update(dataOut, i, data(i))      
+      darray_unsafe_update(rowPtrOut, rowIndices(i)+1, rowPtrOut(rowIndices(i)+1)+1)
+      i += 1
+    }
+    
+    sparsematrix_coo_to_csr_finalize(m,dataOut,colIndicesOut,rowPtrOut)                
+  }
+
+  protected def sparsematrix_coo_to_csr_unordered[A:Manifest](m: Rep[SparseMatrixBuildable[A]]): Rep[SparseMatrix[A]] = {        
+      val data = sparsematrix_coo_raw_data(m)
+      val rowIndices = sparsematrix_coo_raw_rowindices(m)
+      val colIndices = sparsematrix_coo_raw_colindices(m)
+ 
     // build a hashmap containing the elements of the COO matrix, 
     // with tuples mapped to longs and rowIndices in the high bits so we can sort by them. 
+    // TODO: switch to using a specialized HashMap impl to avoid boxing
     val elems = HashMap[Long,A]()
     
     // remove duplicates by preferring elements further to the right in the array    
-    // can we do a faster scan to tell us if we can skip this step (i.e. there are no dups)?
     var i = 0
     while (i < m.nnz) {
       if (rowIndices(i) >= 0) {  // removed elements are represented by a negative index
@@ -36,7 +85,6 @@ trait SparseMatrixCOOImplOps extends SparseMatrixBuildableImplOps {
       }
       i += 1
     }
-
     val indices = elems.keys.toArray.sort // can we avoid the toArray?
     val dataOut = DeliteArray[A](indices.length)
     val colIndicesOut = DeliteArray[Int](indices.length)
@@ -55,15 +103,19 @@ trait SparseMatrixCOOImplOps extends SparseMatrixBuildableImplOps {
       i += 1
     }
             
+    sparsematrix_coo_to_csr_finalize(m,dataOut,colIndicesOut,rowPtrOut)
+  }
+  
+  protected def sparsematrix_coo_to_csr_finalize[A:Manifest](m: Rep[SparseMatrixBuildable[A]], dataOut: Rep[DeliteArray[A]], colIndicesOut: Rep[DeliteArray[Int]], rowPtrOut: Rep[DeliteArray[Int]]) = {
     // finalize rowPtr    
-    i = 0
+    var i = 0
     var acc = 0
     while (i < m.numRows) {
       acc += rowPtrOut(i)
       darray_unsafe_update(rowPtrOut, i, acc)
       i += 1
     }
-    darray_unsafe_update(rowPtrOut, m.numRows, indices.length)        
+    darray_unsafe_update(rowPtrOut, m.numRows, dataOut.length)        
     
     // -- debug
     // println("indices.length: " + indices.length)
@@ -81,10 +133,15 @@ trait SparseMatrixCOOImplOps extends SparseMatrixBuildableImplOps {
     sparsematrix_csr_set_raw_data(out, dataOut.unsafeImmutable)      
     sparsematrix_csr_set_raw_colindices(out, colIndicesOut.unsafeImmutable)
     sparsematrix_csr_set_raw_rowptr(out, rowPtrOut.unsafeImmutable)
-    sparsematrix_set_nnz(out, indices.length)    
-    out.unsafeImmutable
+    sparsematrix_set_nnz(out, dataOut.length)    
+    out.unsafeImmutable    
   }
   
+  
+  /**
+   * remainder of SparseMatrixBuildable interface
+   */
+   
   protected def sparsematrix_coo_find_offset[A:Manifest](m: Rep[SparseMatrixBuildable[A]], row: Rep[Int], col: Rep[Int]): Rep[Int] = {
     val rowIndices = sparsematrix_coo_raw_rowindices(m)
     val colIndices = sparsematrix_coo_raw_colindices(m)

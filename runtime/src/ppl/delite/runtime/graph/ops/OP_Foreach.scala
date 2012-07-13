@@ -12,7 +12,7 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
  * Stanford University
  */
 
-class OP_Foreach(val id: String, func: String, private[graph] val outputTypesMap: Map[Targets.Value,Map[String,String]], private[graph] val inputTypesMap: Map[Targets.Value,Map[String,String]]) extends OP_Executable {
+class OP_Foreach(val id: String, func: String, private[graph] var outputTypesMap: Map[Targets.Value,Map[String,String]], private[graph] var inputTypesMap: Map[Targets.Value,Map[String,String]]) extends OP_Executable {
 
   final def isDataParallel = true
 

@@ -56,6 +56,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     val rowPtr = sparsematrix_csr_raw_rowptr(x)
     var i = 0
     var lastRowOff = 0
+    // if (rowPtr(0) != 0) fatal("sparsematrix_csr_nz_row_indices: rowPtr(0) should always be 0")
     while (i < rowPtr.length - 1) {
       val rowOff = rowPtr(i)
       if (rowOff != lastRowOff) {

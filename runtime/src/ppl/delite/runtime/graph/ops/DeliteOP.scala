@@ -19,8 +19,8 @@ abstract class DeliteOP {
    */
   def task : String
 
-  private[graph] val outputTypesMap: Map[Targets.Value, Map[String,String]]
-  private[graph] val inputTypesMap: Map[Targets.Value, Map[String,String]]
+  private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]]
+  private[graph] var inputTypesMap: Map[Targets.Value, Map[String,String]]
   def getOutputTypesMap = outputTypesMap
   def getInputTypesMap = inputTypesMap
 
@@ -29,6 +29,7 @@ abstract class DeliteOP {
   def outputType(symbol: String) = outputTypesMap(Targets.Scala)(symbol)
   def outputType = outputTypesMap(Targets.Scala)("functionReturn")
   def inputType(target: Targets.Value, symbol: String): String = inputTypesMap(target)(symbol)
+  def inputType(symbol: String) = inputTypesMap(Targets.Scala)(symbol)
 
   def supportsTarget(target: Targets.Value) : Boolean = outputTypesMap contains target
 

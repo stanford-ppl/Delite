@@ -9,6 +9,7 @@ import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatC
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.datastructures.DeliteArray
 import ppl.delite.framework.Util._
 import ppl.dsl.optila._
 
@@ -146,8 +147,8 @@ trait DenseVectorOps extends Variables {
 trait DenseVectorCompilerOps extends DenseVectorOps {
   this: OptiLACompiler =>
   
-  def densevector_raw_data[A:Manifest](x: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[Array[A]]
-  def densevector_set_raw_data[A:Manifest](x: Rep[DenseVector[A]], data: Rep[Array[A]])(implicit ctx: SourceContext): Rep[Unit]
+  def densevector_raw_data[A:Manifest](x: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[DeliteArray[A]]
+  def densevector_set_raw_data[A:Manifest](x: Rep[DenseVector[A]], data: Rep[DeliteArray[A]])(implicit ctx: SourceContext): Rep[Unit]
   def densevector_set_length[A:Manifest](x: Rep[DenseVector[A]], newVal: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
   def densevector_set_isrow[A:Manifest](x: Rep[DenseVector[A]], newVal: Rep[Boolean])(implicit ctx: SourceContext): Rep[Unit]
 }
@@ -170,10 +171,10 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
   
   case class DenseVectorLength[A:Manifest](x: Exp[DenseVector[A]]) extends DefWithManifest[A,Int]
   case class DenseVectorIsRow[A:Manifest](x: Exp[DenseVector[A]]) extends DefWithManifest[A,Boolean]
-  case class DenseVectorRawData[A:Manifest](x: Exp[DenseVector[A]]) extends DefWithManifest[A,Array[A]]
+  case class DenseVectorRawData[A:Manifest](x: Exp[DenseVector[A]]) extends DefWithManifest[A,DeliteArray[A]]
   case class DenseVectorSetLength[A:Manifest](x: Exp[DenseVector[A]], newVal: Exp[Int]) extends DefWithManifest[A,Unit]
   case class DenseVectorSetIsRow[A:Manifest](x: Exp[DenseVector[A]], newVal: Exp[Boolean]) extends DefWithManifest[A,Unit]
-  case class DenseVectorSetRawData[A:Manifest](x: Exp[DenseVector[A]], newVal: Exp[Array[A]]) extends DefWithManifest[A,Unit]
+  case class DenseVectorSetRawData[A:Manifest](x: Exp[DenseVector[A]], newVal: Exp[DeliteArray[A]]) extends DefWithManifest[A,Unit]
     
   /////////////////////////////////////////////////
   // implemented via kernel embedding (sequential)
@@ -275,8 +276,8 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
   def densevector_obj_onesf(len: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectOnesF(len))
   def densevector_obj_zeros(len: Exp[Int])(implicit ctx: SourceContext) = densevector_zero_double(len,unit(true)) //reflectPure(DenseVectorObjectZeros(len))
   def densevector_obj_zerosf(len: Exp[Int])(implicit ctx: SourceContext) = densevector_zero_float(len,unit(true))//reflectPure(DenseVectorObjectZerosF(len))
-  def densevector_obj_rand(len: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectRand(len))
-  def densevector_obj_randf(len: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectRandF(len))
+  def densevector_obj_rand(len: Exp[Int])(implicit ctx: SourceContext) = reflectEffect(DenseVectorObjectRand(len))
+  def densevector_obj_randf(len: Exp[Int])(implicit ctx: SourceContext) = reflectEffect(DenseVectorObjectRandF(len))
   def densevector_obj_uniform(start: Exp[Double], step_size: Exp[Double], end: Exp[Double], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectUniform(start, step_size, end, isRow))
   def densevector_obj_flatten[A:Manifest](pieces: Exp[DenseVector[DenseVector[A]]])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectFlatten(pieces))  
 
@@ -302,7 +303,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
   // internal
   
   def densevector_raw_data[A:Manifest](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(DenseVectorRawData(x))
-  def densevector_set_raw_data[A:Manifest](x: Exp[DenseVector[A]], newVal: Exp[Array[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DenseVectorSetRawData(x, newVal))
+  def densevector_set_raw_data[A:Manifest](x: Exp[DenseVector[A]], newVal: Exp[DeliteArray[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DenseVectorSetRawData(x, newVal))
   def densevector_set_length[A:Manifest](x: Exp[DenseVector[A]], newVal: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(x)(DenseVectorSetLength(x, newVal))
   def densevector_set_isrow[A:Manifest](x: Exp[DenseVector[A]], newVal: Exp[Boolean])(implicit ctx: SourceContext) = reflectWrite(x)(DenseVectorSetIsRow(x, newVal))
   
@@ -359,7 +360,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
   
   override def dc_copy[A:Manifest](src: Exp[DeliteCollection[A]], srcPos: Exp[Int], dst: Exp[DeliteCollection[A]], dstPos: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
     if (isDenseVec(src) && isDenseVec(dst)) {
-      array_unsafe_copy(densevector_raw_data(asDenseVec(src)), srcPos, densevector_raw_data(asDenseVec(dst)), dstPos, size)
+      darray_unsafe_copy(densevector_raw_data(asDenseVec(src)), srcPos, densevector_raw_data(asDenseVec(dst)), dstPos, size)
     }
     else super.dc_copy(src,srcPos,dst,dstPos,size)
   }      

@@ -109,7 +109,7 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
   
   def densevector_update_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {
     val d = densevector_raw_data(v)
-    array_unsafe_update(d,pos,x) 
+    darray_unsafe_update(d,pos,x) 
   }
   
   def densevector_insert_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {
@@ -127,7 +127,7 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
     var i = 0
     val d = densevector_raw_data(v)
     while (i < xs.length) {
-      array_unsafe_update(d,pos+i,xs(i))
+      darray_unsafe_update(d,pos+i,xs(i))
       i += 1
     }
   }
@@ -135,22 +135,22 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
   def densevector_removeall_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit] = {
     //chkRange(pos, pos + len)
     val data = densevector_raw_data(v)
-    array_unsafe_copy(data, pos + len, data, pos, v.length - (pos + len))
+    darray_unsafe_copy(data, pos + len, data, pos, v.length - (pos + len))
     densevector_set_length(v, v.length - len)
   }
 
   def densevector_trim_impl[A:Manifest](v: Rep[DenseVector[A]]): Rep[Unit] = {
     val data = densevector_raw_data(v)
     if (v.length < data.length) {
-      val outData = NewArray[A](v.length)
-      array_unsafe_copy(data, 0, outData, 0, v.length)
+      val outData = DeliteArray[A](v.length)
+      darray_unsafe_copy(data, 0, outData, 0, v.length)
       densevector_set_raw_data(v, outData.unsafeImmutable)
     }
   }
   
   def densevector_clear_impl[A:Manifest](v: Rep[DenseVector[A]]): Rep[Unit] = {
     densevector_set_length(v, 0)
-    densevector_set_raw_data(v, (NewArray[A](0)).unsafeImmutable)
+    densevector_set_raw_data(v, (DeliteArray[A](0)).unsafeImmutable)
   }
 
   def densevector_mutabletrans_impl[A:Manifest](v: Rep[DenseVector[A]]): Rep[Unit] = {
@@ -160,7 +160,7 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
   protected def densevector_insertspace[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit] = {
     densevector_ensureextra(v,len)
     val data = densevector_raw_data(v)
-    array_unsafe_copy(data, pos, data, pos + len, v.length - pos)
+    darray_unsafe_copy(data, pos, data, pos + len, v.length - pos)
     densevector_set_length(v, v.length + len)
   }
 
@@ -175,8 +175,8 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
     val data = densevector_raw_data(v)
     var n = Math.max(4, data.length * 2)
     while (n < minLen) n = n*2
-    val d = NewArray[A](n)
-    array_unsafe_copy(data, 0, d, 0, v.length)
+    val d = DeliteArray[A](n)
+    darray_unsafe_copy(data, 0, d, 0, v.length)
     densevector_set_raw_data(v, d.unsafeImmutable)
   }
   

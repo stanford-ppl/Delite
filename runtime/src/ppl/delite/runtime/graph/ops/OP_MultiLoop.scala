@@ -9,7 +9,7 @@ package ppl.delite.runtime.graph.ops
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.graph.DeliteTaskGraph
 
-class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, func: String, private[graph] val outputTypesMap: Map[Targets.Value,Map[String,String]], private[graph] val inputTypesMap: Map[Targets.Value,Map[String,String]], val needsCombine: Boolean, val needsPostProcess: Boolean) extends OP_Executable {
+class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, func: String, private[graph] var outputTypesMap: Map[Targets.Value,Map[String,String]], private[graph] var inputTypesMap: Map[Targets.Value,Map[String,String]], val needsCombine: Boolean, val needsPostProcess: Boolean) extends OP_Executable {
 
   final def isDataParallel = true
 
@@ -42,8 +42,10 @@ class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, f
     r
   }
 
-  def header(kernel: String, graph: DeliteTaskGraph): OP_Single = {
-    val h = new OP_Single(id+"_h", kernel, Map(Targets.Scala->Map(id+"_h"->kernel,"functionReturn"->kernel)), inputTypesMap)
+  def header(kernel: String, outputType: String, graph: DeliteTaskGraph): OP_Single = {
+    val typesMap = Map(id+"_h"->outputType,"functionReturn"->outputType)
+    val headerTypesMap = Map(Targets.Scala->typesMap, Targets.Cpp->typesMap)
+    val h = new OP_Single(id+"_h", kernel, headerTypesMap, inputTypesMap)
     //header assumes all inputs of multiloop
     h.dependencies = dependencies
     h.inputList = inputList
@@ -52,6 +54,7 @@ class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, f
     //map consumes header, multiloop's consumers remain unchanged
     dependencies = Set(h)
     inputList = List((h,h.id))
+    inputTypesMap = headerTypesMap
     graph.registerOp(h)
     h
   }

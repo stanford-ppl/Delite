@@ -19,8 +19,8 @@ import ppl.delite.runtime.Config
 
 object OpHelper {
 
-  def expand(op: DeliteOP, numChunks: Int, graph: DeliteTaskGraph) = op match {
-    case multi: OP_MultiLoop => scheduledTarget(op) match {
+  def expand(op: DeliteOP, numChunks: Int, graph: DeliteTaskGraph, target: Targets.Value) = op match {
+    case multi: OP_MultiLoop => target match {
       case Targets.Scala => (new ScalaMultiLoopHeaderGenerator(multi,numChunks,graph)).makeHeader()
       case Targets.Cpp => (new CppMultiLoopHeaderGenerator(multi,numChunks,graph)).makeHeader()
     }
@@ -30,8 +30,8 @@ object OpHelper {
     case other => error("OP type not recognized: " + other.getClass.getSimpleName)
   }
 
-  def split(op: DeliteOP, numChunks: Int, kernelPath: String): Seq[DeliteOP] = op match {
-    case multi: OP_MultiLoop => scheduledTarget(op) match {
+  def split(op: DeliteOP, numChunks: Int, kernelPath: String, target: Targets.Value): Seq[DeliteOP] = op match {
+    case multi: OP_MultiLoop => target match {
       case Targets.Scala => ScalaMultiLoopGenerator.makeChunks(multi, numChunks, kernelPath)
       case Targets.Cpp => CppMultiLoopGenerator.makeChunks(multi, numChunks, kernelPath)
       case Targets.Cuda => assert(numChunks == 1); Seq(cuda.MultiLoop_GPU_Array_Generator.makeChunk(multi))
