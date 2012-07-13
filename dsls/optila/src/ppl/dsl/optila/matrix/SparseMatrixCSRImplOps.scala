@@ -126,7 +126,7 @@ trait SparseMatrixCSRImplOps extends SparseMatrixImplOps {
     var nnz = 0
     var i = 0
     
-    while (i < ma.numRows) {
+    while (i < ma.numRows+1) {
       // union of colIndicesA and colIndicesB at row i
       if (rowPtrA(i) != oldRowA || rowPtrB(i) != oldRowB) {
         // add to output from either A or B, maintaining sorted order
@@ -164,15 +164,17 @@ trait SparseMatrixCSRImplOps extends SparseMatrixImplOps {
             outData(nnz) = f(defaultValue[A], dataB(bIdx))                            
             bIdx += 1
           }
+          else {
+            fatal("sparsematrix_csr_zip_nz_union_impl should never reach here")
+          }
           nnz += 1
-        }
-        outRowPtr(i) = nnz                
+        }       
       }
+      outRowPtr(i) = nnz                
       oldRowA = rowPtrA(i)
       oldRowB = rowPtrB(i)
       i += 1
     }
-    outRowPtr(ma.numRows) = nnz      
     
     val out = sparsematrix_csr_new[R](ma.numRows, ma.numCols)
     sparsematrix_csr_set_raw_colindices(out, outColIndices.unsafeImmutable)
@@ -201,7 +203,7 @@ trait SparseMatrixCSRImplOps extends SparseMatrixImplOps {
     var nnz = 0
     var i = 0
     
-    while (i < ma.numRows) {
+    while (i < ma.numRows+1) {
       // intersection of colIndicesA and colIndicesB at row i
       if (rowPtrA(i) != oldRowA && rowPtrB(i) != oldRowB) {
         // add to output from A and B, maintaining sorted order
@@ -223,13 +225,12 @@ trait SparseMatrixCSRImplOps extends SparseMatrixImplOps {
             nnz += 1
           }
         }
-        outRowPtr(i) = nnz                
       }
+      outRowPtr(i) = nnz                
       oldRowA = rowPtrA(i)
       oldRowB = rowPtrB(i)
       i += 1
     }
-    outRowPtr(ma.numRows) = nnz      
     
     val out = sparsematrix_csr_new[R](ma.numRows, ma.numCols)
     sparsematrix_csr_set_raw_colindices(out, outColIndices.unsafeImmutable)

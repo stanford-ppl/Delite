@@ -49,10 +49,18 @@ trait SparseMatrixCSROpsExp extends SparseMatrixCSRCompilerOps with DeliteCollec
     extends DeliteOpSingleTask[DeliteArray[Int]](reifyEffectsHere(sparsematrix_csr_rowindices_impl(rowPtr)))
   
   case class SparseMatrixCSRZipNZUnion[A:Manifest,B:Manifest,R:Manifest](ma: Rep[SparseMatrix[A]], mb: Rep[SparseMatrix[B]], f: (Rep[A],Rep[B]) => Rep[R])
-    extends DeliteOpSingleTask[SparseMatrix[R]](reifyEffectsHere(sparsematrix_csr_zip_nz_union_impl(ma, mb, f)))
+    extends DeliteOpSingleTask[SparseMatrix[R]](reifyEffectsHere(sparsematrix_csr_zip_nz_union_impl(ma, mb, f))) {
+      val mA = manifest[A]
+      val mB = manifest[B]
+      val mR = manifest[R]
+    }
 
   case class SparseMatrixCSRZipNZIntersection[A:Manifest,B:Manifest,R:Manifest](ma: Rep[SparseMatrix[A]], mb: Rep[SparseMatrix[B]], f: (Rep[A],Rep[B]) => Rep[R])
-    extends DeliteOpSingleTask[SparseMatrix[R]](reifyEffectsHere(sparsematrix_csr_zip_nz_intersection_impl(ma, mb, f)))
+    extends DeliteOpSingleTask[SparseMatrix[R]](reifyEffectsHere(sparsematrix_csr_zip_nz_intersection_impl(ma, mb, f))) {
+      val mA = manifest[A]
+      val mB = manifest[B]
+      val mR = manifest[R]      
+    }
   
   def sparsematrix_csr_rowindices(rowPtr: Rep[DeliteArray[Int]]) = reflectPure(SparseMatrixCSRRowIndices(rowPtr))
   def sparsematrix_csr_zip_nz_union[A:Manifest,B:Manifest,R:Manifest](ma: Rep[SparseMatrix[A]], mb: Rep[SparseMatrix[B]], f: (Rep[A],Rep[B]) => Rep[R]) = reflectPure(SparseMatrixCSRZipNZUnion(ma,mb,f))
@@ -154,7 +162,10 @@ trait SparseMatrixCSROpsExp extends SparseMatrixCSRCompilerOps with DeliteCollec
     case e@SparseMatrixCSRRawData(x) => reflectPure(SparseMatrixCSRRawData(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@SparseMatrixCSRRawColIndices(x) => reflectPure(SparseMatrixCSRRawColIndices(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@SparseMatrixCSRRawRowPtr(x) => reflectPure(SparseMatrixCSRRawRowPtr(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
-
+    case e@SparseMatrixCSRRowIndices(x) => reflectPure(new { override val original = Some(f,e) } with SparseMatrixCSRRowIndices(f(x)))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@SparseMatrixCSRZipNZUnion(x,y,g) => reflectPure(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZUnion(f(x),f(y),f(g))(e.mA,e.mB,e.mR))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@SparseMatrixCSRZipNZIntersection(x,y,g) => reflectPure(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZIntersection(f(x),f(y),f(g))(e.mA,e.mB,e.mR))(mtype(manifest[A]),implicitly[SourceContext])
+    
     // reflected
     case Reflect(e@SparseMatrixCSRNew(x,y), u, es) => reflectMirrored(Reflect(SparseMatrixCSRNew(f(x),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case Reflect(e@SparseMatrixCSRRawData(x), u, es) => reflectMirrored(Reflect(SparseMatrixCSRRawData(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
@@ -163,6 +174,9 @@ trait SparseMatrixCSROpsExp extends SparseMatrixCSRCompilerOps with DeliteCollec
     case Reflect(e@SparseMatrixCSRSetRawData(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCSRSetRawData(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))       
     case Reflect(e@SparseMatrixCSRSetRawColIndices(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCSRSetRawColIndices(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))       
     case Reflect(e@SparseMatrixCSRSetRawRowPtr(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCSRSetRawRowPtr(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))       
+    case Reflect(e@SparseMatrixCSRRowIndices(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixCSRRowIndices(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SparseMatrixCSRZipNZUnion(x,y,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZUnion(f(x),f(y),f(g))(e.mA,e.mB,e.mR), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@SparseMatrixCSRZipNZIntersection(x,y,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZIntersection(f(x),f(y),f(g))(e.mA,e.mB,e.mR), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??  
   
@@ -176,21 +190,21 @@ trait SparseMatrixCSROpsExp extends SparseMatrixCSRCompilerOps with DeliteCollec
   
   override def onCreate[A:Manifest](s: Sym[A], d: Def[A]) = d match {    
     // map         
-    case e:DeliteOpMapI[_,_,_,_] if (isSparseMat(e.in)) =>
+    case e:DeliteOpMapI[_,_,_,_] if (Config.optimize > 0 && isSparseMat(e.in)) =>
       specializeSparseMap(s, e, asSparseMat(e.in), sparsematrix_mapnz_manifest(e.dmA,e.dmB))(e.dmA,e.dmB).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
-    case Reflect(e:DeliteOpMapI[_,_,_,_], u, es) if (isSparseMat(e.in)) =>
+    case Reflect(e:DeliteOpMapI[_,_,_,_], u, es) if (Config.optimize > 0 && isSparseMat(e.in)) =>
       reflectSpecialized(specializeSparseMap(s, e, asSparseMat(e.in), sparsematrix_mapnz_manifest(e.dmA,e.dmB))(e.dmA,e.dmB), u, es)(super.onCreate(s,d))
         
     // zip
-    case e:DeliteOpZipWithI[_,_,_,_,_] if (isSparseMat(e.inA) && isSparseMat(e.inB)) =>
+    case e:DeliteOpZipWithI[_,_,_,_,_] if (Config.optimize > 0 && isSparseMat(e.inA) && isSparseMat(e.inB)) =>
       specializeSparseZip(s, e, asSparseMat(e.inA), asSparseMat(e.inB), sparsematrix_zipnz_manifest(e.dmA,e.dmB,e.dmR))(e.dmA,e.dmB,e.dmR).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
-    case Reflect(e:DeliteOpZipWithI[_,_,_,_,_], u, es) if (isSparseMat(e.inA) && isSparseMat(e.inB)) =>
+    case Reflect(e:DeliteOpZipWithI[_,_,_,_,_], u, es) if (Config.optimize > 0 && isSparseMat(e.inA) && isSparseMat(e.inB)) =>
       reflectSpecialized(specializeSparseZip(s, e, asSparseMat(e.inA), asSparseMat(e.inB), sparsematrix_zipnz_manifest(e.dmA,e.dmB,e.dmR))(e.dmA,e.dmB,e.dmR), u, es)(super.onCreate(s,d))
       
     // reduce  
-    case e:DeliteOpReduce[_] if (isSparseMat(e.in)) =>
+    case e:DeliteOpReduce[_] if (Config.optimize > 0 && isSparseMat(e.in)) =>
       specializeSparseReduce(s, e, asSparseMat(e.in), sparsematrix_reducenz_manifest(e.dmA))(e.dmA).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
-    case Reflect(e:DeliteOpReduce[_], u, es) if (isSparseMat(e.in)) =>
+    case Reflect(e:DeliteOpReduce[_], u, es) if (Config.optimize > 0 && isSparseMat(e.in)) =>
       reflectSpecialized(specializeSparseReduce(s, e, asSparseMat(e.in), sparsematrix_reducenz_manifest(e.dmA))(e.dmA), u, es)(super.onCreate(s,d))
     
     // TODO: filter
