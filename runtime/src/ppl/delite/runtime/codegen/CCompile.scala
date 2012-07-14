@@ -75,6 +75,7 @@ trait CCompile extends CodeCache {
     val output = Array(outputSwitch, destination)
     val args = Array(config.compiler) ++ paths ++ compileFlags ++ output ++ sources
     val process = Runtime.getRuntime.exec(args)
+    println(args.mkString(" "))
     process.waitFor
     checkError(process, args)
   }

@@ -1496,7 +1496,6 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
               if (isPrimitiveType(sym.tp)) {
                 emitAssignment(fieldAccess("__act2",quote(sym)),fieldAccess("__act2",quote(sym)+"_zero"))
               } else {
-                assert(false) // make Clone available to C target
                 emitAssignment(fieldAccess("__act2",quote(sym)),fieldAccess("__act2",quote(sym)+"_zero.Clone")) // separate zero buffer
               }
               stream.println("if (" + quote(op.size) + " > 0) {")

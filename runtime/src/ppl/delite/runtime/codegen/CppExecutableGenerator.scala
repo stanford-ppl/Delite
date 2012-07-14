@@ -19,7 +19,9 @@ trait CppExecutableGenerator extends ExecutableGenerator {
   }
 
   protected def writeHeader() {
-    out.append("#include <jni.h>\n") //jni
+    out.append("#include <stdio.h>\n")
+    out.append("#include <stdlib.h>\n")
+    out.append("#include <jni.h>\n")
     out.append("#include \"cppSyncObjects.h\"\n")
     out.append("#include \"cppHeader.hpp\"\n")
     out.append("#include \""+CppMultiLoopHeaderGenerator.headerFile+".h\"\n")
@@ -59,12 +61,9 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     out.append("}\n")
   }
 
-  protected def writeFooter() {
-    addAccessor()
-  }
+  protected def writeFooter() { }
 
   //TODO: can/should this be factored out? need some kind of factory for each target
-  //TODO: why is multiloop codegen handled differently?
   protected def makeNestedFunction(op: DeliteOP) = op match {
     case c: OP_Condition => {
       val codegen = new CppConditionGenerator(c, location, kernelPath)
@@ -112,11 +111,9 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     "xH"+name
   }
 
-  protected def addAccessor() {  }
-
   protected def writeSyncObject() {  }
 
-  protected def isPrimitiveType(scalaType: String) = CppExecutableGenerator.isPrimitiveType(scalaType)
+  protected def isPrimitiveType(scalaType: String) = Targets.isPrimitiveType(scalaType)
 
 }
 
@@ -167,27 +164,14 @@ object CppExecutableGenerator {
   }
 
   def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
-    for (i <- 0 until schedule.numResources) {
-      new CppMainExecutableGenerator(Config.numThreads+i, kernelPath).makeExecutable(schedule(i)) // native execution plan
-      new ScalaNativeExecutableGenerator(Config.numThreads+i, kernelPath).makeExecutable          // JNI launcher scala source
+    for (sch <- schedule if sch.size > 0) {
+      val location = sch.peek.scheduledResource
+      new CppMainExecutableGenerator(location, kernelPath).makeExecutable(sch) // native execution plan
+      new ScalaNativeExecutableGenerator(location, kernelPath).makeExecutable() // JNI launcher scala source
     }
     // Register header file for the Cpp sync objects
     CppCompile.addHeader(syncObjects.mkString(""),"cppSyncObjects")
     CppMultiLoopHeaderGenerator.createHeaderFile()
-  }
-
-  def isPrimitiveType(scalaType: String): Boolean = scalaType match {
-    case "Unit" => true
-    case "Int" => true
-    case "Long" => true
-    case "Float" => true
-    case "Double" => true
-    case "Boolean" => true
-    case "Short" => true
-    case "Char" => true
-    case "Byte" => true
-    //case r if r.startsWith("generated.scala.Ref[") => isPrimitiveType(r.slice(20,r.length-1))
-    case _ => false
   }
 
 }

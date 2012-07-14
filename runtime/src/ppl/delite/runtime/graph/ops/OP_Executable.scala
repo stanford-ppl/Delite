@@ -10,5 +10,6 @@ package ppl.delite.runtime.graph.ops
  */
 
 abstract class OP_Executable extends DeliteOP {
+  override def toString = id
   def opName: String = id
 }

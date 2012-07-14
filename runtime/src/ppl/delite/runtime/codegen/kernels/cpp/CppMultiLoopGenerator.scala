@@ -139,7 +139,7 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
   }
 
   protected def kernelSignature = {
-    def ref(name: String) = if(!CppExecutableGenerator.isPrimitiveType(op.inputType(name))) "* " else " "
+    def ref(name: String) = if(!Targets.isPrimitiveType(op.inputType(name))) "* " else " "
     className + "* " + kernelName + op.getInputs.map(in => op.inputType(Targets.Cpp, in._2) + ref(in._2) + in._2).mkString("(", ", ", ")")
   }
 
@@ -165,7 +165,7 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
       if (!first) out.append(", ")
       first = false
       out.append(op.inputType(Targets.Cpp, name))
-      if (!CppExecutableGenerator.isPrimitiveType(op.inputType(name))) out.append("*")
+      if (!Targets.isPrimitiveType(op.inputType(name))) out.append("*")
       out.append(" in")
       out.append(inIdx)
       inIdx += 1

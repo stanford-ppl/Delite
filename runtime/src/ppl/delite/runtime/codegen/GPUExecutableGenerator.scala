@@ -1,246 +1,120 @@
 package ppl.delite.runtime.codegen
 
 import ppl.delite.runtime.graph.ops._
-import collection.mutable.ArrayBuffer
-import java.lang.annotation.Target
-import ppl.delite.runtime.graph.targets.{OS, OPData, Targets}
-import ppl.delite.runtime.scheduler.OpList
+import ppl.delite.runtime.graph.targets.{OPData, Targets}
 
-/**
- * Author: Kevin J. Brown
- * Date: Dec 1, 2010
- * Time: 8:18:07 PM
- *
- * Pervasive Parallelism Laboratory (PPL)
- * Stanford University
- */
+trait GPUExecutableGenerator extends CppExecutableGenerator {
 
-/**
- * Generates optimized DeliteExecutable for a CUDA host thread for a given schedule
- * This generator creates a single executable function for the GPU host
- * The generated code is C++ (and a JNI call) in order to work with CUDA efficiently
- * WARNING: The implementation used here is not efficient for hosting multiple CUDA kernel streams simultaneously
- *
- * This generator makes the following synchronization optimizations:
- * 1) It utilizes 3 CUDA streams (1 for kernels, 1 for h2d transfers, and 1 for d2h transfers), for the maximum possible communication/computation overlap
- * 2) It generates a synchronized getter (h2d transfers) for dependencies from other resources for the first use only
- *    transferred data remains in the GPU device memory for local reuse
- * 3) It generates synchronized result publications (d2h transfers) only for outputs that other resources will need to consume
- *    outputs that the scheduler has restricted to this GPU resource exist only in device memory
- * 4) All kernel launches and device memory transfers are asynchronous with ordering maintained through CUDA events
- *    This allows the host thread to run-ahead as much as possible (keep multiple streams occupied)
- *    The host thread only blocks when data must be transferred to/from other CPU threads
- */
+  protected def target: Targets.Value
 
-trait GPUExecutableGenerator {
+  protected def writeKernelCall(op: DeliteOP)
 
-  protected def addKernelCalls(schedule: OpList, location: Int, available: ArrayBuffer[(DeliteOP,String)], awaited: ArrayBuffer[DeliteOP], syncList: ArrayBuffer[DeliteOP], out: StringBuilder)(implicit aliases:AliasTable[(DeliteOP,String)])
+  protected def writeMemoryAdd(sym: String) //TODO: how do we want to handle memory management?
 
-  protected def executableName: String
-
-  protected def getSymCPU(name: String): String = {
-    "xC"+name
+  override protected def writeFunctionCall(op: DeliteOP) = op match {
+    case n: OP_Nested => writeNestedFunctionCall(op) //TODO: super.writeFunctionCall(op)?
+    case e: OP_External => writeLibraryCall(op)
+    case m: OP_MultiLoop => writeMultiKernelCall(op)
+    case _ => writeKernelCall(op)
   }
 
-  protected def getSymGPU(name: String): String = {
-    "xG"+name
-  }
-
-  protected def getScalaSym(op: DeliteOP, name: String): String = {
-    "x"+name
-  }
-
-  protected def getJNIType(scalaType: String): String = {
-    scalaType match {
-      case "Unit" => "void"
-      case "Int" => "jint"
-      case "Long" => "jlong"
-      case "Float" => "jfloat"
-      case "Double" => "jdouble"
-      case "Boolean" => "jboolean"
-      case "Short" => "jshort"
-      case "Char" => "jchar"
-      case "Byte" => "jbyte"
-      //case r if r.startsWith("generated.scala.Ref[") => getJNIType(r.slice(20,r.length-1))
-      case _ => "jobject"//all other types are objects
-    }
-  }
-
-  protected def getJNIArgType(scalaType: String): String = {
-    scalaType match {
-      case "Unit" => "Lscala/runtime/BoxedUnit;"
-      case "Int" => "I"
-      case "Long" => "J"
-      case "Float" => "F"
-      case "Double" => "D"
-      case "Boolean" => "Z"
-      case "Short" => "S"
-      case "Char" => "C"
-      case "Byte" => "B"
-      //case r if r.startsWith("generated.scala.Ref[") => getJNIArgType(r.slice(20,r.length-1))
-      case array if array.startsWith("Array[") => "[" + getJNIArgType(array.slice(6,array.length-1))
-      case _ => { //all other types are objects
-        var objectType = scalaType.replace('.','/')
-        if (objectType.indexOf('[') != -1) objectType = objectType.substring(0, objectType.indexOf('[')) //erasure
-        "L"+objectType+";" //'L' + fully qualified type + ';'
+  protected def writeOutputAllocs(op: DeliteOP) {
+    if (op.isInstanceOf[OP_Executable]) {
+      for ((data,name) <- op.getGPUMetadata(target).outputs if data.resultType!="void") {
+        out.append(op.outputType(Targets.Cuda,name) + "* " + getSymGPU(name))
+        if (op.isInstanceOf[OP_MultiLoop])
+          out.append(";\n")
+        else {
+          out.append(" = " + data.func + "(")
+          writeInputList(op, data)
+          out.append(");\n")
+          writeMemoryAdd(name)
+        }
       }
     }
   }
 
-  protected def getJNIOutputType(scalaType: String): String = {
-    scalaType match {
-      case "Unit" => "V"
-      case "Int" => "I"
-      case "Long" => "J"
-      case "Float" => "F"
-      case "Double" => "D"
-      case "Boolean" => "Z"
-      case "Short" => "S"
-      case "Char" => "C"
-      case "Byte" => "B"
-      //case r if r.startsWith("generated.scala.Ref[") => getJNIOutputType(r.slice(20,r.length-1))
-      case array if array.startsWith("Array[") => "[" + getJNIOutputType(array.slice(6,array.length-1))
-      case _ => { //all other types are objects
-        var objectType = scalaType.replace('.','/')
-        if (objectType.indexOf('[') != -1) objectType = objectType.substring(0, objectType.indexOf('[')) //erasure
-        "L"+objectType+";" //'L' + fully qualified type + ';'
+  protected def writeTempAllocs(op: DeliteOP) {
+    for ((temp,name) <- op.getGPUMetadata(target).temps) {
+      out.append(temp.resultType + "* " + getSymGPU(name) + " = " + temp.func)
+      out.append(temp.inputs.map(in => getSymGPU(in._2)).mkString("(",",",");\n"))
+      writeMemoryAdd(name)
+    }
+  }
+
+  protected def writeInputList(op: DeliteOP, data: OPData) {
+    out.append(data.inputs.map(in => getSymGPU(in._2)).mkString(","))
+  }
+
+  protected def writeInputs(op: DeliteOP, dereference: Boolean = true) {
+    def deref(in: DeliteOP, name: String) = if (!isPrimitiveType(in.outputType(name)) && dereference) "*" else ""
+    out.append(op.getInputs.map(in => deref(in._1,in._2) + getSymGPU(in._2)).mkString(","))
+  }
+
+  protected def writeTemps(op: DeliteOP, dereference: Boolean = true) {
+    val deref = if (dereference) "*" else ""
+    out.append(op.getGPUMetadata(target).temps.map(t => "," + deref + getSymGPU(t._2))).mkString("")
+  }
+
+  protected def writeMultiKernelCall(op: DeliteOP) {
+    if (op.task == null) return //dummy op
+    out.append(op.task) //kernel name
+    out.append('(')
+    var first = true
+    for ((data,name) <- (op.getGPUMetadata(target).outputs) if data.resultType!="void") {
+      if(!first) out.append(',')
+      out.append("&" + getSymGPU(name))
+      first = false
+    }
+    if (!first && (op.getInputs.length > 0 || op.getGPUMetadata(target).temps.length > 0)) out.append(",")
+    writeInputs(op, false) //then all op inputs
+    writeTemps(op, false) //then all op temporaries
+    out.append(");\n")
+  }
+
+  protected def writeLibraryCall(op: DeliteOP) {
+    if (op.task == null) return //dummy op
+    out.append(op.task) //kernel name
+    out.append('(')
+    assert(op.getOutputs.size == 1) //TODO: what does libCall support?
+    for (name <- op.getOutputs) {
+      if (op.outputType(name) != "Unit") {
+        out.append("*" + getSymGPU(name) + ",")
       }
     }
+    writeInputs(op) //then all op inputs
+    //out.append(",kernelStream") //TODO: what other libraries besides cuBlas do we use? how do we use the stream only with supported libraries?
+    out.append(");\n")
   }
 
-  protected def getJNIFuncType(scalaType: String): String = scalaType match {
-    case "Unit" => "Void"
-    case "Int" => "Int"
-    case "Long" => "Long"
-    case "Float" => "Float"
-    case "Double" => "Double"
-    case "Boolean" => "Boolean"
-    case "Short" => "Short"
-    case "Char" => "Char"
-    case "Byte" => "Byte"
-    //case r if r.startsWith("generated.scala.Ref[") => getJNIFuncType(r.slice(20,r.length-1))
-    case _ => "Object"//all other types are objects
-  }
-
-  protected def getCPrimitiveType(scalaType: String): String = scalaType match {
-    case "Unit" => "void"
-    case "Int" => "int"
-    case "Long" => "long"
-    case "Float" => "float"
-    case "Double" => "double"
-    case "Boolean" => "bool"
-    case "Short" => "short"
-    case "Char" => "char"
-    case "Byte" => "char"
-    //case r if r.startsWith("generated.scala.Ref[") => getCPrimitiveType(r.slice(20,r.length-1))
-    case other => error(other + " is not a primitive type")
-  }
-
-  protected def isPrimitiveType(scalaType: String): Boolean = scalaType match {
-    case "Unit" => true
-    case "Int" => true
-    case "Long" => true
-    case "Float" => true
-    case "Double" => true
-    case "Boolean" => true
-    case "Short" => true
-    case "Char" => true
-    case "Byte" => true
-    //case r if r.startsWith("generated.scala.Ref[") => isPrimitiveType(r.slice(20,r.length-1))
-    case _ => false
-  }
-
-  protected def writeJNIInitializer(locations: Set[Int], out: StringBuilder) {
-    for (i <- locations) {
-      out.append("jclass cls")
-      out.append(i)
-      out.append(" = env->FindClass(\"")
-      out.append(executableName)
-      out.append(i)
-      out.append("\");\n")
+  //TODO: this function provided by C++ generator? while, if, etc. entirely host constructs!
+  protected def writeNestedFunctionCall(op: DeliteOP) {
+    if (op.outputType != "Unit") {
+      out.append(op.outputType(Targets.Cuda))
+      out.append(' ')
+      // GPU nested block can only return when both condition branches are returned by GPU,
+      // meaning that the return object will be a pointer type
+      if(op.outputType != "Unit") out.append('*')
+      out.append(getSymGPU(op.getOutputs.head))
+      out.append(" = ")
     }
-    //add a reference to the singleton of scala.runtime.BoxedUnit for use everywhere required
-    out.append("jclass clsBU = env->FindClass(\"scala/runtime/BoxedUnit\");\n")
-    out.append("jobject boxedUnit = env->GetStaticObjectField(clsBU, env->GetStaticFieldID(clsBU, \"UNIT\", \"Lscala/runtime/BoxedUnit;\"));\n")
-  }
-
-  protected def writeJNIFinalizer(locations: Set[Int], out: StringBuilder) {
-    for (i <- locations) {
-      out.append("env->DeleteLocalRef(cls")
-      out.append(i)
-      out.append(");\n")
+    out.append(op.task)
+    out.append('(')
+    var first = true
+    for ((input,sym) <- op.getInputs) {
+      if (op.getGPUMetadata(target).inputs.contains(input,sym) || isPrimitiveType(input.outputType(sym))) {
+        if (!first) out.append(',')
+        first = false
+        out.append(getSymGPU(sym))
+        if ((op.getMutableInputs contains (input,sym)) && (input.getConsumers.filter(_.scheduledResource!=input.scheduledResource).nonEmpty)) {
+          out.append(',')
+          out.append(getSymCPU(sym))
+        }
+      }
     }
-    out.append("env->DeleteLocalRef(clsBU);\n")
-    out.append("env->DeleteLocalRef(boxedUnit);\n")
+    out.append(");\n")
   }
 
-  protected def emitCppHeader: String
-  protected def emitCppBody(schedule: OpList, location: Int, syncList: ArrayBuffer[DeliteOP]): String
+  protected def getSymGPU(name: String) = "xG"+name
 
 }
-
-/*
-class GPUScalaExecutableGenerator(target: Targets.Value) extends ExecutableGenerator {
-
-  protected def executableName = "Executable"
-
-  def emitScala(location: Int, syncList: ArrayBuffer[DeliteOP], kernelPath: String): String = {
-    val out = new StringBuilder
-
-    //the header
-    writeHeader(out, location, "")
-
-    //the run method
-    out.append("def run() {\n")
-    out.append("hostGPU\n")
-    out.append('}')
-    out.append('\n')
-
-    //the native method
-    out.append("@native def hostGPU : Unit\n")
-
-    //link the native code upon object creation
-    if(target == Targets.Cuda) {
-      out.append("System.load(\"\"\"")
-      out.append(CudaCompile.binCacheHome)
-      out.append("cudaHost.")
-      out.append(OS.libExt)
-      out.append("\"\"\")\n")
-    }
-    else if (target == Targets.OpenCL) {
-      out.append("System.load(\"\"\"")
-      out.append(OpenCLCompile.binCacheHome)
-      out.append("openclHost.")
-      out.append(OS.libExt)
-      out.append("\"\"\")\n")
-    }
-
-    //the sync methods/objects
-    addSync(syncList, out)
-    writeOuterSet(syncList, out) //helper set methods for JNI calls to access
-
-    //an accessor method for the object
-    addAccessor(out)
-
-    //the footer
-    out.append('}')
-    out.append('\n')
-
-    out.toString
-  }
-
-  protected def writeOuterSet(list: ArrayBuffer[DeliteOP], out: StringBuilder) {
-    for (op <- list) {
-      for (sym <- op.getOutputs) {
-        out.append("def set")
-        out.append(getSym(op, sym))
-        out.append("(result : ")
-        out.append(op.outputType(sym))
-        out.append(") = ")
-        out.append(getSync(op, sym))
-        out.append(".set(result)\n")
-      }
-    }
-  }
-}
-*/

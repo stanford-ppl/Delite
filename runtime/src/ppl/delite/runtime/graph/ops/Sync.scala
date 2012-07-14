@@ -2,7 +2,7 @@ package ppl.delite.runtime.graph.ops
 
 import collection.mutable
 import ppl.delite.runtime.graph.DeliteTaskGraph
-import ppl.delite.runtime.scheduler.PartialSchedule
+import ppl.delite.runtime.scheduler.{OpHelper, PartialSchedule}
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.targets.Targets
 
@@ -28,7 +28,7 @@ object Sync {
     val sender = SendData(sym, from, node(to.scheduledResource))
     sender match {
       case _ if (from.scheduledResource == to.scheduledResource) => null //same thread
-      case _ if (sharedMemory(from.scheduledResource, to.scheduledResource)) => sendView(sym, from, to)
+      case _ if (shouldView(sym, from, to)) => sendView(sym, from, to)
       case _ if (syncSet contains sender) => syncSet(sender).asInstanceOf[SendData] //redundant send
       case _ => addSend(sender, from)
     }
@@ -44,7 +44,7 @@ object Sync {
 
   def receive(sender: Send, to: DeliteOP) {
     sender match {
-      case null => null //same thread
+      case null =>
       case s:SendView => receiveView(s, to)
       case s:SendData =>
         val receiver = ReceiveData(s, to.scheduledResource)
@@ -80,7 +80,7 @@ object Sync {
 
   def await(sender: Send, to: DeliteOP) = {
     sender match {
-      case null => null
+      case null =>
       case s: SendData => receive(s, to)
       case s: SendView => receiveView(s, to)
       case n: Notify =>
@@ -99,7 +99,7 @@ object Sync {
   def update(sym: String, from: DeliteOP, to: DeliteOP) = {
     val updater = SendUpdate(sym, from, node(to.scheduledResource))
     updater match {
-      case _ if sharedMemory(from.scheduledResource, to.scheduledResource) => null //update handled by hardware
+      case _ if shouldView(sym, from, to) => null //update handled by hardware
       case _ if (syncSet contains updater) => syncSet(updater).asInstanceOf[SendUpdate] //multiple readers after mutation
       case _ => addSend(updater, from)
     }
@@ -109,7 +109,7 @@ object Sync {
     val updatee = ReceiveUpdate(updater, node(to.scheduledResource))
     if (updater ne null) assert(updatee.atNode == updater.toNode, "invalid update pair")
     updater match {
-      case null => null
+      case null =>
       case _ if (syncSet contains updatee) =>
       case _ => addReceive(updatee, to)
     }
@@ -137,8 +137,25 @@ object Sync {
     }
   }
 
+  def shouldView(sym: String, from: DeliteOP, to: DeliteOP) = typeIsViewable(to.inputType(sym)) && (sharedMemory(from.scheduledResource, to.scheduledResource) || canAcquire(from.scheduledResource, to.scheduledResource))
+
+  def typeIsViewable(outputType: String) = { //make a distinction between copyByValue (primitive) and copyByReference (reference) types
+    !Targets.isPrimitiveType(outputType)
+  }
+
+  def canAcquire(from: Int, to: Int) = (OpHelper.scheduledTarget(from), OpHelper.scheduledTarget(to)) match {
+    case (Targets.Scala, Targets.Cpp) => true
+    case _ => false
+  }
+
   def sharedMemory(from: Int, to: Int) = node(from) == node(to)
-  def node(resource: Int) = 0 //only 1 node for now
+
+  def node(resource: Int) = OpHelper.scheduledTarget(resource) match {
+    case Targets.Scala => 0 //only 1 Scala node
+    case Targets.Cpp => 1 //only 1 C++ node
+    case Targets.Cuda => resource //every GPU is it's own node
+    case Targets.OpenCL => resource
+  }
 
   def dataDeps(op: DeliteOP) = op.getInputs.toSet -- _graph.inputs
   def allDeps(op: DeliteOP) = op.getDependencies -- _graph.inputOps
@@ -193,13 +210,17 @@ abstract class Sync extends DeliteOP {
 
 abstract class Send extends Sync {
   val from: DeliteOP
+  scheduledResource = from.scheduledResource
 
   val receivers = new mutable.HashSet[Receive]
 }
 
 abstract class Receive extends Sync {
   var to: DeliteOP = _
-  def setReceiveOp(op: DeliteOP) { to = op }
+  def setReceiveOp(op: DeliteOP) {
+    to = op
+    scheduledResource = to.scheduledResource
+  }
 
   val sender: Send
 }

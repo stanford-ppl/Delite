@@ -4,10 +4,15 @@ import ppl.delite.runtime.graph.ops._
 import collection.mutable.{HashSet, ArrayBuffer}
 import ppl.delite.runtime.codegen.{ScalaExecutableGenerator, ExecutableGenerator}
 import ppl.delite.runtime.codegen.hosts.Hosts
+import ppl.delite.runtime.graph.targets.Targets
 
 trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
 
   private val syncList = new ArrayBuffer[Send]
+
+  override def receiveData(s: ReceiveData) {
+    writeGetter(s.sender.from, s.sender.sym)
+  }
 
   override protected def receiveView(s: ReceiveView) {
     writeGetter(s.sender.from, s.sender.sym)
@@ -15,6 +20,15 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
 
   override protected def awaitSignal(s: Await) {
     writeAwaiter(s.sender.from)
+  }
+
+  override def sendData(s: SendData) {
+    if (Targets.isPrimitiveType(s.from.outputType(s.sym))) {
+      writeSetter(s.from, s.sym)
+      syncList += s
+    }
+    else
+      sys.error(s.from.id + " send data copy for object types not yet implemented")
   }
 
   override protected def sendView(s: SendView) {

@@ -11,6 +11,10 @@ trait ScalaSyncObjectGenerator extends SyncObjectGenerator with ScalaExecutableG
   protected def addSyncObject() {
     for (sender <- sync) {
       sender match {
+        case s: SendData =>
+          writePublicGet(s, getSym(s.from, s.sym), getSync(s.from, s.sym), s.from.outputType(s.sym))
+          SyncObject(s, getSync(s.from, s.sym), s.from.outputType(s.sym))
+          writePublicSet(s, getSym(s.from, s.sym), getSync(s.from, s.sym), s.from.outputType(s.sym))
         case s: SendView =>
           writePublicGet(s, getSym(s.from, s.sym), getSync(s.from, s.sym), s.from.outputType(s.sym))
           SyncObject(s, getSync(s.from, s.sym), s.from.outputType(s.sym))

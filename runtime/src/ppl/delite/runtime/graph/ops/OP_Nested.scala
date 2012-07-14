@@ -45,6 +45,8 @@ abstract class OP_Nested extends DeliteOP {
 
   final def isDataParallel = false
 
+  override def toString = id
+
   // Refining input dependencies
   // TODO: also refine other deps
   def refineInputDeps(nested: OP_Nested, graph:DeliteTaskGraph, idx: Int) {

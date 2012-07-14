@@ -64,16 +64,18 @@ object Targets extends Enumeration {
     }
   }
 
-  /*
-  def intType(target: Value): String = {
-    target match {
-      case Scala => "Int"
-      case Cuda => "int"
-      case JNI => "jint"
-      case Cpp => "int"
-    }
+  def isPrimitiveType(scalaType: String): Boolean = scalaType match { //should include Target type in determination, but for now everyone agrees
+    case "Unit" => true
+    case "Int" => true
+    case "Long" => true
+    case "Float" => true
+    case "Double" => true
+    case "Boolean" => true
+    case "Short" => true
+    case "Char" => true
+    case "Byte" => true
+    case _ => false
   }
-  */
 
   def getHostType(target: Value): Hosts.Value = {
     target match {

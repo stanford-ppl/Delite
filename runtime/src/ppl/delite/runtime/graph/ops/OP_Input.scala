@@ -30,4 +30,6 @@ class OP_Input(op: DeliteOP) extends DeliteOP {
   def cost = 0
   def size = 0
 
+  override def toString = id
+
 }

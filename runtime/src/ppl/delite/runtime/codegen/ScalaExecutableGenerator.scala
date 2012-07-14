@@ -47,7 +47,6 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
   }
 
   //TODO: can/should this be factored out? need some kind of factory for each target
-  //TODO: why is multiloop codegen handled differently?
   protected def makeNestedFunction(op: DeliteOP) = op match {
     case c: OP_Condition => new ScalaConditionGenerator(c, location, kernelPath).makeExecutable()
     case w: OP_While => new ScalaWhileGenerator(w, location, kernelPath).makeExecutable()
@@ -123,8 +122,9 @@ class ScalaMainExecutableGenerator(val location: Int, val kernelPath: String)
 object ScalaExecutableGenerator {
 
   def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
-    for (i <- 0 until schedule.numResources) {
-      new ScalaMainExecutableGenerator(i, kernelPath).makeExecutable(schedule(i))
+    for (sch <- schedule if (sch.size > 0)) {
+      val location = sch.peek.scheduledResource
+      new ScalaMainExecutableGenerator(location, kernelPath).makeExecutable(sch)
     }
   }
 

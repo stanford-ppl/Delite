@@ -31,7 +31,7 @@ object Compilers {
 
   def compileSchedule(graph: DeliteTaskGraph): StaticSchedule = {
     //generate executable(s) for all the ops in each proc
-    //TODO: this is a poor method of separating CPU from GPU, should be encoded
+    //TODO: this is a poor method of separating CPU from GPU, should be encoded - essentially need to loop over all nodes
     val schedule = graph.schedule
     assert((Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL) == schedule.numResources)
     Sync.addSync(graph)
@@ -41,15 +41,9 @@ object Compilers {
     CppExecutableGenerator.collectInputTypesMap(graph)
     CppExecutableGenerator.makeExecutables(schedule.slice(Config.numThreads, Config.numThreads+Config.numCpp), graph.kernelPath)
 
-    /*
-    for (i <- 0 until numGPUs) {
-      if (Config.useOpenCL){
-        OpenCLMainGenerator.makeExecutable(schedule.slice(numThreads+i, numThreads+i+1), graph.kernelPath)
-      }
-      else
-        CudaMainGenerator.makeExecutable(schedule.slice(numThreads+i, numThreads+i+1), graph.kernelPath)
+    for (i <- Config.numThreads+Config.numCpp until Config.numThreads+Config.numCpp+Config.numCuda) {
+      CudaExecutableGenerator.makeExecutable(schedule.slice(i, i+1), graph.kernelPath)
     }
-    */
 
     if (Config.printSources) { //DEBUG option
       ScalaCompile.printSources()
