@@ -1168,6 +1168,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   def emitVarDef(name: String, tpe: String, init: String): Unit
   def emitAbstractFatLoopHeader(className: String, actType: String): Unit
   def emitAbstractFatLoopFooter(): Unit
+  def refNotEq: String
+  def nullRef: String
 
   def emitCollectElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteCollectElem[_,_,_], prefixSym: String = "") {
     emitValDef(elem.eV, quote(getBlockResult(elem.func)))
@@ -1588,7 +1590,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             emitValDef(elem.sV, fieldAccess("__act", quote(sym) + "_offset") + " + " + fieldAccess("__act",quote(sym) + "_size"))
             emitValDef(elem.allocVal, fieldAccess("__act", quote(sym) + "_buf"))
             emitBlock(elem.buf.allocRaw)
-            stream.println(fieldAccess("__act", quote(sym) + "_data_set(" + quote(getBlockResult(elem.buf.allocRaw)) + ")"))
+            emitMethodCall(fieldAccess("__act",quote(sym) + "_data_set"),List(quote(getBlockResult(elem.buf.allocRaw))))
             stream.println("} else {")
             emitAssignment(fieldAccess("__act",quote(sym) + "_data"), fieldAccess("__act", quote(sym) + "_buf"))
             stream.println("}")
@@ -1604,7 +1606,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         case (sym, elem: DeliteCollectElem[_,_,_]) => //FIXME: get rid of .data and adapt to new alloc style
           if (elem.par == ParBuffer) {
             // write size results from buf into data at offset
-            stream.println("if (" + fieldAccess("__act",quote(sym)+"_data") + " ne " + fieldAccess("__act",quote(sym)+"_buf") + ") {")   //TODO: Handle 'ne'
+            stream.println("if (" + fieldAccess("__act",quote(sym)+"_data") + " " + refNotEq + " " + fieldAccess("__act",quote(sym)+"_buf") + ") {")   //TODO: Handle 'ne'
             emitValDef(elem.sV, fieldAccess("__act",quote(sym)+"_size"))
             emitValDef(elem.buf.aV, fieldAccess("__act",quote(sym)+"_buf"))
             emitValDef(elem.allocVal, fieldAccess("__act",quote(sym)+"_data"))
@@ -1660,7 +1662,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
               emitFieldDecl(quote(sym) + "_conditionals", remap(Manifest.Int))
             emitMethod(quote(sym)+"_data_set", remap(Manifest.Unit), List(("xs",remap(elem.allocVal.tp)))) {
               emitAssignment(quote(sym) + "_data", "xs")
-              stream.println("if (left_act != null)")
+              stream.println("if (left_act " + refNotEq + " " + nullRef + ")")
               emitMethodCall(fieldAccess("left_act",quote(sym)+"_data_set"),List("xs")) // XX linked frame
             }
           }
@@ -1758,6 +1760,9 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
   def emitAbstractFatLoopFooter() {
     stream.println("}")
   }
+
+  def refNotEq: String = "ne"
+  def nullRef: String = "null"
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case s:DeliteOpSingleTask[_] => {
@@ -2164,6 +2169,9 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
     stream.println("};")
     stream.println("#endif")
   }
+
+  def refNotEq: String = "!="
+  def nullRef: String = "NULL"
 
   private def emitFieldsAndConstructor() {
     val fields = kernelInputVals.map(i => deref(remap(i.tp)) + " " + quote(i)) ++ kernelInputVars.map(i => deref("Ref<" + remap(i.tp) + ">") + quote(i))

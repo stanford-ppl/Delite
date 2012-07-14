@@ -475,6 +475,7 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
 
 trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenDeliteOps
   with CGenArithOps with CGenVectorOps with CGenDenseVectorOps with CGenDenseVectorViewOps with CGenMatrixOps with CGenDenseMatrixOps //with CGenMatrixRowOps
+  with CGenDeliteCollectionOps with CGenDeliteArrayOps
   with DeliteCGenAllOverrides with DeliteCppHostTransfer with OptiLACppHostTransfer
 {
   val IR: DeliteApplication with OptiLAExp

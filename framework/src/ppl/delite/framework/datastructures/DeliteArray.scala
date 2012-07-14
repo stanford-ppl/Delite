@@ -352,3 +352,44 @@ trait OpenCLGenDeliteArrayOps extends OpenCLGenEffect {
   }
 
 }
+
+trait CGenDeliteArrayOps extends CGenEffect {
+  val IR: DeliteArrayOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case a@DeliteArrayNew(n) => emitValDef(sym, "new DeliteArray<" + remap(a.mA) + ">(" + quote(n) + ")")
+    case DeliteArrayLength(da) =>
+      emitValDef(sym, quote(da) + "->length")
+    case DeliteArrayApply(da, idx) =>
+      emitValDef(sym, quote(da) + "->apply(" + quote(idx) + ")")
+    case DeliteArrayUpdate(da, idx, x) =>
+      emitValDef(sym, quote(da) + "->update(" + quote(idx) + ", " + quote(x) + ")")
+    case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
+      emitValDef(sym, quote(src) + "->copy(" + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
+    //case DeliteArrayMkString(da,x) =>
+    //  emitValDef(sym, quote(da) + ".mkString(" + quote(x) + ")")
+    case DeliteArrayUnion(lhs,rhs) =>
+      emitValDef(sym, quote(lhs) + "->arrayunion(" + quote(rhs) + ")")
+    case DeliteArrayIntersect(lhs,rhs) =>
+      emitValDef(sym, quote(lhs) + "->intersect(" + quote(rhs) + ")")
+    case DeliteArrayTake(lhs,n) =>
+      emitValDef(sym, quote(lhs) + "->take(" + quote(n) + ")")
+    //case a@DeliteArraySort(x) =>
+    //  stream.println("val " + quote(sym) + " = {")
+    //  stream.println("val d = new Array[" + remap(a.mA) + "](" + quote(x) + ".length" + ")")
+    //  stream.println("System.arraycopy(" + quote(x) + ", 0, d, 0, " + quote(x) + ".length)")
+    //  stream.println("scala.util.Sorting.quickSort(d)")
+    //  stream.println("d")
+    //  stream.println("}")
+    case DeliteArrayRange(st,en) =>
+      emitValDef(sym, "new DeliteArray<int>(" + quote(st) + "," + quote(en) + ")")
+    //case DeliteArrayToSeq(a) => emitValDef(sym, quote(a) + ".toSeq")
+    case _ => super.emitNode(sym, rhs)
+  }
+
+  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "DeliteArray" => "DeliteArray<" + remap(m.typeArguments(0)) + ">"
+    case _ => super.remap(m)
+  }
+}

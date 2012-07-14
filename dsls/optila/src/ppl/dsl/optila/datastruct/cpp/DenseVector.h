@@ -1,47 +1,58 @@
 #ifndef _DENSEVECTOR_H_
 #define _DENSEVECTOR_H_
 
-//#include <DeliteArray.h>
+#include <DeliteArray.h>
 #include <stdlib.h>
 
 template <class T>
 class DenseVector {
 public:
+    DeliteArray<T> *da;
     T *data;
     int length;
     bool isRow;
 
     // Constructor
-    //DenseVector() { }
-
     DenseVector(int _length, bool _isRow) {
         length = _length;
         isRow = _isRow;
-        data = (T *)malloc(length*sizeof(T));
+        da = new DeliteArray<T>(length);
+        data = da->data;
+    }
+
+    DenseVector(DeliteArray<T> *_da, int _length, bool _isRow) {
+        length = _length;
+        isRow = _isRow;
+        da = _da;
+        data = _da->data;
     }
 
     DenseVector(T *_data, int _length, bool _isRow) {
         length = _length;
         isRow = _isRow;
-        data = (T *)_data;
-    }
-    // Reset the value to given value
-    /*
-    DenseVector(int _length, bool _isRow, T value) {
-        length = _length;
-        isRow = _isRow;
-        data = malloc(length*sizeof(T));
+        da = new DeliteArray<T>(_data, _length);
+        data = _data;
     }
 
     // Accessor Functions
     T apply(int idx) {
-        return data[idx];
+        return data->apply(idx);
     }
 
     void update(int idx, T newVal) {
-        data[idx] = newVal;
+        data->update(idx, newVal);
     }
 
+    DeliteArray<T> *getData(void) {
+      return da;
+    }
+
+    void setData(DeliteArray<T> *_da) {
+      da = _da;
+      data = da->data;
+    }
+
+    /*
     // DeliteCoolection
     int size() {
         return length;
