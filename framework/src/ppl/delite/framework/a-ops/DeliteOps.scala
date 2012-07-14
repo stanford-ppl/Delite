@@ -1166,6 +1166,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   def emitClass(name: String)(body: => Unit)
   def emitValDef(name: String, tpe: String, init: String): Unit
   def emitVarDef(name: String, tpe: String, init: String): Unit
+  def emitAssignment(name: String, tpe: String, rhs: String): Unit
   def emitAbstractFatLoopHeader(className: String, actType: String): Unit
   def emitAbstractFatLoopFooter(): Unit
   def refNotEq: String
@@ -1197,7 +1198,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
    */
 
   def emitForeachElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteForeachElem[_]) {
-    stream.println(quote(getBlockResult(elem.func)))
+    emitAssignment(quote(sym), remap(sym.tp), quote(getBlockResult(elem.func)))
+    //stream.println(quote(getBlockResult(elem.func)))
   }
 
   // -- begin emit reduce
@@ -1307,20 +1309,20 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         if (elem.cond.nonEmpty)
           emitVarDef(quote(sym) + "_conditionals", remap(Manifest.Int), "0")
       case (sym, elem: DeliteForeachElem[_]) =>
-        emitVarDef(quote(sym), remap(sym.tp), "()")
+        emitVarDef(quote(sym), remap(sym.tp), "()")  //TODO: Need this for other targets? (Currently, other targets just don't generate unit types)
       case (sym, elem: DeliteReduceElem[_]) =>
         emitBlock(elem.zero)
         emitValDef(quote(sym) + "_zero", remap(sym.tp), quote(getBlockResult(elem.zero)))
         emitVarDef(quote(sym), remap(sym.tp), quote(sym) + "_zero")
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
         emitBlock(elem.zero._1)
-        emitValDef(quote(sym) + "_zero", remap(sym.tp), quote(getBlockResult(elem.zero._1)))
+        emitValDef(quote(sym) + "_zero", remap(elem.zero._1.tp), quote(getBlockResult(elem.zero._1)))
         emitBlock(elem.zero._2)
-        emitValDef(quote(sym) + "_zero_2", remap(sym.tp), quote(getBlockResult(elem.zero._2)))
+        emitValDef(quote(sym) + "_zero_2", remap(elem.zero._2.tp), quote(getBlockResult(elem.zero._2)))
         /*stream.println("val " + quote(sym) + "_zero   = " + elem.zero._1)
         stream.println("val " + quote(sym) + "_zero_2 = " + elem.zero._2)*/
-        emitVarDef(quote(sym), remap(sym.tp), quote(sym) + "_zero")
-        emitVarDef(quote(sym), remap(sym.tp) + "_2", quote(sym) + "_zero_2")
+        emitVarDef(quote(sym), remap(elem.zero._1.tp), quote(sym) + "_zero")
+        emitVarDef(quote(sym) + "_2", remap(elem.zero._2.tp), quote(sym) + "_zero_2")
     }
     emitVarDef(quote(op.v), remap(op.v.tp), "0")
     //if (true) { //op.body exists (loopBodyNeedsStripFirst _)) { preserve line count as indicator for succesful fusing
@@ -1332,9 +1334,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
           emitCollectElem(op, sym, elem)
         case (sym, elem: DeliteForeachElem[_]) =>
-          stream.println(quote(sym) + " = {"/*}*/)
           emitForeachElem(op, sym, elem)
-          stream.println(/*{*/"}")
         case (sym, elem: DeliteReduceElem[_]) =>
           if (elem.stripFirst) {
             stream.println(quote(sym) + " = {"/*}*/)
@@ -1355,9 +1355,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       case (sym, elem: DeliteCollectElem[_,_,_]) =>
         emitCollectElem(op, sym, elem)
       case (sym, elem: DeliteForeachElem[_]) =>
-        stream.println(quote(sym) + " = {"/*}*/)
         emitForeachElem(op, sym, elem)
-        stream.println(/*{*/"}")
       case (sym, elem: DeliteReduceElem[_]) =>
         emitReduceElem(op, sym, elem)
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
@@ -1417,11 +1415,11 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             emitAssignment(fieldAccess("__act",quote(sym)+"_data"),quote(getBlockResult(elem.allocN)))
         }
         case (sym, elem: DeliteForeachElem[_]) =>
-          stream.println("__act." + quote(sym) + " = ()") // must be type Unit, initialized in init below
+          emitAssignment(fieldAccess("__act",quote(sym)), remap(sym.tp), "()")  // must be type Unit, initialized in init below
         case (sym, elem: DeliteReduceElem[_]) =>
           emitBlock(elem.zero)
           emitAssignment(fieldAccess("__act",quote(sym)+"_zero"),quote(getBlockResult(elem.zero)))
-          stream.println(/*{*/"}")
+          //stream.println(/*{*/"}")
           /*stream.println("__act." + quote(sym) + "_zero = " + elem.zero)
           stream.println("__act." + quote(sym) + " = __act." + quote(sym) + "_zero")*/
         case (sym, elem: DeliteReduceTupleElem[_,_]) =>
@@ -1527,9 +1525,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
           emitCollectElem(op, sym, elem, "__act")
         case (sym, elem: DeliteForeachElem[_]) =>
-          stream.println("val " + quote(sym) + " = {")
+          emitValDef(quote(sym), remap(sym.tp), "()")
           emitForeachElem(op, sym, elem)
-          stream.println("}")
         case (sym, elem: DeliteReduceElem[_]) =>
           emitReduceElem(op, sym, elem, "__act")
         case (sym, elem: DeliteReduceTupleElem[_,_]) =>
@@ -1725,7 +1722,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
   }
 
   def fieldAccess(className: String, varName: String): String = {
-    className + "." + varName
+    if (className == "") varName
+    else className + "." + varName
   }
 
   def releaseRef(varName: String) {
@@ -1750,6 +1748,10 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
 
   def emitVarDef(name: String, tpe: String, init: String) {
     stream.println("var " + name + ": " + tpe + " = " + init)
+  }
+
+  def emitAssignment(name: String, tpe: String, rhs: String) {
+    stream.println(name + " = " + rhs)
   }
 
   def emitAbstractFatLoopHeader(className: String, actType: String) {
@@ -2114,7 +2116,8 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   }
 
   def fieldAccess(className: String, varName: String): String = {
-    className + "->" + varName
+    if (className == "") varName
+    else className + "->" + varName
   }
 
   def releaseRef(varName: String) {
@@ -2153,6 +2156,14 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
       case "void" => //
       case _ =>
         stream.println(deref(tpe) + name + " = " + init + ";")
+    }
+  }
+
+  def emitAssignment(name: String, tpe: String, rhs: String) {
+    tpe match {
+      case "void" => //
+      case _ =>
+        stream.println(name + " = " + rhs + ";")
     }
   }
 
