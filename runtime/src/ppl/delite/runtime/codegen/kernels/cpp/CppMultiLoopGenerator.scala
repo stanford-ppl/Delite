@@ -129,6 +129,7 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
   }
 
   protected def writeClassHeader() {
+    out.append("#include <pthread.h>\n")
     out.append("#include \""+op.id+".cpp\"\n")
     out.append("#ifndef HEADER_"+op.id+"\n")
     out.append("#define HEADER_"+op.id+"\n")
@@ -196,17 +197,17 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
     out.append("pthread_mutex_t lock"+key+";\n")
     out.append("pthread_cond_t cond"+key+";\n")
 
-    out.append("bool notReady;\n")
-    out.append(outputType+ " _result"+key+";\n")
+    out.append("bool notReady"+key+";\n")
+    out.append(outputType+ "* _result"+key+";\n")
 
-    out.append(outputType+" get"+key+"(){\n")
+    out.append(outputType+"* get"+key+"(){\n")
     out.append("while(notReady"+key+") {\n")
     out.append("pthread_mutex_lock(&lock"+key+"); pthread_cond_wait(&cond"+key+", &lock"+key+");\n")
     out.append("}\n")
     out.append("return _result"+key+";\n")
     out.append("}\n")
 
-    out.append("void set"+key+"("+outputType+" result) {\n")
+    out.append("void set"+key+"("+outputType+"* result) {\n")
     out.append("pthread_mutex_lock(&lock"+key+");\n")
     out.append("_result"+key + " = result;\n")
     out.append("notReady"+key+" = false;\n")
@@ -218,8 +219,8 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
   protected def initSync() {
     out.append("void initSync() {\n")
     for (key <- syncList) {
-      out.append("lock"+key+" = PTHREAD_MUTEX_INITIALIZER;\n")
-      out.append("cond"+key+" = PTHREAD_COND_INITIALIZER;\n")
+      out.append("pthread_mutex_init(&lock"+key+", NULL);\n")
+      out.append("pthread_cond_init(&cond"+key+", NULL);\n")
       out.append("notReady"+key+ " = true;\n")
     }
     out.append("}\n")
