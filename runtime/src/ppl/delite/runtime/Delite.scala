@@ -54,8 +54,9 @@ object Delite {
       case "ACC" => new Acc_StaticScheduler
       case "SMP+GPU" => new SMP_GPU_StaticScheduler
       case "default" => {
-        if (Config.numCuda + Config.numOpenCL == 0) new SMPStaticScheduler
-        else if (Config.numCuda + Config.numOpenCL == 1) new SMP_GPU_StaticScheduler
+        if (Config.numCuda + Config.numOpenCL + Config.numCpp == 0) new SMPStaticScheduler
+        else if (Config.numCpp > 0 && Config.numCuda + Config.numOpenCL == 0) new Acc_StaticScheduler
+        else if (Config.numCpp == 0 && Config.numCuda + Config.numOpenCL == 1) new SMP_GPU_StaticScheduler
         else error("No scheduler currently exists that can handle the requested resources")
       }
       case _ => throw new IllegalArgumentException("Requested scheduler is not recognized")
@@ -66,7 +67,7 @@ object Delite {
       case "ACC" => new SMP_Acc_Executor
       case "SMP+GPU" => new SMP_Acc_Executor
       case "default" => {
-        if (Config.numCuda + Config.numOpenCL == 0) new SMPExecutor
+        if (Config.numCuda + Config.numOpenCL + Config.numCpp == 0) new SMPExecutor
         else new SMP_Acc_Executor
       }
       case _ => throw new IllegalArgumentException("Requested executor is not recognized")

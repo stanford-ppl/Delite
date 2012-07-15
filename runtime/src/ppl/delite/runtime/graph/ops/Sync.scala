@@ -98,8 +98,9 @@ object Sync {
   //TODO: updatee is in an outer scope - delay update
   def update(sym: String, from: DeliteOP, to: DeliteOP) = {
     val updater = SendUpdate(sym, from, node(to.scheduledResource))
+    val source = from.getMutableInputs.find(_._2 == sym).get._1
     updater match {
-      case _ if shouldView(sym, from, to) => null //update handled by hardware
+      case _ if (shouldView(sym, source, from) && shouldView(sym, source, to)) => null //update handled by hardware //TODO: if the updater has the *same* view as the receiver
       case _ if (syncSet contains updater) => syncSet(updater).asInstanceOf[SendUpdate] //multiple readers after mutation
       case _ => addSend(updater, from)
     }
@@ -137,7 +138,7 @@ object Sync {
     }
   }
 
-  def shouldView(sym: String, from: DeliteOP, to: DeliteOP) = typeIsViewable(to.inputType(sym)) && (sharedMemory(from.scheduledResource, to.scheduledResource) || canAcquire(from.scheduledResource, to.scheduledResource))
+  def shouldView(sym: String, from: DeliteOP, to: DeliteOP) = typeIsViewable(from.outputType(sym)) && (sharedMemory(from.scheduledResource, to.scheduledResource) || canAcquire(from.scheduledResource, to.scheduledResource))
 
   def typeIsViewable(outputType: String) = { //make a distinction between copyByValue (primitive) and copyByReference (reference) types
     !Targets.isPrimitiveType(outputType)

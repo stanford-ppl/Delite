@@ -33,7 +33,7 @@ trait OptiLACppHostTransfer extends CppHostTransfer {
             val typeArg = sym.tp.typeArguments.head
             val signature = "jobject sendCPPtoJVM_%s(JNIEnv *env, %s *%s)".format(quote(sym),remap(sym.tp),quote(sym))
             out.append(signature + " {\n")
-            out.append("\tjclass cls = env->FindClass(\"generated/scala/%sDenseVector\");\n".format(typeArg.toString))
+            out.append("\tjclass cls = env->FindClass(\"generated/scala/%sDenseMatrix\");\n".format(typeArg.toString))
             out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(II)V\");\n")
             out.append("\tjobject obj = env->NewObject(cls,mid,%s->numRows,%s->numCols);\n".format(quote(sym),quote(sym)))
             out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"_data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
