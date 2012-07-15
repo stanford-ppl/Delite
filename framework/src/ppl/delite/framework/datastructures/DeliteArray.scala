@@ -358,7 +358,7 @@ trait CGenDeliteArrayOps extends CGenEffect {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case a@DeliteArrayNew(n) => emitValDef(sym, "new DeliteArray<" + remap(a.mA) + ">(" + quote(n) + ")")
+    case a@DeliteArrayNew(n) => emitValDef(sym, "new DeliteArray< " + remap(a.mA) + " >(" + quote(n) + ")")
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + "->length")
     case DeliteArrayApply(da, idx) =>
@@ -383,13 +383,13 @@ trait CGenDeliteArrayOps extends CGenEffect {
     //  stream.println("d")
     //  stream.println("}")
     case DeliteArrayRange(st,en) =>
-      emitValDef(sym, "new DeliteArray<int>(" + quote(st) + "," + quote(en) + ")")
+      emitValDef(sym, "new DeliteArray< int >(" + quote(st) + "," + quote(en) + ")")
     //case DeliteArrayToSeq(a) => emitValDef(sym, quote(a) + ".toSeq")
     case _ => super.emitNode(sym, rhs)
   }
 
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
-    case "DeliteArray" => "DeliteArray<" + remap(m.typeArguments(0)) + ">"
+    case "DeliteArray" => "DeliteArray< " + remap(m.typeArguments(0)) + " >"
     case _ => super.remap(m)
   }
 }

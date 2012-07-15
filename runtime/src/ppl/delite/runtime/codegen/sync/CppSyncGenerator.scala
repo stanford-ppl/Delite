@@ -88,6 +88,8 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     val ref = if (isPrimitiveType(dep.outputType(sym))) "" else "*"
     if (view)
       out.append("%s %s%s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(CppExecutableGenerator.typesMap(Targets.Cpp)(sym),ref,getSymHost(dep,sym),sym,location,getSymCPU(sym)))
+    else if(isPrimitiveType(dep.outputType(sym)))
+      out.append("%s %s = (%s)%s;\n".format(CppExecutableGenerator.typesMap(Targets.Cpp)(sym),getSymHost(dep,sym),CppExecutableGenerator.typesMap(Targets.Cpp)(sym),getSymCPU(sym)))
     else
       out.append("%s %s%s = recvCPPfromJVM_%s(env%s,%s);\n".format(CppExecutableGenerator.typesMap(Targets.Cpp)(sym),ref,getSymHost(dep,sym),sym,location,getSymCPU(sym)))
   }
@@ -113,6 +115,8 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
   private def writeSetter(op: DeliteOP, sym: String, view: Boolean) {
     if (view)
       out.append("%s %s = sendViewCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),sym,location,getSymHost(op,sym)))
+    else if(isPrimitiveType(op.outputType(sym)))
+      out.append("%s %s = (%s)%s;\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),getJNIType(op.outputType(sym)),getSymHost(op,sym)))
     else
       out.append("%s %s = sendCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),sym,location,getSymHost(op,sym)))
 

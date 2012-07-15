@@ -482,12 +482,20 @@ trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenD
   import IR._
 
   override def remap[A](m: Manifest[A]) : String = {
+    val startsWith = m.toString.split("\\[")
+    startsWith(0) match {
+      case "ppl.dsl.optila.DenseVector" => "DenseVector< " + remap(m.typeArguments(0)) + " >"
+      case "ppl.dsl.optila.DenseMatrix" => "DenseMatrix< " + remap(m.typeArguments(0)) + " >"
+      case _ => super.remap(m)
+    }
+
+    /*
     m.toString match {
-      case "ppl.dsl.optila.DenseVector[Int]" => "DenseVector<int>"
-      case "ppl.dsl.optila.DenseVector[Long]" => "DenseVector<long>"
-      case "ppl.dsl.optila.DenseVector[Float]" => "DenseVector<float>"
-      case "ppl.dsl.optila.DenseVector[Double]" => "DenseVector<double>"
-      case "ppl.dsl.optila.DenseVector[Boolean]" => "DenseVector<bool>"
+      case "ppl.dsl.optila.DenseVector[Int]" => "DenseVector<int> "
+      case "ppl.dsl.optila.DenseVector[Long]" => "DenseVector<long> "
+      case "ppl.dsl.optila.DenseVector[Float]" => "DenseVector<float> "
+      case "ppl.dsl.optila.DenseVector[Double]" => "DenseVector<double> "
+      case "ppl.dsl.optila.DenseVector[Boolean]" => "DenseVector<bool> "
       case "ppl.dsl.optila.DenseMatrix[Int]" => "DenseMatrix<int>"
       case "ppl.dsl.optila.DenseMatrix[Long]" => "DenseMatrix<long>"
       case "ppl.dsl.optila.DenseMatrix[Float]" => "DenseMatrix<float>"
@@ -511,6 +519,7 @@ trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenD
       //case "Array[Boolean]" => "DeliteArray<bool> *"
       case _ => super.remap(m)
     }
+    */
   }
 
   override def getDSLHeaders: String = {

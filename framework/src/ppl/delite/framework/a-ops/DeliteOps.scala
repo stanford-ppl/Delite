@@ -1525,7 +1525,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
           emitCollectElem(op, sym, elem, "__act")
         case (sym, elem: DeliteForeachElem[_]) =>
-          emitValDef(quote(sym), remap(sym.tp), "()")
+          emitVarDef(quote(sym), remap(sym.tp), "()")
           emitForeachElem(op, sym, elem)
         case (sym, elem: DeliteReduceElem[_]) =>
           emitReduceElem(op, sym, elem, "__act")

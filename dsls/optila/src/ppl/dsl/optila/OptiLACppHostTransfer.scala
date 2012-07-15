@@ -10,7 +10,7 @@ trait OptiLACppHostTransfer extends CppHostTransfer {
   override def emitSend(sym: Sym[Any], host: Hosts.Value): (String,String) = {
     if (host == Hosts.JVM) {
         remap(sym.tp) match {
-          case "DenseVector<bool>" | "DenseVector<char>" | "DenseVector<CHAR>" | "DenseVector<short>" | "DenseVector<int>" | "DenseVector<long>" | "DenseVector<float>" | "DenseVector<double>" =>
+          case "DenseVector< bool >" | "DenseVector< char >" | "DenseVector< CHAR >" | "DenseVector< short >" | "DenseVector< int >" | "DenseVector< long >" | "DenseVector< float >" | "DenseVector< double >" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
             val signature = "jobject sendCPPtoJVM_%s(JNIEnv *env, %s *%s)".format(quote(sym),remap(sym.tp),quote(sym))
@@ -28,7 +28,7 @@ trait OptiLACppHostTransfer extends CppHostTransfer {
             out.append("\treturn obj;\n")
             out.append("}\n")
             (signature+";\n", out.toString)
-          case "DenseMatrix<bool>" | "DenseMatrix<char>" | "DenseMatrix<CHAR>" | "DenseMatrix<short>" | "DenseMatrix<int>" | "DenseMatrix<long>" | "DenseMatrix<float>" | "DenseMatrix<double>" =>
+          case "DenseMatrix< bool >" | "DenseMatrix< char >" | "DenseMatrix< CHAR >" | "DenseMatrix< short >" | "DenseMatrix< int >" | "DenseMatrix< long >" | "DenseMatrix< float >" | "DenseMatrix< double >" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
             val signature = "jobject sendCPPtoJVM_%s(JNIEnv *env, %s *%s)".format(quote(sym),remap(sym.tp),quote(sym))
@@ -57,7 +57,7 @@ trait OptiLACppHostTransfer extends CppHostTransfer {
   override def emitRecv(sym: Sym[Any], host: Hosts.Value): (String,String) = {
     if (host == Hosts.JVM) {
         remap(sym.tp) match {
-          case "DenseVector<bool>" | "DenseVector<char>" | "DenseVector<CHAR>" | "DenseVector<short>" | "DenseVector<int>" | "DenseVector<long>" | "DenseVector<float>" | "DenseVector<double>" =>
+          case "DenseVector< bool >" | "DenseVector< char >" | "DenseVector< CHAR >" | "DenseVector< short >" | "DenseVector< int >" | "DenseVector< long >" | "DenseVector< float >" | "DenseVector< double >" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
             val signature = "%s *recvCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remap(sym.tp),quote(sym))
@@ -76,7 +76,7 @@ trait OptiLACppHostTransfer extends CppHostTransfer {
             out.append("\treturn %s;\n".format(quote(sym)))
             out.append("}\n")
             (signature+";\n", out.toString)
-          case "DenseMatrix<bool>" | "DenseMatrix<char>" | "DenseMatrix<CHAR>" | "DenseMatrix<short>" | "DenseMatrix<int>" | "DenseMatrix<long>" | "DenseMatrix<float>" | "DenseMatrix<double>" =>
+          case "DenseMatrix< bool >" | "DenseMatrix< char >" | "DenseMatrix< CHAR >" | "DenseMatrix< short >" | "DenseMatrix< int >" | "DenseMatrix< long >" | "DenseMatrix< float >" | "DenseMatrix< double >" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
             val signature = "%s *recvCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remap(sym.tp),quote(sym))
@@ -105,8 +105,8 @@ trait OptiLACppHostTransfer extends CppHostTransfer {
   override def emitSendView(sym: Sym[Any], host: Hosts.Value): (String,String) = {
     if (host == Hosts.JVM) {
         remap(sym.tp) match {
-          case "DenseVector<bool>" | "DenseVector<char>" | "DenseVector<CHAR>" | "DenseVector<short>" | "DenseVector<int>" | "DenseVector<long>" | "DenseVector<float>" | "DenseVector<double>" |
-               "DenseMatrix<bool>" | "DenseMatrix<char>" | "DenseMatrix<CHAR>" | "DenseMatrix<short>" | "DenseMatrix<int>" | "DenseMatrix<long>" | "DenseMatrix<float>" | "DenseMatrix<double>" =>
+          case "DenseVector< bool >" | "DenseVector< char >" | "DenseVector< CHAR >" | "DenseVector< short >" | "DenseVector< int >" | "DenseVector< long >" | "DenseVector< float >" | "DenseVector< double >" |
+          "DenseMatrix< bool >" | "DenseMatrix< char >" | "DenseMatrix< CHAR >" | "DenseMatrix< short >" | "DenseMatrix< int >" | "DenseMatrix< long >" | "DenseMatrix< float >" | "DenseMatrix< double >" =>
             val out = new StringBuilder
             val signature = "jobject sendViewCPPtoJVM_%s(JNIEnv *env, %s *%s)".format(quote(sym),remap(sym.tp),quote(sym))
             out.append(signature + " {\n")
@@ -124,7 +124,7 @@ trait OptiLACppHostTransfer extends CppHostTransfer {
   override def emitRecvView(sym: Sym[Any], host: Hosts.Value): (String,String) = {
     if (host == Hosts.JVM) {
         remap(sym.tp) match {
-          case "DenseVector<bool>" | "DenseVector<char>" | "DenseVector<CHAR>" | "DenseVector<short>" | "DenseVector<int>" | "DenseVector<long>" | "DenseVector<float>" | "DenseVector<double>" =>
+          case "DenseVector< bool >" | "DenseVector< char >" | "DenseVector< CHAR >" | "DenseVector< short >" | "DenseVector< int >" | "DenseVector< long >" | "DenseVector< float >" | "DenseVector< double >" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
             val signature = "%s *recvViewCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remap(sym.tp),quote(sym))
@@ -141,7 +141,7 @@ trait OptiLACppHostTransfer extends CppHostTransfer {
             out.append("\treturn %s;\n".format(quote(sym)))
             out.append("}\n")
             (signature+";\n", out.toString)
-          case "DenseMatrix<bool>" | "DenseMatrix<char>" | "DenseMatrix<CHAR>" | "DenseMatrix<short>" | "DenseMatrix<int>" | "DenseMatrix<long>" | "DenseMatrix<float>" | "DenseMatrix<double>" =>
+          case "DenseMatrix< bool >" | "DenseMatrix< char >" | "DenseMatrix< CHAR >" | "DenseMatrix< short >" | "DenseMatrix< int >" | "DenseMatrix< long >" | "DenseMatrix< float >" | "DenseMatrix< double >" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
             val signature = "%s *recvViewCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remap(sym.tp),quote(sym))
@@ -168,7 +168,7 @@ trait OptiLACppHostTransfer extends CppHostTransfer {
   override def emitSendUpdate(sym: Sym[Any], host: Hosts.Value): (String,String) = {
     if (host == Hosts.JVM) {
         remap(sym.tp) match {
-          case "DenseVector<bool>" | "DenseVector<char>" | "DenseVector<CHAR>" | "DenseVector<short>" | "DenseVector<int>" | "DenseVector<long>" | "DenseVector<float>" | "DenseVector<double>" =>
+          case "DenseVector< bool >" | "DenseVector< char >" | "DenseVector< CHAR >" | "DenseVector< short >" | "DenseVector< int >" | "DenseVector< long >" | "DenseVector< float >" | "DenseVector< double >" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
             val signature = "void sendUpdateCPPtoJVM_%s(JNIEnv *env, jobject obj, %s *%s)".format(quote(sym),remap(sym.tp),quote(sym))
@@ -183,7 +183,7 @@ trait OptiLACppHostTransfer extends CppHostTransfer {
             out.append("\tenv->DeleteLocalRef(cls);\n")
             out.append("}\n")
             (signature+";\n", out.toString)
-          case "DenseMatrix<bool>" | "DenseMatrix<char>" | "DenseMatrix<CHAR>" | "DenseMatrix<short>" | "DenseMatrix<int>" | "DenseMatrix<long>" | "DenseMatrix<float>" | "DenseMatrix<double>" =>
+          case "DenseMatrix< bool >" | "DenseMatrix< char >" | "DenseMatrix< CHAR >" | "DenseMatrix< short >" | "DenseMatrix< int >" | "DenseMatrix< long >" | "DenseMatrix< float >" | "DenseMatrix< double >" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
             val signature = "void sendUpdateCPPtoJVM_%s(JNIEnv *env, jobject obj, %s *%s)".format(quote(sym),remap(sym.tp),quote(sym))
@@ -208,7 +208,7 @@ trait OptiLACppHostTransfer extends CppHostTransfer {
   override def emitRecvUpdate(sym: Sym[Any], host: Hosts.Value): (String,String) = {
     if (host == Hosts.JVM) {
         remap(sym.tp) match {
-          case "DenseVector<bool>" | "DenseVector<char>" | "DenseVector<CHAR>" | "DenseVector<short>" | "DenseVector<int>" | "DenseVector<long>" | "DenseVector<float>" | "DenseVector<double>" =>
+          case "DenseVector< bool >" | "DenseVector< char >" | "DenseVector< CHAR >" | "DenseVector< short >" | "DenseVector< int >" | "DenseVector< long >" | "DenseVector< float >" | "DenseVector< double >" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
             val signature = "void recvUpdateCPPfromJVM_%s(JNIEnv *env, jobject obj, %s *%s)".format(quote(sym),remap(sym.tp),quote(sym))
@@ -223,7 +223,7 @@ trait OptiLACppHostTransfer extends CppHostTransfer {
             out.append("\tenv->DeleteLocalRef(cls);\n")
             out.append("}\n")
             (signature+";\n", out.toString)
-          case "DenseMatrix<bool>" | "DenseMatrix<char>" | "DenseMatrix<CHAR>" | "DenseMatrix<short>" | "DenseMatrix<int>" | "DenseMatrix<long>" | "DenseMatrix<float>" | "DenseMatrix<double>" =>
+          case "DenseMatrix< bool >" | "DenseMatrix< char >" | "DenseMatrix< CHAR >" | "DenseMatrix< short >" | "DenseMatrix< int >" | "DenseMatrix< long >" | "DenseMatrix< float >" | "DenseMatrix< double >" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
             val signature = "void recvUpdateCPPfromJVM_%s(JNIEnv *env, jobject obj, %s *%s)".format(quote(sym),remap(sym.tp),quote(sym))

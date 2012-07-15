@@ -210,7 +210,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
             }
           }
           else if (resultIsVar && gen.toString=="cpp") {
-            returnTypes += new Pair[String,String](gen.toString,"Ref<" + gen.remap(sym.head.tp) + ">") {
+            returnTypes += new Pair[String,String](gen.toString,"Ref< " + gen.remap(sym.head.tp) + " >") {
               override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
             }
           }

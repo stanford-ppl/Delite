@@ -12,7 +12,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
       if (sym.tp.erasure == classOf[Variable[AnyVal]]) {
         val out = new StringBuilder
         val typeArg = sym.tp.typeArguments.head
-        val signature = "jobject sendCPPtoJVM_%s(JNIEnv *env, Ref<%s> *%s)".format(quote(sym),remap(typeArg),quote(sym))
+        val signature = "jobject sendCPPtoJVM_%s(JNIEnv *env, Ref<%s > *%s)".format(quote(sym),remap(typeArg),quote(sym))
         out.append(signature + " {\n")
         out.append("\tjclass cls = env->FindClass(\"generated/scala/Ref$mc%s$sp\");\n".format(JNITypeDescriptor(typeArg)))
         out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(%s)V\");\n".format(JNITypeDescriptor(typeArg)))
@@ -23,7 +23,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
       }
       else {
         remap(sym.tp) match {
-          case "DeliteArray<bool>" | "DeliteArray<char>" | "DeliteArray<CHAR>" | "DeliteArray<short>" | "DeliteArray<int>" | "DeiteArray<long>" | "DeliteArray<float>" | "DeliteArray<double>" =>
+          case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
             val signature = "jobject sendCPPtoJVM_%s(JNIEnv *env, %s *%s)".format(quote(sym),remap(sym.tp),quote(sym))
@@ -48,7 +48,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
       if (sym.tp.erasure == classOf[Variable[AnyVal]]) {
         val out = new StringBuilder
         val typeArg = sym.tp.typeArguments.head
-        val signature = "Ref<%s> *recvCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remap(sym.tp),quote(sym))
+        val signature = "Ref<%s > *recvCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remap(sym.tp),quote(sym))
         out.append(signature + " {\n")
         out.append("\tjclass cls = env->GetObjectClass(obj);\n")
         out.append("\tjmethodID mid_get = env->GetMethodID(cls,\"get$mc%s$sp\",\"()%s\");\n".format(JNITypeDescriptor(typeArg),JNITypeDescriptor(typeArg)))
@@ -59,7 +59,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
       }
       else {
         remap(sym.tp) match {
-          case "DeliteArray<bool>" | "DeliteArray<char>" | "DeliteArray<CHAR>" | "DeliteArray<short>" | "DeliteArray<int>" | "DeiteArray<long>" | "DeliteArray<float>" | "DeliteArray<double>" =>
+          case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
             val signature = "%s *recvCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remap(sym.tp),quote(sym))
@@ -86,7 +86,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
       if (sym.tp.erasure == classOf[Variable[AnyVal]]) {
         val out = new StringBuilder
         val typeArg = sym.tp.typeArguments.head
-        val signature = "jobject sendViewCPPtoJVM_%s(JNIEnv *env, Ref<%s> *%s)".format(quote(sym),remap(typeArg),quote(sym))
+        val signature = "jobject sendViewCPPtoJVM_%s(JNIEnv *env, Ref<%s > *%s)".format(quote(sym),remap(typeArg),quote(sym))
         out.append(signature + " {\n")
         out.append("\tassert(false);\n")
         out.append("}\n")
@@ -94,7 +94,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
       }
       else {
         remap(sym.tp) match {
-          case "DeliteArray<bool>" | "DeliteArray<char>" | "DeliteArray<CHAR>" | "DeliteArray<short>" | "DeliteArray<int>" | "DeiteArray<long>" | "DeliteArray<float>" | "DeliteArray<double>" =>
+          case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
             val signature = "jobject sendViewCPPtoJVM_%s(JNIEnv *env, %s *%s)".format(quote(sym),remap(sym.tp),quote(sym))
@@ -115,7 +115,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
       if (sym.tp.erasure == classOf[Variable[AnyVal]]) {
         val out = new StringBuilder
         val typeArg = sym.tp.typeArguments.head
-        val signature = "Ref<%s> *recvViewCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remap(sym.tp),quote(sym))
+        val signature = "Ref<%s > *recvViewCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remap(sym.tp),quote(sym))
         out.append(signature + " {\n")
         out.append("\tjclass cls = env->GetObjectClass(obj);\n")
         out.append("\tjmethodID mid_get = env->GetMethodID(cls,\"get$mc%s$sp\",\"()%s\");\n".format(JNITypeDescriptor(typeArg),JNITypeDescriptor(typeArg)))
@@ -126,7 +126,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
       }
       else {
         remap(sym.tp) match {
-          case "DeliteArray<bool>" | "DeliteArray<char>" | "DeliteArray<CHAR>" | "DeliteArray<short>" | "DeliteArray<int>" | "DeiteArray<long>" | "DeliteArray<float>" | "DeliteArray<double>" =>
+          case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
             val signature = "%s *recvViewCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remap(sym.tp),quote(sym))
@@ -153,7 +153,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
       if (sym.tp.erasure == classOf[Variable[AnyVal]]) {
         val out = new StringBuilder
         val typeArg = sym.tp.typeArguments.head
-        val signature = "void sendUpdateCPPtoJVM_%s(JNIEnv *env, jobject obj, Ref<%s> *%s)".format(quote(sym),remap(sym.tp),quote(sym))
+        val signature = "void sendUpdateCPPtoJVM_%s(JNIEnv *env, jobject obj, Ref<%s > *%s)".format(quote(sym),remap(sym.tp),quote(sym))
         out.append(signature + " {\n")
         out.append("\tjclass cls = env->GetObjectClass(obj);\n")
         out.append("\tjmethodID mid_set = env->GetMethodID(cls,\"set$mc%s$sp\",\"(%s)V\");\n".format(JNITypeDescriptor(typeArg),JNITypeDescriptor(typeArg)))
@@ -163,7 +163,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
       }
       else {
         remap(sym.tp) match {
-          case "DeliteArray<bool>" | "DeliteArray<char>" | "DeliteArray<CHAR>" | "DeliteArray<short>" | "DeliteArray<int>" | "DeiteArray<long>" | "DeliteArray<float>" | "DeliteArray<double>" =>
+          case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
             val signature = "void sendUpdateCPPtoJVM_%s(JNIEnv *env, jobject obj, %s *%s)".format(quote(sym),remap(sym.tp),quote(sym))
@@ -186,7 +186,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
       if (sym.tp.erasure == classOf[Variable[AnyVal]]) {
         val out = new StringBuilder
         val typeArg = sym.tp.typeArguments.head
-        val signature = "void recvUpdateCPPfromJVM_%s(JNIEnv *env, jobject obj, Ref<%s> *%s)".format(quote(sym),remap(sym.tp),quote(sym))
+        val signature = "void recvUpdateCPPfromJVM_%s(JNIEnv *env, jobject obj, Ref<%s > *%s)".format(quote(sym),remap(sym.tp),quote(sym))
         out.append(signature + " {\n")
         out.append("\tjclass cls = env->GetObjectClass(obj);\n")
         out.append("\tjmethodID mid_get = env->GetMethodID(cls,\"get$mc%s$sp\",\"()%s\");\n".format(JNITypeDescriptor(typeArg),JNITypeDescriptor(typeArg)))
@@ -196,7 +196,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
       }
       else {
         remap(sym.tp) match {
-          case "DeliteArray<bool>" | "DeliteArray<char>" | "DeliteArray<CHAR>" | "DeliteArray<short>" | "DeliteArray<int>" | "DeiteArray<long>" | "DeliteArray<float>" | "DeliteArray<double>" =>
+          case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
             val typeArg = sym.tp.typeArguments.head
             val signature = "void recvUpdateCPPfromJVM_%s(JNIEnv *env, jobject obj, %s *%s)".format(quote(sym),remap(sym.tp),quote(sym))

@@ -125,7 +125,9 @@ class CppWhileGenerator(val whileLoop: OP_While, val location: Int, val kernelPa
   }
 
   protected def beginFunction(inputs: Seq[(DeliteOP,String)]) {
-    out.append("bool predicate(")
+    out.append("bool predicate_")
+    out.append(executableName(location))
+    out.append("(")
     writeInputs(inputs)
     out.append(") {\n")
     val locationsRecv = nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Receive])).map(_.asInstanceOf[Receive].sender.from.scheduledResource).toSet
@@ -139,7 +141,7 @@ class CppWhileGenerator(val whileLoop: OP_While, val location: Int, val kernelPa
   }
 
   protected def callFunction(inputs: Seq[(DeliteOP,String)]) = {
-    "predicate(" + inputs.map(i=>getSymHost(i._1,i._2)).mkString(",") + ")"
+    "predicate_" + executableName(location) + "(" + inputs.map(i=>getSymHost(i._1,i._2)).mkString(",") + ")"
   }
 
   override protected def getSym(op: DeliteOP, name: String) = WhileCommon.getSym(whileLoop, baseId, op, name)
