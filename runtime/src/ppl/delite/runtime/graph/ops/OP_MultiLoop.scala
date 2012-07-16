@@ -25,9 +25,8 @@ class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, f
 
   /**
    * Since the semantics of the multiloop are to mutate the elements in a collection all consumer (true) dependency edges already exist in graph
-   * Chunking needs to add additional anti-dependency edges for each chunk to ensure all chunks are complete,
-   *  unless a combine is performed, in which case all chunks are necessarily complete when final result is returned
-   * Chunks require same dependency & input lists
+   * It is the responsibility of the multiloop to ensure all chunks are complete before the master chunk returns the result (chunks have no external consumers)
+   * Chunks require same dependency & input lists (the header)
    */
   def chunk(i: Int): OP_MultiLoop = {
 	  // TODO: aks (pass a sane size, sizeIsConst for the chunk?)
@@ -35,10 +34,6 @@ class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, f
     r.dependencies = dependencies //lists are immutable so can be shared
     r.inputList = inputList
     for (dep <- getDependencies) dep.addConsumer(r)
-    if (!needsCombine) {
-      r.consumers = consumers
-      for (c <- getConsumers) c.addDependency(r)
-    }
     r
   }
 

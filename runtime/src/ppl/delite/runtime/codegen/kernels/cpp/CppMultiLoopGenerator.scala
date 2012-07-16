@@ -201,9 +201,11 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
     out.append(outputType+ "* _result"+key+";\n")
 
     out.append(outputType+"* get"+key+"(){\n")
+    out.append("pthread_mutex_lock(&lock"+key+");\n")
     out.append("while(notReady"+key+") {\n")
-    out.append("pthread_mutex_lock(&lock"+key+"); pthread_cond_wait(&cond"+key+", &lock"+key+");\n")
+    out.append("pthread_cond_wait(&cond"+key+", &lock"+key+");\n")
     out.append("}\n")
+    out.append("pthread_mutex_unlock(&lock"+key+");\n")
     out.append("return _result"+key+";\n")
     out.append("}\n")
 

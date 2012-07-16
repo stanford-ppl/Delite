@@ -97,38 +97,39 @@ trait MultiLoop_SMP_Array_Generator {
     if (Config.profile)
       endProfile()
 
-    //tree reduction
-    if (op.needsCombine) {
-      var half = chunkIdx
-      var step = 1
-      while ((half % 2 == 0) && (chunkIdx + step < numChunks)) { //half the chunks quit each iteration
-        half = half / 2
-        val neighbor = chunkIdx + step //the index of the chunk to reduce with
-        step *= 2
-
-        combine(acc, get("A", neighbor))
-      }
-      if (chunkIdx != 0) { //other chunks store result
-        set("A", chunkIdx, acc)
-      }
-    }
-
     if (op.needsPostProcess) {
       if (chunkIdx != 0) {
         val neighbor = chunkIdx - 1
-        postCombine(acc, get("B", neighbor))
+        postCombine(acc, get("B", neighbor)) //linear chain combine
       }
       if (chunkIdx == numChunks-1) {
-        postProcInit(acc)
+        postProcInit(acc) //single-threaded
       }
 
       if (numChunks > 1) set("B", chunkIdx, acc) // kick off others
       if (chunkIdx != numChunks-1) get("B", numChunks-1) // wait for last one
-      postProcess(acc)
+      postProcess(acc) //parallel again
     }
 
-    if (chunkIdx == 0) finalize(acc)
-    if (chunkIdx == 0) returnResult(acc)
+    //tree reduction, combines thread-local results and guarantees completion of all chunks by the time the master chunk returns
+    var half = chunkIdx
+    var step = 1
+    while ((half % 2 == 0) && (chunkIdx + step < numChunks)) { //half the chunks quit each iteration
+      half = half / 2
+      val neighbor = chunkIdx + step //the index of the chunk to reduce with
+      step *= 2
+
+      val neighborVal = get("A", neighbor)
+      if (op.needsCombine) combine(acc, neighborVal) //combine activation records if needed
+    }
+
+    if (chunkIdx != 0) { //slave chunks store result
+      set("A", chunkIdx, acc)
+    }
+    else { //master chunk returns it
+      finalize(acc)
+      returnResult(acc)
+    }
 
     writeKernelFooter()
   }
@@ -148,11 +149,9 @@ trait MultiLoop_SMP_Array_Header_Generator {
 
     writeHeader()
 
-    if (op.needsCombine) {
-      //the sync state
-      for (i <- 1 until numChunks) //sync for all chunks except 0
-        writeSync("A"+i)
-    }
+    for (i <- 1 until numChunks) //tree-reduce: sync for all chunks except 0
+      writeSync("A"+i)
+
     if (op.needsPostProcess && numChunks > 1) { //all chunks need to sync
       for (i <- 0 until numChunks)
         writeSync("B"+i)
