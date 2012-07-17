@@ -199,7 +199,9 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case e@VectorFindOverride(x,c) => reflectPure(new { override val original = Some(f,e) } with VectorFindOverride(f(x),f(c))(e.m))(mtype(manifest[A]),implicitly[SourceContext])    
     case e@VectorApplyIndices(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorApplyIndices(f(x),f(y))(e.mA,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])    
+    case Reflect(e@VectorFindOverride(x,c), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorFindOverride(f(x),f(c))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case Reflect(e@VectorApplyIndices(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorApplyIndices(f(x),f(y))(e.mA,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case Reflect(e@VectorUpdateIndices(x,i,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorUpdateIndices(f(x),f(i),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)

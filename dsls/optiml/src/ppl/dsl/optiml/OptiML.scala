@@ -233,6 +233,8 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
     }
   }
 
+  override def remap(s: String) = parmap(s)
+  
   override def remap[A](m: Manifest[A]): String = {
     val mGI = manifest[GrayscaleImage]
     m match {

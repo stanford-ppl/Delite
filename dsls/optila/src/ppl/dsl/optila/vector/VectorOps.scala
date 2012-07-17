@@ -26,20 +26,9 @@ trait VectorOps extends Variables {
   
   object Vector {
     def apply[A:Manifest](len: Int, isRow: Boolean)(implicit ctx: SourceContext) = densevector_obj_new(unit(len), unit(isRow)) // needed to resolve ambiguities
-    def apply[A](len: Rep[Int], isRow: Rep[Boolean])(implicit mA: Manifest[A], o: Overloaded1, ctx: SourceContext) = densevector_obj_new(len, isRow)
-    def apply[A:Manifest](xs: A*)(implicit ctx: SourceContext) = {
-      val out = densevector_obj_new[A](unit(0),unit(true))
-      // interpreted (not lifted)
-      xs.foreach { out += unit(_) }
-      out.unsafeImmutable
-    }
-    def apply[A](xs: Rep[A]*)(implicit mA: Manifest[A], o: Overloaded2, ctx: SourceContext) = {
-      val out = densevector_obj_new[A](unit(0),unit(true))
-      // interpreted (not lifted)
-      xs.foreach { out += _ }
-      out.unsafeImmutable // return immutable object
-    }
-
+    def apply[A:Manifest](len: Rep[Int], isRow: Rep[Boolean])(implicit o: Overloaded1, ctx: SourceContext) = densevector_obj_new(len, isRow)
+    def apply[A:Manifest](xs: A*)(implicit ctx: SourceContext) = DenseVector[A](xs.map(e=>unit(e)): _*)
+    def apply[A:Manifest](xs: Rep[A]*)(implicit o: Overloaded1, ctx: SourceContext) = DenseVector[A](xs: _*)
     def dense[A:Manifest](len: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = densevector_obj_new(len, isRow)
     def sparse[A:Manifest](len: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = sparsevector_obj_new(len, isRow)
         

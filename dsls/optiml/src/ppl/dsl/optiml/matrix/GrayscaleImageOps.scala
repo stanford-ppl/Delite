@@ -57,12 +57,18 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
   // implemented via method on real data structure
 
   case class GrayscaleImageObjectNew(numRows: Exp[Int], numCols: Exp[Int]) extends Def[GrayscaleImage]
-  case class GrayscaleImageObjectFromMat(x: Exp[DenseMatrix[Int]]) extends Def[GrayscaleImage]
-
 
   ////////////////////////////////
   // implemented via delite ops
 
+  case class GrayscaleImageObjectFromMat(in: Exp[DenseMatrix[Int]])
+    extends DeliteOpMap[Int,Int,GrayscaleImage] {
+      
+    override def alloc = GrayscaleImage(in.numCols, in.numRows)
+    val size = copyTransformedOrElse(_.size)(in.size)
+    def func = i => i // parallel copy 
+  }
+  
   case class GrayscaleImageObjectCartToPolarMagnitude(x: Exp[DenseMatrix[Float]], y: Exp[DenseMatrix[Float]])
     extends MatrixArithmeticZipWith[Float,DenseMatrix[Float],DenseMatrix[Float]] {
 
@@ -106,10 +112,7 @@ trait ScalaGenGrayscaleImageOps extends ScalaGenBase {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    // case GrayscaleImageObjectNew(numRows, numCols) => emitValDef(sym, "new generated.scala.GrayscaleImageImpl(" + quote(numRows) + "," + quote(numCols) + ")")
-    // case GrayscaleImageObjectFromMat(m) => emitValDef(sym, "new generated.scala.GrayscaleImageImpl(" + quote(m) + ")")
-    case GrayscaleImageObjectNew(numRows, numCols) => emitValDef(sym, "new generated.scala.Image[Int](" + quote(numRows) + "," + quote(numCols) + ")")
-    case GrayscaleImageObjectFromMat(m) => emitValDef(sym, "new generated.scala.Image[Int](" + quote(m) + ")")
+    case GrayscaleImageObjectNew(numRows, numCols) => emitValDef(sym, "new " + remap("generated.scala.Image[Int]")+"(" + quote(numRows) + "," + quote(numCols) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }

@@ -274,7 +274,8 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
 
     // augment the DenseMatrix with the identity DenseMatrix of the same size
     val id = DenseMatrix.identity(m.numCols)
-    val augMat = m.toDouble.mutable
+    val isDouble: Boolean = manifest[A] == manifest[Double] // explicitly typed to prevent lifting
+    val augMat = if (isDouble) (m.asInstanceOf[Rep[DenseMatrix[Double]]].mutable) else m.toDouble.mutable
     augMat.insertAllCols(augMat.numCols, id)
 //    try{
       // perform row reductions

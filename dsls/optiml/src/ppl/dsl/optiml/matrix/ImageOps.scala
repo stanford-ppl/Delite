@@ -127,13 +127,18 @@ trait ImageOpsExp extends ImageOps with VariablesExp {
   case class ImageObjectNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) extends Def[Image[A]] {
     val mA = manifest[A]
   }
-  case class ImageObjectFromMat[A:Manifest](x: Exp[DenseMatrix[A]]) extends Def[Image[A]] {
-    val mA = manifest[A]
-  }
 
   ////////////////////////////////
   // implemented via delite ops
 
+  case class ImageObjectFromMat[A:Manifest](in: Exp[DenseMatrix[A]])
+    extends DeliteOpMap[A,A,Image[A]] {
+      
+    override def alloc = Image[A](in.numCols, in.numRows)
+    val size = copyTransformedOrElse(_.size)(in.size)
+    def func = i => i // parallel copy 
+  }
+    
   // TODO: represent these explicitly, see IndexVector2Ops
 //  case class ImageDownsample[A:Manifest](x: Exp[Image[A]], rowFactor: Exp[Int], colFactor: Exp[Int], block: Exp[Matrix[A]] => Exp[A])
 //    extends DeliteOpMap[Int,Vector[A],Vector] {
@@ -150,7 +155,7 @@ trait ImageOpsExp extends ImageOps with VariablesExp {
   // object interface
 
   def image_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectEffect(ImageObjectNew[A](numRows, numCols))
-  def image_obj_frommat[A:Manifest](x: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = reflectEffect(ImageObjectFromMat(x))
+  def image_obj_frommat[A:Manifest](x: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = ImageObjectFromMat(x)
 
   ///////////////////
   // class interface
@@ -185,7 +190,6 @@ trait ScalaGenImageOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case m@ImageObjectNew(numRows, numCols) => emitValDef(sym, "new " + remap("generated.scala.Image[" + remap(m.mA) + "]") + "(" + quote(numRows) + "," + quote(numCols) + ")")
-    case m@ImageObjectFromMat(x) => emitValDef(sym, "new " + remap("generated.scala.Image[" + remap(m.mA) + "]") + "(" + quote(x) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }

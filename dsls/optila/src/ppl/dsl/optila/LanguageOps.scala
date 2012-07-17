@@ -429,8 +429,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class RandSampleMatrix[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Exp[Int], sampleRows: Exp[Boolean])(implicit b: MatrixBuilder[A,I,MA])
     extends DeliteOpSingleTask[MA](reifyEffects(optila_randsample_matrix_impl[A,I,MA](m, numSamples, sampleRows)))
 
-  case class RandSampleVector[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Exp[Int])(implicit b: VectorBuilder[A,VA])
-    extends DeliteOpSingleTask[VA](reifyEffects(optila_randsample_vector_impl[A,VA](v, numSamples)))
+  case class RandSampleVector[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Exp[Int])(implicit val b: VectorBuilder[A,VA])
+    extends DeliteOpSingleWithManifest[A,VA](reifyEffects(optila_randsample_vector_impl[A,VA](v, numSamples)))
   
   def optila_randsample_matrix[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Exp[Int], sampleRows: Exp[Boolean])(implicit b: MatrixBuilder[A,I,MA], ctx: SourceContext) = {
     reflectPure(RandSampleMatrix[A,I,MA](m, numSamples, sampleRows))
@@ -463,7 +463,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     case e@MatrixDistanceEuc(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceEuc(f(x),f(y))(e.m,e.a))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixDistanceSquare(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceSquare(f(x),f(y))(e.m,e.a))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixDeterminant(x) => reflectPure(new { override val original = Some(f,e) } with MatrixDeterminant(f(x))(e.m,e.a,e.n))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@RandSampleVector(x,n) => reflectPure(new { override val original = Some(f,e) } with RandSampleVector(f(x),f(n))(e.mA,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])
+    case Reflect(e@VectorDistanceAbs(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorDistanceAbs(f(x),f(y))(e.m,e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(RandReseed(), u, es) => reflectMirrored(Reflect(RandReseed(), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(RandInt(), u, es) => reflectMirrored(Reflect(RandInt(), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(RandDouble(), u, es) => reflectMirrored(Reflect(RandDouble(), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(RandGaussian(), u, es) => reflectMirrored(Reflect(RandGaussian(), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(RandFloat(), u, es) => reflectMirrored(Reflect(RandFloat(), mapOver(f,u), f(es)))(mtype(manifest[A]))

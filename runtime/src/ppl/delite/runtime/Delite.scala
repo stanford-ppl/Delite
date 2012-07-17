@@ -122,7 +122,7 @@ object Delite {
       executor.shutdown()
     }
     catch {
-      case i: InterruptedException => abnormalShutdown(); exit(1) //a worker thread threw the original exception        
+      case i: InterruptedException => abnormalShutdown(); throw i //a worker thread threw the original exception        
       case e: Exception => abnormalShutdown(); throw e       
     }
     finally {

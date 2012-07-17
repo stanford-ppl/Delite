@@ -1112,6 +1112,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     case e@MatrixMapRowsSequential(x,g) => reflectPure(new { override val original = Some(f,e) } with MatrixMapRowsSequential(f(x),f(g))(e.mA,e.mB,e.mI,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])    
     case e@MatrixMapRowsToVec(x,g,r) => reflectPure(new { override val original = Some(f,e) } with MatrixMapRowsToVec(f(x),f(g),f(r))(e.mA,e.mB,e.mVB,e.b))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixZipWith(x,y,g) => reflectPure(new { override val original = Some(f,e) } with MatrixZipWith(f(x),f(y),f(g))(e.mA,e.mB,e.mR,e.mI,e.mMR,e.b))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@MatrixReduceRows(x,g) => reflectPure(new { override val original = Some(f,e) } with MatrixReduceRows(f(x),f(g))(e.mA,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixCount(x,g) => reflectPure(new { override val original = Some(f,e) } with MatrixCount(f(x),f(g))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
       
     // reflected
@@ -1163,6 +1164,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     case Reflect(e@MatrixZipWith(x,y,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixZipWith(f(x),f(y),f(g))(e.mA,e.mB,e.mR,e.mI,e.mMR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case Reflect(e@MatrixForeach(x,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixForeach(f(x),f(g))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case Reflect(e@MatrixForeachRow(x,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixForeachRow(f(x),f(g))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@MatrixReduceRows(x,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixReduceRows(f(x),f(g))(e.mA,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@MatrixCount(x,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixCount(f(x),f(g))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@MatrixUpdateRow(x,r,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixUpdateRow(f(x),f(r),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@MatrixMutableMap(x,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixMutableMap(f(x),f(g))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))

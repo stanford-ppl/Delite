@@ -26,7 +26,8 @@ trait MultiloopTransformExp extends DeliteTransform
    */
   // private val t = deviceDependentLowering
   private val t = new MultiloopTransformOuter { val IR: self.type = self }
-  appendTransformer(t)
+  if (Config.generateCUDA)
+    appendTransformer(t)
   
   def isGPUable(block: Block[Any]): Boolean = {
     try {

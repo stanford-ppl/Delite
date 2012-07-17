@@ -603,12 +603,18 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    * Mirroring
    */
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case e@AggregateIf(st,en,c,b) => reflectPure(new { override val original = Some(f,e) } with AggregateIf(f(st),f(en),f(c),f(b))(e.m))(mtype(manifest[A]), implicitly[SourceContext])    
+    case e@Aggregate2d(x,y,b) => reflectPure(new { override val original = Some(f,e) } with Aggregate2d(f(x),f(y),f(b))(e.m))(mtype(manifest[A]), implicitly[SourceContext])    
+    case e@Aggregate2dIf(x,y,c,b) => reflectPure(new { override val original = Some(f,e) } with Aggregate2dIf(f(x),f(y),f(c),f(b))(e.m))(mtype(manifest[A]), implicitly[SourceContext])    
     case e@Sum(st,en,b,init) => reflectPure(new { override val original = Some(f,e) } with Sum(f(st),f(en),f(b),f(init))(e.m, e.a, e.c, e.sc))(mtype(manifest[A]), implicitly[SourceContext])
     case e@SumIf(st,en,c,b) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b))(e.m, e.a, e.c,e.mA,e.cs,e.sc))(mtype(manifest[A]), implicitly[SourceContext])
 //    case e@SumIf(st,en,c,b,init) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))
     case Reflect(e@Sum(st,en,b,init), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with Sum(f(st),f(en),f(b),f(init))(e.m, e.a, e.c, e.sc), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@SumIf(st,en,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b))(e.m,e.a,e.c,e.mA,e.cs,e.sc), mapOver(f,u), f(es)))(mtype(manifest[A]))
 //    case Reflect(e@SumIf(st,en,c,b,init), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b),f(init))(e.m,e.a,e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@AggregateIf(st,en,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with AggregateIf(f(st),f(en),f(c),f(b))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@Aggregate2d(x,y,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with Aggregate2d(f(x),f(y),f(b))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@Aggregate2dIf(x,y,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with Aggregate2dIf(f(x),f(y),f(c),f(b))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }

@@ -192,10 +192,10 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
     extends DeliteOpSingleTask(reifyEffectsHere(densevector_obj_onesf_impl(len)))
 
   case class DenseVectorObjectZeros(len: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffectsHere(reflectPure(DenseVectorNew[Double](len, Const(true))))) //densevector_obj_zeros_impl(len)))
+    extends DeliteOpSingleTask(reifyEffectsHere(densevector_obj_zeros_impl(len))) //reflectPure(DenseVectorNew[Double](len, Const(true))))) 
 
   case class DenseVectorObjectZerosF(len: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffectsHere(reflectPure(DenseVectorNew[Float](len, Const(true))))) //densevector_obj_zerosf_impl(len)))
+    extends DeliteOpSingleTask(reifyEffectsHere(densevector_obj_zerosf_impl(len))) //reflectPure(DenseVectorNew[Float](len, Const(true))))) 
     
   case class DenseVectorObjectRand(len: Exp[Int])
     extends DeliteOpSingleTask(reifyEffectsHere(densevector_obj_rand_impl(len)))

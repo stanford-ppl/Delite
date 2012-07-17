@@ -10,8 +10,8 @@ trait DenseVectorImplOps { this: OptiLA =>
   def densevector_obj_fromunliftedseq_impl[A:Manifest](xs: Seq[Rep[A]]): Rep[DenseVector[A]]
   def densevector_obj_ones_impl(length: Rep[Int]): Rep[DenseVector[Double]]
   def densevector_obj_onesf_impl(length: Rep[Int]): Rep[DenseVector[Float]]
-  //def densevector_obj_zeros_impl(length: Rep[Int]): Rep[DenseVector[Double]]
-  //def densevector_obj_zerosf_impl(length: Rep[Int]): Rep[DenseVector[Float]]
+  def densevector_obj_zeros_impl(length: Rep[Int]): Rep[DenseVector[Double]]
+  def densevector_obj_zerosf_impl(length: Rep[Int]): Rep[DenseVector[Float]]
   def densevector_obj_rand_impl(length: Rep[Int]): Rep[DenseVector[Double]]
   def densevector_obj_randf_impl(length: Rep[Int]): Rep[DenseVector[Float]]
   def densevector_obj_uniform_impl(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]): Rep[DenseVector[Double]]
@@ -58,9 +58,9 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
 
   def densevector_obj_onesf_impl(length: Rep[Int]) = DenseVector[Float](length, true) mmap { e => 1f }
 
-  //def densevector_obj_zeros_impl(length: Rep[Int]) = DenseVector[Double](length, true)
+  def densevector_obj_zeros_impl(length: Rep[Int]) = DenseVector[Double](length, true) mmap { e => 0. } // required for compatibility with non-JVM generators
 
-  //def densevector_obj_zerosf_impl(length: Rep[Int]) = DenseVector[Float](length, true)
+  def densevector_obj_zerosf_impl(length: Rep[Int]) = DenseVector[Float](length, true) mmap { e => 0f }
 
   def densevector_obj_rand_impl(length: Rep[Int]) = DenseVector[Double](length, true) mmap { e => random[Double] }
 
