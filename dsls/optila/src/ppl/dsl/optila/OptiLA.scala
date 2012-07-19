@@ -486,8 +486,18 @@ trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenD
     startsWith(0) match {
       case "ppl.dsl.optila.DenseVector" => "DenseVector< " + remap(m.typeArguments(0)) + " >"
       case "ppl.dsl.optila.DenseMatrix" => "DenseMatrix< " + remap(m.typeArguments(0)) + " >"
-      case _ => super.remap(m)
+      case _ => {
+        m.toString match {
+          case "Array[Int]" => "DeliteArray< int >"
+          case "Array[Long]" => "DeliteArray< long >"
+          case "Array[Float]" => "DeliteArray< float >"
+          case "Array[Double]" => "DeliteArray< double >"
+          case "Array[Boolean]" => "DeliteArray< bool >"
+          case _ => super.remap(m)
+        }
+      }
     }
+  }
 
     /*
     m.toString match {
@@ -520,7 +530,6 @@ trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenD
       case _ => super.remap(m)
     }
     */
-  }
 
   override def getDSLHeaders: String = {
     val out = new StringBuilder

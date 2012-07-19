@@ -95,7 +95,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     out.append(op.getInputs.map(i=>getSymHost(i._1,i._2)).mkString("(",",",");\n"))
 
     if (!returnsResult) {
-      for (name <- op.getOutputs) {
+      for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
         out.append(op.outputType(Targets.Cpp, name))
         if (!isPrimitiveType(op.outputType(name))) out.append('*')
         out.append(" " + getSymHost(op,name) + " = " + resultName + "->" + name + ";\n")

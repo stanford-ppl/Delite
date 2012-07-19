@@ -388,8 +388,15 @@ trait CGenDeliteArrayOps extends CGenEffect {
     case _ => super.emitNode(sym, rhs)
   }
 
-  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
-    case "DeliteArray" => "DeliteArray< " + remap(m.typeArguments(0)) + " >"
-    case _ => super.remap(m)
+  override def remap[A](m: Manifest[A]): String = {
+    //if(m.erasure.isArray) 
+    //  "DeliteArray< " + remap(Manifest.classType(m.erasure.getComponentType)) + " >" 
+    //else {
+       m.erasure.getSimpleName match {
+        case "DeliteArray" => "DeliteArray< " + remap(m.typeArguments(0)) + " >"
+        case t_ => super.remap(m)
+      }
+    //}
   }
+
 }
