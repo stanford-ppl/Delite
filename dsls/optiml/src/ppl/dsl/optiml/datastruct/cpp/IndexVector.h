@@ -1,53 +1,52 @@
-#ifndef _DENSEVECTOR_H_
-#define _DENSEVECTOR_H_
+#ifndef _INDEXVECTOR_H_
+#define _INDEXVECTOR_H_
 
 #include <DeliteArray.h>
 #include <stdlib.h>
 
-template <class T>
-class DenseVector {
+class IndexVectorDense {
 public:
-    DeliteArray<T> *da;
-    T *data;
+    DeliteArray<int> *da;
+    int *data;
     int length;
     bool isRow;
 
     // Constructor
-    DenseVector(int _length, bool _isRow) {
+    IndexVectorDense(int _length, bool _isRow) {
         length = _length;
         isRow = _isRow;
-        da = new DeliteArray<T>(length);
+        da = new DeliteArray<int>(length);
         data = da->data;
     }
 
-    DenseVector(DeliteArray<T> *_da, int _length, bool _isRow) {
+    IndexVectorDense(DeliteArray<int> *_da, int _length, bool _isRow) {
         length = _length;
         isRow = _isRow;
         da = _da;
         data = _da->data;
     }
 
-    DenseVector(T *_data, int _length, bool _isRow) {
+    IndexVectorDense(int *_data, int _length, bool _isRow) {
         length = _length;
         isRow = _isRow;
-        da = new DeliteArray<T>(_data, _length);
+        da = new DeliteArray<int>(_data, _length);
         data = _data;
     }
 
     // Accessor Functions
-    T apply(int idx) {
+    int apply(int idx) {
         return data[idx];
     }
 
-    void update(int idx, T newVal) {
+    void update(int idx, int newVal) {
         data[idx] = newVal;
     }
 
-    DeliteArray<T> *getData(void) {
+    DeliteArray<int> *getData(void) {
       return da;
     }
 
-    void setData(DeliteArray<T> *_da) {
+    void setData(DeliteArray<int> *_da) {
       da = _da;
       data = da->data;
     }

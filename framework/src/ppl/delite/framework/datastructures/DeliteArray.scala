@@ -364,9 +364,9 @@ trait CGenDeliteArrayOps extends CGenEffect {
     case DeliteArrayApply(da, idx) =>
       emitValDef(sym, quote(da) + "->apply(" + quote(idx) + ")")
     case DeliteArrayUpdate(da, idx, x) =>
-      emitValDef(sym, quote(da) + "->update(" + quote(idx) + ", " + quote(x) + ")")
+      stream.println(quote(da) + "->update(" + quote(idx) + ", " + quote(x) + ");")
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
-      emitValDef(sym, quote(src) + "->copy(" + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
+      stream.println(quote(src) + "->copy(" + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ");")
     //case DeliteArrayMkString(da,x) =>
     //  emitValDef(sym, quote(da) + ".mkString(" + quote(x) + ")")
     case DeliteArrayUnion(lhs,rhs) =>

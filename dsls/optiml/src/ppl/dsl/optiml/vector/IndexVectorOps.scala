@@ -3,7 +3,7 @@ package ppl.dsl.optiml.vector
 import ppl.dsl.optiml.{DenseVector,Vector, IndexVector, IndexVectorRange, IndexVectorDense, Matrix, DenseMatrix}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import ppl.delite.framework.DeliteApplication
-import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
+import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase, CGenBase}
 import scala.virtualization.lms.util.OverloadHack
 import scala.reflect.SourceContext
 import java.io.PrintWriter
@@ -116,6 +116,18 @@ trait ScalaGenIndexVectorOps extends ScalaGenBase {
     //   emitValDef(sym, "new generated.scala.IndexVectorRange(" + quote(start) +  "," + quote(end) + ")")
     case v@IndexVectorDenseNew(len, isRow) =>
       emitValDef(sym, "new generated.scala.IndexVectorDense(" + quote(len) + ", " + quote(isRow) + ")")
+
+    case _ => super.emitNode(sym, rhs)
+  }
+}
+
+trait CGenIndexVectorOps extends CGenBase {
+  val IR: IndexVectorOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case v@IndexVectorDenseNew(len, isRow) =>
+      emitValDef(sym, "new IndexVectorDense(" + quote(len) + ", " + quote(isRow) + ")")
 
     case _ => super.emitNode(sym, rhs)
   }

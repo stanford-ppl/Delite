@@ -593,11 +593,11 @@ trait CGenDenseMatrixOps extends CGenBase {
     case DenseMatrixNumRows(x)  => emitValDef(sym, quote(x) + "->numRows")
     case DenseMatrixNumCols(x)  => emitValDef(sym, quote(x) + "->numCols")
     case DenseMatrixRawApply(x,i) => emitValDef(sym, quote(x) + "->data[" + quote(i) + "]")
-    case DenseMatrixRawUpdate(x,i,y) => emitValDef(sym, quote(x) + "->data[" + quote(i) + "] = "  + quote(y))
+    case DenseMatrixRawUpdate(x,i,y) => stream.println(quote(x) + "->data[" + quote(i) + "] = "  + quote(y) + ";")
     case DenseMatrixRawData(x) => emitValDef(sym, quote(x) + "->getData()")
-    case DenseMatrixSetNumRows(x,v) => emitValDef(sym, quote(x) + "->numRows = " + quote(v))
-    case DenseMatrixSetNumCols(x,v) => emitValDef(sym, quote(x) + "->numCols = " + quote(v))
-    case DenseMatrixSetRawData(x,data) => emitValDef(sym, quote(x) + "->setData(" + quote(data) + ")")
+    case DenseMatrixSetNumRows(x,v) => stream.println(quote(x) + "->numRows = " + quote(v) + ";")
+    case DenseMatrixSetNumCols(x,v) => stream.println(quote(x) + "->numCols = " + quote(v) + ";")
+    case DenseMatrixSetRawData(x,data) => stream.println(quote(x) + "->setData(" + quote(data) + ");")
     case _ => super.emitNode(sym, rhs)
   }
 }

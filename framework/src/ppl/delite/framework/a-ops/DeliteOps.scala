@@ -1298,7 +1298,6 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             emitValDef(elem.sV, quote(op.size))
         }
         emitBlock(elem.allocN)
-        stream.println(quote(getBlockResult(elem.allocN)))
         elem.par match {
           case ParBuffer =>
             emitValDef(quote(sym) + "_buf", remap(getBlockResult(elem.allocN).tp), quote(getBlockResult(elem.allocN)))
