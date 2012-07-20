@@ -44,7 +44,8 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   }
   // Separate condition kernel only needed for COLLECT with condition (i.e., need scan phase later)
   private def conditionList(op: OP_MultiLoop): List[(OPData,String)] = {
-    op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.hasCond && o._1.loopType=="COLLECT")
+    //op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.hasCond && o._1.loopType=="COLLECT")
+    op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.hasCond)
   }
 
   private def needDeref(op:OP_MultiLoop, in: DeliteOP, sym:String): Boolean = {
@@ -340,8 +341,7 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   private def writeReduceKernel(out: StringBuilder, op: OP_MultiLoop) {
     writeKernelHeader(out, op, "Reduce")
     for((odata,osym) <- reductionList(op)) {
-      if (odata.hasCond) out.append("smem_" + osym + "[threadIdx.x] = ((idxX<size) && (bitmap_" + osym + "[idxX]==1)) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
-      else out.append("smem_" + osym + "[threadIdx.x] = (idxX < size) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+      out.append("smem_" + osym + "[threadIdx.x] = (idxX < size) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
       out.append("__syncthreads();\n")
       out.append("for(unsigned int s=1; s<blockDim.x; s*=2) {\n")
       out.append("if((idxX%(2*s))==0) { \n")
@@ -357,14 +357,8 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   private def writeReduceTupleKernel(out: StringBuilder, op: OP_MultiLoop) {
     writeKernelHeader(out, op, "ReduceTuple")
     for((odata,osym) <- reductionTupleList(op)) {
-      if (odata.hasCond) {
-        out.append("smem_1_" + osym + "[threadIdx.x] = ((idxX<size) && (bitmap_" + osym + "[idxX]==1)) ? temp_1_" + osym + "[idxX] : dev_zero_1_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
-        out.append("smem_2_" + osym + "[threadIdx.x] = ((idxX<size) && (bitmap_" + osym + "[idxX]==1)) ? temp_2_" + osym + "[idxX] : dev_zero_2_" + funcNameSuffix(op,osym) + odata.loopZeroInputs_2.mkString("(",",",");\n"))
-      }
-      else {
-        out.append("smem_1_" + osym + "[threadIdx.x] = (idxX < size) ? temp_1_" + osym + "[idxX] : dev_zero_1_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
-        out.append("smem_2_" + osym + "[threadIdx.x] = (idxX < size) ? temp_2_" + osym + "[idxX] : dev_zero_2_" + funcNameSuffix(op,osym) + odata.loopZeroInputs_2.mkString("(",",",");\n"))
-      }
+      out.append("smem_1_" + osym + "[threadIdx.x] = (idxX < size) ? temp_1_" + osym + "[idxX] : dev_zero_1_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+      out.append("smem_2_" + osym + "[threadIdx.x] = (idxX < size) ? temp_2_" + osym + "[idxX] : dev_zero_2_" + funcNameSuffix(op,osym) + odata.loopZeroInputs_2.mkString("(",",",");\n"))
       out.append("__syncthreads();\n")
       out.append("for(unsigned int s=1; s<blockDim.x; s*=2) {\n")
       out.append("if((idxX%(2*s))==0) { \n")
@@ -475,7 +469,7 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
   private def writeScanKernel(out: StringBuilder, op: OP_MultiLoop) {
     //exclusive scan
-    for ((odata,osym) <- conditionList(op)) {
+    for ((odata,osym) <- conditionList(op) if odata.loopType=="COLLECT") {
       out.append("thrust::device_ptr<unsigned int> bitmap_" + osym + "_thrust(bitmap_" + osym + ");\n")
       out.append("thrust::device_ptr<unsigned int> scanmap_" + osym + "_thrust(scanmap_" + osym + ");\n")
       out.append("thrust::exclusive_scan(bitmap_" + osym + "_thrust, bitmap_" + osym + "_thrust+" + op.size + ", scanmap_" + osym + "_thrust);\n")
