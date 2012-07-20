@@ -123,7 +123,8 @@ trait IndexVectorDenseOpsExpOpt extends IndexVectorDenseOpsExp { this: OptiMLExp
     case Def(v@Reflect(IndexVectorDenseNew(l,r), u, es)) if context.contains(v) => l
     case Def(IndexVectorObjectFromVec(xs)) => xs.length
     case Def(v@Reflect(IndexVectorObjectFromVec(xs), u, es)) if context.contains(v) => xs.length
-    case _ => super.indexvectordense_length(x)
+    case Def(VectorSlice(a, start, end)) => end - start
+    case _ => super.indexvectordense_length(x) // densevector_length(x) // should work
   }
 
 

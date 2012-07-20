@@ -1076,8 +1076,49 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 }
 
 
+trait BaseDeliteOpsTraversalFat extends BaseLoopsTraversalFat {
+  val IR: DeliteOpsExp
+  import IR._
 
-trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt with BaseGenStaticData {
+  /*
+    // overridden only to attach DeliteFatOp trait to result ...
+    override def fatten(e: TP[Any]): TTP = e.rhs match {
+      case op: DeliteOpLoop[_] => 
+        TTP(List(e.sym), DeliteFatLoop(op.size, op.v, List(op.body)))
+      case _ => super.fatten(e)
+    }
+  */
+
+  /*
+    // TODO: can implement generically? or need override for VectorSize and all others?
+    override def unapplySimpleDomain(e: Def[Int]): Option[Exp[Any]] = e match {
+      case ArrayLength(a) => Some(a)
+      case _ => super.unapplySimpleDomain(e)
+    }
+  */
+  
+  override def unapplySimpleCollect(e: Def[Any]) = e match {
+    case e: DeliteCollectElem[_,_,_] if e.cond.isEmpty => Some(e.func.res)
+    case _ => super.unapplySimpleCollect(e)
+  }
+
+  override def unapplySimpleCollectIf(e: Def[Any]) = e match {
+    case e: DeliteCollectElem[_,_,_] => Some((e.func.res, e.cond.map(_.res)))
+  //    case e: DeliteReduceElem[_] => Some((e.func, e.cond)) // TODO: aks -- testing fusing conditionals for reduce elems
+    case _ => super.unapplySimpleCollectIf(e)
+  }
+
+  override def applyAddCondition(e: Def[Any], c: List[Exp[Boolean]]) = e match {
+    case e: DeliteCollectElem[_,_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))
+    case e: DeliteReduceElem[_] => e.copy(cond = e.cond ++ c.map(Block(_)))
+    case _ => super.applyAddCondition(e,c)
+  }
+
+  override def shouldApplyFusion(currentScope: List[Stm])(result: List[Exp[Any]]) = Config.opfusionEnabled  
+}
+
+
+trait BaseGenDeliteOps extends BaseDeliteOpsTraversalFat with BaseGenLoopsFat with LoopFusionOpt with BaseGenStaticData {
   val IR: DeliteOpsExp
   import IR._
 
@@ -1098,42 +1139,6 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt with BaseGenSt
     deliteKernel = saveKernel
     ret
   }
-
-/*
-  // overridden only to attach DeliteFatOp trait to result ...
-  override def fatten(e: TP[Any]): TTP = e.rhs match {
-    case op: DeliteOpLoop[_] => 
-      TTP(List(e.sym), DeliteFatLoop(op.size, op.v, List(op.body)))
-    case _ => super.fatten(e)
-  }
-*/
-
-/*
-  // TODO: can implement generically? or need override for VectorSize and all others?
-  override def unapplySimpleDomain(e: Def[Int]): Option[Exp[Any]] = e match {
-    case ArrayLength(a) => Some(a)
-    case _ => super.unapplySimpleDomain(e)
-  }
-*/
-  override def unapplySimpleCollect(e: Def[Any]) = e match {
-    case e: DeliteCollectElem[_,_,_] if e.cond.isEmpty => Some(e.func.res)
-    case _ => super.unapplySimpleCollect(e)
-  }
-
-  override def unapplySimpleCollectIf(e: Def[Any]) = e match {
-    case e: DeliteCollectElem[_,_,_] => Some((e.func.res, e.cond.map(_.res)))
-//    case e: DeliteReduceElem[_] => Some((e.func, e.cond)) // TODO: aks -- testing fusing conditionals for reduce elems
-    case _ => super.unapplySimpleCollectIf(e)
-  }
-
-  override def applyAddCondition(e: Def[Any], c: List[Exp[Boolean]]) = e match {
-    case e: DeliteCollectElem[_,_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))
-    case e: DeliteReduceElem[_] => e.copy(cond = e.cond ++ c.map(Block(_)))
-    case _ => super.applyAddCondition(e,c)
-  }
-
-  override def shouldApplyFusion(currentScope: List[Stm])(result: List[Exp[Any]]) = Config.opfusionEnabled
-
 }
 
 

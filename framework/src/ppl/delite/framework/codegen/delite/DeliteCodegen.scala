@@ -1,20 +1,23 @@
 package ppl.delite.framework.codegen.delite
 
-import generators.{DeliteGenTaskGraph}
-import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
-import scala.virtualization.lms.internal._
-import scala.virtualization.lms.common.{BaseGenStaticData, StaticDataExp, WorklistTransformer}
-import ppl.delite.framework.{Config, DeliteApplication}
+import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
 import collection.mutable.{ListBuffer}
 import collection.mutable.HashMap
-import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
 import scala.reflect.SourceContext
+import scala.virtualization.lms.internal._
+import scala.virtualization.lms.common._
+
+import generators.{DeliteGenTaskGraph}
+import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
+import ppl.delite.framework.{Config, DeliteApplication}
+import ppl.delite.framework.transform.ForwardPassTransformer
+import ppl.delite.framework.ops.DeliteOpsExp
 
 /**
  * Notice that this is using Effects by default, also we are mixing in the Delite task graph code generator
  */
 trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.delite.framework.codegen.Utils {
-  val IR: Expressions with FatExpressions with Effects with StaticDataExp
+  val IR: DeliteOpsExp //Expressions with FatExpressions with Effects with StaticDataExp with LoopsFatExp with IfThenElseFatExp
   import IR._
 
   // these are the target-specific kernel generators (e.g. scala, cuda, etc.)
@@ -116,11 +119,11 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   
   def runTransformations[A:Manifest](b: Block[A]): Block[A] = {
     printlog("DeliteCodegen: applying transformations")
+    var curBlock = b  
     printlog("  Transformers: " + transformers)    
-    printlog("  Block before transformation: " + b)
-    var curBlock = b
     val maxTransformIter = 3 // TODO: make configurable
     for (t <- transformers) {
+      printlog("  Block before transformation: " + curBlock)    
       printlog("  map: " + t.nextSubst)
       var i = 0
       while (!t.isDone && i < maxTransformIter) {
@@ -129,9 +132,9 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
         i += 1
       }
       if (i == maxTransformIter) printlog("  warning: transformer " + t + " did not converge in " + maxTransformIter + " iterations")
+      printlog("  Block after transformation: " + curBlock) 
     }
-    printlog("DeliteCodegen: done transforming")
-    printlog("  Block after transformation: " + curBlock) 
+    printlog("DeliteCodegen: done transforming")    
     curBlock   
   }
   

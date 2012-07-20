@@ -27,6 +27,7 @@ import ppl.dsl.optiml.library.cluster._
 import ppl.dsl.optiml.library.regression._
 import ppl.dsl.optiml.application._
 import ppl.dsl.optiml.capabilities._
+import ppl.dsl.optiml.transform._
 
 /**
  * Microbenchmark experiments: OptiMLApplicationRunners with optimizations disabled
@@ -110,7 +111,8 @@ trait OptiML extends OptiMLScalaOpsPkg with OptiLA with RecordOps
 trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities with GraphCompilerOps with DeliteCollectionOps 
   with LanguageImplOpsStandard with VectorImplOpsStandard with IndexVectorImplOpsStandard with MatrixImplOpsStandard
   with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
-  with GraphImplOpsStandard with EdgeImplOpsStandard with VertexImplOpsStandard with VerticesImplOpsStandard {
+  with GraphImplOpsStandard with EdgeImplOpsStandard with VertexImplOpsStandard with VerticesImplOpsStandard
+  with TrainingSetImplOpsStandard {
 
   this: OptiMLApplication with OptiMLExp =>
 }
@@ -127,6 +129,7 @@ trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp 
   with StreamOpsExpOpt with StreamRowOpsExpOpt
   with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
   with GraphOpsExp with EdgeOpsExp with VertexOpsExp with VSetOpsExp
+  with MultiloopTransformExp
   with DeliteAllOverridesExp {
 
   // this: OptiMLApplicationRunner => why doesn't this work?

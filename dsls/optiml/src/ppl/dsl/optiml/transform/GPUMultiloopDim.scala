@@ -1,12 +1,14 @@
-package ppl.delite.framework.transform
+package ppl.dsl.optiml.transform
 
 import java.io._
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{AbstractSubstTransformer,Transforming}
 import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.delite.framework.ops.{DeliteOpsExp, BaseDeliteOpsTraversalFat}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.Config
+import ppl.delite.framework.transform.{DeliteTransform,ForwardPassTransformer}
+import ppl.dsl.optila.vector.DenseVectorOpsExp
 
 /**
  * Transform nested multiloops by selecting a dimension to parallelize for the GPU.
@@ -17,17 +19,18 @@ trait MultiloopTransformExp extends DeliteTransform
   with BooleanOpsExp with MiscOpsExp with StringOpsExp with ObjectOpsExp with PrimitiveOpsExp
   with LiftString with LiftBoolean with LiftPrimitives { // may want to use self-types instead of mix-in to decrease risk of accidental inclusion
   
-  self =>
+  self: DenseVectorOpsExp =>
   
   val cudaGen = getCodeGenPkg(cudaTarget) // use a fresh CUDA generator to avoid any interference
 
   /*
    * This selects which multiloop transformer (policy) to use. TODO: make configurable
    */
-  // private val t = deviceDependentLowering
+  // private val t = deviceDependentLowering  
   private val t = new MultiloopTransformOuter { val IR: self.type = self }
-  if (Config.generateCUDA)
-    appendTransformer(t)
+  if (Config.generateCUDA && Config.optimize > 0) {
+    appendTransformer(t)    
+  }
   
   def isGPUable(block: Block[Any]): Boolean = {
     try {
@@ -52,7 +55,7 @@ trait MultiloopTransformExp extends DeliteTransform
                                  .exists(e=>isGPUable(e.rhs.asInstanceOf[DeliteOpLoop[Any]].body.asInstanceOf[DeliteCollectElem[_,_,_]].func))
       }
     }    
-    foundCollect    
+    foundCollect
   }
   
   def loopContainsGPUableCollect(l: DeliteOpLoop[_]) = {
@@ -62,6 +65,21 @@ trait MultiloopTransformExp extends DeliteTransform
       case e:DeliteForeachElem[_] => blockContainsGPUableCollect(e.func)
       case e:DeliteReduceElem[_] => blockContainsGPUableCollect(e.func) || blockContainsGPUableCollect(e.rFunc)
       case _ => false
+    }
+  }
+  
+  def shouldTransformLoop(l: DeliteOpLoop[_]) = {    
+    // an old, but flawed criteria
+    // loopContainsGPUableCollect(l)
+    
+    // an equally flawed criteria, but hey
+    l.size match {
+      case Const(x) if x < 1024 => 
+        // Predef.println("transforming loop due to size (" + x + "): " + l.toString)
+        true
+      case _ => 
+        // Predef.println("not transforming loop of size (" + l.size.toString + "): " + l.toString)
+        false
     }
   }
     
@@ -172,36 +190,69 @@ trait MultiloopTransformExp extends DeliteTransform
 }
 
 /* Always parallelize inner multiloop, if GPUable */ 
-// should this happen before or after fusion?
-trait MultiloopTransformOuter extends ForwardPassTransformer {  
-  val IR: LoopsFatExp with IfThenElseFatExp with MultiloopTransformExp
+trait MultiloopTransformOuter extends ForwardPassTransformer with BaseDeliteOpsTraversalFat with LoopFusionOpt {  
+  val IR: LoopsFatExp with IfThenElseFatExp with MultiloopTransformExp with DenseVectorOpsExp
   import IR._
   
-  var inMultiloop = false
-    
+  var inMultiloop = 0
+
+  override def runOnce[A:Manifest](s: Block[A]): Block[A] = {
+    val save = Config.opfusionEnabled
+    // disabling fusion for now because still not sure how to make
+    // fusion+transformer combo work correctly in general
+    Config.opfusionEnabled = false
+    val z = super.runOnce(s)
+    Config.opfusionEnabled = save
+    // 
+    // Predef.println("global syms: ")
+    // for (s<-IR.globalDefs) Predef.println("  "+s)
+    z
+  }  
+  
+  override def unapplySimpleIndex(e: Def[Any]) = e match { // TODO: what to do about this? should inherit from BaseDenseVectorTraversal or something? 
+    case DenseVectorApply(a, i) => Some((a,i))
+    case _ => super.unapplySimpleIndex(e)
+  }  
+      
+  override def traverseStm(stm: Stm) = stm match {        
+    case TTP(lhs, mhs, rhs) => 
+      // Predef.println("unwrapping TTP: " + stm)
+      lhs.map(e => findDefinition(e).get).foreach(traverseStm) // ??
+     
+    case TP(s,l:DeliteOpLoop[_]) =>
+      inMultiloop += 1
+      super.traverseStm(stm)
+      inMultiloop -= 1
+      
+    case TP(s,Reflect(l:DeliteOpLoop[_], u, es))  =>
+      inMultiloop += 1
+      super.traverseStm(stm)
+      inMultiloop -= 1
+      
+    case _ => super.traverseStm(stm)
+  }        
+  
   override def transformStm(stm: Stm): Exp[Any] = stm match {
-    case TP(s,l:DeliteOpLoop[_]) if (Config.generateCUDA && !inMultiloop && loopContainsGPUableCollect(l)) => 
-      inMultiloop = true
+    case TP(s,l:DeliteOpLoop[_]) if (inMultiloop < 2 && shouldTransformLoop(l)) => 
       val newSym = l.body match {
         case e:DeliteCollectElem[_,_,_] => (transformCollectToWhile(s,l,e)(e.mA,e.mI,e.mCA))
         case e:DeliteForeachElem[_] => (transformForeachToWhile(s,l,e)(e.mA))
         case e:DeliteReduceElem[_] => (transformReduceToWhile(s,l,e)(e.mA))
-        case _ => s
+        case _ => super.transformStm(stm)
       }      
-      inMultiloop = false
       newSym
       
-    case TP(s,Reflect(l:DeliteOpLoop[_], u, es)) if (Config.generateCUDA && !inMultiloop && loopContainsGPUableCollect(l)) =>
-      inMultiloop = true
+    case TP(s,Reflect(l:DeliteOpLoop[_], u, es)) if (inMultiloop < 2 && shouldTransformLoop(l)) =>
       val newSym = l.body match {
         case e:DeliteCollectElem[a,i,c] => reflectTransformed(this.asInstanceOf[IR.Transformer], (transformCollectToWhile(s,l,e)(e.mA,e.mI,e.mCA)), u, es)(e.mCA) // cast needed why?
         case e:DeliteForeachElem[_] => reflectTransformed(this.asInstanceOf[IR.Transformer], (transformForeachToWhile(s,l,e)(e.mA)), u, es) 
         case e:DeliteReduceElem[a] => reflectTransformed(this.asInstanceOf[IR.Transformer], (transformReduceToWhile(s,l,e)(e.mA)), u, es)(e.mA)       
-        case _ => s        
+        case _ => super.transformStm(stm)        
       }
-      inMultiloop = false
       newSym
       
-    case _ => super.transformStm(stm)
+    case _ => 
+      // Predef.println("=== FOUND NO TRANFORM MATCH FOR: " + stm.toString)
+      super.transformStm(stm)
   }
 }

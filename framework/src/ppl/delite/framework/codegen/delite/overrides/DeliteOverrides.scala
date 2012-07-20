@@ -5,7 +5,7 @@ import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.transform._
 
 // you can pick and choose your overrides, these are provided for convenience
-trait DeliteAllOverridesExp extends DeliteIfThenElseExp /*with DeliteOpMap*/ with DeliteWhileExp with MultiloopTransformExp {
+trait DeliteAllOverridesExp extends DeliteIfThenElseExp /*with DeliteOpMap*/ with DeliteWhileExp {
   this: DeliteApplication with DeliteOpsExp =>
 }
 
