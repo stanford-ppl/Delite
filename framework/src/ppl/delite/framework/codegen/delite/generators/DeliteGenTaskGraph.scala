@@ -26,7 +26,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
   }
 
   private def mutating(kernelContext: State, sym: Sym[Any]) : List[Sym[Any]] = kernelContext flatMap {
-    case Def(Reflect(x,u,effects)) => if (mayWrite(u,List(sym))) List(sym) else Nil
+    case Def(Reflect(x,u,effects)) => if (u.mstWrite contains sym) List(sym) else Nil
     case _ => Nil
   }
 

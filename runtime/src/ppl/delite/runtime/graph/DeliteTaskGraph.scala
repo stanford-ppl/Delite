@@ -15,9 +15,11 @@ object DeliteTaskGraph {
 
   def apply(degFile: File) = {
     val contents = scala.io.Source.fromFile(degFile).mkString
-    JSON.parseFull(contents) match {
-      case Some(json) => buildFromParsedJSON(json)
-      case None => throw new RuntimeException("Couldn't parse the DEG file")
+    import JSON._
+
+    phrase(root)(new lexical.Scanner(contents)) match {
+      case Success(result,_) => buildFromParsedJSON(resolveType(result))
+      case f@NoSuccess(_,_) => throw new RuntimeException("Couldn't parse the DEG file:\n" + f.toString)
     }
   }
 
