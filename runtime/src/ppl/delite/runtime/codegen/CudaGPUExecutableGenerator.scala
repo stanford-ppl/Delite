@@ -81,6 +81,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("cudaStreamCreate(&d2hStream);\n")
     out.append("cublasSetKernelStream(kernelStream);\n")  // set cublas to use the kernel stream
     out.append("hostInit();\n") // try to remove the overhead of the first call to hostInit (internally calls cudaHostAlloc)
+    out.append("tempCudaMemInit();\n") // initialize temporary cuda memory for multiloop 
   }
 
 

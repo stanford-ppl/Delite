@@ -44,8 +44,8 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   }
   // Separate condition kernel only needed for COLLECT with condition (i.e., need scan phase later)
   private def conditionList(op: OP_MultiLoop): List[(OPData,String)] = {
-    //op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.hasCond && o._1.loopType=="COLLECT")
-    op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.hasCond)
+    op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.hasCond && o._1.loopType=="COLLECT")
+    //op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.hasCond)
   }
 
   private def needDeref(op:OP_MultiLoop, in: DeliteOP, sym:String): Boolean = {
@@ -299,7 +299,7 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
           out.append("dev_foreach_" + funcNameSuffix(op,osym) + "(" + odata.loopFuncInputs.mkString("",",",",") + "idxX);\n")
           out.append("}\n")
         case "REDUCE" =>
-          if (odata.hasCond) out.append("smem_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (bitmap_" + osym + "[idxX]==1)) ? dev_collect_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") +  ": dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+          if (odata.hasCond) out.append("smem_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (dev_cond_" + funcNameSuffix(op,osym) + "(" + (odata.loopCondInputs:+"idxX").mkString(",") + "))) ? dev_collect_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") +  ": dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
           else out.append("smem_" + osym + "[threadIdx.x] = (idxX < " + op.size + ") ? dev_collect_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") +  ": dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
           out.append("__syncthreads();\n")
           out.append("for(unsigned int s=1; s<blockDim.x; s*=2) {\n")
@@ -311,8 +311,8 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
           out.append("if(threadIdx.x==0) temp_" + osym + "[blockIdx.x] = smem_" + osym + "[0];\n")
         case "REDUCE_TUPLE" =>
           if (odata.hasCond) {
-            out.append("smem_1_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (bitmap_" + osym + "[idxX]==1)) ? dev_collect_1_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") + " : dev_zero_1_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
-            out.append("smem_2_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (bitmap_" + osym + "[idxX]==1)) ? dev_collect_2_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs_2:+"idxX").mkString("(",",",")") + " : dev_zero_2_" + funcNameSuffix(op,osym) + odata.loopZeroInputs_2.mkString("(",",",");\n"))
+            out.append("smem_1_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (dev_cond_" + funcNameSuffix(op,osym) + "(" + (odata.loopCondInputs:+"idxX").mkString(",") + "))) ? dev_collect_1_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") + " : dev_zero_1_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+            out.append("smem_2_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (dev_cond_" + funcNameSuffix(op,osym) + "(" + (odata.loopCondInputs:+"idxX").mkString(",") + "))) ? dev_collect_2_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs_2:+"idxX").mkString("(",",",")") + " : dev_zero_2_" + funcNameSuffix(op,osym) + odata.loopZeroInputs_2.mkString("(",",",");\n"))
           }
           else {
             out.append("smem_1_" + osym + "[threadIdx.x] = (idxX < " + op.size + ") ? dev_collect_1_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") + " : dev_zero_1_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
@@ -495,21 +495,28 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
   // Allocate temporary outputs for reduction operations
   private def allocateTemps(out: StringBuilder, op: OP_MultiLoop) {
+    out.append("char *tempPtr = tempCudaMem;\n")
     for ((odata,osym) <- reductionList(op)) {
-      out.append(odata.loopFuncOutputType + " *temp_" + osym + ";\n")
-      out.append("DeliteCudaMalloc((void**)&temp_" + osym + ", " + op.size + "*sizeof(" + odata.loopFuncOutputType + "));\n")
-      out.append(odata.loopFuncOutputType + " *temp_" + osym + "_2;\n")
-      out.append("DeliteCudaMalloc((void**)&temp_" + osym + "_2, " + op.size + "*sizeof(" + odata.loopFuncOutputType + "));\n")
+      out.append(odata.loopFuncOutputType + " *temp_" + osym + " = (" + odata.loopFuncOutputType + "*)tempPtr;\n")
+      out.append("tempPtr += " + op.size + "*sizeof(" + odata.loopFuncOutputType + ");\n")
+      //out.append("DeliteCudaMalloc((void**)&temp_" + osym + ", " + op.size + "*sizeof(" + odata.loopFuncOutputType + "));\n")
+      out.append(odata.loopFuncOutputType + " *temp_" + osym + "_2 = (" + odata.loopFuncOutputType + "*) tempPtr;\n")
+      out.append("tempPtr += " + op.size + "*sizeof(" + odata.loopFuncOutputType + ");\n")
+      //out.append("DeliteCudaMalloc((void**)&temp_" + osym + "_2, " + op.size + "*sizeof(" + odata.loopFuncOutputType + "));\n")
     }
     for ((odata,osym) <- reductionTupleList(op)) {
-      out.append(odata.loopFuncOutputType + " *temp_1_" + osym + ";\n")
-      out.append("DeliteCudaMalloc((void**)&temp_1_" + osym + ", " + op.size + "*sizeof(" + odata.loopFuncOutputType + "));\n")
-      out.append(odata.loopFuncOutputType + " *temp_1_" + osym + "_2;\n")
-      out.append("DeliteCudaMalloc((void**)&temp_1_" + osym + "_2, " + op.size + "*sizeof(" + odata.loopFuncOutputType + "));\n")
-      out.append(odata.loopFuncOutputType_2 + " *temp_2_" + osym + ";\n")
-      out.append("DeliteCudaMalloc((void**)&temp_2_" + osym + ", " + op.size + "*sizeof(" + odata.loopFuncOutputType_2 + "));\n")
-      out.append(odata.loopFuncOutputType_2 + " *temp_2_" + osym + "_2;\n")
-      out.append("DeliteCudaMalloc((void**)&temp_2_" + osym + "_2, " + op.size + "*sizeof(" + odata.loopFuncOutputType_2 + "));\n")
+      out.append(odata.loopFuncOutputType + " *temp_1_" + osym + " = (" + odata.loopFuncOutputType + "*)tempPtr;\n")
+      out.append("tempPtr += " + op.size + "*sizeof(" + odata.loopFuncOutputType + ");\n")
+      //out.append("DeliteCudaMalloc((void**)&temp_1_" + osym + ", " + op.size + "*sizeof(" + odata.loopFuncOutputType + "));\n")
+      out.append(odata.loopFuncOutputType + " *temp_1_" + osym + "_2 = (" + odata.loopFuncOutputType + "*)tempPtr;\n")
+      out.append("tempPtr += " + op.size + "*sizeof(" + odata.loopFuncOutputType + ");\n")
+      //out.append("DeliteCudaMalloc((void**)&temp_1_" + osym + "_2, " + op.size + "*sizeof(" + odata.loopFuncOutputType + "));\n")
+      out.append(odata.loopFuncOutputType_2 + " *temp_2_" + osym + " = (" + odata.loopFuncOutputType_2 + "*)tempPtr;\n")
+      out.append("tempPtr += " + op.size + "*sizeof(" + odata.loopFuncOutputType_2 + ");\n")
+      //out.append("DeliteCudaMalloc((void**)&temp_2_" + osym + ", " + op.size + "*sizeof(" + odata.loopFuncOutputType_2 + "));\n")
+      out.append(odata.loopFuncOutputType_2 + " *temp_2_" + osym + "_2 = (" + odata.loopFuncOutputType_2 + "*)tempPtr;\n")
+      out.append("tempPtr += " + op.size + "*sizeof(" + odata.loopFuncOutputType_2 + ");\n")
+      //out.append("DeliteCudaMalloc((void**)&temp_2_" + osym + "_2, " + op.size + "*sizeof(" + odata.loopFuncOutputType_2 + "));\n")
     }
     for ((odata,osym) <- hashReductionList(op)) {
       out.append(odata.loopFuncOutputType + " *temp_" + osym + ";\n")

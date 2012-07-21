@@ -106,6 +106,15 @@ size_t bufferSize = 5368709120/4;
 char* bufferEnd;
 char* bufferCurrent;
 
+char* tempCudaMem;
+size_t tempCudaMemSize = 1048675 * 256;
+void tempCudaMemInit(void) {
+  if(cudaMalloc(&tempCudaMem, tempCudaMemSize) != cudaSuccess) {
+    cout << "FATAL: Insufficient device memory for tempCudaMem" << endl;
+    exit(-1);
+  }
+}
+
 void hostInit() {
 	cudaHostAlloc(&bufferStart, bufferSize, cudaHostAllocDefault);
 	bufferEnd = bufferStart + bufferSize;
