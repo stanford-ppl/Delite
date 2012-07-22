@@ -34,6 +34,7 @@ trait VectorOps extends Variables {
         
     def ones(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.ones(len)
     def onesf(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.onesf(len)
+    def mzeros(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.mzeros(len)
     def zeros(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.zeros(len)
     def zerosf(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.zerosf(len)
     def rand(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.rand(len)

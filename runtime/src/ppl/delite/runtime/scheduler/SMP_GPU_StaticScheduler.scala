@@ -12,6 +12,7 @@ import java.util.ArrayDeque
 import ppl.delite.runtime.graph.ops.{OP_Nested, DeliteOP}
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.cost._
+import ppl.delite.runtime.codegen.kernels.cuda.SingleTask_GPU_Generator
 
 /**
  * @author Kevin J. Brown
@@ -59,6 +60,7 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with GPULoopCostMode
             splitGPU(op, schedule)
           else {
             scheduleOn(op, schedule, gpu)
+            SingleTask_GPU_Generator(op)
           }
         }
         else if (op.variant != null && numGPUs > 0) { //kernel could be partially GPUable

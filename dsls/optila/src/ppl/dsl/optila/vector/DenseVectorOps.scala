@@ -36,6 +36,7 @@ trait DenseVectorOps extends Variables {
     
     def ones(len: Rep[Int])(implicit ctx: SourceContext) = densevector_obj_ones(len)
     def onesf(len: Rep[Int])(implicit ctx: SourceContext) = densevector_obj_onesf(len)
+    def mzeros(len: Rep[Int])(implicit cts: SourceContext) = densevector_obj_mzeros(len)
     def zeros(len: Rep[Int])(implicit ctx: SourceContext) = densevector_obj_zeros(len)
     def zerosf(len: Rep[Int])(implicit ctx: SourceContext) = densevector_obj_zerosf(len)
     def rand(len: Rep[Int])(implicit ctx: SourceContext) = densevector_obj_rand(len)
@@ -111,6 +112,7 @@ trait DenseVectorOps extends Variables {
   def densevector_obj_fromunliftedseq[A:Manifest](xs: Seq[Rep[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]]
   def densevector_obj_ones(len: Rep[Int])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
   def densevector_obj_onesf(len: Rep[Int])(implicit ctx: SourceContext): Rep[DenseVector[Float]]
+  def densevector_obj_mzeros(len: Rep[Int])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
   def densevector_obj_zeros(len: Rep[Int])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
   def densevector_obj_zerosf(len: Rep[Int])(implicit ctx: SourceContext): Rep[DenseVector[Float]]
   def densevector_obj_rand(len: Rep[Int])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
@@ -266,6 +268,15 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
     val mA = manifest[A]
   }
 
+  case class DenseVectorObjectMZeros(length: Exp[Int], isRow: Exp[Boolean])
+    extends DeliteOpMap[Int,Double,DenseVector[Double]] {
+    val size = length 
+    override val in = (0::length)
+    override def alloc = DenseVector[Double](length,isRow)
+    def func = i => 0.0
+  }
+
+  
   /////////////////////
   // object interface
 
@@ -274,6 +285,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
   def densevector_obj_fromunliftedseq[A:Manifest](xs: Seq[Exp[A]])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectFromUnliftedSeq(xs)) 
   def densevector_obj_ones(len: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectOnes(len))
   def densevector_obj_onesf(len: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectOnesF(len))
+  def densevector_obj_mzeros(len: Exp[Int])(implicit ctx: SourceContext) = densevector_mzero_double(len,unit(true)) //reflectPure(DenseVectorObjectZeros(len))
   def densevector_obj_zeros(len: Exp[Int])(implicit ctx: SourceContext) = densevector_zero_double(len,unit(true)) //reflectPure(DenseVectorObjectZeros(len))
   def densevector_obj_zerosf(len: Exp[Int])(implicit ctx: SourceContext) = densevector_zero_float(len,unit(true))//reflectPure(DenseVectorObjectZerosF(len))
   def densevector_obj_rand(len: Exp[Int])(implicit ctx: SourceContext) = reflectEffect(DenseVectorObjectRand(len))
@@ -314,6 +326,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
   def densevector_empty_float(implicit ctx: SourceContext) = DenseVectorEmptyFloat()
   def densevector_empty_int(implicit ctx: SourceContext) = DenseVectorEmptyInt()
   def densevector_empty[A:Manifest](implicit ctx: SourceContext) = DenseVectorEmpty[A]()
+  def densevector_mzero_double(length: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectMutable(DenseVectorObjectMZeros(length, isRow))
   def densevector_zero_double(length: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(DenseVectorZeroDouble(length, isRow))
   def densevector_zero_float(length: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(DenseVectorZeroFloat(length, isRow))
   def densevector_zero_int(length: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(DenseVectorZeroInt(length, isRow))
@@ -634,7 +647,7 @@ trait CudaGenDenseVectorOps extends BaseGenDenseVectorOps with CudaGenFat with C
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case DenseVectorApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
-    case DenseVectorUpdate(x,n,y) => stream.println(quote(x) + ".update(" + quote(n) + "," + quote(y) + ");")
+    case DenseVectorUpdate(x,n,y) => isGPUable = true; stream.println(quote(x) + ".update(" + quote(n) + "," + quote(y) + ");")
     case DenseVectorLength(x) => emitValDef(sym, quote(x) + ".length")
     case DenseVectorIsRow(x) => emitValDef(sym, quote(x) + ".isRow")
     case DenseVectorRawData(x) => emitValDef(sym, quote(x) + ".getdata()")

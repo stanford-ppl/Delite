@@ -132,6 +132,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
         }
         else if (needsUpdate(op, input, sym)) { //input exists on device but data is old
           //write a new copy function (input must be an object)
+            println("op is " + op.id + ",sym is " + sym)
           addInputCopy = true
           writeInputCopy(input, sym, inData.func, inData.resultType, out, false)
         }
@@ -163,7 +164,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
         //sync output copy with kernel completion
         out.append("addEvent(kernelStream, d2hStream);\n")
         //write a setter
-        writeSetters(op, location, out)
+        writeSetters(op, location, getterList, out)
       }
       writeDataFrees(op, out, available)
     }
@@ -238,43 +239,15 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
 
   protected def writeKernelCall(op: DeliteOP, out: StringBuilder) {
     if (op.task == null) return //dummy op
+
     out.append(op.task) //kernel name
-    val dims = op.getGPUMetadata(target)
+    //val dims = op.getGPUMetadata(target)
     out.append("<<<") //kernel dimensions
     //grid dimensions
-    out.append("dim3")
-    out.append('(')
-    out.append(dims.dimSizeX.func)
-    out.append('(')
-    writeInputList(op, dims.dimSizeX, out)
-    out.append(')')
-    out.append(',')
-    out.append(dims.dimSizeY.func)
-    out.append('(')
-    writeInputList(op, dims.dimSizeY, out)
-    out.append(')')
-    out.append(',')
-    out.append('1')
-    out.append(')')
+    out.append("dim3(1,1,1)")
     out.append(',')
     //block dimensions
-    out.append("dim3")
-    out.append('(')
-    out.append(dims.blockSizeX.func)
-    out.append('(')
-    writeInputList(op, dims.blockSizeX, out)
-    out.append(')')
-    out.append(',')
-    out.append(dims.blockSizeY.func)
-    out.append('(')
-    writeInputList(op, dims.blockSizeY, out)
-    out.append(')')
-    out.append(',')
-    out.append(dims.blockSizeZ.func)
-    out.append('(')
-    writeInputList(op, dims.blockSizeZ, out)
-    out.append(')')
-    out.append(')')
+    out.append("dim3(1,1,1)")
     out.append(',')
     //dynamic shared memory (unused)
     out.append('0')
@@ -349,7 +322,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
         if (!first) out.append(',')
         first = false
         out.append(getSymGPU(sym))
-        if ((op.getMutableInputs. contains (input,sym)) && (input.getConsumers.filter(_.scheduledResource!=input.scheduledResource).nonEmpty)) {
+        if ( !isPrimitiveType(input.outputType(sym)) && (op.getMutableInputs contains (input,sym)) && (input.getConsumers.filter(_.scheduledResource!=input.scheduledResource).nonEmpty)) {
           out.append(',')
           out.append(getSymCPU(sym))
         }
@@ -439,7 +412,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     }
   }
 
-  protected def writeSetters(op: DeliteOP, location: Int, out: StringBuilder) {
+  protected def writeSetters(op: DeliteOP, location: Int, getterList: ArrayBuffer[String], out: StringBuilder) {
     for ((in,name) <- op.getGPUMetadata(target).inputs.keys) {
       if (op.getMutableInputs.contains(in,name)) {
         //copy any mutated inputs from GPU to CPU
@@ -486,9 +459,10 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
       out.append(");\n")
 
       if (deleteLocalRef) {
-        out.append("env->DeleteLocalRef(")
-        out.append(getSymCPU(name))
-        out.append(");\n")
+        getterList += getSymCPU(name)
+        //out.append("env->DeleteLocalRef(")
+        //out.append(getSymCPU(name))
+        //out.append(");\n")
       }
     }
   }

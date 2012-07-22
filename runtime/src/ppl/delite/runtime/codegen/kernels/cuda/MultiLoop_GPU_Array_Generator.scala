@@ -166,7 +166,8 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
   private def writeKernelCall(out: StringBuilder, op: OP_MultiLoop, id: String) {
     def dimSize(size: String) = if(id=="HashReduce1" || id=="HashReduce2") "1 +((" + size + "-1)/(" + blockSize + "/MAX_GROUP))"
-                  else "1 +((" + size + "-1)/" + blockSize + ")"
+                                else if(id=="Reduce") "1 +((" + size + "-1)/" + blockSize + "/2)"
+                                else "1 +((" + size + "-1)/" + blockSize + ")"
     def blockSize = if(id=="HashReduce1" || id=="HashReduce2") "512" else "256"
     def deref(op: DeliteOP, tp: String) = if (isPrimitiveType(op.outputType(tp))) "" else "*"
     def cudaLaunch(dimConfig: String): String = {
@@ -198,10 +199,12 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
       case "Reduce" =>
         out.append("int num_blocks_" + id + " = 64;\n")
         out.append("while(num_blocks_" + id + " != 1) {\n")
-        out.append(cudaLaunch(dimSize("num_blocks_"+id)))
+        //out.append(cudaLaunch(dimSize("num_blocks_"+id)))
+        out.append(cudaLaunch("1"))
         val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).map(o => "**" + o._2) ++ conditionList(op).map(o => "bitmap_" + o._2 + ", scanmap_" + o._2) ++ (reductionList(op)++hashReductionList(op)).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => "temp_1_" + o._2 + ", temp_1_" + o._2 + "_2, temp_2_" + o._2 + ", temp_2_" + o._2 + "_2") ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else "")) ++ List("num_blocks_"+id)
         out.append(args.mkString("(",",",");\n"))
-        out.append("num_blocks_" + id + " = " + dimSize("num_blocks_"+id) + ";\n")
+        out.append("num_blocks_" + id + " = 1;\n")
+        //out.append("num_blocks_" + id + " = " + dimSize("num_blocks_"+id) + ";\n")
         for((odata,osym) <- reductionList(op)) {
           out.append(odata.loopFuncOutputType + " *temp_" + osym + "_t = temp_" + osym + ";\n")
           out.append("temp_" + osym + " = temp_" + osym + "_2;\n")
@@ -259,7 +262,7 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
     out.append(") {\n")
     id match {
-      case "MapReduce" if (needsReduction(op)) =>
+      case "MapReduce" | "Reduce" if (needsReduction(op)) =>
         out.append("int idxX = blockIdx.x * 2 * blockDim.x + threadIdx.x;\n")
         out.append("int blockSize = 256;\n")
         out.append("int gridSize = blockSize * 2 * gridDim.x;\n")
@@ -407,17 +410,52 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   //TODO: Use more efficient reduction algorithm
   private def writeReduceKernel(out: StringBuilder, op: OP_MultiLoop) {
     writeKernelHeader(out, op, "Reduce")
-    for((odata,osym) <- reductionList(op)) {
-      out.append("smem_" + osym + "[threadIdx.x] = (idxX < size) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
-      out.append("__syncthreads();\n")
-      out.append("for(unsigned int s=1; s<blockDim.x; s*=2) {\n")
-      out.append("if((idxX%(2*s))==0) { \n")
-      out.append("smem_" + osym + "[threadIdx.x] = dev_reduce_" + funcNameSuffix(op,osym) + (odata.loopReduceInputs++List("smem_"+osym+"[threadIdx.x]","smem_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
+
+      for((odata,osym) <- reductionList(op)) {
+        out.append(odata.loopFuncOutputType + " localSum_" + osym + " = dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+      }
+      out.append("while( idxX < size) {")
+      for((odata,osym) <- reductionList(op)) {
+        val arg = "temp_" + osym + "[idxX]"
+        out.append("localSum_" + osym + " = dev_reduce_" + funcNameSuffix(op,osym) + (odata.loopReduceInputs++List("localSum_"+osym,arg,"idxX")).mkString("(",",",");\n"))
+        }
+      out.append("if (idxX + blockSize < size) {")
+      for((odata,osym) <- reductionList(op)) {
+        val arg = "temp_" + osym + "[idxX + blockSize]"
+        out.append("localSum_" + osym + " = dev_reduce_" + funcNameSuffix(op,osym) + (odata.loopReduceInputs++List("localSum_"+osym,arg,"idxX")).mkString("(",",",");\n"))
+      }
       out.append("}\n")
-      out.append("__syncthreads();\n")
+      out.append("idxX += gridSize;\n")
       out.append("}\n")
-      out.append("if(threadIdx.x==0) temp_" + osym + "_2[blockIdx.x] = smem_" + osym + "[0];\n")
-    }
+      for((odata,osym) <- reductionList(op)) {
+        out.append("smem_" + osym + "[threadIdx.x] = localSum_" + osym + ";\n")
+      }
+      out.append("__syncthreads();\n")
+      for(blockSize <- List(512,256,128)) {
+        out.append("if(blockSize >= " + blockSize + ") { if (threadIdx.x < " + blockSize/2 + ") { ")
+        for((odata,osym) <- reductionList(op)) {
+          out.append("smem_" + osym + "[threadIdx.x] = dev_reduce_" + funcNameSuffix(op,osym) + (odata.loopReduceInputs++List("smem_"+osym+"[threadIdx.x]","smem_"+osym+"[threadIdx.x+" + blockSize/2 + "]","idxX")).mkString("(",",","); "))
+        }
+        out.append(" } __syncthreads(); }\n")
+      }
+      out.append("if(threadIdx.x < 32) {\n")
+      for((odata,osym) <- reductionList(op)) {
+        out.append("volatile " + odata.loopFuncOutputType + "* sdata_" + osym + " = smem_" + osym + ";\n")
+      }
+      for(blockSize <- List(64,32,16,8,4,2)) {
+        out.append("if (blockSize >= " + blockSize + ") { ")
+        for((odata,osym) <- reductionList(op)) {
+          out.append("sdata_" + osym + "[threadIdx.x] = dev_reduce_" + funcNameSuffix(op,osym) + (odata.loopReduceInputs++List("sdata_"+osym+"[threadIdx.x]","sdata_"+osym+"[threadIdx.x+" + blockSize/2 + "]","idxX")).mkString("(",",","); "))
+        }
+        out.append("}\n")
+      }
+      out.append("}\n")
+      out.append("if(threadIdx.x == 0) {\n")
+      for((odata,osym) <- reductionList(op)) {
+        out.append("temp_" + osym + "_2[blockIdx.x] = smem_" + osym + "[0];\n")
+      }
+      out.append("}\n")
+
     writeKernelFooter(out)
   }
 
@@ -561,6 +599,7 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   }
 
   // Allocate temporary outputs for reduction operations
+  //TODO: Add check for the temporary buffer overflow and fall back to normal CudaMalloc
   private def allocateTemps(out: StringBuilder, op: OP_MultiLoop) {
     out.append("char *tempPtr = tempCudaMem;\n")
     for ((odata,osym) <- reductionList(op)) {

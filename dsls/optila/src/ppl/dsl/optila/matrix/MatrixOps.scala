@@ -46,6 +46,7 @@ trait MatrixOps extends Variables {
     def identity(w: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.identity(w)
     def zeros(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.zeros(numRows,numCols)
     def zerosf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.zerosf(numRows,numCols)
+    def mzeros(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.mzeros(numRows,numCols)
     def mzerosf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.mzerosf(numRows,numCols)
     def ones(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.ones(numRows,numCols)
     def onesf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.onesf(numRows,numCols)

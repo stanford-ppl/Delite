@@ -12,7 +12,7 @@ import ppl.delite.framework.extern.codegen.GenericGenExternal
 import ppl.delite.framework.ops._
 import ppl.delite.framework.codegen.delite._
 
-trait CudaGenExternalBase extends GenericGenExternal with CudaGenBase {
+trait CudaGenExternalBase extends GenericGenExternal with CudaGenFat {
   val IR: DeliteOpsExp
   import IR._
 
@@ -34,7 +34,7 @@ trait CudaGenExternalBase extends GenericGenExternal with CudaGenBase {
   }
 
   def emitMethodCall(sym: Sym[Any], e: DeliteOpExternal[_], lib: ExternalLibrary, args: List[String]) = {
-    emitAllocFunc(sym, e.allocVal)
+    emitAllocFunc(sym, List(e.allocVal), Nil)
     stream.println(e.funcName + "(" + (args mkString ",") + ");")    
   }
   
