@@ -34,7 +34,7 @@ trait DenseMatrixOps extends Variables {
       Matrix.dense[A](numRows, numCols)
     }
     def toBuildableIntf(x: Rep[DenseMatrix[A]]): Interface[MatrixBuildable[A]] = denseMatToBuildableInterface(x)
-    def finalizer(x: Rep[DenseMatrix[A]]) = x.unsafeImmutable
+    def finalizer(x: Rep[DenseMatrix[A]]) = x
     def toIntf(x: Rep[DenseMatrix[A]]): Interface[Matrix[A]] = denseMatToInterface(x)    
   }  
 

@@ -487,7 +487,7 @@ trait ArithOpsExpOpt extends ArithOpsExp {
       val a = if (x.isInstanceOf[java.lang.Number]) unbox(x.asInstanceOf[java.lang.Number]) else x
       val b = if (y.isInstanceOf[java.lang.Number]) unbox(y.asInstanceOf[java.lang.Number]) else y    
       unit(implicitly[Numeric[T]].minus(a,b))
-    case (Const(0 | 0.0 | 0.0f | -0.0 | -0.0f), y) => y
+    // case (Const(0 | 0.0 | 0.0f | -0.0 | -0.0f), y) => unit(-1.asInstanceOf[T])*y
     case (y, Const(0 | 0.0 | 0.0f | -0.0 | -0.0f)) => y
     case _ => super.arith_minus(lhs, rhs)
   }

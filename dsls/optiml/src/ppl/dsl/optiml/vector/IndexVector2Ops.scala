@@ -5,6 +5,7 @@ import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
 import scala.reflect.SourceContext
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.transform.LoweringTransform
+import ppl.delite.framework.Config
 import ppl.dsl.optiml._
 
 trait IndexVector2Ops extends Base { this: OptiML =>
@@ -217,11 +218,13 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp with LoweringTra
   
   def indexvector2_construct[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: (Exp[Int],Exp[Int]) => Exp[A]): Exp[DenseMatrix[A]] = {
     // in order for the transformation to be successful, we have to evaluate block to expose (free) dependencies    
-    reflectPure(IndexVector2Construct(rowInd,colInd,block,block))
-    
-    // val out = DenseMatrix[A](rowInd.length, colInd.length)
-    // reflectWrite(out)(IndexVector2ConstructMutable(rowInd,colInd,block,out)) 
-    // out.unsafeImmutable
+    if (Config.optimize > 0)
+      reflectPure(IndexVector2Construct(rowInd,colInd,block,block))
+    else {
+      val out = DenseMatrix[A](rowInd.length, colInd.length)
+      reflectWrite(out)(IndexVector2ConstructMutable(rowInd,colInd,block,out)) 
+      out.unsafeImmutable
+    }
   }
   
   // def indexvector2_rowind(x: Exp[IndexVector2]) = x match {
