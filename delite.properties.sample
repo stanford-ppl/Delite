@@ -17,10 +17,6 @@
 # required for typical Delite usage.
 apps.data=/home/user/delite
 
-# used for sbt tests. should point to the sbt target directory
-# for compiled runtime classes.
-runtime.classes=runtime/target/scala-2.10/classes
-
 # test options for sbt tests
 tests.verbose=false
 tests.threads=1

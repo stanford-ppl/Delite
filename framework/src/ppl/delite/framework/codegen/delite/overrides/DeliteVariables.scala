@@ -12,20 +12,20 @@ trait DeliteScalaGenVariables extends ScalaGenEffect {
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     val symIsResult = !deliteResult.isEmpty && (deliteResult.get contains sym)
     var gen = false
+    
     if (symIsResult) {
       rhs match {
         case NewVar(init) => emitValDef(sym, "new generated.scala.Ref(" + quote(init) + ")"); gen = true
         case _ => // pass
       }
     }
-    if (!(deliteInputs intersect syms(rhs)).isEmpty) {
-      rhs match {
-        case ReadVar(Variable(a)) => emitValDef(sym, quote(a) + ".get"); gen = true
-        case Assign(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(b) + ")"); gen = true
-        case VarPlusEquals(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get + " + quote(b) + ")"); gen = true
-        case VarMinusEquals(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get - " + quote(b) + ")"); gen = true
-        case _ => // pass
-      }
+
+    rhs match {
+      case ReadVar(Variable(a)) if deliteInputs.contains(a) => emitValDef(sym, quote(a) + ".get"); gen = true
+      case Assign(Variable(a), b) if deliteInputs.contains(a) => emitValDef(sym, quote(a) + ".set(" + quote(b) + ")"); gen = true
+      case VarPlusEquals(Variable(a), b) if deliteInputs.contains(a) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get + " + quote(b) + ")"); gen = true
+      case VarMinusEquals(Variable(a), b) if deliteInputs.contains(a) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get - " + quote(b) + ")"); gen = true
+      case _ => // pass
     }
 
     if (!gen) {
@@ -59,14 +59,13 @@ trait DeliteCGenVariables extends CGenEffect with DeliteCLikeGenVariables {
         case _ => // pass
       }
     }
-    if (!(deliteInputs intersect syms(rhs)).isEmpty) {
-      rhs match {
-        case ReadVar(Variable(a)) => emitValDef(sym, quote(a)); gen = true
-        case Assign(Variable(a), b) => stream.println(quote(a) + " = " + quote(b) + ";"); gen = true
-        case VarPlusEquals(Variable(a), b) => stream.println(quote(a) + " += " + quote(b) + ";"); gen = true
-        case VarMinusEquals(Variable(a), b) => stream.println(quote(a) + " -= " + quote(b) + ";"); gen = true
-        case _ => // pass
-      }
+
+    rhs match {
+      case ReadVar(Variable(a)) if deliteInputs.contains(a) => emitValDef(sym, quote(a)); gen = true
+      case Assign(Variable(a), b) if deliteInputs.contains(a) => stream.println(quote(a) + " = " + quote(b) + ";"); gen = true
+      case VarPlusEquals(Variable(a), b) if deliteInputs.contains(a) => stream.println(quote(a) + " += " + quote(b) + ";"); gen = true
+      case VarMinusEquals(Variable(a), b) if deliteInputs.contains(a) => stream.println(quote(a) + " -= " + quote(b) + ";"); gen = true
+      case _ => // pass
     }
 
     if (!gen) {

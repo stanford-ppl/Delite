@@ -25,6 +25,7 @@ trait DeliteTestConfig {
   val javaHome = new File(props.getProperty("java.home", ""))
   val scalaHome = new File(props.getProperty("scala.vanilla.home", ""))
   val runtimeClasses = new File(props.getProperty("runtime.classes", ""))
+  val runtimeExternalProc = false // scalaHome and runtimeClasses only required if runtimeExternalProc is true. should this be configurable? or should we just remove execTestExternal?
 }
 
 trait DeliteSuite extends Suite with DeliteTestConfig {
@@ -35,9 +36,9 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
   def validateParameters() {
     if (!javaHome.exists) throw new TestFailedException("java.home must be a valid path in delite.properties", 3)
     else if (!javaBin.exists) throw new TestFailedException("Could not find valid java installation in " + javaHome, 3)
-    else if (!scalaHome.exists) throw new TestFailedException("scala.vanilla.home must be a valid path in delite.proeprties", 3)
-    else if (!scalaCompiler.exists || !scalaLibrary.exists) throw new TestFailedException("Could not find valid scala installation in " + scalaHome, 3)
-    else if (!runtimeClasses.exists) throw new TestFailedException("runtime.classes must be a valid path in delite.properties", 3)
+    else if (runtimeExternalProc && !scalaHome.exists) throw new TestFailedException("scala.vanilla.home must be a valid path in delite.proeprties", 3)
+    else if (runtimeExternalProc && (!scalaCompiler.exists || !scalaLibrary.exists)) throw new TestFailedException("Could not find valid scala installation in " + scalaHome, 3)
+    else if (runtimeExternalProc && !runtimeClasses.exists) throw new TestFailedException("runtime.classes must be a valid path in delite.properties", 3)
   }
 
   def compileAndTest(app: DeliteTestRunner) {
@@ -53,7 +54,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val args = Array(uniqueTestName + "-test.deg")
     app.resultBuffer = new ArrayBuffer[Boolean] with SynchronizedBuffer[Boolean]
     stageTest(app, args(0), uniqueTestName)
-    val outStr = execTest(app, args, uniqueTestName)
+    val outStr = execTest(app, args, uniqueTestName) // if (runtimeExternalProc..)?
     checkTest(app, outStr)
   }
 
