@@ -140,7 +140,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp with LoweringTra
     extends DeliteOpForeach[Int] {
   
     val in = rowInd.ops.elem.asInstanceOf[Exp[Vector[Int]]]
-    val size = rowInd.length
+    val size = copyTransformedOrElse(_.size)(rowInd.length)
     def sync = i => List()
     def func = i => out(i) = colInd map { j => block(i,j) } // updateRow should be fused with function application
      

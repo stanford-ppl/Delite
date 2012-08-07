@@ -176,14 +176,21 @@ trait LanguageOps extends Base { this: OptiLA =>
   def floor(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   def exp(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   def log(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double] = optila_scalar_log(x)
+  def log10(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   def sin(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def sinh(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def asin(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   def cos(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def cosh(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   def acos(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def tan(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def tanh(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]  
   def atan(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   def atan2(x: Rep[Double], y: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   def pow(x: Rep[Double], y: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   def max[A:Manifest:Numeric](x: Rep[A], y: Rep[A])(implicit ctx: SourceContext): Rep[A]
   def min[A:Manifest:Numeric](x: Rep[A], y: Rep[A])(implicit ctx: SourceContext): Rep[A]
+  
   def Pi(implicit ctx: SourceContext): Rep[Double]
   def E(implicit ctx: SourceContext): Rep[Double]
   
@@ -336,10 +343,16 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def sqrt(e: Exp[Double])(implicit ctx: SourceContext) = Math.sqrt(e)   
   def ceil(x: Exp[Double])(implicit ctx: SourceContext) = Math.ceil(x)
   def floor(x: Exp[Double])(implicit ctx: SourceContext) = Math.floor(x)
+  def log10(x: Exp[Double])(implicit ctx: SourceContext) = Math.log10(x)
   def exp(x: Exp[Double])(implicit ctx: SourceContext) = Math.exp(x)
   def sin(x: Exp[Double])(implicit ctx: SourceContext) = Math.sin(x)
+  def sinh(x: Exp[Double])(implicit ctx: SourceContext) = Math.sinh(x)
+  def asin(x: Exp[Double])(implicit ctx: SourceContext) = Math.asin(x)
   def cos(x: Exp[Double])(implicit ctx: SourceContext) = Math.cos(x)
+  def cosh(x: Exp[Double])(implicit ctx: SourceContext) = Math.cosh(x)
   def acos(x: Exp[Double])(implicit ctx: SourceContext) = Math.acos(x)
+  def tan(x: Exp[Double])(implicit ctx: SourceContext) = Math.tan(x)
+  def tanh(x: Exp[Double])(implicit ctx: SourceContext) = Math.tanh(x)  
   def atan(x: Exp[Double])(implicit ctx: SourceContext) = Math.atan(x)
   def atan2(x: Exp[Double], y: Exp[Double])(implicit ctx: SourceContext) = Math.atan2(x,y)
   def pow(x: Exp[Double], y: Exp[Double])(implicit ctx: SourceContext) = Math.pow(x,y)
