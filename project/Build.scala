@@ -2,21 +2,25 @@ import sbt._
 import Keys._
 
 object DeliteBuild extends Build {
-  val virtualization_lms_core = "EPFL" % "lms_2.10.0-M1-virtualized" % "0.2"
+  val virtualization_lms_core = "EPFL" % "lms_2.10" % "0.2"
   
   // FIXME: custom-built scalatest
   val dropboxScalaTestRepo = "Dropbox" at "http://dl.dropbox.com/u/12870350/scala-virtualized"
 
-  val scalatestCompile = "org.scalatest" % "scalatest_2.10.0-virtualized-SNAPSHOT" % "1.6.1-SNAPSHOT" 
+  //val scalatestCompile = "org.scalatest" % "scalatest_2.10.0-virtualized-SNAPSHOT" % "1.6.1-SNAPSHOT" intransitive()
+  val scalatestCompile = "org.scalatest" % "scalatest_2.10.0-M6" % "1.9-2.10.0-M6-B2" intransitive()
   val scalatest = scalatestCompile % "test" 
 
-  val virtScala = "2.10.0-M1-virtualized" //"2.10.0-virtualized-SNAPSHOT"
+  //val virtScala = "2.10.0-M1-virtualized" //"2.10.0-virtualized-SNAPSHOT"
+  val virtScala = "2.10.0-M7"
   val virtBuildSettingsBase = Defaults.defaultSettings ++ Seq(
     resolvers += ScalaToolsSnapshots, 
     resolvers += dropboxScalaTestRepo,
     organization := "stanford-ppl",
     scalaOrganization := "org.scala-lang",
+    //scalaHome := Some(file("/Users/tiark/scala-virt-m7/build/pack")),
     scalaVersion := virtScala,
+    scalaBinaryVersion := "2.10",
     publishArtifact in (Compile, packageDoc) := false,
     libraryDependencies += virtualization_lms_core,
     // needed for scala.tools, which is apparently not included in sbt's built in version

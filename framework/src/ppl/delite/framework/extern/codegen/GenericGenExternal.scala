@@ -18,7 +18,7 @@ trait GenericGenExternal extends GenericNestedCodegen {
   val generatedOps = HashSet[String]()
     
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case e:DeliteOpExternal[Any] =>
+    case e:DeliteOpExternal[_] =>
       // generate library once only
       if (!generatedOps.contains(e.funcName)) {
         try {

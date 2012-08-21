@@ -25,11 +25,8 @@ trait TraversalAnalysis extends GenericFatCodegen with OverloadHack {
   def emitValDef(sym: Sym[Any], rhs: String) {}
   def result: Option[Any] = _result
   
-  def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): List[(Sym[Any], Any)] = {
-    val x = fresh[A]
-    val y = reifyEffects(f(x))
-
-    traverseBlock(y)
+  def emitSource[A : Manifest](args: List[Sym[_]], body: Block[A], className: String, stream: PrintWriter): List[(Sym[Any], Any)] = {
+    traverseBlock(body)
     Nil
   }
 }

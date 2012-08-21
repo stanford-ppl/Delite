@@ -54,7 +54,7 @@ trait DataTableOpsExp extends DataTableOps with BaseFatExp { this: DataTableOpsE
   def dataTablePrintAsTable[T:Manifest](t: Exp[DataTable[T]]): Exp[Unit] = reflectEffect(DataTablePrintAsTable(t))
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
-    case DataTableApply(t,i) => dataTableApply(f(t), f(i))
+    case DataTableApply(t,i) => dataTableApply(f(t), f(i))(mtype(manifest[A]))
     case _ => super.mirror(e,f)
   }
 

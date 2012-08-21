@@ -50,8 +50,8 @@ trait RecordOpsExp extends RecordOps with EffectExp {
   def recordFieldAccess[T:Manifest](r: Rep[Record], field: String): Rep[T] = RecordFieldAccess[T](r,field)
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = e match {
-    case d@CreateRecord(fields) => toAtom(CreateRecord(fields.map(t=>(t._1,f(t._2))))(d.m))
-    case d@RecordFieldAccess(r,field) => recordFieldAccess(f(r),field)(d.m)
+    case d@CreateRecord(fields) => toAtom(CreateRecord(fields.map(t=>(t._1,f(t._2))))(mtype(d.m)))
+    case d@RecordFieldAccess(r,field) => recordFieldAccess(f(r),field)(mtype(d.m))
     case _ => super.mirror(e,f)
   }
 

@@ -68,12 +68,13 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
     case _ => super.fatten(e)
   }
  
-  override def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): List[(Sym[Any],Any)] = {
-    val x = fresh[A]
-    val y = reifyEffects(f(x))
+  //override def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): List[(Sym[Any],Any)] = {
+  def emitSource[A : Manifest](args: List[Sym[_]], body: Block[A], className: String, stream: PrintWriter): List[(Sym[Any], Any)] = {
+  //  val x = fresh[A]
+    val y = body
 
-    val sA = mA.toString
-    val sB = mB.toString
+    //val sA = mA.toString
+    //val sB = mB.toString
 
     printlog("-- emitSource")
     availableDefs.foreach(printlog(_))

@@ -438,12 +438,12 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
   def arith_exp[T:Manifest:Numeric](lhs: Exp[T])(implicit ctx: SourceContext) = reflectPure(ArithExp(lhs))
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case e@ArithPlus(lhs,rhs) => reflectPure(ArithPlus(f(lhs),f(rhs))(e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@ArithMinus(lhs,rhs) => reflectPure(ArithMinus(f(lhs),f(rhs))(e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@ArithTimes(lhs,rhs) => reflectPure(ArithTimes(f(lhs),f(rhs))(e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@ArithFractionalDivide(lhs,rhs) => reflectPure(ArithFractionalDivide(f(lhs),f(rhs))(e.mA,e.f))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@ArithAbs(lhs) => reflectPure(ArithAbs(f(lhs))(e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@ArithExp(lhs) => reflectPure(ArithExp(f(lhs))(e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithPlus(lhs,rhs) => reflectPure(ArithPlus(f(lhs),f(rhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[A]]))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithMinus(lhs,rhs) => reflectPure(ArithMinus(f(lhs),f(rhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[A]]))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithTimes(lhs,rhs) => reflectPure(ArithTimes(f(lhs),f(rhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[A]]))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithFractionalDivide(lhs,rhs) => reflectPure(ArithFractionalDivide(f(lhs),f(rhs))(mtype(e.mA),e.f.asInstanceOf[Fractional[A]]))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithAbs(lhs) => reflectPure(ArithAbs(f(lhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[A]]))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithExp(lhs) => reflectPure(ArithExp(f(lhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[Any]]))(mtype(manifest[A]),implicitly[SourceContext])
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]] 
   
