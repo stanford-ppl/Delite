@@ -1,0 +1,183 @@
+/* Stylesheet generated from TextMate theme
+ *
+ * Slush & Poppies
+ * 
+ *
+ */
+
+/* Mostly to improve view within the TextMate HTML viewer */
+body {
+  margin: 0;
+  padding: 0;
+}
+
+pre.textmate-source {
+  margin: 0;
+  padding: 0 0 0 2px;
+  font-family: Monaco, monospace;
+  font-size: 12px;
+  line-height: 1.3em;
+  word-wrap: break-word;
+  white-space: pre;
+  white-space: pre-wrap;
+  white-space: -moz-pre-wrap;
+  white-space: -o-pre-wrap;
+}
+
+pre.textmate-source {
+  color: #000000;
+  background-color: #F1F1F1;
+}
+
+pre.textmate-source .linenum {
+  width: 75px;
+  padding: 0.1em 1em 0.2em 0;
+  color: #888;
+  background-color: #eee;
+}
+pre.textmate-source span {
+   padding-top: 0.2em;
+   padding-bottom: 0.1em;
+}
+pre.textmate-source ::selection {
+  background-color: #B0B0FF;
+}
+/* Comment */
+pre.textmate-source .comment {
+  color: #406040;
+}
+
+/* String */
+pre.textmate-source .string {
+  color: #C03030;
+}
+
+/* Number */
+pre.textmate-source .constant_numeric {
+  color: #0080A0;
+}
+
+/* OCaml floating-point constants */
+pre.textmate-source .source_ocaml .constant_numeric_floating-point {
+  text-decoration: underline;
+}
+
+/* Character constants */
+pre.textmate-source .constant_character {
+  color: #800000;
+}
+
+/* Built-in constant */
+pre.textmate-source .constant_language {
+}
+
+/* User-defined constant */
+pre.textmate-source .constant_character, pre.textmate-source .constant_other {
+}
+
+/* Variable */
+pre.textmate-source .variable_parameter, pre.textmate-source .variable_other {
+}
+
+/* Keyword */
+pre.textmate-source .keyword {
+  color: #2060A0;
+}
+
+/* Operators */
+pre.textmate-source .keyword_operator {
+  color: #2060A0;
+}
+
+/* OCaml prefix f-p operators */
+pre.textmate-source .source_ocaml .keyword_operator_symbol_prefix_floating-point {
+  text-decoration: underline;
+}
+
+/* OCaml infix f-p operators */
+pre.textmate-source .source_ocaml .keyword_operator_symbol_infix_floating-point {
+  text-decoration: underline;
+}
+
+/* Module Keyword */
+pre.textmate-source .entity_name_module, pre.textmate-source . .support_other_module {
+  color: #0080FF;
+}
+
+/* Storage types */
+pre.textmate-source .storage_type {
+  color: #A08000;
+}
+
+/* Storage */
+pre.textmate-source .storage {
+  color: #008080;
+}
+
+/* Variant types */
+pre.textmate-source .entity_name_class_variant {
+  color: #C08060;
+}
+
+/* Directives */
+pre.textmate-source .keyword_other_directive {
+  font-weight: bold;
+}
+
+/* Line-number directives */
+pre.textmate-source .source_ocaml .keyword_other_directive_line-number {
+}
+
+/* Inherited class */
+pre.textmate-source .entity_other_inherited-class {
+}
+
+/* Function name */
+pre.textmate-source .entity_name_function {
+  color: #800000;
+}
+
+/* Type name */
+pre.textmate-source .storage_type_user-defined {
+  color: #800080;
+}
+
+/* Class type name */
+pre.textmate-source .entity_name_type_class_type {
+  color: #8000C0;
+}
+
+/* Function argument */
+pre.textmate-source .variable_parameter {
+}
+
+/* Tag name */
+pre.textmate-source .entity_name_tag {
+}
+
+/* Tag attribute */
+pre.textmate-source .entity_other_attribute-name {
+}
+
+/* Library function */
+pre.textmate-source .support_function {
+}
+
+/* Library constant */
+pre.textmate-source .support_constant {
+}
+
+/* Library class/type */
+pre.textmate-source .support_type, pre.textmate-source .support_class {
+}
+
+/* Library variable */
+pre.textmate-source .support_variable {
+}
+
+/* Invalid */
+pre.textmate-source .invalid {
+}
+
+
+
