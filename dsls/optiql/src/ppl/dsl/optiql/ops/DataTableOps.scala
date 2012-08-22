@@ -54,14 +54,14 @@ trait DataTableOpsExp extends DataTableOps with BaseFatExp { this: OptiQLExp =>
   def dataTableApply[T:Manifest](t: Exp[DataTable[T]], i: Exp[Int]): Exp[T] = darray_apply(dataTableArray(t), i)
 
   def dataTableObjectApply[T:Manifest](): Exp[DataTable[T]] =
-    struct[DataTable[T]](List("DataTable"), Map("data" -> DeliteArray(unit(0)), "size" -> unit(0)))
+    struct[DataTable[T]](ClassTag[DataTable[T]]("DataTable"), Map("data" -> DeliteArray(unit(0)), "size" -> unit(0)))
     //reflectEffect(DataTableObjectApply[T](manifest[DataTable[T]], unit(0)))
 
   def dataTableObjectApply[T:Manifest](initSize: Exp[Int]): Exp[DataTable[T]] =
-    struct[DataTable[T]](List("DataTable"), Map("data" -> DeliteArray(initSize), "size" -> initSize))
+    struct[DataTable[T]](ClassTag[DataTable[T]]("DataTable"), Map("data" -> DeliteArray(initSize), "size" -> initSize))
 
   def dataTableObjectApply[T:Manifest](data: Exp[DeliteArray[T]], initSize: Exp[Int]): Exp[DataTable[T]] =
-    struct[DataTable[T]](List("DataTable"), Map("data" -> data, "size" -> initSize))
+    struct[DataTable[T]](ClassTag[DataTable[T]]("DataTable"), Map("data" -> data, "size" -> initSize))
 
 
   //def dataTableApply[T:Manifest](t: Exp[DataTable[T]], i: Exp[Int]): Exp[T] = DataTableApply(t, i)

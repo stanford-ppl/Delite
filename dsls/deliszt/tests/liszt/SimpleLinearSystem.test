@@ -1,0 +1,52 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode 
+trait VecVertexLS[MO <: MeshObj, N <: IntM] extends LinearSystem {
+	def row(v : MO) : Vec[N,RowIndex] = AutoIndex
+	def col(v : MO) : Vec[N,ColIndex] = AutoIndex
+}
+
+@lisztcode
+object MyLS extends VecVertexLS[Vertex,_3]
+
+
+//take a cube mesh, set all exterior verts position to their current position,
+//and set all interior verts to be at the average of their neighbors, and then solve the linear system
+//the result should be equal to the original positions for the interior verts.
+@lisztcode
+object SimpleLinearSystem {
+	val position = FieldWithLabel[Vertex,Vec[_3,Double]]("position")
+	def main() {
+		val A = MyLS.A()
+		val x = MyLS.x()
+		val b = MyLS.b()
+		
+		for(v <- vertices(mesh)) {
+			Print(position(v))
+			val row = MyLS.row(v)
+			val col = MyLS.col(v)
+			val sz = size(vertices(v))
+			val I = Mat( Vec(1.0,0.0,0.0),
+				         Vec(0.0,1.0,0.0),
+				         Vec(0.0,0.0,1.0))
+			if(sz < 6) {
+				A(row,col) = I
+				b(row) = position(v)
+			} else {
+				A(row,col) = -I
+				for(v2 <- vertices(v)) {
+					A(row,MyLS.col(v2)) = I / sz
+				}
+				b(row) = Vec(0.0,0.0,0.0)
+			}
+		}
+		MyLS.solve(A,x,b)
+		for(v <- vertices(mesh)) {
+			val col = MyLS.col(v)
+			if(size(vertices(v)) == 6)
+				Print("ID ", ID(v), " value ", x(col), position(v))
+		}
+	}
+}

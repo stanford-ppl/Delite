@@ -1,0 +1,24 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object FieldOfMat {
+
+        val initMat = Mat(Vec(0, 0, 0), Vec(0, 0, 0), Vec(0, 0, 0)) ;
+        val edgeField = FieldWithConst[Edge, Mat[_3,_3,Int]](initMat) ;
+
+        def main() {
+                val newObject = Mat( Vec( 1, 0, 0) , Vec( 0, 1, 0), Vec( 0, 0, 1) );
+                for ( e <- edges(mesh) ) {
+                        edgeField(e) = newObject + initMat;
+                }
+                for ( e <- edges(mesh) ) {
+                        val storedValue = edgeField(e) - initMat;
+                        if ( !(storedValue == newObject) ) {
+                                Print( "unexpected value in edge: ", ID(e) ) ;
+                        }
+                }
+		Print( "Everything ok if only this was printed") ; 
+       }
+}
+

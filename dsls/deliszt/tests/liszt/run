@@ -1,0 +1,291 @@
+#!/usr/bin/python
+from __future__ import with_statement
+import sys
+import glob
+import os
+import os.path
+import shutil
+import subprocess
+import Queue
+import threading
+import time
+import signal
+import operator
+from optparse import OptionParser
+from StringIO import StringIO
+import os
+try:
+	import json
+except ImportError:
+	import simplejson as json
+
+class Watcher:
+    """this class solves two problems with multithreaded
+    programs in Python, (1) a signal might be delivered
+    to any thread (which is just a malfeature) and (2) if
+    the thread that gets the signal is waiting, the signal
+    is ignored (which is a bug).
+
+    The watcher is a concurrent process (not thread) that
+    waits for a signal and the process that contains the
+    threads.  See Appendix A of The Little Book of Semaphores.
+    http://greenteapress.com/semaphores/
+    """
+    
+    def __init__(self):
+        """ Creates a child thread, which returns.  The parent
+            thread waits for a KeyboardInterrupt and then kills
+            the child thread.
+        """
+        self.child = os.fork()
+        if self.child == 0:
+            return
+        else:
+            self.watch()
+
+    def watch(self):
+        try:
+            os.wait()
+        except KeyboardInterrupt:
+            # I put the capital B in KeyBoardInterrupt so I can
+            # tell when the Watcher gets the SIGINT
+            print 'KeyBoardInterrupt'
+            self.kill()
+        sys.exit()
+    
+    def kill(self):
+        try:
+            os.kill(self.child, signal.SIGKILL)
+        except OSError: pass
+
+class Test:
+  """This class encapsulates a test file and all the instances on different runtimes of that test"""
+  def __init__(self, clazz, runtimeslist):
+    self.clazz = clazz
+    self.instances = [TestInstance(clazz, x) for x in runtimeslist]
+
+class TestInstance:
+  """This class encapsulates a single test instance on a specific runtime and it's result"""
+  def __init__(self, clazz, runtime):
+    self.clazz = clazz
+    self.runtime = runtime
+    self.status = "NOT RAN"
+
+
+parser = OptionParser()
+parser.add_option("-n", "--num-threads",
+        help="number of tests to run simultanesouly", type="int",
+        default=4, metavar="NUM")
+parser.add_option("-s", "--strict-diff",action="store_true", default=False,
+        help="use strict diff rather than sorted diff (may not work for multi-thread runtimes)")
+parser.add_option("-r", "--runtime", 
+      help="which runtime to run on", type="string", default="")
+parser.add_option("-p", "--porcelain",action="store_true", default=False,
+      help="Output porcelain format rather than human-readable. Porcelain will not change and is intended for consumption by scripts.")
+parser.add_option("-q", "--quiet",action="store_true", default=False,
+      help="Only output the results table")
+parser.add_option("-d", "--no-delete",action="store_true", default=False,
+      help="do not delete the build directories for tests (by default they are deleted if the test passes)")
+parser.add_option("-c", "--num-cores",
+        help="for multi-core runtimes, the number of cores each test will use", type="int",
+        default=4, metavar="NUM")
+
+(options, args) = parser.parse_args()
+
+if len(args) >= 1:
+  files = args
+else:
+  files = glob.glob('*.test')
+
+#Launch the watcher thread to catch signals
+Watcher()
+
+# The global list of all runtimes that we will run on:
+RUNTIMES = set(["gpu", "smp", "mpi", "single"])
+if options.runtime != "":
+  if not (options.runtime in RUNTIMES):
+    print "You provide a runtime from the", RUNTIMES
+    exit(1)
+  RUNTIMES = set([options.runtime])
+
+TESTEXCLUDESNAME = ".liszttestexclude"
+GLOBALEXCLUDES = TESTEXCLUDESNAME
+LOCALEXCLUDES = os.path.expanduser("~/%s" % TESTEXCLUDESNAME)
+DEFAULT_CONFIG_FILE = "default.cfg"
+
+def unifyExcludes(globalfile, localfile):
+	gconf = json.loads(open(globalfile,'r').read())
+	if os.path.exists(LOCALEXCLUDES):
+	  local_str = open(localfile,'r').read()
+	else:
+	  local_str = "{}"
+	lconf = json.loads(local_str)
+	testexcludes = {}
+	for test in gconf:
+		testexcludes[test] = set(gconf[test])
+	for test in lconf:
+		if test in testexcludes:
+			testexcludes[test] = testexcludes[test].union(set(lconf[test]))
+		else:
+			testexcludes[test] = set(lconf[test])
+	return testexcludes
+
+#Build the exclude list from both our local and global excludes
+excludes = unifyExcludes(GLOBALEXCLUDES, LOCALEXCLUDES)
+
+def getRuntimesForTest(testname):
+	global excludes
+	global RUNTIMES
+	if testname in excludes:
+		return RUNTIMES - excludes[testname]
+	return RUNTIMES
+
+def configureConfigFile(configfile, runtime, clazz=None):
+  dconf = json.loads(open(configfile,'r').read())
+  #we replace the runtimes completely
+  dconf["runtimes"] = [runtime]
+  dconf["num-procs"] = options.num_cores
+  #if we specify a clazz, we also replace that. We only do this is the configfile is not already specific to the test
+  if clazz != None:
+    dconf["main-class"] = clazz
+  return dconf
+
+def stringifyConfigFile(configuredConfigFile):
+  io = StringIO()
+  json.dump(configuredConfigFile, io, indent=2)
+  return io.getvalue()
+
+config_file = "liszt.cfg"
+liszt_cmd = "../../release/bin/liszt"
+output_dir_base = "test_output"
+if options.strict_diff:
+  diff_tool = "diff"
+else:
+  diff_tool = "../../../liszt_diff"
+
+def write_config_file(configString, path):
+  with open(os.path.join(path, config_file),"w") as f:
+    f.write(configString)
+
+def make_clean_dir(dir):
+  try:
+    os.makedirs(dir)
+  except OSError:
+    if os.path.isdir(dir):
+      shutil.rmtree(dir)
+      os.makedirs(dir)
+    else:
+      raise
+
+def run_test(testinstance):
+  # This code does some path acrobatics to prevent calling a global chdir(),
+  # allowing us to parallelize the test run within the Python script without
+  # changing the current directory of other threads.
+  clazz = testinstance.clazz
+  runtime = testinstance.runtime
+  if not options.quiet:
+    print "Testing %s on runtime %s" % (clazz, runtime)
+
+  if not (os.path.exists("%s.out" % (clazz)) ^ os.path.exists("%s.fail" % (clazz))):
+    print "Incorrect test setup: Exactly one of %s.out or %s.fail must exist" % (clazz, clazz)
+    testinstance.status = "FAIL (test setup)"
+    return
+  
+  #Set up the test's config file
+  test_path = os.path.join(output_dir_base, testinstance.runtime, testinstance.clazz)
+  make_clean_dir(test_path)
+  if os.path.exists("%s.cfg" % clazz):
+    write_config_file(stringifyConfigFile(configureConfigFile("%s.cfg" % clazz, runtime)), test_path)
+  else:
+    write_config_file(stringifyConfigFile(configureConfigFile(DEFAULT_CONFIG_FILE, runtime, clazz)), test_path)
+    
+  
+  shutil.copy("%s.test" % clazz, os.path.join(test_path, "%s.scala" % (clazz)))
+  # Copy the output or expected failure output file to known location, both to
+  # simplify the code and to provide a snapshot of the test in a single directory
+  if os.path.exists("%s.out" % (clazz)):
+    shutil.copy("%s.out" % (clazz), os.path.join(test_path, "expected.out"))
+  if os.path.exists("%s.fail" % (clazz)):
+    shutil.copy("%s.fail" % (clazz), os.path.join(test_path, "expected.fail"))
+  # TODO(mbarrien): Copy the mesh file too?
+
+  # Since we'll be running from a path 2 levels deeper, need to go up 2 directories to find liszt compiler
+  my_cmd = os.path.join(os.pardir, os.pardir, liszt_cmd)
+  compile_result = subprocess.call("%s &> compile.log" % (my_cmd), executable="/bin/bash", shell=True, cwd=test_path)
+  subprocess.call("cat *.log | grep 'liszt:' 2>&1 > output", executable="/bin/bash", shell=True, cwd=test_path)
+  if compile_result == 0:
+    diff_result = subprocess.call([diff_tool, "expected.out", "output"], cwd=test_path)
+    if diff_result == 0:
+      testinstance.status = "pass"
+    else:
+      testinstance.status= "FAIL"
+  else:
+    if os.path.exists(os.path.join(test_path, "expected.fail")):
+      # Intentionally failed during compile stage. Check for specific error
+      # The ".fail" file should contain a single line with an expression to grep for.
+      # It may also contain *whole* comment lines beginning with "#"
+      with open(os.devnull, 'w') as devnull:
+        grep_result = subprocess.call('grep "`grep -v ^# expected.fail`" compile.log', executable="/bin/bash", shell=True, stdout=devnull, cwd=test_path)
+        
+      if grep_result == 0:
+        testinstance.status = "pass"
+      else:
+        if not options.quiet:
+          print "Compile Failed for wrong reason: "
+          subprocess.call(["cat", "compile.log"], cwd=test_path)
+        testinstance.status = "FAIL (compiler wrong reason)"
+    else:
+      if not options.quiet:
+        print "Compile Failed: "
+        subprocess.call(["cat", "compile.log"], cwd=test_path)
+      testinstance.status = "FAIL (compiler)"
+      
+  #shutil.copy("test_output/%s/output" % clazz,"new_expected/%s.out" % (clazz))
+  # Cleanup
+  if testinstance.status == "pass" and not options.no_delete:
+    shutil.rmtree(test_path)
+
+
+# The right way to multithread is probably using make. This will do for now.
+def go(q):
+  while True:
+    try:
+      run_test(q.get())
+      q.task_done()
+    except Queue.Empty:
+      return
+
+#Now we create lists of all the tests to run, and instances of each test
+testclazzez = map(lambda x: "".join(os.path.splitext(x)[:-1]), files)
+tests = map(lambda x: Test(x, getRuntimesForTest(x)), testclazzez)
+
+#Now create a map from runtimes to list of tests to run
+runtimes_testinstances_map = {}
+for testobj in tests:
+  for testinstanceobj in testobj.instances:
+    runtimes_testinstances_map.setdefault(testinstanceobj.runtime,[]).append(testinstanceobj)
+
+#Here we actually run the tests. If it's a smp or single runtime we run in parallel, else we serialize.
+for runtime in runtimes_testinstances_map.keys():
+  if runtime == "smp" or runtime == "single" or runtime == "mpi":
+    queue = Queue.Queue(0)
+    for testobj in runtimes_testinstances_map[runtime]:
+      queue.put(testobj)
+    for i in range(options.num_threads):
+      t = threading.Thread(target=go, args=(queue,))
+      t.setDaemon(True)
+      t.start()
+    queue.join()
+  else:
+    for testobj in runtimes_testinstances_map[runtime]:
+      run_test(testobj)
+
+print "Test Summary"
+if not options.porcelain:
+  print "-"*140
+  for testobj in tests:
+    print "| %s | %s |" % (str(testobj.clazz).ljust(37)[0:37], ("".join(["(%s: %s) " % (x.runtime, x.status) for x in testobj.instances])).ljust(96)[0:96])
+  print "-"*140
+else:
+  for testobj in tests:
+    print "%s ; %s" % (testobj.clazz, "".join( ["(%s: %s)|" % (x.runtime, x.status) for x in testobj.instances] ))

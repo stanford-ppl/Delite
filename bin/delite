@@ -12,7 +12,7 @@ import delitecommon
 from delitecommon import *
 
 def main():
-    usage = "usage: %prog <application runner> [params] [options]"
+    usage = "usage: %prog <application runner> [args] [options]"
     parser = OptionParser(usage)
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose")
     parser.add_option("-t", "--threads", dest="num_threads", default="1", help="num execution threads e.g. 4")
@@ -59,15 +59,21 @@ def run(deg, params, opts):
     java_opts = java_opts + " -Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) + " -Ddelite.gpus=" + opts.num_gpus + " -Ddelite.runs=" + opts.num_runs
     
     if opts.profile == True:
-        java_opts = java_opts + " -Dstats.output.dir=profile -Dstats.dump.component=prof -Ddelite.debug.profile=true"
+        java_opts = java_opts + " -Dprofile.output.dir=profile -Dprofile.dump=true -Ddelite.debug.profile=true"
 
-    #add classpaths
+    # add classpaths
     cp = " -cp "
-    cp = cp + delitecommon.DELITE_HOME + "/runtime/target/" + delitecommon.scala_virt_version + "/classes" + os.pathsep
+    cp = cp + delitecommon.DELITE_HOME + "/runtime/target/" + delitecommon.scala_major_id + "/classes" + os.pathsep
     cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-library.jar" + os.pathsep
-    cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-compiler.jar"
+    cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-compiler.jar" + os.pathsep
+    # lms math ops generated apache math for performance
+    cp = cp + delitecommon.DELITE_HOME + "/lib_managed/jars/org.apache.commons/commons-math/commons-math-2.2.jar" + os.pathsep 
+    
+    # needed by deliszt
+    bootcp = " -Xbootclasspath/a:"
+    bootcp = bootcp + delitecommon.DELITE_HOME + "/unsafe_classes/unsafe.jar"
 
-    java_opts = java_opts + cp
+    java_opts = java_opts + cp + bootcp
     #os.putenv("JAVA_OPTS", java_opts)
 
     #MKL ENV

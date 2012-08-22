@@ -1,0 +1,23 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object ReturnTypes {
+	var a = true
+	
+	def bar() : Int = {
+		if(a) return 3
+		return 4
+	}
+	def foo() : Int = { 
+		while(a) {
+			if(a) {
+				return bar()
+			}
+		}
+		return 2
+	}
+	def main() {
+		Print(foo())
+	}
+} 

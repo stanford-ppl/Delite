@@ -92,7 +92,10 @@ trait ArithOps extends Variables with OverloadHack {
   def infix_-(lhs: Rep[Int], rhs: Float)(implicit ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].-(lhs, unit(rhs))
   def infix_-(lhs: Rep[Float], rhs: Float)(implicit o: Overloaded1, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].-(lhs, unit(rhs))
   def infix_-(lhs: Rep[Float], rhs: Double)(implicit o: Overloaded1, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].-(lhs, unit(rhs))
-
+  def infix_-(lhs: Rep[Float], rhs: Rep[Int])(implicit o: Overloaded1, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].-(lhs, repIntToRepFloat(rhs))
+  def infix_-(lhs: Rep[Double], rhs: Rep[Int])(implicit o: Overloaded2, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].-(lhs, repIntToRepDouble(rhs))
+  def infix_-(lhs: Rep[Double], rhs: Rep[Float])(implicit o: Overloaded3, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].-(lhs, repFloatToRepDouble(rhs))
+  
   def infix_+[L:Arith:Manifest,R](lhs: Rep[L], rhs: R)(implicit c: R => Rep[L], ctx: SourceContext): Rep[L] = implicitly[Arith[L]].+(lhs,c(rhs))
   def infix_+[L:Manifest,R:Arith:Manifest](lhs: Rep[L], rhs: Rep[R])(implicit c: Rep[L] => Rep[R], ctx: SourceContext): Rep[R] = implicitly[Arith[R]].+(c(lhs),rhs)  
   
@@ -107,7 +110,10 @@ trait ArithOps extends Variables with OverloadHack {
   def infix_+(lhs: Rep[Int], rhs: Float)(implicit ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].+(lhs, unit(rhs))
   def infix_+(lhs: Rep[Float], rhs: Float)(implicit o: Overloaded1, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].+(lhs, unit(rhs))
   def infix_+(lhs: Rep[Float], rhs: Double)(implicit o: Overloaded1, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].+(lhs, unit(rhs))
-
+  def infix_+(lhs: Rep[Float], rhs: Rep[Int])(implicit o: Overloaded22, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].+(lhs, repIntToRepFloat(rhs))
+  def infix_+(lhs: Rep[Double], rhs: Rep[Int])(implicit o: Overloaded23, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].+(lhs, repIntToRepDouble(rhs))
+  def infix_+(lhs: Rep[Double], rhs: Rep[Float])(implicit o: Overloaded24, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].+(lhs, repFloatToRepDouble(rhs))
+  
   def infix_*[L:Arith:Manifest,R](lhs: Rep[L], rhs: R)(implicit c: R => Rep[L], ctx: SourceContext): Rep[L] = implicitly[Arith[L]].*(lhs,c(rhs))
   def infix_*[L:Manifest,R:Arith:Manifest](lhs: Rep[L], rhs: Rep[R])(implicit c: Rep[L] => Rep[R], ctx: SourceContext): Rep[R] = implicitly[Arith[R]].*(c(lhs),rhs)  
   
@@ -122,7 +128,10 @@ trait ArithOps extends Variables with OverloadHack {
   def infix_*(lhs: Rep[Int], rhs: Float)(implicit ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].*(lhs, unit(rhs))
   def infix_*(lhs: Rep[Float], rhs: Float)(implicit o: Overloaded1, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].*(lhs, unit(rhs))
   def infix_*(lhs: Rep[Float], rhs: Double)(implicit o: Overloaded1, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].*(lhs, unit(rhs))
-
+  def infix_*(lhs: Rep[Float], rhs: Rep[Int])(implicit o: Overloaded7, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].*(lhs, repIntToRepFloat(rhs))
+  def infix_*(lhs: Rep[Double], rhs: Rep[Int])(implicit o: Overloaded8, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].*(lhs, repIntToRepDouble(rhs))
+  def infix_*(lhs: Rep[Double], rhs: Rep[Float])(implicit o: Overloaded9, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].*(lhs, repFloatToRepDouble(rhs))
+  
   def infix_/[L:Arith:Manifest,R](lhs: Rep[L], rhs: R)(implicit c: R => Rep[L], ctx: SourceContext): Rep[L] = implicitly[Arith[L]]./(lhs,c(rhs))
   def infix_/[L:Manifest,R:Arith:Manifest](lhs: Rep[L], rhs: Rep[R])(implicit c: Rep[L] => Rep[R], ctx: SourceContext): Rep[R] = implicitly[Arith[R]]./(c(lhs),rhs)  
   
@@ -137,7 +146,11 @@ trait ArithOps extends Variables with OverloadHack {
   def infix_/(lhs: Rep[Int], rhs: Float)(implicit ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]]./(lhs, unit(rhs))
   def infix_/(lhs: Rep[Float], rhs: Float)(implicit o: Overloaded1, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]]./(lhs, unit(rhs))
   def infix_/(lhs: Rep[Float], rhs: Double)(implicit o: Overloaded1, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]]./(lhs, unit(rhs))
-       
+  def infix_/(lhs: Rep[Float], rhs: Rep[Int])(implicit o: Overloaded10, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]]./(lhs, repIntToRepFloat(rhs))
+  def infix_/(lhs: Rep[Double], rhs: Rep[Int])(implicit o: Overloaded11, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]]./(lhs, repIntToRepDouble(rhs))
+  def infix_/(lhs: Rep[Double], rhs: Rep[Float])(implicit o: Overloaded12, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]]./(lhs, repFloatToRepDouble(rhs))
+  
+         
   /**
    * Vector
    */
@@ -197,7 +210,7 @@ trait ArithOps extends Variables with OverloadHack {
   /**
    *  Tuple
    */
-
+  
   implicit def tuple2Arith[A:Manifest:Arith,B:Manifest:Arith] : Arith[Tuple2[A,B]] =
     new Arith[Tuple2[A,B]] {
       def +=(a: Rep[Tuple2[A,B]], b: Rep[Tuple2[A,B]])(implicit ctx: SourceContext) =
@@ -228,7 +241,7 @@ trait ArithOps extends Variables with OverloadHack {
         Tuple2(a._1.zero, a._2.zero)
     }
   
-  implicit def tuple3Arith[A:Manifest:Arith,B:Manifest:Arith,C:Manifest:Arith,D:Manifest:Arith] : Arith[Tuple3[A,B,C]] =
+  implicit def tuple3Arith[A:Manifest:Arith,B:Manifest:Arith,C:Manifest:Arith] : Arith[Tuple3[A,B,C]] =
     new Arith[Tuple3[A,B,C]] {
       def +=(a: Rep[Tuple3[A,B,C]], b: Rep[Tuple3[A,B,C]])(implicit ctx: SourceContext) =
         Tuple3(a._1 += b._1, a._2 += b._2, a._3 += b._3)
@@ -289,6 +302,49 @@ trait ArithOps extends Variables with OverloadHack {
         Tuple4(a._1.zero, a._2.zero, a._3.zero, a._4.zero)    
     }
 
+  /**
+   * Tuple-scalar math
+   * 
+   * This unfortunately large number of declarations is used to resolve overload ambiguities with previous arith declarations.
+   */     
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[Tuple2[A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded13): Rep[Tuple2[A,A]] = ((a._1+b,a._2))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[B], b: Rep[Tuple2[A,A]])(implicit conv: Rep[B] => Rep[A], o: Overloaded14): Rep[Tuple2[A,A]] = infix_+(b,a)
+   def infix_-[A:Manifest:Arith,B:Manifest](a: Rep[Tuple2[A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded13): Rep[Tuple2[A,A]] = ((a._1-b,a._2-b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[Tuple2[A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded13): Rep[Tuple2[A,A]] = ((a._1*b,a._2*b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[B], b: Rep[Tuple2[A,A]])(implicit conv: Rep[B] => Rep[A], o: Overloaded14): Rep[Tuple2[A,A]] = infix_*(b,a)
+   def infix_/[A:Manifest:Arith,B:Manifest](a: Rep[Tuple2[A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded13): Rep[Tuple2[A,A]] = ((a._1/b,a._2/b))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[Tuple2[A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded15): Rep[Tuple2[A,A]] = ((a._1+b,a._2))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: B, b: Rep[Tuple2[A,A]])(implicit conv: B => Rep[A], o: Overloaded16): Rep[Tuple2[A,A]] = infix_+(b,a)
+   def infix_-[A:Manifest:Arith,B:Manifest](a: Rep[Tuple2[A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded15): Rep[Tuple2[A,A]] = ((a._1-b,a._2-b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[Tuple2[A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded15): Rep[Tuple2[A,A]] = ((a._1*b,a._2*b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: B, b: Rep[Tuple2[A,A]])(implicit conv: B => Rep[A], o: Overloaded16): Rep[Tuple2[A,A]] = infix_*(b,a)
+   def infix_/[A:Manifest:Arith,B:Manifest](a: Rep[Tuple2[A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded15): Rep[Tuple2[A,A]] = ((a._1/b,a._2/b))   
+   
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[Tuple3[A,A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded17): Rep[Tuple3[A,A,A]] = ((a._1+b,a._2+b,a._3+b))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[B], b: Rep[Tuple3[A,A,A]])(implicit conv: Rep[B] => Rep[A], o: Overloaded18): Rep[Tuple3[A,A,A]] = infix_+(b,a)
+   def infix_-[A:Manifest:Arith,B:Manifest](a: Rep[Tuple3[A,A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded17): Rep[Tuple3[A,A,A]] = ((a._1-b,a._2-b,a._3-b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[Tuple3[A,A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded17): Rep[Tuple3[A,A,A]] = ((a._1*b,a._2*b,a._3*b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[B], b: Rep[Tuple3[A,A,A]])(implicit conv: Rep[B] => Rep[A], o: Overloaded18): Rep[Tuple3[A,A,A]] = infix_*(b,a)
+   def infix_/[A:Manifest:Arith,B:Manifest](a: Rep[Tuple3[A,A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded17): Rep[Tuple3[A,A,A]] = ((a._1/b,a._2/b,a._3/b))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[Tuple3[A,A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded19): Rep[Tuple3[A,A,A]] = ((a._1+b,a._2+b,a._3+b))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: B, b: Rep[Tuple3[A,A,A]])(implicit conv: B => Rep[A], o: Overloaded20): Rep[Tuple3[A,A,A]] = infix_+(b,a)
+   def infix_-[A:Manifest:Arith,B:Manifest](a: Rep[Tuple3[A,A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded19): Rep[Tuple3[A,A,A]] = ((a._1-b,a._2-b,a._3-b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[Tuple3[A,A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded19): Rep[Tuple3[A,A,A]] = ((a._1*b,a._2*b,a._3*b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: B, b: Rep[Tuple3[A,A,A]])(implicit conv: B => Rep[A], o: Overloaded20): Rep[Tuple3[A,A,A]] = infix_*(b,a)
+   def infix_/[A:Manifest:Arith,B:Manifest](a: Rep[Tuple3[A,A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded19): Rep[Tuple3[A,A,A]] = ((a._1/b,a._2/b,a._3/b))
+      
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[Tuple4[A,A,A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded21): Rep[Tuple4[A,A,A,A]] = ((a._1+b,a._2+b,a._3+b,a._4+b))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[B], b: Rep[Tuple4[A,A,A,A]])(implicit conv: Rep[B] => Rep[A], o: Overloaded22): Rep[Tuple4[A,A,A,A]] = infix_+(b,a)
+   def infix_-[A:Manifest:Arith,B:Manifest](a: Rep[Tuple4[A,A,A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded21): Rep[Tuple4[A,A,A,A]] = ((a._1-b,a._2-b,a._3-b,a._4-b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[Tuple4[A,A,A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded21): Rep[Tuple4[A,A,A,A]] = ((a._1*b,a._2*b,a._3*b,a._4*b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[B], b: Rep[Tuple4[A,A,A,A]])(implicit conv: Rep[B] => Rep[A], o: Overloaded22): Rep[Tuple4[A,A,A,A]] = infix_*(b,a)
+   def infix_/[A:Manifest:Arith,B:Manifest](a: Rep[Tuple4[A,A,A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded21): Rep[Tuple4[A,A,A,A]] = ((a._1/b,a._2/b,a._3/b,a._4/b))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[Tuple4[A,A,A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded23): Rep[Tuple4[A,A,A,A]] = ((a._1+b,a._2+b,a._3+b,a._4+b))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: B, b: Rep[Tuple4[A,A,A,A]])(implicit conv: B => Rep[A], o: Overloaded24): Rep[Tuple4[A,A,A,A]] = infix_+(b,a)
+   def infix_-[A:Manifest:Arith,B:Manifest](a: Rep[Tuple4[A,A,A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded23): Rep[Tuple4[A,A,A,A]] = ((a._1-b,a._2-b,a._3-b,a._4-b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[Tuple4[A,A,A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded23): Rep[Tuple4[A,A,A,A]] = ((a._1*b,a._2*b,a._3*b,a._4*b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: B, b: Rep[Tuple4[A,A,A,A]])(implicit conv: B => Rep[A], o: Overloaded24): Rep[Tuple4[A,A,A,A]] = infix_*(b,a)
+   def infix_/[A:Manifest:Arith,B:Manifest](a: Rep[Tuple4[A,A,A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded23): Rep[Tuple4[A,A,A,A]] = ((a._1/b,a._2/b,a._3/b,a._4/b))   
 
   /**
    * Primitives
@@ -336,6 +392,20 @@ trait ArithOps extends Variables with OverloadHack {
     //def unary_-(a: Rep[Int]) = -a
   }
   
+  implicit val longArith : Arith[Long] = new Arith[Long] {
+    def +=(a: Rep[Long], b: Rep[Long])(implicit ctx: SourceContext) = arith_plus(a,b)
+    def +(a: Rep[Long], b: Rep[Long])(implicit ctx: SourceContext) = arith_plus(a,b)
+    def -(a: Rep[Long], b: Rep[Long])(implicit ctx: SourceContext) = arith_minus(a,b)
+    def *(a: Rep[Long], b: Rep[Long])(implicit ctx: SourceContext) = arith_times(a,b)
+    def /(a: Rep[Long], b: Rep[Long])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
+    def abs(a: Rep[Long])(implicit ctx: SourceContext) = arith_abs(a)
+    def exp(a: Rep[Long])(implicit ctx: SourceContext) = arith_exp(a).AsInstanceOf[Long]
+    def empty(implicit ctx: SourceContext) = unit(0L)
+    def zero(a: Rep[Long])(implicit ctx: SourceContext) = empty
+    //def unary_-(a: Rep[Long]) = -a
+  }
+  
+  
   def arith_plus[T:Manifest:Numeric](lhs: Rep[T], rhs: Rep[T])(implicit ctx: SourceContext): Rep[T]
   def arith_minus[T:Manifest:Numeric](lhs: Rep[T], rhs: Rep[T])(implicit ctx: SourceContext): Rep[T]
   def arith_times[T:Manifest:Numeric](lhs: Rep[T], rhs: Rep[T])(implicit ctx: SourceContext): Rep[T]
@@ -381,27 +451,63 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
 
 trait ArithOpsExpOpt extends ArithOpsExp {
   this: OptiLAExp =>
+  
+  def unbox[T:Manifest](n: java.lang.Number): T = {
+    val mD = manifest[Double]
+    val mF = manifest[Float]
+    val mI = manifest[Int]
+    val mL = manifest[Long]
+    manifest[T] match {
+      case `mD` => n.doubleValue().asInstanceOf[T]
+      case `mF` => n.floatValue().asInstanceOf[T]
+      case `mI` => n.intValue().asInstanceOf[T]
+      case `mL` => n.longValue().asInstanceOf[T]
+    }
+  }
 
+  override def arith_abs[T:Manifest:Numeric](lhs: Exp[T])(implicit ctx: SourceContext): Exp[T] = lhs match {
+    case Const(x) => 
+      // weird java class cast exception inside numeric while unboxing java.lang.Integer              
+      val a = if (x.isInstanceOf[java.lang.Number]) unbox(x.asInstanceOf[java.lang.Number]) else x
+      unit(implicitly[Numeric[T]].abs(a))
+    case _ => super.arith_abs(lhs)
+  }
   override def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T])(implicit ctx: SourceContext) : Exp[T] = (lhs,rhs) match {
-    case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].plus(x,y))
+    case (Const(x), Const(y)) => 
+      val a = if (x.isInstanceOf[java.lang.Number]) unbox(x.asInstanceOf[java.lang.Number]) else x
+      val b = if (y.isInstanceOf[java.lang.Number]) unbox(y.asInstanceOf[java.lang.Number]) else y    
+      unit(implicitly[Numeric[T]].plus(a,b))
     case (Const(0 | 0.0 | 0.0f | -0.0 | -0.0f), y) => y
     case (y, Const(0 | 0.0 | 0.0f | -0.0 | -0.0f)) => y
     case _ => super.arith_plus(lhs, rhs)
   }
+  
   override def arith_minus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T])(implicit ctx: SourceContext) : Exp[T] = (lhs,rhs) match {
-    case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].minus(x,y))
-    case (Const(0 | 0.0 | 0.0f | -0.0 | -0.0f), y) => y
+    case (Const(x), Const(y)) => 
+      val a = if (x.isInstanceOf[java.lang.Number]) unbox(x.asInstanceOf[java.lang.Number]) else x
+      val b = if (y.isInstanceOf[java.lang.Number]) unbox(y.asInstanceOf[java.lang.Number]) else y    
+      unit(implicitly[Numeric[T]].minus(a,b))
+    // case (Const(0 | 0.0 | 0.0f | -0.0 | -0.0f), y) => unit(-1.asInstanceOf[T])*y
     case (y, Const(0 | 0.0 | 0.0f | -0.0 | -0.0f)) => y
     case _ => super.arith_minus(lhs, rhs)
   }
+  
   override def arith_times[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T])(implicit ctx: SourceContext) : Exp[T] = (lhs,rhs) match {
-    case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].times(x,y))
+    case (Const(x), Const(y)) => 
+      val a = if (x.isInstanceOf[java.lang.Number]) unbox(x.asInstanceOf[java.lang.Number]) else x
+      val b = if (y.isInstanceOf[java.lang.Number]) unbox(y.asInstanceOf[java.lang.Number]) else y
+      unit(implicitly[Numeric[T]].times(a,b))
     case (Const(0 | 0.0 | 0.0f | -0.0 | -0.0f), _) => lhs
     case (_, Const(0 | 0.0 | 0.0f | -0.0 | -0.0f)) => rhs
 //    case (Const(1 | 1.0 | 1.0f), y) => y //TODO: careful about type promotion!
 //    case (y, Const(1 | 1.0 | 1.0f)) => y
     case _ => super.arith_times(lhs, rhs)
   }
+  
+  override def arith_fractional_divide[T:Manifest:Fractional](lhs: Exp[T], rhs: Exp[T])(implicit ctx: SourceContext) : Exp[T] = (lhs,rhs) match {
+    case (Const(0 | 0.0 | 0.0f | -0.0 | -0.0f), _) => lhs  // TODO: shouldn't match on 0 / 0 ?
+    case _ => super.arith_fractional_divide(lhs, rhs)
+  }  
 }
 
 
@@ -410,7 +516,7 @@ trait ScalaGenArithOps extends ScalaGenBase {
   val IR: ArithOpsExp
   import IR._
   
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case ArithPlus(a,b) => emitValDef(sym, quote(a) + " + " + quote(b))
     case ArithMinus(a,b) => emitValDef(sym, quote(a) + " - " + quote(b))
     case ArithTimes(a,b) => emitValDef(sym, quote(a) + " * " + quote(b))
@@ -429,7 +535,7 @@ trait CLikeGenArithOps extends CLikeCodegen {
   val IR: ArithOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
       rhs match {
         case ArithPlus(a,b) =>
           emitValDef(sym, quote(a) + " + " + quote(b))

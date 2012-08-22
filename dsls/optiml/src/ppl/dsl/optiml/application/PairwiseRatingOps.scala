@@ -51,7 +51,7 @@ trait ScalaGenPairwiseRatingOps extends ScalaGenBase {
   val IR: ApplicationOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   // these are the ops that call through to the underlying real data structure
     case PairwiseRatingObjectNew(profileA, profileB, scoreA, scoreB) => emitValDef(sym, "new " + remap(manifest[PairwiseRating]) + "(" + quote(profileA)  + "," + quote(profileB)  + "," + quote(scoreA)  + "," + quote(scoreB)  + ")")
     case PairwiseRatingProfilea(x) =>  emitValDef(sym, quote(x) + ".profileA")

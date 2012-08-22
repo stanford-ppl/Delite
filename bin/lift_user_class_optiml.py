@@ -176,7 +176,7 @@ import scala.virtualization.lms.common.{EffectExp, Variables}\n\n"
     l = l + "  val IR: ApplicationOpsExp\n"
     l = l + "  import IR._\n\n"
     
-    l = l + "  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {\n"
+    l = l + "  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {\n"
     l = l + "  // these are the ops that call through to the underlying real data structure\n"
     l = l + "    case " + clazz + "ObjectNew(" + listify(fields) + ") => emitValDef(sym, \"new \" + remap(manifest[" + clazz + "]) + \"(" + quotify(fields) + ")\")\n"
     for f in fields:

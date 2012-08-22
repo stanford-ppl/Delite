@@ -1,7 +1,6 @@
 package ppl.apps.ml.cf
 
 import ppl.dsl.optiml._
-import ppl.dsl.optiml.application.{Similarity, PairwiseRating}
 import ppl.delite.framework.DeliteApplication
 
 object TopNRunner extends OptiMLApplicationRunner with TopN
@@ -11,28 +10,56 @@ trait TopN extends OptiMLApplication {
     println("Usage: TopN <input data file> <user> <number of recommendations>")
     exit(-1)
   }
-
+  
+  /**
+   * Application-specific data structures
+   */
+  type PairwiseRating = Record{val profileA: Int; val profileB: Int; val scoreA: Int; val scoreB: Int}  
+  def NewPairwiseRating(pa: Rep[Int], pb: Rep[Int], sa: Rep[Int], sb: Rep[Int]) = new Record {
+    val profileA = pa
+    val profileB = pb
+    val scoreA = sa
+    val scoreB = sb
+  }
+  
+  type Similarity = Record{val a: Int; val b: Int; val value: Double}
+  def NewSimilarity(sa: Rep[Int], sb: Rep[Int], sv: Rep[Double]) = new Record {
+    val a = sa
+    val b = sb
+    val value = sv
+  }  
+  
   /**
    * Pearson correlation 
    */
   def similarity(ratings: Rep[DenseVector[PairwiseRating]]) = {    
-    val avgA = sum(0, ratings.length) { ratings(_).scoreA } / ratings.length
-    val avgB = sum(0, ratings.length) { ratings(_).scoreB } / ratings.length
-
+    val avgA = (sum(0, ratings.length) { ratings(_).scoreA }).AsInstanceOf[Double] / ratings.length
+    val avgB = (sum(0, ratings.length) { ratings(_).scoreB }).AsInstanceOf[Double] / ratings.length
+    
     def diffA(i: Rep[Int]) = ratings(i).scoreA - avgA
     def diffB(i: Rep[Int]) = ratings(i).scoreB - avgB
     
     val num = sum(0, ratings.length) { i => diffA(i)*diffB(i) }
-    val den = sqrt(sum(0, ratings.length) { diffA(_) }) * sqrt(sum(0, ratings.length) { diffB(_) })
+    val den = sqrt(sum(0, ratings.length) { i => diffA(i)*diffA(i) }) * sqrt(sum(0, ratings.length) { i => diffB(i)*diffB(i) })
     
-    Similarity(ratings(0).profileA, ratings(0).profileB, num/den)
+    // var i = 0
+    // if (ratings.length > 1) {
+    // while (i < ratings.length) {
+    //   println("  ***" + ratings(i).profileA + ", " + ratings(i).profileB + ", [ " + ratings(i).scoreA + ", " + ratings(i).scoreB + "]")
+    //   i += 1
+    // }
+    // println("num is " + num)
+    // }
+    
+    NewSimilarity(ratings(0).profileA, ratings(0).profileB, num/(den+1))
   }
   
-  def preferences(user: Rep[Int], ratings: Rep[DenseMatrix[Int]], sims: Rep[DenseMatrix[Double]]) = {
-    (0::sims.numRows) { testProfile => // each row is a unique profile
+  def preferences(user: Rep[Int], ratings: Rep[DenseMatrix[Int]], sims: Rep[SparseMatrix[Double]]) = {
+    // should this be sims.rowIndices { ... } that returns a SparseVector? (might be more expressive, but also slower)
+    sims.nzRowIndices { testProfile => // each row is a unique profile
       val num = sum(0, ratings.numRows) { i => sims(testProfile, ratings(i,1))*ratings(i,2) }
       val den = sum(0, ratings.numRows) { i => abs(sims(testProfile, ratings(i,1))) }
-      num/den
+      num/(den+1)
     }
   }
   
@@ -59,27 +86,18 @@ trait TopN extends OptiMLApplication {
         
     val pairwiseRatings = userRatings flatMap { submat =>
       
-      // this is testing way too many combinations
-      // need something equivalent to:
-      // for (i <- 0 until submat.numRows) {
-      //   for (j <- i+1 until submat.numRows) {
-      //}}
-      // since we're in the outer flatMap, could do this sequentially, but how do we express it?
-      // aggregateIf(i@0::submat.numRows, i::submat.numRows) --> then could still represent as a flattened multiloop internally
-      // another option is to try to optimize the multiloop + conditional, but we would need a 2d multiloop representation
-      
-      // another option is to represent this as a triangular matrix explicitly, and use a bulk operation on that
-      aggregateIf(0::submat.numRows, 0::submat.numRows) ((i,j) => i < j) { (i,j) =>
+      // aggregateIf(0::submat.numRows, 0::submat.numRows) ((i,j) => i < j) { (i,j) =>
+      aggregate (utriangle(submat.numRows,false)) { (i,j) => 
         // canonical ordering, smaller profile id always comes first in the pair
         // so (10,20) and (20,10) are both stored at (10,20)
         val a = submat(i,1)
         val b = submat(j,1)
         if (a < b) {
-          PairwiseRating(a,b,submat(i,2),submat(j,2))
+          NewPairwiseRating(a,b,submat(i,2),submat(j,2))
         }
         else {
-          PairwiseRating(b,a,submat(j,2),submat(i,2))
-        }
+          NewPairwiseRating(b,a,submat(j,2),submat(i,2))
+        }                
       }
     } 
     
@@ -88,19 +106,30 @@ trait TopN extends OptiMLApplication {
         
     /* similarity matrix */
     val uniqueRatings = pairwiseRatings groupBy { rating => (rating.profileA, rating.profileB) } // Vector[Vector[PairwiseRating]]        
-    val similarities = uniqueRatings map { similarity } // Vector[Similarity]    
+    val similarities = uniqueRatings map { similarity } // Vector[Similarity]  
+    // var n = 0
+    // while (n < similarities.length) {
+    //   println("  (" + similarities(n).a + ", " + similarities(n).b + ") = " + similarities(n).value)
+    //   n += 1
+    // }  
     println("..found " + similarities.length + " similarities")
-    
+    val userIds = (uniqueRatings map { grp => grp(0).profileA }) ++ (uniqueRatings map { grp => grp(0).profileB })
+
     // each similarity represents a unique (i,j) value in the similarity matrix - invert for fast look-up
-    // uniqueness guaranteed by previous groupBy, but not statically provable... what should optiml do here? (nothing, because it's a foreach?)
     
-    // TODO: this should be a SparseMatrix... only populated where we actually have a similarity value 
-    //val similarityMatrix = SymmetricMatrix[Double](userRatings.length) // n x n where n is the number of unique users
-    val similarityMatrix = DenseMatrix[Double](userRatings.length, userRatings.length)
-    for (sim <- similarities) {
-      similarityMatrix(sim.a, sim.b) = sim.value
+    //val similarityMatrix = SymmetricMatrix[Double](userIds.max+1) // n x n where n is the number of unique users
+    val similarityMatrixB = SparseMatrix[Double](userIds.max+1, userIds.max+1)
+    // AKS TODO: for loops should check for sparse matrix updates inside and throw an error, as this will never work as expected
+    // similarityMatrixB(IndexVector(similarities map { _.a }),IndexVector(similarities map { _.b })) = similarities map { _.value } 
+    var s = 0
+    while (s < similarities.length) {
+      val sim = similarities(s)
+      similarityMatrixB(sim.a, sim.b) = sim.value  
+      similarityMatrixB(sim.b, sim.a) = sim.value 
+      s += 1
     }
-        
+    val similarityMatrix = similarityMatrixB.finish
+    
     /* compute prediction for desired user */
     val testRatings = userRatings filter { m => m(0,0) == testUser } // pretty inefficient unless this is fused...
     if (testRatings.length != 1) {
@@ -108,25 +137,39 @@ trait TopN extends OptiMLApplication {
       exit
     }
     
-    val prefs = preferences(testUser, testRatings(0), similarityMatrix) // Vector[Double] from 0 to n, representing testUser's preference for profile i
+    println("..computing user preferences")
+    val prefs = preferences(testUser, testRatings(0), similarityMatrix) // Vector[Double] from 0 to nnzRows representing testUser's preference for profile sims.nzRowIndices(i)
+    // println("nzRowIndices: ")
+    // similarityMatrix.nzRowIndices.pprint    
+    // println("preferences: ")
+    // prefs.pprint
     
-    /* top N */
-    //val (sorted, indices) = prefs.sortWithIndex 
-    val sorted = prefs.sort    
-    val topScores = sorted take N
-    //val topUsers = indices take N
-    // TODO: why is this type annotation required? inferencer ends up with Rep[DenseVector[Nothing]] otherwise
-    val topUsers: Rep[DenseVector[Int]] = topScores map { e =>
-      val tmp = prefs find { _ == e }
-      tmp(0) } // HACK! need to implement sortWithIndex above    
+    /* top N */    
+    val (sorted, sortedIndices) = prefs.sortWithIndex
+    val nzIndices = sortedIndices filter { i => prefs(i) != 0 } // drop entries we don't have data for
+    val first = if (nzIndices.length - N > 0) nzIndices.length-N else 0
+    val topN = nzIndices drop first
+    val topScores = prefs(topN)
+    val topUsers = topN map { i => similarityMatrix.nzRowIndices(i) }
+        
+    // println("sortedIndices: ")
+    // sortedIndices.pprint
+    // println("nzIndices: ")
+    // nzIndices.pprint
+    // println("topN: ")
+    // topN.pprint
+    // println("topScores: ")
+    // topScores.pprint
+    // println("topUsers: ")
+    // topUsers.pprint
     
     toc(topUsers)
     
     println("top N matches for user " + testUser + ": ")
-    var i = 0
-    while (i < topUsers.length) {
+    var i = topUsers.length - 1
+    while (i >= 0) {
       println("  match: " + topUsers(i) + ", score: " + topScores(i))
-      i += 1
+      i -= 1
     }      
   }
 }

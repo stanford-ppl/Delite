@@ -1,14 +1,13 @@
 package ppl.dsl.optiml.vector
 
-import ppl.dsl.optiml.{Vector, DenseVector, RangeVector, IndexVector, IndexVectorRange}
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
-import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.ops.{DeliteCollectionOpsExp}
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import java.io.PrintWriter
+import scala.reflect.SourceContext
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
 import scala.virtualization.lms.util.OverloadHack
-import scala.reflect.SourceContext
-import java.io.PrintWriter
+import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.ops.{DeliteCollectionOpsExp}
+import ppl.delite.framework.ops.DeliteCollection
+import ppl.dsl.optiml._
 
 trait IndexVectorRangeOps extends Base with OverloadHack { this: OptiML =>
 
@@ -28,8 +27,13 @@ trait IndexVectorRangeOps extends Base with OverloadHack { this: OptiML =>
   
   class IndexVecRangeOpsCls(val elem: Rep[IndexVectorRange]) extends IndexVecOpsCls {
     type Self = IndexVectorRange
+    type VA = IndexVectorDense
     def wrap(x: Rep[IndexVectorRange]) = indexVecRangeToInterface(x)
-          
+    def vaToOps(x: Rep[VA]) = repToIndexVecDenseOps(x)
+    def vaToIntf(x: Rep[VA]) = indexVecDenseToInterface(x)
+    def vaBuilder(implicit ctx: SourceContext) = indexVecDenseBuilder
+    def mVA = manifest[VA]
+    
     // VectorOps
     def length(implicit ctx: SourceContext) = indexvectorrange_length(x)
     def isRow(implicit ctx: SourceContext) = unit(true)
@@ -39,9 +43,9 @@ trait IndexVectorRangeOps extends Base with OverloadHack { this: OptiML =>
     def t(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be transposed") // TODO    
     def mt()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")    
     def update(n: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext): Rep[Unit] = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def copyFrom(pos: Rep[Int], y: Rep[IndexVectorDense])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def insert(pos: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def insertAll(pos: Rep[Int], y: Rep[IndexVectorDense])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def removeAll(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def trim()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def clear()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")        
@@ -68,7 +72,7 @@ trait IndexVectorRangeOpsExp extends IndexVectorRangeOps with DeliteCollectionOp
   /////////////////////
   // delite collection
   
-  def isIndexRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.Type.erasure == classOf[IndexVectorRange]  
+  def isIndexRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.tp.erasure == classOf[IndexVectorRange]
   def asIndexRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[IndexVectorRange]]
     
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 

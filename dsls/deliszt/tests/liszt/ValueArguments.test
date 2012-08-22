@@ -1,0 +1,12 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object ValueArguments {
+	def foo(a : Int, b : Float, c : Boolean, d : Vec[_3,Float], e : String, f : Mat[_2,_2,Float]) {
+		Print(a," ",b," ",c," ",d," ",e," ",f)
+	}
+	def main() {
+		foo(1,1.f,false,Vec(1.f,1.f,1.f),"foo",Mat(Vec(1.f,1.f),Vec(1.f,1.f)))
+	}
+} 

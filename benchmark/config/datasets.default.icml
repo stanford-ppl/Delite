@@ -7,4 +7,14 @@ svm|$data/ml/svm/MATRIX.TRAIN.800|$data/ml/svm/MATRIX.TEST|output|10
 lbp|$data/ml/lbp/onlyedges1|$data/ml/lbp/graphprint1
 lbpdenoise|200|200
 lbpdenoiseraw|$data/ml/lbpdenoise/noisy200x200.raw
-
+liszthello|liszt.cfg
+lisztcpubound|liszt.cfg
+lisztmembound|liszt.cfg
+lisztsss|liszt.cfg
+sc|sc.cfg
+sc_rw|sc.cfg
+mesh_smooth|liszt.cfg
+karthik_smooth|karthik.cfg
+joe|joe.cfg
+sl|liszt.cfg
+rl|liszt.cfg

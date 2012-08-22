@@ -1,0 +1,17 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object SetTypes {
+	def main() {
+	    var i = 0
+		for(c <- cells(mesh)) {
+		    for(f <- faces(c)) {
+		        val s = if(size(faces(c)) % 2 == 0) edges(mesh) else edges(c)
+		        for(e <- s) {
+		            i += 1
+		        }
+		    }
+		}
+	}
+}

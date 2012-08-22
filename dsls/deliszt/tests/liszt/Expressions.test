@@ -1,0 +1,28 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object Expressions {
+	val field = FieldWithConst[Cell,Int](5)
+	val boundary = BoundarySet[Face]("inlet")
+	def main() {
+		1 + 1
+		-1
+		dot(Vec(1,1),Vec(2,2))
+		val a = size(cells(mesh))
+		var b = 0
+		var c = 0
+		
+		for(cell <- cells(mesh)) {
+			val x = if(ID(cell) % 2 == 0) 1 else 0
+			b += x
+			c += field(cell)
+		}
+		val i = 1
+		val d = 1.
+		val s = "moosauces"
+		val bl = false
+		Print(a," ",b," ",c," ",a == 2*b," ",a*5 == c)	
+	}
+}

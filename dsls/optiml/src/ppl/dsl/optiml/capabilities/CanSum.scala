@@ -1,7 +1,7 @@
 package ppl.dsl.optiml.capabilities
 
 import scala.virtualization.lms.common.{Variables, Base}
-import ppl.dsl.optiml.{DenseVector,VectorView}
+import ppl.dsl.optiml.{DenseVector,DenseVectorView}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import scala.reflect.SourceContext
 
@@ -21,9 +21,9 @@ trait CanSumOps extends Variables {
   }
 
   // scalac: erroneous or inaccessible type. wtf?
-  implicit def canSumView[A:Manifest:Arith] = new CanSum[DenseVector[A],VectorView[A]] {
-    def +=(acc: Rep[DenseVector[A]], y: Rep[VectorView[A]])(implicit ctx: SourceContext) = /*acc.+=(vectorViewToInterface[A](y)) //*/ acc += y   
-    def mutable(lhs: Rep[VectorView[A]])(implicit ctx: SourceContext) = /*vectorViewToInterface(lhs).mutable //*/ lhs.mutable
+  implicit def canSumView[A:Manifest:Arith] = new CanSum[DenseVector[A],DenseVectorView[A]] {
+    def +=(acc: Rep[DenseVector[A]], y: Rep[DenseVectorView[A]])(implicit ctx: SourceContext) = /*acc.+=(denseViewToInterface[A](y)) //*/ acc += y   
+    def mutable(lhs: Rep[DenseVectorView[A]])(implicit ctx: SourceContext) = /*denseViewToInterface(lhs).mutable //*/ lhs.mutable
   }
 
   implicit def canSumArith[A:Manifest:Arith:Cloneable] = new CanSum[A,A] {
@@ -32,9 +32,9 @@ trait CanSumOps extends Variables {
   } 
   
   /*
-  implicit object CanSumDenseView extends CanSum[DenseVector[Double],VectorView[Double]] {
-    def +=(acc: Rep[DenseVector[Double]], y: Rep[VectorView[Double]]) = acc += y    
-    def mutable(lhs: Rep[VectorView[Double]]) = lhs.mutable
+  implicit object CanSumDenseView extends CanSum[DenseVector[Double],DenseVectorView[Double]] {
+    def +=(acc: Rep[DenseVector[Double]], y: Rep[DenseVectorView[Double]]) = acc += y    
+    def mutable(lhs: Rep[DenseVectorView[Double]]) = lhs.mutable
   }
       
   implicit object CanSumDense extends CanSum[DenseVector[Double],DenseVector[Double]] {

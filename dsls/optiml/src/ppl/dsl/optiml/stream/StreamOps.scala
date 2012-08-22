@@ -61,7 +61,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   // implemented via method on real data structure
 
   case class StreamObjectNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int], chunkSize: Exp[Int],
-                                         func: Exp[(Int,Int) => A], isPure: Exp[Boolean]) extends Def[Stream[A]] {
+                                         func: Exp[((Int,Int)) => A], isPure: Exp[Boolean]) extends Def[Stream[A]] {
     val mA = manifest[A]
   }
   case class StreamIsPure[A:Manifest](x: Exp[Stream[A]]) extends Def[Boolean]
@@ -129,9 +129,9 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   // object interface
 
   def stream_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int], func: (Rep[Int],Rep[Int]) => Rep[A])(implicit ctx: SourceContext) = {
-    val y = doLambda2(func)
+    val y = fun(func)
     val isPure = y match {
-      case Def(Lambda2(a,b,c,Def(Reify(d,u,es)))) => false
+      case Def(Lambda(a,b,Block(Def(Reify(d,u,es))))) => false
       case _ => true
     }
     // Streams are only mutable from an implementation standpoint (they hold underlying state)
@@ -189,8 +189,15 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case e@StreamRawElem(x, idx) => reflectPure(StreamRawElem(f(x),f(idx)))(mtype(manifest[A]), implicitly[SourceContext])
-    case e@StreamChunkElem(x, idx, j) => reflectPure(new { override val original = Some(f,e) } with StreamChunkElem(f(x),f(idx),f(j)))(mtype(manifest[A]), implicitly[SourceContext])
+    case e@StreamObjectNew(r,c,s,g,p) => reflectPure(StreamObjectNew(f(r),f(c),f(s),f(g),f(p))(e.mA))(mtype(manifest[A]), implicitly[SourceContext])
+    case e@StreamRowsIn(x,o) => reflectPure(new { override val original = Some(f,e) } with StreamRowsIn(f(x),f(o)))(mtype(manifest[A]), implicitly[SourceContext])
+    case e@StreamRawElem(x,idx) => reflectPure(StreamRawElem(f(x),f(idx)))(mtype(manifest[A]), implicitly[SourceContext])
+    case e@StreamChunkElem(x,idx,j) => reflectPure(new { override val original = Some(f,e) } with StreamChunkElem(f(x),f(idx),f(j)))(mtype(manifest[A]), implicitly[SourceContext])    
+    case e@StreamChunkRow(x,idx,o) => reflectPure(StreamChunkRow(f(x),f(idx),f(o)))(mtype(manifest[A]), implicitly[SourceContext])    
+    case Reflect(e@StreamInitRow(x,i,o), u, es) => reflectMirrored(Reflect(StreamInitRow(f(x),f(i),f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@StreamForeachRow(rows,x,i,b,s), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with StreamForeachRow(f(rows),f(x),f(i),f(b),f(s)), mapOver(f,u), f(es)))(mtype(manifest[A]))  
+    case Reflect(e@StreamInitAndForeachRow(rows,x,i,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with StreamInitAndForeachRow(f(rows),f(x),f(i),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@StreamInitChunk(x,o), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with StreamInitChunk(f(x),f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }
@@ -212,7 +219,15 @@ trait StreamOpsExpOpt extends StreamOpsExp {
     case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, func, isPure)/*,_,_)*/) => numCols
     case _ => super.stream_numcols(x)
   }
-  
+
+  def stream_chunksize[A:Manifest](x: Exp[Stream[A]]) = x match {
+    case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, func, isPure)/*,_,_)*/) => chunkSize
+  }
+
+  // def stream_stfunc[A:Manifest](x: Exp[Stream[A]]) = x match {
+  //   case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, Def(Lambda2(stfunc,_,_,_)), Const(true))/*,_,_)*/) => stfunc
+  // }
+    
 /*
   case class StreamRowFusable[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends DeliteOpLoop[StreamRow[A]] {
     val size = in.length
@@ -224,14 +239,26 @@ trait StreamOpsExpOpt extends StreamOpsExp {
   }
 */
 
+  /*case class StreamChunkRowFusable[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int])
+    extends DeliteOpMap[Int,A,StreamRow[A]] {
 
-  // TODO: do we still need this now that we use the new foreach op above?
-  abstract case class StreamChunkRowFusable[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends DeliteOpLoop[StreamRow[A]]
+    val size = stream_numcols(st)
+    val in = 0::size
+    
+    val chunkSize = stream_chunksize(st)
+    val stfunc = stream_stfunc(st)
+    
+    def alloc = VectorNew[A](size, unit(true))//stream_chunk_row(st,row,offset) // FIXME: not supported right now
+    def func = i => stfunc(offset*chunkSize+row,i)
+  }*/
   
   // no unsafeSetData exists for views... so we have to unfortunately do an extra copy to wrap the array result (i.e. safeSetData)
-  def updateViewWithArray[A:Manifest](a: Exp[Array[A]], v: Exp[StreamRow[A]]): Exp[StreamRow[A]] = { vectorview_update_impl(v, a); v }
+  //def updateViewWithArray[A:Manifest](a: Exp[Array[A]], v: Exp[StreamRow[A]]): Exp[StreamRow[A]] = { vectorview_update_impl(v, a); v }
   
-  override def stream_init_and_chunk_row[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = st match {
+  abstract case class StreamChunkRowFusable[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends DeliteOpLoop[StreamRow[A]]
+  
+  /*
+  override def stream_init_and_chunk_row[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]): Exp[StreamRow[A]] = st match {
 
     case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, Def(Lambda2(stfunc,_,_,_)), Const(true))/*,_,_)*/) =>
 /*
@@ -246,21 +273,27 @@ trait StreamOpsExpOpt extends StreamOpsExp {
       //vview(idx*numCols, 1, numCols, true)
       new StreamRowImpl[T](idx, offset, this, _data)
 */
-      val r: Def[StreamRow[A]] = new StreamChunkRowFusable(st, row, offset) {
-        val size = numCols
-        val aV = fresh[Array[A]]
-        val body: Def[StreamRow[A]] = new DeliteCollectElem[A,StreamRow[A]](
-          aV = this.aV,
-          alloc = reifyEffects(updateViewWithArray(aV,stream_chunk_row_mutable(st,row,offset))),
-          func = reifyEffects(stfunc(offset*chunkSize+row,v))
-        )
-      }
-      r
+      
+      printerr("warning: fusable chunked stream rows are currently not supported FIXME")
+      
+      return super.stream_init_and_chunk_row(st,row,offset)
+      
+      // val r: Def[StreamRow[A]] = new StreamChunkRowFusable(st, row, offset) {
+      //   val size = numCols
+      //   val aV = fresh[Array[A]]
+      //   val body: Def[StreamRow[A]] = new DeliteCollectElem[A,StreamRow[A]](
+      //     //aV = this.aV,
+      //     //alloc = reifyEffects(updateViewWithArray(aV,stream_chunk_row_mutable(st,row,offset))),
+      //     aV = fresh[Array[A]],
+      //     alloc = reifyEffects(stream_chunk_row(st,row,offset)), // <--- will ignore the actual data array. stream rows do not have unsafeSetData
+      //     func = reifyEffects(stfunc(offset*chunkSize+row,v))
+      //   )
+      // }
+      // r
       
     case _ => super.stream_init_and_chunk_row(st,row,offset)
   }
-  
-  
+  */
   
 }
 
@@ -270,7 +303,7 @@ trait ScalaGenStreamOps extends ScalaGenBase {
   val IR: StreamOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case m@StreamObjectNew(numRows, numCols, chunkSize, func, isPure) =>
       emitValDef(sym, "new " + remap("generated.scala.Stream[" + remap(m.mA) + "]")+"(" + quote(numRows) + "," + quote(numCols) + "," + quote(chunkSize) + ","
                       + quote(func) + "," + quote(isPure) + ")")
@@ -288,7 +321,7 @@ trait CudaGenStreamOps extends CudaGenBase with CudaGenDataStruct {
   val IR: StreamOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -297,7 +330,7 @@ trait CGenStreamOps extends CGenBase {
   val IR: StreamOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }

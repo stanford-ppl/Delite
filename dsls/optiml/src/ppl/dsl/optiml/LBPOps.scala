@@ -70,7 +70,7 @@ trait ScalaGenDenoiseVertexDataOps extends ScalaGenBase {
   val IR: LBPOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case v@DenoiseVertexDataObjectNew(id,b,p) => emitValDef(sym, "new generated.scala.DenoiseVertexDataImpl(" + quote(id) + "," + quote(b) + "," + quote(p) + ")")
       case DenoiseVertexDataId(v) => emitValDef(sym, quote(v) + ".id")
@@ -141,7 +141,7 @@ trait ScalaGenDenoiseEdgeDataOps extends ScalaGenBase {
   val IR: LBPOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case e@DenoiseEdgeDataObjectNew(m,oM) => emitValDef(sym, "new generated.scala.DenoiseEdgeDataImpl(" + quote(m) + "," + quote(oM) + ")")
       case DenoiseEdgeDataMessage(e) => emitValDef(sym, quote(e) + ".message")

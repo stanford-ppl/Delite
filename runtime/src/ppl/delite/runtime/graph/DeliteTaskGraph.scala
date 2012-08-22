@@ -150,9 +150,9 @@ object DeliteTaskGraph {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
       case "OP_External" => new OP_External(id, "kernel_"+id, resultMap)
       case "OP_MultiLoop" =>
-			  val size = getFieldString(op, "sizeValue")
-				val sizeIsConst = getFieldString(op, "sizeType") == "const"				
-				new OP_MultiLoop(id, size, sizeIsConst, "kernel_"+id, resultMap, getFieldBoolean(op, "needsCombine"), getFieldBoolean(op, "needsPostProcess"))
+        val size = getFieldString(op, "sizeValue")
+        val sizeIsConst = getFieldString(op, "sizeType") == "const"
+        new OP_MultiLoop(id, size, sizeIsConst, "kernel_"+id, resultMap, getFieldBoolean(op, "needsCombine"), getFieldBoolean(op, "needsPostProcess"))
       case "OP_Foreach" => new OP_Foreach(id, "kernel_"+id, resultMap)
       case other => error("OP Type not recognized: " + other)
     }

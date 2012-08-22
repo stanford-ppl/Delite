@@ -26,7 +26,7 @@ trait VerticesOpsExp extends VerticesOps with VariablesExp {
 
   case class VerticesToList[VD:Manifest,ED:Manifest](x: Exp[DenseVector[Vertex[VD,ED]]]) extends DeliteOpSingleTask(reifyEffectsHere(vertices_tolist_impl(x)))
   
-  case class VerticesForeach[VD:Manifest,ED:Manifest](in: Exp[DenseVector[Vertex[VD,ED]]], v: Sym[Vertex[VD,ED]], func: Exp[Unit])
+  case class VerticesForeach[VD:Manifest,ED:Manifest](in: Exp[DenseVector[Vertex[VD,ED]]], v: Sym[Vertex[VD,ED]], func: Block[Unit])
     extends DeliteOpForeachBounded[Vertex[VD,ED],Vertex[VD,ED],DenseVector] {
 
     val i = fresh[Int]
@@ -51,7 +51,7 @@ trait ScalaGenVerticesOps extends BaseGenVerticesOps with ScalaGenBase {
   val IR: VerticesOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
   //   rhs match {
   //     case _ => super.emitNode(sym, rhs)
   //   }
@@ -63,7 +63,7 @@ trait CudaGenVerticesOps extends BaseGenVerticesOps with CudaGenBase with CudaGe
   val IR: VerticesOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //   case _ => super.emitNode(sym, rhs)
   // }
 }
@@ -72,7 +72,7 @@ trait CGenVerticesOps extends BaseGenVerticesOps with CGenBase {
   val IR: VerticesOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //   case _ => super.emitNode(sym, rhs)
   // }
 }

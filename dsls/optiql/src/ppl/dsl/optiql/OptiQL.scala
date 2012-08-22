@@ -53,7 +53,7 @@ trait OptiQLCompiler extends OptiQL with IOOps with SeqOps with Variables with L
  * This trait comprises the IR nodes for OptiQL and the code required to instantiate code generators
  */
 trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp /*with HackOpsExp*/ with DataTableOpsExp with DateOpsExp with DateImplOpsStandard with QueryableOpsExp with OptiQLMiscOpsExp
-  with ResultOpsExp /*with ApplicationOpsExp*/ with InputReaderOpsExp with InputReaderImplOpsStandard with DeliteOpsExp with DeliteArrayBuilderOpsExpOpt with DSArrayOpsExp with DeliteAllOverridesExp {
+  with ResultOpsExp /*with ApplicationOpsExp*/ with InputReaderOpsExp with InputReaderImplOpsStandard with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBuilderOpsExpOpt with DSArrayOpsExp with DeliteAllOverridesExp {
 
   this: DeliteApplication with OptiQLApplication with OptiQLExp =>
 

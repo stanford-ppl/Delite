@@ -6,7 +6,7 @@ import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase}
 import scala.reflect.SourceContext
 import ppl.delite.framework.ops.DeliteOpsExp
-import ppl.dsl.optila.vector.{VectorViewOpsExp}
+import ppl.dsl.optila.vector.{DenseVectorViewOpsExp}
 import ppl.dsl.optiml._
 
 trait StreamRowOps extends Base with OverloadHack { this: OptiML =>
@@ -25,18 +25,18 @@ trait StreamRowOpsExp extends StreamRowOps with BaseExp { this: OptiMLExp =>
   def streamrow_index[A:Manifest](x: Exp[StreamRow[A]])(implicit ctx: SourceContext): Rep[Int] 
 }
 
-trait StreamRowOpsExpOpt extends StreamRowOpsExp with VectorViewOpsExp { this: OptiMLExp =>
+trait StreamRowOpsExpOpt extends StreamRowOpsExp with DenseVectorViewOpsExp { this: OptiMLExp =>
 
-  override def vectorview_length[A:Manifest](x: Exp[VectorView[A]])(implicit ctx: SourceContext) = x match {
+  override def dense_vectorview_length[A:Manifest](x: Exp[DenseVectorView[A]])(implicit ctx: SourceContext) = x match {
     case Def(StreamChunkRow(s, idx, off)) => s.numCols
     case Def(v@Reflect(StreamChunkRow(s,idx,off), u, es)) /*if context.contains(v)*/ => s.numCols 
-    case _ => super.vectorview_length(x) 
+    case _ => super.dense_vectorview_length(x) 
   }  
   
-  override def vectorview_isrow[A:Manifest](x: Exp[VectorView[A]])(implicit ctx: SourceContext) = x match {
+  override def dense_vectorview_isrow[A:Manifest](x: Exp[DenseVectorView[A]])(implicit ctx: SourceContext) = x match {
     case Def(StreamChunkRow(s, idx, off)) => Const(true)
     case Def(v@Reflect(StreamChunkRow(s,idx,off), u, es)) /*if context.contains(v)*/ => Const(true)
-    case _ => super.vectorview_isrow(x) //throw new RuntimeException("could not resolve type of " + findDefinition(x.asInstanceOf[Sym[VectorView[A]]]).get.rhs) 
+    case _ => super.dense_vectorview_isrow(x) //throw new RuntimeException("could not resolve type of " + findDefinition(x.asInstanceOf[Sym[DenseVectorView[A]]]).get.rhs) 
   }
   
   override def streamrow_index[A:Manifest](x: Exp[StreamRow[A]])(implicit ctx: SourceContext) = x match {
@@ -51,7 +51,7 @@ trait ScalaGenStreamRowOps extends ScalaGenBase {
   val IR: StreamRowOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //     // these are the ops that call through to the underlying real data structure
   //     case StreamRowIndex(x)   => emitValDef(sym, quote(x) + ".index")
   //     case _ => super.emitNode(sym, rhs)

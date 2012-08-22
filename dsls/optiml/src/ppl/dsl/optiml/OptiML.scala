@@ -3,7 +3,7 @@ package ppl.dsl.optiml
 import java.io._
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
+import scala.virtualization.lms.internal.{Expressions, GenericFatCodegen, GenericCodegen}
 import ppl.delite.framework.{Config, DeliteApplication, DeliteInteractive, DeliteInteractiveRunner}
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
@@ -28,13 +28,23 @@ import ppl.dsl.optiml.library.regression._
 import ppl.dsl.optiml.application._
 import ppl.dsl.optiml.capabilities._
 
+/**
+ * Microbenchmark experiments: OptiMLApplicationRunners with optimizations disabled
+ */
+
+trait OptiMLNoCSE extends Expressions {
+  override def findDefinition[T](d: Def[T]) = None
+}
+
 
 /**
  * These separate OptiML applications from the Exp world.
  */
 
+trait OptiMLApplicationRunner extends OptiMLApplicationRunnerBase with OptiMLExpOpt
+
 // ex. object GDARunner extends OptiMLApplicationRunner with GDA
-trait OptiMLApplicationRunner extends OptiMLApplication with DeliteApplication with OptiMLExp
+trait OptiMLApplicationRunnerBase extends OptiMLApplication with DeliteApplication
 
 // ex. trait GDA extends OptiMLApplication
 trait OptiMLApplication extends OptiLAApplication with OptiML with OptiMLLift with OptiMLLibrary {
@@ -86,17 +96,21 @@ trait OptiML extends OptiMLScalaOpsPkg with OptiLA with RecordOps
   with LanguageOps with ApplicationOps with LBPOps // TODO: LBPOps should be auto-generated with ApplicationOps
   with MLInputReaderOps with MLOutputWriterOps
   with CanSumOps
-  with VectorOps with OptiMLDenseVectorOps with OptiMLVectorViewOps with OptiMLRangeVectorOps
-  with MatrixOps with IndexVectorOps with IndexVectorDenseOps with IndexVectorRangeOps with IndexVector2Ops 
+  with VectorOps with OptiMLDenseVectorOps with OptiMLDenseVectorViewOps with OptiMLSparseVectorOps with OptiMLSparseVectorViewOps with OptiMLRangeVectorOps
+  with MatrixOps with OptiMLDenseMatrixOps with OptiMLSparseMatrixOps 
+  with IndexVectorOps with IndexVectorDenseOps with IndexVectorRangeOps with IndexVector2Ops with IndexVectorTriangularOps
   with StreamOps with StreamRowOps
   with GraphOps with EdgeOps with VertexOps with VSetOps
-  with TrainingSetOps with ImageOps with GrayscaleImageOps {
+  with TrainingSetOps with ImageOps with ImageOpsExtension with GrayscaleImageOps {
 
   this: OptiMLApplication =>
 }
 
 // these ops are only available to the compiler (they are restricted from application use)
-trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities with GraphCompilerOps with DeliteCollectionOps {
+trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities with GraphCompilerOps with DeliteCollectionOps 
+  with LanguageImplOpsStandard with VectorImplOpsStandard with IndexVectorImplOpsStandard with MatrixImplOpsStandard
+  with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
+  with GraphImplOpsStandard with EdgeImplOpsStandard with VertexImplOpsStandard with VerticesImplOpsStandard {
 
   this: OptiMLApplication with OptiMLExp =>
 }
@@ -106,15 +120,13 @@ trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities wit
  * These are the corresponding IR nodes for OptiML.
  */
 trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp with RecordOpsExp
-  with LanguageOpsExp with ApplicationOpsExp with LBPOpsExp 
+  with LanguageOpsExpOpt with ApplicationOpsExp with LBPOpsExp 
   with MLInputReaderOpsExp with MLOutputWriterOpsExp
-  with VectorOpsExpOpt with MatrixOpsExpOpt with IndexVectorOpsExp with IndexVectorDenseOpsExpOpt with IndexVectorRangeOpsExp with IndexVector2OpsExp 
+  with VectorOpsExpOpt with MatrixOpsExpOpt with DenseMatrixOpsExpOpt 
+  with IndexVectorOpsExp with IndexVectorDenseOpsExpOpt with IndexVectorRangeOpsExp with IndexVector2OpsExp with IndexVectorTriangularOpsExp
   with StreamOpsExpOpt with StreamRowOpsExpOpt
   with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
   with GraphOpsExp with EdgeOpsExp with VertexOpsExp with VSetOpsExp
-  with LanguageImplOpsStandard with VectorImplOpsStandard with IndexVectorImplOpsStandard
-  with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
-  with GraphImplOpsStandard with EdgeImplOpsStandard with VertexImplOpsStandard with VerticesImplOpsStandard
   with DeliteAllOverridesExp {
 
   // this: OptiMLApplicationRunner => why doesn't this work?
@@ -129,9 +141,14 @@ trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp 
       case _ => err("optiml does not support this target")
     }
   }
-
 }
 
+// add rewritings
+trait OptiMLExpOpt extends OptiMLExp
+  with VectorOpsExpOpt with MatrixOpsExpOpt with StreamOpsExpOpt with StreamRowOpsExpOpt {
+    
+  this: DeliteApplication with OptiMLApplication with OptiMLExp =>
+}
 
 trait OptiMLUtilities extends OptiLAUtilities {
   override def err(s: String)(implicit ctx: SourceContext) = {
@@ -216,6 +233,8 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
     }
   }
 
+  override def remap(s: String) = parmap(s)
+  
   override def remap[A](m: Manifest[A]): String = {
     val mGI = manifest[GrayscaleImage]
     m match {
@@ -294,55 +313,23 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
     case _ => super.isObjectType(m)
   }
 
-  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "IndexVector" => indexVectorCopyInputHtoD(sym)
     case "TrainingSet<double,double>" => trainingSetCopyInputHtoD(sym)
     case "TrainingSet<double,int>" => trainingSetCopyInputHtoD(sym)
     case _ => super.copyInputHtoD(sym)
   }
 
-  override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
     case _ => super.copyOutputDtoH(sym)
   }
 
-  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "IndexVector" => indexVectorCopyMutableInputDtoH(sym)
     case "TrainingSet<double,double>" => trainingSetCopyMutableInputDtoH(sym)
     case "TrainingSet<double,int>" => trainingSetCopyMutableInputDtoH(sym)
     case _ => super.copyMutableInputDtoH(sym)
   }
-
-  override def cloneObject(sym: Sym[Any], src: Sym[Any]) : String = remap(sym.Type) match {
-    //case "RangeVector" => rangeVectorCopyMutableInputDtoH(sym)
-    //case "IndexVector" => indexVectorCopyMutableInputDtoH(sym)
-    //case "TrainingSet<double,double>" => trainingSetCopyMutableInputDtoH(sym)
-    //case "TrainingSet<double,int>" => trainingSetCopyMutableInputDtoH(sym)
-    case _ => super.cloneObject(sym,src)
-  }
-
-  /*
-  override def allocOutput(newSym: Sym[_], sym: Sym[_], reset: Boolean = false) : Unit = remap(newSym.Type) match {
-    case "Matrix<int>" | "Matrix<long>" | "Matrix<float>" | "Matrix<double>" | "Matrix<bool>" => emitMatrixAllocSym(newSym,sym,reset)
-    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => emitVectorAllocSym(newSym,sym,reset)
-    case _ => super.allocOutput(newSym,sym,reset)
-  }
-  */
-
-  /*
-  override def allocReference(newSym: Sym[Any], sym: Sym[Any]) : Unit = remap(newSym.Type) match {
-    case "Matrix<int>" | "Matrix<long>" | "Matrix<float>" | "Matrix<double>" | "Matrix<bool>" => emitMatrixAllocRef(newSym,sym)
-    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => emitVectorAllocRef(newSym,sym)
-    case _ => super.allocReference(newSym,sym)
-  }
-   */
-
-  /*
-  override def positionMultDimInputs(sym: Sym[Any]) : String = remap(sym.Type) match {
-    //TODO: Add matrix reposition, and also do safety check for datastructures that do not have data field
-    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => vectorPositionMultDimInputs(sym)
-    case _ => super.positionMultDimInputs(sym)
-  }
-  */
 
   override def getDSLHeaders: String = {
     val out = new StringBuilder
@@ -354,67 +341,45 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
 
 }
 
-trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase with OptiMLOpenCLCodeGenPkg with OpenCLGenDataStruct
+trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase with OptiMLOpenCLCodeGenPkg
+  with OpenCLGenDataStruct with OpenCLGenVectorOps with OpenCLGenMatrixOps with OpenCLGenTrainingSetOps
+  with DeliteOpenCLGenAllOverrides
 {
   val IR: DeliteApplication with OptiMLExp
   import IR._
 
   override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
-    case "ppl.dsl.optiml.IndexVector" => true
-    case "ppl.dsl.optiml.TrainingSet[Float, Float]" => true
-    case "ppl.dsl.optiml.TrainingSet[Float, Int]" => true
-    case "ppl.dsl.optiml.TrainingSet[Double, Double]" => true
-    case "ppl.dsl.optiml.TrainingSet[Double, Int]" => true
-    //case "ppl.dsl.optiml.MatrixRow[Float]" => true
+    //case "ppl.dsl.optiml.IndexVector" => true
+    //case "ppl.dsl.optiml.TrainingSet[Double, Double]" => true
+    //case "ppl.dsl.optiml.TrainingSet[Double, Int]" => true
     case _ => super.isObjectType(m)
   }
 
   override def remap[A](m: Manifest[A]) : String = m.toString match {
-    case "ppl.dsl.optiml.IndexVector" => "IndexVector"
-    case "ppl.dsl.optiml.TrainingSet[Float, Float]" => "FloatFloatTrainingSet"
-    case "ppl.dsl.optiml.TrainingSet[Float, Int]" => "FloatIntTrainingSet"
-    case "ppl.dsl.optiml.TrainingSet[Double, Double]" => "DoubleDoubleTrainingSet"
-    case "ppl.dsl.optiml.TrainingSet[Double, Int]" => "DoubleIntTrainingSet"
-    //case "ppl.dsl.optiml.MatrixRow[Float]" => "FloatMatrixRow"
+    //case "ppl.dsl.optiml.IndexVector" => "IndexVector"
+    //case "ppl.dsl.optiml.TrainingSet[Double, Double]" => "DoubleDoubleTrainingSet"
+    //case "ppl.dsl.optiml.TrainingSet[Double, Int]" => "DoubleIntTrainingSet"
     case _ => super.remap(m)
   }
 
-  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "IndexVector" => indexVectorCopyInputHtoD(sym)
-    case "FloatFloatTrainingSet" | "FloatIntTrainingSet" | "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" => trainingSetCopyInputHtoD(sym)
+    case "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" => trainingSetCopyInputHtoD(sym)
     case _ => super.copyInputHtoD(sym)
   }
 
-  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "IndexVector" => indexVectorCopyMutableInputHtoD(sym)
-    case "FloatFloatTrainingSet" | "FloatIntTrainingSet" | "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" => trainingSetCopyMutableInputHtoD(sym)
+  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
+    case "IndexVector" => indexVectorCopyMutableInputDtoH(sym)
+    case "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" => trainingSetCopyMutableInputDtoH(sym)
     case _ => super.copyMutableInputDtoH(sym)
   }
 
-  /*
-  override def disAssembleObject[A](sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "IntMatrix" | "LongMatrix" | "FloatMatrix" | "DoubleMatrix" | "BooleanMatrix" =>
-      "int %s_numRows, int %s_numCols, __global %s *%s_data".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)),quote(sym))
-    case "IntVector" | "LongVector" | "FloatVector" | "DoubleVector" | "BooleanVector" =>
-      "char %s_isRow, int %s_length, __global %s *%s_data".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)),quote(sym))
-    case _ => super.disAssembleObject(sym)
-  }
-
-  override def reAssembleObject[A](sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "IntMatrix" | "LongMatrix" | "FloatMatrix" | "DoubleMatrix" | "BooleanMatrix" =>
-      "\t%s %s; %s.numRows = %s_numRows; %s.numCols = %s_numCols; %s.data = %s_data".format(remap(sym.Type),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym))
-    case "IntVector" | "LongVector" | "FloatVector" | "DoubleVector" | "BooleanVector" =>
-      "\t%s %s; %s.isRow = %s_isRow; %s.length = %s_length; %s.data = %s_data;".format(remap(sym.Type),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym))
-    case _ => super.disAssembleObject(sym)
-  }
-  */
-
-  override def unpackObject[A](sym: Sym[Any]) : Map[String,Manifest[_]] = remap(sym.Type) match {
+  override def unpackObject[A](sym: Sym[Any]) : Map[String,Manifest[_]] = remap(sym.tp) match {
     case "IndexVector" =>
       Map("isRow"->Manifest.Boolean, "length"->Manifest.Int, "data"->Manifest.Int.arrayManifest)
-    case "FloatFloatTrainingSet" | "FloatIntTrainingSet" | "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" =>
-      val dataArrayType1 = sym.Type.typeArguments(0)
-      val dataArrayType2 = sym.Type.typeArguments(1)
+    case "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" =>
+      val dataArrayType1 = sym.tp.typeArguments(0)
+      val dataArrayType2 = sym.tp.typeArguments(1)
       Map("numRows"->Manifest.Int, "numCols"->Manifest.Int, "data"->dataArrayType1.arrayManifest, "data_labels"->dataArrayType2.arrayManifest)
     case _ => super.unpackObject(sym)
   }

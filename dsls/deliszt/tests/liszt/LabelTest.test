@@ -1,0 +1,46 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object LabelTest {
+	def main() {
+		for(f <- faces(mesh)) {
+			for(v withLabel l <- vertices(f)) {
+				if(vertex(f,l) != v) {
+					Print("wrong1!", ID(vertex(f,l)), ID(v))
+				}
+			}
+			for(e withLabel l <- edges(f)) {
+				if(edge(f,l) != e) {
+					Print("wrong2!", ID(edge(f,l)), ID(e))
+				}
+			}
+			for(c withLabel l <- cells(f)) {
+				if(cell(f,l) != c) {
+					Print("wrong3!", ID(cell(f,l)), ID(c))
+				}
+			}
+		}
+		for(c <- cells(mesh)) {
+			if(ID(c) == 1) {
+			for(v withLabel l <- vertices(c)) {
+				if(vertex(c,l) != v) 
+					Print("wrong4!", ID(vertex(c,l)), ID(v))
+			}
+			for(e withLabel l <- edges(c)) {
+				if(edge(c,l) != e)
+					Print("wrong5!", ID(edge(c,l)), ID(e))
+			}
+			for(f withLabel l <- faces(c)) {
+				if(face(c,l) != f)
+					Print("wrong6!", ID(face(c,l)), ID(f))
+			}
+			for(c2 withLabel l <- cells(c)) {
+				if(cell(c,l) != c2)
+					Print("wrong7!", ID(cell(c,l))," ",ID(c2))
+			}
+			}
+		}
+	}
+	Print("DONE")
+} 

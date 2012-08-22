@@ -1,0 +1,40 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object VectorOps {
+	def main() {
+		var vi = Vec(1,1,1)
+		var vf = Vec(1.f,1.f,1.f)
+		var vd = Vec(1.0,1.0,1.0)
+		
+		var mi = Mat(Vec(1,1,1),Vec(1,1,1),Vec(1,1,1))
+		var mf = Mat(Vec(1.f,1.f,1.f),Vec(1.f,1.f,1.f),Vec(1.f,1.f,1.f))
+		var md = Mat(Vec(1.0,1.0,1.0),Vec(1.0,1.0,1.0),Vec(1.0,1.0,1.0))
+		
+		var ai = 2*vi
+		var af = 2.f*vf
+		var ad = 2.0*vd
+		
+		var bi = vi*2
+		var bf = vf*2.f
+		var bd = vd*2.0
+		
+		var ci = vi/2
+		var cf = vf/2.f
+		var cd = vd/2.0
+		
+		
+		var dd = vd
+		var dd2 = vd
+		var df = vf
+		df = vi + vf
+		dd = vi + vd
+		dd2 = vf + vd
+		
+		
+		
+		
+		
+	}
+}

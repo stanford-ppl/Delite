@@ -17,7 +17,7 @@ import ppl.delite.runtime.cost._
  * @author Kevin J. Brown
  */
 
-final class SMP_GPU_StaticScheduler extends StaticScheduler with ParallelUtilizationCostModel {
+final class SMP_GPU_StaticScheduler extends StaticScheduler with GPULoopCostModel {
 
   private val numCPUs = Config.numThreads
   private val numGPUs = Config.numGPUs
@@ -41,7 +41,7 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with ParallelUtiliza
     while (!opQueue.isEmpty) {
       val op = opQueue.remove
       if (sequential)
-        addSequential(op, graph, schedule, 0)
+        addSequential(op, graph, schedule, gpu)
       else
         scheduleOne(op, graph, schedule)
       enqueueRoots(graph, opQueue)
@@ -96,6 +96,11 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with ParallelUtiliza
     }
   }
 
+  override protected def split(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resourceList: Seq[Int]) {
+      if(resourceList == Seq(gpu)) splitGPU(op, schedule)
+      else super.split(op, graph, schedule, resourceList)
+  }
+  
   private def splitGPU(op: DeliteOP, schedule: PartialSchedule) {
     op.scheduledResource = gpu // TODO: Check if this is okay (Need to set this because MultiLoop GPU generator needs to know the resource ID of this op)
     val chunk = OpHelper.splitGPU(op)

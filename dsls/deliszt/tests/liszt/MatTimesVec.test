@@ -1,0 +1,16 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object MatTimesVec {
+
+	def main() {
+		val m = Mat( Vec( 1,2,3), Vec(2,3,4), Vec(3,4,5) ) ;
+		val v = Vec( 1,2,3) ;
+ 
+		val x = m*v ;
+
+		Print( x ) ;
+		
+	}
+}

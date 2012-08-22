@@ -32,7 +32,7 @@ trait SimpleVectorScalaOpsPkgExp extends SimpleVectorScalaOpsPkg with DSLOpsExp
   with ImplicitOpsExp with NumericOpsExp with OrderingOpsExp with StringOpsExp
   with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp with TupleOpsExp
   with MathOpsExp with CastingOpsExp with ObjectOpsExp with ArrayOpsExp with RangeOpsExp
-  with DeliteArrayOpsExpOpt with DeliteOpsExp with StructExp
+  with DeliteArrayOpsExpOpt with DeliteArrayImplOps with DeliteOpsExp with StructExp
   
 //Scala codegen version
 trait SimpleVectorScalaCodeGenPkg extends ScalaGenDSLOps

@@ -21,9 +21,11 @@ trait DeliteTestConfig {
   val verbose = props.getProperty("tests.verbose", "false").toBoolean
   val verboseDefs = props.getProperty("tests.verboseDefs", "false").toBoolean
   val threads = props.getProperty("tests.threads", "1")
+  val cacheSyms = props.getProperty("tests.cacheSyms", "true").toBoolean
   val javaHome = new File(props.getProperty("java.home", ""))
   val scalaHome = new File(props.getProperty("scala.vanilla.home", ""))
   val runtimeClasses = new File(props.getProperty("runtime.classes", ""))
+  val runtimeExternalProc = false // scalaHome and runtimeClasses only required if runtimeExternalProc is true. should this be configurable? or should we just remove execTestExternal?
 }
 
 trait DeliteSuite extends Suite with DeliteTestConfig {
@@ -34,9 +36,9 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
   def validateParameters() {
     if (!javaHome.exists) throw new TestFailedException("java.home must be a valid path in delite.properties", 3)
     else if (!javaBin.exists) throw new TestFailedException("Could not find valid java installation in " + javaHome, 3)
-    else if (!scalaHome.exists) throw new TestFailedException("scala.vanilla.home must be a valid path in delite.proeprties", 3)
-    else if (!scalaCompiler.exists || !scalaLibrary.exists) throw new TestFailedException("Could not find valid scala installation in " + scalaHome, 3)
-    else if (!runtimeClasses.exists) throw new TestFailedException("runtime.classes must be a valid path in delite.properties", 3)
+    else if (runtimeExternalProc && !scalaHome.exists) throw new TestFailedException("scala.vanilla.home must be a valid path in delite.proeprties", 3)
+    else if (runtimeExternalProc && (!scalaCompiler.exists || !scalaLibrary.exists)) throw new TestFailedException("Could not find valid scala installation in " + scalaHome, 3)
+    else if (runtimeExternalProc && !runtimeClasses.exists) throw new TestFailedException("runtime.classes must be a valid path in delite.properties", 3)
   }
 
   def compileAndTest(app: DeliteTestRunner) {
@@ -52,7 +54,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val args = Array(uniqueTestName + "-test.deg")
     app.resultBuffer = new ArrayBuffer[Boolean] with SynchronizedBuffer[Boolean]
     stageTest(app, args(0), uniqueTestName)
-    val outStr = execTest(app, args, uniqueTestName)
+    val outStr = execTest(app, args, uniqueTestName) // if (runtimeExternalProc..)?
     checkTest(app, outStr)
   }
 
@@ -60,16 +62,19 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     println("STAGING...")
     val save = Config.degFilename
     val buildDir = Config.buildDir
+    val saveCacheSyms = Config.cacheSyms
     val generatedDir = "generated" + java.io.File.separator + uniqueTestName
     try {
       Config.degFilename = degName
       Config.buildDir = generatedDir
+      Config.cacheSyms = cacheSyms
       val screenOrVoid = if (verbose) System.out else new PrintStream(new ByteArrayOutputStream())
       Console.withOut(screenOrVoid) {
         app.main(Array())
         if (verboseDefs) app.globalDefs.foreach { d => //TR print all defs
           println(d)
-          val info = d.sym.sourceInfo.drop(3).takeWhile(_.getMethodName != "main")
+          val s = d match { case app.TP(sym,_) => sym; case app.TTP(syms,_,_) => syms(0); case _ => sys.error("unknown Stm type: " + d) }
+          val info = s.sourceInfo.drop(3).takeWhile(_.getMethodName != "main")
           println(info.map(s => s.getFileName + ":" + s.getLineNumber).distinct.mkString(","))
         }
         //assert(!app.hadErrors) //TR should enable this check at some time ...
@@ -79,6 +84,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
       assert(Config.buildDir == generatedDir)
       Config.degFilename = save
       Config.buildDir = buildDir
+      Config.cacheSyms = saveCacheSyms
     }
   }
 
@@ -95,9 +101,9 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val fis = new FileInputStream(name)
     fis.read(buf)
     fis.close()
-    val out = new String(buf)
-    if (verbose) println(out)
-    out
+    val r = new String(buf)
+    if (verbose) System.out.println(r)
+    r
   }
 
   private def execTestExternal(args: Array[String]) = {

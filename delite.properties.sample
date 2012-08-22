@@ -1,13 +1,22 @@
 # Delite project properties
 [delite]
-scala.virtualized.home=/home/kjbrown/scala/scala-virtualized/dists/latest
-scala.vanilla.home=/usr/share/scala/scala-2.8.1
 
-java.home=/home/kjbrown/java/jdk1.7.0_b121_x86_64
+# uncomment to override default scala.virtualized.home location.
+# equivalent to setting the SCALA_VIRT_HOME environment variable.
+#scala.virtualized.home=/home/user/scala/scala-virtualized/dists/latest
 
-apps.data=/home/hchafi/delite
+# location of the JVM to use with Delite. 
+# equivalent to setting the JAVA_HOME environment variable.
+#java.home=/home/user/java/jdk1.7.0_b121_x86_64
 
-nvidia.cuda=/usr/local/cuda
+# uncomment to override default lightweigt modular staging (LMS) location.
+# equivalent to setting the LMS_HOME environment variable.
+#libs.lms.home=/home/user/projects/virtualization-lms-core
 
-libs.lms.home=/home/hchafi/projects/virtualization-lms-core
-runtime.classes=runtime/target/scala_2.8.1/classes
+# used for the benchmark/gather-numbers.py benchmarking script. not
+# required for typical Delite usage.
+apps.data=/home/user/delite
+
+# test options for sbt tests
+tests.verbose=false
+tests.threads=1

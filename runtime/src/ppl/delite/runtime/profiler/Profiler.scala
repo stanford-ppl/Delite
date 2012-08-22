@@ -267,7 +267,7 @@ var parallelTasks = [[1, 4, 6], [2, 3, 5]];
   def writeProfile(globalStart: Long, globalStartNanos: Long, stats: Map[String, List[Timing]]) {
     val directory = getOrCreateOutputDirectory()
     // emit JS file containing the profile data
-	emitProfileData(directory, "profileData.js", globalStartNanos, stats)
+	  emitProfileData(directory, "profileData.js", globalStartNanos, stats)
   }
   
   def writeProfile(globalStart: Long, stats: Map[String, List[Timing]], writer: PrintWriter) {
@@ -321,11 +321,11 @@ var parallelTasks = [[1, 4, 6], [2, 3, 5]];
   
   def getOrCreateOutputDirectory(): File = {
     // check that directory is there or make it
-    val directory = new File(Config.statsOutputDirectory)
+    val directory = new File(Config.profileOutputDirectory)
     if(directory.exists == false)
       directory.mkdirs
     else if(directory.isDirectory == false)
-      throw new RuntimeException("statsOutputDirectory doesn't refer to a directory")
+      throw new RuntimeException("profileOutputDirectory doesn't refer to a directory")
     directory
   }
   

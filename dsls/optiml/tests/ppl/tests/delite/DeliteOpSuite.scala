@@ -190,7 +190,7 @@ trait DeliteNestedForeach extends DeliteTestModule with OptiMLApplication {
           collect(v(e+1) - v(e-1) == 2)
         }
       }
-      e // fails with Unit return type because Java can't handle Array[Void]
+      //e // fails with Unit return type because Java can't handle Array[Void]
     }
 
     mkReport

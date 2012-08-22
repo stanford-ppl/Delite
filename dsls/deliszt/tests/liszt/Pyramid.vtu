@@ -1,0 +1,30 @@
+<VTKFile type="UnstructuredGrid" version="0.1" byte_order="BigEndian">
+  <UnstructuredGrid>
+    <Piece NumberOfPoints="5" NumberOfCells="1">
+      <PointData Scalars="scalars">
+      </PointData>
+      <CellData Scalars="scalars">
+      </CellData>
+      <Points>
+        <DataArray type="Float32" NumberOfComponents="3" Format="ascii">
+         0.0 0.0 0.0
+         1.0 0.0 0.0
+         1.0 0.0 -1.0
+         0.0 0.0 -1.0
+         0.5 1.0 -0.5
+        </DataArray>
+      </Points>
+      <Cells>
+        <DataArray type="Int32" Name="connectivity" Format="ascii">
+          0 1 2 3 4
+        </DataArray>
+        <DataArray type="Int32" Name="offsets" Format="ascii">
+          5
+        </DataArray>
+        <DataArray type="Int32" Name="types" Format="ascii">
+          14
+        </DataArray>
+      </Cells>
+    </Piece>
+  </UnstructuredGrid>
+</VTKFile>

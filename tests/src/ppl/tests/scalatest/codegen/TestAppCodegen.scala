@@ -21,7 +21,8 @@ class TestAppCodegen extends FileDiffSuite {
       println("##### all definitions")
       app.globalDefs.foreach { d =>
         println(d)
-        val info = d.sym.sourceInfo.drop(3).takeWhile(_.getMethodName!="main")
+        val s = d match { case app.TP(sym,_) => sym; case app.TTP(syms,_,_) => syms(0); }
+        val info = s.sourceInfo.drop(3).takeWhile(_.getMethodName!="main")
         println(info.map(s=>s.getFileName+":"+s.getLineNumber).distinct.mkString(","))
         //println(info.mkString(","))
       }
@@ -65,7 +66,8 @@ class TestAppCodegen extends FileDiffSuite {
         println("##### all definitions")
         app.globalDefs.foreach { d =>
           println(d)
-          val info = d.sym.sourceInfo.drop(3).takeWhile(_.getMethodName!="main")
+          val s = d match { case app.TP(sym,_) => sym; case app.TTP(syms,_,_) => syms(0); }
+          val info = s.sourceInfo.drop(3).takeWhile(_.getMethodName!="main")
           println(info.map(s=>s.getFileName+":"+s.getLineNumber).distinct.mkString(","))
         }
       } finally {

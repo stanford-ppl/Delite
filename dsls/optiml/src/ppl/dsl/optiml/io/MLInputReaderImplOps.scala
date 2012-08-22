@@ -27,10 +27,8 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     val x = DenseMatrix[Int](0, ints.length)
 
     while (line != null) {
-      val v = (0::ints.length) { i =>
-        Integer.parseInt(ints(i))
-      }
-      x += v.unsafeImmutable
+      val v = (0::ints.length) { i => Integer.parseInt(ints(i)) }
+      repToDenseMatBuildableOps(x) += v.unsafeImmutable  // AKS FIXME: why is this ambiguous?
 
       line = xfs.readLine()
       if (line != null) {
@@ -114,7 +112,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
       val row = DenseVector[Double](numTokens,true)
       var cumsum = unit(0); var j = unit(1)
       // this could be vectorized
-      while (j < repArithToArithOps(nums.length) - 1){
+      while (j < nums.length - 1){
         cumsum += Integer.parseInt(nums(j))
         row(cumsum) = Double.parseDouble(nums(j+1))
         j += 2
@@ -182,7 +180,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     temp = file.readLine().trim.split(" ")
     if (temp(0) != "Match_list:") error("Illegal data format")
     val matchListSize = Integer.parseInt(temp(1))
-    val matchList = IndexVector(0)
+    val matchList = IndexVector(0,true)
     val matchListString = file.readLine().trim.split(" ")
     i = 0
     while (i < matchListSize) {

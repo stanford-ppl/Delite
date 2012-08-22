@@ -1,0 +1,29 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object VectorUpdate {
+	def main() {
+		val foo  = Vec(1,2,3)
+		
+		Print(foo(1))
+		foo(1) = 4
+		Print(foo)
+		foo(1) += 1
+		Print(foo)
+		foo(1) = foo(1) max 7
+		Print(foo)
+		
+		val foo2 = Mat(Vec(1,2),Vec(3,4))
+		foo2(1,1) = 7
+		Print(foo2)
+		foo2(1,1) += 1
+		Print(foo2)
+		foo2(1,1) = foo2(1,1) max 9
+		
+		for(v <- vertices(mesh)) {
+			foo(1) += 1
+			foo2(1,1) += 1
+		}
+	}
+}

@@ -2,7 +2,7 @@ package ppl.dsl.optiml.io
 
 import java.io.{PrintWriter}
 import scala.reflect.SourceContext
-import scala.virtualization.lms.common.Base
+import scala.virtualization.lms.common.{Base, BaseFatExp}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optiml._
@@ -17,8 +17,13 @@ trait MLOutputWriterOps extends Base {
   def obj_mloutput_write_img_pgm(img: Rep[Image[Double]], filename: Rep[String])(implicit ctx: SourceContext): Rep[Unit]
 }
 
-trait MLOutputWriterOpsExp extends MLOutputWriterOps { this: MLOutputWriterImplOps with DeliteOpsExp =>
+trait MLOutputWriterOpsExp extends MLOutputWriterOps with BaseFatExp { this: MLOutputWriterImplOps with DeliteOpsExp =>
   case class MLOutputWriteImgPgm(img: Exp[Image[Double]], filename: Exp[String]) extends DeliteOpSingleTask(reifyEffects(mloutput_write_img_pgm_impl(img,filename)))
   
   def obj_mloutput_write_img_pgm(img: Exp[Image[Double]], filename: Exp[String])(implicit ctx: SourceContext) = reflectEffect(MLOutputWriteImgPgm(img,filename))
+  
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
+    case Reflect(d@MLOutputWriteImgPgm(img,fn), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,d) } with MLOutputWriteImgPgm(f(img),f(fn)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e,f)
+  }).asInstanceOf[Exp[A]]      
 }

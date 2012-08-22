@@ -97,7 +97,7 @@ trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with If
           simpleLoop(size, v, DeliteCollectElem[B,DeliteArray[B]](aV = aV, alloc = reifyEffects(aV), cond = b.cond, func = func))
         }
         
-        struct[A]("Array"::tag, elems.map(p=>(p._1, copyLoop(Block(p._2))(p._2.Type))))
+        struct[A]("Array"::tag, elems.map(p=>(p._1, copyLoop(Block(p._2))(p._2.tp))))
 
       // collect(reduce(hashCollect)) --> hashReduce
       case Block(Def(SimpleLoop(nestedSize /*Def(ArrayLength(input))*/, redV, redBody: DeliteReduceElem[cc]))) =>
@@ -178,7 +178,7 @@ trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with If
           simpleLoop(size, v, DeliteHashCollectElem[k,B,DeliteArray[DeliteArray[B]]](cond = b.cond, keyFunc = b.keyFunc, valFunc = valFunc))
         }
 
-        struct[A]("Array"::"Array"::tag, elems.map(p=>(p._1, copyLoop(Block(p._2))(p._2.Type))))
+        struct[A]("Array"::"Array"::tag, elems.map(p=>(p._1, copyLoop(Block(p._2))(p._2.tp))))
 
       //TODO!!case Block(Def(DeliteArrayApply(xs,v))) if b.cond == Nil && darray_length(xs) == size => xs.asInstanceOf[Exp[A]] // eta-reduce! <--- should live elsewhere, not specific to struct
       case _ => super.simpleLoop(size, v, body)
@@ -217,7 +217,7 @@ trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with If
           if (m.erasure.isArray) mtype(Manifest.classType(m.erasure.getComponentType))
           else { printerr("warning: array_apply expect type Array[A] but got "+m+" for input " + e.toString + "/" + Def.unapply(e).toString); mtype(manifest[Any]) }
       }
-      struct[A](tag, elems.map(p=>(p._1,array_apply(p._2, i)(unwrap(p._2,p._2.Type)))))
+      struct[A](tag, elems.map(p=>(p._1,array_apply(p._2, i)(unwrap(p._2,p._2.tp)))))
     case _ => super.array_apply(a,i)
   }
   
@@ -277,7 +277,7 @@ trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with If
           if (m.erasure.isArray) mtype(Manifest.classType(m.erasure.getComponentType))
           else { printerr("warning: arrayFlatten expect type Array[A] but got "+m+" for input " + data.toString + "/" + elems.toString); mtype(manifest[Any]) }
       }
-      struct[DeliteArray[A]](tag, elems.map(p=>(p._1, arrayFlatten(p._2)(unwrap(unwrap(p._2.Type))))))
+      struct[DeliteArray[A]](tag, elems.map(p=>(p._1, arrayFlatten(p._2)(unwrap(unwrap(p._2.tp))))))
     case _ => DArrayFlatten(data)
   }
     

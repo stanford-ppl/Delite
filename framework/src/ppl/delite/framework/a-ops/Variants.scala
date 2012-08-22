@@ -41,7 +41,7 @@ trait ScalaGenVariantsOps extends BaseGenVariantsOps with ScalaGenEffect {
   import IR._
 
   /*
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
 
   }

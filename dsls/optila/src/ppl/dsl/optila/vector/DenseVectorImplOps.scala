@@ -7,10 +7,11 @@ import ppl.dsl.optila.{OptiLALift, OptiLACompiler, OptiLA}
 
 trait DenseVectorImplOps { this: OptiLA =>
   def densevector_obj_fromseq_impl[A:Manifest](xs: Rep[Seq[A]]): Rep[DenseVector[A]]
+  def densevector_obj_fromunliftedseq_impl[A:Manifest](xs: Seq[Rep[A]]): Rep[DenseVector[A]]
   def densevector_obj_ones_impl(length: Rep[Int]): Rep[DenseVector[Double]]
   def densevector_obj_onesf_impl(length: Rep[Int]): Rep[DenseVector[Float]]
-  //def densevector_obj_zeros_impl(length: Rep[Int]): Rep[DenseVector[Double]]
-  //def densevector_obj_zerosf_impl(length: Rep[Int]): Rep[DenseVector[Float]]
+  def densevector_obj_zeros_impl(length: Rep[Int]): Rep[DenseVector[Double]]
+  def densevector_obj_zerosf_impl(length: Rep[Int]): Rep[DenseVector[Float]]
   def densevector_obj_rand_impl(length: Rep[Int]): Rep[DenseVector[Double]]
   def densevector_obj_randf_impl(length: Rep[Int]): Rep[DenseVector[Float]]
   def densevector_obj_uniform_impl(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]): Rep[DenseVector[Double]]
@@ -27,23 +28,7 @@ trait DenseVectorImplOps { this: OptiLA =>
   def densevector_mutabletrans_impl[A:Manifest](v: Rep[DenseVector[A]]): Rep[Unit] 
   
   def densevector_sort_impl[A:Manifest:Ordering](v: Rep[DenseVector[A]]): Rep[DenseVector[A]]
-  def densevector_slice_impl[A:Manifest](v: Rep[DenseVector[A]], start: Rep[Int], end: Rep[Int]): Rep[DenseVector[A]]
-  def densevector_concatenate_impl[A:Manifest](v1: Rep[DenseVector[A]], v2: Rep[DenseVector[A]]): Rep[DenseVector[A]]
   def densevector_times_matrix_impl[A:Manifest:Arith](v: Rep[DenseVector[A]], m: Rep[DenseMatrix[A]]): Rep[DenseVector[A]]
-  def densevector_outer_impl[A:Manifest:Arith](v1: Rep[DenseVector[A]], v2: Rep[DenseVector[A]]): Rep[DenseMatrix[A]]
-  def densevector_pprint_impl[A:Manifest](v: Rep[DenseVector[A]]): Rep[Unit]
-  def densevector_repmat_impl[A:Manifest](m: Rep[DenseVector[A]], i: Rep[Int], j: Rep[Int]): Rep[DenseMatrix[A]]
-  def densevector_trans_impl[A](v: Rep[DenseVector[A]])(implicit mA: Manifest[A], vA: Manifest[DenseVector[A]]): Rep[DenseVector[A]]
-  def densevector_median_impl[A:Manifest:Ordering](v: Rep[DenseVector[A]]): Rep[A]
-  def densevector_filter_impl[A:Manifest](v: Rep[DenseVector[A]], pred: Rep[A] => Rep[Boolean]): Rep[DenseVector[A]]
-  def densevector_partition_impl[A:Manifest](v: Rep[DenseVector[A]], pred: Rep[A] => Rep[Boolean]): (Rep[DenseVector[A]],Rep[DenseVector[A]])
-  def densevector_contains_impl[A:Manifest](v: Rep[DenseVector[A]], elem: Rep[A]): Rep[Boolean]
-  def densevector_distinct_impl[A:Manifest](v: Rep[DenseVector[A]]): Rep[DenseVector[A]]
-  def densevector_min_index_impl[A:Manifest:Ordering](v: Rep[DenseVector[A]]): Rep[Int]
-  def densevector_max_index_impl[A:Manifest:Ordering](v: Rep[DenseVector[A]]): Rep[Int]
-  def densevector_find_impl[A:Manifest](v: Rep[DenseVector[A]], pred: Rep[A] => Rep[Boolean]): Rep[DenseVector[Int]]
-  def densevector_mkstring_impl[A:Manifest](v: Rep[DenseVector[A]], sep: Rep[String]): Rep[String]
-  def densevector_groupby_impl[A:Manifest,K:Manifest](x: Rep[DenseVector[A]], pred: Rep[A] => Rep[K]): Rep[DenseVector[DenseVector[A]]]
 }
 
 trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
@@ -61,14 +46,21 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
     }
     v.unsafeImmutable
   }
+  
+  def densevector_obj_fromunliftedseq_impl[A:Manifest](xs: Seq[Rep[A]]) = {
+    val out = densevector_obj_new[A](unit(0),unit(true))
+    // interpreted (not lifted)
+    xs.foreach { out += _ }
+    out.unsafeImmutable // return immutable object    
+  }
 
   def densevector_obj_ones_impl(length: Rep[Int]) = DenseVector[Double](length, true) mmap { e => 1. } 
 
   def densevector_obj_onesf_impl(length: Rep[Int]) = DenseVector[Float](length, true) mmap { e => 1f }
 
-  //def densevector_obj_zeros_impl(length: Rep[Int]) = DenseVector[Double](length, true)
+  def densevector_obj_zeros_impl(length: Rep[Int]) = DenseVector[Double](length, true) mmap { e => 0. } // required for compatibility with non-JVM generators
 
-  //def densevector_obj_zerosf_impl(length: Rep[Int]) = DenseVector[Float](length, true)
+  def densevector_obj_zerosf_impl(length: Rep[Int]) = DenseVector[Float](length, true) mmap { e => 0f }
 
   def densevector_obj_rand_impl(length: Rep[Int]) = DenseVector[Double](length, true) mmap { e => random[Double] }
 
@@ -117,7 +109,7 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
   
   def densevector_update_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {
     val d = densevector_raw_data(v)
-    array_unsafe_update(d,pos,x) 
+    darray_unsafe_update(d,pos,x) 
   }
   
   def densevector_insert_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {
@@ -135,7 +127,7 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
     var i = 0
     val d = densevector_raw_data(v)
     while (i < xs.length) {
-      array_unsafe_update(d,pos+i,xs(i))
+      darray_unsafe_update(d,pos+i,xs(i))
       i += 1
     }
   }
@@ -143,22 +135,22 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
   def densevector_removeall_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit] = {
     //chkRange(pos, pos + len)
     val data = densevector_raw_data(v)
-    array_unsafe_copy(data, pos + len, data, pos, v.length - (pos + len))
+    darray_unsafe_copy(data, pos + len, data, pos, v.length - (pos + len))
     densevector_set_length(v, v.length - len)
   }
 
   def densevector_trim_impl[A:Manifest](v: Rep[DenseVector[A]]): Rep[Unit] = {
     val data = densevector_raw_data(v)
     if (v.length < data.length) {
-      val outData = NewArray[A](v.length)
-      array_unsafe_copy(data, 0, outData, 0, v.length)
+      val outData = DeliteArray[A](v.length)
+      darray_unsafe_copy(data, 0, outData, 0, v.length)
       densevector_set_raw_data(v, outData.unsafeImmutable)
     }
   }
   
   def densevector_clear_impl[A:Manifest](v: Rep[DenseVector[A]]): Rep[Unit] = {
     densevector_set_length(v, 0)
-    densevector_set_raw_data(v, (NewArray[A](0)).unsafeImmutable)
+    densevector_set_raw_data(v, (DeliteArray[A](0)).unsafeImmutable)
   }
 
   def densevector_mutabletrans_impl[A:Manifest](v: Rep[DenseVector[A]]): Rep[Unit] = {
@@ -168,7 +160,7 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
   protected def densevector_insertspace[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit] = {
     densevector_ensureextra(v,len)
     val data = densevector_raw_data(v)
-    array_unsafe_copy(data, pos, data, pos + len, v.length - pos)
+    darray_unsafe_copy(data, pos, data, pos + len, v.length - pos)
     densevector_set_length(v, v.length + len)
   }
 
@@ -183,234 +175,24 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
     val data = densevector_raw_data(v)
     var n = Math.max(4, data.length * 2)
     while (n < minLen) n = n*2
-    val d = NewArray[A](n)
-    array_unsafe_copy(data, 0, d, 0, v.length)
+    val d = DeliteArray[A](n)
+    darray_unsafe_copy(data, 0, d, 0, v.length)
     densevector_set_raw_data(v, d.unsafeImmutable)
   }
   
   def densevector_sort_impl[A:Manifest:Ordering](v: Rep[DenseVector[A]]): Rep[DenseVector[A]] = {
-    // inefficent! 3 copies
-    val trimmedV = v.mutable()
-    trimmedV.trim()
-    val data = densevector_raw_data(trimmedV).sort    
-    val out = DenseVector[A](0, v.isRow)
-    densevector_set_length(out, v.length)
-    densevector_set_raw_data(out, data.sort)
-    out.unsafeImmutable
+    // inefficient! 2 copies (one to do the trim)
+    // should be able to provide an index range to array sort
+    val out = v.mutable()
+    out.trim()
+    val data = densevector_raw_data(out).sort    
+    densevector_set_raw_data(out, data)
+    out
   }
   
-  def densevector_slice_impl[A:Manifest](v: Rep[DenseVector[A]], start: Rep[Int], end: Rep[Int]) = { // TODO: use DeliteOp
-    //v.chkRange(start, end)
-    val out = DenseVector[A](end-start, v.isRow)
-    for (i <- start until end){
-      out(i-start) = v(i)
-    }
-    out.unsafeImmutable
-  }
-
-  def densevector_concatenate_impl[A:Manifest](v1: Rep[DenseVector[A]], v2: Rep[DenseVector[A]]) = {
-    // this check doesn't work with nil densevectors
-    //if (v1.isRow != v2.isRow) {
-    //  println("error: trying to concatenate row and column densevectors")
-      // TODo: need an exception throwing mechanism in generated code -- could be External, but needs to accessible from Base
-    //}
-    
-    // even if one of the vectors is empty, this operation should semantically result in a copy (which is very unfortunate if we use it to do flatMap-reduces in delite ops)
-    
-    //if (v1.IsInstanceOf[EmptyVector[A]]) v2
-    //else if (v2.IsInstanceOf[EmptyVector[A]]) v1
-    //else {
-      val out = DenseVector[A](v1.length+v2.length, v1.isRow)
-      for (i <- 0 until v1.length){
-        out(i) = v1(i)
-      }
-      for (i <- 0 until v2.length){
-        out(i+v1.length) = v2(i)
-      }
-      out.unsafeImmutable
-    //}
-  }
-
   def densevector_times_matrix_impl[A:Manifest:Arith](v: Rep[DenseVector[A]], m: Rep[DenseMatrix[A]]) = {
     //v.chkVecMatAgree(v, m)
     val v_trans = v.t
     m.t.mapRowsToVector { a_row => a_row *:* v_trans }
-  }
-
-  def densevector_outer_impl[A:Manifest:Arith](collA: Rep[DenseVector[A]], collB: Rep[DenseVector[A]]) = {
-    val out = DenseMatrix[A](collA.length, collB.length)
-    for (i <- 0 until collA.length ){
-      for (j <- 0 until collB.length ){
-        out(i,j) = collA(i)*collB(j)
-      }
-    }
-    out.unsafeImmutable
-  }
-
-  def densevector_pprint_impl[A:Manifest](v: Rep[DenseVector[A]]) = {
-    if (v.isRow){
-      print("[ ")
-      for (i <- 0 until v.length){
-        print(v(i)); print(" ");
-      }
-      print("]\\n")
-    }
-    else{
-      for (i <- 0 until v.length){
-        print("[")
-        print(v(i))
-        print(" ]\\n")
-      }
-    }
-  }
-
-  def densevector_repmat_impl[A:Manifest](v: Rep[DenseVector[A]], iRep: Rep[Int], jRep: Rep[Int]) = {
-    if (v.isRow) {
-      val out = DenseMatrix[A](iRep, jRep*v.length)
-      for (col <- (0::jRep*v.length)){
-        val colToRep = col % v.length
-        var rI = unit(0)
-        while(rI < iRep){
-          out(rI, col) = v(colToRep)
-          rI += 1
-        }
-      }
-      out.unsafeImmutable
-    }
-    else {
-      val out = Matrix[A](iRep*v.length, jRep)
-      for (row <- (0::iRep*v.length)){
-        val rowToRep = row % v.length
-        var cI = unit(0)
-        while(cI < jRep){
-          out(row, cI) = v(rowToRep)
-          cI += 1
-        }
-      }
-      out.unsafeImmutable
-    }
-  }
-
-  def densevector_trans_impl[A](v: Rep[DenseVector[A]])(implicit mA: Manifest[A], vA: Manifest[DenseVector[A]]) = {
-    val out = DenseVector[A](v.length, !v.isRow)
-    for (i <- 0 until v.length){
-      out(i) = v(i)
-    }
-    out.unsafeImmutable
-  }
-
-  def densevector_median_impl[A:Manifest:Ordering](v: Rep[DenseVector[A]]) = {
-    // TODO: this isn't the proper definition of median
-    val x = v.sort
-    x(x.length / 2)
-  }
-
-  def densevector_filter_impl[A:Manifest](v: Rep[DenseVector[A]], pred: Rep[A] => Rep[Boolean]) = {
-    val result = DenseVector[A](0, v.isRow)
-    for (i <- 0 until v.length) {
-      val x = v(i)
-      if (pred(x)) result += x
-    }
-
-    result.unsafeImmutable
-  }
-
-  def densevector_partition_impl[A:Manifest](v: Rep[DenseVector[A]], pred: Rep[A] => Rep[Boolean]) = {
-    val resultT = DenseVector[A](0, v.isRow)
-    val resultF = DenseVector[A](0, v.isRow)
-    for (i <- 0 until v.length) {
-      val x = v(i)
-      (if (pred(x)) resultT else resultF) += x
-    }
-
-    (resultT.unsafeImmutable, resultF.unsafeImmutable)
-  }
-
-  def densevector_contains_impl[A:Manifest](v: Rep[DenseVector[A]], elem: Rep[A]): Rep[Boolean] = {
-    var i = unit(0)
-    var found = false
-    while (i < v.length && !found) {
-      if (v(i) == elem) found = true
-      i += 1
-    }
-    found
-  }
-
-  def densevector_distinct_impl[A:Manifest](v: Rep[DenseVector[A]]) = {
-    val result = DenseVector[A](0, v.isRow)
-    var i = unit(0)
-    while (i < v.length) {
-     if (!result.contains(v(i))) result += v(i)
-     i += 1
-    }
-    result.unsafeImmutable
-  }
-
-  def densevector_min_index_impl[A:Manifest:Ordering](v: Rep[DenseVector[A]]) = {
-    var minIndex = 0
-    var min = v(0)
-    var j = 1
-    while( j < v.length ){
-      if (v(j) < min) {
-        min = v(j)
-        minIndex = j
-      }
-      j += 1
-    }
-
-    minIndex
-  }
-
-  def densevector_max_index_impl[A:Manifest:Ordering](v: Rep[DenseVector[A]]) = {
-    var maxIndex = 0
-    var max = v(0)
-    var j = 1
-    while( j < v.length ){
-      if (v(j) > max) {
-        max = v(j)
-        maxIndex = j
-      }
-      j += 1
-    }
-
-    maxIndex
-  }
-
-  def densevector_find_impl[A:Manifest](v: Rep[DenseVector[A]], pred: Rep[A] => Rep[Boolean]) = {
-    val indices = DenseVector[Int](0)
-    for (i <- 0 until v.length) {
-      if (pred(v(i))) indices += i
-    }
-    indices.unsafeImmutable.asInstanceOf[Rep[DenseVector[Int]]]
-  }
-
-  def densevector_mkstring_impl[A:Manifest](v: Rep[DenseVector[A]], sep: Rep[String]) = {
-    var s = ""
-    for (i <- 0 until v.length) {
-      s = s + v(i)
-      s = s + sep
-    }
-    s
-  }
-  
-  def densevector_groupby_impl[A:Manifest,K:Manifest](x: Rep[DenseVector[A]], pred: Rep[A] => Rep[K]): Rep[DenseVector[DenseVector[A]]] = {
-    val groups = HashMap[K,DenseVector[A]]()
-
-    var i = 0
-    while (i < x.length) {
-      val key = pred(x(i))      
-      if (!(groups contains key)) {
-        groups(key) = DenseVector[A](0,x.isRow).unsafeImmutable        
-      }
-      //groups(key) += x(i)
-      groups(key) = groups(key) :+ x(i) // inefficient, but have to follow nested mutable rule
-      i += 1
-    }
-
-    val out = DenseVector[DenseVector[A]](0,true)
-    for (v <- groups.values) {
-      out += v.unsafeImmutable       
-    }    
-    out.unsafeImmutable
   }
 }

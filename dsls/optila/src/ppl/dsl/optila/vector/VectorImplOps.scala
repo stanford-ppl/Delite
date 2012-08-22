@@ -14,12 +14,12 @@ trait VectorImplOps { this: OptiLA =>
   def vector_pprint_impl[A:Manifest](v: Interface[Vector[A]]): Rep[Unit]
   def vector_repmat_impl[A:Manifest](v: Interface[Vector[A]], i: Rep[Int], j: Rep[Int]): Rep[DenseMatrix[A]]
   def vector_mkstring_impl[A:Manifest](v: Interface[Vector[A]], sep: Rep[String]): Rep[String]
-  def vector_concatenate_impl[A:Manifest,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
-  
+  def vector_concatenate_impl[A:Manifest,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]  
   //def vector_times_matrix_impl[A:Manifest:Arith,VA:Manifest](v: Interface[Vector[A]], m: Rep[DenseMatrix[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
-  def vector_outer_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]): Rep[DenseMatrix[A]]  
-  
+  def vector_outer_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]): Rep[DenseMatrix[A]]    
   def vector_median_impl[A:Manifest:Ordering](v: Interface[Vector[A]]): Rep[A]
+  def vector_groupby_impl[A:Manifest,K:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[K])(implicit b: VectorBuilder[A,VA]): Rep[DenseVector[VA]]
+  def vector_partition_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit b: VectorBuilder[A,VA]): (Rep[VA],Rep[VA])
 }
 
 trait VectorImplOpsStandard extends VectorImplOps {
@@ -98,7 +98,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
       for (i <- 0 until v.length){
         print("[")
         print(v(i))
-        print(" ]\\n")
+        print("]\\n")
       }
     }
   }
@@ -178,5 +178,39 @@ trait VectorImplOpsStandard extends VectorImplOps {
     x(x.length / 2)
   }
   
+  def vector_partition_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit b: VectorBuilder[A,VA]) = {
+    val resultTAlloc = b.alloc(0, v.isRow)
+    val resultT = b.toIntf(resultTAlloc)
+    val resultFAlloc = b.alloc(0, v.isRow)
+    val resultF = b.toIntf(resultFAlloc)
+    for (i <- 0 until v.length) {
+      val x = v(i)
+      if (pred(x)) resultT += x
+      else resultF += x
+    }
+
+    (resultTAlloc.unsafeImmutable, resultFAlloc.unsafeImmutable)
+  }
+  
+  def vector_groupby_impl[A:Manifest,K:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[K])(implicit b: VectorBuilder[A,VA]): Rep[DenseVector[VA]] = {
+    val groups = HashMap[K,VA]()
+
+    var i = 0
+    while (i < x.length) {
+      val key = pred(x(i))      
+      if (!(groups contains key)) {
+        groups(key) = b.alloc(0,x.isRow).unsafeImmutable        
+      }
+      //groups(key) += x(i)
+      groups(key) = (b.toIntf(groups(key)) :+ x(i)).ops.elem.asInstanceOf[Rep[VA]] // inefficient, but have to follow nested mutable rule
+      i += 1
+    }
+
+    val out = DenseVector[VA](0,true)
+    for (v <- groups.values) {
+      out += v.unsafeImmutable       
+    }    
+    out.unsafeImmutable
+  }  
   
 }

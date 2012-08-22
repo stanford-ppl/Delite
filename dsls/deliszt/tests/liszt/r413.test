@@ -1,0 +1,20 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object r413 {
+	def main() {
+		for( f <- faces(mesh)) {
+			for(e <- edges(f)) {
+				Print("EDGE: ",ID(e))
+				
+				for(v <- vertices(e)) {
+					Print("Vertex: ",ID(v))
+					for(e <- edges(v)) {
+						Print(ID(e))
+					}
+				}
+			}
+		}
+	}
+} 

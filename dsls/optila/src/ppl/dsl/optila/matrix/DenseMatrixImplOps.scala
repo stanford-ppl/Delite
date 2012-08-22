@@ -1,9 +1,8 @@
 package ppl.dsl.optila.matrix
 
-import ppl.dsl.optila.{DenseVector,Vector,VectorView,DenseMatrix}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
-import ppl.dsl.optila.{OptiLAExp, OptiLACompiler, OptiLALift, OptiLA}
+import ppl.dsl.optila._
 
 trait DenseMatrixImplOps { this: OptiLA =>
   def densematrix_obj_fromseq_impl[A:Manifest](xs: Seq[Interface[Vector[A]]]): Rep[DenseMatrix[A]]
@@ -19,21 +18,20 @@ trait DenseMatrixImplOps { this: OptiLA =>
   def densematrix_obj_randn_impl(numRows: Rep[Int], numCols: Rep[Int]): Rep[DenseMatrix[Double]]
   def densematrix_obj_randnf_impl(numRows: Rep[Int], numCols: Rep[Int]): Rep[DenseMatrix[Float]]
   
-  def densematrix_vview_impl[A:Manifest](x: Rep[DenseMatrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]): Rep[VectorView[A]]
+  def densematrix_vview_impl[A:Manifest](x: Rep[DenseMatrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]): Rep[DenseVectorView[A]]
   def densematrix_apply_impl[A:Manifest](x: Rep[DenseMatrix[A]], i: Rep[Int], j: Rep[Int]): Rep[A]
   def densematrix_update_impl[A:Manifest](x: Rep[DenseMatrix[A]], row: Rep[Int], col: Rep[Int], y: Rep[A]): Rep[Unit]
   def densematrix_rawapply_impl[A:Manifest](x: Rep[DenseMatrix[A]], idx: Rep[Int]): Rep[A]
   def densematrix_rawupdate_impl[A:Manifest](x: Rep[DenseMatrix[A]], idx: Rep[Int], y: Rep[A]): Rep[Unit]
-  def densematrix_insertrow_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Rep[DenseVector[A]]): Rep[Unit]
-  def densematrix_insertallrows_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Rep[DenseMatrix[A]]): Rep[Unit]
-  def densematrix_insertcol_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Rep[DenseVector[A]]): Rep[Unit]
-  def densematrix_insertallcols_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Rep[DenseMatrix[A]]): Rep[Unit]
+  def densematrix_insertrow_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Vector[A]]): Rep[Unit]
+  def densematrix_insertallrows_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Matrix[A]]): Rep[Unit]
+  def densematrix_insertcol_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Vector[A]]): Rep[Unit]
+  def densematrix_insertallcols_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Matrix[A]]): Rep[Unit]
   def densematrix_removerows_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit]
   def densematrix_removecols_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit]
     
   def densematrix_inverse_impl[A:Manifest](m: Rep[DenseMatrix[A]])(implicit conv: Rep[A] => Rep[Double]): Rep[DenseMatrix[Double]]
-  def densematrix_multiply_impl[A:Manifest:Arith](x: Rep[DenseMatrix[A]], y: Rep[DenseMatrix[A]]): Rep[DenseMatrix[A]]
-  def densematrix_reducerows_impl[A:Manifest](x: Rep[DenseMatrix[A]], func: (Rep[DenseVector[A]], Rep[VectorView[A]]) => Rep[DenseVector[A]]): Rep[DenseVector[A]]
+  //def densematrix_multiply_impl[A:Manifest:Arith](x: Rep[DenseMatrix[A]], y: Rep[DenseMatrix[A]]): Rep[DenseMatrix[A]]
 }
 
 trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
@@ -108,7 +106,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
   }
   
   def densematrix_vview_impl[A:Manifest](x: Rep[DenseMatrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]) = {
-    VectorView[A](densematrix_raw_data(x), start, stride, length, isRow)
+    DenseVectorView[A](densematrix_raw_data(x), start, stride, length, isRow)
   }
   
   def densematrix_apply_impl[A:Manifest](x: Rep[DenseMatrix[A]], i: Rep[Int], j: Rep[Int]): Rep[A] = {
@@ -131,7 +129,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     array_unsafe_update(d,idx,y) //d(idx) = y
   }
   
-  def densematrix_insertrow_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Rep[DenseVector[A]]): Rep[Unit] = {
+  def densematrix_insertrow_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Vector[A]]): Rep[Unit] = {
     //chkEquals(y._length, _numCols)
     val idx = pos*x.numCols
     if (x.size == 0) densematrix_set_numcols(x, y.length)
@@ -143,7 +141,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     densematrix_set_numrows(x, x.numRows+1)
   }
 
-  def densematrix_insertallrows_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], xs: Rep[DenseMatrix[A]]): Rep[Unit] = {
+  def densematrix_insertallrows_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], xs: Interface[Matrix[A]]): Rep[Unit] = {
     //chkEquals(xs._numCols, _numCols)
     val idx = pos*x.numCols
     if (x.size == 0) densematrix_set_numcols(x, xs.numCols)
@@ -156,7 +154,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     densematrix_set_numrows(x, x.numRows+xs.numRows)
   }
 
-  def densematrix_insertcol_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Rep[DenseVector[A]]): Rep[Unit] = {
+  def densematrix_insertcol_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Vector[A]]): Rep[Unit] = {
     //chkEquals(y._length, _numRows)
     val newCols = x.numCols+1
     if (x.size == 0) densematrix_set_numrows(x, y.length)    
@@ -177,7 +175,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     densematrix_set_numcols(x, newCols)
   }
 
-  def densematrix_insertallcols_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], xs: Rep[DenseMatrix[A]]): Rep[Unit] = {
+  def densematrix_insertallcols_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], xs: Interface[Matrix[A]]): Rep[Unit] = {
     //m.chkEquals(xs._numRows, _numRows)
     val newCols = x.numCols+xs.numCols
     if (x.size == 0) densematrix_set_numrows(x, xs.numRows)
@@ -249,26 +247,26 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     index
   }  
 
-  def densematrix_multiply_impl[A:Manifest:Arith](x: Rep[DenseMatrix[A]], y: Rep[DenseMatrix[A]]): Rep[DenseMatrix[A]] = {
-
-    val yTrans = y.t
-    val out = DenseMatrix[A](x.numRows, y.numCols)
-
-    for (rowIdx <- 0 until x.numRows) {
-      var i = unit(0)
-      while (i < out.numCols) {
-        var j = unit(1)
-        var acc = x(rowIdx, 0) * yTrans(i, 0)
-        while (j < yTrans.numCols) {
-          acc += x(rowIdx, j) * yTrans(i, j)
-          j += 1
-        }
-        out(rowIdx, i) = acc
-        i += 1
-      }
-    }
-    out.unsafeImmutable
-  }
+  // def densematrix_multiply_impl[A:Manifest:Arith](x: Rep[DenseMatrix[A]], y: Rep[DenseMatrix[A]]): Rep[DenseMatrix[A]] = {
+  // 
+  //   val yTrans = y.t
+  //   val out = DenseMatrix[A](x.numRows, y.numCols)
+  // 
+  //   for (rowIdx <- 0 until x.numRows) {
+  //     var i = unit(0)
+  //     while (i < out.numCols) {
+  //       var j = unit(1)
+  //       var acc = x(rowIdx, 0) * yTrans(i, 0)
+  //       while (j < yTrans.numCols) {
+  //         acc += x(rowIdx, j) * yTrans(i, j)
+  //         j += 1
+  //       }
+  //       out(rowIdx, i) = acc
+  //       i += 1
+  //     }
+  //   }
+  //   out.unsafeImmutable
+  // }
   
   // TODO: try/catch, case, in embedded implementation? we need to lift these still.
   def densematrix_inverse_impl[A:Manifest](m: Rep[DenseMatrix[A]])(implicit conv: Rep[A] => Rep[Double]): Rep[DenseMatrix[Double]] = {
@@ -276,7 +274,8 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
 
     // augment the DenseMatrix with the identity DenseMatrix of the same size
     val id = DenseMatrix.identity(m.numCols)
-    val augMat = m.toDouble.mutable
+    val isDouble: Boolean = manifest[A] == manifest[Double] // explicitly typed to prevent lifting
+    val augMat = if (isDouble) (m.asInstanceOf[Rep[DenseMatrix[Double]]].mutable) else m.toDouble.mutable
     augMat.insertAllCols(augMat.numCols, id)
 //    try{
       // perform row reductions
@@ -337,7 +336,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
   }
 
   
-  def densematrix_grouprowsby_impl[A:Manifest,K:Manifest](x: Rep[DenseMatrix[A]], pred: Rep[VectorView[A]] => Rep[K]): Rep[DenseVector[DenseMatrix[A]]]  = {
+  def densematrix_grouprowsby_impl[A:Manifest,K:Manifest](x: Rep[DenseMatrix[A]], pred: Rep[DenseVectorView[A]] => Rep[K]): Rep[DenseVector[DenseMatrix[A]]]  = {
     val groups = HashMap[K,DenseMatrix[A]]()
     
     var i = 0
@@ -357,13 +356,5 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     }    
     out.unsafeImmutable
   }
-  
-  def densematrix_reducerows_impl[A:Manifest](x: Rep[DenseMatrix[A]], func: (Rep[DenseVector[A]], Rep[VectorView[A]]) => Rep[DenseVector[A]]): Rep[DenseVector[A]] = {
-    var acc = ZeroVector[A](x.numCols)
-    for (i <- 0 until x.numRows) {
-      acc = func(acc, x(i))
-    }
-    acc
-  }
-    
+      
 }

@@ -5,6 +5,7 @@
 *.idea
 *.DS_Store
 *.~
+*.o
 /local.properties
 delite.properties
 target/
