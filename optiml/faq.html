@@ -1,0 +1,171 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>OptiML &mdash; FAQ</title>
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import '../css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='http://stanford-ppl.github.com/Delite/optiml/' title="OptiML">OptiML</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Welcome</a></li>
+              <li><a href='getting_started.html'>Getting Started</a></li>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="examples.html">Examples</a></li>
+              <li><a href="debugging.html">Debugging</a></li>
+              <li><a href="getting_started_native.html">Native Libraries and CUDA</a></li>
+              <li><a href="http://groups.google.com/group/optiml">Mailing List</a></li>
+              <li><a href="downloads/optiml-spec-0.1.pdf">Language Specification</a></li>
+              <li><a href='http://stanford-ppl.github.com/Delite/index.html'>Delite</a></li>
+            </ol>
+          </li> 
+          <!--
+          <li>Reference
+            <ol>
+              <li><a href='api/0.3/index.html'>ScalaDoc API</a></li>
+              <li>&nbsp;</li>
+              <li><a href='sponsors.html'>Sponsors</a></li>
+              <li class="logo"><a href="http://ppl.stanford.edu"><img width="110" alt="Stanford Pervasive Parallelism Lab" src='images/ppl_logo_small.png'></a></li>
+            </ol>
+          </li>
+          -->
+        </ol>
+      </div>
+      <div id='content'> 
+        <h1 id='title_faq'>FAQ</h1>
+        <ol>
+          <li><a href="#mirrorerrors">I get errors like <code>error: don't know how to mirror StringToInt(Sym(674))</code>. What do I do?</a></li>
+          <li><a href="#profiling">How can I profile my application?</a></li>
+          <li><a href="#scalalib">I would like to use a Scala library within my OptiML code. Is this possible?</a></li>
+          <li><a href="#indices">Can I access the indices of an element while iterating through a vector or matrix?</a></li>
+          <li><a href="#forloop">Is there a performance advantage to using <code>map</code> instead of a <code>for</code> loop?</a></li>
+          <li><a href="#flags">What flags do I need to pass to delitec (and/or delite) in order to have it execute my code with multiple threads?</a></li>
+          <li><a href="#global">I have some constant/global values defined in my application and am getting "Couldn't find following op" errors when running <code>delite</code>. What's wrong?</a></li>
+          <li><a href="#gpu">How can I tell if GPU code is being generated for my application?</a></li>
+        </ol>
+        <p></p><div id='footer'></div><p></p>
+        <div id='mirrorerrors'>
+          <h3>I get errors like <code>error: don't know how to mirror StringToInt(Sym(674))</code>. What do I do?</a></h3>
+        <p>This annoying error reflects an incompleteness in the implementation of some IR nodes, either in OptiML, Delite, or LMS. Due to the sheer volume
+        of IR nodes and our limited time, we have not yet implemented the mirroring functionality for all nodes. Mirroring is used to copy IR nodes during
+        some optimizations (especially during transformations). The simple way to avoid this error when testing for correctness is to pass the <code>--nf</code>
+        flag to <code>delitec</code> and to not enable any additional optimizations (no <code>-O</code> flag). Please file a ticket in github with your error
+        log and we'll fix the errors ASAP. They are not difficult to address, just time-consuming to achieve full coverage.</p>
+        </div> <!-- mirror errors -->
+        <div id='profiling'>
+          <h3>How can I profile my application?</h3>
+          <p> There are multiple options, depending on the granularity you wish to profile at.</p>
+          <p> One option is to use <code>tic()</code> and <code>toc()</code> calls, which are similar to their MATLAB counterparts. The basic idea is
+           tic()/toc() calls should be paired, and then OptiML will print out the elapsed time between them when the program runs. If you want to make
+           nested tic()/toc() calls, you can name them:
+<p><code><pre>
+tic()
+  while{..} {
+    tic("while")
+    toc("while")
+   }
+toc()
+</pre></code></p>
+          <p>You can also specify dependencies that must run before a tic or a toc, to prevent code motion from moving them around while trying to optimize:</p>
+<p><code><pre>
+val z = lotsOfWork()
+tic("x", z)
+val x = lotsOfMoreWork()
+toc("x", x)
+</pre></code></p>
+          <p>OptiML also has a time() function similar to Python's time(). You can also supply it dependencies, and then you can take the difference of two time() calls to return elapsed time in seconds:</p>
+<p><code><pre>
+val st = time()
+val x = lotsOfWork()
+val en = time(x)
+println("elapsed: " + en-st)
+</pre></code></p>
+        <p>If you wish to go beyond application-level timing, Delite comes with an in-development profiler that measures op execution time across multiple resources and produces a simple HTML visualization
+        that can help identify bottlenecks in your code. Please see the <a href="debugging.html">debugging page</a> for more more information and instructions.</p>
+        <p>Finally, another option is to use standard Java profiling tools when running <code>delite</code> to execute your application. A popular choice is <a href="http://java.sun.com/developer/technicalArticles/Programming/HPROF.html">hprof</a>.
+        These tools will provide very low-level (from OptiML's perspective) profile information, i.e. hotspots in generated code and DSL methods. Nonetheless, they can be helpful in discovering if there is
+        a particular call or set of instructions that are dominating execution time. If you encounter a hotspot using hprof that you can't trace back to your application code, please drop us an <a href="mailto:optiml@googlegroups.com">email</a>.</p>
+        </div> <!-- profiling -->
+        <div id='scalalib'>
+          <h3>I would like to use a Scala library within my OptiML code. Is this possible?</h3>
+          <p>Unfortunately, the short answer is no. You cannot arbitrarily mingle unstaged library code within OptiML code, since OptiML uses staged values (wrapped in the <code>Rep[T]</code> type constructor), which
+          represent <i>future</i> computations that OptiML will generate code to execute. In contrast, library code is normal Scala that is evaluated <i>during staging</i>, while OptiML is building its IR and trying
+          to generate code. Thus, in general, you will get type errors related to mixing <code>Rep[T]</code> with normal types, in particular when trying to pass the result of an OptiML computation to a library.</p>
+          <p>However, there are two sensible ways to use normal Scala code with OptiML. The first is to use the Scala code to do stage-time preprocessing (using only the pure Scala code and no OptiML). The pre-processed
+          results will be evaluated immediately and then passed to the subsequent OptiML code as constant values. Therefore, any pre-processing stage using this partial evaluation technique should <b>not</b> be 
+          performance-critical. The second approach is to use OptiML and Delite's support for <i>scopes</i>, coarse-grained execution blocks that are compiled, staged, and executed independently. This feature is experimental
+          and still under development, but it allows users to pass values into and out of staged blocks from surrounding ordinary Scala (or other DSL) code. For more information, please see our publications or shoot us
+          an <a href="mailto:optiml@googlegroups.com">email</a>.</p>
+        </div> <!-- scalalib-->
+        <div id='indices'>
+        <h3>Can I access the indices of an element while iterating through a vector or matrix?</h3>
+        <p>OptiML doesn't in general support accessing the index of an element. Usually there are ways to avoid needing the index while iterating over elements by using a different operation
+         (a map, a map over the indices, a zip of the collection and its indices), but these vary in how elegant they are - it tends to depend on the actual operation you need to perform. As a last
+         resort, you can always use a simple sequential while loop over an index variable, but this should be avoided in performance-critical sections if at all possible.</p>
+       </div> <!-- indices -->
+        <div id='forloop'>
+        <h3>Is there a performance advantage to using <code>map</code> instead of a <code>for</code> loop?</h3>
+        <p> In general, <code>map</code> should be preferred over <code>for</code>, since <code>for</code> loops have side-effects by definition, and this can preclude some optimization opportunities.
+        However, <code>for</code> loops in OptiML are always parallel and we will also try to generate CUDA code for it, so there is not a catagorical performance hit to using them. Due to the nature
+        of mixing side-effects and parallelism, though, users must be more careful with <code>for</code> loops (in the future, we plan to enhance the compiler to reject the most common problematic cases
+        automatically, but currently there is no safety net). For example, both of the following cases are broken:</p>
+<p><code><pre>
+for (i <- indices) {
+    out(i) = foo // fine
+    out(i+1) = bar // race
+}
+</pre></code></p>
+<p><code><pre>
+var j = 0
+for (i <- indices) {
+    j += i // race
+    out(i) = j
+}
+</pre></code></p>
+      <p> The issue with both of these examples is they write to shared objects inside parallel sections, which can result in multiple threads writing to the same memory location simultaneously (a typical
+      race condition). Thus, the argument to <code>for</code> loops requires functions that follow certain rules (no disjoint writes) for correct execution. These parallel loops are probably the least 'implicitly parallel'
+      part of OptiML, and may disappear in a future version. For now, though, they allow careful users to obtain the best performance in certain situations.</p>
+      </div> <!-- for loop -->
+      <div id='flags'>
+      <h3>What flags do I need to pass to delitec (and/or delite) in order to have it execute my code with multiple threads?</h3>
+      <p> Both <code>delitec</code> and <code>delite</code> accept <code>--help</code> command line arguments, which list all of the options available. To execute with multiple threads, simply pass
+      <code>-t &lt;number of threads&gt;</code> to <code>delite</code>.</p>
+      </div> <!-- flags -->
+      <div id='global'>
+      <h3>I have some constant/global values defined in my application and am getting "Couldn't find following op" errors when running <code>delite</code>. What's wrong?</h3>
+      <p> All variables and values need to be declared/defined within the dynamic scope of the application's <code>main</code> method, or they won't get staged properly. See
+      <a href="http://stanford-ppl.github.com/Delite/optiml/examples.html#organization">this example</a> from the OptiML docs for a concrete description of how to organize OptiML code.</p>
+      </div> <!-- global -->
+      <div id='gpu'>
+      <h3>How can I tell if GPU code is being generated for my application?</h3>
+      <p>Make sure that you run <code>delitec</code> and <code>delite</code> with the <code>--gpu</code> option, and then look inside the generated code folder to make sure there are CUDA kernels
+      (typically at $DELITE_HOME/generated/cuda/kernels). If there are no kernels generated, first make sure that you are properly following the instructions for CUDA at
+      <a href="getting_started_native.html">the getting started guide</a>. If everything looks good, make sure there are no GPU generation warnings when running <code>delitec</code> like:
+<p><pre>
+** GPU Warning [unknown file] **
+Code has nested memory allocations (not supported by current
+Delite GPU code generator). Try manually unrolling the outer loop.
+Stack Trace: &lt;unknown&gt;
+</pre></p>
+      <p>These warnings mean that a CUDA kernel could not be generated for the reason listed and requires manual changes to the application code to make it more GPUable. Finally, if there are no warnings
+      but still no GPU code generated, it could mean that no op was found in the application that could be generated as a CUDA kernel. Please send us an <a href="mailto:optiml@googlegroups.com">email</a>
+      if you think this shouldn't be the case and we are happy to help you figure out what's going wrong.</p>
+      
+      </p>
+      <div id='footer'>Copyright &copy; 2011</div>
+    </div>
+  </body>
+</html>
