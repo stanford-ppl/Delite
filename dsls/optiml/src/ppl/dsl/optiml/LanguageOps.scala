@@ -75,7 +75,12 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
    * sum
    */
   def sum[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A])(implicit ctx: SourceContext) = optiml_sum(start, end, block)
-  def sumIf[R:Manifest:Arith:Cloneable,A:Manifest](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A])(implicit cs: CanSum[R,A], ctx: SourceContext) = optiml_sumif[R,A](start,end,cond,block)
+  // sumRows currently just re-uses sumIf implementation; check if the condition always being true is actually slower than a specialized implementation with no conditional at all
+  def sumRows[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[DenseVectorView[A]])(implicit ctx: SourceContext) = optiml_sumif[DenseVector[A],DenseVectorView[A]](start,end,i => unit(true),block)
+  // def sum[R:Manifest:Arith:Cloneable,A:Manifest](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A])(implicit cs: CanSum[R,A], ctx: SourceContext) = optiml_sum[R,A](start, end, block)  
+  def sumIf[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A])(implicit ctx: SourceContext) = optiml_sumif[A,A](start,end,cond,block)
+  def sumRowsIf[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[DenseVectorView[A]])(implicit ctx: SourceContext) = optiml_sumif[DenseVector[A],DenseVectorView[A]](start,end,cond,block)
+  // def sumIf[R:Manifest:Arith:Cloneable,A:Manifest](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A])(implicit cs: CanSum[R,A], ctx: SourceContext) = optiml_sumif[R,A](start,end,cond,block)
   
   def optiml_sum[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[A]
   def optiml_sumif[R:Manifest:Arith:Cloneable,A:Manifest](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A])(implicit cs: CanSum[R,A], ctx: SourceContext): Rep[R]
