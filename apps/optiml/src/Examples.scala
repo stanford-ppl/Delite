@@ -332,7 +332,7 @@ trait Example12 extends OptiMLApplication with Example12work {
     // code can be organized into different methods and traits
     // these methods get inlined during staging    
     val v = Vector.rand(1000)
-    doWork(v) // defined in Example6work
+    doWork(v) // defined in Example12work
     doWork2(v)
     doWork3(v)
     val a = doWork4(v)

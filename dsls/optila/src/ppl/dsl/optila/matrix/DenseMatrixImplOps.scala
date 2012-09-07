@@ -67,7 +67,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     throw new UnsupportedOperationException("this is currently broken")
 //    val m = DenseMatrix[A](0,0)
 //    for (i <- 0 until xs.length){
-//      m += xs.applyRaw(i)
+//      m <<= xs.applyRaw(i)
 //    }
 //    m
   }
@@ -345,14 +345,14 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
       if (!(groups contains key)) {
         groups(key) = DenseMatrix[A](0,x.numCols).unsafeImmutable        
       }
-      //groups(key) += x(i).Clone // AKS TODO: should not need clone
-      groups(key) = groups(key) :+ x(i) // inefficient, but have to follow nested mutable rule
+      //groups(key) <<= x(i).Clone // AKS TODO: should not need clone
+      groups(key) = groups(key) << x(i) // inefficient, but have to follow nested mutable rule
       i += 1
     }
   
     val out = DenseVector[DenseMatrix[A]](0,true)
     for (m <- groups.values) {
-      out += m.unsafeImmutable       
+      out <<= m.unsafeImmutable       
     }    
     out.unsafeImmutable
   }

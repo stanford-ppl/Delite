@@ -47,7 +47,7 @@ trait SparseVectorDataOps extends DeliteTestModule with OptiMLApplication {
     
     val v3 = SparseVector[Double](10,true)
     v3(0) = 72
-    val v4 = v ++ v3
+    val v4 = v << v3
     collect(v4.length == 26)
     
     // trim
@@ -61,7 +61,7 @@ trait SparseVectorDataOps extends DeliteTestModule with OptiMLApplication {
     collect(v == DenseVector[Double]())
     
     // copyFrom
-    v3 += 1; v3 += 1
+    v3 <<= 1; v3 <<= 1
     v3.copyFrom(1, v2)
     collect(v3.length == 12)
     collect(v3 == DenseVector[Double](72,0,2,2,0,0,0,0,2,2,0,1))

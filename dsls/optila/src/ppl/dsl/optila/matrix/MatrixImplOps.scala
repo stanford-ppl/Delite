@@ -95,8 +95,8 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
   def matrix_addrow_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], y: Interface[Vector[A]])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA] = {
     val resultOut = b.alloc(0,m.numCols)
     val result = b.toBuildableIntf(resultOut)
-    result ++= m
-    result += y
+    result <<= m
+    result <<= y
     b.finalizer(resultOut)
   }  
     
@@ -201,7 +201,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     for (i <- 0 until m.numRows){
       val vv = m.getRow(i)
       if (pred(vv))
-        result += vv.Clone // AKS TODO: should not need to clone
+        result <<= vv.Clone // AKS TODO: should not need to clone
     }
     b.finalizer(resultOut)
   }
@@ -267,14 +267,14 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
       if (!(groups contains key)) {
         groups(key) = b.finalizer(b.alloc(0,x.numCols))
       }
-      //b.toIntf(groups(key)) += x(i).Clone // AKS TODO: should not need clone
-      groups(key) = (b.toIntf(groups(key)) :+ x(i)).ops.elem.asInstanceOf[Rep[MA]] // inefficient, but have to follow nested mutable rule      
+      //b.toIntf(groups(key)) <<= x(i).Clone // AKS TODO: should not need clone
+      groups(key) = (b.toIntf(groups(key)) << x(i)).ops.elem.asInstanceOf[Rep[MA]] // inefficient, but have to follow nested mutable rule      
       i += 1
     }
   
     val out = DenseVector[MA](0,true)
     for (m <- groups.values) {
-      out += m.unsafeImmutable       
+      out <<= m.unsafeImmutable       
     }    
     out.unsafeImmutable
   } 

@@ -50,7 +50,7 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
   def densevector_obj_fromunliftedseq_impl[A:Manifest](xs: Seq[Rep[A]]) = {
     val out = densevector_obj_new[A](unit(0),unit(true))
     // interpreted (not lifted)
-    xs.foreach { out += _ }
+    xs.foreach { out <<= _ }
     out.unsafeImmutable // return immutable object    
   }
 
@@ -94,7 +94,7 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
       var accum = identity
       var i = unit(0)
       while (i < v.length) {
-        result += accum
+        result <<= accum
         accum = func(accum, v(i))
         i += 1
       }

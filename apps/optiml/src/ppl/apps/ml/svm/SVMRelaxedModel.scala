@@ -175,7 +175,7 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
 
   def saveModel(filename : Rep[String]) = {
     val out = weights.Clone
-    out += b
+    out <<= b
     writeVector(out, filename)
   }
 

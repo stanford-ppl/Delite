@@ -116,7 +116,7 @@ if (crt_template.match_list.length < 0) println("dummy")
         tpl.binary_gradients(index) = imageRow(x) //TODO TR non-mutable write
         if (imageRow(x) > 0) {
           //Record where gradients are
-          tpl.match_list += index //TODO TR non-mutable write
+          tpl.match_list <<= index //TODO TR non-mutable write
         }
         x += 1
       }
@@ -349,7 +349,7 @@ for (i <- 0 until 1) { //TR ?
       var iMoved = false
       while (j < len) {
         if (rectFractOverlap(detections(i).roi, detections(j).roi) > overlapThreshold) {
-          output += if (detections(i).score >= detections(j).score) detections(i) else detections(j)
+          output <<= if (detections(i).score >= detections(j).score) detections(i) else detections(j)
         }
         j += 1
       }

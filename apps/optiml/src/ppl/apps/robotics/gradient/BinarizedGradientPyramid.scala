@@ -15,7 +15,7 @@ trait BinarizedGradientPyramidFuncs {
 
     while (currentLevel < pyramid.start_level + pyramid.levels) {
       if (currentLevel >= pyramid.start_level) {
-        pyramid.pyramid += crt //TODO TR non-mutable write
+        pyramid.pyramid <<= crt //TODO TR non-mutable write
       }
       if (currentLevel != (pyramid.start_level + pyramid.levels - 1)) {
         crt = varToGrayscaleImageOps(crt).bitwiseOrDownsample()

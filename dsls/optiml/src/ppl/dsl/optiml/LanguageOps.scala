@@ -482,7 +482,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
         for(j <- unit(0) until vtasks.length) {
           val task = vtasks(j).AsInstanceOf[Vertex[VD,ED]]
           if(!seen.contains(task)) {
-            tasks += task   //TODO TR: non-mutable write (use mclone)
+            tasks <<= task   //TODO TR: non-mutable write (use mclone)
             seen.add(task)   //TODO TR: non-mutable write
           }
         }

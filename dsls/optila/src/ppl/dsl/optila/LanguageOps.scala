@@ -220,24 +220,26 @@ trait LanguageOps extends Base { this: OptiLA =>
   def dist[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit ctx: SourceContext) = optila_vector_dist_abs(v1,v2)
   def dist[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]], metric: DistanceMetric)(implicit ctx: SourceContext) = metric match {
     case ABS => optila_vector_dist_abs(v1,v2)
-    case EUC => optila_vector_dist_euc(v1,v2)
     case SQUARE => optila_vector_dist_square(v1,v2)
-    case _ => throw new IllegalArgumentException("Unknown distance metric selected")
+    case EUC if manifest[A] != manifest[Double] => throw new UnsupportedOperationException("illegal dist argument, euclidean metric selected with non-double vector")
+    case EUC => (optila_vector_dist_euc(v1.asInstanceOf[Interface[Vector[Double]]],v2.asInstanceOf[Interface[Vector[Double]]])).asInstanceOf[Rep[A]]    
+    case _ => throw new UnsupportedOperationException("Unknown distance metric selected")
   }
 
   def dist[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]])(implicit ctx: SourceContext, o: Overloaded1) = optila_matrix_dist_abs(m1,m2)
   def dist[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]], metric: DistanceMetric)(implicit ctx: SourceContext, o: Overloaded2) = metric match {
     case ABS => optila_matrix_dist_abs(m1,m2)
-    case EUC => optila_matrix_dist_euc(m1,m2)
-    case SQUARE => optila_matrix_dist_square(m1,m2)
-    case _ => throw new IllegalArgumentException("Unknown distance metric selected")
+    case SQUARE => optila_matrix_dist_square(m1,m2)    
+    case EUC if manifest[A] != manifest[Double] => throw new UnsupportedOperationException("illegal dist argument, euclidean metric selected with non-double matrix")
+    case EUC => (optila_matrix_dist_euc(m1.asInstanceOf[Interface[Matrix[Double]]],m2.asInstanceOf[Interface[Matrix[Double]]])).asInstanceOf[Rep[A]]
+    case _ => throw new UnsupportedOperationException("Unknown distance metric selected")
   }
 
   def optila_vector_dist_abs[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[A]
-  def optila_vector_dist_euc[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[A]
+  def optila_vector_dist_euc(v1: Interface[Vector[Double]], v2: Interface[Vector[Double]])(implicit ctx: SourceContext): Rep[Double]
   def optila_vector_dist_square[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[A]
   def optila_matrix_dist_abs[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]])(implicit ctx: SourceContext): Rep[A]
-  def optila_matrix_dist_euc[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]])(implicit ctx: SourceContext): Rep[A]
+  def optila_matrix_dist_euc(m1: Interface[Matrix[Double]], m2: Interface[Matrix[Double]])(implicit ctx: SourceContext): Rep[Double]
   def optila_matrix_dist_square[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]])(implicit ctx: SourceContext): Rep[A]
 
 
@@ -394,11 +396,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
       def a = implicitly[Arith[A]] //TODO factor into DeliteOp subclass
     }
 
-  case class VectorDistanceEuc[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]])
-    extends DeliteOpSingleTask[A](reifyEffects(optila_vectordistance_euc_impl(v1,v2))) with VectorDistance {
-      def m = manifest[A]
-      def a = implicitly[Arith[A]]
-    }
+  case class VectorDistanceEuc(v1: Interface[Vector[Double]], v2: Interface[Vector[Double]])
+    extends DeliteOpSingleTask[Double](reifyEffects(optila_vectordistance_euc_impl(v1,v2))) with VectorDistance 
 
   case class VectorDistanceSquare[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]])
     extends DeliteOpSingleTask[A](reifyEffects(optila_vectordistance_square_impl(v1,v2))) with VectorDistance {
@@ -415,11 +414,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
       def a = implicitly[Arith[A]]
     }
 
-  case class MatrixDistanceEuc[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]])
-    extends DeliteOpSingleTask[A](reifyEffects(optila_matrixdistance_euc_impl(m1,m2))) with MatrixDistance {
-      def m = manifest[A]
-      def a = implicitly[Arith[A]]
-    }
+  case class MatrixDistanceEuc(m1: Interface[Matrix[Double]], m2: Interface[Matrix[Double]])
+    extends DeliteOpSingleTask[Double](reifyEffects(optila_matrixdistance_euc_impl(m1,m2))) with MatrixDistance 
 
   case class MatrixDistanceSquare[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]])
     extends DeliteOpSingleTask[A](reifyEffects(optila_matrixdistance_square_impl(m1,m2))) with MatrixDistance {
@@ -428,10 +424,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     }
 
   def optila_vector_dist_abs[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectPure(VectorDistanceAbs(v1,v2))
-  def optila_vector_dist_euc[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectPure(VectorDistanceEuc(v1,v2))
+  def optila_vector_dist_euc(v1: Interface[Vector[Double]], v2: Interface[Vector[Double]])(implicit ctx: SourceContext) = reflectPure(VectorDistanceEuc(v1,v2))
   def optila_vector_dist_square[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectPure(VectorDistanceSquare(v1,v2))
   def optila_matrix_dist_abs[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]])(implicit ctx: SourceContext) = reflectPure(MatrixDistanceAbs(m1,m2))
-  def optila_matrix_dist_euc[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]])(implicit ctx: SourceContext) = reflectPure(MatrixDistanceEuc(m1,m2))
+  def optila_matrix_dist_euc(m1: Interface[Matrix[Double]], m2: Interface[Matrix[Double]])(implicit ctx: SourceContext) = reflectPure(MatrixDistanceEuc(m1,m2))
   def optila_matrix_dist_square[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]])(implicit ctx: SourceContext) = reflectPure(MatrixDistanceSquare(m1,m2))
 
 
@@ -470,10 +466,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    */
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@VectorDistanceAbs(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorDistanceAbs(f(x),f(y))(e.m,e.a))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@VectorDistanceEuc(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorDistanceEuc(f(x),f(y))(e.m,e.a))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@VectorDistanceEuc(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorDistanceEuc(f(x),f(y)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@VectorDistanceSquare(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorDistanceSquare(f(x),f(y))(e.m,e.a))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixDistanceAbs(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceAbs(f(x),f(y))(e.m,e.a))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@MatrixDistanceEuc(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceEuc(f(x),f(y))(e.m,e.a))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@MatrixDistanceEuc(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceEuc(f(x),f(y)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixDistanceSquare(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceSquare(f(x),f(y))(e.m,e.a))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixDeterminant(x) => reflectPure(new { override val original = Some(f,e) } with MatrixDeterminant(f(x))(e.m,e.a,e.n))(mtype(manifest[A]),implicitly[SourceContext])
     case e@RandSampleVector(x,n) => reflectPure(new { override val original = Some(f,e) } with RandSampleVector(f(x),f(n))(e.mA,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])

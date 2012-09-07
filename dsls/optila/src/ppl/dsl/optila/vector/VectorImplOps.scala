@@ -69,7 +69,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
     val result = b.toIntf(resultOut) // this is sub-optimal - passing toIntf as an implicit does't kick in all the time    
     var i = unit(0)
     while (i < v.length) {
-     if (!result.contains(v(i))) result += v(i)
+     if (!result.contains(v(i))) result <<= v(i)
      i += 1
     }
     resultOut.unsafeImmutable
@@ -185,8 +185,8 @@ trait VectorImplOpsStandard extends VectorImplOps {
     val resultF = b.toIntf(resultFAlloc)
     for (i <- 0 until v.length) {
       val x = v(i)
-      if (pred(x)) resultT += x
-      else resultF += x
+      if (pred(x)) resultT <<= x
+      else resultF <<= x
     }
 
     (resultTAlloc.unsafeImmutable, resultFAlloc.unsafeImmutable)
@@ -201,14 +201,14 @@ trait VectorImplOpsStandard extends VectorImplOps {
       if (!(groups contains key)) {
         groups(key) = b.alloc(0,x.isRow).unsafeImmutable        
       }
-      //groups(key) += x(i)
-      groups(key) = (b.toIntf(groups(key)) :+ x(i)).ops.elem.asInstanceOf[Rep[VA]] // inefficient, but have to follow nested mutable rule
+      //groups(key) <<= x(i)
+      groups(key) = (b.toIntf(groups(key)) << x(i)).ops.elem.asInstanceOf[Rep[VA]] // inefficient, but have to follow nested mutable rule
       i += 1
     }
 
     val out = DenseVector[VA](0,true)
     for (v <- groups.values) {
-      out += v.unsafeImmutable       
+      out <<= v.unsafeImmutable       
     }    
     out.unsafeImmutable
   }  

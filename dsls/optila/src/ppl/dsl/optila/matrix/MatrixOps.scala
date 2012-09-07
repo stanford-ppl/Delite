@@ -129,7 +129,7 @@ trait MatrixOps extends Variables {
     def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext): Rep[MA] = matrix_repmat[A,IA,MA](x,i,j)
 
     // data operations
-    def :+(y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[MA] = matrix_addrow[A,IA,MA](x,y)    
+    def <<(y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[MA] = matrix_addrow[A,IA,MA](x,y)    
 
     // arithmetic operations
     def +(y: Interface[Matrix[A]])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = matrix_plus[A,IA,MA](x,y)
@@ -177,7 +177,7 @@ trait MatrixOps extends Variables {
     def count(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = matrix_count(x, pred)
     def mapRows[B:Manifest](f: Interface[Vector[A]] => Interface[Vector[B]])(implicit ctx: SourceContext) = matrix_maprows[A,B,I[B],M[B]](x,f)
     def reduceRows(f: (Rep[VA],Interface[Vector[A]]) => Rep[VA])(implicit ctx: SourceContext) = matrix_reducerows[A,VA](x,f)    
-    // def countRows    
+    // def countRows         
   }
     
   class InterfaceMatOpsCls[A:Manifest](val intf: MInterface[A]) {
@@ -207,7 +207,7 @@ trait MatrixOps extends Variables {
     def mutable()(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.mutable())
     def pprint()(implicit ctx: SourceContext) = intf.ops.pprint()
     def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.replicate(i,j))
-    def :+(y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.:+(y))
+    def <<(y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.<<(y))
     
     def +(y: Interface[Matrix[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.matToIntf(intf.ops.+(y))    
     def +(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.matToIntf(intf.ops.+(y))    
@@ -251,6 +251,12 @@ trait MatrixOps extends Variables {
     // these don't work because the concrete vector types are hidden from us, so the function type is ambiguous. any solution?
     // def mapRows[B:Manifest](f: Interface[Vector[A]] => Rep[V[B]])(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.mapRows(f))
     // def reduceRows(f: (Rep[VA],Interface[Vector[A]]) => Rep[VA])(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.reduceRows(f))
+  }
+  
+  // syntactic sugar for (r <- Matrix.rows) 
+  def infix_rows[A:Manifest,M[X] <: Matrix[X]](a: Rep[M[A]])(implicit toIntf: Rep[M[A]] => Interface[Matrix[A]]) = new MatrixRowIterator(a, toIntf)
+  class MatrixRowIterator[A:Manifest,M[X] <: Matrix[X]](val mat: Rep[M[A]], toIntf: Rep[M[A]] => Interface[Matrix[A]]) {
+    def foreach(block: Interface[Vector[A]] => Rep[Unit]) = toIntf(mat).foreachRow(block)
   }
   
   def __equal[A:Manifest,M[X] <: Matrix[X]](a: Rep[M[A]], b: Rep[M[A]])(implicit toIntf: Rep[M[A]] => Interface[Matrix[A]], mA: Manifest[M[A]], ctx: SourceContext, o: Overloaded8): Rep[Boolean] = matrix_equals(a,b)

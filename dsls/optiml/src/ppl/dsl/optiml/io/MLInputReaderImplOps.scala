@@ -28,7 +28,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
 
     while (line != null) {
       val v = (0::ints.length) { i => Integer.parseInt(ints(i)) }
-      repToDenseMatBuildableOps(x) += v.unsafeImmutable  // AKS FIXME: why is this ambiguous?
+      repToDenseMatBuildableOps(x) <<= v.unsafeImmutable  // AKS FIXME: why is this ambiguous?
 
       line = xfs.readLine()
       if (line != null) {
@@ -62,9 +62,9 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
            val row = line.split(",")
            val schemaData = DenseVector[String](0, true)         
            for (e <- row) {
-             schemaData += e
+             schemaData <<= e
            }
-           out += schemaBldr(schemaData)
+           out <<= schemaBldr(schemaData)
         }
         line = xfs.readLine()
       }
@@ -117,8 +117,8 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
         row(cumsum) = Double.parseDouble(nums(j+1))
         j += 2
       }
-      trainCatSeq += Double.parseDouble(nums(0))
-      trainMatSeq += row.unsafeImmutable
+      trainCatSeq <<= Double.parseDouble(nums(0))
+      trainMatSeq <<= row.unsafeImmutable
     }
     val trainCategory = trainCatSeq.t
     val trainMatrix = DenseMatrix(trainMatSeq)
@@ -133,7 +133,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
   def mlinput_read_template_models_impl(directory: Rep[String]): Rep[DenseVector[(String, DenseVector[BinarizedGradientTemplate])]] = {
     val templateFiles = DenseVector[String](0, true)
     for (f <- File(directory).getCanonicalFile.listFiles) {
-      templateFiles += f.getPath()
+      templateFiles <<= f.getPath()
     }
 
     templateFiles.map { filename =>
@@ -151,7 +151,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
       val numObjs = Integer.parseInt(params(3))
       var i = unit(0)
       while (i < numObjs) {
-        templates += loadModel(file)
+        templates <<= loadModel(file)
         i += 1
       }
       (objName, templates.unsafeImmutable)
@@ -184,7 +184,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     val matchListString = file.readLine().trim.split(" ")
     i = 0
     while (i < matchListSize) {
-      matchList += Integer.parseInt(matchListString(i)) //TODO TR matchList not mutable?
+      matchList <<= Integer.parseInt(matchListString(i)) //TODO TR matchList not mutable?
       i += 1
     }
 

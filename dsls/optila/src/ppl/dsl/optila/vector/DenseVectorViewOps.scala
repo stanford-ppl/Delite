@@ -100,7 +100,7 @@ trait DenseVectorViewOpsExp extends DenseVectorViewOps with DeliteCollectionOpsE
   def dense_vectorview_start[A:Manifest](x: Exp[DenseVectorView[A]])(implicit ctx: SourceContext) = DenseVectorViewStart(x)
   def dense_vectorview_stride[A:Manifest](x: Exp[DenseVectorView[A]])(implicit ctx: SourceContext) = DenseVectorViewStride(x)  
   def dense_vectorview_update[A:Manifest](x: Exp[DenseVectorView[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = reflectWrite(x)(DenseVectorViewUpdate(x, n, y))
-  def dense_vectorview_transpose[A:Manifest](x: Exp[DenseVectorView[A]])(implicit ctx: SourceContext): Exp[DenseVector[A]] = DenseVector[A](unit(0), !x.isRow) ++ x
+  def dense_vectorview_transpose[A:Manifest](x: Exp[DenseVectorView[A]])(implicit ctx: SourceContext): Exp[DenseVector[A]] = DenseVector[A](unit(0), !x.isRow) << x
   
   /////////////////////
   // delite collection

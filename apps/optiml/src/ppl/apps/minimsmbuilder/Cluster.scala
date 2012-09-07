@@ -163,7 +163,7 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
     var i = 0
     while (i < k) {
       vprint("Finding Generator " + i + "\\n")
-      centerIndices += newCenter
+      centerIndices <<= newCenter
       val distanceToNewCenter = oneToAll(theo,theo,newCenter)
       val updatedIndices = (0::numOfConformations) filter { i => distanceToNewCenter(i) < distanceList(i) }
       for (ui <- updatedIndices) distanceList(ui) = distanceToNewCenter(ui) // AKS TODO: indexvector update with indexvector values

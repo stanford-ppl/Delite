@@ -2,10 +2,10 @@ package ppl.dsl.optila
 
 trait LanguageImplOps { this: OptiLA =>
   def optila_vectordistance_abs_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]): Rep[A]
-  def optila_vectordistance_euc_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]): Rep[A]
+  def optila_vectordistance_euc_impl(v1: Interface[Vector[Double]], v2: Interface[Vector[Double]]): Rep[Double]
   def optila_vectordistance_square_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]): Rep[A]
   def optila_matrixdistance_abs_impl[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]]): Rep[A]
-  def optila_matrixdistance_euc_impl[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]]): Rep[A]
+  def optila_matrixdistance_euc_impl(m1: Interface[Matrix[Double]], m2: Interface[Matrix[Double]]): Rep[Double]
   def optila_matrixdistance_square_impl[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]]): Rep[A]
 
   def optila_randsample_matrix_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA]
@@ -34,10 +34,9 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
 */
   }
 
-  def optila_vectordistance_euc_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]) = {
+  def optila_vectordistance_euc_impl(v1: Interface[Vector[Double]], v2: Interface[Vector[Double]]) = {
     //sqrt(((v1-v2) mmap {e => e*e}).sum)
-    println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED")  // TODO AKS
-    v1(0)//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
+    sqrt(optila_vectordistance_euc_impl(v1,v2))
   }
 
   def optila_vectordistance_square_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]) = {
@@ -49,9 +48,8 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
     (m1-m2).abs.sum
   }
 
-  def optila_matrixdistance_euc_impl[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]]) = {
-    println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED") // TODO AKS
-    m1(0,0)//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
+  def optila_matrixdistance_euc_impl(m1: Interface[Matrix[Double]], m2: Interface[Matrix[Double]]) = {
+    sqrt(optila_matrixdistance_euc_impl(m1,m2))
   }
 
   def optila_matrixdistance_square_impl[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]]) = {
@@ -77,7 +75,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
     for (i <- 0 until numSamples){
       val r = i + random(length-i)
       val idx = candidates(r)
-      sampled += mt(idx).Clone
+      sampled <<= mt(idx).Clone
 
       // remove index r from consideration
       val t = candidates(r)
@@ -96,7 +94,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
     for (i <- 0 until numSamples){
       val r = i + random(v.length-i)
       val idx = candidates(r)
-      sampled += v(idx)
+      sampled <<= v(idx)
 
       // remove index r from consideration
       val t = candidates(r)

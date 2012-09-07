@@ -16,7 +16,7 @@ trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
     def apply(xs: Rep[Int]*)(implicit o: Overloaded2, ctx: SourceContext) = {
       val out = indexvector_obj_new(unit(0), unit(true))
       // interpreted (not lifted)
-      xs.foreach { out += _ }
+      xs.foreach { out <<= _ }
       out.unsafeImmutable // return immutable object
     }    
   }

@@ -97,17 +97,17 @@ trait VectorUpdates extends DeliteTestModule with OptiMLApplication {
     v(7) = 0.9123
     collect(v(7) == 0.9123)
 
-    val twov = (v ++ v)
+    val twov = (v << v)
     collect(twov.length == v.length*2)
     collect(twov(1000) == v(0))
 
     var vlen = v.length
-    v += 9.2
+    v <<= 9.2
     collect(v.length == vlen + 1)
     collect(v(vlen) == 9.2)
     vlen += 1
 
-    v ++= vb
+    v <<= vb
     collect(v.length == vlen+vb.length)
     vlen += vb.length
     var i = 0

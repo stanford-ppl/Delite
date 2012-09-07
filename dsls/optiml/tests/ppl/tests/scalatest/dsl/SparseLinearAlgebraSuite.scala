@@ -67,9 +67,9 @@ trait SparseSimpleMatrixArithmetic extends DeliteTestModule with LinearAlgebraTe
     colC(2) = 13.3
     
     val m33b = Matrix.sparse[Double](0,0)
-    m33b += rowA
-    m33b += rowB
-    m33b += colC.t
+    m33b <<= rowA
+    m33b <<= rowB
+    m33b <<= colC.t
     val m33 = m33b.finish
     
     val v1 = SparseVector[Double](3,true)
@@ -82,8 +82,8 @@ trait SparseSimpleMatrixArithmetic extends DeliteTestModule with LinearAlgebraTe
     v2(1) = 8.2
     v2(2) = 17.3
     val m23b = Matrix.sparse[Double](0,0)
-    m23b += v1
-    m23b += v2
+    m23b <<= v1
+    m23b <<= v2
     val m23 = m23b.finish
     
     val v3 = SparseVector[Double](2,true)
@@ -99,9 +99,9 @@ trait SparseSimpleMatrixArithmetic extends DeliteTestModule with LinearAlgebraTe
     v5(1) = .023
     
     val m32b = Matrix.sparse[Double](0,0)
-    m32b += v3
-    m32b += v4
-    m32b += v5
+    m32b <<= v3
+    m32b <<= v4
+    m32b <<= v5
     val m32 = m32b.finish
 
     // matrix square multiplication
@@ -162,9 +162,9 @@ trait SparseCombinedVecMatArithmetic extends DeliteTestModule with LinearAlgebra
     val colE = colEt.t
 
     val m33b = Matrix.sparse[Double](0,0)
-    m33b += rowA
-    m33b += rowB
-    m33b += colC.t
+    m33b <<= rowA
+    m33b <<= rowB
+    m33b <<= colC.t
     val m33 = m33b.finish
     
     val v1 = SparseVector[Double](3,true)
@@ -177,8 +177,8 @@ trait SparseCombinedVecMatArithmetic extends DeliteTestModule with LinearAlgebra
     v2(1) = 8.2
     v2(2) = 17.3
     val m23b = Matrix.sparse[Double](0,0)
-    m23b += v1
-    m23b += v2
+    m23b <<= v1
+    m23b <<= v2
     val m23 = m23b.finish
     
     val v3 = SparseVector[Double](2,true)
@@ -194,9 +194,9 @@ trait SparseCombinedVecMatArithmetic extends DeliteTestModule with LinearAlgebra
     v5(1) = .023
     
     val m32b = Matrix.sparse[Double](0,0)
-    m32b += v3
-    m32b += v4
-    m32b += v5
+    m32b <<= v3
+    m32b <<= v4
+    m32b <<= v5
     val m32 = m32b.finish
     
     val alpha = 4.235

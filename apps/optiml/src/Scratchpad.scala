@@ -3,7 +3,12 @@ import ppl.dsl.optiml._
 object ScratchpadRunner extends OptiMLApplicationRunner with Scratchpad
 trait Scratchpad extends OptiMLApplication { 
   def main() = {
+    val m = Matrix.rand(10,100)
+    for (row <- m.rows) {
+      row.pprint
+    }
     
+    /*
     // can be representation transparent using new Struct inheritance support?
     // ratings: Rep[Matrix[Int]], sims: Rep[Matrix[Double]], check tags on dispatch?
     // abstract interface (Ops) forwards to a dispatch method in OpsExp?
@@ -49,7 +54,7 @@ trait Scratchpad extends OptiMLApplication {
     val p = preferences(0, ratings, sims)
     toc(p)
     println("p nnz: " + p.nnz)
-    
+    */
     // multiloop unwrapping 
     
     // -- test collect
