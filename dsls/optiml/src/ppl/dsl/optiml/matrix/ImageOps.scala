@@ -82,8 +82,8 @@ trait ImageOps extends Variables {
     def viewToIntf[B:Manifest](x: Rep[View[B]]) = denseViewToInterface(x)
 
     // image ops
-    def downsample(rowFactor: Rep[Int], colFactor: Rep[Int])(block: Rep[DenseMatrix[A]] => Rep[A])(implicit ctx: SourceContext) = image_downsample(x,rowFactor, colFactor, block)
-    def windowedFilter[B:Manifest:Arith](rowDim: Rep[Int], colDim: Rep[Int])(block: Rep[DenseMatrix[A]] => Rep[B])(implicit ctx: SourceContext) = image_windowed_filter(x,rowDim, colDim, block)
+    def downsample(rowFactor: Rep[Int], colFactor: Rep[Int])(block: Rep[Image[A]] => Rep[A])(implicit ctx: SourceContext) = image_downsample[A,Image[A]](x, rowFactor, colFactor, block)(manifest[A], manifest[Image[A]], imageBuilder[A], implicitly[SourceContext])
+    def windowedFilter[B:Manifest:Arith](rowDim: Rep[Int], colDim: Rep[Int])(block: Rep[Image[A]] => Rep[B])(implicit ctx: SourceContext) = image_windowed_filter[A,Image[A],B,Image[B]](x,rowDim, colDim, block)(manifest[A], manifest[Image[A]], manifest[B], implicitly[Arith[B]], manifest[Image[B]], imageBuilder[B], implicitly[SourceContext])
     def convolve(kernel: Rep[DenseMatrix[A]])(implicit a: Arith[A], ctx: SourceContext) = { //unroll at call-site for parallelism (temporary until we have composite op) image_convolve(x)
       x.windowedFilter(kernel.numRows, kernel.numCols) { slice =>
         (slice *:* kernel).sum }
@@ -113,8 +113,8 @@ trait ImageOps extends Variables {
   def image_obj_frommat[A:Manifest](x: Rep[DenseMatrix[A]])(implicit ctx: SourceContext): Rep[Image[A]]
 
   // class defs
-  def image_downsample[A:Manifest](x: Rep[Image[A]], rowFactor: Rep[Int], colFactor: Rep[Int], block: Rep[DenseMatrix[A]] => Rep[A])(implicit ctx: SourceContext): Rep[Image[A]]
-  def image_windowed_filter[A:Manifest,B:Manifest:Arith](x: Rep[Image[A]], rowDim: Rep[Int], colDim: Rep[Int], block: Rep[DenseMatrix[A]] => Rep[B])(implicit ctx: SourceContext): Rep[Image[B]]
+  def image_downsample[A:Manifest,IA<:Image[A]:Manifest](x: Rep[IA], rowFactor: Rep[Int], colFactor: Rep[Int], block: Rep[Image[A]] => Rep[A])(implicit b: MatrixBuilder[A,IA,IA], ctx: SourceContext): Rep[IA]
+  def image_windowed_filter[A:Manifest,IA<:Image[A]:Manifest,B:Manifest:Arith,IB<:Image[B]:Manifest](x: Rep[IA], rowDim: Rep[Int], colDim: Rep[Int], block: Rep[Image[A]] => Rep[B])(implicit b: MatrixBuilder[B,IB,IB], ctx: SourceContext): Rep[IB]
 }
 
 
@@ -139,47 +139,54 @@ trait ImageOpsExp extends ImageOps with VariablesExp {
     def func = i => i // parallel copy 
   }
     
-  // TODO: represent these explicitly, see IndexVector2Ops
-//  case class ImageDownsample[A:Manifest](x: Exp[Image[A]], rowFactor: Exp[Int], colFactor: Exp[Int], block: Exp[Matrix[A]] => Exp[A])
-//    extends DeliteOpMap[Int,Vector[A],Vector] {
-//
-//  }
-//
-//  case class ImageWindowedFilter[A:Manifest,B:Manifest:Arith](x: Exp[Image[A]], rowDim: Exp[Int], colDim: Exp[Int], block: Exp[Matrix[A]] => Exp[B])
-//    extends DeliteOpMap[Int,Vector[A],Vector] {
-//
-//  }
+  case class ImageDownsample[A:Manifest,IA<:Image[A]:Manifest](x: Exp[IA], rowFactor: Exp[Int], colFactor: Exp[Int], block: Exp[Image[A]] => Exp[A], out: Exp[IA])
+    extends DeliteOpForeach[Int] {
 
-
-  ////////////////////
-  // object interface
-
-  def image_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectEffect(ImageObjectNew[A](numRows, numCols))
-  def image_obj_frommat[A:Manifest](x: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = ImageObjectFromMat(x)
-
-  ///////////////////
-  // class interface
-
-  def image_downsample[A:Manifest](x: Exp[Image[A]], rowFactor: Exp[Int], colFactor: Exp[Int], block: Exp[DenseMatrix[A]] => Exp[A])(implicit ctx: SourceContext) = {
-    val y = (unit(0) :: x.numRows / rowFactor, unit(0) :: x.numCols / colFactor) { (row, col) =>
-      block(x.slice(rowFactor * row, rowFactor * row + rowFactor, colFactor * col, colFactor * col + colFactor))
-    }
-    Image(y)
-    //Image(ImageDownsample(x, rowFactor, colFactor, block))
+    val in = copyTransformedOrElse(_.in)(unit(0) :: x.numRows / rowFactor)
+    val size = copyTransformedOrElse(_.size)(x.numRows / rowFactor)
+    def sync = i => List[Int]()
+    def func = row => out(row) = (unit(0) :: x.numCols / colFactor) map { col => 
+      block(x.slice(rowFactor * row, rowFactor * row + rowFactor, colFactor * col, colFactor * col + colFactor)) 
+    } 
   }
-  def image_windowed_filter[A:Manifest,B:Manifest:Arith](x: Exp[Image[A]], rowDim: Exp[Int], colDim: Exp[Int], block: Exp[DenseMatrix[A]] => Exp[B])(implicit ctx: SourceContext) = {
-    // Need to enforce odd values for sliceRows and sliceCols
+ 
+
+  case class ImageWindowedFilter[A:Manifest,IA<:Image[A]:Manifest,B:Manifest:Arith,IB<:Image[B]:Manifest](x: Exp[IA], rowDim: Exp[Int], colDim: Exp[Int], block: Exp[Image[A]] => Exp[B], out: Exp[IB])
+    extends DeliteOpForeach[Int] {
+    
     val rowOffset = (rowDim - unit(1)) / unit(2)
     val colOffset = (colDim - unit(1)) / unit(2)
-    val y = (unit(0) :: x.numRows, unit(0) :: x.numCols) { (row,col) =>
+
+    val in = copyTransformedOrElse(_.in)(unit(0) :: x.numRows)
+    val size = copyTransformedOrElse(_.size)(x.numRows)
+    def sync = i => List[Int]()
+    def func = row => out(row) = (unit(0) :: x.numCols) map { col => 
       if ((row >= rowOffset) && (row < x.numRows - rowOffset) && (col >= colOffset) && (col < x.numCols - colOffset)) {
         block(x.slice(row - rowOffset, row + rowOffset + unit(1), col - colOffset, col + colOffset + unit(1)))
       } else {
         unit(0).AsInstanceOf[B]
       }
     }
-    Image(y)
-    //Image(ImageWindowedFilter(x, rowDim, colDim, block))
+  }
+
+  ////////////////////
+  // object interface
+
+  def image_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(ImageObjectNew[A](numRows, numCols))
+  def image_obj_frommat[A:Manifest](x: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = ImageObjectFromMat(x)
+
+  ///////////////////
+  // class interface
+
+  def image_downsample[A:Manifest,IA<:Image[A]:Manifest](x: Exp[IA], rowFactor: Exp[Int], colFactor: Exp[Int], block: Exp[Image[A]] => Exp[A])(implicit b: MatrixBuilder[A,IA,IA], ctx: SourceContext) = {
+    val out = b.alloc(x.numRows / rowFactor, x.numCols / colFactor)
+    reflectWrite(out)(ImageDownsample[A,IA](x,rowFactor,colFactor,block,out))
+    out.unsafeImmutable            
+  }
+  def image_windowed_filter[A:Manifest,IA<:Image[A]:Manifest,B:Manifest:Arith,IB<:Image[B]:Manifest](x: Exp[IA], rowDim: Exp[Int], colDim: Exp[Int], block: Exp[Image[A]] => Exp[B])(implicit b: MatrixBuilder[B,IB,IB], ctx: SourceContext) = {
+    val out = b.alloc(x.numRows, x.numCols)
+    reflectWrite(out)(ImageWindowedFilter[A,IA,B,IB](x,rowDim,colDim,block,out))
+    out.unsafeImmutable                
   }
 }
 

@@ -109,7 +109,7 @@ trait OptiML extends OptiMLScalaOpsPkg with OptiLA with RecordOps
 // these ops are only available to the compiler (they are restricted from application use)
 trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities with GraphCompilerOps with DeliteCollectionOps 
   with LanguageImplOpsStandard with VectorImplOpsStandard with IndexVectorImplOpsStandard with MatrixImplOpsStandard
-  with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
+  with GrayscaleImageImplOpsStandard with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
   with GraphImplOpsStandard with EdgeImplOpsStandard with VertexImplOpsStandard with VerticesImplOpsStandard {
 
   this: OptiMLApplication with OptiMLExp =>
@@ -245,7 +245,7 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
   }
 
   override def specmap(line: String, t: String) : String = {
-    var res = line.replaceAll("import ppl.dsl.optila.datastruct.scala._", "") // ends up in the same package in generated code
+    var res = line.replaceAll("import ppl.dsl.optila.datastruct.scala._", "") // ends up in the same package in generated code    
     super.specmap(res, t)
   }
     
@@ -259,7 +259,7 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
     res = res.replaceAll("L:Manifest", t2)
     res = res.replaceAll("\\bT\\b", t1)
     res = res.replaceAll("\\bL\\b", t2)
-    parmap(res)
+    dsmap(res)
   }
   
   override def parmap(line: String): String = {
@@ -276,7 +276,7 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
         }
       }
     }
-    dsmap(super.parmap(res))
+    super.parmap(res)
   }
 
   override def dsmap(line: String) : String = {
@@ -284,7 +284,7 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
     res = res.replaceAll("import ppl.dsl.optila.datastruct.scala._", "")     
     res = res.replaceAll("ppl.delite.framework.datastruct", "generated")
     res = res.replaceAll("ppl.dsl.optiml", "generated.scala")        
-    super.dsmap(res)
+    super.dsmap(res) // calls parmap
   }
 }
 

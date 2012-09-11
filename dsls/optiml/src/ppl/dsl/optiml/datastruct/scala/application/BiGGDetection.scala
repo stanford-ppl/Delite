@@ -1,4 +1,4 @@
-package ppl.dsl.optiml.datastruct.scala
+package ppl.dsl.optiml.datastruct.scala.application
 import ppl.dsl.optiml.datastruct.scala._
 
 class BiGGDetection (

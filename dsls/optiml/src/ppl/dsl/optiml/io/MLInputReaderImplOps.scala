@@ -204,7 +204,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     val bb = Rect(x, y, width, height)
 
     // TODO: Anand, should not be initializing these null unless we add setters to BinarizedGradientTemplate
-    BinarizedGradientTemplate(radius, bb, null, 0, gradients, matchList, occlusions, null, null)
+    BinarizedGradientTemplate(radius, bb, null, 0, gradients.unsafeImmutable, matchList.unsafeImmutable, occlusions.unsafeImmutable, null, null)
   }
 
 }
