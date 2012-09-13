@@ -26,7 +26,7 @@ trait LBPDenoise extends OptiMLApplication {
     val cols = Integer.parseInt(args(1))
 
     // Generate image
-    val img = Image[Double](rows, cols)
+    val img = GrayscaleImage(rows, cols)
     imgPaintSunset(img, colors)
     MLOutputWriter.writeImgPgm(img, "src.pgm")
     imgCorrupt(img, sigma)
@@ -287,7 +287,7 @@ trait LBPDenoise extends OptiMLApplication {
     img(row, col) = pixel
   }
 
-  def imgPaintSunset(img: Rep[DenseMatrix[Double]], numRings: Rep[Int]) = {
+  def imgPaintSunset(img: Rep[GrayscaleImage], numRings: Rep[Int]) = {
     val centerR = img.numRows.AsInstanceOf[Double] / 2.0
     val centerC = img.numCols.AsInstanceOf[Double] / 2.0
     val maxRadius = min(img.numRows, img.numCols).AsInstanceOf[Double] / 2.0
@@ -303,7 +303,6 @@ trait LBPDenoise extends OptiMLApplication {
         if (r < img.numRows / 2) {
           // Compute ring of sunset
           val ring = floor(min(1.0, distance / maxRadius) * (numRings - 1))
-
           img(r, c) = ring
         }
         else {
@@ -316,11 +315,11 @@ trait LBPDenoise extends OptiMLApplication {
   }
 
   // Corrupt the image with Gaussian noise
-  def imgCorrupt(img: Rep[DenseMatrix[Double]], sigma: Rep[Double]) = {
+  def imgCorrupt(img: Rep[GrayscaleImage], sigma: Rep[Double]) = {
     img mmap { _ + randomGaussian*sigma }
   }
 
-  def imgSave(img: Rep[Image[Double]], filename: Rep[String]) = {
+  def imgSave(img: Rep[GrayscaleImage], filename: Rep[String]) = {
     MLOutputWriter.writeImgPgm(img, filename)
   }
 

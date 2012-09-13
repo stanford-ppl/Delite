@@ -25,7 +25,7 @@ trait BinarizedGradientGridFuncs {
   def detectAllObjects(all_templates: Rep[DenseVector[(String, DenseVector[BinarizedGradientTemplate])]], image: Rep[GrayscaleImage]) = {
     val img_gray = image // assuming image is single-channel. Needs to be made such if not.
 
-    val (mag: Rep[DenseMatrix[Float]], phase: Rep[DenseMatrix[Float]]) = t2(img_gray.gradients(true))
+    val (mag: Rep[DenseMatrix[Double]], phase: Rep[DenseMatrix[Double]]) = t2(img_gray.gradients(true))
     val binGrad = binarizeGradients(mag, phase)  
     val cleanGrad = gradMorphology(binGrad)
     val pyr = makePyramid(cleanGrad)    
@@ -77,7 +77,7 @@ trait BinarizedGradientGridFuncs {
     val (ystart, yoffset) = t2 { if (yc - r < 0) (unit(0), r - yc) else (yc - r, unit(0)) }
     val yend = if (yc + r > gradSummary.numRows) gradSummary.numRows else yc + r
 
-    val binaryGradients = DenseVector[Int](span*span, false)
+    val binaryGradients = DenseVector[Double](span*span, false)
     val matchList = IndexVector(0, true)
     
     // Fill the binary gradients
@@ -101,14 +101,14 @@ trait BinarizedGradientGridFuncs {
   }
 
   // Turn mag and phase into a binary representation of 8 gradient directions.
-  def binarizeGradients(mag: Rep[DenseMatrix[Float]], phase: Rep[DenseMatrix[Float]]): Rep[GrayscaleImage] = {
+  def binarizeGradients(mag: Rep[DenseMatrix[Double]], phase: Rep[DenseMatrix[Double]]): Rep[GrayscaleImage] = {
     GrayscaleImage((mag zip phase) {(a,b) => {
       if (a >= magnitude_threshold_) {
           var angle = b
           if (angle >= 180) {
             angle = angle - 180 // Ignore polarity of the angle
           }
-          pow(2, (angle.AsInstanceOf[Double] / (180.0 / 8)).AsInstanceOf[Int]).AsInstanceOf[Int]
+          pow(2, (angle.AsInstanceOf[Double] / (180.0 / 8)).AsInstanceOf[Int])
         }
       else 0
     }})
@@ -129,8 +129,7 @@ trait BinarizedGradientGridFuncs {
     // (Each pixel location contains just one orientation at this point)
     binaryGradient.windowedFilter (3, 3) { slice /*3x3 GrayscaleImage*/ =>
       // for each element, pick the most frequently occurring gradient direction if it's at least 2; otherwise pick 0 (no direction)
-      // this performs an unnecessary copy (to create the grayscale image)
-      val histogram = GrayscaleImage(slice).histogram      
+      val histogram = slice.histogram
       if (histogram.max > 1) histogram.maxIndex else 0      
     }
   }

@@ -10,7 +10,7 @@ import scala.virtualization.lms.common.{EffectExp, Variables}
 trait BinarizedGradientTemplateOps extends Variables with OverloadHack {
 
   object BinarizedGradientTemplate {
-    def apply(radius: Rep[Int], rect: Rep[Rect], mask_list: Rep[DenseVector[Int]], level: Rep[Int], binary_gradients: Rep[DenseVector[Int]], match_list: Rep[IndexVectorDense], occlusions: Rep[DenseVector[DenseVector[Int]]], templates: Rep[DenseVector[BinarizedGradientTemplate]], hist: Rep[DenseVector[Float]]) = binarizedgradienttemplate_obj_new(radius, rect, mask_list, level, binary_gradients, match_list, occlusions, templates, hist)
+    def apply(radius: Rep[Int], rect: Rep[Rect], mask_list: Rep[DenseVector[Int]], level: Rep[Int], binary_gradients: Rep[DenseVector[Double]], match_list: Rep[IndexVectorDense], occlusions: Rep[DenseVector[DenseVector[Int]]], templates: Rep[DenseVector[BinarizedGradientTemplate]], hist: Rep[DenseVector[Float]]) = binarizedgradienttemplate_obj_new(radius, rect, mask_list, level, binary_gradients, match_list, occlusions, templates, hist)
   }
 
   implicit def repBinarizedGradientTemplateToBinarizedGradientTemplateOps(x: Rep[BinarizedGradientTemplate]) = new binarizedgradienttemplateOpsCls(x)
@@ -29,14 +29,14 @@ trait BinarizedGradientTemplateOps extends Variables with OverloadHack {
   }
 
   //object defs
-  def binarizedgradienttemplate_obj_new(radius: Rep[Int], rect: Rep[Rect], mask_list: Rep[DenseVector[Int]], level: Rep[Int], binary_gradients: Rep[DenseVector[Int]], match_list: Rep[IndexVectorDense], occlusions: Rep[DenseVector[DenseVector[Int]]], templates: Rep[DenseVector[BinarizedGradientTemplate]], hist: Rep[DenseVector[Float]]): Rep[BinarizedGradientTemplate]
+  def binarizedgradienttemplate_obj_new(radius: Rep[Int], rect: Rep[Rect], mask_list: Rep[DenseVector[Int]], level: Rep[Int], binary_gradients: Rep[DenseVector[Double]], match_list: Rep[IndexVectorDense], occlusions: Rep[DenseVector[DenseVector[Int]]], templates: Rep[DenseVector[BinarizedGradientTemplate]], hist: Rep[DenseVector[Float]]): Rep[BinarizedGradientTemplate]
 
   //class defs
   def binarizedgradienttemplate_radius(__x: Rep[BinarizedGradientTemplate]): Rep[Int]
   def binarizedgradienttemplate_rect(__x: Rep[BinarizedGradientTemplate]): Rep[Rect]
   def binarizedgradienttemplate_mask_list(__x: Rep[BinarizedGradientTemplate]): Rep[DenseVector[Int]]
   def binarizedgradienttemplate_level(__x: Rep[BinarizedGradientTemplate]): Rep[Int]
-  def binarizedgradienttemplate_binary_gradients(__x: Rep[BinarizedGradientTemplate]): Rep[DenseVector[Int]]
+  def binarizedgradienttemplate_binary_gradients(__x: Rep[BinarizedGradientTemplate]): Rep[DenseVector[Double]]
   def binarizedgradienttemplate_match_list(__x: Rep[BinarizedGradientTemplate]): Rep[IndexVectorDense]
   def binarizedgradienttemplate_occlusions(__x: Rep[BinarizedGradientTemplate]): Rep[DenseVector[DenseVector[Int]]]
   def binarizedgradienttemplate_templates(__x: Rep[BinarizedGradientTemplate]): Rep[DenseVector[BinarizedGradientTemplate]]
@@ -44,18 +44,18 @@ trait BinarizedGradientTemplateOps extends Variables with OverloadHack {
 }
 
 trait BinarizedGradientTemplateOpsExp extends BinarizedGradientTemplateOps with EffectExp {
-  case class BinarizedGradientTemplateObjectNew(radius: Exp[Int], rect: Exp[Rect], mask_list: Exp[DenseVector[Int]], level: Exp[Int], binary_gradients: Exp[DenseVector[Int]], match_list: Exp[IndexVectorDense], occlusions: Exp[DenseVector[DenseVector[Int]]], templates: Exp[DenseVector[BinarizedGradientTemplate]], hist: Exp[DenseVector[Float]]) extends Def[BinarizedGradientTemplate]
+  case class BinarizedGradientTemplateObjectNew(radius: Exp[Int], rect: Exp[Rect], mask_list: Exp[DenseVector[Int]], level: Exp[Int], binary_gradients: Exp[DenseVector[Double]], match_list: Exp[IndexVectorDense], occlusions: Exp[DenseVector[DenseVector[Int]]], templates: Exp[DenseVector[BinarizedGradientTemplate]], hist: Exp[DenseVector[Float]]) extends Def[BinarizedGradientTemplate]
   case class BinarizedGradientTemplateRadius(__x: Exp[BinarizedGradientTemplate]) extends Def[Int]
   case class BinarizedGradientTemplateRect(__x: Exp[BinarizedGradientTemplate]) extends Def[Rect]
   case class BinarizedGradientTemplateMask_list(__x: Exp[BinarizedGradientTemplate]) extends Def[DenseVector[Int]]
   case class BinarizedGradientTemplateLevel(__x: Exp[BinarizedGradientTemplate]) extends Def[Int]
-  case class BinarizedGradientTemplateBinary_gradients(__x: Exp[BinarizedGradientTemplate]) extends Def[DenseVector[Int]]
+  case class BinarizedGradientTemplateBinary_gradients(__x: Exp[BinarizedGradientTemplate]) extends Def[DenseVector[Double]]
   case class BinarizedGradientTemplateMatch_list(__x: Exp[BinarizedGradientTemplate]) extends Def[IndexVectorDense]
   case class BinarizedGradientTemplateOcclusions(__x: Exp[BinarizedGradientTemplate]) extends Def[DenseVector[DenseVector[Int]]]
   case class BinarizedGradientTemplateTemplates(__x: Exp[BinarizedGradientTemplate]) extends Def[DenseVector[BinarizedGradientTemplate]]
   case class BinarizedGradientTemplateHist(__x: Exp[BinarizedGradientTemplate]) extends Def[DenseVector[Float]]
 
-  def binarizedgradienttemplate_obj_new(radius: Exp[Int], rect: Exp[Rect], mask_list: Exp[DenseVector[Int]], level: Exp[Int], binary_gradients: Exp[DenseVector[Int]], match_list: Exp[IndexVectorDense], occlusions: Exp[DenseVector[DenseVector[Int]]], templates: Exp[DenseVector[BinarizedGradientTemplate]], hist: Exp[DenseVector[Float]]) = reflectEffect(BinarizedGradientTemplateObjectNew(radius, rect, mask_list, level, binary_gradients, match_list, occlusions, templates, hist))
+  def binarizedgradienttemplate_obj_new(radius: Exp[Int], rect: Exp[Rect], mask_list: Exp[DenseVector[Int]], level: Exp[Int], binary_gradients: Exp[DenseVector[Double]], match_list: Exp[IndexVectorDense], occlusions: Exp[DenseVector[DenseVector[Int]]], templates: Exp[DenseVector[BinarizedGradientTemplate]], hist: Exp[DenseVector[Float]]) = reflectEffect(BinarizedGradientTemplateObjectNew(radius, rect, mask_list, level, binary_gradients, match_list, occlusions, templates, hist))
   def binarizedgradienttemplate_radius(__x: Rep[BinarizedGradientTemplate]) = BinarizedGradientTemplateRadius(__x)
   def binarizedgradienttemplate_rect(__x: Rep[BinarizedGradientTemplate]) = BinarizedGradientTemplateRect(__x)
   def binarizedgradienttemplate_mask_list(__x: Rep[BinarizedGradientTemplate]) = BinarizedGradientTemplateMask_list(__x)

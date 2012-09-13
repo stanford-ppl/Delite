@@ -101,7 +101,7 @@ trait OptiML extends OptiMLScalaOpsPkg with OptiLA with RecordOps
   with IndexVectorOps with IndexVectorDenseOps with IndexVectorRangeOps with IndexVector2Ops with IndexVectorTriangularOps
   with StreamOps with StreamRowOps
   with GraphOps with EdgeOps with VertexOps with VSetOps
-  with TrainingSetOps with ImageOps with ImageOpsExtension with GrayscaleImageOps {
+  with TrainingSetOps with ImageOps with GrayscaleImageOps with GrayscaleImageOpsExtension {
 
   this: OptiMLApplication =>
 }
@@ -217,7 +217,7 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
   
   val IR: DeliteApplication with OptiMLExp
 
-  override val mlspecialize = Set(/*"LabelsImpl",*/ "Image", "UnsupervisedTrainingSet", "Stream", "StreamRow")
+  override val mlspecialize = Set(/*"LabelsImpl", "Image",*/ "UnsupervisedTrainingSet", "Stream", "StreamRow")
   override val mlspecialize2 = Set("SupervisedTrainingSet")
 
   override def genSpec2(f: File, dsOut: String) {
@@ -236,12 +236,13 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
   override def remap(s: String) = parmap(s)
   
   override def remap[A](m: Manifest[A]): String = {
-    val mGI = manifest[GrayscaleImage]
-    m match {
-      case `mGI` => remap(manifest[Image[Int]])
-     // AKS TODO: remap Image[T] to DenseMatrix[T]
-      case _ => super.remap(m)
-    }
+    // val mGI = manifest[GrayscaleImage]
+    // m match {
+    //   case `mGI` => remap(manifest[Image[Int]])
+    //  // AKS TODO: remap Image[T] to DenseMatrix[T]
+    // case _ => super.remap(m)
+    // }
+    super.remap(m)
   }
 
   override def specmap(line: String, t: String) : String = {

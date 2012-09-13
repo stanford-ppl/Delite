@@ -32,10 +32,10 @@ trait BinarizedGradientTemplateFuncs {
           var keepRunning = true
           while (i < test1.match_list.length && keepRunning) {
             val x = test1.match_list(i)
-            if (test1.binary_gradients(test1.match_list(i)) == 0 && test2.binary_gradients(test1.match_list(i)) == 0) {
+            if (test1.binary_gradients(test1.match_list(i)).AsInstanceOf[Int] == 0 && test2.binary_gradients(test1.match_list(i)).AsInstanceOf[Int] == 0) {
               matches = matches + 1f
             }
-            else if (((test1.binary_gradients(test1.match_list(i))) & (test2.binary_gradients(test1.match_list(i)))) > 0) {
+            else if (((test1.binary_gradients(test1.match_list(i)).AsInstanceOf[Int]) & (test2.binary_gradients(test1.match_list(i)).AsInstanceOf[Int])) > 0) {
               matches = matches + 1f
             }
             else {

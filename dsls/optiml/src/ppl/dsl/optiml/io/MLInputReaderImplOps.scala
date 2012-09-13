@@ -23,22 +23,21 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     val xfs = BufferedReader(FileReader(filename))
     var line = xfs.readLine()
     line = line.trim()
-    var ints = line.split("\\\\s+")
-    val x = DenseMatrix[Int](0, ints.length)
+    var dbls = line.split("\\\\s+")
+    val x = GrayscaleImage(0, dbls.length)
 
     while (line != null) {
-      val v = (0::ints.length) { i => Integer.parseInt(ints(i)) }
-      repToDenseMatBuildableOps(x) <<= v.unsafeImmutable  // AKS FIXME: why is this ambiguous?
+      val v = (0::dbls.length) { i => dbls(i).toDouble }
+      x <<= v.unsafeImmutable  
 
       line = xfs.readLine()
       if (line != null) {
         line = line.trim()
-        ints = line.split("\\\\s+")
+        dbls = line.split("\\\\s+")
       }
     }
     xfs.close()
-
-    GrayscaleImage(x.unsafeImmutable)
+    x.unsafeImmutable
   }
 
 
@@ -169,11 +168,11 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     temp = file.readLine().trim.split(" ")
     if (temp(0) != "Gradients:") error("Illegal data format")
     val gradientsSize = Integer.parseInt(temp(1))
-    val gradients = DenseVector[Int](gradientsSize,true)
+    val gradients = DenseVector[Double](gradientsSize,true)
     val gradientsString = file.readLine().trim.split(" ")
     var i = unit(0)
     while (i < gradientsSize) {
-      gradients(i) = Integer.parseInt(gradientsString(i))
+      gradients(i) = gradientsString(i).toDouble
       i += 1
     }
 

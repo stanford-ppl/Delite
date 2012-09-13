@@ -12,42 +12,23 @@ import ppl.dsl.optiml._
 trait ImageOps extends Variables {
   this: OptiML =>
 
-  implicit def repToImageOps[A:Manifest](x: Rep[Image[A]]) = new ImageOpsCls(x)
-  implicit def varToImageOps[A:Manifest](x: Var[Image[A]]) = new ImageOpsCls(readVar(x))
-  implicit def repToImageBuildableOps[A:Manifest](x: Rep[Image[A]]) = new ImageBuildableOpsCls(x)
-  implicit def varToImageBuildableOps[A:Manifest](x: Var[Image[A]]) = new ImageBuildableOpsCls(readVar(x))    
-  implicit def imageToInterface[A:Manifest](lhs: Rep[Image[A]]) = new MInterface[A](new ImageOpsCls[A](lhs))
-  implicit def imageVarToInterface[A:Manifest](lhs: Var[Image[A]]) = new MInterface[A](new ImageOpsCls[A](readVar(lhs)))  
-  implicit def imageToBuildableInterface[A:Manifest](lhs: Rep[Image[A]]) = new MBuildableInterface[A](new ImageBuildableOpsCls[A](lhs))
-  implicit def imageVarToBuildableInterface[A:Manifest](lhs: Var[Image[A]]) = new MBuildableInterface[A](new ImageBuildableOpsCls[A](readVar(lhs)))  
+  /**
+   * Interface Image[A]
+   */
+  class ImgInterface[A:Manifest](override val ops: ImageOpsCls[A]) extends MInterface[A](ops) with Interface[Image[A]]  
+  implicit def interfaceToImageOps[A:Manifest](intf: Interface[Image[A]]): InterfaceImageOpsCls[A] = new InterfaceImageOpsCls[A](intf.asInstanceOf[ImgInterface[A]])  
   
-  implicit def imageBuilder[A:Manifest] = new MatrixBuilder[A,Image[A],Image[A]] {
-    def alloc(numRows: Rep[Int], numCols: Rep[Int]) = {
-      Image[A](numRows, numCols)
-    }
-    def toBuildableIntf(x: Rep[Image[A]]): Interface[MatrixBuildable[A]] = imageToBuildableInterface(x)
-    def finalizer(x: Rep[Image[A]]) = x.unsafeImmutable    
-    def toIntf(x: Rep[Image[A]]): Interface[Matrix[A]] = imageToInterface(x)
-  }  
-
-  object Image {
-    def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = image_obj_new(numRows, numCols)
-    def apply[A:Manifest](x: Rep[DenseMatrix[A]])(implicit ctx: SourceContext) = image_obj_frommat(x)
-  }
-
-  class ImageBuildableOpsCls[A:Manifest](val elem: Rep[Image[A]]) extends MatBuildableOpsCls[A] {
-    type Self = Image[A]
-    def wrap(x: Rep[Image[A]]): Interface[MatrixBuildable[A]] = denseMatToBuildableInterface(x)
-    type M[X] = Image[X]
-    type V[X] = DenseVector[X]  
-    def mA: Manifest[A] = manifest[A]
+  abstract class ImageBuildableOpsCls[A:Manifest] extends MatBuildableOpsCls[A] {
+    type M[X] = DenseMatrix[X]
+    type V[X] = DenseVector[X]
+    type Self <: DenseMatrix[A]
     def toIntf[B:Manifest](x: Rep[M[B]]) = denseMatToBuildableInterface(x)
-    def vecToIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]] = denseVecToInterface[B](x)        
-      
+    def vecToIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]] = denseVecToInterface[B](x)            
+    
     // FIXME: see MatrixBuildableOps.scala
     protected def _numRows(implicit ctx: SourceContext) = densematrix_numrows(x)
     protected def _numCols(implicit ctx: SourceContext) = densematrix_numcols(x)
-        
+                
     def update(i: Rep[Int], j: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = densematrix_update(x,i,j,y)
     def insertRow(pos: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext) = densematrix_insertrow(x,pos,y)
     def insertAllRows(pos: Rep[Int], y: Interface[Matrix[A]])(implicit ctx: SourceContext) = densematrix_insertallrows(x,pos,y)
@@ -57,89 +38,58 @@ trait ImageOps extends Variables {
     def removeCols(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densematrix_removecols(x,pos,len)
   }
   
-  /**
-   * By extending DenseMatOpsCls, we preserve the Image[A] return type. We could also choose to simply add methods onto DenseMatrix 
-   * in a similar fashion to GrayscaleImageOps to ImageOps, but we would lose our image-ness whenever a bulk operator is used (just
-   * like GrayscaleImage currently does). We are still exploring what the best consistent way of handling this is. 
-   */
-  class ImageOpsCls[A:Manifest](val elem: Rep[Image[A]]) extends MatOpsCls[A] {
-    type M[X] = Image[X]
-    type I[X] = Image[X]
+  abstract class ImageOpsCls[A:Manifest] extends MatOpsCls[A] with InterfaceOps[Image[A]] {
     type V[X] = DenseVector[X]
+    type M[X] = DenseMatrix[X]    
+    type I[X] = DenseMatrix[X]
     type View[X] = DenseVectorView[X]      
-    type Self = Image[A]
-
+    type MA <: Image[A]
+    type IA = MA
+    implicit def wrap(x: Rep[Self]): Interface[Image[A]]
+    implicit def maBuilder: MatrixBuilder[A,MA,MA]    
+    implicit def maToIntf(x: Rep[MA]): Interface[Image[A]]
     def mA: Manifest[A] = manifest[A]
-    def mM[B:Manifest]: Manifest[M[B]] = manifest[Image[B]]    
-    def mI[B:Manifest]: Manifest[I[B]] = mM[B]
-    def wrap(x: Rep[Image[A]]): Interface[Matrix[A]] = imageToInterface(x)
-    def matToOps[B:Manifest](x: Rep[M[B]]): MatOpsCls[B] = repToImageOps[B](x)
-    def matToIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]] = imageToInterface[B](x)        
-    def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = imageBuilder[B]            
+    def mIA = mMA
     def mV[B:Manifest]: Manifest[V[B]] = manifest[DenseVector[B]]
+    def mM[B:Manifest]: Manifest[M[B]] = manifest[DenseMatrix[B]]
+    def mI[B:Manifest]: Manifest[I[B]] = mM[B]
+    def toIntf[B:Manifest](x: Rep[M[B]]) = denseMatToBuildableInterface(x)        
     def vecToIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]] = denseVecToInterface[B](x)        
     def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]
     def viewToIntf[B:Manifest](x: Rep[View[B]]) = denseViewToInterface(x)
+    def matToOps[B:Manifest](x: Rep[M[B]]): MatOpsCls[B] = repToDenseMatOps[B](x)
+    def matToIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]] = denseMatToInterface[B](x)        
+    def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = denseMatrixBuilder[B]                    
 
     // image ops
-    def downsample(rowFactor: Rep[Int], colFactor: Rep[Int])(block: Rep[Image[A]] => Rep[A])(implicit ctx: SourceContext) = image_downsample[A,Image[A]](x, rowFactor, colFactor, block)(manifest[A], manifest[Image[A]], imageBuilder[A], implicitly[SourceContext])
-    def windowedFilter[B:Manifest:Arith](rowDim: Rep[Int], colDim: Rep[Int])(block: Rep[Image[A]] => Rep[B])(implicit ctx: SourceContext) = image_windowed_filter[A,Image[A],B,Image[B]](x,rowDim, colDim, block)(manifest[A], manifest[Image[A]], manifest[B], implicitly[Arith[B]], manifest[Image[B]], imageBuilder[B], implicitly[SourceContext])
+    def downsample(rowFactor: Rep[Int], colFactor: Rep[Int])(block: Interface[Image[A]] => Rep[A])(implicit ctx: SourceContext) = image_downsample[A,MA](x, rowFactor, colFactor, block) //(manifest[A], manifest[Image[A]], imageBuilder[A], implicitly[SourceContext])
+    def windowedFilter[B:Manifest:Arith](rowDim: Rep[Int], colDim: Rep[Int])(block: Interface[Image[A]] => Rep[B])(implicit ctx: SourceContext) = image_windowed_filter[A,B,M[B]](x,rowDim, colDim, block) //(manifest[A], manifest[Image[A]], manifest[B], implicitly[Arith[B]], manifest[Image[B]], imageBuilder[B], implicitly[SourceContext])
     def convolve(kernel: Rep[DenseMatrix[A]])(implicit a: Arith[A], ctx: SourceContext) = { //unroll at call-site for parallelism (temporary until we have composite op) image_convolve(x)
-      x.windowedFilter(kernel.numRows, kernel.numCols) { slice =>
+      windowedFilter(kernel.numRows, kernel.numCols) { slice =>
         (slice *:* kernel).sum }
-    }
-      
-    // required Matrix implementation -- just forward to DenseMatrix
-    // TODO: how to remove this duplication with DenseMatrixOps?
-    //       extending DenseMatOpsCls doesn't work with the type aliases.
-          
-    // delite collection
-    def dcApply(n: Rep[Int])(implicit ctx: SourceContext): Rep[A] = densematrix_rawapply(x,n)
-    def dcUpdate(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit] = densematrix_rawupdate(x,n,y)
-
-    // accessors
-    def apply(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext) = densematrix_apply(x,i,j)
-    def numRows(implicit ctx: SourceContext) = densematrix_numrows(x)
-    def numCols(implicit ctx: SourceContext) = densematrix_numcols(x)
-    def vview(start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = densematrix_vview(x,start,stride,length,isRow)
-
-    // not supported by interface right now
-    // def *(y: Rep[MA])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = Image(densematrix_multiply(x,y))
-    def inv(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext) = Image(densematrix_inverse(x))    
+    }      
+  }
+    
+  class InterfaceImageOpsCls[A:Manifest](override val intf: ImgInterface[A]) extends InterfaceMatOpsCls[A](intf) {
+    // ugh.. operations on Interface[Image] return an Interface[Matrix] unless we override them here to call the proper maToIntf method. this sucks.
+    // we should have the same problems with operations on Interface[IndexVector] returning an Interface[Vector]... multi-level interfaces don't quite work the way we'd like.
+    override def slice(startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int])(implicit ctx: SourceContext) = intf.ops.maToIntf(intf.ops.slice(startRow,endRow,startCol,endCol))
+    
+    def downsample(rowFactor: Rep[Int], colFactor: Rep[Int])(block: Interface[Image[A]] => Rep[A])(implicit ctx: SourceContext) = intf.ops.maToIntf(intf.ops.downsample(rowFactor,colFactor)(block))
+    def windowedFilter[B:Manifest:Arith](rowDim: Rep[Int], colDim: Rep[Int])(block: Interface[Image[A]] => Rep[B])(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.windowedFilter(rowDim,colDim)(block))
+    def convolve(kernel: Rep[DenseMatrix[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.matToIntf(intf.ops.convolve(kernel))
   }
   
-  // object defs
-  def image_obj_new[A:Manifest](numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[Image[A]]
-  def image_obj_frommat[A:Manifest](x: Rep[DenseMatrix[A]])(implicit ctx: SourceContext): Rep[Image[A]]
-
   // class defs
-  def image_downsample[A:Manifest,IA<:Image[A]:Manifest](x: Rep[IA], rowFactor: Rep[Int], colFactor: Rep[Int], block: Rep[Image[A]] => Rep[A])(implicit b: MatrixBuilder[A,IA,IA], ctx: SourceContext): Rep[IA]
-  def image_windowed_filter[A:Manifest,IA<:Image[A]:Manifest,B:Manifest:Arith,IB<:Image[B]:Manifest](x: Rep[IA], rowDim: Rep[Int], colDim: Rep[Int], block: Rep[Image[A]] => Rep[B])(implicit b: MatrixBuilder[B,IB,IB], ctx: SourceContext): Rep[IB]
+  def image_downsample[A:Manifest,IA<:Image[A]:Manifest](x: Interface[Image[A]], rowFactor: Rep[Int], colFactor: Rep[Int], block: Interface[Image[A]] => Rep[A])(implicit b: MatrixBuilder[A,IA,IA], ctx: SourceContext): Rep[IA]
+  def image_windowed_filter[A:Manifest,B:Manifest:Arith,MB<:Matrix[B]:Manifest](x: Interface[Image[A]], rowDim: Rep[Int], colDim: Rep[Int], block: Interface[Image[A]] => Rep[B])(implicit b: MatrixBuilder[B,MB,MB], ctx: SourceContext): Rep[MB]
 }
 
 
 trait ImageOpsExp extends ImageOps with VariablesExp {
   this: OptiMLExp  =>
-
-  //////////////////////////////////////////////////
-  // implemented via method on real data structure
-
-  case class ImageObjectNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) extends Def[Image[A]] {
-    val mA = manifest[A]
-  }
-
-  ////////////////////////////////
-  // implemented via delite ops
-
-  case class ImageObjectFromMat[A:Manifest](in: Exp[DenseMatrix[A]])
-    extends DeliteOpMap[A,A,Image[A]] {
-      
-    override def alloc = Image[A](in.numCols, in.numRows)
-    val size = copyTransformedOrElse(_.size)(in.size)
-    def func = i => i // parallel copy 
-  }
     
-  case class ImageDownsample[A:Manifest,IA<:Image[A]:Manifest](x: Exp[IA], rowFactor: Exp[Int], colFactor: Exp[Int], block: Exp[Image[A]] => Exp[A], out: Exp[IA])
+  case class ImageDownsample[A:Manifest](x: Interface[Image[A]], rowFactor: Exp[Int], colFactor: Exp[Int], block: Interface[Image[A]] => Exp[A], out: Interface[MatrixBuildable[A]])
     extends DeliteOpForeach[Int] {
 
     val in = copyTransformedOrElse(_.in)(unit(0) :: x.numRows / rowFactor)
@@ -151,7 +101,7 @@ trait ImageOpsExp extends ImageOps with VariablesExp {
   }
  
 
-  case class ImageWindowedFilter[A:Manifest,IA<:Image[A]:Manifest,B:Manifest:Arith,IB<:Image[B]:Manifest](x: Exp[IA], rowDim: Exp[Int], colDim: Exp[Int], block: Exp[Image[A]] => Exp[B], out: Exp[IB])
+  case class ImageWindowedFilter[A:Manifest,B:Manifest:Arith](x: Interface[Image[A]], rowDim: Exp[Int], colDim: Exp[Int], block: Interface[Image[A]] => Exp[B], out: Interface[MatrixBuildable[B]])
     extends DeliteOpForeach[Int] {
     
     val rowOffset = (rowDim - unit(1)) / unit(2)
@@ -169,23 +119,18 @@ trait ImageOpsExp extends ImageOps with VariablesExp {
     }
   }
 
-  ////////////////////
-  // object interface
-
-  def image_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(ImageObjectNew[A](numRows, numCols))
-  def image_obj_frommat[A:Manifest](x: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = ImageObjectFromMat(x)
 
   ///////////////////
   // class interface
 
-  def image_downsample[A:Manifest,IA<:Image[A]:Manifest](x: Exp[IA], rowFactor: Exp[Int], colFactor: Exp[Int], block: Exp[Image[A]] => Exp[A])(implicit b: MatrixBuilder[A,IA,IA], ctx: SourceContext) = {
+  def image_downsample[A:Manifest,IA<:Image[A]:Manifest](x: Interface[Image[A]], rowFactor: Exp[Int], colFactor: Exp[Int], block: Interface[Image[A]] => Exp[A])(implicit b: MatrixBuilder[A,IA,IA], ctx: SourceContext) = {
     val out = b.alloc(x.numRows / rowFactor, x.numCols / colFactor)
-    reflectWrite(out)(ImageDownsample[A,IA](x,rowFactor,colFactor,block,out))
+    reflectWrite(out)(ImageDownsample(x,rowFactor,colFactor,block,b.toBuildableIntf(out)))
     out.unsafeImmutable            
   }
-  def image_windowed_filter[A:Manifest,IA<:Image[A]:Manifest,B:Manifest:Arith,IB<:Image[B]:Manifest](x: Exp[IA], rowDim: Exp[Int], colDim: Exp[Int], block: Exp[Image[A]] => Exp[B])(implicit b: MatrixBuilder[B,IB,IB], ctx: SourceContext) = {
+  def image_windowed_filter[A:Manifest,B:Manifest:Arith,MB<:Matrix[B]:Manifest](x: Interface[Image[A]], rowDim: Exp[Int], colDim: Exp[Int], block: Interface[Image[A]] => Exp[B])(implicit b: MatrixBuilder[B,MB,MB], ctx: SourceContext) = {
     val out = b.alloc(x.numRows, x.numCols)
-    reflectWrite(out)(ImageWindowedFilter[A,IA,B,IB](x,rowDim,colDim,block,out))
+    reflectWrite(out)(ImageWindowedFilter(x,rowDim,colDim,block,b.toBuildableIntf(out)))
     out.unsafeImmutable                
   }
 }
@@ -195,10 +140,10 @@ trait ScalaGenImageOps extends ScalaGenBase {
   val IR: ImageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case m@ImageObjectNew(numRows, numCols) => emitValDef(sym, "new " + remap("generated.scala.Image[" + remap(m.mA) + "]") + "(" + quote(numRows) + "," + quote(numCols) + ")")
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+  //   case m@ImageObjectNew(numRows, numCols) => emitValDef(sym, "new " + remap("generated.scala.Image[" + remap(m.mA) + "]") + "(" + quote(numRows) + "," + quote(numCols) + ")")
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }
 
 trait CudaGenImageOps extends CudaGenBase with CudaGenDataStruct {

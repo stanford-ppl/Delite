@@ -5,7 +5,7 @@ import scala.virtualization.lms.common.ScalaOpsPkg
 import ppl.dsl.optiml._
 
 trait MLOutputWriterImplOps { this: Base =>
-  def mloutput_write_img_pgm_impl(img: Rep[Image[Double]], filename: Rep[String]): Rep[Unit]
+  def mloutput_write_img_pgm_impl(img: Rep[GrayscaleImage], filename: Rep[String]): Rep[Unit]
 }
 
 trait MLOutputWriterImplOpsStandard extends MLOutputWriterImplOps {
@@ -14,7 +14,7 @@ trait MLOutputWriterImplOpsStandard extends MLOutputWriterImplOps {
   ///////////////
   // kernels
 
-  def mloutput_write_img_pgm_impl(img: Rep[Image[Double]], filename: Rep[String]): Rep[Unit] = {
+  def mloutput_write_img_pgm_impl(img: Rep[GrayscaleImage], filename: Rep[String]): Rep[Unit] = {
     val xfs = BufferedWriter(FileWriter(filename))
 
     xfs.write("P2\\n")

@@ -26,10 +26,10 @@ trait OptiMLSparseMatrixOps extends ppl.dsl.optila.matrix.SparseMatrixOps {
   implicit def sparseToMatOverrides[A:Manifest](x: Rep[SparseMatrix[A]]) = new OptiMLSparseMatOpsOverrides(x)  
 }
 
-trait ImageOpsExtension extends ImageOps {
+trait GrayscaleImageOpsExtension extends GrayscaleImageOps {
   this: OptiML =>
   
-  implicit def imageToMatOverrides[A:Manifest](x: Rep[Image[A]]) = new OptiMLImageOpsOverrides(x)  
+  implicit def grayscaleImageToMatOverrides(x: Rep[GrayscaleImage]) = new OptiMLGrayscaleImageOpsOverrides(x)  
 }
 
 trait MatrixOps extends ppl.dsl.optila.matrix.MatrixOps  {
@@ -48,7 +48,7 @@ trait MatrixOps extends ppl.dsl.optila.matrix.MatrixOps  {
     //def nzRowIndices(implicit ctx: SourceContext) = sparsematrix_nz_row_indices(x)
     def nzRowIndices = sparsematrix_nz_row_indices(x)
   }
-  class OptiMLImageOpsOverrides[A:Manifest](x: Rep[Image[A]]) extends ImageOpsCls(x) with OptiMLMatOpsOverrides[A] 
+  class OptiMLGrayscaleImageOpsOverrides(x: Rep[GrayscaleImage]) extends GrayscaleImageOpsCls(x) with OptiMLMatOpsOverrides[Double] 
 
   // class defs
   def matrix_apply_row_indices[A:Manifest,I:Manifest,MA:Manifest](x: Interface[Matrix[A]], rowIndices: Interface[IndexVector])(implicit b: MatrixBuilder[A,I,MA], ctx: SourceContext): Rep[MA] 

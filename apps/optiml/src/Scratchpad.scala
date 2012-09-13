@@ -6,21 +6,21 @@ trait Scratchpad extends OptiMLApplication {
     
     // Bug 1: dependency lost with DeliteReduceTupleElem
     
-    // val slice = (Matrix.rand(3,3)*100).map(_.AsInstanceOf[Int])    
-    // val histogram = DenseVector[Int](256, true)    
-    // var row = 0
-    // while (row < slice.numRows) {
-    //   var col = 0
-    //   while (col < slice.numCols) {
-    //     histogram(slice(row,col)) = histogram(slice(row,col))+1
-    //     col += 1
-    //   }
-    //   row += 1
-    // }      
-    // 
-    // // this produces violated error:
-    // if (histogram.max > 1) histogram.maxIndex else 0
-    // histogram.maxIndex
+    val slice = (Matrix.rand(3,3)*100).map(_.AsInstanceOf[Int])    
+    val histogram = DenseVector[Int](256, true)    
+    var row = 0
+    while (row < slice.numRows) {
+      var col = 0
+      while (col < slice.numCols) {
+        histogram(slice(row,col)) = histogram(slice(row,col))+1
+        col += 1
+      }
+      row += 1
+    }      
+    
+    // this produces violated error:
+    if (histogram.max > 1) histogram.maxIndex else 0
+    histogram.maxIndex
     
     // // this doesn't:
     // histogram.max
@@ -46,29 +46,29 @@ trait Scratchpad extends OptiMLApplication {
     // Bug 2: code motion unsafely hoisting slice out of conditional (if slice is changed to reflectEffect, this works properly...)
     
     // block must have some effects (while loop?) in order to trigger this...
-    val rowDim = 3
-    val colDim = 3
-    val rowOffset = (rowDim - unit(1)) / unit(2)
-    val colOffset = (colDim - unit(1)) / unit(2)
-    def block(x: Rep[DenseMatrix[Int]]) = { 
-      var row = 0
-      while (row < x.numRows) { row += 1 }        
-      row      
-    }
-    
-    val x = (Matrix.rand(3,3)*100).map(_.AsInstanceOf[Int])    
-    val y = (unit(0) :: x.numRows, unit(0) :: x.numCols) { (row,col) =>
-      if ((row >= rowOffset) && (row < x.numRows - rowOffset) && (col >= colOffset) && (col < x.numCols - colOffset)) {
-        // !! x.slice is hoisted out of the conditional !!
-        block(x.slice(row - rowOffset, row + rowOffset + unit(1), col - colOffset, col + colOffset + unit(1)))
-      } else {
-        unit(0)
-      }
-    }
-    
-    println("y numRows: " + y.numRows)
-    println("y numCols: " + y.numCols)
-    y(0).pprint
+    // val rowDim = 3
+    // val colDim = 3
+    // val rowOffset = (rowDim - unit(1)) / unit(2)
+    // val colOffset = (colDim - unit(1)) / unit(2)
+    // def block(x: Rep[DenseMatrix[Int]]) = { 
+    //   var row = 0
+    //   while (row < x.numRows) { row += 1 }        
+    //   row      
+    // }
+    // 
+    // val x = (Matrix.rand(3,3)*100).map(_.AsInstanceOf[Int])    
+    // val y = (unit(0) :: x.numRows, unit(0) :: x.numCols) { (row,col) =>
+    //   if ((row >= rowOffset) && (row < x.numRows - rowOffset) && (col >= colOffset) && (col < x.numCols - colOffset)) {
+    //     // !! x.slice is hoisted out of the conditional !!
+    //     block(x.slice(row - rowOffset, row + rowOffset + unit(1), col - colOffset, col + colOffset + unit(1)))
+    //   } else {
+    //     unit(0)
+    //   }
+    // }
+    // 
+    // println("y numRows: " + y.numRows)
+    // println("y numCols: " + y.numCols)
+    // y(0).pprint
     
     
     
