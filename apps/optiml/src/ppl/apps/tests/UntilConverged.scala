@@ -2,6 +2,7 @@ package ppl.apps.tests
 
 import ppl.delite.framework.DeliteApplication
 import ppl.dsl.optiml._
+import ppl.apps.ml.lbpdenoise.LBPData
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -13,7 +14,7 @@ import ppl.dsl.optiml._
 
 object UntilConvergedRunner extends OptiMLApplicationRunner with UntilConverged
 
-trait UntilConverged extends OptiMLApplication {
+trait UntilConverged extends LBPData {
   def print_usage = {
     println("Usage: UntilConverged <rows> <cols> <print interval> <limit>")
     println("Example: UntilConverged 100 100 2500000 1000.0")
@@ -41,11 +42,10 @@ trait UntilConverged extends OptiMLApplication {
     
     untilconverged(g) {
       v =>
-        val vdata = v.data.AsInstanceOf[DenoiseVertexData]
+        val belief = v.data.belief + Vector.ones(numRings)
         
-        val belief = vdata.belief + Vector.ones(numRings)
-        
-        vdata.setBelief(belief)
+        // vdata.setBelief(belief)
+        v.setData(DenoiseVertexData(v.data.id, belief, v.data.potential))
         
         if(count % interval == 0) {
           println(count)

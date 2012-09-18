@@ -467,31 +467,18 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   // we need a concept of a composite op to do this without unrolling, so that we can have a different result type than the while
   def optiml_untilconverged[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], block: Rep[Vertex[VD,ED]] => Rep[Unit])(implicit ctx: SourceContext) = {
     val vertices = g.vertices
-    val tasks : Rep[DenseVector[Vertex[VD,ED]]] = vertices.mutable
-    val seen = Set[Vertex[VD,ED]]()
+    val tasks = vertices.mutable // not a deep clone - contains the same vertex references as g.vertices
     
     while(tasks.length > unit(0)) {
-      //tasks.mforeach(block)
-      tasks.foreach(block)
+      tasks.foreach(block) // usually updates graph vertices
       tasks.clear()
-      //var totalTasks = unit(0)
       
+      // check all graph vertices for new tasks (not just the previous task list)
       for(i <- unit(0) until vertices.length) {
-        val vtasks = vertices(i).tasks
-        //totalTasks += vtasks.length
-        for(j <- unit(0) until vtasks.length) {
-          val task = vtasks(j).AsInstanceOf[Vertex[VD,ED]]
-          if(!seen.contains(task)) {
-            tasks <<= task   //TODO TR: non-mutable write (use mclone)
-            seen.add(task)   //TODO TR: non-mutable write
-          }
-        }
-
+        tasks <<= vertices(i).tasks.distinct
         vertices(i).clearTasks()
       }
-
-      //println("tasks: " + tasks.length)
-      seen.clear()
+      // println("tasks: " + tasks.length)
     }
   }
 

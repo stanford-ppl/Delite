@@ -22,7 +22,9 @@ trait EdgeOps extends Variables {
   class EdgeOpsCls[VD:Manifest,ED:Manifest](e: Rep[Edge[VD,ED]]) {
     def graph: Rep[Graph[VD,ED]] = edge_get_graph(e)
     def inData: Rep[ED] = edge_get_indata(e) 
+    def setInData(x: Rep[ED]) = edge_set_indata(e,x)
     def outData: Rep[ED] = edge_get_outdata(e)
+    def setOutData(x: Rep[ED]) = edge_set_outdata(e,x)
     def v1: Rep[Vertex[VD,ED]] = edge_get_v1(e)
     def v2: Rep[Vertex[VD,ED]] = edge_get_v2(e)
      
@@ -40,6 +42,9 @@ trait EdgeOps extends Variables {
   def edge_get_outdata[VD:Manifest,ED:Manifest](e: Rep[Edge[VD,ED]]): Rep[ED] 
   def edge_get_v1[VD:Manifest,ED:Manifest](e: Rep[Edge[VD,ED]]): Rep[Vertex[VD,ED]] 
   def edge_get_v2[VD:Manifest,ED:Manifest](e: Rep[Edge[VD,ED]]): Rep[Vertex[VD,ED]] 
+  
+  def edge_set_indata[VD:Manifest,ED:Manifest](e: Rep[Edge[VD,ED]], data: Rep[ED]): Rep[Unit] 
+  def edge_set_outdata[VD:Manifest,ED:Manifest](e: Rep[Edge[VD,ED]], data: Rep[ED]): Rep[Unit]   
   
   def edge_in[VD:Manifest,ED:Manifest](e: Rep[Edge[VD,ED]], v: Rep[Vertex[VD,ED]]): Rep[ED]
   def edge_out[VD:Manifest,ED:Manifest](e: Rep[Edge[VD,ED]], v: Rep[Vertex[VD,ED]]): Rep[ED]
@@ -74,7 +79,8 @@ trait EdgeOpsExp extends EdgeOps with EffectExp {
   case class EdgeGetOutData[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]]) extends Def[ED]
   case class EdgeGetV1[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]]) extends Def[Vertex[VD,ED]]
   case class EdgeGetV2[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]]) extends Def[Vertex[VD,ED]]
-  
+  case class EdgeSetInData[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]], data: Exp[ED]) extends Def[Unit]
+  case class EdgeSetOutData[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]], data: Exp[ED]) extends Def[Unit]
   
   //////////////////////////////////////////////////
   // implemented via kernel embedding
@@ -87,19 +93,22 @@ trait EdgeOpsExp extends EdgeOps with EffectExp {
   /////////////////////
   // object interface
 
-  def edge_obj_new[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], in: Exp[ED], out: Exp[ED], a: Exp[Vertex[VD,ED]], b: Exp[Vertex[VD,ED]]) = reflectPure(EdgeObjectNew(g.unsafeImmutable,in,out,a,b))
+  def edge_obj_new[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], in: Exp[ED], out: Exp[ED], a: Exp[Vertex[VD,ED]], b: Exp[Vertex[VD,ED]]) = reflectMutable(EdgeObjectNew(g.unsafeImmutable,in,out,a,b))
 
   /////////////////////
   // class interface
   
   def edge_get_graph[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]]) = reflectPure(EdgeGetGraph[VD,ED](e))
-  def edge_get_indata[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]]) = reflectPure(EdgeGetInData(e))
-  def edge_get_outdata[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]]) = reflectPure(EdgeGetOutData(e))
+  def edge_get_indata[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]]) = reflectEffect(EdgeGetInData(e), Global()) //reflectPure(EdgeGetInData(e))
+  def edge_get_outdata[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]]) = reflectEffect(EdgeGetOutData(e), Global()) //reflectPure(EdgeGetOutData(e))
   def edge_get_v1[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]]) = reflectPure(EdgeGetV1(e))
   def edge_get_v2[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]]) = reflectPure(EdgeGetV2(e))
   
-  def edge_in[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]], v: Exp[Vertex[VD,ED]]) = reflectPure(EdgeIn(e,v))
-  def edge_out[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]], v: Exp[Vertex[VD,ED]]) = reflectPure(EdgeOut(e,v))
+  def edge_set_indata[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]], data: Exp[ED]) = reflectEffect(EdgeSetInData(e,data), Global()) //reflectWrite(e)(EdgeSetInData(e,data))
+  def edge_set_outdata[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]], data: Exp[ED]) = reflectEffect(EdgeSetOutData(e,data), Global()) //reflectWrite(e)(EdgeSetOutData(e,data))
+  
+  def edge_in[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]], v: Exp[Vertex[VD,ED]]) = reflectEffect(EdgeIn(e,v), Global()) //reflectPure(EdgeIn(e,v))
+  def edge_out[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]], v: Exp[Vertex[VD,ED]]) = reflectEffect(EdgeOut(e,v), Global()) //reflectPure(EdgeOut(e,v))
   def edge_target[VD:Manifest,ED:Manifest](e: Exp[Edge[VD,ED]], v: Exp[Vertex[VD,ED]]) = reflectPure(EdgeTarget(e,v))
 }
 
@@ -122,6 +131,8 @@ trait ScalaGenEdgeOps extends BaseGenEdgeOps with ScalaGenBase {
       case EdgeGetOutData(e) => emitValDef(sym, quote(e) + "._outData")
       case EdgeGetV1(e) => emitValDef(sym, quote(e) + "._v1")
       case EdgeGetV2(e) => emitValDef(sym, quote(e) + "._v2")
+      case EdgeSetInData(e,d) => emitValDef(sym, quote(e) + "._inData = " + quote(d))
+      case EdgeSetOutData(e,d) => emitValDef(sym, quote(e) + "._outData = " + quote(d))      
       case _ => super.emitNode(sym, rhs)
     }
   }

@@ -93,7 +93,7 @@ trait OptiMLCCodeGenPkg extends OptiLACCodeGenPkg
  * This is the trait that every OptiML application must extend.
  */
 trait OptiML extends OptiMLScalaOpsPkg with OptiLA with RecordOps
-  with LanguageOps with ApplicationOps with LBPOps // TODO: LBPOps should be auto-generated with ApplicationOps
+  with LanguageOps with ApplicationOps 
   with MLInputReaderOps with MLOutputWriterOps
   with CanSumOps
   with VectorOps with OptiMLDenseVectorOps with OptiMLDenseVectorViewOps with OptiMLSparseVectorOps with OptiMLSparseVectorViewOps with OptiMLRangeVectorOps
@@ -120,7 +120,7 @@ trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities wit
  * These are the corresponding IR nodes for OptiML.
  */
 trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp with RecordOpsExp
-  with LanguageOpsExpOpt with ApplicationOpsExp with LBPOpsExp 
+  with LanguageOpsExpOpt with ApplicationOpsExp
   with MLInputReaderOpsExp with MLOutputWriterOpsExp
   with VectorOpsExpOpt with MatrixOpsExpOpt with DenseMatrixOpsExpOpt 
   with IndexVectorOpsExp with IndexVectorDenseOpsExpOpt with IndexVectorRangeOpsExp with IndexVector2OpsExp with IndexVectorTriangularOpsExp
@@ -207,7 +207,7 @@ trait OptiMLCodeGenBase extends OptiLACodeGenBase {
 }
 
 trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenRecordOps
-  with ScalaGenApplicationOps with ScalaGenLBPOps with ScalaGenLanguageOps 
+  with ScalaGenApplicationOps with ScalaGenLanguageOps 
   with ScalaGenVectorOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps with ScalaGenIndexVectorDenseOps with ScalaGenIndexVector2Ops 
   with ScalaGenStreamOps with ScalaGenStreamRowOps
   with ScalaGenGraphOps with ScalaGenEdgeOps with ScalaGenVertexOps with ScalaGenVSetOps
@@ -235,16 +235,6 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
 
   override def remap(s: String) = parmap(s)
   
-  override def remap[A](m: Manifest[A]): String = {
-    // val mGI = manifest[GrayscaleImage]
-    // m match {
-    //   case `mGI` => remap(manifest[Image[Int]])
-    //  // AKS TODO: remap Image[T] to DenseMatrix[T]
-    // case _ => super.remap(m)
-    // }
-    super.remap(m)
-  }
-
   override def specmap(line: String, t: String) : String = {
     var res = line.replaceAll("import ppl.dsl.optila.datastruct.scala._", "") // ends up in the same package in generated code    
     super.specmap(res, t)

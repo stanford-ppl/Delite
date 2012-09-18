@@ -58,7 +58,11 @@ trait GraphImplOpsStandard extends GraphImplOps {
 
     val adjacencies = graph_get_adjacencies(g.unsafeImmutable)
     if (!adjacencies.contains(v)) {      
-      hashmap_unsafe_update(adjacencies, v, List[(Edge[VD,ED], Vertex[VD,ED])]())
+      // some strangeness going on here.. the commented version appears to sometimes CSE the List constructor to a prior List[Double] empty constructor
+      // but the table lookup is typed -- unless we are inferring Any along the way somewhere and getting a match?
+      // 
+      // hashmap_unsafe_update(adjacencies, v, List[(Edge[VD,ED], Vertex[VD,ED])]())
+      hashmap_unsafe_update(adjacencies, v, unit(scala.List[(Edge[VD,ED], Vertex[VD,ED])]())) 
       // adjacencies(v) = List[(Edge[VD,ED], Vertex[VD,ED])]()
     }
   }
