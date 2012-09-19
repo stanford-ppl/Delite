@@ -49,9 +49,14 @@ trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
     def isRow(implicit ctx: SourceContext) = rangevector_isrow(elem)
     def apply(n: Rep[Int])(implicit ctx: SourceContext) = rangevector_apply(elem,n)
     def sort(implicit o: Ordering[Int], ctx: SourceContext) = elem.Clone    
+    def t(implicit ctx: SourceContext) = DenseVector[Int](unit(0), !elem.isRow) << elem
+        
+    // Range vector ops
+    def start(implicit ctx: SourceContext) = rangevector_start(elem)
+    def end(implicit ctx: SourceContext) = rangevector_end(elem)
+    def stride(implicit ctx: SourceContext) = rangevector_stride(elem)
     
     // should forward to a RangeVectorOpsExp implementation which throws an OptiLA compiler error instead of using exceptions
-    def t(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be transposed") // TODO    
     def mt()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")    
     def update(n: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext): Rep[Unit] = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
@@ -67,6 +72,9 @@ trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
   def rangevector_apply(x: Rep[RangeVector], n: Rep[Int])(implicit ctx: SourceContext): Rep[Int]
   // def rangevector_times_matrix(x: Rep[RangeVector], y: Rep[Matrix[Int]]): Rep[DenseVector[Int]]
   // def rangevector_flatmap[B:Manifest](x: Rep[RangeVector], f: Rep[A] => Rep[DenseVector[B]]): Rep[DenseVector[B]]
+  def rangevector_start(x: Rep[RangeVector])(implicit ctx: SourceContext): Rep[Int]
+  def rangevector_end(x: Rep[RangeVector])(implicit ctx: SourceContext): Rep[Int]
+  def rangevector_stride(x: Rep[RangeVector])(implicit ctx: SourceContext): Rep[Int]
 }
 
 trait RangeVectorOpsExp extends RangeVectorOps with DeliteCollectionOpsExp { this: OptiLAExp =>
@@ -90,6 +98,21 @@ trait RangeVectorOpsExp extends RangeVectorOps with DeliteCollectionOpsExp { thi
     case _ => None
   }
   
+  def rangevector_start(x: Exp[RangeVector])(implicit ctx: SourceContext) = x match {
+    case Def(VectorObjectRange(s,e,d,r)) => s
+    case Def(v@Reflect(VectorObjectRange(s,e,d,r), u, es)) /*if context.contains(v)*/ => s
+  }
+  
+  def rangevector_end(x: Exp[RangeVector])(implicit ctx: SourceContext) = x match {
+    case Def(VectorObjectRange(s,e,d,r)) => e
+    case Def(v@Reflect(VectorObjectRange(s,e,d,r), u, es)) /*if context.contains(v)*/ => e
+  }
+  
+  def rangevector_stride(x: Exp[RangeVector])(implicit ctx: SourceContext) = x match {
+    case Def(VectorObjectRange(s,e,d,r)) => d
+    case Def(v@Reflect(VectorObjectRange(s,e,d,r), u, es)) /*if context.contains(v)*/ => d
+  }
+    
   /////////////////////
   // delite collection
     

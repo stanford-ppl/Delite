@@ -21,7 +21,7 @@ trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
     }    
   }
 
-  trait IndexVecOpsCls extends VecOpsCls[Int] with InterfaceOps[IndexVector] {
+  trait IndexVecOpsCls extends OptiMLVecOpsOverrides[Int] with InterfaceOps[IndexVector] {
     //implicit def toOps(x: Rep[VA]): IndexVecOpsCls
     //implicit def toIntf(x: Rep[VA]): Interface[IndexVector]        
     type V[X] = DenseVector[X] // conversion operations on IndexVectors will return a DenseVector
