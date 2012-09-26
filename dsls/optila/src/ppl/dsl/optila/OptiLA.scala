@@ -9,7 +9,7 @@ import ppl.delite.framework.datastructures._
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
-import ppl.delite.framework.codegen.c.TargetC
+import ppl.delite.framework.codegen.cpp.TargetCpp
 import ppl.delite.framework.codegen.opencl.TargetOpenCL
 import ppl.delite.framework.codegen.delite.overrides._
 import ppl.delite.framework.transform._
@@ -91,9 +91,10 @@ trait OptiLAOpenCLCodeGenPkg extends OpenCLGenDSLOps with OpenCLGenImplicitOps w
   { val IR: OptiLAScalaOpsPkgExp  }
 
 trait OptiLACCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderingOps
+  with CGenEqual with CGenIfThenElse with CGenVariables with CGenWhile with CGenFunctions
   with CGenStringOps with CGenRangeOps with CGenIOOps with CGenArrayOps with CGenBooleanOps
-  with CGenPrimitiveOps with CGenMiscOps with CGenFunctions with CGenEqual with CGenIfThenElse
-  with CGenVariables with CGenWhile with CGenListOps with CGenSeqOps with CGenObjectOps
+  with CGenPrimitiveOps with CGenMiscOps
+  with CGenListOps with CGenSeqOps with CGenMathOps with CGenCastingOps with CGenSetOps with CGenObjectOps
   with CGenSynchronizedArrayBufferOps with CGenHashMapOps with CGenIterableOps with CGenArrayBufferOps
   { val IR: OptiLAScalaOpsPkgExp  }
 
@@ -147,7 +148,7 @@ trait OptiLAExp extends OptiLACompiler with InterfacesExp with OptiLAScalaOpsPkg
       case _:TargetScala => new OptiLACodeGenScala{val IR: OptiLAExp.this.type = OptiLAExp.this}
       case _:TargetCuda => new OptiLACodeGenCuda{val IR: OptiLAExp.this.type = OptiLAExp.this}
       case _:TargetOpenCL => new OptiLACodeGenOpenCL{val IR: OptiLAExp.this.type = OptiLAExp.this}
-      case _:TargetC => new OptiLACodeGenC{val IR: OptiLAExp.this.type = OptiLAExp.this}
+      case _:TargetCpp => new OptiLACodeGenC{val IR: OptiLAExp.this.type = OptiLAExp.this}
       case _ => err("optila does not support this target")
     }
   }  
@@ -311,6 +312,7 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
     }
   }
 
+  /*
   override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
     case "ppl.dsl.optila.DenseVector[Int]" => true
     case "ppl.dsl.optila.DenseVector[Long]" => true
@@ -350,6 +352,7 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
     case "DeliteArray<int>" | "DeliteArray<long>" | "DeliteArray<float>" | "DeliteArray<double>" | "DeliteArray<bool>" => delitearrayCopyMutableInputDtoH(sym)
     case _ => super.copyMutableInputDtoH(sym)
   }
+  */
 
   override def getDSLHeaders: String = {
     val out = new StringBuilder
@@ -404,6 +407,7 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
     }
   }
 
+  /*
   override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
     case "ppl.dsl.optila.DenseVector[Int]" => true
     case "ppl.dsl.optila.DenseVector[Long]" => true
@@ -455,6 +459,7 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
       Map("isRow"->Manifest.Boolean, "start"->Manifest.Int, "stride"->Manifest.Int, "end"->Manifest.Int)
     case _ => super.unpackObject(sym)
   }
+  */
 
   override def getDSLHeaders: String = {
     val out = new StringBuilder
@@ -467,14 +472,74 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
   }
 }
 
-trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenDeliteOps 
-  with CGenArithOps with CGenVectorOps with CGenDenseVectorOps with CGenMatrixOps with CGenDenseMatrixOps //with CGenMatrixRowOps
-  with CGenVariantsOps with DeliteCGenAllOverrides
+trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenDeliteOps
+  with CGenArithOps with CGenVectorOps with CGenDenseVectorOps with CGenDenseVectorViewOps with CGenMatrixOps with CGenDenseMatrixOps //with CGenMatrixRowOps
+  with CGenDeliteCollectionOps with CGenDeliteArrayOps
+  with DeliteCGenAllOverrides with DeliteCppHostTransfer with OptiLACppHostTransfer
 {
   val IR: DeliteApplication with OptiLAExp
   import IR._
 
-  override def remap[A](m: Manifest[A]) : String = m.toString match {
-    case _ => super.remap(m)
+  override def remap[A](m: Manifest[A]) : String = {
+    val startsWith = m.toString.split("\\[")
+    startsWith(0) match {
+      case "ppl.dsl.optila.DenseVector" => "DenseVector< " + remap(m.typeArguments(0)) + " >"
+      case "ppl.dsl.optila.DenseMatrix" => "DenseMatrix< " + remap(m.typeArguments(0)) + " >"
+      case _ => {
+        m.toString match {
+          case "Array[Int]" => "DeliteArray< int >"
+          case "Array[Long]" => "DeliteArray< long >"
+          case "Array[Float]" => "DeliteArray< float >"
+          case "Array[Double]" => "DeliteArray< double >"
+          case "Array[Boolean]" => "DeliteArray< bool >"
+          case _ => super.remap(m)
+        }
+      }
+    }
+  }
+
+    /*
+    m.toString match {
+      case "ppl.dsl.optila.DenseVector[Int]" => "DenseVector<int> "
+      case "ppl.dsl.optila.DenseVector[Long]" => "DenseVector<long> "
+      case "ppl.dsl.optila.DenseVector[Float]" => "DenseVector<float> "
+      case "ppl.dsl.optila.DenseVector[Double]" => "DenseVector<double> "
+      case "ppl.dsl.optila.DenseVector[Boolean]" => "DenseVector<bool> "
+      case "ppl.dsl.optila.DenseMatrix[Int]" => "DenseMatrix<int>"
+      case "ppl.dsl.optila.DenseMatrix[Long]" => "DenseMatrix<long>"
+      case "ppl.dsl.optila.DenseMatrix[Float]" => "DenseMatrix<float>"
+      case "ppl.dsl.optila.DenseMatrix[Double]" => "DenseMatrix<double>"
+      case "ppl.dsl.optila.DenseMatrix[Boolean]" => "DenseMatrix<bool>"
+      //case "ppl.dsl.optila.RangeVector" => "RangeVector"
+      //case "ppl.dsl.optila.DenseVectorView[Int]" => "DenseVectorView<int>"
+      //case "ppl.dsl.optila.DenseVectorView[Long]" => "DenseVectorView<long>"
+      //case "ppl.dsl.optila.DenseVectorView[Float]" => "DenseVectorView<float>"
+      //case "ppl.dsl.optila.DenseVectorView[Double]" => "DenseVectorView<double>"
+      //case "ppl.dsl.optila.DenseVectorView[Boolean]" => "DenseVectorView<bool>"
+      //case "ppl.dsl.optila.MatrixRow[Int]" => "DenseVectorView<int>"
+      //case "ppl.dsl.optila.MatrixRow[Long]" => "DenseVectorView<long>"
+      //case "ppl.dsl.optila.MatrixRow[Float]" => "DenseVectorView<float>"
+      //case "ppl.dsl.optila.MatrixRow[Double]" => "DenseVectorView<double>"
+      //case "ppl.dsl.optila.MatrixRow[Boolean]" => "DenseVectorView<bool>"
+      //case "Array[Int]" => "DeliteArray<int> *"
+      //case "Array[Long]" => "DeliteArray<long> *"
+      //case "Array[Float]" => "DeliteArray<float> *"
+      //case "Array[Double]" => "DeliteArray<double> *"
+      //case "Array[Boolean]" => "DeliteArray<bool> *"
+      case _ => super.remap(m)
+    }
+    */
+
+  override def getDSLHeaders: String = {
+    val out = new StringBuilder
+    out.append("#include <float.h>\n")
+    out.append("#include \"Ref.h\"\n")
+    out.append("#include \"DeliteArray.h\"\n")
+    out.append("#include \"DenseVector.h\"\n")
+    out.append("#include \"RangeVector.h\"\n")
+    out.append("#include \"DeliteArray.h\"\n")
+    out.append("#include \"DenseMatrix.h\"\n")
+    //out.append("#include \"library.h\"\n") // external library
+    out.toString
   }
 }

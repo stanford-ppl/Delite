@@ -2,7 +2,6 @@ package ppl.delite.runtime.scheduler
 
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.DeliteTaskGraph
-import java.util.ArrayDeque
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.cost._
 
@@ -36,7 +35,7 @@ final class SMPStaticScheduler extends StaticScheduler with ParallelUtilizationC
   protected def scheduleFlat(graph: DeliteTaskGraph) = scheduleFlat(graph, false)
 
   protected def scheduleFlat(graph: DeliteTaskGraph, sequential: Boolean) {
-    val opQueue = new ArrayDeque[DeliteOP]
+    val opQueue = new OpList
     val schedule = PartialSchedule(numThreads)
     enqueueRoots(graph, opQueue)
     while (!opQueue.isEmpty) {

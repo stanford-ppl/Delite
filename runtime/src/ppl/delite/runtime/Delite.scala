@@ -32,7 +32,7 @@ object Delite {
   }
 
   private def printConfig() {
-    println("Delite Runtime executing with " + Config.numThreads + " CPU thread(s) and " + Config.numGPUs + " GPU(s)")
+    println("Delite Runtime executing with " + Config.numThreads + " CPU thread(s) and " + (Config.numCuda+Config.numOpenCL) + " GPU(s)")
   }
 
   def main(args: Array[String]) {
@@ -51,10 +51,12 @@ object Delite {
 
     val scheduler = Config.scheduler match {
       case "SMP" => new SMPStaticScheduler
+      case "ACC" => new Acc_StaticScheduler
       case "SMP+GPU" => new SMP_GPU_StaticScheduler
       case "default" => {
-        if (Config.numGPUs == 0) new SMPStaticScheduler
-        else if (Config.numGPUs == 1) new SMP_GPU_StaticScheduler
+        if (Config.numCuda + Config.numOpenCL + Config.numCpp == 0) new SMPStaticScheduler
+        else if (Config.numCpp > 0 && Config.numCuda + Config.numOpenCL == 0) new Acc_StaticScheduler
+        else if (Config.numCpp == 0 && Config.numCuda + Config.numOpenCL == 1) new SMP_GPU_StaticScheduler
         else error("No scheduler currently exists that can handle the requested resources")
       }
       case _ => throw new IllegalArgumentException("Requested scheduler is not recognized")
@@ -62,19 +64,19 @@ object Delite {
 
     val executor = Config.executor match {
       case "SMP" => new SMPExecutor
-      case "SMP+GPU" => new SMP_GPU_Executor
-      case "OpenCLExecutor" => new OpenCLExecutor     //TODO: Remove this option after debugging
+      case "ACC" => new SMP_Acc_Executor
+      case "SMP+GPU" => new SMP_Acc_Executor
       case "default" => {
-        if (Config.numGPUs == 0) new SMPExecutor
-        else new SMP_GPU_Executor
+        if (Config.numCuda + Config.numOpenCL + Config.numCpp == 0) new SMPExecutor
+        else new SMP_Acc_Executor
       }
       case _ => throw new IllegalArgumentException("Requested executor is not recognized")
     }
 
     def abnormalShutdown() {
       executor.shutdown()
-      if (!Config.noRegenerate)
-        Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
+      //if (!Config.noRegenerate)
+        //Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
     }
 
     try {
@@ -110,7 +112,7 @@ object Delite {
         PerformanceTimer.stop("all", false)
         PerformanceTimer.printAll(globalStart, globalStartNanos)
         if (Config.dumpProfile) PerformanceTimer.dumpProfile(globalStart, globalStartNanos)
-        if (Config.dumpStats) PerformanceTimer.dumpStats()        
+        if (Config.dumpStats) PerformanceTimer.dumpStats()
 	    System.gc()
       }
 
@@ -139,13 +141,10 @@ object Delite {
   }
 
   def loadSources(graph: DeliteTaskGraph) {
-    if (graph.targets contains Targets.Scala)
-      ScalaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + ScalaCompile.target + File.separator).toAbsolute))
-    if (graph.targets contains Targets.Cuda) {
-      CudaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + CudaCompile.target + File.separator).toAbsolute))
+    for (target <- Targets.values) {
+      if (graph.targets contains target)
+        Compilers(target).cacheDegSources(Directory(Path(graph.kernelPath + File.separator + Compilers(target).target + File.separator).toAbsolute))
     }
-    if (graph.targets contains Targets.OpenCL)
-      OpenCLCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + OpenCLCompile.target + File.separator).toAbsolute))
   }
 
   //abnormal shutdown

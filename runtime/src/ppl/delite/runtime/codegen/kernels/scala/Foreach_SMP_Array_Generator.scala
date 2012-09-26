@@ -1,7 +1,7 @@
 package ppl.delite.runtime.codegen.kernels.scala
 
 import ppl.delite.runtime.graph.ops.OP_Foreach
-import ppl.delite.runtime.codegen.{ExecutableGenerator, ScalaCompile}
+import ppl.delite.runtime.codegen.{ScalaExecutableGenerator, ScalaCompile}
 import ppl.delite.runtime.graph.DeliteTaskGraph
 
 /**
@@ -51,7 +51,7 @@ object Foreach_SMP_Array_Generator {
   }
 
   private def writeHeader(out: StringBuilder, master: OP_Foreach, idx: Int, kernelPath: String) {
-    ExecutableGenerator.writePath(kernelPath, out)
+    ScalaExecutableGenerator.writePath(kernelPath, out)
     out.append("import java.util.concurrent.locks.ReentrantLock\n")
     out.append("object ")
     out.append(kernelName(master, idx))
@@ -121,7 +121,7 @@ object Foreach_SMP_Array_Header_Generator {
   }
 
   private def writeObject(out: StringBuilder, op: OP_Foreach, kernelPath: String) {
-    ExecutableGenerator.writePath(kernelPath, out)
+    ScalaExecutableGenerator.writePath(kernelPath, out)
     out.append("import java.util.concurrent.ConcurrentHashMap\n")
     out.append("import java.util.concurrent.locks.ReentrantLock\n")
     out.append("object ")

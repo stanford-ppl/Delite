@@ -14,19 +14,20 @@ import java.io.File
  * Stanford University
  */
 
-class GPUExecutionThread(deviceNum: Int) extends ExecutionThread {
+class AccExecutionThread(deviceNum: Int) extends ExecutionThread {
 
   override def run {
-    initializeDevice(deviceNum)
+    if (deviceNum >= Config.numCpp)
+      initializeDevice(deviceNum)
     super.run
   }
 
   @native def initializeDevice(deviceNum: Int): Unit
 
-  load()
+  loadSlave()
 
   //load gpu init library (and create it if absent)
-  private def load() {
+  private def loadSlave() {
     def loadGPU(target: String, compiler: CCompile) = {
       val sep = File.separator
       val path = Config.deliteHome + sep + "runtime" + sep + target + sep + target + "Init." + OS.libExt
@@ -36,10 +37,14 @@ class GPUExecutionThread(deviceNum: Int) extends ExecutionThread {
       System.load(path)
     }
 
-    if (Config.useOpenCL)
-      loadGPU("opencl", OpenCLCompile)
-    else
+    if (deviceNum > Config.numCpp && deviceNum < Config.numCpp + Config.numCuda) {
       loadGPU("cuda", CudaCompile)
+    }
+    else if (deviceNum > Config.numCpp + Config.numCuda) {
+      loadGPU("opencl", OpenCLCompile)
+    }
+    //else
+    //  throw new RuntimeException("Cannot load unknown device ID " + deviceNum)
   }
 
 }

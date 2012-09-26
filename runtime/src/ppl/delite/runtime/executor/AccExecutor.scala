@@ -15,12 +15,12 @@ import ppl.delite.runtime.scheduler.StaticSchedule
  * A runtime Executor for a single GPU device
  * This executor spawns a host thread to manage the device
  */
-class GPUExecutor(val deviceNum: Int) extends Executor {
+class AccExecutor(val deviceNum: Int) extends Executor {
 
   //TODO: how do we choose the appropriate number of streams for the device?
   val numStreams = 1
 
-  private val host = new GPUExecutionThread(deviceNum)
+  private val host = new AccExecutionThread(deviceNum)
   private var hostThread: Thread = _
 
   /**
@@ -31,7 +31,7 @@ class GPUExecutor(val deviceNum: Int) extends Executor {
   }
 
   def init() {
-    val thread = new Thread(host, "GPUHostThread-"+deviceNum)
+    val thread = new Thread(host, "AccHostThread-"+deviceNum)
     hostThread = thread
     thread.start
   }

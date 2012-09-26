@@ -2,7 +2,6 @@ package ppl.delite.runtime.scheduler
 
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.ops._
-import java.util.ArrayDeque
 import ppl.delite.runtime.cost._
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.targets.Targets
@@ -32,7 +31,7 @@ trait StaticScheduler {
 
   protected def scheduleSequential(graph: DeliteTaskGraph)
 
-  protected def enqueueRoots(graph: DeliteTaskGraph, opQueue: ArrayDeque[DeliteOP]) {
+  protected def enqueueRoots(graph: DeliteTaskGraph, opQueue: OpList) {
     for (op <- graph.ops) {
       if (!op.isSchedulable) {//if not already in opQueue (protects against same consumer appearing in list multiple times)
         op.processSchedulable
@@ -42,15 +41,12 @@ trait StaticScheduler {
   }
 
   protected def split(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resourceList: Seq[Int]) {
-    val header = OpHelper.expand(op, resourceList.length, graph)
-    if (resourceList.length == 1) //if confined to one resource, ensure header is put on the same resource
-      scheduleOn(header, schedule, resourceList(0))
-    else
-      scheduleOne(header, graph, schedule)
+    val header = OpHelper.expand(op, resourceList.length, graph, OpHelper.scheduledTarget(resourceList(0)))
+    scheduleOn(header, schedule, resourceList(0)) //pick a resource out of the list to do the header
 
-    for (i <- resourceList) {
-      val chunk = OpHelper.split(op, i, resourceList.length, graph.kernelPath)
-      scheduleOn(chunk, schedule, i)
+    val chunks = OpHelper.split(op, resourceList.length, graph.kernelPath, OpHelper.scheduledTarget(resourceList(0)))
+    for ((resource, idx) <- resourceList zip (0 until resourceList.length)) {
+      scheduleOn(chunks(idx), schedule, resource)
     }
   }
 

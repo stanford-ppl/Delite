@@ -143,12 +143,12 @@ trait DeliteCGenWhile extends CGenEffect with DeliteBaseGenWhile {
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case DeliteWhile(c,b) =>
-        // calculate condition
         emitBlock(c)
         stream.println("bool cond_%s = %s;".format(quote(sym),quote(getBlockResult(c))))
-        // Emit while loop
-        stream.print("while (cond_%s) {".format(quote(sym)))
+        stream.println("while (cond_%s) {".format(quote(sym)))
         emitBlock(b)
+        emitBlock(c)
+        stream.println("cond_%s = %s;".format(quote(sym),quote(getBlockResult(c))))
         stream.println("}")
       case _ => super.emitNode(sym, rhs)
     }

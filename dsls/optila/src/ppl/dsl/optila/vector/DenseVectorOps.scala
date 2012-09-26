@@ -687,14 +687,23 @@ trait CGenDenseVectorOps extends BaseGenDenseVectorOps with CGenFat {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case DenseVectorApply(x, n) =>
-      emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
-    case DenseVectorUpdate(x,n,y) =>
-      stream.println("%s.update(%s,%s);".format(quote(x),quote(n),quote(y)))
-    case DenseVectorLength(x)    =>
-      emitValDef(sym, quote(x) + ".length")
-    case DenseVectorIsRow(x)     =>
-      emitValDef(sym, quote(x) + ".isRow")
+    case v@DenseVectorNew(length, isRow) => emitValDef(sym, "new %s(%s, %s)".format(remap(sym.tp),quote(length),quote(isRow)))
+    case DenseVectorApply(x,n) => emitValDef(sym, quote(x) + "->data[" + quote(n) + "]")
+    case DenseVectorUpdate(x,n,y) => stream.println(quote(x) + "->data[" + quote(n) + "] = " + quote(y) + ";")
+    case DenseVectorLength(x) => emitValDef(sym, quote(x) + "->length")
+    case DenseVectorIsRow(x) => emitValDef(sym, quote(x) + "->isRow")
+    case DenseVectorRawData(x) => emitValDef(sym, quote(x) + "->getData()")
+    case DenseVectorSetLength(x,v) => stream.println(quote(x) + "->length = " + quote(v) + ";")
+    case DenseVectorSetIsRow(x,v) => stream.println(quote(x) + "->isRow = " + quote(v) + ";")
+    case DenseVectorSetRawData(x,v) => stream.println(quote(x) + "->setData(" + quote(v) + ");")
+
+    case DenseVectorZeroDouble(length, isRow) => emitValDef(sym, "new %s(%s, %s)".format(remap(sym.tp),quote(length),quote(isRow)))
+    case DenseVectorZeroFloat(length, isRow) => emitValDef(sym, "new %s(%s, %s)".format(remap(sym.tp),quote(length),quote(isRow)))
+    case DenseVectorZeroInt(length, isRow) => emitValDef(sym, "new %s(%s, %s)".format(remap(sym.tp),quote(length),quote(isRow)))
+    case DenseVectorEmptyDouble() => emitValDef(sym, "new %s(0, true)".format(remap(sym.tp)))
+    case DenseVectorEmptyFloat() => emitValDef(sym, "new %s(0, true)".format(remap(sym.tp)))
+    case DenseVectorEmptyInt() => emitValDef(sym, "new %s(0, true)".format(remap(sym.tp)))
+    case v@DenseVectorEmpty() => emitValDef(sym, "new %s(0, true)".format(remap(sym.tp)))
 
     case _ => super.emitNode(sym, rhs)
   }

@@ -10,7 +10,7 @@ import ppl.delite.framework.analysis.TraversalAnalysis
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
-import ppl.delite.framework.codegen.c.TargetC
+import ppl.delite.framework.codegen.cpp.TargetCpp
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
 import scala.util.matching.Regex
@@ -106,7 +106,7 @@ trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with Languag
     t match {
       case _:TargetScala => new DeLisztCodeGenScala{val IR: DeLisztExp.this.type = DeLisztExp.this}
       case _:TargetCuda => new DeLisztCodeGenCuda{val IR: DeLisztExp.this.type = DeLisztExp.this}
-      case _:TargetC => new DeLisztCodeGenC{val IR: DeLisztExp.this.type = DeLisztExp.this} 
+      case _:TargetCpp => new DeLisztCodeGenC{val IR: DeLisztExp.this.type = DeLisztExp.this}
       case _ => throw new RuntimeException("DeLiszt does not support this target")
     }
   }
@@ -395,6 +395,7 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
     }
   }
 
+  /*
   override def isObjectType[T](m: Manifest[T]) : Boolean = remap(m) match {
     case "Cell" | "Face" | "Vertex" | "Edge" => true
     case "MeshSet<Cell>" | "MeshSet<Face>" | "MeshSet<Edge>" | "MeshSet<Vertex>" => true
@@ -407,10 +408,11 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
     case "MatField<int,3,3>" | "MatField<long,3,3>" | "MatField<float,3,3>" | "MatField<bool,3,3>" | "MatField<double,3,3>" => true
     case "Mesh" => true
     case "CudaArrayList<Cell>" | "CudaArrayList<Face>" | "CudaArrayList<Edge>" | "CudaArrayList<Vertex>" => true //TODO: Remove this
-
     case _ => super.isObjectType(m)
   }
+  */
 
+  /*
   override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "Cell" | "Face" | "Vertex" | "Edge" => "//copy\n"
     case "MeshSet<Cell>" | "MeshSet<Face>" | "MeshSet<Edge>" | "MeshSet<Vertex>" => MeshSetCopyInputHtoD(sym, sym.tp.typeArguments(0))
@@ -455,6 +457,7 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
     case "CudaArrayList<Cell>" | "CudaArrayList<Face>" | "CudaArrayList<Edge>" | "CudaArrayList<Vertex>" => "//copy\n" //TODO: Remove this
     case _ => super.copyMutableInputDtoH(sym)
   }
+  */
 
   override def getDSLHeaders: String = {
     val out = new StringBuilder
@@ -478,25 +481,5 @@ trait DeLisztCodeGenC extends DeLisztCodeGenBase with DeLisztCCodeGenPkg with CG
 {
   val IR: DeliteApplication with DeLisztExp
   import IR._
- 
-  override def isObjectType[T](m: Manifest[T]) : Boolean = {
-    if (m.erasure == classOf[Variable[Any]]) true
-    else super.isObjectType(m)
-  }
-  
-  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.tp) match {
-    case "int" | "long" | "float" | "double" | "bool" => refCopyInputHtoD(sym)
-    case _ => super.copyInputHtoD(sym)
-  }
-
-  override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
-    case "int" | "long" | "float" | "double" | "bool" => refCopyOutputDtoH(sym)
-    case _ => super.copyInputHtoD(sym)
-  }
-
-  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
-    case "int" | "long" | "float" | "double" | "bool" => refCopyMutableInputDtoH(sym)
-    case _ => super.copyInputHtoD(sym)
-  }
 
 }

@@ -15,9 +15,11 @@ object DeliteTaskGraph {
 
   def apply(degFile: File) = {
     val contents = scala.io.Source.fromFile(degFile).mkString
-    JSON.parseFull(contents) match {
-      case Some(json) => buildFromParsedJSON(json)
-      case None => throw new RuntimeException("Couldn't parse the DEG file")
+    import JSON._
+
+    phrase(root)(new lexical.Scanner(contents)) match {
+      case Success(result,_) => buildFromParsedJSON(resolveType(result))
+      case f@NoSuccess(_,_) => throw new RuntimeException("Couldn't parse the DEG file:\n" + f.toString)
     }
   }
 
@@ -135,6 +137,7 @@ object DeliteTaskGraph {
     val id = getFieldString(op, "kernelId")
 
     val resultMap = processOutputTypes(op)
+    val inputTypesMap = processInputTypes(op)
 
     // source context
     val (fileName, line, opName) = getFieldMapOption(op, "sourceContext") match {
@@ -147,13 +150,13 @@ object DeliteTaskGraph {
     Delite.sourceInfo += (id -> (fileName, line, opName))
 	
     val newop = opType match {
-      case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
-      case "OP_External" => new OP_External(id, "kernel_"+id, resultMap)
+      case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap, inputTypesMap)
+      case "OP_External" => new OP_External(id, "kernel_"+id, resultMap, inputTypesMap)
       case "OP_MultiLoop" =>
         val size = getFieldString(op, "sizeValue")
         val sizeIsConst = getFieldString(op, "sizeType") == "const"
-        new OP_MultiLoop(id, size, sizeIsConst, "kernel_"+id, resultMap, getFieldBoolean(op, "needsCombine"), getFieldBoolean(op, "needsPostProcess"))
-      case "OP_Foreach" => new OP_Foreach(id, "kernel_"+id, resultMap)
+        new OP_MultiLoop(id, size, sizeIsConst, "kernel_"+id, resultMap, inputTypesMap, getFieldBoolean(op, "needsCombine"), getFieldBoolean(op, "needsPostProcess"))
+      case "OP_Foreach" => new OP_Foreach(id, "kernel_"+id, resultMap, inputTypesMap)
       case other => error("OP Type not recognized: " + other)
     }
 
@@ -202,7 +205,7 @@ object DeliteTaskGraph {
     op.get("variant") match {
       case None => //do nothing
       case Some(field) => field match {
-        case map: Map[Any,Any] => newop.variant = processVariant(newop, resultMap, map)
+        case map: Map[Any,Any] => newop.variant = processVariant(newop, resultMap, inputTypesMap, map)
         case err => mapNotFound(err)
       }
     }
@@ -231,6 +234,28 @@ object DeliteTaskGraph {
     resultMap
   }
 
+  def processInputTypes(op: Map[Any,Any]) = {
+    val inputTypes = getFieldMap(op, "input-types")
+    var inputTypesMap = Map[Targets.Value,Map[String,String]]()
+    val inSet = inputTypes.asInstanceOf[Map[String,Map[String,String]]].keySet
+
+    for (target <- Targets.values) {
+      if (!inSet.isEmpty && (inputTypes.head._2.asInstanceOf[Map[String,String]] contains target.toString)) {
+        var inputMap = Map[String,String]()
+        for (input <- inSet) {
+          inputMap += input.toString -> getFieldString(getFieldMap(inputTypes, input), target.toString)
+        }
+        inputTypesMap += target -> inputMap
+      }
+    }
+    inputTypesMap
+  }
+
+  def combineTypesMap(inMaps: List[Map[Targets.Value,Map[String,String]]]): Map[Targets.Value, Map[String,String]] = {
+    val targetSet = inMaps.flatMap(_.keySet)
+    targetSet.map(target => (target,inMaps.flatMap(_.get(target)).reduceLeft(_ ++ _))).toMap
+  }
+
   def newGraph(implicit graph: DeliteTaskGraph) = {
     val newGraph = new DeliteTaskGraph
     newGraph._version = graph._version
@@ -239,7 +264,7 @@ object DeliteTaskGraph {
     newGraph
   }
 
-  def processVariant(op: DeliteOP, resultType: Map[Targets.Value,Map[String,String]], graph: Map[Any, Any])(implicit outerGraph: DeliteTaskGraph) = {
+  def processVariant(op: DeliteOP, resultType: Map[Targets.Value,Map[String,String]], inputTypesMap: Map[Targets.Value,Map[String,String]], graph: Map[Any, Any])(implicit outerGraph: DeliteTaskGraph) = {
     val varGraph = newGraph
     parseOps(getFieldList(graph, "ops"))(varGraph)
     if (getFieldString(graph, "outputType") == "symbol") {
@@ -249,7 +274,7 @@ object DeliteTaskGraph {
     else
       assert(getFieldString(graph, "outputValue") == "()") //only const a variant should return is a Unit literal
 
-    val v = new OP_Variant(op.id, resultType, op, varGraph)
+    val v = new OP_Variant(op.id, resultType, inputTypesMap, op, varGraph)
 
     for (tgt <- Targets.GPU) {
       extractGPUMetadata(v, varGraph, outerGraph, tgt)
@@ -300,8 +325,9 @@ object DeliteTaskGraph {
     var ifInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
     ifInputs ++= (for ((op,sym) <- Seq(predGraph.result, thenGraph.result, elseGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
     val ifMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
+    val inputTypesMap = combineTypesMap(internalOps.map(_.inputTypesMap).toList ++ Seq(predGraph.result, thenGraph.result, elseGraph.result).filter(_._1.isInstanceOf[OP_Input]).map(_._1.outputTypesMap).toList)
 
-    val conditionOp = new OP_Condition(id, resultMap, predGraph, predValue, thenGraph, thenValue, elseGraph, elseValue, true)
+    val conditionOp = new OP_Condition(id, resultMap, inputTypesMap, predGraph, predValue, thenGraph, thenValue, elseGraph, elseValue, true)
     conditionOp.dependencies = ifDeps
     conditionOp.inputList = ifInputs.toList
     conditionOp.mutableInputs = ifMutableInputs
@@ -346,8 +372,9 @@ object DeliteTaskGraph {
     var whileInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
     whileInputs ++= (for ((op,sym) <- Seq(predGraph.result, bodyGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
     val whileMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
+    val inputTypesMap = combineTypesMap(internalOps.map(_.inputTypesMap).toList ++ Seq(predGraph.result, bodyGraph.result).filter(_._1.isInstanceOf[OP_Input]).map(_._1.outputTypesMap).toList)
 
-    val whileOp = new OP_While(id, predGraph, predValue, bodyGraph, bodyValue)
+    val whileOp = new OP_While(id, inputTypesMap, predGraph, predValue, bodyGraph, bodyValue)
     whileOp.dependencies = whileDeps
     whileOp.inputList = whileInputs.toList
     whileOp.mutableInputs = whileMutableInputs
@@ -387,8 +414,9 @@ object DeliteTaskGraph {
     var graphInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
     graphInputs ++= (for ((op,sym) <- Seq(bodyGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
     val graphMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
+    val inputTypesMap = combineTypesMap(internalOps.map(_.inputTypesMap).toList)
 
-    val graphOp = new OP_Variant(id, resultMap, null, bodyGraph)
+    val graphOp = new OP_Variant(id, resultMap, inputTypesMap, null, bodyGraph)
     graphOp.dependencies = graphDeps
     graphOp.inputList = graphInputs.toList
     graphOp.mutableInputs = graphMutableInputs

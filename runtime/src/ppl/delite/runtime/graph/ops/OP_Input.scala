@@ -19,7 +19,8 @@ class OP_Input(op: DeliteOP) extends DeliteOP {
 
   def id = "input_" + op.id
 
-  private[graph] val outputTypesMap = op.outputTypesMap
+  private[graph] var outputTypesMap = op.outputTypesMap
+  private[graph] var inputTypesMap = op.inputTypesMap
 
   isSchedulable = true
   isScheduled = true
@@ -28,5 +29,7 @@ class OP_Input(op: DeliteOP) extends DeliteOP {
   def isDataParallel = false
   def cost = 0
   def size = 0
+
+  override def toString = id
 
 }

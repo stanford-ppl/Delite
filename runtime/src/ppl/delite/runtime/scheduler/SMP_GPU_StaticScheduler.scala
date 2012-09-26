@@ -8,7 +8,6 @@ package ppl.delite.runtime.scheduler
 
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.DeliteTaskGraph
-import java.util.ArrayDeque
 import ppl.delite.runtime.graph.ops.{OP_Nested, DeliteOP}
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.cost._
@@ -20,7 +19,7 @@ import ppl.delite.runtime.cost._
 final class SMP_GPU_StaticScheduler extends StaticScheduler with GPULoopCostModel {
 
   private val numCPUs = Config.numThreads
-  private val numGPUs = Config.numGPUs
+  private val numGPUs = Config.numCuda + Config.numOpenCL
   private val gpu = numCPUs
 
   def schedule(graph: DeliteTaskGraph) {
@@ -35,7 +34,7 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with GPULoopCostMode
 
   protected def scheduleFlat(graph: DeliteTaskGraph, sequential: Boolean) {
     assert(numGPUs > 0)
-    val opQueue = new ArrayDeque[DeliteOP]
+    val opQueue = new OpList
     val schedule = PartialSchedule(numCPUs + numGPUs)
     enqueueRoots(graph, opQueue)
     while (!opQueue.isEmpty) {
@@ -103,7 +102,7 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with GPULoopCostMode
   
   private def splitGPU(op: DeliteOP, schedule: PartialSchedule) {
     op.scheduledResource = gpu // TODO: Check if this is okay (Need to set this because MultiLoop GPU generator needs to know the resource ID of this op)
-    val chunk = OpHelper.splitGPU(op)
+    val chunk = OpHelper.split(op, 1, "", OpHelper.scheduledTarget(op))(0)
     scheduleOn(chunk, schedule, gpu)
   }
 

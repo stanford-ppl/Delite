@@ -26,7 +26,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
   }
 
   private def mutating(kernelContext: State, sym: Sym[Any]) : List[Sym[Any]] = kernelContext flatMap {
-    case Def(Reflect(x,u,effects)) => if (mayWrite(u,List(sym))) List(sym) else Nil
+    case Def(Reflect(x,u,effects)) => if (u.mstWrite contains sym) List(sym) else Nil
     case _ => Nil
   }
 
@@ -102,7 +102,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
 
     if (!skipEmission) for (gen <- generators) {
       val sep = java.io.File.separator
-      val buildPath = Config.buildDir + sep + (if(gen.toString=="c") "cuda" else gen) + sep + "kernels" + sep
+      val buildPath = Config.buildDir + sep + gen + sep + "kernels" + sep
       val outDir = new File(buildPath); outDir.mkdirs()
       val outFile = new File(buildPath + kernelName + "." + gen.kernelFileExt)
       val kstream = new PrintWriter(outFile)
@@ -153,6 +153,15 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
             case foreach: DeliteOpForeachBounded[_,_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.tp) + "]"
             case _ => gen.remap(sym.head.tp)
           }
+          case ("cpp", op: AbstractFatLoop) =>
+            hasOutputSlotTypes = true
+            "DeliteOpMultiLoop_" + kernelName
+          case ("cpp", z) => z match {
+            case op: AbstractLoop[_] =>
+              hasOutputSlotTypes = true
+              "DeliteOpMultiLoop_" + kernelName
+            case _ => gen.remap(sym.head.tp)
+          }
           case ("cuda", op: AbstractFatLoop) =>
             hasOutputSlotTypes = true
             "void"
@@ -179,17 +188,18 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         assert(hasOutputSlotTypes || sym.length == 1)
 
         // emit kernel
-        gen.withStream(kstream)(gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar, external))
-        kstream.println(bodyString.toString)
-        gen.withStream(kstream)(gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar, external))
-        
+        gen.withStream(kstream)(gen.emitFileHeader())
         if (hasOutputSlotTypes) {
           // activation record class declaration
           rhs match {
-            case d:Def[Any] =>  gen.withStream(kstream)(gen.emitNodeKernelExtra(sym, d)) 
-            case f:FatDef => gen.withStream(kstream)(gen.emitFatNodeKernelExtra(sym, f)) 
+            case d:Def[Any] =>  gen.withStream(kstream)(gen.emitNodeKernelExtra(sym, d))
+            case f:FatDef => gen.withStream(kstream)(gen.emitFatNodeKernelExtra(sym, f))
           }
         }
+
+        gen.withStream(kstream)(gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar, external))
+        kstream.println(bodyString.toString)
+        gen.withStream(kstream)(gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar, external))
 
         // record that this kernel was successfully generated
         supportedTargets += gen.toString
@@ -198,7 +208,13 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
             returnTypes += new Pair[String,String](gen.toString,"generated.scala.Ref[" + gen.remap(sym.head.tp) + "]") {
               override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
             }
-          } else {
+          }
+          else if (resultIsVar && gen.toString=="cpp") {
+            returnTypes += new Pair[String,String](gen.toString,"Ref< " + gen.remap(sym.head.tp) + " >") {
+              override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+            }
+          }
+          else {
             returnTypes += new Pair[String,String](gen.toString,gen.remap(sym.head.tp)) {
               override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
             }
@@ -406,6 +422,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     stream.print(" , \"supportedTargets\": [" + supportedTgt.mkString("\"","\",\"","\"") + "],\n")
     stream.print("  \"outputs\":[" + outputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")
     stream.print("  \"inputs\":[" + inputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")
+    stream.print("  \"input-types\":{")
+    val inputTypesMap = inputs.map(i => "\"" + quote(i) + "\":{" + generators.filter(supportedTgt contains _.toString).map(gen => "\"" + gen.toString + "\":\"" + gen.remap(i.tp) + "\"").mkString(",") + "}")
+    stream.print(inputTypesMap.mkString(","))
+    stream.print("  },\n")
     stream.print("  \"mutableInputs\":[" + mutableInputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")
     emitDepsCommon(controlDeps, antiDeps)
     val metadataStr = if (metadata.isEmpty) "" else metadata.mkString(",")

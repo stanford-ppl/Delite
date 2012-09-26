@@ -199,5 +199,19 @@ trait OpenCLGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with OpenC
   }
 }
 
+trait CGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with CGenEffect {
+  val IR: DeliteCollectionOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
+    rhs match {
+      case DeliteCollectionSize(x) => emitValDef(sym, quote(x) + "->dcSize()")
+      case DeliteCollectionApply(x,n) => emitValDef(sym, quote(x) + "->dcApply(" + quote(n) + ")")
+      case DeliteCollectionUpdate(x,n,y) => stream.println(quote(x) + "->dcUpdate(" + quote(n) + "," + quote(y) + ");")
+      case DeliteCollectionUnsafeSetData(x,d) => stream.println(quote(x) + "_ptr->unsafeSetData(" + quote(d) + "," + quote(d) + "->length);")
+      case _ => super.emitNode(sym, rhs)
+    }
+  }
+}
 
 

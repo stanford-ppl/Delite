@@ -1,8 +1,10 @@
 package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
-import ppl.delite.runtime.graph.ops.{DeliteOP, OP_Variant}
 import ppl.delite.runtime.graph.targets.Targets
+import ppl.delite.runtime.graph.ops.{Send, DeliteOP, OP_Variant}
+import ppl.delite.runtime.codegen.hosts.Hosts
+import sync.{CppSyncGenerator, CppSyncObjectGenerator, ScalaSyncObjectGenerator, ScalaSyncGenerator}
 
 /**
  * Author: Kevin J. Brown
@@ -13,50 +15,71 @@ import ppl.delite.runtime.graph.targets.Targets
  * Stanford University
  */
 
-class VariantGenerator(variant: OP_Variant, location: Int) extends NestedGenerator(variant, location) {
+trait VariantGenerator extends NestedGenerator {
+
+  val variant: OP_Variant
+  val nested = variant
 
   def makeExecutable() {
-    val out = new StringBuilder //the output string
-    val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     val hasOutput = variant.outputType != "Unit"
-    val inputs = variant.variantGraph.inputOps
 
     updateOP()
     //header
-    writeHeader(location, out)
-    writeMethodHeader(out)
-
-    val available = new ArrayBuffer[DeliteOP]
-    available ++= inputs
+    writeHeader()
+    writeMethodHeader()
 
     //output body
-    addKernelCalls(variant.variantGraph.schedule(location), location, out, available, syncList)
+    addKernelCalls(variant.variantGraph.schedule(location))
     if (hasOutput) {
-      out.append(getSym(variant.variantGraph.result._1, variant.variantGraph.result._2))
-      out.append('\n')
+      writeOutput(variant.variantGraph.result._1, variant.variantGraph.result._2)
     }
-    out.append("}\n") //end of method
 
-    //the sync methods/objects
-    addSync(syncList, out)
+    writeMethodFooter()
+    writeFooter()
 
-    //the footer
-    out.append("}\n")
+    writeSyncObject()
 
-    ScalaCompile.addSource(out.toString, kernelName)
+    addSource(out.toString)
   }
 
-  protected def executableName = "Variant_" + baseId + "_"
-
+  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Hosts.Value) = {
+    host match {
+      case Hosts.Scala => new ScalaVariantGenerator(variant, location, kernelPath) with ScalaSyncObjectGenerator {
+        protected val sync = syncs
+        override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
+      }
+      case Hosts.Cpp => new CppVariantGenerator(variant, location, kernelPath) with CppSyncObjectGenerator {
+        protected val sync = syncs
+        override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
+      }
+      case _ => throw new RuntimeException("Unknown Host type " + host.toString)
+    }
+  }
 }
 
+class ScalaVariantGenerator(val variant: OP_Variant, val location: Int, val kernelPath: String)
+  extends VariantGenerator with ScalaNestedGenerator with ScalaSyncGenerator {
+  def executableName(location: Int) = "Variant_" + baseId + "_" + location
+
+  override protected def getSym(op: DeliteOP, name: String) = VariantCommon.getSym(baseId, op, name)
+  override protected def getSync(op: DeliteOP, name: String) = VariantCommon.getSync(baseId, op, name)
+}
+
+class CppVariantGenerator(val variant: OP_Variant, val location: Int, val kernelPath: String)
+  extends VariantGenerator with CppNestedGenerator with CppSyncGenerator {
+  def executableName(location: Int) = "Variant_" + baseId + "_" + location
+
+  override protected def getSym(op: DeliteOP, name: String) = VariantCommon.getSym(baseId, op, name)
+  override protected def getSync(op: DeliteOP, name: String) = VariantCommon.getSync(baseId, op, name)
+}
+/*
 class CudaGPUVariantGenerator(variant: OP_Variant, location: Int) extends GPUVariantGenerator(variant, location, Targets.Cuda) with CudaGPUExecutableGenerator {
   def makeExecutable() {
     assert(false, "OP_Variant is temporarily disabled")
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     updateOP()
     CudaMainGenerator.addFunction(emitCpp(syncList))
-    ScalaCompile.addSource(new GPUScalaVariantGenerator(variant, location, target).emitScala(syncList), kernelName)
+    ScalaCompile.addSource(new GPUScalaVariantGenerator(variant, location, target).emitScala(syncList), executableName)
   }
 }
 class OpenCLGPUVariantGenerator(variant: OP_Variant, location: Int) extends GPUVariantGenerator(variant, location, Targets.OpenCL) with OpenCLGPUExecutableGenerator {
@@ -65,7 +88,7 @@ class OpenCLGPUVariantGenerator(variant: OP_Variant, location: Int) extends GPUV
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     updateOP()
     OpenCLMainGenerator.addFunction(emitCpp(syncList))
-    ScalaCompile.addSource(new GPUScalaVariantGenerator(variant, location, target).emitScala(syncList), kernelName)
+    ScalaCompile.addSource(new GPUScalaVariantGenerator(variant, location, target).emitScala(syncList), executableName)
   }
 }
 
@@ -109,4 +132,9 @@ abstract class GPUVariantGenerator(variant: OP_Variant, location: Int, target: T
 
 class GPUScalaVariantGenerator(variant: OP_Variant, location: Int, target: Targets.Value) extends GPUScalaNestedGenerator(variant, location, target) {
   override protected def executableName = "Variant_" + baseId + "_"
+}
+*/
+private [codegen] object VariantCommon { //TODO: traits?
+  def getSym(baseId: String, op: DeliteOP, name: String) = "x" + baseId + "_" + name
+  def getSync(baseId: String, op: DeliteOP, name: String) = "Result_" + baseId + "_" + name
 }

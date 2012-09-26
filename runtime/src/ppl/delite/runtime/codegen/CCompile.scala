@@ -55,12 +55,13 @@ trait CCompile extends CodeCache {
   def compile() {
     if (sourceBuffer.length == 0) return
     cacheRuntimeSources((sourceBuffer ++ headerBuffer).toArray)
-    
+    val kernelsList = Directory(sourceCacheHome + "kernels").deepFiles.withFilter(_.extension == ext).map(_.name)
+
     if (modules.exists(_.needsCompile)) {
       val includes = modules.map(m => config.headerPrefix + sourceCacheHome + m.name).toArray
       val libs = Directory(deliteLibs).files.withFilter(f => f.extension == OS.libExt).map(_.path).toArray
       val paths = includes ++ config.headerDir ++ Array(config.headerPrefix + "runtime" + sep + target) ++ config.libs ++ libs
-      val sources = sourceBuffer.map(s => sourceCacheHome + "runtime" + sep + s._2).toArray
+      val sources = (sourceBuffer.map(s => sourceCacheHome + "runtime" + sep + s._2) ++ kernelsList.map(k => sourceCacheHome + "kernels" + sep + k)).toArray
       val dest = binCacheHome + target + "Host." + OS.libExt
 
       compile(dest, sources, paths)
@@ -73,8 +74,8 @@ trait CCompile extends CodeCache {
     Path(destination).parent.createDirectory()
     val output = Array(outputSwitch, destination)
     val args = Array(config.compiler) ++ paths ++ compileFlags ++ output ++ sources
-    
     val process = Runtime.getRuntime.exec(args)
+    println(args.mkString(" "))
     process.waitFor
     checkError(process, args)
   }

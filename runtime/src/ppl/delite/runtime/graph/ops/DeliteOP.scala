@@ -19,12 +19,17 @@ abstract class DeliteOP {
    */
   def task : String
 
-  private[graph] val outputTypesMap: Map[Targets.Value, Map[String,String]]
+  private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]]
+  private[graph] var inputTypesMap: Map[Targets.Value, Map[String,String]]
+  def getOutputTypesMap = outputTypesMap
+  def getInputTypesMap = inputTypesMap
 
   def outputType(target: Targets.Value, symbol: String): String = outputTypesMap(target)(symbol)
   def outputType(target: Targets.Value): String = outputTypesMap(target)("functionReturn")
   def outputType(symbol: String) = outputTypesMap(Targets.Scala)(symbol)
   def outputType = outputTypesMap(Targets.Scala)("functionReturn")
+  def inputType(target: Targets.Value, symbol: String): String = inputTypesMap(target)(symbol)
+  def inputType(symbol: String) = inputTypesMap(Targets.Scala)(symbol)
 
   def supportsTarget(target: Targets.Value) : Boolean = outputTypesMap contains target
 
@@ -75,6 +80,13 @@ abstract class DeliteOP {
 
   final def addInput(op: DeliteOP, name: String) {
     inputList = (op, name) :: inputList
+  }
+
+  final def removeInput(op: DeliteOP, name: String) {
+    inputList = inputList.filterNot(_ == (op,name))
+    if (mutableInputs.contains((op, name))) {
+      mutableInputs -= Pair(op, name)
+    }
   }
 
   final def replaceInput(old: DeliteOP, input: DeliteOP, name: String) {
@@ -143,7 +155,5 @@ abstract class DeliteOP {
    * these methods/state are used for code generation
    */
   var scheduledResource = -1
-
-  override def toString = id
 
 }

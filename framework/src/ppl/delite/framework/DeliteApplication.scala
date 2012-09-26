@@ -7,7 +7,7 @@ import scala.virtualization.lms.common.{BaseExp, Base}
 import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen, Transforming}
 
 import analysis.{MockStream, TraversalAnalysis}
-import codegen.c.TargetC
+import codegen.cpp.TargetCpp
 import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
 import codegen.opencl.TargetOpenCL
@@ -26,14 +26,14 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
 
   lazy val scalaTarget = new TargetScala{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val cudaTarget = new TargetCuda{val IR: DeliteApplication.this.type = DeliteApplication.this}
-  lazy val cTarget = new TargetC{val IR: DeliteApplication.this.type = DeliteApplication.this}
+  lazy val cppTarget = new TargetCpp{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val openclTarget = new TargetOpenCL{val IR: DeliteApplication.this.type = DeliteApplication.this}
 
   var targets = List[DeliteApplicationTarget](scalaTarget)
   if(Config.generateCUDA)
     targets = cudaTarget :: targets
-  if(Config.generateC)
-    targets = cTarget :: targets
+  if(Config.generateCpp)
+    targets = cppTarget :: targets
   if(Config.generateOpenCL)
     targets = openclTarget :: targets
 
@@ -111,7 +111,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
 
     for (g <- generators) {
       //TODO: Remove c generator specialization
-      val baseDir = Config.buildDir + File.separator + (if(g.toString=="c") "cuda" else g.toString) + File.separator // HACK! TODO: HJ, fix
+      val baseDir = Config.buildDir + File.separator + g.toString + File.separator
       writeModules(baseDir)
       g.emitDataStructures(baseDir + "datastructures" + File.separator)
       g.initializeGenerator(baseDir + "kernels" + File.separator, args, analysisResults)

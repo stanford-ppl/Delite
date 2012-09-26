@@ -1,11 +1,12 @@
 package ppl.delite.runtime.codegen.kernels.opencl
 
-import ppl.delite.runtime.codegen.{OpenCLGPUExecutableGenerator, OpenCLCompile, OpenCLMainGenerator}
+import ppl.delite.runtime.codegen.{CppExecutableGenerator, OpenCLExecutableGenerator, OpenCLCompile}
 import tools.nsc.io._
 import ppl.delite.runtime.graph.ops.{OP_Executable, DeliteOP, OP_MultiLoop}
 import ppl.delite.runtime.graph.targets.{OPData, Targets}
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.Config
+import ppl.delite.runtime.codegen.sync.JNIFuncs
 
 // TODO: Optimizations
 // 1. For Reduce/TupleReduce/HashReduce, remove unnecessary scan operation (only used for Collection type).
@@ -13,11 +14,13 @@ import ppl.delite.runtime.Config
 //   This will remove the memory allocations for bitmap and related memory accesses.
 // 2. Combine all condition checks and reduction templates for each symbol into a single one within a MultiLoop kernel.
 
-object MultiLoop_GPU_Array_Generator extends OpenCLGPUExecutableGenerator {
+object MultiLoop_GPU_Array_Generator extends JNIFuncs {
 
-  def executableName = error("MultiLoop is not a stand-alone executable")
+  val target = Targets.OpenCL
 
-  val unwrappedList = ArrayBuffer[(String,String)]()
+  private val unwrappedList = ArrayBuffer[(String,String)]()
+
+  private def isPrimitiveType(scalaType: String) = Targets.isPrimitiveType(scalaType)
 
   private def needsReduction(op: OP_MultiLoop): Boolean = {
     if (reductionList(op).nonEmpty) true
@@ -487,7 +490,11 @@ object MultiLoop_GPU_Array_Generator extends OpenCLGPUExecutableGenerator {
     writeKernelFooter(out)
   }
 
-  override protected def writeOutputAllocs(op: DeliteOP, out: StringBuilder) {
+  private def writeInputList(op: DeliteOP, data: OPData, out: StringBuilder) {
+    out.append(data.inputs.map(in => getSymGPU(in._2)).mkString(","))
+  }
+
+  private def writeOutputAllocs(op: DeliteOP, out: StringBuilder) {
       for ((odata,osym) <- op.getGPUMetadata(target).outputs if odata.resultType!="void") {// if !isPrimitiveType(op.outputType(osym))) {
         out.append("*" + osym)
         out.append(" = ")
@@ -636,7 +643,7 @@ object MultiLoop_GPU_Array_Generator extends OpenCLGPUExecutableGenerator {
     }
   }
 
-  def unwrapObjects(tp: String, sym: String): String = {
+  private def unwrapObjects(tp: String, sym: String): String = {
     tp match {
       case "DeliteArray_bool" | "DeliteArray_char" | "DeliteArray_CHAR" | "DeliteArray_short" | "DeliteArray_int" | "DeiteArray_long" | "DeliteArray_float" | "DeliteArray_double" =>
         unwrappedList.append((tp,sym))
@@ -645,11 +652,11 @@ object MultiLoop_GPU_Array_Generator extends OpenCLGPUExecutableGenerator {
     }
   }
 
-  def wrapObjects(out: StringBuilder) {
+  private def wrapObjects(out: StringBuilder) {
     unwrappedList.foreach(o => out.append(o._1 + " " + o._2 + "; " + o._2 + ".data = " + o._2 + "_data; " + o._2 + ".length = " + o._2 + "_length;\n"))
     unwrappedList.clear
   }
 
-  override def getSymGPU(name: String) = name
+  private def getSymGPU(name: String) = name
 
 }

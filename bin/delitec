@@ -27,13 +27,16 @@ def main():
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False, help="print delitec environment settings")
     parser.add_option("--nb", dest="no_blas", action="store_true", default=False, help="disable blas calls")
     parser.add_option("--nf", dest="no_fusion", action="store_true", default=False, help="disables op fusion")
-    parser.add_option("--gpu", dest="gpu", action="store_true", default=False, help="enables gpu generation")
+    parser.add_option("--cuda", dest="cuda", action="store_true", default=False, help="enables CUDA generation")
+    parser.add_option("--opencl", dest="opencl", action="store_true", default=False, help="enables OpenCL generation")
+    parser.add_option("--cpp", dest="cpp", action="store_true", default=False, help="enables cpp generation")
     parser.add_option("-p", "--profile", dest="profile", action="store_true", default=False, help="enables application profiling")
     parser.add_option("-O", dest="optimize", action="store", default=0, help="sets advanced optimization level")
     parser.add_option("--debug", dest="debug", action="store_true", default=False, help="enables verbose compiler output")
     parser.add_option("--Xdebug", dest="xdebug", action="store_true", default=False, help="enables LMS debug output; for compiler writers only")
     parser.add_option("--Xnocache", dest="xnocache", action="store_true", default=False, help="disables caching during staging; may reduce memory footprint but decrease code gen performance")
     parser.add_option("-d", "--dest", action="store", dest="build_dir", default=os.getenv("PWD"), help="output location for generated files")
+    parser.add_option("--dump_exception", dest="dump_exception", action="store_true", default=False, help="Dump generation failed exceptions")
 
     (opts, args) = parser.parse_args()
     if len(args) < 1:
@@ -67,8 +70,12 @@ def stage(runner, params, opts):
     java_opts = java_opts + " -server" + " -Ddelite.home.dir=" + delitecommon.DELITE_HOME + " -Ddelite.build.dir=" + build_dir + " -Ddelite.deg.filename=" + runner + ".deg"
     if opts.no_blas == False:
         java_opts = java_opts + " -Ddelite.extern.blas"
-    if opts.gpu == True:
+    if opts.cuda == True:
         java_opts = java_opts + " -Ddelite.generate.cuda"
+    if opts.opencl == True:
+        java_opts = java_opts + " -Ddelite.generate.opencl"
+    if opts.cpp == True:
+        java_opts = java_opts + " -Ddelite.generate.cpp"
     if opts.no_fusion == True:
         java_opts = java_opts + " -Ddelite.enable.fusion=false"
     if opts.profile == True:
@@ -81,6 +88,8 @@ def stage(runner, params, opts):
         java_opts = java_opts + " -Dlms.verbosity=3"
     if opts.xnocache == False:
         java_opts = java_opts + " -Ddelite.cache.syms"
+    if opts.dump_exception == True:
+        java_opts = java_opts + " -Ddelite.dump.exception"
     java_opts = java_opts + " -Dnested.variants.level=0"
     
     scala_virt_version = delitecommon.scala_virt_version

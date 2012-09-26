@@ -1,8 +1,10 @@
 package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
-import ppl.delite.runtime.graph.ops.{DeliteOP, OP_Condition}
-import ppl.delite.runtime.graph.targets.{OPData, Targets}
+import ppl.delite.runtime.scheduler.OpList
+import ppl.delite.runtime.graph.ops.{Send, DeliteOP, OP_Condition}
+import sync._
+import ppl.delite.runtime.codegen.hosts.Hosts
 
 /**
  * Author: Kevin J. Brown
@@ -13,80 +15,168 @@ import ppl.delite.runtime.graph.targets.{OPData, Targets}
  * Stanford University
  */
 
-class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedGenerator(condition, location) {
+trait ConditionGenerator extends NestedGenerator {
+
+  val condition: OP_Condition
+  val nested = condition
 
   def makeExecutable() {
-    val out = new StringBuilder //the output string
-    val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     val hasOutput = condition.outputType != "Unit"
-    val inputs = (condition.predicateGraph.inputOps ++ condition.thenGraph.inputOps ++ condition.elseGraph.inputOps)
 
     updateOP()
     //header
-    writeHeader(location, out)
-    writeMethodHeader(out)
+    writeHeader()
+    writeMethodHeader()
 
-    val available = new ArrayBuffer[DeliteOP]
     //output predicate
     if (condition.predicateValue == "") {
-      available ++= inputs
-      addKernelCalls(condition.predicateGraph.schedule(location), location, out, available, syncList)
+      addKernelCalls(condition.predicateGraph.schedule(location))
     }
 
-    //write if
-    out.append("if (")
-    if (condition.predicateValue == "") out.append(getSym(condition.predicateGraph.result._1, condition.predicateGraph.result._2))
-    else out.append(condition.predicateValue)
-    out.append(") {\n")
+    //if block
+    beginConditionBlock()
+    if (condition.predicateValue == "") writeOutput(condition.predicateGraph.result._1, condition.predicateGraph.result._2, false)
+    else writeValue(condition.predicateValue, false)
+    endConditionBlock()
 
-    //output if body
+    //then block
+    beginThenBlock()
     if (condition.thenValue == "") {
-      available.clear()
-      available ++= inputs
-      addKernelCalls(condition.thenGraph.schedule(location), location, out, available, syncList)
-      if (hasOutput) out.append(getSym(condition.thenGraph.result._1, condition.thenGraph.result._2))
+      addKernelCalls(condition.thenGraph.schedule(location))
+      if (hasOutput) {
+        writeReturn(false)
+        writeOutput(condition.thenGraph.result._1, condition.thenGraph.result._2)
+      }
     }
-    else if (hasOutput) out.append(condition.thenValue)
-    if (hasOutput) out.append('\n')
+    else if (hasOutput) {
+      writeReturn(false)
+      writeValue(condition.thenValue)
+    }
+    endThenBlock()
 
-    //print else
-    out.append("} else {\n")
-
-    //output else body
+    //else block
+    beginElseBlock()
     if (condition.elseValue == "") {
-      available.clear()
-      available ++= inputs
-      addKernelCalls(condition.elseGraph.schedule(location), location, out, available, syncList)
-      if (hasOutput) out.append(getSym(condition.elseGraph.result._1, condition.elseGraph.result._2))
+      addKernelCalls(condition.elseGraph.schedule(location))
+      if (hasOutput) {
+        writeReturn(false)
+        writeOutput(condition.elseGraph.result._1, condition.elseGraph.result._2)
+      }
     }
-    else if (hasOutput) out.append(condition.elseValue)
-    if (hasOutput) out.append('\n')
+    else if (hasOutput) {
+      writeReturn(false)
+      writeValue(condition.elseValue)
+    }
+    endElseBlock()
 
-    //print end of if and method
-    out.append("}\n}\n")
+    writeMethodFooter()
+    writeFooter()
 
-    //the sync methods/objects
-    addSync(syncList, out)
+    writeSyncObject()
 
-    //the footer
+    addSource(out.toString)
+  }
+
+  protected def beginConditionBlock()
+  protected def endConditionBlock()
+
+  protected def beginThenBlock()
+  protected def endThenBlock()
+
+  protected def beginElseBlock()
+  protected def endElseBlock()
+
+  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Hosts.Value) = {
+    host match {
+      case Hosts.Scala => new ScalaConditionGenerator(condition, location, kernelPath) with ScalaSyncObjectGenerator {
+        protected val sync = syncs
+        override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
+      }
+      case Hosts.Cpp => new CppConditionGenerator(condition, location, kernelPath) with CppSyncObjectGenerator {
+        protected val sync = syncs
+        override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
+      }
+      case _ => throw new RuntimeException("Unknown Host type " + host.toString)
+    }
+  }
+
+}
+
+class ScalaConditionGenerator(val condition: OP_Condition, val location: Int, val kernelPath: String)
+  extends ConditionGenerator with ScalaNestedGenerator with ScalaSyncGenerator {
+
+  protected def beginConditionBlock() {
+    out.append("if (")
+  }
+
+  protected def endConditionBlock() {
+    out.append(')')
+  }
+
+  protected def beginThenBlock() {
+    out.append(" {\n")
+  }
+
+  protected def endThenBlock() {
     out.append("}\n")
+  }
 
-    ScalaCompile.addSource(out.toString, kernelName)
+  protected def beginElseBlock() {
+    out.append("else {\n")
+  }
+
+  protected def endElseBlock() {
+    out.append("}\n")
   }
 
   override protected def getSym(op: DeliteOP, name: String) = ConditionCommon.getSym(condition, baseId, op, name)
   override protected def getSync(op: DeliteOP, name: String) = ConditionCommon.getSync(condition, baseId, op, name)
 
-  protected def executableName = "Condition_" + baseId + "_"
+  def executableName(location: Int) = "Condition_" + baseId + "_" + location
 
 }
 
+class CppConditionGenerator(val condition: OP_Condition, val location: Int, val kernelPath: String)
+  extends ConditionGenerator with CppNestedGenerator with CppSyncGenerator {
+
+
+  protected def beginConditionBlock() {
+    out.append("if (")
+  }
+
+  protected def endConditionBlock() {
+    out.append(')')
+  }
+
+  protected def beginThenBlock() {
+    out.append(" {\n")
+  }
+
+  protected def endThenBlock() {
+    out.append("}\n")
+  }
+
+  protected def beginElseBlock() {
+    out.append("else {\n")
+  }
+
+  protected def endElseBlock() {
+    out.append("}\n")
+  }
+
+  override protected def getSym(op: DeliteOP, name: String) = ConditionCommon.getSym(condition, baseId, op, name)
+  override protected def getSync(op: DeliteOP, name: String) = ConditionCommon.getSync(condition, baseId, op, name)
+
+  def executableName(location: Int) = "Condition_" + baseId + "_" + location
+}
+
+/*
 class CudaGPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUConditionGenerator(condition, location, Targets.Cuda) with CudaGPUExecutableGenerator {
   def makeExecutable() {
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     updateOP()
     CudaMainGenerator.addFunction(emitCpp(syncList))
-    ScalaCompile.addSource(new GPUScalaConditionGenerator(condition, location, target).emitScala(syncList), kernelName)
+    ScalaCompile.addSource(new GPUScalaConditionGenerator(condition, location, target).emitScala(syncList), executableName)
   }
 }
 
@@ -95,7 +185,7 @@ class OpenCLGPUConditionGenerator(condition: OP_Condition, location: Int) extend
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     updateOP()
     OpenCLMainGenerator.addFunction(emitCpp(syncList))
-    ScalaCompile.addSource(new GPUScalaConditionGenerator(condition, location, target).emitScala(syncList), kernelName)
+    ScalaCompile.addSource(new GPUScalaConditionGenerator(condition, location, target).emitScala(syncList), executableName)
   }
 }
 
@@ -194,7 +284,7 @@ class GPUScalaConditionGenerator(condition: OP_Condition, location: Int, target:
   override protected def getSym(op: DeliteOP, name: String) = ConditionCommon.getSym(condition, baseId, op, name)
   override protected def getSync(op: DeliteOP, name: String) = ConditionCommon.getSync(condition, baseId, op, name)
 }
-
+*/
 private[codegen] object ConditionCommon {
   private def suffix(condition: OP_Condition, baseId: String, op: DeliteOP, name: String) = {
     if (condition.predicateGraph.ops.contains(op))

@@ -8,6 +8,7 @@ import ppl.delite.runtime.graph.targets.Targets
  */
 
 class OP_While(val id: String,
+               var inputTypesMap: Map[Targets.Value, Map[String,String]],
                val predicateGraph: DeliteTaskGraph, val predicateValue: String,
                val bodyGraph: DeliteTaskGraph, val bodyValue: String,
                outputSymbol: String = null)
@@ -15,7 +16,7 @@ class OP_While(val id: String,
 
   def nestedGraphs = Seq(predicateGraph, bodyGraph)
 
-  private[graph] val outputTypesMap = if (outputSymbol == null) Targets.unitTypes(id) else Targets.unitTypes(outputSymbol)
+  private[graph] var outputTypesMap = if (outputSymbol == null) Targets.unitTypes(id) else Targets.unitTypes(outputSymbol)
 
   /**
    * creates a While chunk for each requested resource and destroys the original
@@ -25,10 +26,10 @@ class OP_While(val id: String,
     val chunks =
       for (idx <- indices) yield {
         val outputSym = if (idx == indices(0)) this.id else null
-        val r = new OP_While(id+"_"+idx, predicateGraph, predicateValue, bodyGraph, bodyValue, outputSym)
+        val r = new OP_While(id+"_"+idx, inputTypesMap, predicateGraph, predicateValue, bodyGraph, bodyValue, outputSym)
         r.dependencies = dependencies
         r.inputList = inputList
-        val mset = (bodyGraph.schedule(idx).toArray(new Array[DeliteOP](bodyGraph.schedule(idx).size)).flatMap(op=>op.getMutableInputs) ++ predicateGraph.schedule(idx).toArray(new Array[DeliteOP](predicateGraph.schedule(idx).size)).flatMap(op=>op.getMutableInputs)).map(e => e._2).toSet
+        val mset = (bodyGraph.schedule(idx).toArray(bodyGraph.schedule(idx).size).flatMap(op=>op.getMutableInputs) ++ predicateGraph.schedule(idx).toArray(predicateGraph.schedule(idx).size).flatMap(op=>op.getMutableInputs)).map(e => e._2).toSet
         r.mutableInputs = mutableInputs filter (i => mset contains (i._2))
         r.consumers = consumers
         for (tgt <- Targets.GPU) r.setGPUMetadata(tgt, getGPUMetadata(tgt))
@@ -36,13 +37,14 @@ class OP_While(val id: String,
         for (c <- getConsumers) c.addDependency(r)
 
         //add special consumer ops
-        if (predicateValue == "") predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, Seq(predicateGraph.result._1), Seq(predicateGraph.result._1))) //get predicate result on all chunks
+        if (predicateValue == "") predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, Seq(predicateGraph.result._1), Seq(predicateGraph.result))) //get predicate result on all chunks
         if (bodyValue == "") bodyGraph.schedule(idx).add(new GetterOp(id+"b_"+idx, idx, lastOps, Seq())) //barrier end of body so predicate can be reevaluated
         r
       }
 
     graph.replaceOp(this, chunks(0))
+    for (i <- 0 until indices.length)
+      refineInputDeps(chunks(i), graph, indices(i))
     chunks
   }
-
 }

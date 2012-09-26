@@ -1,10 +1,11 @@
 package ppl.delite.runtime.codegen.kernels.cuda
 
-import ppl.delite.runtime.codegen.{CudaGPUExecutableGenerator, CudaCompile, CudaMainGenerator}
+import ppl.delite.runtime.codegen.{CppExecutableGenerator, CudaExecutableGenerator, CudaCompile}
 import tools.nsc.io._
 import ppl.delite.runtime.graph.ops.{OP_Executable, DeliteOP, OP_MultiLoop}
 import ppl.delite.runtime.graph.targets.{OPData, Targets}
 import collection.mutable.ArrayBuffer
+import ppl.delite.runtime.codegen.sync.JNIFuncs
 
 // TODO: Optimizations
 // 1. For Reduce/TupleReduce/HashReduce, remove unnecessary scan operation (only used for Collection type).
@@ -12,9 +13,11 @@ import collection.mutable.ArrayBuffer
 //   This will remove the memory allocations for bitmap and related memory accesses.
 // 2. Combine all condition checks and reduction templates for each symbol into a single one within a MultiLoop kernel.
 
-object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
+object MultiLoop_GPU_Array_Generator extends JNIFuncs {
 
-  def executableName = error("MultiLoop is not a stand-alone executable")
+  val target = Targets.Cuda
+
+  private def isPrimitiveType(scalaType: String) = Targets.isPrimitiveType(scalaType)
 
   private def needsReduction(op: OP_MultiLoop): Boolean = {
     if (reductionList(op).nonEmpty) true
@@ -432,7 +435,11 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
     writeKernelFooter(out)
   }
 
-  override protected def writeOutputAllocs(op: DeliteOP, out: StringBuilder) {
+  private def writeInputList(op: DeliteOP, data: OPData, out: StringBuilder) {
+    out.append(data.inputs.map(in => getSymGPU(in._2)).mkString(","))
+  }
+
+  private def writeOutputAllocs(op: DeliteOP, out: StringBuilder) {
       for ((odata,osym) <- op.getGPUMetadata(target).outputs if odata.resultType!="void") {// if !isPrimitiveType(op.outputType(osym))) {
         out.append("*" + osym)
         out.append(" = ")
@@ -552,6 +559,6 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
     }
   }
 
-  override def getSymGPU(name: String) = name
+  private def getSymGPU(name: String) = name
 
 }
