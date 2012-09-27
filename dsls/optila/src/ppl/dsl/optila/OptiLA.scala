@@ -274,7 +274,7 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
 trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with OptiLACudaGenExternal with CudaGenDeliteOps
   with CudaGenArithOps with CudaGenVectorOps with CudaGenDenseVectorOps with CudaGenDenseVectorViewOps with CudaGenMatrixOps with CudaGenDenseMatrixOps with CudaGenDataStruct
   with CudaGenVariantsOps with CudaGenDeliteCollectionOps with CudaGenDeliteArrayOps
-  with DeliteCudaGenAllOverrides { //with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
+  with DeliteCudaGenAllOverrides with DeliteCppHostTransfer with OptiLACppHostTransfer with DeliteCudaDeviceTransfer with OptiLACudaDeviceTransfer { //with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
   val IR: DeliteApplication with OptiLAExp
   import IR._
 
@@ -282,33 +282,37 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
   // Maps the scala type to cuda type
   override def remap[A](m: Manifest[A]) : String = {
     m.toString match {
-      case "ppl.dsl.optila.DenseVector[Int]" => "DenseVector<int>"
-      case "ppl.dsl.optila.DenseVector[Long]" => "DenseVector<long>"
-      case "ppl.dsl.optila.DenseVector[Float]" => "DenseVector<float>"
-      case "ppl.dsl.optila.DenseVector[Double]" => "DenseVector<double>"
-      case "ppl.dsl.optila.DenseVector[Boolean]" => "DenseVector<bool>"
+      case "ppl.dsl.optila.DenseVector[Int]" => "DenseVector< int >"
+      case "ppl.dsl.optila.DenseVector[Long]" => "DenseVector< long >"
+      case "ppl.dsl.optila.DenseVector[Float]" => "DenseVector< float >"
+      case "ppl.dsl.optila.DenseVector[Double]" => "DenseVector< double >"
+      case "ppl.dsl.optila.DenseVector[Boolean]" => "DenseVector< bool >"
       case "ppl.dsl.optila.RangeVector" => "RangeVector"
-      case "ppl.dsl.optila.DenseMatrix[Int]" => "DenseMatrix<int>"
-      case "ppl.dsl.optila.DenseMatrix[Long]" => "DenseMatrix<long>"
-      case "ppl.dsl.optila.DenseMatrix[Float]" => "DenseMatrix<float>"
-      case "ppl.dsl.optila.DenseMatrix[Double]" => "DenseMatrix<double>"
-      case "ppl.dsl.optila.DenseMatrix[Boolean]" => "DenseMatrix<bool>"
-      case "ppl.dsl.optila.DenseVectorView[Int]" => "DenseVectorView<int>"
-      case "ppl.dsl.optila.DenseVectorView[Long]" => "DenseVectorView<long>"
-      case "ppl.dsl.optila.DenseVectorView[Float]" => "DenseVectorView<float>"
-      case "ppl.dsl.optila.DenseVectorView[Double]" => "DenseVectorView<double>"
-      case "ppl.dsl.optila.DenseVectorView[Boolean]" => "DenseVectorView<bool>"
+      case "ppl.dsl.optila.DenseMatrix[Int]" => "DenseMatrix< int >"
+      case "ppl.dsl.optila.DenseMatrix[Long]" => "DenseMatrix< long >"
+      case "ppl.dsl.optila.DenseMatrix[Float]" => "DenseMatrix< float >"
+      case "ppl.dsl.optila.DenseMatrix[Double]" => "DenseMatrix< double >"
+      case "ppl.dsl.optila.DenseMatrix[Boolean]" => "DenseMatrix< bool >"
+      case "ppl.dsl.optila.DenseVectorView[Int]" => "DenseVectorView< int >"
+      case "ppl.dsl.optila.DenseVectorView[Long]" => "DenseVectorView< long >"
+      case "ppl.dsl.optila.DenseVectorView[Float]" => "DenseVectorView< float >"
+      case "ppl.dsl.optila.DenseVectorView[Double]" => "DenseVectorView< double >"
+      case "ppl.dsl.optila.DenseVectorView[Boolean]" => "DenseVectorView< bool >"
       //case "ppl.dsl.optila.MatrixRow[Int]" => "DenseVectorView<int>"
       //case "ppl.dsl.optila.MatrixRow[Long]" => "DenseVectorView<long>"
       //case "ppl.dsl.optila.MatrixRow[Float]" => "DenseVectorView<float>"
       //case "ppl.dsl.optila.MatrixRow[Double]" => "DenseVectorView<double>"
       //case "ppl.dsl.optila.MatrixRow[Boolean]" => "DenseVectorView<bool>"
-      case "Array[Int]" => "DeliteArray<int>"
-      case "Array[Long]" => "DeliteArray<long>"
-      case "Array[Float]" => "DeliteArray<float>"
-      case "Array[Double]" => "DeliteArray<double>"
-      case "Array[Boolean]" => "DeliteArray<bool>"
-      case _ => super.remap(m)
+      case _ => {
+        m.toString match {
+          case "Array[Int]" => "DeliteArray< int >"
+          case "Array[Long]" => "DeliteArray< long >"
+          case "Array[Float]" => "DeliteArray< float >"
+          case "Array[Double]" => "DeliteArray< double >"
+          case "Array[Boolean]" => "DeliteArray< bool >"
+          case _ => super.remap(m)
+        }
+      }
     }
   }
 
