@@ -26,8 +26,10 @@ trait DeLisztApplicationRunner extends DeLisztApplication with DeLisztExp {
     unit(y)
   }
   
-  override val deliteGenerator = new DeliteCodeGenPkg with LoopColoringOpt { val IR: DeLisztApplicationRunner.this.type = DeLisztApplicationRunner.this;
-                                                                             val generators = DeLisztApplicationRunner.this.generators }                                                                               
+  override val deliteGenerator = new DeliteCodeGenPkg with LoopColoringOpt { 
+    val IR: DeLisztApplicationRunner.this.type = DeLisztApplicationRunner.this;
+    val generators = DeLisztApplicationRunner.this.generators 
+  }
 }
  
 trait DeLisztApplication extends DeliteApplication with DeLiszt with DeLisztLift with DeLisztLibrary
