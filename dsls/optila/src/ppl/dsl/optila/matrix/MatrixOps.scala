@@ -482,7 +482,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     override def alloc = b.alloc(intf.numRows, intf.numCols)
     def finalizer(x: Exp[I]) = b.finalizer(x)
     val size = intf.numRows*intf.numCols
-    def func = e => (1.0/(1.0+exp(conv(e)*(unit(-1.)))))
+    def func: Exp[A] => Exp[Double] = (e:Exp[A]) => (unit(1.0)/(unit(1.0)+exp(conv(e)*(unit(-1.))))) // COMPILE ERROR: inaccessible or erroneous type
     
     val mA = manifest[A]
     val mB = manifest[I]

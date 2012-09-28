@@ -447,22 +447,22 @@ trait SparseVectorOpsExp extends SparseVectorOps with DeliteCollectionOpsExp wit
     
   override def onCreate[A:Manifest](s: Sym[A], d: Def[A]) = d match {    
     // map         
-    case e:DeliteOpMap[_,_,_] if (Config.optimize > 0 && isSparseVec(e.in)) =>
-      specializeSparseMap(s, e, asSparseVec(e.in), sparsevector_mapnz_manifest(e.dmA,e.dmB))(e.dmA,e.dmB).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
-    case Reflect(e:DeliteOpMap[_,_,_], u, es) if (Config.optimize > 0 && isSparseVec(e.in)) =>
-      reflectSpecialized(specializeSparseMap(s, e, asSparseVec(e.in), sparsevector_mapnz_manifest(e.dmA,e.dmB))(e.dmA,e.dmB), u, es)(super.onCreate(s,d))
+    case e:DeliteOpMap[a,b,_] if (Config.optimize > 0 && isSparseVec(e.in)) =>
+      specializeSparseMap[a,b,SparseVector](s, e, asSparseVec(e.in), sparsevector_mapnz_manifest(e.dmA,e.dmB))(e.dmA,e.dmB).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
+    case Reflect(e:DeliteOpMap[a,b,_], u, es) if (Config.optimize > 0 && isSparseVec(e.in)) =>
+      reflectSpecialized(specializeSparseMap[a,b,SparseVector](s, e, asSparseVec(e.in), sparsevector_mapnz_manifest(e.dmA,e.dmB))(e.dmA,e.dmB), u, es)(super.onCreate(s,d))
         
     // zip
-    case e:DeliteOpZipWith[_,_,_,_] if (Config.optimize > 0 && isSparseVec(e.inA) && isSparseVec(e.inB)) =>
-      specializeSparseZip(s, e, asSparseVec(e.inA), asSparseVec(e.inB), sparsevector_zipnz_manifest(e.dmA,e.dmB,e.dmR))(e.dmA,e.dmB,e.dmR).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
-    case Reflect(e:DeliteOpZipWith[_,_,_,_], u, es) if (Config.optimize > 0 && isSparseVec(e.inA) && isSparseVec(e.inB)) =>
-      reflectSpecialized(specializeSparseZip(s, e, asSparseVec(e.inA), asSparseVec(e.inB), sparsevector_zipnz_manifest(e.dmA,e.dmB,e.dmR))(e.dmA,e.dmB,e.dmR), u, es)(super.onCreate(s,d))
+    case e:DeliteOpZipWith[a,b,r,_] if (Config.optimize > 0 && isSparseVec(e.inA) && isSparseVec(e.inB)) =>
+      specializeSparseZip[a,b,r,SparseVector](s, e, asSparseVec(e.inA), asSparseVec(e.inB), sparsevector_zipnz_manifest(e.dmA,e.dmB,e.dmR))(e.dmA,e.dmB,e.dmR).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
+    case Reflect(e:DeliteOpZipWith[a,b,r,_], u, es) if (Config.optimize > 0 && isSparseVec(e.inA) && isSparseVec(e.inB)) =>
+      reflectSpecialized(specializeSparseZip[a,b,r,SparseVector](s, e, asSparseVec(e.inA), asSparseVec(e.inB), sparsevector_zipnz_manifest(e.dmA,e.dmB,e.dmR))(e.dmA,e.dmB,e.dmR), u, es)(super.onCreate(s,d))
       
     // reduce  
-    case e:DeliteOpReduce[_] if (Config.optimize > 0 && isSparseVec(e.in)) =>
-      specializeSparseReduce(s, e, asSparseVec(e.in), sparsevector_reducenz_manifest(e.dmA))(e.dmA).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
-    case Reflect(e:DeliteOpReduce[_], u, es) if (Config.optimize > 0 && isSparseVec(e.in)) =>
-      reflectSpecialized(specializeSparseReduce(s, e, asSparseVec(e.in), sparsevector_reducenz_manifest(e.dmA))(e.dmA), u, es)(super.onCreate(s,d))
+    case e:DeliteOpReduce[a] if (Config.optimize > 0 && isSparseVec(e.in)) =>
+      specializeSparseReduce[a,SparseVector](s, e, asSparseVec(e.in), sparsevector_reducenz_manifest(e.dmA))(e.dmA).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
+    case Reflect(e:DeliteOpReduce[a], u, es) if (Config.optimize > 0 && isSparseVec(e.in)) =>
+      reflectSpecialized(specializeSparseReduce[a,SparseVector](s, e, asSparseVec(e.in), sparsevector_reducenz_manifest(e.dmA))(e.dmA), u, es)(super.onCreate(s,d))
     
     // TODO: filter
     // MapReduce, ReduceFold, .. ?

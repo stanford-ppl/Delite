@@ -149,7 +149,6 @@ trait ArithOps extends Variables with OverloadHack {
   def infix_/(lhs: Rep[Float], rhs: Rep[Int])(implicit o: Overloaded10, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]]./(lhs, repIntToRepFloat(rhs))
   def infix_/(lhs: Rep[Double], rhs: Rep[Int])(implicit o: Overloaded11, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]]./(lhs, repIntToRepDouble(rhs))
   def infix_/(lhs: Rep[Double], rhs: Rep[Float])(implicit o: Overloaded12, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]]./(lhs, repFloatToRepDouble(rhs))
-  
          
   /**
    * Vector

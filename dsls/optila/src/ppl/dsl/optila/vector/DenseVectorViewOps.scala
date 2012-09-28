@@ -133,8 +133,8 @@ trait DenseVectorViewOpsExp extends DenseVectorViewOps with DeliteCollectionOpsE
     case Reflect(e@DenseVectorViewLength(x), u, es) => reflectMirrored(Reflect(DenseVectorViewLength(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@DenseVectorViewIsRow(x), u, es) => reflectMirrored(Reflect(DenseVectorViewIsRow(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@DenseVectorViewStart(x), u, es) => reflectMirrored(Reflect(DenseVectorViewStart(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@DenseVectorViewStride(x), u, es) => reflectMirrored(Reflect(DenseVectorViewStride(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))        
-    case Reflect(e@DenseVectorViewApply(x,n), u, es) => reflectMirrored(Reflect(DenseVectorViewApply(f(x),f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DenseVectorViewStride(x), u, es) => reflectMirrored(Reflect(DenseVectorViewStride(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DenseVectorViewApply(x,n), u, es) => reflectMirrored(Reflect(DenseVectorViewApply(f(x),f(n))(mtype(manifest[A])), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@DenseVectorViewUpdate(x,n,y), u, es) => reflectMirrored(Reflect(DenseVectorViewUpdate(f(x),f(n),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??  
