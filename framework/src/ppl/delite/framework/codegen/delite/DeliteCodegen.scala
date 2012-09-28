@@ -138,15 +138,8 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     curBlock   
   }
   
-  def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): List[(Sym[Any],Any)] = {
-
-    val x = fresh[A]
-    val b = reifyEffects(f(x)) // transformers only get registrations at this point, while the IR is being constructed    
-    val y = runTransformations(b)
-    
-    val sA = mA.toString
-    val sB = mB.toString
-
+  def emitSource[A:Manifest](args: List[Sym[_]], body: Block[A], className: String, stream: PrintWriter): List[(Sym[Any],Any)] = {
+    val y = runTransformations(body)
     val staticData = getFreeDataBlock(y)
 
     printlog("-- emitSource")
