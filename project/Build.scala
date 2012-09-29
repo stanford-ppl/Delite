@@ -4,6 +4,9 @@ import Keys._
 object DeliteBuild extends Build {
   val virtualization_lms_core = "EPFL" % "lms_2.10" % "0.3-SNAPSHOT"
   
+  // -DshowSuppressedErrors=false
+  System.setProperty("showSuppressedErrors", "false")
+
   // FIXME: custom-built scalatest
   val dropboxScalaTestRepo = "Dropbox" at "http://dl.dropbox.com/u/12870350/scala-virtualized"
 

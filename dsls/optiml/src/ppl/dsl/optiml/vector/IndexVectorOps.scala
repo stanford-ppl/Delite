@@ -98,10 +98,10 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case e@IndexVectorConstruct(in,b) => reflectPure(new { override val original = Some(f,e) } with IndexVectorConstruct(f(in),f(b))(e.m))(mtype(manifest[A]), implicitly[SourceContext])
+    case e@IndexVectorConstruct(in,b) => reflectPure(new { override val original = Some(f,e) } with IndexVectorConstruct(f.intf(in),f(b))(e.m))(mtype(manifest[A]), implicitly[SourceContext])
     case IndexVectorRangeNew(start,end) => indexvector_range(f(start),f(end))
     case Reflect(e@IndexVectorDenseNew(l,r), u, es) => reflectMirrored(Reflect(IndexVectorDenseNew(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))     
-    case Reflect(e@IndexVectorConstruct(in,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorConstruct(f(in),f(b))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@IndexVectorConstruct(in,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorConstruct(f.intf(in),f(b))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
 }

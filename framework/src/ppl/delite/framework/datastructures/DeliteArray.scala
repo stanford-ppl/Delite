@@ -60,7 +60,7 @@ trait DeliteArrayCompilerOps extends DeliteArrayOps {
   def darray_unsafe_copy[T:Manifest](src: Rep[DeliteArray[T]], srcPos: Rep[Int], dest: Rep[DeliteArray[T]], destPos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
 }
 
-trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteCollectionOpsExp with StructExp with EffectExp {
+trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteCollectionOpsExp /*with StructExp*/ with EffectExp {
   this: DeliteOpsExp =>
   
   case class DeliteArrayNew[T:Manifest](length: Exp[Int]) extends DefWithManifest[T,DeliteArray[T]] 

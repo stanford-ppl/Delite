@@ -7,7 +7,7 @@ class Stream[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: Int,
     val size = numCols*bufRows
     protected var _data: Array[T] =  try { new Array[T](size) }
                                      catch {
-                                       case _ => throw new RuntimeException("Stream overflowed during initialization")
+                                       case _: Throwable => throw new RuntimeException("Stream overflowed during initialization")
                                      }
     def data = _data
 

@@ -4,21 +4,25 @@ import java.io.PrintWriter
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 
-trait RecordOps extends Base {
+trait RecordOps extends Structs {
   
-  class Record extends Struct[Rep]
+  //class Record extends Struct[Rep]
       
-  def __new[T<:Struct[Rep]:Manifest](fields: (String, Boolean, Rep[T] => Rep[_])*): Rep[T] = newRecord[T](fields)
+  //def __new[T<:Struct[Rep]:Manifest](fields: (String, Boolean, Rep[T] => Rep[_])*): Rep[T] = newRecord[T](fields)
     
-  def newRecord[T:Manifest](fields: Seq[(String,Boolean,Rep[T] => Rep[_])]): Rep[T]
+  //def newRecord[T:Manifest](fields: Seq[(String,Boolean,Rep[T] => Rep[_])]): Rep[T]
+  def record_new[T : Manifest](fields: Seq[(String, Boolean, Rep[T] => Rep[_])]): Rep[T]
+
+  //implicit def repToRecordOps(r: Rep[Record]) = new RecordOpsCls(r)
   
-  implicit def repToRecordOps(r: Rep[Record]) = new RecordOpsCls(r)
+  //class RecordOpsCls(r: Rep[Record]) {
+  //  def selectDynamic[T:Manifest](n: String): Rep[T] = recordFieldAccess[T](r,n)
+  //}
   
-  class RecordOpsCls(r: Rep[Record]) {
-    def selectDynamic[T:Manifest](n: String): Rep[T] = recordFieldAccess[T](r,n)
-  }
-  
-  def recordFieldAccess[T:Manifest](r: Rep[Record], field: String): Rep[T]
+  //def recordFieldAccess[T:Manifest](r: Rep[Record], field: String): Rep[T]
+
+  def record_select[T : Manifest](record: Rep[Record], field: String): Rep[T]
+
   /*
   class ApplyDynamicOps {
     def applyDynamic[T](n: String)(as: AnyRef*): Rep[T] = error(n + as.mkString("(", ",", ")"))
@@ -32,6 +36,8 @@ trait RecordOps extends Base {
 
 trait RecordOpsExp extends RecordOps with EffectExp {
     
+  // TBD: duplicate logic is unfortunate -- can't we use definitions from StructExp? If not, can we fix them?
+
   case class CreateRecord[T:Manifest](fields: Seq[(String,Rep[_])]) extends Def[T] {
     val m = manifest[T]
   }
@@ -39,7 +45,7 @@ trait RecordOpsExp extends RecordOps with EffectExp {
     val m = manifest[T]
   }
     
-  def newRecord[T:Manifest](fields: Seq[(String,Boolean,Rep[T] => Rep[_])]): Rep[T] = {
+  def record_new[T:Manifest](fields: Seq[(String,Boolean,Rep[T] => Rep[_])]): Rep[T] = {
     val x: Sym[T] = fresh[T]
     val flatFields: Seq[(String, Rep[_])] = fields map {case (n, _, rhs) => (n, rhs(x))}
     val nDef: Def[T] = CreateRecord(flatFields)
@@ -47,11 +53,11 @@ trait RecordOpsExp extends RecordOps with EffectExp {
     return x
   }
   
-  def recordFieldAccess[T:Manifest](r: Rep[Record], field: String): Rep[T] = RecordFieldAccess[T](r,field)
+  def record_select[T:Manifest](r: Rep[Record], field: String): Rep[T] = RecordFieldAccess[T](r,field)
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = e match {
     case d@CreateRecord(fields) => toAtom(CreateRecord(fields.map(t=>(t._1,f(t._2))))(mtype(d.m)))
-    case d@RecordFieldAccess(r,field) => recordFieldAccess(f(r),field)(mtype(d.m))
+    case d@RecordFieldAccess(r,field) => record_select(f(r),field)(mtype(d.m))
     case _ => super.mirror(e,f)
   }
 
