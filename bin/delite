@@ -61,6 +61,8 @@ def run(deg, params, opts):
     if opts.profile == True:
         java_opts = java_opts + " -Dprofile.output.dir=profile -Dprofile.dump=true -Ddelite.debug.profile=true"
 
+    delitecommon.scala_virt_version = "scala-2.10"
+        
     # add classpaths
     cp = " -cp "
     cp = cp + delitecommon.DELITE_HOME + "/runtime/target/" + delitecommon.scala_major_id + "/classes" + os.pathsep
