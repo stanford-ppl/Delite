@@ -44,6 +44,28 @@ trait OptiCVXLibrary extends OptiCVXApplication {
     v(0)
   })
 
+  /*
+  val max = cvxfun_vararg(
+    vexity=convex,
+    monotonicity=increasing)
+  ((xs) => {
+    val t = variable()
+    for x <- xs {
+      t >= x
+    }
+    minimize (t) over (t)
+    t
+  })
+
+  val quad_over_lin = cvxfun (
+    vexity=convex, 
+    sign=positive, 
+    monotonicity=(diatonic, decreasing))
+  ((x, y) => {
+
+  })
+  */
+
   val square = cvxfun (convex) arguments (nomonotonicity) body ((x) => {
     val z = variable()
     constrain_rotatedcone(reshape(x,vector(1)),1.0,z)
