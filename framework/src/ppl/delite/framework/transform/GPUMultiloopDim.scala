@@ -19,7 +19,8 @@ trait MultiloopTransformExp extends DeliteTransform
   
   self =>
   
-  val cudaGen = getCodeGenPkg(cudaTarget) // use a fresh CUDA generator to avoid any interference
+  // use a fresh CUDA generator to avoid any interference
+  lazy val cudaGen = if (Config.generateCUDA) getCodeGenPkg(cudaTarget) else throw new RuntimeException("MultiloopTransform: tried to initialize cudaGen with Config.generateCUDA == false")  
 
   /*
    * This selects which multiloop transformer (policy) to use. TODO: make configurable
