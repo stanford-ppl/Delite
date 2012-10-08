@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>OptiCVX Problem IR Description</title>
+</head>
+<body>
+
+<h1>OptiCVX Problem IR Description</h1>
+
+We define a problem as follows:
+
+<pre>
+Problem := numSizeInputs: Int,
+           dataInputShape: Shape[numSizeInputs],
+           variableShape: Shape[numSizeInputs],
+           affineConstraintSize: Size[numSizeInputs],
+           conicConstraintShape: Shape[numSizeInputs],
+           objective: Expr[ShapeScalar[numSizeInputs], numSizeInputs, dataInputShape, variableShape],
+           affineConstraint: Expr[ShapeFor[affineConstraintSize, ShapeScalar], numSizeInputs, dataInputShape, variableShape],
+           conicConstraint: Expr[conicConstraintShape, numSizeInputs, dataInputShape, variableShape],
+           cone: Cone[conicConstraintShape]
+</pre>
+
+Where we define symbols:
+
+<pre>
+Size[N: Int] := constantTerm: Int,
+                coeffs: Array[Int, N]
+
+
+Shape[N: Int] :: ShapeScalar[N],
+                 ShapeFor[N],
+                 ShapeStruct[N]
+
+ShapeScalar[N: Int] := ()
+
+ShapeFor[N: Int] := size: Size[N],
+                    body: Shape[N+1]
+
+ShapeStruct[N: Int] := members: List[Shape[N]]
+
+
+Expr[N: Int, SH: Shape[N], SHI: Shape[N], SHV: Shape[N]]
+
+</pre>
+
+Here, all Ints must be nonnegative.
+
+</body>
+</html>
