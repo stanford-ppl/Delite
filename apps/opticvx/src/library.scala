@@ -64,6 +64,50 @@ trait OptiCVXLibrary extends OptiCVXApplication {
   ((x, y) => {
 
   })
+
+  //the only magic we support is:
+  //  - universal functions (call a function that normally takes 1 scalar with a vector input; result is a vector)
+  //  - varargs functions (call a function that normally takes 1 vector with some number of scalars)
+  //note that only functions of 1 argument are supported for this magic
+
+  val max = cvxfun(vexity=convex, shape=vector, monotonicity=increasing) ((v) => {
+    val t = variable()
+    for (i <- 0 until v.size) {
+      t >= v(i)
+    }
+    return v
+  })
+
+  def max(v: Vector#Increasing): Convex = {
+    val t = variable()
+    for (i <- 0 until v.size) {
+      t >= v(i)
+    }
+    minimize (t) over (t)
+    return t
+  }
+
+  def max(xs: Increasing*): Convex = {
+    val t = variable()
+    for(x <- xs) {
+      t >= v(i)
+    }
+    minimize (t) over (t)
+    return t
+  }
+
+  */
+
+  /*
+  object foobar {
+    def foreach(fx: (Int)=>Unit): String = {
+      fx(3)
+      fx(4)
+      return "bar"
+    }
+  } 
+
+  val aaa = scala.Console.println(for (x <- foobar) { scala.Console.println(x) })
   */
 
   val square = cvxfun (convex) arguments (nomonotonicity) body ((x) => {
