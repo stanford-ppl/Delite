@@ -197,42 +197,42 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val mB = manifest[B]
   }
 
-  abstract class DeliteHashElem[A,CB] extends Def[CB] {
-    def keyFunc: Block[A]
+  abstract class DeliteHashElem[K,CV] extends Def[CV] {
+    def keyFunc: Block[K]
     def cond: List[Block[Boolean]]
   }
 
-  case class DeliteHashCollectElem[A:Manifest,B:Manifest,CB:Manifest](
+  case class DeliteHashCollectElem[K:Manifest,V:Manifest,CV:Manifest](
     //aV: Sym[DeliteArray[A]], //TODO: array and length!
     //alloc: Block[CA],
-    keyFunc: Block[A],
-    valFunc: Block[B],
+    keyFunc: Block[K],
+    valFunc: Block[V],
     cond: List[Block[Boolean]] = Nil
-  ) extends DeliteHashElem[A,CB] {
-    val mA = manifest[A]
-    val mB = manifest[B]
-    val mCB = manifest[CB]
+  ) extends DeliteHashElem[K,CV] {
+    val mK = manifest[K]
+    val mV = manifest[V]
+    val mCV = manifest[CV]
   }
 
-  case class DeliteHashReduceElem[A:Manifest,B:Manifest,CB:Manifest](
-    keyFunc: Block[A],
-    valFunc: Block[B],
+  case class DeliteHashReduceElem[K:Manifest,V:Manifest,CV:Manifest](
+    keyFunc: Block[K],
+    valFunc: Block[V],
     cond: List[Block[Boolean]] = Nil,
-    zero: Block[B],
-    rV: (Sym[B], Sym[B]),
-    rFunc: Block[B]
-  ) extends DeliteHashElem[A,CB] {
-    val mA = manifest[A]
-    val mB = manifest[B]
-    val mCB = manifest[CB]
+    zero: Block[V],
+    rV: (Sym[V], Sym[V]),
+    rFunc: Block[V]
+  ) extends DeliteHashElem[K,CV] {
+    val mK = manifest[K]
+    val mV = manifest[V]
+    val mCV = manifest[CV]
   }
 
-  case class DeliteHashIndexElem[A:Manifest,CB:Manifest](
-    keyFunc: Block[A],
+  case class DeliteHashIndexElem[K:Manifest,CV:Manifest](
+    keyFunc: Block[K],
     cond: List[Block[Boolean]] = Nil
-  ) extends DeliteHashElem[A,CB] {
-    val mA = manifest[A]
-    val mCB = manifest[CB]
+  ) extends DeliteHashElem[K,CV] {
+    val mK = manifest[K]
+    val mCV = manifest[CV]
   }
 
 
@@ -765,6 +765,118 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       sync = reifyEffects(unit(List()))
     ))
   }
+
+  abstract class DeliteOpHashCollectLike[K:Manifest, V:Manifest, CV:Manifest] extends DeliteOpLoop[CV] {
+    type OpType <: DeliteOpHashCollectLike[K,V,CV]
+    def alloc(len: Exp[Int]): Exp[CV]
+  }
+
+  abstract class DeliteOpHash[K:Manifest, V: Manifest, CV:Manifest] extends DeliteOpHashCollectLike[K,V,CV] {
+    type OpType <: DeliteOpHash[K,V,CV]
+    val in: Exp[DeliteCollection[V]]
+
+    def keyFunc: Exp[V] => Exp[K]
+
+    lazy val body: Def[CV] = copyBodyOrElse(DeliteHashCollectElem[K,V,CV](
+      keyFunc = reifyEffects(this.keyFunc(dc_apply(in,v))),
+      valFunc = reifyEffects(dc_apply(in,v))
+    ))
+  }
+
+  abstract class DeliteOpHashMap[A:Manifest, K:Manifest, V:Manifest, CV:Manifest] extends DeliteOpHashCollectLike[K,V,CV] {
+    type OpType <: DeliteOpHashMap[A,K,V,CV]
+    val in: Exp[DeliteCollection[A]]
+
+    def keyFunc: Exp[A] => Exp[K]
+    def mapFunc: Exp[A] => Exp[V]
+
+    lazy val body: Def[CV] = copyBodyOrElse(DeliteHashCollectElem[K,V,CV](
+      keyFunc = reifyEffects(this.keyFunc(dc_apply(in,v))),
+      valFunc = reifyEffects(this.mapFunc(dc_apply(in,v)))
+    ))
+  }
+
+  abstract class DeliteOpHashFilter[A:Manifest, K:Manifest, V:Manifest, CV:Manifest] extends DeliteOpHashCollectLike[K,V,CV] {
+    type OpType <: DeliteOpHashFilter[A,K,V,CV]
+    val in: Exp[DeliteCollection[A]]
+
+    def keyFunc: Exp[A] => Exp[K]
+    def mapFunc: Exp[A] => Exp[V]
+    def cond: Exp[A] => Exp[Boolean]
+
+    lazy val body: Def[CV] = copyBodyOrElse(DeliteHashCollectElem[K,V,CV](
+      keyFunc = reifyEffects(this.keyFunc(dc_apply(in,v))),
+      valFunc = reifyEffects(this.mapFunc(dc_apply(in,v))),
+      cond = reifyEffects(this.cond(dc_apply(in,v)))::Nil
+    ))
+  }
+
+  abstract class DeliteOpHashReduceLike[K:Manifest, V:Manifest, CV:Manifest] extends DeliteOpLoop[CV] {
+    type OpType <: DeliteOpHashReduceLike[K,V,CV]
+    final lazy val rV: (Sym[V],Sym[V]) = copyOrElse(_.rV)((reflectMutableSym(fresh[V]), fresh[V]))
+  }
+
+  abstract class DeliteOpHashReduce[K:Manifest, V:Manifest, CV:Manifest] extends DeliteOpHashReduceLike[K,V,CV] {
+    type OpType <: DeliteOpHashReduce[K,V,CV]
+    val in: Exp[DeliteCollection[V]]
+
+    def keyFunc: Exp[V] => Exp[K]
+    def reduceFunc: (Exp[V], Exp[V]) => Exp[V]
+    def zero: Exp[V]
+
+    lazy val body: Def[CV] = copyBodyOrElse(DeliteHashReduceElem[K,V,CV](
+      keyFunc = reifyEffects(this.keyFunc(dc_apply(in,v))),
+      valFunc = reifyEffects(dc_apply(in,v)),
+      zero = reifyEffects(this.zero),
+      rV = this.rV,
+      rFunc = reifyEffects(reduceFunc(rV._1, rV._2))
+    ))
+  }
+
+  abstract class DeliteOpHashMapReduce[A:Manifest, K:Manifest, V:Manifest, CV:Manifest] extends DeliteOpHashReduceLike[K,V,CV] {
+    type OpType <: DeliteOpHashMapReduce[A,K,V,CV]
+    val in: Exp[DeliteCollection[A]]
+
+    def keyFunc: Exp[A] => Exp[K]
+    def mapFunc: Exp[A] => Exp[V]
+    def reduceFunc: (Exp[V], Exp[V]) => Exp[V]
+    def zero: Exp[V]
+
+    lazy val body: Def[CV] = copyBodyOrElse(DeliteHashReduceElem[K,V,CV](
+      keyFunc = reifyEffects(this.keyFunc(dc_apply(in,v))),
+      valFunc = reifyEffects(mapFunc(dc_apply(in,v))),
+      zero = reifyEffects(this.zero),
+      rV = this.rV,
+      rFunc = reifyEffects(reduceFunc(rV._1, rV._2))
+    ))
+  }
+
+  abstract class DeliteOpHashFilterReduce[A:Manifest, K:Manifest, V:Manifest, CV:Manifest] extends DeliteOpHashReduceLike[K,V,CV] {
+    type OpType <: DeliteOpHashFilterReduce[A,K,V,CV]
+    val in: Exp[DeliteCollection[A]]
+
+    def keyFunc: Exp[A] => Exp[K]
+    def mapFunc: Exp[A] => Exp[V]
+    def reduceFunc: (Exp[V], Exp[V]) => Exp[V]
+    def zero: Exp[V]
+    def cond: Exp[A] => Exp[Boolean]
+
+    lazy val body: Def[CV] = copyBodyOrElse(DeliteHashReduceElem[K,V,CV](
+      keyFunc = reifyEffects(this.keyFunc(dc_apply(in,v))),
+      valFunc = reifyEffects(mapFunc(dc_apply(in,v))),
+      cond = reifyEffects(this.cond(dc_apply(in,v)))::Nil,
+      zero = reifyEffects(this.zero),
+      rV = this.rV,
+      rFunc = reifyEffects(reduceFunc(rV._1, rV._2))
+    ))
+  }
+
+  /* abstract class DeliteOpSort[A:Manifest, CA:Manifest] extends DeliteOp[CA] {
+    val in: Exp[DeliteCollection[A]]
+    val size: Exp[Int]
+    def alloc: Exp[CA]
+    def compare: (Exp[A], Exp[A]) => Exp[Int]
+  } */
     
   /**
    * Deprecated Delite ops  
@@ -934,28 +1046,28 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     def fb[B:Manifest](b: Block[B]) = f(b)
     
     d match {
-      case e: DeliteHashCollectElem[a,b,cb] => 
-        (DeliteHashCollectElem[a,b,cb](
+      case e: DeliteHashCollectElem[k,v,cv] => 
+        (DeliteHashCollectElem[k,v,cv](
           //aV = f(e.aV).asInstanceOf[Sym[DeliteArray[a]]],
           //alloc = f(e.alloc),
-          keyFunc = fb(e.keyFunc)(e.mA),
-          valFunc = fb(e.valFunc)(e.mB),
+          keyFunc = fb(e.keyFunc)(e.mK),
+          valFunc = fb(e.valFunc)(e.mV),
           cond = e.cond.map(f(_))//f(e.cond)
-        )(e.mA,e.mB,e.mCB)).asInstanceOf[Def[A]]
-      case e: DeliteHashReduceElem[a,b,cb] => 
-        (DeliteHashReduceElem[a,b,cb](
-          keyFunc = fb(e.keyFunc)(e.mA),
-          valFunc = fb(e.valFunc)(e.mB),
+        )(e.mK,e.mV,e.mCV)).asInstanceOf[Def[A]]
+      case e: DeliteHashReduceElem[k,v,cv] => 
+        (DeliteHashReduceElem[k,v,cv](
+          keyFunc = fb(e.keyFunc)(e.mK),
+          valFunc = fb(e.valFunc)(e.mV),
           cond = e.cond.map(f(_)),//f(e.cond)
-          zero = fb(e.zero)(e.mB),
-          rV = (f(e.rV._1).asInstanceOf[Sym[b]], f(e.rV._2).asInstanceOf[Sym[b]]), // need to transform bound vars ??
-          rFunc = fb(e.rFunc)(e.mB)
-        )(e.mA,e.mB,e.mCB)).asInstanceOf[Def[A]]
-      case e: DeliteHashIndexElem[a,cb] => 
-        (DeliteHashIndexElem[a,cb](
-          keyFunc = fb(e.keyFunc)(e.mA),
+          zero = fb(e.zero)(e.mV),
+          rV = (f(e.rV._1).asInstanceOf[Sym[v]], f(e.rV._2).asInstanceOf[Sym[v]]), // need to transform bound vars ??
+          rFunc = fb(e.rFunc)(e.mV)
+        )(e.mK,e.mV,e.mCV)).asInstanceOf[Def[A]]
+      case e: DeliteHashIndexElem[k,cv] => 
+        (DeliteHashIndexElem[k,cv](
+          keyFunc = fb(e.keyFunc)(e.mK),
           cond = e.cond.map(f(_))//f(e.cond)
-        )(e.mA,e.mCB)).asInstanceOf[Def[A]]
+        )(e.mK,e.mCV)).asInstanceOf[Def[A]]
       case e: DeliteCollectElem[a,i,ca] => 
         (DeliteCollectElem[a,i,ca]( // need to be a case class for equality (do we rely on equality?)          
           eV = f(e.eV).asInstanceOf[Sym[a]],        
@@ -1721,6 +1833,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
           stream.println(quote(getBlockResult(elem.allocN)))                  
           stream.println("}")
       }
+      case (sym, elem: DeliteHashElem[_,_]) => //
       case (sym, elem: DeliteForeachElem[_]) => 
         stream.println("__act." + quote(sym) + " = ()") // must be type Unit, initialized in init below
       case (sym, elem: DeliteReduceElem[_]) => 
@@ -1779,6 +1892,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
           stream.println("if (" + quote(op.size) + " > 0) {")
           emitCollectElem(op, sym, elem, "__act2.")
           stream.println("}")
+        case (sym, elem: DeliteHashElem[_,_]) => 
         case (sym, elem: DeliteForeachElem[_]) => 
           stream.println("__act2." + quote(sym) + " = {"/*}*/)
           stream.println("if (" + quote(op.size) + " > 0) {")
@@ -1843,6 +1957,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     emitMultiHashCombine(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act.")
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_,_]) =>
+      case (sym, elem: DeliteHashElem[_,_]) => 
       case (sym, elem: DeliteForeachElem[_]) => // nothing needed
       case (sym, elem: DeliteReduceElem[_]) =>
         // if either value is zero, return the other instead of combining
@@ -1945,6 +2060,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
         }        
         emitBlock(elem.finalizer)
         stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.finalizer)))
+      case (sym, elem: DeliteHashElem[_,_]) => 
       case (sym, elem: DeliteForeachElem[_]) =>
       case (sym, elem: DeliteReduceElem[_]) =>
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
@@ -1976,6 +2092,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
           stream.println("if (left_act ne null) left_act." + quote(sym) + "_data_set(xs)") // XX linked frame             
           stream.println("}")                              
         }
+      case (sym, elem: DeliteHashElem[_,_]) => 
       case (sym, elem: DeliteForeachElem[_]) =>
         stream.println("var " + quote(sym) + ": " + remap(sym.tp) + " = _")
       case (sym, elem: DeliteReduceElem[_]) =>

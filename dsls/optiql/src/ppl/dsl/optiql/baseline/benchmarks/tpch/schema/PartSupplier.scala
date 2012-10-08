@@ -1,6 +1,6 @@
 package ppl.dsl.optiql.baseline.benchmarks.tpch.schema
 import collection.mutable.ArrayBuffer
-import ppl.dsl.optiql.baseline.containers.DataTable
+import ppl.dsl.optiql.baseline.containers.Table
 
 
 class PartSupplier (
@@ -11,7 +11,7 @@ class PartSupplier (
   val comment: String
 )
 
-class PartSupplierTable extends DataTable[PartSupplier] {
+class PartSupplierTable extends Table[PartSupplier] {
 
 
 

@@ -7,6 +7,7 @@ import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.internal.{GenericFatCodegen,GenerationFailedException}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteCollection
+import ppl.delite.framework.datastructures.DeliteArray
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.Util._
 import ppl.dsl.optila._
@@ -18,7 +19,7 @@ trait DenseVectorViewOps extends Base with OverloadHack { this: OptiLA =>
   implicit def denseViewToInterface[A:Manifest](lhs: Rep[DenseVectorView[A]]) = new VInterface(new DenseVectorViewOpsCls(lhs))
     
   object DenseVectorView {
-    def apply[A:Manifest](x: Rep[Array[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]) = dense_vectorview_obj_new(x,start,stride,length,isRow)
+    def apply[A:Manifest](x: Rep[DeliteArray[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]) = dense_vectorview_obj_new(x,start,stride,length,isRow)
   }
   
   class DenseVectorViewOpsCls[A:Manifest](val elem: Rep[DenseVectorView[A]]) extends VecOpsCls[A] {
@@ -71,7 +72,7 @@ trait DenseVectorViewOps extends Base with OverloadHack { this: OptiLA =>
     def clear()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("DenseVectorViews cannot be updated")        
   } 
   
-  def dense_vectorview_obj_new[A:Manifest](x: Rep[Array[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]): Rep[DenseVectorView[A]]
+  def dense_vectorview_obj_new[A:Manifest](x: Rep[DeliteArray[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]): Rep[DenseVectorView[A]]
   def dense_vectorview_length[A:Manifest](x: Rep[DenseVectorView[A]])(implicit ctx: SourceContext): Rep[Int]
   def dense_vectorview_isrow[A:Manifest](x: Rep[DenseVectorView[A]])(implicit ctx: SourceContext): Rep[Boolean]
   def dense_vectorview_apply[A:Manifest](x: Rep[DenseVectorView[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[A]
@@ -85,23 +86,28 @@ trait DenseVectorViewOps extends Base with OverloadHack { this: OptiLA =>
 }
 
 trait DenseVectorViewOpsExp extends DenseVectorViewOps with DeliteCollectionOpsExp { this: OptiLAExp =>
-  case class DenseVectorViewNew[A:Manifest](x: Exp[Array[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) extends DefWithManifest[A,DenseVectorView[A]]
-  case class DenseVectorViewLength[A:Manifest](x: Exp[DenseVectorView[A]]) extends DefWithManifest[A,Int]
-  case class DenseVectorViewIsRow[A:Manifest](x: Exp[DenseVectorView[A]]) extends DefWithManifest[A,Boolean]
-  case class DenseVectorViewApply[A:Manifest](x: Exp[DenseVectorView[A]], n: Exp[Int]) extends DefWithManifest[A,A]  
-  case class DenseVectorViewStart[A:Manifest](x: Exp[DenseVectorView[A]]) extends DefWithManifest[A,Int]
-  case class DenseVectorViewStride[A:Manifest](x: Exp[DenseVectorView[A]]) extends DefWithManifest[A,Int]  
-  case class DenseVectorViewUpdate[A:Manifest](x: Exp[DenseVectorView[A]], n: Exp[Int], y: Exp[A]) extends DefWithManifest[A,Unit]
+  case class DenseVectorViewNew[A:Manifest](x: Exp[DeliteArray[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) extends DeliteStruct[DenseVectorView[A]] {
+    val elems = copyTransformedElems(collection.Seq("_data" -> x, "_start" -> start, "_stride" -> stride, "_length" -> length, "_isRow" -> isRow))
+    val mA = manifest[A]
+  }
+  //case class DenseVectorViewLength[A:Manifest](x: Exp[DenseVectorView[A]]) extends DefWithManifest[A,Int]
+  //case class DenseVectorViewIsRow[A:Manifest](x: Exp[DenseVectorView[A]]) extends DefWithManifest[A,Boolean]
+  //case class DenseVectorViewApply[A:Manifest](x: Exp[DenseVectorView[A]], n: Exp[Int]) extends DefWithManifest[A,A]  
+  //case class DenseVectorViewStart[A:Manifest](x: Exp[DenseVectorView[A]]) extends DefWithManifest[A,Int]
+  //case class DenseVectorViewStride[A:Manifest](x: Exp[DenseVectorView[A]]) extends DefWithManifest[A,Int]  
+  //case class DenseVectorViewUpdate[A:Manifest](x: Exp[DenseVectorView[A]], n: Exp[Int], y: Exp[A]) extends DefWithManifest[A,Unit]
   
-  def dense_vectorview_obj_new[A:Manifest](x: Exp[Array[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) = DenseVectorViewNew(x,start,stride,length,isRow)
-  def dense_vectorview_length[A:Manifest](x: Exp[DenseVectorView[A]])(implicit ctx: SourceContext): Exp[Int] = DenseVectorViewLength(x)
-  def dense_vectorview_isrow[A:Manifest](x: Exp[DenseVectorView[A]])(implicit ctx: SourceContext): Exp[Boolean] = DenseVectorViewIsRow(x)
-  def dense_vectorview_apply[A:Manifest](x: Exp[DenseVectorView[A]], n: Exp[Int])(implicit ctx: SourceContext): Exp[A] = DenseVectorViewApply(x,n)
-  def dense_vectorview_start[A:Manifest](x: Exp[DenseVectorView[A]])(implicit ctx: SourceContext) = DenseVectorViewStart(x)
-  def dense_vectorview_stride[A:Manifest](x: Exp[DenseVectorView[A]])(implicit ctx: SourceContext) = DenseVectorViewStride(x)  
-  def dense_vectorview_update[A:Manifest](x: Exp[DenseVectorView[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = reflectWrite(x)(DenseVectorViewUpdate(x, n, y))
+  def dense_vectorview_obj_new[A:Manifest](x: Exp[DeliteArray[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) = DenseVectorViewNew(x,start,stride,length,isRow)
+  def dense_vectorview_length[A:Manifest](x: Exp[DenseVectorView[A]])(implicit ctx: SourceContext): Exp[Int] = field[Int](x, "_length")
+  def dense_vectorview_isrow[A:Manifest](x: Exp[DenseVectorView[A]])(implicit ctx: SourceContext): Exp[Boolean] = field[Boolean](x, "_isRow")
+  def dense_vectorview_apply[A:Manifest](x: Exp[DenseVectorView[A]], n: Exp[Int])(implicit ctx: SourceContext): Exp[A] = dense_vectorview_data(x).apply(dense_vectorview_index(x,n))
+  def dense_vectorview_start[A:Manifest](x: Exp[DenseVectorView[A]])(implicit ctx: SourceContext) = field[Int](x, "_start")
+  def dense_vectorview_stride[A:Manifest](x: Exp[DenseVectorView[A]])(implicit ctx: SourceContext) = field[Int](x, "_stride")  
+  def dense_vectorview_update[A:Manifest](x: Exp[DenseVectorView[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = dense_vectorview_data(x).update(dense_vectorview_index(x,n), y)
   def dense_vectorview_transpose[A:Manifest](x: Exp[DenseVectorView[A]])(implicit ctx: SourceContext): Exp[DenseVector[A]] = DenseVector[A](unit(0), !x.isRow) ++ x
-  
+  def dense_vectorview_data[A:Manifest](x: Exp[DenseVectorView[A]]) = field[DeliteArray[A]](x, "_data")
+  def dense_vectorview_index[A:Manifest](x: Exp[DenseVectorView[A]], n: Exp[Int]) = dense_vectorview_start(x) + n * dense_vectorview_stride(x)
+
   /////////////////////
   // delite collection
     
@@ -122,20 +128,20 @@ trait DenseVectorViewOpsExp extends DenseVectorViewOps with DeliteCollectionOpsE
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case e@DenseVectorViewNew(x,s,str,l,r) => reflectPure(DenseVectorViewNew(f(x),f(s),f(str),f(l),f(r))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@DenseVectorViewLength(x) => reflectPure(DenseVectorViewLength(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@DenseVectorViewIsRow(x) => reflectPure(DenseVectorViewIsRow(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@DenseVectorViewApply(x,n) => reflectPure(DenseVectorViewApply(f(x),f(n))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@DenseVectorViewStart(x) => reflectPure(DenseVectorViewStart(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@DenseVectorViewStride(x) => reflectPure(DenseVectorViewStride(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])        
+    case e@DenseVectorViewNew(x,s,str,l,r) => reflectPure(new { override val original = Some(f,e) } with DenseVectorViewNew(f(x),f(s),f(str),f(l),f(r))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    //case e@DenseVectorViewLength(x) => reflectPure(DenseVectorViewLength(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    //case e@DenseVectorViewIsRow(x) => reflectPure(DenseVectorViewIsRow(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    //case e@DenseVectorViewApply(x,n) => reflectPure(DenseVectorViewApply(f(x),f(n))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    //case e@DenseVectorViewStart(x) => reflectPure(DenseVectorViewStart(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    //case e@DenseVectorViewStride(x) => reflectPure(DenseVectorViewStride(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])        
         
-    case Reflect(e@DenseVectorViewNew(x,s,str,l,r), u, es) => reflectMirrored(Reflect(DenseVectorViewNew(f(x),f(s),f(str),f(l),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@DenseVectorViewLength(x), u, es) => reflectMirrored(Reflect(DenseVectorViewLength(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@DenseVectorViewIsRow(x), u, es) => reflectMirrored(Reflect(DenseVectorViewIsRow(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@DenseVectorViewStart(x), u, es) => reflectMirrored(Reflect(DenseVectorViewStart(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@DenseVectorViewStride(x), u, es) => reflectMirrored(Reflect(DenseVectorViewStride(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))        
-    case Reflect(e@DenseVectorViewApply(x,n), u, es) => reflectMirrored(Reflect(DenseVectorViewApply(f(x),f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@DenseVectorViewUpdate(x,n,y), u, es) => reflectMirrored(Reflect(DenseVectorViewUpdate(f(x),f(n),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DenseVectorViewNew(x,s,str,l,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseVectorViewNew(f(x),f(s),f(str),f(l),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    //case Reflect(e@DenseVectorViewLength(x), u, es) => reflectMirrored(Reflect(DenseVectorViewLength(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    //case Reflect(e@DenseVectorViewIsRow(x), u, es) => reflectMirrored(Reflect(DenseVectorViewIsRow(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    //case Reflect(e@DenseVectorViewStart(x), u, es) => reflectMirrored(Reflect(DenseVectorViewStart(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    //case Reflect(e@DenseVectorViewStride(x), u, es) => reflectMirrored(Reflect(DenseVectorViewStride(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))        
+    //case Reflect(e@DenseVectorViewApply(x,n), u, es) => reflectMirrored(Reflect(DenseVectorViewApply(f(x),f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    //case Reflect(e@DenseVectorViewUpdate(x,n,y), u, es) => reflectMirrored(Reflect(DenseVectorViewUpdate(f(x),f(n),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??  
 }
@@ -199,12 +205,12 @@ trait ScalaGenDenseVectorViewOps extends BaseGenDenseVectorViewOps with ScalaGen
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     // these are the ops that call through to the underlying real data structure
     case v@DenseVectorViewNew(x,start,stride,length,isRow) => emitValDef(sym, "new " + remap("DenseVectorView[" + remap(v.mA) + "]") + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ")")
-    case DenseVectorViewApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
-    case DenseVectorViewUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
-    case DenseVectorViewLength(x)    => emitValDef(sym, quote(x) + "._length")
-    case DenseVectorViewIsRow(x)     => emitValDef(sym, quote(x) + "._isRow")
-    case DenseVectorViewStart(x) => emitValDef(sym, quote(x) + "._start")
-    case DenseVectorViewStride(x) => emitValDef(sym, quote(x) + "._stride")    
+    //case DenseVectorViewApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
+    //case DenseVectorViewUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
+    //case DenseVectorViewLength(x)    => emitValDef(sym, quote(x) + "._length")
+    //case DenseVectorViewIsRow(x)     => emitValDef(sym, quote(x) + "._isRow")
+    //case DenseVectorViewStart(x) => emitValDef(sym, quote(x) + "._start")
+    //case DenseVectorViewStride(x) => emitValDef(sym, quote(x) + "._stride")    
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -220,10 +226,10 @@ trait CudaGenDenseVectorViewOps extends BaseGenDenseVectorViewOps with CudaGenFa
       if(!processingHelperFunc) stream.println(remap(sym.tp) + " " + quote(sym) + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ");")
       else throw new GenerationFailedException("CudaGen: DenseVectorViewNew cannot be used in helper functions.")
     }
-    case DenseVectorViewApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
-    case DenseVectorViewUpdate(x,n,y) => stream.println(quote(x) + ".update(" + quote(n) + "," + quote(y) + ");\n")
-    case DenseVectorViewLength(x)    => emitValDef(sym, quote(x) + ".length")
-    case DenseVectorViewIsRow(x)     => emitValDef(sym, quote(x) + ".isRow")
+    //case DenseVectorViewApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
+    //case DenseVectorViewUpdate(x,n,y) => stream.println(quote(x) + ".update(" + quote(n) + "," + quote(y) + ");\n")
+    //case DenseVectorViewLength(x)    => emitValDef(sym, quote(x) + ".length")
+    //case DenseVectorViewIsRow(x)     => emitValDef(sym, quote(x) + ".isRow")
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -237,10 +243,10 @@ trait OpenCLGenDenseVectorViewOps extends BaseGenDenseVectorViewOps with OpenCLG
       if(!processingHelperFunc) stream.println(remap(sym.tp) + " " + quote(sym) + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ");")
       else throw new GenerationFailedException("OpenCLGen: DenseVectorViewNew cannot be used in helper functions.")
     }
-    case DenseVectorViewApply(x,n) => emitValDef(sym, remap(x.tp) + "_apply(" + quote(x) + "," + quote(n) + ")")
-    case DenseVectorViewUpdate(x,n,y) => stream.println(remap(x.tp) + "_update(" + quote(x) + "," + quote(n) + "," + quote(y) + ");\n")
-    case DenseVectorViewLength(x)    => emitValDef(sym, quote(x) + ".length")
-    case DenseVectorViewIsRow(x)     => emitValDef(sym, quote(x) + ".isRow")
+    //case DenseVectorViewApply(x,n) => emitValDef(sym, remap(x.tp) + "_apply(" + quote(x) + "," + quote(n) + ")")
+    //case DenseVectorViewUpdate(x,n,y) => stream.println(remap(x.tp) + "_update(" + quote(x) + "," + quote(n) + "," + quote(y) + ");\n")
+    //case DenseVectorViewLength(x)    => emitValDef(sym, quote(x) + ".length")
+    //case DenseVectorViewIsRow(x)     => emitValDef(sym, quote(x) + ".isRow")
     case _ => super.emitNode(sym, rhs)
   }
 }

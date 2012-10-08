@@ -126,7 +126,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
 
   def densematrix_rawupdate_impl[A:Manifest](x: Rep[DenseMatrix[A]], idx: Rep[Int], y: Rep[A]): Rep[Unit] = {
     val d = densematrix_raw_data(x)
-    array_unsafe_update(d,idx,y) //d(idx) = y
+    darray_unsafe_update(d,idx,y) //d(idx) = y
   }
   
   def densematrix_insertrow_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Vector[A]]): Rep[Unit] = {
@@ -136,7 +136,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     densematrix_insertspace(x, idx, x.numCols)
     val data = densematrix_raw_data(x)
     for (i <- idx until idx+x.numCols){
-      array_unsafe_update(data,i,y(i-idx))
+      darray_unsafe_update(data,i,y(i-idx))
     }
     densematrix_set_numrows(x, x.numRows+1)
   }
@@ -149,7 +149,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     densematrix_insertspace(x, idx, sz)
     val data = densematrix_raw_data(x)
     for (i <- idx until idx+sz){
-      array_unsafe_update(data,i,xs.dcApply(i-idx))
+      darray_unsafe_update(data,i,xs.dcApply(i-idx))
     }
     densematrix_set_numrows(x, x.numRows+xs.numRows)
   }
@@ -158,7 +158,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     //chkEquals(y._length, _numRows)
     val newCols = x.numCols+1
     if (x.size == 0) densematrix_set_numrows(x, y.length)    
-    val outData = NewArray[A](x.numRows*newCols)
+    val outData = DeliteArray[A](x.numRows*newCols)
     for (i <- 0 until x.numRows){
       var col = 0
       for (j <- 0 until newCols) {
@@ -179,7 +179,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     //m.chkEquals(xs._numRows, _numRows)
     val newCols = x.numCols+xs.numCols
     if (x.size == 0) densematrix_set_numrows(x, xs.numRows)
-    val outData = NewArray[A](x.numRows*newCols)
+    val outData = DeliteArray[A](x.numRows*newCols)
     for (i <- 0 until x.numRows){
       var col = 0
       for (j <- 0 until newCols){
@@ -200,13 +200,13 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     val idx = pos*x.numCols
     val len = num*x.numCols
     val data = densematrix_raw_data(x)
-    array_unsafe_copy(data, idx + len, data, idx, x.size - (idx + len))
+    darray_unsafe_copy(data, idx + len, data, idx, x.size - (idx + len))
     densematrix_set_numrows(x, x.numRows - num)
   }
 
   def densematrix_removecols_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], num: Rep[Int]): Rep[Unit] = {
     val newCols = x.numCols-num
-    val outData = NewArray[A](x.numRows*newCols)
+    val outData = DeliteArray[A](x.numRows*newCols)
     for (i <- 0 until x.numRows){
       var col = 0
       for (j <- 0 until x.numCols){
@@ -230,8 +230,8 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     val data = densematrix_raw_data(x)
     var n = max(4, data.length * 2)
     while (n < minLen) n = n*2
-    val d = NewArray[A](n)
-    array_unsafe_copy(data, 0, d, 0, x.size)
+    val d = DeliteArray[A](n)
+    darray_unsafe_copy(data, 0, d, 0, x.size)
     densematrix_set_raw_data(x, d.unsafeImmutable)
   }
 
@@ -239,7 +239,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     if (pos < 0 || pos > x.size) fatal("IndexOutOfBounds")
     densematrix_ensureextra(x,len)
     val d = densematrix_raw_data(x)
-    array_unsafe_copy(d, pos, d, pos + len, x.size - pos)
+    darray_unsafe_copy(d, pos, d, pos + len, x.size - pos)
   }
 
   protected def densematrix_chkpos[A:Manifest](x: Rep[DenseMatrix[A]], index: Rep[Int]) = {

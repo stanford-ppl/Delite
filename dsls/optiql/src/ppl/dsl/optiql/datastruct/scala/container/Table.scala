@@ -1,6 +1,6 @@
 package ppl.dsl.optiql.datastruct.scala.container
 
-object DataTable {
+object Table {
 
   def printAsTable(m: Map[String,Any], max_rows: Int = 0) { // FIXME: max_rows not used!
     // Check if Table is empty

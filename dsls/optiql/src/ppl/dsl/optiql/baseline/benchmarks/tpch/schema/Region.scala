@@ -1,7 +1,7 @@
 package ppl.dsl.optiql.baseline.benchmarks.tpch.schema
 
 import collection.mutable.ArrayBuffer
-import ppl.dsl.optiql.baseline.containers.DataTable
+import ppl.dsl.optiql.baseline.containers.Table
 
 
 class Region (
@@ -10,7 +10,7 @@ class Region (
   val comment: String
 )
 
-class RegionTable extends DataTable[Region] {
+class RegionTable extends Table[Region] {
 
 
 

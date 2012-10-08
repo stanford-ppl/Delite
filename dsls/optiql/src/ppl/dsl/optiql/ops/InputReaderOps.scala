@@ -1,30 +1,38 @@
 package ppl.dsl.optiql.ops
 
-import scala.virtualization.lms.common.ScalaGenEffect
+import scala.virtualization.lms.common.{Base,BaseFatExp}
 import ppl.dsl.optiql._
+import ppl.delite.framework.datastructures.DeliteArray
 import java.io.PrintWriter
-import reflect.RefinedManifest
+import reflect.{RefinedManifest,SourceContext}
 
-trait InputReaderOps { this: OptiQL =>
+trait InputReaderOps extends Base { this: OptiQL =>
 
   object TableInputReader {
     def apply[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String] = unit("|")) = optiql_table_input_reader(path, shape, separator)
   }
 
-  def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]): Rep[DataTable[T]]
+  def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]): Rep[Table[T]]
 
 }
 
-trait InputReaderOpsExp extends InputReaderOps { this: OptiQLExp with InputReaderImplOps =>
+trait InputReaderOpsExp extends InputReaderOps with BaseFatExp { this: OptiQLExp with InputReaderImplOps =>
 
-  case class OptiQLTableInputReader[T:Manifest](readBlock: Block[DeliteArray[T]]) extends DeliteOpSingleTask(readBlock)
+  case class OptiQLTableInputReader[T:Manifest](readBlock: Block[DeliteArray[T]]) extends DeliteOpSingleTask(readBlock) {
+    val mT = manifest[T]
+  }
 
   //TODO: using SingleTask to encapsulate effects, but needs to be fat to return field syms
   def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]) = {
-    val wrappedData = toAtom(OptiQLTableInputReader(reifyEffectsHere(optiql_table_input_reader_impl(path,shape,separator))))
-    val data = deliteArrayPure(wrappedData, manifest[T].asInstanceOf[RefinedManifest[T]].fields)
-    DataTable(data, data.length)
+    val wrappedData = reflectPure(OptiQLTableInputReader(reifyEffectsHere(optiql_table_input_reader_impl(path,shape,separator)))).unsafeImmutable
+    val data = deliteArrayPure(wrappedData, manifest[T].asInstanceOf[RefinedManifest[T]])
+    Table(data, data.length)
   }
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case e@OptiQLTableInputReader(block) => reflectPure(new { override val original = Some(f,e) } with OptiQLTableInputReader(f(block))(e.mT))(mtype(manifest[A]),implicitly[SourceContext])      
+    case _ => super.mirror(e,f)
+  }).asInstanceOf[Exp[A]]
 
 }
 
@@ -32,8 +40,10 @@ trait InputReaderImplOps { this: OptiQL =>
   def optiql_table_input_reader_impl[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]): Rep[DeliteArray[T]]
 }
 
-trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLCompiler with OptiQLLift =>
+trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift with OptiQLExp =>
   def optiql_table_input_reader_impl[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]) = {
+    implicit def rv[T:Manifest](v: Var[T]): Exp[T] = readVar(v) //TODO: why isn't readVar implicit working?
+
     val input = BufferedReader(FileReader(path))
     val table = DeliteArrayBuilder[T]()
     var record = input.readLine()
@@ -50,10 +60,12 @@ trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLCompil
   }
 
   private def addRecord[T<:Record:Manifest](table: Rep[DeliteArrayBuilder[T]], record: Rep[Array[String]], shape: Rep[T]) {
-    val elems = manifest[T] match {
-      case rm: RefinedManifest[T] => rm.fields
+    val rm = manifest[T] match {
+      case rm: RefinedManifest[T] => rm
       case m => throw new RuntimeException("No RefinedManifest for type " + m.toString)
     }
+    val elems = rm.fields
+
     val fields = Range(0,elems.length) map { i =>
       val (field, tp) = elems(i)
       tp.toString match {
@@ -66,7 +78,8 @@ trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLCompil
         case _ => throw new RuntimeException("Unsupported record field type: " + tp.toString)
       }
     }
-    val res = struct[T](fields:_*)
+    
+    val res = struct[T](AnonTag(rm), fields)
     table += res
   }
 

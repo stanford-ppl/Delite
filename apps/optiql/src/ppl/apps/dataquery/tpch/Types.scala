@@ -47,7 +47,7 @@ trait Types { this: OptiQLApplication =>
 
   def LineItem(): Rep[LineItem] = LineItem(0, 0, 0, 0, 0, 0, 0, 0, unit('\0'), unit('\0'), Date(""), Date(""), Date(""), "", "", "")
 
-  type LineItemTable = DataTable[LineItem]
+  type LineItemTable = Table[LineItem]
 
   type Customer = Record {
     val c_custkey: Int
@@ -74,7 +74,7 @@ trait Types { this: OptiQLApplication =>
 
   def Customer(): Rep[Customer] = Customer(0, "", "", 0, "", 0, "", "") //TODO: no lift for Double?
 
-  type CustomerTable = DataTable[Customer]
+  type CustomerTable = Table[Customer]
 
   type Nation = Record {
     val n_nationkey: Int
@@ -92,7 +92,7 @@ trait Types { this: OptiQLApplication =>
 
   def Nation(): Rep[Nation] = Nation(0, "", 0, "")
 
-  type NationTable = DataTable[Nation]
+  type NationTable = Table[Nation]
 
   type Order = Record {
     val o_orderkey: Int
@@ -122,7 +122,7 @@ trait Types { this: OptiQLApplication =>
 
   def Order(): Rep[Order] = Order(0, 0, unit('\0'), 0, Date(""), "", "", 0, "")
 
-  type OrderTable = DataTable[Order]
+  type OrderTable = Table[Order]
 
   type Part = Record {
     val p_partkey: Int
@@ -151,7 +151,7 @@ trait Types { this: OptiQLApplication =>
 
   def Part(): Rep[Part] = Part(0, "", "", "", "", 0, "", 0, "")
 
-  type PartTable = DataTable[Part]
+  type PartTable = Table[Part]
 
   type PartSupplier = Record {
     val ps_partkey: Int
@@ -172,7 +172,7 @@ trait Types { this: OptiQLApplication =>
 
   def PartSupplier(): Rep[PartSupplier] = PartSupplier(unit(0), unit(0), unit(0), unit(0.0), unit(""))
 
-  type PartSupplierTable = DataTable[PartSupplier]
+  type PartSupplierTable = Table[PartSupplier]
 
   type Region = Record {
     val r_regionkey: Int
@@ -188,7 +188,7 @@ trait Types { this: OptiQLApplication =>
 
   def Region(): Rep[Region] = Region(0,"","")
 
-  type RegionTable = DataTable[Region]
+  type RegionTable = Table[Region]
 
   type Supplier = Record {
     val s_suppkey: Int
@@ -213,6 +213,6 @@ trait Types { this: OptiQLApplication =>
 
   def Supplier(): Rep[Supplier] = Supplier(0, "", "", 0, "", 0, "")
 
-  type SupplierTable = DataTable[Supplier]
+  type SupplierTable = Table[Supplier]
 
 }

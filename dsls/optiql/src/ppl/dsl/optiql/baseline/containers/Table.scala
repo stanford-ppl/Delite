@@ -7,7 +7,7 @@ import ppl.dsl.optiql.baseline.util.{ReflectionHelper, Date}
 import ppl.dsl.optiql.baseline.OptiQL
 
 //this includes functionality for loading TPCH style data
-abstract class DataTable[TSource] extends Iterable[TSource] {
+abstract class Table[TSource] extends Iterable[TSource] {
 
   val data = new ArrayBuffer[TSource]
 
@@ -18,12 +18,12 @@ abstract class DataTable[TSource] extends Iterable[TSource] {
   override def filter(p: TSource => Boolean ) = {
 
     val ndata = data.filter(p)
-    new DataTable[TSource] {
+    new Table[TSource] {
 
       override val data = ndata
 
       def addRecord(arr: Array[String]) {
-        throw new RuntimeException("Cannot  add Record into a projected DataTable")
+        throw new RuntimeException("Cannot  add Record into a projected Table")
       }
     }
 
@@ -83,7 +83,7 @@ abstract class DataTable[TSource] extends Iterable[TSource] {
     for(key <- data) {
       val group = key.asInstanceOf[Grouping[_,_]]
       println("Key = " + group.key)
-      val table = OptiQL.convertIterableToDataTable(group.elems)
+      val table = OptiQL.convertIterableToTable(group.elems)
       table.printAsTable
     }
 

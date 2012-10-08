@@ -113,7 +113,6 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       //TODO: Remove c generator specialization
       val baseDir = Config.buildDir + File.separator + (if(g.toString=="c") "cuda" else g.toString) + File.separator // HACK! TODO: HJ, fix
       writeModules(baseDir)
-      g.emitDataStructures(baseDir + "datastructures" + File.separator)
       g.initializeGenerator(baseDir + "kernels" + File.separator, args, analysisResults)
     }
 
@@ -131,14 +130,18 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
     val sd = deliteGenerator.emitSource(liftedMain, "Application", stream)    
     deliteGenerator.finalizeGenerator()
 
+    for (g <- generators) {
+      val baseDir = Config.buildDir + File.separator + g.toString + File.separator
+      g.emitDataStructures(baseDir + "datastructures" + File.separator)
+      g.finalizeGenerator()
+    }
+
     if(Config.printGlobals) {
       println("Global definitions")
       for(globalDef <- globalDefs) {
         println(globalDef)
       }
     }
-
-    generators foreach { _.finalizeGenerator()}
     
     staticDataMap = Map() ++ sd map { case (s,d) => (deliteGenerator.quote(s), d) }
   }

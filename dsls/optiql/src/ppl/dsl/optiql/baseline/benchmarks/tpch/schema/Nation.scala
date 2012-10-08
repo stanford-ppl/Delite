@@ -1,7 +1,7 @@
 package ppl.dsl.optiql.baseline.benchmarks.tpch.schema
 
 import collection.mutable.ArrayBuffer
-import ppl.dsl.optiql.baseline.containers.DataTable
+import ppl.dsl.optiql.baseline.containers.Table
 
 
 class Nation (
@@ -11,7 +11,7 @@ class Nation (
   val comment: String
 )
 
-class NationTable extends DataTable[Nation] {
+class NationTable extends Table[Nation] {
 
 
   def addRecord(fs: Array[String]) {

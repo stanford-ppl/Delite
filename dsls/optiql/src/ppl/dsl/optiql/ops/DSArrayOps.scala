@@ -1,14 +1,14 @@
 package ppl.dsl.optiql.ops
 
 import java.io.PrintWriter
-import scala.virtualization.lms.common.{Base, ScalaGenFat, CLikeGenBase, CudaGenFat, OpenCLGenFat, BaseFatExp, LoopsFatExp, IfThenElseFatExp, TupleOpsExp, ArrayOpsExp, LoopFusionOpt}
+import scala.virtualization.lms.common.{Base, ScalaGenFat, CLikeGenFat, CudaGenFat, OpenCLGenFat, BaseFatExp, LoopsFatExp, IfThenElseFatExp, TupleOpsExp, ArrayOpsExp, LoopFusionOpt}
 import scala.virtualization.lms.internal.GenericFatCodegen
 import ppl.dsl.optiql.OptiQLExp
-import ppl.delite.framework.datastructures.FieldAccessOpsExp
+import ppl.delite.framework.datastructures.DeliteArray
 import scala.reflect.SourceContext
 
 trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with IfThenElseFatExp { this: OptiQLExp =>
-
+  /*
   //object ToReduceElem {
   //  def unapply[T](x: Def)
   //}
@@ -202,7 +202,7 @@ trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with If
     }*/
 
     case _ => super.simpleLoop(size, v, body)
-  }
+  } */
 
   
   // write these as: (not so easy, polymorphic function)
@@ -242,7 +242,7 @@ trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with If
       ll.head
     case _ => super.array_length(a)
   }
-  */
+  
 
   // ******** api *********
 
@@ -405,24 +405,15 @@ trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with If
     if (manifest[A] == manifest[Char] && manifest[B] == manifest[Char])
       toAtom(ETuple2(t._1, t._2))(mtype(manifest[Int]))
     else super.make_tuple2(t)*/
+  */
 }
 
 
 trait ScalaGenDSArrayOps extends ScalaGenFat with LoopFusionOpt {
   val IR: DSArrayOpsExp with OptiQLExp
   import IR._  
-
-  /* override def unapplySimpleIndex(e: Def[Any]) = e match {
-    case ArrayApply(a, i) => Some((a,i))
-    case _ => super.unapplySimpleIndex(e)
-  }
-  override def unapplySimpleDomain(e: Def[Int]): Option[Exp[Any]] = e match {
-    case ArrayLength(a @ Def(SimpleLoop(_,_,_:DeliteCollectElem[_,_]))) => Some(a) // exclude hash collect (?)
-    case _ => super.unapplySimpleDomain(e)
-  } */
-  
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  /*
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case e@ETuple2(a, b) if e.m1 == manifest[Boolean] && e.m2 == manifest[Boolean] =>
       emitValDef(sym, "((if("+ quote(a) + ") 1 else 0) << 1) + " + "(if("+ quote(b) + ") 1 else 0)")
     case a@Tuple2Access1(t) if a.m == manifest[Boolean] =>
@@ -452,15 +443,15 @@ trait ScalaGenDSArrayOps extends ScalaGenFat with LoopFusionOpt {
       stream.println("array map { e => e.toInt }")
       stream.println(/*{*/"}")
     case _ => super.emitNode(sym, rhs)
-  }
+  } */
 }
 
 
-trait CLikeGenDSArrayOps extends CLikeGenBase with LoopFusionOpt {
+trait CLikeGenDSArrayOps extends CLikeGenFat with LoopFusionOpt {
   val IR: DSArrayOpsExp with OptiQLExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case e@ETuple2(a, b) if e.m1 == manifest[Boolean] && e.m2 == manifest[Boolean] =>
       emitValDef(sym, "((unsigned int)" + quote(a) + " << 1) + " + quote(b))
     case a@Tuple2Access1(t) if a.m == manifest[Boolean] =>
@@ -479,4 +470,3 @@ trait CLikeGenDSArrayOps extends CLikeGenBase with LoopFusionOpt {
 
 trait CudaGenDSArrayOps extends CudaGenFat with CLikeGenDSArrayOps 
 trait OpenCLGenDSArrayOps extends OpenCLGenFat with CLikeGenDSArrayOps
-

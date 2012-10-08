@@ -181,6 +181,13 @@ trait OptiLACodeGenBase extends GenericFatCodegen with SchedulingOpt {
   def getFiles(d: File): Array[File] = {
     d.listFiles flatMap { f => if (f.isDirectory()) getFiles(f) else Array(f) }
   }
+
+  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "DenseVector" => IR.structName(m)
+    case "DenseMatrix" => IR.structName(m)
+    case "DenseVectorView" => IR.structName(m)
+    case _ => super.remap(m)
+  }
   
   override def emitDataStructures(path: String) {
     val s = File.separator

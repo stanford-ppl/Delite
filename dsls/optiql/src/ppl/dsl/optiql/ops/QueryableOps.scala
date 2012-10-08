@@ -7,301 +7,303 @@ import scala.virtualization.lms.common.{LiftPrimitives, Base, ScalaGenFat, BaseF
 import scala.reflect.SourceContext
 
 trait QueryableOps extends Base { this: OptiQL =>
-
-  //TODO: abstract class Grouping[TKey, TSource] extends Struct with DeliteCollection[TSource]
-
-  implicit def repToQueryableOps[TSource:Manifest](r: Rep[DataTable[TSource]]) = new QOpsCls(r) 
-  implicit def repGroupingToQueryableOps[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]) = new QOpsCls(queryable_grouping_toDatatable(g))
   
-  abstract class OrderedQueryable[TSource:Manifest]
-  implicit def repOQtoOQOps[TSource:Manifest](r: Rep[OrderedQueryable[TSource]]) = new OQOpsCls(r)  
-  implicit def repOQtoDT[TSource:Manifest](r: Rep[OrderedQueryable[TSource]]): Rep[DataTable[TSource]]
+  implicit def repToQueryableOps[T:Manifest](r: Rep[Table[T]]) = new QOpsCls(r) 
+  implicit def repGroupingToQueryableOps[K:Manifest, T:Manifest](g: Rep[Grouping[K, T]]) = new QOpsCls(queryable_grouping_toDatatable(g))
 
-  class QOpsCls[TSource:Manifest](s: Rep[DataTable[TSource]]) {
-    def Where(predicate: Rep[TSource] => Rep[Boolean]) = queryable_where(s, predicate)
-    def GroupBy[TKey:Manifest](keySelector: Rep[TSource] => Rep[TKey]) = queryable_groupby(s,keySelector)
-    def Select[TResult:Manifest](resultSelector: Rep[TSource] => Rep[TResult]) = queryable_select(s, resultSelector)
-    def Sum(sumSelector: Rep[TSource] => Rep[Double]) = queryable_sum(s, sumSelector)
-    def Average(avgSelector: Rep[TSource] => Rep[Double]) = queryable_average(s, avgSelector)
+  class QOpsCls[T:Manifest](s: Rep[Table[T]]) {
+    def Where(predicate: Rep[T] => Rep[Boolean]) = queryable_where(s, predicate)
+    def GroupBy[K:Manifest](keySelector: Rep[T] => Rep[K]) = queryable_groupby(s,keySelector)
+    def Select[R:Manifest](resultSelector: Rep[T] => Rep[R]) = queryable_select(s, resultSelector)
+    def Sum[N:Numeric:Manifest](sumSelector: Rep[T] => Rep[N]) = queryable_sum(s, sumSelector)
+    def Average[N:Numeric:Manifest](avgSelector: Rep[T] => Rep[N]) = queryable_average(s, avgSelector)
     def Count() = queryable_count(s)
-    def OrderBy[TKey:Ordering:Manifest](keySelector: Rep[TSource] => Rep[TKey]) = queryable_orderby(s, keySelector)
-    def OrderByDescending[TKey:Ordering:Manifest](keySelector: Rep[TSource] => Rep[TKey]) = queryable_orderbydescending(s, keySelector)
-    def Min(minSelector: Rep[TSource] => Rep[Double]) = queryable_min(s, minSelector)
-    def MinIndex(minSelector: Rep[TSource] => Rep[Double]) = queryable_min_index(s, minSelector)
-    def Join[TSecond:Manifest](second: Rep[DataTable[TSecond]]) = new JoinableOps(s, second)
+    def OrderBy[K:Ordering:Manifest](keySelector: Rep[T] => Rep[K]) = queryable_orderby(s, keySelector)
+    def OrderByDescending[K:Ordering:Manifest](keySelector: Rep[T] => Rep[K]) = queryable_orderbydescending(s, keySelector)
+    def ThenBy[K:Ordering:Manifest](keySelector: Rep[T] => Rep[K]) = queryable_thenby(s, keySelector)
+    def ThenByDescending[K:Ordering:Manifest](keySelector: Rep[T] => Rep[K]) = queryable_thenbydescending(s, keySelector) 
+    def Max[N:Ordering:Manifest](maxSelector: Rep[T] => Rep[N]) = queryable_max(s, maxSelector)
+    def Min[N:Ordering:Manifest](minSelector: Rep[T] => Rep[N]) = queryable_min(s, minSelector)
+    def First() = queryable_first(s)
+    def Last() = queryable_last(s)
+    def Join[T2:Manifest](second: Rep[Table[T2]]) = new JoinableOps(s, second)
   }
 
-  class JoinableOps[TFirst:Manifest, TSecond:Manifest](first: Rep[DataTable[TFirst]], second: Rep[DataTable[TSecond]]) {
-    def Where(predicate: Rep[TSecond] => Rep[Boolean]) = new JoinableOps(first, second.Where(predicate))
-    def WhereEq[TKey2:Manifest](firstKeySelector: Rep[TFirst] => Rep[TKey2],secondKeySelector: Rep[TSecond] => Rep[TKey2]) = new Joinable2(first, firstKeySelector, second, secondKeySelector)
+  class JoinableOps[T1:Manifest, T2:Manifest](first: Rep[Table[T1]], second: Rep[Table[T2]]) {
+    def Where(predicate: Rep[T2] => Rep[Boolean]) = new JoinableOps(first, second.Where(predicate))
+    def WhereEq[K:Manifest](firstKeySelector: Rep[T1] => Rep[K], secondKeySelector: Rep[T2] => Rep[K]) = new Joinable2(first, firstKeySelector, second, secondKeySelector)
   }
 
-  class Joinable2[TFirst:Manifest, TSecond:Manifest, TKey2:Manifest](
-    val first: Rep[DataTable[TFirst]],
-    val firstKeySelector: Rep[TFirst] => Rep[TKey2],
-    val second: Rep[DataTable[TSecond]],
-    val secondKeySelector: Rep[TSecond] => Rep[TKey2] 
+  class Joinable2[T1:Manifest, T2:Manifest, K:Manifest](
+    val first: Rep[Table[T1]],
+    val firstKeySelector: Rep[T1] => Rep[K],
+    val second: Rep[Table[T2]],
+    val secondKeySelector: Rep[T2] => Rep[K] 
   ) {
-    def Select[TResult:Manifest](resultSelector: (Rep[TFirst], Rep[TSecond]) => Rep[TResult]) = queryable_join2(first, firstKeySelector, second, secondKeySelector, resultSelector)
+    def Select[R:Manifest](resultSelector: (Rep[T1], Rep[T2]) => Rep[R]) = queryable_join2(first, firstKeySelector, second, secondKeySelector, resultSelector)
   }
   
-  class OQOpsCls[TSource:Manifest](oq: Rep[OrderedQueryable[TSource]]) {
-    def ThenBy[TKey:Ordering:Manifest](keySelector: Rep[TSource] => Rep[TKey]) = queryable_thenby(oq, keySelector) 
-  }
-  
-  //Grouping stuff
-  def infix_key[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]) = queryable_grouping_key(g) 
+  //Grouping
+  def infix_key[K:Manifest, T:Manifest](g: Rep[Grouping[K, T]]) = queryable_grouping_key(g) 
 
-  def queryable_where[TSource:Manifest](s: Rep[DataTable[TSource]], predicate: Rep[TSource] => Rep[Boolean]): Rep[DataTable[TSource]]
-  def queryable_groupby[TSource:Manifest, TKey:Manifest](s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]): Rep[DataTable[Grouping[TKey, TSource]]]
-  def queryable_select[TSource:Manifest, TResult:Manifest](s: Rep[DataTable[TSource]], resultSelector: Rep[TSource] => Rep[TResult]): Rep[DataTable[TResult]]
-  def queryable_sum[TSource:Manifest](s: Rep[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Double]): Rep[Double]
-  def queryable_min[TSource:Manifest](s: Rep[DataTable[TSource]], minSelector: Rep[TSource] => Rep[Double]): Rep[TSource]
-  def queryable_min_index[TSource:Manifest](s: Rep[DataTable[TSource]], minSelector: Rep[TSource] => Rep[Double]): Rep[Int]
-  def queryable_average[TSource:Manifest](s: Rep[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]): Rep[Double]
-  def queryable_count[TSource:Manifest](s: Rep[DataTable[TSource]]): Rep[Int]  
-  def queryable_orderby[TSource:Manifest, TKey:Ordering:Manifest](s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]): Rep[OrderedQueryable[TSource]]
-  def queryable_orderbydescending[TSource:Manifest, TKey:Ordering:Manifest](s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]): Rep[OrderedQueryable[TSource]]
-  def queryable_thenby[TSource:Manifest, TKey:Ordering:Manifest](oq: Rep[OrderedQueryable[TSource]], keySelector: Rep[TSource] => Rep[TKey]): Rep[OrderedQueryable[TSource]]
+  def queryable_where[T:Manifest](s: Rep[Table[T]], predicate: Rep[T] => Rep[Boolean]): Rep[Table[T]]
+  def queryable_groupby[T:Manifest, K:Manifest](s: Rep[Table[T]], keySelector: Rep[T] => Rep[K]): Rep[Table[Grouping[K, T]]]
+  def queryable_select[T:Manifest, R:Manifest](s: Rep[Table[T]], resultSelector: Rep[T] => Rep[R]): Rep[Table[R]]
+  def queryable_sum[T:Manifest, N:Numeric:Manifest](s: Rep[Table[T]], sumSelector: Rep[T] => Rep[N]): Rep[N]
+  def queryable_average[T:Manifest, N:Numeric:Manifest](s: Rep[Table[T]], avgSelector: Rep[T] => Rep[N]): Rep[N]
+  def queryable_count[T:Manifest](s: Rep[Table[T]]): Rep[Int]  
+  def queryable_max[T:Manifest, N:Ordering:Manifest](s: Rep[Table[T]], maxSelector: Rep[T] => Rep[N]): Rep[N]
+  def queryable_min[T:Manifest, N:Ordering:Manifest](s: Rep[Table[T]], minSelector: Rep[T] => Rep[N]): Rep[N]
+  def queryable_first[T:Manifest](s: Rep[Table[T]]): Rep[T]
+  def queryable_last[T:Manifest](s: Rep[Table[T]]): Rep[T]
+  def queryable_orderby[T:Manifest, K:Ordering:Manifest](s: Rep[Table[T]], keySelector: Rep[T] => Rep[K]): Rep[Table[T]]
+  def queryable_orderbydescending[T:Manifest, K:Ordering:Manifest](s: Rep[Table[T]], keySelector: Rep[T] => Rep[K]): Rep[Table[T]]
+  def queryable_thenby[T:Manifest, K:Ordering:Manifest](s: Rep[Table[T]], keySelector: Rep[T] => Rep[K]): Rep[Table[T]]
+  def queryable_thenbydescending[T:Manifest, K:Ordering:Manifest](s: Rep[Table[T]], keySelector: Rep[T] => Rep[K]): Rep[Table[T]]
   
-  def queryable_grouping_toDatatable[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[DataTable[TSource]]
-  def queryable_grouping_key[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[TKey]
+  def queryable_grouping_toDatatable[K:Manifest, T:Manifest](g: Rep[Grouping[K, T]]): Rep[Table[T]]
+  def queryable_grouping_key[K:Manifest, T:Manifest](g: Rep[Grouping[K, T]]): Rep[K]
   
-  def queryable_join2[TFirst:Manifest, TSecond:Manifest, TKey2:Manifest, TResult:Manifest](first: Rep[DataTable[TFirst]], firstKeySelector: Rep[TFirst] => Rep[TKey2], 
-    second: Rep[DataTable[TSecond]], secondKeySelector: Rep[TSecond] => Rep[TKey2], resultSelector: (Rep[TFirst], Rep[TSecond]) => Rep[TResult]):Rep[DataTable[TResult]]
+  def queryable_join2[T1:Manifest, T2:Manifest, K2:Manifest, R:Manifest](first: Rep[Table[T1]], firstKeySelector: Rep[T1] => Rep[K2], 
+    second: Rep[Table[T2]], secondKeySelector: Rep[T2] => Rep[K2], resultSelector: (Rep[T1], Rep[T2]) => Rep[R]):Rep[Table[R]]
   
 }
 
 trait QueryableOpsExp extends QueryableOps with BaseFatExp { this: OptiQLExp with LiftPrimitives =>
-
-  case class QueryableWhere[TSource:Manifest](in: Exp[DataTable[TSource]], cond: Exp[TSource] => Exp[Boolean]) extends DeliteOpFilter[TSource, TSource, DataTable[TSource]] {
-    def alloc = DataTable[TSource]()
-    override def allocWithArray = data => DataTable(data, data.length)
-    def func = e => e
+  
+  case class QueryableWhere[T:Manifest](in: Exp[Table[T]], cond: Exp[T] => Exp[Boolean]) extends DeliteOpFilter[T, T, Table[T]] {
+    override def alloc(len: Exp[Int]) = Table(len)
     val size = copyTransformedOrElse(_.size)(in.size)
+
+    def func = e => e
   }
      
-  case class QueryableSelect[TSource:Manifest, TResult:Manifest](in: Exp[DataTable[TSource]], func: Exp[TSource] => Exp[TResult]) extends DeliteOpMap[TSource, TResult, DataTable[TResult]] {
-    def alloc = DataTable[TResult](in.size)
-    override def allocWithArray = data => DataTable(data, data.length)
+  case class QueryableSelect[T:Manifest, R:Manifest](in: Exp[Table[T]], func: Exp[T] => Exp[R]) extends DeliteOpMap[T, R, Table[R]] {
+    override def alloc(len: Exp[Int]) = Table(len)
     val size = copyTransformedOrElse(_.size)(in.size)
   }
 
-  case class QueryableSum[TSource:Manifest](in: Exp[DataTable[TSource]], map: Exp[TSource] => Exp[Double]) extends DeliteOpMapReduce[TSource,Double] {
+  case class QueryableSum[T:Manifest, N:Numeric:Manifest](in: Exp[Table[T]], map: Exp[T] => Exp[N]) extends DeliteOpMapReduce[T, N] {
     val size = copyTransformedOrElse(_.size)(in.size)
-    def zero = unit(0.0)
+    def zero = unit(0).AsInstanceOf[N] //TODO: member of Numeric
     def reduce = _ + _
-  }
-  
-  //these are hacked up for now untill we have proper Delite support
-  case class QueryableWhereMarker[TSource: Manifest](in: Exp[DataTable[TSource]], cond: Exp[TSource] => Exp[Boolean]) extends Def[DataTable[TSource]]
-  //case class HackQueryableGroupBy[TSource:Manifest, TKey:Manifest](s: Exp[DataTable[TSource]], v:Sym[TSource], key: Block[TKey]) extends Def[DataTable[Grouping[TKey, TSource]]]
-  //case class HackQueryableSum[TSource:Manifest](s:Exp[DataTable[TSource]], sym: Sym[TSource], value: Block[Double]) extends Def[Double]
-  
-  //case class QueryableAverage[TSource:Manifest](s: Exp[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]) extends Def[Double]
-  
-  //case class QueryableCount[TSource:Manifest](s: Exp[DataTable[TSource]]) extends Def[Int]
 
-  //case class QueryableGroupingToDataTable[TSource:Manifest, TKey:Manifest](g: Rep[Grouping[TKey, TSource]]) extends Def[DataTable[TSource]]
-  //case class QueryableGroupingKey[TSource:Manifest, TKey:Manifest](g: Rep[Grouping[TKey, TSource]]) extends Def[TKey]
-  
-  case class NewOrderedQueryable[TSource:Manifest](s: Exp[DataTable[TSource]], orig: Exp[DataTable[TSource]], sel: (Exp[Int], Exp[Int]) => Exp[Int]) extends Def[OrderedQueryable[TSource]]
-
-  implicit def repOQtoDT[TSource:Manifest](x: Exp[OrderedQueryable[TSource]]) = x match {
-    case Def(NewOrderedQueryable(s,_,_)) => s
+    val N = implicitly[Numeric[N]]
+    val mN = manifest[N]
+    val mT = manifest[T]
   }
 
-  def queryable_select[TSource:Manifest, TResult:Manifest](s: Rep[DataTable[TSource]], resultSelector: Rep[TSource] => Rep[TResult]) = {
-    //QueryableSelect(s, resultSelector)
-    val data = arraySelect(s.size)(i => resultSelector(s(i)))
-    DataTable(data, data.length)
+  case class QueryableMax[T:Manifest, N:Ordering:Manifest](in: Exp[Table[T]], map: Exp[T] => Exp[N]) extends DeliteOpMapReduce[T, N] {
+    val size = copyTransformedOrElse(_.size)(in.size)
+    def zero = unit(null).AsInstanceOf[N] //TODO: ??
+    def reduce = (a,b) => a max b
   }
-  
-  def queryable_where[TSource:Manifest](s: Exp[DataTable[TSource]], predicate: Exp[TSource] => Exp[Boolean]) = {
-    //QueryableWhere(s, predicate)
-    //val data = arrayWhere(s.size)(i => predicate(s(i)))(i => s(i))
-    //DataTable(data, data.length)
-    QueryableWhereMarker(s, predicate)
+
+  case class QueryableMin[T:Manifest, N:Ordering:Manifest](in: Exp[Table[T]], map: Exp[T] => Exp[N]) extends DeliteOpMapReduce[T, N] {
+    val size = copyTransformedOrElse(_.size)(in.size)
+    def zero = unit(null).AsInstanceOf[N] //TODO: ??
+    def reduce = (a,b) => a min b
   }
+
+  case class QueryableSort[T:Manifest](in: Exp[Table[T]], compare: (Exp[T],Exp[T]) => Exp[Int]) extends Def[Table[T]]
+
+  case class QueryableGroupBy[T:Manifest, K:Manifest](in: Exp[Table[T]], keyFunc: Exp[T] => Exp[K]) extends DeliteOpHash[K, T, Table[Grouping[K,T]]] {
+    def alloc(len: Exp[Int]) = Table(len)
+    val size = copyTransformedOrElse(_.size)(in.size)
+  }
+
+  def queryable_select[T:Manifest, R:Manifest](s: Exp[Table[T]], resultSelector: Exp[T] => Exp[R]) = QueryableSelect(s, resultSelector)
+
+  def queryable_where[T:Manifest](s: Exp[Table[T]], predicate: Exp[T] => Exp[Boolean]) = QueryableWhere(s, predicate)
   
-  //TODO: this a very shoddy way of fusing filters... why doesn't LMS fusing work here?
-  def queryable_groupby[TSource:Manifest, TKey:Manifest](s0: Exp[DataTable[TSource]], keySelector: Exp[TSource] => Exp[TKey]) = {
-    val (s, cond) = s0 match {
-      case Def(QueryableWhereMarker(s1, predicate)) => 
-        val cond = (i: Exp[Int]) => predicate(s1(i))
-        (s1, List(cond))
-      case _ => (s0, Nil)
+  def queryable_groupby[T:Manifest, K:Manifest](s: Exp[Table[T]], keySelector: Exp[T] => Exp[K]) = QueryableGroupBy(s, keySelector)
+
+  //TODO: should Join be a DeliteOp?; could also create an abstract Join op for pattern matching and later lower to this
+  def queryable_join2[T1:Manifest, T2:Manifest, K:Manifest, R:Manifest](first: Exp[Table[T1]], firstKeySelector: Exp[T1] => Exp[K], 
+    second: Exp[Table[T2]], secondKeySelector: Exp[T2] => Exp[K], resultSelector: (Exp[T1], Exp[T2]) => Exp[R]): Exp[Table[R]] = {
+
+    /* val firstGrouped = first.GroupBy(firstKeySelector)
+
+    //val result = second flatMap { x2 => firstMap(secondKeySelector(x2)) map { x1 => resultSelector(x1,x2) } }
+    val nestedResult = second.Select { secondValue => 
+      val key = secondKeySelector(secondValue)
+      val firstValues = firstGrouped(key)
+      firstValues.Select(firstValue => resultSelector(firstValue, secondValue))
     }
-
-    val keyData = arrayDistinct(s.size)(i => keySelector(s(i)), cond)
-    val valData = arrayGroup(s.size)(i => keySelector(s(i)))(i => s(i), cond)
-    val data = arraySelect(keyData.length)(i => 
-      grouping_apply(keyData(i), DataTable(valData(i), valData(i).length)))
-    DataTable(data, data.length)
+    nestedResult.flatten */
+    throw new RuntimeException("Join2 not yet implemented")
   }
 
-  def queryable_join2[TFirst:Manifest, TSecond:Manifest, TKey2:Manifest, TResult:Manifest](first: Rep[DataTable[TFirst]], firstKeySelector: Rep[TFirst] => Rep[TKey2], 
-    second: Rep[DataTable[TSecond]], secondKeySelector: Rep[TSecond] => Rep[TKey2], resultSelector: (Rep[TFirst], Rep[TSecond]) => Rep[TResult]):Rep[DataTable[TResult]] = {
+  def queryable_sum[T:Manifest, N:Numeric:Manifest](s: Exp[Table[T]], sumSelector: Exp[T] => Exp[N]) = QueryableSum(s, sumSelector)
+  
+  def queryable_max[T:Manifest, N:Ordering:Manifest](s: Exp[Table[T]], maxSelector: Exp[T] => Exp[N]) = QueryableMax(s, maxSelector)
 
-    /* first firstKeySelector second secondKeySelector resultSelector */
+  def queryable_min[T:Manifest, N:Ordering:Manifest](s: Exp[Table[T]], minSelector: Exp[T] => Exp[N]) = QueryableMin(s, minSelector)
+
+  def queryable_average[T:Manifest, N:Numeric:Manifest](s: Exp[Table[T]], avgSelector: Exp[T] => Exp[N]) = //QueryableAverage(s, avgSelector)
+    s.Sum(avgSelector)/s.Count.AsInstanceOf[N] //TODO: this only works for primitive types
     
-    val firstMap = indexBuild(first.size)(i => firstKeySelector(first(i)))
-    val firstGrouped = arrayGroup(first.size)(i => firstKeySelector(first(i)))(i => first(i))
-    
-    val empty = arraySelect(0)(i => first(i))
-    
-    val dataNested = arraySelect(second.size) { j => 
-      val secondItem = second(j)
-      val key = secondKeySelector(secondItem)
-      val firstIdx = indexLookup(firstMap,key)
-      val firstItems = if (firstIdx >= 0) firstGrouped(firstIdx) else empty
-      arraySelect(firstItems.length)(i => resultSelector(firstItems(i), secondItem))
-    }
-    
-    val data = arrayFlatten(dataNested)
-    DataTable(data, data.length)    
-    
-    /*
-    val firstMap = first.groupBy(firstKeySelector)
-    second flatMap { x2 => firstMap(secondKeySelector(x2)) map { x1 => resultSelector(x1,x2) } }
-    */
+  def queryable_count[T:Manifest](s: Exp[Table[T]]) = s.size
+
+  def queryable_first[T:Manifest](s: Exp[Table[T]]) = s(0)
+
+  def queryable_last[T:Manifest](s: Exp[Table[T]]) = s(s.Count-1)
+
+  def compareAsc[T:Manifest, K:Ordering:Manifest](a: Exp[T], b: Exp[T], keySelector: Exp[T] => Exp[K]): Exp[Int] = {
+    if (keySelector(a) < keySelector(b)) unit(-1) else if (keySelector(a) > keySelector(b)) unit(1) else unit(0)
   }
 
-
-  def queryable_sum[TSource:Manifest](s: Rep[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Double]) = {
-    //QueryableSum(s, sumSelector)
-    val res = reducePlain(s.size)(i => sumSelector(s(i)))(0)(_ + _)
-    res
-  }
-
-  def queryable_min_index[TSource:Manifest](s: Rep[DataTable[TSource]], minSelector: Rep[TSource] => Rep[Double]) = {
-    /*
-    CAVEAT: must not fuse if s is a filter loop because that will mess with index i !!!
-    */
-    reduceTuple(1 + s.size - 1)(i => i, i => minSelector(s(i)))(unit(-1), unit(scala.Double.MaxValue)) {
-      case ((i0,v0),(i1,v1)) => 
-        (reifyEffects { if (v0 <= v1) i0 else i1 },
-         reifyEffects { if (v0 <= v1) v0 else v1 })
-    }
+  def compareDsc[T:Manifest, K:Ordering:Manifest](a: Exp[T], b: Exp[T], keySelector: Exp[T] => Exp[K]): Exp[Int] = {
+    if (keySelector(a) > keySelector(b)) unit(-1) else if (keySelector(a) < keySelector(b)) unit(1) else unit(0)
   }
   
-  def queryable_min[TSource:Manifest](s: Rep[DataTable[TSource]], minSelector: Rep[TSource] => Rep[Double]) = {
-    // first compute min index, then get item at index
-    val minIdx = queryable_min_index(s,minSelector)
-    // the conditional below forces Map creation.
-    // TODO: refactor to return Option and implement soa transform for option values.
-    if (minIdx >= 0) s(minIdx) else null  // <--- should have struct(k -> null)  for all k in null
+  def queryable_orderby[T:Manifest, K:Ordering:Manifest](s: Exp[Table[T]], keySelector: Exp[T] => Exp[K]) = QueryableSort(s, (a:Exp[T], b:Exp[T]) => compareAsc(a,b,keySelector))
+
+  def queryable_orderbydescending[T:Manifest, K:Ordering:Manifest](s: Exp[Table[T]], keySelector: Exp[T] => Exp[K]) = QueryableSort(s, (a:Exp[T], b:Exp[T]) => compareDsc(a,b,keySelector))
+
+  def queryable_thenby[T:Manifest, K:Ordering:Manifest](s: Exp[Table[T]], keySelector: Exp[T] => Exp[K]) = s match {
+    case Def(QueryableSort(orig, sel)) =>
+      val compoundSel = (a:Exp[T], b:Exp[T]) => {
+        val prev = sel(a,b)
+        if (prev == unit(0)) compareAsc(a,b,keySelector)
+        else prev
+      }
+      QueryableSort(orig, compoundSel)
+
+    case _ => throw new IllegalArgumentException("ERROR: ThenBy must be preceded by OrderBy or OrderByDescending")
   }
 
-  def queryable_average[TSource:Manifest](s: Rep[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]) = 
-    s.Sum(avgSelector)/s.Sum(_ => 1)
-    
-  def queryable_count[TSource:Manifest](s: Rep[DataTable[TSource]]) = s.size()
+  def queryable_thenbydescending[T:Manifest, K:Ordering:Manifest](s: Exp[Table[T]], keySelector: Exp[T] => Exp[K]) = s match {
+    case Def(QueryableSort(orig, sel)) =>
+      val compoundSel = (a:Exp[T], b:Exp[T]) => {
+        val prev = sel(a,b)
+        if (prev == unit(0)) compareDsc(a,b,keySelector)
+        else prev
+      }
+      QueryableSort(orig, compoundSel)
 
-  def queryable_compare[TSource:Manifest, TKey:Ordering:Manifest](i: Rep[Int], j: Rep[Int], s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]): Rep[Int] = {
-    if (keySelector(s(i)) < keySelector(s(j))) unit(-1) else if (keySelector(s(i)) > keySelector(s(j))) unit(1) else unit(0)
+    case _ => throw new IllegalArgumentException("ERROR: ThenByDescending must be preceded by OrderBy or OrderByDescending")
   }
   
-  def queryable_orderby[TSource:Manifest, TKey:Ordering:Manifest](s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]) = {
-    val permutation = arraySort(s.size)((i,j) => keySelector(s(i)) <= keySelector(s(j)))    
-    val data = arraySelect(s.size)(i => s(permutation(i)))
-    val sel: (Rep[Int],Rep[Int]) => Rep[Int] = (i,j) => queryable_compare(i,j,s,keySelector)
-    val table = DataTable(data, data.length)
-    Console.println("NewOrderedQueryable type " + table.Type)
-    toAtom(NewOrderedQueryable(table, s, sel))(mtype(table.Type),ctx)
-  }
-  def queryable_orderbydescending[TSource:Manifest, TKey:Ordering:Manifest](s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]) = {
-    // TODO: copy pasted from above --> refactor
-    val permutation = arraySort(s.size)((i,j) => keySelector(s(i)) >= keySelector(s(j)))
-    val data = arraySelect(s.size)(i => s(permutation(i)))
-    val sel: (Rep[Int],Rep[Int]) => Rep[Int] = (i,j) => queryable_compare(i,j,s,keySelector)
-    val table = DataTable(data, data.length)
-    Console.println("NewOrderedQueryable type " + table.Type)
-    toAtom(NewOrderedQueryable(table, s, sel))(mtype(table.Type),ctx)
-  }
-
-  def queryable_thenby[TSource:Manifest, TKey:Ordering:Manifest](oq: Rep[OrderedQueryable[TSource]], keySelector: Rep[TSource] => Rep[TKey]) = {
-    val (s,sel) = oq match {
-      case Def(NewOrderedQueryable(n, s, sel)) => (s,sel)
-    }
-    val permutation = arraySort(s.size)((i,j) => {
-      val prev = sel(i,j)
-      if (unit(-1) == prev) unit(true) else if (prev == unit(1)) unit(false) else keySelector(s(i)) <= keySelector(s(j))
-    })
-    val data = arraySelect(s.size)(i => s(permutation(i)))
-    val compoundSel: (Rep[Int],Rep[Int]) => Rep[Int] = (i,j) => {
-      val prev = sel(i,j)
-      if (prev == unit(0)) queryable_compare(i,j,s,keySelector)
-      else prev 
-    }
-    val table = DataTable(data, data.length)
-    Console.println("NewOrderedQueryable type " + table.Type)
-    toAtom(NewOrderedQueryable(table, s, compoundSel))(mtype(table.Type),ctx)
-  }
+  def grouping_apply[K:Manifest, T:Manifest](k: Exp[K], v: Exp[Table[T]]): Exp[Grouping[K,T]] =
+    struct[Grouping[K,T]](ClassTag[Grouping[K,T]]("Grouping"), "key"->k, "values"->v)
   
-  def grouping_apply[TKey:Manifest, TSource:Manifest](k: Rep[TKey], v: Rep[DataTable[TSource]]): Rep[Grouping[TKey, TSource]] =
-    struct[Grouping[TKey,TSource]](List("Grouping"), Map("key"->k, "values"->v))
-  
-  //def queryable_grouping_toDatatable[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]) = QueryableGroupingToDataTable(g)
-  //def queryable_grouping_key[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[TKey] = QueryableGroupingKey(g)
-  
-  def queryable_grouping_key[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[TKey] = field[TKey](g, "key")
-  def queryable_grouping_toDatatable[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[DataTable[TSource]] = field[DataTable[TSource]](g, "values")
+  def queryable_grouping_key[K:Manifest, T:Manifest](g: Exp[Grouping[K, T]]): Exp[K] = field[K](g, "key")
+  def queryable_grouping_toDatatable[K:Manifest, T:Manifest](g: Exp[Grouping[K, T]]): Exp[Table[T]] = field[Table[T]](g, "values")
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    // FIXME: this won't work. mirroring delite ops needs to look like this:
-    //case e@VectorMap(x,p) => reflectPure(new { override val original = Some(f,e) } with VectorMap(f(x),f(p))(e.mA,e.mB))(mtype(manifest[A]))
-    case QueryableWhere(s,p) => queryable_where(f(s), p)
-    case NewOrderedQueryable(n,s,sel) => reflectPure(NewOrderedQueryable(f(n),f(s),f(sel)))(mtype(f(n).Type),ctx)
+    case e@QueryableSum(in,g) => reflectPure(new { override val original = Some(f,e) } with QueryableSum(f(in),f(g))(e.mT,e.N,e.mN))(mtype(manifest[A]),implicitly[SourceContext])      
     case _ => super.mirror(e,f)
-  }).asInstanceOf[Exp[A]] //todo fix asInstanceOf
-  
-  override def syms(e: Any): List[Sym[Any]] = e match { 
-    //case QueryableGroupBy(s,v,k) => syms(s) 
-    case NewOrderedQueryable(n,s,sel) => syms(n)
-    case _ => super.syms(e)
-  }
-  
-  override def symsFreq(e: Any): List[(Sym[Any],Double)] = e match { 
-    //case QueryableGroupBy(s,v,k) => syms(s) 
-    case NewOrderedQueryable(n,s,sel) => freqNormal(n)
-    case _ => super.symsFreq(e)
-  }
-  
-  override def boundSyms(e: Any): List[Sym[Any]] = e match {    
-    //case HackQueryableGroupBy(s,v,k) => v::syms(k)
-    //case HackQueryableSum(s,sym,value) => sym::syms(value)
-    case _ => super.boundSyms(e)
-  }  
+  }).asInstanceOf[Exp[A]] 
   
 }
 
-trait ScalaGenQueryableOps extends ScalaGenFat {  
-  val IR: QueryableOpsExp with OptiQLExp
-  import IR._
+trait QueryableOpsExpOpt extends QueryableOpsExp { this: OptiQLExp =>
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case NewOrderedQueryable(n,s,sel) => //super.emitNode()
-                                      /*val d = findDefinition(s.asInstanceOf[Sym[Any]]).get; emitNode(d.sym,d.rhs)*/ 
-                                       stream.println("val " + quote(sym) + " = {")
-                                       emitBlock(Block(n)) 
-                                       stream.println(quote(n))
-                                       stream.println("}")
-    /*
-    case HackQueryableGroupBy(s, v, k) =>  {
-      stream.println("val " + quote(sym) + " =  " + quote(s) + ".GroupBy( " + quote(v) + " => {")   
-      emitBlock(k)   
-      stream.println(quote(getBlockResult(k)) + "})")
-    }
-    case HackQueryableSum(s,sym2,value) => {
-      stream.println("val " + quote(sym) + " = " + quote(s) + ".Sum( " + quote(sym2) + " => {")
-      emitBlock(value)
-      stream.println(quote(getBlockResult(value)) + "})")    
-    }
-    
-    case QueryableGroupingToDataTable(g) => emitValDef(sym, "generated.scala.container.DataTable.convertIterableToDataTable(" + quote(g) + ")")
-    case QueryableGroupingKey(g) => emitValDef(sym, quote(g) + ".key")
-    */
-    case _ => super.emitNode(sym,rhs)
+  case class QueryableSelectWhere[T:Manifest, R:Manifest](in: Exp[Table[T]], func: Exp[T] => Exp[R], cond: Exp[T] => Exp[Boolean]) extends DeliteOpFilter[T, R, Table[R]] {
+    override def alloc(len: Exp[Int]) = Table(len)
+    val size = copyTransformedOrElse(_.size)(in.size)
   }
+
+  case class QueryableGroupByWhere[T:Manifest, K:Manifest](in: Exp[Table[T]], keyFunc: Exp[T] => Exp[K], cond: Exp[T] => Exp[Boolean]) extends DeliteOpHashFilter[T, K, T, Table[Grouping[K,T]]] {
+    def alloc(len: Exp[Int]) = Table(len)
+    val size = copyTransformedOrElse(_.size)(in.size)
+
+    def mapFunc = v => v
+  }
+
+  case class QueryableReduceToCount[T:Manifest](in: Exp[Table[T]]) extends DeliteOpMapReduce[T, Int] {
+    val size = copyTransformedOrElse(_.size)(in.size)
+    def zero = unit(0)
+    def map = a => 1
+    def reduce = (a,b) => a + b 
+  }
+
+  case class QueryableReduceToAverage[T:Manifest, N:Numeric:Manifest](in: Exp[Table[T]], map: Exp[T] => Exp[N]) extends Def[N] //DeliteOpFilterReduceFold
+
+  case class QueryableReduceToFirst[T:Manifest](in: Exp[Table[T]]) extends DeliteOpReduce[T] {
+    val size = copyTransformedOrElse(_.size)(in.size)
+    def zero = unit(null).AsInstanceOf[T]
+    def func = (a,b) => a
+  }
+
+  case class QueryableReduceToLast[T:Manifest](in: Exp[Table[T]]) extends DeliteOpReduce[T] {
+    val size = copyTransformedOrElse(_.size)(in.size)
+    def zero = unit(null).AsInstanceOf[T]
+    def func = (a,b) => b
+  }
+
+  case class QueryableHashReduce[T:Manifest, K:Manifest, R:Manifest](in: Exp[Table[T]], keyFunc: Exp[T] => Exp[K], mapFunc: Exp[T] => Exp[R], reduceFunc: (Exp[R],Exp[R]) => Exp[R], cond: Exp[T] => Exp[Boolean]) 
+    extends DeliteOpHashFilterReduce[T, K, R, Table[R]] {
+
+    def alloc(len: Exp[Int]) = Table[R](len)
+    val size = copyTransformedOrElse(_.size)(in.size)
+    def zero = unit(null).AsInstanceOf[R]
+  }
+
+  //Where-GroupBy fusion
+  override def queryable_groupby[T:Manifest, K:Manifest](s: Exp[Table[T]], keySelector: Exp[T] => Exp[K]) = s match {
+    case Def(QueryableWhere(origS, predicate)) => //TODO: this special-cases filter fusion (only for groupBy); LMS fusion should take care of it generically for us
+      QueryableGroupByWhere(origS, keySelector, predicate)
+    case _ => super.queryable_groupby(s, keySelector)
+  }
+  
+  override def queryable_select[T:Manifest, R:Manifest](s: Exp[Table[T]], resultSelector: Exp[T] => Exp[R]): Exp[Table[R]] = s match {
+    case Def(QueryableWhere(origS, predicate)) => //Where-Select fusion
+      QueryableSelectWhere(origS, resultSelector, predicate)
+
+    case Def(QueryableGroupBy(origS: Exp[Table[a]], keySelector)) => //GroupBy-Select fusion
+      def abort(): Exp[Table[R]] = { 
+        printlog("WARNING: unable to fuse GroupBy-Select")
+        return super.queryable_select(s, resultSelector)
+      }
+
+      resultSelector(fresh[T]) match {
+        case Def(Struct(tag: StructTag[R], elems)) => 
+          val valueFunc = (a:Exp[a]) => struct[R](tag, elems map { case (key, value) => (key, value match {
+            case Def(QueryableSum(s, sumSelector)) => sumSelector(a)
+            case _ => abort() //unknown operator, abort
+          })})
+
+          val ctx = implicitly[SourceContext]
+          val reduceFunc = (a:Exp[R],b:Exp[R]) => struct[R](tag, elems map { case (key, value) => (key, value match {
+            case Def(qs@QueryableSum(s, sumSelector)) => numeric_plus(field(a,key)(value.tp,ctx), field(b,key)(value.tp,ctx))(qs.N,qs.mN,ctx)
+            case _ => abort()
+          })})
+
+          printlog("fused GroupBy-Select successfully")
+          QueryableHashReduce(origS, keySelector, valueFunc, reduceFunc, (e:Exp[a]) => unit(true))
+
+        case _ => abort()
+      }
+
+    case _ => super.queryable_select(s, resultSelector)
+  }
+
+  private var queryable_special: QueryableSpecial = Default
+  private abstract class QueryableSpecial
+  private case object Default extends QueryableSpecial
+  private case object GroupBySelect extends QueryableSpecial
+
+  //rewrite these as simple reductions for GroupBy-Select fusion
+  override def queryable_average[T:Manifest, N:Numeric:Manifest](s: Exp[Table[T]], avgSelector: Exp[T] => Exp[N]) = queryable_special match {
+    case GroupBySelect => QueryableReduceToAverage(s, avgSelector) //TODO: running average or sum-divide?
+    case _ => s.Sum(avgSelector)/s.Count.AsInstanceOf[N]
+  }
+    
+  override def queryable_count[T:Manifest](s: Exp[Table[T]]) = queryable_special match {
+    case GroupBySelect => QueryableReduceToCount(s)
+    case _ => s.size
+  }
+
+  override def queryable_first[T:Manifest](s: Exp[Table[T]]) = queryable_special match {
+    case GroupBySelect => QueryableReduceToFirst(s)
+    case _ => s(0)
+  }
+
+  override def queryable_last[T:Manifest](s: Exp[Table[T]]) = queryable_special match {
+    case GroupBySelect => QueryableReduceToLast(s)
+    case _ => s(s.Count-1)
+  }
+
 }

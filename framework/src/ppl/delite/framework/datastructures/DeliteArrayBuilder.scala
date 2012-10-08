@@ -4,6 +4,7 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common._
 import java.io.PrintWriter
 import reflect.{SourceContext, RefinedManifest}
+import ppl.delite.framework.Config
 
 
 /*
@@ -54,9 +55,13 @@ trait DeliteArrayBuilderOpsExp extends DeliteArrayBuilderOps with StructExp with
 trait DeliteArrayBuilderOpsExpOpt extends DeliteArrayBuilderOpsExp with StructExpOptCommon {
   this: DeliteArrayOpsExpOpt with DeliteOpsExp =>
   
-  //extracting the length into the tag seems dangerous here since it will change with every += op
-  //but then we're back to guessing which field to read to determine the lenghth of the result
+  //TODO: extract the length as a field and update it
   case class SoaBuilderTag[T](base: StructTag[T]) extends StructTag[DeliteArrayBuilder[T]]
+
+  override def structName[T](tag: StructTag[T]): String = tag match {
+    case SoaBuilderTag(base) => "DeliteArrayBuilder" + structName(base)
+    case _ => super.structName(tag)
+  }
 
   //forwarder to appease type-checker
   private def dnew[T:Manifest](initSize: Exp[Int])(implicit ctx: SourceContext): Rep[DeliteArrayBuilder[T]] = darray_builder_new(initSize)
@@ -64,18 +69,26 @@ trait DeliteArrayBuilderOpsExpOpt extends DeliteArrayBuilderOpsExp with StructEx
   private def argManifest[A,B](m: Manifest[A]): Manifest[B] = m.typeArguments(0).asInstanceOf[Manifest[B]]
 
   override def darray_builder_new[T:Manifest](initSize: Exp[Int])(implicit ctx: SourceContext) = manifest[T] match {
-    case rm: RefinedManifest[T] => struct[DeliteArrayBuilder[T]](SoaBuilderTag(AnonTag(rm)), rm.fields.map(p=>(p._1,dnew(initSize)(p._2,ctx))):_*)
+    case rm: RefinedManifest[T] if Config.soaEnabled => 
+      struct[DeliteArrayBuilder[T]](SoaBuilderTag(AnonTag(rm)), rm.fields.map(p=>(p._1,dnew(initSize)(p._2,ctx))))
     case _ => super.darray_builder_new(initSize)
   }
 
   override def darray_builder_plus_equals[T:Manifest](b: Exp[DeliteArrayBuilder[T]], elem: Exp[T])(implicit ctx: SourceContext) = b match {
-    case Def(Struct(SoaBuilderTag(tag), elems:Map[String, Exp[DeliteArrayBuilder[a]]])) =>
-      elems.foreach(p=>darray_builder_plus_equals(p._2, field[a](elem.asInstanceOf[Exp[Record]],p._1)(argManifest(p._2.tp),ctx))(argManifest(p._2.tp),ctx))
-    case _ => super.darray_builder_plus_equals(b, elem)
+    case Def(Struct(SoaBuilderTag(tag), elems:Seq[(String, Exp[DeliteArrayBuilder[a]])])) =>
+      elems.foreach(p=>darray_builder_plus_equals(p._2, field[a](elem,p._1)(argManifest(p._2.tp),ctx))(argManifest(p._2.tp),ctx))
+    case Def(Reflect(Struct(SoaBuilderTag(tag), elems:Seq[(String, Exp[DeliteArrayBuilder[a]])]), u, es)) =>
+      elems.foreach(p=>darray_builder_plus_equals(p._2, field[a](elem,p._1)(argManifest(p._2.tp),ctx))(argManifest(p._2.tp),ctx))
+    case _ => 
+      super.darray_builder_plus_equals(b, elem)
   }
 
   override def darray_builder_result[T:Manifest](b: Exp[DeliteArrayBuilder[T]])(implicit ctx: SourceContext) = b match {
-    case Def(Struct(SoaBuilderTag(tag), elems: Map[String, Exp[DeliteArrayBuilder[a]]])) =>
+    case Def(Struct(SoaBuilderTag(tag), elems: Seq[(String, Exp[DeliteArrayBuilder[a]])])) =>
+      val arrays = elems.map(p=>(p._1, darray_builder_result(p._2)(argManifest(p._2.tp),ctx)))
+      val len = darray_length(arrays.head._2)(argManifest(arrays.head._2.tp),ctx) //which length?
+      struct[DeliteArray[T]](SoaTag(tag, len), arrays)
+    case Def(Reflect(Struct(SoaBuilderTag(tag), elems: Seq[(String, Exp[DeliteArrayBuilder[a]])]), u, es)) =>
       val arrays = elems.map(p=>(p._1, darray_builder_result(p._2)(argManifest(p._2.tp),ctx)))
       val len = darray_length(arrays.head._2)(argManifest(arrays.head._2.tp),ctx) //which length?
       struct[DeliteArray[T]](SoaTag(tag, len), arrays)
@@ -96,6 +109,15 @@ trait ScalaGenDeliteArrayBuilderOps extends ScalaGenEffect {
     case DeliteArrayBuilderResult(b) =>
       emitValDef(sym, quote(b) + ".toArray")
     case _ => super.emitNode(sym, rhs)
+  }
+
+  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "DeliteArrayBuilder" => m.typeArguments(0) match {
+      case s if s <:< manifest[Record] =>
+        structName(m)
+      case arg => "scala.collection.mutable.ArrayBuffer[" + remap(arg) + "]"
+    }
+    case _ => super.remap(m)
   }
 
 }
