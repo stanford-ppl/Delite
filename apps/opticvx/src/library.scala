@@ -57,12 +57,14 @@ trait OptiCVXLibrary extends OptiCVXApplication {
     t
   })
 
-  val quad_over_lin = cvxfun (
-    vexity=convex, 
-    sign=positive, 
-    monotonicity=(diatonic, decreasing))
+  val quad_over_lin = cvxfun (vexity=convex, sign=positive)
+  
+  val quad_over_lin = cvxfun (vexity=convex, sign=positive)
+    arg (monotonicity_at_0=zero, shape=vector, name="x")
+    arg (monotonicity=decreasing, shape=scalar, name="y")
+    body    
   ((x, y) => {
-
+    
   })
 
   //the only magic we support is:
