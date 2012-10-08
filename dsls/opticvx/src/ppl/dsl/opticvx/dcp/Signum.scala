@@ -1,4 +1,4 @@
-package ppl.dsl.opticvx
+package ppl.dsl.opticvx.dcp
 
 sealed abstract class Signum {
   //encapsulates the idea of adding two expressions
@@ -123,7 +123,7 @@ object Vexity {
   }
 }
 
-object Monotonicity {
+object Tonicity {
   val none: Signum = Signum.All
   val nondecreasing: Signum = Signum.Positive
   val nonincreasing: Signum = Signum.Negative
@@ -131,9 +131,9 @@ object Monotonicity {
   val decreasing: Signum = Signum.Negative
   val constant: Signum = Signum.Zero
   def format(d: Signum): String = d match {
-    case Monotonicity.none => "none"
-    case Monotonicity.nondecreasing => "nondecreasing"
-    case Monotonicity.nonincreasing => "nonincreasing"
-    case Monotonicity.constant => "constant"
+    case Tonicity.none => "none"
+    case Tonicity.nondecreasing => "nondecreasing"
+    case Tonicity.nonincreasing => "nonincreasing"
+    case Tonicity.constant => "constant"
   }
 }
