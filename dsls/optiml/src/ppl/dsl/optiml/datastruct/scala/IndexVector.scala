@@ -18,7 +18,7 @@ import ppl.dsl.optila.datastruct.scala._
  *
  */
 
-class IndexVectorDense(__length: Int, __isRow: Boolean) { 
+class IndexVectorDenseC(__length: Int, __isRow: Boolean) { 
   var _length = __length
   var _isRow = __isRow
   var _data: Array[Int] = new Array[Int](_length)

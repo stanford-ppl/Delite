@@ -58,11 +58,6 @@ trait DeliteArrayBuilderOpsExpOpt extends DeliteArrayBuilderOpsExp with StructEx
   //TODO: extract the length as a field and update it
   case class SoaBuilderTag[T](base: StructTag[T]) extends StructTag[DeliteArrayBuilder[T]]
 
-  override def structName[T](tag: StructTag[T]): String = tag match {
-    case SoaBuilderTag(base) => "DeliteArrayBuilder" + structName(base)
-    case _ => super.structName(tag)
-  }
-
   //forwarder to appease type-checker
   private def dnew[T:Manifest](initSize: Exp[Int])(implicit ctx: SourceContext): Rep[DeliteArrayBuilder[T]] = darray_builder_new(initSize)
 

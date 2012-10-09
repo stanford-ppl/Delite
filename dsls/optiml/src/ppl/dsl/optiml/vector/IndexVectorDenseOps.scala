@@ -5,6 +5,7 @@ import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteCollectionOpsExp}
 import ppl.delite.framework.ops.DeliteCollection
+import ppl.delite.framework.datastructures.DeliteArray
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.util.OverloadHack
 import scala.reflect.SourceContext
@@ -57,12 +58,13 @@ trait IndexVectorDenseOps extends Base with OverloadHack { this: OptiML =>
 }
 
 trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOpsExp with VariablesExp with BaseFatExp { this: OptiMLExp => 
-  case class IndexVectorDenseLength(x: Exp[IndexVectorDense]) extends Def[Int]
-  case class IndexVectorDenseApply(x: Exp[IndexVectorDense], n: Exp[Int]) extends Def[Int]
+  //case class IndexVectorDenseLength(x: Exp[IndexVectorDense]) extends Def[Int]
+  //case class IndexVectorDenseApply(x: Exp[IndexVectorDense], n: Exp[Int]) extends Def[Int]
   //case class IndexVectorDenseNewUnsafe(x: Exp[DenseVector[Int]]) extends Def[IndexVectorDense]
     
-  def indexvectordense_length(x: Exp[IndexVectorDense])(implicit ctx: SourceContext) = reflectPure(IndexVectorDenseLength(x))
-  def indexvectordense_apply(x: Exp[IndexVectorDense], n: Exp[Int])(implicit ctx: SourceContext) = reflectPure(IndexVectorDenseApply(x,n))  
+  def indexvectordense_length(x: Exp[IndexVectorDense])(implicit ctx: SourceContext) = field[Int](x, "_length")
+  def indexvectordense_raw_data(x: Exp[IndexVectorDense])(implicit ctx: SourceContext) = field[DeliteArray[Int]](x, "_data")
+  def indexvectordense_apply(x: Exp[IndexVectorDense], n: Exp[Int])(implicit ctx: SourceContext) = indexvectordense_raw_data(x).apply(n) 
   def indexvectordense_new_unsafe(x: Exp[DenseVector[Int]])(implicit ctx: SourceContext) = {
     val a = indexvector_obj_new(unit(0), unit(true))
     densevector_set_raw_data(a,densevector_raw_data(x))
@@ -105,12 +107,12 @@ trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOp
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case e@IndexVectorDenseLength(x) => reflectPure(IndexVectorDenseLength(f(x)))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@IndexVectorDenseApply(x,n) => reflectPure(IndexVectorDenseApply(f(x),f(n)))(mtype(manifest[A]),implicitly[SourceContext])
+    //case e@IndexVectorDenseLength(x) => reflectPure(IndexVectorDenseLength(f(x)))(mtype(manifest[A]),implicitly[SourceContext])
+    //case e@IndexVectorDenseApply(x,n) => reflectPure(IndexVectorDenseApply(f(x),f(n)))(mtype(manifest[A]),implicitly[SourceContext])
     
     // delite ops
-    case Reflect(e@IndexVectorDenseLength(x), u, es) => reflectMirrored(Reflect(IndexVectorDenseLength(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@IndexVectorDenseApply(x,n), u, es) => reflectMirrored(Reflect(IndexVectorDenseApply(f(x),f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    //case Reflect(e@IndexVectorDenseLength(x), u, es) => reflectMirrored(Reflect(IndexVectorDenseLength(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    //case Reflect(e@IndexVectorDenseApply(x,n), u, es) => reflectMirrored(Reflect(IndexVectorDenseApply(f(x),f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
   
@@ -140,8 +142,8 @@ trait ScalaGenIndexVectorDenseOps extends ScalaGenFat {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case IndexVectorDenseLength(x) => emitValDef(sym, quote(x) + "._length")
-    case IndexVectorDenseApply(x,n) => emitValDef(sym, quote(x) + "._data(" + quote(n) + ")")
+    //case IndexVectorDenseLength(x) => emitValDef(sym, quote(x) + "._length")
+    //case IndexVectorDenseApply(x,n) => emitValDef(sym, quote(x) + "._data(" + quote(n) + ")")
     // case IndexVectorDenseNewUnsafe(x) => 
     //   stream.println("val " + quote(sym) + " = {")
     //   stream.println("val res = new generated.scala.IndexVectorDense(0)")

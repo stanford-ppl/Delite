@@ -92,7 +92,7 @@ trait OptiMLCCodeGenPkg extends OptiLACCodeGenPkg
 /**
  * This is the trait that every OptiML application must extend.
  */
-trait OptiML extends OptiMLScalaOpsPkg with OptiLA with RecordOps
+trait OptiML extends OptiMLScalaOpsPkg with OptiLA with StructOps
   with LanguageOps with ApplicationOps with LBPOps // TODO: LBPOps should be auto-generated with ApplicationOps
   with MLInputReaderOps with MLOutputWriterOps
   with CanSumOps
@@ -119,7 +119,7 @@ trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities wit
 /**
  * These are the corresponding IR nodes for OptiML.
  */
-trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp with RecordOpsExp
+trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp with StructExp
   with LanguageOpsExpOpt with ApplicationOpsExp with LBPOpsExp 
   with MLInputReaderOpsExp with MLOutputWriterOpsExp
   with VectorOpsExpOpt with MatrixOpsExpOpt with DenseMatrixOpsExpOpt 
@@ -206,7 +206,7 @@ trait OptiMLCodeGenBase extends OptiLACodeGenBase {
   }
 }
 
-trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenRecordOps
+trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenDeliteStruct
   with ScalaGenApplicationOps with ScalaGenLBPOps with ScalaGenLanguageOps 
   with ScalaGenVectorOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps with ScalaGenIndexVectorDenseOps with ScalaGenIndexVector2Ops 
   with ScalaGenStreamOps with ScalaGenStreamRowOps

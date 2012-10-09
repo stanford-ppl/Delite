@@ -181,6 +181,12 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     val elems = copyTransformedElems(collection.Seq("_data" -> var_new(DeliteArray[A](numRows*numCols)).e, "_numRows" -> var_new(numRows).e, "_numCols" -> var_new(numCols).e))
     val mA = manifest[A]
   }
+
+  case class DenseMatrixObjectZeros[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) extends DeliteStruct[DenseMatrix[A]] {
+    val elems = copyTransformedElems(collection.Seq("_data" -> DeliteArray.imm(numRows*numCols), "_numRows" -> numRows, "_numCols" -> numCols))
+    val mA = manifest[A]
+  }
+
   //case class DenseMatrixRawData[A:Manifest](x: Exp[DenseMatrix[A]]) extends DefWithManifest[A,DeliteArray[A]]
   //case class DenseMatrixNumRows[A:Manifest](x: Exp[DenseMatrix[A]]) extends DefWithManifest[A,Int] 
   //case class DenseMatrixNumCols[A:Manifest](x: Exp[DenseMatrix[A]]) extends DefWithManifest[A,Int]
@@ -316,8 +322,8 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   def densematrix_obj_fromvec[A:Manifest](xs: Rep[DenseVector[DenseVector[A]]])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectFromVec(xs))
   def densematrix_obj_diag[A:Manifest](w: Exp[Int], vals: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectDiag(w, vals))
   def densematrix_obj_identity(w: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectIdentity(w))
-  def densematrix_obj_zeros(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectNew[Double](numRows, numCols))//DenseMatrixObjectZeros(numRows, numCols))
-  def densematrix_obj_zerosf(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectNew[Float](numRows, numCols))//DenseMatrixObjectZerosF(numRows, numCols))
+  def densematrix_obj_zeros(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectZeros[Double](numRows, numCols))//DenseMatrixObjectZeros(numRows, numCols))
+  def densematrix_obj_zerosf(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectZeros[Float](numRows, numCols))//DenseMatrixObjectZerosF(numRows, numCols))
   def densematrix_obj_mzerosf(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(DenseMatrixObjectNew[Float](numRows, numCols))//reflectPure(DenseMatrixObjectZerosF(numRows, numCols))
   def densematrix_obj_ones(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectOnes(numRows, numCols))
   def densematrix_obj_onesf(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectOnesF(numRows, numCols))
@@ -332,8 +338,8 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   // class interface
 
   def densematrix_apply[A:Manifest](x: Exp[DenseMatrix[A]], i: Exp[Int], j: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixApply[A](x,i,j))
-  def densematrix_numrows[A:Manifest](x: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = readVar(var_field[Int](x, "_numRows"))
-  def densematrix_numcols[A:Manifest](x: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = readVar(var_field[Int](x, "_numCols"))
+  def densematrix_numrows[A:Manifest](x: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = field[Int](x, "_numRows")
+  def densematrix_numcols[A:Manifest](x: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = field[Int](x, "_numCols")
   def densematrix_vview[A:Manifest](x: Exp[DenseMatrix[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(DenseMatrixVView(x,start,stride,length,isRow))
 
   def densematrix_update[A:Manifest](x: Exp[DenseMatrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = reflectWrite(x)(DenseMatrixUpdate[A](x,i,j,y))
@@ -368,10 +374,10 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
 
   def densematrix_rawapply[A:Manifest](x: Exp[DenseMatrix[A]], n: Exp[Int])(implicit ctx: SourceContext) = densematrix_raw_data(x).apply(n)
   def densematrix_rawupdate[A:Manifest](x: Exp[DenseMatrix[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = densematrix_raw_data(x).update(n,y)
-  def densematrix_raw_data[A:Manifest](x: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = readVar(var_field[DeliteArray[A]](x, "_data"))
-  def densematrix_set_numrows[A:Manifest](x: Exp[DenseMatrix[A]], newVal: Exp[Int])(implicit ctx: SourceContext) = var_assign(var_field[Int](x, "_numRows"), newVal)
-  def densematrix_set_numcols[A:Manifest](x: Exp[DenseMatrix[A]], newVal: Exp[Int])(implicit ctx: SourceContext) = var_assign(var_field[Int](x, "_numCols"), newVal)
-  def densematrix_set_raw_data[A:Manifest](x: Exp[DenseMatrix[A]], data: Exp[DeliteArray[A]])(implicit ctx: SourceContext) = var_assign(var_field[DeliteArray[A]](x, "_data"), data)
+  def densematrix_raw_data[A:Manifest](x: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = field[DeliteArray[A]](x, "_data")
+  def densematrix_set_numrows[A:Manifest](x: Exp[DenseMatrix[A]], newVal: Exp[Int])(implicit ctx: SourceContext) = field_update[Int](x, "_numRows", newVal)
+  def densematrix_set_numcols[A:Manifest](x: Exp[DenseMatrix[A]], newVal: Exp[Int])(implicit ctx: SourceContext) = field_update[Int](x, "_numCols", newVal)
+  def densematrix_set_raw_data[A:Manifest](x: Exp[DenseMatrix[A]], data: Exp[DeliteArray[A]])(implicit ctx: SourceContext) = field_update[DeliteArray[A]](x, "_data", data)
 
   /////////////////////
   // delite collection
@@ -404,6 +410,7 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@DenseMatrixObjectNew(r,c) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixObjectNew(f(r),f(c))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@DenseMatrixObjectZeros(r,c) => reflectPure(new {override val original = Some(f,e) } with DenseMatrixObjectZeros(f(r),f(c))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     //case e@DenseMatrixRawData(x) => reflectPure(DenseMatrixRawData(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     //case e@DenseMatrixNumRows(x) => reflectPure(DenseMatrixNumRows(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     //case e@DenseMatrixNumCols(x) => reflectPure(DenseMatrixNumCols(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])

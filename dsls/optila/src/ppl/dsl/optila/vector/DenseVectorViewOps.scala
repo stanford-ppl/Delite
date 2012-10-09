@@ -204,7 +204,7 @@ trait ScalaGenDenseVectorViewOps extends BaseGenDenseVectorViewOps with ScalaGen
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case v@DenseVectorViewNew(x,start,stride,length,isRow) => emitValDef(sym, "new " + remap("DenseVectorView[" + remap(v.mA) + "]") + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ")")
+    //case v@DenseVectorViewNew(x,start,stride,length,isRow) => emitValDef(sym, "new " + remap("DenseVectorView[" + remap(v.mA) + "]") + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ")")
     //case DenseVectorViewApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
     //case DenseVectorViewUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
     //case DenseVectorViewLength(x)    => emitValDef(sym, quote(x) + "._length")
@@ -222,10 +222,10 @@ trait CudaGenDenseVectorViewOps extends BaseGenDenseVectorViewOps with CudaGenFa
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     // these are the ops that call through to the underlying real data structure
     //TODO: Allow this to only kernels (not helper functions)
-    case DenseVectorViewNew(x,start,stride,length,isRow) => {
-      if(!processingHelperFunc) stream.println(remap(sym.tp) + " " + quote(sym) + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ");")
-      else throw new GenerationFailedException("CudaGen: DenseVectorViewNew cannot be used in helper functions.")
-    }
+    //case DenseVectorViewNew(x,start,stride,length,isRow) => {
+    //  if(!processingHelperFunc) stream.println(remap(sym.tp) + " " + quote(sym) + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ");")
+    //  else throw new GenerationFailedException("CudaGen: DenseVectorViewNew cannot be used in helper functions.")
+    //}
     //case DenseVectorViewApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
     //case DenseVectorViewUpdate(x,n,y) => stream.println(quote(x) + ".update(" + quote(n) + "," + quote(y) + ");\n")
     //case DenseVectorViewLength(x)    => emitValDef(sym, quote(x) + ".length")
@@ -239,10 +239,10 @@ trait OpenCLGenDenseVectorViewOps extends BaseGenDenseVectorViewOps with OpenCLG
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case DenseVectorViewNew(x,start,stride,length,isRow) => {
-      if(!processingHelperFunc) stream.println(remap(sym.tp) + " " + quote(sym) + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ");")
-      else throw new GenerationFailedException("OpenCLGen: DenseVectorViewNew cannot be used in helper functions.")
-    }
+    //case DenseVectorViewNew(x,start,stride,length,isRow) => {
+    //  if(!processingHelperFunc) stream.println(remap(sym.tp) + " " + quote(sym) + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ");")
+    //  else throw new GenerationFailedException("OpenCLGen: DenseVectorViewNew cannot be used in helper functions.")
+    //}
     //case DenseVectorViewApply(x,n) => emitValDef(sym, remap(x.tp) + "_apply(" + quote(x) + "," + quote(n) + ")")
     //case DenseVectorViewUpdate(x,n,y) => stream.println(remap(x.tp) + "_update(" + quote(x) + "," + quote(n) + "," + quote(y) + ");\n")
     //case DenseVectorViewLength(x)    => emitValDef(sym, quote(x) + ".length")
