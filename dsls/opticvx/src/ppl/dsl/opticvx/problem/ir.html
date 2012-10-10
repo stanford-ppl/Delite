@@ -28,7 +28,7 @@ Size[N: Int] := constantTerm: Int,
                 coeffs: Array[Int, N]
 
 
-Shape[N: Int] :: ShapeScalar[N],
+Shape[N: Int] :: ShapeScalar,
                  ShapeFor[N],
                  ShapeStruct[N]
 
@@ -41,15 +41,18 @@ ShapeStruct[N: Int] := members: List[Shape[N]]
 
 
 Expr[N: Int, SH: Shape[N], SHI: Shape[N], SHV: Shape[N]]
-  :: ExprVariable
-  :: ExprInput
-  :: ExprIndex
-  :: ExprAccess
-  :: ExprConstant
-  :: ExprSum
-  :: ExprProduct
-  :: ExprNeg
-  :: ExprReduce
+  :: ExprVariable[SH] (only if SH == SHV)
+     ExprFor[N, shx: Shape[N+1], SHI, SHV] (only if SH == ShapeFor(..., shx))
+     ExprStruct[...]
+     ExprIndex[N, SH, SHI, SHV]
+     ExprAccess[N, SH, SHI, SHV]
+     ExprConstant (only if SH == ShapeScalar)
+     ExprSum[N, SHI, SHV] (only if SH == ShapeScalar)
+     ExprProduct[N, SHI, SHV] (only if SH == ShapeScalar)
+     ExprNeg[N, SHI, SHV] (only if SH == ShapeScalar)
+     ExprReduce[N, SHI, SHV] (only if SH == ShapeScalar)
+
+
 
 </pre>
 
