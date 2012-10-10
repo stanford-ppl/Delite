@@ -26,7 +26,7 @@ case class ExprFor(val size: Size, val body: Expr) extends Expr {
 }
 
 //A compound expression of different subexpressions
-class ExprStruct(val body: Seq[Expr]) extends Expr {
+case class ExprStruct(val body: Seq[Expr]) extends Expr {
   val nIntParams: Int = body(0).nIntParams
   val bindings: Seq[IShape] = body(0).bindings
   val shape: IShape = IShapeStruct(nIntParams, body map ((x) => x.shape))
@@ -37,13 +37,38 @@ class ExprStruct(val body: Seq[Expr]) extends Expr {
   }
 }
 
+case class ExprIndex(val at: Size, val arg: Expr) extends Expr {
+  val nIntParams: Int = arg.nIntParams
+  
+  if (at.nIntParams != nIntParams) throw new ProblemIRValidationException()
+  if (arg.nIntParams != nIntParams) throw new ProblemIRValidationException()
+  
+  val shape: IShape = arg.shape match {
+    case IShapeFor(nip, sz, b) => b
+    case _ => throw new ProblemIRValidationException()
+  }
+  
+  val bindings: Seq[IShape] = arg.bindings
+}
+
+case class ExprAccess(val at: Int, val arg: Expr) extends Expr {
+  val nIntParams: Int = arg.nIntParams
+  
+  val shape: IShape = arg.shape match {
+    case IShapeStruct(nip, bs) => bs(at)
+    case _ => throw new ProblemIRValidationException()
+  }
+  
+  val bindings: Seq[IShape] = arg.bindings
+}
+
 //A reference to a bound expression
-class ExprReference(val nIntParams: Int, val bindings: Seq[IShape], val index: Int) extends Expr {
+case class ExprReference(val nIntParams: Int, val bindings: Seq[IShape], val index: Int) extends Expr {
   val shape: IShape = bindings(index)
 }
 
 //A compound expression under which a variable is bound
-class ExprLet(val bound: Expr, val body: Expr) extends Expr {
+case class ExprLet(val bound: Expr, val body: Expr) extends Expr {
   val nIntParams = bound.nIntParams
   val shape: IShape = body.shape
   val bindings: Seq[IShape] = body.bindings :+ bound.shape
@@ -52,7 +77,7 @@ class ExprLet(val bound: Expr, val body: Expr) extends Expr {
   if (bound.nIntParams != nIntParams) throw new ProblemIRValidationException()
 }
 
-class ExprSum(val arg1: Expr, val arg2: Expr) extends Expr {
+case class ExprSum(val arg1: Expr, val arg2: Expr) extends Expr {
   val nIntParams: Int = arg1.nIntParams
 
   if (arg1.nIntParams != nIntParams) throw new ProblemIRValidationException()
@@ -74,7 +99,7 @@ class ExprSum(val arg1: Expr, val arg2: Expr) extends Expr {
   if (arg2.bindings != bindings) throw new ProblemIRValidationException()
 }
 
-class ExprReduce(val arg: Expr) extends Expr {
+case class ExprReduce(val arg: Expr) extends Expr {
   val nIntParams: Int = arg.nIntParams
 
   val shape: IShape = arg.shape match {
@@ -85,31 +110,42 @@ class ExprReduce(val arg: Expr) extends Expr {
   val bindings: Seq[IShape] = arg.bindings
 }
 
-/*
+case class ExprProd(val arg1: Expr, val arg2: Expr) {
+  val nIntParams: Int = arg1.nIntParams
 
-class ExprProd(val scale: Expr, val arg: Expr) {
-  def shape(dataShape: Shape, varShape: Shape): Shape = ShapeScalar()
-  def isInput: Boolean = scale.isInput && arg.isInput
-}
-
-class ExprNeg(val arg: Expr) extends Expr {
-  def shape(dataShape: Shape, varShape: Shape): Shape = ShapeScalar()
-  def isInput: Boolean = arg.isInput
-}
-
-class ExprIndex(val at: Size, val arg: Expr) extends Expr {
-  def shape(dataShape: Shape, varShape: Shape): Shape = arg.shape match {
-    case ShapeFor(size, body) => body
-    case _ => throw new Exception("Can't index a non-for-shaped expression.")
+  if (arg1.nIntParams != nIntParams) throw new ProblemIRValidationException()
+  if (arg2.nIntParams != nIntParams) throw new ProblemIRValidationException()
+  
+  val arg1ii: Boolean = arg1.shape match {
+    case IShapeScalar(nip, ii) => ii
+    case _ => throw new ProblemIRValidationException()
   }
-  def isInput: Boolean = arg.isInput
+  val arg2ii: Boolean = arg2.shape match {
+    case IShapeScalar(nip, ii) => ii
+    case _ => throw new ProblemIRValidationException()
+  }
+  
+  //Can't multiply two noninput expressions, since the result would be nonaffine
+  if((!arg1ii)&&(!arg2ii)) throw new ProblemIRValidationException()
+
+  val shape: IShape = IShapeScalar(nIntParams, arg1ii && arg2ii)
+  val bindings: Seq[IShape] = arg1.bindings
+
+  if (arg1.bindings != bindings) throw new ProblemIRValidationException()
+  if (arg2.bindings != bindings) throw new ProblemIRValidationException()
 }
 
-class ExprAccess(val at: Int, val arg: Expr) extends Expr {
-  def shape(dataShape: Shape, varShape: Shape): Shape = arg.shape match {
-    case ShapeStruct(body) => body(at)
-    case _ => throw new Exception("Can't access a non-struct-shaped expression.")
+case class ExprNeg(val arg: Expr) extends Expr {
+  val nIntParams: Int = arg.nIntParams
+  
+  val argii: Boolean = arg.shape match {
+    case IShapeScalar(nip, ii) => ii
+    case _ => throw new ProblemIRValidationException()
   }
-  def isInput: Boolean = arg.isInput
+  
+  val shape: IShape = IShapeScalar(nIntParams, argii)
+  val bindings: Seq[IShape] = arg.bindings
 }
-*/
+
+
+
