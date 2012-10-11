@@ -36,12 +36,3 @@ case class ConeSecondOrder(val size: Size) extends Cone {
     ShapeFor(nIntParams, size, ShapeScalar(nIntParams+1))))
 }
 
-/*
-
-case class ConeFor(val size: Size, val body: Cone) extends Cone {
-  def shape: Shape = ShapeFor(size, body.shape)
-}
-case class ConeStruct(val body: Seq[Cone]) extends Cone {
-  def shape: Shape = ShapeStruct(body map ((x) => x.shape))
-}
-*/
