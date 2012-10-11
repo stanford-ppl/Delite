@@ -13,7 +13,7 @@ import delitecommon
 
 DSLs = ['optiml','optila','optiql','deliszt','optigraph','opticvx']
 LMS_HOME = os.getenv("LMS_HOME")
-lms_version = "lms_2.10.0-M1-virtualized"
+lms_version = "lms_2.10-0.3-SNAPSHOT.jar"
 
 def err(s):
     exit("error: " + s)
@@ -103,7 +103,8 @@ def stage(runner, params, opts):
     cp = cp + DELITE_HOME + "/target/" + scala_major_id + "/test-classes" + os.pathsep
 
     #scala-virt cp
-    cp = cp + SCALA_VIRT_HOME + "/scala-library.jar" + os.pathsep
+    cp = cp + SCALA_VIRT_HOME + "/scala-library.jar" + os.pathsep  #TR should use /lib/*.jar?
+    cp = cp + SCALA_VIRT_HOME + "/scala-reflect.jar" + os.pathsep
     cp = cp + SCALA_VIRT_HOME + "/scala-compiler.jar"
 
     java_opts = java_opts + cp
