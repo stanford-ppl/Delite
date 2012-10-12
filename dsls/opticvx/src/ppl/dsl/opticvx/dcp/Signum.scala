@@ -110,30 +110,3 @@ object Signum {
   }
 }
 
-object Vexity {
-  val none: Signum = Signum.All
-  val convex: Signum = Signum.Positive
-  val concave: Signum = Signum.Negative
-  val affine: Signum = Signum.Zero
-  def format(d: Signum): String = d match {
-    case Vexity.none => "none"
-    case Vexity.convex => "convex"
-    case Vexity.concave => "concave"
-    case Vexity.affine => "affine"
-  }
-}
-
-object Tonicity {
-  val none: Signum = Signum.All
-  val nondecreasing: Signum = Signum.Positive
-  val nonincreasing: Signum = Signum.Negative
-  val increasing: Signum = Signum.Positive
-  val decreasing: Signum = Signum.Negative
-  val constant: Signum = Signum.Zero
-  def format(d: Signum): String = d match {
-    case Tonicity.none => "none"
-    case Tonicity.nondecreasing => "nondecreasing"
-    case Tonicity.nonincreasing => "nonincreasing"
-    case Tonicity.constant => "constant"
-  }
-}

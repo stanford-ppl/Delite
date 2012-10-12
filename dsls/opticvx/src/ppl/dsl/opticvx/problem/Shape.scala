@@ -2,6 +2,11 @@ package ppl.dsl.opticvx.problem
 
 case class Size(val const: Int, val coeffs: Seq[Int]) {
   def nIntParams: Int = coeffs.length
+
+  if (const < 0) throw new ProblemIRValidationException()
+  for (c <- coeffs) {
+    if (c < 0) throw new ProblemIRValidationException()
+  }
 }
 
 sealed trait Shape {

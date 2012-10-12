@@ -72,12 +72,44 @@ trait OptiCVXLibrary extends OptiCVXApplication {
   //  - varargs functions (call a function that normally takes 1 vector with some number of scalars)
   //note that only functions of 1 argument are supported for this magic
 
+  val max = cvxfun (convex) with(n <- param) args(v <- increasing(n)) {
+    val t = variable()
+    for (i <- 0 until n) {
+      t >= v(i)
+    }
+    return t
+  }
+
+  val max = cvxfun (convex) with(param)((n) => args(increasing(n))((v) => {
+    val t = variable()
+    for (i <- 0 until n) {
+      t >= v(i)
+    }
+  }))
+
+  val max = cvxfun (convex) args ((n) => vector(n, increasing) body ((v) => {
+    val t = variable()
+    for (i <- 0 until n) {
+      t >= v(i)
+    }
+    return t
+  }))
+
+  val max = cvxfun (convex) body ((n) => ((v) => {
+    v ~ vector(n, increasing)
+    val t = variable()
+    for (i <- 0 until n) {
+      t >= v(i)
+    }
+    return t
+  }))
+
   val max = cvxfun(vexity=convex, shape=vector, monotonicity=increasing) ((v) => {
     val t = variable()
     for (i <- 0 until v.size) {
       t >= v(i)
     }
-    return v
+    return t
   })
 
   def max(v: Vector#Increasing): Convex = {

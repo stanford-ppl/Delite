@@ -2,7 +2,7 @@ package ppl.dsl.opticvx.dcp
 
 trait DCPFunction {
   self: DCPExpr with DCPShape =>
-  
+  /*
   case class FunDesc(val va: Signum, val sg: Signum, val name: String)
   case class ArgDesc(val t: Signum, val nt: Signum, val sh: Shape, val name: String)
   
@@ -56,5 +56,5 @@ trait DCPFunction {
   def dcpfun1apply(fd: FunDesc, ad0: ArgDesc, fx: (Expr) => Expr, a0: Expr): Expr
   def dcpfun2apply(fd: FunDesc, ad0: ArgDesc, ad1: ArgDesc, fx: (Expr,Expr) => Expr, a0: Expr, a1: Expr): Expr
   def dcpfun3apply(fd: FunDesc, ad0: ArgDesc, ad1: ArgDesc, ad2: ArgDesc, fx: (Expr,Expr,Expr) => Expr, a0: Expr, a1: Expr, a2: Expr): Expr
-
+  */
 }
