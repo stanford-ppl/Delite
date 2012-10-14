@@ -17,6 +17,12 @@ trait DCPShape {
   case class VShapeScalar(val vexity: Signum, val sign: Signum) extends VShape {
     val xi: Shape = ShapeScalar()
     if (!(vexity <= sign)) throw new DCPIRValidationException()
+    
+    def dupshape(sh: Shape): VShape = sh match {
+      case ShapeScalar() => this
+      case ShapeFor(size, body) => VShapeFor(size, dupshape(body))
+      case ShapeStruct(body) => VShapeStruct(body map ((x) => dupshape(x)))
+    }
   }
   case class VShapeFor(val size: Size, val body: VShape) extends VShape {
     val xi: Shape = ShapeFor(size, body.xi)
@@ -33,14 +39,46 @@ trait DCPShape {
   case class TShapeScalar(val tonicity: Signum, val niltonicity: Signum) extends TShape {
     val xi: Shape = ShapeScalar()
     if (!(niltonicity <= tonicity)) throw new DCPIRValidationException()
+    
+    def dupshape(sh: Shape): TShape = sh match {
+      case ShapeScalar() => this
+      case ShapeFor(size, body) => TShapeFor(size, dupshape(body))
+      case ShapeStruct(body) => TShapeStruct(body map ((x) => dupshape(x)))
+    }
   }
-  case class TShapeFor(val size: Size, val body: TShape) extends VShape {
+  case class TShapeFor(val size: Size, val body: TShape) extends TShape {
     val xi: Shape = ShapeFor(size, body.xi)
   }
   case class TShapeStruct(val body: Seq[TShape]) extends TShape {
     val xi: Shape = ShapeStruct(body map ((x) => x.xi))
   }
 
+  
+  sealed trait XShape {
+    val xi: Shape
+    val xv: VShape
+  }
+  
+  case class XShapeScalar(val vexity: Signum, val sign: Signum, val isInput: Boolean) extends XShape {
+    val xi: Shape = ShapeScalar()
+    val xv: VShape = VShapeScalar(vexity, sign)
+    if (!(vexity <= sign)) throw new DCPIRValidationException()
+    if (isInput && (vexity != Signum.Zero)) throw new DCPIRValidationException()
+    
+    def dupshape(sh: Shape): XShape = sh match {
+      case ShapeScalar() => this
+      case ShapeFor(size, body) => XShapeFor(size, dupshape(body))
+      case ShapeStruct(body) => XShapeStruct(body map ((x) => dupshape(x)))
+    }
+  }
+  case class XShapeFor(val size: Size, val body: XShape) extends XShape {
+    val xi: Shape = ShapeFor(size, body.xi)
+    val xv: VShape = VShapeFor(size, body.xv)
+  }
+  case class XShapeStruct(val body: Seq[XShape]) extends XShape {
+    val xi: Shape = ShapeStruct(body map ((x) => x.xi))
+    val xv: VShape = VShapeStruct(body map ((x) => x.xv))
+  }
 }
   
 trait DCPShapeNames {
@@ -68,8 +106,8 @@ trait DCPShapeNames {
     def zero = new VSImplGen(Signum.Zero, Signum.Zero)
   }
 
-  sealed trait zero
-  object zero extends zero
+  sealed trait Zero
+  object zero extends Zero
 
   object nondecreasing extends TSImplGen(Signum.Positive, Signum.Positive) {
     def at(zero: Zero) = new TSImplGen(Signum.All, Signum.Positive)

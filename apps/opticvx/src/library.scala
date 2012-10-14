@@ -56,6 +56,43 @@ trait OptiCVXLibrary extends OptiCVXApplication {
     minimize (t) over (t)
     t
   })
+  
+  over (x <- scalar(), y <- vector()) where {
+    y <= 3
+    x + 2*y == 0
+  } minimize (y - x)
+  
+  trait MyProblem[T] extends CVXProblem[T] {
+    val x = variable()
+    val y = variable()
+    x <= y
+    y <= z
+    override val objective = x + y
+    
+  }
+  
+  val soln = 
+  over (x <- scalar(), y <- vector(60)) where {
+    for (n <- 0 until 60) {
+      y(n) <= x
+      y(n) == input_array(n)
+    }
+  }
+  minimize (x + y)
+  yield (x, y)
+  
+  
+  val input = cvxinput(lms_array)
+  val inlen = cvxint(lms_array.len)
+  
+  val x = cvxvar()
+  val y = cvxvar(input.length)
+  for (n <- 0 until input.length) {
+    y(n) <= x
+  }
+  val J = sum(for (n <- 0 until input.length) yield y(n)*input(n))
+  minimize (J) over (x, y)
+  
 
   val quad_over_lin = cvxfun (vexity=convex, sign=positive)
   

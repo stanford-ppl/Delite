@@ -6,7 +6,7 @@ class DCPIRValidationException extends Exception
 
 trait DCPSize {
 
-  type IntParam
+  class IntParam
 
   case class Size(val const: Int, val coeffs: Map[IntParam, Int]) {
     if (const < 0) throw new DCPIRValidationException()
