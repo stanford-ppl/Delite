@@ -46,7 +46,7 @@ trait OptiQLScalaOpsPkgExp extends OptiQLScalaOpsPkg with MiscOpsExp with IOOpsE
 /**
  * Ops available only to the compiler, and not our applications
  */
-trait OptiQLCompiler extends OptiQL with IOOps with SeqOps with Variables with LiftVariables with While with DeliteArrayOps with DeliteArrayBuilderOps {
+trait OptiQLCompiler extends OptiQL with IOOps with SeqOps with Variables with LiftVariables with While with DeliteArrayOps with DeliteArrayBufferCompilerOps {
   this: OptiQLApplication with OptiQLExp =>
 }
 
@@ -54,7 +54,7 @@ trait OptiQLCompiler extends OptiQL with IOOps with SeqOps with Variables with L
  * This trait comprises the IR nodes for OptiQL and the code required to instantiate code generators
  */
 trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with TableOpsExp with DateOpsExp with DateImplOpsStandard with QueryableOpsExpOpt with OptiQLMiscOpsExp
-  with InputReaderOpsExp with InputReaderImplOpsStandard with DeliteCollectionOpsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBuilderOpsExpOpt with DSArrayOpsExp with DeliteAllOverridesExp 
+  with InputReaderOpsExp with InputReaderImplOpsStandard with DeliteCollectionOpsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DSArrayOpsExp with DeliteAllOverridesExp 
   with MultiloopSoATransformExp {
 
   this: DeliteApplication with OptiQLApplication with OptiQLExp =>
@@ -74,17 +74,17 @@ trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with TableOpsEx
  * Codegen traits
  */
 trait OptiQLScalaCodeGenPkg extends ScalaGenMiscOps with ScalaGenIOOps with ScalaGenSeqOps with ScalaGenOrderingOps with ScalaGenBooleanOps with ScalaGenEqual with ScalaGenVariables
-  with ScalaGenPrimitiveOps with ScalaGenObjectOps with ScalaGenStringOps with ScalaGenTupleOps with ScalaGenNumericOps with ScalaGenArrayOps with ScalaGenIfThenElseFat with ScalaGenImplicitOps with ScalaGenCastingOps with ScalaGenFatStruct {
+  with ScalaGenPrimitiveOps with ScalaGenObjectOps with ScalaGenStringOps with ScalaGenTupleOps with ScalaGenNumericOps with ScalaGenArrayOps with ScalaGenIfThenElseFat with ScalaGenImplicitOps with ScalaGenCastingOps {
   val IR: OptiQLScalaOpsPkgExp
 }
 
 trait OptiQLCudaCodeGenPkg extends CudaGenMiscOps with CudaGenIOOps with CudaGenSeqOps with CudaGenOrderingOps with CudaGenBooleanOps with CudaGenEqual with CudaGenVariables
-  with CudaGenPrimitiveOps with CudaGenObjectOps with CudaGenStringOps /*with CudaGenTupleOps*/ with CudaGenNumericOps with CudaGenArrayOps with CudaGenIfThenElseFat with CudaGenImplicitOps with CudaGenCastingOps with CudaGenFatStruct {
+  with CudaGenPrimitiveOps with CudaGenObjectOps with CudaGenStringOps /*with CudaGenTupleOps*/ with CudaGenNumericOps with CudaGenArrayOps with CudaGenIfThenElseFat with CudaGenImplicitOps with CudaGenCastingOps {
   val IR: OptiQLScalaOpsPkgExp
 }
 
 trait OptiQLOpenCLCodeGenPkg extends OpenCLGenMiscOps with OpenCLGenIOOps with OpenCLGenSeqOps with OpenCLGenOrderingOps with OpenCLGenBooleanOps with OpenCLGenEqual with OpenCLGenVariables
-  with OpenCLGenPrimitiveOps with OpenCLGenObjectOps with OpenCLGenStringOps /*with OpenCLGenTupleOps*/ with OpenCLGenNumericOps with OpenCLGenArrayOps with OpenCLGenIfThenElseFat with OpenCLGenImplicitOps with OpenCLGenCastingOps with OpenCLGenFatStruct {
+  with OpenCLGenPrimitiveOps with OpenCLGenObjectOps with OpenCLGenStringOps /*with OpenCLGenTupleOps*/ with OpenCLGenNumericOps with OpenCLGenArrayOps with OpenCLGenIfThenElseFat with OpenCLGenImplicitOps with OpenCLGenCastingOps {
   val IR: OptiQLScalaOpsPkgExp
 }
 
@@ -124,20 +124,30 @@ trait OptiQLCodeGenBase extends GenericFatCodegen {
   }
 }
 
-trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg with ScalaGenOptiQLMiscOps 
-  with ScalaGenDeliteCollectionOps with ScalaGenDeliteOps with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBuilderOps with ScalaGenDSArrayOps with DeliteScalaGenAllOverrides {
+trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg with ScalaGenOptiQLMiscOps with ScalaGenQueryableOps
+  with ScalaGenDeliteCollectionOps with ScalaGenDeliteOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDSArrayOps with DeliteScalaGenAllOverrides {
   val IR: DeliteApplication with OptiQLExp
 
   override def remap[A](m: Manifest[A]): String = {    
     m match {
+      //case m if m.erasure.getSimpleName == "Table" => IR.structName(m)
       case m if m.erasure.getSimpleName == "Date" => "Int"
+      case m if m.toString == "scala.Tuple2[Char, Char]" => "Int"
       case m if m.toString.startsWith("scala.collection.immutable.Map") // HACK-ish, maybe use a DSL type instead
         && remap(m.typeArguments(0)) == "Int" => "generated.scala.container.HashMapImpl[" + remap(m.typeArguments(0)) + "]"
-      case m if m.toString == "scala.Tuple2" => "Int" //HACK
-      case m if m.toString == "scala.Tuple2[Char, Char]" => "Int" //move to Tuple
-      case m if m.toString == "scala.Tuple2[Boolean, Boolean]" => "Int"
+
       case _ => dsmap(super.remap(m))
     }   
+  }
+
+  override def emitNode(sym: IR.Sym[Any], rhs: IR.Def[Any]) = rhs match {
+    case IR.Struct(tag, elems) if sym.tp.toString == "scala.Tuple2[Char, Char]" =>
+      emitValDef(sym, "("+ quote(elems(0)._2) + ".toInt << 16) + " + quote(elems(1)._2))
+    case f@IR.FieldApply(s, index) if s.tp.toString == "scala.Tuple2[Char, Char]" && index == "_1" =>
+      emitValDef(sym, "((" + quote(s) + " & 0xffff0000) >>> 16).toChar")
+    case f@IR.FieldApply(s, index) if s.tp.toString == "scala.Tuple2[Char, Char]" && index == "_2" =>
+      emitValDef(sym, "(" + quote(s) + " & 0xffff).toChar")
+    case _ => super.emitNode(sym, rhs)
   }
 
   override def dsmap(line: String) : String = {
@@ -148,7 +158,7 @@ trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg wi
 }
 
 trait OptiQLCodeGenCuda extends OptiQLCodeGenBase with OptiQLCudaCodeGenPkg
-  with CudaGenDeliteCollectionOps with CudaGenDeliteOps with CudaGenDeliteArrayOps /*with CudaGenDeliteArrayBuilderOps*/ with CudaGenDSArrayOps with DeliteCudaGenAllOverrides {
+  with CudaGenDeliteCollectionOps with CudaGenDeliteOps with CudaGenDeliteArrayOps /*with CudaGenDeliteArrayBufferOps*/ with CudaGenDSArrayOps with DeliteCudaGenAllOverrides {
   val IR: DeliteApplication with OptiQLExp
 
   override def remap[A](m: Manifest[A]): String = {
@@ -169,7 +179,7 @@ trait OptiQLCodeGenCuda extends OptiQLCodeGenBase with OptiQLCudaCodeGenPkg
 }
 
 trait OptiQLCodeGenOpenCL extends OptiQLCodeGenBase with OptiQLOpenCLCodeGenPkg
-  with OpenCLGenDeliteCollectionOps with OpenCLGenDeliteOps with OpenCLGenDeliteArrayOps /*with OpenCLGenDeliteArrayBuilderOps*/ with OpenCLGenDSArrayOps with DeliteOpenCLGenAllOverrides {
+  with OpenCLGenDeliteCollectionOps with OpenCLGenDeliteOps with OpenCLGenDeliteArrayOps /*with OpenCLGenDeliteArrayBufferOps*/ with OpenCLGenDSArrayOps with DeliteOpenCLGenAllOverrides {
   val IR: DeliteApplication with OptiQLExp
 
   override def remap[A](m: Manifest[A]): String = {

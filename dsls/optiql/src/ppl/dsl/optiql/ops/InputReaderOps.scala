@@ -2,7 +2,7 @@ package ppl.dsl.optiql.ops
 
 import scala.virtualization.lms.common.{Base,BaseFatExp}
 import ppl.dsl.optiql._
-import ppl.delite.framework.datastructures.DeliteArray
+import ppl.delite.framework.datastructures.{DeliteArray,DeliteArrayBuffer}
 import java.io.PrintWriter
 import reflect.{RefinedManifest,SourceContext}
 
@@ -18,26 +18,25 @@ trait InputReaderOps extends Base { this: OptiQL =>
 
 trait InputReaderOpsExp extends InputReaderOps with BaseFatExp { this: OptiQLExp with InputReaderImplOps =>
 
-  case class OptiQLTableInputReader[T:Manifest](readBlock: Block[DeliteArray[T]]) extends DeliteOpSingleTask(readBlock) {
+  case class OptiQLTableInputReader[T:Manifest](readBlock: Block[Table[T]]) extends DeliteOpSingleTask(readBlock) {
     val mT = manifest[T]
   }
 
   //TODO: using SingleTask to encapsulate effects, but needs to be fat to return field syms
   def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]) = {
-    val wrappedData = reflectPure(OptiQLTableInputReader(reifyEffectsHere(optiql_table_input_reader_impl(path,shape,separator)))).unsafeImmutable
-    val data = deliteArrayPure(wrappedData, manifest[T].asInstanceOf[RefinedManifest[T]])
-    Table(data, data.length)
+    reflectEffect(OptiQLTableInputReader(reifyEffectsHere(optiql_table_input_reader_impl(path,shape,separator))))
   }
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@OptiQLTableInputReader(block) => reflectPure(new { override val original = Some(f,e) } with OptiQLTableInputReader(f(block))(e.mT))(mtype(manifest[A]),implicitly[SourceContext])      
+    case Reflect(e@OptiQLTableInputReader(block), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with OptiQLTableInputReader(f(block))(e.mT), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
 
 }
 
 trait InputReaderImplOps { this: OptiQL =>
-  def optiql_table_input_reader_impl[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]): Rep[DeliteArray[T]]
+  def optiql_table_input_reader_impl[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]): Rep[Table[T]]
 }
 
 trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift with OptiQLExp =>
@@ -45,7 +44,7 @@ trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift w
     implicit def rv[T:Manifest](v: Var[T]): Exp[T] = readVar(v) //TODO: why isn't readVar implicit working?
 
     val input = BufferedReader(FileReader(path))
-    val table = DeliteArrayBuilder[T]()
+    val table = DeliteArrayBuffer[T]()
     var record = input.readLine()
     var i = 0
     while (record != unit(null)) {
@@ -56,10 +55,10 @@ trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift w
       if (i % 1000000 == 0) println("processed " + i/1000000 + " million records")
     }
     input.close()
-    table.result
+    Table(darray_buffer_unsafe_result(table), table.length)
   }
 
-  private def addRecord[T<:Record:Manifest](table: Rep[DeliteArrayBuilder[T]], record: Rep[Array[String]], shape: Rep[T]) {
+  private def addRecord[T<:Record:Manifest](table: Rep[DeliteArrayBuffer[T]], record: Rep[Array[String]], shape: Rep[T]) {
     val rm = manifest[T] match {
       case rm: RefinedManifest[T] => rm
       case m => throw new RuntimeException("No RefinedManifest for type " + m.toString)

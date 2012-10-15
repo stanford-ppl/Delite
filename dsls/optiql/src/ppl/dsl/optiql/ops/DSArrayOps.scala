@@ -450,7 +450,7 @@ trait ScalaGenDSArrayOps extends ScalaGenFat with LoopFusionOpt {
 trait CLikeGenDSArrayOps extends CLikeGenFat with LoopFusionOpt {
   val IR: DSArrayOpsExp with OptiQLExp
   import IR._
-
+  /*
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case e@ETuple2(a, b) if e.m1 == manifest[Boolean] && e.m2 == manifest[Boolean] =>
       emitValDef(sym, "((unsigned int)" + quote(a) + " << 1) + " + quote(b))
@@ -465,7 +465,7 @@ trait CLikeGenDSArrayOps extends CLikeGenFat with LoopFusionOpt {
     case a@Tuple2Access2(t) if a.m == manifest[Char] =>
       emitValDef(sym, "(unsigned short)(" + quote(t) + " & 0xffff)")
     case _ => super.emitNode(sym, rhs)
-  }
+  } */
 }
 
 trait CudaGenDSArrayOps extends CudaGenFat with CLikeGenDSArrayOps 

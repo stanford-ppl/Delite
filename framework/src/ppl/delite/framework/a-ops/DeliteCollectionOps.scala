@@ -67,7 +67,7 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with VariablesExp with 
     reflectPure(DeliteCollectionApply(x,n))
   }
   def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext): Exp[Unit] = {
-    /*throw new RuntimeException*/printlog("warning: no static implementation found for dc_update on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get)
+    /*throw new RuntimeException*/printlog("warning: no static implementation found for dc_update")
     reflectWrite(x)(DeliteCollectionUpdate(x,n,y))
   }
   def dc_parallelization[A:Manifest](x: Exp[DeliteCollection[A]], hasConditions: Boolean)(implicit ctx: SourceContext) = {

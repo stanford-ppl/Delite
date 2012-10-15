@@ -42,14 +42,20 @@ trait TPCHQ0Trait extends TPCHBaseTrait {
   def query() = {
     val lineItems = loadLineItems()
 
-    val q = lineItems /*Where(_.l_shipdate <= Date("1998-12-01"))*/ Select(l => new Result {
+    /* val q1 = lineItems Select(l => new Result {
+      val divided = l.l_quantity / l.l_extendedprice
+      val other = l.l_tax / l.l_discount
+    })
+    q1.printAsTable */
+
+    val q2 = lineItems Where(_.l_shipdate <= Date("1998-12-01")) Select(l => new Result {
       val divided = l.l_quantity / l.l_extendedprice
       val other = l.l_tax / l.l_discount 
     })
-    q.printAsTable
+    q2.printAsTable
 
-    val u = lineItems Sum(_.l_quantity)
-    println(u)
+    /* val u1 = lineItems Sum(_.l_quantity)
+    println(u) */
 
   }
 }

@@ -2,20 +2,21 @@ package ppl.dsl.optiql.datastruct.scala.container
 
 object Table {
 
-  def printAsTable(m: Map[String,Any], max_rows: Int = 0) { // FIXME: max_rows not used!
+  def printAsTable(m: AnyRef, max_rows: Int = 0) { // FIXME: max_rows not used!
+
+    implicit val tableStr = new StringBuilder
+    val numRows = m.getClass.getMethod("size").invoke(m).asInstanceOf[Integer].intValue
+    val fields = m.getClass.getMethod("data").invoke(m)
+    val fieldStrs = fields.getClass.getDeclaredMethods.filter(_.getName.endsWith("_$eq")).map(_.getName.stripSuffix("_$eq"))
+    val columnSizes = getTableColSizes(fields, fieldStrs)
+
     // Check if Table is empty
-    if(m.size == 0) {
+    if(numRows == 0) {
       println("=====================================================")
       println("|                  EMPTY TABLE                      |")
       println("=====================================================")
       return
     }
-
-    implicit val tableStr = new StringBuilder
-    val numRows = m("size").asInstanceOf[Int]
-    val fields = m("data").asInstanceOf[Map[String,Any]]
-
-    val columnSizes = getTableColSizes(fields)
 
     def repeat(s: String, n:Int) {
       //assert(n < 0 || n > 300, "Incorrect value supplied for n in repeat")
@@ -41,7 +42,6 @@ object Table {
 
     horizontalRule
     tableStr append("|")
-    val fieldStrs = fields.keys.toArray
     for(i <- 0 until columnSizes.size) {
       tableStr append( " " + fieldStrs(i))
       repeat(" " , columnSizes(i) - fieldStrs(i).size - 1  )
@@ -67,8 +67,8 @@ object Table {
       var str = ""
 
       var idx = 0
-      for(f <- fields.keys) {
-        str = readArray(fields(f), r)
+      for(f <- fieldStrs) {
+        str = readArray(fields.getClass.getMethod(f).invoke(fields), r)
         tableStr append(str); repeat(" ", columnSizes(idx) - str.size - 1); tableStr append("| ")
         idx += 1
       }
@@ -104,19 +104,19 @@ object Table {
     case ar: AnyRef => throw new IllegalArgumentException(ar.getClass.getSimpleName + " cannot be printed as a table")
   }
 
-  private def getTableColSizes(fields: Map[String,Any]) = {
-    val colSizes = new Array[Int](fields.size)
+  private def getTableColSizes(fields: AnyRef, fieldStrs: Array[String]) = {
+    val colSizes = new Array[Int](fieldStrs.length)
 
     //Columns should be at least the size of the headers
     var idx = 0
-    for(f <- fields.keys) {
+    for(f <- fieldStrs) {
       colSizes(idx) = max(colSizes(idx), f.length + 2)
       idx += 1
     }
     //columns should be at least the size of maximal element
     idx = 0
-    for (f <- fields.keys) {
-      for (d <- arrayToString(fields(f))) {
+    for (f <- fieldStrs) {
+      for (d <- arrayToString(fields.getClass.getMethod(f).invoke(fields))) {
         colSizes(idx) = max(colSizes(idx), d.length + 2)
       }
       idx += 1

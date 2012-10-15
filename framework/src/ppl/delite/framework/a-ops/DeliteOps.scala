@@ -813,7 +813,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
   abstract class DeliteOpHashReduceLike[K:Manifest, V:Manifest, CV:Manifest] extends DeliteOpLoop[CV] {
     type OpType <: DeliteOpHashReduceLike[K,V,CV]
-    final lazy val rV: (Sym[V],Sym[V]) = copyOrElse(_.rV)((reflectMutableSym(fresh[V]), fresh[V]))
+    final lazy val rV: (Sym[V],Sym[V]) = copyOrElse(_.rV)((fresh[V], fresh[V]))
   }
 
   abstract class DeliteOpHashReduce[K:Manifest, V:Manifest, CV:Manifest] extends DeliteOpHashReduceLike[K,V,CV] {

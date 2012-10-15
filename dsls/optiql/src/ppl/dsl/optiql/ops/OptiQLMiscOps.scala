@@ -25,7 +25,7 @@ trait OptiQLMiscOpsExp extends OptiQLMiscOps with EffectExp { this : OptiQLExp =
 
   def optiql_profile_start(deps: Seq[Rep[Any]]): Rep[Unit] = reflectEffect(OptiQLProfileStart(Seq(deps: _*)))
   def optiql_profile_stop(deps: Seq[Rep[Any]]): Rep[Unit] =  reflectEffect(OptiQLProfileStop(Seq(deps: _*)))
-  def tablePrintAsTable[T:Manifest](t: Exp[Table[T]], max_rows: Rep[Int]): Exp[Unit] = reflectEffect(TablePrintAsTable(t, max_rows))
+  def tablePrintAsTable[T:Manifest](t: Exp[Table[T]], max_rows: Rep[Int]): Exp[Unit] = reflectEffect(TablePrintAsTable(t, max_rows)) //TODO: port pretty print function from plain Scala
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case Reflect(OptiQLProfileStart(x), u, es) => reflectMirrored(Reflect(OptiQLProfileStart(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))

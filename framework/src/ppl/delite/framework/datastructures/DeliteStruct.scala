@@ -3,6 +3,7 @@ package ppl.delite.framework.datastructures
 import java.io.{File,FileWriter,PrintWriter}
 import scala.virtualization.lms.common._
 import ppl.delite.framework.ops.DeliteOpsExp
+import scala.reflect.SourceContext
 
 trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
 	
@@ -14,13 +15,41 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
       original.map(p=>(p._2.asInstanceOf[OpType]).elems.map(e=>(e._1,p._1(e._2)))).getOrElse(e)
   }
 
+  //the following is a HACK to make struct inputs appear in delite op kernel input lists while keeping them out of the read effects list
+  //the proper solution is to simply override readSyms as done in trait StructExp, but see def freeInScope in BlockTraversal.scala
+  override def readSyms(e: Any): List[Sym[Any]] = e match {
+    case s: AbstractStruct[_] => s.elems.flatMap(e => readSyms(e._2)).toList
+    case _ => super.readSyms(e)
+  }
+
+  override def reflectEffect[A:Manifest](d: Def[A], u: Summary)(implicit pos: SourceContext): Exp[A] =  d match {
+    case s: AbstractStruct[_] => reflectEffectInternal(d, u)
+    case _ => super.reflectEffect(d,u)
+  }
+
+  case class NestedFieldUpdate[T:Manifest](struct: Exp[Any], fields: List[String], rhs: Exp[T]) extends Def[Unit]
+
+  override def field_update[T:Manifest](struct: Exp[Any], index: String, rhs: Exp[T]) = recurseFields(struct, List(index), rhs)
+
+  private def recurseFields[T:Manifest](struct: Exp[Any], fields: List[String], rhs: Exp[T]): Exp[Unit] = struct match {
+    case Def(Reflect(Field(s,name),_,_)) => recurseFields(s, name :: fields, rhs)
+    case _ => reflectWrite(struct)(NestedFieldUpdate(struct, fields, rhs))
+  }
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case Reflect(NestedFieldUpdate(struct, fields, rhs), u, es) => reflectMirrored(Reflect(NestedFieldUpdate(f(struct), fields, f(rhs)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e,f)
+  }).asInstanceOf[Exp[A]]
+
 }
+
 
 trait ScalaGenDeliteStruct extends BaseGenStruct {
   val IR: DeliteStructsExp with DeliteOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    //TODO: generalize primitive struct packing
     case Struct(tag, elems) =>
       registerStruct(structName(sym.tp), elems)
       emitValDef(sym, "new " + structName(sym.tp) + "(" + elems.map{ e => 
@@ -34,6 +63,8 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     case FieldUpdate(struct, index, rhs) =>
       emitValDef(sym, quote(struct) + "." + index + " = " + quote(rhs))
       printlog("WARNING: emitting field update: " + quote(struct) + "." + index)
+    case NestedFieldUpdate(struct, fields, rhs) =>
+      emitValDef(sym, quote(struct) + "." + fields.reduceLeft(_ + "." + _) + " = " + quote(rhs))
     case _ => super.emitNode(sym, rhs)
   }
 
@@ -51,32 +82,29 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     val stream = new PrintWriter(path + "DeliteStructs.scala")
     stream.println("package generated.scala")
     for ((name, elems) <- encounteredStructs) {
-      stream.println()
-      stream.print("case class " + name + "(")
-      val fields = for ((idx,tp) <- elems) yield {
-      	val genType = if (isVarType(tp)) 
-      	  "var "
-        else 
-      	  "val "
-      	genType + idx + ": " + remap(tp)
-      }
-      stream.print(fields.mkString(", "))
-      stream.println(") {")
-
-      //clone impl //TODO: get rid of Clone in DeliteOps codegen
-      stream.print("def Clone() = new " + name + "(")
-      val copyFields = for ((idx,tp) <- elems) yield { tp match {
-        case p if (isPrimitiveType(baseType(p))) => idx //copy by value
-        case arr if (isArrayType(baseType(arr))) => idx + ".clone"
-        case str if (isStringType(baseType(str))) => idx //immutable
-        case s => idx + ".Clone"
-      } }
-      stream.print(copyFields.mkString(", "))
-      stream.println(")")
-      
-      stream.println("}")
+      stream.println("")
+      emitStructDeclaration(name, elems)(stream)
     }
     stream.close()
     super.emitDataStructures(path)
+  }
+
+  def emitStructDeclaration(name: String, elems: Seq[(String,Manifest[_])])(stream: PrintWriter) {
+    stream.print("case class " + name + "(")
+    stream.print(elems.map{ case (idx,tp) => "var " + idx + ": " + remap(tp) }.mkString(", "))
+    stream.println(") {")
+
+    //clone impl //TODO: get rid of Clone in DeliteOps codegen
+    /* stream.print("def Clone() = new " + name + "(")
+    val copyFields = for ((idx,tp) <- elems) yield { tp match {
+      case p if (isPrimitiveType(baseType(p))) => idx //copy by value
+      case arr if (isArrayType(baseType(arr))) => idx + ".clone"
+      case str if (isStringType(baseType(str))) => idx //immutable
+      case s => idx + ".Clone"
+    } }
+    stream.print(copyFields.mkString(", "))
+    stream.println(")") */
+    
+    stream.println("}")
   }
 }
