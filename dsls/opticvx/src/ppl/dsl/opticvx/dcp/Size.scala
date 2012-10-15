@@ -2,12 +2,18 @@ package ppl.dsl.opticvx.dcp
 
 import scala.collection.immutable.Map
 
+import scala.virtualization.lms.common.ScalaOpsPkg
+import scala.virtualization.lms.common.{Base, BaseExp}
+
 class DCPIRValidationException extends Exception
 
-trait DCPSize {
+trait DCPSize extends BaseExp {
+  self: DCPExpr =>
 
-  class IntParam
-
+  abstract class IntParam
+  class IntParamInput(val rep: Exp[Int]) extends IntParam
+  class IntParamBound extends IntParam
+  
   case class Size(val const: Int, val coeffs: Map[IntParam, Int]) {
     if (const < 0) throw new DCPIRValidationException()
     for ((ip, c) <- coeffs) {
