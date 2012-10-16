@@ -81,15 +81,34 @@ trait OptiCVXLibrary extends OptiCVXApplication {
   minimize (x + y)
   yield (x, y)
   
+
+  val input = cvxexpr()
+  val x = cvxexpr()
+  val y = cvxexpr()
+  val z = cvxexpr()
+  solve(
+    given(input_array -> input),
+    over(scalar -> x, vector(input.length) -> y),
+    let(2*x -> z)
+    where(
+      cfor(0 until input.length)((n) => (y(n) <= x)),
+      x >= 0
+    ),
+    minimize(
+      sum(0 until input.length)((n) => y(n)*input(n)) - x
+    )
+  )
+  
+  
   
   val input = cvxinput(lms_array)
   val inlen = cvxint(lms_array.len)
   
   val x = cvxvar()
   val y = cvxvar(input.length)
-  for (n <- 0 until input.length) {
+  constrainfor(0 until input.length)((n) => 
     y(n) <= x
-  }
+  )
   val J = sum(for (n <- 0 until input.length) yield y(n)*input(n))
   minimize (J) over (x, y)
   
