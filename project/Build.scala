@@ -10,32 +10,29 @@ object DeliteBuild extends Build {
   // FIXME: custom-built scalatest
   //val dropboxScalaTestRepo = "Dropbox" at "http://dl.dropbox.com/u/12870350/scala-virtualized"
 
-  val prereleaseScalaTest = "Pre-Release ScalaTest" at "https://scala-webapps.epfl.ch/jenkins/view/2.10.x/job/community-nightly-2.10.0/ws/target/repositories/bccb0f4eb0bf6024577064915da437e3574281cb/"
+  //val prereleaseScalaTest = "Pre-Release ScalaTest" at "https://scala-webapps.epfl.ch/jenkins/view/2.10.x/job/community-nightly-2.10.0/ws/target/repositories/bccb0f4eb0bf6024577064915da437e3574281cb/"
 
   val mavenLocal = "Maven Local" at "file://"+Path.userHome+"/.m2/repository"  //"file:///Users/me/scala/dists/maven/2.10.0-20121008-191448-74daa02069" //
 
-  //val scalatestCompile = "org.scalatest" % "scalatest_2.10.0-virtualized-SNAPSHOT" % "1.6.1-SNAPSHOT" intransitive()
-  //val scalatest = scalatestCompile % "test" 
+  val scalatestCompile = "org.scalatest" % "scalatest_2.10.0-RC1" % "2.0.M4" intransitive()
+  val scalatest = scalatestCompile % "test" 
 
-  val virtScala = Option(System.getenv("SCALA_VIRTUALIZED_VERSION")).getOrElse("2.10.0-M7")
+  val virtScala = Option(System.getenv("SCALA_VIRTUALIZED_VERSION")).getOrElse("2.10.0-RC1")
   val virtBuildSettingsBase = Defaults.defaultSettings ++ Seq(
-    resolvers := Seq(mavenLocal, prereleaseScalaTest, Resolver.sonatypeRepo("snapshots"), Resolver.sonatypeRepo("releases")),
+    //resolvers := Seq(mavenLocal, prereleaseScalaTest, Resolver.sonatypeRepo("snapshots"), Resolver.sonatypeRepo("releases")),
     organization := "stanford-ppl",
     scalaOrganization := "org.scala-lang.virtualized",
-    scalaHome := Some(file(Path.userHome + "/scala/build/pack")),
+    //scalaHome := Some(file(Path.userHome + "/scala/build/pack")),
     scalaVersion := virtScala,
     scalaBinaryVersion := "2.10",
     publishArtifact in (Compile, packageDoc) := false,
-    libraryDependencies := Seq(virtualization_lms_core,
-    "org.scala-lang.virtualized" % "scala-library" % virtScala,
-    "org.scala-lang.virtualized" % "scala-compiler" % virtScala,
-    "org.apache.commons" % "commons-math" % "2.2"),
-    
     // needed for scala.tools, which is apparently not included in sbt's built in version
-    //libraryDependencies += "org.scala-lang.virtualized" % "scala-library" % virtScala,
-    //libraryDependencies += "org.scala-lang.virtualized" % "scala-compiler" % virtScala,
-    //libraryDependencies += scalatest,
-    //libraryDependencies += "org.apache.commons" % "commons-math" % "2.2",
+    libraryDependencies += virtualization_lms_core,
+    libraryDependencies += "org.scala-lang.virtualized" % "scala-library" % virtScala,
+    libraryDependencies += "org.scala-lang.virtualized" % "scala-compiler" % virtScala,
+    libraryDependencies += "org.scala-lang" % "scala-actors" % virtScala, // for ScalaTest
+    libraryDependencies += scalatest,
+    libraryDependencies += "org.apache.commons" % "commons-math" % "2.2",
     // used in delitec to access jars
     retrieveManaged := true,
     scalacOptions += "-Yno-generic-signatures",
@@ -78,7 +75,7 @@ object DeliteBuild extends Build {
   lazy val framework = Project("framework", file("framework"), settings = virtBuildSettings) dependsOn(runtime) // dependency to runtime because of Scopes
 
   lazy val deliteTest = Project("delite-test", file("framework/delite-test"), settings = virtBuildSettings ++ Seq(
-    //libraryDependencies += scalatestCompile 
+    libraryDependencies += scalatestCompile 
   )) dependsOn(framework, runtime)
 
   lazy val dsls = Project("dsls", file("dsls"), settings = virtBuildSettings) aggregate(optila, optiml, optiql, optimesh, optigraph, opticvx) 
