@@ -2,16 +2,13 @@ package ppl.dsl.opticvx.dcp
 
 import scala.collection.immutable.Set
 
-import scala.virtualization.lms.common.ScalaOpsPkg
-import scala.virtualization.lms.common.{Base, BaseExp}
-
-trait DCPExpr extends BaseExp {
+trait DCPExpr {
   self: DCPShape with DCPShapeNames with DCPSize =>
 
 
   trait Expr {
     def shape: XShape
-    def vars: Set[OptVar]
+    //def vars: Set[OptVar]
     
     def +(x: Expr): Expr = {
       if (shape != x.shape) throw new DCPIRValidationException()
@@ -31,10 +28,10 @@ trait DCPExpr extends BaseExp {
   
   // Optimization variables
   
-  class OptVar(varshape: Shape) extends Expr {
-    def shape: XShape = XShapeScalar(Signum.Zero, Signum.All, false).dupshape(varshape)
-    def vars: Set[OptVar] = Set(this)
-  }
+  // class OptVar(varshape: Shape) extends Expr {
+  //   def shape: XShape = XShapeScalar(Signum.Zero, Signum.All, false).dupshape(varshape)
+  //   def vars: Set[OptVar] = Set(this)
+  // }
   
   // Scalar arithmetic ops
   
@@ -47,7 +44,7 @@ trait DCPExpr extends BaseExp {
         arg1sh.sign + arg2sh.sign, 
         arg1sh.isInput && arg2sh.isInput)
     }
-    def vars: Set[OptVar] = arg1.vars union arg2.vars
+    //def vars: Set[OptVar] = arg1.vars union arg2.vars
     
     if (!arg1.shape.isInstanceOf[XShapeScalar]) throw new DCPIRValidationException()
     if (!arg2.shape.isInstanceOf[XShapeScalar]) throw new DCPIRValidationException()
@@ -58,7 +55,7 @@ trait DCPExpr extends BaseExp {
       val argsh = arg.shape.asInstanceOf[XShapeScalar]
       XShapeScalar(-argsh.vexity, -argsh.sign, argsh.isInput)
     }
-    def vars: Set[OptVar] = arg.vars
+    //def vars: Set[OptVar] = arg.vars
     
     if (!arg.shape.isInstanceOf[XShapeScalar]) throw new DCPIRValidationException()
   }
@@ -72,7 +69,7 @@ trait DCPExpr extends BaseExp {
         arg1sh.sign * arg2sh.sign, 
         arg1sh.isInput && arg2sh.isInput)
     }
-    def vars: Set[OptVar] = arg1.vars union arg2.vars
+    //def vars: Set[OptVar] = arg1.vars union arg2.vars
     
     if (!arg1.shape.isInstanceOf[XShapeScalar]) throw new DCPIRValidationException()
     if (!arg2.shape.isInstanceOf[XShapeScalar]) throw new DCPIRValidationException()
@@ -83,27 +80,27 @@ trait DCPExpr extends BaseExp {
   
   class ExprFor(size: Size, bound: IntParamBound, body: Expr) extends Expr {
     def shape: XShape = XShapeFor(size, body.shape)
-    def vars: Set[OptVar] = body.vars
+    //def vars: Set[OptVar] = body.vars
   }
   
   class ExprIndex(at: Size, arg: Expr) extends Expr {
     def shape: XShape = arg.shape.asInstanceOf[XShapeFor].body
-    def vars: Set[OptVar] = arg.vars
+    //def vars: Set[OptVar] = arg.vars
     
     if (!arg.shape.isInstanceOf[XShapeFor]) throw new DCPIRValidationException()
   }
   
   // Input ops
   
-  class ExprInputScalar(arg: Exp[Float], sign: Signum) extends Expr {
-    def shape: XShape = XShapeScalar(Signum.Zero, sign, true)
-    def vars: Set[OptVar] = Set()
-  }
+  // class ExprInputScalar(arg: Exp[Float], sign: Signum) extends Expr {
+  //   def shape: XShape = XShapeScalar(Signum.Zero, sign, true)
+  //   def vars: Set[OptVar] = Set()
+  // }
   
-  class ExprInputVector(size: Size, arg: Exp[Array[Float]], sign: Signum) extends Expr {
-    def shape: XShape = XShapeFor(size, XShapeScalar(Signum.Zero, sign, true))
-    def vars: Set[OptVar] = Set()
-  }
+  // class ExprInputVector(size: Size, arg: Exp[Array[Float]], sign: Signum) extends Expr {
+  //   def shape: XShape = XShapeFor(size, XShapeScalar(Signum.Zero, sign, true))
+  //   def vars: Set[OptVar] = Set()
+  // }
   
   
 }
