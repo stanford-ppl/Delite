@@ -50,7 +50,7 @@ trait DeliteArrayBufferCompilerOps extends DeliteArrayBufferOps {
   def darray_buffer_unsafe_result[A:Manifest](d: Rep[DeliteArrayBuffer[A]])(implicit ctx: SourceContext): Rep[DeliteArray[A]]
 }
 
-trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollectionOpsExp with StructExp with NumericOpsExp with PrimitiveOpsExp with VariablesExp {
+trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollectionOpsExp with StructExp with PrimitiveOpsExp with VariablesExp {
   this: DeliteArrayOpsExp with DeliteOpsExp =>
 
   case class DeliteArrayBufferNew[A:Manifest](initSize: Exp[Int]) extends DeliteStruct[DeliteArrayBuffer[A]] {
@@ -87,7 +87,7 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
   }
 
   def darray_buffer_unsafe_result[A:Manifest](d: Exp[DeliteArrayBuffer[A]])(implicit ctx: SourceContext): Exp[DeliteArray[A]] = {
-    darray_buffer_raw_data(d).unsafeImmutable
+    darray_buffer_raw_data(d)
   }
 
   protected def darray_buffer_raw_data[A:Manifest](d: Exp[DeliteArrayBuffer[A]]): Exp[DeliteArray[A]] = field[DeliteArray[A]](d, "data")
@@ -161,7 +161,14 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
   }
   
   override def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext) = {
-    if (isDeliteArrayBuffer(x)) darray_buffer_set_length(asDeliteArrayBuffer(x), y)
+    if (isDeliteArrayBuffer(x)) {
+      val buf = asDeliteArrayBuffer(x)
+      val arr = darray_buffer_raw_data(buf)
+      if (arr.length != y) {
+        darray_buffer_set_raw_data(buf, arr.take(y)) //set the physical length as well so it can be returned from DeliteOps as a DeliteArray of the right size
+      }
+      darray_buffer_set_length(buf, y)
+    }
     else super.dc_set_logical_size(x,y)        
   }
   
@@ -185,14 +192,33 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@DeliteArrayBufferNewImm(d,l) => reflectPure(new {override val original = Some(f,e) } with DeliteArrayBufferNewImm(f(d),f(l))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case Reflect(e@DeliteArrayBufferNew(l), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteArrayBufferNew(f(l))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case IntPlus(x,y) => infix_+(f(x),f(y))
+    case IntMinus(x,y) => infix_-(f(x),f(y))
+    case IntTimes(x,y) => infix_*(f(x),f(y))
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
+
+  //annoying, but don't want to depend on Numeric (OptiML doesn't use it), is there a better way?
+  private def infix_+(x: Exp[Int], y: Exp[Int]): Exp[Int] = IntPlus(x,y)
+  private def infix_-(x: Exp[Int], y: Exp[Int]): Exp[Int] = IntMinus(x,y)
+  private def infix_*(x: Exp[Int], y: Exp[Int]): Exp[Int] = IntTimes(x,y)
+
+  case class IntPlus(x: Exp[Int], y: Exp[Int]) extends Def[Int]
+  case class IntMinus(x: Exp[Int], y: Exp[Int]) extends Def[Int]
+  case class IntTimes(x: Exp[Int], y: Exp[Int]) extends Def[Int]
 
 }
 
 trait ScalaGenDeliteArrayBufferOps extends ScalaGenEffect {
   val IR: DeliteArrayBufferOpsExp
   import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case IntPlus(x,y) => emitValDef(sym, quote(x) + " + " + quote(y))
+    case IntMinus(x,y) => emitValDef(sym, quote(x) + " - " + quote(y))
+    case IntTimes(x,y) => emitValDef(sym, quote(x) + " * " + quote(y))
+    case _ => super.emitNode(sym, rhs)
+  }
 
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
     case "DeliteArrayBuffer" => structName(m)

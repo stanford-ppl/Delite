@@ -92,19 +92,6 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
   def emitStructDeclaration(name: String, elems: Seq[(String,Manifest[_])])(stream: PrintWriter) {
     stream.print("case class " + name + "(")
     stream.print(elems.map{ case (idx,tp) => "var " + idx + ": " + remap(tp) }.mkString(", "))
-    stream.println(") {")
-
-    //clone impl //TODO: get rid of Clone in DeliteOps codegen
-    /* stream.print("def Clone() = new " + name + "(")
-    val copyFields = for ((idx,tp) <- elems) yield { tp match {
-      case p if (isPrimitiveType(baseType(p))) => idx //copy by value
-      case arr if (isArrayType(baseType(arr))) => idx + ".clone"
-      case str if (isStringType(baseType(str))) => idx //immutable
-      case s => idx + ".Clone"
-    } }
-    stream.print(copyFields.mkString(", "))
-    stream.println(")") */
-    
-    stream.println("}")
+    stream.println(")")
   }
 }

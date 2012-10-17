@@ -137,7 +137,7 @@ trait OptiLAExp extends OptiLACompiler with InterfacesExp with OptiLAScalaOpsPkg
   with ExceptionOpsExp
   // -- choice of sparse matrix repr
   with SparseMatrixCSROpsExp with SparseMatrixCOOOpsExp with SparseVectorViewCSROpsExp
-  with ExpressionsOpt with DeliteTransform with DeliteAllOverridesExp {
+  with ExpressionsOpt with DeliteTransform /*with MultiloopSoATransformExp*/ with DeliteAllOverridesExp {
 
   // this: OptiLAApplicationRunner => why doesn't this work?
   this: DeliteApplication with OptiLAApplication with OptiLAExp => // can't be OptiLAApplication right now because code generators depend on stuff inside DeliteApplication (via IR)

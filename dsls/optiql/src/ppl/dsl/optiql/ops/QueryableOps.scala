@@ -74,7 +74,6 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp { this
   case class QueryableWhere[T:Manifest](in: Exp[Table[T]], cond: Exp[T] => Exp[Boolean]) extends DeliteOpFilter[T, T, Table[T]] {
     override def alloc(len: Exp[Int]) = Table(len)
     val size = copyTransformedOrElse(_.size)(in.size)
-    override def finalizer(t: Exp[Table[T]]) = Table(tableRawData(t), tableRawData(t).length) 
 
     def func = e => e
   }
@@ -82,7 +81,6 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp { this
   case class QueryableSelect[T:Manifest, R:Manifest](in: Exp[Table[T]], func: Exp[T] => Exp[R]) extends DeliteOpMap[T, R, Table[R]] {
     override def alloc(len: Exp[Int]) = Table(len)
     val size = copyTransformedOrElse(_.size)(in.size)
-    override def finalizer(t: Exp[Table[R]]) = Table(tableRawData(t), size) 
   }
 
   case class QueryableSum[T:Manifest, N:Numeric:Manifest](in: Exp[Table[T]], map: Exp[T] => Exp[N]) extends DeliteOpMapReduce[T, N] {
@@ -231,7 +229,6 @@ trait QueryableOpsExpOpt extends QueryableOpsExp { this: OptiQLExp =>
   case class QueryableSelectWhere[T:Manifest, R:Manifest](in: Exp[Table[T]], func: Exp[T] => Exp[R], cond: Exp[T] => Exp[Boolean]) extends DeliteOpFilter[T, R, Table[R]] {
     override def alloc(len: Exp[Int]) = Table(len)
     val size = copyTransformedOrElse(_.size)(in.size)
-    override def finalizer(t: Exp[Table[R]]) = Table(tableRawData(t), tableRawData(t).length) 
   }
 
   /* case class QueryableGroupByWhere[T:Manifest, K:Manifest](in: Exp[Table[T]], keyFunc: Exp[T] => Exp[K], cond: Exp[T] => Exp[Boolean]) extends DeliteOpHashFilter[T, K, T, Table[Grouping[K,T]]] {
@@ -246,7 +243,7 @@ trait QueryableOpsExpOpt extends QueryableOpsExp { this: OptiQLExp =>
   }
 
   case class QueryableKeysDistinct[T:Manifest, K:Manifest](in: Exp[Table[T]], keyFunc: Exp[T] => Exp[K], cond: Exp[T] => Exp[Boolean]) extends DeliteOpHashFilterReduce[T, K, K, Table[K]] {
-    def alloc(len: Exp[Int]) = Table[K](len)
+    def alloc = Table[K](0)
     val size = copyTransformedOrElse(_.size)(in.size)
     def zero = unit(null).AsInstanceOf[K]
     def mapFunc = keyFunc
@@ -256,7 +253,7 @@ trait QueryableOpsExpOpt extends QueryableOpsExp { this: OptiQLExp =>
   case class QueryableHashReduce[T:Manifest, K:Manifest, R:Manifest](in: Exp[Table[T]], keyFunc: Exp[T] => Exp[K], mapFunc: Exp[T] => Exp[R], reduceFunc: (Exp[R],Exp[R]) => Exp[R], cond: Exp[T] => Exp[Boolean]) 
     extends DeliteOpHashFilterReduce[T, K, R, Table[R]] {
 
-    def alloc(len: Exp[Int]) = Table[R](len)
+    def alloc = Table[R](0)
     val size = copyTransformedOrElse(_.size)(in.size)
     def zero = zeroType[R]
 
@@ -268,7 +265,6 @@ trait QueryableOpsExpOpt extends QueryableOpsExp { this: OptiQLExp =>
   case class QueryableDivide[T:Manifest](inA: Exp[Table[T]], inB: Exp[Table[Int]], func: (Exp[T],Exp[Int]) => Exp[T]) extends DeliteOpZipWith[T,Int,T,Table[T]] {
     override def alloc(len: Exp[Int]) = Table(len)
     val size = copyTransformedOrElse(_.size)(inA.size)
-    override def finalizer(t: Exp[Table[T]]) = Table(tableRawData(t), size)
     val mT = manifest[T]
   }
 

@@ -384,6 +384,17 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
     }
     else super.dc_copy(src,srcPos,dst,dstPos,size)
   }      
+
+  override def dc_data_field[A:Manifest](x: Exp[DeliteCollection[A]]) = {
+    if (isDenseVec(x)) "_data"
+    else super.dc_data_field(x)
+  }
+
+  override def dc_size_field[A:Manifest](x: Exp[DeliteCollection[A]]) = {
+    if (isDenseVec(x)) "_length"
+    else super.dc_size_field(x)
+  }
+  
     
   //////////////
   // mirroring

@@ -302,7 +302,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     //val zero = copyTransformedOrElse(_.zero)(reifyEffects(a.zero(init).mutable).res) 
     //val zero = copyTransformedBlockOrElse(_.zero)(reifyEffects(a.zero(init).mutable)) // FIXME: zero can be a fresh matrix, mutable calls cloneL
     //def zero = a.zero(init).mutable
-    def zero = a.zero(init).mutable
+    def zero = a.zero(init)
+    override def accInit = a.zero(init).mutable
     def reduce = (a,b) => a += b
     
     def m = manifest[A]

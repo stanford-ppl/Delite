@@ -91,7 +91,12 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with VariablesExp with 
   }  
   def dc_copy[A:Manifest](src: Exp[DeliteCollection[A]], srcPos: Exp[Int], dst: Exp[DeliteCollection[A]], dstPos: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
     fatal(unit("dc_copy called without any implementation on " + src.toString))
-  }    
+  }   
+
+  // - Struct transformation methods
+  def dc_data_field[A:Manifest](x: Exp[DeliteCollection[A]]): String = ""
+
+  def dc_size_field[A:Manifest](x: Exp[DeliteCollection[A]]): String = ""
 
   //////////////
   // mirroring

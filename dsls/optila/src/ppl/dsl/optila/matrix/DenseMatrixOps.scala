@@ -404,6 +404,11 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     if (isDenseMat(x)) ParFlat // parallel filter not supported with matrices yet. how will this work with sparse matrices?
     else super.dc_parallelization(x, hasConditions)
   }    
+
+  override def dc_data_field[A:Manifest](x: Exp[DeliteCollection[A]]) = {
+    if (isDenseMat(x)) "_data"
+    else super.dc_data_field(x)
+  }
   
   //////////////
   // mirroring

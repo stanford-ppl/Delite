@@ -41,7 +41,7 @@ trait TableOpsExp extends TableOps with DeliteCollectionOpsExp { this: OptiQLExp
   def tableApply[T:Manifest](t: Exp[Table[T]], i: Exp[Int]): Exp[T] = tableRawData(t).apply(i)
 
   def tableObjectApply[T:Manifest](): Exp[Table[T]] = tableObjectApply(unit(16))
-  def tableObjectApply[T:Manifest](initSize: Exp[Int]): Exp[Table[T]] = fatal(unit("Table allocation within Delite Op not rewritten"))
+  def tableObjectApply[T:Manifest](initSize: Exp[Int]): Exp[Table[T]] = struct(classTag[Table[T]], "data" -> fatal(unit("Table allocation within Delite Op not rewritten")), "size" -> initSize)
   def tableObjectApply[T:Manifest](data: Exp[DeliteArray[T]], size: Exp[Int]): Exp[Table[T]] = struct(classTag[Table[T]], "data" -> data, "size" -> size)
 
   //delite collection ops  
@@ -56,6 +56,16 @@ trait TableOpsExp extends TableOps with DeliteCollectionOpsExp { this: OptiQLExp
   override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
     if (isTable(x)) asTable(x).apply(n)
     else super.dc_apply(x,n)    
+  }
+
+  override def dc_data_field[A:Manifest](x: Exp[DeliteCollection[A]]) = {
+    if (isTable(x)) "data"
+    else super.dc_data_field(x)
+  }
+
+  override def dc_size_field[A:Manifest](x: Exp[DeliteCollection[A]]) = {
+    if (isTable(x)) "size"
+    else super.dc_size_field(x)
   }
   
   /* override def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext) = {
