@@ -1472,8 +1472,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
 
     stream.println("def init(__act: " + actType + ", " + quotearg(op.v) + "): " + actType + " = {"/*}*/)
     if (op.body exists (loopBodyNeedsCombine _)) {
-      emitMultiLoopFuncs(op, symList)                               
-      stream.println("val __act2 = new " + actType)
+      // first emit zero initializers
+      stream.println("val __act2 = new " + actType)      
       (symList zip op.body) foreach {
         case (sym, elem: DeliteCollectElem[_,_,_]) => elem.par match {
           case ParBuffer =>
@@ -1485,33 +1485,16 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
           case ParFlat =>
             stream.println("__act2." + quote(sym) + "_data = __act." + quote(sym) + "_data")
           }
-          stream.println("if (" + quote(op.size) + " > 0) {")
-          emitCollectElem(op, sym, elem, "__act2.")
-          stream.println("}")
-        case (sym, elem: DeliteForeachElem[_]) => 
-          stream.println("__act2." + quote(sym) + " = {"/*}*/)
-          stream.println("if (" + quote(op.size) + " > 0) {")
-          emitForeachElem(op, sym, elem)
-          stream.println("}")
-          stream.println(/*{*/"}")               
         case (sym, elem: DeliteReduceElem[_]) =>
-          if (elem.stripFirst) {
-            stream.println("__act2." + quote(sym) + "_zero = " + "__act." + quote(sym) + "_zero") // do we need zero here? yes, for comparing against...
-            stream.println("__act2." + quote(sym) + " = {"/*}*/)
-            stream.println("if (" + quote(op.size) + " > 0) {")
-            emitFirstReduceElem(op, sym, elem, "__act2.")
-            stream.println("} else __act2." + quote(sym) + "_zero")
-            stream.println(/*{*/"}")
-          } else { 
-            stream.println("__act2." + quote(sym) + "_zero = " + "__act." + quote(sym) + "_zero")
-            if (isPrimitiveType(sym.tp)) {
-              stream.println("__act2." + quote(sym) + " = " + "__act2." + quote(sym) + "_zero")
-            } else {
-              stream.println("__act2." + quote(sym) + " = " + "__act2." + quote(sym) + "_zero.Clone") // separate zero buffer
-            }
-            stream.println("if (" + quote(op.size) + " > 0) {")
-            emitReduceElem(op, sym, elem, "__act2.")
-            stream.println("}")
+          stream.println("__act2." + quote(sym) + "_zero = " + "__act." + quote(sym) + "_zero")
+          // should we throw an exception instead on an empty reduce?
+          if (elem.stripFirst) {            
+            stream.println("if (" + quote(op.size) + " == 0) // stripping the first iter: only initialize to zero if empty")          
+          }
+          if (isPrimitiveType(sym.tp)) {
+            stream.println("__act2." + quote(sym) + " = " + "__act2." + quote(sym) + "_zero")
+          } else {
+            stream.println("__act2." + quote(sym) + " = " + "__act2." + quote(sym) + "_zero.Clone") // separate zero buffer
           }
         case (sym, elem: DeliteReduceTupleElem[_,_]) =>
           // no strip first here ... stream.println("assert(false, \"TODO: tuple reduce\")")
@@ -1519,17 +1502,38 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
           stream.println("__act2." + quote(sym) + "_zero_2 = " + "__act." + quote(sym) + "_zero_2")
           stream.println("__act2." + quote(sym) + "   = " + "__act2." + quote(sym) + "_zero  ")
           stream.println("__act2." + quote(sym) + "_2 = " + "__act2." + quote(sym) + "_zero_2")
-          stream.println("if (" + quote(op.size) + " > 0) {")
-          emitReduceTupleElem(op, sym, elem, "__act2.")
-          stream.println("}")
       }
+      // then emit first element initializers, if size is non-zero
+      stream.println("if (" + quote(op.size) + " > 0) {")
+      emitMultiLoopFuncs(op, symList)                               
+      (symList zip op.body) foreach {
+        case (sym, elem: DeliteCollectElem[_,_,_]) => 
+          emitCollectElem(op, sym, elem, "__act2.")
+        case (sym, elem: DeliteForeachElem[_]) => 
+          stream.println("__act2." + quote(sym) + " = {"/*}*/)
+          emitForeachElem(op, sym, elem)
+          stream.println(/*{*/"}")               
+        case (sym, elem: DeliteReduceElem[_]) =>
+          if (elem.stripFirst) {
+            stream.println("__act2." + quote(sym) + " = {"/*}*/)
+            // initializes to first elem of collection if no condition
+            emitFirstReduceElem(op, sym, elem, "__act2.")
+            stream.println(/*{*/"}")
+          } 
+          else {           
+            emitReduceElem(op, sym, elem, "__act2.")
+          }
+        case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+          emitReduceTupleElem(op, sym, elem, "__act2.")
+      }
+      stream.println("}")
       stream.println("__act2")
     } else {
       stream.println("if (" + quote(op.size) + " > 0) {")
       stream.println("process(__act, " + quote(op.v) + ")")
       stream.println("}")
       stream.println("__act")
-    }
+    }    
     stream.println(/*{*/"}")
     stream.println("def process(__act: " + actType + ", " + quotearg(op.v) + "): Unit = {"/*}*/)
     emitMultiLoopFuncs(op, symList)

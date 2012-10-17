@@ -113,7 +113,7 @@ trait ScalaGenGSetOps extends BaseGenGSetOps with ScalaGenFat {
       case GSetRemove(s, e) => emitValDef(sym, quote(s) + ".remove(" + quote(e) + ")")
       case GSetRemoveSet(s, s2) => emitValDef(sym, quote(s) + ".removeSet(" + quote(s2) + ")")
       case GSetClear(s) => emitValDef(sym, quote(s) + ".clear")
-      case GSetClone(s) => emitValDef(sym, quote(s) + ".cloneL")
+      case GSetClone(s) => emitValDef(sym, quote(s) + ".Clone")
       case _ => super.emitNode(sym, rhs)
     }
   }

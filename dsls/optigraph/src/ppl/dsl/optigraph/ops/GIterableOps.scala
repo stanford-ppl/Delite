@@ -1,12 +1,14 @@
 package ppl.dsl.optigraph.ops
 
 import ppl.delite.framework.ops._
+import ppl.delite.framework.Util._
+import ppl.delite.framework.datastruct.scala.DeliteCollection
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.dsl.optigraph._
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.util._
-import reflect.Manifest
+import reflect.{Manifest,SourceContext}
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 import java.io.PrintWriter
 
@@ -70,7 +72,7 @@ trait GIterableOps extends Variables {
   def iter_toset[T:Manifest](iter: Rep[GIterable[T]]): Rep[GSet[T]]                                                                                                                        
 }
 
-trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp {
+trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp with DeliteCollectionOpsExp {
   this: OptiGraphExp =>
   
   case class GIterableNewEmpty[T]()(val mGIt: Manifest[GIterable[T]]) extends Def[GIterable[T]]
@@ -80,7 +82,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp {
   // parallel iteration (no reduction assignments in the loop body)
   case class GIterableForeach[T:Manifest](in: Exp[GIterable[T]], func: Exp[T] => Exp[Unit])
    extends DeliteOpForeach[T] {
-    val size = dc_size(in)
+    val size = copyTransformedOrElse(_.size)(dc_size(in))
     def sync = n => List()
   }
   
@@ -271,7 +273,13 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp {
   def iter_toset[T:Manifest](iter: Exp[GIterable[T]]) = reflectPure(GIterableToSet(iter))
   def iter_next_bfs_level(iter: Exp[GIterable[Node]]) = reflectPure(GIterableNextBFSLevel(iter))
   def iter_filter[T:Manifest](iter: Exp[GIterable[T]], pred: Exp[T] => Exp[Boolean]) = reflectPure(GIterableFilter(iter, pred))
-  def iter_foreach_default[T:Manifest](iter: Exp[GIterable[T]], block: Exp[T] => Exp[Unit]) = reflectEffect(GIterableForeach(iter, block))
+  def iter_foreach_default[T:Manifest](iter: Exp[GIterable[T]], block: Exp[T] => Exp[Unit]) = {
+    // reflectEffect(GIterableForeach(iter, block))
+     
+    // have to collect the effects inside the block and properly reflect them!
+    val gf = GIterableForeach(iter, block) 
+    reflectEffect(gf, summarizeEffects(gf.body.asInstanceOf[DeliteForeachElem[T]].func).star andAlso Simple())    
+  }
   
   // sequential iteration
   def iter_for[T:Manifest](iter: Exp[GIterable[T]], filter: Option[Exp[T] => Exp[Boolean]], block: Exp[T] => Exp[Unit]) = {
@@ -288,6 +296,10 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp {
      
   // parallel iteration
   def iter_foreach[T:Manifest](in: Exp[GIterable[T]], func: Exp[T] => Exp[Unit]): Exp[Unit] = {
+    iter_foreach_default(in, func)
+    
+    // TODO: need to fix this by adding DeliteOpForeachReduce
+    /*
     // get list of effects of the foreach block (will contain the reduction assignments (if any))
     val v = fresh[Int] 
     val (blockSummary, blockEffects) = 
@@ -388,6 +400,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp {
 
     	// TODO: fix dependencies when other effects follow reductions in the block
     }
+    */
   }
   
   /*case class TransformedForeach[T:Manifest](in: Exp[GIterable[T]], func: Exp[T]=>Exp[Unit], symId: Int, uid: Sym[Any]) 
@@ -428,6 +441,74 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp {
     case ConstructFatLoop(size, v, body, symList) => v :: body.flatMap(boundSyms)
     case _ => super.boundSyms(e)
   }
+  
+  
+  ///////////////////////
+  // delite collection
+  
+  // provides access to underlying GIterable fields required by DeliteCollection   
+  case class GIterableRawSize[A:Manifest](x: Exp[GIterable[A]]) extends Def[Int]
+  case class GIterableRawApply[A:Manifest](x: Exp[GIterable[A]], i: Exp[Int]) extends Def[A]
+  case class GIterableRawUpdate[A:Manifest](x: Exp[GIterable[A]], i: Exp[Int], y: Exp[A]) extends Def[Unit]
+  case class GIterableSetRawSize[A:Manifest](x: Exp[GIterable[A]], newSz: Exp[Int]) extends Def[Unit]
+  case class GIterableRawInsert[A:Manifest](x: Exp[GIterable[A]], i: Exp[Int], y: Exp[A]) extends Def[Unit]
+  case class GIterableRawData[A:Manifest](x: Exp[GIterable[A]]) extends Def[Array[A]]
+  case class GIterableRawAlloc[A:Manifest](x: Exp[Array[A]], sz: Exp[Int]) extends Def[GIterable[A]] {
+    val mGIt = manifest[GIterable[A]]
+  }
+  
+  def giterable_raw_size[A:Manifest](x: Exp[GIterable[A]]): Exp[Int] = GIterableRawSize(x)
+  def giterable_raw_apply[A:Manifest](x: Exp[GIterable[A]], i: Exp[Int]): Exp[A] = GIterableRawApply(x,i)
+  def giterable_raw_update[A:Manifest](x: Exp[GIterable[A]], i: Exp[Int], y: Exp[A]): Exp[Unit] = reflectWrite(x)(GIterableRawUpdate(x,i,y))
+  def giterable_set_raw_size[A:Manifest](x: Exp[GIterable[A]], newSz: Exp[Int]): Exp[Unit] = reflectWrite(x)(GIterableSetRawSize(x,newSz))
+  def giterable_raw_insert[A:Manifest](x: Exp[GIterable[A]], i: Exp[Int], y: Exp[A]): Exp[Unit] = reflectWrite(x)(GIterableRawInsert(x,i,y))
+  def giterable_raw_data[A:Manifest](x: Exp[GIterable[A]]): Exp[Array[A]] = GIterableRawData(x)
+  def giterable_raw_alloc[A:Manifest](x: Exp[Array[A]], sz: Exp[Int]): Exp[GIterable[A]] = reflectMutable(GIterableRawAlloc(x,sz))
+    
+  def isGIterable[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.tp.erasure,classOf[GIterable[A]])  
+  def asGIterable[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[GIterable[A]]]
+  
+  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
+    if (isGIterable(x)) giterable_raw_size(asGIterable(x))
+    else super.dc_size(x)
+  }
+  
+  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
+    if (isGIterable(x)) giterable_raw_apply(asGIterable(x), n)
+    else super.dc_apply(x,n)    
+  }  
+  
+  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isGIterable(x)) giterable_raw_update(asGIterable(x), n, y)
+    else super.dc_update(x,n,y)        
+  }  
+    
+  // ParBuffer methods (for filters)
+  
+  override def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext) = {
+    if (isGIterable(x)) giterable_set_raw_size(asGIterable(x), y)
+    else super.dc_set_logical_size(x,y)        
+  }
+      
+  override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isGIterable(x)) { giterable_raw_insert(asGIterable(x),i,y); unit(true) }
+    else super.dc_append(x,i,y)        
+  }  
+  
+  override def dc_alloc[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], size: Exp[Int])(implicit ctx: SourceContext): Exp[CA] = {
+    if (isGIterable(x)) {
+      val out = giterable_raw_alloc(NewArray[A](size), size)
+      out.asInstanceOf[Exp[CA]]
+    }
+    else super.dc_alloc[A,CA](x,size)
+  }  
+  
+  override def dc_copy[A:Manifest](src: Exp[DeliteCollection[A]], srcPos: Exp[Int], dst: Exp[DeliteCollection[A]], dstPos: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
+    if (isGIterable(src) && isGIterable(dst)) {
+      array_unsafe_copy(giterable_raw_data(asGIterable(src)), srcPos, giterable_raw_data(asGIterable(dst)), dstPos, size)
+    }
+    else super.dc_copy(src,srcPos,dst,dstPos,size)
+  }        
 }
 
 trait BaseGenGIterableOps extends GenericFatCodegen {
@@ -445,6 +526,14 @@ trait ScalaGenGIterableOps extends BaseGenGIterableOps with ScalaGenFat {
       case it@GIterableNewEmpty() => emitValDef(sym, "new " + remap(it.mGIt) +"()")
       case GIterableToList(iter) => emitValDef(sym, quote(iter) + ".toList")
       case GIterableToSet(iter) => emitValDef(sym, quote(iter) + ".toSet")
+      // delite collection
+      case GIterableRawSize(x) => emitValDef(sym, quote(x) + ".length")
+      case GIterableRawApply(x,i) => emitValDef(sym, quote(x) + ".dcApply(" + quote(i) + ")")
+      case GIterableRawUpdate(x, i, y) => emitValDef(sym, quote(x) + ".dcUpdate(" + quote(i) + "," + quote(y) + ")")
+      case GIterableSetRawSize(x, newSz) => emitValDef(sym, quote(x) + ".size = " + quote(newSz))
+      case GIterableRawInsert(x, i, y) => emitValDef(sym, quote(x) + ".dcInsert(" + quote(i) + "," + quote(y) + ")")
+      case GIterableRawData(x) => emitValDef(sym, quote(x) + ".data")
+      case it@GIterableRawAlloc(x, sz) => emitValDef(sym, "new " + remap(it.mGIt) + "(" + quote(x) + ", 0, " + quote(sz) + ")")
       case _ => super.emitNode(sym, rhs)
     }
   }

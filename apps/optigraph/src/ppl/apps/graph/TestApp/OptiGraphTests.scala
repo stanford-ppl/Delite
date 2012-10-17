@@ -696,37 +696,42 @@ trait OptiGraphTests extends OptiGraphApplication {
     G.Freeze
     val np = NodeProperty[Int](G, 0)
     
-    val i = Reduceable[Int](0)
+    // val i = Reduceable[Int](0)
     for(n <- G.Nodes) {
       np(n) = 1
-      i += 1
+      // i += 1
     }
+    
+    /* TODO: this needs ForeachReduce
     if(i.value != 2) {
       println("[FAIL] Expected number of iterations = 2, Actual number of iterations = " + i.value)
     } else {
       println("[OK] Num iterations is correct.")
     }
+    */
     if(np(n1) != 1 || np(n2) != 1) {
       println("[FAIL] Iteration block was not executed.")
     } else {
       println("[OK] Iteration block was executed.")
     }
     
-    i.setValue(0)
+    // i.setValue(0)
     Foreach(G.Nodes) { n =>
       np(n) = 2
-      i += 1
+      // i += 1
     }
-    if(i.value != G.NumNodes) {
-      println("[FAIL] Expected number of iterations = 2, Actual number of iterations = " + i.value)
-    } else {
-      println("[OK] Num iterations is correct.")
-    }
+    // if(i.value != G.NumNodes) {
+    //   println("[FAIL] Expected number of iterations = 2, Actual number of iterations = " + i.value)
+    // } else {
+    //   println("[OK] Num iterations is correct.")
+    // }
     if(np(n1) != 2 || np(n2) != 2) {
       println("[FAIL] Iteration block was not executed.")
+      println("np(n1): " + np(n1))
+      println("np(n2): " + np(n2))
     } else {
       println("[OK] Iteration block was executed.")
-    }
+    }  
     
     //-------//
     
@@ -1017,7 +1022,7 @@ trait OptiGraphTests extends OptiGraphApplication {
       //PR: Rep[NodeProperty[Double]]) 
   {
     //val G = RandUniformGraph(5,5,1997L)
-    val G = graph_load("/home/viq/delite/Delite/test.bin")
+    val G = graph_load(args(0))
     
     val e = 0.001
     val d = 0.85
@@ -1034,6 +1039,7 @@ trait OptiGraphTests extends OptiGraphApplication {
     // move to ds
     val deg = NewArray[Int](G.NumNodes)
     for(t <- G.Nodes) {
+      println("something should print here")
       deg(t.Id) = t.OutDegree
     }
     
@@ -1158,21 +1164,21 @@ trait OptiGraphTests extends OptiGraphApplication {
   
   def main() {
     /* tests */
-    //test_graphOps()
-    //test_nodeOpsEdgeOps()
-    //test_nodeEdgeProps()
-    //test_reduceable()
-    //test_reductions()
-    //test_deferrable()
-    //test_filters()
-    //test_iterations()
-    //test_traversals()
+    test_graphOps()
+    test_nodeOpsEdgeOps()
+    test_nodeEdgeProps()
+    // test_reduceable()     // TODO: needs DeliteOpForeachReduce 
+    test_reductions()
+    test_deferrable()
+    test_filters()
+    test_iterations()
+    test_traversals()
     
     /* sample applications */
     //conductance()
 //    var i = 0
 //    while (i < 2) {
-      page_rank()
+      // page_rank()
 //      i += 1
 //    }
     //SSC()
