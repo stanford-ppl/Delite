@@ -82,14 +82,12 @@ trait OptiCVXLibrary extends OptiCVXApplication {
   yield (x, y)
   
 
-  val input = cvxexpr()
   val x = cvxexpr()
   val y = cvxexpr()
   val z = cvxexpr()
   solve(
-    given(input_array -> input),
     over(scalar -> x, vector(input.length) -> y),
-    let(2*x -> z)
+    let(2*x -> z),
     where(
       cfor(0 until input.length)((n) => (y(n) <= x)),
       x >= 0
@@ -99,7 +97,7 @@ trait OptiCVXLibrary extends OptiCVXApplication {
     )
   )
   
-  
+  do we even need the "given" argument? can we do without it? i think yes we can.  
   
   val input = cvxinput(lms_array)
   val inlen = cvxint(lms_array.len)
