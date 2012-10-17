@@ -5,10 +5,30 @@ import scala.collection.immutable.Set
 trait DCPExpr {
   self: DCPShape with DCPShapeNames with DCPSize =>
 
+  class Symbol extends Expr {
+    var bound: Boolean = false
+    var resolved: Boolean = false
+    var boundShape: XShape = null
+    def bind(sh: XShape) {
+      if (!bound) throw new DCPIRValidationException()
+      bound = true
+      boundShape = sh
+    }
+    def shape: XShape = {
+      if (!bound) throw new DCPIRValidationException()
+      boundShape
+    }
+    def syms: Set[Symbol] = Set(this)
+    def verifydcp() {
+      if (!bound) throw new DCPIRValidationException()
+      if (resolved) throw new DCPIRValidationException()
+    }
+  }
 
   trait Expr {
     def shape: XShape
-    //def vars: Set[OptVar]
+    def syms: Set[Symbol]
+    def verifydcp(): Unit
     
     def +(x: Expr): Expr = {
       if (shape != x.shape) throw new DCPIRValidationException()
@@ -25,7 +45,7 @@ trait DCPExpr {
     def unary_-(): Expr = new ExprNeg(this)
     def -(x: Expr): Expr = new ExprSum(this, new ExprNeg(x))
   }
-  
+
   // Optimization variables
   
   // class OptVar(varshape: Shape) extends Expr {
@@ -44,10 +64,14 @@ trait DCPExpr {
         arg1sh.sign + arg2sh.sign, 
         arg1sh.isInput && arg2sh.isInput)
     }
-    //def vars: Set[OptVar] = arg1.vars union arg2.vars
+    def syms: Set[Symbol] = arg1.syms union arg2.syms
     
-    if (!arg1.shape.isInstanceOf[XShapeScalar]) throw new DCPIRValidationException()
-    if (!arg2.shape.isInstanceOf[XShapeScalar]) throw new DCPIRValidationException()
+    def verifydcp() {
+      arg1.verifydcp()
+      arg2.verifydcp()
+      if (!arg1.shape.isInstanceOf[XShapeScalar]) throw new DCPIRValidationException()
+      if (!arg2.shape.isInstanceOf[XShapeScalar]) throw new DCPIRValidationException()
+    }
   }
   
   class ExprNeg(arg: Expr) extends Expr {
@@ -55,9 +79,12 @@ trait DCPExpr {
       val argsh = arg.shape.asInstanceOf[XShapeScalar]
       XShapeScalar(-argsh.vexity, -argsh.sign, argsh.isInput)
     }
-    //def vars: Set[OptVar] = arg.vars
+    def syms: Set[Symbol] = arg.syms
     
-    if (!arg.shape.isInstanceOf[XShapeScalar]) throw new DCPIRValidationException()
+    def verifydcp() {
+      arg.verifydcp()
+      if (!arg.shape.isInstanceOf[XShapeScalar]) throw new DCPIRValidationException()
+    }
   }
   
   class ExprProd(arg1: Expr, arg2: Expr) extends Expr {
@@ -69,25 +96,36 @@ trait DCPExpr {
         arg1sh.sign * arg2sh.sign, 
         arg1sh.isInput && arg2sh.isInput)
     }
-    //def vars: Set[OptVar] = arg1.vars union arg2.vars
+    def syms: Set[Symbol] = arg1.syms union arg2.syms
     
-    if (!arg1.shape.isInstanceOf[XShapeScalar]) throw new DCPIRValidationException()
-    if (!arg2.shape.isInstanceOf[XShapeScalar]) throw new DCPIRValidationException()
-    if (!(arg1.shape.asInstanceOf[XShapeScalar].isInput || arg2.shape.asInstanceOf[XShapeScalar].isInput)) throw new DCPIRValidationException()
+    def verifydcp() {
+      arg1.verifydcp()
+      arg2.verifydcp()
+      if (!arg1.shape.isInstanceOf[XShapeScalar]) throw new DCPIRValidationException()
+      if (!arg2.shape.isInstanceOf[XShapeScalar]) throw new DCPIRValidationException()
+      if (!(arg1.shape.asInstanceOf[XShapeScalar].isInput || arg2.shape.asInstanceOf[XShapeScalar].isInput)) throw new DCPIRValidationException()
+    }
   }
   
   // Compound ops
   
   class ExprFor(size: Size, bound: IntParamBound, body: Expr) extends Expr {
     def shape: XShape = XShapeFor(size, body.shape)
-    //def vars: Set[OptVar] = body.vars
+    def syms: Set[Symbol] = body.syms
+
+    def verifydcp() {
+      body.verifydcp()
+    }
   }
   
   class ExprIndex(at: Size, arg: Expr) extends Expr {
     def shape: XShape = arg.shape.asInstanceOf[XShapeFor].body
-    //def vars: Set[OptVar] = arg.vars
+    def syms: Set[Symbol] = arg.syms
     
-    if (!arg.shape.isInstanceOf[XShapeFor]) throw new DCPIRValidationException()
+    def verifydcp() {
+      arg.verifydcp()
+      if (!arg.shape.isInstanceOf[XShapeFor]) throw new DCPIRValidationException()
+    }
   }
   
   // Input ops
