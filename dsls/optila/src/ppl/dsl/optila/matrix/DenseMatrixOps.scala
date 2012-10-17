@@ -48,6 +48,7 @@ trait DenseMatrixOps extends Variables {
     def identity(w: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_identity(w)
     def zeros(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_zeros(numRows, numCols)
     def zerosf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_zerosf(numRows, numCols)
+    def mzeros(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_mzeros(numRows, numCols)
     def mzerosf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_mzerosf(numRows, numCols)
     def ones(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_ones(numRows, numCols)
     def onesf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_onesf(numRows, numCols)
@@ -134,6 +135,7 @@ trait DenseMatrixOps extends Variables {
   def densematrix_obj_identity(w: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Double]]
   def densematrix_obj_zeros(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Double]]
   def densematrix_obj_zerosf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Float]]
+  def densematrix_obj_mzeros(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Double]]
   def densematrix_obj_mzerosf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Float]]
   def densematrix_obj_ones(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Double]]
   def densematrix_obj_onesf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Float]]
@@ -182,6 +184,13 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
 
   //////////////////////////////////////////////////
   // implemented via method on real data structure
+  case class DenseMatrixObjectNewMutable[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) 
+    extends DeliteOpMap[Int,Double,DenseMatrix[Double]] {
+    val size = numRows*numCols 
+    override val in = (0::numRows*numCols)
+    override def alloc = DenseMatrix[Double](numRows,numCols)
+    def func = i => 0.0
+  }
   
   case class DenseMatrixObjectNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) extends DefWithManifest[A,DenseMatrix[A]] 
   case class DenseMatrixRawData[A:Manifest](x: Exp[DenseMatrix[A]]) extends DefWithManifest[A,Array[A]]
@@ -321,6 +330,7 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   def densematrix_obj_identity(w: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectIdentity(w))
   def densematrix_obj_zeros(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectNew[Double](numRows, numCols))//DenseMatrixObjectZeros(numRows, numCols))
   def densematrix_obj_zerosf(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectNew[Float](numRows, numCols))//DenseMatrixObjectZerosF(numRows, numCols))
+  def densematrix_obj_mzeros(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(DenseMatrixObjectNewMutable[Double](numRows, numCols))//DenseMatrixObjectZeros(numRows, numCols))
   def densematrix_obj_mzerosf(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(DenseMatrixObjectNew[Float](numRows, numCols))//reflectPure(DenseMatrixObjectZerosF(numRows, numCols))
   def densematrix_obj_ones(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectOnes(numRows, numCols))
   def densematrix_obj_onesf(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectOnesF(numRows, numCols))
@@ -558,7 +568,7 @@ trait ScalaGenDenseMatrixOps extends ScalaGenBase {
   }
 }
 
-trait CudaGenDenseMatrixOps extends CudaGenBase with CudaGenDataStruct {
+trait CudaGenDenseMatrixOps extends CudaGenBase {
   val IR: DenseMatrixOpsExp
   import IR._
 
@@ -576,7 +586,7 @@ trait CudaGenDenseMatrixOps extends CudaGenBase with CudaGenDataStruct {
   }
 }
 
-trait OpenCLGenDenseMatrixOps extends OpenCLGenBase with OpenCLGenDataStruct {
+trait OpenCLGenDenseMatrixOps extends OpenCLGenBase {
   val IR: DenseMatrixOpsExp
   import IR._
 

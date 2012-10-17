@@ -146,7 +146,7 @@ trait ScalaGenImageOps extends ScalaGenBase {
   // }
 }
 
-trait CudaGenImageOps extends CudaGenBase with CudaGenDataStruct {
+trait CudaGenImageOps extends CudaGenBase {
   val IR: ImageOpsExp
   import IR._
 

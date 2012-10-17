@@ -1977,13 +1977,12 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           if (elem.par == ParBuffer) throw new GenerationFailedException("GPU DeliteOps: ParBuffer is not implemented yet!")
 
           if(elem.cond.nonEmpty) {
-            emitAllocFunc(sym,Block(Combine(List(elem.allocN,elem.finalizer).map(getBlockResultFull))),elem.allocVal,null)
-            //emitAllocFunc(sym,elem.allocN,elem.allocVal,null)
+            emitAllocFunc(sym,List(elem.allocN,elem.finalizer),Nil,elem.allocVal,null)
             lf.loopFuncInputs = emitMultiLoopFunc(elem.func, "collect_"+funcNameSuffix(sym), List(op.v), stream)
             emitMultiLoopCond(sym, elem.cond, op.v, "cond_"+funcNameSuffix(sym), stream)
           }
           else {
-            emitAllocFunc(sym,elem.allocN,elem.allocVal,op.size)
+            emitAllocFunc(sym,List(elem.allocN),List((elem.sV,op.size)),elem.allocVal,op.size)
             lf.loopFuncInputs = emitMultiLoopFunc(elem.func, "collect_"+funcNameSuffix(sym), List(op.v), stream)
           }
           lf.loopFuncOutputType = remap(getBlockResult(elem.func).tp)

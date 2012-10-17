@@ -5,6 +5,7 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.ops.{OP_Nested, DeliteOP}
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.cost._
+import ppl.delite.runtime.codegen.kernels.cuda.SingleTask_GPU_Generator
 
 
 final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilizationCostModel {
@@ -14,7 +15,6 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
   private val numCpp = Config.numCpp
   private val gpu = numScala + numCpp
   private val numResources = numScala + numCpp + Config.numCuda + Config.numOpenCL
-
 
   def schedule(graph: DeliteTaskGraph) {
     //traverse nesting & schedule sub-graphs, starting with outermost graph
@@ -65,8 +65,10 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
   private def scheduleGPU(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
     if (op.isDataParallel)
       split(op, graph, schedule, Seq(gpu))
-    else
+    else {
       scheduleOn(op, schedule, gpu)
+      SingleTask_GPU_Generator(op)
+    }
   }
 
   private var nextThread = 0

@@ -23,7 +23,7 @@ trait CCompile extends CodeCache {
   protected def outputSwitch: String // compiler parameter that allows us to specify destination dir (e.g. -o)
   protected lazy val config = loadConfig(configFile)
   
-  val binCacheHome = cacheHome + "bin" + sep + "runtime" + sep
+  //val binCacheHome = cacheHome + "bin" + sep + "runtime" + sep
 
   private val headerBuffer = new ArrayBuffer[(String, String)]
 
@@ -55,13 +55,13 @@ trait CCompile extends CodeCache {
   def compile() {
     if (sourceBuffer.length == 0) return
     cacheRuntimeSources((sourceBuffer ++ headerBuffer).toArray)
-    val kernelsList = Directory(sourceCacheHome + "kernels").deepFiles.withFilter(_.extension == ext).map(_.name)
+    val kernelsList = Nil //Directory(sourceCacheHome + "kernels").deepFiles.withFilter(_.extension == ext).map(_.name)
 
     if (modules.exists(_.needsCompile)) {
       val includes = modules.map(m => config.headerPrefix + sourceCacheHome + m.name).toArray
       val libs = Directory(deliteLibs).files.withFilter(f => f.extension == OS.libExt).map(_.path).toArray
       val paths = includes ++ config.headerDir ++ Array(config.headerPrefix + "runtime" + sep + target) ++ config.libs ++ libs
-      val sources = (sourceBuffer.map(s => sourceCacheHome + "runtime" + sep + s._2) ++ kernelsList.map(k => sourceCacheHome + "kernels" + sep + k)).toArray
+      val sources = (sourceBuffer.map(s => sourceCacheHome + "runtime" + sep + s._2) ++ List(sourceCacheHome + "kernels" + sep + "helperFuncs.cu") ++ List(Config.deliteHome + sep + "runtime" + sep + target + sep + "DeliteCuda.cu") ++ kernelsList.map(k => sourceCacheHome + "kernels" + sep + k)).toArray
       val dest = binCacheHome + target + "Host." + OS.libExt
 
       compile(dest, sources, paths)

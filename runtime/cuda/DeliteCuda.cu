@@ -9,6 +9,21 @@ list<void*>* lastAlloc = new list<void*>();
 queue<FreeItem>* freeList = new queue<FreeItem>();
 map<void*,list<void*>*>* cudaMemoryMap = new map<void*,list<void*>*>();
 
+void addEvent(cudaStream_t fromStream, cudaStream_t toStream) {
+  cudaEvent_t event;
+  cudaEventCreateWithFlags(&event, cudaEventDisableTiming);
+  cudaEventRecord(event, fromStream);
+  cudaStreamWaitEvent(toStream, event, 0);
+  cudaEventDestroy(event);
+}
+
+cudaEvent_t addHostEvent(cudaStream_t stream) {
+  cudaEvent_t event;
+  cudaEventCreateWithFlags(&event, cudaEventDisableTiming | cudaEventBlockingSync);
+  cudaEventRecord(event, stream);
+  return event;
+}
+
 void freeCudaMemory(FreeItem item) {
     list< pair<void*,bool> >::iterator iter;
     for (iter = item.keys->begin(); iter != item.keys->end(); iter++) {
@@ -105,6 +120,16 @@ char* bufferStart = 0;
 size_t bufferSize = 5368709120/4;
 char* bufferEnd;
 char* bufferCurrent;
+
+//TODO: How to determine the size of the temp allocations?
+char* tempCudaMem;
+size_t tempCudaMemSize = 1048576 * 512;
+void tempCudaMemInit(void) {
+  if(cudaMalloc(&tempCudaMem, tempCudaMemSize) != cudaSuccess) {
+    cout << "FATAL: Insufficient device memory for tempCudaMem" << endl;
+    exit(-1);
+  }
+}
 
 void hostInit() {
 	cudaHostAlloc(&bufferStart, bufferSize, cudaHostAllocDefault);

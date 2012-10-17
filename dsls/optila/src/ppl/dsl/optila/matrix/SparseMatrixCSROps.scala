@@ -239,7 +239,7 @@ trait ScalaGenSparseMatrixCSROps extends ScalaGenBase {
   }  
 }
 
-trait CudaGenSparseMatrixCSROps extends CudaGenBase with CudaGenDataStruct {
+trait CudaGenSparseMatrixCSROps extends CudaGenBase {
   val IR: SparseMatrixCSROpsExp
   import IR._
 
@@ -248,7 +248,7 @@ trait CudaGenSparseMatrixCSROps extends CudaGenBase with CudaGenDataStruct {
   // }
 }
 
-trait OpenCLGenSparseMatrixCSROps extends OpenCLGenBase with OpenCLGenDataStruct {
+trait OpenCLGenSparseMatrixCSROps extends OpenCLGenBase {
   val IR: SparseMatrixCSROpsExp
   import IR._
 

@@ -23,6 +23,7 @@ object Sync {
   //TODO: consider case: syncing with x also implicitly syncs with y if x syncd with y
 
   private var syncSet = new mutable.HashMap[Sync, Sync] //basically a Set, but can retrieve the original instance
+  private var freeList = new mutable.ArrayBuffer[Free]()
 
   def send(sym: String, from: DeliteOP, to: DeliteOP) = {
     val sender = SendData(sym, from, node(to.scheduledResource))
@@ -100,6 +101,7 @@ object Sync {
     val updater = SendUpdate(sym, from, node(to.scheduledResource))
     val source = from.getMutableInputs.find(_._2 == sym).get._1
     updater match {
+      case _ if (from.scheduledResource == to.scheduledResource) => null //same thread
       case _ if (shouldView(sym, source, from) && shouldView(sym, source, to)) => null //update handled by hardware //TODO: if the updater has the *same* view as the receiver
       case _ if (syncSet contains updater) => syncSet(updater).asInstanceOf[SendUpdate] //multiple readers after mutation
       case _ => addSend(updater, from)
@@ -127,7 +129,19 @@ object Sync {
     receiver.sender.receivers += receiver
   }
 
+  //TODO: Fix this hack
   private def addSyncToSchedule() {
+    for (sync <- syncSet.values) {
+      sync match {
+        case s: Notify =>
+          schedule.insertAfter(s, s.from)
+          syncSet.remove(sync)
+        case r: Await =>
+          schedule.insertBefore(r, r.to)
+          syncSet.remove(sync)
+        case _ =>
+      }
+    }
     for (sync <- syncSet.values) {
       sync match {
         case s: Send =>
@@ -136,6 +150,10 @@ object Sync {
           schedule.insertBefore(r, r.to)
       }
     }
+  }
+
+  private def addFreeToSchedule() {
+    for (f <- freeList) schedule.insertAfter(f, f.op)
   }
 
   def shouldView(sym: String, from: DeliteOP, to: DeliteOP) = typeIsViewable(from.outputType(sym)) && (sharedMemory(from.scheduledResource, to.scheduledResource) || canAcquire(from.scheduledResource, to.scheduledResource))
@@ -182,27 +200,77 @@ object Sync {
       }
       for ((dep,sym) <- mutableDeps(op)) { //write this as a broadcast and then optimize?
         for (cons <- mutableDepConsumers(op, sym)) {
-          awaitUpdate(update(sym, op, cons), cons)
+          if (_graph.inputs.map(_._2).contains(sym) || (schedule(cons.scheduledResource).availableAt(dep,sym,cons))) {
+            awaitUpdate(update(sym, op, cons), cons)
+          }
         }
       }
 
+      // Add Free nodes to the schedule if needed
+      writeDataFrees(op)
+
       if (op.isInstanceOf[OP_Nested]) {
         val saveSync = syncSet
+        val saveFree = freeList
         for (graph <- op.asInstanceOf[OP_Nested].nestedGraphs if !(visitedGraphs contains graph)) {
           syncSet = new mutable.HashMap[Sync,Sync]
+          freeList = new mutable.ArrayBuffer[Free]
           addSync(graph)
         }
         syncSet = saveSync
+        freeList = saveFree
         _graph = graph
       }
     }
+    // Should be in this order: frees for an op should be emitted after all syncs for the op are emitted (sync may need to use it)
+    addFreeToSchedule()
     addSyncToSchedule()
+
+  }
+
+  protected def writeDataFrees(op: DeliteOP) {
+    val items = ArrayBuffer[(DeliteOP,String)]()
+
+    def opFreeable(op: DeliteOP, sym: String) = {
+      //TODO: Better to make OP_Condition extending OP_Executable?
+      (op.isInstanceOf[OP_Executable] || op.isInstanceOf[OP_Condition]) /*&& available.contains(op,sym)*/ && op.outputType(sym)!="Unit"
+    }
+
+    //free outputs
+    //TODO: Handle alias for Condition op output
+    for (name <- op.getOutputs if(opFreeable(op,name))) {
+      if (op.getConsumers.filter(c => c.getInputs.contains((op,name)) && c.scheduledResource == op.scheduledResource).isEmpty && !Targets.isPrimitiveType(op.outputType(name))) {
+        items += Pair(op,name)
+      }
+    }
+
+    //free inputs
+    for ((in,name) <- op.getInputs if(opFreeable(in,name))) {
+      var free = true
+      if (Targets.isPrimitiveType(in.outputType(name)) && (in.scheduledResource!=op.scheduledResource)) free = false
+      //for ((i,n) <- aliases.get(in,name); c <- i.getConsumers.filter(c => c.getInputs.contains(i,n) && c.scheduledResource == op.scheduledResource)) {
+      for (c <- in.getConsumers.filter(c => c.getInputs.contains(in,name) && c.scheduledResource == op.scheduledResource)) {
+        if (schedule(c.scheduledResource).indexOf(op) < schedule(c.scheduledResource).indexOf(c)) free = false
+      }
+      if (free) {
+        items += Pair(in,name)
+      }
+    }
+    if (items.size > 0) freeList += Free(op,items.toList)
   }
 
 }
 
 abstract class Sync extends DeliteOP {
   val id = "Sync"
+  def isDataParallel = false
+  def task = null
+  private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]] = null
+  private[graph] var inputTypesMap: Map[Targets.Value, Map[String,String]] = null
+}
+
+abstract class PCM_M extends DeliteOP {
+  val id = "MemoryManagement"
   def isDataParallel = false
   def task = null
   private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]] = null
@@ -241,3 +309,6 @@ case class Await(sender: Notify, atResource: Int) extends Receive
 //update existing data, separated from Send/Receive data for analysis purposes
 case class SendUpdate(sym: String, from: DeliteOP, toNode: Int) extends Send
 case class ReceiveUpdate(sender: SendUpdate, atNode: Int) extends Receive
+
+//Free nodes (TODO: Better to have a Free node for each symbol?)
+case class Free(op: DeliteOP, items: List[(DeliteOP,String)]) extends PCM_M

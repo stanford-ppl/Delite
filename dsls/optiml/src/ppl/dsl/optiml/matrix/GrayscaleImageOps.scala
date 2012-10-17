@@ -196,7 +196,7 @@ trait ScalaGenGrayscaleImageOps extends ScalaGenBase {
   }
 }
 
-trait CudaGenGrayscaleImageOps extends CudaGenBase with CudaGenDataStruct {
+trait CudaGenGrayscaleImageOps extends CudaGenBase {
   val IR: GrayscaleImageOpsExp
   import IR._
 

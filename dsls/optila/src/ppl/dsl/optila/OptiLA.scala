@@ -272,7 +272,7 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
 }
 
 trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with OptiLACudaGenExternal with CudaGenDeliteOps
-  with CudaGenArithOps with CudaGenVectorOps with CudaGenDenseVectorOps with CudaGenDenseVectorViewOps with CudaGenMatrixOps with CudaGenDenseMatrixOps with CudaGenDataStruct
+  with CudaGenArithOps with CudaGenVectorOps with CudaGenDenseVectorOps with CudaGenDenseVectorViewOps with CudaGenMatrixOps with CudaGenDenseMatrixOps 
   with CudaGenVariantsOps with CudaGenDeliteCollectionOps with CudaGenDeliteArrayOps
   with DeliteCudaGenAllOverrides with DeliteCppHostTransfer with OptiLACppHostTransfer with DeliteCudaDeviceTransfer with OptiLACudaDeviceTransfer { //with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
   val IR: DeliteApplication with OptiLAExp
@@ -316,48 +316,6 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
     }
   }
 
-  /*
-  override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
-    case "ppl.dsl.optila.DenseVector[Int]" => true
-    case "ppl.dsl.optila.DenseVector[Long]" => true
-    case "ppl.dsl.optila.DenseVector[Float]" => true
-    case "ppl.dsl.optila.DenseVector[Double]" => true
-    case "ppl.dsl.optila.DenseVector[Boolean]" => true
-    case "ppl.dsl.optila.RangeVector" => true
-    case "ppl.dsl.optila.DenseMatrix[Int]" => true
-    case "ppl.dsl.optila.DenseMatrix[Long]" => true
-    case "ppl.dsl.optila.DenseMatrix[Float]" => true
-    case "ppl.dsl.optila.DenseMatrix[Double]" => true
-    case "ppl.dsl.optila.DenseMatrix[Boolean]" => true
-    case "Array[Double]" | "Array[Long]" | "Array[Float]" | "Array[Double]" | "Array[Boolean]" => true
-    case _ => super.isObjectType(m)
-  }
-
-  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.tp) match {
-    case "DenseVector<int>" | "DenseVector<long>" | "DenseVector<float>" | "DenseVector<double>" | "DenseVector<bool>" => densevectorCopyInputHtoD(sym)
-    case "RangeVector" => rangevectorCopyInputHtoD(sym)
-    case "DenseMatrix<int>" | "DenseMatrix<long>" | "DenseMatrix<float>" | "DenseMatrix<double>" | "DenseMatrix<bool>" => densematrixCopyInputHtoD(sym)
-    case "DeliteArray<int>" | "DeliteArray<long>" | "DeliteArray<float>" | "DeliteArray<double>" | "DeliteArray<bool>" => delitearrayCopyInputHtoD(sym)
-    case _ => super.copyInputHtoD(sym)
-  }
-
-  override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
-    case "DenseVector<int>" | "DenseVector<long>" | "DenseVector<float>" | "DenseVector<double>" | "DenseVector<bool>" => densevectorCopyOutputDtoH(sym)
-    case "RangeVector" => "assert(false); //RangeVector cannot be an output of a GPU kernel!\n"
-    case "DenseMatrix<int>" | "DenseMatrix<long>" | "DenseMatrix<float>" | "DenseMatrix<double>" | "DenseMatrix<bool>" => densematrixCopyOutputDtoH(sym)
-    case "DeliteArray<int>" | "DeliteArray<long>" | "DeliteArray<float>" | "DeliteArray<double>" | "DeliteArray<bool>" => delitearrayCopyOutputDtoH(sym)
-    case _ => super.copyOutputDtoH(sym)
-  }
-
-  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
-    case "DenseVector<int>" | "DenseVector<long>" | "DenseVector<float>" | "DenseVector<double>" | "DenseVector<bool>" => densevectorCopyMutableInputDtoH(sym)
-    case "RangeVector" => "assert(false); //RangeVector cannot be mutated within a GPU kernel!\n"
-    case "DenseMatrix<int>" | "DenseMatrix<long>" | "DenseMatrix<float>" | "DenseMatrix<double>" | "DenseMatrix<bool>" => densematrixCopyMutableInputDtoH(sym)
-    case "DeliteArray<int>" | "DeliteArray<long>" | "DeliteArray<float>" | "DeliteArray<double>" | "DeliteArray<bool>" => delitearrayCopyMutableInputDtoH(sym)
-    case _ => super.copyMutableInputDtoH(sym)
-  }
-  */
-
   override def getDSLHeaders: String = {
     val out = new StringBuilder
     out.append("#include <float.h>\n")
@@ -365,6 +323,10 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
     out.append("#include \"RangeVector.h\"\n")
     out.append("#include \"DeliteArray.h\"\n")
     out.append("#include \"DenseMatrix.h\"\n")
+    out.append("#include \"HostDenseVector.h\"\n")
+    out.append("#include \"HostRangeVector.h\"\n")
+    out.append("#include \"HostDeliteArray.h\"\n")
+    out.append("#include \"HostDenseMatrix.h\"\n")
     out.append("#include \"library.h\"\n") // external library
     out.toString
   }
@@ -372,7 +334,7 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
 }
 
 trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg with OptiLAOpenCLGenExternal with OpenCLGenDeliteOps
-  with OpenCLGenArithOps with OpenCLGenVectorOps with OpenCLGenDenseVectorOps with OpenCLGenDenseVectorViewOps with OpenCLGenMatrixOps with OpenCLGenDenseMatrixOps with OpenCLGenDataStruct
+  with OpenCLGenArithOps with OpenCLGenVectorOps with OpenCLGenDenseVectorOps with OpenCLGenDenseVectorViewOps with OpenCLGenMatrixOps with OpenCLGenDenseMatrixOps 
   with OpenCLGenVariantsOps with OpenCLGenDeliteCollectionOps with OpenCLGenDeliteArrayOps
   with DeliteOpenCLGenAllOverrides
 {
@@ -411,60 +373,6 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
     }
   }
 
-  /*
-  override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
-    case "ppl.dsl.optila.DenseVector[Int]" => true
-    case "ppl.dsl.optila.DenseVector[Long]" => true
-    case "ppl.dsl.optila.DenseVector[Float]" => true
-    case "ppl.dsl.optila.DenseVector[Double]" => true
-    case "ppl.dsl.optila.DenseVector[Boolean]" => true
-    case "ppl.dsl.optila.RangeVector" => true
-    case "ppl.dsl.optila.DenseMatrix[Int]" => true
-    case "ppl.dsl.optila.DenseMatrix[Long]" => true
-    case "ppl.dsl.optila.DenseMatrix[Float]" => true
-    case "ppl.dsl.optila.DenseMatrix[Double]" => true
-    case "ppl.dsl.optila.DenseMatrix[Boolean]" => true
-    case "Array[Double]" | "Array[Long]" | "Array[Float]" | "Array[Double]" | "Array[Boolean]" => true
-    case _ => super.isObjectType(m)
-  }
-
-  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.tp) match {
-    case "DenseVector_int" | "DenseVector_long" | "DenseVector_float" | "DenseVector_double" | "DenseVector_bool" => densevectorCopyInputHtoD(sym)
-    case "RangeVector" => rangevectorCopyInputHtoD(sym)
-    case "DenseMatrix_int" | "DenseMatrix_long" | "DenseMatrix_float" | "DenseMatrix_double" | "DenseMatrix_bool" => densematrixCopyInputHtoD(sym)
-    //case "DeliteArray_int" | "DeliteArray_long" | "DeliteArray_float" | "DeliteArray_double" | "DeliteArray_bool" => delitearrayCopyInputHtoD(sym)
-    case _ => super.copyInputHtoD(sym)
-  }
-
-  override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
-    case "DenseVector_int" | "DenseVector_long" | "DenseVector_float" | "DenseVector_double" | "DenseVector_bool" => densevectorCopyOutputDtoH(sym)
-    case "RangeVector" => "assert(false); //RangeVector cannot be an output of a GPU kernel!\n"
-    case "DenseMatrix_int" | "DenseMatrix_long" | "DenseMatrix_float" | "DenseMatrix_double" | "DenseMatrix_bool" => densematrixCopyOutputDtoH(sym)
-    //case "DeliteArray_int" | "DeliteArray_long" | "DeliteArray_float" | "DeliteArray_double" | "DeliteArray_bool" => delitearrayCopyOutputDtoH(sym)
-    case _ => super.copyOutputDtoH(sym)
-  }
-
-  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
-    case "DenseVector_int" | "DenseVector_long" | "DenseVector_float" | "DenseVector_double" | "DenseVector_bool" => densevectorCopyMutableInputDtoH(sym)
-    case "RangeVector" => "assert(false); //RangeVector cannot be mutated within a GPU kernel!\n"
-    case "DenseMatrix_int" | "DenseMatrix_long" | "DenseMatrix_float" | "DenseMatrix_double" | "DenseMatrix_bool" => densematrixCopyMutableInputDtoH(sym)
-    //case "DeliteArray_int" | "DeliteArray_long" | "DeliteArray_float" | "DeliteArray_double" | "DeliteArray_bool" => delitearrayCopyMutableInputDtoH(sym)
-    case _ => super.copyMutableInputDtoH(sym)
-  }
-
-  override def unpackObject[A](sym: Sym[Any]) : Map[String,Manifest[_]] = remap(sym.tp) match {
-    case "DenseMatrix_int" | "DenseMatrix_long" | "DenseMatrix_float" | "DenseMatrix_double" | "DenseMatrix_bool" =>
-      val dataArrayType = sym.tp.typeArguments(0)
-      Map("numRows"->Manifest.Int, "numCols"->Manifest.Int, "data"->dataArrayType.arrayManifest)
-    case "DenseVector_int" | "DenseVector_long" | "DenseVector_float" | "DenseVector_double" | "DenseVector_bool" =>
-      val dataArrayType = sym.tp.typeArguments(0)
-      Map("isRow"->Manifest.Boolean, "length"->Manifest.Int, "data"->dataArrayType.arrayManifest)
-    case "RangeVector" =>
-      Map("isRow"->Manifest.Boolean, "start"->Manifest.Int, "stride"->Manifest.Int, "end"->Manifest.Int)
-    case _ => super.unpackObject(sym)
-  }
-  */
-
   override def getDSLHeaders: String = {
     val out = new StringBuilder
     out.append("#include <float.h>\n")
@@ -501,38 +409,6 @@ trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenD
       }
     }
   }
-
-    /*
-    m.toString match {
-      case "ppl.dsl.optila.DenseVector[Int]" => "DenseVector<int> "
-      case "ppl.dsl.optila.DenseVector[Long]" => "DenseVector<long> "
-      case "ppl.dsl.optila.DenseVector[Float]" => "DenseVector<float> "
-      case "ppl.dsl.optila.DenseVector[Double]" => "DenseVector<double> "
-      case "ppl.dsl.optila.DenseVector[Boolean]" => "DenseVector<bool> "
-      case "ppl.dsl.optila.DenseMatrix[Int]" => "DenseMatrix<int>"
-      case "ppl.dsl.optila.DenseMatrix[Long]" => "DenseMatrix<long>"
-      case "ppl.dsl.optila.DenseMatrix[Float]" => "DenseMatrix<float>"
-      case "ppl.dsl.optila.DenseMatrix[Double]" => "DenseMatrix<double>"
-      case "ppl.dsl.optila.DenseMatrix[Boolean]" => "DenseMatrix<bool>"
-      //case "ppl.dsl.optila.RangeVector" => "RangeVector"
-      //case "ppl.dsl.optila.DenseVectorView[Int]" => "DenseVectorView<int>"
-      //case "ppl.dsl.optila.DenseVectorView[Long]" => "DenseVectorView<long>"
-      //case "ppl.dsl.optila.DenseVectorView[Float]" => "DenseVectorView<float>"
-      //case "ppl.dsl.optila.DenseVectorView[Double]" => "DenseVectorView<double>"
-      //case "ppl.dsl.optila.DenseVectorView[Boolean]" => "DenseVectorView<bool>"
-      //case "ppl.dsl.optila.MatrixRow[Int]" => "DenseVectorView<int>"
-      //case "ppl.dsl.optila.MatrixRow[Long]" => "DenseVectorView<long>"
-      //case "ppl.dsl.optila.MatrixRow[Float]" => "DenseVectorView<float>"
-      //case "ppl.dsl.optila.MatrixRow[Double]" => "DenseVectorView<double>"
-      //case "ppl.dsl.optila.MatrixRow[Boolean]" => "DenseVectorView<bool>"
-      //case "Array[Int]" => "DeliteArray<int> *"
-      //case "Array[Long]" => "DeliteArray<long> *"
-      //case "Array[Float]" => "DeliteArray<float> *"
-      //case "Array[Double]" => "DeliteArray<double> *"
-      //case "Array[Boolean]" => "DeliteArray<bool> *"
-      case _ => super.remap(m)
-    }
-    */
 
   override def getDSLHeaders: String = {
     val out = new StringBuilder

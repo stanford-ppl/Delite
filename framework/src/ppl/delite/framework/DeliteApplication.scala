@@ -4,7 +4,7 @@ import java.io.{FileWriter, File, PrintWriter}
 import scala.collection.mutable.{Map => MMap}
 import scala.tools.nsc.io._
 import scala.virtualization.lms.common.{BaseExp, Base}
-import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen, Transforming}
+import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen, Transforming, GenerationFailedException}
 
 import analysis.{MockStream, TraversalAnalysis}
 import codegen.cpp.TargetCpp
@@ -140,6 +140,17 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
 
     generators foreach { _.finalizeGenerator()}
     
+    generators foreach { _.emitTransferFunctions()}
+    /*
+    generators foreach { g =>
+      try { g.emitTransferFunctions() } 
+      catch { 
+        case e: GenerationFailedException => 
+        case e: Exception => throw(e) 
+      }
+    }
+    */
+
     staticDataMap = Map() ++ sd map { case (s,d) => (deliteGenerator.quote(s), d) }
   }
 

@@ -593,7 +593,7 @@ trait ScalaGenSparseVectorOps extends BaseGenSparseVectorOps with ScalaGenFat {
   }
 }
 
-trait CudaGenSparseVectorOps extends BaseGenSparseVectorOps with CudaGenFat with CudaGenDataStruct {
+trait CudaGenSparseVectorOps extends BaseGenSparseVectorOps with CudaGenFat {
   val IR: SparseVectorOpsExp
   import IR._
 
@@ -602,7 +602,7 @@ trait CudaGenSparseVectorOps extends BaseGenSparseVectorOps with CudaGenFat with
   // }
 }
 
-trait OpenCLGenSparseVectorOps extends BaseGenSparseVectorOps with OpenCLGenFat with OpenCLGenDataStruct {
+trait OpenCLGenSparseVectorOps extends BaseGenSparseVectorOps with OpenCLGenFat {
   val IR: SparseVectorOpsExp
   import IR._
 

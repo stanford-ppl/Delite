@@ -31,8 +31,8 @@ trait SyncGenerator {
   protected def receiveView(s: ReceiveView) { notImplemented(s) }
   protected def sendSignal(s: Notify) { }
   protected def awaitSignal(s: Await) { notImplemented(s) }
-  protected def sendUpdate(s: SendUpdate) { notImplemented(s) }
-  protected def receiveUpdate(s: ReceiveUpdate) { notImplemented(s) }
+  protected def sendUpdate(s: SendUpdate) { }
+  protected def receiveUpdate(s: ReceiveUpdate) { }
 
   private def notImplemented(s: Sync) = sys.error("don't know how to synchronize " + s)
 

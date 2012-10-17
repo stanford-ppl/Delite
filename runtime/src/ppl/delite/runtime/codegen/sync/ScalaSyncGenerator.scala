@@ -22,13 +22,17 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
     writeAwaiter(s.sender.from)
   }
 
+  override protected def receiveUpdate(s: ReceiveUpdate) {
+    writeAwaiter(s.sender.from)
+  }
+
   override def sendData(s: SendData) {
-    if (Targets.isPrimitiveType(s.from.outputType(s.sym))) {
+    //if (Targets.isPrimitiveType(s.from.outputType(s.sym))) {
       writeSetter(s.from, s.sym)
       syncList += s
-    }
-    else
-      sys.error(s.from.id + " send data copy for object types not yet implemented")
+    //}
+    //else
+    //  sys.error(s.from.id + " send data copy for object types not yet implemented")
   }
 
   override protected def sendView(s: SendView) {
@@ -40,6 +44,12 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
     writeNotifier(s.from)
     syncList += s
   }
+
+  override protected def sendUpdate(s: SendUpdate) {
+    writeNotifier(s.from)
+    syncList += s
+  }
+
 
   private def writeGetter(dep: DeliteOP, sym: String) {
     out.append("val ")
@@ -83,6 +93,7 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
 
   override protected def makeNestedFunction(op: DeliteOP) = op match {
     case s: Sync => addSync(s) //TODO: if sync companion also Scala
+    case m: Free => // JVM GC
     case _ => super.makeNestedFunction(op)
   }
 
@@ -91,6 +102,7 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
       syncObjectGenerator(syncList, Hosts.Scala).makeSyncObjects
     //}
   }
+
 }
 
 

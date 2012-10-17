@@ -90,15 +90,17 @@ trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator
 
 }
 
-
 trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
+
+  private val target = Targets.Cpp
+  private val typesMap = CppExecutableGenerator.typesMap
 
   def generateMethodSignature(): String = {
     val str = new StringBuilder
     str.append("#include \"cppHeader.hpp\"\n")
-    str.append(nested.outputType(Targets.Cpp))
+    str.append(nested.outputType(target))
     str.append(' ')
-    if (!isPrimitiveType(nested.outputType) && nested.outputType!="Unit") out.append(" *")
+    if (!isPrimitiveType(nested.outputType) && nested.outputType!="Unit") str.append(" *")
     str.append(executableName)
     str.append('(')
     str.append(generateInputs())
@@ -126,7 +128,7 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
     for ((op,sym) <- inputs) {
       if (!first) str.append(", ")
       first = false
-      str.append(CppExecutableGenerator.typesMap(Targets.Cpp)(sym))
+      str.append(typesMap(target)(sym))
       if (!isPrimitiveType(op.outputType(sym))) str.append(" *")
       str.append(' ')
       str.append(getSymHost(op, sym))
@@ -156,85 +158,73 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
 }
 
 
-/*
-abstract class GPUNestedGenerator(nested: OP_Nested, location: Int, target: Targets.Value) extends GPUExecutableGenerator {
+trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator {
 
-  protected val baseId = nested.id.slice(0, nested.id.indexOf('_'))
+  private val target = Targets.Cuda
+  private val typesMap = CudaExecutableGenerator.typesMap
 
-  protected def updateOP() {
-    nested.setExecutableName(executableName)
+  def generateMethodSignature(): String = {
+    val str = new StringBuilder
+    str.append(nested.outputType(target))
+    str.append(' ')
+    if (!isPrimitiveType(nested.outputType) && nested.outputType!="Unit") str.append(" *")
+    str.append(executableName)
+    str.append('(')
+    str.append(generateInputs())
+    str.append(")")
+    str.toString
   }
 
-  protected def executableName = executableName + location
-
-  override protected def getScalaSym(op: DeliteOP, name: String) = NestedCommon.getSym(baseId, op, name)
-
-  protected def writeFunctionHeader(out: StringBuilder) {
-    out.append(nested.outputType(target))
-    out.append(' ')
-    // GPU nested block can only return when both condition branches are returned by GPU,
-    // meaning that the return object will be a pointer type
-    if(nested.outputType != "Unit") out.append('*')
-    out.append(executableName)
-    out.append('(')
-    writeInputs(out)
-    out.append(") {\n")
-  }
-
-  protected def writeInputs(out: StringBuilder) {
-    var first = true
-
-    val metadata = nested.getGPUMetadata(target)
-
-    for ((in, sym) <- nested.getInputs) {
-      if (metadata.inputs.contains((in,sym))) {
-        if (!first) out.append(',')
-        first = false
-        out.append(metadata.inputs((in,sym)).resultType)
-        out.append("* ")
-        out.append(getSymGPU(sym))
-        if ((nested.getMutableInputs. contains (in,sym)) && (in.getConsumers.filter(_.scheduledResource!=in.scheduledResource).nonEmpty)) {
-          out.append(',')
-          out.append(getJNIType(in.outputType(sym)))
-          out.append(' ')
-          out.append(getSymCPU(sym))
-        }
-      }
-      else if (isPrimitiveType(in.outputType(sym))) {
-        if (!first) out.append(',')
-        first = false
-        out.append(getCPrimitiveType(in.outputType(sym)))
-        out.append(' ')
-        out.append(getSymGPU(sym))
-      }
-    }
-  }
-}
-
-abstract class GPUScalaNestedGenerator(nested: OP_Nested, location: Int, target: Targets.Value) extends GPUScalaExecutableGenerator(target) {
-
-  protected val baseId = nested.id.slice(0, nested.id.indexOf('_'))
-
-  def emitScala(syncList: ArrayBuffer[DeliteOP]) = {
-    val out = new StringBuilder
-    writeHeader(location, out)
-    addSync(syncList, out) //the sync methods/objects
-    writeOuterSet(syncList, out) //helper set methods for JNI calls to access
-    out.append("}\n")
-    out.toString
-  }
-
-  protected def executableName = executableName + location
-
-  override protected def getSym(op: DeliteOP, name: String) = NestedCommon.getSym(baseId, op, name)
-  override protected def getSync(op: DeliteOP, name: String) = NestedCommon.getSync(baseId, op, name)
-
-  protected def writeHeader(location: Int, out: StringBuilder) {
-    out.append("import java.util.concurrent.locks._\n") //locking primitives
-    ScalaExecutableGenerator.writePath(nested.nestedGraphs(0).kernelPath, out) //package of scala kernels
-    out.append("object ")
-    out.append(executableName)
+  override protected def writeMethodHeader() {
+    out.append(generateMethodSignature)
     out.append(" {\n")
+    // Add references to other executables for sync objects
+    val locationsRecv = nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Receive])).map(_.asInstanceOf[Receive].sender.from.scheduledResource).toSet
+    val locations = if (nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Send])).nonEmpty) Set(location) union locationsRecv
+                    else locationsRecv
+    writeJNIInitializer(locations)
   }
-}*/
+
+  override protected def writeMethodFooter() {
+    out.append("}\n")
+  }
+
+  protected def generateInputs(inputs: Seq[(DeliteOP,String)] = nested.getInputs): String = {
+    val str = new StringBuilder
+    var first = true
+    for ((op,sym) <- inputs) {
+      if (!first) str.append(", ")
+      first = false
+      str.append(typesMap(target)(sym))
+      if (!isPrimitiveType(op.outputType(sym))) str.append(" *")
+      str.append(' ')
+      str.append(getSymDevice(op, sym))
+    }
+    str.toString
+  }
+
+  protected def writeInputs(inputs: Seq[(DeliteOP,String)] = nested.getInputs) {
+    out.append(generateInputs(inputs))
+  }
+
+  protected def writeReturn(newLine: Boolean = true) {
+    if (newLine) out.append("return;\n")
+    else out.append("return ")
+  }
+
+  protected def writeOutput(op: DeliteOP, name: String, newLine: Boolean = true) {
+    out.append(getSymDevice(op, name))
+    if (newLine) out.append(";\n")
+  }
+
+  protected def writeValue(value: String, newLine: Boolean = true) {
+    out.append(value)
+    if (newLine) out.append(";\n")
+  }
+
+  override protected def initializeBlock() {
+    available.clear
+  }
+
+}
 

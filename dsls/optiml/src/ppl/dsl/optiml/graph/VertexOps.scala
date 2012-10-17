@@ -122,7 +122,7 @@ trait ScalaGenVertexOps extends BaseGenVertexOps with ScalaGenBase {
 }
 
 
-trait CudaGenVertexOps extends BaseGenVertexOps with CudaGenBase with CudaGenDataStruct {
+trait CudaGenVertexOps extends BaseGenVertexOps with CudaGenBase {
   val IR: VertexOpsExp
   import IR._
 

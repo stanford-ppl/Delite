@@ -5,7 +5,6 @@ import ppl.dsl.optiml._
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 import java.io.PrintWriter
-import ppl.dsl.optiml.CudaGenDataStruct
 
 trait VerticesOps extends Variables {
   this: OptiML =>
@@ -59,7 +58,7 @@ trait ScalaGenVerticesOps extends BaseGenVerticesOps with ScalaGenBase {
 }
 
 
-trait CudaGenVerticesOps extends BaseGenVerticesOps with CudaGenBase with CudaGenDataStruct {
+trait CudaGenVerticesOps extends BaseGenVerticesOps with CudaGenBase {
   val IR: VerticesOpsExp
   import IR._
 

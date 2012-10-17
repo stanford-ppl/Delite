@@ -280,8 +280,8 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
 }
 
 trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with OptiMLCudaCodeGenPkg 
-  with CudaGenDataStruct with CudaGenVectorOps with CudaGenMatrixOps with CudaGenTrainingSetOps 
-  with DeliteCudaGenAllOverrides // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
+  with CudaGenVectorOps with CudaGenMatrixOps with CudaGenTrainingSetOps
+  with DeliteCudaGenAllOverrides with OptiMLCppHostTransfer with OptiMLCudaDeviceTransfer // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
 {
   val IR: DeliteApplication with OptiMLExp
   import IR._
@@ -296,37 +296,12 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
       case _ => super.remap(m)
     }
   }
-  /*
-  override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
-    case "ppl.dsl.optiml.datastruct.scala.IndexVector" => true
-    case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Double]" => true
-    case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Int]" => true
-    case _ => super.isObjectType(m)
-  }
-
-  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.tp) match {
-    case "IndexVector" => indexVectorCopyInputHtoD(sym)
-    case "TrainingSet<double,double>" => trainingSetCopyInputHtoD(sym)
-    case "TrainingSet<double,int>" => trainingSetCopyInputHtoD(sym)
-    case _ => super.copyInputHtoD(sym)
-  }
-
-  override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
-    case _ => super.copyOutputDtoH(sym)
-  }
-
-  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
-    case "IndexVector" => indexVectorCopyMutableInputDtoH(sym)
-    case "TrainingSet<double,double>" => trainingSetCopyMutableInputDtoH(sym)
-    case "TrainingSet<double,int>" => trainingSetCopyMutableInputDtoH(sym)
-    case _ => super.copyMutableInputDtoH(sym)
-  }
-  */
 
   override def getDSLHeaders: String = {
     val out = new StringBuilder
     out.append(super.getDSLHeaders)
     out.append("#include \"IndexVectorImpl.h\"\n")
+    out.append("#include \"HostIndexVector.h\"\n")
     out.append("#include \"TrainingSetImpl.h\"\n")
     out.toString
   }
@@ -334,19 +309,11 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
 }
 
 trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase with OptiMLOpenCLCodeGenPkg
-  with OpenCLGenDataStruct with OpenCLGenVectorOps with OpenCLGenMatrixOps with OpenCLGenTrainingSetOps
+  with OpenCLGenVectorOps with OpenCLGenMatrixOps with OpenCLGenTrainingSetOps
   with DeliteOpenCLGenAllOverrides
 {
   val IR: DeliteApplication with OptiMLExp
   import IR._
-  /*
-  override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
-    //case "ppl.dsl.optiml.IndexVector" => true
-    //case "ppl.dsl.optiml.TrainingSet[Double, Double]" => true
-    //case "ppl.dsl.optiml.TrainingSet[Double, Int]" => true
-    case _ => super.isObjectType(m)
-  }
-  */
 
   override def remap[A](m: Manifest[A]) : String = m.toString match {
     //case "ppl.dsl.optiml.IndexVector" => "IndexVector"
@@ -354,30 +321,6 @@ trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase wit
     //case "ppl.dsl.optiml.TrainingSet[Double, Int]" => "DoubleIntTrainingSet"
     case _ => super.remap(m)
   }
-
-  /*
-  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.tp) match {
-    case "IndexVector" => indexVectorCopyInputHtoD(sym)
-    case "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" => trainingSetCopyInputHtoD(sym)
-    case _ => super.copyInputHtoD(sym)
-  }
-
-  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
-    case "IndexVector" => indexVectorCopyMutableInputDtoH(sym)
-    case "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" => trainingSetCopyMutableInputDtoH(sym)
-    case _ => super.copyMutableInputDtoH(sym)
-  }
-
-  override def unpackObject[A](sym: Sym[Any]) : Map[String,Manifest[_]] = remap(sym.tp) match {
-    case "IndexVector" =>
-      Map("isRow"->Manifest.Boolean, "length"->Manifest.Int, "data"->Manifest.Int.arrayManifest)
-    case "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" =>
-      val dataArrayType1 = sym.tp.typeArguments(0)
-      val dataArrayType2 = sym.tp.typeArguments(1)
-      Map("numRows"->Manifest.Int, "numCols"->Manifest.Int, "data"->dataArrayType1.arrayManifest, "data_labels"->dataArrayType2.arrayManifest)
-    case _ => super.unpackObject(sym)
-  }
-  */
 
   override def getDSLHeaders: String = {
     val out = new StringBuilder

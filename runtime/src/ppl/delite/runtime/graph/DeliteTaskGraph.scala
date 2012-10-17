@@ -325,9 +325,12 @@ object DeliteTaskGraph {
     var ifInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
     ifInputs ++= (for ((op,sym) <- Seq(predGraph.result, thenGraph.result, elseGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
     val ifMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
-    val inputTypesMap = combineTypesMap(internalOps.map(_.inputTypesMap).toList ++ Seq(predGraph.result, thenGraph.result, elseGraph.result).filter(_._1.isInstanceOf[OP_Input]).map(_._1.outputTypesMap).toList)
 
-    val conditionOp = new OP_Condition(id, resultMap, inputTypesMap, predGraph, predValue, thenGraph, thenValue, elseGraph, elseValue, true)
+    //TODO: Would it be better to generate more type information in DEG and make it general to all targets?
+    val condTypeMap:List[Map[Targets.Value,Map[String,String]]] = if (predValue == "") Targets.GPU.map(t => Map(t -> Map(predGraph.result._2 -> "bool"))) else Nil
+    val inputTypesMap = combineTypesMap(condTypeMap ++ internalOps.map(_.inputTypesMap).toList ++ Seq(predGraph.result, thenGraph.result, elseGraph.result).filter(_._1.isInstanceOf[OP_Input]).map(_._1.outputTypesMap).toList)
+
+    val conditionOp = new OP_Condition(id, resultMap, inputTypesMap, predGraph, predValue, thenGraph, thenValue, elseGraph, elseValue)
     conditionOp.dependencies = ifDeps
     conditionOp.inputList = ifInputs.toList
     conditionOp.mutableInputs = ifMutableInputs
@@ -372,7 +375,10 @@ object DeliteTaskGraph {
     var whileInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
     whileInputs ++= (for ((op,sym) <- Seq(predGraph.result, bodyGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
     val whileMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
-    val inputTypesMap = combineTypesMap(internalOps.map(_.inputTypesMap).toList ++ Seq(predGraph.result, bodyGraph.result).filter(_._1.isInstanceOf[OP_Input]).map(_._1.outputTypesMap).toList)
+
+    //TODO: Would it be better to generate more type information in DEG and make it general to all targets?
+    val condTypeMap:List[Map[Targets.Value,Map[String,String]]] = if (predValue == "") Targets.GPU.map(t => Map(t -> Map(predGraph.result._2 -> "bool"))) else Nil
+    val inputTypesMap = combineTypesMap(condTypeMap ++ internalOps.map(_.inputTypesMap).toList ++ Seq(predGraph.result, bodyGraph.result).filter(_._1.isInstanceOf[OP_Input]).map(_._1.outputTypesMap).toList)
 
     val whileOp = new OP_While(id, inputTypesMap, predGraph, predValue, bodyGraph, bodyValue)
     whileOp.dependencies = whileDeps

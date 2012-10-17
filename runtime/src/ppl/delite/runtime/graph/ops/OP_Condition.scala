@@ -11,7 +11,7 @@ class OP_Condition(val id: String, private[graph] var outputTypesMap: Map[Target
                    private[graph] var inputTypesMap: Map[Targets.Value, Map[String,String]],
                    val predicateGraph: DeliteTaskGraph, val predicateValue: String,
                    val thenGraph: DeliteTaskGraph, val thenValue: String,
-                   val elseGraph: DeliteTaskGraph, val elseValue: String, val isReturner: Boolean)
+                   val elseGraph: DeliteTaskGraph, val elseValue: String)
   extends OP_Control {
 
   def nestedGraphs = Seq(predicateGraph, thenGraph, elseGraph)
@@ -24,9 +24,6 @@ class OP_Condition(val id: String, private[graph] var outputTypesMap: Map[Target
       elseGraph.result._1.scheduledResource
     else indices(0)
 
-    // Returner is always 0 (assuming the index 0 is CPU)
-    //TODO: Change this so that GPU can also be the returner
-    //indices(0)
   }
 
   /**
@@ -39,7 +36,7 @@ class OP_Condition(val id: String, private[graph] var outputTypesMap: Map[Target
       for (idx <- indices) yield {
         val resultMap = if (idx == returnerIdx) outputTypesMap else Targets.unitTypes(id+"_"+idx)
         val r = new OP_Condition(id+"_"+idx, resultMap, inputTypesMap, predicateGraph, predicateValue,
-        thenGraph, thenValue, elseGraph, elseValue, idx == returnerIdx)
+        thenGraph, thenValue, elseGraph, elseValue)
         r.dependencies = dependencies
         r.inputList = inputList
         r.mutableInputs = mutableInputs

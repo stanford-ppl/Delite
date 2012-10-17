@@ -10,11 +10,10 @@ import ppl.delite.framework.extern.lib._
 import ppl.delite.framework.extern.codegen.opencl.OpenCLGenExternalBase
 import ppl.delite.framework.ops._
 import ppl.delite.framework.codegen.delite._
-import ppl.dsl.optila.OpenCLGenDataStruct
 
 import ppl.dsl.optila.OptiLAExp
 
-trait OptiLAOpenCLGenExternal extends OpenCLGenExternalBase with OpenCLGenDataStruct {
+trait OptiLAOpenCLGenExternal extends OpenCLGenExternalBase {
   val IR: OptiLAExp
   import IR._
   

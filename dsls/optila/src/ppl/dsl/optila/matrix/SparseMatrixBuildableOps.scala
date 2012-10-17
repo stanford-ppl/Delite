@@ -275,7 +275,7 @@ trait ScalaGenSparseMatrixBuildableOps extends ScalaGenBase {
   }  
 }
 
-trait CudaGenSparseMatrixBuildableOps extends CudaGenBase with CudaGenDataStruct {
+trait CudaGenSparseMatrixBuildableOps extends CudaGenBase {
   val IR: SparseMatrixBuildableOpsExp
   import IR._
 
@@ -284,7 +284,7 @@ trait CudaGenSparseMatrixBuildableOps extends CudaGenBase with CudaGenDataStruct
   // }
 }
 
-trait OpenCLGenSparseMatrixBuildableOps extends OpenCLGenBase with OpenCLGenDataStruct {
+trait OpenCLGenSparseMatrixBuildableOps extends OpenCLGenBase {
   val IR: SparseMatrixBuildableOpsExp
   import IR._
 

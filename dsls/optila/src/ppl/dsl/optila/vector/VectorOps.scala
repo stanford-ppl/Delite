@@ -34,6 +34,7 @@ trait VectorOps extends Variables {
         
     def ones(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.ones(len)
     def onesf(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.onesf(len)
+    def mzeros(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.mzeros(len)
     def zeros(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.zeros(len)
     def zerosf(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.zerosf(len)
     def rand(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.rand(len)
@@ -1344,7 +1345,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
 }
 
 
-trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenDataStruct {
+trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat {
   val IR: VectorOpsExp
   import IR._
 
@@ -1354,7 +1355,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
   }
 }
 
-trait OpenCLGenVectorOps extends BaseGenVectorOps with OpenCLGenFat with OpenCLGenDataStruct {
+trait OpenCLGenVectorOps extends BaseGenVectorOps with OpenCLGenFat {
   val IR: VectorOpsExp
   import IR._
 

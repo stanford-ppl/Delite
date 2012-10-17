@@ -27,6 +27,7 @@ object Config {
   var collectStencil = System.getProperty("deliszt.stencil.enabled", "false") == "true"
   var printGlobals = System.getProperty("delite.print_globals.enabled", "false") == "true"  
   val optimize = getProperty("delite.optimize", "0").toInt
+  val enableGPUTransform = getProperty("delite.enable.gputransform","false") != "false"
 
   //Print generationFailedException info
   val dumpException: Boolean = getProperty("delite.dump.exception", "false") != "false"

@@ -1,6 +1,5 @@
 package ppl.dsl.optiml.graph
 
-import ppl.dsl.optiml.CudaGenDataStruct
 import java.io.{PrintWriter}
 
 import reflect.Manifest
@@ -211,7 +210,7 @@ trait ScalaGenGraphOps extends BaseGenGraphOps with ScalaGenBase {
 }
 
 
-trait CudaGenGraphOps extends BaseGenGraphOps with CudaGenBase with CudaGenDataStruct {
+trait CudaGenGraphOps extends BaseGenGraphOps with CudaGenBase {
   val IR: GraphOpsExp
   import IR._
 

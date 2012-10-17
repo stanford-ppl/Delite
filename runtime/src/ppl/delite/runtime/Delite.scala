@@ -49,15 +49,13 @@ object Delite {
     Arguments.args = args.drop(1)
     Arguments.staticDataMap = staticData
 
+    //TODO: combine into a single scheduler and executor
     val scheduler = Config.scheduler match {
       case "SMP" => new SMPStaticScheduler
       case "ACC" => new Acc_StaticScheduler
-      case "SMP+GPU" => new SMP_GPU_StaticScheduler
       case "default" => {
         if (Config.numCuda + Config.numOpenCL + Config.numCpp == 0) new SMPStaticScheduler
-        else if (Config.numCpp > 0 && Config.numCuda + Config.numOpenCL == 0) new Acc_StaticScheduler
-        else if (Config.numCpp == 0 && Config.numCuda + Config.numOpenCL == 1) new SMP_GPU_StaticScheduler
-        else error("No scheduler currently exists that can handle the requested resources")
+        else new Acc_StaticScheduler
       }
       case _ => throw new IllegalArgumentException("Requested scheduler is not recognized")
     }
@@ -65,7 +63,6 @@ object Delite {
     val executor = Config.executor match {
       case "SMP" => new SMPExecutor
       case "ACC" => new SMP_Acc_Executor
-      case "SMP+GPU" => new SMP_Acc_Executor
       case "default" => {
         if (Config.numCuda + Config.numOpenCL + Config.numCpp == 0) new SMPExecutor
         else new SMP_Acc_Executor

@@ -4,7 +4,8 @@ import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.ops.DeliteOP
 import ppl.delite.runtime.graph.targets.Targets
 
-trait OpenCLExecutableGenerator extends GPUExecutableGenerator {
+/*
+trait OpenCLExecutableGenerator extends ExecutableGenerator {
 
   protected def target = Targets.OpenCL
 
@@ -98,3 +99,4 @@ trait OpenCLExecutableGenerator extends GPUExecutableGenerator {
   }
 
 }
+*/

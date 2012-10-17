@@ -45,8 +45,9 @@ trait ExecutableGenerator {
   }
 
   protected def addKernelCalls(resource: OpList) {
+    initializeBlock()
     for (op <- resource) {
-      if (op.isInstanceOf[OP_Nested] || op.isInstanceOf[Sync]) //runtime responsible for implementation
+      if (op.isInstanceOf[OP_Nested] || op.isInstanceOf[Sync] || op.isInstanceOf[PCM_M]) //runtime responsible for implementation
         makeNestedFunction(op)
       writeFunctionCall(op)
     }
@@ -73,5 +74,7 @@ trait ExecutableGenerator {
   protected def getSym(op: DeliteOP, name: String): String = {
     "x"+name
   }
+
+  protected def initializeBlock() { }
 
 }

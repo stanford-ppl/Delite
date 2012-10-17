@@ -10,11 +10,10 @@ import ppl.delite.framework.extern.lib._
 import ppl.delite.framework.extern.codegen.cuda.CudaGenExternalBase
 import ppl.delite.framework.ops._
 import ppl.delite.framework.codegen.delite._
-import ppl.dsl.optila.CudaGenDataStruct
 
 import ppl.dsl.optila.OptiLAExp
 
-trait OptiLACudaGenExternal extends CudaGenExternalBase with CudaGenDataStruct {
+trait OptiLACudaGenExternal extends CudaGenExternalBase {
   val IR: OptiLAExp
   import IR._
   

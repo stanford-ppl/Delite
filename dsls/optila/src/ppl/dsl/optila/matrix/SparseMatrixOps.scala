@@ -334,7 +334,7 @@ trait ScalaGenSparseMatrixOps extends ScalaGenBase {
   }  
 }
 
-trait CudaGenSparseMatrixOps extends CudaGenBase with CudaGenDataStruct {
+trait CudaGenSparseMatrixOps extends CudaGenBase {
   val IR: SparseMatrixOpsExp
   import IR._
 
@@ -343,7 +343,7 @@ trait CudaGenSparseMatrixOps extends CudaGenBase with CudaGenDataStruct {
   // }
 }
 
-trait OpenCLGenSparseMatrixOps extends OpenCLGenBase with OpenCLGenDataStruct {
+trait OpenCLGenSparseMatrixOps extends OpenCLGenBase {
   val IR: SparseMatrixOpsExp
   import IR._
 

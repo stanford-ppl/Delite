@@ -1,6 +1,5 @@
 package ppl.dsl.optiml.graph
 
-import ppl.dsl.optiml.CudaGenDataStruct
 import ppl.dsl.optiml._
 import java.io.{PrintWriter}
 
@@ -139,7 +138,7 @@ trait ScalaGenEdgeOps extends BaseGenEdgeOps with ScalaGenBase {
 }
 
 
-trait CudaGenEdgeOps extends BaseGenEdgeOps with CudaGenBase with CudaGenDataStruct {
+trait CudaGenEdgeOps extends BaseGenEdgeOps with CudaGenBase {
   val IR: EdgeOpsExp
   import IR._
 

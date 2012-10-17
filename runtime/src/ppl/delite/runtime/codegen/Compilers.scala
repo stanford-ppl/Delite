@@ -5,7 +5,8 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.ops.Sync
 import ppl.delite.runtime.graph.targets.Targets
-import ppl.delite.runtime.scheduler.{PartialSchedule, OpHelper, StaticSchedule}
+import ppl.delite.runtime.codegen.hosts.Hosts
+import ppl.delite.runtime.scheduler.{OpHelper, StaticSchedule}
 
 /**
  * Author: Kevin J. Brown
@@ -34,22 +35,20 @@ object Compilers {
     val schedule = graph.schedule
     assert((Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL) == schedule.numResources)
     Sync.addSync(graph)
-
-    val scalaSchedule = schedule.slice(0, Config.numThreads)
-    if (Config.numThreads > 0) checkRequestedResource(scalaSchedule, Targets.Scala)
-    ScalaExecutableGenerator.makeExecutables(scalaSchedule, graph.kernelPath)
+    ScalaExecutableGenerator.makeExecutables(schedule.slice(0,Config.numThreads), graph.kernelPath)
 
     // Hack to collect global inputTypesMap (TODO: Get rid of this)
     CppExecutableGenerator.collectInputTypesMap(graph)
-    val cppSchedule = schedule.slice(Config.numThreads, Config.numThreads+Config.numCpp)
-    if (Config.numCpp > 0) checkRequestedResource(cppSchedule, Targets.Cpp)
-    CppExecutableGenerator.makeExecutables(cppSchedule, graph.kernelPath)
+    CppExecutableGenerator.makeExecutables(schedule.slice(Config.numThreads, Config.numThreads+Config.numCpp), graph.kernelPath)
 
+    CudaExecutableGenerator.collectInputTypesMap(graph)
+    CudaExecutableGenerator.makeExecutables(schedule.slice(Config.numThreads+Config.numCpp, Config.numThreads+Config.numCpp+Config.numCuda), graph.kernelPath)
+
+    /*
     for (i <- Config.numThreads+Config.numCpp until Config.numThreads+Config.numCpp+Config.numCuda) {
-      val cudaSchedule = schedule.slice(i, i+1)
-      checkRequestedResource(cudaSchedule, Targets.Cuda)
-      CudaExecutableGenerator.makeExecutable(cudaSchedule, graph.kernelPath)
+      CudaExecutableGenerator.makeExecutables(schedule.slice(i, i+1), graph.kernelPath)
     }
+    */
 
     if (Config.printSources) { //DEBUG option
       ScalaCompile.printSources()
@@ -65,17 +64,12 @@ object Compilers {
     val classLoader = ScalaCompile.compile
 
     val queues = StaticSchedule(schedule.numResources)
-    for (i <- 0 until schedule.numResources if !schedule(i).isEmpty) {
+    for (i <- 0 until schedule.numResources) {
       val cls = classLoader.loadClass("Executable"+i) //load the Executable class
       val executable = cls.getMethod("self").invoke(null).asInstanceOf[DeliteExecutable] //retrieve the singleton instance
       queues(i) += executable
     }
     queues
-  }
-
-  def checkRequestedResource(schedule: PartialSchedule, target: Targets.Value) {
-    if (schedule.map(_.size).reduce(_ + _) == 0)
-      println("WARNING: no kernels scheduled on " + target)
   }
 
 }

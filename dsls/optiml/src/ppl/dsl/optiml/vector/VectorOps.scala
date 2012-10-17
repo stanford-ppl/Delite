@@ -1,6 +1,5 @@
 package ppl.dsl.optiml.vector
 
-import ppl.dsl.optiml.{CudaGenDataStruct, OpenCLGenDataStruct}
 import java.io.{PrintWriter}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
@@ -309,7 +308,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
 }
 
 
-trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenDataStruct {
+trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat {
   val IR: VectorOpsExp
   import IR._
 
@@ -319,7 +318,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
   //   }
 }
 
-trait OpenCLGenVectorOps extends BaseGenVectorOps with OpenCLGenFat with OpenCLGenDataStruct {
+trait OpenCLGenVectorOps extends BaseGenVectorOps with OpenCLGenFat {
   val IR: VectorOpsExp
   import IR._
 

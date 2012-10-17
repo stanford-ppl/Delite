@@ -1,6 +1,6 @@
 package ppl.delite.runtime.codegen.kernels.opencl
 
-import ppl.delite.runtime.codegen.{CppExecutableGenerator, OpenCLExecutableGenerator, OpenCLCompile}
+import ppl.delite.runtime.codegen.OpenCLCompile
 import tools.nsc.io._
 import ppl.delite.runtime.graph.ops.{OP_Executable, DeliteOP, OP_MultiLoop}
 import ppl.delite.runtime.graph.targets.{OPData, Targets}

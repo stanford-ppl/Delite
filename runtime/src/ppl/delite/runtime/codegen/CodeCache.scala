@@ -19,6 +19,7 @@ trait CodeCache {
 
   val cacheHome = Config.codeCacheHome + File.separator + target + File.separator
   val sourceCacheHome = cacheHome + "src" + File.separator
+  val binCacheHome = cacheHome + "bin" + sep + "runtime" + sep
   protected var modules = List.empty[Module]
   
   def target: String

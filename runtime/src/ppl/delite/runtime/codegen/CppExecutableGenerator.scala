@@ -2,13 +2,13 @@ package ppl.delite.runtime.codegen
 
 import kernels.cpp.CppMultiLoopHeaderGenerator
 import ppl.delite.runtime.graph.ops._
-import ppl.delite.runtime.scheduler.{OpList, PartialSchedule}
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.codegen.hosts.Hosts
 import ppl.delite.runtime.graph.targets.{OS, Targets}
 import collection.mutable.ArrayBuffer
 import sync._
 import ppl.delite.runtime.graph.DeliteTaskGraph
+import ppl.delite.runtime.scheduler.{OpHelper, OpList, PartialSchedule}
 
 trait CppExecutableGenerator extends ExecutableGenerator {
 
@@ -189,10 +189,11 @@ class ScalaNativeExecutableGenerator(override val location: Int, override val ke
   }
 
   private def writeNativeLoad() {
+    val tgt = OpHelper.scheduledTarget(location)
     out.append("@native def host" + executableName(location) + ": Unit\n")
     out.append("System.load(\"\"\"")
-    out.append(CppCompile.binCacheHome)
-    out.append(CppCompile.target)
+    out.append(Compilers(tgt).binCacheHome)
+    out.append(tgt)
     out.append("Host.")
     out.append(OS.libExt)
     out.append("\"\"\")\n")

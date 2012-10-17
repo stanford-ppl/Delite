@@ -5,8 +5,11 @@ import ppl.delite.runtime.codegen.ScalaExecutableGenerator
 import ppl.delite.runtime.codegen.hosts.Hosts
 import ppl.delite.runtime.scheduler.OpHelper._
 import ppl.delite.runtime.graph.targets._
+import scala.collection.mutable.HashSet
 
 trait ScalaSyncObjectGenerator extends SyncObjectGenerator with ScalaExecutableGenerator {
+
+  private val generatedSyncObjects: HashSet[String] = HashSet[String]()
 
   protected def addSyncObject() {
     for (sender <- sync) {
@@ -20,9 +23,19 @@ trait ScalaSyncObjectGenerator extends SyncObjectGenerator with ScalaExecutableG
           SyncObject(s, getSync(s.from, s.sym), s.from.outputType(s.sym))
           writePublicSet(s, getSym(s.from, s.sym), getSync(s.from, s.sym), s.from.outputType(s.sym))
         case s: Notify =>
-          writePublicGet(s, getOpSym(s.from), getOpSync(s.from), "Unit")
-          SyncObject(s, getOpSync(s.from), "Unit")
-          writePublicSet(s, getOpSym(s.from), getOpSync(s.from), "Unit")
+          if(!generatedSyncObjects.contains(getOpSync(s.from))) {
+            writePublicGet(s, getOpSym(s.from), getOpSync(s.from), "Unit")
+            SyncObject(s, getOpSync(s.from), "Unit")
+            writePublicSet(s, getOpSym(s.from), getOpSync(s.from), "Unit")
+            generatedSyncObjects += getOpSync(s.from)
+          }
+        case s: SendUpdate =>
+          if(!generatedSyncObjects.contains(getOpSync(s.from))) {
+            writePublicGet(s, getOpSym(s.from), getOpSync(s.from), "Unit")
+            SyncObject(s, getOpSync(s.from), "Unit")
+            writePublicSet(s, getOpSym(s.from), getOpSync(s.from), "Unit")
+            generatedSyncObjects += getOpSync(s.from)
+          }
       }
     }
   }
