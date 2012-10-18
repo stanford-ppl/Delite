@@ -75,7 +75,12 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
    * sum
    */
   def sum[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A])(implicit ctx: SourceContext) = optiml_sum(start, end, block)
-  def sumIf[R:Manifest:Arith:Cloneable,A:Manifest](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A])(implicit cs: CanSum[R,A], ctx: SourceContext) = optiml_sumif[R,A](start,end,cond,block)
+  // sumRows currently just re-uses sumIf implementation; check if the condition always being true is actually slower than a specialized implementation with no conditional at all
+  def sumRows[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[DenseVectorView[A]])(implicit ctx: SourceContext) = optiml_sumif[DenseVector[A],DenseVectorView[A]](start,end,i => unit(true),block)
+  // def sum[R:Manifest:Arith:Cloneable,A:Manifest](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A])(implicit cs: CanSum[R,A], ctx: SourceContext) = optiml_sum[R,A](start, end, block)  
+  def sumIf[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A])(implicit ctx: SourceContext) = optiml_sumif[A,A](start,end,cond,block)
+  def sumRowsIf[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[DenseVectorView[A]])(implicit ctx: SourceContext) = optiml_sumif[DenseVector[A],DenseVectorView[A]](start,end,cond,block)
+  // def sumIf[R:Manifest:Arith:Cloneable,A:Manifest](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A])(implicit cs: CanSum[R,A], ctx: SourceContext) = optiml_sumif[R,A](start,end,cond,block)
   
   def optiml_sum[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[A]
   def optiml_sumif[R:Manifest:Arith:Cloneable,A:Manifest](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A])(implicit cs: CanSum[R,A], ctx: SourceContext): Rep[R]
@@ -463,31 +468,18 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   // we need a concept of a composite op to do this without unrolling, so that we can have a different result type than the while
   def optiml_untilconverged[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], block: Rep[Vertex[VD,ED]] => Rep[Unit])(implicit ctx: SourceContext) = {
     val vertices = g.vertices
-    val tasks : Rep[DenseVector[Vertex[VD,ED]]] = vertices.mutable
-    val seen = Set[Vertex[VD,ED]]()
+    val tasks = vertices.mutable // not a deep clone - contains the same vertex references as g.vertices
     
     while(tasks.length > unit(0)) {
-      //tasks.mforeach(block)
-      tasks.foreach(block)
+      tasks.foreach(block) // usually updates graph vertices
       tasks.clear()
-      //var totalTasks = unit(0)
       
+      // check all graph vertices for new tasks (not just the previous task list)
       for(i <- unit(0) until vertices.length) {
-        val vtasks = vertices(i).tasks
-        //totalTasks += vtasks.length
-        for(j <- unit(0) until vtasks.length) {
-          val task = vtasks(j).AsInstanceOf[Vertex[VD,ED]]
-          if(!seen.contains(task)) {
-            tasks += task   //TODO TR: non-mutable write (use mclone)
-            seen.add(task)   //TODO TR: non-mutable write
-          }
-        }
-
+        tasks <<= vertices(i).tasks.distinct
         vertices(i).clearTasks()
       }
-
-      //println("tasks: " + tasks.length)
-      seen.clear()
+      // println("tasks: " + tasks.length)
     }
   }
 

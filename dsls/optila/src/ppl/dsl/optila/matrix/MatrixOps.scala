@@ -69,13 +69,18 @@ trait MatrixOps extends Variables {
     type V[X] <: Vector[X]
     type View[X] <: Vector[X]
     type I[X] <: MatrixBuildable[X] // intermediate type for matrix builder  
-    type MA = M[A] 
-    type VA = V[A]
-    type IA = I[A]     
+    type MA <: Matrix[A]
+    type IA <: MatrixBuildable[A] 
+    type VA = V[A]    
     
-    implicit def mA: Manifest[A]     
+    implicit def mA: Manifest[A]    
     implicit def mM[B:Manifest]: Manifest[M[B]] 
+    implicit def mMA: Manifest[MA]     
     implicit def mI[B:Manifest]: Manifest[I[B]] 
+    implicit def mIA: Manifest[IA]
+    implicit def maToOps(x: Rep[MA]): MatOpsCls[A]
+    implicit def maToIntf(x: Rep[MA]): Interface[Matrix[A]]
+    implicit def maBuilder: MatrixBuilder[A,IA,MA]    
     implicit def matToOps[B:Manifest](x: Rep[M[B]]): MatOpsCls[B]
     implicit def matToIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]]        
     implicit def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]]        
@@ -129,7 +134,7 @@ trait MatrixOps extends Variables {
     def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext): Rep[MA] = matrix_repmat[A,IA,MA](x,i,j)
 
     // data operations
-    def :+(y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[MA] = matrix_addrow[A,IA,MA](x,y)    
+    def <<(y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[MA] = matrix_addrow[A,IA,MA](x,y)    
 
     // arithmetic operations
     def +(y: Interface[Matrix[A]])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = matrix_plus[A,IA,MA](x,y)
@@ -173,11 +178,11 @@ trait MatrixOps extends Variables {
     def foreachRow(block: Interface[Vector[A]] => Rep[Unit])(implicit ctx: SourceContext) = matrix_foreachrow(x, block)
     def zip[B:Manifest,R:Manifest](y: Interface[Matrix[B]])(f: (Rep[A],Rep[B]) => Rep[R])(implicit ctx: SourceContext): Rep[M[R]] = matrix_zipwith[A,B,R,I[R],M[R]](x,y,f)    
     def filterRows(pred: Interface[Vector[A]] => Rep[Boolean])(implicit ctx: SourceContext): Rep[MA] = matrix_filterrows[A,IA,MA](x,pred)
-    def groupRowsBy[K:Manifest](pred: Interface[Vector[A]] => Rep[K])(implicit ctx: SourceContext): Rep[DenseVector[MA]] = matrix_grouprowsby[A,K,I[A],M[A]](x, pred)
+    def groupRowsBy[K:Manifest](pred: Interface[Vector[A]] => Rep[K])(implicit ctx: SourceContext): Rep[DenseVector[MA]] = matrix_grouprowsby[A,K,IA,MA](x, pred)
     def count(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = matrix_count(x, pred)
     def mapRows[B:Manifest](f: Interface[Vector[A]] => Interface[Vector[B]])(implicit ctx: SourceContext) = matrix_maprows[A,B,I[B],M[B]](x,f)
     def reduceRows(f: (Rep[VA],Interface[Vector[A]]) => Rep[VA])(implicit ctx: SourceContext) = matrix_reducerows[A,VA](x,f)    
-    // def countRows    
+    // def countRows         
   }
     
   class InterfaceMatOpsCls[A:Manifest](val intf: MInterface[A]) {
@@ -197,31 +202,31 @@ trait MatrixOps extends Variables {
     def vview(start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = intf.ops.viewToIntf(intf.ops.vview(start,stride,length,isRow))
     def getRow(row: Rep[Int])(implicit ctx: SourceContext) = intf.ops.viewToIntf(intf.ops.getRow(row))
     def getCol(col: Rep[Int])(implicit ctx: SourceContext) = intf.ops.viewToIntf(intf.ops.getCol(col))
-    def slice(startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int])(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.slice(startRow,endRow,startCol,endCol))
-    def sliceRows(start: Rep[Int], end: Rep[Int])(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.sliceRows(start,end))
+    def slice(startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int])(implicit ctx: SourceContext) = intf.ops.maToIntf(intf.ops.slice(startRow,endRow,startCol,endCol))
+    def sliceRows(start: Rep[Int], end: Rep[Int])(implicit ctx: SourceContext) = intf.ops.maToIntf(intf.ops.sliceRows(start,end))
     def numRows(implicit ctx: SourceContext) = intf.ops.numRows
     def numCols(implicit ctx: SourceContext) = intf.ops.numCols
 
-    def t(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.t)
-    def Clone()(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.Clone())
-    def mutable()(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.mutable())
+    def t(implicit ctx: SourceContext) = intf.ops.maToIntf(intf.ops.t)
+    def Clone()(implicit ctx: SourceContext) = intf.ops.maToIntf(intf.ops.Clone())
+    def mutable()(implicit ctx: SourceContext) = intf.ops.maToIntf(intf.ops.mutable())
     def pprint()(implicit ctx: SourceContext) = intf.ops.pprint()
-    def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.replicate(i,j))
-    def :+(y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.:+(y))
+    def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext) = intf.ops.maToIntf(intf.ops.replicate(i,j))
+    def <<(y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.maToIntf(intf.ops.<<(y))
     
-    def +(y: Interface[Matrix[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.matToIntf(intf.ops.+(y))    
-    def +(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.matToIntf(intf.ops.+(y))    
-    def -(y: Interface[Matrix[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.matToIntf(intf.ops.-(y))    
-    def -(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.matToIntf(intf.ops.-(y))    
-    def *:*(y: Interface[Matrix[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.matToIntf(intf.ops.*:*(y))    
-    def *(y: Interface[Matrix[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.matToIntf(intf.ops.*(y))
+    def +(y: Interface[Matrix[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.maToIntf(intf.ops.+(y))    
+    def +(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.maToIntf(intf.ops.+(y))    
+    def -(y: Interface[Matrix[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.maToIntf(intf.ops.-(y))    
+    def -(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.maToIntf(intf.ops.-(y))    
+    def *:*(y: Interface[Matrix[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.maToIntf(intf.ops.*:*(y))    
+    def *(y: Interface[Matrix[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.maToIntf(intf.ops.*(y))
     def *(y: Interface[Vector[A]])(implicit a: Arith[A], o: Overloaded2, ctx: SourceContext) = intf.ops.vecToIntf(intf.ops.*(y))
-    def *(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.matToIntf(intf.ops.*(y))    
-    def /(y: Interface[Matrix[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.matToIntf(intf.ops./(y))
-    def /(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.matToIntf(intf.ops./(y))
+    def *(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.maToIntf(intf.ops.*(y))    
+    def /(y: Interface[Matrix[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.maToIntf(intf.ops./(y))
+    def /(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.maToIntf(intf.ops./(y))
     //def unary_-(implicit a: Arith[A]) = matrix_unary_minus(x)
-    def abs(implicit a: Arith[A], ctx: SourceContext) = intf.ops.matToIntf(intf.ops.abs)
-    def exp(implicit a: Arith[A], ctx: SourceContext) = intf.ops.matToIntf(intf.ops.exp)
+    def abs(implicit a: Arith[A], ctx: SourceContext) = intf.ops.maToIntf(intf.ops.abs)
+    def exp(implicit a: Arith[A], ctx: SourceContext) = intf.ops.maToIntf(intf.ops.exp)
     def sum(implicit a: Arith[A], ctx: SourceContext) = intf.ops.sum
     def sumRow(implicit a: Arith[A], ctx: SourceContext) = intf.ops.vecToIntf(intf.ops.sumRow)
     def sumCol(implicit a: Arith[A], ctx: SourceContext) = intf.ops.vecToIntf(intf.ops.sumCol)
@@ -243,7 +248,7 @@ trait MatrixOps extends Variables {
     def foreach(block: Rep[A] => Rep[Unit])(implicit ctx: SourceContext) = intf.ops.foreach(block)
     def foreachRow(block: Interface[Vector[A]] => Rep[Unit])(implicit ctx: SourceContext) = intf.ops.foreachRow(block)
     def zip[B:Manifest,R:Manifest](y: Interface[Matrix[B]])(f: (Rep[A],Rep[B]) => Rep[R])(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.zip(y)(f))
-    def filterRows(pred: Interface[Vector[A]] => Rep[Boolean])(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.filterRows(pred))
+    def filterRows(pred: Interface[Vector[A]] => Rep[Boolean])(implicit ctx: SourceContext) = intf.ops.maToIntf(intf.ops.filterRows(pred))
     def groupRowsBy[K:Manifest](pred: Interface[Vector[A]] => Rep[K])(implicit ctx: SourceContext) = intf.ops.groupRowsBy(pred)
     def count(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = intf.ops.count(pred)
     // def countRows        
@@ -251,6 +256,12 @@ trait MatrixOps extends Variables {
     // these don't work because the concrete vector types are hidden from us, so the function type is ambiguous. any solution?
     // def mapRows[B:Manifest](f: Interface[Vector[A]] => Rep[V[B]])(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.mapRows(f))
     // def reduceRows(f: (Rep[VA],Interface[Vector[A]]) => Rep[VA])(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.reduceRows(f))
+  }
+  
+  // syntactic sugar for (r <- Matrix.rows) 
+  def infix_rows[A:Manifest,M[X] <: Matrix[X]](a: Rep[M[A]])(implicit toIntf: Rep[M[A]] => Interface[Matrix[A]]) = new MatrixRowIterator(a, toIntf)
+  class MatrixRowIterator[A:Manifest,M[X] <: Matrix[X]](val mat: Rep[M[A]], toIntf: Rep[M[A]] => Interface[Matrix[A]]) {
+    def foreach(block: Interface[Vector[A]] => Rep[Unit]) = toIntf(mat).foreachRow(block)
   }
   
   def __equal[A:Manifest,M[X] <: Matrix[X]](a: Rep[M[A]], b: Rep[M[A]])(implicit toIntf: Rep[M[A]] => Interface[Matrix[A]], mA: Manifest[M[A]], ctx: SourceContext, o: Overloaded8): Rep[Boolean] = matrix_equals(a,b)

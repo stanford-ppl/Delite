@@ -102,7 +102,7 @@ trait SparseVectorViewOpsExp extends SparseVectorViewCompilerOps with DeliteColl
   def sparse_vectorview_start[A:Manifest](x: Exp[SparseVectorView[A]])(implicit ctx: SourceContext) = SparseVectorViewStart(x)
   def sparse_vectorview_stride[A:Manifest](x: Exp[SparseVectorView[A]])(implicit ctx: SourceContext) = SparseVectorViewStride(x)
   def sparse_vectorview_apply[A:Manifest](x: Exp[SparseVectorView[A]], n: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SparseVectorViewApply(x, n))
-  def sparse_vectorview_transpose[A:Manifest](x: Exp[SparseVectorView[A]])(implicit ctx: SourceContext): Exp[SparseVector[A]] = SparseVector[A](unit(0), !x.isRow) ++ x
+  def sparse_vectorview_transpose[A:Manifest](x: Exp[SparseVectorView[A]])(implicit ctx: SourceContext): Exp[SparseVector[A]] = SparseVector[A](unit(0), !x.isRow) << x
   
   /////////////////////
   // delite collection

@@ -24,7 +24,7 @@ trait LAInputReaderImplOpsStandard extends LAInputReaderImplOps {
   
     while (line != null){
       val v = (0::elems.length) map { i => schemaBldr(elems(i)) } 
-      x += v
+      x <<= v
   
       line = xfs.readLine()
       if (line != null) {
@@ -48,7 +48,7 @@ trait LAInputReaderImplOpsStandard extends LAInputReaderImplOps {
       val elems = line.split(delim)
       val v = (0::elems.length) map { i => elems(i) }
       val row = schemaBldr(v)
-      x += row
+      x <<= row
 
       line = xfs.readLine()
     }

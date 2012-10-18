@@ -16,12 +16,12 @@ trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
     def apply(xs: Rep[Int]*)(implicit o: Overloaded2, ctx: SourceContext) = {
       val out = indexvector_obj_new(unit(0), unit(true))
       // interpreted (not lifted)
-      xs.foreach { out += _ }
+      xs.foreach { out <<= _ }
       out.unsafeImmutable // return immutable object
     }    
   }
 
-  trait IndexVecOpsCls extends VecOpsCls[Int] with InterfaceOps[IndexVector] {
+  trait IndexVecOpsCls extends OptiMLVecOpsOverrides[Int] with InterfaceOps[IndexVector] {
     //implicit def toOps(x: Rep[VA]): IndexVecOpsCls
     //implicit def toIntf(x: Rep[VA]): Interface[IndexVector]        
     type V[X] = DenseVector[X] // conversion operations on IndexVectors will return a DenseVector

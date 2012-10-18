@@ -54,8 +54,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   this: OptiMLExp with StreamImplOps =>
 
   // used for all operations
-  //val chunkSize = 10000
-  def chunkSize(numCols: Rep[Int]): Rep[Int] = unit(100000)/numCols + unit(1000) // heuristic, total buffer size is chunkSize x numCols
+  def chunkSize(numCols: Rep[Int]) = Math.ceil(unit(1000000)/numCols).AsInstanceOf[Int] // heuristic, total buffer size is chunkSize x numCols
 
   //////////////////////////////////////////////////
   // implemented via method on real data structure

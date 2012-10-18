@@ -38,9 +38,9 @@ trait IndexVectorRangeOps extends Base with OverloadHack { this: OptiML =>
     def length(implicit ctx: SourceContext) = indexvectorrange_length(x)
     def isRow(implicit ctx: SourceContext) = unit(true)
     def apply(n: Rep[Int])(implicit ctx: SourceContext) = indexvectorrange_apply(x,n)
-    def sort(implicit o: Ordering[Int], ctx: SourceContext) = x.Clone    
+    def sort(implicit o: Ordering[Int], ctx: SourceContext) = x.Clone        
+    def t(implicit ctx: SourceContext) = IndexVector(unit(0), !elem.isRow) << elem
     
-    def t(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be transposed") // TODO    
     def mt()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")    
     def update(n: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext): Rep[Unit] = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def copyFrom(pos: Rep[Int], y: Rep[IndexVectorDense])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")

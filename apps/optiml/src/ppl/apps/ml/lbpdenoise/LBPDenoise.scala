@@ -5,7 +5,7 @@ import ppl.dsl.optiml._
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
- * last modified: 01/19/2011
+ * created: 01/19/2011
  *
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
@@ -13,7 +13,26 @@ import ppl.dsl.optiml._
 
 object LBPDenoiseRunner extends OptiMLApplicationRunner with LBPDenoise
 
-trait LBPDenoise extends OptiMLApplication {
+trait LBPData extends OptiMLApplication {
+  object DenoiseVertexData {
+    def apply(_id: Rep[Int], _b: Rep[DenseVector[Double]], _p: Rep[DenseVector[Double]]) = new Record {
+      val id = _id
+      val belief = _b
+      val potential = _p
+    }
+  }
+  type DenoiseVertexData = Record{val id: Int; val belief: DenseVector[Double]; val potential: DenseVector[Double]}
+  
+  object DenoiseEdgeData {
+    def apply(_m: Rep[DenseVector[Double]], _oM: Rep[DenseVector[Double]]) = new Record {
+      val message = _m
+      val oldMessage = _oM
+    }  
+  }
+  type DenoiseEdgeData = Record{val message: DenseVector[Double]; val oldMessage: DenseVector[Double]}  
+}
+
+trait LBPDenoise extends LBPData {
   def print_usage = {
     println("Usage: LBPDenoise <rows> <cols>")
     println("Example: LBPDenoise 100 100")
@@ -26,32 +45,29 @@ trait LBPDenoise extends OptiMLApplication {
     val cols = Integer.parseInt(args(1))
 
     // Generate image
-    val img = Image[Double](rows, cols)
+    val img = GrayscaleImage(rows, cols)
     imgPaintSunset(img, colors)
     MLOutputWriter.writeImgPgm(img, "src.pgm")
     imgCorrupt(img, sigma)
     MLOutputWriter.writeImgPgm(img, "noise.pgm")
     img
   }
-
+  
   def main() = {
     if (args.length < 1) print_usage
   
     val colors = 5
     val damping = unit(0.1)
     val bound = 1E-15
-    var rows = 100
-    var cols = 100
     val sigma = 2
     val lambda = unit(10)
     var smoothing = "laplace"
     val pred_type = "map"
-
     val edgePotential = DenseMatrix[Double](colors, colors).mutable
     
     val img = loadImage(args, colors, sigma)
-    rows = img.numRows
-    cols = img.numCols
+    val rows = img.numRows
+    val cols = img.numCols
 
     // Clean up the image and save it
     
@@ -66,135 +82,123 @@ trait LBPDenoise extends OptiMLApplication {
     }
     else if (smoothing == "square") {
       binaryFactorSetAgreement(edgePotential, lambda)
-    }
-    
+    }    
     edgePotential.pprint
-
-    var count = 1
+    g.freeze()    
+    println("finished constructing graph")
+    println("  vertices: " + g.vertices.length)
+    println("  edges: " + g.edges.length)
     
-    g.freeze()
+    tic()    
+    var count = 0       
+    untilconverged(g) { v =>
+      // val vdata = v.data
+      /*if(count % 100000 == 0) {
+        print("ITER")
+        vdata.belief.pprint
+      } */        
+      val belief = v.data.potential.mutable
+      
+      /*if(count % 100000 == 0) {
+        belief.pprint
+      }*/
 
-    tic()
-    
-    untilconverged(g) {
-      v =>
-        val vdata = v.data.AsInstanceOf[DenoiseVertexData]
-        /*if(count % 100000 == 0) {
-          print("ITER")
-          vdata.belief.pprint
-        } */
-        
-        val belief = vdata.potential.mutable
-        
-        /*if(count % 100000 == 0) {
+      // Multiply belief by messages
+      for (e <- v.edges) {  
+        val in = e.in(v)
+        unaryFactorTimesM(belief, in.message)            
+       /* if(count % 100000 == 0) {
+          print("mult ")
+          in.message.pprint
           belief.pprint
-        }*/
-
-        // Multiply belief by messages
-        for (e <- v.edges) {  //TODO TR: non-mutable write
-          val in = e.AsInstanceOf[Edge[DenoiseVertexData,DenoiseEdgeData]].in(v)
-          unaryFactorTimesM(belief, in.message)  //TODO TR: non-mutable write
-          
-         /* if(count % 100000 == 0) {
-            print("mult ")
-            in.message.pprint
-            belief.pprint
-          } */
-        }
-        
-        // Normalize the belief
-        unaryFactorNormalizeM(belief) //TODO TR: non-mutable write
-        
-        vdata.belief.copyFrom(0, belief)
-        
-      /* if(count % 100000 == 0) {
-          print("norm")
-          vdata.belief.pprint
         } */
+      }
+      
+      // Normalize the belief
+      unaryFactorNormalizeM(belief) 
+      v.setData(DenoiseVertexData(v.data.id, belief, v.data.potential))
+     /* if(count % 100000 == 0) {
+        print("norm")
+        vdata.belief.pprint
+      } */
 
-        // Send outbound messages
-        for (e <- v.edges) { //TODO TR: non-mutable write (within)
-          val in = e.AsInstanceOf[Edge[DenoiseVertexData,DenoiseEdgeData]].in(v)
-          val out = e.AsInstanceOf[Edge[DenoiseVertexData,DenoiseEdgeData]].out(v)
+      // Send outbound messages
+      for (e <- v.edges) { 
+        val in = e.in(v)
+        val out = e.out(v)
+     
+        val cavity = v.data.belief.mutable          
+       /* if(count % 100000 == 0) {
+          print("CAVITY")
+          cavity.pprint
+        } */   
+        
+        unaryFactorDivideM(cavity, in.message)          
+        /*if(count % 100000 == 0) {
+          print("div")
+          in.message.pprint
+          cavity.pprint
+        } */  
+        
+        // Compute the cavity
+        unaryFactorNormalizeM(cavity)           
+        /*if(count % 100000 == 0) {
+          cavity.pprint
+        } */  
+        
+        // Convolve the cavity with the edge factor
+        val dampMsg = unaryFactorConvolve(edgePotential, cavity).mutable          
+        /*if(count % 100000 == 0) {
+          print("damp")
+          dampMsg.pprint
+        }   */
+        
+        val whatever = unaryFactorNormalizeM(dampMsg)
+        // Damp the message (MUTATE IN PLACE)
+        val whatever2 = unaryFactorDampM(dampMsg, out.message, damping)
+        
+        /*if(count % 100000 == 0) {
+          print("out")
+          out.message.pprint
+          dampMsg.pprint
+        } */  
+        
+        // Compute message residual
+        val residual = unaryFactorResidual(dampMsg, out.message)          
+        /*if(count % 100000 == 0) {
+          print("residual")
+          print(residual)
+        }   */
+        
+        // Set the message
+        if (v == e.v1) 
+          e.setOutData(DenoiseEdgeData(dampMsg, e.outData.message))  
+        else
+          e.setInData(DenoiseEdgeData(dampMsg, e.inData.message))  
+        
+        /*if(count % 100000 == 0) {
+          out.message.pprint
+        } */
+        
+        /*if(count % 100000 == 0) {
+         println(count)
+         println(residual)
+         } */
        
-          val cavity = vdata.belief.mutable
-          
-         /* if(count % 100000 == 0) {
-            print("CAVITY")
-            cavity.pprint
-          } */   
-          
-          unaryFactorDivideM(cavity, in.message)
-          
-          /*if(count % 100000 == 0) {
-            print("div")
-            in.message.pprint
-            cavity.pprint
-          } */  
-          
-          // Compute the cavity
-          unaryFactorNormalizeM(cavity) //TODO TR: non-mutable write (use mclone)
-          
-          /*if(count % 100000 == 0) {
-            cavity.pprint
-          } */  
-          
-          // Convolve the cavity with the edge factor
-          val dampMsg = unaryFactorConvolve(edgePotential, cavity).mutable
-          
-          /*if(count % 100000 == 0) {
-            print("damp")
-            dampMsg.pprint
-          }   */
-          
-          val whatever = unaryFactorNormalizeM(dampMsg)
-          
-         /* if(count % 100000 == 0) {
-            dampMsg.pprint
-          }*/   
-
-          // Damp the message (MUTATE IN PLACE)
-          val whatever2 = unaryFactorDampM(dampMsg, out.message, damping)
-          
-          /*if(count % 100000 == 0) {
-            print("out")
-            out.message.pprint
-            dampMsg.pprint
-          } */  
-          
-          // Compute message residual
-          val residual = unaryFactorResidual(dampMsg, out.message)
-          
-          /*if(count % 100000 == 0) {
-            print("residual")
-            print(residual)
-          }   */
-          
-          // Set the message
-          out.message.copyFrom(0, dampMsg) //TODO TR: non-mutable write
-          
-          /*if(count % 100000 == 0) {
-            out.message.pprint
-          } */
-          
-          /*if(count % 100000 == 0) {
-           println(count)
-           println(residual)
-           } */
-         
-          // Enqueue update function on target vertex if residual is greater than bound
-          if (residual > bound) {
-            v.addTask(e.AsInstanceOf[Edge[DenoiseVertexData,DenoiseEdgeData]].target(v)) //TODO TR: non-mutable write
-          }
+        // Enqueue update function on target vertex if residual is greater than bound
+        if (residual > bound) {
+          v.addTask(e.target(v)) 
         }
+      }
       count += 1 
     }
          
     toc()
 
     // Predict the image!
-   g.vertices foreach { v =>
-      imgUpdate(cleanImg, v.data.AsInstanceOf[DenoiseVertexData].id, unaryFactorMaxAsg(v.data.AsInstanceOf[DenoiseVertexData].belief))   //TODO TR: non-mutable write (use mclone)
+    g.vertices foreach { v =>
+      // println("vertex belief: " + v.data.belief)
+      imgUpdate(cleanImg, v.data.id, unaryFactorMaxAsg(v.data.belief))   
     }
     
     MLOutputWriter.writeImgPgm(cleanImg, "pred.pgm")
@@ -231,7 +235,7 @@ trait LBPDenoise extends OptiMLApplication {
         val data = DenoiseVertexData(pixelId, unaryFactorUniform(numRings), potential)
         val vertex = Vertex(g, data)
 
-        vertices(i,j) = vertex //TODO TR: non-mutable write (use matrix update?)        
+        vertices(i,j) = vertex 
         g.addVertex(vertex)
         
         j += 1
@@ -287,7 +291,7 @@ trait LBPDenoise extends OptiMLApplication {
     img(row, col) = pixel
   }
 
-  def imgPaintSunset(img: Rep[DenseMatrix[Double]], numRings: Rep[Int]) = {
+  def imgPaintSunset(img: Rep[GrayscaleImage], numRings: Rep[Int]) = {
     val centerR = img.numRows.AsInstanceOf[Double] / 2.0
     val centerC = img.numCols.AsInstanceOf[Double] / 2.0
     val maxRadius = min(img.numRows, img.numCols).AsInstanceOf[Double] / 2.0
@@ -303,7 +307,6 @@ trait LBPDenoise extends OptiMLApplication {
         if (r < img.numRows / 2) {
           // Compute ring of sunset
           val ring = floor(min(1.0, distance / maxRadius) * (numRings - 1))
-
           img(r, c) = ring
         }
         else {
@@ -316,11 +319,11 @@ trait LBPDenoise extends OptiMLApplication {
   }
 
   // Corrupt the image with Gaussian noise
-  def imgCorrupt(img: Rep[DenseMatrix[Double]], sigma: Rep[Double]) = {
+  def imgCorrupt(img: Rep[GrayscaleImage], sigma: Rep[Double]) = {
     img mmap { _ + randomGaussian*sigma }
   }
 
-  def imgSave(img: Rep[Image[Double]], filename: Rep[String]) = {
+  def imgSave(img: Rep[GrayscaleImage], filename: Rep[String]) = {
     MLOutputWriter.writeImgPgm(img, filename)
   }
 
@@ -363,8 +366,10 @@ trait LBPDenoise extends OptiMLApplication {
   }
 
   def unaryFactorUniform(arity: Rep[Int]) = {
-    val factor = Vector.zeros(arity).mutable
-    unaryFactorNormalizeM(factor)
+    // val factor = Vector.zeros(arity).mutable
+    // unaryFactorNormalizeM(factor)
+    val factor = Vector.zeros(arity)
+    unaryFactorNormalize(factor)    
   }
 
   def unaryFactorNormalize(uf: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
@@ -439,26 +444,10 @@ trait LBPDenoise extends OptiMLApplication {
   }
 
   // Max assignment
-  def unaryFactorMaxAsg(uf: Rep[DenseVector[Double]]): Rep[Int] = {
-    var max_asg = 0
-    var max_value = uf(0)
-
-    var asg = 0
-    while (asg < uf.length) {
-      if (uf(asg) > max_value) {
-        max_value = uf(asg)
-        max_asg = asg
-      }
-      asg += 1
-    }
-
-    max_asg
-  }
+  def unaryFactorMaxAsg(uf: Rep[DenseVector[Double]]): Rep[Int] = uf.maxIndex
 
   def unaryFactorExpectation(uf: Rep[DenseVector[Double]]): Rep[Double] = {
-    //val indices = Vector.range(0, uf.length)
     val indices = (0::uf.length)
-
     (uf.exp * indices.toDouble).sum / uf.exp.sum
   }
   

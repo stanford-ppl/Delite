@@ -11,18 +11,23 @@ trait BinarizedGradientPyramidFuncs {
   def makePyramid(gradientImage: Rep[GrayscaleImage]) = {
     var crt = gradientImage
     var currentLevel = 0
-    val pyramid = BinarizedGradientPyramid(DenseVector[GrayscaleImage](0, true), 3, 1, 3)
-
-    while (currentLevel < pyramid.start_level + pyramid.levels) {
-      if (currentLevel >= pyramid.start_level) {
-        pyramid.pyramid += crt //TODO TR non-mutable write
+    
+    val pyramid = DenseVector[GrayscaleImage](0, true)
+    val startLevel = 3
+    val levels = 1
+    val fixedLevelIndex = 3
+    
+    while (currentLevel < startLevel + levels) {
+      if (currentLevel >= startLevel) {
+        pyramid <<= crt
       }
-      if (currentLevel != (pyramid.start_level + pyramid.levels - 1)) {
-        crt = varToGrayscaleImageOps(crt).bitwiseOrDownsample()
+      if (currentLevel != (startLevel + levels - 1)) {
+        crt = crt.bitwiseOrDownsample
       }
       currentLevel += 1
     }
-    pyramid
+    
+    BinarizedGradientPyramid(pyramid, startLevel, levels, fixedLevelIndex)
   }
 
   def getIndex(pyramid: Rep[BinarizedGradientPyramid], index: Rep[Int]) = pyramid.pyramid(index - pyramid.start_level)

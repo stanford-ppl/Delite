@@ -4,6 +4,82 @@ object ScratchpadRunner extends OptiMLApplicationRunner with Scratchpad
 trait Scratchpad extends OptiMLApplication { 
   def main() = {
     
+    // Bug 1: dependency lost with DeliteReduceTupleElem
+    
+    val slice = (Matrix.rand(3,3)*100).map(_.AsInstanceOf[Int])    
+    val histogram = DenseVector[Int](256, true)    
+    var row = 0
+    while (row < slice.numRows) {
+      var col = 0
+      while (col < slice.numCols) {
+        histogram(slice(row,col)) = histogram(slice(row,col))+1
+        col += 1
+      }
+      row += 1
+    }      
+    
+    // this produces violated error:
+    if (histogram.max > 1) histogram.maxIndex else 0
+    histogram.maxIndex
+    
+    // // this doesn't:
+    // histogram.max
+    
+    // // neither does this:
+    // val htest = histogram.unsafeImmutable
+    // if (htest.max > 1) htest.maxIndex else 0
+    
+    // // neither does this:    
+    // var i = 2
+    // var max = histogram(1)
+    // var maxIndex = 1
+    // while (i < histogram.length) {
+    //   if (histogram(i) > max) {
+    //     max = histogram(i)
+    //     maxIndex = i
+    //   }
+    //   i += 1
+    // }
+    // if (max > 1) maxIndex else 0
+    
+    
+    // Bug 2: code motion unsafely hoisting slice out of conditional (if slice is changed to reflectEffect, this works properly...)
+    
+    // block must have some effects (while loop?) in order to trigger this...
+    // val rowDim = 3
+    // val colDim = 3
+    // val rowOffset = (rowDim - unit(1)) / unit(2)
+    // val colOffset = (colDim - unit(1)) / unit(2)
+    // def block(x: Rep[DenseMatrix[Int]]) = { 
+    //   var row = 0
+    //   while (row < x.numRows) { row += 1 }        
+    //   row      
+    // }
+    // 
+    // val x = (Matrix.rand(3,3)*100).map(_.AsInstanceOf[Int])    
+    // val y = (unit(0) :: x.numRows, unit(0) :: x.numCols) { (row,col) =>
+    //   if ((row >= rowOffset) && (row < x.numRows - rowOffset) && (col >= colOffset) && (col < x.numCols - colOffset)) {
+    //     // !! x.slice is hoisted out of the conditional !!
+    //     block(x.slice(row - rowOffset, row + rowOffset + unit(1), col - colOffset, col + colOffset + unit(1)))
+    //   } else {
+    //     unit(0)
+    //   }
+    // }
+    // 
+    // println("y numRows: " + y.numRows)
+    // println("y numCols: " + y.numCols)
+    // y(0).pprint
+    
+    
+    
+    /*
+    val m = Matrix.rand(10,100)
+    for (row <- m.rows) {
+      row.pprint
+    }
+    */
+    
+    /*
     // can be representation transparent using new Struct inheritance support?
     // ratings: Rep[Matrix[Int]], sims: Rep[Matrix[Double]], check tags on dispatch?
     // abstract interface (Ops) forwards to a dispatch method in OpsExp?
@@ -49,7 +125,7 @@ trait Scratchpad extends OptiMLApplication {
     val p = preferences(0, ratings, sims)
     toc(p)
     println("p nnz: " + p.nnz)
-    
+    */
     // multiloop unwrapping 
     
     // -- test collect

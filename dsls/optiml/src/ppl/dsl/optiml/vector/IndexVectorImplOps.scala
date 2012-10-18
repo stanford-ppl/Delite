@@ -14,7 +14,7 @@ trait IndexVectorImplOpsStandard extends IndexVectorImplOps {
   this: OptiMLCompiler with OptiMLLift =>
 
   def index_vector_obj_fromvec_impl(xs: Interface[Vector[Int]]) = {
-    val out = IndexVector(0,xs.isRow) ++ xs
+    val out = IndexVector(0,xs.isRow) << xs
     out.unsafeImmutable.asInstanceOf[Rep[IndexVectorDense]]
   }
 

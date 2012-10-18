@@ -1,4 +1,4 @@
-package ppl.dsl.optiml.datastruct.scala
+package ppl.dsl.optiml.datastruct.scala.application
 import ppl.dsl.optiml.datastruct.scala._
 import ppl.dsl.optila.datastruct.scala._
 
@@ -14,7 +14,7 @@ class BinarizedGradientTemplate (
   val level: Int,
 
   // The list of gradients in the template
-  val binary_gradients: DenseVector[Int],
+  val binary_gradients: DenseVector[Double],
 
   // indices to use for matching (skips zeros inside binary_gradients)
   val match_list: IndexVectorDenseC,

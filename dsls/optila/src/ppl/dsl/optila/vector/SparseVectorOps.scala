@@ -69,7 +69,7 @@ trait SparseVectorOps extends Variables {
     def mt()(implicit ctx: SourceContext) = {sparsevector_mutable_trans(elem); elem}
     
     // data operations
-    override def +=(y: Rep[A])(implicit ctx: SourceContext): Rep[Unit] = sparsevector_append(elem,length,y)
+    override def <<=(y: Rep[A])(implicit ctx: SourceContext): Rep[Unit] = sparsevector_append(elem,length,y)
     def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = sparsevector_update(elem,n,y)
     def copyFrom(pos: Rep[Int], y: Rep[SparseVector[A]])(implicit ctx: SourceContext) = sparsevector_copyfrom(elem,pos,y)
     def insert(pos: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = sparsevector_insert(elem,pos,y)

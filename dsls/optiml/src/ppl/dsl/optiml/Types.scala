@@ -23,7 +23,7 @@ trait IndexVectorTriangular extends IndexVector2
  *  Matrix
  */
 trait Image[T] extends DenseMatrix[T]
-trait GrayscaleImage extends Image[Int]
+trait GrayscaleImage extends Image[Double]
 
 
 /**

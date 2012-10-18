@@ -180,7 +180,7 @@ trait SVMModel { this: OptiMLApplication =>
 
   def saveModel(weights: Rep[DenseVector[Double]], b: Rep[Double], filename: Rep[String]) = {
     val out = weights.Clone
-    out += b
+    out <<= b
     writeVector(out, filename)
   }
 }

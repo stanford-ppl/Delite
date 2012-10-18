@@ -139,9 +139,9 @@ trait VectorOps extends Variables {
     // data operations
     // TODO: these should probably be moved to another interface (MutableVector), analogously to MatrixBuildable. 
     def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
-    def :+(y: Rep[A])(implicit ctx: SourceContext): Rep[VA] = {
+    def <<(y: Rep[A])(implicit ctx: SourceContext): Rep[VA] = {
       val out = mutable()
-      out += y
+      out <<= y
       out.unsafeImmutable
       // val out = builder[A].alloc(length+1, isRow)
       // for (i <- 0 until out.length) {
@@ -150,9 +150,9 @@ trait VectorOps extends Variables {
       // out(length) = y
       // out
     }
-    def +=(y: Rep[A])(implicit ctx: SourceContext): Rep[Unit] = insert(length,y)
-    def ++(y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[VA] = vector_concatenate[A,VA](x,y)    
-    def ++=(y: Rep[VA])(implicit ctx: SourceContext) = insertAll(length,y)
+    def <<=(y: Rep[A])(implicit ctx: SourceContext): Rep[Unit] = insert(length,y)
+    def <<(y: Interface[Vector[A]])(implicit ctx: SourceContext, o: Overloaded1): Rep[VA] = vector_concatenate[A,VA](x,y)    
+    def <<=(y: Rep[VA])(implicit ctx: SourceContext, o: Overloaded1) = insertAll(length,y)
     def copyFrom(pos: Rep[Int], y: Rep[VA])(implicit ctx: SourceContext): Rep[Unit]
     def insert(pos: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
     def insertAll(pos: Rep[Int], y: Rep[VA])(implicit ctx: SourceContext): Rep[Unit]
@@ -170,8 +170,8 @@ trait VectorOps extends Variables {
     def +(y: Rep[VA])(implicit a: Arith[A], ctx: SourceContext): Rep[VA] = vector_plus[A,VA](x,y) // needed for Arith        
     def +(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext, o: Overloaded1) = vector_plus_scalar[A,VA](x,y) 
     def +=(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = { vector_plusequals[A](x,y); elem }
-    def +=(y: Rep[VA])(implicit a: Arith[A], ctx: SourceContext, o: Overloaded1) = { vector_plusequals[A](x,y); elem }
-    def :+=(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext, o: Overloaded1) = vector_plusequals_scalar[A](x,y) 
+    def +=(y: Rep[VA])(implicit a: Arith[A], ctx: SourceContext) = { vector_plusequals[A](x,y); elem }
+    def +=(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext, o: Overloaded1) = vector_plusequals_scalar[A](x,y) 
     
     def -(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = vector_minus[A,VA](x,y)
     def -[B:Manifest](y: Interface[Vector[B]])(implicit a: Arith[A], c: Rep[B] => Rep[A], ctx: SourceContext) = vector_minus_withconvert[B,A,VA](y,x)
@@ -267,9 +267,9 @@ trait VectorOps extends Variables {
     def mkString(sep: Rep[String] = unit(""))(implicit ctx: SourceContext) = intf.ops.mkString(sep)
     
     def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = intf.ops.update(n,y)
-    def +=(y: Rep[A])(implicit ctx: SourceContext) = intf.ops.+=(y)    
-    def :+(y: Rep[A])(implicit ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.:+(y))
-    def ++(y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.++(y))
+    def <<(y: Rep[A])(implicit ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.<<(y))
+    def <<=(y: Rep[A])(implicit ctx: SourceContext) = intf.ops.<<=(y)
+    def <<(y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.<<(y))
     //def ++=(y: Rep[intf.ops.V[A]]) = intf.ops.++=(y)
     //def copyFrom(pos: Rep[Int], y: Rep[intf.ops.V[A]]) = intf.ops.copyFrom(pos,y)
     def insert(pos: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = intf.ops.insert(pos,y)
@@ -279,7 +279,8 @@ trait VectorOps extends Variables {
     def trim()(implicit ctx: SourceContext) = intf.ops.trim
     def clear()(implicit ctx: SourceContext) = intf.ops.clear    
     
-    // //def +(y: Rep[intf.ops.V[A]])(implicit a: Arith[A]) = intf.ops.vecToIntf(intf.ops.+(y)) // doesn't work, would need dynamic type of ops
+    def +=(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.+=(y)        
+    // //def +(y: Rep[intf.ops.V[A]])(implicit a: Arith[A]) = intf.ops.vecToIntf(intf.ops.+(y)) // doesn't work, would need dynamic type of ops    
     def +(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.+(y))    
     def +(y: Rep[A])(implicit a: Arith[A], o: Overloaded2, ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.+(y))
     def -(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.-(y))    
@@ -1026,7 +1027,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp {
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]  
     val size = copyTransformedOrElse(_.size)(intf.length)
     val zero = b.alloc(unit(0), intf.isRow)
-    def reduce = (l,r) => (b.toIntf(l) ++ b.toIntf(r)).ops.elem.asInstanceOf[Exp[VB]]
+    def reduce = (l,r) => (b.toIntf(l) << b.toIntf(r)).ops.elem.asInstanceOf[Exp[VB]]
 
     val mA = manifest[A]
     val mB = manifest[B]

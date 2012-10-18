@@ -62,15 +62,15 @@ trait NaiveBayes extends OptiMLApplication {
 //    val phi_y0 = Vector.zeros(numTokens).mutable
     
     val phi_y1 = (0::numTokens) { j =>
-      val spamwordcount   = sumIf[Double,Double](0, numTrainDocs) { ts.labels(_) == 1 } { i => tsTrans(j,i) }
-      val spam_totalwords = sumIf[Double,Double](0, numTrainDocs) { ts.labels(_) == 1 } { i => words_per_email(i) }
+      val spamwordcount   = sumIf(0, numTrainDocs) { ts.labels(_) == 1 } { i => tsTrans(j,i) }
+      val spam_totalwords = sumIf(0, numTrainDocs) { ts.labels(_) == 1 } { i => words_per_email(i) }
       
       (spamwordcount + 1) / (spam_totalwords + numTokens)
     }
     
     val phi_y0 = (0::numTokens) { j => 
-      val nonspamwordcount   = sumIf[Double,Double](0, numTrainDocs) { ts.labels(_) != 1 } { i => tsTrans(j,i) }
-      val nonspam_totalwords = sumIf[Double,Double](0, numTrainDocs) { ts.labels(_) != 1 } { i => words_per_email(i) }
+      val nonspamwordcount   = sumIf(0, numTrainDocs) { ts.labels(_) != 1 } { i => tsTrans(j,i) }
+      val nonspam_totalwords = sumIf(0, numTrainDocs) { ts.labels(_) != 1 } { i => words_per_email(i) }
 
       (nonspamwordcount + 1) / (nonspam_totalwords + numTokens)
     }
@@ -113,8 +113,8 @@ trait NaiveBayes extends OptiMLApplication {
 
     val output = (0::numTestDocs) { j =>
       // compute log(p(x|y=1)p(y=1)) and log(p(x|y=0)p(y=0))
-      val p_norm = sumIf[Double,Double](0,numTokens) { i => ts(j,i) > 0 } { i => (log(phi_y0(i)) + log(1.-phi_y)) * ts(j,i) }
-      val p_spam = sumIf[Double,Double](0,numTokens) { i => ts(j,i) > 0 } { i => (log(phi_y1(i)) + log(phi_y)) * ts(j,i) }
+      val p_norm = sumIf(0,numTokens) { i => ts(j,i) > 0 } { i => (log(phi_y0(i)) + log(1.-phi_y)) * ts(j,i) }
+      val p_spam = sumIf(0,numTokens) { i => ts(j,i) > 0 } { i => (log(phi_y1(i)) + log(phi_y)) * ts(j,i) }
 
       if (p_spam > p_norm) 1.
       else 0.

@@ -22,7 +22,7 @@ trait SumIf extends DeliteTestModule with OptiMLApplication {
   def main() = {
 
     val y = Vector(true, false, true, false, true, false, false, false, true, true)
-    val x = sumIf[DenseVector[Double],DenseVector[Double]](0,10) { y(_) } { i => Vector.ones(5) }
+    val x = sumIf(0,10) { y(_) } { i => Vector.ones(5) }
     //x.pprint
 		collect(x == Vector(5.0, 5.0, 5.0, 5.0, 5.0))
     mkReport

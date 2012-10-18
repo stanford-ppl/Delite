@@ -93,7 +93,7 @@ trait OptiMLCCodeGenPkg extends OptiLACCodeGenPkg
  * This is the trait that every OptiML application must extend.
  */
 trait OptiML extends OptiMLScalaOpsPkg with OptiLA with StructOps
-  with LanguageOps with ApplicationOps with LBPOps // TODO: LBPOps should be auto-generated with ApplicationOps
+  with LanguageOps with ApplicationOps 
   with MLInputReaderOps with MLOutputWriterOps
   with CanSumOps
   with VectorOps with OptiMLDenseVectorOps with OptiMLDenseVectorViewOps with OptiMLSparseVectorOps with OptiMLSparseVectorViewOps with OptiMLRangeVectorOps
@@ -101,7 +101,7 @@ trait OptiML extends OptiMLScalaOpsPkg with OptiLA with StructOps
   with IndexVectorOps with IndexVectorDenseOps with IndexVectorRangeOps with IndexVector2Ops with IndexVectorTriangularOps
   with StreamOps with StreamRowOps
   with GraphOps with EdgeOps with VertexOps with VSetOps
-  with TrainingSetOps with ImageOps with ImageOpsExtension with GrayscaleImageOps {
+  with TrainingSetOps with ImageOps with GrayscaleImageOps with GrayscaleImageOpsExtension {
 
   this: OptiMLApplication =>
 }
@@ -109,7 +109,7 @@ trait OptiML extends OptiMLScalaOpsPkg with OptiLA with StructOps
 // these ops are only available to the compiler (they are restricted from application use)
 trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities with GraphCompilerOps with DeliteCollectionOps 
   with LanguageImplOpsStandard with VectorImplOpsStandard with IndexVectorImplOpsStandard with MatrixImplOpsStandard
-  with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
+  with GrayscaleImageImplOpsStandard with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
   with GraphImplOpsStandard with EdgeImplOpsStandard with VertexImplOpsStandard with VerticesImplOpsStandard {
 
   this: OptiMLApplication with OptiMLExp =>
@@ -120,7 +120,7 @@ trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities wit
  * These are the corresponding IR nodes for OptiML.
  */
 trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp with StructExp
-  with LanguageOpsExpOpt with ApplicationOpsExp with LBPOpsExp 
+  with LanguageOpsExpOpt with ApplicationOpsExp
   with MLInputReaderOpsExp with MLOutputWriterOpsExp
   with VectorOpsExpOpt with MatrixOpsExpOpt with DenseMatrixOpsExpOpt 
   with IndexVectorOpsExp with IndexVectorDenseOpsExpOpt with IndexVectorRangeOpsExp with IndexVector2OpsExp with IndexVectorTriangularOpsExp
@@ -207,7 +207,7 @@ trait OptiMLCodeGenBase extends OptiLACodeGenBase {
 }
 
 trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenDeliteStruct
-  with ScalaGenApplicationOps with ScalaGenLBPOps with ScalaGenLanguageOps 
+  with ScalaGenApplicationOps with ScalaGenLanguageOps 
   with ScalaGenVectorOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps with ScalaGenIndexVectorDenseOps with ScalaGenIndexVector2Ops 
   with ScalaGenStreamOps with ScalaGenStreamRowOps
   with ScalaGenGraphOps with ScalaGenEdgeOps with ScalaGenVertexOps with ScalaGenVSetOps
@@ -217,7 +217,7 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
   
   val IR: DeliteApplication with OptiMLExp
 
-  override val mlspecialize = Set(/*"LabelsImpl",*/ "Image", "UnsupervisedTrainingSet", "Stream", "StreamRow")
+  override val mlspecialize = Set(/*"LabelsImpl", "Image",*/ "UnsupervisedTrainingSet", "Stream", "StreamRow")
   override val mlspecialize2 = Set("SupervisedTrainingSet")
 
   override def genSpec2(f: File, dsOut: String) {
@@ -235,17 +235,8 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
 
   override def remap(s: String) = parmap(s)
   
-  override def remap[A](m: Manifest[A]): String = {
-    val mGI = manifest[GrayscaleImage]
-    m match {
-      case `mGI` => remap(manifest[Image[Int]])
-     // AKS TODO: remap Image[T] to DenseMatrix[T]
-      case _ => super.remap(m)
-    }
-  }
-
   override def specmap(line: String, t: String) : String = {
-    var res = line.replaceAll("import ppl.dsl.optila.datastruct.scala._", "") // ends up in the same package in generated code
+    var res = line.replaceAll("import ppl.dsl.optila.datastruct.scala._", "") // ends up in the same package in generated code    
     super.specmap(res, t)
   }
     
@@ -259,7 +250,7 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
     res = res.replaceAll("L:Manifest", t2)
     res = res.replaceAll("\\bT\\b", t1)
     res = res.replaceAll("\\bL\\b", t2)
-    parmap(res)
+    dsmap(res)
   }
   
   override def parmap(line: String): String = {
@@ -276,7 +267,7 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
         }
       }
     }
-    dsmap(super.parmap(res))
+    super.parmap(res)
   }
 
   override def dsmap(line: String) : String = {
@@ -284,7 +275,7 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
     res = res.replaceAll("import ppl.dsl.optila.datastruct.scala._", "")     
     res = res.replaceAll("ppl.delite.framework.datastruct", "generated")
     res = res.replaceAll("ppl.dsl.optiml", "generated.scala")        
-    super.dsmap(res)
+    super.dsmap(res) // calls parmap
   }
 }
 

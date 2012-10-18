@@ -1,11 +1,11 @@
-package ppl.dsl.optiml.datastruct.scala
+package ppl.dsl.optiml.datastruct.scala.application
 import ppl.dsl.optiml.datastruct.scala._
 
 class BiGGDetection (
   val name: String,
   val score: Float,
   val roi: Rect,
-  val mask: Image[Int],
+  val mask: GrayscaleImage,
   val index: Int,
   val x: Int,
   val y: Int,

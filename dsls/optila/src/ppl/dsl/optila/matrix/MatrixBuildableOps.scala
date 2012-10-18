@@ -62,9 +62,9 @@ trait MatrixBuildableOps extends Variables {
     // data operations
     def update(i: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit] = updateRow(i, y)
     def updateRow(row: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit] = matrix_updaterow(x,row,y)
-    def +=(y: Rep[VA])(implicit ctx: SourceContext): Rep[Unit] = this.+=(vecToIntf(y))
-    def +=(y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit] = insertRow(_numRows,y)
-    def ++=(y: Interface[Matrix[A]])(implicit ctx: SourceContext): Rep[Unit] = insertAllRows(_numRows,y)
+    def <<=(y: Rep[VA])(implicit ctx: SourceContext): Rep[Unit] = this.<<=(vecToIntf(y))
+    def <<=(y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit] = insertRow(_numRows,y)
+    def <<=(y: Interface[Matrix[A]])(implicit ctx: SourceContext, o: Overloaded1): Rep[Unit] = insertAllRows(_numRows,y)
     def removeRow(pos: Rep[Int])(implicit ctx: SourceContext): Rep[Unit] = removeRows(pos, unit(1))
     def removeCol(pos: Rep[Int])(implicit ctx: SourceContext): Rep[Unit] = removeCols(pos, unit(1))    
   }
@@ -73,8 +73,8 @@ trait MatrixBuildableOps extends Variables {
     def update(i: Rep[Int], j: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = intf.ops.update(i,j,y)
     def update(i: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.update(i,y)
     def updateRow(row: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.updateRow(row,y)
-    def +=(y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.+=(y) 
-    def ++=(y: Interface[Matrix[A]])(implicit ctx: SourceContext) = intf.ops.++=(y)
+    def <<=(y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.<<=(y) 
+    def <<=(y: Interface[Matrix[A]])(implicit ctx: SourceContext, o: Overloaded2) = intf.ops.<<=(y)
     def insertRow(pos: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.insertRow(pos,y)
     def insertAllRows(pos: Rep[Int], y: Interface[Matrix[A]])(implicit ctx: SourceContext) = intf.ops.insertAllRows(pos,y)
     def insertCol(pos: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.insertCol(pos,y)

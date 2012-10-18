@@ -47,7 +47,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
         for(j <- 0 until vtasks.length) {
           val task = vtasks(j).AsInstanceOf[Vertex[VD,ED]]
           if(!seen.contains(task)) {
-            tasks += task
+            tasks <<= task
             seen.add(task)
           }
         }

@@ -366,7 +366,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
   }
   
   override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
-    if (isDenseVec(x)) { asDenseVec(x) += y; unit(true) }
+    if (isDenseVec(x)) { asDenseVec(x) <<= y; unit(true) }
     else super.dc_append(x,i,y)        
   }  
   

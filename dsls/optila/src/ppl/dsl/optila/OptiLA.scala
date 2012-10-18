@@ -171,7 +171,6 @@ trait OptiLACodeGenBase extends GenericFatCodegen with SchedulingOpt {
   val IR: DeliteApplication with OptiLAExp
   override def initialDefs = IR.deliteGenerator.availableDefs
 
-
   def dsmap(line: String) = line
 
   val specialize = Set[String]()
@@ -250,14 +249,14 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
     res = res.replaceAll("@specialized T: Manifest", t)
     res = res.replaceAll("T:Manifest", t)
     res = res.replaceAll("\\bT\\b", t)
-    parmap(res)
+    dsmap(res)
   }
 
   override def remap(s: String) = parmap(s)
   override def remap[A](m: Manifest[A]): String = {
     var res = super.remap(m)
     res = res.replaceAllLiterally("package$", "")
-    parmap(res)
+    dsmap(res)
   }
 
   def parmap(line: String): String = {
@@ -267,14 +266,14 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
         res = res.replaceAll(s+"\\["+tpe1+"\\]", tpe1+s)
       }
     }
-    dsmap(res)
+    res
   }
 
   override def dsmap(line: String) : String = {
     var res = line.replaceAll("ppl.dsl.optila.datastruct", "generated")
     res = res.replaceAll("ppl.delite.framework.datastruct", "generated")
     res = res.replaceAll("ppl.dsl.optila", "generated.scala")    
-    res
+    parmap(res)
   }
 }
 

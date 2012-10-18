@@ -2,6 +2,7 @@ package ppl.apps.tests
 
 import ppl.delite.framework.DeliteApplication
 import ppl.dsl.optiml._
+import ppl.apps.ml.lbpdenoise.LBPData
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -13,7 +14,7 @@ import ppl.dsl.optiml._
 
 object VerticesForeachRunner extends OptiMLApplicationRunner with VerticesForeach
 
-trait VerticesForeach extends OptiMLApplication {
+trait VerticesForeach extends LBPData {
   def print_usage = {
     println("Usage: VerticesForeach <rows> <cols> <print interval> <times>")
     println("Example: VerticesForeach 100 100 2500000 1000")
