@@ -1,6 +1,6 @@
 package ppl.dsl.optila
 
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollection
 
 /**
  * OptiLA compiler types

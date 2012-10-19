@@ -4,8 +4,7 @@ import java.io._
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{AbstractSubstTransformer,Transforming}
 import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.ops.DeliteOpsExp
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollection}
 import ppl.delite.framework.Config
 
 /**

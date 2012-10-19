@@ -3,7 +3,7 @@ package ppl.dsl.optiml.vector
 import java.io.{PrintWriter}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.datastructures.DeliteArray
 import scala.reflect.Manifest
 import scala.virtualization.lms.common._

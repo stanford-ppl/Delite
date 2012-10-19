@@ -63,35 +63,39 @@ trait TrainingSetOps extends Variables with OverloadHack {
 
 trait TrainingSetOpsExp extends TrainingSetOps with BaseExp { this: DeliteOpsExp with OptiMLExp =>  
   // implemented via method on real data structure
-  case class SupervisedTrainingSetObjectFromMat[A:Manifest,B:Manifest](xs: Exp[DenseMatrix[A]], labels: Exp[DenseVector[B]]) extends Def[SupervisedTrainingSet[A,B]] {
+  case class SupervisedTrainingSetObjectFromMat[A:Manifest,B:Manifest](xs: Exp[DenseMatrix[A]], labels: Exp[DenseVector[B]]) extends DeliteStruct[SupervisedTrainingSet[A,B]] {
+    val elems = copyTransformedElems(collection.Seq("_data" -> xs, "_labels" -> labels))
      val mA = manifest[A]
      val mB = manifest[B]
   }
   
-  case class UnsupervisedTrainingSetObjectFromMat[A:Manifest](xs: Exp[DenseMatrix[A]]) extends Def[UnsupervisedTrainingSet[A]] {
-     val mA = manifest[A]
+  case class UnsupervisedTrainingSetObjectFromMat[A:Manifest](xs: Exp[DenseMatrix[A]]) extends DeliteStruct[UnsupervisedTrainingSet[A]] {
+    val elems = copyTransformedElems(collection.Seq("_data" -> xs))
+    val mA = manifest[A]
   }
   
-  case class TrainingSetGetData[A:Manifest](x: Exp[TrainingSet[A]]) extends Def[DenseMatrix[A]] {
-    val mA = manifest[A]
-  }
+  //case class TrainingSetGetData[A:Manifest](x: Exp[TrainingSet[A]]) extends Def[DenseMatrix[A]] {
+  // val mA = manifest[A]
+  //}
     
-  case class SupervisedTrainingSetGetLabels[A:Manifest,B:Manifest](x: Exp[SupervisedTrainingSet[A,B]]) extends Def[DenseVector[B]] {
-    val mA = manifest[A]
-    val mB = manifest[B]
-  }
+  //case class SupervisedTrainingSetGetLabels[A:Manifest,B:Manifest](x: Exp[SupervisedTrainingSet[A,B]]) extends Def[DenseVector[B]] {
+  //  val mA = manifest[A]
+  //  val mB = manifest[B]
+  //}
 
   def supervised_trainingset_obj_fromMat[A:Manifest,B:Manifest](xs: Exp[DenseMatrix[A]], labels: Exp[DenseVector[B]])(implicit ctx: SourceContext) = SupervisedTrainingSetObjectFromMat(xs, labels)
   def unsupervised_trainingset_obj_fromMat[A:Manifest](xs: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = UnsupervisedTrainingSetObjectFromMat(xs)
   
-  def trainingset_get_data[A:Manifest](x: Exp[TrainingSet[A]])(implicit ctx: SourceContext) = TrainingSetGetData(x)
-  def supervised_trainingset_get_labels[A:Manifest,B:Manifest](x: Exp[SupervisedTrainingSet[A,B]])(implicit ctx: SourceContext) = SupervisedTrainingSetGetLabels(x)
+  def trainingset_get_data[A:Manifest](x: Exp[TrainingSet[A]])(implicit ctx: SourceContext) = field[DenseMatrix[A]](x, "_data")
+  def supervised_trainingset_get_labels[A:Manifest,B:Manifest](x: Exp[SupervisedTrainingSet[A,B]])(implicit ctx: SourceContext) = field[DenseVector[B]](x, "_labels")
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case e@UnsupervisedTrainingSetObjectFromMat(x) => unsupervised_trainingset_obj_fromMat(f(x))(e.mA,implicitly[SourceContext])
-    case e@TrainingSetGetData(x) => trainingset_get_data(f(x))(e.mA,implicitly[SourceContext])
-    case e@SupervisedTrainingSetObjectFromMat(x,y) => supervised_trainingset_obj_fromMat(f(x),f(y))(e.mA,e.mB,implicitly[SourceContext])
-    case e@SupervisedTrainingSetGetLabels(x) => supervised_trainingset_get_labels(f(x))(e.mA,e.mB,implicitly[SourceContext])
+    case e@UnsupervisedTrainingSetObjectFromMat(x) => reflectPure(new { override val original = Some(f,e) } with UnsupervisedTrainingSetObjectFromMat(f(x)))(mtype(manifest[A]),implicitly[SourceContext])    
+    case e@SupervisedTrainingSetObjectFromMat(x,y) => reflectPure(new { override val original = Some(f,e) } with SupervisedTrainingSetObjectFromMat(f(x),f(y)))(mtype(manifest[A]),implicitly[SourceContext])    
+    //case e@UnsupervisedTrainingSetObjectFromMat(x) => unsupervised_trainingset_obj_fromMat(f(x))(e.mA,implicitly[SourceContext])
+    //case e@TrainingSetGetData(x) => trainingset_get_data(f(x))(e.mA,implicitly[SourceContext])
+    //case e@SupervisedTrainingSetObjectFromMat(x,y) => supervised_trainingset_obj_fromMat(f(x),f(y))(e.mA,e.mB,implicitly[SourceContext])
+    //case e@SupervisedTrainingSetGetLabels(x) => supervised_trainingset_get_labels(f(x))(e.mA,e.mB,implicitly[SourceContext])
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }
@@ -103,10 +107,10 @@ trait ScalaGenTrainingSetOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case t@SupervisedTrainingSetObjectFromMat(xs, labels) => emitValDef(sym, "new " + remap("generated.scala.SupervisedTrainingSet[" + remap(t.mA) + "," + remap(t.mB) + "]") + "(" + quote(xs) + "," + quote(labels) + ")")
-    case t@UnsupervisedTrainingSetObjectFromMat(xs) => emitValDef(sym, "new " + remap("generated.scala.UnsupervisedTrainingSet[" + remap(t.mA) + "]") + "(" + quote(xs) + ")")
-    case TrainingSetGetData(x) => emitValDef(sym, quote(x) + "._data")
-    case SupervisedTrainingSetGetLabels(x) => emitValDef(sym, quote(x) + "._labels")
+    //case t@SupervisedTrainingSetObjectFromMat(xs, labels) => emitValDef(sym, "new " + remap("generated.scala.SupervisedTrainingSet[" + remap(t.mA) + "," + remap(t.mB) + "]") + "(" + quote(xs) + "," + quote(labels) + ")")
+    //case t@UnsupervisedTrainingSetObjectFromMat(xs) => emitValDef(sym, "new " + remap("generated.scala.UnsupervisedTrainingSet[" + remap(t.mA) + "]") + "(" + quote(xs) + ")")
+    //case TrainingSetGetData(x) => emitValDef(sym, quote(x) + "._data")
+    //case SupervisedTrainingSetGetLabels(x) => emitValDef(sym, quote(x) + "._labels")
     case _ => super.emitNode(sym, rhs)
   }
 }

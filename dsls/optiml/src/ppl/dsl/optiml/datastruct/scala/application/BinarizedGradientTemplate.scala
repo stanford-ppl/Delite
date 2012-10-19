@@ -17,7 +17,7 @@ class BinarizedGradientTemplate (
   val binary_gradients: DenseVector[Double],
 
   // indices to use for matching (skips zeros inside binary_gradients)
-  val match_list: IndexVectorDense,
+  val match_list: IndexVectorDenseC,
 
   // This is a match list of list of sub-parts. Currently unused.
   val occlusions: DenseVector[DenseVector[Int]],

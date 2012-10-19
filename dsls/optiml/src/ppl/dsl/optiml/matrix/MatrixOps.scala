@@ -7,7 +7,7 @@ import scala.virtualization.lms.common.{VariablesExp, Variables}
 import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase, CGenBase, OpenCLGenBase}
 import scala.virtualization.lms.internal.{GenerationFailedException}
 import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.Config
 import ppl.delite.framework.extern.lib._

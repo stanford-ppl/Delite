@@ -63,14 +63,17 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   // implemented via method on real data structure
 
   case class IndexVectorRangeNew(start: Exp[Int], end: Exp[Int]) extends Def[IndexVectorRange]
-  case class IndexVectorDenseNew(len: Exp[Int], isRow: Exp[Boolean]) extends Def[IndexVectorDense]
+  
+  case class IndexVectorDenseNew(len: Exp[Int], isRow: Exp[Boolean]) extends DeliteStruct[IndexVectorDense] {
+    val elems = copyTransformedElems(collection.Seq("_data" -> var_new(DeliteArray[Int](len)).e, "_length" -> var_new(len).e, "_isRow" -> var_new(isRow).e))
+  }
 
   ////////////////////////////////
   // implemented via delite ops
 
   case class IndexVectorObjectFromVec(xs: Interface[Vector[Int]]) extends DeliteOpSingleTask[IndexVectorDense](reifyEffectsHere(index_vector_obj_fromvec_impl(xs)))
 
-  // Note: Construction from a discrete index vector set will curently return a contiguous (non-sparse) vector.
+  // Note: Construction from a discrete index vector set will currently return a contiguous (non-sparse) vector.
   // Is this what we want?
   case class IndexVectorConstruct[B:Manifest](intf: Interface[IndexVector], func: Exp[Int] => Exp[B])
     extends DeliteOpMap[Int,B,DenseVector[B]] {
@@ -100,7 +103,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@IndexVectorConstruct(in,b) => reflectPure(new { override val original = Some(f,e) } with IndexVectorConstruct(f(in),f(b))(e.m))(mtype(manifest[A]), implicitly[SourceContext])
     case IndexVectorRangeNew(start,end) => indexvector_range(f(start),f(end))
-    case Reflect(e@IndexVectorDenseNew(l,r), u, es) => reflectMirrored(Reflect(IndexVectorDenseNew(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))     
+    case Reflect(e@IndexVectorDenseNew(l,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorDenseNew(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@IndexVectorConstruct(in,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorConstruct(f(in),f(b))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
@@ -114,8 +117,8 @@ trait ScalaGenIndexVectorOps extends ScalaGenBase {
     // should not be required -- pattern matches in IndexVectorRangeOps.scala should always take precedence
     // case v@IndexVectorRangeNew(start, end) =>
     //   emitValDef(sym, "new generated.scala.IndexVectorRange(" + quote(start) +  "," + quote(end) + ")")
-    case v@IndexVectorDenseNew(len, isRow) =>
-      emitValDef(sym, "new generated.scala.IndexVectorDense(" + quote(len) + ", " + quote(isRow) + ")")
+    //case v@IndexVectorDenseNew(len, isRow) =>
+    //  emitValDef(sym, "new generated.scala.IndexVectorDense(" + quote(len) + ", " + quote(isRow) + ")")
 
     case _ => super.emitNode(sym, rhs)
   }

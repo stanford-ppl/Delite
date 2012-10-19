@@ -2,7 +2,7 @@ package ppl.dsl.optiql.baseline.benchmarks.tpch.schema
 
 import ppl.dsl.optiql.baseline.util.Date
 import collection.mutable.ArrayBuffer
-import ppl.dsl.optiql.baseline.containers.DataTable
+import ppl.dsl.optiql.baseline.containers.Table
 
 
 class LineItem (
@@ -24,7 +24,7 @@ class LineItem (
   val comment: String
 )
 
-class LineItemTable extends DataTable[LineItem] {
+class LineItemTable extends Table[LineItem] {
 
 
 

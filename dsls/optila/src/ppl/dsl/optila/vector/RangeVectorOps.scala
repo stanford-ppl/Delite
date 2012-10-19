@@ -6,7 +6,7 @@ import scala.reflect.SourceContext
 import java.io.PrintWriter
 
 import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.Util._
 

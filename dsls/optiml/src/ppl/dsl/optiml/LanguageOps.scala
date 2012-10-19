@@ -1,7 +1,7 @@
 package ppl.dsl.optiml
 
-import datastruct.scala._
-import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollection}
+import ppl.delite.framework.datastruct.scala._
 import java.io.PrintWriter
 import reflect.{Manifest, SourceContext}
 import scala.virtualization.lms.internal.GenericFatCodegen
@@ -307,7 +307,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     //val zero = copyTransformedOrElse(_.zero)(reifyEffects(a.zero(init).mutable).res) 
     //val zero = copyTransformedBlockOrElse(_.zero)(reifyEffects(a.zero(init).mutable)) // FIXME: zero can be a fresh matrix, mutable calls cloneL
     //def zero = a.zero(init).mutable
-    def zero = a.zero(init).mutable
+    def zero = a.zero(init)
+    override def accInit = a.zero(init).mutable
     def reduce = (a,b) => a += b
     
     def m = manifest[A]
@@ -485,11 +486,13 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def optiml_untilconverged[A:Manifest:Cloneable](x: Exp[A], thresh: Exp[A] => Exp[Double], max_iter: Exp[Int], clone_prev_val: Exp[Boolean],
                                                   block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double])(implicit ctx: SourceContext) = {
 
+    implicit def rv[T:Manifest](v: Var[T]): Exp[T] = readVar(v) //TODO: why isn't readVar implicit working?
+
     var delta = var_new(unit(scala.Double.MaxValue))
     var cur = var_new(x)
     var iter = var_new(unit(0))
 
-    while ((abs(delta) > thresh(cur)) && (iter < max_iter)){
+    while (abs(delta) > thresh(cur) && (iter < max_iter)){
       val prev = if (clone_prev_val)
         cur.Clone()
       else

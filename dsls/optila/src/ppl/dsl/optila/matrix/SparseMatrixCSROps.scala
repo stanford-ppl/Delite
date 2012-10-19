@@ -9,7 +9,7 @@ import scala.virtualization.lms.internal.{GenerationFailedException}
 import scala.reflect.SourceContext
 
 import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.datastructures.DeliteArray
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.transform.LoweringTransform
@@ -48,18 +48,18 @@ trait SparseMatrixCSROpsExp extends SparseMatrixCSRCompilerOps with DeliteCollec
   case class SparseMatrixCSRRowIndices(rowPtr: Rep[DeliteArray[Int]])
     extends DeliteOpSingleTask[DeliteArray[Int]](reifyEffectsHere(sparsematrix_csr_rowindices_impl(rowPtr)))
   
-  case class SparseMatrixCSRZipNZUnion[A:Manifest,B:Manifest,R:Manifest](ma: Rep[SparseMatrix[A]], mb: Rep[SparseMatrix[B]], f: (Rep[A],Rep[B]) => Rep[R])
-    extends DeliteOpSingleTask[SparseMatrix[R]](reifyEffectsHere(sparsematrix_csr_zip_nz_union_impl(ma, mb, f))) {
+  case class SparseMatrixCSRZipNZUnion[A:Manifest,B:Manifest,C:Manifest](ma: Rep[SparseMatrix[A]], mb: Rep[SparseMatrix[B]], f: (Rep[A],Rep[B]) => Rep[C])
+    extends DeliteOpSingleTask[SparseMatrix[C]](reifyEffectsHere(sparsematrix_csr_zip_nz_union_impl(ma, mb, f))) {
       val mA = manifest[A]
       val mB = manifest[B]
-      val mR = manifest[R]
+      val mC = manifest[C]
     }
 
-  case class SparseMatrixCSRZipNZIntersection[A:Manifest,B:Manifest,R:Manifest](ma: Rep[SparseMatrix[A]], mb: Rep[SparseMatrix[B]], f: (Rep[A],Rep[B]) => Rep[R])
-    extends DeliteOpSingleTask[SparseMatrix[R]](reifyEffectsHere(sparsematrix_csr_zip_nz_intersection_impl(ma, mb, f))) {
+  case class SparseMatrixCSRZipNZIntersection[A:Manifest,B:Manifest,C:Manifest](ma: Rep[SparseMatrix[A]], mb: Rep[SparseMatrix[B]], f: (Rep[A],Rep[B]) => Rep[C])
+    extends DeliteOpSingleTask[SparseMatrix[C]](reifyEffectsHere(sparsematrix_csr_zip_nz_intersection_impl(ma, mb, f))) {
       val mA = manifest[A]
       val mB = manifest[B]
-      val mR = manifest[R]      
+      val mC = manifest[C]      
     }
   
   def sparsematrix_csr_rowindices(rowPtr: Rep[DeliteArray[Int]]) = reflectPure(SparseMatrixCSRRowIndices(rowPtr))
@@ -163,8 +163,8 @@ trait SparseMatrixCSROpsExp extends SparseMatrixCSRCompilerOps with DeliteCollec
     case e@SparseMatrixCSRRawColIndices(x) => reflectPure(SparseMatrixCSRRawColIndices(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@SparseMatrixCSRRawRowPtr(x) => reflectPure(SparseMatrixCSRRawRowPtr(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@SparseMatrixCSRRowIndices(x) => reflectPure(new { override val original = Some(f,e) } with SparseMatrixCSRRowIndices(f(x)))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@SparseMatrixCSRZipNZUnion(x,y,g) => reflectPure(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZUnion(f(x),f(y),f(g))(e.mA,e.mB,e.mR))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@SparseMatrixCSRZipNZIntersection(x,y,g) => reflectPure(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZIntersection(f(x),f(y),f(g))(e.mA,e.mB,e.mR))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@SparseMatrixCSRZipNZUnion(x,y,g) => reflectPure(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZUnion(f(x),f(y),f(g))(e.mA,e.mB,e.mC))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@SparseMatrixCSRZipNZIntersection(x,y,g) => reflectPure(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZIntersection(f(x),f(y),f(g))(e.mA,e.mB,e.mC))(mtype(manifest[A]),implicitly[SourceContext])
     
     // reflected
     case Reflect(e@SparseMatrixCSRNew(x,y), u, es) => reflectMirrored(Reflect(SparseMatrixCSRNew(f(x),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
@@ -175,8 +175,8 @@ trait SparseMatrixCSROpsExp extends SparseMatrixCSRCompilerOps with DeliteCollec
     case Reflect(e@SparseMatrixCSRSetRawColIndices(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCSRSetRawColIndices(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))       
     case Reflect(e@SparseMatrixCSRSetRawRowPtr(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCSRSetRawRowPtr(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))       
     case Reflect(e@SparseMatrixCSRRowIndices(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixCSRRowIndices(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@SparseMatrixCSRZipNZUnion(x,y,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZUnion(f(x),f(y),f(g))(e.mA,e.mB,e.mR), mapOver(f,u), f(es)))(mtype(manifest[A]))    
-    case Reflect(e@SparseMatrixCSRZipNZIntersection(x,y,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZIntersection(f(x),f(y),f(g))(e.mA,e.mB,e.mR), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@SparseMatrixCSRZipNZUnion(x,y,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZUnion(f(x),f(y),f(g))(e.mA,e.mB,e.mC), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@SparseMatrixCSRZipNZIntersection(x,y,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZIntersection(f(x),f(y),f(g))(e.mA,e.mB,e.mC), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??  
   

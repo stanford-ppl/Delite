@@ -146,7 +146,7 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
       if ((row >= rowOffset) && (row < x.numRows - rowOffset) && (col >= colOffset) && (col < x.numCols - colOffset)) {
         // workaround for: https://github.com/stanford-ppl/Delite/issues/26
         val z = var_new(x.slice(row - rowOffset, row + rowOffset + unit(1), col - colOffset, col + colOffset + unit(1)))
-        block(z)
+        block(readVar(z))
       } else {
         unit(0.0)
       }

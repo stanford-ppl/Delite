@@ -4,7 +4,7 @@ import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
 
 // TODO: rename to DeliteArrayBufferImplOps?
-trait DeliteArrayImplOps { this: DeliteArrayOps =>
+//trait DeliteArrayImplOps { this: DeliteArrayOps =>
   // def delitearray_apply_impl[A:Manifest](v: Rep[DeliteArray[A]], pos: Rep[Int]): Rep[A]
   // def delitearray_update_impl[A:Manifest](v: Rep[DeliteArray[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit]
   /*
@@ -13,10 +13,10 @@ trait DeliteArrayImplOps { this: DeliteArrayOps =>
   def delitearray_copyfrom_impl[A:Manifest](v: Rep[DeliteArray[A]], pos: Rep[Int], xs: Rep[DeliteArray[A]]): Rep[Unit]  
   def delitearray_removeall_impl[A:Manifest](v: Rep[DeliteArray[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit]
   */
-}
+//}
 
-trait DeliteArrayImplOpsStandard extends DeliteArrayImplOps {
-  this: DeliteArrayOps =>
+//trait DeliteArrayImplOpsStandard extends DeliteArrayImplOps {
+//  this: DeliteArrayOps =>
 
   //////////////////////////
   // kernel implementations
@@ -81,4 +81,4 @@ trait DeliteArrayImplOpsStandard extends DeliteArrayImplOps {
   }
   */
 
-}
+//}

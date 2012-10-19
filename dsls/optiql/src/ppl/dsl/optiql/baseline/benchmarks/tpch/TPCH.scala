@@ -2,7 +2,7 @@ package ppl.dsl.optiql.baseline.benchmarks.tpch
 
 import java.io.File
 import schema._
-import ppl.dsl.optiql.baseline.containers.DataTable
+import ppl.dsl.optiql.baseline.containers.Table
 import ppl.dsl.optiql.baseline.util.{Date, Interval}
 import ppl.dsl.optiql.baseline.OptiQL
 
@@ -81,7 +81,7 @@ object TPCH {
     q3.printAsTable
   }
 
-  def loadTPCHTable(path: String, table: DataTable[_]) = {
+  def loadTPCHTable(path: String, table: Table[_]) = {
     log("loading tpch table from file[" + tpchDataPath + "/" + path +"] into memory")
     //open file for reading
     val filename = tpchDataPath + "/" + path + ".tbl"

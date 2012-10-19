@@ -9,7 +9,7 @@ import scala.virtualization.lms.internal.{GenerationFailedException}
 import scala.reflect.SourceContext
 
 import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.Config
 import ppl.delite.framework.extern.lib._

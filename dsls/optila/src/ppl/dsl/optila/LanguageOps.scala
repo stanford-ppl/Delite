@@ -1,7 +1,6 @@
 package ppl.dsl.optila
 
-import datastruct.scala._
-import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollection}
 import java.io.PrintWriter
 import reflect.Manifest
 import scala.virtualization.lms.internal.GenericFatCodegen

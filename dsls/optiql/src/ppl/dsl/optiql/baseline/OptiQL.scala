@@ -1,6 +1,6 @@
 package ppl.dsl.optiql.baseline
 
-import containers.{Grouping, DataTable}
+import containers.{Grouping, Table}
 import ordering.{ProjectionComparer, OrderedQueryable}
 import collection.mutable.ArrayBuffer
 import collection.mutable.HashMap
@@ -9,18 +9,18 @@ import collection.mutable.Buffer
 object OptiQL {
 
   implicit def convertIterableToQueryable[T](i: Iterable[T]) = new Queryable[T](i)
-  implicit def convertIterableToDataTable[T](i: Iterable[T]) : DataTable[T] = {
-    if(i.isInstanceOf[DataTable[T]]) {
-      i.asInstanceOf[DataTable[T]]
+  implicit def convertIterableToTable[T](i: Iterable[T]) : Table[T] = {
+    if(i.isInstanceOf[Table[T]]) {
+      i.asInstanceOf[Table[T]]
     }
     else if(i.isInstanceOf[ArrayBuffer[T]]) {
 
-      return new DataTable[T] {
+      return new Table[T] {
 
         override val data = i.asInstanceOf[ArrayBuffer[T]]
 
         def addRecord(arr: Array[String]) {
-          throw new RuntimeException("Cannot add Record into a projected DataTable")
+          throw new RuntimeException("Cannot add Record into a projected Table")
         }
       }
 
@@ -30,15 +30,15 @@ object OptiQL {
       for (e <- i) {
         arrbuf.append(e)
       }
-      return new DataTable[T] {
+      return new Table[T] {
 
         override val data = arrbuf
 
         def addRecord(arr: Array[String]) {
-          throw new RuntimeException("Cannot add Record into a projected DataTable")
+          throw new RuntimeException("Cannot add Record into a projected Table")
         }
       }
-      //throw new RuntimeException("Could not convert iterable to DataTable")
+      //throw new RuntimeException("Could not convert iterable to Table")
     }
   }
 
@@ -78,7 +78,7 @@ class Queryable[TSource](source: Iterable[TSource]) {
 
   def GroupBy[TKey](keySelector: TSource => TKey): Iterable[Grouping[TKey, TSource]] = {
     val (hTable, keys) = buildHash(source,keySelector)
-    val result = new DataTable[Grouping[TKey,TSource]] {
+    val result = new Table[Grouping[TKey,TSource]] {
       def addRecord(fields: Array[String]) = throw new RuntimeException("Cannot add records to a grouping table")
       override val grouped = true
     }

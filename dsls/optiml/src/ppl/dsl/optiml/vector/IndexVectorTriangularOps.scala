@@ -6,7 +6,7 @@ import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
 import scala.virtualization.lms.util.OverloadHack
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteCollectionOpsExp}
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollection
 import ppl.dsl.optiml._
 
 /**

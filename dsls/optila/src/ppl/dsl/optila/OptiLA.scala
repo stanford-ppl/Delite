@@ -130,7 +130,7 @@ trait OptiLACompiler extends OptiLA with OptiLAUtilities
 /**
  * These are the corresponding IR nodes for OptiLA.
  */
-trait OptiLAExp extends OptiLACompiler with InterfacesExp with OptiLAScalaOpsPkgExp with FunctionBlocksExp with DeliteOpsExp with DeliteArrayOpsExp with VariantsOpsExp 
+trait OptiLAExp extends OptiLACompiler with InterfacesExp with OptiLAScalaOpsPkgExp with FunctionBlocksExp with DeliteOpsExp with DeliteArrayFatExp with VariantsOpsExp 
   with LanguageOpsExp with ArithOpsExpOpt with CloneableOpsExp
   with VectorOpsExpOpt with DenseVectorOpsExpOpt with SparseVectorOpsExp with RangeVectorOpsExp with DenseVectorViewOpsExpOpt with SparseVectorViewOpsExpOpt //with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
   with MatrixOpsExpOpt with DenseMatrixOpsExpOpt with SparseMatrixOpsExp with SparseMatrixBuildableOpsExp
@@ -138,7 +138,7 @@ trait OptiLAExp extends OptiLACompiler with InterfacesExp with OptiLAScalaOpsPkg
   with ExceptionOpsExp
   // -- choice of sparse matrix repr
   with SparseMatrixCSROpsExp with SparseMatrixCOOOpsExp with SparseVectorViewCSROpsExp
-  with ExpressionsOpt with DeliteTransform with DeliteAllOverridesExp {
+  with ExpressionsOpt with DeliteTransform /*with MultiloopSoATransformExp*/ with DeliteAllOverridesExp {
 
   // this: OptiLAApplicationRunner => why doesn't this work?
   this: DeliteApplication with OptiLAApplication with OptiLAExp => // can't be OptiLAApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
@@ -180,6 +180,13 @@ trait OptiLACodeGenBase extends GenericFatCodegen with SchedulingOpt {
 
   def getFiles(d: File): Array[File] = {
     d.listFiles flatMap { f => if (f.isDirectory()) getFiles(f) else Array(f) }
+  }
+
+  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "DenseVector" => IR.structName(m)
+    case "DenseMatrix" => IR.structName(m)
+    case "DenseVectorView" => IR.structName(m)
+    case _ => super.remap(m)
   }
   
   override def emitDataStructures(path: String) {

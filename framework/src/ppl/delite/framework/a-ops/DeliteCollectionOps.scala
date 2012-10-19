@@ -4,8 +4,10 @@ import java.io.PrintWriter
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.datastructures.DeliteArray
 import ppl.delite.framework.Interfaces
+
+trait DeliteCollection[A]
 
 trait DeliteCollectionOps extends Interfaces with Variables {
     
@@ -42,13 +44,12 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with VariablesExp with 
   }
   case class DeliteCollectionUpdate[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) extends Def[Unit]
   case class DeliteCollectionAppend[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A]) extends Def[Unit]
-  case class DeliteCollectionUnsafeSetData[A:Manifest](x: Exp[DeliteCollection[A]], d: Exp[Array[A]]) extends Def[Unit] { // legacy...
+  case class DeliteCollectionUnsafeSetData[A:Manifest](x: Exp[DeliteCollection[A]], d: Exp[DeliteArray[A]]) extends Def[Unit] { // legacy...
     def m = manifest[A]
   }
 
   /**
    * Default delite collection op implementations
-   * TODO: provide implementations for DeliteArray
    */
     
   // dc_size is currently unused. do we need it? if we keep it, should it be renamed to dc_physical_size?
@@ -66,7 +67,7 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with VariablesExp with 
     reflectPure(DeliteCollectionApply(x,n))
   }
   def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext): Exp[Unit] = {
-    /*throw new RuntimeException*/printlog("warning: no static implementation found for dc_update on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get)
+    /*throw new RuntimeException*/printlog("warning: no static implementation found for dc_update")
     reflectWrite(x)(DeliteCollectionUpdate(x,n,y))
   }
   def dc_parallelization[A:Manifest](x: Exp[DeliteCollection[A]], hasConditions: Boolean)(implicit ctx: SourceContext) = {
@@ -77,20 +78,25 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with VariablesExp with 
    
   def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
     //reflectPure(DeliteCollectionSetLogicalSize(x,y))    
-    fatal(unit("dc_set_logical_size called without any implementation on " + x))    
+    fatal(unit("dc_set_logical_size called without any implementation on " + x.toString))    
   }  
   /* returns true if the element was accepted and actually appended, false otherwise */
   def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext): Exp[Boolean] = {
     // reflectWrite(x)(DeliteCollectionAppend(x,i,y))
     // unit(true)
-    fatal(unit("dc_append called without any implementation on " + x))    
+    fatal(unit("dc_append called without any implementation on " + x.toString))    
   }  
   def dc_alloc[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], size: Exp[Int])(implicit ctx: SourceContext): Exp[CA] = {
-    fatal(unit("dc_alloc called without any implementation on " + x))
+    fatal(unit("dc_alloc called without any implementation on " + x.toString))
   }  
   def dc_copy[A:Manifest](src: Exp[DeliteCollection[A]], srcPos: Exp[Int], dst: Exp[DeliteCollection[A]], dstPos: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
-    fatal(unit("dc_copy called without any implementation on " + src))
-  }    
+    fatal(unit("dc_copy called without any implementation on " + src.toString))
+  }   
+
+  // - Struct transformation methods
+  def dc_data_field[A:Manifest](x: Exp[DeliteCollection[A]]): String = ""
+
+  def dc_size_field[A:Manifest](x: Exp[DeliteCollection[A]]): String = ""
 
   //////////////
   // mirroring

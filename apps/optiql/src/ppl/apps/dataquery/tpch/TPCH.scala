@@ -1,56 +1,71 @@
-    package ppl.apps.dataquery.tpch
+package ppl.apps.dataquery.tpch
 
 import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
-import java.io.File
 
-object TPCHRunner extends OptiQLApplicationRunner with TPCH
+object TPCHQ0 extends OptiQLApplicationRunner with TPCHQ0Trait
+object TPCHQ1 extends OptiQLApplicationRunner with TPCHQ1Trait
+object TPCHQ2 extends OptiQLApplicationRunner with TPCHQ2Trait
 
-trait TPCH extends OptiQLApplication {
-
-  val s = File.separator
+trait TPCHBaseTrait extends OptiQLApplication with Types {
 
   def printUsage = {
     println("Usage: TPCH <input tpch directory>")
     exit(-1)
   }
-  
-  
-  val debug = true
 
+  val queryName: String
+  
+  var tpchDataPath: Rep[String] = _
+  def loadCustomers() = TableInputReader(tpchDataPath+"/customer.tbl", Customer())
+  def loadLineItems() = TableInputReader(tpchDataPath+"/lineitem.tbl", LineItem())
+  def loadOrders() = TableInputReader(tpchDataPath+"/orders.tbl", Order())
+  def loadNations() = TableInputReader(tpchDataPath+"/nation.tbl", Nation())
+  def loadParts() = TableInputReader(tpchDataPath+"/part.tbl", Part())
+  def loadPartSuppliers() = TableInputReader(tpchDataPath+"/partsupp.tbl", PartSupplier())
+  def loadRegions() = TableInputReader(tpchDataPath+"/region.tbl", Region())
+  def loadSuppliers() = TableInputReader(tpchDataPath+"/supplier.tbl", Supplier())
+  
+  def query(): Rep[_]
+  
   def main() = {
-  
-  
-    println("TPCH style benchmarking")
+    println("TPCH style benchmarking " + queryName)
     if (args.length < 1) printUsage
     
-    val tpchDataPath = args(0)
-    
-    
-/*    
-    class Result extends Row[Rep]
-    
-    class ApplyDynamicOps {
-      def applyDynamic[T](n: String)(as: AnyRef*): Rep[T] = error(n + as.mkString("(", ",", ")"))
-    }
-    implicit def applyDynamicOps[T <: Result](qual: Rep[T]): ApplyDynamicOps = new ApplyDynamicOps 
-    
-    
-    val qual = new Result{ val xxx: Rep[Int] = 5    }
-    val x: Rep[Int] = qual.xxx("foo",unit(5),unit(4)) 
-    x 
-  */  
+    tpchDataPath = args(0)
+    query()
+  }
 
-    //load TPCH data
-    val lineItems = TPCH.loadLineItems(tpchDataPath)
-    println("Loading Complete")
-	  tic(lineItems)
-    
-    
-      
-    //val res = lineItems Select(e => new Result { val l_shipdate = e.l_shipdate  }) Where(_.l_shipdate <= Date("1998-12-01"))
-   
-    ///*
-    val res = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag,l.l_linestatus)) Select(g => new Result {
+}
+
+trait TPCHQ0Trait extends TPCHBaseTrait {
+  val queryName = "Q0"
+  def query() = {
+    val lineItems = loadLineItems()
+
+    /* val q1 = lineItems Select(l => new Result {
+      val divided = l.l_quantity / l.l_extendedprice
+      val other = l.l_tax / l.l_discount
+    })
+    q1.printAsTable */
+
+    val q2 = lineItems Where(_.l_shipdate <= Date("1998-12-01")) Select(l => new Result {
+      val divided = l.l_quantity / l.l_extendedprice
+      val other = l.l_tax / l.l_discount 
+    })
+    q2.printAsTable
+
+    /* val u1 = lineItems Sum(_.l_quantity)
+    println(u) */
+
+  }
+}
+
+trait TPCHQ1Trait extends TPCHBaseTrait {
+  val queryName = "Q1"  
+  def query() = {  
+    val lineItems = loadLineItems()         
+    tic(lineItems.size)
+    val q = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag,l.l_linestatus)) Select(g => new Result {
       val returnFlag = g.key._1
       val lineStatus = g.key._2
       val sumQty = g.Sum(_.l_quantity)
@@ -60,162 +75,70 @@ trait TPCH extends OptiQLApplication {
       val avgQty = g.Average(_.l_quantity)
       val avgPrice = g.Average(_.l_extendedprice)
       val avgDiscount = g.Average(_.l_discount)
-      val countOrder = g.Count            
-    }) //*/
-    
-    toc(res)
-    res.printAsTable() 
-/*
-    val res1 = lineItems Where(_.shipDate <= Date("1998-12-01")) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(e => {
-      val returnFlag = e.key._1
-      val lineStatus = e.key._2
-      val sumQty = e.Sum(_.quantity)
-      val sumBasePrice = e.Sum(_.extendedPrice)
-      val sumDiscountedPrice = e.Sum(l => l.extendedPrice * (1.0f-l.discount))
-      val sumCharge = e.Sum(l=> l.extendedPrice * (1.0f-l.discount) * (1.0f+l.tax))
-      val avgQty = e.Average(_.quantity)
-      val avgPrice = e.Average(_.extendedPrice)
-      val avgDiscount = e.Average(_.discount)
-      val count = e.Count
-      //hack
-      ResultQ1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, count)
-    }) 
-    val res2 = lineItems Where(_.shipDate <= Date("1998-12-01")) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(e => {
-      val returnFlag = e.key._1
-      val lineStatus = e.key._2
-      val sumQty = e.Sum(_.quantity)
-      val sumBasePrice = e.Sum(_.extendedPrice)
-      val sumDiscountedPrice = e.Sum(l => l.extendedPrice * (1.0f-l.discount))
-      val sumCharge = e.Sum(l=> l.extendedPrice * (1.0f-l.discount) * (1.0f+l.tax))
-      val avgQty = e.Average(_.quantity)
-      val avgPrice = e.Average(_.extendedPrice)
-      val avgDiscount = e.Average(_.discount)
-      val count = e.Count
-      //hack
-      ResultQ1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, count)
-    }) 
-    val res3 = lineItems Where(_.shipDate <= Date("1998-12-01")) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(e => {
-      val returnFlag = e.key._1
-      val lineStatus = e.key._2
-      val sumQty = e.Sum(_.quantity)
-      val sumBasePrice = e.Sum(_.extendedPrice)
-      val sumDiscountedPrice = e.Sum(l => l.extendedPrice * (1.0f-l.discount))
-      val sumCharge = e.Sum(l=> l.extendedPrice * (1.0f-l.discount) * (1.0f+l.tax))
-      val avgQty = e.Average(_.quantity)
-      val avgPrice = e.Average(_.extendedPrice)
-      val avgDiscount = e.Average(_.discount)
-      val count = e.Count
-      //hack
-      ResultQ1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, count)
-    }) 
-    val res4 = lineItems Where(_.shipDate <= Date("1998-12-01")) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(e => {
-      val returnFlag = e.key._1
-      val lineStatus = e.key._2
-      val sumQty = e.Sum(_.quantity)
-      val sumBasePrice = e.Sum(_.extendedPrice)
-      val sumDiscountedPrice = e.Sum(l => l.extendedPrice * (1.0f-l.discount))
-      val sumCharge = e.Sum(l=> l.extendedPrice * (1.0f-l.discount) * (1.0f+l.tax))
-      val avgQty = e.Average(_.quantity)
-      val avgPrice = e.Average(_.extendedPrice)
-      val avgDiscount = e.Average(_.discount)
-      val count = e.Count
-      //hack
-      ResultQ1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, count)
-    }) 
-    val res5 = lineItems Where(_.shipDate <= Date("1998-12-01")) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(e => {
-      val returnFlag = e.key._1
-      val lineStatus = e.key._2
-      val sumQty = e.Sum(_.quantity)
-      val sumBasePrice = e.Sum(_.extendedPrice)
-      val sumDiscountedPrice = e.Sum(l => l.extendedPrice * (1.0f-l.discount))
-      val sumCharge = e.Sum(l=> l.extendedPrice * (1.0f-l.discount) * (1.0f+l.tax))
-      val avgQty = e.Average(_.quantity)
-      val avgPrice = e.Average(_.extendedPrice)
-      val avgDiscount = e.Average(_.discount)
-      val count = e.Count
-      //hack
-      ResultQ1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, count)
-    }) 
-    val res6 = lineItems Where(_.shipDate <= Date("1998-12-01")) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(e => {
-      val returnFlag = e.key._1
-      val lineStatus = e.key._2
-      val sumQty = e.Sum(_.quantity)
-      val sumBasePrice = e.Sum(_.extendedPrice)
-      val sumDiscountedPrice = e.Sum(l => l.extendedPrice * (1.0f-l.discount))
-      val sumCharge = e.Sum(l=> l.extendedPrice * (1.0f-l.discount) * (1.0f+l.tax))
-      val avgQty = e.Average(_.quantity)
-      val avgPrice = e.Average(_.extendedPrice)
-      val avgDiscount = e.Average(_.discount)
-      val count = e.Count
-      //hack
-      ResultQ1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, count)
-    }) 
-    val res7 = lineItems Where(_.shipDate <= Date("1998-12-01")) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(e => {
-      val returnFlag = e.key._1
-      val lineStatus = e.key._2
-      val sumQty = e.Sum(_.quantity)
-      val sumBasePrice = e.Sum(_.extendedPrice)
-      val sumDiscountedPrice = e.Sum(l => l.extendedPrice * (1.0f-l.discount))
-      val sumCharge = e.Sum(l=> l.extendedPrice * (1.0f-l.discount) * (1.0f+l.tax))
-      val avgQty = e.Average(_.quantity)
-      val avgPrice = e.Average(_.extendedPrice)
-      val avgDiscount = e.Average(_.discount)
-      val count = e.Count
-      //hack
-      ResultQ1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, count)
-    }) 
-    val res8 = lineItems Where(_.shipDate <= Date("1998-12-01")) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(e => {
-      val returnFlag = e.key._1
-      val lineStatus = e.key._2
-      val sumQty = e.Sum(_.quantity)
-      val sumBasePrice = e.Sum(_.extendedPrice)
-      val sumDiscountedPrice = e.Sum(l => l.extendedPrice * (1.0f-l.discount))
-      val sumCharge = e.Sum(l=> l.extendedPrice * (1.0f-l.discount) * (1.0f+l.tax))
-      val avgQty = e.Average(_.quantity)
-      val avgPrice = e.Average(_.extendedPrice)
-      val avgDiscount = e.Average(_.discount)
-      val count = e.Count
-      //hack
-      ResultQ1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, count)
-    }) 
-    val res9 = lineItems Where(_.shipDate <= Date("1998-12-01")) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(e => {
-      val returnFlag = e.key._1
-      val lineStatus = e.key._2
-      val sumQty = e.Sum(_.quantity)
-      val sumBasePrice = e.Sum(_.extendedPrice)
-      val sumDiscountedPrice = e.Sum(l => l.extendedPrice * (1.0f-l.discount))
-      val sumCharge = e.Sum(l=> l.extendedPrice * (1.0f-l.discount) * (1.0f+l.tax))
-      val avgQty = e.Average(_.quantity)
-      val avgPrice = e.Average(_.extendedPrice)
-      val avgDiscount = e.Average(_.discount)
-      val count = e.Count
-      //hack
-      ResultQ1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, count)
-    }) 
-    val res10 = lineItems Where(_.shipDate <= Date("1998-12-01")) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(e => {
-      val returnFlag = e.key._1
-      val lineStatus = e.key._2
-      val sumQty = e.Sum(_.quantity)
-      val sumBasePrice = e.Sum(_.extendedPrice)
-      val sumDiscountedPrice = e.Sum(l => l.extendedPrice * (1.0f-l.discount))
-      val sumCharge = e.Sum(l=> l.extendedPrice * (1.0f-l.discount) * (1.0f+l.tax))
-      val avgQty = e.Average(_.quantity)
-      val avgPrice = e.Average(_.extendedPrice)
-      val avgDiscount = e.Average(_.discount)
-      val count = e.Count
-      //hack
-      ResultQ1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, count)
-    }) 
-    toc(res1,res2,res3,res4,res5,res6,res7,res8,res9,res10)
-    res1.printAsTable()
-*/    
-    
+      val countOrder = g.Count
+    }) OrderBy(_.returnFlag) ThenBy(_.lineStatus)
+    toc(q)
+    q.printAsTable()
+  }    
+}
 
-
-	
-  }
+trait TPCHQ2Trait extends TPCHBaseTrait {
+  val queryName = "Q2"  
   
-  
-  
-
+  def query() = {
+    val parts = loadParts(); val partSuppliers = loadPartSuppliers(); val suppliers = loadSuppliers(); val nations = loadNations(); val regions = loadRegions()
+    tic(parts.size)
+    val q = parts.Where(p => {val res:Rep[Boolean] = p.p_size == 15; res}).Where(_.p_type.endsWith("BRASS")).Join(partSuppliers).WhereEq(_.p_partkey, _.ps_partkey).Select((p, ps) => new  Result {
+      val p_partkey = p.p_partkey
+      val p_mfgr = p.p_mfgr
+      val ps_suppkey = ps.ps_suppkey
+      val ps_supplycost = ps.ps_supplycost
+    }).Join(suppliers).WhereEq(_.ps_suppkey,_.s_suppkey).Select((j, s) => new Result {
+      val s_acctbal = s.s_acctbal
+      val s_name = s.s_name
+      val p_partkey = j.p_partkey
+      val p_mfgr = j.p_mfgr
+      val s_address = s.s_address
+      val s_phone = s.s_phone
+      val s_comment = s.s_comment
+      val ps_supplycost = j.ps_supplycost
+      val s_nationkey = s.s_nationkey
+    }).Join(nations).WhereEq(_.s_nationkey, _.n_nationkey).Select((j, n) => new Result {
+      val s_acctbal = j.s_acctbal
+      val s_name = j.s_name
+      val n_name = n.n_name
+      val p_partkey = j.p_partkey
+      val p_mfgr = j.p_mfgr
+      val s_address = j.s_address
+      val s_phone = j.s_phone
+      val s_comment = j.s_comment
+      val ps_supplycost = j.ps_supplycost
+      val n_regionkey = n.n_regionkey
+    }).Join(regions).WhereEq(_.n_regionkey, _.r_regionkey).Select((j, r) => new Result {
+      val s_acctbal = j.s_acctbal
+      val s_name = j.s_name
+      val n_name = j.n_name
+      val p_partkey = j.p_partkey
+      val p_mfgr = j.p_mfgr
+      val s_address = j.s_address
+      val s_phone = j.s_phone
+      val s_comment = j.s_comment
+      val ps_supplycost = j.ps_supplycost
+      val r_name = r.r_name
+    }).Where(_.r_name == "EUROPE").Where(j1 => j1.ps_supplycost == {
+      val pssc = partSuppliers.Where(_.ps_partkey == j1.p_partkey).
+        Join(suppliers).WhereEq(_.ps_suppkey, _.s_suppkey).Select((ps, s) => new Result {
+        val ps_supplycost = ps.ps_supplycost
+        val s_nationkey = s.s_nationkey
+       }).Join(nations).WhereEq(_.s_nationkey, _.n_nationkey).Select((jj1, n) => new Result {
+         val ps_supplycost = jj1.ps_supplycost
+         val n_regionkey = n.n_regionkey
+       }).Join(regions).WhereEq(_.n_regionkey, _.r_regionkey).Select((jj2, r) => new Result {
+         val ps_supplycost = jj2.ps_supplycost
+         val r_name = r.r_name
+       }).Where(_.r_name == "EUROPE").Min(_.ps_supplycost)
+    }) OrderByDescending(_.s_acctbal) ThenBy(_.n_name) ThenBy(_.s_name) ThenBy(_.p_partkey)
+    toc(q)
+    q.printAsTable(10)
+  }    
 }
