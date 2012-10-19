@@ -225,7 +225,8 @@ object Sync {
     // Should be in this order: frees for an op should be emitted after all syncs for the op are emitted (sync may need to use it)
     addFreeToSchedule()
     addSyncToSchedule()
-
+    syncSet = new mutable.HashMap[Sync,Sync]
+    freeList = new mutable.ArrayBuffer[Free]
   }
 
   protected def writeDataFrees(op: DeliteOP) {

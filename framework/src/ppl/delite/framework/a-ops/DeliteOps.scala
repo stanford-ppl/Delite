@@ -1637,18 +1637,20 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   // -- begin emit reduce
 
-  def emitFirstReduceElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_], prefixSym: String = "") {
+  // Assigns the first reduce element to the result symbol
+  def emitFirstReduceElemAssign(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_], prefixSym: String = "") {
+    val resultSym = fieldAccess(prefixSym,quote(sym))
     if (elem.cond.nonEmpty) {
       // if we have conditionals, we have to delay the the initialization of the accumulator to the
       // first element where the condition is true
       stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
-      emitReturn(quote(getBlockResult(elem.func)))
+      emitAssignment(resultSym,quote(getBlockResult(elem.func)))
       stream.println("} else {")
-      emitReturn(fieldAccess(prefixSym,quote(sym)+"_zero"))
+      emitAssignment(resultSym,fieldAccess(prefixSym,quote(sym)+"_zero"))
       stream.println("}")
     }
     else {
-      stream.println(quote(getBlockResult(elem.func)))
+      emitAssignment(resultSym,quote(getBlockResult(elem.func)))
     }
   }
 
@@ -1733,9 +1735,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       case (sym, elem: DeliteCollectElem[_,_,_]) =>
         elem.par match {
           case ParBuffer =>
-            emitValDef(elem.sV, "0")
+            emitVarDef(quote(elem.sV), remap(elem.sV.tp), "0")
           case ParFlat =>
-            emitValDef(elem.sV, quote(op.size))
+            emitVarDef(quote(elem.sV), remap(elem.sV.tp), quote(op.size))
         }
         emitBlock(elem.allocN)
         elem.par match {
@@ -1775,13 +1777,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           emitCollectElem(op, sym, elem)
         case (sym, elem: DeliteHashElem[_,_]) => // done above
         case (sym, elem: DeliteForeachElem[_]) => 
-          stream.println(quote(sym) + " = {"/*}*/)
           emitForeachElem(op, sym, elem)
         case (sym, elem: DeliteReduceElem[_]) =>
           if (elem.stripFirst) {
-            stream.println(quote(sym) + " = {"/*}*/)
-            emitFirstReduceElem(op, sym, elem)
-            stream.println(/*{*/"}")
+            emitFirstReduceElemAssign(op, sym, elem)
           }
           else {
             emitReduceElem(op, sym, elem)
@@ -1799,7 +1798,6 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitCollectElem(op, sym, elem)
       case (sym, elem: DeliteHashElem[_,_]) => // done above
       case (sym, elem: DeliteForeachElem[_]) => 
-        stream.println(quote(sym) + " = {"/*}*/)                             
         emitForeachElem(op, sym, elem)
       case (sym, elem: DeliteReduceElem[_]) =>
         emitReduceElem(op, sym, elem)
@@ -1817,9 +1815,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         if (elem.par == ParBuffer) {
           emitValDef(elem.allocVal, quote(sym) + "_buf")
           if (elem.cond.nonEmpty)
-            emitValDef(elem.sV, quote(sym) + "_conditionals")
+            emitAssignment(quote(elem.sV), quote(sym) + "_conditionals")
           else
-            emitValDef(elem.sV, quote(op.size))
+            emitAssignment(quote(elem.sV), quote(op.size))
           emitBlock(elem.buf.setSize)
         }
         else {
@@ -1934,9 +1932,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             if (elem.stripFirst) {
               emitAssignment(fieldAccess("__act2",quote(sym)+"_zero"),fieldAccess("__act",quote(sym)+"_zero")) // do we need zero here? yes, for comparing against...
               stream.println("if (" + quote(op.size) + " > 0) {")
-              emitFirstReduceElem(op, sym, elem, "__act2")
-              emitAssignment(fieldAccess("__act2",quote(sym)),quote(sym)) //TODO: okay to use quote(sym)?
-              stream.println("} else")
+              emitFirstReduceElemAssign(op, sym, elem, "__act2")
+              stream.println("} else {")
               emitAssignment(fieldAccess("__act2",quote(sym)),fieldAccess("__act2",quote(sym)+"_zero"))
               stream.println(/*{*/"}")
             } else {
@@ -1945,7 +1942,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
                 emitAssignment(fieldAccess("__act2",quote(sym)),fieldAccess("__act2",quote(sym)+"_zero"))
               } else {
                 emitBlock(elem.accInit)
-                emitAssignment(fieldAccess("__act2",quote(sym)),fieldAccess("__act2",quote(sym)+"_zero.Clone")) // separate zero buffer
+                emitAssignment(fieldAccess("__act2",quote(sym)),quote(getBlockResult(elem.accInit))) // separate zero buffer
               }
               stream.println("if (" + quote(op.size) + " > 0) {")
               emitReduceElem(op, sym, elem, "__act2")
