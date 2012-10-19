@@ -1,10 +1,6 @@
 package ppl.dsl.opticvx.problem
 
-//an abstract matrix has the following properties:
-// - arity (number of integer size parameters it takes)
-// - domain shape (as a shape in that arity)
-// - codomain shape (as a shape in that arity)
-// - input shape (as a shape in that arity)
+/*
 
 trait Expr {
   //The number of integer parameters in this expression's scope
@@ -153,5 +149,6 @@ case class ExprNeg(val arg: Expr) extends Expr {
   val bindings: Seq[IShape] = arg.bindings
 }
 
+*/
 
 

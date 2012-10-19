@@ -1,5 +1,6 @@
 package ppl.dsl.opticvx.problem
 
+/*
 trait Cone {
   val nIntParams: Int
   val shape: Shape
@@ -35,4 +36,4 @@ case class ConeSecondOrder(val size: Size) extends Cone {
     ShapeScalar(nIntParams), 
     ShapeFor(nIntParams, size, ShapeScalar(nIntParams+1))))
 }
-
+*/

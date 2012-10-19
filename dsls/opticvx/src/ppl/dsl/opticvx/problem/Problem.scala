@@ -2,6 +2,7 @@ package ppl.dsl.opticvx.problem
 
 class ProblemIRValidationException extends Exception
 
+/*
 case class Problem(
   val variableShape: Shape,
   val dataInputShape: Shape,
@@ -37,3 +38,4 @@ case class Problem(
   }
   if (conicConstraint.shape.xi != cone.shape) throw new ProblemIRValidationException()
 }
+*/
