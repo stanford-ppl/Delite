@@ -209,6 +209,8 @@ case class AlmapIndex(val at: Size, val arg: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapIndex(at.arityOp(op), arg.arityOp(op))
   
   def mmpy(x: Almap): Almap = AlmapIndex(at, arg.mmpy(x))
+  
+  def T: Almap = throw new ProblemIRValidationException()
 }
 
 //Represents a sum over a vector-indexed array of linear functionals
@@ -224,6 +226,8 @@ case class AlfReduce(val size: Size, val body: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlfReduce(size.arityOp(op), body.arityOp(op))
   
   def mmpy(x: Almap): Almap = AlfReduce(size, body.mmpy(x.promote))
+  
+  def T: Almap = throw new ProblemIRValidationException()
 }
 
 //A compound linear map of different subexpressions
@@ -241,6 +245,8 @@ case class AlmapStruct(val body: Seq[Almap]) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapStruct(body map ((x) => x.arityOp(op)))
   
   def mmpy(x: Almap): Almap = AlmapStruct(body map ((b) => b.mmpy(x)))
+  
+  def T: Almap = throw new ProblemIRValidationException()
 }
 
 //Represents a linear map that accesses some part of the ouput of another map
@@ -255,4 +261,6 @@ case class AlmapAccess(val at: Int, val arg: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapAccess(at, arg.arityOp(op))
   
   def mmpy(x: Almap): Almap = AlmapAccess(at, arg.mmpy(x))
+  
+  def T: Almap = throw new ProblemIRValidationException()
 }
