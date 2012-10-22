@@ -185,12 +185,6 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteCollectionOpsE
   
   def darray_unsafe_update[T:Manifest](x: Exp[DeliteArray[T]], n: Exp[Int], y: Exp[T])(implicit ctx: SourceContext) = DeliteArrayUpdate(x,n,y)
   def darray_unsafe_copy[T:Manifest](src: Exp[DeliteArray[T]], srcPos: Exp[Int], dest: Exp[DeliteArray[T]], destPos: Exp[Int], len: Exp[Int])(implicit ctx: SourceContext) = DeliteArrayCopy(src,srcPos,dest,destPos,len)  
-  
-  //internally rewrite a Var(NewArray) to contain an immutable array; works with the above rewrites for array_update
-  /* override def var_new[T:Manifest](init: Exp[T])(implicit ctx: SourceContext): Var[T] = init match {
-    case Def(Reflect(n@DeliteArrayNew(length),_,_)) => var_new(darray_new_immutable(length)(n.mA,ctx).asInstanceOf[Exp[T]])
-    case _ => super.var_new(init)
-  } */
 
 
   //////////////
