@@ -8,6 +8,7 @@ import scala.virtualization.lms.internal.{GenericCodegen, GenericFatCodegen, Gen
 import ppl.delite.framework.{Config, Util}
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.extern.lib._
+import ppl.delite.framework.transform.LoopSoAOpt
 
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
 trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with FunctionBlocksExp with IfThenElseFatExp
@@ -1292,7 +1293,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
 
 
-trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt with BaseGenStaticData {
+trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt with LoopSoAOpt with BaseGenStaticData {
   val IR: DeliteOpsExp
   import IR._
 

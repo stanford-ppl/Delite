@@ -139,20 +139,5 @@ trait IndexVectorDenseOpsExpOpt extends IndexVectorDenseOpsExp { this: OptiMLExp
 
 trait ScalaGenIndexVectorDenseOps extends ScalaGenFat {
   val IR: IndexVectorDenseOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    //case IndexVectorDenseLength(x) => emitValDef(sym, quote(x) + "._length")
-    //case IndexVectorDenseApply(x,n) => emitValDef(sym, quote(x) + "._data(" + quote(n) + ")")
-    // case IndexVectorDenseNewUnsafe(x) => 
-    //   stream.println("val " + quote(sym) + " = {")
-    //   stream.println("val res = new generated.scala.IndexVectorDense(0)")
-    //   stream.println("res._data = " + quote(x) + "._data")
-    //   stream.println("res._length = " + quote(x) + "._length")
-    //   stream.println("res._isRow = " + quote(x) + "._isRow")
-    //   stream.println("res")
-    //   stream.println("}")
-    case _ => super.emitNode(sym, rhs)
-  }
 }
   

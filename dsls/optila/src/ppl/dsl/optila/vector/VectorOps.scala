@@ -1327,49 +1327,21 @@ trait VectorOpsExpOpt extends VectorOpsExp { this: OptiLAExp =>
 
 trait BaseGenVectorOps extends GenericFatCodegen {
   val IR: VectorOpsExp
-  import IR._
-
 }
 
 trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
   val IR: VectorOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    // these are the ops that call through to the underlying real data structure
-//     case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new generated.scala.RangeVectorImpl(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
-    case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new generated.scala.RangeVector(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
-    case _ => super.emitNode(sym, rhs)
-  }
 }
-
 
 trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenDataStruct {
   val IR: VectorOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case VectorObjectRange(start, end, stride, isRow) => stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,%s,%s);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(start),quote(end),quote(stride),quote(isRow)))
-    case _ => super.emitNode(sym, rhs)
-  }
 }
 
 trait OpenCLGenVectorOps extends BaseGenVectorOps with OpenCLGenFat with OpenCLGenDataStruct {
   val IR: VectorOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case VectorObjectRange(start, end, stride, isRow) => stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,%s,%s);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(start),quote(end),quote(stride),quote(isRow)))
-    case _ => super.emitNode(sym, rhs)
-  }
 }
 
 trait CGenVectorOps extends BaseGenVectorOps with CGenFat {
   val IR: VectorOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
 }
 

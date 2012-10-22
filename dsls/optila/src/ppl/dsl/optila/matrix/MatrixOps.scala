@@ -1286,42 +1286,16 @@ trait MatrixOpsExpOpt extends MatrixOpsExp {
 
 trait ScalaGenMatrixOps extends ScalaGenBase {
   val IR: MatrixOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    // these are the ops that call through to the underlying real data structure
-    //case m@SymmetricMatrixObjectNew(n) => emitValDef(sym, "new generated.scala.SymmetricMatrixImpl[" + remap(m.m) + "](" + quote(n) + ")")
-    //case MatrixVView(x,start,stride,length,isRow) => emitValDef(sym, quote(x) + ".vview(" + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ")")
-    //case MatrixApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
-    //case MatrixGetRow(x,i) => emitValDef(sym, quote(x) + ".getRow(" + quote(i) + ")")
-    //case MatrixGetCol(x,j) => emitValDef(sym, quote(x) + ".getCol(" + quote(j) + ")")
-    case _ => super.emitNode(sym, rhs)
-  }
 }
 
 trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
   val IR: MatrixOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
 }
 
 trait OpenCLGenMatrixOps extends OpenCLGenBase with OpenCLGenDataStruct {
   val IR: MatrixOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
 }
 
 trait CGenMatrixOps extends CGenBase {
   val IR: MatrixOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
 }

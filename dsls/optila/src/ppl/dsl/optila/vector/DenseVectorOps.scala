@@ -596,118 +596,17 @@ trait BaseGenDenseVectorOps extends GenericFatCodegen {
 
 trait ScalaGenDenseVectorOps extends BaseGenDenseVectorOps with ScalaGenFat {
   val IR: DenseVectorOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    // these are the ops that call through to the underlying real data structure
-    
-    //     case DenseVectorZeroDouble(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorDoubleImpl(" + quote(length) + ", " + quote(isRow) + ")")
-    //     case DenseVectorZeroFloat(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorFloatImpl(" + quote(length) + ", " + quote(isRow) + ")")
-    //     case DenseVectorZeroInt(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorIntImpl(" + quote(length) + ", " + quote(isRow) + ")")
-    //     case DenseVectorEmptyDouble() => emitValDef(sym, "generated.scala.EmptyVectorDoubleImpl")
-    //     case DenseVectorEmptyFloat() => emitValDef(sym, "generated.scala.EmptyVectorFloatImpl")
-    //     case DenseVectorEmptyInt() => emitValDef(sym, "generated.scala.EmptyVectorIntImpl")
-    //     case v@DenseVectorEmpty() => emitValDef(sym, "new generated.scala.EmptyVectorImpl[" + remap(v.mA) + "]")
-    //     case v@DenseVectorNew(length, isRow) => emitValDef(sym, "new generated.scala.VectorImpl[" + remap(v.mA) + "](" + quote(length) + "," + quote(isRow) + ")")        
-    //case v@DenseVectorNew(length, isRow) => emitValDef(sym, "new " + remap("generated.scala.DenseVector[" + remap(v.mA) + "]")+"(" + quote(length) + "," + quote(isRow) + ")")        
-    //case DenseVectorApply(x,n) => emitValDef(sym, quote(x) + "._data(" + quote(n) + ")")
-    //case DenseVectorUpdate(x,n,y) => emitValDef(sym, quote(x) + "._data(" + quote(n) + ") = " + quote(y))
-    //case DenseVectorLength(x) => emitValDef(sym, quote(x) + "._length")
-    //case DenseVectorIsRow(x) => emitValDef(sym, quote(x) + "._isRow")
-    //case DenseVectorRawData(x) => emitValDef(sym, quote(x) + "._data")
-    //case DenseVectorSetLength(x,v) => emitValDef(sym, quote(x) + ".length = " + quote(v))
-    //case DenseVectorSetIsRow(x,v) => emitValDef(sym, quote(x) + ".isRow = " + quote(v))
-    //case DenseVectorSetRawData(x,v) => emitValDef(sym, quote(x) + ".data = " + quote(v))
-    // case DenseVectorMutableTrans(x) => emitValDef(sym, quote(x) + ".mtrans")
-    // case DenseVectorSort(x) => emitValDef(sym, quote(x) + ".sort")
-    // case DenseVectorCopyFrom(x,pos,y) => emitValDef(sym, quote(x) + ".copyFrom(" + quote(pos) + ", " + quote(y) + ")")
-    // case DenseVectorInsert(x,pos,y) => emitValDef(sym, quote(x) + ".insert(" + quote(pos) + ", " + quote(y) + ")")
-    // case DenseVectorInsertAll(x,pos,y) => emitValDef(sym, quote(x) + ".insertAll(" + quote(pos) + ", " + quote(y) + ")")
-    // case DenseVectorRemoveAll(x,pos,len) => emitValDef(sym, quote(x) + ".removeAll(" + quote(pos) + ", " + quote(len) + ")")
-    // case DenseVectorTrim(x) => emitValDef(sym, quote(x) + ".trim")
-    // case DenseVectorClear(x) => emitValDef(sym, quote(x) + ".clear()")
-    
-    //case DenseVectorZeroDouble(length, isRow) => emitValDef(sym, "new " + remap("generated.scala.DenseVector[Double]")+"(" + quote(length) + ", " + quote(isRow) + ")")
-    //case DenseVectorZeroFloat(length, isRow) => emitValDef(sym, "new " + remap("generated.scala.DenseVector[Float]")+"(" + quote(length) + ", " + quote(isRow) + ")")
-    //case DenseVectorZeroInt(length, isRow) => emitValDef(sym, "new " + remap("generated.scala.DenseVector[Int]")+"(" + quote(length) + ", " + quote(isRow) + ")")
-    //case DenseVectorEmptyDouble() => emitValDef(sym, "new " + remap("generated.scala.DenseVector[Double]")+"(0,true)")
-    //case DenseVectorEmptyFloat() => emitValDef(sym, "new " + remap("generated.scala.DenseVector[Float]")+"(0,true)")
-    //case DenseVectorEmptyInt() => emitValDef(sym, "new " + remap("generated.scala.DenseVector[Int]")+"(0,true)")
-    //case v@DenseVectorEmpty() => emitValDef(sym, "new " + remap("generated.scala.DenseVector[" + remap(v.mA) + "]")+"(0,true)")
-    
-    case _ => super.emitNode(sym, rhs)
-  }
 }
 
 trait CudaGenDenseVectorOps extends BaseGenDenseVectorOps with CudaGenFat with CudaGenDataStruct {
   val IR: DenseVectorOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    //case DenseVectorApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
-    //case DenseVectorUpdate(x,n,y) => stream.println(quote(x) + ".update(" + quote(n) + "," + quote(y) + ");")
-    //case DenseVectorLength(x) => emitValDef(sym, quote(x) + ".length")
-    //case DenseVectorIsRow(x) => emitValDef(sym, quote(x) + ".isRow")
-    //case DenseVectorRawData(x) => emitValDef(sym, quote(x) + ".getdata()")
-    //case DenseVectorSetLength(x,v) => stream.println(quote(x) + ".length = " + quote(v) + ";")
-    //case DenseVectorSetIsRow(x,v) => stream.println(quote(x) + ".isRow = " + quote(v) + ";")
-    //case DenseVectorSetRawData(x,v) => stream.println(quote(x) + ".setdata(" + quote(v) + ");")
-
-    //case DenseVectorNew(length, isRow) => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow)))
-    //case DenseVectorZeroDouble(length, isRow) => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,0);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow)))
-    //case DenseVectorZeroFloat(length, isRow) => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,0);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow)))
-    //case DenseVectorZeroInt(length, isRow) => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,0);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow)))
-    //case DenseVectorEmptyDouble() => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(0,true);".format(remap(sym.tp),quote(sym),remap(sym.tp)))
-    //case DenseVectorEmptyFloat() => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(0,true);".format(remap(sym.tp),quote(sym),remap(sym.tp)))
-    //case DenseVectorEmptyInt() => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(0,true);".format(remap(sym.tp),quote(sym),remap(sym.tp)))
-    //case DenseVectorEmpty() => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(0,true);".format(remap(sym.tp),quote(sym),remap(sym.tp)))
-    
-    case _ => super.emitNode(sym, rhs)
-  }
 }
 
 trait OpenCLGenDenseVectorOps extends BaseGenDenseVectorOps with OpenCLGenFat with OpenCLGenDataStruct {
   val IR: DenseVectorOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    //case DenseVectorApply(x,n) => emitValDef(sym, remap(x.tp) + "_apply(" + quote(x) + "," + quote(n) + ")")
-    //case DenseVectorUpdate(x,n,y) => stream.println(remap(x.tp) + "_update(" + quote(x) + "," + quote(n) + "," + quote(y) + ");")
-    //case DenseVectorLength(x) => emitValDef(sym, quote(x) + ".length")
-    //case DenseVectorIsRow(x) => emitValDef(sym, quote(x) + ".isRow")
-    //case DenseVectorRawData(x) => emitValDef(sym, remap(x.tp) + "_getdata(" + quote(x) + ")")
-    //case DenseVectorSetLength(x,v) => stream.println(quote(x) + ".length = " + quote(v) + ";")
-    //case DenseVectorSetIsRow(x,v) => stream.println(quote(x) + ".isRow = " + quote(v) + ";")
-    //case DenseVectorSetRawData(x,v) => stream.println(remap(x.tp) + "_setdata(" + quote(x) + "," + quote(v) + ");")
-
-    //case DenseVectorNew(length, isRow) => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow)))
-    //case DenseVectorZeroDouble(length, isRow) => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,0);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow)))
-    //case DenseVectorZeroFloat(length, isRow) => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,0);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow)))
-    //case DenseVectorZeroInt(length, isRow) => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,0);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow)))
-    //case DenseVectorEmptyDouble() => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(0,true);".format(remap(sym.tp),quote(sym),remap(sym.tp)))
-    //case DenseVectorEmptyFloat() => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(0,true);".format(remap(sym.tp),quote(sym),remap(sym.tp)))
-    //case DenseVectorEmptyInt() => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(0,true);".format(remap(sym.tp),quote(sym),remap(sym.tp)))
-    //case DenseVectorEmpty() => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(0,true);".format(remap(sym.tp),quote(sym),remap(sym.tp)))
-
-    case _ => super.emitNode(sym, rhs)
-  }
 }
 
 trait CGenDenseVectorOps extends BaseGenDenseVectorOps with CGenFat {
   val IR: DenseVectorOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    //case DenseVectorApply(x, n) =>
-    //  emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
-    //case DenseVectorUpdate(x,n,y) =>
-    //  stream.println("%s.update(%s,%s);".format(quote(x),quote(n),quote(y)))
-    //case DenseVectorLength(x)    =>
-    //  emitValDef(sym, quote(x) + ".length")
-    //case DenseVectorIsRow(x)     =>
-    //  emitValDef(sym, quote(x) + ".isRow")
-
-    case _ => super.emitNode(sym, rhs)
-  }
 }
 

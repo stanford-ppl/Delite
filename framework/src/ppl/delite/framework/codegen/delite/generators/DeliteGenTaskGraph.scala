@@ -3,6 +3,7 @@ package ppl.delite.framework.codegen.delite.generators
 import ppl.delite.framework.codegen.delite.DeliteCodegen
 import ppl.delite.framework.ops.{VariantsOpsExp, DeliteOpsExp}
 import ppl.delite.framework.Config
+import ppl.delite.framework.transform.LoopSoAOpt
 import collection.mutable.{ArrayBuffer, ListBuffer, HashMap}
 import java.io.{StringWriter, FileWriter, File, PrintWriter}
 import scala.virtualization.lms.common.LoopFusionOpt
@@ -10,7 +11,7 @@ import scala.virtualization.lms.internal.{GenerationFailedException}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import scala.reflect.SourceContext
 
-trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
+trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOpt {
   val IR: DeliteOpsExp
   import IR.{ __newVar => _, __assign => _, __ifThenElse => _ , _ }
 

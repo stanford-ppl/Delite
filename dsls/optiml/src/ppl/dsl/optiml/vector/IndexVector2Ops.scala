@@ -266,14 +266,4 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp with LoweringTra
 
 trait ScalaGenIndexVector2Ops extends ScalaGenBase {
   val IR: IndexVector2OpsExp
-  import IR._
-
-  //override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    // case IndexVector2New(rowInd, colInd) =>
-    //   emitValDef(sym, "new generated.scala.IndexVector2Impl(" + quote(rowInd) +  "," + quote(colInd) + ")")
-    // case IndexVector2Wildcard() => emitValDef(sym, "generated.scala.IndexVectorWCImpl")
-    // case IndexVector2RowInd(x) => emitValDef(sym, quote(x) + ".rowInd")
-    // case IndexVector2ColInd(x) => emitValDef(sym, quote(x) + ".colInd")
-  // case _ => super.emitNode(sym, rhs)
-  // }
 }

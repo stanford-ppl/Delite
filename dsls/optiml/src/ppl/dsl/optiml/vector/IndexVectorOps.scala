@@ -111,15 +111,4 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
 
 trait ScalaGenIndexVectorOps extends ScalaGenBase {
   val IR: IndexVectorOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    // should not be required -- pattern matches in IndexVectorRangeOps.scala should always take precedence
-    // case v@IndexVectorRangeNew(start, end) =>
-    //   emitValDef(sym, "new generated.scala.IndexVectorRange(" + quote(start) +  "," + quote(end) + ")")
-    //case v@IndexVectorDenseNew(len, isRow) =>
-    //  emitValDef(sym, "new generated.scala.IndexVectorDense(" + quote(len) + ", " + quote(isRow) + ")")
-
-    case _ => super.emitNode(sym, rhs)
-  }
 }

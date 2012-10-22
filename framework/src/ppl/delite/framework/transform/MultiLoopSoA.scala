@@ -30,10 +30,10 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         case Some(newSym) => newSym
         case None => super.transformStm(stm)
       }
-      case TP(sym, s: DeliteOpSingleTask[r]) => unwrapSingleTask(s)(s.mR) match {
+      /*case TP(sym, s: DeliteOpSingleTask[r]) => unwrapSingleTask(s)(s.mR) match {
         case Some(newSym) => newSym
         case None => super.transformStm(stm)
-      }
+      }*/
       case _ => super.transformStm(stm)
     }
   }
@@ -98,11 +98,12 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
 
       val newLoop = t(body.func) match {
         case Block(Def(Struct(ta,es))) if Config.soaEnabled => soaTransform(ta,es)
-        case Block(Def(a)) => copyLoop(t(body.func))
+        case _ => copyLoop(t(body.func))
       }
       val newElems = elems.map { e => 
         if (e._1 == dataField) (e._1, newLoop)
         else if (e._1 == sizeField) (e._1, t(size))
+        else if (e._2.tp.erasure == classOf[Var[_]]) (e._1, readVar(Variable(t(e._2).asInstanceOf[Exp[Var[Any]]]))(mtype(e._2.tp.typeArguments(0)),implicitly[SourceContext]))
         else (e._1, t(e._2))
       }
       val res = struct[I](tag, newElems)
@@ -118,6 +119,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
     case Block(Def(Reify(x, _, _))) => x
     case Block(x) => x
   }
+
 
   //this is extremely unfortunate code duplication, but trying to parameterize the collection type causes manifest issues
   def soaBufferCollect[A:Manifest, I<:DeliteCollection[A]:Manifest, CA<:DeliteCollection[A]:Manifest](size: Exp[Int], v: Sym[Int], body: DeliteCollectElem[A,I,CA]): Option[Exp[CA]] = t(body.allocN) match {
@@ -172,6 +174,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
       val newElems = elems.map { e => 
         if (e._1 == dataField) (e._1, newLoop)
         else if (e._1 == sizeField) (e._1, newLoop.length)
+        else if (e._2.tp.erasure == classOf[Var[_]]) (e._1, readVar(Variable(t(e._2).asInstanceOf[Exp[Var[Any]]]))(mtype(e._2.tp.typeArguments(0)),implicitly[SourceContext]))
         else (e._1, t(e._2))
       }
       val res = struct[I](tag, newElems)
@@ -319,11 +322,45 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
     case _ => None
   }
 
+  //case class FieldFromEffect[T](field: Exp[T], effects: Block[Unit]) extends Def[T]
+  //val block = Block(Reify(Const(()), es, u))
+  //struct(tag, elems.map(e => (e._1, effectField(e._2, block))))
 
   def unwrapSingleTask[A:Manifest](s: DeliteOpSingleTask[A]): Option[Exp[A]] = s.block match {
     case Block(Def(e@Struct(_,_))) => Console.println("unwrapped sequential: " + e.toString); Some(e)
-    case Block(Def(Reify(Def(e@Struct(_,_)),es,u))) => Console.println("unwrapped sequential with reify: " + e.toString); Block(Reify(Const(()), es, u)); Some(e)
+    //case Block(Def(Reify(Def(Struct(_,_)),es,u))) => Console.println("unwrapped sequential with reify: " + e.toString)
     case Block(Def(a)) => Console.println("failed on sequential: " + a.toString); None
+  }
+
+}
+
+trait LoopSoAOpt extends BaseGenLoopsFat with LoopFusionOpt {
+  val IR: DeliteOpsExp
+  import IR._
+
+  //pre-fuse any loops that have been split by SoA transform
+  //such loops have the same 'size' sym, the same 'v' sym, and are in the same scope
+  override def focusExactScopeFat[A](resultB: List[Block[Any]])(body: List[Stm] => A): A = {
+    val result = resultB.map(getBlockResultFull) flatMap { case Combine(xs) => xs case x => List(x) }
+    val currentScope = innerScope
+    val levelScope = getExactScope(currentScope)(result) //top-level scope
+    
+    val loops = levelScope collect { case t@TTP(_, _, SimpleFatLoop(_,_,_)) => t }
+    val splitLoops = loops groupBy { case TTP(_, _, SimpleFatLoop(size,v,bodies)) => v }
+
+    val fusedLoops = splitLoops map {
+      case (v, l) if l.length == 1 => l.head
+      case (v, l) => 
+        val size = l.map(_.rhs.asInstanceOf[AbstractFatLoop].size) reduceLeft { (s1,s2) => assert(s1 == s2); s1 }
+        val t = TTP(l.flatMap(_.lhs), l.flatMap(_.mhs), SimpleFatLoop(size, v, l.flatMap(_.rhs.asInstanceOf[AbstractFatLoop].body)))
+        printlog("fusing split SoA loop: " + t.toString)
+        t
+    }
+
+    val remainder = currentScope diff loops
+    val newScope = remainder ++ fusedLoops
+    innerScope = getSchedule(newScope)(result) //get the order right
+    super.focusExactScopeFat(resultB)(body) //call LoopFusionOpt
   }
 
 }

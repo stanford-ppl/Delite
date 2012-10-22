@@ -67,7 +67,7 @@ trait OptiLAScalaOpsPkgExp extends OptiLAScalaOpsPkg with DSLOpsExp
   with SynchronizedArrayBufferOpsExp with HashMapOpsExp with IterableOpsExp with ArrayBufferOpsExp with ExceptionOpsExp
 
 trait OptiLAScalaCodeGenPkg extends ScalaGenDSLOps
-  with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenTupleOps with ScalaGenTupledFunctions
+  with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenTupleOps
   with ScalaGenImplicitOps with ScalaGenOrderingOps with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps
   with ScalaGenArrayOps with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps 
   with ScalaGenListOps with ScalaGenSeqOps with ScalaGenMathOps with ScalaGenCastingOps with ScalaGenSetOps with ScalaGenObjectOps
@@ -129,7 +129,7 @@ trait OptiLACompiler extends OptiLA with OptiLAUtilities
 /**
  * These are the corresponding IR nodes for OptiLA.
  */
-trait OptiLAExp extends OptiLACompiler with InterfacesExp with OptiLAScalaOpsPkgExp with FunctionBlocksExp with DeliteOpsExp with DeliteArrayFatExp with VariantsOpsExp 
+trait OptiLAExp extends OptiLACompiler with InterfacesExp with OptiLAScalaOpsPkgExp with FunctionBlocksExp with DeliteOpsExp with DeliteArrayFatExp with VariantsOpsExp
   with LanguageOpsExp with ArithOpsExpOpt with CloneableOpsExp
   with VectorOpsExpOpt with DenseVectorOpsExpOpt with SparseVectorOpsExp with RangeVectorOpsExp with DenseVectorViewOpsExpOpt with SparseVectorViewOpsExpOpt //with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
   with MatrixOpsExpOpt with DenseMatrixOpsExpOpt with SparseMatrixOpsExp with SparseMatrixBuildableOpsExp
@@ -137,7 +137,7 @@ trait OptiLAExp extends OptiLACompiler with InterfacesExp with OptiLAScalaOpsPkg
   with ExceptionOpsExp
   // -- choice of sparse matrix repr
   with SparseMatrixCSROpsExp with SparseMatrixCOOOpsExp with SparseVectorViewCSROpsExp
-  with ExpressionsOpt with DeliteTransform /*with MultiloopSoATransformExp*/ with DeliteAllOverridesExp {
+  with ExpressionsOpt with DeliteTransform with MultiloopSoATransformExp with DeliteAllOverridesExp {
 
   // this: OptiLAApplicationRunner => why doesn't this work?
   this: DeliteApplication with OptiLAApplication with OptiLAExp => // can't be OptiLAApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
@@ -218,7 +218,7 @@ trait OptiLACodeGenBase extends GenericFatCodegen with SchedulingOpt {
 }
 
 trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg with OptiLAScalaGenExternal 
-  with ScalaGenDeliteOps with ScalaGenDeliteCollectionOps with ScalaGenDeliteArrayOps
+  with ScalaGenDeliteOps with ScalaGenDeliteCollectionOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenTupledFunctions
   with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenSparseVectorOps
   with ScalaGenDenseVectorViewOps with ScalaGenSparseVectorViewOps with ScalaGenMatrixOps with ScalaGenDenseMatrixOps with ScalaGenSparseMatrixOps with ScalaGenSparseMatrixBuildableOps  
   //with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
