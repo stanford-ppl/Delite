@@ -3,14 +3,14 @@ package ppl.dsl.opticvx.dcp
 import scala.collection.immutable.Set
 
 trait DCPExpr {
-  self: DCPShape with DCPShapeNames with DCPSize =>
+  self: DCPShape with DCPShapeNames with DCPSize with DCPConstraint =>
 
   class Symbol extends Expr {
     var bound: Boolean = false
     var resolved: Boolean = false
     var boundShape: XShape = null
     def bind(sh: XShape) {
-      if (!bound) throw new DCPIRValidationException()
+      if (bound) throw new DCPIRValidationException()
       bound = true
       boundShape = sh
     }
@@ -30,20 +30,15 @@ trait DCPExpr {
     def syms: Set[Symbol]
     def verifydcp(): Unit
     
-    def +(x: Expr): Expr = {
-      if (shape != x.shape) throw new DCPIRValidationException()
-      shape match {
-        case XShapeScalar(v, s, ii) => new ExprSum(this, x)
-        case XShapeFor(sz, b) => {
-          val ipb = new IntParamBound
-          new ExprFor(sz, ipb, new ExprIndex(ipb, this) + new ExprIndex(ipb, x))
-        }
-        case _ => throw new DCPIRValidationException()
-      }
-    }
+    def +(x: Expr): Expr = new ExprSum(this, x)
     def *(x: Expr): Expr = new ExprProd(this, x)
     def unary_-(): Expr = new ExprNeg(this)
     def -(x: Expr): Expr = new ExprSum(this, new ExprNeg(x))
+    
+    def apply(at: Size): Expr = new ExprIndex(at, this)
+    
+    def <=(x: Expr): Constraint = new ConstraintNonNegative(x - this)
+    def >=(x: Expr): Constraint = new ConstraintNonNegative(this - x)
   }
 
   // Optimization variables
@@ -60,8 +55,8 @@ trait DCPExpr {
       val arg1sh = arg1.shape.asInstanceOf[XShapeScalar]
       val arg2sh = arg2.shape.asInstanceOf[XShapeScalar]
       XShapeScalar(
-        arg1sh.vexity + arg2sh.vexity, 
-        arg1sh.sign + arg2sh.sign, 
+        arg1sh.vexity + arg2sh.vexity,
+        arg1sh.sign + arg2sh.sign,
         arg1sh.isInput && arg2sh.isInput)
     }
     def syms: Set[Symbol] = arg1.syms union arg2.syms
@@ -118,6 +113,15 @@ trait DCPExpr {
     }
   }
   
+  class ExprReduce(size: Size, bound: IntParamBound, body: Expr) extends Expr {
+    def shape: XShape = body.shape
+    def syms: Set[Symbol] = body.syms
+
+    def verifydcp() {
+      body.verifydcp()
+    }
+  }
+  
   class ExprIndex(at: Size, arg: Expr) extends Expr {
     def shape: XShape = arg.shape.asInstanceOf[XShapeFor].body
     def syms: Set[Symbol] = arg.syms
@@ -130,15 +134,19 @@ trait DCPExpr {
   
   // Input ops
   
-  // class ExprInputScalar(arg: Exp[Float], sign: Signum) extends Expr {
-  //   def shape: XShape = XShapeScalar(Signum.Zero, sign, true)
-  //   def vars: Set[OptVar] = Set()
-  // }
+  class ExprInputScalar(arg: Exp[Double], sign: Signum) extends Expr {
+    def shape: XShape = XShapeScalar(Signum.Zero, sign, true)
+    def syms: Set[Symbol] = Set()
+    
+    def verifydcp() { }
+  }
   
-  // class ExprInputVector(size: Size, arg: Exp[Array[Float]], sign: Signum) extends Expr {
-  //   def shape: XShape = XShapeFor(size, XShapeScalar(Signum.Zero, sign, true))
-  //   def vars: Set[OptVar] = Set()
-  // }
+  class ExprInputVector(size: Size, arg: Exp[Array[Double]], sign: Signum) extends Expr {
+    def shape: XShape = XShapeFor(size, XShapeScalar(Signum.Zero, sign, true))
+    def syms: Set[Symbol] = Set()
+  
+    def verifydcp() { }
+  }
   
   
 }

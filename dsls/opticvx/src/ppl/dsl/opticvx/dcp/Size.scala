@@ -38,6 +38,8 @@ trait DCPSize extends BaseExp {
 
   implicit def intparam2size(ip: IntParam): Size = Size(0, Map(ip -> 1))
   implicit def int2size(i: Int): Size = Size(i, Map())
+  implicit def expint2size(i: Exp[Int]): Size = Size(0, Map(new IntParamInput(i) -> 1))
+
 
   case class SizeIntMpyHack(a: Int) {
     def *(s: Size): Size = s*a
@@ -45,3 +47,4 @@ trait DCPSize extends BaseExp {
 
   implicit def sizeintmpyhackimplicit(i: Int) = SizeIntMpyHack(i)
 }
+

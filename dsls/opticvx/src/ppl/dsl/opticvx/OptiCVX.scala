@@ -89,18 +89,25 @@ trait OptiCVXScalaCodeGenPkg extends ScalaGenDSLOps
 // }
 trait OptiCVX extends OptiLA
   with OptiCVXScalaOpsPkg
-  with OptVarOps
-  with ExprShapeOps
-  with ExprOps
-  with FunctionOps
-  with ConstraintOps
-  with VectorOps
-  with ObjectiveOps
-  with ConstExprOps
-  with SolverOps
-  with MatlabCVXOps
-  with AbstractMatrixOps
-  with ConeOps
+  with dcp.DCPOps
+  with dcp.DCPShape
+  with dcp.DCPShapeNames
+  with dcp.DCPSize
+  with dcp.DCPExpr
+  with dcp.DCPConstraint
+  
+//   with OptVarOps
+//   with ExprShapeOps
+//   with ExprOps
+//   with FunctionOps
+//   with ConstraintOps
+//   with VectorOps
+//   with ObjectiveOps
+//   with ConstExprOps
+//   with SolverOps
+//   with MatlabCVXOps
+//   with AbstractMatrixOps
+//   with ConeOps
   //with OptVarOps with ExprOps with ConstraintOps
   //with ObjectiveOps with FunctionOps
   //awith ConstExprOps
@@ -124,18 +131,20 @@ trait OptiCVXExp extends OptiLAExp
   with OptiCVXCompiler with OptiCVXScalaOpsPkgExp 
   with ScalaOpsPkgExp
   with DeliteOpsExp
-  with OptVarOpsExp
-  with ExprShapeOpsExp
-  with ExprOpsExp
-  with FunctionOpsExp
-  with ConstraintOpsExp
-  with VectorOpsExp
-  with ObjectiveOpsExp
-  with ConstExprOpsExp
-  with SolverOpsExp
-  with MatlabCVXOpsExp
-  with AbstractMatrixOpsExp
-  with ConeOpsExp
+  with dcp.DCPOpsExp
+  
+//   with OptVarOpsExp
+//   with ExprShapeOpsExp
+//   with ExprOpsExp
+//   with FunctionOpsExp
+//   with ConstraintOpsExp
+//   with VectorOpsExp
+//   with ObjectiveOpsExp
+//   with ConstExprOpsExp
+//   with SolverOpsExp
+//   with MatlabCVXOpsExp
+//   with AbstractMatrixOpsExp
+//   with ConeOpsExp
   //with OptVarOpsExp with ExprOpsExp with ConstraintOpsExp
   //with ObjectiveOpsExp with FunctionOpsExp
   //with ConstExprOpsExp
@@ -174,18 +183,18 @@ trait OptiCVXCodeGenScala extends OptiLACodeGenScala
   with OptiCVXCodeGenBase
   with ScalaCodeGenPkg
   with ScalaGenDeliteOps
-  with ScalaGenOptVarOps
-  with ScalaGenExprShapeOps
-  with ScalaGenExprOps
-  with ScalaGenFunctionOps
-  with ScalaGenConstraintOps
-  with ScalaGenVectorOps
-  with ScalaGenObjectiveOps
-  with ScalaGenConstExprOps
-  with ScalaGenSolverOps
-  with ScalaGenMatlabCVXOps
-  with ScalaGenAbstractMatrixOps
-  with ScalaGenConeOps
+//   with ScalaGenOptVarOps
+//   with ScalaGenExprShapeOps
+//   with ScalaGenExprOps
+//   with ScalaGenFunctionOps
+//   with ScalaGenConstraintOps
+//   with ScalaGenVectorOps
+//   with ScalaGenObjectiveOps
+//   with ScalaGenConstExprOps
+//   with ScalaGenSolverOps
+//   with ScalaGenMatlabCVXOps
+//   with ScalaGenAbstractMatrixOps
+//   with ScalaGenConeOps
   //with ScalaGenOptVarOps with ScalaGenExprOps with ScalaGenConstraintOps
   //with ScalaGenObjectiveOps with ScalaGenFunctionOps
   //with ScalaGenConstExprOps

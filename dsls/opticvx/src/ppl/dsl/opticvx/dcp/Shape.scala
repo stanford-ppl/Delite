@@ -1,5 +1,7 @@
 package ppl.dsl.opticvx.dcp
 
+import scala.virtualization.lms.common.BaseExp
+
 trait DCPShape {
   self: DCPSize =>
 
@@ -82,7 +84,7 @@ trait DCPShape {
 }
   
 trait DCPShapeNames {
-  self: DCPShape =>
+  self: DCPShape with DCPSize with BaseExp =>
 
   sealed class VSImplGen(val vexity: Signum, val sign: Signum)
   sealed class TSImplGen(val tonicity: Signum, val niltonicity: Signum)
@@ -123,5 +125,7 @@ trait DCPShapeNames {
 
   implicit def vsimpl(z: VSImplGen): VShapeScalar = VShapeScalar(z.vexity, z.sign)
   implicit def tsimpl(z: TSImplGen): TShapeScalar = TShapeScalar(z.tonicity, z.niltonicity)
-  
+
+  def scalar: Shape = ShapeScalar()
+  def vector(len: Exp[Int]): Shape = ShapeFor(len, ShapeScalar())
 }

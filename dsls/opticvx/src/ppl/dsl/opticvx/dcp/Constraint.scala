@@ -30,4 +30,10 @@ trait DCPConstraint {
       if (!(z.shape.asInstanceOf[XShapeScalar].vexity <= Signum.Negative)) throw new DCPIRValidationException
     }
   }
+  
+  class ConstrainFor(size: Size, bound: IntParamBound, body: Constraint) extends Constraint {
+    def verifydcp() {
+      body.verifydcp()
+    }
+  }
 }
