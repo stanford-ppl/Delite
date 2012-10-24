@@ -16,14 +16,248 @@ trait Almap extends HasArity[Almap] {
   if (input.arity != arity) throw new ProblemIRValidationException()
   if (domain.arity != arity) throw new ProblemIRValidationException()
   if (codomain.arity != arity) throw new ProblemIRValidationException()
-
-  //Matrix multiply
-  def mmpy(x: Almap): Almap
   
   //The transpose
   def T: Almap
+
+  //Matrix multiply
+  //def mmpy(m: Almap): Almap
 }
 
+//The identity map from scalars to scalars
+case class AlmapIdentity(val input: Shape) extends Almap {
+  val arity: Int = input.arity
+  val domain: Shape = ShapeScalar(arity)
+  val codomain: Shape = ShapeScalar(arity)
+  
+  def arityOp(op: ArityOp): Almap = AlmapIdentity(input.arityOp(op))
+
+  def T: Almap = this
+
+  // def mmpy(m: Almap): Almap = {
+  //   if (m.arity != arity) throw new ProblemIRValidationException()
+  //   if (m.input != input) throw new ProblemIRValidationException()
+  //   if (m.codomain != domain) throw new ProblemIRValidationException()
+  //   m
+  // }
+}
+
+//The zero map
+case class AlmapZero(val input: Shape, val domain: Shape, val codomain: Shape) extends Almap {
+  val arity: Int = input.arity
+  
+  def arityOp(op: ArityOp): Almap = AlmapZero(input.arityOp(op), domain.arityOp(op), codomain.arityOp(op))
+
+  def T: Almap = AlmapZero(input, codomain, domain)
+
+  // def mmpy(m: Almap): Almap = {
+  //   if (m.arity != arity) throw new ProblemIRValidationException()
+  //   if (m.input != input) throw new ProblemIRValidationException()
+  //   if (m.codomain != domain) throw new ProblemIRValidationException()
+  //   AlmapZero(input, m.domain, codomain)
+  // }
+}
+
+//The sum of several linear maps
+case class AlmapSum(val args: Seq[Almap]) extends Almap {
+  val arity: Int = args(0).arity
+  val input: Shape = args(0).input
+  val domain: Shape = args(0).domain
+  val codomain: Shape = args(0).codomain
+
+  for(a <- args) {
+    if (a.arity != arity) throw new ProblemIRValidationException()
+    if (a.input != input) throw new ProblemIRValidationException()
+    if (a.domain != domain) throw new ProblemIRValidationException()
+    if (a.codomain != codomain) throw new ProblemIRValidationException()
+  }
+
+  def arityOp(op: ArityOp): Almap = AlmapSum(args map ((x) => x.arityOp(op)))
+
+  def T: Almap = AlmapSum(args map ((x) => x.T))
+
+  // def mmpy(m: Almap): Almap = AlmapSum(args map ((a) => a.mmpy(m)))
+}
+
+//Negation of a linear map
+case class AlmapNeg(val arg: Almap) extends Almap {
+  val arity: Int = arg.arity
+  val input: Shape = arg.input
+  val domain: Shape = arg.domain
+  val codomain: Shape = arg.codomain
+  
+  def arityOp(op: ArityOp): Almap = AlmapNeg(arg.arityOp(op))
+
+  def T: Almap = AlmapNeg(arg.T)
+
+  // def mmpy(m: Almap): Almap = AlmapNeg(arg.mmpy(m))
+}
+
+//Scale of a linear map by a parameter that is itself a linear functional from the input space
+case class AlmapScale(val arg: Almap, val scale: Almap) extends Almap {
+  val arity: Int = arg.arity
+  val input: Shape = arg.input
+  val domain: Shape = arg.domain
+  val codomain: Shape = arg.codomain
+
+  if (arity != scale.arity) throw new ProblemIRValidationException()
+  if (input != scale.input) throw new ProblemIRValidationException()
+  if (input != scale.domain) throw new ProblemIRValidationException()
+  if (!(scale.codomain.isInstanceOf[ShapeScalar])) throw new ProblemIRValidationException()
+  
+  def arityOp(op: ArityOp): Almap = AlmapScale(arg.arityOp(op), scale.arityOp(op))
+  
+  def T: Almap = AlmapScale(arg.T, scale)
+
+  // def mmpy(m: Almap): Almap = AlmapScale(arg.mmpy(m), scale)
+}
+
+//Scale of a linear map by a constant
+case class AlmapScaleConstant(val arg: Almap, val scale: Float) extends Almap {
+  val arity: Int = arg.arity
+  val input: Shape = arg.input
+  val domain: Shape = arg.domain
+  val codomain: Shape = arg.codomain
+  
+  def arityOp(op: ArityOp): Almap = AlmapScaleConstant(arg.arityOp(op), scale)
+  
+  def T: Almap = AlmapScaleConstant(arg.T, scale)
+
+  // def mmpy(m: Almap): Almap = AlmapScaleConstant(arg.mmpy(m), scale)
+}
+
+
+//The vertical concatenation of several linear maps
+case class AlmapVCat(val args: Seq[Almap]) extends Almap {
+  val arity: Int = args(0).arity
+  val input: Shape = args(0).input
+  val domain: Shape = args(0).domain
+  val codomain: Shape = ShapeStruct(args map ((a) => a.codomain))
+
+  for(a <- args) {
+    if (a.arity != arity) throw new ProblemIRValidationException()
+    if (a.input != input) throw new ProblemIRValidationException()
+    if (a.domain != domain) throw new ProblemIRValidationException()
+  }
+
+  def arityOp(op: ArityOp): Almap = AlmapVCat(args map ((a) => a.arityOp(op)))
+
+  def T: Almap = AlmapHCat(args map ((a) => a.T))
+
+  // def mmpy(m: Almap): Almap = AlmapVCat(args map ((a) => a.mmpy(m)))
+}
+
+//The vertical concatenation of a number of linear maps, depending on problem size
+case class AlmapVCatFor(val size: Size, val arg: Almap) extends Almap {
+  val arity: Int = size.arity
+  val input: Shape = arg.input.demote
+  val domain: Shape = arg.domain.demote
+  val codomain: Shape = ShapeFor(size, arg.codomain)
+
+  if (arg.arity != (size.arity + 1)) throw new ProblemIRValidationException()
+
+  def arityOp(op: ArityOp): Almap = AlmapVCatFor(size.arityOp(op), arg.arityOp(op))
+
+  def T: Almap = AlmapHCatFor(size, arg.T)
+
+  // def mmpy(m: Almap): Almap = AlmapVCatFor(size, arg.mmpy(m.promote))
+}
+
+
+//The horizontal concatenation of several linear maps
+case class AlmapHCat(val args: Seq[Almap]) extends Almap {
+  val arity: Int = args(0).arity
+  val input: Shape = args(0).input
+  val domain: Shape = ShapeStruct(args map ((a) => a.domain))
+  val codomain: Shape = args(0).codomain
+
+  for(a <- args) {
+    if (a.arity != arity) throw new ProblemIRValidationException()
+    if (a.input != input) throw new ProblemIRValidationException()
+    if (a.codomain != codomain) throw new ProblemIRValidationException()
+  }
+
+  def arityOp(op: ArityOp): Almap = AlmapHCat(args map ((a) => a.arityOp(op)))
+
+  def T: Almap = AlmapVCat(args map ((a) => a.T))
+
+  // def mmpy(m: Almap): Almap = m match {
+  //   case AlmapVCat(ma) => AlmapSum(for(i <- 0 until args.length) yield args(i).mmpy(ma(i)))
+  //   case _ => throw new ProblemIRValidationException()
+  // }
+}
+
+//The horizontal concatenation of a number of linear maps, depending on problem size
+case class AlmapHCatFor(val size: Size, val arg: Almap) extends Almap {
+  val arity: Int = size.arity
+  val input: Shape = arg.input.demote
+  val domain: Shape = ShapeFor(size, arg.domain)
+  val codomain: Shape = arg.codomain.demote
+
+  if (arg.arity != (size.arity + 1)) throw new ProblemIRValidationException()
+
+  def arityOp(op: ArityOp): Almap = AlmapHCatFor(size.arityOp(op), arg.arityOp(op))
+
+  def T: Almap = AlmapVCatFor(size, arg.T)
+
+  // def mmpy(m: Almap): Almap = m match {
+  //   case AlmapVCatFor(s, ma) => {
+  //     if (s != size) throw new ProblemIRValidationException()
+  //     AlmapSumFor(size, arg.mmpy(ma))
+  //   }
+  //   case _ => throw new ProblemIRValidationException()
+  // }
+}
+
+//The sum of a problem-size-dependent number of linear ops
+case class AlmapSumFor(val size: Size, val arg: Almap) extends Almap {
+  val arity: Int = size.arity
+  val input: Shape = arg.input.demote
+  val domain: Shape = arg.domain.demote
+  val codomain: Shape = arg.codomain.demote
+
+  if (arg.arity != (size.arity + 1)) throw new ProblemIRValidationException()
+
+  def arityOp(op: ArityOp): Almap = AlmapSumFor(size.arityOp(op), arg.arityOp(op))
+
+  def T: Almap = AlmapSumFor(size, arg.T)
+
+  // def mmpy(m: Almap): Almap = AlmapSumFor(size, arg.mmpy(m.promote))
+}
+
+//A delta function based on the integer variables.  Takes on the argument if pred == 0, and zero otherwise.
+case class AlmapIf(val pred: Size, val arg: Almap) extends Almap {
+  val arity: Int = arg.arity
+  val input: Shape = arg.input
+  val domain: Shape = arg.domain
+  val codomain: Shape = arg.codomain
+
+  if (pred.arity != arity) throw new ProblemIRValidationException()
+
+  def arityOp(op: ArityOp): Almap = AlmapIf(pred.arityOp(op), arg.arityOp(op))
+
+  def T: Almap = AlmapIf(pred, arg.T)
+
+  // def mmpy(m: Almap): Almap = AlmapIf(pred, arg.mmpy(m))
+}
+
+//Matrix multiply
+case class AlmapProd(val argl: Almap, val argr: Almap) extends Almap {
+  if (argl.arity != argr.arity) throw new ProblemIRValidationException()
+  if (argl.input != argr.input) throw new ProblemIRValidationException()
+  if (argl.domain != argr.codomain) throw new ProblemIRValidationException()
+
+  val arity: Int = argl.arity
+  val input: Shape = argl.input
+  val domain: Shape = argr.domain
+  val codomain: Shape = argl.codomain
+
+  def arityOp(op: ArityOp): Almap = AlmapProd(argl.arityOp(op), argr.arityOp(op))
+
+  def T: Almap = AlmapProd(argr.T, argl.T)
+}
+
+/*
 object AlmapUtil {
   def sum(x: Almap, y: Almap): Almap = {
     if (x.arity != y.arity) throw new ProblemIRValidationException()
@@ -88,179 +322,5 @@ object AlmapUtil {
     }
   }
 }
+*/
 
-
-//The identity map over a space
-case class AlmapIdentity(val domain: Shape, val input: Shape) extends Almap {
-  val arity: Int = domain.arity
-  val codomain: Shape = domain
-  
-  def arityOp(op: ArityOp): Almap = AlmapIdentity(domain.arityOp(op), input.arityOp(op))
-
-  def mmpy(x: Almap): Almap = {
-    if(arity != x.arity) throw new ProblemIRValidationException()
-    if(input != x.input) throw new ProblemIRValidationException()
-    if(domain != x.codomain) throw new ProblemIRValidationException()
-    x
-  }
-  
-  def T: Almap = this
-}
-
-//Sum of two linear functionals
-case class AlfSum(val arg1: Almap, val arg2: Almap) extends Almap {
-  if (arg1.arity != arg2.arity) throw new ProblemIRValidationException()
-  if (arg1.input != arg2.input) throw new ProblemIRValidationException()
-  if (arg1.domain != arg2.domain) throw new ProblemIRValidationException()
-  if (!(arg1.codomain.isInstanceOf[ShapeScalar])) throw new ProblemIRValidationException()
-  if (!(arg2.codomain.isInstanceOf[ShapeScalar])) throw new ProblemIRValidationException()
-
-  val arity: Int = arg1.arity
-  val input: Shape = arg1.input
-  val domain: Shape = arg1.domain
-  val codomain: Shape = ShapeScalar(arity)
-  
-  def arityOp(op: ArityOp): Almap = AlfSum(arg1.arityOp(op), arg2.arityOp(op))
-
-  def mmpy(x: Almap): Almap = AlfSum(arg1.mmpy(x), arg2.mmpy(x))
-  
-  def T: Almap = AlmapUtil.sum(arg1.T, arg2.T)
-}
-
-//Negation of a linear functional
-case class AlfNeg(val arg: Almap) extends Almap {
-  if (!(arg.codomain.isInstanceOf[ShapeScalar])) throw new ProblemIRValidationException()
-
-  val arity: Int = arg.arity
-  val input: Shape = arg.input
-  val domain: Shape = arg.domain
-  val codomain: Shape = ShapeScalar(arity)
-  
-  def arityOp(op: ArityOp): Almap = AlfNeg(arg.arityOp(op))
-  
-  def mmpy(x: Almap): Almap = AlfNeg(arg.mmpy(x))
-
-  def T: Almap = AlmapUtil.neg(arg.T)
-}
-
-//Scale of a linear functional by a parameter that is itself a linear functional from the input space
-case class AlfScale(val arg: Almap, val scale: Almap) extends Almap {
-  if (arg.arity != scale.arity) throw new ProblemIRValidationException()
-  if (arg.input != scale.input) throw new ProblemIRValidationException()
-  if (arg.input != scale.domain) throw new ProblemIRValidationException()
-  if (!(arg.codomain.isInstanceOf[ShapeScalar])) throw new ProblemIRValidationException()
-  if (!(scale.codomain.isInstanceOf[ShapeScalar])) throw new ProblemIRValidationException()
-
-  val arity: Int = arg.arity
-  val input: Shape = arg.input
-  val domain: Shape = arg.domain
-  val codomain: Shape = ShapeScalar(arity)
-  
-  def arityOp(op: ArityOp): Almap = AlfScale(arg.arityOp(op), scale.arityOp(op))
-  
-  def mmpy(x: Almap): Almap = AlfScale(arg.mmpy(x), scale)
-  
-  def T: Almap = AlmapUtil.scale(arg.T, scale)
-}
-
-//Scale of a linear functional by a constant
-case class AlfScaleConstant(val arg: Almap, val scale: Float) extends Almap {
-  if (!(arg.codomain.isInstanceOf[ShapeScalar])) throw new ProblemIRValidationException()
-
-  val arity: Int = arg.arity
-  val input: Shape = arg.input
-  val domain: Shape = arg.domain
-  val codomain: Shape = ShapeScalar(arity)
-  
-  def arityOp(op: ArityOp): Almap = AlfScaleConstant(arg.arityOp(op), scale)
-  
-  def mmpy(x: Almap): Almap = AlfScaleConstant(arg.mmpy(x), scale)
-  
-  def T: Almap = AlmapUtil.scaleconstant(arg.T, scale)
-}
-
-//A compound linear map representing a for loop
-//One can also think of this as the vertical concatenation of several matrices
-case class AlmapFor(val size: Size, val body: Almap) extends Almap {
-  if (body.arity != (size.arity + 1)) throw new ProblemIRValidationException()
-  val arity: Int = size.arity
-  val input: Shape = body.input.demote
-  val domain: Shape = body.domain.demote
-  val codomain: Shape = ShapeFor(size, body.codomain)
-  
-  def arityOp(op: ArityOp): Almap = AlmapFor(size.arityOp(op), body.arityOp(op))
-  
-  def mmpy(x: Almap): Almap = AlmapFor(size, body.mmpy(x.promote))
-  
-  def T: Almap = AlmapUtil.reduce(size, body.T.mmpy( 
-    AlmapIndex(Size.param(arity, arity + 1), AlmapIdentity(input, domain.promote))))
-}
-
-//Represents a linear map that indexes the output of another map
-case class AlmapIndex(val at: Size, val arg: Almap) extends Almap {
-  if (at.arity != arg.arity) throw new ProblemIRValidationException()
-  if (!arg.codomain.isInstanceOf[ShapeFor]) throw new ProblemIRValidationException()
-
-  val arity: Int = arg.arity
-  val input: Shape = arg.input
-  val domain: Shape = arg.domain
-  val codomain: Shape = arg.codomain.asInstanceOf[ShapeFor].body
-  
-  def arityOp(op: ArityOp): Almap = AlmapIndex(at.arityOp(op), arg.arityOp(op))
-  
-  def mmpy(x: Almap): Almap = AlmapIndex(at, arg.mmpy(x))
-  
-  def T: Almap = throw new ProblemIRValidationException()
-}
-
-//Represents a sum over a vector-indexed array of linear functionals
-case class AlfReduce(val size: Size, val body: Almap) extends Almap {
-  if (body.arity != (size.arity + 1)) throw new ProblemIRValidationException()
-  if (!body.codomain.isInstanceOf[ShapeScalar]) throw new ProblemIRValidationException()
-
-  val arity: Int = size.arity
-  val input: Shape = body.input.demote
-  val domain: Shape = body.domain.demote
-  val codomain: Shape = ShapeScalar(arity)
-  
-  def arityOp(op: ArityOp): Almap = AlfReduce(size.arityOp(op), body.arityOp(op))
-  
-  def mmpy(x: Almap): Almap = AlfReduce(size, body.mmpy(x.promote))
-  
-  def T: Almap = throw new ProblemIRValidationException()
-}
-
-//A compound linear map of different subexpressions
-case class AlmapStruct(val body: Seq[Almap]) extends Almap {
-  val arity: Int = body(0).arity
-  val input: Shape = body(0).input
-  val domain: Shape = body(0).domain
-  for (b <- body) {
-    if (b.arity != arity) throw new ProblemIRValidationException()
-    if (b.input != input) throw new ProblemIRValidationException()
-    if (b.domain != domain) throw new ProblemIRValidationException()
-  }
-  val codomain: Shape = ShapeStruct(body map ((x) => x.codomain))
-  
-  def arityOp(op: ArityOp): Almap = AlmapStruct(body map ((x) => x.arityOp(op)))
-  
-  def mmpy(x: Almap): Almap = AlmapStruct(body map ((b) => b.mmpy(x)))
-  
-  def T: Almap = throw new ProblemIRValidationException()
-}
-
-//Represents a linear map that accesses some part of the ouput of another map
-case class AlmapAccess(val at: Int, val arg: Almap) extends Almap {
-  if (!arg.codomain.isInstanceOf[ShapeStruct]) throw new ProblemIRValidationException()
-
-  val arity: Int = arg.arity
-  val input: Shape = arg.input
-  val domain: Shape = arg.domain
-  val codomain: Shape = arg.codomain.asInstanceOf[ShapeStruct].body(at)
-  
-  def arityOp(op: ArityOp): Almap = AlmapAccess(at, arg.arityOp(op))
-  
-  def mmpy(x: Almap): Almap = AlmapAccess(at, arg.mmpy(x))
-  
-  def T: Almap = throw new ProblemIRValidationException()
-}

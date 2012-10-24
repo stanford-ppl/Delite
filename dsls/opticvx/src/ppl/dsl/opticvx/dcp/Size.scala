@@ -15,10 +15,10 @@ trait DCPSize extends BaseExp {
   class IntParamBound extends IntParam
   
   case class Size(val const: Int, val coeffs: Map[IntParam, Int]) {
-    if (const < 0) throw new DCPIRValidationException()
-    for ((ip, c) <- coeffs) {
-      if (c < 0) throw new DCPIRValidationException()
-    }
+    //if (const < 0) throw new DCPIRValidationException()
+    //for ((ip, c) <- coeffs) {
+    //  if (c < 0) throw new DCPIRValidationException()
+    //}
 
     def +(s: Size): Size = {
       var mc: Map[IntParam, Int] = coeffs

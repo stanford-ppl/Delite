@@ -53,8 +53,19 @@ Expr[N: Int, SH: Shape[N], SHI: Shape[N], SHV: Shape[N]]
      ExprReduce[N, SHI, SHV] (only if SH == ShapeScalar)
 
 
-
 </pre>
+
+
+A matrix is one of the following:
+<ul>
+  <li>The scalar zero matrix</li>
+  <li>The scalar identity matrix</li>
+  <li>The sum of two similarly-shaped matrices</li>
+  <li>The scale of a matrix by a constant or by a function of the input</li>
+  <li>A horizontal concatenation, either loop-based or heterogeneous</li>
+  <li>A vertical concatenation, either loop-based or heterogeneous</li>
+  <li>An equality conditional</li>
+</ul>
 
 Here, all Ints must be nonnegative.
 
