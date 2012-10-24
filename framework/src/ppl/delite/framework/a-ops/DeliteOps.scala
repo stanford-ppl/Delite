@@ -2447,6 +2447,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           else {
             emitAllocFunc(sym,List(elem.allocN),List((elem.sV,op.size)),elem.allocVal,op.size)
             lf.loopFuncInputs = emitMultiLoopFunc(elem.func, "collect_"+funcNameSuffix(sym), List(op.v), stream)
+            emitMultiLoopFunc(elem.update, "update_"+funcNameSuffix(sym), List(op.v,elem.eV,elem.allocVal), stream)
           }
           lf.loopFuncOutputType = remap(getBlockResult(elem.func).tp)
 

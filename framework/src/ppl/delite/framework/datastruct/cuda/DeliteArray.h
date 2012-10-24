@@ -10,6 +10,11 @@ public:
     int length;
 
     // Constructor
+    __host__ DeliteArray(void) {
+      length = 0;
+      data = NULL;
+    }
+
     __host__ DeliteArray(int _length) {
         length = _length;
         DeliteCudaMalloc((void**)&data,length*sizeof(T));

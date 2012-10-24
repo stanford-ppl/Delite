@@ -2,6 +2,7 @@ package ppl.delite.framework.datastructures
 
 import java.io.{File,FileWriter,PrintWriter}
 import scala.virtualization.lms.common._
+import scala.virtualization.lms.internal.{CudaCodegen,OpenCLCodegen, CCodegen}
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.reflect.SourceContext
 
@@ -95,3 +96,91 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     stream.println(")")
   }
 }
+
+trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
+  val IR: DeliteStructsExp with DeliteOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    //TODO: generalize primitive struct packing
+    case Struct(tag, elems) =>
+      registerStruct(structName(sym.tp), elems)
+      //emitValDef(sym, "new " + structName(sym.tp) + "(" + elems.map{ e => 
+      stream.println(structName(sym.tp) + " *" + quote(sym) + "_ptr = new " + structName(sym.tp) + "(" + elems.map{ e => 
+        if (isVarType(e._2.tp) && deliteInputs.contains(e._2)) quote(e._2) + "->get()"
+        else quote(e._2)
+      }.mkString(",") + ");")
+      stream.println(structName(sym.tp) + " " + quote(sym) + " = *" + quote(sym) + "_ptr;")
+      printlog("WARNING: emitting " + structName(sym.tp) + " struct " + quote(sym))    
+    case FieldApply(struct, index) =>
+      emitValDef(sym, quote(struct) + "." + index)
+      printlog("WARNING: emitting field access: " + quote(struct) + "." + index)
+    case FieldUpdate(struct, index, rhs) =>
+      emitValDef(sym, quote(struct) + "." + index + " = " + quote(rhs))
+      printlog("WARNING: emitting field update: " + quote(struct) + "." + index)
+    case NestedFieldUpdate(struct, fields, rhs) =>
+      emitValDef(sym, quote(struct) + "." + fields.reduceLeft(_ + "." + _) + " = " + quote(rhs))
+    case _ => super.emitNode(sym, rhs)
+  }
+
+  override def remap[A](m: Manifest[A]) = m match {
+    case s if s <:< manifest[Record] => structName(m)
+    case _ => super.remap(m)
+  }
+
+  private def isVarType[T](m: Manifest[T]) = m.erasure.getSimpleName == "Variable"
+  private def isArrayType[T](m: Manifest[T]) = m.erasure.getSimpleName == "DeliteArray"
+  private def isStringType[T](m: Manifest[T]) = m.erasure.getSimpleName == "String"
+  private def baseType[T](m: Manifest[T]) = if (isVarType(m)) mtype(m.typeArguments(0)) else m
+  
+  override def emitDataStructures(path: String) {
+    val stream = new PrintWriter(path + "DeliteStructs.h")
+    stream.println("#ifndef __DELITESTRUCTS_H__")
+    stream.println("#define __DELITESTRUCTS_H__")
+    stream.println("#include \"DeliteArray.h\"")
+    stream.println("#include \"HostDeliteArray.h\"")
+    for ((name, elems) <- encounteredStructs) {
+      stream.println("")
+      elems foreach { e => dsTypesList.add(baseType(e._2).asInstanceOf[Manifest[Any]]) }
+      emitStructDeclaration(name, elems)(stream)
+    }
+    stream.println("#endif")
+    stream.close()
+    super.emitDataStructures(path)
+  }
+
+  def emitStructDeclaration(name: String, elems: Seq[(String,Manifest[_])])(stream: PrintWriter) {
+   
+    for(prefix <- List("Host","")) {
+      stream.println("class " + prefix + name + " {")
+      // fields
+      stream.println("public:")
+      stream.print(elems.map{ case (idx,tp) => "\t" + (if(!isPrimitiveType(baseType(tp))) prefix else "") + remap(tp) + " " + idx + ";\n" }.mkString(""))
+      // constructor
+      if(prefix == "Host") {
+        stream.println("\t" + prefix + name + "(void) { }")
+        stream.print("\t" + prefix + name + "(")
+      }
+      else {
+        stream.println("\t__host__ __device__ " + prefix + name + "(void) { }")
+        stream.print("\t__host__ __device__ " + prefix + name + "(")
+      }
+      stream.print(elems.map{ case (idx,tp) => (if(!isPrimitiveType(baseType(tp))) prefix else "") + remap(tp) + " _" + idx }.mkString(","))
+      stream.println(") {")
+      stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = _" + idx + ";\n" }.mkString(""))
+      stream.println("\t}")
+      stream.println("};")
+    }
+  }
+}
+
+trait OpenCLGenDeliteStruct extends BaseGenStruct with OpenCLCodegen {
+  val IR: DeliteStructsExp with DeliteOpsExp
+  import IR._
+}
+
+trait CGenDeliteStruct extends BaseGenStruct with CCodegen {
+  val IR: DeliteStructsExp with DeliteOpsExp
+  import IR._
+}
+

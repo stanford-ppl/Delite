@@ -429,39 +429,42 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenFat with
 }
 
 
-trait CudaGenDeliteArrayOps extends BaseGenDeliteArrayOps with CudaGenFat {
+trait CudaGenDeliteArrayOps extends BaseGenDeliteArrayOps with CudaGenFat with CudaGenDeliteStruct {
   val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    //case DeliteArrayNew(length) =>
-    //  emitValDef(sym, "new Array[" + remap(sym.tp.tpArguments(0)) + "](" + quote(length) + ")")
+    case a@DeliteArrayNew(n) =>
+      stream.println("DeliteArray< " + remap(a.mA) + " > *" + quote(sym) + "_ptr = new DeliteArray< " + remap(a.mA) + " >(" + quote(n) + ");")
+      stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = *" + quote(sym) + "_ptr;")
+      //emitValDef(sym, "new DeliteArray< " + remap(a.mA) + " >(" + quote(n) + ")")
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + ".length")
     case DeliteArrayApply(da, idx) =>
       emitValDef(sym, quote(da) + ".apply(" + quote(idx) + ")")
     case DeliteArrayUpdate(da, idx, x) =>
       emitValDef(sym, quote(da) + ".update(" + quote(idx) + "," + quote(x) + ");")
+    case StructUpdate(struct, fields, idx, x) =>
+      stream.println(quote(struct) + "." + fields.reduceLeft(_ + "." + _) + ".update(" + quote(idx) + "," + quote(x) + ");\n")
     case _ => super.emitNode(sym, rhs)
   }
 
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
     case "DeliteArray" => m.typeArguments(0) match {
-      case s if s <:< manifest[Record] =>
-        throw new GenerationFailedException("CudaGen: Struct generation not possible")
-      case arg => "DeliteArray<" + remap(arg) + ">"
+      case StructType(_,_) => structName(m)
+      case arg => "DeliteArray< " + remap(arg) + " >"
     }
     case _ => super.remap(m)
   }
 }
 
-trait OpenCLGenDeliteArrayOps extends BaseGenDeliteArrayOps with OpenCLGenFat {
+trait OpenCLGenDeliteArrayOps extends BaseGenDeliteArrayOps with OpenCLGenFat with OpenCLGenDeliteStruct {
   val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    //case DeliteArrayNew(length) =>
-    //  emitValDef(sym, "new Array[" + remap(sym.tp.typeArguments(0)) + "](" + quote(length) + ")")
+    case a@DeliteArrayNew(n) =>
+      emitValDef(sym, "new Array[" + remap(a.mA) + "](" + quote(n) + ")")
     case DeliteArrayLength(da) =>
       emitValDef(sym, remap(da.tp) + "_size(" + quote(da) + ")")
     case DeliteArrayApply(da, idx) =>
@@ -481,8 +484,8 @@ trait OpenCLGenDeliteArrayOps extends BaseGenDeliteArrayOps with OpenCLGenFat {
   }
 }
 
-trait CGenDeliteArrayOps extends CGenEffect {
-  val IR: DeliteArrayOpsExp
+trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenEffect with CGenDeliteStruct {
+  val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {

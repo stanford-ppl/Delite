@@ -255,7 +255,12 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
 
   override def remap(s: String) = parmap(s)
   override def remap[A](m: Manifest[A]): String = {
-    var res = super.remap(m)
+    var res = m.erasure.getSimpleName match {
+      case "DenseVector" => "generated.scala." + IR.structName(m)
+      case "DenseMatrix" => "generated.scala." + IR.structName(m)
+      case "DenseVectorView" => "generated.scala." + IR.structName(m)
+      case _ => super.remap(m)
+    }
     res = res.replaceAllLiterally("package$", "")
     dsmap(res)
   }
@@ -278,17 +283,17 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
   }
 }
 
-trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with OptiLACudaGenExternal with CudaGenDeliteOps
+trait OptiLACodeGenCuda extends OptiLACudaCodeGenPkg with OptiLACodeGenBase with OptiLACudaGenExternal with CudaGenDeliteOps
   with CudaGenArithOps with CudaGenVectorOps with CudaGenDenseVectorOps with CudaGenDenseVectorViewOps with CudaGenMatrixOps with CudaGenDenseMatrixOps 
   with CudaGenVariantsOps with CudaGenDeliteCollectionOps with CudaGenDeliteArrayOps
   with DeliteCudaGenAllOverrides with DeliteCppHostTransfer with OptiLACppHostTransfer with DeliteCudaDeviceTransfer with OptiLACudaDeviceTransfer { //with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
   val IR: DeliteApplication with OptiLAExp
   import IR._
 
-
   // Maps the scala type to cuda type
   override def remap[A](m: Manifest[A]) : String = {
     m.toString match {
+        /*
       case "ppl.dsl.optila.DenseVector[Int]" => "DenseVector< int >"
       case "ppl.dsl.optila.DenseVector[Long]" => "DenseVector< long >"
       case "ppl.dsl.optila.DenseVector[Float]" => "DenseVector< float >"
@@ -305,6 +310,7 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
       case "ppl.dsl.optila.DenseVectorView[Float]" => "DenseVectorView< float >"
       case "ppl.dsl.optila.DenseVectorView[Double]" => "DenseVectorView< double >"
       case "ppl.dsl.optila.DenseVectorView[Boolean]" => "DenseVectorView< bool >"
+      */
       //case "ppl.dsl.optila.MatrixRow[Int]" => "DenseVectorView<int>"
       //case "ppl.dsl.optila.MatrixRow[Long]" => "DenseVectorView<long>"
       //case "ppl.dsl.optila.MatrixRow[Float]" => "DenseVectorView<float>"
@@ -326,6 +332,7 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
   override def getDSLHeaders: String = {
     val out = new StringBuilder
     out.append("#include <float.h>\n")
+    out.append("#include \"DeliteStructs.h\"\n")
     out.append("#include \"DenseVector.h\"\n")
     out.append("#include \"RangeVector.h\"\n")
     out.append("#include \"DeliteArray.h\"\n")

@@ -11,6 +11,11 @@ public:
     int length;
 
     // Constructor
+    HostDeliteArray(void) {
+      length = 0;
+      data = NULL;
+    }
+
     HostDeliteArray(int _length) {
         length = _length;
         data = (T *)malloc(length*sizeof(T));
