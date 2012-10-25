@@ -59,6 +59,25 @@ trait DCPShape {
   sealed trait XShape {
     val xi: Shape
     val xv: VShape
+    def +(s: XShape): XShape = {
+      if (xi != s.xi) throw new DCPIRValidationException()
+      (this, s) match {
+        case (XShapeScalar(vx1, sgn1, iip1), XShapeScalar(vx2, sgn2, iip2)) =>
+          XShapeScalar(vx1 + vx2, sgn1 + sgn2, iip1 && iip2)
+        case (XShapeFor(sz1, b1), XShapeFor(sz2, b2)) =>
+          XShapeFor(sz1, b1 + b2)
+        case (XShapeStruct(bs1), XShapeStruct(bs2)) =>
+          XShapeStruct(for (i <- 0 until bs1.length) yield bs1(i) + bs2(i))
+        case _ =>
+          throw new DCPIRValidationException()
+      }
+    }
+    def unary_-(): XShape = this match {
+      case XShapeScalar(vx, sgn, iip) => XShapeScalar(-vx, -sgn, iip)
+      case XShapeFor(sz, b) => XShapeFor(sz, -b)
+      case XShapeStruct(bs) => XShapeStruct(bs map ((b) => -b))
+      case _ => throw new DCPIRValidationException()
+    }
   }
   
   case class XShapeScalar(val vexity: Signum, val sign: Signum, val isInput: Boolean) extends XShape {

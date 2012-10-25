@@ -25,12 +25,11 @@ trait Almap extends HasArity[Almap] {
 }
 
 //The identity map from scalars to scalars
-case class AlmapIdentity(val input: Shape) extends Almap {
+case class AlmapIdentity(val input: Shape, val domain: Shape) extends Almap {
   val arity: Int = input.arity
-  val domain: Shape = ShapeScalar(arity)
-  val codomain: Shape = ShapeScalar(arity)
+  val codomain: Shape = domain
   
-  def arityOp(op: ArityOp): Almap = AlmapIdentity(input.arityOp(op))
+  def arityOp(op: ArityOp): Almap = AlmapIdentity(input.arityOp(op), domain.arityOp(op))
 
   def T: Almap = this
 

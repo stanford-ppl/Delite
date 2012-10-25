@@ -7,7 +7,11 @@ trait DCPOps extends Base with NumericOps {
   self: DCPShape with DCPShapeNames with DCPSize with DCPExpr with DCPConstraint =>
 
   def cvxexpr(): Symbol = new Symbol()
-  def solve(s_over: SolveOver, s_let: SolveLet, s_where: SolveWhere, s_opt: SolveOpt): Unit
+  def solve(
+    ts_over: =>SolveOver,
+    ts_let: =>SolveLet,
+    ts_where: =>SolveWhere,
+    ts_opt: SolveOpt): Unit
 
   class SolveOver(val vars: Seq[VarBinding])
   class VarBinding(val shape: Shape, val symbol: Symbol)
@@ -56,16 +60,25 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
   implicit def inputscalar(c: Exp[Double]): Expr = new ExprInputScalar(c, Signum.All)
   def inputvector(ar: Exp[Array[Double]]): Expr = new ExprInputVector(ar.length, ar, Signum.All)
   
-  def solve(s_over: SolveOver, s_let: SolveLet, s_where: SolveWhere, s_opt: SolveOpt) {
+  def solve(
+    ts_over: =>SolveOver, 
+    ts_let: =>SolveLet, 
+    ts_where: =>SolveWhere, 
+    ts_opt: =>SolveOpt
+  ) {
+    val s_over = ts_over  
     // Bind the problem variables
     for (v <- s_over.vars) {
       v.symbol.bind(XShapeScalar(Signum.Zero, Signum.All, false).dupshape(v.shape))
     }
+    val s_let = ts_let
     // Bind the expression symbols
     for (x <- s_let.exprs) {
       x.expr.verifydcp()
       x.symbol.bind(x.expr.shape)
     }
+    val s_where = ts_where
+    val s_opt = ts_opt
     // DCP-verify the constraints
     for (c <- s_where.constraints) {
       c.verifydcp()
