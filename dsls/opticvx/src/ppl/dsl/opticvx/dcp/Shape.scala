@@ -1,150 +1,112 @@
-package ppl.dsl.opticvx.dcp
+package ppl.dsl.opticvx.problem
 
-import scala.virtualization.lms.common.BaseExp
+import scala.collection.immutable.Seq
 
-trait DCPShape {
-  self: DCPSize =>
+sealed trait ArityOp
+case class ArityOpRemoveParam(idx: Int) extends ArityOp
+case class ArityOpAddParam(idx: Int) extends ArityOp
 
-  sealed trait Shape
-  
-  case class ShapeScalar extends Shape
-  case class ShapeFor(val size: Size, val body: Shape) extends Shape
-  case class ShapeStruct(val body: Seq[Shape]) extends Shape
-  
+trait HasArity[T] {
+  val arity: Int
+  def demote: T = removeParam(arity - 1)
+  def promote: T = addParam(arity)
+  def removeParam(idx: Int): T = arityOp(ArityOpRemoveParam(idx))
+  def addParam(idx: Int): T = arityOp(ArityOpAddParam(idx))
+  def arityOp(op: ArityOp): T
+}
 
-  sealed trait VShape {
-    val xi: Shape
-  }
+object Size {
+  def param(idx: Int, arity: Int): Size = Size(0, Seq[Int]().padTo(arity, 0).updated(idx, 1))
+  def const(c: Int, arity: Int): Size = Size(0, Seq[Int]().padTo(arity, 0))
+}
 
-  case class VShapeScalar(val vexity: Signum, val sign: Signum) extends VShape {
-    val xi: Shape = ShapeScalar()
-    if (!(vexity <= sign)) throw new DCPIRValidationException()
-    
-    def dupshape(sh: Shape): VShape = sh match {
-      case ShapeScalar() => this
-      case ShapeFor(size, body) => VShapeFor(size, dupshape(body))
-      case ShapeStruct(body) => VShapeStruct(body map ((x) => dupshape(x)))
+case class Size(val const: Int, val coeffs: Seq[Int]) extends HasArity[Size] {
+  val arity: Int = coeffs.length
+  def arityOp(op: ArityOp): Size = op match {
+    case ArityOpRemoveParam(idx) => {
+      if (coeffs(idx) != 0) throw new ProblemIRValidationException()
+      Size(const, coeffs.take(idx) ++ coeffs.drop(idx+1))
     }
-  }
-  case class VShapeFor(val size: Size, val body: VShape) extends VShape {
-    val xi: Shape = ShapeFor(size, body.xi)
-  }
-  case class VShapeStruct(val body: Seq[VShape]) extends VShape {
-    val xi: Shape = ShapeStruct(body map ((x) => x.xi))
-  }
-  
-
-  sealed trait TShape {
-    val xi: Shape
+    case ArityOpAddParam(idx) => Size(const, (coeffs.take(idx) :+ 0) ++ coeffs.drop(idx))
   }
 
-  case class TShapeScalar(val tonicity: Signum, val niltonicity: Signum) extends TShape {
-    val xi: Shape = ShapeScalar()
-    if (!(niltonicity <= tonicity)) throw new DCPIRValidationException()
-    
-    def dupshape(sh: Shape): TShape = sh match {
-      case ShapeScalar() => this
-      case ShapeFor(size, body) => TShapeFor(size, dupshape(body))
-      case ShapeStruct(body) => TShapeStruct(body map ((x) => dupshape(x)))
-    }
-  }
-  case class TShapeFor(val size: Size, val body: TShape) extends TShape {
-    val xi: Shape = ShapeFor(size, body.xi)
-  }
-  case class TShapeStruct(val body: Seq[TShape]) extends TShape {
-    val xi: Shape = ShapeStruct(body map ((x) => x.xi))
-  }
-
-  
-  sealed trait XShape {
-    val xi: Shape
-    val xv: VShape
-    def +(s: XShape): XShape = {
-      if (xi != s.xi) throw new DCPIRValidationException()
-      (this, s) match {
-        case (XShapeScalar(vx1, sgn1, iip1), XShapeScalar(vx2, sgn2, iip2)) =>
-          XShapeScalar(vx1 + vx2, sgn1 + sgn2, iip1 && iip2)
-        case (XShapeFor(sz1, b1), XShapeFor(sz2, b2)) =>
-          XShapeFor(sz1, b1 + b2)
-        case (XShapeStruct(bs1), XShapeStruct(bs2)) =>
-          XShapeStruct(for (i <- 0 until bs1.length) yield bs1(i) + bs2(i))
-        case _ =>
-          throw new DCPIRValidationException()
-      }
-    }
-    def unary_-(): XShape = this match {
-      case XShapeScalar(vx, sgn, iip) => XShapeScalar(-vx, -sgn, iip)
-      case XShapeFor(sz, b) => XShapeFor(sz, -b)
-      case XShapeStruct(bs) => XShapeStruct(bs map ((b) => -b))
-      case _ => throw new DCPIRValidationException()
-    }
-  }
-  
-  case class XShapeScalar(val vexity: Signum, val sign: Signum, val isInput: Boolean) extends XShape {
-    val xi: Shape = ShapeScalar()
-    val xv: VShape = VShapeScalar(vexity, sign)
-    if (!(vexity <= sign)) throw new DCPIRValidationException()
-    if (isInput && (vexity != Signum.Zero)) throw new DCPIRValidationException()
-    
-    def dupshape(sh: Shape): XShape = sh match {
-      case ShapeScalar() => this
-      case ShapeFor(size, body) => XShapeFor(size, dupshape(body))
-      case ShapeStruct(body) => XShapeStruct(body map ((x) => dupshape(x)))
-    }
-  }
-  case class XShapeFor(val size: Size, val body: XShape) extends XShape {
-    val xi: Shape = ShapeFor(size, body.xi)
-    val xv: VShape = VShapeFor(size, body.xv)
-  }
-  case class XShapeStruct(val body: Seq[XShape]) extends XShape {
-    val xi: Shape = ShapeStruct(body map ((x) => x.xi))
-    val xv: VShape = VShapeStruct(body map ((x) => x.xv))
+  if (const < 0) throw new ProblemIRValidationException()
+  for (c <- coeffs) {
+    if (c < 0) throw new ProblemIRValidationException()
   }
 }
-  
-trait DCPShapeNames {
-  self: DCPShape with DCPSize with BaseExp =>
 
-  sealed class VSImplGen(val vexity: Signum, val sign: Signum)
-  sealed class TSImplGen(val tonicity: Signum, val niltonicity: Signum)
+sealed trait Shape extends HasArity[Shape]
 
-  object novexity extends VSImplGen(Signum.All, Signum.All)
-  object notonicity extends TSImplGen(Signum.All, Signum.All)
-
-  object convex extends VSImplGen(Signum.Positive, Signum.All) {
-    def positive = new VSImplGen(Signum.Positive, Signum.Positive)
-    def nonnegative = positive
+case class ShapeScalar(val arity: Int) extends Shape {
+  def arityOp(op: ArityOp): Shape = op match {
+    case ArityOpRemoveParam(idx) => {
+      if ((arity == 0)||(idx >= arity)) throw new ProblemIRValidationException()
+      ShapeScalar(arity - 1)
+    }
+    case ArityOpAddParam(idx) => ShapeScalar(arity + 1)
   }
-  object concave extends VSImplGen(Signum.Negative, Signum.All) {
-    def negative = new VSImplGen(Signum.Negative, Signum.Negative)
-    def nonpositive = negative
-  }
-  object affine extends VSImplGen(Signum.Zero, Signum.All) {
-    def positive = new VSImplGen(Signum.Zero, Signum.Positive)
-    def negative = new VSImplGen(Signum.Zero, Signum.Negative)
-    def nonnegative = positive
-    def nonpositive = negative
-    def zero = new VSImplGen(Signum.Zero, Signum.Zero)
-  }
-
-  sealed trait Zero
-  object zero extends Zero
-
-  object nondecreasing extends TSImplGen(Signum.Positive, Signum.Positive) {
-    def at(zero: Zero) = new TSImplGen(Signum.All, Signum.Positive)
-  }
-  object nonincreasing extends TSImplGen(Signum.Negative, Signum.Negative) {
-    def at(zero: Zero) = new TSImplGen(Signum.All, Signum.Negative)
-  }
-  val increasing = nondecreasing
-  val decreasing = nonincreasing
-  object constant extends TSImplGen(Signum.Zero, Signum.Zero) {
-    def at(zero: Zero) = new TSImplGen(Signum.All, Signum.Zero)
-  }
-
-  implicit def vsimpl(z: VSImplGen): VShapeScalar = VShapeScalar(z.vexity, z.sign)
-  implicit def tsimpl(z: TSImplGen): TShapeScalar = TShapeScalar(z.tonicity, z.niltonicity)
-
-  def scalar: Shape = ShapeScalar()
-  def vector(len: Exp[Int]): Shape = ShapeFor(len, ShapeScalar())
 }
+case class ShapeFor(val size: Size, val body: Shape) extends Shape {
+  val arity = size.arity
+  if (body.arity != (arity + 1)) throw new ProblemIRValidationException()
+  def arityOp(op: ArityOp): Shape = ShapeFor(size.arityOp(op), body.arityOp(op))
+}
+case class ShapeStruct(val body: Seq[Shape]) extends Shape {
+  val arity = body(0).arity
+  for (b <- body) {
+    if (b.arity != arity) throw new ProblemIRValidationException()
+  }
+  def arityOp(op: ArityOp): Shape = ShapeStruct(body map ((x) => x.arityOp(op)))
+}
+
+/*
+case class Size(val const: Int, val coeffs: Seq[Int]) {
+  def nIntParams: Int = coeffs.length
+
+  if (const < 0) throw new ProblemIRValidationException()
+  for (c <- coeffs) {
+    if (c < 0) throw new ProblemIRValidationException()
+  }
+}
+
+sealed trait Shape {
+  val nIntParams: Int
+  def xp(isInput: Boolean): IShape
+}
+
+case class ShapeScalar(val nIntParams: Int) extends Shape {
+  def xp(isInput: Boolean): IShape = IShapeScalar(nIntParams, isInput)
+}
+case class ShapeFor(val nIntParams: Int, val size: Size, val body: Shape) extends Shape {
+  if (size.nIntParams != nIntParams) throw new ProblemIRValidationException()
+  if (body.nIntParams != (nIntParams + 1)) throw new ProblemIRValidationException()
+  def xp(isInput: Boolean): IShape = IShapeFor(nIntParams, size, body.xp(isInput))
+}
+case class ShapeStruct(val nIntParams: Int, val body: Seq[Shape]) extends Shape {
+  for (b <- body) {
+    if (b.nIntParams != nIntParams) throw new ProblemIRValidationException()
+  }
+  def xp(isInput: Boolean): IShape = IShapeStruct(nIntParams, body map ((x) => x.xp(isInput)))
+}
+
+sealed trait IShape {
+  val nIntParams: Int
+  def xi: Shape
+}
+
+case class IShapeScalar(val nIntParams: Int, val isInput: Boolean) extends IShape {
+  def xi: Shape = ShapeScalar(nIntParams)
+}
+case class IShapeFor(val nIntParams: Int, val size: Size, val body: IShape) extends IShape {
+  if (size.nIntParams != nIntParams) throw new ProblemIRValidationException()
+  if (body.nIntParams != (nIntParams + 1)) throw new ProblemIRValidationException()
+  def xi: Shape = ShapeFor(nIntParams, size, body.xi)
+}
+case class IShapeStruct(val nIntParams: Int, val body: Seq[IShape]) extends IShape {
+  for (b <- body) {
+    if (b.nIntParams != nIntParams) throw new ProblemIRValidationException()
+  }
+  def xi: Shape = ShapeStruct(nIntParams, body map ((x) => x.xi))
+}
+*/
