@@ -6,25 +6,54 @@ import scala.virtualization.lms.common.{Base, BaseExp, ArrayOpsExp, RangeOpsExp,
 trait DCPOps extends Base with NumericOps {
   self: DCPShape with DCPShapeNames with DCPSize with DCPExpr with DCPConstraint =>
 
-  def cvxexpr(): Symbol = new Symbol()
+  def cvxexpr(): SymbolExpr = new SymbolExpr()
+  def cvxinput(): SymbolInput = new SymbolInput()
+  def cvxparam(): SymbolParam = new SymbolParam()
+
   def solve(
+    ts_params: =>SolveParams,
+    ts_given: =>SolveGiven,
     ts_over: =>SolveOver,
     ts_let: =>SolveLet,
     ts_where: =>SolveWhere,
-    ts_opt: SolveOpt): Unit
+    ts_opt: =>SolveOpt): Unit
+
+  class SolveParams(val params: Seq[ParamBinding])
+  class ParamBinding(val param: Rep[Int], val symbol: SymbolParam)
+
+  def params(params: ParamBinding*): SolveParams = new SolveParams(params)
+  implicit def tuple2parambinding(tpl: Tuple2[Rep[Int], SymbolParam]): ParamBinding
+    = new ParamBinding(tpl._1, tpl._2)
+  implicit def flattuple2parambinding(tpl: Tuple2[Int, SymbolParam]): ParamBinding
+    = new ParamBinding(unit(tpl._1), tpl._2)
+
+  class SolveGiven(val inputs: Seq[InputBinding])
+  class InputBinding(val input: InputDesc, val symbol: SymbolInput)
+
+  def given(inputs: InputBinding*): SolveGiven = new SolveGiven(inputs)
+  implicit def tuple2inputbinding(tpl: Tuple2[InputDesc, SymbolInput]): InputBinding
+    = new InputBinding(tpl._1, tpl._2)
+
+  sealed trait InputDesc
+  case class InputDescScalar(val input: Rep[Float]) extends InputDesc
+  case class InputDescFor(val size: Size, val body: (Rep[Int]) => InputDesc) extends InputDesc
+
+  implicit def float2inputdesc(input: Float): InputDesc = InputDescScalar(unit(input))
+  implicit def repfloat2inputdesc(input: Rep[Float]): InputDesc = InputDescScalar(input)
+  def ifor(size: Size)(body: (Rep[Int]) => InputDesc): InputDesc = InputDescFor(size, body)
 
   class SolveOver(val vars: Seq[VarBinding])
-  class VarBinding(val shape: Shape, val symbol: Symbol)
+  class VarBinding(val shape: Shape, val symbol: SymbolExpr)
 
   def over(vars: VarBinding*): SolveOver = new SolveOver(vars)
-  implicit def tuple2varbinding(tpl: Tuple2[Shape, Symbol]): VarBinding
+  implicit def tuple2varbinding(tpl: Tuple2[Shape, SymbolExpr]): VarBinding
     = new VarBinding(tpl._1, tpl._2)
 
   class SolveLet(val exprs: Seq[ExprBinding])
-  class ExprBinding(val expr: Expr, val symbol: Symbol)
+  class ExprBinding(val expr: Expr, val symbol: SymbolExpr)
 
   def let(exprs: ExprBinding*): SolveLet = new SolveLet(exprs)
-  implicit def tuple2exprbinding(tpl: Tuple2[Expr, Symbol]): ExprBinding
+  implicit def tuple2exprbinding(tpl: Tuple2[Expr, SymbolExpr]): ExprBinding
     = new ExprBinding(tpl._1, tpl._2)
 
   class SolveWhere(val constraints: Seq[Constraint])
@@ -34,7 +63,7 @@ trait DCPOps extends Base with NumericOps {
   class SolveOpt(val expr: Expr)
 
   def minimize(expr: Expr): SolveOpt = new SolveOpt(expr)
-  def maximize(expr: Expr): SolveOpt = new SolveOpt(-expr)
+  //def maximize(expr: Expr): SolveOpt = new SolveOpt(-expr)
 
   def cfor(len: Size)(body: (IntParamBound) => Constraint): Constraint
   def sum(len: Size)(body: (IntParamBound) => Expr): Expr
@@ -47,20 +76,22 @@ trait DCPOps extends Base with NumericOps {
   implicit def inputscalar(c: Rep[Double]): Expr
   def inputvector(ar: Rep[Array[Double]]): Expr
   
-  class ArrayIndexHack(ar: Rep[Array[Double]]) {
-    def apply(at: Size): Expr = (inputvector(ar))(at)
-  }
+  //class ArrayIndexHack(ar: Rep[Array[Double]]) {
+  //  def apply(at: Size): Expr = (inputvector(ar))(at)
+  //}
   
-  implicit def arrayindexhackimpl(ar: Rep[Array[Double]]) = new ArrayIndexHack(ar)
+  //implicit def arrayindexhackimpl(ar: Rep[Array[Double]]) = new ArrayIndexHack(ar)
 }
 
 trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp {
   self: DCPShape with DCPShapeNames with DCPSize with DCPExpr with DCPConstraint =>
-  
+  /*
   implicit def inputscalar(c: Exp[Double]): Expr = new ExprInputScalar(c, Signum.All)
   def inputvector(ar: Exp[Array[Double]]): Expr = new ExprInputVector(ar.length, ar, Signum.All)
   
   def solve(
+    ts_params: =>SolveParams,
+    ts_given: =>SolveGiven,
     ts_over: =>SolveOver, 
     ts_let: =>SolveLet, 
     ts_where: =>SolveWhere, 
@@ -104,8 +135,9 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
     val ipb = new IntParamBound
     new ExprFor(len, ipb, body(ipb))    
   }
+  */
 }
-
+/*
 trait DCPOpsTest extends DCPOps with BaseExp with ArrayOpsExp with RangeOpsExp {
   self: DCPShape with DCPShapeNames with DCPSize with DCPExpr with DCPConstraint =>
 
@@ -128,3 +160,4 @@ trait DCPOpsTest extends DCPOps with BaseExp with ArrayOpsExp with RangeOpsExp {
     )
   }
 }
+*/

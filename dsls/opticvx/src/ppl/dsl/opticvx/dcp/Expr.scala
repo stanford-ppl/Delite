@@ -5,7 +5,7 @@ import scala.collection.immutable.Set
 trait DCPExpr {
   self: DCPShape with DCPShapeNames with DCPSize with DCPConstraint =>
 
-  class Symbol {
+  class SymbolExpr {
     var binding: Expr = null
     def bind(e: Expr) {
       if (binding != null) throw new DCPIRValidationException()
@@ -13,9 +13,17 @@ trait DCPExpr {
     }
   }
   
-  def symbol2exprimpl(s: Symbol): Expr = {
+  def symbol2exprimpl(s: SymbolExpr): Expr = {
     if (s.binding == null) throw new DCPIRValidationException()
     s.binding
+  }
+
+  class SymbolParam {
+
+  }
+
+  class SymbolInput {
+
   }
 
   trait Expr {
@@ -102,7 +110,7 @@ trait DCPExpr {
   }
   
   class ExprInputVector(val size: Size, val arg: Exp[Array[Double]], val sign: Signum, val varshape: Shape) extends Expr {
-    def shape: XShape = XShapeFor(size, XShapeScalar(Signum.Zero, sign, true))
+    val shape: XShape = XShapeFor(size, XShapeScalar(Signum.Zero, sign, true))
   }
   
 }

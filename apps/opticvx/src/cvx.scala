@@ -20,7 +20,12 @@ trait HelloCVX extends OptiCVXApplication /*with OptiCVXLibrary*/ {
     val x = cvxexpr()
     val y = cvxexpr()
     val z = cvxexpr()
+    val l = cvxinput()
+    val n = cvxparam()
+    val m = cvxparam()
     solve(
+      params(1 -> n, input.length -> m),
+      given(ifor(n)((i) => input(i)) -> l, "foobar"),
       over(scalar -> x, vector(input.length) -> y),
       let(x + x -> z),
       where(
