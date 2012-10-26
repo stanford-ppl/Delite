@@ -1,9 +1,9 @@
 package ppl.dsl.opticvx.dcp
 
 import scala.collection.immutable.Set
-/*
+
 trait DCPExpr {
-  self: DCPShape with DCPShapeNames with DCPSize with DCPConstraint =>
+  self: DCPShape with DCPAlmap =>
 
   class SymbolExpr {
     var binding: Expr = null
@@ -44,7 +44,7 @@ trait DCPExpr {
   // Optimization variables
   
   case class ExprVar(val varshape: Shape) extends Expr {
-    val shape: XShape = XShapeScalar(Signum.Zero, Signum.All, false).dupshape(varshape)
+    val shape: XShape = varshape.morph((n) => XDesc(Signum.Zero, Signum.All, false))
   }
   
   // Scalar arithmetic ops
@@ -114,4 +114,4 @@ trait DCPExpr {
   }
   
 }
-*/
+
