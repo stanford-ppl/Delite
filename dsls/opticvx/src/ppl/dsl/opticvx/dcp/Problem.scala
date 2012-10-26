@@ -1,6 +1,4 @@
-package ppl.dsl.opticvx.problem
-
-class ProblemIRValidationException extends Exception
+package ppl.dsl.opticvx.dcp
 
 /*
 case class Problem(

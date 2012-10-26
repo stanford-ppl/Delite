@@ -2,7 +2,7 @@ package ppl.dsl.opticvx.dcp
 
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{Base, BaseExp, ArrayOpsExp, RangeOpsExp, NumericOps, NumericOpsExp}
-
+/*
 trait DCPOps extends Base with NumericOps {
   self: DCPShape with DCPShapeNames with DCPSize with DCPExpr with DCPConstraint =>
 
@@ -137,6 +137,7 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
   }
   */
 }
+*/
 /*
 trait DCPOpsTest extends DCPOps with BaseExp with ArrayOpsExp with RangeOpsExp {
   self: DCPShape with DCPShapeNames with DCPSize with DCPExpr with DCPConstraint =>

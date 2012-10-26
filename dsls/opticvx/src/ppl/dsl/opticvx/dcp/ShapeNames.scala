@@ -1,7 +1,7 @@
 package ppl.dsl.opticvx.dcp
 
 import scala.virtualization.lms.common.BaseExp
-
+/*
 trait DCPShape {
   self: DCPSize =>
 
@@ -148,3 +148,4 @@ trait DCPShapeNames {
   def scalar: Shape = ShapeScalar()
   def vector(len: Exp[Int]): Shape = ShapeFor(len, ShapeScalar())
 }
+*/

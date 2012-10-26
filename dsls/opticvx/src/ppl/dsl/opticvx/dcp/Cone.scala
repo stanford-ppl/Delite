@@ -1,4 +1,4 @@
-package ppl.dsl.opticvx.problem
+package ppl.dsl.opticvx.dcp
 
 /*
 trait Cone {

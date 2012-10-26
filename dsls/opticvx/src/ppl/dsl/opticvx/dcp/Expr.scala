@@ -1,7 +1,7 @@
 package ppl.dsl.opticvx.dcp
 
 import scala.collection.immutable.Set
-
+/*
 trait DCPExpr {
   self: DCPShape with DCPShapeNames with DCPSize with DCPConstraint =>
 
@@ -114,3 +114,4 @@ trait DCPExpr {
   }
   
 }
+*/

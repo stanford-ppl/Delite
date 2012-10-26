@@ -1,10 +1,11 @@
 // Almap = Abstract Linear MAP
 // This represents a linear map as a composition of a set of linear mapping primitives
 
-package ppl.dsl.opticvx.problem
+package ppl.dsl.opticvx.dcp
 
 import scala.collection.immutable.Seq
 
+/*
 trait Almap extends HasArity[Almap] {
   //The shape of the input parameters used by this map
   val input: Shape
@@ -255,6 +256,7 @@ case class AlmapProd(val argl: Almap, val argr: Almap) extends Almap {
 
   def T: Almap = AlmapProd(argr.T, argl.T)
 }
+*/
 
 /*
 object AlmapUtil {
