@@ -56,6 +56,7 @@ trait DCPShape {
     val arity = size.arity
     if (body.arity != (arity + 1)) throw new DCPIRValidationException()
     def arityOp(op: ArityOp): ShapeWith[T] = ShapeForWith[T](size.arityOp(op), body.arityOp(op))
+    def morph[U](fx: (T) => U): ShapeWith[U] = ShapeForWith[U](size, body.morph[U](fx))
   }
   case class ShapeStructWith[T](val body: Seq[ShapeWith[T]]) extends ShapeWith[T] {
     val arity = body(0).arity
@@ -63,8 +64,57 @@ trait DCPShape {
       if (b.arity != arity) throw new DCPIRValidationException()
     }
     def arityOp(op: ArityOp): ShapeWith[T] = ShapeStructWith[T](body map ((x) => x.arityOp(op)))
+    def morph[U](fx: (T) => U): ShapeWith[U] = ShapeStructWith[U](body map ((x) => x.morph[U](fx)))
   }
 
+  case class VDesc(val vexity: Signum, val sign: Signum)
+  case class TDesc(val tonicity: Signum, val niltonicity: Signum)
+  case class XDesc(val vexity: Signum, val sign: Signum, val isinput: Boolean)
+  
+  type Shape = ShapeWith[Null]
+  type ShapeScalar = ShapeScalarWith[Null]
+  type ShapeFor = ShapeForWith[Null]
+  type ShapeStruct = ShapeStructWith[Null]
+  def ShapeScalar(arity: Int)
+    = ShapeScalarWith[Null](arity, null)
+  def ShapeFor(size: Size, body: Shape)
+    = ShapeForWith[Null](size, body)
+  def ShapeStruct(body: Seq[Shape])
+    = ShapeStructWith[Null](body)
+  
+  type VShape = ShapeWith[VDesc]
+  type VShapeScalar = ShapeScalarWith[VDesc]
+  type VShapeFor = ShapeForWith[VDesc]
+  type VShapeStruct = ShapeStructWith[VDesc]
+  def VShapeScalar(arity: Int, vexity: Signum, sign: Signum) 
+    = ShapeScalarWith[VDesc](arity, VDesc(vexity, sign))
+  def VShapeFor(size: Size, body: VShape)
+    = ShapeForWith[VDesc](size, body)
+  def VShapeStruct(body: Seq[VShape])
+    = ShapeStructWith[VDesc](body)
+  
+  type TShape = ShapeWith[TDesc]
+  type TShapeScalar = ShapeScalarWith[TDesc]
+  type TShapeFor = ShapeForWith[TDesc]
+  type TShapeStruct = ShapeStructWith[TDesc]
+  def TShapeScalar(arity: Int, tonicity: Signum, niltonicity: Signum) 
+    = ShapeScalarWith[TDesc](arity, TDesc(tonicity, niltonicity))
+  def TShapeFor(size: Size, body: TShape)
+    = ShapeForWith[TDesc](size, body)
+  def TShapeStruct(body: Seq[TShape])
+    = ShapeStructWith[TDesc](body)
+  
+  type XShape = ShapeWith[XDesc]
+  type XShapeScalar = ShapeScalarWith[XDesc]
+  type XShapeFor = ShapeForWith[XDesc]
+  type XShapeStruct = ShapeStructWith[XDesc]
+  def XShapeScalar(arity: Int, vexity: Signum, sign: Signum, isinput: Boolean) 
+    = ShapeScalarWith[XDesc](arity, XDesc(vexity, sign, isinput))
+  def XShapeFor(size: Size, body: XShape)
+    = ShapeForWith[XDesc](size, body)
+  def XShapeStruct(body: Seq[XShape])
+    = ShapeStructWith[XDesc](body)
+  
 }
 
 /*

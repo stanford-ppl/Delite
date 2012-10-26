@@ -7,6 +7,7 @@ import scala.virtualization.lms.common.{Base, BaseExp}
 
 class DCPIRValidationException extends Exception
 
+/*
 trait DCPSize extends BaseExp {
   self: DCPExpr =>
 
@@ -47,4 +48,4 @@ trait DCPSize extends BaseExp {
 
   implicit def sizeintmpyhackimplicit(i: Int) = SizeIntMpyHack(i)
 }
-
+*/
