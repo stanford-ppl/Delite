@@ -1,31 +1,56 @@
 package ppl.dsl.opticvx.dcp
 
+import scala.collection.immutable.Seq
 import scala.collection.immutable.Set
 
 trait DCPExpr {
   self: DCPShape with DCPAlmap =>
 
-  class SymbolExpr {
-    var binding: Expr = null
-    def bind(e: Expr) {
+  class Symbol[T>:Null] {
+    var binding: T = null
+    def bind(e: T) {
       if (binding != null) throw new DCPIRValidationException()
       binding = e
     }
   }
   
-  def symbol2exprimpl(s: SymbolExpr): Expr = {
+  implicit def symbol2Timpl[T>:Null](s: Symbol[T]): T = {
     if (s.binding == null) throw new DCPIRValidationException()
     s.binding
   }
-
+  
+  /*
   class SymbolParam {
-
+    var binding: Size = null
+    def bind(e: size) {
+      if (binding != null) throw new DCPIRValidationException()
+      binding = e
+    }
   }
 
   class SymbolInput {
-
+    
   }
+  */
 
+  case class Expr(val shape: XShape, val almap: Almap) extends HasArity[Expr] {
+    val arity: Int = shape.arity
+  
+    def arityOp(op: ArityOp): Expr = Expr(shape.arityOp(op), almap.arityOp(op))
+  
+    if (shape.strip != almap.codomain) throw new DCPIRValidationException()
+  
+    def +(x: Expr): Expr = Expr(shape + x.shape, AlmapSum(Seq(almap, x.almap)))
+    def unary_-(): Expr = Expr(-shape, AlmapNeg(almap))
+    def -(x: Expr): Expr = this + (-x)
+    
+    def apply(at: Size): Expr = {
+      throw new DCPIRValidationException()
+    }
+  }
+  
+  
+  /*
   trait Expr {
     val shape: XShape
     val varshape: Shape
@@ -112,6 +137,6 @@ trait DCPExpr {
   class ExprInputVector(val size: Size, val arg: Exp[Array[Double]], val sign: Signum, val varshape: Shape) extends Expr {
     val shape: XShape = XShapeFor(size, XShapeScalar(Signum.Zero, sign, true))
   }
-  
+  */
 }
 

@@ -25,15 +25,15 @@ trait HelloCVX extends OptiCVXApplication /*with OptiCVXLibrary*/ {
     val m = cvxparam()
     solve(
       params(1 -> n, input.length -> m),
-      given(ifor(n)((i) => input(i)) -> l, "foobar"),
-      over(scalar -> x, vector(input.length) -> y),
+      given(ifor(n)((i) => input(i)) -> l),
+      over(scalar -> x, vector(m) -> y),
       let(x + x -> z),
       where(
-        cfor(input.length)((n) => (y(n) <= x)),
+        cfor(m)((n) => (y(n) <= x)),
         x >= 0
       ),
       minimize(
-        sum(input.length)((n) => y(n)*input(n)) - x
+        sum(m)((n) => y(n)*input(n)) - x
       )
     )
   }

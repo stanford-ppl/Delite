@@ -92,8 +92,9 @@ trait OptiCVX extends OptiLA
   with dcp.DCPOps
   with dcp.DCPShape
   with dcp.DCPShapeNames
-  with dcp.DCPSize
+  with dcp.DCPAlmap
   with dcp.DCPExpr
+  with dcp.DCPCone
   with dcp.DCPConstraint
   
 //   with OptVarOps
@@ -131,7 +132,6 @@ trait OptiCVXExp extends OptiLAExp
   with OptiCVXCompiler with OptiCVXScalaOpsPkgExp 
   with ScalaOpsPkgExp
   with DeliteOpsExp
-  with dcp.DCPOpsExp
   
 //   with OptVarOpsExp
 //   with ExprShapeOpsExp

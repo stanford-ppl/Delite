@@ -1,39 +1,100 @@
 package ppl.dsl.opticvx.dcp
 
-/*
-trait Cone {
-  val nIntParams: Int
-  val shape: Shape
-  if (shape.nIntParams != nIntParams) throw new ProblemIRValidationException()
-}
+import scala.collection.immutable.Set
+import scala.collection.immutable.Seq
 
-case class ConeFor(val size: Size, val body: Cone) extends Cone {
-  val nIntParams: Int = size.nIntParams
-  val shape: Shape = ShapeFor(nIntParams, size, body.shape)
-  
-  if (size.nIntParams != nIntParams) throw new ProblemIRValidationException()
-  if (body.nIntParams != (nIntParams + 1)) throw new ProblemIRValidationException()
-}
+trait DCPCone {
+  self: DCPShape =>
 
-case class ConeStruct(val body: Seq[Cone]) extends Cone {
-  val nIntParams: Int = body(0).nIntParams
-  val shape: Shape = ShapeStruct(nIntParams, body map ((x) => x.shape))
-  
-  for (b <- body) {
-    if (b.nIntParams != nIntParams) throw new ProblemIRValidationException()
+  trait Cone extends HasArity[Cone] {
+    val shape: Shape
+    def dcpvalidate(xsh: XShape): Unit
+    
+    if (shape.arity != arity) throw new DCPIRValidationException()
   }
-}
+  
+  //The trivial scalar cone (the only proper cone over R)
+  case class ConeNonNegative(val arity: Int) extends Cone {
+    val shape: Shape = ShapeScalar(arity)
+    
+    def dcpvalidate(xsh: XShape) {
+      if (xsh.arity != arity) throw new DCPIRValidationException()
+      if (!(xsh.isInstanceOf[XShapeScalar])) throw new DCPIRValidationException()
+      val xd = xsh.asInstanceOf[XShapeScalar].desc
+      if (!(xd.vexity <= Signum.Negative)) throw new DCPIRValidationException()
+    }
+    
+    def arityOp(op: ArityOp): Cone = op match {
+      case ArityOpRemoveParam(idx) => {
+        if ((arity == 0)||(idx >= arity)) throw new DCPIRValidationException()
+        ConeNonNegative(arity - 1)
+      }
+      case ArityOpAddParam(idx) => ConeNonNegative(arity + 1)
+    }
+  }
+  
+  //Second order cone
+  case class ConeSecondOrder(val size: Size) extends Cone {
+    val arity: Int = size.arity
+    val shape: Shape = ShapeStruct(Seq[Shape](
+      ShapeScalar(size.arity),
+      ShapeFor(size, ShapeScalar(size.arity + 1))))
+    
+    def dcpvalidate(xsh: XShape) {
+      if (xsh.arity != arity) throw new DCPIRValidationException()
+      xsh match {
+        case ShapeStructWith(Seq(
+          ShapeScalarWith(arx, dx),
+          ShapeForWith(szz, ShapeScalarWith(arz, dz)))) => {
+            if (!(dx.vexity <= Signum.Negative)) throw new DCPIRValidationException()
+            if (!(dz.vexity <= Signum.Zero)) throw new DCPIRValidationException()
+          }
+        case _ =>
+          throw new DCPIRValidationException()
+      }
+    }
+      
+    def arityOp(op: ArityOp): Cone = ConeSecondOrder(size.arityOp(op))
+  }
 
-//The trivial scalar cone (the only proper cone over R)
-case class ConeScalar(val nIntParams: Int) extends Cone {
-  val shape: Shape = ShapeScalar(nIntParams)
-}
+  //For-loop product of cones
+  case class ConeFor(val size: Size, val body: Cone) extends Cone {
+    val arity: Int = size.arity
+    val shape: Shape = ShapeFor(size, body.shape)
+    
+    def arityOp(op: ArityOp): Cone = ConeFor(size.arityOp(op), body.arityOp(op))
+    
+    def dcpvalidate(xsh: XShape) {
+      if (xsh.arity != arity) throw new DCPIRValidationException()
+      if (!(xsh.isInstanceOf[XShapeFor])) throw new DCPIRValidationException()
+      val x = xsh.asInstanceOf[XShapeFor]
+      if (x.size != size) throw new DCPIRValidationException()
+      body.dcpvalidate(x.body)
+    }
+    
+    if (body.arity != (arity + 1)) throw new DCPIRValidationException()
+  }
 
-//Second order cone
-case class ConeSecondOrder(val size: Size) extends Cone {
-  val nIntParams: Int = size.nIntParams
-  val shape: Shape = ShapeStruct(nIntParams, Seq[Shape](
-    ShapeScalar(nIntParams), 
-    ShapeFor(nIntParams, size, ShapeScalar(nIntParams+1))))
+  //Cartesian-product of cones
+  case class ConeStruct(val body: Seq[Cone]) extends Cone {
+    val arity: Int = body(0).arity
+    val shape: Shape = ShapeStruct(body map ((x) => x.shape))
+    
+    def arityOp(op: ArityOp): Cone = ConeStruct(body map ((b) => b.arityOp(op)))
+    
+    def dcpvalidate(xsh: XShape) {
+      if (xsh.arity != arity) throw new DCPIRValidationException()
+      if (!(xsh.isInstanceOf[XShapeStruct])) throw new DCPIRValidationException()
+      val xb = xsh.asInstanceOf[XShapeStruct].body
+      if (!(xb.length == body.length)) throw new DCPIRValidationException()
+      for (i <- 0 until body.length) {
+        body(i).dcpvalidate(xb(i))
+      }
+    }
+    
+    for (b <- body) {
+      if (b.arity != arity) throw new DCPIRValidationException()
+    }
+  }
+
 }
-*/
