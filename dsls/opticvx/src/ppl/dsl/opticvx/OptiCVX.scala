@@ -132,6 +132,8 @@ trait OptiCVXExp extends OptiLAExp
   with OptiCVXCompiler with OptiCVXScalaOpsPkgExp 
   with ScalaOpsPkgExp
   with DeliteOpsExp
+  with dcp.DCPOpsExp
+  with dcp.DCPProblem
   
 //   with OptVarOpsExp
 //   with ExprShapeOpsExp

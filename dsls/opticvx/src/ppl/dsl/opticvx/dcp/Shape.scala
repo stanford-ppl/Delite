@@ -36,6 +36,8 @@ trait DCPShape {
     for (c <- coeffs) {
       if (c < 0) throw new DCPIRValidationException()
     }
+
+    def next: Size = Size.param(arity, arity + 1)
   }
 
   sealed trait ShapeWith[T] extends HasArity[ShapeWith[T]] {
@@ -115,6 +117,14 @@ trait DCPShape {
     = ShapeForWith[XDesc](size, body)
   def XShapeStruct(body: Seq[XShape])
     = ShapeStructWith[XDesc](body)
+
+  type CShape = ShapeWith[Double]
+  def CShapeScalar(arity: Int, const: Double) 
+    = ShapeScalarWith[Double](arity, const)
+  def CShapeFor(size: Size, body: CShape)
+    = ShapeForWith[Double](size, body)
+  def CShapeStruct(body: Seq[CShape])
+    = ShapeStructWith[Double](body)
   
   trait RingDesc[T] {
     def plus(x1: T, x2: T): T
@@ -126,6 +136,11 @@ trait DCPShape {
       XDesc(x1.vexity + x2.vexity, x1.sign + x2.sign, x1.isinput && x2.isinput)
     def neg(x: XDesc): XDesc = 
       XDesc(-x.vexity, -x.sign, x.isinput)
+  }
+
+  implicit object CRingDesc extends RingDesc[Double] {
+    def plus(x1: Double, x2: Double): Double = x1 + x2
+    def neg(x: Double): Double = -x
   }
   
   def infix_+[T](x1: ShapeWith[T], x2: ShapeWith[T])(implicit ev: RingDesc[T]): ShapeWith[T] = 
@@ -142,6 +157,7 @@ trait DCPShape {
         if (xs1.body.length != xs2.body.length) throw new DCPIRValidationException()
         ShapeStructWith[T](for (i <- 0 until xs1.body.length) yield infix_+(xs1.body(i), xs2.body(i)))
       }
+      case _ => throw new DCPIRValidationException()
     }
   
   def infix_unary_-[T](x: ShapeWith[T])(implicit ev: RingDesc[T]): ShapeWith[T] = 
@@ -152,6 +168,7 @@ trait DCPShape {
         ShapeForWith[T](xs.size, infix_unary_-(xs.body))
       case xs: ShapeStructWith[T] =>
         ShapeStructWith[T](xs.body map ((b) => infix_unary_-(b))) 
+      case _ => throw new DCPIRValidationException()
     }
   
   

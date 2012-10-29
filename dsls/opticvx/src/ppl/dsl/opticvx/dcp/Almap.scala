@@ -115,7 +115,7 @@ trait DCPAlmap {
   }
 
   //Scale of a linear map by a constant
-  case class AlmapScaleConstant(val arg: Almap, val scale: Float) extends Almap {
+  case class AlmapScaleConstant(val arg: Almap, val scale: Double) extends Almap {
     val arity: Int = arg.arity
     val input: Shape = arg.input
     val domain: Shape = arg.domain

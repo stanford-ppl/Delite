@@ -4,7 +4,7 @@ import scala.collection.immutable.Seq
 import scala.collection.immutable.Set
 
 trait DCPExpr {
-  self: DCPShape with DCPAlmap =>
+  self: DCPShape with DCPAlmap with DCPConstraint with DCPCone =>
 
   class Symbol[T>:Null] {
     var binding: T = null
@@ -33,22 +33,96 @@ trait DCPExpr {
   }
   */
 
-  case class Expr(val shape: XShape, val almap: Almap) extends HasArity[Expr] {
+  case class Expr(val shape: XShape, val almap: Almap, val offset: Almap) extends HasArity[Expr] {
     val arity: Int = shape.arity
   
-    def arityOp(op: ArityOp): Expr = Expr(shape.arityOp(op), almap.arityOp(op))
+    def arityOp(op: ArityOp): Expr = Expr(shape.arityOp(op), almap.arityOp(op), offset.arityOp(op))
   
     if (shape.strip != almap.codomain) throw new DCPIRValidationException()
+    if (shape.strip != offset.codomain) throw new DCPIRValidationException()
+    if (offset.domain != ShapeScalar(arity)) throw new DCPIRValidationException()
+    if (almap.input != offset.input) throw new DCPIRValidationException()
   
-    def +(x: Expr): Expr = Expr(shape + x.shape, AlmapSum(Seq(almap, x.almap)))
-    def unary_-(): Expr = Expr(-shape, AlmapNeg(almap))
+    def +(x: Expr): Expr = Expr(
+      shape + x.shape, 
+      AlmapSum(Seq(almap, x.almap)),
+      AlmapSum(Seq(offset, x.offset)))
+
+    def unary_-(): Expr = Expr(-shape, AlmapNeg(almap), AlmapNeg(offset))
     def -(x: Expr): Expr = this + (-x)
     
     def apply(at: Size): Expr = {
       throw new DCPIRValidationException()
     }
+
+    def <=(x: Expr): ConicConstraint = constrain_nonnegative(x - this)
+    def >=(x: Expr): ConicConstraint = constrain_nonnegative(this - x)
+
+    def *(c: Expr): Expr = {
+      throw new DCPIRValidationException()
+    }
   }
-  
+
+  def infix_<=(y: Expr, c: Double): ConicConstraint = {
+    val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
+    constrain_nonnegative(x - y)
+  }
+  def infix_>=(y: Expr, c: Double): ConicConstraint = {
+    val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
+    constrain_nonnegative(y - x)
+  }
+  def infix_<=(c: Double, y: Expr): ConicConstraint = {
+    val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
+    constrain_nonnegative(y - x)
+  }
+  def infix_>=(c: Double, y: Expr): ConicConstraint = {
+    val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
+    constrain_nonnegative(x - y)
+  }
+
+  def infix_+(y: Expr, c: Double): Expr = {
+    val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
+    y + x
+  }
+  def infix_+(c: Double, y: Expr): Expr = {
+    val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
+    x + y
+  }
+
+  def infix_-(y: Expr, c: Double): Expr = {
+    val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
+    y - x
+  }
+  def infix_-(c: Double, y: Expr): Expr = {
+    val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
+    x - y
+  }
+
+  def constant2expr(c: Double, input: Shape, domain: Shape): Expr = Expr(
+      XShapeScalar(input.arity, Signum.Zero, Signum.All, true),
+      AlmapZero(input, domain, ShapeScalar(input.arity)),
+      AlmapScaleConstant(AlmapIdentity(input, ShapeScalar(input.arity)), c))
+
+  def xfor(len: Size, body: (Size) => Expr): Expr = {
+    val bsx: Expr = body(len.next)
+    Expr(
+      XShapeFor(len, bsx.shape),
+      AlmapVCatFor(len, bsx.almap),
+      AlmapVCatFor(len, bsx.offset))
+  }
+
+  def sum(len: Size, body: (Size) => Expr): Expr = {
+    val bsx: Expr = body(len.next)
+    Expr(
+      bsx.shape,
+      AlmapSumFor(len, bsx.almap),
+      AlmapSumFor(len, bsx.offset))
+  }
+
+  def xstruct(body: Seq[Expr]): Expr = Expr(
+    XShapeStruct(body map (x => x.shape)),
+    AlmapVCat(body map (x => x.almap)),
+    AlmapVCat(body map (x => x.offset)))
   
   /*
   trait Expr {
