@@ -38,7 +38,7 @@ trait DCPOps extends Base with NumericOps {
     def shape(arity: Int): Shape = {
       if (arity != size.arity) throw new DCPIRValidationException()
       val iid: InputDesc = body(unit(0))
-      ShapeFor(size, iid.shape(arity))
+      ShapeFor(size, iid.shape(arity + 1))
     }
   }
 
@@ -96,17 +96,29 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
     for(i <- 0 until arity) {
       s_params.params(i).symbol.bind(Size.param(i, arity))
     }
-    //Bind the given inputs
+    //Resolve the given inputs and problem variables
     val s_given = ts_given
     val input: Shape = ShapeStruct(s_given.inputs map ((ii) => ii.input.shape(arity)))
+    val s_over = ts_over
+    val varshape: Shape = ShapeStruct(s_over.vars map ((vv) => vv.shape))
+    //Bind the given inputs
     for(i <- 0 until s_given.inputs.length) {
+      val ash = s_given.inputs(i).input.shape(arity)
+      val ysh = ash.morph((nn) => XDesc(Signum.Zero, Signum.All, true))
+      val yalmap = AlmapZero(input, varshape, ash)
+      val ypart = AlmapHCat(for (j <- 0 until s_given.inputs.length)
+        yield if (i == j) AlmapIdentity(input, ash)
+          else AlmapZero(input, s_given.inputs(j).input.shape(arity), s_given.inputs(j).input.shape(arity)))
       s_given.inputs(i).symbol.bind(throw new DCPIRValidationException())
     }
     // Bind the problem variables
-    val s_over = ts_over
-    val varshape: Shape = ShapeStruct(s_over.vars map ((vv) => vv.shape))
     for (i <- 0 until s_over.vars.length) {
-      s_over.vars(i).symbol.bind(throw new DCPIRValidationException())
+      val ysh = s_over.vars(i).shape.morph((nn) => XDesc(Signum.Zero, Signum.All, false))
+      val yalmap = AlmapHCat(for (j <- 0 until s_over.vars.length)
+        yield if (i == j) AlmapIdentity(input, s_over.vars(i).shape)
+          else AlmapZero(input, s_over.vars(j).shape, s_over.vars(j).shape))
+      val yoffset = AlmapZero(input, varshape, ShapeScalar(arity))
+      s_over.vars(i).symbol.bind(Expr(ysh, yalmap, yoffset))
     }
     // Bind the expression symbols
     val s_let = ts_let
@@ -125,8 +137,14 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
     // DCP-verify the objective
     val s_opt = ts_opt
     val objectiveExpr = s_opt.expr
-    if (!(s_opt.expr.shape.isInstanceOf[XShapeScalar])) throw new DCPIRValidationException()
-    if (!(s_opt.expr.shape.asInstanceOf[XShapeScalar].desc.vexity <= Signum.Positive)) throw new DCPIRValidationException()
+    if (!(s_opt.expr.shape.isInstanceOf[XShapeScalar]))
+      throw new DCPIRValidationException()
+    if (!(s_opt.expr.shape.asInstanceOf[XShapeScalar].desc.vexity <= Signum.Positive))
+      throw new DCPIRValidationException()
+    // Construct the problem
+    val problem: Problem = Problem(
+      affineConstraint.almap, affineConstraint.offset,
+      conicConstraint.almap, conicConstraint.offset, cone)
   }
   
 }

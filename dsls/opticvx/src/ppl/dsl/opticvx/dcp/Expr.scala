@@ -18,20 +18,6 @@ trait DCPExpr {
     if (s.binding == null) throw new DCPIRValidationException()
     s.binding
   }
-  
-  /*
-  class SymbolParam {
-    var binding: Size = null
-    def bind(e: size) {
-      if (binding != null) throw new DCPIRValidationException()
-      binding = e
-    }
-  }
-
-  class SymbolInput {
-    
-  }
-  */
 
   case class Expr(val shape: XShape, val almap: Almap, val offset: Almap) extends HasArity[Expr] {
     val arity: Int = shape.arity
@@ -59,8 +45,28 @@ trait DCPExpr {
     def >=(x: Expr): ConicConstraint = constrain_nonnegative(this - x)
 
     def *(c: Expr): Expr = {
-      throw new DCPIRValidationException()
+      if (shape.isInstanceOf[XShapeScalar]&&shape.asInstanceOf[XShapeScalar].desc.isinput) {
+        exprscale(c, this)
+      }
+      else if (c.shape.isInstanceOf[XShapeScalar]&&c.shape.asInstanceOf[XShapeScalar].desc.isinput) {
+        exprscale(this, c)
+      }
+      else {
+        throw new DCPIRValidationException()
+      }
     }
+  }
+  
+  def exprscale(x: Expr, c: Expr): Expr = {
+    //Since c is an input, it is fully described by its offset property
+    if (!(c.shape.isInstanceOf[XShapeScalar])) throw new DCPIRValidationException()
+    if (!(c.shape.asInstanceOf[XShapeScalar].desc.isinput)) throw new DCPIRValidationException()
+    val csign = c.shape.asInstanceOf[XShapeScalar].desc.sign
+    val ysh = x.shape.morph((xd: XDesc) => 
+      XDesc(csign * xd.vexity, csign * xd.sign, xd.isinput))
+    val yalmap = AlmapScale(x.almap, c.offset)
+    val yoffset = AlmapScale(x.offset, c.offset)
+    Expr(ysh, yalmap, yoffset)
   }
 
   def infix_<=(y: Expr, c: Double): ConicConstraint = {
