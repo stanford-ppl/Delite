@@ -5,7 +5,7 @@ import scala.virtualization.lms.common.{VariablesExp, Variables}
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.dsl.optigraph._
 import scala.virtualization.lms.common._
-import reflect.Manifest
+import reflect.{Manifest,SourceContext}
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 import java.io.PrintWriter
 
@@ -106,6 +106,32 @@ trait GSeqOpsExp extends GSeqOps with VariablesExp with BaseFatExp {
   def gseq_popfront[T:Manifest](o: Exp[GSeq[T]]) = reflectWrite(o)(GSeqPopFront(o))
   def gseq_popback[T:Manifest](o: Exp[GSeq[T]]) = reflectWrite(o)(GSeqPopBack(o))
   def gseq_apply[T:Manifest](o: Exp[GSeq[T]], idx: Exp[Int]) = reflectPure(GSeqApply(o, idx))
+  
+  //////////////
+  // mirroring
+  
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case GSeqItems(o) => gseq_items(f(o))
+    case GSeqContains(o,x) => gseq_contains(f(o),f(x))
+    case GSeqSize(o) => gseq_size(f(o))
+    case GSeqFront(o) => gseq_front(f(o))
+    case GSeqBack(o) => gseq_back(f(o))
+    case GSeqApply(o,n) => gseq_apply(f(o),f(n))
+    case Reflect(e@GSeqObjectNew(), u, es) => reflectMirrored(Reflect(GSeqObjectNew()(e.mGS), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GSeqItems(o), u, es) => reflectMirrored(Reflect(GSeqItems(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GSeqContains(o,x), u, es) => reflectMirrored(Reflect(GSeqContains(f(o),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GSeqSize(o), u, es) => reflectMirrored(Reflect(GSeqSize(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GSeqFront(o), u, es) => reflectMirrored(Reflect(GSeqFront(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GSeqBack(o), u, es) => reflectMirrored(Reflect(GSeqBack(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GSeqApply(o,n), u, es) => reflectMirrored(Reflect(GSeqApply(f(o),f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GSeqPushFront(o,x), u, es) => reflectMirrored(Reflect(GSeqPushFront(f(o),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GSeqPushBack(o,x), u, es) => reflectMirrored(Reflect(GSeqPushBack(f(o),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GSeqPushFrontSeq(o,x), u, es) => reflectMirrored(Reflect(GSeqPushFrontSeq(f(o),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GSeqPushBackSeq(o,x), u, es) => reflectMirrored(Reflect(GSeqPushBackSeq(f(o),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GSeqPopFront(o), u, es) => reflectMirrored(Reflect(GSeqPopFront(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GSeqPopBack(o), u, es) => reflectMirrored(Reflect(GSeqPopBack(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??    
 }
 
 trait BaseGenGSeqOps extends GenericFatCodegen {

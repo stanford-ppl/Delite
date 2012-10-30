@@ -138,19 +138,26 @@ trait OptiGraphTests extends OptiGraphApplication {
     val n4 = g.AddNode
     g.Freeze
     
+    println("Test Foreach With No Reductions")
+    for (n <- g.Nodes) {
+      println("should print 4 times")
+    }
+    
     println("Test Reduction Assignments: SUM ")
     val sum = Reduceable[Int](5)
     for(n <- g.Nodes) {
+      println("foo")
       sum += 1
+      println("bar")
+      // println(sum)  // TODO: won't work --> need to go through remaining effects and remove any remaining references to the DeliteReduction sum += 1
     }
     if(sum.value != 9) {
       println("[FAIL] Expected value = 9, Actual value = " + sum.value)
     } else {
       println("[OK] Sum is correct.")
     }
-   
-    //-------//
     
+    //-------//
     println("Test Reduction Assignments: PROD ")
     val prod = Reduceable[Int](2)
     for(n <- g.Nodes) {
@@ -163,7 +170,6 @@ trait OptiGraphTests extends OptiGraphApplication {
     }
     
     //-------//
-    
     println("Test Reduction Assignments: ALL ")
     val all = Reduceable[Boolean](true)
     val all2 = Reduceable[Boolean](true)
@@ -219,6 +225,7 @@ trait OptiGraphTests extends OptiGraphApplication {
     val max = Reduceable[Int](MIN_INT)
     for(n <- g.Nodes) {
       max >= n.Id
+      println("max: " + max.value) // should at least not crash
     }
     if(max.value != 3) {
       println("[FAIL] Expected value = 3, Actual value = " + max.value)
@@ -253,7 +260,7 @@ trait OptiGraphTests extends OptiGraphApplication {
       println("[FAIL] Expected value = 2.0, Actual value = " + red.value)
     } else {
       println("[OK] Value was set correctly.")
-    }
+    }    
   }
   
   def test_reductions() {
@@ -427,7 +434,6 @@ trait OptiGraphTests extends OptiGraphApplication {
     } else {
       println("[OK] Any is correct.")
     }
-    
   }
   
   def test_traversals() {
@@ -680,7 +686,6 @@ trait OptiGraphTests extends OptiGraphApplication {
   def test_iterations() {   
     
     // empty / non-empty
-    
     println("Test Parallel For-each")
     val set = NodeSet()
     for(n <- set.Items) {
@@ -689,42 +694,46 @@ trait OptiGraphTests extends OptiGraphApplication {
     Foreach(set.Items) { n =>
       println("[FAIL] Iterable collection is empty ")
     }
-
+    
     val G  = Graph()
     val n1 = G.AddNode
     val n2 = G.AddNode
     G.Freeze
     val np = NodeProperty[Int](G, 0)
     
-    // val i = Reduceable[Int](0)
+    // TODO: this test fails with fusion on. weird interaction inside DeliteOpForeachReduce?
+    // inserting printlns effects things in non-obvious ways, too... maybe has to do with
+    // the order things get fused in? the two foreaches should *not* get fused due to the
+    // write of np and the subsequent read.. HOWEVER, they are getting fused! are we losing the write?
+    val i = Reduceable[Int](0)
     for(n <- G.Nodes) {
+      // println("mark")
       np(n) = 1
-      // i += 1
+      i += 1
     }
     
-    /* TODO: this needs ForeachReduce
     if(i.value != 2) {
       println("[FAIL] Expected number of iterations = 2, Actual number of iterations = " + i.value)
     } else {
       println("[OK] Num iterations is correct.")
     }
-    */
+
     if(np(n1) != 1 || np(n2) != 1) {
       println("[FAIL] Iteration block was not executed.")
     } else {
       println("[OK] Iteration block was executed.")
     }
     
-    // i.setValue(0)
+    i.setValue(0)
     Foreach(G.Nodes) { n =>
       np(n) = 2
-      // i += 1
+      i += 1
     }
-    // if(i.value != G.NumNodes) {
-    //   println("[FAIL] Expected number of iterations = 2, Actual number of iterations = " + i.value)
-    // } else {
-    //   println("[OK] Num iterations is correct.")
-    // }
+    if(i.value != G.NumNodes) {
+      println("[FAIL] Expected number of iterations = 2, Actual number of iterations = " + i.value)
+    } else {
+      println("[OK] Num iterations is correct.")
+    }
     if(np(n1) != 2 || np(n2) != 2) {
       println("[FAIL] Iteration block was not executed.")
       println("np(n1): " + np(n1))
@@ -743,8 +752,7 @@ trait OptiGraphTests extends OptiGraphApplication {
       println("[FAIL] Iteration block was not executed.")
     } else {
       println("[OK] Iteration block was executed.")
-    }
-    
+    }    
   }
   
   def test_nodeEdgeProps() {
@@ -1167,7 +1175,7 @@ trait OptiGraphTests extends OptiGraphApplication {
     test_graphOps()
     test_nodeOpsEdgeOps()
     test_nodeEdgeProps()
-    // test_reduceable()     // TODO: needs DeliteOpForeachReduce 
+    test_reduceable()     
     test_reductions()
     test_deferrable()
     test_filters()

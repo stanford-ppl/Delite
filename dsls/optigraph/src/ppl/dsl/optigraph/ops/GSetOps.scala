@@ -5,7 +5,7 @@ import scala.virtualization.lms.common.{VariablesExp, Variables}
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.dsl.optigraph._
 import scala.virtualization.lms.common._
-import reflect.Manifest
+import reflect.{Manifest, SourceContext}
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 import java.io.PrintWriter
 
@@ -84,12 +84,34 @@ trait GSetOpsExp extends GSetOps with VariablesExp with BaseFatExp {
   def gset_items[A:Manifest](s: Exp[GSet[A]]) = reflectPure(GSetItems(s))
   def gset_contains[A:Manifest](s: Exp[GSet[A]], e: Exp[A]) = reflectPure(GSetContains(s, e))
   def gset_size[A:Manifest](s: Exp[GSet[A]]) = reflectPure(GSetSize(s))
-  def gset_add[A:Manifest](s: Exp[GSet[A]], e: Exp[A]) = reflectPure(GSetAdd(s, e))
-  def gset_addset[A:Manifest](s: Exp[GSet[A]], s2: Exp[GSet[A]]) = reflectPure(GSetAddSet(s, s2))
-  def gset_remove[A:Manifest](s: Exp[GSet[A]], e: Exp[A]) = reflectPure(GSetRemove(s, e))
-  def gset_removeset[A:Manifest](s: Exp[GSet[A]], s2: Exp[GSet[A]]) = reflectPure(GSetRemoveSet(s, s2))
-  def gset_clear[A:Manifest](s: Exp[GSet[A]]) = reflectPure(GSetClear(s))
+  def gset_add[A:Manifest](s: Exp[GSet[A]], e: Exp[A]) = reflectWrite(s)(GSetAdd(s, e))
+  def gset_addset[A:Manifest](s: Exp[GSet[A]], s2: Exp[GSet[A]]) = reflectWrite(s)(GSetAddSet(s, s2))
+  def gset_remove[A:Manifest](s: Exp[GSet[A]], e: Exp[A]) = reflectWrite(s)(GSetRemove(s, e))
+  def gset_removeset[A:Manifest](s: Exp[GSet[A]], s2: Exp[GSet[A]]) = reflectWrite(s)(GSetRemoveSet(s, s2))
+  def gset_clear[A:Manifest](s: Exp[GSet[A]]) = reflectWrite(s)(GSetClear(s))
   def gset_clone[A:Manifest](s: Exp[GSet[A]]) = reflectPure(GSetClone(s))
+  
+  //////////////
+  // mirroring
+  
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case GSetItems(s) => gset_items(f(s))
+    case GSetSize(s) => gset_size(f(s))
+    case GSetContains(s,x) => gset_contains(f(s),f(x))
+    case GSetClone(s) => gset_contains(f(s),f(s))
+    case Reflect(e@GSetObjectNew(), u, es) => reflectMirrored(Reflect(GSetObjectNew()(e.mGS), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GSetItems(s), u, es) => reflectMirrored(Reflect(GSetItems(f(s)), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@GSetSize(s), u, es) => reflectMirrored(Reflect(GSetSize(f(s)), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@GSetClone(s), u, es) => reflectMirrored(Reflect(GSetClone(f(s)), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@GSetContains(s,x), u, es) => reflectMirrored(Reflect(GSetContains(f(s),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@GSetAdd(s,x), u, es) => reflectMirrored(Reflect(GSetAdd(f(s),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@GSetAddSet(s,x), u, es) => reflectMirrored(Reflect(GSetAddSet(f(s),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@GSetRemove(s,x), u, es) => reflectMirrored(Reflect(GSetRemove(f(s),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@GSetRemoveSet(s,x), u, es) => reflectMirrored(Reflect(GSetRemoveSet(f(s),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@GSetClear(s), u, es) => reflectMirrored(Reflect(GSetClear(f(s)), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
+  
 }
 
 trait BaseGenGSetOps extends GenericFatCodegen {

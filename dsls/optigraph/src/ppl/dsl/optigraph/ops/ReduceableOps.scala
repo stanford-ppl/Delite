@@ -1,7 +1,7 @@
 package ppl.dsl.optigraph.ops
 
 import java.io.{PrintWriter}
-import reflect.Manifest
+import reflect.{Manifest,SourceContext}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 import ppl.dsl.optigraph._
@@ -65,88 +65,74 @@ trait ReduceableOpsExp extends ReduceableOps with EffectExp {
   case class RedSetValue[T:Manifest](r: Exp[Reduceable[T]], x: Rep[T]) extends Def[Unit]
   case class RedSetOutput[T:Manifest](r:Exp[Reduceable[T]], out: Exp[T], reduceOpString: String, dep: Exp[Unit]) extends Def[Unit]
   
-  abstract class ReductionOp[T:Manifest]() extends Def[Unit] {
-    val m = manifest[T]
-    val rv: Exp[Reduceable[T]]
-    val rhs: Exp[T]
-    val zero: Exp[T]
-    def reduce: (Exp[T], Exp[T]) => Exp[T]
-    // reduceStr stores the String representation of the reduction operation
-    // in order to combine the result of the parallel block with the initial value
-    // TODO: there must be a better way to do this
-    def reduceStr: String
-  }
-  
-  case class RedSum[T:Manifest:Numeric](rv: Exp[Reduceable[T]], v: Exp[T]) extends ReductionOp[T] {
-    val n = implicitly[Numeric[T]]   
-    val rhs = v
+  case class RedSum[T:Manifest:Numeric](lhs: Exp[Reduceable[T]], rhs: Exp[T]) extends DeliteReduction[Reduceable[T],T] {
     val zero = unit(0.asInstanceOf[T])
-    def reduce: (Exp[T],Exp[T])=>Exp[T] = (a,b) => a + b
-    def reduceStr: String = "(a,b) => a + b"
+    def reduce = (a,b) => a+b
+    def updateValue = (a,b) => a.setValue(reduce(a.value,b))
+    
+    val mT = manifest[T]
+    val mN = implicitly[Numeric[T]]    
   }
-  
-  case class RedProd[T:Manifest:Numeric](rv: Exp[Reduceable[T]], v: Exp[T]) extends ReductionOp[T] {
-    val n = implicitly[Numeric[T]]
-    val rhs = v
+    
+  case class RedProd[T:Manifest:Numeric](lhs: Exp[Reduceable[T]], rhs: Exp[T]) extends DeliteReduction[Reduceable[T],T] {
     val zero = unit(1.asInstanceOf[T])
-    def reduce: (Exp[T],Exp[T])=>Exp[T] = (a,b) => a * b
-    def reduceStr: String = "(a,b) => a * b"
-  }
+    def reduce = (a,b) => a*b
+    def updateValue = (a,b) => a.setValue(reduce(a.value,b))
+    
+    val mT = manifest[T]
+    val mN = implicitly[Numeric[T]]    
+  }  
   
-  case class RedCount(rv: Exp[Reduceable[Int]], v: Exp[Boolean]) extends ReductionOp[Int] {
-    val rhs = if(v) { unit(1) } else { unit(0) }
+  case class RedCount(lhs: Exp[Reduceable[Int]], v: Exp[Boolean]) extends DeliteReduction[Reduceable[Int],Int] {
+    val rhs = if (v) unit(1) else unit(0)
     val zero = unit(0)
-    def reduce = (a,b) => a + b
-    def reduceStr: String = "(a,b) => a + b"
-  }
+    def reduce = (a,b) => a+b
+    def updateValue = (a,b) => a.setValue(reduce(a.value,b))
+  }  
   
-  case class RedMax[T:Manifest:Ordering](rv: Exp[Reduceable[T]], v: Exp[T]) extends ReductionOp[T] {
-    val n = implicitly[Ordering[T]]
-    val rhs = v
-    val mT: Manifest[T] = manifest[T]
-    val zero = (mT match {
+  case class RedMax[T:Manifest:Ordering](lhs: Exp[Reduceable[T]], rhs: Exp[T]) extends DeliteReduction[Reduceable[T],T] {
+    val zero = (manifest[T] match {
       case Manifest.Double => MIN_DOUBLE
       case Manifest.Float => MIN_FLOAT
-      case Manifest.Int =>  MIN_INT
-      case _ => throw new RuntimeException()
-    }).asInstanceOf[Exp[T]]
-    def reduce = (a,b) => if (a > b) a else b
-    def reduceStr: String = "(a,b) => if (a > b) a else b"
-  }
+      case Manifest.Int => MIN_INT
+    }).asInstanceOf[Exp[T]]    
+    def reduce = (a,b) => if (a < b) b else a
+    def updateValue = (a,b) => a.setValue(reduce(a.value,b))
+    
+    val mT = manifest[T]
+    val mO = implicitly[Ordering[T]]    
+  }  
   
-  case class RedMin[T:Manifest:Ordering](rv: Exp[Reduceable[T]], v: Exp[T]) extends ReductionOp[T] {
-    val n = implicitly[Ordering[T]]
-    val rhs = v
-    val mT: Manifest[T] = manifest[T]
-    val zero = (mT match {
+  case class RedMin[T:Manifest:Ordering](lhs: Exp[Reduceable[T]], rhs: Exp[T]) extends DeliteReduction[Reduceable[T],T] {
+    val zero = (manifest[T] match {
       case Manifest.Double => MAX_DOUBLE
       case Manifest.Float => MAX_FLOAT
-      case Manifest.Int =>  MAX_INT
-      case _ => throw new RuntimeException()
-    }).asInstanceOf[Exp[T]]
-    def reduce = (a,b) => if (a < b) a else b
-    def reduceStr: String = "(a,b) => if (a < b) a else b"
-  }
+      case Manifest.Int => MAX_INT
+    }).asInstanceOf[Exp[T]]    
+    def reduce = (a,b) => if (a > b) b else a
+    def updateValue = (a,b) => a.setValue(reduce(a.value,b))
+    
+    val mT = manifest[T]
+    val mO = implicitly[Ordering[T]]
+  }    
   
-  case class RedAll(rv: Exp[Reduceable[Boolean]], v: Exp[Boolean]) extends ReductionOp[Boolean] {
-    val rhs = v
+  case class RedAll(lhs: Exp[Reduceable[Boolean]], rhs: Exp[Boolean]) extends DeliteReduction[Reduceable[Boolean],Boolean] {
     val zero = unit(true)
     def reduce = (a,b) => a && b
-    def reduceStr: String = "(a,b) => a && b"
-  }
+    def updateValue = (a,b) => a.setValue(reduce(a.value,b))
+  }  
   
-  case class RedAny(rv: Exp[Reduceable[Boolean]], v: Exp[Boolean]) extends ReductionOp[Boolean] {
-    val rhs = v
+  case class RedAny(lhs: Exp[Reduceable[Boolean]], rhs: Exp[Boolean]) extends DeliteReduction[Reduceable[Boolean],Boolean] {
     val zero = unit(false)
     def reduce = (a,b) => a || b
-    def reduceStr: String = "(a,b) => a || b"
-  }
-  
+    def updateValue = (a,b) => a.setValue(reduce(a.value,b))
+  }  
+    
   def red_new[T:Manifest](init: Exp[T]) = reflectMutable(RedObjectNew(init)(manifest[Reduceable[T]]))
   def red_getvalue[T:Manifest](r: Exp[Reduceable[T]]) = reflectPure(RedGetValue(r))
   def red_setvalue[T:Manifest](r: Exp[Reduceable[T]], x: Exp[T]) = reflectWrite(r)(RedSetValue(r,x))
    
-  def red_sum[T:Manifest:Numeric](r: Exp[Reduceable[T]], v: Exp[T]) = reflectEffect(RedSum(r,v))
+  def red_sum[T:Manifest:Numeric](r: Exp[Reduceable[T]], v: Exp[T]) = reflectWrite(r)(RedSum(r,v))
   def red_product[T:Manifest:Numeric](r: Exp[Reduceable[T]], v: Exp[T]) = reflectWrite(r)(RedProd(r,v))
   def red_count(r: Exp[Reduceable[Int]], v: Exp[Boolean]) = reflectWrite(r)(RedCount(r,v))
   def red_min[T:Manifest:Ordering](r: Exp[Reduceable[T]], v: Exp[T]) = reflectWrite(r)(RedMin(r,v))
@@ -173,6 +159,26 @@ trait ReduceableOpsExp extends ReduceableOps with EffectExp {
     case RedSetOutput(r, out, dep) => Nil//out.asInstanceOf[Sym[Any]] :: scala.List() //v :: body.flatMap(boundSyms)
     case _ => super.boundSyms(e)
   }*/
+  
+  //////////////
+  // mirroring
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    // implemented via method on real data structure
+    case RedGetValue(r) => red_getvalue(f(r))
+    
+    case Reflect(e@RedGetValue(r), u, es) => reflectMirrored(Reflect(RedGetValue(f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@RedSetValue(r,x), u, es) => reflectMirrored(Reflect(RedSetValue(f(r),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@RedObjectNew(x), u, es) => reflectMirrored(Reflect(RedObjectNew(f(x))(e.mR), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@RedSum(r,v), u, es) => reflectMirrored(Reflect(RedSum(f(r),f(v))(e.mT,e.mN), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@RedProd(r,v), u, es) => reflectMirrored(Reflect(RedProd(f(r),f(v))(e.mT,e.mN), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@RedCount(r,v), u, es) => reflectMirrored(Reflect(RedCount(f(r),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@RedMin(r,v), u, es) => reflectMirrored(Reflect(RedMin(f(r),f(v))(e.mT,e.mO), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@RedMax(r,v), u, es) => reflectMirrored(Reflect(RedMax(f(r),f(v))(e.mT,e.mO), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@RedAll(r,v), u, es) => reflectMirrored(Reflect(RedAll(f(r),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@RedAny(r,v), u, es) => reflectMirrored(Reflect(RedAny(f(r),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
   
 }
 
