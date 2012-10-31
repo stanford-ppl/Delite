@@ -22,7 +22,10 @@ trait DCPConstraint {
     ConicConstraint(expr, ConeNonNegative(expr.arity))
 
   def cfor(len: Size, body: (Size) => Constraint): Constraint = {
-    body(len.next) match {
+    globalArityPromote()
+    val eval_body = body(len.next)
+    globalArityDemote()
+    eval_body match {
       case bsx: ConicConstraint => ConicConstraint(
         Expr(
           XShapeFor(len, bsx.expr.shape),
@@ -36,6 +39,7 @@ trait DCPConstraint {
           AlmapVCatFor(len, bsx.expr.offset)))
       case _ => throw new DCPIRValidationException()
     }
+
   }
 
 }

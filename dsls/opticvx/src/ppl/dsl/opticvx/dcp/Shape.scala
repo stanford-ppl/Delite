@@ -5,10 +5,49 @@ import scala.collection.immutable.Seq
 trait DCPShape {
 
   var globalArity: Int = -1
+  var globalInputShape: Shape = null
+  var globalVarShape: Shape = null
 
-  sealed trait ArityOp
-  case class ArityOpRemoveParam(idx: Int) extends ArityOp
-  case class ArityOpAddParam(idx: Int) extends ArityOp
+  def globalArityPromote() {
+    if (globalInputShape.arity != globalArity) throw new DCPIRValidationException()
+    if (globalVarShape.arity != globalArity) throw new DCPIRValidationException()
+    globalArity += 1
+    globalInputShape = globalInputShape.promote
+    globalVarShape = globalVarShape.promote
+  }
+
+  def globalArityDemote() {
+    if (globalInputShape.arity != globalArity) throw new DCPIRValidationException()
+    if (globalVarShape.arity != globalArity) throw new DCPIRValidationException()
+    globalArity -= 1
+    globalInputShape = globalInputShape.demote
+    globalVarShape = globalVarShape.demote
+  }
+
+  sealed trait ArityOp {
+    def apply(arity: Int): Int
+  }
+  case class ArityOpRemoveParam(idx: Int) extends ArityOp {
+    if (idx < 0) throw new DCPIRValidationException()
+    def apply(arity: Int): Int = {
+      if (idx >= arity) throw new DCPIRValidationException()
+      arity - 1
+    }
+  }
+  case class ArityOpAddParam(idx: Int) extends ArityOp {
+    if (idx < 0) throw new DCPIRValidationException()
+    def apply(arity: Int): Int = {
+      if (idx > arity) throw new DCPIRValidationException()
+      arity + 1
+    }
+  }
+  case class ArityOpSubstituteAt(idx: Int, size: Size) extends ArityOp {
+    if (size.arity != idx) throw new DCPIRValidationException()
+    def apply(arity: Int): Int = {
+      if (idx >= arity) throw new DCPIRValidationException()
+      arity - 1
+    }
+  }
 
   trait HasArity[T] {
     val arity: Int
@@ -16,6 +55,7 @@ trait DCPShape {
     def promote: T = addParam(arity)
     def removeParam(idx: Int): T = arityOp(ArityOpRemoveParam(idx))
     def addParam(idx: Int): T = arityOp(ArityOpAddParam(idx))
+    def substituteAt(idx: Int, size: Size) = arityOp(ArityOpSubstituteAt(idx, size))
     def arityOp(op: ArityOp): T
   }
 
@@ -32,6 +72,12 @@ trait DCPShape {
         Size(const, coeffs.take(idx) ++ coeffs.drop(idx+1))
       }
       case ArityOpAddParam(idx) => Size(const, (coeffs.take(idx) :+ 0) ++ coeffs.drop(idx))
+      case ArityOpSubstituteAt(idx, size) => {
+        val cidx = coeffs(idx)
+        val c0: Seq[Int] = for (i <- 0 until idx) yield coeffs(idx) + cidx * size.coeffs(idx)
+        val c1 = coeffs.drop(idx + 1)
+        Size(const + size.const * cidx, c0 ++ c1)
+      }
     }
 
     def positive: Boolean = {
@@ -68,13 +114,7 @@ trait DCPShape {
   }
 
   case class ShapeScalarWith[T](val arity: Int, val desc: T) extends ShapeWith[T] {
-    def arityOp(op: ArityOp): ShapeWith[T] = op match {
-      case ArityOpRemoveParam(idx) => {
-        if ((arity == 0)||(idx >= arity)) throw new DCPIRValidationException()
-        ShapeScalarWith[T](arity - 1, desc)
-      }
-      case ArityOpAddParam(idx) => ShapeScalarWith[T](arity + 1, desc)
-    }
+    def arityOp(op: ArityOp): ShapeWith[T] = ShapeScalarWith[T](op(arity), desc)
     def morph[U](fx: (T) => U): ShapeWith[U] = ShapeScalarWith[U](arity, fx(desc))
   }
   case class ShapeForWith[T](val size: Size, val body: ShapeWith[T]) extends ShapeWith[T] {
@@ -83,13 +123,12 @@ trait DCPShape {
     def arityOp(op: ArityOp): ShapeWith[T] = ShapeForWith[T](size.arityOp(op), body.arityOp(op))
     def morph[U](fx: (T) => U): ShapeWith[U] = ShapeForWith[U](size, body.morph[U](fx))
   }
-  case class ShapeStructWith[T](val body: Seq[ShapeWith[T]]) extends ShapeWith[T] {
-    val arity = body(0).arity
+  case class ShapeStructWith[T](val arity: Int, val body: Seq[ShapeWith[T]]) extends ShapeWith[T] {
     for (b <- body) {
       if (b.arity != arity) throw new DCPIRValidationException()
     }
-    def arityOp(op: ArityOp): ShapeWith[T] = ShapeStructWith[T](body map ((x) => x.arityOp(op)))
-    def morph[U](fx: (T) => U): ShapeWith[U] = ShapeStructWith[U](body map ((x) => x.morph[U](fx)))
+    def arityOp(op: ArityOp): ShapeWith[T] = ShapeStructWith[T](op(arity), body map ((x) => x.arityOp(op)))
+    def morph[U](fx: (T) => U): ShapeWith[U] = ShapeStructWith[U](arity, body map ((x) => x.morph[U](fx)))
   }
 
   case class VDesc(val vexity: Signum, val sign: Signum)
@@ -104,8 +143,8 @@ trait DCPShape {
     = ShapeScalarWith[Null](arity, null)
   def ShapeFor(size: Size, body: Shape)
     = ShapeForWith[Null](size, body)
-  def ShapeStruct(body: Seq[Shape])
-    = ShapeStructWith[Null](body)
+  def ShapeStruct(arity: Int, body: Seq[Shape])
+    = ShapeStructWith[Null](arity, body)
   
   type VShape = ShapeWith[VDesc]
   type VShapeScalar = ShapeScalarWith[VDesc]
@@ -115,8 +154,8 @@ trait DCPShape {
     = ShapeScalarWith[VDesc](arity, VDesc(vexity, sign))
   def VShapeFor(size: Size, body: VShape)
     = ShapeForWith[VDesc](size, body)
-  def VShapeStruct(body: Seq[VShape])
-    = ShapeStructWith[VDesc](body)
+  def VShapeStruct(arity: Int, body: Seq[VShape])
+    = ShapeStructWith[VDesc](arity, body)
   
   type TShape = ShapeWith[TDesc]
   type TShapeScalar = ShapeScalarWith[TDesc]
@@ -126,8 +165,8 @@ trait DCPShape {
     = ShapeScalarWith[TDesc](arity, TDesc(tonicity, niltonicity))
   def TShapeFor(size: Size, body: TShape)
     = ShapeForWith[TDesc](size, body)
-  def TShapeStruct(body: Seq[TShape])
-    = ShapeStructWith[TDesc](body)
+  def TShapeStruct(arity: Int, body: Seq[TShape])
+    = ShapeStructWith[TDesc](arity, body)
   
   type XShape = ShapeWith[XDesc]
   type XShapeScalar = ShapeScalarWith[XDesc]
@@ -137,16 +176,16 @@ trait DCPShape {
     = ShapeScalarWith[XDesc](arity, XDesc(vexity, sign, isinput))
   def XShapeFor(size: Size, body: XShape)
     = ShapeForWith[XDesc](size, body)
-  def XShapeStruct(body: Seq[XShape])
-    = ShapeStructWith[XDesc](body)
+  def XShapeStruct(arity: Int, body: Seq[XShape])
+    = ShapeStructWith[XDesc](arity, body)
 
   type CShape = ShapeWith[Double]
   def CShapeScalar(arity: Int, const: Double) 
     = ShapeScalarWith[Double](arity, const)
   def CShapeFor(size: Size, body: CShape)
     = ShapeForWith[Double](size, body)
-  def CShapeStruct(body: Seq[CShape])
-    = ShapeStructWith[Double](body)
+  def CShapeStruct(arity: Int, body: Seq[CShape])
+    = ShapeStructWith[Double](arity, body)
   
   trait RingDesc[T] {
     def plus(x1: T, x2: T): T
@@ -165,10 +204,10 @@ trait DCPShape {
     def neg(x: Double): Double = -x
   }
   
-  def infix_+[T](x1: ShapeWith[T], x2: ShapeWith[T])(implicit ev: RingDesc[T]): ShapeWith[T] = 
+  def infix_+[T](x1: ShapeWith[T], x2: ShapeWith[T])(implicit ev: RingDesc[T]): ShapeWith[T] = {
+    if (x1.arity != x2.arity) throw new DCPIRValidationException()
     (x1, x2) match {
       case (xs1: ShapeScalarWith[T], xs2: ShapeScalarWith[T]) => {
-        if (xs1.arity != xs2.arity) throw new DCPIRValidationException()
         ShapeScalarWith[T](xs1.arity, ev.plus(xs1.desc, xs2.desc))
       }
       case (xs1: ShapeForWith[T], xs2: ShapeForWith[T]) => {
@@ -177,10 +216,11 @@ trait DCPShape {
       }
       case (xs1: ShapeStructWith[T], xs2: ShapeStructWith[T]) => {
         if (xs1.body.length != xs2.body.length) throw new DCPIRValidationException()
-        ShapeStructWith[T](for (i <- 0 until xs1.body.length) yield infix_+(xs1.body(i), xs2.body(i)))
+        ShapeStructWith[T](xs1.arity, for (i <- 0 until xs1.body.length) yield infix_+(xs1.body(i), xs2.body(i)))
       }
       case _ => throw new DCPIRValidationException()
     }
+  }
   
   def infix_unary_-[T](x: ShapeWith[T])(implicit ev: RingDesc[T]): ShapeWith[T] = 
     x match {
@@ -189,7 +229,7 @@ trait DCPShape {
       case xs: ShapeForWith[T] =>
         ShapeForWith[T](xs.size, infix_unary_-(xs.body))
       case xs: ShapeStructWith[T] =>
-        ShapeStructWith[T](xs.body map ((b) => infix_unary_-(b))) 
+        ShapeStructWith[T](xs.arity, xs.body map ((b) => infix_unary_-(b))) 
       case _ => throw new DCPIRValidationException()
     }
   

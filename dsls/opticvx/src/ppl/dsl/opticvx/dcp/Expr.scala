@@ -6,7 +6,7 @@ import scala.collection.immutable.Set
 trait DCPExpr {
   self: DCPShape with DCPAlmap with DCPConstraint with DCPCone =>
 
-  class Symbol[T>:Null] {
+  class Symbol[T >: Null <: HasArity[T]] {
     var binding: T = null
     def bind(e: T) {
       if (binding != null) throw new DCPIRValidationException()
@@ -14,9 +14,14 @@ trait DCPExpr {
     }
   }
   
-  implicit def symbol2Timpl[T>:Null](s: Symbol[T]): T = {
+  implicit def symbol2Timpl[T >: Null <: HasArity[T]](s: Symbol[T]): T = {
     if (s.binding == null) throw new DCPIRValidationException()
-    s.binding
+    var lsx: T = s.binding
+    while(lsx.arity < globalArity) {
+      lsx = lsx.promote
+    }
+    if (s.binding.arity > globalArity) throw new DCPIRValidationException()
+    lsx
   }
 
   case class Expr(val shape: XShape, val almap: Almap, val offset: Almap) extends HasArity[Expr] {
@@ -31,14 +36,25 @@ trait DCPExpr {
   
     def +(x: Expr): Expr = Expr(
       shape + x.shape, 
-      AlmapSum(Seq(almap, x.almap)),
-      AlmapSum(Seq(offset, x.offset)))
+      almap + x.almap,
+      offset + x.offset)
 
     def unary_-(): Expr = Expr(-shape, AlmapNeg(almap), AlmapNeg(offset))
     def -(x: Expr): Expr = this + (-x)
     
     def apply(at: Size): Expr = {
-      throw new DCPIRValidationException()
+      if (!(shape.isInstanceOf[XShapeFor])) throw new DCPIRValidationException()
+      val vsh = shape.asInstanceOf[XShapeFor].body.substituteAt(arity, at)
+      val aprod = AlmapHCatFor(
+        shape.asInstanceOf[XShapeFor].size,
+        AlmapIf(
+          at.next - at.promote,
+          AlmapIdentity(
+            almap.input.promote,
+            almap.codomain.asInstanceOf[ShapeFor].body)))
+      val yalmap = AlmapProd(aprod, almap)
+      val yoffset = AlmapProd(aprod, offset)
+      Expr(vsh, yalmap, yoffset)
     }
 
     def <=(x: Expr): ConicConstraint = constrain_nonnegative(x - this)
@@ -110,7 +126,9 @@ trait DCPExpr {
       AlmapScaleConstant(AlmapIdentity(input, ShapeScalar(input.arity)), c))
 
   def xfor(len: Size, body: (Size) => Expr): Expr = {
+    globalArityPromote()
     val bsx: Expr = body(len.next)
+    globalArityDemote()
     Expr(
       XShapeFor(len, bsx.shape),
       AlmapVCatFor(len, bsx.almap),
@@ -118,7 +136,9 @@ trait DCPExpr {
   }
 
   def sum(len: Size, body: (Size) => Expr): Expr = {
+    globalArityPromote()
     val bsx: Expr = body(len.next)
+    globalArityDemote()
     Expr(
       bsx.shape,
       AlmapSumFor(len, bsx.almap),
@@ -126,9 +146,9 @@ trait DCPExpr {
   }
 
   def xstruct(body: Seq[Expr]): Expr = Expr(
-    XShapeStruct(body map (x => x.shape)),
-    AlmapVCat(body map (x => x.almap)),
-    AlmapVCat(body map (x => x.offset)))
+    XShapeStruct(globalArity, body map (x => x.shape)),
+    AlmapVCat(globalInputShape, globalVarShape, body map (x => x.almap)),
+    AlmapVCat(globalInputShape, ShapeScalar(globalArity), body map (x => x.offset)))
   
   /*
   trait Expr {

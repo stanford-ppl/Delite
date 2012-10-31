@@ -29,6 +29,10 @@ trait DCPAlmap {
     //def mmpy(m: Almap): Almap
   }
 
+  def infix_+(x: Almap, y: Almap): Almap = AlmapSum(x.input, x.domain, x.codomain, Seq(x,y))
+  def infix_unary_-(x: Almap): Almap = AlmapNeg(x)
+  def infix_-(x: Almap, y: Almap): Almap = (x + (-y))
+
   //The identity map from scalars to scalars
   case class AlmapIdentity(val input: Shape, val domain: Shape) extends Almap {
     val arity: Int = input.arity
@@ -67,11 +71,8 @@ trait DCPAlmap {
   }
 
   //The sum of several linear maps
-  case class AlmapSum(val args: Seq[Almap]) extends Almap {
-    val arity: Int = args(0).arity
-    val input: Shape = args(0).input
-    val domain: Shape = args(0).domain
-    val codomain: Shape = args(0).codomain
+  case class AlmapSum(val input: Shape, val domain: Shape, val codomain: Shape, val args: Seq[Almap]) extends Almap {
+    val arity: Int = input.arity
 
     for(a <- args) {
       if (a.arity != arity) throw new DCPIRValidationException()
@@ -80,9 +81,10 @@ trait DCPAlmap {
       if (a.codomain != codomain) throw new DCPIRValidationException()
     }
 
-    def arityOp(op: ArityOp): Almap = AlmapSum(args map ((x) => x.arityOp(op)))
+    def arityOp(op: ArityOp): Almap
+      = AlmapSum(input.arityOp(op), domain.arityOp(op), codomain.arityOp(op), args map ((x) => x.arityOp(op)))
 
-    def T: Almap = AlmapSum(args map ((x) => x.T))
+    def T: Almap = AlmapSum(input, codomain, domain, args map ((x) => x.T))
 
     // def mmpy(m: Almap): Almap = AlmapSum(args map ((a) => a.mmpy(m)))
     
@@ -144,11 +146,9 @@ trait DCPAlmap {
 
 
   //The vertical concatenation of several linear maps
-  case class AlmapVCat(val args: Seq[Almap]) extends Almap {
-    val arity: Int = args(0).arity
-    val input: Shape = args(0).input
-    val domain: Shape = args(0).domain
-    val codomain: Shape = ShapeStruct(args map ((a) => a.codomain))
+  case class AlmapVCat(val input: Shape, val domain: Shape, val args: Seq[Almap]) extends Almap {
+    val arity: Int = input.arity
+    val codomain: Shape = ShapeStruct(arity, args map ((a) => a.codomain))
 
     for(a <- args) {
       if (a.arity != arity) throw new DCPIRValidationException()
@@ -156,9 +156,10 @@ trait DCPAlmap {
       if (a.domain != domain) throw new DCPIRValidationException()
     }
 
-    def arityOp(op: ArityOp): Almap = AlmapVCat(args map ((a) => a.arityOp(op)))
+    def arityOp(op: ArityOp): Almap
+      = AlmapVCat(input.arityOp(op), domain.arityOp(op), args map ((a) => a.arityOp(op)))
 
-    def T: Almap = AlmapHCat(args map ((a) => a.T))
+    def T: Almap = AlmapHCat(input, domain, args map ((a) => a.T))
 
     // def mmpy(m: Almap): Almap = AlmapVCat(args map ((a) => a.mmpy(m)))
     
@@ -185,11 +186,9 @@ trait DCPAlmap {
 
 
   //The horizontal concatenation of several linear maps
-  case class AlmapHCat(val args: Seq[Almap]) extends Almap {
-    val arity: Int = args(0).arity
-    val input: Shape = args(0).input
-    val domain: Shape = ShapeStruct(args map ((a) => a.domain))
-    val codomain: Shape = args(0).codomain
+  case class AlmapHCat(val input: Shape, val codomain: Shape, val args: Seq[Almap]) extends Almap {
+    val arity: Int = input.arity
+    val domain: Shape = ShapeStruct(arity, args map ((a) => a.domain))
 
     for(a <- args) {
       if (a.arity != arity) throw new DCPIRValidationException()
@@ -197,9 +196,10 @@ trait DCPAlmap {
       if (a.codomain != codomain) throw new DCPIRValidationException()
     }
 
-    def arityOp(op: ArityOp): Almap = AlmapHCat(args map ((a) => a.arityOp(op)))
+    def arityOp(op: ArityOp): Almap
+      = AlmapHCat(input.arityOp(op), codomain.arityOp(op), args map ((a) => a.arityOp(op)))
 
-    def T: Almap = AlmapVCat(args map ((a) => a.T))
+    def T: Almap = AlmapVCat(input, codomain, args map ((a) => a.T))
 
     // def mmpy(m: Almap): Almap = m match {
     //   case AlmapVCat(ma) => AlmapSum(for(i <- 0 until args.length) yield args(i).mmpy(ma(i)))
@@ -290,7 +290,7 @@ trait DCPAlmap {
   //Given a linear map over the input space, wraps it into a map from R
   def almap_wrapinput(almap: Almap): Almap = {
     if (almap.input != almap.domain) throw new DCPIRValidationException()
-    almap.codomain match {
+    val rv = almap.codomain match {
       case xsh: ShapeScalar => 
         AlmapScale(AlmapIdentity(almap.input, ShapeScalar(almap.arity)), almap)
       case xsh: ShapeFor =>
@@ -306,6 +306,10 @@ trait DCPAlmap {
             almap.promote)))
 
     }
+    if (!rv.domain.isInstanceOf[ShapeScalar]) throw new DCPIRValidationException()
+    if (rv.codomain != almap.codomain) throw new DCPIRValidationException()
+    if (rv.input != almap.input) throw new DCPIRValidationException()
+    rv
   }
 
 }

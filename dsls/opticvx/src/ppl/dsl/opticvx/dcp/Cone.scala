@@ -9,8 +9,6 @@ trait DCPCone {
   trait Cone extends HasArity[Cone] {
     val shape: Shape
     def dcpvalidate(xsh: XShape): Unit
-    
-    if (shape.arity != arity) throw new DCPIRValidationException()
   }
   
   //The trivial scalar cone (the only proper cone over R)
@@ -30,31 +28,46 @@ trait DCPCone {
         ConeNonNegative(arity - 1)
       }
       case ArityOpAddParam(idx) => ConeNonNegative(arity + 1)
+      case ArityOpSubstituteAt(idx, size) => {
+        if ((arity == 0)||(idx >= arity)) throw new DCPIRValidationException()
+        ConeNonNegative(arity - 1)
+      }
     }
+
+    if (shape.arity != arity) throw new DCPIRValidationException()
   }
   
   //Second order cone
   case class ConeSecondOrder(val size: Size) extends Cone {
     val arity: Int = size.arity
-    val shape: Shape = ShapeStruct(Seq[Shape](
-      ShapeScalar(size.arity),
-      ShapeFor(size, ShapeScalar(size.arity + 1))))
+    val shape: Shape = ShapeStruct(
+      arity, 
+      Seq[Shape](
+        ShapeScalar(size.arity),
+        ShapeFor(
+          size, 
+          ShapeScalar(size.arity + 1))))
     
     def dcpvalidate(xsh: XShape) {
       if (xsh.arity != arity) throw new DCPIRValidationException()
       xsh match {
-        case ShapeStructWith(Seq(
-          ShapeScalarWith(arx, dx),
-          ShapeForWith(szz, ShapeScalarWith(arz, dz)))) => {
-            if (!(dx.vexity <= Signum.Negative)) throw new DCPIRValidationException()
-            if (!(dz.vexity <= Signum.Zero)) throw new DCPIRValidationException()
-          }
+        case ShapeStructWith(
+          ars, 
+          Seq(
+            ShapeScalarWith(arx, dx),
+            ShapeForWith(szz, 
+              ShapeScalarWith(arz, dz)))) => {
+                if (!(dx.vexity <= Signum.Negative)) throw new DCPIRValidationException()
+                if (!(dz.vexity <= Signum.Zero)) throw new DCPIRValidationException()
+              }
         case _ =>
           throw new DCPIRValidationException()
       }
     }
       
     def arityOp(op: ArityOp): Cone = ConeSecondOrder(size.arityOp(op))
+    
+    if (shape.arity != arity) throw new DCPIRValidationException()
   }
 
   //For-loop product of cones
@@ -73,14 +86,15 @@ trait DCPCone {
     }
     
     if (body.arity != (arity + 1)) throw new DCPIRValidationException()
+    
+    if (shape.arity != arity) throw new DCPIRValidationException()
   }
 
   //Cartesian-product of cones
-  case class ConeStruct(val body: Seq[Cone]) extends Cone {
-    val arity: Int = body(0).arity
-    val shape: Shape = ShapeStruct(body map ((x) => x.shape))
+  case class ConeStruct(val arity: Int, val body: Seq[Cone]) extends Cone {
+    val shape: Shape = ShapeStruct(arity, body map ((x) => x.shape))
     
-    def arityOp(op: ArityOp): Cone = ConeStruct(body map ((b) => b.arityOp(op)))
+    def arityOp(op: ArityOp): Cone = ConeStruct(op(arity), body map ((b) => b.arityOp(op)))
     
     def dcpvalidate(xsh: XShape) {
       if (xsh.arity != arity) throw new DCPIRValidationException()
@@ -95,6 +109,8 @@ trait DCPCone {
     for (b <- body) {
       if (b.arity != arity) throw new DCPIRValidationException()
     }
+    
+    if (shape.arity != arity) throw new DCPIRValidationException()
   }
 
 }

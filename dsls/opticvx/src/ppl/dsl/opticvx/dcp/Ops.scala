@@ -100,27 +100,34 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
     globalArity = arity
     //Resolve the given inputs and problem variables
     val s_given = ts_given
-    val input: Shape = ShapeStruct(s_given.inputs map ((ii) => ii.input.shape(arity)))
+    val input: Shape = ShapeStruct(arity, s_given.inputs map ((ii) => ii.input.shape(arity)))
     val s_over = ts_over
-    val varshape: Shape = ShapeStruct(s_over.vars map ((vv) => vv.shape))
+    val varshape: Shape = ShapeStruct(arity, s_over.vars map ((vv) => vv.shape))
+    //Set the global input and varshapes
+    globalInputShape = input
+    globalVarShape = varshape
     //Bind the given inputs
     for(i <- 0 until s_given.inputs.length) {
       val ash = s_given.inputs(i).input.shape(arity)
       val ysh = ash.morph((nn) => XDesc(Signum.Zero, Signum.All, true))
       val yalmap = AlmapZero(input, varshape, ash)
-      val ypart = AlmapHCat(for (j <- 0 until s_given.inputs.length)
-        yield if (i == j) AlmapIdentity(input, ash)
-          else AlmapZero(input, s_given.inputs(j).input.shape(arity), ash))
+      val ypart = AlmapHCat(input, ash,
+        for (j <- 0 until s_given.inputs.length)
+          yield if (i == j) AlmapIdentity(input, ash)
+            else AlmapZero(input, s_given.inputs(j).input.shape(arity), ash))
       s_given.inputs(i).symbol.bind(Expr(ysh, yalmap, almap_wrapinput(ypart)))
+      //println("INS: " + s_given.inputs(i).symbol.binding.shape.toString + "\n\n")
     }
     // Bind the problem variables
     for (i <- 0 until s_over.vars.length) {
       val ysh = s_over.vars(i).shape.morph((nn) => XDesc(Signum.Zero, Signum.All, false))
-      val yalmap = AlmapHCat(for (j <- 0 until s_over.vars.length)
-        yield if (i == j) AlmapIdentity(input, s_over.vars(i).shape)
-          else AlmapZero(input, s_over.vars(j).shape, s_over.vars(i).shape))
+      val yalmap = AlmapHCat(input, s_over.vars(i).shape,
+        for (j <- 0 until s_over.vars.length)
+          yield if (i == j) AlmapIdentity(input, s_over.vars(i).shape)
+            else AlmapZero(input, s_over.vars(j).shape, s_over.vars(i).shape))
       val yoffset = AlmapZero(input, ShapeScalar(arity), s_over.vars(i).shape)
       s_over.vars(i).symbol.bind(Expr(ysh, yalmap, yoffset))
+      //println("VAR: " + s_over.vars(i).symbol.binding.shape.toString + "\n\n")
     }
     // Bind the expression symbols
     val s_let = ts_let
@@ -133,7 +140,7 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
       s_where.constraints filter (c => c.isInstanceOf[ConicConstraint]) map (c => c.asInstanceOf[ConicConstraint])
     val affine_cstrt: Seq[AffineConstraint] = 
       s_where.constraints filter (c => c.isInstanceOf[AffineConstraint]) map (c => c.asInstanceOf[AffineConstraint])
-    val cone: Cone = ConeStruct(conic_cstrt map ((cc) => cc.cone))
+    val cone: Cone = ConeStruct(arity, conic_cstrt map ((cc) => cc.cone))
     val conicConstraint: Expr = xstruct(conic_cstrt map (cc => cc.expr))
     val affineConstraint: Expr = xstruct(affine_cstrt map (cc => cc.expr))
     // DCP-verify the objective
@@ -143,8 +150,10 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
       throw new DCPIRValidationException()
     if (!(s_opt.expr.shape.asInstanceOf[XShapeScalar].desc.vexity <= Signum.Positive))
       throw new DCPIRValidationException()
-    // Reset the global arity
-    globalArity = arity
+    // Reset the global arity, inputshape, and varshape
+    globalArity = -1
+    globalInputShape = null
+    globalVarShape = null
     // Construct the problem
     val problem: Problem = Problem(
       affineConstraint.almap, affineConstraint.offset,
