@@ -22,13 +22,13 @@
           <li>Start Here
             <ol>
               <li><a href='index.html'>Welcome</a></li>
-              <li><a href="dsl_example.html">My First DSL</a></li>
+              <li><a href="myfirstdsl.html">My First DSL</a></li>
               <li><a href="faq.html">FAQ</a></li>
               <!--
               <li><a href="performance.html">Performance</a></li>
               <li><a href="tests.html">Tests</a></li>
-              -->              
               <li><a href="troubleshooting.html">Troubleshooting</a></li>
+              -->              
               <li><a href="publications.html">Publications</a></li>
             </ol>
           </li>
@@ -116,8 +116,7 @@
         inside <code>dsls/profiling/src/example/profiling</code>:      
         </p>
         <div class="highlight"><pre><code class="scala"><span class="k">package</span> <span class="nn">example.profiling</span>
-<span class="k">import</span> <span class="nn">scala.virtualization.lms.common.{ScalaGenBase, Base, EffectExp}</span>
-<span class="k">import</span> <span class="nn">java.io.PrintWriter</span>
+<span class="k">import</span> <span class="nn">scala.virtualization.lms.common.{ScalaGenEffect, Base, EffectExp}</span>
 
 <span class="c">// this is the abstract interface of our profiling methods</span>
 <span class="k">trait</span> <span class="nc">ProfileOps</span> <span class="k">extends</span> <span class="nc">Base</span> {
@@ -139,7 +138,7 @@
        by expanding ProfileOps.scala to include an implementation of profile_body:
        </p>
        <div class="highlight"><pre><code class="scala"><span class="k">trait</span> <span class="nc">ProfileOpsExp</span> <span class="k">extends</span> <span class="nc">ProfileOps</span> <span class="k">with</span> <span class="nc">EffectExp</span> {
-  <span class="k">case class</span> Profile(n: <span class="kt">Exp[Int]</span>, body: <span class="kt">Exp[Any]</span>) <span class="k">extends</span> <span class="nc">Def[ProfileArray]</span>
+  <span class="k">case class</span> Profile(n: <span class="kt">Exp[Int]</span>, body: <span class="kt">Block[Any]</span>) <span class="k">extends</span> <span class="nc">Def[ProfileArray]</span>
 
   <span class="k">def</span> profile_body(n: <span class="kt">Exp[Int]</span>, func: <span class="kt">=> Exp[Any]</span>) = {
     reflectEffect(<span class="nc">Profile</span>(n, reifyEffects(func)))  <span class="c">// create an IR node</span>
@@ -164,7 +163,6 @@
 <span class="k">import</span> <span class="nn">scala.virtualization.lms.common.ScalaGenBase</span>
 <span class="k">import</span> <span class="nn">ppl.delite.framework.ops.{DeliteCollectionOpsExp,DeliteOpsExp}</span>
 <span class="k">import</span> <span class="nn">ppl.delite.framework.datastruct.scala.DeliteCollection</span>
-<span class="k">import</span> <span class="nn">java.io.PrintWriter</span>
 
 <span class="k">trait</span> <span class="nc">ProfileArrayOps</span> <span class="k">extends</span> <span class="nc">Base</span> {
   <span class="c">// a simple way of enumerating choices in our syntax</span>
@@ -248,11 +246,11 @@
      ReportAverage is a DeliteOp, Delite takes care of that one for us! Let's start with the generator
      for Profile. Open ProfileOps.scala again, and add this snippet to the bottom:
      </p>
-     <div class="highlight"><pre><code class="scala"><span class="k">trait</span> <span class="nc">ScalaGenProfileOps</span> <span class="k">extends</span> <span class="nc">ScalaGenBase</span> {
+     <div class="highlight"><pre><code class="scala"><span class="k">trait</span> <span class="nc">ScalaGenProfileOps</span> <span class="k">extends</span> <span class="nc">ScalaGenEffect</span> {
   <span class="k">val</span> IR: <span class="kt">ProfileOpsExp</span>
   <span class="k">import</span> IR._
 
-  <span class="k">override def</span> emitNode(sym: <span class="kt">Sym[Any]</span>, rhs: <span class="kt">Def[Any]</span>)(<span class="k">implicit</span> stream: <span class="kt">PrintWriter</span>) = 
+  <span class="k">override def</span> emitNode(sym: <span class="kt">Sym[Any]</span>, rhs: <span class="kt">Def[Any]</span>) = 
     rhs <span class="k">match</span> {
       <span class="c">// insert instrumentation code around function body</span>
       <span class="k">case</span> <span class="nc">Profile</span>(n, body) => 
@@ -281,7 +279,7 @@
   <span class="k">val</span> IR: <span class="kt">ProfileArrayOpsExp</span>
   <span class="k">import</span> IR._
 
-  <span class="k">override def</span> emitNode(sym: <span class="kt">Sym[Any]</span>, rhs: <span class="kt">Def[Any]</span>)(<span class="k">implicit</span> stream: <span class="kt">PrintWriter</span>) =
+  <span class="k">override def</span> emitNode(sym: <span class="kt">Sym[Any]</span>, rhs: <span class="kt">Def[Any]</span>) =
     rhs <span class="k">match</span> {
       <span class="k">case</span> <span class="nc">ReportMedian</span>(x) =>
         <span class="k">val</span> a = quote(x)

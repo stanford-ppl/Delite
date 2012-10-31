@@ -22,13 +22,13 @@
           <li>Start Here
             <ol>
               <li><a href='index.html'>Welcome</a></li>
-              <li><a href="dsl_example.html">My First DSL</a></li>
+              <li><a href="myfirstdsl.html">My First DSL</a></li>
               <li><a href="faq.html">FAQ</a></li>
               <!--
               <li><a href="performance.html">Performance</a></li>
               <li><a href="tests.html">Tests</a></li>
-              -->              
               <li><a href="troubleshooting.html">Troubleshooting</a></li>
+              -->              
               <li><a href="publications.html">Publications</a></li>
             </ol>
           </li>
@@ -63,6 +63,7 @@
       <div id='content'> 
         <h1 id='title_faq'>FAQ</h1>
         <ol>
+          <li><a href="#outofmemory">How do I fix a "java.lang.OutOfMemoryError" while compiling?</a></li>
           <li><a href="#irval">What is the line <code>{ val IR: SimpleVectorScalaOpsPkgExp }</code> in code generator traits for?</a></li>
           <li><a href="#selftype">What does <code>{ this: SimpleVectorApplication => }</code> mean?</a></li>
           <li><a href="#syms">What are the methods <code>syms</code> and <code>boundSyms</code> for?</a></li>
@@ -71,6 +72,12 @@
           <li><a href="#fusion">How to benefit from loop fusion?</a></li>
         </ol>
         <p></p><div id='footer'></div><p></p>
+        <div id='outofmemory'>
+          <h3>How do I fix a "java.lang.OutOfMemoryError" while compiling?"</h3>
+          <p> Modify the sbt startup script (typically located at <code>~/bin/sbt</code>) to increase the available JVM memory. A typical script that should work on most machines (with enough physical memory) is:
+          </p><p>
+<div class="highlight" style="overflow: scroll"><pre><code class="bash">java -Xmx3g -XX:MaxPermSize=1g -XX:ReservedCodeCacheSize=128m -jar `dirname $0`/sbt-launch.jar "$@"</pre></code></div>
+        </p></div>
         <div id='irval'>
         <h3>What is the line <code>{ val IR: SimpleVectorScalaOpsPkgExp }</code> in code generator traits for?</h3>
 <p>This line declares an abstract value IR of type SimpleVectorScalaOpsPkgExp. It is instantiated in the getCodeGenPkg method to be the value of the DeliteApplication instance that mixes together all of the DSL traits - in this way, the IR definitions are injected into the code generator traits so that they can be referenced without being the same object. Another way of thinking about this is that when all of the traits are finally mixed in, we have two "super" objects. One contains all of the application and IR definitions (DeliteApplication, *Lift, *Ops, *OpsExp, *ImplOps traits), and one contains all the code generators (*CodeGenPkg, *CodeGen{Target}). The IR object defines a method getCodeGenPkg that returns an instance of the code generator object, and the code generator object contains a reference to the IR object via the IR val.
