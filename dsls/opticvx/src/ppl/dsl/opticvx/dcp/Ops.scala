@@ -110,7 +110,7 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
       val yalmap = AlmapZero(input, varshape, ash)
       val ypart = AlmapHCat(for (j <- 0 until s_given.inputs.length)
         yield if (i == j) AlmapIdentity(input, ash)
-          else AlmapZero(input, s_given.inputs(j).input.shape(arity), s_given.inputs(j).input.shape(arity)))
+          else AlmapZero(input, s_given.inputs(j).input.shape(arity), ash))
       s_given.inputs(i).symbol.bind(Expr(ysh, yalmap, almap_wrapinput(ypart)))
     }
     // Bind the problem variables
@@ -118,8 +118,8 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
       val ysh = s_over.vars(i).shape.morph((nn) => XDesc(Signum.Zero, Signum.All, false))
       val yalmap = AlmapHCat(for (j <- 0 until s_over.vars.length)
         yield if (i == j) AlmapIdentity(input, s_over.vars(i).shape)
-          else AlmapZero(input, s_over.vars(j).shape, s_over.vars(j).shape))
-      val yoffset = AlmapZero(input, varshape, ShapeScalar(arity))
+          else AlmapZero(input, s_over.vars(j).shape, s_over.vars(i).shape))
+      val yoffset = AlmapZero(input, ShapeScalar(arity), s_over.vars(i).shape)
       s_over.vars(i).symbol.bind(Expr(ysh, yalmap, yoffset))
     }
     // Bind the expression symbols
