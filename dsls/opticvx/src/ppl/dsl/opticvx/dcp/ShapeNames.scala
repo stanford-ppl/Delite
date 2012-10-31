@@ -4,9 +4,15 @@ import scala.virtualization.lms.common.BaseExp
 
 trait DCPShapeNames {
   self: DCPShape =>
-  
-  def scalar: Shape = ShapeScalar(0)
-  def vector(len: Size): Shape = ShapeFor(len, ShapeScalar(0))
+
+  def scalar: Shape = {
+    if (globalArity == -1) throw new DCPIRValidationException()
+    ShapeScalar(globalArity)
+  }
+  def vector(len: Size): Shape = {
+    if (len.arity != globalArity) throw new DCPIRValidationException()
+    ShapeFor(len, ShapeScalar(len.arity + 1))
+  }
 }
 
 /*

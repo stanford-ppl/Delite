@@ -96,6 +96,8 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
     for(i <- 0 until arity) {
       s_params.params(i).symbol.bind(Size.param(i, arity))
     }
+    //Set the global arity
+    globalArity = arity
     //Resolve the given inputs and problem variables
     val s_given = ts_given
     val input: Shape = ShapeStruct(s_given.inputs map ((ii) => ii.input.shape(arity)))
@@ -109,7 +111,7 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
       val ypart = AlmapHCat(for (j <- 0 until s_given.inputs.length)
         yield if (i == j) AlmapIdentity(input, ash)
           else AlmapZero(input, s_given.inputs(j).input.shape(arity), s_given.inputs(j).input.shape(arity)))
-      s_given.inputs(i).symbol.bind(throw new DCPIRValidationException())
+      s_given.inputs(i).symbol.bind(Expr(ysh, yalmap, almap_wrapinput(ypart)))
     }
     // Bind the problem variables
     for (i <- 0 until s_over.vars.length) {
@@ -141,6 +143,8 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
       throw new DCPIRValidationException()
     if (!(s_opt.expr.shape.asInstanceOf[XShapeScalar].desc.vexity <= Signum.Positive))
       throw new DCPIRValidationException()
+    // Reset the global arity
+    globalArity = arity
     // Construct the problem
     val problem: Problem = Problem(
       affineConstraint.almap, affineConstraint.offset,

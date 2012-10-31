@@ -4,6 +4,8 @@ import scala.collection.immutable.Seq
 
 trait DCPShape {
 
+  var globalArity: Int = -1
+
   sealed trait ArityOp
   case class ArityOpRemoveParam(idx: Int) extends ArityOp
   case class ArityOpAddParam(idx: Int) extends ArityOp
@@ -32,13 +34,33 @@ trait DCPShape {
       case ArityOpAddParam(idx) => Size(const, (coeffs.take(idx) :+ 0) ++ coeffs.drop(idx))
     }
 
-    if (const < 0) throw new DCPIRValidationException()
-    for (c <- coeffs) {
-      if (c < 0) throw new DCPIRValidationException()
+    def positive: Boolean = {
+      if (const < 0) return false
+      for (c <- coeffs) {
+        if (c < 0) return false
+      }
+      return true
     }
 
     def next: Size = Size.param(arity, arity + 1)
+  
+    def +(s: Size): Size = {
+      if (s.arity != arity) throw new DCPIRValidationException()
+      Size(const + s.const, for (i <- 0 until arity) yield coeffs(i) + s.coeffs(i))
+    }
+    def unary_-(): Size = {
+      Size(-const, for (i <- 0 until arity) yield -coeffs(i))
+    }
+    def -(s: Size): Size = {
+      if (s.arity != arity) throw new DCPIRValidationException()
+      Size(const - s.const, for (i <- 0 until arity) yield coeffs(i) - s.coeffs(i))
+    }
+    def *(a: Int): Size = {
+      Size(a*const, for (i <- 0 until arity) yield a*coeffs(i))
+    }
   }
+
+  def infix_*(a: Int, s: Size): Size = s * a
 
   sealed trait ShapeWith[T] extends HasArity[ShapeWith[T]] {
     def morph[U](fx: (T) => U): ShapeWith[U]

@@ -16,9 +16,11 @@ trait DCPAlmap {
     val codomain: Shape
 
     //Constraints that all the shape properties must share the map's arity
-    if (input.arity != arity) throw new DCPIRValidationException()
-    if (domain.arity != arity) throw new DCPIRValidationException()
-    if (codomain.arity != arity) throw new DCPIRValidationException()
+    def arityVerify() {
+      if (input.arity != arity) throw new DCPIRValidationException()
+      if (domain.arity != arity) throw new DCPIRValidationException()
+      if (codomain.arity != arity) throw new DCPIRValidationException()
+    }
     
     //The transpose
     def T: Almap
@@ -42,6 +44,8 @@ trait DCPAlmap {
     //   if (m.codomain != domain) throw new DCPIRValidationException()
     //   m
     // }
+
+    arityVerify()
   }
 
   //The zero map
@@ -58,6 +62,8 @@ trait DCPAlmap {
     //   if (m.codomain != domain) throw new DCPIRValidationException()
     //   AlmapZero(input, m.domain, codomain)
     // }
+
+    arityVerify()
   }
 
   //The sum of several linear maps
@@ -79,6 +85,8 @@ trait DCPAlmap {
     def T: Almap = AlmapSum(args map ((x) => x.T))
 
     // def mmpy(m: Almap): Almap = AlmapSum(args map ((a) => a.mmpy(m)))
+    
+    arityVerify()
   }
 
   //Negation of a linear map
@@ -93,6 +101,8 @@ trait DCPAlmap {
     def T: Almap = AlmapNeg(arg.T)
 
     // def mmpy(m: Almap): Almap = AlmapNeg(arg.mmpy(m))
+    
+    arityVerify()
   }
 
   //Scale of a linear map by a parameter that is itself a linear functional from the input space
@@ -112,6 +122,8 @@ trait DCPAlmap {
     def T: Almap = AlmapScale(arg.T, scale)
 
     // def mmpy(m: Almap): Almap = AlmapScale(arg.mmpy(m), scale)
+    
+    arityVerify()
   }
 
   //Scale of a linear map by a constant
@@ -126,6 +138,8 @@ trait DCPAlmap {
     def T: Almap = AlmapScaleConstant(arg.T, scale)
 
     // def mmpy(m: Almap): Almap = AlmapScaleConstant(arg.mmpy(m), scale)
+    
+    arityVerify()
   }
 
 
@@ -147,6 +161,8 @@ trait DCPAlmap {
     def T: Almap = AlmapHCat(args map ((a) => a.T))
 
     // def mmpy(m: Almap): Almap = AlmapVCat(args map ((a) => a.mmpy(m)))
+    
+    arityVerify()
   }
 
   //The vertical concatenation of a number of linear maps, depending on problem size
@@ -163,6 +179,8 @@ trait DCPAlmap {
     def T: Almap = AlmapHCatFor(size, arg.T)
 
     // def mmpy(m: Almap): Almap = AlmapVCatFor(size, arg.mmpy(m.promote))
+    
+    arityVerify()
   }
 
 
@@ -187,6 +205,8 @@ trait DCPAlmap {
     //   case AlmapVCat(ma) => AlmapSum(for(i <- 0 until args.length) yield args(i).mmpy(ma(i)))
     //   case _ => throw new DCPIRValidationException()
     // }
+    
+    arityVerify()
   }
 
   //The horizontal concatenation of a number of linear maps, depending on problem size
@@ -209,6 +229,8 @@ trait DCPAlmap {
     //   }
     //   case _ => throw new DCPIRValidationException()
     // }
+    
+    arityVerify()
   }
 
   //The sum of a problem-size-dependent number of linear ops
@@ -225,6 +247,8 @@ trait DCPAlmap {
     def T: Almap = AlmapSumFor(size, arg.T)
 
     // def mmpy(m: Almap): Almap = AlmapSumFor(size, arg.mmpy(m.promote))
+    
+    arityVerify()
   }
 
   //A delta function based on the integer variables.  Takes on the argument if pred == 0, and zero otherwise.
@@ -241,6 +265,8 @@ trait DCPAlmap {
     def T: Almap = AlmapIf(pred, arg.T)
 
     // def mmpy(m: Almap): Almap = AlmapIf(pred, arg.mmpy(m))
+    
+    arityVerify()
   }
 
   //Matrix multiply
@@ -257,6 +283,29 @@ trait DCPAlmap {
     def arityOp(op: ArityOp): Almap = AlmapProd(argl.arityOp(op), argr.arityOp(op))
 
     def T: Almap = AlmapProd(argr.T, argl.T)
+    
+    arityVerify()
+  }
+
+  //Given a linear map over the input space, wraps it into a map from R
+  def almap_wrapinput(almap: Almap): Almap = {
+    if (almap.input != almap.domain) throw new DCPIRValidationException()
+    almap.codomain match {
+      case xsh: ShapeScalar => 
+        AlmapScale(AlmapIdentity(almap.input, ShapeScalar(almap.arity)), almap)
+      case xsh: ShapeFor =>
+        AlmapVCatFor(
+          xsh.size,
+          almap_wrapinput(AlmapProd(
+            AlmapHCatFor(
+              xsh.size.promote,
+              AlmapIf(
+                xsh.size.next.next - xsh.size.next.promote,
+                AlmapIdentity(almap.input.promote.promote, xsh.body.promote)
+              )),
+            almap.promote)))
+
+    }
   }
 
 }
