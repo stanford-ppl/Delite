@@ -77,11 +77,12 @@ trait DCPExpr {
     //Since c is an input, it is fully described by its offset property
     if (!(c.shape.isInstanceOf[XShapeScalar])) throw new DCPIRValidationException()
     if (!(c.shape.asInstanceOf[XShapeScalar].desc.isinput)) throw new DCPIRValidationException()
+    if (!(x.shape.isInstanceOf[XShapeScalar])) throw new DCPIRValidationException()
     val csign = c.shape.asInstanceOf[XShapeScalar].desc.sign
     val ysh = x.shape.morph((xd: XDesc) => 
       XDesc(csign * xd.vexity, csign * xd.sign, xd.isinput))
-    val yalmap = AlmapScale(x.almap, c.offset)
-    val yoffset = AlmapScale(x.offset, c.offset)
+    val yalmap = AlmapProd(c.offset, x.almap)
+    val yoffset = AlmapProd(c.offset, x.offset)
     Expr(ysh, yalmap, yoffset)
   }
 
@@ -140,7 +141,7 @@ trait DCPExpr {
     val bsx: Expr = body(len.next)
     globalArityDemote()
     Expr(
-      bsx.shape,
+      bsx.shape.demote,
       AlmapSumFor(len, bsx.almap),
       AlmapSumFor(len, bsx.offset))
   }
