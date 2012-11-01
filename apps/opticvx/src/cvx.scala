@@ -15,6 +15,8 @@ trait HelloCVX extends OptiCVXApplication /*with OptiCVXLibrary*/ {
     //println("square(3) = " + resolve(square(3.0)))
     //println("inv(0.5) = " + resolve(inv(0.5)))
     //println("geomean(2,8) = " + resolve(geomean(2.0,8.0)))
+    
+    /*
     var input: Rep[Array[Double]] = null
   
     val x = cvxexpr()
@@ -34,6 +36,22 @@ trait HelloCVX extends OptiCVXApplication /*with OptiCVXLibrary*/ {
       ),
       minimize(
         sum(m, (i) => y(i)*l(i)) - x
+      )
+    )
+    */
+    
+    
+    val x = cvxexpr()
+    solve(
+      params(),
+      given(),
+      over(scalar -> x),
+      let(),
+      where(
+        x >= 1
+      ),
+      minimize(
+        x
       )
     )
   }
