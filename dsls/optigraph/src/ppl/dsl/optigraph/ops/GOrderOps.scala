@@ -5,7 +5,7 @@ import scala.virtualization.lms.common.{VariablesExp, Variables}
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.dsl.optigraph._
 import scala.virtualization.lms.common._
-import reflect.Manifest
+import reflect.{Manifest,SourceContext}
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 import java.io.PrintWriter
 
@@ -105,6 +105,33 @@ trait GOrderOpsExp extends GOrderOps with VariablesExp with BaseFatExp {
   def gorder_popfront[T:Manifest](o: Exp[GOrder[T]]) = reflectWrite(o)(GOrderPopFront(o))
   def gorder_popback[T:Manifest](o: Exp[GOrder[T]]) = reflectWrite(o)(GOrderPopBack(o))
   def gorder_apply[T:Manifest](o: Exp[GOrder[T]], idx: Exp[Int]) = reflectPure(GOrderApply(o, idx))
+  
+  //////////////
+  // mirroring
+  
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case GOrderItems(o) => gorder_items(f(o))
+    case GOrderContains(o,x) => gorder_contains(f(o),f(x))
+    case GOrderSize(o) => gorder_size(f(o))
+    case GOrderFront(o) => gorder_front(f(o))
+    case GOrderBack(o) => gorder_back(f(o))
+    case GOrderApply(o,n) => gorder_apply(f(o),f(n))
+    case Reflect(e@GOrderObjectNew(), u, es) => reflectMirrored(Reflect(GOrderObjectNew()(e.mGO), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderItems(o), u, es) => reflectMirrored(Reflect(GOrderItems(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderContains(o,x), u, es) => reflectMirrored(Reflect(GOrderContains(f(o),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderSize(o), u, es) => reflectMirrored(Reflect(GOrderSize(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderFront(o), u, es) => reflectMirrored(Reflect(GOrderFront(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderBack(o), u, es) => reflectMirrored(Reflect(GOrderBack(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderApply(o,n), u, es) => reflectMirrored(Reflect(GOrderApply(f(o),f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderPushFront(o,x), u, es) => reflectMirrored(Reflect(GOrderPushFront(f(o),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderPushBack(o,x), u, es) => reflectMirrored(Reflect(GOrderPushBack(f(o),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderPushFrontOrd(o,x), u, es) => reflectMirrored(Reflect(GOrderPushFrontOrd(f(o),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderPushBackOrd(o,x), u, es) => reflectMirrored(Reflect(GOrderPushBackOrd(f(o),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderPopFront(o), u, es) => reflectMirrored(Reflect(GOrderPopFront(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderPopBack(o), u, es) => reflectMirrored(Reflect(GOrderPopBack(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??  
+  
 }
 
 trait BaseGenGOrderOps extends GenericFatCodegen {

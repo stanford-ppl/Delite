@@ -19,7 +19,7 @@ class GSet[@specialized T: ClassManifest] {
     dataArray
   }
   
-  def cloneL = { val s = new GSet[T](); s.addSet(this); s }
+  def Clone = { val s = new GSet[T](); s.addSet(this); s }
   
   /** Items in the set */
   def items: GIterable[T] = { new GIterable[T](dataAsArray) }

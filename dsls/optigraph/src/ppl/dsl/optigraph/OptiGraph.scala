@@ -9,6 +9,7 @@ import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.delite.overrides.{DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.codegen.delite.DeliteCodeGenPkg
 import ppl.delite.framework.ops._
+import ppl.delite.framework.transform.ForeachReduceTransformExp
 //import ppl.dsl.optigraph.io._
 import ppl.dsl.optigraph.ops._
 import ppl.dsl.optigraph.datastruct.scala._
@@ -19,14 +20,7 @@ import ppl.dsl.optigraph.datastruct.scala._
 //trait OptiGraphApplicationRunner extends OptiGraphApplicationRunnerBase with OptiGraphExp
 //trait OptiGraphApplicationRunnerBase extends OptiGraphApplication with DeliteApplication
 
-trait OptiGraphApplicationRunner extends OptiGraphApplication with OptiGraphExp {
-
-  override val deliteGenerator = new DeliteCodeGenPkg with FuseTransformedForeach { 
-    val IR: OptiGraphApplicationRunner.this.type = OptiGraphApplicationRunner.this;
-    val generators = OptiGraphApplicationRunner.this.generators
-  }  
-}
-
+trait OptiGraphApplicationRunner extends OptiGraphApplication with OptiGraphExp 
 trait OptiGraphApplication extends DeliteApplication with OptiGraph with OptiGraphLift
 
 trait OptiGraphLibrary {
@@ -52,14 +46,14 @@ trait OptiGraphScalaOpsPkgExp extends OptiGraphScalaOpsPkg with DSLOpsExp
   with ImplicitOpsExp with OrderingOpsExp with StringOpsExp with RangeOpsExp with IOOpsExp
   with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp with TupleOpsExp
   with ListOpsExp with SeqOpsExp with MathOpsExp with CastingOpsExp with SetOpsExp with ObjectOpsExp
-  with SynchronizedArrayBufferOpsExp with HashMapOpsExp with IterableOpsExp
+  with SynchronizedArrayBufferOpsExp with HashMapOpsExp with IterableOpsExp with ExceptionOpsExp
 
 trait OptiGraphScalaCodeGenPkg extends ScalaGenDSLOps
   with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenFunctions
   with ScalaGenImplicitOps with ScalaGenOrderingOps with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps
   with ScalaGenArrayOps with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenTupleOps
   with ScalaGenListOps with ScalaGenSeqOps with ScalaGenMathOps with ScalaGenCastingOps with ScalaGenSetOps with ScalaGenObjectOps
-  with ScalaGenSynchronizedArrayBufferOps with ScalaGenHashMapOps with ScalaGenIterableOps
+  with ScalaGenSynchronizedArrayBufferOps with ScalaGenHashMapOps with ScalaGenIterableOps with ScalaGenExceptionOps
   { val IR: OptiGraphScalaOpsPkgExp  }
 
 /**
@@ -92,6 +86,7 @@ trait OptiGraphExp extends OptiGraphCompiler with OptiGraphScalaOpsPkgExp with D
   with NodePropertyOpsExp with EdgePropertyOpsExp
   with GIterableOpsExp with GSetOpsExp with GOrderOpsExp with GSeqOpsExp
   with ReduceableOpsExp with DeferrableOpsExp
+  with ForeachReduceTransformExp
   with DeliteAllOverridesExp {
 
   this: DeliteApplication with OptiGraphApplication with OptiGraphExp =>
@@ -107,7 +102,7 @@ trait OptiGraphExp extends OptiGraphCompiler with OptiGraphScalaOpsPkgExp with D
 /**
  * OptiGraph code generators
  */
-trait OptiGraphCodeGenBase extends GenericFatCodegen with FuseTransformedForeach {
+trait OptiGraphCodeGenBase extends GenericFatCodegen {
   val IR: DeliteApplication with OptiGraphExp
   override def initialDefs = IR.deliteGenerator.availableDefs
 

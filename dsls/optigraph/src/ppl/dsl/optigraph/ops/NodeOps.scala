@@ -5,7 +5,7 @@ import scala.util.DynamicVariable
 
 import ppl.delite.framework.{DeliteApplication}
 import ppl.delite.framework.ops.DeliteOpsExp
-import reflect.Manifest
+import reflect.{Manifest, SourceContext}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 import ppl.dsl.optigraph._
@@ -106,6 +106,43 @@ trait NodeOpsExp extends NodeOps with EffectExp {
   def node_in_degree(n: Exp[Node]) = reflectPure(NodeInDegree(n))
   def node_id(n: Exp[Node]) = reflectPure(NodeId(n))
   def node_graph(n: Exp[Node]) = reflectPure(NodeGraph(n))
+  
+  //////////////
+  // mirroring
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case NodeOutNeighbors(n) => node_out_neighbors(f(n))
+    case NodeInNeighbors(n) => node_in_neighbors(f(n))
+    case NodeUpNeighbors(n,v) => node_up_neighbors(f(n))
+    case NodeDownNeighbors(n,v) => node_down_neighbors(f(n))
+    case NodeOutEdges(n) => node_out_edges(f(n))
+    case NodeInEdges(n) => node_in_edges(f(n))
+    case NodeUpEdges(n,v) => node_up_edges(f(n))
+    case NodeDownEdges(n,v) => node_down_edges(f(n))
+    case NodeNumOutNeighbors(n) => node_num_out_neighbors(f(n))
+    case NodeNumInNeighbors(n) => node_num_in_neighbors(f(n))
+    case NodeOutDegree(n) => node_out_degree(f(n))
+    case NodeInDegree(n) => node_in_degree(f(n))
+    case NodeId(n) => node_id(f(n))
+    case NodeGraph(n) => node_graph(f(n))
+    
+    case Reflect(e@NodeOutNeighbors(n), u, es) => reflectMirrored(Reflect(NodeOutNeighbors(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodeInNeighbors(n), u, es) => reflectMirrored(Reflect(NodeInNeighbors(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodeUpNeighbors(n,v), u, es) => reflectMirrored(Reflect(NodeUpNeighbors(f(n),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodeDownNeighbors(n,v), u, es) => reflectMirrored(Reflect(NodeDownNeighbors(f(n),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodeOutEdges(n), u, es) => reflectMirrored(Reflect(NodeOutEdges(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodeInEdges(n), u, es) => reflectMirrored(Reflect(NodeInEdges(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodeUpEdges(n,v), u, es) => reflectMirrored(Reflect(NodeUpEdges(f(n),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodeDownEdges(n,v), u, es) => reflectMirrored(Reflect(NodeDownEdges(f(n),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodeNumOutNeighbors(n), u, es) => reflectMirrored(Reflect(NodeNumOutNeighbors(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodeNumInNeighbors(n), u, es) => reflectMirrored(Reflect(NodeNumInNeighbors(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodeOutDegree(n), u, es) => reflectMirrored(Reflect(NodeOutDegree(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodeInDegree(n), u, es) => reflectMirrored(Reflect(NodeInDegree(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodeId(n), u, es) => reflectMirrored(Reflect(NodeId(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@NodeGraph(n), u, es) => reflectMirrored(Reflect(NodeGraph(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
+  
 }
 
 
