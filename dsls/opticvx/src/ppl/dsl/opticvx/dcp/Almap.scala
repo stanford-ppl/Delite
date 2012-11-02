@@ -183,6 +183,23 @@ trait DCPAlmap {
     
     arityVerify()
   }
+  
+  // "Puts" the given almap at the target index
+  case class AlmapVPut(val size: Size, val at: Size, val arg: Almap) extends Almap {
+    val arity: Int = size.arity
+    val input: Shape = arg.input.demote
+    val domain: Shape = arg.domain.demote
+    val codomain: Shape = ShapeFor(size, arg.codomain)
+
+    if (arg.arity != (size.arity + 1)) throw new DCPIRValidationException()
+    if (size.arity != at.arity) throw new DCPIRValidationException()
+
+    def arityOp(op: ArityOp): Almap = AlmapVPut(size.arityOp(op), at.arityOp(op), arg.arityOp(op))
+
+    def T: Almap = AlmapHPut(size, at, arg.T)
+
+    arityVerify()
+  }
 
 
   //The horizontal concatenation of several linear maps
@@ -231,6 +248,23 @@ trait DCPAlmap {
     // }
     
     arityVerify()
+  }  
+  
+  // "Puts" the given almap at the target index
+  case class AlmapHPut(val size: Size, val at: Size, val arg: Almap) extends Almap {
+    val arity: Int = size.arity
+    val input: Shape = arg.input.demote
+    val domain: Shape = ShapeFor(size, arg.domain)
+    val codomain: Shape = arg.codomain.demote
+
+    if (arg.arity != (size.arity + 1)) throw new DCPIRValidationException()
+    if (size.arity != at.arity) throw new DCPIRValidationException()
+
+    def arityOp(op: ArityOp): Almap = AlmapHPut(size.arityOp(op), at.arityOp(op), arg.arityOp(op))
+
+    def T: Almap = AlmapVPut(size, at, arg.T)
+
+    arityVerify()
   }
 
   //The sum of a problem-size-dependent number of linear ops
@@ -247,24 +281,6 @@ trait DCPAlmap {
     def T: Almap = AlmapSumFor(size, arg.T)
 
     // def mmpy(m: Almap): Almap = AlmapSumFor(size, arg.mmpy(m.promote))
-    
-    arityVerify()
-  }
-
-  //A delta function based on the integer variables.  Takes on the argument if pred == 0, and zero otherwise.
-  case class AlmapIf(val pred: Size, val arg: Almap) extends Almap {
-    val arity: Int = arg.arity
-    val input: Shape = arg.input
-    val domain: Shape = arg.domain
-    val codomain: Shape = arg.codomain
-
-    if (pred.arity != arity) throw new DCPIRValidationException()
-
-    def arityOp(op: ArityOp): Almap = AlmapIf(pred.arityOp(op), arg.arityOp(op))
-
-    def T: Almap = AlmapIf(pred, arg.T)
-
-    // def mmpy(m: Almap): Almap = AlmapIf(pred, arg.mmpy(m))
     
     arityVerify()
   }
@@ -297,12 +313,10 @@ trait DCPAlmap {
         AlmapVCatFor(
           xsh.size,
           almap_wrapinput(AlmapProd(
-            AlmapHCatFor(
+            AlmapHPut(
               xsh.size.promote,
-              AlmapIf(
-                xsh.size.next.next - xsh.size.next.promote,
-                AlmapIdentity(almap.input.promote.promote, xsh.body.promote)
-              )),
+              xsh.size.next,
+              AlmapIdentity(almap.input.promote.promote, xsh.body.promote)),
             almap.promote)))
 
     }

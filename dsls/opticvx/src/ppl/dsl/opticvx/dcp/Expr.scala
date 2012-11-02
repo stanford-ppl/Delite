@@ -45,13 +45,12 @@ trait DCPExpr {
     def apply(at: Size): Expr = {
       if (!(shape.isInstanceOf[XShapeFor])) throw new DCPIRValidationException()
       val vsh = shape.asInstanceOf[XShapeFor].body.substituteAt(arity, at)
-      val aprod = AlmapHCatFor(
+      val aprod = AlmapHPut(
         shape.asInstanceOf[XShapeFor].size,
-        AlmapIf(
-          at.next - at.promote,
-          AlmapIdentity(
-            almap.input.promote,
-            almap.codomain.asInstanceOf[ShapeFor].body)))
+        at,
+        AlmapIdentity(
+          almap.input.promote,
+          almap.codomain.asInstanceOf[ShapeFor].body))
       val yalmap = AlmapProd(aprod, almap)
       val yoffset = AlmapProd(aprod, offset)
       Expr(vsh, yalmap, yoffset)

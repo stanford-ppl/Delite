@@ -6,6 +6,8 @@ import scala.virtualization.lms.common.{Base, BaseExp, ArrayOpsExp, RangeOpsExp,
 import scala.collection.immutable.Seq
 import scala.collection.immutable.Set
 
+class DCPIRValidationException extends Exception
+
 trait DCPOps extends Base with NumericOps {
   self: DCPShape with DCPExpr with DCPConstraint =>
 
