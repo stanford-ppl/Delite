@@ -9,19 +9,23 @@ trait DCPShape {
   var globalVarShape: Shape = null
 
   def globalArityPromote() {
-    if (globalInputShape.arity != globalArity) throw new DCPIRValidationException()
-    if (globalVarShape.arity != globalArity) throw new DCPIRValidationException()
+    if ((globalInputShape != null)||(globalVarShape != null)) {
+      if (globalInputShape.arity != globalArity) throw new DCPIRValidationException()
+      if (globalVarShape.arity != globalArity) throw new DCPIRValidationException()
+      globalInputShape = globalInputShape.promote
+      globalVarShape = globalVarShape.promote
+    }
     globalArity += 1
-    globalInputShape = globalInputShape.promote
-    globalVarShape = globalVarShape.promote
   }
 
   def globalArityDemote() {
-    if (globalInputShape.arity != globalArity) throw new DCPIRValidationException()
-    if (globalVarShape.arity != globalArity) throw new DCPIRValidationException()
+    if ((globalInputShape != null)||(globalVarShape != null)) {
+      if (globalInputShape.arity != globalArity) throw new DCPIRValidationException()
+      if (globalVarShape.arity != globalArity) throw new DCPIRValidationException()
+      globalInputShape = globalInputShape.demote
+      globalVarShape = globalVarShape.demote
+    }
     globalArity -= 1
-    globalInputShape = globalInputShape.demote
-    globalVarShape = globalVarShape.demote
   }
 
   sealed trait ArityOp {

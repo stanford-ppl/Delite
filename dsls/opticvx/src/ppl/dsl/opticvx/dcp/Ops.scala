@@ -9,8 +9,8 @@ import scala.collection.immutable.Set
 class DCPIRValidationException extends Exception
 
 trait DCPOps extends Base with NumericOps {
-  self: DCPShape with DCPExpr with DCPConstraint =>
-
+  self: DCPShape with DCPExpr with DCPConstraint with DCPInput =>
+  
   def cvxexpr(): Symbol[Expr] = new Symbol[Expr]()
   def cvxparam(): Symbol[Size] = new Symbol[Size]()
 
@@ -29,24 +29,6 @@ trait DCPOps extends Base with NumericOps {
   def given(inputs: InputBinding*): SolveGiven = new SolveGiven(Seq(inputs:_*))
   implicit def tuple2inputbinding(tpl: Tuple2[InputDesc, Symbol[Expr]]): InputBinding
     = new InputBinding(tpl._1, tpl._2)
-    
-  sealed trait InputDesc {
-    def shape(arity: Int): Shape
-  }
-  case class InputDescScalar(val input: Rep[Double]) extends InputDesc {
-    def shape(arity: Int): Shape = ShapeScalar(arity)
-  }
-  case class InputDescFor(val size: Size, val body: (Rep[Int]) => InputDesc) extends InputDesc {
-    def shape(arity: Int): Shape = {
-      if (arity != size.arity) throw new DCPIRValidationException()
-      val iid: InputDesc = body(unit(0))
-      ShapeFor(size, iid.shape(arity + 1))
-    }
-  }
-
-  implicit def dbl2inputdesc(input: Double): InputDesc = InputDescScalar(unit(input))
-  implicit def repdbl2inputdesc(input: Rep[Double]): InputDesc = InputDescScalar(input)
-  def ifor(size: Size, body: (Rep[Int]) => InputDesc): InputDesc = InputDescFor(size, body)
 
   class SolveOver(val vars: Seq[VarBinding])
   class VarBinding(val shape: Shape, val symbol: Symbol[Expr])
@@ -82,7 +64,7 @@ trait DCPOps extends Base with NumericOps {
 }
 
 trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp {
-  self: DCPShape with DCPExpr with DCPConstraint with DCPCone with DCPAlmap with DCPProblem =>
+  self: DCPShape with DCPInput with DCPExpr with DCPConstraint with DCPCone with DCPAlmap with DCPProblem =>
   
   def solve(
     ts_params: =>SolveParams,
@@ -102,7 +84,7 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
     globalArity = arity
     //Resolve the given inputs and problem variables
     val s_given = ts_given
-    val input: Shape = ShapeStruct(arity, s_given.inputs map ((ii) => ii.input.shape(arity)))
+    val input: Shape = ShapeStruct(arity, s_given.inputs map ((ii) => ii.input.shape))
     val s_over = ts_over
     val varshape: Shape = ShapeStruct(arity, s_over.vars map ((vv) => vv.shape))
     //Set the global input and varshapes
@@ -110,13 +92,13 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
     globalVarShape = varshape
     //Bind the given inputs
     for(i <- 0 until s_given.inputs.length) {
-      val ash = s_given.inputs(i).input.shape(arity)
+      val ash = s_given.inputs(i).input.shape
       val ysh = ash.morph((nn) => XDesc(Signum.Zero, Signum.All, true))
       val yalmap = AlmapZero(input, varshape, ash)
       val ypart = AlmapHCat(input, ash,
         for (j <- 0 until s_given.inputs.length)
           yield if (i == j) AlmapIdentity(input, ash)
-            else AlmapZero(input, s_given.inputs(j).input.shape(arity), ash))
+            else AlmapZero(input, s_given.inputs(j).input.shape, ash))
       s_given.inputs(i).symbol.bind(Expr(ysh, yalmap, almap_wrapinput(ypart)))
       //println("INS: " + s_given.inputs(i).symbol.binding.shape.toString + "\n\n")
     }
