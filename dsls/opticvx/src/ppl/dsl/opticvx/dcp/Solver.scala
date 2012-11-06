@@ -11,17 +11,52 @@ trait DCPSolver {
   )
   
   trait SolverOp
+
+  sealed trait Scale
+  case class ScaleZero extends Scale
+  case class ScaleOne extends Scale
+  case class ScaleNeg extends Scale
+  case class ScaleConst(val c: Double) extends Scale
+  case class ScaleVar(val s: Int) extends Scale
   
-  // Computes m_dst = m_dst * s_scale_dst + m_src * s_scale_src
+  // Computes m_dst = m_dst * s_scale_dst + almap * m_src * s_scale_src
   case class SolverOpMMpy(
     val input: Shape,
     val memory: Seq[Shape],
     val almap: Almap,
     val m_src: Int,
     val m_dst: Int,
-    val s_scale_src: Int,
-    val s_scale_dst: Int
+    val s_scale_src: Scale,
+    val s_scale_dst: Scale
+  ) extends SolverOp
+  
+  // Computes m_dst = m_dst * s_scale_dst + almap * 1 * s_scale_src
+  case class SolverOpPut(
+    val input: Shape,
+    val memory: Seq[Shape],
+    val almap: Almap,
+    val m_dst: Int,
+    val s_scale_src: Scale,
+    val s_scale_dst: Scale
+  ) extends SolverOp
+
+  // Computes the sum of two variables
+  case class SolverOpAdd(
+    val input: Shape,
+    val memory: Seq[Shape],
+    val m_src_1: Int,
+    val m_src_2: Int,
+    val s_scale_src_1: Scale,
+    val s_scale_src_2: Scale,
+    val s_scale_dst: Scale
   )
-  
-  
+
+  // Computes the norm squared of a variable
+  case class SolverOpNorm(
+    val input: Shape,
+    val memory: Seq[Shape],
+    val m_src: Int,
+    val s_dst: Int
+  )
+
 }
