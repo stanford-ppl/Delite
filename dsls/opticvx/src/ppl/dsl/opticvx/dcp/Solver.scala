@@ -49,7 +49,7 @@ trait DCPSolver {
     val s_scale_src_1: Scale,
     val s_scale_src_2: Scale,
     val s_scale_dst: Scale
-  )
+  ) extends SolverOp
 
   // Computes the norm squared of a variable
   case class SolverOpNorm(
@@ -57,6 +57,55 @@ trait DCPSolver {
     val memory: Seq[Shape],
     val m_src: Int,
     val s_dst: Int
-  )
+  ) extends SolverOp
+
+  // Computes the sum of two scalars
+  case class SolverOpAddScalar(
+    val input: Shape,
+    val memory: Seq[Shape],
+    val s_src_1: Int,
+    val s_src_2: Int,
+    val s_dst: Int
+  ) extends SolverOp
+
+  // Computes the sum of two scalars
+  case class SolverOpMulScalar(
+    val input: Shape,
+    val memory: Seq[Shape],
+    val s_src_1: Int,
+    val s_src_2: Int,
+    val s_dst: Int
+  ) extends SolverOp
+
+  // Computes the square root of a scalar
+  case class SolverOpSqrtScalar(
+    val input: Shape,
+    val memory: Seq[Shape],
+    val s_src: Int,
+    val s_dst: Int
+  ) extends SolverOp
+
+  // Computes the multiplicative inverse of a scalar
+  case class SolverOpSqrtScalar(
+    val input: Shape,
+    val memory: Seq[Shape],
+    val s_src: Int,
+    val s_dst: Int
+  ) extends SolverOp
+
+  // Sets a scalar
+  case class SolverOpSetScalar(
+    val input: Shape,
+    val memory: Seq[Shape],
+    val c_src: Double,
+    val s_dst: Int
+  ) extends SolverOp
+
+  // Sets a vector to zero
+  case class SolverOpSetZero(
+    val input: Shape,
+    val memory: Seq[Shape],
+    val m_dst: Int
+  ) extends SolverOp
 
 }
