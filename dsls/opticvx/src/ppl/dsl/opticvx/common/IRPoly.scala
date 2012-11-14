@@ -92,14 +92,16 @@ sealed trait IRPoly extends HasArity[IRPoly] {
     else if((x.is0)||(y.is0)) {
       IRPolyN(arity, Seq())
     }
-    val xcfs: Seq[IRPoly] = x.asInstanceOf[IRPolyN].coeffs
-    val ycfs: Seq[IRPoly] = y.asInstanceOf[IRPolyN].coeffs
-    val c0: IRPoly = xcfs(0) * ycfs(0)
-    val dx: IRPoly = IRPolyN(arity, xcfs.drop(1))
-    val dy: IRPoly = IRPolyN(arity, ycfs.drop(1))
-    val dz: IRPoly = y*dx + x*dy + dx*dy
-    val dzcfs: Seq[IRPoly] = dz.asInstanceOf[IRPolyN].coeffs
-    IRPolyN(arity, Seq(c0) ++ dzcfs)
+    else {
+      val xcfs: Seq[IRPoly] = x.asInstanceOf[IRPolyN].coeffs
+      val ycfs: Seq[IRPoly] = y.asInstanceOf[IRPolyN].coeffs
+      val c0: IRPoly = xcfs(0) * ycfs(0)
+      val dx: IRPoly = IRPolyN(arity, xcfs.drop(1))
+      val dy: IRPoly = IRPolyN(arity, ycfs.drop(1))
+      val dz: IRPoly = y*dx + x*dy + dx*dy
+      val dzcfs: Seq[IRPoly] = dz.asInstanceOf[IRPolyN].coeffs
+      IRPolyN(arity, Seq(c0) ++ dzcfs)
+    }
   }
 
   // division by an integer
@@ -135,7 +137,11 @@ sealed trait IRPoly extends HasArity[IRPoly] {
       IRPolyN(arity, this.asInstanceOf[IRPolyN].coeffs.drop(1))
     }
     else if (idx < arity - 1) {
-      IRPolyN(arity, this.asInstanceOf[IRPolyN].coeffs map (x => x.diff(idx)))
+      var cfs: Seq[IRPoly] = this.asInstanceOf[IRPolyN].coeffs map (x => x.diff(idx))
+      while((cfs.length > 0)&&(cfs(cfs.length - 1).is0)) {
+        cfs = cfs.take(cfs.length - 1)
+      }
+      IRPolyN(arity, cfs)
     }
     else {
       throw new IRValidationException()
