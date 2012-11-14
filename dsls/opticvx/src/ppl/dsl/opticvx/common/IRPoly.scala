@@ -169,11 +169,24 @@ sealed trait IRPoly extends HasArity[IRPoly] {
 
   // arity ops
   def arityOp(op: ArityOp): IRPoly = op(this)
+
+  // pretty print methods
+  def toString(varnames: Seq[String]): String
+  override def toString: String = {
+    val varnames = Seq("a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z")
+    if (arity > varnames.length) throw new IRValidationException()
+    toString(varnames.take(arity))
+  }
 }
 
 case class IRPolyA0(val c0: Int) extends IRPoly {
   val arity: Int = 0
   def is0: Boolean = (c0 == 0)
+  // pretty printing (for debugging)
+  def toString(varnames: Seq[String]): String = {
+    if(varnames.length != 0) throw new IRValidationException()
+    c0.toString
+  }
 }
 case class IRPolyN(val arity: Int, val coeffs: Seq[IRPoly]) extends IRPoly {
   // This case class can't represent arity-0 polynomials
@@ -188,6 +201,30 @@ case class IRPolyN(val arity: Int, val coeffs: Seq[IRPoly]) extends IRPoly {
   }
   // This is zero if it has no coefficients
   def is0: Boolean = (coeffs.length == 0)
+  // pretty printing (for debugging)
+  def toString(varnames: Seq[String]): String = {
+    if(varnames.length != arity) throw new IRValidationException()
+    if(coeffs.length == 0) {
+      "0"
+    }
+    else {
+      var rv: Seq[String] = Seq()
+      for (i <- 0 until coeffs.length) yield {
+        if (!(coeffs(i).is0)) {
+          if (i == 0) {
+            rv = rv :+ coeffs(i).toString(varnames.init)
+          }
+          else if (i == 1) {
+            rv = rv :+ ("(" + coeffs(i).toString(varnames.init) + ")" + varnames.last)
+          }
+          else {
+            rv = rv :+ ("(" + coeffs(i).toString(varnames.init) + ")" + varnames.last + "@" + i.toString)
+          }
+        }
+      }
+      rv mkString " + "
+    }
+  }
 }
 
 class IntLikeIRPoly(val arity: Int) extends IntLike[IRPoly] {
