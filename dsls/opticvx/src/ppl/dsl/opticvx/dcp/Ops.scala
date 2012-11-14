@@ -11,6 +11,30 @@ class DCPIRValidationException extends Exception
 trait DCPOps extends Base with NumericOps {
   self: DCPShape with DCPExpr with DCPConstraint with DCPInput =>
   
+  var globalArity: Int = -1
+  var globalInputShape: Shape = null
+  var globalVarShape: Shape = null
+
+  def globalArityPromote() {
+    if ((globalInputShape != null)||(globalVarShape != null)) {
+      if (globalInputShape.arity != globalArity) throw new DCPIRValidationException()
+      if (globalVarShape.arity != globalArity) throw new DCPIRValidationException()
+      globalInputShape = globalInputShape.promote
+      globalVarShape = globalVarShape.promote
+    }
+    globalArity += 1
+  }
+
+  def globalArityDemote() {
+    if ((globalInputShape != null)||(globalVarShape != null)) {
+      if (globalInputShape.arity != globalArity) throw new DCPIRValidationException()
+      if (globalVarShape.arity != globalArity) throw new DCPIRValidationException()
+      globalInputShape = globalInputShape.demote
+      globalVarShape = globalVarShape.demote
+    }
+    globalArity -= 1
+  }
+  
   def cvxexpr(): Symbol[Expr] = new Symbol[Expr]()
   def cvxparam(): Symbol[Size] = new Symbol[Size]()
 
