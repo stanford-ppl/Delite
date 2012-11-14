@@ -64,11 +64,24 @@ case class ArityOpSwap(idx1: Int, idx2: Int) extends ArityOp {
     irpoly.eval[IRPoly](inseq)(new IntLikeIRPoly(irpoly.arity))
   }
 }
+case class ArityOpPromoteBy(len: Int) extends ArityOp {
+  if (len < 0) throw new IRValidationException()
+  def apply(irpoly: IRPoly): IRPoly = {
+    // construct the inputs
+    val inseq: Seq[IRPoly] = for (i <- 0 until irpoly.arity) yield {
+      IRPoly.param(i, irpoly.arity + len)
+    }
+    // and evaluate the polynomial
+    irpoly.eval[IRPoly](inseq)(new IntLikeIRPoly(irpoly.arity + len))
+  }
+}
+
 
 trait HasArity[T] {
   val arity: Int
   def demote: T = removeParam(arity - 1)
   def promote: T = addParam(arity)
+  def promoteBy(len: Int): T = arityOp(ArityOpPromoteBy(len))
   def removeParam(idx: Int): T = arityOp(ArityOpRemoveParam(idx))
   def addParam(idx: Int): T = arityOp(ArityOpAddParam(idx))
   def substituteAt(idx: Int, irpoly: IRPoly) = arityOp(ArityOpSubstituteAt(idx, irpoly))

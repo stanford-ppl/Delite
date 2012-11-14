@@ -1,9 +1,11 @@
 #!/bin/bash
 
+shopt -s nullglob
+
 echo "Creating class dir..."
 mkdir $DELITE/scalatest_cvx_tmp
 echo "Compiling tests..."
-scalac -d $DELITE/scalatest_cvx_tmp $DELITE/dsls/opticvx/src/ppl/dsl/opticvx/common/{,test/}*.scala \
+scalac -d $DELITE/scalatest_cvx_tmp $DELITE/dsls/opticvx/src/ppl/dsl/opticvx/{common,solver}/{,test/}*.scala \
 && echo "Running tests..." \
 && scala -cp $DELITE/scalatest_cvx_tmp ppl.dsl.opticvx.common.test.IRPolyTestApp
 echo "Removing class dir..."
