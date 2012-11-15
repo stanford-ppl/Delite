@@ -10,7 +10,16 @@ trait SolverGen {
 
 class ADMMSolverGen extends SolverGen {
   def gen(p: Problem): Solver = {
-    val scratchSize: IRPoly = IRPoly.pmax(IRPoly.pmax(IRPoly.pmax(IRPoly.pmax(p.affineAlmap.scratch, p.affineOffset.scratch), p.conicAlmap.scratch), p.conicOffset.scratch), p.objective.scratch)
+    // combine the matrices into a single matrix for ADMM
+    val c: Almap = AlmapVCat(p.objective.T, AlmapZero(p.inputSize, IRPoly.const(1, p.arity), p.coneSize))
+    val b: Almap = AlmapVCat(p.affineOffset, p.conicOffset)
+    val A: Almap = AlmapHCat(AlmapVCat(p.affineAlmap, p.conicAlmap), 
+        AlmapVCat(AlmapZero(p.inputSize, p.coneSize, p.affineAlmap.codomain),
+            AlmapIdentity(p.inputSize, p.coneSize)))
+    // determine the scratch size
+    val scratchSize: IRPoly = IRPoly.pmax(IRPoly.pmax(A.scratch, b.scratch), c.scratch)
+    // determine the required memory space
     
+
   }
 }

@@ -15,6 +15,7 @@ case class Problem(
   val arity: Int = affineAlmap.arity
   val variableSize: IRPoly = affineAlmap.domain
   val inputSize: IRPoly = affineAlmap.input
+  val coneSize: IRPoly = conicAlmap.codomain
   
   //Verify that all expressions have the same arity
   if (affineOffset.arity != arity) throw new IRValidationException()
@@ -42,6 +43,7 @@ case class Problem(
   if (objective.codomain != IRPoly.const(1, arity)) throw new IRValidationException()
 
   def arityOp(op: ArityOp): Problem = Problem(
+    objective.arityOp(op),
     affineAlmap.arityOp(op),
     affineOffset.arityOp(op),
     conicAlmap.arityOp(op),
