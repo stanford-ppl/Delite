@@ -22,6 +22,30 @@ object IRPoly {
       IRPolyN(arity, Seq(param(idx, arity - 1)))
     }
   }
+  // given two polynomials, returns their least upper bound respect to the partial ordering
+  // that y >= x iff the coefficients of y are greater than those of x
+  def pmax(x: IRPoly, y: IRPoly): IRPoly = {
+    if(x.arity != y.arity) throw new IRValidationException()
+    if(x.arity == 0) {
+      IRPolyA0(math.max(x.asInstanceOf[IRPolyA0].c0, y.asInstanceOf[IRPolyA0].c0))
+    }
+    else {
+      var xcfs: Seq[IRPoly] = x.asInstanceOf[IRPolyN].coeffs
+      var ycfs: Seq[IRPoly] = y.asInstanceOf[IRPolyN].coeffs
+      val poly0: IRPoly = if (x.arity == 1) IRPolyA0(0) else IRPolyN(x.arity - 1, Seq())
+      while(xcfs.length < ycfs.length) {
+        xcfs = xcfs :+ poly0
+      }
+      while(ycfs.length < xcfs.length) {
+        ycfs = ycfs :+ poly0
+      }
+      var outcfs: Seq[IRPoly] = for (i <- 0 until xcfs.length) yield (pmax(xcfs(i), ycfs(i)))
+      while((outcfs.length > 0)&&(outcfs(outcfs.length - 1).is0)) {
+        outcfs = outcfs.take(outcfs.length - 1)
+      }
+      IRPolyN(x.arity, outcfs)
+    }
+  }
 }
 
 sealed trait IRPoly extends HasArity[IRPoly] {
