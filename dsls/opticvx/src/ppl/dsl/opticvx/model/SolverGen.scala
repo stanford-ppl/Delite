@@ -19,7 +19,6 @@ class ADMMSolverGen extends SolverGen {
     // determine the scratch size
     val scratchSize: IRPoly = IRPoly.pmax(IRPoly.pmax(A.scratch, b.scratch), c.scratch)
     // determine the required memory space
-    
-
+    throw new IRValidationException()
   }
 }

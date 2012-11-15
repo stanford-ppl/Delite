@@ -4,6 +4,7 @@
 package ppl.dsl.opticvx.model
 
 import ppl.dsl.opticvx.common._
+import ppl.dsl.opticvx.solver._
 import scala.collection.immutable.Seq
 
 
@@ -26,6 +27,16 @@ trait Almap extends HasArity[Almap] {
 
   //Amount of scratch space necessary for computation (assume 0)
   def scratch: IRPoly
+
+  //Code generation for this matrix
+  def genmmpy(
+    context: SolverContext,
+    src: IRPoly,
+    dst: IRPoly,
+    scratch: IRPoly,
+    srcscale: SolverExpr,
+    dstscale: SolverExpr
+    ): Seq[SolverInstr]
 }
 
 //The identity map
@@ -36,6 +47,8 @@ case class AlmapIdentity(val input: IRPoly, val domain: IRPoly) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapIdentity(input.arityOp(op), domain.arityOp(op))
 
   def T: Almap = this
+
+  def scratch: IRPoly = IRPoly.const(0, arity)
 
   arityVerify()
 }
@@ -48,6 +61,8 @@ case class AlmapZero(val input: IRPoly, val domain: IRPoly, val codomain: IRPoly
   def arityOp(op: ArityOp): Almap = AlmapZero(input.arityOp(op), domain.arityOp(op), codomain.arityOp(op))
 
   def T: Almap = AlmapZero(input, codomain, domain)
+
+  def scratch: IRPoly = IRPoly.const(0, arity)
 
   arityVerify()
 }
@@ -67,6 +82,8 @@ case class AlmapSum(val arg1: Almap, val arg2: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapSum(arg1.arityOp(op), arg2.arityOp(op))
 
   def T: Almap = AlmapSum(arg1.T, arg2.T)
+
+  def scratch: IRPoly = IRPoly.pmax(arg1.scratch, arg2.scratch)
   
   arityVerify()
 }
@@ -81,6 +98,8 @@ case class AlmapNeg(val arg: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapNeg(arg.arityOp(op))
 
   def T: Almap = AlmapNeg(arg.T)
+
+  def scratch: IRPoly = arg.scratch
   
   arityVerify()
 }
@@ -97,6 +116,8 @@ case class AlmapScale(val arg: Almap, val scale: IRPoly) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapScale(arg.arityOp(op), scale.arityOp(op))
   
   def T: Almap = AlmapScale(arg.T, scale)
+
+  def scratch: IRPoly = arg.scratch
   
   arityVerify()
 }
@@ -111,6 +132,8 @@ case class AlmapScaleConstant(val arg: Almap, val scale: Double) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapScaleConstant(arg.arityOp(op), scale)
   
   def T: Almap = AlmapScaleConstant(arg.T, scale)
+
+  def scratch: IRPoly = arg.scratch
 
   arityVerify()
 }
@@ -130,6 +153,8 @@ case class AlmapVCat(val arg1: Almap, val arg2: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapVCat(arg1.arityOp(op), arg2.arityOp(op))
 
   def T: Almap = AlmapHCat(arg1.T, arg2.T)
+
+  def scratch: IRPoly = IRPoly.pmax(arg1.scratch, arg2.scratch)
   
   arityVerify()
 }
@@ -147,6 +172,9 @@ case class AlmapVCatFor(val len: IRPoly, val body: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapVCatFor(len.arityOp(op), body.arityOp(op))
 
   def T: Almap = AlmapHCatFor(len, body.T)
+
+  // Since we'll be running all the bodies in parallel, we need to sum, not max
+  def scratch: IRPoly = body.scratch.sum(arity).substituteAt(arity, len)
   
   arityVerify()
 }
@@ -165,6 +193,8 @@ case class AlmapVPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
 
   def T: Almap = AlmapHPut(len, at, body.T)
 
+  def scratch: IRPoly = body.scratch.substituteAt(arity, at)
+
   arityVerify()
 }
 
@@ -182,6 +212,8 @@ case class AlmapHCat(val arg1: Almap, val arg2: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapHCat(arg1.arityOp(op), arg2.arityOp(op))
 
   def T: Almap = AlmapVCat(arg1.T, arg2.T)
+
+  def scratch: IRPoly = IRPoly.pmax(arg1.scratch, arg2.scratch)
   
   arityVerify()
 }
@@ -200,6 +232,9 @@ case class AlmapHCatFor(val len: IRPoly, val body: Almap) extends Almap {
 
   def T: Almap = AlmapVCatFor(len, body.T)
   
+  //Since we'll be running all the bodies in parallel, we need to sum, not max
+  def scratch: IRPoly = body.scratch.sum(arity).substituteAt(arity, len)
+
   arityVerify()
 }
 
@@ -217,6 +252,8 @@ case class AlmapHPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
 
   def T: Almap = AlmapVPut(len, at, body.T)
 
+  def scratch: IRPoly = body.scratch.substituteAt(arity, at)
+
   arityVerify()
 }
 
@@ -232,6 +269,8 @@ case class AlmapSumFor(val len: IRPoly, val body: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapSumFor(len.arityOp(op), body.arityOp(op))
 
   def T: Almap = AlmapSumFor(len, body.T)
+
+  def scratch: IRPoly = body.scratch.sum(arity).substituteAt(arity, len) + body.codomain.sum(arity).substituteAt(arity, len)
   
   arityVerify()
 }
@@ -251,31 +290,9 @@ case class AlmapProd(val argl: Almap, val argr: Almap) extends Almap {
 
   def T: Almap = AlmapProd(argr.T, argl.T)
 
+  def scratch: IRPoly = argl.domain + IRPoly.pmax(argl.scratch, argr.scratch)
+
   arityVerify()
 }
 
-/*
-//Given a linear map over the input space, wraps it into a map from R
-def almap_wrapinput(almap: Almap): Almap = {
-  if (almap.input != almap.domain) throw new IRValidationException()
-  val rv = almap.codomain match {
-    case xsh: ShapeScalar => 
-      AlmapScale(AlmapIdentity(almap.input, ShapeScalar(almap.arity)), almap)
-    case xsh: ShapeFor =>
-      AlmapVCatFor(
-        xsh.size,
-        almap_wrapinput(AlmapProd(
-          AlmapHPut(
-            xsh.size.promote,
-            xsh.size.next,
-            AlmapIdentity(almap.input.promote.promote, xsh.body.promote)),
-          almap.promote)))
-
-  }
-  if (!rv.domain.isInstanceOf[ShapeScalar]) throw new IRValidationException()
-  if (rv.codomain != almap.codomain) throw new IRValidationException()
-  if (rv.input != almap.input) throw new IRValidationException()
-  rv
-}
-*/
 
