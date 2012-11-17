@@ -124,9 +124,11 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp { this
   case class QueryableFirst[T:Manifest](s: Exp[Table[T]]) extends DeliteOpSingleTask[T](reifyEffectsHere(s(0)))
   case class QueryableLast[T:Manifest](s: Exp[Table[T]]) extends DeliteOpSingleTask[T](reifyEffectsHere(s(s.size-1)))
 
-  protected def zeroType[T:Manifest] = manifest[T] match { //need a more robust solution, e.g. type class
-    case r: RefinedManifest[T] => struct[T](AnonTag(r), r.fields.map(e => (e._1, unit(0).AsInstanceOf(e._2, implicitly[SourceContext]))))
-    case _ => unit(0).AsInstanceOf[T]
+  protected def zeroType[T:Manifest]: Exp[T] = manifest[T] match { //need a more robust solution, e.g. type class
+    case r: RefinedManifest[T] => struct[T](AnonTag(r), r.fields.map(e => (e._1, zeroType(e._2))))
+    case s if s == manifest[String] => unit("").asInstanceOf[Rep[T]]
+    case v if v <:< manifest[AnyVal] => unit(0).AsInstanceOf[T]
+    case o => throw new IllegalArgumentException("Unknown Numeric type: " + o)
   }
 
   def queryable_select[T:Manifest, R:Manifest](s: Exp[Table[T]], resultSelector: Exp[T] => Exp[R]) = QueryableSelect(s, resultSelector)
@@ -317,10 +319,10 @@ trait QueryableOpsExpOpt extends QueryableOpsExp { this: OptiQLExp =>
     case Def(QueryableWhere(origS, predicate)) => //Where-Select fusion
       QueryableSelectWhere(origS, resultSelector, predicate) 
     
-    case Def(g@QueryableGroupBy(origS: Exp[Table[a]], keySelector)) => hashReduce(resultSelector, keySelector) match { //GroupBy-Select fusion
+    case Def(g@QueryableGroupBy(origS: Exp[Table[a]], keySelector)) => hashReduce(resultSelector, keySelector)(g.mT,g.mK,manifest[T],manifest[R]) match { //GroupBy-Select fusion
       case Some((valueFunc, reduceFunc, averageFunc)) => 
-        val hr = QueryableHashReduce(origS, keySelector, valueFunc, reduceFunc, (e:Exp[a]) => unit(true))
-        val count = QueryableHashReduce(origS, keySelector, (e:Exp[a])=>unit(1), (a:Exp[Int],b:Exp[Int])=>a+b, (e:Exp[a])=>unit(true))
+        val hr = QueryableHashReduce(origS, keySelector, valueFunc, reduceFunc, (e:Exp[a]) => unit(true))(g.mT,g.mK,manifest[R])
+        val count = QueryableHashReduce(origS, keySelector, (e:Exp[a])=>unit(1), (a:Exp[Int],b:Exp[Int])=>a+b, (e:Exp[a])=>unit(true))(g.mT,g.mK,manifest[Int])
         QueryableDivide(hr, count, averageFunc)
       case None => 
         Console.println("ERROR: unable to fuse GroupBy-Select")
