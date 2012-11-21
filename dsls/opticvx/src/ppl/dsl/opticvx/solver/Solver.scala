@@ -169,7 +169,7 @@ case class SolverExprParReduce(
 
 case class SolverExprUnaryOp(
   val context: SolverContext,
-  val op: SolverBinaryOp,
+  val op: SolverUnaryOp,
   val arg: SolverExpr
   ) extends SolverExpr
 {
