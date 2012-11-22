@@ -13,9 +13,10 @@ case class Problem(
   val conicCone: Cone) extends HasArity[Problem]
 {
   val arity: Int = affineAlmap.arity
-  val variableSize: IRPoly = affineAlmap.domain
+  val varSize: IRPoly = affineAlmap.domain
   val inputSize: IRPoly = affineAlmap.input
   val coneSize: IRPoly = conicAlmap.codomain
+  val affineCstrtSize: IRPoly = affineAlmap.codomain
   
   //Verify that all expressions have the same arity
   if (affineOffset.arity != arity) throw new IRValidationException()
@@ -24,8 +25,8 @@ case class Problem(
   if (conicCone.arity != arity) throw new IRValidationException()
 
   //Verify that all expressions have the same variable size
-  if (conicAlmap.domain != variableSize) throw new IRValidationException()
-  if (objective.domain != variableSize) throw new IRValidationException()
+  if (conicAlmap.domain != varSize) throw new IRValidationException()
+  if (objective.domain != varSize) throw new IRValidationException()
 
   //Verify that all expressions have the same input size
   if (affineOffset.input != inputSize) throw new IRValidationException()

@@ -6,6 +6,17 @@ import ppl.dsl.opticvx.solver._
 import scala.collection.immutable.Seq
 
 trait SolverGen {
+  val problem: Problem
+
+  val arity = problem.arity
+  val varSize = problem.varSize
+  val inputSize = problem.inputSize
+  val affineCstrtSize = problem.affineCstrtSize
+  val coneSize = problem.coneSize
+
+  def scalar: SolverGenVector = vector(IRPoly.const(1, arity))
+  def vector(len: IRPoly): SolverGenVector
+
   case class SolverGenVector(val at: IRPoly, val len: IRPoly) {
     def :=(x: SolverGenExpr)
     def +=(x: SolverGenExpr)
