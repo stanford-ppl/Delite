@@ -1,14 +1,14 @@
-package ppl.dsl.opticvx.model
+package ppl.dsl.opticvx.solvergen
 
 import ppl.dsl.opticvx.common._
+import ppl.dsl.opticvx.model._
 import ppl.dsl.opticvx.solver._
 import scala.collection.immutable.Seq
 
-trait SolverGen {
-  def gen(p: Problem): Solver
-}
 
-class PrimalDualSubgradientSolverGen extends SolverGen {
+case class PrimalDualSubgradientSolverGen(p: Problem) extends SolverGen {
+
+
   def gen(p: Problem): Solver = {
     
   }
