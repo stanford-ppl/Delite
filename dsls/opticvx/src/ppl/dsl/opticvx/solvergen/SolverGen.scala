@@ -79,6 +79,19 @@ trait SolverGen {
     def scratch: IRPoly = almap.scratch
   }
 
+  case class SolverGenExprAdd(x: SolverGenExpr, y: SolverGenExpr) extends SolverGenExpr {
+    if(x.len != y.len) throw new IRValidationException()
+    val len: IRPoly = x.len
+    def scratch: IRPoly = IRPoly.pmax(x.scratch, y.scratch)
+    def get: SolverExpr = throw new IRValidationException()
+    def put(dst: SolverGenVector, dstscale: SolverGenExpr): Seq[SolverInstr] = {
+      if(dst.len != len) throw new IRValidationException()
+      if(dstscale.len != IRPoly.const(1, arity)) throw new IRValidationException()
+      x.put(dst, dstscale) ++ y.put(dst, SolverGenExprConstant(1))
+    }
+
+  }
+
   def gen(): Unit
 
   def solver(): Solver = {

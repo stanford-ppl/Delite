@@ -100,6 +100,22 @@ case class SolverInstrIterate(
   def arityOp(op: ArityOp) = SolverInstrIterate(context.arityOp(op), cond.arityOp(op), iterlimit.arityOp(op), code map (c => c.arityOp(op)))
 }
 
+case class SolverInstrParallel(
+  val context: SolverContext,
+  val body: Seq[Seq[SolverInstr]]
+  ) extends SolverInstr
+{
+  val arity: Int = context.arity
+
+  for(b <- body) {
+    for (c <- b) {
+      if (c.context != context) throw new IRValidationException()
+    }
+  }
+
+  def arityOp(op: ArityOp) = SolverInstrParallel(context.arityOp(op), body map (b => b map (c => c.arityOp(op))))
+}
+
 case class SolverInstrParFor(
   val context: SolverContext,
   val len: IRPoly,

@@ -15,6 +15,12 @@ case class PrimalDualSubgradientSolverGen(val problem: Problem) extends SolverGe
   val theta = scalar
 
   def gen {
-    
+    x := 0
+    v := 0
+    y := 0
+    converge {
+      Axb := A*x + b
+      Fxg := F*x + g
+    }
   }
 }
