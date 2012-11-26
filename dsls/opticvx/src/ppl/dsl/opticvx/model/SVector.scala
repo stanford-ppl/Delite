@@ -1,4 +1,4 @@
-package ppl.dsl.opticvx.solver
+package ppl.dsl.opticvx.model
 
 import ppl.dsl.opticvx.common._
 import scala.collection.immutable.Seq
