@@ -191,6 +191,9 @@ sealed trait IRPoly extends HasArity[IRPoly] {
     return acc
   }
 
+  // next param
+  def next: IRPoly = IRPoly.param(arity, arity+1)
+
   // arity ops
   def arityOp(op: ArityOp): IRPoly = op(this)
 

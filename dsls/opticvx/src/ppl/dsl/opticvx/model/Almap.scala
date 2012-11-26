@@ -26,13 +26,11 @@ sealed trait Almap extends HasArity[Almap] {
   def scratch: IRPoly
 
   //Code generation for this matrixz
-  def genmmpy(
-    context: SolverContext,
-    src: IRPoly,
-    dst: IRPoly,
-    scratch: IRPoly,
-    srcscale: SolverExpr,
-    dstscale: SolverExpr
+  def genmmpy(context: SolverContext,
+    src: SolverExpr,
+    dstat: IRPoly,
+    dstop: (SolverExpr, IRPoly) => SolverExpr,
+    scratchat: IRPoly
     ): Seq[SolverInstr]
 
   def +(a: Almap) = {
@@ -68,35 +66,26 @@ case class AlmapIdentity(val domain: IRPoly) extends Almap {
 
   arityVerify()
 
-  def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
-    srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
+  def genmmpy(context: SolverContext,
+    src: SolverExpr,
+    dstat: IRPoly,
+    dstop: (SolverExpr, IRPoly) => SolverExpr,
+    scratchat: IRPoly
+    ): Seq[SolverInstr] =
   {
-    if(src.arity != arity) throw new IRValidationException()
-    if(dst.arity != arity) throw new IRValidationException()
-    if(scratch.arity != arity) throw new IRValidationException()
-    return Seq(SolverInstrParFor(
-      context, 
-      domain, 
-      Seq(SolverInstrWrite(
-        context.pushLimit(domain), 
-        dst.promote + IRPoly.param(arity, arity+1), 
-        SolverExprBinaryOp(
-          context.pushLimit(domain),
-          SolverBinaryOpAdd,
-          SolverExprBinaryOp(
+    if(context.arity != arity) throw new IRValidationException()
+    if(src.context != context.pushLimit(domain)) throw new IRValidationException()
+    if(dstat.arity != arity) throw new IRValidationException()
+    if(scratchat.arity != arity) throw new IRValidationException()
+    return Seq(
+      SolverInstrParFor(
+        context,
+        domain,
+        Seq(
+          SolverInstrWrite(
             context.pushLimit(domain),
-            SolverBinaryOpMpy,
-            srcscale,
-            SolverExprRead(
-              context.pushLimit(domain), 
-              src.promote + IRPoly.param(arity, arity+1))),
-          SolverExprBinaryOp(
-            context.pushLimit(domain),
-            SolverBinaryOpMpy,
-            dstscale,
-            SolverExprRead(
-              context.pushLimit(domain), 
-              dst.promote + IRPoly.param(arity, arity+1))))))))
+            dstat.promote + dstat.next,
+            dstop(src, dstat.next)))))
   }
 }
 
@@ -113,25 +102,26 @@ case class AlmapZero(val domain: IRPoly, val codomain: IRPoly) extends Almap {
 
   arityVerify()
 
-  def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
-    srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
+  def genmmpy(context: SolverContext,
+    src: SolverExpr,
+    dstat: IRPoly,
+    dstop: (SolverExpr, IRPoly) => SolverExpr,
+    scratchat: IRPoly
+    ): Seq[SolverInstr] =
   {
-    if(src.arity != arity) throw new IRValidationException()
-    if(dst.arity != arity) throw new IRValidationException()
-    if(scratch.arity != arity) throw new IRValidationException()
-    return Seq(SolverInstrParFor(
-      context, 
-      domain, 
-      Seq(SolverInstrWrite(
-        context.pushLimit(domain), 
-        dst.promote + IRPoly.param(arity, arity+1), 
-        SolverExprBinaryOp(
-          context.pushLimit(domain),
-          SolverBinaryOpMpy,
-          dstscale,
-          SolverExprRead(
-            context.pushLimit(domain), 
-            dst.promote + IRPoly.param(arity, arity+1)))))))
+    if(context.arity != arity) throw new IRValidationException()
+    if(src.context != context.pushLimit(domain)) throw new IRValidationException()
+    if(dstat.arity != arity) throw new IRValidationException()
+    if(scratchat.arity != arity) throw new IRValidationException()
+    return Seq(
+      SolverInstrParFor(
+        context,
+        codomain,
+        Seq(
+          SolverInstrWrite(
+            context.pushLimit(codomain),
+            dstat.promote + dstat.next,
+            dstop(SolverExprConstant(context.pushLimit(codomain), 0), dstat.next)))))
   }
 }
 
@@ -153,14 +143,26 @@ case class AlmapSum(val arg1: Almap, val arg2: Almap) extends Almap {
   
   arityVerify()
 
-  def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
-    srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
+  def genmmpy(context: SolverContext,
+    src: SolverExpr,
+    dstat: IRPoly,
+    dstop: (SolverExpr, IRPoly) => SolverExpr,
+    scratchat: IRPoly
+    ): Seq[SolverInstr] =
   {
-    if(src.arity != arity) throw new IRValidationException()
-    if(dst.arity != arity) throw new IRValidationException()
-    if(scratch.arity != arity) throw new IRValidationException()
-    return arg1.genmmpy(context, src, dst, scratch, srcscale, dstscale) ++
-      arg2.genmmpy(context, src, dst, scratch, srcscale, SolverExprConstant(context, 1))
+    if(context.arity != arity) throw new IRValidationException()
+    if(src.context != context.pushLimit(domain)) throw new IRValidationException()
+    if(dstat.arity != arity) throw new IRValidationException()
+    if(scratchat.arity != arity) throw new IRValidationException()
+    return arg1.genmmpy(context, src, dstat, dstop, scratchat) ++
+      arg2.genmmpy(context, src, dstat, 
+        (x, i) => SolverExprBinaryOp(
+          context.pushLimit(codomain),
+          SolverBinaryOpAdd,
+          SolverExprRead(
+            context.pushLimit(codomain),
+            dstat.promote + i),
+          x), scratchat)
   }
 }
 
@@ -178,14 +180,22 @@ case class AlmapNeg(val arg: Almap) extends Almap {
   
   arityVerify()
 
-  def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
-    srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
+  def genmmpy(context: SolverContext,
+    src: SolverExpr,
+    dstat: IRPoly,
+    dstop: (SolverExpr, IRPoly) => SolverExpr,
+    scratchat: IRPoly
+    ): Seq[SolverInstr] =
   {
-    if(src.arity != arity) throw new IRValidationException()
-    if(dst.arity != arity) throw new IRValidationException()
-    if(scratch.arity != arity) throw new IRValidationException()
-    return arg.genmmpy(context, src, dst, scratch, 
-      SolverExprUnaryOp(context, SolverUnaryOpNeg, srcscale), dstscale)
+    if(context.arity != arity) throw new IRValidationException()
+    if(src.context != context.pushLimit(domain)) throw new IRValidationException()
+    if(dstat.arity != arity) throw new IRValidationException()
+    if(scratchat.arity != arity) throw new IRValidationException()
+    return arg.genmmpy(context, 
+      SolverExprUnaryOp(
+        context.pushLimit(domain), 
+        SolverUnaryOpNeg,
+        src), dstat, dstop, scratchat)
   }
 }
 
@@ -205,15 +215,25 @@ case class AlmapScaleInput(val arg: Almap, val scale: IRPoly) extends Almap {
   
   arityVerify()
 
-  def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
-    srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
+  def genmmpy(context: SolverContext,
+    src: SolverExpr,
+    dstat: IRPoly,
+    dstop: (SolverExpr, IRPoly) => SolverExpr,
+    scratchat: IRPoly
+    ): Seq[SolverInstr] =
   {
-    if(src.arity != arity) throw new IRValidationException()
-    if(dst.arity != arity) throw new IRValidationException()
-    if(scratch.arity != arity) throw new IRValidationException()
-    return arg.genmmpy(context, src, dst, scratch, 
-      SolverExprBinaryOp(context, SolverBinaryOpMpy, srcscale,
-        SolverExprInput(context, scale)), dstscale)
+    if(context.arity != arity) throw new IRValidationException()
+    if(src.context != context.pushLimit(domain)) throw new IRValidationException()
+    if(dstat.arity != arity) throw new IRValidationException()
+    if(scratchat.arity != arity) throw new IRValidationException()
+    return arg.genmmpy(context, 
+      SolverExprBinaryOp(
+        context.pushLimit(domain), 
+        SolverBinaryOpMpy,
+        SolverExprInput(
+          context.pushLimit(domain),
+          scale),
+        src), dstat, dstop, scratchat)
   }
 }
 
@@ -233,15 +253,25 @@ case class AlmapScaleMemory(val arg: Almap, val scale: IRPoly) extends Almap {
   
   arityVerify()
 
-  def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
-    srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
+  def genmmpy(context: SolverContext,
+    src: SolverExpr,
+    dstat: IRPoly,
+    dstop: (SolverExpr, IRPoly) => SolverExpr,
+    scratchat: IRPoly
+    ): Seq[SolverInstr] =
   {
-    if(src.arity != arity) throw new IRValidationException()
-    if(dst.arity != arity) throw new IRValidationException()
-    if(scratch.arity != arity) throw new IRValidationException()
-    return arg.genmmpy(context, src, dst, scratch, 
-      SolverExprBinaryOp(context, SolverBinaryOpMpy, srcscale,
-        SolverExprRead(context, scale)), dstscale)
+    if(context.arity != arity) throw new IRValidationException()
+    if(src.context != context.pushLimit(domain)) throw new IRValidationException()
+    if(dstat.arity != arity) throw new IRValidationException()
+    if(scratchat.arity != arity) throw new IRValidationException()
+    return arg.genmmpy(context, 
+      SolverExprBinaryOp(
+        context.pushLimit(domain), 
+        SolverBinaryOpMpy,
+        SolverExprRead(
+          context.pushLimit(domain),
+          scale),
+        src), dstat, dstop, scratchat)
   }
 }
 
@@ -259,15 +289,25 @@ case class AlmapScaleConstant(val arg: Almap, val scale: Double) extends Almap {
 
   arityVerify()
 
-  def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
-    srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
+  def genmmpy(context: SolverContext,
+    src: SolverExpr,
+    dstat: IRPoly,
+    dstop: (SolverExpr, IRPoly) => SolverExpr,
+    scratchat: IRPoly
+    ): Seq[SolverInstr] =
   {
-    if(src.arity != arity) throw new IRValidationException()
-    if(dst.arity != arity) throw new IRValidationException()
-    if(scratch.arity != arity) throw new IRValidationException()
-    return arg.genmmpy(context, src, dst, scratch, 
-      SolverExprBinaryOp(context, SolverBinaryOpMpy, srcscale,
-        SolverExprConstant(context, scale)), dstscale)
+    if(context.arity != arity) throw new IRValidationException()
+    if(src.context != context.pushLimit(domain)) throw new IRValidationException()
+    if(dstat.arity != arity) throw new IRValidationException()
+    if(scratchat.arity != arity) throw new IRValidationException()
+    return arg.genmmpy(context, 
+      SolverExprBinaryOp(
+        context.pushLimit(domain), 
+        SolverBinaryOpMpy,
+        SolverExprConstant(
+          context.pushLimit(domain),
+          scale),
+        src), dstat, dstop, scratchat)
   }
 }
 
@@ -289,14 +329,20 @@ case class AlmapVCat(val arg1: Almap, val arg2: Almap) extends Almap {
   
   arityVerify()
 
-  def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
-    srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
+  def genmmpy(context: SolverContext,
+    src: SolverExpr,
+    dstat: IRPoly,
+    dstop: (SolverExpr, IRPoly) => SolverExpr,
+    scratchat: IRPoly
+    ): Seq[SolverInstr] =
   {
-    if(src.arity != arity) throw new IRValidationException()
-    if(dst.arity != arity) throw new IRValidationException()
-    if(scratch.arity != arity) throw new IRValidationException()
-    return arg1.genmmpy(context, src, dst, scratch, srcscale, dstscale) ++
-      arg2.genmmpy(context, src, dst + arg1.codomain, scratch, srcscale, dstscale)
+    if(context.arity != arity) throw new IRValidationException()
+    if(src.context != context.pushLimit(domain)) throw new IRValidationException()
+    if(dstat.arity != arity) throw new IRValidationException()
+    if(scratchat.arity != arity) throw new IRValidationException()
+    return arg1.genmmpy(context, src, dstat, dstop, scratchat) ++
+      arg2.genmmpy(context, src, dstat + arg1.codomain, 
+        (x, i) => dstop(x, i + arg1.codomain.promote), scratchat)
   }
 }
 
@@ -318,22 +364,26 @@ case class AlmapVCatFor(val len: IRPoly, val body: Almap) extends Almap {
   
   arityVerify()
 
-  def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
-    srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
+  def genmmpy(context: SolverContext,
+    src: SolverExpr,
+    dstat: IRPoly,
+    dstop: (SolverExpr, IRPoly) => SolverExpr,
+    scratchat: IRPoly
+    ): Seq[SolverInstr] =
   {
-    if(src.arity != arity) throw new IRValidationException()
-    if(dst.arity != arity) throw new IRValidationException()
-    if(scratch.arity != arity) throw new IRValidationException()
+    if(context.arity != arity) throw new IRValidationException()
+    if(src.context != context.pushLimit(domain)) throw new IRValidationException()
+    if(dstat.arity != arity) throw new IRValidationException()
+    if(scratchat.arity != arity) throw new IRValidationException()
     return Seq(SolverInstrParFor(
       context,
       len,
       body.genmmpy(
         context.pushLimit(len),
-        src,
-        dst + body.codomain.sum(arity),
-        scratch + body.scratch.sum(arity),
-        srcscale,
-        dstscale)))
+        src.promote,
+        dstat.promote + body.codomain.sum(arity),
+        (x, i) => dstop(x, i + body.codomain.sum(arity)),
+        scratch.promote + body.scratch.sum(arity))))
   }
 }
 
@@ -350,37 +400,50 @@ case class AlmapVPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
 
   def T: Almap = AlmapHPut(len, at, body.T)
 
-  def scratch: IRPoly = body.scratch.substituteAt(arity, at)
+  def scratch: IRPoly = body.codomain.substituteAt(arity, at) + body.scratch.substituteAt(arity, at)
 
-  arityVerify()  
+  arityVerify()
 
-  def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
-    srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
+  def genmmpy(context: SolverContext,
+    src: SolverExpr,
+    dstat: IRPoly,
+    dstop: (SolverExpr, IRPoly) => SolverExpr,
+    scratchat: IRPoly
+    ): Seq[SolverInstr] =
   {
-    if(src.arity != arity) throw new IRValidationException()
-    if(dst.arity != arity) throw new IRValidationException()
-    if(scratch.arity != arity) throw new IRValidationException()
-    return Seq(
-      SolverInstrParFor(
-        context, 
-        codomain, 
-        Seq(SolverInstrWrite(
-          context.pushLimit(codomain), 
-          dst.promote + IRPoly.param(arity, arity+1), 
-          SolverExprBinaryOp(
-            context.pushLimit(codomain),
-            SolverBinaryOpMpy,
-            dstscale,
-            SolverExprRead(
-              context.pushLimit(codomain), 
-              dst.promote + IRPoly.param(arity, arity+1))))))) ++
-      body.genmmpy(
-        context,
-        src,
-        dst + body.codomain.sum(arity).substituteAt(arity, at),
-        scratch,
-        srcscale,
-        SolverExprConstant(context, 1))
+    if(context.arity != arity) throw new IRValidationException()
+    if(src.context != context.pushLimit(domain)) throw new IRValidationException()
+    if(dstat.arity != arity) throw new IRValidationException()
+    if(scratchat.arity != arity) throw new IRValidationException()
+    return body.substituteAt(arity, at).genmmpy(
+      context, 
+      src, 
+      scratch, 
+      (x, i) => dstop(x, i + body.codomain.sum(arity).substituteAt(arity, at)),
+      scratch + body.codomain.substituteAt(arity, at)
+      ) ++
+      Seq(
+        SolverInstrParFor(
+          context,
+          codomain,
+          Seq(
+            SolverInstrWrite(
+              context.pushLimit(codomain),
+              dstat.promote + dstat.next,
+              dstop(
+                SolverExprConstant(context.pushLimit(codomain), 0), 
+                dstat.next))))) ++
+      Seq(
+        SolverInstrParFor(
+          context,
+          body.codomain.substituteAt(arity, at),
+          Seq(
+            SolverInstrWrite(
+              context.pushLimit(body.codomain.substituteAt(arity, at)),
+              (dstat + body.codomain.sum(arity).substituteAt(arity, at)).promote + dstat.next,
+              SolverExprRead(
+                context.pushLimit(body.codomain.substituteAt(arity, at)),
+                scratch.promote + dstat.next)))))
   }
 }
 
