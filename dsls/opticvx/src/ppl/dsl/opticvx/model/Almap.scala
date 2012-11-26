@@ -22,9 +22,6 @@ sealed trait Almap extends HasArity[Almap] {
   //The transpose
   def T: Almap
 
-  //Amount of scratch space necessary for computation (assume 0)
-  def scratch: IRPoly
-
   //Code generation for this matrix
   def mmpy(x: SVector): SVector
 
@@ -57,11 +54,12 @@ case class AlmapIdentity(val domain: IRPoly) extends Almap {
 
   def T: Almap = this
 
-  def scratch: IRPoly = IRPoly.const(0, arity)
-
   arityVerify()
 
-
+  def mmpy(x: SVector): SVector = {
+    if(x.size != domain) throw new IRValidationException()
+    x
+  }
 }
 
 
@@ -73,11 +71,12 @@ case class AlmapZero(val domain: IRPoly, val codomain: IRPoly) extends Almap {
 
   def T: Almap = AlmapZero(codomain, domain)
 
-  def scratch: IRPoly = IRPoly.const(0, arity)
-
   arityVerify()
 
-
+  def mmpy(x: SVector): SVector = {
+    if(x.size != domain) throw new IRValidationException()
+    SVectorZero(codomain)
+  }
 }
 
 //The sum of two linear maps
@@ -93,11 +92,13 @@ case class AlmapSum(val arg1: Almap, val arg2: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapSum(arg1.arityOp(op), arg2.arityOp(op))
 
   def T: Almap = AlmapSum(arg1.T, arg2.T)
-
-  def scratch: IRPoly = IRPoly.pmax(arg1.scratch, arg2.scratch)
   
   arityVerify()
 
+  def mmpy(x: SVector): SVector = {
+    if(x.size != domain) throw new IRValidationException()
+    SVectorAdd(arg1.mmpy(x), arg2.mmpy(x))
+  }
 }
 
 //Negation of a linear map
@@ -109,11 +110,13 @@ case class AlmapNeg(val arg: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapNeg(arg.arityOp(op))
 
   def T: Almap = AlmapNeg(arg.T)
-
-  def scratch: IRPoly = arg.scratch
   
   arityVerify()
 
+  def mmpy(x: SVector): SVector = {
+    if(x.size != domain) throw new IRValidationException()
+    SVectorNeg(x)
+  }
 }
 
 //Scale of a linear map by some indexing of the input space
@@ -126,30 +129,14 @@ case class AlmapScaleInput(val arg: Almap, val scale: IRPoly) extends Almap {
   
   def arityOp(op: ArityOp): Almap = AlmapScaleInput(arg.arityOp(op), scale.arityOp(op))
   
-  def T: Almap = AlmapScaleMemory(arg.T, scale)
-
-  def scratch: IRPoly = arg.scratch
+  def T: Almap = AlmapScaleInput(arg.T, scale)
   
   arityVerify()
 
-}
-
-//Scale of a linear map by some indexing of the memory space
-case class AlmapScaleMemory(val arg: Almap, val scale: IRPoly) extends Almap {
-  val arity: Int = arg.arity
-  val domain: IRPoly = arg.domain
-  val codomain: IRPoly = arg.codomain
-
-  if (arity != scale.arity) throw new IRValidationException()
-  
-  def arityOp(op: ArityOp): Almap = AlmapScaleMemory(arg.arityOp(op), scale.arityOp(op))
-  
-  def T: Almap = AlmapScaleMemory(arg.T, scale)
-
-  def scratch: IRPoly = arg.scratch
-  
-  arityVerify()
-
+  def mmpy(x: SVector): SVector = {
+    if(x.size != domain) throw new IRValidationException()
+    SVectorScaleInput(x, scale)
+  }
 }
 
 //Scale of a linear map by a constant
@@ -162,11 +149,12 @@ case class AlmapScaleConstant(val arg: Almap, val scale: Double) extends Almap {
   
   def T: Almap = AlmapScaleConstant(arg.T, scale)
 
-  def scratch: IRPoly = arg.scratch
-
   arityVerify()
 
-
+  def mmpy(x: SVector): SVector = {
+    if(x.size != domain) throw new IRValidationException()
+    SVectorScaleConstant(x, scale)
+  }
 }
 
 
@@ -182,12 +170,13 @@ case class AlmapVCat(val arg1: Almap, val arg2: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapVCat(arg1.arityOp(op), arg2.arityOp(op))
 
   def T: Almap = AlmapHCat(arg1.T, arg2.T)
-
-  def scratch: IRPoly = IRPoly.pmax(arg1.scratch, arg2.scratch)
   
   arityVerify()
 
-
+  def mmpy(x: SVector): SVector = {
+    if(x.size != domain) throw new IRValidationException()
+    SVectorCat(arg1.mmpy(x), arg2.mmpy(x))
+  }
 }
 
 
@@ -202,12 +191,13 @@ case class AlmapVCatFor(val len: IRPoly, val body: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapVCatFor(len.arityOp(op), body.arityOp(op))
 
   def T: Almap = AlmapHCatFor(len, body.T)
-
-  // Since we'll be running all the bodies in parallel, we need to sum, not max
-  def scratch: IRPoly = body.scratch.sum(arity).substituteAt(arity, len)
   
   arityVerify()
 
+  def mmpy(x: SVector): SVector = {
+    if(x.size != domain) throw new IRValidationException()
+    SVectorCatFor(len, body.mmpy(x.promote))
+  }
 }
 
 // "Puts" the given almap at the target index, all other entries are 0
@@ -223,11 +213,17 @@ case class AlmapVPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
 
   def T: Almap = AlmapHPut(len, at, body.T)
 
-  def scratch: IRPoly = body.codomain.substituteAt(arity, at) + body.scratch.substituteAt(arity, at)
-
   arityVerify()
 
-
+  def mmpy(x: SVector): SVector = {
+    if(x.size != domain) throw new IRValidationException()
+    SVectorCat(
+      SVectorZero(body.codomain.sum(arity).substituteAt(arity, at)),
+      SVectorCat(
+        body.substituteAt(arity, at).mmpy(x),
+      SVectorZero(body.codomain.sum(arity).substituteAt(arity, len) - 
+        body.codomain.sum(arity).substituteAt(arity, at + IRPoly.const(1, arity)))))
+  }
 }
 
 //The horizontal concatenation of two linear maps
@@ -242,12 +238,14 @@ case class AlmapHCat(val arg1: Almap, val arg2: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapHCat(arg1.arityOp(op), arg2.arityOp(op))
 
   def T: Almap = AlmapVCat(arg1.T, arg2.T)
-
-  def scratch: IRPoly = IRPoly.pmax(arg1.scratch, arg2.scratch)
   
   arityVerify()
 
-
+  def mmpy(x: SVector): SVector = {
+    if(x.size != domain) throw new IRValidationException()
+    SVectorAdd(arg1.mmpy(SVectorSlice(x, IRPoly.const(0, arity), arg1.domain)), 
+      arg2.mmpy(SVectorSlice(x, arg1.domain, arg1.domain + arg2.domain)))
+  }
 }
 
 
@@ -262,13 +260,19 @@ case class AlmapHCatFor(val len: IRPoly, val body: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapHCatFor(len.arityOp(op), body.arityOp(op))
 
   def T: Almap = AlmapVCatFor(len, body.T)
-  
-  //Since we'll be running all the bodies in parallel, we need to sum, not max
-  def scratch: IRPoly = (body.codomain * len) +
-    body.scratch.sum(arity).substituteAt(arity, len)
 
   arityVerify()
 
+  def mmpy(x: SVector): SVector = {
+    if(x.size != domain) throw new IRValidationException()
+    SVectorAddFor(
+      len,
+      body.mmpy(
+        SVectorSlice(
+          x.promote,
+          body.domain.sum(arity),
+          body.domain)))
+  }
 }
 
 // "Puts" the given almap at the target index, all other entries are 0
@@ -284,10 +288,16 @@ case class AlmapHPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
 
   def T: Almap = AlmapVPut(len, at, body.T)
 
-  def scratch: IRPoly = body.scratch.substituteAt(arity, at)
-
   arityVerify()
 
+  def mmpy(x: SVector): SVector = {
+    if(x.size != domain) throw new IRValidationException()
+    body.substituteAt(arity, at).mmpy(
+      SVectorSlice(
+        x, 
+        body.domain.sum(arity).substituteAt(arity, at),
+        body.domain.substituteAt(arity, at)))
+  }
 }
 
 //The sum of a problem-size-dependent number of linear ops
@@ -302,10 +312,12 @@ case class AlmapSumFor(val len: IRPoly, val body: Almap) extends Almap {
 
   def T: Almap = AlmapSumFor(len, body.T)
 
-  def scratch: IRPoly = body.scratch.sum(arity).substituteAt(arity, len) + body.codomain.sum(arity).substituteAt(arity, len)
-  
   arityVerify()
 
+  def mmpy(x: SVector): SVector = {
+    if(x.size != domain) throw new IRValidationException()
+    SVectorAddFor(len, body.mmpy(x))
+  }
 }
 
 //Matrix multiply
@@ -321,10 +333,12 @@ case class AlmapProd(val argl: Almap, val argr: Almap) extends Almap {
 
   def T: Almap = AlmapProd(argr.T, argl.T)
 
-  def scratch: IRPoly = argl.domain + IRPoly.pmax(argl.scratch, argr.scratch)
-
   arityVerify()
-  
+
+  def mmpy(x: SVector): SVector = {
+    if(x.size != domain) throw new IRValidationException()
+    argl.mmpy(argr.mmpy(x))
+  }
 }
 
 
