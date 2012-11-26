@@ -8,7 +8,7 @@ import ppl.dsl.opticvx.solver._
 import scala.collection.immutable.Seq
 
 
-trait Almap extends HasArity[Almap] {
+sealed trait Almap extends HasArity[Almap] {
   //The domain and codomain sizes of this map
   val domain: IRPoly
   val codomain: IRPoly
@@ -34,6 +34,25 @@ trait Almap extends HasArity[Almap] {
     srcscale: SolverExpr,
     dstscale: SolverExpr
     ): Seq[SolverInstr]
+
+  def +(a: Almap) = {
+    if((domain != a.domain)||(codomain != a.codomain)) throw new IRValidationException()
+    AlmapSum(this, a)
+  }
+
+  def -(a: Almap) = {
+    if((domain != a.domain)||(codomain != a.codomain)) throw new IRValidationException()
+    AlmapSum(this, AlmapNeg(a))
+  }
+
+  def unary_-() = {
+    AlmapNeg(this)
+  }
+
+  def *(a: Almap) = {
+    if(domain != a.codomain) throw new IRValidationException()
+    AlmapProd(this, a)
+  }
 }
 
 //The identity map
