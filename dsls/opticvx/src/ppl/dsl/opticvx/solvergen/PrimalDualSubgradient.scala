@@ -18,9 +18,9 @@ case class PrimalDualSubgradientSolverGen(val problem: Problem) extends SolverGe
     x := 0
     v := 0
     y := 0
-    converge {
+    converge({
       Axb := A*x + b
       Fxg := F*x + g
-    }
+    })
   }
 }

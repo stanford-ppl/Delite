@@ -28,7 +28,7 @@ trait Almap extends HasArity[Almap] {
   //Amount of scratch space necessary for computation (assume 0)
   def scratch: IRPoly
 
-  //Code generation for this matrix
+  //Code generation for this matrixz
   def genmmpy(
     context: SolverContext,
     src: IRPoly,
@@ -166,7 +166,7 @@ case class AlmapNeg(val arg: Almap) extends Almap {
 
   def scratch: IRPoly = arg.scratch
   
-  arityVerify()  
+  arityVerify()
 
   def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
     srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
