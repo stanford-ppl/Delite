@@ -23,7 +23,7 @@ sealed trait Almap extends HasArity[Almap] {
   def T: Almap
 
   //Code generation for this matrix
-  def mmpy(x: SVector): SVector
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V
 
   def +(a: Almap) = {
     if((domain != a.domain)||(codomain != a.codomain)) throw new IRValidationException()
@@ -56,8 +56,9 @@ case class AlmapIdentity(val domain: IRPoly) extends Almap {
 
   arityVerify()
 
-  def mmpy(x: SVector): SVector = {
-    if(x.size != domain) throw new IRValidationException()
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+    import e._
+    if(size(x) != domain) throw new IRValidationException()
     x
   }
 }
@@ -73,9 +74,10 @@ case class AlmapZero(val domain: IRPoly, val codomain: IRPoly) extends Almap {
 
   arityVerify()
 
-  def mmpy(x: SVector): SVector = {
-    if(x.size != domain) throw new IRValidationException()
-    SVectorZero(codomain)
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+    import e._
+    if(size(x) != domain) throw new IRValidationException()
+    zero(codomain)
   }
 }
 
@@ -95,9 +97,10 @@ case class AlmapSum(val arg1: Almap, val arg2: Almap) extends Almap {
   
   arityVerify()
 
-  def mmpy(x: SVector): SVector = {
-    if(x.size != domain) throw new IRValidationException()
-    SVectorAdd(arg1.mmpy(x), arg2.mmpy(x))
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+    import e._
+    if(size(x) != domain) throw new IRValidationException()
+    arg1.mmpy(x) + arg2.mmpy(x)
   }
 }
 
@@ -113,9 +116,10 @@ case class AlmapNeg(val arg: Almap) extends Almap {
   
   arityVerify()
 
-  def mmpy(x: SVector): SVector = {
-    if(x.size != domain) throw new IRValidationException()
-    SVectorNeg(x)
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+    import e._
+    if(size(x) != domain) throw new IRValidationException()
+    -x
   }
 }
 
@@ -133,9 +137,10 @@ case class AlmapScaleInput(val arg: Almap, val scale: IRPoly) extends Almap {
   
   arityVerify()
 
-  def mmpy(x: SVector): SVector = {
-    if(x.size != domain) throw new IRValidationException()
-    SVectorScaleInput(x, scale)
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+    import e._
+    if(size(x) != domain) throw new IRValidationException()
+    scaleinput(x, scale)
   }
 }
 
@@ -151,9 +156,10 @@ case class AlmapScaleConstant(val arg: Almap, val scale: Double) extends Almap {
 
   arityVerify()
 
-  def mmpy(x: SVector): SVector = {
-    if(x.size != domain) throw new IRValidationException()
-    SVectorScaleConstant(x, scale)
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+    import e._
+    if(size(x) != domain) throw new IRValidationException()
+    scaleconstant(x, scale)
   }
 }
 
@@ -173,9 +179,10 @@ case class AlmapVCat(val arg1: Almap, val arg2: Almap) extends Almap {
   
   arityVerify()
 
-  def mmpy(x: SVector): SVector = {
-    if(x.size != domain) throw new IRValidationException()
-    SVectorCat(arg1.mmpy(x), arg2.mmpy(x))
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+    import e._
+    if(size(x) != domain) throw new IRValidationException()
+    arg1.mmpy(x) ++ arg2.mmpy(x)
   }
 }
 
@@ -194,9 +201,10 @@ case class AlmapVCatFor(val len: IRPoly, val body: Almap) extends Almap {
   
   arityVerify()
 
-  def mmpy(x: SVector): SVector = {
-    if(x.size != domain) throw new IRValidationException()
-    SVectorCatFor(len, body.mmpy(x.promote))
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+    import e._
+    if(size(x) != domain) throw new IRValidationException()
+    catfor(len, body.mmpy(x.promote))
   }
 }
 
@@ -215,14 +223,12 @@ case class AlmapVPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
 
   arityVerify()
 
-  def mmpy(x: SVector): SVector = {
-    if(x.size != domain) throw new IRValidationException()
-    SVectorCat(
-      SVectorZero(body.codomain.sum(arity).substituteAt(arity, at)),
-      SVectorCat(
-        body.substituteAt(arity, at).mmpy(x),
-      SVectorZero(body.codomain.sum(arity).substituteAt(arity, len) - 
-        body.codomain.sum(arity).substituteAt(arity, at + IRPoly.const(1, arity)))))
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+    import e._
+    if(size(x) != domain) throw new IRValidationException()
+    zero(body.codomain.sum(arity).substituteAt(arity, at)) ++
+      body.substituteAt(arity, at).mmpy(x) ++
+        zero(body.codomain.sum(arity).substituteAt(arity, at + IRPoly.const(1, arity)))
   }
 }
 
@@ -241,10 +247,11 @@ case class AlmapHCat(val arg1: Almap, val arg2: Almap) extends Almap {
   
   arityVerify()
 
-  def mmpy(x: SVector): SVector = {
-    if(x.size != domain) throw new IRValidationException()
-    SVectorAdd(arg1.mmpy(SVectorSlice(x, IRPoly.const(0, arity), arg1.domain)), 
-      arg2.mmpy(SVectorSlice(x, arg1.domain, arg1.domain + arg2.domain)))
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+    import e._
+    if(size(x) != domain) throw new IRValidationException()
+    arg1.mmpy(x(IRPoly.const(0, arity), arg1.domain)) +  
+      arg2.mmpy(x(arg1.domain, arg1.domain + arg2.domain))
   }
 }
 
@@ -263,12 +270,13 @@ case class AlmapHCatFor(val len: IRPoly, val body: Almap) extends Almap {
 
   arityVerify()
 
-  def mmpy(x: SVector): SVector = {
-    if(x.size != domain) throw new IRValidationException()
-    SVectorAddFor(
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+    import e._
+    if(size(x) != domain) throw new IRValidationException()
+    addfor(
       len,
       body.mmpy(
-        SVectorSlice(
+        slice(
           x.promote,
           body.domain.sum(arity),
           body.domain)))
@@ -290,10 +298,11 @@ case class AlmapHPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
 
   arityVerify()
 
-  def mmpy(x: SVector): SVector = {
-    if(x.size != domain) throw new IRValidationException()
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+    import e._
+    if(size(x) != domain) throw new IRValidationException()
     body.substituteAt(arity, at).mmpy(
-      SVectorSlice(
+      slice(
         x, 
         body.domain.sum(arity).substituteAt(arity, at),
         body.domain.substituteAt(arity, at)))
@@ -314,9 +323,10 @@ case class AlmapSumFor(val len: IRPoly, val body: Almap) extends Almap {
 
   arityVerify()
 
-  def mmpy(x: SVector): SVector = {
-    if(x.size != domain) throw new IRValidationException()
-    SVectorAddFor(len, body.mmpy(x))
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+    import e._
+    if(size(x) != domain) throw new IRValidationException()
+    addfor(len, body.mmpy(x))
   }
 }
 
@@ -335,8 +345,9 @@ case class AlmapProd(val argl: Almap, val argr: Almap) extends Almap {
 
   arityVerify()
 
-  def mmpy(x: SVector): SVector = {
-    if(x.size != domain) throw new IRValidationException()
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+    import e._
+    if(size(x) != domain) throw new IRValidationException()
     argl.mmpy(argr.mmpy(x))
   }
 }

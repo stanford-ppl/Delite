@@ -7,6 +7,19 @@ trait SVector extends HasArity[SVector] {
   val size: IRPoly
 }
 
+object AVectorLikeSVector extends AVectorLike[SVector] {
+  def size(arg: SVector): IRPoly = arg.size
+  def zero(size: IRPoly): SVector = SVectorZero(size)
+  def add(arg1: SVector, arg2: SVector): SVector = SVectorAdd(arg1, arg2)
+  def addfor(len: IRPoly, arg: SVector): SVector = SVectorAddFor(len, arg)
+  def neg(arg: SVector): SVector = SVectorNeg(arg)
+  def scaleinput(arg: SVector, scale: IRPoly): SVector = SVectorScaleInput(arg, scale)
+  def scaleconstant(arg: SVector, scale: Double): SVector = SVectorScaleConstant(arg, scale)
+  def cat(arg1: SVector, arg2: SVector): SVector = SVectorCat(arg1, arg2)
+  def catfor(len: IRPoly, arg: SVector): SVector = SVectorCatFor(len, arg)
+  def slice(arg: SVector, at: IRPoly, size: IRPoly): SVector = SVectorSlice(arg, at, size)
+}
+
 case class SVectorZero(val size: IRPoly) extends SVector {
   val arity: Int = size.arity  
   def arityOp(op: ArityOp): SVector = SVectorZero(size.arityOp(op))
