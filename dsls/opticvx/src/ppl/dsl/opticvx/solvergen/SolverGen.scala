@@ -73,7 +73,7 @@ trait SolverGen {
       if(dst.len != len) throw new IRValidationException()
       if(srcscale.len != IRPoly.const(1, arity)) throw new IRValidationException()
       if(dstscale.len != IRPoly.const(1, arity)) throw new IRValidationException()
-      AlmapIdentity(inputSize, len).genmmpy(
+      AlmapIdentity(len).genmmpy(
         context, at, dst.at, memorySize, srcscale.get, dstscale.get)
     }
     def get: SolverExpr = {

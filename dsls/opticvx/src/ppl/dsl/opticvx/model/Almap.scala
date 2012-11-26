@@ -9,15 +9,12 @@ import scala.collection.immutable.Seq
 
 
 trait Almap extends HasArity[Almap] {
-  //The size of the input parameters used by this map
-  val input: IRPoly
   //The domain and codomain sizes of this map
   val domain: IRPoly
   val codomain: IRPoly
 
   //Constraints that all the shape properties must share the map's arity
   def arityVerify() {
-    if (input.arity != arity) throw new IRValidationException()
     if (domain.arity != arity) throw new IRValidationException()
     if (codomain.arity != arity) throw new IRValidationException()
   }
@@ -40,11 +37,11 @@ trait Almap extends HasArity[Almap] {
 }
 
 //The identity map
-case class AlmapIdentity(val input: IRPoly, val domain: IRPoly) extends Almap {
-  val arity: Int = input.arity
+case class AlmapIdentity(val domain: IRPoly) extends Almap {
+  val arity: Int = domain.arity
   val codomain: IRPoly = domain
   
-  def arityOp(op: ArityOp): Almap = AlmapIdentity(input.arityOp(op), domain.arityOp(op))
+  def arityOp(op: ArityOp): Almap = AlmapIdentity(domain.arityOp(op))
 
   def T: Almap = this
 
@@ -55,7 +52,6 @@ case class AlmapIdentity(val input: IRPoly, val domain: IRPoly) extends Almap {
   def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
     srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
   {
-    if(context.input != input) throw new IRValidationException()
     if(src.arity != arity) throw new IRValidationException()
     if(dst.arity != arity) throw new IRValidationException()
     if(scratch.arity != arity) throw new IRValidationException()
@@ -87,12 +83,12 @@ case class AlmapIdentity(val input: IRPoly, val domain: IRPoly) extends Almap {
 
 
 //The zero map
-case class AlmapZero(val input: IRPoly, val domain: IRPoly, val codomain: IRPoly) extends Almap {
-  val arity: Int = input.arity
+case class AlmapZero(val domain: IRPoly, val codomain: IRPoly) extends Almap {
+  val arity: Int = domain.arity
   
-  def arityOp(op: ArityOp): Almap = AlmapZero(input.arityOp(op), domain.arityOp(op), codomain.arityOp(op))
+  def arityOp(op: ArityOp): Almap = AlmapZero(domain.arityOp(op), codomain.arityOp(op))
 
-  def T: Almap = AlmapZero(input, codomain, domain)
+  def T: Almap = AlmapZero(codomain, domain)
 
   def scratch: IRPoly = IRPoly.const(0, arity)
 
@@ -101,7 +97,6 @@ case class AlmapZero(val input: IRPoly, val domain: IRPoly, val codomain: IRPoly
   def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
     srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
   {
-    if(context.input != input) throw new IRValidationException()
     if(src.arity != arity) throw new IRValidationException()
     if(dst.arity != arity) throw new IRValidationException()
     if(scratch.arity != arity) throw new IRValidationException()
@@ -124,12 +119,10 @@ case class AlmapZero(val input: IRPoly, val domain: IRPoly, val codomain: IRPoly
 //The sum of two linear maps
 case class AlmapSum(val arg1: Almap, val arg2: Almap) extends Almap {
   val arity: Int = arg1.arity
-  val input: IRPoly = arg1.input
   val domain: IRPoly = arg1.domain
   val codomain: IRPoly = arg1.codomain
 
   if (arg2.arity != arity) throw new IRValidationException()
-  if (arg2.input != input) throw new IRValidationException()
   if (arg2.domain != domain) throw new IRValidationException()
   if (arg2.codomain != codomain) throw new IRValidationException()
 
@@ -144,7 +137,6 @@ case class AlmapSum(val arg1: Almap, val arg2: Almap) extends Almap {
   def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
     srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
   {
-    if(context.input != input) throw new IRValidationException()
     if(src.arity != arity) throw new IRValidationException()
     if(dst.arity != arity) throw new IRValidationException()
     if(scratch.arity != arity) throw new IRValidationException()
@@ -156,7 +148,6 @@ case class AlmapSum(val arg1: Almap, val arg2: Almap) extends Almap {
 //Negation of a linear map
 case class AlmapNeg(val arg: Almap) extends Almap {
   val arity: Int = arg.arity
-  val input: IRPoly = arg.input
   val domain: IRPoly = arg.domain
   val codomain: IRPoly = arg.codomain
   
@@ -171,7 +162,6 @@ case class AlmapNeg(val arg: Almap) extends Almap {
   def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
     srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
   {
-    if(context.input != input) throw new IRValidationException()
     if(src.arity != arity) throw new IRValidationException()
     if(dst.arity != arity) throw new IRValidationException()
     if(scratch.arity != arity) throw new IRValidationException()
@@ -181,17 +171,16 @@ case class AlmapNeg(val arg: Almap) extends Almap {
 }
 
 //Scale of a linear map by some indexing of the input space
-case class AlmapScale(val arg: Almap, val scale: IRPoly) extends Almap {
+case class AlmapScaleInput(val arg: Almap, val scale: IRPoly) extends Almap {
   val arity: Int = arg.arity
-  val input: IRPoly = arg.input
   val domain: IRPoly = arg.domain
   val codomain: IRPoly = arg.codomain
 
   if (arity != scale.arity) throw new IRValidationException()
   
-  def arityOp(op: ArityOp): Almap = AlmapScale(arg.arityOp(op), scale.arityOp(op))
+  def arityOp(op: ArityOp): Almap = AlmapScaleInput(arg.arityOp(op), scale.arityOp(op))
   
-  def T: Almap = AlmapScale(arg.T, scale)
+  def T: Almap = AlmapScaleMemory(arg.T, scale)
 
   def scratch: IRPoly = arg.scratch
   
@@ -200,7 +189,6 @@ case class AlmapScale(val arg: Almap, val scale: IRPoly) extends Almap {
   def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
     srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
   {
-    if(context.input != input) throw new IRValidationException()
     if(src.arity != arity) throw new IRValidationException()
     if(dst.arity != arity) throw new IRValidationException()
     if(scratch.arity != arity) throw new IRValidationException()
@@ -210,10 +198,37 @@ case class AlmapScale(val arg: Almap, val scale: IRPoly) extends Almap {
   }
 }
 
+//Scale of a linear map by some indexing of the memory space
+case class AlmapScaleMemory(val arg: Almap, val scale: IRPoly) extends Almap {
+  val arity: Int = arg.arity
+  val domain: IRPoly = arg.domain
+  val codomain: IRPoly = arg.codomain
+
+  if (arity != scale.arity) throw new IRValidationException()
+  
+  def arityOp(op: ArityOp): Almap = AlmapScaleMemory(arg.arityOp(op), scale.arityOp(op))
+  
+  def T: Almap = AlmapScaleMemory(arg.T, scale)
+
+  def scratch: IRPoly = arg.scratch
+  
+  arityVerify()
+
+  def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
+    srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
+  {
+    if(src.arity != arity) throw new IRValidationException()
+    if(dst.arity != arity) throw new IRValidationException()
+    if(scratch.arity != arity) throw new IRValidationException()
+    return arg.genmmpy(context, src, dst, scratch, 
+      SolverExprBinaryOp(context, SolverBinaryOpMpy, srcscale,
+        SolverExprRead(context, scale)), dstscale)
+  }
+}
+
 //Scale of a linear map by a constant
 case class AlmapScaleConstant(val arg: Almap, val scale: Double) extends Almap {
   val arity: Int = arg.arity
-  val input: IRPoly = arg.input
   val domain: IRPoly = arg.domain
   val codomain: IRPoly = arg.codomain
   
@@ -228,7 +243,6 @@ case class AlmapScaleConstant(val arg: Almap, val scale: Double) extends Almap {
   def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
     srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
   {
-    if(context.input != input) throw new IRValidationException()
     if(src.arity != arity) throw new IRValidationException()
     if(dst.arity != arity) throw new IRValidationException()
     if(scratch.arity != arity) throw new IRValidationException()
@@ -242,12 +256,10 @@ case class AlmapScaleConstant(val arg: Almap, val scale: Double) extends Almap {
 //The vertical concatenation of two linear maps
 case class AlmapVCat(val arg1: Almap, val arg2: Almap) extends Almap {
   val arity: Int = arg1.arity
-  val input: IRPoly = arg1.input
   val domain: IRPoly = arg1.domain
   val codomain: IRPoly = arg1.codomain + arg2.codomain
 
   if (arg1.arity != arg2.arity) throw new IRValidationException()
-  if (arg1.input != arg2.input) throw new IRValidationException()
   if (arg1.domain != arg2.domain) throw new IRValidationException()
 
   def arityOp(op: ArityOp): Almap = AlmapVCat(arg1.arityOp(op), arg2.arityOp(op))
@@ -261,7 +273,6 @@ case class AlmapVCat(val arg1: Almap, val arg2: Almap) extends Almap {
   def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
     srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
   {
-    if(context.input != input) throw new IRValidationException()
     if(src.arity != arity) throw new IRValidationException()
     if(dst.arity != arity) throw new IRValidationException()
     if(scratch.arity != arity) throw new IRValidationException()
@@ -274,7 +285,6 @@ case class AlmapVCat(val arg1: Almap, val arg2: Almap) extends Almap {
 //The vertical concatenation of a number of linear maps, depending on problem size
 case class AlmapVCatFor(val len: IRPoly, val body: Almap) extends Almap {
   val arity: Int = len.arity
-  val input: IRPoly = body.input.demote
   val domain: IRPoly = body.domain.demote
   val codomain: IRPoly = body.codomain.sum(arity).substituteAt(arity, len)
 
@@ -292,7 +302,6 @@ case class AlmapVCatFor(val len: IRPoly, val body: Almap) extends Almap {
   def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
     srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
   {
-    if(context.input != input) throw new IRValidationException()
     if(src.arity != arity) throw new IRValidationException()
     if(dst.arity != arity) throw new IRValidationException()
     if(scratch.arity != arity) throw new IRValidationException()
@@ -312,7 +321,6 @@ case class AlmapVCatFor(val len: IRPoly, val body: Almap) extends Almap {
 // "Puts" the given almap at the target index, all other entries are 0
 case class AlmapVPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends Almap {
   val arity: Int = len.arity
-  val input: IRPoly = body.input.demote
   val domain: IRPoly = body.domain.demote
   val codomain: IRPoly = body.codomain.sum(arity).substituteAt(arity, len)
 
@@ -330,7 +338,6 @@ case class AlmapVPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
   def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
     srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
   {
-    if(context.input != input) throw new IRValidationException()
     if(src.arity != arity) throw new IRValidationException()
     if(dst.arity != arity) throw new IRValidationException()
     if(scratch.arity != arity) throw new IRValidationException()
@@ -361,12 +368,10 @@ case class AlmapVPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
 //The horizontal concatenation of two linear maps
 case class AlmapHCat(val arg1: Almap, val arg2: Almap) extends Almap {
   val arity: Int = arg1.arity
-  val input: IRPoly = arg1.input
   val domain: IRPoly = arg1.domain + arg2.domain
   val codomain: IRPoly = arg1.codomain
 
   if (arg1.arity != arg2.arity) throw new IRValidationException()
-  if (arg1.input != arg2.input) throw new IRValidationException()
   if (arg1.codomain != arg2.codomain) throw new IRValidationException()
 
   def arityOp(op: ArityOp): Almap = AlmapHCat(arg1.arityOp(op), arg2.arityOp(op))
@@ -380,7 +385,6 @@ case class AlmapHCat(val arg1: Almap, val arg2: Almap) extends Almap {
   def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
     srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
   {
-    if(context.input != input) throw new IRValidationException()
     if(src.arity != arity) throw new IRValidationException()
     if(dst.arity != arity) throw new IRValidationException()
     if(scratch.arity != arity) throw new IRValidationException()
@@ -393,7 +397,6 @@ case class AlmapHCat(val arg1: Almap, val arg2: Almap) extends Almap {
 //The horzontal concatenation of a number of linear maps, depending on problem size
 case class AlmapHCatFor(val len: IRPoly, val body: Almap) extends Almap {
   val arity: Int = len.arity
-  val input: IRPoly = body.input.demote
   val domain: IRPoly = body.domain.sum(arity).substituteAt(arity, len)
   val codomain: IRPoly = body.codomain.demote
 
@@ -412,7 +415,6 @@ case class AlmapHCatFor(val len: IRPoly, val body: Almap) extends Almap {
   def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
     srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
   {
-    if(context.input != input) throw new IRValidationException()
     if(src.arity != arity) throw new IRValidationException()
     if(dst.arity != arity) throw new IRValidationException()
     if(scratch.arity != arity) throw new IRValidationException()
@@ -455,7 +457,6 @@ case class AlmapHCatFor(val len: IRPoly, val body: Almap) extends Almap {
 // "Puts" the given almap at the target index, all other entries are 0
 case class AlmapHPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends Almap {
   val arity: Int = len.arity
-  val input: IRPoly = body.input.demote
   val domain: IRPoly = body.domain.sum(arity).substituteAt(arity, len)
   val codomain: IRPoly = body.codomain.demote
 
@@ -473,7 +474,6 @@ case class AlmapHPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
   def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
     srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
   {
-    if(context.input != input) throw new IRValidationException()
     if(src.arity != arity) throw new IRValidationException()
     if(dst.arity != arity) throw new IRValidationException()
     if(scratch.arity != arity) throw new IRValidationException()
@@ -484,7 +484,6 @@ case class AlmapHPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
 //The sum of a problem-size-dependent number of linear ops
 case class AlmapSumFor(val len: IRPoly, val body: Almap) extends Almap {
   val arity: Int = len.arity
-  val input: IRPoly = body.input.demote
   val domain: IRPoly = body.domain.demote
   val codomain: IRPoly = body.codomain.demote
 
@@ -501,7 +500,6 @@ case class AlmapSumFor(val len: IRPoly, val body: Almap) extends Almap {
   def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
     srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
   {
-    if(context.input != input) throw new IRValidationException()
     if(src.arity != arity) throw new IRValidationException()
     if(dst.arity != arity) throw new IRValidationException()
     if(scratch.arity != arity) throw new IRValidationException()
@@ -544,11 +542,9 @@ case class AlmapSumFor(val len: IRPoly, val body: Almap) extends Almap {
 //Matrix multiply
 case class AlmapProd(val argl: Almap, val argr: Almap) extends Almap {
   if (argl.arity != argr.arity) throw new IRValidationException()
-  if (argl.input != argr.input) throw new IRValidationException()
   if (argl.domain != argr.codomain) throw new IRValidationException()
 
   val arity: Int = argl.arity
-  val input: IRPoly = argl.input
   val domain: IRPoly = argr.domain
   val codomain: IRPoly = argl.codomain
 
@@ -563,7 +559,6 @@ case class AlmapProd(val argl: Almap, val argr: Almap) extends Almap {
   def genmmpy(context: SolverContext, src: IRPoly, dst: IRPoly, scratch: IRPoly,
     srcscale: SolverExpr, dstscale: SolverExpr): Seq[SolverInstr] = 
   {
-    if(context.input != input) throw new IRValidationException()
     if(src.arity != arity) throw new IRValidationException()
     if(dst.arity != arity) throw new IRValidationException()
     if(scratch.arity != arity) throw new IRValidationException()

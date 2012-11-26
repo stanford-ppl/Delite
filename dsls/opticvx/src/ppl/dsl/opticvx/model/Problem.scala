@@ -5,6 +5,7 @@ import scala.collection.immutable.Seq
 
 
 case class Problem(
+  val inputSize: IRPoly,
   val objective: Almap,
   val affineAlmap: Almap,
   val affineOffset: Almap,
@@ -14,7 +15,6 @@ case class Problem(
 {
   val arity: Int = affineAlmap.arity
   val varSize: IRPoly = affineAlmap.domain
-  val inputSize: IRPoly = affineAlmap.input
   val coneSize: IRPoly = conicAlmap.codomain
   val affineCstrtSize: IRPoly = affineAlmap.codomain
   
@@ -28,11 +28,6 @@ case class Problem(
   if (conicAlmap.domain != varSize) throw new IRValidationException()
   if (objective.domain != varSize) throw new IRValidationException()
 
-  //Verify that all expressions have the same input size
-  if (affineOffset.input != inputSize) throw new IRValidationException()
-  if (conicAlmap.input != inputSize) throw new IRValidationException()
-  if (conicOffset.input != inputSize) throw new IRValidationException()
-
   //Verify that codomains agree
   if (affineAlmap.codomain != affineOffset.codomain) throw new IRValidationException()
   if (conicAlmap.codomain != conicOffset.codomain) throw new IRValidationException()
@@ -44,6 +39,7 @@ case class Problem(
   if (objective.codomain != IRPoly.const(1, arity)) throw new IRValidationException()
 
   def arityOp(op: ArityOp): Problem = Problem(
+    inputSize.arityOp(op),
     objective.arityOp(op),
     affineAlmap.arityOp(op),
     affineOffset.arityOp(op),
