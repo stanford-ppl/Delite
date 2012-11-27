@@ -27,7 +27,7 @@ trait AVectorLike[T <: HasArity[T]] {
   implicit def t2thackimpl(t: T) = new THackImpl(t)
 }
 
-trait AVectorLikeAVector extends AVectorLike[AVector] {
+object AVectorLikeAVector extends AVectorLike[AVector] {
   def size(arg: AVector): IRPoly = arg.size
   def zero(size: IRPoly): AVector = AVectorZero(size)
   def one(size: IRPoly): AVector = AVectorOne(size)
@@ -39,6 +39,14 @@ trait AVectorLikeAVector extends AVectorLike[AVector] {
   def cat(arg1: AVector, arg2: AVector): AVector = AVectorCat(arg1, arg2)
   def catfor(len: IRPoly, arg: AVector): AVector = AVectorCatFor(len, arg)
   def slice(arg: AVector, at: IRPoly, size: IRPoly): AVector = AVectorSlice(arg, at, size)
+}
+
+object AVector {
+  import AVectorLikeAVector._
+  def input(at: IRPoly, len: IRPoly): AVector = {
+    if(at.arity != len.arity) throw new IRValidationException()
+    catfor(len, scaleinput(one(IRPoly.const(1, at.arity + 1)), at.promote + at.next))
+  }
 }
 
 trait AVector extends HasArity[AVector] {

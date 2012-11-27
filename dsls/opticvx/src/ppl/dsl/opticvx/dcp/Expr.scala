@@ -49,6 +49,33 @@ case class Expr(val vexity: Signum, val sign: Signum, val almap: Almap, val offs
   */
 }
 
+object Expr {
+  // an input expression
+  def input(at: IRPoly, size: IRPoly, inputSize: IRPoly, varSize: IRPoly): Expr = {
+    Expr(Signum.Zero, Signum.All, AlmapZero(varSize, size), AVector.input(at, size))
+  }
+  // a variable expression
+  def variable(at: IRPoly, size: IRPoly, inputSize: IRPoly, varSize: IRPoly): Expr = {
+    Expr(Signum.Zero, Signum.All, 
+      AlmapHCat(AlmapHCat(AlmapZero(at, size), AlmapIdentity(size)), AlmapZero(varSize - (at + size), size)),
+      AVectorZero(size))
+  }
+  // a zero-size expression
+  def zero(inputSize: IRPoly, varSize: IRPoly): Expr = {
+    if(inputSize.arity != varSize.arity) throw new IRValidationException()
+    Expr(Signum.Zero, Signum.Zero, AlmapZero(varSize, IRPoly.const(0, varSize.arity)), AVectorZero(IRPoly.const(0, varSize.arity)))
+  }
+  // concatenate two expressions
+  def cat(arg1: Expr, arg2: Expr): Expr = {
+    if(arg1.arity != arg2.arity) throw new IRValidationException()
+    Expr(
+      arg1.vexity + arg2.vexity,
+      arg1.sign + arg2.sign,
+      AlmapVCat(arg1.almap, arg2.almap),
+      AVectorCat(arg1.offset, arg2.offset))
+  }
+}
+
 /*
 def exprscale(x: Expr, c: Expr): Expr = {
   //Since c is an input, it is fully described by its offset property

@@ -8,6 +8,12 @@ trait Cone extends HasArity[Cone] {
   val size: IRPoly
 }
 
+case class ConeZero(val arity: Int) extends Cone {
+  val size: IRPoly = IRPoly.const(0, arity)
+
+  def arityOp(op: ArityOp): Cone = ConeZero(op(size).arity)
+}
+
 //The trivial scalar cone (the only proper cone over R)
 case class ConeNonNegative(val arity: Int) extends Cone {
   val size: IRPoly = IRPoly.const(1,arity)
