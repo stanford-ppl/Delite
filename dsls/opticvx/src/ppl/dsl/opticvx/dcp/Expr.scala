@@ -74,6 +74,11 @@ object Expr {
       AlmapVCat(arg1.almap, arg2.almap),
       AVectorCat(arg1.offset, arg2.offset))
   }
+  // a constant scalar expression
+  def const(c: Double, inputSize: IRPoly, varSize: IRPoly): Expr = {
+    if(inputSize.arity != varSize.arity) throw new IRValidationException()
+    Expr(Signum.Zero, Signum.sgn(c), AlmapZero(varSize, IRPoly.const(1, varSize.arity)), AVector.const(c, varSize.arity))
+  }
 }
 
 /*

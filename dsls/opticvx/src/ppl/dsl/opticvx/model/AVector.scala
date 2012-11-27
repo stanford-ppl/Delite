@@ -47,6 +47,9 @@ object AVector {
     if(at.arity != len.arity) throw new IRValidationException()
     catfor(len, scaleinput(one(IRPoly.const(1, at.arity + 1)), at.promote + at.next))
   }
+  def const(c: Double, arity: Int): AVector = {
+    scaleconstant(one(IRPoly.const(1, arity)), c)
+  }
 }
 
 trait AVector extends HasArity[AVector] {

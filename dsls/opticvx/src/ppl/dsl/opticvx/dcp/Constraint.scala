@@ -30,7 +30,7 @@ object Constraints {
   }
 
   def nonnegative(expr: Expr): ConicConstraint = {
-    if(expr.vexity != Signum.Negative) throw new IRValidationException()
+    if(!(expr.vexity <= Signum.Negative)) throw new IRValidationException()
     ConicConstraint(expr, ConeNonNegative(expr.arity))
   }
 
