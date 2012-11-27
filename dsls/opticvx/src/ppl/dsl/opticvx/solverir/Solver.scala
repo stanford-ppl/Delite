@@ -39,7 +39,7 @@ trait SolverInstr extends HasArity[SolverInstr] {
 case class SolverInstrWrite(
   val context: SolverContext,
   val dst: Int,
-  val src: SVector)
+  val src: SVector) extends SolverInstr
 {
   val arity: Int = context.arity
 
@@ -52,7 +52,7 @@ case class SolverInstrWrite(
 case class SolverInstrConverge(
   val context: SolverContext,
   val condition: SVector,
-  val code: Seq[SolverInstr])
+  val code: Seq[SolverInstr]) extends SolverInstr
 {
   val arity: Int = context.arity
 

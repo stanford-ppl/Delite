@@ -5,7 +5,7 @@ import ppl.dsl.opticvx.model._
 import ppl.dsl.opticvx.solverir._
 import scala.collection.immutable.Seq
 
-trait SolverGen {
+trait SolverGen {  
   val problem: Problem
 
   val A: Almap = problem.affineAlmap
@@ -21,61 +21,57 @@ trait SolverGen {
   val affineCstrtSize = problem.affineCstrtSize
   val coneSize = problem.coneSize
 
-  private var memorySize: IRPoly = IRPoly.const(0, arity)
+  private var variables: Seq[IRPoly] = Seq()
 
-  def scalar: SolverGenVector = vector(IRPoly.const(1, arity))
-  def vector(len: IRPoly): SolverGenVector = {
-    val rv = SolverGenVector(memorySize, len)
-    memorySize += len
-    rv
+  def scalar: SVariable = vector(IRPoly.const(1, arity))
+  def vector(len: IRPoly): SVariable = {
+    variables = variables ++ Seq(len)
+    SVariable(variables.size - 1)
   }
 
   private var code: Seq[SolverInstr] = null
-  private var context: SolverContext = null
-  private var scratchSize: IRPoly = null
+  private var context: SolverContext = null  
 
-  case class SolverGenVector(val at: IRPoly, val len: IRPoly) {
-    def :=(zero: Int) {
-      if(zero != 0) throw new IRValidationException()
-      if (context != null) {
-        code = code ++ Seq(
-          SolverInstrParFor(
-            context.pushLimit(len), 
-            len, 
-            Seq(
-              SolverInstrWrite(
-                context.pushLimit(len),
-                IRPoly.param(arity, arity+1),
-                SolverExprConstant(
-                  context.pushLimit(len),
-                  0)))))
-      }
-    }    
-    def :=(almap: Almap) {
+  implicit object AVectorLikeSVectorLocal extends AVectorLike[SVector] {
+    def size(arg: SVector): IRPoly = arg.size
+    def zero(size: IRPoly): SVector = SVectorZero(context, size)
+    def one(size: IRPoly): SVector = SVectorOne(context, size)
+    def add(arg1: SVector, arg2: SVector): SVector = SVectorAdd(arg1, arg2)
+    def addfor(len: IRPoly, arg: SVector): SVector = SVectorAddFor(len, arg)
+    def neg(arg: SVector): SVector = SVectorNeg(arg)
+    def scaleinput(arg: SVector, scale: IRPoly): SVector = SVectorScaleInput(arg, scale)
+    def scaleconstant(arg: SVector, scale: Double): SVector = SVectorScaleConstant(arg, scale)
+    def cat(arg1: SVector, arg2: SVector): SVector = SVectorCat(arg1, arg2)
+    def catfor(len: IRPoly, arg: SVector): SVector = SVectorCatFor(len, arg)
+    def slice(arg: SVector, at: IRPoly, size: IRPoly): SVector = SVectorSlice(arg, at, size)
+  }
+  import AVectorLikeSVectorLocal._
 
+  case class SVariable(val idx: Int) {
+    def :=(v: SVector) {
+      if(context == null) throw new IRValidationException()
+      code = code ++ Seq(SolverInstrWrite(context, idx, v))
     }
-    def +=(almap: Almap) {
-      this := (this + almap)
+    def +=(v: SVector) {
+      this := (variable2vector(this) + v)
     }
-    def -=(almap: Almap) {
-      this := (this - almap)
+    def -=(v: SVector) {
+      this := (variable2vector(this) - v)
     }
   }
 
-  implicit def vector2almap(v: SolverGenVector): Almap = {
-    AlmapVCatFor(v.len, AlmapScaleMemory(AlmapIdentity(IRPoly.const(1, v.len.arity)), v.at))
+  implicit def variable2vector(v: SVariable): SVector = {
+    if(context == null) throw new IRValidationException()
+    SVectorRead(context, v.idx)
   }
-
 
   def gen(): Unit
 
   def solver(): Solver = {
-    scratchSize = IRPoly.const(0, arity)
-    gen()
     code = Seq()
-    context = SolverContext(inputSize, memorySize + scratchSize, Seq())
+    context = SolverContext(inputSize, variables)
     gen()
-    Solver(inputSize, memorySize + scratchSize, code)
+    Solver(inputSize, variables, code)
   }
 
   def converge(body: =>Unit) {
