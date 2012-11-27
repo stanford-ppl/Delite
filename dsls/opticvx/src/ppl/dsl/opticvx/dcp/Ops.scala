@@ -1,39 +1,10 @@
 package ppl.dsl.opticvx.dcp
-/*
-import scala.virtualization.lms.common.ScalaOpsPkg
-import scala.virtualization.lms.common.{Base, BaseExp, ArrayOpsExp, RangeOpsExp, NumericOps, NumericOpsExp}
 
+import ppl.dsl.opticvx.common._
 import scala.collection.immutable.Seq
 import scala.collection.immutable.Set
 
-class DCPIRValidationException extends Exception
-
-trait DCPOps extends Base with NumericOps {
-  self: DCPShape with DCPExpr with DCPConstraint with DCPInput =>
-  
-  var globalArity: Int = -1
-  var globalInputShape: Shape = null
-  var globalVarShape: Shape = null
-
-  def globalArityPromote() {
-    if ((globalInputShape != null)||(globalVarShape != null)) {
-      if (globalInputShape.arity != globalArity) throw new DCPIRValidationException()
-      if (globalVarShape.arity != globalArity) throw new DCPIRValidationException()
-      globalInputShape = globalInputShape.promote
-      globalVarShape = globalVarShape.promote
-    }
-    globalArity += 1
-  }
-
-  def globalArityDemote() {
-    if ((globalInputShape != null)||(globalVarShape != null)) {
-      if (globalInputShape.arity != globalArity) throw new DCPIRValidationException()
-      if (globalVarShape.arity != globalArity) throw new DCPIRValidationException()
-      globalInputShape = globalInputShape.demote
-      globalVarShape = globalVarShape.demote
-    }
-    globalArity -= 1
-  }
+trait DCPOps {
   
   def cvxexpr(): Symbol[Expr] = new Symbol[Expr]()
   def cvxparam(): Symbol[Size] = new Symbol[Size]()
@@ -155,9 +126,9 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
     val s_opt = ts_opt
     val objectiveExpr = s_opt.expr
     if (!(s_opt.expr.shape.isInstanceOf[XShapeScalar]))
-      throw new DCPIRValidationException()
+      throw new IRValidationException()
     if (!(s_opt.expr.shape.asInstanceOf[XShapeScalar].desc.vexity <= Signum.Positive))
-      throw new DCPIRValidationException()
+      throw new IRValidationException()
     // Reset the global arity, inputshape, and varshape
     globalArity = -1
     globalInputShape = null
@@ -169,7 +140,7 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
   }
   
 }
-*/
+
 
 /*
 trait DCPOpsTest extends DCPOps with BaseExp with ArrayOpsExp with RangeOpsExp {
