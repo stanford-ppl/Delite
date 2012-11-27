@@ -27,7 +27,7 @@ trait AVectorLike[T <: HasArity[T]] {
   implicit def t2thackimpl(t: T) = new THackImpl(t)
 }
 
-trait AVectorLikeAVector extends AVector {
+trait AVectorLikeAVector extends AVectorLike[AVector] {
   def size(arg: AVector): IRPoly = arg.size
   def zero(size: IRPoly): AVector = AVectorZero(size)
   def one(size: IRPoly): AVector = AVectorOne(size)

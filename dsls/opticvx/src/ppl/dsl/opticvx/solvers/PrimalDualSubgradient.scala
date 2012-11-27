@@ -2,7 +2,8 @@ package ppl.dsl.opticvx.solvers
 
 import ppl.dsl.opticvx.common._
 import ppl.dsl.opticvx.model._
-import ppl.dsl.opticvx.solver._
+import ppl.dsl.opticvx.solverir._
+import ppl.dsl.opticvx.solvergen._
 import scala.collection.immutable.Seq
 
 
@@ -18,9 +19,9 @@ case class PrimalDualSubgradientSolverGen(val problem: Problem) extends SolverGe
     x := 0
     v := 0
     y := 0
-    converge({
+    converge(x) {
       Axb := A*x + b
       Fxg := F*x + g
-    })
+    }
   }
 }

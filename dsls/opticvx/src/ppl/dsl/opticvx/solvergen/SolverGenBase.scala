@@ -9,10 +9,10 @@ trait SolverGen {
   val problem: Problem
 
   val A: Almap = problem.affineAlmap
-  val b: Almap = problem.affineOffset
+  val b: SVector = problem.affineOffset.translate(AVectorLikeSVectorLocal)
   val F: Almap = problem.conicAlmap
-  val g: Almap = problem.conicOffset
-  val c: Almap = problem.objective
+  val g: SVector = problem.conicOffset.translate(AVectorLikeSVectorLocal)
+  val c: SVector = problem.objective.translate(AVectorLikeSVectorLocal)
   val cone: Cone = problem.conicCone
 
   val arity = problem.arity
@@ -48,6 +48,17 @@ trait SolverGen {
   import AVectorLikeSVectorLocal._
 
   case class SVariable(val idx: Int) {
+    def :=(i: Int) {
+      if(i == 0) {
+        this := zero(variables(idx))
+      }
+      else if(i == 1) {
+        this := one(variables(idx))
+      }
+      else {
+        throw new IRValidationException()
+      }
+    }
     def :=(v: SVector) {
       if(context == null) throw new IRValidationException()
       code = code ++ Seq(SolverInstrWrite(context, idx, v))
@@ -65,6 +76,15 @@ trait SolverGen {
     SVectorRead(context, v.idx)
   }
 
+  // A hack to get around the double implicit in the almap-vector multiply
+  class AlmapHackImpl(val almap: Almap) {
+    def *(v: SVariable) = almap*variable2vector(v)
+  }
+  implicit def almap2almaphackimpl(almap: Almap) = new AlmapHackImpl(almap)
+  
+  // Import the arithmetic ops from the AVectorLikeSVectorLocal object
+  implicit def svector2svectorhackimpl(s: SVector) = AVectorLikeSVectorLocal.t2thackimpl(s)
+
   def gen(): Unit
 
   def solver(): Solver = {
@@ -74,7 +94,11 @@ trait SolverGen {
     Solver(inputSize, variables, code)
   }
 
-  def converge(body: =>Unit) {
-
+  def converge(condition: SVector)(body: =>Unit) {
+    if(condition.size != IRPoly.const(1, arity)) throw new IRValidationException()
+    val curcode: Seq[SolverInstr] = code
+    code = Seq()
+    body
+    code = curcode ++ Seq(SolverInstrConverge(context, condition, code))
   }
 }

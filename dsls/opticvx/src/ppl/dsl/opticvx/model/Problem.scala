@@ -6,11 +6,11 @@ import scala.collection.immutable.Seq
 
 case class Problem(
   val inputSize: IRPoly,
-  val objective: Almap,
+  val objective: AVector,
   val affineAlmap: Almap,
-  val affineOffset: Almap,
+  val affineOffset: AVector,
   val conicAlmap: Almap,
-  val conicOffset: Almap,
+  val conicOffset: AVector,
   val conicCone: Cone) extends HasArity[Problem]
 {
   val arity: Int = affineAlmap.arity
@@ -26,17 +26,12 @@ case class Problem(
 
   //Verify that all expressions have the same variable size
   if (conicAlmap.domain != varSize) throw new IRValidationException()
-  if (objective.domain != varSize) throw new IRValidationException()
+  if (objective.size != varSize) throw new IRValidationException()
 
   //Verify that codomains agree
-  if (affineAlmap.codomain != affineOffset.codomain) throw new IRValidationException()
-  if (conicAlmap.codomain != conicOffset.codomain) throw new IRValidationException()
+  if (affineAlmap.codomain != affineOffset.size) throw new IRValidationException()
+  if (conicAlmap.codomain != conicOffset.size) throw new IRValidationException()
   if (conicAlmap.codomain != conicCone.size) throw new IRValidationException()
-
-  //Verify that offsets have the proper domain
-  if (affineOffset.domain != IRPoly.const(1, arity)) throw new IRValidationException()
-  if (conicOffset.domain != IRPoly.const(1, arity)) throw new IRValidationException()
-  if (objective.codomain != IRPoly.const(1, arity)) throw new IRValidationException()
 
   def arityOp(op: ArityOp): Problem = Problem(
     inputSize.arityOp(op),
