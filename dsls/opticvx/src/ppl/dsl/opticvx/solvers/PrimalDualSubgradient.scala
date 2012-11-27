@@ -1,4 +1,4 @@
-package ppl.dsl.opticvx.solvergen
+package ppl.dsl.opticvx.solvers
 
 import ppl.dsl.opticvx.common._
 import ppl.dsl.opticvx.model._

@@ -2,7 +2,7 @@ package ppl.dsl.opticvx.solvergen
 
 import ppl.dsl.opticvx.common._
 import ppl.dsl.opticvx.model._
-import ppl.dsl.opticvx.solver._
+import ppl.dsl.opticvx.solverir._
 import scala.collection.immutable.Seq
 
 trait SolverGen {
