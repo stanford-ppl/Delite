@@ -43,6 +43,10 @@ sealed trait Almap extends HasArity[Almap] {
     if(domain != a.codomain) throw new IRValidationException()
     AlmapProd(this, a)
   }
+
+  def *[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+    mmpy(x)
+  }
 }
 
 //The identity map
