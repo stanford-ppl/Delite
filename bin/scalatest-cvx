@@ -5,7 +5,7 @@ shopt -s nullglob
 echo "Creating class dir..."
 mkdir $DELITE/scalatest_cvx_tmp
 echo "Compiling tests..."
-scalac -J"-Xmx2g" -d $DELITE/scalatest_cvx_tmp $DELITE/dsls/opticvx/src/ppl/dsl/opticvx/{common,model,solvergen}/{,test/}*.scala \
+scalac -J"-Xmx2g" -d $DELITE/scalatest_cvx_tmp $DELITE/dsls/opticvx/src/ppl/dsl/opticvx/{common,model,solverir,solvergen}/{,test/}*.scala \
 && echo "Running tests..." \
 && scala -cp $DELITE/scalatest_cvx_tmp ppl.dsl.opticvx.common.test.IRPolyTestApp
 echo "Removing class dir..."
