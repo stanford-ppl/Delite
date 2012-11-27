@@ -1,10 +1,8 @@
 package ppl.dsl.opticvx.dcp
 
-import scala.virtualization.lms.common.ScalaOpsPkg
-
 import scala.collection.immutable.Seq
 import scala.collection.immutable.Set
-
+/*
 trait DCPInput {
   self: DCPShape =>
   
@@ -36,3 +34,4 @@ trait DCPInput {
   implicit def repdbl2inputdesc(input: RepDouble): InputDesc = InputDescScalar(globalArity, input)
   def ifor(size: Size, body: (RepInt) => InputDesc): InputDesc = InputDescFor(size, body)
 }
+*/

@@ -1,5 +1,5 @@
 package ppl.dsl.opticvx.dcp
-
+/*
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{Base, BaseExp, ArrayOpsExp, RangeOpsExp, NumericOps, NumericOpsExp}
 
@@ -169,6 +169,7 @@ trait DCPOpsExp extends DCPOps with BaseExp with ArrayOpsExp with NumericOpsExp 
   }
   
 }
+*/
 
 /*
 trait DCPOpsTest extends DCPOps with BaseExp with ArrayOpsExp with RangeOpsExp {

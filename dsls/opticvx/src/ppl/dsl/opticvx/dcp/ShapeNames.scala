@@ -1,7 +1,6 @@
 package ppl.dsl.opticvx.dcp
 
-import scala.virtualization.lms.common.BaseExp
-
+/*
 trait DCPShapeNames {
   self: DCPShape =>
 
@@ -14,6 +13,7 @@ trait DCPShapeNames {
     ShapeFor(len, ShapeScalar(len.arity + 1))
   }
 }
+*/
 
 /*
 trait DCPShape {

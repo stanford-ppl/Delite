@@ -1,26 +1,40 @@
 package ppl.dsl.opticvx.dcp
 
+import ppl.dsl.opticvx.common._
+import ppl.dsl.opticvx.model._
 import scala.collection.immutable.Set
 import scala.collection.immutable.Seq
 
-trait DCPConstraint {
-  self: DCPShape with DCPExpr with DCPCone with DCPAlmap =>
 
-  
-  sealed trait Constraint
+sealed trait Constraint extends HasArity[Constraint] {
+  val size: IRPoly
+}
 
-  case class AffineConstraint(val expr: Expr) extends Constraint
+case class AffineConstraint(val expr: Expr) extends Constraint {
+  val arity: Int = expr.arity
+  val size: IRPoly = expr.size
+  def arityOp(op: ArityOp): Constraint = AffineConstraint(expr.arityOp(op))
+}
 
-  case class ConicConstraint(val expr: Expr, val cone: Cone) extends Constraint {
-    cone.dcpvalidate(expr.shape)
+case class ConicConstraint(val expr: Expr, val cone: Cone) extends Constraint {
+  val arity: Int = expr.arity
+  val size: IRPoly = expr.size
+  if(expr.size != cone.size) throw new IRValidationException()
+  def arityOp(op: ArityOp): Constraint = ConicConstraint(expr.arityOp(op), cone.arityOp(op))
+}
+
+object Constraints {
+  def zero(expr: Expr): AffineConstraint = {
+    if(expr.vexity != Signum.Zero) throw new IRValidationException()
+    AffineConstraint(expr)
   }
 
-  def constrain_zero(expr: Expr): AffineConstraint = 
-    AffineConstraint(expr)
-
-  def constrain_nonnegative(expr: Expr): ConicConstraint =
+  def nonnegative(expr: Expr): ConicConstraint = {
+    if(expr.vexity != Signum.Negative) throw new IRValidationException()
     ConicConstraint(expr, ConeNonNegative(expr.arity))
+  }
 
+  /*
   def cfor(len: Size, body: (Size) => Constraint): Constraint = {
     globalArityPromote()
     val eval_body = body(len.next)
@@ -39,8 +53,6 @@ trait DCPConstraint {
           AlmapVCatFor(len, bsx.expr.offset)))
       case _ => throw new DCPIRValidationException()
     }
-
   }
-
+  */
 }
-

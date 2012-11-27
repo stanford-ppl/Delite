@@ -1,155 +1,154 @@
 package ppl.dsl.opticvx.dcp
 
+import ppl.dsl.opticvx.common._
+import ppl.dsl.opticvx.model._
 import scala.collection.immutable.Seq
 import scala.collection.immutable.Set
 
-trait DCPExpr {
-  self: DCPShape with DCPAlmap with DCPConstraint with DCPCone =>
 
+case class Expr(val vexity: Signum, val sign: Signum, val almap: Almap, val offset: AVector) extends HasArity[Expr] {
+  val arity: Int = almap.arity
+  val size: IRPoly = offset.size
+
+  def arityOp(op: ArityOp): Expr = Expr(vexity, sign, almap.arityOp(op), offset.arityOp(op))
+
+  if (almap.codomain != offset.size) throw new IRValidationException()
+
+  def +(x: Expr): Expr = Expr(
+    vexity + x.vexity,
+    sign + x.sign, 
+    almap + x.almap,
+    offset + x.offset)
+
+  def unary_-(): Expr = Expr(-vexity, -sign, -almap, -offset)
+  def -(x: Expr): Expr = this + (-x)
+  
+  def apply(at: IRPoly): Expr = apply(at, IRPoly.const(1, arity))
+  def apply(at: IRPoly, size: IRPoly): Expr = {
+    val almappfx = AlmapHCat(AlmapHCat(AlmapZero(at, size), AlmapIdentity(size)), AlmapZero(this.size - (at + size), size))
+    val almapout = almappfx * almap
+    val offsetout = offset(at, size)
+    Expr(vexity, sign, almapout, offsetout)
+  }
+
+  def <=(x: Expr): ConicConstraint = Constraints.nonnegative(x - this)
+  def >=(x: Expr): ConicConstraint = Constraints.nonnegative(this - x)
+
+  /*
+  def *(c: Expr): Expr = {
+    if (shape.isInstanceOf[XShapeScalar]&&shape.asInstanceOf[XShapeScalar].desc.isinput) {
+      exprscale(c, this)
+    }
+    else if (c.shape.isInstanceOf[XShapeScalar]&&c.shape.asInstanceOf[XShapeScalar].desc.isinput) {
+      exprscale(this, c)
+    }
+    else {
+      throw new IRValidationException()
+    }
+  }
+  */
+}
+
+/*
+def exprscale(x: Expr, c: Expr): Expr = {
+  //Since c is an input, it is fully described by its offset property
+  if (!(c.shape.isInstanceOf[XShapeScalar])) throw new IRValidationException()
+  if (!(c.shape.asInstanceOf[XShapeScalar].desc.isinput)) throw new IRValidationException()
+  if (!(x.shape.isInstanceOf[XShapeScalar])) throw new IRValidationException()
+  val csign = c.shape.asInstanceOf[XShapeScalar].desc.sign
+  val ysh = x.shape.morph((xd: XDesc) => 
+    XDesc(csign * xd.vexity, csign * xd.sign, xd.isinput))
+  val yalmap = AlmapProd(c.offset, x.almap)
+  val yoffset = AlmapProd(c.offset, x.offset)
+  Expr(ysh, yalmap, yoffset)
+}
+
+def infix_<=(y: Expr, c: Double): ConicConstraint = {
+  val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
+  constrain_nonnegative(x - y)
+}
+def infix_>=(y: Expr, c: Double): ConicConstraint = {
+  val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
+  constrain_nonnegative(y - x)
+}
+def infix_<=(c: Double, y: Expr): ConicConstraint = {
+  val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
+  constrain_nonnegative(y - x)
+}
+def infix_>=(c: Double, y: Expr): ConicConstraint = {
+  val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
+  constrain_nonnegative(x - y)
+}
+
+def infix_+(y: Expr, c: Double): Expr = {
+  val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
+  y + x
+}
+def infix_+(c: Double, y: Expr): Expr = {
+  val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
+  x + y
+}
+
+def infix_-(y: Expr, c: Double): Expr = {
+  val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
+  y - x
+}
+def infix_-(c: Double, y: Expr): Expr = {
+  val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
+  x - y
+}
+
+def constant2expr(c: Double, input: Shape, domain: Shape): Expr = Expr(
+    XShapeScalar(input.arity, Signum.Zero, Signum.All, true),
+    AlmapZero(input, domain, ShapeScalar(input.arity)),
+    AlmapScaleConstant(AlmapIdentity(input, ShapeScalar(input.arity)), c))
+
+def xfor(len: Size, body: (Size) => Expr): Expr = {
+  globalArityPromote()
+  val bsx: Expr = body(len.next)
+  globalArityDemote()
+  Expr(
+    XShapeFor(len, bsx.shape),
+    AlmapVCatFor(len, bsx.almap),
+    AlmapVCatFor(len, bsx.offset))
+}
+
+def sum(len: Size, body: (Size) => Expr): Expr = {
+  globalArityPromote()
+  val bsx: Expr = body(len.next)
+  globalArityDemote()
+  Expr(
+    bsx.shape.demote,
+    AlmapSumFor(len, bsx.almap),
+    AlmapSumFor(len, bsx.offset))
+}
+
+def xstruct(body: Seq[Expr]): Expr = Expr(
+  XShapeStruct(globalArity, body map (x => x.shape)),
+  AlmapVCat(globalInputShape, globalVarShape, body map (x => x.almap)),
+  AlmapVCat(globalInputShape, ShapeScalar(globalArity), body map (x => x.offset)))
+*/
+
+  /*
   class Symbol[T >: Null <: HasArity[T]] {
     var binding: T = null
     def bind(e: T) {
-      if (binding != null) throw new DCPIRValidationException()
+      if (binding != null) throw new IRValidationException()
       binding = e
     }
   }
   
   implicit def symbol2Timpl[T >: Null <: HasArity[T]](s: Symbol[T]): T = {
-    if (s.binding == null) throw new DCPIRValidationException()
+    if (s.binding == null) throw new IRValidationException()
     var lsx: T = s.binding
     while(lsx.arity < globalArity) {
       lsx = lsx.promote
     }
-    if (s.binding.arity > globalArity) throw new DCPIRValidationException()
+    if (s.binding.arity > globalArity) throw new IRValidationException()
     lsx
   }
+  */
 
-  case class Expr(val shape: XShape, val almap: Almap, val offset: Almap) extends HasArity[Expr] {
-    val arity: Int = shape.arity
-  
-    def arityOp(op: ArityOp): Expr = Expr(shape.arityOp(op), almap.arityOp(op), offset.arityOp(op))
-  
-    if (shape.strip != almap.codomain) throw new DCPIRValidationException()
-    if (shape.strip != offset.codomain) throw new DCPIRValidationException()
-    if (offset.domain != ShapeScalar(arity)) throw new DCPIRValidationException()
-    if (almap.input != offset.input) throw new DCPIRValidationException()
-  
-    def +(x: Expr): Expr = Expr(
-      shape + x.shape, 
-      almap + x.almap,
-      offset + x.offset)
-
-    def unary_-(): Expr = Expr(-shape, AlmapNeg(almap), AlmapNeg(offset))
-    def -(x: Expr): Expr = this + (-x)
-    
-    def apply(at: Size): Expr = {
-      if (!(shape.isInstanceOf[XShapeFor])) throw new DCPIRValidationException()
-      val vsh = shape.asInstanceOf[XShapeFor].body.substituteAt(arity, at)
-      val aprod = AlmapHPut(
-        shape.asInstanceOf[XShapeFor].size,
-        at,
-        AlmapIdentity(
-          almap.input.promote,
-          almap.codomain.asInstanceOf[ShapeFor].body))
-      val yalmap = AlmapProd(aprod, almap)
-      val yoffset = AlmapProd(aprod, offset)
-      Expr(vsh, yalmap, yoffset)
-    }
-
-    def <=(x: Expr): ConicConstraint = constrain_nonnegative(x - this)
-    def >=(x: Expr): ConicConstraint = constrain_nonnegative(this - x)
-
-    def *(c: Expr): Expr = {
-      if (shape.isInstanceOf[XShapeScalar]&&shape.asInstanceOf[XShapeScalar].desc.isinput) {
-        exprscale(c, this)
-      }
-      else if (c.shape.isInstanceOf[XShapeScalar]&&c.shape.asInstanceOf[XShapeScalar].desc.isinput) {
-        exprscale(this, c)
-      }
-      else {
-        throw new DCPIRValidationException()
-      }
-    }
-  }
-  
-  def exprscale(x: Expr, c: Expr): Expr = {
-    //Since c is an input, it is fully described by its offset property
-    if (!(c.shape.isInstanceOf[XShapeScalar])) throw new DCPIRValidationException()
-    if (!(c.shape.asInstanceOf[XShapeScalar].desc.isinput)) throw new DCPIRValidationException()
-    if (!(x.shape.isInstanceOf[XShapeScalar])) throw new DCPIRValidationException()
-    val csign = c.shape.asInstanceOf[XShapeScalar].desc.sign
-    val ysh = x.shape.morph((xd: XDesc) => 
-      XDesc(csign * xd.vexity, csign * xd.sign, xd.isinput))
-    val yalmap = AlmapProd(c.offset, x.almap)
-    val yoffset = AlmapProd(c.offset, x.offset)
-    Expr(ysh, yalmap, yoffset)
-  }
-
-  def infix_<=(y: Expr, c: Double): ConicConstraint = {
-    val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
-    constrain_nonnegative(x - y)
-  }
-  def infix_>=(y: Expr, c: Double): ConicConstraint = {
-    val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
-    constrain_nonnegative(y - x)
-  }
-  def infix_<=(c: Double, y: Expr): ConicConstraint = {
-    val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
-    constrain_nonnegative(y - x)
-  }
-  def infix_>=(c: Double, y: Expr): ConicConstraint = {
-    val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
-    constrain_nonnegative(x - y)
-  }
-
-  def infix_+(y: Expr, c: Double): Expr = {
-    val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
-    y + x
-  }
-  def infix_+(c: Double, y: Expr): Expr = {
-    val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
-    x + y
-  }
-
-  def infix_-(y: Expr, c: Double): Expr = {
-    val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
-    y - x
-  }
-  def infix_-(c: Double, y: Expr): Expr = {
-    val x: Expr = constant2expr(c, y.almap.input, y.almap.domain)
-    x - y
-  }
-
-  def constant2expr(c: Double, input: Shape, domain: Shape): Expr = Expr(
-      XShapeScalar(input.arity, Signum.Zero, Signum.All, true),
-      AlmapZero(input, domain, ShapeScalar(input.arity)),
-      AlmapScaleConstant(AlmapIdentity(input, ShapeScalar(input.arity)), c))
-
-  def xfor(len: Size, body: (Size) => Expr): Expr = {
-    globalArityPromote()
-    val bsx: Expr = body(len.next)
-    globalArityDemote()
-    Expr(
-      XShapeFor(len, bsx.shape),
-      AlmapVCatFor(len, bsx.almap),
-      AlmapVCatFor(len, bsx.offset))
-  }
-
-  def sum(len: Size, body: (Size) => Expr): Expr = {
-    globalArityPromote()
-    val bsx: Expr = body(len.next)
-    globalArityDemote()
-    Expr(
-      bsx.shape.demote,
-      AlmapSumFor(len, bsx.almap),
-      AlmapSumFor(len, bsx.offset))
-  }
-
-  def xstruct(body: Seq[Expr]): Expr = Expr(
-    XShapeStruct(globalArity, body map (x => x.shape)),
-    AlmapVCat(globalInputShape, globalVarShape, body map (x => x.almap)),
-    AlmapVCat(globalInputShape, ShapeScalar(globalArity), body map (x => x.offset)))
-  
   /*
   trait Expr {
     val shape: XShape
@@ -238,5 +237,5 @@ trait DCPExpr {
     val shape: XShape = XShapeFor(size, XShapeScalar(Signum.Zero, sign, true))
   }
   */
-}
+
 

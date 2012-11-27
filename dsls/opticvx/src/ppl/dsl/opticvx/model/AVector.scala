@@ -44,6 +44,12 @@ trait AVectorLikeAVector extends AVectorLike[AVector] {
 trait AVector extends HasArity[AVector] {
   def size: IRPoly
   def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V
+
+  def +(u: AVector) = AVectorAdd(this, u)
+  def -(u: AVector) = AVectorAdd(this, AVectorNeg(u))
+  def unary_-() = AVectorNeg(this)
+  def ++(u: AVector) = AVectorCat(this, u)
+  def apply(at: IRPoly, size: IRPoly) = AVectorSlice(this, at, size)
 }
 
 case class AVectorZero(val size: IRPoly) extends AVector {
