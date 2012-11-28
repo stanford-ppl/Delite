@@ -31,8 +31,8 @@ case class Expr(val vexity: Signum, val sign: Signum, val almap: Almap, val offs
     Expr(vexity, sign, almapout, offsetout)
   }
 
-  def <=(x: Expr): ConicConstraint = Constraints.nonnegative(x - this)
-  def >=(x: Expr): ConicConstraint = Constraints.nonnegative(this - x)
+  def <=(x: Expr): ConicConstraint = Constraint.nonnegative(x - this)
+  def >=(x: Expr): ConicConstraint = Constraint.nonnegative(this - x)
 
   /*
   def *(c: Expr): Expr = {
@@ -74,10 +74,28 @@ object Expr {
       AlmapVCat(arg1.almap, arg2.almap),
       AVectorCat(arg1.offset, arg2.offset))
   }
+  // concatenate many expressions
+  def catfor(len: IRPoly, arg: Expr): Expr = {
+    if(len.arity + 1 != arg.arity) throw new IRValidationException()
+    Expr(
+      arg.vexity,
+      arg.sign,
+      AlmapVCatFor(len, arg.almap),
+      AVectorCatFor(len, arg.offset))
+  }
   // a constant scalar expression
   def const(c: Double, inputSize: IRPoly, varSize: IRPoly): Expr = {
     if(inputSize.arity != varSize.arity) throw new IRValidationException()
     Expr(Signum.Zero, Signum.sgn(c), AlmapZero(varSize, IRPoly.const(1, varSize.arity)), AVector.const(c, varSize.arity))
+  }
+  // sum many expressions
+  def sumfor(len: IRPoly, arg: Expr): Expr = {
+    if(len.arity + 1 != arg.arity) throw new IRValidationException()
+    Expr(
+      arg.vexity,
+      arg.sign,
+      AlmapSumFor(len, arg.almap),
+      AVectorAddFor(len, arg.offset))
   }
 }
 

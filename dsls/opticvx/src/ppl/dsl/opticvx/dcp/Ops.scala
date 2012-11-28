@@ -18,9 +18,34 @@ trait DCPOps extends DCPOpsGlobal {
   def cvxparam(): Symbol[IRPoly] = new Symbol[IRPoly]()
 
   def scalar: IRPoly = IRPoly.const(1, globalArity)
-  def vector(i: Int): IRPoly = IRPoly.const(i, globalArity)
+  def vector(size: IRPoly): IRPoly = size
 
+  implicit def int2irpoly(i: Int) = IRPoly.const(i, globalArity)
   implicit def double2expr(x: Double) = Expr.const(x, globalInputSize, globalVarSize)
+
+  def sumfor(len: IRPoly)(fx: (IRPoly)=>Expr): Expr = {
+    if(len.arity != globalArity) throw new IRValidationException()
+    globalArityPromote()
+    val exfx = fx(len.next)
+    globalArityDemote()
+    Expr.sumfor(len, exfx)
+  }
+
+  def xfor(len: IRPoly)(fx: (IRPoly)=>Expr): Expr = {
+    if(len.arity != globalArity) throw new IRValidationException()
+    globalArityPromote()
+    val exfx = fx(len.next)
+    globalArityDemote()
+    Expr.catfor(len, exfx)
+  }
+
+  def cfor(len: IRPoly)(fx: (IRPoly)=>Constraint): Constraint = {
+    if(len.arity != globalArity) throw new IRValidationException()
+    globalArityPromote()
+    val cxfx = fx(len.next)
+    globalArityDemote()
+    Constraint.catfor(len, cxfx)
+  }
 
   class SolveParams(val params: Seq[ParamBinding])
   class ParamBinding(val param: ParamDesc, val symbol: Symbol[IRPoly])

@@ -23,7 +23,7 @@ case class ConicConstraint(val expr: Expr, val cone: Cone) extends Constraint {
   def arityOp(op: ArityOp): Constraint = ConicConstraint(expr.arityOp(op), cone.arityOp(op))
 }
 
-object Constraints {
+object Constraint {
   def zero(expr: Expr): AffineConstraint = {
     if(expr.vexity != Signum.Zero) throw new IRValidationException()
     AffineConstraint(expr)
@@ -32,6 +32,14 @@ object Constraints {
   def nonnegative(expr: Expr): ConicConstraint = {
     if(!(expr.vexity <= Signum.Negative)) throw new IRValidationException()
     ConicConstraint(expr, ConeNonNegative(expr.arity))
+  }
+
+  def catfor(len: IRPoly, constraint: Constraint): Constraint = {
+    if(len.arity + 1 != constraint.arity) throw new IRValidationException()
+    constraint match {
+      case AffineConstraint(e) => AffineConstraint(Expr.catfor(len, e))
+      case ConicConstraint(e, c) => ConicConstraint(Expr.catfor(len, e), ConeFor(len, c))
+    }
   }
 
   /*
