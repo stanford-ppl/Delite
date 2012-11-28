@@ -61,23 +61,29 @@ Int) : Float {
       }
       if (total.value < threshold) {
         LCC(s) = 0.0f
-	println("Computed LCC = " + LCC(s))
+        //println("Computed LCC = " + LCC(s))
         //println("Total (" + total.value + ") was less than threshold")
       } else {
         LCC(s) = (triangles.value.AsInstanceOf[Float]) / (total.value.AsInstanceOf[Float])
-        println("Computed LCC = " + LCC(s) + " = " + triangles.value + " / " + total.value)
+        //println("Computed LCC = " + LCC(s) + " = " + triangles.value + " / " + total.value)
       }
     }
   }
 
   def main() {
-    //val G = graph_load(args(0))
-    val G = RandUniformGraph(30,800,1996L)
-
-    val lccprop : Rep[NodeProperty[Float]] = null
-    lccprop = NodeProperty[Float](G, 0.0f)
-    val threshold = 10
-    lcc(G, lccprop, threshold)
+    val sizes = Array(5E6, 10E6, 15E6, 20E6, 25E6)
+    for (size <- sizes) {
+      val isize = size.AsInstanceOf[Int]
+      val edges = isize*isize-isize
+      val start_time = wall_time()
+      val G = RandUniformGraph(isize,edges,2012L)
+      val generation_time = wall_time() - start_time
+      val lccprop : Rep[NodeProperty[Float]] = NodeProperty[Float](G, 0.0f)
+      lcc(G, lccprop, 10)
+      val lcc_time = wall_time() - generation_time
+      val total_time = lcc_time - start_time
+      println(isize + " nodes, " + edges + " edges = generation: " + generation_time + " lcc: " + lcc_time + " total: " + total_time)
+    }
   }
 }
 
