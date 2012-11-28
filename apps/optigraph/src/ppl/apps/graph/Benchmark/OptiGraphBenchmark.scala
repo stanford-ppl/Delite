@@ -2,6 +2,7 @@ package ppl.apps.graph.Benchmark
 
 import ppl.dsl.optigraph._
 import ppl.delite.framework.DeliteApplication
+//import scala.virtualization.lms.common.FractionalOps
 
 object GraphAppRunner extends OptiGraphApplicationRunner with OptiGraphBenchmark
 
@@ -60,21 +61,21 @@ Int) : Float {
       }
       if (total.value < threshold) {
         LCC(s) = 0.0f
-        println("Total (" + total.value + ") was less than threshold")
+	println("Computed LCC = " + LCC(s))
+        //println("Total (" + total.value + ") was less than threshold")
       } else {
-        LCC(s) = (triangles.value.asInstanceOf[Rep[Float]]) / (total.value.asInstanceOf[Rep[Float]])
-        println("Computed LCC = " + LCC(s))
+        LCC(s) = (triangles.value.AsInstanceOf[Float]) / (total.value.AsInstanceOf[Float])
+        println("Computed LCC = " + LCC(s) + " = " + triangles.value + " / " + total.value)
       }
     }
   }
 
   def main() {
     //val G = graph_load(args(0))
-    val G = RandUniformGraph(5,13,1996L)
+    val G = RandUniformGraph(30,800,1996L)
 
-    val start: Float = 0.0f
     val lccprop : Rep[NodeProperty[Float]] = null
-    lccprop = NodeProperty[Float](G, start)
+    lccprop = NodeProperty[Float](G, 0.0f)
     val threshold = 10
     lcc(G, lccprop, threshold)
   }

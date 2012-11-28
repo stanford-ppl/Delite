@@ -428,8 +428,7 @@ object Graph {
         }
       }
 
-      G.freeze
-      G
+      G.snapshot()
     }
 
    def loadGraph_backup(fileName: String): Graph = {
