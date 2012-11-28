@@ -3,14 +3,15 @@ package ppl.dsl.opticvx.dcp.test
 import scala.collection.immutable.Seq
 import ppl.dsl.opticvx.dcp._
 
-object DCPOpsTestApp extends DCPOps {
+object DCPOpsTestApp extends DCPOpsDefinite {
   def main(args: Array[String]) {
+    val l = cvxexpr()
     val x = cvxexpr()
     val y = cvxexpr()
     val z = cvxexpr()
     solve(
       params(),
-      given(),
+      given(double2inputdesc(3.4) -> l),
       over(scalar -> x, vector(3) -> y),
       let(x + x -> z),
       where(

@@ -143,7 +143,7 @@ sealed trait IRPoly extends HasArity[IRPoly] {
   def sum(idx: Int): IRPoly = {
     if (arity <= 0) throw new IRValidationException()
     if (idx == arity - 1) {
-      IRPolyN(arity, this.asInstanceOf[IRPolyN].coeffs :+ IRPoly.const(0, arity - 1))
+      IRPolyN(arity, Seq(IRPoly.const(0, arity - 1)) ++ this.asInstanceOf[IRPolyN].coeffs)
     }
     else if (idx < arity - 1) {
       IRPolyN(arity, this.asInstanceOf[IRPolyN].coeffs map (x => x.sum(idx)))
