@@ -15,12 +15,12 @@ import java.io.PrintWriter
 trait GIterableOps extends Variables {
   this: OptiGraph =>
 
-  /** 
+  /**
    * GIterable objects are returned by range words on graphs, nodes, and collections
-   * and can be used in iterations and parallel filter and reduction expressions 
+   * and can be used in iterations and parallel filter and reduction expressions
    * (they cannot be created)
    */
-    
+
   implicit def repGIterableToGIterableOps[T:Manifest](iter: Rep[GIterable[T]]) = new GIterableOpsCls(iter)
 
   /** Operations of GIterables */
@@ -51,8 +51,9 @@ trait GIterableOps extends Variables {
     def any(filter: Rep[T] => Rep[Boolean], block: Rep[T] => Rep[Boolean]): Rep[Boolean] = iter_anyIf(iter, filter, block)
     /** Returns the elements as a set */
     def toSet(): Rep[GSet[T]] = iter_toset(iter)
+    def toList(): Rep[List[T]] = iter_tolist(iter)
   }
-  
+
   def iter_foreach[T:Manifest](iter: Rep[GIterable[T]], block: Rep[T] => Rep[Unit]): Rep[Unit]
   def iter_for[T:Manifest](iter: Rep[GIterable[T]], filter: Option[Rep[T] => Rep[Boolean]], block: Rep[T] => Rep[Unit]): Rep[Unit]
   def iter_filter[T:Manifest](iter: Rep[GIterable[T]], pred: Rep[T] => Rep[Boolean]): Rep[GIterable[T]]
@@ -69,30 +70,35 @@ trait GIterableOps extends Variables {
   def iter_allIf[T:Manifest](iter: Rep[GIterable[T]], filter: Rep[T] => Rep[Boolean], block: Rep[T] => Rep[Boolean]): Rep[Boolean]
   def iter_any[T:Manifest](iter: Rep[GIterable[T]], block: Rep[T] => Rep[Boolean]): Rep[Boolean]
   def iter_anyIf[T:Manifest](iter: Rep[GIterable[T]], filter: Rep[T] => Rep[Boolean], block: Rep[T] => Rep[Boolean]): Rep[Boolean]
-  def iter_toset[T:Manifest](iter: Rep[GIterable[T]]): Rep[GSet[T]]                                                                                                                        
+  def iter_toset[T:Manifest](iter: Rep[GIterable[T]]): Rep[GSet[T]]
+  def iter_tolist[T:Manifest](iter: Rep[GIterable[T]]): Rep[List[T]]
 }
 
 trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp with DeliteCollectionOpsExp {
   this: OptiGraphExp =>
-  
+
   case class GIterableNewEmpty[T]()(val mGIt: Manifest[GIterable[T]]) extends Def[GIterable[T]]
   case class GIterableToList[T:Manifest](iter: Exp[GIterable[T]]) extends DefWithManifest[T,List[T]]
   case class GIterableToSet[T:Manifest](iter: Exp[GIterable[T]]) extends DefWithManifest[T,GSet[T]]
-  
+
   // parallel iteration (no reduction assignments in the loop body)
   case class GIterableForeach[T:Manifest](in: Exp[GIterable[T]], func: Exp[T] => Exp[Unit])
-    extends DeliteOpForeachReduce[T] {
+    extends DeliteOpForeach[T] {
+    //extends DeliteOpForeachReduce[T] {
     val size = copyTransformedOrElse(_.size)(dc_size(in))
+    def sync = n => List()
+
+    val mA = manifest[T]
   }
-  
+
   // parallel filter
   case class GIterableFilter[T:Manifest](in: Exp[GIterable[T]], cond: Exp[T] => Exp[Boolean])
     extends DeliteOpFilter[T,T,GIterable[T]] {
     override def alloc = new_empty_iterable()
-    def func = e => e 
+    def func = e => e
     val size = copyTransformedOrElse(_.size)(dc_size(in))
   }
-  
+
   // called during a BFS traversal
   // returns the down neighbors of all the nodes in the GItarable 'in' object (i.e. the next BFS level)
   case class GIterableNextBFSLevel(in: Exp[GIterable[Node]]) extends DeliteOpMapReduce[Node, GSet[Node]] {
@@ -115,59 +121,59 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
           out.Add(n)
         }
         out
-        
+
         //gset_addset(a, b); a
       }
     }
   }
-  
+
   // Parallel reductions
-  
-  case class GIterableSum[T:Manifest, A:Manifest:Numeric](in: Exp[GIterable[T]], map: Exp[T] => Exp[A]) 
+
+  case class GIterableSum[T:Manifest, A:Manifest:Numeric](in: Exp[GIterable[T]], map: Exp[T] => Exp[A])
    extends DeliteOpMapReduce[T, A] {
     val size = copyTransformedOrElse(_.size)(dc_size(in))
     val zero = unit(0.asInstanceOf[A])
     def reduce = (a,b) => a + b
-    
+
     val mT = manifest[T]
     val mA = manifest[A]
     val n = implicitly[Numeric[A]]
   }
-  
-  case class GIterableSumIf[T:Manifest, A:Manifest:Numeric](in: Exp[GIterable[T]], cond: Exp[T] => Exp[Boolean], func: Exp[T] => Exp[A]) 
+
+  case class GIterableSumIf[T:Manifest, A:Manifest:Numeric](in: Exp[GIterable[T]], cond: Exp[T] => Exp[Boolean], func: Exp[T] => Exp[A])
    extends DeliteOpFilterReduce[T, A] {
     val size = copyTransformedOrElse(_.size)(dc_size(in))
     val zero = unit(0.asInstanceOf[A])
     def reduce = (a,b) => a + b
-    
+
     val mT = manifest[T]
     val mA = manifest[A]
-    val n = implicitly[Numeric[A]]    
+    val n = implicitly[Numeric[A]]
   }
-  
-  case class GIterableProduct[T:Manifest, A:Manifest:Numeric](in: Exp[GIterable[T]], map: Exp[T] => Exp[A]) 
+
+  case class GIterableProduct[T:Manifest, A:Manifest:Numeric](in: Exp[GIterable[T]], map: Exp[T] => Exp[A])
    extends DeliteOpMapReduce[T,A] {
     val size = copyTransformedOrElse(_.size)(dc_size(in))
     val zero = unit(1.asInstanceOf[A])
     def reduce = (a,b) => a * b
-    
+
     val mT = manifest[T]
     val mA = manifest[A]
-    val n = implicitly[Numeric[A]]    
+    val n = implicitly[Numeric[A]]
   }
-  
-  case class GIterableProductIf[T:Manifest, A:Manifest:Numeric](in: Exp[GIterable[T]], cond: Exp[T] => Exp[Boolean], func: Exp[T] => Exp[A]) 
+
+  case class GIterableProductIf[T:Manifest, A:Manifest:Numeric](in: Exp[GIterable[T]], cond: Exp[T] => Exp[Boolean], func: Exp[T] => Exp[A])
    extends DeliteOpFilterReduce[T,A] {
     val size = copyTransformedOrElse(_.size)(dc_size(in))
     val zero = unit(1.asInstanceOf[A])
     def reduce = (a,b) => a * b
-    
+
     val mT = manifest[T]
     val mA = manifest[A]
-    val n = implicitly[Numeric[A]]    
+    val n = implicitly[Numeric[A]]
   }
-  
-  case class GIterableMax[T:Manifest, A:Manifest:Ordering](in: Exp[GIterable[T]], map: Exp[T] => Exp[A]) 
+
+  case class GIterableMax[T:Manifest, A:Manifest:Ordering](in: Exp[GIterable[T]], map: Exp[T] => Exp[A])
    extends DeliteOpMapReduce[T,A] {
     val size = copyTransformedOrElse(_.size)(dc_size(in))
     val zero = (manifest[A] match {
@@ -177,13 +183,13 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
       case _ => throw new RuntimeException("no zero value for " + mA.toString)
     }).asInstanceOf[Exp[A]]
     def reduce = (a,b) => if (a > b) a else b
-    
+
     val mT = manifest[T]
     val mA = manifest[A]
-    val o = implicitly[Ordering[A]]    
+    val o = implicitly[Ordering[A]]
   }
-  
-  case class GIterableMaxIf[T:Manifest, A:Manifest:Ordering](in: Exp[GIterable[T]], cond: Exp[T] => Exp[Boolean], func: Exp[T] => Exp[A]) 
+
+  case class GIterableMaxIf[T:Manifest, A:Manifest:Ordering](in: Exp[GIterable[T]], cond: Exp[T] => Exp[Boolean], func: Exp[T] => Exp[A])
    extends DeliteOpFilterReduce[T,A] {
     val size = copyTransformedOrElse(_.size)(dc_size(in))
     val zero = (manifest[A] match {
@@ -193,13 +199,13 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
       case _ => throw new RuntimeException("no zero value for " + mA.toString)
     }).asInstanceOf[Exp[A]]
     def reduce = (a,b) => if (a > b) a else b
-    
+
     val mT = manifest[T]
     val mA = manifest[A]
-    val o = implicitly[Ordering[A]]        
+    val o = implicitly[Ordering[A]]
   }
-  
-  case class GIterableMin[T:Manifest, A:Manifest:Ordering](in: Exp[GIterable[T]], map: Exp[T] => Exp[A]) 
+
+  case class GIterableMin[T:Manifest, A:Manifest:Ordering](in: Exp[GIterable[T]], map: Exp[T] => Exp[A])
    extends DeliteOpMapReduce[T,A] {
     val size = copyTransformedOrElse(_.size)(dc_size(in))
     val zero = (manifest[A] match {
@@ -209,13 +215,13 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
       case _ => throw new RuntimeException("no zero value for " + mA.toString)
     }).asInstanceOf[Exp[A]]
     def reduce = (a,b) => if (a < b) a else b
-    
+
     val mT = manifest[T]
     val mA = manifest[A]
-    val o = implicitly[Ordering[A]]        
+    val o = implicitly[Ordering[A]]
   }
-  
-  case class GIterableMinIf[T:Manifest, A:Manifest:Ordering](in: Exp[GIterable[T]], cond: Exp[T] => Exp[Boolean], func: Exp[T] => Exp[A]) 
+
+  case class GIterableMinIf[T:Manifest, A:Manifest:Ordering](in: Exp[GIterable[T]], cond: Exp[T] => Exp[Boolean], func: Exp[T] => Exp[A])
    extends DeliteOpFilterReduce[T,A] {
     val size = copyTransformedOrElse(_.size)(dc_size(in))
     val zero = (manifest[A] match {
@@ -225,48 +231,48 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
       case _ => throw new RuntimeException("no zero value for " + mA.toString)
     }).asInstanceOf[Exp[A]]
     def reduce = (a,b) => if (a < b) a else b
-    
+
     val mT = manifest[T]
     val mA = manifest[A]
-    val o = implicitly[Ordering[A]]        
+    val o = implicitly[Ordering[A]]
   }
-  
-  case class GIterableCount[T:Manifest](in: Exp[GIterable[T]], cond: Exp[T] => Exp[Boolean]) 
+
+  case class GIterableCount[T:Manifest](in: Exp[GIterable[T]], cond: Exp[T] => Exp[Boolean])
    extends DeliteOpFilterReduce[T,Int] {
     val size = copyTransformedOrElse(_.size)(dc_size(in))
     val zero = unit(0)
     def func = e => unit(1)
     def reduce = (a,b) => a + b
   }
-  
-  case class GIterableAll[T:Manifest](in: Exp[GIterable[T]], map: Exp[T] => Exp[Boolean]) 
+
+  case class GIterableAll[T:Manifest](in: Exp[GIterable[T]], map: Exp[T] => Exp[Boolean])
    extends DeliteOpMapReduce[T,Boolean] {
     val size = copyTransformedOrElse(_.size)(dc_size(in))
     val zero = unit(true)
     def reduce = (a,b) => a && b
   }
-  
-  case class GIterableAllIf[T:Manifest](in: Exp[GIterable[T]], cond: Exp[T] => Exp[Boolean], func: Exp[T] => Exp[Boolean]) 
+
+  case class GIterableAllIf[T:Manifest](in: Exp[GIterable[T]], cond: Exp[T] => Exp[Boolean], func: Exp[T] => Exp[Boolean])
    extends DeliteOpFilterReduce[T,Boolean] {
     val size = copyTransformedOrElse(_.size)(dc_size(in))
     val zero = unit(true)
     def reduce = (a,b) => a && b
   }
-  
-  case class GIterableAny[T:Manifest](in: Exp[GIterable[T]], map: Exp[T] => Exp[Boolean]) 
+
+  case class GIterableAny[T:Manifest](in: Exp[GIterable[T]], map: Exp[T] => Exp[Boolean])
    extends DeliteOpMapReduce[T,Boolean] {
     val size = copyTransformedOrElse(_.size)(dc_size(in))
     val zero = unit(false)
     def reduce = (a,b) => a || b
   }
-  
-  case class GIterableAnyIf[T:Manifest](in: Exp[GIterable[T]], cond: Exp[T] => Exp[Boolean], func: Exp[T] => Exp[Boolean]) 
+
+  case class GIterableAnyIf[T:Manifest](in: Exp[GIterable[T]], cond: Exp[T] => Exp[Boolean], func: Exp[T] => Exp[Boolean])
    extends DeliteOpFilterReduce[T,Boolean] {
     val size = copyTransformedOrElse(_.size)(dc_size(in))
     val zero = unit(false)
     def reduce = (a,b) => a || b
   }
- 
+
   def new_empty_iterable[T:Manifest]() = reflectMutable(GIterableNewEmpty()(manifest[GIterable[T]]))
   def iter_sum[T:Manifest, A:Manifest:Numeric](iter: Exp[GIterable[T]], block: Exp[T] => Exp[A]) = reflectPure(GIterableSum(iter, block))
   def iter_sumIf[T:Manifest, A:Manifest:Numeric](iter: Exp[GIterable[T]], filter: Exp[T] => Exp[Boolean], block: Exp[T] => Exp[A]) = reflectPure(GIterableSumIf(iter, filter, block))
@@ -299,13 +305,13 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
   def iter_filter[T:Manifest](iter: Exp[GIterable[T]], pred: Exp[T] => Exp[Boolean]) = reflectPure(GIterableFilter(iter, pred))
   def iter_foreach_default[T:Manifest](iter: Exp[GIterable[T]], block: Exp[T] => Exp[Unit]) = {
     // have to collect the effects inside the block and properly reflect them!
-    val gf = GIterableForeach(iter, block) 
-    reflectEffect(gf, summarizeEffects(gf.funcBody).star /*andAlso Simple()*/)  
+    val gf = GIterableForeach(iter, block)
+    reflectEffect(gf, summarizeEffects(gf.body.asInstanceOf[DeliteForeachElem[T]].func).star andAlso Simple())
   }
-  
+
   // sequential iteration
   def iter_for[T:Manifest](iter: Exp[GIterable[T]], filter: Option[Exp[T] => Exp[Boolean]], block: Exp[T] => Exp[Unit]) = {
-    var i = var_new(unit(0)) 
+    var i = var_new(unit(0))
     while(i < dc_size(iter)) {
       val elem = dc_apply(iter, i)
       filter match {
@@ -313,34 +319,35 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
         case Some(pred) => if(pred(elem)) { block(elem) }
       }
       i += 1
-    }    
+    }
   }
-     
+
   // parallel iteration
   def iter_foreach[T:Manifest](in: Exp[GIterable[T]], func: Exp[T] => Exp[Unit]): Exp[Unit] = {
-    iter_foreach_default(in, func)    
+    iter_foreach_default(in, func)
   }
-      
+
   //////////////
   // mirroring
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {    
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@GIterableFilter(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableFilter(f(x),f(b)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@GIterableNextBFSLevel(x) => reflectPure(new { override val original = Some(f,e) } with GIterableNextBFSLevel(f(x)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@GIterableSum(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableSum(f(x),f(b))(e.mT,e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
     case e@GIterableSumIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableSumIf(f(x),f(c),f(b))(e.mT,e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
     case e@GIterableProduct(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableProduct(f(x),f(b))(e.mT,e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@GIterableProductIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableProductIf(f(x),f(c),f(b))(e.mT,e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])    
+    case e@GIterableProductIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableProductIf(f(x),f(c),f(b))(e.mT,e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
     case e@GIterableMax(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableMax(f(x),f(b))(e.mT,e.mA,e.o))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@GIterableMaxIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableMaxIf(f(x),f(c),f(b))(e.mT,e.mA,e.o))(mtype(manifest[A]),implicitly[SourceContext])    
+    case e@GIterableMaxIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableMaxIf(f(x),f(c),f(b))(e.mT,e.mA,e.o))(mtype(manifest[A]),implicitly[SourceContext])
     case e@GIterableMin(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableMin(f(x),f(b))(e.mT,e.mA,e.o))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@GIterableMinIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableMinIf(f(x),f(c),f(b))(e.mT,e.mA,e.o))(mtype(manifest[A]),implicitly[SourceContext])        
+    case e@GIterableMinIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableMinIf(f(x),f(c),f(b))(e.mT,e.mA,e.o))(mtype(manifest[A]),implicitly[SourceContext])
     case e@GIterableCount(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableCount(f(x),f(b)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@GIterableAll(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableAll(f(x),f(b)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@GIterableAllIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableAllIf(f(x),f(c),f(b)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@GIterableAny(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableAny(f(x),f(b)))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@GIterableAnyIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableAnyIf(f(x),f(c),f(b)))(mtype(manifest[A]),implicitly[SourceContext])    
-    case Reflect(e@GIterableForeach(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableForeach(f(x),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case e@GIterableAnyIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableAnyIf(f(x),f(c),f(b)))(mtype(manifest[A]),implicitly[SourceContext])
+    case Reflect(e@GIterableForeach(a,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableForeach(f(a),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    //case Reflect(e@GIterableForeach(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableForeach(f(x),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableFilter(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableFilter(f(x),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableNextBFSLevel(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableNextBFSLevel(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableSum(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableSum(f(x),f(b))(e.mT,e.mA,e.n), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -356,9 +363,9 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
     case Reflect(e@GIterableAllIf(x,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableAllIf(f(x),f(c),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableAny(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableAny(f(x),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableAnyIf(x,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableAnyIf(f(x),f(c),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    
+
     case e@GIterableToList(x) => iter_tolist(f(x))(e.mA)
-    case e@GIterableToSet(x) => iter_toset(f(x))(e.mA)    
+    case e@GIterableToSet(x) => iter_toset(f(x))(e.mA)
     case GIterableRawSize(x) => giterable_raw_size(f(x))
     case GIterableRawApply(x,i) => giterable_raw_apply(f(x),f(i))
     case GIterableRawData(x) => giterable_raw_data(f(x))
@@ -374,12 +381,12 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
     case Reflect(e@GIterableRawAlloc(x,s), u, es) => reflectMirrored(Reflect(GIterableRawAlloc(f(x),f(s))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
-  
-  
+
+
   ///////////////////////
   // delite collection
-  
-  // provides access to underlying GIterable fields required by DeliteCollection   
+
+  // provides access to underlying GIterable fields required by DeliteCollection
   case class GIterableRawSize[A:Manifest](x: Exp[GIterable[A]]) extends Def[Int]
   case class GIterableRawApply[A:Manifest](x: Exp[GIterable[A]], i: Exp[Int]) extends Def[A]
   case class GIterableRawUpdate[A:Manifest](x: Exp[GIterable[A]], i: Exp[Int], y: Exp[A]) extends Def[Unit]
@@ -390,7 +397,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
     val mA = manifest[A]
     val mGIt = manifest[GIterable[A]]
   }
-  
+
   def giterable_raw_size[A:Manifest](x: Exp[GIterable[A]]): Exp[Int] = reflectPure(GIterableRawSize(x))
   def giterable_raw_apply[A:Manifest](x: Exp[GIterable[A]], i: Exp[Int]): Exp[A] = reflectPure(GIterableRawApply(x,i))
   def giterable_raw_update[A:Manifest](x: Exp[GIterable[A]], i: Exp[Int], y: Exp[A]): Exp[Unit] = reflectWrite(x)(GIterableRawUpdate(x,i,y))
@@ -398,51 +405,51 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
   def giterable_raw_insert[A:Manifest](x: Exp[GIterable[A]], i: Exp[Int], y: Exp[A]): Exp[Unit] = reflectWrite(x)(GIterableRawInsert(x,i,y))
   def giterable_raw_data[A:Manifest](x: Exp[GIterable[A]]): Exp[Array[A]] = reflectPure(GIterableRawData(x))
   def giterable_raw_alloc[A:Manifest](x: Exp[Array[A]], sz: Exp[Int]): Exp[GIterable[A]] = reflectMutable(GIterableRawAlloc(x,sz))
-    
-  def isGIterable[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.tp.erasure,classOf[GIterable[A]])  
+
+  def isGIterable[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.tp.erasure,classOf[GIterable[A]])
   def asGIterable[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[GIterable[A]]]
-  
-  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
+
+  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = {
     if (isGIterable(x)) giterable_raw_size(asGIterable(x))
     else super.dc_size(x)
   }
-  
+
   override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
     if (isGIterable(x)) giterable_raw_apply(asGIterable(x), n)
-    else super.dc_apply(x,n)    
-  }  
-  
+    else super.dc_apply(x,n)
+  }
+
   override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
     if (isGIterable(x)) giterable_raw_update(asGIterable(x), n, y)
-    else super.dc_update(x,n,y)        
-  }  
-    
+    else super.dc_update(x,n,y)
+  }
+
   // ParBuffer methods (for filters)
-  
+
   override def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext) = {
     if (isGIterable(x)) giterable_set_raw_size(asGIterable(x), y)
-    else super.dc_set_logical_size(x,y)        
+    else super.dc_set_logical_size(x,y)
   }
-      
+
   override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
-    if (isGIterable(x)) { giterable_raw_insert(asGIterable(x),i,y); unit(true) }
-    else super.dc_append(x,i,y)        
-  }  
-  
+    if (isGIterable(x)) { giterable_raw_insert(asGIterable(x),dc_size(x),y); unit(true) } // changed!!
+    else super.dc_append(x,i,y)
+  }
+
   override def dc_alloc[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], size: Exp[Int])(implicit ctx: SourceContext): Exp[CA] = {
     if (isGIterable(x)) {
       val out = giterable_raw_alloc[A](NewArray[A](size), size)
       out.asInstanceOf[Exp[CA]]
     }
     else super.dc_alloc[A,CA](x,size)
-  }  
-  
+  }
+
   override def dc_copy[A:Manifest](src: Exp[DeliteCollection[A]], srcPos: Exp[Int], dst: Exp[DeliteCollection[A]], dstPos: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
     if (isGIterable(src) && isGIterable(dst)) {
       array_unsafe_copy(giterable_raw_data(asGIterable(src)), srcPos, giterable_raw_data(asGIterable(dst)), dstPos, size)
     }
     else super.dc_copy(src,srcPos,dst,dstPos,size)
-  }        
+  }
 }
 
 trait BaseGenGIterableOps extends GenericFatCodegen {
