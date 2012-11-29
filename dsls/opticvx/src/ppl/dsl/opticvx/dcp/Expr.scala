@@ -34,6 +34,18 @@ case class Expr(val vexity: Signum, val sign: Signum, val almap: Almap, val offs
   def <=(x: Expr): ConicConstraint = Constraint.nonnegative(x - this)
   def >=(x: Expr): ConicConstraint = Constraint.nonnegative(this - x)
 
+  def *(x: Expr): Expr = {
+    if((size == IRPoly.const(1, arity))&&(almap.is0)) {
+      Expr.scale(x, sign, offset)
+    }
+    else if((x.size == IRPoly.const(1, arity))&&(x.almap.is0)) {
+      Expr.scale(this, x.sign, x.offset)
+    }
+    else {
+      throw new IRValidationException()
+    }
+  }
+
   /*
   def *(c: Expr): Expr = {
     if (shape.isInstanceOf[XShapeScalar]&&shape.asInstanceOf[XShapeScalar].desc.isinput) {
@@ -96,6 +108,14 @@ object Expr {
       arg.sign,
       AlmapSumFor(len, arg.almap),
       AVectorAddFor(len, arg.offset))
+  }
+  // scale an expression
+  def scale(x: Expr, sign: Signum, scale: AVector): Expr = {
+    Expr(
+      x.vexity * sign,
+      x.sign * sign,
+      scale.translate(AVectorLikeScale(x.almap, AVectorLikeAlmap(x.almap.domain))),
+      scale.translate(AVectorLikeScale(x.offset, AVectorLikeAVector(scale.arity))))
   }
 }
 

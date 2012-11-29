@@ -3,10 +3,11 @@ package ppl.dsl.opticvx.model
 import ppl.dsl.opticvx.common._
 import scala.collection.immutable.Seq
 
-trait AVectorLike[T <: HasArity[T]] {
+trait AVectorLike[T <: HasArity[T]] extends HasArity[AVectorLike[T]] {
+  val arity: Int
   def size(arg: T): IRPoly
   def zero(size: IRPoly): T
-  def one(size: IRPoly): T
+  def one: T
   def add(arg1: T, arg2: T): T
   def addfor(len: IRPoly, arg:T): T
   def neg(arg: T): T
@@ -27,10 +28,27 @@ trait AVectorLike[T <: HasArity[T]] {
   implicit def t2thackimpl(t: T) = new THackImpl(t)
 }
 
-object AVectorLikeAVector extends AVectorLike[AVector] {
+case class AVectorLikeScale[T <: HasArity[T]](val base: T, val e: AVectorLike[T]) extends AVectorLike[T] {
+  val arity: Int = e.arity
+  def size(arg: T): IRPoly = e.size(arg) / e.size(base)
+  def zero(size: IRPoly): T = e.zero(size * e.size(base))
+  def one: T = base
+  def add(arg1: T, arg2: T): T = e.add(arg1, arg2)
+  def addfor(len: IRPoly, arg:T): T = e.addfor(len, arg)
+  def neg(arg: T): T = e.neg(arg)
+  def scaleinput(arg: T, scale: IRPoly): T = e.scaleinput(arg, scale)
+  def scaleconstant(arg: T, scale: Double): T = e.scaleconstant(arg, scale)
+  def cat(arg1: T, arg2:T): T = e.cat(arg1, arg2)
+  def catfor(len: IRPoly, arg: T): T = e.catfor(len, arg)
+  def slice(arg: T, at: IRPoly, size: IRPoly): T = e.slice(arg, at, size)
+
+  def arityOp(op: ArityOp): AVectorLike[T] = AVectorLikeScale(base.arityOp(op), e.arityOp(op))
+}
+
+case class AVectorLikeAVector(val arity: Int) extends AVectorLike[AVector] {
   def size(arg: AVector): IRPoly = arg.size
   def zero(size: IRPoly): AVector = AVectorZero(size)
-  def one(size: IRPoly): AVector = AVectorOne(size)
+  def one: AVector = AVectorOne(arity)
   def add(arg1: AVector, arg2: AVector): AVector = AVectorAdd(arg1, arg2)
   def addfor(len: IRPoly, arg: AVector): AVector = AVectorAddFor(len, arg)
   def neg(arg: AVector): AVector = AVectorNeg(arg)
@@ -39,16 +57,18 @@ object AVectorLikeAVector extends AVectorLike[AVector] {
   def cat(arg1: AVector, arg2: AVector): AVector = AVectorCat(arg1, arg2)
   def catfor(len: IRPoly, arg: AVector): AVector = AVectorCatFor(len, arg)
   def slice(arg: AVector, at: IRPoly, size: IRPoly): AVector = AVectorSlice(arg, at, size)
+
+  def arityOp(op: ArityOp): AVectorLike[AVector] = AVectorLikeAVector(IRPoly.const(0, arity).arityOp(op).arity)
 }
 
+
 object AVector {
-  import AVectorLikeAVector._
   def input(at: IRPoly, len: IRPoly): AVector = {
     if(at.arity != len.arity) throw new IRValidationException()
-    catfor(len, scaleinput(one(IRPoly.const(1, at.arity + 1)), at.promote + at.next))
+    AVectorCatFor(len, AVectorScaleInput(AVectorOne(at.arity + 1), at.promote + at.next))
   }
   def const(c: Double, arity: Int): AVector = {
-    scaleconstant(one(IRPoly.const(1, arity)), c)
+    AVectorScaleConstant(AVectorOne(arity), c)
   }
 }
 
@@ -69,17 +89,24 @@ case class AVectorZero(val size: IRPoly) extends AVector {
   def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.zero(size)
 }
 
-case class AVectorOne(val size: IRPoly) extends AVector {
-  val arity: Int = size.arity  
-  def arityOp(op: ArityOp): AVector = AVectorZero(size.arityOp(op))
-  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.one(size)
+case class AVectorOne(val arity: Int) extends AVector {
+  val size: IRPoly = IRPoly.const(1, arity)
+  def arityOp(op: ArityOp): AVector = AVectorOne(size.arityOp(op).arity)
+  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = {
+    if (e.arity != arity) throw new IRValidationException()
+    e.one
+  }
 }
 
 case class AVectorAdd(val arg1: AVector, val arg2: AVector) extends AVector {
   val arity: Int = arg1.arity
   val size: IRPoly = arg1.size
 
-  if(arg1.size != arg2.size) throw new IRValidationException()
+  if(arg1.size != arg2.size) {
+    println(arg1.size)
+    println(arg2.size)
+    throw new IRValidationException()
+  }
 
   def arityOp(op: ArityOp): AVector = AVectorAdd(arg1.arityOp(op), arg2.arityOp(op))
 

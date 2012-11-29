@@ -139,6 +139,13 @@ sealed trait IRPoly extends HasArity[IRPoly] {
     }
   }
 
+  // division of polynomials
+  def /(y: IRPoly): IRPoly = {
+    // TODO: THIS IS INCOMPLETE
+    if(y == this) IRPoly.const(1, arity)
+    else throw new IRValidationException()
+  }
+
   // sums the polynomial over the variable at the given index
   def sum(idx: Int): IRPoly = {
     if (arity <= 0) throw new IRValidationException()

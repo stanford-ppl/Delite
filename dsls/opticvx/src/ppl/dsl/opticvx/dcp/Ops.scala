@@ -146,7 +146,7 @@ trait DCPOps extends DCPOpsGlobal {
     if(objectiveExpr.size != IRPoly.const(1, arity)) throw new IRValidationException()
     if(!(objectiveExpr.vexity <= Signum.Positive)) throw new IRValidationException()
     // Convert the objective expression to a vector
-    val objectiveVector = objectiveExpr.almap.T.mmpy(AVectorOne(IRPoly.const(1, arity)): AVector)(AVectorLikeAVector)
+    val objectiveVector = objectiveExpr.almap.T.mmpy(AVectorOne(arity): AVector)(AVectorLikeAVector(arity))
     // Reset the global arity, inputshape, and varshape
     globalArity = -1
     globalInputSize = null

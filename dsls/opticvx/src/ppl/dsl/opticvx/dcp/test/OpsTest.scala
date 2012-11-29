@@ -20,7 +20,7 @@ object DCPOpsTestApp extends DCPOpsDefinite {
         x >= 0
       ),
       minimize(
-        z
+        (sumfor(n)((i) => y(i))) - x
       )
     )
 
