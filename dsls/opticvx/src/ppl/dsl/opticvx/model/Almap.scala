@@ -24,6 +24,11 @@ sealed trait Almap extends HasArity[Almap] {
   //Code generation for this matrix
   def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V
 
+  def mmpycheck[V <: HasArity[V]](v: V)(implicit e: AVectorLike[V]): V = {
+    if(e.size(v) != codomain) throw new IRValidationException()
+    v
+  }
+
   //Is this matrix zero?
   def is0: Boolean
 
@@ -62,7 +67,7 @@ case class AlmapIdentity(val domain: IRPoly) extends Almap {
 
   arityVerify()
 
-  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck {
     import e._
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
@@ -84,7 +89,7 @@ case class AlmapZero(val domain: IRPoly, val codomain: IRPoly) extends Almap {
 
   arityVerify()
 
-  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck {
     import e._
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
@@ -111,7 +116,7 @@ case class AlmapSum(val arg1: Almap, val arg2: Almap) extends Almap {
   
   arityVerify()
 
-  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck {
     import e._
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
@@ -134,12 +139,12 @@ case class AlmapNeg(val arg: Almap) extends Almap {
   
   arityVerify()
 
-  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck {
     import e._
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
     if(size(x) != domain) throw new IRValidationException()
-    -x
+    -arg.mmpy(x)
   }
 
   def is0: Boolean = arg.is0
@@ -159,7 +164,7 @@ case class AlmapScaleInput(val arg: Almap, val scale: IRPoly) extends Almap {
   
   arityVerify()
 
-  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck {
     import e._
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
@@ -182,7 +187,7 @@ case class AlmapScaleConstant(val arg: Almap, val scale: Double) extends Almap {
 
   arityVerify()
 
-  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck {
     import e._
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
@@ -209,7 +214,7 @@ case class AlmapVCat(val arg1: Almap, val arg2: Almap) extends Almap {
   
   arityVerify()
 
-  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck {
     import e._
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
@@ -235,7 +240,7 @@ case class AlmapVCatFor(val len: IRPoly, val body: Almap) extends Almap {
   
   arityVerify()
 
-  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck {
     import e._
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
@@ -261,7 +266,7 @@ case class AlmapVPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
 
   arityVerify()
 
-  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck {
     import e._
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
@@ -289,7 +294,7 @@ case class AlmapHCat(val arg1: Almap, val arg2: Almap) extends Almap {
   
   arityVerify()
 
-  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck {
     import e._
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
@@ -316,7 +321,7 @@ case class AlmapHCatFor(val len: IRPoly, val body: Almap) extends Almap {
 
   arityVerify()
 
-  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck {
     import e._
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
@@ -348,7 +353,7 @@ case class AlmapHPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
 
   arityVerify()
 
-  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck {
     import e._
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
@@ -377,7 +382,7 @@ case class AlmapSumFor(val len: IRPoly, val body: Almap) extends Almap {
 
   arityVerify()
 
-  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck {
     import e._
     if(size(x) != domain) throw new IRValidationException()
     addfor(len, body.mmpy(x.promote)(e.promote))
@@ -401,7 +406,7 @@ case class AlmapProd(val argl: Almap, val argr: Almap) extends Almap {
 
   arityVerify()
 
-  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = {
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck {
     import e._
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity

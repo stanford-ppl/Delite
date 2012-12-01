@@ -75,7 +75,11 @@ case class ArityOpPromoteBy(len: Int) extends ArityOp {
     irpoly.eval[IRPoly](inseq)(new IntLikeIRPoly(irpoly.arity + len))
   }
 }
-
+case class ArityOpSequential(op1: ArityOp, op2: ArityOp) extends ArityOp {
+  def apply(irpoly: IRPoly): IRPoly = {
+    return op2(op1(irpoly))
+  }
+}
 
 trait HasArity[T] {
   val arity: Int

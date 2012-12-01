@@ -5,6 +5,8 @@ import ppl.dsl.opticvx.model._
 import scala.collection.immutable.Seq
 import scala.collection.immutable.Set
 
+import ppl.dsl.opticvx.solvers._
+
 trait HasSize {
   val size: IRPoly
 }
@@ -157,6 +159,8 @@ trait DCPOps extends DCPOpsGlobal {
       objectiveVector,
       affineConstraint.almap, affineConstraint.offset,
       conicConstraint.almap, conicConstraint.offset, cone)
+
+    val tt = PrimalDualSubgradientSolverGen(problem)
   }
 
 }

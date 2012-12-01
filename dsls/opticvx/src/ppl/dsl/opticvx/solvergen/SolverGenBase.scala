@@ -32,10 +32,12 @@ trait SolverGen {
   private var code: Seq[SolverInstr] = null
   private var context: SolverContext = null  
 
+  /*
   implicit object AVectorLikeSVectorLocal extends AVectorLike[SVector] {
+    val arity: Int = context.arity
     def size(arg: SVector): IRPoly = arg.size
     def zero(size: IRPoly): SVector = SVectorZero(context, size)
-    def one(size: IRPoly): SVector = SVectorOne(context, size)
+    def one: SVector = SVectorOne(context)
     def add(arg1: SVector, arg2: SVector): SVector = SVectorAdd(arg1, arg2)
     def addfor(len: IRPoly, arg: SVector): SVector = SVectorAddFor(len, arg)
     def neg(arg: SVector): SVector = SVectorNeg(arg)
@@ -44,16 +46,16 @@ trait SolverGen {
     def cat(arg1: SVector, arg2: SVector): SVector = SVectorCat(arg1, arg2)
     def catfor(len: IRPoly, arg: SVector): SVector = SVectorCatFor(len, arg)
     def slice(arg: SVector, at: IRPoly, size: IRPoly): SVector = SVectorSlice(arg, at, size)
+
+    def arityOp(op: ArityOp): AVectorLike[SVector] = AVectorLikeSVector(context.arityOp(op))
   }
   import AVectorLikeSVectorLocal._
+  */
 
   case class SVariable(val idx: Int) {
     def :=(i: Int) {
       if(i == 0) {
         this := zero(variables(idx))
-      }
-      else if(i == 1) {
-        this := one(variables(idx))
       }
       else {
         throw new IRValidationException()

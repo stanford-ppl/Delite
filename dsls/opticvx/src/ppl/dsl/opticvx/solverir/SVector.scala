@@ -11,9 +11,10 @@ trait SVector extends HasArity[SVector] {
 }
 
 case class AVectorLikeSVector(val context: SolverContext) extends AVectorLike[SVector] {
+  val arity: Int = context.arity
   def size(arg: SVector): IRPoly = arg.size
   def zero(size: IRPoly): SVector = SVectorZero(context, size)
-  def one(size: IRPoly): SVector = SVectorOne(context, size)
+  def one: SVector = SVectorOne(context)
   def add(arg1: SVector, arg2: SVector): SVector = SVectorAdd(arg1, arg2)
   def addfor(len: IRPoly, arg: SVector): SVector = SVectorAddFor(len, arg)
   def neg(arg: SVector): SVector = SVectorNeg(arg)
@@ -22,6 +23,8 @@ case class AVectorLikeSVector(val context: SolverContext) extends AVectorLike[SV
   def cat(arg1: SVector, arg2: SVector): SVector = SVectorCat(arg1, arg2)
   def catfor(len: IRPoly, arg: SVector): SVector = SVectorCatFor(len, arg)
   def slice(arg: SVector, at: IRPoly, size: IRPoly): SVector = SVectorSlice(arg, at, size)
+
+  def arityOp(op: ArityOp): AVectorLike[SVector] = AVectorLikeSVector(context.arityOp(op))
 }
 
 case class SVectorRead(val context: SolverContext, val idx: Int) extends SVector {
@@ -38,9 +41,10 @@ case class SVectorZero(val context: SolverContext, val size: IRPoly) extends SVe
   def arityOp(op: ArityOp): SVector = SVectorZero(context.arityOp(op), size.arityOp(op))
 }
 
-case class SVectorOne(val context: SolverContext, val size: IRPoly) extends SVector {
-  val arity: Int = size.arity  
-  def arityOp(op: ArityOp): SVector = SVectorOne(context.arityOp(op), size.arityOp(op))
+case class SVectorOne(val context: SolverContext) extends SVector {
+  val arity: Int = context.arity
+  val size: IRPoly = IRPoly.const(1, arity)
+  def arityOp(op: ArityOp): SVector = SVectorOne(context.arityOp(op))
 }
 
 case class SVectorAdd(val arg1: SVector, val arg2: SVector) extends SVector {
