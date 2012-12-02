@@ -5,15 +5,8 @@ import ppl.dsl.opticvx.model._
 import ppl.dsl.opticvx.solverir._
 import scala.collection.immutable.Seq
 
-trait SolverGen {  
+trait SolverGenBase {  
   val problem: Problem
-
-  val A: Almap = problem.affineAlmap
-  val b: SVector = problem.affineOffset.translate(AVectorLikeSVectorLocal)
-  val F: Almap = problem.conicAlmap
-  val g: SVector = problem.conicOffset.translate(AVectorLikeSVectorLocal)
-  val c: SVector = problem.objective.translate(AVectorLikeSVectorLocal)
-  val cone: Cone = problem.conicCone
 
   val arity = problem.arity
   val varSize = problem.varSize
@@ -29,8 +22,21 @@ trait SolverGen {
     SVariable(variables.size - 1)
   }
 
+}
+
+trait SolverGenOps {
+  self: SolverGenBase => 
+
+  val context: SolverContext = null
+
+  val A: Almap = problem.affineAlmap
+  val b: SVector = problem.affineOffset.translate
+  val F: Almap = problem.conicAlmap
+  val g: SVector = problem.conicOffset.translate
+  val c: SVector = problem.objective.translate
+  val cone: Cone = problem.conicCone
+
   private var code: Seq[SolverInstr] = null
-  private var context: SolverContext = null  
 
   /*
   implicit object AVectorLikeSVectorLocal extends AVectorLike[SVector] {
@@ -91,7 +97,6 @@ trait SolverGen {
 
   def solver(): Solver = {
     code = Seq()
-    context = SolverContext(inputSize, variables)
     gen()
     Solver(inputSize, variables, code)
   }
