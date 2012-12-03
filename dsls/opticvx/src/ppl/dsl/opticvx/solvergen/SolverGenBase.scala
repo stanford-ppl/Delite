@@ -5,25 +5,80 @@ import ppl.dsl.opticvx.model._
 import ppl.dsl.opticvx.solverir._
 import scala.collection.immutable.Seq
 
-trait SolverGenBase {  
-  val problem: Problem
+trait SolverGen {
+  type Variables >: Null <: SGVariables
+  type Gen <: SGGen
 
-  val arity = problem.arity
-  val varSize = problem.varSize
-  val inputSize = problem.inputSize
-  val affineCstrtSize = problem.affineCstrtSize
-  val coneSize = problem.coneSize
+  trait SGVariables {
+    val problem: Problem
 
-  private var variables: Seq[IRPoly] = Seq()
+    type VariableType
 
-  def scalar: SVariable = vector(IRPoly.const(1, arity))
-  def vector(len: IRPoly): SVariable = {
-    variables = variables ++ Seq(len)
-    SVariable(variables.size - 1)
+    val arity = problem.arity
+    val varSize = problem.varSize
+    val inputSize = problem.inputSize
+    val affineCstrtSize = problem.affineCstrtSize
+    val coneSize = problem.coneSize
+
+    protected[SolverGen] var variables: Seq[IRPoly] = Seq()
+
+    def scalar: VariableType = vector(IRPoly.const(1, arity))
+    def vector(len: IRPoly): VariableType = {
+      variables = variables ++ Seq(len)
+      make_variable(variables.size - 1)
+    }
+
+    def make_variable(index: Int): VariableType
   }
 
+  trait SGGen extends Variables {
+
+    type VariableType = SVector
+
+    private val context: SolverContext = SolverContext(inputSize, variables)
+    private var code: Seq[SolverInstr] = Seq()
+
+    implicit val avlsvl = AVectorLikeSVector(context)
+
+    case class SVariable(val idx: Int) {
+      def :=(i: Int) {
+        if(i == 0) {
+          this := avlsvl.zero(variables(idx))
+        }
+        else {
+          throw new IRValidationException()
+        }
+      }
+      def :=(v: SVector) {
+        if(context == null) throw new IRValidationException()
+        code = code ++ Seq(SolverInstrWrite(context, idx, v))
+      }
+      def +=(v: SVector) {
+        this := avlsvl.add(variable2vector(this), v)
+      }
+      def -=(v: SVector) {
+        this := avlsvl.add(variable2vector(this), avlsvl.neg(v))
+      }
+    }
+
+    implicit def variable2vector(v: SVariable): SVector = {
+      if(context == null) throw new IRValidationException()
+      SVectorRead(context, v.idx)
+    }
+
+    class SVHackImpl(val t: SVector) {
+      def +(u: SVector) = avlsvl.add(t, u)
+      def -(u: SVector) = avlsvl.add(t, avlsvl.neg(u))
+      def unary_-() = avlsvl.neg(t)
+      def ++(u: SVector) = avlsvl.cat(t, u)
+      def apply(at: IRPoly, size: IRPoly) = avlsvl.slice(t, at, size)
+    }
+
+    implicit def sv2svhackimpl(t: SVector) = new SVHackImpl(t)
+  }
 }
 
+/*
 trait SolverGenOps {
   self: SolverGenBase => 
 
@@ -35,8 +90,6 @@ trait SolverGenOps {
   val g: SVector = problem.conicOffset.translate
   val c: SVector = problem.objective.translate
   val cone: Cone = problem.conicCone
-
-  private var code: Seq[SolverInstr] = null
 
   /*
   implicit object AVectorLikeSVectorLocal extends AVectorLike[SVector] {
@@ -57,32 +110,6 @@ trait SolverGenOps {
   }
   import AVectorLikeSVectorLocal._
   */
-
-  case class SVariable(val idx: Int) {
-    def :=(i: Int) {
-      if(i == 0) {
-        this := zero(variables(idx))
-      }
-      else {
-        throw new IRValidationException()
-      }
-    }
-    def :=(v: SVector) {
-      if(context == null) throw new IRValidationException()
-      code = code ++ Seq(SolverInstrWrite(context, idx, v))
-    }
-    def +=(v: SVector) {
-      this := (variable2vector(this) + v)
-    }
-    def -=(v: SVector) {
-      this := (variable2vector(this) - v)
-    }
-  }
-
-  implicit def variable2vector(v: SVariable): SVector = {
-    if(context == null) throw new IRValidationException()
-    SVectorRead(context, v.idx)
-  }
 
   // A hack to get around the double implicit in the almap-vector multiply
   class AlmapHackImpl(val almap: Almap) {
@@ -109,3 +136,4 @@ trait SolverGenOps {
     code = curcode ++ Seq(SolverInstrConverge(context, condition, code))
   }
 }
+*/

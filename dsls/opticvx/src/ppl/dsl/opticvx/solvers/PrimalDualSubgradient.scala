@@ -7,15 +7,16 @@ import ppl.dsl.opticvx.solvergen._
 import scala.collection.immutable.Seq
 
 
-case class PrimalDualSubgradientSolverGen(val problem: Problem) extends SolverGen {
-  val x = vector(varSize)
-  val v = vector(affineCstrtSize)
-  val y = vector(coneSize)
-  val Axb = vector(affineCstrtSize)
-  val Fxg = vector(coneSize)
-  val theta = scalar
-
-  def gen {
+trait PrimalDualSubgradientSolverGen extends SolverGen {
+  trait Variables extends SGVariables {
+    val x = vector(varSize)
+    val v = vector(affineCstrtSize)
+    val y = vector(coneSize)
+    val Axb = vector(affineCstrtSize)
+    val Fxg = vector(coneSize)
+    val theta = scalar
+  }
+  trait Gen extends SGGen {
     x := 0
     v := 0
     y := 0
