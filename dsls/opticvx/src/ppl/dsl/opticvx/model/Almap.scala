@@ -300,7 +300,7 @@ case class AlmapHCat(val arg1: Almap, val arg2: Almap) extends Almap {
     val arity: Int = this.arity
     if(size(x) != domain) throw new IRValidationException()
     arg1.mmpy(x(IRPoly.const(0, arity), arg1.domain)) +  
-      arg2.mmpy(x(arg1.domain, arg1.domain + arg2.domain))
+      arg2.mmpy(x(arg1.domain, arg2.domain))
   }
 
   def is0: Boolean = arg1.is0 && arg2.is0
