@@ -159,7 +159,7 @@ case class AVectorCatFor(val len: IRPoly, val arg: AVector) extends AVector {
 
   def arityOp(op: ArityOp): AVector = AVectorCatFor(len.arityOp(op), arg.arityOp(op))
 
-  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.catfor(len, arg.translate)
+  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.catfor(len, arg.translate(e.promote))
 }
 
 case class AVectorSlice(val arg: AVector, val at: IRPoly, val size: IRPoly) extends AVector {
@@ -181,5 +181,5 @@ case class AVectorAddFor(val len: IRPoly, val arg: AVector) extends AVector {
 
   def arityOp(op: ArityOp): AVector = AVectorAddFor(len.arityOp(op), arg.arityOp(op))
 
-  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.addfor(len, arg.translate)
+  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.addfor(len, arg.translate(e.promote))
 }

@@ -5,12 +5,15 @@ import ppl.dsl.opticvx.model._
 import ppl.dsl.opticvx.solverir._
 import scala.collection.immutable.Seq
 
-trait SolverGen {
+trait SolverGenBase {
   type Variables <: SGVariables
+  type Code <: SGCode
   type Gen <: SGGen
 
   trait SGVariables {
     val problem: Problem
+
+    println("SGVariables constructor.")
 
     type VariableType
 
@@ -20,7 +23,7 @@ trait SolverGen {
     val affineCstrtSize = problem.affineCstrtSize
     val coneSize = problem.coneSize
 
-    protected[SolverGen] var variables: Seq[IRPoly] = Seq()
+    protected[SolverGenBase] var variables: Seq[IRPoly] = Seq()
 
     def scalar: VariableType = vector(IRPoly.const(1, arity))
     def vector(len: IRPoly): VariableType = {
@@ -31,14 +34,25 @@ trait SolverGen {
     def make_variable(index: Int): VariableType
   }
 
-  trait SGGen extends Variables {
+  trait SGCode {
+    self: Variables =>
 
-    type VariableType = SVector
+    println("SGCode constructor.")
 
-    private val context: SolverContext = SolverContext(inputSize, variables)
-    private var code: Seq[SolverInstr] = Seq()
+    type VariableType = SVariable
+    def make_variable(index: Int): VariableType = SVariable(index)
+
+    protected[SolverGenBase] val context: SolverContext = SolverContext(inputSize, variables)
+    protected[SolverGenBase] var code: Seq[SolverInstr] = Seq()
 
     implicit val avlsvl = AVectorLikeSVector(context)
+
+    val A: Almap = problem.affineAlmap
+    val b: SVector = problem.affineOffset.translate
+    val F: Almap = problem.conicAlmap
+    val g: SVector = problem.conicOffset.translate
+    val c: SVector = problem.objective.translate
+    val cone: Cone = problem.conicCone
 
     case class SVariable(val idx: Int) {
       def :=(i: Int) {
@@ -75,6 +89,28 @@ trait SolverGen {
     }
 
     implicit def sv2svhackimpl(t: SVector) = new SVHackImpl(t)
+
+    class SALMHackImpl(val t: Almap) {
+      def *(u: SVariable) = t * variable2vector(u)
+    }
+
+    implicit def almap2salmhackimpl(t: Almap) = new SALMHackImpl(t)
+
+    def converge(condition: SVector)(body: =>Unit) {
+      if(condition.size != IRPoly.const(1, arity)) throw new IRValidationException()
+      val curcode: Seq[SolverInstr] = code
+      code = Seq()
+      body
+      code = curcode ++ Seq(SolverInstrConverge(context, condition, code))
+    }
+  }
+
+  trait SGGen extends SGCode {
+    self: Variables with Code =>
+
+    println("SGGen constructor.")
+
+    val solver = Solver(inputSize, variables, code)
   }
 }
 

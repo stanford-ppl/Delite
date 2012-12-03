@@ -160,7 +160,7 @@ trait DCPOps extends DCPOpsGlobal {
       affineConstraint.almap, affineConstraint.offset,
       conicConstraint.almap, conicConstraint.offset, cone)
 
-    val tt = PrimalDualSubgradientSolverGen(problem)
+    val tt = PrimalDualSubgradient.Gen(problem).solver
   }
 
 }
