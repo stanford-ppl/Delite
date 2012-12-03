@@ -6,7 +6,7 @@ import ppl.dsl.opticvx.solverir._
 import scala.collection.immutable.Seq
 
 trait SolverGen {
-  type Variables >: Null <: SGVariables
+  type Variables <: SGVariables
   type Gen <: SGGen
 
   trait SGVariables {
