@@ -13,8 +13,6 @@ trait SolverGenBase {
   trait SGVariables {
     val problem: Problem
 
-    println("SGVariables constructor.")
-
     type VariableType
 
     val arity = problem.arity
@@ -36,8 +34,6 @@ trait SolverGenBase {
 
   trait SGCode {
     self: Variables =>
-
-    println("SGCode constructor.")
 
     type VariableType = SVariable
     def make_variable(index: Int): VariableType = SVariable(index)
@@ -107,8 +103,6 @@ trait SolverGenBase {
 
   trait SGGen extends SGCode {
     self: Variables with Code =>
-
-    println("SGGen constructor.")
 
     val solver = Solver(inputSize, variables, code)
   }

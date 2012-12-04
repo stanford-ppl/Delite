@@ -10,8 +10,6 @@ import scala.collection.immutable.Seq
 object PrimalDualSubgradient extends SolverGenBase {
   trait Variables extends SGVariables {
 
-    println("Variables constructor.")
-
     val x = vector(varSize)
     val v = vector(affineCstrtSize)
     val y = vector(coneSize)
@@ -22,8 +20,6 @@ object PrimalDualSubgradient extends SolverGenBase {
   trait Code extends SGCode {
     self: Variables =>
 
-    println("Code constructor.")
-
     x := 0
     v := 0
     y := 0
@@ -32,7 +28,5 @@ object PrimalDualSubgradient extends SolverGenBase {
       Fxg := F*x + g
     }
   }
-  case class Gen(val problem: Problem) extends SGVariables with Variables with SGCode with Code with SGGen {
-    println("Gen constructor.")
-  }
+  case class Gen(val problem: Problem) extends SGVariables with Variables with SGCode with Code with SGGen
 }

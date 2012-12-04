@@ -163,5 +163,56 @@ trait DCPOps extends DCPOpsGlobal {
     val tt = PrimalDualSubgradient.Gen(problem).solver
   }
 
+  object SolveImplicit1
+  def solve(
+    ts_given: =>SolveGiven,
+    ts_over: =>SolveOver,
+    ts_let: =>SolveLet,
+    ts_where: =>SolveWhere,
+    ts_opt: =>SolveOpt)(implicit e: SolveImplicit1.type): Unit = solve(params(), ts_given, ts_over, ts_let, ts_where, ts_opt)
+
+  object SolveImplicit2
+  def solve(
+    ts_params: =>SolveParams,
+    ts_over: =>SolveOver,
+    ts_let: =>SolveLet,
+    ts_where: =>SolveWhere,
+    ts_opt: =>SolveOpt)(implicit e: SolveImplicit2.type): Unit = solve(ts_params, given(), ts_over, ts_let, ts_where, ts_opt)
+
+  object SolveImplicit3
+  def solve(
+    ts_over: =>SolveOver,
+    ts_let: =>SolveLet,
+    ts_where: =>SolveWhere,
+    ts_opt: =>SolveOpt)(implicit e: SolveImplicit3.type): Unit = solve(params(), given(), ts_over, ts_let, ts_where, ts_opt)
+
+  object SolveImplicit4
+  def solve(
+    ts_params: =>SolveParams,
+    ts_given: =>SolveGiven,
+    ts_over: =>SolveOver,
+    ts_where: =>SolveWhere,
+    ts_opt: =>SolveOpt)(implicit e: SolveImplicit4.type): Unit = solve(ts_params, ts_given, ts_over, let(), ts_where, ts_opt)
+
+  object SolveImplicit5
+  def solve(
+    ts_given: =>SolveGiven,
+    ts_over: =>SolveOver,
+    ts_where: =>SolveWhere,
+    ts_opt: =>SolveOpt)(implicit e: SolveImplicit5.type): Unit = solve(params(), ts_given, ts_over, let(), ts_where, ts_opt)
+
+  object SolveImplicit6
+  def solve(
+    ts_params: =>SolveParams,
+    ts_over: =>SolveOver,
+    ts_where: =>SolveWhere,
+    ts_opt: =>SolveOpt)(implicit e: SolveImplicit6.type): Unit = solve(ts_params, given(), ts_over, let(), ts_where, ts_opt)
+
+  object SolveImplicit7
+  def solve(
+    ts_over: =>SolveOver,
+    ts_where: =>SolveWhere,
+    ts_opt: =>SolveOpt)(implicit e: SolveImplicit7.type): Unit = solve(params(), given(), ts_over, let(), ts_where, ts_opt)
+
 }
 
