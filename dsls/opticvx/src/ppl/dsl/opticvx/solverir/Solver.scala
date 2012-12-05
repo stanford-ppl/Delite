@@ -19,6 +19,15 @@ case class Solver(
   }
 
   def arityOp(op: ArityOp) = Solver(input.arityOp(op), variables map (v => v.arityOp(op)), code map (c => c.arityOp(op)))
+
+  def run(params: Seq[Int], inputs: Seq[Double]): Seq[Seq[Double]] = {
+    if (inputs.size != input.eval(params)(IntLikeInt)) throw new IRValidationException()
+    val memory: Seq[Array[Double]] = variables map (p => new Array[Double](p.eval(params)(IntLikeInt)))
+    for (i <- code) {
+      i.run(params, inputs, memory)
+    }
+    memory map (a => Seq(a:_*))
+  }
 }
 
 case class SolverContext(val input: IRPoly, val variables: Seq[IRPoly]) extends HasArity[SolverContext] {
