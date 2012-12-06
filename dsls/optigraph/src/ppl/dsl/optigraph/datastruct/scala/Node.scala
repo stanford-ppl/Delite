@@ -26,9 +26,9 @@ class Node(val g: Graph) {
   def upEdges(visited: Array[Int]): GIterable[Edge] = { g.upEdges(this, visited) }
   /** During BFS: edges to downNeighbors */
   def downEdges(visited: Array[Int]): GIterable[Edge] = { g.downEdges(this, visited) }
-  
-  def numOutNeighbors: Int = { g.outNeighbors(this).length }
-  def numInNeighbors: Int = { g.inNeighbors(this).length }
+
+  def numOutNeighbors: Int = { g.outNeighbors(this)._size }
+  def numInNeighbors: Int = { g.inNeighbors(this)._size }
   def outDegree: Int = { g.outDegree(this) }
   def inDegree: Int = { g.inDegree(this) }
 }

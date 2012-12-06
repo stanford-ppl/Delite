@@ -115,7 +115,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
   // parallel filter
   case class GIterableFilter[T:Manifest](in: Exp[GIterable[T]], cond: Exp[T] => Exp[Boolean])
     extends DeliteOpFilter[T,T,GIterable[T]] {
-    override def alloc = GIterable()
+    override def alloc = new_empty_iterable()
     def func = e => e
     val size = copyTransformedOrElse(_.size)(dc_size(in))
   }
