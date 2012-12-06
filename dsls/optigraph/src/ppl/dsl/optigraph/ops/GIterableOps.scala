@@ -28,11 +28,6 @@ trait GIterableOps extends Variables {
 
   implicit def repGIterableToGIterableOps[T:Manifest](iter: Rep[GIterable[T]]) = new GIterableOpsCls(iter)
 
-  object GIterable {
-    def apply[A:Manifest]()(implicit ctx: SourceContext) = new_empty_iterable(DeliteArray[A](unit(0)), unit(0), unit(0))
-    def apply[A:Manifest](data: Rep[DeliteArray[A]])(implicit ctx: SourceContext) = new_empty_iterable(data, unit(0), darray_length(data))
-  }
-
   /** Operations of GIterables */
   class GIterableOpsCls[T:Manifest](iter: Rep[GIterable[T]]) {
     /** Parallel iteration */
