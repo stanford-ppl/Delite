@@ -2,7 +2,6 @@ package ppl.dsl.optigraph.datastruct.scala
 
 import collection.mutable.{HashMap, Map, MutableList}
 import scala.util.Random
-import scala.io.Source
 import java.io._
 
 /**
@@ -246,15 +245,15 @@ class Graph(val isDirected: Boolean)  {
   def inDegree(n: Node) = {
     if (!immutable) throw new RuntimeException("Operation avaliable for immutable graphs only")
     if(isDirected) {
-      nodeInEdges(n.id).length
+      nodeInEdges(n.id)._size //TODO use giterable_raw_size(g)
     } else {
-      nodeOutEdges(n.id).length
+      nodeOutEdges(n.id)._size //TODO use giterable_raw_size(g)
     }
   }
 
   def outDegree(n: Node) = {
     //if (!immutable) throw new RuntimeException("Operation avaliable for immutable graphs only")
-    nodeOutEdges(n.id).length
+    nodeOutEdges(n.id)._size //TODO use giterable_raw_size(g)
   }
 
   def upNeighbors(n: Node, visited: Array[Int]): GIterable[Node] = {
@@ -267,9 +266,9 @@ class Graph(val isDirected: Boolean)  {
     val inNbrs = inNeighbors(n)
     val upNbrs = collection.mutable.HashSet[Node]()
     var i = 0
-    while (i < inNbrs.length) {
-      if ((visited(inNbrs(i).id) < visited(n.id)) && (visited(inNbrs(i).id) != 0)) {
-        upNbrs.add(inNbrs(i))
+    while (i < inNbrs._size) { //TODO use giterable_raw_size(g) and giterable_raw_apply(g, i)
+      if ((visited(inNbrs._data(inNbrs._offset + i).id) < visited(n.id)) && (visited(inNbrs._data(inNbrs._offset + i).id) != 0)) {
+        upNbrs.add(inNbrs._data(inNbrs._offset + i))
       }
       i += 1
     }
@@ -287,9 +286,9 @@ class Graph(val isDirected: Boolean)  {
     val outNbrs = outNeighbors(n)
     val downNbrs = collection.mutable.HashSet[Node]()
     var i = 0
-    while (i < outNbrs.length) {
-      if (visited(outNbrs(i).id) > visited(n.id) || visited(outNbrs(i).id) == 0) {
-        downNbrs.add(outNbrs(i))
+    while (i < outNbrs._size) { //TODO use giterable_raw_size(g) and giterable_raw_apply(g, i)
+      if (visited(outNbrs._data(outNbrs._offset + i).id) > visited(n.id) || visited(outNbrs._data(outNbrs._offset + i).id) == 0) {
+        downNbrs.add(outNbrs._data(outNbrs._offset + i))
       }
       i += 1
     }
@@ -307,9 +306,9 @@ class Graph(val isDirected: Boolean)  {
     val inEdgs = inEdges(n)
     val upEdges = new MutableList[Edge]()
     var i = 0
-    while (i < inEdgs.length) {
-      if ((visited(inEdgs(i).from.id) < visited(n.id)) && (visited(inEdgs(i).from.id) != 0)) {
-        upEdges += inEdgs(i)
+    while (i < inEdgs._size) { //TODO use giterable_raw_size(g) and giterable_raw_apply(g, i)
+      if ((visited(inEdgs._data(inEdgs._offset + i).from.id) < visited(n.id)) && (visited(inEdgs._data(inEdgs._offset + i).from.id) != 0)) {
+        upEdges += inEdgs._data(inEdgs._offset + i)
       }
       i += 1
     }
@@ -326,9 +325,9 @@ class Graph(val isDirected: Boolean)  {
     val outEdgs = outEdges(n)
     val downEdges = new MutableList[Edge]()
     var i = 0
-    while (i < outEdgs.length) {
-      if (visited(outEdgs(i).to.id) > visited(n.id) || visited(outEdgs(i).to.id) == 0) {
-        downEdges += outEdgs(i)
+    while (i < outEdgs._size) { //TODO use giterable_raw_size(g) and giterable_raw_apply(g, i)
+      if (visited(outEdgs._data(outEdgs._offset + i).to.id) > visited(n.id) || visited(outEdgs._data(outEdgs._offset + i).to.id) == 0) {
+        downEdges += outEdgs._data(outEdgs._offset + i)
       }
       i += 1
     }
@@ -396,42 +395,42 @@ object Graph {
       var j = G.offsets(i)
       while(j < G.offsets(i+1)) {
         val toId = nbrs_ids(j)
-    	G.addEdge(gNodes(fromId), gNodes(toId))
-    	j += 1
+        G.addEdge(gNodes(fromId), gNodes(toId))
+        j += 1
       }
       i += 1
     }
     G.snapshot()
   }
 
-    def loadGraph(fileName: String): Graph = {
-      val input = Source.fromFile(fileName)
-      val lines = input.getLines()
+  def loadGraph(fileName: String): Graph = {
+    val input = Source.fromFile(fileName)
+    val lines = input.getLines()
 
-      val G = new Graph(true)
-      val nodemap = new HashMap[Int, Node]
+    val G = new Graph(true)
+    val nodemap = new HashMap[Int, Node]
 
-      for (line <- lines) {
-        if (line.charAt(0) != '#') {
-          val edges = line.split("\t").map(_.toInt)
+    for (line <- lines) {
+      if (line.charAt(0) != '#') {
+        val edges = line.split("\t").map(_.toInt)
 
-          if (!nodemap.contains(edges(0))) {
-            nodemap += edges(0) -> G.addNode
-          }
-
-          if (!nodemap.contains(edges(1))) {
-            nodemap += edges(1) -> G.addNode
-          }
-
-          G.addEdge(nodemap(edges(0)), nodemap(edges(1)))
-          //println("Added edge " + edges(0) + " to " + edges(1))
+        if (!nodemap.contains(edges(0))) {
+          nodemap += edges(0) -> G.addNode
         }
-      }
 
-      G.snapshot()
+        if (!nodemap.contains(edges(1))) {
+          nodemap += edges(1) -> G.addNode
+        }
+
+        G.addEdge(nodemap(edges(0)), nodemap(edges(1)))
+        //println("Added edge " + edges(0) + " to " + edges(1))
+      }
     }
 
-   def loadGraph_backup(fileName: String): Graph = {
+    G.snapshot()
+  }
+
+   def loadGraph_old(fileName: String): Graph = {
     val fis = new FileInputStream(fileName)
     val dis = new DataInputStream(fis)
     // skip first 12 bytes (assume the node/edge ids are 32-bit)
@@ -479,13 +478,13 @@ object Graph {
       while(j < G.offsets(i+1)) {
         val toId = nbrs_ids(j)
         G.nbrs(j) = G._nodes(toId)
-    	G._edges(j) = new Edge(G, G._nodes(fromId), G._nodes(toId))
+        G._edges(j) = new Edge(G, G._nodes(fromId), G._nodes(toId))
         G._edges(j).id = j
 
         // count how many in-coming edges to this node
         r_nbrs_pos(j) = G.r_offsets(toId)
         G.r_offsets(toId) += 1
-    	j += 1
+        j += 1
       }
       i += 1
     }
@@ -510,7 +509,7 @@ object Graph {
         val toId = nbrs_ids(j)
         G.r_nbrs(G.r_offsets(toId) + r_nbrs_pos(j)) = G._nodes(fromId)
         //println(" toId " + toId + " j " + j + " off " +G.r_offsets(toId) + " pos " + r_nbrs_pos(j) + " r_nbrs " + G.r_nbrs(G.r_offsets(toId) + r_nbrs_pos(j)))
-    	j += 1
+        j += 1
       }
       i += 1
     }
