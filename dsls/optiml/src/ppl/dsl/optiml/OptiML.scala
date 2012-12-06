@@ -4,12 +4,13 @@ import java.io._
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{Expressions, GenericFatCodegen, GenericCodegen}
-import ppl.delite.framework.{Config, DeliteApplication, DeliteInteractive, DeliteInteractiveRunner}
+import ppl.delite.framework.{Config, DeliteApplication, DeliteInteractive, DeliteInteractiveRunner, DeliteRestageOps, DeliteRestageOpsExp, DeliteRestageRunner}
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
 import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.opencl.TargetOpenCL
+import ppl.delite.framework.codegen.restage.{DeliteCodeGenRestage,TargetRestage}
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteOpenCLGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
 import ppl.delite.framework.datastructures._
@@ -45,12 +46,11 @@ trait OptiMLNoCSE extends Expressions {
 trait OptiMLApplicationRunner extends OptiMLApplicationRunnerBase with OptiMLExpOpt
 
 // ex. object GDARunner extends OptiMLApplicationRunner with GDA
-trait OptiMLApplicationRunnerBase extends OptiMLApplication with DeliteApplication
-
+trait OptiMLApplicationRunnerBase extends OptiMLApplication with DeliteApplication 
 // ex. trait GDA extends OptiMLApplication
-trait OptiMLApplication extends OptiLAApplication with OptiML with OptiMLLift with OptiMLLibrary {
+trait OptiMLApplication extends OptiLAApplication with OptiML with OptiMLLift with OptiMLLibrary with DeliteInteroperability {
   var args: Rep[Array[String]]
-  def main(): Unit
+  def main(): Unit  
 }
 
 trait OptiMLLibrary extends OptiMLKmeans with OptiMLLinReg {
@@ -60,11 +60,152 @@ trait OptiMLLibrary extends OptiMLKmeans with OptiMLLinReg {
 
 trait OptiMLInteractive extends OptiMLApplication with DeliteInteractive
 
-trait OptiMLInteractiveRunner extends OptiMLApplicationRunner with DeliteInteractiveRunner
+trait OptiMLInteractiveRunner extends OptiMLApplicationRunner with DeliteInteractiveRunner {
+  /*
+  case class Materialize[A](x: Any) extends Def[A]
+  
+  def materialize[R[X],A](x: Facade[R,A]): Exp[A] = {
+    // e.g. Materialize(OptiQL.Rep[DeliteArray[Int]])
+    // later, in compose, when OptiQL.Rep == OptiML.Rep, we unwrap this.
+    // the problem is the composition is static and OptiML+OptiQL scope will have a different IR than both of the original OptiML and OptiQL objects!
+    Materialize[A](x.body)
+  }  
+  */
+}
 
+// executes scope immediately
 object OptiML {
   def apply[R](b: => R) = new Scope[OptiMLInteractive, OptiMLInteractiveRunner, R](b)
+  
+  // allows combining with one extra scope
+  // def compose[A,AR](b: => Unit) = new Scope[OptiMLInteractive with A, OptiMLInteractiveRunner with AR, Unit](b)
 }
+
+// defines stuff visible outside of the scopes
+// can use structs and delite arrays as valid data to pass between scopes
+trait DeliteInteroperability {
+  
+  // ATTEMPT 1: define some abstract data type to pass data between scopes
+
+  // abstract class Facade
+  
+  // case class DeliteArrayFacade[A](a: A) extends Facade {
+  //   // def length = a.asInstanceOf[s.Rep[DeliteArray[Any]]].length // length is not defined in this scope..    
+  // }
+  
+  // lean on type inference very heavily
+  /*
+  class Facade[R[X],A](body: R[A])
+  
+  def facade[R[X],A](x: R[A]) = new Facade(x)
+  */
+  
+  /*
+  def materialize[R[X],A](x: Facade[R,A]) = {
+    // type-system hack - if R is not Exp, we are in trouble
+    // still won't work: it's the *wrong* Exp. what can we do?
+    //  x: OptiML1.Exp[DeliteArray[Int]]
+    
+    
+    // what if materialize constructs an IR node of the right type, which is unwrapped when the blocks are composed?
+    //  -- composed block has an IR type different than either of the individual block..
+    
+    //  can only materialize it inside a combined scope, when the Exps are the same!
+    // but this scope needs to be defined statically somehow..
+    
+    val rx = x.body.asInstanceOf[Rep[A]]
+    Predef.println("got: " + rx)
+    
+    throw new RuntimeException("--")
+  }
+  */
+  
+  
+  // ATTEMPT 2: try to stage the combined scopes as a single object with narrow visibility for each block
+  // PROBLEM: limited visibiility is not enough. rewrites from object B can still effect object A if mixed together..
+  /*
+  
+  def compose[A <: DeliteInterativeRunner,B <: DeliteApplication](b1: => Any)(b2: => Any)/*(implicit aToI: A => DeliteInteractive, aToIRunner: A => DeliteInteractiveRunner)*/ {
+    
+    val a = new Scope[A, A with DeliteStager, Any](b1) // stage b1 with A in scope only
+    
+    class B2 extends A with B with DeliteStager {
+      // for the input data of A to be the same Exp type as B, *while* staging B, we must stage B in the same object as A
+      // but now A's rewrites could possibly effect B!
+      
+      static = a // input data available to block 2 
+    }    
+  
+    val b = new Scope[B, B with DeliteStager, Any](b2) // stage b2 with B in scope only
+    
+    
+    val c = new Scope[A with B, A with B with DeliteStager, Any]
+    
+    // val z = () => { b1; b2 }    
+    // val globalCore = new Scope[A,B with DeliteStager,Any](z) 
+    
+    // how do we narrow the visible type for each block?
+    
+    // how do we set the output of the first block as the input (args) to the second?        
+  }
+  */
+  
+  // fundamentally, we have two conflicting goals:
+  //  1. we want to refer to a result from a previous staged block as a normal Rep in our scope
+  //  2. but we don't want to be in the same object as the other block due to possibly conflicting rewrites
+  
+  // problems with single object:
+  //  1. rewrites
+  //  2. namespace conflicts
+  //  3. transformation conflicts (can still be applied independently?)
+  
+  // what about the simpler problem of composing two blocks (not known ahead of time) into a single object, with narrow visibility for each block?
+  // in this case, we don't need to lower each object IR and then recombine, since they are the same IR (subject to the problems above)
+  //    - still no good way to limit the visibility of each block - has to be narrowed at call site (application), and then it is not isolated in a scope
+  
+  // the problem seems artificial though: Exp in the second scope is not the same as Exp in the first scope (except it is, more or less). The type system
+  // is what's binding our hands here, not anything fundamental.
+  // ideally, we want the two scopes to share the definition of Rep[T] = Exp[T], but nothing else, but to do that Exp[T] can't be object dependent
+    
+  
+  /*
+  def compose[A,B](b1: => Any, b2: => Any) {
+    
+  }
+  */  
+}
+
+// ATTEMPT 3: stage DSL scopes individually and generate re-stageable code
+// 
+// what if we only save the rhs of the lowered expression from the first scope, and reconstruct the sym in the second scope? how would we reconstruct it?
+// DeliteArrayNew(..., ..., ...) -> we'd actually want to execute these definitions from a serialized representation.. seems tough
+//    - but we could use program generation to create a function that would execute the appropriate case class constructors to reconstruct the IR
+//    - essentially serialize the IR out as a low-level Delite IR generator! When we are trying to stage block b, we first run (gen a), and set args to that.
+//
+// do we need a code generator for every IR node that essentially emits mirror? that seems terrible.
+// 
+// - first execution of the program:
+//    - stage block A independently. schedule result, and emitNode on each result to recreate the relevant low-level IR nodes.
+//    - set B args to some abstract placeholder for A??
+//    - stage block B independently. schedule result, and emitNode on each result to recreate the relevant low-level IR nodes.
+// 
+// - second execution of the program:
+//    - run func A to recreate A's results (now in a Delite-only base IR)
+//    - in same IR, run func B to recreate B's results
+// 
+
+// stages scope and generates re-stageable code
+
+trait OptiMLLower extends OptiMLApplication with DeliteRestageOps
+trait OptiMLLowerRunner extends OptiMLApplicationRunner with DeliteRestageRunner
+
+object OptiML_ {
+  def apply[R](b: => R) = new Scope[OptiMLLower, OptiMLLowerRunner, R](b)
+}
+
+// def compose(scopes: DeliteApplication*) = {
+//   // stage and execute the independent Delite apps
+// }
 
 
 /**
@@ -130,6 +271,7 @@ trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp 
   with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
   with GraphOpsExp with EdgeOpsExp with VertexOpsExp with VSetOpsExp
   with MultiloopTransformExp
+  with DeliteRestageOpsExp
   with DeliteAllOverridesExp {
 
   // this: OptiMLApplicationRunner => why doesn't this work?
@@ -141,6 +283,7 @@ trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp 
       case _:TargetCuda => new OptiMLCodeGenCuda{val IR: OptiMLExp.this.type = OptiMLExp.this}
       case _:TargetOpenCL => new OptiMLCodeGenOpenCL{val IR: OptiMLExp.this.type = OptiMLExp.this}
       case _:TargetC => new OptiMLCodeGenC{val IR: OptiMLExp.this.type = OptiMLExp.this} 
+      case _:TargetRestage => new OptiMLCodeGenRestage{val IR: OptiMLExp.this.type = OptiMLExp.this}
       case _ => err("optiml does not support this target")
     }
   }
@@ -207,6 +350,11 @@ trait OptiMLCodeGenBase extends OptiLACodeGenBase {
       }
     }
   }
+}
+
+// strategy is to inherit all of the base Scala generators and override what we need
+trait OptiMLCodeGenRestage extends OptiMLScalaCodeGenPkg with DeliteCodeGenRestage { 
+  val IR: DeliteApplication with OptiMLExp
 }
 
 trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenDeliteStruct

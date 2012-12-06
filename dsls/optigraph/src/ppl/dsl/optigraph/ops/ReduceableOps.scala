@@ -132,7 +132,8 @@ trait ReduceableOpsExp extends ReduceableOps with EffectExp {
   def red_getvalue[T:Manifest](r: Exp[Reduceable[T]]) = reflectPure(RedGetValue(r))
   def red_setvalue[T:Manifest](r: Exp[Reduceable[T]], x: Exp[T]) = reflectWrite(r)(RedSetValue(r,x))
    
-  def red_sum[T:Manifest:Numeric](r: Exp[Reduceable[T]], v: Exp[T]) = reflectWrite(r)(RedSum(r,v))
+  // def red_sum[T:Manifest:Numeric](r: Exp[Reduceable[T]], v: Exp[T]) = reflectWrite(r)(RedSum(r,v))
+  def red_sum[T:Manifest:Numeric](r: Exp[Reduceable[T]], v: Exp[T]) = r.setValue(r.value+v)  
   def red_product[T:Manifest:Numeric](r: Exp[Reduceable[T]], v: Exp[T]) = reflectWrite(r)(RedProd(r,v))
   def red_count(r: Exp[Reduceable[Int]], v: Exp[Boolean]) = reflectWrite(r)(RedCount(r,v))
   def red_min[T:Manifest:Ordering](r: Exp[Reduceable[T]], v: Exp[T]) = reflectWrite(r)(RedMin(r,v))

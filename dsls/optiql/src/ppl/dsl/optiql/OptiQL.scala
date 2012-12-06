@@ -8,7 +8,7 @@ import ppl.delite.framework.ops._
 import ppl.delite.framework.codegen.delite.overrides.DeliteAllOverridesExp
 import scala.virtualization.lms.internal.GenericFatCodegen
 import ppl.delite.framework.codegen.scala.TargetScala
-import ppl.delite.framework.{Config, DeliteApplication}
+import ppl.delite.framework.{Config, DeliteApplication, DeliteInteractive, DeliteInteractiveRunner}
 import ppl.dsl.optiql.user.applications._
 import java.io.{FileWriter, BufferedWriter, File}
 import ppl.delite.framework.codegen.{Utils, Target}
@@ -25,6 +25,9 @@ trait OptiQLScalaOpsPkg extends Base with MiscOps with OrderingOps with Primitiv
 trait OptiQL extends OptiQLScalaOpsPkg with HackOps with DataTableOps with QueryableOps with DateOps with OptiQLMiscOps with ResultOps with ApplicationOps {
   this: OptiQLApplication =>
 }
+
+trait OptiQLInteractive extends OptiQLApplication with DeliteInteractive
+trait OptiQLInteractiveRunner extends OptiQLApplicationRunner with DeliteInteractiveRunner
 
 /**
  * These are the lifted scala constructs, which convert a concrete type to a Rep type.

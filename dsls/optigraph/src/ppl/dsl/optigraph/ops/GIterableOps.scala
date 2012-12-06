@@ -81,8 +81,10 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
   
   // parallel iteration (no reduction assignments in the loop body)
   case class GIterableForeach[T:Manifest](in: Exp[GIterable[T]], func: Exp[T] => Exp[Unit])
+    // extends DeliteOpForeach[T] {
     extends DeliteOpForeachReduce[T] {
     val size = copyTransformedOrElse(_.size)(dc_size(in))
+    // def sync = n => List()
   }
   
   // parallel filter
@@ -301,6 +303,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
     // have to collect the effects inside the block and properly reflect them!
     val gf = GIterableForeach(iter, block) 
     reflectEffect(gf, summarizeEffects(gf.funcBody).star /*andAlso Simple()*/)  
+    // reflectEffect(gf, summarizeEffects(gf.body.asInstanceOf[DeliteForeachElem[_]].func).star /*andAlso Simple()*/) 
   }
   
   // sequential iteration
@@ -425,7 +428,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
   }
       
   override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
-    if (isGIterable(x)) { giterable_raw_insert(asGIterable(x),i,y); unit(true) }
+    if (isGIterable(x)) { giterable_raw_insert(asGIterable(x),dc_size(x),y); unit(true) }
     else super.dc_append(x,i,y)        
   }  
   

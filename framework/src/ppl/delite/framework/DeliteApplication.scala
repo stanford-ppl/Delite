@@ -12,6 +12,7 @@ import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
 import codegen.opencl.TargetOpenCL
 import codegen.scala.TargetScala
+import codegen.restage.TargetRestage
 import codegen.Target
 import ops.DeliteOpsExp
 import transform.DeliteTransform
@@ -28,6 +29,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   lazy val cudaTarget = new TargetCuda{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val cTarget = new TargetC{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val openclTarget = new TargetOpenCL{val IR: DeliteApplication.this.type = DeliteApplication.this}
+  lazy val restageTarget = new TargetRestage{val IR: DeliteApplication.this.type = DeliteApplication.this}
 
   var targets = List[DeliteApplicationTarget](scalaTarget)
   if(Config.generateCUDA)

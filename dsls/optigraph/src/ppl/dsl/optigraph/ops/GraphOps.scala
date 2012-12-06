@@ -253,6 +253,7 @@ trait GraphOpsExp extends GraphOps with EffectExp with NodeOps {
     case GraphFlip(g) => graph_flip(f(g))
     case GraphSnapshot(g) => graph_snapshot(f(g))
     case GraphLoad(fn) => graph_load(f(fn))
+    case GraphRandUniform(dir,nn,ne,se) => graph_randu(f(nn),f(ne),f(se))
     case Reflect(e@GraphNode(g,x), u, es) => reflectMirrored(Reflect(GraphNode(f(g),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GraphEdge(g,x), u, es) => reflectMirrored(Reflect(GraphEdge(f(g),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GraphNodes(g), u, es) => reflectMirrored(Reflect(GraphNodes(f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))
