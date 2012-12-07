@@ -44,16 +44,13 @@ Int) : Float {
     Foreach(G.Nodes) { s =>
       val triangles = Reduceable[Int](0)
       val total = Reduceable[Int](0)
-      val sNeighbors = s.OutNbrs.toSet()
 
       Foreach(s.InNbrs) { t =>
-        val tNeighbors = t.OutNbrs.toSet()
-        if (sNeighbors.Has(t)) {
-          Foreach(s.InNbrs.filter(n => n.OutNbrs.toSet().Has(t))) { u =>
-            if (sNeighbors.Has(u)) {
-              val uNeighbors = u.OutNbrs.toSet()
-              if (uNeighbors.Has(t)) {triangles += 1}
-              if (tNeighbors.Has(u)) {triangles += 1}
+        if (s.HasOutNbr(t)) {
+          Foreach(s.InNbrs.filter(n => n.HasOutNbr(t))) { u =>
+            if (s.HasOutNbr(u)) {
+              if (u.HasOutNbr(t)) {triangles += 1}
+              if (t.HasOutNbr(u)) {triangles += 1}
               total += 2
             }
           }
@@ -61,11 +58,11 @@ Int) : Float {
       }
       if (total.value < threshold) {
         LCC(s) = 0.0f
-        //println("Computed LCC = " + LCC(s))
+        println("Computed LCC = " + LCC(s))
         //println("Total (" + total.value + ") was less than threshold")
       } else {
         LCC(s) = (triangles.value.AsInstanceOf[Float]) / (total.value.AsInstanceOf[Float])
-        //println("Computed LCC = " + LCC(s) + " = " + triangles.value + " / " + total.value)
+        println("Computed LCC = " + LCC(s) + " = " + triangles.value + " / " + total.value)
       }
     }
   }
