@@ -5,6 +5,9 @@ import ppl.dsl.opticvx.model._
 import scala.collection.immutable.Seq
 import scala.collection.immutable.Set
 
+import ppl.dsl.opticvx.solvers._
+
+
 trait DCPOpsDefinite extends DCPOps {
   
   type ParamDesc = Int
@@ -18,4 +21,14 @@ trait DCPOpsDefinite extends DCPOps {
       x
       })
 
+  override def postsolve(problem: Problem, params: Seq[Int], inputs: Seq[InputDescDefinite]) {
+    val tt = PrimalDualSubgradient.Gen(problem).solver
+
+    var vvinputs: Seq[Double] = Seq()
+    for (i <- inputs) {
+      vvinputs = vvinputs ++ ((0 until i.size.eval(params)(IntLikeInt)) map i.data)
+    }
+
+    val vv = tt.run(params, vvinputs)
+  }
 }

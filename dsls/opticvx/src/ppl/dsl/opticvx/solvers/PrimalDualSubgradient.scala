@@ -23,6 +23,7 @@ object PrimalDualSubgradient extends SolverGenBase {
     x := 0
     v := 0
     y := 0
+    theta := 0
     converge(theta) {
       Axb := A*x + b
       Fxg := F*x + g
