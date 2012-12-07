@@ -68,16 +68,17 @@ Int) : Float {
   }
 
   def main() {
-    for (arg <- args) {
-      val start_time = wall_time()
-      val G = graph_load(arg)
-      val generation_time = wall_time() - start_time
-      val lccprop : Rep[NodeProperty[Float]] = NodeProperty[Float](G, 0.0f)
-      lcc(G, lccprop, 10)
-      val lcc_time = wall_time() - (generation_time + start_time)
-      val total_time = lcc_time + generation_time
-      println("file: " + arg + " = generation: " + generation_time + " lcc: " + lcc_time + " total: " + total_time)
-    }
+    //for (arg <- args) {
+    val arg = args(0)
+    val start_time = wall_time()
+    val G = graph_load(arg)
+    val generation_time = wall_time() - start_time
+    val lccprop : Rep[NodeProperty[Float]] = NodeProperty[Float](G, 0.0f)
+    lcc(G, lccprop, 10)
+    val lcc_time = wall_time() - (generation_time + start_time)
+    val total_time = lcc_time + generation_time
+    println("file: " + arg + " = generation: " + generation_time + " lcc: " + lcc_time + " total: " + total_time)
+    //}
   }
 }
 
