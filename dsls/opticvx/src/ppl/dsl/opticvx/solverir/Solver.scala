@@ -22,11 +22,11 @@ case class Solver(
 
   def run(params: Seq[Int], inputs: Seq[Double]): Seq[Seq[Double]] = {
     if (inputs.size != input.eval(params)(IntLikeInt)) throw new IRValidationException()
-    val memory: Seq[Array[Double]] = variables map (p => new Array[Double](p.eval(params)(IntLikeInt)))
+    var memory: Seq[Seq[Double]] = variables map (p => null)
     for (i <- code) {
-      i.run(params, inputs, memory)
+      memory = i.run(params, inputs, memory)
     }
-    memory map (a => Seq(a:_*))
+    memory
   }
 }
 
@@ -43,6 +43,8 @@ case class SolverContext(val input: IRPoly, val variables: Seq[IRPoly]) extends 
 
 trait SolverInstr extends HasArity[SolverInstr] {
   val context: SolverContext
+
+  def run(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Seq[Double]]
 }
 
 case class SolverInstrWrite(
@@ -56,6 +58,9 @@ case class SolverInstrWrite(
   if(src.context != context) throw new IRValidationException()
 
   def arityOp(op: ArityOp) = SolverInstrWrite(context.arityOp(op), dst, src.arityOp(op))
+
+  def run(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Seq[Double]] 
+    = memory.updated(dst, src.eval(params, inputs, memory))
 }
 
 case class SolverInstrConverge(
@@ -66,7 +71,18 @@ case class SolverInstrConverge(
   val arity: Int = context.arity
 
   if(condition.context != context) throw new IRValidationException()
+  if(condition.size != IRPoly.const(1, arity)) throw new IRValidationException()
 
   def arityOp(op: ArityOp) = SolverInstrConverge(context.arityOp(op), condition.arityOp(op), code map (c => c.arityOp(op)))
+
+  def run(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Seq[Double]] = {
+    var mem = memory
+    while(condition.eval(params, inputs, mem)(0) > 0.0) {
+      for(c <- code) {
+        mem = c.run(params, inputs, mem)
+      }
+    }
+    mem
+  }
 }
 
