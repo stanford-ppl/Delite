@@ -2,6 +2,7 @@ package ppl.dsl.optigraph.datastruct.scala
 
 import collection.mutable.{HashMap, Map, MutableList}
 import scala.util.Random
+import scala.io.Source
 import java.io._
 
 /**
