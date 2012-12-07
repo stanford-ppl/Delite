@@ -112,8 +112,12 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
 
   // parallel iteration (no reduction assignments in the loop body)
   case class GIterableForeach[T:Manifest](in: Exp[GIterable[T]], func: Exp[T] => Exp[Unit])
-    extends DeliteOpForeachReduce[T] {
+    extends DeliteOpForeach[T] {
+    //extends DeliteOpForeachReduce[T] {
     val size = copyTransformedOrElse(_.size)(dc_size(in))
+    def sync = n => List()
+
+    val mA = manifest[T]
   }
 
   // parallel filter
@@ -352,7 +356,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
   def iter_foreach_default[T:Manifest](iter: Exp[GIterable[T]], block: Exp[T] => Exp[Unit]) = {
     // have to collect the effects inside the block and properly reflect them!
     val gf = GIterableForeach(iter, block)
-    reflectEffect(gf, summarizeEffects(gf.funcBody).star /*andAlso Simple()*/)
+    reflectEffect(gf, summarizeEffects(gf.body.asInstanceOf[DeliteForeachElem[T]].func).star andAlso Simple())
   }
   def iter_contains[T:Manifest](iter: Exp[GIterable[T]], n: Exp[T]) = reflectPure(GIterableContains(iter, n))
 
