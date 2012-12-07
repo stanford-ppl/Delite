@@ -57,6 +57,9 @@ trait GIterableOps extends Variables {
     /** Returns the elements as a set */
     def toSet(): Rep[GSet[T]] = iter_toset(iter)
 
+    /* Returns true if the object is contained in the GIterable's array */
+    def contains(n: Rep[T]): Rep[Boolean] = iter_contains(iter, n)
+
     // accessors
     def length(implicit ctx: SourceContext) = giterable_raw_size(iter)
   }
@@ -78,6 +81,7 @@ trait GIterableOps extends Variables {
   def iter_any[T:Manifest](iter: Rep[GIterable[T]], block: Rep[T] => Rep[Boolean]): Rep[Boolean]
   def iter_anyIf[T:Manifest](iter: Rep[GIterable[T]], filter: Rep[T] => Rep[Boolean], block: Rep[T] => Rep[Boolean]): Rep[Boolean]
   def iter_toset[T:Manifest](iter: Rep[GIterable[T]]): Rep[GSet[T]]
+  def iter_contains[T:Manifest](iter: Rep[GIterable[T]], n: Rep[T]): Rep[Boolean]
 
   //TODO do this for all of the methods below
   def new_empty_iterable[T:Manifest](): Rep[GIterable[T]]
@@ -311,6 +315,9 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
   case class GIterableRawInsert[T:Manifest](x: Exp[GIterable[T]], i: Exp[Int], y: Exp[T])
     extends DeliteOpSingleWithManifest[T,Unit](reifyEffectsHere(giterable_insert_impl(x, i, y)))
 
+  case class GIterableContains[T:Manifest](iter: Exp[GIterable[T]], n: Exp[T])
+    extends DeliteOpSingleWithManifest[T,Boolean](reifyEffectsHere(giterable_contains_impl(iter, n)))
+
   //def new_empty_iterable[T:Manifest](data: Exp[DeliteArray[T]], offset: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(GIterableNew(data, offset, size))
   def new_empty_iterable[T:Manifest]() = reflectMutable(GIterableNewEmpty()(manifest[GIterable[T]]))
   def iter_sum[T:Manifest, A:Manifest:Numeric](iter: Exp[GIterable[T]], block: Exp[T] => Exp[A]) = reflectPure(GIterableSum(iter, block))
@@ -347,6 +354,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
     val gf = GIterableForeach(iter, block)
     reflectEffect(gf, summarizeEffects(gf.funcBody).star /*andAlso Simple()*/)
   }
+  def iter_contains[T:Manifest](iter: Exp[GIterable[T]], n: Exp[T]) = reflectPure(GIterableContains(iter, n))
 
   // sequential iteration
   def iter_for[T:Manifest](iter: Exp[GIterable[T]], filter: Option[Exp[T] => Exp[Boolean]], block: Exp[T] => Exp[Unit]) = {
@@ -409,6 +417,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
     case GIterableRawData(x) => giterable_raw_data(f(x))
     case GIterableSetRawData(x, g) => giterable_set_raw_data(f(x), f(g))
     case GIterableRawInsert(x,i,y) => giterable_raw_insert(f(x), f(i), f(y))
+    case GIterableContains(x, n) => iter_contains(f(x), f(n))
     //case Reflect(e@GIterableToList(x), u, es) => reflectMirrored(Reflect(GIterableToList(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableToSet(x), u, es) => reflectMirrored(Reflect(GIterableToSet(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     //case Reflect(e@GIterableNew(d, o, s), u, es) => reflectMirrored(Reflect(GIterableNew(d, o, s)(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -421,6 +430,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
     case Reflect(e@GIterableSetRawSize(x,s), u, es) => reflectMirrored(Reflect(GIterableSetRawSize(f(x),f(s)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableRawInsert(x,i,y), u, es) => reflectMirrored(Reflect(GIterableRawInsert(f(x),f(i),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableRawAlloc(x,s), u, es) => reflectMirrored(Reflect(GIterableRawAlloc(f(x),f(s))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GIterableContains(x,n), u, es) => reflectMirrored(Reflect(GIterableContains(f(x),f(n))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 

@@ -69,7 +69,8 @@ trait OptiGraphCompiler extends OptiGraph
   with ExceptionOps
   // -- kernel implementations
   with LanguageImplOpsStandard
-  with GIterableImplOpsStandard {
+  with GIterableImplOpsStandard
+  with NodeImplOpsStandard {
 
   this: OptiGraphApplication with OptiGraphExp =>
 }

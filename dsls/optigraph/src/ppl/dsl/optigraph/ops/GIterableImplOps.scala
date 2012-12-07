@@ -1,7 +1,7 @@
 package ppl.dsl.optigraph.ops
 
 import scala.virtualization.lms.common.ScalaOpsPkg
-import scala.virtualization.lms.common.{BaseExp, Base}
+import scala.virtualization.lms.common.{BaseExp, Base, BooleanOps}
 import ppl.dsl.optigraph.{GIterable, GSet}
 import ppl.dsl.optigraph.{OptiGraphLift, OptiGraphCompiler, OptiGraph}
 
@@ -9,6 +9,7 @@ trait GIterableImplOps { this: OptiGraph =>
   //def giterable_tolist_impl[A:Manifest](g: Rep[GIterable[A]]): Rep[List[A]]
   def giterable_toset_impl[A:Manifest](g: Rep[GIterable[A]]): Rep[GSet[A]]
   def giterable_insert_impl[A:Manifest](g: Rep[GIterable[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit]
+  def giterable_contains_impl[A:Manifest](g: Rep[GIterable[A]], n: Rep[A]): Rep[Boolean]
 }
 
 trait GIterableImplOpsStandard extends GIterableImplOps {
@@ -29,6 +30,11 @@ trait GIterableImplOpsStandard extends GIterableImplOps {
       i += 1
     }
     ns
+  }
+
+  def giterable_contains_impl[A:Manifest](g: Rep[GIterable[A]], n: Rep[A]): Rep[Boolean] = {
+    val data = giterable_raw_data(g)
+    data.map(e => e == n).reduce(boolean_or, false)
   }
 
   def giterable_insert_impl[A:Manifest](g: Rep[GIterable[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {
