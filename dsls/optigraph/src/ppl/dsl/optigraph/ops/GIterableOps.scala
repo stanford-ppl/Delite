@@ -494,7 +494,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
   }
 
   override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
-    if (isGIterable(x)) { giterable_raw_insert(asGIterable(x),i,y); unit(true) }
+    if (isGIterable(x)) { giterable_raw_insert(asGIterable(x),asGIterable(x).length,y); unit(true) }
     else super.dc_append(x,i,y)
   }
 
