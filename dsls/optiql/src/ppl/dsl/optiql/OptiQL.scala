@@ -15,6 +15,7 @@ import ppl.delite.framework.codegen.{Utils, Target}
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.codegen.delite.overrides._
 import ppl.delite.framework.transform.MultiloopSoATransformExp
+import ppl.delite.framework.{DeliteInteractive, DeliteInteractiveRunner}
 
 
 /**
@@ -28,6 +29,9 @@ trait OptiQLScalaOpsPkg extends Base with MiscOps with OrderingOps with Primitiv
 trait OptiQL extends OptiQLScalaOpsPkg with TableOps with QueryableOps with DateOps with OptiQLMiscOps with InputReaderOps with Types {
   this: OptiQLApplication =>
 }
+
+trait OptiQLInteractive extends OptiQLApplication with DeliteInteractive
+trait OptiQLInteractiveRunner extends OptiQLApplicationRunner with DeliteInteractiveRunner
 
 /**
  * These are the lifted scala constructs, which convert a concrete type to a Rep type.
@@ -57,7 +61,7 @@ trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with TableOpsEx
   with InputReaderOpsExp with InputReaderImplOpsStandard with DeliteCollectionOpsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DSArrayOpsExp with DeliteAllOverridesExp 
   with MultiloopSoATransformExp {
 
-  this: DeliteApplication with OptiQLApplication with OptiQLExp =>
+  this: DeliteApplication with OptiQLApplication =>
 
   def getCodeGenPkg(t: Target{val IR: OptiQLExp.this.type}) : GenericFatCodegen{val IR: OptiQLExp.this.type} = {
     t match {

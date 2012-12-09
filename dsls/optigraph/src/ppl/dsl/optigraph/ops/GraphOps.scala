@@ -2,7 +2,7 @@ package ppl.dsl.optigraph.ops
 
 import java.io.{PrintWriter}
 
-import reflect.Manifest
+import reflect.{Manifest,SourceContext}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 import ppl.dsl.optigraph._
@@ -239,6 +239,39 @@ trait GraphOpsExp extends GraphOps with EffectExp with NodeOps {
     //case GraphSnapshot(g) => Nil
     case _ => super.copySyms(e)
   }
+  
+  //////////////
+  // mirroring
+  
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case GraphNode(g,x) => graph_node(f(g),f(x))
+    case GraphEdge(g,x) => graph_edge(f(g),f(x))
+    case GraphNodes(g) => graph_nodes(f(g))
+    case GraphEdges(g) => graph_edges(f(g))
+    case GraphNumNodes(g) => graph_num_nodes(f(g))
+    case GraphNumEdges(g) => graph_num_edges(f(g))
+    case GraphFlip(g) => graph_flip(f(g))
+    case GraphSnapshot(g) => graph_snapshot(f(g))
+    case GraphLoad(fn) => graph_load(f(fn))
+    case GraphRandUniform(dir,nn,ne,se) => graph_randu(f(nn),f(ne),f(se))
+    case Reflect(e@GraphNode(g,x), u, es) => reflectMirrored(Reflect(GraphNode(f(g),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GraphEdge(g,x), u, es) => reflectMirrored(Reflect(GraphEdge(f(g),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GraphNodes(g), u, es) => reflectMirrored(Reflect(GraphNodes(f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GraphEdges(g), u, es) => reflectMirrored(Reflect(GraphEdges(f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GraphNumNodes(g), u, es) => reflectMirrored(Reflect(GraphNumNodes(f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GraphNumEdges(g), u, es) => reflectMirrored(Reflect(GraphNumEdges(f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GraphFlip(g), u, es) => reflectMirrored(Reflect(GraphFlip(f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GraphSnapshot(g), u, es) => reflectMirrored(Reflect(GraphSnapshot(f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GraphLoad(fn), u, es) => reflectMirrored(Reflect(GraphLoad(f(fn)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DGraphObjectNew(), u, es) => reflectMirrored(Reflect(DGraphObjectNew(), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@UGraphObjectNew(), u, es) => reflectMirrored(Reflect(UGraphObjectNew(), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GraphAddNode(g), u, es) => reflectMirrored(Reflect(GraphAddNode(f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GraphAddEdge(g,fr,to), u, es) => reflectMirrored(Reflect(GraphAddEdge(f(g),f(fr),f(to)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GraphFreeze(g), u, es) => reflectMirrored(Reflect(GraphFreeze(f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GraphRandUniform(dir,nn,ne,se), u, es) => reflectMirrored(Reflect(GraphRandUniform(f(dir),f(nn),f(ne),f(se)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
+  
 }
 
 

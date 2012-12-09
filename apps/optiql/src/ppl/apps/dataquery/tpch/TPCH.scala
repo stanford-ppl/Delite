@@ -2,6 +2,7 @@ package ppl.apps.dataquery.tpch
 
 import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
 
+object Tweeter extends OptiQLApplicationRunner with TweeterTrait
 object TPCHQ0 extends OptiQLApplicationRunner with TPCHQ0Trait
 object TPCHQ1 extends OptiQLApplicationRunner with TPCHQ1Trait
 object TPCHQ2 extends OptiQLApplicationRunner with TPCHQ2Trait
@@ -24,6 +25,7 @@ trait TPCHBaseTrait extends OptiQLApplication with Types {
   def loadPartSuppliers() = TableInputReader(tpchDataPath+"/partsupp.tbl", PartSupplier())
   def loadRegions() = TableInputReader(tpchDataPath+"/region.tbl", Region())
   def loadSuppliers() = TableInputReader(tpchDataPath+"/supplier.tbl", Supplier())
+  def loadTweets() = TableInputReader(tpchDataPath+"/tweet.tbl", Tweet())
   
   def query(): Rep[_]
   
@@ -36,6 +38,23 @@ trait TPCHBaseTrait extends OptiQLApplication with Types {
   }
 
 }
+
+trait TweeterTrait extends TPCHBaseTrait {
+  val queryName = "Tweet"
+  def query() = {
+    
+    val tweets = loadTweets()
+
+    val q = tweets Where(_.time >= Date("2008-01-01")) Where(_.language == "en") Select(l => new Result {
+      val fromId = l.fromId
+      val toId = l.toId
+      val text = l.text
+    })
+    q.printAsTable
+    
+  }
+}
+
 
 trait TPCHQ0Trait extends TPCHBaseTrait {
   val queryName = "Q0"

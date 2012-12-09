@@ -4,6 +4,28 @@ import ppl.dsl.optiql.OptiQLApplication
 
 trait Types { this: OptiQLApplication =>
 
+  type Tweet = Record {
+    val id: String
+    val time: Date
+    val fromId: Int
+    val toId: Int
+    val language: String
+    val text: String
+  }
+
+  def Tweet(_id: Rep[String], _time: Rep[Date], _fromId: Rep[Int], _toId: Rep[Int], _language: Rep[String], _text: Rep[String]): Rep[Tweet] = new Record {
+    val id = _id;
+    val time = _time;
+    val fromId = _fromId;
+    val toId = _toId;
+    val language = _language;
+    val text = _text;
+  }
+
+  def Tweet(): Rep[Tweet] = Tweet("", Date(""), 0, 0, "", "")
+ 
+  type TweetTable = Table[Tweet] 
+
   type LineItem = Record {
     val l_orderkey: Int
     val l_partkey: Int

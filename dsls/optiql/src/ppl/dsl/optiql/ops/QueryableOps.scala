@@ -226,7 +226,7 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp { this
   
 }
 
-trait QueryableOpsExpOpt extends QueryableOpsExp { this: OptiQLExp =>
+trait QueryableOpsExpOpt extends QueryableOpsExp { this: OptiQLExp with LiftPrimitives =>
 
   case class QueryableSelectWhere[T:Manifest, R:Manifest](in: Exp[Table[T]], func: Exp[T] => Exp[R], cond: Exp[T] => Exp[Boolean]) extends DeliteOpFilter[T, R, Table[R]] {
     override def alloc(len: Exp[Int]) = Table(len)

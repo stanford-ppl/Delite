@@ -4,7 +4,7 @@ import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication}
 import ppl.delite.framework.ops.DeliteOpsExp
-import reflect.Manifest
+import reflect.{Manifest,SourceContext}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 import ppl.dsl.optigraph._
@@ -39,7 +39,20 @@ trait EdgeOpsExp extends EdgeOps with EffectExp {
   def edge_from(e: Exp[Edge]) = reflectPure(EdgeFrom(e))
   def edge_to(e: Exp[Edge]) = reflectPure(EdgeTo(e))
   def edge_id(e: Exp[Edge]) = reflectPure(EdgeId(e))
-
+  
+  //////////////
+  // mirroring
+  
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case EdgeFrom(x) => edge_from(f(x))
+    case EdgeTo(x) => edge_to(f(x))
+    case EdgeId(x) => edge_id(f(x))
+    case Reflect(e@EdgeFrom(x), u, es) => reflectMirrored(Reflect(EdgeFrom(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@EdgeTo(x), u, es) => reflectMirrored(Reflect(EdgeTo(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@EdgeId(x), u, es) => reflectMirrored(Reflect(EdgeId(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??  
+  
 }
 
 trait BaseGenEdgeOps extends GenericNestedCodegen {

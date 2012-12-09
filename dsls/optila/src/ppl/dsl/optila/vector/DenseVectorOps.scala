@@ -177,7 +177,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
   }
 
   case class DenseVectorEmpty[A:Manifest]() extends DeliteStruct[DenseVector[A]] {
-    val elems = copyTransformedElems(collection.Seq("_data" -> DeliteArray.imm(0), "_length" -> 0, "_isRow" -> true))
+    val elems = copyTransformedElems(collection.Seq("_data" -> DeliteArray.imm(unit(0)), "_length" -> unit(0), "_isRow" -> unit(true)))
     val mA = manifest[A]
   }
 
@@ -526,7 +526,7 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
     //case Def(Reflect(e: DeliteOpZipWith[_,_,_,_], _,_)) => e.size // reasonable?
     //    case Def(e: DeliteOpDenseVectorLoop[A]) => e.size
     
-    //case Def(DenseVectorSlice(a, start, end)) => end - start
+    case Def(VectorSlice(a, start, end)) => end - start
     //case Def(DenseVectorMutableTrans(a)) => a.length
     //case Def(DenseVectorConcatenate(a,b)) => a.length + b.length   
     case Def(DenseVectorSort(a)) => a.length

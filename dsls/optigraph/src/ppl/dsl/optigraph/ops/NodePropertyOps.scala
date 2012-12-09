@@ -1,5 +1,6 @@
 package ppl.dsl.optigraph.ops
 
+import reflect.{Manifest, SourceContext}
 import ppl.delite.framework.ops._
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
@@ -108,7 +109,7 @@ trait NodePropertyOpsExp extends NodePropertyOps with VariablesExp with BaseFatE
   def nodeprop_defer[A:Manifest](np: Exp[NodeProperty[A]], n: Exp[Node], x: Exp[A]) = reflectWrite(np)(NodePropDefer(np, n.Id, x))
   def nodeprop_get_def[A:Manifest](np: Exp[NodeProperty[A]], idx: Exp[Int]) = reflectPure(NodePropGetDef(np, idx))
   def nodeprop_has_def[A:Manifest](np: Exp[NodeProperty[A]], idx: Exp[Int]) = reflectPure(NodePropHasDef(np, idx))
-  def nodeprop_clear_def[A:Manifest](np: Exp[NodeProperty[A]], idx: Exp[Int]) = reflectPure(NodePropClearDef(np, idx))
+  def nodeprop_clear_def[A:Manifest](np: Exp[NodeProperty[A]], idx: Exp[Int]) = reflectWrite(np)(NodePropClearDef(np, idx))
   def nodeprop_assignAll[A:Manifest](np: Exp[NodeProperty[A]]) = reflectWrite(np)(NodePropAssignAll(np))
   def nodeprop_assign[A:Manifest](np: Exp[NodeProperty[A]], n: Exp[Node]) = {
     val i = n.Id
@@ -117,6 +118,23 @@ trait NodePropertyOpsExp extends NodePropertyOps with VariablesExp with BaseFatE
       nodeprop_clear_def(np, i)
     }  
   }
+  
+  //////////////
+  // mirroring
+  
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case NodePropGetDef(np,i) => nodeprop_get_def(f(np),f(i))
+    case NodePropHasDef(np,i) => nodeprop_has_def(f(np),f(i))
+    case Reflect(e@NodePropObjectNew(g,s), u, es) => reflectMirrored(Reflect(NodePropObjectNew(f(g),f(s))(e.mNP), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodePropDefer(np,i,x), u, es) => reflectMirrored(Reflect(NodePropDefer(f(np),f(i),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodePropGetDef(np,i), u, es) => reflectMirrored(Reflect(NodePropGetDef(f(np),f(i)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodePropHasDef(np,i), u, es) => reflectMirrored(Reflect(NodePropHasDef(f(np),f(i)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodePropClearDef(np,i), u, es) => reflectMirrored(Reflect(NodePropClearDef(f(np),f(i)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodePropAssignAll(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with NodePropAssignAll(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodePropSetAll(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with NodePropSetAll(f(x),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
+  
 }
 
 trait BaseGenNodePropertyOps extends GenericFatCodegen {
