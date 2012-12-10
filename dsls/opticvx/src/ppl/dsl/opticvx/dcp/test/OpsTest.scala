@@ -23,6 +23,10 @@ object DCPOpsTestApp extends DCPOpsDefinite {
         (sumfor(n)((i) => y(i))) - x
       )
     )
+    println(l.resolve)
+    println(x.resolve)
+    println(y.resolve)
+    println(z.resolve)
 
     /*
     solve(

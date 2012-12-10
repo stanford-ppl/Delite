@@ -12,6 +12,7 @@ trait DCPOpsDefinite extends DCPOps {
   
   type ParamDesc = Int
   type InputDesc = InputDescDefinite
+  type ExprRT = Seq[Double]
 
   case class InputDescDefinite(val size: IRPoly, val data: (Int)=>Double) extends HasSize
 

@@ -14,9 +14,10 @@ trait DCPOps extends DCPOpsGlobal {
   
   type ParamDesc
   type InputDesc <: HasSize
+  type ExprRT >: Null
 
-  def cvxexpr(): Symbol[Expr] = new Symbol[Expr]()
-  def cvxparam(): Symbol[IRPoly] = new Symbol[IRPoly]()
+  def cvxexpr(): Symbol[Expr, ExprRT] = new Symbol[Expr, ExprRT]()
+  def cvxparam(): Symbol[IRPoly, Null] = new Symbol[IRPoly, Null]()
 
   def scalar: IRPoly = IRPoly.const(1, globalArity)
   def vector(size: IRPoly): IRPoly = size
@@ -49,31 +50,31 @@ trait DCPOps extends DCPOpsGlobal {
   }
 
   class SolveParams(val params: Seq[ParamBinding])
-  class ParamBinding(val param: ParamDesc, val symbol: Symbol[IRPoly])
+  class ParamBinding(val param: ParamDesc, val symbol: Symbol[IRPoly, Null])
 
   def params(params: ParamBinding*): SolveParams = new SolveParams(Seq(params:_*))
-  implicit def tuple2parambinding(tpl: Tuple2[ParamDesc, Symbol[IRPoly]]): ParamBinding
+  implicit def tuple2parambinding(tpl: Tuple2[ParamDesc, Symbol[IRPoly, Null]]): ParamBinding
     = new ParamBinding(tpl._1, tpl._2)
 
   class SolveGiven(val inputs: Seq[InputBinding])
-  class InputBinding(val input: InputDesc, val symbol: Symbol[Expr])
+  class InputBinding(val input: InputDesc, val symbol: Symbol[Expr, ExprRT])
 
   def given(inputs: InputBinding*): SolveGiven = new SolveGiven(Seq(inputs:_*))
-  implicit def tuple2inputbinding(tpl: Tuple2[InputDesc, Symbol[Expr]]): InputBinding
+  implicit def tuple2inputbinding(tpl: Tuple2[InputDesc, Symbol[Expr, ExprRT]]): InputBinding
     = new InputBinding(tpl._1, tpl._2)
 
   class SolveOver(val vars: Seq[VarBinding])
-  class VarBinding(val size: IRPoly, val symbol: Symbol[Expr])
+  class VarBinding(val size: IRPoly, val symbol: Symbol[Expr, ExprRT])
 
   def over(vars: VarBinding*): SolveOver = new SolveOver(Seq(vars:_*))
-  implicit def tuple2varbinding(tpl: Tuple2[IRPoly, Symbol[Expr]]): VarBinding
+  implicit def tuple2varbinding(tpl: Tuple2[IRPoly, Symbol[Expr, ExprRT]]): VarBinding
     = new VarBinding(tpl._1, tpl._2)
 
   class SolveLet(val exprs: Seq[ExprBinding])
-  class ExprBinding(val expr: Expr, val symbol: Symbol[Expr])
+  class ExprBinding(val expr: Expr, val symbol: Symbol[Expr, ExprRT])
 
   def let(exprs: ExprBinding*): SolveLet = new SolveLet(Seq(exprs:_*))
-  implicit def tuple2exprbinding(tpl: Tuple2[Expr, Symbol[Expr]]): ExprBinding
+  implicit def tuple2exprbinding(tpl: Tuple2[Expr, Symbol[Expr, ExprRT]]): ExprBinding
     = new ExprBinding(tpl._1, tpl._2)
 
   class SolveWhere(val constraints: Seq[Constraint])
