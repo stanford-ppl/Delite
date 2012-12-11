@@ -26,7 +26,9 @@ sealed trait Almap extends HasArity[Almap] {
 
   def mmpycheck[V <: HasArity[V]](v: V)(implicit e: AVectorLike[V]): V = {
     if(e.size(v) != codomain) {
-      println(e)
+      println(e.size(v))
+      println(codomain)
+      println(domain)
       throw new IRValidationException()
     }
     v
@@ -172,7 +174,7 @@ case class AlmapScaleInput(val arg: Almap, val scale: IRPoly) extends Almap {
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
     if(size(x) != domain) throw new IRValidationException()
-    scaleinput(x, scale)
+    scaleinput(arg.mmpy(x), scale)
   }
 
   def is0: Boolean = arg.is0
@@ -195,7 +197,7 @@ case class AlmapScaleConstant(val arg: Almap, val scale: Double) extends Almap {
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
     if(size(x) != domain) throw new IRValidationException()
-    scaleconstant(x, scale)
+    scaleconstant(arg.mmpy(x), scale)
   }
 
   def is0: Boolean = arg.is0 || (scale == 0)

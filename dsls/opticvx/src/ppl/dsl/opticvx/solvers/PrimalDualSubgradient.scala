@@ -33,14 +33,14 @@ object PrimalDualSubgradient extends SolverGenBase {
     v := 0
     y := 0
     J := 1
+    Axb := A*x + b
+    Fxg := F*x + g
+    cTxbTvgTy := dot(c,x) + dot(b,v) + dot(g,y)
+    ATvFTyc := A.T*v + F.T*y - c
+    pvFxg := Fxg - cone.project(Fxg)
+    pvy := y - cone.conj.project(y)
+    J := norm2(cTxbTvgTy) + norm2(Axb) + norm2(ATvFTyc) + norm2(pvFxg) + norm2(pvy)
     converge(J) {
-      Axb := A*x + b
-      Fxg := F*x + g
-      cTxbTvgTy := dot(c,x) + dot(b,v) + dot(g,y)
-      ATvFTyc := A.T*v + F.T*y - c
-      pvFxg := Fxg - cone.project(Fxg)
-      pvy := y - cone.conj.project(y)
-      J := norm2(cTxbTvgTy) + norm2(Axb) + norm2(ATvFTyc) + norm2(pvFxg) + norm2(pvy)
       GJx := c*cTxbTvgTy + A.T*Axb + F.T*pvFxg
       GJy := g*cTxbTvgTy + F*ATvFTyc + pvy
       GJv := b*cTxbTvgTy + A*ATvFTyc
@@ -49,6 +49,13 @@ object PrimalDualSubgradient extends SolverGenBase {
       x := x - GJx * alpha
       y := y - GJy * alpha
       v := v - GJv * alpha
+      Axb := A*x + b
+      Fxg := F*x + g
+      cTxbTvgTy := dot(c,x) + dot(b,v) + dot(g,y)
+      ATvFTyc := A.T*v + F.T*y - c
+      pvFxg := Fxg - cone.project(Fxg)
+      pvy := y - cone.conj.project(y)
+      J := norm2(cTxbTvgTy) + norm2(Axb) + norm2(ATvFTyc) + norm2(pvFxg) + norm2(pvy)
     }
   }
   case class Gen(val problem: Problem) extends SGVariables with Variables with SGCode with Code with SGGen

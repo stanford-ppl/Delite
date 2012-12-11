@@ -219,7 +219,7 @@ case class SVectorSqrt(val arg: SVector) extends SVector {
   def eval(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Double] = {
     val v = arg.eval(params, inputs, memory)
     if(v.size != 1) throw new IRValidationException()
-    Seq(Math.sqrt(v(0)))
+    Seq(scala.math.sqrt(v(0)))
   }
 }
 

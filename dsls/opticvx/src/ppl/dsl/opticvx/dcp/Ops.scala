@@ -25,6 +25,11 @@ trait DCPOps extends DCPOpsGlobal {
   implicit def int2irpoly(i: Int) = IRPoly.const(i, globalArity)
   implicit def double2expr(x: Double) = Expr.const(x, globalInputSize, globalVarSize)
 
+  def in_secondorder_cone(x: Expr, z: Expr): Constraint = {
+    if(z.size != IRPoly.const(1, globalArity)) throw new IRValidationException()
+    ConicConstraint(Expr.cat(z, x), ConeSecondOrder(x.size))
+  }
+
   def sumfor(len: IRPoly)(fx: (IRPoly)=>Expr): Expr = {
     if(len.arity != globalArity) throw new IRValidationException()
     globalArityPromote()
@@ -48,6 +53,8 @@ trait DCPOps extends DCPOpsGlobal {
     globalArityDemote()
     Constraint.catfor(len, cxfx)
   }
+
+  def cat(x1: Expr, x2: Expr): Expr = Expr.cat(x1, x2)
 
   class SolveParams(val params: Seq[ParamBinding])
   class ParamBinding(val param: ParamDesc, val symbol: Symbol[IRPoly, Null])

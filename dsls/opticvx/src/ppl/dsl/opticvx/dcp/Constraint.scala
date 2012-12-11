@@ -19,7 +19,11 @@ case class AffineConstraint(val expr: Expr) extends Constraint {
 case class ConicConstraint(val expr: Expr, val cone: Cone) extends Constraint {
   val arity: Int = expr.arity
   val size: IRPoly = expr.size
-  if(expr.size != cone.size) throw new IRValidationException()
+  if(expr.size != cone.size) {
+    println(expr.size)
+    println(cone.size)
+    throw new IRValidationException()
+  }
   def arityOp(op: ArityOp): Constraint = ConicConstraint(expr.arityOp(op), cone.arityOp(op))
 }
 

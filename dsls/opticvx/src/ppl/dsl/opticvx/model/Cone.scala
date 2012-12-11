@@ -48,18 +48,22 @@ case class ConeSecondOrder(val dim: IRPoly) extends Cone {
   if (size.arity != arity) throw new IRValidationException()
 
   def project_eval(params: Seq[Int], v: Seq[Double]): Seq[Double] = {
+    //println("in: " + v.toString)
     if(v.size != size.eval(params)(IntLikeInt)) throw new IRValidationException()
     val vn2 = v.drop(1).foldLeft(0.0)((b,a) => b+a*a)
     val v0 = v(0)
-    if((v0 < 0)&&(v0*v0 >= vn2)) {
-      for (i <- 0 until v.size) yield 0.0
+    if((v0 <= 0)&&(v0*v0 >= vn2)) {
+      //println("out: " + ((0 until v.size) map (a => 0.0)).toString)
+      return (0 until v.size) map (a => 0.0)
     }
-    else if((v0 > 0)&&(v0*v0 >= vn2)) {
-      v
+    else if((v0 >= 0)&&(v0*v0 >= vn2)) {
+      //println("out: " + v.toString)
+      return v
     }
     else {
-      val scl = (1 + v0/Math.sqrt(vn2))/2
-      Seq(scl * Math.sqrt(vn2)) ++ v.drop(1).map(a => scl*a)
+      val scl = (1 + v0/scala.math.sqrt(vn2))/2
+      //println("out: " + (Seq(scl * scala.math.sqrt(vn2)) ++ v.drop(1).map(a => scl*a)).toString)
+      return Seq(scl * scala.math.sqrt(vn2)) ++ v.drop(1).map(a => scl*a)
     }
   }
 }
