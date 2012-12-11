@@ -160,10 +160,10 @@ trait DCPOps extends DCPOpsGlobal {
       affineConstraint.almap, affineConstraint.offset,
       conicConstraint.almap, conicConstraint.offset, cone)
 
-    postsolve(problem, s_params.params map (p => p.param), s_given.inputs map (i => i.input))
+    postsolve(problem, s_params.params map (p => p.param), s_given.inputs map (i => i.input), (s_given.inputs map (p => p.symbol)) ++ (s_over.vars map (p => p.symbol)) ++ (s_let.exprs map (p => p.symbol)))
   }
 
-  def postsolve(problem: Problem, params: Seq[ParamDesc], inputs: Seq[InputDesc]) { }
+  def postsolve(problem: Problem, params: Seq[ParamDesc], inputs: Seq[InputDesc], syms: Seq[Symbol[Expr, ExprRT]]) { }
 
   object SolveImplicit1
   def solve(

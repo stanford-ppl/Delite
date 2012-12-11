@@ -6,6 +6,7 @@ import scala.collection.immutable.Seq
 import scala.collection.immutable.Set
 
 import ppl.dsl.opticvx.solvers._
+import ppl.dsl.opticvx.solverir._
 
 
 trait DCPOpsDefinite extends DCPOps {
@@ -22,7 +23,7 @@ trait DCPOpsDefinite extends DCPOps {
       x
       })
 
-  override def postsolve(problem: Problem, params: Seq[Int], inputs: Seq[InputDescDefinite]) {
+  override def postsolve(problem: Problem, params: Seq[Int], inputs: Seq[InputDescDefinite], syms: Seq[Symbol[Expr, ExprRT]]) {
     val tt = PrimalDualSubgradient.Gen(problem).solver
 
     var vvinputs: Seq[Double] = Seq()
@@ -31,5 +32,15 @@ trait DCPOpsDefinite extends DCPOps {
     }
 
     val vv = tt.run(params, vvinputs)
+
+    for(s <- syms) {
+      val x = s.binding
+      val scontext = SolverContext(tt.input, Seq(tt.variables(0)))
+      val avlsv = AVectorLikeSVector(scontext)
+      val sv = SVectorAdd(
+        x.offset.translate(avlsv),
+        x.almap.mmpy(SVectorRead(scontext, 0): SVector)(avlsv))
+      s.rset(sv.eval(params, vvinputs, Seq(vv(0))))
+    }
   }
-}
+};

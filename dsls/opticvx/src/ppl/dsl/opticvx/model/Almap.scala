@@ -25,7 +25,10 @@ sealed trait Almap extends HasArity[Almap] {
   def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V
 
   def mmpycheck[V <: HasArity[V]](v: V)(implicit e: AVectorLike[V]): V = {
-    if(e.size(v) != codomain) throw new IRValidationException()
+    if(e.size(v) != codomain) {
+      println(e)
+      throw new IRValidationException()
+    }
     v
   }
 

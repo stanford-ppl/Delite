@@ -55,6 +55,9 @@ trait SolverGenBase {
         if(i == 0) {
           this := avlsvl.zero(variables(idx))
         }
+        else if(i == 1) {
+          this := avlsvl.one
+        }
         else {
           throw new IRValidationException()
         }
@@ -82,9 +85,12 @@ trait SolverGenBase {
       def unary_-() = avlsvl.neg(t)
       def ++(u: SVector) = avlsvl.cat(t, u)
       def apply(at: IRPoly, size: IRPoly) = avlsvl.slice(t, at, size)
+      def *(u: SVector) = SVectorMpy(t, u)
+      def /(u: SVector) = SVectorDiv(t, u)
     }
 
     implicit def sv2svhackimpl(t: SVector) = new SVHackImpl(t)
+    implicit def svar2svhackimpl(t: SVariable) = new SVHackImpl(variable2vector(t))
 
     class SALMHackImpl(val t: Almap) {
       def *(u: SVariable) = t * variable2vector(u)
@@ -99,6 +105,16 @@ trait SolverGenBase {
       body
       code = curcode ++ Seq(SolverInstrConverge(context, condition, code))
     }
+
+    def norm2(arg: SVector) = SVectorNorm2(arg)
+    def sqrt(arg: SVector) = SVectorSqrt(arg)
+    def dot(arg1: SVector, arg2: SVector) = SVectorDot(arg1, arg2)
+
+    class ConeHackImpl(val c: Cone) {
+      def project(t: SVector): SVector = SVectorProjCone(t, c)
+    }
+
+    implicit def cone2conehackimpl(c: Cone) = new ConeHackImpl(c)
   }
 
   trait SGGen extends SGCode {

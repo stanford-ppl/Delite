@@ -5,6 +5,25 @@ import ppl.dsl.opticvx.dcp._
 
 object DCPOpsTestApp extends DCPOpsDefinite {
   def main(args: Array[String]) {
+    val x = cvxexpr()
+    val y = cvxexpr()
+    solve(
+      params(),
+      given(),
+      over(scalar -> x, scalar -> y),
+      let(),
+      where(
+        x * 3 >= 2,
+        y - x >= 1
+      ),
+      minimize(
+        y
+      )
+    )
+    println(x.resolve)
+    println(y.resolve)
+
+    /*
     val n = cvxparam()
     val l = cvxexpr()
     val x = cvxexpr()
@@ -27,21 +46,6 @@ object DCPOpsTestApp extends DCPOpsDefinite {
     println(x.resolve)
     println(y.resolve)
     println(z.resolve)
-
-    /*
-    solve(
-      params(),
-      given(),
-      over(scalar -> x, vector(input.length) -> y),
-      let(x + x -> z),
-      where(
-        cfor(input.length)((n) => (y(n) <= x)),
-        x >= 0
-      ),
-      minimize(
-        sum(input.length)((n) => y(n)*input(n)) - x
-      )
-    )
     */
   }
 }

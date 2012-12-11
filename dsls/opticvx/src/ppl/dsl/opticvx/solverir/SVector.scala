@@ -189,3 +189,116 @@ case class SVectorAddFor(val len: IRPoly, val arg: SVector) extends SVector {
     rv
   }
 }
+
+// NON-LINEAR OPERATIONS
+
+// Norm squared of a vector
+case class SVectorNorm2(val arg: SVector) extends SVector {
+  val arity: Int = arg.arity
+  val size: IRPoly = IRPoly.const(1, arity)
+  val context: SolverContext = arg.context
+
+  def arityOp(op: ArityOp): SVector = SVectorNorm2(arg.arityOp(op))
+
+  def eval(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Double] = {
+    val v = arg.eval(params, inputs, memory)
+    Seq(v.foldLeft(0.0)((b, a) => b+a*a))
+  }
+}
+
+// Square root of a scalar
+case class SVectorSqrt(val arg: SVector) extends SVector {
+  val arity: Int = arg.arity
+  val size: IRPoly = IRPoly.const(1, arity)
+  val context: SolverContext = arg.context
+
+  if(arg.size != IRPoly.const(1, arity)) throw new IRValidationException()
+
+  def arityOp(op: ArityOp): SVector = SVectorSqrt(arg.arityOp(op))
+
+  def eval(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Double] = {
+    val v = arg.eval(params, inputs, memory)
+    if(v.size != 1) throw new IRValidationException()
+    Seq(Math.sqrt(v(0)))
+  }
+}
+
+// Dot product
+case class SVectorDot(val arg1: SVector, val arg2: SVector) extends SVector {
+  val arity: Int = arg1.arity
+  val size: IRPoly = IRPoly.const(1, arity)
+  val context: SolverContext = arg1.context
+
+  if(arg1.size != arg2.size) throw new IRValidationException()
+  if(arg1.context != arg2.context) throw new IRValidationException()
+
+  def arityOp(op: ArityOp): SVector = SVectorDot(arg1.arityOp(op), arg2.arityOp(op))
+
+  def eval(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Double] = {
+    val v1 = arg1.eval(params, inputs, memory)
+    val v2 = arg2.eval(params, inputs, memory)
+    if(v1.size != v2.size) throw new IRValidationException()
+    var acc: Double = 0.0
+    for (i <- 0 until v1.size) {
+      acc += v1(i)*v2(i)
+    }
+    Seq(acc)
+  }
+}
+
+// Division of a vector by a scalar
+case class SVectorDiv(val arg: SVector, val scale: SVector) extends SVector {
+  val arity: Int = arg.arity
+  val size: IRPoly = arg.size
+  val context: SolverContext = arg.context
+
+  if(scale.size != IRPoly.const(1, arity)) throw new IRValidationException()
+  if(arg.context != scale.context) throw new IRValidationException()
+
+  def arityOp(op: ArityOp): SVector = SVectorDiv(arg.arityOp(op), scale.arityOp(op))
+
+  def eval(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Double] = {
+    val va = arg.eval(params, inputs, memory)
+    val vs = scale.eval(params, inputs, memory)
+    if(vs.size != 1) throw new IRValidationException()
+    va map (a => a / vs(0))
+  }
+}
+
+
+// Multiplication of a vector by a scalar
+case class SVectorMpy(val arg: SVector, val scale: SVector) extends SVector {
+  val arity: Int = arg.arity
+  val size: IRPoly = arg.size
+  val context: SolverContext = arg.context
+
+  if(scale.size != IRPoly.const(1, arity)) throw new IRValidationException()
+  if(arg.context != scale.context) throw new IRValidationException()
+
+  def arityOp(op: ArityOp): SVector = SVectorMpy(arg.arityOp(op), scale.arityOp(op))
+
+  def eval(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Double] = {
+    val va = arg.eval(params, inputs, memory)
+    val vs = scale.eval(params, inputs, memory)
+    if(vs.size != 1) throw new IRValidationException()
+    va map (a => a * vs(0))
+  }
+}
+
+case class SVectorProjCone(val arg: SVector, val cone: Cone) extends SVector {
+  val arity: Int = arg.arity
+  val size: IRPoly = arg.size
+  val context: SolverContext = arg.context
+
+  if(arg.size != cone.size) throw new IRValidationException()
+
+  def arityOp(op: ArityOp): SVector = SVectorProjCone(arg.arityOp(op), cone.arityOp(op))
+
+  def eval(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Double] = {
+    val v = arg.eval(params, inputs, memory)
+    cone.project_eval(params, v)
+  }
+}
+
+
+

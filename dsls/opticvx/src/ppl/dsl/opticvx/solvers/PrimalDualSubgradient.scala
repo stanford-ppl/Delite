@@ -15,7 +15,16 @@ object PrimalDualSubgradient extends SolverGenBase {
     val y = vector(coneSize)
     val Axb = vector(affineCstrtSize)
     val Fxg = vector(coneSize)
-    val theta = scalar
+    val cTxbTvgTy = scalar
+    val ATvFTyc = vector(varSize)
+    val pvFxg = vector(coneSize)
+    val pvy = vector(coneSize)
+    val J = scalar
+    val GJx = vector(varSize)
+    val GJy = vector(coneSize)
+    val GJv = vector(affineCstrtSize)
+    val NG = scalar
+    val alpha = scalar
   }
   trait Code extends SGCode {
     self: Variables =>
@@ -23,10 +32,23 @@ object PrimalDualSubgradient extends SolverGenBase {
     x := 0
     v := 0
     y := 0
-    theta := 0
-    converge(theta) {
+    J := 1
+    converge(J) {
       Axb := A*x + b
       Fxg := F*x + g
+      cTxbTvgTy := dot(c,x) + dot(b,v) + dot(g,y)
+      ATvFTyc := A.T*v + F.T*y - c
+      pvFxg := Fxg - cone.project(Fxg)
+      pvy := y - cone.conj.project(y)
+      J := norm2(cTxbTvgTy) + norm2(Axb) + norm2(ATvFTyc) + norm2(pvFxg) + norm2(pvy)
+      GJx := c*cTxbTvgTy + A.T*Axb + F.T*pvFxg
+      GJy := g*cTxbTvgTy + F*ATvFTyc + pvy
+      GJv := b*cTxbTvgTy + A*ATvFTyc
+      NG := norm2(GJx) + norm2(GJy) + norm2(GJv)  
+      alpha := J/(NG + NG)
+      x := x - GJx * alpha
+      y := y - GJy * alpha
+      v := v - GJv * alpha
     }
   }
   case class Gen(val problem: Problem) extends SGVariables with Variables with SGCode with Code with SGGen

@@ -32,13 +32,13 @@ trait DCPOpsGlobal {
 
 
   class Symbol[T >: Null <: HasArity[T], R >: Null] {
-    protected[DCPOpsGlobal] var binding: T = null
+    protected[dcp] var binding: T = null
     protected[dcp] def bind(e: T) {
       if (binding != null) throw new IRValidationException()
       if (resolution != null) throw new IRValidationException()
       binding = e
     }
-    protected[DCPOpsGlobal] var resolution: R = null
+    protected[dcp] var resolution: R = null
     protected[dcp] def rset(r: R) {
       if (resolution != null) throw new IRValidationException()
       if (binding == null) throw new IRValidationException()
