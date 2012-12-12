@@ -11,7 +11,7 @@ import scala.reflect.SourceContext
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
-import ppl.delite.framework.datastructures.DeliteArray
+import ppl.delite.framework.datastructures.{DeliteArray, DeliteStructsExp}
 import ppl.delite.framework.Config
 import ppl.delite.framework.extern.lib._
 import ppl.delite.framework.Util._
@@ -179,7 +179,7 @@ trait DenseMatrixCompilerOps extends DenseMatrixOps {
   def densematrix_set_numcols[A:Manifest](x: Rep[DenseMatrix[A]], newVal: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
 }
 
-trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsExp with VariablesExp {
+trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsExp with DeliteStructsExp with VariablesExp {
   this: DenseMatrixImplOps with OptiLAExp  =>
 
   //////////////////////////////////////////////////
@@ -426,6 +426,12 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   override def dc_data_field[A:Manifest](x: Exp[DeliteCollection[A]]) = {
     if (isDenseMat(x)) "_data"
     else super.dc_data_field(x)
+  }
+
+  override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = {
+    val m = manifest[T]
+    if (m.erasure == classOf[DenseMatrix[_]]) Some((classTag(m), collection.immutable.List("_data" -> darrayManifest(m.typeArguments(0)), "_numRows" -> manifest[Int], "_numCols" -> manifest[Int])))
+    else super.unapplyStructType
   }
   
   //////////////

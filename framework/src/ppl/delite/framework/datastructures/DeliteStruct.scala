@@ -3,7 +3,7 @@ package ppl.delite.framework.datastructures
 import java.io.{File,FileWriter,PrintWriter}
 import scala.virtualization.lms.common._
 import ppl.delite.framework.ops.DeliteOpsExp
-import scala.reflect.SourceContext
+import scala.reflect.{RefinedManifest, SourceContext}
 
 trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
 	
@@ -40,6 +40,13 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
     case Reflect(NestedFieldUpdate(struct, fields, rhs), u, es) => reflectMirrored(Reflect(NestedFieldUpdate(f(struct), fields, f(rhs)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
+
+  def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
+    case r: RefinedManifest[T] => Some(AnonTag(r), r.fields)
+    case t if t.erasure == classOf[Tuple2[_,_]] => Some((classTag(t), List("_1","_2") zip t.typeArguments))
+    case t if t.erasure == classOf[Tuple3[_,_,_]] => Some((classTag(t), List("_1","_2","_3") zip t.typeArguments))
+    case _ => None
+  }
 
 }
 

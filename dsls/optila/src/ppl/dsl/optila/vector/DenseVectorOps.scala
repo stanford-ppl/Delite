@@ -9,7 +9,7 @@ import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatC
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.ops.DeliteCollection
-import ppl.delite.framework.datastructures.DeliteArray
+import ppl.delite.framework.datastructures.{DeliteArray, DeliteStructsExp}
 import ppl.delite.framework.Util._
 import ppl.dsl.optila._
 
@@ -155,7 +155,7 @@ trait DenseVectorCompilerOps extends DenseVectorOps {
   def densevector_set_isrow[A:Manifest](x: Rep[DenseVector[A]], newVal: Rep[Boolean])(implicit ctx: SourceContext): Rep[Unit]
 }
 
-trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
+trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp with DeliteStructsExp {
 
   this: DenseVectorImplOps with OptiLAExp =>
 
@@ -402,6 +402,12 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
   override def dc_size_field[A:Manifest](x: Exp[DeliteCollection[A]]) = {
     if (isDenseVec(x)) "_length"
     else super.dc_size_field(x)
+  }
+
+  override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = {
+    val m = manifest[T]
+    if (m.erasure == classOf[DenseVector[_]]) Some((classTag(m), collection.immutable.List("_data" -> darrayManifest(m.typeArguments(0)), "_length" -> manifest[Int], "_isRow" -> manifest[Boolean])))
+    else super.unapplyStructType
   }
   
     
