@@ -107,6 +107,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   abstract class DeliteOpExternal[A:Manifest] extends DeliteOp[A] {
     type OpType <: DeliteOpExternal[A]
     def alloc: Exp[A]
+    def inputs: List[Exp[Any]] = Nil
     val funcName: String
     final lazy val allocVal: Block[A] = copyTransformedBlockOrElse(_.allocVal)(reifyEffects(alloc))
   }

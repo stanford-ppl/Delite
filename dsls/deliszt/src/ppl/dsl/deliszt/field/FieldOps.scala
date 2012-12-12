@@ -6,7 +6,7 @@ import scala.virtualization.lms.common._
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.internal.{GenericFatCodegen, GenerationFailedException}
 
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollection
 
 import ppl.dsl.deliszt.capabilities._
 import ppl.dsl.deliszt._

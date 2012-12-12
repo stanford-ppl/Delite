@@ -22,6 +22,7 @@ trait TableOps extends Base { this: OptiQL =>
   class TableRepOps[T:Manifest](t:Rep[Table[T]]) {
     def apply(i: Rep[Int]): Rep[T] = tableApply(t, i)
     def size() = tableSize(t)
+    def toArray() = tableToArray(t)
   }
 
 
@@ -32,6 +33,8 @@ trait TableOps extends Base { this: OptiQL =>
   def tableObjectApply[T:Manifest](data: Rep[DeliteArray[T]], initSize: Rep[Int]): Rep[Table[T]]
   def tableSize[T:Manifest](t: Rep[Table[T]]): Rep[Int]
 
+  // data exchange
+  def tableToArray[T:Manifest](t: Rep[Table[T]]): Rep[DeliteArray[T]]
 }
 
 trait TableOpsExp extends TableOps with DeliteCollectionOpsExp { this: OptiQLExp =>
@@ -44,6 +47,8 @@ trait TableOpsExp extends TableOps with DeliteCollectionOpsExp { this: OptiQLExp
   def tableObjectApply[T:Manifest](initSize: Exp[Int]): Exp[Table[T]] = struct(classTag[Table[T]], "data" -> fatal(unit("Table allocation within Delite Op not rewritten")), "size" -> initSize)
   def tableObjectApply[T:Manifest](data: Exp[DeliteArray[T]], size: Exp[Int]): Exp[Table[T]] = struct(classTag[Table[T]], "data" -> data, "size" -> size)
 
+  def tableToArray[T:Manifest](t: Exp[Table[T]]) = tableRawData(t)
+  
   //delite collection ops  
   def isTable[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.tp.erasure,classOf[Table[A]])  
   def asTable[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[Table[A]]]

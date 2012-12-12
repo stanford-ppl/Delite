@@ -11,7 +11,7 @@ from time import localtime, strftime
 
 import delitecommon
 
-DSLs = ['optiml','optila','optiql','deliszt','optigraph','opticvx']
+DSLs = ['optiml','optila','optiql','deliszt','optigraph','opticvx','multi-dsl']
 LMS_HOME = os.getenv("LMS_HOME")
 lms_version = "lms_2.10"
 

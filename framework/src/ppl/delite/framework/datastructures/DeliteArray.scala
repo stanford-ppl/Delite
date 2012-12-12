@@ -241,10 +241,12 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteCollectionOpsE
   
 }
 
-trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with StructExpOptCommon {
-  this: DeliteOpsExp =>
+trait DeliteArrayStructTags extends Base with StructTags {
+  case class SoaTag[T](base: StructTag[T], length: Rep[Int]) extends StructTag[DeliteArray[T]]
+}
 
-  case class SoaTag[T](base: StructTag[T], length: Exp[Int]) extends StructTag[DeliteArray[T]]
+trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags with StructExpOptCommon {
+  this: DeliteOpsExp =>  
 
   object StructIR {
     def unapply[A](e: Exp[DeliteArray[A]]): Option[(StructTag[A], Exp[Int], Seq[(String,Exp[DeliteArray[Any]])])] = e match {

@@ -5,7 +5,7 @@ import java.io.PrintWriter
 import ppl.dsl.deliszt._
 import ppl.dsl.deliszt.MetaInteger._
 
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.ops.DeliteCollectionOpsExp
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.GenericFatCodegen

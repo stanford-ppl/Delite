@@ -2,7 +2,6 @@ package ppl.delite.framework.ops
 
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
-//import ppl.delite.framework.datastruct.scala.DeliteCollection
 
 trait DeliteReductionOpsExp extends BaseFatExp {  
 

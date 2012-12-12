@@ -18,6 +18,7 @@ import ppl.delite.framework.datastructures._
 import ppl.dsl.optila.{OptiLAApplication}
 import ppl.dsl.optila.{OptiLAScalaOpsPkg, OptiLAScalaOpsPkgExp, OptiLA, OptiLAExp, OptiLACompiler, OptiLALift, OptiLAUtilities}
 import ppl.dsl.optila.{OptiLAScalaCodeGenPkg, OptiLACudaCodeGenPkg, OptiLAOpenCLCodeGenPkg, OptiLACCodeGenPkg, OptiLACodeGenBase, OptiLACodeGenScala, OptiLACodeGenCuda, OptiLACodeGenOpenCL, OptiLACodeGenC}
+import ppl.dsl.optila.capabilities.ScalaGenArithOps
 
 import ppl.dsl.optiml.io._
 import ppl.dsl.optiml.vector._
@@ -359,7 +360,7 @@ trait OptiMLCodeGenBase extends OptiLACodeGenBase {
 }
 
 // strategy is to inherit all of the base Scala generators and override what we need
-trait OptiMLCodeGenRestage extends OptiMLScalaCodeGenPkg with DeliteCodeGenRestage { 
+trait OptiMLCodeGenRestage extends OptiMLScalaCodeGenPkg with ScalaGenArithOps with DeliteCodeGenRestage { 
   val IR: DeliteApplication with OptiMLExp
 }
 

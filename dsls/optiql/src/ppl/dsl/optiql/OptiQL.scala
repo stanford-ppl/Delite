@@ -15,7 +15,8 @@ import ppl.delite.framework.codegen.{Utils, Target}
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.codegen.delite.overrides._
 import ppl.delite.framework.transform.MultiloopSoATransformExp
-import ppl.delite.framework.{DeliteInteractive, DeliteInteractiveRunner}
+import ppl.delite.framework.{DeliteInteractive, DeliteInteractiveRunner, DeliteRestageOps, DeliteRestageOpsExp, DeliteRestageRunner}
+import ppl.delite.framework.codegen.restage.{DeliteCodeGenRestage,TargetRestage}
 
 
 /**
@@ -32,6 +33,13 @@ trait OptiQL extends OptiQLScalaOpsPkg with TableOps with QueryableOps with Date
 
 trait OptiQLInteractive extends OptiQLApplication with DeliteInteractive
 trait OptiQLInteractiveRunner extends OptiQLApplicationRunner with DeliteInteractiveRunner
+
+trait OptiQLLower extends OptiQLApplication with DeliteRestageOps
+trait OptiQLLowerRunner extends OptiQLApplicationRunner with DeliteRestageRunner
+
+object OptiQL_ {
+  def apply[R](b: => R) = new Scope[OptiQLLower, OptiQLLowerRunner, R](b)
+}
 
 /**
  * These are the lifted scala constructs, which convert a concrete type to a Rep type.
@@ -58,7 +66,8 @@ trait OptiQLCompiler extends OptiQL with IOOps with SeqOps with Variables with L
  * This trait comprises the IR nodes for OptiQL and the code required to instantiate code generators
  */
 trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with TableOpsExp with DateOpsExp with DateImplOpsStandard with QueryableOpsExpOpt with OptiQLMiscOpsExp
-  with InputReaderOpsExp with InputReaderImplOpsStandard with DeliteCollectionOpsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DSArrayOpsExp with DeliteAllOverridesExp 
+  with InputReaderOpsExp with InputReaderImplOpsStandard with DeliteCollectionOpsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DSArrayOpsExp 
+  with DeliteRestageOpsExp with DeliteAllOverridesExp 
   with MultiloopSoATransformExp {
 
   this: DeliteApplication with OptiQLApplication =>
@@ -68,6 +77,7 @@ trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with TableOpsEx
       case _:TargetScala => new OptiQLCodeGenScala{val IR: OptiQLExp.this.type = OptiQLExp.this}
       case _:TargetCuda => new OptiQLCodeGenCuda{val IR: OptiQLExp.this.type = OptiQLExp.this}
       case _:TargetOpenCL => new OptiQLCodeGenOpenCL{val IR: OptiQLExp.this.type = OptiQLExp.this}
+      case _:TargetRestage => new OptiQLCodeGenRestage{val IR: OptiQLExp.this.type = OptiQLExp.this}
       case _ => throw new RuntimeException("OptiQL does not support this target")
     }
   }
@@ -125,6 +135,18 @@ trait OptiQLCodeGenBase extends GenericFatCodegen {
       }
 
     }
+  }
+}
+
+trait OptiQLCodeGenRestage extends OptiQLScalaCodeGenPkg with DeliteCodeGenRestage { 
+  val IR: DeliteApplication with OptiQLExp
+  
+  // we shouldn't need this if we have a proper lowering stage (i.e. transformation)
+  override def remap[A](m: Manifest[A]): String = {    
+    m match {
+      case m if m.erasure.getSimpleName == "Date" => "Int"
+      case _ => super.remap(m)
+    }   
   }
 }
 

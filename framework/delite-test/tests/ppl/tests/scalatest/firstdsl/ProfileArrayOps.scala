@@ -4,7 +4,7 @@ import reflect.{Manifest, SourceContext}
 import scala.virtualization.lms.common.{NumericOpsExp, FractionalOpsExp, Base}
 import scala.virtualization.lms.common.ScalaGenBase
 import ppl.delite.framework.ops.{DeliteCollectionOpsExp,DeliteOpsExp}
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollection
 
 trait ProfileArrayOps extends Base {
   // a simple way of enumerating choices in our syntax
