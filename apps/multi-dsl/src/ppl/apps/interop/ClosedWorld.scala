@@ -4,13 +4,13 @@ import ppl.dsl.optiql.OptiQL_
 // import ppl.dsl.optigraph.OptiGraph_
 import ppl.dsl.optiml.OptiML_
 import ppl.delite.framework.datastructures.DeliteArray
+import ppl.delite.framework.EndScopes
 
 object CloseWorldCompose {
   
   def main(args: Array[String]) {
     println("scala 1")
     
-    /*
     OptiQL_ {
       type Tweet = Record {
         val id: String
@@ -33,12 +33,11 @@ object CloseWorldCompose {
       // type Tweet = Record{val fromId: Int; val toId: Int; val text: String}
       // val tweets: Rep[Table[Tweet]] = loadTweets() // elided
       val tweets = TableInputReader(args(0)+"/tweet.tbl", emptyTweet())      
-      val result = tweets Where(_.time >= Date("2008-01-01")) Where(_.language == "en") 
+      val result = tweets Where(t => t.time >= Date("2008-01-01") && t.language == "en") 
       // is there something in the desugaring scopes that ignores the block result?
       // without returnScopeResult, getting a block result of (), even the Scope result is of type R
       returnScopeResult(result.toArray)
     }
-    */
     
     /*
     OptiGraph_ {      
@@ -78,6 +77,7 @@ object CloseWorldCompose {
     }
     */
     
+    /*
     OptiML_ {
       // unweighted linear regression
       val in = lastScopeResult.AsInstanceOf[(DeliteArray[Double],DeliteArray[Double])]
@@ -90,7 +90,9 @@ object CloseWorldCompose {
       // println("got input from previous stage: " + previous(0).AsInstanceOf[DeliteArray[Int]]) 
       // println("optiml 2")
     }
+    */
     
+    EndScopes() // marker to complete the scope file
     
     // unstaged blocks get executed immediately like normal
     println("scala 2")

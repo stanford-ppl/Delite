@@ -28,8 +28,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * Where should these live?
    */
   trait DeliteParallelStrategy
-  object ParFlat extends DeliteParallelStrategy
-  object ParBuffer extends DeliteParallelStrategy
+  object ParFlat extends DeliteParallelStrategy { override def toString = "ParFlat" }
+  object ParBuffer extends DeliteParallelStrategy { override def toString = "ParBuffer" }
   
   /*
    * Useful for mirroring

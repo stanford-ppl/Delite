@@ -18,31 +18,56 @@ trait TargetRestage extends Target {
 }
 
 trait RestageCodegen extends ScalaCodegen with Config {
-  val IR: Expressions
+  val IR: Expressions 
   import IR._
 
+  // should be set by DeliteRestage if there are any transformations to be run before codegen
+  var transformers: List[WorklistTransformer{val IR: RestageCodegen.this.IR.type}] = Nil
+  
   override def kernelFileExt = "scala"
 
   override def toString = "restage"
-
-  override def emitSource[A : Manifest](args: List[Sym[_]], body: Block[A], className: String, out: PrintWriter) = {
-    val staticData = getFreeDataBlock(body)
-    
-    println("--RestageCodegen emitSource")
-    
-    withStream(out) {
-      emitBlock(body)
-      // stream.println("setLastScopeResult(" + quote(getBlockResult(body)) + ")")
+  
+  def emitHeader(out: PrintWriter, append: Boolean) {
+    if (!append) {    
+      // restage header
+      out.println("import ppl.delite.framework.{DeliteILApplication,DeliteILApplicationRunner}")
+      out.println("import ppl.delite.framework.datastructures.{DeliteArray,DeliteArrayBuffer}")
+      out.println()
+      out.println("object RestageApplicationRunner extends DeliteILApplicationRunner with RestageApplication")
+      out.println("trait RestageApplication extends DeliteILApplication {")      
+      out.println("/* Emitting re-stageable code */")
+      out.println("def main() {")
+      out.println("val x0 = args;")
+      out.println("{")
+    }
+    else {
+      out.println("{")
     }    
-    
-    staticData
   }  
 }
 
 trait RestageFatCodegen extends GenericFatCodegen with RestageCodegen {
   val IR: Expressions with Effects with FatExpressions
   import IR._
-  
+    
+  override def emitSource[A : Manifest](args: List[Sym[_]], body: Block[A], className: String, out: PrintWriter) = {
+    val staticData = getFreeDataBlock(body)
+    
+    println("--RestageCodegen emitSource")
+    
+    var b = body
+    for (t <- transformers) {
+      b = t.run(b)
+    }
+    
+    withStream(out) {
+      emitBlock(b)
+      // stream.println("setLastScopeResult(" + quote(getBlockResult(body)) + ")")
+    }    
+    
+    staticData
+  }    
 
 }
 
@@ -60,39 +85,55 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     val ms = manifest[String]
     m match {
       case `ms` => "String"
-      case s if s <:< manifest[Record] => "Rep[Record]" // should only be calling 'field' on records at this level
-      case s if s.erasure.getSimpleName == "Tuple2" => "Rep[Record]" // this is custom overridden in ScalaGenTupleOps
+      case s if s.erasure.getSimpleName == "Tuple2" => "Record" // this is custom overridden in ScalaGenTupleOps 
+      case s if s.erasure.getSimpleName == "DeliteArrayBuffer" => "DeliteArrayBuffer[" + remap(s.typeArguments(0)) + "]"
+      case s if s.erasure.getSimpleName == "DeliteArray" => m.typeArguments(0) match {
+        case StructType(_,_) => "DeliteArray[" + remap(s.typeArguments(0)) + "]" // "Record" // need to maintain DeliteArray-ness even when a record
+        case arg => "DeliteArray[" + remap(arg) + "]"
+      }
+      case s if s <:< manifest[Record] => "Record" // should only be calling 'field' on records at this level      
       case _ => 
         // Predef.println("calling remap on: " + m.toString)
         super.remap(m)
     }
   }
   
-  // dropping all non-SoA tags for now
-  def quote[T](tag: StructTag[T]): String = tag match {
-    case ClassTag(name) => "ClassTag(\"erased\")"
-    case NestClassTag(elem) => "ClassTag(\"erased\")"
-    case AnonTag(fields) => "ClassTag(\"erased\")"
-    case SoaTag(base, length) => "SoaTag(" + quote(base) + ", " + quote(length) + ")"
-    case MapTag() => "ClassTag(\"erased\")"
-  } 
-  
-  def remapTag[T](tag: StructTag[T]): String = tag match {
-    case SoaTag(b,l) => "[DeliteArray[Any]]"
-    case _ => ""
+  override def quote(x: Exp[Any]) : String = x match {
+    case Const(s: String) => (super.quote(x)).replace("\\", "\\\\") // need extra backslashes since we are going through an extra layer
+    case _ => 
+      // Predef.println("called super on quote: " + x)
+      super.quote(x)
   }
-     
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+
+  def quoteTag[T](tag: StructTag[T], tp: Manifest[Any]): String = tag match {
+    case ClassTag(name) => "ClassTag(\""+name+"\")"
+    case NestClassTag(elem) => quoteTag(elem,tp) //"NestClassTag[Var,"+remap(tp)+"]("+quoteTag(elem,tp)+")" // dropping the var wrapper...
+    case AnonTag(fields) => "ClassTag(\"erased\")"
+    case SoaTag(base, length) => "SoaTag(" + quoteTag(base,tp) + ", " + quote(length) + ")"
+    case MapTag() => "MapTag()"
+  } 
+       
+  def recordFieldLookup[T](initStruct: String, fields: List[String], tp: Manifest[T]): String = {        
+    if (fields.length == 1) 
+      "field[" + remap(tp) + "](" + initStruct + ", \"" + fields.head + "\")"
+    else
+      "field[Record](" + recordFieldLookup(initStruct, fields.tail, tp) + ", \"" + fields.head + "\")"
+  }    
+  
+  
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {    
+    // data exchange
     case ReturnScopeResult(n) => emitValDef(sym, "setScopeResult(" + quote(n) + ")")
     case LastScopeResult() => emitValDef(sym, "getScopeResult") 
-    case a@DeliteArrayNew(n) => emitValDef(sym, "DeliteArray[" + remap(a.mA) + "](" + quote(n) + ")")
-    case DeliteArrayCopy(src,srcPos,dest,destPos,len) => emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
     
+    // scala
     case ObjBrApply(f) => emitValDef(sym, "BufferedReader(" + quote(f) + ")")
     case ObjFrApply(s) => emitValDef(sym, "FileReader(" + quote(s) + ")")    
     case ThrowException(m) => emitValDef(sym, "fatal(" + quote(m) + ")")
     case NewVar(init) => stream.println("var " + quote(sym) + " = " + quote(init))
     case ObjIntegerParseInt(s) => emitValDef(sym, "Integer.parseInt(" + quote(s) + ")")
+    case RepIsInstanceOf(x,mA,mB) => emitValDef(sym, quote(x) + ".isInstanceOf[Rep[" + remap(mB) + "]]")
+    case RepAsInstanceOf(x,mA,mB) => emitValDef(sym, quote(x) + ".asInstanceOf[Rep[" + remap(mB) + "]]")    
     
     // if then else
     // !! redundant - copy paste of LMS if/then/else just to avoid DeliteIfThenElse getting a hold of it, which is put in scope by the individual DSLs
@@ -105,6 +146,12 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
       stream.println(quote(getBlockResult(b)))
       stream.println("}")
 
+    // delite array
+    case a@DeliteArrayNew(n) => emitValDef(sym, "DeliteArray[" + remap(a.mA) + "](" + quote(n) + ")")
+    case DeliteArrayCopy(src,srcPos,dest,destPos,len) => emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
+    case DeliteArrayGetActSize() => emitValDef(sym, "darray_unsafe_get_act_size()")
+    case DeliteArraySetActBuffer(da) => emitValDef(sym, "darray_unsafe_set_act_buf(" + quote(da) + ")")
+    case DeliteArraySetActFinal(da) => emitValDef(sym, "darray_unsafe_set_act_final(" + quote(da) + ")")
     
     // structs
     // case s@SimpleStruct(tag, elems) =>
@@ -112,16 +159,44 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
       // oops.. internal scalac error
       // emitValDef(sym, "anonStruct(" + elems.asInstanceOf[Seq[(String,Rep[Any])]].map{case (k,v) => "(\"" + k + "\", " + quote(v) + ")" }.mkString(",") + ")")
        
-       // struct type arg remaps to a generated struct name that doesn't exist... is the struct type important?
-      // emitValDef(sym, "struct[" + remap(s.mT) + "](" + quote(tag) + ", Seq(" + elems.asInstanceOf[Seq[(String,Rep[Any])]].map{t => "(\"" + t._1 + "\", " + quote(t._2) + ")" }.mkString(",") + "))")
-      emitValDef(sym, "struct" + remapTag(tag) + "(" + quote(tag) + ", " + elems.asInstanceOf[Seq[(String,Rep[Any])]].map{t => "(\"" + t._1 + "\", " + quote(t._2) + ")" }.mkString(",") + ")")
+      // hack! right now we only use nest for Var, but in the future.. 
+      // how else can we recover the Var?
+      // val nestTp = if (tag.isInstanceOf[NestClassTag[Any,_]]) "Var["+remap(sym.tp)+"]" else remap(sym.tp)       
+      // just dropping the var for now.. is this reasonable? does the var do anything for us in the restaged code?
+      // val isVar = tag.isInstanceOf[NestClassTag[Any,_]]
+      val tp = /*if (isVar) "Var["+remap(sym.tp)+"]" else*/ remap(sym.tp)       
+       
+      // if (isVar) {
+      //   stream.println("var " + quote(sym) + " = struct[Var[" + remap(sym.tp) + "]](" + quoteTag(tag,sym.tp) + ", " + elems.asInstanceOf[Seq[(String,Rep[Any])]].map{t => "(\"" + t._1 + "\", " + quote(t._2) + ")" }.mkString(",") + ")")
+      // }
+      // else {
+        emitValDef(sym, "struct[" + tp/*remap(sym.tp)*/ + "](" + quoteTag(tag,sym.tp) + ", " + elems.asInstanceOf[Seq[(String,Rep[Any])]].map{t => "(\"" + t._1 + "\", " + quote(t._2) + ")" }.mkString(",") + ")")
+      // }
+      
     
     case FieldApply(struct, index) => emitValDef(sym, "field[" + remap(sym.tp) + "](" + quote(struct) + ",\"" + index + "\")")    
     case FieldUpdate(struct, index, rhs) => emitValDef(sym, "field_update[" + remap(sym.tp) + "](" + quote(struct) + ",\"" + index + "\"," + quote(rhs) + ")")
     case NestedFieldUpdate(struct, fields, rhs) => 
-      assert(fields.length == 1) // not handling true nesting yet.. need to somehow call field[..] recursively
-      emitValDef(sym, "field_update(" + quote(struct) + ",\"" + fields.head + "\"," + quote(rhs) + ")")
-    
+      assert(fields.length > 0)      
+      // x34.data.id(x66)
+      // field[T](field[Record](x34, "data"), "id")
+      if (fields.length == 1) { // not nested
+        emitValDef(sym, "field_update[" + remap(rhs.tp) + "](" + quote(struct) + ",\"" + fields(0) + "\"," + quote(rhs) + ")")
+      }
+      else {
+        val f = "field[Record](" + quote(struct) + ", \"" + fields.head + "\")"
+        emitValDef(sym, "field_update(" + recordFieldLookup(f, fields.tail, rhs.tp) + ", " + quote(rhs) + ")")        
+      }
+   
+    case StructUpdate(struct, fields, idx, x) =>
+      assert(fields.length > 0)
+      if (fields.length == 1) { // not nested
+        emitValDef(sym, "darray_update(field[DeliteArray[Any]](" + quote(struct) + ", \"" + fields.head + "\"), " + quote(idx) + ", " + quote(x) + ")")
+      }
+      else {
+        val f = "field[Record](" + quote(struct) + ", \"" + fields.head + "\")"
+        emitValDef(sym, "darray_update(" + recordFieldLookup(f, fields.tail, manifest[DeliteArray[Any]]) + ", " + quote(idx) + ", " + quote(x) + ")")
+      }
     
     // delite ops
     case s:DeliteOpSingleTask[_] => 
@@ -146,8 +221,8 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
       
     case op: AbstractLoop[_] => 
       stream.println("// a *thin* loop follows: " + quote(sym))
-      emitFatNode(List(sym), SimpleFatLoop(op.size, op.v, List(op.body)))
-      
+      emitFatNode(List(sym), SimpleFatLoop(op.size, op.v, List(op.body)))        
+    
     case _ => 
       // Predef.println("calling super.emitNode on: " + rhs.toString)
       super.emitNode(sym, rhs)
@@ -158,35 +233,97 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     case _ => super.emitFatNode(symList, rhs)
   }
   
+  def makeBoundVarArgs(args: Exp[Any]*) = "(" + args.map(a => quote(a) + ": Rep[" + remap(a.tp) + "]").mkString(",") + ") => "
+  
+  def emitBufferElem(op: AbstractFatLoop, elem: DeliteCollectElem[_,_,_]) {
+    // append
+    stream.println("{")
+    stream.println(makeBoundVarArgs(elem.allocVal,elem.eV,op.v))
+    emitBlock(elem.buf.append)
+    stream.println(quote(getBlockResult(elem.buf.append)))
+    stream.println("},")
+    // setSize
+    stream.println("{")
+    stream.println(makeBoundVarArgs(elem.allocVal,elem.sV))
+    emitBlock(elem.buf.setSize)
+    stream.println(quote(getBlockResult(elem.buf.setSize)))
+    stream.println("},")
+    // allocRaw
+    stream.println("{")
+    stream.println(makeBoundVarArgs(elem.allocVal,elem.sV))  
+    emitBlock(elem.buf.allocRaw)
+    stream.println(quote(getBlockResult(elem.buf.allocRaw)))
+    stream.println("},")
+    // copyRaw
+    stream.println("{")
+    stream.println(makeBoundVarArgs(elem.buf.aV,elem.buf.iV,elem.allocVal,elem.buf.iV2,elem.sV))  
+    emitBlock(elem.buf.copyRaw)
+    stream.println(quote(getBlockResult(elem.buf.copyRaw)))    
+    stream.println("}")
+  }
+  
+  
   def emitRestageableLoop(op: AbstractFatLoop, symList: List[Sym[Any]]) {
     // break the multiloops apart, they'll get fused again anyways
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_,_]) => 
         stream.println("val " + quote(sym) + " = collect(")
+        // loop size
         stream.println(quote(op.size) + ",")
+        // alloc func
         stream.println("{")
-        stream.println(quote(elem.sV) + ": Rep[" + remap(elem.sV.tp) + "] => ")
+        stream.println(makeBoundVarArgs(elem.sV))
         emitBlock(elem.allocN)
         stream.println(quote(getBlockResult(elem.allocN)))
         stream.println("},")
+        // func
         stream.println("{")
-        stream.println("(" + quote(elem.eV) + ": Rep[" + remap(elem.eV.tp) + "]," + quote(op.v) + ": Rep[" + remap(op.v.tp) + "]) => ")
+        stream.println(makeBoundVarArgs(elem.eV,op.v))
         emitBlock(elem.func)
         stream.println(quote(getBlockResult(elem.func)))
         stream.println("},")
+        // update
         stream.println("{")
-        stream.println("(" + quote(elem.allocVal) + ": Rep[" + remap(elem.allocVal.tp) + "]," + quote(elem.eV) + ": Rep[" + remap(elem.eV.tp) + "]," + quote(op.v) + ": Rep[" + remap(op.v.tp) + "]) => ")
+        stream.println(makeBoundVarArgs(elem.allocVal,elem.eV,op.v))
         emitBlock(elem.update)
         stream.println(quote(getBlockResult(elem.update)))
         stream.println("},")
+        // finalizer
         stream.println("{")
-        stream.println(quote(elem.allocVal) + ": Rep[" + remap(elem.allocVal.tp) + "] => ")
+        stream.println(makeBoundVarArgs(elem.allocVal))
         emitBlock(elem.finalizer)
         stream.println(quote(getBlockResult(elem.finalizer)))
-        stream.println("})")
-        // TODO: filter
+        // conditions
+        stream.println("},")
+        stream.print("scala.List(")
+        for (i <- 0 until elem.cond.length) {
+          stream.println("{")
+          stream.println(makeBoundVarArgs(op.v))
+          emitBlock(elem.cond(i))
+          stream.println(quote(getBlockResult(elem.cond(i))))
+          stream.print("}")
+          if (i < elem.cond.length - 1) stream.println(",")
+        }
+        stream.println("),")
+        // par
+        stream.println("\"" + elem.par.toString + "\",")
+        // buffer
+        emitBufferElem(op, elem)
+        stream.println(")")
+
+        
       case (sym, elem: DeliteForeachElem[_]) => 
-        Predef.println("error: tried to restage DeliteForeachElem but no impl yet")
+        stream.println("val " + quote(sym) + " = foreach(")
+        // loop size
+        stream.println(quote(op.size) + ",")
+        // alloc func
+        stream.println("{")
+        stream.println(makeBoundVarArgs(op.v))
+        emitBlock(elem.func)
+        stream.println(quote(getBlockResult(elem.func)))
+        stream.println("})")
+        
+        
       case (sym, elem: DeliteReduceElem[_]) =>    
         Predef.println("error: tried to restage DeliteReduceElem but no impl yet")
     }
