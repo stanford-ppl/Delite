@@ -1,3 +1,4 @@
+/*
 package ppl.dsl.optigraph.datastruct.scala
 
 import collection.mutable.{HashMap, Map, MutableList}
@@ -27,35 +28,35 @@ class GSeq[@specialized T: ClassManifest] {
   
   def pushBack(n: T): Unit = { 
     data.+=(n)
-    resetDataArray  
+    resetDataArray
   }
   def pushFront(n: T): Unit = {
     data.+=:(n)
     resetDataArray
   }
-  def pushFrontSeq(s: GSeq[T]): Unit = { 
+  def pushFrontSeq(s: GSeq[T]): Unit = {
     var i = s.size - 1
     while (i >= 0) {
       pushFront(s.data(i))
       i += 1
     }
   }
-  def pushBackSeq(s: GSeq[T]): Unit = { 
+  def pushBackSeq(s: GSeq[T]): Unit = {
     var i = 0
     while (i < s.size) {
-      pushBack(s.data(i)) 
+      pushBack(s.data(i))
       i += 1
     }
   }
-  def popFront(): T = { 
+  def popFront(): T = {
     val f = front()
     data = data.tail
     resetDataArray
     f
   }
-  def popBack(): T = { 
+  def popBack(): T = {
     val l = back()
-    data = data.take(data.size - 2) 
+    data = data.take(data.size - 2)
     resetDataArray
     l
   }
@@ -64,3 +65,4 @@ class GSeq[@specialized T: ClassManifest] {
     data(idx)
   }
 }
+*/

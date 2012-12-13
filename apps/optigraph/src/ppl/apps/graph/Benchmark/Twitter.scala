@@ -12,12 +12,12 @@ trait Twitter extends OptiGraphApplication {
       var triangles = 0 
       var total = 0
 
-      Foreach(s.InNbrs) { t =>
-        if (s.HasOutNbr(t)) {
-          Foreach(s.InNbrs.filter(n => n.HasOutNbr(t))) { u =>
-            if (s.HasOutNbr(u)) {
-              if (u.HasOutNbr(t)) {triangles += 1}
-              if (t.HasOutNbr(u)) {triangles += 1}
+      Foreach(G.InNbrs(s)) { t =>
+        if (G.HasOutNbr(s,t)) {
+          Foreach(G.InNbrs(s).filter(n => G.HasOutNbr(n,t))) { u =>
+            if (G.HasOutNbr(s,u)) {
+              if (G.HasOutNbr(u,t)) {triangles += 1}
+              if (G.HasOutNbr(t,u)) {triangles += 1}
               total += 2
             }
           }
@@ -37,8 +37,8 @@ trait Twitter extends OptiGraphApplication {
   //TODO: Better to accumulate the number of retweets this node 
   def retweetCnt(G: Rep[Graph], RT: Rep[NodeProperty[Int]]) {
     Foreach(G.Nodes) { t =>
-      RT(t) = t.InNbrs.length
-      println("inNbrs = " + t.InNbrs.length)
+      RT(t) = G.InNbrs(t).length
+      println("inNbrs = " + G.InNbrs(t).length)
     }
   }
 

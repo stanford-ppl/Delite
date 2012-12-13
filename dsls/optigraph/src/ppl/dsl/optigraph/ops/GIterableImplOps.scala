@@ -4,12 +4,14 @@ import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base, BooleanOps}
 import ppl.dsl.optigraph.{GIterable, GSet}
 import ppl.dsl.optigraph.{OptiGraphLift, OptiGraphCompiler, OptiGraph}
+import ppl.delite.framework.datastructures.DeliteArray
 
 trait GIterableImplOps { this: OptiGraph =>
   //def giterable_tolist_impl[A:Manifest](g: Rep[GIterable[A]]): Rep[List[A]]
   def giterable_toset_impl[A:Manifest](g: Rep[GIterable[A]]): Rep[GSet[A]]
   def giterable_insert_impl[A:Manifest](g: Rep[GIterable[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit]
   def giterable_contains_impl[A:Manifest](g: Rep[GIterable[A]], n: Rep[A]): Rep[Boolean]
+  def delitearray_giterable_append_impl[A:Manifest](x: Rep[DeliteArray[GIterable[A]]], i: Rep[Int], y: Rep[A]): Rep[Unit]
 }
 
 trait GIterableImplOpsStandard extends GIterableImplOps {
@@ -34,7 +36,13 @@ trait GIterableImplOpsStandard extends GIterableImplOps {
 
   def giterable_contains_impl[A:Manifest](g: Rep[GIterable[A]], n: Rep[A]): Rep[Boolean] = {
     val data = giterable_raw_data(g)
-    data.map(e => e == n).reduce(boolean_or, false)
+    var found = false
+    var i = 0
+    while(i < giterable_raw_size(g) && !found) {
+      if(data(i)==n) found = true
+      i += 1
+    } 
+    found
   }
 
   def giterable_insert_impl[A:Manifest](g: Rep[GIterable[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {
@@ -64,4 +72,13 @@ trait GIterableImplOpsStandard extends GIterableImplOps {
     darray_unsafe_copy(data, 0, d, 0, giterable_raw_size(g))
     giterable_set_raw_data(g, d)
   }
+
+  def delitearray_giterable_append_impl[A:Manifest](x: Rep[DeliteArray[GIterable[A]]], i: Rep[Int], y: Rep[A]): Rep[Unit] = {
+    val g = x(i)
+    giterable_ensureextra(g, 1)
+    val data = giterable_raw_data(g)
+    giterable_set_raw_size(g, giterable_raw_size(g) + 1)
+    giterable_raw_update(g, giterable_raw_size(g), y)
+  }
+
 }

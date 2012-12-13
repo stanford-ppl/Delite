@@ -1,3 +1,4 @@
+/*
 package ppl.dsl.optigraph.datastruct.scala
 
 import collection.mutable.{HashMap, Map, MutableList}
@@ -536,3 +537,5 @@ object Graph {
     G
   }
 }
+
+*/

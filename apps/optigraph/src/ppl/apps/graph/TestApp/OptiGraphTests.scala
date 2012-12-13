@@ -529,7 +529,7 @@ trait OptiGraphTests extends OptiGraphApplication {
     g.Freeze
 
     println("Test Node Out-Nbrs")
-    val outNbrs = n1.OutNbrs.toSet
+    val outNbrs = g.OutNbrs(n1).toSet
     if(outNbrs.Size != 2) {
       println("[FAIL] [Expected size = 2] [Actual size = " + outNbrs.Size+ "]")
     } else {
@@ -544,7 +544,7 @@ trait OptiGraphTests extends OptiGraphApplication {
     //-------//
 
     println("Test Node In-Nbrs")
-    val inNbrs = n1.InNbrs.toSet
+    val inNbrs = g.InNbrs(n1).toSet
     if(inNbrs.Size != 2) {
       println("[FAIL] [Expected size = 2] [Actual size = " + inNbrs.Size+ "]")
     } else {
@@ -1059,7 +1059,7 @@ trait OptiGraphTests extends OptiGraphApplication {
     while(cond) {
       diff.setValue(0.0)
       for(t <- G.Nodes) {
-        val Val: Rep[Double] = ((1.0 - d) / N) + d * Sum(t.InNbrs){
+        val Val: Rep[Double] = ((1.0 - d) / N) + d * Sum(G.InNbrs(t)){
           w => PR(w) / deg(w.Id)//w.OutDegree
         }
         //val Val = v
@@ -1102,7 +1102,7 @@ trait OptiGraphTests extends OptiGraphApplication {
     	val Din = Sum(G.Nodes, (u:Rep[Node]) => member(u) == num){ _.Degree }
     	val Dout = Sum(G.Nodes, (u:Rep[Node]) => member(u) != num){ _.Degree }
     	val Cross = Sum(G.Nodes, (u:Rep[Node]) => member(u) == num){ u =>
-                   Count(u.Nbrs) {j => member(j) != num}}
+                   Count(G.Nbrs(u)) {j => member(j) != num}}
     	val m = if (Din < Dout) Din else Dout
     	val retVal = if(m == 0) {
     		if(Cross == 0) 0.0 else MAX_DOUBLE

@@ -1,3 +1,4 @@
+/*
 package ppl.dsl.optigraph.datastruct.scala
 
 /** 
@@ -35,3 +36,4 @@ class Property[@specialized T: ClassManifest](val g: Graph, val size: Int) {
   /* Returns the length of the property data array (which is the number of nodes or edges in the graph)*/
   def dcSize : Int = data.length
 }
+*/

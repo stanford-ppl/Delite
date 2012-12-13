@@ -1,3 +1,4 @@
+/*
 package ppl.dsl.optigraph.datastruct.scala
 
 /**
@@ -25,3 +26,4 @@ class GIterable[@specialized T: ClassManifest](var __data: Array[T], __offset: I
     _size = len
   }
 }
+*/
