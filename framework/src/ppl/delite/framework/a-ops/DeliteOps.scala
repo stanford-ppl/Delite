@@ -2029,18 +2029,30 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     }    
     stream.println(/*{*/"}")
     stream.println("def process(__act: " + actType + ", " + quotearg(op.v) + "): Unit = {"/*}*/)
+    stream.println("// BEGIN multi " + symList)
     emitMultiLoopFuncs(op, symList)
+    stream.println("// END multi " + symList)
+    stream.println("// BEGIN hash ")
     emitMultiHashElem(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act.")
+    stream.println("// END hash ")
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_,_]) =>
+        stream.println("// BEGIN collect " + sym)
         emitCollectElem(op, sym, elem, "__act.")
+        stream.println("// END collect " + sym)
       case (sym, elem: DeliteHashElem[_,_]) => // done above
       case (sym, elem: DeliteForeachElem[_]) =>
+        stream.println("// BEGIN foreach " + sym)
         stream.println("val " + quote(sym) + " = {")
         emitForeachElem(op, sym, elem)
         stream.println("}")
+        stream.println("// END foreach " + sym)
       case (sym, elem: DeliteReduceElem[_]) =>
+        stream.println("// BEGIN reduce " + sym) // TODO: should make reduces fusable
+        stream.println("val " + quote(sym) + "_red = {")
         emitReduceElem(op, sym, elem, "__act.")
+        stream.println("}")
+        stream.println("// END reduce " + sym)
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
         emitReduceTupleElem(op, sym, elem, "__act.")
     }
