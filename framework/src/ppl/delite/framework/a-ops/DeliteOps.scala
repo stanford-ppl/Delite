@@ -28,8 +28,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * Where should these live?
    */
   trait DeliteParallelStrategy
-  object ParFlat extends DeliteParallelStrategy
-  object ParBuffer extends DeliteParallelStrategy
+  object ParFlat extends DeliteParallelStrategy { override def toString = "ParFlat" }
+  object ParBuffer extends DeliteParallelStrategy { override def toString = "ParBuffer" }
   
   /*
    * Useful for mirroring
@@ -107,6 +107,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   abstract class DeliteOpExternal[A:Manifest] extends DeliteOp[A] {
     type OpType <: DeliteOpExternal[A]
     def alloc: Exp[A]
+    def inputs: List[Exp[Any]] = Nil
     val funcName: String
     final lazy val allocVal: Block[A] = copyTransformedBlockOrElse(_.allocVal)(reifyEffects(alloc))
   }
@@ -445,6 +446,11 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
         copyRaw = reifyEffects(dc_copy(aV,iV,allocVal,iV2,sV))        
       )      
     ))    
+
+    val dmA = manifest[A]
+    val dmB = manifest[B]
+    val dmI = manifest[I]
+    val dmCB = manifest[CB]
   }  
   
   /**
@@ -1418,6 +1424,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
 
   def quotearg(x: Sym[Any]) = quote(x) + ": " + quotetp(x)
   def quotetp(x: Sym[Any]) = remap(x.tp)
+
 /*
   def quoteZero(x: Sym[Any]) = x.tp.toString match {
     case "Int" | "Long" | "Float" | "Double" => "0" 
@@ -1648,6 +1655,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
         emitValDef(elem.allocVal, prefixSym + quote(sym) + "_buf")                
         if (elem.cond.nonEmpty) stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")        
         // should append be called insert? it is a physical append of element e, at logical index v (it's a tail-insert)        
+        currentSym = prefixSym + quote(sym)
         emitBlock(elem.buf.append)
         stream.println("if (" + quote(getBlockResult(elem.buf.append)) + ")")
         stream.println(prefixSym + quote(sym) + "_size += 1")
@@ -1661,6 +1669,11 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
         emitBlock(elem.update)
     }
   }
+
+  private var currentSym = ""
+  def getActSize = currentSym + "_size"
+  def getActBuffer = currentSym + "_buf"
+  var getActFinal = ""
     
   def emitForeachElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteForeachElem[_]) {
     // if (elem.cond.nonEmpty)
@@ -1857,7 +1870,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
         // if we are using parallel buffers, set the logical size of the output since it
         // might be different than the physically appended size for some representations
         if (elem.par == ParBuffer) {      
-          emitValDef(elem.allocVal, quote(sym) + "_buf")     
+          stream.println("var " + quote(elem.allocVal) + " = " + quote(sym) + "_buf")
+          getActFinal = quote(elem.allocVal)     
           if (elem.cond.nonEmpty) 
             emitValDef(elem.sV, quote(sym) + "_conditionals")
           else
@@ -1956,18 +1970,22 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
           case ParFlat =>
             stream.println("__act2." + quote(sym) + "_data = __act." + quote(sym) + "_data")
           }
+        case (sym, elem: DeliteHashElem[_,_]) => 
         case (sym, elem: DeliteForeachElem[_]) => // nothing needed - this case only happens if a ForeachElem is fused with something else that needs combine
         case (sym, elem: DeliteReduceElem[_]) =>
           stream.println("__act2." + quote(sym) + "_zero = " + "__act." + quote(sym) + "_zero")
           // should we throw an exception instead on an empty reduce?
           if (elem.stripFirst) {            
             stream.println("if (" + quote(op.size) + " == 0) // stripping the first iter: only initialize to zero if empty")          
-          }
-          if (isPrimitiveType(sym.tp)) {
             stream.println("__act2." + quote(sym) + " = " + "__act2." + quote(sym) + "_zero")
-          } else {
-            emitBlock(elem.accInit)
-            stream.println("__act2." + quote(sym) + " = " + quote(getBlockResult(elem.accInit))) // separate zero buffer
+          }
+          else {
+            if (isPrimitiveType(sym.tp)) {
+              stream.println("__act2." + quote(sym) + " = " + "__act2." + quote(sym) + "_zero")
+            } else {
+              emitBlock(elem.accInit)
+              stream.println("__act2." + quote(sym) + " = " + quote(getBlockResult(elem.accInit))) // separate zero buffer
+            }
           }
         case (sym, elem: DeliteReduceTupleElem[_,_]) =>
           // no strip first here ... stream.println("assert(false, \"TODO: tuple reduce\")")
@@ -2011,18 +2029,30 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     }    
     stream.println(/*{*/"}")
     stream.println("def process(__act: " + actType + ", " + quotearg(op.v) + "): Unit = {"/*}*/)
+    stream.println("// BEGIN multi " + symList)
     emitMultiLoopFuncs(op, symList)
+    stream.println("// END multi " + symList)
+    stream.println("// BEGIN hash ")
     emitMultiHashElem(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act.")
+    stream.println("// END hash ")
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_,_]) =>
+        stream.println("// BEGIN collect " + sym)
         emitCollectElem(op, sym, elem, "__act.")
+        stream.println("// END collect " + sym)
       case (sym, elem: DeliteHashElem[_,_]) => // done above
       case (sym, elem: DeliteForeachElem[_]) =>
+        stream.println("// BEGIN foreach " + sym)
         stream.println("val " + quote(sym) + " = {")
         emitForeachElem(op, sym, elem)
         stream.println("}")
+        stream.println("// END foreach " + sym)
       case (sym, elem: DeliteReduceElem[_]) =>
+        stream.println("// BEGIN reduce " + sym) // TODO: should make reduces fusable
+        stream.println("val " + quote(sym) + "_red = {")
         emitReduceElem(op, sym, elem, "__act.")
+        stream.println("}")
+        stream.println("// END reduce " + sym)
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
         emitReduceTupleElem(op, sym, elem, "__act.")
     }
@@ -2122,7 +2152,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     emitMultiHashFinalize(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act.")
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_,_]) =>
-        emitValDef(elem.allocVal, "__act." + quote(sym) + "_data")                    
+        stream.println("var " + quote(elem.allocVal) + " = __act." + quote(sym) + "_data")
+        getActFinal = quote(elem.allocVal)    
         if (elem.par == ParBuffer) {          
           if (elem.cond.nonEmpty) {
             emitValDef(elem.sV, "__act." + quote(sym) + "_conditionals")
@@ -2163,8 +2194,10 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
             stream.println("var " + quote(sym) + "_conditionals= 0")
           stream.println("def " + quote(sym) + "_data_set(xs: " + remap(elem.allocVal.tp) + "): Unit = {"/*}*/)
           stream.println(quote(sym) + "_data = xs")
-          stream.println("if (left_act ne null) left_act." + quote(sym) + "_data_set(xs)") // XX linked frame             
-          stream.println("}")                              
+          stream.println("if (left_act ne null) {")
+          stream.println("left_act." + quote(sym) + "_conditionals = left_act." + quote(sym) + "_conditionals + " + quote(sym) + "_conditionals")
+          stream.println("left_act." + quote(sym) + "_data_set(xs)") // XX linked frame             
+          stream.println("}}")                              
         }
       case (sym, elem: DeliteHashElem[_,_]) => 
       case (sym, elem: DeliteForeachElem[_]) =>

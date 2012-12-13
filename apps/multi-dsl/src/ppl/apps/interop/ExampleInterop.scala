@@ -79,7 +79,7 @@ object ExampleInterop {
     }
     
     OptiML_ {
-      println("got input from previous stage: " + previous(0).AsInstanceOf[DeliteArray[Int]]) 
+      println("got input from previous stage: " + lastScopeResult.AsInstanceOf[DeliteArray[Int]]) 
       println("optiml 2")
     }
     

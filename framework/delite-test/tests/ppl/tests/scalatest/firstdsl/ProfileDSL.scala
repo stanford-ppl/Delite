@@ -5,7 +5,7 @@ import scala.virtualization.lms.internal._
 import ppl.delite.framework._
 import ppl.delite.framework.codegen._
 import ppl.delite.framework.ops._
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollection
 import codegen.delite.overrides._
 import codegen.scala.TargetScala
 import java.io.File

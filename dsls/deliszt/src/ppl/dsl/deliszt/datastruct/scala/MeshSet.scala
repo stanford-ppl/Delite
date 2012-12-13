@@ -1,6 +1,6 @@
 package ppl.dsl.deliszt.datastruct.scala
 
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollection
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)

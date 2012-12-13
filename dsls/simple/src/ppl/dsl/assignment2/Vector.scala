@@ -3,7 +3,7 @@ package ppl.dsl.assignment2
 import virtualization.lms.common.{Variables, VariablesExp, BaseFatExp}
 import scala.reflect.SourceContext
 import ppl.delite.framework.ops._
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.datastructures._
 import java.io.PrintWriter
 
