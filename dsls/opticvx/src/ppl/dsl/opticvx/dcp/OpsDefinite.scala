@@ -23,6 +23,9 @@ trait DCPOpsDefinite extends DCPOps {
       x
       })
 
+  def vector_input(size: Int)(data: (Int)=>Double) = InputDescDefinite(IRPoly.const(size, globalArity), data)
+  def vector_input(size: IRPoly)(data: (Int)=>Double) = InputDescDefinite(size, data)
+
   override def postsolve(problem: Problem, params: Seq[Int], inputs: Seq[InputDescDefinite], syms: Seq[Symbol[Expr, ExprRT]]) {
     val tt = PrimalDualSubgradient.Gen(problem).solver
 
