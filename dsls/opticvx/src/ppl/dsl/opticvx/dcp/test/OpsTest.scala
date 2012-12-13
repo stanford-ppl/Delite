@@ -26,6 +26,34 @@ object DCPOpsTestApp extends DCPOpsDefinite {
     println(v.resolve)
     println(y.resolve)
 
+    /* maybe:
+
+    trait MyProblem extends OptiCVXProblem {
+      trait params {
+        self: _params =>
+        val n = param()
+      }
+      trait given {
+        self: _given =>
+        val v = vector(n)
+      }
+      trait over {
+        self: _over =>
+        val x = scalar()
+        val y = vector(n)
+      }
+      trait let {
+        self: _let =>
+      }
+      def where(implicit e: _where) = {
+        import e._
+        for (i <- n) yield y(i) >= v(i)
+        in_secondorder_cone(cat(2*y(2), x-1), x+1)
+      }
+    }
+
+    */
+
     /*
     val n = cvxparam()
     val l = cvxexpr()
