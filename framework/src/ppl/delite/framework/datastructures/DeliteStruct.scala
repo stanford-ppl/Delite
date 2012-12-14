@@ -93,9 +93,7 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
       emitStructDeclaration(name, elems)(stream)
     }
     stream.close()
-    //TODO: Assume this will the last call in the chain other than LMS emitDataStructures().
-    //      Problem is LMS structs also emit the same datastructures. 
-    //super.emitDataStructures(path)
+    super.emitDataStructures(path)
   }
 
   def emitStructDeclaration(name: String, elems: Seq[(String,Manifest[_])])(stream: PrintWriter) {
