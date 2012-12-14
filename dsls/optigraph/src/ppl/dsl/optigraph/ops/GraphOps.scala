@@ -14,6 +14,7 @@ trait GraphOps extends Variables {
   /** Directed graph constructors */
   object Graph {
     def apply() = dgraph_new()
+    def fromArray(array: Rep[DeliteArray[(Int,Int)]]):Rep[Graph] = graph_load_array(array)
   }
   object DGraph {
     def apply() = dgraph_new()
@@ -92,6 +93,7 @@ trait GraphOps extends Variables {
   def graph_snapshot(g: Rep[Graph]): Rep[Graph]
   def graph_randu(numNodes: Rep[Int], numEdges: Rep[Int], seed: Rep[Long]): Rep[Graph]
   def graph_load(fileName: Rep[String]): Rep[Graph]
+  def graph_load_array(array: Rep[DeliteArray[(Int,Int)]]): Rep[Graph]
   def graph_node_in_neighbors(g: Rep[Graph], n: Rep[Node]): Rep[GIterable[Node]]
   def graph_node_out_neighbors(g: Rep[Graph], n: Rep[Node]): Rep[GIterable[Node]]
   def graph_node_has_in_neighbor(g: Rep[Graph], n: Rep[Node], from: Rep[Node]): Rep[Boolean]
@@ -135,8 +137,9 @@ trait GraphOpsExp extends GraphOps with EffectExp with NodeOps {
   case class GraphSnapshot(g: Exp[Graph]) extends Def[Graph]
   case class GraphRandUniform(isDirected: Exp[Boolean], numNodes: Exp[Int], numEdges: Exp[Int], seed: Exp[Long]) extends Def[Graph]
   //case class GraphLoad(fileName: Exp[String]) extends Def[Graph]
-  case class GraphLoad(fileName: Exp[String]) extends DeliteOpSingleTask(reifyEffectsHere(graph_load_impl(fileName)))
-
+  case class GraphLoadFile(fileName: Exp[String]) extends DeliteOpSingleTask(reifyEffectsHere(graph_load_impl(fileName)))
+  case class GraphLoadArray(array: Exp[DeliteArray[(Int,Int)]]) extends DeliteOpSingleTask(reifyEffectsHere(graph_load_array_impl(array)))
+ 
   case class GraphObjectNew() extends DeliteStruct[Graph] {
     val elems = copyTransformedElems(collection.Seq("isImmutable" -> unit(true),
                                                     "_nodes" -> var_new(DeliteArray[Node](0)).e,
@@ -282,7 +285,8 @@ trait GraphOpsExp extends GraphOps with EffectExp with NodeOps {
   def graph_freeze(g: Exp[Graph]) = reflectWrite(g)(GraphFreeze(g))
   def graph_snapshot(g: Exp[Graph]) = reflectPure(GraphSnapshot(g))
   def graph_randu(numNodes: Exp[Int], numEdges: Exp[Int], seed: Exp[Long]) = reflectPure(GraphRandUniform(unit(true), numNodes, numEdges, seed))
-  def graph_load(fileName: Exp[String]) = reflectPure(GraphLoad(fileName))
+  def graph_load(fileName: Exp[String]) = reflectPure(GraphLoadFile(fileName))
+  def graph_load_array(array: Exp[DeliteArray[(Int,Int)]]) = reflectPure(GraphLoadArray(array))
   
   // alias/sharing
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
@@ -321,7 +325,8 @@ trait GraphOpsExp extends GraphOps with EffectExp with NodeOps {
     case GraphFlip(g) => graph_flip(f(g))
     case GraphSnapshot(g) => graph_snapshot(f(g))
     //case GraphLoad(fn) => graph_load(f(fn))
-    case GraphLoad(fn) => reflectPure(new { override val original = Some(f,e) } with GraphLoad(f(fn)))(mtype(manifest[A]),implicitly[SourceContext])
+    case GraphLoadFile(fn) => reflectPure(new { override val original = Some(f,e) } with GraphLoadFile(f(fn)))(mtype(manifest[A]),implicitly[SourceContext])
+    case GraphLoadArray(a) => reflectPure(new { override val original = Some(f,e) } with GraphLoadArray(f(a)))(mtype(manifest[A]),implicitly[SourceContext])
     case GraphRandUniform(dir,nn,ne,se) => graph_randu(f(nn),f(ne),f(se))
     case Reflect(e@GraphObjectNew(), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GraphObjectNew(), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GraphNodeInNeighbors(g,n), u, es) => reflectMirrored(Reflect(GraphNodeInNeighbors(f(g),f(n)), mapOver(f,u), f(es)))(mtype(manifest[A])) //reflectMirrored(Reflect(new { override val original = Some(f,e) } with GraphNodeInNeighbors(f(g),f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -335,7 +340,8 @@ trait GraphOpsExp extends GraphOps with EffectExp with NodeOps {
     case Reflect(e@GraphFlip(g), u, es) => reflectMirrored(Reflect(GraphFlip(f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GraphSnapshot(g), u, es) => reflectMirrored(Reflect(GraphSnapshot(f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     //case Reflect(e@GraphLoad(fn), u, es) => reflectMirrored(Reflect(GraphLoad(f(fn)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@GraphLoad(fn), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GraphLoad(f(fn)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GraphLoadFile(fn), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GraphLoadFile(f(fn)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GraphLoadArray(a), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GraphLoadArray(f(a)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@DGraphObjectNew(), u, es) => reflectMirrored(Reflect(DGraphObjectNew(), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@UGraphObjectNew(), u, es) => reflectMirrored(Reflect(UGraphObjectNew(), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GraphAddNode(g), u, es) => reflectMirrored(Reflect(GraphAddNode(f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))

@@ -42,6 +42,8 @@ trait NodePropertyOps extends Variables {
     def assign(n: Rep[Node]) = nodeprop_assign(np, n)
     /** Assign the values deferred for all the nodes (parallel operation) */
     def assignAll() = nodeprop_assignAll(np)
+    /** take the internal DeliteArray */
+    def toArray() = nodeprop_toarray(np) 
   }
   
   def nodeprop_new[A:Manifest](g: Rep[Graph]): Rep[NodeProperty[A]]
@@ -57,6 +59,7 @@ trait NodePropertyOps extends Variables {
   def nodeprop_graph[A:Manifest](np: Rep[NodeProperty[A]]): Rep[Graph]
   def nodeprop_raw_data[A:Manifest](np: Rep[NodeProperty[A]]): Rep[DeliteArray[A]]
   def nodeprop_size[A:Manifest](np: Rep[NodeProperty[A]]): Rep[Int]
+  def nodeprop_toarray[A:Manifest](np: Rep[NodeProperty[A]]): Rep[DeliteArray[A]]
 }
 
 trait NodePropertyOpsExp extends NodePropertyOps with VariablesExp with BaseFatExp {
@@ -131,6 +134,7 @@ trait NodePropertyOpsExp extends NodePropertyOps with VariablesExp with BaseFatE
   def nodeprop_graph[A:Manifest](np: Exp[NodeProperty[A]]) = field[Graph](np, "_graph")
   def nodeprop_raw_data[A:Manifest](np: Exp[NodeProperty[A]]) = field[DeliteArray[A]](np, "_data")
   def nodeprop_size[A:Manifest](np: Exp[NodeProperty[A]]) = field[Int](np, "_size")
+  def nodeprop_toarray[A:Manifest](np: Exp[NodeProperty[A]]) = nodeprop_raw_data(np) //Do we want copy?
   
   //////////////
   // mirroring
