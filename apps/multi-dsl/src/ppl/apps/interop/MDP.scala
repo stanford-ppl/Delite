@@ -10,8 +10,8 @@ import ppl.delite.framework.datastructures.DeliteArray
 
 trait OptiCollections extends OptiMLApplication {
 
-  trait CMap[K,V]
-  trait CSeq[A]
+  abstract class CMap[K,V] extends Record
+  abstract class CSeq[A] extends Record
 
   object CSeq {
     def fromArray[A:Manifest](a: Rep[DeliteArray[A]]) = sequence_fromArray(a)
@@ -116,6 +116,29 @@ trait MDPModel extends OptiMLApplication with OptiCollections {
     (optimalValue, optimalActions)
   }
 
+  def valueIteration2(actionResults: Rep[CMap[Double, (DenseMatrix[Double], DenseVector[Double])]], initValue: Rep[DenseVector[Double]], discountFactor: Rep[Double], tolerance: Rep[Double], maxIter: Rep[Int]) = {
+    var optimalActions = Vector[Double](0)
+    var iter = 0
+    var value = initValue
+    var delta = Double.MaxValue
+    while (abs(delta) > tolerance && iter < maxIter) {
+      val allValues = actionResults map { e => (e._1, (0::value.length){ i => (e._2._1(i) * value(i) * discountFactor + e._2._2(i)).sum }) }
+      val allValues1 = allValues/*.unsafeMutable.unsafeImmutable*/
+      val allValues2 = allValues/*.unsafeMutable.unsafeImmutable*/
+      val newValue = allValues1.values reduce { (v1,v2) => (0::value.length){ i => if (v1(i) <= v2(i)) v1(i) else v2(i) } }
+      optimalActions = allValues2.values reduce { (v1,v2) => (0::value.length){ i => if (v1(i) <= v2(i)) 0.0 else 1.0 } }
+      newValue
+
+      iter += 1
+      delta = diff(newValue, value)
+      value = newValue
+    }
+    println("iters " + iter)
+    (value, optimalActions)
+  }
+
+  def diff(x: Rep[DenseVector[Double]], y: Rep[DenseVector[Double]]) = (x-y).abs.sum
+
   def printUsage = {
     println("MDP <#states> <#actions> <max iters>")
     exit(-1)
@@ -129,24 +152,24 @@ trait MDPModel extends OptiMLApplication with OptiCollections {
     val maxIter  = args(2).toInt
     val tolerance = 1e-3
 
-    val cost = Vector.rand(size).unsafeImmutable
-    val P = Matrix.rand(size,size).unsafeImmutable
+
     val initValue = Vector.rand(size).unsafeImmutable
     val discountFactor = 0.9
 
     val arr = DeliteArray[(Action, (DenseMatrix[Double], DenseVector[Double]))](numActions)
     for (i <- 0::numActions) {
+      val cost = Vector.rand(size).unsafeImmutable
+      val P = Matrix.rand(size,size).unsafeImmutable
       arr(i) = make_tuple2(i, make_tuple2(P, cost)) //FIXME: tuple lifting implicits
     }
 
     val actionResults = CMap.fromArray(arr.unsafeImmutable)
 
     tic()
-    val (value, actions) = valueIteration(actionResults, initValue, discountFactor, tolerance, maxIter)
-    //val value = valueIterationSimple(P, cost, initValue, discountFactor, tolerance, maxIter)
+    val (value, actions) = valueIteration2(actionResults, initValue, discountFactor, tolerance, maxIter)
     toc(value)
-    value.pprint
-    actions.pprint
+    println(value)
+    println(actions)
   }
 
 }
