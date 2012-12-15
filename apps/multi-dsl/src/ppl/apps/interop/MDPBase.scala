@@ -4,35 +4,51 @@ package ppl.apps.interop
 object MDPModelBase {
 
   def printUsage = {
-    println("MDP <#states> <#actions> <#maxIter>")
+    println("MDP <#states> <#actions> <#maxIter> <version>")
     exit(-1)
   }
 
   def main(args: Array[String]) {
-    if (args.length < 3) printUsage
+    if (args.length < 4) printUsage
 
     val size = args(0).toInt
     val numActions = args(1).toInt
     val maxIter = args(2).toInt
+    val version = args(3)
 
-    val cost = Vector.rand(size)
-    val P = Matrix.rand(size,size)
-
-    var actionResults = Map.empty[Action, (Matrix,Vector)]
-    for (i <- 0 until numActions) {
-      actionResults += Pair(i, (P,cost))
-    }
-
-    val initValue = Vector.rand(size)
     val discountFactor = 0.9
     val tolerance = 1e-3
+    if (version == "lib") {
+      var actionResults = Map.empty[Action, (Matrix,Vector)]
+      for (i <- 0 until numActions) {
+        val cost = Vector.rand(size)
+        val P = Matrix.rand(size,size)
+        actionResults += Pair(i, (P,cost))
+      }
+      val initValue = Vector.rand(size)
 
-    val start = System.currentTimeMillis
-    val (value, actions) = valueIteration(actionResults, initValue, discountFactor, tolerance, maxIter)
-    val stop = System.currentTimeMillis
+      val start = System.currentTimeMillis
+      val (value, actions) = valueIteration2(actionResults, initValue, discountFactor, tolerance, maxIter)
+      val stop = System.currentTimeMillis
+      //value.pprint
+      println("time elapsed: " + (stop-start)/1e3)
+    }
+    else {
+      val cost = new Array[Array[Double]](numActions)
+      val prob = new Array[Array[Double]](numActions)
+      val actions = new Array[Double](numActions)
+      for (i <- 0 until numActions) {
+        actions(i) = i
+        cost(i) = Vector.rand(size).data
+        prob(i) = Matrix.rand(size,size).data
+      }
+      val initValue = Vector.rand(size).data
 
-    value.pprint
-    println("time elapsed: " + (stop-start)/1e3)
+      val start = System.currentTimeMillis
+      val (value, act) = valueIterationOpt(actions, prob, cost, initValue, discountFactor, tolerance, maxIter)
+      val stop = System.currentTimeMillis
+      println("time elapsed: " + (stop-start)/1e3)
+    }
   }
 
   type Action = Double
@@ -66,7 +82,91 @@ object MDPModelBase {
     (value, optimalActions)
   }
 
+  def valueIteration2(actionResults: Map[Double, (Matrix, Vector)], initValue: Vector, discountFactor: Double, tolerance: Double, maxIter: Int) = {
+    var optimalActions: Vector = null
+    
+    var delta = Double.MaxValue
+    var value = initValue
+    var iter = 0
+    var time = 0L
+    while (Math.abs(delta) > tolerance && iter < maxIter) {
+      val allValues = actionResults map { case (action, (prob, cost)) => (action, Vector.fill(0,value.length)(i => (prob(i) * value(i) * discountFactor + cost(i)).sum)) }
+      val newValue = allValues.map(_._2) reduce { (v1,v2) => Vector.fill(0,value.length){ i => if (v1(i) <= v2(i)) v1(i) else v2(i) } }
+      optimalActions = allValues.map(_._2).reduce { (v1,v2) => Vector.fill(0,value.length){ i => if (v1(i) <= v2(i)) 0.0 else 1.0 } }
+      
+      iter += 1
+      delta = diff(newValue, value)
+      value = newValue
+    }
+    println("iters " + iter)
+    (value, optimalActions)
+  }
+
+  def valueIterationOpt(actions: Array[Double], prob: Array[Array[Double]], cost: Array[Array[Double]], initValue: Array[Double], discountFactor: Double, tolerance: Double, maxIter: Double) = {
+    var optimalActions: Array[Double] = null
+
+    val max = Double.MaxValue
+    var delta = max
+    var value = initValue
+    var iter = 0
+    val len = value.length
+    while (Math.abs(delta) > tolerance && iter < maxIter) {
+      val vMin = new Array[Double](len)
+      var j = 0
+      while (j < len) {
+        vMin(j) = max
+        j += 1
+      }
+      val actMin = new Array[Double](len)
+      var a = 0
+      while (a < actions.length) {
+        val act = actions(a)
+        var i = 0
+        val vTemp = new Array[Double](len)
+        val p = prob(a)
+        val c = cost(a)
+        while (i < len) {
+          var vi = 0.0
+          var k = 0
+          while (k < len) {
+            val offset = i*len
+            vi += p(offset + k) * value(i) * discountFactor + c(i)
+            k += 1
+          }
+          vTemp(i) = vi
+          i += 1
+        }
+        i = 0
+        while (i < len) {
+          if (vMin(i) > vTemp(i)) {
+            vMin(i) = vTemp(i)
+            actMin(i) = act
+          }
+          i += 1
+        }
+        a += 1
+      }
+
+      optimalActions = actMin
+      iter += 1
+      delta = diff(vMin, value)
+      value = vMin
+    }
+    println("iters " + iter)
+    (value, optimalActions)
+  }
+
   def diff(x: Vector, y: Vector) = {
+    var acc = 0.0
+    var i = 0
+    while (i < x.length) {
+      acc += Math.abs(x(i) - y(i))
+      i += 1
+    }
+    acc
+  }
+
+  def diff(x: Array[Double], y: Array[Double]) = {
     var acc = 0.0
     var i = 0
     while (i < x.length) {
@@ -102,7 +202,7 @@ object MDPModelBase {
   }
 
   class Vector(val length: Int) {
-    private val data = new Array[Double](length)
+    val data = new Array[Double](length)
 
     def apply(n: Int) = data(n)
     def update(n: Int, x: Double) = data(n) = x
@@ -117,6 +217,16 @@ object MDPModelBase {
       res
     }
 
+    def +(s: Double): Vector = {
+      val res = new Vector(length)
+      var i = 0
+      while (i < length) {
+        res(i) = this(i) + s
+        i += 1
+      }
+      res
+    }
+
     def *(s: Double): Vector = {
       val res = new Vector(length)
       var i = 0
@@ -125,6 +235,16 @@ object MDPModelBase {
         i += 1
       }
       res
+    }
+
+    def sum(): Double = {
+      var acc = 0.0
+      var i = 0
+      while (i < length) {
+        acc += this(i)
+        i += 1
+      }
+      acc
     }
 
     def pprint {
@@ -153,10 +273,18 @@ object MDPModelBase {
     }
   }
 
+  class VectorView(length: Int, offset: Int, _data: Array[Double]) extends Vector(length) {
+    override val data = _data
+    override def apply(n: Int) = data(offset + n)
+    override def update(n: Int, x: Double) = data(offset + n) = x
+  }
+
   class Matrix(val numRows: Int, val numCols: Int) {
-    private val data = new Array[Double](numRows * numCols)
+    val data = new Array[Double](numRows * numCols)
     def apply(i: Int, j: Int) = data(i * numCols + j)
     def update(i: Int, j: Int, x: Double) = data(i * numCols + j) = x
+
+    def apply(i: Int): Vector = new VectorView(numCols, i*numCols, data)
 
     def *(v: Vector): Vector = {
       val res = new Vector(numRows)

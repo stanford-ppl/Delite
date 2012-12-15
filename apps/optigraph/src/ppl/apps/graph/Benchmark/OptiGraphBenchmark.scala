@@ -45,12 +45,12 @@ Int) : Float {
       val triangles = Reduceable[Int](0)
       val total = Reduceable[Int](0)
 
-      Foreach(s.InNbrs) { t =>
-        if (s.HasOutNbr(t)) {
-          Foreach(s.InNbrs.filter(n => n.HasOutNbr(t))) { u =>
-            if (s.HasOutNbr(u)) {
-              if (u.HasOutNbr(t)) {triangles += 1}
-              if (t.HasOutNbr(u)) {triangles += 1}
+      Foreach(G.InNbrs(s)) { t =>
+        if (G.HasOutNbr(s,t)) {
+          Foreach(G.InNbrs(s).filter(n => G.HasOutNbr(n,t))) { u =>
+            if (G.HasOutNbr(s,u)) {
+              if (G.HasOutNbr(u,t)) {triangles += 1}
+              if (G.HasOutNbr(t,u)) {triangles += 1}
               total += 2
             }
           }

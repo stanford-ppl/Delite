@@ -69,6 +69,7 @@ trait OptiGraphCompiler extends OptiGraph
   with ExceptionOps
   // -- kernel implementations
   with LanguageImplOpsStandard
+  with GraphImplOpsStandard
   with GIterableImplOpsStandard
   with NodeImplOpsStandard {
 
@@ -129,6 +130,14 @@ trait OptiGraphCodeGenBase extends GenericFatCodegen {
     d.listFiles flatMap { f => if (f.isDirectory()) getFiles(f) else Array(f) }
   }
 
+  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "NodeProperty" => IR.structName(m)
+    case "Graph" => IR.structName(m)
+    case "GIterable" => IR.structName(m)
+    case "Node" => "Int" //IR.structName(m)
+    case _ => super.remap(m)
+  }
+  
   override def emitDataStructures(path: String) {
     val s = File.separator
     val dsDir = new File(Config.homeDir + s+"dsls"+s+"optigraph"+s+"src"+s+"ppl"+s+"dsl"+s+"optigraph"+s+"datastruct"+s + this.toString)
@@ -164,7 +173,7 @@ trait OptiGraphCodeGenBase extends GenericFatCodegen {
 }
 
 trait OptiGraphCodeGenScala extends OptiGraphCodeGenBase with OptiGraphScalaCodeGenPkg with ScalaGenDeliteOps
-  with ScalaGenDeliteCollectionOps with ScalaGenDeliteArrayOps with ScalaGenLanguageOps with ScalaGenNumericOps with ScalaGenOrderingOps
+  with ScalaGenDeliteCollectionOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenLanguageOps with ScalaGenNumericOps with ScalaGenOrderingOps
   with ScalaGenReduceableOps with ScalaGenDeferrableOps
   with ScalaGenGraphOps with ScalaGenNodeOps with ScalaGenEdgeOps
   with ScalaGenExceptionOps
@@ -174,9 +183,9 @@ trait OptiGraphCodeGenScala extends OptiGraphCodeGenBase with OptiGraphScalaCode
 
   val IR: DeliteApplication with OptiGraphExp
 
-  override val specialize = Set[String]("Property", "Reduceable", "Deferrable")
+  override val specialize = Set[String]("Reduceable", "Deferrable")
   override val specialize2 = Set[String]()
-  override val specialize3 = Set[String]("GIterable", "GOrder", "GSet", "GSeq")
+  override val specialize3 = Set[String]("GOrder", "GSet", "GSeq")
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int","Float","Long","Boolean")) {
@@ -248,8 +257,6 @@ trait OptiGraphCodeGenScala extends OptiGraphCodeGenBase with OptiGraphScalaCode
   override def parmap(line: String): String = {
     //printf(line)
     var res = line
-    res = res.replaceAll("EdgeProperty", "Property")
-    res = res.replaceAll("NodeProperty", "Property")
 
     for(tpe1 <- List("Int","Long","Double","Float","Boolean")) {
       for (s <- specialize) {
