@@ -23,7 +23,7 @@ trait DeliteRestageOps extends Base {
   def returnScopeResult(n: Rep[Any]): Rep[Unit]
 }
 
-trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp with StructExp {
+trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp with StructExp with RangeOpsExp {
   this: DeliteArrayOpsExpOpt =>
   
   case class LastScopeResult() extends Def[Any]
@@ -38,15 +38,6 @@ trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp with StructExp
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]  
 
-  // TODO: remove, this wasn't it
-  // hack for not having a refinedManifest for explicitly constructed DeliteArray structs..
-  override def structName[T](m: Manifest[T]): String = m match {
-    // case s if s.erasure.getSimpleName == "DeliteArray" => m.typeArguments(0) match {
-    //   case StructType(_,_) => "DeliteArray"+structName(m.typeArguments(0))
-    //   case _ => super.structName(m)
-    // }
-    case _ => super.structName(m)
-  }  
 }
 
 object EndScopes {

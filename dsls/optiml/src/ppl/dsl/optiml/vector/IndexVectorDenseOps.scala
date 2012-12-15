@@ -1,6 +1,5 @@
 package ppl.dsl.optiml.vector
 
-import ppl.dsl.optiml.{Vector, DenseVector, RangeVector, IndexVector, IndexVectorDense}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteCollectionOpsExp}

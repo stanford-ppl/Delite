@@ -11,6 +11,8 @@ import ppl.dsl.optiml.application.{BinarizedGradientTemplate}
 // TODO: we need to support an escape hatch, or move application-specific i/o to application ops. Either
 // way, they shouldn't be here.
 trait MLInputReaderOps extends Base {
+  this: OptiML =>
+  
   // file format is m lines with n floats per line, each float separated by whitespaces
   // (same as matlab .dat)
   def readGrayscaleImage(filename: Rep[String])(implicit ctx: SourceContext) = obj_mlinput_read_grayscale_image(filename)
@@ -27,7 +29,7 @@ trait MLInputReaderOps extends Base {
   def obj_mlinput_read_template_models(directory: Rep[String])(implicit ctx: SourceContext): Rep[DenseVector[(String, DenseVector[BinarizedGradientTemplate])]]
 }
 
-trait MLInputReaderOpsExp extends MLInputReaderOps with BaseFatExp { this: MLInputReaderImplOps with DeliteOpsExp with TupleOpsExp =>
+trait MLInputReaderOpsExp extends MLInputReaderOps with BaseFatExp { this: MLInputReaderImplOps with OptiMLExp =>
   case class MLInputReadGrayscaleImage(filename: Exp[String])
     extends DeliteOpSingleTask(reifyEffects(mlinput_read_grayscale_image_impl(filename)))
     

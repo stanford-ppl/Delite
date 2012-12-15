@@ -22,7 +22,7 @@ trait DeliteILApplication extends DeliteIL with DeliteILLift {
   def main(): Unit
 }
 
-trait DeliteILLift extends LiftVariables with LiftEquals with LiftString with LiftBoolean /*with LiftNumeric*/ with LiftPrimitives {
+trait DeliteILLift extends LiftVariables with LiftEquals with LiftString with LiftBoolean with LiftNumeric with LiftPrimitives {
   this: DeliteIL =>
 }
 
@@ -31,19 +31,19 @@ trait DeliteILScalaOpsPkg extends Base
   with ImplicitOps with OrderingOps with StringOps
   with BooleanOps with PrimitiveOps with MiscOps with TupleOps
   with CastingOps with ObjectOps with IOOps
-  with ArrayOps with ExceptionOps
+  with ArrayOps with ExceptionOps with MathOps with NumericOps with FractionalOps
 
 trait DeliteILScalaOpsPkgExp extends DeliteILScalaOpsPkg with DSLOpsExp
   with EqualExp with IfThenElseExp with VariablesExp with WhileExp with TupleOpsExp with TupledFunctionsExp
   with ImplicitOpsExp with OrderingOpsExp with StringOpsExp with RangeOpsExp with IOOpsExp
-  with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp 
+  with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp  with NumericOpsExp with FractionalOpsExp
   with ListOpsExp with SeqOpsExp with MathOpsExp with CastingOpsExp with SetOpsExp with ObjectOpsExp
-  with SynchronizedArrayBufferOpsExp with HashMapOpsExp with IterableOpsExp with ArrayBufferOpsExp with ExceptionOpsExp
+  with SynchronizedArrayBufferOpsExp with HashMapOpsExp with IterableOpsExp with ArrayBufferOpsExp with ExceptionOpsExp 
 
 trait DeliteILScalaCodeGenPkg extends ScalaGenDSLOps
   with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenTupleOps
   with ScalaGenImplicitOps with ScalaGenOrderingOps with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps
-  with ScalaGenArrayOps with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps 
+  with ScalaGenArrayOps with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps  with ScalaGenNumericOps with ScalaGenFractionalOps
   with ScalaGenListOps with ScalaGenSeqOps with ScalaGenMathOps with ScalaGenCastingOps with ScalaGenSetOps with ScalaGenObjectOps
   with ScalaGenSynchronizedArrayBufferOps with ScalaGenHashMapOps with ScalaGenIterableOps with ScalaGenArrayBufferOps with ScalaGenExceptionOps
   { val IR: DeliteILScalaOpsPkgExp  }
@@ -65,7 +65,7 @@ trait DeliteILExp extends DeliteIL with DeliteILScalaOpsPkgExp with DeliteILOpsE
       case _:TargetScala => new DeliteILCodeGenScala{val IR: DeliteILExp.this.type = DeliteILExp.this}
       case _ => throw new RuntimeException("DeliteIL does not support this target")
     }
-  }  
+  }    
 }
 
 trait DeliteILCodeGenBase extends GenericFatCodegen with SchedulingOpt {
@@ -75,6 +75,12 @@ trait DeliteILCodeGenBase extends GenericFatCodegen with SchedulingOpt {
 
   def dsmap(line: String) = line
 
+  // TODO should we generate these as Record with DeliteCollection instead?
+  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "DeliteCollection" => IR.structName(m)
+    case _ => super.remap(m)
+  }
+    
   val specialize = Set[String]()
   val specialize2 = Set[String]()
   def genSpec(f: File, outPath: String) = {}

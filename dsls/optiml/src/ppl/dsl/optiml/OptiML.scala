@@ -235,7 +235,7 @@ trait OptiMLCCodeGenPkg extends OptiLACCodeGenPkg
 /**
  * This is the trait that every OptiML application must extend.
  */
-trait OptiML extends OptiMLScalaOpsPkg with OptiLA with StructOps
+trait OptiML extends OptiLA with OptiMLTypes with OptiMLScalaOpsPkg 
   with LanguageOps with ApplicationOps 
   with MLInputReaderOps with MLOutputWriterOps
   with CanSumOps
@@ -262,7 +262,7 @@ trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities wit
 /**
  * These are the corresponding IR nodes for OptiML.
  */
-trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp with StructExp
+trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp
   with LanguageOpsExpOpt with ApplicationOpsExp
   with MLInputReaderOpsExp with MLOutputWriterOpsExp
   with VectorOpsExpOpt with MatrixOpsExpOpt with DenseMatrixOpsExpOpt 

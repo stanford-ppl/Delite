@@ -308,6 +308,7 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   }
 
   case class DenseMatrixTimesVectorBLAS[A:Manifest:Arith](x: Exp[DenseMatrix[A]], y: Exp[DenseVector[A]]) extends DeliteOpExternal[DenseVector[A]] {
+    override def inputs = scala.List(x,y)
     def alloc = Vector[A](x.numRows, unit(false))
     val funcName = "matMultV"
 

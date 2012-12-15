@@ -9,7 +9,7 @@ import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.delite.overrides._
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.{DeliteRestageOps,DeliteRestageOpsExp}
-import ppl.delite.framework.ops.{DeliteOpsExp,DeliteCollectionOpsExp,ScalaGenDeliteCollectionOps}
+import ppl.delite.framework.ops.{DeliteOpsExp,DeliteCollection,DeliteCollectionOpsExp,ScalaGenDeliteCollectionOps}
 
 trait TargetRestage extends Target {
   import IR._
@@ -33,9 +33,12 @@ trait RestageCodegen extends ScalaCodegen with Config {
       // restage header
       out.println("import ppl.delite.framework.{DeliteILApplication,DeliteILApplicationRunner}")
       out.println("import ppl.delite.framework.datastructures.{DeliteArray,DeliteArrayBuffer}")
+      out.println("import ppl.delite.framework.ops.DeliteCollection")
+      out.println("import scala.virtualization.lms.util.OverloadHack")
+      out.println("import reflect.{RefinedManifest,SourceContext}")
       out.println()
       out.println("object RestageApplicationRunner extends DeliteILApplicationRunner with RestageApplication")
-      out.println("trait RestageApplication extends DeliteILApplication {")      
+      out.println("trait RestageApplication extends DeliteILApplication with OverloadHack {")      
       out.println("/* Emitting re-stageable code */")
       out.println("def main() {")
       out.println("val x0 = args;")
@@ -76,10 +79,10 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
   with ScalaGenDeliteCollectionOps with ScalaGenDeliteArrayOps with ScalaGenDeliteStruct with DeliteScalaGenAllOverrides {
     
   val IR: Expressions with Effects with FatExpressions with DeliteRestageOpsExp 
-          with IOOpsExp with PrimitiveOpsExp
+          with IOOpsExp with PrimitiveOpsExp with MathOpsExp with RangeOpsExp
           with DeliteCollectionOpsExp with DeliteArrayFatExp with DeliteOpsExp with DeliteAllOverridesExp
   import IR._
-
+  import ppl.delite.framework.Util._
 
   override def remap[A](m: Manifest[A]): String = {
     val ms = manifest[String]
@@ -91,9 +94,19 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
         case StructType(_,_) => "DeliteArray[" + remap(s.typeArguments(0)) + "]" // "Record" // need to maintain DeliteArray-ness even when a record
         case arg => "DeliteArray[" + remap(arg) + "]"
       }
+      case s if (s <:< manifest[Record] && isSubtype(s.erasure,classOf[DeliteCollection[_]])) => 
+        "DeliteCollection[" + remap(s.typeArguments(0)) + "]" 
       case s if s <:< manifest[Record] => "Record" // should only be calling 'field' on records at this level      
+      // case s if isSubtype(s.erasure,classOf[Record]) => "Record"  
       case _ => 
         // Predef.println("calling remap on: " + m.toString)
+        // Predef.println("m.erasure: " + m.erasure)
+        // Predef.println("m.simpleName: " + m.erasure.getSimpleName)
+        // for (cls <- m.erasure.getInterfaces()) {
+        //   println("  intf: " + cls.getSimpleName)
+        // }
+        // println("  superclass: " + m.erasure.getSuperlass().getSimpleName)
+        // Predef.println("m.getInterfaces: " + m.erasure.getInterfaces())
         super.remap(m)
     }
   }
@@ -134,6 +147,19 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     case ObjIntegerParseInt(s) => emitValDef(sym, "Integer.parseInt(" + quote(s) + ")")
     case RepIsInstanceOf(x,mA,mB) => emitValDef(sym, quote(x) + ".isInstanceOf[Rep[" + remap(mB) + "]]")
     case RepAsInstanceOf(x,mA,mB) => emitValDef(sym, quote(x) + ".asInstanceOf[Rep[" + remap(mB) + "]]")    
+    case MathMax(x,y) => emitValDef(sym, "Math.max(" + quote(x) + ", " + quote(y) + ")")
+    
+    // Range foreach
+    // !! this is unfortunate: we need the var to be typed differently, but most of this is copy/paste
+    case RangeForeach(start, end, i, body) => {
+      stream.println("var " + quote(i) + " = " + quote(start))
+      stream.println("val " + quote(sym) + " = " + "while (" + quote(i) + " < " + quote(end) + ") {")
+      emitBlock(body)
+      stream.println(quote(getBlockResult(body)))
+      stream.println(quote(i) + " = " + quote(i) + " + 1")
+      stream.println("}")
+    }
+    
     
     // if then else
     // !! redundant - copy paste of LMS if/then/else just to avoid DeliteIfThenElse getting a hold of it, which is put in scope by the individual DSLs
@@ -148,7 +174,7 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
 
     // delite array
     case a@DeliteArrayNew(n) => emitValDef(sym, "DeliteArray[" + remap(a.mA) + "](" + quote(n) + ")")
-    case DeliteArrayCopy(src,srcPos,dest,destPos,len) => emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
+    case DeliteArrayCopy(src,srcPos,dest,destPos,len) => emitValDef(sym, "darray_unsafe_copy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
     case DeliteArrayGetActSize() => emitValDef(sym, "darray_unsafe_get_act_size()")
     case DeliteArraySetActBuffer(da) => emitValDef(sym, "darray_unsafe_set_act_buf(" + quote(da) + ")")
     case DeliteArraySetActFinal(da) => emitValDef(sym, "darray_unsafe_set_act_final(" + quote(da) + ")")
@@ -159,19 +185,15 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
       // oops.. internal scalac error
       // emitValDef(sym, "anonStruct(" + elems.asInstanceOf[Seq[(String,Rep[Any])]].map{case (k,v) => "(\"" + k + "\", " + quote(v) + ")" }.mkString(",") + ")")
        
-      // hack! right now we only use nest for Var, but in the future.. 
-      // how else can we recover the Var?
-      // val nestTp = if (tag.isInstanceOf[NestClassTag[Any,_]]) "Var["+remap(sym.tp)+"]" else remap(sym.tp)       
-      // just dropping the var for now.. is this reasonable? does the var do anything for us in the restaged code?
-      // val isVar = tag.isInstanceOf[NestClassTag[Any,_]]
+      val isVar = elems(0)._2 match {
+        case Def(Reflect(NewVar(x),u,es)) => true
+        case _ => false
+      }
       val tp = /*if (isVar) "Var["+remap(sym.tp)+"]" else*/ remap(sym.tp)       
-       
-      // if (isVar) {
-      //   stream.println("var " + quote(sym) + " = struct[Var[" + remap(sym.tp) + "]](" + quoteTag(tag,sym.tp) + ", " + elems.asInstanceOf[Seq[(String,Rep[Any])]].map{t => "(\"" + t._1 + "\", " + quote(t._2) + ")" }.mkString(",") + ")")
-      // }
-      // else {
-        emitValDef(sym, "struct[" + tp/*remap(sym.tp)*/ + "](" + quoteTag(tag,sym.tp) + ", " + elems.asInstanceOf[Seq[(String,Rep[Any])]].map{t => "(\"" + t._1 + "\", " + quote(t._2) + ")" }.mkString(",") + ")")
-      // }
+      val structMethod = if (isVar) "mstruct" else "struct"      
+      emitValDef(sym, structMethod + "[" + tp + "](" + quoteTag(tag,sym.tp) + ", " + elems.asInstanceOf[Seq[(String,Rep[Any])]].map{t => "(\"" + t._1 + "\", " + quote(t._2) + ")" }.mkString(",") + ")" +
+        "(new RefinedManifest[" + tp + "]{ def erasure = classOf[" + tp + "]; override def typeArguments = List("+sym.tp.typeArguments.map(a => "manifest[" + remap(a) + "]").mkString(",") + "); def fields = List(" + elems.map(t => ("\""+t._1+"\"","manifest["+remap(t._2.tp)+"]")).mkString(",") + ")}," +
+        "implicitly[Overloaded1], implicitly[SourceContext])")
       
     
     case FieldApply(struct, index) => emitValDef(sym, "field[" + remap(sym.tp) + "](" + quote(struct) + ",\"" + index + "\")")    

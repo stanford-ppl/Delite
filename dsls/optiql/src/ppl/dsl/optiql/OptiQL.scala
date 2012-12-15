@@ -45,14 +45,14 @@ object OptiQL_ {
  * These are the lifted scala constructs, which convert a concrete type to a Rep type.
  * These can be dangerous if you mix them in to the wrong place
  */
-trait OptiQLLift extends LiftString with LiftPrimitives {
+trait OptiQLLift extends LiftString with LiftPrimitives with LiftNumeric {
   this: OptiQL =>
 }
 
 /**
  * Scala IR nodes
  */
-trait OptiQLScalaOpsPkgExp extends OptiQLScalaOpsPkg with MiscOpsExp with IOOpsExp with SeqOpsExp with OrderingOpsExp with BooleanOpsExp with EqualExp
+trait OptiQLScalaOpsPkgExp extends OptiQLScalaOpsPkg with MiscOpsExp with IOOpsExp with SeqOpsExp with OrderingOpsExp with BooleanOpsExp with EqualExp with MathOpsExp
   with PrimitiveOpsExp with ObjectOpsExp with StringOpsExp with TupleOpsExp with StructExp with NumericOpsExp with ArrayOpsExp with IfThenElseExp with StructFatExpOptCommon with CastingOpsExp
 
 /**

@@ -16,10 +16,11 @@ import codegen.scala.TargetScala
 import codegen.restage.{RestageCodegen,TargetRestage}
 import codegen.Target
 import ops.{DeliteCollection,DeliteOpsExp}
-import datastructures.DeliteArray
+import datastructures.{DeliteArray,DeliteArrayFatExp}
 import datastructures.DeliteArrayStructTags
 
 trait DeliteILOps extends Variables with StructOps with StructTags with DeliteArrayStructTags with OverloadHack {
+  this: DeliteIL =>
   
   implicit def varManifest[T:Manifest](x: Var[T]): Manifest[Var[T]]
   implicit def daVarManifest: Manifest[Var[DeliteArray[Record]]] // why is this not covered by the previous def?
@@ -34,9 +35,11 @@ trait DeliteILOps extends Variables with StructOps with StructTags with DeliteAr
   def darray_unsafe_set_act_buf[A:Manifest](da: Rep[DeliteArray[A]]): Rep[Unit]
   def darray_unsafe_set_act_final[A:Manifest](da: Rep[DeliteArray[A]]): Rep[Unit]
   def darray_unsafe_get_act_size(): Rep[Int]
+  def darray_unsafe_copy[T:Manifest](src: Rep[DeliteArray[T]], srcPos: Rep[Int], dest: Rep[DeliteArray[T]], destPos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
   
   // expose struct method from StructExp for restaging
   def struct[T:Manifest](tag: StructTag[T], elems: (String, Rep[Any])*)(implicit o: Overloaded1, pos: SourceContext): Rep[T]
+  def mstruct[T:Manifest](tag: StructTag[T], elems: (String, Rep[Any])*)(implicit o: Overloaded1, pos: SourceContext): Rep[T]
   def field_update[T:Manifest](struct: Rep[Any], index: String, rhs: Rep[T]): Rep[Unit] 
     
   // delite ops
@@ -51,7 +54,9 @@ trait DeliteILOps extends Variables with StructOps with StructTags with DeliteAr
   def extern[A:Manifest](funcName: String, alloc: => Rep[A], inputs: List[Rep[Any]]): Rep[A]
 }
 
-trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with ListOpsExp {
+trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatExp with ListOpsExp {
+  this: DeliteILExp =>
+  
   def varManifest[T:Manifest](x: Var[T]) = manifest[Variable[T]]
   def daVarManifest = manifest[Variable[DeliteArray[Record]]]
   
@@ -114,14 +119,23 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with ListOpsExp {
         case "ParFlat" => ParFlat
         case "ParBuffer" => ParBuffer
       }
-      val c = DeliteILCollect(size,allocN,func,update,finalizer,cond,parStrategy,append,setSize,allocRaw,copyRaw)
-      reflectEffect(c, summarizeEffects(c.body.asInstanceOf[DeliteCollectElem[A,I,CA]].func))
+      
+      // -- hack: need to get the RefinedManifest from allocN, but we don't want to expose its effects
+      // if we enclose it in a reify, we lose the manifest
+      val save = context
+      context = Nil      
+      //val a1 = reifyEffects(allocN(fresh[Int]))
+      val a1 = allocN(fresh[Int])
+      context = save
+      val refTp = a1.tp
+      val c = DeliteILCollect(size,allocN,func,update,finalizer,cond,parStrategy,append,setSize,allocRaw,copyRaw)(manifest[A],refTp,refTp.asInstanceOf[Manifest[CA]]) // HACK: forcing I and CA to be the same in order to retain RefinedManifest from I
+      reflectEffect(c, summarizeEffects(c.body.asInstanceOf[DeliteCollectElem[_,_,_]].func))(refTp.asInstanceOf[Manifest[CA]],implicitly[SourceContext])
     }  
     
   case class DeliteILForeach[A:Manifest](size: Exp[Int], ffunc: Exp[Int] => Exp[Unit]) extends DeliteOpLoop[Unit] {
     lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
       func = reifyEffects(ffunc(v)),
-      sync = reifyEffects(List())
+      sync = reifyEffects(List[Any]())
     ))    
     
     val mA = manifest[A]
@@ -138,8 +152,9 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with ListOpsExp {
   }
     
   def extern[A:Manifest](funcName: String, alloc: => Exp[A], inputs: List[Exp[Any]]) = DeliteILExtern(funcName, () => alloc, inputs)
- 
- 
+  
+  def mstruct[T:Manifest](tag: StructTag[T], elems: (String, Rep[Any])*)(implicit o: Overloaded1, pos: SourceContext) = reflectMutable(SimpleStruct(tag, elems.map(p=>(p._1,var_new(p._2)(p._2.tp,pos).e))))
+
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case GetScopeResult() => getScopeResult
     case Reflect(SetScopeResult(n),u,es) => reflectMirrored(Reflect(SetScopeResult(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))   
@@ -152,7 +167,7 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with ListOpsExp {
     case Reflect(e@DeliteILExtern(s,fu,i), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILExtern(s,() => f(fu()),f(i))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]  
-  
+      
 }
 
 trait ScalaGenDeliteILOps extends GenericFatCodegen with ScalaGenFat {

@@ -4,7 +4,7 @@ import scala.virtualization.lms.common.Base
 import scala.virtualization.lms.common.ScalaOpsPkg
 import ppl.dsl.optiml._
 
-trait MLOutputWriterImplOps { this: Base =>
+trait MLOutputWriterImplOps { this: OptiML =>
   def mloutput_write_img_pgm_impl(img: Rep[GrayscaleImage], filename: Rep[String]): Rep[Unit]
 }
 

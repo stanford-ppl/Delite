@@ -2,7 +2,6 @@ package ppl.dsl.optila.vector
 
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
-import ppl.dsl.optila.{Vector,Matrix,DenseVector,DenseMatrix}
 import ppl.dsl.optila.{OptiLALift, OptiLACompiler, OptiLA}
 
 trait VectorImplOps { this: OptiLA =>  

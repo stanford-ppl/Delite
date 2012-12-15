@@ -25,6 +25,12 @@ trait DeliteILScalaGenExternal extends ScalaGenExternalBase {
           val args = scala.List("%1$s._data", "%2$s._data", "%3$s._data", "%1$s._numRows", "%1$s._numCols", "%2$s._numCols")
                      .map { _.format(quote(e.inputs(0)), quote(e.inputs(1)), quote(sym)) }
           emitMethodCall(sym, e, BLAS, args)
+        
+        case "matMultV" =>
+          val args = scala.List("%1$s._data", "%2$s._data", "%3$s._data", "%1$s._numRows", "%1$s._numCols", "0", "1")
+                     .map { _.format(quote(e.inputs(0)), quote(e.inputs(1)), quote(sym)) }
+          emitMethodCall(sym, e, BLAS, args)
+          
         case _ => throw new IllegalArgumentException("tried to emit unknown Delite IL external node")      
       }
       
@@ -56,6 +62,33 @@ trait DeliteILScalaGenExternal extends ScalaGenExternalBase {
             	(*env)->ReleasePrimitiveArrayCritical(env, mat1, mat1_ptr, 0);
             	(*env)->ReleasePrimitiveArrayCritical(env, mat2, mat2_ptr, 0);
             	(*env)->ReleasePrimitiveArrayCritical(env, mat3, mat3_ptr, 0);
+            }""".format(tp.toLowerCase, func))
+          
+        case "matMultV" =>
+          // val tp = e.mA.toString
+          val tp = manifest[Double].toString
+          val func = tp match {
+            case "Double" => "cblas_dgemv"
+            case "Float" => "cblas_sgemv"
+          }
+          emitInterfaceAndMethod(BLAS, e.funcName, 
+            scala.List("mat1:Array[%1$s]", "vec2:Array[%1$s]", "vec3:Array[%1$s]", "mat_row:Int", "mat_col:Int", "vec_offset:Int", "vec_stride:Int") map { _.format(tp) },
+            scala.List("j%1$sArray mat1", "j%1$sArray vec2", "j%1$sArray vec3", "jint mat_row", "jint mat_col", "jint vec_offset", "jint vec_stride") map { _.format(tp.toLowerCase) },
+            """
+            {
+            	jboolean copy;
+
+            	j%1$s *mat1_ptr = (j%1$s*)((*env)->GetPrimitiveArrayCritical(env, (jarray)mat1, &copy));
+            	j%1$s *vec2_ptr = (j%1$s*)((*env)->GetPrimitiveArrayCritical(env, (jarray)vec2, &copy));
+            	j%1$s *vec3_ptr = (j%1$s*)((*env)->GetPrimitiveArrayCritical(env, (jarray)vec3, &copy));
+
+            	vec2_ptr += vec_offset;
+
+            	%2$s(CblasRowMajor, CblasNoTrans, mat_row, mat_col, 1.0, mat1_ptr, mat_col, vec2_ptr, vec_stride, 0.0, vec3_ptr, 1);
+
+            	(*env)->ReleasePrimitiveArrayCritical(env, mat1, mat1_ptr, 0);
+            	(*env)->ReleasePrimitiveArrayCritical(env, vec2, vec2_ptr, 0);
+            	(*env)->ReleasePrimitiveArrayCritical(env, vec3, vec3_ptr, 0);
             }""".format(tp.toLowerCase, func))
           
         case _ => throw new IllegalArgumentException("tried to emit unknown Delite IL external lib")      
