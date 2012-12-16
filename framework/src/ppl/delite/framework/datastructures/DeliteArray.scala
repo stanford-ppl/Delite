@@ -319,7 +319,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
 }
 
 trait DeliteArrayStructTags extends Base with StructTags {
-  case class SoaTag[T](base: StructTag[T], length: Rep[Int]) extends StructTag[DeliteArray[T]]
+  case class SoaTag[T,DA <: DeliteArray[T]](base: StructTag[T], length: Rep[Int]) extends StructTag[DA]
 }
 
 trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags with StructExpOptCommon with DeliteStructsExp {
@@ -327,8 +327,8 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
 
   object StructIR {
     def unapply[A](e: Exp[DeliteArray[A]]): Option[(StructTag[A], Exp[Int], Seq[(String,Exp[DeliteArray[Any]])])] = e match {
-      case Def(Struct(SoaTag(tag,len),elems:Seq[(String,Exp[DeliteArray[Any]])])) => Some((tag,len,elems))
-      case Def(Reflect(Struct(SoaTag(tag,len), elems:Seq[(String,Exp[DeliteArray[Any]])]), u, es)) => Some((tag,len,elems))
+      case Def(Struct(SoaTag(tag: StructTag[A],len),elems:Seq[(String,Exp[DeliteArray[Any]])])) => Some((tag,len,elems))
+      case Def(Reflect(Struct(SoaTag(tag: StructTag[A],len), elems:Seq[(String,Exp[DeliteArray[Any]])]), u, es)) => Some((tag,len,elems))
       case _ => None
     }
   }
@@ -431,7 +431,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
   }
 
   override def containSyms(e: Any): List[Sym[Any]] = e match {
-    case NewVar(Def(Reflect(Struct(tag,_),_,_))) if tag.isInstanceOf[SoaTag[_]] => Nil //as above for SoA array
+    case NewVar(Def(Reflect(Struct(tag,_),_,_))) if tag.isInstanceOf[SoaTag[_,_]] => Nil //as above for SoA array
     case _ => super.containSyms(e)
   }
 

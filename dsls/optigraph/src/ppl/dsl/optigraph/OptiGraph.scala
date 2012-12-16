@@ -11,6 +11,9 @@ import ppl.delite.framework.codegen.delite.overrides.{DeliteScalaGenAllOverrides
 import ppl.delite.framework.codegen.delite.DeliteCodeGenPkg
 import ppl.delite.framework.transform.ForeachReduceTransformExp
 import ppl.delite.framework.ops._
+import ppl.delite.framework.{DeliteInteractive, DeliteInteractiveRunner, DeliteRestageOps, DeliteRestageOpsExp, DeliteRestageRunner}
+import ppl.delite.framework.codegen.restage.{DeliteCodeGenRestage,TargetRestage}
+
 //import ppl.dsl.optigraph.io._
 import ppl.dsl.optigraph.ops._
 import ppl.dsl.optigraph.datastruct.scala._
@@ -86,6 +89,13 @@ trait OptiGraph extends OptiGraphScalaOpsPkg with DeliteCollectionOps with Delit
   this: OptiGraphApplication =>
 }
 
+trait OptiGraphLower extends OptiGraphApplication with DeliteRestageOps
+trait OptiGraphLowerRunner extends OptiGraphApplicationRunner with DeliteRestageRunner
+
+object OptiGraph_ {
+  def apply[R](b: => R) = new Scope[OptiGraphLower, OptiGraphLowerRunner, R](b)
+}
+
 /**
  * OptiGraph IR
  */
@@ -98,13 +108,14 @@ trait OptiGraphExp extends OptiGraphCompiler with OptiGraphScalaOpsPkgExp with D
   with GIterableOpsExp with GSetOpsExp with GOrderOpsExp with GSeqOpsExp
   with ReduceableOpsExp with DeferrableOpsExp
   with ForeachReduceTransformExp
-  with DeliteAllOverridesExp {
+  with DeliteRestageOpsExp with DeliteAllOverridesExp {
 
   this: DeliteApplication with OptiGraphApplication with OptiGraphExp =>
 
   def getCodeGenPkg(t: Target{val IR: OptiGraphExp.this.type}) : GenericFatCodegen{val IR: OptiGraphExp.this.type} = {
     t match {
       case _:TargetScala => new OptiGraphCodeGenScala{val IR: OptiGraphExp.this.type = OptiGraphExp.this}
+      case _:TargetRestage => new OptiGraphCodeGenRestage{val IR: OptiGraphExp.this.type = OptiGraphExp.this}
       case _ => throw new RuntimeException("unsupported target")
     }
   }
@@ -170,6 +181,19 @@ trait OptiGraphCodeGenBase extends GenericFatCodegen {
       }
     }
   }
+}
+
+trait OptiGraphCodeGenRestage extends OptiGraphScalaCodeGenPkg with DeliteCodeGenRestage { 
+  val IR: DeliteApplication with OptiGraphExp  
+  
+  // we shouldn't need this if we have a proper lowering stage (i.e. transformation)
+  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    // the next two cases would happen automatically (in DeliteCodeGenRestage) if NodeProperty, GIterable and Graph <: Record
+    case "NodeProperty" | "GIterable"  => "DeliteCollection[" + remap(m.typeArguments(0)) + "]" 
+    case "Graph" => "Record"
+    case "Node" => "Int" //IR.structName(m)
+    case _ => super.remap(m)
+  }  
 }
 
 trait OptiGraphCodeGenScala extends OptiGraphCodeGenBase with OptiGraphScalaCodeGenPkg with ScalaGenDeliteOps

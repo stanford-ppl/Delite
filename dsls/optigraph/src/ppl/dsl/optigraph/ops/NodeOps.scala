@@ -117,11 +117,11 @@ trait NodeOpsExp extends NodeOps with EffectExp {
   def node_num_in_neighbors(n: Exp[Node]) = reflectPure(NodeNumInNeighbors(n))
   def node_out_degree(n: Exp[Node]) = reflectPure(NodeOutDegree(n))
   def node_in_degree(n: Exp[Node]) = reflectPure(NodeInDegree(n))
-  def node_id(n: Exp[Node]) = reflectPure(NodeId(n)) //field[Int](n,"_id") 
+  def node_id(n: Exp[Node]) = n.unsafeImmutable.AsInstanceOf[Int] //reflectPure(NodeId(n)) //field[Int](n,"_id") 
   //def node_id(n: Exp[Node]) = field[Int](n,"_id") 
   //def node_has_out_nbr(n: Exp[Node], t: Exp[Node]) = reflectPure(NodeHasOutNbr(n, t))
   def node_graph(n: Exp[Node]) = reflectPure(NodeGraph(n)) //field[Graph](n,"_g")
-  def node_new(id: Exp[Int]) = reflectPure(NodeNew(id))
+  def node_new(id: Exp[Int]) = id.unsafeImmutable.AsInstanceOf[Node] //reflectPure(NodeNew(id))
 
   //////////////
   // mirroring

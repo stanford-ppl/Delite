@@ -23,7 +23,8 @@ trait DeliteRestageOps extends Base {
   def returnScopeResult(n: Rep[Any]): Rep[Unit]
 }
 
-trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp with StructExp with RangeOpsExp {
+trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp with StructExp 
+  with RangeOpsExp with HashMapOpsExp {
   this: DeliteArrayOpsExpOpt =>
   
   case class LastScopeResult() extends Def[Any]

@@ -476,7 +476,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
   def giterable_set_raw_data[A:Manifest](x: Exp[GIterable[A]], g: Exp[DeliteArray[A]])(implicit ctx: SourceContext) = field_update[DeliteArray[A]](x, "_data", g)
 
   def giterable_raw_insert[A:Manifest](x: Exp[GIterable[A]], i: Exp[Int], y: Exp[A]): Exp[Unit] = reflectWrite(x)(GIterableRawInsert(x,i,y))
-  def giterable_raw_alloc[A:Manifest](x: Exp[DeliteArray[A]], sz: Exp[Int]): Exp[GIterable[A]] = reflectMutable(GIterableRawAlloc(x,sz))
+  def giterable_raw_alloc[A:Manifest](x: Exp[DeliteArray[A]], sz: Exp[Int]): Exp[GIterable[A]] = new_iterable(x, unit(0), sz) //reflectMutable(GIterableRawAlloc(x,sz))
 
   // /////////////////////
   // delite collection

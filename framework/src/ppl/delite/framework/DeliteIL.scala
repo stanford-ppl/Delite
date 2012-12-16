@@ -30,7 +30,7 @@ trait DeliteILScalaOpsPkg extends Base
   with Equal with IfThenElse with Variables with While with TupledFunctions
   with ImplicitOps with OrderingOps with StringOps
   with BooleanOps with PrimitiveOps with MiscOps with TupleOps
-  with CastingOps with ObjectOps with IOOps
+  with CastingOps with ObjectOps with IOOps with HashMapOps
   with ArrayOps with ExceptionOps with MathOps with NumericOps with FractionalOps
 
 trait DeliteILScalaOpsPkgExp extends DeliteILScalaOpsPkg with DSLOpsExp
@@ -78,6 +78,7 @@ trait DeliteILCodeGenBase extends GenericFatCodegen with SchedulingOpt {
   // TODO should we generate these as Record with DeliteCollection instead?
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
     case "DeliteCollection" => IR.structName(m)
+    case s if s.contains("$") => s // due to synthetically generated domain-specific types in the restaged program
     case _ => super.remap(m)
   }
     
