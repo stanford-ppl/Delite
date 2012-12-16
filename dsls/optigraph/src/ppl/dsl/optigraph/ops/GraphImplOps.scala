@@ -79,7 +79,7 @@ trait GraphImplOpsStandard extends GraphImplOps {
     val outneighbors = DeliteArray[GIterable[Node]](nodemap.size)
     val inneighbors = DeliteArray[GIterable[Node]](nodemap.size)
     for(i <- 0 until nodemap.size) {
-      nodes(i) = nodemap(i)
+      nodes(i) = node_new(i)
       outneighbors(i) = new_empty_iterable[Node]()
       inneighbors(i) = new_empty_iterable[Node]()
     }

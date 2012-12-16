@@ -38,30 +38,37 @@ object CloseWorldCompose {
       val result = tweets Where(t => t.time >= Date("2008-01-01") && t.language == "en") 
       // is there something in the desugaring scopes that ignores the block result?
       // without returnScopeResult, getting a block result of (), even the Scope result is of type R
-      //returnScopeResult(result.toArray)
-      println(result.toArray)
+      returnScopeResult(result.toArray)
+      // println(result.toArray)
     }
     
     OptiGraph_ {      
-      val da1 = DeliteArray[Int](12)
-      val da2 = DeliteArray[Int](12)
-      da1(0) = 0; da2(0) = 3
-      da1(1) = 0; da2(1) = 1
-      da1(2) = 0; da2(2) = 2
-      da1(3) = 1; da2(3) = 4
-      da1(4) = 1; da2(4) = 6
-      da1(5) = 2; da2(5) = 0
-      da1(6) = 2; da2(6) = 3
-      da1(7) = 2; da2(7) = 4
-      da1(8) = 3; da2(8) = 0
-      da1(9) = 3; da2(9) = 5
-      da1(10) = 3; da2(10) = 1
-      da1(11) = 3; da2(11) = 2
-      val da = da1.zip(da2)((i,j) => t2(i,j))
-      val G = Graph.fromArray(da)
-      // type Tweet = Record { val id: String; val time: Date; val fromId: Int; val toId: Int; val language: String; val text: String }
-      // val in = lastScopeResult.asInstanceOf[Rep[DeliteArray[Tweet]]]
-      // val G = Graph.fromArray(in.map(t => (t.fromId,t.toId)))                  
+      // val da1 = DeliteArray[Int](12)
+      // val da2 = DeliteArray[Int](12)
+      // da1(0) = 0; da2(0) = 3
+      // da1(1) = 0; da2(1) = 1
+      // da1(2) = 0; da2(2) = 2
+      // da1(3) = 1; da2(3) = 4
+      // da1(4) = 1; da2(4) = 6
+      // da1(5) = 2; da2(5) = 0
+      // da1(6) = 2; da2(6) = 3
+      // da1(7) = 2; da2(7) = 4
+      // da1(8) = 3; da2(8) = 0
+      // da1(9) = 3; da2(9) = 5
+      // da1(10) = 3; da2(10) = 1
+      // da1(11) = 3; da2(11) = 2
+      // val da = da1.zip(da2)((i,j) => t2(i,j))
+      // val G = Graph.fromArray(da)
+      type Tweet = Record { val id: String; val time: Int; val fromId: Int; val toId: Int; val language: String; val text: String }
+      val in = lastScopeResult.AsInstanceOf[DeliteArray[Tweet]]
+      println("in.length: " + in.length)
+      println("in(0): " + in(0))
+      println("in(1): " + in(1))
+      // val in2 = in2.map(t => (t.fromId,t.toId))
+      // println("in2(0): " + in2(0))
+      // println("in2(1): " + in2(1))
+      
+      val G = Graph.fromArray(in.map(t => (t.fromId,t.toId)))                  
       
       // LCC
       // TODO: DeliteCodeGenRestage breaks when we have multiple Node Properties of different types
@@ -101,16 +108,16 @@ object CloseWorldCompose {
         println("inNbrs = " + G.InNbrs(t).length)
       }
             
-      // returnScopeResult((LCC.toArray, RT.toArray))
+      returnScopeResult((LCC.toArray, RT.toArray))
     }
         
     OptiML_ {
       // unweighted linear regression
-      // val in = lastScopeResult.AsInstanceOfInstanceOf[(DeliteArray[Double],DeliteArray[Double])]
-      // val X = Matrix.fromArray(tuple2_get1(in), numFeatures = 1)/*.mutable*/
-      // val y = Vector.fromArray(tuple2_get2(in)).t
-      val X = readMatrix(args(0)+"/ml/linreg/q2x.dat")
-      val y = readVector(args(0)+"/ml/linreg/q2y.dat").t
+      val in = lastScopeResult.AsInstanceOf[(DeliteArray[Double],DeliteArray[Double])]
+      val X = Matrix.fromArray(tuple2_get1(in), numFeatures = 1)/*.mutable*/
+      val y = Vector.fromArray(tuple2_get2(in)).t
+      // val X = readMatrix(args(0)+"/ml/linreg/q2x.dat")
+      // val y = readVector(args(0)+"/ml/linreg/q2y.dat").t
       X.insertCol(0, Vector.ones(X.numRows).t)
       val x2 = X.unsafeImmutable
       val theta = y+y

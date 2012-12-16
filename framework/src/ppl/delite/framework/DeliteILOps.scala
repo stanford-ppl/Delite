@@ -180,7 +180,7 @@ trait ScalaGenDeliteILOps extends GenericFatCodegen with ScalaGenFat {
   import IR._
   
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case SetScopeResult(n) => stream.println("// set scope result happened here (all getScopeResults should have been short-circuited)")
+    case SetScopeResult(n) => emitValDef(sym, "() // set scope result happened here (all getScopeResults should have been short-circuited)")
     case _ => super.emitNode(sym, rhs)
   }
 }

@@ -79,7 +79,7 @@ trait OptiGraphCompiler extends OptiGraph
   this: OptiGraphApplication with OptiGraphExp =>
 }
 
-trait OptiGraph extends OptiGraphScalaOpsPkg with DeliteCollectionOps with DeliteArrayOps
+trait OptiGraph extends OptiGraphScalaOpsPkg with DeliteCollectionOps with DeliteArrayOps with StructOps
   with LanguageOps
   with GraphOps with NodeOps with EdgeOps
   with NodePropertyOps with EdgePropertyOps
@@ -100,7 +100,7 @@ object OptiGraph_ {
  * OptiGraph IR
  */
 
-trait OptiGraphExp extends OptiGraphCompiler with OptiGraphScalaOpsPkgExp with DeliteOpsExp with DeliteArrayFatExp with VariantsOpsExp
+trait OptiGraphExp extends OptiGraphCompiler with OptiGraphScalaOpsPkgExp with DeliteOpsExp with DeliteArrayFatExp with StructExp with VariantsOpsExp
   with NumericOpsExp with OrderingOpsExp with LanguageOpsExp
   with GraphOpsExp with NodeOpsExp with EdgeOpsExp
   with NodePropertyOpsExp with EdgePropertyOpsExp
