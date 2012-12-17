@@ -107,7 +107,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
   // implemented via method on real data structure
 
   case class GIterableNew[T:Manifest](data: Exp[DeliteArray[T]], offset: Exp[Int], size: Exp[Int]) extends DeliteStruct[GIterable[T]] {
-    val elems = copyTransformedElems(collection.Seq("_data" -> var_new(data).e, "_offset" -> var_new(offset).e, "_size" -> var_new(size).e))
+    val elems = copyTransformedElems(collection.Seq("_data" -> data, "_offset" -> offset, "_size" -> size))
     val mT = manifest[T]
   }
   case class GIterableNewEmpty[T:Manifest]() extends DeliteStruct[GIterable[T]] {
@@ -333,7 +333,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
   case class DeliteArrayGIterableAppend[T:Manifest](x: Exp[DeliteArray[GIterable[T]]], i: Exp[Int], y: Exp[T])
     extends DeliteOpSingleWithManifest[T,Unit](reifyEffectsHere(delitearray_giterable_append_impl(x, i, y)))
 
-  def new_iterable[T:Manifest](data: Exp[DeliteArray[T]], offset: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(GIterableNew(data, offset, size))
+  def new_iterable[T:Manifest](data: Exp[DeliteArray[T]], offset: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext) = reflectPure(GIterableNew(data, offset, size))
   def new_empty_iterable[T:Manifest]() = reflectMutable(GIterableNewEmpty())
   def iter_sum[T:Manifest, A:Manifest:Numeric](iter: Exp[GIterable[T]], block: Exp[T] => Exp[A]) = reflectPure(GIterableSum(iter, block))
   def iter_sumIf[T:Manifest, A:Manifest:Numeric](iter: Exp[GIterable[T]], filter: Exp[T] => Exp[Boolean], block: Exp[T] => Exp[A]) = reflectPure(GIterableSumIf(iter, filter, block))
