@@ -11,25 +11,19 @@ trait Twitter extends OptiGraphApplication {
     Foreach(G.Nodes) { s =>
       var triangles = 0 
       var total = 0
-
-      Foreach(G.InNbrs(s)) { t =>
-        if (G.HasOutNbr(s,t)) {
-          Foreach(G.InNbrs(s).filter(n => G.HasOutNbr(n,t))) { u =>
-            if (G.HasOutNbr(s,u)) {
-              if (G.HasOutNbr(u,t)) {triangles += 1}
-              if (G.HasOutNbr(t,u)) {triangles += 1}
-              total += 2
-            }
-          }
+        
+      Foreach(G.InNbrs(s).filter(t => G.HasOutNbr(s,t))) { t =>
+        Foreach(G.InNbrs(s).filter(u => G.HasOutNbr(s,u) && u != t)) { u =>
+          if (G.HasOutNbr(u,t)) {triangles += 1}
+          if (G.HasOutNbr(t,u)) {triangles += 1}
+          total += 2
         }
       }
+
       if (total < threshold) {
         LCC(s) = 0.0f
-        println("Computed LCC = " + LCC(s))
-        //println("Total (" + total.value + ") was less than threshold")
       } else {
         LCC(s) = (triangles) / (total)
-        println("Computed LCC = " + LCC(s) + " = " + triangles + " / " + total)
       }
     }
   }
@@ -38,7 +32,6 @@ trait Twitter extends OptiGraphApplication {
   def retweetCnt(G: Rep[Graph], RT: Rep[NodeProperty[Int]]) {
     Foreach(G.Nodes) { t =>
       RT(t) = G.InNbrs(t).length
-      println("inNbrs = " + G.InNbrs(t).length)
     }
   }
 

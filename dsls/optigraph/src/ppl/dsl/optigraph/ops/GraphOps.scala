@@ -175,7 +175,10 @@ trait GraphOpsExp extends GraphOps with EffectExp with NodeOps {
   def graph_new() = reflectMutable(GraphObjectNew())
   def dgraph_new() = reflectMutable(DGraphObjectNew())
   def ugraph_new() = reflectMutable(UGraphObjectNew())
-  def graph_nodes(g: Exp[Graph]) = reflectPure(GraphNodes(g))
+  def graph_nodes(g: Exp[Graph]) = {
+    val nodes = graph_raw_nodes(g)
+    new_iterable(nodes, unit(0), nodes.length)
+  }
   def graph_edges(g: Exp[Graph]) = reflectPure(GraphEdges(g))
   def graph_num_nodes(g: Exp[Graph]) = field[DeliteArray[Node]](g, "_nodes").length
   def graph_num_edges(g: Exp[Graph]) = reflectPure(GraphNumEdges(g))
