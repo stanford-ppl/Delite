@@ -35,6 +35,7 @@ object CloseWorldCompose {
       // type Tweet = Record{val fromId: Int; val toId: Int; val text: String}
       // val tweets: Rep[Table[Tweet]] = loadTweets() // elided
       val tweets = TableInputReader(args(0)+"/tweet.tbl", emptyTweet())      
+      tic(tweets)
       val result = tweets Where(t => t.time >= Date("2008-01-01") && t.language == "en") 
       // is there something in the desugaring scopes that ignores the block result?
       // without returnScopeResult, getting a block result of (), even the Scope result is of type R
@@ -61,9 +62,9 @@ object CloseWorldCompose {
       // val G = Graph.fromArray(da)
       type Tweet = Record { val id: String; val time: Int; val fromId: Int; val toId: Int; val language: String; val text: String }
       val in = lastScopeResult.AsInstanceOf[DeliteArray[Tweet]]
-      println("in.length: " + in.length)
-      println("in(0): " + in(0))
-      println("in(1): " + in(1))
+      //println("in.length: " + in.length)
+      //println("in(0): " + in(0))
+      //println("in(1): " + in(1))
       // val in2 = in2.map(t => (t.fromId,t.toId))
       // println("in2(0): " + in2(0))
       // println("in2(1): " + in2(1))
@@ -72,14 +73,23 @@ object CloseWorldCompose {
       
       // LCC
       // TODO: DeliteCodeGenRestage breaks when we have multiple Node Properties of different types
-      val LCC: Rep[NodeProperty[Double]] = NodeProperty[Double](G, 0.0)
-      val RT: Rep[NodeProperty[Double]] = NodeProperty[Double](G, 0.0)
+      val LCC: Rep[NodeProperty[Float]] = NodeProperty[Float](G, 0.0f)
+      val RT: Rep[NodeProperty[Float]] = NodeProperty[Float](G, 0.0f)
       val threshold = 1
       
       Foreach(G.Nodes) { s =>
         var triangles = 0 
         var total = 0
+        
+        Foreach(G.InNbrs(s).filter(t => G.HasOutNbr(s,t))) { t =>
+          Foreach(G.InNbrs(s).filter(u => G.HasOutNbr(s,u) && u != t)) { u =>
+            if (G.HasOutNbr(u,t)) {triangles += 1}
+            if (G.HasOutNbr(t,u)) {triangles += 1}
+            total += 2
+          }
+        }
 
+        /*
         Foreach(G.InNbrs(s)) { t =>
           if (G.HasOutNbr(s,t)) {
             Foreach(G.InNbrs(s).filter(n => G.HasOutNbr(n,t))) { u =>
@@ -91,13 +101,14 @@ object CloseWorldCompose {
             }
           }
         }
+        */
         if (total < threshold) {
-          LCC(s) = 0.0
-          println("Computed LCC = " + LCC(s))
+          LCC(s) = 0.0f
+          //println("Computed LCC = " + LCC(s))
           //println("Total (" + total.value + ") was less than threshold")
         } else {
-          LCC(s) = (triangles) / (total)
-          println("Computed LCC = " + LCC(s) + " = " + triangles + " / " + total)
+          LCC(s) = (triangles.floatValueL) / (total.floatValueL)
+          //println("Computed LCC = " + LCC(s) + " = " + triangles + " / " + total)
         }
       }
       
@@ -105,7 +116,7 @@ object CloseWorldCompose {
       //TODO: Better to accumulate the number of retweets this node 
       Foreach(G.Nodes) { t =>
         RT(t) = G.InNbrs(t).length
-        println("inNbrs = " + G.InNbrs(t).length)
+        //println("inNbrs = " + G.InNbrs(t).length)
       }
             
       returnScopeResult((LCC.toArray, RT.toArray))
@@ -113,17 +124,46 @@ object CloseWorldCompose {
         
     OptiML_ {
       // unweighted linear regression
-      val in = lastScopeResult.AsInstanceOf[(DeliteArray[Double],DeliteArray[Double])]
-      val X = Matrix.fromArray(tuple2_get1(in), numFeatures = 1)/*.mutable*/
-      val y = Vector.fromArray(tuple2_get2(in)).t
-      // val X = readMatrix(args(0)+"/ml/linreg/q2x.dat")
-      // val y = readVector(args(0)+"/ml/linreg/q2y.dat").t
-      X.insertCol(0, Vector.ones(X.numRows).t)
-      val x2 = X.unsafeImmutable
-      val theta = y+y
-      // val theta = ((x2.t*x2).inv)*(x2.t*y)
-      println("theta(0): " + theta(0))
-      // theta.pprint
+      val in = lastScopeResult.AsInstanceOf[(DeliteArray[Float],DeliteArray[Float])]
+      val inA = tuple2_get1(in)
+      val inB = tuple2_get2(in)
+      //println("inA.length: " + inA.length)
+      //println("inB.length: " + inB.length)
+
+
+      //val x = Matrix.fromArray(DeliteArray[Float](200), numFeatures = 1)
+      //val y = Vector.fromArray(DeliteArray[Float](200)).t
+      //val x = readMatrix(args(0)+"/ml/linreg/q2x.dat")
+      //val y = readVector(args(0)+"/ml/linreg/q2y.dat").t
+
+      // -- normal optiml version
+   //  val x = Matrix.fromArray(inA, numFeatures = 1)/*.mutable*/
+   //  val y = Vector.fromArray(inB).t
+      //val xm = x.mutable
+   //   val xm = x
+   //   xm.insertCol(0, Vector.onesf(x.numRows).t)
+      //val X = xm.Clone
+   //   val X = xm.unsafeImmutable
+      //println("X.numRows: " + X.numRows)
+      //println("X.numCols: " + X.numCols)
+      //println("y.length: " + y.length)
+      //val theta = y+y
+   //   val a = (X.t*X)//.inv
+   //    val b = X.t*y
+      
+      // -- pre-transposed version
+      val X = DenseMatrix(Vector.onesf(inA.length), Vector.fromArray(inA))
+      val y = Vector.fromArray(inB).t
+      val a = (X*X.t)
+      val b = X*y
+
+      //println("a numCols: " + a.numCols)
+      val theta = a*b
+      //val theta = ((X.t*X).inv)*(X.t*y)
+      //println("theta(0): " + theta(0))
+      //println("theta(1): " + theta(1))
+      toc(theta)
+      theta.pprint
       // linreg.weighted(readMatrix(args(0),readVector(args(1)).t))
       // println("got input from previous stage: " + previous(0).AsInstanceOf[DeliteArray[Int]]) 
       // println("optiml 2")

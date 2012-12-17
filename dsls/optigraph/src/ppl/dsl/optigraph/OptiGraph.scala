@@ -51,6 +51,7 @@ trait OptiGraphScalaOpsPkgExp extends OptiGraphScalaOpsPkg with DSLOpsExp
   with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp with TupleOpsExp
   with ListOpsExp with SeqOpsExp with MathOpsExp with CastingOpsExp with SetOpsExp with ObjectOpsExp
   with SynchronizedArrayBufferOpsExp with HashMapOpsExp with IterableOpsExp with ExceptionOpsExp
+  with NumericOpsExp 
 
 trait OptiGraphScalaCodeGenPkg extends ScalaGenDSLOps
   with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenFunctions
@@ -58,6 +59,7 @@ trait OptiGraphScalaCodeGenPkg extends ScalaGenDSLOps
   with ScalaGenArrayOps with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenTupleOps
   with ScalaGenListOps with ScalaGenSeqOps with ScalaGenMathOps with ScalaGenCastingOps with ScalaGenSetOps with ScalaGenObjectOps
   with ScalaGenSynchronizedArrayBufferOps with ScalaGenHashMapOps with ScalaGenIterableOps with ScalaGenExceptionOps
+  with ScalaGenNumericOps   
   { val IR: OptiGraphScalaOpsPkgExp  }
 
 /**
@@ -101,7 +103,7 @@ object OptiGraph_ {
  */
 
 trait OptiGraphExp extends OptiGraphCompiler with OptiGraphScalaOpsPkgExp with DeliteOpsExp with DeliteArrayFatExp with StructExp with VariantsOpsExp
-  with NumericOpsExp with OrderingOpsExp with LanguageOpsExp
+  with LanguageOpsExp
   with GraphOpsExp with NodeOpsExp with EdgeOpsExp
   with NodePropertyOpsExp with EdgePropertyOpsExp
   with ExceptionOps
@@ -197,7 +199,7 @@ trait OptiGraphCodeGenRestage extends OptiGraphScalaCodeGenPkg with DeliteCodeGe
 }
 
 trait OptiGraphCodeGenScala extends OptiGraphCodeGenBase with OptiGraphScalaCodeGenPkg with ScalaGenDeliteOps
-  with ScalaGenDeliteCollectionOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenLanguageOps with ScalaGenNumericOps with ScalaGenOrderingOps
+  with ScalaGenDeliteCollectionOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenLanguageOps
   with ScalaGenReduceableOps with ScalaGenDeferrableOps
   with ScalaGenGraphOps with ScalaGenNodeOps with ScalaGenEdgeOps
   with ScalaGenExceptionOps

@@ -90,7 +90,7 @@ trait GraphImplOpsStandard extends GraphImplOps {
     graph_set_raw_nodes(g,nodes)
     graph_set_raw_outneighbors(g,outneighbors)
     graph_set_raw_inneighbors(g,inneighbors)
-    g
+    g.unsafeImmutable
   }
 
   def graph_nodes_impl(g: Rep[Graph]): Rep[GIterable[Node]] = {

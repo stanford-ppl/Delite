@@ -435,6 +435,12 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
     case _ => super.containSyms(e)
   }
 
+  override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
+    case d if d.erasure == classOf[DeliteArray[_]] =>
+      val elems = unapplyStructType(d.typeArguments(0))
+      elems.map { case (tag: StructTag[T],fields) => (tag, fields.map(e => (e._1, darrayManifest(e._2)))) }
+    case _ => super.unapplyStructType
+  }
 }
 
 trait DeliteArrayFatExp extends DeliteArrayOpsExpOpt with StructFatExpOptCommon {

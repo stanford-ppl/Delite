@@ -140,13 +140,19 @@ trait OptiQLCodeGenBase extends GenericFatCodegen {
 
 trait OptiQLCodeGenRestage extends OptiQLScalaCodeGenPkg with DeliteCodeGenRestage { 
   val IR: DeliteApplication with OptiQLExp
-  
+  import IR._
+
   // we shouldn't need this if we have a proper lowering stage (i.e. transformation)
   override def remap[A](m: Manifest[A]): String = {    
     m match {
       case m if m.erasure.getSimpleName == "Date" => "Int"
       case _ => super.remap(m)
     }   
+  }
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case OptiQLProfileStart(x) => emitValDef(sym, "tic()")//)).mkString(",") + ")")
+    case _ => super.emitNode(sym, rhs)
   }
 }
 

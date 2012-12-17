@@ -362,6 +362,12 @@ trait OptiMLCodeGenBase extends OptiLACodeGenBase {
 // strategy is to inherit all of the base Scala generators and override what we need
 trait OptiMLCodeGenRestage extends OptiMLScalaCodeGenPkg with ScalaGenArithOps with DeliteCodeGenRestage { 
   val IR: DeliteApplication with OptiMLExp
+  import IR._
+  
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case ProfileStop(x,deps) =>  emitValDef(sym, "toc(" + deps.map(quote(_)).mkString(",") + ")") 
+    case _ => super.emitNode(sym, rhs)
+  }
 }
 
 trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with OptiMLScalaCodeGenPkg

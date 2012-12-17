@@ -156,11 +156,30 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     case MapTag() => "MapTag()"
   } 
        
-  def recordFieldLookup[T](initStruct: String, fields: List[String], tp: Manifest[T]): String = {        
-    if (fields.length == 1) 
-      "field[" + remap(tp) + "](" + initStruct + ", \"" + fields.head + "\")"
-    else
-      "field[Record](" + recordFieldLookup(initStruct, fields.tail, tp) + ", \"" + fields.head + "\")"
+  //def recordFieldLookup[T:Manifest](struct: Exp[T], nextStructTp: Manifest[_], fieldNames: List[String]): String = {        
+  def recordFieldLookup[T:Manifest](struct: Exp[T], nextStructTp: Manifest[_], currentStr: String, fieldNames: List[String]): String = {        
+    if (fieldNames == Nil) return currentStr
+
+    val structFieldTpes = nextStructTp match {
+      case StructType(tag,fields) => fields
+    }
+    val fieldTp = mtype(structFieldTpes.find(_._1 == fieldNames.head).get._2)
+  
+    val newStr = if (currentStr == "") {
+      "field["+remap(fieldTp)+"](" + quote(struct) + ", \"" + fieldNames.head + "\")"
+    }
+    else {
+      "field["+remap(fieldTp)+"](" + currentStr + ", \"" + fieldNames.head + "\")"
+    }
+    recordFieldLookup(struct, fieldTp, newStr, fieldNames.tail)
+
+    /*
+    if (fieldNames.length == 1) 
+      "field["+remap(fieldTp)+"](" + quote(struct) + ", \"" + fieldNames.head + "\")"
+    else {      
+      "field["+remap(fieldTp)+"](" + recordFieldLookup(struct, fieldTp, fieldNames.tail) + ", \"" + fieldNames.head + "\")"
+    }
+    */
   }    
   
   /**
@@ -290,12 +309,13 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     case ThrowException(m) => emitValDef(sym, "fatal(" + quote(m) + ")")
     case NewVar(init) => stream.println("var " + quote(sym) + " = " + quote(init))
     case ObjIntegerParseInt(s) => emitValDef(sym, "Integer.parseInt(" + quote(s) + ")")
+    case IntFloatValue(lhs) => emitValDef(sym, quote(lhs) + ".floatValueL()")
     case RepIsInstanceOf(x,mA,mB) => emitValDef(sym, quote(x) + ".isInstanceOf[Rep[" + remap(mB) + "]]")
     case RepAsInstanceOf(x,mA,mB) => emitValDef(sym, quote(x) + ".asInstanceOf[Rep[" + remap(mB) + "]]")    
     case MathMax(x,y) => emitValDef(sym, "Math.max(" + quote(x) + ", " + quote(y) + ")")
     // TODO: this manifest doesn't appear to be correct if we come from a struct where we explicitly created our own RefinedManifest
     case ObjectUnsafeImmutable(x) => emitValDef(sym, quote(x) + ".unsafeImmutable()")//("+makeManifestStr(unvar(x.tp))+",implicitly[SourceContext])")
-    
+
     // Range foreach
     // !! this is unfortunate: we need the var to be typed differently, but most of this is copy/paste
     case RangeForeach(start, end, i, body) => {
@@ -325,7 +345,8 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     case a@DeliteArrayNew(n) if sym.tp.typeArguments(0).erasure.getSimpleName == "GIterable" => emitValDef(sym, "DeliteArray[" + restageStructName(a.mA) + "](" + quote(n) + ")")
     case a@DeliteArrayNew(n) => emitValDef(sym, "DeliteArray[" + remap(a.mA) + "](" + quote(n) + ")")
     // case a@DeliteArrayNew(n) => emitValDef(sym, "DeliteArray[" + remap(a.mA) + "](" + quote(n) + ")")
-    case DeliteArrayCopy(src,srcPos,dest,destPos,len) => emitValDef(sym, "darray_unsafe_copy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
+    //case DeliteArrayCopy(src,srcPos,dest,destPos,len) => emitValDef(sym, "darray_unsafe_copy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
+    case DeliteArrayCopy(src,srcPos,dest,destPos,len) => emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
     case DeliteArrayGetActSize() => emitValDef(sym, "darray_unsafe_get_act_size()")
     case DeliteArraySetActBuffer(da) => emitValDef(sym, "darray_unsafe_set_act_buf(" + quote(da) + ")")
     case DeliteArraySetActFinal(da) => emitValDef(sym, "darray_unsafe_set_act_final(" + quote(da) + ")")
@@ -365,8 +386,9 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
         emitValDef(sym, "field_update[" + remap(rhs.tp) + "](" + quote(struct) + ",\"" + fields(0) + "\"," + quote(rhs) + ")")
       }
       else {
-        val f = "field[Record](" + quote(struct) + ", \"" + fields.head + "\")"
-        emitValDef(sym, "field_update(" + recordFieldLookup(f, fields.tail, rhs.tp) + ", " + quote(rhs) + ")")        
+        //val f = "field[Record](" + quote(struct) + ", \"" + fields.head + "\")"
+        //emitValDef(sym, "field_update(" + recordFieldLookup(f, fields.tail, rhs.tp) + ", " + quote(rhs) + ")")        
+        emitValDef(sym, "field_update(" + recordFieldLookup(struct, struct.tp, "", fields) + ", " + quote(rhs) + ")")        
       }
    
     case StructUpdate(struct, fields, idx, x) =>
@@ -375,8 +397,12 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
         emitValDef(sym, "darray_update(field[DeliteArray["+remap(x.tp)+"]](" + quote(struct) + ", \"" + fields.head + "\"), " + quote(idx) + ", " + quote(x) + ")")
       }
       else {
-        val f = "field[Record](" + quote(struct) + ", \"" + fields.head + "\")"
-        emitValDef(sym, "darray_update(" + recordFieldLookup(f, fields.tail, x.tp) + ", " + quote(idx) + ", " + quote(x) + ")")
+        //val structFieldTpes = struct match {
+        //  case StructType(tag,fields) => fields.map(_._2)
+        //}
+        //val f = "field["+remap(structFieldTpes(0))+"](" + quote(struct) + ", \"" + fields.head + "\")"
+        //emitValDef(sym, "darray_update(" + recordFieldLookup(f, fields.tail, struct.tp) + ", " + quote(idx) + ", " + quote(x) + ")")
+        emitValDef(sym, "darray_update(" + recordFieldLookup(struct, struct.tp, "", fields) + ", " + quote(idx) + ", " + quote(x) + ")")
       }
     
     // delite ops
@@ -384,7 +410,8 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
       // each stm inside the block must be restageable..
       emitBlock(s.block)
       stream.print("val " + quote(sym) + " = ")
-      stream.println(quote(getBlockResult(s.block)) + ".unsafeImmutable()")//"("+makeManifestStr(unvar(sym.tp))+",implicitly[SourceContext])")
+      stream.println(quote(getBlockResult(s.block)))
+      //stream.println(quote(getBlockResult(s.block)) + ".unsafeImmutable()")//"("+makeManifestStr(unvar(sym.tp))+",implicitly[SourceContext])")
       
     case e:DeliteOpExternal[_] => 
       // DeliteOpExternals are broken right now - we can't generate the JNI stuff from the external node alone... what to do?
