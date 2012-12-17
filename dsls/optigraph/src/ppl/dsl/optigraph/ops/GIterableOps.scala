@@ -83,6 +83,7 @@ trait GIterableOps extends Variables {
 
   //TODO do this for all of the methods below
   def new_iterable[T:Manifest](data: Rep[DeliteArray[T]], offset: Rep[Int], size: Rep[Int])(implicit ctx: SourceContext): Rep[GIterable[T]]
+  def new_iterable_imm[T:Manifest](data: Rep[DeliteArray[T]], offset: Rep[Int], size: Rep[Int])(implicit ctx: SourceContext): Rep[GIterable[T]]
   def new_empty_iterable[T:Manifest](): Rep[GIterable[T]]
   def giterable_raw_size[T:Manifest](iter: Rep[GIterable[T]])(implicit ctx: SourceContext): Rep[Int]
   def delitearray_giterable_append[T:Manifest](x: Rep[DeliteArray[GIterable[T]]], i: Rep[Int], y: Rep[T]): Rep[Unit]
@@ -110,6 +111,10 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
     val elems = copyTransformedElems(collection.Seq("_data" -> data, "_offset" -> offset, "_size" -> size))
     val mT = manifest[T]
   }
+  case class GIterableNewImm[T:Manifest](data: Exp[DeliteArray[T]], offset: Exp[Int], size: Exp[Int]) extends DeliteStruct[GIterable[T]] {
+    val elems = copyTransformedElems(collection.Seq("_data" -> data, "_offset" -> offset, "_size" -> size))
+    val mT = manifest[T]
+  } 
   case class GIterableNewEmpty[T:Manifest]() extends DeliteStruct[GIterable[T]] {
     val elems = copyTransformedElems(collection.Seq("_data" -> var_new(DeliteArray[T](0)).e, "_offset" -> var_new(unit(0)).e, "_size" -> var_new(unit(0)).e))
     val mT = manifest[T]
@@ -333,7 +338,8 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
   case class DeliteArrayGIterableAppend[T:Manifest](x: Exp[DeliteArray[GIterable[T]]], i: Exp[Int], y: Exp[T])
     extends DeliteOpSingleWithManifest[T,Unit](reifyEffectsHere(delitearray_giterable_append_impl(x, i, y)))
 
-  def new_iterable[T:Manifest](data: Exp[DeliteArray[T]], offset: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext) = reflectPure(GIterableNew(data, offset, size))
+  def new_iterable[T:Manifest](data: Exp[DeliteArray[T]], offset: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(GIterableNew(data, offset, size))
+  def new_iterable_imm[T:Manifest](data: Exp[DeliteArray[T]], offset: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext) = reflectPure(GIterableNewImm(data, offset, size))
   def new_empty_iterable[T:Manifest]() = reflectMutable(GIterableNewEmpty())
   def iter_sum[T:Manifest, A:Manifest:Numeric](iter: Exp[GIterable[T]], block: Exp[T] => Exp[A]) = reflectPure(GIterableSum(iter, block))
   def iter_sumIf[T:Manifest, A:Manifest:Numeric](iter: Exp[GIterable[T]], filter: Exp[T] => Exp[Boolean], block: Exp[T] => Exp[A]) = reflectPure(GIterableSumIf(iter, filter, block))

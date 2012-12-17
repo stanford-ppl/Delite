@@ -87,14 +87,14 @@ trait GraphImplOpsStandard extends GraphImplOps {
       delitearray_giterable_append(outneighbors, nodemap(fromArray(i)._1).Id, nodemap(fromArray(i)._2))
       delitearray_giterable_append(inneighbors, nodemap(fromArray(i)._2).Id, nodemap(fromArray(i)._1))
     }
-    graph_set_raw_nodes(g,nodes)
-    graph_set_raw_outneighbors(g,outneighbors)
-    graph_set_raw_inneighbors(g,inneighbors)
+    graph_set_raw_nodes(g,nodes.unsafeImmutable)
+    graph_set_raw_outneighbors(g,outneighbors.unsafeImmutable)
+    graph_set_raw_inneighbors(g,inneighbors.unsafeImmutable)
     g.unsafeImmutable
   }
 
   def graph_nodes_impl(g: Rep[Graph]): Rep[GIterable[Node]] = {
     val node_array = graph_raw_nodes(g)
-    new_iterable(node_array, unit(0), node_array.length)
+    new_iterable_imm(node_array, unit(0), node_array.length)
   }
 }
