@@ -73,7 +73,7 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
 
   def darray_buffer_append[A:Manifest](d: Exp[DeliteArrayBuffer[A]], elem: Exp[A])(implicit ctx: SourceContext): Exp[Unit] = {
     //darray_buffer_insert(d, d.length, elem)
-    darray_buffer_ensureextra(d,d.length+unit(1))
+    darray_buffer_ensureextra(d,unit(1))
     darray_buffer_update(d,d.length,elem)
     darray_buffer_set_length(d, d.length+unit(1))
   }

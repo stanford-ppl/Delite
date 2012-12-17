@@ -55,7 +55,7 @@ trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift w
       if (i % 1000000 == 0) println("processed " + i/1000000 + " million records")
     }
     input.close()
-    Table(darray_buffer_unsafe_result(table), table.length)
+    Table(darray_buffer_unsafe_result(table).unsafeImmutable, table.length)
   }
 
   private def addRecord[T<:Record:Manifest](table: Rep[DeliteArrayBuffer[T]], record: Rep[Array[String]], shape: Rep[T]) {
