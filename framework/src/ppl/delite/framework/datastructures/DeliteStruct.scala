@@ -5,7 +5,7 @@ import scala.virtualization.lms.common._
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.reflect.{RefinedManifest, SourceContext}
 
-trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsExp => // FIXME: mix in prim somewhere else
+trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsExp with OrderingOpsExp => // FIXME: mix in prim somewhere else
 	
   abstract class DeliteStruct[T:Manifest] extends AbstractStruct[T] with DeliteOp[T] {
     type OpType <: DeliteStruct[T]
@@ -42,7 +42,7 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
         println("      dep: " + e.toString + "=" + r)
       }
 
-      // find last assignment ...
+      // find last assignment ... FIXME: should look at *all* mutations of orig
       val writes = es collect {
         case Def(Reflect(NestedFieldUpdate(`orig`,List(`index`),rhs), _, _)) => rhs
       }
@@ -64,9 +64,9 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
     case Def(rhs@Reflect(SimpleStruct(tag, fields), _, _)) =>
       println("**** trying to shortcut field access: " + struct.toString + "=" + rhs + "." + index)
 
-      // find last assignment ...
+      // find last assignment ... FIXME: should look at *all* mutations of struct
       context foreach {
-        case Def(Reflect(NestedFieldUpdate(`struct`,List(`index`),rhs), _, _)) => 
+        case Def(Reflect(NestedFieldUpdate(`struct`,List(`index`),rhs), _, _)) =>  //ok
         case Def(e) => 
           println("      ignoring " + e)
       }
@@ -93,10 +93,39 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
     case _ => reflectWrite(struct)(NestedFieldUpdate(struct, fields, rhs))
   }
 
+
+  def mirrorDD[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Def[A] = (e match {
+    case IntTimes(a,b) => 
+      println("warning: encountered effectful primitive def during mirror "+e)
+      IntTimes(f(a),f(b))
+    case IntPlus(a,b) => 
+      println("warning: encountered effectful primitive def during mirror "+e)
+      IntPlus(f(a),f(b))
+    case IntMinus(a,b) => 
+      println("warning: encountered effectful primitive def during mirror "+e)
+      IntMinus(f(a),f(b))
+    case e@OrderingLT(a,b) =>
+      println("warning: encountered effectful primitive def during mirror "+e)
+      OrderingLT(f(a),f(b))(null.asInstanceOf[Ordering[Any]],manifest[Any]) //HACK
+    case e@Reflect(a,u,es) => Reflect(mirrorDD(a,f),mapOver(f,u),f(es))
+    case _ => 
+      println("FAIL: "+e)
+      e
+  }).asInstanceOf[Def[A]]
+
+
+
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case Reflect(NestedFieldUpdate(struct, fields, rhs), u, es) => reflectMirrored(Reflect(NestedFieldUpdate(f(struct), fields, f(rhs)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case _ => super.mirror(e,f)
+    case Reflect(x@IntTimes(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case Reflect(x@IntPlus(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case Reflect(x@IntMinus(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case Reflect(x@OrderingLT(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case _ => 
+      //println("mirror: "+e)
+      super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
+
 
   def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
     case r: RefinedManifest[T] => Some(AnonTag(r), r.fields)
