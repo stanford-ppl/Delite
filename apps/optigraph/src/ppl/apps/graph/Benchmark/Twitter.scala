@@ -11,27 +11,33 @@ trait Twitter extends OptiGraphApplication {
     Foreach(G.Nodes) { s =>
       var triangles = 0 
       var total = 0
-        
+
       Foreach(G.InNbrs(s).filter(t => G.HasOutNbr(s,t))) { t =>
         Foreach(G.InNbrs(s).filter(u => G.HasOutNbr(s,u) && u != t)) { u =>
-          if (G.HasOutNbr(u,t)) {triangles += 1}
-          if (G.HasOutNbr(t,u)) {triangles += 1}
-          total += 2
+          //if(G.HasOutNbr(u,t)) {
+            if (G.HasOutNbr(u,t)) {triangles += 1}
+            if (G.HasOutNbr(t,u)) {triangles += 1}
+            total += 2
+          //}
         }
       }
-
+      //LCC(s) = if(total < threshold) 0.0f else unit(1.0f) * triangles / total
       if (total < threshold) {
         LCC(s) = 0.0f
+        //println("Computed LCC = " + LCC(s))
+        //println("Total (" + total.value + ") was less than threshold")
       } else {
-        LCC(s) = (triangles) / (total)
+        LCC(s) = unit(1.0f) * (triangles) / (total)
+        //println("Computed LCC = " + LCC(s) + " = " + triangles + " / " + total)
       }
     }
   }
 
   //TODO: Better to accumulate the number of retweets this node 
-  def retweetCnt(G: Rep[Graph], RT: Rep[NodeProperty[Int]]) {
+  def retweetCnt(G: Rep[Graph], RT: Rep[NodeProperty[Float]]) {
     Foreach(G.Nodes) { t =>
       RT(t) = G.InNbrs(t).length
+      //println("inNbrs = " + G.InNbrs(t).length)
     }
   }
 
@@ -61,20 +67,48 @@ trait Twitter extends OptiGraphApplication {
     println("cnt:" + cnt + ",diff:" + diff)
   }
   */
+  type EdgeList = Record {
+    val fromId: Int
+    val toId: Int
+  }
+  def EdgeList(_fromId: Rep[Int], _toId: Rep[Int]) = new Record{ 
+    val fromId = _fromId;
+    val toId = _toId;
+  }
+  def EdgeList(): Rep[EdgeList] = EdgeList(0,0)
+
+  type Tweet = Record {
+    val id: String
+    val time: String
+    val fromId: Int
+    val toId: Int
+    val language: String
+    val text: String
+  }
+
+  def Tweet(_id: Rep[String], _time: Rep[String], _fromId: Rep[Int], _toId: Rep[Int], _language: Rep[String], _text: Rep[String]): Rep[Tweet] = new Record {
+    val id = _id;
+    val time = _time;
+    val fromId = _fromId;
+    val toId = _toId;
+    val language = _language;
+    val text = _text;
+  }
+
+  def Tweet(): Rep[Tweet] = Tweet("", "", 0, 0, "", "")
 
   def main() {
-    val start_time = wall_time()
-    val G = graph_load(args(0))
-    val generation_time = wall_time() - start_time
+ 
+    //val G = graph_load(args(0))
+    val GArray = Graph(args(0), Tweet())
+    tic(GArray)
+    val G = Graph.fromArray(GArray.map(e => (e.fromId,e.toId)))
+    //toc(G)
     val lccprop : Rep[NodeProperty[Float]] = NodeProperty[Float](G, 0.0f)
-    val retweet : Rep[NodeProperty[Int]] = NodeProperty[Int](G, 0)
-    //val rank : Rep[NodeProperty[Double]] = NodeProperty[Double](G, 0.0)
+    val retweet : Rep[NodeProperty[Float]] = NodeProperty[Float](G, 0.0f)
     lcc(G, lccprop, 1)
-    //pagerank(G, rank, 0.001, 0.85, 6)
     retweetCnt(G, retweet)
-    val lcc_time = wall_time() - (generation_time + start_time)
-    val total_time = lcc_time + generation_time
-    println("file: " + args(0) + " = generation: " + generation_time + " lcc: " + lcc_time + " total: " + total_time)
+    toc(lccprop(node_new(0)),retweet(node_new(0)))
   }
 }
 

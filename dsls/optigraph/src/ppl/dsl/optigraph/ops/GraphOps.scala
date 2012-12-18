@@ -15,6 +15,7 @@ trait GraphOps extends Variables {
   object Graph {
     def apply() = dgraph_new()
     def fromArray(array: Rep[DeliteArray[(Int,Int)]]):Rep[Graph] = graph_load_array(array)
+    def apply[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String] = unit("|")) = optigraph_table_input_reader(path, shape, separator)
   }
   object DGraph {
     def apply() = dgraph_new()
@@ -113,6 +114,7 @@ trait GraphOps extends Variables {
   def graph_set_raw_nodeinneighbors(g: Rep[Graph], n: Rep[Node], newVal: Rep[GIterable[Node]])(implicit ctx: SourceContext): Rep[Unit]
   def graph_set_raw_inneighbors(g: Rep[Graph], newVal: Rep[DeliteArray[GIterable[Node]]])(implicit ctx: SourceContext): Rep[Unit]
   def graph_set_raw_outneighbors(g: Rep[Graph], newVal: Rep[DeliteArray[GIterable[Node]]])(implicit ctx: SourceContext): Rep[Unit]
+  def optigraph_table_input_reader[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]): Rep[DeliteArray[T]]
 
 }
 
@@ -139,6 +141,9 @@ trait GraphOpsExp extends GraphOps with EffectExp with NodeOps {
   //case class GraphLoad(fileName: Exp[String]) extends Def[Graph]
   case class GraphLoadFile(fileName: Exp[String]) extends DeliteOpSingleTask(reifyEffectsHere(graph_load_impl(fileName)))
   case class GraphLoadArray(array: Exp[DeliteArray[(Int,Int)]]) extends DeliteOpSingleTask(reifyEffectsHere(graph_load_array_impl(array)))
+  case class OptiGraphTableInputReader[T:Manifest](readBlock: Block[DeliteArray[T]]) extends DeliteOpSingleTask(readBlock) {
+    val mT = manifest[T]
+  }
  
   case class GraphObjectNew() extends DeliteStruct[Graph] {
     val elems = copyTransformedElems(collection.Seq("isImmutable" -> unit(true),
@@ -290,6 +295,9 @@ trait GraphOpsExp extends GraphOps with EffectExp with NodeOps {
   def graph_randu(numNodes: Exp[Int], numEdges: Exp[Int], seed: Exp[Long]) = reflectPure(GraphRandUniform(unit(true), numNodes, numEdges, seed))
   def graph_load(fileName: Exp[String]) = reflectPure(GraphLoadFile(fileName))
   def graph_load_array(array: Exp[DeliteArray[(Int,Int)]]) = reflectPure(GraphLoadArray(array))
+  def optigraph_table_input_reader[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]) = {
+    reflectEffect(OptiGraphTableInputReader(reifyEffectsHere(optigraph_table_input_reader_impl(path,shape,separator))))
+  }
   
   // alias/sharing
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
@@ -330,6 +338,7 @@ trait GraphOpsExp extends GraphOps with EffectExp with NodeOps {
     //case GraphLoad(fn) => graph_load(f(fn))
     case GraphLoadFile(fn) => reflectPure(new { override val original = Some(f,e) } with GraphLoadFile(f(fn)))(mtype(manifest[A]),implicitly[SourceContext])
     case GraphLoadArray(a) => reflectPure(new { override val original = Some(f,e) } with GraphLoadArray(f(a)))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@OptiGraphTableInputReader(block) => reflectPure(new { override val original = Some(f,e) } with OptiGraphTableInputReader(f(block))(e.mT))(mtype(manifest[A]),implicitly[SourceContext])      
     case GraphRandUniform(dir,nn,ne,se) => graph_randu(f(nn),f(ne),f(se))
     case Reflect(e@GraphObjectNew(), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GraphObjectNew(), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GraphNodeInNeighbors(g,n), u, es) => reflectMirrored(Reflect(GraphNodeInNeighbors(f(g),f(n)), mapOver(f,u), f(es)))(mtype(manifest[A])) //reflectMirrored(Reflect(new { override val original = Some(f,e) } with GraphNodeInNeighbors(f(g),f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -345,6 +354,7 @@ trait GraphOpsExp extends GraphOps with EffectExp with NodeOps {
     //case Reflect(e@GraphLoad(fn), u, es) => reflectMirrored(Reflect(GraphLoad(f(fn)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GraphLoadFile(fn), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GraphLoadFile(f(fn)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GraphLoadArray(a), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GraphLoadArray(f(a)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@OptiGraphTableInputReader(block), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with OptiGraphTableInputReader(f(block))(e.mT), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@DGraphObjectNew(), u, es) => reflectMirrored(Reflect(DGraphObjectNew(), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@UGraphObjectNew(), u, es) => reflectMirrored(Reflect(UGraphObjectNew(), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GraphAddNode(g), u, es) => reflectMirrored(Reflect(GraphAddNode(f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))
