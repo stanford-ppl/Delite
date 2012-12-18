@@ -133,6 +133,7 @@ trait GraphImplOpsStandard extends GraphImplOps {
         //case "Float" => (field, Float.parseFloat(record(i))
         case "Int" => (field, Integer.parseInt(record(i)))
         case "Char" => (field, record(i).charAt(0))
+        case "Boolean" => (field, record(i)=="true")
         case _ => throw new RuntimeException("Unsupported record field type: " + tp.toString)
       }
     }

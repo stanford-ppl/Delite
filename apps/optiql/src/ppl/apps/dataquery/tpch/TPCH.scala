@@ -45,12 +45,12 @@ trait TweeterTrait extends TPCHBaseTrait {
     
     val tweets = loadTweets()
 
-    val q = tweets Where(_.time >= Date("2008-01-01")) Where(_.language == "en") Select(l => new Result {
-      val fromId = l.fromId
-      val toId = l.toId
-      val text = l.text
-    })
-    q.printAsTable
+    tic(tweets.size)
+    val entweets = tweets Where(_.language == "en")
+    val enretweets = tweets Where(t => t.time >= Date("2008-01-01") && t.language == "en" && t.retweet)
+    toc(entweets, enretweets)
+    println("english tweets : " + entweets.size)
+    println("english retweets : " + enretweets.size)
     
   }
 }

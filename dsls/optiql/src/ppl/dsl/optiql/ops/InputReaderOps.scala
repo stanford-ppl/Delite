@@ -73,6 +73,7 @@ trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift w
         //case "Float" => (field, Float.parseFloat(record(i))
         case "Int" => (field, Integer.parseInt(record(i)))
         case "Char" => (field, record(i).charAt(0))
+        case "Boolean" => (field, record(i)=="true")
         case d if d.contains("Date") => (field, Date(record(i)))
         case _ => throw new RuntimeException("Unsupported record field type: " + tp.toString)
       }

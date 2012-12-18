@@ -365,7 +365,10 @@ trait OptiMLCodeGenRestage extends OptiMLScalaCodeGenPkg with ScalaGenArithOps w
   import IR._
   
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case ProfileStart(x,deps) =>  emitValDef(sym, "tic(" + deps.map(quote(_)).mkString(",") + ")") 
     case ProfileStop(x,deps) =>  emitValDef(sym, "toc(" + deps.map(quote(_)).mkString(",") + ")") 
+    case ArithAbs(x) => emitValDef(sym, "Math.abs(" + quote(x) + ")")
+    case ArithExp(x) => emitValDef(sym, "Math.exp(" + quote(x) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }

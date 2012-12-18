@@ -1,3 +1,5 @@
+/*
+
 package ppl.apps.interop
 
 import Types._
@@ -5,6 +7,10 @@ import Types._
 /**
  * Iterable collection of graph items (nodes or edges)
  */
+
+class NodeGIterable extends ArrayBuffer[Node] {
+  def 
+}
 
 class NodeGIterable(var data: Array[Node], __offset: Int, var size: Int) {
 
@@ -68,3 +74,5 @@ class NodeGIterable(var data: Array[Node], __offset: Int, var size: Int) {
     data = d
   }
 }
+
+*/

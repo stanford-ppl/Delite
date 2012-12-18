@@ -152,6 +152,7 @@ trait OptiQLCodeGenRestage extends OptiQLScalaCodeGenPkg with DeliteCodeGenResta
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case OptiQLProfileStart(x) => emitValDef(sym, "tic()")//)).mkString(",") + ")")
+    case OptiQLProfileStop(x) => emitValDef(sym, "toc()")//)).mkString(",") + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }

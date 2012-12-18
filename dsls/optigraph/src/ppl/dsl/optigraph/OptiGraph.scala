@@ -188,7 +188,8 @@ trait OptiGraphCodeGenBase extends GenericFatCodegen {
 
 trait OptiGraphCodeGenRestage extends OptiGraphScalaCodeGenPkg with DeliteCodeGenRestage { 
   val IR: DeliteApplication with OptiGraphExp  
-  
+  import IR._
+
   // we shouldn't need this if we have a proper lowering stage (i.e. transformation)
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
     // the next two cases would happen automatically (in DeliteCodeGenRestage) if NodeProperty, GIterable and Graph <: Record
@@ -197,6 +198,12 @@ trait OptiGraphCodeGenRestage extends OptiGraphScalaCodeGenPkg with DeliteCodeGe
     case "Node" => "Int" //IR.structName(m)
     case _ => super.remap(m)
   }  
+  
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case ProfileStart(deps) =>  emitValDef(sym, "tic(" + deps.map(quote(_)).mkString(",") + ")") 
+    case ProfileStop(deps) =>  emitValDef(sym, "toc(" + deps.map(quote(_)).mkString(",") + ")") 
+    case _ => super.emitNode(sym, rhs)
+  }
 }
 
 trait OptiGraphCodeGenScala extends OptiGraphCodeGenBase with OptiGraphScalaCodeGenPkg with ScalaGenDeliteOps

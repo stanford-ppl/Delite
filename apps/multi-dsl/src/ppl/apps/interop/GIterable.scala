@@ -1,12 +1,16 @@
 package ppl.apps.interop
 
-import collection.mutable.ArrayBuffer
+import scala.collection.mutable.ArrayBuffer
 import Types._
 
 /**
  * Iterable collection of graph items (nodes or edges)
  */
 
+
+class GIterable[T] extends ArrayBuffer[T]
+
+/*
 class GIterable[@specialized T: ClassManifest](var data: Array[T], __offset: Int, var size: Int) {
 
   val _offset = __offset
@@ -89,3 +93,4 @@ class GIterable[@specialized T: ClassManifest](var data: Array[T], __offset: Int
     data = d
   }
 }
+*/
