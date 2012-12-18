@@ -6,7 +6,8 @@ import java.io.{PrintWriter}
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
-import scala.collection.mutable.HashMap
+//import scala.collection.mutable.HashMap
+import java.util.HashMap
 import ppl.dsl.optiml._
 
 trait GraphOps extends Variables {

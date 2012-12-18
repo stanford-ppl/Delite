@@ -190,7 +190,16 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
     
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]  
-      
+ 
+  override def syms(e: Any): List[Sym[Any]] = e match {
+    case SetScopeResult(x) => Nil
+    case _ => super.syms(e)
+  } 
+
+  override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
+    case SetScopeResult(x) => Nil
+    case _ => super.symsFreq(e)
+  }
 }
 
 trait ScalaGenDeliteILOps extends GenericFatCodegen with ScalaGenFat {

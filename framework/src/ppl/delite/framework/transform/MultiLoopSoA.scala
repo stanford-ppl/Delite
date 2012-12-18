@@ -3,6 +3,7 @@ package ppl.delite.framework.transform
 import ppl.delite.framework.ops._
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.{Config, DeliteApplication}
+import ppl.delite.framework.Util._
 import scala.virtualization.lms.common._
 import scala.reflect.SourceContext
 
@@ -99,7 +100,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
       val dataField = dc_data_field(t.getBlockResult(alloc))
       val sizeField = dc_size_field(t.getBlockResult(alloc))
 
-      if (dataField == "" && manifest[I].erasure != classOf[DeliteArray[_]]) {
+      if (dataField == "" && !isSubtype(manifest[I].erasure,classOf[DeliteArray[_]])) {
         printlog("unable to transform collect elem: no data field defined for " + manifest[I].toString)
         return None
       }
@@ -111,7 +112,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         case f2 => copyLoop(f2)
       }
 
-      val res = if (manifest[I].erasure == classOf[DeliteArray[_]]) {
+      val res = if (isSubtype(manifest[I].erasure, classOf[DeliteArray[_]])) {
         newLoop
       }
       else {

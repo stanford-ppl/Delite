@@ -304,6 +304,9 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     
     // scala
     case m@HashMapNew() => emitValDef(sym, "HashMap[" + remap(m.mK) + "," + remap(m.mV) + "]()")
+    case HashMapApply(m,k) => emitValDef(sym, quote(m) + "(" + quote(k) + ")")
+    case HashMapUpdate(m,k,v)  => emitValDef(sym, quote(m) + "(" + quote(k) + ") = " + quote(v))
+    case HashMapContains(m,i) => emitValDef(sym, quote(m) + ".contains(" + quote(i) + ")")  
     case ObjBrApply(f) => emitValDef(sym, "BufferedReader(" + quote(f) + ")")
     case ObjFrApply(s) => emitValDef(sym, "FileReader(" + quote(s) + ")")    
     case ThrowException(m) => emitValDef(sym, "fatal(" + quote(m) + ")")
