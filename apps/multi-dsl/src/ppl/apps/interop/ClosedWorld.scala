@@ -14,34 +14,31 @@ object CloseWorldCompose {
     println("scala 1")
     
     OptiQL_ {
-      type Tweet = Record {
-        val id: String
-        val time: Date
-        val fromId: Int
-        val toId: Int
-        val language: String
-        val text: String
-      }      
-      def Tweet(_id: Rep[String], _time: Rep[Date], _fromId: Rep[Int], _toId: Rep[Int], _language: Rep[String], _text: Rep[String]): Rep[Tweet] = new Record {
+      type Tweet = Record { val id: String; val time: Date; val hour: Int; val fromId: Int; val toId: Int; val rt: Boolean; val language: String; val text: String }
+      def Tweet(_id: Rep[String], _time: Rep[Date], _hour: Rep[Int], _fromId: Rep[Int], _toId: Rep[Int], _rt: Rep[Boolean], _language: Rep[String], _text: Rep[String]): Rep[Tweet] = new Record {
         val id = _id;
         val time = _time;
+        val hour = _hour;
         val fromId = _fromId;
         val toId = _toId;
+        val rt = _rt;
         val language = _language;
         val text = _text;
       }      
-      def emptyTweet(): Rep[Tweet] = Tweet("", Date(""), 0, 0, "", "")
+      def emptyTweet(): Rep[Tweet] = Tweet("", Date(""), 0, 0, 0, unit(true), "", "")
             
       // type Tweet = Record{val fromId: Int; val toId: Int; val text: String}
       // val tweets: Rep[Table[Tweet]] = loadTweets() // elided
-      val tweets = TableInputReader(args(0)+"/tweet.tbl", emptyTweet())      
-      //tic(tweets)
-      val result = tweets Where(t => t.time >= Date("2008-01-01") && t.language == "en") 
+      val tweets = TableInputReader(args(0), emptyTweet())      
+      dtic("all", tweets)
+      //dtic("optiql", tweets)
+      val retweets = tweets Where(t => t.time >= Date("2008-01-01") && t.language == "en" && t.rt) 
+      val engtweets = tweets Where(t => t.language == "en") 
       // is there something in the desugaring scopes that ignores the block result?
       // without returnScopeResult, getting a block result of (), even the Scope result is of type R
-      returnScopeResult(result.toArray)
+      returnScopeResult(retweets.toArray,engtweets.toArray)
       // println(result.toArray)
-      //toc(result)
+      //dtoc("optiql", retweets, engtweets)
     }
     
     OptiGraph_ {      
@@ -61,24 +58,23 @@ object CloseWorldCompose {
       // da1(11) = 3; da2(11) = 2
       // val da = da1.zip(da2)((i,j) => t2(i,j))
       // val G = Graph.fromArray(da)
-      type Tweet = Record { val id: String; val time: Int; val fromId: Int; val toId: Int; val language: String; val text: String }
-      val in = lastScopeResult.AsInstanceOf[DeliteArray[Tweet]]
+      type Tweet = Record { val id: String; val time: Int; val hour: Int; val fromId: Int; val toId: Int; val rt: Boolean; val language: String; val text: String }
+      val in = lastScopeResult.AsInstanceOf[(DeliteArray[Tweet],DeliteArray[Tweet])]
       //println("in.length: " + in.length)
       //println("in(0): " + in(0))
       //println("in(1): " + in(1))
       // val in2 = in2.map(t => (t.fromId,t.toId))
       // println("in2(0): " + in2(0))
       // println("in2(1): " + in2(1))
-      
-      val inEdges = in.map(t => (t.fromId,t.toId))
-      //tic(inEdges)
-      //tic()
+      //dtic("optigraph 1")
+      val retweets = in._1
+      val inEdges = retweets.map(t => (t.fromId,t.toId))
+      //dtoc("optigraph 1", inEdges)
       val G = Graph.fromArray(inEdges)  
-      //toc(G)
-      //toc(G)
 
       // LCC
-      // TODO: DeliteCodeGenRestage breaks when we have multiple Node Properties of different types
+      // TODO: DeliteCodeGenRestage breaks when we have multiple Node Properties of different type
+      //dtic("optigraph", G)
       val LCC: Rep[NodeProperty[Double]] = NodeProperty[Double](G, 0.0)
       val RT: Rep[NodeProperty[Double]] = NodeProperty[Double](G, 0.0)
       val threshold = 1
@@ -125,14 +121,20 @@ object CloseWorldCompose {
         //println("inNbrs = " + G.InNbrs(t).length)
       }
             
-      returnScopeResult((LCC.toArray, RT.toArray))
+      val RTarray = RT.toArray
+      //dtoc("optigraph", RTarray)
+      returnScopeResult((LCC.toArray, RTarray, retweets, in._2))
     }
         
     OptiML_ {
+      type Tweet = Record { val id: String; val time: Int; val hour: Int; val fromId: Int; val toId: Int; val rt: Boolean; val language: String; val text: String }
       // unweighted linear regression
-      val in = lastScopeResult.AsInstanceOf[(DeliteArray[Double],DeliteArray[Double])]
-      val inA = tuple2_get1(in)
-      val inB = tuple2_get2(in)
+      val in = lastScopeResult.AsInstanceOf[(DeliteArray[Double],DeliteArray[Double],DeliteArray[Tweet],DeliteArray[Tweet])]
+      val inA = tuple4_get1(in)
+      val inB = tuple4_get2(in)
+      val retweets = tuple4_get3(in)
+      val tweets = tuple4_get4(in)
+
       //println("inA.length: " + inA.length)
       //println("inB.length: " + inB.length)
 
@@ -143,6 +145,7 @@ object CloseWorldCompose {
       //val y = readVector(args(0)+"/ml/linreg/q2y.dat").t
 
       // -- normal optiml version
+      //dtic("optiml")
       val x = Matrix.fromArray(inA, numFeatures = 1)/*.mutable*/
       val RT = Vector.fromArray(inB).t
       val xm = x.mutable
@@ -151,16 +154,25 @@ object CloseWorldCompose {
       val RTlog = log(RT+1.0)
       val y = RTlog/sum(RTlog) // norm
 
-      // compute unweighted linear regression
+      // compute unweighted linear regression on LCC, norm(RT)
       val a = (X.t*X)//.inv
       val b = X.t*y
       val theta = a*b
 
-      // compute other RT statistics
-      val m = mean(RT)
-      val sdev = sqrt(square(RT-m).sum) / RT.length
-      val dist = ((square(RT-m) * (-1.0) / (2*sdev*sdev)).exp) / sqrt(2*Pi*sdev*sdev)
+      // compute other statistics on all tweets
+      val tweetHours = Vector.fromArray(tweets.map(_.hour.AsInstanceOf[Double]))
+      val m = mean(tweetHours)
+      val sdev = sqrt(square(tweetHours-m).sum) / tweetHours.length
+      val dist = ((square(tweetHours-m) * (-1.0) / (2*sdev*sdev)).exp) / sqrt(2*Pi*sdev*sdev)
+
+      val rtHours = Vector.fromArray(retweets.map(_.hour.AsInstanceOf[Double]))
+      val mRt = mean(rtHours)
+      val sdevRt = sqrt(square(rtHours-mRt).sum) / rtHours.length
+      val distRt = ((square(rtHours-mRt) * (-1.0) / (2*sdevRt*sdevRt)).exp) / sqrt(2*Pi*sdevRt*sdevRt)
       
+      //dtoc("optiml", dist, distRt, dist)
+      dtoc("all", dist, distRt, dist)
+
       // -- pre-transposed version
 //      val X = DenseMatrix(Vector.onesf(inA.length), Vector.fromArray(inA))
 //      val y = Vector.fromArray(inB).t
@@ -172,11 +184,14 @@ object CloseWorldCompose {
       //val theta = ((X.t*X).inv)*(X.t*y)
       //println("theta(0): " + theta(0))
       //println("theta(1): " + theta(1))
-      //toc(dist)
       theta.pprint
       println("mean: " + m)
       println("sdev: " + sdev)
       println("dist(0): " + dist(0))
+
+      println("rt mean: " + mRt)
+      println("rt sdev: " + sdevRt)
+      println("rt dist(0): " + distRt(0))
 
       // linreg.weighted(readMatrix(args(0),readVector(args(1)).t))
       // println("got input from previous stage: " + previous(0).AsInstanceOf[DeliteArray[Int]]) 

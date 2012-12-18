@@ -518,7 +518,7 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
     case "DeliteArray" => m.typeArguments(0) match {
       case StructType(_,_) => structName(m)
-      case s if s.erasure.getSimpleName == "Record" => structName(m) // occurs due to restaging
+      case s if s <:< manifest[Record] => structName(m) // occurs due to restaging
       case arg => 
         "Array[" + remap(arg) + "]"
     }

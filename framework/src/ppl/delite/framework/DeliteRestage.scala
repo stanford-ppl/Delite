@@ -21,6 +21,15 @@ trait DeliteRestageOps extends Base {
   // scope-facing placeholders for data exchange
   def lastScopeResult: Rep[Any]
   def returnScopeResult(n: Rep[Any]): Rep[Unit]
+
+  // DSL independent timing
+  def dtic(deps: Rep[Any]*)(implicit ctx: SourceContext) = delite_profile_start(unit("app"),deps)
+  def dtic(component: Rep[String], deps: Rep[Any]*)(implicit ctx: SourceContext) = delite_profile_start(component, deps)
+  def dtoc(deps: Rep[Any]*)(implicit ctx: SourceContext) = delite_profile_stop(unit("app"),deps)
+  def dtoc(component: Rep[String], deps: Rep[Any]*)(implicit ctx: SourceContext) = delite_profile_stop(component, deps)
+
+  def delite_profile_start(component: Rep[String], deps: Seq[Rep[Any]])(implicit ctx: SourceContext): Rep[Unit]
+  def delite_profile_stop(component: Rep[String], deps: Seq[Rep[Any]])(implicit ctx: SourceContext): Rep[Unit]
 }
 
 trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp with StructExp 
@@ -33,9 +42,17 @@ trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp with StructExp
   case class ReturnScopeResult(n: Rep[Any]) extends Def[Unit]
   def returnScopeResult(n: Rep[Any]) = reflectEffect(ReturnScopeResult(n))
   
+  case class DeliteProfileStart(component: Exp[String], deps: List[Exp[Any]]) extends Def[Unit]
+  case class DeliteProfileStop(component: Exp[String], deps: List[Exp[Any]]) extends Def[Unit]
+
+  def delite_profile_start(component: Exp[String], deps: Seq[Exp[Any]])(implicit ctx: SourceContext) = reflectEffect(DeliteProfileStart(component, deps.toList))
+  def delite_profile_stop(component: Exp[String], deps: Seq[Exp[Any]])(implicit ctx: SourceContext) = reflectEffect(DeliteProfileStop(component, deps.toList))
+
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case LastScopeResult() => lastScopeResult
     case Reflect(ReturnScopeResult(n),u,es) => reflectMirrored(Reflect(ReturnScopeResult(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))   
+    case Reflect(DeliteProfileStart(c,deps), u, es) => reflectMirrored(Reflect(DeliteProfileStart(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(DeliteProfileStop(c,deps), u, es) => reflectMirrored(Reflect(DeliteProfileStop(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]  
 

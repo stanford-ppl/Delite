@@ -45,6 +45,7 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
     case r: RefinedManifest[T] => Some(AnonTag(r), r.fields)
     case t if t.erasure == classOf[Tuple2[_,_]] => Some((classTag(t), List("_1","_2") zip t.typeArguments))
     case t if t.erasure == classOf[Tuple3[_,_,_]] => Some((classTag(t), List("_1","_2","_3") zip t.typeArguments))
+    case t if t.erasure == classOf[Tuple4[_,_,_,_]] => Some((classTag(t), List("_1","_2","_3","_4") zip t.typeArguments))
     case _ => None
   }
 

@@ -76,6 +76,8 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp { this
     val size = copyTransformedOrElse(_.size)(in.size)
 
     def func = e => e
+
+    val mT = manifest[T]
   }
      
   case class QueryableSelect[T:Manifest, R:Manifest](in: Exp[Table[T]], func: Exp[T] => Exp[R]) extends DeliteOpMap[T, R, Table[R]] {
@@ -218,6 +220,7 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp { this
   def queryable_grouping_toDatatable[K:Manifest, T:Manifest](g: Exp[Grouping[K, T]]): Exp[Table[T]] = field[Table[T]](g, "values")
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case e@QueryableWhere(in,c) => reflectPure(new { override val original = Some(f,e) } with QueryableWhere(f(in),f(c))(e.mT))(mtype(manifest[A]),implicitly[SourceContext])      
     case e@QueryableSum(in,g) => reflectPure(new { override val original = Some(f,e) } with QueryableSum(f(in),f(g))(e.mT,e.N,e.mN))(mtype(manifest[A]),implicitly[SourceContext])      
     case e@QueryableCount(in) => reflectPure(new { override val original = Some(f,e) } with QueryableCount(f(in))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@QueryableSort(in,comp) => reflectPure(QueryableSort(f(in),f(comp))(e.mT))(mtype(manifest[A]),implicitly[SourceContext])
