@@ -41,14 +41,14 @@ trait OptiGraphLift extends LiftVariables with LiftEquals with LiftString with L
 trait OptiGraphScalaOpsPkg extends Base
   with Equal with IfThenElse with Variables with While with Functions
   with ImplicitOps with OrderingOps with StringOps
-  with BooleanOps with PrimitiveOps with MiscOps with TupleOps with NumericOps
+  with BooleanOps with PrimitiveOps with MiscOps with TupleOps with StructOps with NumericOps
   with MathOps with CastingOps with ObjectOps with IOOps with HashMapOps
   with ArrayOps with ExceptionOps
 
 trait OptiGraphScalaOpsPkgExp extends OptiGraphScalaOpsPkg with DSLOpsExp
   with EqualExp with IfThenElseExp with VariablesExp with WhileExp with FunctionsExp
   with ImplicitOpsExp with OrderingOpsExp with StringOpsExp with RangeOpsExp with IOOpsExp
-  with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp with TupleOpsExp
+  with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp with TupleOpsExp with StructExp with StructFatExpOptCommon
   with ListOpsExp with SeqOpsExp with MathOpsExp with CastingOpsExp with SetOpsExp with ObjectOpsExp
   with SynchronizedArrayBufferOpsExp with HashMapOpsExp with IterableOpsExp with ExceptionOpsExp
   with NumericOpsExp 
@@ -67,6 +67,7 @@ trait OptiGraphScalaCodeGenPkg extends ScalaGenDSLOps
  */
 trait OptiGraphCompiler extends OptiGraph
   with DeliteArrayCompilerOps
+  with DeliteArrayBufferCompilerOps
   with DeliteCollectionOps
   with GIterableCompilerOps
   with RangeOps with IOOps with SeqOps with SetOps
@@ -81,7 +82,7 @@ trait OptiGraphCompiler extends OptiGraph
   this: OptiGraphApplication with OptiGraphExp =>
 }
 
-trait OptiGraph extends OptiGraphScalaOpsPkg with DeliteCollectionOps with DeliteArrayOps with StructOps
+trait OptiGraph extends OptiGraphScalaOpsPkg with DeliteCollectionOps with DeliteArrayOps with StructOps with DeliteArrayBufferOps
   with LanguageOps
   with GraphOps with NodeOps with EdgeOps
   with NodePropertyOps with EdgePropertyOps
@@ -102,7 +103,7 @@ object OptiGraph_ {
  * OptiGraph IR
  */
 
-trait OptiGraphExp extends OptiGraphCompiler with OptiGraphScalaOpsPkgExp with DeliteOpsExp with DeliteArrayFatExp with StructExp with VariantsOpsExp
+trait OptiGraphExp extends OptiGraphCompiler with OptiGraphScalaOpsPkgExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with StructExp with VariantsOpsExp
   with LanguageOpsExp
   with GraphOpsExp with NodeOpsExp with EdgeOpsExp
   with NodePropertyOpsExp with EdgePropertyOpsExp
@@ -199,7 +200,7 @@ trait OptiGraphCodeGenRestage extends OptiGraphScalaCodeGenPkg with DeliteCodeGe
 }
 
 trait OptiGraphCodeGenScala extends OptiGraphCodeGenBase with OptiGraphScalaCodeGenPkg with ScalaGenDeliteOps
-  with ScalaGenDeliteCollectionOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenLanguageOps
+  with ScalaGenDeliteCollectionOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenLanguageOps with ScalaGenDeliteArrayBufferOps
   with ScalaGenReduceableOps with ScalaGenDeferrableOps
   with ScalaGenGraphOps with ScalaGenNodeOps with ScalaGenEdgeOps
   with ScalaGenExceptionOps
