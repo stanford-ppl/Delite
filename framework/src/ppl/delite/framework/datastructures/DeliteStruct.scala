@@ -31,6 +31,16 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
 
   override def field_update[T:Manifest](struct: Exp[Any], index: String, rhs: Exp[T]) = recurseFields(struct, List(index), rhs)
 
+  // TODO: not sure if this is really safe!
+  override def field[T:Manifest](struct: Exp[Any], index: String)(implicit pos: SourceContext): Exp[T] = struct match {
+    case Def(rhs@Reflect(ObjectUnsafeImmutable(orig), _, _)) => 
+      println("**** shortcutting field access: " + struct.toString + "=" + rhs + "." + index)
+      field(orig, index)
+    case _ => super.field(struct, index)
+  }
+
+
+
   private def recurseFields[T:Manifest](struct: Exp[Any], fields: List[String], rhs: Exp[T]): Exp[Unit] = struct match {
     case Def(Reflect(Field(s,name),_,_)) => recurseFields(s, name :: fields, rhs)
     case _ => reflectWrite(struct)(NestedFieldUpdate(struct, fields, rhs))
@@ -67,10 +77,12 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
       printlog("WARNING: emitting " + structName(sym.tp) + " struct " + quote(sym))    
     case FieldApply(struct, index) =>
       emitValDef(sym, quote(struct) + "." + index)
-      printlog("WARNING: emitting field access: " + quote(struct) + "." + index)
+      val lhs = struct match { case Def(lhs) => lhs.toString case _ => "?" }
+      printlog("WARNING: emitting field access: " + quote(struct) + "=" + lhs + "." + index)
     case FieldUpdate(struct, index, rhs) =>
       emitValDef(sym, quote(struct) + "." + index + " = " + quote(rhs))
-      printlog("WARNING: emitting field update: " + quote(struct) + "." + index)
+      val lhs = struct match { case Def(lhs) => lhs.toString case _ => "?" }
+      printlog("WARNING: emitting field update: " + quote(struct) + "=" + lhs + "." + index)
     case NestedFieldUpdate(struct, fields, rhs) =>
       emitValDef(sym, quote(struct) + "." + fields.reduceLeft(_ + "." + _) + " = " + quote(rhs))
     case _ => super.emitNode(sym, rhs)
