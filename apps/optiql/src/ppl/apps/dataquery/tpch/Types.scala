@@ -7,22 +7,26 @@ trait Types { this: OptiQLApplication =>
   type Tweet = Record {
     val id: String
     val time: Date
+    val hour: Int
     val fromId: Int
     val toId: Int
+    val retweet: Boolean
     val language: String
     val text: String
   }
 
-  def Tweet(_id: Rep[String], _time: Rep[Date], _fromId: Rep[Int], _toId: Rep[Int], _language: Rep[String], _text: Rep[String]): Rep[Tweet] = new Record {
+  def Tweet(_id: Rep[String], _time: Rep[Date], _hour: Rep[Int], _fromId: Rep[Int], _toId: Rep[Int], _retweet: Rep[Boolean], _language: Rep[String], _text: Rep[String]): Rep[Tweet] = new Record {
     val id = _id;
     val time = _time;
+    val hour = _hour;
     val fromId = _fromId;
     val toId = _toId;
+    val retweet = _retweet;
     val language = _language;
     val text = _text;
   }
 
-  def Tweet(): Rep[Tweet] = Tweet("", Date(""), 0, 0, "", "")
+  def Tweet(): Rep[Tweet] = Tweet("", Date(""), 0, 0, 0, unit(false), "", "")
  
   type TweetTable = Table[Tweet] 
 
