@@ -80,32 +80,37 @@ trait Twitter extends OptiGraphApplication {
   type Tweet = Record {
     val id: String
     val time: String
+    val hour: Int
     val fromId: Int
     val toId: Int
+    val retweet: Boolean
     val language: String
     val text: String
   }
 
-  def Tweet(_id: Rep[String], _time: Rep[String], _fromId: Rep[Int], _toId: Rep[Int], _language: Rep[String], _text: Rep[String]): Rep[Tweet] = new Record {
+  def Tweet(_id: Rep[String], _time: Rep[String], _hour: Rep[Int], _fromId: Rep[Int], _toId: Rep[Int], _retweet: Rep[Boolean], _language: Rep[String], _text: Rep[String]): Rep[Tweet] = new Record {
     val id = _id;
     val time = _time;
+    val hour = _hour;
     val fromId = _fromId;
     val toId = _toId;
+    val retweet = _retweet;
     val language = _language;
     val text = _text;
   }
 
-  def Tweet(): Rep[Tweet] = Tweet("", "", 0, 0, "", "")
+  def Tweet(): Rep[Tweet] = Tweet("", "", 0, 0, 0, false, "", "")
 
   def main() {
  
     //val G = graph_load(args(0))
     val GArray = Graph(args(0), Tweet())
-    tic(GArray)
+    //tic(GArray)
     val G = Graph.fromArray(GArray.map(e => (e.fromId,e.toId)))
     //toc(G)
     val lccprop : Rep[NodeProperty[Float]] = NodeProperty[Float](G, 0.0f)
     val retweet : Rep[NodeProperty[Float]] = NodeProperty[Float](G, 0.0f)
+    tic(G)
     lcc(G, lccprop, 1)
     retweetCnt(G, retweet)
     toc(lccprop(node_new(0)),retweet(node_new(0)))

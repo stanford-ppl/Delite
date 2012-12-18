@@ -3,22 +3,7 @@ package ppl.apps.interop
 import scala.collection.mutable.ArrayBuffer
 import java.io._
 
-object Date {
-  def apply(str: String) = {
-    val elems = str.split('-')
-    new Date(elems(0).toInt, elems(1).toInt, elems(2).toInt)
-  }
-}
-
-class Date(val year: Int, val month: Int, val day: Int) {
-  def >(to: Date): Boolean = {
-    val thisInt = (year << 9) + (month << 5) + day
-    val toInt = (to.year << 9) + (to.month << 5) + to.day
-    thisInt > toInt
-  }
-}
-
-object Twitter {
+object Twitter2 {
 
   private var startTime:Long = 0
   private var endTime:Long = 0
@@ -34,8 +19,10 @@ object Twitter {
   case class Tweet(
     val id: Int,
     val time: Date,
+    val hour: Int,
     val fromId: Int,
     val toId: Int,
+    val rt: Boolean,
     val language: String,
     val text: String
   )
@@ -46,7 +33,7 @@ object Twitter {
     var line = xfs.readLine()
     while(line != null) {
       val elems = line.split(sep)
-      table += Tweet(elems(0).toInt, Date(elems(1)), elems(2).toInt, elems(3).toInt, elems(4), elems(5))
+      table += Tweet(elems(0).toInt, Date(elems(1)), elems(2).toInt, elems(3).toInt, elems(4).toInt, elems(5).toBoolean, elems(6), elems(7))
       line = xfs.readLine()
     }
     //println("read " + table.length + " tweets")
@@ -102,16 +89,16 @@ object Twitter {
     //val d = Date("2008-01-01")
     for(i <- 0 until numIter) {
       tic()
-      val QLresult = tweet.filter(t => t.time > Date("2008-01-01") && t.language == "en")
+      val retweets = tweet.filter(t => t.language == "en" && t.time > Date("2008-01-01") && t.rt)
+      val tweets= tweet.filter(t => t.language == "en")  //Add another filter condition
       toc("QL")
-      //for(i <- 0 until QLresult.length) {
-      //  println(QLresult(i).fromId + "\t" + QLresult(i).toId)
-      //}
+      println("retweets:" + retweets.length)
+      println("tweets:" + tweets.length)
 
       // OptiGraph
       //val G = Graph.loadGraph(args(0))
       tic()
-      val G = Graph.loadGraph(QLresult.map(t => (t.fromId,t.toId)))
+      val G = Graph.loadGraph(retweets.map(t => (t.fromId,t.toId)))
       toc("Graph Build")
       tic()
       val LCC = new Property[Double](G, G.numNodes)
@@ -123,16 +110,23 @@ object Twitter {
       // OptiML
       tic()
       val rt = Vector.fromArray(RT.data).t
-      val scaledRT = (rt+1.0).log.norm
+      val scaledRT = (rt + 1.0).log.norm
       val X = Matrix.fromArray(LCC.data,1)
       X.insertCol(0, Vector.ones[Double](X.numRows).t)
       val theta = (X.t*X)*(X.t*scaledRT)
-
-      val m = rt.mean
-      val sdev = rt.stddev
-      val normdist = (((rt-m).square * (-1.0) / (2 * sdev * sdev)).exp) / Math.sqrt(2*scala.math.Pi*sdev*sdev)
+      
+      val tweetHours = Vector.fromArray(tweets.map(_.hour.toDouble))
+      val mT = tweetHours.mean
+      val sdevT = tweetHours.stddev
+      val distT = (((tweetHours-mT).square * (-1.0) / (2 * sdevT * sdevT)).exp) / Math.sqrt(2*scala.math.Pi*sdevT*sdevT)
+      val retweetHours = Vector.fromArray(retweets.map(_.hour.toDouble))
+      val mRT = retweetHours.mean
+      val sdevRT = retweetHours.stddev
+      val distRT = (((retweetHours-mRT).square * (-1.0) / (2 * sdevRT * sdevRT)).exp) / Math.sqrt(2*scala.math.Pi*sdevRT*sdevRT)
       toc("ML")
-      println("mean:" + m + ", stddev:" + sdev)
+
+      println("mean(T):" + mT + ", stddev(T):" + sdevT)
+      println("mean(RT):" + mRT + ", stddev(RT):" + sdevRT)
       println(theta.data.mkString(","))
     }
   }

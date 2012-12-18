@@ -42,8 +42,9 @@ class Vector[@specialized T:Numeric:Manifest:Fractional](val data: Array[T], val
   def -(x: T): Vector[T] = map(e => e - x)
   def *(x: T): Vector[T] = map(e => e * x)
   def /(x: T): Vector[T] = map(e => e / x)
-  def log(): Vector[Float] = map(e => Math.log(e.toDouble).toFloat)
-  def exp(): Vector[Float] = map(e => Math.exp(e.toDouble).toFloat)
+  def log(): Vector[Double] = map(e => Math.log(e.toDouble))
+  def exp(): Vector[Double] = map(e => Math.exp(e.toDouble))
+  def square(): Vector[Double] = map(e => e.toDouble * e.toDouble)
   def t() = new Vector[T](data.map(e => e),length,!isRow)
 
   def +(v: Vector[T]) : Vector[T] = zip(v, (a,b) => a+b)
@@ -52,18 +53,18 @@ class Vector[@specialized T:Numeric:Manifest:Fractional](val data: Array[T], val
   def /(v: Vector[T]) : Vector[T] = zip(v, (a,b) => a/b)
 
   def sum(): T = data.reduce(_ + _)
-  def mean(): Float = sum().toFloat / this.length
+  def mean(): Double = sum().toDouble / this.length
 
-  def norm(): Vector[Float] = {
+  def norm(): Vector[Double] = {
     val sum = this.sum()
-    val result = map(e => e.toFloat / sum.toFloat)
+    val result = map(e => e.toDouble / sum.toDouble)
     result
   }
 
-  def stddev(): Float = {
+  def stddev(): Double = {
     val m = mean()
-    val acc = data.map(e => (e.toFloat-m)*(e.toFloat-m)).reduce(_ + _)
-    (Math.sqrt(acc) / this.length).toFloat
+    val acc = this.map(e => e.toDouble - m).square.sum //(this - m).square.sum
+    (Math.sqrt(acc) / this.length).toDouble
   }
 
 }
