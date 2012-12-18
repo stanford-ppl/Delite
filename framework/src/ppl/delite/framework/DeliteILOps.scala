@@ -27,7 +27,9 @@ trait DeliteILOps extends Variables with StructOps with StructTags with DeliteAr
   
   // profiling
   def tic(deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_start(unit("app"),deps)
-  def toc(deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_stop(unit("app"),deps)
+  def tic(component: Rep[String], deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_start(component,deps)
+  def toc(deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_stop(unit("app"),deps.map(_.unsafeImmutable))
+  def toc(component: Rep[String], deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_stop(component,deps)
   
   def profile_start(component: Rep[String], deps: Seq[Rep[Any]])(implicit ctx: SourceContext): Rep[Unit]
   def profile_stop(component: Rep[String], deps: Seq[Rep[Any]])(implicit ctx: SourceContext): Rep[Unit]
@@ -57,8 +59,12 @@ trait DeliteILOps extends Variables with StructOps with StructTags with DeliteAr
     ): Rep[CA]
     
   def foreach[A:Manifest](size: Rep[Int], func: Rep[Int] => Rep[Unit]): Rep[Unit]
+  
+  def reduce[A:Manifest](size: Rep[Int], func: Rep[Int] => Rep[A], cond: List[Rep[Int] => Rep[Boolean]], zero: => Rep[A], accInit: => Rep[A], rFunc: (Rep[A],Rep[A]) => Rep[A], stripFirst: Boolean): Rep[A]
     
   def extern[A:Manifest](funcName: String, alloc: => Rep[A], inputs: List[Rep[Any]]): Rep[A]
+  
+  def single[A:Manifest](func: => Rep[A]): Rep[A]
 }
 
 trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatExp with ListOpsExp {
@@ -71,6 +77,8 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
   def getScopeResult = {
     // find last SetScopeResult effect and unpack it to directly connect
     val e = context.collect{ case Def(Reflect(SetScopeResult(n), u, es)) => n }
+    Predef.println("[restaging]: found results embedded in SetScope: " + e)
+    Predef.println("[restaging]: selecting last one (" + e.last.toString + ", def is: " + findDefinition(e.last.asInstanceOf[Sym[Any]]).toString +")")
     e.last
   }
   
@@ -136,7 +144,7 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
       context = save
       val refTp = a1.tp
       val c = DeliteILCollect(size,allocN,func,update,finalizer,cond,parStrategy,append,setSize,allocRaw,copyRaw)(manifest[A],refTp,refTp.asInstanceOf[Manifest[CA]]) // HACK: forcing I and CA to be the same in order to retain RefinedManifest from I
-      reflectEffect(c, summarizeEffects(c.body.asInstanceOf[DeliteCollectElem[_,_,_]].func))(refTp.asInstanceOf[Manifest[CA]],implicitly[SourceContext])
+      reflectEffect(c, summarizeEffects(c.body.asInstanceOf[DeliteCollectElem[_,_,_]].func).star)(refTp.asInstanceOf[Manifest[CA]],implicitly[SourceContext])
     }  
     
   case class DeliteILForeach[A:Manifest](size: Exp[Int], ffunc: Exp[Int] => Exp[Unit]) extends DeliteOpLoop[Unit] {
@@ -150,18 +158,50 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
   
   def foreach[A:Manifest](size: Exp[Int], func: Exp[Int] => Exp[Unit]) = {
     val f = DeliteILForeach(size,func)
-    reflectEffect(f, summarizeEffects(f.body.asInstanceOf[DeliteForeachElem[A]].func))
+    val u = summarizeEffects(f.body.asInstanceOf[DeliteForeachElem[A]].func).star
+    Predef.println("[restaging] foreach elem " + f + ", got summary: " + u)
+    reflectEffect(f, summarizeEffects(f.body.asInstanceOf[DeliteForeachElem[A]].func).star andAlso Simple()) // TODO: don't want Simple()
   }
+  
+  
+  case class DeliteILReduce[A:Manifest](size: Exp[Int], rfunc: Exp[Int] => Exp[A], cond: List[Exp[Int] => Exp[Boolean]], rzero: () => Exp[A], raccInit: () => Exp[A], rrfunc: (Exp[A],Exp[A]) => Exp[A], rstripFirst: Boolean) extends DeliteOpReduceLike[A] {
+    lazy val body: Def[A] = copyBodyOrElse(DeliteReduceElem[A](
+      func = reifyEffects(rfunc(v)),
+      zero = reifyEffects(rzero()),
+      accInit = reifyEffects(raccInit()),
+      rV = this.rV,
+      rFunc = reifyEffects(rrfunc(rV._1, rV._2)),
+      stripFirst = rstripFirst
+    ))    
     
+    val mA = manifest[A]
+  }
+
+  def reduce[A:Manifest](size: Exp[Int], func: Exp[Int] => Exp[A], cond: List[Exp[Int] => Exp[Boolean]], zero: => Exp[A], accInit: => Exp[A], rFunc: (Exp[A],Exp[A]) => Exp[A], stripFirst: Boolean): Rep[A] = {
+    val f = DeliteILReduce(size,func,cond,() => zero,() => accInit,rFunc,stripFirst)
+    reflectEffect(f, summarizeEffects(f.body.asInstanceOf[DeliteReduceElem[A]].func).star)
+  }
+
   case class DeliteILExtern[A:Manifest](funcName: String, allocFunc: () => Exp[A], override val inputs: List[Exp[Any]]) extends DeliteOpExternal[A] {
     def alloc = allocFunc()
     val mA = manifest[A]
   }
     
   def extern[A:Manifest](funcName: String, alloc: => Exp[A], inputs: List[Exp[Any]]) = DeliteILExtern(funcName, () => alloc, inputs)
+ 
   
-  def mstruct[T](tag: StructTag[T], elems: (String, Rep[Any])*)(implicit m: Manifest[T], o: Overloaded1, pos: SourceContext) = reflectMutable(SimpleStruct(tag, elems.map(p=>(p._1,var_new(p._2)(p._2.tp,pos).e))))(m,pos)
+  case class DeliteILSingleTask[A:Manifest](func: () => Exp[A]) extends DeliteOpSingleTask[A](reifyEffectsHere(func())) {
+    val mA = manifest[A]
+  }
 
+  def single[A:Manifest](func: => Exp[A]) = {
+    val f = DeliteILSingleTask(() => func)
+    reflectEffect(f, summarizeEffects(f.block).star)
+  }
+ 
+
+  // mutable structs
+  def mstruct[T](tag: StructTag[T], elems: (String, Rep[Any])*)(implicit m: Manifest[T], o: Overloaded1, pos: SourceContext) = reflectMutable(SimpleStruct(tag, elems.map(p=>(p._1,var_new(p._2)(p._2.tp,pos).e))))(m,pos)
 
   // profiling
   case class ProfileStart(component: Exp[String], deps: List[Exp[Any]]) extends Def[Unit]
@@ -178,8 +218,12 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
     case Reflect(e@DeliteILCollect(s,a,fu,up,fi,c,p,ap,sz,al,co), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILCollect(f(s),f(a),f(fu),f(up),f(fi),c.map(f(_)),p,f(ap),f(sz),f(al),f(co))(e.mA,e.mI,e.mCA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case e@DeliteILForeach(s,fu) => reflectPure(new { override val original = Some(f,e) } with DeliteILForeach(f(s),f(fu))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])  
     case Reflect(e@DeliteILForeach(s,fu), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILForeach(f(s),f(fu))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case e@DeliteILReduce(s,rf,c,rz,ra,rrf,sf) => reflectPure(new { override val original = Some(f,e) } with DeliteILReduce(f(s),f(rf),c.map(f(_)),() => f(rz()),() => f(ra()),f(rrf),sf)(e.mA))(mtype(manifest[A]),implicitly[SourceContext])  
+    case Reflect(e@DeliteILReduce(s,rf,c,rz,ra,rrf,sf), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILReduce(f(s),f(rf),c.map(f(_)),() => f(rz()),() => f(ra()),f(rrf),sf)(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case e@DeliteILExtern(s,fu,i) => reflectPure(new { override val original = Some(f,e) } with DeliteILExtern(s,() => f(fu()),f(i))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])  
     case Reflect(e@DeliteILExtern(s,fu,i), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILExtern(s,() => f(fu()),f(i))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case e@DeliteILSingleTask(fu) => reflectPure(new { override val original = Some(f,e) } with DeliteILSingleTask(() => f(fu()))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])  
+    case Reflect(e@DeliteILSingleTask(fu), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILSingleTask(() => f(fu()))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
 
     case Reflect(ProfileStart(c,deps), u, es) => reflectMirrored(Reflect(ProfileStart(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(ProfileStop(c,deps), u, es) => reflectMirrored(Reflect(ProfileStop(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))

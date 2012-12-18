@@ -42,7 +42,7 @@ trait DeliteILScalaGenExternal extends ScalaGenExternalBase {
       e.funcName match {
         case "matMult" =>
           // val tp = e.mA.toString
-          val tp = manifest[Float].toString
+          val tp = manifest[Double].toString
           val func = tp match {
             case "Double" => "cblas_dgemm"
             case "Float" => "cblas_sgemm"
@@ -66,7 +66,7 @@ trait DeliteILScalaGenExternal extends ScalaGenExternalBase {
           
         case "matMultV" =>
           // val tp = e.mA.toString
-          val tp = manifest[Float].toString
+          val tp = manifest[Double].toString
           val func = tp match {
             case "Double" => "cblas_dgemv"
             case "Float" => "cblas_sgemv"
