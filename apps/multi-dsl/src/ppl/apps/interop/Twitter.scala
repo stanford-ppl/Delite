@@ -54,7 +54,7 @@ object Twitter {
     table.toArray
   }
 
-  def lcc(G: Graph, LCC: Property[Float], threshold: Int) {
+  def lcc(G: Graph, LCC: Property[Double], threshold: Int) {
     for(s <- G.nodes) {
       var triangles = 0
       var total = 0
@@ -67,22 +67,22 @@ object Twitter {
           }
       }
       if (total < threshold) {
-        LCC(s) = 0.0f
+        LCC(s) = 0.0
         //println(LCC(s))
         //println("Computed LCC = " + LCC(s))
       } else {
-        LCC(s) = (1.0f * (triangles)) / (total)
+        LCC(s) = triangles.toDouble / total.toDouble
         //println(LCC(s))
         //println("Computed LCC = " + LCC(s) + " = " + triangles + " / " + total)
       }
     }
   }
         
-  def retweetCnt(G: Graph, RT: Property[Float]) {
+  def retweetCnt(G: Graph, RT: Property[Double]) {
     for(t <- G.nodes) { 
       RT(t) = G.InNbrs(t).length
       //println("inNbrs = " + G.InNbrs(t).length)
-      println(G.InNbrs(t).length)
+      //println(G.InNbrs(t).length)
     }
   }
 
@@ -113,32 +113,33 @@ object Twitter {
       tic()
       val G = Graph.loadGraph(QLresult.map(t => (t.fromId,t.toId)))
       toc("Graph Build")
-      val LCC = new Property[Float](G, G.numNodes)
-      val RT = new Property[Float](G, G.numNodes)
       tic()
+      val LCC = new Property[Double](G, G.numNodes)
+      val RT = new Property[Double](G, G.numNodes)
       lcc(G, LCC, 1)
       retweetCnt(G, RT)
       toc("GL")
 
       // OptiML
-      //tic()
+      tic()
       /*
       val y = Vector(RT.data)
       val x = Matrix(Array.fill(LCC.size)(1.0f), LCC.data)
       val theta = (x*x.t)*(x*y)
       //val theta = inv(x*x.t)*(x*y) //TODO: enable inv
       */
-      val y = ((Vector.fromArray(RT.data).t)+1.0f).log.norm
+      val rt = Vector.fromArray(RT.data).t
+      val scaledRT = ((Vector.fromArray(RT.data).t)+1.0).log.norm
       //val y = (Vector.fromArray(RT.data).t)
       val X = Matrix.fromArray(LCC.data,1)
-      X.insertCol(0, Vector.ones[Float](X.numRows).t)
-      val theta = (X.t*X)*(X.t*y)
+      X.insertCol(0, Vector.ones[Double](X.numRows).t)
+      val theta = (X.t*X)*(X.t*scaledRT)
 
-      val m = y.mean
-      val sdev = y.stddev
-      val normdist = (((y-m) * (y-m) * (-1.0f) / (2 * sdev * sdev)).exp) / Math.sqrt(2*scala.math.Pi*sdev*sdev).toFloat
+      val m = rt.mean
+      val sdev = rt.stddev
+      val normdist = (((rt-m).square * (-1.0) / (2 * sdev * sdev)).exp) / Math.sqrt(2*scala.math.Pi*sdev*sdev)
       toc("ML")
-      println("mean:" + m + ", stddev:" + sdev + ", normdist(0):" + normdist(0))
+      println("mean:" + m + ", stddev:" + sdev)
       println(theta.data.mkString(","))
     }
   }
