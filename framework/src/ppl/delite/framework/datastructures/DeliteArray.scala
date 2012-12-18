@@ -57,6 +57,9 @@ trait DeliteArrayOps extends StringOps {
   def darray_sort[A:Manifest](lhs: Rep[DeliteArray[A]]): Rep[DeliteArray[A]]
   def darray_range(st: Rep[Int], en: Rep[Int]): Rep[DeliteArray[Int]]
   def darray_toseq[A:Manifest](a: Rep[DeliteArray[A]]): Rep[Seq[A]]
+
+  def darray_set_act_buf[A:Manifest](da: Rep[DeliteArray[A]]): Rep[Unit]
+  def darray_set_act_final[A:Manifest](da: Rep[DeliteArray[A]]): Rep[Unit]
 }
 
 trait DeliteArrayCompilerOps extends DeliteArrayOps {
@@ -190,6 +193,8 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
     else super.dc_copy(src,srcPos,dst,dstPos,size)
   }
 
+  def darray_set_act_buf[A:Manifest](da: Exp[DeliteArray[A]]) = reflectEffect(DeliteArraySetActBuffer(da), Write(List(da.asInstanceOf[Sym[Any]])) andAlso Simple())
+  def darray_set_act_final[A:Manifest](da: Exp[DeliteArray[A]]) = reflectEffect(DeliteArraySetActFinal(da), Write(List(da.asInstanceOf[Sym[Any]])) andAlso Simple())
   def darray_unsafe_set_act_buf[A:Manifest](da: Exp[DeliteArray[A]]) = reflectEffect(DeliteArraySetActBuffer(da))
   def darray_unsafe_set_act_final[A:Manifest](da: Exp[DeliteArray[A]]) = reflectEffect(DeliteArraySetActFinal(da))
   def darray_unsafe_get_act_size(): Exp[Int] = reflectEffect(DeliteArrayGetActSize())

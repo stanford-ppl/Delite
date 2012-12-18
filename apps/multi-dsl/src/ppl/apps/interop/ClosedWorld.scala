@@ -35,12 +35,13 @@ object CloseWorldCompose {
       // type Tweet = Record{val fromId: Int; val toId: Int; val text: String}
       // val tweets: Rep[Table[Tweet]] = loadTweets() // elided
       val tweets = TableInputReader(args(0)+"/tweet.tbl", emptyTweet())      
-      tic(tweets)
+      //tic(tweets)
       val result = tweets Where(t => t.time >= Date("2008-01-01") && t.language == "en") 
       // is there something in the desugaring scopes that ignores the block result?
       // without returnScopeResult, getting a block result of (), even the Scope result is of type R
       returnScopeResult(result.toArray)
       // println(result.toArray)
+      //toc(result)
     }
     
     OptiGraph_ {      
@@ -69,12 +70,17 @@ object CloseWorldCompose {
       // println("in2(0): " + in2(0))
       // println("in2(1): " + in2(1))
       
-      val G = Graph.fromArray(in.map(t => (t.fromId,t.toId)))                  
-      
+      val inEdges = in.map(t => (t.fromId,t.toId))
+      //tic(inEdges)
+      //tic()
+      val G = Graph.fromArray(inEdges)  
+      //toc(G)
+      //toc(G)
+
       // LCC
       // TODO: DeliteCodeGenRestage breaks when we have multiple Node Properties of different types
-      val LCC: Rep[NodeProperty[Float]] = NodeProperty[Float](G, 0.0f)
-      val RT: Rep[NodeProperty[Float]] = NodeProperty[Float](G, 0.0f)
+      val LCC: Rep[NodeProperty[Double]] = NodeProperty[Double](G, 0.0)
+      val RT: Rep[NodeProperty[Double]] = NodeProperty[Double](G, 0.0)
       val threshold = 1
       
       Foreach(G.Nodes) { s =>
@@ -103,7 +109,7 @@ object CloseWorldCompose {
         }
         */
         if (total < threshold) {
-          LCC(s) = 0.0f
+          LCC(s) = 0.0
           //println("Computed LCC = " + LCC(s))
           //println("Total (" + total.value + ") was less than threshold")
         } else {
@@ -124,46 +130,54 @@ object CloseWorldCompose {
         
     OptiML_ {
       // unweighted linear regression
-      val in = lastScopeResult.AsInstanceOf[(DeliteArray[Float],DeliteArray[Float])]
+      val in = lastScopeResult.AsInstanceOf[(DeliteArray[Double],DeliteArray[Double])]
       val inA = tuple2_get1(in)
       val inB = tuple2_get2(in)
       //println("inA.length: " + inA.length)
       //println("inB.length: " + inB.length)
 
 
-      //val x = Matrix.fromArray(DeliteArray[Float](200), numFeatures = 1)
-      //val y = Vector.fromArray(DeliteArray[Float](200)).t
+      //val x = Matrix.fromArray(DeliteArray[Double](200), numFeatures = 1)
+      //val y = Vector.fromArray(DeliteArray[Double](200)).t
       //val x = readMatrix(args(0)+"/ml/linreg/q2x.dat")
       //val y = readVector(args(0)+"/ml/linreg/q2y.dat").t
 
       // -- normal optiml version
-   //  val x = Matrix.fromArray(inA, numFeatures = 1)/*.mutable*/
-   //  val y = Vector.fromArray(inB).t
-      //val xm = x.mutable
-   //   val xm = x
-   //   xm.insertCol(0, Vector.onesf(x.numRows).t)
-      //val X = xm.Clone
-   //   val X = xm.unsafeImmutable
-      //println("X.numRows: " + X.numRows)
-      //println("X.numCols: " + X.numCols)
-      //println("y.length: " + y.length)
-      //val theta = y+y
-   //   val a = (X.t*X)//.inv
-   //    val b = X.t*y
+      val x = Matrix.fromArray(inA, numFeatures = 1)/*.mutable*/
+      val RT = Vector.fromArray(inB).t
+      val xm = x.mutable
+      xm.insertCol(0, Vector.ones(x.numRows).t)
+      val X = xm.unsafeImmutable
+      val RTlog = log(RT+1.0)
+      val y = RTlog/sum(RTlog) // norm
+
+      // compute unweighted linear regression
+      val a = (X.t*X)//.inv
+      val b = X.t*y
+      val theta = a*b
+
+      // compute other RT statistics
+      val m = mean(RT)
+      val sdev = sqrt(square(RT-m).sum) / RT.length
+      val dist = ((square(RT-m) * (-1.0) / (2*sdev*sdev)).exp) / sqrt(2*Pi*sdev*sdev)
       
       // -- pre-transposed version
-      val X = DenseMatrix(Vector.onesf(inA.length), Vector.fromArray(inA))
-      val y = Vector.fromArray(inB).t
-      val a = (X*X.t)
-      val b = X*y
+//      val X = DenseMatrix(Vector.onesf(inA.length), Vector.fromArray(inA))
+//      val y = Vector.fromArray(inB).t
+//      val a = (X*X.t)
+//      val b = X*y
 
       //println("a numCols: " + a.numCols)
-      val theta = a*b
+//      val theta = a*b
       //val theta = ((X.t*X).inv)*(X.t*y)
       //println("theta(0): " + theta(0))
       //println("theta(1): " + theta(1))
-      toc(theta)
+      //toc(dist)
       theta.pprint
+      println("mean: " + m)
+      println("sdev: " + sdev)
+      println("dist(0): " + dist(0))
+
       // linreg.weighted(readMatrix(args(0),readVector(args(1)).t))
       // println("got input from previous stage: " + previous(0).AsInstanceOf[DeliteArray[Int]]) 
       // println("optiml 2")

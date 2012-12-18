@@ -316,6 +316,9 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     case RepIsInstanceOf(x,mA,mB) => emitValDef(sym, quote(x) + ".isInstanceOf[Rep[" + remap(mB) + "]]")
     case RepAsInstanceOf(x,mA,mB) => emitValDef(sym, quote(x) + ".asInstanceOf[Rep[" + remap(mB) + "]]")    
     case MathMax(x,y) => emitValDef(sym, "Math.max(" + quote(x) + ", " + quote(y) + ")")
+    case MathLog(x) => emitValDef(sym, "Math.log(" + quote(x) + ")")
+    case MathSqrt(x) => emitValDef(sym, "Math.sqrt(" + quote(x) + ")")
+    case MathExp(x) => emitValDef(sym, "Math.exp(" + quote(x) + ")")
     // TODO: this manifest doesn't appear to be correct if we come from a struct where we explicitly created our own RefinedManifest
     case ObjectUnsafeImmutable(x) => emitValDef(sym, quote(x) + ".unsafeImmutable()")//("+makeManifestStr(unvar(x.tp))+",implicitly[SourceContext])")
 
@@ -351,8 +354,8 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     //case DeliteArrayCopy(src,srcPos,dest,destPos,len) => emitValDef(sym, "darray_unsafe_copy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) => emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
     case DeliteArrayGetActSize() => emitValDef(sym, "darray_unsafe_get_act_size()")
-    case DeliteArraySetActBuffer(da) => emitValDef(sym, "darray_unsafe_set_act_buf(" + quote(da) + ")")
-    case DeliteArraySetActFinal(da) => emitValDef(sym, "darray_unsafe_set_act_final(" + quote(da) + ")")
+    case DeliteArraySetActBuffer(da) => emitValDef(sym, "darray_set_act_buf(" + quote(da) + ")")
+    case DeliteArraySetActFinal(da) => emitValDef(sym, "darray_set_act_final(" + quote(da) + ")")
     
     // structs
     // case s@SimpleStruct(tag, elems) =>
@@ -411,9 +414,10 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     // delite ops
     case s:DeliteOpSingleTask[_] => 
       // each stm inside the block must be restageable..
+      stream.print("val " + quote(sym) + " = single({")
       emitBlock(s.block)
-      stream.print("val " + quote(sym) + " = ")
       stream.println(quote(getBlockResult(s.block)))
+      stream.println("})")
       //stream.println(quote(getBlockResult(s.block)) + ".unsafeImmutable()")//"("+makeManifestStr(unvar(sym.tp))+",implicitly[SourceContext])")
       
     case e:DeliteOpExternal[_] => 
@@ -538,8 +542,46 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
         stream.println("})")
         
         
-      case (sym, elem: DeliteReduceElem[_]) =>    
-        Predef.println("error: tried to restage DeliteReduceElem but no impl yet")
+      case (sym, elem: DeliteReduceElem[_]) =>   
+        stream.println("val " + quote(sym) + " = reduce(")
+        // loop size
+        stream.println(quote(op.size) + ",")
+        // func
+        stream.println("{")
+        stream.println(makeBoundVarArgs(op.v))
+        emitBlock(elem.func)
+        stream.println(quote(getBlockResult(elem.func)))
+        stream.println("},")
+        // conditions
+        stream.print("scala.List(")
+        for (i <- 0 until elem.cond.length) {
+          stream.println("{")
+          stream.println(makeBoundVarArgs(op.v))
+          emitBlock(elem.cond(i))
+          stream.println(quote(getBlockResult(elem.cond(i))))
+          stream.print("}")
+          if (i < elem.cond.length - 1) stream.println(",")
+        }
+        stream.println("),") 
+        // zero
+        stream.println("{")
+        emitBlock(elem.zero)
+        stream.println(quote(getBlockResult(elem.zero)))
+        stream.println("},") 
+        // accInit
+        stream.println("{")
+        emitBlock(elem.accInit)
+        stream.println(quote(getBlockResult(elem.accInit)))
+        stream.println("},") 
+        // rFunc
+        stream.println("{")
+        stream.println(makeBoundVarArgs(elem.rV._1,elem.rV._2))
+        emitBlock(elem.rFunc)
+        stream.println(quote(getBlockResult(elem.rFunc)))
+        stream.println("},")
+        // stripFirst
+        stream.println(elem.stripFirst)
+        stream.println(")")
     }
   }
 }
