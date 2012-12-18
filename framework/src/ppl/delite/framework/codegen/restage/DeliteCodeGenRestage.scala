@@ -120,12 +120,16 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
       // case s if s.erasure.getSimpleName == "DeliteArrayBuffer" => "DeliteArrayBuffer[" + remapOrStructRename(s.typeArguments(0)) + "]"            
       // case s if isSubtype(s.erasure,classOf[DeliteCollection[_]]) => "DeliteCollection[" + remapOrStructRename(s.typeArguments(0)) + "]" 
       
-      case s if s.erasure.getSimpleName == "DeliteArray" => remapOrStructRename(s)
-      case s if s.erasure.getSimpleName == "DeliteArrayBuffer" => remapOrStructRename(s)
-      case s if isSubtype(s.erasure,classOf[DeliteCollection[_]]) => remapOrStructRename(s)
+      //case s if s.erasure.getSimpleName == "DeliteArray" => remapOrStructRename(s)
+      //case s if s.erasure.getSimpleName == "DeliteArrayBuffer" => remapOrStructRename(s)
+      //case s if isSubtype(s.erasure,classOf[DeliteCollection[_]]) => remapOrStructRename(s)
       
+      //case s if s <:< manifest[Record] => remapOrStructRename(s)
+      //case s if s.erasure.getSimpleName == "Tuple2" => remapOrStructRename(s)
+
       case s if s <:< manifest[Record] => remapOrStructRename(s)
-      case s if s.erasure.getSimpleName == "Tuple2" => remapOrStructRename(s)
+      case s if isSubtype(s.erasure,classOf[DeliteCollection[_]]) => remapOrStructRename(s)
+      case StructType(_,_) => remapOrStructRename(m)
             
       case _ => 
         // Predef.println("calling remap on: " + m.toString)
@@ -240,24 +244,30 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
   
   // we need this so we don't call restageStructName on primitives (i.e. non structs)
   def remapOrStructRename(m: Manifest[_]): String = unvar(m) match {
-    case rm: RefinedManifest[_] if !inRestageStructName => restageStructName(rm)    
-    
     case s if s <:< manifest[Record] && !inRestageStructName => restageStructName(s)
-    case s if s <:< manifest[Record] => "Record" // should these fallbacks be here, or in remap? either way they should only happen if we're inside restageStructName already...
-    
-    // // tuples are not records..
-    case s if s.erasure.getSimpleName == "Tuple2" && !inRestageStructName => restageStructName(s)
-    case s if s.erasure.getSimpleName == "Tuple2" => "Record"                
-    
+    case s if s <:< manifest[Record] => "Record"
+
     // special treatment for Delite collections... can we unify this?
-    case s if s.erasure.getSimpleName == "DeliteArray" && s.typeArguments(0) <:< manifest[Record] && !inRestageStructName => restageStructName(s)
-    case s if s.erasure.getSimpleName == "DeliteArray" => "DeliteArray[" + remapOrStructRename(s.typeArguments(0)) + "]"
-    case s if s.erasure.getSimpleName == "DeliteArrayBuffer" && s.typeArguments(0) <:< manifest[Record] && !inRestageStructName => restageStructName(s)
-    case s if s.erasure.getSimpleName == "DeliteArrayBuffer" => "DeliteArray[" + remapOrStructRename(s.typeArguments(0)) + "]"
-    case s if isSubtype(s.erasure,classOf[DeliteCollection[_]]) && s.typeArguments(0) <:< manifest[Record] && !inRestageStructName => restageStructName(s) 
-    case s if isSubtype(s.erasure,classOf[DeliteCollection[_]]) => "DeliteCollection[" + remapOrStructRename(s.typeArguments(0)) + "]"
+    case s if s.erasure.getSimpleName == "DeliteArray" => s.typeArguments(0) match {
+      case StructType(_,_) if !inRestageStructName => restageStructName(s)
+      case s if s <:< manifest[Record] => restageStructName(s)
+      case _ => "DeliteArray[" + remapOrStructRename(s.typeArguments(0)) + "]"
+    }
+    case s if s.erasure.getSimpleName == "DeliteArrayBuffer" => s.typeArguments(0) match {
+      case StructType(_,_) if !inRestageStructName => restageStructName(s)
+      case s if s <:< manifest[Record] => restageStructName(s)
+      case _ => "DeliteArrayBuffer[" + remapOrStructRename(s.typeArguments(0)) + "]"
+    }
+    case s if isSubtype(s.erasure,classOf[DeliteCollection[_]]) => s.typeArguments(0) match {
+      case StructType(_,_) if !inRestageStructName => restageStructName(s)
+      case s if s <:< manifest[Record] => restageStructName(s)
+      case _ => "DeliteCollection[" + remapOrStructRename(s.typeArguments(0)) + "]"
+    }
     
-    case _ => remap(m)
+    case s@StructType(_,_) if !inRestageStructName => restageStructName(s)
+    case StructType(_,_) => "Record"
+
+    case s => remap(s)
   }  
   def withoutStructNameRemap[T](tp: Manifest[T]) = {
     inRestageStructName = true
@@ -321,6 +331,12 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     case MathExp(x) => emitValDef(sym, "Math.exp(" + quote(x) + ")")
     // TODO: this manifest doesn't appear to be correct if we come from a struct where we explicitly created our own RefinedManifest
     case ObjectUnsafeImmutable(x) => emitValDef(sym, quote(x) + ".unsafeImmutable()")//("+makeManifestStr(unvar(x.tp))+",implicitly[SourceContext])")
+
+    // profiling
+    case DeliteProfileStart(x,deps) if deps == Nil =>  emitValDef(sym, "tic(" + quote(x) + ")") 
+    case DeliteProfileStart(x,deps) => emitValDef(sym, "tic(" + quote(x) + ", " + deps.map(quote(_)).mkString(",") + ")") 
+    case DeliteProfileStop(x,deps) if deps == Nil =>  emitValDef(sym, "toc(" + quote(x) + ")")
+    case DeliteProfileStop(x,deps) => emitValDef(sym, "toc(" + quote(x) + ", " + deps.map(quote(_)).mkString(",") + ")")
 
     // Range foreach
     // !! this is unfortunate: we need the var to be typed differently, but most of this is copy/paste
@@ -416,6 +432,7 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
       // each stm inside the block must be restageable..
       stream.print("val " + quote(sym) + " = single({")
       emitBlock(s.block)
+      //stream.print("val " + quote(sym) + " = ({")
       stream.println(quote(getBlockResult(s.block)))
       stream.println("})")
       //stream.println(quote(getBlockResult(s.block)) + ".unsafeImmutable()")//"("+makeManifestStr(unvar(sym.tp))+",implicitly[SourceContext])")

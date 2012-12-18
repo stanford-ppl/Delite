@@ -198,12 +198,6 @@ trait OptiGraphCodeGenRestage extends OptiGraphScalaCodeGenPkg with DeliteCodeGe
     case "Node" => "Int" //IR.structName(m)
     case _ => super.remap(m)
   }  
-  
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case ProfileStart(deps) =>  emitValDef(sym, "tic(" + deps.map(quote(_)).mkString(",") + ")") 
-    case ProfileStop(deps) =>  emitValDef(sym, "toc(" + deps.map(quote(_)).mkString(",") + ")") 
-    case _ => super.emitNode(sym, rhs)
-  }
 }
 
 trait OptiGraphCodeGenScala extends OptiGraphCodeGenBase with OptiGraphScalaCodeGenPkg with ScalaGenDeliteOps

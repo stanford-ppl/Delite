@@ -149,12 +149,6 @@ trait OptiQLCodeGenRestage extends OptiQLScalaCodeGenPkg with DeliteCodeGenResta
       case _ => super.remap(m)
     }   
   }
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case OptiQLProfileStart(x) => emitValDef(sym, "tic()")//)).mkString(",") + ")")
-    case OptiQLProfileStop(x) => emitValDef(sym, "toc()")//)).mkString(",") + ")")
-    case _ => super.emitNode(sym, rhs)
-  }
 }
 
 trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg with ScalaGenOptiQLMiscOps with ScalaGenQueryableOps

@@ -1371,11 +1371,12 @@ trait BaseDeliteOpsTraversalFat extends BaseLoopsTraversalFat {
     case _ => super.unapplySimpleCollectIf(e)
   }
 
+  // FIXME: need to modify .par from ParPlat to ParBuf accordingly
   override def applyAddCondition(e: Def[Any], c: List[Exp[Boolean]]) = e match {
     case e: DeliteHashCollectElem[_,_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))
     case e: DeliteHashReduceElem[_,_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))
     case e: DeliteHashIndexElem[_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))
-    case e: DeliteCollectElem[_,_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))
+    case e: DeliteCollectElem[_,_,_] => e.copy(par = ParBuffer, cond = e.cond ++ c.map(Block(_)))
     case e: DeliteReduceElem[_] => e.copy(cond = e.cond ++ c.map(Block(_)))
     case e: DeliteReduceTupleElem[_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))
     case _ => super.applyAddCondition(e,c)
@@ -1665,6 +1666,10 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
         } 
         
       case ParFlat =>
+        if (elem.cond.nonEmpty) {
+          stream.println("//ERROR: need to test for conds " + elem.cond)
+          println("ERROR: need to test for conds " + elem.cond)
+        }
         emitValDef(elem.allocVal, prefixSym + quote(sym) + "_data")                
         emitBlock(elem.update)
     }

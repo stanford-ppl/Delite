@@ -547,8 +547,8 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
     case Def(DenseVectorSort(a)) => a.length
     case Def(DenseVectorObjectFromUnliftedSeq(xs)) => Const(xs.length)
     case _ => 
-      //printerr("could not short-circuit call to " + x.toString + ".length")
-      //printerr(findDefinition(x.asInstanceOf[Sym[DenseVector[A]]]))
+      printerr("**** could not short-circuit call to " + x.toString + ".length")
+      printerr(findDefinition(x.asInstanceOf[Sym[DenseVector[A]]]))
       super.densevector_length(x)
   }
 
