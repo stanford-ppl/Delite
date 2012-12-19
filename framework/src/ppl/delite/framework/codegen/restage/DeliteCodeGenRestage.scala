@@ -308,6 +308,9 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
   }
   
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {    
+    // bound sym hack
+    case Bind(x) => emitValDef(sym, "bind(" + quote(x) + ")")
+
     // data exchange
     case ReturnScopeResult(n) => emitValDef(sym, "setScopeResult(" + quote(n) + ")")
     case LastScopeResult() => emitValDef(sym, "getScopeResult") 
