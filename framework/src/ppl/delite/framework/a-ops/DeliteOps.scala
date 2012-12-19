@@ -1366,9 +1366,10 @@ trait BaseDeliteOpsTraversalFat extends BaseLoopsTraversalFat {
 
   override def unapplySimpleCollectIf(e: Def[Any]) = e match {
     case e: DeliteHashReduceElem[_,_,_] => Some((e.valFunc.res, e.cond.map(_.res))) // FIXME: HACK!!
-    case e: DeliteCollectElem[_,_,_] => Some((e.func.res, e.cond.map(_.res)))
-  //    case e: DeliteReduceElem[_] => Some((e.func, e.cond)) // TODO: aks -- testing fusing conditionals for reduce elems
-    case _ => super.unapplySimpleCollectIf(e)
+    case e: DeliteCollectElem[_,_,_] => 
+//    case e: DeliteReduceElem[_] => Some((e.func, e.cond)) // TODO: aks -- testing fusing conditionals for reduce elems
+    case _ => 
+      super.unapplySimpleCollectIf(e)
   }
 
   // FIXME: need to modify .par from ParPlat to ParBuf accordingly
