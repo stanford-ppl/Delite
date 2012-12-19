@@ -93,8 +93,10 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         }
         val sz = body.par match {
           case ParFlat => t(size)
-          case ParBuffer => //newElems(0)._2.length //TODO: we want to know the output size without having to pick one of the returned arrays arbitrarily (prevents potential DCE)... can we just grab the size out of the activation record somehow?
+          case ParBuffer => 
 
+          newElems(0)._2.length //TODO: we want to know the output size without having to pick one of the returned arrays arbitrarily (prevents potential DCE)... can we just grab the size out of the activation record somehow?
+          /*
           val rV1 = fresh[Int]
           val rV2 = fresh[Int]
 
@@ -106,7 +108,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
             rV = (rV1,rV2),
             rFunc = reifyEffects(int_plus(rV1,rV2)),
             stripFirst = false
-          ))
+          ))*/
         }
         struct[DeliteArray[B]](SoaTag(tag,sz), newElems)
       }

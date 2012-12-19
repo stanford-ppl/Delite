@@ -31,8 +31,7 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
 
   override def field_update[T:Manifest](struct: Exp[Any], index: String, rhs: Exp[T]) = recurseFields(struct, List(index), rhs)
 
-/*
-  no shortcutting on mutable structs ...
+  //no shortcutting on mutable structs ...
 
   // TODO: clean up and check everything's safe
   override def field[T:Manifest](struct: Exp[Any], index: String)(implicit pos: SourceContext): Exp[T] = struct match {
@@ -55,8 +54,8 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
         case Nil => 
           orig match {
             case Def(Reflect(SimpleStruct(tag, fields), _, _)) =>
-              val rhs = fields.find(_._1 == index).get._2
-              println("      picking alloc " + rhs.toString)
+              val Def(Reflect(NewVar(rhs), _,_)) = fields.find(_._1 == index).get._2
+              println("      picking alloc " + rhs.toString) 
               rhs.asInstanceOf[Exp[T]] // take field
             case _ =>
               println("      giving up...")
@@ -80,14 +79,13 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
           println("      picking write " + rhs.toString)
           rhs.asInstanceOf[Exp[T]] // take last one
         case Nil =>
-          val rhs = fields.find(_._1 == index).get._2
+          val Def(Reflect(NewVar(rhs), _,_)) = fields.find(_._1 == index).get._2
           println("      picking alloc " + rhs.toString)
           rhs.asInstanceOf[Exp[T]] // take field
       }
 
     case _ => super.field(struct, index)
   }
-*/
 
 
   private def recurseFields[T:Manifest](struct: Exp[Any], fields: List[String], rhs: Exp[T]): Exp[Unit] = struct match {

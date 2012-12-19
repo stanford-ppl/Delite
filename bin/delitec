@@ -78,7 +78,7 @@ def stage(runner, params, opts):
     if opts.debug == True:
         java_opts = java_opts + " -Ddelite.debug"
     if opts.xdebug == True:
-        java_opts = java_opts + " -Dlms.verbosity=3"
+        java_opts = java_opts + " -Dlms.verbosity=1"
     if opts.xnocache == False:
         java_opts = java_opts + " -Ddelite.cache.syms"
     java_opts = java_opts + " -Dnested.variants.level=0"
