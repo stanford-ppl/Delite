@@ -390,8 +390,13 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
       val tp = /*if (isVar) "Var["+remap(sym.tp)+"]" else*/ remap(sym.tp)       
       // Predef.println("manifest simple name: " + sym.tp.erasure.getSimpleName)
       // Predef.println("manifest type arguments: " + sym.tp.typeArguments.map(_.erasure.getSimpleName))
-      val structMethod = if (isVar) "mstruct" else "struct"      
-      emitValDef(sym, structMethod + "[" + restageStructName(sym.tp) + "](" + quoteTag(tag,sym.tp) + ", " + elems.asInstanceOf[Seq[(String,Rep[Any])]].map{t => "(\"" + t._1 + "\", " + quote(t._2) + ")" }.mkString(",") + ")") //+
+//TR      val structMethod = if (isVar) "mstruct" else "struct"      
+//      emitValDef(sym, structMethod + "[" + restageStructName(sym.tp) + "](" + quoteTag(tag,sym.tp) + ", " + elems.asInstanceOf[Seq[(String,Rep[Any])]].map{t => "(\"" + t._1 + "\", " + quote(t._2) + ")" }.mkString(",") + ")") //+
+        if (isVar)
+          stream.println("var " + quote(sym) + " = struct[" + restageStructName(sym.tp) + "](" + quoteTag(tag,sym.tp) + ", " + elems.asInstanceOf[Seq[(String,Rep[Any])]].map{t => "(\"" + t._1 + "\", " + quote(t._2) + ")" }.mkString(",") + ")") //+
+        else
+          emitValDef(sym, "struct[" + restageStructName(sym.tp) + "](" + quoteTag(tag,sym.tp) + ", " + elems.asInstanceOf[Seq[(String,Rep[Any])]].map{t => "(\"" + t._1 + "\", " + quote(t._2) + ")" }.mkString(",") + ")") //+
+
         // "(" + makeManifestStr(sym,rhs) + "," +
         // "(new Manifest[" + tp + "]{ def erasure = classOf[" + tp + "]; override def typeArguments = List("+sym.tp.typeArguments.map(a => makeManifestStr(a)).mkString(",") + ")}," + 
         // "(new RefinedManifest[" + tp + "]{ def erasure = classOf[" + tp + "]; override def typeArguments = List("+unvar(sym.tp).typeArguments.map(a => makeManifestStr(a)).mkString(",") + "); def fields = List(" + elems.map(t => ("\""+t._1+"\"","manifest["+remap(t._2.tp)+"]")).mkString(",") + ")}," +
@@ -408,12 +413,12 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
       // x34.data.id(x66)
       // field[T](field[Record](x34, "data"), "id")
       if (fields.length == 1) { // not nested
-        emitValDef(sym, "field_update[" + remap(rhs.tp) + "](" + quote(struct) + ",\"" + fields(0) + "\"," + quote(rhs) + ")")
+        emitValDef(sym, "field_updatev[" + remap(rhs.tp) + "](" + quote(struct) + ",\"" + fields(0) + "\"," + quote(rhs) + ")")
       }
       else {
         //val f = "field[Record](" + quote(struct) + ", \"" + fields.head + "\")"
         //emitValDef(sym, "field_update(" + recordFieldLookup(f, fields.tail, rhs.tp) + ", " + quote(rhs) + ")")        
-        emitValDef(sym, "field_update(" + recordFieldLookup(struct, struct.tp, "", fields) + ", " + quote(rhs) + ")")        
+        emitValDef(sym, "field_updatev(" + recordFieldLookup(struct, struct.tp, "", fields) + ", " + quote(rhs) + ")")        
       }
    
     case StructUpdate(struct, fields, idx, x) =>

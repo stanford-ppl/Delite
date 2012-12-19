@@ -53,6 +53,8 @@ trait DeliteILOps extends Variables with StructOps with StructTags with DeliteAr
   def struct[T:Manifest](tag: StructTag[T], elems: (String, Rep[Any])*)(implicit o: Overloaded1, pos: SourceContext): Rep[T]
   def mstruct[T:Manifest](tag: StructTag[T], elems: (String, Rep[Any])*)(implicit o: Overloaded1, pos: SourceContext): Rep[T]
   def field_update[T:Manifest](struct: Rep[Any], index: String, rhs: Rep[T]): Rep[Unit] 
+  def field_updatev[T:Manifest](struct: Rep[Any], index: String, rhs: Rep[T])(implicit o: Overloaded1, pos: SourceContext): Rep[Unit]
+  def field_updatev[T:Manifest](struct: Var[Any], index: String, rhs: Rep[T])(implicit o: Overloaded2, pos: SourceContext): Rep[Unit]
     
   // delite ops
   def collect[A:Manifest,I<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest]

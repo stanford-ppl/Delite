@@ -31,8 +31,41 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
 
   override def field_update[T:Manifest](struct: Exp[Any], index: String, rhs: Exp[T]) = recurseFields(struct, List(index), rhs)
 
+  //override def field_updatev[T:Manifest](struct: Var[Any], index: String, rhs: Rep[T]): Rep[Unit] 
+  def field_updatev[T:Manifest](struct: Rep[Any], index: String, rhs: Exp[T])(implicit o: Overloaded1, pos: SourceContext) =
+    field_update(struct, index, rhs)
+
+  def field_updatev[T:Manifest](struct: Var[Any], index: String, rhs: Exp[T])(implicit o: Overloaded2, pos: SourceContext) = {
+    struct.e match {
+      case Def(Struct(tag, elems)) => 
+        val v = elems.find(_._1 == index).get._2.asInstanceOf[Rep[Variable[T]]]
+        var_assign(Variable(v), rhs)
+      case _ => 
+        println("WARNING: field_updatev " + struct.toString + "=" + Def.unapply(struct))
+        field_update(struct.e, index, rhs)
+    }
+  }
+
+
+
+
 /*
-  no shortcutting on mutable structs ...
+  override def field_updatev[T:Manifest](struct: Var[Any], index: String, rhs: Exp[T]) = struct match {
+    case Variable(Def(Struct(tag,elems: Seq[(String,Exp[Variable[Any]])]))) =>
+      assert(tagL == tagR)
+      for (((lk,lv), (rk,rv)) <- elemsL zip elemsR) {
+        assert(lk == rk)
+        var_assign(Variable(lv), rv)(rv.tp, pos)
+      }
+      Const(())
+    case _ => 
+      println("ERROR")
+      field_update(struct, idx, rhs)
+  }
+*/
+
+/*
+  no shortcutting on mutable structs...
 
   // TODO: clean up and check everything's safe
   override def field[T:Manifest](struct: Exp[Any], index: String)(implicit pos: SourceContext): Exp[T] = struct match {
