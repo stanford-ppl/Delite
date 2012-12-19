@@ -30,6 +30,9 @@ trait DeliteRestageOps extends Base {
 
   def delite_profile_start(component: Rep[String], deps: Seq[Rep[Any]])(implicit ctx: SourceContext): Rep[Unit]
   def delite_profile_stop(component: Rep[String], deps: Seq[Rep[Any]])(implicit ctx: SourceContext): Rep[Unit]
+
+  // hack for bound syms escaping
+  def bind[A:Manifest](x: Rep[A]): Rep[A]
 }
 
 trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp with StructExp 
@@ -48,8 +51,12 @@ trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp with StructExp
   def delite_profile_start(component: Exp[String], deps: Seq[Exp[Any]])(implicit ctx: SourceContext) = reflectEffect(DeliteProfileStart(component, deps.toList))
   def delite_profile_stop(component: Exp[String], deps: Seq[Exp[Any]])(implicit ctx: SourceContext) = reflectEffect(DeliteProfileStop(component, deps.toList))
 
+  case class Bind[A:Manifest](x: Exp[A]) extends Def[A]
+  def bind[A:Manifest](x: Rep[A]) = reflectEffect(Bind(x))
+
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case LastScopeResult() => lastScopeResult
+    case Reflect(Bind(x), u, es) => reflectMirrored(Reflect(Bind(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(ReturnScopeResult(n),u,es) => reflectMirrored(Reflect(ReturnScopeResult(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))   
     case Reflect(DeliteProfileStart(c,deps), u, es) => reflectMirrored(Reflect(DeliteProfileStart(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(DeliteProfileStop(c,deps), u, es) => reflectMirrored(Reflect(DeliteProfileStop(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))

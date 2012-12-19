@@ -304,10 +304,11 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp with 
   def densevector_obj_flatten[A:Manifest](pieces: Exp[DenseVector[DenseVector[A]]])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectFlatten(pieces))  
 
   def densevector_fromarray[A:Manifest](x: Rep[DeliteArray[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]] = {
-    val out = DenseVector[A](unit(0),unit(true))
-    densevector_set_length(out, x.length)
-    densevector_set_raw_data(out, x)
-    out.unsafeImmutable
+    //val out = DenseVector[A](unit(0),unit(true))
+    //densevector_set_length(out, x.length)
+    //densevector_set_raw_data(out, x)
+    //out.unsafeImmutable
+    reflectPure(DenseVectorNewImm[A](x,x.length,unit(true)))
   }
   
   /////////////////////
@@ -523,6 +524,7 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
     /* these are essential for fusing:    */
 //    case Def(Reflect(e @ DenseVectorTimes(_,_), _,_)) => e.asInstanceOf[DeliteOpDenseVectorLoop[A]].size // FIXME: in general this is unsafe, but hey...
     case Def(DenseVectorNew(len, isRow)) => len
+    case Def(DenseVectorNewImm(d, len, r)) => len
     //case Def(Reflect(DenseVectorNew(len, isRow), _,_)) => len // FIXME: in general this is unsafe, but hey...
     //case Def(Reflect(e @ DenseVectorObjectZeros(l), _,_)) => l // FIXME: in general this is unsafe, but hey...
     //case Def(Reflect(e @ DenseVectorClone(a), _,_)) => densevector_length(a) // FIXME: in general this is unsafe, but hey...

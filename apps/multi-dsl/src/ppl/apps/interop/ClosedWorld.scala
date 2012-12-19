@@ -30,15 +30,16 @@ object CloseWorldCompose {
       // type Tweet = Record{val fromId: Int; val toId: Int; val text: String}
       // val tweets: Rep[Table[Tweet]] = loadTweets() // elided
       val tweets = TableInputReader(args(0), emptyTweet())      
-      dtic("all", tweets)
-      //dtic("optiql", tweets)
+      //dtic("all", tweets)
+      dtic("optiql", tweets)
+      //val retweets = tweets Where(t => t.time >= Date("2009-06-23") && t.language == "en" && t.rt) 
       val retweets = tweets Where(t => t.time >= Date("2008-01-01") && t.language == "en" && t.rt) 
       val engtweets = tweets Where(t => t.language == "en") 
       // is there something in the desugaring scopes that ignores the block result?
       // without returnScopeResult, getting a block result of (), even the Scope result is of type R
       returnScopeResult(retweets.toArray,engtweets.toArray)
       // println(result.toArray)
-      //dtoc("optiql", retweets, engtweets)
+      dtoc("optiql", retweets, engtweets)
     }
     
     OptiGraph_ {      
@@ -74,7 +75,7 @@ object CloseWorldCompose {
 
       // LCC
       // TODO: DeliteCodeGenRestage breaks when we have multiple Node Properties of different type
-      //dtic("optigraph", G)
+      dtic("optigraph", G)
       val LCC: Rep[NodeProperty[Double]] = NodeProperty[Double](G, 0.0)
       val RT: Rep[NodeProperty[Double]] = NodeProperty[Double](G, 0.0)
       val threshold = 1
@@ -122,7 +123,7 @@ object CloseWorldCompose {
       }
             
       val RTarray = RT.toArray
-      //dtoc("optigraph", RTarray)
+      dtoc("optigraph", RTarray)
       returnScopeResult((LCC.toArray, RTarray, retweets, in._2))
     }
         
@@ -132,8 +133,18 @@ object CloseWorldCompose {
       val in = lastScopeResult.AsInstanceOf[(DeliteArray[Double],DeliteArray[Double],DeliteArray[Tweet],DeliteArray[Tweet])]
       val inA = tuple4_get1(in)
       val inB = tuple4_get2(in)
-      val retweets = tuple4_get3(in)
-      val tweets = tuple4_get4(in)
+      val retweets = tuple4_get3(in) //Vector.fromArray(tuple4_get3(in))
+      val tweets = tuple4_get4(in) //Vector.fromArray(tuple4_get4(in))
+      
+      dtic("optiml")
+
+      //val spam = Vector("buy","cheap","sale","free","limited","textbook")
+      val spam = Vector("buy","cheap","sale")
+      
+      //val tweetsSpamFactor = Vector.fromArray(tweets).map(t => 1.0 / (Vector.fromArray(t.text.split(" ").AsInstanceOf[DeliteArray[String]]).count(w => spam.contains(w)) + 1))
+      val tweetsSpamFactor = Vector.fromArray(tweets).map(t => 1.0 / (spam.count(s => bind(t).text.contains(s)) + 1))
+     // val retweetsSpamFactor = Vector.fromArray(retweets).map(t => 1.0 / (Vector.fromArray(t.text.split(" ").AsInstanceOf[DeliteArray[String]]).count(w => spam.contains(w)) + 1))
+      val retweetsSpamFactor = Vector.fromArray(retweets).map(t => 1.0 / (spam.count(s => bind(t).text.contains(s)) + 1))
 
       //println("inA.length: " + inA.length)
       //println("inB.length: " + inB.length)
@@ -144,8 +155,7 @@ object CloseWorldCompose {
       //val x = readMatrix(args(0)+"/ml/linreg/q2x.dat")
       //val y = readVector(args(0)+"/ml/linreg/q2y.dat").t
 
-      // -- normal optiml version
-      //dtic("optiml")
+      // -- normal optiml version      
       val x = Matrix.fromArray(inA, numFeatures = 1)/*.mutable*/
       val RT = Vector.fromArray(inB).t
       val xm = x.mutable
@@ -160,18 +170,20 @@ object CloseWorldCompose {
       val theta = a*b
 
       // compute other statistics on all tweets
-      val tweetHours = Vector.fromArray(tweets.map(_.hour.AsInstanceOf[Double]))
+      val tweetHours = Vector.fromArray(tweets.map(_.hour.AsInstanceOf[Double]))*tweetsSpamFactor
+      //val tweetHours = Vector.fromArray(tweets.map(_.hour.AsInstanceOf[Double]))
       val m = mean(tweetHours)
       val sdev = sqrt(square(tweetHours-m).sum) / tweetHours.length
       val dist = ((square(tweetHours-m) * (-1.0) / (2*sdev*sdev)).exp) / sqrt(2*Pi*sdev*sdev)
 
-      val rtHours = Vector.fromArray(retweets.map(_.hour.AsInstanceOf[Double]))
+      val rtHours = Vector.fromArray(retweets.map(_.hour.AsInstanceOf[Double]))*retweetsSpamFactor 
+      //val rtHours = Vector.fromArray(retweets.map(_.hour.AsInstanceOf[Double]))
       val mRt = mean(rtHours)
       val sdevRt = sqrt(square(rtHours-mRt).sum) / rtHours.length
       val distRt = ((square(rtHours-mRt) * (-1.0) / (2*sdevRt*sdevRt)).exp) / sqrt(2*Pi*sdevRt*sdevRt)
       
-      //dtoc("optiml", dist, distRt, dist)
-      dtoc("all", dist, distRt, dist)
+      dtoc("optiml", dist, distRt, dist)
+      //dtoc("all", dist, distRt, dist)
 
       // -- pre-transposed version
 //      val X = DenseMatrix(Vector.onesf(inA.length), Vector.fromArray(inA))

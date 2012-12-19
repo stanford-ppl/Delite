@@ -190,6 +190,11 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     val mA = manifest[A]
   }
 
+  case class DenseMatrixObjectNewImm[A:Manifest](_data: Exp[DeliteArray[A]], _numRows: Exp[Int], _numCols: Exp[Int]) extends DeliteStruct[DenseMatrix[A]] {
+    val elems = copyTransformedElems(collection.Seq("_data" -> _data, "_numRows" -> _numRows, "_numCols" -> _numCols))
+    val mA = manifest[A]
+  }
+  
   case class DenseMatrixObjectZeros[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) extends DeliteStruct[DenseMatrix[A]] {
     val elems = copyTransformedElems(collection.Seq("_data" -> DeliteArray.imm(numRows*numCols), "_numRows" -> numRows, "_numCols" -> numCols))
     val mA = manifest[A]
@@ -381,11 +386,13 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
 
   def densematrix_fromarray[A:Manifest](x: Rep[DeliteArray[A]], n: Rep[Int])(implicit ctx: SourceContext) = {
     // expecting x to be row-major...
-    val out = DenseMatrix[A](unit(0),unit(0))
-    densematrix_set_numrows(out,x.length/n)
-    densematrix_set_numcols(out,n)    
-    densematrix_set_raw_data(out,x)
-    out//.unsafeImmutable
+    //val out = DenseMatrix[A](unit(0),unit(0))
+    //densematrix_set_numrows(out,x.length/n)
+    //densematrix_set_numcols(out,n)    
+    //densematrix_set_raw_data(out,x)
+    //out//.unsafeImmutable
+
+    reflectPure(DenseMatrixObjectNewImm[A](x,x.length/n,n))
   }
   
   //////////////////

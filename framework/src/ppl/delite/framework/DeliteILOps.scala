@@ -25,6 +25,9 @@ trait DeliteILOps extends Variables with StructOps with StructTags with DeliteAr
   implicit def varManifest[T:Manifest](x: Var[T]): Manifest[Var[T]]
   implicit def daVarManifest: Manifest[Var[DeliteArray[Record]]] // why is this not covered by the previous def?
   
+  // hack for bound syms escaping
+  def bind[A:Manifest](x: Rep[A]): Rep[A]
+
   // profiling
   def tic(deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_start(unit("app"),deps)
   def tic(component: Rep[String], deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_start(component,deps)
@@ -211,6 +214,8 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
   def profile_start(component: Exp[String], deps: Seq[Exp[Any]])(implicit ctx: SourceContext) = reflectEffect(ProfileStart(component, deps.toList))
   def profile_stop(component: Exp[String], deps: Seq[Exp[Any]])(implicit ctx: SourceContext) = reflectEffect(ProfileStop(component, deps.toList))
 
+  def bind[A:Manifest](x: Rep[A]) = reflectEffect(ObjectUnsafeImmutable(x))
+
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case GetScopeResult() => getScopeResult
     case Reflect(SetScopeResult(n),u,es) => reflectMirrored(Reflect(SetScopeResult(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))   
@@ -228,6 +233,8 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
 
     case Reflect(ProfileStart(c,deps), u, es) => reflectMirrored(Reflect(ProfileStart(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(ProfileStop(c,deps), u, es) => reflectMirrored(Reflect(ProfileStop(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    
+    //case Reflect(Bind(x), u, es) => reflectMirrored(Reflect(Bind(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
 
     // TODO: move to LMS
     case e@HashMapSize(m) => hashmap_size(f(m))(e.mK,e.mV,pos)
