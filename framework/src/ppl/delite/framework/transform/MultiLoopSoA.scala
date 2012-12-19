@@ -53,7 +53,8 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
   def soaCollect[A:Manifest, I<:DeliteCollection[A]:Manifest, CA<:DeliteCollection[A]:Manifest](size: Exp[Int], v: Sym[Int], body: DeliteCollectElem[A,I,CA]): Option[Exp[CA]] = {
     val alloc = t(body.allocN)
     alloc match {
-    case StructBlock(tag,elems) =>       
+    case StructBlock(tag,elems) =>
+      val cond2 = body.cond.map(t(_))
       def copyLoop[B:Manifest](f: Block[B]): Exp[DeliteArray[B]] = {
         val allocV = reflectMutableSym(fresh[DeliteArray[B]])
         val elemV = fresh[B]
@@ -70,7 +71,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
           func = f,//t(f),
           update = reifyEffects(dc_update(allocV,tv,elemV)),
           finalizer = reifyEffects(allocV),
-          cond = body.cond.map(t(_)),
+          cond = cond2,
           par = body.par,
           buf = DeliteBufferElem[B,DeliteArray[B],DeliteArray[B]](
             aV = buf_aV,
@@ -92,7 +93,20 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         }
         val sz = body.par match {
           case ParFlat => t(size)
-          case ParBuffer => newElems(0)._2.length //TODO: we want to know the output size without having to pick one of the returned arrays arbitrarily (prevents potential DCE)... can we just grab the size out of the activation record somehow?
+          case ParBuffer => //newElems(0)._2.length //TODO: we want to know the output size without having to pick one of the returned arrays arbitrarily (prevents potential DCE)... can we just grab the size out of the activation record somehow?
+
+          val rV1 = fresh[Int]
+          val rV2 = fresh[Int]
+
+          simpleLoop(t(size), t(v).asInstanceOf[Sym[Int]], DeliteReduceElem[Int](
+            func = reifyEffects(unit(1)),
+            cond = cond2,
+            zero = reifyEffects(unit(0)),
+            accInit = reifyEffects(unit(0)), //?
+            rV = (rV1,rV2),
+            rFunc = reifyEffects(int_plus(rV1,rV2)),
+            stripFirst = false
+          ))
         }
         struct[DeliteArray[B]](SoaTag(tag,sz), newElems)
       }

@@ -65,11 +65,11 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
       println("**** trying to shortcut field access: " + struct.toString + "=" + rhs + "." + index)
 
       // find last assignment ... FIXME: should look at *all* mutations of struct
-      context foreach {
+      /*context foreach {
         case Def(Reflect(NestedFieldUpdate(`struct`,List(`index`),rhs), _, _)) =>  //ok
         case Def(e) => 
           println("      ignoring " + e)
-      }
+      }*/
       val writes = context collect {
         case Def(Reflect(NestedFieldUpdate(`struct`,List(`index`),rhs), _, _)) => rhs
       }
@@ -93,7 +93,7 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
     case _ => reflectWrite(struct)(NestedFieldUpdate(struct, fields, rhs))
   }
 
-
+  // TODO: get rid of entirely or just use mirrorDef
   def mirrorDD[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Def[A] = (e match {
     case IntTimes(a,b) => 
       println("warning: encountered effectful primitive def during mirror "+e)
@@ -104,6 +104,12 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
     case IntMinus(a,b) => 
       println("warning: encountered effectful primitive def during mirror "+e)
       IntMinus(f(a),f(b))
+    case IntMod(a,b) => 
+      println("warning: encountered effectful primitive def during mirror "+e)
+      IntMod(f(a),f(b))
+    case IntDivide(a,b) => 
+      println("warning: encountered effectful primitive def during mirror "+e)
+      IntDivide(f(a),f(b)) //xx
     case e@OrderingLT(a,b) =>
       println("warning: encountered effectful primitive def during mirror "+e)
       OrderingLT(f(a),f(b))(null.asInstanceOf[Ordering[Any]],manifest[Any]) //HACK
@@ -120,6 +126,8 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
     case Reflect(x@IntTimes(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
     case Reflect(x@IntPlus(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
     case Reflect(x@IntMinus(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case Reflect(x@IntMod(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case Reflect(x@IntDivide(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
     case Reflect(x@OrderingLT(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
     case _ => 
       //println("mirror: "+e)

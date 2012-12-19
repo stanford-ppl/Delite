@@ -346,9 +346,13 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
   //choosing the length of the first array creates an unnecessary dependency (all arrays must have same length), so we store length in the tag
   override def darray_length[T:Manifest](da: Exp[DeliteArray[T]])(implicit ctx: SourceContext) = da match {
     case Def(Loop(size,_,b:DeliteCollectElem[_,_,_])) if b.cond == Nil => size
-    case StructIR(tag, len, elems) => len
+    case StructIR(tag, len, elems) => 
+      println("**** extracted array length: " + len.toString)
+      len
     case StructType(tag, fields) =>
-      dlength(field(da,fields(0)._1)(mtype(darrayManifest(fields(0)._2)),ctx))(mtype(fields(0)._2),ctx)
+      val z = dlength(field(da,fields(0)._1)(mtype(darrayManifest(fields(0)._2)),ctx))(mtype(fields(0)._2),ctx)
+      println("**** fallback array length: " + z + " of " + da.toString)
+      z
     case _ => super.darray_length(da)
   }
 
@@ -463,7 +467,7 @@ trait BaseGenDeliteArrayOps extends GenericFatCodegen {
 
   override def unapplySimpleDomain(e: Def[Int]): Option[Exp[Any]] = e match {
     //case DeliteArrayLength(da) => Some(da)
-    case DeliteArrayLength(a @ Def(Loop(_,_,_:DeliteCollectElem[_,_,_]))) => Some(a) // exclude hash collect (?)
+    case DeliteArrayLength(a /*@ Def(Loop(_,_,_:DeliteCollectElem[_,_,_]))*/) => Some(a) // exclude hash collect (?)
     case _ => super.unapplySimpleDomain(e)
   }
 
@@ -476,7 +480,7 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case a@DeliteArrayNew(n) => emitValDef(sym, "new Array[" + remap(a.mA) + "](" + quote(n) + ")")
     case DeliteArrayLength(da) =>
-      emitValDef(sym, quote(da) + ".length")
+      emitValDef(sym, quote(da) + ".length //" + quotePos(sym))
     case DeliteArrayApply(da, idx) =>
       emitValDef(sym, quote(da) + "(" + quote(idx) + ")")
     case DeliteArrayUpdate(da, idx, x) =>
