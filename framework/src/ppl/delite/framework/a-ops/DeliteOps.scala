@@ -1190,6 +1190,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   //////////////
   // dependencies
 
+
   /* is this necessary or not? does not appear to effect anything yet. */
   override def blocks(e: Any): List[Block[Any]] = e match {
     case s: DeliteOpSingleTask[_] => blocks(s.block)

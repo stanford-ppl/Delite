@@ -80,6 +80,9 @@ trait RestageFatCodegen extends GenericFatCodegen with RestageCodegen {
     implStream.flush()
     out.println(implStreamBody)
     
+    //println("GlobalDefs")
+    //globalDefs.foreach(println)
+
     staticData
   }    
 
@@ -432,6 +435,7 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     
     // delite ops
     case s:DeliteOpSingleTask[_] => 
+      stream.println("// " + sym.toString + "=" + s + " / " + Def.unapply(sym))
       // each stm inside the block must be restageable..
       stream.print("val " + quote(sym) + " = single({")
       emitBlock(s.block)
@@ -474,25 +478,25 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
   
   def emitBufferElem(op: AbstractFatLoop, elem: DeliteCollectElem[_,_,_]) {
     // append
-    stream.println("{")
+    stream.println("{ // append")
     stream.println(makeBoundVarArgs(elem.allocVal,elem.eV,op.v))
     emitBlock(elem.buf.append)
     stream.println(quote(getBlockResult(elem.buf.append)))
     stream.println("},")
     // setSize
-    stream.println("{")
+    stream.println("{ // setSize")
     stream.println(makeBoundVarArgs(elem.allocVal,elem.sV))
     emitBlock(elem.buf.setSize)
     stream.println(quote(getBlockResult(elem.buf.setSize)))
     stream.println("},")
     // allocRaw
-    stream.println("{")
+    stream.println("{ // allocRaw")
     stream.println(makeBoundVarArgs(elem.allocVal,elem.sV))  
     emitBlock(elem.buf.allocRaw)
     stream.println(quote(getBlockResult(elem.buf.allocRaw)))
     stream.println("},")
     // copyRaw
-    stream.println("{")
+    stream.println("{ // copyRaw")
     stream.println(makeBoundVarArgs(elem.buf.aV,elem.buf.iV,elem.allocVal,elem.buf.iV2,elem.sV))  
     emitBlock(elem.buf.copyRaw)
     stream.println(quote(getBlockResult(elem.buf.copyRaw)))    
@@ -504,6 +508,7 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     // break the multiloops apart, they'll get fused again anyways
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_,_]) => 
+        stream.println("// " + sym.toString + "=" + elem + " / " + Def.unapply(sym))
         stream.println("val " + quote(sym) + " = collect[" + remap(elem.mA) + "," + remap(elem.mI) + "," + remap(elem.mCA) + "](")
         // stream.println("val " + quote(sym) + " = collect(")
         // loop size
@@ -551,6 +556,7 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
 
         
       case (sym, elem: DeliteForeachElem[_]) => 
+        stream.println("// " + sym.toString + "=" + elem + " / " + Def.unapply(sym))
         stream.println("val " + quote(sym) + " = foreach(")
         // loop size
         stream.println(quote(op.size) + ",")
@@ -563,6 +569,7 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
         
         
       case (sym, elem: DeliteReduceElem[_]) =>   
+        stream.println("// " + sym.toString + "=" + elem + " / " + Def.unapply(sym))
         stream.println("val " + quote(sym) + " = reduce(")
         // loop size
         stream.println(quote(op.size) + ",")

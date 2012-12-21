@@ -39,7 +39,7 @@ object CloseWorldCompose {
       // without returnScopeResult, getting a block result of (), even the Scope result is of type R
       returnScopeResult(retweets.toArray,engtweets.toArray)
       // println(result.toArray)
-      dtoc("optiql", retweets, engtweets)
+      //dtoc("optiql", retweets, engtweets)
     }
     
     OptiGraph_ {      
@@ -123,7 +123,7 @@ object CloseWorldCompose {
       }
             
       val RTarray = RT.toArray
-      dtoc("optigraph", RTarray)
+      //dtoc("optigraph", RTarray)
       returnScopeResult((LCC.toArray, RTarray, retweets, in._2))
     }
         
@@ -141,7 +141,7 @@ object CloseWorldCompose {
       //val spam = Vector("buy","cheap","sale","free","limited","textbook")
       val spam = Vector("buy","cheap","sale")
       
-      //def bind[T](x:T) = x
+      def bind[T](x:T) = x
 
       //val tweetsSpamFactor = Vector.fromArray(tweets).map(t => 1.0 / (Vector.fromArray(t.text.split(" ").AsInstanceOf[DeliteArray[String]]).count(w => spam.contains(w)) + 1))
       val tweetsSpamFactor = Vector.fromArray(tweets.map(_.text)).map{t => 1.0 / (spam.count{s => bind(t); t.contains(s)}.AsInstanceOf[Double] + 1.0)}
@@ -185,7 +185,7 @@ object CloseWorldCompose {
       val sdevRt = sqrt(square(rtHours-mRt).sum) / rtHours.length
       val distRt = ((square(rtHours-mRt) * (-1.0) / (2*sdevRt*sdevRt)).exp) / sqrt(2*Pi*sdevRt*sdevRt)
       
-      dtoc("optiml", dist, distRt, dist)
+      //TRdtoc("optiml", dist, distRt, dist)
       //dtoc("all", dist, distRt, dist)
 
       // -- pre-transposed version
