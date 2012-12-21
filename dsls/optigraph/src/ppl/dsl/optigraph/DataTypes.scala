@@ -3,7 +3,7 @@ package ppl.dsl.optigraph
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 
 /**
- * OptiGraph (front-end) data types 
+ * OptiGraph (front-end) data types
 */
 
 /* Graph types */
@@ -18,16 +18,25 @@ trait Graph {
 trait Node
 trait Edge
 
+trait MutableGraph {
+  // directed
+  type DMutableGraph = MutableGraph
+  // undirected
+  type UMutableGraph = MutableGraph
+}
+
+trait MutableNode
+trait MutableEdge
 /* Properties (for immutable graphs only) */
 
-/** 
+/**
  * Used to associate data with the nodes in the graph
  * Note: properties can be associated only with immutable graph instances
  */
 trait NodeProperty[T] extends DeliteCollection[T] {
   type NP[T] = NodeProperty[T]
 }
-/** 
+/**
  * An EdgeProperty object is used to associate data with graph edges
  * Note: properties can be associated only with immutable graph instances
  */
