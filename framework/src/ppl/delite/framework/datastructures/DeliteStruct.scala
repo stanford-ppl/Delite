@@ -36,6 +36,7 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
   // TODO: clean up and check everything's safe
   override def field[T:Manifest](struct: Exp[Any], index: String)(implicit pos: SourceContext): Exp[T] = struct match {
     // is this confined to unsafe immutable or should we look at any mutable struct def?
+    /*
     case Def(rhs@Reflect(ObjectUnsafeImmutable(orig), u, es)) => 
       println("**** trying to shortcut field access: " + struct.toString + "=" + rhs + "." + index)
 
@@ -62,6 +63,8 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
               super.field(struct, index)
           }
       }
+    */
+    /*
     case Def(rhs@Reflect(SimpleStruct(tag, fields), _, _)) =>
       println("**** trying to shortcut field access: " + struct.toString + "=" + rhs + "." + index)
 
@@ -83,7 +86,7 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
           println("      picking alloc " + rhs.toString)
           rhs.asInstanceOf[Exp[T]] // take field
       }
-
+      */
     case _ => super.field(struct, index)
   }
 

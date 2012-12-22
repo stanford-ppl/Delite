@@ -199,9 +199,9 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
   }
 
   def single[A:Manifest](func: => Exp[A]) = {
-    //val f = DeliteILSingleTask(() => func)
-    //reflectEffect(f, summarizeEffects(f.block).star)
-    func
+    val f = DeliteILSingleTask(() => func)
+    reflectEffect(f, summarizeEffects(f.block).star)
+    //func
   }
  
 
