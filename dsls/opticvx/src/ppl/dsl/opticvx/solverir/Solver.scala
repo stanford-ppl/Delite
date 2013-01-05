@@ -77,12 +77,15 @@ case class SolverInstrConverge(
 
   def run(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Seq[Double]] = {
     var mem = memory
+    var counter: Int = 0
     // hardcoded tolerance for now
     while(condition.eval(params, inputs, mem)(0) > 1e-8) {
       for(c <- code) {
         mem = c.run(params, inputs, mem)
       }
+      counter += 1
     }
+    println("converged in " + counter.toString + " iterations")
     mem
   }
 }
