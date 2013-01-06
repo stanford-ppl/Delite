@@ -4,6 +4,25 @@ import scala.collection.immutable.Seq
 import ppl.dsl.opticvx.dcp._
 
 object DCPOpsTestApp extends DCPOpsDefinite {
+  
+  val square = {
+    val x = cvxexpr()
+    val t = cvxexpr()
+    cvxfun(
+      paraminputs(),
+      inputs(x),
+      require(),
+      dcp(convex + x.vexity*x.sign),
+      over(scalar -> t),
+      let(),
+      where(
+        in_secondorder_cone(cat(2*x, t-1), t+1)
+      ),
+      minimize(t)
+    )
+  }
+  
+
   def main(args: Array[String]) {
     val x = cvxexpr()
     val y = cvxexpr()
