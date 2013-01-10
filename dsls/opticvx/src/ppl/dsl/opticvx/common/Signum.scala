@@ -1,4 +1,4 @@
-package ppl.dsl.opticvx.dcp
+package ppl.dsl.opticvx.common
 
 sealed abstract class Signum {
   //encapsulates the idea of adding two expressions
@@ -11,6 +11,11 @@ sealed abstract class Signum {
   //A <= B if all A expressions are B.  i.e. Affine <= Convex
   def <=(d: Signum): Boolean
   //def >=(d: Signum): Boolean = (d <= this)
+
+  //functions to allow signumpoly to work
+  def +(y: SignumPoly): SignumPoly = y + this
+  def -(y: SignumPoly): SignumPoly = (-y) + this
+  def *(y: SignumPoly): SignumPoly = y * this
 }
 
 object Signum {
