@@ -89,7 +89,9 @@ def stage(runner, params, opts):
     
     #add classpaths for Delite
     scala_major_id = delitecommon.scala_major_id
+    old_cp = os.getenv("CLASSPATH", "")
     cp = " -cp "
+    cp = cp + old_cp + os.pathsep
     cp = cp + LMS_HOME + "/*" + os.pathsep
     cp = cp + DELITE_HOME + "/framework/target/" + scala_major_id + "/classes" + os.pathsep
     
@@ -118,7 +120,7 @@ def stage(runner, params, opts):
 
     print "==  Generating DEG file with options: " + str(opts)
     java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " " + runner + " " + ' '.join(params)
-    #print exec
+    #print java_cmd
     ecode = os.system(java_cmd)
     if ecode != 0:
         err("Delite compilation failed")
