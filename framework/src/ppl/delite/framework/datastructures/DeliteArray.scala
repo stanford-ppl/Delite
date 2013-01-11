@@ -347,11 +347,11 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
   override def darray_length[T:Manifest](da: Exp[DeliteArray[T]])(implicit ctx: SourceContext) = da match {
     case Def(Loop(size,_,b:DeliteCollectElem[_,_,_])) if b.cond == Nil => size
     case StructIR(tag, len, elems) => 
-      println("**** extracted array length: " + len.toString)
+      printlog("**** extracted array length: " + len.toString)
       len
     case StructType(tag, fields) =>
       val z = dlength(field(da,fields(0)._1)(mtype(darrayManifest(fields(0)._2)),ctx))(mtype(fields(0)._2),ctx)
-      println("**** fallback array length: " + z + " of " + da.toString)
+      printlog("**** fallback array length: " + z + " of " + da.toString)
       z
     case _ => super.darray_length(da)
   }

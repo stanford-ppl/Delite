@@ -141,13 +141,11 @@ object CloseWorldCompose {
       //val spam = Vector("buy","cheap","sale","free","limited","textbook")
       val spam = Vector("buy","cheap","sale")
       
-      def bind[T](x:T) = x
-
       //val tweetsSpamFactor = Vector.fromArray(tweets).map(t => 1.0 / (Vector.fromArray(t.text.split(" ").AsInstanceOf[DeliteArray[String]]).count(w => spam.contains(w)) + 1))
-      val tweetsSpamFactor = Vector.fromArray(tweets.map(_.text)).map{t => 1.0 / (spam.count{s => bind(t); t.contains(s)}.AsInstanceOf[Double] + 1.0)}
+      val tweetsSpamFactor = Vector.fromArray(tweets.map(_.text)).map{t => 1.0 / (spam.count{s => t; t.contains(s)}.AsInstanceOf[Double] + 1.0)}
       //tweetsSpamFactor.slice(0,5).pprint
      // val retweetsSpamFactor = Vector.fromArray(retweets).map(t => 1.0 / (Vector.fromArray(t.text.split(" ").AsInstanceOf[DeliteArray[String]]).count(w => spam.contains(w)) + 1))
-      val retweetsSpamFactor = Vector.fromArray(retweets.map(_.text)).map{t => 1.0 / (spam.count{s => bind(t); t.contains(s)}.AsInstanceOf[Double] + 1.0)}
+      val retweetsSpamFactor = Vector.fromArray(retweets.map(_.text)).map{t => 1.0 / (spam.count{s => t; t.contains(s)}.AsInstanceOf[Double] + 1.0)}
 
       //println("inA.length: " + inA.length)
       //println("inB.length: " + inB.length)

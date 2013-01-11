@@ -75,7 +75,6 @@ trait DeliteILCodeGenBase extends GenericFatCodegen with SchedulingOpt {
 
   def dsmap(line: String) = line
 
-  // TODO should we generate these as Record with DeliteCollection instead?
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
     case "DeliteCollection" => IR.structName(m)
     case s if s.contains("$") => s // due to synthetically generated domain-specific types in the restaged program

@@ -25,9 +25,6 @@ trait DeliteILOps extends Variables with StructOps with StructTags with DeliteAr
   implicit def varManifest[T:Manifest](x: Var[T]): Manifest[Var[T]]
   implicit def daVarManifest: Manifest[Var[DeliteArray[Record]]] // why is this not covered by the previous def?
   
-  // hack for bound syms escaping
-  def bind[A:Manifest](x: Rep[A]): Rep[Unit]
-
   // profiling
   def tic(deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_start(unit("app"),deps)
   def tic(component: Rep[String], deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_start(component,deps)
@@ -80,16 +77,12 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
   def getScopeResult = {
     // find last SetScopeResult effect and unpack it to directly connect
     val e = context.collect{ case Def(Reflect(SetScopeResult(n), u, es)) => n }
-    Predef.println("[restaging]: found results embedded in SetScope: " + e)
-    Predef.println("[restaging]: selecting last one (" + e.last.toString + ", def is: " + findDefinition(e.last.asInstanceOf[Sym[Any]]).toString +")")
     e.last
   }
   
   case class SetScopeResult(n: Rep[Any]) extends Def[Unit]
   def setScopeResult(n: Rep[Any]) = reflectEffect(SetScopeResult(n))
   
-  // case class DeliteILCollect[A:Manifest,I<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest]
-  //   (size: Exp[Int], callocN: Exp[Int] => Exp[I], cfunc: (Exp[A], Exp[Int]) => Rep[A], cupdate: (Exp[I],Exp[A],Exp[Int]) => Rep[Unit], cfinalizer: Exp[I] => Exp[CA]) extends DeliteOpMapLike[A,I,CA] {
   case class DeliteILCollect[A:Manifest,I<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest]
     (size: Exp[Int], callocN: Exp[Int] => Exp[I], cfunc: (Exp[A], Exp[Int]) => Exp[A], cupdate: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit], cfinalizer: Exp[I] => Exp[CA],
      ccond: List[Exp[Int] => Exp[Boolean]], cpar: DeliteParallelStrategy, 
@@ -125,31 +118,29 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
     val mCA = manifest[CA]  
   }
   
-  // def collect[A:Manifest,I<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest]
-  //   (size: Exp[Int], allocN: Exp[Int] => Rep[I], func: (Exp[A], Exp[Int]) => Exp[A], update: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit], finalizer: Exp[I] => Exp[CA]) = {
-    def collect[A:Manifest,I<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest]
-      (size: Exp[Int], allocN: Exp[Int] => Exp[I], func: (Exp[A], Exp[Int]) => Exp[A], update: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit], finalizer: Exp[I] => Exp[CA],
-       cond: List[Exp[Int] => Exp[Boolean]], par: String, 
-       append: (Exp[I],Exp[A],Exp[Int]) => Exp[Boolean], setSize: (Exp[I],Exp[Int]) => Exp[Unit], allocRaw: (Exp[I],Exp[Int]) => Exp[I], copyRaw: (Exp[I],Exp[Int],Exp[I],Exp[Int],Exp[Int]) => Exp[Unit]
-      ) = {
-      
-      val parStrategy = par match {
-        case "ParFlat" => ParFlat
-        case "ParBuffer" => ParBuffer
-      }
-      
-      // -- hack: need to get the RefinedManifest from allocN, but we don't want to expose its effects
-      // if we enclose it in a reify, we lose the manifest
-      val save = context
-      context = Nil      
-      //val a1 = reifyEffects(allocN(fresh[Int]))
-      val a1 = allocN(fresh[Int])
-      context = save
-      val refTp = a1.tp
-      val c = DeliteILCollect(size,allocN,func,update,finalizer,cond,parStrategy,append,setSize,allocRaw,copyRaw)(manifest[A],refTp,refTp.asInstanceOf[Manifest[CA]]) // HACK: forcing I and CA to be the same in order to retain RefinedManifest from I
-      reflectEffect(c, summarizeEffects(c.body.asInstanceOf[DeliteCollectElem[_,_,_]].func).star)(refTp.asInstanceOf[Manifest[CA]],implicitly[SourceContext])
-    }  
+  def collect[A:Manifest,I<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest]
+    (size: Exp[Int], allocN: Exp[Int] => Exp[I], func: (Exp[A], Exp[Int]) => Exp[A], update: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit], finalizer: Exp[I] => Exp[CA],
+     cond: List[Exp[Int] => Exp[Boolean]], par: String, 
+     append: (Exp[I],Exp[A],Exp[Int]) => Exp[Boolean], setSize: (Exp[I],Exp[Int]) => Exp[Unit], allocRaw: (Exp[I],Exp[Int]) => Exp[I], copyRaw: (Exp[I],Exp[Int],Exp[I],Exp[Int],Exp[Int]) => Exp[Unit]
+    ) = {
     
+    val parStrategy = par match {
+      case "ParFlat" => ParFlat
+      case "ParBuffer" => ParBuffer
+    }
+    
+    // -- hack: need to get the RefinedManifest from allocN, but we don't want to expose its effects
+    // if we enclose it in a reify, we lose the manifest
+    val save = context
+    context = Nil      
+    //val a1 = reifyEffects(allocN(fresh[Int]))
+    val a1 = allocN(fresh[Int])
+    context = save
+    val refTp = a1.tp
+    val c = DeliteILCollect(size,allocN,func,update,finalizer,cond,parStrategy,append,setSize,allocRaw,copyRaw)(manifest[A],refTp,refTp.asInstanceOf[Manifest[CA]]) // HACK: forcing I and CA to be the same in order to retain RefinedManifest from I
+    reflectEffect(c, summarizeEffects(c.body.asInstanceOf[DeliteCollectElem[_,_,_]].func).star)(refTp.asInstanceOf[Manifest[CA]],implicitly[SourceContext])
+  }  
+  
   case class DeliteILForeach[A:Manifest](size: Exp[Int], ffunc: Exp[Int] => Exp[Unit]) extends DeliteOpLoop[Unit] {
     lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
       func = reifyEffects(ffunc(v)),
@@ -162,7 +153,6 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
   def foreach[A:Manifest](size: Exp[Int], func: Exp[Int] => Exp[Unit]) = {
     val f = DeliteILForeach(size,func)
     val u = summarizeEffects(f.body.asInstanceOf[DeliteForeachElem[A]].func).star
-    Predef.println("[restaging] foreach elem " + f + ", got summary: " + u)
     reflectEffect(f, summarizeEffects(f.body.asInstanceOf[DeliteForeachElem[A]].func).star andAlso Simple()) // TODO: don't want Simple()
   }
   
@@ -215,9 +205,6 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
   def profile_start(component: Exp[String], deps: Seq[Exp[Any]])(implicit ctx: SourceContext) = reflectEffect(ProfileStart(component, deps.toList))
   def profile_stop(component: Exp[String], deps: Seq[Exp[Any]])(implicit ctx: SourceContext) = reflectEffect(ProfileStop(component, deps.toList))
 
-  case class Bind[A:Manifest](x: Exp[A]) extends Def[Unit]
-  def bind[A:Manifest](x: Rep[A]) = reflectEffect(Bind(x))
-
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case GetScopeResult() => getScopeResult
     case Reflect(SetScopeResult(n),u,es) => reflectMirrored(Reflect(SetScopeResult(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))   
@@ -235,12 +222,6 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
 
     case Reflect(ProfileStart(c,deps), u, es) => reflectMirrored(Reflect(ProfileStart(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(ProfileStop(c,deps), u, es) => reflectMirrored(Reflect(ProfileStop(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    
-    case Reflect(Bind(x), u, es) => reflectMirrored(Reflect(Bind(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-
-    // TODO: move to LMS
-    case e@HashMapSize(m) => hashmap_size(f(m))(e.mK,e.mV,pos)
-    case Reflect(e@HashMapSize(m), u, es) => reflectMirrored(Reflect(HashMapSize(f(m))(e.mK,e.mV), mapOver(f,u), f(es)))(mtype(manifest[A]))            
     
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]  
@@ -264,7 +245,6 @@ trait ScalaGenDeliteILOps extends GenericFatCodegen with ScalaGenFat {
     case SetScopeResult(n) => emitValDef(sym, "() // set scope result happened here (all getScopeResults should have been short-circuited)")
     case ProfileStart(c,deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(" + quote(c) + ", false)")
     case ProfileStop(c,deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(" + quote(c) + ", false)")
-    case Bind(x) => emitValDef(sym, "()")
     case _ => super.emitNode(sym, rhs)
   }
 }

@@ -99,26 +99,26 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
   // TODO: get rid of entirely or just use mirrorDef
   def mirrorDD[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Def[A] = (e match {
     case IntTimes(a,b) => 
-      println("warning: encountered effectful primitive def during mirror "+e)
+      printlog("warning: encountered effectful primitive def during mirror "+e)
       IntTimes(f(a),f(b))
     case IntPlus(a,b) => 
-      println("warning: encountered effectful primitive def during mirror "+e)
+      printlog("warning: encountered effectful primitive def during mirror "+e)
       IntPlus(f(a),f(b))
     case IntMinus(a,b) => 
-      println("warning: encountered effectful primitive def during mirror "+e)
+      printlog("warning: encountered effectful primitive def during mirror "+e)
       IntMinus(f(a),f(b))
     case IntMod(a,b) => 
-      println("warning: encountered effectful primitive def during mirror "+e)
+      printlog("warning: encountered effectful primitive def during mirror "+e)
       IntMod(f(a),f(b))
     case IntDivide(a,b) => 
-      println("warning: encountered effectful primitive def during mirror "+e)
+      printlog("warning: encountered effectful primitive def during mirror "+e)
       IntDivide(f(a),f(b)) //xx
     case e@OrderingLT(a,b) =>
-      println("warning: encountered effectful primitive def during mirror "+e)
+      printlog("warning: encountered effectful primitive def during mirror "+e)
       OrderingLT(f(a),f(b))(null.asInstanceOf[Ordering[Any]],manifest[Any]) //HACK
     case e@Reflect(a,u,es) => Reflect(mirrorDD(a,f),mapOver(f,u),f(es))
     case _ => 
-      println("FAIL: "+e)
+      printerr("FAIL: "+e)
       e
   }).asInstanceOf[Def[A]]
 
