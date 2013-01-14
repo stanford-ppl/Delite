@@ -6,6 +6,14 @@ package ppl.dsl.opticvx.model
 import ppl.dsl.opticvx.common._
 import scala.collection.immutable.Seq
 
+object Almap {
+  def diagCat(x: Almap, y: Almap): Almap = {
+    if(x.arity != y.arity) throw new IRValidationException()
+    AlmapHCat(
+      AlmapVCat(x, AlmapZero(x.domain, y.codomain)),
+      AlmapVCat(AlmapZero(y.domain, x.codomain), y))
+  }
+}
 
 sealed trait Almap extends HasArity[Almap] {
   //The domain and codomain sizes of this map

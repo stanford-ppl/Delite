@@ -16,10 +16,13 @@ case class Function(
   // size of the inner variable of this function
   var varSize: IRPoly,
   // objective and constraints for inner problem (objective is return value)
-  val objective: AVector,
-  val affineAlmap: Almap,
+  val argObjective: Seq[AVector],
+  val varObjective: AVector,
+  val affineArgAlmap: Seq[Almap],
+  val affineVarAlmap: Almap,
   val affineOffset: AVector,
-  val conicAlmap: Almap,
+  val conicArgAlmap: Seq[Almap],
+  val conicVarAlmap: Almap,
   val conicOffset: AVector,
   val conicCone: Cone) extends HasArity[Function]
 {
@@ -34,26 +37,81 @@ case class Function(
   }
   // next, verify that all the constraints have the appropriate size
   // this also implicitly verifies that all the arguments have the same arity
-  val totalSize: IRPoly = argSize.foldLeft(varSize)((x,y) => x + y)
-  if(objective.size != totalSize) throw new IRValidationException()
-  if(affineAlmap.domain != totalSize) throw new IRValidationException()
-  if(conicAlmap.domain != totalSize) throw new IRValidationException()
+  if(argObjective.length != argSize.length) throw new IRValidationException()
+  if(affineArgAlmap.length != argSize.length) throw new IRValidationException()
+  if(conicArgAlmap.length != argSize.length) throw new IRValidationException()
+  for(i <- 0 until argSize.length) {
+    if(argObjective(i).size != argSize(i)) throw new IRValidationException()
+    if(affineArgAlmap(i).domain != argSize(i)) throw new IRValidationException()
+    if(conicArgAlmap(i).domain != argSize(i)) throw new IRValidationException() 
+  }
+  if(varObjective.size != varSize) throw new IRValidationException()
+  if(affineVarAlmap.domain != varSize) throw new IRValidationException()
+  if(conicVarAlmap.domain != varSize) throw new IRValidationException()
   // verify that all codomains agree
-  if(affineAlmap.codomain != affineOffset.size) throw new IRValidationException()
-  if(conicAlmap.codomain != conicOffset.size) throw new IRValidationException()
-  if(conicAlmap.codomain != conicCone.size) throw new IRValidationException()
+  if(affineVarAlmap.codomain != affineOffset.size) throw new IRValidationException()
+  if(conicVarAlmap.codomain != conicOffset.size) throw new IRValidationException()
+  if(conicVarAlmap.codomain != conicCone.size) throw new IRValidationException()
+  for(i <- 0 until argSize.length) {
+    if(affineArgAlmap(i).codomain != affineOffset.size) throw new IRValidationException()
+    if(conicArgAlmap(i).codomain != affineOffset.size) throw new IRValidationException()
+  }
 
   def arityOp(op: ArityOp): Function = Function(
     argSize map (x => x.arityOp(op)),
-    vexity,
     sign,
+    tonicity,
+    vexity,
     varSize.arityOp(op),
-    objective.arityOp(op),
-    affineAlmap.arityOp(op),
+    argObjective map (x => x.arityOp(op)),
+    varObjective.arityOp(op),
+    affineArgAlmap map (x => x.arityOp(op)),
+    affineVarAlmap.arityOp(op),
     affineOffset.arityOp(op),
-    conicAlmap.arityOp(op),
+    conicArgAlmap map (x => x.arityOp(op)),
+    conicVarAlmap.arityOp(op),
     conicOffset.arityOp(op),
     conicCone.arityOp(op))
+
+
+  def +(y: Function): Function = {
+    // the two functions to be added must take the same arguments
+    if(argSize != y.argSize) throw new IRValidationException()
+    // form the output function
+    Function(
+      argSize,
+      sign + y.sign,
+      for(i <- 0 until argSize.length) yield tonicity(i) + y.tonicity(i),
+      vexity + y.vexity,
+      varSize + y.varSize,
+      for(i <- 0 until argSize.length) yield argObjective(i) + y.argObjective(i),
+      varObjective ++ y.varObjective,
+      for(i <- 0 until argSize.length) yield AlmapVCat(affineArgAlmap(i), y.affineArgAlmap(i)),
+      Almap.diagCat(affineVarAlmap, y.affineVarAlmap),
+      affineOffset ++ y.affineOffset,
+      for(i <- 0 until argSize.length) yield AlmapVCat(conicArgAlmap(i), y.conicArgAlmap(i)),
+      Almap.diagCat(conicVarAlmap, y.conicVarAlmap),
+      conicOffset ++ y.conicOffset,
+      ConeProduct(conicCone, y.conicCone))
+  }
+
+  def unary_-(): Function = Function(
+    argSize,
+    -sign,
+    tonicity map (x => -x),
+    -vexity,
+    varSize,
+    argObjective map (x => -x),
+    -varObjective,
+    affineArgAlmap,
+    affineVarAlmap,
+    affineOffset,
+    conicArgAlmap,
+    conicVarAlmap,
+    conicOffset,
+    conicCone)
+
+  def -(y: Function): Function = this + (-y)
 }
 
   /*
