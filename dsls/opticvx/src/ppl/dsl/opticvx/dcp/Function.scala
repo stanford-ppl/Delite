@@ -7,10 +7,12 @@ import scala.collection.immutable.Seq
 case class Function(
   // sizes of the input arguments to this function
   val argSize: Seq[IRPoly],
-  // polynomial to determine the vexity of the output of this function
-  val vexity: SignumPoly,
-  // polynomial to determine the sign of the output of this function
+  // polynomial to determine the sign of this function
   val sign: SignumPoly,
+  // polynomial to determine the tonicity of this function
+  val tonicity: Seq[SignumPoly],
+  // polynomial to determine the vexity of this function
+  val vexity: SignumPoly,
   // size of the inner variable of this function
   var varSize: IRPoly,
   // objective and constraints for inner problem (objective is return value)
@@ -24,8 +26,12 @@ case class Function(
   val arity: Int = varSize.arity
   // first, make sure that the signum polynomials have the correct number of inputs
   // two inputs for each argument, one for sign and one for vexity
-  if(vexity.arity != 2*argSize.length) throw new IRValidationException()
-  if(sign.arity != 2*argSize.length) throw new IRValidationException()
+  if(vexity.arity != argSize.length) throw new IRValidationException()
+  if(sign.arity != argSize.length) throw new IRValidationException()
+  if(tonicity.length != argSize.length) throw new IRValidationException()
+  for(t <- tonicity) {
+    if(t.arity != argSize.length) throw new IRValidationException()
+  }
   // next, verify that all the constraints have the appropriate size
   // this also implicitly verifies that all the arguments have the same arity
   val totalSize: IRPoly = argSize.foldLeft(varSize)((x,y) => x + y)
