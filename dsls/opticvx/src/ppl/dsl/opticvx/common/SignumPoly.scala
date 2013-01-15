@@ -95,7 +95,7 @@ sealed trait SignumPoly {
     }
   }
 
-  def evalpoly(s: Seq[SignumPoly]): Signum = {
+  def evalpoly(s: Seq[SignumPoly]): SignumPoly = {
     if(s.length != arity) throw new IRValidationException()
     if(arity == 0) throw new IRValidationException()
     for(i <- 0 until s.length) {

@@ -81,12 +81,14 @@ trait AVector extends HasArity[AVector] {
   def unary_-() = AVectorNeg(this)
   def ++(u: AVector) = AVectorCat(this, u)
   def apply(at: IRPoly, size: IRPoly) = AVectorSlice(this, at, size)
+  def isPure: Boolean
 }
 
 case class AVectorZero(val size: IRPoly) extends AVector {
   val arity: Int = size.arity  
   def arityOp(op: ArityOp): AVector = AVectorZero(size.arityOp(op))
   def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.zero(size)
+  def isPure: Boolean = true
 }
 
 case class AVectorOne(val arity: Int) extends AVector {
@@ -96,6 +98,7 @@ case class AVectorOne(val arity: Int) extends AVector {
     if (e.arity != arity) throw new IRValidationException()
     e.one
   }
+  def isPure: Boolean = true
 }
 
 case class AVectorAdd(val arg1: AVector, val arg2: AVector) extends AVector {
@@ -111,6 +114,8 @@ case class AVectorAdd(val arg1: AVector, val arg2: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorAdd(arg1.arityOp(op), arg2.arityOp(op))
 
   def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.add(arg1.translate, arg2.translate)
+
+  def isPure: Boolean = arg1.isPure && arg2.isPure
 }
 
 case class AVectorNeg(val arg: AVector) extends AVector {
@@ -120,6 +125,8 @@ case class AVectorNeg(val arg: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorNeg(arg.arityOp(op))
 
   def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.neg(arg.translate)
+
+  def isPure: Boolean = arg.isPure
 }
 
 case class AVectorScaleInput(val arg: AVector, val scale: IRPoly) extends AVector {
@@ -131,6 +138,8 @@ case class AVectorScaleInput(val arg: AVector, val scale: IRPoly) extends AVecto
   def arityOp(op: ArityOp): AVector = AVectorScaleInput(arg.arityOp(op), scale.arityOp(op))
 
   def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.scaleinput(arg.translate, scale)
+
+  def isPure: Boolean = false
 }
 
 case class AVectorScaleConstant(val arg: AVector, val scale: Double) extends AVector {
@@ -140,6 +149,8 @@ case class AVectorScaleConstant(val arg: AVector, val scale: Double) extends AVe
   def arityOp(op: ArityOp): AVector = AVectorScaleConstant(arg.arityOp(op), scale)
 
   def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.scaleconstant(arg.translate, scale)
+
+  def isPure: Boolean = arg.isPure
 }
 
 case class AVectorCat(val arg1: AVector, val arg2: AVector) extends AVector {
@@ -149,6 +160,8 @@ case class AVectorCat(val arg1: AVector, val arg2: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorCat(arg1.arityOp(op), arg2.arityOp(op))
 
   def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.cat(arg1.translate, arg2.translate)
+
+  def isPure: Boolean = arg1.isPure && arg2.isPure
 }
 
 case class AVectorCatFor(val len: IRPoly, val arg: AVector) extends AVector {
@@ -160,6 +173,8 @@ case class AVectorCatFor(val len: IRPoly, val arg: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorCatFor(len.arityOp(op), arg.arityOp(op))
 
   def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.catfor(len, arg.translate(e.promote))
+
+  def isPure: Boolean = arg.isPure
 }
 
 case class AVectorSlice(val arg: AVector, val at: IRPoly, val size: IRPoly) extends AVector {
@@ -171,6 +186,8 @@ case class AVectorSlice(val arg: AVector, val at: IRPoly, val size: IRPoly) exte
   def arityOp(op: ArityOp): AVector = AVectorSlice(arg.arityOp(op), at.arityOp(op), size.arityOp(op))
 
   def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.slice(arg.translate, at, size)
+
+  def isPure: Boolean = arg.isPure
 }
 
 case class AVectorAddFor(val len: IRPoly, val arg: AVector) extends AVector {
@@ -182,4 +199,6 @@ case class AVectorAddFor(val len: IRPoly, val arg: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorAddFor(len.arityOp(op), arg.arityOp(op))
 
   def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.addfor(len, arg.translate(e.promote))
+  
+  def isPure: Boolean = arg.isPure
 }

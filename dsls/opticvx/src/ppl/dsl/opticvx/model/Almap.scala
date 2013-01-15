@@ -45,6 +45,9 @@ sealed trait Almap extends HasArity[Almap] {
   //Is this matrix zero?
   def is0: Boolean
 
+  //Does this matrix use no inputs
+  def isPure: Boolean
+
   def +(a: Almap) = {
     if((domain != a.domain)||(codomain != a.codomain)) throw new IRValidationException()
     AlmapSum(this, a)
@@ -89,6 +92,8 @@ case class AlmapIdentity(val domain: IRPoly) extends Almap {
   }
 
   def is0: Boolean = (domain == IRPoly.const(0, arity))
+
+  def isPure: Boolean = true
 }
 
 
@@ -111,6 +116,8 @@ case class AlmapZero(val domain: IRPoly, val codomain: IRPoly) extends Almap {
   }
 
   def is0: Boolean = true
+
+  def isPure: Boolean = true
 }
 
 //The sum of two linear maps
@@ -138,6 +145,8 @@ case class AlmapSum(val arg1: Almap, val arg2: Almap) extends Almap {
   }
 
   def is0: Boolean = arg1.is0 && arg2.is0
+
+  def isPure: Boolean = arg1.isPure && arg2.isPure
 }
 
 //Negation of a linear map
@@ -161,6 +170,8 @@ case class AlmapNeg(val arg: Almap) extends Almap {
   }
 
   def is0: Boolean = arg.is0
+
+  def isPure: Boolean = arg.isPure
 }
 
 //Scale of a linear map by some indexing of the input space
@@ -186,6 +197,8 @@ case class AlmapScaleInput(val arg: Almap, val scale: IRPoly) extends Almap {
   }
 
   def is0: Boolean = arg.is0
+
+  def isPure: Boolean = false
 }
 
 //Scale of a linear map by a constant
@@ -209,6 +222,8 @@ case class AlmapScaleConstant(val arg: Almap, val scale: Double) extends Almap {
   }
 
   def is0: Boolean = arg.is0 || (scale == 0)
+
+  def isPure: Boolean = arg.isPure
 }
 
 
@@ -236,6 +251,8 @@ case class AlmapVCat(val arg1: Almap, val arg2: Almap) extends Almap {
   }
 
   def is0: Boolean = arg1.is0 && arg2.is0
+
+  def isPure: Boolean = arg1.isPure && arg2.isPure
 }
 
 
@@ -262,6 +279,8 @@ case class AlmapVCatFor(val len: IRPoly, val body: Almap) extends Almap {
   }
 
   def is0: Boolean = body.is0
+
+  def isPure: Boolean = body.isPure
 }
 
 // "Puts" the given almap at the target index, all other entries are 0
@@ -290,6 +309,8 @@ case class AlmapVPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
   }
 
   def is0: Boolean = body.is0
+
+  def isPure: Boolean = body.isPure
 }
 
 //The horizontal concatenation of two linear maps
@@ -317,6 +338,8 @@ case class AlmapHCat(val arg1: Almap, val arg2: Almap) extends Almap {
   }
 
   def is0: Boolean = arg1.is0 && arg2.is0
+
+  def isPure: Boolean = arg1.isPure && arg2.isPure
 }
 
 
@@ -349,6 +372,8 @@ case class AlmapHCatFor(val len: IRPoly, val body: Almap) extends Almap {
   }
 
   def is0: Boolean = body.is0
+
+  def isPure: Boolean = body.isPure
 }
 
 // "Puts" the given almap at the target index, all other entries are 0
@@ -379,6 +404,8 @@ case class AlmapHPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
   }
 
   def is0: Boolean = body.is0
+
+  def isPure: Boolean = body.isPure
 }
 
 //The sum of a problem-size-dependent number of linear ops
@@ -402,6 +429,8 @@ case class AlmapSumFor(val len: IRPoly, val body: Almap) extends Almap {
   }
 
   def is0: Boolean = body.is0
+
+  def isPure: Boolean = body.isPure
 }
 
 //Matrix multiply
@@ -428,6 +457,8 @@ case class AlmapProd(val argl: Almap, val argr: Almap) extends Almap {
   }
 
   def is0: Boolean = argl.is0 || argr.is0
+
+  def isPure: Boolean = argl.isPure && argr.isPure
 }
 
 

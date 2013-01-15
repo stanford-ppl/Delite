@@ -4,6 +4,48 @@ import ppl.dsl.opticvx.common._
 import ppl.dsl.opticvx.model._
 import scala.collection.immutable.Seq
 
+object Function {
+  def param(idx: Int, argSize: Seq[IRPoly]): Function = {
+    val irp0: IRPoly = IRPoly.const(0, argSize(0).arity)
+    Function(
+      argSize,
+      SignumPoly.param(idx, argSize.length),
+      for(i <- 0 until argSize.length) yield SignumPoly.const(if (i == idx) Signum.Positive else Signum.Zero, argSize.length),
+      SignumPoly.const(Signum.Zero, argSize.length),
+      irp0,
+      for(i <- 0 until argSize.length) yield if (i == idx) AlmapIdentity(argSize(idx)) else AlmapZero(argSize(i), argSize(idx)),
+      AlmapZero(irp0, argSize(idx)),
+      AVectorZero(argSize(idx)),
+      for(i <- 0 until argSize.length) yield AlmapZero(argSize(i), irp0),
+      AlmapZero(irp0, irp0),
+      AVectorZero(irp0),
+      for(i <- 0 until argSize.length) yield AlmapZero(argSize(i), irp0),
+      AlmapZero(irp0, irp0),
+      AVectorZero(irp0),
+      ConeZero(irp0.arity))
+  }
+
+  def const(c: AVector, argSize: Seq[IRPoly]): Function = {
+    val irp0: IRPoly = IRPoly.const(0, argSize(0).arity)
+    Function(
+      argSize,
+      SignumPoly.const(Signum.All, argSize.length),
+      for(i <- 0 until argSize.length) yield SignumPoly.const(Signum.Zero, argSize.length),
+      SignumPoly.const(Signum.Zero, argSize.length),
+      irp0,
+      for(i <- 0 until argSize.length) yield AlmapZero(argSize(i), c.size),
+      AlmapZero(irp0, c.size),
+      c,
+      for(i <- 0 until argSize.length) yield AlmapZero(argSize(i), irp0),
+      AlmapZero(irp0, irp0),
+      AVectorZero(irp0),
+      for(i <- 0 until argSize.length) yield AlmapZero(argSize(i), irp0),
+      AlmapZero(irp0, irp0),
+      AVectorZero(irp0),
+      ConeZero(irp0.arity))    
+  }
+}
+
 case class Function(
   // sizes of the input arguments to this function
   val argSize: Seq[IRPoly],
@@ -15,10 +57,10 @@ case class Function(
   val vexity: SignumPoly,
   // size of the inner variable of this function
   var varSize: IRPoly,
-  // objective and constraints for inner problem (objective is return value)
-  val objectiveArgAlmap: Seq[Almap],
-  val objectiveVarAlmap: Almap,
-  val objectiveOffset: AVector,
+  // value and constraints for inner problem (objective is return value)
+  val valueArgAlmap: Seq[Almap],
+  val valueVarAlmap: Almap,
+  val valueOffset: AVector,
   val affineArgAlmap: Seq[Almap],
   val affineVarAlmap: Almap,
   val affineOffset: AVector,
@@ -38,24 +80,24 @@ case class Function(
   }
   // next, verify that all the constraints have the appropriate size
   // this also implicitly verifies that all the arguments have the same arity
-  if(objectiveArgAlmap.length != argSize.length) throw new IRValidationException()
+  if(valueArgAlmap.length != argSize.length) throw new IRValidationException()
   if(affineArgAlmap.length != argSize.length) throw new IRValidationException()
   if(conicArgAlmap.length != argSize.length) throw new IRValidationException()
   for(i <- 0 until argSize.length) {
-    if(objectiveArgAlmap(i).domain != argSize(i)) throw new IRValidationException()
+    if(valueArgAlmap(i).domain != argSize(i)) throw new IRValidationException()
     if(affineArgAlmap(i).domain != argSize(i)) throw new IRValidationException()
     if(conicArgAlmap(i).domain != argSize(i)) throw new IRValidationException() 
   }
-  if(objectiveVarAlmap.domain != varSize) throw new IRValidationException()
+  if(valueVarAlmap.domain != varSize) throw new IRValidationException()
   if(affineVarAlmap.domain != varSize) throw new IRValidationException()
   if(conicVarAlmap.domain != varSize) throw new IRValidationException()
   // verify that all codomains agree
-  if(objectiveVarAlmap.codomain != objectiveOffset.size) throw new IRValidationException()
+  if(valueVarAlmap.codomain != valueOffset.size) throw new IRValidationException()
   if(affineVarAlmap.codomain != affineOffset.size) throw new IRValidationException()
   if(conicVarAlmap.codomain != conicOffset.size) throw new IRValidationException()
   if(conicVarAlmap.codomain != conicCone.size) throw new IRValidationException()
   for(i <- 0 until argSize.length) {
-    if(objectiveArgAlmap(i).codomain != objectiveOffset.size)
+    if(valueArgAlmap(i).codomain != valueOffset.size)
     if(affineArgAlmap(i).codomain != affineOffset.size) throw new IRValidationException()
     if(conicArgAlmap(i).codomain != conicOffset.size) throw new IRValidationException()
   }
@@ -66,9 +108,9 @@ case class Function(
     tonicity,
     vexity,
     varSize.arityOp(op),
-    objectiveArgAlmap map (x => x.arityOp(op)),
-    objectiveVarAlmap.arityOp(op),
-    objectiveOffset.arityOp(op),
+    valueArgAlmap map (x => x.arityOp(op)),
+    valueVarAlmap.arityOp(op),
+    valueOffset.arityOp(op),
     affineArgAlmap map (x => x.arityOp(op)),
     affineVarAlmap.arityOp(op),
     affineOffset.arityOp(op),
@@ -77,6 +119,16 @@ case class Function(
     conicOffset.arityOp(op),
     conicCone.arityOp(op))
 
+  def isPure: Boolean = 
+    valueArgAlmap.foldLeft(true)((a,b) => a && b.isPure) &&
+    valueVarAlmap.isPure &&
+    valueOffset.isPure && 
+    affineArgAlmap.foldLeft(true)((a,b) => a && b.isPure) &&
+    affineVarAlmap.isPure &&
+    affineOffset.isPure &&
+    conicArgAlmap.foldLeft(true)((a,b) => a && b.isPure) &&
+    conicVarAlmap.isPure &&
+    conicOffset.isPure
 
   def +(y: Function): Function = {
     // the two functions to be added must take the same arguments
@@ -88,9 +140,9 @@ case class Function(
       for(i <- 0 until argSize.length) yield tonicity(i) + y.tonicity(i),
       vexity + y.vexity,
       varSize + y.varSize,
-      for(i <- 0 until argSize.length) yield objectiveArgAlmap(i) + y.objectiveArgAlmap(i),
-      AlmapHCat(objectiveVarAlmap, y.objectiveVarAlmap),
-      objectiveOffset + y.objectiveOffset,
+      for(i <- 0 until argSize.length) yield valueArgAlmap(i) + y.valueArgAlmap(i),
+      AlmapHCat(valueVarAlmap, y.valueVarAlmap),
+      valueOffset + y.valueOffset,
       for(i <- 0 until argSize.length) yield AlmapVCat(affineArgAlmap(i), y.affineArgAlmap(i)),
       Almap.diagCat(affineVarAlmap, y.affineVarAlmap),
       affineOffset ++ y.affineOffset,
@@ -106,9 +158,9 @@ case class Function(
     tonicity map (x => -x),
     -vexity,
     varSize,
-    objectiveArgAlmap map (x => -x),
-    -objectiveVarAlmap,
-    -objectiveOffset,
+    valueArgAlmap map (x => -x),
+    -valueVarAlmap,
+    -valueOffset,
     affineArgAlmap,
     affineVarAlmap,
     affineOffset,
@@ -126,27 +178,184 @@ case class Function(
       if(ys(i).argSize.length != ys(0).argSize.length) throw new IRValidationException()
     }
     // form the output function
+    val ysnumargs: Int = ys(0).argSize.length
     Function(
-      ys(0).argSize.length,
-      sign.polyeval(ys map (x => x.sign)),
-      for(i <- 0 until ys(0).argSize.length) yield {
-        var tacc: SignumPoly = SignumPoly.const(Signum.Zero, ys(0).argSize.length)
+      //argSize
+      ys(0).argSize,
+      //sign
+      sign.evalpoly(ys map (x => x.sign)),
+      //tonicity
+      for(i <- 0 until ysnumargs) yield {
+        var tacc: SignumPoly = SignumPoly.const(Signum.Zero, ysnumargs)
         for(j <- 0 until argSize.length) {
-          tacc = tacc + tonicity(j).polyeval(ys map (x => x.sign)) * ys(j).tonicity(i)
+          tacc = tacc + tonicity(j).evalpoly(ys map (x => x.sign)) * ys(j).tonicity(i)
         }
         tacc
       },
+      //vexity
       {
-        var vacc: SignumPoly = vexity.polyeval(ys map (x => x.sign))
+        var vacc: SignumPoly = vexity.evalpoly(ys map (x => x.sign))
         for(j <- 0 until argSize.length) {
-          tacc = tacc + tonicity(j).polyeval(ys map (x => x.sign)) * ys(j).vexity
+          vacc = vacc + tonicity(j).evalpoly(ys map (x => x.sign)) * ys(j).vexity
         }
-        tacc
+        vacc
       },
-      ys.foldLeft(varSize)((b,a) => b + a),
-      
+      //varSize
+      ys.foldLeft(varSize)((b,a) => b + a.varSize),
+      //valueArgAlmap
+      for(i <- 0 until ysnumargs) yield {
+        var acc: Almap = valueArgAlmap(0) * ys(0).valueArgAlmap(i)
+        for(j <- 1 until argSize.length) {
+          acc = acc + valueArgAlmap(j) * ys(j).valueArgAlmap(i)
+        }
+        acc
+      },
+      //valueVarAlmap
+      {
+        var acc: Almap = valueVarAlmap
+        for(j <- 0 until argSize.length) {
+          acc = AlmapHCat(acc, valueArgAlmap(j) * ys(j).valueVarAlmap)
+        }
+        acc
+      },
+      //valueOffset
+      {
+        implicit val avlav = AVectorLikeAVector(arity)
+        var acc: AVector = valueOffset
+        for(j <- 0 until argSize.length) {
+          acc = acc + valueArgAlmap(j) * ys(j).valueOffset
+        }
+        acc
+      },
+      //affineArgAlmap
+      for(i <- 0 until ysnumargs) yield {
+        var acc: Almap = affineArgAlmap(0) * ys(0).valueArgAlmap(i)
+        for(j <- 1 until argSize.length) {
+          acc = acc + affineArgAlmap(j) * ys(j).valueArgAlmap(i)
+        }
+        for(j <- 0 until argSize.length) {
+          acc = AlmapVCat(acc, ys(j).affineArgAlmap(i))
+        }
+        acc
+      },
+      //affineVarAlmap
+      {
+        var acc: Almap = affineVarAlmap
+        for(j <- 0 until argSize.length) {
+          acc = Almap.diagCat(acc, ys(j).affineVarAlmap)
+        }
+        acc
+      },
+      //affineOffset
+      {
+        implicit val avlav = AVectorLikeAVector(arity)
+        var acc: AVector = affineOffset
+        for(j <- 0 until argSize.length) {
+          acc = acc + affineArgAlmap(j) * ys(j).affineOffset
+        }
+        for(j <- 0 until argSize.length) {
+          acc = acc ++ ys(j).affineOffset
+        }
+        acc
+      },
+      //conicArgAlmap
+      for(i <- 0 until ysnumargs) yield {
+        var acc: Almap = conicArgAlmap(0) * ys(0).valueArgAlmap(i)
+        for(j <- 1 until argSize.length) {
+          acc = acc + conicArgAlmap(j) * ys(j).valueArgAlmap(i)
+        }
+        for(j <- 0 until argSize.length) {
+          acc = AlmapVCat(acc, ys(j).conicArgAlmap(i))
+        }
+        acc
+      },
+      //conicVarAlmap
+      {
+        var acc: Almap = conicVarAlmap
+        for(j <- 0 until argSize.length) {
+          acc = Almap.diagCat(acc, ys(j).conicVarAlmap)
+        }
+        acc
+      },
+      //conicOffset
+      {
+        implicit val avlav = AVectorLikeAVector(arity)
+        var acc: AVector = conicOffset
+        for(j <- 0 until argSize.length) {
+          acc = acc + conicArgAlmap(j) * ys(j).conicOffset
+        }
+        for(j <- 0 until argSize.length) {
+          acc = acc ++ ys(j).conicOffset
+        }
+        acc
+      },
+      //conicCone
+      {
+        var acc: Cone = conicCone
+        for(j <- 0 until argSize.length) {
+          acc = ConeProduct(acc, ys(j).conicCone)
+        }
+        acc
+      }
     )
   }
+
+  //transforms the function by minimizing over the last argument
+  def minimize_over_lastarg: Function = {
+    if(argSize.length < 1) throw new IRValidationException()
+    val sgnvn = (for(i <- 0 until argSize.length - 1) yield SignumPoly.param(i, argSize.length - 1)) :+ SignumPoly.const(Signum.All, argSize.length - 1)
+    Function(
+      // argSize
+      argSize.dropRight(1),
+      // sign
+      sign.evalpoly(sgnvn),
+      // tonicity (minimizing componentwise destroys tonicity information)
+      for(i <- 0 until argSize.length-1) yield SignumPoly.const(Signum.All, argSize.length - 1), //tonicity(i).evalpoly(sgnvn),
+      // vexity
+      vexity.evalpoly(sgnvn) + SignumPoly.const(Signum.Negative, argSize.length - 1),
+      // varSize
+      varSize + argSize.last,
+      // valueArgAlmap
+      valueArgAlmap.dropRight(1),
+      // valueVarAlmap
+      AlmapHCat(valueVarAlmap, valueArgAlmap.last),
+      // valueOffset
+      valueOffset,
+      // affineArgAlmap
+      affineArgAlmap.dropRight(1),
+      // affineVarAlmap
+      AlmapHCat(affineVarAlmap, affineArgAlmap.last),
+      // affineOffset
+      affineOffset,
+      // conicArgAlmap
+      conicArgAlmap.dropRight(1),
+      // conicVarAlmap
+      AlmapHCat(conicVarAlmap, conicArgAlmap.last),
+      // conicOffset
+      conicOffset,
+      // conicCone
+      conicCone)
+  }
+
+  def maximize_over_lastarg: Function = -((-this).minimize_over_lastarg)
+
+  // change the DCP properties of this function
+  def chdcp(new_sign: SignumPoly, new_tonicity: Seq[SignumPoly], new_vexity: SignumPoly): Function = Function(
+    argSize,
+    new_sign,
+    new_tonicity,
+    new_vexity,
+    varSize,
+    valueArgAlmap,
+    valueVarAlmap,
+    valueOffset,
+    affineArgAlmap,
+    affineVarAlmap,
+    affineOffset,
+    conicArgAlmap,
+    conicVarAlmap,
+    conicOffset,
+    conicCone)
 }
 
   /*
