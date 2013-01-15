@@ -16,8 +16,9 @@ case class Function(
   // size of the inner variable of this function
   var varSize: IRPoly,
   // objective and constraints for inner problem (objective is return value)
-  val argObjective: Seq[AVector],
-  val varObjective: AVector,
+  val objectiveArgAlmap: Seq[Almap],
+  val objectiveVarAlmap: Almap,
+  val objectiveOffset: AVector,
   val affineArgAlmap: Seq[Almap],
   val affineVarAlmap: Almap,
   val affineOffset: AVector,
@@ -37,24 +38,26 @@ case class Function(
   }
   // next, verify that all the constraints have the appropriate size
   // this also implicitly verifies that all the arguments have the same arity
-  if(argObjective.length != argSize.length) throw new IRValidationException()
+  if(objectiveArgAlmap.length != argSize.length) throw new IRValidationException()
   if(affineArgAlmap.length != argSize.length) throw new IRValidationException()
   if(conicArgAlmap.length != argSize.length) throw new IRValidationException()
   for(i <- 0 until argSize.length) {
-    if(argObjective(i).size != argSize(i)) throw new IRValidationException()
+    if(objectiveArgAlmap(i).domain != argSize(i)) throw new IRValidationException()
     if(affineArgAlmap(i).domain != argSize(i)) throw new IRValidationException()
     if(conicArgAlmap(i).domain != argSize(i)) throw new IRValidationException() 
   }
-  if(varObjective.size != varSize) throw new IRValidationException()
+  if(objectiveVarAlmap.domain != varSize) throw new IRValidationException()
   if(affineVarAlmap.domain != varSize) throw new IRValidationException()
   if(conicVarAlmap.domain != varSize) throw new IRValidationException()
   // verify that all codomains agree
+  if(objectiveVarAlmap.codomain != objectiveOffset.size) throw new IRValidationException()
   if(affineVarAlmap.codomain != affineOffset.size) throw new IRValidationException()
   if(conicVarAlmap.codomain != conicOffset.size) throw new IRValidationException()
   if(conicVarAlmap.codomain != conicCone.size) throw new IRValidationException()
   for(i <- 0 until argSize.length) {
+    if(objectiveArgAlmap(i).codomain != objectiveOffset.size)
     if(affineArgAlmap(i).codomain != affineOffset.size) throw new IRValidationException()
-    if(conicArgAlmap(i).codomain != affineOffset.size) throw new IRValidationException()
+    if(conicArgAlmap(i).codomain != conicOffset.size) throw new IRValidationException()
   }
 
   def arityOp(op: ArityOp): Function = Function(
@@ -63,8 +66,9 @@ case class Function(
     tonicity,
     vexity,
     varSize.arityOp(op),
-    argObjective map (x => x.arityOp(op)),
-    varObjective.arityOp(op),
+    objectiveArgAlmap map (x => x.arityOp(op)),
+    objectiveVarAlmap.arityOp(op),
+    objectiveOffset.arityOp(op),
     affineArgAlmap map (x => x.arityOp(op)),
     affineVarAlmap.arityOp(op),
     affineOffset.arityOp(op),
@@ -84,8 +88,9 @@ case class Function(
       for(i <- 0 until argSize.length) yield tonicity(i) + y.tonicity(i),
       vexity + y.vexity,
       varSize + y.varSize,
-      for(i <- 0 until argSize.length) yield argObjective(i) + y.argObjective(i),
-      varObjective ++ y.varObjective,
+      for(i <- 0 until argSize.length) yield objectiveArgAlmap(i) + y.objectiveArgAlmap(i),
+      AlmapHCat(objectiveVarAlmap, y.objectiveVarAlmap),
+      objectiveOffset + y.objectiveOffset,
       for(i <- 0 until argSize.length) yield AlmapVCat(affineArgAlmap(i), y.affineArgAlmap(i)),
       Almap.diagCat(affineVarAlmap, y.affineVarAlmap),
       affineOffset ++ y.affineOffset,
@@ -101,8 +106,9 @@ case class Function(
     tonicity map (x => -x),
     -vexity,
     varSize,
-    argObjective map (x => -x),
-    -varObjective,
+    objectiveArgAlmap map (x => -x),
+    -objectiveVarAlmap,
+    -objectiveOffset,
     affineArgAlmap,
     affineVarAlmap,
     affineOffset,
@@ -112,6 +118,35 @@ case class Function(
     conicCone)
 
   def -(y: Function): Function = this + (-y)
+
+  def compose(ys: Seq[Function]): Function = {
+    // verify that the same number of arguments are given for both functions
+    if(ys.length != argSize.length) throw new IRValidationException()
+    for(i <- 0 until ys.length) {
+      if(ys(i).argSize.length != ys(0).argSize.length) throw new IRValidationException()
+    }
+    // form the output function
+    Function(
+      ys(0).argSize.length,
+      sign.polyeval(ys map (x => x.sign)),
+      for(i <- 0 until ys(0).argSize.length) yield {
+        var tacc: SignumPoly = SignumPoly.const(Signum.Zero, ys(0).argSize.length)
+        for(j <- 0 until argSize.length) {
+          tacc = tacc + tonicity(j).polyeval(ys map (x => x.sign)) * ys(j).tonicity(i)
+        }
+        tacc
+      },
+      {
+        var vacc: SignumPoly = vexity.polyeval(ys map (x => x.sign))
+        for(j <- 0 until argSize.length) {
+          tacc = tacc + tonicity(j).polyeval(ys map (x => x.sign)) * ys(j).vexity
+        }
+        tacc
+      },
+      ys.foldLeft(varSize)((b,a) => b + a),
+      
+    )
+  }
 }
 
   /*

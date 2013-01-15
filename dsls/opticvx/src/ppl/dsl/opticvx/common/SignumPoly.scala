@@ -94,6 +94,18 @@ sealed trait SignumPoly {
       xa.c0.eval(sf) + sl * xa.c1.eval(sf) + sl * sl * xa.c2.eval(sf)
     }
   }
+
+  def evalpoly(s: Seq[SignumPoly]): Signum = {
+    if(s.length != arity) throw new IRValidationException()
+    if(arity == 0) throw new IRValidationException()
+    for(i <- 0 until s.length) {
+      if(s(i).arity != s(0).arity) throw new IRValidationException()
+    }
+    val xa = this.asInstanceOf[SignumPolyN]
+    val sf: Seq[SignumPoly] = s.take(s.length - 1)
+    var sl: SignumPoly = s(s.length - 1)
+    xa.c0.evalpoly(sf) + sl * xa.c1.evalpoly(sf) + sl * sl * xa.c2.evalpoly(sf)
+  }
 }
 
 case class SignumPolyA0(val c0: Signum) extends SignumPoly {
