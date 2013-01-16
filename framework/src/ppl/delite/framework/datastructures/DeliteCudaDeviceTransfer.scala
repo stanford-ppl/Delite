@@ -15,7 +15,15 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
   
   override def emitSendSlave(tp: Manifest[Any]): (String,String) = {
     if (tp.erasure == classOf[Variable[AnyVal]]) {
-      throw new GenerationFailedException("CudaDeviceTransfer: Ref types are not supported yet.")
+      val out = new StringBuilder
+      val typeArg = tp.typeArguments.head
+      if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
+      val signature = "Ref< %s > *sendCuda_Ref__%s__(HostRef< %s > *%s)".format(remap(typeArg),mangledName(remap(tp)),remap(typeArg),"sym")
+      out.append(signature + " {\n")
+      out.append("\tRef< %s > *%s_dev = new Ref< %s >(%s->get());\n".format(remap(typeArg),"sym",remap(typeArg),"sym"))
+      out.append("\treturn %s_dev;\n".format("sym"))
+      out.append("}\n")
+      (signature+";\n", out.toString)
     }
     else if(encounteredStructs.contains(structName(tp))) {
       val out = new StringBuilder
@@ -57,7 +65,14 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
 
   override def emitRecvSlave(tp: Manifest[Any]): (String,String) = {
     if (tp.erasure == classOf[Variable[AnyVal]]) {
-      throw new GenerationFailedException("CudaDeviceTransfer: Ref types are not supported yet.")
+      val out = new StringBuilder
+      val typeArg = tp.typeArguments.head
+      if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
+      val signature = "HostRef< %s > *recvCuda_Ref__%s__(Ref< %s > *%s_dev)".format(remap(typeArg),mangledName(remap(tp)),remap(typeArg),"sym")
+      out.append(signature + " {\n")
+      out.append("assert(false);\n")
+      out.append("}\n")
+      (signature+";\n", out.toString)
     }
     else if(encounteredStructs.contains(structName(tp))) {
       val out = new StringBuilder
@@ -106,7 +121,14 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
 
   override def emitSendUpdateSlave(tp: Manifest[Any]): (String,String) = {
     if (tp.erasure == classOf[Variable[AnyVal]]) {
-      throw new GenerationFailedException("CudaDeviceTransfer: Ref types are not supported yet.")
+      val out = new StringBuilder
+      val typeArg = tp.typeArguments.head
+      if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
+      val signature = "void sendUpdateCuda_Ref__%s__(Ref< %s > *%s_dev, HostRef< %s > *%s)".format(mangledName(remap(tp)),remap(typeArg),"sym",remap(typeArg),"sym")
+      out.append(signature + " {\n")
+      out.append("assert(false);\n")
+      out.append("}\n")
+      (signature+";\n", out.toString)
     }
     else if(encounteredStructs.contains(structName(tp))) {
       val out = new StringBuilder
@@ -136,13 +158,28 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
 
   override def emitRecvUpdateSlave(tp: Manifest[Any]): (String,String) = {
     if (tp.erasure == classOf[Variable[AnyVal]]) {
-      throw new GenerationFailedException("CudaDeviceTransfer: Ref types are not supported yet.")
+      val out = new StringBuilder
+      val typeArg = tp.typeArguments.head
+      if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
+      val signature = "void recvUpdateCuda_Ref__%s__(Ref< %s > *%s_dev, HostRef< %s > *%s)".format(mangledName(remap(tp)),remap(typeArg),"sym",remap(typeArg),"sym")
+      out.append(signature + " {\n")
+      out.append("assert(false);\n")
+      out.append("}\n")
+      (signature+";\n", out.toString)
     }
     else if(encounteredStructs.contains(structName(tp))) {
       val out = new StringBuilder
       val signature = "void recvUpdateCuda_%s(%s *%s_dev, Host%s *%s)".format(mangledName(remap(tp)),remap(tp),"sym",remap(tp),"sym")
       out.append(signature + " {\n")
-      out.append("assert(false);\n")
+      for(elem <- encounteredStructs(structName(tp))) {
+        val elemtp = baseType(elem._2)
+        if(isPrimitiveType(elemtp)) {
+          out.append("\tsym->%s = sym_dev->%s;\n".format(elem._1,elem._1))
+        }
+        else { // Always assume array type?
+          out.append("\trecvUpdateCuda_%s(&(sym_dev->%s), &(sym->%s));\n".format(mangledName(remap(elemtp)),elem._1,elem._1))
+        }
+      }
       out.append("}\n")
       (signature+";\n", out.toString)
     }

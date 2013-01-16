@@ -2316,6 +2316,18 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
 trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
   import IR._
 
+  def emitVarDef(name: String, tpe: String, init: String) {
+    tpe match {
+      case "void" => //
+      case _ =>
+        stream.println(tpe + " " + name + " = " + init + ";")
+    }
+  }
+
+  def emitValDef(name: String, tpe: String, init: String) {
+    emitVarDef(name, tpe, init)
+  }
+
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef) = rhs match {
     case op: AbstractFatLoop =>
       if (deliteKernel) emitKernelAbstractFatLoop(op, symList)
@@ -2393,8 +2405,13 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     (symList zip op.body) foreach {
       //TODO: Check if primitive type operations
       case (sym, elem: DeliteCollectElem[_,_,_]) =>
+        boundMap.put(elem.sV,op.size)
+        emitVarDef(quote(elem.sV), remap(elem.sV.tp), quote(op.size))
         emitBlock(elem.allocN) //This will generate alloc failure exception
-        throw new GenerationFailedException("GPUGen: Inlined DeliteCollectElem is not supported yet due to memory allocations.\n" + quotePos(sym))
+        emitValDef(quote(sym) + "_data", remap(getBlockResult(elem.allocN).tp), quote(getBlockResult(elem.allocN)))
+        emitVarDef(quote(sym) + "_size", remap(Manifest.Int), "0")
+        //throw new GenerationFailedException("GPUGen: Inlined DeliteCollectElem is not supported yet due to memory allocations.\n" + quotePos(sym))
+      case (sym, elem: DeliteForeachElem[_]) =>
       case (sym, elem: DeliteReduceElem[_]) =>
         emitBlock(elem.zero)
         stream.println("%s %s = %s;".format(remap(elem.zero.tp),quote(sym),quote(getBlockResult(elem.zero))))
@@ -2410,6 +2427,11 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     // body
     emitMultiLoopFuncs(op, symList)
     (symList zip op.body) foreach {
+      case (sym, elem: DeliteCollectElem[_,_,_]) =>
+        emitValDef(elem.eV, quote(getBlockResult(elem.func)))
+        emitValDef(elem.allocVal, quote(sym)+"_data")
+        emitBlock(elem.update)
+      case (sym, elem: DeliteForeachElem[_]) =>
       case (sym, elem: DeliteReduceElem[_]) =>
         stream.println("//start emitReduceElem")
         emitReduceElem(op, sym, elem)
@@ -2423,12 +2445,28 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     }
     stream.println(quote(op.v) + " += 1;")
     stream.println(/*{*/"} // end fat loop " + symList.map(quote).mkString(","))
+
+    (symList zip op.body) foreach {
+      case (sym, elem: DeliteCollectElem[_,_,_]) =>
+        emitValDef(elem.allocVal, quote(sym) + "_data")
+        emitBlock(elem.finalizer)
+        emitValDef(sym, quote(getBlockResult(elem.finalizer)))
+      case (sym, elem: DeliteForeachElem[_]) =>
+      case (sym, elem: DeliteReduceElem[_]) =>
+      case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+    }
   }
 
   def emitKernelAbstractFatLoop(op: AbstractFatLoop, symList: List[Sym[Any]]) {
+    outerLoopSize = op.size
     tabWidth += 1
     def funcNameSuffix(sym: Sym[Any]) = {
       symList.map(quote).mkString("")+"_"+quote(sym)
+    }
+
+    val sizeSym = op.size match {
+      case s@Sym(id) => List(s)
+      case _ => Nil
     }
 
     (symList zip op.body) foreach {
@@ -2440,14 +2478,14 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           if (elem.par == ParBuffer) throw new GenerationFailedException("GPU DeliteOps: ParBuffer is not implemented yet!")
 
           if(elem.cond.nonEmpty) {
-            emitAllocFunc(sym,List(elem.allocN,elem.finalizer),Nil,elem.allocVal,null)
-            lf.loopFuncInputs = emitMultiLoopFunc(elem.func, "collect_"+funcNameSuffix(sym), List(op.v), stream)
+            emitAllocFunc(List((elem.allocVal,elem.allocN),(sym,elem.finalizer)),"allocFunc_"+quote(sym),List(elem.sV),Map())
+            lf.loopFuncInputs = emitMultiLoopFunc(elem.func, "collect_"+funcNameSuffix(sym), List(op.v) ++ sizeSym, stream)
             emitMultiLoopCond(sym, elem.cond, op.v, "cond_"+funcNameSuffix(sym), stream)
           }
           else {
-            emitAllocFunc(sym,List(elem.allocN),List((elem.sV,op.size)),elem.allocVal,op.size)
-            lf.loopFuncInputs = emitMultiLoopFunc(elem.func, "collect_"+funcNameSuffix(sym), List(op.v), stream)
-            emitMultiLoopFunc(elem.update, "update_"+funcNameSuffix(sym), List(op.v,elem.eV,elem.allocVal), stream)
+            emitAllocFunc(List((elem.allocVal,elem.allocN),(sym,elem.finalizer)),"allocFunc_"+quote(sym),Nil,Map(elem.sV->op.size))
+            lf.loopFuncInputs = emitMultiLoopFunc(elem.func, "collect_"+funcNameSuffix(sym), List(op.v) ++ sizeSym, stream)
+            emitMultiLoopFunc(elem.update, "update_"+funcNameSuffix(sym), List(op.v,elem.eV,elem.allocVal) ++ sizeSym, stream)
           }
           lf.loopFuncOutputType = remap(getBlockResult(elem.func).tp)
 
@@ -2457,7 +2495,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
           metaData.loopFuncs.put(sym,lf)
           lf.tpe = "FOREACH"
-          lf.loopFuncInputs = emitMultiLoopFunc(elem.func, "foreach_"+funcNameSuffix(sym), List(op.v), stream)
+          lf.loopFuncInputs = emitMultiLoopFunc(elem.func, "foreach_"+funcNameSuffix(sym), List(op.v) ++ sizeSym, stream)
           lf.loopFuncOutputType = remap(getBlockResult(elem.func).tp)
 
         case (sym, elem: DeliteReduceElem[_]) =>
@@ -2465,13 +2503,13 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           metaData.loopFuncs.put(sym,lf)
           lf.tpe = "REDUCE"
 
-          lf.loopFuncInputs = emitMultiLoopFunc(elem.func, "collect_"+funcNameSuffix(sym), List(op.v), stream)
-          lf.loopReduceInputs = emitMultiLoopFunc(elem.rFunc, "reduce_"+funcNameSuffix(sym), List(elem.rV._1, elem.rV._2, op.v), stream)
-          lf.loopZeroInputs = emitMultiLoopFunc(elem.zero,"zero_"+funcNameSuffix(sym), Nil, stream)
+          lf.loopFuncInputs = emitMultiLoopFunc(elem.func, "collect_"+funcNameSuffix(sym), List(op.v) ++ sizeSym, stream)
+          lf.loopReduceInputs = emitMultiLoopFunc(elem.rFunc, "reduce_"+funcNameSuffix(sym), List(elem.rV._1, elem.rV._2, op.v) ++ sizeSym, stream)
+          lf.loopZeroInputs = emitMultiLoopFunc(elem.zero,"zero_"+funcNameSuffix(sym), sizeSym, stream)
           if(!isPrimitiveType(sym.tp)) {
             printDebug(sym, "DeliteReduceElem with non-primitive types is not supported.")
           } else {
-            emitAllocFuncPrimitive(sym)
+            emitAllocFuncPrimitive(sym, "allocFunc_"+quote(sym))
           }
           lf.loopFuncOutputType = remap(getBlockResult(elem.func).tp)
           if(elem.cond.nonEmpty) emitMultiLoopCond(sym, elem.cond, op.v, "cond_"+funcNameSuffix(sym), stream)
@@ -2481,18 +2519,18 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           metaData.loopFuncs.put(sym,lf)
           lf.tpe = "REDUCE_TUPLE"
 
-          lf.loopFuncInputs = emitMultiLoopFunc(elem.func._1, "collect_1_"+funcNameSuffix(sym), List(op.v), stream)
-          lf.loopFuncInputs_2 = emitMultiLoopFunc(elem.func._2, "collect_2_"+funcNameSuffix(sym), List(op.v), stream)
-          lf.loopReduceInputs = emitMultiLoopFunc(elem.rFuncSeq._1, "reduce_seq_1_"+funcNameSuffix(sym), List(elem.rVSeq._1._1, elem.rVSeq._1._2, elem.rVSeq._2._1, elem.rVSeq._2._2, op.v), stream)
-          lf.loopReduceInputs_2 = emitMultiLoopFunc(elem.rFuncSeq._2, "reduce_seq_2_"+funcNameSuffix(sym), List(elem.rVSeq._1._1, elem.rVSeq._1._2, elem.rVSeq._2._1, elem.rVSeq._2._2, op.v), stream)
-          lf.loopReduceParInputs = emitMultiLoopFunc(elem.rFuncPar._1, "reduce_par_1_"+funcNameSuffix(sym), List(elem.rVPar._1._1, elem.rVPar._1._2, elem.rVPar._2._1, elem.rVPar._2._2, op.v), stream)
-          lf.loopReduceParInputs_2 = emitMultiLoopFunc(elem.rFuncPar._2, "reduce_par_2_"+funcNameSuffix(sym), List(elem.rVPar._1._1, elem.rVPar._1._2, elem.rVPar._2._1, elem.rVPar._2._2, op.v), stream)
-          lf.loopZeroInputs = emitMultiLoopFunc(elem.zero._1,"zero_1_"+funcNameSuffix(sym), Nil, stream)
-          lf.loopZeroInputs_2 = emitMultiLoopFunc(elem.zero._2,"zero_2_"+funcNameSuffix(sym), Nil, stream)
+          lf.loopFuncInputs = emitMultiLoopFunc(elem.func._1, "collect_1_"+funcNameSuffix(sym), List(op.v) ++ sizeSym, stream)
+          lf.loopFuncInputs_2 = emitMultiLoopFunc(elem.func._2, "collect_2_"+funcNameSuffix(sym), List(op.v) ++ sizeSym, stream)
+          lf.loopReduceInputs = emitMultiLoopFunc(elem.rFuncSeq._1, "reduce_seq_1_"+funcNameSuffix(sym), List(elem.rVSeq._1._1, elem.rVSeq._1._2, elem.rVSeq._2._1, elem.rVSeq._2._2, op.v) ++ sizeSym, stream)
+          lf.loopReduceInputs_2 = emitMultiLoopFunc(elem.rFuncSeq._2, "reduce_seq_2_"+funcNameSuffix(sym), List(elem.rVSeq._1._1, elem.rVSeq._1._2, elem.rVSeq._2._1, elem.rVSeq._2._2, op.v) ++ sizeSym, stream)
+          lf.loopReduceParInputs = emitMultiLoopFunc(elem.rFuncPar._1, "reduce_par_1_"+funcNameSuffix(sym), List(elem.rVPar._1._1, elem.rVPar._1._2, elem.rVPar._2._1, elem.rVPar._2._2, op.v) ++ sizeSym, stream)
+          lf.loopReduceParInputs_2 = emitMultiLoopFunc(elem.rFuncPar._2, "reduce_par_2_"+funcNameSuffix(sym), List(elem.rVPar._1._1, elem.rVPar._1._2, elem.rVPar._2._1, elem.rVPar._2._2, op.v) ++ sizeSym, stream)
+          lf.loopZeroInputs = emitMultiLoopFunc(elem.zero._1,"zero_1_"+funcNameSuffix(sym), sizeSym, stream)
+          lf.loopZeroInputs_2 = emitMultiLoopFunc(elem.zero._2,"zero_2_"+funcNameSuffix(sym), sizeSym, stream)
           if(!isPrimitiveType(sym.tp)) {
             printDebug(sym, "DeliteReduceTupleElem with non-primitive types is not supported.")
           } else {
-            emitAllocFuncPrimitive(sym)
+            emitAllocFuncPrimitive(sym, "allocFunc_"+quote(sym))
           }
           lf.loopFuncOutputType = remap(getBlockResult(elem.func._1).tp)
           lf.loopFuncOutputType_2 = remap(getBlockResult(elem.func._2).tp)

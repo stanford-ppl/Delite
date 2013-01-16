@@ -116,6 +116,7 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
 	lastAlloc->push_back(*ptr);
 } */
 
+size_t cudaHeapSize = 1024*1204;
 char* bufferStart = 0;
 size_t bufferSize = 5368709120/4;
 char* bufferEnd;

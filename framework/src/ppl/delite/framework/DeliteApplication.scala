@@ -15,8 +15,9 @@ import codegen.scala.TargetScala
 import codegen.Target
 import ops.DeliteOpsExp
 import transform.DeliteTransform
+import datastructures.DeliteStructsExp
 
-trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransform {  
+trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransform with DeliteStructsExp {  
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
 
   /*

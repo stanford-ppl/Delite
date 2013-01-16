@@ -499,6 +499,13 @@ object DeliteTaskGraph {
       //}
     }
 
+    for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) {
+      val tempMap = temp.asInstanceOf[Map[String,Any]]
+      val sym = tempMap.keys.head
+      val value = tempMap.values.head.asInstanceOf[List[String]]
+      val data = metadata.newTemp(sym,value(0),value(1))
+    }
+
     //output allocation
     for (out <- getFieldList(metadataMap, "gpuOutputs").reverse) {
       val outputMap = out.asInstanceOf[Map[Any,Any]]

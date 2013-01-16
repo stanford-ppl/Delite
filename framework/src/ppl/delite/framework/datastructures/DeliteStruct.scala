@@ -102,15 +102,22 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    //TODO: generalize primitive struct packing
     case Struct(tag, elems) =>
       registerStruct(structName(sym.tp), elems)
-      //emitValDef(sym, "new " + structName(sym.tp) + "(" + elems.map{ e => 
-      stream.println(structName(sym.tp) + " *" + quote(sym) + "_ptr = new " + structName(sym.tp) + "(" + elems.map{ e => 
-        if (isVarType(e._2.tp) && deliteInputs.contains(e._2)) quote(e._2) + "->get()"
-        else quote(e._2)
-      }.mkString(",") + ");")
-      stream.println(structName(sym.tp) + " " + quote(sym) + " = *" + quote(sym) + "_ptr;")
+      // Within kernel, place on stack
+      if(isNestedNode) {
+        stream.println(structName(sym.tp) + " " + quote(sym) + " = " + structName(sym.tp) + "(" + elems.map{ e => 
+          if (isVarType(e._2.tp) && deliteInputs.contains(e._2)) quote(e._2) + ".get()"
+          else quote(e._2)
+        }.mkString(",") + ");")
+      }
+      else {
+        stream.println(structName(sym.tp) + " *" + quote(sym) + "_ptr = new " + structName(sym.tp) + "(" + elems.map{ e => 
+          if (isVarType(e._2.tp) && deliteInputs.contains(e._2)) quote(e._2) + "->get()"
+          else quote(e._2)
+        }.mkString(",") + ");")
+        stream.println(structName(sym.tp) + " " + quote(sym) + " = *" + quote(sym) + "_ptr;")
+      }
       printlog("WARNING: emitting " + structName(sym.tp) + " struct " + quote(sym))    
     case FieldApply(struct, index) =>
       emitValDef(sym, quote(struct) + "." + index)
@@ -134,18 +141,26 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
   private def baseType[T](m: Manifest[T]) = if (isVarType(m)) mtype(m.typeArguments(0)) else m
   
   override def emitDataStructures(path: String) {
-    val stream = new PrintWriter(path + "DeliteStructs.h")
-    stream.println("#ifndef __DELITESTRUCTS_H__")
-    stream.println("#define __DELITESTRUCTS_H__")
-    stream.println("#include \"DeliteArray.h\"")
-    stream.println("#include \"HostDeliteArray.h\"")
+    val structStream = new PrintWriter(path + "DeliteStructs.h")
+    structStream.println("#ifndef __DELITESTRUCTS_H__")
+    structStream.println("#define __DELITESTRUCTS_H__")
+    structStream.println("#include \"DeliteArray.h\"")
+    structStream.println("#include \"HostDeliteArray.h\"")
+    //println("Cuda Gen is generating " + structs.toString)
     for ((name, elems) <- encounteredStructs) {
-      stream.println("")
+      structStream.println("#include \"" + name + ".h\"")
+      val stream = new PrintWriter(path + name + ".h")
+      stream.println("#ifndef __" + name + "__")
+      stream.println("#define __" + name + "__")
       elems foreach { e => dsTypesList.add(baseType(e._2).asInstanceOf[Manifest[Any]]) }
+      println("current DSTYpes list is " + dsTypesList.toString)
+      elems foreach { e => if (encounteredStructs.contains(remap(e._2))) stream.println("#include \"" + remap(e._2) + ".h\"") }
       emitStructDeclaration(name, elems)(stream)
+      stream.println("#endif")
+      stream.close()
     }
-    stream.println("#endif")
-    stream.close()
+    structStream.println("#endif")
+    structStream.close()
     super.emitDataStructures(path)
   }
 

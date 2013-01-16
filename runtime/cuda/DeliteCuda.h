@@ -13,6 +13,8 @@
 
 using namespace std;
 
+extern size_t cudaHeapSize;
+
 // Second element in pair<void*,bool> indicates that void* points to GPU device memory,
 // so should not call free() on it.
 struct FreeItem {
@@ -24,6 +26,7 @@ extern cudaStream_t h2dStream;
 extern cudaStream_t d2hStream;
 extern cudaStream_t kernelStream;
 extern char *tempCudaMem;
+extern size_t tempCudaMemSize;
 
 extern list<void*>* lastAlloc;
 extern queue<FreeItem>* freeList;

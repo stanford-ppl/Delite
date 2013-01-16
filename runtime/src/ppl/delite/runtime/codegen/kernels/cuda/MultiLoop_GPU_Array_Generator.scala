@@ -2,7 +2,7 @@ package ppl.delite.runtime.codegen.kernels.cuda
 
 import tools.nsc.io._
 import ppl.delite.runtime.graph.ops.{OP_Executable, DeliteOP, OP_MultiLoop}
-import ppl.delite.runtime.graph.targets.{OPData, Targets}
+import ppl.delite.runtime.graph.targets.{OPData, Targets, TempAlloc}
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.codegen.sync.JNIFuncs
 import ppl.delite.runtime.codegen.{CppCompile, CppExecutableGenerator, CudaExecutableGenerator, CudaCompile}
@@ -57,6 +57,10 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
     //op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.hasCond)
   }
 
+  private def tempAllocs(op: OP_MultiLoop): List[TempAlloc] = {
+    op.getGPUMetadata(Targets.Cuda).temps
+  }
+
   private def needDeref(op:OP_MultiLoop, in: DeliteOP, sym:String): Boolean = {
     //println("in: " + in.id + "," + in.scheduledResource)
     //println("op: " + op.id + "," + op.scheduledResource)
@@ -109,6 +113,7 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
   }
 
   private def writeFileHeader(out: StringBuilder, op: OP_MultiLoop) {
+    out.append("#include <stdlib.h>\n")
     out.append("#include <cuda.h>\n")
     out.append("#include <assert.h>\n")
     out.append("#include <thrust/scan.h>\n")
@@ -172,7 +177,7 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
     def dimSize(size: String) = if(id=="HashReduce1" || id=="HashReduce2") "1 +((" + size + "-1)/(" + blockSize + "/MAX_GROUP))"
                                 else if(id=="Reduce") "1 +((" + size + "-1)/" + blockSize + "/2)"
                                 else "1 +((" + size + "-1)/" + blockSize + ")"
-    def blockSize = if(id=="HashReduce1" || id=="HashReduce2") "512" else if(needsReduction(op)||needsReductionTuple(op)) "256" else "1024"
+    def blockSize = if(id=="HashReduce1" || id=="HashReduce2") "512" else if(needsReduction(op)||needsReductionTuple(op)) "256" else "512"
     def deref(op: DeliteOP, tp: String) = if (isPrimitiveType(op.outputType(tp))) "" else "*"
     def cudaLaunch(dimConfig: String): String = {
       val str = new StringBuilder
@@ -198,7 +203,8 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
         out.append("if(" + dimSize(op.size) +" > 65536) { printf(\"Kernel Launch Failure: Grid size %d for GPU is too large even with maximum blockSize " + blockSize + "!\\n\"," + dimSize(op.size) + "); assert(false); }\n")
         if (needsReduction(op)) out.append(cudaLaunch("64"))
         else out.append(cudaLaunch(dimSize(op.size)))
-        val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).map(o => "**" + o._2) ++ conditionList(op).map(o => "bitmap_" + o._2 + ", scanmap_" + o._2) ++ (reductionList(op)++hashReductionList(op)).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => "temp_1_" + o._2 + ", temp_1_" + o._2 + "_2, temp_2_" + o._2 + ", temp_2_" + o._2 + "_2") ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
+        //val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).map(o => "**" + o._2) ++ conditionList(op).map(o => "bitmap_" + o._2 + ", scanmap_" + o._2) ++ (reductionList(op)++hashReductionList(op)).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => "temp_1_" + o._2 + ", temp_1_" + o._2 + "_2, temp_2_" + o._2 + ", temp_2_" + o._2 + "_2") ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else "")) ++ tempAllocs(op).map(t => t.sym) ++ List("tempCudaMem","tempCudaMemSize/"+op.size)
+        val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).map(o => "**" + o._2) ++ conditionList(op).map(o => "bitmap_" + o._2 + ", scanmap_" + o._2) ++ (reductionList(op)++hashReductionList(op)).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => "temp_1_" + o._2 + ", temp_1_" + o._2 + "_2, temp_2_" + o._2 + ", temp_2_" + o._2 + "_2") ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else "")) ++ tempAllocs(op).map(t => t.sym) ++ List("tempCudaMemSize, tempCudaMem")
         out.append(args.mkString("(",",",");\n"))
       case "Reduce" =>
         out.append("int num_blocks_" + id + " = 64;\n")
@@ -261,6 +267,10 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
         if((id=="Reduce") || (id=="ReduceTuple") || (id=="HashReduce2")) {
           out.append(", int size")
         }
+        if(tempAllocs(op).size > 0) out.append(",")
+        out.append(tempAllocs(op).map(t => t.tp + " *" + t.sym).mkString(","))
+        out.append(", size_t tempMemSize, char *tempMemPtr")
+        //if(id=="MapReduce") out.append(",char *tempCudaMem,size_t tempCudaMemSize")
       case _ => error(id + " is not a known kernel type")
     }
 
@@ -322,15 +332,20 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
         case "COLLECT" =>
           if (odata.hasCond) out.append("if (idxX<" + op.size + " && bitmap_" + osym + "[idxX]==1) {\n")
           else out.append("if (idxX < " + op.size + ") {\n")
-          out.append(odata.loopFuncOutputType + " collect_" + osym + " = dev_collect_" + funcNameSuffix(op,osym) + "(" + (odata.loopFuncInputs:+"idxX").mkString(",") + ");\n")
+          //out.append(odata.loopFuncOutputType + " collect_" + osym + " = dev_collect_" + funcNameSuffix(op,osym) + "(" + ((odata.loopFuncInputs:+"idxX")++tempAllocs(op).map(_.sym)++List("tempCudaMem,tempCudaMemSize")).mkString(",") + ");\n")
+          out.append(odata.loopFuncOutputType + " collect_" + osym + " = dev_collect_" + funcNameSuffix(op,osym) + "(" + ((odata.loopFuncInputs:+"idxX":+op.size)++tempAllocs(op).map(_.sym)++List("tempMemSize","tempMemPtr")).mkString(",") + ");\n")
           //TODO: Fix this
           //if(odata.hasCond) out.append(osym + ".dcUpdate(scanmap_" + osym + "[idxX], collect_" + osym + ");\n")
           //else out.append(osym + ".dcUpdate(idxX, collect_" + osym + ");\n")
-          out.append("dev_update_" +funcNameSuffix(op,osym) + "(idxX, collect_"+osym+","+osym+");\n")
+          if(tempAllocs(op).size > 0) 
+            out.append("dev_update_" +funcNameSuffix(op,osym) + "(idxX, collect_"+osym+","+osym+","+op.size+"," + tempAllocs(op).map(_.sym).mkString(",") + ");\n")
+          else
+            out.append("dev_update_" +funcNameSuffix(op,osym) + "(idxX, collect_"+osym+","+osym+","+op.size+");\n")
           out.append("}\n")
         case "FOREACH" =>
           out.append("if (idxX < " + op.size + ") {\n")
-          out.append("dev_foreach_" + funcNameSuffix(op,osym) + "(" + odata.loopFuncInputs.mkString("",",",",") + "idxX);\n")
+          //out.append("dev_foreach_" + funcNameSuffix(op,osym) + "(" + odata.loopFuncInputs.mkString("",",",",") + "idxX);\n")
+          out.append("dev_foreach_" + funcNameSuffix(op,osym) + "(" + ((odata.loopFuncInputs:+"idxX":+op.size)++tempAllocs(op).map(_.sym)++List("tempMemSize","tempMemPtr")).mkString(",") + ");\n")
           out.append("}\n")
         case "REDUCE_TUPLE" =>
           if (odata.hasCond) {
@@ -593,9 +608,17 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
 
   // Allocate & Register temporary memory for filter and reduction operations
   private def makeTemps(out: StringBuilder, op: OP_MultiLoop) {
+    allocateTempAllocs(out, op)
     allocateMaps(out, op)
     allocateTemps(out, op)
     //addOpTemps(op)
+  }
+
+  private def allocateTempAllocs(out: StringBuilder, op: OP_MultiLoop) {
+    for(temp <- tempAllocs(op)) {
+      out.append(temp.tp + " *" + temp.sym + ";\n")
+      out.append("DeliteCudaMalloc((void**)&" + temp.sym + ", sizeof(" + temp.tp + ")*" + op.size + "*" + temp.size + ");\n")
+    }
   }
 
   // Allocate bitmap and scanmap for filter operations
@@ -614,26 +637,27 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
     out.append("char *tempPtr = tempCudaMem;\n")
     for ((odata,osym) <- reductionList(op)) {
       out.append(odata.loopFuncOutputType + " *temp_" + osym + " = (" + odata.loopFuncOutputType + "*)tempPtr;\n")
-      out.append("tempPtr += " + op.size + "*sizeof(" + odata.loopFuncOutputType + ");\n")
+      out.append("tempPtr += max(" + op.size + ",256)*sizeof(" + odata.loopFuncOutputType + ");\n")
       //out.append("DeliteCudaMalloc((void**)&temp_" + osym + ", " + op.size + "*sizeof(" + odata.loopFuncOutputType + "));\n")
       out.append(odata.loopFuncOutputType + " *temp_" + osym + "_2 = (" + odata.loopFuncOutputType + "*) tempPtr;\n")
-      out.append("tempPtr += " + op.size + "*sizeof(" + odata.loopFuncOutputType + ");\n")
+      out.append("tempPtr += max(" + op.size + ",256)*sizeof(" + odata.loopFuncOutputType + ");\n")
       //out.append("DeliteCudaMalloc((void**)&temp_" + osym + "_2, " + op.size + "*sizeof(" + odata.loopFuncOutputType + "));\n")
     }
     for ((odata,osym) <- reductionTupleList(op)) {
       out.append(odata.loopFuncOutputType + " *temp_1_" + osym + " = (" + odata.loopFuncOutputType + "*)tempPtr;\n")
-      out.append("tempPtr += " + op.size + "*sizeof(" + odata.loopFuncOutputType + ");\n")
+      out.append("tempPtr += max(" + op.size + ",256)*sizeof(" + odata.loopFuncOutputType + ");\n")
       //out.append("DeliteCudaMalloc((void**)&temp_1_" + osym + ", " + op.size + "*sizeof(" + odata.loopFuncOutputType + "));\n")
       out.append(odata.loopFuncOutputType + " *temp_1_" + osym + "_2 = (" + odata.loopFuncOutputType + "*)tempPtr;\n")
-      out.append("tempPtr += " + op.size + "*sizeof(" + odata.loopFuncOutputType + ");\n")
+      out.append("tempPtr += max(" + op.size + ",256)*sizeof(" + odata.loopFuncOutputType + ");\n")
       //out.append("DeliteCudaMalloc((void**)&temp_1_" + osym + "_2, " + op.size + "*sizeof(" + odata.loopFuncOutputType + "));\n")
       out.append(odata.loopFuncOutputType_2 + " *temp_2_" + osym + " = (" + odata.loopFuncOutputType_2 + "*)tempPtr;\n")
-      out.append("tempPtr += " + op.size + "*sizeof(" + odata.loopFuncOutputType_2 + ");\n")
+      out.append("tempPtr += max(" + op.size + ",256)*sizeof(" + odata.loopFuncOutputType_2 + ");\n")
       //out.append("DeliteCudaMalloc((void**)&temp_2_" + osym + ", " + op.size + "*sizeof(" + odata.loopFuncOutputType_2 + "));\n")
       out.append(odata.loopFuncOutputType_2 + " *temp_2_" + osym + "_2 = (" + odata.loopFuncOutputType_2 + "*)tempPtr;\n")
-      out.append("tempPtr += " + op.size + "*sizeof(" + odata.loopFuncOutputType_2 + ");\n")
+      out.append("tempPtr += max(" + op.size + ",256)*sizeof(" + odata.loopFuncOutputType_2 + ");\n")
       //out.append("DeliteCudaMalloc((void**)&temp_2_" + osym + "_2, " + op.size + "*sizeof(" + odata.loopFuncOutputType_2 + "));\n")
     }
+    //TODO: Change for hash-reduce
     for ((odata,osym) <- hashReductionList(op)) {
       out.append(odata.loopFuncOutputType + " *temp_" + osym + ";\n")
       out.append("DeliteCudaMalloc((void**)&temp_" + osym + ", (1+(" + op.size + "-1)/(512/MAX_GROUP))*sizeof(" + odata.loopFuncOutputType + ")*MAX_GROUP);\n")
@@ -665,6 +689,13 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
           out.append(getCPrimitiveType(in.outputType(sym)))
           out.append(" " + sym)
         }
+      }
+      else {
+        if (!first) out.append(", ")
+        first = false
+        out.append(op.inputType(target,sym))
+        if (reference) out.append("*")
+        out.append(" " + sym)
       }
     }
   }

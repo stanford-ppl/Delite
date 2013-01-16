@@ -75,11 +75,11 @@ trait OptiLAScalaCodeGenPkg extends ScalaGenDSLOps
   { val IR: OptiLAScalaOpsPkgExp  }
 
 trait OptiLACudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with CudaGenOrderingOps
-  with CudaGenEqual with CudaGenIfThenElse with CudaGenVariables with CudaGenWhile with CudaGenFunctions
+  with CudaGenEqual with CudaGenIfThenElse with CudaGenVariables with CudaGenWhile with CudaGenTupleOps with CudaGenFunctions
   with CudaGenStringOps with CudaGenRangeOps with CudaGenIOOps with CudaGenArrayOps with CudaGenBooleanOps
   with CudaGenPrimitiveOps with CudaGenMiscOps
   with CudaGenListOps with CudaGenSeqOps with CudaGenMathOps with CudaGenCastingOps with CudaGenSetOps with CudaGenObjectOps
-  with CudaGenSynchronizedArrayBufferOps with CudaGenHashMapOps with CudaGenIterableOps with CudaGenArrayBufferOps
+  with CudaGenSynchronizedArrayBufferOps with CudaGenHashMapOps with CudaGenIterableOps with CudaGenArrayBufferOps with CudaGenExceptionOps
   { val IR: OptiLAScalaOpsPkgExp  }
 
 trait OptiLAOpenCLCodeGenPkg extends OpenCLGenDSLOps with OpenCLGenImplicitOps with OpenCLGenOrderingOps
@@ -332,13 +332,17 @@ trait OptiLACodeGenCuda extends OptiLACudaCodeGenPkg with OptiLACodeGenBase with
   override def getDSLHeaders: String = {
     val out = new StringBuilder
     out.append("#include <float.h>\n")
+    out.append("#include \"Ref.h\"\n")
     out.append("#include \"DeliteStructs.h\"\n")
     out.append("#include \"DenseVector.h\"\n")
     out.append("#include \"RangeVector.h\"\n")
+    out.append("#include \"List.h\"\n")
     out.append("#include \"DeliteArray.h\"\n")
     out.append("#include \"DenseMatrix.h\"\n")
+    out.append("#include \"HostRef.h\"\n")
     out.append("#include \"HostDenseVector.h\"\n")
     out.append("#include \"HostRangeVector.h\"\n")
+    out.append("#include \"HostList.h\"\n")
     out.append("#include \"HostDeliteArray.h\"\n")
     out.append("#include \"HostDenseMatrix.h\"\n")
     out.append("#include \"library.h\"\n") // external library
