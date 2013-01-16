@@ -2078,6 +2078,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     }
 
     emitMethod("finalize", remap(Manifest.Unit), List(("__act",actType))) {
+      emitMultiHashFinalize(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act.")
       (symList zip op.body) foreach {
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
           emitValDef(elem.allocVal, fieldAccess("__act",quote(sym) + "_data"))

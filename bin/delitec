@@ -11,7 +11,7 @@ from time import localtime, strftime
 
 import delitecommon
 
-DSLs = ['optiml','optila','optiql','deliszt','optigraph','opticvx']
+DSLs = ['optiml','optila','optiql','deliszt','optigraph','opticvx','multi-dsl']
 LMS_HOME = os.getenv("LMS_HOME")
 lms_version = "lms_2.10.0-M1-virtualized"
 
@@ -27,6 +27,7 @@ def main():
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False, help="print delitec environment settings")
     parser.add_option("--nb", dest="no_blas", action="store_true", default=False, help="disable blas calls")
     parser.add_option("--nf", dest="no_fusion", action="store_true", default=False, help="disables op fusion")
+    parser.add_option("--ns", dest="no_soa", action="store_true", default=False, help="disables soa transform")
     parser.add_option("--cuda", dest="cuda", action="store_true", default=False, help="enables CUDA generation")
     parser.add_option("--opencl", dest="opencl", action="store_true", default=False, help="enables OpenCL generation")
     parser.add_option("--cpp", dest="cpp", action="store_true", default=False, help="enables cpp generation")
@@ -78,6 +79,8 @@ def stage(runner, params, opts):
         java_opts = java_opts + " -Ddelite.generate.cpp"
     if opts.no_fusion == True:
         java_opts = java_opts + " -Ddelite.enable.fusion=false"
+    if opts.no_soa == True:
+	java_opts = java_opts + " -Ddelite.enable.soa=false"
     if opts.profile == True:
         java_opts = java_opts + " -Ddelite.enable.profiler=true"
     if opts.optimize > 0:
