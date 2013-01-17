@@ -121,7 +121,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
     out.append("cudaStreamCreate(&d2hStream);\n")
     out.append("cublasSetKernelStream(kernelStream);\n")  // set cublas to use the kernel stream
     out.append("hostInit();\n") // try to remove the overhead of the first call to hostInit (internally calls cudaHostAlloc)
-    out.append("tempCudaMemInit();\n")  // Allocate temporary device memory used for multiloops
+    out.append("tempCudaMemInit(" + Config.tempCudaMemRate + ");\n")  // Allocate temporary device memory used for multiloops
     out.append("cudaDeviceSetLimit(cudaLimitMallocHeapSize, cudaHeapSize);\n") // Allocate heap device memory
     out.append("cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);\n") // 48KB L1 and 16KB Shared mem
     val locations = Range(0,Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL).toSet

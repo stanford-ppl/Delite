@@ -33,12 +33,13 @@ object Config {
   val deliteHome: String = getProperty("delite.home", System.getProperty("user.dir"))
   val codeCacheHome: String = getProperty("delite.code.cache.home", deliteHome + java.io.File.separator + "generatedCache")
   val useFsc: Boolean = getProperty("delite.usefsc", "false") != "false"
+  val tempCudaMemRate: Double = getProperty("delite.tempcudamem", "0.2").toDouble         /* proportions of the cuda device memory used for temporary allocations */
 
   /* Debug options */
   val queueSize: Int = getProperty("delite.debug.queue.size", "128").toInt
   val noRegenerate: Boolean = getProperty("delite.debug.noregenerate", "false") != "false"
-  val gpuBlackList: Array[String] = getProperty("delite.debug.gpu.blacklist","").split(",")
-  val gpuWhiteList: Array[String] = getProperty("delite.debug.gpu.whitelist","").split(",")
+  val gpuBlackList: Array[String] = { val p = getProperty("delite.debug.gpu.blacklist",""); if(p=="") Array() else p.split(",") }
+  val gpuWhiteList: Array[String] = { val p = getProperty("delite.debug.gpu.whitelist",""); if(p=="") Array() else p.split(",") }
   val profile: Boolean = getProperty("delite.debug.profile", "false") != "false"
   val printSources: Boolean = getProperty("delite.debug.print.sources", "false") != "false"
 

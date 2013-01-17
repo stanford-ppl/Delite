@@ -25,8 +25,6 @@ struct FreeItem {
 extern cudaStream_t h2dStream;
 extern cudaStream_t d2hStream;
 extern cudaStream_t kernelStream;
-extern char *tempCudaMem;
-extern size_t tempCudaMemSize;
 
 extern list<void*>* lastAlloc;
 extern queue<FreeItem>* freeList;
@@ -36,7 +34,10 @@ extern void addEvent(cudaStream_t fromStream, cudaStream_t toStream);
 extern cudaEvent_t addHostEvent(cudaStream_t stream);
 extern void freeCudaMemory(FreeItem item);
 extern void DeliteCudaMalloc(void** ptr, size_t size);
-extern void tempCudaMemInit(void);
+extern void tempCudaMemInit(double tempMemRate);
+extern void tempCudaMemReset(void);
+extern size_t tempCudaMemAvailable(void);
+extern void DeliteCudaMallocTemp(void** ptr, size_t size);
 extern void hostInit();
 extern void DeliteCudaMallocHost(void** ptr, size_t size);
 extern void DeliteCudaMemcpyHtoDAsync(void* dptr, void* sptr, size_t size);

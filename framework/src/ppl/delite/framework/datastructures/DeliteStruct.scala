@@ -153,7 +153,6 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
       stream.println("#ifndef __" + name + "__")
       stream.println("#define __" + name + "__")
       elems foreach { e => dsTypesList.add(baseType(e._2).asInstanceOf[Manifest[Any]]) }
-      println("current DSTYpes list is " + dsTypesList.toString)
       elems foreach { e => if (encounteredStructs.contains(remap(e._2))) stream.println("#include \"" + remap(e._2) + ".h\"") }
       emitStructDeclaration(name, elems)(stream)
       stream.println("#endif")

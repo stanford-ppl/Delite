@@ -2504,11 +2504,11 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           metaData.loopFuncs.put(sym,lf)
           lf.tpe = "REDUCE"
 
-          lf.loopFuncInputs = emitMultiLoopFunc(elem.func, "collect_"+funcNameSuffix(sym), List(op.v) ++ sizeSym, stream)
+          lf.loopFuncInputs = emitMultiLoopFunc(elem.func, "func_"+funcNameSuffix(sym), List(op.v) ++ sizeSym, stream)
           lf.loopReduceInputs = emitMultiLoopFunc(elem.rFunc, "reduce_"+funcNameSuffix(sym), List(elem.rV._1, elem.rV._2, op.v) ++ sizeSym, stream)
           lf.loopZeroInputs = emitMultiLoopFunc(elem.zero,"zero_"+funcNameSuffix(sym), sizeSym, stream)
           if(!isPrimitiveType(sym.tp)) {
-            printDebug(sym, "DeliteReduceElem with non-primitive types is not supported.")
+            throw new GenerationFailedException("DeliteReduceElem with non-primitive types is not supported.")
           } else {
             emitAllocFuncPrimitive(sym, "allocFunc_"+quote(sym))
           }
@@ -2520,8 +2520,8 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           metaData.loopFuncs.put(sym,lf)
           lf.tpe = "REDUCE_TUPLE"
 
-          lf.loopFuncInputs = emitMultiLoopFunc(elem.func._1, "collect_1_"+funcNameSuffix(sym), List(op.v) ++ sizeSym, stream)
-          lf.loopFuncInputs_2 = emitMultiLoopFunc(elem.func._2, "collect_2_"+funcNameSuffix(sym), List(op.v) ++ sizeSym, stream)
+          lf.loopFuncInputs = emitMultiLoopFunc(elem.func._1, "func_1_"+funcNameSuffix(sym), List(op.v) ++ sizeSym, stream)
+          lf.loopFuncInputs_2 = emitMultiLoopFunc(elem.func._2, "func_2_"+funcNameSuffix(sym), List(op.v) ++ sizeSym, stream)
           lf.loopReduceInputs = emitMultiLoopFunc(elem.rFuncSeq._1, "reduce_seq_1_"+funcNameSuffix(sym), List(elem.rVSeq._1._1, elem.rVSeq._1._2, elem.rVSeq._2._1, elem.rVSeq._2._2, op.v) ++ sizeSym, stream)
           lf.loopReduceInputs_2 = emitMultiLoopFunc(elem.rFuncSeq._2, "reduce_seq_2_"+funcNameSuffix(sym), List(elem.rVSeq._1._1, elem.rVSeq._1._2, elem.rVSeq._2._1, elem.rVSeq._2._2, op.v) ++ sizeSym, stream)
           lf.loopReduceParInputs = emitMultiLoopFunc(elem.rFuncPar._1, "reduce_par_1_"+funcNameSuffix(sym), List(elem.rVPar._1._1, elem.rVPar._1._2, elem.rVPar._2._1, elem.rVPar._2._2, op.v) ++ sizeSym, stream)
@@ -2529,7 +2529,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           lf.loopZeroInputs = emitMultiLoopFunc(elem.zero._1,"zero_1_"+funcNameSuffix(sym), sizeSym, stream)
           lf.loopZeroInputs_2 = emitMultiLoopFunc(elem.zero._2,"zero_2_"+funcNameSuffix(sym), sizeSym, stream)
           if(!isPrimitiveType(sym.tp)) {
-            printDebug(sym, "DeliteReduceTupleElem with non-primitive types is not supported.")
+            throw new GenerationFailedException("DeliteReduceTupleElem with non-primitive types is not supported.")
           } else {
             emitAllocFuncPrimitive(sym, "allocFunc_"+quote(sym))
           }
