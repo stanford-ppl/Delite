@@ -119,6 +119,7 @@ case class Function(
     conicOffset.arityOp(op),
     conicCone.arityOp(op))
 
+  // is this function input-invariant?
   def isPure: Boolean = 
     valueArgAlmap.foldLeft(true)((a,b) => a && b.isPure) &&
     valueVarAlmap.isPure &&
@@ -129,6 +130,12 @@ case class Function(
     conicArgAlmap.foldLeft(true)((a,b) => a && b.isPure) &&
     conicVarAlmap.isPure &&
     conicOffset.isPure
+
+  // is this an indicator function?
+  def isIndicator: Boolean = 
+    valueArgAlmap.foldLeft(true)((a,b) => a && b.is0) &&
+    valueVarAlmap.is0 &&
+    valueOffset.is0
 
   def +(y: Function): Function = {
     // the two functions to be added must take the same arguments
@@ -170,6 +177,23 @@ case class Function(
     conicCone)
 
   def -(y: Function): Function = this + (-y)
+
+  def scale(c: Double): Function = Function(
+    argSize,
+    sign * Signum.sgn(c),
+    tonicity map (x => x * Signum.sgn(c)),
+    vexity * Signum.sgn(c),
+    varSize,
+    valueArgAlmap map (x => AlmapScaleConstant(x, c)),
+    AlmapScaleConstant(valueVarAlmap, c),
+    AVectorScaleConstant(valueOffset, c),
+    affineArgAlmap,
+    affineVarAlmap,
+    affineOffset,
+    conicArgAlmap,
+    conicVarAlmap,
+    conicOffset,
+    conicCone)
 
   def compose(ys: Seq[Function]): Function = {
     // verify that the same number of arguments are given for both functions
