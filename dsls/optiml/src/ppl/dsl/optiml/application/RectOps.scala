@@ -8,7 +8,8 @@ import scala.virtualization.lms.common.{EffectExp, Variables}
 
 
 trait RectOps extends Variables with OverloadHack {
-
+  this: OptiML =>
+  
   object Rect {
     def apply(x: Rep[Int], y: Rep[Int], width: Rep[Int], height: Rep[Int]) = rect_obj_new(x, y, width, height)
   }
@@ -34,6 +35,8 @@ trait RectOps extends Variables with OverloadHack {
 }
 
 trait RectOpsExp extends RectOps with EffectExp {
+  this: OptiMLExp =>
+  
   case class RectObjectNew(x: Exp[Int], y: Exp[Int], width: Exp[Int], height: Exp[Int]) extends Def[Rect]
   case class RectX(__x: Exp[Rect]) extends Def[Int]
   case class RectY(__x: Exp[Rect]) extends Def[Int]

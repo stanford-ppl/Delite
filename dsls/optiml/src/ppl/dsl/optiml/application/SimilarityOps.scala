@@ -8,7 +8,8 @@ import scala.virtualization.lms.common.{EffectExp, Variables}
 
 
 trait SimilarityOps extends Variables with OverloadHack {
-
+  this: OptiML =>
+  
   object Similarity {
     def apply(a: Rep[Int], b: Rep[Int], value: Rep[Double]) = similarity_obj_new(a, b, value)
   }
@@ -32,6 +33,8 @@ trait SimilarityOps extends Variables with OverloadHack {
 }
 
 trait SimilarityOpsExp extends SimilarityOps with EffectExp {
+  this: OptiMLExp =>
+  
   case class SimilarityObjectNew(a: Exp[Int], b: Exp[Int], value: Exp[Double]) extends Def[Similarity]
   case class SimilarityA(__x: Exp[Similarity]) extends Def[Int]
   case class SimilarityB(__x: Exp[Similarity]) extends Def[Int]

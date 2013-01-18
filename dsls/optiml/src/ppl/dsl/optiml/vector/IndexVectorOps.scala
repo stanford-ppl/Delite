@@ -1,6 +1,5 @@
 package ppl.dsl.optiml.vector
 
-import ppl.dsl.optiml.{DenseVector,Vector, IndexVector, IndexVectorRange, IndexVectorDense, Matrix, DenseMatrix}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase, CGenBase}

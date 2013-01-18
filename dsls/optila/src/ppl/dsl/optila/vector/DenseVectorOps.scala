@@ -9,7 +9,7 @@ import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatC
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.ops.DeliteCollection
-import ppl.delite.framework.datastructures.DeliteArray
+import ppl.delite.framework.datastructures.{DeliteArray, DeliteStructsExp}
 import ppl.delite.framework.Util._
 import ppl.dsl.optila._
 
@@ -120,6 +120,8 @@ trait DenseVectorOps extends Variables {
   def densevector_obj_uniform(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
   def densevector_obj_flatten[A:Manifest](pieces: Rep[DenseVector[DenseVector[A]]])(implicit ctx: SourceContext): Rep[DenseVector[A]]  
   
+  def densevector_fromarray[A:Manifest](x: Rep[DeliteArray[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]]
+  
   // class defs
   def densevector_length[A:Manifest](x: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[Int]
   def densevector_isrow[A:Manifest](x: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[Boolean]
@@ -155,7 +157,7 @@ trait DenseVectorCompilerOps extends DenseVectorOps {
   def densevector_set_isrow[A:Manifest](x: Rep[DenseVector[A]], newVal: Rep[Boolean])(implicit ctx: SourceContext): Rep[Unit]
 }
 
-trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
+trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp with DeliteStructsExp {
 
   this: DenseVectorImplOps with OptiLAExp =>
 
@@ -179,7 +181,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
   }
 
   case class DenseVectorEmpty[A:Manifest]() extends DeliteStruct[DenseVector[A]] {
-    val elems = copyTransformedElems(collection.Seq("_data" -> DeliteArray.imm(0), "_length" -> 0, "_isRow" -> true))
+    val elems = copyTransformedElems(collection.Seq("_data" -> DeliteArray.imm(unit(0)), "_length" -> unit(0), "_isRow" -> unit(true)))
     val mA = manifest[A]
   }
 
@@ -291,7 +293,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
   case class DenseVectorObjectConst[A:Manifest](length: Exp[Int], isRow: Exp[Boolean], c: Exp[A])
     extends DeliteOpMap[Int,A,DenseVector[A]] {
 
-    val in = (0::length)
+    val in = (unit(0)::length)
     val size = copyTransformedOrElse(_.size)(length)
 
     override def alloc = DenseVector[A](length, unit(true))
@@ -316,6 +318,14 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
   def densevector_obj_uniform(start: Exp[Double], step_size: Exp[Double], end: Exp[Double], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectUniform(start, step_size, end, isRow))
   def densevector_obj_flatten[A:Manifest](pieces: Exp[DenseVector[DenseVector[A]]])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectFlatten(pieces))  
 
+  def densevector_fromarray[A:Manifest](x: Rep[DeliteArray[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]] = {
+    //val out = DenseVector[A](unit(0),unit(true))
+    //densevector_set_length(out, x.length)
+    //densevector_set_raw_data(out, x)
+    //out.unsafeImmutable
+    reflectPure(DenseVectorNewImm[A](x,x.length,unit(true)))
+  }
+  
   /////////////////////
   // class interface
 
@@ -408,6 +418,12 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
   override def dc_size_field[A:Manifest](x: Exp[DeliteCollection[A]]) = {
     if (isDenseVec(x)) "_length"
     else super.dc_size_field(x)
+  }
+
+  override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = {
+    val m = manifest[T]
+    if (m.erasure == classOf[DenseVector[_]]) Some((classTag(m), collection.immutable.List("_data" -> darrayManifest(m.typeArguments(0)), "_length" -> manifest[Int], "_isRow" -> manifest[Boolean])))
+    else super.unapplyStructType
   }
   
     
@@ -525,6 +541,7 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
     /* these are essential for fusing:    */
 //    case Def(Reflect(e @ DenseVectorTimes(_,_), _,_)) => e.asInstanceOf[DeliteOpDenseVectorLoop[A]].size // FIXME: in general this is unsafe, but hey...
     case Def(DenseVectorNew(len, isRow)) => len
+    case Def(DenseVectorNewImm(d, len, r)) => len
     //case Def(Reflect(DenseVectorNew(len, isRow), _,_)) => len // FIXME: in general this is unsafe, but hey...
     //case Def(Reflect(e @ DenseVectorObjectZeros(l), _,_)) => l // FIXME: in general this is unsafe, but hey...
     //case Def(Reflect(e @ DenseVectorClone(a), _,_)) => densevector_length(a) // FIXME: in general this is unsafe, but hey...
@@ -544,13 +561,13 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
     //case Def(Reflect(e: DeliteOpZipWith[_,_,_,_], _,_)) => e.size // reasonable?
     //    case Def(e: DeliteOpDenseVectorLoop[A]) => e.size
     
-    //case Def(DenseVectorSlice(a, start, end)) => end - start
+    case Def(VectorSlice(a, start, end)) => end - start
     //case Def(DenseVectorMutableTrans(a)) => a.length
     //case Def(DenseVectorConcatenate(a,b)) => a.length + b.length   
     case Def(DenseVectorSort(a)) => a.length
     case Def(DenseVectorObjectFromUnliftedSeq(xs)) => Const(xs.length)
     case _ => 
-      //printerr("could not short-circuit call to " + x.toString + ".length")
+      //printerr("**** could not short-circuit call to " + x.toString + ".length")
       //printerr(findDefinition(x.asInstanceOf[Sym[DenseVector[A]]]))
       super.densevector_length(x)
   }

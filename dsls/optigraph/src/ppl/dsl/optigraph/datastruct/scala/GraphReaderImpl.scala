@@ -1,3 +1,4 @@
+/*
 package ppl.dsl.optigraph.datastruct.scala
 
 class GraphReaderImpl() {
@@ -6,3 +7,5 @@ class GraphReaderImpl() {
     //TODO: read input graph
   }
 }
+
+*/

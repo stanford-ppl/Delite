@@ -1,3 +1,4 @@
+/*
 package ppl.dsl.optigraph.datastruct.scala
 
 import collection.mutable.{HashSet, HashMap}
@@ -19,7 +20,7 @@ class GSet[@specialized T: ClassManifest] {
     dataArray
   }
   
-  def cloneL = { val s = new GSet[T](); s.addSet(this); s }
+  def Clone = { val s = new GSet[T](); s.addSet(this); s }
   
   /** Items in the set */
   def items: GIterable[T] = { new GIterable[T](dataAsArray) }
@@ -68,3 +69,4 @@ class GSet[@specialized T: ClassManifest] {
     throw new RuntimeException("Set dcUpdate should not be called")
   }
 }
+*/

@@ -2,6 +2,7 @@ package ppl.apps.dataquery.tpch
 
 import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
 
+object Tweeter extends OptiQLApplicationRunner with TweeterTrait
 object TPCHQ0 extends OptiQLApplicationRunner with TPCHQ0Trait
 object TPCHQ1 extends OptiQLApplicationRunner with TPCHQ1Trait
 object TPCHQ2 extends OptiQLApplicationRunner with TPCHQ2Trait
@@ -24,6 +25,7 @@ trait TPCHBaseTrait extends OptiQLApplication with Types {
   def loadPartSuppliers() = TableInputReader(tpchDataPath+"/partsupp.tbl", PartSupplier())
   def loadRegions() = TableInputReader(tpchDataPath+"/region.tbl", Region())
   def loadSuppliers() = TableInputReader(tpchDataPath+"/supplier.tbl", Supplier())
+  def loadTweets() = TableInputReader(tpchDataPath+"/tweet.tbl", Tweet())
   
   def query(): Rep[_]
   
@@ -36,6 +38,23 @@ trait TPCHBaseTrait extends OptiQLApplication with Types {
   }
 
 }
+
+trait TweeterTrait extends TPCHBaseTrait {
+  val queryName = "Tweet"
+  def query() = {
+    
+    val tweets = loadTweets()
+
+    tic(tweets.size)
+    val entweets = tweets Where(_.language == "en")
+    val enretweets = tweets Where(t => t.time >= Date("2008-01-01") && t.language == "en" && t.retweet)
+    toc(entweets, enretweets)
+    println("english tweets : " + entweets.size)
+    println("english retweets : " + enretweets.size)
+    
+  }
+}
+
 
 trait TPCHQ0Trait extends TPCHBaseTrait {
   val queryName = "Q0"

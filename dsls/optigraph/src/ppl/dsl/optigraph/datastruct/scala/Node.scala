@@ -1,3 +1,4 @@
+/*
 package ppl.dsl.optigraph.datastruct.scala
 
 /**
@@ -8,6 +9,7 @@ class Node(val g: Graph) {
 
   /** Node id */
   var id: Int = 0
+    /*
   /** Returns the nodes that this node has edges to */
   def outNeighbors: GIterable[Node] = { g.outNeighbors(this) }
   /** Returns the nodes that have edges to this node */
@@ -26,9 +28,11 @@ class Node(val g: Graph) {
   def upEdges(visited: Array[Int]): GIterable[Edge] = { g.upEdges(this, visited) }
   /** During BFS: edges to downNeighbors */
   def downEdges(visited: Array[Int]): GIterable[Edge] = { g.downEdges(this, visited) }
-  
-  def numOutNeighbors: Int = { g.outNeighbors(this).length }
-  def numInNeighbors: Int = { g.inNeighbors(this).length }
+
+  def numOutNeighbors: Int = { g.outNeighbors(this)._size }
+  def numInNeighbors: Int = { g.inNeighbors(this)._size }
   def outDegree: Int = { g.outDegree(this) }
   def inDegree: Int = { g.inDegree(this) }
+  */
 }
+*/

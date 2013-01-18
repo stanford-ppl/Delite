@@ -1,20 +1,23 @@
 package ppl.delite.framework.codegen.delite
 
-import generators.{DeliteGenTaskGraph}
-import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
-import scala.virtualization.lms.internal._
-import scala.virtualization.lms.common.{BaseGenStaticData, StaticDataExp, WorklistTransformer}
-import ppl.delite.framework.{Config, DeliteApplication}
+import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
 import collection.mutable.{ListBuffer}
 import collection.mutable.HashMap
-import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
 import scala.reflect.SourceContext
+import scala.virtualization.lms.internal._
+import scala.virtualization.lms.common._
+
+import generators.{DeliteGenTaskGraph}
+import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
+import ppl.delite.framework.{Config, DeliteApplication}
+import ppl.delite.framework.transform.ForwardPassTransformer
+import ppl.delite.framework.ops.DeliteOpsExp
 
 /**
  * Notice that this is using Effects by default, also we are mixing in the Delite task graph code generator
  */
 trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.delite.framework.codegen.Utils {
-  val IR: Expressions with FatExpressions with Effects with StaticDataExp
+  val IR: DeliteOpsExp //Expressions with FatExpressions with Effects with StaticDataExp with LoopsFatExp with IfThenElseFatExp
   import IR._
 
   // these are the target-specific kernel generators (e.g. scala, cuda, etc.)
@@ -59,9 +62,16 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
 
   // fusion stuff...
   override def unapplySimpleIndex(e: Def[Any]) = ifGenAgree(_.unapplySimpleIndex(e))
+  override def unapplySimpleDomain(e: Def[Int]) = ifGenAgree(_.unapplySimpleDomain(e))
   override def unapplySimpleCollect(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollect(e))
+  override def unapplySimpleCollectIf(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollectIf(e))
+
+  override def applyAddCondition(e: Def[Any], c: List[Exp[Boolean]]): Def[Any] = ifGenAgree(_.applyAddCondition(e,c))
 
   override def shouldApplyFusion(currentScope: List[Stm])(result: List[Exp[Any]]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result))
+
+
+
 
   def emitSourceContext(sourceContext: Option[SourceContext], stream: PrintWriter, id: String) {
     // obtain root parent source context (if any)
@@ -116,11 +126,11 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   
   def runTransformations[A:Manifest](b: Block[A]): Block[A] = {
     printlog("DeliteCodegen: applying transformations")
+    var curBlock = b  
     printlog("  Transformers: " + transformers)    
-    printlog("  Block before transformation: " + b)
-    var curBlock = b
     val maxTransformIter = 3 // TODO: make configurable
     for (t <- transformers) {
+      printlog("  Block before transformation: " + curBlock)    
       printlog("  map: " + t.nextSubst)
       var i = 0
       while (!t.isDone && i < maxTransformIter) {
@@ -129,21 +139,14 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
         i += 1
       }
       if (i == maxTransformIter) printlog("  warning: transformer " + t + " did not converge in " + maxTransformIter + " iterations")
+      printlog("  Block after transformation: " + curBlock) 
     }
-    printlog("DeliteCodegen: done transforming")
-    printlog("  Block after transformation: " + curBlock) 
+    printlog("DeliteCodegen: done transforming")    
     curBlock   
   }
   
-  def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): List[(Sym[Any],Any)] = {
-
-    val x = fresh[A]
-    val b = reifyEffects(f(x)) // transformers only get registrations at this point, while the IR is being constructed    
-    val y = runTransformations(b)
-    
-    val sA = mA.toString
-    val sB = mB.toString
-
+  def emitSource[A:Manifest](args: List[Sym[_]], body: Block[A], className: String, stream: PrintWriter): List[(Sym[Any],Any)] = {
+    val y = runTransformations(body)
     val staticData = getFreeDataBlock(y)
 
     printlog("-- emitSource")

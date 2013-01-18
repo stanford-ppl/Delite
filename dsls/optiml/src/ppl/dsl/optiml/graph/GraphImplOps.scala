@@ -2,7 +2,8 @@ package ppl.dsl.optiml.graph
 
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
-import scala.collection.mutable.HashMap
+//import scala.collection.mutable.HashMap
+import java.util.HashMap
 import ppl.dsl.optiml._
 
 trait GraphImplOps { this: OptiML =>

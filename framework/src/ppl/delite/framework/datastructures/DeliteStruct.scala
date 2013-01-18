@@ -4,9 +4,9 @@ import java.io.{File,FileWriter,PrintWriter}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{CudaCodegen,OpenCLCodegen, CCodegen}
 import ppl.delite.framework.ops.DeliteOpsExp
-import scala.reflect.SourceContext
+import scala.reflect.{RefinedManifest, SourceContext}
 
-trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
+trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsExp with OrderingOpsExp => // FIXME: mix in prim somewhere else
 	
   abstract class DeliteStruct[T:Manifest] extends AbstractStruct[T] with DeliteOp[T] {
     type OpType <: DeliteStruct[T]
@@ -32,15 +32,120 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
 
   override def field_update[T:Manifest](struct: Exp[Any], index: String, rhs: Exp[T]) = recurseFields(struct, List(index), rhs)
 
+  //no shortcutting on mutable structs ...
+
+  // TODO: clean up and check everything's safe
+  override def field[T:Manifest](struct: Exp[Any], index: String)(implicit pos: SourceContext): Exp[T] = struct match {
+    // is this confined to unsafe immutable or should we look at any mutable struct def?
+    /*
+    case Def(rhs@Reflect(ObjectUnsafeImmutable(orig), u, es)) => 
+      println("**** trying to shortcut field access: " + struct.toString + "=" + rhs + "." + index)
+
+      for (e@Def(r) <- es) {
+        println("      dep: " + e.toString + "=" + r)
+      }
+
+      // find last assignment ... FIXME: should look at *all* mutations of orig
+      val writes = es collect {
+        case Def(Reflect(NestedFieldUpdate(`orig`,List(`index`),rhs), _, _)) => rhs
+      }
+      writes.reverse match {
+        case rhs::_ => 
+          println("      picking write " + rhs.toString)
+          rhs.asInstanceOf[Exp[T]] // take last one
+        case Nil => 
+          orig match {
+            case Def(Reflect(SimpleStruct(tag, fields), _, _)) =>
+              val Def(Reflect(NewVar(rhs), _,_)) = fields.find(_._1 == index).get._2
+              println("      picking alloc " + rhs.toString) 
+              rhs.asInstanceOf[Exp[T]] // take field
+            case _ =>
+              println("      giving up...")
+              super.field(struct, index)
+          }
+      }
+    */
+    /*
+    case Def(rhs@Reflect(SimpleStruct(tag, fields), _, _)) =>
+      println("**** trying to shortcut field access: " + struct.toString + "=" + rhs + "." + index)
+
+      // find last assignment ... FIXME: should look at *all* mutations of struct
+      /*context foreach {
+        case Def(Reflect(NestedFieldUpdate(`struct`,List(`index`),rhs), _, _)) =>  //ok
+        case Def(e) => 
+          println("      ignoring " + e)
+      }*/
+      val writes = context collect {
+        case Def(Reflect(NestedFieldUpdate(`struct`,List(`index`),rhs), _, _)) => rhs
+      }
+      writes.reverse match {
+        case rhs::_ => 
+          println("      picking write " + rhs.toString)
+          rhs.asInstanceOf[Exp[T]] // take last one
+        case Nil =>
+          val Def(Reflect(NewVar(rhs), _,_)) = fields.find(_._1 == index).get._2
+          println("      picking alloc " + rhs.toString)
+          rhs.asInstanceOf[Exp[T]] // take field
+      }
+      */
+    case _ => super.field(struct, index)
+  }
+
+
   private def recurseFields[T:Manifest](struct: Exp[Any], fields: List[String], rhs: Exp[T]): Exp[Unit] = struct match {
     case Def(Reflect(Field(s,name),_,_)) => recurseFields(s, name :: fields, rhs)
     case _ => reflectWrite(struct)(NestedFieldUpdate(struct, fields, rhs))
   }
 
+  // TODO: get rid of entirely or just use mirrorDef
+  def mirrorDD[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Def[A] = (e match {
+    case IntTimes(a,b) => 
+      printlog("warning: encountered effectful primitive def during mirror "+e)
+      IntTimes(f(a),f(b))
+    case IntPlus(a,b) => 
+      printlog("warning: encountered effectful primitive def during mirror "+e)
+      IntPlus(f(a),f(b))
+    case IntMinus(a,b) => 
+      printlog("warning: encountered effectful primitive def during mirror "+e)
+      IntMinus(f(a),f(b))
+    case IntMod(a,b) => 
+      printlog("warning: encountered effectful primitive def during mirror "+e)
+      IntMod(f(a),f(b))
+    case IntDivide(a,b) => 
+      printlog("warning: encountered effectful primitive def during mirror "+e)
+      IntDivide(f(a),f(b)) //xx
+    case e@OrderingLT(a,b) =>
+      printlog("warning: encountered effectful primitive def during mirror "+e)
+      OrderingLT(f(a),f(b))(null.asInstanceOf[Ordering[Any]],manifest[Any]) //HACK
+    case e@Reflect(a,u,es) => Reflect(mirrorDD(a,f),mapOver(f,u),f(es))
+    case _ => 
+      printerr("FAIL: "+e)
+      e
+  }).asInstanceOf[Def[A]]
+
+
+
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case Reflect(NestedFieldUpdate(struct, fields, rhs), u, es) => reflectMirrored(Reflect(NestedFieldUpdate(f(struct), fields, f(rhs)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case _ => super.mirror(e,f)
+    case Reflect(x@IntTimes(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case Reflect(x@IntPlus(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case Reflect(x@IntMinus(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case Reflect(x@IntMod(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case Reflect(x@IntDivide(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case Reflect(x@OrderingLT(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case _ => 
+      //println("mirror: "+e)
+      super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
+
+
+  def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
+    case r: RefinedManifest[T] => Some(AnonTag(r), r.fields)
+    case t if t.erasure == classOf[Tuple2[_,_]] => Some((classTag(t), List("_1","_2") zip t.typeArguments))
+    case t if t.erasure == classOf[Tuple3[_,_,_]] => Some((classTag(t), List("_1","_2","_3") zip t.typeArguments))
+    case t if t.erasure == classOf[Tuple4[_,_,_,_]] => Some((classTag(t), List("_1","_2","_3","_4") zip t.typeArguments))
+    case _ => None
+  }
 
 }
 
@@ -60,10 +165,12 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
       printlog("WARNING: emitting " + structName(sym.tp) + " struct " + quote(sym))    
     case FieldApply(struct, index) =>
       emitValDef(sym, quote(struct) + "." + index)
-      printlog("WARNING: emitting field access: " + quote(struct) + "." + index)
+      val lhs = struct match { case Def(lhs) => lhs.toString case _ => "?" }
+      printlog("WARNING: emitting field access: " + quote(struct) + "=" + lhs + "." + index)
     case FieldUpdate(struct, index, rhs) =>
       emitValDef(sym, quote(struct) + "." + index + " = " + quote(rhs))
-      printlog("WARNING: emitting field update: " + quote(struct) + "." + index)
+      val lhs = struct match { case Def(lhs) => lhs.toString case _ => "?" }
+      printlog("WARNING: emitting field update: " + quote(struct) + "=" + lhs + "." + index)
     case NestedFieldUpdate(struct, fields, rhs) =>
       emitValDef(sym, quote(struct) + "." + fields.reduceLeft(_ + "." + _) + " = " + quote(rhs))
     case _ => super.emitNode(sym, rhs)

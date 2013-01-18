@@ -11,7 +11,7 @@ import scala.reflect.SourceContext
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
-import ppl.delite.framework.datastructures.DeliteArray
+import ppl.delite.framework.datastructures.{DeliteArray, DeliteStructsExp}
 import ppl.delite.framework.Config
 import ppl.delite.framework.extern.lib._
 import ppl.delite.framework.Util._
@@ -146,6 +146,7 @@ trait DenseMatrixOps extends Variables {
   def densematrix_obj_randnf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Float]]
   def densematrix_obj_mrandnf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Float]]
   
+  def densematrix_fromarray[A:Manifest](x: Rep[DeliteArray[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[A]]
   
   // class defs
   def densematrix_apply[A:Manifest](x: Rep[DenseMatrix[A]], i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext): Rep[A]
@@ -166,7 +167,7 @@ trait DenseMatrixOps extends Variables {
   def densematrix_inverse[A:Manifest](x: Rep[DenseMatrix[A]])(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext): Rep[DenseMatrix[Double]]  
   def densematrix_sigmoid[A:Manifest](x: Rep[DenseMatrix[A]])(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext): Rep[DenseMatrix[Double]]
   def densematrix_sigmoidf[A:Manifest](x: Rep[DenseMatrix[A]])(implicit conv: Rep[A] => Rep[Float], ctx: SourceContext): Rep[DenseMatrix[Float]]
-  
+    
   def densematrix_rawapply[A:Manifest](x: Rep[DenseMatrix[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[A]
   def densematrix_rawupdate[A:Manifest](x: Rep[DenseMatrix[A]], n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
 }
@@ -180,7 +181,7 @@ trait DenseMatrixCompilerOps extends DenseMatrixOps {
   def densematrix_set_numcols[A:Manifest](x: Rep[DenseMatrix[A]], newVal: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
 }
 
-trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsExp with VariablesExp {
+trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsExp with DeliteStructsExp with VariablesExp {
   this: DenseMatrixImplOps with OptiLAExp  =>
 
   //////////////////////////////////////////////////
@@ -190,6 +191,11 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     val mA = manifest[A]
   }
 
+  case class DenseMatrixObjectNewImm[A:Manifest](_data: Exp[DeliteArray[A]], _numRows: Exp[Int], _numCols: Exp[Int]) extends DeliteStruct[DenseMatrix[A]] {
+    val elems = copyTransformedElems(collection.Seq("_data" -> _data, "_numRows" -> _numRows, "_numCols" -> _numCols))
+    val mA = manifest[A]
+  }
+  
   case class DenseMatrixObjectZeros[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) extends DeliteStruct[DenseMatrix[A]] {
     val elems = copyTransformedElems(collection.Seq("_data" -> DeliteArray.imm(numRows*numCols), "_numRows" -> numRows, "_numCols" -> numCols))
     val mA = manifest[A]
@@ -289,7 +295,7 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   case class DenseMatrixObjectConst[A:Manifest](numRows: Exp[Int], numCols: Exp[Int], c: Exp[A])
     extends DeliteOpMap[Int,A,DenseMatrix[A]] {
 
-    val in = (0::numRows*numCols)
+    val in = (unit(0)::numRows*numCols)
     val size = copyTransformedOrElse(_.size)(numRows*numCols)
 
     override def alloc = DenseMatrix[A](numRows, numCols)
@@ -311,6 +317,7 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   // }
 
   case class DenseMatrixMultiplyBLAS[A:Manifest:Arith](x: Exp[DenseMatrix[A]], y: Exp[DenseMatrix[A]]) extends DeliteOpExternal[DenseMatrix[A]] {
+    override def inputs = scala.List(x,y)
     def alloc = DenseMatrix[A](x.numRows, y.numCols)
     val funcName = "matMult"
 
@@ -319,6 +326,7 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   }
 
   case class DenseMatrixTimesVectorBLAS[A:Manifest:Arith](x: Exp[DenseMatrix[A]], y: Exp[DenseVector[A]]) extends DeliteOpExternal[DenseVector[A]] {
+    override def inputs = scala.List(x,y)
     def alloc = Vector[A](x.numRows, unit(false))
     val funcName = "matMultV"
 
@@ -407,6 +415,17 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     else reflectPure(MatrixSigmoidF[A,DenseMatrix[Float],DenseMatrix[Float]](x))
   }  
 
+  def densematrix_fromarray[A:Manifest](x: Rep[DeliteArray[A]], n: Rep[Int])(implicit ctx: SourceContext) = {
+    // expecting x to be row-major...
+    //val out = DenseMatrix[A](unit(0),unit(0))
+    //densematrix_set_numrows(out,x.length/n)
+    //densematrix_set_numcols(out,n)    
+    //densematrix_set_raw_data(out,x)
+    //out//.unsafeImmutable
+
+    reflectPure(DenseMatrixObjectNewImm[A](x,x.length/n,n))
+  }
+  
   //////////////////
   // internal
 
@@ -446,6 +465,12 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   override def dc_data_field[A:Manifest](x: Exp[DeliteCollection[A]]) = {
     if (isDenseMat(x)) "_data"
     else super.dc_data_field(x)
+  }
+
+  override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = {
+    val m = manifest[T]
+    if (m.erasure == classOf[DenseMatrix[_]]) Some((classTag(m), collection.immutable.List("_data" -> darrayManifest(m.typeArguments(0)), "_numRows" -> manifest[Int], "_numCols" -> manifest[Int])))
+    else super.unapplyStructType
   }
   
   //////////////

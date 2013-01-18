@@ -4,7 +4,7 @@ import java.io._
 import scala.virtualization.lms.common.Base
 import ppl.dsl.optila._
 
-trait LAInputReaderImplOps { this: Base =>
+trait LAInputReaderImplOps { this: OptiLA =>
   def lainput_read_matrix_impl[Elem:Manifest](filename: Rep[String], schemaBldr: Rep[String] => Rep[Elem], delim: Rep[String]): Rep[DenseMatrix[Elem]]
   def lainput_read_vector_impl[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row], delim: Rep[String]): Rep[DenseVector[Row]]  
 }

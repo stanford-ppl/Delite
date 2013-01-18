@@ -2,7 +2,7 @@ import sbt._
 import Keys._
 
 object DeliteBuild extends Build {
-  val virtualization_lms_core = "EPFL" % "lms_2.10.0-M1-virtualized" % "0.2"
+  val virtualization_lms_core = "EPFL" % "lms_2.10" % "0.2"
   
   // FIXME: custom-built scalatest
   val dropboxScalaTestRepo = "Dropbox" at "http://dl.dropbox.com/u/12870350/scala-virtualized"
@@ -61,7 +61,7 @@ object DeliteBuild extends Build {
   // _ forces sbt to choose it as default
   // useless base directory is to avoid compiling leftover .scala files in the project root directory
   lazy val _delite = Project("delite", file("project/boot"),
-    settings = Defaults.defaultSettings ++ Seq(scalaVersion := virtScala)) aggregate(framework, dsls, runtime, apps, tests)
+    settings = Defaults.defaultSettings ++ Seq(scalaVersion := virtScala)) aggregate(framework, dsls, runtime, apps, tests, deliteTest)
 
   lazy val framework = Project("framework", file("framework"), settings = virtBuildSettings) dependsOn(runtime) // dependency to runtime because of Scopes
 
@@ -83,7 +83,7 @@ object DeliteBuild extends Build {
   lazy val optimeshApps = Project("optimesh-apps", file("apps/deliszt"), settings = virtBuildSettings) dependsOn(optimesh)
   lazy val optigraphApps = Project("optigraph-apps", file("apps/optigraph"), settings = virtBuildSettings) dependsOn(optigraph)
   lazy val opticvxApps = Project("opticvx-apps", file("apps/opticvx"), settings = virtBuildSettings) dependsOn(opticvx)
-  lazy val interopApps = Project("interop-apps", file("apps/multi-dsl"), settings = virtBuildSettings) dependsOn(optiml, optiql) // dependsOn(dsls) not working
+  lazy val interopApps = Project("interop-apps", file("apps/multi-dsl"), settings = virtBuildSettings) dependsOn(optiml, optiql, optigraph) // dependsOn(dsls) not working
 
   lazy val runtime = Project("runtime", file("runtime"), settings = virtBuildSettings)
 

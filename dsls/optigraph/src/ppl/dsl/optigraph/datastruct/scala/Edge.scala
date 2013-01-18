@@ -1,3 +1,4 @@
+/*
 package ppl.dsl.optigraph.datastruct.scala
 
 /**
@@ -7,3 +8,4 @@ package ppl.dsl.optigraph.datastruct.scala
 class Edge(val g: Graph, val from: Node, val to: Node) {
   var id: Int = 0
 }
+*/

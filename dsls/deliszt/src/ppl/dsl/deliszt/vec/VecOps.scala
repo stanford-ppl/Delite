@@ -5,7 +5,7 @@ import java.io.PrintWriter
 import ppl.dsl.deliszt._
 import ppl.dsl.deliszt.MetaInteger._
 
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.ops.DeliteCollectionOpsExp
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.GenericFatCodegen
@@ -583,10 +583,10 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
     // field might have changed state since it was read, so reading the underlying field could be incorrect if there was a copy on read
     // but the read is just a view into the underlying field anyways, so it doesn't matter
     // issue is that the old Reflect node sticks around because of the effect...
-    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstCell(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(1).asInstanceOf[Manifest[A]])
-    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstEdge(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(1).asInstanceOf[Manifest[A]])
-    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstFace(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(1).asInstanceOf[Manifest[A]])
-    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstVertex(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(1).asInstanceOf[Manifest[A]])
+    case Def(s@Reflect(fa@FieldApplyDL(f@Def(Reflect(DeLisztFieldWithConstCell(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(1).asInstanceOf[Manifest[A]])
+    case Def(s@Reflect(fa@FieldApplyDL(f@Def(Reflect(DeLisztFieldWithConstEdge(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(1).asInstanceOf[Manifest[A]])
+    case Def(s@Reflect(fa@FieldApplyDL(f@Def(Reflect(DeLisztFieldWithConstFace(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(1).asInstanceOf[Manifest[A]])
+    case Def(s@Reflect(fa@FieldApplyDL(f@Def(Reflect(DeLisztFieldWithConstVertex(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(1).asInstanceOf[Manifest[A]])
 
     case Def(e: DeliteOpMap[A,_,_]) => e.body match {
       case ce: DeliteCollectElem[_,_,_] => ce.allocN match {

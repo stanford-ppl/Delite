@@ -1,6 +1,6 @@
 package ppl.dsl.deliszt
 
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollection
 
 /**
  * DeLiszt compiler types

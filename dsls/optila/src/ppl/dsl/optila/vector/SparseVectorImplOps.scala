@@ -3,7 +3,6 @@ package ppl.dsl.optila.vector
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
 import ppl.delite.framework.datastructures.DeliteArray
-import ppl.dsl.optila.{DenseVector, DenseMatrix, SparseVector, SparseMatrix}
 import ppl.dsl.optila.{OptiLALift, OptiLACompiler, OptiLA}
 
 /* SparseVector implementation notes

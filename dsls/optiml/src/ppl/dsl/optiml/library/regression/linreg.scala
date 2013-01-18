@@ -31,8 +31,9 @@ trait OptiMLLinReg {
   // output: predictions along uniformly sampled points
   private def linreg_unweighted(x: Rep[DenseMatrix[Double]], y: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
     // by convention, x_0 = 1
-    val X = x.mutable
-    X.insertCol(0, Vector.ones(X.numRows).t) 
+    val xm = x.mutable
+    xm.insertCol(0, Vector.ones(x.numRows).t) 
+    val X = xm.Clone
     
     // theta = inv(X.'X)*(X.'*y) (if y is a col vector)
     val theta = ((X.t*X).inv)*(X.t*y)
@@ -44,9 +45,10 @@ trait OptiMLLinReg {
 
   private def linreg_weighted(x: Rep[DenseMatrix[Double]], y: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
     val tau = 10
-    val X = x.mutable
-    X.insertCol(0, Vector.ones(X.numRows).t) 
-  
+    val xm = x.mutable
+    xm.insertCol(0, Vector.ones(x.numRows).t) 
+    val X = xm.Clone    
+
     // initialize prediction points
     val xstep = 25.0/X.numRows
     val xref_pts = Vector.uniform(-10, xstep, 14.99).t

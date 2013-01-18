@@ -5,7 +5,7 @@ import scala.virtualization.lms.common.Base
 import ppl.dsl.optiml._
 import ppl.dsl.optiml.application.BinarizedGradientTemplate
 
-trait MLInputReaderImplOps { this: Base =>
+trait MLInputReaderImplOps { this: OptiML =>
   def mlinput_read_grayscale_image_impl(filename: Rep[String]): Rep[GrayscaleImage]
   def mlinput_read_arff_impl[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row]): Rep[DenseVector[Row]]
   //def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]]

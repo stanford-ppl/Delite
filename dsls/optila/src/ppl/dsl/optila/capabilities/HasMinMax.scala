@@ -2,7 +2,6 @@ package ppl.dsl.optila.capabilities
 
 import scala.virtualization.lms.common.{Variables, Base}
 import scala.reflect.SourceContext
-import ppl.dsl.optila.{Vector,Matrix}
 import ppl.dsl.optila.{OptiLAExp, OptiLA}
 
 trait HasMinMaxInternal[Rep[X], T] {

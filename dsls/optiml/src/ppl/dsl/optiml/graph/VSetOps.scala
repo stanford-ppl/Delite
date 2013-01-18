@@ -9,10 +9,14 @@ import ppl.delite.framework.DeliteApplication
 import ppl.dsl.optiml._
 
 trait VSetOps extends Variables {
+  this: OptiML =>
+  
   def vset_vertices[VD:Manifest,ED:Manifest](s: Rep[Set[Vertex[VD,ED]]]) : Rep[DenseVector[Vertex[VD,ED]]]
 }
 
 trait VSetOpsExp extends VSetOps with EffectExp {
+  this: OptiMLExp =>
+  
   case class VSetVertices[VD:Manifest,ED:Manifest](s: Exp[Set[Vertex[VD,ED]]]) extends Def[DenseVector[Vertex[VD,ED]]] {
     val mVD = manifest[VD]
     val mED = manifest[ED]

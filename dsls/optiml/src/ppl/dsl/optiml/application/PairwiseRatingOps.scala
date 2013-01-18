@@ -8,7 +8,8 @@ import scala.virtualization.lms.common.{EffectExp, Variables}
 
 
 trait PairwiseRatingOps extends Variables with OverloadHack {
-
+  this: OptiML =>
+  
   object PairwiseRating {
     def apply(profileA: Rep[Int], profileB: Rep[Int], scoreA: Rep[Int], scoreB: Rep[Int]) = pairwiserating_obj_new(profileA, profileB, scoreA, scoreB)
   }
@@ -34,6 +35,8 @@ trait PairwiseRatingOps extends Variables with OverloadHack {
 }
 
 trait PairwiseRatingOpsExp extends PairwiseRatingOps with EffectExp {
+  this: OptiMLExp =>
+  
   case class PairwiseRatingObjectNew(profileA: Exp[Int], profileB: Exp[Int], scoreA: Exp[Int], scoreB: Exp[Int]) extends Def[PairwiseRating]
   case class PairwiseRatingProfilea(__x: Exp[PairwiseRating]) extends Def[Int]
   case class PairwiseRatingProfileb(__x: Exp[PairwiseRating]) extends Def[Int]

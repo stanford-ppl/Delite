@@ -2,7 +2,7 @@ package ppl.dsl.optigraph
 
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
-import reflect.Manifest
+import reflect.{Manifest,SourceContext}
 import scala.virtualization.lms.internal.GenericFatCodegen
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.util._
@@ -92,14 +92,24 @@ trait LanguageOps extends Base with OverloadHack { this: OptiGraph =>
 trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   this: OptiGraphExp with LanguageImplOps =>
   
-    case class WallTime() extends Def[Double]  
-    def wall_time() = reflectEffect(WallTime())
-    
-    case class ProfileStart(deps: List[Exp[Any]]) extends Def[Unit]
-    case class ProfileStop(deps: List[Exp[Any]]) extends Def[Unit]
+  case class WallTime() extends Def[Double]  
+  def wall_time() = reflectEffect(WallTime())
+  
+  case class ProfileStart(deps: List[Exp[Any]]) extends Def[Unit]
+  case class ProfileStop(deps: List[Exp[Any]]) extends Def[Unit]
 
-    def profile_start(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStart(deps.toList))
-    def profile_stop(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStop(deps.toList))
+  def profile_start(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStart(deps.toList))
+  def profile_stop(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStop(deps.toList))
+
+  //////////////
+  // mirroring
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case Reflect(e@WallTime(), u, es) => reflectMirrored(Reflect(WallTime(), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@ProfileStart(deps), u, es) => reflectMirrored(Reflect(ProfileStart(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@ProfileStop(deps), u, es) => reflectMirrored(Reflect(ProfileStop(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??  
   
 }
 

@@ -12,7 +12,7 @@ import ppl.delite.framework.transform.LoopSoAOpt
 
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
 trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with FunctionBlocksExp with IfThenElseFatExp
-    with VariantsOpsExp with DeliteCollectionOpsExp
+    with VariantsOpsExp with DeliteCollectionOpsExp with DeliteReductionOpsExp
     with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp with StaticDataExp {
   
 
@@ -28,8 +28,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * Where should these live?
    */
   trait DeliteParallelStrategy
-  object ParFlat extends DeliteParallelStrategy
-  object ParBuffer extends DeliteParallelStrategy
+  object ParFlat extends DeliteParallelStrategy { override def toString = "ParFlat" }
+  object ParBuffer extends DeliteParallelStrategy { override def toString = "ParBuffer" }
   
   /*
    * Useful for mirroring
@@ -107,6 +107,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   abstract class DeliteOpExternal[A:Manifest] extends DeliteOp[A] {
     type OpType <: DeliteOpExternal[A]
     def alloc: Exp[A]
+    def inputs: List[Exp[Any]] = Nil
     val funcName: String
     final lazy val allocVal: Block[A] = copyTransformedBlockOrElse(_.allocVal)(reifyEffects(alloc))
   }
@@ -115,9 +116,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * The base class for most data parallel Delite ops.
    */
   abstract class DeliteOpLoop[A:Manifest] extends AbstractLoop[A] with DeliteOp[A] {
-    type OpType <: DeliteOpLoop[A]
+    type OpType <: DeliteOpLoop[A]    
     def copyBodyOrElse(e: => Def[A]): Def[A] = original.map(p=>mirrorLoopBody(p._2.asInstanceOf[OpType].body,p._1)).getOrElse(e)
-    final lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(fresh[Int]).asInstanceOf[Sym[Int]]
+    final lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(fresh[Int]).asInstanceOf[Sym[Int]]    
   }
 
   //case class DeliteOpFatLoop(val size: Exp[Int], val v: Sym[Int], val body: List[Def[Any]]) extends AbstractFatLoop with DeliteFatOp
@@ -132,7 +133,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   ) extends Def[Unit] {
     val mA = manifest[A]
   }
-  
+    
   // used only for ParBuffer operations
   // dc_append, dc_set_logical_size, dc_alloc, and dc_copy only need to be
   // overridden if the DeliteParallelStrategy is ParBuffer
@@ -445,6 +446,11 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
         copyRaw = reifyEffects(dc_copy(aV,iV,allocVal,iV2,sV))        
       )      
     ))    
+
+    val dmA = manifest[A]
+    val dmB = manifest[B]
+    val dmI = manifest[I]
+    val dmCB = manifest[CB]
   }  
   
   /**
@@ -763,6 +769,42 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     ))
   }
 
+  /**
+   * Parallel foreach with possible global reductions (instances of DeliteReduction) in the body.
+   * DeliteReductions are factored out into separate ReduceElem bodies, and the result of the reduction
+   * is written to their input vars after the foreach completes.
+   * 
+   * @param  in     the input collection
+   * @param  size   the size of the input collection  
+   * @param  func   the foreach function Exp[A] => Exp[Unit]   
+   */ 
+  abstract class DeliteOpForeachReduce[A:Manifest] extends DeliteOp[Unit]  { //DeliteOpLoop[Unit] { 
+    type OpType <: DeliteOpForeachReduce[A]
+    val in: Exp[DeliteCollection[A]]
+    val size: Exp[Int]
+    def func: Exp[A] => Exp[Unit]
+            
+    final lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(fresh[Int]).asInstanceOf[Sym[Int]]
+    
+    /* expand func body for proper effect tracking */
+    lazy val funcBody: Block[Unit] = copyTransformedBlockOrElse(_.funcBody)(reifyEffects(this.func(dc_apply(in,v))))
+    
+    /**
+     * DeliteOpForeachReduce instances eventually get transformed into a composite of foreach and reduce elements.
+     * See ForeachReduceTransformer.scala. Here we grab the reductions to be used later.
+     */     
+    lazy val (xFunc, deliteReductions) = funcBody match {
+      case Block(Def(Reify(x,u,es))) =>
+        val reductions = es.collect(e => e match { case Def(Reflect(r:DeliteReduction[_,_],_,_)) => r })
+        if (reductions.length == 0) {
+          (funcBody, Nil)
+        }
+        else {
+          (Block(Reify(Const(),u,es)), reductions)
+        }
+     }                   
+  }
+  
   abstract class DeliteOpIndexedLoop extends DeliteOpLoop[Unit] {
     type OpType <: DeliteOpIndexedLoop
     val size: Exp[Int]
@@ -1148,10 +1190,12 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   //////////////
   // dependencies
 
+
   /* is this necessary or not? does not appear to effect anything yet. */
   override def blocks(e: Any): List[Block[Any]] = e match {
     case s: DeliteOpSingleTask[_] => blocks(s.block)
     case e: DeliteOpExternal[_] =>  super.blocks(e) ::: blocks(e.allocVal) 
+    case fr: DeliteOpForeachReduce[_] => blocks(fr.funcBody)
     case op: DeliteCollectElem[_,_,_] => blocks(op.func) ::: blocks(op.update) ::: blocks(op.cond) ::: blocks(op.allocN) ::: blocks(op.finalizer) ::: blocks(op.buf) 
     case op: DeliteBufferElem[_,_,_] => blocks(op.append) ::: blocks(op.setSize) ::: blocks(op.allocRaw) ::: blocks(op.copyRaw)
 //    case op: DeliteForeachElem[_] => blocks(op.func) ::: blocks(op.cond) ::: blocks(op.sync)
@@ -1172,6 +1216,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case op: DeliteHashReduceElem[_,_,_] => syms(op.keyFunc) ++ syms(op.valFunc) ++ syms(op.cond) ++ syms(op.zero) ++ syms(op.rFunc) ++ syms(op.alloc)
     case op: DeliteHashIndexElem[_,_] => syms(op.keyFunc) ++ syms(op.cond)
     case e: DeliteOpExternal[_] =>  super.syms(e) ::: syms(e.allocVal) 
+    case fr: DeliteOpForeachReduce[_] => syms(fr.funcBody)
     case op: DeliteCollectElem[_,_,_] => syms(op.func) ::: syms(op.update) ::: syms(op.cond) ::: syms(op.allocN) ::: syms(op.finalizer) ::: syms(op.buf) 
     case op: DeliteBufferElem[_,_,_] => syms(op.append) ::: syms(op.setSize) ::: syms(op.allocRaw) ::: syms(op.copyRaw)
 //    case op: DeliteForeachElem[_] => syms(op.func) ::: syms(op.cond) ::: syms(op.sync)
@@ -1190,6 +1235,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case op: DeliteHashReduceElem[_,_,_] => syms(op.keyFunc) ++ syms(op.valFunc) ++ syms(op.cond) ++ syms(op.zero) ++ syms(op.rFunc) ++ syms(op.alloc)
     case op: DeliteHashIndexElem[_,_] => syms(op.keyFunc) ++ syms(op.cond)
     case e: DeliteOpExternal[_] => super.syms(e) ::: syms(e.allocVal)
+    case fr: DeliteOpForeachReduce[_] => syms(fr.funcBody)
     case op: DeliteCollectElem[_,_,_] => syms(op.func) ::: syms(op.cond) ::: syms(op.allocN) ::: syms(op.finalizer)
 //    case op: DeliteForeachElem[_] => syms(op.func) ::: syms(op.cond) ::: syms(op.sync)
     case op: DeliteForeachElem[_] => syms(op.func) ::: syms(op.sync)
@@ -1206,6 +1252,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case op: DeliteHashReduceElem[_,_,_] => List(op.rV._1, op.rV._2) ++ effectSyms(op.keyFunc) ++ effectSyms(op.valFunc) ++ effectSyms(op.cond) ++ effectSyms(op.zero) ++ effectSyms(op.rFunc) ++ syms(op.allocVal) ++ effectSyms(op.alloc)
     case op: DeliteHashIndexElem[_,_] => effectSyms(op.keyFunc) ++ effectSyms(op.cond)
     case e: DeliteOpExternal[_] => effectSyms(e.allocVal) /*::: super.effectSyms(e) */
+    case fr: DeliteOpForeachReduce[_] => List(fr.v) ::: effectSyms(fr.funcBody)
     case op: DeliteCollectElem[_,_,_] => List(op.eV, op.sV) ::: effectSyms(op.func)  ::: effectSyms(op.cond) ::: effectSyms(op.allocN) ::: effectSyms(op.finalizer) ::: syms(op.allocVal) ::: boundSyms(op.buf)
     case op: DeliteBufferElem[_,_,_] => List(op.aV, op.iV, op.iV2) ::: effectSyms(op.append) ::: effectSyms(op.setSize) ::: effectSyms(op.allocRaw) ::: effectSyms(op.copyRaw) 
 //    case op: DeliteForeachElem[_] => effectSyms(op.func) ::: effectSyms(op.cond) ::: effectSyms(op.sync)
@@ -1225,6 +1272,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case op: DeliteHashReduceElem[_,_,_] => freqHot(op.keyFunc) ++ freqHot(op.valFunc) ++ freqHot(op.cond) ++ freqNormal(op.zero) ++ freqHot(op.rFunc) ++ freqNormal(op.alloc)
     case op: DeliteHashIndexElem[_,_] => freqHot(op.keyFunc) ++ freqHot(op.cond)
     case e: DeliteOpExternal[_] => super.symsFreq(e) ::: freqNormal(e.allocVal)
+    case fr: DeliteOpForeachReduce[_] => freqHot(fr.funcBody)
     case op: DeliteCollectElem[_,_,_] => freqNormal(op.allocN) ::: freqNormal(op.finalizer) ::: freqHot(op.cond) ::: freqHot(op.func) ::: freqHot(op.update) ::: symsFreq(op.buf)
     case op: DeliteBufferElem[_,_,_] => freqHot(op.append) ::: freqNormal(op.setSize) ::: freqNormal(op.allocRaw) ::: freqNormal(op.copyRaw)
 //    case op: DeliteForeachElem[_] => freqNormal(op.sync) ::: freqHot(op.cond) ::: freqHot(op.func)
@@ -1291,12 +1339,56 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   }
 }
 
-
-
-trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt with LoopSoAOpt with BaseGenStaticData {
+trait BaseDeliteOpsTraversalFat extends BaseLoopsTraversalFat {
   val IR: DeliteOpsExp
   import IR._
 
+  /*
+    // overridden only to attach DeliteFatOp trait to result ...
+    override def fatten(e: TP[Any]): TTP = e.rhs match {
+      case op: DeliteOpLoop[_] => 
+        TTP(List(e.sym), DeliteFatLoop(op.size, op.v, List(op.body)))
+      case _ => super.fatten(e)
+    }
+  */
+
+  /*
+    // TODO: can implement generically? or need override for VectorSize and all others?
+    override def unapplySimpleDomain(e: Def[Int]): Option[Exp[Any]] = e match {
+      case ArrayLength(a) => Some(a)
+      case _ => super.unapplySimpleDomain(e)
+    }
+  */
+  
+  override def unapplySimpleCollect(e: Def[Any]) = e match {
+    case e: DeliteCollectElem[_,_,_] if e.cond.isEmpty => Some(e.func.res)
+    case _ => super.unapplySimpleCollect(e)
+  }
+
+  override def unapplySimpleCollectIf(e: Def[Any]) = e match {
+  //    case e: DeliteReduceElem[_] => Some((e.func, e.cond)) // TODO: aks -- testing fusing conditionals for reduce elems
+    case e: DeliteHashReduceElem[_,_,_] => Some((e.valFunc.res, e.cond.map(_.res))) // FIXME: HACK!!
+    case e: DeliteCollectElem[_,_,_] => Some((e.func.res, e.cond.map(_.res)))
+    case _ => super.unapplySimpleCollectIf(e)
+  }
+
+  // FIXME: need to modify .par from ParPlat to ParBuf accordingly
+  override def applyAddCondition(e: Def[Any], c: List[Exp[Boolean]]) = e match {
+    case e: DeliteHashCollectElem[_,_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))
+    case e: DeliteHashReduceElem[_,_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))
+    case e: DeliteHashIndexElem[_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))
+    case e: DeliteCollectElem[_,_,_] => e.copy(par = ParBuffer, cond = e.cond ++ c.map(Block(_)))
+    case e: DeliteReduceElem[_] => e.copy(cond = e.cond ++ c.map(Block(_)))
+    case e: DeliteReduceTupleElem[_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))
+    case _ => super.applyAddCondition(e,c)
+  }
+
+  override def shouldApplyFusion(currentScope: List[Stm])(result: List[Exp[Any]]) = Config.opfusionEnabled  
+}
+
+trait BaseGenDeliteOps extends BaseDeliteOpsTraversalFat with BaseGenLoopsFat with LoopFusionOpt with BaseGenStaticData {
+  val IR: DeliteOpsExp
+  import IR._
   //abstract override def emitValDef(sym: Sym[Any], rhs: String): Unit =
   //  if (!simpleCodegen) super.emitValDef(sym,rhs) else stream.print(quote(sym)+";")
   //def emitVarDef(sym: Sym[Any], rhs: String): Unit
@@ -1314,50 +1406,7 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt with LoopSoAOp
     deliteKernel = saveKernel
     ret
   }
-
-/*
-  // overridden only to attach DeliteFatOp trait to result ...
-  override def fatten(e: TP[Any]): TTP = e.rhs match {
-    case op: DeliteOpLoop[_] => 
-      TTP(List(e.sym), DeliteFatLoop(op.size, op.v, List(op.body)))
-    case _ => super.fatten(e)
-  }
-*/
-
-/*
-  // TODO: can implement generically? or need override for VectorSize and all others?
-  override def unapplySimpleDomain(e: Def[Int]): Option[Exp[Any]] = e match {
-    case ArrayLength(a) => Some(a)
-    case _ => super.unapplySimpleDomain(e)
-  }
-*/
-  override def unapplySimpleCollect(e: Def[Any]) = e match {
-    case e: DeliteCollectElem[_,_,_] if e.cond.isEmpty => Some(e.func.res)
-    case _ => super.unapplySimpleCollect(e)
-  }
-
-  override def unapplySimpleCollectIf(e: Def[Any]) = e match {
-    case e: DeliteHashReduceElem[_,_,_] => Some((e.valFunc.res, e.cond.map(_.res))) // FIXME: HACK!!
-    case e: DeliteCollectElem[_,_,_] => Some((e.func.res, e.cond.map(_.res)))
-//    case e: DeliteReduceElem[_] => Some((e.func, e.cond)) // TODO: aks -- testing fusing conditionals for reduce elems
-    case _ => super.unapplySimpleCollectIf(e)
-  }
-
-  override def applyAddCondition(e: Def[Any], c: List[Exp[Boolean]]) = e match {
-    case e: DeliteHashCollectElem[_,_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))
-    case e: DeliteHashReduceElem[_,_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))
-    case e: DeliteHashIndexElem[_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))
-    case e: DeliteCollectElem[_,_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))
-    case e: DeliteReduceElem[_] => e.copy(cond = e.cond ++ c.map(Block(_)))
-    case e: DeliteReduceTupleElem[_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))
-    case _ => super.applyAddCondition(e,c)
-  }
-
-  override def shouldApplyFusion(currentScope: List[Stm])(result: List[Exp[Any]]) = Config.opfusionEnabled
-
 }
-
-
 
 trait ScalaGenStaticDataDelite extends ScalaGenStaticData {
   val IR: StaticDataExp
@@ -1613,6 +1662,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitValDef(elem.allocVal, fieldAccess(prefixSym,quote(sym)+"_buf"))
         if (elem.cond.nonEmpty) stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
         // should append be called insert? it is a physical append of element e, at logical index v (it's a tail-insert)
+        currentSym = fieldAccess(prefixSym, quote(sym))
         emitBlock(elem.buf.append)
         stream.println("if (" + quote(getBlockResult(elem.buf.append)) + ")")
         emitAssignment(fieldAccess(prefixSym,quote(sym)+"_size"), fieldAccess(prefixSym,quote(sym)+"_size") + " + 1")
@@ -1623,14 +1673,19 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
       case ParFlat =>
         emitValDef(elem.allocVal, fieldAccess(prefixSym,quote(sym)+"_data"))
+        if (elem.cond.nonEmpty) {
+          stream.println("//ERROR: need to test for conds " + elem.cond)
+          println("ERROR: need to test for conds " + elem.cond)
+        }
         emitBlock(elem.update)
     }
   }
 
-  /**
-   * MultiLoop components
-   */
-
+  private var currentSym = ""
+  def getActSize = currentSym + "_size"
+  def getActBuffer = currentSym + "_buf"
+  var getActFinal = ""
+    
   def emitForeachElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteForeachElem[_]) {
     emitAssignment(quote(sym), remap(sym.tp), quote(getBlockResult(elem.func)))
     //stream.println(quote(getBlockResult(elem.func)))
@@ -1815,6 +1870,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         // might be different than the physically appended size for some representations
         if (elem.par == ParBuffer) {
           emitValDef(elem.allocVal, quote(sym) + "_buf")
+          getActFinal = quote(elem.allocVal)     
           if (elem.cond.nonEmpty)
             emitAssignment(quote(elem.sV), quote(sym) + "_conditionals")
           else
@@ -1880,8 +1936,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       }
       emitReturn("__act")
     }
-    // processRange
 
+    // processRange
     emitMethod("processRange", actType, List(("__act",actType),("start",remap(Manifest.Int)),("end",remap(Manifest.Int)))) {
       emitVarDef("idx", remap(Manifest.Int), "start")
       emitValDef("__act2",actType,"init(__act,idx)") // TODO: change to use method call
@@ -1892,17 +1948,6 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       stream.println("}")
       emitReturn("__act2")
     }
-
-/*
-    out.append("val acc = head.closure.init(out, idx)\n") // copy of out per chunk
-                out.append("idx += 1\n")
-    out.append("val hc = head.closure\n")
-    out.append("while (idx < end) {\n")
-    out.append("hc.process(acc, idx)\n")
-    out.append("idx += 1\n")
-    out.append("}\n")
-*/
-    //out.append("val acc = head.closure.processRange(out,idx,end)\n")
 
     // init and compute first element
     emitMethod("init", actType, List(("__act",actType),(quote(op.v),remap(op.v.tp)))) {
@@ -1920,34 +1965,22 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             case ParFlat =>
               emitAssignment(fieldAccess("__act2",quote(sym)+"_data"),fieldAccess("__act",quote(sym)+"_data"))
             }
-            stream.println("if (" + quote(op.size) + " > 0) {")
-            emitCollectElem(op, sym, elem, "__act2")
-            stream.println("}")
           case (sym, elem: DeliteHashElem[_,_]) => 
-          case (sym, elem: DeliteForeachElem[_]) =>
-            stream.println("if (" + quote(op.size) + " > 0) {")
-            emitForeachElem(op, sym, elem)
-            emitAssignment(fieldAccess("__act2",quote(sym)),quote(sym))
-            stream.println("}")
+          case (sym, elem: DeliteForeachElem[_]) => // nothing needed - this case only happens if a ForeachElem is fused with something else that needs combine
           case (sym, elem: DeliteReduceElem[_]) =>
+            emitAssignment(fieldAccess("__act2",quote(sym)+"_zero"),fieldAccess("__act",quote(sym)+"_zero")) 
+            // should we throw an exception instead on an empty reduce?
             if (elem.stripFirst) {
-              emitAssignment(fieldAccess("__act2",quote(sym)+"_zero"),fieldAccess("__act",quote(sym)+"_zero")) // do we need zero here? yes, for comparing against...
-              stream.println("if (" + quote(op.size) + " > 0) {")
-              emitFirstReduceElemAssign(op, sym, elem, "__act2")
-              stream.println("} else {")
+              stream.println("if (" + quote(op.size) + " == 0) // stripping the first iter: only initialize to zero if empty")
               emitAssignment(fieldAccess("__act2",quote(sym)),fieldAccess("__act2",quote(sym)+"_zero"))
-              stream.println(/*{*/"}")
             } else {
-              emitAssignment(fieldAccess("__act2",quote(sym)+"_zero"),fieldAccess("__act",quote(sym)+"_zero"))
+              //emitAssignment(fieldAccess("__act2",quote(sym)+"_zero"),fieldAccess("__act",quote(sym)+"_zero"))
               if (isPrimitiveType(sym.tp)) {
                 emitAssignment(fieldAccess("__act2",quote(sym)),fieldAccess("__act2",quote(sym)+"_zero"))
               } else {
                 emitBlock(elem.accInit)
                 emitAssignment(fieldAccess("__act2",quote(sym)),quote(getBlockResult(elem.accInit))) // separate zero buffer
               }
-              stream.println("if (" + quote(op.size) + " > 0) {")
-              emitReduceElem(op, sym, elem, "__act2")
-              stream.println("}")
             }
           case (sym, elem: DeliteReduceTupleElem[_,_]) =>
             // no strip first here ... stream.println("assert(false, \"TODO: tuple reduce\")")
@@ -1955,10 +1988,28 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             emitAssignment(fieldAccess("__act2",quote(sym)+"_zero_2"), fieldAccess("__act",quote(sym)+"_zero_2"))
             emitAssignment(fieldAccess("__act2",quote(sym)), fieldAccess("__act2",quote(sym)+"_zero"))
             emitAssignment(fieldAccess("__act2",quote(sym)+"_2"), fieldAccess("__act2",quote(sym)+"_zero_2"))
-            stream.println("if (" + quote(op.size) + " > 0) {")
-            emitReduceTupleElem(op, sym, elem, "__act2")
-            stream.println("}")
         }
+        // then emit first element initializers, if size is non-zero
+        stream.println("if (" + quote(op.size) + " > 0) {")
+        emitMultiLoopFuncs(op, symList)
+        emitMultiHashElem(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act2.")
+        (symList zip op.body) foreach {
+          case (sym, elem: DeliteCollectElem[_,_,_]) =>
+            emitCollectElem(op, sym, elem, "__act2")
+          case (sym, elem: DeliteHashElem[_,_]) =>
+          case (sym, elem: DeliteForeachElem[_]) => 
+            emitForeachElem(op, sym, elem)
+            emitAssignment(fieldAccess("__act2",quote(sym)),quote(sym))
+          case (sym, elem: DeliteReduceElem[_]) =>
+            if (elem.stripFirst) {
+              emitFirstReduceElemAssign(op, sym, elem, "__act2")
+            } else {
+              emitReduceElem(op, sym, elem, "__act2")
+            }
+          case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+            emitReduceTupleElem(op, sym, elem, "__act2")
+        }
+        stream.println("}")
         emitReturn("__act2")
       } else {
         stream.println("if (" + quote(op.size) + " > 0) {")
@@ -2081,7 +2132,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       emitMultiHashFinalize(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act.")
       (symList zip op.body) foreach {
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
-          emitValDef(elem.allocVal, fieldAccess("__act",quote(sym) + "_data"))
+          emitVarDef(quote(elem.allocVal), remap(elem.allocVal.tp), fieldAccess("__act",quote(sym) + "_data"))
+          getActFinal = quote(elem.allocVal)
           if (elem.par == ParBuffer) {
             if (elem.cond.nonEmpty) {
               emitValDef(elem.sV, fieldAccess("__act", quote(sym) + "_conditionals"))

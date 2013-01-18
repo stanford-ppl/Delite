@@ -11,6 +11,7 @@ import scala.reflect.SourceContext
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
+import ppl.delite.framework.datastructures.DeliteArray
 import ppl.delite.framework.Config
 import ppl.delite.framework.extern.lib._
 import ppl.delite.framework.Util._
@@ -39,6 +40,8 @@ trait MatrixOps extends Variables {
     def apply[A](xs: Rep[DenseVector[DenseVectorView[A]]])(implicit mA: Manifest[A], o: Overloaded1, ctx: SourceContext): Rep[Matrix[A]] = densematrix_obj_fromvec(xs.asInstanceOf[Rep[DenseVector[DenseVector[A]]]])
     def apply[A:Manifest](xs: Rep[DenseVector[A]]*)(implicit ctx: SourceContext): Rep[DenseMatrix[A]] = DenseMatrix(DenseVector(xs: _*))
 
+    def fromArray[A:Manifest](x: Rep[DeliteArray[A]], numFeatures: Rep[Int]) = densematrix_fromarray(x,numFeatures)
+    
     def dense[A:Manifest](numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_new(numRows, numCols)
     def sparse[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) = sparsematrix_obj_new(numRows, numCols)   
     

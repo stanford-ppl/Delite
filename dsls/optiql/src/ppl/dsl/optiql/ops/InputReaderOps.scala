@@ -55,7 +55,7 @@ trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift w
       if (i % 1000000 == 0) println("processed " + i/1000000 + " million records")
     }
     input.close()
-    Table(darray_buffer_unsafe_result(table), table.length)
+    Table(darray_buffer_unsafe_result(table).unsafeImmutable, table.length)
   }
 
   private def addRecord[T<:Record:Manifest](table: Rep[DeliteArrayBuffer[T]], record: Rep[Array[String]], shape: Rep[T]) {
@@ -71,6 +71,7 @@ trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift w
         case s if s.contains("String") => (field, record(i))
         case "Double" => (field, Double.parseDouble(record(i)))
         //case "Float" => (field, Float.parseFloat(record(i))
+        case "Boolean" => (field, record(i) == "true")
         case "Int" => (field, Integer.parseInt(record(i)))
         case "Char" => (field, record(i).charAt(0))
         case d if d.contains("Date") => (field, Date(record(i)))

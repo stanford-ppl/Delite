@@ -6,7 +6,7 @@ import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.internal.{GenericFatCodegen,GenerationFailedException}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteCollection
-import ppl.delite.framework.datastructures.DeliteArray
+import ppl.delite.framework.datastructures.{DeliteArray, DeliteStructsExp}
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.Util._
 import ppl.dsl.optila._
@@ -85,7 +85,7 @@ trait DenseVectorViewOps extends Base with OverloadHack { this: OptiLA =>
   // def dense_vectorview_flatmap[B:Manifest](x: Rep[DenseVectorView[A]], f: Rep[A] => Rep[DenseVector[B]]): Rep[DenseVector[B]]
 }
 
-trait DenseVectorViewOpsExp extends DenseVectorViewOps with DeliteCollectionOpsExp { this: OptiLAExp =>
+trait DenseVectorViewOpsExp extends DenseVectorViewOps with DeliteCollectionOpsExp with DeliteStructsExp { this: OptiLAExp =>
   case class DenseVectorViewNew[A:Manifest](x: Exp[DeliteArray[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) extends DeliteStruct[DenseVectorView[A]] {
     val elems = copyTransformedElems(collection.Seq("_data" -> x, "_start" -> start, "_stride" -> stride, "_length" -> length, "_isRow" -> isRow))
     val mA = manifest[A]
@@ -122,6 +122,12 @@ trait DenseVectorViewOpsExp extends DenseVectorViewOps with DeliteCollectionOpsE
   override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
     if (isDenseView(x)) asDenseView(x).apply(n)
     else super.dc_apply(x,n)    
+  }
+
+  override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = {
+    val m = manifest[T]
+    if (m.erasure == classOf[DenseVectorView[_]]) Some((classTag(m), collection.immutable.List("_data" -> darrayManifest(m.typeArguments(0)), "_start" -> manifest[Int], "_stride" -> manifest[Int], "_length" -> manifest[Int], "_isRow" -> manifest[Boolean])))
+    else super.unapplyStructType
   }
     
   //////////////
