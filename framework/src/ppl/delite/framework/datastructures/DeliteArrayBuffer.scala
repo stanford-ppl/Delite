@@ -54,12 +54,12 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
   this: DeliteArrayOpsExp with DeliteOpsExp =>
 
   case class DeliteArrayBufferNew[A:Manifest](initSize: Exp[Int]) extends DeliteStruct[DeliteArrayBuffer[A]] {
-    val elems = Seq("data" -> var_new(DeliteArray[A](initSize)).e, "length" -> var_new(initSize).e)
+    val elems = copyTransformedElems(Seq("data" -> var_new(DeliteArray[A](initSize)).e, "length" -> var_new(unit(0)).e))
     val mA = manifest[A]
   }
 
   case class DeliteArrayBufferNewImm[A:Manifest](data: Exp[DeliteArray[A]], length: Exp[Int]) extends DeliteStruct[DeliteArrayBuffer[A]] {
-    val elems = Seq("data" -> data, "length" -> length)
+    val elems = copyTransformedElems(Seq("data" -> data, "length" -> length))
     val mA = manifest[A]
   }
 
