@@ -33,8 +33,8 @@ trait DCPOpsFunction extends DCPOpsGlobal {
 
     val square = {
       val n = cvxfunparam()
-      val x = cvxfunarg()
-      val t = cvxfunarg()
+      val x = cvxfunexpr()
+      val t = cvxfunexpr()
       cvxfun(
         params(),
         args(scalar -> x),
@@ -58,9 +58,17 @@ trait DCPOpsFunction extends DCPOpsGlobal {
 
   class CvxFunParamSymbol {
     protected[DCPOpsFunction] var boundparam: IRPoly = null
+    def bind(x: IRPoly) {
+      if(boundparam != null) throw new IRValidationException()
+      boundparam = x
+    }
   }
   class CvxFunExprSymbol {
     protected[DCPOpsFunction] var boundexpr: CvxFunExpr = null
+    def bind(x: CvxFunExpr) {
+      if(boundexpr != null) throw new IRValidationException()
+      boundexpr = x
+    }
   }
 
   implicit def cvxfunparamssym2val(sym: CvxFunParamSymbol): IRPoly = {
@@ -72,7 +80,10 @@ trait DCPOpsFunction extends DCPOpsGlobal {
     sym.boundexpr
   }
 
-  class CvxFunParams(val params: CvxFunParamSymbol) 
+  def cvxfunparam(): CvxFunParamSymbol = new CvxFunParamSymbol
+  def cvxfunexpr(): CvxFunExprSymbol = new CvxFunExprSymbol
+
+  class CvxFunParams(val params: CvxFunParamSymbol)
 
   class CvxFunArgs(val args: Seq[CvxFunArgBinding])
   class CvxFunArgBinding(val size: IRPoly, val symbol: CvxFunExprSymbol)
