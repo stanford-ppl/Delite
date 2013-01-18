@@ -63,6 +63,15 @@ trait DCPOpsFunction extends DCPOpsGlobal {
     protected[DCPOpsFunction] var boundexpr: CvxFunExpr = null
   }
 
+  implicit def cvxfunparamssym2val(sym: CvxFunParamSymbol): IRPoly = {
+    if(sym.boundparam == null) throw new IRValidationException()
+    sym.boundparam
+  }
+  implicit def cvxfunexprsym2val(sym: CvxFunExprSymbol): CvxFunExpr = {
+    if(sym.boundexpr == null) throw new IRValidationException()
+    sym.boundexpr
+  }
+
   class CvxFunParams(val params: CvxFunParamSymbol) 
 
   class CvxFunArgs(val args: Seq[CvxFunArgBinding])
