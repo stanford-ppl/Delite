@@ -654,7 +654,7 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
     out.append("int *tempMemUsage;\n")
     out.append("DeliteCudaMallocTemp((void**)&tempMemUsage,sizeof(int)*"+op.size+");\n")
     out.append("DeliteCudaMemset((void*)tempMemUsage,0,sizeof(int)*"+op.size+");\n")
-    out.append("size_t tempMemSize = tempCudaMemAvailable();\n")
+    out.append("size_t tempMemSize = tempCudaMemAvailable()/"+op.size+";\n")
     out.append("char *tempMemPtr;\n")
     out.append("DeliteCudaMallocTemp((void**)&tempMemPtr,tempMemSize);\n")
   }
