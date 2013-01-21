@@ -6,19 +6,20 @@ import ppl.dsl.opticvx.dcp._
 object DCPOpsTestApp extends DCPOpsDefinite {
   
   val square = {
-    val x = cvxexpr()
-    val t = cvxexpr()
+    val x = cvxfunexpr()
+    val t = cvxfunexpr()
     cvxfun(
-      paraminputs(),
-      inputs(x),
-      require(),
-      dcp(convex + x.vexity*x.sign),
+      params(),
+      args(scalar -> x),
+      sign(positive),
+      tonicity(x.sign),
+      vexity(positive),
       over(scalar -> t),
       let(),
       where(
-        in_secondorder_cone(cat(2*x, t-1), t+1)
+        //in_secondorder_cone(cat(2*x, t-1), t+1)
       ),
-      minimize(t)
+      maximize(t)
     )
   }
   

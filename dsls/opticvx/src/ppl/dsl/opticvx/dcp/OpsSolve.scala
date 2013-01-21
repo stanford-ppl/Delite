@@ -19,9 +19,6 @@ trait DCPOpsSolve extends DCPOpsGlobal {
   def cvxexpr(): Symbol[Expr, ExprRT] = new Symbol[Expr, ExprRT]()
   def cvxparam(): Symbol[IRPoly, Null] = new Symbol[IRPoly, Null]()
 
-  def scalar: IRPoly = IRPoly.const(1, globalArity)
-  def vector(size: IRPoly): IRPoly = size
-
   implicit def int2irpoly(i: Int) = IRPoly.const(i, globalArity)
   implicit def double2expr(x: Double) = Expr.const(x, globalInputSize, globalVarSize)
 

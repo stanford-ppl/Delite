@@ -44,6 +44,28 @@ object Function {
       AVectorZero(irp0),
       ConeZero(irp0.arity))    
   }
+
+  def fromcone(cone: Cone): Function = {
+    val irp0 = IRPoly.const(0, cone.arity)
+    val irp1 = IRPoly.const(1, cone.arity)
+    Function(
+      Seq(cone.size),
+      SignumPoly.const(Signum.Positive, 1),
+      Seq(SignumPoly.const(Signum.All, 1)),
+      SignumPoly.const(Signum.Positive, 1),
+      irp0,
+      Seq(AlmapZero(cone.size, irp1)),
+      AlmapZero(irp0, irp1),
+      AVectorZero(irp1),
+      Seq(AlmapZero(cone.size, irp0)),
+      AlmapZero(irp0, irp0),
+      AVectorZero(irp0),
+      Seq(AlmapIdentity(cone.size)),
+      AlmapZero(irp0, cone.size),
+      AVectorZero(cone.size),
+      cone
+    )
+  }
 }
 
 case class Function(
@@ -207,20 +229,20 @@ case class Function(
       //argSize
       ys(0).argSize,
       //sign
-      sign.evalpoly(ys map (x => x.sign)),
+      sign.evalpoly(ysnumargs, ys map (x => x.sign)),
       //tonicity
       for(i <- 0 until ysnumargs) yield {
         var tacc: SignumPoly = SignumPoly.const(Signum.Zero, ysnumargs)
         for(j <- 0 until argSize.length) {
-          tacc = tacc + tonicity(j).evalpoly(ys map (x => x.sign)) * ys(j).tonicity(i)
+          tacc = tacc + tonicity(j).evalpoly(ysnumargs, ys map (x => x.sign)) * ys(j).tonicity(i)
         }
         tacc
       },
       //vexity
       {
-        var vacc: SignumPoly = vexity.evalpoly(ys map (x => x.sign))
+        var vacc: SignumPoly = vexity.evalpoly(ysnumargs, ys map (x => x.sign))
         for(j <- 0 until argSize.length) {
-          vacc = vacc + tonicity(j).evalpoly(ys map (x => x.sign)) * ys(j).vexity
+          vacc = vacc + tonicity(j).evalpoly(ysnumargs, ys map (x => x.sign)) * ys(j).vexity
         }
         vacc
       },
@@ -332,11 +354,11 @@ case class Function(
       // argSize
       argSize.dropRight(1),
       // sign
-      sign.evalpoly(sgnvn),
+      sign.evalpoly(sgnvn(0).arity, sgnvn),
       // tonicity (minimizing componentwise destroys tonicity information)
       for(i <- 0 until argSize.length-1) yield SignumPoly.const(Signum.All, argSize.length - 1), //tonicity(i).evalpoly(sgnvn),
       // vexity
-      vexity.evalpoly(sgnvn) + SignumPoly.const(Signum.Negative, argSize.length - 1),
+      vexity.evalpoly(sgnvn(0).arity, sgnvn) + SignumPoly.const(Signum.Negative, argSize.length - 1),
       // varSize
       varSize + argSize.last,
       // valueArgAlmap

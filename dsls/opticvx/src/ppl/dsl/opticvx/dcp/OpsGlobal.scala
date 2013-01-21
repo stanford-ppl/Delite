@@ -30,6 +30,11 @@ trait DCPOpsGlobal {
     globalArity -= 1
   }
 
+  def scalar: IRPoly = IRPoly.const(1, globalArity)
+  def vector(size: IRPoly): IRPoly = size
+
+  var globalSignumArity: Int = -1
+
 
   class Symbol[T >: Null <: HasArity[T], R >: Null] {
     protected[dcp] var binding: T = null
