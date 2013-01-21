@@ -143,7 +143,7 @@ case class SVectorCatFor(val len: IRPoly, val arg: SVector) extends SVector {
 
   if(len.arity + 1 != arg.arity) throw new IRValidationException()
 
-  def arityOp(op: ArityOp): SVector = SVectorCatFor(len.arityOp(op), arg.arityOp(op))
+  def arityOp(op: ArityOp): SVector = SVectorCatFor(len.arityOp(op), arg.arityOp(op.promote))
 
   def eval(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Double] = {
     var rv: Seq[Double] = Seq()
@@ -177,7 +177,7 @@ case class SVectorAddFor(val len: IRPoly, val arg: SVector) extends SVector {
 
   if(arg.arity != len.arity + 1) throw new IRValidationException()
 
-  def arityOp(op: ArityOp): SVector = SVectorAddFor(len.arityOp(op), arg.arityOp(op))
+  def arityOp(op: ArityOp): SVector = SVectorAddFor(len.arityOp(op), arg.arityOp(op.promote))
 
   def eval(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Double] = {
     val isize = size.eval(params)(IntLikeInt)

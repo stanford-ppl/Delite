@@ -178,7 +178,7 @@ case class AVectorCatFor(val len: IRPoly, val arg: AVector) extends AVector {
 
   if(len.arity + 1 != arg.arity) throw new IRValidationException()
 
-  def arityOp(op: ArityOp): AVector = AVectorCatFor(len.arityOp(op), arg.arityOp(op))
+  def arityOp(op: ArityOp): AVector = AVectorCatFor(len.arityOp(op), arg.arityOp(op.promote))
 
   def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.catfor(len, arg.translate(e.promote))
 
@@ -206,7 +206,7 @@ case class AVectorAddFor(val len: IRPoly, val arg: AVector) extends AVector {
 
   if(arg.arity != len.arity + 1) throw new IRValidationException()
 
-  def arityOp(op: ArityOp): AVector = AVectorAddFor(len.arityOp(op), arg.arityOp(op))
+  def arityOp(op: ArityOp): AVector = AVectorAddFor(len.arityOp(op), arg.arityOp(op.promote))
 
   def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.addfor(len, arg.translate(e.promote))
   
