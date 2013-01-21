@@ -603,4 +603,11 @@ class DeliteTaskGraph {
     old.inputList = Nil
     old.mutableInputs = Set.empty
   }
+
+  def totalOps: Set[DeliteOP] = {
+    _ops.values.flatMap(_ match {
+      case m: OP_Nested => m.nestedGraphs.flatMap(g => g.totalOps)
+      case o@_ => Seq(o)
+    }).toSet
+  }
 }

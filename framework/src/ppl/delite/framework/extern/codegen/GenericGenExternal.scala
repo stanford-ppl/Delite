@@ -48,13 +48,13 @@ trait GenericGenExternal extends GenericNestedCodegen {
   // generator config
   
   /* location for generated interface objects */
-  val headerDir = new File(Config.buildDir + "/" + this.toString + "/kernels/")
+  lazy val headerDir = new File(Config.buildDir + "/" + this.toString + "/kernels/")
   
   /* location for generated native method wrappers */
-  val nativeDir = new File(Config.buildDir + "/native/")
+  lazy val nativeDir = new File(Config.buildDir + "/native/")
   
   /* location for compiled .so shared libraries */
-  val libDir = new File(Config.buildDir + "/libraries/" + this.toString)
+  lazy val libDir = new File(Config.buildDir + "/libraries/" + this.toString)
   
   def libInterfaceHdr(lib: ExternalLibrary) = ""
   def libInterfaceFtr(lib: ExternalLibrary) = ""

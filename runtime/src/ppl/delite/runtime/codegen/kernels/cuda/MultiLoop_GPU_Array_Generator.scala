@@ -266,7 +266,7 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
         out.append(params.mkString(","))
         if (params.nonEmpty && op.getInputs.nonEmpty) out.append(',')
         writeInputs(out,op,false)
-        if(op.getInputs.size > 0) out.append(",")
+        if (params.nonEmpty || op.getInputs.nonEmpty) out.append(',')
         if((id=="Reduce") || (id=="ReduceTuple") || (id=="HashReduce2")) {
           out.append("int size,")
         }
@@ -333,19 +333,19 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
           if (odata.hasCond) out.append("if (idxX<" + op.size + " && bitmap_" + osym + "[idxX]==1) {\n")
           else out.append("if (idxX < " + op.size + ") {\n")
           //out.append(odata.loopFuncOutputType + " collect_" + osym + " = dev_collect_" + funcNameSuffix(op,osym) + "(" + ((odata.loopFuncInputs:+"idxX")++tempAllocs(op).map(_.sym)++List("tempCudaMem,tempCudaMemSize")).mkString(",") + ");\n")
-          out.append(odata.loopFuncOutputType + " collect_" + osym + " = dev_collect_" + funcNameSuffix(op,osym) + "(" + (odata.loopFuncInputs++List("idxX",op.size)++tempAllocs(op).map(_.sym)++List("tempMemSize","tempMemPtr","tempMemUsage")).mkString(",") + ");\n")
+          out.append(odata.loopFuncOutputType + " collect_" + osym + " = dev_collect_" + funcNameSuffix(op,osym) + "(" + (odata.loopFuncInputs++(if(op.sizeIsConst) List("idxX") else List("idxX",op.size))++tempAllocs(op).map(_.sym)++List("tempMemSize","tempMemPtr","tempMemUsage")).mkString(",") + ");\n")
           //TODO: Fix this
           //if(odata.hasCond) out.append(osym + ".dcUpdate(scanmap_" + osym + "[idxX], collect_" + osym + ");\n")
           //else out.append(osym + ".dcUpdate(idxX, collect_" + osym + ");\n")
           if(tempAllocs(op).size > 0) 
-            out.append("dev_update_" +funcNameSuffix(op,osym) + "(idxX, collect_"+osym+","+osym+","+op.size+","+(tempAllocs(op).map(_.sym)++List("tempMemSize","tempMemPtr","tempMemUsage")).mkString(",") + ");\n")
+            out.append("dev_update_" +funcNameSuffix(op,osym) + "(idxX, collect_"+osym+","+osym+","+ (if(op.sizeIsConst) "" else op.size+",") + (tempAllocs(op).map(_.sym)++List("tempMemSize","tempMemPtr","tempMemUsage")).mkString(",") + ");\n")
           else
-            out.append("dev_update_" +funcNameSuffix(op,osym) + "(idxX, collect_"+osym+","+osym+","+op.size+"," + List("tempMemSize","tempMemPtr","tempMemUsage").mkString(",") + ");\n")
+            out.append("dev_update_" +funcNameSuffix(op,osym) + "(idxX, collect_"+osym+","+osym+"," + (if(op.sizeIsConst) "" else op.size+",") + List("tempMemSize","tempMemPtr","tempMemUsage").mkString(",") + ");\n")
           out.append("}\n")
         case "FOREACH" =>
           out.append("if (idxX < " + op.size + ") {\n")
           //out.append("dev_foreach_" + funcNameSuffix(op,osym) + "(" + odata.loopFuncInputs.mkString("",",",",") + "idxX);\n")
-          out.append("dev_foreach_" + funcNameSuffix(op,osym) + "(" + (odata.loopFuncInputs++List("idxX",op.size)++tempAllocs(op).map(_.sym)++List("tempMemSize","tempMemPtr","tempMemUsage")).mkString(",") + ");\n")
+          out.append("dev_foreach_" + funcNameSuffix(op,osym) + "(" + (odata.loopFuncInputs++(if(op.sizeIsConst) List("idxX") else List("idxX",op.size))++tempAllocs(op).map(_.sym)++List("tempMemSize","tempMemPtr","tempMemUsage")).mkString(",") + ");\n")
           out.append("}\n")
         case "REDUCE_TUPLE" =>
           if (odata.hasCond) {

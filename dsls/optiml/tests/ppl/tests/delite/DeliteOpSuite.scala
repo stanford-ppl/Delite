@@ -1,6 +1,8 @@
 package ppl.tests.scalatest.delite
 
+import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.codegen.cuda.TargetCuda
 import ppl.dsl.optiml.{OptiMLApplicationRunner, OptiMLApplication}
 import ppl.tests.scalatest._
 
@@ -216,18 +218,16 @@ trait DeliteIfThenElse extends DeliteTestModule with OptiMLApplication {
 }
 
 class DeliteOpSuite extends DeliteSuite {
-  def testDeliteMap() { compileAndTest(DeliteMapRunner) }
-  def testDeliteZip() { compileAndTest(DeliteZipRunner) }
-  def testDeliteReduce() { compileAndTest(DeliteReduceRunner) }
-  def testDeliteMapReduce() { compileAndTest(DeliteMapReduceRunner) }
-  def testDeliteFilter() { compileAndTest(DeliteFilterRunner) }
+  def testDeliteMap() { compileAndTest(DeliteMapRunner, CHECK_MULTILOOP); }
+  def testDeliteZip() { compileAndTest(DeliteZipRunner, CHECK_MULTILOOP); }
+  def testDeliteReduce() { compileAndTest(DeliteReduceRunner, CHECK_MULTILOOP); }
+  def testDeliteMapReduce() { compileAndTest(DeliteMapReduceRunner, CHECK_MULTILOOP); }
+  def testDeliteFilter() { compileAndTest(DeliteFilterRunner, CHECK_MULTILOOP); }
   def testDeliteForeach() { compileAndTest(DeliteForeachRunner) }
   def testDeliteNestedMap() { compileAndTest(DeliteNestedMapRunner) }
-
   def testDeliteNestedZip() { compileAndTest(DeliteNestedZipRunner) }
-  def testDeliteNestedReduce() { compileAndTest(DeliteNestedReduceRunner) }
-  def testDeliteNestedMapReduce() { compileAndTest(DeliteNestedMapReduceRunner) }
+  def testDeliteNestedReduce() { compileAndTest(DeliteNestedReduceRunner, CHECK_MULTILOOP); }
+  def testDeliteNestedMapReduce() { compileAndTest(DeliteNestedMapReduceRunner, CHECK_MULTILOOP); }
   def testDeliteNestedForeach() { compileAndTest(DeliteNestedForeachRunner) }
-  
   def testDeliteIfThenElse() { compileAndTest(DeliteIfThenElseRunner) }
 }
