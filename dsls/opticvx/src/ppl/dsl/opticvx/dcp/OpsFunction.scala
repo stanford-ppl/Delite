@@ -216,6 +216,7 @@ trait DCPOpsFunction extends DCPOpsGlobal {
 
   class FunctionHack(fx: Function) {
     def apply(exprs: CvxFunExpr*) = CvxFunExpr(fx.compose(Seq(exprs:_*) map (x => x.fx)))
+    def apply(params: IRPoly*) = new FunctionHack(fx.arityOp())
   }
 
   implicit def functionhackimpl(fx: Function) = new FunctionHack(fx)
