@@ -1,4 +1,4 @@
 package ppl.dsl.opticvx.dcp
 
 
-trait DCPOps extends DCPOpsSolve with DCPOpsFunctionPrimitives
+trait DCPOps extends DCPOpsProblem
