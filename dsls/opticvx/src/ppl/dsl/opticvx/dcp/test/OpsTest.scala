@@ -17,7 +17,7 @@ object DCPOpsTestApp extends DCPOpsDefinite {
       over(scalar -> t),
       let(),
       where(
-        //in_secondorder_cone(cat(2*x, t-1), t+1)
+        in_secondorder_cone(cat(2*x, t-1), t+1)
       ),
       maximize(t)
     )
