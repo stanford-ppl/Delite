@@ -49,12 +49,53 @@ trait DCPOpsFunction extends DCPOpsGlobal {
         value(t)
       )
     }
-  */
+  */  
 
-  case class CvxFunExpr(val fx: Function)
+  private val positive_cone_ifx = Function.fromcone(ConeNonNegative(0))
+  private val secondorder_cone_ifx = Function.fromcone(ConeSecondOrder(IRPoly.param(0, 1)))
+
+  private val zero_ifx = {
+    val irn = IRPoly.param(0, 1)
+    val irp0 = IRPoly.const(0, 1)
+    val irp1 = IRPoly.const(1, 1)
+    Function(
+      Seq(irn),
+      SignumPoly.const(Signum.Positive, 1),
+      Seq(SignumPoly.const(Signum.All, 1)),
+      SignumPoly.const(Signum.Positive, 1),
+      irp0,
+      Seq(AlmapZero(irn, irp1)),
+      AlmapZero(irp0, irp1),
+      AVectorZero(irp1),
+      Seq(AlmapIdentity(irn)),
+      AlmapZero(irp0, irn),
+      AVectorZero(irn),
+      Seq(AlmapZero(irn, irp0)),
+      AlmapZero(irp0, irp0),
+      AVectorZero(irp0),
+      ConeZero(1)
+    )
+  }
+
+  case class CvxFunExpr(val fx: Function) {
+    def +(y: CvxFunExpr): CvxFunExpr = CvxFunExpr(fx + y.fx)
+    def -(y: CvxFunExpr): CvxFunExpr = CvxFunExpr(fx - y.fx)
+    def unary_-(): CvxFunExpr = CvxFunExpr(-fx)
+    def size: IRPoly = fx.codomain
+    def >=(y: CvxFunExpr): CvxFunConstraint =
+      CvxFunConstraint(positive_cone_ifx(this - y).fx)
+    def <=(y: CvxFunExpr): CvxFunConstraint = (y >= this)
+    def ==(y: CvxFunExpr): CvxFunConstraint = {
+      if(this.size != y.size) throw new IRValidationException()
+      CvxFunConstraint(zero_ifx(this.size)(this - y).fx)
+    }
+  }
+  
   case class CvxFunConstraint(val fx: Function) {
     if(!(fx.isIndicator)) throw new IRValidationException()
   }
+
+
 
   class CvxFunParamSymbol {
     protected[DCPOpsFunction] var boundparam: IRPoly = null

@@ -92,6 +92,7 @@ case class Function(
   val conicCone: Cone) extends HasArity[Function]
 {
   val arity: Int = varSize.arity
+  val codomain: IRPoly = valueOffset.size
   // first, make sure that the signum polynomials have the correct number of inputs
   // two inputs for each argument, one for sign and one for vexity
   if(vexity.arity != argSize.length) throw new IRValidationException()
