@@ -22,6 +22,19 @@ object DCPOpsTestApp extends DCPOpsDefinite {
       maximize(t)
     )
   }
+
+  val square2 = {
+    cvxfun(
+      params(),
+      args(),
+      sign(positive),
+      tonicity(),
+      vexity(zero),
+      over(),
+      let(),
+      where(),
+      maximize(square(2)))
+  }
   
 
   def main(args: Array[String]) {

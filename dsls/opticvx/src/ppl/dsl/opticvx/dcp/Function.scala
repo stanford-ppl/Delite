@@ -26,7 +26,10 @@ object Function {
   }
 
   def const(c: AVector, argSize: Seq[IRPoly]): Function = {
-    val irp0: IRPoly = IRPoly.const(0, argSize(0).arity)
+    for(s <- argSize) {
+      if(s.arity != c.arity) throw new IRValidationException()
+    }
+    val irp0: IRPoly = IRPoly.const(0, c.arity)
     Function(
       argSize,
       SignumPoly.const(Signum.All, argSize.length),
@@ -65,6 +68,28 @@ object Function {
       AVectorZero(cone.size),
       cone
     )
+  }
+
+  def cat(x: Function, y: Function) = {
+    // the two functions to be added must take the same arguments
+    if(x.argSize != y.argSize) throw new IRValidationException()
+    // form the output function
+    Function(
+      x.argSize,
+      x.sign + y.sign,
+      for(i <- 0 until x.argSize.length) yield x.tonicity(i) + y.tonicity(i),
+      x.vexity + y.vexity,
+      x.varSize + y.varSize,
+      for(i <- 0 until x.argSize.length) yield AlmapVCat(x.valueArgAlmap(i), y.valueArgAlmap(i)),
+      Almap.diagCat(x.valueVarAlmap, y.valueVarAlmap),
+      AVectorCat(x.valueOffset, y.valueOffset),
+      for(i <- 0 until x.argSize.length) yield AlmapVCat(x.affineArgAlmap(i), y.affineArgAlmap(i)),
+      Almap.diagCat(x.affineVarAlmap, y.affineVarAlmap),
+      x.affineOffset ++ y.affineOffset,
+      for(i <- 0 until x.argSize.length) yield AlmapVCat(x.conicArgAlmap(i), y.conicArgAlmap(i)),
+      Almap.diagCat(x.conicVarAlmap, y.conicVarAlmap),
+      x.conicOffset ++ y.conicOffset,
+      ConeProduct(x.conicCone, y.conicCone))
   }
 }
 
@@ -298,7 +323,7 @@ case class Function(
         implicit val avlav = AVectorLikeAVector(arity)
         var acc: AVector = affineOffset
         for(j <- 0 until argSize.length) {
-          acc = acc + affineArgAlmap(j) * ys(j).affineOffset
+          acc = acc + affineArgAlmap(j) * ys(j).valueOffset
         }
         for(j <- 0 until argSize.length) {
           acc = acc ++ ys(j).affineOffset
@@ -329,7 +354,7 @@ case class Function(
         implicit val avlav = AVectorLikeAVector(arity)
         var acc: AVector = conicOffset
         for(j <- 0 until argSize.length) {
-          acc = acc + conicArgAlmap(j) * ys(j).conicOffset
+          acc = acc + conicArgAlmap(j) * ys(j).valueOffset
         }
         for(j <- 0 until argSize.length) {
           acc = acc ++ ys(j).conicOffset

@@ -30,6 +30,8 @@ trait DCPOpsGlobal {
     globalArity -= 1
   }
 
+  var globalArgSize: Seq[IRPoly] = null
+
   def scalar: IRPoly = IRPoly.const(1, globalArity)
   def vector(size: IRPoly): IRPoly = size
 

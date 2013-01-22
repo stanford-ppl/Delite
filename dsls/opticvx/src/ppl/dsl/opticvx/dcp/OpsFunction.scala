@@ -116,7 +116,32 @@ trait DCPOpsFunction extends DCPOpsGlobal {
       if(this.size != y.size) throw new IRValidationException()
       CvxFunConstraint(zero_ifx(this.size)(this - y).fx)
     }
+    def +(c: Double): CvxFunExpr = 
+      CvxFunExpr(fx + Function.const(AVector.const(c, fx.arity), fx.argSize))
+    def -(c: Double): CvxFunExpr = 
+      CvxFunExpr(fx - Function.const(AVector.const(c, fx.arity), fx.argSize))
+    def *(c: Double): CvxFunExpr = 
+      CvxFunExpr(fx.scale(c))
+    def /(c: Double): CvxFunExpr = 
+      CvxFunExpr(fx.scale(1/c))
   }
+
+  def cat(x: CvxFunExpr, y: CvxFunExpr): CvxFunExpr =
+    CvxFunExpr(Function.cat(x.fx, y.fx))
+
+  class DoubleHack(val c: Double) {
+    def +(x: CvxFunExpr): CvxFunExpr = (x + c)
+    def -(x: CvxFunExpr): CvxFunExpr = ((-x) + c)
+    def *(x: CvxFunExpr): CvxFunExpr = (x * c)
+    def /(x: CvxFunExpr): CvxFunExpr = throw new IRValidationException()
+
+    def +(x: CvxFunExprSymbol): CvxFunExpr = (cvxfunexprsym2val(x) + c)
+    def -(x: CvxFunExprSymbol): CvxFunExpr = ((-cvxfunexprsym2val(x)) + c)
+    def *(x: CvxFunExprSymbol): CvxFunExpr = (cvxfunexprsym2val(x) * c)
+    def /(x: CvxFunExprSymbol): CvxFunExpr = throw new IRValidationException()
+  }
+  implicit def double2doublehackimpl(c: Double): DoubleHack = new DoubleHack(c)
+  implicit def int2doublehackimpl(c: Int): DoubleHack = new DoubleHack(c.toDouble)
   
   case class CvxFunConstraint(val fx: Function) {
     if(!(fx.isIndicator)) throw new IRValidationException()
@@ -224,6 +249,14 @@ trait DCPOpsFunction extends DCPOpsGlobal {
   def maximize(x: CvxFunExpr): CvxFunValue = new CvxFunMaximize(x)
 
   def positive: SignumPoly = SignumPoly.const(Signum.Positive, globalSignumArity)
+  def negative: SignumPoly = SignumPoly.const(Signum.Negative, globalSignumArity)
+  def zero: SignumPoly = SignumPoly.const(Signum.Zero, globalSignumArity)
+  def none: SignumPoly = SignumPoly.const(Signum.All, globalSignumArity)
+
+  implicit def double2cvxfunexprimpl(c: Double): CvxFunExpr = 
+    CvxFunExpr(Function.const(AVector.const(c, globalArity), globalArgSize))
+  implicit def int2cvxfunexprimpl(i: Int): CvxFunExpr = 
+    double2cvxfunexprimpl(i.toDouble)
 
   def cvxfun(
     ts_params: =>CvxFunParams,
@@ -256,7 +289,8 @@ trait DCPOpsFunction extends DCPOpsGlobal {
     globalSignumArity = -1
     // get the variables
     val s_over = ts_over.vars
-    val s_argsize: Seq[IRPoly] = (s_args map (x => x.size)) ++ (s_over map (x => x.size)) 
+    val s_argsize: Seq[IRPoly] = (s_args map (x => x.size)) ++ (s_over map (x => x.size))
+    globalArgSize = s_argsize
     // rebind the arguments
     for(i <- 0 until s_args.length) {
       s_args(i).symbol.releasesign()
@@ -275,6 +309,7 @@ trait DCPOpsFunction extends DCPOpsGlobal {
     val s_where = ts_where.constraints
     val s_value = ts_value
     globalArity = -1
+    globalArgSize = null
     // make the return value
     val tmpfxn = s_value match {
       case x: CvxFunMinimize => s_where.foldLeft(x.expr.fx)((a,b) => a + b.fx)
