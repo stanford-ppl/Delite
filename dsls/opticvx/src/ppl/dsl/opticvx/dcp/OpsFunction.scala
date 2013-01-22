@@ -52,7 +52,34 @@ trait DCPOpsFunction extends DCPOpsGlobal {
   */  
 
   private val positive_cone_ifx = Function.fromcone(ConeNonNegative(0))
-  private val secondorder_cone_ifx = Function.fromcone(ConeSecondOrder(IRPoly.param(0, 1)))
+  private val secondorder_cone_ifx = {
+    val irn = IRPoly.param(0, 1)
+    val irp0 = IRPoly.const(0, 1)
+    val irp1 = IRPoly.const(1, 1)
+    Function(
+      Seq(irn, irp1),
+      SignumPoly.const(Signum.Positive, 2),
+      Seq(SignumPoly.const(Signum.All, 2), SignumPoly.const(Signum.All, 2)),
+      SignumPoly.const(Signum.Positive, 2),
+      irp0,
+      Seq(AlmapZero(irn, irp1), AlmapZero(irp1, irp1)),
+      AlmapZero(irp0, irp1),
+      AVectorZero(irp1),
+      Seq(AlmapZero(irn, irp0), AlmapZero(irp1, irp0)),
+      AlmapZero(irp0, irp0),
+      AVectorZero(irp0),
+      Seq(
+        AlmapVCat(
+          AlmapZero(irn, irp1),
+          AlmapIdentity(irn)),
+        AlmapVCat(
+          AlmapIdentity(irp1),
+          AlmapZero(irp1, irn))),
+      AlmapZero(irp0, irn + irp1),
+      AVectorZero(irn + irp1),
+      ConeSecondOrder(irn)
+    )
+  }
 
   private val zero_ifx = {
     val irn = IRPoly.param(0, 1)
@@ -95,7 +122,10 @@ trait DCPOpsFunction extends DCPOpsGlobal {
     if(!(fx.isIndicator)) throw new IRValidationException()
   }
 
-
+  def in_secondorder_cone(x: CvxFunExpr, z: CvxFunExpr): CvxFunConstraint = {
+    if(z.size != IRPoly.const(1, x.size.arity)) throw new IRValidationException()
+    CvxFunConstraint(secondorder_cone_ifx(x.size)(x, z).fx)
+  }
 
   class CvxFunParamSymbol {
     protected[DCPOpsFunction] var boundparam: IRPoly = null
