@@ -6,8 +6,8 @@ import ppl.dsl.opticvx.dcp._
 object DCPOpsTestApp extends DCPOpsDefinite {
   
   val square = {
-    val x = cvxfunexpr()
-    val t = cvxfunexpr()
+    val x = cvxexpr()
+    val t = cvxexpr()
     cvxfun(
       params(),
       args(scalar -> x),

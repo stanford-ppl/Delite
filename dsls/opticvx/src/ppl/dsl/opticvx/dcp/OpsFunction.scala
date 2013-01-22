@@ -197,8 +197,8 @@ trait DCPOpsFunction extends DCPOpsGlobal {
     sym.boundexpr
   }
 
-  def cvxfunparam(): CvxFunParamSymbol = new CvxFunParamSymbol
-  def cvxfunexpr(): CvxFunExprSymbol = new CvxFunExprSymbol
+  def cvxparam(): CvxFunParamSymbol = new CvxFunParamSymbol
+  def cvxexpr(): CvxFunExprSymbol = new CvxFunExprSymbol
 
   class CvxFunParams(val params: Seq[CvxFunParamSymbol])
 
