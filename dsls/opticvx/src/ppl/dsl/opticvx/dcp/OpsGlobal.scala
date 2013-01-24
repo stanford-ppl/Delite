@@ -9,6 +9,7 @@ trait DCPOpsGlobal {
   var globalArity: Int = -1
   var globalInputSize: IRPoly = null
   var globalVarSize: IRPoly = null
+  var globalArgSize: Seq[IRPoly] = null
 
   def globalArityPromote() {
     if ((globalInputSize != null)||(globalVarSize != null)) {
@@ -16,6 +17,10 @@ trait DCPOpsGlobal {
       if (globalVarSize.arity != globalArity) throw new IRValidationException()
       globalInputSize = globalInputSize.promote
       globalVarSize = globalVarSize.promote
+      globalArgSize = globalArgSize map (x => {
+        if(x.arity != globalArity) throw new IRValidationException()
+        x.promote
+        })
     }
     globalArity += 1
   }
@@ -26,11 +31,13 @@ trait DCPOpsGlobal {
       if (globalVarSize.arity != globalArity) throw new IRValidationException()
       globalInputSize = globalInputSize.demote
       globalVarSize = globalVarSize.demote
+      globalArgSize = globalArgSize map (x => {
+        if(x.arity != globalArity) throw new IRValidationException()
+        x.demote
+        })
     }
     globalArity -= 1
   }
-
-  var globalArgSize: Seq[IRPoly] = null
 
   def scalar: IRPoly = IRPoly.const(1, globalArity)
   def vector(size: IRPoly): IRPoly = size

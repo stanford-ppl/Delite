@@ -6,14 +6,6 @@ package ppl.dsl.opticvx.model
 import ppl.dsl.opticvx.common._
 import scala.collection.immutable.Seq
 
-object Almap {
-  def diagCat(x: Almap, y: Almap): Almap = {
-    if(x.arity != y.arity) throw new IRValidationException()
-    AlmapHCat(
-      AlmapVCat(x, AlmapZero(x.domain, y.codomain)),
-      AlmapVCat(AlmapZero(y.domain, x.codomain), y))
-  }
-}
 
 sealed trait Almap extends HasArity[Almap] {
   //The domain and codomain sizes of this map
@@ -283,6 +275,7 @@ case class AlmapVCatFor(val len: IRPoly, val body: Almap) extends Almap {
   def isPure: Boolean = body.isPure
 }
 
+/*
 // "Puts" the given almap at the target index, all other entries are 0
 case class AlmapVPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends Almap {
   val arity: Int = len.arity
@@ -312,6 +305,7 @@ case class AlmapVPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
 
   def isPure: Boolean = body.isPure
 }
+*/
 
 //The horizontal concatenation of two linear maps
 case class AlmapHCat(val arg1: Almap, val arg2: Almap) extends Almap {
@@ -376,6 +370,7 @@ case class AlmapHCatFor(val len: IRPoly, val body: Almap) extends Almap {
   def isPure: Boolean = body.isPure
 }
 
+/*
 // "Puts" the given almap at the target index, all other entries are 0
 case class AlmapHPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends Almap {
   val arity: Int = len.arity
@@ -401,6 +396,69 @@ case class AlmapHPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
         x, 
         body.domain.sum(arity).substituteAt(arity, at),
         body.domain.substituteAt(arity, at)))
+  }
+
+  def is0: Boolean = body.is0
+
+  def isPure: Boolean = body.isPure
+}
+*/
+
+//The horizontal concatenation of two linear maps
+case class AlmapDiagCat(val arg1: Almap, val arg2: Almap) extends Almap {
+  val arity: Int = arg1.arity
+  val domain: IRPoly = arg1.domain + arg2.domain
+  val codomain: IRPoly = arg1.codomain + arg2.codomain
+
+  if (arg1.arity != arg2.arity) throw new IRValidationException()
+
+  def arityOp(op: ArityOp): Almap = AlmapDiagCat(arg1.arityOp(op), arg2.arityOp(op))
+
+  def T: Almap = AlmapDiagCat(arg1.T, arg2.T)
+  
+  arityVerify()
+
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck {
+    import e._
+    if(e.arity != this.arity) throw new IRValidationException()
+    val arity: Int = this.arity
+    if(size(x) != domain) throw new IRValidationException()
+    cat(arg1.mmpy(x(IRPoly.const(0, arity), arg1.domain)),
+      arg2.mmpy(x(arg1.domain, arg2.domain)))
+  }
+
+  def is0: Boolean = arg1.is0 && arg2.is0
+
+  def isPure: Boolean = arg1.isPure && arg2.isPure
+}
+
+
+//The horzontal concatenation of a number of linear maps, depending on problem size
+case class AlmapDiagCatFor(val len: IRPoly, val body: Almap) extends Almap {
+  val arity: Int = len.arity
+  val domain: IRPoly = body.domain.sum(arity).substituteAt(arity, len)
+  val codomain: IRPoly = body.codomain.sum(arity).substituteAt(arity, len)
+
+  if (body.arity != (len.arity + 1)) throw new IRValidationException()
+
+  def arityOp(op: ArityOp): Almap = AlmapDiagCatFor(len.arityOp(op), body.arityOp(op.promote))
+
+  def T: Almap = AlmapDiagCatFor(len, body.T)
+
+  arityVerify()
+
+  def mmpy[V <: HasArity[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck {
+    import e._
+    if(e.arity != this.arity) throw new IRValidationException()
+    val arity: Int = this.arity
+    if(size(x) != domain) throw new IRValidationException()
+    catfor(
+      len,
+      body.mmpy(
+        slice(
+          x.promote,
+          body.domain.sum(arity),
+          body.domain))(e.promote))
   }
 
   def is0: Boolean = body.is0

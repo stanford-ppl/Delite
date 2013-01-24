@@ -129,6 +129,30 @@ trait DCPOpsFunction extends DCPOpsGlobal {
   def cat(x: CvxFunExpr, y: CvxFunExpr): CvxFunExpr =
     CvxFunExpr(Function.cat(x.fx, y.fx))
 
+  def sumfor(len: IRPoly)(fx: (IRPoly)=>CvxFunExpr): CvxFunExpr = {
+    if(len.arity != globalArity) throw new IRValidationException()
+    globalArityPromote()
+    val exfx = fx(len.next)
+    globalArityDemote()
+    CvxFunExpr(Function.sumfor(len, exfx.fx))
+  }
+
+  def xfor(len: IRPoly)(fx: (IRPoly)=>CvxFunExpr): CvxFunExpr = {
+    if(len.arity != globalArity) throw new IRValidationException()
+    globalArityPromote()
+    val exfx = fx(len.next)
+    globalArityDemote()
+    CvxFunExpr(Function.catfor(len, exfx.fx))
+  }
+
+  def cfor(len: IRPoly)(fx: (IRPoly)=>CvxFunConstraint): CvxFunConstraint = {
+    if(len.arity != globalArity) throw new IRValidationException()
+    globalArityPromote()
+    val cxfx = fx(len.next)
+    globalArityDemote()
+    CvxFunConstraint(Function.sumfor(len, cxfx.fx))
+  }
+
   class DoubleHack(val c: Double) {
     def +(x: CvxFunExpr): CvxFunExpr = (x + c)
     def -(x: CvxFunExpr): CvxFunExpr = ((-x) + c)
@@ -194,7 +218,7 @@ trait DCPOpsFunction extends DCPOpsGlobal {
   }
   implicit def cvxfunexprsym2val(sym: CvxFunExprSymbol): CvxFunExpr = {
     if(sym.boundexpr == null) throw new IRValidationException()
-    sym.boundexpr
+    CvxFunExpr(sym.boundexpr.fx.arityOp(ArityOp(globalArity, globalArgSize)))
   }
 
   def cvxparam(): CvxFunParamSymbol = new CvxFunParamSymbol

@@ -81,15 +81,62 @@ object Function {
       x.vexity + y.vexity,
       x.varSize + y.varSize,
       for(i <- 0 until x.argSize.length) yield AlmapVCat(x.valueArgAlmap(i), y.valueArgAlmap(i)),
-      Almap.diagCat(x.valueVarAlmap, y.valueVarAlmap),
+      AlmapDiagCat(x.valueVarAlmap, y.valueVarAlmap),
       AVectorCat(x.valueOffset, y.valueOffset),
       for(i <- 0 until x.argSize.length) yield AlmapVCat(x.affineArgAlmap(i), y.affineArgAlmap(i)),
-      Almap.diagCat(x.affineVarAlmap, y.affineVarAlmap),
+      AlmapDiagCat(x.affineVarAlmap, y.affineVarAlmap),
       x.affineOffset ++ y.affineOffset,
       for(i <- 0 until x.argSize.length) yield AlmapVCat(x.conicArgAlmap(i), y.conicArgAlmap(i)),
-      Almap.diagCat(x.conicVarAlmap, y.conicVarAlmap),
+      AlmapDiagCat(x.conicVarAlmap, y.conicVarAlmap),
       x.conicOffset ++ y.conicOffset,
       ConeProduct(x.conicCone, y.conicCone))
+  }
+
+  def sumfor(len: IRPoly, x: Function): Function = {
+    if(x.arity != len.arity + 1) throw new IRValidationException()
+    for(sz <- x.argSize) {
+      if(!(sz.invariantAt(len.arity))) throw new IRValidationException()
+    }
+    if(!(x.codomain.invariantAt(len.arity))) throw new IRValidationException()
+    Function(
+      x.argSize,
+      x.sign,
+      x.tonicity,
+      x.vexity,
+      x.varSize.sum(len.arity).substituteAt(len.arity, len),
+      x.valueArgAlmap map (a => AlmapSumFor(len, a)),
+      AlmapHCatFor(len, x.valueVarAlmap),
+      AVectorAddFor(len, x.valueOffset),
+      x.affineArgAlmap map (a => AlmapVCatFor(len, a)),
+      AlmapDiagCatFor(len, x.affineVarAlmap),
+      AVectorCatFor(len, x.affineOffset),
+      x.conicArgAlmap map (a => AlmapVCatFor(len, a)),
+      AlmapDiagCatFor(len, x.conicVarAlmap),
+      AVectorCatFor(len, x.conicOffset),
+      ConeFor(len, x.conicCone))
+  }
+
+  def catfor(len: IRPoly, x: Function): Function = {
+    if(x.arity != len.arity + 1) throw new IRValidationException()
+    for(sz <- x.argSize) {
+      if(!(sz.invariantAt(len.arity))) throw new IRValidationException()
+    }
+    Function(
+      x.argSize,
+      x.sign,
+      x.tonicity,
+      x.vexity,
+      x.varSize.sum(len.arity).substituteAt(len.arity, len),
+      x.valueArgAlmap map (a => AlmapVCatFor(len, a)),
+      AlmapDiagCatFor(len, x.valueVarAlmap),
+      AVectorCatFor(len, x.valueOffset),
+      x.affineArgAlmap map (a => AlmapVCatFor(len, a)),
+      AlmapDiagCatFor(len, x.affineVarAlmap),
+      AVectorCatFor(len, x.affineOffset),
+      x.conicArgAlmap map (a => AlmapVCatFor(len, a)),
+      AlmapDiagCatFor(len, x.conicVarAlmap),
+      AVectorCatFor(len, x.conicOffset),
+      ConeFor(len, x.conicCone))
   }
 }
 
@@ -199,10 +246,10 @@ case class Function(
       AlmapHCat(valueVarAlmap, y.valueVarAlmap),
       valueOffset + y.valueOffset,
       for(i <- 0 until argSize.length) yield AlmapVCat(affineArgAlmap(i), y.affineArgAlmap(i)),
-      Almap.diagCat(affineVarAlmap, y.affineVarAlmap),
+      AlmapDiagCat(affineVarAlmap, y.affineVarAlmap),
       affineOffset ++ y.affineOffset,
       for(i <- 0 until argSize.length) yield AlmapVCat(conicArgAlmap(i), y.conicArgAlmap(i)),
-      Almap.diagCat(conicVarAlmap, y.conicVarAlmap),
+      AlmapDiagCat(conicVarAlmap, y.conicVarAlmap),
       conicOffset ++ y.conicOffset,
       ConeProduct(conicCone, y.conicCone))
   }
@@ -314,7 +361,7 @@ case class Function(
       {
         var acc: Almap = affineVarAlmap
         for(j <- 0 until argSize.length) {
-          acc = Almap.diagCat(acc, ys(j).affineVarAlmap)
+          acc = AlmapDiagCat(acc, ys(j).affineVarAlmap)
         }
         acc
       },
@@ -345,7 +392,7 @@ case class Function(
       {
         var acc: Almap = conicVarAlmap
         for(j <- 0 until argSize.length) {
-          acc = Almap.diagCat(acc, ys(j).conicVarAlmap)
+          acc = AlmapDiagCat(acc, ys(j).conicVarAlmap)
         }
         acc
       },
