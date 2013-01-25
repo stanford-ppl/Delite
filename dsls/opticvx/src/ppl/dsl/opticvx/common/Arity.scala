@@ -86,15 +86,13 @@ case class ArityOpSequential(op1: ArityOp, op2: ArityOp) extends ArityOp {
 //Here, xa is the arity of each of the xs.  We need this upfront in case
 //the xs is an empty sequence, in order to construct an expression of appropriate
 //arity.
-case class ArityOp(val xa: Int, val xs: Seq[IRPoly]) {
-  if(xa < 0) throw new IRValidationException()
+case class ArityOp(val arity: Int, val xs: Seq[IRPoly]) extends HasArity[ArityOp] {
+  if(arity < 0) throw new IRValidationException()
   for(x <- xs) {
-    if(x.arity != xa) throw new IRValidationException()
+    if(x.arity != arity) throw new IRValidationException()
   }
 
-  def promote: ArityOp = ArityOp(
-    xa + 1,
-    (xs map (x => x.promote)) :+ IRPoly.param(xa, xa + 1))
+  def arityOp(op: ArityOp): ArityOp = ArityOp(op.arity, xs map (x => x.arityOp(op)))
 }
 
 trait HasArity[T] {

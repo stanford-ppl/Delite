@@ -15,7 +15,7 @@ case class ConeZero(val arity: Int) extends Cone {
   val size: IRPoly = IRPoly.const(0, arity)
   def conj: Cone = ConeZero(arity)
 
-  def arityOp(op: ArityOp): Cone = ConeZero(op.xa)
+  def arityOp(op: ArityOp): Cone = ConeZero(op.arity)
 
   def project_eval(params: Seq[Int], v: Seq[Double]): Seq[Double] = {
     if(v.size != 0) throw new IRValidationException()
@@ -28,7 +28,7 @@ case class ConeNonNegative(val arity: Int) extends Cone {
   val size: IRPoly = IRPoly.const(1,arity)
   def conj: Cone = ConeNonNegative(arity)
   
-  def arityOp(op: ArityOp): Cone = ConeNonNegative(op.xa)
+  def arityOp(op: ArityOp): Cone = ConeNonNegative(op.arity)
 
   def project_eval(params: Seq[Int], v: Seq[Double]): Seq[Double] = {
     if(v.size != 1) throw new IRValidationException()
