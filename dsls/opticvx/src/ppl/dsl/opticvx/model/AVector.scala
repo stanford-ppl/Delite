@@ -3,23 +3,22 @@ package ppl.dsl.opticvx.model
 import ppl.dsl.opticvx.common._
 import scala.collection.immutable.Seq
 
-trait AVectorLike[T <: HasArity[T]] extends HasArity[AVectorLike[T]] {
-  val arity: Int
+trait AVectorLike[T <: HasInput[T]] extends HasInput[AVectorLike[T]] {
   def size(arg: T): IRPoly
   def zero(size: IRPoly): T
   def one: T
-  def add(arg1: T, arg2: T): T
-  def addfor(len: IRPoly, arg:T): T
+  def sum(arg1: T, arg2: T): T
+  def sumfor(len: IRPoly, arg:T): T
   def neg(arg: T): T
-  def scaleinput(arg: T, scale: IRPoly): T
   def scaleconstant(arg: T, scale: Double): T
   def cat(arg1: T, arg2:T): T
   def catfor(len: IRPoly, arg: T): T
   def slice(arg: T, at: IRPoly, size: IRPoly): T
+  def mmpyinput(arg: T, iidx: Int, sidx: Seq[IRPoly]): T
 
   class THackImpl(val t: T) {
-    def +(u: T) = add(t, u)
-    def -(u: T) = add(t, neg(u))
+    def +(u: T) = sum(t, u)
+    def -(u: T) = sum(t, neg(u))
     def unary_-() = neg(t)
     def ++(u: T) = cat(t, u)
     def apply(at: IRPoly, size: IRPoly) = slice(t, at, size)
@@ -28,7 +27,8 @@ trait AVectorLike[T <: HasArity[T]] extends HasArity[AVectorLike[T]] {
   implicit def t2thackimpl(t: T) = new THackImpl(t)
 }
 
-case class AVectorLikeScale[T <: HasArity[T]](val base: T, val e: AVectorLike[T]) extends AVectorLike[T] {
+/*
+case class AVectorLikeScale[T <: HasInput[T]](val base: T, val e: AVectorLike[T]) extends AVectorLike[T] {
   val arity: Int = e.arity
   def size(arg: T): IRPoly = e.size(arg) / e.size(base)
   def zero(size: IRPoly): T = e.zero(size * e.size(base))
@@ -44,13 +44,14 @@ case class AVectorLikeScale[T <: HasArity[T]](val base: T, val e: AVectorLike[T]
 
   def arityOp(op: ArityOp): AVectorLike[T] = AVectorLikeScale(base.arityOp(op), e.arityOp(op))
 }
+*/
 
 case class AVectorLikeAVector(val arity: Int) extends AVectorLike[AVector] {
   def size(arg: AVector): IRPoly = arg.size
   def zero(size: IRPoly): AVector = AVectorZero(size)
   def one: AVector = AVectorOne(arity)
-  def add(arg1: AVector, arg2: AVector): AVector = AVectorAdd(arg1, arg2)
-  def addfor(len: IRPoly, arg: AVector): AVector = AVectorAddFor(len, arg)
+  def sum(arg1: AVector, arg2: AVector): AVector = AVectorSum(arg1, arg2)
+  def sumfor(len: IRPoly, arg: AVector): AVector = AVectorSumFor(len, arg)
   def neg(arg: AVector): AVector = AVectorNeg(arg)
   def scaleinput(arg: AVector, scale: IRPoly): AVector = AVectorScaleInput(arg, scale)
   def scaleconstant(arg: AVector, scale: Double): AVector = AVectorScaleConstant(arg, scale)
@@ -72,12 +73,27 @@ object AVector {
   }
 }
 
-trait AVector extends HasArity[AVector] {
-  def size: IRPoly
-  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V
+trait AVector extends HasInput[AVector] {
+  val size: IRPoly
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V
 
-  def +(u: AVector) = AVectorAdd(this, u)
-  def -(u: AVector) = AVectorAdd(this, AVectorNeg(u))
+  def arityVerify() {
+    if(size.arity != arity) throw new IRValidationException()
+    if(input.arity != arity) throw new IRValidationException()
+  }
+
+  def translateCheck[V <: HasInput[V]](tv: =>V)(implicit e: AVectorLike[V]): V = {
+    if(e.arity != arity) throw new IRValidationException()
+    if(e.input != input) throw new IRValidationException()
+    val v: V = tv
+    if(v.arity != arity) throw new IRValidationException()
+    if(v.input != input) throw new IRValidationException()
+    if(e.size(v) != size) throw new IRValidationException()
+    v
+  }
+
+  def +(u: AVector) = AVectorSum(this, u)
+  def -(u: AVector) = AVectorSum(this, AVectorNeg(u))
   def unary_-() = AVectorNeg(this)
   def ++(u: AVector) = AVectorCat(this, u)
   def apply(at: IRPoly, size: IRPoly) = AVectorSlice(this, at, size)
@@ -85,38 +101,48 @@ trait AVector extends HasArity[AVector] {
   def isPure: Boolean
 }
 
-case class AVectorZero(val size: IRPoly) extends AVector {
-  val arity: Int = size.arity  
-  def arityOp(op: ArityOp): AVector = AVectorZero(size.arityOp(op))
-  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.zero(size)
+case class AVectorZero(val input: InputDesc, val size: IRPoly) extends AVector {
+  val arity: Int = size.arity
+  arityVerify()
+  def arityOp(op: ArityOp): AVector = AVectorZero(input.arityOp(op), size.arityOp(op))
+  def inputOp(op: InputOp): AVector = AVectorZero(op.input, size)
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+    e.zero(size)
+  }
   def is0: Boolean = true
   def isPure: Boolean = true
 }
 
-case class AVectorOne(val arity: Int) extends AVector {
+case class AVectorOne(val input: InputDesc) extends AVector {
+  val arity: Int = input.arity
   val size: IRPoly = IRPoly.const(1, arity)
-  def arityOp(op: ArityOp): AVector = AVectorOne(size.arityOp(op).arity)
-  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = {
-    if (e.arity != arity) throw new IRValidationException()
+  arityVerify()
+  def arityOp(op: ArityOp): AVector = AVectorOne(input.arityOp())
+  def inputOp(op: InputOp): AVector = AVectorOne(op.input)
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
     e.one
   }
   def is0: Boolean = false
   def isPure: Boolean = true
 }
 
-case class AVectorAdd(val arg1: AVector, val arg2: AVector) extends AVector {
+case class AVectorSum(val arg1: AVector, val arg2: AVector) extends AVector {
   val arity: Int = arg1.arity
+  val input: InputDesc = arg1.input
   val size: IRPoly = arg1.size
 
-  if(arg1.size != arg2.size) {
-    println(arg1.size)
-    println(arg2.size)
-    throw new IRValidationException()
+  if(arg1.arity != arg2.arity) throw new IRValidationException()
+  if(arg1.input != arg2.input) throw new IRValidationException()
+  if(arg1.size != arg2.size) throw new IRValidationException()
+
+  arityVerify()
+
+  def arityOp(op: ArityOp): AVector = AVectorSum(arg1.arityOp(op), arg2.arityOp(op))
+  def inputOp(op: InputOp): AVector = AVectorSum(arg1.inputOp(op), arg2.inputOp(op))
+
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+    e.sum(arg1.translate, arg2.translate)
   }
-
-  def arityOp(op: ArityOp): AVector = AVectorAdd(arg1.arityOp(op), arg2.arityOp(op))
-
-  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.add(arg1.translate, arg2.translate)
 
   def is0: Boolean = arg1.is0 && arg2.is0
   def isPure: Boolean = arg1.isPure && arg2.isPure
@@ -124,16 +150,23 @@ case class AVectorAdd(val arg1: AVector, val arg2: AVector) extends AVector {
 
 case class AVectorNeg(val arg: AVector) extends AVector {
   val arity: Int = arg.arity
+  val input: InputDesc = arg.input
   val size: IRPoly = arg.size
 
-  def arityOp(op: ArityOp): AVector = AVectorNeg(arg.arityOp(op))
+  arityVerify()
 
-  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.neg(arg.translate)
+  def arityOp(op: ArityOp): AVector = AVectorNeg(arg.arityOp(op))
+  def inputOp(op: InputOp): AVector = AVectorNeg(arg.inputOp(op))
+
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+    e.neg(arg.translate)
+  }
 
   def is0: Boolean = arg.is0
   def isPure: Boolean = arg.isPure
 }
 
+/*
 case class AVectorScaleInput(val arg: AVector, val scale: IRPoly) extends AVector {
   val arity: Int = arg.arity
   val size: IRPoly = arg.size
@@ -142,19 +175,26 @@ case class AVectorScaleInput(val arg: AVector, val scale: IRPoly) extends AVecto
 
   def arityOp(op: ArityOp): AVector = AVectorScaleInput(arg.arityOp(op), scale.arityOp(op))
 
-  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.scaleinput(arg.translate, scale)
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = e.scaleinput(arg.translate, scale)
 
   def is0: Boolean = arg.is0
   def isPure: Boolean = false
 }
+*/
 
 case class AVectorScaleConstant(val arg: AVector, val scale: Double) extends AVector {
   val arity: Int = arg.arity
+  val input: InputDesc = arg.input
   val size: IRPoly = arg.size
 
-  def arityOp(op: ArityOp): AVector = AVectorScaleConstant(arg.arityOp(op), scale)
+  arityVerify()
 
-  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.scaleconstant(arg.translate, scale)
+  def arityOp(op: ArityOp): AVector = AVectorScaleConstant(arg.arityOp(op), scale)
+  def inputOp(op: InputOp): AVector = AVectorScaleConstant(arg.inputOp(op), scale)
+
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+    e.scaleconstant(arg.translate, scale)
+  }
 
   def is0: Boolean = arg.is0 || (scale == 0.0)
   def isPure: Boolean = arg.isPure
@@ -162,11 +202,20 @@ case class AVectorScaleConstant(val arg: AVector, val scale: Double) extends AVe
 
 case class AVectorCat(val arg1: AVector, val arg2: AVector) extends AVector {
   val arity: Int = arg1.arity
+  val input: InputDesc = arg1.input
   val size: IRPoly = arg1.size + arg2.size
 
-  def arityOp(op: ArityOp): AVector = AVectorCat(arg1.arityOp(op), arg2.arityOp(op))
+  if(arg1.arity != arg2.arity) throw new IRValidationException()
+  if(arg1.input != arg2.input) throw new IRValidationException()
 
-  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.cat(arg1.translate, arg2.translate)
+  arityVerify()
+
+  def arityOp(op: ArityOp): AVector = AVectorCat(arg1.arityOp(op), arg2.arityOp(op))
+  def inputOp(op: InputOp): AVector = AVectorCat(arg1.inputOp(op), arg2.inputOp(op))
+
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+    e.cat(arg1.translate, arg2.translate)
+  }
 
   def is0: Boolean = arg1.is0 && arg2.is0
   def isPure: Boolean = arg1.isPure && arg2.isPure
@@ -174,41 +223,59 @@ case class AVectorCat(val arg1: AVector, val arg2: AVector) extends AVector {
 
 case class AVectorCatFor(val len: IRPoly, val arg: AVector) extends AVector {
   val arity: Int = len.arity
+  val input: InputDesc = arg.input.demote
   val size: IRPoly = arg.size.sum(arity).substituteAt(arity, len)
 
   if(len.arity + 1 != arg.arity) throw new IRValidationException()
 
-  def arityOp(op: ArityOp): AVector = AVectorCatFor(len.arityOp(op), arg.arityOp(op.promote))
+  arityVerify()
 
-  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.catfor(len, arg.translate(e.promote))
+  def arityOp(op: ArityOp): AVector = AVectorCatFor(len.arityOp(op), arg.arityOp(op.promote))
+  def inputOp(op: InputOp): AVector = AVectorCatFor(len, arg.inputOp(op.promote))
+
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+    e.catfor(len, arg.translate(e.promote))
+  }
 
   def is0: Boolean = arg.is0
   def isPure: Boolean = arg.isPure
 }
 
 case class AVectorSlice(val arg: AVector, val at: IRPoly, val size: IRPoly) extends AVector {
-  val arity: Int = size.arity
+  val arity: Int = arg.arity
+  val input: InputDesc = arg.input
 
-  if(arg.arity != arity) throw new IRValidationException()
+  if(size.arity != arity) throw new IRValidationException()
   if(at.arity != arity) throw new IRValidationException()
 
-  def arityOp(op: ArityOp): AVector = AVectorSlice(arg.arityOp(op), at.arityOp(op), size.arityOp(op))
+  arityVerify()
 
-  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.slice(arg.translate, at, size)
+  def arityOp(op: ArityOp): AVector = AVectorSlice(arg.arityOp(op), at.arityOp(op), size.arityOp(op))
+  def inputOp(op: InputOp): AVector = AVectorSlice(arg.inputOp(op), at, size)
+
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+    e.slice(arg.translate, at, size)
+  }
 
   def is0: Boolean = arg.is0
   def isPure: Boolean = arg.isPure
 }
 
-case class AVectorAddFor(val len: IRPoly, val arg: AVector) extends AVector {
+case class AVectorSumFor(val len: IRPoly, val arg: AVector) extends AVector {
   val arity: Int = len.arity
+  val input: InputDesc = arg.input.demote
   val size: IRPoly = arg.size.demote
 
   if(arg.arity != len.arity + 1) throw new IRValidationException()
 
-  def arityOp(op: ArityOp): AVector = AVectorAddFor(len.arityOp(op), arg.arityOp(op.promote))
+  arityVerify()
 
-  def translate[V <: HasArity[V]](implicit e: AVectorLike[V]): V = e.addfor(len, arg.translate(e.promote))
+  def arityOp(op: ArityOp): AVector = AVectorSumFor(len.arityOp(op), arg.arityOp(op.promote))
+  def inputOp(op: InputOp): AVector = AVectorSumFor(len, arg.inputOp(op.promote))
+
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+    e.sumfor(len, arg.translate(e.promote))
+  }
   
   def is0: Boolean = arg.is0
   def isPure: Boolean = arg.isPure

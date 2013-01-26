@@ -14,6 +14,7 @@ sealed trait Almap extends HasInput[Almap] {
 
   //Constraints that all the shape properties must share the map's arity
   def arityVerify() {
+    if (input.arity != arity) throw new IRValidationException()
     if (domain.arity != arity) throw new IRValidationException()
     if (codomain.arity != arity) throw new IRValidationException()
   }
