@@ -102,7 +102,7 @@ case class AlmapZero(val input: InputDesc, val domain: IRPoly, val codomain: IRP
 
   arityVerify()
 
-  def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(op) {
+  def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(x) {
     import e._
     zero(codomain)
   }
@@ -180,7 +180,7 @@ case class AlmapScaleInput(val arg: Almap, val scale: IRPoly) extends Almap {
   
   arityVerify()
 
-  def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(op) {
+  def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(x) {
     import e._
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
@@ -290,7 +290,7 @@ case class AlmapVPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
 
   arityVerify()
 
-  def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(op) {
+  def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(x) {
     import e._
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
@@ -355,7 +355,7 @@ case class AlmapHCatFor(val len: IRPoly, val body: Almap) extends Almap {
   def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(x) {
     import e._
     val arity: Int = this.arity
-    addfor(
+    sumfor(
       len,
       body.mmpy(
         slice(
@@ -385,7 +385,7 @@ case class AlmapHPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
 
   arityVerify()
 
-  def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(op) {
+  def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(x) {
     import e._
     if(e.arity != this.arity) throw new IRValidationException()
     val arity: Int = this.arity
@@ -449,7 +449,7 @@ case class AlmapDiagCatFor(val len: IRPoly, val body: Almap) extends Almap {
 
   arityVerify()
 
-  def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(op) {
+  def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(x) {
     import e._
     val arity: Int = this.arity
     catfor(
@@ -484,7 +484,7 @@ case class AlmapSumFor(val len: IRPoly, val body: Almap) extends Almap {
 
   def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(x) {
     import e._
-    addfor(len, body.mmpy(x.promote)(e.promote))
+    sumfor(len, body.mmpy(x.promote)(e.promote))
   }
 
   def is0: Boolean = body.is0
@@ -510,7 +510,7 @@ case class AlmapProd(val argl: Almap, val argr: Almap) extends Almap {
 
   arityVerify()
 
-  def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(op) {
+  def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(x) {
     import e._
     argl.mmpy(argr.mmpy(x))
   }
