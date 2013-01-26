@@ -5,7 +5,7 @@ import ppl.dsl.opticvx.model._
 import scala.collection.immutable.Set
 import scala.collection.immutable.Seq
 
-
+/*
 sealed trait Constraint extends HasArity[Constraint] {
   val size: IRPoly
 }
@@ -68,3 +68,5 @@ object Constraint {
   }
   */
 }
+*/
+

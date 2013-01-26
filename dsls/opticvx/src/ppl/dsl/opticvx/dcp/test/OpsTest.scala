@@ -38,6 +38,7 @@ object DCPOpsTestApp extends DCPOpsDefinite {
   
 
   def main(args: Array[String]) {
+    /*
     val x = cvxexpr()
     val y = cvxexpr()
     val v = cvxexpr()
@@ -58,6 +59,7 @@ object DCPOpsTestApp extends DCPOpsDefinite {
     println(x.resolve)
     println(v.resolve)
     println(y.resolve)
+    */
 
     /* maybe:
 

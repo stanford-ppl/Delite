@@ -8,7 +8,7 @@ import scala.collection.immutable.Set
 import ppl.dsl.opticvx.solvers._
 import ppl.dsl.opticvx.solverir._
 
-
+/*
 trait DCPOpsDefinite extends DCPOps {
   
   type ParamDesc = Int
@@ -47,3 +47,4 @@ trait DCPOpsDefinite extends DCPOps {
     }
   }
 };
+*/

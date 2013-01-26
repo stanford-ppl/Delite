@@ -5,7 +5,7 @@ import ppl.dsl.opticvx.model._
 import scala.collection.immutable.Seq
 import scala.collection.immutable.Set
 
-
+/*
 trait HasSize {
   val size: IRPoly
 }
@@ -221,4 +221,5 @@ trait DCPOpsSolve extends DCPOpsGlobal {
     ts_opt: =>SolveOpt)(implicit e: SolveImplicit7.type): Unit = solve(params(), given(), ts_over, let(), ts_where, ts_opt)
 
 }
+*/
 

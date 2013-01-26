@@ -5,6 +5,7 @@ import ppl.dsl.opticvx.model._
 import scala.collection.immutable.Seq
 import scala.collection.immutable.Set
 
+/*
 
 case class Expr(val vexity: Signum, val sign: Signum, val almap: Almap, val offset: AVector) extends HasArity[Expr] {
   val arity: Int = almap.arity
@@ -308,4 +309,4 @@ def xstruct(body: Seq[Expr]): Expr = Expr(
   }
   */
 
-
+*/
