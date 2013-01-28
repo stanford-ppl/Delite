@@ -1,50 +1,53 @@
 package ppl.dsl.opticvx.dcp
 
 import ppl.dsl.opticvx.common._
+import ppl.dsl.opticvx.model._
 import scala.collection.immutable.Seq
 import scala.collection.immutable.Set
 
 trait DCPOpsGlobal {
 
   var globalArity: Int = -1
-  var globalInputSize: IRPoly = null
+  var globalInputSize: InputDesc = null
   var globalVarSize: IRPoly = null
   var globalArgSize: Seq[IRPoly] = null
+  var globalSignumArity: Int = -1
 
   def globalArityPromote() {
-    if ((globalInputSize != null)||(globalVarSize != null)) {
+    if ((globalInputSize != null)||(globalVarSize != null)||(globalArgSize != null)) {
       if (globalInputSize.arity != globalArity) throw new IRValidationException()
       if (globalVarSize.arity != globalArity) throw new IRValidationException()
+      for(a <- globalArgSize) {
+        if(a.arity != globalArity) throw new IRValidationException()
+      }
       globalInputSize = globalInputSize.promote
       globalVarSize = globalVarSize.promote
-      globalArgSize = globalArgSize map (x => {
-        if(x.arity != globalArity) throw new IRValidationException()
-        x.promote
-        })
+      globalArgSize = globalArgSize map (x => x.promote)
     }
     globalArity += 1
   }
 
   def globalArityDemote() {
-    if ((globalInputSize != null)||(globalVarSize != null)) {
+    if ((globalInputSize != null)||(globalVarSize != null)||(globalArgSize != null)) {
       if (globalInputSize.arity != globalArity) throw new IRValidationException()
       if (globalVarSize.arity != globalArity) throw new IRValidationException()
+      for(a <- globalArgSize) {
+        if(a.arity != globalArity) throw new IRValidationException()
+      }
       globalInputSize = globalInputSize.demote
       globalVarSize = globalVarSize.demote
-      globalArgSize = globalArgSize map (x => {
-        if(x.arity != globalArity) throw new IRValidationException()
-        x.demote
-        })
+      globalArgSize = globalArgSize map (x => x.demote)
     }
     globalArity -= 1
   }
 
   def scalar: IRPoly = IRPoly.const(1, globalArity)
-  def vector(size: IRPoly): IRPoly = size
+  def vector(size: IRPoly): IRPoly = {
+    if(size.arity != globalArity) throw new IRValidationException()
+    size
+  }
 
-  var globalSignumArity: Int = -1
-
-
+  /*
   class Symbol[T >: Null <: HasArity[T], R >: Null] {
     protected[dcp] var binding: T = null
     protected[dcp] def bind(e: T) {
@@ -74,5 +77,6 @@ trait DCPOpsGlobal {
     if (s.binding.arity > globalArity) throw new IRValidationException()
     lsx
   }
+  */
 
 }

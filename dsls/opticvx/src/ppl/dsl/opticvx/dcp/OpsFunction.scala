@@ -51,32 +51,41 @@ trait DCPOpsFunction extends DCPOpsGlobal {
     }
   */  
 
+  class FunctionHack(fx: Function) {
+    def apply(exprs: CvxFunExpr*) = CvxFunExpr(fx.compose(Seq(exprs:_*) map (x => x.fx)))
+    def apply(params: IRPoly*) = new FunctionHack(fx.arityOp(ArityOp(params(0).arity, Seq(params:_*))))
+  }
+
+  implicit def functionhackimpl(fx: Function) = new FunctionHack(fx)
+
   private val positive_cone_ifx = Function.fromcone(ConeNonNegative(0))
   private val secondorder_cone_ifx = {
     val irn = IRPoly.param(0, 1)
     val irp0 = IRPoly.const(0, 1)
     val irp1 = IRPoly.const(1, 1)
+    val fxinput = InputDesc(1, Seq())
     Function(
+      fxinput,
       Seq(irn, irp1),
       SignumPoly.const(Signum.Positive, 2),
       Seq(SignumPoly.const(Signum.All, 2), SignumPoly.const(Signum.All, 2)),
       SignumPoly.const(Signum.Positive, 2),
       irp0,
-      Seq(AlmapZero(irn, irp1), AlmapZero(irp1, irp1)),
-      AlmapZero(irp0, irp1),
-      AVectorZero(irp1),
-      Seq(AlmapZero(irn, irp0), AlmapZero(irp1, irp0)),
-      AlmapZero(irp0, irp0),
-      AVectorZero(irp0),
+      Seq(AlmapZero(fxinput, irn, irp1), AlmapZero(fxinput, irp1, irp1)),
+      AlmapZero(fxinput, irp0, irp1),
+      AVectorZero(fxinput, irp1),
+      Seq(AlmapZero(fxinput, irn, irp0), AlmapZero(fxinput, irp1, irp0)),
+      AlmapZero(fxinput, irp0, irp0),
+      AVectorZero(fxinput, irp0),
       Seq(
         AlmapVCat(
-          AlmapZero(irn, irp1),
-          AlmapIdentity(irn)),
+          AlmapZero(fxinput, irn, irp1),
+          AlmapIdentity(fxinput, irn)),
         AlmapVCat(
-          AlmapIdentity(irp1),
-          AlmapZero(irp1, irn))),
-      AlmapZero(irp0, irn + irp1),
-      AVectorZero(irn + irp1),
+          AlmapIdentity(fxinput, irp1),
+          AlmapZero(fxinput, irp1, irn))),
+      AlmapZero(fxinput, irp0, irn + irp1),
+      AVectorZero(fxinput, irn + irp1),
       ConeSecondOrder(irn)
     )
   }
@@ -85,24 +94,28 @@ trait DCPOpsFunction extends DCPOpsGlobal {
     val irn = IRPoly.param(0, 1)
     val irp0 = IRPoly.const(0, 1)
     val irp1 = IRPoly.const(1, 1)
+    val fxinput = InputDesc(1, Seq())
     Function(
+      fxinput,
       Seq(irn),
       SignumPoly.const(Signum.Positive, 1),
       Seq(SignumPoly.const(Signum.All, 1)),
       SignumPoly.const(Signum.Positive, 1),
       irp0,
-      Seq(AlmapZero(irn, irp1)),
-      AlmapZero(irp0, irp1),
-      AVectorZero(irp1),
-      Seq(AlmapIdentity(irn)),
-      AlmapZero(irp0, irn),
-      AVectorZero(irn),
-      Seq(AlmapZero(irn, irp0)),
-      AlmapZero(irp0, irp0),
-      AVectorZero(irp0),
+      Seq(AlmapZero(fxinput, irn, irp1)),
+      AlmapZero(fxinput, irp0, irp1),
+      AVectorZero(fxinput, irp1),
+      Seq(AlmapIdentity(fxinput, irn)),
+      AlmapZero(fxinput, irp0, irn),
+      AVectorZero(fxinput, irn),
+      Seq(AlmapZero(fxinput, irn, irp0)),
+      AlmapZero(fxinput, irp0, irp0),
+      AVectorZero(fxinput, irp0),
       ConeZero(1)
     )
   }
+
+  case class CvxFunInput(val idx: Int)
 
   case class CvxFunExpr(val fx: Function) {
     def +(y: CvxFunExpr): CvxFunExpr = CvxFunExpr(fx + y.fx)
@@ -116,15 +129,14 @@ trait DCPOpsFunction extends DCPOpsGlobal {
       if(this.size != y.size) throw new IRValidationException()
       CvxFunConstraint(zero_ifx(this.size)(this - y).fx)
     }
-    def +(c: Double): CvxFunExpr = 
-      CvxFunExpr(fx + Function.const(AVector.const(c, fx.arity), fx.argSize))
-    def -(c: Double): CvxFunExpr = 
-      CvxFunExpr(fx - Function.const(AVector.const(c, fx.arity), fx.argSize))
-    def *(c: Double): CvxFunExpr = 
-      CvxFunExpr(fx.scale(c))
-    def /(c: Double): CvxFunExpr = 
-      CvxFunExpr(fx.scale(1/c))
+    def +(c: Double): CvxFunExpr = this + double2expr(c)
+    def -(c: Double): CvxFunExpr = this - double2expr(c)
+    def *(c: Double): CvxFunExpr = CvxFunExpr(fx.scale(c))
+    def /(c: Double): CvxFunExpr = CvxFunExpr(fx.scale(1/c))
   }
+
+  implicit def double2expr(c: Double): CvxFunExpr =
+    CvxFunExpr(Function.const(AVector.const(c, globalInputSize), globalInputSize, globalArgSize))
 
   def cat(x: CvxFunExpr, y: CvxFunExpr): CvxFunExpr =
     CvxFunExpr(Function.cat(x.fx, y.fx))
@@ -187,6 +199,17 @@ trait DCPOpsFunction extends DCPOpsGlobal {
       boundparam = null
     }
   }
+  class CvxFunInputSymbol {
+    protected[DCPOpsFunction] var boundinput: CvxFunInput = null
+    protected[DCPOpsFunction] def bind(x: CvxFunInput) {
+      if(boundinput != null) throw new IRValidationException()
+      boundinput = x
+    }
+    protected[DCPOpsFunction] def release() {
+      if(boundinput == null) throw new IRValidationException()
+      boundinput = null
+    }
+  }
   class CvxFunExprSymbol {
     protected[DCPOpsFunction] var boundexpr: CvxFunExpr = null
     protected[DCPOpsFunction] var boundsign: SignumPoly = null
@@ -212,19 +235,26 @@ trait DCPOpsFunction extends DCPOpsGlobal {
     }
   }
 
-  implicit def cvxfunparamssym2val(sym: CvxFunParamSymbol): IRPoly = {
+  implicit def cvxfunparamsym2val(sym: CvxFunParamSymbol): IRPoly = {
     if(sym.boundparam == null) throw new IRValidationException()
-    sym.boundparam
+    sym.boundparam.promoteTo(globalArity)
+  }
+  implicit def cvxfuninputsym2val(sym: CvxFunInputSymbol): CvxFunInput = {
+    if(sym.boundinput == null) throw new IRValidationException()
+    sym.boundinput
   }
   implicit def cvxfunexprsym2val(sym: CvxFunExprSymbol): CvxFunExpr = {
     if(sym.boundexpr == null) throw new IRValidationException()
-    CvxFunExpr(sym.boundexpr.fx.arityOp(ArityOp(globalArity, globalArgSize)))
+    CvxFunExpr(sym.boundexpr.fx.promoteTo(globalArity))
   }
 
   def cvxparam(): CvxFunParamSymbol = new CvxFunParamSymbol
   def cvxexpr(): CvxFunExprSymbol = new CvxFunExprSymbol
 
   class CvxFunParams(val params: Seq[CvxFunParamSymbol])
+
+  class CvxFunInputs(val inputs: Seq[CvxFunInputBinding])
+  class CvxFunInputBinding(val argdesc: InputArgDesc, val symbol: CvxFunInputSymbol)
 
   class CvxFunArgs(val args: Seq[CvxFunArgBinding])
   class CvxFunArgBinding(val size: IRPoly, val symbol: CvxFunExprSymbol)
@@ -278,12 +308,13 @@ trait DCPOpsFunction extends DCPOpsGlobal {
   def none: SignumPoly = SignumPoly.const(Signum.All, globalSignumArity)
 
   implicit def double2cvxfunexprimpl(c: Double): CvxFunExpr = 
-    CvxFunExpr(Function.const(AVector.const(c, globalArity), globalArgSize))
+    CvxFunExpr(Function.const(AVector.const(c, globalInputSize), globalInputSize, globalArgSize))
   implicit def int2cvxfunexprimpl(i: Int): CvxFunExpr = 
     double2cvxfunexprimpl(i.toDouble)
 
   def cvxfun(
     ts_params: =>CvxFunParams,
+    ts_inputs: =>CvxFunInputs,
     ts_args: =>CvxFunArgs,
     ts_sign: =>CvxFunSign,
     ts_tonicity: =>CvxFunTonicity,
@@ -300,6 +331,13 @@ trait DCPOpsFunction extends DCPOpsGlobal {
       s_params(i).bind(IRPoly.param(i, s_params.length))
     }
     globalArity = s_params.length
+    // bind the inputs
+    val s_inputs: Seq[CvxFunInputBinding] = ts_inputs.inputs
+    val s_inputsize = InputDesc(globalArity, s_inputs map (s => s.argdesc))
+    globalInputSize = s_inputsize
+    for(i <- 0 until s_inputs.length) {
+      s_inputs(i).symbol.bind(CvxFunInput(i))
+    }
     // bind the arguments
     val s_args: Seq[CvxFunArgBinding] = ts_args.args
     for(i <- 0 until s_args.length) {
@@ -318,11 +356,11 @@ trait DCPOpsFunction extends DCPOpsGlobal {
     // rebind the arguments
     for(i <- 0 until s_args.length) {
       s_args(i).symbol.releasesign()
-      s_args(i).symbol.bindexpr(CvxFunExpr(Function.param(i, s_argsize)))
+      s_args(i).symbol.bindexpr(CvxFunExpr(Function.param(i, s_inputsize, s_argsize)))
     }
     // bind the variables
     for(i <- 0 until s_over.length) {
-      s_over(i).symbol.bindexpr(CvxFunExpr(Function.param(i + s_args.length, s_argsize)))
+      s_over(i).symbol.bindexpr(CvxFunExpr(Function.param(i + s_args.length, s_inputsize, s_argsize)))
     }
     // bind the let-expressions
     val s_let = ts_let.exprs
@@ -343,13 +381,6 @@ trait DCPOpsFunction extends DCPOpsGlobal {
     val minfxn = s_over.foldLeft(tmpfxn)((a,b) => a.minimize_over_lastarg)
     minfxn.chdcp(s_sign, s_tonicity, s_vexity)
   }
-
-  class FunctionHack(fx: Function) {
-    def apply(exprs: CvxFunExpr*) = CvxFunExpr(fx.compose(Seq(exprs:_*) map (x => x.fx)))
-    def apply(params: IRPoly*) = new FunctionHack(fx.arityOp(ArityOp(params(0).arity, Seq(params:_*))))
-  }
-
-  implicit def functionhackimpl(fx: Function) = new FunctionHack(fx)
 
   /*
   val square = {

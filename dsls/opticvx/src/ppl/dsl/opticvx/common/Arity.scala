@@ -127,6 +127,12 @@ trait HasArity[T] {
     arityOp(op)
   }
 
+  // promote this value to a particular arity
+  def promoteTo(len: Int): T = {
+    if(arity > len) throw new IRValidationException()
+    promoteBy(len - arity)
+  }
+
   //def removeParam(idx: Int): T = arityOp(ArityOpRemoveParam(idx))
   def removeParam(idx: Int): T = {
     // no well-defined way to remove this parameter if the expression is not

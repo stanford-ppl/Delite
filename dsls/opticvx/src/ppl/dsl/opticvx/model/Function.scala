@@ -53,10 +53,10 @@ object Function {
       ConeZero(irp0.arity))    
   }
 
-  def fromcone(cone: Cone, input: InputDesc): Function = {
-    if(input.arity != cone.arity) throw new IRValidationException()
+  def fromcone(cone: Cone): Function = {
     val irp0 = IRPoly.const(0, cone.arity)
     val irp1 = IRPoly.const(1, cone.arity)
+    val input = InputDesc(cone.arity, Seq())
     Function(
       input,
       Seq(cone.size),
