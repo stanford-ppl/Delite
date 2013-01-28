@@ -15,6 +15,7 @@ trait AVectorLike[T <: HasInput[T]] extends HasInput[AVectorLike[T]] {
   def catfor(len: IRPoly, arg: T): T
   def slice(arg: T, at: IRPoly, size: IRPoly): T
   def mmpyinput(arg: T, iidx: Int, sidx: Seq[IRPoly]): T
+  def mmpyinputtranspose(arg: T, iidx: Int, sidx: Seq[IRPoly]): T
 
   class THackImpl(val t: T) {
     def +(u: T) = sum(t, u)
@@ -46,30 +47,80 @@ case class AVectorLikeScale[T <: HasInput[T]](val base: T, val e: AVectorLike[T]
 }
 */
 
-case class AVectorLikeAVector(val arity: Int) extends AVectorLike[AVector] {
-  def size(arg: AVector): IRPoly = arg.size
-  def zero(size: IRPoly): AVector = AVectorZero(size)
-  def one: AVector = AVectorOne(arity)
-  def sum(arg1: AVector, arg2: AVector): AVector = AVectorSum(arg1, arg2)
-  def sumfor(len: IRPoly, arg: AVector): AVector = AVectorSumFor(len, arg)
-  def neg(arg: AVector): AVector = AVectorNeg(arg)
-  def scaleinput(arg: AVector, scale: IRPoly): AVector = AVectorScaleInput(arg, scale)
-  def scaleconstant(arg: AVector, scale: Double): AVector = AVectorScaleConstant(arg, scale)
-  def cat(arg1: AVector, arg2: AVector): AVector = AVectorCat(arg1, arg2)
-  def catfor(len: IRPoly, arg: AVector): AVector = AVectorCatFor(len, arg)
-  def slice(arg: AVector, at: IRPoly, size: IRPoly): AVector = AVectorSlice(arg, at, size)
+case class AVectorLikeAVector(val input: InputDesc) extends AVectorLike[AVector] {
+  val arity: Int = input.arity
 
-  def arityOp(op: ArityOp): AVectorLike[AVector] = AVectorLikeAVector(IRPoly.const(0, arity).arityOp(op).arity)
+  def size(arg: AVector): IRPoly = {
+    if(arg.input != input) throw new IRValidationException()
+    arg.size
+  }
+  def zero(size: IRPoly): AVector = {
+    if(size.arity != arity) throw new IRValidationException()
+    AVectorZero(input, size)
+  }
+  def one: AVector = AVectorOne(input)
+  def sum(arg1: AVector, arg2: AVector): AVector = {
+    if(arg1.input != input) throw new IRValidationException()
+    if(arg2.input != input) throw new IRValidationException()
+    AVectorSum(arg1, arg2)
+  }
+  def sumfor(len: IRPoly, arg: AVector): AVector = {
+    if(len.arity != arity) throw new IRValidationException()
+    if(arg.input != input) throw new IRValidationException()
+    AVectorSumFor(len, arg)
+  }
+  def neg(arg: AVector): AVector = {
+    if(arg.input != input) throw new IRValidationException()
+    AVectorNeg(arg)
+  }
+  def scaleconstant(arg: AVector, scale: Double): AVector = {
+    if(arg.input != input) throw new IRValidationException()
+    AVectorScaleConstant(arg, scale)
+  }
+  def cat(arg1: AVector, arg2: AVector): AVector = {
+    if(arg1.input != input) throw new IRValidationException()
+    if(arg2.input != input) throw new IRValidationException()
+    AVectorCat(arg1, arg2)
+  }
+  def catfor(len: IRPoly, arg: AVector): AVector = {
+    if(len.arity != arity) throw new IRValidationException()
+    if(arg.input != input) throw new IRValidationException()
+    AVectorCatFor(len, arg)
+  }
+  def slice(arg: AVector, at: IRPoly, size: IRPoly): AVector = {
+    if(at.arity != arity) throw new IRValidationException()
+    if(size.arity != arity) throw new IRValidationException()
+    if(arg.input != input) throw new IRValidationException()
+    AVectorSlice(arg, at, size)
+  }
+  def mmpyinput(arg: AVector, iidx: Int, sidx: Seq[IRPoly]): AVector = {
+    if(arg.input != input) throw new IRValidationException()
+    for(s <- sidx) {
+      if(s.arity != arity) throw new IRValidationException()
+    }
+    AVectorMpyInput(arg, iidx, sidx)
+  }
+  def mmpyinputtranspose(arg: AVector, iidx: Int, sidx: Seq[IRPoly]): AVector = {
+    if(arg.input != input) throw new IRValidationException()
+    for(s <- sidx) {
+      if(s.arity != arity) throw new IRValidationException()
+    }
+    AVectorMpyInputT(arg, iidx, sidx)
+  }
+
+  def arityOp(op: ArityOp): AVectorLike[AVector] = AVectorLikeAVector(input.arityOp(op))
+  def inputOp(op: InputOp): AVectorLike[AVector] = AVectorLikeAVector(op.input)
+
 }
 
 
 object AVector {
-  def input(at: IRPoly, len: IRPoly): AVector = {
-    if(at.arity != len.arity) throw new IRValidationException()
-    AVectorCatFor(len, AVectorScaleInput(AVectorOne(at.arity + 1), at.promote + at.next))
-  }
-  def const(c: Double, arity: Int): AVector = {
-    AVectorScaleConstant(AVectorOne(arity), c)
+  // def input(at: IRPoly, len: IRPoly): AVector = {
+  //   if(at.arity != len.arity) throw new IRValidationException()
+  //   AVectorCatFor(len, AVectorScaleInput(AVectorOne(at.arity + 1), at.promote + at.next))
+  // }
+  def const(c: Double, input: InputDesc): AVector = {
+    AVectorScaleConstant(AVectorOne(input), c)
   }
 }
 
@@ -117,7 +168,7 @@ case class AVectorOne(val input: InputDesc) extends AVector {
   val arity: Int = input.arity
   val size: IRPoly = IRPoly.const(1, arity)
   arityVerify()
-  def arityOp(op: ArityOp): AVector = AVectorOne(input.arityOp())
+  def arityOp(op: ArityOp): AVector = AVectorOne(input.arityOp(op))
   def inputOp(op: InputOp): AVector = AVectorOne(op.input)
   def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
     e.one
@@ -280,3 +331,56 @@ case class AVectorSumFor(val len: IRPoly, val arg: AVector) extends AVector {
   def is0: Boolean = arg.is0
   def isPure: Boolean = arg.isPure
 }
+
+case class AVectorMpyInput(val arg: AVector, val iidx: Int, val sidx: Seq[IRPoly]) extends AVector {
+  val arity: Int = arg.arity
+  val input: InputDesc = arg.input
+  val size: IRPoly = input.args(iidx).codomain.substituteSeq(sidx)
+
+  if(arg.size != input.args(iidx).domain.substituteSeq(sidx)) throw new IRValidationException()
+
+  arityVerify()
+
+  def arityOp(op: ArityOp): AVector = AVectorMpyInput(arg.arityOp(op), iidx, sidx map (s => s.arityOp(op)))
+  def inputOp(op: InputOp): AVector = {
+    if(op.xs.length != input.args.length) throw new IRValidationException()
+    for(i <- 0 until input.args.length) {
+      if(op.xs(i).arity != input.args(i).domain.arity) throw new IRValidationException()
+    }
+    op.xs(iidx).substituteSeq(sidx).mmpy(arg)(AVectorLikeAVector(op.input))
+  }
+
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+    e.mmpyinput(arg.translate(e), iidx, sidx)
+  }
+
+  def is0: Boolean = false
+  def isPure: Boolean = false
+}
+
+case class AVectorMpyInputT(val arg: AVector, val iidx: Int, val sidx: Seq[IRPoly]) extends AVector {
+  val arity: Int = arg.arity
+  val input: InputDesc = arg.input
+  val size: IRPoly = input.args(iidx).domain.substituteSeq(sidx)
+
+  if(arg.size != input.args(iidx).codomain.substituteSeq(sidx)) throw new IRValidationException()
+
+  arityVerify()
+
+  def arityOp(op: ArityOp): AVector = AVectorMpyInput(arg.arityOp(op), iidx, sidx map (s => s.arityOp(op)))
+  def inputOp(op: InputOp): AVector = {
+    if(op.xs.length != input.args.length) throw new IRValidationException()
+    for(i <- 0 until input.args.length) {
+      if(op.xs(i).arity != input.args(i).codomain.arity) throw new IRValidationException()
+    }
+    op.xs(iidx).substituteSeq(sidx).T.mmpy(arg)(AVectorLikeAVector(op.input))
+  }
+
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+    e.mmpyinputtranspose(arg.translate(e), iidx, sidx)
+  }
+
+  def is0: Boolean = false
+  def isPure: Boolean = false
+}
+

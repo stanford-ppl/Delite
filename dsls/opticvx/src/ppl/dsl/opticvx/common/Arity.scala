@@ -166,7 +166,28 @@ trait HasArity[T] {
         else IRPoly.param(i - 1, arity - 1)
       })
     arityOp(op)
-  } 
+  }
+
+  // substitutes the given IRPolys for the last arguments to this class
+  def substituteSeq(irps: Seq[IRPoly]): T = {
+    if(irps.length == 0) {
+      val op = ArityOp(
+        arity,
+        for(i <- 0 until arity) yield IRPoly.param(i, arity))
+      arityOp(op)
+    }
+    else {
+      val newarity: Int = irps(0).arity
+      if(newarity + irps.length != arity) throw new IRValidationException()
+      for(i <- irps) {
+        if(i.arity != newarity) throw new IRValidationException()
+      }
+      val op = ArityOp(
+        newarity,
+        (for(i <- 0 until arity) yield IRPoly.param(i, arity)) ++ irps)
+      arityOp(op)
+    }
+  }
 
   def arityOp(op: ArityOp): T
 }

@@ -520,23 +520,101 @@ case class AlmapProd(val argl: Almap, val argr: Almap) extends Almap {
   def isPure: Boolean = argl.isPure && argr.isPure
 }
 
+//Input matrix
+case class AlmapInput(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly]) extends Almap {
+  val arity: Int = input.arity
 
-case class AVectorLikeAlmap(val domain: IRPoly) extends AVectorLike[Almap] {
+  if((iidx < 0)||(iidx >= input.args.length)) throw new IRValidationException()
+  for(s <- sidx) {
+    if(s.arity != arity) throw new IRValidationException()
+  }
+
+  val domain: IRPoly = input.args(iidx).domain.substituteSeq(sidx)
+  val codomain: IRPoly = input.args(iidx).codomain.substituteSeq(sidx)
+
+  def arityOp(op: ArityOp): Almap = AlmapInput(input.arityOp(op), iidx, sidx map (s => s.arityOp(op)))
+  def inputOp(op: InputOp): Almap = {
+    if(op.xs.length != input.args.length) throw new IRValidationException()
+    for(i <- 0 until input.args.length) {
+      if(op.xs(i).arity != input.args(i).domain.arity) throw new IRValidationException()
+    }
+    op.xs(iidx).substituteSeq(sidx)
+  }
+
+  def T: Almap = AlmapInputT(input, iidx, sidx)
+
+  arityVerify()
+
+  def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(x) {
+    import e._
+    mmpyinput(x, iidx, sidx)
+  }
+
+  def is0: Boolean = false
+  def isPure: Boolean = false
+}
+
+case class AlmapInputT(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly]) extends Almap {
+  val arity: Int = input.arity
+
+  if((iidx < 0)||(iidx >= input.args.length)) throw new IRValidationException()
+  for(s <- sidx) {
+    if(s.arity != arity) throw new IRValidationException()
+  }
+
+  val domain: IRPoly = input.args(iidx).codomain.substituteSeq(sidx)
+  val codomain: IRPoly = input.args(iidx).domain.substituteSeq(sidx)
+
+  def arityOp(op: ArityOp): Almap = AlmapInput(input.arityOp(op), iidx, sidx map (s => s.arityOp(op)))
+  def inputOp(op: InputOp): Almap = {
+    if(op.xs.length != input.args.length) throw new IRValidationException()
+    for(i <- 0 until input.args.length) {
+      if(op.xs(i).arity != input.args(i).codomain.arity) throw new IRValidationException()
+    }
+    op.xs(iidx).substituteSeq(sidx)
+  }
+
+  def T: Almap = AlmapInput(input, iidx, sidx)
+
+  arityVerify()
+
+  def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(x) {
+    import e._
+    mmpyinputtranspose(x, iidx, sidx)
+  }
+
+  def is0: Boolean = false
+  def isPure: Boolean = false
+}
+
+
+case class AVectorLikeAlmap(val input: InputDesc, val domain: IRPoly) extends AVectorLike[Almap] {
   val arity: Int = domain.arity
   def size(arg: Almap): IRPoly = arg.codomain
-  def zero(size: IRPoly): Almap = AlmapZero(domain, size)
+  def zero(size: IRPoly): Almap = AlmapZero(input, domain, size)
   def one: Almap = throw new IRValidationException()
-  def add(arg1: Almap, arg2: Almap): Almap = arg1 + arg2
-  def addfor(len: IRPoly, arg: Almap): Almap = AlmapSumFor(len, arg)
+  def sum(arg1: Almap, arg2: Almap): Almap = arg1 + arg2
+  def sumfor(len: IRPoly, arg: Almap): Almap = AlmapSumFor(len, arg)
   def neg(arg: Almap): Almap = -arg
-  def scaleinput(arg: Almap, scale: IRPoly): Almap = AlmapScaleInput(arg, scale)
+  //def scaleinput(arg: Almap, scale: IRPoly): Almap = AlmapScaleInput(arg, scale)
   def scaleconstant(arg: Almap, scale: Double): Almap = AlmapScaleConstant(arg, scale)
   def cat(arg1: Almap, arg2: Almap): Almap = AlmapVCat(arg1, arg2)
   def catfor(len: IRPoly, arg: Almap): Almap = AlmapVCatFor(len, arg)
   def slice(arg: Almap, at: IRPoly, size: IRPoly): Almap = {
-    val almappfx = AlmapHCat(AlmapHCat(AlmapZero(at, size), AlmapIdentity(size)), AlmapZero(arg.codomain - (at + size), size))
+    val almappfx = AlmapHCat(
+      AlmapHCat(
+        AlmapZero(input, at, size), 
+        AlmapIdentity(input, size)), 
+      AlmapZero(input, arg.codomain - (at + size), size))
     AlmapProd(almappfx, arg)
   }
+  def mmpyinput(arg: Almap, iidx: Int, sidx: Seq[IRPoly]): Almap = {
+    AlmapProd(AlmapInput(input, iidx, sidx), arg)
+  }
+  def mmpyinputtranspose(arg: Almap, iidx: Int, sidx: Seq[IRPoly]): Almap = {
+    AlmapProd(AlmapInputT(input, iidx, sidx), arg)
+  }
 
-  def arityOp(op: ArityOp): AVectorLike[Almap] = AVectorLikeAlmap(domain.arityOp(op))
+  def arityOp(op: ArityOp): AVectorLike[Almap] = AVectorLikeAlmap(input.arityOp(op), domain.arityOp(op))
+  def inputOp(op: InputOp): AVectorLike[Almap] = AVectorLikeAlmap(op.input, domain)
 }

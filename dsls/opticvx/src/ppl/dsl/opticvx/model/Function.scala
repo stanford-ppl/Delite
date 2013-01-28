@@ -1,80 +1,89 @@
-package ppl.dsl.opticvx.dcp
+package ppl.dsl.opticvx.model
 
 import ppl.dsl.opticvx.common._
-import ppl.dsl.opticvx.model._
 import scala.collection.immutable.Seq
 
+
 object Function {
-  def param(idx: Int, argSize: Seq[IRPoly]): Function = {
+  def param(idx: Int, input: InputDesc, argSize: Seq[IRPoly]): Function = {
+    for(a <- argSize) {
+      if(a.arity != input.arity) throw new IRValidationException()
+    }
     val irp0: IRPoly = IRPoly.const(0, argSize(0).arity)
     Function(
+      input,
       argSize,
       SignumPoly.param(idx, argSize.length),
       for(i <- 0 until argSize.length) yield SignumPoly.const(if (i == idx) Signum.Positive else Signum.Zero, argSize.length),
       SignumPoly.const(Signum.Zero, argSize.length),
       irp0,
-      for(i <- 0 until argSize.length) yield if (i == idx) AlmapIdentity(argSize(idx)) else AlmapZero(argSize(i), argSize(idx)),
-      AlmapZero(irp0, argSize(idx)),
-      AVectorZero(argSize(idx)),
-      for(i <- 0 until argSize.length) yield AlmapZero(argSize(i), irp0),
-      AlmapZero(irp0, irp0),
-      AVectorZero(irp0),
-      for(i <- 0 until argSize.length) yield AlmapZero(argSize(i), irp0),
-      AlmapZero(irp0, irp0),
-      AVectorZero(irp0),
+      for(i <- 0 until argSize.length) yield if (i == idx) AlmapIdentity(input, argSize(idx)) else AlmapZero(input, argSize(i), argSize(idx)),
+      AlmapZero(input, irp0, argSize(idx)),
+      AVectorZero(input, argSize(idx)),
+      for(i <- 0 until argSize.length) yield AlmapZero(input, argSize(i), irp0),
+      AlmapZero(input, irp0, irp0),
+      AVectorZero(input, irp0),
+      for(i <- 0 until argSize.length) yield AlmapZero(input, argSize(i), irp0),
+      AlmapZero(input, irp0, irp0),
+      AVectorZero(input, irp0),
       ConeZero(irp0.arity))
   }
 
-  def const(c: AVector, argSize: Seq[IRPoly]): Function = {
+  def const(c: AVector, input: InputDesc, argSize: Seq[IRPoly]): Function = {
     for(s <- argSize) {
       if(s.arity != c.arity) throw new IRValidationException()
     }
     val irp0: IRPoly = IRPoly.const(0, c.arity)
     Function(
+      input,
       argSize,
       SignumPoly.const(Signum.All, argSize.length),
       for(i <- 0 until argSize.length) yield SignumPoly.const(Signum.Zero, argSize.length),
       SignumPoly.const(Signum.Zero, argSize.length),
       irp0,
-      for(i <- 0 until argSize.length) yield AlmapZero(argSize(i), c.size),
-      AlmapZero(irp0, c.size),
+      for(i <- 0 until argSize.length) yield AlmapZero(input, argSize(i), c.size),
+      AlmapZero(input, irp0, c.size),
       c,
-      for(i <- 0 until argSize.length) yield AlmapZero(argSize(i), irp0),
-      AlmapZero(irp0, irp0),
-      AVectorZero(irp0),
-      for(i <- 0 until argSize.length) yield AlmapZero(argSize(i), irp0),
-      AlmapZero(irp0, irp0),
-      AVectorZero(irp0),
+      for(i <- 0 until argSize.length) yield AlmapZero(input, argSize(i), irp0),
+      AlmapZero(input, irp0, irp0),
+      AVectorZero(input, irp0),
+      for(i <- 0 until argSize.length) yield AlmapZero(input, argSize(i), irp0),
+      AlmapZero(input, irp0, irp0),
+      AVectorZero(input, irp0),
       ConeZero(irp0.arity))    
   }
 
-  def fromcone(cone: Cone): Function = {
+  def fromcone(cone: Cone, input: InputDesc): Function = {
+    if(input.arity != cone.arity) throw new IRValidationException()
     val irp0 = IRPoly.const(0, cone.arity)
     val irp1 = IRPoly.const(1, cone.arity)
     Function(
+      input,
       Seq(cone.size),
       SignumPoly.const(Signum.Positive, 1),
       Seq(SignumPoly.const(Signum.All, 1)),
       SignumPoly.const(Signum.Positive, 1),
       irp0,
-      Seq(AlmapZero(cone.size, irp1)),
-      AlmapZero(irp0, irp1),
-      AVectorZero(irp1),
-      Seq(AlmapZero(cone.size, irp0)),
-      AlmapZero(irp0, irp0),
-      AVectorZero(irp0),
-      Seq(AlmapIdentity(cone.size)),
-      AlmapZero(irp0, cone.size),
-      AVectorZero(cone.size),
+      Seq(AlmapZero(input, cone.size, irp1)),
+      AlmapZero(input, irp0, irp1),
+      AVectorZero(input, irp1),
+      Seq(AlmapZero(input, cone.size, irp0)),
+      AlmapZero(input, irp0, irp0),
+      AVectorZero(input, irp0),
+      Seq(AlmapIdentity(input, cone.size)),
+      AlmapZero(input, irp0, cone.size),
+      AVectorZero(input, cone.size),
       cone
     )
   }
 
   def cat(x: Function, y: Function) = {
     // the two functions to be added must take the same arguments
+    if(x.input != y.input)
     if(x.argSize != y.argSize) throw new IRValidationException()
     // form the output function
     Function(
+      x.input,
       x.argSize,
       x.sign + y.sign,
       for(i <- 0 until x.argSize.length) yield x.tonicity(i) + y.tonicity(i),
@@ -99,6 +108,7 @@ object Function {
     }
     if(!(x.codomain.invariantAt(len.arity))) throw new IRValidationException()
     Function(
+      x.input,
       x.argSize,
       x.sign,
       x.tonicity,
@@ -106,7 +116,7 @@ object Function {
       x.varSize.sum(len.arity).substituteAt(len.arity, len),
       x.valueArgAlmap map (a => AlmapSumFor(len, a)),
       AlmapHCatFor(len, x.valueVarAlmap),
-      AVectorAddFor(len, x.valueOffset),
+      AVectorSumFor(len, x.valueOffset),
       x.affineArgAlmap map (a => AlmapVCatFor(len, a)),
       AlmapDiagCatFor(len, x.affineVarAlmap),
       AVectorCatFor(len, x.affineOffset),
@@ -122,6 +132,7 @@ object Function {
       if(!(sz.invariantAt(len.arity))) throw new IRValidationException()
     }
     Function(
+      x.input,
       x.argSize,
       x.sign,
       x.tonicity,
@@ -140,7 +151,10 @@ object Function {
   }
 }
 
+
 case class Function(
+  // input description
+  val input: InputDesc,
   // sizes of the input arguments to this function
   val argSize: Seq[IRPoly],
   // polynomial to determine the sign of this function
@@ -163,8 +177,9 @@ case class Function(
   val conicOffset: AVector,
   val conicCone: Cone) extends HasArity[Function]
 {
-  val arity: Int = varSize.arity
+  val arity: Int = input.arity
   val codomain: IRPoly = valueOffset.size
+  if(varSize.arity != input.arity) throw new IRValidationException()
   // first, make sure that the signum polynomials have the correct number of inputs
   // two inputs for each argument, one for sign and one for vexity
   if(vexity.arity != argSize.length) throw new IRValidationException()
@@ -196,8 +211,25 @@ case class Function(
     if(affineArgAlmap(i).codomain != affineOffset.size) throw new IRValidationException()
     if(conicArgAlmap(i).codomain != conicOffset.size) throw new IRValidationException()
   }
+  //verify that all inputs agree
+  for(a <- valueArgAlmap) {
+    if(a.input != input) throw new IRValidationException()
+  }
+  if(valueVarAlmap.input != input) throw new IRValidationException()
+  if(valueOffset.input != input) throw new IRValidationException()
+  for(a <- affineArgAlmap) {
+    if(a.input != input) throw new IRValidationException()
+  }
+  if(affineVarAlmap.input != input) throw new IRValidationException()
+  if(affineOffset.input != input) throw new IRValidationException()
+  for(a <- conicArgAlmap) {
+    if(a.input != input) throw new IRValidationException()
+  }
+  if(conicVarAlmap.input != input) throw new IRValidationException()
+  if(conicOffset.input != input) throw new IRValidationException()
 
   def arityOp(op: ArityOp): Function = Function(
+    input.arityOp(op),
     argSize map (x => x.arityOp(op)),
     sign,
     tonicity,
@@ -234,9 +266,11 @@ case class Function(
 
   def +(y: Function): Function = {
     // the two functions to be added must take the same arguments
+    if(input != y.input) throw new IRValidationException()
     if(argSize != y.argSize) throw new IRValidationException()
     // form the output function
     Function(
+      input,
       argSize,
       sign + y.sign,
       for(i <- 0 until argSize.length) yield tonicity(i) + y.tonicity(i),
@@ -255,6 +289,7 @@ case class Function(
   }
 
   def unary_-(): Function = Function(
+    input,
     argSize,
     -sign,
     tonicity map (x => -x),
@@ -274,6 +309,7 @@ case class Function(
   def -(y: Function): Function = this + (-y)
 
   def scale(c: Double): Function = Function(
+    input,
     argSize,
     sign * Signum.sgn(c),
     tonicity map (x => x * Signum.sgn(c)),
@@ -294,11 +330,13 @@ case class Function(
     // verify that the same number of arguments are given for both functions
     if(ys.length != argSize.length) throw new IRValidationException()
     for(i <- 0 until ys.length) {
+      if(ys(i).input != input) throw new IRValidationException()
       if(ys(i).argSize.length != ys(0).argSize.length) throw new IRValidationException()
     }
     // form the output function
     val ysnumargs: Int = ys(0).argSize.length
     Function(
+      input,
       //argSize
       ys(0).argSize,
       //sign
@@ -339,7 +377,7 @@ case class Function(
       },
       //valueOffset
       {
-        implicit val avlav = AVectorLikeAVector(arity)
+        implicit val avlav = AVectorLikeAVector(input)
         var acc: AVector = valueOffset
         for(j <- 0 until argSize.length) {
           acc = acc + valueArgAlmap(j) * ys(j).valueOffset
@@ -367,7 +405,7 @@ case class Function(
       },
       //affineOffset
       {
-        implicit val avlav = AVectorLikeAVector(arity)
+        implicit val avlav = AVectorLikeAVector(input)
         var acc: AVector = affineOffset
         for(j <- 0 until argSize.length) {
           acc = acc + affineArgAlmap(j) * ys(j).valueOffset
@@ -398,7 +436,7 @@ case class Function(
       },
       //conicOffset
       {
-        implicit val avlav = AVectorLikeAVector(arity)
+        implicit val avlav = AVectorLikeAVector(input)
         var acc: AVector = conicOffset
         for(j <- 0 until argSize.length) {
           acc = acc + conicArgAlmap(j) * ys(j).valueOffset
@@ -424,6 +462,8 @@ case class Function(
     if(argSize.length < 1) throw new IRValidationException()
     val sgnvn = (for(i <- 0 until argSize.length - 1) yield SignumPoly.param(i, argSize.length - 1)) :+ SignumPoly.const(Signum.All, argSize.length - 1)
     Function(
+      // input
+      input,
       // argSize
       argSize.dropRight(1),
       // sign
@@ -460,6 +500,7 @@ case class Function(
 
   // change the DCP properties of this function
   def chdcp(new_sign: SignumPoly, new_tonicity: Seq[SignumPoly], new_vexity: SignumPoly): Function = Function(
+    input,
     argSize,
     new_sign,
     new_tonicity,
