@@ -17,7 +17,7 @@ trait SolverGenBase {
 
     val arity = problem.arity
     val varSize = problem.varSize
-    val inputSize = problem.inputSize
+    val inputSize = problem.input
     val affineCstrtSize = problem.affineCstrtSize
     val coneSize = problem.coneSize
 
@@ -41,7 +41,7 @@ trait SolverGenBase {
     protected[SolverGenBase] val context: SolverContext = SolverContext(inputSize, variables)
     protected[SolverGenBase] var code: Seq[SolverInstr] = Seq()
 
-    implicit val avlsvl = AVectorLikeSVector(context)
+    implicit val avlsvl: AVectorLike[SVector] = AVectorLikeSVector(context)
 
     val A: Almap = problem.affineAlmap
     val b: SVector = problem.affineOffset.translate
@@ -67,10 +67,10 @@ trait SolverGenBase {
         code = code ++ Seq(SolverInstrWrite(context, idx, v))
       }
       def +=(v: SVector) {
-        this := avlsvl.add(variable2vector(this), v)
+        this := avlsvl.sum(variable2vector(this), v)
       }
       def -=(v: SVector) {
-        this := avlsvl.add(variable2vector(this), avlsvl.neg(v))
+        this := avlsvl.sum(variable2vector(this), avlsvl.neg(v))
       }
     }
 
@@ -80,8 +80,8 @@ trait SolverGenBase {
     }
 
     class SVHackImpl(val t: SVector) {
-      def +(u: SVector) = avlsvl.add(t, u)
-      def -(u: SVector) = avlsvl.add(t, avlsvl.neg(u))
+      def +(u: SVector) = avlsvl.sum(t, u)
+      def -(u: SVector) = avlsvl.sum(t, avlsvl.neg(u))
       def unary_-() = avlsvl.neg(t)
       def ++(u: SVector) = avlsvl.cat(t, u)
       def apply(at: IRPoly, size: IRPoly) = avlsvl.slice(t, at, size)

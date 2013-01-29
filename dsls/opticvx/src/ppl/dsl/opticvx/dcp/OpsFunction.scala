@@ -279,6 +279,8 @@ trait DCPOpsFunction extends DCPOpsGlobal {
 
   def params(ps: CvxFunParamSymbol*): CvxFunParams = new CvxFunParams(Seq(ps:_*))
 
+  def inputs(bs: CvxFunInputBinding*): CvxFunInputs = new CvxFunInputs(Seq(bs:_*))
+
   def args(as: CvxFunArgBinding*): CvxFunArgs = new CvxFunArgs(Seq(as:_*))
   implicit def argbindingimpl(tpl: Tuple2[IRPoly, CvxFunExprSymbol]): CvxFunArgBinding =
     new CvxFunArgBinding(tpl._1, tpl._2)

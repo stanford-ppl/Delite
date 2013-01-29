@@ -10,6 +10,7 @@ object DCPOpsTestApp extends DCPOpsDefinite {
     val t = cvxexpr()
     cvxfun(
       params(),
+      inputs(),
       args(scalar -> x),
       sign(positive),
       tonicity(x.sign),
@@ -26,6 +27,7 @@ object DCPOpsTestApp extends DCPOpsDefinite {
   val square2 = {
     cvxfun(
       params(),
+      inputs(),
       args(),
       sign(positive),
       tonicity(),

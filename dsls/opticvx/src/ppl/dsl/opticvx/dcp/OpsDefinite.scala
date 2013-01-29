@@ -8,9 +8,9 @@ import scala.collection.immutable.Set
 import ppl.dsl.opticvx.solvers._
 import ppl.dsl.opticvx.solverir._
 
-/*
 trait DCPOpsDefinite extends DCPOps {
-  
+
+/*  
   type ParamDesc = Int
   type InputDesc = InputDescDefinite
   type ExprRT = Seq[Double]
@@ -46,5 +46,5 @@ trait DCPOpsDefinite extends DCPOps {
       s.rset(sv.eval(params, vvinputs, Seq(vv(0))))
     }
   }
-};
 */
+}

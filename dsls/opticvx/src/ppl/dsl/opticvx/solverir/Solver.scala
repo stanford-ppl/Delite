@@ -1,12 +1,13 @@
 package ppl.dsl.opticvx.solverir
 
+import ppl.dsl.opticvx.model._
 import ppl.dsl.opticvx.common._
 import scala.collection.immutable.Seq
 
 case class Solver(
-  val input: IRPoly,
+  val input: InputDesc,
   val variables: Seq[IRPoly],
-  val code: Seq[SolverInstr]) extends HasArity[Solver]
+  val code: Seq[SolverInstr]) extends HasInput[Solver]
 {
   val arity: Int = input.arity
 
@@ -19,9 +20,10 @@ case class Solver(
   }
 
   def arityOp(op: ArityOp) = Solver(input.arityOp(op), variables map (v => v.arityOp(op)), code map (c => c.arityOp(op)))
+  def inputOp(op: InputOp) = Solver(op.input, variables, code map (c => c.inputOp(op)))
 
   def run(params: Seq[Int], inputs: Seq[Double]): Seq[Seq[Double]] = {
-    if (inputs.size != input.eval(params)(IntLikeInt)) throw new IRValidationException()
+    //if (inputs.size != input.eval(params)(IntLikeInt)) throw new IRValidationException()
     var memory: Seq[Seq[Double]] = variables map (p => null)
     for (i <- code) {
       memory = i.run(params, inputs, memory)
@@ -30,18 +32,18 @@ case class Solver(
   }
 }
 
-case class SolverContext(val input: IRPoly, val variables: Seq[IRPoly]) extends HasArity[SolverContext] {
+case class SolverContext(val input: InputDesc, val variables: Seq[IRPoly]) extends HasInput[SolverContext] {
   val arity: Int = input.arity
   
-  if(input.arity != arity) throw new IRValidationException()
   for(v <- variables) {
     if(v.arity != arity) throw new IRValidationException()
   }
 
   def arityOp(op: ArityOp) = SolverContext(input.arityOp(op), variables map (v => v.arityOp(op)))
+  def inputOp(op: InputOp) = SolverContext(op.input, variables)
 }
 
-trait SolverInstr extends HasArity[SolverInstr] {
+trait SolverInstr extends HasInput[SolverInstr] {
   val context: SolverContext
 
   def run(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Seq[Double]]
