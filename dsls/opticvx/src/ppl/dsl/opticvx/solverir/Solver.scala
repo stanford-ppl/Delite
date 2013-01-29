@@ -55,11 +55,13 @@ case class SolverInstrWrite(
   val src: SVector) extends SolverInstr
 {
   val arity: Int = context.arity
+  val input: InputDesc = context.input
 
   if((dst<0)||(dst>=context.variables.size)) throw new IRValidationException()
   if(src.context != context) throw new IRValidationException()
 
   def arityOp(op: ArityOp) = SolverInstrWrite(context.arityOp(op), dst, src.arityOp(op))
+  def inputOp(op: InputOp) = SolverInstrWrite(context.inputOp(op), dst, src.inputOp(op))
 
   def run(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Seq[Double]] 
     = memory.updated(dst, src.eval(params, inputs, memory))
@@ -71,11 +73,15 @@ case class SolverInstrConverge(
   val code: Seq[SolverInstr]) extends SolverInstr
 {
   val arity: Int = context.arity
+  val input: InputDesc = context.input
 
   if(condition.context != context) throw new IRValidationException()
   if(condition.size != IRPoly.const(1, arity)) throw new IRValidationException()
 
-  def arityOp(op: ArityOp) = SolverInstrConverge(context.arityOp(op), condition.arityOp(op), code map (c => c.arityOp(op)))
+  def arityOp(op: ArityOp) = 
+    SolverInstrConverge(context.arityOp(op), condition.arityOp(op), code map (c => c.arityOp(op)))
+  def inputOp(op: InputOp) = 
+    SolverInstrConverge(context.inputOp(op), condition.inputOp(op), code map (c => c.inputOp(op)))
 
   def run(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Seq[Double]] = {
     var mem = memory

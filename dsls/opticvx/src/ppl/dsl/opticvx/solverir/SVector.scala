@@ -10,11 +10,18 @@ trait SVector extends HasInput[SVector] {
   val input: InputDesc
   val context: SolverContext
 
+  def arityVerify() {
+    if(size.arity != arity) throw new IRValidationException()
+    if(input.arity != arity) throw new IRValidationException()
+  }
+
   def eval(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Double]
 }
 
 case class AVectorLikeSVector(val context: SolverContext) extends AVectorLike[SVector] {
   val arity: Int = context.arity
+  val input: InputDesc = context.input
+
   def size(arg: SVector): IRPoly = arg.size
   def zero(size: IRPoly): SVector = SVectorZero(context, size)
   def one: SVector = SVectorOne(context)
@@ -25,14 +32,19 @@ case class AVectorLikeSVector(val context: SolverContext) extends AVectorLike[SV
   def cat(arg1: SVector, arg2: SVector): SVector = SVectorCat(arg1, arg2)
   def catfor(len: IRPoly, arg: SVector): SVector = SVectorCatFor(len, arg)
   def slice(arg: SVector, at: IRPoly, size: IRPoly): SVector = SVectorSlice(arg, at, size)
+  def mmpyinput(arg: SVector, iidx: Int, sidx: Seq[IRPoly]): SVector = SVectorMpyInput(arg, iidx, sidx)
+  def mmpyinputtranspose(arg: SVector, iidx: Int, sidx: Seq[IRPoly]): SVector = SVectorMpyInputT(arg, iidx, sidx)
 
   def arityOp(op: ArityOp): AVectorLike[SVector] = AVectorLikeSVector(context.arityOp(op))
+  def inputOp(op: InputOp): AVectorLike[SVector] = AVectorLikeSVector(context.inputOp(op))
 }
 
 case class SVectorRead(val context: SolverContext, val idx: Int) extends SVector {
   val arity: Int = context.arity
   val input: InputDesc = context.input
   val size: IRPoly = context.variables(idx)
+
+  arityVerify()
 
   if((idx<0)||(idx>=context.variables.size)) throw new IRValidationException()
 
@@ -49,6 +61,8 @@ case class SVectorZero(val context: SolverContext, val size: IRPoly) extends SVe
   val arity: Int = size.arity
   val input: InputDesc = context.input
 
+  arityVerify()
+
   def arityOp(op: ArityOp): SVector = SVectorZero(context.arityOp(op), size.arityOp(op))
   def inputOp(op: InputOp): SVector = SVectorZero(context.inputOp(op), size)
 
@@ -61,6 +75,8 @@ case class SVectorOne(val context: SolverContext) extends SVector {
   val arity: Int = context.arity
   val input: InputDesc = context.input
   val size: IRPoly = IRPoly.const(1, arity)
+
+  arityVerify()
 
   def arityOp(op: ArityOp): SVector = SVectorOne(context.arityOp(op))
   def inputOp(op: InputOp): SVector = SVectorOne(context.inputOp(op))
@@ -75,6 +91,8 @@ case class SVectorSum(val arg1: SVector, val arg2: SVector) extends SVector {
   val size: IRPoly = arg1.size
   val context: SolverContext = arg1.context
   val input: InputDesc = context.input
+
+  arityVerify()
 
   if(arg1.size != arg2.size) throw new IRValidationException()
   if(arg1.context != arg2.context) throw new IRValidationException()
@@ -94,6 +112,8 @@ case class SVectorNeg(val arg: SVector) extends SVector {
   val size: IRPoly = arg.size
   val context: SolverContext = arg.context
   val input: InputDesc = context.input
+
+  arityVerify()
 
   def arityOp(op: ArityOp): SVector = SVectorNeg(arg.arityOp(op))
   def inputOp(op: InputOp): SVector = SVectorNeg(arg.inputOp(op))
@@ -129,6 +149,8 @@ case class SVectorScaleConstant(val arg: SVector, val scale: Double) extends SVe
   val context: SolverContext = arg.context
   val input: InputDesc = context.input
 
+  arityVerify()
+
   def arityOp(op: ArityOp): SVector = SVectorScaleConstant(arg.arityOp(op), scale)
   def inputOp(op: InputOp): SVector = SVectorScaleConstant(arg.inputOp(op), scale)
 
@@ -143,6 +165,8 @@ case class SVectorCat(val arg1: SVector, val arg2: SVector) extends SVector {
   val size: IRPoly = arg1.size + arg2.size
   val context: SolverContext = arg1.context
   val input: InputDesc = context.input
+
+  arityVerify()
   
   if(arg1.context != arg2.context) throw new IRValidationException()
 
@@ -161,6 +185,8 @@ case class SVectorCatFor(val len: IRPoly, val arg: SVector) extends SVector {
   val size: IRPoly = arg.size.sum(arity).substituteAt(arity, len)
   val context: SolverContext = arg.context.demote
   val input: InputDesc = context.input
+
+  arityVerify()
 
   if(len.arity + 1 != arg.arity) throw new IRValidationException()
 
@@ -182,6 +208,8 @@ case class SVectorSlice(val arg: SVector, val at: IRPoly, val size: IRPoly) exte
   val context: SolverContext = arg.context
   val input: InputDesc = context.input
 
+  arityVerify()
+
   if(arg.arity != arity) throw new IRValidationException()
   if(at.arity != arity) throw new IRValidationException()
 
@@ -200,6 +228,8 @@ case class SVectorSumFor(val len: IRPoly, val arg: SVector) extends SVector {
   val context: SolverContext = arg.context.demote
   val input: InputDesc = context.input
 
+  arityVerify()
+
   if(arg.arity != len.arity + 1) throw new IRValidationException()
 
   def arityOp(op: ArityOp): SVector = SVectorSumFor(len.arityOp(op), arg.arityOp(op.promote))
@@ -216,6 +246,56 @@ case class SVectorSumFor(val len: IRPoly, val arg: SVector) extends SVector {
   }
 }
 
+case class SVectorMpyInput(val arg: SVector, val iidx: Int, val sidx: Seq[IRPoly]) extends SVector {
+  val arity: Int = arg.arity
+  val context: SolverContext = arg.context
+  val input: InputDesc = context.input
+  val size: IRPoly = input.args(iidx).codomain.substituteSeq(sidx)
+
+  if(arg.size != input.args(iidx).domain.substituteSeq(sidx)) throw new IRValidationException()
+
+  arityVerify()
+
+  def arityOp(op: ArityOp): SVector = SVectorMpyInput(arg.arityOp(op), iidx, sidx map (s => s.arityOp(op)))
+  def inputOp(op: InputOp): SVector = {
+    if(op.xs.length != input.args.length) throw new IRValidationException()
+    for(i <- 0 until input.args.length) {
+      if(op.xs(i).arity != input.args(i).domain.arity) throw new IRValidationException()
+    }
+    op.xs(iidx).substituteSeq(sidx).mmpy(arg)(AVectorLikeSVector(context.inputOp(op)))
+  }
+
+  def eval(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Double] = {
+    throw new IRValidationException()
+  }
+}
+
+case class SVectorMpyInputT(val arg: SVector, val iidx: Int, val sidx: Seq[IRPoly]) extends SVector {
+  val arity: Int = arg.arity
+  val context: SolverContext = arg.context
+  val input: InputDesc = context.input
+  val size: IRPoly = input.args(iidx).domain.substituteSeq(sidx)
+
+  if(arg.size != input.args(iidx).codomain.substituteSeq(sidx)) throw new IRValidationException()
+
+  arityVerify()
+
+  def arityOp(op: ArityOp): SVector = SVectorMpyInput(arg.arityOp(op), iidx, sidx map (s => s.arityOp(op)))
+  def inputOp(op: InputOp): SVector = {
+    if(op.xs.length != input.args.length) throw new IRValidationException()
+    for(i <- 0 until input.args.length) {
+      if(op.xs(i).arity != input.args(i).codomain.arity) throw new IRValidationException()
+    }
+    op.xs(iidx).substituteSeq(sidx).T.mmpy(arg)(AVectorLikeSVector(context.inputOp(op)))
+  }
+
+  def eval(params: Seq[Int], inputs: Seq[Double], memory: Seq[Seq[Double]]): Seq[Double] = {
+    throw new IRValidationException()
+  }
+}
+
+
+
 // NON-LINEAR OPERATIONS
 
 // Norm squared of a vector
@@ -224,6 +304,8 @@ case class SVectorNorm2(val arg: SVector) extends SVector {
   val size: IRPoly = IRPoly.const(1, arity)
   val context: SolverContext = arg.context
   val input: InputDesc = context.input
+
+  arityVerify()
 
   def arityOp(op: ArityOp): SVector = SVectorNorm2(arg.arityOp(op))
   def inputOp(op: InputOp): SVector = SVectorNorm2(arg.inputOp(op))
@@ -240,6 +322,8 @@ case class SVectorSqrt(val arg: SVector) extends SVector {
   val size: IRPoly = IRPoly.const(1, arity)
   val context: SolverContext = arg.context
   val input: InputDesc = context.input
+
+  arityVerify()
 
   if(arg.size != IRPoly.const(1, arity)) throw new IRValidationException()
 
@@ -259,6 +343,8 @@ case class SVectorDot(val arg1: SVector, val arg2: SVector) extends SVector {
   val size: IRPoly = IRPoly.const(1, arity)
   val context: SolverContext = arg1.context
   val input: InputDesc = context.input
+
+  arityVerify()
 
   if(arg1.size != arg2.size) throw new IRValidationException()
   if(arg1.context != arg2.context) throw new IRValidationException()
@@ -285,6 +371,8 @@ case class SVectorDiv(val arg: SVector, val scale: SVector) extends SVector {
   val context: SolverContext = arg.context
   val input: InputDesc = context.input
 
+  arityVerify()
+
   if(scale.size != IRPoly.const(1, arity)) throw new IRValidationException()
   if(arg.context != scale.context) throw new IRValidationException()
 
@@ -307,6 +395,8 @@ case class SVectorMpy(val arg: SVector, val scale: SVector) extends SVector {
   val context: SolverContext = arg.context
   val input: InputDesc = context.input
 
+  arityVerify()
+
   if(scale.size != IRPoly.const(1, arity)) throw new IRValidationException()
   if(arg.context != scale.context) throw new IRValidationException()
 
@@ -326,6 +416,8 @@ case class SVectorProjCone(val arg: SVector, val cone: Cone) extends SVector {
   val size: IRPoly = arg.size
   val context: SolverContext = arg.context
   val input: InputDesc = context.input
+
+  arityVerify()
 
   if(arg.size != cone.size) throw new IRValidationException()
 
