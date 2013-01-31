@@ -541,7 +541,7 @@ trait CLikeGenArithOps extends CLikeCodegen {
         case ArithMinus(a,b) => emitValDef(sym, quote(a) + " - " + quote(b))
         case ArithTimes(a,b) => emitValDef(sym, quote(a) + " * " + quote(b))
         case ArithFractionalDivide(a,b) => emitValDef(sym, quote(a) + " / " + quote(b))
-        case ArithAbs(x) => emitValDef(sym, "fabs(" + quote(x) + ")")
+        case ArithAbs(x) => emitValDef(sym, "abs(" + quote(x) + ")")
         case ArithExp(a) => emitValDef(sym, "exp(" + quote(a) + ")")
         case _ => super.emitNode(sym, rhs)
       }

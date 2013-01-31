@@ -213,7 +213,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append(signature + " {\n")
             out.append("\tint length = env->GetArrayLength((%sArray)obj);\n".format(JNIType(typeArg)))
             out.append("\t%s *dataPtr = (%s *)env->GetPrimitiveArrayCritical((%sArray)obj,0);\n".format(JNIType(typeArg),JNIType(typeArg),JNIType(typeArg)))
-            out.append("\tHost%s *%s = new Host%s(dataPtr,length);\n".format(remap(tp),"sym",remap(tp)))
+            out.append("\tHost%s *%s = new Host%s((%s *)dataPtr,length);\n".format(remap(tp),"sym",remap(tp),remap(typeArg)))
             //out.append("\tmemcpy(%s->data, dataPtr, length*sizeof(%s));\n".format("sym",remap(typeArg)))
             //out.append("\tenv->ReleasePrimitiveArrayCritical((j%sArray)obj, dataPtr, 0);\n".format(remapToJNI(typeArg).toLowerCase))
             out.append("\treturn %s;\n".format("sym"))

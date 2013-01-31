@@ -38,9 +38,11 @@ object Compilers {
     ScalaExecutableGenerator.makeExecutables(schedule.slice(0,Config.numThreads), graph.kernelPath)
 
     // Hack to collect global inputTypesMap (TODO: Get rid of this)
+    CppExecutableGenerator.typesMap = Map[Targets.Value, Map[String,String]]()
     CppExecutableGenerator.collectInputTypesMap(graph)
     CppExecutableGenerator.makeExecutables(schedule.slice(Config.numThreads, Config.numThreads+Config.numCpp), graph.kernelPath)
 
+    CudaExecutableGenerator.typesMap = Map[Targets.Value, Map[String,String]]()
     CudaExecutableGenerator.collectInputTypesMap(graph)
     CudaExecutableGenerator.makeExecutables(schedule.slice(Config.numThreads+Config.numCpp, Config.numThreads+Config.numCpp+Config.numCuda), graph.kernelPath)
 

@@ -470,6 +470,10 @@ trait CudaGenDeliteArrayOps extends BaseGenDeliteArrayOps with CudaGenFat with C
       stream.println(quote(da) + ".update(" + quote(idx) + "," + quote(x) + ");")
     case StructUpdate(struct, fields, idx, x) =>
       stream.println(quote(struct) + "." + fields.reduceLeft(_ + "." + _) + ".update(" + quote(idx) + "," + quote(x) + ");\n")
+    case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
+      stream.println("for(int i=0; i<"+quote(len)+"; i++) {")
+      stream.println(quote(dest) + ".update(" + quote(destPos) + "+i," + quote(src) + ".apply(" + quote(srcPos) + "+i));")
+      stream.println("}")
     case _ => super.emitNode(sym, rhs)
   }
 

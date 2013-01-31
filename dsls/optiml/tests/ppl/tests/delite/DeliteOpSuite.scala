@@ -110,6 +110,17 @@ trait DeliteForeach extends DeliteTestModule with OptiMLApplication {
   }
 }
 
+object DeliteZipWithReduceTupleRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteZipWithReduceTuple
+trait DeliteZipWithReduceTuple extends DeliteTestModule with OptiMLApplication {
+  def main() = {
+
+    val v = Vector.range(0, 10)
+    collect(v.maxIndex == 9)
+
+    mkReport
+  }
+}
+
 object DeliteNestedMapRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteNestedMap
 trait DeliteNestedMap extends DeliteTestModule with OptiMLApplication {
   def main() = {
@@ -222,8 +233,9 @@ class DeliteOpSuite extends DeliteSuite {
   def testDeliteZip() { compileAndTest(DeliteZipRunner, CHECK_MULTILOOP); }
   def testDeliteReduce() { compileAndTest(DeliteReduceRunner, CHECK_MULTILOOP); }
   def testDeliteMapReduce() { compileAndTest(DeliteMapReduceRunner, CHECK_MULTILOOP); }
-  def testDeliteFilter() { compileAndTest(DeliteFilterRunner, CHECK_MULTILOOP); }
+  def testDeliteFilter() { compileAndTest(DeliteFilterRunner); }
   def testDeliteForeach() { compileAndTest(DeliteForeachRunner) }
+  def testDeliteZipWithReduceTuple() { compileAndTest(DeliteZipWithReduceTupleRunner, CHECK_MULTILOOP); }
   def testDeliteNestedMap() { compileAndTest(DeliteNestedMapRunner) }
   def testDeliteNestedZip() { compileAndTest(DeliteNestedZipRunner) }
   def testDeliteNestedReduce() { compileAndTest(DeliteNestedReduceRunner, CHECK_MULTILOOP); }

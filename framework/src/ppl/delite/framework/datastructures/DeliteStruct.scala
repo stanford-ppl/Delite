@@ -139,7 +139,11 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
   private def isArrayType[T](m: Manifest[T]) = m.erasure.getSimpleName == "DeliteArray"
   private def isStringType[T](m: Manifest[T]) = m.erasure.getSimpleName == "String"
   private def baseType[T](m: Manifest[T]) = if (isVarType(m)) mtype(m.typeArguments(0)) else m
-  
+  private def argType[T](m: Manifest[T]): Manifest[_] = baseType(m) match {
+    case bm if isArrayType(bm) => argType(bm.typeArguments(0))
+    case bm => bm 
+  }
+
   override def emitDataStructures(path: String) {
     val structStream = new PrintWriter(path + "DeliteStructs.h")
     structStream.println("#ifndef __DELITESTRUCTS_H__")
@@ -154,6 +158,7 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
       stream.println("#define __" + name + "__")
       elems foreach { e => dsTypesList.add(baseType(e._2).asInstanceOf[Manifest[Any]]) }
       elems foreach { e => if (encounteredStructs.contains(remap(e._2))) stream.println("#include \"" + remap(e._2) + ".h\"") }
+      elems foreach { e => if (encounteredStructs.contains(remap(argType(e._2)))) stream.println("#include \"" + remap(argType(e._2)) + ".h\"") }  
       emitStructDeclaration(name, elems)(stream)
       stream.println("#endif")
       stream.close()
