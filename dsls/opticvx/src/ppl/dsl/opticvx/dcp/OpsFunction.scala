@@ -51,84 +51,98 @@ trait DCPOpsFunction extends DCPOpsExpr {
     }
   */
 
-  class CvxFunParams(val params: Seq[CvxFunParamSymbol])
+  class CvxFunParams(val params: Seq[CvxParamSymbol])
 
   class CvxFunInputs(val inputs: Seq[CvxFunInputBinding])
-  class CvxFunInputBinding(val argdesc: InputArgDesc, val symbol: CvxFunInputSymbol)
+  class CvxFunInputBinding(val argdesc: InputArgDesc, val symbol: CvxInputSymbol)
 
-  class CvxFunArgs(val args: Seq[CvxFunArgBinding])
-  class CvxFunArgBinding(val size: IRPoly, val symbol: CvxFunExprSymbol)
+  class CvxArgs(val args: Seq[CvxArgBinding])
+  class CvxArgBinding(val size: IRPoly, val symbol: CvxExprSymbol)
 
-  class CvxFunSign(val sign: SignumPoly)
+  class CvxSign(val sign: SignumPoly)
 
-  class CvxFunTonicity(val tonicity: Seq[SignumPoly])
+  class CvxTonicity(val tonicity: Seq[SignumPoly])
 
-  class CvxFunVexity(val vexity: SignumPoly)
+  class CvxVexity(val vexity: SignumPoly)
 
-  class CvxFunOver(val vars: Seq[CvxFunOverBinding])
-  class CvxFunOverBinding(val size: IRPoly, val symbol: CvxFunExprSymbol)
+  class CvxOver(val vars: Seq[CvxOverBinding])
+  class CvxOverBinding(val size: IRPoly, val symbol: CvxExprSymbol)
 
-  class CvxFunLet(val exprs: Seq[CvxFunLetBinding])
-  class CvxFunLetBinding(val expr: CvxFunExpr, val symbol: CvxFunExprSymbol)
+  class CvxLet(val exprs: Seq[CvxLetBinding])
+  class CvxLetBinding(val expr: CvxExpr, val symbol: CvxExprSymbol)
 
-  class CvxFunWhere(val constraints: Seq[CvxFunConstraint])
+  class CvxWhere(val constraints: Seq[CvxConstraint])
 
-  trait CvxFunValue
-  class CvxFunMinimize(val expr: CvxFunExpr) extends CvxFunValue
-  class CvxFunMaximize(val expr: CvxFunExpr) extends CvxFunValue
+  trait CvxValue
+  class CvxMinimize(val expr: CvxExpr) extends CvxValue
+  class CvxMaximize(val expr: CvxExpr) extends CvxValue
 
-  def params(ps: CvxFunParamSymbol*): CvxFunParams = new CvxFunParams(Seq(ps:_*))
+  def params(ps: CvxParamSymbol*): CvxFunParams = new CvxFunParams(Seq(ps:_*))
 
-  def inputs(bs: CvxFunInputBinding*): CvxFunInputs = new CvxFunInputs(Seq(bs:_*))
+  def given(bs: CvxFunInputBinding*): CvxFunInputs = new CvxFunInputs(Seq(bs:_*))
 
-  def args(as: CvxFunArgBinding*): CvxFunArgs = new CvxFunArgs(Seq(as:_*))
-  implicit def argbindingimpl(tpl: Tuple2[IRPoly, CvxFunExprSymbol]): CvxFunArgBinding =
-    new CvxFunArgBinding(tpl._1, tpl._2)
+  def args(as: CvxArgBinding*): CvxArgs = new CvxArgs(Seq(as:_*))
+  implicit def argbindingimpl(tpl: Tuple2[IRPoly, CvxExprSymbol]): CvxArgBinding =
+    new CvxArgBinding(tpl._1, tpl._2)
 
-  def sign(s: SignumPoly): CvxFunSign = new CvxFunSign(s)
+  def sign(s: SignumPoly): CvxSign = new CvxSign(s)
 
-  def tonicity(ts: SignumPoly*): CvxFunTonicity = new CvxFunTonicity(Seq(ts:_*))
+  def tonicity(ts: SignumPoly*): CvxTonicity = new CvxTonicity(Seq(ts:_*))
 
-  def vexity(v: SignumPoly): CvxFunVexity = new CvxFunVexity(v)
+  def vexity(v: SignumPoly): CvxVexity = new CvxVexity(v)
 
-  def over(vs: CvxFunOverBinding*): CvxFunOver = new CvxFunOver(Seq(vs:_*))
-  implicit def overbindingimpl(tpl: Tuple2[IRPoly, CvxFunExprSymbol]): CvxFunOverBinding = 
-    new CvxFunOverBinding(tpl._1, tpl._2)
+  def over(vs: CvxOverBinding*): CvxOver = new CvxOver(Seq(vs:_*))
+  implicit def overbindingimpl(tpl: Tuple2[IRPoly, CvxExprSymbol]): CvxOverBinding = 
+    new CvxOverBinding(tpl._1, tpl._2)
 
-  def let(xs: CvxFunLetBinding*): CvxFunLet = new CvxFunLet(Seq(xs:_*))
-  implicit def letbindingimpl(tpl: Tuple2[CvxFunExpr, CvxFunExprSymbol]): CvxFunLetBinding =
-    new CvxFunLetBinding(tpl._1, tpl._2)
+  def let(xs: CvxLetBinding*): CvxLet = new CvxLet(Seq(xs:_*))
+  implicit def letbindingimpl(tpl: Tuple2[CvxExpr, CvxExprSymbol]): CvxLetBinding =
+    new CvxLetBinding(tpl._1, tpl._2)
 
-  def where(xs: CvxFunConstraint*): CvxFunWhere = new CvxFunWhere(Seq(xs:_*))
+  def where(xs: CvxConstraint*): CvxWhere = new CvxWhere(Seq(xs:_*))
 
-  def minimize(x: CvxFunExpr): CvxFunValue = new CvxFunMinimize(x)
-  def maximize(x: CvxFunExpr): CvxFunValue = new CvxFunMaximize(x)
+  def minimize(x: CvxExpr): CvxValue = {
+    val v: Signum = x.fx.vexity.reduce
+    if(!(v <= Signum.Positive)) {
+      println(v)
+      throw new IRValidationException()
+    }
+    new CvxMinimize(x)
+  }
+  def maximize(x: CvxExpr): CvxValue = {
+    val v: Signum = x.fx.vexity.reduce
+    if(!(v <= Signum.Negative)) {
+      println(v)
+      throw new IRValidationException()
+    }
+    new CvxMaximize(x)
+  }
 
   def positive: SignumPoly = SignumPoly.const(Signum.Positive, globalSignumArity)
   def negative: SignumPoly = SignumPoly.const(Signum.Negative, globalSignumArity)
   def zero: SignumPoly = SignumPoly.const(Signum.Zero, globalSignumArity)
   def none: SignumPoly = SignumPoly.const(Signum.All, globalSignumArity)
 
-  implicit def double2cvxfunexprimpl(c: Double): CvxFunExpr = 
-    CvxFunExpr(Function.const(AVector.const(c, globalInputSize), globalInputSize, globalArgSize))
-  implicit def int2cvxfunexprimpl(i: Int): CvxFunExpr = 
+  implicit def double2cvxfunexprimpl(c: Double): CvxExpr = 
+    CvxExpr(Function.const(AVector.const(c, globalInputSize), globalInputSize, globalArgSize))
+  implicit def int2cvxfunexprimpl(i: Int): CvxExpr = 
     double2cvxfunexprimpl(i.toDouble)
 
   def cvxfun(
     ts_params: =>CvxFunParams,
     ts_inputs: =>CvxFunInputs,
-    ts_args: =>CvxFunArgs,
-    ts_sign: =>CvxFunSign,
-    ts_tonicity: =>CvxFunTonicity,
-    ts_vexity: =>CvxFunVexity,
-    ts_over: =>CvxFunOver,
-    ts_let: =>CvxFunLet,
-    ts_where: =>CvxFunWhere,
-    ts_value: =>CvxFunValue
+    ts_args: =>CvxArgs,
+    ts_sign: =>CvxSign,
+    ts_tonicity: =>CvxTonicity,
+    ts_vexity: =>CvxVexity,
+    ts_over: =>CvxOver,
+    ts_let: =>CvxLet,
+    ts_where: =>CvxWhere,
+    ts_value: =>CvxValue
     ): Function =
   {
     // bind the parameters
-    val s_params: Seq[CvxFunParamSymbol] = ts_params.params
+    val s_params: Seq[CvxParamSymbol] = ts_params.params
     for(i <- 0 until s_params.length) {
       s_params(i).bind(IRPoly.param(i, s_params.length))
     }
@@ -138,10 +152,10 @@ trait DCPOpsFunction extends DCPOpsExpr {
     val s_inputsize = InputDesc(globalArity, s_inputs map (s => s.argdesc))
     globalInputSize = s_inputsize
     for(i <- 0 until s_inputs.length) {
-      s_inputs(i).symbol.bind(CvxFunInput(i))
+      s_inputs(i).symbol.bind(CvxInput(i))
     }
     // bind the arguments
-    val s_args: Seq[CvxFunArgBinding] = ts_args.args
+    val s_args: Seq[CvxArgBinding] = ts_args.args
     for(i <- 0 until s_args.length) {
       s_args(i).symbol.bindsign(SignumPoly.param(i, s_args.length))
     }
@@ -158,11 +172,11 @@ trait DCPOpsFunction extends DCPOpsExpr {
     // rebind the arguments
     for(i <- 0 until s_args.length) {
       s_args(i).symbol.releasesign()
-      s_args(i).symbol.bindexpr(CvxFunExpr(Function.param(i, s_inputsize, s_argsize)))
+      s_args(i).symbol.bindexpr(CvxExpr(Function.param(i, s_inputsize, s_argsize)))
     }
     // bind the variables
     for(i <- 0 until s_over.length) {
-      s_over(i).symbol.bindexpr(CvxFunExpr(Function.param(i + s_args.length, s_inputsize, s_argsize)))
+      s_over(i).symbol.bindexpr(CvxExpr(Function.param(i + s_args.length, s_inputsize, s_argsize)))
     }
     // bind the let-expressions
     val s_let = ts_let.exprs
@@ -175,12 +189,13 @@ trait DCPOpsFunction extends DCPOpsExpr {
     globalArity = -1
     globalArgSize = null
     // make the return value
-    val tmpfxn = s_value match {
-      case x: CvxFunMinimize => s_where.foldLeft(x.expr.fx)((a,b) => a + b.fx)
-      case x: CvxFunMaximize => s_where.foldLeft(x.expr.fx)((a,b) => a - b.fx)
+    val tmpfxn = (s_value match {
+      case x: CvxMinimize => s_where.foldLeft(x.expr.fx)((a,b) => a + b.fx)
+      case x: CvxMaximize => s_where.foldLeft(x.expr.fx)((a,b) => a - b.fx)
       case _ => throw new IRValidationException()
-    }
-    val minfxn = s_over.foldLeft(tmpfxn)((a,b) => a.minimize_over_lastarg)
+    })
+    val minfxn = s_over.foldLeft(tmpfxn)((a,b) => a.minimize_over_lastarg).simplify
+
     minfxn.chdcp(s_sign, s_tonicity, s_vexity)
   }
 

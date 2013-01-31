@@ -149,7 +149,11 @@ sealed trait IRPoly extends HasArity[IRPoly] {
   // sums the polynomial over the variable at the given index
   def sum(idx: Int): IRPoly = {
     if (arity <= 0) throw new IRValidationException()
-    if (idx == arity - 1) {
+    if ((idx < 0)||(idx >= arity)) throw new IRValidationException()
+    if(is0) {
+      this
+    }
+    else if (idx == arity - 1) {
       IRPolyN(arity, Seq(IRPoly.const(0, arity - 1)) ++ this.asInstanceOf[IRPolyN].coeffs)
     }
     else if (idx < arity - 1) {

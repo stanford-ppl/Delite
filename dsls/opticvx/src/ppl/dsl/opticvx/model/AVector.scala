@@ -150,6 +150,7 @@ trait AVector extends HasInput[AVector] {
   def apply(at: IRPoly, size: IRPoly) = AVectorSlice(this, at, size)
   def is0: Boolean
   def isPure: Boolean
+  def simplify: AVector
 }
 
 case class AVectorZero(val input: InputDesc, val size: IRPoly) extends AVector {
@@ -162,6 +163,10 @@ case class AVectorZero(val input: InputDesc, val size: IRPoly) extends AVector {
   }
   def is0: Boolean = true
   def isPure: Boolean = true
+
+  def simplify: AVector = this
+
+  override def toString: String = "zero(" + size.toString + ")"
 }
 
 case class AVectorOne(val input: InputDesc) extends AVector {
@@ -175,6 +180,10 @@ case class AVectorOne(val input: InputDesc) extends AVector {
   }
   def is0: Boolean = false
   def isPure: Boolean = true
+
+  def simplify: AVector = this
+
+  override def toString: String = "one()"
 }
 
 case class AVectorSum(val arg1: AVector, val arg2: AVector) extends AVector {
@@ -197,6 +206,22 @@ case class AVectorSum(val arg1: AVector, val arg2: AVector) extends AVector {
 
   def is0: Boolean = arg1.is0 && arg2.is0
   def isPure: Boolean = arg1.isPure && arg2.isPure
+
+  def simplify: AVector = {
+    val sa1 = arg1.simplify
+    val sa2 = arg2.simplify
+    if(sa1.is0) {
+      sa2
+    }
+    else if(sa2.is0) {
+      sa1
+    }
+    else {
+      AVectorSum(sa1, sa2)
+    }
+  }
+
+  override def toString: String = "sum(" + arg1.toString + ", " + arg2.toString + ")"
 }
 
 case class AVectorNeg(val arg: AVector) extends AVector {
@@ -215,6 +240,18 @@ case class AVectorNeg(val arg: AVector) extends AVector {
 
   def is0: Boolean = arg.is0
   def isPure: Boolean = arg.isPure
+
+  def simplify: AVector = {
+    val sa = arg.simplify
+    if(sa.is0) {
+      AVectorZero(input, size)
+    }
+    else {
+      AVectorNeg(sa)
+    }
+  }
+
+  override def toString: String = "neg(" + arg.toString + ")"
 }
 
 /*
@@ -249,6 +286,16 @@ case class AVectorScaleConstant(val arg: AVector, val scale: Double) extends AVe
 
   def is0: Boolean = arg.is0 || (scale == 0.0)
   def isPure: Boolean = arg.isPure
+
+  def simplify: AVector = {
+    val sa = arg.simplify
+    if(sa.is0) {
+      AVectorZero(input, size)
+    }
+    else {
+      AVectorScaleConstant(sa, scale)
+    }
+  }
 }
 
 case class AVectorCat(val arg1: AVector, val arg2: AVector) extends AVector {
@@ -270,6 +317,23 @@ case class AVectorCat(val arg1: AVector, val arg2: AVector) extends AVector {
 
   def is0: Boolean = arg1.is0 && arg2.is0
   def isPure: Boolean = arg1.isPure && arg2.isPure
+
+  def simplify: AVector = {
+    val sa1 = arg1.simplify
+    val sa2 = arg2.simplify
+    if(sa1.is0 && sa2.is0) {
+      AVectorZero(input, size)
+    }
+    else if(sa1.size == IRPoly.const(0, arity)) {
+      sa2
+    }
+    else if(sa2.size == IRPoly.const(0, arity)) {
+      sa1
+    }
+    else {
+      AVectorCat(sa1, sa2)
+    }
+  }
 }
 
 case class AVectorCatFor(val len: IRPoly, val arg: AVector) extends AVector {
@@ -290,6 +354,19 @@ case class AVectorCatFor(val len: IRPoly, val arg: AVector) extends AVector {
 
   def is0: Boolean = arg.is0
   def isPure: Boolean = arg.isPure
+
+  def simplify: AVector = {
+    val sb = arg.simplify
+    if(sb.is0) {
+      AVectorZero(input, size)
+    }
+    else if(sb.size == IRPoly.const(0, arity)) {
+      AVectorZero(input, size)
+    }
+    else {
+      AVectorCatFor(len, sb)
+    }
+  }
 }
 
 case class AVectorSlice(val arg: AVector, val at: IRPoly, val size: IRPoly) extends AVector {
@@ -310,6 +387,19 @@ case class AVectorSlice(val arg: AVector, val at: IRPoly, val size: IRPoly) exte
 
   def is0: Boolean = arg.is0
   def isPure: Boolean = arg.isPure
+
+  def simplify: AVector = {
+    val sb = arg.simplify
+    if(sb.is0) {
+      AVectorZero(input, size)
+    }
+    else if(size == IRPoly.const(0, arity)) {
+      AVectorZero(input, size)
+    }
+    else {
+      AVectorSlice(sb, at, size)
+    }
+  }
 }
 
 case class AVectorSumFor(val len: IRPoly, val arg: AVector) extends AVector {
@@ -330,6 +420,19 @@ case class AVectorSumFor(val len: IRPoly, val arg: AVector) extends AVector {
   
   def is0: Boolean = arg.is0
   def isPure: Boolean = arg.isPure
+
+  def simplify: AVector = {
+    val sb = arg.simplify
+    if(sb.is0) {
+      AVectorZero(input, size)
+    }
+    else if(sb.size == IRPoly.const(0, arity)) {
+      AVectorZero(input, size)
+    }
+    else {
+      AVectorSumFor(len, sb)
+    }
+  }
 }
 
 case class AVectorMpyInput(val arg: AVector, val iidx: Int, val sidx: Seq[IRPoly]) extends AVector {
@@ -356,6 +459,16 @@ case class AVectorMpyInput(val arg: AVector, val iidx: Int, val sidx: Seq[IRPoly
 
   def is0: Boolean = false
   def isPure: Boolean = false
+
+  def simplify: AVector = {
+    val sa = arg.simplify
+    if(sa.is0) {
+      AVectorZero(input, size)
+    }
+    else {
+      AVectorMpyInput(sa, iidx, sidx)
+    }
+  }
 }
 
 case class AVectorMpyInputT(val arg: AVector, val iidx: Int, val sidx: Seq[IRPoly]) extends AVector {
@@ -382,5 +495,15 @@ case class AVectorMpyInputT(val arg: AVector, val iidx: Int, val sidx: Seq[IRPol
 
   def is0: Boolean = false
   def isPure: Boolean = false
+
+  def simplify: AVector = {
+    val sa = arg.simplify
+    if(sa.is0) {
+      AVectorZero(input, size)
+    }
+    else {
+      AVectorMpyInputT(sa, iidx, sidx)
+    }
+  }
 }
 

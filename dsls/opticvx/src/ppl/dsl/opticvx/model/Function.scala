@@ -498,6 +498,27 @@ case class Function(
 
   def maximize_over_lastarg: Function = -((-this).minimize_over_lastarg)
 
+  def expand(newVarSize: IRPoly): Function = {
+    if(varSize != IRPoly.const(0, arity)) throw new IRValidationException()
+    Function(
+      input,
+      argSize,
+      sign,
+      tonicity,
+      vexity,
+      newVarSize,
+      valueArgAlmap,
+      AlmapZero(input, newVarSize, valueOffset.size),
+      valueOffset,
+      affineArgAlmap,
+      AlmapZero(input, newVarSize, affineOffset.size),
+      affineOffset,
+      conicArgAlmap,
+      AlmapZero(input, newVarSize, conicOffset.size),
+      conicOffset,
+      conicCone)
+  }
+
   // change the DCP properties of this function
   def chdcp(new_sign: SignumPoly, new_tonicity: Seq[SignumPoly], new_vexity: SignumPoly): Function = Function(
     input,
@@ -515,6 +536,24 @@ case class Function(
     conicArgAlmap,
     conicVarAlmap,
     conicOffset,
+    conicCone)
+
+  def simplify: Function = Function(
+    input,
+    argSize,
+    sign,
+    tonicity,
+    vexity,
+    varSize,
+    valueArgAlmap map (x => x.simplify),
+    valueVarAlmap.simplify,
+    valueOffset.simplify,
+    affineArgAlmap map (x => x.simplify),
+    affineVarAlmap.simplify,
+    affineOffset.simplify,
+    conicArgAlmap map (x => x.simplify),
+    conicVarAlmap.simplify,
+    conicOffset.simplify,
     conicCone)
 }
 

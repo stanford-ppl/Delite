@@ -57,4 +57,15 @@ case class Problem(
     conicAlmap.inputOp(op),
     conicOffset.inputOp(op),
     conicCone)
+
+  def display() {
+    println("")
+    println("objective: " + objective.toString)
+    println("affineAlmap: " + affineAlmap.toString)
+    println("affineOffset: " + affineOffset.toString)
+    println("conicAlmap: " + conicAlmap.toString)
+    println("conicOffset: " + conicOffset.toString)
+    println("conicCone: " + conicCone.toString)
+    println("")
+  }
 }

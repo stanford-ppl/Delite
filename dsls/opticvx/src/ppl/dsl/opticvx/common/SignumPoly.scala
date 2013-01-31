@@ -91,7 +91,7 @@ sealed trait SignumPoly {
       val xa = this.asInstanceOf[SignumPolyN]
       val sf: Seq[Signum] = s.take(s.length - 1)
       var sl: Signum = s(s.length - 1)
-      xa.c0.eval(sf) + sl * xa.c1.eval(sf) + sl * sl * xa.c2.eval(sf)
+      xa.c0.eval(sf) + sl * xa.c1.eval(sf) + sl.square * xa.c2.eval(sf)
     }
   }
 
@@ -111,6 +111,8 @@ sealed trait SignumPoly {
       xa.c0.evalpoly(sarity, sf) + sl * xa.c1.evalpoly(sarity, sf) + sl * sl * xa.c2.evalpoly(sarity, sf)
     }
   }
+
+  def reduce: Signum = eval(for(i <- 0 until arity) yield Signum.All)
 }
 
 case class SignumPolyA0(val c0: Signum) extends SignumPoly {

@@ -26,7 +26,12 @@ sealed trait Almap extends HasInput[Almap] {
   def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V
 
   def mmpycheck[V <: HasInput[V]](x: V)(tv: =>V)(implicit e: AVectorLike[V]): V = {
-    if(e.size(x) != domain) throw new IRValidationException()
+    if(e.size(x) != domain) {
+      print(e.size(x).toString + "\n")
+      print(domain.toString + "\n")
+      print(codomain.toString + "\n")
+      throw new IRValidationException()
+    }
     if(x.input != input) throw new IRValidationException()
     if(e.input != input) throw new IRValidationException()
     val v: V = tv
@@ -40,6 +45,9 @@ sealed trait Almap extends HasInput[Almap] {
 
   //Does this matrix use no inputs
   def isPure: Boolean
+
+  //try to simplify this Almap
+  def simplify: Almap
 
   def +(a: Almap) = {
     if((domain != a.domain)||(codomain != a.codomain)) throw new IRValidationException()
@@ -86,6 +94,8 @@ case class AlmapIdentity(val input: InputDesc, val domain: IRPoly) extends Almap
   def is0: Boolean = (domain == IRPoly.const(0, arity))
 
   def isPure: Boolean = true
+
+  def simplify: Almap = this
 }
 
 
@@ -110,6 +120,8 @@ case class AlmapZero(val input: InputDesc, val domain: IRPoly, val codomain: IRP
   def is0: Boolean = true
 
   def isPure: Boolean = true
+
+  def simplify: Almap = this
 }
 
 //The sum of two linear maps
@@ -139,6 +151,20 @@ case class AlmapSum(val arg1: Almap, val arg2: Almap) extends Almap {
   def is0: Boolean = arg1.is0 && arg2.is0
 
   def isPure: Boolean = arg1.isPure && arg2.isPure
+  
+  def simplify: Almap = {
+    val sa1 = arg1.simplify
+    val sa2 = arg2.simplify
+    if(sa1.is0) {
+      sa2
+    }
+    else if(sa2.is0) {
+      sa1
+    }
+    else {
+      AlmapSum(sa1, sa2)
+    }
+  }
 }
 
 //Negation of a linear map
@@ -163,6 +189,16 @@ case class AlmapNeg(val arg: Almap) extends Almap {
   def is0: Boolean = arg.is0
 
   def isPure: Boolean = arg.isPure
+
+  def simplify: Almap = {
+    val sa = arg.simplify
+    if(sa.is0) {
+      sa
+    }
+    else {
+      AlmapNeg(sa)
+    }
+  }
 }
 
 /*
@@ -216,6 +252,16 @@ case class AlmapScaleConstant(val arg: Almap, val scale: Double) extends Almap {
   def is0: Boolean = arg.is0 || (scale == 0)
 
   def isPure: Boolean = arg.isPure
+
+  def simplify: Almap = {
+    val sa = arg.simplify
+    if(sa.is0) {
+      sa
+    }
+    else {
+      AlmapScaleConstant(sa, scale)
+    }
+  }
 }
 
 
@@ -245,6 +291,23 @@ case class AlmapVCat(val arg1: Almap, val arg2: Almap) extends Almap {
   def is0: Boolean = arg1.is0 && arg2.is0
 
   def isPure: Boolean = arg1.isPure && arg2.isPure
+
+  def simplify: Almap = {
+    val sa1 = arg1.simplify
+    val sa2 = arg2.simplify
+    if((sa1.is0)&&(sa2.is0)) {
+      AlmapZero(input, domain, codomain)
+    }
+    else if(sa1.codomain == IRPoly.const(0, arity)) {
+      sa2
+    }
+    else if(sa2.codomain == IRPoly.const(0, arity)) {
+      sa1
+    }
+    else {
+      AlmapVCat(sa1, sa2)
+    }
+  }
 }
 
 
@@ -272,6 +335,19 @@ case class AlmapVCatFor(val len: IRPoly, val body: Almap) extends Almap {
   def is0: Boolean = body.is0
 
   def isPure: Boolean = body.isPure
+
+  def simplify: Almap = {
+    val sb = body.simplify
+    if(sb.is0) {
+      AlmapZero(input, domain, codomain)
+    }
+    else if(sb.codomain == IRPoly.const(0, arity)) {
+      AlmapZero(input, domain, codomain)
+    }
+    else {
+      AlmapVCatFor(len, sb)
+    }
+  }
 }
 
 /*
@@ -333,6 +409,23 @@ case class AlmapHCat(val arg1: Almap, val arg2: Almap) extends Almap {
   def is0: Boolean = arg1.is0 && arg2.is0
 
   def isPure: Boolean = arg1.isPure && arg2.isPure
+
+  def simplify: Almap = {
+    val sa1 = arg1.simplify
+    val sa2 = arg2.simplify
+    if((sa1.is0)&&(sa2.is0)) {
+      AlmapZero(input, domain, codomain)
+    }
+    else if(sa1.domain == IRPoly.const(0, arity)) {
+      sa2
+    }
+    else if(sa2.domain == IRPoly.const(0, arity)) {
+      sa1
+    }
+    else {
+      AlmapHCat(sa1, sa2)
+    }
+  }
 }
 
 
@@ -367,6 +460,19 @@ case class AlmapHCatFor(val len: IRPoly, val body: Almap) extends Almap {
   def is0: Boolean = body.is0
 
   def isPure: Boolean = body.isPure
+
+  def simplify: Almap = {
+    val sb = body.simplify
+    if(sb.is0) {
+      AlmapZero(input, domain, codomain)
+    }
+    else if(sb.domain == IRPoly.const(0, arity)) {
+      AlmapZero(input, domain, codomain)
+    }
+    else {
+      AlmapHCatFor(len, sb)
+    }
+  }
 }
 
 /*
@@ -430,6 +536,17 @@ case class AlmapDiagCat(val arg1: Almap, val arg2: Almap) extends Almap {
   def is0: Boolean = arg1.is0 && arg2.is0
 
   def isPure: Boolean = arg1.isPure && arg2.isPure
+
+  def simplify: Almap = {
+    val sa1 = arg1.simplify
+    val sa2 = arg2.simplify
+    if((sa1.is0)&&(sa2.is0)) {
+      AlmapZero(input, domain, codomain)
+    }
+    else {
+      AlmapDiagCat(sa1, sa2)
+    }
+  }
 }
 
 
@@ -464,6 +581,22 @@ case class AlmapDiagCatFor(val len: IRPoly, val body: Almap) extends Almap {
   def is0: Boolean = body.is0
 
   def isPure: Boolean = body.isPure
+
+  def simplify: Almap = {
+    val sb = body.simplify
+    if(sb.is0) {
+      AlmapZero(input, domain, codomain)
+    }
+    else if(sb.domain == IRPoly.const(0, arity)) {
+      AlmapZero(input, domain, codomain)
+    }
+    else if(sb.codomain == IRPoly.const(0, arity)) {
+      AlmapZero(input, domain, codomain)
+    }
+    else {
+      AlmapDiagCatFor(len, sb)
+    }
+  }
 }
 
 //The sum of a problem-size-dependent number of linear ops
@@ -490,6 +623,22 @@ case class AlmapSumFor(val len: IRPoly, val body: Almap) extends Almap {
   def is0: Boolean = body.is0
 
   def isPure: Boolean = body.isPure
+
+  def simplify: Almap = {
+    val sb = body.simplify
+    if(sb.is0) {
+      AlmapZero(input, domain, codomain)
+    }
+    else if(sb.domain == IRPoly.const(0, arity)) {
+      AlmapZero(input, domain, codomain)
+    }
+    else if(sb.codomain == IRPoly.const(0, arity)) {
+      AlmapZero(input, domain, codomain)
+    }
+    else {
+      AlmapSumFor(len, sb)
+    }
+  }
 }
 
 //Matrix multiply
@@ -518,6 +667,17 @@ case class AlmapProd(val argl: Almap, val argr: Almap) extends Almap {
   def is0: Boolean = argl.is0 || argr.is0
 
   def isPure: Boolean = argl.isPure && argr.isPure
+
+  def simplify: Almap = {
+    val sal = argl.simplify
+    val sar = argr.simplify
+    if((sal.is0)||(sar.is0)) {
+      AlmapZero(input, domain, codomain)
+    }
+    else {
+      AlmapProd(sal, sar)
+    }
+  }
 }
 
 //Input matrix
@@ -552,6 +712,8 @@ case class AlmapInput(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly]
 
   def is0: Boolean = false
   def isPure: Boolean = false
+
+  def simplify: Almap = this
 }
 
 case class AlmapInputT(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly]) extends Almap {
@@ -585,6 +747,8 @@ case class AlmapInputT(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly
 
   def is0: Boolean = false
   def isPure: Boolean = false
+
+  def simplify: Almap = this
 }
 
 

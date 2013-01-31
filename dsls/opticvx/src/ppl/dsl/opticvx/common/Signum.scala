@@ -11,6 +11,7 @@ sealed abstract class Signum {
   //A <= B if all A expressions are B.  i.e. Affine <= Convex
   def <=(d: Signum): Boolean
   //def >=(d: Signum): Boolean = (d <= this)
+  def square: Signum
 
   //functions to allow signumpoly to work
   def +(y: SignumPoly): SignumPoly = y + this
@@ -46,6 +47,7 @@ object Signum {
       case Negative => false
       case Zero => false
     }
+    override def square = Positive
   }
 
   case object Positive extends Signum {
@@ -68,6 +70,7 @@ object Signum {
       case Negative => false
       case Zero => false
     }
+    override def square = Positive
   }
 
   case object Negative extends Signum {
@@ -90,6 +93,7 @@ object Signum {
       case Negative => true
       case Zero => false
     }
+    override def square = Positive
   }
 
   case object Zero extends Signum {
@@ -112,6 +116,7 @@ object Signum {
       case Negative => true
       case Zero => true
     }
+    override def square = Zero
   }
 }
 

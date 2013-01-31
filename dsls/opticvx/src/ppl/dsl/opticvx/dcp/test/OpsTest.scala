@@ -10,7 +10,7 @@ object DCPOpsTestApp extends DCPOpsDefinite {
     val t = cvxexpr()
     cvxfun(
       params(),
-      inputs(),
+      given(),
       args(scalar -> x),
       sign(positive),
       tonicity(x.sign),
@@ -24,22 +24,10 @@ object DCPOpsTestApp extends DCPOpsDefinite {
     )
   }
 
-  val square2 = {
-    cvxfun(
-      params(),
-      inputs(),
-      args(),
-      sign(positive),
-      tonicity(),
-      vexity(zero),
-      over(),
-      let(),
-      where(),
-      maximize(square(2)))
-  }
   
 
   def main(args: Array[String]) {
+    
     /*
     val x = cvxexpr()
     val y = cvxexpr()
@@ -62,6 +50,21 @@ object DCPOpsTestApp extends DCPOpsDefinite {
     println(v.resolve)
     println(y.resolve)
     */
+
+    val x = cvxexpr
+    solve(
+      params(),
+      given(),
+      over(scalar -> x),
+      let(),
+      where(
+        x >= square(2)
+      ),
+      minimize(
+        x
+      )
+    )
+    println(x.resolve)
 
     /* maybe:
 

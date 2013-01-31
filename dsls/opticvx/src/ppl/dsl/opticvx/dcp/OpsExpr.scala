@@ -9,7 +9,7 @@ import scala.collection.immutable.Set
 trait DCPOpsExpr extends DCPOpsGlobal {
 
   class FunctionHack(fx: Function) {
-    def apply(exprs: CvxFunExpr*) = CvxFunExpr(fx.compose(Seq(exprs:_*) map (x => x.fx)))
+    def apply(exprs: CvxExpr*) = CvxExpr(fx.compose(Seq(exprs:_*) map (x => x.fx)))
     def apply(params: IRPoly*) = new FunctionHack(fx.arityOp(ArityOp(params(0).arity, Seq(params:_*))))
   }
 
@@ -72,80 +72,101 @@ trait DCPOpsExpr extends DCPOpsGlobal {
     )
   }
 
-  case class CvxFunInput(val idx: Int)
+  case class CvxInput(val idx: Int)
 
-  case class CvxFunExpr(val fx: Function) {
-    def +(y: CvxFunExpr): CvxFunExpr = CvxFunExpr(fx + y.fx)
-    def -(y: CvxFunExpr): CvxFunExpr = CvxFunExpr(fx - y.fx)
-    def unary_-(): CvxFunExpr = CvxFunExpr(-fx)
+  case class CvxExpr(val fx: Function) {
+    def +(y: CvxExpr): CvxExpr = CvxExpr(fx + y.fx)
+    def -(y: CvxExpr): CvxExpr = CvxExpr(fx - y.fx)
+    def unary_-(): CvxExpr = CvxExpr(-fx)
     def size: IRPoly = fx.codomain
-    def >=(y: CvxFunExpr): CvxFunConstraint =
-      CvxFunConstraint(positive_cone_ifx(this - y).fx)
-    def <=(y: CvxFunExpr): CvxFunConstraint = (y >= this)
-    def ==(y: CvxFunExpr): CvxFunConstraint = {
+    def >=(y: CvxExpr): CvxConstraint =
+      CvxConstraint(positive_cone_ifx(this - y).fx)
+    def <=(y: CvxExpr): CvxConstraint = (y >= this)
+    def ==(y: CvxExpr): CvxConstraint = {
       if(this.size != y.size) throw new IRValidationException()
-      CvxFunConstraint(zero_ifx(this.size)(this - y).fx)
+      CvxConstraint(zero_ifx(this.size)(this - y).fx)
     }
-    def +(c: Double): CvxFunExpr = this + double2expr(c)
-    def -(c: Double): CvxFunExpr = this - double2expr(c)
-    def *(c: Double): CvxFunExpr = CvxFunExpr(fx.scale(c))
-    def /(c: Double): CvxFunExpr = CvxFunExpr(fx.scale(1/c))
+    def +(c: Double): CvxExpr = this + double2expr(c)
+    def -(c: Double): CvxExpr = this - double2expr(c)
+    def *(c: Double): CvxExpr = CvxExpr(fx.scale(c))
+    def /(c: Double): CvxExpr = CvxExpr(fx.scale(1/c))
+    def apply(at: IRPoly): CvxExpr = apply(at, IRPoly.const(1, fx.arity))
+    def apply(at: IRPoly, size: IRPoly): CvxExpr = {
+      val almappfx = AlmapHCat(AlmapHCat(AlmapZero(fx.input, at, size), AlmapIdentity(fx.input, size)), AlmapZero(fx.input, this.size - (at + size), size))
+      CvxExpr(Function(
+        fx.input,
+        fx.argSize,
+        fx.sign,
+        fx.tonicity,
+        fx.vexity,
+        fx.varSize,
+        fx.valueArgAlmap map (x => almappfx * x),
+        almappfx * fx.valueVarAlmap,
+        fx.valueOffset(at, size),
+        fx.affineArgAlmap,
+        fx.affineVarAlmap,
+        fx.affineOffset,
+        fx.conicArgAlmap,
+        fx.conicVarAlmap,
+        fx.conicOffset,
+        fx.conicCone))
+    }
   }
 
-  implicit def double2expr(c: Double): CvxFunExpr =
-    CvxFunExpr(Function.const(AVector.const(c, globalInputSize), globalInputSize, globalArgSize))
+  implicit def double2expr(c: Double): CvxExpr =
+    CvxExpr(Function.const(AVector.const(c, globalInputSize), globalInputSize, globalArgSize))
 
-  def cat(x: CvxFunExpr, y: CvxFunExpr): CvxFunExpr =
-    CvxFunExpr(Function.cat(x.fx, y.fx))
+  def cat(x: CvxExpr, y: CvxExpr): CvxExpr =
+    CvxExpr(Function.cat(x.fx, y.fx))
 
-  def sumfor(len: IRPoly)(fx: (IRPoly)=>CvxFunExpr): CvxFunExpr = {
+  def sumfor(len: IRPoly)(fx: (IRPoly)=>CvxExpr): CvxExpr = {
     if(len.arity != globalArity) throw new IRValidationException()
     globalArityPromote()
     val exfx = fx(len.next)
     globalArityDemote()
-    CvxFunExpr(Function.sumfor(len, exfx.fx))
+    CvxExpr(Function.sumfor(len, exfx.fx))
   }
 
-  def xfor(len: IRPoly)(fx: (IRPoly)=>CvxFunExpr): CvxFunExpr = {
+  def xfor(len: IRPoly)(fx: (IRPoly)=>CvxExpr): CvxExpr = {
     if(len.arity != globalArity) throw new IRValidationException()
     globalArityPromote()
     val exfx = fx(len.next)
     globalArityDemote()
-    CvxFunExpr(Function.catfor(len, exfx.fx))
+    CvxExpr(Function.catfor(len, exfx.fx))
   }
 
-  def cfor(len: IRPoly)(fx: (IRPoly)=>CvxFunConstraint): CvxFunConstraint = {
+  def cfor(len: IRPoly)(fx: (IRPoly)=>CvxConstraint): CvxConstraint = {
     if(len.arity != globalArity) throw new IRValidationException()
     globalArityPromote()
     val cxfx = fx(len.next)
     globalArityDemote()
-    CvxFunConstraint(Function.sumfor(len, cxfx.fx))
+    CvxConstraint(Function.sumfor(len, cxfx.fx))
   }
 
   class DoubleHack(val c: Double) {
-    def +(x: CvxFunExpr): CvxFunExpr = (x + c)
-    def -(x: CvxFunExpr): CvxFunExpr = ((-x) + c)
-    def *(x: CvxFunExpr): CvxFunExpr = (x * c)
-    def /(x: CvxFunExpr): CvxFunExpr = throw new IRValidationException()
+    def +(x: CvxExpr): CvxExpr = (x + c)
+    def -(x: CvxExpr): CvxExpr = ((-x) + c)
+    def *(x: CvxExpr): CvxExpr = (x * c)
+    def /(x: CvxExpr): CvxExpr = throw new IRValidationException()
 
-    def +(x: CvxFunExprSymbol): CvxFunExpr = (cvxfunexprsym2val(x) + c)
-    def -(x: CvxFunExprSymbol): CvxFunExpr = ((-cvxfunexprsym2val(x)) + c)
-    def *(x: CvxFunExprSymbol): CvxFunExpr = (cvxfunexprsym2val(x) * c)
-    def /(x: CvxFunExprSymbol): CvxFunExpr = throw new IRValidationException()
+    def +(x: CvxExprSymbol): CvxExpr = (cvxexprsym2val(x) + c)
+    def -(x: CvxExprSymbol): CvxExpr = ((-cvxexprsym2val(x)) + c)
+    def *(x: CvxExprSymbol): CvxExpr = (cvxexprsym2val(x) * c)
+    def /(x: CvxExprSymbol): CvxExpr = throw new IRValidationException()
   }
   implicit def double2doublehackimpl(c: Double): DoubleHack = new DoubleHack(c)
   implicit def int2doublehackimpl(c: Int): DoubleHack = new DoubleHack(c.toDouble)
   
-  case class CvxFunConstraint(val fx: Function) {
+  case class CvxConstraint(val fx: Function) {
     if(!(fx.isIndicator)) throw new IRValidationException()
   }
 
-  def in_secondorder_cone(x: CvxFunExpr, z: CvxFunExpr): CvxFunConstraint = {
+  def in_secondorder_cone(x: CvxExpr, z: CvxExpr): CvxConstraint = {
     if(z.size != IRPoly.const(1, x.size.arity)) throw new IRValidationException()
-    CvxFunConstraint(secondorder_cone_ifx(x.size)(x, z).fx)
+    CvxConstraint(secondorder_cone_ifx(x.size)(x, z).fx)
   }
 
-  class CvxFunParamSymbol {
+  class CvxParamSymbol {
     protected[dcp] var boundparam: IRPoly = null
     protected[dcp] def bind(x: IRPoly) {
       if(boundparam != null) throw new IRValidationException()
@@ -156,9 +177,9 @@ trait DCPOpsExpr extends DCPOpsGlobal {
       boundparam = null
     }
   }
-  class CvxFunInputSymbol {
-    protected[dcp] var boundinput: CvxFunInput = null
-    protected[dcp] def bind(x: CvxFunInput) {
+  class CvxInputSymbol {
+    protected[dcp] var boundinput: CvxInput = null
+    protected[dcp] def bind(x: CvxInput) {
       if(boundinput != null) throw new IRValidationException()
       boundinput = x
     }
@@ -167,11 +188,13 @@ trait DCPOpsExpr extends DCPOpsGlobal {
       boundinput = null
     }
   }
-  class CvxFunExprSymbol {
-    protected[dcp] var boundexpr: CvxFunExpr = null
+  class CvxExprSymbol {
+    protected[dcp] var boundexpr: CvxExpr = null
     protected[dcp] var boundsign: SignumPoly = null
-    protected[dcp] def bindexpr(x: CvxFunExpr) {
+    protected[dcp] var resolution: Seq[Double] = null
+    protected[dcp] def bindexpr(x: CvxExpr) {
       if(boundexpr != null) throw new IRValidationException()
+      if(resolution != null) throw new IRValidationException()
       boundexpr = x
     }
     protected[dcp] def releaseexpr() {
@@ -186,26 +209,36 @@ trait DCPOpsExpr extends DCPOpsGlobal {
       if(boundsign == null) throw new IRValidationException()
       boundsign = null
     }
+    protected[dcp] def rset(r: Seq[Double]) {
+      releaseexpr()
+      if(resolution != null) throw new IRValidationException()
+      resolution = r
+    }
     def sign: SignumPoly = {
       if(boundsign == null) throw new IRValidationException()
       boundsign
     }
+    def resolve: Seq[Double] = {
+      if(resolution == null) throw new IRValidationException()
+      resolution
+    }
   }
 
-  implicit def cvxfunparamsym2val(sym: CvxFunParamSymbol): IRPoly = {
+  implicit def cvxparamsym2val(sym: CvxParamSymbol): IRPoly = {
     if(sym.boundparam == null) throw new IRValidationException()
     sym.boundparam.promoteTo(globalArity)
   }
-  implicit def cvxfuninputsym2val(sym: CvxFunInputSymbol): CvxFunInput = {
+  implicit def cvxinputsym2val(sym: CvxInputSymbol): CvxInput = {
     if(sym.boundinput == null) throw new IRValidationException()
     sym.boundinput
   }
-  implicit def cvxfunexprsym2val(sym: CvxFunExprSymbol): CvxFunExpr = {
+  implicit def cvxexprsym2val(sym: CvxExprSymbol): CvxExpr = {
     if(sym.boundexpr == null) throw new IRValidationException()
-    CvxFunExpr(sym.boundexpr.fx.promoteTo(globalArity))
+    CvxExpr(sym.boundexpr.fx.promoteTo(globalArity))
   }
 
-  def cvxparam(): CvxFunParamSymbol = new CvxFunParamSymbol
-  def cvxexpr(): CvxFunExprSymbol = new CvxFunExprSymbol
+  def cvxparam(): CvxParamSymbol = new CvxParamSymbol
+  def cvxinput(): CvxInputSymbol = new CvxInputSymbol
+  def cvxexpr(): CvxExprSymbol = new CvxExprSymbol
 
 }

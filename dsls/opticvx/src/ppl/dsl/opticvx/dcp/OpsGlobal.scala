@@ -9,37 +9,34 @@ trait DCPOpsGlobal {
 
   var globalArity: Int = -1
   var globalInputSize: InputDesc = null
-  var globalVarSize: IRPoly = null
   var globalArgSize: Seq[IRPoly] = null
   var globalSignumArity: Int = -1
 
   def globalArityPromote() {
-    if ((globalInputSize != null)||(globalVarSize != null)||(globalArgSize != null)) {
+    if ((globalInputSize != null)||(globalArgSize != null)) {
       if (globalInputSize.arity != globalArity) throw new IRValidationException()
-      if (globalVarSize.arity != globalArity) throw new IRValidationException()
       for(a <- globalArgSize) {
         if(a.arity != globalArity) throw new IRValidationException()
       }
       globalInputSize = globalInputSize.promote
-      globalVarSize = globalVarSize.promote
       globalArgSize = globalArgSize map (x => x.promote)
     }
     globalArity += 1
   }
 
   def globalArityDemote() {
-    if ((globalInputSize != null)||(globalVarSize != null)||(globalArgSize != null)) {
+    if ((globalInputSize != null)||(globalArgSize != null)) {
       if (globalInputSize.arity != globalArity) throw new IRValidationException()
-      if (globalVarSize.arity != globalArity) throw new IRValidationException()
       for(a <- globalArgSize) {
         if(a.arity != globalArity) throw new IRValidationException()
       }
       globalInputSize = globalInputSize.demote
-      globalVarSize = globalVarSize.demote
       globalArgSize = globalArgSize map (x => x.demote)
     }
     globalArity -= 1
   }
+
+  implicit def int2irpoly(i: Int): IRPoly = IRPoly.const(1, globalArity)
 
   def scalar: IRPoly = IRPoly.const(1, globalArity)
   def vector(size: IRPoly): IRPoly = {
