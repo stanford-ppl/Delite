@@ -81,11 +81,10 @@ trait DCPOpsSolve extends DCPOpsFunction {
       minfxn.conicOffset,
       minfxn.conicCone)
 
-    problem.display()
+    //problem.display()
 
     val tt = PrimalDualSubgradient.Gen(problem).solver
     val vv = tt.run(s_params map (s => s.binding), Seq())
-    println(vv)
     val syms = (s_over map (x => x.symbol)) ++ (s_let map (x => x.symbol))
     for(s <- syms) {
       val x = s.boundexpr

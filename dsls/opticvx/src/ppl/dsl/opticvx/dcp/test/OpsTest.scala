@@ -52,19 +52,20 @@ object DCPOpsTestApp extends DCPOpsDefinite {
     */
 
     val x = cvxexpr
+    val y = cvxexpr
     solve(
-      params(),
-      given(),
-      over(scalar -> x),
-      let(),
+      params(), given(),
+      over(scalar -> x, scalar -> y), let(),
       where(
-        x >= square(2)
+        y <= 4,
+        in_secondorder_cone(cat(2*x, y-1), y+1)
       ),
-      minimize(
+      maximize(
         x
       )
     )
-    println(x.resolve)
+    println("x = " + x.resolve(0).toString)
+    println("y = " + y.resolve(0).toString)
 
     /* maybe:
 
