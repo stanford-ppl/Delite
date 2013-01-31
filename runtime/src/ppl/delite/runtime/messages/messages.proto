@@ -1,0 +1,87 @@
+package ppl.delite.runtime.messages;
+
+message DeliteMasterMessage {
+  enum Type { OP = 1; DATA = 2; DEBUG = 3; }
+
+  required Type type = 1;
+
+  optional RemoteOp op = 2;
+  optional RequestData data = 3;
+  optional DebugMessage debug = 4;
+}
+
+message DeliteSlaveMessage {
+  enum Type { RESULT = 1; DEBUG = 2; }
+
+  required Type type = 1;
+
+  optional ReturnResult result = 2;
+  optional DebugMessage debug = 3;
+}
+
+message RemoteOp {
+  enum Type { INPUT = 1; MULTILOOP = 2; }
+
+  required Id id = 1;
+  required Type type = 2;
+  repeated bytes input = 3;
+}
+
+message ReturnResult {
+  required Id id = 1;
+  repeated bytes output = 2;
+}
+
+message RequestData {
+  required Id id = 1;
+}
+
+message DebugMessage {
+  required string message = 1;
+}
+
+message Id { //TODO: could just be an int
+  required string id = 1;
+}
+
+message LaunchInfo {
+  required int32 slaveIdx = 1;
+  repeated string slave = 2;
+  repeated string arg = 3;
+}
+
+//primitive type message wrappers
+
+message IntMessage {
+  required sint32 value = 1;
+}
+
+message LongMessage {
+  required sint64 value = 1;
+}
+
+message DoubleMessage {
+  required double value = 1;
+}
+
+message FloatMessage {
+  required float value = 1;
+}
+
+message BooleanMessage {
+  required bool value = 1;
+}
+
+message UIntMessage {
+  required uint32 value = 1;
+}
+
+message StringMessage {
+  required string value = 1;
+}
+
+message ArrayMessage {
+  optional Id id = 1;
+  optional int32 length = 2;
+  optional bytes array = 3;
+}

@@ -25,9 +25,9 @@ object OpHelper {
       case Targets.Cpp => (new CppMultiLoopHeaderGenerator(multi,numChunks,graph)).makeHeader()
     }
     case foreach: OP_Foreach => Foreach_SMP_Array_Header_Generator.makeHeader(foreach, graph)
-    case single: OP_Single => error("OP Single cannot be expanded")
-    case external: OP_External => error("OP External cannot be expanded")
-    case other => error("OP type not recognized: " + other.getClass.getSimpleName)
+    case single: OP_Single => sys.error("OP Single cannot be expanded")
+    case external: OP_External => sys.error("OP External cannot be expanded")
+    case other => sys.error("OP type not recognized: " + other.getClass.getSimpleName)
   }
 
   def split(op: DeliteOP, numChunks: Int, kernelPath: String, target: Targets.Value): Seq[DeliteOP] = op match {
@@ -54,5 +54,12 @@ object OpHelper {
     else if (location < Config.numThreads+Config.numCpp+Config.numCuda) Targets.Cuda
     else if (location < Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL) Targets.OpenCL
     else throw new RuntimeException("Cannot find a target for resource ID " + location)
+  }
+
+  def remote(op: DeliteOP, kernelPath: String) = op match {
+    case multi: OP_MultiLoop => RPC_Generator.makeKernel(multi, kernelPath)
+    case file: OP_FileReader => RPC_Generator.makeKernel(file, kernelPath)
+    case single: OP_Single => sys.error("OP Single cannot be executed remotely")
+    case other => sys.error("OP type not recognized: " + other.getClass.getSimpleName)
   }
 }

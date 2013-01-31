@@ -87,11 +87,130 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     }
     stream.close()
     super.emitDataStructures(path)
+
+    val stream2 = new PrintWriter(path + "structs.proto")
+    stream2.println("package generated.scala;")
+    stream2.println("import \"messages.proto\";")
+    for ((name, elems) <- encounteredStructs) {
+      stream2.println("")
+      emitMessageDeclaration(name, elems)(stream2)
+    }
+    stream2.close()
+    super.emitDataStructures(path)
   }
 
   def emitStructDeclaration(name: String, elems: Seq[(String,Manifest[_])])(stream: PrintWriter) {
+    stream.println("object " + name + " {")
+    stream.println("def parseFrom(bytes: com.google.protobuf.ByteString) = {")
+    stream.println("val mssg = Structs." + name + ".parseFrom(bytes)")
+    emitStructDeserialization(name, elems, "mssg")(stream)
+    stream.println("\n}")
+    stream.print("def reduce(lhs: " + name + ", " + "rhs: " + name + ") = ")
+    emitStructReduction(name, elems, "lhs", "rhs")(stream)
+    stream.println("\n}")
+
     stream.print("case class " + name + "(")
     stream.print(elems.map{ case (idx,tp) => "var " + idx + ": " + remap(tp) }.mkString(", "))
-    stream.println(")")
+    stream.println(") {")
+    stream.print("def toByteString = ")
+    emitStructSerialization(name, elems, "")(stream)
+    stream.println(".build.toByteString")
+    stream.println("}")
   }
+
+  private def mangle(name: String) = name.split("_").map(toCamelCase).mkString("")
+  private def toCamelCase(name: String) = name.substring(0,1).toUpperCase + name.substring(1)
+
+  def emitStructDeserialization(name: String, elems: Seq[(String,Manifest[_])], prefix: String)(stream: PrintWriter) {
+    def insertField(field: String, tp: Manifest[_]) = {
+      val name = structName(tp)
+      val getField = prefix + ".get" + mangle(field)
+      if (encounteredStructs.contains(name)) emitStructDeserialization(name, encounteredStructs(name), getField)(stream) 
+      else if (deVar(tp).erasure.getSimpleName == "DeliteArray") stream.print("ppl.delite.runtime.messages.Serialization.deserializeDeliteArray" + arrayRemap(deVar(tp).typeArguments(0)) + "(" + getField + ")")
+      else stream.print(getField)
+    }
+
+    stream.print("new " + name + "(")
+    var first = true
+    for ((field,tp) <- elems) {
+      if (!first) stream.print(",")
+      first = false
+      insertField(field,tp)
+    }
+    stream.print(")")
+  }
+
+  def emitStructSerialization(name: String, elems: Seq[(String,Manifest[_])], prefix: String)(stream: PrintWriter) {
+    def insertField(field: String, tp: Manifest[_]) = {
+      val name = structName(tp)
+      val fullField = prefix + field
+      if (encounteredStructs.contains(name)) emitStructSerialization(name, encounteredStructs(name), fullField+".")(stream)
+      else if (deVar(tp).erasure.getSimpleName == "DeliteArray") stream.print("ppl.delite.runtime.messages.Serialization.serializeDeliteArray(" + fullField + ")")
+      else stream.print(fullField)
+    }
+
+    stream.print("Structs." + name + ".newBuilder")
+    for ((field,tp) <- elems) {
+      stream.print(".set" + mangle(field) + "(")
+      insertField(field,tp)
+      stream.print(")")
+    }
+  }
+
+  def emitStructReduction(name: String, elems: Seq[(String,Manifest[_])], prefixL: String, prefixR: String)(stream: PrintWriter) {
+    def insertField(field: String, tp: Manifest[_]) = {
+      val name = structName(tp)
+      val lhs = prefixL + "." + field
+      val rhs = prefixR + "." + field
+      if (encounteredStructs.contains(name)) emitStructReduction(name, encounteredStructs(name), lhs, rhs)(stream)
+      else if (deVar(tp).erasure.getSimpleName == "DeliteArray") stream.print("ppl.delite.runtime.data.DeliteArray" + arrayRemap(deVar(tp).typeArguments(0)) + ".reduce(" + lhs + "," + rhs + ")")
+      else if (deVar(tp).erasure.getSimpleName == "int") stream.print(lhs + " + " + rhs) //TODO: need something extensible / customizable
+      else throw new RuntimeException("don't know how to reduce type " + deVar(tp))
+    }
+
+    stream.print("new " + name + "(")
+    var first = true
+    for ((field,tp) <- elems) {
+      if (!first) stream.print(",")
+      first = false
+      insertField(field,tp)
+    }
+    stream.print(")")
+  }
+
+  def emitMessageDeclaration(name: String, elems: Seq[(String,Manifest[_])])(stream: PrintWriter) {
+    stream.println("message " + name + " {")
+    var idx = 1
+    for ((field,tp) <- elems) {
+      stream.println("required " + protoRemap(tp) + " " + field + " = " + idx + ";")
+      idx += 1
+    }
+    stream.println("}")
+  }
+
+  private def deVar(tp: Manifest[_]) = if (tp.erasure == classOf[Variable[_]]) mtype(tp.typeArguments(0)) else mtype(tp)
+
+  private def arrayRemap(tp: Manifest[_]): String = {
+    val default = remap(tp) 
+    default match {
+      case "Int" | "Long" | "Double" | "Float" | "Char" | "Short" | "Byte" | "Boolean" => default
+      case _ => "Object" //[" + default + "]"
+    }
+  }
+ 
+  private def protoRemap(tp: Manifest[_]): String = deVar(tp).erasure.getSimpleName match {
+    case "int" => "sint32"
+    case "long" => "sint64"
+    case "float" => "float"
+    case "double" => "double"
+    case "char" => "uint32"
+    case "short" => "sint32"
+    case "boolean" => "bool"
+    case "byte" => "uint32"
+    case "String" => "string"
+    case _ if encounteredStructs.contains(structName(tp)) => structName(tp)
+    case "DeliteArray" => "ppl.delite.runtime.messages.ArrayMessage"
+    case other => throw new RuntimeException("don't know how to remap type " + other + " to Protocol Buffers")
+  }
+
 }

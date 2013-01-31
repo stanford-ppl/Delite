@@ -1,7 +1,7 @@
 package ppl.delite.framework.codegen.delite.generators
 
 import ppl.delite.framework.codegen.delite.DeliteCodegen
-import ppl.delite.framework.ops.{VariantsOpsExp, DeliteOpsExp}
+import ppl.delite.framework.ops._
 import ppl.delite.framework.Config
 import ppl.delite.framework.transform.LoopSoAOpt
 import collection.mutable.{ArrayBuffer, ListBuffer, HashMap}
@@ -159,6 +159,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
               "generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
             case foreach: DeliteOpForeach2[_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.tp) + "]"
             case foreach: DeliteOpForeachBounded[_,_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.tp) + "]"
+            case input: DeliteOpInput[_] =>
+              hasOutputSlotTypes = true
+              "activation_"+kernelName
             case _ => gen.remap(sym.head.tp)
           }
           case ("cpp", op: AbstractFatLoop) =>
@@ -337,6 +340,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
           case c:DeliteOpCondition[_] => emitIfThenElse(Block(c.cond), c.thenp, c.elsep, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
           case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
           case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, optContext)
+          case i:DeliteOpInput[_] => emitInput(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, optContext)
           case f:DeliteOpForeach2[_,_] => emitForeach(f, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
           case f:DeliteOpForeachBounded[_,_,_] => emitForeach(f, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
           case _ => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, if (outputs(0).sourceContexts.isEmpty) None else Some(outputs(0).sourceContexts.head)) // things that are not specified as DeliteOPs, emit as SingleTask nodes
@@ -378,6 +382,14 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
   def emitSingleTask(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], sourceContext: Option[SourceContext])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"SingleTask\",")
+    emitSourceContext(sourceContext, stream, id)
+    emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
+    stream.println("},")
+  }
+
+  def emitInput(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], sourceContext: Option[SourceContext])
+        (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
+    stream.print("{\"type\":\"Input\",")
     emitSourceContext(sourceContext, stream, id)
     emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
     stream.println("},")

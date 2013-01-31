@@ -50,16 +50,16 @@ trait DeliteArrayBufferCompilerOps extends DeliteArrayBufferOps {
   def darray_buffer_unsafe_result[A:Manifest](d: Rep[DeliteArrayBuffer[A]])(implicit ctx: SourceContext): Rep[DeliteArray[A]]
 }
 
-trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollectionOpsExp with StructExp with PrimitiveOpsExp with VariablesExp {
+trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollectionOpsExp with StructExp with PrimitiveOpsExp with EqualExp with VariablesExp {
   this: DeliteArrayOpsExp with DeliteOpsExp =>
 
   case class DeliteArrayBufferNew[A:Manifest](initSize: Exp[Int]) extends DeliteStruct[DeliteArrayBuffer[A]] {
-    val elems = Seq("data" -> var_new(DeliteArray[A](initSize)).e, "length" -> var_new(initSize).e)
+    val elems = copyTransformedElems(Seq("data" -> var_new(DeliteArray[A](initSize)).e, "length" -> var_new(unit(0)).e))
     val mA = manifest[A]
   }
 
   case class DeliteArrayBufferNewImm[A:Manifest](data: Exp[DeliteArray[A]], length: Exp[Int]) extends DeliteStruct[DeliteArrayBuffer[A]] {
-    val elems = Seq("data" -> data, "length" -> length)
+    val elems = copyTransformedElems(Seq("data" -> data, "length" -> length))
     val mA = manifest[A]
   }
 

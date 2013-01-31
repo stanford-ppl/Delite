@@ -7,6 +7,7 @@ import ppl.delite.runtime.graph.ops.Sync
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.codegen.hosts.Hosts
 import ppl.delite.runtime.scheduler.{OpHelper, StaticSchedule}
+import ppl.delite.runtime.DeliteMesosExecutor
 
 /**
  * Author: Kevin J. Brown
@@ -62,6 +63,7 @@ object Compilers {
     if (Config.numOpenCL > 0) OpenCLCompile.compile()
 
     val classLoader = ScalaCompile.compile
+    DeliteMesosExecutor.classLoader = classLoader
 
     val queues = StaticSchedule(schedule.numResources)
     for (i <- 0 until schedule.numResources) {

@@ -20,7 +20,8 @@ import tools.nsc.io._
 
 object Delite {
 
-  private var mainThread: Thread = null
+  private var mainThread: Thread = _
+  private var outstandingException: Exception = _
 
   private def printArgs(args: Array[String]) {
     if(args.length == 0) {
@@ -36,7 +37,12 @@ object Delite {
   }
 
   def main(args: Array[String]) {
-    embeddedMain(args, Map())
+    if (Config.clusterMode == 1) //master (scheduler)
+      DeliteMesosScheduler.main(args)
+    else if (Config.clusterMode == 2) //slave (executor)
+      DeliteMesosExecutor.main(args)
+    else
+      embeddedMain(args, Map())
   }
 
   def embeddedMain(args: Array[String], staticData: Map[String,_]) {
@@ -72,8 +78,8 @@ object Delite {
 
     def abnormalShutdown() {
       executor.shutdown()
-      //if (!Config.noRegenerate)
-        //Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
+      if (!Config.noRegenerate && !Config.alwaysKeepCache)
+        Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
     }
 
     try {
@@ -98,19 +104,25 @@ object Delite {
       val executable = Compilers.compileSchedule(graph)
 
       //execute
-      val numTimes = Config.numRuns
-      for (i <- 1 to numTimes) {
-        println("Beginning Execution Run " + i)
-        val globalStart = System.currentTimeMillis
-        val globalStartNanos = System.nanoTime()
-        PerformanceTimer.start("all", false)
-        executor.run(executable)
-        EOP_Global.await //await the end of the application program
-        PerformanceTimer.stop("all", false)
-        PerformanceTimer.printAll(globalStart, globalStartNanos)
-        if (Config.dumpProfile) PerformanceTimer.dumpProfile(globalStart, globalStartNanos)
-        if (Config.dumpStats) PerformanceTimer.dumpStats()
-	    System.gc()
+      if (Config.clusterMode == 2) { //slave executor
+        DeliteMesosExecutor.executor = executor.asInstanceOf[SMPExecutor].threadPool
+        DeliteMesosExecutor.awaitWork()
+      }
+      else { //master executor (including single-node execution)
+        val numTimes = Config.numRuns
+        for (i <- 1 to numTimes) {
+          println("Beginning Execution Run " + i)
+          val globalStart = System.currentTimeMillis
+          val globalStartNanos = System.nanoTime()
+          PerformanceTimer.start("all", false)
+          executor.run(executable)
+          EOP_Global.await //await the end of the application program
+          PerformanceTimer.stop("all", false)
+          PerformanceTimer.printAll(globalStart, globalStartNanos)
+          if (Config.dumpProfile) PerformanceTimer.dumpProfile(globalStart, globalStartNanos)
+          if (Config.dumpStats) PerformanceTimer.dumpStats()        
+          System.gc()
+        }
       }
 
       //println("Done Executing " + numTimes + " Runs")
@@ -121,7 +133,7 @@ object Delite {
       executor.shutdown()
     }
     catch {
-      case i: InterruptedException => abnormalShutdown(); throw i //a worker thread threw the original exception        
+      case i: InterruptedException => abnormalShutdown(); throw outstandingException //a worker thread threw the original exception        
       case e: Exception => abnormalShutdown(); throw e       
     }
     finally {
@@ -145,7 +157,8 @@ object Delite {
   }
 
   //abnormal shutdown
-  def shutdown() {
+  def shutdown(reason: Exception) {
+    outstandingException = reason
     mainThread.interrupt()
   }
 

@@ -56,9 +56,18 @@ final class SMPStaticScheduler extends StaticScheduler with ParallelUtilizationC
   protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
     op match {
       case c: OP_Nested => addNested(c, graph, schedule, Range(0, numThreads))
-			case l: OP_MultiLoop => 
-				if (shouldParallelize(l, Map[String,Int]())){
-					split(op, graph, schedule, Range(0, numThreads))
+			case i: OP_FileReader =>
+        if (Config.clusterMode == 1)
+          OpHelper.remote(op, graph.kernelPath)
+        cluster(op, schedule)
+      case l: OP_MultiLoop => 
+				if (shouldParallelize(l, Map[String,Int]())) {
+          if (Config.clusterMode == 1) {
+            OpHelper.remote(op, graph.kernelPath)
+            cluster(op, schedule)
+          }
+          else 
+					 split(op, graph, schedule, Range(0, numThreads))
 				}
 				else {
 					split(op, graph, schedule, Seq(0))
