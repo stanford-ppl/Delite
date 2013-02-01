@@ -8,6 +8,8 @@ trait Cone extends HasArity[Cone] {
   val size: IRPoly
   def conj: Cone
 
+  def simplify: Cone
+
   def project_eval(params: Seq[Int], v: Seq[Double]): Seq[Double]
 }
 
@@ -21,6 +23,8 @@ case class ConeZero(val arity: Int) extends Cone {
     if(v.size != 0) throw new IRValidationException()
     v
   }
+
+  def simplify: Cone = this
 }
 
 //The trivial scalar cone (the only proper cone over R)
@@ -35,6 +39,8 @@ case class ConeNonNegative(val arity: Int) extends Cone {
     if (v(0) >= 0.0) Seq(v(0))
     else Seq(0.0)
   }
+
+  def simplify: Cone = this
 }
 
 //Second order cone
@@ -66,6 +72,8 @@ case class ConeSecondOrder(val dim: IRPoly) extends Cone {
       return Seq(scl * scala.math.sqrt(vn2)) ++ v.drop(1).map(a => scl*a)
     }
   }
+
+  def simplify: Cone = this
 }
 
 //Cartesian-product of cones
@@ -82,6 +90,20 @@ case class ConeProduct(val arg1: Cone, val arg2: Cone) extends Cone {
     if(v.size != size.eval(params)(IntLikeInt)) throw new IRValidationException()
     val sz1 = arg1.size.eval(params)(IntLikeInt)
     arg1.project_eval(params, v.take(sz1)) ++ arg2.project_eval(params, v.drop(sz1))
+  }
+
+  def simplify: Cone = {
+    val sa1 = arg1.simplify
+    val sa2 = arg2.simplify
+    if(sa1.isInstanceOf[ConeZero]) {
+      sa2
+    }
+    else if(sa2.isInstanceOf[ConeZero]) {
+      sa1
+    }
+    else {
+      ConeProduct(sa1, sa2)
+    }
   }
 }
 
@@ -107,5 +129,21 @@ case class ConeFor(val len: IRPoly, val body: Cone) extends Cone {
       vv = vv.drop(sz)
     }
     rv
+  }
+
+  def simplify: Cone = {
+    val sb = body.simplify
+    if(sb.isInstanceOf[ConeZero]) {
+      ConeZero(arity)
+    }
+    else if(len == IRPoly.const(0, arity)) {
+      ConeZero(arity)
+    }
+    else if(len == IRPoly.const(1, arity)) {
+      sb.substituteAt(arity, IRPoly.const(0, arity)).simplify
+    }
+    else {
+      ConeFor(len, sb)
+    }
   }
 }

@@ -296,6 +296,8 @@ case class AVectorScaleConstant(val arg: AVector, val scale: Double) extends AVe
       AVectorScaleConstant(sa, scale)
     }
   }
+
+  override def toString: String = "scale(" + arg.toString + ", " + scale.toString + ")"
 }
 
 case class AVectorCat(val arg1: AVector, val arg2: AVector) extends AVector {
@@ -334,6 +336,8 @@ case class AVectorCat(val arg1: AVector, val arg2: AVector) extends AVector {
       AVectorCat(sa1, sa2)
     }
   }
+
+  override def toString: String = "cat(" + arg1.toString + ", " + arg2.toString + ")"
 }
 
 case class AVectorCatFor(val len: IRPoly, val arg: AVector) extends AVector {
@@ -367,6 +371,8 @@ case class AVectorCatFor(val len: IRPoly, val arg: AVector) extends AVector {
       AVectorCatFor(len, sb)
     }
   }
+
+  override def toString: String = "catfor(" + len.toString + ": " + arg.toString + ")"
 }
 
 case class AVectorSlice(val arg: AVector, val at: IRPoly, val size: IRPoly) extends AVector {
@@ -400,6 +406,8 @@ case class AVectorSlice(val arg: AVector, val at: IRPoly, val size: IRPoly) exte
       AVectorSlice(sb, at, size)
     }
   }
+
+  override def toString: String = "slice(" + arg.toString + ", " + at.toString + ", " + size.toString + ")"
 }
 
 case class AVectorSumFor(val len: IRPoly, val arg: AVector) extends AVector {
@@ -433,6 +441,8 @@ case class AVectorSumFor(val len: IRPoly, val arg: AVector) extends AVector {
       AVectorSumFor(len, sb)
     }
   }
+
+  override def toString: String = "sumfor(" + len.toString + ": " + arg.toString + ")"
 }
 
 case class AVectorMpyInput(val arg: AVector, val iidx: Int, val sidx: Seq[IRPoly]) extends AVector {
@@ -469,6 +479,8 @@ case class AVectorMpyInput(val arg: AVector, val iidx: Int, val sidx: Seq[IRPoly
       AVectorMpyInput(sa, iidx, sidx)
     }
   }
+
+  override def toString: String = "mpyinput(" + arg.toString + ", " + iidx.toString + ", " + sidx.toString + ")"
 }
 
 case class AVectorMpyInputT(val arg: AVector, val iidx: Int, val sidx: Seq[IRPoly]) extends AVector {
@@ -505,5 +517,6 @@ case class AVectorMpyInputT(val arg: AVector, val iidx: Int, val sidx: Seq[IRPol
       AVectorMpyInputT(sa, iidx, sidx)
     }
   }
+  override def toString: String = "mpyinputT(" + arg.toString + ", " + iidx.toString + ", " + sidx.toString + ")"
 }
 

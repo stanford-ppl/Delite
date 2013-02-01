@@ -96,6 +96,8 @@ case class AlmapIdentity(val input: InputDesc, val domain: IRPoly) extends Almap
   def isPure: Boolean = true
 
   def simplify: Almap = this
+
+  override def toString: String = "eye(" + domain.toString + ")"
 }
 
 
@@ -122,6 +124,8 @@ case class AlmapZero(val input: InputDesc, val domain: IRPoly, val codomain: IRP
   def isPure: Boolean = true
 
   def simplify: Almap = this
+
+  override def toString: String = "zeros(" + domain.toString + ", " + codomain.toString + ")"
 }
 
 //The sum of two linear maps
@@ -165,6 +169,8 @@ case class AlmapSum(val arg1: Almap, val arg2: Almap) extends Almap {
       AlmapSum(sa1, sa2)
     }
   }
+
+  override def toString: String = "sum(" + arg1.toString + ", " + arg2.toString + ")"
 }
 
 //Negation of a linear map
@@ -199,6 +205,8 @@ case class AlmapNeg(val arg: Almap) extends Almap {
       AlmapNeg(sa)
     }
   }
+
+  override def toString: String = "neg(" + arg.toString + ")"
 }
 
 /*
@@ -262,6 +270,8 @@ case class AlmapScaleConstant(val arg: Almap, val scale: Double) extends Almap {
       AlmapScaleConstant(sa, scale)
     }
   }
+
+  override def toString: String = "scale(" + arg.toString + ", " + scale.toString + ")"
 }
 
 
@@ -308,6 +318,8 @@ case class AlmapVCat(val arg1: Almap, val arg2: Almap) extends Almap {
       AlmapVCat(sa1, sa2)
     }
   }
+
+  override def toString: String = "vcat(" + arg1.toString + ", " + arg2.toString + ")"
 }
 
 
@@ -348,6 +360,8 @@ case class AlmapVCatFor(val len: IRPoly, val body: Almap) extends Almap {
       AlmapVCatFor(len, sb)
     }
   }
+
+  override def toString: String = "vcatfor(" + len.toString + ": " + body.toString + ")"
 }
 
 /*
@@ -426,6 +440,8 @@ case class AlmapHCat(val arg1: Almap, val arg2: Almap) extends Almap {
       AlmapHCat(sa1, sa2)
     }
   }
+
+  override def toString: String = "hcat(" + arg1.toString + ", " + arg2.toString + ")"
 }
 
 
@@ -473,6 +489,8 @@ case class AlmapHCatFor(val len: IRPoly, val body: Almap) extends Almap {
       AlmapHCatFor(len, sb)
     }
   }
+
+  override def toString: String = "hcatfor(" + len.toString + ": " + body.toString + ")"
 }
 
 /*
@@ -543,10 +561,18 @@ case class AlmapDiagCat(val arg1: Almap, val arg2: Almap) extends Almap {
     if((sa1.is0)&&(sa2.is0)) {
       AlmapZero(input, domain, codomain)
     }
+    else if((sa1.domain == IRPoly.const(0, arity))||(sa1.codomain == IRPoly.const(0, arity))||
+      (sa2.domain == IRPoly.const(0, arity))||(sa2.codomain == IRPoly.const(0, arity))) {
+      AlmapVCat(
+        AlmapHCat(sa1, AlmapZero(input, sa2.domain, sa1.codomain)),
+        AlmapHCat(AlmapZero(input, sa1.domain, sa2.codomain), sa2)).simplify
+    }
     else {
       AlmapDiagCat(sa1, sa2)
     }
   }
+
+  override def toString: String = "diagcat(" + arg1.toString + ", " + arg2.toString + ")"
 }
 
 
@@ -597,6 +623,8 @@ case class AlmapDiagCatFor(val len: IRPoly, val body: Almap) extends Almap {
       AlmapDiagCatFor(len, sb)
     }
   }
+
+  override def toString: String = "diagcatfor(" + len.toString + ": " + body.toString + ")"
 }
 
 //The sum of a problem-size-dependent number of linear ops
@@ -639,6 +667,8 @@ case class AlmapSumFor(val len: IRPoly, val body: Almap) extends Almap {
       AlmapSumFor(len, sb)
     }
   }
+
+  override def toString: String = "sumfor(" + len.toString + ": " + body.toString + ")"
 }
 
 //Matrix multiply
@@ -674,10 +704,18 @@ case class AlmapProd(val argl: Almap, val argr: Almap) extends Almap {
     if((sal.is0)||(sar.is0)) {
       AlmapZero(input, domain, codomain)
     }
+    else if(sal.isInstanceOf[AlmapIdentity]) {
+      sar
+    }
+    else if(sar.isInstanceOf[AlmapIdentity]) {
+      sal
+    }
     else {
       AlmapProd(sal, sar)
     }
   }
+
+  override def toString: String = "mmpy(" + argl.toString + " * " + argr.toString + ")"
 }
 
 //Input matrix
@@ -714,6 +752,8 @@ case class AlmapInput(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly]
   def isPure: Boolean = false
 
   def simplify: Almap = this
+
+  override def toString: String = "input(" + iidx.toString + ", " + sidx.toString + ")"
 }
 
 case class AlmapInputT(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly]) extends Almap {
@@ -749,6 +789,8 @@ case class AlmapInputT(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly
   def isPure: Boolean = false
 
   def simplify: Almap = this
+
+  override def toString: String = "inputT(" + iidx.toString + ", " + sidx.toString + ")"
 }
 
 

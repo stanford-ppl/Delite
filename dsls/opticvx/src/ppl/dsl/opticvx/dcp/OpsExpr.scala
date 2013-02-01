@@ -15,7 +15,11 @@ trait DCPOpsExpr extends DCPOpsGlobal {
 
   implicit def functionhackimpl(fx: Function) = new FunctionHack(fx)
 
-  private val positive_cone_ifx = Function.fromcone(ConeNonNegative(0))
+  private val positive_cone_ifx = Function.fromcone(ConeNonNegative(0)).chdcp(
+    SignumPoly.const(Signum.Positive, 1),
+    Seq(SignumPoly.const(Signum.Negative, 1)),
+    SignumPoly.const(Signum.Positive, 1))
+
   private val secondorder_cone_ifx = {
     val irn = IRPoly.param(0, 1)
     val irp0 = IRPoly.const(0, 1)
@@ -159,6 +163,10 @@ trait DCPOpsExpr extends DCPOpsGlobal {
   
   case class CvxConstraint(val fx: Function) {
     if(!(fx.isIndicator)) throw new IRValidationException()
+    if(!(fx.vexity.reduce <= Signum.Positive)) {
+      println(fx.vexity.reduce)
+      throw new IRValidationException()
+    }
   }
 
   def in_secondorder_cone(x: CvxExpr, z: CvxExpr): CvxConstraint = {

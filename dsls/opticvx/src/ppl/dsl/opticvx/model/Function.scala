@@ -499,7 +499,6 @@ case class Function(
   def maximize_over_lastarg: Function = -((-this).minimize_over_lastarg)
 
   def expand(newVarSize: IRPoly): Function = {
-    if(varSize != IRPoly.const(0, arity)) throw new IRValidationException()
     Function(
       input,
       argSize,
@@ -508,15 +507,15 @@ case class Function(
       vexity,
       newVarSize,
       valueArgAlmap,
-      AlmapZero(input, newVarSize, valueOffset.size),
+      AlmapHCat(valueVarAlmap, AlmapZero(input, newVarSize - varSize, valueOffset.size)),
       valueOffset,
       affineArgAlmap,
-      AlmapZero(input, newVarSize, affineOffset.size),
+      AlmapHCat(affineVarAlmap, AlmapZero(input, newVarSize - varSize, affineOffset.size)),
       affineOffset,
       conicArgAlmap,
-      AlmapZero(input, newVarSize, conicOffset.size),
+      AlmapHCat(conicVarAlmap, AlmapZero(input, newVarSize - varSize, conicOffset.size)),
       conicOffset,
-      conicCone)
+      conicCone).simplify
   }
 
   // change the DCP properties of this function
@@ -554,7 +553,25 @@ case class Function(
     conicArgAlmap map (x => x.simplify),
     conicVarAlmap.simplify,
     conicOffset.simplify,
-    conicCone)
+    conicCone.simplify)
+
+
+  def display() {
+    println("")
+    for(a <- argSize) println("\nargSize: " + a.toString)
+    println("\nvarSize: " + varSize.toString)
+    for(a <- valueArgAlmap) println("\nvalueArgAlmap: " + a.toString)
+    println("\nvalueVarAlmap: " + valueVarAlmap.toString)
+    println("\nvalueOffset: " + valueOffset.toString)
+    for(a <- affineArgAlmap) println("\naffineArgAlmap: " + a.toString)
+    println("\naffineVarAlmap: " + affineVarAlmap.toString)
+    println("\naffineOffset: " + affineOffset.toString)
+    for(a <- conicArgAlmap) println("\nconicArgAlmap: " + a.toString)
+    println("\nconicVarAlmap: " + conicVarAlmap.toString)
+    println("\nconicOffset: " + conicOffset.toString)
+    println("\nconicCone: " + conicCone.toString)
+    println("")
+  }
 }
 
   /*

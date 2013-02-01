@@ -69,7 +69,10 @@ trait DCPOpsSolve extends DCPOpsFunction {
       case x: CvxMinimize => x.expr.fx
       case x: CvxMaximize => -x.expr.fx
     }
-    val tmpfxn = s_where.foldLeft(min_value)((a,b) => a + b.fx)
+    val tmpfxn = s_where.foldLeft(min_value)((a,b) => a + b.fx).simplify
+
+    tmpfxn.display()
+
     val minfxn = s_over.foldLeft(tmpfxn)((a,b) => a.minimize_over_lastarg).simplify
     if(minfxn.codomain != IRPoly.const(1, s_params.length)) throw new IRValidationException()
     val problem = Problem(
@@ -80,8 +83,6 @@ trait DCPOpsSolve extends DCPOpsFunction {
       minfxn.conicVarAlmap,
       minfxn.conicOffset,
       minfxn.conicCone)
-
-    //problem.display()
 
     val tt = PrimalDualSubgradient.Gen(problem).solver
     val vv = tt.run(s_params map (s => s.binding), Seq())
