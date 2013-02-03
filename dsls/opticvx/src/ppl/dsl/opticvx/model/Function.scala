@@ -399,9 +399,14 @@ case class Function(
       {
         var acc: Almap = affineVarAlmap
         for(j <- 0 until argSize.length) {
-          acc = AlmapDiagCat(acc, ys(j).affineVarAlmap)
+          acc = AlmapHCat(acc, affineArgAlmap(j) * ys(j).valueVarAlmap)
         }
-        acc
+        var dacc: Almap = ys(0).affineVarAlmap
+        for(j <- 1 until argSize.length) {
+          dacc = AlmapDiagCat(dacc, ys(j).affineVarAlmap)
+        }
+        dacc = AlmapHCat(AlmapZero(input, varSize, dacc.codomain), dacc)
+        AlmapVCat(acc, dacc)
       },
       //affineOffset
       {
@@ -430,9 +435,14 @@ case class Function(
       {
         var acc: Almap = conicVarAlmap
         for(j <- 0 until argSize.length) {
-          acc = AlmapDiagCat(acc, ys(j).conicVarAlmap)
+          acc = AlmapHCat(acc, conicArgAlmap(j) * ys(j).valueVarAlmap)
         }
-        acc
+        var dacc: Almap = ys(0).conicVarAlmap
+        for(j <- 1 until argSize.length) {
+          dacc = AlmapDiagCat(dacc, ys(j).conicVarAlmap)
+        }
+        dacc = AlmapHCat(AlmapZero(input, varSize, dacc.codomain), dacc)
+        AlmapVCat(acc, dacc)
       },
       //conicOffset
       {
