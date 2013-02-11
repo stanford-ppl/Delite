@@ -49,26 +49,8 @@ object Delite {
     Arguments.args = args.drop(1)
     Arguments.staticDataMap = staticData
 
-    //TODO: combine into a single scheduler and executor
-    val scheduler = Config.scheduler match {
-      case "SMP" => new SMPStaticScheduler
-      case "ACC" => new Acc_StaticScheduler
-      case "default" => {
-        if (Config.numCuda + Config.numOpenCL + Config.numCpp == 0) new SMPStaticScheduler
-        else new Acc_StaticScheduler
-      }
-      case _ => throw new IllegalArgumentException("Requested scheduler is not recognized")
-    }
-
-    val executor = Config.executor match {
-      case "SMP" => new SMPExecutor
-      case "ACC" => new SMP_Acc_Executor
-      case "default" => {
-        if (Config.numCuda + Config.numOpenCL + Config.numCpp == 0) new SMPExecutor
-        else new SMP_Acc_Executor
-      }
-      case _ => throw new IllegalArgumentException("Requested executor is not recognized")
-    }
+    var scheduler: StaticScheduler = null
+    var executor: Executor = null
 
     def abnormalShutdown() {
       executor.shutdown()
@@ -78,10 +60,37 @@ object Delite {
 
     try {
 
-      executor.init() //call this first because could take a while and can be done in parallel
-
       //load task graph
       val graph = loadDeliteDEG(args(0))
+    
+      //Print warning if there is no op that supports the target
+      if(Config.numCpp>0 && !graph.targets(Targets.Cpp)) println("[WARNING] No Cpp target op is generated!")
+      if(Config.numCuda>0 && !graph.targets(Targets.Cuda)) println("[WARNING] No Cuda target op is generated!")
+      if(Config.numOpenCL>0 && !graph.targets(Targets.OpenCL)) println("[WARNING] No OpenCL target op is generated!")
+
+      //TODO: combine into a single scheduler and executor
+      scheduler = Config.scheduler match {
+        case "SMP" => new SMPStaticScheduler
+        case "ACC" => new Acc_StaticScheduler
+        case "default" => {
+          if (Config.numCpp+Config.numCuda+Config.numOpenCL==0 || ((graph.targets.size==1) && (graph.targets(Targets.Scala)))) new SMPStaticScheduler
+          else new Acc_StaticScheduler
+        }
+        case _ => throw new IllegalArgumentException("Requested scheduler is not recognized")
+      }
+
+      executor = Config.executor match {
+        case "SMP" => new SMPExecutor
+        case "ACC" => new SMP_Acc_Executor
+        case "default" => {
+          if (Config.numCpp+Config.numCuda+Config.numOpenCL==0 || ((graph.targets.size==1) && (graph.targets(Targets.Scala)))) new SMPExecutor
+          else new SMP_Acc_Executor
+        }
+        case _ => throw new IllegalArgumentException("Requested executor is not recognized")
+      }
+
+      executor.init() //call this first because could take a while and can be done in parallel
+
       //val graph = new TestGraph
       Config.deliteBuildHome = graph.kernelPath
 

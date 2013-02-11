@@ -23,10 +23,10 @@ object Config {
     else if (p1 != null) p1 else if (p2 != null) p2 else default
   }
 
-  val numThreads: Int = getProperty("delite.threads", "1").toInt  /* scala target threads */
-  val numCpp: Int = getProperty("delite.cpp", "0").toInt         /* cpp target threads */
-  val numCuda: Int = getProperty("delite.cuda", "0").toInt        /* cuda target threads */
-  val numOpenCL: Int = getProperty("delite.opencl", "0").toInt    /* opencl target threads */
+  var numThreads: Int = getProperty("delite.threads", "1").toInt  /* scala target threads */
+  var numCpp: Int = getProperty("delite.cpp", "0").toInt         /* cpp target threads */
+  var numCuda: Int = getProperty("delite.cuda", "0").toInt        /* cuda target threads */
+  var numOpenCL: Int = getProperty("delite.opencl", "0").toInt    /* opencl target threads */
   val scheduler: String = getProperty("delite.scheduler", "default")
   val executor: String = getProperty("delite.executor", "default")
   val numRuns: Int = getProperty("delite.runs", "1").toInt

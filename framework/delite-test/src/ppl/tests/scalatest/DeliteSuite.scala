@@ -3,6 +3,10 @@ package ppl.tests.scalatest
 import org.scalatest._
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.Config
+import ppl.delite.framework.codegen.Target
+import ppl.delite.runtime.graph._
+import ppl.delite.runtime.graph.ops._
+import ppl.delite.runtime.graph.targets.Targets
 import scala.virtualization.lms.common._
 import scala.collection.mutable.{ ArrayBuffer, SynchronizedBuffer }
 import java.io.{ File, Console => _, _ }
@@ -26,12 +30,15 @@ trait DeliteTestConfig {
   val scalaHome = new File(props.getProperty("scala.vanilla.home", ""))
   val runtimeClasses = new File(props.getProperty("runtime.classes", ""))
   val runtimeExternalProc = false // scalaHome and runtimeClasses only required if runtimeExternalProc is true. should this be configurable? or should we just remove execTestExternal?
+  val deliteTestTargets = props.getProperty("tests.targets", "scala").split(",")
 }
 
 trait DeliteSuite extends Suite with DeliteTestConfig {
   val javaBin = new File(javaHome, "bin/java")
   val scalaCompiler = new File(scalaHome, "lib/scala-compiler.jar")
   val scalaLibrary = new File(scalaHome, "lib/scala-library.jar")
+
+  val CHECK_MULTILOOP = true
 
   def validateParameters() {
     if (!javaHome.exists) throw new TestFailedException("java.home must be a valid path in delite.properties", 3)
@@ -41,31 +48,77 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     else if (runtimeExternalProc && !runtimeClasses.exists) throw new TestFailedException("runtime.classes must be a valid path in delite.properties", 3)
   }
 
-  def compileAndTest(app: DeliteTestRunner) {
-    compileAndTest(app, app.getClass.getName.replaceAll("\\$", ""))
+  def uniqueTestName(app: DeliteTestRunner): String = {
+    app.getClass.getName.replaceAll("\\$", "")
   }
 
-  def compileAndTest(app: DeliteTestRunner, uniqueTestName: String) {
+  def degName(app: DeliteTestRunner): String = {
+    uniqueTestName(app) + "-test.deg"
+  }
+
+  def compileAndTest(app: DeliteTestRunner, checkMultiLoop: Boolean = false) {
     println("=================================================================================================")
     println("TEST: " + app.toString)
     println("=================================================================================================")
 
     validateParameters()
-    val args = Array(uniqueTestName + "-test.deg")
+    val args = Array(degName(app))
     app.resultBuffer = new ArrayBuffer[Boolean] with SynchronizedBuffer[Boolean]
-    stageTest(app, args(0), uniqueTestName)
-    val outStr = execTest(app, args, uniqueTestName) // if (runtimeExternalProc..)?
-    checkTest(app, outStr)
+
+    // Enable specified target code generators 
+    for(t <- deliteTestTargets) {
+      t match {
+        case "scala" => 
+        case "cuda" => Config.generateCUDA = true
+        case "cpp" => Config.generateCpp = true
+        case "opencl" => Config.generateOpenCL = true
+        case _ => println("Unknown test target: " + t)
+      }
+    }
+
+    // check if all multiloops in the test app are generated for specified targets
+    if(checkMultiLoop) {
+      val generateCUDA = Config.generateCUDA
+      Config.generateCUDA = true
+      stageTest(app)
+      val graph = ppl.delite.runtime.Delite.loadDeliteDEG(degName(app))
+      val targets = List("scala","cuda") // Add other targets 
+      for(op <- graph.totalOps if op.isInstanceOf[OP_MultiLoop]) {
+        targets foreach { t =>  if(!op.supportsTarget(Targets.target(t))) assert(false) }
+      }
+      Config.generateCUDA = generateCUDA
+    }
+    else { // Just stage test
+      stageTest(app)
+    }
+
+    // Set runtime parameters for targets and execute runtime
+    for(t <- deliteTestTargets) { 
+      t match {
+        case "cuda" => ppl.delite.runtime.Config.numCuda = 1
+        case "cpp" => ppl.delite.runtime.Config.numCpp = 1
+        case "opencl" => ppl.delite.runtime.Config.numOpenCL = 1
+        case _ => 
+      }
+      val outStr = execTest(app, args, t) // if (runtimeExternalProc..)?
+      checkTest(app, outStr)
+      t match {
+        case "cuda" => ppl.delite.runtime.Config.numCuda = 0
+        case "cpp" => ppl.delite.runtime.Config.numCpp = 0
+        case "opencl" => ppl.delite.runtime.Config.numOpenCL = 0
+        case _ => 
+      }
+    }
   }
 
-  private def stageTest(app: DeliteTestRunner, degName: String, uniqueTestName: String) = {
+  private def stageTest(app: DeliteTestRunner) = {
     println("STAGING...")
     val save = Config.degFilename
     val buildDir = Config.buildDir
     val saveCacheSyms = Config.cacheSyms
-    val generatedDir = "generated" + java.io.File.separator + uniqueTestName
+    val generatedDir = "generated" + java.io.File.separator + uniqueTestName(app)
     try {
-      Config.degFilename = degName
+      Config.degFilename = degName(app)
       Config.buildDir = generatedDir
       Config.cacheSyms = cacheSyms
       val screenOrVoid = if (verbose) System.out else new PrintStream(new ByteArrayOutputStream())
@@ -88,11 +141,12 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     }
   }
 
-  private def execTest(app: DeliteTestRunner, args: Array[String], uniqueTestName: String) = {
-    println("EXECUTING...")
+  private def execTest(app: DeliteTestRunner, args: Array[String], target: String) = {
+    println("EXECUTING(" + target + ")...")
     val name = "test.tmp"
-    System.setProperty("delite.threads", threads.toString)
-    System.setProperty("delite.code.cache.home", "generatedCache" + java.io.File.separator + uniqueTestName)
+    // Setting up the env variables here does not apply
+    //System.setProperty("delite.threads", threads.toString)
+    //System.setProperty("delite.code.cache.home", "generatedCache" + java.io.File.separator + uniqueTestName)
     Console.withOut(new PrintStream(new FileOutputStream(name))) {
       println("test output for: " + app.toString)
       ppl.delite.runtime.Delite.embeddedMain(args, app.staticDataMap)

@@ -84,6 +84,7 @@ char* bufferCurrent;
 
 
 /* Implementations for temporary memory management */
+#define CUDAMEM_ALIGNMENT 64
 char *tempCudaMemPtr;
 size_t tempCudaMemOffset;
 size_t tempCudaMemSize;
@@ -107,17 +108,18 @@ void tempCudaMemReset(void) {
 }
 
 size_t tempCudaMemAvailable(void) {
-  return (tempCudaMemSize - tempCudaMemOffset);
+  return (tempCudaMemSize - tempCudaMemOffset - CUDAMEM_ALIGNMENT);
 }
 
 void DeliteCudaMallocTemp(void** ptr, size_t size) {
-  if(tempCudaMemOffset + size > tempCudaMemSize) {
+  size_t alignedSize = CUDAMEM_ALIGNMENT * (1 + size / CUDAMEM_ALIGNMENT);
+  if(tempCudaMemOffset + alignedSize > tempCudaMemSize) {
     cout << "FATAL(DeliteCudaMallocTemp): Insufficient device memory for tempCudaMem" << endl;
     exit(-1);
   }
   else {
     *ptr = tempCudaMemPtr + tempCudaMemOffset;
-    tempCudaMemOffset += size;
+    tempCudaMemOffset += alignedSize;
   }
 }
 

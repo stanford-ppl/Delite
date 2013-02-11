@@ -35,9 +35,9 @@ object DeliteTaskGraph {
   def parseDEGMap(degm: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     val deg = getFieldMap(degm, "DEG")
     graph._version = getFieldDouble(deg, "version")
-    graph._targets = getFieldList(deg, "targets").map(Targets.target(_)).toSet
     graph._kernelPath = getFieldString(deg, "kernelpath")
     parseOps(getFieldList(deg, "ops"))
+    graph._targets = graph.totalOps.flatMap(o => o.getOutputTypesMap.keySet)
   }
 
   def parseOps(ops: List[Any])(implicit graph: DeliteTaskGraph) {
@@ -602,5 +602,12 @@ class DeliteTaskGraph {
     old.consumers = Set.empty
     old.inputList = Nil
     old.mutableInputs = Set.empty
+  }
+
+  def totalOps: Set[DeliteOP] = {
+    _ops.values.flatMap(_ match {
+      case m: OP_Nested => m.nestedGraphs.flatMap(g => g.totalOps)
+      case o@_ => Seq(o)
+    }).toSet
   }
 }
