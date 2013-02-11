@@ -383,6 +383,7 @@ case class SVectorDiv(val arg: SVector, val scale: SVector) extends SVector {
     val va = arg.eval(params, inputs, memory)
     val vs = scale.eval(params, inputs, memory)
     if(vs.size != 1) throw new IRValidationException()
+    if(scala.math.abs(vs(0)) < 1e-36) throw new IRValidationException()
     va map (a => a / vs(0))
   }
 }
@@ -397,7 +398,10 @@ case class SVectorMpy(val arg: SVector, val scale: SVector) extends SVector {
 
   arityVerify()
 
-  if(scale.size != IRPoly.const(1, arity)) throw new IRValidationException()
+  if(scale.size != IRPoly.const(1, arity)) {
+    println(scale.size)
+    throw new IRValidationException()
+  }
   if(arg.context != scale.context) throw new IRValidationException()
 
   def arityOp(op: ArityOp): SVector = SVectorMpy(arg.arityOp(op), scale.arityOp(op))

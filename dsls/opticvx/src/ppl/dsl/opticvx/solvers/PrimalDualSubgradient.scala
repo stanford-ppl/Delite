@@ -28,7 +28,7 @@ object PrimalDualSubgradient extends SolverGenBase {
   }
   trait Code extends SGCode {
     self: Variables =>
-
+    
     x := 0
     v := 0
     y := 0

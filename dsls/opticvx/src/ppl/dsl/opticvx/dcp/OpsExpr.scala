@@ -72,7 +72,7 @@ trait DCPOpsExpr extends DCPOpsGlobal {
       Seq(AlmapZero(fxinput, irn, irp0)),
       AlmapZero(fxinput, irp0, irp0),
       AVectorZero(fxinput, irp0),
-      ConeZero(1)
+      ConeNull(1)
     )
   }
 

@@ -796,9 +796,13 @@ case class AlmapInputT(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly
 
 case class AVectorLikeAlmap(val input: InputDesc, val domain: IRPoly) extends AVectorLike[Almap] {
   val arity: Int = domain.arity
+  if(input.arity != domain.arity) throw new IRValidationException()
   def size(arg: Almap): IRPoly = arg.codomain
   def zero(size: IRPoly): Almap = AlmapZero(input, domain, size)
-  def one: Almap = throw new IRValidationException()
+  def one: Almap = {
+    if(domain != IRPoly.const(1, domain.arity)) throw new IRValidationException()
+    AlmapIdentity(input, domain)
+  }
   def sum(arg1: Almap, arg2: Almap): Almap = arg1 + arg2
   def sumfor(len: IRPoly, arg: Almap): Almap = AlmapSumFor(len, arg)
   def neg(arg: Almap): Almap = -arg

@@ -26,7 +26,7 @@ object Function {
       for(i <- 0 until argSize.length) yield AlmapZero(input, argSize(i), irp0),
       AlmapZero(input, irp0, irp0),
       AVectorZero(input, irp0),
-      ConeZero(irp0.arity))
+      ConeNull(irp0.arity))
   }
 
   def const(c: AVector, input: InputDesc, argSize: Seq[IRPoly]): Function = {
@@ -50,7 +50,7 @@ object Function {
       for(i <- 0 until argSize.length) yield AlmapZero(input, argSize(i), irp0),
       AlmapZero(input, irp0, irp0),
       AVectorZero(input, irp0),
-      ConeZero(irp0.arity))    
+      ConeNull(irp0.arity))    
   }
 
   def fromcone(cone: Cone): Function = {

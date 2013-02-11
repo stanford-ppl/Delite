@@ -13,14 +13,42 @@ trait Cone extends HasArity[Cone] {
   def project_eval(params: Seq[Int], v: Seq[Double]): Seq[Double]
 }
 
-case class ConeZero(val arity: Int) extends Cone {
+case class ConeNull(val arity: Int) extends Cone {
   val size: IRPoly = IRPoly.const(0, arity)
-  def conj: Cone = ConeZero(arity)
+  def conj: Cone = ConeNull(arity)
 
-  def arityOp(op: ArityOp): Cone = ConeZero(op.arity)
+  def arityOp(op: ArityOp): Cone = ConeNull(op.arity)
 
   def project_eval(params: Seq[Int], v: Seq[Double]): Seq[Double] = {
     if(v.size != 0) throw new IRValidationException()
+    v
+  }
+
+  def simplify: Cone = this
+}
+
+case class ConeZero(val arity: Int) extends Cone {
+  val size: IRPoly = IRPoly.const(1,arity)
+  def conj: Cone = ConeFree(arity)
+  
+  def arityOp(op: ArityOp): Cone = ConeZero(op.arity)
+
+  def project_eval(params: Seq[Int], v: Seq[Double]): Seq[Double] = {
+    if(v.size != 1) throw new IRValidationException()
+    Seq(0.0)
+  }
+
+  def simplify: Cone = this
+}
+
+case class ConeFree(val arity: Int) extends Cone {
+  val size: IRPoly = IRPoly.const(1,arity)
+  def conj: Cone = ConeZero(arity)
+  
+  def arityOp(op: ArityOp): Cone = ConeFree(op.arity)
+
+  def project_eval(params: Seq[Int], v: Seq[Double]): Seq[Double] = {
+    if(v.size != 1) throw new IRValidationException()
     v
   }
 
@@ -95,10 +123,10 @@ case class ConeProduct(val arg1: Cone, val arg2: Cone) extends Cone {
   def simplify: Cone = {
     val sa1 = arg1.simplify
     val sa2 = arg2.simplify
-    if(sa1.isInstanceOf[ConeZero]) {
+    if(sa1.isInstanceOf[ConeNull]) {
       sa2
     }
-    else if(sa2.isInstanceOf[ConeZero]) {
+    else if(sa2.isInstanceOf[ConeNull]) {
       sa1
     }
     else {
@@ -133,11 +161,11 @@ case class ConeFor(val len: IRPoly, val body: Cone) extends Cone {
 
   def simplify: Cone = {
     val sb = body.simplify
-    if(sb.isInstanceOf[ConeZero]) {
-      ConeZero(arity)
+    if(sb.isInstanceOf[ConeNull]) {
+      ConeNull(arity)
     }
     else if(len == IRPoly.const(0, arity)) {
-      ConeZero(arity)
+      ConeNull(arity)
     }
     else if(len == IRPoly.const(1, arity)) {
       sb.substituteAt(arity, IRPoly.const(0, arity)).simplify

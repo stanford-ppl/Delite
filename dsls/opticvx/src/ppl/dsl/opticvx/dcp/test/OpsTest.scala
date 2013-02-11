@@ -55,7 +55,7 @@ object DCPOpsTestApp extends DCPOpsDefinite {
       over(scalar -> x), 
       let(),
       where(
-        square(square(2.0)) <= x
+        square(2.0) <= x
       ),
       minimize(
         x

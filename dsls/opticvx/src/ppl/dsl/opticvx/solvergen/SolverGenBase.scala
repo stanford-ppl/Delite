@@ -30,6 +30,8 @@ trait SolverGenBase {
     }
 
     def make_variable(index: Int): VariableType
+
+    implicit def int2irpolyimpl(i: Int): IRPoly = IRPoly.const(i, arity)
   }
 
   trait SGCode {
@@ -45,9 +47,12 @@ trait SolverGenBase {
 
     val A: Almap = problem.affineAlmap
     val b: SVector = problem.affineOffset.translate
+    val bm: Almap = problem.affineOffset.translate(AVectorLikeAlmap(inputSize, IRPoly.const(1, arity)))
     val F: Almap = problem.conicAlmap
     val g: SVector = problem.conicOffset.translate
+    val gm: Almap = problem.conicOffset.translate(AVectorLikeAlmap(inputSize, IRPoly.const(1, arity)))
     val c: SVector = problem.objective.translate
+    val cm: Almap = problem.objective.translate(AVectorLikeAlmap(inputSize, IRPoly.const(1, arity)))
     val cone: Cone = problem.conicCone
 
     case class SVariable(val idx: Int) {
@@ -87,6 +92,7 @@ trait SolverGenBase {
       def apply(at: IRPoly, size: IRPoly) = avlsvl.slice(t, at, size)
       def *(u: SVector) = SVectorMpy(t, u)
       def /(u: SVector) = SVectorDiv(t, u)
+      def *(d: Double) = SVectorScaleConstant(t, d)
     }
 
     implicit def sv2svhackimpl(t: SVector) = new SVHackImpl(t)
@@ -112,6 +118,37 @@ trait SolverGenBase {
 
     class ConeHackImpl(val c: Cone) {
       def project(t: SVector): SVector = SVectorProjCone(t, c)
+    }
+
+    def hcat(as: Almap*): Almap = {
+      if(as.length == 0) {
+        throw new IRValidationException()
+      }
+      else {
+        as.drop(1).foldLeft(as(0))((b,a) => AlmapHCat(b, a))
+      }
+    }
+    def vcat(as: Almap*): Almap = {
+      if(as.length == 0) {
+        throw new IRValidationException()
+      }
+      else {
+        as.drop(1).foldLeft(as(0))((b,a) => AlmapVCat(b, a))
+      }
+    }
+    def zeros(d: IRPoly, c: IRPoly) = AlmapZero(context.input, d, c)
+    def eye(d: IRPoly) = AlmapIdentity(context.input, d)
+
+    def zerocone(d: IRPoly): Cone = ConeFor(d, ConeZero(arity + 1))
+    def freecone(d: IRPoly): Cone = ConeFor(d, ConeFree(arity + 1))
+
+    def cat(as: Cone*): Cone = {
+      if(as.length == 0) {
+        throw new IRValidationException()
+      }
+      else {
+        as.drop(1).foldLeft(as(0))((b,a) => ConeProduct(b, a))
+      }
     }
 
     implicit def cone2conehackimpl(c: Cone) = new ConeHackImpl(c)
