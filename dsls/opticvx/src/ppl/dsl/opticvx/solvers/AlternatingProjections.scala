@@ -56,7 +56,7 @@ object AlternatingProjections extends SolverGenBase {
       x := x / sqrt(norm2(x))
       u := M.T*M*x
       udotx := dot(u, x)
-      J := udotx
+      J := sqrt(udotx)
     }
 
     x_out := avlsvl.slice(x, 0, varSize) / avlsvl.slice(x, varSize + affineCstrtSize + coneSize + coneSize, 1)
