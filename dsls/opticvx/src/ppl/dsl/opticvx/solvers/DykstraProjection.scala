@@ -7,7 +7,7 @@ import ppl.dsl.opticvx.solvergen._
 import scala.collection.immutable.Seq
 
 
-object AlternatingProjections extends SolverGenBase {
+object DykstraProjection extends SolverGenBase {
   trait Variables extends SGVariables {
 
     val x_out = vector(varSize)
@@ -56,7 +56,7 @@ object AlternatingProjections extends SolverGenBase {
       x := x / sqrt(norm2(x))
       u := M.T*M*x
       udotx := dot(u, x)
-      J := udotx
+      J := sqrt(udotx)
     }
 
     x_out := avlsvl.slice(x, 0, varSize) / avlsvl.slice(x, varSize + affineCstrtSize + coneSize + coneSize, 1)
