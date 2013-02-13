@@ -149,7 +149,7 @@ trait DCPOpsFunction extends DCPOpsExpr {
     globalArity = s_params.length
     // bind the inputs
     val s_inputs: Seq[CvxFunInputBinding] = ts_inputs.inputs
-    val s_inputsize = InputDesc(globalArity, s_inputs map (s => s.argdesc))
+    val s_inputsize = InputDesc(globalArity, s_inputs map (s => s.argdesc), Seq())
     globalInputSize = s_inputsize
     for(i <- 0 until s_inputs.length) {
       s_inputs(i).symbol.bind(CvxInput(i))

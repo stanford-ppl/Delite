@@ -56,7 +56,7 @@ object Function {
   def fromcone(cone: Cone): Function = {
     val irp0 = IRPoly.const(0, cone.arity)
     val irp1 = IRPoly.const(1, cone.arity)
-    val input = InputDesc(cone.arity, Seq())
+    val input = InputDesc(cone.arity, Seq(), Seq())
     Function(
       input,
       Seq(cone.size),
@@ -227,6 +227,18 @@ case class Function(
   }
   if(conicVarAlmap.input != input) throw new IRValidationException()
   if(conicOffset.input != input) throw new IRValidationException()
+  //verify that everything is memoryless
+  for(i <- 0 until argSize.length) {
+    if(!valueArgAlmap(i).isMemoryless) throw new IRValidationException()
+    if(!affineArgAlmap(i).isMemoryless) throw new IRValidationException()
+    if(!conicArgAlmap(i).isMemoryless) throw new IRValidationException()
+  }
+  if(!valueVarAlmap.isMemoryless) throw new IRValidationException()
+  if(!valueOffset.isMemoryless) throw new IRValidationException()
+  if(!affineVarAlmap.isMemoryless) throw new IRValidationException()
+  if(!affineOffset.isMemoryless) throw new IRValidationException()
+  if(!conicVarAlmap.isMemoryless) throw new IRValidationException()
+  if(!conicOffset.isMemoryless) throw new IRValidationException()
 
   def arityOp(op: ArityOp): Function = Function(
     input.arityOp(op),

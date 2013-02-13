@@ -88,7 +88,6 @@ case class SolverInstrConverge(
     var counter: Int = 0
     // hardcoded tolerance for now
     while(condition.eval(params, inputs, mem)(0) > 1e-8) {
-      println(condition.eval(params, inputs, mem)(0))
       for(c <- code) {
         mem = c.run(params, inputs, mem)
       }

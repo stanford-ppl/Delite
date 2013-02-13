@@ -793,6 +793,72 @@ case class AlmapInputT(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly
   override def toString: String = "inputT(" + iidx.toString + ", " + sidx.toString + ")"
 }
 
+case class AlmapVector(val arg: AVector) extends Almap {
+  val arity: Int = arg.arity
+  val input: InputDesc = arg.input
+  val domain: IRPoly = IRPoly.const(1, arity)
+  val codomain: IRPoly = arg.size
+
+  arityVerify()
+
+  def arityOp(op: ArityOp): Almap = AlmapVector(arg.arityOp(op))
+  def inputOp(op: InputOp): Almap = AlmapVector(arg.inputOp(op))
+
+  def T: Almap = AlmapVectorT(arg)
+
+  def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(x) {
+    throw new IRValidationException()
+  }
+
+  def is0: Boolean = arg.is0
+  def isPure: Boolean = arg.isPure
+
+  def simplify: Almap = {
+    val sa: AVector = arg.simplify
+    if(sa.is0) {
+      AlmapZero(input, domain, codomain)
+    }
+    else {
+      AlmapVector(sa)
+    }
+  }
+
+  override def toString: String = "vector(" + arg.toString + ")"
+}
+
+case class AlmapVectorT(val arg: AVector) extends Almap {
+  val arity: Int = arg.arity
+  val input: InputDesc = arg.input
+  val domain: IRPoly = arg.size
+  val codomain: IRPoly = IRPoly.const(1, arity)
+
+  arityVerify()
+
+  def arityOp(op: ArityOp): Almap = AlmapVectorT(arg.arityOp(op))
+  def inputOp(op: InputOp): Almap = AlmapVectorT(arg.inputOp(op))
+
+  def T: Almap = AlmapVectorT(arg)
+
+  def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(x) {
+    e.dot(arg.translate, x)
+  }
+
+  def is0: Boolean = arg.is0
+  def isPure: Boolean = arg.isPure
+
+  def simplify: Almap = {
+    val sa: AVector = arg.simplify
+    if(sa.is0) {
+      AlmapZero(input, domain, codomain)
+    }
+    else {
+      AlmapVectorT(sa)
+    }
+  }
+
+  override def toString: String = "vectorT(" + arg.toString + ")"
+}
+
 
 case class AVectorLikeAlmap(val input: InputDesc, val domain: IRPoly) extends AVectorLike[Almap] {
   val arity: Int = domain.arity

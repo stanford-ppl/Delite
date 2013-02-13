@@ -16,6 +16,8 @@ trait AVectorLike[T <: HasInput[T]] extends HasInput[AVectorLike[T]] {
   def slice(arg: T, at: IRPoly, size: IRPoly): T
   def mmpyinput(arg: T, iidx: Int, sidx: Seq[IRPoly]): T
   def mmpyinputtranspose(arg: T, iidx: Int, sidx: Seq[IRPoly]): T
+  def read(iidx: Int, sidx: Seq[IRPoly]): T
+  def dot(arg1: T, arg2: T): T
 
   class THackImpl(val t: T) {
     def +(u: T) = sum(t, u)
@@ -106,6 +108,14 @@ case class AVectorLikeAVector(val input: InputDesc) extends AVectorLike[AVector]
       if(s.arity != arity) throw new IRValidationException()
     }
     AVectorMpyInputT(arg, iidx, sidx)
+  }
+  def read(iidx: Int, sidx: Seq[IRPoly]): AVector = {
+    AVectorRead(input, iidx, sidx)
+  }
+  def dot(arg1: AVector, arg2: AVector): AVector = {
+    if(arg1.input != input) throw new IRValidationException()
+    if(arg2.input != input) throw new IRValidationException()
+    AVectorDot(arg1, arg2)
   }
 
   def arityOp(op: ArityOp): AVectorLike[AVector] = AVectorLikeAVector(input.arityOp(op))
@@ -496,7 +506,7 @@ case class AVectorMpyInputT(val arg: AVector, val iidx: Int, val sidx: Seq[IRPol
   def inputOp(op: InputOp): AVector = {
     if(op.xs.length != input.args.length) throw new IRValidationException()
     for(i <- 0 until input.args.length) {
-      if(op.xs(i).arity != input.args(i).codomain.arity) throw new IRValidationException()
+      if(op.xs(i).arity != input.args(i).arity) throw new IRValidationException()
     }
     op.xs(iidx).substituteSeq(sidx).T.mmpy(arg)(AVectorLikeAVector(op.input))
   }
@@ -520,3 +530,69 @@ case class AVectorMpyInputT(val arg: AVector, val iidx: Int, val sidx: Seq[IRPol
   override def toString: String = "mpyinputT(" + arg.toString + ", " + iidx.toString + ", " + sidx.toString + ")"
 }
 
+case class AVectorRead(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly]) extends AVector {
+  val arity: Int = input.arity
+  val size: IRPoly = input.memory(iidx).size.substituteSeq(sidx)
+  
+  if(sidx.length != input.memory(iidx).dims.length) throw new IRValidationException()
+  for(s <- sidx) {
+    if(s.arity != arity) throw new IRValidationException()
+  }
+
+  arityVerify()
+
+  def arityOp(op: ArityOp): AVector = AVectorRead(input.arityOp(op), iidx, sidx map (s => s.arityOp(op)))
+  def inputOp(op: InputOp): AVector = {
+    if(op.ms.length != input.memory.length) throw new IRValidationException()
+    for(i <- 0 until input.memory.length) {
+      if(op.ms(i).arity != input.memory(i).arity) throw new IRValidationException()
+    }
+    op.ms(iidx).substituteSeq(sidx)
+  }
+
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
+    if(e.input != input) throw new IRValidationException()
+    e.read(iidx, sidx)
+  }
+
+  def is0: Boolean = false
+  def isPure: Boolean = false
+
+  def simplify: AVector = this
+
+  override def toString: String = "read(@" + iidx.toString + "[" + sidx.toString + "])"
+}
+
+case class AVectorDot(val arg1: AVector, val arg2: AVector) extends AVector {
+  val arity: Int = input.arity
+  val input: InputDesc = arg1.input
+  val size: IRPoly = IRPoly.const(1, arity)
+
+  if(arg1.size != arg2.size) throw new IRValidationException()
+  if(arg1.input != arg2.input) throw new IRValidationException()
+
+  arityVerify()
+
+  def arityOp(op: ArityOp): AVector = AVectorDot(arg1.arityOp(op), arg2.arityOp(op))
+  def inputOp(op: InputOp): AVector = AVectorDot(arg1.inputOp(op), arg2.inputOp(op))
+
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
+    e.dot(arg1.translate, arg2.translate)
+  }
+
+  def is0: Boolean = arg1.is0 || arg2.is0
+  def isPure: Boolean = arg1.isPure && arg2.isPure
+
+  def simplify: AVector = {
+    val sa1 = arg1.simplify
+    val sa2 = arg2.simplify
+    if(sa1.is0 || sa2.is0) {
+      AVectorZero(input, size)
+    }
+    else {
+      AVectorDot(sa1, sa2)
+    }
+  }
+
+  override def toString: String = "dot(" + arg1.toString + ", " + arg2.toString + ")"
+}

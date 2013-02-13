@@ -24,7 +24,7 @@ trait DCPOpsExpr extends DCPOpsGlobal {
     val irn = IRPoly.param(0, 1)
     val irp0 = IRPoly.const(0, 1)
     val irp1 = IRPoly.const(1, 1)
-    val fxinput = InputDesc(1, Seq())
+    val fxinput = InputDesc(1, Seq(), Seq())
     Function(
       fxinput,
       Seq(irn, irp1),
@@ -55,7 +55,7 @@ trait DCPOpsExpr extends DCPOpsGlobal {
     val irn = IRPoly.param(0, 1)
     val irp0 = IRPoly.const(0, 1)
     val irp1 = IRPoly.const(1, 1)
-    val fxinput = InputDesc(1, Seq())
+    val fxinput = InputDesc(1, Seq(), Seq())
     Function(
       fxinput,
       Seq(irn),
