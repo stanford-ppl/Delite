@@ -807,7 +807,8 @@ case class AlmapVector(val arg: AVector) extends Almap {
   def T: Almap = AlmapVectorT(arg)
 
   def mmpy[V <: HasInput[V]](x: V)(implicit e: AVectorLike[V]): V = mmpycheck(x) {
-    throw new IRValidationException()
+    if(e.size(x) != IRPoly.const(1, arity)) throw new IRValidationException()
+    e.mpy(arg.translate, x)
   }
 
   def is0: Boolean = arg.is0
@@ -889,6 +890,15 @@ case class AVectorLikeAlmap(val input: InputDesc, val domain: IRPoly) extends AV
   }
   def mmpyinputtranspose(arg: Almap, iidx: Int, sidx: Seq[IRPoly]): Almap = {
     AlmapProd(AlmapInputT(input, iidx, sidx), arg)
+  }
+  def read(iidx: Int, sidx: Seq[IRPoly]): Almap = {
+    AlmapVector(AVectorRead(input, iidx, sidx))
+  }
+  def dot(arg1: Almap, arg2: Almap): Almap = {
+    AlmapProd(arg1.T, arg2)
+  }
+  def mpy(arg: Almap, scale: Almap): Almap = {
+    AlmapProd(arg, scale)
   }
 
   def arityOp(op: ArityOp): AVectorLike[Almap] = AVectorLikeAlmap(input.arityOp(op), domain.arityOp(op))
