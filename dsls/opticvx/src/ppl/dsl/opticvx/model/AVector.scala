@@ -132,7 +132,29 @@ case class AVectorLikeAVector(val input: InputDesc) extends AVectorLike[AVector]
     if(scale.input != input) throw new IRValidationException()
     AVectorMpy(arg, scale)
   }
-
+  def div(arg: AVector, scale: AVector): AVector = {
+    if(arg.input != input) throw new IRValidationException()
+    if(scale.input != input) throw new IRValidationException()
+    AVectorDiv(arg, scale)
+  }
+  def norm2(arg: AVector): AVector = {
+    if(arg.input != input) throw new IRValidationException()
+    AVectorNorm2(arg)
+  }
+  def sqrt(arg: AVector): AVector = {
+    if(arg.input != input) throw new IRValidationException()
+    AVectorSqrt(arg)
+  }
+  def max(arg1: AVector, arg2: AVector): AVector = {
+    if(arg1.input != input) throw new IRValidationException()
+    if(arg2.input != input) throw new IRValidationException()
+    AVectorMax(arg1, arg2)
+  }
+  def min(arg1: AVector, arg2: AVector): AVector = {
+    if(arg1.input != input) throw new IRValidationException()
+    if(arg2.input != input) throw new IRValidationException()
+    AVectorMin(arg1, arg2)
+  }
 
   def arityOp(op: ArityOp): AVectorLike[AVector] = AVectorLikeAVector(input.arityOp(op))
   def inputOp(op: InputOp): AVectorLike[AVector] = AVectorLikeAVector(op.input)
@@ -681,7 +703,7 @@ case class AVectorDiv(val arg: AVector, val scale: AVector) extends AVector {
 
 case class AVectorSqrt(val arg: AVector) extends AVector {
   val arity: Int = arg.arity
-  val size: IRPoly = arg.size
+  val size: IRPoly = IRPoly.const(1, arity)
   val input: InputDesc = arg.input
 
   arityVerify()
@@ -709,4 +731,94 @@ case class AVectorSqrt(val arg: AVector) extends AVector {
   }
 }
 
+case class AVectorNorm2(val arg: AVector) extends AVector {
+  val arity: Int = arg.arity
+  val size: IRPoly = arg.size
+  val input: InputDesc = arg.input
 
+  arityVerify()
+
+  def arityOp(op: ArityOp): AVector = AVectorNorm2(arg.arityOp(op))
+  def inputOp(op: InputOp): AVector = AVectorNorm2(arg.inputOp(op))
+
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
+    e.norm2(arg.translate)
+  }
+
+  def is0: Boolean = arg.is0
+  def isPure: Boolean = arg.isPure
+
+  def simplify: AVector = {
+    val sa = arg.simplify
+    if(sa.is0) {
+      AVectorZero(input, size)
+    }
+    else {
+      AVectorNorm2(sa)
+    }
+  }
+}
+
+case class AVectorMax(val arg1: AVector, val arg2: AVector) extends AVector {
+  val arity: Int = arg1.arity
+  val size: IRPoly = arg1.size
+  val input: InputDesc = arg1.input
+
+  arityVerify()
+
+  if(arg1.input != arg2.input) throw new IRValidationException()
+  if(arg1.size != arg2.size) throw new IRValidationException()
+
+  def arityOp(op: ArityOp): AVector = AVectorMax(arg1.arityOp(op), arg2.arityOp(op))
+  def inputOp(op: InputOp): AVector = AVectorMax(arg1.inputOp(op), arg2.inputOp(op))
+
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
+    e.max(arg1.translate, arg2.translate)
+  }
+
+  def is0: Boolean = arg1.is0 && arg2.is0
+  def isPure: Boolean = arg1.isPure && arg2.is0
+
+  def simplify: AVector = {
+    val sa1 = arg1.simplify
+    val sa2 = arg2.simplify
+    if(sa1.is0 && sa2.is0) {
+      AVectorZero(input, size)
+    }
+    else {
+      AVectorMax(sa1, sa2)
+    }
+  }
+}
+
+case class AVectorMin(val arg1: AVector, val arg2: AVector) extends AVector {
+  val arity: Int = arg1.arity
+  val size: IRPoly = arg1.size
+  val input: InputDesc = arg1.input
+
+  arityVerify()
+
+  if(arg1.input != arg2.input) throw new IRValidationException()
+  if(arg1.size != arg2.size) throw new IRValidationException()
+
+  def arityOp(op: ArityOp): AVector = AVectorMin(arg1.arityOp(op), arg2.arityOp(op))
+  def inputOp(op: InputOp): AVector = AVectorMin(arg1.inputOp(op), arg2.inputOp(op))
+
+  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
+    e.max(arg1.translate, arg2.translate)
+  }
+
+  def is0: Boolean = arg1.is0 && arg2.is0
+  def isPure: Boolean = arg1.isPure && arg2.is0
+
+  def simplify: AVector = {
+    val sa1 = arg1.simplify
+    val sa2 = arg2.simplify
+    if(sa1.is0 && sa2.is0) {
+      AVectorZero(input, size)
+    }
+    else {
+      AVectorMin(sa1, sa2)
+    }
+  }
+}

@@ -4,7 +4,7 @@ import ppl.dsl.opticvx.common._
 import ppl.dsl.opticvx.model._
 import scala.collection.immutable.Seq
 
-
+/*
 trait SVector extends HasInput[SVector] {
   val size: IRPoly
   val input: InputDesc
@@ -434,5 +434,5 @@ case class SVectorProjCone(val arg: SVector, val cone: Cone) extends SVector {
   }
 }
 
-
+*/
 

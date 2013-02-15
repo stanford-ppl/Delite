@@ -860,7 +860,7 @@ case class AlmapVectorT(val arg: AVector) extends Almap {
   override def toString: String = "vectorT(" + arg.toString + ")"
 }
 
-
+/*
 case class AVectorLikeAlmap(val input: InputDesc, val domain: IRPoly) extends AVectorLike[Almap] {
   val arity: Int = domain.arity
   if(input.arity != domain.arity) throw new IRValidationException()
@@ -904,3 +904,4 @@ case class AVectorLikeAlmap(val input: InputDesc, val domain: IRPoly) extends AV
   def arityOp(op: ArityOp): AVectorLike[Almap] = AVectorLikeAlmap(input.arityOp(op), domain.arityOp(op))
   def inputOp(op: InputOp): AVectorLike[Almap] = AVectorLikeAlmap(op.input, domain)
 }
+*/

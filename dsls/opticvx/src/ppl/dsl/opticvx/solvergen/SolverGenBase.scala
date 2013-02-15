@@ -47,12 +47,12 @@ trait SolverGenBase {
 
     val A: Almap = problem.affineAlmap
     val b: SVector = problem.affineOffset.translate
-    val bm: Almap = problem.affineOffset.translate(AVectorLikeAlmap(inputSize, IRPoly.const(1, arity)))
+    val bm: Almap = AlmapVector(problem.affineOffset)
     val F: Almap = problem.conicAlmap
     val g: SVector = problem.conicOffset.translate
-    val gm: Almap = problem.conicOffset.translate(AVectorLikeAlmap(inputSize, IRPoly.const(1, arity)))
+    val gm: Almap = AlmapVector(problem.conicOffset)
     val c: SVector = problem.objective.translate
-    val cm: Almap = problem.objective.translate(AVectorLikeAlmap(inputSize, IRPoly.const(1, arity)))
+    val cm: Almap = AlmapVector(problem.objective)
     val cone: Cone = problem.conicCone
 
     case class SVariable(val idx: Int) {
