@@ -389,7 +389,6 @@ case class Function(
       },
       //valueOffset
       {
-        implicit val avlav = AVectorLikeAVector(input)
         var acc: AVector = valueOffset
         for(j <- 0 until argSize.length) {
           acc = acc + valueArgAlmap(j) * ys(j).valueOffset
@@ -422,7 +421,6 @@ case class Function(
       },
       //affineOffset
       {
-        implicit val avlav = AVectorLikeAVector(input)
         var acc: AVector = affineOffset
         for(j <- 0 until argSize.length) {
           acc = acc + affineArgAlmap(j) * ys(j).valueOffset
@@ -458,7 +456,6 @@ case class Function(
       },
       //conicOffset
       {
-        implicit val avlav = AVectorLikeAVector(input)
         var acc: AVector = conicOffset
         for(j <- 0 until argSize.length) {
           acc = acc + conicArgAlmap(j) * ys(j).valueOffset

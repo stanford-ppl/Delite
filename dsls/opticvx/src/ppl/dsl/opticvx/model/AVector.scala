@@ -3,7 +3,7 @@ package ppl.dsl.opticvx.model
 import ppl.dsl.opticvx.common._
 import scala.collection.immutable.Seq
 
-
+/*
 trait AVectorLike[T] extends HasInput[AVectorLike[T]] {
   //base objects
   def size(arg: T): IRPoly
@@ -40,6 +40,7 @@ trait AVectorLike[T] extends HasInput[AVectorLike[T]] {
 
   implicit def t2thackimpl(t: T) = new THackImpl(t)
 }
+*/
 
 /*
 case class AVectorLikeScale[T <: HasInput[T]](val base: T, val e: AVectorLike[T]) extends AVectorLike[T] {
@@ -60,6 +61,7 @@ case class AVectorLikeScale[T <: HasInput[T]](val base: T, val e: AVectorLike[T]
 }
 */
 
+/*
 case class AVectorLikeAVector(val input: InputDesc) extends AVectorLike[AVector] {
   val arity: Int = input.arity
 
@@ -161,7 +163,7 @@ case class AVectorLikeAVector(val input: InputDesc) extends AVectorLike[AVector]
   def inputOp(op: InputOp): AVectorLike[AVector] = AVectorLikeAVector(op.input)
 
 }
-
+*/
 
 object AVector {
   // def input(at: IRPoly, len: IRPoly): AVector = {
@@ -175,21 +177,28 @@ object AVector {
 
 trait AVector extends HasInput[AVector] {
   val size: IRPoly
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V
+  
+  // def translate[V](implicit e: AVectorLike[V]): V
+  
+  // def translateCheck[V <: HasInput[V]](tv: =>V)(implicit e: AVectorLike[V]): V = {
+  //   if(e.arity != arity) throw new IRValidationException()
+  //   if(e.input != input) throw new IRValidationException()
+  //   val v: V = tv
+  //   if(v.arity != arity) throw new IRValidationException()
+  //   if(v.input != input) throw new IRValidationException()
+  //   if(e.size(v) != size) throw new IRValidationException()
+  //   v
+  // }
+  
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V
 
   def arityVerify() {
     if(size.arity != arity) throw new IRValidationException()
     if(input.arity != arity) throw new IRValidationException()
-  }
-
-  def translateCheck[V <: HasInput[V]](tv: =>V)(implicit e: AVectorLike[V]): V = {
-    if(e.arity != arity) throw new IRValidationException()
-    if(e.input != input) throw new IRValidationException()
-    val v: V = tv
-    if(v.arity != arity) throw new IRValidationException()
-    if(v.input != input) throw new IRValidationException()
-    if(e.size(v) != size) throw new IRValidationException()
-    v
   }
 
   def +(u: AVector) = AVectorSum(this, u)
@@ -209,11 +218,20 @@ case class AVectorZero(val input: InputDesc, val size: IRPoly) extends AVector {
   arityVerify()
   def arityOp(op: ArityOp): AVector = AVectorZero(input.arityOp(op), size.arityOp(op))
   def inputOp(op: InputOp): AVector = AVectorZero(op.input, size)
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
-    e.zero(size)
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+  //   e.zero(size)
+  // }
   def is0: Boolean = true
   def isPure: Boolean = true
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.zero(size.eval(params)(runtime))
+  }
 
   def simplify: AVector = this
 
@@ -226,11 +244,20 @@ case class AVectorOne(val input: InputDesc) extends AVector {
   arityVerify()
   def arityOp(op: ArityOp): AVector = AVectorOne(input.arityOp(op))
   def inputOp(op: InputOp): AVector = AVectorOne(op.input)
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
-    e.one
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+  //   e.one
+  // }
   def is0: Boolean = false
   def isPure: Boolean = true
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.one
+  }
 
   def simplify: AVector = this
 
@@ -251,12 +278,23 @@ case class AVectorSum(val arg1: AVector, val arg2: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorSum(arg1.arityOp(op), arg2.arityOp(op))
   def inputOp(op: InputOp): AVector = AVectorSum(arg1.inputOp(op), arg2.inputOp(op))
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
-    e.sum(arg1.translate, arg2.translate)
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+  //   e.sum(arg1.translate, arg2.translate)
+  // }
 
   def is0: Boolean = arg1.is0 && arg2.is0
   def isPure: Boolean = arg1.isPure && arg2.isPure
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.sum(
+      arg1.eval(runtime, params, inputs, memory), 
+      arg2.eval(runtime, params, inputs, memory))
+  }
 
   def simplify: AVector = {
     val sa1 = arg1.simplify
@@ -285,8 +323,19 @@ case class AVectorNeg(val arg: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorNeg(arg.arityOp(op))
   def inputOp(op: InputOp): AVector = AVectorNeg(arg.inputOp(op))
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
-    e.neg(arg.translate)
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+  //   e.neg(arg.translate)
+  // }
+
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.neg(
+      arg.eval(runtime, params, inputs, memory))
   }
 
   def is0: Boolean = arg.is0
@@ -331,12 +380,24 @@ case class AVectorScaleConstant(val arg: AVector, val scale: Double) extends AVe
   def arityOp(op: ArityOp): AVector = AVectorScaleConstant(arg.arityOp(op), scale)
   def inputOp(op: InputOp): AVector = AVectorScaleConstant(arg.inputOp(op), scale)
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
-    e.scaleconstant(arg.translate, scale)
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+  //   e.scaleconstant(arg.translate, scale)
+  // }
 
   def is0: Boolean = arg.is0 || (scale == 0.0)
   def isPure: Boolean = arg.isPure
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.scaleconstant(
+      arg.eval(runtime, params, inputs, memory), 
+      scale)
+  }
+
 
   def simplify: AVector = {
     val sa = arg.simplify
@@ -364,12 +425,23 @@ case class AVectorCat(val arg1: AVector, val arg2: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorCat(arg1.arityOp(op), arg2.arityOp(op))
   def inputOp(op: InputOp): AVector = AVectorCat(arg1.inputOp(op), arg2.inputOp(op))
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
-    e.cat(arg1.translate, arg2.translate)
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+  //   e.cat(arg1.translate, arg2.translate)
+  // }
 
   def is0: Boolean = arg1.is0 && arg2.is0
   def isPure: Boolean = arg1.isPure && arg2.isPure
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.cat(
+      arg1.eval(runtime, params, inputs, memory), 
+      arg2.eval(runtime, params, inputs, memory))
+  }
 
   def simplify: AVector = {
     val sa1 = arg1.simplify
@@ -403,12 +475,24 @@ case class AVectorCatFor(val len: IRPoly, val arg: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorCatFor(len.arityOp(op), arg.arityOp(op.promote))
   def inputOp(op: InputOp): AVector = AVectorCatFor(len, arg.inputOp(op.promote))
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
-    e.catfor(len, arg.translate(e.promote))
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+  //   e.catfor(len, arg.translate(e.promote))
+  // }
 
   def is0: Boolean = arg.is0
-  def isPure: Boolean = arg.isPure
+  def isPure: Boolean = arg.isPure  
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.catfor(
+      len.eval(params)(runtime),
+      (i => arg.eval(runtime, params :+ i, inputs, memory)))
+  }
+
 
   def simplify: AVector = {
     val sb = arg.simplify
@@ -438,12 +522,24 @@ case class AVectorSlice(val arg: AVector, val at: IRPoly, val size: IRPoly) exte
   def arityOp(op: ArityOp): AVector = AVectorSlice(arg.arityOp(op), at.arityOp(op), size.arityOp(op))
   def inputOp(op: InputOp): AVector = AVectorSlice(arg.inputOp(op), at, size)
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
-    e.slice(arg.translate, at, size)
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+  //   e.slice(arg.translate, at, size)
+  // }
 
   def is0: Boolean = arg.is0
   def isPure: Boolean = arg.isPure
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.slice(
+      arg.eval(runtime, params, inputs, memory),
+      at.eval(params)(runtime),
+      size.eval(params)(runtime))
+  }
 
   def simplify: AVector = {
     val sb = arg.simplify
@@ -473,12 +569,23 @@ case class AVectorSumFor(val len: IRPoly, val arg: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorSumFor(len.arityOp(op), arg.arityOp(op.promote))
   def inputOp(op: InputOp): AVector = AVectorSumFor(len, arg.inputOp(op.promote))
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
-    e.sumfor(len, arg.translate(e.promote))
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+  //   e.sumfor(len, arg.translate(e.promote))
+  // }
   
   def is0: Boolean = arg.is0
   def isPure: Boolean = arg.isPure
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.sumfor(
+      len.eval(params)(runtime),
+      (i => arg.eval(runtime, params :+ i, inputs, memory)))
+  }
 
   def simplify: AVector = {
     val sb = arg.simplify
@@ -514,8 +621,19 @@ case class AVectorMpyInput(val arg: AVector, val iidx: Int, val sidx: Seq[IRPoly
     op.xs(iidx).substituteSeq(sidx).mmpy(arg)
   }
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
-    e.mmpyinput(arg.translate(e), iidx, sidx)
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+  //   e.mmpyinput(arg.translate(e), iidx, sidx)
+  // }
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.matrixmpy(
+      runtime.matrixget(inputs(iidx), sidx map (s => s.eval(params)(runtime))),
+      arg.eval(runtime, params, inputs, memory))
   }
 
   def is0: Boolean = false
@@ -552,12 +670,23 @@ case class AVectorMpyInputT(val arg: AVector, val iidx: Int, val sidx: Seq[IRPol
     op.xs(iidx).substituteSeq(sidx).T.mmpy(arg)
   }
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
-    e.mmpyinputtranspose(arg.translate(e), iidx, sidx)
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
+  //   e.mmpyinputtranspose(arg.translate(e), iidx, sidx)
+  // }
 
   def is0: Boolean = false
   def isPure: Boolean = false
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.matrixmpytranspose(
+      runtime.matrixget(inputs(iidx), sidx map (s => s.eval(params)(runtime))),
+      arg.eval(runtime, params, inputs, memory))
+  }
 
   def simplify: AVector = {
     val sa = arg.simplify
@@ -589,12 +718,21 @@ case class AVectorRead(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly
       if(op.ms(i).arity != input.memory(i).arity) throw new IRValidationException()
     }
     op.ms(iidx).substituteSeq(sidx)
+  }  
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.vectorget(memory(iidx), sidx map (s => s.eval(params)(runtime)))
   }
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
-    if(e.input != input) throw new IRValidationException()
-    e.read(iidx, sidx)
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
+  //   if(e.input != input) throw new IRValidationException()
+  //   e.read(iidx, sidx)
+  // }
 
   def is0: Boolean = false
   def isPure: Boolean = false
@@ -617,12 +755,23 @@ case class AVectorDot(val arg1: AVector, val arg2: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorDot(arg1.arityOp(op), arg2.arityOp(op))
   def inputOp(op: InputOp): AVector = AVectorDot(arg1.inputOp(op), arg2.inputOp(op))
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
-    e.dot(arg1.translate, arg2.translate)
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
+  //   e.dot(arg1.translate, arg2.translate)
+  // }
 
   def is0: Boolean = arg1.is0 || arg2.is0
   def isPure: Boolean = arg1.isPure && arg2.isPure
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.dot(
+      arg1.eval(runtime, params, inputs, memory), 
+      arg2.eval(runtime, params, inputs, memory))
+  }
 
   def simplify: AVector = {
     val sa1 = arg1.simplify
@@ -651,12 +800,23 @@ case class AVectorMpy(val arg: AVector, val scale: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorMpy(arg.arityOp(op), scale.arityOp(op))
   def inputOp(op: InputOp): AVector = AVectorMpy(arg.inputOp(op), scale.inputOp(op))
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
-    e.mpy(arg.translate, scale.translate)
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
+  //   e.mpy(arg.translate, scale.translate)
+  // }
 
   def is0: Boolean = arg.is0 || scale.is0
   def isPure: Boolean = arg.isPure && scale.isPure
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.mpy(
+      arg.eval(runtime, params, inputs, memory), 
+      scale.eval(runtime, params, inputs, memory))
+  }
 
   def simplify: AVector = {
     val sa = arg.simplify
@@ -684,12 +844,23 @@ case class AVectorDiv(val arg: AVector, val scale: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorDiv(arg.arityOp(op), scale.arityOp(op))
   def inputOp(op: InputOp): AVector = AVectorDiv(arg.inputOp(op), scale.inputOp(op))
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
-    e.mpy(arg.translate, scale.translate)
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
+  //   e.mpy(arg.translate, scale.translate)
+  // }
 
   def is0: Boolean = arg.is0
   def isPure: Boolean = arg.isPure && scale.isPure
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.div(
+      arg.eval(runtime, params, inputs, memory), 
+      scale.eval(runtime, params, inputs, memory))
+  }
 
   def simplify: AVector = {
     val sa = arg.simplify
@@ -716,12 +887,21 @@ case class AVectorSqrt(val arg: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorSqrt(arg.arityOp(op))
   def inputOp(op: InputOp): AVector = AVectorSqrt(arg.inputOp(op))
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
-    e.sqrt(arg.translate)
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
+  //   e.sqrt(arg.translate)
+  // }
 
   def is0: Boolean = arg.is0
   def isPure: Boolean = arg.isPure
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.sqrt(arg.eval(runtime, params, inputs, memory))
+  }
 
   def simplify: AVector = {
     val sa = arg.simplify
@@ -744,12 +924,21 @@ case class AVectorNorm2(val arg: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorNorm2(arg.arityOp(op))
   def inputOp(op: InputOp): AVector = AVectorNorm2(arg.inputOp(op))
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
-    e.norm2(arg.translate)
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
+  //   e.norm2(arg.translate)
+  // }
 
   def is0: Boolean = arg.is0
   def isPure: Boolean = arg.isPure
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.norm2(arg.eval(runtime, params, inputs, memory))
+  }
 
   def simplify: AVector = {
     val sa = arg.simplify
@@ -775,12 +964,23 @@ case class AVectorMax(val arg1: AVector, val arg2: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorMax(arg1.arityOp(op), arg2.arityOp(op))
   def inputOp(op: InputOp): AVector = AVectorMax(arg1.inputOp(op), arg2.inputOp(op))
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
-    e.max(arg1.translate, arg2.translate)
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
+  //   e.max(arg1.translate, arg2.translate)
+  // }
 
   def is0: Boolean = arg1.is0 && arg2.is0
   def isPure: Boolean = arg1.isPure && arg2.is0
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.max(
+      arg1.eval(runtime, params, inputs, memory), 
+      arg2.eval(runtime, params, inputs, memory))
+  }
 
   def simplify: AVector = {
     val sa1 = arg1.simplify
@@ -807,12 +1007,23 @@ case class AVectorMin(val arg1: AVector, val arg2: AVector) extends AVector {
   def arityOp(op: ArityOp): AVector = AVectorMin(arg1.arityOp(op), arg2.arityOp(op))
   def inputOp(op: InputOp): AVector = AVectorMin(arg1.inputOp(op), arg2.inputOp(op))
 
-  def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
-    e.max(arg1.translate, arg2.translate)
-  }
+  // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
+  //   e.max(arg1.translate, arg2.translate)
+  // }
 
   def is0: Boolean = arg1.is0 && arg2.is0
   def isPure: Boolean = arg1.isPure && arg2.is0
+
+  def eval[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W]): V = 
+  {
+    runtime.min(
+      arg1.eval(runtime, params, inputs, memory), 
+      arg2.eval(runtime, params, inputs, memory))
+  }
 
   def simplify: AVector = {
     val sa1 = arg1.simplify
