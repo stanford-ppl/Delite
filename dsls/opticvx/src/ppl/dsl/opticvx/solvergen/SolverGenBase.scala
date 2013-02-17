@@ -7,7 +7,7 @@ import scala.collection.immutable.Seq
 
 trait SolverGen {
 
-  def code(A: Almap, b: AVector, F: Almap, g: AVector, c: AVector, cone: Cone): AVector
+  def code(A: Almap, b: AVector, F: Almap, g: AVector, c: AVector, cone: Cone): Unit
 
   private var input: InputDesc = null
   private var variables: Seq[MemoryArgDesc] = null
@@ -35,9 +35,14 @@ trait SolverGen {
     }
   }
 
-  def svariable2vectorimpl(s: SVariable): AVector = svariableentry2vectorimpl(s())
+  implicit def svariable2svariableentryimpl(s: SVariable): SVariableEntry = {
+    if(variables(s.iidx).dims.length != 0) throw new IRValidationException()
+    SVariableEntry(s.iidx, Seq())
+  }
 
-  def svariableentry2vectorimpl(s: SVariableEntry): AVector = {
+  implicit def svariable2vectorimpl(s: SVariable): AVector = svariableentry2vectorimpl(s())
+
+  implicit def svariableentry2vectorimpl(s: SVariableEntry): AVector = {
     if(prephase) {
       // in prephase, all reads result in zero because the memory isn't defined
       AVectorZero(input, variables(s.iidx).size.substituteSeq(s.sidx))
@@ -46,6 +51,20 @@ trait SolverGen {
       AVectorRead(input, s.iidx, s.sidx)
     }
   }
+
+  def v2m(v: AVector): Almap = AlmapVector(v)
+
+  def zeros(d: IRPoly, c: IRPoly): Almap = AlmapZero(input, d, c)
+  def eye(d: IRPoly): Almap = AlmapIdentity(input, d)
+  def zeros(l: IRPoly): AVector = AVectorZero(input, l)
+  def ones(l: IRPoly): AVector = AVectorCatFor(l, AVectorOne(input.promote))
+
+  def norm2(arg: AVector) = AVectorNorm2(arg)
+  def sqrt(arg: AVector) = AVectorSqrt(arg)
+  def dot(arg1: AVector, arg2: AVector) = AVectorDot(arg1, arg2)
+
+  implicit def double2vector(x: Double): AVector = 
+    AVectorScaleConstant(AVectorOne(input), x)
 
   def scalar: SVariable = vector(IRPoly.const(1, input.arity))
   def vector(len: IRPoly): SVariable = {
@@ -58,6 +77,14 @@ trait SolverGen {
       vidx += 1
       SVariable(vidx - 1)
     }
+  }
+
+  def converge(condition: AVector)(body: =>Unit) {
+    if(condition.size != IRPoly.const(1, input.arity)) throw new IRValidationException()
+    val cursolver: Solver = solveracc
+    solveracc = SolverNull(input)
+    body
+    solveracc = SolverSeq(cursolver, SolverConverge(condition, solveracc))
   }
 
   def gen(problem: Problem): Solver = {

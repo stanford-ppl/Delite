@@ -195,6 +195,8 @@ trait AVector extends HasInput[AVector] {
   def -(u: AVector) = AVectorSum(this, AVectorNeg(u))
   def unary_-() = AVectorNeg(this)
   def ++(u: AVector) = AVectorCat(this, u)
+  def *(u: AVector) = AVectorMpy(this, u)
+  def /(u: AVector) = AVectorDiv(this, u)
   def apply(at: IRPoly, size: IRPoly) = AVectorSlice(this, at, size)
   def is0: Boolean
   def isPure: Boolean
@@ -508,7 +510,7 @@ case class AVectorMpyInput(val arg: AVector, val iidx: Int, val sidx: Seq[IRPoly
     for(i <- 0 until input.args.length) {
       if(op.xs(i).arity != input.args(i).domain.arity) throw new IRValidationException()
     }
-    op.xs(iidx).substituteSeq(sidx).mmpy(arg)(AVectorLikeAVector(op.input))
+    op.xs(iidx).substituteSeq(sidx).mmpy(arg)
   }
 
   def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {
@@ -546,7 +548,7 @@ case class AVectorMpyInputT(val arg: AVector, val iidx: Int, val sidx: Seq[IRPol
     for(i <- 0 until input.args.length) {
       if(op.xs(i).arity != input.args(i).arity) throw new IRValidationException()
     }
-    op.xs(iidx).substituteSeq(sidx).T.mmpy(arg)(AVectorLikeAVector(op.input))
+    op.xs(iidx).substituteSeq(sidx).T.mmpy(arg)
   }
 
   def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = translateCheck {

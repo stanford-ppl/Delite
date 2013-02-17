@@ -10,7 +10,7 @@ trait Cone extends HasArity[Cone] {
 
   def simplify: Cone
 
-  def project_eval(params: Seq[Int], v: Seq[Double]): Seq[Double]
+  def project(x: AVector): AVector
 }
 
 case class ConeNull(val arity: Int) extends Cone {
@@ -19,9 +19,9 @@ case class ConeNull(val arity: Int) extends Cone {
 
   def arityOp(op: ArityOp): Cone = ConeNull(op.arity)
 
-  def project_eval(params: Seq[Int], v: Seq[Double]): Seq[Double] = {
-    if(v.size != 0) throw new IRValidationException()
-    v
+  def project(x: AVector): AVector = {
+    if(x.size != 0) throw new IRValidationException()
+    x
   }
 
   def simplify: Cone = this
@@ -33,9 +33,9 @@ case class ConeZero(val arity: Int) extends Cone {
   
   def arityOp(op: ArityOp): Cone = ConeZero(op.arity)
 
-  def project_eval(params: Seq[Int], v: Seq[Double]): Seq[Double] = {
-    if(v.size != 1) throw new IRValidationException()
-    Seq(0.0)
+  def project(x: AVector): AVector = {
+    if(x.size != 1) throw new IRValidationException()
+    AVectorZero(x.input, IRPoly.const(1, x.arity))
   }
 
   def simplify: Cone = this
@@ -47,9 +47,9 @@ case class ConeFree(val arity: Int) extends Cone {
   
   def arityOp(op: ArityOp): Cone = ConeFree(op.arity)
 
-  def project_eval(params: Seq[Int], v: Seq[Double]): Seq[Double] = {
-    if(v.size != 1) throw new IRValidationException()
-    v
+  def project(x: AVector): AVector = {
+    if(x.size != 1) throw new IRValidationException()
+    x
   }
 
   def simplify: Cone = this
@@ -62,10 +62,9 @@ case class ConeNonNegative(val arity: Int) extends Cone {
   
   def arityOp(op: ArityOp): Cone = ConeNonNegative(op.arity)
 
-  def project_eval(params: Seq[Int], v: Seq[Double]): Seq[Double] = {
-    if(v.size != 1) throw new IRValidationException()
-    if (v(0) >= 0.0) Seq(v(0))
-    else Seq(0.0)
+  def project(x: AVector): AVector = {
+    if(x.size != 1) throw new IRValidationException()
+    AVectorMax(x, AVectorZero(x.input, IRPoly.const(1, x.arity)))
   }
 
   def simplify: Cone = this
@@ -81,6 +80,17 @@ case class ConeSecondOrder(val dim: IRPoly) extends Cone {
   
   if (size.arity != arity) throw new IRValidationException()
 
+  def project(x: AVector): AVector = {
+    if(x.size != size) throw new IRValidationException()
+    val z = AVectorSlice(x, IRPoly.const(0, arity), IRPoly.const(1, arity))
+    val v = AVectorSlice(x, IRPoly.const(1, arity), dim)
+    val nv = AVectorSqrt(AVectorNorm2(v))
+    val u = AVectorMax(AVectorNeg(AVectorOne(x.input)), AVectorMin(AVectorOne(x.input), AVectorDiv(z, nv)))
+    val w = AVectorMax(nv, z)
+    AVectorMpy(AVectorCat(w, v), AVectorScaleConstant(AVectorOne(x.input) + u, 0.5))
+  }
+
+  /*
   def project_eval(params: Seq[Int], v: Seq[Double]): Seq[Double] = {
     //println("in: " + v.toString)
     if(v.size != size.eval(params)(IntLikeInt)) throw new IRValidationException()
@@ -100,6 +110,7 @@ case class ConeSecondOrder(val dim: IRPoly) extends Cone {
       return Seq(scl * scala.math.sqrt(vn2)) ++ v.drop(1).map(a => scl*a)
     }
   }
+  */
 
   def simplify: Cone = this
 }
@@ -114,11 +125,19 @@ case class ConeProduct(val arg1: Cone, val arg2: Cone) extends Cone {
   
   def arityOp(op: ArityOp): Cone = ConeProduct(arg1.arityOp(op), arg2.arityOp(op))
 
+  def project(x: AVector): AVector = {
+    AVectorCat(
+      arg1.project(AVectorSlice(x, IRPoly.const(0, x.arity), arg1.size)),
+      arg2.project(AVectorSlice(x, arg1.size, arg2.size)))
+  }
+
+  /*
   def project_eval(params: Seq[Int], v: Seq[Double]): Seq[Double] = {
     if(v.size != size.eval(params)(IntLikeInt)) throw new IRValidationException()
     val sz1 = arg1.size.eval(params)(IntLikeInt)
     arg1.project_eval(params, v.take(sz1)) ++ arg2.project_eval(params, v.drop(sz1))
   }
+  */
 
   def simplify: Cone = {
     val sa1 = arg1.simplify
@@ -146,6 +165,13 @@ case class ConeFor(val len: IRPoly, val body: Cone) extends Cone {
   
   def arityOp(op: ArityOp): Cone = ConeFor(len.arityOp(op), body.arityOp(op.promote))
 
+  def project(x: AVector): AVector = {
+    AVectorCatFor(
+      len,
+      body.project(AVectorSlice(x.promote, body.size.sum(arity), body.size)))
+  }
+
+  /*
   def project_eval(params: Seq[Int], v: Seq[Double]): Seq[Double] = {
     if(v.size != size.eval(params)(IntLikeInt)) throw new IRValidationException()
     val ll = len.eval(params)(IntLikeInt)
@@ -158,6 +184,7 @@ case class ConeFor(val len: IRPoly, val body: Cone) extends Cone {
     }
     rv
   }
+  */
 
   def simplify: Cone = {
     val sb = body.simplify
