@@ -3,6 +3,7 @@ package ppl.dsl.opticvx.model
 import ppl.dsl.opticvx.common._
 import scala.collection.immutable.Seq
 
+
 trait AVectorLike[T] extends HasInput[AVectorLike[T]] {
   //base objects
   def size(arg: T): IRPoly
