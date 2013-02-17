@@ -10,8 +10,10 @@ trait SolverGen {
   def code(A: Almap, b: AVector, F: Almap, g: AVector, c: AVector, cone: Cone): AVector
 
   private var input: InputDesc = null
-  private var variables: Seq[MemoryArgDesc] = Seq()
+  private var variables: Seq[MemoryArgDesc] = null
+  private var vidx: Int = 0
   private var prephase: Boolean = true
+  private var solveracc: Solver = null
 
   case class SVariable(iidx: Int) {
     def apply(sar: IRPoly*): SVariableEntry = SVariableEntry(iidx, Seq(sar:_*))
@@ -19,6 +21,18 @@ trait SolverGen {
 
   case class SVariableEntry(iidx: Int, sidx: Seq[IRPoly]) {
     if(variables(iidx).dims.length != sidx.length) throw new IRValidationException()
+
+    def :=(src: AVector) {
+      if(!prephase) {
+        solveracc = SolverSeq(solveracc, SolverWrite(src, iidx, sidx))
+      }
+    }
+    def +=(src: AVector) {
+      this := svariableentry2vectorimpl(this) + src
+    }
+    def -=(src: AVector) {
+      this := svariableentry2vectorimpl(this) - src
+    }
   }
 
   def svariable2vectorimpl(s: SVariable): AVector = svariableentry2vectorimpl(s())
@@ -29,11 +43,26 @@ trait SolverGen {
       AVectorZero(input, variables(s.iidx).size.substituteSeq(s.sidx))
     }
     else {
-      AVectorRead(input, iidx, sidx)
+      AVectorRead(input, s.iidx, s.sidx)
+    }
+  }
+
+  def scalar: SVariable = vector(IRPoly.const(1, input.arity))
+  def vector(len: IRPoly): SVariable = {
+    if(prephase) {
+      variables :+= MemoryArgDesc(Seq(), len)
+      SVariable(variables.length - 1)
+    }
+    else {
+      if(variables(vidx) != MemoryArgDesc(Seq(), len)) throw new IRValidationException()
+      vidx += 1
+      SVariable(vidx - 1)
     }
   }
 
   def gen(problem: Problem): Solver = {
+    if(!problem.isMemoryless) throw new IRValidationException()
+
     val A: Almap = problem.affineAlmap
     val b: AVector = problem.affineOffset
     val F: Almap = problem.conicAlmap
@@ -41,11 +70,34 @@ trait SolverGen {
     val c: AVector = problem.objective
     val cone: Cone = problem.conicCone
 
+    input = problem.input
+    variables = Seq()
+    prephase = true
+    solveracc = null
+
+    code(A, b, F, g, c, cone)
+
+    input = InputDesc(problem.arity, problem.input.args, variables)
+    prephase = false
+    vidx = 0
+    solveracc = SolverNull(input)
+
+    code(A, b, F, g, c, cone)
+
+    if(vidx != variables.length) throw new IRValidationException()
+
+    val rv = solveracc
+
+    input = null
+    variables = null
+    prephase = true
+    solveracc = null
     
+    solveracc
   }
 }
 
-
+/*
 trait SolverGenBase {
   type Variables <: SGVariables
   type Code <: SGCode
@@ -201,6 +253,7 @@ trait SolverGenBase {
     val solver = Solver(inputSize, variables, code)
   }
 }
+*/
 
 /*
 trait SolverGenOps {

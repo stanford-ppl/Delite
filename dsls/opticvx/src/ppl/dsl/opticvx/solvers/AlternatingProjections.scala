@@ -6,7 +6,7 @@ import ppl.dsl.opticvx.solverir._
 import ppl.dsl.opticvx.solvergen._
 import scala.collection.immutable.Seq
 
-
+/*
 object AlternatingProjections extends SolverGenBase {
   trait Variables extends SGVariables {
 
@@ -63,3 +63,4 @@ object AlternatingProjections extends SolverGenBase {
   }
   case class Gen(val problem: Problem) extends SGVariables with Variables with SGCode with Code with SGGen
 }
+*/

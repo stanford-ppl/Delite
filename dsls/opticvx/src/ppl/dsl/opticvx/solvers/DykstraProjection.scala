@@ -7,6 +7,7 @@ import ppl.dsl.opticvx.solvergen._
 import scala.collection.immutable.Seq
 
 
+/*
 object DykstraProjection extends SolverGenBase {
   trait Variables extends SGVariables {
 
@@ -63,3 +64,4 @@ object DykstraProjection extends SolverGenBase {
   }
   case class Gen(val problem: Problem) extends SGVariables with Variables with SGCode with Code with SGGen
 }
+*/

@@ -1,4 +1,4 @@
-package ppl.dsl.opticvx.movel
+package ppl.dsl.opticvx.model
 
 import ppl.dsl.opticvx.model._
 import ppl.dsl.opticvx.common._
@@ -20,6 +20,13 @@ case class SolverContext(val input: InputDesc, val variables: Seq[IRPoly]) exten
   def inputOp(op: InputOp) = SolverContext(op.input, variables)
 }
 */
+
+case class SolverNull(val input: InputDesc) extends Solver {
+  val arity: Int = input.arity
+
+  def arityOp(op: ArityOp) = SolverNull(input.arityOp(op))
+  def inputOp(op: InputOp) = SolverNull(op.input)
+}
 
 case class SolverWrite(val src: AVector, val iidx: Int, val sidx: Seq[IRPoly]) extends Solver {
   val arity: Int = src.arity
