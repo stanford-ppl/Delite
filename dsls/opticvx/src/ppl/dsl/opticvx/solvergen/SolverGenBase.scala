@@ -5,6 +5,47 @@ import ppl.dsl.opticvx.model._
 import ppl.dsl.opticvx.solverir._
 import scala.collection.immutable.Seq
 
+trait SolverGen {
+
+  def code(A: Almap, b: AVector, F: Almap, g: AVector, c: AVector, cone: Cone): AVector
+
+  private var input: InputDesc = null
+  private var variables: Seq[MemoryArgDesc] = Seq()
+  private var prephase: Boolean = true
+
+  case class SVariable(iidx: Int) {
+    def apply(sar: IRPoly*): SVariableEntry = SVariableEntry(iidx, Seq(sar:_*))
+  }
+
+  case class SVariableEntry(iidx: Int, sidx: Seq[IRPoly]) {
+    if(variables(iidx).dims.length != sidx.length) throw new IRValidationException()
+  }
+
+  def svariable2vectorimpl(s: SVariable): AVector = svariableentry2vectorimpl(s())
+
+  def svariableentry2vectorimpl(s: SVariableEntry): AVector = {
+    if(prephase) {
+      // in prephase, all reads result in zero because the memory isn't defined
+      AVectorZero(input, variables(s.iidx).size.substituteSeq(s.sidx))
+    }
+    else {
+      AVectorRead(input, iidx, sidx)
+    }
+  }
+
+  def gen(problem: Problem): Solver = {
+    val A: Almap = problem.affineAlmap
+    val b: AVector = problem.affineOffset
+    val F: Almap = problem.conicAlmap
+    val g: AVector = problem.conicOffset
+    val c: AVector = problem.objective
+    val cone: Cone = problem.conicCone
+
+    
+  }
+}
+
+
 trait SolverGenBase {
   type Variables <: SGVariables
   type Code <: SGCode

@@ -59,5 +59,25 @@ trait HasInput[T] extends HasArity[T] {
 
   def inputOp(op: InputOp): T
 
+  def pushMemory(arg: MemoryArgDesc): T = {
+    if(arg.arity != arity) throw new IRValidationException()
+    val newinput = InputDesc(arity, input.args, input.memory :+ arg)
+    val op = InputOp(
+      newinput,
+      for(i <- 0 until input.args.length) yield 
+        AlmapInput(
+          newinput.promoteBy(input.args(i).dims.length),
+          i,
+          for(j <- 0 until input.args(i).dims.length) yield
+            IRPoly.param(arity + j, arity + input.args(i).dims.length)),
+      for(i <- 0 until input.memory.length) yield
+        AVectorRead(
+          newinput.promoteBy(input.memory(i).dims.length),
+          i,
+          for(j <- 0 until input.memory(i).dims.length) yield
+            IRPoly.param(arity + j, arity + input.memory(i).dims.length)))
+    inputOp(op)
+  }
+
   def isMemoryless: Boolean = (input.memory == Seq())
 }

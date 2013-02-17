@@ -1,4 +1,4 @@
-package ppl.dsl.opticvx.solverir
+package ppl.dsl.opticvx.movel
 
 import ppl.dsl.opticvx.model._
 import ppl.dsl.opticvx.common._
@@ -38,10 +38,26 @@ case class SolverConverge(val condition: AVector, val body: Solver) extends Solv
   if(condition.size != IRPoly.const(1, arity)) throw new IRValidationException()
   if(body.input != input) throw new IRValidationException()
 
-  def arityOp(op: ArityOp) = 
-    SolverConverge(condition.arityOp(op), body.arityOp(op))
-  def inputOp(op: InputOp) = 
-    SolverConverge(condition.inputOp(op), body.inputOp(op))
+  def arityOp(op: ArityOp) = SolverConverge(condition.arityOp(op), body.arityOp(op))
+  def inputOp(op: InputOp) = SolverConverge(condition.inputOp(op), body.inputOp(op))
 }
 
+case class SolverSeq(val first: Solver, val second: Solver) extends Solver {
+  val arity: Int = first.arity
+  val input: InputDesc = first.input
 
+  if(first.input != second.input) throw new IRValidationException()
+
+  def arityOp(op: ArityOp) = SolverSeq(first.arityOp(op), second.arityOp(op))
+  def inputOp(op: InputOp) = SolverSeq(first.inputOp(op), second.inputOp(op))
+}
+
+case class SolverFor(val len: IRPoly, val body: Solver) extends Solver {
+  val arity: Int = len.arity
+  val input: InputDesc = body.input.demote
+
+  if(len.arity + 1 != body.arity) throw new IRValidationException()
+
+  def arityOp(op: ArityOp) = SolverFor(len.arityOp(op), body.arityOp(op.promote))
+  def inputOp(op: InputOp) = SolverFor(len, body.inputOp(op.promote))
+}
