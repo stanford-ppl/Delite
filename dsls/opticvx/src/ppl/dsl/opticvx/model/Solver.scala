@@ -35,6 +35,9 @@ trait SolverRuntime[I, M, N, V, W] extends IntLike[I] {
 
   def vectorget(vecs: W, at: Seq[I]): V
   def vectorset(src: V, vecs: W, at: Seq[I]): W
+
+  def converge(memory: Seq[W], body: (Seq[W]) => (Seq[W], V)): Seq[W]
+  def runfor(len: I, memory: Seq[W], body: (I, Seq[W]) => Seq[W]): Seq[W]
 }
 
 
@@ -91,6 +94,15 @@ case class SolverConverge(val condition: AVector, val body: Solver) extends Solv
 
   def arityOp(op: ArityOp) = SolverConverge(condition.arityOp(op), body.arityOp(op))
   def inputOp(op: InputOp) = SolverConverge(condition.inputOp(op), body.inputOp(op))
+
+  def run[I, M, N, V, W](runtime: SolverRuntime[I, M, N, V, W], params: Seq[I], inputs: Seq[N], memory: Seq[W]): Seq[W] =
+  {
+    runtime.converge(memory, (sw => {
+      val swout = body.run(runtime, params, inputs, sw)
+      val vout = condition.eval(runtime, params, inputs, swout)
+      (swout, vout)
+      }))
+  }
 }
 
 case class SolverSeq(val first: Solver, val second: Solver) extends Solver {
@@ -104,7 +116,7 @@ case class SolverSeq(val first: Solver, val second: Solver) extends Solver {
 
   def run[I, M, N, V, W](runtime: SolverRuntime[I, M, N, V, W], params: Seq[I], inputs: Seq[N], memory: Seq[W]): Seq[W] =
   {
-    second.run(runtime, params, inputs
+    second.run(runtime, params, inputs,
       first.run(runtime, params, inputs, memory))
   }
 }
@@ -118,4 +130,12 @@ case class SolverSeqFor(val len: IRPoly, val body: Solver) extends Solver {
 
   def arityOp(op: ArityOp) = SolverSeqFor(len.arityOp(op), body.arityOp(op.promote))
   def inputOp(op: InputOp) = SolverSeqFor(len, body.inputOp(op.promote))
+
+  def run[I, M, N, V, W](runtime: SolverRuntime[I, M, N, V, W], params: Seq[I], inputs: Seq[N], memory: Seq[W]): Seq[W] =
+  {
+    runtime.runfor(
+      len.eval(params)(runtime),
+      memory, 
+      ((i, sw) => body.run(runtime, params :+ i, inputs, sw)))
+  }
 }
