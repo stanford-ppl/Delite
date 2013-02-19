@@ -95,8 +95,8 @@ trait DCPOpsSolve extends DCPOpsFunction {
       val msfx: Function = s_over.foldLeft(x.fx.expand(tmpfxn.varSize))((a,b) => a.minimize_over_lastarg)
       val sinput = InputDesc(msfx.arity, msfx.input.args, Seq(tt.input.memory(0)))
       val sv = AVectorSum(
-        msfx.valueOffset,
-        msfx.valueVarAlmap.mmpy(AVectorRead(sinput, 0, Seq())))
+        msfx.valueOffset.addMemory(sinput.memory),
+        msfx.valueVarAlmap.addMemory(sinput.memory).mmpy(AVectorRead(sinput, 0, Seq())))
       s.rset(sv.eval[Int, MatrixDefinite, MultiSeq[MatrixDefinite], Seq[Double], MultiSeq[Seq[Double]]](SolverRuntimeDefinite, pp, Seq(), Seq(vv(0))))
     }
   }

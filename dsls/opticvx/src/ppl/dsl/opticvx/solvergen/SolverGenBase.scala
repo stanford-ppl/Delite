@@ -45,7 +45,7 @@ trait SolverGen {
   implicit def svariableentry2vectorimpl(s: SVariableEntry): AVector = {
     if(prephase) {
       // in prephase, all reads result in zero because the memory isn't defined
-      AVectorZero(input, variables(s.iidx).size.substituteSeq(s.sidx))
+      AVectorCatFor(variables(s.iidx).size.substituteSeq(s.sidx), AVectorOne(input.promote))
     }
     else {
       AVectorRead(input, s.iidx, s.sidx)
@@ -81,10 +81,15 @@ trait SolverGen {
 
   def converge(condition: AVector)(body: =>Unit) {
     if(condition.size != IRPoly.const(1, input.arity)) throw new IRValidationException()
-    val cursolver: Solver = solveracc
-    solveracc = SolverNull(input)
-    body
-    solveracc = SolverSeq(cursolver, SolverConverge(condition, solveracc))
+    if(prephase) {
+      body
+    }
+    else {
+      val cursolver: Solver = solveracc
+      solveracc = SolverNull(input)
+      body
+      solveracc = SolverSeq(cursolver, SolverConverge(condition, solveracc))
+    }
   }
 
   def gen(problem: Problem): Solver = {
@@ -109,7 +114,7 @@ trait SolverGen {
     vidx = 0
     solveracc = SolverNull(input)
 
-    code(A, b, F, g, c, cone)
+    code(A.addMemory(variables), b.addMemory(variables), F.addMemory(variables), g.addMemory(variables), c.addMemory(variables), cone)
 
     if(vidx != variables.length) throw new IRValidationException()
 
@@ -120,7 +125,7 @@ trait SolverGen {
     prephase = true
     solveracc = null
     
-    solveracc
+    rv
   }
 }
 

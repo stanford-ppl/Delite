@@ -111,7 +111,7 @@ object SolverRuntimeDefinite extends SolverRuntime[Int, MatrixDefinite, MultiSeq
     var cond: Boolean = true
     while(cond) {
       val (nm, v) = body(m)
-      cond = (v.foldLeft(0.0)((a, x) => a + x*x) >= 1e-6)
+      cond = (v.foldLeft(0.0)((a, x) => a + x*x) >= 1e-12)
       m = nm
     }
     m

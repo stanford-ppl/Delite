@@ -744,8 +744,8 @@ case class AVectorRead(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly
 }
 
 case class AVectorDot(val arg1: AVector, val arg2: AVector) extends AVector {
-  val arity: Int = input.arity
   val input: InputDesc = arg1.input
+  val arity: Int = input.arity
   val size: IRPoly = IRPoly.const(1, arity)
 
   if(arg1.size != arg2.size) throw new IRValidationException()
@@ -917,7 +917,7 @@ case class AVectorSqrt(val arg: AVector) extends AVector {
 
 case class AVectorNorm2(val arg: AVector) extends AVector {
   val arity: Int = arg.arity
-  val size: IRPoly = arg.size
+  val size: IRPoly = IRPoly.const(1, arity)
   val input: InputDesc = arg.input
 
   arityVerify()
