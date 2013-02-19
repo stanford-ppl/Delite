@@ -3,7 +3,7 @@ package ppl.dsl.opticvx.dcp.test
 import scala.collection.immutable.Seq
 import ppl.dsl.opticvx.dcp._
 
-object DCPOpsTestApp extends DCPOpsDefinite {
+object DCPOpsTestApp extends DCPOps {
   
   val square = {
     val x = cvxexpr()
