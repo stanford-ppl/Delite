@@ -75,7 +75,7 @@ trait DCPOpsSolve extends DCPOpsFunction {
     if(minfxn.codomain != IRPoly.const(1, s_params.length)) throw new IRValidationException()
     val problem = Problem(
       s_inputsize,
-      minfxn.valueVarAlmap.T.mmpy[AVector](AVectorOne(s_inputsize))(AVectorLikeAVector(s_inputsize)),
+      minfxn.valueVarAlmap.T.mmpy(AVectorOne(s_inputsize)),
       minfxn.affineVarAlmap,
       minfxn.affineOffset,
       minfxn.conicVarAlmap,
@@ -83,17 +83,21 @@ trait DCPOpsSolve extends DCPOpsFunction {
       minfxn.conicCone)
 
     val tt = PrimalDualSubgradient.gen(problem)
-    val vv = tt.run(s_params map (s => s.binding), Seq())
+    val pp = s_params map (s => s.binding)
+    val mm = for(m <- tt.input.memory) yield {
+      if(m.dims.length != 0) throw new IRValidationException()
+      MultiSeq((for (i <- 0 until m.size.eval(pp)(IntLikeInt)) yield 0.0): Seq[Double])
+    }
+    val vv = tt.run[Int, MatrixDefinite, MultiSeq[MatrixDefinite], Seq[Double], MultiSeq[Seq[Double]]](SolverRuntimeDefinite, pp, Seq(), mm)
     val syms = (s_over map (x => x.symbol)) ++ (s_let map (x => x.symbol))
     for(s <- syms) {
       val x = s.boundexpr
       val msfx: Function = s_over.foldLeft(x.fx.expand(tmpfxn.varSize))((a,b) => a.minimize_over_lastarg)
-      val scontext = SolverContext(tt.input, Seq(tt.variables(0)))
-      val avlsv = AVectorLikeSVector(scontext)
-      val sv = SVectorSum(
-        msfx.valueOffset.translate(avlsv),
-        msfx.valueVarAlmap.mmpy(SVectorRead(scontext, 0): SVector)(avlsv))
-      s.rset(sv.eval(s_params map (s => s.binding), Seq(), Seq(vv(0))))
+      val sinput = InputDesc(msfx.arity, msfx.input.args, Seq(tt.input.memory(0)))
+      val sv = AVectorSum(
+        msfx.valueOffset,
+        msfx.valueVarAlmap.mmpy(AVectorRead(sinput, 0, Seq())))
+      s.rset(sv.eval[Int, MatrixDefinite, MultiSeq[MatrixDefinite], Seq[Double], MultiSeq[Seq[Double]]](SolverRuntimeDefinite, pp, Seq(), Seq(vv(0))))
     }
   }
 

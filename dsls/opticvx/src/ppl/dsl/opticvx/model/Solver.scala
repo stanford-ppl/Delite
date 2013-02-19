@@ -4,7 +4,10 @@ import ppl.dsl.opticvx.model._
 import ppl.dsl.opticvx.common._
 import scala.collection.immutable.Seq
 
-trait SolverRuntime[I, M, N, V, W] extends IntLike[I] {
+trait SolverRuntime[I, M, N, V, W] {
+  //INTEGER OPERATIONS
+  def intlikei: IntLike[I]
+
   //VECTOR OPERATIONS
   //base objects
   def size(arg: V): I
@@ -12,7 +15,7 @@ trait SolverRuntime[I, M, N, V, W] extends IntLike[I] {
   def one: V
   //linear operators
   def sum(arg1: V, arg2: V): V
-  def sumfor(len: I, arg: (I => V)): V
+  def sumfor(len: I, size: I, arg: (I => V)): V
   def neg(arg: V): V
   def scaleconstant(arg: V, scale: Double): V
   def cat(arg1: V, arg2: V): V
@@ -80,7 +83,7 @@ case class SolverWrite(val src: AVector, val iidx: Int, sidx: Seq[IRPoly]) exten
   def run[I, M, N, V, W](runtime: SolverRuntime[I, M, N, V, W], params: Seq[I], inputs: Seq[N], memory: Seq[W]): Seq[W] =
   {
     val eval_src = src.eval(runtime, params, inputs, memory)
-    val set_res = runtime.vectorset(eval_src, memory(iidx), sidx map (s => s.eval(params)(runtime)))
+    val set_res = runtime.vectorset(eval_src, memory(iidx), sidx map (s => s.eval(params)(runtime.intlikei)))
     for(i <- 0 until memory.length) yield if (i == iidx) set_res else memory(i)
   }
 }
@@ -134,7 +137,7 @@ case class SolverSeqFor(val len: IRPoly, val body: Solver) extends Solver {
   def run[I, M, N, V, W](runtime: SolverRuntime[I, M, N, V, W], params: Seq[I], inputs: Seq[N], memory: Seq[W]): Seq[W] =
   {
     runtime.runfor(
-      len.eval(params)(runtime),
+      len.eval(params)(runtime.intlikei),
       memory, 
       ((i, sw) => body.run(runtime, params :+ i, inputs, sw)))
   }

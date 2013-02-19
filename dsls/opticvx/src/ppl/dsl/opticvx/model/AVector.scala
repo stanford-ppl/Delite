@@ -230,7 +230,7 @@ case class AVectorZero(val input: InputDesc, val size: IRPoly) extends AVector {
     inputs: Seq[N],
     memory: Seq[W]): V = 
   {
-    runtime.zero(size.eval(params)(runtime))
+    runtime.zero(size.eval(params)(runtime.intlikei))
   }
 
   def simplify: AVector = this
@@ -489,7 +489,7 @@ case class AVectorCatFor(val len: IRPoly, val arg: AVector) extends AVector {
     memory: Seq[W]): V = 
   {
     runtime.catfor(
-      len.eval(params)(runtime),
+      len.eval(params)(runtime.intlikei),
       (i => arg.eval(runtime, params :+ i, inputs, memory)))
   }
 
@@ -537,8 +537,8 @@ case class AVectorSlice(val arg: AVector, val at: IRPoly, val size: IRPoly) exte
   {
     runtime.slice(
       arg.eval(runtime, params, inputs, memory),
-      at.eval(params)(runtime),
-      size.eval(params)(runtime))
+      at.eval(params)(runtime.intlikei),
+      size.eval(params)(runtime.intlikei))
   }
 
   def simplify: AVector = {
@@ -583,7 +583,8 @@ case class AVectorSumFor(val len: IRPoly, val arg: AVector) extends AVector {
     memory: Seq[W]): V = 
   {
     runtime.sumfor(
-      len.eval(params)(runtime),
+      len.eval(params)(runtime.intlikei),
+      size.eval(params)(runtime.intlikei),
       (i => arg.eval(runtime, params :+ i, inputs, memory)))
   }
 
@@ -632,7 +633,7 @@ case class AVectorMpyInput(val arg: AVector, val iidx: Int, val sidx: Seq[IRPoly
     memory: Seq[W]): V = 
   {
     runtime.matrixmpy(
-      runtime.matrixget(inputs(iidx), sidx map (s => s.eval(params)(runtime))),
+      runtime.matrixget(inputs(iidx), sidx map (s => s.eval(params)(runtime.intlikei))),
       arg.eval(runtime, params, inputs, memory))
   }
 
@@ -684,7 +685,7 @@ case class AVectorMpyInputT(val arg: AVector, val iidx: Int, val sidx: Seq[IRPol
     memory: Seq[W]): V = 
   {
     runtime.matrixmpytranspose(
-      runtime.matrixget(inputs(iidx), sidx map (s => s.eval(params)(runtime))),
+      runtime.matrixget(inputs(iidx), sidx map (s => s.eval(params)(runtime.intlikei))),
       arg.eval(runtime, params, inputs, memory))
   }
 
@@ -726,7 +727,7 @@ case class AVectorRead(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly
     inputs: Seq[N],
     memory: Seq[W]): V = 
   {
-    runtime.vectorget(memory(iidx), sidx map (s => s.eval(params)(runtime)))
+    runtime.vectorget(memory(iidx), sidx map (s => s.eval(params)(runtime.intlikei)))
   }
 
   // def translate[V <: HasInput[V]](implicit e: AVectorLike[V]): V = {
