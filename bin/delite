@@ -66,9 +66,12 @@ def run(deg, params, opts):
     os.putenv("LD_LIBRARY_PATH", ":".join(ld_library_path))
     
     if opts.num_nodes > 0 or opts.isSlave:
-        MESOS_LIB = delitecommon.DELITE_HOME + "/../mesos-0.9.0" + os.sep+"src"+os.sep+".libs" #FIXME!
-        ld_library_path.append(MESOS_LIB)
-        os.putenv("MESOS_NATIVE_LIBRARY", MESOS_LIB+os.sep+"libmesos-0.9.0.dylib")
+        #MESOS_LIB = delitecommon.MESOS_HOME + os.sep+"src"+os.sep+".libs"
+        #ld_library_path.append(MESOS_LIB)
+        if delitecommon.MESOS_NATIVE_LIBRARY is None:
+            err("MESOS_NATIVE_LIBRARY must be set in the environment or included in delite.properties")
+        else:
+            os.putenv("MESOS_NATIVE_LIBRARY", delitecommon.MESOS_NATIVE_LIBRARY)
 
     if opts.codecache == "":
         opts.codecache = delitecommon.DELITE_HOME + os.sep + "generatedCache"
