@@ -16,7 +16,6 @@ project/plugins/project
 runtime/project/boot
 generated
 generatedCache
-data/
 *.deg
 *.debug
 *.pgm
