@@ -9,7 +9,7 @@ import ppl.delite.runtime.data.DeliteArray
 import ppl.delite.runtime.executor.ThreadPool
 import ppl.delite.runtime.codegen.DeliteExecutable
 import ppl.delite.runtime.messages.Messages._
-import ppl.delite.runtime.messages.Serialization
+import ppl.delite.runtime.messages._
 
 
 class DeliteMesosExecutor extends Executor {
@@ -64,19 +64,22 @@ class DeliteMesosExecutor extends Executor {
     val runner = new Runnable {
       def run() {
         try {
-          driver.sendStatusUpdate(status(TaskState.TASK_RUNNING))
-
           val info = LaunchInfo.parseFrom(task.getData)
-          DeliteMesosExecutor.numSlaves = info.getSlaveCount
-          DeliteMesosExecutor.slaveIdx = info.getSlaveIdx
+          
+          val networkId = DeliteMesosExecutor.network.id
+          val taskStarted = TaskStatus.newBuilder.setTaskId(task.getTaskId).setState(TaskState.TASK_RUNNING)
+            .setData(CommInfo.newBuilder.setSlaveIdx(info.getSlaveIdx).addSlaveAddress(networkId.host).addSlavePort(networkId.port).build.toByteString).build
+          driver.sendStatusUpdate(taskStarted)
+
           val args = info.getArgList.toArray(new Array[String](0))
 
-          val message = "my peers are " + info.getSlaveList.toArray.mkString(", ")
-          DeliteMesosExecutor.sendDebugMessage(message)
-          val argsMessage = "my input args are " + args.mkString(", ")
-          DeliteMesosExecutor.sendDebugMessage(argsMessage)
+          DeliteMesosExecutor.networkMap.put(-1, new ConnectionManagerId(info.getMasterAddress, info.getMasterPort))
+          
+          DeliteMesosExecutor.sendDebugMessage("my master is " + info.getMasterAddress + ":" + info.getMasterPort)
+          DeliteMesosExecutor.sendDebugMessage("my connection is " + DeliteMesosExecutor.network.id.host + ":" + DeliteMesosExecutor.network.id.port)
+          DeliteMesosExecutor.sendDebugMessage("my input args are " + args.mkString(", "))
 
-          Delite.embeddedMain(args, Map()) //TODO: slave_main?
+          Delite.embeddedMain(args, Map())
 
           driver.sendStatusUpdate(status(TaskState.TASK_FINISHED))
         }
@@ -119,8 +122,9 @@ class DeliteMesosExecutor extends Executor {
 
     val mssg = DeliteMasterMessage.parseFrom(data)
     mssg.getType match {
-      case DeliteMasterMessage.Type.OP => setRequest{ DeliteMesosExecutor.work = mssg.getOp; DeliteMesosExecutor.workType = DeliteMasterMessage.Type.OP }
-      case DeliteMasterMessage.Type.DATA => setRequest{ DeliteMesosExecutor.requestData = mssg.getData; DeliteMesosExecutor.workType = DeliteMasterMessage.Type.DATA }
+      case DeliteMasterMessage.Type.OP => setRequest{ DeliteMesosExecutor.message = mssg.getOp }
+      case DeliteMasterMessage.Type.DATA => setRequest{ DeliteMesosExecutor.message = mssg.getData }
+      case DeliteMasterMessage.Type.INFO => DeliteMesosExecutor.processSlaves(mssg.getInfo)
       case DeliteMasterMessage.Type.DEBUG => DeliteMesosExecutor.sendDebugMessage(mssg.getDebug.getMessage) //echo
     }
 
@@ -166,10 +170,10 @@ object DeliteMesosExecutor {
   private val remoteLock = new ReentrantLock
   private val hasWork = remoteLock.newCondition
   private var noWork = true
-  private var work: RemoteOp = _
-  private var requestData: RequestData = _
-  private var workType: DeliteMasterMessage.Type = _
+  private var message: Any = _
 
+  private val network = new ConnectionManager
+  private val networkMap = new HashMap[Int,ConnectionManagerId]
   var numSlaves = 0
   var slaveIdx = 0
   
@@ -192,7 +196,25 @@ object DeliteMesosExecutor {
     data
   }
 
+  def processSlaves(info: CommInfo) {
+    numSlaves = info.getSlaveAddressCount
+    slaveIdx = info.getSlaveIdx
+    assert(network.id == new ConnectionManagerId(info.getSlaveAddress(slaveIdx), info.getSlavePort(slaveIdx)))
+    for (i <- 0 until numSlaves) {
+      networkMap.put(i, new ConnectionManagerId(info.getSlaveAddress(i), info.getSlavePort(i)))
+    }
+    DeliteMesosExecutor.sendDebugMessage("my peers are " + info.getSlaveAddressList.toArray.mkString(", "))
+  
+    val message = Message.createBufferMessage(java.nio.ByteBuffer.allocate(10).put(Array.tabulate[Byte](10)(x => x.toByte)))
+    network.sendMessageUnsafe(networkMap.get(-1), message)
+  }
+
   def main(args: Array[String]) {
+    network.onReceiveMessage((msg: Message, id: ConnectionManagerId) => { 
+      sendDebugMessage("Received [" + msg + "] from [" + id + "]")
+      None
+    })
+
     driver = new MesosExecutorDriver(new DeliteMesosExecutor)
     driver.run()
   }
@@ -208,24 +230,22 @@ object DeliteMesosExecutor {
   def awaitWork() {
     sendDebugMessage("awaiting work!")
 
-    var work: RemoteOp = null
-    var requestData: RequestData = null
+    var message: Any = null
     remoteLock.lock()
     try {
       while(noWork) {
         hasWork.await()
       }
-      work = this.work
-      requestData = this.requestData
+      message = this.message
       noWork = true
     }
     finally {
       remoteLock.unlock()
     }
 
-    workType match {
-      case DeliteMasterMessage.Type.OP => launchWork(work)
-      case DeliteMasterMessage.Type.DATA => getData(requestData)
+    message match {
+      case work: RemoteOp => launchWork(work)
+      case request: RequestData => getData(request)
     }
     awaitWork()
   }

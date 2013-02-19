@@ -25,7 +25,12 @@ public final class Messages {
     ppl.delite.runtime.messages.Messages.RequestData getData();
     ppl.delite.runtime.messages.Messages.RequestDataOrBuilder getDataOrBuilder();
     
-    // optional .ppl.delite.runtime.messages.DebugMessage debug = 4;
+    // optional .ppl.delite.runtime.messages.CommInfo info = 4;
+    boolean hasInfo();
+    ppl.delite.runtime.messages.Messages.CommInfo getInfo();
+    ppl.delite.runtime.messages.Messages.CommInfoOrBuilder getInfoOrBuilder();
+    
+    // optional .ppl.delite.runtime.messages.DebugMessage debug = 5;
     boolean hasDebug();
     ppl.delite.runtime.messages.Messages.DebugMessage getDebug();
     ppl.delite.runtime.messages.Messages.DebugMessageOrBuilder getDebugOrBuilder();
@@ -62,12 +67,14 @@ public final class Messages {
         implements com.google.protobuf.ProtocolMessageEnum {
       OP(0, 1),
       DATA(1, 2),
-      DEBUG(2, 3),
+      INFO(2, 3),
+      DEBUG(3, 4),
       ;
       
       public static final int OP_VALUE = 1;
       public static final int DATA_VALUE = 2;
-      public static final int DEBUG_VALUE = 3;
+      public static final int INFO_VALUE = 3;
+      public static final int DEBUG_VALUE = 4;
       
       
       public final int getNumber() { return value; }
@@ -76,7 +83,8 @@ public final class Messages {
         switch (value) {
           case 1: return OP;
           case 2: return DATA;
-          case 3: return DEBUG;
+          case 3: return INFO;
+          case 4: return DEBUG;
           default: return null;
         }
       }
@@ -107,7 +115,7 @@ public final class Messages {
       }
       
       private static final Type[] VALUES = {
-        OP, DATA, DEBUG, 
+        OP, DATA, INFO, DEBUG, 
       };
       
       public static Type valueOf(
@@ -167,11 +175,24 @@ public final class Messages {
       return data_;
     }
     
-    // optional .ppl.delite.runtime.messages.DebugMessage debug = 4;
-    public static final int DEBUG_FIELD_NUMBER = 4;
+    // optional .ppl.delite.runtime.messages.CommInfo info = 4;
+    public static final int INFO_FIELD_NUMBER = 4;
+    private ppl.delite.runtime.messages.Messages.CommInfo info_;
+    public boolean hasInfo() {
+      return ((bitField0_ & 0x00000008) == 0x00000008);
+    }
+    public ppl.delite.runtime.messages.Messages.CommInfo getInfo() {
+      return info_;
+    }
+    public ppl.delite.runtime.messages.Messages.CommInfoOrBuilder getInfoOrBuilder() {
+      return info_;
+    }
+    
+    // optional .ppl.delite.runtime.messages.DebugMessage debug = 5;
+    public static final int DEBUG_FIELD_NUMBER = 5;
     private ppl.delite.runtime.messages.Messages.DebugMessage debug_;
     public boolean hasDebug() {
-      return ((bitField0_ & 0x00000008) == 0x00000008);
+      return ((bitField0_ & 0x00000010) == 0x00000010);
     }
     public ppl.delite.runtime.messages.Messages.DebugMessage getDebug() {
       return debug_;
@@ -184,6 +205,7 @@ public final class Messages {
       type_ = ppl.delite.runtime.messages.Messages.DeliteMasterMessage.Type.OP;
       op_ = ppl.delite.runtime.messages.Messages.RemoteOp.getDefaultInstance();
       data_ = ppl.delite.runtime.messages.Messages.RequestData.getDefaultInstance();
+      info_ = ppl.delite.runtime.messages.Messages.CommInfo.getDefaultInstance();
       debug_ = ppl.delite.runtime.messages.Messages.DebugMessage.getDefaultInstance();
     }
     private byte memoizedIsInitialized = -1;
@@ -203,6 +225,12 @@ public final class Messages {
       }
       if (hasData()) {
         if (!getData().isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
+      if (hasInfo()) {
+        if (!getInfo().isInitialized()) {
           memoizedIsInitialized = 0;
           return false;
         }
@@ -230,7 +258,10 @@ public final class Messages {
         output.writeMessage(3, data_);
       }
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
-        output.writeMessage(4, debug_);
+        output.writeMessage(4, info_);
+      }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        output.writeMessage(5, debug_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -255,7 +286,11 @@ public final class Messages {
       }
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(4, debug_);
+          .computeMessageSize(4, info_);
+      }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(5, debug_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -375,6 +410,7 @@ public final class Messages {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getOpFieldBuilder();
           getDataFieldBuilder();
+          getInfoFieldBuilder();
           getDebugFieldBuilder();
         }
       }
@@ -398,12 +434,18 @@ public final class Messages {
           dataBuilder_.clear();
         }
         bitField0_ = (bitField0_ & ~0x00000004);
+        if (infoBuilder_ == null) {
+          info_ = ppl.delite.runtime.messages.Messages.CommInfo.getDefaultInstance();
+        } else {
+          infoBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000008);
         if (debugBuilder_ == null) {
           debug_ = ppl.delite.runtime.messages.Messages.DebugMessage.getDefaultInstance();
         } else {
           debugBuilder_.clear();
         }
-        bitField0_ = (bitField0_ & ~0x00000008);
+        bitField0_ = (bitField0_ & ~0x00000010);
         return this;
       }
       
@@ -465,6 +507,14 @@ public final class Messages {
         if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
           to_bitField0_ |= 0x00000008;
         }
+        if (infoBuilder_ == null) {
+          result.info_ = info_;
+        } else {
+          result.info_ = infoBuilder_.build();
+        }
+        if (((from_bitField0_ & 0x00000010) == 0x00000010)) {
+          to_bitField0_ |= 0x00000010;
+        }
         if (debugBuilder_ == null) {
           result.debug_ = debug_;
         } else {
@@ -495,6 +545,9 @@ public final class Messages {
         if (other.hasData()) {
           mergeData(other.getData());
         }
+        if (other.hasInfo()) {
+          mergeInfo(other.getInfo());
+        }
         if (other.hasDebug()) {
           mergeDebug(other.getDebug());
         }
@@ -515,6 +568,12 @@ public final class Messages {
         }
         if (hasData()) {
           if (!getData().isInitialized()) {
+            
+            return false;
+          }
+        }
+        if (hasInfo()) {
+          if (!getInfo().isInitialized()) {
             
             return false;
           }
@@ -581,6 +640,15 @@ public final class Messages {
               break;
             }
             case 34: {
+              ppl.delite.runtime.messages.Messages.CommInfo.Builder subBuilder = ppl.delite.runtime.messages.Messages.CommInfo.newBuilder();
+              if (hasInfo()) {
+                subBuilder.mergeFrom(getInfo());
+              }
+              input.readMessage(subBuilder, extensionRegistry);
+              setInfo(subBuilder.buildPartial());
+              break;
+            }
+            case 42: {
               ppl.delite.runtime.messages.Messages.DebugMessage.Builder subBuilder = ppl.delite.runtime.messages.Messages.DebugMessage.newBuilder();
               if (hasDebug()) {
                 subBuilder.mergeFrom(getDebug());
@@ -799,12 +867,102 @@ public final class Messages {
         return dataBuilder_;
       }
       
-      // optional .ppl.delite.runtime.messages.DebugMessage debug = 4;
+      // optional .ppl.delite.runtime.messages.CommInfo info = 4;
+      private ppl.delite.runtime.messages.Messages.CommInfo info_ = ppl.delite.runtime.messages.Messages.CommInfo.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          ppl.delite.runtime.messages.Messages.CommInfo, ppl.delite.runtime.messages.Messages.CommInfo.Builder, ppl.delite.runtime.messages.Messages.CommInfoOrBuilder> infoBuilder_;
+      public boolean hasInfo() {
+        return ((bitField0_ & 0x00000008) == 0x00000008);
+      }
+      public ppl.delite.runtime.messages.Messages.CommInfo getInfo() {
+        if (infoBuilder_ == null) {
+          return info_;
+        } else {
+          return infoBuilder_.getMessage();
+        }
+      }
+      public Builder setInfo(ppl.delite.runtime.messages.Messages.CommInfo value) {
+        if (infoBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          info_ = value;
+          onChanged();
+        } else {
+          infoBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000008;
+        return this;
+      }
+      public Builder setInfo(
+          ppl.delite.runtime.messages.Messages.CommInfo.Builder builderForValue) {
+        if (infoBuilder_ == null) {
+          info_ = builderForValue.build();
+          onChanged();
+        } else {
+          infoBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000008;
+        return this;
+      }
+      public Builder mergeInfo(ppl.delite.runtime.messages.Messages.CommInfo value) {
+        if (infoBuilder_ == null) {
+          if (((bitField0_ & 0x00000008) == 0x00000008) &&
+              info_ != ppl.delite.runtime.messages.Messages.CommInfo.getDefaultInstance()) {
+            info_ =
+              ppl.delite.runtime.messages.Messages.CommInfo.newBuilder(info_).mergeFrom(value).buildPartial();
+          } else {
+            info_ = value;
+          }
+          onChanged();
+        } else {
+          infoBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000008;
+        return this;
+      }
+      public Builder clearInfo() {
+        if (infoBuilder_ == null) {
+          info_ = ppl.delite.runtime.messages.Messages.CommInfo.getDefaultInstance();
+          onChanged();
+        } else {
+          infoBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000008);
+        return this;
+      }
+      public ppl.delite.runtime.messages.Messages.CommInfo.Builder getInfoBuilder() {
+        bitField0_ |= 0x00000008;
+        onChanged();
+        return getInfoFieldBuilder().getBuilder();
+      }
+      public ppl.delite.runtime.messages.Messages.CommInfoOrBuilder getInfoOrBuilder() {
+        if (infoBuilder_ != null) {
+          return infoBuilder_.getMessageOrBuilder();
+        } else {
+          return info_;
+        }
+      }
+      private com.google.protobuf.SingleFieldBuilder<
+          ppl.delite.runtime.messages.Messages.CommInfo, ppl.delite.runtime.messages.Messages.CommInfo.Builder, ppl.delite.runtime.messages.Messages.CommInfoOrBuilder> 
+          getInfoFieldBuilder() {
+        if (infoBuilder_ == null) {
+          infoBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              ppl.delite.runtime.messages.Messages.CommInfo, ppl.delite.runtime.messages.Messages.CommInfo.Builder, ppl.delite.runtime.messages.Messages.CommInfoOrBuilder>(
+                  info_,
+                  getParentForChildren(),
+                  isClean());
+          info_ = null;
+        }
+        return infoBuilder_;
+      }
+      
+      // optional .ppl.delite.runtime.messages.DebugMessage debug = 5;
       private ppl.delite.runtime.messages.Messages.DebugMessage debug_ = ppl.delite.runtime.messages.Messages.DebugMessage.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           ppl.delite.runtime.messages.Messages.DebugMessage, ppl.delite.runtime.messages.Messages.DebugMessage.Builder, ppl.delite.runtime.messages.Messages.DebugMessageOrBuilder> debugBuilder_;
       public boolean hasDebug() {
-        return ((bitField0_ & 0x00000008) == 0x00000008);
+        return ((bitField0_ & 0x00000010) == 0x00000010);
       }
       public ppl.delite.runtime.messages.Messages.DebugMessage getDebug() {
         if (debugBuilder_ == null) {
@@ -823,7 +981,7 @@ public final class Messages {
         } else {
           debugBuilder_.setMessage(value);
         }
-        bitField0_ |= 0x00000008;
+        bitField0_ |= 0x00000010;
         return this;
       }
       public Builder setDebug(
@@ -834,12 +992,12 @@ public final class Messages {
         } else {
           debugBuilder_.setMessage(builderForValue.build());
         }
-        bitField0_ |= 0x00000008;
+        bitField0_ |= 0x00000010;
         return this;
       }
       public Builder mergeDebug(ppl.delite.runtime.messages.Messages.DebugMessage value) {
         if (debugBuilder_ == null) {
-          if (((bitField0_ & 0x00000008) == 0x00000008) &&
+          if (((bitField0_ & 0x00000010) == 0x00000010) &&
               debug_ != ppl.delite.runtime.messages.Messages.DebugMessage.getDefaultInstance()) {
             debug_ =
               ppl.delite.runtime.messages.Messages.DebugMessage.newBuilder(debug_).mergeFrom(value).buildPartial();
@@ -850,7 +1008,7 @@ public final class Messages {
         } else {
           debugBuilder_.mergeFrom(value);
         }
-        bitField0_ |= 0x00000008;
+        bitField0_ |= 0x00000010;
         return this;
       }
       public Builder clearDebug() {
@@ -860,11 +1018,11 @@ public final class Messages {
         } else {
           debugBuilder_.clear();
         }
-        bitField0_ = (bitField0_ & ~0x00000008);
+        bitField0_ = (bitField0_ & ~0x00000010);
         return this;
       }
       public ppl.delite.runtime.messages.Messages.DebugMessage.Builder getDebugBuilder() {
-        bitField0_ |= 0x00000008;
+        bitField0_ |= 0x00000010;
         onChanged();
         return getDebugFieldBuilder().getBuilder();
       }
@@ -4076,16 +4234,19 @@ public final class Messages {
   public interface LaunchInfoOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
     
-    // required int32 slaveIdx = 1;
+    // required string master_address = 1;
+    boolean hasMasterAddress();
+    String getMasterAddress();
+    
+    // required uint32 master_port = 2;
+    boolean hasMasterPort();
+    int getMasterPort();
+    
+    // required uint32 slave_idx = 3;
     boolean hasSlaveIdx();
     int getSlaveIdx();
     
-    // repeated string slave = 2;
-    java.util.List<String> getSlaveList();
-    int getSlaveCount();
-    String getSlave(int index);
-    
-    // repeated string arg = 3;
+    // repeated string arg = 4;
     java.util.List<String> getArgList();
     int getArgCount();
     String getArg(int index);
@@ -4119,32 +4280,60 @@ public final class Messages {
     }
     
     private int bitField0_;
-    // required int32 slaveIdx = 1;
-    public static final int SLAVEIDX_FIELD_NUMBER = 1;
+    // required string master_address = 1;
+    public static final int MASTER_ADDRESS_FIELD_NUMBER = 1;
+    private java.lang.Object masterAddress_;
+    public boolean hasMasterAddress() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    public String getMasterAddress() {
+      java.lang.Object ref = masterAddress_;
+      if (ref instanceof String) {
+        return (String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        String s = bs.toStringUtf8();
+        if (com.google.protobuf.Internal.isValidUtf8(bs)) {
+          masterAddress_ = s;
+        }
+        return s;
+      }
+    }
+    private com.google.protobuf.ByteString getMasterAddressBytes() {
+      java.lang.Object ref = masterAddress_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8((String) ref);
+        masterAddress_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    
+    // required uint32 master_port = 2;
+    public static final int MASTER_PORT_FIELD_NUMBER = 2;
+    private int masterPort_;
+    public boolean hasMasterPort() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    public int getMasterPort() {
+      return masterPort_;
+    }
+    
+    // required uint32 slave_idx = 3;
+    public static final int SLAVE_IDX_FIELD_NUMBER = 3;
     private int slaveIdx_;
     public boolean hasSlaveIdx() {
-      return ((bitField0_ & 0x00000001) == 0x00000001);
+      return ((bitField0_ & 0x00000004) == 0x00000004);
     }
     public int getSlaveIdx() {
       return slaveIdx_;
     }
     
-    // repeated string slave = 2;
-    public static final int SLAVE_FIELD_NUMBER = 2;
-    private com.google.protobuf.LazyStringList slave_;
-    public java.util.List<String>
-        getSlaveList() {
-      return slave_;
-    }
-    public int getSlaveCount() {
-      return slave_.size();
-    }
-    public String getSlave(int index) {
-      return slave_.get(index);
-    }
-    
-    // repeated string arg = 3;
-    public static final int ARG_FIELD_NUMBER = 3;
+    // repeated string arg = 4;
+    public static final int ARG_FIELD_NUMBER = 4;
     private com.google.protobuf.LazyStringList arg_;
     public java.util.List<String>
         getArgList() {
@@ -4158,8 +4347,9 @@ public final class Messages {
     }
     
     private void initFields() {
+      masterAddress_ = "";
+      masterPort_ = 0;
       slaveIdx_ = 0;
-      slave_ = com.google.protobuf.LazyStringArrayList.EMPTY;
       arg_ = com.google.protobuf.LazyStringArrayList.EMPTY;
     }
     private byte memoizedIsInitialized = -1;
@@ -4167,6 +4357,14 @@ public final class Messages {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized != -1) return isInitialized == 1;
       
+      if (!hasMasterAddress()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      if (!hasMasterPort()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
       if (!hasSlaveIdx()) {
         memoizedIsInitialized = 0;
         return false;
@@ -4179,13 +4377,16 @@ public final class Messages {
                         throws java.io.IOException {
       getSerializedSize();
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        output.writeInt32(1, slaveIdx_);
+        output.writeBytes(1, getMasterAddressBytes());
       }
-      for (int i = 0; i < slave_.size(); i++) {
-        output.writeBytes(2, slave_.getByteString(i));
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        output.writeUInt32(2, masterPort_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeUInt32(3, slaveIdx_);
       }
       for (int i = 0; i < arg_.size(); i++) {
-        output.writeBytes(3, arg_.getByteString(i));
+        output.writeBytes(4, arg_.getByteString(i));
       }
       getUnknownFields().writeTo(output);
     }
@@ -4198,16 +4399,15 @@ public final class Messages {
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt32Size(1, slaveIdx_);
+          .computeBytesSize(1, getMasterAddressBytes());
       }
-      {
-        int dataSize = 0;
-        for (int i = 0; i < slave_.size(); i++) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeBytesSizeNoTag(slave_.getByteString(i));
-        }
-        size += dataSize;
-        size += 1 * getSlaveList().size();
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt32Size(2, masterPort_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt32Size(3, slaveIdx_);
       }
       {
         int dataSize = 0;
@@ -4342,12 +4542,14 @@ public final class Messages {
       
       public Builder clear() {
         super.clear();
-        slaveIdx_ = 0;
+        masterAddress_ = "";
         bitField0_ = (bitField0_ & ~0x00000001);
-        slave_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+        masterPort_ = 0;
         bitField0_ = (bitField0_ & ~0x00000002);
-        arg_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+        slaveIdx_ = 0;
         bitField0_ = (bitField0_ & ~0x00000004);
+        arg_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000008);
         return this;
       }
       
@@ -4389,17 +4591,19 @@ public final class Messages {
         if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
           to_bitField0_ |= 0x00000001;
         }
-        result.slaveIdx_ = slaveIdx_;
-        if (((bitField0_ & 0x00000002) == 0x00000002)) {
-          slave_ = new com.google.protobuf.UnmodifiableLazyStringList(
-              slave_);
-          bitField0_ = (bitField0_ & ~0x00000002);
+        result.masterAddress_ = masterAddress_;
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000002;
         }
-        result.slave_ = slave_;
-        if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        result.masterPort_ = masterPort_;
+        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        result.slaveIdx_ = slaveIdx_;
+        if (((bitField0_ & 0x00000008) == 0x00000008)) {
           arg_ = new com.google.protobuf.UnmodifiableLazyStringList(
               arg_);
-          bitField0_ = (bitField0_ & ~0x00000004);
+          bitField0_ = (bitField0_ & ~0x00000008);
         }
         result.arg_ = arg_;
         result.bitField0_ = to_bitField0_;
@@ -4418,23 +4622,19 @@ public final class Messages {
       
       public Builder mergeFrom(ppl.delite.runtime.messages.Messages.LaunchInfo other) {
         if (other == ppl.delite.runtime.messages.Messages.LaunchInfo.getDefaultInstance()) return this;
+        if (other.hasMasterAddress()) {
+          setMasterAddress(other.getMasterAddress());
+        }
+        if (other.hasMasterPort()) {
+          setMasterPort(other.getMasterPort());
+        }
         if (other.hasSlaveIdx()) {
           setSlaveIdx(other.getSlaveIdx());
-        }
-        if (!other.slave_.isEmpty()) {
-          if (slave_.isEmpty()) {
-            slave_ = other.slave_;
-            bitField0_ = (bitField0_ & ~0x00000002);
-          } else {
-            ensureSlaveIsMutable();
-            slave_.addAll(other.slave_);
-          }
-          onChanged();
         }
         if (!other.arg_.isEmpty()) {
           if (arg_.isEmpty()) {
             arg_ = other.arg_;
-            bitField0_ = (bitField0_ & ~0x00000004);
+            bitField0_ = (bitField0_ & ~0x00000008);
           } else {
             ensureArgIsMutable();
             arg_.addAll(other.arg_);
@@ -4446,6 +4646,14 @@ public final class Messages {
       }
       
       public final boolean isInitialized() {
+        if (!hasMasterAddress()) {
+          
+          return false;
+        }
+        if (!hasMasterPort()) {
+          
+          return false;
+        }
         if (!hasSlaveIdx()) {
           
           return false;
@@ -4476,17 +4684,22 @@ public final class Messages {
               }
               break;
             }
-            case 8: {
+            case 10: {
               bitField0_ |= 0x00000001;
-              slaveIdx_ = input.readInt32();
+              masterAddress_ = input.readBytes();
               break;
             }
-            case 18: {
-              ensureSlaveIsMutable();
-              slave_.add(input.readBytes());
+            case 16: {
+              bitField0_ |= 0x00000002;
+              masterPort_ = input.readUInt32();
               break;
             }
-            case 26: {
+            case 24: {
+              bitField0_ |= 0x00000004;
+              slaveIdx_ = input.readUInt32();
+              break;
+            }
+            case 34: {
               ensureArgIsMutable();
               arg_.add(input.readBytes());
               break;
@@ -4497,89 +4710,90 @@ public final class Messages {
       
       private int bitField0_;
       
-      // required int32 slaveIdx = 1;
+      // required string master_address = 1;
+      private java.lang.Object masterAddress_ = "";
+      public boolean hasMasterAddress() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      public String getMasterAddress() {
+        java.lang.Object ref = masterAddress_;
+        if (!(ref instanceof String)) {
+          String s = ((com.google.protobuf.ByteString) ref).toStringUtf8();
+          masterAddress_ = s;
+          return s;
+        } else {
+          return (String) ref;
+        }
+      }
+      public Builder setMasterAddress(String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000001;
+        masterAddress_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearMasterAddress() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        masterAddress_ = getDefaultInstance().getMasterAddress();
+        onChanged();
+        return this;
+      }
+      void setMasterAddress(com.google.protobuf.ByteString value) {
+        bitField0_ |= 0x00000001;
+        masterAddress_ = value;
+        onChanged();
+      }
+      
+      // required uint32 master_port = 2;
+      private int masterPort_ ;
+      public boolean hasMasterPort() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      public int getMasterPort() {
+        return masterPort_;
+      }
+      public Builder setMasterPort(int value) {
+        bitField0_ |= 0x00000002;
+        masterPort_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearMasterPort() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        masterPort_ = 0;
+        onChanged();
+        return this;
+      }
+      
+      // required uint32 slave_idx = 3;
       private int slaveIdx_ ;
       public boolean hasSlaveIdx() {
-        return ((bitField0_ & 0x00000001) == 0x00000001);
+        return ((bitField0_ & 0x00000004) == 0x00000004);
       }
       public int getSlaveIdx() {
         return slaveIdx_;
       }
       public Builder setSlaveIdx(int value) {
-        bitField0_ |= 0x00000001;
+        bitField0_ |= 0x00000004;
         slaveIdx_ = value;
         onChanged();
         return this;
       }
       public Builder clearSlaveIdx() {
-        bitField0_ = (bitField0_ & ~0x00000001);
+        bitField0_ = (bitField0_ & ~0x00000004);
         slaveIdx_ = 0;
         onChanged();
         return this;
       }
       
-      // repeated string slave = 2;
-      private com.google.protobuf.LazyStringList slave_ = com.google.protobuf.LazyStringArrayList.EMPTY;
-      private void ensureSlaveIsMutable() {
-        if (!((bitField0_ & 0x00000002) == 0x00000002)) {
-          slave_ = new com.google.protobuf.LazyStringArrayList(slave_);
-          bitField0_ |= 0x00000002;
-         }
-      }
-      public java.util.List<String>
-          getSlaveList() {
-        return java.util.Collections.unmodifiableList(slave_);
-      }
-      public int getSlaveCount() {
-        return slave_.size();
-      }
-      public String getSlave(int index) {
-        return slave_.get(index);
-      }
-      public Builder setSlave(
-          int index, String value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  ensureSlaveIsMutable();
-        slave_.set(index, value);
-        onChanged();
-        return this;
-      }
-      public Builder addSlave(String value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  ensureSlaveIsMutable();
-        slave_.add(value);
-        onChanged();
-        return this;
-      }
-      public Builder addAllSlave(
-          java.lang.Iterable<String> values) {
-        ensureSlaveIsMutable();
-        super.addAll(values, slave_);
-        onChanged();
-        return this;
-      }
-      public Builder clearSlave() {
-        slave_ = com.google.protobuf.LazyStringArrayList.EMPTY;
-        bitField0_ = (bitField0_ & ~0x00000002);
-        onChanged();
-        return this;
-      }
-      void addSlave(com.google.protobuf.ByteString value) {
-        ensureSlaveIsMutable();
-        slave_.add(value);
-        onChanged();
-      }
-      
-      // repeated string arg = 3;
+      // repeated string arg = 4;
       private com.google.protobuf.LazyStringList arg_ = com.google.protobuf.LazyStringArrayList.EMPTY;
       private void ensureArgIsMutable() {
-        if (!((bitField0_ & 0x00000004) == 0x00000004)) {
+        if (!((bitField0_ & 0x00000008) == 0x00000008)) {
           arg_ = new com.google.protobuf.LazyStringArrayList(arg_);
-          bitField0_ |= 0x00000004;
+          bitField0_ |= 0x00000008;
          }
       }
       public java.util.List<String>
@@ -4620,7 +4834,7 @@ public final class Messages {
       }
       public Builder clearArg() {
         arg_ = com.google.protobuf.LazyStringArrayList.EMPTY;
-        bitField0_ = (bitField0_ & ~0x00000004);
+        bitField0_ = (bitField0_ & ~0x00000008);
         onChanged();
         return this;
       }
@@ -4639,6 +4853,571 @@ public final class Messages {
     }
     
     // @@protoc_insertion_point(class_scope:ppl.delite.runtime.messages.LaunchInfo)
+  }
+  
+  public interface CommInfoOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+    
+    // required uint32 slave_idx = 1;
+    boolean hasSlaveIdx();
+    int getSlaveIdx();
+    
+    // repeated string slave_address = 2;
+    java.util.List<String> getSlaveAddressList();
+    int getSlaveAddressCount();
+    String getSlaveAddress(int index);
+    
+    // repeated uint32 slave_port = 3;
+    java.util.List<java.lang.Integer> getSlavePortList();
+    int getSlavePortCount();
+    int getSlavePort(int index);
+  }
+  public static final class CommInfo extends
+      com.google.protobuf.GeneratedMessage
+      implements CommInfoOrBuilder {
+    // Use CommInfo.newBuilder() to construct.
+    private CommInfo(Builder builder) {
+      super(builder);
+    }
+    private CommInfo(boolean noInit) {}
+    
+    private static final CommInfo defaultInstance;
+    public static CommInfo getDefaultInstance() {
+      return defaultInstance;
+    }
+    
+    public CommInfo getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+    
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return ppl.delite.runtime.messages.Messages.internal_static_ppl_delite_runtime_messages_CommInfo_descriptor;
+    }
+    
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return ppl.delite.runtime.messages.Messages.internal_static_ppl_delite_runtime_messages_CommInfo_fieldAccessorTable;
+    }
+    
+    private int bitField0_;
+    // required uint32 slave_idx = 1;
+    public static final int SLAVE_IDX_FIELD_NUMBER = 1;
+    private int slaveIdx_;
+    public boolean hasSlaveIdx() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    public int getSlaveIdx() {
+      return slaveIdx_;
+    }
+    
+    // repeated string slave_address = 2;
+    public static final int SLAVE_ADDRESS_FIELD_NUMBER = 2;
+    private com.google.protobuf.LazyStringList slaveAddress_;
+    public java.util.List<String>
+        getSlaveAddressList() {
+      return slaveAddress_;
+    }
+    public int getSlaveAddressCount() {
+      return slaveAddress_.size();
+    }
+    public String getSlaveAddress(int index) {
+      return slaveAddress_.get(index);
+    }
+    
+    // repeated uint32 slave_port = 3;
+    public static final int SLAVE_PORT_FIELD_NUMBER = 3;
+    private java.util.List<java.lang.Integer> slavePort_;
+    public java.util.List<java.lang.Integer>
+        getSlavePortList() {
+      return slavePort_;
+    }
+    public int getSlavePortCount() {
+      return slavePort_.size();
+    }
+    public int getSlavePort(int index) {
+      return slavePort_.get(index);
+    }
+    
+    private void initFields() {
+      slaveIdx_ = 0;
+      slaveAddress_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+      slavePort_ = java.util.Collections.emptyList();;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+      
+      if (!hasSlaveIdx()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+    
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeUInt32(1, slaveIdx_);
+      }
+      for (int i = 0; i < slaveAddress_.size(); i++) {
+        output.writeBytes(2, slaveAddress_.getByteString(i));
+      }
+      for (int i = 0; i < slavePort_.size(); i++) {
+        output.writeUInt32(3, slavePort_.get(i));
+      }
+      getUnknownFields().writeTo(output);
+    }
+    
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+    
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt32Size(1, slaveIdx_);
+      }
+      {
+        int dataSize = 0;
+        for (int i = 0; i < slaveAddress_.size(); i++) {
+          dataSize += com.google.protobuf.CodedOutputStream
+            .computeBytesSizeNoTag(slaveAddress_.getByteString(i));
+        }
+        size += dataSize;
+        size += 1 * getSlaveAddressList().size();
+      }
+      {
+        int dataSize = 0;
+        for (int i = 0; i < slavePort_.size(); i++) {
+          dataSize += com.google.protobuf.CodedOutputStream
+            .computeUInt32SizeNoTag(slavePort_.get(i));
+        }
+        size += dataSize;
+        size += 1 * getSlavePortList().size();
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+    
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+    
+    public static ppl.delite.runtime.messages.Messages.CommInfo parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static ppl.delite.runtime.messages.Messages.CommInfo parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static ppl.delite.runtime.messages.Messages.CommInfo parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static ppl.delite.runtime.messages.Messages.CommInfo parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static ppl.delite.runtime.messages.Messages.CommInfo parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static ppl.delite.runtime.messages.Messages.CommInfo parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    public static ppl.delite.runtime.messages.Messages.CommInfo parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static ppl.delite.runtime.messages.Messages.CommInfo parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static ppl.delite.runtime.messages.Messages.CommInfo parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static ppl.delite.runtime.messages.Messages.CommInfo parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(ppl.delite.runtime.messages.Messages.CommInfo prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+    
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements ppl.delite.runtime.messages.Messages.CommInfoOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return ppl.delite.runtime.messages.Messages.internal_static_ppl_delite_runtime_messages_CommInfo_descriptor;
+      }
+      
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return ppl.delite.runtime.messages.Messages.internal_static_ppl_delite_runtime_messages_CommInfo_fieldAccessorTable;
+      }
+      
+      // Construct using ppl.delite.runtime.messages.Messages.CommInfo.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+      
+      private Builder(BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+      
+      public Builder clear() {
+        super.clear();
+        slaveIdx_ = 0;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        slaveAddress_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000002);
+        slavePort_ = java.util.Collections.emptyList();;
+        bitField0_ = (bitField0_ & ~0x00000004);
+        return this;
+      }
+      
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+      
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return ppl.delite.runtime.messages.Messages.CommInfo.getDescriptor();
+      }
+      
+      public ppl.delite.runtime.messages.Messages.CommInfo getDefaultInstanceForType() {
+        return ppl.delite.runtime.messages.Messages.CommInfo.getDefaultInstance();
+      }
+      
+      public ppl.delite.runtime.messages.Messages.CommInfo build() {
+        ppl.delite.runtime.messages.Messages.CommInfo result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+      
+      private ppl.delite.runtime.messages.Messages.CommInfo buildParsed()
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        ppl.delite.runtime.messages.Messages.CommInfo result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(
+            result).asInvalidProtocolBufferException();
+        }
+        return result;
+      }
+      
+      public ppl.delite.runtime.messages.Messages.CommInfo buildPartial() {
+        ppl.delite.runtime.messages.Messages.CommInfo result = new ppl.delite.runtime.messages.Messages.CommInfo(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.slaveIdx_ = slaveIdx_;
+        if (((bitField0_ & 0x00000002) == 0x00000002)) {
+          slaveAddress_ = new com.google.protobuf.UnmodifiableLazyStringList(
+              slaveAddress_);
+          bitField0_ = (bitField0_ & ~0x00000002);
+        }
+        result.slaveAddress_ = slaveAddress_;
+        if (((bitField0_ & 0x00000004) == 0x00000004)) {
+          slavePort_ = java.util.Collections.unmodifiableList(slavePort_);
+          bitField0_ = (bitField0_ & ~0x00000004);
+        }
+        result.slavePort_ = slavePort_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+      
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof ppl.delite.runtime.messages.Messages.CommInfo) {
+          return mergeFrom((ppl.delite.runtime.messages.Messages.CommInfo)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+      
+      public Builder mergeFrom(ppl.delite.runtime.messages.Messages.CommInfo other) {
+        if (other == ppl.delite.runtime.messages.Messages.CommInfo.getDefaultInstance()) return this;
+        if (other.hasSlaveIdx()) {
+          setSlaveIdx(other.getSlaveIdx());
+        }
+        if (!other.slaveAddress_.isEmpty()) {
+          if (slaveAddress_.isEmpty()) {
+            slaveAddress_ = other.slaveAddress_;
+            bitField0_ = (bitField0_ & ~0x00000002);
+          } else {
+            ensureSlaveAddressIsMutable();
+            slaveAddress_.addAll(other.slaveAddress_);
+          }
+          onChanged();
+        }
+        if (!other.slavePort_.isEmpty()) {
+          if (slavePort_.isEmpty()) {
+            slavePort_ = other.slavePort_;
+            bitField0_ = (bitField0_ & ~0x00000004);
+          } else {
+            ensureSlavePortIsMutable();
+            slavePort_.addAll(other.slavePort_);
+          }
+          onChanged();
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+      
+      public final boolean isInitialized() {
+        if (!hasSlaveIdx()) {
+          
+          return false;
+        }
+        return true;
+      }
+      
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder(
+            this.getUnknownFields());
+        while (true) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              this.setUnknownFields(unknownFields.build());
+              onChanged();
+              return this;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                this.setUnknownFields(unknownFields.build());
+                onChanged();
+                return this;
+              }
+              break;
+            }
+            case 8: {
+              bitField0_ |= 0x00000001;
+              slaveIdx_ = input.readUInt32();
+              break;
+            }
+            case 18: {
+              ensureSlaveAddressIsMutable();
+              slaveAddress_.add(input.readBytes());
+              break;
+            }
+            case 24: {
+              ensureSlavePortIsMutable();
+              slavePort_.add(input.readUInt32());
+              break;
+            }
+            case 26: {
+              int length = input.readRawVarint32();
+              int limit = input.pushLimit(length);
+              while (input.getBytesUntilLimit() > 0) {
+                addSlavePort(input.readUInt32());
+              }
+              input.popLimit(limit);
+              break;
+            }
+          }
+        }
+      }
+      
+      private int bitField0_;
+      
+      // required uint32 slave_idx = 1;
+      private int slaveIdx_ ;
+      public boolean hasSlaveIdx() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      public int getSlaveIdx() {
+        return slaveIdx_;
+      }
+      public Builder setSlaveIdx(int value) {
+        bitField0_ |= 0x00000001;
+        slaveIdx_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearSlaveIdx() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        slaveIdx_ = 0;
+        onChanged();
+        return this;
+      }
+      
+      // repeated string slave_address = 2;
+      private com.google.protobuf.LazyStringList slaveAddress_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+      private void ensureSlaveAddressIsMutable() {
+        if (!((bitField0_ & 0x00000002) == 0x00000002)) {
+          slaveAddress_ = new com.google.protobuf.LazyStringArrayList(slaveAddress_);
+          bitField0_ |= 0x00000002;
+         }
+      }
+      public java.util.List<String>
+          getSlaveAddressList() {
+        return java.util.Collections.unmodifiableList(slaveAddress_);
+      }
+      public int getSlaveAddressCount() {
+        return slaveAddress_.size();
+      }
+      public String getSlaveAddress(int index) {
+        return slaveAddress_.get(index);
+      }
+      public Builder setSlaveAddress(
+          int index, String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  ensureSlaveAddressIsMutable();
+        slaveAddress_.set(index, value);
+        onChanged();
+        return this;
+      }
+      public Builder addSlaveAddress(String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  ensureSlaveAddressIsMutable();
+        slaveAddress_.add(value);
+        onChanged();
+        return this;
+      }
+      public Builder addAllSlaveAddress(
+          java.lang.Iterable<String> values) {
+        ensureSlaveAddressIsMutable();
+        super.addAll(values, slaveAddress_);
+        onChanged();
+        return this;
+      }
+      public Builder clearSlaveAddress() {
+        slaveAddress_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000002);
+        onChanged();
+        return this;
+      }
+      void addSlaveAddress(com.google.protobuf.ByteString value) {
+        ensureSlaveAddressIsMutable();
+        slaveAddress_.add(value);
+        onChanged();
+      }
+      
+      // repeated uint32 slave_port = 3;
+      private java.util.List<java.lang.Integer> slavePort_ = java.util.Collections.emptyList();;
+      private void ensureSlavePortIsMutable() {
+        if (!((bitField0_ & 0x00000004) == 0x00000004)) {
+          slavePort_ = new java.util.ArrayList<java.lang.Integer>(slavePort_);
+          bitField0_ |= 0x00000004;
+         }
+      }
+      public java.util.List<java.lang.Integer>
+          getSlavePortList() {
+        return java.util.Collections.unmodifiableList(slavePort_);
+      }
+      public int getSlavePortCount() {
+        return slavePort_.size();
+      }
+      public int getSlavePort(int index) {
+        return slavePort_.get(index);
+      }
+      public Builder setSlavePort(
+          int index, int value) {
+        ensureSlavePortIsMutable();
+        slavePort_.set(index, value);
+        onChanged();
+        return this;
+      }
+      public Builder addSlavePort(int value) {
+        ensureSlavePortIsMutable();
+        slavePort_.add(value);
+        onChanged();
+        return this;
+      }
+      public Builder addAllSlavePort(
+          java.lang.Iterable<? extends java.lang.Integer> values) {
+        ensureSlavePortIsMutable();
+        super.addAll(values, slavePort_);
+        onChanged();
+        return this;
+      }
+      public Builder clearSlavePort() {
+        slavePort_ = java.util.Collections.emptyList();;
+        bitField0_ = (bitField0_ & ~0x00000004);
+        onChanged();
+        return this;
+      }
+      
+      // @@protoc_insertion_point(builder_scope:ppl.delite.runtime.messages.CommInfo)
+    }
+    
+    static {
+      defaultInstance = new CommInfo(true);
+      defaultInstance.initFields();
+    }
+    
+    // @@protoc_insertion_point(class_scope:ppl.delite.runtime.messages.CommInfo)
   }
   
   public interface IntMessageOrBuilder
@@ -7694,6 +8473,11 @@ public final class Messages {
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_ppl_delite_runtime_messages_LaunchInfo_fieldAccessorTable;
   private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_ppl_delite_runtime_messages_CommInfo_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_ppl_delite_runtime_messages_CommInfo_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
     internal_static_ppl_delite_runtime_messages_IntMessage_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
@@ -7743,38 +8527,42 @@ public final class Messages {
   static {
     java.lang.String[] descriptorData = {
       "\n\016messages.proto\022\033ppl.delite.runtime.mes" +
-      "sages\"\244\002\n\023DeliteMasterMessage\022C\n\004type\030\001 " +
+      "sages\"\343\002\n\023DeliteMasterMessage\022C\n\004type\030\001 " +
       "\002(\01625.ppl.delite.runtime.messages.Delite" +
       "MasterMessage.Type\0221\n\002op\030\002 \001(\0132%.ppl.del" +
       "ite.runtime.messages.RemoteOp\0226\n\004data\030\003 " +
       "\001(\0132(.ppl.delite.runtime.messages.Reques" +
-      "tData\0228\n\005debug\030\004 \001(\0132).ppl.delite.runtim" +
-      "e.messages.DebugMessage\"#\n\004Type\022\006\n\002OP\020\001\022" +
-      "\010\n\004DATA\020\002\022\t\n\005DEBUG\020\003\"\354\001\n\022DeliteSlaveMess" +
-      "age\022B\n\004type\030\001 \002(\01624.ppl.delite.runtime.m",
-      "essages.DeliteSlaveMessage.Type\0229\n\006resul" +
-      "t\030\002 \001(\0132).ppl.delite.runtime.messages.Re" +
-      "turnResult\0228\n\005debug\030\003 \001(\0132).ppl.delite.r" +
-      "untime.messages.DebugMessage\"\035\n\004Type\022\n\n\006" +
-      "RESULT\020\001\022\t\n\005DEBUG\020\002\"\242\001\n\010RemoteOp\022+\n\002id\030\001" +
-      " \002(\0132\037.ppl.delite.runtime.messages.Id\0228\n" +
-      "\004type\030\002 \002(\0162*.ppl.delite.runtime.message" +
-      "s.RemoteOp.Type\022\r\n\005input\030\003 \003(\014\" \n\004Type\022\t" +
-      "\n\005INPUT\020\001\022\r\n\tMULTILOOP\020\002\"K\n\014ReturnResult" +
-      "\022+\n\002id\030\001 \002(\0132\037.ppl.delite.runtime.messag",
-      "es.Id\022\016\n\006output\030\002 \003(\014\":\n\013RequestData\022+\n\002" +
-      "id\030\001 \002(\0132\037.ppl.delite.runtime.messages.I" +
-      "d\"\037\n\014DebugMessage\022\017\n\007message\030\001 \002(\t\"\020\n\002Id" +
-      "\022\n\n\002id\030\001 \002(\t\":\n\nLaunchInfo\022\020\n\010slaveIdx\030\001" +
-      " \002(\005\022\r\n\005slave\030\002 \003(\t\022\013\n\003arg\030\003 \003(\t\"\033\n\nIntM" +
-      "essage\022\r\n\005value\030\001 \002(\021\"\034\n\013LongMessage\022\r\n\005" +
-      "value\030\001 \002(\022\"\036\n\rDoubleMessage\022\r\n\005value\030\001 " +
-      "\002(\001\"\035\n\014FloatMessage\022\r\n\005value\030\001 \002(\002\"\037\n\016Bo" +
-      "oleanMessage\022\r\n\005value\030\001 \002(\010\"\034\n\013UIntMessa" +
-      "ge\022\r\n\005value\030\001 \002(\r\"\036\n\rStringMessage\022\r\n\005va",
-      "lue\030\001 \002(\t\"Z\n\014ArrayMessage\022+\n\002id\030\001 \001(\0132\037." +
-      "ppl.delite.runtime.messages.Id\022\016\n\006length" +
-      "\030\002 \001(\005\022\r\n\005array\030\003 \001(\014"
+      "tData\0223\n\004info\030\004 \001(\0132%.ppl.delite.runtime" +
+      ".messages.CommInfo\0228\n\005debug\030\005 \001(\0132).ppl." +
+      "delite.runtime.messages.DebugMessage\"-\n\004" +
+      "Type\022\006\n\002OP\020\001\022\010\n\004DATA\020\002\022\010\n\004INFO\020\003\022\t\n\005DEBU",
+      "G\020\004\"\354\001\n\022DeliteSlaveMessage\022B\n\004type\030\001 \002(\016" +
+      "24.ppl.delite.runtime.messages.DeliteSla" +
+      "veMessage.Type\0229\n\006result\030\002 \001(\0132).ppl.del" +
+      "ite.runtime.messages.ReturnResult\0228\n\005deb" +
+      "ug\030\003 \001(\0132).ppl.delite.runtime.messages.D" +
+      "ebugMessage\"\035\n\004Type\022\n\n\006RESULT\020\001\022\t\n\005DEBUG" +
+      "\020\002\"\242\001\n\010RemoteOp\022+\n\002id\030\001 \002(\0132\037.ppl.delite" +
+      ".runtime.messages.Id\0228\n\004type\030\002 \002(\0162*.ppl" +
+      ".delite.runtime.messages.RemoteOp.Type\022\r" +
+      "\n\005input\030\003 \003(\014\" \n\004Type\022\t\n\005INPUT\020\001\022\r\n\tMULT",
+      "ILOOP\020\002\"K\n\014ReturnResult\022+\n\002id\030\001 \002(\0132\037.pp" +
+      "l.delite.runtime.messages.Id\022\016\n\006output\030\002" +
+      " \003(\014\":\n\013RequestData\022+\n\002id\030\001 \002(\0132\037.ppl.de" +
+      "lite.runtime.messages.Id\"\037\n\014DebugMessage" +
+      "\022\017\n\007message\030\001 \002(\t\"\020\n\002Id\022\n\n\002id\030\001 \002(\t\"Y\n\nL" +
+      "aunchInfo\022\026\n\016master_address\030\001 \002(\t\022\023\n\013mas" +
+      "ter_port\030\002 \002(\r\022\021\n\tslave_idx\030\003 \002(\r\022\013\n\003arg" +
+      "\030\004 \003(\t\"H\n\010CommInfo\022\021\n\tslave_idx\030\001 \002(\r\022\025\n" +
+      "\rslave_address\030\002 \003(\t\022\022\n\nslave_port\030\003 \003(\r" +
+      "\"\033\n\nIntMessage\022\r\n\005value\030\001 \002(\021\"\034\n\013LongMes",
+      "sage\022\r\n\005value\030\001 \002(\022\"\036\n\rDoubleMessage\022\r\n\005" +
+      "value\030\001 \002(\001\"\035\n\014FloatMessage\022\r\n\005value\030\001 \002" +
+      "(\002\"\037\n\016BooleanMessage\022\r\n\005value\030\001 \002(\010\"\034\n\013U" +
+      "IntMessage\022\r\n\005value\030\001 \002(\r\"\036\n\rStringMessa" +
+      "ge\022\r\n\005value\030\001 \002(\t\"Z\n\014ArrayMessage\022+\n\002id\030" +
+      "\001 \001(\0132\037.ppl.delite.runtime.messages.Id\022\016" +
+      "\n\006length\030\002 \001(\005\022\r\n\005array\030\003 \001(\014"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -7786,7 +8574,7 @@ public final class Messages {
           internal_static_ppl_delite_runtime_messages_DeliteMasterMessage_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ppl_delite_runtime_messages_DeliteMasterMessage_descriptor,
-              new java.lang.String[] { "Type", "Op", "Data", "Debug", },
+              new java.lang.String[] { "Type", "Op", "Data", "Info", "Debug", },
               ppl.delite.runtime.messages.Messages.DeliteMasterMessage.class,
               ppl.delite.runtime.messages.Messages.DeliteMasterMessage.Builder.class);
           internal_static_ppl_delite_runtime_messages_DeliteSlaveMessage_descriptor =
@@ -7842,11 +8630,19 @@ public final class Messages {
           internal_static_ppl_delite_runtime_messages_LaunchInfo_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ppl_delite_runtime_messages_LaunchInfo_descriptor,
-              new java.lang.String[] { "SlaveIdx", "Slave", "Arg", },
+              new java.lang.String[] { "MasterAddress", "MasterPort", "SlaveIdx", "Arg", },
               ppl.delite.runtime.messages.Messages.LaunchInfo.class,
               ppl.delite.runtime.messages.Messages.LaunchInfo.Builder.class);
-          internal_static_ppl_delite_runtime_messages_IntMessage_descriptor =
+          internal_static_ppl_delite_runtime_messages_CommInfo_descriptor =
             getDescriptor().getMessageTypes().get(8);
+          internal_static_ppl_delite_runtime_messages_CommInfo_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_ppl_delite_runtime_messages_CommInfo_descriptor,
+              new java.lang.String[] { "SlaveIdx", "SlaveAddress", "SlavePort", },
+              ppl.delite.runtime.messages.Messages.CommInfo.class,
+              ppl.delite.runtime.messages.Messages.CommInfo.Builder.class);
+          internal_static_ppl_delite_runtime_messages_IntMessage_descriptor =
+            getDescriptor().getMessageTypes().get(9);
           internal_static_ppl_delite_runtime_messages_IntMessage_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ppl_delite_runtime_messages_IntMessage_descriptor,
@@ -7854,7 +8650,7 @@ public final class Messages {
               ppl.delite.runtime.messages.Messages.IntMessage.class,
               ppl.delite.runtime.messages.Messages.IntMessage.Builder.class);
           internal_static_ppl_delite_runtime_messages_LongMessage_descriptor =
-            getDescriptor().getMessageTypes().get(9);
+            getDescriptor().getMessageTypes().get(10);
           internal_static_ppl_delite_runtime_messages_LongMessage_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ppl_delite_runtime_messages_LongMessage_descriptor,
@@ -7862,7 +8658,7 @@ public final class Messages {
               ppl.delite.runtime.messages.Messages.LongMessage.class,
               ppl.delite.runtime.messages.Messages.LongMessage.Builder.class);
           internal_static_ppl_delite_runtime_messages_DoubleMessage_descriptor =
-            getDescriptor().getMessageTypes().get(10);
+            getDescriptor().getMessageTypes().get(11);
           internal_static_ppl_delite_runtime_messages_DoubleMessage_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ppl_delite_runtime_messages_DoubleMessage_descriptor,
@@ -7870,7 +8666,7 @@ public final class Messages {
               ppl.delite.runtime.messages.Messages.DoubleMessage.class,
               ppl.delite.runtime.messages.Messages.DoubleMessage.Builder.class);
           internal_static_ppl_delite_runtime_messages_FloatMessage_descriptor =
-            getDescriptor().getMessageTypes().get(11);
+            getDescriptor().getMessageTypes().get(12);
           internal_static_ppl_delite_runtime_messages_FloatMessage_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ppl_delite_runtime_messages_FloatMessage_descriptor,
@@ -7878,7 +8674,7 @@ public final class Messages {
               ppl.delite.runtime.messages.Messages.FloatMessage.class,
               ppl.delite.runtime.messages.Messages.FloatMessage.Builder.class);
           internal_static_ppl_delite_runtime_messages_BooleanMessage_descriptor =
-            getDescriptor().getMessageTypes().get(12);
+            getDescriptor().getMessageTypes().get(13);
           internal_static_ppl_delite_runtime_messages_BooleanMessage_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ppl_delite_runtime_messages_BooleanMessage_descriptor,
@@ -7886,7 +8682,7 @@ public final class Messages {
               ppl.delite.runtime.messages.Messages.BooleanMessage.class,
               ppl.delite.runtime.messages.Messages.BooleanMessage.Builder.class);
           internal_static_ppl_delite_runtime_messages_UIntMessage_descriptor =
-            getDescriptor().getMessageTypes().get(13);
+            getDescriptor().getMessageTypes().get(14);
           internal_static_ppl_delite_runtime_messages_UIntMessage_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ppl_delite_runtime_messages_UIntMessage_descriptor,
@@ -7894,7 +8690,7 @@ public final class Messages {
               ppl.delite.runtime.messages.Messages.UIntMessage.class,
               ppl.delite.runtime.messages.Messages.UIntMessage.Builder.class);
           internal_static_ppl_delite_runtime_messages_StringMessage_descriptor =
-            getDescriptor().getMessageTypes().get(14);
+            getDescriptor().getMessageTypes().get(15);
           internal_static_ppl_delite_runtime_messages_StringMessage_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ppl_delite_runtime_messages_StringMessage_descriptor,
@@ -7902,7 +8698,7 @@ public final class Messages {
               ppl.delite.runtime.messages.Messages.StringMessage.class,
               ppl.delite.runtime.messages.Messages.StringMessage.Builder.class);
           internal_static_ppl_delite_runtime_messages_ArrayMessage_descriptor =
-            getDescriptor().getMessageTypes().get(15);
+            getDescriptor().getMessageTypes().get(16);
           internal_static_ppl_delite_runtime_messages_ArrayMessage_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ppl_delite_runtime_messages_ArrayMessage_descriptor,

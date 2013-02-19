@@ -1,13 +1,14 @@
 package ppl.delite.runtime.messages;
 
 message DeliteMasterMessage {
-  enum Type { OP = 1; DATA = 2; DEBUG = 3; }
+  enum Type { OP = 1; DATA = 2; INFO = 3; DEBUG = 4; }
 
   required Type type = 1;
 
   optional RemoteOp op = 2;
   optional RequestData data = 3;
-  optional DebugMessage debug = 4;
+  optional CommInfo info = 4;
+  optional DebugMessage debug = 5;
 }
 
 message DeliteSlaveMessage {
@@ -45,9 +46,16 @@ message Id { //TODO: could just be an int
 }
 
 message LaunchInfo {
-  required int32 slaveIdx = 1;
-  repeated string slave = 2;
-  repeated string arg = 3;
+  required string master_address = 1;
+  required uint32 master_port = 2;
+  required uint32 slave_idx = 3;
+  repeated string arg = 4;
+}
+
+message CommInfo {
+  required uint32 slave_idx = 1;
+  repeated string slave_address = 2;
+  repeated uint32 slave_port = 3;
 }
 
 //primitive type message wrappers

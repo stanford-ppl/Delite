@@ -3,8 +3,10 @@ package ppl.delite.runtime
 import org.apache.mesos._
 import org.apache.mesos.Protos._
 import com.google.protobuf.ByteString
+import java.util.HashMap
 import java.util.concurrent.locks.ReentrantLock
 import ppl.delite.runtime.messages.Messages._
+import ppl.delite.runtime.messages._
 
 
 class DeliteMesosScheduler(private val executor: ExecutorInfo) extends Scheduler {
@@ -82,8 +84,10 @@ class DeliteMesosScheduler(private val executor: ExecutorInfo) extends Scheduler
       val cpus = offer.getResources(0)
       val mem = offer.getResources(1)
 
-      val mssg = LaunchInfo.newBuilder.setSlaveIdx(idx)
-      for (slave <- slaves) mssg.addSlave(slave)
+      val mssg = LaunchInfo.newBuilder
+        .setMasterAddress(DeliteMesosScheduler.network.id.host)
+        .setMasterPort(DeliteMesosScheduler.network.id.port)
+        .setSlaveIdx(idx)
       for (arg <- DeliteMesosScheduler.appArgs) mssg.addArg(arg)
       idx += 1
 
@@ -131,11 +135,13 @@ class DeliteMesosScheduler(private val executor: ExecutorInfo) extends Scheduler
       Delite.shutdown(reason)
     }
 
-    if (status.getState == TaskState.TASK_LOST) {
-      abnormalShutdown(new RuntimeException("slave task lost... unable to recover"))
-    }
-    if (status.getState == TaskState.TASK_FAILED) {
-      abnormalShutdown(new RuntimeException("task failed"))
+    status.getState match {
+      case TaskState.TASK_RUNNING =>
+        DeliteMesosScheduler.addSlaveToNetwork(CommInfo.parseFrom(status.getData))
+      case TaskState.TASK_LOST => 
+        abnormalShutdown(new RuntimeException("slave task lost... unable to recover"))
+      case TaskState.TASK_FAILED => 
+        abnormalShutdown(new RuntimeException("task failed"))
     }
   }
 
@@ -218,6 +224,8 @@ object DeliteMesosScheduler {
   private val remoteCompleted = remoteLock.newCondition
   private var notCompleted = true
   private var remoteResult: Array[ReturnResult] = _
+  private val network = new ConnectionManager
+  private val networkMap = new HashMap[Int, ConnectionManagerId]
 
   def main(args: Array[String]) {
     appArgs = args
@@ -241,11 +249,40 @@ object DeliteMesosScheduler {
       .setName("Delite Runtime")
       .build
 
+    network.onReceiveMessage((msg: Message, id: ConnectionManagerId) => { 
+      println("Received [" + msg + "] from [" + id + "]")
+      None
+    })
+
     driver = new MesosSchedulerDriver(new DeliteMesosScheduler(executor), framework, master)
     driver.start() //TODO: sanity check successful connection
     Delite.embeddedMain(args, Map())
-
+    
     driver.stop()
+  }
+
+  def addSlaveToNetwork(info: CommInfo) {
+    networkMap.put(info.getSlaveIdx, new ConnectionManagerId(info.getSlaveAddress(0), info.getSlavePort(0)))
+    
+    val message = Message.createBufferMessage(java.nio.ByteBuffer.allocate(10).put(Array.tabulate[Byte](10)(x => x.toByte)))
+    network.sendMessageUnsafe(networkMap.get(info.getSlaveIdx), message)
+    
+    if (networkMap.size == slaves.length) { //broadcast network map to slaves
+      for (i <- 0 until slaves.length) {
+        val slaveInfo = CommInfo.newBuilder.setSlaveIdx(i)
+        for (j <- 0 until slaves.length) {
+          val networkId = networkMap.get(j)
+          slaveInfo.addSlaveAddress(networkId.host)
+          slaveInfo.addSlavePort(networkId.port)
+        }
+        val mssg = DeliteMasterMessage.newBuilder
+          .setType(DeliteMasterMessage.Type.INFO)
+          .setInfo(slaveInfo)
+          .build
+
+        driver.sendFrameworkMessage(executorId, slaves(i), mssg.toByteArray)
+      }
+    }
   }
 
   def launchAllSlaves(id: String, tpe: RemoteOp.Type, args: ByteString*): Array[ReturnResult] = {
