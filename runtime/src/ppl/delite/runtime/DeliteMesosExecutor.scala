@@ -182,7 +182,7 @@ object DeliteMesosExecutor {
   private var size = -1
 
   def getResult(id: String) = {
-    val data = results.get(id).asInstanceOf[DeliteArray]
+    val data = results.get(id).asInstanceOf[DeliteArray[_]]
     if (size == -1) {
       size = data.length
     }
@@ -244,13 +244,7 @@ object DeliteMesosExecutor {
     val types = method.getParameterTypes //or use the DEG?
     var idx = 0
     val args: Array[Object] = for (tpe <- types) yield {
-      val arg = if (idx == op.getInputCount) {
-        if (size == -1) throw new RuntimeException("loop over unknown size... don't know how to partition")
-        Integer.valueOf(size)
-      }
-      else {
-        Serialization.deserialize(tpe, op.getInput(idx), true)
-      }
+      val arg = Serialization.deserialize(tpe, op.getInput(idx), true)
       idx += 1
       arg.asInstanceOf[Object]
     }
@@ -271,7 +265,7 @@ object DeliteMesosExecutor {
           val exec = new DeliteExecutable {
             def run() { try {
               val res = loopM.invoke(null, header)
-              workLock.lock()
+              workLock.lock() //maps should just sync internally, this is redundant for reduce, filter, etc.
               try {
                 notDone -= 1
                 if (i == 0)
@@ -331,13 +325,18 @@ object DeliteMesosExecutor {
     driver.sendFrameworkMessage(mssg.toByteArray)
   }
 
+  def getLoopSize: Int = {         
+    if (size == -1) throw new RuntimeException(id + ": loop over unknown size... don't know how to partition")
+    size
+  }
+
   def getBlockSize(file: java.io.File): (Long,Long) = { //TODO: decouple and possibly specialize framework codegen
     if (driver != null) {
       val length = file.length
-      sendDebugMessage("slaves: " + slaveIdx + ", " + numSlaves)
+      sendDebugMessage("slaves: " + slaveIdx + " out of " + numSlaves)
       val start = length * slaveIdx / numSlaves
       val end = length * (slaveIdx+1) / numSlaves
-      sendDebugMessage("file: " + start + ", " + end + ", " + length)
+      sendDebugMessage("file: from " + start + " to " + end + " out of " + length)
       (start,end)
     }
     else {

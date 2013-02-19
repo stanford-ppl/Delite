@@ -122,6 +122,7 @@ trait ScalaGenDeliteFileReaderOps extends ScalaGenFat {
       stream.println("final class " + actType + " {")
         stream.println("var " + quote(sym) + ": " + remap(sym.tp) + " = _")
         stream.println("def combine(act: " + actType + ", rhs: " + actType + ") {")
+          stream.println("act." + quote(sym) + " = " + remap(sym.tp) + ".combine(act." + quote(sym) + "," + "rhs." + quote(sym) + ")")
         stream.println("}")
       stream.println("}")
     case _ => super.emitNodeKernelExtra(syms, rhs)

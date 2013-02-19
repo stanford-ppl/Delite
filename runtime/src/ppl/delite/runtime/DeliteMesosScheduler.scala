@@ -243,7 +243,6 @@ object DeliteMesosScheduler {
 
     driver = new MesosSchedulerDriver(new DeliteMesosScheduler(executor), framework, master)
     driver.start() //TODO: sanity check successful connection
-
     Delite.embeddedMain(args, Map())
 
     driver.stop()

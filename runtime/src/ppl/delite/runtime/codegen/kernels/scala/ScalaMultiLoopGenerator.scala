@@ -53,10 +53,7 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
 
   //TODO: is the division logic really target dependent?
   protected def calculateRange(): (String,String) = {
-    if (Config.clusterMode == 2) 
-      out.append("val size = "+headerObject+".dataSize\n")
-    else
-      out.append("val size = "+closure+".size\n")
+    out.append("val size = "+closure+".loopSize\n")
     out.append("val start = size*"+chunkIdx+"/"+numChunks+"\n")
     out.append("val end = size*"+(chunkIdx+1)+"/"+numChunks+"\n")
     ("start","end")
@@ -149,7 +146,6 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
       out.append(": ")
       out.append(input.outputType(name))
     }
-    if (Config.clusterMode == 2) out.append(", dataSize: Int = -1")
     out.append(") = new ")
     out.append(className)
     out.append("(")
@@ -158,7 +154,6 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
       out.append("in")
       out.append(i)
     }
-    if (Config.clusterMode == 2) out.append(", dataSize")
     out.append(")\n")
   }
 
@@ -177,7 +172,6 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
       out.append(": ")
       out.append(input.outputType(name))
     }
-    if (Config.clusterMode == 2) out.append(", val dataSize: Int")
     out.append(") {\n")
 
     out.append("val closure = ")
@@ -189,6 +183,11 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
       out.append(i)
     }
     out.append(")\n")
+
+    if (Config.clusterMode == 2) 
+      out.append("closure.loopSize = ppl.delite.runtime.DeliteMesosExecutor.getLoopSize\n")
+    else
+      out.append("closure.loopSize = closure.size\n")
 
     out.append("val out: ")
     out.append(op.outputType)

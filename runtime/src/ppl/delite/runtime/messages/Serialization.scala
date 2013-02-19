@@ -29,7 +29,7 @@ object Serialization {
       case v:Byte => UIntMessage.newBuilder.setValue(v).build.toByteString
       case v:Short => IntMessage.newBuilder.setValue(v).build.toByteString
       case s:String => StringMessage.newBuilder.setValue(s).build.toByteString
-      case a:DeliteArray => serializeDeliteArray(a).toByteString
+      case a:DeliteArray[_] => serializeDeliteArray(a).toByteString
       case other =>
         try {
           other.getClass.getMethod("toByteString").invoke(other).asInstanceOf[ByteString]
@@ -40,13 +40,13 @@ object Serialization {
     }
   }
 
-  def serializeDeliteArray(array: DeliteArray): ArrayMessage = {
+  def serializeDeliteArray(array: DeliteArray[_]): ArrayMessage = {
     array match {
-      case a:DeliteArray if sendId => 
+      case a:DeliteArray[_] if sendId => 
         val id = spawnId
         saveLocally(id, a)
         ArrayMessage.newBuilder.setId(Id.newBuilder.setId(id)).setLength(a.length).build
-      case a:RemoteArray =>
+      case a:RemoteDeliteArray[_] =>
         ArrayMessage.newBuilder.setId(Id.newBuilder.setId(a.id)).build
       case a:LocalDeliteArrayInt =>
         val buf = ByteBuffer.allocate(a.data.length*4)
@@ -246,7 +246,7 @@ object Serialization {
     }
   }
 
-  def deserializeDeliteArrayObject[T](mssg: ArrayMessage): DeliteArrayObject[T] = {
+  def deserializeDeliteArrayObject[T:Manifest](mssg: ArrayMessage): DeliteArrayObject[T] = {
     if (mssg.hasArray) {
       throw new RuntimeException("don't know how to deserialize DeliteArrayObject")
     }

@@ -64,10 +64,10 @@ object RPC_Generator {
     out.append(op.getInputs.map(_._2 + "_bytes").mkString(",",",",")\n"))
 
     //construct outputs
-    val outputs = op.getOutputs.toSeq.sortBy(o => o)
+    val outputs = op.getOutputs.toSeq.sortBy(o => o) //TODO: return outputs in DEG order
     out.append("val act = new activation_" + op.id + "\n")
     var outIdx = 0
-    for (output <- op.getOutputs) {
+    for (output <- outputs) {
       out.append("act." + output + " = Serialization.deserialize(classOf[" + op.outputType(output) + "], res(0).getOutput(" + outIdx + ")).asInstanceOf[" + op.outputType(output) + "]\n")
       outIdx += 1
     }
@@ -85,7 +85,7 @@ object RPC_Generator {
     out.append("while (slaveIdx < res.length) {\n") //TODO: could parallelize reduce across slaves, then send result to master
       out.append("val act2 = new activation_" + op.id + "\n")
       outIdx = 0
-      for (output <- op.getOutputs) {
+      for (output <- outputs) {
         out.append("act2." + output + " = Serialization.deserialize(classOf[" + op.outputType(output) + "], res(slaveIdx).getOutput(" + outIdx + ")).asInstanceOf[" + op.outputType(output) + "]\n")
         outIdx += 1
       }

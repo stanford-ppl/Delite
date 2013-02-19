@@ -105,7 +105,7 @@ object Table {
     //columns should be at least the size of maximal element
     idx = 0
     for (f <- fieldStrs) {
-      val array = fields.getClass.getMethod(f).invoke(fields).asInstanceOf[DeliteArray]
+      val array = fields.getClass.getMethod(f).invoke(fields).asInstanceOf[DeliteArray[_]]
       for (j <- 0 until array.length) {
         val d = readArray(array, j)
         colSizes(idx) = max(colSizes(idx), d.length + 2)

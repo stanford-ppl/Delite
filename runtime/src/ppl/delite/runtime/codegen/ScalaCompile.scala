@@ -6,19 +6,21 @@ import scala.tools.nsc.util._
 import collection.mutable.ArrayBuffer
 import java.io.ByteArrayOutputStream
 import ppl.delite.runtime.Config
+import javax.tools._
 
 object ScalaCompile extends CodeCache {
 
   private val classCacheHome = cacheHome + "classes" + sep
 
   def target = "scala"
+  def javaExt = "java"
 
   def compile: ClassLoader = {
     cacheRuntimeSources(sourceBuffer.toArray)
     sourceBuffer.clear()
 
     for (module <- modules if (module.needsCompile)) {
-      val sources = Directory(Path(sourceCacheHome + module.name)).deepFiles.filter(_.extension == ext).map(_.path).toArray
+      val sources = Directory(Path(sourceCacheHome + module.name)).deepFiles.filter(f => f.extension == ext || f.extension == javaExt).map(_.path).toArray
       val classes = module.deps.map(d => Path(classCacheHome + d.name).path).toArray
       compile(classCacheHome + module.name, sources, classes)
     }
@@ -57,6 +59,16 @@ object ScalaCompile extends CodeCache {
       if (compile()) {
         sys.error("Compilation failed")
       }
+    }
+
+    val javaSources = sources.filter(_.endsWith(javaExt))
+    if (!javaSources.isEmpty) {
+      //val javaCp = cp + File.pathSeparator + destination //TODO: overriding cp loses path to java standard library somehow
+      val args = scala.collection.JavaConversions.asJavaIterable(Array("-nowarn", "-d", destination))
+      val compiler = ToolProvider.getSystemJavaCompiler
+      val fileManager = compiler.getStandardFileManager(null, null, null)
+      def javaCompile() = compiler.getTask(null, fileManager, null, args, null, fileManager.getJavaFileObjects(javaSources:_*)).call()
+      if (!javaCompile()) sys.error("Compilation failed")
     }
   }
 

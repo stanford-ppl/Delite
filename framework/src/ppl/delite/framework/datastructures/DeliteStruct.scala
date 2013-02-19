@@ -3,6 +3,7 @@ package ppl.delite.framework.datastructures
 import java.io.{File,FileWriter,PrintWriter}
 import scala.virtualization.lms.common._
 import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.delite.framework.extern.lib.ProtoBuf
 import scala.reflect.SourceContext
 
 trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
@@ -88,7 +89,8 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     stream.close()
     super.emitDataStructures(path)
 
-    val stream2 = new PrintWriter(path + "structs.proto")
+    val protoFile = new File(path + "structs.proto")
+    val stream2 = new PrintWriter(protoFile)
     stream2.println("package generated.scala;")
     stream2.println("import \"messages.proto\";")
     for ((name, elems) <- encounteredStructs) {
@@ -96,6 +98,7 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
       emitMessageDeclaration(name, elems)(stream2)
     }
     stream2.close()
+    ProtoBuf.compile(protoFile.getAbsolutePath, path)
     super.emitDataStructures(path)
   }
 
@@ -105,7 +108,7 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     stream.println("val mssg = Structs." + name + ".parseFrom(bytes)")
     emitStructDeserialization(name, elems, "mssg")(stream)
     stream.println("\n}")
-    stream.print("def reduce(lhs: " + name + ", " + "rhs: " + name + ") = ")
+    stream.print("def combine(lhs: " + name + ", " + "rhs: " + name + ") = ")
     emitStructReduction(name, elems, "lhs", "rhs")(stream)
     stream.println("\n}")
 
@@ -119,7 +122,7 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
   }
 
   private def mangle(name: String) = name.split("_").map(toCamelCase).mkString("")
-  private def toCamelCase(name: String) = name.substring(0,1).toUpperCase + name.substring(1)
+  private def toCamelCase(name: String) = if (name.length > 0) name.substring(0,1).toUpperCase + (if (name.length > 1) name.substring(1) else "") else ""
 
   def emitStructDeserialization(name: String, elems: Seq[(String,Manifest[_])], prefix: String)(stream: PrintWriter) {
     def insertField(field: String, tp: Manifest[_]) = {
@@ -163,9 +166,10 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
       val lhs = prefixL + "." + field
       val rhs = prefixR + "." + field
       if (encounteredStructs.contains(name)) emitStructReduction(name, encounteredStructs(name), lhs, rhs)(stream)
-      else if (deVar(tp).erasure.getSimpleName == "DeliteArray") stream.print("ppl.delite.runtime.data.DeliteArray" + arrayRemap(deVar(tp).typeArguments(0)) + ".reduce(" + lhs + "," + rhs + ")")
+      else if (deVar(tp).erasure.getSimpleName == "DeliteArray") stream.print("ppl.delite.runtime.data.DeliteArray" + arrayRemap(deVar(tp).typeArguments(0)) + ".combine(" + lhs + "," + rhs + ")")
       else if (deVar(tp).erasure.getSimpleName == "int") stream.print(lhs + " + " + rhs) //TODO: need something extensible / customizable
-      else throw new RuntimeException("don't know how to reduce type " + deVar(tp))
+      else if (deVar(tp).erasure.getSimpleName == "boolean") stream.print(lhs)
+      else throw new RuntimeException("don't know how to combine type " + deVar(tp))
     }
 
     stream.print("new " + name + "(")

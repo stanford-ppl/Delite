@@ -101,7 +101,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val mB = manifest[B]
   }
 
-  abstract class DeliteOpInput[A] extends DeliteOp[A]
+  trait DeliteOpInput[A] extends DeliteOp[A]
   
   
   /**
@@ -1851,6 +1851,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     //   and do the copying in another parallel map <-- faster but more work
 
     emitMethod("size", remap(Manifest.Int), Nil) { emitReturn(quote(op.size)) }
+    emitVarDef("loopSize", remap(Manifest.Int), "0")
 
     emitMethod("alloc", actType, Nil) {
       emitNewInstance("__act", actType)
@@ -1859,7 +1860,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           case ParBuffer =>
             stream.println("// " + fieldAccess("__act",quote(sym)) + " stays null for now")
           case ParFlat =>
-            emitValDef(elem.sV, quote(op.size))
+            emitValDef(elem.sV, "loopSize")
             emitBlock(elem.allocN)
             emitAssignment(fieldAccess("__act",quote(sym)+"_data"),quote(getBlockResult(elem.allocN)))
         }
@@ -1993,6 +1994,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       emitMultiHashCombine(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act.")
       (symList zip op.body) foreach {
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
+          emitAssignment(fieldAccess("__act",quote(sym)), remap(sym.tp)+".combine(" + fieldAccess("__act",quote(sym)) + "," + fieldAccess("rhs",quote(sym)) + ")")
         case (sym, elem: DeliteHashElem[_,_]) => 
         case (sym, elem: DeliteForeachElem[_]) => // nothing needed
         case (sym, elem: DeliteReduceElem[_]) =>
@@ -2091,7 +2093,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
               emitValDef(elem.sV, fieldAccess("__act", quote(sym) + "_conditionals"))
             }
             else {
-              emitValDef(elem.sV, quote(op.size))
+              emitValDef(elem.sV, "loopSize")
             }
             emitBlock(elem.buf.setSize)
           }

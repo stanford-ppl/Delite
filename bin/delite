@@ -92,7 +92,7 @@ def run(deg, params, opts):
     cp = cp + delitecommon.DELITE_HOME + "/lib_managed/jars/org.apache.commons/commons-math/commons-math-2.2.jar" + os.pathsep 
     # mesos jars
     cp = cp + delitecommon.DELITE_HOME + "/lib_managed/jars/org.apache.mesos/mesos/mesos-0.9.0-incubating.jar" + os.pathsep
-    cp = cp + delitecommon.DELITE_HOME + "/lib_managed/jars/com.google.protobuf/protobuf-java/protobuf-java-2.4.1.jar" + os.pathsep   
+    cp = cp + delitecommon.DELITE_HOME + "/lib_managed/jars/com.google.protobuf/protobuf-java/protobuf-java-2.4.1.jar" + os.pathsep
  
     # needed by deliszt
     bootcp = " -Xbootclasspath/a:"

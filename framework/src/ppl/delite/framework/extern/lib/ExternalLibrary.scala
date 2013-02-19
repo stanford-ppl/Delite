@@ -31,6 +31,8 @@ trait ExternalLibrary {
   lazy val headerDir = config.headerDir
   lazy val libs = config.libs
   lazy val configHeader = config.sourceHeader //additional user-specified headers
+  lazy val destFileName = name + "." + libExt
+  val separateOutput = true
 
   protected def sep = File.separator
   
@@ -40,8 +42,8 @@ trait ExternalLibrary {
     
     // invoke the compiler using Runtime.exec
     val buildPath = new File(Config.buildDir, "scala" + sep + "kernels")
-    val destPath = new File(destDir, sep + name + "." + libExt)
-    val outputFlags = List(outputSwitch, destPath.toString)
+    val destPath = new File(destDir + sep + destFileName)
+    val outputFlags = if (separateOutput) List(outputSwitch, destPath.toString) else List(outputSwitch+destPath.toString)
 
     // this call is based on the gcc/icc invocation signature.. do we need to generalize it?
     val args = Array(compiler) ++ headerDir ++ libs ++ compileFlags ++ outputFlags ++ Array(srcFile.toString)
