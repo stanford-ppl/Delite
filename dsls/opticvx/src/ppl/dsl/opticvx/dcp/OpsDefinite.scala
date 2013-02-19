@@ -82,7 +82,7 @@ object SolverRuntimeDefinite extends SolverRuntime[Int, MatrixDefinite, MultiSeq
     for (a <- arg) yield a / scale(0)
   }
   def norm2(arg: Seq[Double]): Seq[Double] = {
-    Seq(arg.foldLeft(0.0)((a, x) => a + x*x))
+    Seq(arg.foldLeft(1e-20)((a, x) => a + x*x))
   }
   def sqrt(arg: Seq[Double]): Seq[Double] = {
     if(arg.length != 1) throw new IRValidationException()
