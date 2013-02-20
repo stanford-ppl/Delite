@@ -54,14 +54,53 @@ trait SolverGen {
 
   def v2m(v: AVector): Almap = AlmapVector(v)
 
+  def hcat(as: Almap*): Almap = {
+    if(as.length == 0) {
+      throw new IRValidationException()
+    }
+    else {
+      as.drop(1).foldLeft(as(0))((b,a) => AlmapHCat(b, a))
+    }
+  }
+  def vcat(as: Almap*): Almap = {
+    if(as.length == 0) {
+      throw new IRValidationException()
+    }
+    else {
+      as.drop(1).foldLeft(as(0))((b,a) => AlmapVCat(b, a))
+    }
+  }
+  def cat(xs: AVector*): AVector = {
+    if(xs.length == 0) {
+      throw new IRValidationException()
+    }
+    else {
+      xs.drop(1).foldLeft(xs(0))((b,a) => AVectorCat(b, a))
+    }
+  }
+  def cat(xs: Cone*): Cone = {
+    if(xs.length == 0) {
+      throw new IRValidationException()
+    }
+    else {
+      xs.drop(1).foldLeft(xs(0))((b,a) => ConeProduct(b, a))
+    }
+  }
+
+  def slice(arg: AVector, at: IRPoly, size: IRPoly) = AVectorSlice(arg, at, size)
+
   def zeros(d: IRPoly, c: IRPoly): Almap = AlmapZero(input, d, c)
   def eye(d: IRPoly): Almap = AlmapIdentity(input, d)
   def zeros(l: IRPoly): AVector = AVectorZero(input, l)
   def ones(l: IRPoly): AVector = AVectorCatFor(l, AVectorOne(input.promote))
-
   def norm2(arg: AVector) = AVectorNorm2(arg)
   def sqrt(arg: AVector) = AVectorSqrt(arg)
   def dot(arg1: AVector, arg2: AVector) = AVectorDot(arg1, arg2)
+
+  def zerocone(d: IRPoly): Cone = ConeFor(d, ConeZero(input.arity + 1))
+  def freecone(d: IRPoly): Cone = ConeFor(d, ConeFree(input.arity + 1))
+
+  implicit def int2irpolyimpl(i: Int): IRPoly = IRPoly.const(i, input.arity) 
 
   implicit def double2vector(x: Double): AVector = 
     AVectorScaleConstant(AVectorOne(input), x)

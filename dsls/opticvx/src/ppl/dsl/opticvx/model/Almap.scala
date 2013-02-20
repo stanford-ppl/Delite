@@ -22,6 +22,13 @@ sealed trait Almap extends HasInput[Almap] {
   //The transpose
   def T: Almap
 
+  def Tcheck(tv: Almap): Almap = {
+    if(tv.input != input) throw new IRValidationException()
+    if(tv.domain != codomain) throw new IRValidationException()
+    if(tv.codomain != domain) throw new IRValidationException()
+    tv
+  }
+
   //Code generation for this matrix
   def mmpy(x: AVector): AVector
 
@@ -76,7 +83,7 @@ case class AlmapIdentity(val input: InputDesc, val domain: IRPoly) extends Almap
   def arityOp(op: ArityOp): Almap = AlmapIdentity(input.arityOp(op), domain.arityOp(op))
   def inputOp(op: InputOp): Almap = AlmapIdentity(op.input, domain)
 
-  def T: Almap = this
+  def T: Almap = Tcheck(this)
 
   arityVerify()
 
@@ -103,7 +110,7 @@ case class AlmapZero(val input: InputDesc, val domain: IRPoly, val codomain: IRP
   def arityOp(op: ArityOp): Almap = AlmapZero(input.arityOp(op), domain.arityOp(op), codomain.arityOp(op))
   def inputOp(op: InputOp): Almap = AlmapZero(op.input, domain, codomain)
 
-  def T: Almap = AlmapZero(input, codomain, domain)
+  def T: Almap = Tcheck(AlmapZero(input, codomain, domain))
 
   arityVerify()
 
@@ -135,8 +142,8 @@ case class AlmapSum(val arg1: Almap, val arg2: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapSum(arg1.arityOp(op), arg2.arityOp(op))
   def inputOp(op: InputOp): Almap = AlmapSum(arg1.inputOp(op), arg2.inputOp(op))
 
-  def T: Almap = AlmapSum(arg1.T, arg2.T)
-  
+  def T: Almap = Tcheck(AlmapSum(arg1.T, arg2.T)
+ ) 
   arityVerify()
 
   def mmpy(x: AVector): AVector = mmpycheck(x) {
@@ -174,8 +181,8 @@ case class AlmapNeg(val arg: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapNeg(arg.arityOp(op))
   def inputOp(op: InputOp): Almap = AlmapNeg(arg.inputOp(op))
 
-  def T: Almap = AlmapNeg(arg.T)
-  
+  def T: Almap = Tcheck(AlmapNeg(arg.T)
+ ) 
   arityVerify()
 
   def mmpy(x: AVector): AVector = mmpycheck(x) {
@@ -210,8 +217,8 @@ case class AlmapScaleInput(val arg: Almap, val scale: IRPoly) extends Almap {
   
   def arityOp(op: ArityOp): Almap = AlmapScaleInput(arg.arityOp(op), scale.arityOp(op))
   
-  def T: Almap = AlmapScaleInput(arg.T, scale)
-  
+  def T: Almap = Tcheck(AlmapScaleInput(arg.T, scale)
+ ) 
   arityVerify()
 
   def mmpy(x: AVector): AVector = mmpycheck(x) {
@@ -237,7 +244,7 @@ case class AlmapScaleConstant(val arg: Almap, val scale: Double) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapScaleConstant(arg.arityOp(op), scale)
   def inputOp(op: InputOp): Almap = AlmapScaleConstant(arg.inputOp(op), scale)
   
-  def T: Almap = AlmapScaleConstant(arg.T, scale)
+  def T: Almap = Tcheck(AlmapScaleConstant(arg.T, scale))
 
   arityVerify()
 
@@ -272,13 +279,17 @@ case class AlmapVCat(val arg1: Almap, val arg2: Almap) extends Almap {
 
   if (arg1.arity != arg2.arity) throw new IRValidationException()
   if (arg1.input != arg2.input) throw new IRValidationException()
-  if (arg1.domain != arg2.domain) throw new IRValidationException()
+  if (arg1.domain != arg2.domain) {
+    println(arg1)
+    println(arg2)
+    throw new IRValidationException()
+  }
 
   def arityOp(op: ArityOp): Almap = AlmapVCat(arg1.arityOp(op), arg2.arityOp(op))
   def inputOp(op: InputOp): Almap = AlmapVCat(arg1.inputOp(op), arg2.inputOp(op))
 
-  def T: Almap = AlmapHCat(arg1.T, arg2.T)
-  
+  def T: Almap = Tcheck(AlmapHCat(arg1.T, arg2.T)
+ ) 
   arityVerify()
 
   def mmpy(x: AVector): AVector = mmpycheck(x) {
@@ -322,8 +333,8 @@ case class AlmapVCatFor(val len: IRPoly, val body: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapVCatFor(len.arityOp(op), body.arityOp(op.promote))
   def inputOp(op: InputOp): Almap = AlmapVCatFor(len, body.inputOp(op.promote))
 
-  def T: Almap = AlmapHCatFor(len, body.T)
-  
+  def T: Almap = Tcheck(AlmapHCatFor(len, body.T)
+ ) 
   arityVerify()
 
   def mmpy(x: AVector): AVector = mmpycheck(x) {
@@ -362,7 +373,7 @@ case class AlmapVPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
 
   def arityOp(op: ArityOp): Almap = AlmapVPut(len.arityOp(op), at.arityOp(op), body.arityOp(op))
 
-  def T: Almap = AlmapHPut(len, at, body.T)
+  def T: Almap = Tcheck(AlmapHPut(len, at, body.T))
 
   arityVerify()
 
@@ -395,8 +406,8 @@ case class AlmapHCat(val arg1: Almap, val arg2: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapHCat(arg1.arityOp(op), arg2.arityOp(op))
   def inputOp(op: InputOp): Almap = AlmapHCat(arg1.inputOp(op), arg2.inputOp(op))
 
-  def T: Almap = AlmapVCat(arg1.T, arg2.T)
-  
+  def T: Almap = Tcheck(AlmapVCat(arg1.T, arg2.T)
+ ) 
   arityVerify()
 
   def mmpy(x: AVector): AVector = mmpycheck(x) {
@@ -441,7 +452,7 @@ case class AlmapHCatFor(val len: IRPoly, val body: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapHCatFor(len.arityOp(op), body.arityOp(op.promote))
   def inputOp(op: InputOp): Almap = AlmapHCatFor(len, body.inputOp(op.promote))
 
-  def T: Almap = AlmapVCatFor(len, body.T)
+  def T: Almap = Tcheck(AlmapVCatFor(len, body.T))
 
   arityVerify()
 
@@ -488,7 +499,7 @@ case class AlmapHPut(val len: IRPoly, val at: IRPoly, val body: Almap) extends A
 
   def arityOp(op: ArityOp): Almap = AlmapHPut(len.arityOp(op), at.arityOp(op), body.arityOp(op))
 
-  def T: Almap = AlmapVPut(len, at, body.T)
+  def T: Almap = Tcheck(AlmapVPut(len, at, body.T))
 
   arityVerify()
 
@@ -522,8 +533,8 @@ case class AlmapDiagCat(val arg1: Almap, val arg2: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapDiagCat(arg1.arityOp(op), arg2.arityOp(op))
   def inputOp(op: InputOp): Almap = AlmapDiagCat(arg1.inputOp(op), arg2.inputOp(op))
 
-  def T: Almap = AlmapDiagCat(arg1.T, arg2.T)
-  
+  def T: Almap = Tcheck(AlmapDiagCat(arg1.T, arg2.T)
+ ) 
   arityVerify()
 
   def mmpy(x: AVector): AVector = mmpycheck(x) {
@@ -569,7 +580,7 @@ case class AlmapDiagCatFor(val len: IRPoly, val body: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapDiagCatFor(len.arityOp(op), body.arityOp(op.promote))
   def inputOp(op: InputOp): Almap = AlmapDiagCatFor(len, body.inputOp(op.promote))
 
-  def T: Almap = AlmapDiagCatFor(len, body.T)
+  def T: Almap = Tcheck(AlmapDiagCatFor(len, body.T))
 
   arityVerify()
 
@@ -619,7 +630,7 @@ case class AlmapSumFor(val len: IRPoly, val body: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapSumFor(len.arityOp(op), body.arityOp(op.promote))
   def inputOp(op: InputOp): Almap = AlmapSumFor(len, body.inputOp(op.promote))
 
-  def T: Almap = AlmapSumFor(len, body.T)
+  def T: Almap = Tcheck(AlmapSumFor(len, body.T))
 
   arityVerify()
 
@@ -664,7 +675,7 @@ case class AlmapProd(val argl: Almap, val argr: Almap) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapProd(argl.arityOp(op), argr.arityOp(op))
   def inputOp(op: InputOp): Almap = AlmapProd(argl.inputOp(op), argr.inputOp(op))
 
-  def T: Almap = AlmapProd(argr.T, argl.T)
+  def T: Almap = Tcheck(AlmapProd(argr.T, argl.T))
 
   arityVerify()
 
@@ -717,7 +728,7 @@ case class AlmapInput(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly]
     op.xs(iidx).substituteSeq(sidx)
   }
 
-  def T: Almap = AlmapInputT(input, iidx, sidx)
+  def T: Almap = Tcheck(AlmapInputT(input, iidx, sidx))
 
   arityVerify()
 
@@ -753,7 +764,7 @@ case class AlmapInputT(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly
     op.xs(iidx).substituteSeq(sidx)
   }
 
-  def T: Almap = AlmapInput(input, iidx, sidx)
+  def T: Almap = Tcheck(AlmapInput(input, iidx, sidx))
 
   arityVerify()
 
@@ -780,7 +791,7 @@ case class AlmapVector(val arg: AVector) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapVector(arg.arityOp(op))
   def inputOp(op: InputOp): Almap = AlmapVector(arg.inputOp(op))
 
-  def T: Almap = AlmapVectorT(arg)
+  def T: Almap = Tcheck(AlmapVectorT(arg))
 
   def mmpy(x: AVector): AVector = mmpycheck(x) {
     AVectorMpy(arg, x)
@@ -813,7 +824,7 @@ case class AlmapVectorT(val arg: AVector) extends Almap {
   def arityOp(op: ArityOp): Almap = AlmapVectorT(arg.arityOp(op))
   def inputOp(op: InputOp): Almap = AlmapVectorT(arg.inputOp(op))
 
-  def T: Almap = AlmapVectorT(arg)
+  def T: Almap = Tcheck(AlmapVector(arg))
 
   def mmpy(x: AVector): AVector = mmpycheck(x) {
     AVectorDot(arg, x)

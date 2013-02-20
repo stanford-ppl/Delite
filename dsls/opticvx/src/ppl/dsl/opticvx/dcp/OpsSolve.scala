@@ -82,7 +82,7 @@ trait DCPOpsSolve extends DCPOpsFunction {
       minfxn.conicOffset,
       minfxn.conicCone)
 
-    val tt = PrimalDualSubgradient.gen(problem)
+    val tt = AlternatingProjections.gen(problem)
     val pp = s_params map (s => s.binding)
     val mm = for(m <- tt.input.memory) yield {
       if(m.dims.length != 0) throw new IRValidationException()
