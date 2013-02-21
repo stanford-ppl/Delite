@@ -257,7 +257,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case e:DeliteHashReduceElem[_,_,_] => true
     case e:DeliteHashCollectElem[_,_,_] => true
     case e:DeliteHashIndexElem[_,_] => true
-    case e:DeliteCollectElem[_,_,_] => e.par == ParBuffer //e.cond.nonEmpty
+    case e:DeliteCollectElem[_,_,_] => false //e.par == ParBuffer //e.cond.nonEmpty
     case _ => false
   }  
 
@@ -1388,6 +1388,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   def emitReturn(rhs: String)
   def emitFieldDecl(name: String, tpe: String)
   def emitClass(name: String)(body: => Unit)
+  def emitObject(name: String)(body: => Unit)
   def emitValDef(name: String, tpe: String, init: String): Unit
   def emitVarDef(name: String, tpe: String, init: String): Unit
   def emitAssignment(name: String, tpe: String, rhs: String): Unit
@@ -1911,7 +1912,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
     // init and compute first element
     emitMethod("init", actType, List(("__act",actType),(quote(op.v),remap(op.v.tp)))) {
-      if (op.body exists (loopBodyNeedsCombine _)) {
+      if (op.body exists (b => loopBodyNeedsCombine(b) || loopBodyNeedsPostProcess(b))) {
         emitMultiLoopFuncs(op, symList)
         emitNewInstance("__act2", actType)
         emitKernelMultiHashInit(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act2.")
@@ -2142,6 +2143,67 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           emitFieldDecl(quote(sym)+"_zero", remap(sym.tp))
           emitFieldDecl(quote(sym)+"_zero_2", remap(elem.func._2.tp))
       }
+
+      emitMethod("serialize", "java.util.ArrayList[com.google.protobuf.ByteString]", List()) {
+        def serializeRef(sym: String) = "ppl.delite.runtime.messages.Serialization.serialize(this." + sym + ", true, \"" + sym + "\")"
+        def serializeVal(sym: String, size: String = "-1") = "ppl.delite.runtime.messages.Serialization.serialize(this." + sym + ", 0, " + size + ")"
+
+        emitValDef("arr", "java.util.ArrayList[com.google.protobuf.ByteString]", "new java.util.ArrayList")
+        def prefix = "arr.add"
+        var firstHash = true
+        (symList zip op.body) foreach {
+          case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
+            if (firstHash) {
+              emitValDef("size", remap(Manifest.Int), kernelName+"_hash_pos.size")
+              emitMethodCall(prefix, List(serializeVal(kernelName+"_hash_pos.unsafeKeys", "size")))
+              //emitMethodCall(prefix, List(serializeVal(kernelName+"_hash_pos.unsafeIndices"))) //TODO: remove this
+              firstHash = false
+            }
+            emitMethodCall(prefix, List(serializeVal(quote(sym)+"_hash_data", "size")))
+          case (sym, elem: DeliteCollectElem[_,_,_]) =>
+            emitMethodCall(prefix, List(serializeRef(quote(sym))))
+          case (sym, elem: DeliteForeachElem[_]) =>
+          case (sym, elem: DeliteReduceElem[_]) =>
+            emitMethodCall(prefix, List(serializeVal(quote(sym))))
+            //emitMethodCall(prefix, List(serializeVal(quote(sym)+"_zero")))
+          case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+            emitMethodCall(prefix, List(serializeVal(quote(sym))))
+            emitMethodCall(prefix, List(serializeVal(quote(sym)+"_2")))
+        }
+        emitReturn("arr")
+      }
+    }
+
+    emitObject("activation_" + kernelName) {
+      emitMethod("deserialize", "activation_"+kernelName, List(("bytes", "java.util.List[com.google.protobuf.ByteString]"))) {
+        var idx = -1
+        def deserialize(tp: String) = { idx += 1; "ppl.delite.runtime.messages.Serialization.deserialize(classOf[" + tp + "], bytes.get(" + idx + "))" }
+        emitValDef("act", "activation_"+kernelName, "new activation_"+kernelName)
+        val prefix = "act."
+        var firstHash = true
+        (symList zip op.body) foreach {
+          case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
+            if (firstHash) {
+              val keyType = if (isPrimitiveType(elem.keyFunc.tp)) "ppl.delite.runtime.data.DeliteArray" + remap(elem.keyFunc.tp) else "ppl.delite.runtime.data.DeliteArrayObject[" + remap(elem.keyFunc.tp) + "]"
+              emitValDef("keys", keyType, deserialize(keyType))
+              //emitValDef("indices", "Array[Int]", deserialize("Array[Int]"))
+              emitAssignment(prefix+kernelName+"_hash_pos", "", "new generated.scala.container.HashMapImpl[" + remap(elem.keyFunc.tp) + "](keys.length*4,keys.length)")
+              stream.println("for (i <- 0 until keys.length) " + prefix+kernelName+"_hash_pos.put(keys(i))") //FIXME!              
+              firstHash = false
+            }
+            emitAssignment(prefix+quote(sym)+"_hash_data", "", deserialize(remap(sym.tp))+".data")
+          case (sym, elem: DeliteCollectElem[_,_,_]) =>
+            emitAssignment(prefix+quote(sym), "", deserialize(remap(sym.tp)))
+          case (sym, elem: DeliteForeachElem[_]) =>
+          case (sym, elem: DeliteReduceElem[_]) =>
+            emitAssignment(prefix+quote(sym), "", deserialize(remap(sym.tp)))
+            //emitAssignment(prefix+quote(sym)+"_zero", "", deserialize(remap(sym.tp)))
+          case (sym, elem: DeliteReduceTupleElem[_,_]) => 
+            emitAssignment(prefix+quote(sym), "", deserialize(remap(sym.tp)))
+            emitAssignment(prefix+quote(sym)+"_2", "", deserialize(remap(elem.func._2.tp)))
+        }
+        emitReturn("act")
+      }
     }
   }
 
@@ -2207,6 +2269,12 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
 
   def emitClass(name: String)(body: => Unit) {
     stream.println("final class " + name + " {")
+    body
+    stream.println("}")
+  }
+
+  def emitObject(name: String)(body: => Unit) {
+    stream.println("object " + name + " {")
     body
     stream.println("}")
   }

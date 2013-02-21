@@ -10,6 +10,7 @@ trait DeliteArray[T] {
 
   def hasArray: Boolean
   def copy(srcPos: Int, dest: DeliteArray[T], destPos: Int, len: Int): Unit
+  def data: Array[T]
 }
 
 abstract class RemoteDeliteArray[T:Manifest] extends DeliteArray[T] {
@@ -20,6 +21,8 @@ abstract class RemoteDeliteArray[T:Manifest] extends DeliteArray[T] {
 
   def apply(i: Int) = getLocal.apply(i)
   def update(i: Int, x: T) = getLocal.update(i,x)
+
+  def data = getLocal.data
 
   private var local: L = _
 
@@ -37,9 +40,11 @@ abstract class RemoteDeliteArray[T:Manifest] extends DeliteArray[T] {
     res
   }
 
-  def getLocal = {
+  def getLocal = if (local eq null) retrieveArray else local
+
+  private def retrieveArray = {
     if (!hasArray) {
-      println("WARNING: transferring remote symbol " + id)
+      println("WARNING: transferring remote symbol " + id.split("_")(0))
       val returnResults = DeliteMesosScheduler.getData(id)
       val chunks = for (result <- returnResults) yield {
         Serialization.deserialize(specializedClass, result.getOutput(0)).asInstanceOf[LocalDeliteArray[T]]

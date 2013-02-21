@@ -4,7 +4,7 @@ import org.apache.mesos._
 import org.apache.mesos.Protos._
 import com.google.protobuf.ByteString
 import java.util.concurrent.locks.ReentrantLock
-import java.util.HashMap
+import java.util.{ArrayList,HashMap}
 import ppl.delite.runtime.data.DeliteArray
 import ppl.delite.runtime.executor.ThreadPool
 import ppl.delite.runtime.codegen.DeliteExecutable
@@ -81,6 +81,7 @@ class DeliteMesosExecutor extends Executor {
 
           Delite.embeddedMain(args, Map())
 
+          DeliteMesosExecutor.network.stop()
           driver.sendStatusUpdate(status(TaskState.TASK_FINISHED))
         }
         catch {
@@ -179,14 +180,13 @@ object DeliteMesosExecutor {
   
   var executor: ThreadPool = _
   var classLoader = this.getClass.getClassLoader
-  val results = new HashMap[String,Any]
+  val results = new HashMap[String,ArrayList[Any]]
 
-  private var id = 0
-  private def nextId = { id += 1; id-1 }
+  //TODO: better partitioning strategies
   private var size = -1
 
-  def getResult(id: String) = {
-    val data = results.get(id).asInstanceOf[DeliteArray[_]]
+  def getResult(id: String, offset: Int) = {
+    val data = results.get(id).get(offset).asInstanceOf[DeliteArray[_]]
     if (size == -1) {
       size = data.length
     }
@@ -197,8 +197,8 @@ object DeliteMesosExecutor {
   }
 
   def processSlaves(info: CommInfo) {
-    numSlaves = info.getSlaveAddressCount
     slaveIdx = info.getSlaveIdx
+    numSlaves = info.getSlaveAddressCount
     assert(network.id == new ConnectionManagerId(info.getSlaveAddress(slaveIdx), info.getSlavePort(slaveIdx)))
     for (i <- 0 until numSlaves) {
       networkMap.put(i, new ConnectionManagerId(info.getSlaveAddress(i), info.getSlavePort(i)))
@@ -276,7 +276,7 @@ object DeliteMesosExecutor {
         val header = method.invoke(null, args:_*)
         val workLock = new ReentrantLock
         val done = workLock.newCondition
-        var notDone = Config.numThreads
+        var notDone = true
         var result: Any = null
         
         for (i <- 0 until Config.numThreads) {
@@ -285,16 +285,16 @@ object DeliteMesosExecutor {
           val exec = new DeliteExecutable {
             def run() { try {
               val res = loopM.invoke(null, header)
-              workLock.lock() //maps should just sync internally, this is redundant for reduce, filter, etc.
-              try {
-                notDone -= 1
-                if (i == 0)
+              if (i == 0) {
+                workLock.lock()
+                try {
                   result = res
-                if (notDone == 0)
-                  done.signal
-              }
-              finally {
-                workLock.unlock()
+                  notDone = false
+                  done.signal()
+                }
+                finally {
+                  workLock.unlock()
+                }
               }
             } catch {
               case i: java.lang.reflect.InvocationTargetException => if (i.getCause != null) throw i.getCause else throw i
@@ -305,7 +305,7 @@ object DeliteMesosExecutor {
 
         workLock.lock()
         try {
-          while (notDone != 0) {
+          while (notDone) {
             done.await
          }
         }
@@ -317,13 +317,8 @@ object DeliteMesosExecutor {
       case i: java.lang.reflect.InvocationTargetException => if (i.getCause != null) throw i.getCause else throw i
     }
 
-    val returnResult = ReturnResult.newBuilder.setId(op.getId)
-    //activation record fields; could use the DEG instead
-    val methods = result.getClass.getDeclaredMethods.filter(m => m.getName.startsWith("x") && !m.getName.contains("_")).toSeq.sortBy(_.getName)
-    for (method <- methods) {
-      val res = method.invoke(result)
-      returnResult.addOutput(Serialization.serialize(res, true))
-    }
+    val serResults = result.getClass.getMethod("serialize").invoke(result).asInstanceOf[java.util.List[ByteString]]
+    val returnResult = ReturnResult.newBuilder.setId(op.getId).addAllOutput(serResults)
 
     val mssg = DeliteSlaveMessage.newBuilder
       .setType(DeliteSlaveMessage.Type.RESULT)
@@ -334,7 +329,16 @@ object DeliteMesosExecutor {
   }
 
   def getData(request: RequestData) {    
-    val ser = Serialization.serialize(results.get(request.getId.getId))
+    val id = request.getId.getId.split("_")
+    assert(id.length == 2)
+    val key = id(0)
+    val offset = id(1).toInt
+
+    val res = results.get(key)
+    if (res == null || res.size <= offset)
+      throw new RuntimeException("data for " + key + "_" + offset + " not found") 
+
+    val ser = Serialization.serialize(res.get(offset))
     val mssg = DeliteSlaveMessage.newBuilder
       .setType(DeliteSlaveMessage.Type.RESULT)
       .setResult(ReturnResult.newBuilder
@@ -346,7 +350,7 @@ object DeliteMesosExecutor {
   }
 
   def getLoopSize: Int = {         
-    if (size == -1) throw new RuntimeException(id + ": loop over unknown size... don't know how to partition")
+    if (size == -1) throw new RuntimeException("loop over unknown size... don't know how to partition")
     size
   }
 

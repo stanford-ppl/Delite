@@ -8,17 +8,31 @@ import ppl.delite.runtime.messages.Messages._
 
 object Serialization {
 
-  private var id = 0
-  def spawnId = {
-    id += 1
-    (id-1).toString
+  private var idOffset = 0
+  private def nextOffset = {
+    idOffset += 1
+    (idOffset-1)
   }
 
+  //FIXME: stack is not thread-safe
   private var sendId = false
   private var lookupId = false
+  var symId: String = _
 
-  def serialize[T](value: T, sendId: Boolean = false): ByteString = {
-    this.sendId = sendId
+  private var copyLength = -1
+  private var copyOffset = 0
+
+  def serialize[T](value: T): ByteString = serialize(value, false, null, 0, -1)
+  def serialize[T](value: T, sendId: Boolean, symId: String): ByteString = serialize(value, sendId, symId, 0, -1)
+  def serialize[T](value: T, offset: Int, length: Int): ByteString = serialize(value, false, null, offset, length)
+
+  def serialize[T](value: T, sendId: Boolean, symId: String, offset: Int, length: Int): ByteString = {
+    this.sendId = sendId //initialize stack
+    copyLength = length
+    copyOffset = offset
+    this.symId = symId
+    idOffset = 0
+
     value match {
       case v:Int => IntMessage.newBuilder.setValue(v).build.toByteString
       case v:Long => LongMessage.newBuilder.setValue(v).build.toByteString
@@ -30,6 +44,9 @@ object Serialization {
       case v:Short => IntMessage.newBuilder.setValue(v).build.toByteString
       case s:String => StringMessage.newBuilder.setValue(s).build.toByteString
       case a:DeliteArray[_] => serializeDeliteArray(a).toByteString
+      case a: Array[Int] => serializeDeliteArray(new LocalDeliteArrayInt(a)).toByteString
+      case a: Array[Char] => serializeDeliteArray(new LocalDeliteArrayChar(a)).toByteString
+      case a: Array[Double] => serializeDeliteArray(new LocalDeliteArrayDouble(a)).toByteString
       case other =>
         try {
           other.getClass.getMethod("toByteString").invoke(other).asInstanceOf[ByteString]
@@ -40,64 +57,69 @@ object Serialization {
     }
   }
 
+  //TODO: for large arrays we probably want to avoid protobufs (extra copies)
+  //seems to require 2 different interfaces? (ByteBuffer vs ByteString)
   def serializeDeliteArray(array: DeliteArray[_]): ArrayMessage = {
+    val length = if (copyLength == -1) array.length else copyLength
+    val offset = this.copyOffset
     array match {
       case a:DeliteArray[_] if sendId => 
-        val id = spawnId
-        saveLocally(id, a)
-        ArrayMessage.newBuilder.setId(Id.newBuilder.setId(id)).setLength(a.length).build
+        val symOffset = nextOffset
+        saveLocally(symId, symOffset, a)
+        val id = symId + "_" + symOffset
+        ArrayMessage.newBuilder.setId(Id.newBuilder.setId(id)).setLength(length).build
       case a:RemoteDeliteArray[_] =>
         ArrayMessage.newBuilder.setId(Id.newBuilder.setId(a.id)).build
       case a:LocalDeliteArrayInt =>
-        val buf = ByteBuffer.allocate(a.data.length*4)
-        buf.asIntBuffer.put(a.data)
+        val buf = ByteBuffer.allocate(length*4)
+        buf.asIntBuffer.put(a.data, offset, length)
         val array = ByteString.copyFrom(buf)
-        ArrayMessage.newBuilder.setLength(a.length).setArray(array).build
+        ArrayMessage.newBuilder.setLength(length).setArray(array).build
       case a:LocalDeliteArrayLong => 
-        val buf = ByteBuffer.allocate(a.data.length*8)
-        buf.asLongBuffer.put(a.data)
+        val buf = ByteBuffer.allocate(length*8)
+        buf.asLongBuffer.put(a.data, offset, length)
         val array = ByteString.copyFrom(buf)
-        ArrayMessage.newBuilder.setLength(a.length).setArray(array).build
+        ArrayMessage.newBuilder.setLength(length).setArray(array).build
       case a:LocalDeliteArrayFloat => 
-        val buf = ByteBuffer.allocate(a.data.length*4)
-        buf.asFloatBuffer.put(a.data)
+        val buf = ByteBuffer.allocate(length*4)
+        buf.asFloatBuffer.put(a.data, offset, length)
         val array = ByteString.copyFrom(buf)
-        ArrayMessage.newBuilder.setLength(a.length).setArray(array).build
+        ArrayMessage.newBuilder.setLength(length).setArray(array).build
       case a:LocalDeliteArrayDouble => 
-        val buf = ByteBuffer.allocate(a.data.length*8)
-        buf.asDoubleBuffer.put(a.data)
+        val buf = ByteBuffer.allocate(length*8)
+        buf.asDoubleBuffer.put(a.data, offset, length)
         val array = ByteString.copyFrom(buf)
-        ArrayMessage.newBuilder.setLength(a.length).setArray(array).build
+        ArrayMessage.newBuilder.setLength(length).setArray(array).build
       case a:LocalDeliteArrayChar => 
-        val buf = ByteBuffer.allocate(a.data.length*2)
-        buf.asCharBuffer.put(a.data)
+        val buf = ByteBuffer.allocate(length*2)
+        buf.asCharBuffer.put(a.data, offset, length)
         val array = ByteString.copyFrom(buf)
-        ArrayMessage.newBuilder.setLength(a.length).setArray(array).build
+        ArrayMessage.newBuilder.setLength(length).setArray(array).build
       case a:LocalDeliteArrayShort => 
-        val buf = ByteBuffer.allocate(a.data.length*2)
-        buf.asShortBuffer.put(a.data)
+        val buf = ByteBuffer.allocate(length*2)
+        buf.asShortBuffer.put(a.data, offset, length)
         val array = ByteString.copyFrom(buf)
-        ArrayMessage.newBuilder.setLength(a.length).setArray(array).build
+        ArrayMessage.newBuilder.setLength(length).setArray(array).build
       case a:LocalDeliteArrayBoolean => 
         val arr = a.data
-        val buf = ByteBuffer.allocate(arr.length)
-        var i = 0
-        while (i < arr.length) {
-          val x = if (arr(i)) -1 else 0
-          buf.put(x.asInstanceOf[Byte])
+        val buf = ByteBuffer.allocate(length)
+        var i = offset
+        while (i < offset+length) {
+          val x: Byte = if (arr(i)) -1 else 0
+          buf.put(x)
           i += 1
         }
         val array = ByteString.copyFrom(buf)
-        ArrayMessage.newBuilder.setLength(a.length).setArray(array).build
+        ArrayMessage.newBuilder.setLength(length).setArray(array).build
       case a:LocalDeliteArrayByte => 
-        val array = ByteString.copyFrom(a.data)
-        ArrayMessage.newBuilder.setLength(a.length).setArray(array).build
+        val array = ByteString.copyFrom(a.data, offset, length)
+        ArrayMessage.newBuilder.setLength(length).setArray(array).build
     }
   }
 
-  def deserialize[T](tpe: Class[T], bytes: ByteString, lookupId: Boolean = false): Any = {
+  def deserialize[T](tpe: Class[T], bytes: ByteString, lookupId: Boolean = false): T = {
     this.lookupId = lookupId
-    tpe match {
+    val res = tpe match {
       case tpe if tpe == classOf[Int] => IntMessage.parseFrom(bytes).getValue
       case tpe if tpe == classOf[Long] => LongMessage.parseFrom(bytes).getValue
       case tpe if tpe == classOf[Float] => FloatMessage.parseFrom(bytes).getValue
@@ -123,6 +145,7 @@ object Serialization {
           case e: NoSuchMethodException => throw new UnsupportedOperationException("don't know how to deserialize " + other.getSimpleName)
         }
     }
+    res.asInstanceOf[T]
   }
 
   def deserializeDeliteArrayInt(mssg: ArrayMessage): DeliteArrayInt = {
@@ -173,9 +196,9 @@ object Serialization {
       val array = new Array[Double](byteBuffer.capacity / 8)
       byteBuffer.asDoubleBuffer.get(array)
 
-      print("[ ")
+      /*print("[ ")
       for (i <- 0 until array.length) print(array(i) + " ")
-      println("]")
+      println("]")*/
 
       new LocalDeliteArrayDouble(array)
     }
@@ -258,12 +281,17 @@ object Serialization {
   }
 
   //TODO: reorganize
-  private def saveLocally(id: String, a: Any) {
-    ppl.delite.runtime.DeliteMesosExecutor.results.put(id, a)
+  private def saveLocally(id: String, offset: Int, a: Any) {
+    if (offset == 0) ppl.delite.runtime.DeliteMesosExecutor.results.put(id, new java.util.ArrayList[Any])
+    //ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage("saving " + id + "_" + offset)
+    ppl.delite.runtime.DeliteMesosExecutor.results.get(id).add(a)
   }
 
   private def lookupLocally(id: String): Any = {
-    ppl.delite.runtime.DeliteMesosExecutor.getResult(id)
+    val splitId = id.split("_")
+    val symId = splitId(0)
+    val offset = splitId(1).toInt
+    ppl.delite.runtime.DeliteMesosExecutor.getResult(symId, offset)
   }
 
 }

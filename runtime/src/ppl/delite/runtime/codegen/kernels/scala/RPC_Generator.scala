@@ -64,13 +64,7 @@ object RPC_Generator {
     out.append(op.getInputs.map(_._2 + "_bytes").mkString(",",",",")\n"))
 
     //construct outputs
-    val outputs = op.getOutputs.toSeq.sortBy(o => o) //TODO: return outputs in DEG order
-    out.append("val act = new activation_" + op.id + "\n")
-    var outIdx = 0
-    for (output <- outputs) {
-      out.append("act." + output + " = Serialization.deserialize(classOf[" + op.outputType(output) + "], res(0).getOutput(" + outIdx + ")).asInstanceOf[" + op.outputType(output) + "]\n")
-      outIdx += 1
-    }
+    out.append("val act = activation_" + op.id + ".deserialize(res(0).getOutputList)\n")
     
     //reduce results from other slaves
     out.append("val closure = ")
@@ -83,15 +77,15 @@ object RPC_Generator {
     }
     out.append("var slaveIdx = 1\n")
     out.append("while (slaveIdx < res.length) {\n") //TODO: could parallelize reduce across slaves, then send result to master
-      out.append("val act2 = new activation_" + op.id + "\n")
-      outIdx = 0
-      for (output <- outputs) {
-        out.append("act2." + output + " = Serialization.deserialize(classOf[" + op.outputType(output) + "], res(slaveIdx).getOutput(" + outIdx + ")).asInstanceOf[" + op.outputType(output) + "]\n")
-        outIdx += 1
-      }
+      out.append("val act2 = activation_" + op.id + ".deserialize(res(slaveIdx).getOutputList)\n")
       out.append("closure.combine(act,act2)\n")
       out.append("slaveIdx += 1\n")
     out.append("}\n")
+
+    op match {
+      case m: OP_MultiLoop if m.needsCombine => out.append("closure.finalize(act)\n") //TODO: should this be called by master, slaves, or both?
+      case _ =>
+    }
 
     out.append("act\n")
   }

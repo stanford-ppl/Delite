@@ -131,6 +131,7 @@ class DeliteMesosScheduler(private val executor: ExecutorInfo) extends Scheduler
    */
   def statusUpdate(driver: SchedulerDriver, status: TaskStatus) {
     def abnormalShutdown(reason: Exception) {
+      DeliteMesosScheduler.network.stop()
       driver.stop()
       Delite.shutdown(reason)
     }
@@ -258,6 +259,7 @@ object DeliteMesosScheduler {
     driver.start() //TODO: sanity check successful connection
     Delite.embeddedMain(args, Map())
     
+    network.stop()
     driver.stop()
   }
 

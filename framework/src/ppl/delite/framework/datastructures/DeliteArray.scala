@@ -392,7 +392,7 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenFat with
   import IR._
   
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case a@DeliteArrayNew(n) if isPrimitiveType(remap(a.mA)) => 
+    case a@DeliteArrayNew(n) if isPrimitiveType(a.mA) => 
       emitValDef(sym, "new ppl.delite.runtime.data.LocalDeliteArray" + remap(a.mA) + "(" + quote(n) + ")")
     case a@DeliteArrayNew(n) =>
       emitValDef(sym, "new ppl.delite.runtime.data.LocalDeliteArrayObject[" + remap(a.mA) + "](" + quote(n) + ")")
@@ -434,15 +434,10 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenFat with
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
     case "DeliteArray" => m.typeArguments(0) match {
       case StructType(_,_) => structName(m)
-      case arg if isPrimitiveType(remap(arg)) => "ppl.delite.runtime.data.DeliteArray" + remap(arg)
+      case arg if isPrimitiveType(arg) => "ppl.delite.runtime.data.DeliteArray" + remap(arg)
       case arg => "ppl.delite.runtime.data.DeliteArrayObject[" + remap(arg) + "]"
     }
     case _ => super.remap(m)
-  }
-
-  private def isPrimitiveType(tpe: String) = tpe match {
-    case "Int" | "Long" | "Double" | "Float" | "Char" | "Short" | "Byte" | "Boolean" => true
-    case _ => false
   }
 
 }

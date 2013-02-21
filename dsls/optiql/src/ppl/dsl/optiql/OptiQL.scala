@@ -140,6 +140,12 @@ trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg wi
     }   
   }
 
+  //because we remapped object types to primitive types above
+  override def isPrimitiveType[A](m: Manifest[A]) = remap(m) match {
+    case "Boolean" | "Byte" | "Char" | "Short" | "Int" | "Long" | "Float" | "Double" => true
+    case _ => false
+  }
+
   override def emitNode(sym: IR.Sym[Any], rhs: IR.Def[Any]) = rhs match {
     case IR.Struct(tag, elems) if sym.tp.toString == "scala.Tuple2[Char, Char]" =>
       emitValDef(sym, "("+ quote(elems(0)._2) + ".toInt << 16) + " + quote(elems(1)._2))

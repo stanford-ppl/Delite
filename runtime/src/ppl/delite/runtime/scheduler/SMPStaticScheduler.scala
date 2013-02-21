@@ -63,7 +63,7 @@ final class SMPStaticScheduler extends StaticScheduler with ParallelUtilizationC
       case l: OP_MultiLoop => 
 				if (shouldParallelize(l, Map[String,Int]())) {
           if (Config.clusterMode == 1) {
-            OpHelper.remote(op, graph.kernelPath)
+            OpHelper.remote(op, graph.kernelPath) //TODO: master should be assigned first chunk?
             cluster(op, schedule)
           }
           else 
