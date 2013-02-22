@@ -57,7 +57,7 @@ object DCPOpsTestApp extends DCPOps {
       over(scalar -> x), 
       let(),
       where(
-        square(x) <= 9.0
+        x <= 9.0
       ),
       maximize(
         x

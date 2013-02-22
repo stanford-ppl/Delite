@@ -7,7 +7,7 @@ import ppl.dsl.opticvx.solvergen._
 import scala.collection.immutable.Seq
 
 
-object AlternatingProjections extends SolverGen {
+object AlternatingProjections extends SolverGenUtil {
 
 
   def code(A: Almap, b: AVector, F: Almap, g: AVector, c: AVector, cone: Cone) {
@@ -20,8 +20,13 @@ object AlternatingProjections extends SolverGen {
     val gm = v2m(g)
 
     val x_out = vector(varSize)
-    val u = vector(varSize + affineCstrtSize + coneSize + coneSize + 2)
     val x = vector(varSize + affineCstrtSize + coneSize + coneSize + 2)
+    val y = vector(varSize + affineCstrtSize + coneSize + coneSize + 2)
+    val p = vector(varSize + affineCstrtSize + coneSize + coneSize + 2)
+    val q = vector(varSize + affineCstrtSize + coneSize + coneSize + 2)
+    
+    /*
+    val u = vector(varSize + affineCstrtSize + coneSize + coneSize + 2)
     val v = vector(varSize + affineCstrtSize + coneSize + coneSize + 2)
     val norm2v = scalar
     val norm2u = scalar
@@ -32,6 +37,7 @@ object AlternatingProjections extends SolverGen {
     val alpha = scalar
     val beta = scalar
     val J = scalar
+    */
 
     val M = vcat(
       hcat(zeros(A.domain, A.domain), -A.T, -F.T, zeros(F.codomain, A.domain), cm, zeros(1, A.domain)),
@@ -40,8 +46,27 @@ object AlternatingProjections extends SolverGen {
       hcat(-cm.T, -bm.T, -gm.T, zeros(F.codomain + 1, 1), -eye(1)))
     val K = cat(freecone(A.domain + A.codomain), cone.conj, cone, ConeNonNegative(cone.arity), ConeNonNegative(cone.arity))
     
+    val Mproj = OrthoNullProjectorPartial(M)
+
     x := cat(zeros(varSize + affineCstrtSize + coneSize + coneSize), ones(2))
-    
+    y := cat(zeros(varSize + affineCstrtSize + coneSize + coneSize + 2))
+    p := cat(zeros(varSize + affineCstrtSize + coneSize + coneSize + 2))
+    q := cat(zeros(varSize + affineCstrtSize + coneSize + coneSize + 2))
+
+    y := Mproj.proj_init(x + p)
+    converge(sqrt(norm2(M*x))) {
+      //converge(Mproj.residual) {
+      //  y := Mproj.proj(y)
+      //}
+      p := x + p - y
+      x := K.project(y + q)
+      q := y + q - x
+      y := Mproj.proj(x + p)
+    }
+
+    x_out := slice(x, 0, varSize) / slice(x, varSize + affineCstrtSize + coneSize + coneSize, 1)
+
+    /*
     v := (M.T * M) * x
     norm2v := norm2(v)
     alpha := dot(v, x)/norm2v
@@ -57,6 +82,7 @@ object AlternatingProjections extends SolverGen {
       alpha := ((norm2v * udotx) - (udotv * vdotx))/deteq
       beta := ((norm2u * vdotx) - (udotv * udotx))/deteq
       v := u*alpha + v*beta
+      norm2v := norm2(v)
       x := x - v
       x := K.project(x)
       x := x / sqrt(norm2(x))
@@ -67,6 +93,7 @@ object AlternatingProjections extends SolverGen {
 
     v := K.conj.project(-x)
     x_out := slice(x, 0, varSize) / slice(x, varSize + affineCstrtSize + coneSize + coneSize, 1)
+    */
   }
 }
 

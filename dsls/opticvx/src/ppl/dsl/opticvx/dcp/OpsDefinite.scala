@@ -113,7 +113,7 @@ object SolverRuntimeDefinite extends SolverRuntime[Int, MatrixDefinite, MultiSeq
     while(cond) {
       val (nm, v) = body(m)
       if(v.length != 1) throw new IRValidationException()
-      cond = (v(0) >= 1e-5)
+      cond = (v(0) >= 1e-8)
       m = nm
       i += 1
     }
