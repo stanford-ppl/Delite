@@ -34,7 +34,7 @@ case class ConeZero(val arity: Int) extends Cone {
   def arityOp(op: ArityOp): Cone = ConeZero(op.arity)
 
   def project(x: AVector): AVector = {
-    if(x.size != 1) throw new IRValidationException()
+    if(x.size != IRPoly.const(1, arity)) throw new IRValidationException()
     AVectorZero(x.input, IRPoly.const(1, x.arity))
   }
 

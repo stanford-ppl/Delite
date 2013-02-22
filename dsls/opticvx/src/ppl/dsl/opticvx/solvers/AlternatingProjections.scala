@@ -20,10 +20,10 @@ object AlternatingProjections extends SolverGen {
     val gm = v2m(g)
 
     val x_out = vector(varSize)
+    val u = vector(varSize + affineCstrtSize + coneSize + coneSize + 2)
     val x = vector(varSize + affineCstrtSize + coneSize + coneSize + 2)
     val v = vector(varSize + affineCstrtSize + coneSize + coneSize + 2)
     val norm2v = scalar
-    val u = vector(varSize + affineCstrtSize + coneSize + coneSize + 2)
     val norm2u = scalar
     val udotv = scalar
     val udotx = scalar
@@ -34,10 +34,10 @@ object AlternatingProjections extends SolverGen {
     val J = scalar
 
     val M = vcat(
-      hcat(zeros(A.domain, A.domain), A.T, -F.T, zeros(F.codomain, A.domain), cm, zeros(1, A.domain)),
+      hcat(zeros(A.domain, A.domain), -A.T, -F.T, zeros(F.codomain, A.domain), cm, zeros(1, A.domain)),
       hcat(A, zeros(A.codomain + F.codomain + F.codomain, A.codomain), bm, zeros(1, A.codomain)),
-      hcat(-F, zeros(A.codomain + F.codomain, F.codomain), eye(F.codomain), -gm, zeros(1, F.codomain)),
-      hcat(cm.T, bm.T, -gm.T, zeros(F.codomain + 1, 1), eye(1)))
+      hcat(F, zeros(A.codomain + F.codomain, F.codomain), -eye(F.codomain), gm, zeros(1, F.codomain)),
+      hcat(-cm.T, -bm.T, -gm.T, zeros(F.codomain + 1, 1), -eye(1)))
     val K = cat(freecone(A.domain + A.codomain), cone.conj, cone, ConeNonNegative(cone.arity), ConeNonNegative(cone.arity))
     
     x := cat(zeros(varSize + affineCstrtSize + coneSize + coneSize), ones(2))
@@ -65,6 +65,7 @@ object AlternatingProjections extends SolverGen {
       J := udotx
     }
 
+    v := K.conj.project(-x)
     x_out := slice(x, 0, varSize) / slice(x, varSize + affineCstrtSize + coneSize + coneSize, 1)
   }
 }

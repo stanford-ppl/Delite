@@ -89,6 +89,10 @@ trait DCPOpsSolve extends DCPOpsFunction {
       MultiSeq((for (i <- 0 until m.size.eval(pp)(IntLikeInt)) yield 0.0): Seq[Double])
     }
     val vv = tt.run[Int, MatrixDefinite, MultiSeq[MatrixDefinite], Seq[Double], MultiSeq[Seq[Double]]](SolverRuntimeDefinite, pp, Seq(), mm)
+    println(vv(0))
+    println(vv(1))
+    println(vv(2))
+    println(vv(3))
     val syms = (s_over map (x => x.symbol)) ++ (s_let map (x => x.symbol))
     for(s <- syms) {
       val x = s.boundexpr

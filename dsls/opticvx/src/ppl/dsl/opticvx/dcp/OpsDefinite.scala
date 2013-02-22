@@ -109,11 +109,15 @@ object SolverRuntimeDefinite extends SolverRuntime[Int, MatrixDefinite, MultiSeq
   def converge(memory: Seq[MultiSeq[Seq[Double]]], body: (Seq[MultiSeq[Seq[Double]]]) => (Seq[MultiSeq[Seq[Double]]], Seq[Double])): Seq[MultiSeq[Seq[Double]]] = {
     var m = memory
     var cond: Boolean = true
+    var i: Int = 0
     while(cond) {
       val (nm, v) = body(m)
-      cond = (v.foldLeft(0.0)((a, x) => a + x*x) >= 1e-40)
+      if(v.length != 1) throw new IRValidationException()
+      cond = (v(0) >= 1e-5)
       m = nm
+      i += 1
     }
+    println("converged in " + i.toString + " iterations")
     m
   }
   def runfor(len: Int, memory: Seq[MultiSeq[Seq[Double]]], body: (Int, Seq[MultiSeq[Seq[Double]]]) => Seq[MultiSeq[Seq[Double]]]): Seq[MultiSeq[Seq[Double]]] = {
