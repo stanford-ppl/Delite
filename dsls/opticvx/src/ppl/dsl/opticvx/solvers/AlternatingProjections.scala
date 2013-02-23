@@ -48,7 +48,7 @@ object AlternatingProjections extends SolverGenUtil {
     
     val Mproj = new LSQRProject(M)
 
-    x := cat(zeros(varSize + affineCstrtSize + coneSize + coneSize), ones(2))
+    x := K.central_vector(A.input) //cat(zeros(varSize + affineCstrtSize + coneSize + coneSize), ones(2))
     y := cat(zeros(varSize + affineCstrtSize + coneSize + coneSize + 2))
     p := cat(zeros(varSize + affineCstrtSize + coneSize + coneSize + 2))
     q := cat(zeros(varSize + affineCstrtSize + coneSize + coneSize + 2))

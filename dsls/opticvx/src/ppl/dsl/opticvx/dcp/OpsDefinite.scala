@@ -109,18 +109,27 @@ object SolverRuntimeDefinite extends SolverRuntime[Int, MatrixDefinite, MultiSeq
     vecs.updated(at, src)
   }
 
+  var isconverging: Boolean = false
   def converge(memory: Seq[MultiSeq[Seq[Double]]], body: (Seq[MultiSeq[Seq[Double]]]) => (Seq[MultiSeq[Seq[Double]]], Seq[Double])): Seq[MultiSeq[Seq[Double]]] = {
     var m = memory
     var cond: Boolean = true
     var i: Int = 0
+    val old_isconverging = isconverging
+    isconverging = true
     while(cond) {
       val (nm, v) = body(m)
       if(v.length != 1) throw new IRValidationException()
-      cond = (v(0) >= 1e-8)
+      if(!old_isconverging) {
+        println(v(0))
+      }
+      cond = (v(0) >= 1e-4)
       m = nm
       i += 1
     }
-    println("converged in " + i.toString + " iterations")
+    isconverging = old_isconverging
+    if(!isconverging) {
+      println("converged in " + i.toString + " iterations")
+    }
     m
   }
   def runfor(len: Int, memory: Seq[MultiSeq[Seq[Double]]], body: (Int, Seq[MultiSeq[Seq[Double]]]) => Seq[MultiSeq[Seq[Double]]]): Seq[MultiSeq[Seq[Double]]] = {

@@ -11,6 +11,8 @@ trait Cone extends HasArity[Cone] {
   def simplify: Cone
 
   def project(x: AVector): AVector
+
+  def central_vector(input: InputDesc): AVector
 }
 
 case class ConeNull(val arity: Int) extends Cone {
@@ -25,6 +27,8 @@ case class ConeNull(val arity: Int) extends Cone {
   }
 
   def simplify: Cone = this
+
+  def central_vector(input: InputDesc): AVector = AVectorZero(input, IRPoly.const(0, arity))
 }
 
 case class ConeZero(val arity: Int) extends Cone {
@@ -39,6 +43,8 @@ case class ConeZero(val arity: Int) extends Cone {
   }
 
   def simplify: Cone = this
+
+  def central_vector(input: InputDesc): AVector = AVectorZero(input, IRPoly.const(1, arity))
 }
 
 case class ConeFree(val arity: Int) extends Cone {
@@ -53,6 +59,8 @@ case class ConeFree(val arity: Int) extends Cone {
   }
 
   def simplify: Cone = this
+
+  def central_vector(input: InputDesc): AVector = AVectorZero(input, IRPoly.const(1, arity))
 }
 
 //The trivial scalar cone (the only proper cone over R)
@@ -68,6 +76,8 @@ case class ConeNonNegative(val arity: Int) extends Cone {
   }
 
   def simplify: Cone = this
+
+  def central_vector(input: InputDesc): AVector = AVectorOne(input)
 }
 
 //Second order cone
@@ -113,6 +123,8 @@ case class ConeSecondOrder(val dim: IRPoly) extends Cone {
   */
 
   def simplify: Cone = this
+
+  def central_vector(input: InputDesc): AVector = AVectorCat(AVectorOne(input), AVectorZero(input, dim))
 }
 
 //Cartesian-product of cones
@@ -152,6 +164,8 @@ case class ConeProduct(val arg1: Cone, val arg2: Cone) extends Cone {
       ConeProduct(sa1, sa2)
     }
   }
+
+  def central_vector(input: InputDesc): AVector = AVectorCat(arg1.central_vector(input), arg2.central_vector(input))
 }
 
 //For-loop product of cones
@@ -201,4 +215,6 @@ case class ConeFor(val len: IRPoly, val body: Cone) extends Cone {
       ConeFor(len, sb)
     }
   }
+
+  def central_vector(input: InputDesc): AVector = AVectorCatFor(len, body.central_vector(input.promote))
 }
