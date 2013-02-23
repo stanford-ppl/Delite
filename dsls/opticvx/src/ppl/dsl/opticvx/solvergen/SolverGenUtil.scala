@@ -8,7 +8,7 @@ import scala.collection.immutable.Seq
 
 trait SolverGenUtil extends SolverGen {
 
-  case class OrthoNullProjectorPartial(val A: Almap) {
+  class OrthoNullProjectorPartial(val A: Almap) {
     private val ATA: Almap = (A.T * A).simplify
     private val u: SVariable = vector(A.domain)
     private val v: SVariable = vector(A.domain)
@@ -55,14 +55,14 @@ trait SolverGenUtil extends SolverGen {
     }
   }
 
-  case class LSQR(val A: Almap) {
+  class LSQR(val A: Almap) {
     private val beta = scalar
-    private val betau = vector(A.domain)
+    private val betau = vector(A.codomain)
     private val u = betau/beta
     private val alpha = scalar
-    private val alphav = vector(A.codomain)
+    private val alphav = vector(A.domain)
     private val v = alphav/alpha
-    private val w = vector(A.codomain)
+    private val w = vector(A.domain)
     private val x = vector(A.domain)
     private val theta = scalar
     private val phi = scalar
@@ -80,15 +80,15 @@ trait SolverGenUtil extends SolverGen {
       alphav := A.T*u
       alpha := sqrt(norm2(alphav))
       w := v
-      x := 0
+      x := zeros(A.domain)
       phibar := beta
       rhobar := alpha
 
       converge(phibar) {
         //solution phase
-        betau := A*v - alpha*u
+        betau := A*v - u*alpha
         beta := sqrt(norm2(betau))
-        alphav := A.T*u - beta*v
+        alphav := A.T*u - v*beta
         alpha := sqrt(norm2(alphav))
 
         rho := sqrt(norm2(rhobar) + norm2(beta))
@@ -104,6 +104,14 @@ trait SolverGenUtil extends SolverGen {
       }
 
       x
+    }
+  }
+
+  class LSQRProject(val A: Almap) {
+    private val lsqr = new LSQR(A)
+
+    def proj(x: AVector): AVector = {
+      x - lsqr.solve(A*x)
     }
   }
 

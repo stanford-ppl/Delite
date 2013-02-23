@@ -77,6 +77,12 @@ case class SolverWrite(val src: AVector, val iidx: Int, sidx: Seq[IRPoly]) exten
   val arity: Int = src.arity
   val input: InputDesc = src.input
 
+  if(src.size != input.memory(iidx).size.substituteSeq(sidx)) {
+    println(src.size)
+    println(input.memory(iidx).size.substituteSeq(sidx))
+    throw new IRValidationException()
+  }
+
   def arityOp(op: ArityOp) = SolverWrite(src.arityOp(op), iidx, sidx map (s => s.arityOp(op)))
   def inputOp(op: InputOp) = SolverWrite(src.inputOp(op), iidx, sidx)
 

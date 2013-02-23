@@ -196,6 +196,23 @@ trait AVector extends HasInput[AVector] {
     inputs: Seq[N],
     memory: Seq[W]): V
 
+  def evalcheck[I, M, N, V, W](
+    runtime: SolverRuntime[I, M, N, V, W], 
+    params: Seq[I], 
+    inputs: Seq[N],
+    memory: Seq[W])(tv: V): V = 
+  {
+    if(size.eval(params)(runtime.intlikei) != runtime.size(tv)) {
+      println(size)
+      println(size.eval(params)(runtime.intlikei))
+      println(runtime.size(tv))
+      println(this)
+      println(memory(10))
+      throw new IRValidationException()
+    }
+    tv
+  }
+
   def arityVerify() {
     if(size.arity != arity) throw new IRValidationException()
     if(input.arity != arity) throw new IRValidationException()
@@ -228,7 +245,7 @@ case class AVectorZero(val input: InputDesc, val size: IRPoly) extends AVector {
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.zero(size.eval(params)(runtime.intlikei))
   }
@@ -254,7 +271,7 @@ case class AVectorOne(val input: InputDesc) extends AVector {
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.one
   }
@@ -289,7 +306,7 @@ case class AVectorSum(val arg1: AVector, val arg2: AVector) extends AVector {
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.sum(
       arg1.eval(runtime, params, inputs, memory), 
@@ -332,7 +349,7 @@ case class AVectorNeg(val arg: AVector) extends AVector {
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.neg(
       arg.eval(runtime, params, inputs, memory))
@@ -391,7 +408,7 @@ case class AVectorScaleConstant(val arg: AVector, val scale: Double) extends AVe
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.scaleconstant(
       arg.eval(runtime, params, inputs, memory), 
@@ -436,7 +453,7 @@ case class AVectorCat(val arg1: AVector, val arg2: AVector) extends AVector {
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.cat(
       arg1.eval(runtime, params, inputs, memory), 
@@ -486,7 +503,7 @@ case class AVectorCatFor(val len: IRPoly, val arg: AVector) extends AVector {
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.catfor(
       len.eval(params)(runtime.intlikei),
@@ -533,7 +550,7 @@ case class AVectorSlice(val arg: AVector, val at: IRPoly, val size: IRPoly) exte
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.slice(
       arg.eval(runtime, params, inputs, memory),
@@ -580,7 +597,7 @@ case class AVectorSumFor(val len: IRPoly, val arg: AVector) extends AVector {
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.sumfor(
       len.eval(params)(runtime.intlikei),
@@ -630,7 +647,7 @@ case class AVectorMpyInput(val arg: AVector, val iidx: Int, val sidx: Seq[IRPoly
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.matrixmpy(
       runtime.matrixget(inputs(iidx), sidx map (s => s.eval(params)(runtime.intlikei))),
@@ -682,7 +699,7 @@ case class AVectorMpyInputT(val arg: AVector, val iidx: Int, val sidx: Seq[IRPol
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.matrixmpytranspose(
       runtime.matrixget(inputs(iidx), sidx map (s => s.eval(params)(runtime.intlikei))),
@@ -725,7 +742,7 @@ case class AVectorRead(val input: InputDesc, val iidx: Int, val sidx: Seq[IRPoly
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.vectorget(memory(iidx), sidx map (s => s.eval(params)(runtime.intlikei)))
   }
@@ -767,7 +784,7 @@ case class AVectorDot(val arg1: AVector, val arg2: AVector) extends AVector {
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.dot(
       arg1.eval(runtime, params, inputs, memory), 
@@ -812,7 +829,7 @@ case class AVectorMpy(val arg: AVector, val scale: AVector) extends AVector {
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.mpy(
       arg.eval(runtime, params, inputs, memory), 
@@ -856,7 +873,7 @@ case class AVectorDiv(val arg: AVector, val scale: AVector) extends AVector {
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.div(
       arg.eval(runtime, params, inputs, memory), 
@@ -899,7 +916,7 @@ case class AVectorSqrt(val arg: AVector) extends AVector {
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.sqrt(arg.eval(runtime, params, inputs, memory))
   }
@@ -936,7 +953,7 @@ case class AVectorNorm2(val arg: AVector) extends AVector {
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.norm2(arg.eval(runtime, params, inputs, memory))
   }
@@ -976,7 +993,7 @@ case class AVectorMax(val arg1: AVector, val arg2: AVector) extends AVector {
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.max(
       arg1.eval(runtime, params, inputs, memory), 
@@ -1019,7 +1036,7 @@ case class AVectorMin(val arg1: AVector, val arg2: AVector) extends AVector {
     runtime: SolverRuntime[I, M, N, V, W], 
     params: Seq[I], 
     inputs: Seq[N],
-    memory: Seq[W]): V = 
+    memory: Seq[W]): V = evalcheck(runtime, params, inputs, memory)
   {
     runtime.min(
       arg1.eval(runtime, params, inputs, memory), 
