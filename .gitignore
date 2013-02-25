@@ -9,6 +9,7 @@
 /local.properties
 delite.properties
 target/
+config/
 *lib_managed
 *src_managed
 project/boot

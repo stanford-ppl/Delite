@@ -2682,6 +2682,10 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
     stream.println("#endif")
   }
 
+  def emitObject(name: String)(body: => Unit) {
+    
+  }
+
   def emitValDef(name: String, tpe: String, init: String) {
     emitVarDef(name, tpe, init)
   }
