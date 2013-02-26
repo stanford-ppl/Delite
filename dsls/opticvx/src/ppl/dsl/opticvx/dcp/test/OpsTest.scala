@@ -57,12 +57,11 @@ object DCPOpsTestApp extends DCPOps {
       over(scalar -> x, scalar -> y), 
       let(),
       where(
-        square(x) <= y,
-        y <= 4.0
-        //square(y) <= x
+        square(x) <= 4.0,
+        square(y) <= x
       ),
       maximize(
-        x
+        y
       )
     )
     println("x = " + x.resolve(0).toString)

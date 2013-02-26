@@ -82,7 +82,7 @@ object SolverRuntimeDefinite extends SolverRuntime[Int, MatrixDefinite, MultiSeq
     for (a <- arg) yield a / scale(0)
   }
   def norm2(arg: Seq[Double]): Seq[Double] = {
-    Seq(arg.foldLeft(1e-100)((a, x) => a + x*x))
+    Seq(arg.foldLeft(1e-300)((a, x) => a + x*x))
   }
   def sqrt(arg: Seq[Double]): Seq[Double] = {
     if(arg.length != 1) throw new IRValidationException()
@@ -109,26 +109,28 @@ object SolverRuntimeDefinite extends SolverRuntime[Int, MatrixDefinite, MultiSeq
     vecs.updated(at, src)
   }
 
-  var isconverging: Boolean = false
-  def converge(memory: Seq[MultiSeq[Seq[Double]]], body: (Seq[MultiSeq[Seq[Double]]]) => (Seq[MultiSeq[Seq[Double]]], Seq[Double])): Seq[MultiSeq[Seq[Double]]] = {
+  var converge_iter_count: Int = -1
+  def converge(memory: Seq[MultiSeq[Seq[Double]]], itermax: Int, body: (Seq[MultiSeq[Seq[Double]]]) => (Seq[MultiSeq[Seq[Double]]], Seq[Double])): Seq[MultiSeq[Seq[Double]]] = {
     var m = memory
     var cond: Boolean = true
-    var i: Int = 0
-    val old_isconverging = isconverging
-    isconverging = true
-    while(cond) {
+    val is_outerloop: Boolean = (converge_iter_count == -1)
+    if(is_outerloop) {
+      converge_iter_count = 0
+    }
+    var i = 0
+    while(cond && (i != itermax)) {
       val (nm, v) = body(m)
       if(v.length != 1) throw new IRValidationException()
-      if(!old_isconverging) {
-        println(v(0))
-      }
-      cond = (v(0) >= 1e-4)
+      cond = (v(0) >= 1e-3)
       m = nm
+      if(!is_outerloop) {
+        converge_iter_count += 1
+      }
       i += 1
     }
-    isconverging = old_isconverging
-    if(!isconverging) {
-      println("converged in " + i.toString + " iterations")
+    if(is_outerloop) {
+      println("converged in " + converge_iter_count.toString + " iterations")
+      converge_iter_count = -1
     }
     m
   }

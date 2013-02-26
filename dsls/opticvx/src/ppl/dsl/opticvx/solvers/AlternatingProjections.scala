@@ -10,16 +10,30 @@ import scala.collection.immutable.Seq
 object AlternatingProjections extends SolverGenUtil {
 
 
-  def code(A: Almap, b: AVector, F: Almap, g: AVector, c: AVector, cone: Cone) {
-    val varSize = A.domain
-    val affineCstrtSize = A.codomain
-    val coneSize = F.codomain
+  def code(Ai: Almap, bi: AVector, Fi: Almap, gi: AVector, ci: AVector, cone: Cone) {
+    val varSize = Ai.domain
+    val affineCstrtSize = Ai.codomain
+    val coneSize = Fi.codomain
+
+    val x_out = vector(varSize)
+
+    val normbi = scalar
+    normbi := ones(1) / sqrt(norm2(bi))
+    val normgi = scalar
+    normgi := ones(1) / sqrt(norm2(gi))
+    val normci = scalar
+    normci := ones(1) / sqrt(norm2(ci))
+
+    val A = AlmapScaleVector(Ai, normbi)
+    val b = bi * normbi
+    val F = AlmapScaleVector(Fi, normgi)
+    val g = gi * normgi
+    val c = ci * normci
 
     val bm = v2m(b)
     val cm = v2m(c)
     val gm = v2m(g)
 
-    val x_out = vector(varSize)
     val x = vector(varSize + affineCstrtSize + coneSize + coneSize + 2)
     val y = vector(varSize + affineCstrtSize + coneSize + coneSize + 2)
     val p = vector(varSize + affineCstrtSize + coneSize + coneSize + 2)
@@ -57,7 +71,7 @@ object AlternatingProjections extends SolverGenUtil {
       //converge(Mproj.residual) {
       //  y := Mproj.proj(y)
       //}
-      y := Mproj.proj(x + p)
+      y := Mproj.proj(x + p, 10)
       p := x + p - y
       x := K.project(y + q)
       q := y + q - x

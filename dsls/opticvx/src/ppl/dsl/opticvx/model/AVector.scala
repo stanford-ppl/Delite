@@ -946,7 +946,7 @@ case class AVectorNorm2(val arg: AVector) extends AVector {
   //   e.norm2(arg.translate)
   // }
 
-  def is0: Boolean = arg.is0
+  def is0: Boolean = false //arg.is0
   def isPure: Boolean = arg.isPure
 
   def eval[I, M, N, V, W](
@@ -960,12 +960,7 @@ case class AVectorNorm2(val arg: AVector) extends AVector {
 
   def simplify: AVector = {
     val sa = arg.simplify
-    if(sa.is0) {
-      AVectorZero(input, size)
-    }
-    else {
-      AVectorNorm2(sa)
-    }
+    AVectorNorm2(sa)
   }
 }
 

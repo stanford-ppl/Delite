@@ -270,6 +270,46 @@ case class AlmapScaleConstant(val arg: Almap, val scale: Double) extends Almap {
 }
 
 
+//Scale of a linear map by a constant
+case class AlmapScaleVector(val arg: Almap, val scale: AVector) extends Almap {
+  val arity: Int = arg.arity
+  val input: InputDesc = arg.input
+  val domain: IRPoly = arg.domain
+  val codomain: IRPoly = arg.codomain
+  
+  if(arg.input != scale.input) throw new IRValidationException()
+  if(scale.size != IRPoly.const(1, arity)) throw new IRValidationException()
+
+  def arityOp(op: ArityOp): Almap = AlmapScaleVector(arg.arityOp(op), scale.arityOp(op))
+  def inputOp(op: InputOp): Almap = AlmapScaleVector(arg.inputOp(op), scale.inputOp(op))
+  
+  def T: Almap = Tcheck(AlmapScaleVector(arg.T, scale))
+
+  arityVerify()
+
+  def mmpy(x: AVector): AVector = mmpycheck(x) {
+    AVectorMpy(arg.mmpy(x), scale)
+  }
+
+  def is0: Boolean = arg.is0 || (scale == 0)
+
+  def isPure: Boolean = arg.isPure
+
+  def simplify: Almap = {
+    val sa = arg.simplify
+    val ss = scale.simplify
+    if(sa.is0 || ss.is0) {
+      AlmapZero(input, domain, codomain)
+    }
+    else {
+      AlmapScaleVector(sa, ss)
+    }
+  }
+
+  override def toString: String = "scalevector(" + arg.toString + ", " + scale.toString + ")"
+}
+
+
 //The vertical concatenation of two linear maps
 case class AlmapVCat(val arg1: Almap, val arg2: Almap) extends Almap {
   val arity: Int = arg1.arity

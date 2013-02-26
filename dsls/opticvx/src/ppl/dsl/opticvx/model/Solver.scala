@@ -39,7 +39,7 @@ trait SolverRuntime[I, M, N, V, W] {
   def vectorget(vecs: W, at: Seq[I]): V
   def vectorset(src: V, vecs: W, at: Seq[I]): W
 
-  def converge(memory: Seq[W], body: (Seq[W]) => (Seq[W], V)): Seq[W]
+  def converge(memory: Seq[W], itermax: Int, body: (Seq[W]) => (Seq[W], V)): Seq[W]
   def runfor(len: I, memory: Seq[W], body: (I, Seq[W]) => Seq[W]): Seq[W]
 }
 
@@ -94,19 +94,19 @@ case class SolverWrite(val src: AVector, val iidx: Int, sidx: Seq[IRPoly]) exten
   }
 }
 
-case class SolverConverge(val condition: AVector, val body: Solver) extends Solver {
+case class SolverConverge(val condition: AVector, val itermax: Int, val body: Solver) extends Solver {
   val arity: Int = condition.arity
   val input: InputDesc = condition.input
 
   if(condition.size != IRPoly.const(1, arity)) throw new IRValidationException()
   if(body.input != input) throw new IRValidationException()
 
-  def arityOp(op: ArityOp) = SolverConverge(condition.arityOp(op), body.arityOp(op))
-  def inputOp(op: InputOp) = SolverConverge(condition.inputOp(op), body.inputOp(op))
+  def arityOp(op: ArityOp) = SolverConverge(condition.arityOp(op), itermax, body.arityOp(op))
+  def inputOp(op: InputOp) = SolverConverge(condition.inputOp(op), itermax, body.inputOp(op))
 
   def run[I, M, N, V, W](runtime: SolverRuntime[I, M, N, V, W], params: Seq[I], inputs: Seq[N], memory: Seq[W]): Seq[W] =
   {
-    runtime.converge(memory, (sw => {
+    runtime.converge(memory, itermax, (sw => {
       val swout = body.run(runtime, params, inputs, sw)
       val vout = condition.eval(runtime, params, inputs, swout)
       (swout, vout)

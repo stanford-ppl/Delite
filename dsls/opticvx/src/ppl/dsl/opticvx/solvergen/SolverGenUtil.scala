@@ -72,7 +72,9 @@ trait SolverGenUtil extends SolverGen {
     private val c = scalar
     private val s = scalar
 
-    def solve(b: AVector): AVector = {
+    def solve(b: AVector): AVector = solve(b, -1)
+
+    def solve(b: AVector, itermax: Int): AVector = {
 
       //initialization phase
       betau := b
@@ -110,8 +112,10 @@ trait SolverGenUtil extends SolverGen {
   class LSQRProject(val A: Almap) {
     private val lsqr = new LSQR(A)
 
-    def proj(x: AVector): AVector = {
-      x - lsqr.solve(A*x)
+    def proj(x: AVector): AVector = proj(x, -1)
+
+    def proj(x: AVector, itermax: Int): AVector = {
+      x - lsqr.solve(A*x, itermax)
     }
   }
 

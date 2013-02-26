@@ -118,7 +118,7 @@ trait SolverGen {
     }
   }
 
-  def converge(condition: AVector)(body: =>Unit) {
+  def converge(condition: AVector, itermax: Int)(body: =>Unit) {
     if(condition.size != IRPoly.const(1, input.arity)) throw new IRValidationException()
     if(prephase) {
       body
@@ -127,8 +127,12 @@ trait SolverGen {
       val cursolver: Solver = solveracc
       solveracc = SolverNull(input)
       body
-      solveracc = SolverSeq(cursolver, SolverConverge(condition, solveracc))
+      solveracc = SolverSeq(cursolver, SolverConverge(condition, itermax, solveracc))
     }
+  }
+
+  def converge(condition: AVector)(body: =>Unit) {
+    converge(condition, -1)(body)
   }
 
   def gen(problem: Problem): Solver = {
