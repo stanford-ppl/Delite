@@ -3,6 +3,7 @@ package ppl.delite.runtime
 import org.apache.mesos._
 import org.apache.mesos.Protos._
 import com.google.protobuf.ByteString
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.locks.ReentrantLock
 import java.util.{ArrayList,HashMap}
 import ppl.delite.runtime.data.DeliteArray
@@ -73,7 +74,7 @@ class DeliteMesosExecutor extends Executor {
 
           val args = info.getArgList.toArray(new Array[String](0))
 
-          DeliteMesosExecutor.networkMap.put(-1, new ConnectionManagerId(info.getMasterAddress, info.getMasterPort))
+          DeliteMesosExecutor.networkMap.put(-1, ConnectionManagerId(info.getMasterAddress, info.getMasterPort))
           
           DeliteMesosExecutor.sendDebugMessage("my master is " + info.getMasterAddress + ":" + info.getMasterPort)
           DeliteMesosExecutor.sendDebugMessage("my connection is " + DeliteMesosExecutor.network.id.host + ":" + DeliteMesosExecutor.network.id.port)
@@ -173,46 +174,43 @@ object DeliteMesosExecutor {
   private var noWork = true
   private var message: Any = _
 
-  private val network = new ConnectionManager
+  private val network: ConnectionManager = new ConnectionManager
   private val networkMap = new HashMap[Int,ConnectionManagerId]
   var numSlaves = 0
   var slaveIdx = 0
   
   var executor: ThreadPool = _
   var classLoader = this.getClass.getClassLoader
-  val results = new HashMap[String,ArrayList[Any]]
-
-  //TODO: better partitioning strategies
-  private var size = -1
+  val results = new HashMap[String,ArrayList[DeliteArray[_]]]
 
   def getResult(id: String, offset: Int) = {
-    val data = results.get(id).get(offset).asInstanceOf[DeliteArray[_]]
-    if (size == -1) {
-      size = data.length
-    }
-    else {
-      if (size != data.length) throw new RuntimeException("inconsistent data sizes, don't know how to partition")
-    }
-    data
+    val res = results.get(id)
+    if (res == null || res.size <= offset)
+      throw new RuntimeException("data for " + id + "_" + offset + " not found") 
+    res.get(offset)
   }
 
   def processSlaves(info: CommInfo) {
     slaveIdx = info.getSlaveIdx
     numSlaves = info.getSlaveAddressCount
-    assert(network.id == new ConnectionManagerId(info.getSlaveAddress(slaveIdx), info.getSlavePort(slaveIdx)))
+    if (network.id != ConnectionManagerId(info.getSlaveAddress(slaveIdx), info.getSlavePort(slaveIdx)))
+      throw new RuntimeException("ERROR: slaves socket addresses don't agree")
     for (i <- 0 until numSlaves) {
-      networkMap.put(i, new ConnectionManagerId(info.getSlaveAddress(i), info.getSlavePort(i)))
+      networkMap.put(i, ConnectionManagerId(info.getSlaveAddress(i), info.getSlavePort(i)))
     }
     DeliteMesosExecutor.sendDebugMessage("my peers are " + info.getSlaveAddressList.toArray.mkString(", "))
-  
-    val message = Message.createBufferMessage(java.nio.ByteBuffer.allocate(10).put(Array.tabulate[Byte](10)(x => x.toByte)))
-    network.sendMessageUnsafe(networkMap.get(-1), message)
   }
 
   def main(args: Array[String]) {
-    network.onReceiveMessage((msg: Message, id: ConnectionManagerId) => { 
-      sendDebugMessage("Received [" + msg + "] from [" + id + "]")
-      None
+    network.onReceiveMessage((msg: Message, id: ConnectionManagerId) => { //TODO: refactor me
+      sendDebugMessage("received request")
+      val bytes = msg.asInstanceOf[BufferMessage].buffers(0).array
+      val mssg = DeliteSlaveMessage.parseFrom(bytes)
+      val response = mssg.getType match {
+        case DeliteSlaveMessage.Type.DATA => getData(mssg.getData)
+      }
+      sendDebugMessage("satisfying remote read")
+      Some(Message.createBufferMessage(response.toByteString.asReadOnlyByteBuffer, msg.id))
     })
 
     driver = new MesosExecutorDriver(new DeliteMesosExecutor)
@@ -245,18 +243,22 @@ object DeliteMesosExecutor {
 
     message match {
       case work: RemoteOp => launchWork(work)
-      case request: RequestData => getData(request)
+      case request: RequestData => driver.sendFrameworkMessage(getData(request).toByteArray)
     }
     awaitWork()
   }
 
   def launchWork(op: RemoteOp) {
     val id = op.getId.getId
-    size = -1 //TODO: need a more robust partitioning solution
-
+    sendDebugMessage("launching op " + id)
+    
     val cls = op.getType match {
       case RemoteOp.Type.INPUT => classLoader.loadClass("generated.scala.kernel_"+id)
-      case RemoteOp.Type.MULTILOOP => classLoader.loadClass("MultiLoopHeader_"+id)
+      case RemoteOp.Type.MULTILOOP => 
+        loopStart = op.getStartIdx(slaveIdx)
+        loopSize = if (op.getStartIdxCount > slaveIdx+1) op.getStartIdx(slaveIdx+1) else -1
+        sendDebugMessage("looping from " + loopStart + " to " + (loopStart+loopSize))
+        classLoader.loadClass("MultiLoopHeader_"+id)
       case other => throw new RuntimeException("unrecognized op type: " + other)
     }
 
@@ -273,12 +275,9 @@ object DeliteMesosExecutor {
       case RemoteOp.Type.INPUT =>
         method.invoke(null, args:_*)
       case RemoteOp.Type.MULTILOOP =>
-        val header = method.invoke(null, args:_*)
-        val workLock = new ReentrantLock
-        val done = workLock.newCondition
-        var notDone = true
-        var result: Any = null
-        
+        val header = method.invoke(null, args:_*) //TODO: for map-like ops we can return this immediately rather than waiting for work to complete
+        val result = new Future[Any]
+
         for (i <- 0 until Config.numThreads) {
           val loopCls = classLoader.loadClass("MultiLoop_"+id+"_Chunk_"+i)
           val loopM = loopCls.getDeclaredMethods.find(_.getName == "apply").get
@@ -286,15 +285,7 @@ object DeliteMesosExecutor {
             def run() { try {
               val res = loopM.invoke(null, header)
               if (i == 0) {
-                workLock.lock()
-                try {
-                  result = res
-                  notDone = false
-                  done.signal()
-                }
-                finally {
-                  workLock.unlock()
-                }
+                result.set(res)
               }
             } catch {
               case i: java.lang.reflect.InvocationTargetException => if (i.getCause != null) throw i.getCause else throw i
@@ -302,17 +293,7 @@ object DeliteMesosExecutor {
           }
           executor.submitOne(i, exec)
         }
-
-        workLock.lock()
-        try {
-          while (notDone) {
-            done.await
-         }
-        }
-        finally {
-          workLock.unlock()
-        }
-        result
+        result.get
     } } catch {
       case i: java.lang.reflect.InvocationTargetException => if (i.getCause != null) throw i.getCause else throw i
     }
@@ -328,31 +309,40 @@ object DeliteMesosExecutor {
     driver.sendFrameworkMessage(mssg.toByteArray)
   }
 
-  def getData(request: RequestData) {    
+  def getData(request: RequestData) = {    
     val id = request.getId.getId.split("_")
     assert(id.length == 2)
     val key = id(0)
     val offset = id(1).toInt
+    val res = getResult(key, offset)
+    val data = if (request.hasIdx) res(request.getIdx) else res
 
-    val res = results.get(key)
-    if (res == null || res.size <= offset)
-      throw new RuntimeException("data for " + key + "_" + offset + " not found") 
-
-    val ser = Serialization.serialize(res.get(offset))
+    val ser = Serialization.serialize(data)
     val mssg = DeliteSlaveMessage.newBuilder
       .setType(DeliteSlaveMessage.Type.RESULT)
       .setResult(ReturnResult.newBuilder
         .setId(request.getId)
         .addOutput(ser)
       ).build
-
-    driver.sendFrameworkMessage(mssg.toByteArray)
+    mssg
   }
 
-  def getLoopSize: Int = {         
-    if (size == -1) throw new RuntimeException("loop over unknown size... don't know how to partition")
-    size
+  def requestData(id: String, location: Int, idx: Int): ReturnResult = {
+    sendDebugMessage("requesting remote read of " + id + " at index " + idx)
+    val mssg = DeliteMasterMessage.newBuilder 
+      .setType(DeliteMasterMessage.Type.DATA)
+      .setData(RequestData.newBuilder.setId(Id.newBuilder.setId(id)).setIdx(idx))
+      .build.toByteString.asReadOnlyByteBuffer
+
+    val resBytes = network.sendMessageSync(networkMap.get(location), Message.createBufferMessage(mssg)).get.asInstanceOf[BufferMessage].buffers(0).array
+    val result = DeliteSlaveMessage.parseFrom(resBytes)
+    result.getType match {
+      case DeliteSlaveMessage.Type.RESULT => sendDebugMessage("remote received"); result.getResult
+    }
   }
+
+  var loopStart = 0
+  var loopSize = -1
 
   def getBlockSize(file: java.io.File): (Long,Long) = { //TODO: decouple and possibly specialize framework codegen
     if (driver != null) {

@@ -53,9 +53,10 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
 
   //TODO: is the division logic really target dependent?
   protected def calculateRange(): (String,String) = {
+    out.append("val startOffset = "+closure+".loopStart\n")
     out.append("val size = "+closure+".loopSize\n")
-    out.append("val start = size*"+chunkIdx+"/"+numChunks+"\n")
-    out.append("val end = size*"+(chunkIdx+1)+"/"+numChunks+"\n")
+    out.append("val start = startOffset + size*"+chunkIdx+"/"+numChunks+"\n")
+    out.append("val end = startOffset + size*"+(chunkIdx+1)+"/"+numChunks+"\n")
     ("start","end")
   }
 
@@ -184,10 +185,14 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
     }
     out.append(")\n")
 
-    if (Config.clusterMode == 2) 
-      out.append("closure.loopSize = ppl.delite.runtime.DeliteMesosExecutor.getLoopSize\n")
-    else
+    if (Config.clusterMode == 2) {
+      out.append("closure.loopStart = ppl.delite.runtime.DeliteMesosExecutor.loopStart\n")
+      out.append("closure.loopSize = if (ppl.delite.runtime.DeliteMesosExecutor.loopSize != -1) ppl.delite.runtime.DeliteMesosExecutor.loopSize else closure.size - closure.loopStart\n")
+    }
+    else {
+      out.append("closure.loopStart = 0\n")
       out.append("closure.loopSize = closure.size\n")
+    }
 
     out.append("val out: ")
     out.append(op.outputType)

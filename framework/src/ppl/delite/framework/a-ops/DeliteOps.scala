@@ -1852,6 +1852,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     //   and do the copying in another parallel map <-- faster but more work
 
     emitMethod("size", remap(Manifest.Int), Nil) { emitReturn(quote(op.size)) }
+    emitVarDef("loopStart", remap(Manifest.Int), "0")
     emitVarDef("loopSize", remap(Manifest.Int), "0")
 
     emitMethod("alloc", actType, Nil) {
@@ -1863,6 +1864,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           case ParFlat =>
             emitValDef(elem.sV, "loopSize")
             emitBlock(elem.allocN)
+            emitAssignment(fieldAccess(quote(getBlockResult(elem.allocN)),"offset"), "loopStart") //FIXME
             emitAssignment(fieldAccess("__act",quote(sym)+"_data"),quote(getBlockResult(elem.allocN)))
         }
         case (sym, elem: DeliteHashElem[_,_]) => //

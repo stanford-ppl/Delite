@@ -4,21 +4,27 @@ import java.nio._
 import java.nio.channels._
 import java.nio.channels.spi._
 import java.net._
-import java.util.concurrent.Executors
+import java.util.concurrent.{CountDownLatch, Executors}
+import scala.collection.mutable.{ArrayBuffer, HashMap, SynchronizedMap, SynchronizedQueue, Queue}
 
-import scala.collection.mutable.HashMap
-import scala.collection.mutable.SynchronizedMap
-import scala.collection.mutable.SynchronizedQueue
-import scala.collection.mutable.Queue
-import scala.collection.mutable.ArrayBuffer
+case class ConnectionManagerId(val host: String, val port: Int) {
 
-case class ConnectionManagerId(host: String, port: Int) {
-  def toSocketAddress() = new InetSocketAddress(host, port)
+  val socketAddr: InetSocketAddress = {
+    var address: InetAddress = null
+    for (addr <- InetAddress.getAllByName(host) if address eq null) {
+      //println("considering " + addr)
+      if (addr.isReachable(10)) address = addr
+    }
+    if (address eq null) throw new RuntimeException("unable to establish local socket connection")
+    new InetSocketAddress(address, port)
+  }
+  
+  def toSocketAddress() = socketAddr
 }
 
 object ConnectionManagerId {
   def fromSocketAddress(socketAddress: InetSocketAddress): ConnectionManagerId = {
-    new ConnectionManagerId(socketAddress.getHostName(), socketAddress.getPort())
+    new ConnectionManagerId(socketAddress.getHostName, socketAddress.getPort)
   }
 }
   
@@ -60,7 +66,7 @@ class ConnectionManager(port: Int) {
   private def log(mssg: String) = println(mssg)
   private def log(mssg: String, e: Exception) = println(mssg)
 
-  val id = new ConnectionManagerId(InetAddress.getLocalHost.getHostName, serverChannel.socket.getLocalPort)
+  val id = ConnectionManagerId(InetAddress.getLocalHost.getHostName, serverChannel.socket.getLocalPort)
   log("Bound socket to port " + serverChannel.socket.getLocalPort() + " with id = " + id)
   
   val thisInstance = this
@@ -295,7 +301,7 @@ class ConnectionManager(port: Int) {
 
   private def sendMessage(connectionManagerId: ConnectionManagerId, message: Message) {
     def startNewConnection(): SendingConnection = {
-      val inetSocketAddress = new InetSocketAddress(connectionManagerId.host, connectionManagerId.port)
+      val inetSocketAddress = connectionManagerId.toSocketAddress
       val newConnection = connectionRequests.getOrElseUpdate(connectionManagerId,
           new SendingConnection(inetSocketAddress, selector, connectionManagerId))
       newConnection   
@@ -319,20 +325,19 @@ class ConnectionManager(port: Int) {
     sendMessage(connectionManagerId, message)
   }
 
-  /*def sendMessageReliably(connectionManagerId: ConnectionManagerId, message: Message)
-      : Future[Option[Message]] = {
-    val promise = Promise[Option[Message]]
-    val status = new MessageStatus(message, connectionManagerId, s => promise.success(s.ackMessage))
+  def sendMessageAsync(connectionManagerId: ConnectionManagerId, message: Message): Future[Option[Message]] = {
+    val future = new Future[Option[Message]]
+    val status = new MessageStatus(message, connectionManagerId, s => future.set(s.ackMessage))
     messageStatuses.synchronized {
       messageStatuses += ((message.id, status))
     }
     sendMessage(connectionManagerId, message)
-    promise.future
+    future
   }
 
-  def sendMessageReliablySync(connectionManagerId: ConnectionManagerId, message: Message): Option[Message] = {
-    Await.result(sendMessageReliably(connectionManagerId, message), Duration.Inf)
-  }*/
+  def sendMessageSync(connectionManagerId: ConnectionManagerId, message: Message): Option[Message] = {
+    sendMessageAsync(connectionManagerId, message).get
+  }
 
   def onReceiveMessage(callback: (Message, ConnectionManagerId) => Option[Message]) {
     onReceiveCallback = callback
