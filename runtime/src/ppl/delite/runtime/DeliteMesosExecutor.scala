@@ -256,7 +256,7 @@ object DeliteMesosExecutor {
       case RemoteOp.Type.INPUT => classLoader.loadClass("generated.scala.kernel_"+id)
       case RemoteOp.Type.MULTILOOP => 
         loopStart = op.getStartIdx(slaveIdx)
-        loopSize = if (op.getStartIdxCount > slaveIdx+1) op.getStartIdx(slaveIdx+1) else -1
+        loopSize = if (op.getStartIdxCount > slaveIdx+1) op.getStartIdx(slaveIdx+1)-loopStart else -1
         sendDebugMessage("looping from " + loopStart + " to " + (loopStart+loopSize))
         classLoader.loadClass("MultiLoopHeader_"+id)
       case other => throw new RuntimeException("unrecognized op type: " + other)

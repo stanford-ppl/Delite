@@ -19,7 +19,16 @@ abstract class RemoteDeliteArray[T:Manifest] extends DeliteArray[T] {
 
   val id: String
   var chunkLengths: Array[Int]
-  var offsets = Array(0) ++ chunkLengths.take(chunkLengths.length-1)
+  var offsets = {
+    val off = new Array[Int](chunkLengths.length)
+    off(0) = 0
+    var sum = 0 
+    for (i <- 1 until chunkLengths.length) {
+      sum += chunkLengths(i-1)
+      off(i) = sum
+    }
+    off
+  }
 
   def apply(i: Int) = getLocal.apply(i)
   def update(i: Int, x: T) = getLocal.update(i,x)
