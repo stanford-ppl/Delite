@@ -9,10 +9,11 @@ import ppl.delite.framework.{Config, Util}
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.extern.lib._
 import ppl.delite.framework.transform.LoopSoAOpt
+import ppl.delite.framework.analysis.StencilExp
 
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
 trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with FunctionBlocksExp with IfThenElseFatExp
-    with VariantsOpsExp with DeliteCollectionOpsExp
+    with PrimitiveOpsExp with VariantsOpsExp with DeliteCollectionOpsExp with DeliteArrayOpsExp with StencilExp
     with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp with StaticDataExp {
   
 

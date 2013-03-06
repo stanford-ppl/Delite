@@ -1,20 +1,24 @@
 package ppl.delite.framework.codegen.delite
 
+import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
+import collection.mutable.{ListBuffer,HashMap}
+import scala.reflect.SourceContext
+
+import scala.virtualization.lms.internal._
+import scala.virtualization.lms.common._
+
+import ppl.delite.framework.{Config, DeliteApplication}
+import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.delite.framework.analysis.StencilAnalysis
 import generators.{DeliteGenTaskGraph}
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
-import scala.virtualization.lms.internal._
-import scala.virtualization.lms.common.{BaseGenStaticData, StaticDataExp, WorklistTransformer}
-import ppl.delite.framework.{Config, DeliteApplication}
-import collection.mutable.{ListBuffer}
-import collection.mutable.HashMap
-import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
-import scala.reflect.SourceContext
+
 
 /**
  * Notice that this is using Effects by default, also we are mixing in the Delite task graph code generator
  */
 trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.delite.framework.codegen.Utils {
-  val IR: Expressions with FatExpressions with Effects with StaticDataExp
+  val IR: DeliteOpsExp
   import IR._
 
   // these are the target-specific kernel generators (e.g. scala, cuda, etc.)
@@ -32,6 +36,8 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   var kernelMutatingDeps = Map[Sym[Any],List[Sym[Any]]]() // from kernel to its mutating deps
   var kernelInputDeps = Map[Sym[Any],List[Sym[Any]]]() // from kernel to its input deps
 
+  // results of stencil analysis, used by DeliteGenTaskGraph
+  var allStencils: HashMap[Exp[Any],Stencil] = _
 
   def ifGenAgree[A](f: Generator => A): A = {
     //val save = generators map { _.shallow }
@@ -139,7 +145,17 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
 
     val x = fresh[A]
     val b = reifyEffects(f(x)) // transformers only get registrations at this point, while the IR is being constructed    
-    val y = runTransformations(b)
+    
+    val y = runTransformations(b)    
+    
+    // should stencil analysis be before or after transformations?
+    
+    // generally it should be after, or we need to construct a map between the stencil results and the transformed results.
+    // however, since fusion is not defined as a transformation, we cannot easily run the stencil analysis after it. we get
+    // around this by invoking the analysis locally inside DeliteGenTaskGraph.
+        
+    // val stencilAnalysis = new StencilAnalysis { val IR: DeliteCodegen.this.IR.type = DeliteCodegen.this.IR }
+    // allStencils = stencilAnalysis.run(y)    
     
     val sA = mA.toString
     val sB = mB.toString
