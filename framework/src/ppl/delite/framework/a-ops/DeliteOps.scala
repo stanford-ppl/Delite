@@ -1755,6 +1755,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitVarDef(quote(sym) + "_size", remap(Manifest.Int), "0")
         if (elem.cond.nonEmpty)
           emitVarDef(quote(sym) + "_conditionals", remap(Manifest.Int), "0")
+      case (sym, elem: DeliteHashElem[_,_]) => //done above
       case (sym, elem: DeliteForeachElem[_]) =>
         emitVarDef(quote(sym), remap(sym.tp), "()")  //TODO: Need this for other targets? (Currently, other targets just don't generate unit types)
       case (sym, elem: DeliteReduceElem[_]) =>
@@ -1831,6 +1832,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         }
         emitBlock(elem.finalizer)
         emitValDef(sym, quote(getBlockResult(elem.finalizer)))
+      case (sym, elem: DeliteHashElem[_,_]) => 
       case (sym, elem: DeliteForeachElem[_]) =>
       case (sym, elem: DeliteReduceElem[_]) =>
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
