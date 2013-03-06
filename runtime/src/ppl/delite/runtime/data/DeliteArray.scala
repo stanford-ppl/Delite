@@ -12,6 +12,7 @@ trait DeliteArray[T] {
   def copy(srcPos: Int, dest: DeliteArray[T], destPos: Int, len: Int): Unit
   def data: Array[T]
   var offsets: Array[Int]
+  var offset: Int
 }
 
 abstract class RemoteDeliteArray[T:Manifest] extends DeliteArray[T] {
@@ -19,6 +20,7 @@ abstract class RemoteDeliteArray[T:Manifest] extends DeliteArray[T] {
 
   val id: String
   var chunkLengths: Array[Int]
+  var offset = 0
   var offsets = {
     val off = new Array[Int](chunkLengths.length)
     off(0) = 0

@@ -1418,7 +1418,6 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
               stream.println(quote(getBlockResult(elem.zero)))
             else {
               stream.println("val " + quote(sym) + "_zero = {"/*}*/)
-              stream.println("val " + quote(sym) + "_zero = {"/*}*/)
               emitBlock(elem.zero)
               stream.println(quote(getBlockResult(elem.zero)))
               stream.println(/*{*/"}")
@@ -1867,7 +1866,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           case ParFlat =>
             emitValDef(elem.sV, "loopSize")
             emitBlock(elem.allocN)
-            emitAssignment(fieldAccess(quote(getBlockResult(elem.allocN)),"offset"), "loopStart") //FIXME
+            val arraySym = if (!remap(elem.allocN.tp).contains("DeliteArray")) fieldAccess(quote(getBlockResult(elem.allocN)), dc_data_field(getBlockResult(elem.allocN))(elem.mA)) else quote(getBlockResult(elem.allocN)) 
+            emitAssignment(fieldAccess(arraySym,"offset"), "loopStart") //FIXME: extremely hacky
             emitAssignment(fieldAccess("__act",quote(sym)+"_data"),quote(getBlockResult(elem.allocN)))
         }
         case (sym, elem: DeliteHashElem[_,_]) => //
