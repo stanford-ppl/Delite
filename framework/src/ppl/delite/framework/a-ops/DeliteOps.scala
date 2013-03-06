@@ -1597,7 +1597,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
           val arrayType = "ppl.delite.runtime.data.LocalDeliteArray" + (if (isPrimitiveType(elem.mV)) remap(elem.mV) else "Object[" + remap(elem.mV) + "]")
           if (prefixSym == "")
-            stream.println("val " + quote(sym) + " = new " + arrayType + "(" + arrayType + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze))")
+            stream.println("val " + quote(sym) + " = new " + arrayType + "(" + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze))")
           else
             stream.println(prefixSym + quote(sym) + " = new " + arrayType + "(" + prefixSym + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze))")
         case (sym, elem: DeliteHashIndexElem[_,_]) => 
