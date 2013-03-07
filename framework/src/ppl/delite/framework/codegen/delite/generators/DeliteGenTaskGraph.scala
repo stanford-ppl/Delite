@@ -371,7 +371,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     */
         
     // result is a single stencil representing all the info we have for this op's inputs
-    // val opStencil = if (sym == Nil) new Stencil() else sym.map(i => stencilReflection(i)).reduce((a,b) => a ++ b)
     val opStencil = if (sym == Nil) new Stencil() else sym.map(i => allStencils.getOrElse(i, new Stencil())).reduce((a,b) => a ++ b)
     
     // emit task graph node
@@ -545,6 +544,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     val stencilMap = inputs map { i => 
       "\"" + quote(i) + "\":\"" + (stencil.get(i) match {
         case Some(Interval(mult,stride,len)) => "range(" + quote(mult) + ", " + quote(stride) + ", " + quote(len) + ")"
+        case Some(Constant(i)) => "const(" + quote(i) + ")"
         case Some(z) => z.toString
         case None => "none"
       }) + "\""

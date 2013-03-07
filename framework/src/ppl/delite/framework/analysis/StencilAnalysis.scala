@@ -16,6 +16,7 @@ trait StencilExp extends LoopsExp {
   object all extends AccessPattern { override def toString = "all" }
   object one extends AccessPattern { override def toString = "one" }
   case class Interval(offsetMultiplier: Exp[Int], stride: Exp[Int], length: Exp[Int]) extends AccessPattern
+  case class Constant(index: Exp[Int]) extends AccessPattern
   
   // from a data symbol (e.g. DeliteArray) to its access pattern
   type Stencil = HashMap[Exp[Any],AccessPattern]      
@@ -28,7 +29,7 @@ trait StencilAnalysis extends FatBlockTraversal {
   // from a loop to its stencil
   var loopStencils = new HashMap[Exp[Any],Stencil]()
   
-  def verbose = false //true //Config.debug  
+  def verbose = false //Config.debug  
   def log(x: String) = if (verbose) Predef.println(x) else ()
   def result(x: String) = Predef.println(x)
   def strDef(x: Exp[Any]) = x match {
@@ -182,23 +183,28 @@ trait StencilAnalysis extends FatBlockTraversal {
       // TODO: if we already have an entry for 'a' in the stencil, what should we do?
       // take the most conservative value?
       
+      lazy val interval = chunked(v,i,context)
+      
       log("      found DeliteArrayApply of array " + strDef(a) + " and index " + strDef(i))
       if (v == i) {
         log("    determining that array " + a.toString + " accesses elements at loop index " + v.toString)                
         stencil += a -> one
       }
-      else {
-        val interval = chunked(v,i,context)
-        if (interval.isDefined) {
-          val (start,stride,size) = interval.get
-          log("    determining that array " + a.toString + " accesses elements at loop index v*" + strDef(start) + " with stride " + strDef(stride) + " and chunk size " + strDef(size))                                            
-          stencil += a -> Interval(start,stride,size)
-        }
-        else {
-          log("    could not determine how array " + a.toString + " is accessed as a function of loop index " + v.toString + ". assuming all elements are accessed.")
-          stencil += a -> all
-        }                
+      else if (interval.isDefined) {
+        val (start,stride,size) = interval.get
+        log("    determining that array " + a.toString + " accesses elements at loop index v*" + strDef(start) + " with stride " + strDef(stride) + " and chunk size " + strDef(size))                                            
+        stencil += a -> Interval(start,stride,size)
       }
+      else {          
+        i match {
+          case c@Const(n) => 
+            log("    determining that array " + a.toString + " accesses the element at constant index " + n.toString)                
+            stencil += a -> Constant(c)
+          case _ =>
+            log("    could not determine how array " + a.toString + " is accessed as a function of loop index " + v.toString + ". assuming all elements are accessed.")
+            stencil += a -> all            
+        }
+      }                
     }
     
     x.rhs match {
