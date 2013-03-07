@@ -418,6 +418,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case e@DenseVectorNewImm(x,d,l) => reflectPure(new { override val original = Some(f,e) } with DenseVectorNewImm(f(x),f(d),f(l))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case DenseVectorEmpty() => reflectPure(new { override val original = Some(f,e) } with DenseVectorEmpty())(mtype(manifest[A]),implicitly[SourceContext])
     case DenseVectorZero(l,r) => reflectPure(new { override val original = Some(f,e) } with DenseVectorZero(f(l),f(r)))(mtype(manifest[A]),implicitly[SourceContext])
     //case e@DenseVectorLength(x) => reflectPure(DenseVectorLength(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
@@ -444,6 +445,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
     // read/write effects
     case Reflect(e@DenseVectorZero(l,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseVectorZero(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case Reflect(e@DenseVectorNew(l,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseVectorNew(f(l),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DenseVectorNewImm(d,l,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseVectorNewImm(f(d),f(l),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     //case Reflect(e@DenseVectorSetLength(x,v), u, es) => reflectMirrored(Reflect(DenseVectorSetLength(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     //case Reflect(e@DenseVectorSetIsRow(x,v), u, es) => reflectMirrored(Reflect(DenseVectorSetIsRow(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))  
     //case Reflect(e@DenseVectorSetRawData(x,v), u, es) => reflectMirrored(Reflect(DenseVectorSetRawData(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))              

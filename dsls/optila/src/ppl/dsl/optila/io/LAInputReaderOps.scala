@@ -4,6 +4,7 @@ import java.io.{PrintWriter}
 import scala.virtualization.lms.common.{TupleOpsExp, Base, BaseFatExp}
 import scala.reflect.SourceContext
 import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.datastructures.DeliteArrayBuffer
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optila._
 
@@ -33,8 +34,25 @@ trait LAInputReaderOpsExp extends LAInputReaderOps with BaseFatExp {
   case class LAInputReadVector[Row:Manifest](filename: Exp[String], schemaBldr: Exp[DenseVector[String]] => Exp[Row], delim: Exp[String])
     extends DeliteOpSingleWithManifest[Row,DenseVector[Row]](reifyEffects(lainput_read_vector_impl(filename, schemaBldr, delim)))
   
-  def obj_lainput_read_matrix[Elem:Manifest](filename: Exp[String], schemaBldr: Exp[String] => Exp[Elem], delim: Exp[String])(implicit ctx: SourceContext) = reflectEffect(LAInputReadMatrix(filename, schemaBldr, delim))
-  def obj_lainput_read_vector[Row:Manifest](filename: Exp[String], schemaBldr: Exp[DenseVector[String]] => Exp[Row], delim: Exp[String])(implicit ctx: SourceContext) = reflectEffect(LAInputReadVector(filename, schemaBldr, delim))  
+  def obj_lainput_read_matrix[Elem:Manifest](filename: Exp[String], schemaBldr: Exp[String] => Exp[Elem], delim: Exp[String])(implicit ctx: SourceContext) = {
+    val numCols = var_new(unit(0))
+    val array = DeliteFileReader.readLinesUnstructured(filename){ (line:Rep[String], buf:Rep[DeliteArrayBuffer[Elem]]) =>
+      val elems = line.trim.split(delim)
+      numCols = elems.length
+      (0::elems.length) foreach { i => buf += schemaBldr(elems(i)) }
+    }
+    reflectWrite(numCols.e)(ObjectUnsafeImmutable(array)) //there must be a better way
+    densematrix_obj_fromarray(array, array.length/numCols, numCols).unsafeImmutable //WTF... without this struct unwrapping (?) can lead to a Reflect(Reflect(x)) in unrelated pieces of the program...
+  }
+
+  def obj_lainput_read_vector[Row:Manifest](filename: Exp[String], schemaBldr: Exp[DenseVector[String]] => Exp[Row], delim: Exp[String])(implicit ctx: SourceContext) = {
+    val array = DeliteFileReader.readLines(filename){ line =>
+      val elems = line.trim.split(delim)
+      val v = (0::elems.length) map { i => elems(i) }
+      schemaBldr(v)    
+    }
+    densevector_obj_fromarray(array, true) 
+  }
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case Reflect(d@LAInputReadVector(fn,s,delim), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,d) } with LAInputReadVector(f(fn),f(s),f(delim))(d.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
