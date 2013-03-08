@@ -316,29 +316,34 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
           out.append(" *" + getSymDevice(op,name) + ";\n")
           writeFreeOutput(op, name, isPrimitiveType(op.outputType(name)))
         }
-        out.append("jobject inputcopyArr = env" + location + "->CallStaticObjectMethod(clsMesosExecutor,env" + location + "->GetStaticMethodID(clsMesosExecutor,\"getInputCopy\",\"()[I\"));\n")
-        out.append("jint *inputcopyJava = (jint *)env" + location + "->GetPrimitiveArrayCritical((jintArray)inputcopyArr,0);\n")
-        out.append("int *inputcopy = (int *)malloc(sizeof(int)*" + op.getInputs.size + ");\n")
-        out.append("memcpy(inputcopy,inputcopyJava,sizeof(int)*" + op.getInputs.size + ");\n")
-        out.append("env" + location + "->ReleasePrimitiveArrayCritical((jintArray)inputcopyArr,inputcopyJava,0);\n")
+        out.append("jobject inputcopyArr = env" + location + "->CallObjectMethod(objTask,env" + location + "->GetMethodID(clsTask,\"inputCopy\",\"()[Z\"));\n")
+        out.append("jboolean *inputcopyJava = (jboolean *)env" + location + "->GetPrimitiveArrayCritical((jbooleanArray)inputcopyArr,0);\n")
+        out.append("bool *inputcopy = (bool *)malloc(sizeof(bool)*" + op.getInputs.size + ");\n")
+        out.append("memcpy(inputcopy,inputcopyJava,sizeof(bool)*" + op.getInputs.size + ");\n")
+        out.append("env" + location + "->ReleasePrimitiveArrayCritical((jbooleanArray)inputcopyArr,inputcopyJava,0);\n")
 
         out.append("int inputIdx = 0;\n")
         for ((in,name) <- op.getInputs.toArray) {
           writeGetter(in, name, op, false)
           out.append("inputIdx += 1;\n")
         }
-        val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").map(o => "&"+getSymDevice(op,o._2)).toList ++ op.getInputs.map(i=>getSymDevice(i._1,i._2))
+        val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").map(o => "&"+getSymDevice(op,o._2)).toList ++ op.getInputs.map(i=>getSymDevice(i._1,i._2)) ++ List("size")
+        
+        out.append("jint start = env" + location + "->CallIntMethod(objTask,env" + location + "->GetMethodID(clsTask,\"start\",\"()I\"));\n")
+        out.append("jint size = env" + location + "->CallIntMethod(objTask,env" + location + "->GetMethodID(clsTask,\"size\",\"()I\"));\n")
+        out.append("if(size==-1) size = " + getSymDevice(op,op.asInstanceOf[OP_MultiLoop].size) + " - start;\n")
         
         out.append(op.task) //kernel name
         out.append(args.mkString("(",",",");\n"))
         out.append("addEvent(kernelStream, d2hStream);\n")
         
-        val needsBlock = op.getOutputs.map(o => op.outputType(o)).exists(t => !t.startsWith("ppl.delite.runtime.data.DeliteArray"))
-        if(needsBlock) {
+        val blockingCall = op.asInstanceOf[OP_MultiLoop].needsCombine || op.asInstanceOf[OP_MultiLoop].needsPostProcess || op.getOutputs.map(op.outputType(_)).exists(t => !t.startsWith("ppl.delite.runtime.data.DeliteArray"))
+        if(blockingCall) {
           for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
             writeSetter(op, name, false)
           }
           writeDataFreesRegister(op)
+          out.append("}\n")
         }
         else {
           var offset = 0
@@ -383,8 +388,10 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
   override protected def initializeBlock() {
     out.append("bool terminate = false;\n")
     out.append("while(!terminate) {\n")
-    out.append("jobject taskString = env" + location + "->CallStaticObjectMethod(clsMesosExecutor,env" + location + "->GetStaticMethodID(clsMesosExecutor,\"getTask\",\"(I)Ljava/lang/String;\"),"+location+");\n")
-    out.append("const char *task = env" + location + "->GetStringUTFChars((jstring)taskString,NULL);\n")
+    out.append("jobject objTask = env" + location + "->CallStaticObjectMethod(clsMesosExecutor,env" + location + "->GetStaticMethodID(clsMesosExecutor,\"getTask\",\"(I)Lppl/delite/runtime/DeliteMesosExecutor$Task;\"),"+location+");\n")
+    out.append("jclass clsTask = env" + location + "->FindClass(\"ppl/delite/runtime/DeliteMesosExecutor$Task\");\n")
+    out.append("jobject taskName = env" + location + "->CallObjectMethod(objTask,env" + location + "->GetMethodID(clsTask,\"name\",\"()Ljava/lang/String;\"),"+location+");\n")
+    out.append("const char *task = env" + location + "->GetStringUTFChars((jstring)taskName,NULL);\n")
     out.append("if(strcmp(task,\"TERMINATE\") == 0) {\n")
     out.append("terminate = true;\n")
     out.append("}\n")

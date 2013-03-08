@@ -2112,6 +2112,24 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       }
     }
 
+    emitMethod("initAct", "activation_"+kernelName, List()) {
+      emitValDef("act", "activation_"+kernelName, "new activation_"+kernelName)
+      (symList zip op.body) foreach {
+        case (sym, elem: DeliteHashElem[_,_]) =>
+        case (sym, elem: DeliteCollectElem[_,_,_]) =>
+        case (sym, elem: DeliteForeachElem[_]) =>
+        case (sym, elem: DeliteReduceElem[_]) =>
+          emitBlock(elem.zero)
+          emitAssignment(fieldAccess("act",quote(sym)+"_zero"),quote(getBlockResult(elem.zero)))
+        case (sym, elem: DeliteReduceTupleElem[_,_]) => 
+          emitBlock(elem.zero._1)
+          emitAssignment(fieldAccess("act",quote(sym)+"_zero"),quote(getBlockResult(elem.zero._1)))
+          emitBlock(elem.zero._2)
+          emitAssignment(fieldAccess("act",quote(sym)+"_zero_2"),quote(getBlockResult(elem.zero._2)))
+      }
+      emitReturn("act")
+    }
+
     emitAbstractFatLoopFooter()
   }
 

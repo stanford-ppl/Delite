@@ -37,6 +37,7 @@ object Config {
   val codeCacheHome: String = getProperty("delite.code.cache.home", deliteHome + java.io.File.separator + "generatedCache") + (new java.util.Random).nextInt(100).toString
   val useFsc: Boolean = getProperty("delite.usefsc", "false") != "false"
   val tempCudaMemRate: Double = getProperty("delite.tempcudamem", "0.2").toDouble         /* proportions of the cuda device memory used for temporary allocations */
+  val taskQueueSize: Int = getProperty("delite.task.queue.size", "1024").toInt
 
   /* Debug options */
   val queueSize: Int = getProperty("delite.debug.queue.size", "128").toInt
