@@ -5,7 +5,7 @@ object DeliteBuild extends Build {
   val virtualization_lms_core = "EPFL" % "lms_2.10.0-M1-virtualized" % "0.2"
   
   // FIXME: custom-built scalatest
-  val dropboxScalaTestRepo = "Dropbox" at "http://dl.dropbox.com/u/12870350/scala-virtualized"
+  val dropboxScalaTestRepo = "Dropbox" at "http://dl.dropbox.com/u/1186811/scala-virtualized"
 
   val scalatestCompile = "org.scalatest" % "scalatest_2.10.0-virtualized-SNAPSHOT" % "1.6.1-SNAPSHOT" 
   val scalatest = scalatestCompile % "test" 

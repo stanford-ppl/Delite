@@ -17,6 +17,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         case Some(newSym) => newSym
         case None => super.transformStm(stm)
       }
+      case TP(sym, r:DeliteOpReduceLike[_]) if r.mutable => super.transformStm(stm) // mutable reduces don't work yet
       case TP(sym, Loop(size, v, body: DeliteReduceElem[a])) => soaReduce[a](size,v,body)(body.mA) match {
         case Some(newSym) => newSym
         case None => super.transformStm(stm)
