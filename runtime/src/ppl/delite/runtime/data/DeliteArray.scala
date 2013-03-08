@@ -3,23 +3,22 @@ package ppl.delite.runtime.data
 import ppl.delite.runtime.messages._
 import ppl.delite.runtime.DeliteMesosScheduler
 
-abstract class DeliteArray[T] {
+trait DeliteArray[T] {
   def length: Int
   def readAt(i: Int): T
-  //def apply(i: Int): T
-  //def update(i: Int, x: T): Unit
 
-  //def hasArray: Boolean
-  //def copy(srcPos: Int, dest: DeliteArray[T], destPos: Int, len: Int): Unit
-  //def getData: Array[T]
-  //var offsets: Array[Int]
-  //var offset: Int
+  var id: String
+  var offsets: Array[Int]
+  var offset: Int
 }
 
-abstract class RemoteDeliteArray[T:Manifest] extends DeliteArray[T] {
+trait RemoteDeliteArray[T] extends DeliteArray[T] {
+  def chunkLengths: Array[Int]
+}
+
+abstract class RemoteDeliteArrayImpl[T:Manifest] extends DeliteArray[T] with RemoteDeliteArray[T] {
   type L <: LocalDeliteArray[T]
 
-  val id: String
   var chunkLengths: Array[Int]
   var offset = 0
   var offsets = {
@@ -38,7 +37,6 @@ abstract class RemoteDeliteArray[T:Manifest] extends DeliteArray[T] {
   def readAt(i: Int) = apply(i)
 
   def data = getLocal.data
-  def getData = data
 
   private var local: L = _
 
@@ -46,7 +44,7 @@ abstract class RemoteDeliteArray[T:Manifest] extends DeliteArray[T] {
   val length = chunkLengths.reduce(_ + _)
 
   def copy(srcPos: Int, dest: DeliteArray[T], destPos: Int, len: Int) = dest match {
-    case d:RemoteDeliteArray[T] => System.arraycopy(this.getLocal.data, srcPos, d.getLocal.data, destPos, len) 
+    case d:RemoteDeliteArrayImpl[T] => System.arraycopy(this.getLocal.data, srcPos, d.getLocal.data, destPos, len) 
     case d:LocalDeliteArray[T] => System.arraycopy(this.getLocal.data, srcPos, d.data, destPos, len)
   }
 
@@ -82,7 +80,7 @@ abstract class RemoteDeliteArray[T:Manifest] extends DeliteArray[T] {
 
 }
 
-final class RemoteDeliteArrayDouble(val id: String, var chunkLengths: Array[Int]) extends DeliteArrayDouble {
+final class RemoteDeliteArrayDouble(var id: String, var chunkLengths: Array[Int]) extends DeliteArrayDouble with RemoteDeliteArray[Double] {
 
   var offset = 0
   var offsets = {
@@ -99,10 +97,7 @@ final class RemoteDeliteArrayDouble(val id: String, var chunkLengths: Array[Int]
   def apply(i: Int) = getLocal.apply(i)
   def update(i: Int, x: Double) = getLocal.update(i,x)
   def readAt(i: Int) = apply(i)
-
   def data = getLocal.data
-  def getData = data
-  var phys = -1
 
   private var local: LocalDeliteArrayDouble = _
 
@@ -142,7 +137,7 @@ final class RemoteDeliteArrayDouble(val id: String, var chunkLengths: Array[Int]
   }
 }
 
-final class RemoteDeliteArrayInt(val id: String, var chunkLengths: Array[Int]) extends DeliteArrayInt {
+final class RemoteDeliteArrayInt(var id: String, var chunkLengths: Array[Int]) extends DeliteArrayInt with RemoteDeliteArray[Int] {
 
   var offset = 0
   var offsets = {
@@ -161,8 +156,6 @@ final class RemoteDeliteArrayInt(val id: String, var chunkLengths: Array[Int]) e
   def readAt(i: Int) = apply(i)
 
   def data = getLocal.data
-  def getData = data
-  var phys = -1
 
   private var local: LocalDeliteArrayInt = _
 
@@ -202,7 +195,7 @@ final class RemoteDeliteArrayInt(val id: String, var chunkLengths: Array[Int]) e
   }
 }
 
-final class RemoteDeliteArrayChar(val id: String, var chunkLengths: Array[Int]) extends DeliteArrayChar {
+final class RemoteDeliteArrayChar(var id: String, var chunkLengths: Array[Int]) extends DeliteArrayChar with RemoteDeliteArray[Char] {
 
   var offset = 0
   var offsets = {
@@ -287,7 +280,7 @@ abstract class LocalDeliteArray[T:Manifest] extends DeliteArray[T] {
 
   def copy(srcPos: Int, dest: DeliteArray[T], destPos: Int, len: Int) = dest match {
     case d: LocalDeliteArray[T] => System.arraycopy(this.data, srcPos, d.data, destPos, len)
-    case d: RemoteDeliteArray[T] => System.arraycopy(this.data, srcPos, d.data, destPos, len)
+    case d: RemoteDeliteArrayImpl[T] => System.arraycopy(this.data, srcPos, d.data, destPos, len)
   }
 
   def take(n: Int) = {
@@ -327,7 +320,6 @@ trait DeliteArrayObject[T] extends DeliteArray[T] {
   def update(i: Int, x: T)
   def take(i: Int): DeliteArrayObject[T]
   def copy(srcPos: Int, dest: DeliteArray[T], destPos: Int, len: Int)
-  var offset: Int
 }
 
 object DeliteArrayDouble {
@@ -354,32 +346,32 @@ object DeliteArrayObject {
   }
 }
 
-class RemoteDeliteArrayLong(val id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArray[Long] with DeliteArrayLong {
+class RemoteDeliteArrayLong(var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[Long] with DeliteArrayLong {
   type L = LocalDeliteArrayLong
   def specializedClass = classOf[DeliteArrayLong]
   def createLocal(len: Int) = new LocalDeliteArrayLong(len)
 }
-class RemoteDeliteArrayFloat(val id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArray[Float] with DeliteArrayFloat {
+class RemoteDeliteArrayFloat(var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[Float] with DeliteArrayFloat {
   type L = LocalDeliteArrayFloat
   def specializedClass = classOf[DeliteArrayFloat]
   def createLocal(len: Int) = new LocalDeliteArrayFloat(len)
 }
-class RemoteDeliteArrayShort(val id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArray[Short] with DeliteArrayShort {
+class RemoteDeliteArrayShort(var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[Short] with DeliteArrayShort {
   type L = LocalDeliteArrayShort
   def specializedClass = classOf[DeliteArrayShort]
   def createLocal(len: Int) = new LocalDeliteArrayShort(len)
 }
-class RemoteDeliteArrayByte(val id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArray[Byte] with DeliteArrayByte {
+class RemoteDeliteArrayByte(var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[Byte] with DeliteArrayByte {
   type L = LocalDeliteArrayByte
   def specializedClass = classOf[DeliteArrayByte]
   def createLocal(len: Int) = new LocalDeliteArrayByte(len)
 }
-class RemoteDeliteArrayBoolean(val id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArray[Boolean] with DeliteArrayBoolean {
+class RemoteDeliteArrayBoolean(var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[Boolean] with DeliteArrayBoolean {
   type L = LocalDeliteArrayBoolean
   def specializedClass = classOf[DeliteArrayBoolean]
   def createLocal(len: Int) = new LocalDeliteArrayBoolean(len)
 }
-class RemoteDeliteArrayObject[T:Manifest](val id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArray[T] with DeliteArrayObject[T] {
+class RemoteDeliteArrayObject[T:Manifest](var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[T] with DeliteArrayObject[T] {
   type L = LocalDeliteArrayObject[T]
   def specializedClass = classOf[DeliteArrayObject[T]]
   def createLocal(len: Int) = new LocalDeliteArrayObject[T](len)
@@ -405,6 +397,9 @@ final class LocalDeliteArrayDouble(val data: Array[Double], var offset: Int) ext
   def this(len: Int) = this(new Array[Double](len), 0)
   def this(len: Int, start: Int) = this(new Array[Double](len), start)
 
+  var id: String = _
+  var offsets: Array[Int] = _
+
   val length = data.length
   def apply(i: Int): Double = data(i-offset)
   def readAt(i: Int) = data(i-offset)
@@ -427,13 +422,15 @@ abstract class DeliteArrayDouble extends DeliteArray[Double] {
   def update(i: Int, x: Double)
   def take(i: Int): DeliteArrayDouble
   def copy(srcPos: Int, dest: DeliteArrayDouble, destPos: Int, len: Int)
-  var offset: Int
 }
 
 final class LocalDeliteArrayInt(val data: Array[Int], var offset: Int) extends DeliteArrayInt {
   def this(data: Array[Int]) = this(data, 0)
   def this(len: Int) = this(new Array[Int](len), 0)
   def this(len: Int, start: Int) = this(new Array[Int](len), start)
+
+  var id: String = _
+  var offsets: Array[Int] = _
 
   val length = data.length
   def apply(i: Int): Int = data(i-offset)
@@ -457,13 +454,15 @@ abstract class DeliteArrayInt extends DeliteArray[Int] {
   def update(i: Int, x: Int)
   def take(i: Int): DeliteArrayInt
   def copy(srcPos: Int, dest: DeliteArrayInt, destPos: Int, len: Int)
-  var offset: Int
 }
 
 final class LocalDeliteArrayChar(val data: Array[Char], var offset: Int) extends DeliteArrayChar {
   def this(data: Array[Char]) = this(data, 0)
   def this(len: Int) = this(new Array[Char](len), 0)
   def this(len: Int, start: Int) = this(new Array[Char](len), start)
+
+  var id: String = _
+  var offsets: Array[Int] = _
 
   val length = data.length
   def apply(i: Int): Char = data(i-offset)
@@ -487,7 +486,6 @@ abstract class DeliteArrayChar extends DeliteArray[Char] {
   def update(i: Int, x: Char)
   def take(i: Int): DeliteArrayChar
   def copy(srcPos: Int, dest: DeliteArrayChar, destPos: Int, len: Int)
-  var offset: Int
 }
 
 

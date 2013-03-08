@@ -6,6 +6,7 @@ import com.google.protobuf.ByteString
 import java.util.HashMap
 import java.util.concurrent.locks.ReentrantLock
 import ppl.delite.runtime.data.RemoteDeliteArray
+import ppl.delite.runtime.graph.Stencil
 import ppl.delite.runtime.messages.Messages._
 import ppl.delite.runtime.messages._
 
@@ -225,7 +226,7 @@ object DeliteMesosScheduler {
   private val remoteCompleted = remoteLock.newCondition
   private var notCompleted = true
   private var remoteResult: Array[ReturnResult] = _
-  private val network: ConnectionManager = new ConnectionManager
+  private lazy val network: ConnectionManager = new ConnectionManager
   private val networkMap = new HashMap[Int, ConnectionManagerId]
 
   def main(args: Array[String]) {
@@ -237,7 +238,7 @@ object DeliteMesosScheduler {
     val sep = java.io.File.separator
     appArgs(0) = Config.deliteHome + sep + appArgs(0) //should be part of the 'delite' script?
     println(appArgs.mkString(", "))
-    val executorCmd = Config.deliteHome + sep + "bin" + sep + "delite --isSlave -t " + Config.numThreads + " --codecache " + Config.deliteHome+"/generatedCacheSlave " + appArgs.mkString(" ")
+    val executorCmd = Config.deliteHome + sep + "bin" + sep + "delite --isSlave -d " + System.getProperty("user.dir") + " -t " + Config.numThreads + " --codecache " + Config.deliteHome+"/generatedCacheSlave " + appArgs.mkString(" ")
     println(executorCmd) 
 
     val executor = ExecutorInfo.newBuilder
@@ -286,36 +287,29 @@ object DeliteMesosScheduler {
   }
 
   //TODO: move me to scheduler and improve algorithm
-  private def schedule(tpe: RemoteOp.Type, args: Any*): Array[Int] = tpe match {
+  private def schedule(tpe: RemoteOp.Type, stencils: Seq[Stencil], args: Seq[Any]): Array[Int] = tpe match {
     case RemoteOp.Type.INPUT => //don't know the file partitioning, so just distribute to everyone //TODO: fix this?
       Array.fill(slaves.length)(0)
     case RemoteOp.Type.MULTILOOP => 
-      var loopBounds: Array[Int] = null
-      for (arg <- args) { arg match {
-        case a: RemoteDeliteArray[_] =>
-          if (loopBounds == null)
-            loopBounds = a.offsets
-          else {
-            //check if partitions are the same
-            //println(a.id + ":" + a.offsets.mkString(","))
-            var same = loopBounds.length == a.offsets.length
-            for (i <- 0 until loopBounds.length if same) { if (loopBounds(i) != a.offsets(i)) same = false }
-            if (!same) //TODO: shuffle, etc.
-              throw new RuntimeException("don't know how to schedule op with inconsistent input partitions")
-          }
-        case _ => //ignore ... TODO: struct types with arrays inside
-      } }
-      if (loopBounds == null) { //all results were local
-        loopBounds = Array.fill(1)(0) //TODO: should run result locally (need to call a MultiLoop on master)
+      def combineLoopBounds(lhs: Option[Array[Int]], rhs: Option[Array[Int]]) = (lhs,rhs) match {
+        case (None, r) => r
+        case (l, None) => l
+        case (l@Some(a), Some(b)) if (java.util.Arrays.equals(a,b)) => l
+        case (l@Some(_), Some(_)) => println("WARNING: loop inputs are not aligned: will be satisfied with remote reads"); l
+      } 
+
+      val bounds = (stencils zip args).filter(_._2.isInstanceOf[RemoteDeliteArray[_]]).map(a => a._1.withArray(a._2.asInstanceOf[RemoteDeliteArray[_]]))
+      bounds.foldLeft(None:Option[Array[Int]])(combineLoopBounds) match {
+        case Some(loopBounds) => loopBounds
+        case None => Array.fill(1)(0) //TODO: should run result locally (need to call a MultiLoop on master)
       }
-      loopBounds
   }
 
-  def launchAllSlaves(id: String, tpe: RemoteOp.Type, args: Any*): Array[ReturnResult] = {
-    val loopBounds = schedule(tpe, args:_*)
+  def launchAllSlaves(id: String, tpe: RemoteOp.Type, stencils: Seq[Stencil], args: Seq[Any]): Array[ReturnResult] = {
+    val loopBounds = schedule(tpe, stencils, args)
     this.remoteResult = new Array(loopBounds.length)
     activeSlaves = loopBounds.length
-    println("sending message to slaves")
+    //println("sending message to slaves")
     for (slaveIdx <- 0 until loopBounds.length) { //TODO: non-contiguous slaves
       val remoteOp = RemoteOp.newBuilder.setId(Id.newBuilder.setId(id)).setType(tpe)
       for (start <- loopBounds) remoteOp.addStartIdx(start)

@@ -8222,6 +8222,11 @@ public final class Messages {
     java.util.List<java.lang.Integer> getOffsetList();
     int getOffsetCount();
     int getOffset(int index);
+    
+    // repeated bytes object = 5;
+    java.util.List<com.google.protobuf.ByteString> getObjectList();
+    int getObjectCount();
+    com.google.protobuf.ByteString getObject(int index);
   }
   public static final class ArrayMessage extends
       com.google.protobuf.GeneratedMessage
@@ -8299,11 +8304,26 @@ public final class Messages {
       return offset_.get(index);
     }
     
+    // repeated bytes object = 5;
+    public static final int OBJECT_FIELD_NUMBER = 5;
+    private java.util.List<com.google.protobuf.ByteString> object_;
+    public java.util.List<com.google.protobuf.ByteString>
+        getObjectList() {
+      return object_;
+    }
+    public int getObjectCount() {
+      return object_.size();
+    }
+    public com.google.protobuf.ByteString getObject(int index) {
+      return object_.get(index);
+    }
+    
     private void initFields() {
       id_ = ppl.delite.runtime.messages.Messages.Id.getDefaultInstance();
       length_ = 0;
       array_ = com.google.protobuf.ByteString.EMPTY;
       offset_ = java.util.Collections.emptyList();;
+      object_ = java.util.Collections.emptyList();;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -8335,6 +8355,9 @@ public final class Messages {
       for (int i = 0; i < offset_.size(); i++) {
         output.writeUInt32(4, offset_.get(i));
       }
+      for (int i = 0; i < object_.size(); i++) {
+        output.writeBytes(5, object_.get(i));
+      }
       getUnknownFields().writeTo(output);
     }
     
@@ -8364,6 +8387,15 @@ public final class Messages {
         }
         size += dataSize;
         size += 1 * getOffsetList().size();
+      }
+      {
+        int dataSize = 0;
+        for (int i = 0; i < object_.size(); i++) {
+          dataSize += com.google.protobuf.CodedOutputStream
+            .computeBytesSizeNoTag(object_.get(i));
+        }
+        size += dataSize;
+        size += 1 * getObjectList().size();
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -8502,6 +8534,8 @@ public final class Messages {
         bitField0_ = (bitField0_ & ~0x00000004);
         offset_ = java.util.Collections.emptyList();;
         bitField0_ = (bitField0_ & ~0x00000008);
+        object_ = java.util.Collections.emptyList();;
+        bitField0_ = (bitField0_ & ~0x00000010);
         return this;
       }
       
@@ -8561,6 +8595,11 @@ public final class Messages {
           bitField0_ = (bitField0_ & ~0x00000008);
         }
         result.offset_ = offset_;
+        if (((bitField0_ & 0x00000010) == 0x00000010)) {
+          object_ = java.util.Collections.unmodifiableList(object_);
+          bitField0_ = (bitField0_ & ~0x00000010);
+        }
+        result.object_ = object_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -8593,6 +8632,16 @@ public final class Messages {
           } else {
             ensureOffsetIsMutable();
             offset_.addAll(other.offset_);
+          }
+          onChanged();
+        }
+        if (!other.object_.isEmpty()) {
+          if (object_.isEmpty()) {
+            object_ = other.object_;
+            bitField0_ = (bitField0_ & ~0x00000010);
+          } else {
+            ensureObjectIsMutable();
+            object_.addAll(other.object_);
           }
           onChanged();
         }
@@ -8664,6 +8713,11 @@ public final class Messages {
                 addOffset(input.readUInt32());
               }
               input.popLimit(limit);
+              break;
+            }
+            case 42: {
+              ensureObjectIsMutable();
+              object_.add(input.readBytes());
               break;
             }
           }
@@ -8852,6 +8906,57 @@ public final class Messages {
         return this;
       }
       
+      // repeated bytes object = 5;
+      private java.util.List<com.google.protobuf.ByteString> object_ = java.util.Collections.emptyList();;
+      private void ensureObjectIsMutable() {
+        if (!((bitField0_ & 0x00000010) == 0x00000010)) {
+          object_ = new java.util.ArrayList<com.google.protobuf.ByteString>(object_);
+          bitField0_ |= 0x00000010;
+         }
+      }
+      public java.util.List<com.google.protobuf.ByteString>
+          getObjectList() {
+        return java.util.Collections.unmodifiableList(object_);
+      }
+      public int getObjectCount() {
+        return object_.size();
+      }
+      public com.google.protobuf.ByteString getObject(int index) {
+        return object_.get(index);
+      }
+      public Builder setObject(
+          int index, com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  ensureObjectIsMutable();
+        object_.set(index, value);
+        onChanged();
+        return this;
+      }
+      public Builder addObject(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  ensureObjectIsMutable();
+        object_.add(value);
+        onChanged();
+        return this;
+      }
+      public Builder addAllObject(
+          java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
+        ensureObjectIsMutable();
+        super.addAll(values, object_);
+        onChanged();
+        return this;
+      }
+      public Builder clearObject() {
+        object_ = java.util.Collections.emptyList();;
+        bitField0_ = (bitField0_ & ~0x00000010);
+        onChanged();
+        return this;
+      }
+      
       // @@protoc_insertion_point(builder_scope:ppl.delite.runtime.messages.ArrayMessage)
     }
     
@@ -8993,10 +9098,10 @@ public final class Messages {
       "\rDoubleMessage\022\r\n\005value\030\001 \002(\001\"\035\n\014FloatMe" +
       "ssage\022\r\n\005value\030\001 \002(\002\"\037\n\016BooleanMessage\022\r" +
       "\n\005value\030\001 \002(\010\"\034\n\013UIntMessage\022\r\n\005value\030\001 " +
-      "\002(\r\"\036\n\rStringMessage\022\r\n\005value\030\001 \002(\t\"j\n\014A" +
+      "\002(\r\"\036\n\rStringMessage\022\r\n\005value\030\001 \002(\t\"z\n\014A" +
       "rrayMessage\022+\n\002id\030\001 \001(\0132\037.ppl.delite.run" +
       "time.messages.Id\022\016\n\006length\030\002 \001(\r\022\r\n\005arra" +
-      "y\030\003 \001(\014\022\016\n\006offset\030\004 \003(\r"
+      "y\030\003 \001(\014\022\016\n\006offset\030\004 \003(\r\022\016\n\006object\030\005 \003(\014"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -9136,7 +9241,7 @@ public final class Messages {
           internal_static_ppl_delite_runtime_messages_ArrayMessage_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ppl_delite_runtime_messages_ArrayMessage_descriptor,
-              new java.lang.String[] { "Id", "Length", "Array", "Offset", },
+              new java.lang.String[] { "Id", "Length", "Array", "Offset", "Object", },
               ppl.delite.runtime.messages.Messages.ArrayMessage.class,
               ppl.delite.runtime.messages.Messages.ArrayMessage.Builder.class);
           return null;

@@ -2189,7 +2189,13 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       if (Config.generateSerializable) {
         emitMethod("deserialize", "activation_"+kernelName, List(("bytes", "java.util.List[com.google.protobuf.ByteString]"))) {
           var idx = -1
-          def deserialize(tp: String) = { idx += 1; "ppl.delite.runtime.messages.Serialization.deserialize(classOf[" + tp + "], bytes.get(" + idx + "))" }
+          def deserialize(tp: String) = { 
+            idx += 1
+            if (tp.contains("DeliteArrayObject")) //FIXME: need to handle this generically
+              "ppl.delite.runtime.messages.Serialization.deserializeDeliteArrayObject["+tp.substring(tp.indexOf("[")+1,tp.indexOf("]"))+"](ppl.delite.runtime.messages.Messages.ArrayMessage.parseFrom(bytes.get("+idx+")))"
+            else 
+              "ppl.delite.runtime.messages.Serialization.deserialize(classOf["+tp+"], bytes.get(" + idx + "))" 
+          }
           emitValDef("act", "activation_"+kernelName, "new activation_"+kernelName)
           val prefix = "act."
           var firstHash = true

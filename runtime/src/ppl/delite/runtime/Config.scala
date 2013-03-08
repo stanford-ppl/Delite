@@ -34,7 +34,7 @@ object Config {
   val executor: String = getProperty("delite.executor", "default")
   val numRuns: Int = getProperty("delite.runs", "1").toInt
   val deliteHome: String = getProperty("delite.home", System.getProperty("user.dir"))
-  val codeCacheHome: String = getProperty("delite.code.cache.home", deliteHome + java.io.File.separator + "generatedCache") + (new java.util.Random).nextInt(100).toString
+  val codeCacheHome: String = getProperty("delite.code.cache.home", deliteHome + java.io.File.separator + "generatedCache") //+ (new java.util.Random).nextInt(100).toString
   val useFsc: Boolean = getProperty("delite.usefsc", "false") != "false"
 
   /* Debug options */

@@ -96,4 +96,5 @@ message ArrayMessage {
   optional uint32 length = 2;
   optional bytes array = 3;
   repeated uint32 offset = 4; 
+  repeated bytes object = 5;
 }

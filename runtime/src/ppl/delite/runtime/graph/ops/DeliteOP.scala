@@ -1,6 +1,6 @@
 package ppl.delite.runtime.graph.ops
 
-import ppl.delite.runtime.graph.DeliteTaskGraph
+import ppl.delite.runtime.graph._
 import ppl.delite.runtime.graph.targets._
 
 /**
@@ -21,6 +21,8 @@ abstract class DeliteOP {
 
   private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]]
   private[graph] var inputTypesMap: Map[Targets.Value, Map[String,String]]
+  private[graph] val stencilMap = new collection.mutable.HashMap[String,Stencil]()
+
   def getOutputTypesMap = outputTypesMap
   def getInputTypesMap = inputTypesMap
 
@@ -34,6 +36,9 @@ abstract class DeliteOP {
   def supportsTarget(target: Targets.Value) : Boolean = outputTypesMap contains target
 
   def getOutputs = outputTypesMap.head._2.keySet - "functionReturn"
+
+  def stencil(symbol: String) = stencilMap(symbol)
+  def stencilOrElse(symbol: String)(orElse: => Stencil) = stencilMap.getOrElse(symbol, orElse)
 
   //set of all incoming graph edges for this op
   private[graph] var dependencies = Set.empty[DeliteOP]
@@ -119,6 +124,9 @@ abstract class DeliteOP {
   //TODO: more versatile/useful to match on the specific type of OP rather than simply dataParallel/sequential buckets?
   //TODO: should revisit this when we have more complex dataParallel patterns
   def isDataParallel : Boolean
+
+  def partition: Partition = Local
+  def partition(symbol: String): Partition = partition
 
   private var cudaMetadata: GPUMetadata = new CudaMetadata
   private var openclMetadata: GPUMetadata = new OpenCLMetadata
