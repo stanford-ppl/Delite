@@ -34,14 +34,16 @@ object Compilers {
     //generate executable(s) for all the ops in each proc
     //TODO: this is a poor method of separating CPU from GPU, should be encoded - essentially need to loop over all nodes
     val schedule = graph.schedule
-    assert((Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL) == schedule.numResources)
+    if(Config.clusterMode!=1) assert((Config.numThreads + (if(graph.targets(Targets.Cpp)) Config.numCpp else 0) + (if(graph.targets(Targets.Cuda)) Config.numCuda else 0) + (if(graph.targets(Targets.OpenCL)) Config.numOpenCL else 0)) == schedule.numResources)
     Sync.addSync(graph)
     ScalaExecutableGenerator.makeExecutables(schedule.slice(0,Config.numThreads), graph.kernelPath)
 
     // Hack to collect global inputTypesMap (TODO: Get rid of this)
+    CppExecutableGenerator.typesMap = Map[Targets.Value, Map[String,String]]()
     CppExecutableGenerator.collectInputTypesMap(graph)
     CppExecutableGenerator.makeExecutables(schedule.slice(Config.numThreads, Config.numThreads+Config.numCpp), graph.kernelPath)
 
+    CudaExecutableGenerator.typesMap = Map[Targets.Value, Map[String,String]]()
     CudaExecutableGenerator.collectInputTypesMap(graph)
     CudaExecutableGenerator.makeExecutables(schedule.slice(Config.numThreads+Config.numCpp, Config.numThreads+Config.numCpp+Config.numCuda), graph.kernelPath)
 
@@ -58,9 +60,9 @@ object Compilers {
       OpenCLCompile.printSources()
     }
 
-    if (Config.numCpp > 0) CppCompile.compile()
-    if (Config.numCuda > 0) CudaCompile.compile()
-    if (Config.numOpenCL > 0) OpenCLCompile.compile()
+    if (Config.numCpp>0 && graph.targets(Targets.Cpp)) CppCompile.compile()
+    if (Config.numCuda>0 && graph.targets(Targets.Cuda)) CudaCompile.compile()
+    if (Config.numOpenCL>0 && graph.targets(Targets.OpenCL)) OpenCLCompile.compile()
 
     val classLoader = ScalaCompile.compile
     DeliteMesosExecutor.classLoader = classLoader

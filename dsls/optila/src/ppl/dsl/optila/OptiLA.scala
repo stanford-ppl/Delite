@@ -75,11 +75,11 @@ trait OptiLAScalaCodeGenPkg extends ScalaGenDSLOps
   { val IR: OptiLAScalaOpsPkgExp  }
 
 trait OptiLACudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with CudaGenOrderingOps
-  with CudaGenEqual with CudaGenIfThenElse with CudaGenVariables with CudaGenWhile with CudaGenFunctions
+  with CudaGenEqual with CudaGenIfThenElse with CudaGenVariables with CudaGenWhile with CudaGenTupleOps with CudaGenFunctions
   with CudaGenStringOps with CudaGenRangeOps with CudaGenIOOps with CudaGenArrayOps with CudaGenBooleanOps
   with CudaGenPrimitiveOps with CudaGenMiscOps
   with CudaGenListOps with CudaGenSeqOps with CudaGenMathOps with CudaGenCastingOps with CudaGenSetOps with CudaGenObjectOps
-  with CudaGenSynchronizedArrayBufferOps with CudaGenHashMapOps with CudaGenIterableOps with CudaGenArrayBufferOps
+  with CudaGenSynchronizedArrayBufferOps with CudaGenHashMapOps with CudaGenIterableOps with CudaGenArrayBufferOps with CudaGenExceptionOps
   { val IR: OptiLAScalaOpsPkgExp  }
 
 trait OptiLAOpenCLCodeGenPkg extends OpenCLGenDSLOps with OpenCLGenImplicitOps with OpenCLGenOrderingOps
@@ -255,7 +255,12 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
 
   override def remap(s: String) = parmap(s)
   override def remap[A](m: Manifest[A]): String = {
-    var res = super.remap(m)
+    var res = m.erasure.getSimpleName match {
+      case "DenseVector" => "generated.scala." + IR.structName(m)
+      case "DenseMatrix" => "generated.scala." + IR.structName(m)
+      case "DenseVectorView" => "generated.scala." + IR.structName(m)
+      case _ => super.remap(m)
+    }
     res = res.replaceAllLiterally("package$", "")
     dsmap(res)
   }
@@ -278,17 +283,17 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
   }
 }
 
-trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with OptiLACudaGenExternal with CudaGenDeliteOps
+trait OptiLACodeGenCuda extends OptiLACudaCodeGenPkg with OptiLACodeGenBase with OptiLACudaGenExternal with CudaGenDeliteOps
   with CudaGenArithOps with CudaGenVectorOps with CudaGenDenseVectorOps with CudaGenDenseVectorViewOps with CudaGenMatrixOps with CudaGenDenseMatrixOps 
   with CudaGenVariantsOps with CudaGenDeliteCollectionOps with CudaGenDeliteArrayOps
   with DeliteCudaGenAllOverrides with DeliteCppHostTransfer with OptiLACppHostTransfer with DeliteCudaDeviceTransfer with OptiLACudaDeviceTransfer { //with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
   val IR: DeliteApplication with OptiLAExp
   import IR._
 
-
   // Maps the scala type to cuda type
   override def remap[A](m: Manifest[A]) : String = {
     m.toString match {
+        /*
       case "ppl.dsl.optila.DenseVector[Int]" => "DenseVector< int >"
       case "ppl.dsl.optila.DenseVector[Long]" => "DenseVector< long >"
       case "ppl.dsl.optila.DenseVector[Float]" => "DenseVector< float >"
@@ -305,6 +310,7 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
       case "ppl.dsl.optila.DenseVectorView[Float]" => "DenseVectorView< float >"
       case "ppl.dsl.optila.DenseVectorView[Double]" => "DenseVectorView< double >"
       case "ppl.dsl.optila.DenseVectorView[Boolean]" => "DenseVectorView< bool >"
+      */
       //case "ppl.dsl.optila.MatrixRow[Int]" => "DenseVectorView<int>"
       //case "ppl.dsl.optila.MatrixRow[Long]" => "DenseVectorView<long>"
       //case "ppl.dsl.optila.MatrixRow[Float]" => "DenseVectorView<float>"
@@ -323,19 +329,24 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
     }
   }
 
-  override def getDSLHeaders: String = {
+  override def getDataStructureHeaders(): String = {
     val out = new StringBuilder
     out.append("#include <float.h>\n")
+    out.append("#include \"Ref.h\"\n")
+    out.append("#include \"DeliteStructs.h\"\n")
     out.append("#include \"DenseVector.h\"\n")
     out.append("#include \"RangeVector.h\"\n")
+    out.append("#include \"List.h\"\n")
     out.append("#include \"DeliteArray.h\"\n")
     out.append("#include \"DenseMatrix.h\"\n")
+    out.append("#include \"HostRef.h\"\n")
     out.append("#include \"HostDenseVector.h\"\n")
     out.append("#include \"HostRangeVector.h\"\n")
+    out.append("#include \"HostList.h\"\n")
     out.append("#include \"HostDeliteArray.h\"\n")
     out.append("#include \"HostDenseMatrix.h\"\n")
     out.append("#include \"library.h\"\n") // external library
-    out.toString
+    getDataStructureHeaders() + out.toString
   }
 
 }
@@ -380,14 +391,12 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
     }
   }
 
-  override def getDSLHeaders: String = {
+  override def getDataStructureHeaders(): String = {
     val out = new StringBuilder
-    out.append("#include <float.h>\n")
     out.append("#include \"VectorImpl.h\"\n")
     out.append("#include \"MatrixImpl.h\"\n")
     out.append("#include \"RangeVectorImpl.h\"\n")
-    out.append("#include \"library.h\"\n") // external library
-    out.toString
+    getDataStructureHeaders() + out.toString
   }
 }
 
@@ -417,16 +426,13 @@ trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenD
     }
   }
 
-  override def getDSLHeaders: String = {
+  override def getDataStructureHeaders(): String = {
     val out = new StringBuilder
-    out.append("#include <float.h>\n")
-    out.append("#include \"Ref.h\"\n")
     out.append("#include \"DeliteArray.h\"\n")
     out.append("#include \"DenseVector.h\"\n")
     out.append("#include \"RangeVector.h\"\n")
     out.append("#include \"DeliteArray.h\"\n")
     out.append("#include \"DenseMatrix.h\"\n")
-    //out.append("#include \"library.h\"\n") // external library
-    out.toString
+    getDataStructureHeaders() + out.toString
   }
 }

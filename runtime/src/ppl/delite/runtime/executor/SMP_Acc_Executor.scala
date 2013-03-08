@@ -23,8 +23,8 @@ class SMP_Acc_Executor extends Executor {
   val numThreads = Config.numThreads
   val numAccs = Config.numCpp + Config.numCuda + Config.numOpenCL
 
-  private val smpExecutor = new SMPExecutor
-  private val accExecutor = new Array[AccExecutor](numAccs)
+  val smpExecutor = new SMPExecutor
+  val accExecutor = new Array[AccExecutor](numAccs)
   for (i <- 0 until numAccs) accExecutor(i) = new AccExecutor(i)
 
   def init() {
@@ -35,6 +35,10 @@ class SMP_Acc_Executor extends Executor {
   def run(schedule: StaticSchedule) {
     assert(schedule.resources.length == numThreads + numAccs)
     smpExecutor.run(new StaticSchedule(schedule.resources.slice(0, numThreads)))
+    runAcc(schedule)
+  }
+
+  def runAcc(schedule: StaticSchedule) {
     for (i <- 0 until numAccs) accExecutor(i).run(new StaticSchedule(schedule.resources.slice(numThreads+i, numThreads+i+1)))
   }
 

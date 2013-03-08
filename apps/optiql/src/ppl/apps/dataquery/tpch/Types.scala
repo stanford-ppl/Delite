@@ -72,7 +72,7 @@ trait Types { this: OptiQLApplication =>
     val c_comment = comment
   }
 
-  def Customer(): Rep[Customer] = Customer(0, "", "", 0, "", 0, "", "") //TODO: no lift for Double?
+  def Customer(): Rep[Customer] = Customer(0, "", "", 0, "", 0, "", "")
 
   type CustomerTable = Table[Customer]
 

@@ -288,31 +288,10 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
 
 trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with OptiMLCudaCodeGenPkg 
   with CudaGenVectorOps with CudaGenMatrixOps with CudaGenTrainingSetOps
-  with DeliteCudaGenAllOverrides with OptiMLCppHostTransfer with OptiMLCudaDeviceTransfer // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
+  with DeliteCudaGenAllOverrides with OptiMLCppHostTransfer with OptiMLCudaDeviceTransfer 
 {
   val IR: DeliteApplication with OptiMLExp
   import IR._
-
-
-  // Maps the scala type to cuda type
-  override def remap[A](m: Manifest[A]) : String = {
-    m.toString match {
-      case "ppl.dsl.optiml.datastruct.scala.IndexVector" => "IndexVector"
-      case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Double]" => "TrainingSet<double,double>"
-      case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Int]" => "TrainingSet<double,int>"
-      case _ => super.remap(m)
-    }
-  }
-
-  override def getDSLHeaders: String = {
-    val out = new StringBuilder
-    out.append(super.getDSLHeaders)
-    out.append("#include \"IndexVectorImpl.h\"\n")
-    out.append("#include \"HostIndexVector.h\"\n")
-    out.append("#include \"TrainingSetImpl.h\"\n")
-    out.toString
-  }
-
 }
 
 trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase with OptiMLOpenCLCodeGenPkg
@@ -321,39 +300,10 @@ trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase wit
 {
   val IR: DeliteApplication with OptiMLExp
   import IR._
-
-  override def remap[A](m: Manifest[A]) : String = m.toString match {
-    //case "ppl.dsl.optiml.IndexVector" => "IndexVector"
-    //case "ppl.dsl.optiml.TrainingSet[Double, Double]" => "DoubleDoubleTrainingSet"
-    //case "ppl.dsl.optiml.TrainingSet[Double, Int]" => "DoubleIntTrainingSet"
-    case _ => super.remap(m)
-  }
-
-  override def getDSLHeaders: String = {
-    val out = new StringBuilder
-    out.append(super.getDSLHeaders)
-    out.append("#include \"IndexVectorImpl.h\"\n")
-    out.append("#include \"TrainingSetImpl.h\"\n")
-    out.toString
-  }
 }
 
 trait OptiMLCodeGenC extends OptiLACodeGenC with OptiMLCodeGenBase with OptiMLCCodeGenPkg with CGenIndexVectorOps with CGenIndexVectorDenseOps with OptiMLCppHostTransfer
 {
   val IR: DeliteApplication with OptiMLExp
   import IR._
-  
-  override def remap[A](m: Manifest[A]) : String = {
-    m.toString match {
-      case "ppl.dsl.optiml.IndexVectorDense" => "IndexVectorDense"
-      case _ => super.remap(m)
-    }
-  }
-
-  override def getDSLHeaders: String = {
-    val out = new StringBuilder
-    out.append(super.getDSLHeaders)
-    out.append("#include \"IndexVector.h\"\n")
-    out.toString
-  }
 }

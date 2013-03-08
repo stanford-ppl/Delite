@@ -177,22 +177,12 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
 }
 
 
-trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse {
+trait DeliteGPUGenIfThenElse extends GPUGenEffect with DeliteBaseGenIfThenElse {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case DeliteIfThenElse(c,a,b,h) =>
-        // TODO: Not GPUable if the result is not primitive types (or void type).
-        // Changing the reference of the output is not safe in general.
-        // Consider passing the object references to the GPU kernels rather than copying by value.
-
-        val objRetType = (!isVoidType(sym.tp)) && (!isPrimitiveType(sym.tp))
-        objRetType match {
-          case true => throw new GenerationFailedException("CudaGen: If-Else cannot return object type.")
-          case _ =>
-        }
-
         isVoidType(sym.tp) match {
           case true =>
             stream.println(addTab() + "if (" + quote(c) + ") {")
@@ -202,6 +192,10 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
             stream.println(addTab() + "} else {")
             tabWidth += 1
             emitBlock(b)
+            getBlockResult(a).tp.toString match {
+              case "Nothing" => // e.g., ExceptionOps
+              case _ => stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
+            }
             tabWidth -= 1
             stream.println(addTab()+"}")
           case false =>
@@ -214,7 +208,10 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
             stream.println(addTab() + "} else {")
             tabWidth += 1
             emitBlock(b)
-            stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
+            getBlockResult(b).tp.toString match {
+              case "Nothing" => // e.g., ExceptionOps
+              case _ => stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
+            }
             tabWidth -= 1
             stream.println(addTab()+"}")
           }
@@ -223,34 +220,8 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
   }
 }
 
-trait DeliteOpenCLGenIfThenElse extends OpenCLGenEffect with DeliteBaseGenIfThenElse {
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
-      rhs match {
-        case DeliteIfThenElse(c,a,b,h) =>
-          //TODO: using if-else does not work
-          remap(sym.tp) match {
-            case "void" =>
-              stream.println("if (" + quote(c) + ") {")
-              emitBlock(a)
-              stream.println("} else {")
-              emitBlock(b)
-              stream.println("}")
-            case _ =>
-              stream.println("%s %s;".format(remap(sym.tp),quote(sym)))
-              stream.println("if (" + quote(c) + ") {")
-              emitBlock(a)
-              stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(a))))
-              stream.println("} else {")
-              emitBlock(b)
-              stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(b))))
-              stream.println("}")
-          }
-        case _ => super.emitNode(sym, rhs)
-      }
-    }
-}
+trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteGPUGenIfThenElse
+trait DeliteOpenCLGenIfThenElse extends OpenCLGenEffect with DeliteGPUGenIfThenElse
 
 trait DeliteCGenIfThenElse extends CGenEffect with DeliteBaseGenIfThenElse {
   import IR._
@@ -258,7 +229,6 @@ trait DeliteCGenIfThenElse extends CGenEffect with DeliteBaseGenIfThenElse {
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
       rhs match {
         case DeliteIfThenElse(c,a,b,h) =>
-          //TODO: using if-else does not work
           remap(sym.tp) match {
             case "void" =>
               stream.println("if (" + quote(c) + ") {")
@@ -279,26 +249,6 @@ trait DeliteCGenIfThenElse extends CGenEffect with DeliteBaseGenIfThenElse {
               stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(b))))
               stream.println("}")
           }
-          /*
-          val booll = remap(sym.tp).equals("void")
-          if(booll) {
-            stream.println("%s %s;".format(remap(sym.tp),quote(sym)))
-            stream.println("if (" + quote(c) + ") {")
-            emitBlock(a)
-            stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(a))))
-            stream.println("} else {")
-            emitBlock(b)
-            stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(b))))
-            stream.println("}")
-          }
-          else {
-            stream.println("if (" + quote(c) + ") {")
-            emitBlock(a)
-            stream.println("} else {")
-            emitBlock(b)
-            stream.println("}")
-          }
-          */
         case _ => super.emitNode(sym, rhs)
       }
     }

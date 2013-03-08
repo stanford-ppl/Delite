@@ -4,13 +4,17 @@ import org.apache.mesos._
 import org.apache.mesos.Protos._
 import com.google.protobuf.ByteString
 import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.ArrayBlockingQueue
 import java.util.{ArrayList,HashMap}
 import ppl.delite.runtime.data.DeliteArray
 import ppl.delite.runtime.executor.ThreadPool
 import ppl.delite.runtime.codegen.DeliteExecutable
 import ppl.delite.runtime.messages.Messages._
 import ppl.delite.runtime.messages._
-
+import ppl.delite.runtime.graph.ops.DeliteOP
+import ppl.delite.runtime.graph.DeliteTaskGraph
+import ppl.delite.runtime.graph.targets.Targets
+import ppl.delite.runtime.data._
 
 class DeliteMesosExecutor extends Executor {
   
@@ -178,6 +182,48 @@ object DeliteMesosExecutor {
   var numSlaves = 0
   var slaveIdx = 0
   
+  private var graph: DeliteTaskGraph = _
+
+  // task queues for workers 
+  private val numResources = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL
+  private val taskQueues = new Array[ArrayBlockingQueue[String]](numResources)
+  for (i <- 0 until numResources) {
+    taskQueues(i) = new ArrayBlockingQueue[String](1024)
+  }
+  def getTask(resourceID: Int): String = taskQueues(resourceID).take()
+  def putTask(resourceID: Int, task: String) = taskQueues(resourceID).put(task)
+  private val inputCopy = new ArrayBlockingQueue[Array[Int]](1)
+  def getInputCopy: Array[Int] = inputCopy.take()
+  def putInputCopy(copy: Array[Int]) = inputCopy.put(copy)
+
+  // version numbers for objects
+  case class VersionID(var w: Int, r:Array[Int])
+  private val versionID = new scala.collection.mutable.HashMap[String,VersionID]
+  private def updateVersionIDs(id: String, target: Targets.Value) {
+    val outSyms = graph.totalOps.find(_.id == id).get.getOutputs
+    for(sym <- outSyms) {
+      val v = versionID.getOrElse(sym, VersionID(0,new Array[Int](numResources)))
+      v.w = v.w + 1
+      v.r(Targets.resourceIDs(target)(0)) = v.w
+      versionID.put(sym, v) 
+    }
+  }
+  private def needsCopy(sym: String, target: Targets.Value): Boolean = {
+    var stale = true
+    if(versionID.contains(sym)) {
+      val v = versionID.get(sym).get
+      if(v.r(Targets.resourceIDs(target)(0)) == v.w) stale = false
+    }
+    stale
+  }
+  private def syncVersionID(sym: String, target: Targets.Value) {
+    assert(versionID.contains(sym))
+    val v = versionID.get(sym).get
+    v.r(Targets.resourceIDs(target)(0)) = v.w
+  }
+
+  private var opTarget: Targets.Value = _
+
   var executor: ThreadPool = _
   var classLoader = this.getClass.getClassLoader
   val results = new HashMap[String,ArrayList[Any]]
@@ -186,6 +232,14 @@ object DeliteMesosExecutor {
   private var size = -1
 
   def getResult(id: String, offset: Int) = {
+    if(opTarget==Targets.Scala && needsCopy(id,Targets.Scala)) {
+      putTask(Targets.resourceIDs(Targets.Cuda)(0),"get_"+id)
+      val syncObjectCls = classLoader.loadClass("Sync_Executable"+Targets.resourceIDs(Targets.Cuda)(0)) 
+      val r = syncObjectCls.getDeclaredMethods.find(_.getName == "get0_x" + id).get.invoke(null,Array():_*)
+      syncVersionID(id, Targets.Scala)
+      val dummySerialization = Serialization.serialize(r, true, id) // Just to update the result table with LocalDeliteArrays
+      sendDebugMessage("slave: " + slaveIdx + " copied data from CUDA device for getResult().")
+    }
     val data = results.get(id).get(offset).asInstanceOf[DeliteArray[_]]
     if (size == -1) {
       size = data.length
@@ -216,6 +270,7 @@ object DeliteMesosExecutor {
     })
 
     driver = new MesosExecutorDriver(new DeliteMesosExecutor)
+    graph = Delite.loadDeliteDEG(args(0))
     driver.run()
   }
 
@@ -244,13 +299,67 @@ object DeliteMesosExecutor {
     }
 
     message match {
-      case work: RemoteOp => launchWork(work)
+      case work: RemoteOp if(scheduleOn(work)==Targets.Cuda) => launchWorkCuda(work)
+      case work: RemoteOp => launchWorkScala(work)
       case request: RequestData => getData(request)
     }
     awaitWork()
   }
 
-  def launchWork(op: RemoteOp) {
+  def launchWorkCuda(op: RemoteOp) {
+    opTarget = Targets.Cuda
+    val id = op.getId.getId
+    size = -1 //TODO: need a more robust partitioning solution
+
+    // Set sync objects for kernel inputs 
+    val o = graph.totalOps.find(_.id == op.getId.getId).get
+    val inputs = o.getInputs.map(i => (i._2,Targets.getClassType(o.inputType(i._2)))).toArray
+    var idx = 0
+    for ((sym,tpe) <- inputs) {
+      sendDebugMessage("CUDA: inserting " + sym)
+      val arg = Serialization.deserialize(tpe, op.getInput(idx), true).asInstanceOf[Object]
+      val syncObjectCls = classLoader.loadClass("Sync_Executable0")
+      val method = syncObjectCls.getDeclaredMethods.find(m => m.getName.contains("set") && m.getName.contains(sym)).get
+      method.invoke(null,Array(arg):_*)
+      idx += 1
+    }
+
+    // Check which inputs need copy
+    val copy = inputs.map(i => if(needsCopy(i._1, Targets.Cuda)) 1 else 0)
+    putInputCopy(copy)
+
+    // Put task on the task queue
+    val returnResult = ReturnResult.newBuilder.setId(op.getId)
+    putTask(Targets.resourceIDs(Targets.Cuda)(0),op.getId.getId)
+
+    // Wait for the result 
+    val syncObjectCls = classLoader.loadClass("Sync_Executable"+Targets.resourceIDs(Targets.Cuda)(0)) 
+    val resultClass = classLoader.loadClass("generated.scala.activation_"+id)
+    val constructor = resultClass.getConstructors()(0)
+    val result = constructor.newInstance(Array():_*)
+    for(output <- o.getOutputs) {
+      val m = resultClass.getDeclaredMethods.find(_.getName == output + "_$eq").get 
+      val r = syncObjectCls.getDeclaredMethods.find(_.getName == "get0_x" + output).get.invoke(null,Array():_*)
+      m.invoke(result,Array(r):_*)
+    }
+
+    // Update the version number
+    updateVersionIDs(id, Targets.Cuda)
+
+    // Send output message to master
+    val serResults = result.getClass.getMethod("serialize").invoke(result).asInstanceOf[java.util.List[ByteString]]
+    returnResult.addAllOutput(serResults)
+
+    val mssg = DeliteSlaveMessage.newBuilder
+      .setType(DeliteSlaveMessage.Type.RESULT)
+      .setResult(returnResult)
+      .build
+
+    driver.sendFrameworkMessage(mssg.toByteArray)
+  }
+
+  def launchWorkScala(op: RemoteOp) {
+    opTarget = Targets.Scala
     val id = op.getId.getId
     size = -1 //TODO: need a more robust partitioning solution
 
@@ -317,6 +426,9 @@ object DeliteMesosExecutor {
       case i: java.lang.reflect.InvocationTargetException => if (i.getCause != null) throw i.getCause else throw i
     }
 
+    // Update the version number for outputs
+    updateVersionIDs(id, Targets.Scala)
+
     val serResults = result.getClass.getMethod("serialize").invoke(result).asInstanceOf[java.util.List[ByteString]]
     val returnResult = ReturnResult.newBuilder.setId(op.getId).addAllOutput(serResults)
 
@@ -329,10 +441,20 @@ object DeliteMesosExecutor {
   }
 
   def getData(request: RequestData) {    
+
     val id = request.getId.getId.split("_")
     assert(id.length == 2)
     val key = id(0)
     val offset = id(1).toInt
+
+    if(needsCopy(key, Targets.Scala)) {
+      putTask(Targets.resourceIDs(Targets.Cuda)(0),"get_"+key)
+      val syncObjectCls = classLoader.loadClass("Sync_Executable"+Targets.resourceIDs(Targets.Cuda)(0)) 
+      val r = syncObjectCls.getDeclaredMethods.find(_.getName == "get0_x" + key).get.invoke(null,Array():_*)
+      syncVersionID(key, Targets.Scala)
+      val dummySerialization = Serialization.serialize(r, true, key) // Just to update the result table with LocalDeliteArrays
+      sendDebugMessage("slave: " + slaveIdx + " copied data from CUDA device.")
+    }
 
     val res = results.get(key)
     if (res == null || res.size <= offset)
@@ -365,6 +487,18 @@ object DeliteMesosExecutor {
     }
     else {
       (0L, Long.MaxValue)
+    }
+  }
+
+  def scheduleOn(op: RemoteOp) = {
+    op.getType match {
+      case RemoteOp.Type.MULTILOOP =>
+        graph.totalOps.find(_.id == op.getId.getId) match {
+          case Some(o) if o.supportsTarget(Targets.Cuda) => Targets.Cuda
+          case _ => Targets.Scala
+        }
+      case _ =>
+        Targets.Scala
     }
   }
 

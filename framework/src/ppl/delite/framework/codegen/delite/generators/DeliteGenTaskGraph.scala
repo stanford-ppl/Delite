@@ -328,21 +328,21 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     // emit task graph node
     rhs match {
       case op: AbstractFatLoop =>
-        emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, op.body.exists (loopBodyNeedsCombine _), op.body.exists (loopBodyNeedsPostProcess _), optContext)
+        emitMultiLoop(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size, op.body.exists (loopBodyNeedsCombine _), op.body.exists (loopBodyNeedsPostProcess _), optContext)
       case op: AbstractFatIfThenElse =>
         assert(sym.length == 1, "TODO: implement fat if then else")
         emitIfThenElse(Block(op.cond), op.thenp.head, op.elsep.head, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
       case z =>
         z match {
-          case op:AbstractLoop[_] => emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body), optContext)
-          case e:DeliteOpExternal[_] => emitExternal(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
+          case op:AbstractLoop[_] => emitMultiLoop(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size, loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body), optContext)
+          case e:DeliteOpExternal[_] => emitExternal(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps)
           case c:DeliteOpCondition[_] => emitIfThenElse(Block(c.cond), c.thenp, c.elsep, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
           case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-          case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, optContext)
-          case i:DeliteOpInput[_] => emitInput(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, optContext)
-          case f:DeliteOpForeach2[_,_] => emitForeach(f, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-          case f:DeliteOpForeachBounded[_,_,_] => emitForeach(f, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-          case _ => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, if (outputs(0).sourceContexts.isEmpty) None else Some(outputs(0).sourceContexts.head)) // things that are not specified as DeliteOPs, emit as SingleTask nodes
+          case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, optContext)
+          case i:DeliteOpInput[_] => emitInput(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, optContext)
+          case f:DeliteOpForeach2[_,_] => emitForeach(f, kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps)
+          case f:DeliteOpForeachBounded[_,_,_] => emitForeach(f, kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps)
+          case _ => emitSingleTask(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, if (outputs(0).sourceContexts.isEmpty) None else Some(outputs(0).sourceContexts.head)) // things that are not specified as DeliteOPs, emit as SingleTask nodes
         }
     }
 
@@ -357,7 +357,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
    * @param antiDeps    a list of WAR dependencies (need to be committed in program order)
    */
 
-  def emitMultiLoop(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], size: Exp[Int], needsCombine: Boolean, needsPostProcess: Boolean,
+  def emitMultiLoop(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], size: Exp[Int], needsCombine: Boolean, needsPostProcess: Boolean,
                     sourceContext: Option[SourceContext])
        (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
    stream.println("{\"type\":\"MultiLoop\",")
@@ -366,38 +366,38 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
    emitConstOrSym(size, "size")
    stream.print(",\"needsCombine\":" + needsCombine)
    stream.print(",\"needsPostProcess\":" + needsPostProcess)
-   emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
+   emitExecutionOpCommon(id, outputs, inputs, inVars, mutableInputs, controlDeps, antiDeps)
    stream.println("},")
   }
 
-  def emitExternal(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitExternal(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"External\"")
     // TODO: add thread control, other configuration?
-    emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
+    emitExecutionOpCommon(id, outputs, inputs, inVars, mutableInputs, controlDeps, antiDeps)
     stream.println("},")
   }
 
-  def emitSingleTask(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], sourceContext: Option[SourceContext])
+  def emitSingleTask(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], sourceContext: Option[SourceContext])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"SingleTask\",")
     emitSourceContext(sourceContext, stream, id)
-    emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
+    emitExecutionOpCommon(id, outputs, inputs, inVars, mutableInputs, controlDeps, antiDeps)
     stream.println("},")
   }
 
-  def emitInput(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], sourceContext: Option[SourceContext])
+  def emitInput(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], sourceContext: Option[SourceContext])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Input\",")
     emitSourceContext(sourceContext, stream, id)
-    emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
+    emitExecutionOpCommon(id, outputs, inputs, inVars, mutableInputs, controlDeps, antiDeps)
     stream.println("},")
   }
 
-  def emitForeach(rhs: Def[Any], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitForeach(rhs: Def[Any], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Foreach\"")
-    emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
+    emitExecutionOpCommon(id, outputs, inputs, inVars, mutableInputs, controlDeps, antiDeps)
     emitVariant(rhs, id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
     stream.println("},")
   }
@@ -447,14 +447,25 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
   }
 
-  def emitExecutionOpCommon(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitExecutionOpCommon(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print(" , \"kernelId\" : \"" + id + "\" ")
     stream.print(" , \"supportedTargets\": [" + supportedTgt.mkString("\"","\",\"","\"") + "],\n")
     stream.print("  \"outputs\":[" + outputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")
     stream.print("  \"inputs\":[" + inputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")
     stream.print("  \"input-types\":{")
-    val inputTypesMap = inputs.map(i => "\"" + quote(i) + "\":{" + generators.filter(supportedTgt contains _.toString).map(gen => "\"" + gen.toString + "\":\"" + gen.remap(i.tp) + "\"").mkString(",") + "}")
+    def addRef(gen:String, sym: Exp[Any], tp:String):String = {
+      if(inVars contains sym) {
+        gen match {
+          case "scala" => "Ref[" + tp + "]"
+          case "cuda" | "cpp" | "opencl" => "Ref< " + tp + " >"
+          case _ => tp
+        }
+      }
+      else
+        tp
+    }
+    val inputTypesMap = inputs.map(i => "\"" + quote(i) + "\":{" + generators.filter(supportedTgt contains _.toString).map(gen => "\"" + gen.toString + "\":\"" + addRef(gen.toString,i,gen.remap(i.tp)) + "\"").mkString(",") + "}")
     stream.print(inputTypesMap.mkString(","))
     stream.print("  },\n")
     stream.print("  \"mutableInputs\":[" + mutableInputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")

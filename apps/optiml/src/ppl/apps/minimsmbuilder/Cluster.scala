@@ -71,6 +71,7 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
 
     // iterate newton descent        
     val linit = (gx + gy) / 2.0
+    /*
     val lambda = 
       untilconverged(linit, (cur: Rep[Double]) => abs(.000001*cur), 50, false) { lambda =>
         val l2 = lambda*lambda
@@ -78,9 +79,9 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
         val a = b + c1
         lambda - (a * lambda + c0) / (2.0*lambda*l2 + b + a)
       }
-
+    */
     // direct solve
-    // val lambda = directSolve(linit, c0, c1, c2) 
+    val lambda = directSolve(linit, c0, c1, c2) 
 
     // println("lambda: " + lambda)
     val rmsd2 = (gx + gy - 2.0 * lambda) / realLen
@@ -98,7 +99,7 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
     val sy = square(yCentered).sum
     val gy = sy.x + sy.y + sy.z
     
-    rmsd_centered(x.length, xCentered, yCentered, gx, gy)
+    rmsd_centered(y.length, xCentered, yCentered, gx, gy)
   }
   
   /*
@@ -108,12 +109,12 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
   def oneToAll(theo1: Rep[Theo], theo2: Rep[Theo], i: Rep[Int]): Rep[DenseVector[Float]] = {
     // -- BEGIN PERFORMANCE CRITICAL SECTION -- 
     val a = theo1.XYZData
-    val b = theo2.XYZData
+    val b = theo2.XYZData.t
     val ga = theo1.G
     val gb = theo2.G
     (0::len(theo2)) { k =>
       // rmsd(a(i),b(k))
-      rmsd_centered(theo1.numAtoms,a(i),b(k),ga(i),gb(k))
+      rmsd_centered(theo1.numAtoms,a(i),b.getCol(k),ga(i),gb(k))
       // rmsd(theo1.numAtoms, theo1.numAtomsWithPadding, a(i), b(k), theo2.G(i), theo2.G(k)))
     }
     
@@ -152,7 +153,7 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
     val numOfConformations = len(theo)
     
     var newCenter = 0 // we start by selecting (arbitrarily) the zeroth frame to be initial center
-    val centerIndices = IndexVector(0,true) // indices of the identified kcenters
+    val centerIndices = IndexVector(k,true).mutable // indices of the identified kcenters
     
     // distanceList holds the distance of every conformation to its closest center
     val distanceList = ((0::numOfConformations) { i => INF.floatValue }).mutable
@@ -163,7 +164,8 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
     var i = 0
     while (i < k) {
       vprint("Finding Generator " + i + "\\n")
-      centerIndices <<= newCenter
+      centerIndices(i) = newCenter
+      //centerIndices <<= newCenter
       val distanceToNewCenter = oneToAll(theo,theo,newCenter)
       val updatedIndices = (0::numOfConformations) filter { i => distanceToNewCenter(i) < distanceList(i) }
       for (ui <- updatedIndices) distanceList(ui) = distanceToNewCenter(ui) // AKS TODO: indexvector update with indexvector values
@@ -218,14 +220,16 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
     var optimalAssignments = initialAssignments
     var optimalDistances = initialDistance
     
-    for (i <- 0::numLocalMinima) {
+    //for (i <- 0::numLocalMinima) {
+    var i = 0
+    while (i < numLocalMinima) {
       vprint(i + " of " + numLocalMinima + " local minima\\n")
       
       // the canonical clarans approach is to initialize the medoids that you
       // start from randomly, but instead we use the kcenters medoids
       
       var medoids = initialMedoids
-      var pMedoids = initialPMedoids
+      //var pMedoids = initialPMedoids
       var assignments = initialAssignments
       var distanceToCurrent = initialDistance
       var currentCost = initialCost
@@ -244,9 +248,10 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
             random(assignments.find(_ == medoids(medoidI)))
           }
         
-        val newMedoids = medoids.mutable
-        newMedoids(medoidI) = trialMedoid
-        pMedoids = get(ptraj,newMedoids)
+        //val newMedoids = medoids.mutable
+        //newMedoids(medoidI) = trialMedoid
+        val newMedoids = IndexVector( (0::medoids.length) { i => if(i == medoidI) trialMedoid else medoids(i) } )
+        val pMedoids = get(ptraj,newMedoids)
         
         val newDistances = distanceToCurrent.mutable
         val newAssignments = assignments.mutable
@@ -266,11 +271,16 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
         val ambiguous = (0::newAssignments.length) filter { i => newAssignments(i) == oldMedoid && distanceToTrial(i) >= distanceToCurrent(i) }
         // println("ambiguous:")
         // ambiguous.pprint
+
+        //var l_idx = 0
         for (l <- ambiguous) {
+        //while (l_idx < ambiguous.length) {
+        //  val l = ambiguous(l_idx)
           val d = oneToAll(ptraj, pMedoids, l)
           val argmin = d.minIndex
           newAssignments(l) = newMedoids(argmin)
           newDistances(l) = d(argmin)
+        //  l_idx += 1
         }
         
         val newCost = sum(newDistances)
@@ -294,6 +304,7 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
         optimalAssignments = assignments.Clone
         optimalDistances = distanceToCurrent.Clone        
       }
+      i += 1
     }
     
     optimalMedoids    
@@ -309,26 +320,29 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
     if (args.length < 1) printUsage()
     val pathToTheoData = args(0).trim()
     
-    if (args.length > 1) {
+    //if (args.length > 1) {
+        /*
       if (args(1) == "+perf") {
         // test rmsd performance
         println("-- testing RMSD performance")
         //val frame = Vector[XYZ](10,true).map(e => ((randomGaussian.floatValue,randomGaussian.floatValue,randomGaussian.floatValue)))
         //val traj = Matrix[XYZ](50000,10).mapRows(e => Vector[XYZ](10,true).map(e=>((randomGaussian.floatValue,randomGaussian.floatValue,randomGaussian.floatValue))))
         val frame = readVector[XYZ](pathToTheoData + "_benchmark_frame.dat", v => ((v(0).toFloat,v(1).toFloat,v(2).toFloat)), ",")
-        val traj = readMatrix[XYZ](pathToTheoData + "_benchmark_traj.dat", line => lineToXYZ(line))
+        val traj = readMatrix[XYZ](pathToTheoData + "_benchmark_traj.dat", line => lineToXYZ(line)).t
+      
+        println(traj)
         // println("frame(0): ")
         // println(frame(0).x + "," + frame(0).y + "," + frame(0).z)
         // println("traj(0,0): ")
         // println(traj(0,0).x + "," + traj(0,0).y + "," + traj(0,0).z)      
         tic()
-        val out = (0::traj.numRows) { i =>
-          rmsd(frame, traj(i))
+        val out = (0::traj.numCols) { i =>
+          rmsd(frame, traj.getCol(i))
         }
         toc(out)      
         println("-- test finished")
         println("out.length: " + out.length)
-        out(0::10).pprint
+        out.pprint
       }
       else if (args(1) == "+perftheo") {
         println("-- testing RMSD performance with theo values")
@@ -347,20 +361,22 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
           val numAtomsWithPadding = trajNumAtoms(1).AsInstanceOf[Int]      
         }        
         val a = frameTheoData.XYZData
-        val b = trajTheoData.XYZData    
+        val b = trajTheoData.XYZData.t    
         val ga = frameTheoData.G
         val gb = trajTheoData.G          
+        println(b)
         tic()
-        val out = (0::b.numRows) { i =>
-          rmsd_centered(frameTheoData.numAtoms, a(0), b(i), ga(0), gb(i))
+        val out = (0::b.numCols) { i =>
+          rmsd_centered(frameTheoData.numAtoms, a(0), b.getCol(i), ga(0), gb(i))
         }
         toc(out)      
         println("-- test finished")
         println("out.length: " + out.length)
         out(0::10).pprint                
       }
-    }
-    else {
+      */
+    //}
+    //else {
       
     // option 1: load Theo data from the trajectory data created from the Python script
     // val theoData = theo(args(0))
@@ -409,7 +425,7 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
     println("found " + numClusters + " centers with kcenters")
     centers.pprint
     
-    }
+    //}
   }
   
 }

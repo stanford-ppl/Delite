@@ -1,6 +1,5 @@
 package ppl.delite.runtime.codegen
 
-
 import kernels.cpp.CppMultiLoopHeaderGenerator
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.scheduler.{OpList, PartialSchedule}
@@ -91,7 +90,9 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
   protected def writeHeader() {
     out.append("#include <stdio.h>\n")
     out.append("#include <stdlib.h>\n")
+    out.append("#include <string.h>\n")
     out.append("#include <jni.h>\n")
+    out.append("#include <map>\n")
     out.append("#include <cuda_runtime.h>\n") //Cuda runtime api
     out.append("#include \"cublas.h\"\n") //cublas library
     out.append("#include \"DeliteCuda.h\"\n") //Delite-Cuda interface for DSL
@@ -121,8 +122,10 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
     out.append("cudaStreamCreate(&d2hStream);\n")
     out.append("cublasSetKernelStream(kernelStream);\n")  // set cublas to use the kernel stream
     out.append("hostInit();\n") // try to remove the overhead of the first call to hostInit (internally calls cudaHostAlloc)
-    out.append("tempCudaMemInit();\n") 
-
+    out.append("tempCudaMemInit(" + Config.tempCudaMemRate + ");\n")  // Allocate temporary device memory used for multiloops
+    out.append("cudaDeviceSetLimit(cudaLimitMallocHeapSize, cudaHeapSize);\n") // Allocate heap device memory
+    out.append("cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);\n") // 48KB L1 and 16KB Shared mem
+    out.append("map<char*,void*>* outputMap = new map<char*,void*>();\n")
     val locations = Range(0,Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL).toSet
     writeJNIInitializer(locations)
   }
@@ -192,7 +195,9 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
           out.append(" *" + getSymDevice(op,name) + ";\n")
         }
         out.append(op.task) //kernel name
-        val args = op.getOutputs.filter(o=>op.outputType(o)!="Unit").map(o=>"&"+getSymDevice(op,o)).toList ++ op.getInputs.map(i=>getSymDevice(i._1,i._2))
+        
+        val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").map(o => "&"+getSymDevice(op,o._2)).toList ++ op.getInputs.map(i=>getSymDevice(i._1,i._2))
+        
         out.append(args.mkString("(",",",");\n"))
       case _:OP_Nested =>
         for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
@@ -258,6 +263,285 @@ class CudaMainExecutableGenerator(val location: Int, val kernelPath: String)
   }
 }
 
+class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) extends CudaExecutableGenerator with CudaSyncGenerator {
+  def executableName(location: Int) = "Executable" + location
+
+  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Hosts.Value) = {
+    host match {
+      case Hosts.Scala => new ScalaMainExecutableGenerator(location, kernelPath) with ScalaSyncObjectGenerator {
+        protected val sync = syncs
+        override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
+      }
+      //case Hosts.Cpp => new CppMainExecutableGenerator(location, kernelPath) with CudaSyncObjectGenerator {
+      //  protected val sync = syncs
+      //  override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
+      //}
+      case _ => throw new RuntimeException("Unknown Host type " + host.toString)
+    }
+  }
+
+  /*
+  override protected def makeNestedFunction(op: DeliteOP) = op match {
+    case r: ReceiveData => addSync(r)
+    case s: SendData => addSync(s)
+    case _ => //
+  }
+  */
+
+  private val localSyncObjects = new ArrayBuffer[Send]
+  override protected def makeNestedFunction(op: DeliteOP) = op match {
+    case s: Send => localSyncObjects += s
+    case _ => //
+  }
+
+  override protected def writeSyncObject() {
+    syncObjectGenerator(localSyncObjects, Hosts.Scala).makeSyncObjects
+  }
+
+  override protected def writeFunctionCall(op: DeliteOP) {
+    if (op.task == null) return //dummy op
+
+    //for (i <- op.getInputs)
+    //  available += i
+    //for (o <- op.getOutputs if op.outputType(o)!="Unit")
+    //  available += Pair(op,o)
+
+    op match {
+      case _:OP_MultiLoop =>
+        out.append("else if(strcmp(task,\"" + op.id + "\") == 0) {\n")
+        out.append("addEvent(h2dStream, kernelStream);\n")
+        writeFreeInit(op)
+        for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
+          out.append(op.outputType(Targets.Cuda, name))
+          out.append(" *" + getSymDevice(op,name) + ";\n")
+          writeFreeOutput(op, name, isPrimitiveType(op.outputType(name)))
+        }
+        out.append("env1->CallStaticVoidMethod(clsMesosExecutor,env1->GetStaticMethodID(clsMesosExecutor,\"sendDebugMessage\",\"(Ljava/lang/String;)V\"),env1->NewStringUTF(\"HI\"));\n")
+        out.append("jobject inputcopyArr = env" + location + "->CallStaticObjectMethod(clsMesosExecutor,env" + location + "->GetStaticMethodID(clsMesosExecutor,\"getInputCopy\",\"()[I\"));\n")
+        out.append("jint *inputcopyJava = (jint *)env" + location + "->GetPrimitiveArrayCritical((jintArray)inputcopyArr,0);\n")
+        out.append("int *inputcopy = (int *)malloc(sizeof(int)*" + op.getInputs.size + ");\n")
+        out.append("memcpy(inputcopy,inputcopyJava,sizeof(int)*" + op.getInputs.size + ");\n")
+        out.append("env" + location + "->ReleasePrimitiveArrayCritical((jintArray)inputcopyArr,inputcopyJava,0);\n")
+
+        out.append("int inputIdx = 0;\n")
+        for ((in,name) <- op.getInputs.toArray) {
+          writeGetter(in, name, op, false)
+          out.append("inputIdx += 1;\n")
+        }
+        out.append("env1->CallStaticVoidMethod(clsMesosExecutor,env1->GetStaticMethodID(clsMesosExecutor,\"sendDebugMessage\",\"(Ljava/lang/String;)V\"),env1->NewStringUTF(\"HI\"));\n")
+        
+        val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").map(o => "&"+getSymDevice(op,o._2)).toList ++ op.getInputs.map(i=>getSymDevice(i._1,i._2))
+        
+        out.append("env1->CallStaticVoidMethod(clsMesosExecutor,env1->GetStaticMethodID(clsMesosExecutor,\"sendDebugMessage\",\"(Ljava/lang/String;)V\"),env1->NewStringUTF(\"HI\"));\n")
+        out.append(op.task) //kernel name
+        out.append(args.mkString("(",",",");\n"))
+        out.append("addEvent(kernelStream, d2hStream);\n")
+        
+        val needsBlock = op.getOutputs.map(o => op.outputType(o)).exists(t => !t.startsWith("ppl.delite.runtime.data.DeliteArray"))
+        if(needsBlock) {
+          for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
+            writeSetter(op, name, false)
+          }
+          writeDataFreesRegister(op)
+        }
+        else {
+          var offset = 0
+          for (name <- op.getOutputs) { 
+            op.outputType(name) match {
+              case da if da.startsWith("ppl.delite.runtime.data.DeliteArrayObject") => throw new RuntimeException("Cannot output object delitearray type!")
+              case da if da.startsWith("ppl.delite.runtime.data.DeliteArray") =>
+                out.append("outputMap->insert(pair<char*,void*>(\"" + getSymDevice(op,name) + "\","+getSymDevice(op,name)+"));\n")
+                out.append("jintArray arr" + name + " = env" + location + "->NewIntArray(1);\n")
+                out.append("jint *dataPtr" + name + " = (jint *)env" + location + "->GetPrimitiveArrayCritical((jintArray)arr" + name + ",0);\n")
+                out.append("dataPtr" + name + "[0] = " + getSymDevice(op,name) + "->length;\n")
+                out.append("env" + location + "->ReleasePrimitiveArrayCritical((jintArray)arr" + name + ", dataPtr" + name + ", 0);\n") 
+                out.append("jstring id" + name + " = env" + location + "->NewStringUTF(\"" + name + "_" + offset + "\");\n")
+                out.append("jclass cls" + name + " = env" + location + "->FindClass(\"" + da.replaceAll("\\.","/").replaceAll("DeliteArray","RemoteDeliteArray") + "\");\n")
+                out.append("jmethodID mid" + name + " = env" + location + "->GetMethodID(cls"+name+",\"<init>\",\"(Ljava/lang/String;[I)V\");\n")
+                out.append("jobject obj" + name + " = env" + location + "->NewObject(cls"+name+",mid"+name+",id"+name+",arr"+name+");\n")
+                out.append("env%1$s->CallStaticVoidMethod(cls%1$s,env%1$s->GetStaticMethodID(cls%1$s,\"set_%2$s\",\"(%3$s)V\"),%4$s);\n".format(location,getSym(op,name),getJNIArgType(op.outputType(name)),"obj"+name))
+              case _ => throw new RuntimeException("Cannot output non-delitearray types!")
+            }
+            //offset += 1
+          }
+          writeDataFreesRegister(op)
+          out.append("}\n")
+          //Print out the getters
+          for (name <- op.getOutputs) { 
+            op.outputType(name) match {
+              case da if da.startsWith("ppl.delite.runtime.data.DeliteArrayObject") => throw new RuntimeException("Cannot output object delitearray type!")
+              case da if da.startsWith("ppl.delite.runtime.data.DeliteArray") =>
+                out.append("else if(strcmp(task,\"get_" + name + "\") == 0) {\n")
+                out.append(op.outputType(Targets.Cuda, name) + " *" + getSymDevice(op,name) + " = (" + op.outputType(Targets.Cuda,name) + "*)outputMap->find(\""+getSymDevice(op,name)+"\")->second;\n")
+                writeSetter(op, name, false)
+                out.append("}\n")
+              case _ => throw new RuntimeException("Cannot output non-delitearray types!")
+            }
+          }
+        }
+        
+      case _ =>
+    }
+  }
+
+  override protected def initializeBlock() {
+    out.append("env1->CallStaticVoidMethod(clsMesosExecutor,env1->GetStaticMethodID(clsMesosExecutor,\"sendDebugMessage\",\"(Ljava/lang/String;)V\"),env1->NewStringUTF(\"HI\"));\n")
+        
+    out.append("bool terminate = false;\n")
+    out.append("while(!terminate) {\n")
+    out.append("jobject taskString = env" + location + "->CallStaticObjectMethod(clsMesosExecutor,env" + location + "->GetStaticMethodID(clsMesosExecutor,\"getTask\",\"(I)Ljava/lang/String;\"),"+location+");\n")
+    out.append("const char *task = env" + location + "->GetStringUTFChars((jstring)taskString,NULL);\n")
+    out.append("if(strcmp(task,\"TERMINATE\") == 0) {\n")
+    out.append("terminate = true;\n")
+    out.append("}\n")
+  }
+
+  override protected def finalizeBlock() {
+    out.append("}\n")
+  }
+  
+  override protected def writeMethodHeader() { 
+    super.writeMethodHeader()
+    out.append("jclass clsMesosExecutor = env" + location + "->FindClass(\"ppl/delite/runtime/DeliteMesosExecutor\");\n")
+  }
+
+  private def mangledName(name: String) = name.map(c => if(!c.isDigit && !c.isLetter) '_' else c) 
+
+  private def writeGetter(dep: DeliteOP, sym: String, to: DeliteOP, view: Boolean) {
+    out.append(getJNIType(dep.outputType(sym)))
+    out.append(' ')
+    out.append(getSymCPU(sym))
+    out.append(" = ")
+    out.append("env")
+    out.append(location)
+    out.append("->CallStatic")
+    out.append(getJNIFuncType(dep.outputType(sym)))
+    out.append("Method(cls")
+    out.append(dep.scheduledResource)
+    out.append(",env")
+    out.append(location)
+    out.append("->GetStaticMethodID(cls")
+    out.append(dep.scheduledResource)
+    out.append(",\"get")
+    out.append(location)
+    out.append('_')
+    out.append(getSym(dep,sym))
+    out.append("\",\"()")
+    out.append(getJNIOutputType(dep.outputType(Targets.Scala,sym)))
+    out.append("\"));\n")
+    val ref = if (isPrimitiveType(dep.outputType(sym))) "" else "*"
+    val devType = CudaExecutableGenerator.typesMap(Targets.Cuda)(sym)
+    if (view) {
+      out.append("Host%s %s%s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
+      out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
+    }
+    else if(isPrimitiveType(dep.outputType(sym))) {
+      out.append("%s %s = (%s)%s;\n".format(devType,getSymHost(dep,sym),devType,getSymCPU(sym)))
+      out.append("%s %s = (%s)%s;\n".format(devType,getSymDevice(dep,sym),devType,getSymHost(dep,sym)))
+    }
+    else {
+      out.append("%s %s%s;\n".format(devType,ref,getSymDevice(dep,sym)))
+      out.append("if(inputcopy[inputIdx]) {\n")
+      writeFreeInput(to, sym, isPrimitiveType(dep.outputType(sym)))
+      out.append("Host%s %s%s = recvCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
+      out.append("%s = sendCuda_%s(%s);\n".format(getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
+      out.append("outputMap->insert(pair<char*,void*>(\"%s\",%s));\n".format(getSymDevice(dep,sym),getSymDevice(dep,sym)))
+      out.append("}\n")
+      out.append("else {\n")
+      out.append("%s = (%s%s)(outputMap->find(\"%s\")->second);\n".format(getSymDevice(dep,sym),devType,ref,getSymDevice(dep,sym)))
+      out.append("}\n")
+      out.append("cudaMemoryMap->insert(pair<void*,list<void*>*>(")
+      out.append(getSymDevice(dep,sym))
+      out.append(",lastAlloc));\n")
+      out.append("lastAlloc = new list<void*>();\n")
+    }
+  }
+
+  private def writeSetter(op: DeliteOP, sym: String, view: Boolean) {
+    val devType = CudaExecutableGenerator.typesMap(Targets.Cuda)(sym)
+    if (view) {
+      out.append("Host%s %s = recvCuda_%s(%s);\n".format(devType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+      out.append("%s *%s = sendViewCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))
+    }
+    else if(isPrimitiveType(op.outputType(sym))) {
+      out.append("%s %s = recvCuda_%s(%s);\n".format(getCPrimitiveType(op.outputType(sym)),getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+      out.append("%s %s = (%s)%s;\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),getJNIType(op.outputType(sym)),getSymHost(op,sym)))
+    }
+    else {
+      out.append("Host%s *%s = recvCuda_%s(%s);\n".format(devType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+      out.append("%s %s = sendCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))
+    }
+
+    out.append("env")
+    out.append(location)
+    out.append("->CallStaticVoidMethod(cls")
+    out.append(location)
+    out.append(",env")
+    out.append(location)
+    out.append("->GetStaticMethodID(cls")
+    out.append(location)
+    out.append(",\"set_")
+    out.append(getSym(op,sym))
+    out.append("\",\"(")
+    out.append(getJNIArgType(op.outputType(sym)))
+    out.append(")V\"),")
+    out.append(getSymCPU(sym))
+    out.append(");\n")
+  }
+
+  private def freeItem(op: DeliteOP) = "freeItem_" + op.id
+
+  private def writeFreeInit(op: DeliteOP) {
+    out.append("FreeItem ")
+    out.append(freeItem(op))
+    out.append(";\n")
+    out.append(freeItem(op))
+    out.append(".keys = new list< pair<void*,bool> >();\n")
+  }
+
+  private def writeFreeInput(op: DeliteOP, sym: String, isPrim: Boolean = false) {
+    out.append("if(outputMap->find(\"" + getSymDevice(op,sym) + "\") != outputMap->end()) {\n")
+    out.append("pair<void*,bool> ")
+    out.append(getSymDevice(op,sym))
+    out.append("_pair(")
+    out.append("outputMap->find(\"" + getSymDevice(op,sym) + "\")->second")
+    out.append(",")
+    out.append(isPrim) //Do not free this ptr using free() : primitive type pointers points to device memory
+    out.append(");\n")
+    out.append(freeItem(op))
+    out.append(".keys->push_back(")
+    out.append(getSymDevice(op,sym))
+    out.append("_pair);\n")
+    out.append("}\n")
+  }
+  
+  private def writeFreeOutput(op: DeliteOP, sym: String, isPrim: Boolean = false) {
+    out.append("if(outputMap->find(\"" + getSymDevice(op,sym) + "\") != outputMap->end()) {\n")
+    out.append("pair<void*,bool> ")
+    out.append(getSymDevice(op,sym))
+    out.append("_pair(")
+    out.append("outputMap->find(\"" + getSymDevice(op,sym) + "\")->second")
+    out.append(",")
+    out.append(isPrim) //Do not free this ptr using free() : primitive type pointers points to device memory
+    out.append(");\n")
+    out.append(freeItem(op))
+    out.append(".keys->push_back(")
+    out.append(getSymDevice(op,sym))
+    out.append("_pair);\n")
+    out.append("}\n")
+  }
+
+  private def writeDataFreesRegister(op: DeliteOP) {
+    val freeItem = "freeItem_" + op.id
+    out.append(freeItem)
+    out.append(".event = addHostEvent(kernelStream);\n")
+    out.append("freeList->push(")
+    out.append(freeItem)
+    out.append(");\n")
+  }
+
+}
+
 object CudaExecutableGenerator {
 
   val syncObjects = ArrayBuffer[String]()
@@ -285,7 +569,10 @@ object CudaExecutableGenerator {
   def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
     for (sch <- schedule if sch.size > 0) {
       val location = sch.peek.scheduledResource
-      new CudaMainExecutableGenerator(location, kernelPath).makeExecutable(sch) // native execution plan
+      if(Config.clusterMode == 2) 
+        new CudaDynamicExecutableGenerator(location, kernelPath).makeExecutable(sch) // native execution plan
+      else 
+        new CudaMainExecutableGenerator(location, kernelPath).makeExecutable(sch) // native execution plan
       new ScalaNativeExecutableGenerator(location, kernelPath).makeExecutable() // JNI launcher scala source
     }
     // Register header file for the Cpp sync objects

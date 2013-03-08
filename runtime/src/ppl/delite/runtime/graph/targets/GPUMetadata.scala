@@ -20,7 +20,8 @@ trait GPUMetadata {
   val dimSizeX = new OPData
   val dimSizeY = new OPData
   var inputs = Map[(DeliteOP, String), OPData]()
-  var temps: List[(OPData, String)] = Nil
+  var temps = List[TempAlloc]()
+  //var temps: List[(OPData, String)] = Nil
   var tempOps: List[DeliteOP] = Nil
   var outputs: List[(OPData, String)] = Nil
 
@@ -39,10 +40,13 @@ trait GPUMetadata {
     in
   }
 
-  def newTemp(sym: String) = {
-    val temp = new OPData
-    temps ::= (temp, sym)
-    temp
+  def newTemp(sym: String, tp: String, size: String) = {
+    val temp = TempAlloc(sym,tp,size)
+    temps ::= temp
+
+    //val temp = new OPData
+    //temps ::= (temp, sym)
+    //temp
   }
 
   def newOutput(sym: String) = {
@@ -62,7 +66,7 @@ trait GPUMetadata {
       blockSizeZ.replaceInput(old, op, sym)
       dimSizeX.replaceInput(old, op, sym)
       dimSizeY.replaceInput(old, op, sym)
-      for ((temp,name) <- temps) temp.replaceInput(old, op, sym)
+      //for ((temp,name) <- temps) temp.replaceInput(old, op, sym)
       for ((output,name) <- outputs) output.replaceInput(old, op, sym)
     }
   }
@@ -99,3 +103,5 @@ final class OPData {
   }
 
 }
+
+case class TempAlloc(sym:String, tp:String, size:String)

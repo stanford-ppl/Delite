@@ -2,9 +2,9 @@ package ppl.dsl.optiml.matrix
 
 import java.io.{PrintWriter}
 import scala.reflect.SourceContext
-import scala.virtualization.lms.common.DSLOpsExp
+import scala.virtualization.lms.common.{DSLOpsExp, FunctionBlocksExp}
 import scala.virtualization.lms.common.{VariablesExp, Variables}
-import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase, CGenBase, OpenCLGenBase}
+import scala.virtualization.lms.common.{CudaGenEffect, ScalaGenEffect, CudaGenBase, ScalaGenBase, CGenBase, OpenCLGenBase}
 import scala.virtualization.lms.internal.{GenerationFailedException}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteCollection
@@ -154,9 +154,21 @@ trait MatrixOpsExp extends ppl.dsl.optila.matrix.MatrixOpsExp with MatrixOps wit
  *  Optimizations for composite MatrixOps operations.
  */
 
-trait MatrixOpsExpOpt extends ppl.dsl.optila.matrix.MatrixOpsExpOpt with MatrixOpsExp {
+trait MatrixOpsExpOpt extends ppl.dsl.optila.matrix.DenseMatrixOpsExpOpt with MatrixOpsExp {
   this: OptiMLExp =>
   
+   override def densematrix_numrows[A:Manifest](x: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = x match {
+     case Def(MatrixApplyRowIndices(x,y)) => y.length
+     case Def(Reflect(MatrixApplyRowIndices(x,y),u,es)) => y.length
+     case Def(IndexVector2Construct(lrows, lcols, f, fblk)) => lrows.length 
+     case Def(Reflect(IndexVector2Construct(lrows, lcols, f, fblk),u,es)) => lrows.length 
+     case _ => super.densematrix_numrows(x)
+   }
+   override def densematrix_numcols[A:Manifest](x: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = x match {
+     case Def(IndexVector2Construct(lrows, lcols, f, fblk)) => lcols.length
+     case Def(Reflect(IndexVector2Construct(lrows, lcols, f, fblk),u,es)) => lcols.length
+     case _ => super.densematrix_numcols(x)
+   }
   // override def matrix_numrows[A:Manifest](x: Exp[Matrix[A]])(implicit ctx: SourceContext) = x match {
   //   //case Def(TrainingSetObjectFromMat(x,y)) => matrix_numrows(x) // TODO: move to TrainingSetOpsExpOpt ?
   //   case _ => super.matrix_numrows(x)
@@ -172,30 +184,23 @@ trait DenseMatrixOpsExpOpt extends ppl.dsl.optila.matrix.DenseMatrixOpsExpOpt {
   this: OptiMLExp =>
   
   override def densematrix_multiply[A:Manifest:Arith](x: Rep[DenseMatrix[A]], y: Rep[DenseMatrix[A]])(implicit ctx: SourceContext) = (x,y) match {
-    case (Def(IndexVector2Construct(lrows, lcols, f, fblk)), Def(IndexVector2Construct(rrows, rcols, g, gblk))) =>
-      // Predef.println("found matrix constructor multiply")
-      super.densematrix_multiply(x,y)
+      //reflectPure(MatrixMultiplyVectorizedFromIndexVectors(fblk,gblk,lcols.length))
     case _ => super.densematrix_multiply(x,y)
   }  
+
 }
 
 
-trait ScalaGenMatrixOps extends ScalaGenBase {
-  val IR: MatrixOpsExp
+trait ScalaGenMatrixOps extends ScalaGenEffect {
+  val IR: MatrixOpsExp with FunctionBlocksExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-  //   case _ => super.emitNode(sym, rhs)
-  // }
 }
 
-trait CudaGenMatrixOps extends CudaGenBase {
-  val IR: MatrixOpsExp
+trait CudaGenMatrixOps extends CudaGenEffect {
+  val IR: MatrixOpsExp with FunctionBlocksExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-  //   case _ => super.emitNode(sym, rhs)
-  // }
 }
 
 trait OpenCLGenMatrixOps extends OpenCLGenBase {

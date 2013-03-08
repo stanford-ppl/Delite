@@ -124,12 +124,18 @@ trait StaticScheduler {
 
   //TODO: Separate hardware and programming model
   protected def scheduleOnGPU(op:DeliteOP) = {
-    if (Config.gpuBlackList.contains(op.id))
-      false
-    else if (!op.supportsTarget(Targets.Cuda) && !op.supportsTarget(Targets.OpenCL))
-      false
-    else
-      true
+    if (Config.gpuWhiteList.size > 0) { // If white-list exists, then only white-list ops are scheduled on GPU
+      if (Config.gpuWhiteList.contains(op.id)) true
+      else false
+    }
+    else { // Otherwise, all the ops except black-list ops are scheduled on GPU
+      if (Config.gpuBlackList.contains(op.id))
+        false
+      else if (!op.supportsTarget(Targets.Cuda) && !op.supportsTarget(Targets.OpenCL))
+        false
+      else
+        true
+    }
   }
 
 }

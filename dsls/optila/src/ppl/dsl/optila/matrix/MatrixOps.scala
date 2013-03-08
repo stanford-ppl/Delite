@@ -982,7 +982,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     val mI = manifest[I]
     val mMA = manifest[MA]
   }
-  
+
   ///////////////////
   // class interface
 
@@ -1238,7 +1238,7 @@ trait MatrixOpsExpOpt extends MatrixOpsExp {
   this: MatrixImplOps with OptiLAExp =>
 
   override def matrix_size[A:Manifest](x: Interface[Matrix[A]])(implicit ctx: SourceContext) = x.ops.elem match {
-    case Def(e: DeliteOpMap[_,_,_]) => e.size
+    case Def(e: DeliteOpMapI[_,_,_,_]) => e.size
     case Def(e: DeliteOpZipWith[_,_,_,_]) => e.size
     case _ => super.matrix_size(x)
   }
