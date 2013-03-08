@@ -5,13 +5,13 @@ import org.apache.mesos.Protos._
 import com.google.protobuf.ByteString
 import java.util.HashMap
 import java.util.concurrent.locks.ReentrantLock
+import ppl.delite.runtime.data.RemoteDeliteArray
 import ppl.delite.runtime.messages.Messages._
 import ppl.delite.runtime.messages._
 
 
 class DeliteMesosScheduler(private val executor: ExecutorInfo) extends Scheduler {
 
-  private var numSlaves: Int = 0
   private var numSlavesReturned: Int = 0
   
   /**
@@ -50,7 +50,7 @@ class DeliteMesosScheduler(private val executor: ExecutorInfo) extends Scheduler
    * fail with a TASK_LOST status and a message saying as much).
    */
   def resourceOffers(driver: SchedulerDriver, offers: java.util.List[Offer]) {
-    if (numSlaves > 0)
+    if (DeliteMesosScheduler.slaves != Nil)
       return
 
     var slaves = List[String]()
@@ -73,7 +73,6 @@ class DeliteMesosScheduler(private val executor: ExecutorInfo) extends Scheduler
     }
 
     DeliteMesosScheduler.slaves = DeliteMesosScheduler.slaves.reverse
-    numSlaves = DeliteMesosScheduler.slaves.length
 
     offersIter = offers.iterator
     idx = 0
@@ -165,7 +164,7 @@ class DeliteMesosScheduler(private val executor: ExecutorInfo) extends Scheduler
       try {
         DeliteMesosScheduler.remoteResult(DeliteMesosScheduler.slaves.indexOf(slaveId)) = res
         numSlavesReturned += 1
-        if (numSlavesReturned == numSlaves) {
+        if (numSlavesReturned == DeliteMesosScheduler.activeSlaves) {
           numSlavesReturned = 0
           DeliteMesosScheduler.notCompleted = false
           DeliteMesosScheduler.remoteCompleted.signal()
@@ -219,13 +218,14 @@ object DeliteMesosScheduler {
   private var appArgs: Array[String] = _
   private var driver: MesosSchedulerDriver = _
   private var slaves: List[SlaveID] = Nil
+  var activeSlaves = 0
   private val executorId = ExecutorID.newBuilder.setValue("DeliteExecutor").build
 
   private val remoteLock = new ReentrantLock
   private val remoteCompleted = remoteLock.newCondition
   private var notCompleted = true
   private var remoteResult: Array[ReturnResult] = _
-  private val network = new ConnectionManager
+  private val network: ConnectionManager = new ConnectionManager
   private val networkMap = new HashMap[Int, ConnectionManagerId]
 
   def main(args: Array[String]) {
@@ -264,11 +264,9 @@ object DeliteMesosScheduler {
   }
 
   def addSlaveToNetwork(info: CommInfo) {
-    networkMap.put(info.getSlaveIdx, new ConnectionManagerId(info.getSlaveAddress(0), info.getSlavePort(0)))
-    
-    val message = Message.createBufferMessage(java.nio.ByteBuffer.allocate(10).put(Array.tabulate[Byte](10)(x => x.toByte)))
-    network.sendMessageUnsafe(networkMap.get(info.getSlaveIdx), message)
-    
+    networkMap.put(info.getSlaveIdx, ConnectionManagerId(info.getSlaveAddress(0), info.getSlavePort(0)))
+    //network.sendMessageAsync(networkMap.get(info.getSlaveIdx), Message.createBufferMessage(java.nio.ByteBuffer.allocate(10)))
+
     if (networkMap.size == slaves.length) { //broadcast network map to slaves
       for (i <- 0 until slaves.length) {
         val slaveInfo = CommInfo.newBuilder.setSlaveIdx(i)
@@ -287,19 +285,48 @@ object DeliteMesosScheduler {
     }
   }
 
-  def launchAllSlaves(id: String, tpe: RemoteOp.Type, args: ByteString*): Array[ReturnResult] = {
-    this.remoteResult = new Array(slaves.length)
+  //TODO: move me to scheduler and improve algorithm
+  private def schedule(tpe: RemoteOp.Type, args: Any*): Array[Int] = tpe match {
+    case RemoteOp.Type.INPUT => //don't know the file partitioning, so just distribute to everyone //TODO: fix this?
+      Array.fill(slaves.length)(0)
+    case RemoteOp.Type.MULTILOOP => 
+      var loopBounds: Array[Int] = null
+      for (arg <- args) { arg match {
+        case a: RemoteDeliteArray[_] =>
+          if (loopBounds == null)
+            loopBounds = a.offsets
+          else {
+            //check if partitions are the same
+            //println(a.id + ":" + a.offsets.mkString(","))
+            var same = loopBounds.length == a.offsets.length
+            for (i <- 0 until loopBounds.length if same) { if (loopBounds(i) != a.offsets(i)) same = false }
+            if (!same) //TODO: shuffle, etc.
+              throw new RuntimeException("don't know how to schedule op with inconsistent input partitions")
+          }
+        case _ => //ignore ... TODO: struct types with arrays inside
+      } }
+      if (loopBounds == null) { //all results were local
+        loopBounds = Array.fill(1)(0) //TODO: should run result locally (need to call a MultiLoop on master)
+      }
+      loopBounds
+  }
+
+  def launchAllSlaves(id: String, tpe: RemoteOp.Type, args: Any*): Array[ReturnResult] = {
+    val loopBounds = schedule(tpe, args:_*)
+    this.remoteResult = new Array(loopBounds.length)
+    activeSlaves = loopBounds.length
     println("sending message to slaves")
-    for (slaveId <- slaves) {
+    for (slaveIdx <- 0 until loopBounds.length) { //TODO: non-contiguous slaves
       val remoteOp = RemoteOp.newBuilder.setId(Id.newBuilder.setId(id)).setType(tpe)
-      for (arg <- args) remoteOp.addInput(arg)
+      for (start <- loopBounds) remoteOp.addStartIdx(start)
+      for (arg <- args) remoteOp.addInput(Serialization.serialize(arg))
 
       val mssg = DeliteMasterMessage.newBuilder
         .setType(DeliteMasterMessage.Type.OP)
         .setOp(remoteOp)
         .build
 
-      driver.sendFrameworkMessage(executorId, slaveId, mssg.toByteArray)
+      driver.sendFrameworkMessage(executorId, slaves(slaveIdx), mssg.toByteArray)
     }
 
     //await results
@@ -319,15 +346,17 @@ object DeliteMesosScheduler {
     remoteResult
   }
 
-  def getData(id: String): Array[ReturnResult] = {
-    this.remoteResult = new Array(slaves.length)
-    for (slaveId <- slaves) {
+  def getData(array: RemoteDeliteArray[_]): Array[ReturnResult] = {
+    val chunks = array.chunkLengths.length
+    this.remoteResult = new Array(chunks)
+    activeSlaves = chunks
+    for (slaveIdx <- 0 until chunks) {
       val mssg = DeliteMasterMessage.newBuilder 
         .setType(DeliteMasterMessage.Type.DATA)
-        .setData(RequestData.newBuilder.setId(Id.newBuilder.setId(id)))
+        .setData(RequestData.newBuilder.setId(Id.newBuilder.setId(array.id)))
         .build
       
-      driver.sendFrameworkMessage(executorId, slaveId, mssg.toByteArray)
+      driver.sendFrameworkMessage(executorId, slaves(slaveIdx), mssg.toByteArray)
     }
 
     //await results

@@ -9,10 +9,11 @@ import ppl.delite.framework.{Config, Util}
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.extern.lib._
 import ppl.delite.framework.transform.LoopSoAOpt
+import ppl.delite.framework.analysis.StencilExp
 
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
 trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with FunctionBlocksExp with IfThenElseFatExp
-    with VariantsOpsExp with DeliteCollectionOpsExp
+    with PrimitiveOpsExp with VariantsOpsExp with DeliteCollectionOpsExp with DeliteArrayOpsExp with StencilExp
     with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp with StaticDataExp {
   
 
@@ -1417,7 +1418,6 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
               stream.println(quote(getBlockResult(elem.zero)))
             else {
               stream.println("val " + quote(sym) + "_zero = {"/*}*/)
-              stream.println("val " + quote(sym) + "_zero = {"/*}*/)
               emitBlock(elem.zero)
               stream.println(quote(getBlockResult(elem.zero)))
               stream.println(/*{*/"}")
@@ -1597,7 +1597,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
           val arrayType = "ppl.delite.runtime.data.LocalDeliteArray" + (if (isPrimitiveType(elem.mV)) remap(elem.mV) else "Object[" + remap(elem.mV) + "]")
           if (prefixSym == "")
-            stream.println("val " + quote(sym) + " = new " + arrayType + "(" + arrayType + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze))")
+            stream.println("val " + quote(sym) + " = new " + arrayType + "(" + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze))")
           else
             stream.println(prefixSym + quote(sym) + " = new " + arrayType + "(" + prefixSym + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze))")
         case (sym, elem: DeliteHashIndexElem[_,_]) => 
@@ -1755,6 +1755,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitVarDef(quote(sym) + "_size", remap(Manifest.Int), "0")
         if (elem.cond.nonEmpty)
           emitVarDef(quote(sym) + "_conditionals", remap(Manifest.Int), "0")
+      case (sym, elem: DeliteHashElem[_,_]) => //done above
       case (sym, elem: DeliteForeachElem[_]) =>
         emitVarDef(quote(sym), remap(sym.tp), "()")  //TODO: Need this for other targets? (Currently, other targets just don't generate unit types)
       case (sym, elem: DeliteReduceElem[_]) =>
@@ -1831,6 +1832,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         }
         emitBlock(elem.finalizer)
         emitValDef(sym, quote(getBlockResult(elem.finalizer)))
+      case (sym, elem: DeliteHashElem[_,_]) => 
       case (sym, elem: DeliteForeachElem[_]) =>
       case (sym, elem: DeliteReduceElem[_]) =>
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
@@ -1852,6 +1854,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     //   and do the copying in another parallel map <-- faster but more work
 
     emitMethod("size", remap(Manifest.Int), Nil) { emitReturn(quote(op.size)) }
+    emitVarDef("loopStart", remap(Manifest.Int), "0")
     emitVarDef("loopSize", remap(Manifest.Int), "0")
 
     emitMethod("alloc", actType, Nil) {
@@ -1863,6 +1866,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           case ParFlat =>
             emitValDef(elem.sV, "loopSize")
             emitBlock(elem.allocN)
+            val arraySym = if (!remap(elem.allocN.tp).contains("DeliteArray")) fieldAccess(quote(getBlockResult(elem.allocN)), dc_data_field(getBlockResult(elem.allocN))(elem.mA)) else quote(getBlockResult(elem.allocN)) 
+            emitAssignment(fieldAccess(arraySym,"offset"), "loopStart") //FIXME: extremely hacky
             emitAssignment(fieldAccess("__act",quote(sym)+"_data"),quote(getBlockResult(elem.allocN)))
         }
         case (sym, elem: DeliteHashElem[_,_]) => //

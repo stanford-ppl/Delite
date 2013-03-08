@@ -62,7 +62,7 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
 
   def densevector_obj_zerosf_impl(length: Rep[Int]) = DenseVector[Float](length, true) mmap { e => 0f }
 
-  def densevector_obj_rand_impl(length: Rep[Int]) = DenseVector[Double](length, true) mmap { e => random[Double] }
+  def densevector_obj_rand_impl(length: Rep[Int]) = DenseVector[Double](length, true) /*m*/map { e => random[Double] }
 
   def densevector_obj_randf_impl(length: Rep[Int]) = DenseVector[Float](length, true) mmap { i => random[Float] }
 

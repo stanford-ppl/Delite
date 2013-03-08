@@ -69,7 +69,9 @@ object Serialization {
         val id = symId + "_" + symOffset
         ArrayMessage.newBuilder.setId(Id.newBuilder.setId(id)).setLength(length).build
       case a:RemoteDeliteArray[_] =>
-        ArrayMessage.newBuilder.setId(Id.newBuilder.setId(a.id)).build
+        val mssg = ArrayMessage.newBuilder.setId(Id.newBuilder.setId(a.id))
+        for (len <- a.offsets) mssg.addOffset(len)
+        mssg.build
       case a:LocalDeliteArrayInt =>
         val buf = ByteBuffer.allocate(length*4)
         buf.asIntBuffer.put(a.data, offset, length)
@@ -157,7 +159,7 @@ object Serialization {
     }
     else {
       val id = mssg.getId.getId
-      if (lookupId) lookupLocally(id).asInstanceOf[DeliteArrayInt]
+      if (lookupId) lookupLocally(id, mssg.getOffsetList).asInstanceOf[DeliteArrayInt]
       else new RemoteDeliteArrayInt(id, Array(mssg.getLength))
     }
   }
@@ -171,7 +173,7 @@ object Serialization {
     }
     else {
       val id = mssg.getId.getId
-      if (lookupId) lookupLocally(id).asInstanceOf[DeliteArrayLong]
+      if (lookupId) lookupLocally(id, mssg.getOffsetList).asInstanceOf[DeliteArrayLong]
       else new RemoteDeliteArrayLong(id, Array(mssg.getLength))
     }
   }
@@ -185,7 +187,7 @@ object Serialization {
     }
     else {
       val id = mssg.getId.getId
-      if (lookupId) lookupLocally(id).asInstanceOf[DeliteArrayFloat]
+      if (lookupId) lookupLocally(id, mssg.getOffsetList).asInstanceOf[DeliteArrayFloat]
       else new RemoteDeliteArrayFloat(id, Array(mssg.getLength))
     }
   }
@@ -204,7 +206,7 @@ object Serialization {
     }
     else {
       val id = mssg.getId.getId
-      if (lookupId) lookupLocally(id).asInstanceOf[DeliteArrayDouble]
+      if (lookupId) lookupLocally(id, mssg.getOffsetList).asInstanceOf[DeliteArrayDouble]
       else new RemoteDeliteArrayDouble(id, Array(mssg.getLength))
     }
   }
@@ -218,7 +220,7 @@ object Serialization {
     }
     else {
       val id = mssg.getId.getId
-      if (lookupId) lookupLocally(id).asInstanceOf[DeliteArrayChar]
+      if (lookupId) lookupLocally(id, mssg.getOffsetList).asInstanceOf[DeliteArrayChar]
       else new RemoteDeliteArrayChar(id, Array(mssg.getLength))
     }
   }
@@ -232,7 +234,7 @@ object Serialization {
     }
     else {
       val id = mssg.getId.getId
-      if (lookupId) lookupLocally(id).asInstanceOf[DeliteArrayShort]
+      if (lookupId) lookupLocally(id, mssg.getOffsetList).asInstanceOf[DeliteArrayShort]
       else new RemoteDeliteArrayShort(id, Array(mssg.getLength))
     }
   }
@@ -246,7 +248,7 @@ object Serialization {
     }
     else {
       val id = mssg.getId.getId
-      if (lookupId) lookupLocally(id).asInstanceOf[DeliteArrayByte]
+      if (lookupId) lookupLocally(id, mssg.getOffsetList).asInstanceOf[DeliteArrayByte]
       else new RemoteDeliteArrayByte(id, Array(mssg.getLength))
     }
   }
@@ -264,7 +266,7 @@ object Serialization {
     }
     else {
       val id = mssg.getId.getId
-      if (lookupId) lookupLocally(id).asInstanceOf[DeliteArrayBoolean]
+      if (lookupId) lookupLocally(id, mssg.getOffsetList).asInstanceOf[DeliteArrayBoolean]
       else new RemoteDeliteArrayBoolean(id, Array(mssg.getLength))
     }
   }
@@ -275,23 +277,28 @@ object Serialization {
     }
     else {
       val id = mssg.getId.getId
-      if (lookupId) lookupLocally(id).asInstanceOf[DeliteArrayObject[T]]
+      if (lookupId) lookupLocally(id, mssg.getOffsetList).asInstanceOf[DeliteArrayObject[T]]
       else new RemoteDeliteArrayObject[T](id, Array(mssg.getLength))
     }
   }
 
   //TODO: reorganize
-  private def saveLocally(id: String, offset: Int, a: Any) {
-    if (offset == 0) ppl.delite.runtime.DeliteMesosExecutor.results.put(id, new java.util.ArrayList[Any])
-    //ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage("saving " + id + "_" + offset)
+  private def saveLocally[T](id: String, offset: Int, a: DeliteArray[T]) {
+    if (offset == 0) ppl.delite.runtime.DeliteMesosExecutor.results.put(id, new java.util.ArrayList[DeliteArray[_]])
     ppl.delite.runtime.DeliteMesosExecutor.results.get(id).add(a)
   }
 
-  private def lookupLocally(id: String): Any = {
+  private def lookupLocally[T](id: String, offsetList: java.util.List[Integer]): DeliteArray[T] = {
     val splitId = id.split("_")
     val symId = splitId(0)
     val offset = splitId(1).toInt
-    ppl.delite.runtime.DeliteMesosExecutor.getResult(symId, offset)
+    val res = ppl.delite.runtime.DeliteMesosExecutor.getResult(symId, offset).asInstanceOf[LocalDeliteArray[T]]
+    val offsets = new Array[Int](offsetList.size)
+    for (i <- 0 until offsets.length) offsets(i) = offsetList.get(i)
+    res.offsets = offsets
+    res.offset = offsets(ppl.delite.runtime.DeliteMesosExecutor.slaveIdx)
+    res.id = id
+    res
   }
 
 }

@@ -316,7 +316,6 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
           out.append(" *" + getSymDevice(op,name) + ";\n")
           writeFreeOutput(op, name, isPrimitiveType(op.outputType(name)))
         }
-        out.append("env1->CallStaticVoidMethod(clsMesosExecutor,env1->GetStaticMethodID(clsMesosExecutor,\"sendDebugMessage\",\"(Ljava/lang/String;)V\"),env1->NewStringUTF(\"HI\"));\n")
         out.append("jobject inputcopyArr = env" + location + "->CallStaticObjectMethod(clsMesosExecutor,env" + location + "->GetStaticMethodID(clsMesosExecutor,\"getInputCopy\",\"()[I\"));\n")
         out.append("jint *inputcopyJava = (jint *)env" + location + "->GetPrimitiveArrayCritical((jintArray)inputcopyArr,0);\n")
         out.append("int *inputcopy = (int *)malloc(sizeof(int)*" + op.getInputs.size + ");\n")
@@ -328,11 +327,8 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
           writeGetter(in, name, op, false)
           out.append("inputIdx += 1;\n")
         }
-        out.append("env1->CallStaticVoidMethod(clsMesosExecutor,env1->GetStaticMethodID(clsMesosExecutor,\"sendDebugMessage\",\"(Ljava/lang/String;)V\"),env1->NewStringUTF(\"HI\"));\n")
-        
         val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").map(o => "&"+getSymDevice(op,o._2)).toList ++ op.getInputs.map(i=>getSymDevice(i._1,i._2))
         
-        out.append("env1->CallStaticVoidMethod(clsMesosExecutor,env1->GetStaticMethodID(clsMesosExecutor,\"sendDebugMessage\",\"(Ljava/lang/String;)V\"),env1->NewStringUTF(\"HI\"));\n")
         out.append(op.task) //kernel name
         out.append(args.mkString("(",",",");\n"))
         out.append("addEvent(kernelStream, d2hStream);\n")
@@ -385,8 +381,6 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
   }
 
   override protected def initializeBlock() {
-    out.append("env1->CallStaticVoidMethod(clsMesosExecutor,env1->GetStaticMethodID(clsMesosExecutor,\"sendDebugMessage\",\"(Ljava/lang/String;)V\"),env1->NewStringUTF(\"HI\"));\n")
-        
     out.append("bool terminate = false;\n")
     out.append("while(!terminate) {\n")
     out.append("jobject taskString = env" + location + "->CallStaticObjectMethod(clsMesosExecutor,env" + location + "->GetStaticMethodID(clsMesosExecutor,\"getTask\",\"(I)Ljava/lang/String;\"),"+location+");\n")

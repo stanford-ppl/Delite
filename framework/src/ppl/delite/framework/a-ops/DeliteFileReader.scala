@@ -2,28 +2,30 @@ package ppl.delite.framework.ops
 
 import scala.virtualization.lms.common._
 import scala.reflect.{SourceContext, RefinedManifest}
-import ppl.delite.framework.datastructures.{DeliteArray, DeliteArrayOpsExp, DeliteArrayBuffer, DeliteArrayBufferOpsExp}
+import ppl.delite.framework.datastructures._
 
 
-trait DeliteFileReaderOps extends Base {
+trait DeliteFileReaderOps extends Base with DeliteArrayBufferOps {
   object DeliteFileReader {
-    def readLines[A:Manifest](path: Rep[String])(f: Rep[String] => Rep[A]) = dfr_readLines(path, f)
+    def readLines[A:Manifest](path: Rep[String])(f: Rep[String] => Rep[A]): Rep[DeliteArray[A]] = dfr_readLines(path, (line, buf) => buf += f(line))
+    def readLinesUnstructured[A:Manifest](path: Rep[String])(f: (Rep[String], Rep[DeliteArrayBuffer[A]]) => Rep[Unit]): Rep[DeliteArray[A]] = dfr_readLines(path, f)
   }
 
-  def dfr_readLines[A:Manifest](path: Rep[String], f: Rep[String] => Rep[A]): Rep[DeliteArray[A]]
+  def dfr_readLines[A:Manifest](path: Rep[String], f: (Rep[String], Rep[DeliteArrayBuffer[A]]) => Rep[Unit]): Rep[DeliteArray[A]]
+  
 }
 
-trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with IOOpsExp with EqualExp with VariablesExp with WhileExp with DeliteArrayOpsExp with DeliteArrayBufferOpsExp with DeliteOpsExp {
+trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with IOOpsExp with StringOpsExp with ArrayOpsExp with EqualExp with VariablesExp with WhileExp with DeliteArrayOpsExp with DeliteArrayBufferOpsExp with DeliteOpsExp {
 
-  def dfr_readLines[A:Manifest](path: Rep[String], f: Rep[String] => Rep[A]) = DeliteOpFileReaderReadLines(reifyEffects(path), f)
-  case class DeliteOpFileReaderReadLines[A:Manifest](path: Block[String], func: Rep[String] => Rep[A]) extends DeliteOpInput[DeliteArray[A]] {
+  def dfr_readLines[A:Manifest](path: Rep[String], f: (Rep[String], Rep[DeliteArrayBuffer[A]]) => Rep[Unit]) = reflectPure(DeliteOpFileReaderReadLines(reifyEffects(path), f))
+  case class DeliteOpFileReaderReadLines[A:Manifest](path: Block[String], func: (Rep[String], Rep[DeliteArrayBuffer[A]]) => Rep[Unit]) extends DeliteOpInput[DeliteArray[A]] {
     type OpType <: DeliteOpFileReaderReadLines[A]
     val mA = manifest[A]
 
     val line: Sym[String] = copyTransformedOrElse(_.line)(fresh[String]).asInstanceOf[Sym[String]]
     val allocVal: Sym[DeliteArrayBuffer[A]] = copyTransformedOrElse(_.allocVal)(reflectMutableSym(fresh[DeliteArrayBuffer[A]])).asInstanceOf[Sym[DeliteArrayBuffer[A]]]
     val alloc: Block[DeliteArrayBuffer[A]] = copyTransformedBlockOrElse(_.alloc)(reifyEffects(DeliteArrayBuffer[A]()))
-    val append: Block[Unit] = copyTransformedBlockOrElse(_.append)(reifyEffects(allocVal += func(line)))
+    val append: Block[Unit] = copyTransformedBlockOrElse(_.append)(reifyEffects(func(line, allocVal)))
     val finalizer: Block[DeliteArray[A]] = copyTransformedBlockOrElse(_.finalizer)(reifyEffects{ dc_set_logical_size(allocVal, allocVal.length); darray_buffer_raw_data(allocVal) })
   }
 

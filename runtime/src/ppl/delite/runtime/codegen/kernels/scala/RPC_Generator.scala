@@ -54,14 +54,14 @@ object RPC_Generator {
 
   private def writeKernel(out: StringBuilder, op: DeliteOP) {
     //build serialized input list
-    for ((in, name) <- op.getInputs) {
+    /*for ((in, name) <- op.getInputs) {
       out.append("val " + name + "_bytes = Serialization.serialize(" + name + ")\n") 
-    }
+    }*/
 
     //launch
     val tpe = if (op.isInstanceOf[OP_MultiLoop]) "RemoteOp.Type.MULTILOOP" else "RemoteOp.Type.INPUT"
     out.append("val res = ppl.delite.runtime.DeliteMesosScheduler.launchAllSlaves(\"" + op.id + "\"," + tpe)
-    out.append(op.getInputs.map(_._2 + "_bytes").mkString(",",",",")\n"))
+    out.append(op.getInputs.map(_._2).mkString(",",",",")\n"))
 
     //construct outputs
     out.append("val act = activation_" + op.id + ".deserialize(res(0).getOutputList)\n")

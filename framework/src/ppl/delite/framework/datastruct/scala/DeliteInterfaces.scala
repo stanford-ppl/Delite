@@ -7,6 +7,7 @@ package ppl.delite.framework.datastruct.scala
 
 abstract class DeliteOpMultiLoop[A] {
   def size: Int
+  var loopStart: Int
   var loopSize: Int
   def alloc: A
   def processRange(__act: A, start: Int, end: Int): A //init+process
