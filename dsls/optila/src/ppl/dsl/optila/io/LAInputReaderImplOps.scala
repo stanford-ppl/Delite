@@ -7,6 +7,7 @@ import ppl.dsl.optila._
 trait LAInputReaderImplOps { this: Base =>
   def lainput_read_matrix_impl[Elem:Manifest](filename: Rep[String], schemaBldr: Rep[String] => Rep[Elem], delim: Rep[String]): Rep[DenseMatrix[Elem]]
   def lainput_read_vector_impl[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row], delim: Rep[String]): Rep[DenseVector[Row]]  
+  def lainput_read_matrix_cols_impl[Elem:Manifest](filename: Rep[String], schemaBldr: Rep[String] => Rep[Elem], delim: Rep[String]): Rep[Int]
 }
 
 trait LAInputReaderImplOpsStandard extends LAInputReaderImplOps {
@@ -14,6 +15,13 @@ trait LAInputReaderImplOpsStandard extends LAInputReaderImplOps {
   
   ///////////////
   // kernels
+
+  def lainput_read_matrix_cols_impl[Elem:Manifest](filename: Rep[String], schemaBldr: Rep[String] => Rep[Elem], delim: Rep[String]) = {
+    val xfs = BufferedReader(FileReader(filename))
+    val elems = xfs.readLine().trim.split(delim)
+    xfs.close()
+    elems.length
+  }
  
   def lainput_read_matrix_impl[Elem:Manifest](filename: Rep[String], schemaBldr: Rep[String] => Rep[Elem], delim: Rep[String]) = {
     val xfs = BufferedReader(FileReader(filename))

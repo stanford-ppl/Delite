@@ -4,6 +4,7 @@ import java.io.{File,FileWriter,PrintWriter}
 import scala.virtualization.lms.common._
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.extern.lib.ProtoBuf
+import ppl.delite.framework.Config
 import scala.reflect.SourceContext
 
 trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
@@ -89,35 +90,41 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     stream.close()
     super.emitDataStructures(path)
 
-    val protoFile = new File(path + "structs.proto")
-    val stream2 = new PrintWriter(protoFile)
-    stream2.println("package generated.scala;")
-    stream2.println("import \"messages.proto\";")
-    for ((name, elems) <- encounteredStructs) {
-      stream2.println("")
-      emitMessageDeclaration(name, elems)(stream2)
+    if (Config.generateSerializable) {
+      val protoFile = new File(path + "structs.proto")
+      val stream2 = new PrintWriter(protoFile)
+      stream2.println("package generated.scala;")
+      stream2.println("import \"messages.proto\";")
+      for ((name, elems) <- encounteredStructs) {
+        stream2.println("")
+        emitMessageDeclaration(name, elems)(stream2)
+      }
+      stream2.close()
+      ProtoBuf.compile(protoFile.getAbsolutePath, path)
     }
-    stream2.close()
-    ProtoBuf.compile(protoFile.getAbsolutePath, path)
     super.emitDataStructures(path)
   }
 
   def emitStructDeclaration(name: String, elems: Seq[(String,Manifest[_])])(stream: PrintWriter) {
-    stream.println("object " + name + " {")
-    stream.println("def parseFrom(bytes: com.google.protobuf.ByteString) = {")
-    stream.println("val mssg = Structs." + name + ".parseFrom(bytes)")
-    emitStructDeserialization(name, elems, "mssg")(stream)
-    stream.println("\n}")
-    stream.print("def combine(lhs: " + name + ", " + "rhs: " + name + ") = ")
-    emitStructReduction(name, elems, "lhs", "rhs")(stream)
-    stream.println("\n}")
+    if (Config.generateSerializable) {
+      stream.println("object " + name + " {")
+      stream.println("def parseFrom(bytes: com.google.protobuf.ByteString) = {")
+      stream.println("val mssg = Structs." + name + ".parseFrom(bytes)")
+      emitStructDeserialization(name, elems, "mssg")(stream)
+      stream.println("\n}")
+      stream.print("def combine(lhs: " + name + ", " + "rhs: " + name + ") = ")
+      emitStructReduction(name, elems, "lhs", "rhs")(stream)
+      stream.println("\n}")
+    }
 
     stream.print("case class " + name + "(")
     stream.print(elems.map{ case (idx,tp) => "var " + idx + ": " + remap(tp) }.mkString(", "))
     stream.println(") {")
-    stream.print("def toByteString = ")
-    emitStructSerialization(name, elems, "")(stream)
-    stream.println(".build.toByteString")
+    if (Config.generateSerializable) {
+      stream.print("def toByteString = ")
+      emitStructSerialization(name, elems, "")(stream)
+      stream.println(".build.toByteString")
+    }
     stream.println("}")
   }
 

@@ -80,17 +80,16 @@ object Table {
 
   private def max(a: Int, b: Int) = if(a > b) a else b
 
-  private def readArray(a: Any, idx: Int) = a match {
-    case i: DeliteArrayInt => i(idx).toString
-    case l: DeliteArrayLong => l(idx).toString
-    case d: DeliteArrayDouble => d(idx).toString
-    case f: DeliteArrayFloat => f(idx).toString
-    case c: DeliteArrayChar => c(idx).toString
-    case s: DeliteArrayShort => s(idx).toString
-    case b: DeliteArrayByte => b(idx).toString
-    case z: DeliteArrayBoolean => z(idx).toString
-    case r: DeliteArrayObject[_] => r(idx).toString
-    case ar: AnyRef => throw new IllegalArgumentException(ar.getClass.getSimpleName + " cannot be printed as a table")
+  private def readArray(x: Any, idx: Int) = x match {
+    case d: DeliteArray[_] => d.readAt(idx).toString
+    case a: Array[_] => a(idx).toString
+    case _ => throw new IllegalArgumentException(x.getClass.getSimpleName + " cannot be printed as a table")
+  }
+
+  private def readArrayLength(x: Any) = x match {
+    case d: DeliteArray[_] => d.length
+    case a: Array[_] => a.length
+    case _ => throw new IllegalArgumentException(x.getClass.getSimpleName + " cannot be printed as a table")
   }
 
   private def getTableColSizes(fields: AnyRef, fieldStrs: Array[String]) = {
@@ -105,8 +104,9 @@ object Table {
     //columns should be at least the size of maximal element
     idx = 0
     for (f <- fieldStrs) {
-      val array = fields.getClass.getMethod(f).invoke(fields).asInstanceOf[DeliteArray[_]]
-      for (j <- 0 until array.length) {
+      val array = fields.getClass.getMethod(f).invoke(fields)
+      val length = readArrayLength(array)
+      for (j <- 0 until length) {
         val d = readArray(array, j)
         colSizes(idx) = max(colSizes(idx), d.length + 2)
       }

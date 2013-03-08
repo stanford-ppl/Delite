@@ -3,7 +3,7 @@ package ppl.delite.framework.ops
 import scala.virtualization.lms.common._
 import scala.reflect.{SourceContext, RefinedManifest}
 import ppl.delite.framework.datastructures._
-
+import ppl.delite.framework.Config
 
 trait DeliteFileReaderOps extends Base with DeliteArrayBufferOps {
   object DeliteFileReader {
@@ -123,24 +123,29 @@ trait ScalaGenDeliteFileReaderOps extends ScalaGenFat {
       val actType = "activation_" + quote(sym)
       stream.println("final class " + actType + " {")
         stream.println("var " + quote(sym) + ": " + remap(sym.tp) + " = _")
-        stream.println("def combine(act: " + actType + ", rhs: " + actType + ") {")
-          stream.println("act." + quote(sym) + " = " + remap(sym.tp) + ".combine(act." + quote(sym) + "," + "rhs." + quote(sym) + ")")
+        
+        if (Config.generateSerializable) {
+          stream.println("def combine(act: " + actType + ", rhs: " + actType + ") {")
+            stream.println("act." + quote(sym) + " = " + remap(sym.tp) + ".combine(act." + quote(sym) + "," + "rhs." + quote(sym) + ")")
+          stream.println("}")
+
+          stream.println("def serialize(): java.util.ArrayList[com.google.protobuf.ByteString] = {")
+            stream.println("val arr = new java.util.ArrayList[com.google.protobuf.ByteString]")
+            stream.println("arr.add(ppl.delite.runtime.messages.Serialization.serialize(this." + quote(sym) + ", true, \"" + quote(sym) + "\"))")
+            stream.println("arr")
+          stream.println("}")
+        }
         stream.println("}")
 
-        stream.println("def serialize(): java.util.ArrayList[com.google.protobuf.ByteString] = {")
-          stream.println("val arr = new java.util.ArrayList[com.google.protobuf.ByteString]")
-          stream.println("arr.add(ppl.delite.runtime.messages.Serialization.serialize(this." + quote(sym) + ", true, \"" + quote(sym) + "\"))")
-          stream.println("arr")
-        stream.println("}")
-      stream.println("}")
-
-      stream.println("object " + actType + " {")
-        stream.println("def deserialize(bytes: java.util.List[com.google.protobuf.ByteString]) = {")
-          stream.println("val act = new " + actType)
-          stream.println("act." + quote(sym) + " = ppl.delite.runtime.messages.Serialization.deserialize(classOf[" + remap(sym.tp) + "], bytes.get(0))")
-          stream.println("act")
-        stream.println("}")
-      stream.println("}")
+        if (Config.generateSerializable) {
+          stream.println("object " + actType + " {")
+            stream.println("def deserialize(bytes: java.util.List[com.google.protobuf.ByteString]) = {")
+              stream.println("val act = new " + actType)
+              stream.println("act." + quote(sym) + " = ppl.delite.runtime.messages.Serialization.deserialize(classOf[" + remap(sym.tp) + "], bytes.get(0))")
+              stream.println("act")
+            stream.println("}")
+          stream.println("}")
+      }
     case _ => super.emitNodeKernelExtra(syms, rhs)
   }
 
