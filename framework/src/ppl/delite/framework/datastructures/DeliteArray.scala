@@ -392,19 +392,22 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenFat with
   import IR._
   
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case a@DeliteArrayNew(n) if isPrimitiveType(a.mA) => 
+    case a@DeliteArrayNew(n) if Config.generateSerializable && isPrimitiveType(a.mA) => 
       emitValDef(sym, "new ppl.delite.runtime.data.LocalDeliteArray" + remap(a.mA) + "(" + quote(n) + ")")
-    case a@DeliteArrayNew(n) =>
+    case a@DeliteArrayNew(n) if Config.generateSerializable =>
       emitValDef(sym, "new ppl.delite.runtime.data.LocalDeliteArrayObject[" + remap(a.mA) + "](" + quote(n) + ")")
+    case a@DeliteArrayNew(n) =>
+      emitValDef(sym, "new Array[" + remap(a.mA) + "](" + quote(n) + ")")
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + ".length")
     case DeliteArrayApply(da, idx) =>
       emitValDef(sym, quote(da) + "(" + quote(idx) + ")")
     case DeliteArrayUpdate(da, idx, x) =>
       emitValDef(sym, quote(da) + "(" + quote(idx) + ") = " + quote(x))
-    case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
+    case DeliteArrayCopy(src,srcPos,dest,destPos,len) if Config.generateSerializable =>
       emitValDef(sym, quote(src) + ".copy(" + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
-      //emitValDef(sym, "System.arraycopy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
+    case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
+      emitValDef(sym, "System.arraycopy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
     /*case DeliteArrayMkString(da,x) =>
       emitValDef(sym, quote(da) + ".mkString(" + quote(x) + ")")
     case DeliteArrayUnion(lhs,rhs) =>
@@ -434,8 +437,9 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenFat with
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
     case "DeliteArray" => m.typeArguments(0) match {
       case StructType(_,_) => structName(m)
-      case arg if isPrimitiveType(arg) => "ppl.delite.runtime.data.DeliteArray" + remap(arg)
-      case arg => "ppl.delite.runtime.data.DeliteArrayObject[" + remap(arg) + "]"
+      case arg if isPrimitiveType(arg) && Config.generateSerializable => "ppl.delite.runtime.data.DeliteArray" + remap(arg)
+      case arg if Config.generateSerializable => "ppl.delite.runtime.data.DeliteArrayObject[" + remap(arg) + "]"
+      case arg => "Array[" + remap(arg) + "]"
     }
     case _ => super.remap(m)
   }

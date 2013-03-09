@@ -7,7 +7,7 @@
 package ppl.delite.runtime.graph.ops
 
 import ppl.delite.runtime.graph.targets.Targets
-import ppl.delite.runtime.graph.DeliteTaskGraph
+import ppl.delite.runtime.graph._
 
 class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, func: String, private[graph] var outputTypesMap: Map[Targets.Value,Map[String,String]], private[graph] var inputTypesMap: Map[Targets.Value,Map[String,String]], val needsCombine: Boolean, val needsPostProcess: Boolean) extends OP_Executable {
 
@@ -52,6 +52,21 @@ class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, f
     inputTypesMap = headerTypesMap
     graph.registerOp(h)
     h
+  }
+
+  override def partition = { //TODO: "free" partition could be local or distributed...
+    if (getInputs.isEmpty) Local
+    else getInputs.map(i => i._1.partition(i._2)).reduceLeft(_ combine _)
+  }
+
+  override def partition(sym: String) = {
+    val opPartition = partition
+    if (needsCombine) Local //TODO: need to know needsCombine per output symbol rather than globally
+    else if (needsPostProcess) { //TODO: likewise for needsPostProcess
+      if (opPartition == Local) Local
+      else Distributed(id) //fresh logical partition 
+    }
+    else opPartition
   }
 
 }

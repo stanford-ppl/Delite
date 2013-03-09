@@ -116,14 +116,14 @@ object DeliteTaskGraph {
     graph._ops.get(sym) match {
       case Some(op) => op
       case None => {
-        val in = findOp(sym)
+        val in = findOp(sym)(graph.superGraph)
         graph._inputs.getOrElseUpdate(sym, new OP_Input(in))
       }
     }
   }
 
   def findOp(sym: String)(implicit firstGraph: DeliteTaskGraph): DeliteOP = {
-    var graph = firstGraph.superGraph
+    var graph = firstGraph
     while (graph != null) {
       graph._ops.get(sym) match {
         case Some(op) => return op
@@ -157,6 +157,10 @@ object DeliteTaskGraph {
       case "OP_MultiLoop" =>
         val size = getFieldString(op, "sizeValue")
         val sizeIsConst = getFieldString(op, "sizeType") == "const"
+        if (resultMap(Targets.Scala).values.contains("Unit")) //FIXME: handle foreaches
+          println("WARNING: ignoring stencil of op with Foreach: " + id)
+        else
+          processStencil(op)
         new OP_MultiLoop(id, size, sizeIsConst, "kernel_"+id, resultMap, inputTypesMap, getFieldBoolean(op, "needsCombine"), getFieldBoolean(op, "needsPostProcess"))
       case "OP_Foreach" => new OP_Foreach(id, "kernel_"+id, resultMap, inputTypesMap)
       case other => error("OP Type not recognized: " + other)
@@ -251,6 +255,37 @@ object DeliteTaskGraph {
       }
     }
     inputTypesMap
+  }
+
+  def processStencil(op: Map[Any,Any])(implicit graph: DeliteTaskGraph) = {
+    val stencilMap = getFieldMap(op, "stencil")
+    for (in <- getFieldList(op, "inputs")) {
+      val localStencil = Stencil(getFieldString(stencilMap, in))
+      traverseInputs(findOp(in), in)
+
+      def updateStencil(op: DeliteOP, in: String) {
+        if (localStencil != Empty && (op.isInstanceOf[OP_FileReader] || op.isInstanceOf[OP_MultiLoop])) 
+          println("adding " + localStencil + " to output " + in + " of op " + op)
+        val globalStencil = op.stencilMap
+        if (globalStencil contains in) globalStencil(in) = globalStencil(in) combine localStencil
+        else globalStencil(in) = localStencil
+      }
+
+      //alias propagation, seems very sketchy...
+      def traverseInputs(op: DeliteOP, in: String) {
+        updateStencil(op, in)
+        op match {
+          case o:OP_Single => 
+            o.getInputs.foreach(i => traverseInputs(findOp(i._2), i._2))
+          case o:OP_Condition => 
+            val resT = o.thenGraph.result._2
+            if (resT != null) traverseInputs(findOp(resT), resT)
+            val resE = o.elseGraph.result._2
+            if (resE != null) traverseInputs(findOp(resE), resE)
+          case _ => 
+        }
+      }
+    }
   }
 
   def combineTypesMap(inMaps: List[Map[Targets.Value,Map[String,String]]]): Map[Targets.Value, Map[String,String]] = {

@@ -221,7 +221,7 @@ trait StencilAnalysis extends FatBlockTraversal {
   def process[A](s: Sym[A], v: Sym[Int], body: Def[_]) { 
     body match {
         
-      case DeliteForeachElem(func,sync) =>
+      case DeliteForeachElem(func) =>
         val stencil = new Stencil()
         
         log("  ++ found foreach elem")

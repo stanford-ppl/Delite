@@ -47,6 +47,7 @@ object Serialization {
       case a: Array[Int] => serializeDeliteArray(new LocalDeliteArrayInt(a)).toByteString
       case a: Array[Char] => serializeDeliteArray(new LocalDeliteArrayChar(a)).toByteString
       case a: Array[Double] => serializeDeliteArray(new LocalDeliteArrayDouble(a)).toByteString
+      case a: Array[Any] => serializeDeliteArray(new LocalDeliteArrayObject(a)).toByteString
       case other =>
         try {
           other.getClass.getMethod("toByteString").invoke(other).asInstanceOf[ByteString]
@@ -116,8 +117,36 @@ object Serialization {
       case a:LocalDeliteArrayByte => 
         val array = ByteString.copyFrom(a.data, offset, length)
         ArrayMessage.newBuilder.setLength(length).setArray(array).build
+      case a:LocalDeliteArrayObject[_] =>
+        val arr = a.data
+        var i = offset
+        
+        val serialize = try {
+          arr(i).getClass.getMethod("toByteString")
+        }
+        catch {
+          case e: NoSuchMethodException => throw new UnsupportedOperationException("don't know how to serialize " + arr(i).getClass.getSimpleName)
+        }
+
+        val saveOffset = copyOffset
+        copyOffset = 0
+        val saveLength = copyLength
+        copyLength = -1
+
+        val mssg = ArrayMessage.newBuilder.setLength(length)
+        while (i < offset+length) {
+          mssg.addObject(serialize.invoke(arr(i)).asInstanceOf[ByteString])         
+          i += 1
+        }
+
+        copyOffset = saveOffset
+        copyLength = saveLength
+
+        mssg.build
     }
   }
+
+  //def deserialize[T](tpe: Class[T], bytes: ByteString, lookupId: Boolean = false): T = deserialize(Seq(tpe), bytes, lookupId)
 
   def deserialize[T](tpe: Class[T], bytes: ByteString, lookupId: Boolean = false): T = {
     this.lookupId = lookupId
@@ -139,6 +168,7 @@ object Serialization {
       case tpe if tpe == classOf[DeliteArrayShort] => deserializeDeliteArrayShort(ArrayMessage.parseFrom(bytes))
       case tpe if tpe == classOf[DeliteArrayByte] => deserializeDeliteArrayByte(ArrayMessage.parseFrom(bytes))
       case tpe if tpe == classOf[DeliteArrayBoolean] => deserializeDeliteArrayBoolean(ArrayMessage.parseFrom(bytes))
+      //case tp if tp == classOf[DeliteArrayObject[_]] => deserializeDeliteArrayObject(tpe(1), ArrayMessage.parseFrom(bytes))
       case other =>
         try {
           other.getMethod("parseFrom", classOf[ByteString]).invoke(null, bytes)
@@ -197,11 +227,6 @@ object Serialization {
       val byteBuffer = mssg.getArray.asReadOnlyByteBuffer
       val array = new Array[Double](byteBuffer.capacity / 8)
       byteBuffer.asDoubleBuffer.get(array)
-
-      /*print("[ ")
-      for (i <- 0 until array.length) print(array(i) + " ")
-      println("]")*/
-
       new LocalDeliteArrayDouble(array)
     }
     else {
@@ -272,8 +297,20 @@ object Serialization {
   }
 
   def deserializeDeliteArrayObject[T:Manifest](mssg: ArrayMessage): DeliteArrayObject[T] = {
-    if (mssg.hasArray) {
-      throw new RuntimeException("don't know how to deserialize DeliteArrayObject")
+    if (mssg.getObjectCount > 0) {
+      val deserialize = try {
+        manifest[T].erasure.getMethod("parseFrom", classOf[ByteString])
+      }
+      catch {
+        case e: NoSuchMethodException => throw new UnsupportedOperationException("don't know how to deserialize " + manifest[T].erasure.getSimpleName)
+      }
+      val array = new Array[T](mssg.getLength)
+      var i = 0
+      while (i < array.length) {
+        array(i) = deserialize.invoke(null, mssg.getObject(i)).asInstanceOf[T]
+        i += 1
+      }
+      new LocalDeliteArrayObject[T](array)    
     }
     else {
       val id = mssg.getId.getId
@@ -292,7 +329,7 @@ object Serialization {
     val splitId = id.split("_")
     val symId = splitId(0)
     val offset = splitId(1).toInt
-    val res = ppl.delite.runtime.DeliteMesosExecutor.getResult(symId, offset).asInstanceOf[LocalDeliteArray[T]]
+    val res = ppl.delite.runtime.DeliteMesosExecutor.getResult(symId, offset).asInstanceOf[DeliteArray[T]]
     val offsets = new Array[Int](offsetList.size)
     for (i <- 0 until offsets.length) offsets(i) = offsetList.get(i)
     res.offsets = offsets

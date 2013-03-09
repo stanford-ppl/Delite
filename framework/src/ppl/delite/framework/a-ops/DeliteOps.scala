@@ -129,8 +129,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   // for use in loops:
 
   case class DeliteForeachElem[A:Manifest](
-    func: Block[A],
-    sync: Block[List[Any]] // FIXME: don't want to create lists at runtime...
+    func: Block[A]
+    //sync: Block[List[Any]] // FIXME: don't want to create lists at runtime...
     // TODO: this is sort of broken right now, re-enable when we figure out how to make this work without emitting dependencies twice
     //cond: List[Exp[Boolean]] = Nil
   ) extends Def[Unit] {
@@ -762,8 +762,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     
     final lazy val i: Sym[Int] = copyOrElse(_.i)(fresh[Int])
     lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
-      func = reifyEffects(this.func(dc_apply(in,v))),
-      sync = reifyEffects(this.sync(i))
+      func = reifyEffects(this.func(dc_apply(in,v)))
+      //sync = reifyEffects(this.sync(i))
     ))
   }
 
@@ -773,8 +773,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     def func: Exp[Int] => Exp[Unit]
     
     lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
-      func = reifyEffects(this.func(v)),
-      sync = reifyEffects(unit(List()))
+      func = reifyEffects(this.func(v))
+      //sync = reifyEffects(unit(List()))
     ))
   }
 
@@ -1120,8 +1120,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
         )(e.mA,e.mI,e.mCA)).asInstanceOf[Def[A]]
       case e: DeliteForeachElem[a] => 
         (DeliteForeachElem[a](
-          func = fb(e.func)(e.mA),
-          sync = f(e.sync)
+          func = fb(e.func)(e.mA)
+          //sync = f(e.sync)
 //          cond = f(e.cond)
         )(e.mA)).asInstanceOf[Def[A]] // reasonable?
       case e: DeliteReduceElem[a] => 
@@ -1159,7 +1159,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case op: DeliteCollectElem[_,_,_] => blocks(op.func) ::: blocks(op.update) ::: blocks(op.cond) ::: blocks(op.allocN) ::: blocks(op.finalizer) ::: blocks(op.buf) 
     case op: DeliteBufferElem[_,_,_] => blocks(op.append) ::: blocks(op.setSize) ::: blocks(op.allocRaw) ::: blocks(op.copyRaw)
 //    case op: DeliteForeachElem[_] => blocks(op.func) ::: blocks(op.cond) ::: blocks(op.sync)
-    case op: DeliteForeachElem[_] => blocks(op.func) ::: blocks(op.sync)
+    case op: DeliteForeachElem[_] => blocks(op.func) //::: blocks(op.sync)
     case op: DeliteReduceElem[_] => blocks(op.func) ::: blocks(op.cond) ::: blocks(op.zero) ::: blocks(op.rFunc) ::: blocks(op.accInit)
     case op: DeliteReduceTupleElem[_,_] => blocks(op.func) ::: blocks(op.cond) ::: blocks(op.zero) ::: blocks(op.rFuncSeq) ::: blocks(op.rFuncPar) // should be ok for tuples...
     case foreach: DeliteOpForeach2[_,_] => blocks(foreach.func) ::: blocks(foreach.sync)
@@ -1179,7 +1179,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case op: DeliteCollectElem[_,_,_] => syms(op.func) ::: syms(op.update) ::: syms(op.cond) ::: syms(op.allocN) ::: syms(op.finalizer) ::: syms(op.buf) 
     case op: DeliteBufferElem[_,_,_] => syms(op.append) ::: syms(op.setSize) ::: syms(op.allocRaw) ::: syms(op.copyRaw)
 //    case op: DeliteForeachElem[_] => syms(op.func) ::: syms(op.cond) ::: syms(op.sync)
-    case op: DeliteForeachElem[_] => syms(op.func) ::: syms(op.sync)
+    case op: DeliteForeachElem[_] => syms(op.func) //::: syms(op.sync)
     case op: DeliteReduceElem[_] => syms(op.func) ::: syms(op.cond) ::: syms(op.zero) ::: syms(op.rFunc) ::: syms(op.accInit)
     case op: DeliteReduceTupleElem[_,_] => syms(op.func) ::: syms(op.cond) ::: syms(op.zero) ::: syms(op.rFuncSeq) ::: syms(op.rFuncPar) // should be ok for tuples...
     case foreach: DeliteOpForeach2[_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ::: syms(foreach.func) ::: syms(foreach.sync)
@@ -1196,7 +1196,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case e: DeliteOpExternal[_] => super.syms(e) ::: syms(e.allocVal)
     case op: DeliteCollectElem[_,_,_] => syms(op.func) ::: syms(op.cond) ::: syms(op.allocN) ::: syms(op.finalizer)
 //    case op: DeliteForeachElem[_] => syms(op.func) ::: syms(op.cond) ::: syms(op.sync)
-    case op: DeliteForeachElem[_] => syms(op.func) ::: syms(op.sync)
+    case op: DeliteForeachElem[_] => syms(op.func) //::: syms(op.sync)
     case op: DeliteReduceElem[_] => syms(op.func) ::: syms(op.cond) ::: syms(op.zero) ::: syms(op.rFunc) ::: syms(op.accInit)
     case op: DeliteReduceTupleElem[_,_] => syms(op.func) ::: syms(op.cond) ::: syms(op.zero) ::: syms(op.rFuncSeq) ::: syms(op.rFuncPar)
     case foreach: DeliteOpForeach2[_,_] => syms(foreach.in)
@@ -1213,7 +1213,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case op: DeliteCollectElem[_,_,_] => List(op.eV, op.sV) ::: effectSyms(op.func)  ::: effectSyms(op.cond) ::: effectSyms(op.allocN) ::: effectSyms(op.finalizer) ::: syms(op.allocVal) ::: boundSyms(op.buf)
     case op: DeliteBufferElem[_,_,_] => List(op.aV, op.iV, op.iV2) ::: effectSyms(op.append) ::: effectSyms(op.setSize) ::: effectSyms(op.allocRaw) ::: effectSyms(op.copyRaw) 
 //    case op: DeliteForeachElem[_] => effectSyms(op.func) ::: effectSyms(op.cond) ::: effectSyms(op.sync)
-    case op: DeliteForeachElem[_] => effectSyms(op.func) ::: effectSyms(op.sync)
+    case op: DeliteForeachElem[_] => effectSyms(op.func) //::: effectSyms(op.sync)
     case op: DeliteReduceElem[_] => List(op.rV._1, op.rV._2) ::: effectSyms(op.func) ::: effectSyms(op.cond) ::: effectSyms(op.zero) ::: effectSyms(op.rFunc) ::: effectSyms(op.accInit)
     case op: DeliteReduceTupleElem[_,_] => syms(op.rVPar) ::: syms(op.rVSeq) ::: effectSyms(op.func._1) ::: effectSyms(op.cond) ::: effectSyms(op.zero) ::: effectSyms(op.rFuncPar) ::: effectSyms(op.rFuncSeq)
     case foreach: DeliteOpForeach2[_,_] => foreach.v::foreach.i::effectSyms(foreach.func):::effectSyms(foreach.sync)
@@ -1232,7 +1232,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case op: DeliteCollectElem[_,_,_] => freqNormal(op.allocN) ::: freqNormal(op.finalizer) ::: freqHot(op.cond) ::: freqHot(op.func) ::: freqHot(op.update) ::: symsFreq(op.buf)
     case op: DeliteBufferElem[_,_,_] => freqHot(op.append) ::: freqNormal(op.setSize) ::: freqNormal(op.allocRaw) ::: freqNormal(op.copyRaw)
 //    case op: DeliteForeachElem[_] => freqNormal(op.sync) ::: freqHot(op.cond) ::: freqHot(op.func)
-    case op: DeliteForeachElem[_] => freqNormal(op.sync) ::: freqHot(op.func)
+    case op: DeliteForeachElem[_] => /*freqNormal(op.sync) :::*/ freqHot(op.func)
     case op: DeliteReduceElem[_] => freqHot(op.cond) ::: freqHot(op.func) ::: freqNormal(op.zero) ::: freqHot(op.rFunc) ::: freqNormal(op.accInit)
     case op: DeliteReduceTupleElem[_,_] => freqHot(op.cond) ::: freqHot(op.func) ::: freqNormal(op.zero) ::: freqHot(op.rFuncSeq) ::: freqHot(op.rFuncPar)
     case foreach: DeliteOpForeach2[_,_] => freqNormal(foreach.in) ::: freqHot(foreach.func) ::: freqHot(foreach.sync)
@@ -1595,11 +1595,14 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           else
             stream.println(prefixSym + quote(sym) + " = " + prefixSym + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze).map(_.toArray) // FIXME: better representation")
         case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
-          val arrayType = "ppl.delite.runtime.data.LocalDeliteArray" + (if (isPrimitiveType(elem.mV)) remap(elem.mV) else "Object[" + remap(elem.mV) + "]")
+          def wrap(result: String) = if (Config.generateSerializable) 
+            "new ppl.delite.runtime.data.LocalDeliteArray" + (if (isPrimitiveType(elem.mV)) remap(elem.mV) else "Object[" + remap(elem.mV) + "]") + "(" + result + ")"
+          else result
+
           if (prefixSym == "")
-            stream.println("val " + quote(sym) + " = new " + arrayType + "(" + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze))")
+            stream.println("val " + quote(sym) + " = " + wrap(quote(sym) + "_hash_data.take(" + quotedGroup + "_sze)"))
           else
-            stream.println(prefixSym + quote(sym) + " = new " + arrayType + "(" + prefixSym + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze))")
+            stream.println(prefixSym + quote(sym) + " = " + wrap(prefixSym + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze)"))
         case (sym, elem: DeliteHashIndexElem[_,_]) => 
           if (prefixSym == "")
             stream.println("val " + quote(sym) + " = " + quotedGroup + "_hash_pos")
@@ -1866,8 +1869,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           case ParFlat =>
             emitValDef(elem.sV, "loopSize")
             emitBlock(elem.allocN)
-            val arraySym = if (!remap(elem.allocN.tp).contains("DeliteArray")) fieldAccess(quote(getBlockResult(elem.allocN)), dc_data_field(getBlockResult(elem.allocN))(elem.mA)) else quote(getBlockResult(elem.allocN)) 
-            emitAssignment(fieldAccess(arraySym,"offset"), "loopStart") //FIXME: extremely hacky
+            if (Config.generateSerializable) {
+              val arraySym = if (!remap(elem.allocN.tp).contains("DeliteArray")) fieldAccess(quote(getBlockResult(elem.allocN)), dc_data_field(getBlockResult(elem.allocN))(elem.mA)) else quote(getBlockResult(elem.allocN)) 
+              emitAssignment(fieldAccess(arraySym,"offset"), "loopStart") //FIXME: extremely hacky
+            }
             emitAssignment(fieldAccess("__act",quote(sym)+"_data"),quote(getBlockResult(elem.allocN)))
         }
         case (sym, elem: DeliteHashElem[_,_]) => //
@@ -2000,7 +2005,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       emitMultiHashCombine(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act.")
       (symList zip op.body) foreach {
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
-          emitAssignment(fieldAccess("__act",quote(sym)), remap(sym.tp)+".combine(" + fieldAccess("__act",quote(sym)) + "," + fieldAccess("rhs",quote(sym)) + ")")
+          if (Config.generateSerializable) emitAssignment(fieldAccess("__act",quote(sym)), remap(sym.tp)+".combine(" + fieldAccess("__act",quote(sym)) + "," + fieldAccess("rhs",quote(sym)) + ")")
         case (sym, elem: DeliteHashElem[_,_]) => 
         case (sym, elem: DeliteForeachElem[_]) => // nothing needed
         case (sym, elem: DeliteReduceElem[_]) =>
@@ -2166,66 +2171,75 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           emitFieldDecl(quote(sym)+"_zero", remap(sym.tp))
           emitFieldDecl(quote(sym)+"_zero_2", remap(elem.func._2.tp))
       }
+      if (Config.generateSerializable) {
+        emitMethod("serialize", "java.util.ArrayList[com.google.protobuf.ByteString]", List()) {
+          def serializeRef(sym: String) = "ppl.delite.runtime.messages.Serialization.serialize(this." + sym + ", true, \"" + sym + "\")"
+          def serializeVal(sym: String, size: String = "-1") = "ppl.delite.runtime.messages.Serialization.serialize(this." + sym + ", 0, " + size + ")"
 
-      emitMethod("serialize", "java.util.ArrayList[com.google.protobuf.ByteString]", List()) {
-        def serializeRef(sym: String) = "ppl.delite.runtime.messages.Serialization.serialize(this." + sym + ", true, \"" + sym + "\")"
-        def serializeVal(sym: String, size: String = "-1") = "ppl.delite.runtime.messages.Serialization.serialize(this." + sym + ", 0, " + size + ")"
-
-        emitValDef("arr", "java.util.ArrayList[com.google.protobuf.ByteString]", "new java.util.ArrayList")
-        def prefix = "arr.add"
-        var firstHash = true
-        (symList zip op.body) foreach {
-          case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
-            if (firstHash) {
-              emitValDef("size", remap(Manifest.Int), kernelName+"_hash_pos.size")
-              emitMethodCall(prefix, List(serializeVal(kernelName+"_hash_pos.unsafeKeys", "size")))
-              //emitMethodCall(prefix, List(serializeVal(kernelName+"_hash_pos.unsafeIndices"))) //TODO: remove this
-              firstHash = false
-            }
-            emitMethodCall(prefix, List(serializeVal(quote(sym)+"_hash_data", "size")))
-          case (sym, elem: DeliteCollectElem[_,_,_]) =>
-            emitMethodCall(prefix, List(serializeRef(quote(sym))))
-          case (sym, elem: DeliteForeachElem[_]) =>
-          case (sym, elem: DeliteReduceElem[_]) =>
-            emitMethodCall(prefix, List(serializeVal(quote(sym))))
-            //emitMethodCall(prefix, List(serializeVal(quote(sym)+"_zero")))
-          case (sym, elem: DeliteReduceTupleElem[_,_]) =>
-            emitMethodCall(prefix, List(serializeVal(quote(sym))))
-            emitMethodCall(prefix, List(serializeVal(quote(sym)+"_2")))
+          emitValDef("arr", "java.util.ArrayList[com.google.protobuf.ByteString]", "new java.util.ArrayList")
+          def prefix = "arr.add"
+          var firstHash = true
+          (symList zip op.body) foreach {
+            case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
+              if (firstHash) {
+                emitValDef("size", remap(Manifest.Int), kernelName+"_hash_pos.size")
+                emitMethodCall(prefix, List(serializeVal(kernelName+"_hash_pos.unsafeKeys", "size")))
+                //emitMethodCall(prefix, List(serializeVal(kernelName+"_hash_pos.unsafeIndices"))) //TODO: remove this
+                firstHash = false
+              }
+              emitMethodCall(prefix, List(serializeVal(quote(sym)+"_hash_data", "size")))
+            case (sym, elem: DeliteCollectElem[_,_,_]) =>
+              emitMethodCall(prefix, List(serializeRef(quote(sym))))
+            case (sym, elem: DeliteForeachElem[_]) =>
+            case (sym, elem: DeliteReduceElem[_]) =>
+              emitMethodCall(prefix, List(serializeVal(quote(sym))))
+              //emitMethodCall(prefix, List(serializeVal(quote(sym)+"_zero")))
+            case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+              emitMethodCall(prefix, List(serializeVal(quote(sym))))
+              emitMethodCall(prefix, List(serializeVal(quote(sym)+"_2")))
+          }
+          emitReturn("arr")
         }
-        emitReturn("arr")
-      }
+      }   
     }
 
     emitObject("activation_" + kernelName) {
-      emitMethod("deserialize", "activation_"+kernelName, List(("bytes", "java.util.List[com.google.protobuf.ByteString]"))) {
-        var idx = -1
-        def deserialize(tp: String) = { idx += 1; "ppl.delite.runtime.messages.Serialization.deserialize(classOf[" + tp + "], bytes.get(" + idx + "))" }
-        emitValDef("act", "activation_"+kernelName, "new activation_"+kernelName)
-        val prefix = "act."
-        var firstHash = true
-        (symList zip op.body) foreach {
-          case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
-            if (firstHash) {
-              val keyType = if (isPrimitiveType(elem.keyFunc.tp)) "ppl.delite.runtime.data.DeliteArray" + remap(elem.keyFunc.tp) else "ppl.delite.runtime.data.DeliteArrayObject[" + remap(elem.keyFunc.tp) + "]"
-              emitValDef("keys", keyType, deserialize(keyType))
-              //emitValDef("indices", "Array[Int]", deserialize("Array[Int]"))
-              emitAssignment(prefix+kernelName+"_hash_pos", "", "new generated.scala.container.HashMapImpl[" + remap(elem.keyFunc.tp) + "](keys.length*4,keys.length)")
-              stream.println("for (i <- 0 until keys.length) " + prefix+kernelName+"_hash_pos.put(keys(i))") //FIXME!              
-              firstHash = false
-            }
-            emitAssignment(prefix+quote(sym)+"_hash_data", "", deserialize(remap(sym.tp))+".data")
-          case (sym, elem: DeliteCollectElem[_,_,_]) =>
-            emitAssignment(prefix+quote(sym), "", deserialize(remap(sym.tp)))
-          case (sym, elem: DeliteForeachElem[_]) =>
-          case (sym, elem: DeliteReduceElem[_]) =>
-            emitAssignment(prefix+quote(sym), "", deserialize(remap(sym.tp)))
-            //emitAssignment(prefix+quote(sym)+"_zero", "", deserialize(remap(sym.tp)))
-          case (sym, elem: DeliteReduceTupleElem[_,_]) => 
-            emitAssignment(prefix+quote(sym), "", deserialize(remap(sym.tp)))
-            emitAssignment(prefix+quote(sym)+"_2", "", deserialize(remap(elem.func._2.tp)))
+      if (Config.generateSerializable) {
+        emitMethod("deserialize", "activation_"+kernelName, List(("bytes", "java.util.List[com.google.protobuf.ByteString]"))) {
+          var idx = -1
+          def deserialize(tp: String) = { 
+            idx += 1
+            if (tp.contains("DeliteArrayObject")) //FIXME: need to handle this generically
+              "ppl.delite.runtime.messages.Serialization.deserializeDeliteArrayObject["+tp.substring(tp.indexOf("[")+1,tp.indexOf("]"))+"](ppl.delite.runtime.messages.Messages.ArrayMessage.parseFrom(bytes.get("+idx+")))"
+            else 
+              "ppl.delite.runtime.messages.Serialization.deserialize(classOf["+tp+"], bytes.get(" + idx + "))" 
+          }
+          emitValDef("act", "activation_"+kernelName, "new activation_"+kernelName)
+          val prefix = "act."
+          var firstHash = true
+          (symList zip op.body) foreach {
+            case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
+              if (firstHash) {
+                val keyType = if (isPrimitiveType(elem.keyFunc.tp)) "ppl.delite.runtime.data.DeliteArray" + remap(elem.keyFunc.tp) else "ppl.delite.runtime.data.DeliteArrayObject[" + remap(elem.keyFunc.tp) + "]"
+                emitValDef("keys", keyType, deserialize(keyType))
+                //emitValDef("indices", "Array[Int]", deserialize("Array[Int]"))
+                emitAssignment(prefix+kernelName+"_hash_pos", "", "new generated.scala.container.HashMapImpl[" + remap(elem.keyFunc.tp) + "](keys.length*4,keys.length)")
+                stream.println("for (i <- 0 until keys.length) " + prefix+kernelName+"_hash_pos.put(keys(i))") //FIXME!              
+                firstHash = false
+              }
+              emitAssignment(prefix+quote(sym)+"_hash_data", "", deserialize(remap(sym.tp))+".data")
+            case (sym, elem: DeliteCollectElem[_,_,_]) =>
+              emitAssignment(prefix+quote(sym), "", deserialize(remap(sym.tp)))
+            case (sym, elem: DeliteForeachElem[_]) =>
+            case (sym, elem: DeliteReduceElem[_]) =>
+              emitAssignment(prefix+quote(sym), "", deserialize(remap(sym.tp)))
+              //emitAssignment(prefix+quote(sym)+"_zero", "", deserialize(remap(sym.tp)))
+            case (sym, elem: DeliteReduceTupleElem[_,_]) => 
+              emitAssignment(prefix+quote(sym), "", deserialize(remap(sym.tp)))
+              emitAssignment(prefix+quote(sym)+"_2", "", deserialize(remap(elem.func._2.tp)))
+          }
+          emitReturn("act")
         }
-        emitReturn("act")
       }
     }
   }

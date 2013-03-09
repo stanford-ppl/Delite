@@ -124,7 +124,7 @@ class DeliteMesosExecutor extends Executor {
    * framework message to be retransmitted in any reliable fashion.
    */
   def frameworkMessage(driver: ExecutorDriver, data: Array[Byte]) {
-    DeliteMesosExecutor.sendDebugMessage("message received!")
+    //DeliteMesosExecutor.sendDebugMessage("message received!")
 
     val mssg = DeliteMasterMessage.parseFrom(data)
     mssg.getType match {
@@ -178,7 +178,7 @@ object DeliteMesosExecutor {
   private var noWork = true
   private var message: Any = _
 
-  private val network: ConnectionManager = new ConnectionManager
+  private lazy val network: ConnectionManager = new ConnectionManager
   private val networkMap = new HashMap[Int,ConnectionManagerId]
   var numSlaves = 0
   var slaveIdx = 0
@@ -279,7 +279,7 @@ object DeliteMesosExecutor {
   }
 
   def awaitWork() {
-    sendDebugMessage("awaiting work!")
+    //sendDebugMessage("awaiting work!")
 
     var message: Any = null
     remoteLock.lock()
@@ -363,14 +363,14 @@ object DeliteMesosExecutor {
   def launchWorkScala(op: RemoteOp) {
     opTarget = Targets.Scala
     val id = op.getId.getId
-    sendDebugMessage("launching op " + id)
+    //sendDebugMessage("launching op " + id)
     
     val cls = op.getType match {
       case RemoteOp.Type.INPUT => classLoader.loadClass("generated.scala.kernel_"+id)
       case RemoteOp.Type.MULTILOOP => 
         loopStart = op.getStartIdx(slaveIdx)
         loopSize = if (op.getStartIdxCount > slaveIdx+1) op.getStartIdx(slaveIdx+1)-loopStart else -1
-        sendDebugMessage("looping from " + loopStart + " to " + (loopStart+loopSize))
+        //sendDebugMessage("looping from " + loopStart + " to " + (loopStart+loopSize))
         classLoader.loadClass("MultiLoopHeader_"+id)
       case other => throw new RuntimeException("unrecognized op type: " + other)
     }
@@ -384,37 +384,39 @@ object DeliteMesosExecutor {
       arg.asInstanceOf[Object]
     }
 
-    val result = try { op.getType match {
-      case RemoteOp.Type.INPUT =>
-        method.invoke(null, args:_*)
-      case RemoteOp.Type.MULTILOOP =>
-        val header = method.invoke(null, args:_*) //TODO: for map-like ops we can return this immediately rather than waiting for work to complete
-        val result = new Future[Any]
+    val serResults = try { 
+      val result = op.getType match {
+        case RemoteOp.Type.INPUT =>
+          method.invoke(null, args:_*)
+        case RemoteOp.Type.MULTILOOP =>
+          val header = method.invoke(null, args:_*) //TODO: for map-like ops we can return this immediately rather than waiting for work to complete
+          val result = new Future[Any]
 
-        for (i <- 0 until Config.numThreads) {
-          val loopCls = classLoader.loadClass("MultiLoop_"+id+"_Chunk_"+i)
-          val loopM = loopCls.getDeclaredMethods.find(_.getName == "apply").get
-          val exec = new DeliteExecutable {
-            def run() { try {
-              val res = loopM.invoke(null, header)
-              if (i == 0) {
-                result.set(res)
-              }
-            } catch {
-              case i: java.lang.reflect.InvocationTargetException => if (i.getCause != null) throw i.getCause else throw i
-            } }
+          for (i <- 0 until Config.numThreads) {
+            val loopCls = classLoader.loadClass("MultiLoop_"+id+"_Chunk_"+i)
+            val loopM = loopCls.getDeclaredMethods.find(_.getName == "apply").get
+            val exec = new DeliteExecutable {
+              def run() { try {
+                val res = loopM.invoke(null, header)
+                if (i == 0) {
+                  result.set(res)
+                }
+              } catch {
+                case i: java.lang.reflect.InvocationTargetException => if (i.getCause != null) throw i.getCause else throw i
+              } }
+            }
+            executor.submitOne(i, exec)
           }
-          executor.submitOne(i, exec)
-        }
-        result.get
-    } } catch {
+          result.get
+      } 
+      result.getClass.getMethod("serialize").invoke(result).asInstanceOf[java.util.List[ByteString]]
+    } catch {
       case i: java.lang.reflect.InvocationTargetException => if (i.getCause != null) throw i.getCause else throw i
     }
 
     // Update the version number for outputs
     updateVersionIDs(id, List(Targets.Scala))
 
-    val serResults = result.getClass.getMethod("serialize").invoke(result).asInstanceOf[java.util.List[ByteString]]
     val returnResult = ReturnResult.newBuilder.setId(op.getId).addAllOutput(serResults)
 
     val mssg = DeliteSlaveMessage.newBuilder
@@ -433,7 +435,7 @@ object DeliteMesosExecutor {
     val offset = id(1).toInt
     sendDebugMessage("requesting data " + key)
     val res = getResult(key, offset)
-    val data = if (request.hasIdx) res(request.getIdx) else res
+    val data = if (request.hasIdx) res.readAt(request.getIdx) else res
 
     val ser = Serialization.serialize(data)
     val mssg = DeliteSlaveMessage.newBuilder

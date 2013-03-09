@@ -28,6 +28,7 @@ def main():
     parser.add_option("--isSlave", dest="isSlave", action="store_true", default=False)
     parser.add_option("-m", "--master", dest="master", default="0.0.0.0:5050", help="master ip address and port for cluster runtime")
     parser.add_option("--codecache", dest="codecache", default="", help="directory for runtime code cache")
+    parser.add_option("-d", "--directory", dest="directory", default="", help="change directory to the specified one before running")
 
     (opts, args) = parser.parse_args()
     if len(args) < 1:
@@ -83,7 +84,9 @@ def run(deg, params, opts):
     if opts.profile == True:
         java_opts = java_opts + " -Dprofile.output.dir=profile -Dprofile.dump=true -Ddelite.debug.profile=true"
     if opts.isSlave == True:
-	java_opts = java_opts + " -Ddelite.cluster.isSlave"
+        java_opts = java_opts + " -Ddelite.cluster.isSlave"
+    if delitecommon.DELITE_MEM != None:
+        java_opts = java_opts + " -Xmx" + delitecommon.DELITE_MEM
 
 
     # add classpaths
@@ -115,6 +118,8 @@ def run(deg, params, opts):
     print "== with options: " + java_opts + "\n" 
     java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " ppl.delite.runtime.Delite " + deg + " " + ' '.join(params)
     #print java_cmd
+    if opts.directory != "":
+        os.chdir(opts.directory)
     ecode = os.system(java_cmd)
     if ecode != 0:
         err("Delite execution failed")
