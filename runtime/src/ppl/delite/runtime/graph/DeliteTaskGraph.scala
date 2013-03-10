@@ -257,6 +257,12 @@ object DeliteTaskGraph {
     inputTypesMap
   }
 
+  //FIXME: should be based on compiler IR node type rather than just output type
+  def isPrimitiveType(tp: String) = tp match {
+    case "Int" | "Long" | "Float" | "Double" | "Char" | "Short" | "Byte" | "Boolean" | "Unit" => true
+    case _ => false
+  }
+
   def processStencil(op: Map[Any,Any])(implicit graph: DeliteTaskGraph) = {
     val stencilMap = getFieldMap(op, "stencil")
     for (in <- getFieldList(op, "inputs")) {
@@ -264,7 +270,7 @@ object DeliteTaskGraph {
       traverseInputs(findOp(in), in)
 
       def updateStencil(op: DeliteOP, in: String) {
-        if (localStencil != Empty && (op.isInstanceOf[OP_FileReader] || op.isInstanceOf[OP_MultiLoop])) 
+        if (localStencil != Empty && (op.isInstanceOf[OP_FileReader] || op.isInstanceOf[OP_MultiLoop]))
           println("adding " + localStencil + " to output " + in + " of op " + op)
         val globalStencil = op.stencilMap
         if (globalStencil contains in) globalStencil(in) = globalStencil(in) combine localStencil
@@ -273,16 +279,18 @@ object DeliteTaskGraph {
 
       //alias propagation, seems very sketchy...
       def traverseInputs(op: DeliteOP, in: String) {
-        updateStencil(op, in)
-        op match {
-          case o:OP_Single => 
-            o.getInputs.foreach(i => traverseInputs(findOp(i._2), i._2))
-          case o:OP_Condition => 
-            val resT = o.thenGraph.result._2
-            if (resT != null) traverseInputs(findOp(resT), resT)
-            val resE = o.elseGraph.result._2
-            if (resE != null) traverseInputs(findOp(resE), resE)
-          case _ => 
+        if (!isPrimitiveType(op.outputType)) {
+          updateStencil(op, in)
+          op match {
+            case o:OP_Single => 
+              o.getInputs.foreach(i => traverseInputs(findOp(i._2), i._2))
+            case o:OP_Condition => 
+              val resT = o.thenGraph.result._2
+              if (resT != null) traverseInputs(findOp(resT), resT)
+              val resE = o.elseGraph.result._2
+              if (resE != null) traverseInputs(findOp(resE), resE)
+            case _ => 
+          }
         }
       }
     }

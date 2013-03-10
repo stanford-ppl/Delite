@@ -18,8 +18,8 @@ class OP_Single(val id: String, kernel: String, private[graph] var outputTypesMa
   final def isDataParallel = false
 
   override def partition(sym: String) = {
-    if (getInputs.isEmpty) Local
-    else getInputs.map(i => i._1.partition(i._2)).reduceLeft(_ combine _) //TODO: this could be a dangerous assumption...
+    if (getInputs.isEmpty || DeliteTaskGraph.isPrimitiveType(outputType)) Local //TODO: this seems like an approximation?
+    else getInputs.map(i => i._1.partition(i._2)).reduceLeft(_ combine _)
   }
 
   def task = kernel

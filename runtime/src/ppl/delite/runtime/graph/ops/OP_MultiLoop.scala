@@ -64,7 +64,7 @@ class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, f
     if (needsCombine) Local //TODO: need to know needsCombine per output symbol rather than globally
     else if (needsPostProcess) { //TODO: likewise for needsPostProcess
       if (opPartition == Local) Local
-      else Distributed(id) //fresh logical partition 
+      else Distributed(Set(id)) //fresh logical partition 
     }
     else opPartition
   }
