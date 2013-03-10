@@ -63,7 +63,7 @@ object Serialization {
   //seems to require 2 different interfaces? (ByteBuffer vs ByteString)
   def serializeDeliteArray(array: DeliteArray[_]): ArrayMessage = {
     val length = if (copyLength == -1) array.length else copyLength
-    DeliteMesosExecutor.sendDebugMessage("produced array of length: " + length)
+    //DeliteMesosExecutor.sendDebugMessage("produced array of length: " + length)
     val offset = this.copyOffset
     array match {
       case a:DeliteArray[_] if sendId => 
