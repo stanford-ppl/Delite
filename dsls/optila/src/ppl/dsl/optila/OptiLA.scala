@@ -346,7 +346,7 @@ trait OptiLACodeGenCuda extends OptiLACudaCodeGenPkg with OptiLACodeGenBase with
     out.append("#include \"HostDeliteArray.h\"\n")
     out.append("#include \"HostDenseMatrix.h\"\n")
     out.append("#include \"library.h\"\n") // external library
-    getDataStructureHeaders() + out.toString
+    super.getDataStructureHeaders() + out.toString
   }
 
 }
@@ -396,7 +396,7 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
     out.append("#include \"VectorImpl.h\"\n")
     out.append("#include \"MatrixImpl.h\"\n")
     out.append("#include \"RangeVectorImpl.h\"\n")
-    getDataStructureHeaders() + out.toString
+    super.getDataStructureHeaders() + out.toString
   }
 }
 
@@ -433,6 +433,6 @@ trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenD
     out.append("#include \"RangeVector.h\"\n")
     out.append("#include \"DeliteArray.h\"\n")
     out.append("#include \"DenseMatrix.h\"\n")
-    getDataStructureHeaders() + out.toString
+    super.getDataStructureHeaders() + out.toString
   }
 }
