@@ -187,14 +187,15 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
         out.append("<<<dim3(1,1,1),dim3(1,1,1),0,kernelStream>>>")
         val args = op.getInputs.map(i => deref(i._1,i._2) + getSymDevice(i._1,i._2))
         out.append(args.mkString("(",",",");\n"))
-      case _:OP_MultiLoop =>
+      case op:OP_MultiLoop =>
         for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
           out.append(op.outputType(Targets.Cuda, name))
           out.append(" *" + getSymDevice(op,name) + ";\n")
         }
         out.append(op.task) //kernel name
         
-        val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").map(o => "&"+getSymDevice(op,o._2)).toList ++ op.getInputs.map(i=>getSymDevice(i._1,i._2))
+        val size = if(op.sizeIsConst) op.size else getSymDevice(op,op.size)
+        val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").map(o => "&"+getSymDevice(op,o._2)).toList ++ op.getInputs.map(i=>getSymDevice(i._1,i._2)) :+ size
         
         out.append(args.mkString("(",",",");\n"))
       case _:OP_Nested =>

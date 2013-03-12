@@ -189,6 +189,7 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
       stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = _" + idx + ";\n" }.mkString(""))
       stream.println("\t}")
 
+      //TODO: Below should be changed to use IR nodes
       if(prefix == "") {
         stream.println("\t__device__ void dc_copy(" + name + " from) {")
         for((idx,tp) <- elems) {
@@ -201,6 +202,21 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
         stream.print(elems.map{ case (idx,tp) => if(!isPrimitiveType(baseType(tp))) ("*" + idx + ".dc_alloc()") else idx }.mkString(","))
         stream.println(");")
         stream.println("\t}")
+        // Only generate dc_apply, dc_update, dc_size when there is only 1 DeliteArray among the fields
+        val generateDC = elems.filter(e => isArrayType(baseType(e._2))).size == 1
+        if(generateDC) {
+          val (idx,tp) = elems.filter(e => isArrayType(baseType(e._2)))(0)
+          val argtp = argType(tp)
+          stream.println("\t__host__ __device__ " + remap(argtp) + " dc_apply(int idx) {")
+          stream.println("\t\treturn " + idx + ".apply(idx);")
+          stream.println("\t}")
+          stream.println("\t__host__ __device__ void dc_update(int idx," + remap(argtp) + " newVal) {")
+          stream.println("\t\t" + idx + ".update(idx,newVal);")
+          stream.println("\t}")
+          stream.println("\t__host__ __device__ int dc_size(void) {")
+          stream.println("\t\treturn " + idx + ".length;")
+          stream.println("\t}")
+        }
       }
       stream.println("};")
     }

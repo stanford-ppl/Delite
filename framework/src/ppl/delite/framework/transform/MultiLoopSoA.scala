@@ -14,7 +14,16 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
     override def transformStm(stm: Stm): Exp[Any] = stm match {
       case TP(sym, Loop(size, v, body: DeliteCollectElem[a,i,ca])) => body.par match {
         case ParFlat => soaFlatCollect[a,i,ca](size,v,body)(body.mA,body.mI,body.mCA) match {
-          case Some(newSym) => newSym
+          case Some(newSym) => 
+            stm match {
+              case TP(sym, z:DeliteOpZipWith[_,_,_,_]) if(Config.enableGPUObjReduce) => 
+                encounteredZipWith += newSym -> z
+                printdbg("Register DeliteOpZipWith symbol ")
+                printdbg(newSym)
+                printdbg(z)
+              case _ => //
+            }
+            newSym
           case None => super.transformStm(stm)
         }
         case ParBuffer => soaBufferCollect[a,i,ca](size,v,body)(body.mA,body.mI,body.mCA) match {
