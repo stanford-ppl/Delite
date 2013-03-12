@@ -188,6 +188,20 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
       stream.println(") {")
       stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = _" + idx + ";\n" }.mkString(""))
       stream.println("\t}")
+
+      if(prefix == "") {
+        stream.println("\t__device__ void dc_copy(" + name + " from) {")
+        for((idx,tp) <- elems) {
+          if(isPrimitiveType(baseType(tp))) stream.println("\t\t" + idx + " = from." + idx + ";")
+          else stream.println("\t\t" + idx + ".dc_copy(from." + idx + ");")
+        }
+        stream.println("\t}")
+        stream.println("\t__host__ " + name + " *dc_alloc() {")
+        stream.print("\t\treturn new " + name + "(")
+        stream.print(elems.map{ case (idx,tp) => if(!isPrimitiveType(baseType(tp))) ("*" + idx + ".dc_alloc()") else idx }.mkString(","))
+        stream.println(");")
+        stream.println("\t}")
+      }
       stream.println("};")
     }
   }

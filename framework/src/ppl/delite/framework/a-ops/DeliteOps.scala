@@ -2463,13 +2463,14 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
 
   def emitKernelAbstractFatLoop(op: AbstractFatLoop, symList: List[Sym[Any]]) {
     outerLoopSize = op.size
+    outerLoopSym = op.v
     tabWidth += 1
     
     // last inputs always added to any device functions
     val lastInputs = (op.size match {
       case s@Sym(_) => List(op.v, op.size).map(i => remap(i.tp) + " " + quote(i))
       case _ => List(op.v).map(i => remap(i.tp) + " " + quote(i))
-    }) ++ List("size_t tempMemSize","char *tempMemPtr","int *tempMemUsage")
+    }) ++ List("TEMP_"+symList.map(quote).mkString(""),"size_t tempMemSize","char *tempMemPtr","int *tempMemUsage")
 
     def funcNameSuffix(sym: Sym[Any]) = {
       symList.map(quote).mkString("")+"_"+quote(sym)
@@ -2497,7 +2498,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           metaData.outputs.put(sym,new TransferFunc)
           lf.tpe = "FOREACH"
         case (sym, elem: DeliteReduceElem[_]) =>
-          if(!isPrimitiveType(sym.tp)) throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceElem with non-primitive types is not supported.")
+          //if(!isPrimitiveType(sym.tp)) throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceElem with non-primitive types is not supported.")
           lf.tpe = "REDUCE"
         case (sym, elem: DeliteReduceTupleElem[_,_]) =>
           if(!isPrimitiveType(sym.tp)) throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceTupleElem with non-primitive types is not supported.")
@@ -2510,16 +2511,18 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       }
     }
 
+    isNestedNode = true;
+
     // emit init functions
     (symList zip op.body) foreach {
       case (sym, elem:DeliteReduceElem[_]) =>
-        val freeVars = getFreeVarBlock(elem.zero,Nil).distinct
+        val freeVars = getFreeVarBlock(elem.accInit,Nil).distinct
         val inputs = remapInputs(freeVars) 
         val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
         lf.loopZeroInputs = freeVars.map(quote)
         stream.println("__device__ " + remap(sym.tp) + " dev_init_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")       
-        emitBlock(elem.zero)
-        stream.println("return " + quote(getBlockResult(elem.zero)) + ";")
+        emitBlock(elem.accInit)
+        stream.println("return " + quote(getBlockResult(elem.accInit)) + ";")
         stream.println("}")
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
         //TODO: would it affect the performance to have separate inputs for zero1 and zero2?
@@ -2689,6 +2692,8 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       case _ => //
     }
 
+    isNestedNode = false;
+    
     // emit output allocations
     (symList zip op.body) foreach {
       case (sym, elem:DeliteCollectElem[_,_,_]) =>
@@ -2705,8 +2710,10 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
 
       case (sym, elem: DeliteReduceElem[_]) =>
         val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
-        assert(isPrimitiveType(sym.tp))
-        emitAllocFuncPrimitive(sym, "allocFunc_"+quote(sym))
+        if(isPrimitiveType(sym.tp)) 
+          emitAllocFuncPrimitive(sym, "allocFunc_"+quote(sym))
+        else
+          emitAllocFunc(List((sym,elem.zero)),"allocFunc_"+quote(sym),Nil,Map())
         lf.loopFuncOutputType = remap(getBlockResult(elem.func).tp)
           
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
