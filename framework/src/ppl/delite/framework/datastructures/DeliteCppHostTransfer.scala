@@ -2,6 +2,7 @@ package ppl.delite.framework.datastructures
 
 import virtualization.lms.internal.{Hosts, Expressions, CppHostTransfer, CLikeCodegen, GenerationFailedException}
 import virtualization.lms.common.BaseGenStruct
+import ppl.delite.framework.Config
 
 trait DeliteCppHostTransfer extends CppHostTransfer {
   this: CLikeCodegen with BaseGenStruct =>
@@ -39,9 +40,18 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             args = args + JNITypeDescriptor(elemtp)
             out.append("\t%s %s = sendCPPtoJVM_%s(env,sym->%s);\n".format(JNIType(elemtp),elem._1,remap(elemtp),elem._1))
           }
-          else { // Always assume array type?
-            args = args + "["+JNITypeDescriptor(elemtp.typeArguments.head)
-            out.append("\t%s %s = sendCPPtoJVM_%s(env,&(sym->%s));\n".format(JNIType(elemtp),elem._1,mangledName(remap(elemtp)),elem._1))
+          else { // TODO: Fix this for cluster
+            if(Config.generateSerializable) { //FIX: Is this the cluster mode option?
+              if(isPrimitiveType(elemtp.typeArguments.head))
+                args = args + "Lppl/delite/runtime/data/DeliteArray" + elemtp.typeArguments.head + ";"
+              else 
+                args = args + "Lppl/delite/runtime/data/DeliteArrayObject;"
+              out.append("\t%s %s = sendCPPtoJVM_%s(env,&(sym->%s));\n".format(JNIType(elemtp),elem._1,mangledName(remap(elemtp)),elem._1))
+            }
+            else {
+              args = args + "["+JNITypeDescriptor(elemtp.typeArguments.head)
+              out.append("\t%s %s = sendCPPtoJVM_%s(env,&(sym->%s));\n".format(JNIType(elemtp),elem._1,mangledName(remap(elemtp)),elem._1))
+            }
           }
         }
         out.append("\tjclass cls = env->FindClass(\"generated/scala/%s\");\n".format(remap(tp)))
@@ -113,11 +123,19 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\t%s j_%s = env->Call%sMethod(obj,mid_get_%s);\n".format(JNIType(elemtp),elem._1,remapToJNI(elemtp),elem._1))
             out.append("\t%s %s = recvCPPfromJVM_%s(env,j_%s);\n".format(remap(elemtp),elem._1,remap(elemtp),elem._1))
           }
-          else { // Always assume array type?
-            if(isArrayType(elemtp))
-              out.append("\tjmethodID mid_get_%s = env->GetMethodID(cls,\"%s\",\"()[%s\");\n".format(elem._1,elem._1,JNITypeDescriptor(elemtp.typeArguments.head)))
-            else 
-              out.append("\tjmethodID mid_get_%s = env->GetMethodID(cls,\"%s\",\"()Lgenerated/scala/%s;\");\n".format(elem._1,elem._1,remap(elemtp)))
+          else { // TODO: Fix this for cluster
+            if(Config.generateSerializable) { //FIX: Is this the cluster mode option?
+              if(isPrimitiveType(elemtp.typeArguments.head))
+                out.append("\tjmethodID mid_get_%s = env->GetMethodID(cls,\"%s\",\"()Lppl/delite/runtime/data/DeliteArray%s;\");\n".format(elem._1,elem._1,elemtp.typeArguments.head))
+              else
+                out.append("\tjmethodID mid_get_%s = env->GetMethodID(cls,\"%s\",\"()Lppl/delite/runtime/data/DeliteArrayObject;\");\n".format(elem._1,elem._1))
+            }
+            else {
+              if(isArrayType(elemtp))
+                out.append("\tjmethodID mid_get_%s = env->GetMethodID(cls,\"%s\",\"()[%s\");\n".format(elem._1,elem._1,JNITypeDescriptor(elemtp.typeArguments.head)))
+              else 
+                out.append("\tjmethodID mid_get_%s = env->GetMethodID(cls,\"%s\",\"()Lgenerated/scala/%s;\");\n".format(elem._1,elem._1,remap(elemtp)))
+            }
             out.append("\t%s j_%s = env->Call%sMethod(obj,mid_get_%s);\n".format("jobject",elem._1,"Object",elem._1))
             out.append("\tHost%s *%s_ptr = recvCPPfromJVM_%s(env,j_%s);\n".format(remap(elemtp),elem._1,mangledName(remap(elemtp)),elem._1))
             out.append("\tHost%s %s = *%s_ptr;\n".format(remap(elemtp),elem._1,elem._1))

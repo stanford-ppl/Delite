@@ -309,8 +309,11 @@ object DeliteMesosExecutor {
     opTarget = Targets.Cuda
     val id = op.getId.getId
 
+    //TODO: Why below is not working for struct type inputs?
     // Set sync objects for kernel inputs 
+    /*
     val o = graph.totalOps.find(_.id == op.getId.getId).get
+    val inputSyms = o.getInputs.map(i => i._2)
     val inputs = o.getInputs.map(i => (i._2,Targets.getClassType(o.inputType(i._2)))).toArray
     var idx = 0
     val args = for ((sym,tpe) <- inputs) yield {
@@ -321,10 +324,28 @@ object DeliteMesosExecutor {
       idx += 1
       arg
     }
+    */
+  
+    // Set sync objects for kernel inputs 
+    val o = graph.totalOps.find(_.id == op.getId.getId).get
+    val inputSyms = o.getInputs.map(i => i._2)
+    val cls = classLoader.loadClass("generated.scala.kernel_" + id)
+    val method = cls.getDeclaredMethods.find(_.getName == "apply").get
+    val types = method.getParameterTypes
+    var idx = 0
+    val args = for (tpe <- types) yield {
+      val arg = Serialization.deserialize(tpe, op.getInput(idx), true).asInstanceOf[Object]
+      val syncObjectCls = classLoader.loadClass("Sync_Executable0")
+      val method = syncObjectCls.getDeclaredMethods.find(m => m.getName.contains("set") && m.getName.contains(inputSyms(idx))).get
+      method.invoke(null,Array(arg):_*)
+      idx += 1
+      arg
+    }
 
+    val s = System.currentTimeMillis()
     // Put task on the task queue
     val returnResult = ReturnResult.newBuilder.setId(op.getId)
-    val inputCopy = inputs.map(i => needsCopy(i._1, Targets.Cuda))
+    val inputCopy = inputSyms.map(i => needsCopy(i, Targets.Cuda)).toArray
     val start = op.getStartIdx(slaveIdx)
     val size = if (op.getStartIdxCount > slaveIdx+1) op.getStartIdx(slaveIdx+1)-start else -1
     putTask(Targets.resourceIDs(Targets.Cuda)(0), Task(op.getId.getId, start, size, inputCopy))
@@ -342,6 +363,8 @@ object DeliteMesosExecutor {
       val r = syncObjectCls.getDeclaredMethods.find(_.getName == "get0_x" + output).get.invoke(null,Array():_*)
       m.invoke(result,Array(r):_*)
     }
+    val e = System.currentTimeMillis()
+    sendDebugMessage("CUDA execution (op " + id + "):" + (e-s))
 
     // Update the version number
     //TODO: allow non-blocking calls for struct type outputs
@@ -387,6 +410,7 @@ object DeliteMesosExecutor {
       arg.asInstanceOf[Object]
     }
 
+    val s = System.currentTimeMillis()
     val serResults = try { 
       val result = op.getType match {
         case RemoteOp.Type.INPUT =>
@@ -416,6 +440,8 @@ object DeliteMesosExecutor {
     } catch {
       case i: java.lang.reflect.InvocationTargetException => if (i.getCause != null) throw i.getCause else throw i
     }
+    val e = System.currentTimeMillis()
+    sendDebugMessage("Scala execution (op " + id + "):" + (e-s))
 
     // Update the version number for outputs
     updateVersionIDs(id, List(Targets.Scala))
