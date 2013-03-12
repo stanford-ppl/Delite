@@ -7,7 +7,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.{ArrayList,HashMap}
-import ppl.delite.runtime.data.DeliteArray
+import ppl.delite.runtime.data._
 import ppl.delite.runtime.executor.ThreadPool
 import ppl.delite.runtime.codegen.DeliteExecutable
 import ppl.delite.runtime.messages.Messages._
@@ -271,11 +271,14 @@ object DeliteMesosExecutor {
   }
 
   def sendDebugMessage(message: String) {
-    val mssg = DeliteSlaveMessage.newBuilder
-      .setType(DeliteSlaveMessage.Type.DEBUG)
-      .setDebug(DebugMessage.newBuilder.setMessage(message))
-      .build
-    driver.sendFrameworkMessage(mssg.toByteArray)
+    if (driver != null) {
+      val mssg = DeliteSlaveMessage.newBuilder
+        .setType(DeliteSlaveMessage.Type.DEBUG)
+        .setDebug(DebugMessage.newBuilder.setMessage(message))
+        .build
+      driver.sendFrameworkMessage(mssg.toByteArray)
+    }
+    else println(message)
   }
 
   def awaitWork() {

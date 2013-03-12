@@ -27,6 +27,7 @@ def main():
     parser.add_option("-n", "--nodes", dest="num_nodes", default=0, help="(maximum) number of cluster nodes")
     parser.add_option("--isSlave", dest="isSlave", action="store_true", default=False)
     parser.add_option("-m", "--master", dest="master", default="0.0.0.0:5050", help="master ip address and port for cluster runtime")
+    parser.add_option("--ip", dest="ip_address", default="0.0.0.0", help="override the ip address Delite binds to")
     parser.add_option("--codecache", dest="codecache", default="", help="directory for runtime code cache")
     parser.add_option("-d", "--directory", dest="directory", default="", help="change directory to the specified one before running")
 
@@ -73,6 +74,7 @@ def run(deg, params, opts):
             err("MESOS_NATIVE_LIBRARY must be set in the environment or included in delite.properties")
         else:
             os.putenv("MESOS_NATIVE_LIBRARY", delitecommon.MESOS_NATIVE_LIBRARY)
+            os.putenv("LIBPROCESS_IP", opts.ip_address)
 
     if opts.codecache == "":
         opts.codecache = delitecommon.DELITE_HOME + os.sep + "generatedCache"

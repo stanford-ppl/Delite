@@ -1,6 +1,7 @@
 package ppl.dsl.optiml.library.cluster
 
 import ppl.dsl.optiml._
+import reflect.{Manifest, SourceContext}
 
 /* K-means clustering API for OptiML programs.
  *
@@ -35,12 +36,14 @@ trait OptiMLKmeans {
 
       val c = (0::m){e => findNearestCluster(x(e), mu)}   
 
-      /*(0::numClusters, *) { j =>
+      /*
+      (0::numClusters, *) { j =>
         val weightedpoints = sumRowsIf(0, m) (c(_) == j) { x(_) } 
         val points = c.count(_ == j)
         val d = if (points == 0) 1 else points 
         weightedpoints / d
-      }*/
+      }
+      */
 
       //TODO: mutable reduce with accInit
       val allWP = indexvector_hashreduce((0::m), i => c(i), i => x(i).Clone, (a:Rep[DenseVector[Double]],b:Rep[DenseVector[Double]]) => a + b)
@@ -52,7 +55,8 @@ trait OptiMLKmeans {
         val d = if (points == 0) 1 else points 
         weightedpoints / d
       }
-    }
+    }((x, y) => dist(x, y, SQUARE), implicitly[Manifest[DenseMatrix[Double]]], implicitly[Cloneable[DenseMatrix[Double]]], implicitly[SourceContext])
+
     (iter,newMu)
   }
 

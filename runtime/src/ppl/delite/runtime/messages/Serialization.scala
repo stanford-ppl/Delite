@@ -4,6 +4,7 @@ import com.google.protobuf.ByteString
 import java.nio.ByteBuffer
 import ppl.delite.runtime.data._
 import ppl.delite.runtime.messages.Messages._
+import ppl.delite.runtime.DeliteMesosExecutor
 
 
 object Serialization {
@@ -62,6 +63,7 @@ object Serialization {
   //seems to require 2 different interfaces? (ByteBuffer vs ByteString)
   def serializeDeliteArray(array: DeliteArray[_]): ArrayMessage = {
     val length = if (copyLength == -1) array.length else copyLength
+    //DeliteMesosExecutor.sendDebugMessage("produced array of length: " + length)
     val offset = this.copyOffset
     array match {
       case a:DeliteArray[_] if sendId => 
@@ -89,6 +91,7 @@ object Serialization {
         val array = ByteString.copyFrom(buf)
         ArrayMessage.newBuilder.setLength(length).setArray(array).build
       case a:LocalDeliteArrayDouble => 
+        //ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(a.data.mkString("local array: [ ", " ", " ]"))
         val buf = ByteBuffer.allocate(length*8)
         buf.asDoubleBuffer.put(a.data, offset, length)
         val array = ByteString.copyFrom(buf)
@@ -227,6 +230,7 @@ object Serialization {
       val byteBuffer = mssg.getArray.asReadOnlyByteBuffer
       val array = new Array[Double](byteBuffer.capacity / 8)
       byteBuffer.asDoubleBuffer.get(array)
+      //ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(array.mkString("remote: [ "," ", " ]"))
       new LocalDeliteArrayDouble(array)
     }
     else {

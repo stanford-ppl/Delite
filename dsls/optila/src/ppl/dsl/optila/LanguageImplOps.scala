@@ -49,7 +49,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
   }
 
   def optila_matrixdistance_euc_impl(m1: Interface[Matrix[Double]], m2: Interface[Matrix[Double]]) = {
-    sqrt(optila_matrixdistance_euc_impl(m1,m2))
+    sqrt(optila_matrixdistance_square_impl(m1,m2))
   }
 
   def optila_matrixdistance_square_impl[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]]) = {

@@ -14,7 +14,7 @@ class OP_FileReader(val id: String, val function: String, private[graph] var out
     if (stencilMap contains outSym) {
       val outStencil = stencil(outSym)
       if (outStencil == All || outStencil == Empty) Local
-      else Distributed(id)
+      else Distributed(Set(id))
     }
     else { //no partitionable op consumes this, just run locally
       Local

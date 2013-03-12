@@ -81,10 +81,10 @@ case object Local extends Partition {
   def combine(other: Partition) = other
 }
 
-case class Distributed(id: String) extends Partition {
+case class Distributed(id: Set[String]) extends Partition {
   def combine(other: Partition) = other match {
     case Local => this
     case Distributed(j) if (id == j) => this
-    case _ => sys.error("don't know how to combine partitions " + this + " and " + other + " (some shuffling may be required)")
+    case Distributed(j) => Distributed(id ++ j)
   }
 }
