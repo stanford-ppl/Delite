@@ -154,4 +154,9 @@ void DeliteCudaMemset(void *ptr, int value, size_t count) {
 	cudaMemset(ptr,value,count);
 }
 
+void DeliteCudaCheckError(void) {
+    cudaDeviceSynchronize();
+    printf("DeliteCuda ERROR: %s\n", cudaGetErrorString(cudaGetLastError()));
+}
+
 #endif

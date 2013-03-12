@@ -42,7 +42,7 @@ object Config {
   /* Debug options */
   val queueSize: Int = getProperty("delite.debug.queue.size", "128").toInt
   val noRegenerate: Boolean = getProperty("delite.debug.noregenerate", "false") != "false"
-  val alwaysKeepCache: Boolean = getProperty("delite.debug.alwaysKeepCache", "false") != "false"
+  val alwaysKeepCache: Boolean = getProperty("delite.debug.alwaysKeepCache", "true") != "false"
   val gpuBlackList: Array[String] = { val p = getProperty("delite.debug.gpu.blacklist",""); if(p=="") Array() else p.split(",") }
   val gpuWhiteList: Array[String] = { val p = getProperty("delite.debug.gpu.whitelist",""); if(p=="") Array() else p.split(",") }
   val profile: Boolean = getProperty("delite.debug.profile", "false") != "false"

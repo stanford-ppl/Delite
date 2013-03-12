@@ -17,6 +17,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp with StaticDataExp {
   
 
+    val encounteredZipWith = new scala.collection.mutable.HashMap[Exp[Any], DeliteOpZipWith[_,_,_,_]]()
+
 /*
   //may try this some time to wrap functions that are passed as case class args...
   case class FF[A,B](val x: Rep[A], val y: Rep[B])(val f: Rep[A]=>Rep[B])  
@@ -2574,25 +2576,26 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
 
   def emitKernelAbstractFatLoop(op: AbstractFatLoop, symList: List[Sym[Any]]) {
     outerLoopSize = op.size
+    outerLoopSym = op.v
     tabWidth += 1
     
     // last inputs always added to any device functions
-    val lastInputs = (op.size match {
-      case s@Sym(_) => List(op.v, op.size).map(i => remap(i.tp) + " " + quote(i))
-      case _ => List(op.v).map(i => remap(i.tp) + " " + quote(i))
-    }) ++ List("size_t tempMemSize","char *tempMemPtr","int *tempMemUsage")
+    def lastInputs(size: Exp[Int], v: Sym[Int]) = (size match {
+      case s@Sym(_) => List(v, size).map(i => remap(i.tp) + " " + quote(i))
+      case _ => List(v).map(i => remap(i.tp) + " " + quote(i)) ++ List("int size")
+    }) ++ List("TEMP_"+symList.map(quote).mkString("")+" size_t tempMemSize","char *tempMemPtr","int *tempMemUsage")
 
     def funcNameSuffix(sym: Sym[Any]) = {
       symList.map(quote).mkString("")+"_"+quote(sym)
     }
 
-    def remapInputs(inputs: List[Sym[Any]]): List[String] = {
+    def remapInputs(inputs: List[Sym[Any]], size: Exp[Int] = op.size, v: Sym[Int] = op.v) : List[String] = {
       inputs.map(s => 
         if(inVars contains s) 
           "Ref< " + remap(s.tp) + " > " + quote(s)
         else 
           remap(s.tp) + " " + quote(s)
-      ) ++ lastInputs  
+      ) ++ lastInputs(size,v)  
     }
     
     // register metadata for each elem and check GenerationFailedException conditions
@@ -2608,8 +2611,19 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           metaData.outputs.put(sym,new TransferFunc)
           lf.tpe = "FOREACH"
         case (sym, elem: DeliteReduceElem[_]) =>
-          if(!isPrimitiveType(sym.tp)) throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceElem with non-primitive types is not supported.")
-          lf.tpe = "REDUCE"
+          if(!isPrimitiveType(sym.tp)) {
+            if(encounteredZipWith contains getBlockResult(elem.rFunc)) {
+              val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+              if(isPrimitiveType(z.dmR)) lf.tpe = "REDUCE_SPEC"
+              else throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceElem with non-primitive types is not supported.")
+            }
+            else {
+              throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceElem with non-primitive types is not supported.")
+            }
+          }
+          else {
+            lf.tpe = "REDUCE"
+          }
         case (sym, elem: DeliteReduceTupleElem[_,_]) =>
           if(!isPrimitiveType(sym.tp)) throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceTupleElem with non-primitive types is not supported.")
           if(elem.cond.nonEmpty && elem.stripFirst) throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceTupleElem with condition + stripFirst is not supported.")
@@ -2621,17 +2635,24 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       }
     }
 
+    isNestedNode = true;
+
     // emit init functions
     (symList zip op.body) foreach {
       case (sym, elem:DeliteReduceElem[_]) =>
-        val freeVars = getFreeVarBlock(elem.zero,Nil).distinct
+        val initFunc = if(elem.stripFirst || isPrimitiveType(sym.tp)) elem.zero else elem.accInit
+        val freeVars = getFreeVarBlock(initFunc,Nil).distinct
         val inputs = remapInputs(freeVars) 
         val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
         lf.loopZeroInputs = freeVars.map(quote)
         stream.println("__device__ " + remap(sym.tp) + " dev_init_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")       
-        emitBlock(elem.zero)
-        stream.println("return " + quote(getBlockResult(elem.zero)) + ";")
+        emitBlock(initFunc)
+        stream.println("return " + quote(getBlockResult(initFunc)) + ";")
         stream.println("}")
+        if(lf.tpe == "REDUCE_SPEC") {
+          val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+          stream.println("__device__ " + remap(z.dmR) + " dev_spcinit_" + funcNameSuffix(sym) + "(void) { return 0; }") 
+        }
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
         //TODO: would it affect the performance to have separate inputs for zero1 and zero2?
         val freeVars = getFreeVarBlock(Block(Combine(List(elem.zero._1,elem.zero._2).map(getBlockResultFull))),Nil).distinct
@@ -2685,7 +2706,17 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         stream.println("__device__ void dev_process_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
         emitBlock(elem.func)
         stream.println("}") 
-      
+
+      case (sym, elem: DeliteReduceElem[_]) if(encounteredZipWith contains getBlockResult(elem.rFunc)) =>
+        val freeVars = getFreeVarBlock(Block(Combine(List(elem.func).map(getBlockResultFull))),List(op.v)).distinct
+        val inputs = remapInputs(freeVars) 
+        val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
+        lf.loopFuncInputs = freeVars.map(quote)
+        stream.println("__device__ " + remap(sym.tp) + " dev_process_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        emitBlock(elem.func)
+        stream.println("return " + quote(getBlockResult(elem.func)) + ";")
+        stream.println("}") 
+
       case (sym, elem:DeliteReduceElem[_]) =>
         val freeVars = getFreeVarBlock(Block(Combine((List(elem.func,elem.rFunc,elem.zero)++elem.cond).map(getBlockResultFull))),List(elem.rV._1,elem.rV._2,op.v)).distinct
         val inputs = remapInputs(freeVars ++ List(elem.rV._1)) 
@@ -2757,6 +2788,41 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
 
     // emit combine functions
     (symList zip op.body) foreach {
+      case (sym, elem: DeliteReduceElem[_]) if(encounteredZipWith contains getBlockResult(elem.rFunc)) =>
+        /*
+        val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+        val zbody = z.body.asInstanceOf[DeliteCollectElem[_,_,_]]
+        val freeVars = getFreeVarBlock(Block(Combine(List(zbody.func).map(getBlockResultFull))),List(z.inA.asInstanceOf[Sym[_]],z.inB.asInstanceOf[Sym[_]],z.v)).distinct
+        val inputs = remapInputs(freeVars ++ List(z.inA.asInstanceOf[Sym[_]],z.inB.asInstanceOf[Sym[_]]),z.size,z.v) //Hack : Set size to be a const! 
+        val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
+        lf.loopReduceInputs = freeVars.map(quote)
+        stream.println("__device__ " + remap(z.dmR) + " dev_combine_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        emitBlock(zbody.func)
+        stream.println("return " + quote(getBlockResult(zbody.func)) + ";")
+        stream.println("}")
+        */
+        // FIXIT: Hacky way of generating zip function
+        val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+        val zbody = z.body.asInstanceOf[DeliteCollectElem[_,_,_]]
+        val prevInnerScope = innerScope
+        val result = zbody.func
+        result.res match {
+          case r:Sym[_] if(innerScope==null) => innerScope = List(findDefinition(r).get) 
+          case r:Sym[_] => innerScope = findDefinition(r).get :: innerScope
+          case _ => // 
+        }
+        val freeVars = getFreeVarBlock(Block(Combine(List(zbody.func).map(getBlockResultFull))),List(z.fin._1.asInstanceOf[Sym[_]],z.fin._2.asInstanceOf[Sym[_]])).distinct
+        //val inputs = (freeVars ++ List(z.fin._1,z.fin._2)).map(i => remap(i.tp) + " " + quote(i)) 
+        val inputs = remapInputs(freeVars ++ List(z.fin._1.asInstanceOf[Sym[_]],z.fin._2.asInstanceOf[Sym[_]]))
+        stream.println("__device__ " + remap(z.dmR) + " dev_combine_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        emitBlock(result)
+        stream.println("return " + quote(getBlockResult(result)) + ";")
+        stream.println("}")
+        innerScope = prevInnerScope 
+        val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
+        lf.loopReduceInputs = freeVars.map(quote)
+        lf.loopFuncOutputType_2 = remap(z.dmR)
+
       case (sym, elem:DeliteReduceElem[_]) =>
         val freeVars = getFreeVarBlock(Block(Combine(List(elem.rFunc,elem.zero).map(getBlockResultFull))),List(elem.rV._1,elem.rV._2,op.v)).distinct
         val inputs = remapInputs(freeVars ++ List(elem.rV._1,elem.rV._2)) 
@@ -2782,7 +2848,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           stream.println("return " + quote(getBlockResult(elem.rFunc)) + ";")
         }
         stream.println("}")
-
+        
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
         val freeVars = getFreeVarBlock(Block(Combine(List(elem.rFuncPar._1,elem.rFuncPar._2).map(getBlockResultFull))),List(elem.rVPar._1._1,elem.rVPar._1._2,elem.rVPar._2._1,elem.rVPar._2._2,op.v)).distinct
         val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
@@ -2800,6 +2866,8 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       case _ => //
     }
 
+    isNestedNode = false;
+    
     // emit output allocations
     (symList zip op.body) foreach {
       case (sym, elem:DeliteCollectElem[_,_,_]) =>
@@ -2814,10 +2882,20 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
         lf.loopFuncOutputType = remap(getBlockResult(elem.func).tp)
 
+      //TODO: Fix below alloc func to use a correct one.
+      case (sym, elem: DeliteReduceElem[_]) if(encounteredZipWith contains getBlockResult(elem.rFunc)) =>
+        val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
+        val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+        val zbody = z.body.asInstanceOf[DeliteCollectElem[_,_,_]]
+        emitAllocFunc(List((sym,elem.zero)),"allocFunc_"+quote(sym),Nil,Map())
+        lf.loopFuncOutputType = remap(getBlockResult(elem.func).tp)
+      
       case (sym, elem: DeliteReduceElem[_]) =>
         val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
-        assert(isPrimitiveType(sym.tp))
-        emitAllocFuncPrimitive(sym, "allocFunc_"+quote(sym))
+        if(isPrimitiveType(sym.tp)) 
+          emitAllocFuncPrimitive(sym, "allocFunc_"+quote(sym))
+        //else
+        //  emitAllocFunc(List((sym,elem.zero)),"allocFunc_"+quote(sym),Nil,Map())
         lf.loopFuncOutputType = remap(getBlockResult(elem.func).tp)
           
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>

@@ -189,14 +189,15 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
         out.append("<<<dim3(1,1,1),dim3(1,1,1),0,kernelStream>>>")
         val args = op.getInputs.map(i => deref(i._1,i._2) + getSymDevice(i._1,i._2))
         out.append(args.mkString("(",",",");\n"))
-      case _:OP_MultiLoop =>
+      case op:OP_MultiLoop =>
         for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
           out.append(op.outputType(Targets.Cuda, name))
           out.append(" *" + getSymDevice(op,name) + ";\n")
         }
         out.append(op.task) //kernel name
         
-        val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").map(o => "&"+getSymDevice(op,o._2)).toList ++ op.getInputs.map(i=>getSymDevice(i._1,i._2))
+        val size = if(op.sizeIsConst) op.size else getSymDevice(op,op.size)
+        val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").map(o => "&"+getSymDevice(op,o._2)).toList ++ op.getInputs.map(i=>getSymDevice(i._1,i._2)) :+ size
         
         out.append(args.mkString("(",",",");\n"))
       case _:OP_Nested =>
@@ -307,7 +308,7 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
     //  available += Pair(op,o)
 
     op match {
-      case _:OP_MultiLoop =>
+      case op:OP_MultiLoop =>
         out.append("else if(strcmp(task,\"" + op.id + "\") == 0) {\n")
         out.append("addEvent(h2dStream, kernelStream);\n")
         writeFreeInit(op)
@@ -331,13 +332,14 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
         
         out.append("jint start = env" + location + "->CallIntMethod(objTask,env" + location + "->GetMethodID(clsTask,\"start\",\"()I\"));\n")
         out.append("jint size = env" + location + "->CallIntMethod(objTask,env" + location + "->GetMethodID(clsTask,\"size\",\"()I\"));\n")
-        out.append("if(size==-1) size = " + getSymDevice(op,op.asInstanceOf[OP_MultiLoop].size) + " - start;\n")
+        val size = if(op.sizeIsConst) op.size else getSymDevice(op,op.size)
+        out.append("if(size==-1) size = " + size + " - start;\n")
         
         out.append(op.task) //kernel name
         out.append(args.mkString("(",",",");\n"))
         out.append("addEvent(kernelStream, d2hStream);\n")
         
-        val blockingCall = op.asInstanceOf[OP_MultiLoop].needsCombine || op.asInstanceOf[OP_MultiLoop].needsPostProcess || op.getOutputs.map(op.outputType(_)).exists(t => !t.startsWith("ppl.delite.runtime.data.DeliteArray"))
+        val blockingCall = op.needsCombine || op.needsPostProcess || op.getOutputs.map(op.outputType(_)).exists(t => !t.startsWith("ppl.delite.runtime.data.DeliteArray"))
         if(blockingCall) {
           for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
             writeSetter(op, name, false)
