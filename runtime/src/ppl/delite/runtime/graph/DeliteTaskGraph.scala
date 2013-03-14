@@ -653,6 +653,6 @@ class DeliteTaskGraph {
     _ops.values.flatMap(_ match {
       case m: OP_Nested => m.nestedGraphs.flatMap(g => g.totalOps)
       case o@_ => Seq(o)
-    }).toSet
+    }).toSet ++ inputOps
   }
 }

@@ -201,11 +201,14 @@ object DeliteMesosExecutor {
   private def updateVersionIDs(id: String, targets: List[Targets.Value]) {
     val outSyms = graph.totalOps.find(_.id == id).get.getOutputs
     for(sym <- outSyms) {
-      val v = versionID.getOrElse(sym, VersionID(0,new Array[Int](numResources)))
-      v.w = v.w + 1
-      for(target <- targets) v.r(Targets.resourceIDs(target)(0)) = v.w
-      versionID.put(sym, v) 
+      updateVersionID(sym, targets)
     }
+  }
+  private def updateVersionID(id: String, targets: List[Targets.Value]) {
+    val v = versionID.getOrElse(id, VersionID(0,new Array[Int](numResources)))
+    v.w = v.w + 1
+    for(target <- targets) v.r(Targets.resourceIDs(target)(0)) = v.w
+    versionID.put(id, v) 
   }
   private def needsCopy(sym: String, target: Targets.Value): Boolean = {
     var stale = true
@@ -216,9 +219,14 @@ object DeliteMesosExecutor {
     stale
   }
   private def syncVersionID(sym: String, target: Targets.Value) {
-    assert(versionID.contains(sym))
-    val v = versionID.get(sym).get
-    v.r(Targets.resourceIDs(target)(0)) = v.w
+    if(versionID.contains(sym)) {
+      //sendDebugMessage("syncing " + sym + " for target " + target)
+      val v = versionID.get(sym).get
+      v.r(Targets.resourceIDs(target)(0)) = v.w
+    }
+    else {
+      updateVersionID(sym, List(target))
+    }
   }
 
   private var opTarget: Targets.Value = _
@@ -309,6 +317,8 @@ object DeliteMesosExecutor {
     opTarget = Targets.Cuda
     val id = op.getId.getId
 
+    //sendDebugMessage("CUDA: Launching op " + id + "on CUDA")
+
     //TODO: Why below is not working for struct type inputs?
     // Set sync objects for kernel inputs 
     /*
@@ -325,7 +335,7 @@ object DeliteMesosExecutor {
       arg
     }
     */
-  
+    
     // Set sync objects for kernel inputs 
     val o = graph.totalOps.find(_.id == op.getId.getId).get
     val inputSyms = o.getInputs.map(i => i._2)
@@ -334,21 +344,32 @@ object DeliteMesosExecutor {
     val types = method.getParameterTypes
     var idx = 0
     val args = for (tpe <- types) yield {
+      Serialization.updated = false
       val arg = Serialization.deserialize(tpe, op.getInput(idx), true).asInstanceOf[Object]
+      if(Serialization.updated) {
+        //sendDebugMessage("updated! " + inputSyms(idx))
+        updateVersionID(inputSyms(idx), List(Targets.Scala))
+      }
       val syncObjectCls = classLoader.loadClass("Sync_Executable0")
       val method = syncObjectCls.getDeclaredMethods.find(m => m.getName.contains("set") && m.getName.contains(inputSyms(idx))).get
       method.invoke(null,Array(arg):_*)
       idx += 1
       arg
     }
+    
+    //sendDebugMessage("CUDA: Input copy is done")
 
     val s = System.currentTimeMillis()
     // Put task on the task queue
     val returnResult = ReturnResult.newBuilder.setId(op.getId)
     val inputCopy = inputSyms.map(i => needsCopy(i, Targets.Cuda)).toArray
+    //sendDebugMessage("inputCopy: " + inputCopy.mkString(","))
     val start = op.getStartIdx(slaveIdx)
     val size = if (op.getStartIdxCount > slaveIdx+1) op.getStartIdx(slaveIdx+1)-start else -1
     putTask(Targets.resourceIDs(Targets.Cuda)(0), Task(op.getId.getId, start, size, inputCopy))
+
+    //sendDebugMessage("CUDA: Put Task")
+    for(i <- inputSyms) syncVersionID(i, Targets.Cuda)
 
     // Wait for the result 
     val syncObjectCls = classLoader.loadClass("Sync_Executable"+Targets.resourceIDs(Targets.Cuda)(0)) 

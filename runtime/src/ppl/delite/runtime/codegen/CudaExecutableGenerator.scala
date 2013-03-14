@@ -3,7 +3,7 @@ package ppl.delite.runtime.codegen
 import kernels.cpp.CppMultiLoopHeaderGenerator
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.scheduler.{OpList, PartialSchedule}
-import ppl.delite.runtime.Config
+import ppl.delite.runtime.{Config,Delite}
 import ppl.delite.runtime.codegen.hosts.Hosts
 import ppl.delite.runtime.graph.targets.{OS, Targets}
 import collection.mutable.ArrayBuffer
@@ -264,14 +264,18 @@ class CudaMainExecutableGenerator(val location: Int, val kernelPath: String)
   }
 }
 
+//TODO: Some location symbols are hard-coded. Change them.
 class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) extends CudaExecutableGenerator with CudaSyncGenerator {
   def executableName(location: Int) = "Executable" + location
 
+  var syncLocation: Int = location
+
   protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Hosts.Value) = {
     host match {
-      case Hosts.Scala => new ScalaMainExecutableGenerator(location, kernelPath) with ScalaSyncObjectGenerator {
+      case Hosts.Scala => new ScalaMainExecutableGenerator(syncLocation, kernelPath) with ScalaSyncObjectGenerator {
         protected val sync = syncs
-        override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
+        override def executableName(location: Int) = executableNamePrefix + super.executableName(syncLocation)
+        override def consumerSet(sender: Send) = {  if(location == 0) scala.collection.mutable.HashSet(1) else scala.collection.mutable.HashSet(0) }
       }
       //case Hosts.Cpp => new CppMainExecutableGenerator(location, kernelPath) with CudaSyncObjectGenerator {
       //  protected val sync = syncs
@@ -281,15 +285,24 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
     }
   }
 
-  /*
-  override protected def makeNestedFunction(op: DeliteOP) = op match {
-    case r: ReceiveData => addSync(r)
-    case s: SendData => addSync(s)
-    case _ => //
+  override protected def addKernelCalls(resource: OpList) {
+    val graph = Delite.loadDeliteDEG(Delite.inputArgs(0))
+    
+    initializeBlock()
+    // Set all the ops to be scheduled on the resource 0
+    for (op <- graph.totalOps) op.scheduledResource = 0
+
+    for (op <- graph.totalOps if op.supportsTarget(Targets.Cuda)) {
+      writeFunctionCall(op) 
+    }
+    finalizeBlock()
   }
-  */
 
   private val localSyncObjects = new ArrayBuffer[Send]
+  private val remoteSyncObjects = new ArrayBuffer[Send]
+  private def addLocalSync(s: SendData) { if(!localSyncObjects.exists(_.asInstanceOf[SendData].sym == s.sym)) localSyncObjects += s }
+  private def addRemoteSync(s: SendData) { if(!remoteSyncObjects.exists(_.asInstanceOf[SendData].sym == s.sym)) remoteSyncObjects += s }
+
   override protected def makeNestedFunction(op: DeliteOP) = op match {
     case s: Send => localSyncObjects += s
     case _ => //
@@ -297,15 +310,12 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
 
   override protected def writeSyncObject() {
     syncObjectGenerator(localSyncObjects, Hosts.Scala).makeSyncObjects
+    syncLocation = 0
+    syncObjectGenerator(remoteSyncObjects, Hosts.Scala).makeSyncObjects
   }
 
   override protected def writeFunctionCall(op: DeliteOP) {
     if (op.task == null) return //dummy op
-
-    //for (i <- op.getInputs)
-    //  available += i
-    //for (o <- op.getOutputs if op.outputType(o)!="Unit")
-    //  available += Pair(op,o)
 
     op match {
       case op:OP_MultiLoop =>
@@ -335,7 +345,8 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
         val size = if(op.sizeIsConst) op.size else getSymDevice(op,op.size)
         out.append("if(size==-1) size = " + size + " - start;\n")
         
-        out.append(op.task) //kernel name
+        //out.append(op.task) //kernel name
+        out.append("MultiLoop_GPU_Array_" + op.id)
         out.append(args.mkString("(",",",");\n"))
         out.append("addEvent(kernelStream, d2hStream);\n")
         
@@ -411,6 +422,7 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
   private def mangledName(name: String) = name.map(c => if(!c.isDigit && !c.isLetter) '_' else c) 
 
   private def writeGetter(dep: DeliteOP, sym: String, to: DeliteOP, view: Boolean) {
+    addRemoteSync(SendData(sym,dep,1))
     out.append(getJNIType(dep.outputType(sym)))
     out.append(' ')
     out.append(getSymCPU(sym))
@@ -461,6 +473,7 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
   }
 
   private def writeSetter(op: DeliteOP, sym: String, view: Boolean) {
+    addLocalSync(SendData(sym,op,0))
     val devType = CudaExecutableGenerator.typesMap(Targets.Cuda)(sym)
     if (view) {
       out.append("Host%s %s = recvCuda_%s(%s);\n".format(devType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))

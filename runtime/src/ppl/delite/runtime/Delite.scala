@@ -23,6 +23,9 @@ object Delite {
   private var mainThread: Thread = _
   private var outstandingException: Exception = _
 
+  //TODO: Remove this. This is only used for cluster version GPU runtime code generation.
+  var inputArgs: Array[String] = _
+
   private def printArgs(args: Array[String]) {
     if(args.length == 0) {
       println("Not enough arguments.\nUsage: [Launch Runtime Command] filename.deg arguments*")
@@ -46,6 +49,7 @@ object Delite {
   }
 
   def embeddedMain(args: Array[String], staticData: Map[String,_]) {
+    inputArgs = args
     mainThread = Thread.currentThread
     
     printArgs(args)

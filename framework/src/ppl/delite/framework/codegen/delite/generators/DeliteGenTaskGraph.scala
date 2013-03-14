@@ -103,6 +103,25 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     deliteInputs = (inVals ++ inVars)
     deliteResult = Some(sym) //findDefinition(rhs) map { _.sym }
 
+    /**
+     * Run stencil analysis locally on the current op to insure that all transformations, including fusion, have already happened.
+     */
+    val stencilAnalysis = new StencilAnalysis { val IR: DeliteGenTaskGraph.this.IR.type = DeliteGenTaskGraph.this.IR }
+    stencilAnalysis.innerScope = this.innerScope
+    
+    def gatherStencil(sym: List[Sym[Any]], rhs: Any) = rhs match {
+      case SimpleFatLoop(sz,v,body) =>         
+        for ((s,d) <- sym.zip(body)) {
+          stencilAnalysis.process(s,v,d)
+        }
+      case SimpleLoop(sz,v,body) =>
+        stencilAnalysis.process(sym(0),v,body)        
+      case _ =>
+    }
+     
+    gatherStencil(sym,rhs)        
+    allStencils = /*allStencils ++*/ stencilAnalysis.getLoopStencils    
+    
     if (!skipEmission) for (gen <- generators) {
       val sep = java.io.File.separator
       val buildPath = Config.buildDir + sep + gen + sep + "kernels" + sep
@@ -330,24 +349,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     val optContext = sym.find(!_.sourceContexts.isEmpty).map(_.sourceContexts.head)
        
     
-    /**
-     * Run stencil analysis locally on the current op to insure that all transformations, including fusion, have already happened.
-     */
-    val stencilAnalysis = new StencilAnalysis { val IR: DeliteGenTaskGraph.this.IR.type = DeliteGenTaskGraph.this.IR }
-    stencilAnalysis.innerScope = this.innerScope
     
-    def gatherStencil(sym: List[Sym[Any]], rhs: Any) = rhs match {
-      case SimpleFatLoop(sz,v,body) =>         
-        for ((s,d) <- sym.zip(body)) {
-          stencilAnalysis.process(s,v,d)
-        }
-      case SimpleLoop(sz,v,body) =>
-        stencilAnalysis.process(sym(0),v,body)        
-      case _ =>
-    }
-     
-    gatherStencil(sym,rhs)        
-    allStencils = /*allStencils ++*/ stencilAnalysis.getLoopStencils    
                 
     /**
      * Domain-specific inputs to loops cause issues with the stencil analysis, since it only records accesses on arrays.

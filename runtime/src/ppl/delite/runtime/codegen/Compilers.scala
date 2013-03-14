@@ -6,7 +6,7 @@ import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.ops.Sync
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.codegen.hosts.Hosts
-import ppl.delite.runtime.scheduler.{OpHelper, StaticSchedule}
+import ppl.delite.runtime.scheduler.{OpHelper, StaticSchedule, PartialSchedule}
 import ppl.delite.runtime.DeliteMesosExecutor
 
 /**
@@ -36,7 +36,13 @@ object Compilers {
     val schedule = graph.schedule
     if(Config.clusterMode!=1) assert((Config.numThreads + (if(graph.targets(Targets.Cpp)) Config.numCpp else 0) + (if(graph.targets(Targets.Cuda)) Config.numCuda else 0) + (if(graph.targets(Targets.OpenCL)) Config.numOpenCL else 0)) == schedule.numResources)
     Sync.addSync(graph)
-    ScalaExecutableGenerator.makeExecutables(schedule.slice(0,Config.numThreads), graph.kernelPath)
+    
+
+    //TODO: Fix this!
+    if(Config.clusterMode != 2 || Config.numCuda == 0) 
+      ScalaExecutableGenerator.makeExecutables(schedule.slice(0,Config.numThreads), graph.kernelPath)
+    else 
+      new ScalaMainExecutableGenerator(0, graph.kernelPath).makeExecutable(PartialSchedule(1).apply(0))
 
     // Hack to collect global inputTypesMap (TODO: Get rid of this)
     CppExecutableGenerator.typesMap = Map[Targets.Value, Map[String,String]]()
