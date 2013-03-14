@@ -2630,7 +2630,13 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           lf.tpe = "REDUCE_TUPLE"
         case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
           lf.tpe = "HASH_REDUCE"
-        case (sym, _) =>
+          // Currently only support limited types of hash-reduce on GPU
+          // keys should be dense perfect hash (0 ~ N-1 for N keys)
+          // reduction needs to be primitive type reduction 
+          //if(elem.cond.nonEmpty) throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem with condition is not supported.")
+          if(!isPrimitiveType(elem.mV)) throw new GenerationFailedException("GPUGen DeliteOPs: DeliteHashReduceElem only supports primitve type reduction.") 
+          if(remap(elem.mK) != "int") throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem only supports perfect hash.")
+          case (sym, _) =>
           throw new GenerationFailedException("GPUGen DeliteOps: Unsupported Elem type for " + quote(sym))
       }
     }
@@ -2667,6 +2673,15 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         emitBlock(elem.zero._2)
         stream.println("return " + quote(getBlockResult(elem.zero._2)) + ";")
         stream.println("}")  
+      case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
+        val freeVars = getFreeVarBlock(elem.zero,Nil).distinct
+        val inputs = remapInputs(freeVars)
+        val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
+        lf.loopZeroInputs = freeVars.map(quote)
+        stream.println("__device__ " + remap(elem.mV) + " dev_init_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        emitBlock(elem.zero)
+        stream.println("return " + quote(getBlockResult(elem.zero)) + ";")
+        stream.println("}") 
       case _ => //
     }
 
@@ -2783,6 +2798,18 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           }
           stream.println("}")
         }
+
+      case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
+        val freeVars = getFreeVarBlock(Block(Combine(List(elem.keyFunc,elem.valFunc).map(getBlockResultFull))),List(op.v)).distinct
+        val inputs = List(remap(elem.mK)+" *"+quote(sym)+"_key",remap(elem.mV)+" *"+quote(sym)+"_val") ++ remapInputs(freeVars) 
+        val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
+        lf.loopFuncInputs = freeVars.map(quote)
+        stream.println("__device__ void dev_process_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        emitFatBlock(List(elem.keyFunc,elem.valFunc))
+        stream.println(quote(sym) + "_key[" + quote(op.v) + "] = " + quote(getBlockResult(elem.keyFunc)) + ";")
+        stream.println(quote(sym) + "_val[" + quote(op.v) + "] = " + quote(getBlockResult(elem.valFunc)) + ";")
+        stream.println("}") 
+
       case _ => //
     }
 
@@ -2863,6 +2890,16 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           stream.println("}")
         }
 
+      case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
+        val freeVars = getFreeVarBlock(elem.rFunc,List(elem.rV._1,elem.rV._2)).distinct
+        val inputs = remapInputs(freeVars ++ List(elem.rV._1,elem.rV._2))
+        val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
+        lf.loopReduceInputs = freeVars.map(quote)
+        stream.println("__device__ " + remap(elem.mV) + " dev_combine_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        emitBlock(elem.rFunc)
+        stream.println("return " + quote(getBlockResult(elem.rFunc)) + ";")
+        stream.println("}") 
+
       case _ => //
     }
 
@@ -2905,6 +2942,15 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         lf.loopFuncOutputType = remap(getBlockResult(elem.func._1).tp)
         lf.loopFuncOutputType_2 = remap(getBlockResult(elem.func._2).tp)
         
+      case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
+        val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)      
+        emitAllocFunc(List((sym,elem.alloc)),"allocFunc_"+quote(sym),Nil,Map())
+        lf.loopFuncOutputType = remap(getBlockResult(elem.keyFunc).tp)
+        lf.loopFuncOutputType_2 = remap(getBlockResult(elem.valFunc).tp)
+
+
+
+
       /*
       //TODO: Factor out the same key functions and indicate in DEG
       case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
