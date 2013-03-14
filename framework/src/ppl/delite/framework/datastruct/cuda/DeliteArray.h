@@ -83,6 +83,9 @@ public:
     __host__ DeliteArray<T> *dc_alloc(void) {
       return new DeliteArray<T>(length);
     }
+    __host__ DeliteArray<T> *dc_alloc(int size) {
+      return new DeliteArray<T>(size);
+    }
 
     
 };

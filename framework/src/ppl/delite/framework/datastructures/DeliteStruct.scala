@@ -2,9 +2,10 @@ package ppl.delite.framework.datastructures
 
 import java.io.{File,FileWriter,PrintWriter}
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.{CudaCodegen,OpenCLCodegen, CCodegen}
+import scala.virtualization.lms.internal.{CudaCodegen,OpenCLCodegen,CCodegen,GenerationFailedException}
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.reflect.SourceContext
+import scala.collection.mutable.HashSet
 
 trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
 	
@@ -101,6 +102,10 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
   val IR: DeliteStructsExp with DeliteOpsExp
   import IR._
 
+  // Set of successfully generated structs for this target
+  private val generatedStructs = HashSet[String]()
+  private val generationFailedStructs = HashSet[String]()
+
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case Struct(tag, elems) =>
       registerStruct(structName(sym.tp), elems)
@@ -139,8 +144,8 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
   private def isArrayType[T](m: Manifest[T]) = m.erasure.getSimpleName == "DeliteArray"
   private def isStringType[T](m: Manifest[T]) = m.erasure.getSimpleName == "String"
   private def baseType[T](m: Manifest[T]) = if (isVarType(m)) mtype(m.typeArguments(0)) else m
-  private def argType[T](m: Manifest[T]): Manifest[_] = baseType(m) match {
-    case bm if isArrayType(bm) => argType(bm.typeArguments(0))
+  private def unwrapArrayType[T](m: Manifest[T]): Manifest[_] = baseType(m) match {
+    case bm if isArrayType(bm) => unwrapArrayType(bm.typeArguments(0))
     case bm => bm 
   }
 
@@ -150,75 +155,103 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
     structStream.println("#define __DELITESTRUCTS_H__")
     structStream.println("#include \"DeliteArray.h\"")
     structStream.println("#include \"HostDeliteArray.h\"")
-    //println("Cuda Gen is generating " + structs.toString)
-    for ((name, elems) <- encounteredStructs) {
-      structStream.println("#include \"" + name + ".h\"")
-      val stream = new PrintWriter(path + name + ".h")
-      stream.println("#ifndef __" + name + "__")
-      stream.println("#define __" + name + "__")
-      elems foreach { e => dsTypesList.add(baseType(e._2).asInstanceOf[Manifest[Any]]) }
-      elems foreach { e => if (encounteredStructs.contains(remap(e._2))) stream.println("#include \"" + remap(e._2) + ".h\"") }
-      elems foreach { e => if (encounteredStructs.contains(remap(argType(e._2)))) stream.println("#include \"" + remap(argType(e._2)) + ".h\"") }  
-      emitStructDeclaration(name, elems)(stream)
-      stream.println("#endif")
-      stream.close()
+    //println("Cuda Gen is generating " + encounteredStructs.map(_._1).mkString(","))
+    for ((name, elems) <- encounteredStructs if !generatedStructs.contains(name)) {
+      try {
+        emitStructDeclaration(path, name, elems)
+        elems foreach { e => dsTypesList.add(baseType(e._2).asInstanceOf[Manifest[Any]]) }
+        structStream.println("#include \"" + name + ".h\"")
+      }
+      catch {
+        case e: GenerationFailedException => generationFailedStructs += name 
+        case e: Exception => throw(e)
+      }
     }
     structStream.println("#endif")
     structStream.close()
     super.emitDataStructures(path)
   }
 
-  def emitStructDeclaration(name: String, elems: Seq[(String,Manifest[_])])(stream: PrintWriter) {
-   
-    for(prefix <- List("Host","")) {
-      stream.println("class " + prefix + name + " {")
-      // fields
-      stream.println("public:")
-      stream.print(elems.map{ case (idx,tp) => "\t" + (if(!isPrimitiveType(baseType(tp))) prefix else "") + remap(tp) + " " + idx + ";\n" }.mkString(""))
-      // constructor
-      if(prefix == "Host") {
-        stream.println("\t" + prefix + name + "(void) { }")
-        stream.print("\t" + prefix + name + "(")
-      }
-      else {
-        stream.println("\t__host__ __device__ " + prefix + name + "(void) { }")
-        stream.print("\t__host__ __device__ " + prefix + name + "(")
-      }
-      stream.print(elems.map{ case (idx,tp) => (if(!isPrimitiveType(baseType(tp))) prefix else "") + remap(tp) + " _" + idx }.mkString(","))
-      stream.println(") {")
-      stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = _" + idx + ";\n" }.mkString(""))
-      stream.println("\t}")
+  def emitStructDeclaration(path: String, name: String, elems: Seq[(String,Manifest[_])]) {
+    val stream = new PrintWriter(path + name + ".h")
+    try {
+      stream.println("#ifndef __" + name + "__")
+      stream.println("#define __" + name + "__")
+      val dependentStructTypes = elems.map(e => 
+        if(encounteredStructs.contains(remap(unwrapArrayType(e._2)))) remap(unwrapArrayType(e._2))
+        else remap(baseType(e._2))  // SoA transfromed types
+      ).distinct
+        
+      dependentStructTypes foreach { t =>
+        if (encounteredStructs.contains(t)) {
+          if (generatedStructs.contains(t)) {
+            stream.println("#include \"" + t + ".h\"") 
+          }
+          else if (generationFailedStructs.contains(t)) {
+            throw new GenerationFailedException("Cannot generate struct " + name + " because of the failed dependency " + t)
+          }
+          else {
+            emitStructDeclaration(path, t, encounteredStructs(t))
+          }
+        }
+      }   
+      for(prefix <- List("Host","")) {
+        stream.println("class " + prefix + name + " {")
+        // fields
+        stream.println("public:")
+        stream.print(elems.map{ case (idx,tp) => "\t" + (if(!isPrimitiveType(baseType(tp))) prefix else "") + remap(tp) + " " + idx + ";\n" }.mkString(""))
+        // constructor
+        if(prefix == "Host") {
+          stream.println("\t" + prefix + name + "(void) { }")
+          stream.print("\t" + prefix + name + "(")
+        }
+        else {
+          stream.println("\t__host__ __device__ " + prefix + name + "(void) { }")
+          stream.print("\t__host__ __device__ " + prefix + name + "(")
+        }
+        stream.print(elems.map{ case (idx,tp) => (if(!isPrimitiveType(baseType(tp))) prefix else "") + remap(tp) + " _" + idx }.mkString(","))
+        stream.println(") {")
+        stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = _" + idx + ";\n" }.mkString(""))
+        stream.println("\t}")
 
-      //TODO: Below should be changed to use IR nodes
-      if(prefix == "") {
-        stream.println("\t__device__ void dc_copy(" + name + " from) {")
-        for((idx,tp) <- elems) {
-          if(isPrimitiveType(baseType(tp))) stream.println("\t\t" + idx + " = from." + idx + ";")
-          else stream.println("\t\t" + idx + ".dc_copy(from." + idx + ");")
+        //TODO: Below should be changed to use IR nodes
+        if(prefix == "") {
+          stream.println("\t__device__ void dc_copy(" + name + " from) {")
+          for((idx,tp) <- elems) {
+            if(isPrimitiveType(baseType(tp))) stream.println("\t\t" + idx + " = from." + idx + ";")
+            else stream.println("\t\t" + idx + ".dc_copy(from." + idx + ");")
+          }
+          stream.println("\t}")
+          stream.println("\t__host__ " + name + " *dc_alloc() {")
+          stream.print("\t\treturn new " + name + "(")
+          stream.print(elems.map{ case (idx,tp) => if(!isPrimitiveType(baseType(tp))) ("*" + idx + ".dc_alloc()") else idx }.mkString(","))
+          stream.println(");")
+          stream.println("\t}")
+          // Only generate dc_apply, dc_update, dc_size when there is only 1 DeliteArray among the fields
+          val generateDC = elems.filter(e => isArrayType(baseType(e._2))).size == 1
+          if(generateDC) {
+            val (idx,tp) = elems.filter(e => isArrayType(baseType(e._2)))(0)
+            val argtp = unwrapArrayType(tp)
+            stream.println("\t__host__ __device__ " + remap(argtp) + " dc_apply(int idx) {")
+            stream.println("\t\treturn " + idx + ".apply(idx);")
+            stream.println("\t}")
+            stream.println("\t__host__ __device__ void dc_update(int idx," + remap(argtp) + " newVal) {")
+            stream.println("\t\t" + idx + ".update(idx,newVal);")
+            stream.println("\t}")
+            stream.println("\t__host__ __device__ int dc_size(void) {")
+            stream.println("\t\treturn " + idx + ".length;")
+            stream.println("\t}")
+          }
         }
-        stream.println("\t}")
-        stream.println("\t__host__ " + name + " *dc_alloc() {")
-        stream.print("\t\treturn new " + name + "(")
-        stream.print(elems.map{ case (idx,tp) => if(!isPrimitiveType(baseType(tp))) ("*" + idx + ".dc_alloc()") else idx }.mkString(","))
-        stream.println(");")
-        stream.println("\t}")
-        // Only generate dc_apply, dc_update, dc_size when there is only 1 DeliteArray among the fields
-        val generateDC = elems.filter(e => isArrayType(baseType(e._2))).size == 1
-        if(generateDC) {
-          val (idx,tp) = elems.filter(e => isArrayType(baseType(e._2)))(0)
-          val argtp = argType(tp)
-          stream.println("\t__host__ __device__ " + remap(argtp) + " dc_apply(int idx) {")
-          stream.println("\t\treturn " + idx + ".apply(idx);")
-          stream.println("\t}")
-          stream.println("\t__host__ __device__ void dc_update(int idx," + remap(argtp) + " newVal) {")
-          stream.println("\t\t" + idx + ".update(idx,newVal);")
-          stream.println("\t}")
-          stream.println("\t__host__ __device__ int dc_size(void) {")
-          stream.println("\t\treturn " + idx + ".length;")
-          stream.println("\t}")
-        }
+        stream.println("};")
       }
-      stream.println("};")
+      stream.println("#endif")
+      generatedStructs += name
+      stream.close()
+    }
+    catch {
+      case e: GenerationFailedException => generationFailedStructs += name; (new File(path + name + ".h")).delete; throw(e)
+      case e: Exception => throw(e)
     }
   }
 }
