@@ -43,7 +43,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
       out.append("}\n")
       (signature+";\n", out.toString)
     }
-    else {
+    else if(remap(tp).startsWith("DeliteArray<")) {
       remap(tp) match {
         case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
           val out = new StringBuilder
@@ -57,10 +57,35 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
           out.append("\tDeliteCudaMemcpyHtoDAsync(%s_dev->data, hostPtr, %s->length*sizeof(%s));\n".format("sym","sym",remap(typeArg)))
           out.append("\treturn %s_dev;\n".format("sym"))
           out.append("}\n")
+          val signatureT = "%s *sendCudaTrans_%s(Host%s *%s, int stride)".format(remap(tp),mangledName(remap(tp)),remap(tp),"sym")
+          out.append(signatureT + " {\n")
+          out.append("\t%s *hostPtr;\n".format(remap(typeArg)))
+          out.append("\tDeliteCudaMallocHost((void**)&hostPtr,%s->length*sizeof(%s));\n".format("sym",remap(typeArg)))
+          out.append("\tint numCols = stride;\n")
+          out.append("\tint numRows = sym->length / stride;\n")
+          out.append("\tfor(int i=0; i<numRows; i++) {\n")
+          out.append("\t\tfor(int j=0; j<numCols; j++) {\n")
+          out.append("\t\t\thostPtr[j*numRows+i] = sym->data[i*numCols+j];\n")
+          out.append("\t\t}\n")
+          out.append("\t}\n")
+          out.append("\t%s *%s_dev = new %s(%s->length);\n".format(remap(tp),"sym",remap(tp),"sym"))
+          out.append("\tsym_dev->offset = 0; sym_dev->stride = numRows; sym_dev->flag = numCols;\n")
+          out.append("\tDeliteCudaMemcpyHtoDAsync(%s_dev->data, hostPtr, %s->length*sizeof(%s));\n".format("sym","sym",remap(typeArg)))
+          out.append("\treturn %s_dev;\n".format("sym"))
+          out.append("}\n")
+          (signature+";\n" + signatureT+";\n", out.toString)
+        case _ => 
+          val out = new StringBuilder
+          val typeArg = tp.typeArguments.head
+          val signature = "%s *sendCuda_%s(Host%s *%s)".format(remap(tp),mangledName(remap(tp)),remap(tp),"sym")
+          out.append(signature + " {\n")
+          out.append("assert(false);\n")
+          out.append("}\n")
           (signature+";\n", out.toString)
-        case _ => super.emitSendSlave(tp)
       }
     }
+    else
+      super.emitSendSlave(tp)
   }
 
   override def emitRecvSlave(tp: Manifest[Any]): (String,String) = {
@@ -92,7 +117,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
       out.append("}\n")
       (signature+";\n", out.toString)
     }
-    else {
+    else if(remap(tp).startsWith("DeliteArray<")) {
       remap(tp) match {
         case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
           val out = new StringBuilder
@@ -107,9 +132,25 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
           out.append("\treturn %s;\n".format("sym"))
           out.append("}\n")
           (signature+";\n", out.toString)
-        case _ => super.emitRecvSlave(tp)
+        case _ => // DeliteArrayObject
+          val out = new StringBuilder
+          val typeArg = tp.typeArguments.head
+          val signature = "HostDeliteArray< Host%s > *recvCuda_%s(%s *%s_dev)".format(remap(typeArg),mangledName(remap(tp)),remap(tp),"sym")
+          out.append(signature + " {\n")
+          out.append("\tHostDeliteArray< Host%s > *res = new HostDeliteArray< Host%s >(sym_dev->length);\n".format(remap(typeArg),remap(typeArg)))
+          out.append("\t%s *temp = (%s*)malloc(sizeof(%s)*sym_dev->length);\n".format(remap(typeArg),remap(typeArg),remap(typeArg)))
+          out.append("\tDeliteCudaMemcpyDtoHAsync((void*)temp, (void*)(sym_dev->data), sym_dev->length*sizeof(%s));\n".format(remap(typeArg)))
+          out.append("\tres->length = sym_dev->length;\n")
+          out.append("\tfor(int i=0; i<res->length; i++) {\n")
+          out.append("\t\tres->data[i] = *recvCuda_%s(temp+i);\n".format(remap(typeArg)))
+          out.append("\t}\n")
+          out.append("\treturn res;\n")
+          out.append("}\n")
+          (signature+";\n", out.toString)
       }
     }
+    else
+      super.emitRecvSlave(tp)
   }
 
   /*
@@ -138,7 +179,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
       out.append("}\n")
       (signature+";\n", out.toString)
     }
-    else {
+    else if(remap(tp).startsWith("DeliteArray<")) {
       remap(tp) match {
        case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
           val out = new StringBuilder
@@ -151,9 +192,12 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
           out.append("\tDeliteCudaMemcpyHtoDAsync(%s_dev->data, hostPtr, %s->length*sizeof(%s));\n".format("sym","sym",remap(typeArg)))
           out.append("}\n")
           (signature+";\n", out.toString)
-        case _ => super.emitSendUpdateSlave(tp)
+        case _ => 
+          ("", "") //TODO
       }
     }
+    else
+      super.emitSendUpdateSlave(tp)
   }
 
   override def emitRecvUpdateSlave(tp: Manifest[Any]): (String,String) = {
@@ -183,7 +227,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
       out.append("}\n")
       (signature+";\n", out.toString)
     }
-    else {
+    else if(remap(tp).startsWith("DeliteArray<")) {
       remap(tp) match {
         case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
           val out = new StringBuilder
@@ -196,9 +240,12 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
           out.append("\tmemcpy(%s->data,hostPtr,%s->length*sizeof(%s));\n".format("sym","sym",remap(typeArg)))
           out.append("}\n")
           (signature+";\n", out.toString)
-        case _ => super.emitRecvUpdateSlave(tp)
+        case _ => 
+          ("", "") //TODO
       }
     }
+    else
+      super.emitRecvUpdateSlave(tp)
   }
 
 }

@@ -2,6 +2,7 @@ package ppl.delite.runtime.codegen
 
 import kernels.cpp.CppMultiLoopHeaderGenerator
 import ppl.delite.runtime.graph.ops._
+import ppl.delite.runtime.graph._
 import ppl.delite.runtime.scheduler.{OpList, PartialSchedule}
 import ppl.delite.runtime.{Config,Delite}
 import ppl.delite.runtime.codegen.hosts.Hosts
@@ -459,7 +460,11 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
       out.append("if(inputcopy[inputIdx]) {\n")
       writeFreeInput(to, sym, isPrimitiveType(dep.outputType(sym)))
       out.append("Host%s %s%s = recvCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
-      out.append("%s = sendCuda_%s(%s);\n".format(getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
+      // Use transpose copy
+      dep.stencilOrElse(sym)(Empty) match { 
+        case Interval(start,stride,length) => out.append("%s = sendCudaTrans_%s(%s,%s);\n".format(getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym),getSymDevice(dep,length.trim)))
+        case _ => out.append("%s = sendCuda_%s(%s);\n".format(getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
+      }
       out.append("outputMap->insert(pair<char*,void*>(\"%s\",%s));\n".format(getSymDevice(dep,sym),getSymDevice(dep,sym)))
       out.append("}\n")
       out.append("else {\n")
@@ -482,6 +487,15 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
     else if(isPrimitiveType(op.outputType(sym))) {
       out.append("%s %s = recvCuda_%s(%s);\n".format(getCPrimitiveType(op.outputType(sym)),getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
       out.append("%s %s = (%s)%s;\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),getJNIType(op.outputType(sym)),getSymHost(op,sym)))
+    }
+    else if(devType.startsWith("DeliteArray<")) {
+      devType match { //TODO: Fix this for nested object types
+        case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" => 
+          out.append("Host%s *%s = recvCuda_%s(%s);\n".format(devType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+        case _ => //DeliteArrayObject Type
+          out.append("HostDeliteArray< Host%s  *%s = recvCuda_%s(%s);\n".format(devType.drop(13),getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+      }
+      out.append("%s %s = sendCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))
     }
     else {
       out.append("Host%s *%s = recvCuda_%s(%s);\n".format(devType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))

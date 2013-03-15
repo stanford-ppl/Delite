@@ -13,6 +13,7 @@ public:
     int length;
     int offset;
     int stride;
+    int flag;
 
     // Constructor
     __host__ __device__ DeliteArray(void) {
@@ -34,6 +35,7 @@ public:
         DeliteCudaMalloc((void**)&data,length*sizeof(T));
         offset = 0;
         stride = 1;
+        flag = 1;
     }
 
     __host__ __device__ DeliteArray(int _length, T *_data, int _offset) {
@@ -41,6 +43,7 @@ public:
         data = _data; // + _offset * _length;
         offset = _offset *_length;
         stride = 1;
+        flag = 1;
     }
 
     __host__ __device__ DeliteArray(int _length, T *_data, int _offset, int _stride) {
@@ -48,14 +51,21 @@ public:
         data = _data; // + _offset*_length;
         offset = _offset;
         stride = _stride;
+        flag = 1;
     }
 
     __host__ __device__ T apply(int idx) {
+      if(flag!=1) 
+        return data[offset + (idx % flag) * stride + idx / flag];
+      else 
         return data[offset + idx * stride];
         //return data[idx];
     }
 
     __host__ __device__ void update(int idx, T value) {
+      if(flag!=1) 
+        data[offset + (idx % flag) * stride + idx / flag] = value;
+      else
         data[offset + idx * stride] = value;
         //data[idx] = value;
     }
@@ -70,7 +80,7 @@ public:
     }
 
     __host__ __device__ void dc_update(int idx, T value) {
-        update(idx, value);
+        update(idx,value);
     }
 
     __host__ __device__ void dc_copy(DeliteArray<T> from) {
@@ -81,8 +91,9 @@ public:
     __host__ DeliteArray<T> *dc_alloc(void) {
       return new DeliteArray<T>(length);
     }
+
     __host__ DeliteArray<T> *dc_alloc(int size) {
-      return new DeliteArray<T>(size);
+       return new DeliteArray<T>(size);
     }
 
     

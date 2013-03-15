@@ -61,7 +61,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("}\n")
         (signature+";\n", out.toString)
       }
-      else {
+      else if(remap(tp).startsWith("DeliteArray<")) {
         remap(tp) match {
           case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
@@ -86,9 +86,30 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\treturn obj;\n")
             out.append("}\n")
             (signature+";\n", out.toString)
-          case _ => super.emitSend(tp, host)
+          case _ => //DeliteArrayObject
+            val out = new StringBuilder
+            val typeArg = tp.typeArguments.head
+            val signature = "jobject sendCPPtoJVM_%s(JNIEnv *env, HostDeliteArray< Host%s >*sym)".format(mangledName(remap(tp)),remap(typeArg))
+            out.append(signature + " {\n")
+            //out.append("\tjclass cls = env->FindClass(\"ppl/delite/runtime/data/DeliteArrayObject$\");\n")
+            //out.append("\tjmethodID mid = env->GetMethodID(cls,\"apply\",\"(I)Lppl/delite/runtime/data/LocalDeliteArrayObject;\");\n")
+            //out.append("\tjobject arr = env->CallObjectMethod(cls,mid,sym->length);\n")
+            out.append("\tjclass cls = env->FindClass(\"generated/scala/" + remap(typeArg) + "$\");\n")
+            out.append("\tjmethodID mid = env->GetMethodID(cls,\"createLocal\",\"(I)Lppl/delite/runtime/data/LocalDeliteArrayObject;\");\n")
+            out.append("\tjobject arr = env->CallObjectMethod(cls,mid,sym->length);\n")
+            out.append("\tjclass cls1 = env->GetObjectClass(arr);\n")
+            out.append("\tjmethodID mid_update = env->GetMethodID(cls1,\"dc_update\",\"(ILjava/lang/Object;)V\");\n")
+            out.append("\tfor(int i=0; i<sym->length; i++) {\n")
+            out.append("\tjobject obj = sendCPPtoJVM_DenseVectorDouble(env, &(sym->data[i]));\n")
+            out.append("\tenv->CallVoidMethod(arr,mid_update,i,obj);\n")
+            out.append("\t}\n")
+            out.append("\treturn arr;\n")
+            out.append("}\n")
+            (signature+";\n", out.toString)
         }
       }
+      else 
+        super.emitSend(tp, host)
     }
     else
       super.emitSend(tp, host)
@@ -146,7 +167,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("}\n")
         (signature+";\n", out.toString)
       }
-      else {
+      else if(remap(tp).startsWith("DeliteArray<")) {
         remap(tp) match {
           case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
@@ -172,9 +193,18 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\treturn sym;\n")
             out.append("}\n")
             (signature+";\n", out.toString)
-          case _ => super.emitRecv(tp, host)
+          case _ => //TODO
+            val out = new StringBuilder
+            val typeArg = tp.typeArguments.head
+            val signature = "Host%s *recvCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remap(tp),mangledName(remap(tp)))
+            out.append(signature + " {\n")
+            out.append("assert(false);\n")
+            out.append("}\n")
+            (signature+";\n", out.toString)
         }
       }
+      else 
+        super.emitRecv(tp, host)
     }
     else
       super.emitRecv(tp,host)
@@ -202,7 +232,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("}\n")
         (signature+";\n", out.toString)
       }
-      else {
+      else if(remap(tp).startsWith("DeliteArray<")) {
         remap(tp) match {
           case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
@@ -212,9 +242,12 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\tassert(false);\n")
             out.append("}\n")
             (signature+";\n", out.toString)
-          case _ => super.emitSendView(tp, host)
+          case _ => 
+            ("","") //TODO
         }
       }
+      else
+        super.emitSendView(tp, host)
     }
     else
       super.emitSendView(tp, host)
@@ -244,7 +277,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("}\n")
         (signature+";\n", out.toString)
       }
-      else {
+      else if(remap(tp).startsWith("DeliteArray<")) {
         remap(tp) match {
           case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
@@ -259,9 +292,12 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\treturn %s;\n".format("sym"))
             out.append("}\n")
             (signature+";\n", out.toString)
-          case _ => super.emitRecvView(tp, host)
+          case _ => 
+            ("","") //TODO
         }
       }
+      else
+        super.emitRecvView(tp, host)
     }
     else
       super.emitRecvView(tp, host)
@@ -303,7 +339,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("}\n")
         (signature+";\n", out.toString)
       }
-      else {
+      else if(remap(tp).startsWith("DeliteArray<")) {
         remap(tp) match {
           case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
@@ -315,9 +351,12 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\tenv->ReleasePrimitiveArrayCritical((%sArray)obj, dataPtr, 0);\n".format(JNIType(typeArg)))
             out.append("}\n")
             (signature+";\n", out.toString)
-          case _ => super.emitSendUpdate(tp, host)
+          case _ => 
+            ("","") //TODO
         }
       }
+      else 
+        super.emitSendUpdate(tp, host)
     }
     else
       super.emitSendUpdate(tp, host)
@@ -346,7 +385,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("}\n")
         (signature+";\n", out.toString)
       }
-      else {
+      else if(remap(tp).startsWith("DeliteArray<")) {
         remap(tp) match {
           case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
@@ -358,9 +397,12 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\tenv->ReleasePrimitiveArrayCritical((%sArray)obj, dataPtr, 0);\n".format(JNIType(typeArg)))
             out.append("}\n")
             (signature+";\n", out.toString)
-          case _ => super.emitRecvUpdate(tp, host)
+          case _ => 
+            ("","") //TODO
         }
       }
+      else
+        super.emitRecvUpdate(tp, host)
     }
     else
       super.emitRecvUpdate(tp, host)

@@ -516,4 +516,6 @@ class LocalDeliteArrayObject[T:Manifest](val data: Array[T], var offset: Int) ex
   def this(len: Int) = this(new Array[T](len), 0)
   def this(len: Int, start: Int) = this(new Array[T](len), start)
   def createLocal(len: Int, start: Int) = new LocalDeliteArrayObject[T](len, start)
+  //TODO: Get rid of dc_update. Used for GPU data transfer and avoid manifest.
+  def dc_update(idx: Int, newVal: T) { data(idx) = newVal }
 }

@@ -2224,9 +2224,11 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             emitAssignment("i_"+name,"i_"+name+"+1")
             stream.println("}")
           }
-          (symList zip op.body) foreach { case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
-            emitAssignment(quote(sym)+"_hash_data",fieldAccess(quote(sym),"data"))
-            releaseRef(quote(sym))
+          (symList zip op.body) foreach { 
+            case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
+              emitAssignment(quote(sym)+"_hash_data",fieldAccess(quote(sym),"data"))
+              releaseRef(quote(sym))
+            case _ =>
           }
         }
 
@@ -2657,14 +2659,26 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           if(elem.cond.nonEmpty && elem.stripFirst) throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceTupleElem with condition + stripFirst is not supported.")
           lf.tpe = "REDUCE_TUPLE"
         case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
-          lf.tpe = "HASH_REDUCE"
           // Currently only support limited types of hash-reduce on GPU
           // keys should be dense perfect hash (0 ~ N-1 for N keys)
           // reduction needs to be primitive type reduction 
           //if(elem.cond.nonEmpty) throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem with condition is not supported.")
-          if(!isPrimitiveType(elem.mV)) throw new GenerationFailedException("GPUGen DeliteOPs: DeliteHashReduceElem only supports primitve type reduction.") 
+          //if(!isPrimitiveType(elem.mV)) throw new GenerationFailedException("GPUGen DeliteOPs: DeliteHashReduceElem only supports primitve type reduction.") 
           if(remap(elem.mK) != "int") throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem only supports perfect hash.")
-          case (sym, _) =>
+          if(!isPrimitiveType(elem.mV)) {
+            if(encounteredZipWith contains getBlockResult(elem.rFunc)) {
+              val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+              if(isPrimitiveType(z.dmR)) lf.tpe = "HASH_REDUCE_SPEC"
+              else throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem with non-primitive types is not supported.")
+            }
+            else {
+              throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem with non-primitive types is not supported.")
+            }
+          }
+          else {
+            lf.tpe = "HASH_REDUCE"
+          }
+        case (sym, _) =>
           throw new GenerationFailedException("GPUGen DeliteOps: Unsupported Elem type for " + quote(sym))
       }
     }
@@ -2710,6 +2724,10 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         emitBlock(elem.zero)
         stream.println("return " + quote(getBlockResult(elem.zero)) + ";")
         stream.println("}") 
+        if(lf.tpe == "HASH_REDUCE_SPEC") {
+          val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+          stream.println("__device__ " + remap(z.dmR) + " dev_spcinit_" + funcNameSuffix(sym) + "(void) { return 0; }") 
+        }
       case _ => //
     }
 
@@ -2751,7 +2769,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         stream.println("}") 
 
       case (sym, elem: DeliteReduceElem[_]) if(encounteredZipWith contains getBlockResult(elem.rFunc)) =>
-        val freeVars = getFreeVarBlock(Block(Combine(List(elem.func).map(getBlockResultFull))),List(op.v)).distinct
+        val freeVars = getFreeVarBlock(elem.func,List(op.v)).distinct
         val inputs = remapInputs(freeVars) 
         val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
         lf.loopFuncInputs = freeVars.map(quote)
@@ -2918,6 +2936,28 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           stream.println("}")
         }
 
+      case (sym, elem: DeliteHashReduceElem[_,_,_]) if(encounteredZipWith contains getBlockResult(elem.rFunc)) =>
+        // FIXIT: Hacky way of generating zip function
+        val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+        val zbody = z.body.asInstanceOf[DeliteCollectElem[_,_,_]]
+        val prevInnerScope = innerScope
+        val result = zbody.func
+        result.res match {
+          case r:Sym[_] if(innerScope==null) => innerScope = List(findDefinition(r).get) 
+          case r:Sym[_] => innerScope = findDefinition(r).get :: innerScope
+          case _ => // 
+        }
+        val freeVars = getFreeVarBlock(Block(Combine(List(zbody.func).map(getBlockResultFull))),List(z.fin._1.asInstanceOf[Sym[_]],z.fin._2.asInstanceOf[Sym[_]])).distinct
+        val inputs = remapInputs(freeVars ++ List(z.fin._1.asInstanceOf[Sym[_]],z.fin._2.asInstanceOf[Sym[_]]))
+        stream.println("__device__ " + remap(z.dmR) + " dev_combine_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        emitBlock(result)
+        stream.println("return " + quote(getBlockResult(result)) + ";")
+        stream.println("}")
+        innerScope = prevInnerScope 
+        val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
+        lf.loopReduceInputs = freeVars.map(quote)
+        lf.loopFuncOutputType_2 = remap(z.dmR)
+
       case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
         val freeVars = getFreeVarBlock(elem.rFunc,List(elem.rV._1,elem.rV._2)).distinct
         val inputs = remapInputs(freeVars ++ List(elem.rV._1,elem.rV._2))
@@ -2927,6 +2967,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         emitBlock(elem.rFunc)
         stream.println("return " + quote(getBlockResult(elem.rFunc)) + ";")
         stream.println("}") 
+
 
       case _ => //
     }
@@ -2969,32 +3010,21 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         emitAllocFuncPrimitive(sym, "allocFunc_"+quote(sym))
         lf.loopFuncOutputType = remap(getBlockResult(elem.func._1).tp)
         lf.loopFuncOutputType_2 = remap(getBlockResult(elem.func._2).tp)
-        
+       
+      case (sym, elem: DeliteHashReduceElem[_,_,_]) if(encounteredZipWith contains getBlockResult(elem.rFunc)) =>
+        val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)      
+        val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+        val zbody = z.body.asInstanceOf[DeliteCollectElem[_,_,_]]
+        emitAllocFunc(List((sym,elem.alloc)),"allocFunc_"+quote(sym),Nil,Map())
+        lf.loopFuncOutputType = remap(getBlockResult(elem.valFunc).tp)
+
       case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
         val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)      
         emitAllocFunc(List((sym,elem.alloc)),"allocFunc_"+quote(sym),Nil,Map())
-        lf.loopFuncOutputType = remap(getBlockResult(elem.keyFunc).tp)
+        //lf.loopFuncOutputType_2 = remap(getBlockResult(elem.keyFunc).tp) //TODO: Pass this to DEG metadata
+        lf.loopFuncOutputType = remap(getBlockResult(elem.valFunc).tp)
         lf.loopFuncOutputType_2 = remap(getBlockResult(elem.valFunc).tp)
 
-
-
-
-      /*
-      //TODO: Factor out the same key functions and indicate in DEG
-      case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
-        val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
-        metaData.loopFuncs.put(sym,lf)
-        lf.tpe = "HASH_REDUCE"
-        lf.loopFuncInputs = emitMultiLoopFunc(elem.valFunc, "valFunc_"+funcNameSuffix(sym), List(op.v), stream)
-        lf.loopFuncInputs_2 = emitMultiLoopFunc(elem.keyFunc, "keyFunc_"+funcNameSuffix(sym), List(op.v), stream)
-        lf.loopReduceInputs = emitMultiLoopFunc(elem.rFunc, "reduce_"+funcNameSuffix(sym), List(elem.rV._1, elem.rV._2, op.v), stream)
-        lf.loopZeroInputs = emitMultiLoopFunc(elem.zero,"zero_"+funcNameSuffix(sym), Nil, stream)
-
-        if(elem.cond.nonEmpty) emitMultiLoopCond(sym, elem.cond, op.v, "cond_"+funcNameSuffix(sym), stream)
-        emitAllocFunc(sym,null,sym,op.size)
-        lf.loopFuncOutputType = remap(getBlockResult(elem.valFunc).tp)
-        lf.loopFuncOutputType_2 = remap(getBlockResult(elem.keyFunc).tp)
-      */
 
       case _ =>
     }

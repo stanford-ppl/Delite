@@ -317,7 +317,7 @@ object DeliteMesosExecutor {
     opTarget = Targets.Cuda
     val id = op.getId.getId
 
-    //sendDebugMessage("CUDA: Launching op " + id + "on CUDA")
+    sendDebugMessage("CUDA: Launching op " + id + "on CUDA")
 
     //TODO: Why below is not working for struct type inputs?
     // Set sync objects for kernel inputs 
@@ -363,12 +363,12 @@ object DeliteMesosExecutor {
     // Put task on the task queue
     val returnResult = ReturnResult.newBuilder.setId(op.getId)
     val inputCopy = inputSyms.map(i => needsCopy(i, Targets.Cuda)).toArray
-    //sendDebugMessage("inputCopy: " + inputCopy.mkString(","))
+    sendDebugMessage("inputCopy: " + inputCopy.mkString(","))
     val start = op.getStartIdx(slaveIdx)
     val size = if (op.getStartIdxCount > slaveIdx+1) op.getStartIdx(slaveIdx+1)-start else -1
     putTask(Targets.resourceIDs(Targets.Cuda)(0), Task(op.getId.getId, start, size, inputCopy))
 
-    //sendDebugMessage("CUDA: Put Task")
+    sendDebugMessage("CUDA: Put Task")
     for(i <- inputSyms) syncVersionID(i, Targets.Cuda)
 
     // Wait for the result 

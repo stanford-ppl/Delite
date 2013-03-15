@@ -116,6 +116,8 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
       stream.println("\n}")
       stream.print("def combine(lhs: " + name + ", " + "rhs: " + name + ") = ")
       emitStructReduction(name, elems, "lhs", "rhs")(stream)
+      //TODO: Get rid of below. Just a hack for GPU cluster execution.
+      stream.println("def createLocal(len: Int) = new ppl.delite.runtime.data.LocalDeliteArrayObject[" + name + "](len)")
       stream.println("\n}")
     }
 
@@ -188,7 +190,7 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
       first = false
       insertField(field,tp)
     }
-    stream.print(")")
+    stream.println(")")
   }
 
   def emitMessageDeclaration(name: String, elems: Seq[(String,Manifest[_])])(stream: PrintWriter) {
