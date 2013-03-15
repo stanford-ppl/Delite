@@ -384,6 +384,12 @@ object DeliteMesosExecutor {
       val r = syncObjectCls.getDeclaredMethods.find(_.getName == "get0_x" + output).get.invoke(null,Array():_*)
       m.invoke(result,Array(r):_*)
     }
+    val finalizeM = resultClass.getDeclaredMethods.find(_.getName == "unwrap")
+    finalizeM match {
+      case Some(m) => m.invoke(result,Array():_*) // Hash type activation record
+      case _ => 
+    }
+    
     val e = System.currentTimeMillis()
     sendDebugMessage("CUDA execution (op " + id + "):" + (e-s))
 

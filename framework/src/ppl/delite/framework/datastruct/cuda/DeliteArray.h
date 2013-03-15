@@ -65,14 +65,12 @@ public:
         return length;
     }
 
-    __host__ __device__ T dcApply(int idx) {
-      assert(false);
-        return data[idx];
+    __host__ __device__ T dc_apply(int idx) {
+        return apply(idx);
     }
 
-    __host__ __device__ void dcUpdate(int idx, T value) {
-      assert(false);
-        data[idx] = value;
+    __host__ __device__ void dc_update(int idx, T value) {
+        update(idx, value);
     }
 
     __host__ __device__ void dc_copy(DeliteArray<T> from) {

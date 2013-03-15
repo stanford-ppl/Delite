@@ -2119,10 +2119,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       }
     }
 
+    //TODO: This would not be needed if other targets (CUDA, C, etc) properly creates activation records
     emitMethod("initAct", "activation_"+kernelName, List()) {
       emitValDef("act", "activation_"+kernelName, "new activation_"+kernelName)
       (symList zip op.body) foreach {
-        case (sym, elem: DeliteHashElem[_,_]) =>
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
         case (sym, elem: DeliteForeachElem[_]) =>
         case (sym, elem: DeliteReduceElem[_]) =>
@@ -2133,7 +2133,15 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           emitAssignment(fieldAccess("act",quote(sym)+"_zero"),quote(getBlockResult(elem.zero._1)))
           emitBlock(elem.zero._2)
           emitAssignment(fieldAccess("act",quote(sym)+"_zero_2"),quote(getBlockResult(elem.zero._2)))
+        case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
+          emitBlock(elem.zero)
+          emitAssignment(fieldAccess("act",quote(sym)+"_zero"),quote(getBlockResult(elem.zero)))
+          emitAssignment(fieldAccess("act",quote(sym)+"_hash_data"), "new Array(128)")   
+        case (sym, elem: DeliteHashElem[_,_]) =>       
       }
+      val keyGroups = (symList zip op.body) collect { case (sym, elem: DeliteHashReduceElem[_,_,_]) => (sym,elem) } groupBy(_._2.keyFunc)
+      for((key,kps) <- keyGroups) 
+        emitAssignment(fieldAccess("act",kps.map(p=>quote(p._1)).mkString("")+"_hash_pos"), "new generated.scala.container.HashMapImpl(512,128)") 
       emitReturn("act")
     }
 
@@ -2202,6 +2210,26 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           }
           emitReturn("arr")
         }
+         
+        //TODO: This would not be needed if other targets (CUDA, C, etc) properly creates activation records
+        //Target devices should send back the key array also, not just the data.
+        //This unwrapping would only work for dense perfect hash cases.
+        emitMethod("unwrap", remap(Manifest.Unit), List()) {
+          val keyGroups = (symList zip op.body) collect { case (sym, elem: DeliteHashReduceElem[_,_,_]) => (sym,elem) } groupBy(_._2.keyFunc)
+          for((key,kps) <- keyGroups) {
+            val name = kps.map(p=>quote(p._1)).mkString("")
+            emitVarDef("i_"+name, remap(Manifest.Int), "0")
+            stream.println("while(i_"+name+" < " + fieldAccess(quote(kps(0)._1),"length") + ") {")
+            emitMethodCall(fieldAccess(name+"_hash_pos","put"),List("i_"+name))
+            emitAssignment("i_"+name,"i_"+name+"+1")
+            stream.println("}")
+          }
+          (symList zip op.body) foreach { case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
+            emitAssignment(quote(sym)+"_hash_data",fieldAccess(quote(sym),"data"))
+            releaseRef(quote(sym))
+          }
+        }
+
       }   
     }
 
