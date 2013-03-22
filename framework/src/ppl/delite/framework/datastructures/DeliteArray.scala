@@ -523,6 +523,7 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
     case "DeliteArray" => m.typeArguments(0) match {
       case StructType(_,_) => structName(m)
       case s if s <:< manifest[Record] => structName(m) // occurs due to restaging
+      case s if isSubtype(s.erasure, classOf[Record]) => structName(m) 
       case arg => 
         "Array[" + remap(arg) + "]"
     }

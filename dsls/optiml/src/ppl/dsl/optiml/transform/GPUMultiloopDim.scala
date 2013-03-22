@@ -209,7 +209,7 @@ trait MultiloopTransformOuter extends ForwardPassTransformer with BaseDeliteOpsT
   }  
   
   override def unapplySimpleIndex(e: Def[Any]) = e match { // TODO: what to do about this? should inherit from BaseDenseVectorTraversal or something? 
-    case DenseVectorApply(a, i) => Some((a,i))
+    // case DenseVectorApply(a, i) => Some((a,i))
     case _ => super.unapplySimpleIndex(e)
   }  
       

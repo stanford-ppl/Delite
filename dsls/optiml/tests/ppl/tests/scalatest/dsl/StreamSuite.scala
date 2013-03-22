@@ -2,7 +2,6 @@ package ppl.tests.scalatest.dsl.optiml
 
 import ppl.delite.framework.DeliteApplication
 import ppl.dsl.optiml.{OptiMLApplicationRunner, OptiMLApplication, OptiMLExp}
-import ppl.dsl.optiml.{Vector, Stream}
 import ppl.tests.scalatest._
 
 /* Testing stream operations

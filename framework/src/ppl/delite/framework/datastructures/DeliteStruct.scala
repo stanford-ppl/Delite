@@ -1,10 +1,11 @@
 package ppl.delite.framework.datastructures
 
 import java.io.{File,FileWriter,PrintWriter}
+import scala.reflect.{RefinedManifest, SourceContext}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{CudaCodegen,OpenCLCodegen, CCodegen}
 import ppl.delite.framework.ops.DeliteOpsExp
-import scala.reflect.{RefinedManifest, SourceContext}
+import ppl.delite.framework.Util._
 
 trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsExp with OrderingOpsExp => // FIXME: mix in prim somewhere else
 	
@@ -178,6 +179,7 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
 
   override def remap[A](m: Manifest[A]) = m match {
     case s if s <:< manifest[Record] => structName(m)
+    case s if isSubtype(s.erasure, classOf[Record]) => structName(m) // do we need isSubtype(..) when Record is a trait? i.e., will <:< match now?
     case _ => super.remap(m)
   }
 
@@ -239,6 +241,7 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
 
   override def remap[A](m: Manifest[A]) = m match {
     case s if s <:< manifest[Record] => structName(m)
+    case s if isSubtype(s.erasure, classOf[Record]) => structName(m)
     case _ => super.remap(m)
   }
 

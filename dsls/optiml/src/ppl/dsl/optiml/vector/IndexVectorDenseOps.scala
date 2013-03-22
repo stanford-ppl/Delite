@@ -78,29 +78,14 @@ trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOp
   
   def isIndexDense[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.tp.erasure == classOf[IndexVectorDense]
   def asIndexDense[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[IndexVectorDense]]
-    
-  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
-    if (isIndexDense(x)) asIndexDense(x).length
-    else super.dc_size(x)
-  }
-  
-  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
-    if (isIndexDense(x)) (asIndexDense(x).apply(n)).asInstanceOf[Exp[A]]
-    else super.dc_apply(x,n)    
-  }
-  
-  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
-    if (isIndexDense(x)) asIndexDense(x).update(n,y.asInstanceOf[Exp[Int]])
-    else super.dc_update(x,n,y)        
-  }  
-  
+
   override def dc_alloc[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], size: Exp[Int])(implicit ctx: SourceContext): Exp[CA] = {
     if (isIndexDense(x)) {
       val out = IndexVector(size, asIndexDense(x).isRow)
       out.asInstanceOf[Exp[CA]]
     }
     else super.dc_alloc[A,CA](x,size)
-  }
+  }  
   
   //////////////
   // mirroring

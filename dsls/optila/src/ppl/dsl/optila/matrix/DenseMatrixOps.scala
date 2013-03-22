@@ -253,16 +253,16 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   case class DenseMatrixApply[A:Manifest](x: Exp[DenseMatrix[A]], i: Exp[Int], j: Exp[Int])
     extends DeliteOpSingleWithManifest[A,A](reifyEffectsHere(densematrix_apply_impl(x, i, j)))
 
-  case class DenseMatrixRawApply[A:Manifest](x: Exp[DenseMatrix[A]], i: Exp[Int])
-    extends DefWithManifest[A,A]
-    //extends DeliteOpSingleWithManifest[A,A](reifyEffectsHere(densematrix_rawapply_impl(x,i))) 
+  // case class DenseMatrixRawApply[A:Manifest](x: Exp[DenseMatrix[A]], i: Exp[Int])
+  //   extends DefWithManifest[A,A]
+  //   //extends DeliteOpSingleWithManifest[A,A](reifyEffectsHere(densematrix_rawapply_impl(x,i))) 
     
   case class DenseMatrixUpdate[A:Manifest](x: Exp[DenseMatrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A]) 
     extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(densematrix_update_impl(x,i,j,y)))
     
-  case class DenseMatrixRawUpdate[A:Manifest](x: Exp[DenseMatrix[A]], i: Exp[Int], y: Exp[A])
-    extends DefWithManifest[A,Unit]
-    //extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(densematrix_rawupdate_impl(x,i,y)))
+  // case class DenseMatrixRawUpdate[A:Manifest](x: Exp[DenseMatrix[A]], i: Exp[Int], y: Exp[A])
+  //   extends DefWithManifest[A,Unit]
+  //   //extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(densematrix_rawupdate_impl(x,i,y)))
 
   case class DenseMatrixInsertRow[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Interface[Vector[A]]) 
     extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(densematrix_insertrow_impl(x,pos,y)))

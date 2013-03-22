@@ -185,12 +185,9 @@ trait OptiMLCodeGenBase extends OptiLACodeGenBase {
   val mlspecialize2 = Set[String]()  
   def genSpec2(f: File, outPath: String) = {}
 
-  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
-    case "IndexVectorDense" => IR.structName(m)
-    case "SupervisedTrainingSet" => IR.structName(m)
-    case "UnsupervisedTrainingSet" => IR.structName(m)
-    case _ => super.remap(m)
-  }
+  // override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+  //   case _ => super.remap(m)
+  // }
     
   override def emitDataStructures(path: String) {
     super.emitDataStructures(path) // get optila data structures
