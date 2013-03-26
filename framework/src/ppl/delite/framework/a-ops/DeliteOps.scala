@@ -2638,6 +2638,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           if (!isPrimitiveType(elem.mA)) throw new GenerationFailedException("GPUGen DeliteOps: output of collect elem is non-primitive type.")
           lf.tpe = "COLLECT"
         case (sym, elem:DeliteForeachElem[_]) =>
+          throw new GenerationFailedException("GPUGen DeliteOps: GPU ForEachElem is temporarily disabled..")
           metaData.outputs.put(sym,new TransferFunc)
           lf.tpe = "FOREACH"
         case (sym, elem: DeliteReduceElem[_]) =>
