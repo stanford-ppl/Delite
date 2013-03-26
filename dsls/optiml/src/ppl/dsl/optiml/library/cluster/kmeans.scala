@@ -31,7 +31,7 @@ trait OptiMLKmeans {
 
     println("m:"+m+",n:"+n+",numClusters:"+numClusters+",mu.numRows:"+mu.numRows)
 
-    val newMu = untilconverged(mu, tol){ mu =>
+    val newMu = untilconverged(mu, tol, max_iter=10){ mu =>
       iter += 1
 
       val c = (0::m){e => findNearestCluster(x(e), mu)}   

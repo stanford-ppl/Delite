@@ -523,6 +523,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
       println(unit("Maximum iterations exceeded"))
       returnL()
     }
+    println("Finished in " + iter + " iterations")
 
     cur
   }
