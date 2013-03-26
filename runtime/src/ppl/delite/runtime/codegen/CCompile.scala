@@ -60,7 +60,7 @@ trait CCompile extends CodeCache {
     if (modules.exists(_.needsCompile)) {
       val includes = modules.map(m => config.headerPrefix + sourceCacheHome + m.name).toArray
       val libs = Directory(deliteLibs).files.withFilter(f => f.extension == OS.libExt).map(_.path).toArray
-      val paths = includes ++ config.headerDir ++ Array(config.headerPrefix + "runtime" + sep + target) ++ config.libs ++ libs
+      val paths = includes ++ config.headerDir ++ Array(config.headerPrefix + Config.deliteHome + sep + "runtime" + sep + target) ++ config.libs ++ libs
       val sources = (sourceBuffer.map(s => sourceCacheHome + "runtime" + sep + s._2) ++ List(sourceCacheHome + "kernels" + sep + "helperFuncs.cu") ++ List(Config.deliteHome + sep + "runtime" + sep + target + sep + "DeliteCuda.cu") ++ kernelsList.map(k => sourceCacheHome + "kernels" + sep + k)).toArray
       val dest = binCacheHome + target + "Host." + OS.libExt
 
@@ -90,28 +90,34 @@ trait CCompile extends CodeCache {
   protected def checkError(process: Process, args: Array[String]) {
     val errorStream = process.getErrorStream
     val inputStream = process.getInputStream
+    val out = new StringBuilder
 
     var err = errorStream.read()
     if (err != -1) {
-      println("--" + target + " compile args: " + args.mkString(","))
+      out.append("--" + target + " compile args: " + args.mkString(","))
       while (err != -1) {
-        print(err.asInstanceOf[Char])
+        out.append(err.asInstanceOf[Char])
         err = errorStream.read()
       }
-      println()
+      out.append('\n')
     }
 
     var in = inputStream.read()
     if (in != -1) {
       while (in != -1) {
-        print(in.asInstanceOf[Char])
+        out.append(in.asInstanceOf[Char])
         in = inputStream.read()
       }
-      println()
+      out.append('\n')
     }
 
-    if (process.exitValue != 0)
+    if (process.exitValue != 0) {
+      if(Config.clusterMode == 2) // Send the error message to the master node
+        ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(out.toString)
+      else 
+        println(out.toString)
       sys.error(target + " compilation failed with exit value " + process.exitValue)
+    }
   }
 
 }

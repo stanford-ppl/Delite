@@ -164,7 +164,7 @@ trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg wi
 }
 
 trait OptiQLCodeGenCuda extends OptiQLCodeGenBase with OptiQLCudaCodeGenPkg
-  with CudaGenDeliteCollectionOps with CudaGenDeliteOps with CudaGenDeliteArrayOps /*with CudaGenDeliteArrayBufferOps*/ with CudaGenDSArrayOps with DeliteCudaGenAllOverrides {
+  with CudaGenDeliteCollectionOps with CudaGenDeliteOps with CudaGenDeliteArrayOps /*with CudaGenDeliteArrayBufferOps*/ with CudaGenDSArrayOps with DeliteCudaGenAllOverrides with DeliteCppHostTransfer with DeliteCudaDeviceTransfer {
   val IR: DeliteApplication with OptiQLExp
 
   override def remap[A](m: Manifest[A]): String = {
@@ -176,12 +176,6 @@ trait OptiQLCodeGenCuda extends OptiQLCodeGenBase with OptiQLCudaCodeGenPkg
       case _ => super.remap(m)
     }
   }
-
-	override def getDSLHeaders: String = {
-    val out = new StringBuilder
-    out.toString
-	}
-
 }
 
 trait OptiQLCodeGenOpenCL extends OptiQLCodeGenBase with OptiQLOpenCLCodeGenPkg
@@ -198,9 +192,9 @@ trait OptiQLCodeGenOpenCL extends OptiQLCodeGenBase with OptiQLOpenCLCodeGenPkg
     }
   }
 
-	override def getDSLHeaders: String = {
+	override def getDataStructureHeaders(): String = {
     val out = new StringBuilder
-    out.toString
+    super.getDataStructureHeaders() + out.toString
 	}
 
 }

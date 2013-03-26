@@ -34,7 +34,7 @@ trait OpenCLGenExternalBase extends GenericGenExternal with OpenCLGenFat {
   }
 
   def emitMethodCall(sym: Sym[Any], e: DeliteOpExternal[_], lib: ExternalLibrary, args: List[String]) = {
-    emitAllocFunc(sym, List(e.allocVal), Nil)
+    emitAllocFunc(List((sym,e.allocVal)), "allocFunc_"+quote(sym), Nil, Map())
     stream.println(e.funcName + "(" + (args mkString ",") + ");")
   }
 

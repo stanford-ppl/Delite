@@ -23,6 +23,9 @@ object Delite {
   private var mainThread: Thread = _
   private var outstandingException: Exception = _
 
+  //TODO: Remove this. This is only used for cluster version GPU runtime code generation.
+  var inputArgs: Array[String] = _
+
   private def printArgs(args: Array[String]) {
     if(args.length == 0) {
       println("Not enough arguments.\nUsage: [Launch Runtime Command] filename.deg arguments*")
@@ -46,6 +49,7 @@ object Delite {
   }
 
   def embeddedMain(args: Array[String], staticData: Map[String,_]) {
+    inputArgs = args
     mainThread = Thread.currentThread
     
     printArgs(args)
@@ -55,26 +59,8 @@ object Delite {
     Arguments.args = args.drop(1)
     Arguments.staticDataMap = staticData
 
-    //TODO: combine into a single scheduler and executor
-    val scheduler = Config.scheduler match {
-      case "SMP" => new SMPStaticScheduler
-      case "ACC" => new Acc_StaticScheduler
-      case "default" => {
-        if (Config.numCuda + Config.numOpenCL + Config.numCpp == 0) new SMPStaticScheduler
-        else new Acc_StaticScheduler
-      }
-      case _ => throw new IllegalArgumentException("Requested scheduler is not recognized")
-    }
-
-    val executor = Config.executor match {
-      case "SMP" => new SMPExecutor
-      case "ACC" => new SMP_Acc_Executor
-      case "default" => {
-        if (Config.numCuda + Config.numOpenCL + Config.numCpp == 0) new SMPExecutor
-        else new SMP_Acc_Executor
-      }
-      case _ => throw new IllegalArgumentException("Requested executor is not recognized")
-    }
+    var scheduler: StaticScheduler = null
+    var executor: Executor = null
 
     def abnormalShutdown() {
       executor.shutdown()
@@ -84,10 +70,39 @@ object Delite {
 
     try {
 
-      executor.init() //call this first because could take a while and can be done in parallel
-
       //load task graph
       val graph = loadDeliteDEG(args(0))
+    
+      //Print warning if there is no op that supports the target
+      if(Config.numCpp>0 && !graph.targets(Targets.Cpp)) println("[WARNING] No Cpp target op is generated!")
+      if(Config.numCuda>0 && !graph.targets(Targets.Cuda)) println("[WARNING] No Cuda target op is generated!")
+      if(Config.numOpenCL>0 && !graph.targets(Targets.OpenCL)) println("[WARNING] No OpenCL target op is generated!")
+
+      //TODO: combine into a single scheduler and executor
+      scheduler = Config.scheduler match {
+        case "SMP" => new SMPStaticScheduler
+        case "ACC" => new Acc_StaticScheduler
+        case "default" => {
+          if (Config.numCpp+Config.numCuda+Config.numOpenCL==0 || ((graph.targets.size==1) && (graph.targets(Targets.Scala)))) new SMPStaticScheduler
+          else if (Config.clusterMode == 1) new SMPStaticScheduler
+          else new Acc_StaticScheduler
+        }
+        case _ => throw new IllegalArgumentException("Requested scheduler is not recognized")
+      }
+
+      executor = Config.executor match {
+        case "SMP" => new SMPExecutor
+        case "ACC" => new SMP_Acc_Executor
+        case "default" => {
+          if (Config.numCpp+Config.numCuda+Config.numOpenCL==0 || ((graph.targets.size==1) && (graph.targets(Targets.Scala)))) new SMPExecutor
+          else if (Config.clusterMode == 1) new SMPExecutor
+          else new SMP_Acc_Executor
+        }
+        case _ => throw new IllegalArgumentException("Requested executor is not recognized")
+      }
+
+      executor.init() //call this first because could take a while and can be done in parallel
+
       //val graph = new TestGraph
       Config.deliteBuildHome = graph.kernelPath
 
@@ -105,7 +120,13 @@ object Delite {
 
       //execute
       if (Config.clusterMode == 2) { //slave executor
-        DeliteMesosExecutor.executor = executor.asInstanceOf[SMPExecutor].threadPool
+        //DeliteMesosExecutor.executor = executor.asInstanceOf[SMPExecutor].threadPool
+        if(executor.isInstanceOf[SMPExecutor])
+          DeliteMesosExecutor.executor = executor.asInstanceOf[SMPExecutor].threadPool
+        else {
+          DeliteMesosExecutor.executor = executor.asInstanceOf[SMP_Acc_Executor].smpExecutor.threadPool
+          executor.asInstanceOf[SMP_Acc_Executor].runAcc(executable)
+        }
         DeliteMesosExecutor.awaitWork()
       }
       else { //master executor (including single-node execution)

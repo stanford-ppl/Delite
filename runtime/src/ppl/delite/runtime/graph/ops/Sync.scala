@@ -114,7 +114,10 @@ object Sync {
     updater match {
       case null =>
       case _ if (syncSet contains updatee) =>
-      case _ => addReceive(updatee, to)
+      case _ => 
+        val potentialNotifyAwait = Await(Notify(updater.from,node(to.scheduledResource)),to.scheduledResource)
+        if (syncSet contains potentialNotifyAwait) removeSendReceive(potentialNotifyAwait, to)
+        addReceive(updatee, to)
     }
   }
 
@@ -127,6 +130,12 @@ object Sync {
     syncSet += Pair(receiver,receiver)
     receiver.setReceiveOp(to)
     receiver.sender.receivers += receiver
+  }
+
+  private def removeSendReceive[T <: Receive](receiver: T, to: DeliteOP) {
+    syncSet -= receiver
+    receiver.sender.receivers -= receiver
+    if(receiver.sender.receivers.size==0) syncSet -= receiver.sender
   }
 
   //TODO: Fix this hack

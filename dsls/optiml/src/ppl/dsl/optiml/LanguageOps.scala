@@ -609,24 +609,24 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
       iter += unit(1)
       // println("current theta: ")
       // cur.pprint
-       
+      
+      /* 
       val gradient = sum(unit(0),x.numSamples) { i =>
         // produces the correct answer (~.27s after warmup)
         (x(i)*(y(i) - hyp(cur,x(i)))).Clone
         
         // produces the wrong answer (only correct on the first iteration)
         // (x(i)*(y(i) - hyp(cur,x(i))))
-      }       
+      } 
+      */      
       
-      /*
       val gradient = ((0::x.numSamples) { i =>        
         // no violated error, correct answer
-        // (x(i)*(y(i) - hyp(cur,x(i)))).Clone
+        (x(i)*(y(i) - hyp(cur,x(i)))).Clone
         
         // violated order of effects with soa, correct answer without soa (~.23s after warmup)
-        (x(i)*(y(i) - hyp(cur,x(i))))        
+        //(x(i)*(y(i) - hyp(cur,x(i))))        
       }).sum
-      */
             
       val z = cur + alpha*gradient // note that each term in the gradient has opposite sign as in Spark
       // println("gradient: ")

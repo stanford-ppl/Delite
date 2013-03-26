@@ -60,11 +60,15 @@ trait IndexVectorRangeOps extends Base with OverloadHack { this: OptiML =>
 trait IndexVectorRangeOpsExp extends IndexVectorRangeOps with DeliteCollectionOpsExp { this: OptiMLExp =>
     
   def indexvectorrange_length(x: Rep[IndexVectorRange])(implicit ctx: SourceContext) = x match {
+    case Def(IndexVectorRangeNew(Const(0),e)) => e
+    case Def(v@Reflect(IndexVectorRangeNew(Const(0),e), u, es)) => e
     case Def(IndexVectorRangeNew(s,e)) => e - s
     case Def(v@Reflect(IndexVectorRangeNew(s,e), u, es)) /*if context.contains(v)*/ => e - s
   }
   
   def indexvectorrange_apply(x: Rep[IndexVectorRange], n: Rep[Int])(implicit ctx: SourceContext) = x match {
+    case Def(IndexVectorRangeNew(Const(0),e)) => n
+    case Def(v@Reflect(IndexVectorRangeNew(Const(0),e), u, es)) => n
     case Def(IndexVectorRangeNew(s,e)) => s + n
     case Def(v@Reflect(IndexVectorRangeNew(s,e), u, es)) /*if context.contains(v)*/ => s + n
   }  

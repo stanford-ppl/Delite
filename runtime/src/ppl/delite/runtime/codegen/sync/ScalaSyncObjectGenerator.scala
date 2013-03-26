@@ -41,7 +41,7 @@ trait ScalaSyncObjectGenerator extends SyncObjectGenerator with ScalaExecutableG
   }
 
   //private def consumerSet(sender: Send) = sender.receivers.map(_.to.scheduledResource)
-  private def consumerSet(sender: Send) =
+  def consumerSet(sender: Send) =
     if (Targets.getHostType(scheduledTarget(sender.from))==Hosts.Cpp) sender.receivers.map(_.to).filter(op=>Targets.getHostType(scheduledTarget(op))==Hosts.Scala).map(_.scheduledResource)
     else sender.receivers.map(_.to.scheduledResource)
 

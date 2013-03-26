@@ -20,6 +20,10 @@ object Serialization {
   private var lookupId = false
   var symId: String = _
 
+  //TODO: Move this to somewhere else. 
+  //This is only used to check if a new array data is sent from the master so that GPU can update its stale copy.  
+  var updated: Boolean = false
+
   private var copyLength = -1
   private var copyOffset = 0
 
@@ -188,6 +192,7 @@ object Serialization {
       val byteBuffer = mssg.getArray.asReadOnlyByteBuffer
       val array = new Array[Int](byteBuffer.capacity / 4)
       byteBuffer.asIntBuffer.get(array) 
+      updated = true
       new LocalDeliteArrayInt(array)
     }
     else {
@@ -202,6 +207,7 @@ object Serialization {
       val byteBuffer = mssg.getArray.asReadOnlyByteBuffer
       val array = new Array[Long](byteBuffer.capacity / 8)
       byteBuffer.asLongBuffer.get(array) 
+      updated = true
       new LocalDeliteArrayLong(array)
     }
     else {
@@ -216,6 +222,7 @@ object Serialization {
       val byteBuffer = mssg.getArray.asReadOnlyByteBuffer
       val array = new Array[Float](byteBuffer.capacity / 4)
       byteBuffer.asFloatBuffer.get(array) 
+      updated = true
       new LocalDeliteArrayFloat(array)
     }
     else {
@@ -231,6 +238,7 @@ object Serialization {
       val array = new Array[Double](byteBuffer.capacity / 8)
       byteBuffer.asDoubleBuffer.get(array)
       //ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(array.mkString("remote: [ "," ", " ]"))
+      updated = true
       new LocalDeliteArrayDouble(array)
     }
     else {
@@ -245,6 +253,7 @@ object Serialization {
       val byteBuffer = mssg.getArray.asReadOnlyByteBuffer
       val array = new Array[Char](byteBuffer.capacity / 2)
       byteBuffer.asCharBuffer.get(array) 
+      updated = true
       new LocalDeliteArrayChar(array)
     }
     else {
@@ -259,6 +268,7 @@ object Serialization {
       val byteBuffer = mssg.getArray.asReadOnlyByteBuffer
       val array = new Array[Short](byteBuffer.capacity / 2)
       byteBuffer.asShortBuffer.get(array) 
+      updated = true
       new LocalDeliteArrayShort(array)
     }
     else {
@@ -273,6 +283,7 @@ object Serialization {
       val byteBuffer = mssg.getArray.asReadOnlyByteBuffer
       val array = new Array[Byte](byteBuffer.capacity)
       byteBuffer.get(array) 
+      updated = true
       new LocalDeliteArrayByte(array)
     }
     else {
@@ -291,6 +302,7 @@ object Serialization {
         array(i) = byteBuffer.get != 0
         i += 1
       }
+      updated = true
       new LocalDeliteArrayBoolean(array)
     }
     else {
@@ -314,6 +326,7 @@ object Serialization {
         array(i) = deserialize.invoke(null, mssg.getObject(i)).asInstanceOf[T]
         i += 1
       }
+      updated = true
       new LocalDeliteArrayObject[T](array)    
     }
     else {

@@ -76,58 +76,57 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
   lastAlloc->push_back(*ptr);
 }
 
-/*
-void DeliteCudaMalloc(void** ptr, size_t size) {
-    while (freeList->size() > 0) {
-	    FreeItem item = freeList->front();
- 	        freeList->pop();
-		
-		while (cudaEventQuery(item.event) != cudaSuccess) {
-			cudaEventSynchronize(item.event);
-		}
-		cudaEventDestroy(item.event);
-		
-		list<void*>::iterator iter;
-		for (iter = item.keys->begin(); iter != item.keys->end(); iter++) {
-			//cout << "object ref: " << (long) *iter << endl;
-			list<void*>* freePtrList = cudaMemoryMap->find(*iter)->second;	
-			list<void*>::iterator iter2;
-			for (iter2 = freePtrList->begin(); iter2 != freePtrList->end(); iter2++) {
-				void* freePtr = *iter2;
-				if (cudaFree(freePtr) != cudaSuccess)
-					cout << "bad free pointer: " << (long) freePtr << endl;
-				else
-					cout << "freed successfully: " << (long) freePtr << endl;
-			}
-			cudaMemoryMap->erase(*iter);
-			delete freePtrList;
-			free(*iter);
-		}
-		delete item.keys;
-	}
-
-	if (cudaMalloc(ptr, size) != cudaSuccess) {
-		cout << "FATAL: cuda malloc failed unexpectedly" << endl;
-		exit(-1);
-	}
-	else
-		cout << "allocated successfully: " << (long) *ptr << endl;
-	
-	lastAlloc->push_back(*ptr);
-} */
-
+size_t cudaHeapSize = 1024*1204;
 char* bufferStart = 0;
 size_t bufferSize = 5368709120/4;
 char* bufferEnd;
 char* bufferCurrent;
 
-//TODO: How to determine the size of the temp allocations?
-char* tempCudaMem;
-size_t tempCudaMemSize = 1048576 * 512;
-void tempCudaMemInit(void) {
-  if(cudaMalloc(&tempCudaMem, tempCudaMemSize) != cudaSuccess) {
-    cout << "FATAL: Insufficient device memory for tempCudaMem" << endl;
+
+/* Implementations for temporary memory management */
+#define CUDAMEM_ALIGNMENT 64
+char *tempCudaMemPtr;
+size_t tempCudaMemOffset;
+size_t tempCudaMemSize;
+
+void tempCudaMemInit(double tempMemRate) {
+  size_t free, total;
+  cudaMemGetInfo(&free, &total);
+  tempCudaMemSize = total * tempMemRate;
+  tempCudaMemOffset = 0;
+  if(cudaMalloc(&tempCudaMemPtr, tempCudaMemSize) != cudaSuccess) {
+    cout << "FATAL (tempCudaMemInit): Insufficient device memory for tempCudaMem" << endl;
     exit(-1);
+  }
+  //cout << "Free:" << free << endl;
+  //cout << "Total:" << total << endl;
+  //cout << "tempMemSize:" << tempCudaMemSize << endl;
+}
+
+void tempCudaMemFree(void) {
+  if(cudaFree(tempCudaMemPtr) != cudaSuccess) {
+    cout << "FATAL (tempCudaMemFree): Failed to free temporary memory" << endl;
+    exit(-1);
+  }
+}
+
+void tempCudaMemReset(void) {
+  tempCudaMemOffset = 0;
+}
+
+size_t tempCudaMemAvailable(void) {
+  return (tempCudaMemSize - tempCudaMemOffset - CUDAMEM_ALIGNMENT);
+}
+
+void DeliteCudaMallocTemp(void** ptr, size_t size) {
+  size_t alignedSize = CUDAMEM_ALIGNMENT * (1 + size / CUDAMEM_ALIGNMENT);
+  if(tempCudaMemOffset + alignedSize > tempCudaMemSize) {
+    cout << "FATAL(DeliteCudaMallocTemp): Insufficient device memory for tempCudaMem" << endl;
+    exit(-1);
+  }
+  else {
+    *ptr = tempCudaMemPtr + tempCudaMemOffset;
+    tempCudaMemOffset += alignedSize;
   }
 }
 
@@ -160,6 +159,33 @@ void DeliteCudaMemcpyDtoDAsync(void *dptr, void* sptr, size_t size) {
 
 void DeliteCudaMemset(void *ptr, int value, size_t count) {
 	cudaMemset(ptr,value,count);
+}
+
+void DeliteCudaCheckError(void) {
+    cudaDeviceSynchronize();
+    printf("DeliteCuda ERROR: %s\n", cudaGetErrorString(cudaGetLastError()));
+}
+
+// TODO: Remove this kernel from here by generate it 
+__global__ void kernel_offset(int *key, int *idx, int *offset, int size) {
+
+  int idxX = threadIdx.x + blockIdx.x*blockDim.x;
+
+  if(idxX == 0) {
+    offset[1] = 0;
+  }
+  else if(idxX < size) {
+    int keyVal = key[idxX];
+    int keyValPrev = key[idxX-1]; 
+    if(keyVal != keyValPrev) {
+      offset[keyVal+1] = idxX;
+    }
+  }
+  if(idxX == size-1) {
+    int keyVal = key[idxX];
+    offset[0] = keyVal+1;
+    offset[keyVal+2] = size;
+  }
 }
 
 #endif

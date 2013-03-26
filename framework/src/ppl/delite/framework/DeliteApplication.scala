@@ -15,8 +15,9 @@ import codegen.scala.TargetScala
 import codegen.Target
 import ops.DeliteOpsExp
 import transform.DeliteTransform
+import datastructures.DeliteStructsExp
 
-trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransform {  
+trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransform with DeliteStructsExp {  
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
 
   /*
@@ -29,15 +30,17 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   lazy val cppTarget = new TargetCpp{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val openclTarget = new TargetOpenCL{val IR: DeliteApplication.this.type = DeliteApplication.this}
 
-  var targets = List[DeliteApplicationTarget](scalaTarget)
-  if(Config.generateCUDA)
-    targets = cudaTarget :: targets
-  if(Config.generateCpp)
-    targets = cppTarget :: targets
-  if(Config.generateOpenCL)
-    targets = openclTarget :: targets
-
-  val generators: List[GenericFatCodegen{ val IR: DeliteApplication.this.type }] = targets.reverse.map(getCodeGenPkg(_))
+  def targets = {
+    var target = List[DeliteApplicationTarget](scalaTarget)
+    if(Config.generateCUDA)
+      target = cudaTarget :: target
+    if(Config.generateCpp)
+      target = cppTarget :: target
+    if(Config.generateOpenCL)
+      target = openclTarget :: target
+    target
+  }
+  lazy val generators: List[GenericFatCodegen{ val IR: DeliteApplication.this.type }] = targets.reverse.map(getCodeGenPkg(_))
 
 
   // TODO: refactor, this is from ScalaCompile trait
@@ -45,7 +48,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
     getCodeGenPkg(scalaTarget).asInstanceOf[ScalaCodegen { val IR: DeliteApplication.this.type }]
 
   // generators created by getCodeGenPkg will use the 'current' scope of the deliteGenerator as global scope
-  val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
+  lazy val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
                                                val generators = DeliteApplication.this.generators; }
 
 

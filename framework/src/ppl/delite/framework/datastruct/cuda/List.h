@@ -1,21 +1,33 @@
-#ifndef _DELITEARRAY_H_
-#define _DELITEARRAY_H_
+#ifndef _LIST_H_
+#define _LIST_H_
 
 #include "DeliteCuda.h"
 
+#include <stdlib.h>
+
 template <class T>
-class DeliteArray {
+class List {
 public:
     T *data;
     int length;
 
     // Constructor
-    __host__ DeliteArray(int _length) {
+    __host__ __device__ List(void) {
+      length = 0;
+      data = NULL;
+    }
+
+    __device__ List(int _length, T *ptr, int idx) {
+      length = _length;
+      data = ptr + idx*_length;
+    }
+
+    __host__ List(int _length) {
         length = _length;
         DeliteCudaMalloc((void**)&data,length*sizeof(T));
     }
 
-    __host__ __device__ DeliteArray(int _length, T *_data) {
+    __host__ __device__ List(int _length, T *_data) {
         length = _length;
         data = _data;
     }

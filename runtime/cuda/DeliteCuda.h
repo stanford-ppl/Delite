@@ -13,6 +13,8 @@
 
 using namespace std;
 
+extern size_t cudaHeapSize;
+
 // Second element in pair<void*,bool> indicates that void* points to GPU device memory,
 // so should not call free() on it.
 struct FreeItem {
@@ -23,7 +25,6 @@ struct FreeItem {
 extern cudaStream_t h2dStream;
 extern cudaStream_t d2hStream;
 extern cudaStream_t kernelStream;
-extern char *tempCudaMem;
 
 extern list<void*>* lastAlloc;
 extern queue<FreeItem>* freeList;
@@ -33,12 +34,19 @@ extern void addEvent(cudaStream_t fromStream, cudaStream_t toStream);
 extern cudaEvent_t addHostEvent(cudaStream_t stream);
 extern void freeCudaMemory(FreeItem item);
 extern void DeliteCudaMalloc(void** ptr, size_t size);
-extern void tempCudaMemInit(void);
+extern void tempCudaMemInit(double tempMemRate);
+extern void tempCudaMemFree(void);
+extern void tempCudaMemReset(void);
+extern size_t tempCudaMemAvailable(void);
+extern void DeliteCudaMallocTemp(void** ptr, size_t size);
 extern void hostInit();
 extern void DeliteCudaMallocHost(void** ptr, size_t size);
 extern void DeliteCudaMemcpyHtoDAsync(void* dptr, void* sptr, size_t size);
 extern void DeliteCudaMemcpyDtoHAsync(void* dptr, void* sptr, size_t size);
 extern void DeliteCudaMemcpyDtoDAsync(void *dptr, void* sptr, size_t size);
 extern void DeliteCudaMemset(void *ptr, int value, size_t count);
+extern void DeliteCudaCheckError(void);
 
+//TODO: Remove this from here
+__global__ void kernel_offset(int *key, int *idx, int *offset, int size);
 #endif

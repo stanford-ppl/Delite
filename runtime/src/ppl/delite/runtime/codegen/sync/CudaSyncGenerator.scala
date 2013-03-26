@@ -158,6 +158,15 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
       out.append("%s %s = recvCuda_%s(%s);\n".format(getCPrimitiveType(op.outputType(sym)),getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
       out.append("%s %s = (%s)%s;\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),getJNIType(op.outputType(sym)),getSymHost(op,sym)))
     }
+    else if(devType.startsWith("DeliteArray<")) {
+      devType match { //TODO: Fix this for nested object types
+        case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" => 
+          out.append("Host%s *%s = recvCuda_%s(%s);\n".format(devType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+        case _ => //DeliteArrayObject Type
+          out.append("HostDeliteArray< Host%s  *%s = recvCuda_%s(%s);\n".format(devType.drop(13),getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+      }
+      out.append("%s %s = sendCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))
+    }
     else {
       out.append("Host%s *%s = recvCuda_%s(%s);\n".format(devType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
       out.append("%s %s = sendCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))
