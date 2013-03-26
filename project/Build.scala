@@ -2,7 +2,7 @@ import sbt._
 import Keys._
 
 object DeliteBuild extends Build {
-  val virtualization_lms_core = "EPFL" % "lms_2.10" % "0.2"
+  val virtualization_lms_core = "EPFL" % "lms_2.10.0-M1-virtualized" % "0.2"
   
   // FIXME: custom-built scalatest
   val dropboxScalaTestRepo = "Dropbox" at "http://dl.dropbox.com/u/1186811/scala-virtualized"
@@ -17,6 +17,7 @@ object DeliteBuild extends Build {
     organization := "stanford-ppl",
     scalaOrganization := "org.scala-lang",
     scalaVersion := virtScala,
+    scalaBinaryVersion := virtScala,
     publishArtifact in (Compile, packageDoc) := false,
     libraryDependencies += virtualization_lms_core,
     // needed for scala.tools, which is apparently not included in sbt's built in version
