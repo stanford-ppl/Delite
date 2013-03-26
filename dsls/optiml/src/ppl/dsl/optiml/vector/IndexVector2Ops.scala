@@ -78,6 +78,9 @@ trait IndexVector2Ops extends Base { this: OptiML =>
   def indexvector2_construct[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: (Rep[Int],Rep[Int]) => Rep[A]): Rep[DenseMatrix[A]]
   // def indexvector2_rowind(x: Rep[IndexVector2]): Interface[IndexVector]
   // def indexvector2_colind(x: Rep[IndexVector2]): Interface[IndexVector]
+  
+  // temporary: for lancet compatibility
+  def indexvector2_construct_vectors_wildcard2[A:Manifest](rowInd: Interface[IndexVector], block: Rep[Int] => Rep[DenseVector[A]]): Rep[DenseMatrix[A]]
 }
 
 trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp with LoweringTransform { this: OptiMLExp =>
@@ -133,6 +136,18 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp with LoweringTra
     def m = manifest[A]
   }
 
+  // temporary: lancet compatibility
+  case class IndexVector2ConstructRows2[A:Manifest](intf: Interface[Vector[Int]], block: Exp[Int] => Exp[DenseVector[A]], out: Exp[DenseMatrix[A]])
+    extends DeliteOpForeach[Int] {
+    
+    val in = intf.ops.elem.asInstanceOf[Exp[Vector[Int]]]
+    val size = copyTransformedOrElse(_.size)(intf.length)
+    def sync = i => List()
+    def func = i => { out(i) = block(i) } // updateRow should be fused with function application
+    
+    def m = manifest[A]
+  }  
+
 //  case class IndexVector2ConstructCols[A:Manifest](in: Exp[IndexVector], block: Exp[Int] => Exp[Vector[A]], out: Exp[Matrix[A]])
 //    extends DeliteOpForeach[Int]
 
@@ -165,7 +180,16 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp with LoweringTra
     reflectWrite(out)(IndexVector2ConstructRows(in.slice(unit(1),in.length),block,out))
     out.unsafeImmutable
   }
-  
+
+  // temporary: lancet compatibility
+  def indexvector2_construct_vectors_wildcard2[A:Manifest](in: Interface[IndexVector], block: Exp[Int] => Exp[DenseVector[A]]): Exp[DenseMatrix[A]] = {
+    val first = block(in(unit(0))) 
+    val out = DenseMatrix[A](in.length, first.length)
+    out(unit(0)) = first 
+    reflectWrite(out)(IndexVector2ConstructRows2(in.slice(unit(1),in.length),block,out))
+    out.unsafeImmutable
+  }
+    
   def indexvector2_construct_vectors[A:Manifest](inr: Interface[IndexVector], inc: Interface[IndexVector], block: Exp[Int] => Interface[Vector[A]]): Exp[DenseMatrix[A]] = {
     val out = DenseMatrix[A](inr.length, inc.length)
     reflectWrite(out)(IndexVector2ConstructRows(inr,block,out))
@@ -260,6 +284,8 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp with LoweringTra
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case Reflect(e@IndexVector2ConstructMutable(r,c,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructMutable(f(r),f(c),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@IndexVector2ConstructRows(in,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructRows(f(in),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    // temporary: lancet compatibility
+    case Reflect(e@IndexVector2ConstructRows2(in,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructRows2(f(in),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }

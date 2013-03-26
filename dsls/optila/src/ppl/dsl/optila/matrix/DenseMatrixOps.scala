@@ -167,6 +167,10 @@ trait DenseMatrixOps extends Variables {
   def densematrix_sigmoid[A:Manifest](x: Rep[DenseMatrix[A]])(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext): Rep[DenseMatrix[Double]]
   def densematrix_sigmoidf[A:Manifest](x: Rep[DenseMatrix[A]])(implicit conv: Rep[A] => Rep[Float], ctx: SourceContext): Rep[DenseMatrix[Float]]
   
+  // temporary: lancet compatbility
+  def densematrix_maprowstovector[A:Manifest,B:Manifest](x: Rep[DenseMatrix[A]], f: Rep[DenseVectorView[A]] => Rep[B], isRow: Rep[Boolean]): Rep[DenseVector[B]]
+  def densematrix_getrow[A:Manifest](x: Rep[DenseMatrix[A]], row: Rep[Int]) = densematrix_vview(x, row*x.numCols, unit(1), x.numCols, unit(true))
+    
   def densematrix_rawapply[A:Manifest](x: Rep[DenseMatrix[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[A]
   def densematrix_rawupdate[A:Manifest](x: Rep[DenseMatrix[A]], n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
 }
@@ -302,6 +306,21 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
 
     val mA = manifest[A]
   }
+  
+  // temporary: lancet compatibility
+  case class DenseMatrixMapRowsToVector[A:Manifest,B:Manifest](x: Exp[DenseMatrix[A]], rowFunc: Exp[DenseVectorView[A]] => Exp[B], isRow: Exp[Boolean])
+    extends DeliteOpMap[Int,B,DenseVector[B]] {
+
+    override def alloc = DenseVector[B](x.numRows, isRow)
+    val in = copyTransformedOrElse(_.in)(unit(0)::x.numRows)
+    val size = copyTransformedOrElse(_.size)(x.numRows)
+    def func = i => rowFunc(x(i))   
+    
+    val mA = manifest[A]
+    val mB = manifest[B]
+    val mVB = manifest[DenseVector[B]]
+  }
+  
 
   ///////////////////////////////////////////////////////////////////
   // BLAS enabled routines 
@@ -395,6 +414,11 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(DenseMatrixSigmoidVectorized(x.asInstanceOf[Exp[DenseMatrix[Float]]]))    
     else reflectPure(MatrixSigmoidF[A,DenseMatrix[Float],DenseMatrix[Float]](x))
   }  
+  
+  // temporary: lancet compatbility
+  def densematrix_maprowstovector[A:Manifest,B:Manifest](x: Rep[DenseMatrix[A]], f: Rep[DenseVectorView[A]] => Rep[B], isRow: Rep[Boolean]): Rep[DenseVector[B]] = {
+    reflectPure(DenseMatrixMapRowsToVector(x,f,isRow))
+  }
 
   //////////////////
   // internal
