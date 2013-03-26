@@ -35,6 +35,7 @@ extern cudaEvent_t addHostEvent(cudaStream_t stream);
 extern void freeCudaMemory(FreeItem item);
 extern void DeliteCudaMalloc(void** ptr, size_t size);
 extern void tempCudaMemInit(double tempMemRate);
+extern void tempCudaMemFree(void);
 extern void tempCudaMemReset(void);
 extern size_t tempCudaMemAvailable(void);
 extern void DeliteCudaMallocTemp(void** ptr, size_t size);

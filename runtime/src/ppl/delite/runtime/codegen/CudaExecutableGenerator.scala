@@ -147,6 +147,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
   }
 
   protected def writeMethodFooter() {
+    out.append("tempCudaMemFree();\n")
     out.append("}\n")
   }
 
