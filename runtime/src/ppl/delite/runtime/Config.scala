@@ -39,6 +39,9 @@ object Config {
   val tempCudaMemRate: Double = getProperty("delite.tempcudamem", "0.5").toDouble         /* proportions of the cuda device memory used for temporary allocations */
   val taskQueueSize: Int = getProperty("delite.task.queue.size", "1024").toInt
 
+  /* GPU optimization */
+  val gpuOptTrans: Boolean = getProperty("delite.gpu.opt.trans", "true") != "false"
+
   /* Debug options */
   val queueSize: Int = getProperty("delite.debug.queue.size", "128").toInt
   val noRegenerate: Boolean = getProperty("delite.debug.noregenerate", "false") != "false"
