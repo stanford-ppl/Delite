@@ -316,10 +316,8 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
         
       dependentStructTypes foreach { t =>
         if (encounteredStructs.contains(t)) {
-          if (generatedStructs.contains(t)) {
-            stream.println("#include \"" + t + ".h\"") 
-          }
-          else if (generationFailedStructs.contains(t)) {
+          stream.println("#include \"" + t + ".h\"") 
+          if (generationFailedStructs.contains(t)) {
             throw new GenerationFailedException("Cannot generate struct " + name + " because of the failed dependency " + t)
           }
           else {
