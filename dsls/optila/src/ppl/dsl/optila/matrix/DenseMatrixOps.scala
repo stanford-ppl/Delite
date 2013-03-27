@@ -170,7 +170,7 @@ trait DenseMatrixOps extends Variables {
   // temporary: lancet compatbility
   def densematrix_maprowstovector[A:Manifest,B:Manifest](x: Rep[DenseMatrix[A]], f: Rep[DenseVectorView[A]] => Rep[B], isRow: Rep[Boolean]): Rep[DenseVector[B]]
   def densematrix_getrow[A:Manifest](x: Rep[DenseMatrix[A]], row: Rep[Int]) = densematrix_vview(x, row*x.numCols, unit(1), x.numCols, unit(true))
-    
+  
   def densematrix_rawapply[A:Manifest](x: Rep[DenseMatrix[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[A]
   def densematrix_rawupdate[A:Manifest](x: Rep[DenseMatrix[A]], n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
 }
@@ -512,6 +512,8 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     //case e@DenseMatrixTimesVector(x,y) => reflectPure(new {override val original = Some(f,e) } with DenseMatrixTimesVector(f(x),f(y))(e.m,e.a))(mtype(manifest[A]),implicitly[SourceContext])
     case e@DenseMatrixObjectConst(numRows,numCols,c) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixObjectConst(f(numRows),f(numCols),f(c))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@DenseMatrixMultiply3by3(x,y) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixMultiply3by3(f(x),f(y))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@DenseMatrixMapRowsToVector(x,g,r) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixMapRowsToVector(f(x),f(g),f(r))(e.mA,e.mB))(mtype(manifest[A]),implicitly[SourceContext])
+    
     // reflected
     case Reflect(e@DenseMatrixObjectNew(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixObjectNew(f(x),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case Reflect(e@DenseMatrixNewImm(d,r,c), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixNewImm(f(d),f(r),f(c))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -550,6 +552,7 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     case Reflect(e@DenseMatrixRemoveCols(x,y,z), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixRemoveCols(f(x),f(y),f(z))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case Reflect(e@DenseMatrixObjectConst(numRows,numCols,c), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixObjectConst(f(numRows),f(numCols),f(c))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@DenseMatrixMultiply3by3(x,y), u, es) => reflectMirrored(Reflect(new {override val original = Some(f,e) } with DenseMatrixMultiply3by3(f(x),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DenseMatrixMapRowsToVector(x,g,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixMapRowsToVector(f(x),f(g),f(r))(e.mA,e.mB), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
   

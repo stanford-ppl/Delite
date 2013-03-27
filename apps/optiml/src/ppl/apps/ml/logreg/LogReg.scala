@@ -25,7 +25,7 @@ trait LogReg extends OptiMLApplication {
     println("y.length:  " + y.length)
 
     // gradient descent with logistic function
-    tic()
+    tic(x,y)
     val w = gradient (SupervisedTrainingSet(x,y), alpha = 1, tol = .001, maxIter = 30) { (t,xi) => 1.0 / (1.0 + exp(t*(-1.0) *:* xi)) }
     toc(w)
     println("w:")
