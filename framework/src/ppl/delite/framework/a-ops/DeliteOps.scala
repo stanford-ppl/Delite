@@ -2460,6 +2460,12 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
 trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
   import IR._
 
+  // hack for lancet compatibility
+  def unvar(x: Exp[Any]) = x match {
+    case Def(Reflect(ReadVar(Variable(y)),u,es)) => (es collect { case(Def(Reflect(Assign(Variable(y),z),u,es2))) => z }).last    
+    case _ => x
+  }
+
   def emitVarDef(name: String, tpe: String, init: String) {
     tpe match {
       case "void" => //
@@ -2643,13 +2649,16 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           lf.tpe = "FOREACH"
         case (sym, elem: DeliteReduceElem[_]) =>
           if(!isPrimitiveType(sym.tp)) {
-            if(encounteredZipWith contains getBlockResult(elem.rFunc)) {
-              val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+            if(encounteredZipWith contains unvar(getBlockResult(elem.rFunc))) {
+              val z = encounteredZipWith.get(unvar(getBlockResult(elem.rFunc))).get
               if(isPrimitiveType(z.dmR)) lf.tpe = "REDUCE_SPEC"
-              else throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceElem with non-primitive types is not supported.")
+              else throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceElem with non-primitive types is not supported - zipWith has non primitive type.")
             }
             else {
-              throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceElem with non-primitive types is not supported.")
+              //Console.println("encounteredZipWith: " + encounteredZipWith)
+              //Console.println("elem.rFunc: " + elem.rFunc.toString)
+              //Console.println("getBlockResult(elem.rFunc) " + getBlockResult(elem.rFunc).toString)
+              throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceElem with non-primitive types is not supported - could not match rFunc with previous zipWiths.")
             }
           }
           else {
@@ -2667,13 +2676,16 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           //if(!isPrimitiveType(elem.mV)) throw new GenerationFailedException("GPUGen DeliteOPs: DeliteHashReduceElem only supports primitve type reduction.") 
           if(remap(elem.mK) != "int") throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem only supports perfect hash.")
           if(!isPrimitiveType(elem.mV)) {
-            if(encounteredZipWith contains getBlockResult(elem.rFunc)) {
-              val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+            if(encounteredZipWith contains unvar(getBlockResult(elem.rFunc))) {
+              val z = encounteredZipWith.get(unvar(getBlockResult(elem.rFunc))).get
               if(isPrimitiveType(z.dmR)) lf.tpe = "HASH_REDUCE_SPEC"
-              else throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem with non-primitive types is not supported.")
+              else throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem with non-primitive types is not supported - zipWith has non primitive type.")
             }
             else {
-              throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem with non-primitive types is not supported.")
+              //Console.println("encounteredZipWith: " + encounteredZipWith)
+              //Console.println("elem.rFunc: " + elem.rFunc.toString)
+              //Console.println("getBlockResult(elem.rFunc) " + getBlockResult(elem.rFunc).toString)
+              throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem with non-primitive types is not supported - could not match rFunc with previous zipWiths.")
             }
           }
           else {
@@ -2699,7 +2711,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         stream.println("return " + quote(getBlockResult(initFunc)) + ";")
         stream.println("}")
         if(lf.tpe == "REDUCE_SPEC") {
-          val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+          val z = encounteredZipWith.get(unvar(getBlockResult(elem.rFunc))).get
           stream.println("__device__ " + remap(z.dmR) + " dev_spcinit_" + funcNameSuffix(sym) + "(void) { return 0; }") 
         }
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
@@ -2726,7 +2738,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         stream.println("return " + quote(getBlockResult(elem.zero)) + ";")
         stream.println("}") 
         if(lf.tpe == "HASH_REDUCE_SPEC") {
-          val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+          val z = encounteredZipWith.get(unvar(getBlockResult(elem.rFunc))).get
           stream.println("__device__ " + remap(z.dmR) + " dev_spcinit_" + funcNameSuffix(sym) + "(void) { return 0; }") 
         }
       case _ => //
@@ -2769,7 +2781,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         emitBlock(elem.func)
         stream.println("}") 
 
-      case (sym, elem: DeliteReduceElem[_]) if(encounteredZipWith contains getBlockResult(elem.rFunc)) =>
+      case (sym, elem: DeliteReduceElem[_]) if(encounteredZipWith contains unvar(getBlockResult(elem.rFunc))) =>
         val freeVars = getFreeVarBlock(elem.func,List(op.v)).distinct
         val inputs = remapInputs(freeVars) 
         val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
@@ -2862,7 +2874,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
 
     // emit combine functions
     (symList zip op.body) foreach {
-      case (sym, elem: DeliteReduceElem[_]) if(encounteredZipWith contains getBlockResult(elem.rFunc)) =>
+      case (sym, elem: DeliteReduceElem[_]) if(encounteredZipWith contains unvar(getBlockResult(elem.rFunc))) =>
         /*
         val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
         val zbody = z.body.asInstanceOf[DeliteCollectElem[_,_,_]]
@@ -2876,7 +2888,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         stream.println("}")
         */
         // FIXIT: Hacky way of generating zip function
-        val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+        val z = encounteredZipWith.get(unvar(getBlockResult(elem.rFunc))).get
         val zbody = z.body.asInstanceOf[DeliteCollectElem[_,_,_]]
         val prevInnerScope = innerScope
         val result = zbody.func
@@ -2937,9 +2949,9 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           stream.println("}")
         }
 
-      case (sym, elem: DeliteHashReduceElem[_,_,_]) if(encounteredZipWith contains getBlockResult(elem.rFunc)) =>
+      case (sym, elem: DeliteHashReduceElem[_,_,_]) if(encounteredZipWith contains unvar(getBlockResult(elem.rFunc))) =>
         // FIXIT: Hacky way of generating zip function
-        val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+        val z = encounteredZipWith.get(unvar(getBlockResult(elem.rFunc))).get
         val zbody = z.body.asInstanceOf[DeliteCollectElem[_,_,_]]
         val prevInnerScope = innerScope
         val result = zbody.func
@@ -2990,9 +3002,9 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         lf.loopFuncOutputType = remap(getBlockResult(elem.func).tp)
 
       //TODO: Fix below alloc func to use a correct one.
-      case (sym, elem: DeliteReduceElem[_]) if(encounteredZipWith contains getBlockResult(elem.rFunc)) =>
+      case (sym, elem: DeliteReduceElem[_]) if(encounteredZipWith contains unvar(getBlockResult(elem.rFunc))) =>
         val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
-        val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+        val z = encounteredZipWith.get(unvar(getBlockResult(elem.rFunc))).get
         val zbody = z.body.asInstanceOf[DeliteCollectElem[_,_,_]]
         emitAllocFunc(List((sym,elem.zero)),"allocFunc_"+quote(sym),Nil,Map())
         lf.loopFuncOutputType = remap(getBlockResult(elem.func).tp)
@@ -3012,9 +3024,9 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         lf.loopFuncOutputType = remap(getBlockResult(elem.func._1).tp)
         lf.loopFuncOutputType_2 = remap(getBlockResult(elem.func._2).tp)
        
-      case (sym, elem: DeliteHashReduceElem[_,_,_]) if(encounteredZipWith contains getBlockResult(elem.rFunc)) =>
+      case (sym, elem: DeliteHashReduceElem[_,_,_]) if(encounteredZipWith contains unvar(getBlockResult(elem.rFunc))) =>
         val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)      
-        val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+        val z = encounteredZipWith.get(unvar(getBlockResult(elem.rFunc))).get
         val zbody = z.body.asInstanceOf[DeliteCollectElem[_,_,_]]
         emitAllocFunc(List((sym,elem.alloc)),"allocFunc_"+quote(sym),Nil,Map())
         lf.loopFuncOutputType = remap(getBlockResult(elem.valFunc).tp)
