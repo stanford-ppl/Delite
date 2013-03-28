@@ -194,16 +194,18 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteCollectionOpsE
     (e match {
       case DeliteArrayLength(a) => darray_length(f(a))
       case DeliteArrayApply(a,x) => darray_apply(f(a),f(x))
+      case DeliteArrayRange(s,e) => darray_range(f(s),f(e))
       case e@DeliteArrayNew(l) => darray_new_immutable(f(l))(e.mA,ctx)
       case e@DeliteArrayTake(a,x) => darray_take(f(a),f(x))(e.mA,ctx)
       case e@DeliteArraySort(x) => darray_sort(f(x))(e.mA)
       case e@DeliteArrayUpdate(l,i,r) => darray_unsafe_update(f(l),f(i),f(r))
       case e@DeliteArrayCopy(a,ap,d,dp,l) => toAtom(DeliteArrayCopy(f(a),f(ap),f(d),f(dp),f(l))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
       case e@DeliteArrayMap(in,g) => reflectPure(new { override val original = Some(f,e) } with DeliteArrayMap(f(in),f(g))(e.dmA,e.dmB))(mtype(manifest[A]),implicitly[SourceContext])      
-      case e@DeliteArrayReduce(in,g,z) => reflectPure(new { override val original = Some(f,e) } with DeliteArrayReduce(f(in),f(g),f(z))(e.dmA))(mtype(manifest[A]),implicitly[SourceContext])
+      case e@DeliteArrayReduce(in,g,z) => reflectPure(new { override val original = Some(f,e) } with DeliteArrayReduce(f(in),f(g),f(z))(e.dmA))(mtype(manifest[A]),implicitly[SourceContext])      
       case Reflect(e@DeliteArrayNew(l), u, es) => reflectMirrored(Reflect(DeliteArrayNew(f(l))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(DeliteArrayApply(l,r), u, es) => reflectMirrored(Reflect(DeliteArrayApply(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(DeliteArrayLength(a), u, es) => reflectMirrored(Reflect(DeliteArrayLength(f(a)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(DeliteArrayRange(s,e), u, es) => reflectMirrored(Reflect(DeliteArrayRange(f(s),f(e)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(DeliteArrayUpdate(l,i,r), u, es) => reflectMirrored(Reflect(DeliteArrayUpdate(f(l),f(i),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))   
       case Reflect(DeliteArrayTake(a,x), u, es) => reflectMirrored(Reflect(DeliteArrayTake(f(a),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(StructUpdate(s,n,i,x), u, es) => reflectMirrored(Reflect(StructUpdate(f(s),n,f(i),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))   
@@ -242,7 +244,69 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteCollectionOpsE
   
 }
 
-trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with StructExpOptCommon {
+/**
+ * Functionality required for running the generic benchmark acceleration experiment in Lancet (NameScore)
+ */
+trait DeliteArrayOpsLancet extends DeliteArrayOpsExp with TupleOpsExp {
+  this: DeliteOpsExp =>
+  
+  // case class SourceFromFile(path: Exp[String]) extends Def[io.BufferedSource]
+  // def source_fromfile(path: Exp[String]) = reflectPure(SourceFromFile(path))
+  // 
+  // case class SourceMkString(src: Exp[io.BufferedSource]) extends Def[String]
+  // def source_mkstring(src: Exp[io.BufferedSource]) = reflectPure(SourceMkString(src))
+
+  case class SourceStringFromFile(path: Exp[String]) extends Def[String]
+  def source_stringfromfile(path: Exp[String]) = reflectPure(SourceStringFromFile(path)) //source_mkstring(source_fromfile(path))
+  
+  case class DeliteArrayFromSplit(s: Exp[String], del: Exp[String]) extends Def[DeliteArray[String]]
+  def darray_fromsplit(s: Exp[String], del: Exp[String]) = reflectPure(DeliteArrayFromSplit(s,del))
+    
+  def darray_zipwithindex[T:Manifest](x: Exp[DeliteArray[T]]): Exp[DeliteArray[(T,Int)]] = x.zip(darray_range(unit(0),x.length)) { (a,b) => make_tuple2(a,b) }
+    
+  // should be moved to StringOps  
+  case class StringSlice(x: Exp[String], start: Exp[Int], end: Exp[Int]) extends Def[String]
+  case class StringLength(x: Exp[String]) extends Def[Int]  
+  case class StringMap[A:Manifest](x: Exp[String], c: Sym[Char], body: Block[A]) extends DefWithManifest[A,DeliteArray[A]]  
+  def string_slice(x: Exp[String], start: Exp[Int], end: Exp[Int]) = reflectPure(StringSlice(x,start,end))  
+  def string_length(x: Exp[String]) = reflectPure(StringLength(x))
+  def string_map[A:Manifest](x: Exp[String], f: Exp[Char] => Exp[A]) = {
+    val c = fresh[Char]
+    val b = reifyEffects(f(c))
+    reflectEffect(StringMap(x, c, b), summarizeEffects(b))    
+  }
+  
+  override def syms(e: Any): List[Sym[Any]] = e match {
+    case StringMap(s, c, body) => syms(s):::syms(body)
+    case _ => super.syms(e)
+  }
+
+  override def boundSyms(e: Any): List[Sym[Any]] = e match {
+    case StringMap(s, c, body) => c :: effectSyms(body)
+    case _ => super.boundSyms(e)
+  }
+
+  override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
+    case StringMap(s, c, body) => freqNormal(s):::freqHot(body)
+    case _ => super.symsFreq(e)
+  }  
+  
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = {
+    (e match {
+      // case SourceFromFile(p) => source_fromfile(f(p))
+      // case SourceMkString(s) => source_mkstring(f(s))
+      case SourceStringFromFile(p) => source_stringfromfile(f(p))
+      case DeliteArrayFromSplit(s,d) => darray_fromsplit(f(s),f(d))
+      case StringSlice(s,st,en) => string_slice(f(s),f(st),f(en))
+      case StringLength(x) => string_length(f(x))
+      case e@StringMap(x,c,b) => reflectPure(StringMap(f(x),f(c).asInstanceOf[Sym[Char]],f(b))(e.mA))
+      case Reflect(e@StringMap(x,c,b), u, es) => reflectMirrored(Reflect(StringMap(f(x),f(c).asInstanceOf[Sym[Char]],f(b))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case _ => super.mirror(e,f)
+    }).asInstanceOf[Exp[A]] // why??  
+  }
+}
+
+trait DeliteArrayOpsExpOpt extends DeliteArrayOpsLancet with StructExpOptCommon {
   this: DeliteOpsExp =>
 
   case class SoaTag[T](base: StructTag[T], length: Exp[Int]) extends StructTag[DeliteArray[T]]
@@ -262,8 +326,8 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with StructExpOptCommon {
 
   def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
     case r: RefinedManifest[T] => Some(AnonTag(r), r.fields)
-    case t if t.erasure == classOf[Tuple2[_,_]] => Some((classTag(t), List("_1","_2") zip t.typeArguments))
-    case t if t.erasure == classOf[Tuple3[_,_,_]] => Some((classTag(t), List("_1","_2","_3") zip t.typeArguments))
+    case t if t.erasure == classOf[Tuple2[_,_]] => Some((classTag(t), List("_A","_B") zip t.typeArguments))
+    case t if t.erasure == classOf[Tuple3[_,_,_]] => Some((classTag(t), List("_A","_B","_C") zip t.typeArguments))
     case _ => None
   }
 
@@ -416,7 +480,7 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenFat with
       emitValDef(sym, quote(lhs) + " intersect " + quote(rhs))*/    
     case DeliteArrayTake(lhs,n) =>
       emitValDef(sym, quote(lhs) + ".take(" + quote(n) + ")")
-    /*case a@DeliteArraySort(x) => 
+    case a@DeliteArraySort(x) => 
       stream.println("val " + quote(sym) + " = {")
       stream.println("val d = new Array[" + remap(a.mA) + "](" + quote(x) + ".length" + ")")
       stream.println("System.arraycopy(" + quote(x) + ", 0, d, 0, " + quote(x) + ".length)")
@@ -425,12 +489,29 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenFat with
       stream.println("}")    
     case DeliteArrayRange(st,en) =>
       emitValDef(sym, "Array.range(" + quote(st) + "," + quote(en) + ")")
+    /*  
     case DeliteArrayToSeq(a) => emitValDef(sym, quote(a) + ".toSeq")*/
     case StructUpdate(struct, fields, idx, x) =>
       emitValDef(sym, quote(struct) + "." + fields.reduceLeft(_ + "." + _) + "(" + quote(idx) + ") = " + quote(x))
     case VarUpdate(Variable(a), idx, x) =>
       val readVar = if (deliteInputs contains a) ".get" else ""
       emitValDef(sym, quote(a) + readVar + "(" + quote(idx) + ") = " + quote(x))
+      
+    // lancet benchmark
+    // case SourceFromFile(p) => emitValDef(sym, "scala.io.Source.fromFile(" + quote(p) + ")")
+    // case SourceMkString(s) => emitValDef(sym, quote(s) + ".mkString")
+    case SourceStringFromFile(p) => emitValDef(sym, "scala.io.Source.fromFile(" + quote(p) + ").mkString")
+    case DeliteArrayFromSplit(s,d) => emitValDef(sym, quote(s) + ".split(" + quote(d) + ")")
+    case StringSlice(s,st,en) => emitValDef(sym, quote(s) + ".slice(" + quote(st) + ", " + quote(en) + ")")
+    case StringLength(s) => emitValDef(sym, quote(s) + ".length")
+    case StringMap(s,c,b) => {
+      stream.println("val " + quote(sym) + " = {")
+      stream.println(quote(s) + ".map(" + quote(c) + " => {")
+      emitBlock(b)
+      stream.println(quote(getBlockResult(b)))
+      stream.println("})")
+      stream.println("}")
+    }
     case _ => super.emitNode(sym, rhs)
   }
 
