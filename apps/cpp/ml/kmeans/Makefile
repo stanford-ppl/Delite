@@ -1,6 +1,6 @@
 CC=g++
-CFLAGS=-c -O3 -Wall -I../../ 
-LDFLAGS= -O3
+CFLAGS=-fopenmp -pthread -c -O3 -Wall -I../../ 
+LDFLAGS= -O3 -fopenmp -pthread
 HEADERS= ../OptiML.hpp
 SOURCES=kmeans.cpp 
 OBJECTS=$(SOURCES:.cpp=.o)
