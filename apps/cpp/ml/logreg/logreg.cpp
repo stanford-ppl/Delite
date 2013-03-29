@@ -119,9 +119,14 @@ int main(int argc,char *argv[]) {
   if((gradient = (double*)malloc(numFeatures * sizeof(double))) == NULL) cout<<"Cannot allocate memory";
   for (i = 0; i < numFeatures; i++) gradient[i] = 0.0;
 
-  double** all_gradients = (double**)malloc(numThreads*sizeof(double*));
+  int outer_size;
+  if (numThreads < 128) outer_size = 128; else outer_size = numThreads;
+  int inner_size;
+  if (numFeatures < 128) inner_size = 128; else inner_size = numFeatures;
+
+  double** all_gradients = (double**)malloc(outer_size*sizeof(double*));
   for (i = 0; i < numThreads; i++) {
-    all_gradients[i] = (double*)malloc(numFeatures*sizeof(double));
+    all_gradients[i] = (double*)malloc(inner_size*sizeof(double));
   }
 
   do { //until_converged
@@ -131,7 +136,7 @@ int main(int argc,char *argv[]) {
     for(i = 0; i < numFeatures; i++) gradient[i] = 0.0;
 
     
-    #pragma omp parallel private(i,j)
+    #pragma omp parallel private(i,j) //shared(x,v,numFeatures,numSamples)
     {
      int thread = omp_get_thread_num(); 
      for (j = 0; j < numFeatures; j++) {
@@ -139,7 +144,7 @@ int main(int argc,char *argv[]) {
       }
 
     //sum
-    #pragma omp for private(i,j)
+    #pragma omp for private(i,j) schedule(static)
     for (i = 0; i < numSamples; i++) {
       double hyp_temp = 0;
       for (j = 0; j < numFeatures; j++) { //hyp(cur, x(i))
