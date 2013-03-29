@@ -12,7 +12,7 @@ using namespace std;
 double tol = 0.001; // tolerance
 
 void print_usage() {
-  cout << "Usage: logreg <input data file> <labels file>\n";
+  cout << "Usage: logreg <input data file> <labels file> <num threads>\n";
   exit(-1);
 }
 
@@ -86,13 +86,16 @@ int main(int argc,char *argv[]) {
   int i, j;
   int iter = 0;
 
-  if(argc != 3) {
+  if(argc != 4) {
     print_usage();
   }
 
   int alpha = 1;
   double tol = .001;
   int maxIter = 30;
+  int numThreads = atoi(argv[3]);
+
+  omp_set_num_threads(numThreads);
 
   x = ReadInputMatrix(argv[1],x_row, x_col);
   v = ReadInputVector(argv[2], v_len);
@@ -104,6 +107,7 @@ int main(int argc,char *argv[]) {
   cout << "numSamples: " << numSamples << endl;
   cout << "numFeatures: " << numFeatures << endl;
 
+  cout << "numThreads: " << numThreads << endl;
   cout << "logreg starting computation" << endl;
   
   OptiML::tic();
@@ -115,35 +119,43 @@ int main(int argc,char *argv[]) {
   if((gradient = (double*)malloc(numFeatures * sizeof(double))) == NULL) cout<<"Cannot allocate memory";
   for (i = 0; i < numFeatures; i++) gradient[i] = 0.0;
 
+  double** all_gradients = (double**)malloc(numThreads*sizeof(double*));
+  for (i = 0; i < numThreads; i++) {
+    all_gradients[i] = (double*)malloc(numFeatures*sizeof(double));
+  }
+
   do { //until_converged
     iter++;
     
     for(i = 0; i < numFeatures; i++) cur[i] = gradient[i]; //swap
     for(i = 0; i < numFeatures; i++) gradient[i] = 0.0;
 
-    //sum
-    #pragma omp parallel 
+    
+    #pragma omp parallel private(i,j)
     {
-      double* local_gradient = (double*)malloc(numFeatures*sizeof(double));
-      for (j = 0; j < numFeatures; j++) local_gradient[j] = 0.0;
-
-      #pragma omp for private(i,j)
-      for (i = 0; i < numSamples; i++) {
-        double hyp_temp = 0;
-        for (j = 0; j < numFeatures; j++) { //hyp(cur, x(i))
-          hyp_temp += -1.0 * cur[j] * x[i][j];
-        }
-        double hyp = v[i] - (1.0 / (1.0 + exp(hyp_temp)));
-        for (j = 0; j < numFeatures; j++) { //x(i) * 
-          local_gradient[j] += x[i][j] * hyp;
-        }
+     int thread = omp_get_thread_num(); 
+     for (j = 0; j < numFeatures; j++) {
+        all_gradients[thread][j] = 0.0;
       }
 
-      #pragma omp critical
+    //sum
+    #pragma omp for private(i,j)
+    for (i = 0; i < numSamples; i++) {
+      double hyp_temp = 0;
+      for (j = 0; j < numFeatures; j++) { //hyp(cur, x(i))
+        hyp_temp += -1.0 * cur[j] * x[i][j];
+      }
+      double hyp = v[i] - (1.0 / (1.0 + exp(hyp_temp)));
+      for (j = 0; j < numFeatures; j++) { //x(i) * 
+        all_gradients[thread][j] += x[i][j] * hyp;
+      }
+    }
+    }
+
+    for (i = 0; i < numThreads; i++) {
       for (j = 0; j < numFeatures; j++) {
-        gradient[j] += local_gradient[j];
+        gradient[j] += all_gradients[i][j];
       }
-      free(local_gradient);
     }
 
     for (j = 0; j < numFeatures; j++) {
@@ -161,10 +173,13 @@ int main(int argc,char *argv[]) {
   free(v);
   free(cur);
 
+  for(i = 0; i < numThreads; i++) free(all_gradients[i]);
+  free(all_gradients);
+
   OptiML::toc();
   cout << "finished in " << iter << " iterations.\n";
   for(i = 0; i < numFeatures; i++) {
-    cout << gradient[i] << endl;
+    cout << fixed << gradient[i] << endl;
   }
   free(gradient);
 
