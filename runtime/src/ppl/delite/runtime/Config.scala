@@ -40,7 +40,7 @@ object Config {
   val taskQueueSize: Int = getProperty("delite.task.queue.size", "1024").toInt
 
   /* GPU optimization */
-  val gpuOptTrans: Boolean = getProperty("delite.gpu.opt.trans", "true") != "false"
+  val gpuOptTrans: Boolean = getProperty("delite.gpu.opt.trans", "false") != "false"
 
   /* Debug options */
   val queueSize: Int = getProperty("delite.debug.queue.size", "128").toInt
