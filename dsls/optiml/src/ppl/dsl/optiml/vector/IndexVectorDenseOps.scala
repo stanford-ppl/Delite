@@ -4,7 +4,7 @@ import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteCollectionOpsExp}
 import ppl.delite.framework.ops.DeliteCollection
-import ppl.delite.framework.datastructures.DeliteArray
+import ppl.delite.framework.datastructures.{DeliteStructsExp, DeliteArray}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.util.OverloadHack
 import scala.reflect.SourceContext
@@ -56,7 +56,7 @@ trait IndexVectorDenseOps extends Base with OverloadHack { this: OptiML =>
   def indexvectordense_new_unsafe(x: Rep[DenseVector[Int]])(implicit ctx: SourceContext): Rep[IndexVectorDense]  
 }
 
-trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOpsExp with VariablesExp with BaseFatExp { this: OptiMLExp => 
+trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOpsExp with VariablesExp with BaseFatExp with DeliteStructsExp { this: OptiMLExp => 
   //case class IndexVectorDenseLength(x: Exp[IndexVectorDense]) extends Def[Int]
   //case class IndexVectorDenseApply(x: Exp[IndexVectorDense], n: Exp[Int]) extends Def[Int]
   //case class IndexVectorDenseNewUnsafe(x: Exp[DenseVector[Int]]) extends Def[IndexVectorDense]
@@ -86,6 +86,12 @@ trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOp
     }
     else super.dc_alloc[A,CA](x,size)
   }  
+
+  override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = {
+    val m = manifest[T]
+    if (m.erasure == classOf[IndexVectorDense]) Some((classTag(m), collection.immutable.List("_data" -> manifest[DeliteArray[Int]], "_length" -> manifest[Int], "_isRow" -> manifest[Boolean])))
+    else super.unapplyStructType
+  }
   
   //////////////
   // mirroring

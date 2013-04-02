@@ -199,7 +199,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
   def densematrix_removerows_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], num: Rep[Int]): Rep[Unit] = {
     val idx = pos*x.numCols
     val len = num*x.numCols
-    val data = densematrix_raw_data(x).unsafeMutable
+    val data = densematrix_raw_data(x)//.unsafeMutable
     darray_copy(data, idx + len, data, idx, x.size - (idx + len))
     densematrix_set_numrows(x, x.numRows - num)
   }
@@ -238,7 +238,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
   protected def densematrix_insertspace[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit] = {
     if (pos < 0 || pos > x.size) fatal("IndexOutOfBounds")
     densematrix_ensureextra(x,len)
-    val d = densematrix_raw_data(x).unsafeMutable
+    val d = densematrix_raw_data(x)//.unsafeMutable
     darray_copy(d, pos, d, pos + len, x.size - pos)
   }
 

@@ -3,7 +3,7 @@ package ppl.dsl.optiql.ops
 import scala.virtualization.lms.common.{ScalaGenFat, BaseFatExp, Base}
 import ppl.dsl.optiql.{OptiQL, OptiQLExp}
 import ppl.delite.framework.ops.{DeliteCollection, DeliteCollectionOpsExp}
-import ppl.delite.framework.datastructures.{DeliteArray,DeliteArrayBuffer}
+import ppl.delite.framework.datastructures.{DeliteArray, DeliteArrayBuffer, DeliteStructsExp}
 import ppl.delite.framework.Util._
 import java.io.PrintWriter
 import scala.reflect.SourceContext
@@ -37,7 +37,7 @@ trait TableOps extends Base { this: OptiQL =>
   def tableToArray[T:Manifest](t: Rep[Table[T]]): Rep[DeliteArray[T]]
 }
 
-trait TableOpsExp extends TableOps with DeliteCollectionOpsExp { this: OptiQLExp =>
+trait TableOpsExp extends TableOps with DeliteCollectionOpsExp with DeliteStructsExp { this: OptiQLExp =>
 
   def tableRawData[T:Manifest](t: Exp[Table[T]]) = field[DeliteArray[T]](t, "data")
   def tableSize[T:Manifest](t: Exp[Table[T]]): Exp[Int] = field[Int](t, "size")
@@ -71,6 +71,12 @@ trait TableOpsExp extends TableOps with DeliteCollectionOpsExp { this: OptiQLExp
   override def dc_size_field[A:Manifest](x: Exp[DeliteCollection[A]]) = {
     if (isTable(x)) "size"
     else super.dc_size_field(x)
+  }
+
+  override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = {
+    val m = manifest[T]
+    if (m.erasure == classOf[Table[_]]) Some((classTag(m), List("data" -> darrayManifest(m.typeArguments(0)), "size" -> manifest[Int])))
+    else super.unapplyStructType
   }
   
   /* override def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext) = {

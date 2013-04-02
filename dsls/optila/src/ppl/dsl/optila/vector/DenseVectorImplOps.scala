@@ -108,7 +108,7 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
   // }
   // 
   // def densevector_update_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {
-  //   val d = densevector_raw_data(v).unsafeMutable
+  //   val d = densevector_raw_data(v)//.unsafeMutable
   //   darray_update(d,pos,x) 
   // }
   
@@ -125,7 +125,7 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
   def densevector_copyfrom_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], xs: Rep[DenseVector[A]]): Rep[Unit] = {
     //chkRange(pos, pos + xs.length)
     var i = 0
-    val d = densevector_raw_data(v).unsafeMutable
+    val d = densevector_raw_data(v)//.unsafeMutable
     while (i < xs.length) {
       darray_update(d,pos+i,xs(i))
       i += 1
@@ -134,13 +134,13 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
 
   def densevector_removeall_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit] = {
     //chkRange(pos, pos + len)
-    val data = densevector_raw_data(v).unsafeMutable
+    val data = densevector_raw_data(v)//.unsafeMutable
     darray_copy(data, pos + len, data, pos, v.length - (pos + len))
     densevector_set_length(v, v.length - len)
   }
 
   def densevector_trim_impl[A:Manifest](v: Rep[DenseVector[A]]): Rep[Unit] = {
-    val data = densevector_raw_data(v).unsafeMutable
+    val data = densevector_raw_data(v)//.unsafeMutable
     if (v.length < data.length) {
       val outData = DeliteArray[A](v.length)
       darray_copy(data, 0, outData, 0, v.length)
@@ -159,17 +159,7 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
 
   protected def densevector_insertspace[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit] = {
     densevector_ensureextra(v,len)
-    
-    // *** TODO: Vector of struct updates are not working correctly ***
-    
-    // when things are structs, the darray ops get rewritten to be on the underlying fields, which are not mutable!
-    // unsafeMutable needs to create a copy of the struct with mutable fields.. (just like unsafeImmutable needs to create a copy of the struct with immutable fields)?
-    // that's not quite right though, since not all the fields should be mutable
-    
-    // if we use unsafe, do the writes still happen? rule: use unsafe except when using darray_update?
-    // seems like the way the rewrites are currently written, we need to use a different strategy at the call-site when updating structs and when not updating structs, which is broken
-    
-    val data = densevector_raw_data(v).unsafeMutable
+    val data = densevector_raw_data(v)//.unsafeMutable
     darray_copy(data, pos, data, pos + len, v.length - pos)
     densevector_set_length(v, v.length + len)
   }
@@ -182,7 +172,7 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
   }
 
   protected def densevector_realloc[A:Manifest](v: Rep[DenseVector[A]], minLen: Rep[Int]): Rep[Unit] = {  
-    val data = densevector_raw_data(v).unsafeMutable
+    val data = densevector_raw_data(v)//.unsafeMutable
     var n = Math.max(4, data.length * 2)
     while (n < minLen) n = n*2
     val d = DeliteArray[A](n)

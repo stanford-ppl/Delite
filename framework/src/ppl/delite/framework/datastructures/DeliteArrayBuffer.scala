@@ -110,18 +110,14 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
   }
 
   protected def darray_buffer_copyfrom[A:Manifest](d: Exp[DeliteArrayBuffer[A]], pos: Exp[Int], xs: Exp[DeliteArray[A]]): Exp[Unit] = {
-    val i = var_new(unit(0))
     val data = darray_buffer_raw_data(d)
-    while (i < xs.length) {
-      darray_unsafe_update(data,pos+readVar(i),xs(i))
-      i += 1
-    }
+    darray_copy(xs, unit(0), data, pos, xs.length)
   }
 
   protected def darray_buffer_insertspace[A:Manifest](d: Exp[DeliteArrayBuffer[A]], pos: Exp[Int], len: Exp[Int]): Exp[Unit] = {
     darray_buffer_ensureextra(d,len)
     val data = darray_buffer_raw_data(d)
-    darray_unsafe_copy(data, pos, data, pos + len, d.length - pos)
+    darray_copy(data, pos, data, pos + len, d.length - pos)
     darray_buffer_set_length(d, d.length + len)
   }
 
@@ -138,8 +134,8 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     val n = var_new(if (unit(4) > doubleLength) unit(4) else doubleLength)
     while (n < minLen) n = n * unit(2)
     val newData = DeliteArray[A](n)
-    darray_unsafe_copy(oldData, unit(0), newData, unit(0), d.length)
-    darray_buffer_set_raw_data(d, newData.unsafeImmutable)
+    darray_copy(oldData, unit(0), newData, unit(0), d.length)
+    darray_buffer_set_raw_data(d, newData)
   }
 
   /////////////////////
@@ -189,7 +185,7 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
   
   override def dc_copy[A:Manifest](src: Exp[DeliteCollection[A]], srcPos: Exp[Int], dst: Exp[DeliteCollection[A]], dstPos: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
     if (isDeliteArrayBuffer(src) && isDeliteArrayBuffer(dst)) {
-      darray_unsafe_copy(darray_buffer_raw_data(asDeliteArrayBuffer(src)), srcPos, darray_buffer_raw_data(asDeliteArrayBuffer(dst)), dstPos, size)
+      darray_copy(darray_buffer_raw_data(asDeliteArrayBuffer(src)), srcPos, darray_buffer_raw_data(asDeliteArrayBuffer(dst)), dstPos, size)
     }
     else super.dc_copy(src,srcPos,dst,dstPos,size)
   }

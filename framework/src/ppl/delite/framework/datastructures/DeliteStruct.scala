@@ -5,6 +5,7 @@ import scala.reflect.{RefinedManifest, SourceContext}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{CudaCodegen,OpenCLCodegen, CCodegen}
 import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.delite.framework.Config
 import ppl.delite.framework.Util._
 
 trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsExp with OrderingOpsExp => // FIXME: mix in prim somewhere else
@@ -124,7 +125,11 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
       e
   }).asInstanceOf[Def[A]]
 
-
+  override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case s: AbstractStruct[_] => Nil //ignore nested mutability for Structs: this is only safe because we rewrite mutations to atomic operations
+    case NestedFieldUpdate(_,_,_) => Nil
+    case _ => super.containSyms(e)
+  }
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case Reflect(NestedFieldUpdate(struct, fields, rhs), u, es) => reflectMirrored(Reflect(NestedFieldUpdate(f(struct), fields, f(rhs)), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -134,17 +139,21 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
     case Reflect(x@IntMod(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
     case Reflect(x@IntDivide(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
     case Reflect(x@OrderingLT(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
-    case _ => 
-      //println("mirror: "+e)
-      super.mirror(e,f)
+    case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
 
+
+  object StructType { //TODO: we should have a unified way of handling this, e.g., TypeTag[T] instead of Manifest[T]
+    def unapply[T:Manifest](e: Exp[DeliteArray[T]]) = unapplyStructType[T]
+    def unapply[T:Manifest] = unapplyStructType[T]
+  }
 
   def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
     case r: RefinedManifest[T] => Some(AnonTag(r), r.fields)
     case t if t.erasure == classOf[Tuple2[_,_]] => Some((classTag(t), List("_1","_2") zip t.typeArguments))
     case t if t.erasure == classOf[Tuple3[_,_,_]] => Some((classTag(t), List("_1","_2","_3") zip t.typeArguments))
     case t if t.erasure == classOf[Tuple4[_,_,_,_]] => Some((classTag(t), List("_1","_2","_3","_4") zip t.typeArguments))
+    case t if t.erasure == classOf[Tuple5[_,_,_,_,_]] => Some((classTag(t), List("_1","_2","_3","_4","_5") zip t.typeArguments))
     case _ => None
   }
 
@@ -178,12 +187,12 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
   }
 
   override def remap[A](m: Manifest[A]) = m match {
+    case StructType(_,_) => structName(m)
     case s if s <:< manifest[Record] => structName(m)
-    case s if isSubtype(s.erasure, classOf[Record]) => structName(m) // do we need isSubtype(..) when Record is a trait? i.e., will <:< match now?
     case _ => super.remap(m)
   }
 
-  private def isVarType[T](m: Manifest[T]) = m.erasure.getSimpleName == "Variable"
+  private def isVarType[T](m: Manifest[T]) = m.erasure.getSimpleName == "Variable" && unapplyStructType(m.typeArguments(0)) == None
   private def isArrayType[T](m: Manifest[T]) = m.erasure.getSimpleName == "DeliteArray"
   private def isStringType[T](m: Manifest[T]) = m.erasure.getSimpleName == "String"
   private def baseType[T](m: Manifest[T]) = if (isVarType(m)) mtype(m.typeArguments(0)) else m
@@ -240,8 +249,8 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
   }
 
   override def remap[A](m: Manifest[A]) = m match {
+    case StructType(_,_) => structName(m)
     case s if s <:< manifest[Record] => structName(m)
-    case s if isSubtype(s.erasure, classOf[Record]) => structName(m)
     case _ => super.remap(m)
   }
 
