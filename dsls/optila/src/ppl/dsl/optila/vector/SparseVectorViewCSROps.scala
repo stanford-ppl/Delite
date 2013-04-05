@@ -50,3 +50,9 @@ trait ScalaGenSparseVectorViewCSROps extends BaseGenSparseVectorViewCSROps with 
   }  
   
 }  
+
+trait CudaGenSparseVectorViewCSROps extends BaseGenSparseVectorViewCSROps with CudaGenFat {
+  val IR: SparseVectorViewCSROpsExp
+  import IR._
+  
+}  

@@ -514,8 +514,10 @@ object DeliteTaskGraph {
       output.resultType = outList.head
       output.func = "allocFunc_%s".format(outputMap.keys.head)
       for (sym <- outList.tail.head.asInstanceOf[List[String]].reverse) {
-        output.inputs ::= (getOp(sym), sym)
+        val depOp = try { getOp(sym) } catch { case e: RuntimeException => null }
+        output.inputs ::= (depOp, sym)
       }
+      
       //output copy
       output.funcReturn = "copyOutputDtoH_%s".format(outputMap.keys.head)
 

@@ -379,9 +379,21 @@ trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
     if (isDenseVec(x)) asDenseVec(x).update(n,y)
     else super.dc_update(x,n,y)        
   }
+
+  override def dc_parallelization[A:Manifest](x: Exp[DeliteCollection[A]], hasConditions: Boolean)(implicit ctx: SourceContext) = {
+    if (isDenseVec(x)) {
+      if (hasConditions) ParSimpleBuffer else ParFlat
+    }
+    else super.dc_parallelization(x, hasConditions)
+  }
+
+  override def dc_appendable[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isDenseVec(x)) unit(true)
+    else super.dc_appendable(x,i,y)        
+  }  
   
   override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
-    if (isDenseVec(x)) { asDenseVec(x) <<= y; unit(true) }
+    if (isDenseVec(x)) { asDenseVec(x) <<= y }
     else super.dc_append(x,i,y)        
   }  
   

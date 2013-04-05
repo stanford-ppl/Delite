@@ -136,7 +136,7 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
   }
 
   override def remap[A](m: Manifest[A]) = m match {
-    case s if s <:< manifest[Record] => structName(m)
+    case s if s <:< manifest[Record] => "generated.scala."+structName(m)
     case _ => super.remap(m)
   }
 
@@ -184,10 +184,8 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
         
       dependentStructTypes foreach { t =>
         if (encounteredStructs.contains(t)) {
-          if (generatedStructs.contains(t)) {
-            stream.println("#include \"" + t + ".h\"") 
-          }
-          else if (generationFailedStructs.contains(t)) {
+          stream.println("#include \"" + t + ".h\"") 
+          if (generationFailedStructs.contains(t)) {
             throw new GenerationFailedException("Cannot generate struct " + name + " because of the failed dependency " + t)
           }
           else {

@@ -26,7 +26,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
             newSym
           case None => super.transformStm(stm)
         }
-        case ParBuffer => soaBufferCollect[a,i,ca](size,v,body)(body.mA,body.mI,body.mCA) match {
+        case ParBuffer | ParSimpleBuffer => soaBufferCollect[a,i,ca](size,v,body)(body.mA,body.mI,body.mCA) match {
           case Some(newSym) => newSym
           case None => super.transformStm(stm)
         }
@@ -83,6 +83,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
             aV = buf_aV,
             iV = buf_iV,
             iV2 = buf_iV2,
+            appendable = reifyEffects(dc_appendable(allocV,tv,elemV)),
             append = reifyEffects(dc_append(allocV,tv,elemV)),
             setSize = reifyEffects(dc_set_logical_size(allocV,sizeV)),
             allocRaw = reifyEffects(dc_alloc[B,DeliteArray[B]](allocV,sizeV)),
@@ -155,6 +156,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
             aV = buf_aV,
             iV = buf_iV,
             iV2 = buf_iV2,
+            appendable = reifyEffects(dc_appendable(allocV,tv,elemV)),
             append = reifyEffects(dc_append(allocV,tv,elemV)),
             setSize = reifyEffects(dc_set_logical_size(allocV,sizeV)),
             allocRaw = reifyEffects(dc_alloc[B,DeliteArrayBuffer[B]](allocV,sizeV)),

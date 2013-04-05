@@ -283,49 +283,27 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
   }
 }
 
-trait OptiLACodeGenCuda extends OptiLACudaCodeGenPkg with OptiLACodeGenBase with OptiLACudaGenExternal with CudaGenDeliteOps
-  with CudaGenArithOps with CudaGenVectorOps with CudaGenDenseVectorOps with CudaGenDenseVectorViewOps with CudaGenMatrixOps with CudaGenDenseMatrixOps 
-  with CudaGenVariantsOps with CudaGenDeliteCollectionOps with CudaGenDeliteArrayOps
+trait OptiLACodeGenCuda extends OptiLACudaCodeGenPkg with OptiLACodeGenBase with OptiLACudaGenExternal 
+  with CudaGenDeliteOps with CudaGenDeliteCollectionOps with CudaGenDeliteStruct with CudaGenDeliteArrayOps with CudaGenDeliteArrayBufferOps //with CudaGenTupledFunctions 
+  /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenVectorOps with CudaGenDenseVectorOps with CudaGenSparseVectorOps
+  with CudaGenDenseVectorViewOps with CudaGenSparseVectorViewOps with CudaGenMatrixOps with CudaGenDenseMatrixOps with CudaGenSparseMatrixOps with CudaGenSparseMatrixBuildableOps
+  with CudaGenExceptionOps
+  with CudaGenVariantsOps
+  with CudaGenSparseMatrixCSROps with CudaGenSparseMatrixCOOOps with CudaGenSparseVectorViewCSROps
   with DeliteCudaGenAllOverrides with DeliteCppHostTransfer with OptiLACppHostTransfer with DeliteCudaDeviceTransfer with OptiLACudaDeviceTransfer { //with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
   val IR: DeliteApplication with OptiLAExp
+
   import IR._
 
   // Maps the scala type to cuda type
   override def remap[A](m: Manifest[A]) : String = {
     m.toString match {
-        /*
-      case "ppl.dsl.optila.DenseVector[Int]" => "DenseVector< int >"
-      case "ppl.dsl.optila.DenseVector[Long]" => "DenseVector< long >"
-      case "ppl.dsl.optila.DenseVector[Float]" => "DenseVector< float >"
-      case "ppl.dsl.optila.DenseVector[Double]" => "DenseVector< double >"
-      case "ppl.dsl.optila.DenseVector[Boolean]" => "DenseVector< bool >"
-      case "ppl.dsl.optila.RangeVector" => "RangeVector"
-      case "ppl.dsl.optila.DenseMatrix[Int]" => "DenseMatrix< int >"
-      case "ppl.dsl.optila.DenseMatrix[Long]" => "DenseMatrix< long >"
-      case "ppl.dsl.optila.DenseMatrix[Float]" => "DenseMatrix< float >"
-      case "ppl.dsl.optila.DenseMatrix[Double]" => "DenseMatrix< double >"
-      case "ppl.dsl.optila.DenseMatrix[Boolean]" => "DenseMatrix< bool >"
-      case "ppl.dsl.optila.DenseVectorView[Int]" => "DenseVectorView< int >"
-      case "ppl.dsl.optila.DenseVectorView[Long]" => "DenseVectorView< long >"
-      case "ppl.dsl.optila.DenseVectorView[Float]" => "DenseVectorView< float >"
-      case "ppl.dsl.optila.DenseVectorView[Double]" => "DenseVectorView< double >"
-      case "ppl.dsl.optila.DenseVectorView[Boolean]" => "DenseVectorView< bool >"
-      */
-      //case "ppl.dsl.optila.MatrixRow[Int]" => "DenseVectorView<int>"
-      //case "ppl.dsl.optila.MatrixRow[Long]" => "DenseVectorView<long>"
-      //case "ppl.dsl.optila.MatrixRow[Float]" => "DenseVectorView<float>"
-      //case "ppl.dsl.optila.MatrixRow[Double]" => "DenseVectorView<double>"
-      //case "ppl.dsl.optila.MatrixRow[Boolean]" => "DenseVectorView<bool>"
-      case _ => {
-        m.toString match {
-          case "Array[Int]" => "DeliteArray< int >"
-          case "Array[Long]" => "DeliteArray< long >"
-          case "Array[Float]" => "DeliteArray< float >"
-          case "Array[Double]" => "DeliteArray< double >"
-          case "Array[Boolean]" => "DeliteArray< bool >"
-          case _ => super.remap(m)
-        }
-      }
+      case "Array[Int]" => "DeliteArray< int >"
+      case "Array[Long]" => "DeliteArray< long >"
+      case "Array[Float]" => "DeliteArray< float >"
+      case "Array[Double]" => "DeliteArray< double >"
+      case "Array[Boolean]" => "DeliteArray< bool >"
+      case _ => super.remap(m)
     }
   }
 
@@ -361,27 +339,6 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
 
   override def remap[A](m: Manifest[A]) : String = {
     m.toString match {
-      case "ppl.dsl.optila.DenseVector[Int]" => "DenseVector_int"
-      case "ppl.dsl.optila.DenseVector[Long]" => "DenseVector_long"
-      case "ppl.dsl.optila.DenseVector[Float]" => "DenseVector_float"
-      case "ppl.dsl.optila.DenseVector[Double]" => "DenseVector_double"
-      case "ppl.dsl.optila.DenseVector[Boolean]" => "DenseVector_bool"
-      case "ppl.dsl.optila.RangeVector" => "RangeVector"
-      case "ppl.dsl.optila.DenseMatrix[Int]" => "DenseMatrix_int"
-      case "ppl.dsl.optila.DenseMatrix[Long]" => "DenseMatrix_long"
-      case "ppl.dsl.optila.DenseMatrix[Float]" => "DenseMatrix_float"
-      case "ppl.dsl.optila.DenseMatrix[Double]" => "DenseMatrix_double"
-      case "ppl.dsl.optila.DenseMatrix[Boolean]" => "DenseMatrix_bool"
-      case "ppl.dsl.optila.DenseVectorView[Int]" => "DenseVectorView_int"
-      //case "ppl.dsl.optila.DenseVectorView[Long]" => "DenseVectorView_long"
-      //case "ppl.dsl.optila.DenseVectorView[Float]" => "DenseVectorView_float"
-      //case "ppl.dsl.optila.DenseVectorView[Double]" => "DenseVectorView_double"
-      //case "ppl.dsl.optila.DenseVectorView[Boolean]" => "DenseVectorView_bool"
-      //case "ppl.dsl.optila.MatrixRow[Int]" => "DenseVectorView<int>"
-      //case "ppl.dsl.optila.MatrixRow[Long]" => "DenseVectorView<long>"
-      //case "ppl.dsl.optila.MatrixRow[Float]" => "DenseVectorView<float>"
-      //case "ppl.dsl.optila.MatrixRow[Double]" => "DenseVectorView<double>"
-      //case "ppl.dsl.optila.MatrixRow[Boolean]" => "DenseVectorView<bool>"
       case "Array[Int]" => "DeliteArray_int"
       case "Array[Long]" => "DeliteArray_long"
       case "Array[Float]" => "DeliteArray_float"
@@ -411,20 +368,13 @@ trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenD
   import IR._
 
   override def remap[A](m: Manifest[A]) : String = {
-    val startsWith = m.toString.split("\\[")
-    startsWith(0) match {
-      case "ppl.dsl.optila.DenseVector" => "DenseVector< " + remap(m.typeArguments(0)) + " >"
-      case "ppl.dsl.optila.DenseMatrix" => "DenseMatrix< " + remap(m.typeArguments(0)) + " >"
-      case _ => {
-        m.toString match {
-          case "Array[Int]" => "DeliteArray< int >"
-          case "Array[Long]" => "DeliteArray< long >"
-          case "Array[Float]" => "DeliteArray< float >"
-          case "Array[Double]" => "DeliteArray< double >"
-          case "Array[Boolean]" => "DeliteArray< bool >"
-          case _ => super.remap(m)
-        }
-      }
+    m.toString match {
+      case "Array[Int]" => "DeliteArray< int >"
+      case "Array[Long]" => "DeliteArray< long >"
+      case "Array[Float]" => "DeliteArray< float >"
+      case "Array[Double]" => "DeliteArray< double >"
+      case "Array[Boolean]" => "DeliteArray< bool >"
+      case _ => super.remap(m)
     }
   }
 
