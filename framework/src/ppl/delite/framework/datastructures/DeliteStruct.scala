@@ -71,7 +71,7 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
   }
 
   override def remap[A](m: Manifest[A]) = m match {
-    case s if s <:< manifest[Record] => structName(m)
+    case s if s <:< manifest[Record] => "generated.scala."+structName(m)
     case _ => super.remap(m)
   }
 
@@ -136,7 +136,7 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
   }
 
   override def remap[A](m: Manifest[A]) = m match {
-    case s if s <:< manifest[Record] => "generated.scala."+structName(m)
+    case s if s <:< manifest[Record] => structName(m)
     case _ => super.remap(m)
   }
 

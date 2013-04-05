@@ -260,10 +260,9 @@ trait CudaSyncGenerator extends CudaToScalaSync {
     }
 
     //TODO: Separate JVM/Host/Device frees
-    //TODO: Enable freeing primitive type GPU allocations
     writeCudaFreeInit()
     for (f <- m.items) {
-      writeCudaFree(f._2, false)
+      writeCudaFree(f._2, isPrimitiveType(f._1.outputType(f._2)))
       if (f._1.scheduledResource != location) writeJVMRelease(f._2)
     }
 
