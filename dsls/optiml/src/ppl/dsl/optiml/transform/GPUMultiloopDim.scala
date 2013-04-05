@@ -89,7 +89,8 @@ trait MultiloopTransformExp extends DeliteTransform
                        f: Rep[Int] => Rep[A],                        
                        upd: (Rep[I],Rep[Int],Rep[A]) => Rep[Unit], 
                        cond: List[Rep[Int] => Rep[Boolean]], 
-                       append: (Rep[I],Rep[Int],Rep[A]) => Rep[Boolean], 
+                       appendable: (Rep[I],Rep[Int],Rep[A]) => Rep[Boolean], 
+                       append: (Rep[I],Rep[Int],Rep[A]) => Rep[Unit], 
                        setSize: (Rep[I],Rep[Int]) => Rep[Unit],
                        finalizer: Rep[I] => Rep[CA]) = {      
                          
@@ -99,8 +100,12 @@ trait MultiloopTransformExp extends DeliteTransform
       while (i < size) {
         // mixed staged and interpreted code follows (operations on cond are unlifted)
         if (cond.nonEmpty) {
-          if (cond.map(c=>c(i)).reduce((a,b) => a && b)) 
-             if (append(res,i,f(i))) appended += 1 
+          if (cond.map(c=>c(i)).reduce((a,b) => a && b)) { 
+             if (appendable(res,i,f(i))) {
+              append(res,i,f(i))
+              appended += 1
+             }
+          } 
         }
         else 
           upd(res,i,f(i))
@@ -119,6 +124,7 @@ trait MultiloopTransformExp extends DeliteTransform
           {n => transformBlockWithBound(t, e.func, List(loop.v -> n))},                          
           {(col,n,x) => transformBlockWithBound(t, e.update, List(e.allocVal -> col, loop.v -> n, e.eV -> x))},                
           e.cond.map{c => { n: Rep[Int] => transformBlockWithBound(t, c, List(loop.v -> n)) }},
+          {(col,n,x) => transformBlockWithBound(t, e.buf.appendable, List(e.allocVal -> col, loop.v -> n, e.eV -> x))},
           {(col,n,x) => transformBlockWithBound(t, e.buf.append, List(e.allocVal -> col, loop.v -> n, e.eV -> x))},                
           {(col,sz) => transformBlockWithBound(t, e.buf.setSize, List(e.allocVal -> col, e.sV -> sz))},                
           {col => transformBlockWithBound(t, e.finalizer, List(e.allocVal -> col))})

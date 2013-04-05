@@ -164,6 +164,11 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
     else super.dc_set_logical_size(x,y)        
   }
   
+  override def dc_appendable[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isDeliteArray(x)) { unit(true) }
+    else super.dc_appendable(x,i,y)
+  }
+
   override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
     if (isDeliteArray(x)) {
       val arr = asDeliteArray(x)
@@ -179,7 +184,6 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
       else {
         arr(size) = y
       }
-      unit(true)
     }
     else super.dc_append(x,i,y)
   }
@@ -558,13 +562,18 @@ trait CudaGenDeliteArrayOps extends BaseGenDeliteArrayOps with CudaGenFat with C
       // If isNestedNode, each thread allocates its own DeliteArray (TODO: Check the allocation does not escape the kernel)
       if(isNestedNode) {
         // If size is known before launching the kernel (same size for all the threads), allocate outside the kernel
+        //TODO: automatically figure out which access pattern is the best
         if(deliteInputs.contains(n)) { 
           val allocSym = registerTempAlloc(sym,a.mA,n)
-          stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + ",threadIdx.x+blockIdx.x*blockDim.x," + quote(outerLoopSize) + ");")
+          //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",blockDim.x*gridDim.x);")
+          //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",max(2*blockDim.x*gridDim.x,blockDim.x*(1+" + quote(outerLoopSize) + "/blockDim.x)));")
+          stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + "*" + quote(n) + ",1);")
         }
         else if (boundMap.contains(n) && deliteInputs.contains(boundMap(n))) {
           val allocSym = registerTempAlloc(sym,a.mA,boundMap(n))
-          stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + ",threadIdx.x+blockIdx.x*blockDim.x," + quote(outerLoopSize) + ");")
+          //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",max(2*blockDim.x*gridDim.x,blockDim.x*(1+" + quote(outerLoopSize) + "/blockDim.x)));")
+          //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",blockDim.x*gridDim.x);")
+          stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + "*" + quote(n) + ",1);")
         }
         // If size is not known before launching the kernel, use temporary memory
         // TODO: Figure out the size is the same for all the threads

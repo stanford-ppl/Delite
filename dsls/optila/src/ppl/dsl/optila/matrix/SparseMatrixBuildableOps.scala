@@ -208,14 +208,20 @@ trait SparseMatrixBuildableOpsExp extends SparseMatrixBuildableCompilerOps with 
   //   else super.dc_set_logical_size(x,y)        
   // }
 
+  override def dc_appendable[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isSparseMatBuildable(x)) {
+      if (y != defaultValue[A]) unit(true) 
+      else unit(false)
+    }      
+    else super.dc_appendable(x,i,y)        
+  } 
+
   override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
     if (isSparseMatBuildable(x)) {
       if (y != defaultValue[A]) { 
         val m = asSparseMatBuildable(x)
-        sparsematrix_buildable_append(m,i/m.numCols,i%m.numCols,y)
-        unit(true) 
+        sparsematrix_buildable_append(m,i/m.numCols,i%m.numCols,y) 
       }
-      else unit(false)
     }      
     else super.dc_append(x,i,y)        
   } 

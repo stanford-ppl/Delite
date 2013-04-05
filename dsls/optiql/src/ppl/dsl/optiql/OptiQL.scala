@@ -185,7 +185,7 @@ trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg wi
 }
 
 trait OptiQLCodeGenCuda extends OptiQLCodeGenBase with OptiQLCudaCodeGenPkg
-  with CudaGenDeliteCollectionOps with CudaGenDeliteOps with CudaGenDeliteArrayOps /*with CudaGenDeliteArrayBufferOps*/ with CudaGenDSArrayOps with DeliteCudaGenAllOverrides {
+  with CudaGenDeliteCollectionOps with CudaGenDeliteOps with CudaGenDeliteArrayOps /*with CudaGenDeliteArrayBufferOps*/ with CudaGenDSArrayOps with DeliteCudaGenAllOverrides with DeliteCppHostTransfer with DeliteCudaDeviceTransfer {
   val IR: DeliteApplication with OptiQLExp
 
   override def remap[A](m: Manifest[A]): String = {

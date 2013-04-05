@@ -371,6 +371,12 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
   }
   
   def emitBufferElem(op: AbstractFatLoop, elem: DeliteCollectElem[_,_,_]) {
+    // appendable
+    stream.println("{ // appendable")
+    stream.println(makeBoundVarArgs(elem.allocVal,elem.eV,op.v))
+    emitBlock(elem.buf.appendable)
+    stream.println(quote(getBlockResult(elem.buf.appendable)))
+    stream.println("},")
     // append
     stream.println("{ // append")
     stream.println(makeBoundVarArgs(elem.allocVal,elem.eV,op.v))

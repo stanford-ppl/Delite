@@ -121,6 +121,21 @@ trait DeliteGPUNestedMutation extends DeliteTestModule with OptiMLApplication {
   }
 }
 
+object DeliteGPUObjectReductionRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteGPUObjectReduction
+trait DeliteGPUObjectReduction extends DeliteTestModule with OptiMLApplication {
+  def main() = {
+    val in = Matrix.onesf(4096,4)
+    val out = ((0::in.numRows) { i => in(i).Clone }).sum
+
+    collect(out(0) == 4096.0f)
+    collect(out(1) == 4096.0f)
+    collect(out(2) == 4096.0f)
+    collect(out(3) == 4096.0f)
+    
+    mkReport
+  }
+}
+
 class DeliteGPUSuite extends DeliteSuite {
   //def testDeliteGPUBLASMM() { compileAndTest(DeliteGPUBLASMMRunner); }
   //def testDeliteGPUBLASMV() { compileAndTest(DeliteGPUBLASMVRunner); }
@@ -129,4 +144,6 @@ class DeliteGPUSuite extends DeliteSuite {
   def testDeliteGPUMemLeak() { compileAndTest(DeliteGPUMemLeakRunner, CHECK_MULTILOOP); }
   def testDeliteGPUMutation() { compileAndTest(DeliteGPUMutationRunner, CHECK_MULTILOOP); }
   def testDeliteGPUNestedMutation() { compileAndTest(DeliteGPUNestedMutationRunner, CHECK_MULTILOOP); }
+  def testDeliteGPUObjectReduction() { compileAndTest(DeliteGPUObjectReductionRunner, CHECK_MULTILOOP); }
+
 }
