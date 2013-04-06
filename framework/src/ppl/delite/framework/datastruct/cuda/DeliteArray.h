@@ -74,6 +74,19 @@ public:
       assert(false);
         data[idx] = value;
     }
+
+    __host__ __device__ void dc_copy(DeliteArray<T> from) {
+      for(int i=0; i<length; i++)
+        update(i,from.apply(i));
+    }
+
+    __host__ DeliteArray<T> *dc_alloc(void) {
+      return new DeliteArray<T>(length);
+    }
+    __host__ DeliteArray<T> *dc_alloc(int size) {
+      return new DeliteArray<T>(size);
+    }
+
     
 };
 

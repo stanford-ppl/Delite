@@ -4,7 +4,7 @@ import java.io.{PrintWriter}
 
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
-import scala.virtualization.lms.common.{CudaGenEffect, CudaGenBase, ScalaGenBase, OpenCLGenBase, CGenBase}
+import scala.virtualization.lms.common.{CudaGenEffect, CudaGenBase, ScalaGenEffect, ScalaGenBase, OpenCLGenBase, CGenBase}
 import scala.virtualization.lms.internal.{GenerationFailedException}
 import scala.reflect.SourceContext
 
@@ -341,15 +341,16 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     val mA = manifest[A]
   }
 
-  case class DenseMatrixMultiply3by3[A:Manifest](x: Exp[DenseMatrix[A]], y: Exp[DenseMatrix[A]]) extends Def[DenseMatrix[A]] {
+  case class DenseMatrixMultiply3by3[A:Manifest:Arith](x: Exp[DenseMatrix[A]], y: Exp[DenseMatrix[A]]) extends Def[DenseMatrix[A]] {
     type OpType <: DenseMatrixMultiply3by3[A]
     def original: Option[(Transformer,Def[_])] = None
     def copyTransformedBlockOrElse[B:Manifest](f: OpType => Block[B])(e: => Block[B]): Block[B] = original.map(p=>p._1(f(p._2.asInstanceOf[OpType]))).getOrElse(e)
 
     def alloc:Exp[DenseMatrix[A]] = DenseMatrix[A](unit(3),unit(3))
     final lazy val allocBlock: Block[DenseMatrix[A]] = copyTransformedBlockOrElse(_.allocBlock)(reifyEffects(alloc))
-    //val allocBlock = reifyEffects(alloc)
+    final lazy val implBlock: Block[DenseMatrix[A]] = copyTransformedBlockOrElse(_.implBlock)(reifyEffects(matrix_multiply_impl[A,DenseMatrix[A],DenseMatrix[A]](x,y)))
     val mA = manifest[A]
+    val a = implicitly[Arith[A]]
   }
   
 
@@ -505,7 +506,7 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     case e@DenseMatrixSigmoidVectorized(x) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixSigmoidVectorized(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     //case e@DenseMatrixTimesVector(x,y) => reflectPure(new {override val original = Some(f,e) } with DenseMatrixTimesVector(f(x),f(y))(e.m,e.a))(mtype(manifest[A]),implicitly[SourceContext])
     case e@DenseMatrixObjectConst(numRows,numCols,c) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixObjectConst(f(numRows),f(numCols),f(c))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@DenseMatrixMultiply3by3(x,y) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixMultiply3by3(f(x),f(y))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@DenseMatrixMultiply3by3(x,y) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixMultiply3by3(f(x),f(y))(e.mA,e.a))(mtype(manifest[A]),implicitly[SourceContext])
     // reflected
     case Reflect(e@DenseMatrixObjectNew(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixObjectNew(f(x),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     //case Reflect(e@DenseMatrixRawData(x), u, es) => reflectMirrored(Reflect(DenseMatrixRawData(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
@@ -542,7 +543,7 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     case Reflect(e@DenseMatrixRemoveRows(x,y,z), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixRemoveRows(f(x),f(y),f(z))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@DenseMatrixRemoveCols(x,y,z), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixRemoveCols(f(x),f(y),f(z))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case Reflect(e@DenseMatrixObjectConst(numRows,numCols,c), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixObjectConst(f(numRows),f(numCols),f(c))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@DenseMatrixMultiply3by3(x,y), u, es) => reflectMirrored(Reflect(new {override val original = Some(f,e) } with DenseMatrixMultiply3by3(f(x),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DenseMatrixMultiply3by3(x,y), u, es) => reflectMirrored(Reflect(new {override val original = Some(f,e) } with DenseMatrixMultiply3by3(f(x),f(y))(e.mA,e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
   
@@ -552,26 +553,26 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
 
   // TODO: precise sharing info for other IR types (default is conservative)
   override def blocks(e: Any): List[Block[Any]] = e match {
-    case e@DenseMatrixMultiply3by3(x,y) => super.blocks(e) ::: blocks(e.allocBlock)
+    case e@DenseMatrixMultiply3by3(x,y) => super.blocks(e) ::: blocks(e.allocBlock) ::: blocks(e.implBlock)
     case _ => super.blocks(e)
   }
   override def syms(e: Any): List[Sym[Any]] = e match {
-    case e@DenseMatrixMultiply3by3(x,y) => super.syms(e) ::: syms(e.allocBlock)
+    case e@DenseMatrixMultiply3by3(x,y) => super.syms(e) ::: syms(e.allocBlock) ::: syms(e.implBlock)
     case _ => super.syms(e)
   }
 
   override def readSyms(e: Any): List[Sym[Any]] = e match {
-    case e@DenseMatrixMultiply3by3(x,y) => super.syms(e) ::: syms(e.allocBlock)
+    case e@DenseMatrixMultiply3by3(x,y) => super.syms(e) ::: syms(e.allocBlock) ::: syms(e.implBlock)
     case _ => super.readSyms(e)
   }
 
   override def boundSyms(e: Any): List[Sym[Any]] = e match {
-    case e@DenseMatrixMultiply3by3(x,y) => effectSyms(e.allocBlock) //scala.List(x,y,e.alloc)
+    case e@DenseMatrixMultiply3by3(x,y) => effectSyms(e.allocBlock) ::: effectSyms(e.implBlock)//scala.List(x,y,e.alloc)
     case _ => super.boundSyms(e)
   }
 
   override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
-    case e@DenseMatrixMultiply3by3(x,y) => super.symsFreq(e) ::: freqNormal(e.allocBlock)
+    case e@DenseMatrixMultiply3by3(x,y) => super.symsFreq(e) ::: freqNormal(e.allocBlock) ::: freqNormal(e.implBlock)
     case _ => super.symsFreq(e)
   }
 
@@ -641,12 +642,15 @@ trait DenseMatrixOpsExpOpt extends DenseMatrixOpsExp {
 }
 
 
-trait ScalaGenDenseMatrixOps extends ScalaGenBase {
+trait ScalaGenDenseMatrixOps extends ScalaGenEffect {
   val IR: DenseMatrixOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case DenseMatrixMultiply3by3(x,y) => stream.println("val " + quote(sym) + ": " + remap(sym.tp) + " = throw new Exception(\"should never be executed\")")
+    case e@DenseMatrixMultiply3by3(x,y) => 
+      emitBlock(e.implBlock)
+      emitValDef(sym, quote(getBlockResult(e.implBlock)))
+      //stream.println("val " + quote(sym) + ": " + remap(sym.tp) + " = throw new Exception(\"should never be executed\")")
     case _ => super.emitNode(sym, rhs)
   }
 }

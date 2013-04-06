@@ -55,7 +55,7 @@ trait DeliteILOps extends Variables with StructOps with StructTags with DeliteAr
   def collect[A:Manifest,I<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest]
     (size: Rep[Int], allocN: Rep[Int] => Rep[I], func: (Rep[A], Rep[Int]) => Rep[A], update: (Rep[I],Rep[A],Rep[Int]) => Rep[Unit], finalizer: Rep[I] => Rep[CA],
      cond: List[Rep[Int] => Rep[Boolean]], par: String, 
-     append: (Rep[I],Rep[A],Rep[Int]) => Rep[Boolean], setSize: (Rep[I],Rep[Int]) => Rep[Unit], allocRaw: (Rep[I],Rep[Int]) => Rep[I], copyRaw: (Rep[I],Rep[Int],Rep[I],Rep[Int],Rep[Int]) => Rep[Unit]
+     append: (Rep[I],Rep[A],Rep[Int]) => Rep[Unit], appendable: (Rep[I],Rep[A],Rep[Int]) => Rep[Boolean], setSize: (Rep[I],Rep[Int]) => Rep[Unit], allocRaw: (Rep[I],Rep[Int]) => Rep[I], copyRaw: (Rep[I],Rep[Int],Rep[I],Rep[Int],Rep[Int]) => Rep[Unit]
     ): Rep[CA]
     
   def foreach[A:Manifest](size: Rep[Int], func: Rep[Int] => Rep[Unit]): Rep[Unit]
@@ -86,7 +86,7 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
   case class DeliteILCollect[A:Manifest,I<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest]
     (size: Exp[Int], callocN: Exp[Int] => Exp[I], cfunc: (Exp[A], Exp[Int]) => Exp[A], cupdate: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit], cfinalizer: Exp[I] => Exp[CA],
      ccond: List[Exp[Int] => Exp[Boolean]], cpar: DeliteParallelStrategy, 
-     cappend: (Exp[I],Exp[A],Exp[Int]) => Exp[Boolean], csetSize: (Exp[I],Exp[Int]) => Exp[Unit], callocRaw: (Exp[I],Exp[Int]) => Exp[I], ccopyRaw: (Exp[I],Exp[Int],Exp[I],Exp[Int],Exp[Int]) => Exp[Unit]
+     cappendable: (Exp[I],Exp[A],Exp[Int]) => Exp[Boolean], cappend: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit], csetSize: (Exp[I],Exp[Int]) => Exp[Unit], callocRaw: (Exp[I],Exp[Int]) => Exp[I], ccopyRaw: (Exp[I],Exp[Int],Exp[I],Exp[Int],Exp[Int]) => Exp[Unit]
     ) extends DeliteOpMapLike[A,I,CA] {
     
           
@@ -106,6 +106,7 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
         iV = this.iV,
         iV2 = this.iV2,
         aV = this.aV,
+        appendable = reifyEffects(cappendable(allocVal,eV,v)),
         append = reifyEffects(cappend(allocVal,eV,v)),
         setSize = reifyEffects(csetSize(allocVal,sV)),
         allocRaw = reifyEffects(callocRaw(allocVal,sV)),
@@ -121,7 +122,7 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
   def collect[A:Manifest,I<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest]
     (size: Exp[Int], allocN: Exp[Int] => Exp[I], func: (Exp[A], Exp[Int]) => Exp[A], update: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit], finalizer: Exp[I] => Exp[CA],
      cond: List[Exp[Int] => Exp[Boolean]], par: String, 
-     append: (Exp[I],Exp[A],Exp[Int]) => Exp[Boolean], setSize: (Exp[I],Exp[Int]) => Exp[Unit], allocRaw: (Exp[I],Exp[Int]) => Exp[I], copyRaw: (Exp[I],Exp[Int],Exp[I],Exp[Int],Exp[Int]) => Exp[Unit]
+     appendable: (Exp[I],Exp[A],Exp[Int]) => Exp[Boolean], append: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit], setSize: (Exp[I],Exp[Int]) => Exp[Unit], allocRaw: (Exp[I],Exp[Int]) => Exp[I], copyRaw: (Exp[I],Exp[Int],Exp[I],Exp[Int],Exp[Int]) => Exp[Unit]
     ) = {
     
     val parStrategy = par match {
@@ -137,7 +138,7 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
     val a1 = allocN(fresh[Int])
     context = save
     val refTp = a1.tp
-    val c = DeliteILCollect(size,allocN,func,update,finalizer,cond,parStrategy,append,setSize,allocRaw,copyRaw)(manifest[A],refTp,refTp.asInstanceOf[Manifest[CA]]) // HACK: forcing I and CA to be the same in order to retain RefinedManifest from I
+    val c = DeliteILCollect(size,allocN,func,update,finalizer,cond,parStrategy,appendable,append,setSize,allocRaw,copyRaw)(manifest[A],refTp,refTp.asInstanceOf[Manifest[CA]]) // HACK: forcing I and CA to be the same in order to retain RefinedManifest from I
     reflectEffect(c, summarizeEffects(c.body.asInstanceOf[DeliteCollectElem[_,_,_]].func).star)(refTp.asInstanceOf[Manifest[CA]],implicitly[SourceContext])
   }  
   
@@ -209,8 +210,8 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
     case GetScopeResult() => getScopeResult
     case Reflect(SetScopeResult(n),u,es) => reflectMirrored(Reflect(SetScopeResult(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))   
     
-    case e@DeliteILCollect(s,a,fu,up,fi,c,p,ap,sz,al,co) => reflectPure(new { override val original = Some(f,e) } with DeliteILCollect(f(s),f(a),f(fu),f(up),f(fi),c.map(f(_)),p,f(ap),f(sz),f(al),f(co))(e.mA,e.mI,e.mCA))(mtype(manifest[A]),implicitly[SourceContext])  
-    case Reflect(e@DeliteILCollect(s,a,fu,up,fi,c,p,ap,sz,al,co), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILCollect(f(s),f(a),f(fu),f(up),f(fi),c.map(f(_)),p,f(ap),f(sz),f(al),f(co))(e.mA,e.mI,e.mCA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case e@DeliteILCollect(s,a,fu,up,fi,c,p,ape,ap,sz,al,co) => reflectPure(new { override val original = Some(f,e) } with DeliteILCollect(f(s),f(a),f(fu),f(up),f(fi),c.map(f(_)),p,f(ape),f(ap),f(sz),f(al),f(co))(e.mA,e.mI,e.mCA))(mtype(manifest[A]),implicitly[SourceContext])  
+    case Reflect(e@DeliteILCollect(s,a,fu,up,fi,c,p,ape,ap,sz,al,co), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILCollect(f(s),f(a),f(fu),f(up),f(fi),c.map(f(_)),p,f(ape),f(ap),f(sz),f(al),f(co))(e.mA,e.mI,e.mCA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case e@DeliteILForeach(s,fu) => reflectPure(new { override val original = Some(f,e) } with DeliteILForeach(f(s),f(fu))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])  
     case Reflect(e@DeliteILForeach(s,fu), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILForeach(f(s),f(fu))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case e@DeliteILReduce(s,rf,c,rz,ra,rrf,sf) => reflectPure(new { override val original = Some(f,e) } with DeliteILReduce(f(s),f(rf),c.map(f(_)),() => f(rz()),() => f(ra()),f(rrf),sf)(e.mA))(mtype(manifest[A]),implicitly[SourceContext])  

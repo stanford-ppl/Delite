@@ -30,6 +30,7 @@ object Config {
   var printGlobals = System.getProperty("delite.print_globals.enabled", "false") == "true"  
   val optimize = getProperty("delite.optimize", "0").toInt
   val enableGPUTransform = getProperty("delite.enable.gputransform","false") != "false"
+  val enableGPUObjReduce = getProperty("delite.enable.gpu.objreduce","true") != "false"
 
   //Print generationFailedException info
   val dumpException: Boolean = getProperty("delite.dump.exception", "false") != "false"

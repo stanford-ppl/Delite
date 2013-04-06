@@ -44,5 +44,8 @@ extern void DeliteCudaMemcpyHtoDAsync(void* dptr, void* sptr, size_t size);
 extern void DeliteCudaMemcpyDtoHAsync(void* dptr, void* sptr, size_t size);
 extern void DeliteCudaMemcpyDtoDAsync(void *dptr, void* sptr, size_t size);
 extern void DeliteCudaMemset(void *ptr, int value, size_t count);
+extern void DeliteCudaCheckError(void);
 
+//TODO: Remove this from here
+__global__ void kernel_offset(int *key, int *idx, int *offset, int size);
 #endif

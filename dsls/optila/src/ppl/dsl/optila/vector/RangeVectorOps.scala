@@ -133,6 +133,11 @@ trait RangeVectorOpsExp extends RangeVectorOps with DeliteCollectionOpsExp { thi
     if (isRange(x)) err("dc_update should not be called on RangeVector")
     else super.dc_update(x,n,y)        
   }
+
+  override def dc_appendable[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isRange(x)) err("dc_appendable should not be called on RangeVector")
+    else super.dc_appendable(x,i,y)        
+  }    
   
   override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
     if (isRange(x)) err("dc_append should not be called on RangeVector")

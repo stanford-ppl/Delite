@@ -173,8 +173,20 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     else super.dc_set_logical_size(x,y)        
   }
   
+  override def dc_parallelization[A:Manifest](x: Exp[DeliteCollection[A]], hasConditions: Boolean)(implicit ctx: SourceContext) = {
+    if (isDeliteArrayBuffer(x)) {
+      if (hasConditions) ParSimpleBuffer else ParFlat
+    }
+    else super.dc_parallelization(x, hasConditions)
+  }
+
+  override def dc_appendable[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isDeliteArrayBuffer(x)) { unit(true) }
+    else super.dc_appendable(x,i,y)
+  }
+
   override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
-    if (isDeliteArrayBuffer(x)) { asDeliteArrayBuffer(x) += y; unit(true) }
+    if (isDeliteArrayBuffer(x)) { asDeliteArrayBuffer(x) += y; }
     else super.dc_append(x,i,y)
   }
   
@@ -203,6 +215,17 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
 }
 
 trait ScalaGenDeliteArrayBufferOps extends ScalaGenEffect {
+  val IR: DeliteArrayBufferOpsExp
+  import IR._
+
+  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "DeliteArrayBuffer" => "generated.scala."+structName(m)
+    case _ => super.remap(m)
+  }
+
+}
+
+trait CudaGenDeliteArrayBufferOps extends CudaGenEffect {
   val IR: DeliteArrayBufferOpsExp
   import IR._
 

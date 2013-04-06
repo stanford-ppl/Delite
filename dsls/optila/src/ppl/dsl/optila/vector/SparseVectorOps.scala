@@ -359,10 +359,18 @@ trait SparseVectorOpsExp extends SparseVectorOps with DeliteCollectionOpsExp wit
     else super.dc_update(x,n,y)        
   }
   
+  // Only append when the value y is not the defaultValue
+  override def dc_appendable[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isSparseVec(x)) {
+      if (y != defaultValue[A]) unit(true)
+      else unit(false)
+    }      
+    else super.dc_appendable(x,i,y)        
+  }
+
   override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
     if (isSparseVec(x)) {
-      if (y != defaultValue[A]) { sparsevector_append(asSparseVec(x),i,y); unit(true) }
-      else unit(false)
+      if (y != defaultValue[A]) sparsevector_append(asSparseVec(x),i,y)
     }      
     else super.dc_append(x,i,y)        
   }  

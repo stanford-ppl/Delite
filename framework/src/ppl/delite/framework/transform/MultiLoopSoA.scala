@@ -14,7 +14,15 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
     val IR: self.type = self
     override def transformStm(stm: Stm): Exp[Any] = stm match {
       case TP(sym, Loop(size, v, body: DeliteCollectElem[a,i,ca])) => soaCollect[a,i,ca](size,v,body)(body.mA,body.mI,body.mCA) match {
-        case Some(newSym) => newSym
+        case Some(newSym) => stm match {
+            case TP(sym, z:DeliteOpZipWith[_,_,_,_]) if(Config.enableGPUObjReduce) => 
+              encounteredZipWith += newSym -> z
+              printdbg("Register DeliteOpZipWith symbol ")
+              printdbg(newSym)
+              printdbg(z)
+            case _ => //
+          }
+          newSym
         case None => super.transformStm(stm)
       }
       /*case TP(sym, Loop(size, v, body: DeliteReduceElem[a])) => soaReduce[a](size,v,body)(body.mA) match {
@@ -77,6 +85,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
             aV = buf_aV,
             iV = buf_iV,
             iV2 = buf_iV2,
+            appendable = reifyEffects(dc_appendable(allocV,tv,elemV)),
             append = reifyEffects(dc_append(allocV,tv,elemV)),
             setSize = reifyEffects(dc_set_logical_size(allocV,sizeV)),
             allocRaw = reifyEffects(dc_alloc[B,DeliteArray[B]](allocV,sizeV)),
@@ -93,7 +102,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         }
         val sz = body.par match {
           case ParFlat => t(size)
-          case ParBuffer => 
+          case ParBuffer | ParSimpleBuffer => 
 
           newElems(0)._2.length //TODO: we want to know the output size without having to pick one of the returned arrays arbitrarily (prevents potential DCE)... can we just grab the size out of the activation record somehow?
           /* //determine output size by counting:
@@ -135,7 +144,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         val newElems = elems.map {
           case (df, _) if df == dataField => (df, newLoop)
           case (sf, _) if (sf == sizeField && body.par == ParFlat) => (sf, t(size))
-          case (sf, _) if (sf == sizeField && body.par == ParBuffer) => (sf, newLoop.length)
+          case (sf, _) if (sf == sizeField && (body.par == ParBuffer || body.par == ParSimpleBuffer)) => (sf, newLoop.length)
           case (f, Def(Reflect(NewVar(init),_,_))) => (f, t(init))
           case (f,v) => (f, t(v))
         }
