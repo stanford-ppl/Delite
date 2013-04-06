@@ -55,7 +55,7 @@ trait DeliteILOps extends Variables with StructOps with StructTags with DeliteAr
   def collect[A:Manifest,I<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest]
     (size: Rep[Int], allocN: Rep[Int] => Rep[I], func: (Rep[A], Rep[Int]) => Rep[A], update: (Rep[I],Rep[A],Rep[Int]) => Rep[Unit], finalizer: Rep[I] => Rep[CA],
      cond: List[Rep[Int] => Rep[Boolean]], par: String, 
-     append: (Rep[I],Rep[A],Rep[Int]) => Rep[Unit], appendable: (Rep[I],Rep[A],Rep[Int]) => Rep[Boolean], setSize: (Rep[I],Rep[Int]) => Rep[Unit], allocRaw: (Rep[I],Rep[Int]) => Rep[I], copyRaw: (Rep[I],Rep[Int],Rep[I],Rep[Int],Rep[Int]) => Rep[Unit]
+     appendable: (Rep[I],Rep[A],Rep[Int]) => Rep[Boolean], append: (Rep[I],Rep[A],Rep[Int]) => Rep[Unit], setSize: (Rep[I],Rep[Int]) => Rep[Unit], allocRaw: (Rep[I],Rep[Int]) => Rep[I], copyRaw: (Rep[I],Rep[Int],Rep[I],Rep[Int],Rep[Int]) => Rep[Unit]
     ): Rep[CA]
     
   def foreach[A:Manifest](size: Rep[Int], func: Rep[Int] => Rep[Unit]): Rep[Unit]
