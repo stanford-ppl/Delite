@@ -4,7 +4,8 @@ import ppl.dsl.optiql.OptiQL_
 import ppl.dsl.optigraph.OptiGraph_
 import ppl.dsl.optiml.OptiML_
 import ppl.delite.framework.datastructures.DeliteArray
-import ppl.delite.framework.EndScopes
+import ppl.delite.framework.{BeginScopes,EndScopes}
+import ppl.delite.framework.ScopeCommunication._
 
 import ppl.dsl.optigraph.NodeProperty
 
@@ -13,35 +14,56 @@ object CloseWorldCompose {
   def main(args: Array[String]) {
     println("scala 1")
     
-    OptiQL_ {
-      type Tweet = Record { val id: String; val time: Date; val hour: Int; val fromId: Int; val toId: Int; val rt: Boolean; val language: String; val text: String }
-      def Tweet(_id: Rep[String], _time: Rep[Date], _hour: Rep[Int], _fromId: Rep[Int], _toId: Rep[Int], _rt: Rep[Boolean], _language: Rep[String], _text: Rep[String]): Rep[Tweet] = new Record {
-        val id = _id;
-        val time = _time;
-        val hour = _hour;
-        val fromId = _fromId;
-        val toId = _toId;
-        val rt = _rt;
-        val language = _language;
-        val text = _text;
-      }      
-      def emptyTweet(): Rep[Tweet] = Tweet("", Date(""), 0, 0, 0, unit(true), "", "")
-            
-      // type Tweet = Record{val fromId: Int; val toId: Int; val text: String}
-      // val tweets: Rep[Table[Tweet]] = loadTweets() // elided
-      val tweets = TableInputReader(args(0), emptyTweet())      
-      //dtic("all", tweets)
-      dtic("optiql", tweets)
-      //val retweets = tweets Where(t => t.time >= Date("2009-06-23") && t.language == "en" && t.rt) 
-      val retweets = tweets Where(t => t.time >= Date("2008-01-01") && t.language == "en" && t.rt) 
-      val engtweets = tweets Where(t => t.language == "en") 
-      // is there something in the desugaring scopes that ignores the block result?
-      // without returnScopeResult, getting a block result of (), even the Scope result is of type R
-      returnScopeResult(retweets.toArray,engtweets.toArray)
-      // println(result.toArray)
-      dtoc("optiql", retweets.size, engtweets.size)
-    }
+    // if Scope return result isn't working, we'll need to use var tweets = _, and set the var inside the scope
     
+    // need a path-independent record to be able to fix the DRef type
+    // type ExtTweet = ExtRecord{val id: String; val time: Date; val hour: Int; val fromId: Int; val toId: Int; val rt: Boolean; val language: String; val text: String}
+    // var tweets: DRef[(DeliteArray[ExtTweet],DeliteArray[ExtTweet])]
+    // def updateTweets(x: DRef[(DeliteArray[ExtTweet],DeliteArray[ExtTweet])] = tweets = x
+    
+    val QLResult: Box[Any] = Box(null)
+    // var accesses inside scopes get lifted, requiring getters and setters
+    // var QLResult: DRef[Any] = null
+    
+    BeginScopes() // marker to begin scope file
+    
+    // val QLResult = 
+      OptiQL_ {
+        type Tweet = Record { val id: String; val time: Date; val hour: Int; val fromId: Int; val toId: Int; val rt: Boolean; val language: String; val text: String }
+        def Tweet(_id: Rep[String], _time: Rep[Date], _hour: Rep[Int], _fromId: Rep[Int], _toId: Rep[Int], _rt: Rep[Boolean], _language: Rep[String], _text: Rep[String]): Rep[Tweet] = new Record {
+          val id = _id;
+          val time = _time;
+          val hour = _hour;
+          val fromId = _fromId;
+          val toId = _toId;
+          val rt = _rt;
+          val language = _language;
+          val text = _text;
+        }      
+        def emptyTweet(): Rep[Tweet] = Tweet("", Date(""), 0, 0, 0, unit(true), "", "")
+            
+        // type Tweet = Record{val fromId: Int; val toId: Int; val text: String}
+        // val tweets: Rep[Table[Tweet]] = loadTweets() // elided
+        val tweets = TableInputReader(args(0), emptyTweet())      
+        //dtic("all", tweets)
+        dtic("optiql", tweets)
+        //val retweets = tweets Where(t => t.time >= Date("2009-06-23") && t.language == "en" && t.rt) 
+        val retweets = tweets Where(t => t.time >= Date("2008-01-01") && t.language == "en" && t.rt) 
+        val engtweets = tweets Where(t => t.language == "en") 
+        // println(result.toArray)
+        dtoc("optiql", retweets.size, engtweets.size)
+      
+        // is there something in the desugaring scopes that ignores the block result?
+        // without returnScopeResult, getting a block result of (), even the Scope result is of type R
+        // returnScopeResult(retweets.toArray,engtweets.toArray)      
+        // DRef(retweets.toArray,engtweets.toArray)
+        // Predef.println("foo")
+        // QLResult = DRef(retweets.toArray,engtweets.toArray) // looks like var assign is getting lifted here
+        QLResult.box(DRef((tweets.toArray,engtweets.toArray)))
+      }
+    
+    // println("tweets: " + tweets.toString)
+     
     OptiGraph_ {      
       // val da1 = DeliteArray[Int](12)
       // val da2 = DeliteArray[Int](12)
@@ -60,7 +82,10 @@ object CloseWorldCompose {
       // val da = da1.zip(da2)((i,j) => t2(i,j))
       // val G = Graph.fromArray(da)
       type Tweet = Record { val id: String; val time: Int; val hour: Int; val fromId: Int; val toId: Int; val rt: Boolean; val language: String; val text: String }
-      val in = lastScopeResult.AsInstanceOf[(DeliteArray[Tweet],DeliteArray[Tweet])]
+      // val in = lastScopeResult.AsInstanceOf[(DeliteArray[Tweet],DeliteArray[Tweet])]
+      val in = QLResult.unbox.asInstanceOf[DRef[(DeliteArray[Tweet],DeliteArray[Tweet])]].get
+      // val in = tweets.get.AsInstanceOf[(DeliteArray[Tweet],DeliteArray[Tweet])]
+      
       //println("in.length: " + in.length)
       //println("in(0): " + in(0))
       //println("in(1): " + in(1))
@@ -138,6 +163,8 @@ object CloseWorldCompose {
       
       dtic("optiml")
 
+      // seems to be a bug in wip-develop with populating the spam vector in the restaged code (TODO: try in wip-restage2)
+      
       //val spam = Vector("buy","cheap","sale","free","limited","textbook")
       val spam = Vector("buy","cheap","sale")
       

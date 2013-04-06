@@ -7,6 +7,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
 
+import Config._
 import codegen.cpp.TargetCpp
 import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
@@ -17,11 +18,73 @@ import codegen.Target
 import ops.DeliteOpsExp
 import datastructures.DeliteArrayOpsExpOpt
 
+/**
+ * For scope communication
+ */
+object ScopeCommunication {
+  /* Path independent */  
+  abstract class DRef[+T]  
+  case class WrapSymAsDRef[T:Manifest](drefId: Int) extends DRef[T] 
+  
+  // used to wrap DRefs because outer vars get lifted improperly inside DSL scopes
+  // this is not necessary once scope return is working correctly
+  case class Box[T](x: DRef[T]) {
+    var _ref = x
+    
+    // to avoid confusion with 'get' on the actual DRef
+    def unbox = _ref
+    def box(y: DRef[T]) { _ref = y }
+  }
+  
+  // global id
+  var curDrefId = 0  
+  def drefBox(id: Int) = "dref_" + id  
+}
+
+// abstract class ExtRecord[T]
+// case class WrapRecAsExt[T:Manifest](recId: Int) extends ExtRecord[T]
+
+/**
+ * Scope markers
+ */
+object BeginScopes {
+  def apply() = {
+    val f = new File(restageFile)
+    if (f.exists) f.delete
+  }
+}
+
+object EndScopes {
+  def apply() = {
+    val append = (new File(restageFile)).exists
+    if (!append) throw new RuntimeException("EndScopes marker encountered without prior scopes")
+    val stream = new PrintWriter(new FileWriter(restageFile, append))
+    stream.println("}")    
+    stream.println("}")    
+    stream.close()
+  }
+}
+  
 trait DeliteRestageOps extends Base {
+  import ScopeCommunication._
+  
   // scope-facing placeholders for data exchange
   def lastScopeResult: Rep[Any]
   def returnScopeResult(n: Rep[Any]): Rep[Unit]
-
+    
+  object DRef {
+    def apply[T:Manifest](x: Rep[T]) = dref_new(x)
+  }
+  implicit def dRefToRep[T:Manifest](ref: DRef[T]) = new DRefOpsCls(ref)  
+  class DRefOpsCls[T:Manifest](ref: DRef[T]) {
+    def get = dref_get(ref)
+  }
+  
+  def dref_get[T:Manifest](x: DRef[T]): Rep[T]
+  def dref_new[T:Manifest](x: Rep[T]): DRef[T]
+  
+  // implicit def recToExtRec(x: Rep[Record]) // we actually have a (DeliteArray[Record],DeliteArray[Record])
+  
   // DSL independent timing
   def dtic(deps: Rep[Any]*)(implicit ctx: SourceContext) = delite_profile_start(unit("app"),deps)
   def dtic(component: Rep[String], deps: Rep[Any]*)(implicit ctx: SourceContext) = delite_profile_start(component, deps)
@@ -36,11 +99,26 @@ trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp with StructExp
   with RangeOpsExp with HashMapOpsExp {
   this: DeliteArrayOpsExpOpt =>
   
+  import ScopeCommunication._
+    
   case class LastScopeResult() extends Def[Any]
   def lastScopeResult = LastScopeResult()
   
   case class ReturnScopeResult(n: Rep[Any]) extends Def[Unit]
   def returnScopeResult(n: Rep[Any]) = reflectEffect(ReturnScopeResult(n))
+    
+  case class WrapDRefAsSym[T:Manifest](drefId: Int) extends Def[T]  
+  case class SetDRefOutput[T:Manifest](sym: Rep[T], drefId: Int) extends Def[Unit]
+  def dref_get[T:Manifest](ref: DRef[T]) = ref match {
+    case WrapSymAsDRef(id) => toAtom(WrapDRefAsSym(id))
+  }
+  def dref_new[T:Manifest](sym: Rep[T]) = {
+    // ideally you would want nothing in the restaged code - just a short-circuit via the box. the problem is that 
+    // the generated code is scoped, so we don't have access to it unless we generate something to pass it along, too.    
+    curDrefId += 1
+    reflectEffect(SetDRefOutput(sym, curDrefId)) 
+    WrapSymAsDRef(curDrefId) 
+  }
   
   case class DeliteProfileStart(component: Exp[String], deps: List[Exp[Any]]) extends Def[Unit]
   case class DeliteProfileStop(component: Exp[String], deps: List[Exp[Any]]) extends Def[Unit]
@@ -50,6 +128,8 @@ trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp with StructExp
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case LastScopeResult() => lastScopeResult
+    case WrapDRefAsSym(id) => WrapDRefAsSym(id)
+    case Reflect(SetDRefOutput(s,id),u,es) => reflectMirrored(Reflect(SetDRefOutput(f(s),id), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(ReturnScopeResult(n),u,es) => reflectMirrored(Reflect(ReturnScopeResult(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))   
     case Reflect(DeliteProfileStart(c,deps), u, es) => reflectMirrored(Reflect(DeliteProfileStart(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(DeliteProfileStop(c,deps), u, es) => reflectMirrored(Reflect(DeliteProfileStop(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -58,23 +138,11 @@ trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp with StructExp
 
 }
 
-object EndScopes {
-  val scopeFile = "restage-scopes"
-  
-  def apply() = {
-    val append = (new File(scopeFile)).exists
-    if (!append) throw new RuntimeException("EndScopes marker encountered without prior scopes")
-    val stream = new PrintWriter(new FileWriter(scopeFile, append))
-    stream.println("}")    
-    stream.println("}")    
-    stream.close()
-  }
-}
-
 trait DeliteRestageRunner extends DeliteApplication with DeliteRestageOpsExp {  
   this: DeliteArrayOpsExpOpt =>
   
   import EndScopes._
+  import ScopeCommunication._
   
   def apply: Any
   def main = apply
@@ -84,16 +152,18 @@ trait DeliteRestageRunner extends DeliteApplication with DeliteRestageOpsExp {
     val generator = getCodeGenPkg(restageTarget).asInstanceOf[RestageCodegen{val IR: DeliteRestageRunner.this.type }]
     val baseDir = Config.buildDir + File.separator + generator.toString + File.separator    
     
-    val append = (new File(scopeFile)).exists
-    val stream = new PrintWriter(new FileWriter(scopeFile, append))
+    val append = (new File(restageFile)).exists
+    val stream = new PrintWriter(new FileWriter(restageFile, append))
+    
+    // curScopeId += 1    
     generator.emitHeader(stream, append)
-    generator.transformers = transformers
+    generator.transformers = transformers        
     generator.emitSource(liftedMain, "Application", stream)     
     stream.println("}")
     stream.close()
     
     // main(scala.Array())
-    // ppl.delite.runtime.Delite.embeddedMain(scala.Array(scopeFile), staticDataMap) 
+    // ppl.delite.runtime.Delite.embeddedMain(scala.Array(restageFile), staticDataMap) 
   }
     
   System.out.println("object created")

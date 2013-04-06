@@ -10,6 +10,7 @@ import ppl.delite.framework.codegen.delite.overrides._
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.{DeliteRestageOps,DeliteRestageOpsExp}
 import ppl.delite.framework.ops.{DeliteOpsExp,DeliteCollection,DeliteCollectionOpsExp,ScalaGenDeliteCollectionOps}
+import ppl.delite.framework.ScopeCommunication._
 
 trait TargetRestage extends Target {
   import IR._
@@ -43,13 +44,12 @@ trait RestageCodegen extends ScalaCodegen with Config {
       out.println("object RestageApplicationRunner extends DeliteILApplicationRunner with RestageApplication")
       out.println("trait RestageApplication extends DeliteILApplication with OverloadHack {")      
       out.println("/* Emitting re-stageable code */")
+      out.println("val drefGlobals = scala.collection.mutable.HashMap[Int,Any]()") // odd things happen when this is declared inside main
       out.println("def main() {")
       out.println("val x0 = args;")
-      out.println("{")
     }
-    else {
-      out.println("{")
-    }    
+    // out.println("var " + drefBox(curScopeId) + ": Any = null;")      
+    out.println("{")
   }  
 }
 
@@ -232,6 +232,13 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     case ReturnScopeResult(n) => emitValDef(sym, "setScopeResult(" + quote(n) + ")")
     case LastScopeResult() => emitValDef(sym, "getScopeResult") 
     
+    case SetDRefOutput(s,id) => 
+      stream.println("drefGlobals += " + id + " -> " + quote(s))
+      // stream.println(drefBox(id) + " = " + quote(s))
+    case e@WrapDRefAsSym(id) => 
+      emitValDef(sym, "drefGlobals("+id+").asInstanceOf[Rep["+remap(sym.tp)+"]]")
+      // emitValDef(sym, drefBox(id)+".asInstanceOf[Rep["+remap(sym.tp)+"]]")
+    
     // scala
     case m@HashMapNew() => emitValDef(sym, "HashMap[" + remap(m.mK) + "," + remap(m.mV) + "]()")
     case HashMapApply(m,k) => emitValDef(sym, quote(m) + "(" + quote(k) + ")")
@@ -284,6 +291,14 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     case a@DeliteArrayNew(n) if sym.tp.typeArguments(0).erasure.getSimpleName == "GIterable" => emitValDef(sym, "DeliteArray[" + restageStructName(a.mA) + "](" + quote(n) + ")")
     case a@DeliteArrayNew(n) => emitValDef(sym, "DeliteArray[" + remap(a.mA) + "](" + quote(n) + ")")
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) => emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
+    // new in wip-develop
+    case StructCopy(src,srcPos,struct,fields,destPos,len) => 
+      assert(fields.length == 1) // nested fields not supported yet
+      emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + ", field["+remap(src.tp)+"](" + quote(struct) + ",\"" + fields(0) + "\")," + quote(destPos) + "," + quote(len) + ")")
+    case VarCopy(src,srcPos,Variable(a),destPos,len) =>
+      val dest = quote(a) + (if (deliteInputs contains a) ".get" else "")
+      emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + "," + dest + "," + quote(destPos) + "," + quote(len) + ")")
+    
     case DeliteArrayGetActSize() => emitValDef(sym, "darray_unsafe_get_act_size()")
     case DeliteArraySetActBuffer(da) => emitValDef(sym, "darray_set_act_buf(" + quote(da) + ")")
     case DeliteArraySetActFinal(da) => emitValDef(sym, "darray_set_act_final(" + quote(da) + ")")
