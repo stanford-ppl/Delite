@@ -157,7 +157,6 @@ trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg wi
 
   override def remap[A](m: Manifest[A]): String = {    
     m match {
-      //case m if m.erasure.getSimpleName == "Table" => IR.structName(m)
       case m if m.erasure.getSimpleName == "Date" => "Int"
       case m if m.toString == "scala.Tuple2[Char, Char]" => "Int"
       case m if m.toString.startsWith("scala.collection.immutable.Map") // HACK-ish, maybe use a DSL type instead
