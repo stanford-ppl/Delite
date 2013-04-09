@@ -14,7 +14,6 @@ import ppl.delite.framework.transform.LoopSoAOpt
 trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with FunctionBlocksExp with IfThenElseFatExp
     with VariantsOpsExp with DeliteCollectionOpsExp with DeliteReductionOpsExp
     with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp with StaticDataExp {
-  
 
     val encounteredZipWith = new scala.collection.mutable.HashMap[Exp[Any], DeliteOpZipWith[_,_,_,_]]()
 

@@ -15,7 +15,7 @@ import ppl.dsl.optila.vector.DenseVectorOpsExp
 
 trait MultiloopTransformExp extends DeliteTransform 
   with DeliteApplication with DeliteOpsExp 
-  with BooleanOpsExp with MiscOpsExp with StringOpsExp with ObjectOpsExp with PrimitiveOpsExp
+  with BooleanOpsExp with MiscOpsExp with StringOpsExp with ObjectOpsExp with PrimitiveOpsExp with OrderingOpsExp with WhileExp
   with LiftString with LiftBoolean with LiftPrimitives { // may want to use self-types instead of mix-in to decrease risk of accidental inclusion
   
   self: DenseVectorOpsExp =>
