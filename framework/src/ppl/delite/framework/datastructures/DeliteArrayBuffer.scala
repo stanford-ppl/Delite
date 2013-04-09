@@ -216,22 +216,8 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
 
 trait ScalaGenDeliteArrayBufferOps extends ScalaGenEffect {
   val IR: DeliteArrayBufferOpsExp
-  import IR._
-
-  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
-    case "DeliteArrayBuffer" => "generated.scala."+structName(m)
-    case _ => super.remap(m)
-  }
-
 }
 
 trait CudaGenDeliteArrayBufferOps extends CudaGenEffect {
   val IR: DeliteArrayBufferOpsExp
-  import IR._
-
-  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
-    case "DeliteArrayBuffer" => structName(m)
-    case _ => super.remap(m)
-  }
-
 }

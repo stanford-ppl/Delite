@@ -174,23 +174,20 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
         if (isVarType(e._2.tp) && deliteInputs.contains(e._2)) quote(e._2) + ".get"
         else quote(e._2)
       }.mkString(",") + ")")
-      printlog("WARNING: emitting " + structName(sym.tp) + " struct " + quote(sym))    
     case FieldApply(struct, index) =>
       emitValDef(sym, quote(struct) + "." + index)
       val lhs = struct match { case Def(lhs) => lhs.toString case _ => "?" }
-      printlog("WARNING: emitting field access: " + quote(struct) + "=" + lhs + "." + index)
     case FieldUpdate(struct, index, rhs) =>
       emitValDef(sym, quote(struct) + "." + index + " = " + quote(rhs))
       val lhs = struct match { case Def(lhs) => lhs.toString case _ => "?" }
-      printlog("WARNING: emitting field update: " + quote(struct) + "=" + lhs + "." + index)
     case NestedFieldUpdate(struct, fields, rhs) =>
       emitValDef(sym, quote(struct) + "." + fields.reduceLeft(_ + "." + _) + " = " + quote(rhs))
     case _ => super.emitNode(sym, rhs)
   }
 
   override def remap[A](m: Manifest[A]) = m match {
-    case StructType(_,_) => "generated.scala."+structName(m)
-    case s if s <:< manifest[Record] => "generated.scala."+structName(m)
+    case StructType(_,_) => "generated.scala." + structName(m)
+    case s if s <:< manifest[Record] && s != manifest[Nothing] => "generated.scala." + structName(m)
     case _ => super.remap(m)
   }
 

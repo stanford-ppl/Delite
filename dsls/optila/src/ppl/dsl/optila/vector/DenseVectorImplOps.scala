@@ -47,11 +47,12 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
   }
   
   def densevector_obj_fromunliftedseq_impl[A:Manifest](xs: Seq[Rep[A]]) = {
-    val out = densevector_obj_new[A](unit(xs.length),unit(true))
-    // interpreted (not lifted)    
-    // difficult to express this as an interpreted update since 'var' and 'while' get lifted in this scope
-    xs.foreach { out <<= _ }
-    out.unsafeImmutable 
+    val v = DenseVector[A](xs.length, true)
+    // interpreted (not lifted)
+    for (i <- (0 until xs.length): Range) { //range gets lifted by default in this scope, explicit typing prevents it
+      v(i) = xs(i)
+    }
+    v.unsafeImmutable 
   }
 
   def densevector_obj_ones_impl(length: Rep[Int]) = DenseVector[Double](length, true) mmap { e => 1. } 

@@ -90,66 +90,66 @@ trait VectorOperators extends DeliteTestModule with OptiMLApplication {
 object VectorUpdatesRunner extends DeliteTestRunner with OptiMLApplicationRunner with VectorUpdates
 trait VectorUpdates extends DeliteTestModule with OptiMLApplication {
   def main() {    
-    // val v = Vector.rand(1000).mutable
-    // val vb = Vector.rand(10).mutable
-    // 
-    // v(7) = 0.9123
-    // collect(v(7) == 0.9123)
-    // 
-    // val twov = (v << v)
-    // collect(twov.length == v.length*2)
-    // collect(twov(1000) == v(0))
-    // 
-    // var vlen = v.length
-    // v <<= 9.2
-    // collect(v.length == vlen + 1)
-    // collect(v(vlen) == 9.2)
-    // vlen += 1
-    // 
-    // v <<= vb
-    // collect(v.length == vlen+vb.length)
-    // vlen += vb.length
-    // var i = 0
-    // while (i < vb.length){
-    //   collect(v(vlen-vb.length+i) == vb(i))
-    //   i += 1
-    // }
-    // 
-    // v.copyFrom(100, vb)
-    // i = 0
-    // while (i < vb.length){
-    //   collect(v(i+100) == vb(i))
-    //   i += 1
-    // }
-    // 
-    // v.insert(500, 9.21)
-    // collect(v.length == vlen+1)
-    // collect(v(500) == 9.21)
-    // vlen += 1
-    // 
-    // v.insertAll(13, vb)
-    // collect(v.length == vlen + vb.length)
-    // i = 0
-    // while (i < vb.length){
-    //   collect(v(i+13) == vb(i))
-    //   i += 1
-    // }
-    // vlen += vb.length
-    // 
-    // var shifted = v(72)
-    // v.remove(71)
-    // collect(v.length == vlen-1)
-    // collect(v(71) == shifted)
-    // vlen -= 1
-    // 
-    // shifted = v(102)
-    // v.removeAll(99,3)
-    // collect(v.length == vlen-3)
-    // collect(v(99) == shifted)
-    // vlen -= 3
-    // 
-    // v.trim
-    // collect(v.length == vlen)
+    val v = Vector.rand(1000).mutable
+    val vb = Vector.rand(10).mutable
+    
+    v(7) = 0.9123
+    collect(v(7) == 0.9123)
+    
+    val twov = (v << v)
+    collect(twov.length == v.length*2)
+    collect(twov(1000) == v(0))
+    
+    var vlen = v.length
+    v <<= 9.2
+    collect(v.length == vlen + 1)
+    collect(v(vlen) == 9.2)
+    vlen += 1
+    
+    v <<= vb
+    collect(v.length == vlen+vb.length)
+    vlen += vb.length
+    var i = 0
+    while (i < vb.length){
+      collect(v(vlen-vb.length+i) == vb(i))
+      i += 1
+    }
+    
+    v.copyFrom(100, vb)
+    i = 0
+    while (i < vb.length){
+      collect(v(i+100) == vb(i))
+      i += 1
+    }
+    
+    v.insert(500, 9.21)
+    collect(v.length == vlen+1)
+    collect(v(500) == 9.21)
+    vlen += 1
+    
+    v.insertAll(13, vb)
+    collect(v.length == vlen + vb.length)
+    i = 0
+    while (i < vb.length){
+      collect(v(i+13) == vb(i))
+      i += 1
+    }
+    vlen += vb.length
+    
+    var shifted = v(72)
+    v.remove(71)
+    collect(v.length == vlen-1)
+    collect(v(71) == shifted)
+    vlen -= 1
+    
+    shifted = v(102)
+    v.removeAll(99,3)
+    collect(v.length == vlen-3)
+    collect(v(99) == shifted)
+    vlen -= 3
+    
+    v.trim
+    collect(v.length == vlen)
 
     // vector of struct
     val a1 = Vector(1,2,3,4)
@@ -328,21 +328,21 @@ trait GroupBy extends DeliteTestModule with OptiMLApplication {
 }
 
 class VectorSuite extends DeliteSuite {
-  // def testAccessors() { compileAndTest(VectorAccessorsRunner) }
-  // def testOperators() { compileAndTest(VectorOperatorsRunner) }
+  def testAccessors() { compileAndTest(VectorAccessorsRunner) }
+  def testOperators() { compileAndTest(VectorOperatorsRunner) }
   def testUpdates() { compileAndTest(VectorUpdatesRunner) } 
-  // def testRange() { compileAndTest(VectorRangeRunner) }
+  def testRange() { compileAndTest(VectorRangeRunner) }
   
-  // def testInit() { compileAndTest(InitRunner) }
-  // def testLoop() { compileAndTest(LoopRunner) }
-  // def testCount() { compileAndTest(CountRunner) }
-  // def testBulkUpdate() { compileAndTest(BulkUpdateRunner) }
-  // def testFind() { compileAndTest(FindRunner) } 
-  // def testDist() { compileAndTest(DistRunner) }
-  // def testDistinct() { compileAndTest(DistinctRunner) }
-  // def testMedian() { compileAndTest(MedianRunner) }
-  // def testNearestNeighbor() { compileAndTest(NearestNeighborRunner) }
-  // def testSample() { compileAndTest(SampleRunner) }
-  // def testGroupBy() { compileAndTest(GroupByRunner) } 
+  def testInit() { compileAndTest(InitRunner) }
+  def testLoop() { compileAndTest(LoopRunner) }
+  def testCount() { compileAndTest(CountRunner) }
+  def testBulkUpdate() { compileAndTest(BulkUpdateRunner) }
+  def testFind() { compileAndTest(FindRunner) } 
+  def testDist() { compileAndTest(DistRunner) }
+  def testDistinct() { compileAndTest(DistinctRunner) }
+  def testMedian() { compileAndTest(MedianRunner) }
+  def testNearestNeighbor() { compileAndTest(NearestNeighborRunner) }
+  def testSample() { compileAndTest(SampleRunner) }
+  def testGroupBy() { compileAndTest(GroupByRunner) } 
 }
 
