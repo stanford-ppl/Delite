@@ -77,7 +77,7 @@ trait NodePropertyOpsExp extends NodePropertyOps with VariablesExp with BaseFatE
   //case class NodePropUpdate[A:Manifest](np: Exp[NodeProperty[A]], n: Exp[Node], x: Exp[A]) extends Def[Unit]
   
   case class NodePropDefer[A:Manifest](np: Exp[NodeProperty[A]], idx: Exp[Int], x: Exp[A]) extends Def[Unit]
-  case class NodePropGetDef[A:Manifest](np: Exp[NodeProperty[A]], idx: Exp[Int]) extends Def[A]
+  case class NodePropGetDef[A:Manifest](np: Exp[NodeProperty[A]], idx: Exp[Int]) extends DefWithManifest[A,A]
   case class NodePropHasDef[A:Manifest](np: Exp[NodeProperty[A]], idx: Exp[Int]) extends Def[Boolean]
   case class NodePropClearDef[A:Manifest](np: Exp[NodeProperty[A]], idx: Exp[Int]) extends Def[Unit]
   case class NodePropAssignAll[A:Manifest](in: Exp[NodeProperty[A]]) extends DeliteOpIndexedLoop {
@@ -140,12 +140,12 @@ trait NodePropertyOpsExp extends NodePropertyOps with VariablesExp with BaseFatE
   // mirroring
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case NodePropGetDef(np,i) => nodeprop_get_def(f(np),f(i))
+    case e@NodePropGetDef(np,i) => nodeprop_get_def(f(np),f(i))(e.mA)
     case NodePropHasDef(np,i) => nodeprop_has_def(f(np),f(i))
-	case e@NodePropObjectNew(g,s) => reflectPure(new { override val original = Some(f,e) } with NodePropObjectNew(f(g),f(s)))(mtype(manifest[A]),implicitly[SourceContext])
+	  case e@NodePropObjectNew(g,s) => reflectPure(new { override val original = Some(f,e) } with NodePropObjectNew(f(g),f(s)))(mtype(manifest[A]),implicitly[SourceContext])
     case Reflect(e@NodePropObjectNew(g,s), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with NodePropObjectNew(f(g),f(s))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@NodePropDefer(np,i,x), u, es) => reflectMirrored(Reflect(NodePropDefer(f(np),f(i),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@NodePropGetDef(np,i), u, es) => reflectMirrored(Reflect(NodePropGetDef(f(np),f(i)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@NodePropGetDef(np,i), u, es) => reflectMirrored(Reflect(NodePropGetDef(f(np),f(i))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@NodePropHasDef(np,i), u, es) => reflectMirrored(Reflect(NodePropHasDef(f(np),f(i)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@NodePropClearDef(np,i), u, es) => reflectMirrored(Reflect(NodePropClearDef(f(np),f(i)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@NodePropAssignAll(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with NodePropAssignAll(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))

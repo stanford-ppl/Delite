@@ -37,6 +37,8 @@ trait ForeachReduceTransformExp extends DeliteTransform
       rFunc = reifyEffects(rFunc(this.rV._1, this.rV._2)),  
       stripFirst = false
     ))            
+    
+    val mR = manifest[R]
   }
       
   def transformForeachReduceToLoops[A:Manifest](s: Sym[_], fr: DeliteOpForeachReduce[_]): Exp[Unit] = {   
@@ -83,11 +85,19 @@ trait ForeachReduceTransformExp extends DeliteTransform
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     // implemented as DeliteOpLoop    
     case e@TransformedForeach(s,b) => reflectPure(new { override val original = Some(f,e) } with TransformedForeach(f(s),f(b)))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@TransformedReduce(v,s,z,rhs,r) => reflectPure(new { override val original = Some(f,e) } with TransformedReduce(f(v).asInstanceOf[Sym[Int]],f(s),f(z),f(rhs),f(r)))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@TransformedReduce(v,s,z,rhs,r) => 
+      e.asInstanceOf[TransformedReduce[A]] match {
+        case e@TransformedReduce(v,s,z,rhs,r) => 
+          reflectPure(new { override val original = Some(f,e) } with TransformedReduce(f(v).asInstanceOf[Sym[Int]],f(s),f(z),f(rhs),f(r))(e.mR))(mtype(manifest[A]),implicitly[SourceContext])
+      }
     
     // reflected
     case Reflect(e@TransformedForeach(s,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with TransformedForeach(f(s),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@TransformedReduce(v,s,z,rhs,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with TransformedReduce(f(v).asInstanceOf[Sym[Int]],f(s),f(z),f(rhs),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@TransformedReduce(v,s,z,rhs,r), u, es) => 
+      e.asInstanceOf[TransformedReduce[A]] match {
+        case e@TransformedReduce(v,s,z,rhs,r) => 
+          reflectMirrored(Reflect(new { override val original = Some(f,e) } with TransformedReduce(f(v).asInstanceOf[Sym[Int]],f(s),f(z),f(rhs),f(r))(e.mR), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      }
     
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]   

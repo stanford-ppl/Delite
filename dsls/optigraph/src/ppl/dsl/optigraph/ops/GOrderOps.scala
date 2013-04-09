@@ -82,15 +82,15 @@ trait GOrderOpsExp extends GOrderOps with VariablesExp with BaseFatExp {
   case class GOrderItems[T:Manifest](o: Exp[GOrder[T]]) extends Def[GIterable[T]]
   case class GOrderContains[T:Manifest](o: Exp[GOrder[T]], e: Exp[T]) extends Def[Boolean]
   case class GOrderSize[T:Manifest](o: Exp[GOrder[T]]) extends Def[Int]
-  case class GOrderFront[T:Manifest](o: Exp[GOrder[T]]) extends Def[T]
-  case class GOrderBack[T:Manifest](o: Exp[GOrder[T]]) extends Def[T]
+  case class GOrderFront[T:Manifest](o: Exp[GOrder[T]]) extends DefWithManifest[T,T]
+  case class GOrderBack[T:Manifest](o: Exp[GOrder[T]]) extends DefWithManifest[T,T]
   case class GOrderPushFront[T:Manifest](o: Exp[GOrder[T]], e: Exp[T]) extends Def[Unit]
   case class GOrderPushBack[T:Manifest](o: Exp[GOrder[T]], e: Exp[T]) extends Def[Unit]
   case class GOrderPushFrontOrd[T:Manifest](o: Exp[GOrder[T]], o2: Exp[GOrder[T]]) extends Def[Unit]
   case class GOrderPushBackOrd[T:Manifest](o: Exp[GOrder[T]], o2: Exp[GOrder[T]]) extends Def[Unit]
-  case class GOrderPopFront[T:Manifest](o: Exp[GOrder[T]]) extends Def[T]
-  case class GOrderPopBack[T:Manifest](o: Exp[GOrder[T]]) extends Def[T]
-  case class GOrderApply[T:Manifest](o: Exp[GOrder[T]], idx: Exp[Int]) extends Def[T]
+  case class GOrderPopFront[T:Manifest](o: Exp[GOrder[T]]) extends DefWithManifest[T,T]
+  case class GOrderPopBack[T:Manifest](o: Exp[GOrder[T]]) extends DefWithManifest[T,T]
+  case class GOrderApply[T:Manifest](o: Exp[GOrder[T]], idx: Exp[Int]) extends DefWithManifest[T,T]
   
   def gorder_new[T:Manifest]() = reflectMutable(GOrderObjectNew()(manifest[GOrder[T]]))
   def gorder_items[T:Manifest](o: Exp[GOrder[T]]) = reflectPure(GOrderItems(o))
@@ -113,22 +113,22 @@ trait GOrderOpsExp extends GOrderOps with VariablesExp with BaseFatExp {
     case GOrderItems(o) => gorder_items(f(o))
     case GOrderContains(o,x) => gorder_contains(f(o),f(x))
     case GOrderSize(o) => gorder_size(f(o))
-    case GOrderFront(o) => gorder_front(f(o))
-    case GOrderBack(o) => gorder_back(f(o))
-    case GOrderApply(o,n) => gorder_apply(f(o),f(n))
+    case e@GOrderFront(o) => gorder_front(f(o))(e.mA)
+    case e@GOrderBack(o) => gorder_back(f(o))(e.mA)
+    case e@GOrderApply(o,n) => gorder_apply(f(o),f(n))(e.mA)
     case Reflect(e@GOrderObjectNew(), u, es) => reflectMirrored(Reflect(GOrderObjectNew()(e.mGO), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GOrderItems(o), u, es) => reflectMirrored(Reflect(GOrderItems(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GOrderContains(o,x), u, es) => reflectMirrored(Reflect(GOrderContains(f(o),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GOrderSize(o), u, es) => reflectMirrored(Reflect(GOrderSize(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@GOrderFront(o), u, es) => reflectMirrored(Reflect(GOrderFront(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@GOrderBack(o), u, es) => reflectMirrored(Reflect(GOrderBack(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@GOrderApply(o,n), u, es) => reflectMirrored(Reflect(GOrderApply(f(o),f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderFront(o), u, es) => reflectMirrored(Reflect(GOrderFront(f(o))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderBack(o), u, es) => reflectMirrored(Reflect(GOrderBack(f(o))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderApply(o,n), u, es) => reflectMirrored(Reflect(GOrderApply(f(o),f(n))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GOrderPushFront(o,x), u, es) => reflectMirrored(Reflect(GOrderPushFront(f(o),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GOrderPushBack(o,x), u, es) => reflectMirrored(Reflect(GOrderPushBack(f(o),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GOrderPushFrontOrd(o,x), u, es) => reflectMirrored(Reflect(GOrderPushFrontOrd(f(o),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GOrderPushBackOrd(o,x), u, es) => reflectMirrored(Reflect(GOrderPushBackOrd(f(o),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@GOrderPopFront(o), u, es) => reflectMirrored(Reflect(GOrderPopFront(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@GOrderPopBack(o), u, es) => reflectMirrored(Reflect(GOrderPopBack(f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderPopFront(o), u, es) => reflectMirrored(Reflect(GOrderPopFront(f(o))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GOrderPopBack(o), u, es) => reflectMirrored(Reflect(GOrderPopBack(f(o))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??  
   

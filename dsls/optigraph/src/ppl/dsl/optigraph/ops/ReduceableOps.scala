@@ -61,7 +61,7 @@ trait ReduceableOpsExp extends ReduceableOps with EffectExp {
   this: OptiGraphExp =>
 
   case class RedObjectNew[T](init: Rep[T])(val mR: Manifest[Reduceable[T]]) extends Def[Reduceable[T]]
-  case class RedGetValue[T:Manifest](r: Exp[Reduceable[T]]) extends Def[T]
+  case class RedGetValue[T:Manifest](r: Exp[Reduceable[T]]) extends DefWithManifest[T,T]
   case class RedSetValue[T:Manifest](r: Exp[Reduceable[T]], x: Rep[T]) extends Def[Unit]
   case class RedSetOutput[T:Manifest](r:Exp[Reduceable[T]], out: Exp[T], reduceOpString: String, dep: Exp[Unit]) extends Def[Unit]
 
@@ -166,9 +166,9 @@ trait ReduceableOpsExp extends ReduceableOps with EffectExp {
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     // implemented via method on real data structure
-    case RedGetValue(r) => red_getvalue(f(r))
+    case e@RedGetValue(r) => red_getvalue(f(r))(e.mA)
 
-    case Reflect(e@RedGetValue(r), u, es) => reflectMirrored(Reflect(RedGetValue(f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@RedGetValue(r), u, es) => reflectMirrored(Reflect(RedGetValue(f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@RedSetValue(r,x), u, es) => reflectMirrored(Reflect(RedSetValue(f(r),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@RedObjectNew(x), u, es) => reflectMirrored(Reflect(RedObjectNew(f(x))(e.mR), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@RedSum(r,v), u, es) => reflectMirrored(Reflect(RedSum(f(r),f(v))(e.mT,e.mN), mapOver(f,u), f(es)))(mtype(manifest[A]))

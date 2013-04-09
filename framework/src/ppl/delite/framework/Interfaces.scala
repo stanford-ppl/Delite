@@ -28,6 +28,7 @@ trait InterfacesExp extends Interfaces with BaseExp with Effects with Blocks wit
   // transformers
   
   implicit def transformerToInterfaceTransformer(a: AbstractTransformer{val IR: InterfacesExp.this.type}) = new {
+    def intf[A](x: Interface[A]): Interface[A] = x.ops.wrap(a.apply[x.ops.Self](x.ops.elem))
     def apply[A](x: Interface[A]): Interface[A] = x.ops.wrap(a.apply[x.ops.Self](x.ops.elem))
     def apply[X,A](f: X=>Interface[A])(implicit o: Overloaded1): X=>Interface[A] = (z:X) => apply(f(z))    
   }

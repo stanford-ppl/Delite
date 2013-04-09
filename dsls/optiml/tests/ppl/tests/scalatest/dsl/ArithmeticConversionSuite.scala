@@ -35,10 +35,10 @@ trait PrimitiveConversions extends DeliteTestModule with OptiMLApplication {
     val lit1 = 1.0 + dbl
     val lit2 = 1.0 + int
     val lit3 = 1.0 + flt
-    val lit4 = unit(1) /*TR FIXME*/ + dbl
+    val lit4 = 1 + dbl
     val lit5 = 1 + int
     val lit6 = 1 + flt
-    val lit7 = unit(1f) /*TR FIXME*/ + dbl
+    val lit7 = 1f + dbl
     val lit8 = 1f + int
     val lit9 = 1f + flt
     val lit10 = dbl + 1.0
@@ -75,14 +75,14 @@ trait VectorConversions extends DeliteTestModule with OptiMLApplication {
     val flt = unit(1f)
     
     val l1 = vint + vint
-    val l2 = vint + vdbl
-    val l3 = vint + vflt
+//M7    val l2 = vint + vdbl
+//M7    val l3 = vint + vflt
     val l4 = vdbl + vint
     val l5 = vdbl + vflt
     val l6 = vdbl + vdbl
     val l7 = vflt + vint
     val l8 = vflt + vflt
-    val l9 = vflt + vdbl
+//M7    val l9 = vflt + vdbl
   
     val lift1 = int + vint
     val lift2 = int + vflt
@@ -139,14 +139,14 @@ trait MatrixConversions extends DeliteTestModule with OptiMLApplication {
     val flt = unit(1f)
     
     val l1 = mint + mint
-    val l2 = mint + mdbl
-    val l3 = mint + mflt
+//M7    val l2 = mint + mdbl
+//M7    val l3 = mint + mflt
     val l4 = mdbl + mint
     val l5 = mdbl + mflt
     val l6 = mdbl + mdbl
     val l7 = mflt + mint
     val l8 = mflt + mflt
-    val l9 = mflt + mdbl
+//M7    val l9 = mflt + mdbl
   
     val lift1 = int + mint
     val lift2 = int + mflt

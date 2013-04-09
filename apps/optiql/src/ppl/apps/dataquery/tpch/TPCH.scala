@@ -101,8 +101,8 @@ trait TPCHQ1Trait extends TPCHBaseTrait {
       val lineStatus = g.key._2
       val sumQty = g.Sum(_.l_quantity)
       val sumBasePrice = g.Sum(_.l_extendedprice)
-      val sumDiscountedPrice = g.Sum(l => l.l_extendedprice * (1.0d - l.l_discount))
-      val sumCharge = g.Sum(l=> l.l_extendedprice * (1.0d - l.l_discount) * (1.0d + l.l_tax))
+      val sumDiscountedPrice = g.Sum(l => l.l_extendedprice * (infix_-(1.0d, l.l_discount)))                // FIXME: ambiguous numeric ops problem and compiler crash in 2.10.0
+      val sumCharge = g.Sum(l=> l.l_extendedprice * infix_-(1.0d, l.l_discount) * infix_+(1.0d, l.l_tax))   // FIXME: ambiguous numeric ops problem and compiler crash in 2.10.0
       val avgQty = g.Average(_.l_quantity)
       val avgPrice = g.Average(_.l_extendedprice)
       val avgDiscount = g.Average(_.l_discount)

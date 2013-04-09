@@ -15,6 +15,9 @@ trait CloneableOps extends Variables {
 
   type Cloneable[X] = CloneableInternal[Rep,X]
   
+  // hack: need to pass explicit type class parameters during mirroring, similar to mtype
+  def ctype[A,B](a: Cloneable[A]): Cloneable[B] = a.asInstanceOf[Cloneable[B]]  
+  
   implicit def cloneableToCloneableOps[T:Cloneable:Manifest](n: T) = new CloneableOpsCls(unit(n))
   implicit def repCloneableToCloneableOps[T:Cloneable:Manifest](n: Rep[T]) = new CloneableOpsCls(n)
   implicit def varCloneableToCloneableOps[T:Cloneable:Manifest](n: Var[T]) = new CloneableOpsCls(readVar(n))

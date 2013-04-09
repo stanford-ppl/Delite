@@ -173,7 +173,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
       val pb = new ProcessBuilder(java.util.Arrays.asList(cmd: _*))
       p = pb.start()
     } catch {
-      case e => e.printStackTrace()
+      case e: Throwable => e.printStackTrace()
     }
 
     var exited = 3.14

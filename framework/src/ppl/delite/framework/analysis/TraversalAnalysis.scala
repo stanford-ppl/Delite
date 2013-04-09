@@ -26,7 +26,7 @@ trait TraversalAnalysis extends GenericFatCodegen with OverloadHack {
   def emitAssignment(lhs: String, rhs: String) {}
   def result: Option[Any] = _result
   
-  def emitSource[A:Manifest](args: List[Sym[_]], body: Block[A], className: String, stream: PrintWriter): List[(Sym[Any], Any)] = {
+  def emitSource[A : Manifest](args: List[Sym[_]], body: Block[A], className: String, stream: PrintWriter): List[(Sym[Any], Any)] = {
     traverseBlock(body)
     Nil
   }

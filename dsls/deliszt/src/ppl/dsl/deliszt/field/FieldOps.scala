@@ -274,17 +274,17 @@ trait FieldOpsExpOpt extends FieldOpsExp {
   
   override def field_mo_update[MO<:MeshObj:Manifest,T:Manifest](x: Exp[Field[MO,T]], mo: Rep[MO], v: Exp[T]) = v match {
     case Def(ArithPlus(a, b)) => (a, b) match {
-        case (a, Def(FieldApplyDL(x, mo))) => FieldPlusUpdate(x, mo, a)
-        case (Def(FieldApplyDL(x, mo)), b) => FieldPlusUpdate(x, mo, b)
+        case (a, Def(FieldApplyDL(`x`, `mo`))) => FieldPlusUpdate(x, mo.asInstanceOf[Exp[Int]], a)
+        case (Def(FieldApplyDL(`x`, `mo`)), b) => FieldPlusUpdate(x, mo.asInstanceOf[Exp[Int]], b)
         case _ => super.field_mo_update(x, mo, v)
     }
     case Def(ArithTimes(a, b)) => (a, b) match {
-        case (a, Def(FieldApplyDL(x, mo))) => FieldTimesUpdate(x, mo, a)
-        case (Def(FieldApplyDL(x, mo)), b) => FieldTimesUpdate(x, mo, b)
+        case (a, Def(FieldApplyDL(`x`, `mo`))) => FieldTimesUpdate(x, mo.asInstanceOf[Exp[Int]], a)
+        case (Def(FieldApplyDL(`x`, `mo`)), b) => FieldTimesUpdate(x, mo.asInstanceOf[Exp[Int]], b)
         case _ => super.field_mo_update(x, mo, v)
     }
-    case Def(ArithMinus(Def(FieldApplyDL(x, mo)), b)) => FieldMinusUpdate(x, mo, b)
-    case Def(ArithFractionalDivide(Def(FieldApplyDL(x, mo)), b)) => FieldDivideUpdate(x, mo, b)
+    case Def(ArithMinus(Def(FieldApplyDL(`x`, `mo`)), b)) => FieldMinusUpdate(x, mo.asInstanceOf[Exp[Int]], b)
+    case Def(ArithFractionalDivide(Def(FieldApplyDL(`x`, `mo`)), b)) => FieldDivideUpdate(x, mo.asInstanceOf[Exp[Int]], b)
     case Def(Vec3New(a,b,c)) => field_raw_update(x,ID(mo),0,a); field_raw_update(x,ID(mo),1,b); field_raw_update(x,ID(mo),2,c)
     //case Def(Reify(Def(Reflect(Vec3New(a,b,c), u, es)),_,_)) => field_raw_update(x,ID(mo),0,a); field_raw_update(x,ID(mo),1,b); field_raw_update(x,ID(mo),2,c)
     case _ => super.field_mo_update(x, mo, v)

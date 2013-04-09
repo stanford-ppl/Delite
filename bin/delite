@@ -72,8 +72,9 @@ def run(deg, params, opts):
     # add classpaths
     cp = " -cp "
     cp = cp + delitecommon.DELITE_HOME + "/runtime/target/" + delitecommon.scala_major_id + "/classes" + os.pathsep
-    cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-library.jar" + os.pathsep
+    cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-library.jar" + os.pathsep #TR should use /lib/*.jar?
     cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-compiler.jar" + os.pathsep
+    cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-reflect.jar" + os.pathsep
     # lms math ops generated apache math for performance
     cp = cp + delitecommon.DELITE_HOME + "/lib_managed/jars/org.apache.commons/commons-math/commons-math-2.2.jar" + os.pathsep 
     

@@ -404,14 +404,14 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@GIterableFilter(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableFilter(f(x),f(b)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@GIterableNextBFSLevel(x) => reflectPure(new { override val original = Some(f,e) } with GIterableNextBFSLevel(f(x)))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@GIterableSum(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableSum(f(x),f(b))(e.mT,e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@GIterableSumIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableSumIf(f(x),f(c),f(b))(e.mT,e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@GIterableProduct(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableProduct(f(x),f(b))(e.mT,e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@GIterableProductIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableProductIf(f(x),f(c),f(b))(e.mT,e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@GIterableMax(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableMax(f(x),f(b))(e.mT,e.mA,e.o))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@GIterableMaxIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableMaxIf(f(x),f(c),f(b))(e.mT,e.mA,e.o))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@GIterableMin(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableMin(f(x),f(b))(e.mT,e.mA,e.o))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@GIterableMinIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableMinIf(f(x),f(c),f(b))(e.mT,e.mA,e.o))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@GIterableSum(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableSum(f(x),f(b))(mtype(e.mT),mtype(e.mA),ntype(e.n)))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@GIterableSumIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableSumIf(f(x),f(c),f(b))(mtype(e.mT),mtype(e.mA),ntype(e.n)))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@GIterableProduct(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableProduct(f(x),f(b))(mtype(e.mT),mtype(e.mA),ntype(e.n)))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@GIterableProductIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableProductIf(f(x),f(c),f(b))(mtype(e.mT),mtype(e.mA),ntype(e.n)))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@GIterableMax(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableMax(f(x),f(b))(mtype(e.mT),mtype(e.mA),otype(e.o)))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@GIterableMaxIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableMaxIf(f(x),f(c),f(b))(mtype(e.mT),mtype(e.mA),otype(e.o)))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@GIterableMin(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableMin(f(x),f(b))(mtype(e.mT),mtype(e.mA),otype(e.o)))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@GIterableMinIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableMinIf(f(x),f(c),f(b))(mtype(e.mT),mtype(e.mA),otype(e.o)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@GIterableCount(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableCount(f(x),f(b)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@GIterableAll(x,b) => reflectPure(new { override val original = Some(f,e) } with GIterableAll(f(x),f(b)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@GIterableAllIf(x,c,b) => reflectPure(new { override val original = Some(f,e) } with GIterableAllIf(f(x),f(c),f(b)))(mtype(manifest[A]),implicitly[SourceContext])
@@ -420,14 +420,14 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
     case Reflect(e@GIterableForeach(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableForeach(f(x),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableFilter(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableFilter(f(x),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableNextBFSLevel(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableNextBFSLevel(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@GIterableSum(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableSum(f(x),f(b))(e.mT,e.mA,e.n), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@GIterableSumIf(x,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableSumIf(f(x),f(c),f(b))(e.mT,e.mA,e.n), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@GIterableProduct(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableProduct(f(x),f(b))(e.mT,e.mA,e.n), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@GIterableProductIf(x,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableProductIf(f(x),f(c),f(b))(e.mT,e.mA,e.n), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@GIterableMax(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableMax(f(x),f(b))(e.mT,e.mA,e.o), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@GIterableMaxIf(x,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableMaxIf(f(x),f(c),f(b))(e.mT,e.mA,e.o), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@GIterableMin(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableMin(f(x),f(b))(e.mT,e.mA,e.o), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@GIterableMinIf(x,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableMinIf(f(x),f(c),f(b))(e.mT,e.mA,e.o), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GIterableSum(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableSum(f(x),f(b))(mtype(e.mT),mtype(e.mA),ntype(e.n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GIterableSumIf(x,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableSumIf(f(x),f(c),f(b))(mtype(e.mT),mtype(e.mA),ntype(e.n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GIterableProduct(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableProduct(f(x),f(b))(mtype(e.mT),mtype(e.mA),ntype(e.n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GIterableProductIf(x,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableProductIf(f(x),f(c),f(b))(mtype(e.mT),mtype(e.mA),ntype(e.n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GIterableMax(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableMax(f(x),f(b))(mtype(e.mT),mtype(e.mA),otype(e.o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GIterableMaxIf(x,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableMaxIf(f(x),f(c),f(b))(mtype(e.mT),mtype(e.mA),otype(e.o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GIterableMin(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableMin(f(x),f(b))(mtype(e.mT),mtype(e.mA),otype(e.o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GIterableMinIf(x,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableMinIf(f(x),f(c),f(b))(mtype(e.mT),mtype(e.mA),otype(e.o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableCount(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableCount(f(x),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableAll(x,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableAll(f(x),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableAllIf(x,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableAllIf(f(x),f(c),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -437,7 +437,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
     //case e@GIterableToList(x) => iter_tolist(f(x))(e.mA) //TODO?
     case e@GIterableToSet(x) => iter_toset(f(x))(e.mA) //TODO?
     case GIterableRawSize(x) => giterable_raw_size(f(x))
-    case GIterableRawApply(x,i) => giterable_raw_apply(f(x),f(i))
+    case e@GIterableRawApply(x,i) => giterable_raw_apply(f(x),f(i))(e.mA,ctx)
     case GIterableRawData(x) => giterable_raw_data(f(x))
     case e@GIterableContains(x, n) => reflectPure(new { override val original = Some(f,e) } with GIterableContains(f(x),f(n))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     //case Reflect(e@GIterableToList(x), u, es) => reflectMirrored(Reflect(GIterableToList(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -445,7 +445,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
     case Reflect(e@GIterableNew(d, o, s), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableNew(f(d), f(o), f(s))(e.mT), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableNewEmpty(), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with GIterableNewEmpty()(e.mT), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableRawSize(x), u, es) => reflectMirrored(Reflect(GIterableRawSize(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@GIterableRawApply(x,i), u, es) => reflectMirrored(Reflect(GIterableRawApply(f(x),f(i)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@GIterableRawApply(x,i), u, es) => reflectMirrored(Reflect(GIterableRawApply(f(x),f(i))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableRawData(x), u, es) => reflectMirrored(Reflect(GIterableRawData(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableSetRawData(x,g), u, es) => reflectMirrored(Reflect(GIterableSetRawData(f(x),f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@GIterableRawUpdate(x,i,y), u, es) => reflectMirrored(Reflect(GIterableRawUpdate(f(x),f(i),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -459,7 +459,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp wit
 
   // provides access to underlying GIterable fields required by DeliteCollection
   case class GIterableRawSize[A:Manifest](x: Exp[GIterable[A]]) extends Def[Int]
-  case class GIterableRawApply[A:Manifest](x: Exp[GIterable[A]], i: Exp[Int]) extends Def[A]
+  case class GIterableRawApply[A:Manifest](x: Exp[GIterable[A]], i: Exp[Int]) extends DefWithManifest[A,A]
   case class GIterableRawUpdate[A:Manifest](x: Exp[GIterable[A]], i: Exp[Int], y: Exp[A]) extends Def[Unit]
   case class GIterableSetRawSize[A:Manifest](x: Exp[GIterable[A]], newSz: Exp[Int]) extends Def[Unit]
   case class GIterableRawData[A:Manifest](x: Exp[GIterable[A]]) extends DefWithManifest[A,DeliteArray[A]] //Def[DeliteArray[A]]

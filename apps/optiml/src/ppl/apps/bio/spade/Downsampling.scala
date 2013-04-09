@@ -55,8 +55,10 @@ trait Downsampling {
 
     // NOTE: by allowing row.index to be expressed, we have essentially enabled writing the data race with densities.
     // This is a trade-off of restricted expression for performance, but is it the trade-off we want?
-    for (row <- distances.rows) {
-      if(row.index%1000 == 0) println("  (streaming) # processed node = " + row.index)
+          
+    // for (row <- distances.rows) {
+    distances.foreachRow { row =>
+      if(row.index%1000 == 0) println(infix_+("  (streaming) # processed node = ", row.index))
       if(densities(row.index) == 0) {
         val neighbors = row find { _ < apprxWidth }
         densities(neighbors) = row count { _ < kernelWidth }

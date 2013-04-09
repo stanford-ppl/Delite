@@ -190,22 +190,22 @@ trait SparseMatrixCSROpsExp extends SparseMatrixCSRCompilerOps with DeliteCollec
   
   override def onCreate[A:Manifest](s: Sym[A], d: Def[A]) = d match {    
     // map         
-    case e:DeliteOpMapI[_,_,_,_] if (Config.optimize > 0 && isSparseMat(e.in)) =>
-      specializeSparseMap(s, e, asSparseMat(e.in), sparsematrix_mapnz_manifest(e.dmA,e.dmB))(e.dmA,e.dmB).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
-    case Reflect(e:DeliteOpMapI[_,_,_,_], u, es) if (Config.optimize > 0 && isSparseMat(e.in)) =>
-      reflectSpecialized(specializeSparseMap(s, e, asSparseMat(e.in), sparsematrix_mapnz_manifest(e.dmA,e.dmB))(e.dmA,e.dmB), u, es)(super.onCreate(s,d))
+    case e:DeliteOpMapI[a,b,_,_] if (Config.optimize > 0 && isSparseMat(e.in)) =>
+      specializeSparseMap[a,b,SparseMatrix](s, e, asSparseMat(e.in), sparsematrix_mapnz_manifest(e.dmA,e.dmB))(e.dmA,e.dmB).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
+    case Reflect(e:DeliteOpMapI[a,b,_,_], u, es) if (Config.optimize > 0 && isSparseMat(e.in)) =>
+      reflectSpecialized(specializeSparseMap[a,b,SparseMatrix](s, e, asSparseMat(e.in), sparsematrix_mapnz_manifest(e.dmA,e.dmB))(e.dmA,e.dmB), u, es)(super.onCreate(s,d))
         
     // zip
-    case e:DeliteOpZipWithI[_,_,_,_,_] if (Config.optimize > 0 && isSparseMat(e.inA) && isSparseMat(e.inB)) =>
-      specializeSparseZip(s, e, asSparseMat(e.inA), asSparseMat(e.inB), sparsematrix_zipnz_manifest(e.dmA,e.dmB,e.dmR))(e.dmA,e.dmB,e.dmR).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
-    case Reflect(e:DeliteOpZipWithI[_,_,_,_,_], u, es) if (Config.optimize > 0 && isSparseMat(e.inA) && isSparseMat(e.inB)) =>
-      reflectSpecialized(specializeSparseZip(s, e, asSparseMat(e.inA), asSparseMat(e.inB), sparsematrix_zipnz_manifest(e.dmA,e.dmB,e.dmR))(e.dmA,e.dmB,e.dmR), u, es)(super.onCreate(s,d))
+    case e:DeliteOpZipWithI[a,b,r,_,_] if (Config.optimize > 0 && isSparseMat(e.inA) && isSparseMat(e.inB)) =>
+      specializeSparseZip[a,b,r,SparseMatrix](s, e, asSparseMat(e.inA), asSparseMat(e.inB), sparsematrix_zipnz_manifest(e.dmA,e.dmB,e.dmR))(e.dmA,e.dmB,e.dmR).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
+    case Reflect(e:DeliteOpZipWithI[a,b,r,_,_], u, es) if (Config.optimize > 0 && isSparseMat(e.inA) && isSparseMat(e.inB)) =>
+      reflectSpecialized(specializeSparseZip[a,b,r,SparseMatrix](s, e, asSparseMat(e.inA), asSparseMat(e.inB), sparsematrix_zipnz_manifest(e.dmA,e.dmB,e.dmR))(e.dmA,e.dmB,e.dmR), u, es)(super.onCreate(s,d))
       
     // reduce  
-    case e:DeliteOpReduce[_] if (Config.optimize > 0 && isSparseMat(e.in)) =>
-      specializeSparseReduce(s, e, asSparseMat(e.in), sparsematrix_reducenz_manifest(e.dmA))(e.dmA).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
-    case Reflect(e:DeliteOpReduce[_], u, es) if (Config.optimize > 0 && isSparseMat(e.in)) =>
-      reflectSpecialized(specializeSparseReduce(s, e, asSparseMat(e.in), sparsematrix_reducenz_manifest(e.dmA))(e.dmA), u, es)(super.onCreate(s,d))
+    case e:DeliteOpReduce[a] if (Config.optimize > 0 && isSparseMat(e.in)) =>
+      specializeSparseReduce[a,SparseMatrix](s, e, asSparseMat(e.in), sparsematrix_reducenz_manifest(e.dmA))(e.dmA).map(_.asInstanceOf[Exp[A]]) getOrElse super.onCreate(s,d)
+    case Reflect(e:DeliteOpReduce[a], u, es) if (Config.optimize > 0 && isSparseMat(e.in)) =>
+      reflectSpecialized(specializeSparseReduce[a,SparseMatrix](s, e, asSparseMat(e.in), sparsematrix_reducenz_manifest(e.dmA))(e.dmA), u, es)(super.onCreate(s,d))
     
     // TODO: filter
     // MapReduce, ReduceFold, .. ?

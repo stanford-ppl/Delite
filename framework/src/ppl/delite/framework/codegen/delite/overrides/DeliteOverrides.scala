@@ -10,7 +10,18 @@ trait DeliteAllOverridesExp extends DeliteIfThenElseExp /*with DeliteOpMap*/ wit
 }
 
 trait DeliteScalaGenAllOverrides extends DeliteScalaGenVariables with DeliteScalaGenIfThenElse /*with DeliteScalaGenRange*/ with DeliteScalaGenWhile  {
-  val IR: DeliteAllOverridesExp
+  val IR: DeliteAllOverridesExp 
+    
+  /**
+   * Avoid remapping Nothing to generated.scala.Nothing
+   */
+  override def remap[A](m: Manifest[A]): String = {     
+    val nothing = manifest[Nothing]
+    m match {
+      case `nothing` => "Nothing"
+      case _ => super.remap(m)
+    }
+  }
 }
 
 trait DeliteCudaGenAllOverrides extends DeliteCudaGenVariables with DeliteCudaGenIfThenElse /*with DeliteCudaGenRange*/ with DeliteCudaGenWhile {

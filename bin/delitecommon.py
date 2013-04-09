@@ -8,7 +8,8 @@ DELITE_HOME = os.getenv("DELITE_HOME")
 JAVA_HOME = os.getenv("JAVA_HOME")
 SCALA_VIRT_HOME = os.getenv("SCALA_VIRT_HOME")
 
-scala_virt_version = "scala-2.10.0-M1-virtualized"
+scala_virt_prefix = "org.scala-lang.virtualized."
+scala_virt_version = "scala-2.10.0"
 scala_major_id = '.'.join(scala_virt_version.split('.')[0:2]) 
 props = {}
 
@@ -68,7 +69,7 @@ def checkCommonEnv():
                 SCALA_VIRT_HOME = scala_virt_home
     
     if SCALA_VIRT_HOME is None:
-        scala_virt_home = USER_HOME + "/.sbt/boot/" + scala_virt_version + "/lib/"
+        scala_virt_home = USER_HOME + "/.sbt/boot/" + scala_virt_prefix + scala_virt_version + "/lib/"
         if not os.path.isdir(scala_virt_home):
             err("couldn't find scala virtualized at: " + scala_virt_home + ". Please set the SCALA_VIRT_HOME environment variable or scala.virtualized.home entry in delite.properties manually.")
         SCALA_VIRT_HOME = scala_virt_home

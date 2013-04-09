@@ -35,7 +35,7 @@ trait RBM extends OptiMLApplication {
     println("Reading MNIST dataset")
     val numcases = Integer.parseInt(args(2)) // batchsize
     //val numcases = 100 // batchsize
-    val trainingdata = readMatrix(args(0)).toFloat(e => e.floatValue())
+    val trainingdata = readMatrix(args(0)).toFloat((e:Rep[Double]) => e.floatValue())
     val numdims = trainingdata.numCols
     val numbatches = trainingdata.numRows / numcases
 
