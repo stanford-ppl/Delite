@@ -1,10 +1,10 @@
 package ppl.dsl.optiql.ops
 
-import scala.virtualization.lms.common.{Base,BaseFatExp}
+import scala.virtualization.lms.common.{Base, BaseFatExp, LiftVariables}
 import ppl.dsl.optiql._
-import ppl.delite.framework.datastructures.{DeliteArray,DeliteArrayBuffer}
+import ppl.delite.framework.datastructures.{DeliteArray, DeliteArrayBuffer}
 import java.io.PrintWriter
-import reflect.{RefinedManifest,SourceContext}
+import reflect.{RefinedManifest, SourceContext}
 
 trait InputReaderOps extends Base { this: OptiQL =>
 
@@ -32,10 +32,10 @@ trait InputReaderOpsExp extends InputReaderOps with BaseFatExp { this: OptiQLExp
   }
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case e@OptiQLTableInputReader(block) => reflectPure(new { override val original = Some(f,e) } with OptiQLTableInputReader(f(block))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])      
-    case Reflect(e@OptiQLTableInputReader(block), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with OptiQLTableInputReader(f(block))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case e@OptiQLTableFromSeq(block) => reflectPure(new { override val original = Some(f,e) } with OptiQLTableFromSeq(f(block))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])      
-    case Reflect(e@OptiQLTableFromSeq(block), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with OptiQLTableFromSeq(f(block))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case e@OptiQLTableInputReader(block) => reflectPure(new { override val original = Some(f,e) } with OptiQLTableInputReader(f(block))(mtype(e.mA)))(mtype(manifest[A]),implicitly[SourceContext])      
+    case Reflect(e@OptiQLTableInputReader(block), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with OptiQLTableInputReader(f(block))(mtype(e.mA)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case e@OptiQLTableFromSeq(block) => reflectPure(new { override val original = Some(f,e) } with OptiQLTableFromSeq(f(block))(mtype(e.mA)))(mtype(manifest[A]),implicitly[SourceContext])      
+    case Reflect(e@OptiQLTableFromSeq(block), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with OptiQLTableFromSeq(f(block))(mtype(e.mA)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
 
@@ -48,12 +48,12 @@ trait InputReaderImplOps { this: OptiQL =>
 
 trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift with OptiQLExp =>
   def optiql_table_input_reader_impl[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]) = {
-    implicit def rv[T:Manifest](v: Var[T]): Exp[T] = readVar(v) //TODO: why isn't readVar implicit working?
+    implicit def rv[T:Manifest](v: Var[T]): Exp[T] = readVar(v)
 
     val input = BufferedReader(FileReader(path))
     val table = DeliteArrayBuffer[T]()
-    var record = input.readLine()
-    var i = 0
+    val record = var_new(input.readLine())
+    val i = var_new(0)
     while (record != unit(null)) {
       val fields = record.split("\\\\Q" + separator + "\\\\E")
       addRecord(table, fields, shape)
