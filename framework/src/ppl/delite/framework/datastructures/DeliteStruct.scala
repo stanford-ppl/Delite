@@ -265,6 +265,7 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
     case bm if isArrayType(bm) => unwrapArrayType(bm.typeArguments(0))
     case bm => bm 
   }
+  private def isNestedArrayType[T](m: Manifest[T]) = isArrayType(baseType(m)) && !isPrimitiveType(unwrapArrayType(m))
 
   override def emitDataStructures(path: String) {
     val structStream = new PrintWriter(path + "DeliteStructs.h")
@@ -276,7 +277,7 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
     for ((name, elems) <- encounteredStructs if !generatedStructs.contains(name)) {
       try {
         emitStructDeclaration(path, name, elems)
-        elems foreach { e => dsTypesList.add(baseType(e._2).asInstanceOf[Manifest[Any]]) }
+        elems filterNot { e => isNestedArrayType(e._2) } foreach { e => dsTypesList.add(baseType(e._2).asInstanceOf[Manifest[Any]]) }
         structStream.println("#include \"" + name + ".h\"")
       }
       catch {
@@ -295,7 +296,8 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
       stream.println("#ifndef __" + name + "__")
       stream.println("#define __" + name + "__")
       val dependentStructTypes = elems.map(e => 
-        if(encounteredStructs.contains(remap(unwrapArrayType(e._2)))) remap(unwrapArrayType(e._2))
+        if(encounteredStructs.contains(remap(baseType(e._2)))) remap(baseType(e._2))
+        else if(encounteredStructs.contains(remap(unwrapArrayType(e._2)))) remap(unwrapArrayType(e._2))
         else remap(baseType(e._2))  // SoA transfromed types
       ).distinct
         
@@ -343,18 +345,23 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
           stream.println(");")
           stream.println("\t}")
           // Only generate dc_apply, dc_update, dc_size when there is only 1 DeliteArray among the fields
-          val generateDC = elems.filter(e => isArrayType(baseType(e._2))).size == 1
+          val arrayElems = elems.filter(e => isArrayType(baseType(e._2)))
+          val generateDC = arrayElems.size > 0
+          val generateAssert = (arrayElems.size > 1) || (arrayElems.size==1 && generatedStructs.contains(remap(baseType(arrayElems(0)._2))))
           if(generateDC) {
             val (idx,tp) = elems.filter(e => isArrayType(baseType(e._2)))(0)
             val argtp = unwrapArrayType(tp)
             stream.println("\t__host__ __device__ " + remap(argtp) + " dc_apply(int idx) {")
-            stream.println("\t\treturn " + idx + ".apply(idx);")
+            if(generateAssert) stream.println("\t\tassert(false);")
+            else stream.println("\t\treturn " + idx + ".apply(idx);")
             stream.println("\t}")
             stream.println("\t__host__ __device__ void dc_update(int idx," + remap(argtp) + " newVal) {")
-            stream.println("\t\t" + idx + ".update(idx,newVal);")
+            if(generateAssert) stream.println("\t\tassert(false);")
+            else stream.println("\t\t" + idx + ".update(idx,newVal);")  
             stream.println("\t}")
             stream.println("\t__host__ __device__ int dc_size(void) {")
-            stream.println("\t\treturn " + idx + ".length;")
+            if(generateAssert) stream.println("\t\tassert(false);")
+            else stream.println("\t\treturn " + idx + ".length;")
             stream.println("\t}")
           }
         }
