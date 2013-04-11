@@ -53,12 +53,12 @@ trait OptiQLLift extends LiftString with LiftPrimitives with LiftNumeric {
  * Scala IR nodes
  */
 trait OptiQLScalaOpsPkgExp extends OptiQLScalaOpsPkg with MiscOpsExp with IOOpsExp with SeqOpsExp with OrderingOpsExp with BooleanOpsExp with EqualExp with MathOpsExp
-  with PrimitiveOpsExp with ObjectOpsExp with StringOpsExp with TupleOpsExp with StructExp with NumericOpsExp with ArrayOpsExp with IfThenElseExp with StructFatExpOptCommon with CastingOpsExp
+  with PrimitiveOpsExp with ObjectOpsExp with StringOpsExp with TupleOpsExp with StructExp with NumericOpsExp with ArrayOpsExp with ArrayBufferOpsExp with IfThenElseExp with StructFatExpOptCommon with CastingOpsExp
 
 /**
  * Ops available only to the compiler, and not our applications
  */
-trait OptiQLCompiler extends OptiQL with IOOps with SeqOps with Variables with LiftVariables with While with DeliteArrayOps with DeliteArrayBufferCompilerOps {
+trait OptiQLCompiler extends OptiQL with IOOps with SeqOps with Variables with While with DeliteArrayOps with DeliteArrayBufferCompilerOps {
   this: OptiQLApplication with OptiQLExp =>
 }
 
@@ -88,7 +88,7 @@ trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with TableOpsEx
  * Codegen traits
  */
 trait OptiQLScalaCodeGenPkg extends ScalaGenMiscOps with ScalaGenIOOps with ScalaGenSeqOps with ScalaGenOrderingOps with ScalaGenBooleanOps with ScalaGenEqual with ScalaGenVariables
-  with ScalaGenPrimitiveOps with ScalaGenObjectOps with ScalaGenStringOps with ScalaGenTupleOps with ScalaGenNumericOps with ScalaGenArrayOps with ScalaGenIfThenElseFat with ScalaGenImplicitOps with ScalaGenCastingOps {
+  with ScalaGenPrimitiveOps with ScalaGenObjectOps with ScalaGenStringOps with ScalaGenTupleOps with ScalaGenNumericOps with ScalaGenArrayOps with ScalaGenArrayBufferOps with ScalaGenIfThenElseFat with ScalaGenImplicitOps with ScalaGenCastingOps {
   val IR: OptiQLScalaOpsPkgExp
 }
 
