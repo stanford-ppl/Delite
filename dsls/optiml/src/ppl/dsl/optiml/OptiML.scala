@@ -300,7 +300,7 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
     var res = line.replaceAll("ppl.dsl.optiml.datastruct", "generated")
     res = res.replaceAll("import ppl.dsl.optila.datastruct.scala._", "")     
     res = res.replaceAll("ppl.delite.framework.datastruct", "generated")
-    res = res.replaceAll("ppl.dsl.optiml", "generated.scala")        
+    res = res.replaceAll(".*\\$", "generated.scala.")
     super.dsmap(res) // calls parmap
   }
 }

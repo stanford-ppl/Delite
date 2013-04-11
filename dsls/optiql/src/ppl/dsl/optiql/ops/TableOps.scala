@@ -14,9 +14,10 @@ trait TableOps extends Base { this: OptiQL =>
   implicit def tableRepToTableRepOps[T:Manifest](d: Rep[Table[T]]) = new TableRepOps(d)
 
   object Table {
-    //def apply[T:Manifest](): Rep[Table[T]] = tableObjectApply()
 	  def apply[T:Manifest](initSize: Rep[Int]): Rep[Table[T]] = tableObjectApply(initSize)
 	  def apply[T:Manifest](data: Rep[DeliteArray[T]], size: Rep[Int]): Rep[Table[T]] = tableObjectApply(data, size)
+    def apply[T:Manifest](elems: Rep[T]*): Rep[Table[T]] = optiql_table_from_seq(elems)
+    def fromFile[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String] = unit("|")): Rep[Table[T]] = optiql_table_input_reader(path, shape, separator)
   }
 
   class TableRepOps[T:Manifest](t:Rep[Table[T]]) {
@@ -30,7 +31,7 @@ trait TableOps extends Base { this: OptiQL =>
   def tableApply[T:Manifest](t: Rep[Table[T]], i: Rep[Int]): Rep[T]
   def tableObjectApply[T:Manifest](): Rep[Table[T]]
   def tableObjectApply[T:Manifest](initSize: Rep[Int]): Rep[Table[T]]
-  def tableObjectApply[T:Manifest](data: Rep[DeliteArray[T]], initSize: Rep[Int]): Rep[Table[T]]
+  def tableObjectApply[T:Manifest](data: Rep[DeliteArray[T]], size: Rep[Int]): Rep[Table[T]]
   def tableSize[T:Manifest](t: Rep[Table[T]]): Rep[Int]
 
   // data exchange

@@ -1911,12 +1911,6 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
     emitAbstractFatLoopHeader(kernelName, actType)
 
-    // TODO: if there are conditions, the output size is not known (but for now it is known to be smaller than the input size)
-    // two options:
-    // - combine (reduce step) using concat <-- simpler to implement but slow
-    // - use a pre-combine scan step to find out where each processor should write the data
-    //   and do the copying in another parallel map <-- faster but more work
-
     emitMethod("size", remap(Manifest.Int), Nil) { emitReturn(quote(op.size)) }
 
     emitMethod("alloc", actType, Nil) {
@@ -1936,18 +1930,11 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         case (sym, elem: DeliteReduceElem[_]) =>
           emitBlock(elem.zero)
           emitAssignment(fieldAccess("__act",quote(sym)+"_zero"),quote(getBlockResult(elem.zero)))
-          //stream.println(/*{*/"}")
-          /*stream.println("__act." + quote(sym) + "_zero = " + elem.zero)
-          stream.println("__act." + quote(sym) + " = __act." + quote(sym) + "_zero")*/
         case (sym, elem: DeliteReduceTupleElem[_,_]) =>
           emitBlock(elem.zero._1)
           emitAssignment(fieldAccess("__act",quote(sym)+"_zero"),quote(getBlockResult(elem.zero._1)))
           emitBlock(elem.zero._2)
           emitAssignment(fieldAccess("__act",quote(sym)+"_zero_2"),quote(getBlockResult(elem.zero._2)))
-          /*stream.println("__act." + quote(sym) + "_zero   = " + elem.zero._1)
-          stream.println("__act." + quote(sym) + "_zero_2 = " + elem.zero._2)
-          stream.println("__act." + quote(sym) + "  " + " = __act." + quote(sym) + "_zero  ")
-          stream.println("__act." + quote(sym) + "_2" + " = __act." + quote(sym) + "_zero_2")*/
       }
       emitReturn("__act")
     }
@@ -1967,10 +1954,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     // init and compute first element
     emitMethod("init", actType, List(("__act",actType),(quote(op.v),remap(op.v.tp)))) {
       if (op.body exists (loopBodyNeedsCombine _)) {
-        emitMultiLoopFuncs(op, symList)
         emitNewInstance("__act2", actType)
         emitKernelMultiHashInit(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act2.")
-        emitMultiHashElem(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act2.")
         (symList zip op.body) foreach {
           case (sym, elem: DeliteCollectElem[_,_,_]) => elem.par match {
             case ParBuffer | ParSimpleBuffer =>
@@ -1989,7 +1974,6 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
               stream.println("if (" + quote(op.size) + " == 0) // stripping the first iter: only initialize to zero if empty")
               emitAssignment(fieldAccess("__act2",quote(sym)),fieldAccess("__act2",quote(sym)+"_zero"))
             } else {
-              //emitAssignment(fieldAccess("__act2",quote(sym)+"_zero"),fieldAccess("__act",quote(sym)+"_zero"))
               if (isPrimitiveType(sym.tp)) {
                 emitAssignment(fieldAccess("__act2",quote(sym)),fieldAccess("__act2",quote(sym)+"_zero"))
               } else {

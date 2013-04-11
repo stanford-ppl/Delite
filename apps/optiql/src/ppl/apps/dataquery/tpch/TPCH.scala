@@ -2,8 +2,6 @@ package ppl.apps.dataquery.tpch
 
 import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
 
-object Tweeter extends OptiQLApplicationRunner with TweeterTrait
-object TPCHQ0 extends OptiQLApplicationRunner with TPCHQ0Trait
 object TPCHQ1 extends OptiQLApplicationRunner with TPCHQ1Trait
 object TPCHQ2 extends OptiQLApplicationRunner with TPCHQ2Trait
 
@@ -25,7 +23,6 @@ trait TPCHBaseTrait extends OptiQLApplication with Types {
   def loadPartSuppliers() = TableInputReader(tpchDataPath+"/partsupp.tbl", PartSupplier())
   def loadRegions() = TableInputReader(tpchDataPath+"/region.tbl", Region())
   def loadSuppliers() = TableInputReader(tpchDataPath+"/supplier.tbl", Supplier())
-  def loadTweets() = TableInputReader(tpchDataPath+"/tweet.tbl", Tweet())
   
   def query(): Rep[_]
   
@@ -39,63 +36,13 @@ trait TPCHBaseTrait extends OptiQLApplication with Types {
 
 }
 
-trait TweeterTrait extends TPCHBaseTrait {
-  val queryName = "Tweet"
-  def query() = {
-    
-    val tweets = loadTweets()
-
-    tic(tweets.size)
-    val entweets = tweets Where(_.language == "en")
-    val enretweets = tweets Where(t => t.time >= Date("2008-01-01") && t.language == "en" && t.retweet)
-    toc(entweets, enretweets)
-    println("english tweets : " + entweets.size)
-    println("english retweets : " + enretweets.size)
-    
-  }
-}
-
-
-trait TPCHQ0Trait extends TPCHBaseTrait {
-  val queryName = "Q0"
-  def query() = {
-    val lineItems = loadLineItems()
-
-    val lineItems1 = lineItems.unsafeMutable.unsafeImmutable
-    val m = lineItems1 Select(l => new Result {
-      val divided = l.l_quantity / l.l_extendedprice
-      val other = l.l_tax / l.l_discount
-    })
-    m.printAsTable
-
-    val lineItems2 = lineItems.unsafeMutable.unsafeImmutable
-    val f = lineItems2 Where(_.l_shipdate <= Date("1998-12-01")) Select(l => new Result {
-      val divided = l.l_quantity / l.l_extendedprice
-      val other = l.l_tax / l.l_discount 
-    })
-    f.printAsTable
-
-    val lineItems3 = lineItems.unsafeMutable.unsafeImmutable
-    val r = lineItems3 Sum(_.l_quantity)
-    println(r)
-
-    val lineItems4 = lineItems.unsafeMutable.unsafeImmutable
-    val h = lineItems4 GroupBy(_.l_returnflag) Select(g => new Result {
-      val returnFlag = g.key
-      val sumQty = g.Sum(_.l_quantity)
-      //val avgQty = g.Average(_.l_quantity)
-      val countOrder = g.Count
-    })
-    h.printAsTable
-
-  }
-}
 
 trait TPCHQ1Trait extends TPCHBaseTrait {
   val queryName = "Q1"  
   def query() = {  
     val lineItems = loadLineItems()         
     tic(lineItems.size)
+    
     val q = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag,l.l_linestatus)) Select(g => new Result {
       val returnFlag = g.key._1
       val lineStatus = g.key._2
@@ -108,10 +55,12 @@ trait TPCHQ1Trait extends TPCHBaseTrait {
       val avgDiscount = g.Average(_.l_discount)
       val countOrder = g.Count
     }) OrderBy(_.returnFlag) ThenBy(_.lineStatus)
+    
     toc(q)
     q.printAsTable()
   }    
 }
+
 
 trait TPCHQ2Trait extends TPCHBaseTrait {
   val queryName = "Q2"  
@@ -119,6 +68,7 @@ trait TPCHQ2Trait extends TPCHBaseTrait {
   def query() = {
     val parts = loadParts(); val partSuppliers = loadPartSuppliers(); val suppliers = loadSuppliers(); val nations = loadNations(); val regions = loadRegions()
     tic(parts.size)
+    
     val q = parts.Where(p => {val res:Rep[Boolean] = p.p_size == 15; res}).Where(_.p_type.endsWith("BRASS")).Join(partSuppliers).WhereEq(_.p_partkey, _.ps_partkey).Select((p, ps) => new  Result {
       val p_partkey = p.p_partkey
       val p_mfgr = p.p_mfgr
@@ -169,6 +119,7 @@ trait TPCHQ2Trait extends TPCHBaseTrait {
          val r_name = r.r_name
        }).Where(_.r_name == "EUROPE").Min(_.ps_supplycost)
     }) OrderByDescending(_.s_acctbal) ThenBy(_.n_name) ThenBy(_.s_name) ThenBy(_.p_partkey)
+    
     toc(q)
     q.printAsTable(10)
   }    
