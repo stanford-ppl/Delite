@@ -757,6 +757,7 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
   }
 
   private def writeCopyBackKernel(out: StringBuilder, op: OP_MultiLoop) {
+    out.append("if(" + opSize + " != 0) {\n") //for loop size zero
     for((odata,osym) <- conditionList(op)) {
       out.append("unsigned int *%s_size_ptr;\n".format(osym))
       out.append("DeliteCudaMallocHost((void**)&%s_size_ptr,2*sizeof(unsigned int));\n".format(osym))
@@ -765,6 +766,7 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
       out.append("*%s_size_ptr = *%s_size_ptr + *(%s_size_ptr+1);\n".format(osym,osym,osym))
       out.append("act." + osym + "_conditionals = *" + osym + "_size_ptr;\n")
     }
+    out.append("}\n")
   }
 
   private def writeCopyBackReduceKernelCall(out: StringBuilder, op: OP_MultiLoop) {
