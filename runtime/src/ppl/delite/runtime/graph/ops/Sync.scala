@@ -109,11 +109,15 @@ object Sync {
   }
 
   def awaitUpdate(updater: SendUpdate, to: DeliteOP) {
-    val updatee = ReceiveUpdate(updater, node(to.scheduledResource))
-    if (updater ne null) assert(updatee.atNode == updater.toNode, "invalid update pair")
+    val updatee = ReceiveUpdate(updater, to.scheduledResource)
+    if (updater ne null) assert(node(updatee.atResource) == updater.toNode, "invalid update pair")
     updater match {
       case null =>
       case _ if (syncSet contains updatee) =>
+        // need to replace the receiveOp to be the earliest one in the schedule 
+        val receiver = syncSet(updatee).asInstanceOf[ReceiveUpdate]
+        val sch = schedule(to.scheduledResource)
+        if(sch.indexOf(receiver.to) > sch.indexOf(to)) receiver.setReceiveOp(to)
       case _ => 
         val potentialNotifyAwait = Await(Notify(updater.from,node(to.scheduledResource)),to.scheduledResource)
         if (syncSet contains potentialNotifyAwait) removeSendReceive(potentialNotifyAwait, to)
@@ -318,7 +322,7 @@ case class Await(sender: Notify, atResource: Int) extends Receive
 
 //update existing data, separated from Send/Receive data for analysis purposes
 case class SendUpdate(sym: String, from: DeliteOP, toNode: Int) extends Send
-case class ReceiveUpdate(sender: SendUpdate, atNode: Int) extends Receive
+case class ReceiveUpdate(sender: SendUpdate, atResource: Int) extends Receive
 
 //Free nodes (TODO: Better to have a Free node for each symbol?)
 case class Free(op: DeliteOP, items: List[(DeliteOP,String)]) extends PCM_M
