@@ -28,9 +28,11 @@ trait DeliteTestConfig {
   val cacheSyms = props.getProperty("tests.cacheSyms", "true").toBoolean
   val javaHome = new File(props.getProperty("java.home", ""))
   val scalaHome = new File(props.getProperty("scala.vanilla.home", ""))
+  val deliteHome = new File(props.getProperty("delite.home",""))
   val runtimeClasses = new File(props.getProperty("runtime.classes", ""))
   val runtimeExternalProc = false // scalaHome and runtimeClasses only required if runtimeExternalProc is true. should this be configurable? or should we just remove execTestExternal?
   val deliteTestTargets = props.getProperty("tests.targets", "scala").split(",")
+  val useBlas = props.getProperty("tests.extern.blas", "false").toBoolean
 }
 
 trait DeliteSuite extends Suite with DeliteTestConfig {
@@ -42,6 +44,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
 
   def validateParameters() {
     if (!javaHome.exists) throw new TestFailedException("java.home must be a valid path in delite.properties", 3)
+    else if (!deliteHome.exists) throw new TestFailedException("delite.home must be a valid path in delite.properties", 3)
     else if (!javaBin.exists) throw new TestFailedException("Could not find valid java installation in " + javaHome, 3)
     else if (runtimeExternalProc && !scalaHome.exists) throw new TestFailedException("scala.vanilla.home must be a valid path in delite.proeprties", 3)
     else if (runtimeExternalProc && (!scalaCompiler.exists || !scalaLibrary.exists)) throw new TestFailedException("Could not find valid scala installation in " + scalaHome, 3)
@@ -75,6 +78,8 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
         case _ => println("Unknown test target: " + t)
       }
     }
+
+    if(useBlas) Config.useBlas = true
 
     // check if all multiloops in the test app are generated for specified targets
     if(checkMultiLoop) {
@@ -116,7 +121,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val save = Config.degFilename
     val buildDir = Config.buildDir
     val saveCacheSyms = Config.cacheSyms
-    val generatedDir = "generated" + java.io.File.separator + uniqueTestName(app)
+    val generatedDir = deliteHome + java.io.File.separator + "generated" + java.io.File.separator + uniqueTestName(app)
     try {
       Config.degFilename = degName(app)
       Config.buildDir = generatedDir

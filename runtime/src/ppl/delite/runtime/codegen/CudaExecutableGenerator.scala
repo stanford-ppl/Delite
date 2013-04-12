@@ -207,21 +207,33 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
         out.append(op.task) //kernel name
         val args = op.getInputs.map(i=>getSymDevice(i._1,i._2))
         out.append(args.mkString("(",",",");\n"))
-      /*
       case _:OP_External =>
         assert(op.getOutputs.size == 1) //TODO: what does libCall support?
+        writeOutputAlloc(op)
         out.append(op.task) //kernel name
         out.append('(')
-        for (name <- op.getOutputs) {
-          if (op.outputType(name) != "Unit") out.append("*" + getSymDevice(op,name) + ",")
-        }
-        //writeInputs(op) //then all op inputs
+        out.append((op.getOutputs.toList++op.getInputs.map(i => i._2)).map(getSymDevice(op,_)).mkString(","))
         //out.append(",kernelStream") //TODO: what other libraries besides cuBlas do we use? how do we use the stream only with supported libraries?
         out.append(");\n")
-      */
     }
     out.append("addEvent(kernelStream, d2hStream);\n")
     //writeDataFrees(op)
+  }
+
+  protected def writeOutputAlloc(op: DeliteOP) {
+    for ((odata,osym) <- op.getGPUMetadata(Targets.Cuda).outputs if odata.resultType!="void") {// if !isPrimitiveType(op.outputType(osym))) {
+      out.append(op.outputType(Targets.Cuda, osym))
+      out.append(" *" + getSymDevice(op,osym))
+      out.append(" = ")
+      out.append(odata.func)
+      out.append('(')
+      out.append(odata.inputs.map(i => getSymDevice(op,i._2)).mkString(","))
+      out.append(");\n")
+      out.append("cudaMemoryMap->insert(pair<void*,list<void*>*>(")
+      out.append(getSymDevice(op,osym))
+      out.append(",lastAlloc));\n")
+      out.append("lastAlloc = new list<void*>();\n")
+    }
   }
 
   protected def getSymCPU(name: String): String = {

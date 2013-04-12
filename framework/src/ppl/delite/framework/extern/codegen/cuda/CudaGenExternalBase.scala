@@ -34,6 +34,8 @@ trait CudaGenExternalBase extends GenericGenExternal with CudaGenFat {
   }
 
   def emitMethodCall(sym: Sym[Any], e: DeliteOpExternal[_], lib: ExternalLibrary, args: List[String]) = {
+    if(isNestedNode) throw new GenerationFailedException(quote(sym) + ": cannot call external libraries within kernels")
+    
     emitAllocFunc(List((sym,e.allocVal)), "allocFunc_"+quote(sym), Nil, Map())
     stream.println(e.funcName + "(" + (args mkString ",") + ");")    
   }

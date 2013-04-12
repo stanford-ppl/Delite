@@ -6,6 +6,7 @@ import ppl.delite.runtime.graph.ops.{OP_Nested, DeliteOP}
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.cost._
 import ppl.delite.runtime.codegen.kernels.cuda.SingleTask_GPU_Generator
+import ppl.delite.runtime.codegen.{Compilers,CCompile}
 
 
 final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilizationCostModel {
@@ -67,7 +68,11 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
       split(op, graph, schedule, Seq(gpu))
     else {
       scheduleOn(op, schedule, gpu)
-      SingleTask_GPU_Generator(op)
+      Compilers(OpHelper.scheduledTarget(gpu)) match {
+        case c:CCompile => c.addKernel(op.id)
+        case _ => throw new RuntimeException("GPU compiler should be extending C compiler.")
+      }
+      //SingleTask_GPU_Generator(op)
     }
   }
 
