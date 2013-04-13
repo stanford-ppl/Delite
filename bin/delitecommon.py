@@ -9,8 +9,9 @@ JAVA_HOME = os.getenv("JAVA_HOME")
 SCALA_VIRT_HOME = os.getenv("SCALA_VIRT_HOME")
 
 scala_virt_prefix = "org.scala-lang.virtualized."
-scala_virt_version = "scala-2.10.0"
-scala_major_id = '.'.join(scala_virt_version.split('.')[0:2]) 
+scala_virt_version = "scala-2.10.1"
+#scala_major_id = '.'.join(scala_virt_version.split('.')[0:2]) 
+scala_major_id = "scala-2.10.1" 
 props = {}
 
 def err(s):

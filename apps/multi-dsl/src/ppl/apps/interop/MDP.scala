@@ -1,5 +1,6 @@
 package ppl.apps.interop
 
+import scala.virtualization.lms.common.Record
 import ppl.dsl.optiml._
 import ppl.delite.framework.datastructures.DeliteArray
 

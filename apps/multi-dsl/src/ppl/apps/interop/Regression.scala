@@ -1,12 +1,15 @@
 package ppl.apps.interop
 
+import scala.virtualization.lms.common.Record
 import ppl.dsl.optiml._
 import ppl.delite.framework.DeliteApplication
+
+// AKS: temporarily comments out during scala-virtualized scope/record testing
 
 object RegressionRunner extends OptiMLApplicationRunner with Regression
 
 trait Regression extends OptiMLApplication {
-
+  /*
 
   // file format is m lines with n floats per line, each float seperated by 2 spaces
   // (same as matlab .dat)
@@ -35,8 +38,9 @@ trait Regression extends OptiMLApplication {
       val text = v(7)
     }
   }
-
+  */
   def main() = {                                                 
+    /*
     if (args.length < 4) print_usage
 
 
@@ -71,5 +75,6 @@ trait Regression extends OptiMLApplication {
     theta.pprint
     println("mean: " + m)
     println("std dev: " + sdev)
+    */
   }
 }
