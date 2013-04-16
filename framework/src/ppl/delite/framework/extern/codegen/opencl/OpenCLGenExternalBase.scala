@@ -12,7 +12,7 @@ import ppl.delite.framework.extern.codegen.GenericGenExternal
 import ppl.delite.framework.ops._
 import ppl.delite.framework.codegen.delite._
 
-trait OpenCLGenExternalBase extends GenericGenExternal with OpenCLGenFat {
+trait OpenCLGenExternalBase extends GenericGenExternal with OpenCLGenFat with OpenCLGenDeliteOps {
   val IR: DeliteOpsExp
   import IR._
 
@@ -34,8 +34,11 @@ trait OpenCLGenExternalBase extends GenericGenExternal with OpenCLGenFat {
   }
 
   def emitMethodCall(sym: Sym[Any], e: DeliteOpExternal[_], lib: ExternalLibrary, args: List[String]) = {
-    emitAllocFunc(List((sym,e.allocVal)), "allocFunc_"+quote(sym), Nil, Map())
-    stream.println(e.funcName + "(" + (args mkString ",") + ");")
+    val allocInputs = emitMultiLoopAllocFunc(e.allocVal, "alloc_"+quote(sym), "", quote(sym), Map())
+    val elem = new LoopElem("EXTERN",Map())
+    elem.funcs += "alloc" -> allocInputs.map(quote)
+    metaData.outputs.put(sym, elem)
+    stream.println(e.funcName + "(" + (args mkString ",") + ");")   
   }
 
   def emitInterfaceAndMethod(lib: ExternalLibrary, funcName: String, args: List[String], global: String, body: String) = {

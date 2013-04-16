@@ -221,13 +221,14 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
   }
 
   protected def writeOutputAlloc(op: DeliteOP) {
-    for ((odata,osym) <- op.getGPUMetadata(Targets.Cuda).outputs if odata.resultType!="void") {// if !isPrimitiveType(op.outputType(osym))) {
+    for ((odata,osym) <- op.getGPUMetadata(Targets.Cuda).outputs if op.outputType(Targets.Cuda,osym)!="void") {// if !isPrimitiveType(op.outputType(osym))) {
       out.append(op.outputType(Targets.Cuda, osym))
-      out.append(" *" + getSymDevice(op,osym))
-      out.append(" = ")
-      out.append(odata.func)
+      out.append(" *")
+      out.append(getSymDevice(op,osym))
+      out.append(";\n")
+      out.append("alloc_" + osym)
       out.append('(')
-      out.append(odata.inputs.map(i => getSymDevice(op,i._2)).mkString(","))
+      out.append((odata.getInputs("alloc").map(i => getSymDevice(op,i)):+("&"+getSymDevice(op,osym))).mkString(","))
       out.append(");\n")
       out.append("cudaMemoryMap->insert(pair<void*,list<void*>*>(")
       out.append(getSymDevice(op,osym))
