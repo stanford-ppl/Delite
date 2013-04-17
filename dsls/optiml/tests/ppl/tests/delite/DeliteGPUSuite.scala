@@ -157,6 +157,20 @@ trait DeliteGPUSync extends DeliteTestModule with OptiMLApplication {
   }
 }
 
+// check if nested datastructure is properly copied from host to device
+object DeliteGPUNestedInputRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteGPUNestedInput
+trait DeliteGPUNestedInput extends DeliteTestModule with OptiMLApplication {
+  def main() = {
+
+    val x = Vector(Vector(1,2,3,4,5), Vector(6,7,8,9))
+    val y = x.map(i => i.sum)
+    collect(y(0) == 15)
+    collect(y(1) == 30)
+    
+    mkReport
+  }
+}
+
 class DeliteGPUSuite extends DeliteSuite {
   //def testDeliteGPUBLASMM() { compileAndTest(DeliteGPUBLASMMRunner); }
   //def testDeliteGPUBLASMV() { compileAndTest(DeliteGPUBLASMVRunner); }
@@ -167,5 +181,6 @@ class DeliteGPUSuite extends DeliteSuite {
   def testDeliteGPUNestedMutation() { compileAndTest(DeliteGPUNestedMutationRunner, CHECK_MULTILOOP); }
   def testDeliteGPUObjectReduction() { compileAndTest(DeliteGPUObjectReductionRunner, CHECK_MULTILOOP); }
   def testDeliteGPUSync() { compileAndTest(DeliteGPUSyncRunner, CHECK_MULTILOOP); }
+  def testDeliteGPUNestedInput() { compileAndTest(DeliteGPUNestedInputRunner, CHECK_MULTILOOP); }
 
 }

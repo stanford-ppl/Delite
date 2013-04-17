@@ -12,7 +12,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
   private def isArrayType[T](m: Manifest[T]) = m.erasure.getSimpleName == "DeliteArray"
   private def isVarType[T](m: Manifest[T]) = m.erasure.getSimpleName == "Variable"
   private def baseType[T](m: Manifest[T]) = if (isVarType(m)) mtype(m.typeArguments(0)) else m
-  
+
   override def emitSend(tp: Manifest[Any], host: Hosts.Value): (String,String) = {
     if (host == Hosts.JVM) {
       if (tp.erasure == classOf[Variable[AnyVal]]) {
@@ -51,7 +51,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("}\n")
         (signature+";\n", out.toString)
       }
-      else {
+      else if(remap(tp).startsWith("DeliteArray<")) {
         remap(tp) match {
           case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
@@ -65,12 +65,24 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\treturn arr;\n")
             out.append("}\n")
             (signature+";\n", out.toString)
-          case _ => super.emitSend(tp, host)
+          case _ => // DeliteArrayObject
+            val out = new StringBuilder
+            val typeArg = tp.typeArguments.head
+            val signature = "jobject sendCPPtoJVM_%s(JNIEnv *env, Host%s *sym)".format(mangledName(remap(tp)),remap(tp))
+            out.append(signature + " {\n")
+            out.append("assert(false);\n")
+            out.append("}\n")
+            (signature+";\n", out.toString)
         }
       }
+      else {
+        super.emitSend(tp, host)
+      }
     }
-    else
+    else {
       super.emitSend(tp, host)
+    }
+      
   }
 
   override def emitRecv(tp: Manifest[Any], host: Hosts.Value): (String,String) = {
@@ -116,7 +128,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("}\n")
         (signature+";\n", out.toString)
       }
-      else {
+      else if(remap(tp).startsWith("DeliteArray<")) {
         remap(tp) match {
           case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
@@ -131,8 +143,23 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\treturn sym;\n")
             out.append("}\n")
             (signature+";\n", out.toString)
-          case _ => super.emitRecv(tp, host)
+          case _ => // DeliteArrayObject
+            val out = new StringBuilder
+            val typeArg = tp.typeArguments.head
+            val signature = "%s *recvCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remapHost(tp),mangledName(remap(tp)))
+            out.append(signature + " {\n")
+            out.append("\tint length = env->GetArrayLength((%sArray)obj);\n".format(JNIType(typeArg)))
+            out.append("\t%s *sym = new %s(length);\n".format(remapHost(tp),remapHost(tp)))
+            out.append("\tfor(int i=0; i<length; i++) {\n")
+            out.append("\t\tsym->data[i] = recvCPPfromJVM_%s(env, env->GetObjectArrayElement((%sArray)obj,i));\n".format(mangledName(remap(typeArg)),JNIType(typeArg)))
+            out.append("\t}\n")
+            out.append("\treturn sym;\n")
+            out.append("}\n")
+            (signature+";\n", out.toString)
         }
+      }
+      else {
+        super.emitRecv(tp, host)
       }
     }
     else
@@ -161,7 +188,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("}\n")
         (signature+";\n", out.toString)
       }
-      else {
+      else if(remap(tp).startsWith("DeliteArray<")) {
         remap(tp) match {
           case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
@@ -171,8 +198,18 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\tassert(false);\n")
             out.append("}\n")
             (signature+";\n", out.toString)
-          case _ => super.emitSendView(tp, host)
+          case _ => 
+            val out = new StringBuilder
+            val typeArg = tp.typeArguments.head
+            val signature = "jobject sendViewCPPtoJVM_%s(JNIEnv *env, Host%s *%s)".format(mangledName(remap(tp)),remap(tp),"sym")
+            out.append(signature + " {\n")
+            out.append("\tassert(false);\n")
+            out.append("}\n")
+            (signature+";\n", out.toString)
         }
+      }
+      else {
+        super.emitSendView(tp, host)
       }
     }
     else
@@ -203,7 +240,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("}\n")
         (signature+";\n", out.toString)
       }
-      else {
+      else if(remap(tp).startsWith("DeliteArray<")) {
         remap(tp) match {
           case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
@@ -218,8 +255,18 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\treturn %s;\n".format("sym"))
             out.append("}\n")
             (signature+";\n", out.toString)
-          case _ => super.emitRecvView(tp, host)
+          case _ => 
+            val out = new StringBuilder
+            val typeArg = tp.typeArguments.head
+            val signature = "Host%s *recvViewCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remap(tp),mangledName(remap(tp)))
+            out.append(signature + " {\n")
+            out.append("assert(false);\n")
+            out.append("}\n")
+            (signature+";\n", out.toString)
         }
+      }
+      else {
+        super.emitRecvView(tp, host)
       }
     }
     else
@@ -262,7 +309,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("}\n")
         (signature+";\n", out.toString)
       }
-      else {
+      else if(remap(tp).startsWith("DeliteArray<")) {
         remap(tp) match {
           case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
@@ -274,8 +321,18 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\tenv->ReleasePrimitiveArrayCritical((%sArray)obj, dataPtr, 0);\n".format(JNIType(typeArg)))
             out.append("}\n")
             (signature+";\n", out.toString)
-          case _ => super.emitSendUpdate(tp, host)
+          case _ => 
+            val out = new StringBuilder
+            val typeArg = tp.typeArguments.head
+            val signature = "void sendUpdateCPPtoJVM_%s(JNIEnv *env, jobject obj, Host%s *%s)".format(mangledName(remap(tp)),remap(tp),"sym")
+            out.append(signature + " {\n")
+            out.append("assert(false);\n")
+            out.append("}\n")
+            (signature+";\n", out.toString)
         }
+      }
+      else {
+        super.emitSendUpdate(tp, host)
       }
     }
     else
@@ -305,7 +362,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("}\n")
         (signature+";\n", out.toString)
       }
-      else {
+      else if(remap(tp).startsWith("DeliteArray<")) {
         remap(tp) match {
           case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
             val out = new StringBuilder
@@ -317,8 +374,18 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\tenv->ReleasePrimitiveArrayCritical((%sArray)obj, dataPtr, 0);\n".format(JNIType(typeArg)))
             out.append("}\n")
             (signature+";\n", out.toString)
-          case _ => super.emitRecvUpdate(tp, host)
+          case _ => 
+            val out = new StringBuilder
+            val typeArg = tp.typeArguments.head
+            val signature = "void recvUpdateCPPfromJVM_%s(JNIEnv *env, jobject obj, Host%s *%s)".format(mangledName(remap(tp)),remap(tp),"sym")
+            out.append(signature + " {\n")
+            out.append("assert(false);\n")
+            out.append("}\n")
+            (signature+";\n", out.toString)
         }
+      }
+      else {
+        super.emitRecvUpdate(tp, host)
       }
     }
     else

@@ -12,7 +12,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
 
   private def isVarType[T](m: Manifest[T]) = m.erasure.getSimpleName == "Variable"
   private def baseType[T](m: Manifest[T]) = if (isVarType(m)) mtype(m.typeArguments(0)) else m
-  
+
   override def emitSendSlave(tp: Manifest[Any]): (String,String) = {
     if (tp.erasure == classOf[Variable[AnyVal]]) {
       val out = new StringBuilder
@@ -49,7 +49,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
       out.append("}\n")
       (signature+";\n", out.toString)
     }
-    else {
+    else if(remap(tp).startsWith("DeliteArray<")) {
       remap(tp) match {
         case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
           val out = new StringBuilder
@@ -67,8 +67,28 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
           out.append("\treturn result;\n")
           out.append("}\n")
           (signature+";\n", out.toString)
-        case _ => super.emitSendSlave(tp)
+        case _ => // DeliteArrayObject
+          val out = new StringBuilder
+          val typeArg = tp.typeArguments.head
+          val signature = "%s *sendCuda_%s(%s *sym)".format(remap(tp),mangledName(remap(tp)),remapHost(tp))
+          out.append(signature + " {\n")
+          out.append("\t%s *hostPtr;\n".format(remapWithRef(typeArg)))
+          out.append("\tDeliteCudaMallocHost((void**)&hostPtr,sym->length*sizeof(%s));\n".format(remapWithRef(typeArg)))
+          out.append("\tfor(int i=0; i<sym->length; i++) {\n")
+          out.append("\t\thostPtr[i] = sendCuda_%s(sym->data[i]);\n".format(mangledName(remap(typeArg))))
+          out.append("\t}\n")
+          out.append("\t%s *sym_dev = new %s(sym->length);\n".format(remap(tp),remap(tp)))
+          out.append("\tDeliteCudaMemcpyHtoDAsync(sym_dev->data, hostPtr, sym->length*sizeof(%s));\n".format(remapWithRef(typeArg)))
+          out.append("\t%s result;\n".format(remapWithRef(tp)))
+          out.append("\tDeliteCudaMalloc((void**)&result,sizeof(%s));\n".format(remap(tp)))
+          out.append("\tDeliteCudaMemcpyHtoDAsync((void*)result,(void*)sym_dev,sizeof(%s));\n".format(remap(tp)))
+          out.append("\treturn result;\n")
+          out.append("}\n")
+          (signature+";\n", out.toString)
       }
+    }
+    else {
+      super.emitSendSlave(tp)
     }
   }
 
@@ -104,7 +124,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
       out.append("}\n")
       (signature+";\n", out.toString)
     }
-    else {
+    else if(remap(tp).startsWith("DeliteArray<")) {
       remap(tp) match {
         case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
           val out = new StringBuilder
@@ -121,8 +141,18 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
           out.append("\treturn sym;\n")
           out.append("}\n")
           (signature+";\n", out.toString)
-        case _ => super.emitRecvSlave(tp)
+        case _ => 
+          val out = new StringBuilder
+          val typeArg = tp.typeArguments.head
+          val signature = "Host%s *recvCuda_%s(%s *sym_dev)".format(remap(tp),mangledName(remap(tp)),remap(tp))
+          out.append(signature + " {\n")
+          out.append("assert(false);\n")
+          out.append("}\n")
+          (signature+";\n", out.toString)
       }
+    }
+    else {
+      super.emitRecvSlave(tp)
     }
   }
 
@@ -152,7 +182,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
       out.append("}\n")
       (signature+";\n", out.toString)
     }
-    else {
+    else if(remap(tp).startsWith("DeliteArray<")) {
       remap(tp) match {
        case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
           val out = new StringBuilder
@@ -168,8 +198,18 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
           out.append("\tDeliteCudaMemcpyHtoDAsync(hostDA->data, hostPtr, sym->length*sizeof(%s));\n".format(remap(typeArg)))
           out.append("}\n")
           (signature+";\n", out.toString)
-        case _ => super.emitSendUpdateSlave(tp)
+        case _ => 
+          val out = new StringBuilder
+          val typeArg = tp.typeArguments.head
+          val signature = "void sendUpdateCuda_%s(%s *sym_dev, Host%s *sym)".format(mangledName(remap(tp)),remap(tp),remap(tp))
+          out.append(signature + " {\n")
+          out.append("assert(false);\n")
+          out.append("}\n")
+          (signature+";\n", out.toString)
       }
+    }
+    else {
+      super.emitSendUpdateSlave(tp)
     }
   }
 
@@ -203,7 +243,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
       out.append("}\n")
       (signature+";\n", out.toString)
     }
-    else {
+    else if(remap(tp).startsWith("DeliteArray<")) {
       remap(tp) match {
         case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
           val out = new StringBuilder
@@ -219,8 +259,18 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
           out.append("\tmemcpy(sym->data,hostPtr,hostDA->length*sizeof(%s));\n".format(remap(typeArg)))
           out.append("}\n")
           (signature+";\n", out.toString)
-        case _ => super.emitRecvUpdateSlave(tp)
+        case _ =>
+          val out = new StringBuilder
+          val typeArg = tp.typeArguments.head
+          val signature = "void recvUpdateCuda_%s(%s *sym_dev, Host%s *sym)".format(mangledName(remap(tp)),remap(tp),remap(tp))
+          out.append(signature + " {\n")
+          out.append("assert(false);\n")
+          out.append("}\n")
+          (signature+";\n", out.toString)
       }
+    }
+    else {
+      super.emitRecvUpdateSlave(tp)
     }
   }
 

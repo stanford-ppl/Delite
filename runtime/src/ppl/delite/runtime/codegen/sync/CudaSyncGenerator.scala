@@ -80,6 +80,8 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
       super.sendUpdate(s)  // TODO: always call super? (when multiple receivers have different host types)
     //}
   }
+  
+  private def hostType(t: String): String = "Host" + t.replaceAll("< ","< Host")
 
   private def writeGetter(dep: DeliteOP, sym: String, to: DeliteOP, view: Boolean) {
     out.append(getJNIType(dep.outputType(sym)))
@@ -114,7 +116,7 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
       out.append("%s %s = (%s)%s;\n".format(devType,getSymDevice(dep,sym),devType,getSymHost(dep,sym)))
     }
     else {
-      out.append("Host%s %s%s = recvCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
+      out.append("%s %s%s = recvCPPfromJVM_%s(env%s,%s);\n".format(hostType(devType),ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
       out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
       out.append("cudaMemoryMap->insert(pair<void*,list<void*>*>(")
       out.append(getSymDevice(dep,sym))

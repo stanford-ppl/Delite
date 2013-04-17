@@ -561,7 +561,6 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
 
 }
 
-
 trait CudaGenDeliteArrayOps extends BaseGenDeliteArrayOps with CudaGenFat with CudaGenDeliteStruct {
   val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
@@ -576,14 +575,28 @@ trait CudaGenDeliteArrayOps extends BaseGenDeliteArrayOps with CudaGenFat with C
           case Const(x) => registerTempAlloc(sym,a.mA,quote(n))
           case _ if deliteInputs.contains(n) => registerTempAlloc(sym,a.mA,quote(n))
           case _ if (boundMap.contains(n) && deliteInputs.contains(boundMap(n))) => registerTempAlloc(sym,a.mA,quote(boundMap(n)))
-          case _ => throw new GenerationFailedException("nested delitearray allocation with unknown size")
+          case _ => ""
         }
         val allocSymArray = registerTempAlloc(sym,sym.tp,"1")
-        stream.println("DeliteArray< " + remapWithRef(a.mA) + " > *" + quote(sym) + " = " + allocSymArray + " + " + quote(outerLoopSym) + ";")
-        stream.println(quote(sym) + "->data = " + allocSymData + " + " + quote(n) + " * " + quote(outerLoopSym) + ";")
-        stream.println(quote(sym) + "->length = " + quote(n) + ";")
-        stream.println(quote(sym) + "->offset = 0;")
-        stream.println(quote(sym) + "->stride = 1;")
+        if(allocSymData != "") {
+          stream.println("DeliteArray< " + remapWithRef(a.mA) + " > *" + quote(sym) + " = " + allocSymArray + " + " + quote(outerLoopSym) + ";")
+          stream.println(quote(sym) + "->data = " + allocSymData + " + " + quote(n) + " * " + quote(outerLoopSym) + ";")
+          stream.println(quote(sym) + "->length = " + quote(n) + ";")
+          stream.println(quote(sym) + "->offset = 0;")
+          stream.println(quote(sym) + "->stride = 1;")
+        }
+        else {
+          stream.println("if (tempMemSize < tempMemUsage[threadIdx.x+blockIdx.x*blockDim.x] + sizeof(" + remap(a.mA) + ")*" + quote(n) + ") {")
+          stream.println("assert(false);")
+          stream.println("}")
+          stream.println(remapWithRef(a.mA) + " *" + quote(sym) + "Ptr = (" + remapWithRef(a.mA) + "*)(tempMemPtr + tempMemUsage[threadIdx.x+blockIdx.x*blockDim.x]*gridDim.x*blockDim.x);") 
+          stream.println("tempMemUsage[threadIdx.x+blockIdx.x*blockDim.x] = tempMemUsage[threadIdx.x+blockIdx.x*blockDim.x] + sizeof(" + remap(a.mA) + ")*" + quote(n) + ";")
+          stream.println("DeliteArray< " + remapWithRef(a.mA) + " > *" + quote(sym) + " = " + allocSymArray + " + " + quote(outerLoopSym) + ";")
+          stream.println(quote(sym) + "->data = " + quote(sym) + "Ptr + " + quote(n) + " * " + quote(outerLoopSym) + ";")
+          stream.println(quote(sym) + "->length = " + quote(n) + ";")
+          stream.println(quote(sym) + "->offset = 0;")
+          stream.println(quote(sym) + "->stride = 1;")
+        }
           //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",blockDim.x*gridDim.x);")
           //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",max(2*blockDim.x*gridDim.x,blockDim.x*(1+" + quote(outerLoopSize) + "/blockDim.x)));")
           //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + "*" + quote(n) + ",1);")
@@ -636,7 +649,7 @@ trait CudaGenDeliteArrayOps extends BaseGenDeliteArrayOps with CudaGenFat with C
     case "DeliteArray" => m.typeArguments(0) match {
       case StructType(_,_) if Config.soaEnabled => structName(m)
       case s if s <:< manifest[Record] && Config.soaEnabled => structName(m) // occurs due to restaging
-      case arg => "DeliteArray< " + remap(arg) + " >"
+      case arg => "DeliteArray< " + remapWithRef(arg) + " >"
     }
     case _ => super.remap(m)
   }
@@ -713,5 +726,4 @@ trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenEffect with CGen
       }
     //}
   }
-
 }
