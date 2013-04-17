@@ -75,9 +75,9 @@ public:
         data[idx] = value;
     }
 
-    __host__ __device__ void dc_copy(DeliteArray<T> from) {
+    __host__ __device__ void dc_copy(DeliteArray<T> *from) {
       for(int i=0; i<length; i++)
-        update(i,from.apply(i));
+        update(i,from->apply(i));
     }
 
     __host__ DeliteArray<T> *dc_alloc(void) {
@@ -85,6 +85,18 @@ public:
     }
     __host__ DeliteArray<T> *dc_alloc(int size) {
       return new DeliteArray<T>(size);
+    }
+    __host__ DeliteArray<T> *shallow_copy_htod(void) {
+      DeliteArray<T> *ret;
+      DeliteCudaMalloc((void**)&ret, sizeof(DeliteArray<T>));
+      DeliteCudaMemcpyHtoDAsync((void*)ret,(void*)this,sizeof(DeliteArray<T>));
+      return ret;
+    }
+    __host__ DeliteArray<T> *shallow_copy_dtoh(void) {
+      DeliteArray<T> *ret;
+      DeliteCudaMallocHost((void**)&ret, sizeof(DeliteArray<T>));
+      DeliteCudaMemcpyDtoHAsync((void*)ret,(void*)this,sizeof(DeliteArray<T>));
+      return ret;
     }
 
     

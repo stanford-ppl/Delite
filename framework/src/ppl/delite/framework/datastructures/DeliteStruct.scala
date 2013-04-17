@@ -224,30 +224,33 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case Struct(tag, elems) =>
-      registerStruct(structName(sym.tp), elems)
-      // Within kernel, place on stack
+      registerStruct(remap(sym.tp), elems)
       if(isNestedNode) {
-        stream.println(structName(sym.tp) + " " + quote(sym) + " = " + structName(sym.tp) + "(" + elems.map{ e => 
-          if (isVarType(e._2.tp) && deliteInputs.contains(e._2)) quote(e._2) + ".get()"
-          else quote(e._2)
-        }.mkString(",") + ");")
+        val allocSym = registerTempAlloc(sym,sym.tp,"1")
+        stream.println(remapWithRef(sym.tp) + " " + quote(sym) + " = " + allocSym + " + " + quote(outerLoopSym) + ";")
+        for((idx,s) <- elems) {
+          stream.print(quote(sym) + "->" + idx + " = ")
+          if (isVarType(s.tp) && deliteInputs.contains(s)) 
+            stream.println(quote(s) + "->get();")
+          else 
+            stream.println(quote(s) + ";")
+        }
       }
       else {
-        stream.println(structName(sym.tp) + " *" + quote(sym) + "_ptr = new " + structName(sym.tp) + "(" + elems.map{ e => 
+        stream.println(remapWithRef(sym.tp) + " " + quote(sym) + " = new " + remap(sym.tp) + "(" + elems.map{ e => 
           if (isVarType(e._2.tp) && deliteInputs.contains(e._2)) quote(e._2) + "->get()"
           else quote(e._2)
         }.mkString(",") + ");")
-        stream.println(structName(sym.tp) + " " + quote(sym) + " = *" + quote(sym) + "_ptr;")
       }
       printlog("WARNING: emitting " + structName(sym.tp) + " struct " + quote(sym))    
     case FieldApply(struct, index) =>
-      emitValDef(sym, quote(struct) + "." + index)
+      emitValDef(sym, quote(struct) + "->" + index)
       printlog("WARNING: emitting field access: " + quote(struct) + "." + index)
     case FieldUpdate(struct, index, rhs) =>
-      emitValDef(sym, quote(struct) + "." + index + " = " + quote(rhs))
+      emitValDef(sym, quote(struct) + "->" + index + " = " + quote(rhs))
       printlog("WARNING: emitting field update: " + quote(struct) + "." + index)
     case NestedFieldUpdate(struct, fields, rhs) =>
-      emitValDef(sym, quote(struct) + "." + fields.reduceLeft(_ + "." + _) + " = " + quote(rhs))
+      emitValDef(sym, quote(struct) + "->" + fields.reduceLeft(_ + "->" + _) + " = " + quote(rhs))
     case _ => super.emitNode(sym, rhs)
   }
 
@@ -316,7 +319,7 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
         stream.println("class " + prefix + name + " {")
         // fields
         stream.println("public:")
-        stream.print(elems.map{ case (idx,tp) => "\t" + (if(!isPrimitiveType(baseType(tp))) prefix else "") + remap(tp) + " " + idx + ";\n" }.mkString(""))
+        stream.print(elems.map{ case (idx,tp) => "\t" + (if(!isPrimitiveType(baseType(tp))) prefix else "") + remapWithRef(baseType(tp)) + " " + idx + ";\n" }.mkString(""))
         // constructor
         if(prefix == "Host") {
           stream.println("\t" + prefix + name + "(void) { }")
@@ -326,22 +329,48 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
           stream.println("\t__host__ __device__ " + prefix + name + "(void) { }")
           stream.print("\t__host__ __device__ " + prefix + name + "(")
         }
-        stream.print(elems.map{ case (idx,tp) => (if(!isPrimitiveType(baseType(tp))) prefix else "") + remap(tp) + " _" + idx }.mkString(","))
+        stream.print(elems.map{ case (idx,tp) => (if(!isPrimitiveType(baseType(tp))) prefix else "") + remapWithRef(baseType(tp)) + " _" + idx }.mkString(","))
         stream.println(") {")
         stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = _" + idx + ";\n" }.mkString(""))
         stream.println("\t}")
 
         //TODO: Below should be changed to use IR nodes
         if(prefix == "") {
-          stream.println("\t__device__ void dc_copy(" + name + " from) {")
+          stream.println("\t__device__ void dc_copy(" + name + " *from) {")
           for((idx,tp) <- elems) {
-            if(isPrimitiveType(baseType(tp))) stream.println("\t\t" + idx + " = from." + idx + ";")
-            else stream.println("\t\t" + idx + ".dc_copy(from." + idx + ");")
+            if(isPrimitiveType(baseType(tp))) stream.println("\t\t" + idx + " = from->" + idx + ";")
+            else stream.println("\t\t" + idx + "->dc_copy(from->" + idx + ");")
           }
           stream.println("\t}")
+
+          stream.println("\t__host__ " + name + " *shallow_copy_htod(void) {")
+          stream.println("\t\t" + name + " *from;")
+          stream.println("\t\tDeliteCudaMallocHost((void**)&from, sizeof(" + name + "));")
+          for((idx,tp) <- elems) {
+            if (isPrimitiveType(baseType(tp))) stream.println("\t\tfrom->" + idx + " = " + idx + ";")
+            else stream.println("\t\tfrom->" + idx + " = " + idx + "->shallow_copy_htod();")
+          }
+          stream.println("\t\t" + name + "*to;")
+          stream.println("\t\tDeliteCudaMalloc((void**)&to,sizeof(" + name + "));")
+          stream.println("\t\tDeliteCudaMemcpyHtoDAsync((void*)to,(void*)from,sizeof(" + name + "));")
+          stream.println("\t\treturn to;")
+          stream.println("\t}")
+
+          stream.println("\t__host__ " + name + " *shallow_copy_dtoh(void) {")
+          stream.println("\t\t" + name + "*to;")
+          stream.println("\t\tDeliteCudaMallocHost((void**)&to,sizeof(" + name + "));")
+          stream.println("\t\tDeliteCudaMemcpyDtoHAsync((void*)to,(void*)this,sizeof(" + name + "));")
+          //stream.println("\t\t" + name + " *from;")
+          //stream.println("\t\tDeliteCudaMallocHost((void**)&from, sizeof(" + name + "));")
+          for((idx,tp) <- elems if !isPrimitiveType(baseType(tp))) {
+            stream.println("\t\tto->" + idx + " = to->" + idx + "->shallow_copy_dtoh();")
+          }
+          stream.println("\t\treturn to;")
+          stream.println("\t}")
+
           stream.println("\t__host__ " + name + " *dc_alloc() {")
           stream.print("\t\treturn new " + name + "(")
-          stream.print(elems.map{ case (idx,tp) => if(!isPrimitiveType(baseType(tp))) ("*" + idx + ".dc_alloc()") else idx }.mkString(","))
+          stream.print(elems.map{ case (idx,tp) => if(!isPrimitiveType(baseType(tp))) (idx + "->dc_alloc()") else idx }.mkString(","))
           stream.println(");")
           stream.println("\t}")
           // Only generate dc_apply, dc_update, dc_size when there is only 1 DeliteArray among the fields
@@ -353,15 +382,15 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
             val argtp = if(generateAssert) "int" else remap(unwrapArrayType(tp))
             stream.println("\t__host__ __device__ " + argtp + " dc_apply(int idx) {")
             if(generateAssert) stream.println("\t\tassert(false);")
-            else stream.println("\t\treturn " + idx + ".apply(idx);")
+            else stream.println("\t\treturn " + idx + "->apply(idx);")
             stream.println("\t}")
             stream.println("\t__host__ __device__ void dc_update(int idx," + argtp + " newVal) {")
             if(generateAssert) stream.println("\t\tassert(false);")
-            else stream.println("\t\t" + idx + ".update(idx,newVal);")  
+            else stream.println("\t\t" + idx + "->update(idx,newVal);")  
             stream.println("\t}")
             stream.println("\t__host__ __device__ int dc_size(void) {")
             if(generateAssert) stream.println("\t\tassert(false);")
-            else stream.println("\t\treturn " + idx + ".length;")
+            else stream.println("\t\treturn " + idx + "->length;")
             stream.println("\t}")
           }
         }

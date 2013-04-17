@@ -2439,8 +2439,8 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
   }
 
   def emitReduction(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_], prefixSym: String = "") {
-    stream.println("%s %s = %s;".format(remap(elem.rV._1.tp),quote(elem.rV._1),prefixSym+quote(sym)))
-    stream.println("%s %s = %s;".format(remap(elem.rV._2.tp),quote(elem.rV._2),quote(getBlockResult(elem.func))))
+    stream.println("%s %s = %s;".format(remapWithRef(elem.rV._1.tp),quote(elem.rV._1),prefixSym+quote(sym)))
+    stream.println("%s %s = %s;".format(remapWithRef(elem.rV._2.tp),quote(elem.rV._2),quote(getBlockResult(elem.func))))
     emitBlock(elem.rFunc)
     stream.println(prefixSym + quote(sym) + " = " + quote(getBlockResult(elem.rFunc)) + ";")
   }
@@ -2449,10 +2449,10 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     val rV = elem.rVSeq
     val rFunc = elem.rFuncSeq
 
-    stream.println("%s %s = %s;".format(remap(rV._1._1.tp),quote(rV._1._1),prefixSym+quote(sym)))
-    stream.println("%s %s = %s_2;".format(remap(rV._1._2.tp),quote(rV._1._2),prefixSym+quote(sym)))
-    stream.println("%s %s = %s;".format(remap(rV._2._1.tp),quote(rV._2._1),quote(getBlockResult(elem.func._1))))
-    stream.println("%s %s = %s;".format(remap(rV._2._2.tp),quote(rV._2._2),quote(getBlockResult(elem.func._2))))
+    stream.println("%s %s = %s;".format(remapWithRef(rV._1._1.tp),quote(rV._1._1),prefixSym+quote(sym)))
+    stream.println("%s %s = %s_2;".format(remapWithRef(rV._1._2.tp),quote(rV._1._2),prefixSym+quote(sym)))
+    stream.println("%s %s = %s;".format(remapWithRef(rV._2._1.tp),quote(rV._2._1),quote(getBlockResult(elem.func._1))))
+    stream.println("%s %s = %s;".format(remapWithRef(rV._2._2.tp),quote(rV._2._2),quote(getBlockResult(elem.func._2))))
     emitFatBlock(List(rFunc._1, rFunc._2))
     stream.println(prefixSym + quote(sym) + "   = " + quote(getBlockResult(rFunc._1)) + ";")
     stream.println(prefixSym + quote(sym) + "_2 = " + quote(getBlockResult(rFunc._2)) + ";")
@@ -2463,19 +2463,19 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       //TODO: Check if primitive type operations
       case (sym, elem: DeliteCollectElem[_,_,_]) =>
         boundMap.put(elem.sV,op.size)
-        emitVarDef(quote(elem.sV), remap(elem.sV.tp), quote(op.size))
+        emitVarDef(quote(elem.sV), remapWithRef(elem.sV.tp), quote(op.size))
         emitBlock(elem.allocN) //This will generate alloc failure exception
-        emitValDef(quote(sym) + "_data", remap(getBlockResult(elem.allocN).tp), quote(getBlockResult(elem.allocN)))
-        emitVarDef(quote(sym) + "_size", remap(Manifest.Int), "0")
+        emitValDef(quote(sym) + "_data", remapWithRef(getBlockResult(elem.allocN).tp), quote(getBlockResult(elem.allocN)))
+        emitVarDef(quote(sym) + "_size", remapWithRef(Manifest.Int), "0")
         //throw new GenerationFailedException("GPUGen: Inlined DeliteCollectElem is not supported yet due to memory allocations.\n" + quotePos(sym))
       case (sym, elem: DeliteForeachElem[_]) =>
       case (sym, elem: DeliteReduceElem[_]) =>
         emitBlock(elem.zero)
-        stream.println("%s %s = %s;".format(remap(elem.zero.tp),quote(sym),quote(getBlockResult(elem.zero))))
+        stream.println("%s %s = %s;".format(remapWithRef(elem.zero.tp),quote(sym),quote(getBlockResult(elem.zero))))
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
         emitFatBlock(List(elem.zero._1,elem.zero._2))
-        stream.println("%s %s = %s;".format(remap(elem.zero._1.tp),quote(sym),quote(getBlockResult(elem.zero._1))))
-        stream.println("%s %s_2 = %s;".format(remap(elem.zero._2.tp),quote(sym),quote(getBlockResult(elem.zero._2))))
+        stream.println("%s %s = %s;".format(remapWithRef(elem.zero._1.tp),quote(sym),quote(getBlockResult(elem.zero._1))))
+        stream.println("%s %s_2 = %s;".format(remapWithRef(elem.zero._2.tp),quote(sym),quote(getBlockResult(elem.zero._2))))
       case _ =>
         throw new GenerationFailedException("GPUGen: Unsupported Elem Type!")
     }
@@ -2521,10 +2521,14 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     
     val kernelName = symList.map(quote).mkString("")
     // last inputs always added to any device functions
-    def lastInputs(size: Exp[Int], v: Sym[Int]) = (size match {
-      case s@Sym(_) => List(v, size).map(i => remap(i.tp) + " " + quote(i))
-      case _ => List(v).map(i => remap(i.tp) + " " + quote(i)) ++ List("int size")
-    }) ++ List("TEMP_"+symList.map(quote).mkString("")+" size_t tempMemSize","char *tempMemPtr","int *tempMemUsage, activation_"+kernelName+" act")
+    def lastInputs(size: Exp[Int], v: Sym[Int]) = {
+      List(v).map(i => remapWithRef(i.tp) + " " + quote(i)) ++
+      List("TEMP_"+symList.map(quote).mkString("")+" size_t tempMemSize","char *tempMemPtr","int *tempMemUsage, activation_"+kernelName+" act")
+    }
+    //def lastInputs(size: Exp[Int], v: Sym[Int]) = (size match {
+    //  case s@Sym(_) => List(v, size).map(i => remapWithRef(i.tp) + " " + quote(i))
+    //  case _ => List(v).map(i => remapWithRef(i.tp) + " " + quote(i)) ++ List("int size")
+    //}) ++ List("TEMP_"+symList.map(quote).mkString("")+" size_t tempMemSize","char *tempMemPtr","int *tempMemUsage, activation_"+kernelName+" act")
 
     def funcNameSuffix(sym: Sym[Any]) = {
       symList.map(quote).mkString("")+"_"+quote(sym)
@@ -2533,9 +2537,9 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     def remapInputs(inputs: List[Sym[Any]], size: Exp[Int] = op.size, v: Sym[Int] = op.v) : List[String] = {
       inputs.map(s => 
         if(inVars contains s) 
-          "Ref< " + remap(s.tp) + " > " + quote(s)
+          "Ref< " + remapWithRef(s.tp) + " > *" + quote(s)
         else 
-          remap(s.tp) + " " + quote(s)
+          remapWithRef(s.tp) + " " + quote(s)
       ) ++ lastInputs(size,v)  
     }
     
@@ -2592,13 +2596,13 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         val inputs = remapInputs(freeVars) 
         val e = metaData.outputs.get(sym).get
         e.funcs += "init" -> freeVars.map(quote)
-        stream.println("__device__ " + remap(sym.tp) + " dev_init_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")       
+        stream.println("__device__ " + remapWithRef(sym.tp) + " dev_init_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")       
         emitBlock(initFunc)
         stream.println("return " + quote(getBlockResult(initFunc)) + ";")
         stream.println("}")
         if(e.elemType == "REDUCE_SPEC") {
           val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
-          stream.println("__device__ " + remap(z.dmR) + " dev_spcinit_" + funcNameSuffix(sym) + "(void) { return 0; }") 
+          stream.println("__device__ " + remapWithRef(z.dmR) + " dev_spcinit_" + funcNameSuffix(sym) + "(void) { return 0; }") 
         }
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
         //TODO: would it affect the performance to have separate inputs for zero1 and zero2?
@@ -2606,11 +2610,11 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         val inputs = remapInputs(freeVars) 
         val e = metaData.outputs.get(sym).get
         e.funcs += "init" -> freeVars.map(quote)
-        stream.println("__device__ " + remap(sym.tp) + " dev_init1_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")       
+        stream.println("__device__ " + remapWithRef(sym.tp) + " dev_init1_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")       
         emitBlock(elem.zero._1)
         stream.println("return " + quote(getBlockResult(elem.zero._1)) + ";")
         stream.println("}")
-        stream.println("__device__ " + remap(sym.tp) + " dev_init2_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")       
+        stream.println("__device__ " + remapWithRef(sym.tp) + " dev_init2_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")       
         emitBlock(elem.zero._2)
         stream.println("return " + quote(getBlockResult(elem.zero._2)) + ";")
         stream.println("}")  
@@ -2619,7 +2623,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         val inputs = remapInputs(freeVars)
         val e = metaData.outputs.get(sym).get
         e.funcs += "init" -> freeVars.map(quote)
-        stream.println("__device__ " + remap(elem.mV) + " dev_init_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        stream.println("__device__ " + remapWithRef(elem.mV) + " dev_init_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
         emitBlock(elem.zero)
         stream.println("return " + quote(getBlockResult(elem.zero)) + ";")
         stream.println("}") 
@@ -2629,7 +2633,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     // emit process functions
     (symList zip op.body) foreach {
       case (sym, elem:DeliteCollectElem[_,_,_]) =>
-        val freeVars = (getFreeVarBlock(Block(Combine((List(elem.func,elem.update)++elem.cond).map(getBlockResultFull))),List(elem.eV,elem.allocVal,op.v,sym))++List(sym)).distinct
+        val freeVars = getFreeVarBlock(Block(Combine((List(elem.func,elem.update)++elem.cond).map(getBlockResultFull))),List(elem.eV,elem.allocVal,op.v,sym)).distinct
         val inputs = remapInputs(freeVars) 
         val e = metaData.outputs.get(sym).get
         e.funcs += "process" -> freeVars.map(quote)
@@ -2655,7 +2659,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           case ParFlat =>
             emitBlock(elem.func)
             emitValDef(elem.eV, quote(getBlockResult(elem.func)))
-            emitValDef(elem.allocVal, quote(sym))
+            emitValDef(elem.allocVal, "act." + quote(sym) + "_data")
             emitBlock(elem.update)
           case _ =>
         }
@@ -2675,7 +2679,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         val inputs = remapInputs(freeVars) 
         val e = metaData.outputs.get(sym).get
         e.funcs += "process" -> freeVars.map(quote)
-        stream.println("__device__ " + remap(sym.tp) + " dev_process_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        stream.println("__device__ " + remapWithRef(sym.tp) + " dev_process_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
         emitBlock(elem.func)
         stream.println("return " + quote(getBlockResult(elem.func)) + ";")
         stream.println("}") 
@@ -2685,7 +2689,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         val inputs = remapInputs(freeVars ++ List(elem.rV._1)) 
         val e = metaData.outputs.get(sym).get
         e.funcs += "process" -> freeVars.map(quote)
-        stream.println("__device__ " + remap(sym.tp) + " dev_process_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")       
+        stream.println("__device__ " + remapWithRef(sym.tp) + " dev_process_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")       
         emitBlock(elem.func)
         emitValDef(elem.rV._2, quote(getBlockResult(elem.func)))
         if(elem.cond.nonEmpty) {
@@ -2693,7 +2697,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           stream.println("if(" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
           if (elem.stripFirst) {
             emitBlock(elem.zero)
-            stream.println(remap(sym.tp) + " " + quote(sym) + "_zero = " + quote(getBlockResult(elem.zero)) + ";")
+            stream.println(remapWithRef(sym.tp) + " " + quote(sym) + "_zero = " + quote(getBlockResult(elem.zero)) + ";")
             stream.println("if(" + quote(elem.rV._1) + " == " + quote(sym) + "_zero) {")
             stream.println("return " + quote(elem.rV._2) + ";")
             stream.println("}")
@@ -2725,7 +2729,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           val (rVSeq1, rVSeq2, rFuncSeq) = if(i == 1) (elem.rVSeq._1._1, elem.rVSeq._2._1, elem.rFuncSeq._1)
                                            else (elem.rVSeq._1._2, elem.rVSeq._2._2, elem.rFuncSeq._2)  
           val inputs = remapInputs(freeVars ++ List(elem.rVSeq._1._1,elem.rVSeq._1._2)) 
-          stream.println("__device__ " + remap(sym.tp) + " dev_process" + i + "_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")       
+          stream.println("__device__ " + remapWithRef(sym.tp) + " dev_process" + i + "_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")       
           emitFatBlock(List(elem.func._1,elem.func._2))
           emitValDef(elem.rVSeq._2._1, quote(getBlockResult(elem.func._1)))
           emitValDef(elem.rVSeq._2._2, quote(getBlockResult(elem.func._2)))
@@ -2749,7 +2753,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
 
       case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
         val freeVars = getFreeVarBlock(Block(Combine(List(elem.keyFunc,elem.valFunc).map(getBlockResultFull))),List(op.v)).distinct
-        val inputs = List(remap(elem.mK)+" *"+quote(sym)+"_key",remap(elem.mV)+" *"+quote(sym)+"_val") ++ remapInputs(freeVars) 
+        val inputs = List(remapWithRef(elem.mK)+" *"+quote(sym)+"_key",remapWithRef(elem.mV)+" *"+quote(sym)+"_val") ++ remapInputs(freeVars) 
         val e = metaData.outputs.get(sym).get
         e.funcs += "process" -> freeVars.map(quote)
         stream.println("__device__ void dev_process_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
@@ -2764,14 +2768,14 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     // emit post-process functions
     (symList zip op.body) foreach {
       case (sym, elem:DeliteCollectElem[_,_,_]) =>
-        val freeVars = (getFreeVarBlock(Block(Combine((List(elem.func,elem.update)++elem.cond).map(getBlockResultFull))),List(elem.eV,elem.allocVal,op.v,sym))++List(sym)).distinct
+        val freeVars = getFreeVarBlock(Block(Combine((List(elem.func,elem.update)++elem.cond).map(getBlockResultFull))),List(elem.eV,elem.allocVal,op.v,sym)).distinct
         val inputs = remapInputs(freeVars) 
         val e = metaData.outputs.get(sym).get
         e.funcs += "postprocess" -> freeVars.map(quote)
         stream.println("__device__ void dev_postprocess_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
         elem.par match {
           case ParSimpleBuffer =>
-            emitValDef(elem.allocVal, quote(sym))
+            emitValDef(elem.allocVal, "act." + quote(sym) + "_data")
             if (elem.cond.nonEmpty) stream.println("if (act."+quote(sym)+"_bitmap[" + quote(op.v) + "] == 1) {")
             emitBlock(elem.func)
             emitValDef(elem.eV, quote(getBlockResult(elem.func)))
@@ -2813,7 +2817,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         val freeVars = getFreeVarBlock(Block(Combine(List(zbody.func).map(getBlockResultFull))),List(z.fin._1.asInstanceOf[Sym[_]],z.fin._2.asInstanceOf[Sym[_]])).distinct
         //val inputs = (freeVars ++ List(z.fin._1,z.fin._2)).map(i => remap(i.tp) + " " + quote(i)) 
         val inputs = remapInputs(freeVars ++ List(z.fin._1.asInstanceOf[Sym[_]],z.fin._2.asInstanceOf[Sym[_]]))
-        stream.println("__device__ " + remap(z.dmR) + " dev_combine_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        stream.println("__device__ " + remapWithRef(z.dmR) + " dev_combine_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
         emitBlock(result)
         stream.println("return " + quote(getBlockResult(result)) + ";")
         stream.println("}")
@@ -2826,9 +2830,9 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         val inputs = remapInputs(freeVars ++ List(elem.rV._1,elem.rV._2)) 
         val e = metaData.outputs.get(sym).get
         e.funcs += "combine" -> freeVars.map(quote)
-        stream.println("__device__ " + remap(sym.tp) + " dev_combine_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        stream.println("__device__ " + remapWithRef(sym.tp) + " dev_combine_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
         emitBlock(elem.zero)
-        stream.println(remap(sym.tp) + " " + quote(sym) + "_zero = " + quote(getBlockResult(elem.zero)) + ";")
+        stream.println(remapWithRef(sym.tp) + " " + quote(sym) + "_zero = " + quote(getBlockResult(elem.zero)) + ";")
         if(elem.cond.nonEmpty) {
           stream.println("if (" + quote(elem.rV._1) + " == " + quote(sym) + "_zero) {")
           stream.println("return " + quote(elem.rV._2) + ";")
@@ -2855,7 +2859,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           val (func, rFuncPar) = if(i == 1) (elem.func._1, elem.rFuncPar._1)
                                  else (elem.func._2, elem.rFuncPar._2)  
           val inputs = remapInputs(freeVars ++ List(elem.rVPar._1._1,elem.rVPar._1._2,elem.rVPar._2._1,elem.rVPar._2._2))  
-          stream.println("__device__ " + remap(sym.tp) + " dev_combine" + i + "_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+          stream.println("__device__ " + remapWithRef(sym.tp) + " dev_combine" + i + "_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
           emitBlock(rFuncPar)
           stream.println("return " + quote(getBlockResult(rFuncPar)) + ";")
           stream.println("}")
@@ -2866,7 +2870,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         val inputs = remapInputs(freeVars ++ List(elem.rV._1,elem.rV._2))
         val e = metaData.outputs.get(sym).get
         e.funcs += "combine" -> freeVars.map(quote)
-        stream.println("__device__ " + remap(elem.mV) + " dev_combine_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        stream.println("__device__ " + remapWithRef(elem.mV) + " dev_combine_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
         emitBlock(elem.rFunc)
         stream.println("return " + quote(getBlockResult(elem.rFunc)) + ";")
         stream.println("}") 
@@ -2933,8 +2937,8 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     stream.println("unsigned int size;")
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_,_]) =>
-        stream.println(remap(sym.tp) + " *" + quote(sym) + ";")
-        stream.println(remap(elem.allocVal.tp) + " *" + quote(sym) + "_data;")
+        stream.println(remapWithRef(sym.tp) + " " + quote(sym) + ";")
+        stream.println(remapWithRef(elem.allocVal.tp) + " " + quote(sym) + "_data;")
         if (elem.par == ParBuffer || elem.par == ParSimpleBuffer) {
           //stream.println(remap(elem.eV) + " *" + quote(sym) + "_buf;")
           stream.println("unsigned int *" + quote(sym) + "_bitmap;")
@@ -2942,9 +2946,9 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           stream.println("unsigned int " + quote(sym) + "_conditionals;")
         }
       case (sym, elem: DeliteReduceElem[_]) =>
-        stream.println(remap(sym.tp) + " *" + quote(sym) + ";")
+        stream.println(remapWithRef(sym.tp) + " *" + quote(sym) + ";")
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
-        stream.println(remap(sym.tp) + " *" + quote(sym) + ";")
+        stream.println(remapWithRef(sym.tp) + " *" + quote(sym) + ";")
       case _ => //
     }
     stream.println("} activation_" + kernelName + ";")
@@ -2972,7 +2976,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       val b = s.block
       if (!deliteKernel) {  //In the process of generating operations for deliteKernel type kernels (allow SingleTask to be inlined)
         emitBlock(b)
-        if(!isVoidType(sym.tp)) stream.println(addTab() + "%s %s = %s;".format(remap(sym.tp),quote(sym),quote(getBlockResult(b))))
+        if(!isVoidType(sym.tp)) stream.println(addTab() + "%s %s = %s;".format(remapWithRef(sym.tp),quote(sym),quote(getBlockResult(b))))
       }
       else {
     	  throw new GenerationFailedException("GPUGen: DeliteOpSingleTask is not GPUable")
@@ -2990,8 +2994,8 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
   def emitMultiLoopAllocFunc(block: Block[Any], funcName: String, actType: String, resultActField: String, boundVals:Map[Sym[Any],String]): List[Sym[Any]] = {
     processingHelperFunc = true
 
-    //if(helperFuncList contains funcName) return 
-    //helperFuncList += funcName
+    val generated = helperFuncList contains funcName
+    if(!generated) helperFuncList += funcName
 
     val out = new StringBuilder
     val blockString = new StringWriter
@@ -3001,7 +3005,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
 
     if(isPrimitiveType(block.tp)) { // primitive type allocation
       if(actType == "") throw new GenerationFailedException("Non-DeliteOp with primitive type output.")
-      blockString.append("\tDeliteCudaMalloc((void**)&(act." + resultActField + "), sizeof(%s));\n".format(remap(block.tp)))
+      blockString.append("\tDeliteCudaMalloc((void**)&(act." + resultActField + "), sizeof(%s));\n".format(remapWithRef(block.tp)))
     }
     else {
       // emit bouding symbols
@@ -3009,8 +3013,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         withStream(blockStream) {
           if(isPrimitiveType(b._1.tp)) emitValDef(b._1,b._2)
           else {
-            stream.println("\t%s *%s_ptr = %s;".format(remap(b._1.tp),quote(b._1),b._2))
-            stream.println("\t%s %s = *(%s_ptr);".format(remap(b._1.tp),quote(b._1),quote(b._1)))
+            stream.println("\t%s %s = %s;".format(remapWithRef(b._1.tp),quote(b._1),b._2))
           }
         }
       }
@@ -3018,29 +3021,34 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       // emit block body
       withStream(blockStream) {
         emitBlock(block)
-        if(actType!="") stream.println("\tact." + resultActField + " = " + quote(getBlockResult(block)) + "_ptr;")
-        else stream.println("\t*" + resultActField + " = " + quote(getBlockResult(block)) + "_ptr;")
+        //HACK: fix this
+        stream.println(remapWithRef(block.tp) + " result;")
+        if(funcName.startsWith("alloc")) {
+          stream.println("result = " + quote(getBlockResult(block)) + "->shallow_copy_htod();")
+        }
+        else {
+          stream.println("result = " + quote(getBlockResult(block)) + ";")
+        }
+        if(actType!="") stream.println("\tact." + resultActField + " = result;")
+        else stream.println("\t*" + resultActField + " = result;")
       }
     }
     
-    val act = if(actType=="") remap(block.tp) + " **" + resultActField else "activation_" + actType + " &act" 
-    val paramStr = (inputs.map(s =>
-      if(isPrimitiveType(s.tp)) remap(s.tp) + " " + quote(s)
-      else remap(s.tp) + " *" + quote(s) + "_ptr"
-    ) :+ act).mkString(",")
+    val act = if(actType=="") remapWithRef(block.tp) + " *" + resultActField else "activation_" + actType + " &act" 
+    val paramStr = (inputs.map(i => remapWithRef(i.tp) + " " + quote(i) + "_i") :+ act).mkString(",")
     val derefParams = inputs.map(s =>
-      if(isPrimitiveType(s.tp)) ""
-      else "\t%s %s = *(%s_ptr);\n".format(remap(s.tp),quote(s),quote(s))
+      if(isPrimitiveType(s.tp)) "\t%s %s = %s;\n".format(remapWithRef(s.tp),quote(s),quote(s)+"_i")
+      else "\t%s %s = %s_i->shallow_copy_dtoh();\n".format(remapWithRef(s.tp),quote(s),quote(s))
     ).mkString("")
 
     // emit header and complete host function
     out.append("void %s(%s)".format(funcName, paramStr))
-    headerStream.append(out.toString + ";\n")
+    if(!generated)  headerStream.append(out.toString + ";\n")
     out.append("{\n")
     out.append(derefParams)
     out.append(blockString)
     out.append("}\n")
-    helperFuncStream.println(out.toString)
+    if(!generated)  helperFuncStream.println(out.toString)
 
     processingHelperFunc = false
     inputs
@@ -3060,18 +3068,15 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     }
     tabWidth = currentTab
 
-    def addRef(elem: Sym[Any], tp: String): String = {
-      if(inVars contains elem) {
-        "Ref< " + tp + " >"
-      }
-      else 
-        tp
-    }
+    def addRef(elem: Sym[Any]): String = {
+      if(inVars contains elem) "Ref< " + remapWithRef(elem.tp) + " > *"
+      else remapWithRef(elem.tp)
+    } 
 
     val inputs = getFreeVarBlock(func,lastInputs).distinct
-    val paramStr = ((inputs++lastInputs).map(ele => addRef(ele,remap(ele.tp)) + " " + quote(ele)) ++ metaData.temps.map(t=>t.tp + " *" + t.sym) ++ List("size_t tempMemSize","char *tempMemPtr","int *tempMemUsage")).mkString(",")
+    val paramStr = ((inputs++lastInputs).map(i => addRef(i) + " " + quote(i)) ++ metaData.temps.map(t=>t.tp + " *" + t.sym) ++ List("size_t tempMemSize","char *tempMemPtr","int *tempMemUsage")).mkString(",")
 
-    header.append(devFuncPrefix + " %s dev_%s(%s) {\n".format(remap(getBlockResult(func).tp),postfix,paramStr))
+    header.append(devFuncPrefix + " %s dev_%s(%s) {\n".format(remapWithRef(getBlockResult(func).tp),postfix,paramStr))
     if(remap(getBlockResult(func).tp) != "void")
       footer.append("\treturn %s;\n".format(quote(getBlockResult(func))))
     footer.append("}\n")

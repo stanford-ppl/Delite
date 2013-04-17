@@ -41,7 +41,7 @@ void freeCudaMemory(FreeItem item) {
        		}
         	cudaMemoryMap->erase((*iter).first);
         	delete freePtrList;
-        	if(!((*iter).second)) free((*iter).first);
+        	//if(!((*iter).second)) free((*iter).first);
 		}
     }
     delete item.keys;

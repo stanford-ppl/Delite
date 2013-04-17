@@ -212,7 +212,9 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
         writeOutputAlloc(op)
         out.append(op.task) //kernel name
         out.append('(')
-        out.append((op.getOutputs.toList++op.getInputs.map(i => i._2)).map(getSymDevice(op,_)).mkString(","))
+        val args = op.getOutputs.map(o => if(!isPrimitiveType(op.outputType(o))) (getSymDevice(op,o)+"->shallow_copy_dtoh()") else getSymDevice(op,o)).toList ++
+                   op.getInputs.map(i => if(!isPrimitiveType(op.inputType(i._2))) (getSymDevice(op,i._2)+"->shallow_copy_dtoh()") else getSymDevice(op,i._2))
+        out.append(args.mkString(","))
         //out.append(",kernelStream") //TODO: what other libraries besides cuBlas do we use? how do we use the stream only with supported libraries?
         out.append(");\n")
     }

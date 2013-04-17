@@ -19,19 +19,19 @@ trait OptiLACudaGenExternal extends CudaGenExternalBase {
   
   override def emitExternalNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case e@DenseMatrixTimesVectorBLAS(x,y) =>
-      val args = scala.List("'t'", "%1$s->_numCols", "%1$s->_numRows", "%1$s->_data.data", "%2$s->_data.data", "%3$s->_data.data")
+      val args = scala.List("'t'", "%1$s->_numCols", "%1$s->_numRows", "%1$s->_data->data", "%2$s->_data->data", "%3$s->_data->data")
                  .map { _.format(quote(x), quote(y), quote(sym)) }
       emitMethodCall(sym, e, cuBLAS, args)
       registerKernel(scala.List(sym))
 
     case e@DenseMatrixMultiplyBLAS(x,y) =>
-      val args = scala.List("'n'", "'n'", "%2$s->_numCols", "%1$s->_numRows", "%2$s->_numRows", "1.0", "%2$s->_data.data", "%2$s->_numCols", "%1$s->_data.data", "%1$s->_numCols", "0.0", "%3$s->_data.data", "%3$s->_numCols")
+      val args = scala.List("'n'", "'n'", "%2$s->_numCols", "%1$s->_numRows", "%2$s->_numRows", "1.0", "%2$s->_data->data", "%2$s->_numCols", "%1$s->_data->data", "%1$s->_numCols", "0.0", "%3$s->_data->data", "%3$s->_numCols")
                  .map { _.format(quote(x), quote(y), quote(sym)) }
       emitMethodCall(sym, e, cuBLAS, args)
       registerKernel(scala.List(sym))
 
     case e@DenseMatrixSigmoidVectorized(in) =>
-      val args = scala.List("%1$s->_data.data", "%2$s->_data.data", "%1$s->_numRows*%1$s->_numCols")
+      val args = scala.List("%1$s->_data->data", "%2$s->_data->data", "%1$s->_numRows*%1$s->_numCols")
                  .map { _.format(quote(in), quote(sym)) }
       emitMethodCall(sym, e, cuBLAS, args)
       registerKernel(scala.List(sym))

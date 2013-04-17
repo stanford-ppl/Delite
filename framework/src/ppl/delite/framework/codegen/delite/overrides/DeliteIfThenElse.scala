@@ -199,7 +199,7 @@ trait DeliteGPUGenIfThenElse extends GPUGenEffect with DeliteBaseGenIfThenElse {
             tabWidth -= 1
             stream.println(addTab()+"}")
           case false =>
-            stream.println(addTab() + "%s %s;".format(remap(sym.tp),quote(sym)))
+            stream.println(addTab() + "%s %s;".format(remapWithRef(sym.tp),quote(sym)))
             stream.println(addTab() + "if (" + quote(c) + ") {")
             tabWidth += 1
             emitBlock(a)

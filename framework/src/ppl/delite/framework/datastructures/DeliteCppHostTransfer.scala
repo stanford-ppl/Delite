@@ -41,7 +41,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
           }
           else { // Always assume array type?
             args = args + "["+JNITypeDescriptor(elemtp.typeArguments.head)
-            out.append("\t%s %s = sendCPPtoJVM_%s(env,&(sym->%s));\n".format(JNIType(elemtp),elem._1,mangledName(remap(elemtp)),elem._1))
+            out.append("\t%s %s = sendCPPtoJVM_%s(env,sym->%s);\n".format(JNIType(elemtp),elem._1,mangledName(remap(elemtp)),elem._1))
           }
         }
         out.append("\tjclass cls = env->FindClass(\"generated/scala/%s\");\n".format(remap(tp)))
@@ -108,8 +108,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             else 
               out.append("\tjmethodID mid_get_%s = env->GetMethodID(cls,\"%s\",\"()Lgenerated/scala/%s;\");\n".format(elem._1,elem._1,remap(elemtp)))
             out.append("\t%s j_%s = env->Call%sMethod(obj,mid_get_%s);\n".format("jobject",elem._1,"Object",elem._1))
-            out.append("\tHost%s *%s_ptr = recvCPPfromJVM_%s(env,j_%s);\n".format(remap(elemtp),elem._1,mangledName(remap(elemtp)),elem._1))
-            out.append("\tHost%s %s = *%s_ptr;\n".format(remap(elemtp),elem._1,elem._1))
+            out.append("\tHost%s *%s = recvCPPfromJVM_%s(env,j_%s);\n".format(remap(elemtp),elem._1,mangledName(remap(elemtp)),elem._1))
           }
           out.append("\tsym->%s = %s;\n".format(elem._1,elem._1))
         }
@@ -257,7 +256,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
           else { // Always assume array type?
             out.append("\tjmethodID mid_%s = env->GetMethodID(cls,\"%s\",\"()[%s\");\n".format(elem._1,elem._1,JNITypeDescriptor(elemtp.typeArguments.head)))
             out.append("\tjobject obj_%s = env->CallObjectMethod(obj,mid_%s);\n".format(elem._1, elem._1))
-            out.append("\tsendUpdateCPPtoJVM_%s(env,obj_%s,&(sym->%s));\n".format(mangledName(remap(elemtp)),elem._1,elem._1))
+            out.append("\tsendUpdateCPPtoJVM_%s(env,obj_%s,sym->%s);\n".format(mangledName(remap(elemtp)),elem._1,elem._1))
           }
         }
         out.append("}\n")

@@ -572,45 +572,62 @@ trait CudaGenDeliteArrayOps extends BaseGenDeliteArrayOps with CudaGenFat with C
       if(isNestedNode) {
         // If size is known before launching the kernel (same size for all the threads), allocate outside the kernel
         //TODO: automatically figure out which access pattern is the best
-        if(deliteInputs.contains(n)) { 
-          val allocSym = registerTempAlloc(sym,a.mA,n)
-          //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",blockDim.x*gridDim.x);")
-          //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",max(2*blockDim.x*gridDim.x,blockDim.x*(1+" + quote(outerLoopSize) + "/blockDim.x)));")
-          stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + "*" + quote(n) + ",1);")
+        val allocSymData = n match {
+          case Const(x) => registerTempAlloc(sym,a.mA,quote(n))
+          case _ if deliteInputs.contains(n) => registerTempAlloc(sym,a.mA,quote(n))
+          case _ if (boundMap.contains(n) && deliteInputs.contains(boundMap(n))) => registerTempAlloc(sym,a.mA,quote(boundMap(n)))
+          case _ => throw new GenerationFailedException("nested delitearray allocation with unknown size")
         }
+        val allocSymArray = registerTempAlloc(sym,sym.tp,"1")
+        stream.println("DeliteArray< " + remapWithRef(a.mA) + " > *" + quote(sym) + " = " + allocSymArray + " + " + quote(outerLoopSym) + ";")
+        stream.println(quote(sym) + "->data = " + allocSymData + " + " + quote(n) + " * " + quote(outerLoopSym) + ";")
+        stream.println(quote(sym) + "->length = " + quote(n) + ";")
+        stream.println(quote(sym) + "->offset = 0;")
+        stream.println(quote(sym) + "->stride = 1;")
+          //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",blockDim.x*gridDim.x);")
+          //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",max(2*blockDim.x*gridDim.x,blockDim.x*(1+" + quote(outerLoopSize) + "/blockDim.x)));")
+          //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + "*" + quote(n) + ",1);")
+        /*
         else if (boundMap.contains(n) && deliteInputs.contains(boundMap(n))) {
-          val allocSym = registerTempAlloc(sym,a.mA,boundMap(n))
+          val allocSymArray = registerTempAlloc(sym,sym.tp,"1")
+          val allocSymData = registerTempAlloc(sym,a.mA,quote(boundMap(n)))
+          stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = " + allocSymArray + " + " + quote(outerLoopSym) + ";")
+          stream.println(quote(sym) + "->data = " + allocSymData + " + " + quote(boundMap(n)) + ";")
+          stream.println(quote(sym) + "->length = " + quote(boundMap(n)) + ";")
+          stream.println(quote(sym) + "->offset = 0;")
+          stream.println(quote(sym) + "->stride = 1;")
           //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",max(2*blockDim.x*gridDim.x,blockDim.x*(1+" + quote(outerLoopSize) + "/blockDim.x)));")
           //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",blockDim.x*gridDim.x);")
-          stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + "*" + quote(n) + ",1);")
+          //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + "*" + quote(n) + ",1);")
         }
         // If size is not known before launching the kernel, use temporary memory
         // TODO: Figure out the size is the same for all the threads
-        else {
+        //else {
+        //  
           stream.println("if (tempMemSize < tempMemUsage[threadIdx.x+blockIdx.x*blockDim.x] + sizeof(" + remap(a.mA) + ")*" + quote(n) + ") {")
           stream.println("assert(false);")
           stream.println("}")
           stream.println(remap(a.mA) + " *" + quote(sym) + "Ptr = (" + remap(a.mA) + "*)(tempMemPtr + tempMemUsage[threadIdx.x+blockIdx.x*blockDim.x]*gridDim.x*blockDim.x);") 
           stream.println("tempMemUsage[threadIdx.x+blockIdx.x*blockDim.x] = tempMemUsage[threadIdx.x+blockIdx.x*blockDim.x] + sizeof(" + remap(a.mA) + ")*" + quote(n) + ";")
           stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + quote(sym) + "Ptr,threadIdx.x+blockIdx.x*blockDim.x," + quote(outerLoopSize) + ");")
-        }
+        //}
+        */
       }
       // Allocated only once for the entire kernel by helper function
       else {
-        stream.println("DeliteArray< " + remap(a.mA) + " > *" + quote(sym) + "_ptr = new DeliteArray< " + remap(a.mA) + " >(" + quote(n) + ");")
-        stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = *" + quote(sym) + "_ptr;")
+        emitValDef(sym, "new DeliteArray< " + remapWithRef(a.mA) + " >(" + quote(n) + ");")
       }
     case DeliteArrayLength(da) =>
-      emitValDef(sym, quote(da) + ".length")
+      emitValDef(sym, quote(da) + "->length")
     case DeliteArrayApply(da, idx) =>
-      emitValDef(sym, quote(da) + ".apply(" + quote(idx) + ")")
+      emitValDef(sym, quote(da) + "->apply(" + quote(idx) + ")")
     case DeliteArrayUpdate(da, idx, x) =>
-      stream.println(quote(da) + ".update(" + quote(idx) + "," + quote(x) + ");")
+      stream.println(quote(da) + "->update(" + quote(idx) + "," + quote(x) + ");")
     case StructUpdate(struct, fields, idx, x) =>
-      stream.println(quote(struct) + "." + fields.reduceLeft(_ + "." + _) + ".update(" + quote(idx) + "," + quote(x) + ");\n")
+      stream.println(quote(struct) + "->" + fields.reduceLeft(_ + "->" + _) + "->update(" + quote(idx) + "," + quote(x) + ");\n")
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
       stream.println("for(int i=0; i<"+quote(len)+"; i++) {")
-      stream.println(quote(dest) + ".update(" + quote(destPos) + "+i," + quote(src) + ".apply(" + quote(srcPos) + "+i));")
+      stream.println(quote(dest) + "->update(" + quote(destPos) + "+i," + quote(src) + "->apply(" + quote(srcPos) + "+i));")
       stream.println("}")
     case _ => super.emitNode(sym, rhs)
   }
