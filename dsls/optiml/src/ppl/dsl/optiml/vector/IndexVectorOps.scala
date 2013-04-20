@@ -117,12 +117,4 @@ trait ScalaGenIndexVectorOps extends ScalaGenBase {
 
 trait CGenIndexVectorOps extends CGenBase {
   val IR: IndexVectorOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case v@IndexVectorDenseNew(len, isRow) =>
-      emitValDef(sym, "new IndexVectorDense(" + quote(len) + ", " + quote(isRow) + ")")
-
-    case _ => super.emitNode(sym, rhs)
-  }
 }

@@ -64,9 +64,9 @@ object Delite {
       val graph = loadDeliteDEG(args(0))
     
       //Print warning if there is no op that supports the target
-      if(Config.numCpp>0 && !graph.targets(Targets.Cpp)) println("[WARNING] No Cpp target op is generated!")
-      if(Config.numCuda>0 && !graph.targets(Targets.Cuda)) println("[WARNING] No Cuda target op is generated!")
-      if(Config.numOpenCL>0 && !graph.targets(Targets.OpenCL)) println("[WARNING] No OpenCL target op is generated!")
+      if(Config.numCpp>0 && !graph.targets(Targets.Cpp)) { Config.numCpp = 0; println("[WARNING] No Cpp target op is generated!") }
+      if(Config.numCuda>0 && !graph.targets(Targets.Cuda)) { Config.numCuda = 0; println("[WARNING] No Cuda target op is generated!") }
+      if(Config.numOpenCL>0 && !graph.targets(Targets.OpenCL)) { Config.numOpenCL = 0; println("[WARNING] No OpenCL target op is generated!") }
 
       //TODO: combine into a single scheduler and executor
       scheduler = Config.scheduler match {
