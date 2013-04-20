@@ -30,7 +30,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
     }
     else if(encounteredStructs.contains(structName(tp))) {
       val out = new StringBuilder
-      val signature = "%s *sendCuda_%s(Host%s *sym)".format(remap(tp),mangledName(remap(tp)),remap(tp))
+      val signature = "%s *sendCuda_%s(%s *sym)".format(remap(tp),mangledName(remap(tp)),remap(tp,"Host"))
       out.append(signature + " {\n")
       out.append("\t%s *sym_dev = new %s();\n".format(remap(tp),remap(tp)))
       for(elem <- encounteredStructs(structName(tp))) {
@@ -54,7 +54,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
         case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
           val out = new StringBuilder
           val typeArg = tp.typeArguments.head
-          val signature = "%s *sendCuda_%s(Host%s *sym)".format(remap(tp),mangledName(remap(tp)),remap(tp))
+          val signature = "%s *sendCuda_%s(%s *sym)".format(remap(tp),mangledName(remap(tp)),remap(tp,"Host"))
           out.append(signature + " {\n")
           out.append("\t%s *hostPtr;\n".format(remap(typeArg)))
           out.append("\tDeliteCudaMallocHost((void**)&hostPtr,sym->length*sizeof(%s));\n".format(remap(typeArg)))
@@ -70,7 +70,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
         case _ => // DeliteArrayObject
           val out = new StringBuilder
           val typeArg = tp.typeArguments.head
-          val signature = "%s *sendCuda_%s(%s *sym)".format(remap(tp),mangledName(remap(tp)),remapHost(tp))
+          val signature = "%s *sendCuda_%s(%s *sym)".format(remap(tp),mangledName(remap(tp)),remap(tp,"Host"))
           out.append(signature + " {\n")
           out.append("\t%s *hostPtr;\n".format(remapWithRef(typeArg)))
           out.append("\tDeliteCudaMallocHost((void**)&hostPtr,sym->length*sizeof(%s));\n".format(remapWithRef(typeArg)))
@@ -105,12 +105,12 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
     }
     else if(encounteredStructs.contains(structName(tp))) {
       val out = new StringBuilder
-      val signature = "Host%s *recvCuda_%s(%s *sym_dev)".format(remap(tp),mangledName(remap(tp)),remap(tp))
+      val signature = "%s *recvCuda_%s(%s *sym_dev)".format(remap(tp,"Host"),mangledName(remap(tp)),remap(tp))
       out.append(signature + " {\n")
       out.append("\t%s *sym_dev_temp;\n".format(remap(tp)))
       out.append("\tDeliteCudaMallocHost((void**)&sym_dev_temp,sizeof(%s));".format(remap(tp)))
       out.append("\tDeliteCudaMemcpyDtoHAsync(sym_dev_temp, sym_dev, sizeof(%s));\n".format(remap(tp)))
-      out.append("\tHost%s *sym = new Host%s();\n".format(remap(tp),remap(tp)))
+      out.append("\t%s *sym = new %s();\n".format(remap(tp,"Host"),remap(tp,"Host")))
       for(elem <- encounteredStructs(structName(tp))) {
         val elemtp = baseType(elem._2)
         if(!isPrimitiveType(elemtp)) {
@@ -129,14 +129,14 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
         case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
           val out = new StringBuilder
           val typeArg = tp.typeArguments.head
-          val signature = "Host%s *recvCuda_%s(%s *sym_dev)".format(remap(tp),mangledName(remap(tp)),remap(tp))
+          val signature = "%s *recvCuda_%s(%s *sym_dev)".format(remap(tp,"Host"),mangledName(remap(tp)),remap(tp))
           out.append(signature + " {\n")
-          out.append("\tHost%s *sym = new Host%s(0);\n".format(remap(tp),remap(tp)))
+          out.append("\t%s *sym = new %s(0);\n".format(remap(tp,"Host"),remap(tp,"Host")))
           out.append("\tDeliteCudaMemcpyDtoHAsync(sym, sym_dev, sizeof(%s));\n".format(remap(tp)))
           out.append("\t%s *hostPtr;\n".format(remap(typeArg)))
           out.append("\tDeliteCudaMallocHost((void**)&hostPtr,sym->length*sizeof(%s));\n".format(remap(typeArg)))
           out.append("\tDeliteCudaMemcpyDtoHAsync(hostPtr, sym->data, sym->length*sizeof(%s));\n".format(remap(typeArg)))
-          out.append("\tsym = new Host%s(sym->length);\n".format(remap(tp),remap(tp)))
+          out.append("\tsym = new %s(sym->length);\n".format(remap(tp,"Host")))
           out.append("\tmemcpy(sym->data,hostPtr,sym->length*sizeof(%s));\n".format(remap(typeArg)))
           out.append("\treturn sym;\n")
           out.append("}\n")
@@ -144,7 +144,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
         case _ => 
           val out = new StringBuilder
           val typeArg = tp.typeArguments.head
-          val signature = "Host%s *recvCuda_%s(%s *sym_dev)".format(remap(tp),mangledName(remap(tp)),remap(tp))
+          val signature = "%s *recvCuda_%s(%s *sym_dev)".format(remap(tp,"Host"),mangledName(remap(tp)),remap(tp))
           out.append(signature + " {\n")
           out.append("assert(false);\n")
           out.append("}\n")
@@ -176,7 +176,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
     }
     else if(encounteredStructs.contains(structName(tp))) {
       val out = new StringBuilder
-      val signature = "void sendUpdateCuda_%s(%s *%s_dev, Host%s *%s)".format(mangledName(remap(tp)),remap(tp),"sym",remap(tp),"sym")
+      val signature = "void sendUpdateCuda_%s(%s *%s_dev, %s *%s)".format(mangledName(remap(tp)),remap(tp),"sym",remap(tp,"Host"),"sym")
       out.append(signature + " {\n")
       out.append("assert(false);\n")
       out.append("}\n")
@@ -187,7 +187,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
        case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
           val out = new StringBuilder
           val typeArg = tp.typeArguments.head
-          val signature = "void sendUpdateCuda_%s(%s *sym_dev, Host%s *sym)".format(mangledName(remap(tp)),remap(tp),remap(tp))
+          val signature = "void sendUpdateCuda_%s(%s *sym_dev, %s *sym)".format(mangledName(remap(tp)),remap(tp),remap(tp,"Host"))
           out.append(signature + " {\n")
           out.append("\t%s *hostDA;\n".format(remap(tp)))
           out.append("\tDeliteCudaMallocHost((void**)&hostDA,sizeof(%s));\n".format(remap(tp)))
@@ -201,7 +201,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
         case _ => 
           val out = new StringBuilder
           val typeArg = tp.typeArguments.head
-          val signature = "void sendUpdateCuda_%s(%s *sym_dev, Host%s *sym)".format(mangledName(remap(tp)),remap(tp),remap(tp))
+          val signature = "void sendUpdateCuda_%s(%s *sym_dev, %s *sym)".format(mangledName(remap(tp)),remap(tp),remap(tp,"Host"))
           out.append(signature + " {\n")
           out.append("assert(false);\n")
           out.append("}\n")
@@ -226,7 +226,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
     }
     else if(encounteredStructs.contains(structName(tp))) {
       val out = new StringBuilder
-      val signature = "void recvUpdateCuda_%s(%s *sym_dev, Host%s *sym)".format(mangledName(remap(tp)),remap(tp),remap(tp))
+      val signature = "void recvUpdateCuda_%s(%s *sym_dev, %s *sym)".format(mangledName(remap(tp)),remap(tp),remap(tp,"Host"))
       out.append(signature + " {\n")
       out.append("\t%s *hostStruct;\n".format(remap(tp)))
       out.append("\tDeliteCudaMallocHost((void**)&hostStruct,sizeof(%s));\n".format(remap(tp)))
@@ -248,7 +248,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
         case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" =>
           val out = new StringBuilder
           val typeArg = tp.typeArguments.head
-          val signature = "void recvUpdateCuda_%s(%s *sym_dev, Host%s *sym)".format(mangledName(remap(tp)),remap(tp),remap(tp))
+          val signature = "void recvUpdateCuda_%s(%s *sym_dev, %s *sym)".format(mangledName(remap(tp)),remap(tp),remap(tp,"Host"))
           out.append(signature + " {\n")
           out.append("\t%s *hostDA;\n".format(remap(tp)))
           out.append("\tDeliteCudaMallocHost((void**)&hostDA,sizeof(%s));\n".format(remap(tp)))
@@ -262,7 +262,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
         case _ =>
           val out = new StringBuilder
           val typeArg = tp.typeArguments.head
-          val signature = "void recvUpdateCuda_%s(%s *sym_dev, Host%s *sym)".format(mangledName(remap(tp)),remap(tp),remap(tp))
+          val signature = "void recvUpdateCuda_%s(%s *sym_dev, %s *sym)".format(mangledName(remap(tp)),remap(tp),remap(tp,"Host"))
           out.append(signature + " {\n")
           out.append("assert(false);\n")
           out.append("}\n")

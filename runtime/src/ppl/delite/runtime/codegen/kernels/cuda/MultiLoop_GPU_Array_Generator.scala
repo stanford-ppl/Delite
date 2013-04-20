@@ -191,6 +191,8 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
     // allocate outputs for non-buffer type loops
     writeOutputAllocs(out, op, output_static++output_dynamic) // TODO: remove output_dynamic from the list
     
+    out.append("addEvent(h2dStream, kernelStream);\n")
+    
     // call process kernel
     writeKernelCall(out, op, "Process")
     

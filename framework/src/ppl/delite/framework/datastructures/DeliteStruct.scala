@@ -280,7 +280,8 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
     for ((name, elems) <- encounteredStructs if !generatedStructs.contains(name)) {
       try {
         emitStructDeclaration(path, name, elems)
-        elems filterNot { e => isNestedArrayType(e._2) } foreach { e => dsTypesList.add(baseType(e._2).asInstanceOf[Manifest[Any]]) }
+        //elems filterNot { e => isNestedArrayType(e._2) } foreach { e => dsTypesList.add(baseType(e._2).asInstanceOf[Manifest[Any]]) }
+        //elems foreach { e => dsTypesList.add(baseType(e._2).asInstanceOf[Manifest[Any]]) }
         structStream.println("#include \"" + name + ".h\"")
       }
       catch {
@@ -298,28 +299,26 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
     try {
       stream.println("#ifndef __" + name + "__")
       stream.println("#define __" + name + "__")
-      val dependentStructTypes = elems.map(e => 
+      val dependentTypes = elems.map(e => 
         if(encounteredStructs.contains(remap(baseType(e._2)))) remap(baseType(e._2))
         else if(encounteredStructs.contains(remap(unwrapArrayType(e._2)))) remap(unwrapArrayType(e._2))
         else remap(baseType(e._2))  // SoA transfromed types
       ).distinct
         
-      dependentStructTypes foreach { t =>
-        if (encounteredStructs.contains(t)) {
-          stream.println("#include \"" + t + ".h\"") 
-          if (generationFailedStructs.contains(t)) {
-            throw new GenerationFailedException("Cannot generate struct " + name + " because of the failed dependency " + t)
-          }
-          else {
-            emitStructDeclaration(path, t, encounteredStructs(t))
-          }
+      dependentTypes filter(encounteredStructs.contains) foreach { t =>
+        stream.println("#include \"" + t + ".h\"") 
+        if (generationFailedStructs.contains(t)) {
+          throw new GenerationFailedException("Cannot generate struct " + name + " because of the failed dependency " + t)
+        }
+        else {
+          emitStructDeclaration(path, t, encounteredStructs(t))
         }
       }   
       for(prefix <- List("Host","")) {
         stream.println("class " + prefix + name + " {")
         // fields
         stream.println("public:")
-        stream.print(elems.map{ case (idx,tp) => "\t" + (if(!isPrimitiveType(baseType(tp))) prefix else "") + remapWithRef(baseType(tp)) + " " + idx + ";\n" }.mkString(""))
+        stream.print(elems.map{ case (idx,tp) => "\t" + remapWithRef(baseType(tp),prefix) + " " + idx + ";\n" }.mkString(""))
         // constructor
         if(prefix == "Host") {
           stream.println("\t" + prefix + name + "(void) { }")
@@ -329,7 +328,7 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
           stream.println("\t__host__ __device__ " + prefix + name + "(void) { }")
           stream.print("\t__host__ __device__ " + prefix + name + "(")
         }
-        stream.print(elems.map{ case (idx,tp) => (if(!isPrimitiveType(baseType(tp))) prefix else "") + remapWithRef(baseType(tp)) + " _" + idx }.mkString(","))
+        stream.print(elems.map{ case (idx,tp) => remapWithRef(baseType(tp),prefix) + " _" + idx }.mkString(","))
         stream.println(") {")
         stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = _" + idx + ";\n" }.mkString(""))
         stream.println("\t}")
@@ -399,6 +398,7 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
       stream.println("#endif")
       generatedStructs += name
       stream.close()
+      elems foreach { e => dsTypesList.add(baseType(e._2).asInstanceOf[Manifest[Any]]) }
     }
     catch {
       case e: GenerationFailedException => generationFailedStructs += name; (new File(path + name + ".h")).delete; throw(e)
