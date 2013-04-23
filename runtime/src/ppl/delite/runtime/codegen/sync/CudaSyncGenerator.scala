@@ -7,6 +7,8 @@ import ppl.delite.runtime.codegen._
 import ppl.delite.runtime.codegen.hosts.Hosts
 import ppl.delite.runtime.scheduler.OpHelper._
 import ppl.delite.runtime.graph.targets.Targets._
+import ppl.delite.runtime.Config
+import ppl.delite.runtime.graph._
 
 trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JNIFuncs {
 
@@ -115,7 +117,16 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
     }
     else {
       out.append("Host%s %s%s = recvCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
-      out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
+      //FIXIT: Using the length symbol for transpose is not safe in general because the symbol may not be emitted yet
+      if(Config.gpuOptTrans) {
+        // Use transpose copy
+        dep.stencilOrElse(sym)(Empty) match {
+          case Interval(start,stride,length) => out.append("%s %s%s = sendCudaTrans_%s(%s,%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym),getSymDevice(dep,length.trim)))
+          case _ => out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
+        }
+      }
+      else
+        out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
       out.append("cudaMemoryMap->insert(pair<void*,list<void*>*>(")
       out.append(getSymDevice(dep,sym))
       out.append(",lastAlloc));\n")

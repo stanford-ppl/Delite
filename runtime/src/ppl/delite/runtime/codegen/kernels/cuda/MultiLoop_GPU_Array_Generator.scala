@@ -411,9 +411,15 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
         out.append("localSum1_" + osym + " = dev_process1_" + funcNameSuffix(op,osym) + (odata.getInputs("process")++List("localSum1_"+osym,"localSum2_"+osym)++lastInputArgs(op)).mkString("(",",",");\n"))
         out.append("localSum2_" + osym + " = dev_process2_" + funcNameSuffix(op,osym) + (odata.getInputs("process")++List("localSum1_"+osym,"localSum2_"+osym)++lastInputArgs(op)).mkString("(",",",");\n"))
       }
-      for((odata,osym) <- hashReductionList(op)) {
+      //TODO: Group by the same key function
+      if (hashReductionList(op).nonEmpty) {
+        val (odata,osym) = hashReductionList(op)(0)
+        val inputs = hashReductionList(op) flatMap {h => List("key_"+h._2,"val_"+h._2)}
         out.append("dev_process_" + funcNameSuffix(op,osym) + (List("key_"+osym,"val_"+osym)++odata.getInputs("process")++lastInputArgs(op)).mkString("(",",",");\n"))
       }
+      //for((odata,osym) <- hashReductionList(op)) {
+      //  out.append("dev_process_" + funcNameSuffix(op,osym) + (List("key_"+osym,"val_"+osym)++odata.loopFuncInputs++lastInputArgs(op)).mkString("(",",",");\n"))
+      //}
       out.append("idxX += blockSize;\n")
       out.append("if (idxX < " + opSize + ") {\n")
       for((odata,osym) <- collectList(op)++foreachList(op)) {
@@ -429,9 +435,15 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
         out.append("localSum1_" + osym + " = dev_process1_" + funcNameSuffix(op,osym) + (odata.getInputs("process")++List("localSum1_"+osym,"localSum2_"+osym)++lastInputArgs(op)).mkString("(",",",");\n"))
         out.append("localSum2_" + osym + " = dev_process2_" + funcNameSuffix(op,osym) + (odata.getInputs("process")++List("localSum1_"+osym,"localSum2_"+osym)++lastInputArgs(op)).mkString("(",",",");\n"))
       }
-      for((odata,osym) <- hashReductionList(op)) {
+      //TODO: Group by the same key function
+      if (hashReductionList(op).nonEmpty) {
+        val (odata,osym) = hashReductionList(op)(0)
+        val inputs = hashReductionList(op) flatMap {h => List("key_"+h._2,"val_"+h._2)}
         out.append("dev_process_" + funcNameSuffix(op,osym) + (List("key_"+osym,"val_"+osym)++odata.getInputs("process")++lastInputArgs(op)).mkString("(",",",");\n"))
       }
+      //for((odata,osym) <- hashReductionList(op)) {
+      //  out.append("dev_process_" + funcNameSuffix(op,osym) + (List("key_"+osym,"val_"+osym)++odata.loopFuncInputs++lastInputArgs(op)).mkString("(",",",");\n"))
+      //}
       out.append("}\n")
       out.append("idxX += (gridSize-blockSize);\n")
       out.append("}\n")
@@ -882,8 +894,8 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
       out.append("thrust::sort_by_key(key_" + osym + "_thrust, key_" + osym + "_thrust+" + opSize + ", idx_" + osym + "_thrust);\n")
       out.append("kernel_offset<<<dim3(1+(" + opSize + "-1)/1024,1,1),dim3(1024,1,1),0,kernelStream>>>(key_" + osym + ", idx_" + osym + ", offset_" + osym + ", " + opSize + ");\n")
       out.append("addEvent(kernelStream,d2hStream);\n")
-      out.append("int *host_offset_" + osym + " = (int *)malloc(sizeof(int)*" + opSize + ");\n")
-      out.append("DeliteCudaMemcpyDtoHAsync((void*)host_offset_" + osym + ", (void*)offset_" + osym + ", sizeof(int)*" + opSize + ");\n")
+      out.append("int *host_offset_" + osym + " = (int *)malloc(sizeof(int));\n")
+      out.append("DeliteCudaMemcpyDtoHAsync((void*)host_offset_" + osym + ", (void*)offset_" + osym + ", sizeof(int));\n")
       out.append(" *" + osym + " = (*" + osym + ")->dc_alloc(host_offset_" + osym + "[0]);\n")
       out.append(odata.getType("mV") + " res_" + osym + ";\n")
       if(odata.elemType=="HASH_REDUCE_SPEC") {

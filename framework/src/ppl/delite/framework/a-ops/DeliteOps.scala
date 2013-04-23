@@ -2553,6 +2553,15 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     emitFatBlock(elemFuncs.distinct) 
   }
 
+  def emitHashElemFuncs(op: AbstractFatLoop, symList: List[Sym[Any]]) {
+    val elemFuncs = op.body flatMap {
+      //case elem: DeliteHashCollectElem[_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
+      case elem: DeliteHashReduceElem[_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
+      //case elem: DeliteHashIndexElem[_,_] => elem.keyFunc :: elem.cond
+    }
+    emitFatBlock(elemFuncs.distinct) 
+  }
+
   /*
   def emitFirstReduceElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_], prefixSym: String = "") {
       if (elem.cond.nonEmpty) {
@@ -2670,6 +2679,8 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     tabWidth += 1
     
     val kernelName = symList.map(quote).mkString("")
+    val generatedHashFuncs = new scala.collection.mutable.HashSet[Sym[Any]]()
+
     // last inputs always added to any device functions
     def lastInputs(size: Exp[Int], v: Sym[Int]) = (size match {
       case s@Sym(_) => List(v, size).map(i => remap(i.tp) + " " + quote(i))
@@ -2701,6 +2712,9 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
             metaData.outputs.put(sym, new LoopElem("COLLECT_BUF",Map("mA"->remap(elem.mA),"mI"->remap(elem.mI),"mCA"->remap(elem.mCA))))
         case (sym, elem:DeliteForeachElem[_]) =>
           metaData.outputs.put(sym, new LoopElem("FOREACH",Map("mA"->remap(elem.mA))))
+          /*throw new GenerationFailedException("GPUGen DeliteOps: GPU ForEachElem is temporarily disabled..")
+          metaData.outputs.put(sym,new TransferFunc)
+          lf.tpe = "FOREACH"*/
         case (sym, elem: DeliteReduceElem[_]) =>
           if(!isPrimitiveType(sym.tp)) {
             if(encounteredZipWith contains getBlockResult(elem.rFunc)) {
@@ -2916,16 +2930,31 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           stream.println("}")
         }
 
-      case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
-        val freeVars = getFreeVarBlock(Block(Combine(List(elem.keyFunc,elem.valFunc).map(getBlockResultFull))),List(op.v)).distinct
-        val inputs = List(remap(elem.mK)+" *"+quote(sym)+"_key",remap(elem.mV)+" *"+quote(sym)+"_val") ++ remapInputs(freeVars) 
+      //TODO: Group by the same key function
+      case (sym, elem: DeliteHashReduceElem[_,_,_]) if !generatedHashFuncs.contains(sym) =>
+        val funcs = op.body flatMap { case e: DeliteHashReduceElem[_,_,_] => List(e.keyFunc,e.valFunc) }
+        val freeVars = getFreeVarBlock(Block(Combine(funcs.map(getBlockResultFull))),List(op.v)).distinct
+        val inputs = ((symList zip op.body) collect { case (s, e: DeliteHashReduceElem[_,_,_]) => remap(e.mK)+" *"+quote(s)+"_key,"+remap(e.mV)+" *"+quote(s)+"_val" } ) ++ remapInputs(freeVars)
+        //val inputs = List(remap(elem.mK)+" *"+quote(sym)+"_key",remap(elem.mV)+" *"+quote(sym)+"_val") ++ remapInputs(freeVars) 
         val e = metaData.outputs.get(sym).get
         e.funcs += "process" -> freeVars.map(quote)
+        //val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
+        //lf.loopFuncInputs = freeVars.map(quote)
         stream.println("__device__ void dev_process_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
-        emitFatBlock(List(elem.keyFunc,elem.valFunc))
-        stream.println(quote(sym) + "_key[" + quote(op.v) + "] = " + quote(getBlockResult(elem.keyFunc)) + ";")
-        stream.println(quote(sym) + "_val[" + quote(op.v) + "] = " + quote(getBlockResult(elem.valFunc)) + ";")
+        //emitFatBlock(List(elem.keyFunc,elem.valFunc))
+        //stream.println(quote(sym) + "_key[" + quote(op.v) + "] = " + quote(getBlockResult(elem.keyFunc)) + ";")
+        //stream.println(quote(sym) + "_val[" + quote(op.v) + "] = " + quote(getBlockResult(elem.valFunc)) + ";")
+        emitHashElemFuncs(op, symList)
+        (symList zip op.body) foreach {
+          case (s,e: DeliteHashReduceElem[_,_,_]) => 
+            stream.println(quote(s) + "_key[" + quote(op.v) + "] = " + quote(getBlockResult(e.keyFunc)) + ";")
+            stream.println(quote(s) + "_val[" + quote(op.v) + "] = " + quote(getBlockResult(e.valFunc)) + ";")
+          case _ =>
+        }
         stream.println("}") 
+        val commonKeyElems = (symList zip op.body) collect { case (sym, elem: DeliteHashReduceElem[_,_,_]) => (sym,elem) } filter (_._2.keyFunc == elem.keyFunc)
+        for((s,e) <- commonKeyElems) 
+          generatedHashFuncs.add(s)
 
       case _ => //
     }
