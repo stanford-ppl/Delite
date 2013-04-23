@@ -1461,64 +1461,70 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   /* (grouped) hash support follows */
   def emitInlineMultiHashInit(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = "") {
-    for ((key,kps) <- ps.groupBy(_._2.keyFunc)) {
-      stream.println("var " + kps.map(p=>quote(p._1)).mkString("") + "_hash_pos: generated.scala.container.HashMapImpl[" + remap(getBlockResult(key).tp) + "] = new generated.scala.container.HashMapImpl(512,128)")
-      kps foreach { 
-        case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
-          //stream.println("//TODO hash collect")
-          //stream.println("var " + quote(sym) + "_hash: scala.collection.mutable.HashMap[" + remap(getBlockResult(elem.keyFunc).tp) + ", ArrayBuffer[" + remap(getBlockResult(elem.valFunc).tp) + "]] = new scala.collection.mutable.HashMap // TODO: more efficient buffer handling")
-          stream.println("var " + quote(sym) + "_hash_data: Array[generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).tp) + "]] = new Array(128) // TODO: more efficient buffer handling")
-        case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
-          stream.println("var " + quote(sym) + "_hash_data: Array[" + remap(getBlockResult(elem.valFunc).tp) + "] = new Array(128)")
-          if (elem.rFunc != Block(elem.rV._2)) {
-            if (elem.zero.res.isInstanceOf[Const[Any]])
-              stream.println(quote(getBlockResult(elem.zero)))
-            else {
-              stream.println("val " + quote(sym) + "_zero = {"/*}*/)
-              stream.println("val " + quote(sym) + "_zero = {"/*}*/)
-              emitBlock(elem.zero)
-              stream.println(quote(getBlockResult(elem.zero)))
-              stream.println(/*{*/"}")
+    for ((cond,cps) <- ps.groupBy(_._2.cond)) {
+      for ((key,kps) <- cps.groupBy(_._2.keyFunc)) {
+        stream.println("var " + kps.map(p=>quote(p._1)).mkString("") + "_hash_pos: generated.scala.container.HashMapImpl[" + remap(getBlockResult(key).tp) + "] = new generated.scala.container.HashMapImpl(512,128)")
+        kps foreach { 
+          case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
+            //stream.println("//TODO hash collect")
+            //stream.println("var " + quote(sym) + "_hash: scala.collection.mutable.HashMap[" + remap(getBlockResult(elem.keyFunc).tp) + ", ArrayBuffer[" + remap(getBlockResult(elem.valFunc).tp) + "]] = new scala.collection.mutable.HashMap // TODO: more efficient buffer handling")
+            stream.println("var " + quote(sym) + "_hash_data: Array[generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).tp) + "]] = new Array(128) // TODO: more efficient buffer handling")
+          case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
+            stream.println("var " + quote(sym) + "_hash_data: Array[" + remap(getBlockResult(elem.valFunc).tp) + "] = new Array(128)")
+            if (elem.rFunc != Block(elem.rV._2)) {
+              if (elem.zero.res.isInstanceOf[Const[Any]])
+                stream.println(quote(getBlockResult(elem.zero)))
+              else {
+                stream.println("val " + quote(sym) + "_zero = {"/*}*/)
+                stream.println("val " + quote(sym) + "_zero = {"/*}*/)
+                emitBlock(elem.zero)
+                stream.println(quote(getBlockResult(elem.zero)))
+                stream.println(/*{*/"}")
+              }
             }
-          }
-        case (sym, elem: DeliteHashIndexElem[_,_]) => 
+          case (sym, elem: DeliteHashIndexElem[_,_]) => 
+        }
       }
     }
   }
   def emitKernelMultiHashDecl(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = "") {
-    for ((key,kps) <- ps.groupBy(_._2.keyFunc)) {
-      stream.println("var " + kps.map(p=>quote(p._1)).mkString("") + "_hash_pos: generated.scala.container.HashMapImpl[" + remap(getBlockResult(key).tp) + "] = _")
-      kps foreach { 
-        case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
-          //stream.println("//TODO hash collect")
-          stream.println("var " + quote(sym) + ": " + remap(sym.tp) + " = _")
-          //stream.println("var " + quote(sym) + "_hash: scala.collection.mutable.HashMap[" + remap(getBlockResult(elem.keyFunc).tp) + ", generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).tp) + "]] = _")
-          stream.println("var " + quote(sym) + "_hash_data: Array[generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).tp) + "]] = _ // TODO: more efficient buffer handling")
-        case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
-          stream.println("var " + quote(sym) + ": " + remap(sym.tp) + " = _")
-          stream.println("var " + quote(sym) + "_hash_data: Array[" + remap(getBlockResult(elem.valFunc).tp) + "] = _")
-          stream.println("var " + quote(sym) + "_zero: " + remap(elem.zero.tp) + " = _")
-        case (sym, elem: DeliteHashIndexElem[_,_]) => 
-          stream.println("//TODO hash index elem")
-          stream.println("var " + quote(sym) + ": " + remap(sym.tp) + " = _")
+    for ((cond,cps) <- ps.groupBy(_._2.cond)) {
+      for ((key,kps) <- cps.groupBy(_._2.keyFunc)) {
+        stream.println("var " + kps.map(p=>quote(p._1)).mkString("") + "_hash_pos: generated.scala.container.HashMapImpl[" + remap(getBlockResult(key).tp) + "] = _")
+        kps foreach { 
+          case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
+            //stream.println("//TODO hash collect")
+            stream.println("var " + quote(sym) + ": " + remap(sym.tp) + " = _")
+            //stream.println("var " + quote(sym) + "_hash: scala.collection.mutable.HashMap[" + remap(getBlockResult(elem.keyFunc).tp) + ", generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).tp) + "]] = _")
+            stream.println("var " + quote(sym) + "_hash_data: Array[generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).tp) + "]] = _ // TODO: more efficient buffer handling")
+          case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
+            stream.println("var " + quote(sym) + ": " + remap(sym.tp) + " = _")
+            stream.println("var " + quote(sym) + "_hash_data: Array[" + remap(getBlockResult(elem.valFunc).tp) + "] = _")
+            stream.println("var " + quote(sym) + "_zero: " + remap(elem.zero.tp) + " = _")
+          case (sym, elem: DeliteHashIndexElem[_,_]) => 
+            stream.println("//TODO hash index elem")
+            stream.println("var " + quote(sym) + ": " + remap(sym.tp) + " = _")
+        }
       }
     }
   }
   def emitKernelMultiHashInit(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = ""){
-    for ((key,kps) <- ps.groupBy(_._2.keyFunc)) {
-      stream.println(prefixSym + kps.map(p=>quote(p._1)).mkString("") + "_hash_pos = new generated.scala.container.HashMapImpl(512,128)")
-      kps foreach { 
-        case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
-          //stream.println("//TODO hash collect")
-          //stream.println(prefixSym + quote(sym) + "_hash = new scala.collection.mutable.HashMap")
-          stream.println(prefixSym + quote(sym) + "_hash_data = new Array(128)")
-        case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
-          stream.println(prefixSym + quote(sym) + "_zero = {"/*}*/)
-          emitBlock(elem.zero)
-          stream.println(quote(getBlockResult(elem.zero)))          
-          stream.println(/*{*/"}")
-          stream.println(prefixSym + quote(sym) + "_hash_data = new Array(128)")
-        case (sym, elem: DeliteHashIndexElem[_,_]) => 
+    for ((cond,cps) <- ps.groupBy(_._2.cond)) {
+      for ((key,kps) <- cps.groupBy(_._2.keyFunc)) {
+        stream.println(prefixSym + kps.map(p=>quote(p._1)).mkString("") + "_hash_pos = new generated.scala.container.HashMapImpl(512,128)")
+        kps foreach { 
+          case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
+            //stream.println("//TODO hash collect")
+            //stream.println(prefixSym + quote(sym) + "_hash = new scala.collection.mutable.HashMap")
+            stream.println(prefixSym + quote(sym) + "_hash_data = new Array(128)")
+          case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
+            stream.println(prefixSym + quote(sym) + "_zero = {"/*}*/)
+            emitBlock(elem.zero)
+            stream.println(quote(getBlockResult(elem.zero)))          
+            stream.println(/*{*/"}")
+            stream.println(prefixSym + quote(sym) + "_hash_data = new Array(128)")
+          case (sym, elem: DeliteHashIndexElem[_,_]) => 
+        }
       }
     }
   }
@@ -1593,45 +1599,47 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   def emitMultiHashCombine(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = ""){
     // TODO: extract and generalize common parts
     // TODO: use multi-phase parallel combine instead of this reduction based one
-    for ((key,kps) <- ps.groupBy(_._2.keyFunc)) {
-      val quotedGroup = kps.map(p=>quote(p._1)).mkString("")
-      stream.println("// common key "+key+" for "+quotedGroup)
-      stream.println("for (i <- (0 until rhs." + quotedGroup + "_hash_pos.size)) {"/*}*/) // TODO: while // common key "+key+" for "+quotedGroup)
-      stream.println("val " + quotedGroup + "_k = rhs." + quotedGroup + "_hash_pos.unsafeKeys(i)")
-      stream.println("val " + quotedGroup + "_sze = " + prefixSym + quotedGroup + "_hash_pos.size")
-      stream.println("val " + quotedGroup + "_idx = " + prefixSym + quotedGroup + "_hash_pos.put("+quotedGroup+"_k)")
-      stream.println("if (" + quotedGroup + "_idx == " + quotedGroup + "_sze) {"/*}*/) // new key
-      stream.println("// TODO: handle buffer resizing!")
-      kps foreach { 
-        case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
-          //stream.println("//TODO hash collect")
-          stream.println("val " + quote(sym) + "_v = rhs." + quote(sym) + "_hash_data(i)")
-          stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + quote(sym) + "_v")
-        case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
-          stream.println("val " + quote(sym) + "_v = rhs." + quote(sym) + "_hash_data(i)")
-          stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + quote(sym) + "_v")
-        case (sym, elem: DeliteHashIndexElem[_,_]) => 
-      }
-      stream.println(/*{*/"} else {"/*}*/)
-      kps foreach { 
-        case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
-          //stream.println("//TODO hash collect")
-          stream.println("val " + quote(sym) + "_v = rhs." + quote(sym) + "_hash_data(i)")
-          stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) ++= " + quote(sym) + "_v")
-        case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
-          stream.println("val " + quote(sym) + "_v = rhs." + quote(sym) + "_hash_data(i)")
-          if (elem.rFunc == Block(elem.rV._2)) {
+    for ((cond,cps) <- ps.groupBy(_._2.cond)) {
+      for ((key,kps) <- cps.groupBy(_._2.keyFunc)) {
+        val quotedGroup = kps.map(p=>quote(p._1)).mkString("")
+        stream.println("// common key "+key+" for "+quotedGroup)
+        stream.println("for (i <- (0 until rhs." + quotedGroup + "_hash_pos.size)) {"/*}*/) // TODO: while // common key "+key+" for "+quotedGroup)
+        stream.println("val " + quotedGroup + "_k = rhs." + quotedGroup + "_hash_pos.unsafeKeys(i)")
+        stream.println("val " + quotedGroup + "_sze = " + prefixSym + quotedGroup + "_hash_pos.size")
+        stream.println("val " + quotedGroup + "_idx = " + prefixSym + quotedGroup + "_hash_pos.put("+quotedGroup+"_k)")
+        stream.println("if (" + quotedGroup + "_idx == " + quotedGroup + "_sze) {"/*}*/) // new key
+        stream.println("// TODO: handle buffer resizing!")
+        kps foreach { 
+          case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
+            //stream.println("//TODO hash collect")
+            stream.println("val " + quote(sym) + "_v = rhs." + quote(sym) + "_hash_data(i)")
             stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + quote(sym) + "_v")
-          } else {
-            stream.println("val " + quote(elem.rV._1) + " = " + prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx)")
-            stream.println("val " + quote(elem.rV._2) + " = " + quote(sym) + "_v")
-            emitBlock(elem.rFunc)
-            stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + quote(getBlockResult(elem.rFunc)))
-          }
-        case (sym, elem: DeliteHashIndexElem[_,_]) => 
+          case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
+            stream.println("val " + quote(sym) + "_v = rhs." + quote(sym) + "_hash_data(i)")
+            stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + quote(sym) + "_v")
+          case (sym, elem: DeliteHashIndexElem[_,_]) => 
+        }
+        stream.println(/*{*/"} else {"/*}*/)
+        kps foreach { 
+          case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
+            //stream.println("//TODO hash collect")
+            stream.println("val " + quote(sym) + "_v = rhs." + quote(sym) + "_hash_data(i)")
+            stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) ++= " + quote(sym) + "_v")
+          case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
+            stream.println("val " + quote(sym) + "_v = rhs." + quote(sym) + "_hash_data(i)")
+            if (elem.rFunc == Block(elem.rV._2)) {
+              stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + quote(sym) + "_v")
+            } else {
+              stream.println("val " + quote(elem.rV._1) + " = " + prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx)")
+              stream.println("val " + quote(elem.rV._2) + " = " + quote(sym) + "_v")
+              emitBlock(elem.rFunc)
+              stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + quote(getBlockResult(elem.rFunc)))
+            }
+          case (sym, elem: DeliteHashIndexElem[_,_]) => 
+        }
+        stream.println(/*{*/"}")
+        stream.println(/*{*/"}") // end for
       }
-      stream.println(/*{*/"}")
-      stream.println(/*{*/"}") // end for
     }
     /*stream.println("for((k,v) <- rhs." + quote(sym) + "_hash) {") 
     stream.println("  val " + quote(elem.rV._1) + " =  __act." + quote(sym) + "_hash.getOrElse(k , " + "__act." + quote(sym) + "_zero)")
@@ -1642,26 +1650,28 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   }
 
   def emitMultiHashFinalize(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = "") {
-    for ((key,kps) <- ps.groupBy(_._2.keyFunc)) {
-      val quotedGroup = kps.map(p=>quote(p._1)).mkString("")
-      stream.println("val " + quotedGroup + "_sze = " + prefixSym + quotedGroup + "_hash_pos.size")
-      kps foreach { 
-        case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
-          stream.println("//TODO hash collect")
-          if (prefixSym == "")
-            stream.println("val " + quote(sym) + " = " + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze).map(_.toArray) // FIXME: better representation")
-          else
-            stream.println(prefixSym + quote(sym) + " = " + prefixSym + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze).map(_.toArray) // FIXME: better representation")
-        case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
-          if (prefixSym == "")
-            stream.println("val " + quote(sym) + " = " + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze)")
-          else
-            stream.println(prefixSym + quote(sym) + " = " + prefixSym + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze)")
-        case (sym, elem: DeliteHashIndexElem[_,_]) => 
-          if (prefixSym == "")
-            stream.println("val " + quote(sym) + " = " + quotedGroup + "_hash_pos")
-          else
-            stream.println(prefixSym + quote(sym) + " = " + prefixSym + quotedGroup + "_hash_pos")
+    for ((cond,cps) <- ps.groupBy(_._2.cond)) {
+      for ((key,kps) <- cps.groupBy(_._2.keyFunc)) {
+        val quotedGroup = kps.map(p=>quote(p._1)).mkString("")
+        stream.println("val " + quotedGroup + "_sze = " + prefixSym + quotedGroup + "_hash_pos.size")
+        kps foreach { 
+          case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
+            stream.println("//TODO hash collect")
+            if (prefixSym == "")
+              stream.println("val " + quote(sym) + " = " + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze).map(_.toArray) // FIXME: better representation")
+            else
+              stream.println(prefixSym + quote(sym) + " = " + prefixSym + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze).map(_.toArray) // FIXME: better representation")
+          case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
+            if (prefixSym == "")
+              stream.println("val " + quote(sym) + " = " + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze)")
+            else
+              stream.println(prefixSym + quote(sym) + " = " + prefixSym + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze)")
+          case (sym, elem: DeliteHashIndexElem[_,_]) => 
+            if (prefixSym == "")
+              stream.println("val " + quote(sym) + " = " + quotedGroup + "_hash_pos")
+            else
+              stream.println(prefixSym + quote(sym) + " = " + prefixSym + quotedGroup + "_hash_pos")
+        }
       }
     }
   }
