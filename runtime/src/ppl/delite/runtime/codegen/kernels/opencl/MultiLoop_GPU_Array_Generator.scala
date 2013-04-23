@@ -16,6 +16,9 @@ import ppl.delite.runtime.codegen.sync.JNIFuncs
 
 object MultiLoop_GPU_Array_Generator extends JNIFuncs {
 
+  def makeChunk(op: OP_MultiLoop): OP_MultiLoop = op
+
+  /*
   val target = Targets.OpenCL
 
   private val unwrappedList = ArrayBuffer[(String,String)]()
@@ -658,5 +661,5 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
   }
 
   private def getSymGPU(name: String) = name
-
+  */
 }

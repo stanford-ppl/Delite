@@ -80,16 +80,15 @@ object SingleTask_GPU_Generator { //extends CudaGPUExecutableGenerator {
 
   private def writeInputParams(op: DeliteOP, out:StringBuilder) {
     var first = true
-    val metadata = op.getGPUMetadata(Targets.Cuda)
 
     for ((in, sym) <- op.getInputs) {
-      if (metadata.inputs.contains((in,sym))) {
+      if (!isPrimitiveType(in.outputType(sym))) {
         if (!first) out.append(", ")
         first = false
-        out.append(metadata.inputs((in,sym)).resultType)
+        out.append(op.inputType(Targets.Cuda,sym))
         out.append(" " + sym)
       }
-      else if (isPrimitiveType(in.outputType(sym))) {
+      else {
         if (!first) out.append(", ")
         first = false
         if(in.scheduledResource==op.scheduledResource) {

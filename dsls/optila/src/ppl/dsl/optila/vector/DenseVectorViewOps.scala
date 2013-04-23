@@ -213,21 +213,4 @@ trait OpenCLGenDenseVectorViewOps extends BaseGenDenseVectorViewOps with OpenCLG
 
 trait CGenDenseVectorViewOps extends BaseGenDenseVectorViewOps with CGenFat {
   val IR: DenseVectorViewOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    /*
-    // these are the ops that call through to the underlying real data structure
-    case v@DenseVectorViewNew(x,start,stride,length,isRow) => stream.println("%s *%s = new %s(%s,%s,%s,%s,%s);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(x),quote(start),quote(stride),quote(length),quote(isRow)))
-    case DenseVectorViewApply(x,n) => emitValDef(sym, quote(x) + "->apply(" + quote(n) + ")")
-    case DenseVectorViewUpdate(x,n,y) => emitValDef(sym, quote(x) + "->update(" + quote(n) + "," + quote(y) + ")")
-    case DenseVectorViewLength(x)    => emitValDef(sym, quote(x) + "->length")
-    case DenseVectorViewIsRow(x)     => emitValDef(sym, quote(x) + "->isRow")
-    case DenseVectorViewStart(x) => emitValDef(sym, quote(x) + "->start")
-    case DenseVectorViewStride(x) => emitValDef(sym, quote(x) + "->stride")
-    */
-    case _ => super.emitNode(sym, rhs)
-  }
 }
-
-  

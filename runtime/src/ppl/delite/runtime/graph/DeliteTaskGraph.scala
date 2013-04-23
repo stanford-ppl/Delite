@@ -441,6 +441,7 @@ object DeliteTaskGraph {
   // Change Metadata apply method from Target -> specific metadata in DeliteOP
   def extractGPUMetadata(superOp: OP_Nested, innerGraph: DeliteTaskGraph, outerGraph: DeliteTaskGraph, tgt: Targets.Value) {
     superOp.getGPUMetadata(tgt).outputs ++= innerGraph.result._1.getGPUMetadata(tgt).outputs
+    /*
     for (op <- innerGraph._ops.values; key <- op.getGPUMetadata(tgt).inputs.keys) {
       try {
         val inOp = getOp(key._2)(outerGraph)
@@ -450,6 +451,7 @@ object DeliteTaskGraph {
         case e => //symbol only exists in inner graph, therefore ignore
       }
     }
+    */
   }
 
   /**
@@ -484,21 +486,16 @@ object DeliteTaskGraph {
     val metadataAll = getFieldMap(op, "metadata")
     val metadataMap = getFieldMap(metadataAll, tgt.toString)
     val metadata = newop.getGPUMetadata(tgt)
-
+  
+    //TODO: Add feature to unwrap/wrap OpenCL datastructures
+    /*
     for (input <- getFieldList(metadataMap, "gpuInputs").reverse) { //input list
-      val inputMap = input.asInstanceOf[Map[String,Any]]
-      val sym = inputMap.keys.head
-      val value = inputMap.values.head.asInstanceOf[List[Any]]
-      val data = metadata.newInput(getOp(sym), sym)
-      data.resultType = value.head
-      data.func = "copyInputHtoD_%s_%s".format(newop.id,sym)
-      data.funcReturn = "copyMutableInputDtoH_%s_%s".format(newop.id,sym)
       //tgt match {
       //  case Targets.OpenCL => data.objFields = value.tail.head.asInstanceOf[Map[String,String]]
       //  case _ =>
       //}
     }
-
+    */
     for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) {
       val tempMap = temp.asInstanceOf[Map[String,Any]]
       val sym = tempMap.keys.head
@@ -507,41 +504,16 @@ object DeliteTaskGraph {
     }
 
     //output allocation
-    for (out <- getFieldList(metadataMap, "gpuOutputs").reverse) {
-      val outputMap = out.asInstanceOf[Map[Any,Any]]
-      val output = metadata.newOutput(outputMap.keys.head)
-      val outList = outputMap.values.head.asInstanceOf[List[Any]]
-      output.resultType = outList.head
-      output.func = "allocFunc_%s".format(outputMap.keys.head)
-      for (sym <- outList.tail.head.asInstanceOf[List[String]].reverse) {
-        val depOp = try { getOp(sym) } catch { case e: RuntimeException => null }
-        output.inputs ::= (depOp, sym)
-      }
-      
-      //output copy
-      output.funcReturn = "copyOutputDtoH_%s".format(outputMap.keys.head)
-
-      //Added for new GPU execution model
-      val loopConfig = outList.tail.tail
-      output.loopType = loopConfig.head
-      output.hasCond = java.lang.Boolean.parseBoolean(loopConfig.tail.head)
-      output.loopFuncInputs = loopConfig.tail.tail.head.asInstanceOf[List[String]]
-      output.loopFuncInputs_2 = loopConfig.tail.tail.tail.head.asInstanceOf[List[String]]
-      output.loopFuncOutputType = loopConfig.tail.tail.tail.tail.head
-      output.loopFuncOutputType_2 = loopConfig.tail.tail.tail.tail.tail.head
-      output.loopCondInputs = loopConfig.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
-      output.loopReduceInputs = loopConfig.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
-      output.loopReduceInputs_2 = loopConfig.tail.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
-      output.loopReduceParInputs = loopConfig.tail.tail.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
-      output.loopReduceParInputs_2 = loopConfig.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
-      output.loopZeroInputs = loopConfig.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
-      output.loopZeroInputs_2 = loopConfig.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
-
+    val outputs = getFieldMap(metadataMap, "gpuOutputs").asInstanceOf[Map[String,Map[Any,Any]]]
+    for ((osym,odata) <- outputs) {
+      val elemType = getFieldString(odata, "elemType")
+      val types = getFieldMap(odata, "types").asInstanceOf[Map[String,String]]
+      val funcs = getFieldMap(odata, "funcs").asInstanceOf[Map[String,List[String]]]
+      metadata.newOutput(osym,elemType,types,funcs)
       //tgt match {
       //  case Targets.OpenCL => output.objFields = outList.tail.tail.tail.tail.head.asInstanceOf[Map[String,String]]
       //  case _ =>
       //}
-
     }
 
   }
@@ -591,7 +563,6 @@ class DeliteTaskGraph {
       c.replaceDependency(old, op)
       for ((x,sym) <- c.getInputs; if (x == old)) {
         c.replaceInput(old, op, sym)
-        for (tgt <- Targets.GPU) c.getGPUMetadata(tgt).replaceInput(old, op, sym)
       }
     }
 
