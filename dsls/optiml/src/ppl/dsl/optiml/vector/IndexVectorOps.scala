@@ -120,11 +120,11 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
     case e@IndexVectorObjectFromVec(x) => reflectPure(new { override val original = Some(f,e) } with IndexVectorObjectFromVec(f.intf(x)))(mtype(manifest[A]), implicitly[SourceContext])
     case e@IndexVectorConstruct(in,b) => reflectPure(new { override val original = Some(f,e) } with IndexVectorConstruct(f.intf(in),f(b))(e.m))(mtype(manifest[A]), implicitly[SourceContext])
     case IndexVectorRangeNew(start,end) => indexvector_range(f(start),f(end))
-    case e@IndexVectorHash(x,kf,mf,rf) => reflectPure(new { override val original = Some(f,e) } with IndexVectorHash(f(x),f(kf),f(mf),f(rf))(e.mV,e.aV))(mtype(manifest[A]), implicitly[SourceContext])
+    case e@IndexVectorHash(x,kf,mf,rf) => reflectPure(new { override val original = Some(f,e) } with IndexVectorHash(f.intf(x),f(kf),f(mf),f(rf))(e.mV,e.aV))(mtype(manifest[A]), implicitly[SourceContext])
     case Reflect(e@IndexVectorObjectFromVec(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorObjectFromVec(f.intf(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@IndexVectorDenseNew(l,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorDenseNew(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@IndexVectorConstruct(in,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorConstruct(f.intf(in),f(b))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@IndexVectorHash(x,kf,mf,rf), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorHash(f(x),f(kf),f(mf),f(rf))(e.mV,e.aV), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@IndexVectorHash(x,kf,mf,rf), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorHash(f.intf(x),f(kf),f(mf),f(rf))(e.mV,e.aV), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
 }
