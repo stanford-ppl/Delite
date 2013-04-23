@@ -15,17 +15,16 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
     override def transformStm(stm: Stm): Exp[Any] = stm match {
       case TP(sym, Loop(size, v, body: DeliteCollectElem[a,i,ca])) => soaCollect[a,i,ca](size,v,body)(body.mA,body.mI,body.mCA) match {
         case Some(newSym) => stm match {
-            case TP(sym, z:DeliteOpZipWith[_,_,_,_]) if(Config.enableGPUObjReduce) => 
-              encounteredZipWith += newSym -> z
-              printdbg("Register DeliteOpZipWith symbol ")
-              printdbg(newSym)
-              printdbg(z)
-            case _ => //
-          }
-          newSym
+          case TP(sym, z:DeliteOpZipWith[_,_,_,_]) if(Config.enableGPUObjReduce) => 
+            encounteredZipWith += newSym -> z
+            printdbg("Register DeliteOpZipWith symbol: " + z.toString + " -> " + newSym.toString)
+            newSym
+          case _ => newSym
+        }
         case None => super.transformStm(stm)
       }
-      /*case TP(sym, Loop(size, v, body: DeliteReduceElem[a])) => soaReduce[a](size,v,body)(body.mA) match {
+      case TP(sym, r:DeliteOpReduceLike[_]) if r.mutable => super.transformStm(stm) // mutable reduces don't work yet
+      /*case TP(sym, Loop(size, v, body: DeliteReduceElem[a])) => soaReduce[a](size,v,body)(body.mA) match {        
         case Some(newSym) => newSym
         case None => super.transformStm(stm)
       }*/
@@ -97,7 +96,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
       def soaTransform[B:Manifest](tag: StructTag[B], elems: Seq[(String,Exp[Any])]): Exp[DeliteArray[B]] = {
         val newElems = elems map {
           case (index, e @ Def(Struct(t,es))) => (index, soaTransform(t,es)(e.tp))
-          case (index, Def(DeliteArrayApply(x,iv))) if (iv == v && body.par == ParFlat) => (index, x) //eliminate identify function loop
+          case (index, Def(DeliteArrayApply(x,iv))) if (iv.equals(v) && body.par == ParFlat) => (index, x) //eliminate identify function loop
           case (index, e) => (index, copyLoop(Block(e))(e.tp))
         }
         val sz = body.par match {

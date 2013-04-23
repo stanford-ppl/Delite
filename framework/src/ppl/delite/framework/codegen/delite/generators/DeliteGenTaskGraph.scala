@@ -1,15 +1,17 @@
 package ppl.delite.framework.codegen.delite.generators
 
-import ppl.delite.framework.codegen.delite.DeliteCodegen
-import ppl.delite.framework.ops.{VariantsOpsExp, DeliteOpsExp}
-import ppl.delite.framework.Config
-import ppl.delite.framework.transform.LoopSoAOpt
 import collection.mutable.{ArrayBuffer, ListBuffer, HashMap}
 import java.io.{StringWriter, FileWriter, File, PrintWriter}
 import scala.virtualization.lms.common.LoopFusionOpt
 import scala.virtualization.lms.internal.{GenerationFailedException}
-import ppl.delite.framework.ops.DeliteCollection
 import scala.reflect.SourceContext
+
+import ppl.delite.framework.codegen.delite.DeliteCodegen
+import ppl.delite.framework.ops._
+import ppl.delite.framework.Config
+import ppl.delite.framework.transform.LoopSoAOpt
+import ppl.delite.framework.datastructures.DeliteArray
+import ppl.delite.framework.analysis.StencilAnalysis
 
 trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOpt {
   val IR: DeliteOpsExp
@@ -101,6 +103,25 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     deliteInputs = (inVals ++ inVars)
     deliteResult = Some(sym) //findDefinition(rhs) map { _.sym }
 
+    /**
+     * Run stencil analysis locally on the current op to insure that all transformations, including fusion, have already happened.
+     */
+    val stencilAnalysis = new StencilAnalysis { val IR: DeliteGenTaskGraph.this.IR.type = DeliteGenTaskGraph.this.IR }
+    stencilAnalysis.innerScope = this.innerScope
+    
+    def gatherStencil(sym: List[Sym[Any]], rhs: Any) = rhs match {
+      case SimpleFatLoop(sz,v,body) =>         
+        for ((s,d) <- sym.zip(body)) {
+          stencilAnalysis.process(s,v,d)
+        }
+      case SimpleLoop(sz,v,body) =>
+        stencilAnalysis.process(sym(0),v,body)        
+      case _ =>
+    }
+     
+    gatherStencil(sym,rhs)        
+    allStencils = /*allStencils ++*/ stencilAnalysis.getLoopStencils    
+    
     if (!skipEmission) for (gen <- generators) {
       val sep = java.io.File.separator
       val buildPath = Config.buildDir + sep + gen + sep + "kernels" + sep
@@ -159,6 +180,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
               "generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
             case foreach: DeliteOpForeach2[_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.tp) + "]"
             case foreach: DeliteOpForeachBounded[_,_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.tp) + "]"
+            case input: DeliteOpInput[_] =>
+              hasOutputSlotTypes = true
+              "activation_"+kernelName
             case _ => gen.remap(sym.head.tp)
           }
           case ("cpp", op: AbstractFatLoop) =>
@@ -323,20 +347,59 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     printlog(outputSlotTypes)
 
     val optContext = sym.find(!_.sourceContexts.isEmpty).map(_.sourceContexts.head)
+       
+    
+    
+                
+    /**
+     * Domain-specific inputs to loops cause issues with the stencil analysis, since it only records accesses on arrays.
+     * This method is intended to allow us to associate structs with their component arrays by identifying array symbols
+     * that are fields within a struct. However, discovering the original array symbol requires some care since each
+     * field read is a new symbol. 
+     * 
+     * Until we implement this, we can only associate the stencil analysis results with an op's input
+     * if input structs are unwrapped.
+     */
+    /*
+    def getArrayInputs(s: Exp[Any]): Seq[Exp[Any]] = s.tp match {
+      case StructType(tag,elems) => 
+        Predef.println("found struct with elems " + elems)
+        elems.flatMap(e => getArrayInputs(e._2))
+      case y if y.erasure == manifest[DeliteArray[Any]].erasure => List(s)
+      case _ => 
+        Predef.println("did not find struct or array: " + findDefinition(s.asInstanceOf[Sym[Any]]).toString)
+        Nil
+    }
+    */
+        
+    // result is a single stencil representing all the info we have for this op's inputs
+    val opStencil = if (sym == Nil) new Stencil() else sym.map(i => allStencils.getOrElse(i, new Stencil())).reduce((a,b) => a ++ b)
+    
     // emit task graph node
     rhs match {
       case op: AbstractFatLoop =>
-        emitMultiLoop(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size, op.body.exists (loopBodyNeedsCombine _), op.body.exists (loopBodyNeedsPostProcess _), optContext)
+        // Predef.println("emitting DeliteFatLoop (" + sym + "), inputs are: ")
+        // Predef.println(inputs)
+        // Predef.println("stencil is: " + opStencil)
+        // val arrayInputs = inputs.flatMap(getArrayInputs)
+        // Predef.println("  array inputs are: ")
+        // Predef.println(arrayInputs)
+        emitMultiLoop(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size, op.body.exists (loopBodyNeedsCombine _), op.body.exists (loopBodyNeedsPostProcess _), optContext, opStencil)
       case op: AbstractFatIfThenElse =>
         assert(sym.length == 1, "TODO: implement fat if then else")
         emitIfThenElse(Block(op.cond), op.thenp.head, op.elsep.head, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
       case z =>
         z match {
-          case op:AbstractLoop[_] => emitMultiLoop(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size, loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body), optContext)
+          case op:AbstractLoop[_] => 
+            // Predef.println("emitting DeliteLoop (" + sym + "), inputs are: ")
+            // Predef.println(inputs)          
+            // Predef.println("stencil is: " + opStencil)
+            emitMultiLoop(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size, loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body), optContext, opStencil)
           case e:DeliteOpExternal[_] => emitExternal(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps)
           case c:DeliteOpCondition[_] => emitIfThenElse(Block(c.cond), c.thenp, c.elsep, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
           case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
           case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, optContext)
+          case i:DeliteOpInput[_] => emitInput(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, optContext)
           case f:DeliteOpForeach2[_,_] => emitForeach(f, kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps)
           case f:DeliteOpForeachBounded[_,_,_] => emitForeach(f, kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps)
           case _ => emitSingleTask(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, if (outputs(0).sourceContexts.isEmpty) None else Some(outputs(0).sourceContexts.head)) // things that are not specified as DeliteOPs, emit as SingleTask nodes
@@ -347,6 +410,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     //emitValDef(sym, "embedding.scala.gen.kernel_" + quote(sym) + "(" + inputs.map(quote(_)).mkString(",") + ")")
   }
 
+  
   /**
    * @param sym         the symbol representing the kernel
    * @param inputs      a list of real kernel dependencies (formal kernel parameters)
@@ -355,18 +419,19 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
    */
 
   def emitMultiLoop(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], size: Exp[Int], needsCombine: Boolean, needsPostProcess: Boolean,
-                    sourceContext: Option[SourceContext])
+                    sourceContext: Option[SourceContext], stencil: Stencil)
        (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
    stream.println("{\"type\":\"MultiLoop\",")
    emitSourceContext(sourceContext, stream, id)
    stream.println(",\n")
    emitConstOrSym(size, "size")
    stream.print(",\"needsCombine\":" + needsCombine)
-   stream.print(",\"needsPostProcess\":" + needsPostProcess)
+   stream.println(",\"needsPostProcess\":" + needsPostProcess)   
+   emitStencil(inputs, stencil)   
    emitExecutionOpCommon(id, outputs, inputs, inVars, mutableInputs, controlDeps, antiDeps)
-   stream.println("},")
+   stream.println("},")      
   }
-
+  
   def emitExternal(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"External\"")
@@ -378,6 +443,14 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
   def emitSingleTask(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], sourceContext: Option[SourceContext])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"SingleTask\",")
+    emitSourceContext(sourceContext, stream, id)
+    emitExecutionOpCommon(id, outputs, inputs, inVars, mutableInputs, controlDeps, antiDeps)
+    stream.println("},")
+  }
+
+  def emitInput(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], sourceContext: Option[SourceContext])
+        (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
+    stream.print("{\"type\":\"Input\",")
     emitSourceContext(sourceContext, stream, id)
     emitExecutionOpCommon(id, outputs, inputs, inVars, mutableInputs, controlDeps, antiDeps)
     stream.println("},")
@@ -479,6 +552,20 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     stream.print("  \"antiDeps\":[" + makeString(antiDeps) + "]" + (if(last) "\n" else ",\n"))
   }
 
+  def emitStencil(inputs: List[Exp[Any]], stencil: Stencil) = {
+    stream.print(" , \"stencil\":{")
+    val stencilMap = inputs map { i => 
+      "\"" + quote(i) + "\":\"" + (stencil.get(i) match {
+        case Some(Interval(mult,stride,len)) => "range(" + quote(mult) + ", " + quote(stride) + ", " + quote(len) + ")"
+        case Some(Constant(i)) => "const(" + quote(i) + ")"
+        case Some(z) => z.toString
+        case None => "none"
+      }) + "\""
+    }
+    stream.print(stencilMap.mkString(","))
+    stream.println("}")
+  }  
+  
   var nested = 0
 
   def emitVariant(rhs: Def[Any], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])

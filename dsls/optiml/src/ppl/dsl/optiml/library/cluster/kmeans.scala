@@ -1,6 +1,7 @@
 package ppl.dsl.optiml.library.cluster
 
 import ppl.dsl.optiml._
+import reflect.{Manifest, SourceContext}
 
 /* K-means clustering API for OptiML programs.
  *
@@ -28,34 +29,38 @@ trait OptiMLKmeans {
     val mu = initMu getOrElse ((0::numClusters, *) { i => x(random(m)) })
     var iter = 0
 
-    println("m:"+m+",n:"+n+",numClusters:"+numClusters+",mu.numRows:"+mu.numRows);
+    println("m:"+m+",n:"+n+",numClusters:"+numClusters+",mu.numRows:"+mu.numRows)
 
     val newMu = untilconverged(mu, tol){ mu =>
       iter += 1
 
-      // update c -- calculate distances to current centroids
-      val c = (0::m){e => findNearestCluster(x(e), mu)}
+      val c = (0::m){e => findNearestCluster(x(e), mu)}   
 
-      // update mu -- move each cluster centroid to the mean of the points assigned to it
-      (0::numClusters, * /*0::n*/) { j =>
+      /*
+      (0::numClusters, *) { j =>
         val weightedpoints = sumRowsIf(0, m) (c(_) == j) { x(_) } 
-        // val weightedpoints = sumIf[DenseVector[Double],DenseVectorView[Double]](0, m) (c(_) == j) { x(_) } 
-        //val points = sumIf(0,m) (c(_) == j) { _ => 1 }
-        val points = c.count(_ == j)  // cannot fuse because sum strips first iteration
-
-        //if (points == 0) {
-        //  weightedpoints          
-        //}
-        //else weightedpoints / points
+        val points = c.count(_ == j)
         val d = if (points == 0) 1 else points 
         weightedpoints / d
       }
+      */
 
-    }
+      //TODO: mutable reduce with accInit
+      val allWP = indexvector_hashreduce((0::m), i => c(i), i => x(i).Clone, (a:Rep[DenseVector[Double]],b:Rep[DenseVector[Double]]) => a + b)
+      val allP = indexvector_hashreduce((0::m), i => c(i), i => 1, (a:Rep[Int],b:Rep[Int]) => a + b)
+
+      (0::numClusters, *) { j =>
+        val weightedpoints = allWP(j)
+        val points = allP(j)
+        val d = if (points == 0) 1 else points 
+        weightedpoints / d
+      }
+    }((x, y) => dist(x, y, SQUARE), implicitly[Manifest[DenseMatrix[Double]]], implicitly[Cloneable[DenseMatrix[Double]]], implicitly[SourceContext])
+
     (iter,newMu)
   }
 
-  private def findNearestCluster( x_i: Rep[DenseVectorView[Double]], mu: Rep[DenseMatrix[Double]] ): Rep[Int] = {
+  private def findNearestCluster( x_i: Interface[Vector[Double]], mu: Rep[DenseMatrix[Double]] ): Rep[Int] = {
     (mu mapRowsToVector { row => dist(x_i, row, SQUARE) }).minIndex
 //    var min_d = Double.PositiveInfinity
 //    var min_j = -1

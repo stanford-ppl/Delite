@@ -21,6 +21,10 @@ class OP_Input(op: DeliteOP) extends DeliteOP {
 
   private[graph] var outputTypesMap = op.outputTypesMap
   private[graph] var inputTypesMap = op.inputTypesMap
+  private[graph] override val stencilMap = op.stencilMap
+
+  override def partition = op.partition
+  override def partition(symbol: String) = op.partition(symbol)
 
   isSchedulable = true
   isScheduled = true

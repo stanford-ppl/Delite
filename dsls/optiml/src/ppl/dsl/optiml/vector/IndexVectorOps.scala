@@ -2,6 +2,7 @@ package ppl.dsl.optiml.vector
 
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.datastructures.DeliteArray
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase, CGenBase}
 import scala.virtualization.lms.util.OverloadHack
 import scala.reflect.SourceContext
@@ -44,10 +45,11 @@ trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
   implicit def interfaceToIndexVecOps(intf: Interface[IndexVector]): InterfaceIndexVecOpsCls = new InterfaceIndexVecOpsCls(intf.asInstanceOf[IVInterface])
   
   class InterfaceIndexVecOpsCls(override val intf: IVInterface) extends InterfaceVecOpsCls[Int](intf) {
-    def apply[A:Manifest](block: Rep[Int] => Rep[A])(implicit ctx: SourceContext) = intf.ops.apply(block)    
+    def apply[A:Manifest](block: Rep[Int] => Rep[A])(implicit ctx: SourceContext) = intf.ops.apply(block)
   }
   
   // impl defs
+  def indexvector_hashreduce[V:Manifest:Arith](x: Interface[IndexVector], keyFunc: Rep[Int] => Rep[Int], mapFunc: Rep[Int] => Rep[V], reduceFunc: (Rep[V],Rep[V]) => Rep[V]): Rep[DenseVector[V]]
   def indexvector_range(start: Rep[Int], end: Rep[Int])(implicit ctx: SourceContext): Rep[IndexVectorRange]
   def indexvector_obj_new(len: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext): Rep[IndexVectorDense]
   def indexvector_obj_fromvec(xs: Interface[Vector[Int]])(implicit ctx: SourceContext): Rep[IndexVectorDense]
@@ -82,11 +84,26 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
     override def alloc = DenseVector[B](intf.length, intf.isRow)
     def m = manifest[B]
   }
+
+  case class IndexVectorHash[V:Manifest:Arith](intf: Interface[IndexVector], keyFunc: Exp[Int] => Exp[Int], mapFunc: Exp[Int] => Exp[V], reduceFunc: (Exp[V],Exp[V]) => Exp[V]) 
+    extends DeliteOpHashMapReduce[Int, Int, V, DeliteArray[V]] {
+    
+    val in = intf.ops.elem.asInstanceOf[Exp[Vector[Int]]]
+    val size = copyTransformedOrElse(_.size)(intf.length)
+    def zero = aV.empty
+    def alloc = DeliteArray(0)
+    def mV = manifest[V]
+    def aV = implicitly[Arith[V]]
+  }
   
   // impl defs
   def indexvector_range(start: Exp[Int], end: Exp[Int])(implicit ctx: SourceContext) = reflectPure(IndexVectorRangeNew(start, end))
   def indexvector_obj_new(len: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectMutable(IndexVectorDenseNew(len, isRow))
   def indexvector_obj_fromvec(xs: Interface[Vector[Int]])(implicit ctx: SourceContext) = reflectPure(IndexVectorObjectFromVec(xs))
+  def indexvector_hashreduce[V:Manifest:Arith](x: Interface[IndexVector], keyFunc: Exp[Int] => Exp[Int], mapFunc: Exp[Int] => Exp[V], reduceFunc: (Exp[V],Exp[V]) => Exp[V]) = {
+    val data = reflectPure(IndexVectorHash(x, keyFunc, mapFunc, reduceFunc))
+    DenseVectorNewImm(data, data.length, false)
+  }
 
   // class defs
   def indexvector_construct[A:Manifest](x: Interface[IndexVector], block: Exp[Int] => Exp[A])(implicit ctx: SourceContext): Exp[DenseVector[A]] = {
@@ -103,10 +120,11 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
     case e@IndexVectorObjectFromVec(x) => reflectPure(new { override val original = Some(f,e) } with IndexVectorObjectFromVec(f.intf(x)))(mtype(manifest[A]), implicitly[SourceContext])
     case e@IndexVectorConstruct(in,b) => reflectPure(new { override val original = Some(f,e) } with IndexVectorConstruct(f.intf(in),f(b))(e.m))(mtype(manifest[A]), implicitly[SourceContext])
     case IndexVectorRangeNew(start,end) => indexvector_range(f(start),f(end))
-
+    case e@IndexVectorHash(x,kf,mf,rf) => reflectPure(new { override val original = Some(f,e) } with IndexVectorHash(f(x),f(kf),f(mf),f(rf))(e.mV,e.aV))(mtype(manifest[A]), implicitly[SourceContext])
     case Reflect(e@IndexVectorObjectFromVec(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorObjectFromVec(f.intf(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@IndexVectorDenseNew(l,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorDenseNew(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@IndexVectorConstruct(in,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorConstruct(f.intf(in),f(b))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@IndexVectorHash(x,kf,mf,rf), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorHash(f(x),f(kf),f(mf),f(rf))(e.mV,e.aV), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
 }

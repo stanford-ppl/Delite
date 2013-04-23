@@ -1,8 +1,7 @@
 package ppl.delite.framework.codegen.delite
 
 import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
-import collection.mutable.{ListBuffer}
-import collection.mutable.HashMap
+import collection.mutable.{ListBuffer,HashMap}
 import scala.reflect.SourceContext
 import scala.virtualization.lms.internal._
 import scala.virtualization.lms.common._
@@ -13,11 +12,21 @@ import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.transform.ForwardPassTransformer
 import ppl.delite.framework.ops.DeliteOpsExp
 
+import scala.virtualization.lms.internal._
+import scala.virtualization.lms.common._
+
+import ppl.delite.framework.{Config, DeliteApplication}
+import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.delite.framework.analysis.StencilAnalysis
+import generators.{DeliteGenTaskGraph}
+import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
+
+
 /**
  * Notice that this is using Effects by default, also we are mixing in the Delite task graph code generator
  */
 trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.delite.framework.codegen.Utils {
-  val IR: DeliteOpsExp //Expressions with FatExpressions with Effects with StaticDataExp with LoopsFatExp with IfThenElseFatExp
+  val IR: DeliteOpsExp
   import IR._
 
   // these are the target-specific kernel generators (e.g. scala, cuda, etc.)
@@ -35,6 +44,8 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   var kernelMutatingDeps = Map[Sym[Any],List[Sym[Any]]]() // from kernel to its mutating deps
   var kernelInputDeps = Map[Sym[Any],List[Sym[Any]]]() // from kernel to its input deps
 
+  // results of stencil analysis, used by DeliteGenTaskGraph
+  var allStencils: HashMap[Exp[Any],Stencil] = _
 
   def ifGenAgree[A](f: Generator => A): A = {
     //val save = generators map { _.shallow }

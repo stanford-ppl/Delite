@@ -7,6 +7,8 @@ USER_HOME = os.getenv("HOME")
 DELITE_HOME = os.getenv("DELITE_HOME")
 JAVA_HOME = os.getenv("JAVA_HOME")
 SCALA_VIRT_HOME = os.getenv("SCALA_VIRT_HOME")
+MESOS_NATIVE_LIBRARY = os.getenv("MESOS_NATIVE_LIBRARY")
+DELITE_MEM = os.getenv("DELITE_MEM")
 
 scala_virt_prefix = "org.scala-lang.virtualized."
 scala_virt_version = "scala-2.10.0"
@@ -53,6 +55,8 @@ def checkCommonEnv():
     global USER_HOME
     global JAVA_HOME
     global SCALA_VIRT_HOME
+    global MESOS_NATIVE_LIBRARY
+    global DELITE_MEM
 
     if JAVA_HOME is None:
         if "java.home" in props:
@@ -73,6 +77,15 @@ def checkCommonEnv():
         if not os.path.isdir(scala_virt_home):
             err("couldn't find scala virtualized at: " + scala_virt_home + ". Please set the SCALA_VIRT_HOME environment variable or scala.virtualized.home entry in delite.properties manually.")
         SCALA_VIRT_HOME = scala_virt_home
+
+    if MESOS_NATIVE_LIBRARY is None:
+        if "mesos.lib" in props:
+            MESOS_NATIVE_LIBRARY = props["mesos.lib"]
+
+    if DELITE_MEM is None:
+        if "delite.mem" in props:
+            DELITE_MEM = props["delite.mem"]
+
 
 def printEnv():
   print("======== REQUIRED DELITE ENVIRONMENT VARIABLES =========")

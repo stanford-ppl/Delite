@@ -1,5 +1,7 @@
 package ppl.dsl.optiql.datastruct.scala.container
 
+import ppl.delite.runtime.data._
+
 object Table {
 
   def printAsTable(m: AnyRef, max_rows: Int = 0) { // FIXME: max_rows not used!
@@ -78,30 +80,16 @@ object Table {
 
   private def max(a: Int, b: Int) = if(a > b) a else b
 
-  private def readArray(a: Any, idx: Int) = a match {
-    case i: Array[Int] => i(idx).toString
-    case l: Array[Long] => l(idx).toString
-    case d: Array[Double] => d(idx).toString
-    case f: Array[Float] => f(idx).toString
-    case c: Array[Char] => c(idx).toString
-    case s: Array[Short] => s(idx).toString
-    case b: Array[Byte] => b(idx).toString
-    case z: Array[Boolean] => z(idx).toString
-    case r: Array[AnyRef] => r(idx).toString
-    case ar: AnyRef => throw new IllegalArgumentException(ar.getClass.getSimpleName + " cannot be printed as a table")
+  private def readArray(x: Any, idx: Int) = x match {
+    case d: DeliteArray[_] => d.readAt(idx).toString
+    case a: Array[_] => a(idx).toString
+    case _ => throw new IllegalArgumentException(x.getClass.getSimpleName + " cannot be printed as a table")
   }
 
-  private def arrayToString(a: Any) = a match {
-    case i: Array[Int] => i map { e => e.toString }
-    case l: Array[Long] => l map { e => e.toString }
-    case d: Array[Double] => d map { e => e.toString }
-    case f: Array[Float] => f map { e => e.toString }
-    case c: Array[Char] => c map { e => e.toString }
-    case s: Array[Short] => s map { e => e.toString }
-    case b: Array[Byte] => b map { e => e.toString }
-    case z: Array[Boolean] => z map { e => e.toString }
-    case r: Array[AnyRef] => r map { e => e.toString }
-    case ar: AnyRef => throw new IllegalArgumentException(ar.getClass.getSimpleName + " cannot be printed as a table")
+  private def readArrayLength(x: Any) = x match {
+    case d: DeliteArray[_] => d.length
+    case a: Array[_] => a.length
+    case _ => throw new IllegalArgumentException(x.getClass.getSimpleName + " cannot be printed as a table")
   }
 
   private def getTableColSizes(fields: AnyRef, fieldStrs: Array[String]) = {
@@ -116,7 +104,10 @@ object Table {
     //columns should be at least the size of maximal element
     idx = 0
     for (f <- fieldStrs) {
-      for (d <- arrayToString(fields.getClass.getMethod(f).invoke(fields))) {
+      val array = fields.getClass.getMethod(f).invoke(fields)
+      val length = readArrayLength(array)
+      for (j <- 0 until length) {
+        val d = readArray(array, j)
         colSizes(idx) = max(colSizes(idx), d.length + 2)
       }
       idx += 1

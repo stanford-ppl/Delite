@@ -1,7 +1,7 @@
 package ppl.delite.runtime.scheduler
 
 import ppl.delite.runtime.Config
-import ppl.delite.runtime.graph.DeliteTaskGraph
+import ppl.delite.runtime.graph._
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.cost._
 
@@ -56,9 +56,20 @@ final class SMPStaticScheduler extends StaticScheduler with ParallelUtilizationC
   protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
     op match {
       case c: OP_Nested => addNested(c, graph, schedule, Range(0, numThreads))
-			case l: OP_MultiLoop => 
-				if (shouldParallelize(l, Map[String,Int]())){
-					split(op, graph, schedule, Range(0, numThreads))
+			case i: OP_FileReader =>
+        println("scheduling input op " + op.id + " as " + op.partition)
+        if (Config.clusterMode == 1 && op.partition.isInstanceOf[Distributed])
+          OpHelper.remote(op, graph.kernelPath)
+        cluster(op, schedule)
+      case l: OP_MultiLoop => 
+				if (shouldParallelize(l, Map[String,Int]())) {
+          println("scheduling loop op " + op.id + " as " + op.partition)
+          if (Config.clusterMode == 1 && op.partition.isInstanceOf[Distributed]) {
+            OpHelper.remote(op, graph.kernelPath) //TODO: master should be assigned first chunk?
+            cluster(op, schedule)
+          }
+          else 
+					 split(op, graph, schedule, Range(0, numThreads))
 				}
 				else {
 					split(op, graph, schedule, Seq(0))

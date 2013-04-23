@@ -100,7 +100,7 @@ trait CCompile extends CodeCache {
 
     var err = errorStream.read()
     if (err != -1) {
-      println("--" + target + " compile args: " + args.mkString(","))
+      out.append("--" + target + " compile args: " + args.mkString(","))
       while (err != -1) {
         out.append(err.asInstanceOf[Char])
         err = errorStream.read()
@@ -117,8 +117,13 @@ trait CCompile extends CodeCache {
       out.append('\n')
     }
 
-    if (process.exitValue != 0)
-      sys.error(target + " compilation failed with exit value " + process.exitValue + ":" + out.toString)
+    if (process.exitValue != 0) {
+      if(Config.clusterMode == 2) // Send the error message to the master node
+        ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(out.toString)
+      else 
+        println(out.toString)
+      sys.error(target + " compilation failed with exit value " + process.exitValue)
+    }
   }
 
 }

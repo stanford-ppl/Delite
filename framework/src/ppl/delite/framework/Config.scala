@@ -20,6 +20,7 @@ object Config {
   var generateCUDA = getProperty("delite.generate.cuda", "false") != "false"
   var generateCpp = getProperty("delite.generate.cpp", "false") != "false"
   var generateOpenCL = getProperty("delite.generate.opencl", "false") != "false"
+  var generateSerializable = getProperty("delite.generate.serializable", "false") != "false"
   var homeDir = getProperty("delite.home.dir", System.getProperty("user.dir"))
   var buildDir = getProperty("delite.build.dir", "generated")
   var useBlas = getProperty("delite.extern.blas", "false") != "false"

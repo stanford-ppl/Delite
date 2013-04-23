@@ -50,7 +50,7 @@ trait DeliteArrayBufferCompilerOps extends DeliteArrayBufferOps {
   def darray_buffer_unsafe_result[A:Manifest](d: Rep[DeliteArrayBuffer[A]])(implicit ctx: SourceContext): Rep[DeliteArray[A]]
 }
 
-trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollectionOpsExp with StructExp with PrimitiveOpsExp with VariablesExp with DeliteStructsExp {
+trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollectionOpsExp with StructExp with PrimitiveOpsExp with EqualExp with VariablesExp with DeliteStructsExp {
   this: DeliteArrayOpsExpOpt with DeliteOpsExp =>
 
   case class DeliteArrayBufferNew[A:Manifest](initSize: Exp[Int]) extends DeliteStruct[DeliteArrayBuffer[A]] {

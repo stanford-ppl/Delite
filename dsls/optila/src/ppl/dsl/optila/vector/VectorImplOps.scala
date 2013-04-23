@@ -75,14 +75,15 @@ trait VectorImplOpsStandard extends VectorImplOps {
   }
   
   def vector_clone_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = {
-    val resultOut = b.alloc(v.length, v.isRow)
-    val result = b.toIntf(resultOut) 
-    var i = unit(0)
-    while (i < v.length) {
-     result(i) = v(i)
-     i += 1
-    }
-    resultOut.unsafeImmutable
+    v.map(e => e).ops.elem.asInstanceOf[Rep[VA]] // not ideal
+    // val resultOut = b.alloc(v.length, v.isRow)
+    // val result = b.toIntf(resultOut) 
+    // var i = unit(0)
+    // while (i < v.length) {
+    //  result(i) = v(i)
+    //  i += 1
+    // }
+    // resultOut.unsafeImmutable
   }
     
   def vector_pprint_impl[A:Manifest](v: Interface[Vector[A]]) = {

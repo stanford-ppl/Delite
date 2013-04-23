@@ -29,6 +29,7 @@ trait VectorOps extends Variables {
     def apply[A:Manifest](len: Rep[Int], isRow: Rep[Boolean])(implicit o: Overloaded1, ctx: SourceContext) = densevector_obj_new(len, isRow)
     def apply[A:Manifest](xs: A*)(implicit ctx: SourceContext) = DenseVector[A](xs.map(e=>unit(e)): _*)
     def apply[A:Manifest](xs: Rep[A]*)(implicit o: Overloaded1, ctx: SourceContext) = DenseVector[A](xs: _*)
+    def apply[A:Manifest](xs: Rep[DeliteArray[A]], isRow: Rep[Boolean])(implicit o: Overloaded2, ctx: SourceContext) = densevector_obj_fromarray(xs,isRow)
     def dense[A:Manifest](len: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = densevector_obj_new(len, isRow)
     def sparse[A:Manifest](len: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = sparsevector_obj_new(len, isRow)
     
