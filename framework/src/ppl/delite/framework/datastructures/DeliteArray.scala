@@ -76,10 +76,11 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   case class DeliteArrayUpdate[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int], x: Exp[T]) extends DefWithManifest[T,Unit]
   case class DeliteArrayCopy[T:Manifest](src: Exp[DeliteArray[T]], srcPos: Exp[Int], dest: Exp[DeliteArray[T]], destPos: Exp[Int], len: Exp[Int]) extends DefWithManifest[T,Unit]
   
+  //TODO: ideally this group of ops should be implemented in the IR using the 'core' ops above
   case class DeliteArrayMkString[T:Manifest](da: Exp[DeliteArray[T]], del: Exp[String]) extends DefWithManifest[T,String]
   case class DeliteArrayUnion[T:Manifest](lhs: Exp[DeliteArray[T]], rhs: Exp[DeliteArray[T]]) extends DefWithManifest[T,DeliteArray[T]]
   case class DeliteArrayIntersect[T:Manifest](lhs: Exp[DeliteArray[T]], rhs: Exp[DeliteArray[T]]) extends DefWithManifest[T,DeliteArray[T]]
-  case class DeliteArrayTake[T:Manifest](lhs: Exp[DeliteArray[T]], n: Exp[Int]) extends DefWithManifest[T,DeliteArray[T]] //TODO: implement in IR
+  case class DeliteArrayTake[T:Manifest](lhs: Exp[DeliteArray[T]], n: Exp[Int]) extends DefWithManifest[T,DeliteArray[T]]
   case class DeliteArraySort[T:Manifest](da: Exp[DeliteArray[T]]) extends DefWithManifest[T,DeliteArray[T]]
   case class DeliteArrayRange(st: Exp[Int], en: Exp[Int]) extends Def[DeliteArray[Int]]
   case class DeliteArrayToSeq[A:Manifest](x: Exp[DeliteArray[A]]) extends Def[Seq[A]]
@@ -517,24 +518,25 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
       emitValDef(sym, quote(src) + ".copy(" + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
       emitValDef(sym, "System.arraycopy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
-    /*case DeliteArrayMkString(da,x) =>
-      emitValDef(sym, quote(da) + ".mkString(" + quote(x) + ")")
-    case DeliteArrayUnion(lhs,rhs) =>
-      emitValDef(sym, quote(lhs) + " union " + quote(rhs))
-    case DeliteArrayIntersect(lhs,rhs) =>
-      emitValDef(sym, quote(lhs) + " intersect " + quote(rhs))*/    
     case DeliteArrayTake(lhs,n) =>
       emitValDef(sym, quote(lhs) + ".take(" + quote(n) + ")")
-    /*case a@DeliteArraySort(x) => 
+    case DeliteArrayMkString(da,x) if !Config.generateSerializable =>
+      emitValDef(sym, quote(da) + ".mkString(" + quote(x) + ")")
+    case DeliteArrayUnion(lhs,rhs) if !Config.generateSerializable =>
+      emitValDef(sym, quote(lhs) + " union " + quote(rhs))
+    case DeliteArrayIntersect(lhs,rhs) if !Config.generateSerializable =>
+      emitValDef(sym, quote(lhs) + " intersect " + quote(rhs))  
+    case a@DeliteArraySort(x) if !Config.generateSerializable => 
       stream.println("val " + quote(sym) + " = {")
       stream.println("val d = new Array[" + remap(a.mA) + "](" + quote(x) + ".length" + ")")
       stream.println("System.arraycopy(" + quote(x) + ", 0, d, 0, " + quote(x) + ".length)")
       stream.println("scala.util.Sorting.quickSort(d)")
       stream.println("d")
       stream.println("}")    
-    case DeliteArrayRange(st,en) =>
+    case DeliteArrayRange(st,en) if !Config.generateSerializable =>
       emitValDef(sym, "Array.range(" + quote(st) + "," + quote(en) + ")")
-    case DeliteArrayToSeq(a) => emitValDef(sym, quote(a) + ".toSeq")*/
+    case DeliteArrayToSeq(a) if !Config.generateSerializable => 
+      emitValDef(sym, quote(a) + ".toSeq")
     case StructUpdate(struct, fields, idx, x) =>
       emitValDef(sym, quote(struct) + "." + fields.reduceLeft(_ + "." + _) + "(" + quote(idx) + ") = " + quote(x))
     case VarUpdate(Variable(a), idx, x) =>

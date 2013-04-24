@@ -128,6 +128,12 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
       e
   }).asInstanceOf[Def[A]]
 
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case s: AbstractStruct[_] => Nil
+    case NestedFieldUpdate(_,_,_) => Nil
+    case _ => super.aliasSyms(e)
+  }
+
   override def containSyms(e: Any): List[Sym[Any]] = e match {
     case s: AbstractStruct[_] => Nil //ignore nested mutability for Structs: this is only safe because we rewrite mutations to atomic operations
     case NestedFieldUpdate(_,_,_) => Nil

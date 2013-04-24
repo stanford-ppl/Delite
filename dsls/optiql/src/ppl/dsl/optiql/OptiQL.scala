@@ -154,15 +154,12 @@ trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg wi
   with ScalaGenDeliteCollectionOps with ScalaGenDeliteOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteFileReaderOps with ScalaGenDSArrayOps with DeliteScalaGenAllOverrides {
   val IR: DeliteApplication with OptiQLExp
 
-  override def remap[A](m: Manifest[A]): String = {    
-    m match {
-      case m if m.erasure.getSimpleName == "Date" => "Int"
-      case m if m.toString == "scala.Tuple2[Char, Char]" => "Int"
-      case m if m.toString.startsWith("scala.collection.immutable.Map") // HACK-ish, maybe use a DSL type instead
-        && remap(m.typeArguments(0)) == "Int" => "generated.scala.container.HashMapImpl[" + remap(m.typeArguments(0)) + "]"
-
-      case _ => dsmap(super.remap(m))
-    }   
+  override def remap[A](m: Manifest[A]): String = m match {
+    case m if m.erasure.getSimpleName == "Date" => "Int"
+    case m if m.toString == "scala.Tuple2[Char, Char]" => "Int"
+    case m if m.toString.startsWith("scala.collection.immutable.Map") // HACK-ish, maybe use a DSL type instead
+      && remap(m.typeArguments(0)) == "Int" => "generated.scala.container.HashMapImpl[" + remap(m.typeArguments(0)) + "]"
+    case _ => dsmap(super.remap(m))
   }
 
   //because we remapped object types to primitive types above

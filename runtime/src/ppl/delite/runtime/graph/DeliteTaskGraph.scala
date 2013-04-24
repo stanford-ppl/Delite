@@ -4,6 +4,7 @@ import java.io.File
 import _root_.scala.util.parsing.json.JSON
 import ops._
 import targets._
+import ppl.delite.runtime.Config
 import ppl.delite.runtime.Delite
 import ppl.delite.runtime.scheduler.PartialSchedule
 import collection.mutable.{HashSet, HashMap}
@@ -158,7 +159,7 @@ object DeliteTaskGraph {
         val size = getFieldString(op, "sizeValue")
         val sizeIsConst = getFieldString(op, "sizeType") == "const"
         if (resultMap(Targets.Scala).values.contains("Unit")) //FIXME: handle foreaches
-          println("WARNING: ignoring stencil of op with Foreach: " + id)
+          if (Config.clusterMode == 1) println("WARNING: ignoring stencil of op with Foreach: " + id)
         else
           processStencil(op)
         new OP_MultiLoop(id, size, sizeIsConst, "kernel_"+id, resultMap, inputTypesMap, getFieldBoolean(op, "needsCombine"), getFieldBoolean(op, "needsPostProcess"))
@@ -271,14 +272,14 @@ object DeliteTaskGraph {
 
       def updateStencil(op: DeliteOP, in: String) {
         if (localStencil != Empty && (op.isInstanceOf[OP_FileReader] || op.isInstanceOf[OP_MultiLoop]))
-          println("adding " + localStencil + " to output " + in + " of op " + op)
+          if (Config.clusterMode == 1) println("adding " + localStencil + " to output " + in + " of op " + op)
         val globalStencil = op.stencilMap
         if (globalStencil contains in) globalStencil(in) = globalStencil(in) combine localStencil
         else globalStencil(in) = localStencil
       }
 
       //alias propagation, seems very sketchy...
-      def traverseInputs(op: DeliteOP, in: String) {
+      def traverseInputs(op: DeliteOP, in: String)(implicit graph: DeliteTaskGraph) {
         if (!isPrimitiveType(op.outputType)) {
           updateStencil(op, in)
           op match {
@@ -286,9 +287,9 @@ object DeliteTaskGraph {
               o.getInputs.foreach(i => traverseInputs(findOp(i._2), i._2))
             case o:OP_Condition => 
               val resT = o.thenGraph.result._2
-              if (resT != null) traverseInputs(findOp(resT), resT)
+              if (resT != null) traverseInputs(findOp(resT)(o.thenGraph), resT)(o.thenGraph)
               val resE = o.elseGraph.result._2
-              if (resE != null) traverseInputs(findOp(resE), resE)
+              if (resE != null) traverseInputs(findOp(resE)(o.elseGraph), resE)(o.elseGraph)
             case _ => 
           }
         }
