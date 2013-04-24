@@ -2197,9 +2197,12 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           emitAssignment(fieldAccess("act",quote(sym)+"_hash_data"), "new Array(128)")   
         case (sym, elem: DeliteHashElem[_,_]) =>       
       }
-      val keyGroups = (symList zip op.body) collect { case (sym, elem: DeliteHashReduceElem[_,_,_]) => (sym,elem) } groupBy(_._2.keyFunc)
-      for((key,kps) <- keyGroups) 
-        emitAssignment(fieldAccess("act",kps.map(p=>quote(p._1)).mkString("")+"_hash_pos"), "new generated.scala.container.HashMapImpl(512,128)") 
+
+      val hashElems = (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }
+      for ((cond,cps) <- hashElems.groupBy(_._2.cond)) {
+        for((key,kps) <- cps.groupBy(_._2.keyFunc)) 
+          emitAssignment(fieldAccess("act",kps.map(p=>quote(p._1)).mkString("")+"_hash_pos"), "new generated.scala.container.HashMapImpl(512,128)") 
+      }
       emitReturn("act")
     }
 
