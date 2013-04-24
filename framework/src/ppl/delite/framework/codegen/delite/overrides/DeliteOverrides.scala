@@ -10,7 +10,7 @@ trait DeliteAllOverridesExp extends DeliteIfThenElseExp /*with DeliteOpMap*/ wit
 }
 
 trait DeliteScalaGenAllOverrides extends DeliteScalaGenVariables with DeliteScalaGenIfThenElse /*with DeliteScalaGenRange*/ with DeliteScalaGenWhile  {
-  val IR: DeliteAllOverridesExp 
+  val IR: DeliteAllOverridesExp
     
   /**
    * Avoid remapping Nothing to generated.scala.Nothing
@@ -21,6 +21,13 @@ trait DeliteScalaGenAllOverrides extends DeliteScalaGenVariables with DeliteScal
       case `nothing` => "Nothing"
       case _ => super.remap(m)
     }
+  }
+
+  override def emitFileHeader() {
+    // This override was moved here from LMS,
+    // because it was breaking stuff there (not sure
+    // this is the best place to put it/TODO)
+    stream.println("package generated." + this.toString)
   }
 }
 
