@@ -91,7 +91,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[Int]]]
     val size = copyTransformedOrElse(_.size)(intf.length)
     def zero = aV.empty
-    def alloc = DeliteArray(0)
+    def alloc(i: Exp[Int]) = DeliteArray(i)
     def mV = manifest[V]
     def aV = implicitly[Arith[V]]
   }

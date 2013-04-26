@@ -265,7 +265,7 @@ trait QueryableOpsExpOpt extends QueryableOpsExp { this: OptiQLExp =>
   }
 
   case class QueryableKeysDistinct[T:Manifest, K:Manifest](in: Exp[Table[T]], keyFunc: Exp[T] => Exp[K], cond: Exp[T] => Exp[Boolean]) extends DeliteOpHashFilterReduce[T, K, K, Table[K]] {
-    def alloc = Table[K](unit(0))
+    def alloc(i: Exp[Int]) = Table[K](i)
     val size = copyTransformedOrElse(_.size)(in.size)
     def zero = unit(null).AsInstanceOf[K]
     def mapFunc = keyFunc
@@ -275,7 +275,7 @@ trait QueryableOpsExpOpt extends QueryableOpsExp { this: OptiQLExp =>
   case class QueryableHashReduce[T:Manifest, K:Manifest, R:Manifest](in: Exp[Table[T]], keyFunc: Exp[T] => Exp[K], mapFunc: Exp[T] => Exp[R], reduceFunc: (Exp[R],Exp[R]) => Exp[R], cond: Exp[T] => Exp[Boolean]) 
     extends DeliteOpHashFilterReduce[T, K, R, Table[R]] {
 
-    def alloc = Table[R](unit(0))
+    def alloc(i: Exp[Int]) = Table[R](i)
     val size = copyTransformedOrElse(_.size)(in.size)
     def zero = zeroType[R]
 

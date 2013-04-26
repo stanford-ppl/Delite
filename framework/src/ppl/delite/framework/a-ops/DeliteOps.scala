@@ -230,12 +230,19 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   }
 
   case class DeliteHashReduceElem[K:Manifest,V:Manifest,CV:Manifest](
+    iV: Sym[Int],
+    sV: Sym[Int],
+    eV: Sym[V],
     allocVal: Sym[CV],
     alloc: Block[CV],
     keyFunc: Block[K],
     valFunc: Block[V],
+    apply: Block[V],
+    update: Block[Unit],
+    append: Block[Unit],
+    setSize: Block[Unit],
     cond: List[Block[Boolean]] = Nil,
-    zero: Block[V],
+    zero: Block[V], //TODO: necessary?
     rV: (Sym[V], Sym[V]),
     rFunc: Block[V]
   ) extends DeliteHashElem[K,CV] {
@@ -883,53 +890,27 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     ))
   }
 
-  abstract class DeliteOpHashReduceLike[K:Manifest, V:Manifest, CV:Manifest] extends DeliteOpLoop[CV] {
+  abstract class DeliteOpHashReduceLike[K:Manifest, V:Manifest, CV <: DeliteCollection[V]:Manifest] extends DeliteOpLoop[CV] {
     type OpType <: DeliteOpHashReduceLike[K,V,CV]
     final lazy val rV: (Sym[V],Sym[V]) = copyOrElse(_.rV)((fresh[V], fresh[V]))
-    final lazy val allocVal: Sym[CV] = copyTransformedOrElse(_.allocVal)(fresh[CV]).asInstanceOf[Sym[CV]]
-    def alloc: Exp[CV]
+    final lazy val allocVal: Sym[CV] = copyTransformedOrElse(_.allocVal)(reflectMutableSym(fresh[CV])).asInstanceOf[Sym[CV]]
+    final lazy val iV: Sym[Int] = copyTransformedOrElse(_.iV)(fresh[Int]).asInstanceOf[Sym[Int]]
+    final lazy val sV: Sym[Int] = copyTransformedOrElse(_.sV)(fresh[Int]).asInstanceOf[Sym[Int]]
+    final lazy val eV: Sym[V] = copyTransformedOrElse(_.eV)(fresh[V]).asInstanceOf[Sym[V]]
+    def alloc(i: Exp[Int]): Exp[CV]
   }
 
-  abstract class DeliteOpHashReduce[K:Manifest, V:Manifest, CV:Manifest] extends DeliteOpHashReduceLike[K,V,CV] {
+  abstract class DeliteOpHashReduce[K:Manifest, V:Manifest, CV <: DeliteCollection[V]:Manifest] extends DeliteOpHashMapReduce[V,K,V,CV] {
     type OpType <: DeliteOpHashReduce[K,V,CV]
-    val in: Exp[DeliteCollection[V]]
-
-    def keyFunc: Exp[V] => Exp[K]
-    def reduceFunc: (Exp[V], Exp[V]) => Exp[V]
-    def zero: Exp[V]
-
-    lazy val body: Def[CV] = copyBodyOrElse(DeliteHashReduceElem[K,V,CV](
-      alloc = reifyEffects(this.alloc),
-      allocVal = this.allocVal,
-      keyFunc = reifyEffects(this.keyFunc(dc_apply(in,v))),
-      valFunc = reifyEffects(dc_apply(in,v)),
-      zero = reifyEffects(this.zero),
-      rV = this.rV,
-      rFunc = reifyEffects(reduceFunc(rV._1, rV._2))
-    ))
+    def mapFunc: Exp[V] => Exp[V] = v => v
   }
 
-  abstract class DeliteOpHashMapReduce[A:Manifest, K:Manifest, V:Manifest, CV:Manifest] extends DeliteOpHashReduceLike[K,V,CV] {
+  abstract class DeliteOpHashMapReduce[A:Manifest, K:Manifest, V:Manifest, CV <: DeliteCollection[V]:Manifest] extends DeliteOpHashFilterReduce[A,K,V,CV] {
     type OpType <: DeliteOpHashMapReduce[A,K,V,CV]
-    val in: Exp[DeliteCollection[A]]
-
-    def keyFunc: Exp[A] => Exp[K]
-    def mapFunc: Exp[A] => Exp[V]
-    def reduceFunc: (Exp[V], Exp[V]) => Exp[V]
-    def zero: Exp[V]
-
-    lazy val body: Def[CV] = copyBodyOrElse(DeliteHashReduceElem[K,V,CV](
-      alloc = reifyEffects(this.alloc),
-      allocVal = this.allocVal,
-      keyFunc = reifyEffects(this.keyFunc(dc_apply(in,v))),
-      valFunc = reifyEffects(mapFunc(dc_apply(in,v))),
-      zero = reifyEffects(this.zero),
-      rV = this.rV,
-      rFunc = reifyEffects(reduceFunc(rV._1, rV._2))
-    ))
+    def cond: Exp[A] => Exp[Boolean] = null
   }
 
-  abstract class DeliteOpHashFilterReduce[A:Manifest, K:Manifest, V:Manifest, CV:Manifest] extends DeliteOpHashReduceLike[K,V,CV] {
+  abstract class DeliteOpHashFilterReduce[A:Manifest, K:Manifest, V:Manifest, CV <: DeliteCollection[V]:Manifest] extends DeliteOpHashReduceLike[K,V,CV] {
     type OpType <: DeliteOpHashFilterReduce[A,K,V,CV]
     val in: Exp[DeliteCollection[A]]
 
@@ -940,11 +921,18 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     def cond: Exp[A] => Exp[Boolean]
 
     lazy val body: Def[CV] = copyBodyOrElse(DeliteHashReduceElem[K,V,CV](
-      alloc = reifyEffects(this.alloc),
+      iV = this.iV,
+      sV = this.sV,
+      eV = this.eV,
       allocVal = this.allocVal,
+      alloc = reifyEffects(this.alloc(sV)),
       keyFunc = reifyEffects(this.keyFunc(dc_apply(in,v))),
       valFunc = reifyEffects(mapFunc(dc_apply(in,v))),
-      cond = reifyEffects(this.cond(dc_apply(in,v)))::Nil,
+      apply = reifyEffects(dc_apply(allocVal,iV)),
+      update = reifyEffects(dc_update(allocVal,iV,eV)),
+      append = reifyEffects(dc_append(allocVal,v,eV)),
+      setSize = reifyEffects(dc_set_logical_size(allocVal,sV)),
+      cond = if (this.cond == null) Nil else reifyEffects(this.cond(dc_apply(in,v)))::Nil,
       zero = reifyEffects(this.zero),
       rV = this.rV,
       rFunc = reifyEffects(reduceFunc(rV._1, rV._2))
@@ -1132,15 +1120,22 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
           alloc = fb(e.alloc)(e.mCV),
           keyFunc = fb(e.keyFunc)(e.mK),
           valFunc = fb(e.valFunc)(e.mV),
-          cond = e.cond.map(f(_))//f(e.cond)
+          cond = e.cond.map(fb(_)(manifest[Boolean]))
         )(e.mK,e.mV,e.mCV)).asInstanceOf[Def[A]]
       case e: DeliteHashReduceElem[k,v,cv] => 
         (DeliteHashReduceElem[k,v,cv](
+          iV = f(e.iV).asInstanceOf[Sym[Int]],
+          sV = f(e.sV).asInstanceOf[Sym[Int]],
+          eV = f(e.eV).asInstanceOf[Sym[v]],
           allocVal = f(e.allocVal).asInstanceOf[Sym[cv]],
           alloc = fb(e.alloc)(e.mCV),
           keyFunc = fb(e.keyFunc)(e.mK),
           valFunc = fb(e.valFunc)(e.mV),
-          cond = e.cond.map(f(_)),//f(e.cond)
+          apply = fb(e.apply)(e.mV),
+          update = fb(e.update)(manifest[Unit]),
+          append = fb(e.append)(manifest[Unit]),
+          setSize = fb(e.setSize)(manifest[Unit]),
+          cond = e.cond.map(fb(_)(manifest[Boolean])),
           zero = fb(e.zero)(e.mV),
           rV = (f(e.rV._1).asInstanceOf[Sym[v]], f(e.rV._2).asInstanceOf[Sym[v]]), // need to transform bound vars ??
           rFunc = fb(e.rFunc)(e.mV)
@@ -1229,7 +1224,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case s: DeliteOpSingleTask[_] if s.requireInputs => super.syms(e) ::: syms(s.block) // super call: add case class syms (iff flag is set)
     case s: DeliteOpSingleTask[_] => syms(s.block)
     case op: DeliteHashCollectElem[_,_,_] => syms(op.keyFunc) ++ syms(op.valFunc) ++ syms(op.cond) ++ syms(op.alloc)
-    case op: DeliteHashReduceElem[_,_,_] => syms(op.keyFunc) ++ syms(op.valFunc) ++ syms(op.cond) ++ syms(op.zero) ++ syms(op.rFunc) ++ syms(op.alloc)
+    case op: DeliteHashReduceElem[_,_,_] => syms(op.keyFunc) ++ syms(op.valFunc) ++ syms(op.cond) ++ syms(op.zero) ++ syms(op.rFunc) ++ syms(op.alloc) ++ syms(op.apply) ++ syms(op.update) ++ syms(op.append) ++ syms(op.setSize)
     case op: DeliteHashIndexElem[_,_] => syms(op.keyFunc) ++ syms(op.cond)
     case e: DeliteOpExternal[_] =>  super.syms(e) ::: syms(e.allocVal) 
     case fr: DeliteOpForeachReduce[_] => syms(fr.funcBody)
@@ -1265,7 +1260,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   override def boundSyms(e: Any): List[Sym[Any]] = e match {
     case s: DeliteOpSingleTask[_] => effectSyms(s.block)
     case op: DeliteHashCollectElem[_,_,_] => effectSyms(op.keyFunc) ++ effectSyms(op.valFunc) ++ effectSyms(op.cond) ++ syms(op.allocVal) ++ effectSyms(op.alloc)
-    case op: DeliteHashReduceElem[_,_,_] => List(op.rV._1, op.rV._2) ++ effectSyms(op.keyFunc) ++ effectSyms(op.valFunc) ++ effectSyms(op.cond) ++ effectSyms(op.zero) ++ effectSyms(op.rFunc) ++ syms(op.allocVal) ++ effectSyms(op.alloc)
+    case op: DeliteHashReduceElem[_,_,_] => List(op.iV, op.sV, op.eV, op.rV._1, op.rV._2) ++ effectSyms(op.keyFunc) ++ effectSyms(op.valFunc) ++ effectSyms(op.cond) ++ effectSyms(op.zero) ++ effectSyms(op.rFunc) ++ syms(op.allocVal) ++ effectSyms(op.alloc) ++ effectSyms(op.apply) ++ effectSyms(op.update) ++ effectSyms(op.append) ++ effectSyms(op.setSize)
     case op: DeliteHashIndexElem[_,_] => effectSyms(op.keyFunc) ++ effectSyms(op.cond)
     case e: DeliteOpExternal[_] => effectSyms(e.allocVal) /*::: super.effectSyms(e) */
     case fr: DeliteOpForeachReduce[_] => List(fr.v) ::: effectSyms(fr.funcBody)
@@ -1285,7 +1280,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case s: DeliteOpSingleTask[_] if s.requireInputs => super.symsFreq(e) ::: freqNormal(s.block)  // super call: add case class syms (iff flag is set)
     case s: DeliteOpSingleTask[_] => freqNormal(s.block)
     case op: DeliteHashCollectElem[_,_,_] => freqHot(op.keyFunc) ++ freqHot(op.valFunc) ++ freqHot(op.cond) ++ freqNormal(op.alloc)
-    case op: DeliteHashReduceElem[_,_,_] => freqHot(op.keyFunc) ++ freqHot(op.valFunc) ++ freqHot(op.cond) ++ freqNormal(op.zero) ++ freqHot(op.rFunc) ++ freqNormal(op.alloc)
+    case op: DeliteHashReduceElem[_,_,_] => freqHot(op.keyFunc) ++ freqHot(op.valFunc) ++ freqHot(op.cond) ++ freqNormal(op.zero) ++ freqHot(op.rFunc) ++ freqNormal(op.alloc) ++ freqHot(op.apply) ++ freqHot(op.update) ++ freqHot(op.append) ++ freqNormal(op.setSize)
     case op: DeliteHashIndexElem[_,_] => freqHot(op.keyFunc) ++ freqHot(op.cond)
     case e: DeliteOpExternal[_] => super.symsFreq(e) ::: freqNormal(e.allocVal)
     case fr: DeliteOpForeachReduce[_] => freqHot(fr.funcBody)
@@ -1303,8 +1298,6 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 	/////////////////////
   // aliases and sharing
 
-  //TODO: HashElem
-
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
     case s: DeliteOpSingleTask[_] => syms(s.block)
     case e: DeliteOpExternal[_] => Nil
@@ -1312,6 +1305,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case op: DeliteForeachElem[_] => Nil
     case op: DeliteReduceElem[_] => Nil
     case op: DeliteReduceTupleElem[_,_] => Nil
+    case op: DeliteHashReduceElem[_,_,_] => Nil
     case foreach: DeliteOpForeach2[_,_] => Nil
     case foreach: DeliteOpForeachBounded[_,_,_] => Nil
     case _ => super.aliasSyms(e)
@@ -1336,6 +1330,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case op: DeliteForeachElem[_] => Nil
     case op: DeliteReduceElem[_] => Nil
     case op: DeliteReduceTupleElem[_,_] => Nil
+    case op: DeliteHashReduceElem[_,_,_] => Nil
     case foreach: DeliteOpForeach2[_,_] => Nil
     case foreach: DeliteOpForeachBounded[_,_,_] => Nil
     case _ => super.extractSyms(e)
@@ -1467,25 +1462,15 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   /* (grouped) hash support follows */
   def emitInlineMultiHashInit(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = "") {
     for ((cond,cps) <- ps.groupBy(_._2.cond)) {
-      for ((key,kps) <- cps.groupBy(_._2.keyFunc)) {
-        stream.println("var " + kps.map(p=>quote(p._1)).mkString("") + "_hash_pos: generated.scala.container.HashMapImpl[" + remap(getBlockResult(key).tp) + "] = new generated.scala.container.HashMapImpl(512,128)")
+      for ((key,kps) <- cps.groupBy(_._2.keyFunc)) { //TODO: to properly abstract this over multiple code generators we need a hashmap impl for each!
+        emitValDef(kps.map(p=>quote(p._1)).mkString("") + "_hash_pos", "generated.scala.container.HashMapImpl[" + remap(getBlockResult(key).tp) + "]", "new generated.scala.container.HashMapImpl(512,128)") 
         kps foreach { 
-          case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
-            //stream.println("//TODO hash collect")
-            //stream.println("var " + quote(sym) + "_hash: scala.collection.mutable.HashMap[" + remap(getBlockResult(elem.keyFunc).tp) + ", ArrayBuffer[" + remap(getBlockResult(elem.valFunc).tp) + "]] = new scala.collection.mutable.HashMap // TODO: more efficient buffer handling")
-            stream.println("var " + quote(sym) + "_hash_data: Array[generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).tp) + "]] = new Array(128) // TODO: more efficient buffer handling")
+          case (sym, elem: DeliteHashCollectElem[_,_,_]) => //TODO: hashcollect should use DeliteArray / DeliteArrayBuffer
+            emitValDef(quote(sym) + "_hash_data", "Array[generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).tp) + "]]", "new Array(128)")
           case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
-            stream.println("var " + quote(sym) + "_hash_data: Array[" + remap(getBlockResult(elem.valFunc).tp) + "] = new Array(128)")
-            if (elem.rFunc != Block(elem.rV._2)) {
-              if (elem.zero.res.isInstanceOf[Const[Any]])
-                stream.println(quote(getBlockResult(elem.zero)))
-              else {
-                stream.println("val " + quote(sym) + "_zero = {"/*}*/)
-                emitBlock(elem.zero)
-                stream.println(quote(getBlockResult(elem.zero)))
-                stream.println(/*{*/"}")
-              }
-            }
+            emitVarDef(quote(elem.sV), remap(elem.sV.tp), "128") 
+            emitBlock(elem.alloc)
+            emitVarDef(quote(sym) + "_hash_data", remap(getBlockResult(elem.alloc).tp), quote(getBlockResult(elem.alloc)))
           case (sym, elem: DeliteHashIndexElem[_,_]) => 
         }
       }
@@ -1495,20 +1480,16 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   def emitKernelMultiHashDecl(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = "") {
     for ((cond,cps) <- ps.groupBy(_._2.cond)) {
       for ((key,kps) <- cps.groupBy(_._2.keyFunc)) {
-        stream.println("var " + kps.map(p=>quote(p._1)).mkString("") + "_hash_pos: generated.scala.container.HashMapImpl[" + remap(getBlockResult(key).tp) + "] = _")
+        emitFieldDecl(kps.map(p=>quote(p._1)).mkString("") + "_hash_pos", "generated.scala.container.HashMapImpl[" + remap(getBlockResult(key).tp) + "]")
         kps foreach { 
           case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
-            //stream.println("//TODO hash collect")
-            stream.println("var " + quote(sym) + ": " + remap(sym.tp) + " = _")
-            //stream.println("var " + quote(sym) + "_hash: scala.collection.mutable.HashMap[" + remap(getBlockResult(elem.keyFunc).tp) + ", generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).tp) + "]] = _")
-            stream.println("var " + quote(sym) + "_hash_data: Array[generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).tp) + "]] = _ // TODO: more efficient buffer handling")
+            emitFieldDecl(quote(sym), remap(sym.tp))
+            emitFieldDecl(quote(sym) + "_hash_data", "Array[generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).tp) + "]]")
           case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
-            stream.println("var " + quote(sym) + ": " + remap(sym.tp) + " = _")
-            stream.println("var " + quote(sym) + "_hash_data: Array[" + remap(getBlockResult(elem.valFunc).tp) + "] = _")
-            stream.println("var " + quote(sym) + "_zero: " + remap(elem.zero.tp) + " = _")
+            emitFieldDecl(quote(sym), remap(sym.tp))
+            emitFieldDecl(quote(sym) + "_hash_data", remap(getBlockResult(elem.alloc).tp))
           case (sym, elem: DeliteHashIndexElem[_,_]) => 
-            stream.println("//TODO hash index elem")
-            stream.println("var " + quote(sym) + ": " + remap(sym.tp) + " = _")
+            emitFieldDecl(quote(sym), remap(sym.tp))
         }
       }
     }
@@ -1517,18 +1498,14 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   def emitKernelMultiHashInit(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = ""){
     for ((cond,cps) <- ps.groupBy(_._2.cond)) {
       for ((key,kps) <- cps.groupBy(_._2.keyFunc)) {
-        stream.println(prefixSym + kps.map(p=>quote(p._1)).mkString("") + "_hash_pos = new generated.scala.container.HashMapImpl(512,128)")
+        emitAssignment(fieldAccess(prefixSym, kps.map(p=>quote(p._1)).mkString("") + "_hash_pos"), "new generated.scala.container.HashMapImpl(512,128)")
         kps foreach { 
           case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
-            //stream.println("//TODO hash collect")
-            //stream.println(prefixSym + quote(sym) + "_hash = new scala.collection.mutable.HashMap")
-            stream.println(prefixSym + quote(sym) + "_hash_data = new Array(128)")
+            emitAssignment(fieldAccess(prefixSym, quote(sym) + "_hash_data"), "new Array(128)")
           case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
-            stream.println(prefixSym + quote(sym) + "_zero = {"/*}*/)
-            emitBlock(elem.zero)
-            stream.println(quote(getBlockResult(elem.zero)))          
-            stream.println(/*{*/"}")
-            stream.println(prefixSym + quote(sym) + "_hash_data = new Array(128)")
+            emitValDef(quote(elem.sV), remap(elem.sV.tp), "128") 
+            emitBlock(elem.alloc)
+            emitAssignment(fieldAccess(prefixSym, quote(sym) + "_hash_data"), quote(getBlockResult(elem.alloc)))
           case (sym, elem: DeliteHashIndexElem[_,_]) => 
         }
       }
@@ -1537,65 +1514,58 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   def emitMultiHashElem(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = "") {
     for ((cond,cps) <- ps.groupBy(_._2.cond)) { // group by cond
-      if (cond.nonEmpty) stream.println("if (" + cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {"/*}*/)
+      if (cond.nonEmpty) stream.println("if (" + cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
         // group by key
         for ((key,kps) <- cps.groupBy(_._2.keyFunc)) {
           val quotedGroup = kps.map(p=>quote(p._1)).mkString("")
           stream.println("// common key "+key+" for "+quotedGroup)
-          stream.println("val " + quotedGroup + "_sze = " + prefixSym + quotedGroup + "_hash_pos.size")
-          stream.println("val " + quotedGroup + "_idx = " + prefixSym + quotedGroup + "_hash_pos.put(" + quote(getBlockResult(key)) + ")")
-          stream.println("if (" + quotedGroup + "_idx == " + quotedGroup + "_sze) { // new key"/*}*/)
-          val kps1 = kps.filterNot(_._2.isInstanceOf[DeliteHashIndexElem[_,_]])
-          if (kps1.nonEmpty) {
-            stream.println("if (" + quotedGroup + "_idx >= " + prefixSym + quote(kps1.head._1) + "_hash_data.length) { // resize buffers"/*}*/) // resize first, resize all
-            kps1 foreach {
-              case (sym, elem) => 
-                val data = prefixSym + quote(sym) + "_hash_data"
-                val ndata = quote(sym) + "_hash_data_new"
-                val elemtp = elem match {
-                  case elem: DeliteHashCollectElem[_,_,_] => "generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).tp) + "]"
-                  case elem: DeliteHashReduceElem[_,_,_] => remap(getBlockResult(elem.valFunc).tp)
-                }
-                stream.println("val " + ndata + " = new Array[" + elemtp + "](2*" + data + ".length)")
-                stream.println("System.arraycopy("+ data + ", 0, " + ndata + ", 0, " + data + ".length)")
-                stream.println(data + " = " + ndata)
-            }
-            stream.println(/*{*/"}")          
+          emitValDef(quotedGroup + "_sze", remap(manifest[Int]), fieldAccess(fieldAccess(prefixSym, quotedGroup + "_hash_pos"), "size"))
+          emitValDef(quotedGroup + "_idx", remap(manifest[Int]), fieldAccess(fieldAccess(prefixSym, quotedGroup + "_hash_pos"), "put(" + quote(getBlockResult(key)) + ")"))
+          stream.println("if (" + quotedGroup + "_idx == " + quotedGroup + "_sze) { // new key")
+          for ((sym, elem: DeliteHashCollectElem[_,_,_]) <- kps) { //resize buffers
+            stream.println("if (" + quotedGroup + "_idx >= " + fieldAccess(fieldAccess(prefixSym, quote(sym) + "_hash_data"), "length") + ") { // resize buffers")
+            stream.println("val " + quote(sym) + "_hash_data_new" + " = new Array[generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).tp) + "]" + "](2*" + prefixSym + quote(sym) + "_hash_data" + ".length)")
+            stream.println("System.arraycopy("+ fieldAccess(prefixSym, quote(sym) + "_hash_data") + ", 0, " + quote(sym) + "_hash_data_new" + ", 0, " + prefixSym + quote(sym) + "_hash_data" + ".length)")
+            stream.println(fieldAccess(prefixSym, quote(sym) + "_hash_data") + " = " + quote(sym) + "_hash_data_new")
           }
+
           kps foreach {
             case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
-              //stream.println("//TODO hash collect")
-              //emitHashCollectElem(op, sym, elem, prefixSym)
-              val valString = quote(getBlockResult(elem.valFunc))
-              stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = new generated.scala.container.BufferImpl")
-              stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) += " + valString)
+              stream.println(fieldAccess(prefixSym, quote(sym)) + "_hash_data(" + quotedGroup + "_idx) = new generated.scala.container.BufferImpl")
+              stream.println(fieldAccess(prefixSym, quote(sym)) + "_hash_data(" + quotedGroup + "_idx) += " + quote(getBlockResult(elem.valFunc)))
             case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
-              val valString = quote(getBlockResult(elem.valFunc))
-              stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + valString)
+              emitValDef(quote(elem.allocVal), remap(elem.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_hash_data")) 
+              emitValDef(quote(elem.eV), remap(elem.eV.tp), quote(getBlockResult(elem.valFunc)))
+              getActBuffer = fieldAccess(prefixSym, quote(sym) + "_hash_data")
+              getActSize = quotedGroup + "_sze"
+              emitBlock(elem.append)
             case (sym, elem: DeliteHashIndexElem[_,_]) => 
           }
-          stream.println(/*{*/"} else {"/*}*/)
+          stream.println("} else {")
           kps foreach { 
             case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
-              //stream.println("//TODO hash collect")
-              //emitHashCollectElem(op, sym, elem, prefixSym)
-              val valString = quote(getBlockResult(elem.valFunc))
-              stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) += " + valString)
+              stream.println(fieldAccess(prefixSym, quote(sym)) + "_hash_data(" + quotedGroup + "_idx) += " + quote(getBlockResult(elem.valFunc)))
             case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
-              val valString = quote(getBlockResult(elem.valFunc))
-              if (elem.rFunc == Block(elem.rV._2)) {
-                stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + valString)
-              } else {
-                stream.println("val " + quote(elem.rV._1) + " = " + prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx)")
-                stream.println("val " + quote(elem.rV._2) + " = " + valString)
-                emitBlock(elem.rFunc)
-                stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + quote(getBlockResult(elem.rFunc)))
+              if (elem.rFunc != Block(elem.rV._1)) { //else drop
+                emitValDef(quote(elem.iV), remap(elem.iV.tp), quotedGroup + "_idx") 
+                emitValDef(quote(elem.allocVal), remap(elem.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_hash_data"))              
+                if (elem.rFunc == Block(elem.rV._2)) { //overwrite
+                  emitValDef(quote(elem.eV), remap(elem.eV.tp), quote(getBlockResult(elem.valFunc)))
+                  emitBlock(elem.update)
+                } else { //reduce
+                  emitBlock(elem.apply)
+                  emitValDef(quote(elem.rV._1), remap(elem.rV._1.tp), quote(getBlockResult(elem.apply)))
+                  emitValDef(quote(elem.rV._2), remap(elem.rV._2.tp), quote(getBlockResult(elem.valFunc)))
+                  emitBlock(elem.rFunc)
+                  emitValDef(quote(elem.eV), remap(elem.eV.tp), quote(getBlockResult(elem.rFunc)))
+                  emitBlock(elem.update)
+                }
               }
             case (sym, elem: DeliteHashIndexElem[_,_]) => 
           }
-          stream.println(/*{*/"}")
+          stream.println("}")
         }
-      if (cond.nonEmpty) stream.println(/*{*/"}")
+      if (cond.nonEmpty) stream.println("}")
     }
   }
 
@@ -1606,78 +1576,93 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       for ((key,kps) <- cps.groupBy(_._2.keyFunc)) {
         val quotedGroup = kps.map(p=>quote(p._1)).mkString("")
         stream.println("// common key "+key+" for "+quotedGroup)
-        stream.println("for (i <- (0 until rhs." + quotedGroup + "_hash_pos.size)) {"/*}*/) // TODO: while // common key "+key+" for "+quotedGroup)
-        stream.println("val " + quotedGroup + "_k = rhs." + quotedGroup + "_hash_pos.unsafeKeys(i)")
-        stream.println("val " + quotedGroup + "_sze = " + prefixSym + quotedGroup + "_hash_pos.size")
-        stream.println("val " + quotedGroup + "_idx = " + prefixSym + quotedGroup + "_hash_pos.put("+quotedGroup+"_k)")
-        stream.println("if (" + quotedGroup + "_idx == " + quotedGroup + "_sze) {"/*}*/) // new key
-        stream.println("// TODO: handle buffer resizing!")
+        emitVarDef(quotedGroup + "rhs_idx", remap(manifest[Int]), "0")
+        stream.println("while (" + quotedGroup + "rhs_idx < rhs." + quotedGroup + "_hash_pos.size) {")
+        emitValDef(quotedGroup + "_k", remap(key.tp), "rhs." + quotedGroup + "_hash_pos.unsafeKeys(" + quotedGroup + "rhs_idx)")
+        emitValDef(quotedGroup + "_sze", remap(manifest[Int]), fieldAccess(prefixSym, quotedGroup + "_hash_pos.size"))
+        emitValDef(quotedGroup + "_idx", remap(manifest[Int]), fieldAccess(prefixSym, quotedGroup + "_hash_pos.put("+quotedGroup+"_k)"))
+        stream.println("if (" + quotedGroup + "_idx == " + quotedGroup + "_sze) {") // new key
         kps foreach { 
           case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
-            //stream.println("//TODO hash collect")
-            stream.println("val " + quote(sym) + "_v = rhs." + quote(sym) + "_hash_data(i)")
-            stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + quote(sym) + "_v")
+            stream.println("val " + quote(sym) + "_v = rhs." + quote(sym) + "_hash_data(" + quotedGroup + "rhs_idx)")
+            stream.println(fieldAccess(prefixSym, quote(sym)) + "_hash_data(" + quotedGroup + "_idx) = " + quote(sym) + "_v")
           case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
-            stream.println("val " + quote(sym) + "_v = rhs." + quote(sym) + "_hash_data(i)")
-            stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + quote(sym) + "_v")
+            emitVarDef(quote(elem.allocVal), remap(elem.allocVal.tp), "rhs." + quote(sym) + "_hash_data")
+            emitValDef(quote(elem.iV), remap(elem.iV.tp), quotedGroup + "rhs_idx")
+            emitBlock(elem.apply)
+            emitAssignment(quote(elem.allocVal), fieldAccess(prefixSym, quote(sym) + "_hash_data"))
+            emitValDef(quote(elem.eV), remap(elem.eV.tp), quote(getBlockResult(elem.apply)))
+            getActBuffer = fieldAccess(prefixSym, quote(sym) + "_hash_data")
+            getActSize = quotedGroup + "_sze"
+            emitBlock(elem.append)
           case (sym, elem: DeliteHashIndexElem[_,_]) => 
         }
-        stream.println(/*{*/"} else {"/*}*/)
+        stream.println("} else {")
         kps foreach { 
           case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
-            //stream.println("//TODO hash collect")
             stream.println("val " + quote(sym) + "_v = rhs." + quote(sym) + "_hash_data(i)")
-            stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) ++= " + quote(sym) + "_v")
+            stream.println(fieldAccess(prefixSym, quote(sym)) + "_hash_data(" + quotedGroup + "_idx) ++= " + quote(sym) + "_v")
           case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
-            stream.println("val " + quote(sym) + "_v = rhs." + quote(sym) + "_hash_data(i)")
-            if (elem.rFunc == Block(elem.rV._2)) {
-              stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + quote(sym) + "_v")
-            } else {
-              stream.println("val " + quote(elem.rV._1) + " = " + prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx)")
-              stream.println("val " + quote(elem.rV._2) + " = " + quote(sym) + "_v")
-              emitBlock(elem.rFunc)
-              stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + quote(getBlockResult(elem.rFunc)))
+            if (elem.rFunc != Block(elem.rV._1)) { //else drop
+              emitValDef(quote(elem.allocVal), remap(elem.allocVal.tp), "rhs." + quote(sym) + "_hash_data")
+              emitValDef(quote(elem.iV), remap(elem.iV.tp), quotedGroup + "rhs_idx")
+              emitBlock(elem.apply)
+              emitValDef(quote(sym) + "_v", remap(getBlockResult(elem.apply).tp), quote(getBlockResult(elem.apply)))              
+              emitValDef(quote(sym) + "_reduce_block", remap(manifest[Unit]), "{")
+              emitValDef(quote(elem.allocVal), remap(elem.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_hash_data"))
+              emitValDef(quote(elem.iV), remap(elem.iV.tp), quotedGroup + "_idx")
+              if (elem.rFunc == Block(elem.rV._2)) { //overwrite
+                emitValDef(quote(elem.eV), remap(elem.eV.tp), quote(sym) + "_v")
+                emitBlock(elem.update)
+              } else { //reduce
+                emitBlock(elem.apply)
+                emitValDef(quote(elem.rV._1), remap(elem.rV._1.tp), quote(getBlockResult(elem.apply)))
+                emitValDef(quote(elem.rV._2), remap(elem.rV._2.tp), quote(sym)+"_v")
+                emitBlock(elem.rFunc)
+                emitValDef(quote(elem.eV), remap(elem.eV.tp), quote(getBlockResult(elem.rFunc)))
+                emitBlock(elem.update)                
+              }
+              stream.println("}")
             }
           case (sym, elem: DeliteHashIndexElem[_,_]) => 
         }
-        stream.println(/*{*/"}")
-        stream.println(/*{*/"}") // end for
+        stream.println("}")
+        emitAssignment(quotedGroup + "rhs_idx", quotedGroup + "rhs_idx+1")
+        stream.println("}") // end loop
       }
     }
-    /*stream.println("for((k,v) <- rhs." + quote(sym) + "_hash) {") 
-    stream.println("  val " + quote(elem.rV._1) + " =  __act." + quote(sym) + "_hash.getOrElse(k , " + "__act." + quote(sym) + "_zero)")
-    stream.println("  val " + quote(elem.rV._2) + " = v")                        
-    emitBlock(elem.rFunc)
-    stream.println("  __act." + quote(sym) + "_hash(k) = " + quote(getBlockResult(elem.rFunc)))
-    stream.println("}")*/
   }
 
   def emitMultiHashFinalize(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = "") {
     for ((cond,cps) <- ps.groupBy(_._2.cond)) {
       for ((key,kps) <- cps.groupBy(_._2.keyFunc)) {
         val quotedGroup = kps.map(p=>quote(p._1)).mkString("")
-        stream.println("val " + quotedGroup + "_sze = " + prefixSym + quotedGroup + "_hash_pos.size")
+        emitValDef(quotedGroup + "_sze", remap(manifest[Int]), fieldAccess(fieldAccess(prefixSym, quotedGroup + "_hash_pos"), "size"))
         kps foreach { 
           case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
             stream.println("//TODO hash collect")
             if (prefixSym == "")
-              stream.println("val " + quote(sym) + " = " + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze).map(_.toArray) // FIXME: better representation")
+              emitValDef(quote(sym), remap(sym.tp), quote(sym) + "_hash_data.take(" + quotedGroup + "_sze).map(_.toArray) // FIXME: better representation")
             else
-              stream.println(prefixSym + quote(sym) + " = " + prefixSym + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze).map(_.toArray) // FIXME: better representation")
-          case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
-            def wrap(result: String) = if (Config.generateSerializable) 
-              "new ppl.delite.runtime.data.LocalDeliteArray" + (if (isPrimitiveType(elem.mV)) remap(elem.mV) else "Object[" + remap(elem.mV) + "]") + "(" + result + ")"
-            else result
-
-            if (prefixSym == "")
-              stream.println("val " + quote(sym) + " = " + wrap(quote(sym) + "_hash_data.take(" + quotedGroup + "_sze)"))
-            else
-              stream.println(prefixSym + quote(sym) + " = " + wrap(prefixSym + quote(sym) + "_hash_data.take(" + quotedGroup + "_sze)"))
+              emitAssignment(fieldAccess(prefixSym, quote(sym)), fieldAccess(prefixSym, quote(sym)) + "_hash_data.take(" + quotedGroup + "_sze).map(_.toArray) // FIXME: better representation")
+          case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
+            emitVarDef(quote(elem.allocVal), remap(elem.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_hash_data"))
+            getActFinal = quote(elem.allocVal)     
+            if (prefixSym == "") {
+              emitAssignment(quote(elem.sV), quotedGroup + "_sze")
+              emitBlock(elem.setSize)
+              emitValDef(quote(sym), remap(sym.tp), quote(elem.allocVal))
+            }
+            else {
+              emitValDef(quote(elem.sV), remap(elem.sV.tp), quotedGroup + "_sze")
+              emitBlock(elem.setSize)
+              emitAssignment(fieldAccess(prefixSym, quote(sym)), quote(elem.allocVal))
+            }
           case (sym, elem: DeliteHashIndexElem[_,_]) => 
             if (prefixSym == "")
-              stream.println("val " + quote(sym) + " = " + quotedGroup + "_hash_pos")
+              emitValDef(quote(sym), remap(sym.tp), quotedGroup + "_hash_pos")
             else
-              stream.println(prefixSym + quote(sym) + " = " + prefixSym + quotedGroup + "_hash_pos")
+              emitAssignment(fieldAccess(prefixSym, quote(sym)), fieldAccess(prefixSym, quotedGroup + "_hash_pos"))
         }
       }
     }
@@ -1692,7 +1677,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitValDef(elem.allocVal, fieldAccess(prefixSym,quote(sym)+"_buf"))
         if (elem.cond.nonEmpty) stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
         // should append be called insert? it is a physical append of element e, at logical index v (it's a tail-insert)
-        currentSym = fieldAccess(prefixSym, quote(sym))
+        getActBuffer = fieldAccess(prefixSym, quote(sym) + "_buf")
+        getActSize = fieldAccess(prefixSym, quote(sym) + "_size")
         emitBlock(elem.buf.appendable)
         stream.println("if (" + quote(getBlockResult(elem.buf.appendable)) + ") {")
         emitBlock(elem.buf.append)
@@ -1713,9 +1699,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     }
   }
 
-  private var currentSym = ""
-  def getActSize = currentSym + "_size"
-  def getActBuffer = currentSym + "_buf"
+  var getActSize = ""
+  var getActBuffer = ""
   var getActFinal = ""
     
   def emitForeachElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteForeachElem[_]) {
@@ -1980,7 +1965,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     emitMethod("init", actType, List(("__act",actType),(quote(op.v),remap(op.v.tp)))) {
       if (op.body exists (b => loopBodyNeedsCombine(b) || loopBodyNeedsPostProcess(b))) {
         emitNewInstance("__act2", actType)
-        emitKernelMultiHashInit(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act2.")
+        emitKernelMultiHashInit(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act2")
         (symList zip op.body) foreach {
           case (sym, elem: DeliteCollectElem[_,_,_]) => elem.par match {
             case ParBuffer | ParSimpleBuffer =>
@@ -2016,7 +2001,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         // then emit first element initializers, if size is non-zero
         stream.println("if (" + quote(op.size) + " > 0) {")
         emitMultiLoopFuncs(op, symList)
-        emitMultiHashElem(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act2.")
+        emitMultiHashElem(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act2")
         (symList zip op.body) foreach {
           case (sym, elem: DeliteCollectElem[_,_,_]) =>
             emitCollectElem(op, sym, elem, "__act2")
@@ -2045,7 +2030,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
     emitMethod("process", remap(Manifest.Unit), List(("__act",actType),(quote(op.v),remap(op.v.tp)))) {
       emitMultiLoopFuncs(op, symList)
-      emitMultiHashElem(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act.")
+      emitMultiHashElem(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act")
       (symList zip op.body) foreach {
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
           emitCollectElem(op, sym, elem, "__act")
@@ -2061,7 +2046,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     }
 
     emitMethod("combine", remap(Manifest.Unit), List(("__act",actType),("rhs",actType))) {
-      emitMultiHashCombine(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act.")
+      emitMultiHashCombine(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act")
       (symList zip op.body) foreach {
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
           if (Config.generateSerializable) emitAssignment(fieldAccess("__act",quote(sym)), remap(sym.tp)+".combine(" + fieldAccess("__act",quote(sym)) + "," + fieldAccess("rhs",quote(sym)) + ")")
@@ -2154,7 +2139,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     }
 
     emitMethod("finalize", remap(Manifest.Unit), List(("__act",actType))) {
-      emitMultiHashFinalize(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act.")
+      emitMultiHashFinalize(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act")
       (symList zip op.body) foreach {
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
           emitVarDef(quote(elem.allocVal), remap(elem.allocVal.tp), fieldAccess("__act",quote(sym) + "_data"))
@@ -2192,9 +2177,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           emitBlock(elem.zero._2)
           emitAssignment(fieldAccess("act",quote(sym)+"_zero_2"),quote(getBlockResult(elem.zero._2)))
         case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
-          emitBlock(elem.zero)
-          emitAssignment(fieldAccess("act",quote(sym)+"_zero"),quote(getBlockResult(elem.zero)))
-          emitAssignment(fieldAccess("act",quote(sym)+"_hash_data"), "new Array(128)")   
+          //emitAssignment(fieldAccess("act",quote(sym)+"_hash_data"), "new Array(128)")   
         case (sym, elem: DeliteHashElem[_,_]) =>       
       }
 

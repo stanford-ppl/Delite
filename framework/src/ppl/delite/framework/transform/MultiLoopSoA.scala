@@ -231,12 +231,23 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
   def soaHashReduce[K:Manifest,V:Manifest,CV:Manifest](size: Exp[Int], v: Sym[Int], body: DeliteHashReduceElem[K,V,CV]): Option[Exp[CV]] = t(body.alloc) match {
     case StructBlock(tag,elems) =>
       def copyLoop[B:Manifest](f: Block[B], r: Block[B], z: Block[B], rv1: Exp[B], rv2: Exp[B]): Exp[DeliteArray[B]] = {
-        val allocV = fresh[DeliteArray[B]]
-        simpleLoop(t(size), t(v).asInstanceOf[Sym[Int]], DeliteHashReduceElem[K,B,DeliteArray[B]](
+        val allocV = reflectMutableSym(fresh[DeliteArray[B]])
+        val indexV = fresh[Int]
+        val sizeV = fresh[Int]
+        val elemV = fresh[B]
+        val tv = t(v).asInstanceOf[Sym[Int]]
+        simpleLoop(t(size), tv, DeliteHashReduceElem[K,B,DeliteArray[B]](
+          iV = indexV,
+          sV = sizeV,
+          eV = elemV,
           allocVal = allocV,
-          alloc = reifyEffects(DeliteArray.imm[B](unit(0))),
+          alloc = reifyEffects(DeliteArray[B](sizeV)),
           keyFunc = t(body.keyFunc),
           valFunc = f,
+          apply = reifyEffects(dc_apply(allocV,indexV)),
+          update = reifyEffects(dc_update(allocV,indexV,elemV)),
+          append = reifyEffects(dc_append(allocV,tv,elemV)),
+          setSize = reifyEffects(dc_set_logical_size(allocV,sizeV)),
           cond = body.cond.map(t(_)),
           zero = z,
           rV = (rv1.asInstanceOf[Sym[B]], rv2.asInstanceOf[Sym[B]]),
