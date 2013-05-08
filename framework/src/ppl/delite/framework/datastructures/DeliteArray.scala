@@ -490,8 +490,8 @@ trait BaseGenDeliteArrayOps extends GenericFatCodegen {
   }
 
   override def unapplySimpleDomain(e: Def[Int]): Option[Exp[Any]] = e match {
-    case DeliteArrayLength(da) => Some(da)
-    //case DeliteArrayLength(a @ Def(Loop(_,_,_:DeliteCollectElem[_,_,_]))) => Some(a) // exclude hash collect (?)
+    //case DeliteArrayLength(da) => Some(da)
+    case DeliteArrayLength(a @ Def(Loop(_,_,_:DeliteCollectElem[_,_,_]))) => Some(a) // exclude hash elems
     case _ => super.unapplySimpleDomain(e)
   }
 

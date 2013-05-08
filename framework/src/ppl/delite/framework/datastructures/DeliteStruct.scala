@@ -376,13 +376,10 @@ trait CudaGenDeliteStruct extends BaseGenStruct with CudaCodegen {
         }.mkString(",") + ");")
         stream.println(structName(sym.tp) + " " + quote(sym) + " = *" + quote(sym) + "_ptr;")
       }
-      printlog("WARNING: emitting " + structName(sym.tp) + " struct " + quote(sym))    
     case FieldApply(struct, index) =>
       emitValDef(sym, quote(struct) + "." + index)
-      printlog("WARNING: emitting field access: " + quote(struct) + "." + index)
     case FieldUpdate(struct, index, rhs) =>
       emitValDef(sym, quote(struct) + "." + index + " = " + quote(rhs))
-      printlog("WARNING: emitting field update: " + quote(struct) + "." + index)
     case NestedFieldUpdate(struct, fields, rhs) =>
       emitValDef(sym, quote(struct) + "." + fields.reduceLeft(_ + "." + _) + " = " + quote(rhs))
     case _ => super.emitNode(sym, rhs)

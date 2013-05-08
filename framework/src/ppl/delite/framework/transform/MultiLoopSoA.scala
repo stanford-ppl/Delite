@@ -133,6 +133,9 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         case u@Block(Def(a@Struct(ta,es))) if Config.soaEnabled => 
           printlog("*** SOA " + u + " / " + a)
           soaTransform(ta,es)
+        case f2@Block(Def(a)) => 
+          printlog("*** Unable to SOA " + f2 + " / " + a)
+          copyLoop(f2)
         case f2 => copyLoop(f2)
       }
 
