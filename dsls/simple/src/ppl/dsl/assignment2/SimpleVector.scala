@@ -7,7 +7,6 @@ import scala.tools.nsc.io._
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
-import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.ops._
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.codegen.delite.overrides._
@@ -32,7 +31,7 @@ trait SimpleVectorScalaOpsPkgExp extends SimpleVectorScalaOpsPkg with DSLOpsExp
   with ImplicitOpsExp with NumericOpsExp with OrderingOpsExp with StringOpsExp
   with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp with TupleOpsExp
   with MathOpsExp with CastingOpsExp with ObjectOpsExp with ArrayOpsExp with RangeOpsExp
-  with DeliteArrayOpsExpOpt with DeliteArrayImplOps with DeliteOpsExp with StructExp
+  with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteOpsExp with StructExp
   
 //Scala codegen version
 trait SimpleVectorScalaCodeGenPkg extends ScalaGenDSLOps
@@ -40,7 +39,7 @@ trait SimpleVectorScalaCodeGenPkg extends ScalaGenDSLOps
   with ScalaGenImplicitOps with ScalaGenNumericOps with ScalaGenOrderingOps with ScalaGenStringOps
   with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenTupleOps
   with ScalaGenMathOps with ScalaGenCastingOps with ScalaGenObjectOps with ScalaGenArrayOps with ScalaGenRangeOps
-  with ScalaGenDeliteArrayOps with ScalaGenStruct
+  with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteStruct
   { val IR: SimpleVectorScalaOpsPkgExp }
 
 trait SimpleVectorCudaCodeGenPkg extends CudaGenDSLOps
@@ -75,7 +74,6 @@ trait SimpleVectorExp extends SimpleVectorCompiler with SimpleVectorScalaOpsPkgE
     t match {
       case _:TargetScala => new SimpleVectorCodegenScala{val IR: SimpleVectorExp.this.type = SimpleVectorExp.this}
       case _:TargetCuda => new SimpleVectorCodegenCuda{val IR: SimpleVectorExp.this.type = SimpleVectorExp.this}
-      case _:TargetC => new SimpleVectorCodegenC{val IR: SimpleVectorExp.this.type = SimpleVectorExp.this}
       case _ => throw new RuntimeException("simple vector does not support this target")
     }
   }
@@ -99,43 +97,12 @@ trait SimpleVectorCodegenBase extends GenericFatCodegen {
   val IR: DeliteApplication with SimpleVectorExp
   override def initialDefs = IR.deliteGenerator.availableDefs
   
-  def dsmap(line: String) = line
-
-  override def emitDataStructures(path: String) {
-    val s = File.separator
-    val dsRoot = Config.homeDir + s+"dsls"+s+"assignment2"+s+"src"+s+"ppl"+s+"dsl"+s+"assignment2"+s+"datastructures"+s + this.toString
-
-    val dsDir = Directory(Path(dsRoot))
-    val outDir = Directory(Path(path))
-    outDir.createDirectory()
-
-    for (f <- dsDir.files) {
-      val outFile = path + s + f.name
-      val out = new BufferedWriter(new FileWriter(outFile))
-      for (line <- scala.io.Source.fromFile(f.jfile).getLines) {
-        out.write(dsmap(line) + "\n")
-      }
-      out.close()
-    }
-  }
 }
 
 trait SimpleVectorCodegenScala extends SimpleVectorCodegenBase with SimpleVectorScalaCodeGenPkg
   with ScalaGenDeliteOps with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps with DeliteScalaGenAllOverrides {
 
   val IR: DeliteApplication with SimpleVectorExp
-  
-  //these methods translates types in the compiler to types in the generated code
-  override def dsmap(line: String) : String = {
-    var res = line.replaceAll("ppl.dsl.assignment2.datastructures", "generated")
-    res = res.replaceAll("ppl.delite.framework.datastruct", "generated")
-    res
-  }
-
-  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
-    case "Vector" => "Map[String,Any]"
-    case _ => super.remap(m)
-  }
 }
 
 trait SimpleVectorCodegenCuda extends SimpleVectorCodegenBase with SimpleVectorCudaCodeGenPkg

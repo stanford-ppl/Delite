@@ -178,7 +178,7 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     case Struct(tag, elems) =>
       registerStruct(structName(sym.tp), elems)
       emitValDef(sym, "new " + structName(sym.tp) + "(" + elems.map{ e => 
-        if (isVarType(e._2.tp) && deliteInputs.contains(e._2)) quote(e._2) + ".get"
+        if (isVarType(e._2) && deliteInputs.contains(e._2)) quote(e._2) + ".get"
         else quote(e._2)
       }.mkString(",") + ")")
     case FieldApply(struct, index) =>
@@ -197,11 +197,14 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     case s if s <:< manifest[Record] && s != manifest[Nothing] => "generated.scala." + structName(m)
     case _ => super.remap(m)
   }
+  
+  private def isVarType[T](e: Exp[T]) = e.tp.erasure.getSimpleName == "Variable" && (e match { //TODO: this is fragile, based on behavior of var_new override in Structs.scala
+    case Def(Struct(_,_)) => false //Var(Struct) => Struct(Var)
+    case _ => true
+  })
 
-  private def isVarType[T](m: Manifest[T]) = m.erasure.getSimpleName == "Variable" && unapplyStructType(m.typeArguments(0)) == None
   private def isArrayType[T](m: Manifest[T]) = m.erasure.getSimpleName == "DeliteArray"
   private def isStringType[T](m: Manifest[T]) = m.erasure.getSimpleName == "String"
-  private def baseType[T](m: Manifest[T]) = if (isVarType(m)) mtype(m.typeArguments(0)) else m
   
   override def emitDataStructures(path: String) {
     val stream = new PrintWriter(path + "DeliteStructs.scala")
