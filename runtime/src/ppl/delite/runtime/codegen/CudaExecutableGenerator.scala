@@ -5,7 +5,6 @@ import kernels.cpp.CppMultiLoopHeaderGenerator
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.scheduler.{OpList, PartialSchedule}
 import ppl.delite.runtime.Config
-import ppl.delite.runtime.codegen.hosts.Hosts
 import ppl.delite.runtime.graph.targets.{OS, Targets}
 import collection.mutable.ArrayBuffer
 import sync._
@@ -96,7 +95,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
     out.append("#include \"cublas.h\"\n") //cublas library
     out.append("#include \"DeliteCuda.h\"\n") //Delite-Cuda interface for DSL
     out.append("#include \"cudaSyncObjects.h\"\n")
-    out.append("#include \"helperFuncs.h\"\n")
+    out.append("#include \"" + Targets.Cuda + "helperFuncs.h\"\n")
     out.append("extern JNIEnv* env" + location + ";\n")
     out.append("extern cudaStream_t kernelStream;\n")
     out.append("extern cudaStream_t h2dStream;\n")
@@ -260,17 +259,17 @@ class CudaMainExecutableGenerator(val location: Int, val kernelPath: String)
 
   def executableName(location: Int) = "Executable" + location
 
-  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Hosts.Value) = {
-    host match {
-      case Hosts.Scala => new ScalaMainExecutableGenerator(location, kernelPath) with ScalaSyncObjectGenerator {
+  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value) = {
+    target match {
+      case Targets.Scala => new ScalaMainExecutableGenerator(location, kernelPath) with ScalaSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
-      //case Hosts.Cpp => new CppMainExecutableGenerator(location, kernelPath) with CudaSyncObjectGenerator {
+      //case Targets.Cpp => new CppMainExecutableGenerator(location, kernelPath) with CudaSyncObjectGenerator {
       //  protected val sync = syncs
       //  override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       //}
-      case _ => throw new RuntimeException("Unknown Host type " + host.toString)
+      case _ => throw new RuntimeException("Unknown Host type " + target.toString)
     }
   }
 }
@@ -279,7 +278,7 @@ object CudaExecutableGenerator {
 
   val syncObjects = ArrayBuffer[String]()
   syncObjects += "#include <pthread.h>\n"
-  syncObjects += "#include \"helperFuncs.h\"\n"
+  syncObjects += "#include \"" + Targets.Cuda + "helperFuncs.h\"\n"
 
   var typesMap = Map[Targets.Value, Map[String,String]]()
 

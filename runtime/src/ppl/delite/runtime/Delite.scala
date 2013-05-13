@@ -32,7 +32,7 @@ object Delite {
   }
 
   private def printConfig() {
-    println("Delite Runtime executing with " + Config.numThreads + " CPU thread(s) and " + (Config.numCuda+Config.numOpenCL) + " GPU(s)")
+    println("Delite Runtime executing with: " + Config.numThreads + " Scala thread(s), " + Config.numCpp + " Cpp thread(s), " + Config.numCuda + " Cuda(s), " + Config.numOpenCL + " OpenCL(s)")
   }
 
   def main(args: Array[String]) {

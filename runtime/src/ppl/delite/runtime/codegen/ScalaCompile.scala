@@ -6,12 +6,13 @@ import scala.tools.nsc.util._
 import collection.mutable.ArrayBuffer
 import java.io.ByteArrayOutputStream
 import ppl.delite.runtime.Config
+import ppl.delite.runtime.graph.targets.Targets
 
 object ScalaCompile extends CodeCache {
 
   private val classCacheHome = cacheHome + "classes" + sep
 
-  def target = "scala"
+  def target = Targets.Scala
 
   def compile: ClassLoader = {
     cacheRuntimeSources(sourceBuffer.toArray)

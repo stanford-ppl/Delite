@@ -238,11 +238,13 @@ object CppMultiLoopHeaderGenerator {
   def className(op: OP_MultiLoop) = "MultiLoopHeader_" + op.id
 
   private[kernels] val headerList = new ArrayBuffer[String]
-  headerList += "#include \"cppHeader.hpp\"\n"
+  headerList += "#include \"" + Targets.Cpp + "helperFuncs.h\"\n"
 
   def headerFile = "multiLoopHeaders"
   def createHeaderFile() = {
     CppCompile.addHeader(headerList.mkString(""),headerFile)
   }
+
+  def clear() { headerList.clear }
 
 }

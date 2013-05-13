@@ -1,33 +1,33 @@
-#ifndef _LIST_H_
-#define _LIST_H_
+#ifndef _CUDA_LIST_H_
+#define _CUDA_LIST_H_
 
 #include "DeliteCuda.h"
 
 #include <stdlib.h>
 
 template <class T>
-class List {
+class cudaList {
 public:
     T *data;
     int length;
 
     // Constructor
-    __host__ __device__ List(void) {
+    __host__ __device__ cudaList(void) {
       length = 0;
       data = NULL;
     }
 
-    __device__ List(int _length, T *ptr, int idx) {
+    __device__ cudaList(int _length, T *ptr, int idx) {
       length = _length;
       data = ptr + idx*_length;
     }
 
-    __host__ List(int _length) {
+    __host__ cudaList(int _length) {
         length = _length;
         DeliteCudaMalloc((void**)&data,length*sizeof(T));
     }
 
-    __host__ __device__ List(int _length, T *_data) {
+    __host__ __device__ cudaList(int _length, T *_data) {
         length = _length;
         data = _data;
     }

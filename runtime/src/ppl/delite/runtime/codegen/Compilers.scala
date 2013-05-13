@@ -5,7 +5,6 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.ops.Sync
 import ppl.delite.runtime.graph.targets.Targets
-import ppl.delite.runtime.codegen.hosts.Hosts
 import ppl.delite.runtime.scheduler.{OpHelper, StaticSchedule, PartialSchedule}
 
 /**
@@ -47,7 +46,8 @@ object Compilers {
     if (Config.numCpp > 0) checkRequestedResource(cppSchedule, Targets.Cpp)
     CppExecutableGenerator.collectInputTypesMap(graph)
     CppExecutableGenerator.makeExecutables(cppSchedule, graph.kernelPath)
-
+    CppMultiLoopHeaderGenerator.clear()
+    
     CudaExecutableGenerator.typesMap = Map[Targets.Value, Map[String,String]]()
     val cudaSchedule = schedule.slice(Config.numThreads+Config.numCpp, Config.numThreads+Config.numCpp+Config.numCuda)
     if (Config.numCuda > 0) checkRequestedResource(cudaSchedule, Targets.Cuda)

@@ -46,7 +46,7 @@ object SingleTask_GPU_Generator { //extends CudaGPUExecutableGenerator {
     val out = new StringBuilder
 
     out.append("#include <cuda.h>\n")
-    out.append("#include \"helperFuncs.h\"\n")
+    out.append("#include \"" + Targets.Cuda + "helperFuncs.h\"\n")
 
     out.append("__global__ void ")
     out.append(op.task)

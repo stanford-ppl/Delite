@@ -1,7 +1,5 @@
 package ppl.delite.runtime.graph.targets
 
-import ppl.delite.runtime.codegen.hosts.Hosts
-
 /**
  * Author: Kevin J. Brown
  * Date: Dec 4, 2010
@@ -22,7 +20,7 @@ object Targets extends Enumeration {
   /**
    * Return the value of a target
    */
-  def target(s: String): Value = s.toLowerCase() match {
+  def apply(s: String): Value = s.toLowerCase() match {
     case "scala" => Scala
     case "cuda" => Cuda
     case "opencl" => OpenCL
@@ -58,33 +56,38 @@ object Targets extends Enumeration {
   def unitType(target: Value): String = {
     target match {
       case Scala => "Unit"
-      case Cuda => "void"
-      case OpenCL => "void"
-      case Cpp => "void"
+      case Cuda | OpenCL | Cpp => "void"
     }
   }
 
+
   def isPrimitiveType(scalaType: String): Boolean = scalaType match { //should include Target type in determination, but for now everyone agrees
-    case "Unit" => true
-    case "Int" => true
-    case "Long" => true
-    case "Float" => true
-    case "Double" => true
-    case "Boolean" => true
-    case "Short" => true
-    case "Char" => true
-    case "Byte" => true
+    case "Boolean" | "Byte" | "Char" | "Short" | "Int" | "Long" | "Float" | "Double" | "Unit" => true
     case _ => false
   }
 
-  def getHostType(target: Value): Hosts.Value = {
+  def getHostTarget(target: Value): Targets.Value = {
     target match {
-      case Targets.Scala => Hosts.Scala
-      case Targets.Cpp => Hosts.Cpp
-      case Targets.Cuda => Hosts.Cpp
-      case Targets.OpenCL => Hosts.Cpp
-      case _ => throw new RuntimeException("Cannot find a host type for target " + target)
+      case Targets.Scala => Targets.Scala
+      case Targets.Cpp => Targets.Cpp
+      case Targets.Cuda => Targets.Cpp
+      case Targets.OpenCL => Targets.Cpp
+      case _ => throw new IllegalArgumentException("Cannot find a host target for target " + target)
     }
   }
+
+  def getHostTarget(target: String): Targets.Value = getHostTarget(Targets(target))
+  
+  /*
+  def getCompiler(target: Value): CodeCache = {
+    target match {
+      case Targets.Scala => ScalaCompile
+      case Targets.Cuda => CudaCompile
+      case Targets.OpenCL => OpenCLCompile
+      case Targets.Cpp => CppCompile
+      case _ => throw new IllegalArgumentException("Cannot find a compiler for target " + target)
+    }
+  }
+  */
 
 }

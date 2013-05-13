@@ -72,8 +72,10 @@ def stage(runner, params, opts):
     if opts.no_blas == False:
         java_opts = java_opts + " -Ddelite.extern.blas"
     if opts.cuda == True:
+        java_opts = java_opts + " -Ddelite.generate.cpp"
         java_opts = java_opts + " -Ddelite.generate.cuda"
     if opts.opencl == True:
+        java_opts = java_opts + " -Ddelite.generate.cpp"
         java_opts = java_opts + " -Ddelite.generate.opencl"
     if opts.cpp == True:
         java_opts = java_opts + " -Ddelite.generate.cpp"

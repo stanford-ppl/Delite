@@ -1,27 +1,22 @@
-#ifndef _HOST_LIST_H_
-#define _HOST_LIST_H_
+#ifndef _CPP_DELITEARRAY_H_
+#define _CPP_DELITEARRAY_H_
 
 #include <stdlib.h>
 #include <string.h>
 
 template <class T>
-class HostList {
+class cppDeliteArray {
 public:
     T *data;
     int length;
 
     // Constructor
-    HostList(void) {
-      length = 0;
-      data = NULL;
-    }
-
-    HostList(int _length) {
+    cppDeliteArray(int _length) {
         length = _length;
         data = (T *)malloc(length*sizeof(T));
     }
 
-    HostList(T *_data, int _length) {
+    cppDeliteArray(T *_data, int _length) {
         length = _length;
         data = _data;
     }
@@ -46,15 +41,15 @@ public:
     void dcUpdate(int idx, T value) {
         data[idx] = value;
     }
-
+    
     // Additional functions
-    void copy(int srcOffset, HostList<T> *dest, int destOffset, int length) {
+    void copy(int srcOffset, cppDeliteArray<T> *dest, int destOffset, int length) {
       memcpy(dest->data + destOffset, data + srcOffset, sizeof(T) * length);
     }
 
-    HostList<T> *arrayunion(HostList<T> *rhs) {
+    cppDeliteArray<T> *arrayunion(cppDeliteArray<T> *rhs) {
       int newLength = length + rhs->length;
-      HostList<T> *result = new HostList<T>(newLength);
+      cppDeliteArray<T> *result = new cppDeliteArray<T>(newLength);
       int acc = 0;
       for(int i=0; i<length; i++) {
         T elem = data[i];
@@ -79,9 +74,9 @@ public:
       return result;
     }
 
-    HostList<T> *intersect(HostList<T> *rhs) {
+    cppDeliteArray<T> *intersect(cppDeliteArray<T> *rhs) {
       int newLength = max(length, rhs->length);
-      HostList<T> *result = new HostList<T>(newLength);
+      cppDeliteArray<T> *result = new cppDeliteArray<T>(newLength);
       int acc = 0;
       for(int i=0; i<length; i++)
         for(int j=0; j<rhs->length; j++) 
@@ -91,8 +86,8 @@ public:
       return result;
     }
     
-    HostList<T> *take(int n) {
-      HostList<T> *result = new HostList<T>(n);
+    cppDeliteArray<T> *take(int n) {
+      cppDeliteArray<T> *result = new cppDeliteArray<T>(n);
       memcpy(result->data, data, sizeof(T) * n);
       return result;
     }

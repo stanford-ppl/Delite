@@ -59,8 +59,13 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
   private def scheduleMultiCore(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resourceList: Seq[Int]) {
     if (op.isDataParallel)
       split(op, graph, schedule, resourceList)
-    else
-      cluster(op, schedule)
+    else {
+      cluster(op, schedule, resourceList)
+      Compilers(OpHelper.scheduledTarget(resourceList(0))) match {
+        case c:CCompile => c.addKernel(op.id)
+        case _ => //
+      }
+    }
   }
 
   private def scheduleGPU(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
@@ -78,23 +83,23 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
 
   private var nextThread = 0
 
-  private def cluster(op: DeliteOP, schedule: PartialSchedule) {
+  private def cluster(op: DeliteOP, schedule: PartialSchedule, resourceList: Seq[Int]) {
     //look for best place to put this op (simple nearest-neighbor clustering)
     var i = 0
     var notDone = true
     val deps = op.getDependencies
-    while (i < numCPUs && notDone) {
-      if (deps.contains(schedule(i).peekLast)) {
-        scheduleOn(op, schedule, i)
+    while (i < resourceList.length && notDone) {
+      if (deps.contains(schedule(resourceList(i)).peekLast)) {
+        scheduleOn(op, schedule, resourceList(i))
         notDone = false
-        if (nextThread == i) nextThread = (nextThread + 1) % numCPUs
+        if (nextThread == i) nextThread = (nextThread + 1) % resourceList.length
       }
       i += 1
     }
     //else submit op to next thread in the rotation (round-robin)
     if (notDone) {
-      scheduleOn(op, schedule, nextThread)
-      nextThread = (nextThread + 1) % numCPUs
+      nextThread = (nextThread + 1) % resourceList.length
+      scheduleOn(op, schedule, resourceList(nextThread))
     }
   }
 
@@ -114,10 +119,10 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
   }
 
   private def scheduleOnTarget(op: DeliteOP) = {
-    if (scheduleOnGPU(op)) {
+    if (scheduleOnGPU(op)) {   
       if (op.supportsTarget(Targets.Cuda)) Targets.Cuda else Targets.OpenCL
     }
-    else if (op.isDataParallel && op.supportsTarget(Targets.Cpp) && numCpp > 0) Targets.Cpp
+    else if (op.supportsTarget(Targets.Cpp) && numCpp > 0) Targets.Cpp
     else Targets.Scala
   }
 

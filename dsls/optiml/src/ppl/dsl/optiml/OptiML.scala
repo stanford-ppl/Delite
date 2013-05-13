@@ -321,7 +321,9 @@ trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase wit
   import IR._
 }
 
-trait OptiMLCodeGenC extends OptiLACodeGenC with OptiMLCodeGenBase with OptiMLCCodeGenPkg with CGenIndexVectorOps with CGenIndexVectorDenseOps with OptiMLCppHostTransfer
+trait OptiMLCodeGenC extends OptiLACodeGenC with OptiMLCodeGenBase with OptiMLCCodeGenPkg with CGenIndexVectorOps 
+  with CGenVectorOps with CGenMatrixOps with CGenTrainingSetOps with DeliteCGenAllOverrides 
+  with OptiMLCppHostTransfer
 {
   val IR: DeliteApplication with OptiMLExp
   import IR._

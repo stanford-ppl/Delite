@@ -52,6 +52,14 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   lazy val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
                                                val generators = DeliteApplication.this.generators; }
 
+  /*
+  private def setHostTargetCodegen(devicegen: GenericFatCodegen{ val IR: DeliteApplication.this.type }) = {
+    generators find { _.deviceTarget == devicegen.hostTarget } match {
+      case Some(hostgen) => devicegen.hostTargetCodegen = hostgen
+      case _ => throw new Exception("Cannot find the host target codegen of " + devicegen.toString) 
+    }
+  }
+  */
 
   /*
    * analyses

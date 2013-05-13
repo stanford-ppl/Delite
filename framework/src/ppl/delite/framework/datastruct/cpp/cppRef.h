@@ -1,16 +1,12 @@
-#ifndef _HOST_DELITEREF_H_
-#define _HOST_DELITEREF_H_
+#ifndef _CPP_REF_H_
+#define _CPP_REF_H_
 
 template <class T>
-class HostRef {
+class cppRef {
 public:
     T data;
 
-    HostRef(void) {
-      data = NULL;
-    }
-
-    HostRef(T _data) {
+    cppRef(T _data) {
       data = _data;
     }
 

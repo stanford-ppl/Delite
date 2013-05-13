@@ -1,27 +1,27 @@
-#ifndef _HOST_DELITEARRAY_H_
-#define _HOST_DELITEARRAY_H_
+#ifndef _CPP_LIST_H_
+#define _CPP_LIST_H_
 
 #include <stdlib.h>
 #include <string.h>
 
 template <class T>
-class HostDeliteArray {
+class cppList {
 public:
     T *data;
     int length;
 
     // Constructor
-    HostDeliteArray(void) {
+    cppList(void) {
       length = 0;
       data = NULL;
     }
 
-    HostDeliteArray(int _length) {
+    cppList(int _length) {
         length = _length;
         data = (T *)malloc(length*sizeof(T));
     }
 
-    HostDeliteArray(T *_data, int _length) {
+    cppList(T *_data, int _length) {
         length = _length;
         data = _data;
     }
@@ -48,13 +48,13 @@ public:
     }
 
     // Additional functions
-    void copy(int srcOffset, HostDeliteArray<T> *dest, int destOffset, int length) {
+    void copy(int srcOffset, cppList<T> *dest, int destOffset, int length) {
       memcpy(dest->data + destOffset, data + srcOffset, sizeof(T) * length);
     }
 
-    HostDeliteArray<T> *arrayunion(HostDeliteArray<T> *rhs) {
+    cppList<T> *arrayunion(cppList<T> *rhs) {
       int newLength = length + rhs->length;
-      HostDeliteArray<T> *result = new HostDeliteArray<T>(newLength);
+      cppList<T> *result = new cppList<T>(newLength);
       int acc = 0;
       for(int i=0; i<length; i++) {
         T elem = data[i];
@@ -79,9 +79,9 @@ public:
       return result;
     }
 
-    HostDeliteArray<T> *intersect(HostDeliteArray<T> *rhs) {
+    cppList<T> *intersect(cppList<T> *rhs) {
       int newLength = max(length, rhs->length);
-      HostDeliteArray<T> *result = new HostDeliteArray<T>(newLength);
+      cppList<T> *result = new cppList<T>(newLength);
       int acc = 0;
       for(int i=0; i<length; i++)
         for(int j=0; j<rhs->length; j++) 
@@ -91,8 +91,8 @@ public:
       return result;
     }
     
-    HostDeliteArray<T> *take(int n) {
-      HostDeliteArray<T> *result = new HostDeliteArray<T>(n);
+    cppList<T> *take(int n) {
+      cppList<T> *result = new cppList<T>(n);
       memcpy(result->data, data, sizeof(T) * n);
       return result;
     }

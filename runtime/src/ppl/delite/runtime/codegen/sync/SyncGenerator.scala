@@ -38,6 +38,8 @@ trait SyncGenerator {
 
   protected def getOpSync(op: DeliteOP) = getSync(op, "op_"+op.id)
   protected def getSync(op: DeliteOP, name: String): String = { "Result"+name }
+
+  protected def mangledName(name: String) = name.replaceAll("\\s","").map(c => if(!c.isDigit && !c.isLetter) '_' else c) 
 }
 
 trait SyncObjectGenerator extends SyncGenerator with ExecutableGenerator {
