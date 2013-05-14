@@ -28,6 +28,9 @@ object DeliteBuild extends Build {
     libraryDependencies += "org.scala-lang" % "scala-actors" % virtScala, // for ScalaTest
     libraryDependencies += scalaTest,
     libraryDependencies += "org.apache.commons" % "commons-math" % "2.2",
+    libraryDependencies += "com.google.protobuf" % "protobuf-java" % "2.4.1",
+    libraryDependencies += "org.apache.mesos" % "mesos" % "0.9.0-incubating",    
+
     // used in delitec to access jars
     retrieveManaged := true,
     scalacOptions += "-Yno-generic-signatures",

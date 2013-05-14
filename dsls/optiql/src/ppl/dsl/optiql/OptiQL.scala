@@ -58,7 +58,7 @@ trait OptiQLScalaOpsPkgExp extends OptiQLScalaOpsPkg with MiscOpsExp with IOOpsE
 /**
  * Ops available only to the compiler, and not our applications
  */
-trait OptiQLCompiler extends OptiQL with IOOps with SeqOps with Variables with While with DeliteArrayOps with DeliteArrayBufferCompilerOps {
+trait OptiQLCompiler extends OptiQL with IOOps with SeqOps with Variables with While with DeliteArrayOps with DeliteArrayBufferCompilerOps with DeliteFileReaderOps {
   this: OptiQLApplication with OptiQLExp =>
 }
 
@@ -66,9 +66,8 @@ trait OptiQLCompiler extends OptiQL with IOOps with SeqOps with Variables with W
  * This trait comprises the IR nodes for OptiQL and the code required to instantiate code generators
  */
 trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with TableOpsExp with DateOpsExp with DateImplOpsStandard with QueryableOpsExpOpt with OptiQLMiscOpsExp
-  with InputReaderOpsExp with InputReaderImplOpsStandard with DeliteCollectionOpsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DSArrayOpsExp 
-  with DeliteRestageOpsExp with DeliteAllOverridesExp 
-  with MultiloopSoATransformExp {
+  with InputReaderOpsExp with InputReaderImplOpsStandard with DeliteCollectionOpsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteFileReaderOpsExp with DSArrayOpsExp 
+  with DeliteRestageOpsExp with DeliteAllOverridesExp with MultiloopSoATransformExp {
 
   this: DeliteApplication with OptiQLApplication =>
 
@@ -152,18 +151,21 @@ trait OptiQLCodeGenRestage extends OptiQLScalaCodeGenPkg with DeliteCodeGenResta
 }
 
 trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg with ScalaGenOptiQLMiscOps with ScalaGenQueryableOps
-  with ScalaGenDeliteCollectionOps with ScalaGenDeliteOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDSArrayOps with DeliteScalaGenAllOverrides {
+  with ScalaGenDeliteCollectionOps with ScalaGenDeliteOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteFileReaderOps with ScalaGenDSArrayOps with DeliteScalaGenAllOverrides {
   val IR: DeliteApplication with OptiQLExp
 
-  override def remap[A](m: Manifest[A]): String = {    
-    m match {
-      case m if m.erasure.getSimpleName == "Date" => "Int"
-      case m if m.toString == "scala.Tuple2[Char, Char]" => "Int"
-      case m if m.toString.startsWith("scala.collection.immutable.Map") // HACK-ish, maybe use a DSL type instead
-        && remap(m.typeArguments(0)) == "Int" => "generated.scala.container.HashMapImpl[" + remap(m.typeArguments(0)) + "]"
+  override def remap[A](m: Manifest[A]): String = m match {
+    case m if m.erasure.getSimpleName == "Date" => "Int"
+    case m if m.toString == "scala.Tuple2[Char, Char]" => "Int"
+    case m if m.toString.startsWith("scala.collection.immutable.Map") // HACK-ish, maybe use a DSL type instead
+      && remap(m.typeArguments(0)) == "Int" => "generated.scala.container.HashMapImpl[" + remap(m.typeArguments(0)) + "]"
+    case _ => dsmap(super.remap(m))
+  }
 
-      case _ => dsmap(super.remap(m))
-    }   
+  //because we remapped object types to primitive types above
+  override def isPrimitiveType[A](m: Manifest[A]) = remap(m) match {
+    case "Boolean" | "Byte" | "Char" | "Short" | "Int" | "Long" | "Float" | "Double" => true
+    case _ => false
   }
 
   override def emitNode(sym: IR.Sym[Any], rhs: IR.Def[Any]) = rhs match {
@@ -196,12 +198,6 @@ trait OptiQLCodeGenCuda extends OptiQLCodeGenBase with OptiQLCudaCodeGenPkg
       case _ => super.remap(m)
     }
   }
-
-	override def getDSLHeaders: String = {
-    val out = new StringBuilder
-    out.toString
-	}
-
 }
 
 trait OptiQLCodeGenOpenCL extends OptiQLCodeGenBase with OptiQLOpenCLCodeGenPkg
@@ -218,9 +214,9 @@ trait OptiQLCodeGenOpenCL extends OptiQLCodeGenBase with OptiQLOpenCLCodeGenPkg
     }
   }
 
-	override def getDSLHeaders: String = {
+	override def getDataStructureHeaders(): String = {
     val out = new StringBuilder
-    out.toString
+    super.getDataStructureHeaders() + out.toString
 	}
 
 }

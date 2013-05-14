@@ -103,6 +103,13 @@ void tempCudaMemInit(double tempMemRate) {
   //cout << "tempMemSize:" << tempCudaMemSize << endl;
 }
 
+void tempCudaMemFree(void) {
+  if(cudaFree(tempCudaMemPtr) != cudaSuccess) {
+    cout << "FATAL (tempCudaMemFree): Failed to free temporary memory" << endl;
+    exit(-1);
+  }
+}
+
 void tempCudaMemReset(void) {
   tempCudaMemOffset = 0;
 }

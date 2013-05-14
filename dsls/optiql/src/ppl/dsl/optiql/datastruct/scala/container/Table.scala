@@ -1,14 +1,39 @@
 package ppl.dsl.optiql.datastruct.scala.container
 
+import ppl.delite.runtime.data._
+import scala.collection.mutable.HashMap
+
 object Table {
 
-  def printAsTable(m: AnyRef, max_rows: Int = 0) { // FIXME: max_rows not used!
+  def printAsTable(table: AnyRef, maxRows: Int = 0) {
 
     implicit val tableStr = new StringBuilder
-    val numRows = m.getClass.getMethod("size").invoke(m).asInstanceOf[Integer].intValue
-    val fields = m.getClass.getMethod("data").invoke(m)
-    val fieldStrs = fields.getClass.getDeclaredMethods.filter(_.getName.endsWith("_$eq")).map(_.getName.stripSuffix("_$eq"))
-    val columnSizes = getTableColSizes(fields, fieldStrs)
+    val numRows = math.min(table.getClass.getMethod("size").invoke(table).asInstanceOf[Integer].intValue, maxRows)
+    val data = table.getClass.getMethod("data").invoke(table)
+    val columnStrings = if (data.isInstanceOf[Array[_]]) getCaseClassFields(data.asInstanceOf[Array[_]](0).getClass) else getCaseClassFields(data.getClass)
+    val columnSizes = getTableColSizes(data, columnStrings, numRows)
+
+    def repeat(s: String, n:Int) {
+      for (i <- 0 until n) tableStr append s
+    }
+
+    def horizontalRule = {
+      for(size <- columnSizes.values)
+        repeat("=", size+1)
+      tableStr append "=\n"
+    }
+
+    def emitRecordAsRow(row: Int) {
+      tableStr append "| "
+
+      for(col <- columnStrings) {
+        val str = readArray(data, col, row)
+        tableStr append str
+        repeat(" ", columnSizes(col) - str.length - 1)
+        tableStr append "| "
+      }
+      tableStr append "\n"
+    }
 
     // Check if Table is empty
     if(numRows == 0) {
@@ -18,108 +43,60 @@ object Table {
       return
     }
 
-    def repeat(s: String, n:Int) {
-      //assert(n < 0 || n > 300, "Incorrect value supplied for n in repeat")
-      //todo for now, just ignore bad value of n
-      if(n < 0 || n > 300)
-        return
-      var idx = 0
-      while(idx != n) {
-        tableStr.append(s);
-        idx += 1
-      }
-    }
-
-    def horizontalRule = {
-      for(i <- 0 until columnSizes.size )
-        repeat("=",columnSizes(i)+1)
-      tableStr append("=\n")
-    }
-
-    def newLine = {
-      tableStr append("\n")
-    }
-
     horizontalRule
-    tableStr append("|")
-    for(i <- 0 until columnSizes.size) {
-      tableStr append( " " + fieldStrs(i))
-      repeat(" " , columnSizes(i) - fieldStrs(i).size - 1  )
-      tableStr append("|")
+    tableStr append "|"
+    for(col <- columnStrings) {
+      tableStr append (" " + col)
+      repeat(" " , columnSizes(col) - col.length - 1)
+      tableStr append "|"
     }
-    newLine
+    tableStr append "\n"
     horizontalRule
-    print(tableStr.toString)
-    tableStr.clear
 
     for(r <- 0 until numRows) {
-      emitRecordAsRow(r, columnSizes)
+      emitRecordAsRow(r)
     }
-
-    print(tableStr.toString)
-    tableStr.clear
 
     horizontalRule
     println(tableStr.toString)
+  }
 
-    def emitRecordAsRow(r: Int, columnSizes: Array[Int]) {
-      tableStr append("| ")
-      var str = ""
+  private def getCaseClassFields(clazz: Class[_]) = {
+    clazz.getDeclaredMethods.filter(_.getName.endsWith("_$eq")).map(_.getName.stripSuffix("_$eq"))
+  }
 
-      var idx = 0
-      for(f <- fieldStrs) {
-        str = readArray(fields.getClass.getMethod(f).invoke(fields), r)
-        tableStr append(str); repeat(" ", columnSizes(idx) - str.size - 1); tableStr append("| ")
-        idx += 1
-      }
-      tableStr append("\n")
+  private def readArray(x: Any, col: String, row: Int): String = x match {
+    case d: DeliteArray[_] if col != null => 
+      val e = d.readAt(row)
+      e.getClass.getMethod(col).invoke(e).toString
+    case d: DeliteArray[_] => 
+      d.readAt(row).toString
+    case a: Array[_] if col != null => 
+      val e = a(row)
+      e.getClass.getMethod(col).invoke(e).toString
+    case a: Array[_] =>
+      a(row).toString
+    case _ if col != null => 
+      readArray(x.getClass.getMethod(col).invoke(x), null, row)
+    case _ => 
+      throw new IllegalArgumentException(x.getClass.getSimpleName + " cannot be printed as a table")
+
+  }
+
+  private def getTableColSizes(data: Any, columnStrings: Array[String], numRows: Int) = {
+    val colSizes = new HashMap[String,Int]
+
+    //columns should be at least the size of the headers
+    for(col <- columnStrings) {
+      colSizes(col) = col.length + 2
     }
-  }
 
-  private def max(a: Int, b: Int) = if(a > b) a else b
-
-  private def readArray(a: Any, idx: Int) = a match {
-    case i: Array[Int] => i(idx).toString
-    case l: Array[Long] => l(idx).toString
-    case d: Array[Double] => d(idx).toString
-    case f: Array[Float] => f(idx).toString
-    case c: Array[Char] => c(idx).toString
-    case s: Array[Short] => s(idx).toString
-    case b: Array[Byte] => b(idx).toString
-    case z: Array[Boolean] => z(idx).toString
-    case r: Array[AnyRef] => r(idx).toString
-    case ar: AnyRef => throw new IllegalArgumentException(ar.getClass.getSimpleName + " cannot be printed as a table")
-  }
-
-  private def arrayToString(a: Any) = a match {
-    case i: Array[Int] => i map { e => e.toString }
-    case l: Array[Long] => l map { e => e.toString }
-    case d: Array[Double] => d map { e => e.toString }
-    case f: Array[Float] => f map { e => e.toString }
-    case c: Array[Char] => c map { e => e.toString }
-    case s: Array[Short] => s map { e => e.toString }
-    case b: Array[Byte] => b map { e => e.toString }
-    case z: Array[Boolean] => z map { e => e.toString }
-    case r: Array[AnyRef] => r map { e => e.toString }
-    case ar: AnyRef => throw new IllegalArgumentException(ar.getClass.getSimpleName + " cannot be printed as a table")
-  }
-
-  private def getTableColSizes(fields: AnyRef, fieldStrs: Array[String]) = {
-    val colSizes = new Array[Int](fieldStrs.length)
-
-    //Columns should be at least the size of the headers
-    var idx = 0
-    for(f <- fieldStrs) {
-      colSizes(idx) = max(colSizes(idx), f.length + 2)
-      idx += 1
-    }
     //columns should be at least the size of maximal element
-    idx = 0
-    for (f <- fieldStrs) {
-      for (d <- arrayToString(fields.getClass.getMethod(f).invoke(fields))) {
-        colSizes(idx) = max(colSizes(idx), d.length + 2)
+    for (col <- columnStrings) {
+      for (j <- 0 until numRows) {
+        val d = readArray(data, col, j)
+        colSizes(col) = math.max(colSizes(col), d.length + 2)
       }
-      idx += 1
     }
 
     colSizes

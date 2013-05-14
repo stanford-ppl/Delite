@@ -144,8 +144,7 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
   
   case class DeliteILForeach[A:Manifest](size: Exp[Int], ffunc: Exp[Int] => Exp[Unit]) extends DeliteOpLoop[Unit] {
     lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
-      func = reifyEffects(ffunc(v)),
-      sync = reifyEffects(List[Any]())
+      func = reifyEffects(ffunc(v))   
     ))    
     
     val mA = manifest[A]

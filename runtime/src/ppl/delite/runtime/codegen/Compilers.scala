@@ -6,6 +6,7 @@ import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.ops.Sync
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.scheduler.{OpHelper, StaticSchedule, PartialSchedule}
+import ppl.delite.runtime.DeliteMesosExecutor
 
 /**
  * Author: Kevin J. Brown
@@ -33,12 +34,17 @@ object Compilers {
     //TODO: this is a poor method of separating CPU from GPU, should be encoded - essentially need to loop over all nodes
     val schedule = graph.schedule
 
-    assert((Config.numThreads + (if(graph.targets(Targets.Cpp)) Config.numCpp else 0) + (if(graph.targets(Targets.Cuda)) Config.numCuda else 0) + (if(graph.targets(Targets.OpenCL)) Config.numOpenCL else 0)) == schedule.numResources)
+    if(Config.clusterMode!=1) assert((Config.numThreads + (if(graph.targets(Targets.Cpp)) Config.numCpp else 0) + (if(graph.targets(Targets.Cuda)) Config.numCuda else 0) + (if(graph.targets(Targets.OpenCL)) Config.numOpenCL else 0)) == schedule.numResources)
     Sync.addSync(graph)
     
     val scalaSchedule = schedule.slice(0, Config.numThreads)
     if (Config.numThreads > 0) checkRequestedResource(scalaSchedule, Targets.Scala)
-    ScalaExecutableGenerator.makeExecutables(scalaSchedule, graph.kernelPath)
+    
+    //TODO: Fix this!
+    if(Config.clusterMode != 2 || Config.numCuda == 0) 
+      ScalaExecutableGenerator.makeExecutables(scalaSchedule, graph.kernelPath)
+    else 
+      new ScalaMainExecutableGenerator(0, graph.kernelPath).makeExecutable(PartialSchedule(1).apply(0))
 
     // Hack to collect global inputTypesMap (TODO: Get rid of this)
     CppExecutableGenerator.typesMap = Map[Targets.Value, Map[String,String]]()
@@ -66,6 +72,7 @@ object Compilers {
     if (Config.numOpenCL>0 && graph.targets(Targets.OpenCL)) OpenCLCompile.compile()
 
     val classLoader = ScalaCompile.compile
+    DeliteMesosExecutor.classLoader = classLoader
 
     val queues = StaticSchedule(schedule.numResources)
     for (i <- 0 until schedule.numResources if !schedule(i).isEmpty) {

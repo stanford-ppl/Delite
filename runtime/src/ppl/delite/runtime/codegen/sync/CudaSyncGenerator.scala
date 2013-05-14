@@ -6,6 +6,8 @@ import ppl.delite.runtime.graph.targets.{OS, Targets}
 import ppl.delite.runtime.codegen._
 import ppl.delite.runtime.scheduler.OpHelper._
 import ppl.delite.runtime.graph.targets.Targets._
+import ppl.delite.runtime.Config
+import ppl.delite.runtime.graph._
 
 trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JNIFuncs {
 
@@ -114,7 +116,16 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
     }
     else {
       out.append("%s %s%s = recvCPPfromJVM_%s(env%s,%s);\n".format(hostType,ref,getSymHost(dep,sym),mangledName(hostType),location,getSymCPU(sym)))
-      out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
+      //FIXIT: Using the length symbol for transpose is not safe in general because the symbol may not be emitted yet
+      if(Config.gpuOptTrans) {
+        // Use transpose copy
+        dep.stencilOrElse(sym)(Empty) match {
+          case Interval(start,stride,length) => out.append("%s %s%s = sendCudaTrans_%s(%s,%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym),getSymDevice(dep,length.trim)))
+          case _ => out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
+        }
+      }
+      else
+        out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
       out.append("cudaMemoryMap->insert(pair<void*,list<void*>*>(")
       out.append(getSymDevice(dep,sym))
       out.append(",lastAlloc));\n")
@@ -158,6 +169,15 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
     else if(isPrimitiveType(op.outputType(sym))) {
       out.append("%s %s = recvCuda_%s(%s);\n".format(getCPrimitiveType(op.outputType(sym)),getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
       out.append("%s %s = (%s)%s;\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),getJNIType(op.outputType(sym)),getSymHost(op,sym)))
+    }
+    else if(devType.startsWith("DeliteArray<")) {
+      devType match { //TODO: Fix this for nested object types
+        case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" => 
+          out.append("Host%s *%s = recvCuda_%s(%s);\n".format(devType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+        case _ => //DeliteArrayObject Type
+          out.append("HostDeliteArray< Host%s  *%s = recvCuda_%s(%s);\n".format(devType.drop(13),getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+      }
+      out.append("%s %s = sendCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))
     }
     else {
       out.append("%s *%s = recvCuda_%s(%s);\n".format(hostType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))

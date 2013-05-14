@@ -52,7 +52,23 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
       out.append("\tDeliteCudaMemcpyHtoDAsync(sym_dev->data, hostPtr, sym->length*sizeof(%s));\n".format(remap(typeArg)))
       out.append("\treturn sym_dev;\n")
       out.append("}\n")
-      (signature+";\n", out.toString)
+      val signatureT = "%s *sendCudaTrans_%s(%s *sym, int stride)".format(remap(tp),mangledName(remap(tp)),remapHost(tp))
+      out.append(signatureT + " {\n")
+      out.append("\t%s *hostPtr;\n".format(remap(typeArg)))
+      out.append("\tDeliteCudaMallocHost((void**)&hostPtr,sym->length*sizeof(%s));\n".format(remap(typeArg)))
+      out.append("\tint numCols = stride;\n")
+      out.append("\tint numRows = sym->length / stride;\n")
+      out.append("\tfor(int i=0; i<numRows; i++) {\n")
+      out.append("\t\tfor(int j=0; j<numCols; j++) {\n")
+      out.append("\t\t\thostPtr[j*numRows+i] = sym->data[i*numCols+j];\n")
+      out.append("\t\t}\n")
+      out.append("\t}\n")
+      out.append("\t%s *sym_dev = new %s(sym->length);\n".format(remap(tp),remap(tp)))
+      out.append("\tsym_dev->offset = 0; sym_dev->stride = numRows; sym_dev->flag = numCols;\n")
+      out.append("\tDeliteCudaMemcpyHtoDAsync(sym_dev->data, hostPtr, sym->length*sizeof(%s));\n".format(remap(typeArg)))
+      out.append("\treturn sym_dev;\n")
+      out.append("}\n")
+      (signature+";\n" + signatureT+";\n", out.toString)
     }
     else {
       super.emitSendSlave(tp)
@@ -93,18 +109,30 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
       val typeArg = tp.typeArguments.head
       val signature = "%s *recvCuda_%s(%s *sym_dev)".format(remapHost(tp),mangledName(remap(tp)),remap(tp))
       out.append(signature + " {\n")
-      out.append("\t%s *hostPtr;\n".format(remap(typeArg)))
-      out.append("\tDeliteCudaMallocHost((void**)&hostPtr,sym_dev->length*sizeof(%s));\n".format(remap(typeArg)))
-      out.append("\tDeliteCudaMemcpyDtoHAsync(hostPtr, sym_dev->data, sym_dev->length*sizeof(%s));\n".format(remap(typeArg)))
-      out.append("\t%s *sym = new %s(sym_dev->length);\n".format(remapHost(tp),remapHost(tp)))
-      out.append("\tmemcpy(sym->data,hostPtr,sym->length*sizeof(%s));\n".format(remap(typeArg)))
-      out.append("\treturn sym;\n")
+      if(isPrimitiveType(typeArg)) {
+        out.append("\t%s *hostPtr;\n".format(remap(typeArg)))
+        out.append("\tDeliteCudaMallocHost((void**)&hostPtr,sym_dev->length*sizeof(%s));\n".format(remap(typeArg)))
+        out.append("\tDeliteCudaMemcpyDtoHAsync(hostPtr, sym_dev->data, sym_dev->length*sizeof(%s));\n".format(remap(typeArg)))
+        out.append("\t%s *sym = new %s(sym_dev->length);\n".format(remapHost(tp),remapHost(tp)))
+        out.append("\tmemcpy(sym->data,hostPtr,sym->length*sizeof(%s));\n".format(remap(typeArg)))
+        out.append("\treturn sym;\n")
+      }  
+      else {
+        out.append("\tassert(false);\n") //check this functionality
+        out.append("\t%s *sym = new %s(sym_dev->length);\n".format(remapHost(tp),remapHost(tp)))
+        out.append("\t%s *temp = (%s*)malloc(sizeof(%s*)*sym_dev->length);\n".format(remapHost(typeArg),remapHost(typeArg),remapHost(typeArg)))
+        out.append("\tDeliteCudaMemcpyDtoHAsync((void*)temp, (void*)(sym_dev->data), sym_dev->length*sizeof(%s));\n".format(remap(typeArg)))
+        out.append("\tsym->length = sym_dev->length;\n")
+        out.append("\tfor(int i=0; i<sym->length; i++) {\n")
+        out.append("\t\tsym->data[i] = *recvCuda_%s(temp+i);\n".format(mangledName(remap(typeArg))))
+        out.append("\t}\n")
+        out.append("\treturn sym;\n")
+      }
       out.append("}\n")
       (signature+";\n", out.toString)
     }
-    else {
+    else
       super.emitRecvSlave(tp)
-    }
   }
 
   /*

@@ -9,6 +9,7 @@
 /local.properties
 delite.properties
 target/
+config/
 *lib_managed
 *src_managed
 project/boot
@@ -16,7 +17,6 @@ project/plugins/project
 runtime/project/boot
 generated
 generatedCache
-data/
 *.deg
 *.debug
 *.pgm

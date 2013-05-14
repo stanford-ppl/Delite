@@ -46,7 +46,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
   //def densematrix_obj_zerosf_impl(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix[Float](numRows, numCols)
   def densematrix_obj_ones_impl(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix[Double](numRows, numCols) mmap { e => 1. }
   def densematrix_obj_onesf_impl(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix[Float](numRows, numCols) mmap { e => 1f}
-  def densematrix_obj_rand_impl(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix[Double](numRows, numCols) mmap { e => random[Double] }
+  def densematrix_obj_rand_impl(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix[Double](numRows, numCols) /*m*/map { e => random[Double] }
   def densematrix_obj_randf_impl(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix[Float](numRows, numCols) mmap { e => random[Float] }
   def densematrix_obj_randn_impl(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix[Double](numRows, numCols) mmap { e => randomGaussian }
   def densematrix_obj_randnf_impl(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix[Float](numRows, numCols) mmap { e => randomGaussian.floatValue() }

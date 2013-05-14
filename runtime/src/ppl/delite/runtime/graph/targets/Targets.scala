@@ -1,5 +1,7 @@
 package ppl.delite.runtime.graph.targets
 
+import ppl.delite.runtime.Config
+
 /**
  * Author: Kevin J. Brown
  * Date: Dec 4, 2010
@@ -66,6 +68,19 @@ object Targets extends Enumeration {
     case _ => false
   }
 
+  def getClassType(scalaType: String): Class[_] = scalaType match {
+    case "Unit" => java.lang.Void.TYPE
+    case "Int" => java.lang.Integer.TYPE
+    case "Long" => java.lang.Long.TYPE
+    case "Float" => java.lang.Float.TYPE
+    case "Double" => java.lang.Double.TYPE
+    case "Boolean" => java.lang.Boolean.TYPE
+    case "Short" => java.lang.Short.TYPE
+    case "Char" => java.lang.Character.TYPE
+    case "Byte" => java.lang.Byte.TYPE
+    case _ => Class.forName(scalaType)
+  }
+
   def getHostTarget(target: Value): Targets.Value = {
     target match {
       case Targets.Scala => Targets.Scala
@@ -78,16 +93,14 @@ object Targets extends Enumeration {
 
   def getHostTarget(target: String): Targets.Value = getHostTarget(Targets(target))
   
-  /*
-  def getCompiler(target: Value): CodeCache = {
+  def resourceIDs(target: Value): Seq[Int] = {
     target match {
-      case Targets.Scala => ScalaCompile
-      case Targets.Cuda => CudaCompile
-      case Targets.OpenCL => OpenCLCompile
-      case Targets.Cpp => CppCompile
-      case _ => throw new IllegalArgumentException("Cannot find a compiler for target " + target)
+      case Targets.Scala => 0 until Config.numThreads
+      case Targets.Cpp => Config.numThreads until Config.numThreads+Config.numCpp
+      case Targets.Cuda => Config.numThreads+Config.numCpp until Config.numThreads+Config.numCpp+Config.numCuda
+      case Targets.OpenCL => Config.numThreads+Config.numCpp+Config.numCuda until Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL
+      case _ => throw new RuntimeException("Cannot find a resource IDs for target " + target)
     }
   }
-  */
 
 }

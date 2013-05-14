@@ -4,6 +4,7 @@ import java.io.File
 import _root_.scala.util.parsing.json.JSON
 import ops._
 import targets._
+import ppl.delite.runtime.Config
 import ppl.delite.runtime.Delite
 import ppl.delite.runtime.scheduler.PartialSchedule
 import collection.mutable.{HashSet, HashMap}
@@ -47,6 +48,7 @@ object DeliteTaskGraph {
       opType match {
         case "SingleTask" => processCommon(op, "OP_Single")
         case "External" => processCommon(op, "OP_External")
+        case "Input" => processCommon(op, "OP_FileReader")
         case "MultiLoop" => processCommon(op, "OP_MultiLoop")
         case "Foreach" => processCommon(op, "OP_Foreach")
         case "Conditional" => processIfThenElseTask(op)
@@ -115,14 +117,14 @@ object DeliteTaskGraph {
     graph._ops.get(sym) match {
       case Some(op) => op
       case None => {
-        val in = findOp(sym)
+        val in = findOp(sym)(graph.superGraph)
         graph._inputs.getOrElseUpdate(sym, new OP_Input(in))
       }
     }
   }
 
   def findOp(sym: String)(implicit firstGraph: DeliteTaskGraph): DeliteOP = {
-    var graph = firstGraph.superGraph
+    var graph = firstGraph
     while (graph != null) {
       graph._ops.get(sym) match {
         case Some(op) => return op
@@ -152,9 +154,14 @@ object DeliteTaskGraph {
     val newop = opType match {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap, inputTypesMap)
       case "OP_External" => new OP_External(id, "kernel_"+id, resultMap, inputTypesMap)
+      case "OP_FileReader" => new OP_FileReader(id, "kernel_"+id, resultMap, inputTypesMap)
       case "OP_MultiLoop" =>
         val size = getFieldString(op, "sizeValue")
         val sizeIsConst = getFieldString(op, "sizeType") == "const"
+        if (resultMap(Targets.Scala).values.contains("Unit")) //FIXME: handle foreaches
+          if (Config.clusterMode == 1) println("WARNING: ignoring stencil of op with Foreach: " + id)
+        else
+          processStencil(op)
         new OP_MultiLoop(id, size, sizeIsConst, "kernel_"+id, resultMap, inputTypesMap, getFieldBoolean(op, "needsCombine"), getFieldBoolean(op, "needsPostProcess"))
       case "OP_Foreach" => new OP_Foreach(id, "kernel_"+id, resultMap, inputTypesMap)
       case other => error("OP Type not recognized: " + other)
@@ -249,6 +256,45 @@ object DeliteTaskGraph {
       }
     }
     inputTypesMap
+  }
+
+  //FIXME: should be based on compiler IR node type rather than just output type
+  def isPrimitiveType(tp: String) = tp match {
+    case "Int" | "Long" | "Float" | "Double" | "Char" | "Short" | "Byte" | "Boolean" | "Unit" => true
+    case _ => false
+  }
+
+  def processStencil(op: Map[Any,Any])(implicit graph: DeliteTaskGraph) = {
+    val stencilMap = getFieldMap(op, "stencil")
+    for (in <- getFieldList(op, "inputs")) {
+      val localStencil = Stencil(getFieldString(stencilMap, in))
+      traverseInputs(findOp(in), in)
+
+      def updateStencil(op: DeliteOP, in: String) {
+        if (localStencil != Empty && (op.isInstanceOf[OP_FileReader] || op.isInstanceOf[OP_MultiLoop]))
+          if (Config.clusterMode == 1) println("adding " + localStencil + " to output " + in + " of op " + op)
+        val globalStencil = op.stencilMap
+        if (globalStencil contains in) globalStencil(in) = globalStencil(in) combine localStencil
+        else globalStencil(in) = localStencil
+      }
+
+      //alias propagation, seems very sketchy...
+      def traverseInputs(op: DeliteOP, in: String)(implicit graph: DeliteTaskGraph) {
+        if (!isPrimitiveType(op.outputType)) {
+          updateStencil(op, in)
+          op match {
+            case o:OP_Single => 
+              o.getInputs.foreach(i => traverseInputs(findOp(i._2), i._2))
+            case o:OP_Condition => 
+              val resT = o.thenGraph.result._2
+              if (resT != null) traverseInputs(findOp(resT)(o.thenGraph), resT)(o.thenGraph)
+              val resE = o.elseGraph.result._2
+              if (resE != null) traverseInputs(findOp(resE)(o.elseGraph), resE)(o.elseGraph)
+            case _ => 
+          }
+        }
+      }
+    }
   }
 
   def combineTypesMap(inMaps: List[Map[Targets.Value,Map[String,String]]]): Map[Targets.Value, Map[String,String]] = {
@@ -581,6 +627,6 @@ class DeliteTaskGraph {
     _ops.values.flatMap(_ match {
       case m: OP_Nested => m.nestedGraphs.flatMap(g => g.totalOps)
       case o@_ => Seq(o)
-    }).toSet
+    }).toSet ++ inputOps
   }
 }

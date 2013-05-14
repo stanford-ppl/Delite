@@ -50,7 +50,7 @@ trait SyncObjectGenerator extends SyncGenerator with ExecutableGenerator {
 
   protected def addSyncObject(): Unit
 
-  protected[sync] def makeSyncObjects {
+  def makeSyncObjects {
     writeHeader()
     addSyncObject()
     writeFooter()

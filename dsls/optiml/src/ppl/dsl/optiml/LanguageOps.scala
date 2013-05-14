@@ -146,9 +146,10 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   /**
    * gradient descent
    */
-  def gradient(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
-               maxIter: Rep[Int] = unit(10000))(hyp: Rep[DenseVectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
-    = optiml_gradient(x, alpha, thresh, maxIter, hyp)
+  
+  def gradient(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), tol: Rep[Double] = unit(.0001),
+               maxIter: Rep[Int] = unit(10000))(hyp: (Interface[Vector[Double]],Interface[Vector[Double]]) => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
+    = optiml_gradient(x, alpha, tol, maxIter, hyp)
 
   // stochastic: block() updates every jth parameter for every ith training sample
   //    while not converged{
@@ -158,9 +159,9 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   // hypothesis function maps a training example to a prediction
 
   // stochastic can only be parallelized across features, which is generally << samples
-  def stochastic(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
-                 maxIter: Rep[Int] = unit(10000))(hyp: Rep[DenseVectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
-    = optiml_stochastic(x, alpha, thresh, maxIter, hyp)
+  def stochastic(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), tol: Rep[Double] = unit(.0001),
+                 maxIter: Rep[Int] = unit(10000))(hyp: (Interface[Vector[Double]],Interface[Vector[Double]]) => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
+    = optiml_stochastic(x, alpha, tol, maxIter, hyp)
 
   // batch: block() updates each jth parameter from the sum of all ith training samples
   //    while not converged{
@@ -170,19 +171,19 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
 
   // in batch, the sum(...) loops over the entire training set independently, which is where the parallelism comes from
   // batch can be parallized across samples
-  def batch(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
-               maxIter: Rep[Int] = unit(10000))(hyp: Rep[DenseVectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
-    = optiml_batch(x, alpha, thresh, maxIter, hyp)
+  def batch(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), tol: Rep[Double] = unit(.0001),
+               maxIter: Rep[Int] = unit(10000))(hyp: (Interface[Vector[Double]],Interface[Vector[Double]]) => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
+    = optiml_batch(x, alpha, tol, maxIter, hyp)
 
 
   def optiml_gradient(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                      maxIter: Rep[Int], hyp: Rep[DenseVectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
+                      maxIter: Rep[Int], hyp: (Interface[Vector[Double]],Interface[Vector[Double]]) => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
 
   def optiml_stochastic(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                        maxIter: Rep[Int], hyp: Rep[DenseVectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
+                        maxIter: Rep[Int], hyp: (Interface[Vector[Double]],Interface[Vector[Double]]) => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
 
   def optiml_batch(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                   maxIter: Rep[Int], hyp: Rep[DenseVectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
+                   maxIter: Rep[Int], hyp: (Interface[Vector[Double]],Interface[Vector[Double]]) => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
 
   // coordinate ascent: analogous to stochastic gradient descent, but updates m parameters (alphas(0)...alphas(m-1))
   // at each update, all but alpha(i) must be held constant, so there are dependencies between every iteration
@@ -396,11 +397,16 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
   
   // FIXME: peeling off the first iteration manually can prevent fusion because the LoopOp is 1 smaller than its cousins
+  // it also causes problems with the stencil analysis, since we have to account for the +1 offset on accesses.
   // TODO: what is the deired behavior if the range is empty?
   def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A])(implicit ctx: SourceContext) = {
-    val firstBlock = block(start)
-    val out = reflectPure(Sum(start+unit(1), end, block, firstBlock))
-    out + firstBlock
+    // val firstBlock = block(start)
+    // val out = reflectPure(Sum(start+unit(1), end, block, firstBlock))
+    // out + firstBlock
+     
+    // don't add it back in, just re-compute it to avoid the peeled iteration problems
+    val zero = block(start) 
+    reflectPure(Sum(start,end,block,zero))    
   }
 
   def optiml_sumif[R:Manifest:Arith:Cloneable,A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A])(implicit cs: CanSum[R,A], ctx: SourceContext) = {
@@ -522,53 +528,116 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
 
   /**
-   * gradient descent
+   * gradient descent for exponential family objective functions
    */
   private val MIN_BATCH_PROCS = 4
-  def optiml_gradient(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                      maxIter: Rep[Int], hyp: Rep[DenseVectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]] = {
+  def optiml_gradient(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double], tol: Rep[Double],
+                      maxIter: Rep[Int], hyp: (Interface[Vector[Double]],Interface[Vector[Double]]) => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]] = {
 
     val y = x.labels
     val numProcs = 8 //Delite.threadNum // dynamically set
     if (numProcs < MIN_BATCH_PROCS){
-      stochastic(x, alpha, thresh, maxIter)(hyp)
+      stochastic(x, alpha, tol, maxIter)(hyp)
     }
     else{
-      batch(x, alpha, thresh, maxIter)(hyp)
+      batch(x, alpha, tol, maxIter)(hyp)
     }
   }
 
-  def optiml_stochastic(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                        maxIter: Rep[Int], hyp: Rep[DenseVectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]] = {
+  def optiml_stochastic(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double], tol: Rep[Double],
+                        maxIter: Rep[Int], hyp: (Interface[Vector[Double]],Interface[Vector[Double]]) => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]] = {
 
     val y = x.labels
     val theta = Vector.zeros(x.numFeatures).mutable
-    untilconverged(theta, thresh, maxIter, unit(true)) { theta =>
-      for (i <- unit(0) until x.numSamples) {
-        for (j <- unit(0) until x.numFeatures ) {
+    untilconverged(theta, tol, maxIter, unit(true)) { theta =>
+      val mem = y - x.data.mapRowsToVector(row => hyp(theta, row))        
+      for (i <- unit(0) until x.numSamples) {        
+        for (j <- 0::x.numFeatures) {
           val tmp = x(i) // SourceContext hack
-          theta(j) = theta(j) + alpha*(y(i) - hyp(x(i)))*tmp(j)          
+          theta(j) = theta(j) + alpha*mem(i)*tmp(j)          
         }
       }
       theta
     }
   }
 
-  def optiml_batch(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                   maxIter: Rep[Int], hyp: Rep[DenseVectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]] = {
+  def optiml_batch(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double], tol: Rep[Double],
+                   maxIter: Rep[Int], hyp: (Interface[Vector[Double]],Interface[Vector[Double]]) => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]] = {
 
     val y = x.labels
-    val theta = Vector.zeros(x.numFeatures).mutable
-    untilconverged(theta, thresh, maxIter, unit(true)) { theta =>
-      for (j <- unit(0) until x.numFeatures) {        
+    val theta = Vector.zeros(x.numFeatures)
+    val iter = var_new(unit(0))        
+    
+    // naive
+    // with m = 10k, n = 10, iter = 100, ~1s after warmup
+    /*
+    val v = untilconverged(theta, tol, maxIter, unit(true)) { theta =>
+      iter += unit(1)
+      (unit(0)::x.numFeatures) { j => 
         val acc = sum(unit(0), x.numSamples) { i =>
           val tmp = x(i) // SourceContext hack
-          (y(i) - hyp(x(i))*tmp(j))   // parallel work
+          tmp(j)*(y(i) - hyp(theta,x(i))) // parallel work
         }
-        theta(j) = theta(j) + alpha*acc
+        theta(j) + alpha*acc
+      }      
+    }    
+    */
+            
+    // memoized
+    // with m = 10k, n = 10, iter = 100, ~.22s after warmup, same answer as above    
+    /*
+    val v = untilconverged(theta, tol, maxIter, unit(true)) { theta =>
+      iter += unit(1)
+      val mem = y - x.data.mapRowsToVector(row => hyp(theta, row))
+      val z = (unit(0)::x.numFeatures) { j => 
+        val acc = sum(unit(0), x.numSamples) { i =>
+          val tmp = x(i) // SourceContext hack
+          tmp(j)*mem(i)
+        }
+        // println("gradient(" + j + "): " + acc)
+        theta(j) + alpha*acc
       }
-      theta
-    }
+      // println("next value (b): ")
+      // z.pprint
+      z            
+    } 
+    */
+                                     
+    // inverted loops    
+    // with m = 10k, n = 10, iter = 100, ~.27s with sum after warmup
+    val v = untilconverged(theta, tol, maxIter, unit(true)) { cur => 
+      iter += unit(1)
+      // println("current theta: ")
+      // cur.pprint
+      
+      /* 
+      val gradient = sum(unit(0),x.numSamples) { i =>
+        // produces the correct answer (~.27s after warmup)
+        (x(i)*(y(i) - hyp(cur,x(i)))).Clone
+        
+        // produces the wrong answer (only correct on the first iteration)
+        // (x(i)*(y(i) - hyp(cur,x(i))))
+      } 
+      */      
+      
+      val gradient = ((0::x.numSamples) { i =>        
+        // no violated error, correct answer
+        (x(i)*(y(i) - hyp(cur,x(i)))).Clone
+        
+        // violated order of effects with soa, correct answer without soa (~.23s after warmup)
+        //(x(i)*(y(i) - hyp(cur,x(i))))        
+      }).sum
+            
+      val z = cur + alpha*gradient // note that each term in the gradient has opposite sign as in Spark
+      // println("gradient: ")
+      // gradient.pprint
+      // println("next value (c): ")
+      // z.pprint
+      z
+    }  
+        
+    println("(batch gradient descent) converged in " + iter + " iterations")
+    v    
   }
 
 

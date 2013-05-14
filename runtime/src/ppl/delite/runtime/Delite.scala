@@ -20,7 +20,11 @@ import tools.nsc.io._
 
 object Delite {
 
-  private var mainThread: Thread = null
+  private var mainThread: Thread = _
+  private var outstandingException: Exception = _
+
+  //TODO: Remove this. This is only used for cluster version GPU runtime code generation.
+  var inputArgs: Array[String] = _
 
   private def printArgs(args: Array[String]) {
     if(args.length == 0) {
@@ -36,10 +40,16 @@ object Delite {
   }
 
   def main(args: Array[String]) {
-    embeddedMain(args, Map())
+    if (Config.clusterMode == 1) //master (scheduler)
+      DeliteMesosScheduler.main(args)
+    else if (Config.clusterMode == 2) //slave (executor)
+      DeliteMesosExecutor.main(args)
+    else
+      embeddedMain(args, Map())
   }
 
   def embeddedMain(args: Array[String], staticData: Map[String,_]) {
+    inputArgs = args
     mainThread = Thread.currentThread
     
     printArgs(args)
@@ -53,15 +63,16 @@ object Delite {
     var executor: Executor = null
 
     def abnormalShutdown() {
-      executor.shutdown()
-      //if (!Config.noRegenerate)
-        //Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
+      if (executor != null) executor.shutdown()
+      if (!Config.noRegenerate && !Config.alwaysKeepCache)
+        Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
     }
 
     try {
 
       //load task graph
       val graph = loadDeliteDEG(args(0))
+      //val graph = new TestGraph
     
       //Print warning if there is no op that supports the target
       if(Config.numCpp>0 && !graph.targets(Targets.Cpp)) { Config.numCpp = 0; println("[WARNING] No Cpp target op is generated!") }
@@ -74,6 +85,7 @@ object Delite {
         case "ACC" => new Acc_StaticScheduler
         case "default" => {
           if (Config.numCpp+Config.numCuda+Config.numOpenCL==0 || ((graph.targets.size==1) && (graph.targets(Targets.Scala)))) new SMPStaticScheduler
+          else if (Config.clusterMode == 1) new SMPStaticScheduler
           else new Acc_StaticScheduler
         }
         case _ => throw new IllegalArgumentException("Requested scheduler is not recognized")
@@ -84,6 +96,7 @@ object Delite {
         case "ACC" => new SMP_Acc_Executor
         case "default" => {
           if (Config.numCpp+Config.numCuda+Config.numOpenCL==0 || ((graph.targets.size==1) && (graph.targets(Targets.Scala)))) new SMPExecutor
+          else if (Config.clusterMode == 1) new SMPExecutor
           else new SMP_Acc_Executor
         }
         case _ => throw new IllegalArgumentException("Requested executor is not recognized")
@@ -91,7 +104,6 @@ object Delite {
 
       executor.init() //call this first because could take a while and can be done in parallel
 
-      //val graph = new TestGraph
       Config.deliteBuildHome = graph.kernelPath
 
       //load kernels & data structures
@@ -107,19 +119,31 @@ object Delite {
       val executable = Compilers.compileSchedule(graph)
 
       //execute
-      val numTimes = Config.numRuns
-      for (i <- 1 to numTimes) {
-        println("Beginning Execution Run " + i)
-        val globalStart = System.currentTimeMillis
-        val globalStartNanos = System.nanoTime()
-        PerformanceTimer.start("all", false)
-        executor.run(executable)
-        EOP_Global.await //await the end of the application program
-        PerformanceTimer.stop("all", false)
-        PerformanceTimer.printAll(globalStart, globalStartNanos)
-        if (Config.dumpProfile) PerformanceTimer.dumpProfile(globalStart, globalStartNanos)
-        if (Config.dumpStats) PerformanceTimer.dumpStats()
-	    System.gc()
+      if (Config.clusterMode == 2) { //slave executor
+        //DeliteMesosExecutor.executor = executor.asInstanceOf[SMPExecutor].threadPool
+        if(executor.isInstanceOf[SMPExecutor])
+          DeliteMesosExecutor.executor = executor.asInstanceOf[SMPExecutor].threadPool
+        else {
+          DeliteMesosExecutor.executor = executor.asInstanceOf[SMP_Acc_Executor].smpExecutor.threadPool
+          executor.asInstanceOf[SMP_Acc_Executor].runAcc(executable)
+        }
+        DeliteMesosExecutor.awaitWork()
+      }
+      else { //master executor (including single-node execution)
+        val numTimes = Config.numRuns
+        for (i <- 1 to numTimes) {
+          println("Beginning Execution Run " + i)
+          val globalStart = System.currentTimeMillis
+          val globalStartNanos = System.nanoTime()
+          PerformanceTimer.start("all", false)
+          executor.run(executable)
+          EOP_Global.await //await the end of the application program
+          PerformanceTimer.stop("all", false)
+          PerformanceTimer.printAll(globalStart, globalStartNanos)
+          if (Config.dumpProfile) PerformanceTimer.dumpProfile(globalStart, globalStartNanos)
+          if (Config.dumpStats) PerformanceTimer.dumpStats()        
+          System.gc()
+        }
       }
 
       //println("Done Executing " + numTimes + " Runs")
@@ -130,7 +154,7 @@ object Delite {
       executor.shutdown()
     }
     catch {
-      case i: InterruptedException => abnormalShutdown(); throw i //a worker thread threw the original exception        
+      case i: InterruptedException => abnormalShutdown(); throw outstandingException //a worker thread threw the original exception        
       case e: Exception => abnormalShutdown(); throw e       
     }
     finally {
@@ -154,7 +178,8 @@ object Delite {
   }
 
   //abnormal shutdown
-  def shutdown() {
+  def shutdown(reason: Exception) {
+    outstandingException = reason
     mainThread.interrupt()
   }
 

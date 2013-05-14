@@ -3,6 +3,7 @@ package ppl.delite.framework.datastructures
 import virtualization.lms.internal.{Targets, Expressions, CppHostTransfer, CLikeCodegen, GenerationFailedException}
 import virtualization.lms.common.BaseGenStruct
 import virtualization.lms.internal.Targets._
+import ppl.delite.framework.Config
 
 trait DeliteCppHostTransfer extends CppHostTransfer {
   this: CLikeCodegen with CLikeGenDeliteStruct =>
@@ -40,9 +41,18 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             args = args + "Lgenerated/scala/"+ structName(elemtp) + ";"
             out.append("\t%s %s = sendCPPtoJVM_%s(env,sym->%s);\n".format(JNIType(elemtp),elem._1,mangledName(remapHost(elemtp)),elem._1))
           }
-          else { 
-            args = args + "["+JNITypeDescriptor(elemtp.typeArguments.head)
-            out.append("\t%s %s = sendCPPtoJVM_%s(env,sym->%s);\n".format(JNIType(elemtp),elem._1,mangledName(remapHost(elemtp)),elem._1))
+          else { // TODO: Fix this for cluster
+            if(Config.generateSerializable) { //FIX: Is this the cluster mode option?
+              if(isPrimitiveType(elemtp.typeArguments.head))
+                args = args + "Lppl/delite/runtime/data/DeliteArray" + elemtp.typeArguments.head + ";"
+              else 
+                args = args + "Lppl/delite/runtime/data/DeliteArrayObject;"
+              out.append("\t%s %s = sendCPPtoJVM_%s(env,sym->%s);\n".format(JNIType(elemtp),elem._1,mangledName(remapHost(elemtp)),elem._1))
+            }
+            else {
+              args = args + "["+JNITypeDescriptor(elemtp.typeArguments.head)
+              out.append("\t%s %s = sendCPPtoJVM_%s(env,sym->%s);\n".format(JNIType(elemtp),elem._1,mangledName(remapHost(elemtp)),elem._1))
+            }
           }
         }
         out.append("\tjclass cls = env->FindClass(\"generated/scala/%s\");\n".format(remapHost(tp).replaceAll(hostTarget,"")))
@@ -58,21 +68,53 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         val signature = "jobject sendCPPtoJVM_%s(JNIEnv *env, %s *sym)".format(mangledName(remapHost(tp)),remapHost(tp))
         out.append(signature + " {\n")  
         if(isPrimitiveType(typeArg)) {
-          out.append("\t%sArray arr = env->New%sArray(sym->length);\n".format(JNIType(typeArg),remapToJNI(typeArg)))
-          out.append("\t%s *dataPtr = (%s *)env->GetPrimitiveArrayCritical((%sArray)arr,0);\n".format(JNIType(typeArg),JNIType(typeArg),JNIType(typeArg)))
-          out.append("\tmemcpy(dataPtr, sym->data, sym->length*sizeof(%s));\n".format(remapHost(typeArg)))
-          out.append("\tenv->ReleasePrimitiveArrayCritical((%sArray)arr, dataPtr, 0);\n".format(JNIType(typeArg)))
-          out.append("\treturn arr;\n")
+          if(Config.generateSerializable) {
+            out.append("\t%sArray arr = env->New%sArray(sym->length);\n".format(JNIType(typeArg),remapToJNI(typeArg)))
+            out.append("\t%s *dataPtr = (%s *)env->GetPrimitiveArrayCritical((%sArray)arr,0);\n".format(JNIType(typeArg),JNIType(typeArg),JNIType(typeArg)))
+            out.append("\tmemcpy(dataPtr, sym->data, sym->length*sizeof(%s));\n".format(remapHost(typeArg)))
+            out.append("\tenv->ReleasePrimitiveArrayCritical((%sArray)arr, dataPtr, 0);\n".format(JNIType(typeArg)))
+            out.append("\tjclass cls = env->FindClass(\"ppl/delite/runtime/data/LocalDeliteArray%s\");\n".format(remapToJNI(typeArg)))
+            out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"([%s)V\");\n".format(JNITypeDescriptor(typeArg)))
+            out.append("\tjobject obj = env->NewObject(cls,mid,arr);\n")
+            out.append("\treturn obj;\n")
+          }
+          else {
+            out.append("\t%sArray arr = env->New%sArray(sym->length);\n".format(JNIType(typeArg),remapToJNI(typeArg)))
+            out.append("\t%s *dataPtr = (%s *)env->GetPrimitiveArrayCritical((%sArray)arr,0);\n".format(JNIType(typeArg),JNIType(typeArg),JNIType(typeArg)))
+            out.append("\tmemcpy(dataPtr, sym->data, sym->length*sizeof(%s));\n".format(remapHost(typeArg)))
+            out.append("\tenv->ReleasePrimitiveArrayCritical((%sArray)arr, dataPtr, 0);\n".format(JNIType(typeArg)))
+            out.append("\treturn arr;\n")
+          }
         }
         else {
-          out.append("\tjclass cls = env->FindClass(\"" + JNITypeDescriptor(typeArg) + "\");\n")
-          out.append("\tjobjectArray arr = env->NewObjectArray(sym->length,cls,0);\n")
-          out.append("\tfor(int i=0; i<sym->length; i++) {\n")
-          //TODO: Move the null check to other place? (e.g. struct type transfer and delitearray primitive type transfer)
-          out.append("\t\tjobject obj = (sym->data[i]==NULL) ? NULL : sendCPPtoJVM_%s(env, sym->data[i]);\n".format(mangledName(remapHost(typeArg))))
-          out.append("\t\tenv->SetObjectArrayElement(arr,i,obj);\n")
-          out.append("\t}\n")
-          out.append("\treturn arr;\n")
+          if(Config.generateSerializable) {
+            if (encounteredStructs.contains(structName(typeArg)))
+              out.append("\tjclass cls = env->FindClass(\"generated/scala/" + remap(typeArg).replaceAll(deviceTarget,"") + "$\");\n")
+            else
+              out.append("\tjclass cls = env->FindClass(\"" + JNITypeDescriptor(typeArg) + "\");\n")
+            out.append("\tjmethodID mid = env->GetMethodID(cls,\"createLocal\",\"(I)Lppl/delite/runtime/data/LocalDeliteArrayObject;\");\n")
+            out.append("\tjobject arr = env->CallObjectMethod(cls,mid,sym->length);\n")
+            out.append("\tjclass cls1 = env->GetObjectClass(arr);\n")
+            out.append("\tjmethodID mid_update = env->GetMethodID(cls1,\"dc_update\",\"(ILjava/lang/Object;)V\");\n")
+            out.append("\tfor(int i=0; i<sym->length; i++) {\n")
+            out.append("\t\tjobject obj = (sym->data[i]==NULL) ? NULL : sendCPPtoJVM_%s(env, sym->data[i]);\n".format(mangledName(remapHost(typeArg))))
+            out.append("\t\tenv->CallVoidMethod(arr,mid_update,i,obj);\n")
+            out.append("\t}\n")
+            out.append("\treturn arr;\n")
+          }
+          else {
+            if (encounteredStructs.contains(structName(typeArg)))
+              out.append("\tjclass cls = env->FindClass(\"generated/scala/" + remap(typeArg).replaceAll(deviceTarget,"") + "$\");\n")
+            else
+              out.append("\tjclass cls = env->FindClass(\"" + JNITypeDescriptor(typeArg) + "\");\n")
+            out.append("\tjobjectArray arr = env->NewObjectArray(sym->length,cls,0);\n")
+            out.append("\tfor(int i=0; i<sym->length; i++) {\n")
+            //TODO: Move the null check to other place? (e.g. struct type transfer and delitearray primitive type transfer)
+            out.append("\t\tjobject obj = (sym->data[i]==NULL) ? NULL : sendCPPtoJVM_%s(env, sym->data[i]);\n".format(mangledName(remapHost(typeArg))))
+            out.append("\t\tenv->SetObjectArrayElement(arr,i,obj);\n")
+            out.append("\t}\n")
+            out.append("\treturn arr;\n")
+          }
         }
         out.append("}\n")
         (signature+";\n", out.toString)
@@ -109,9 +151,16 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         for(elem <- encounteredStructs(structName(tp))) {
           val elemtp = baseType(elem._2)
           if(isPrimitiveType(elemtp)) {
-            out.append("\tjmethodID mid_get_%s = env->GetMethodID(cls,\"%s\",\"()%s\");\n".format(elem._1,elem._1,JNITypeDescriptor(elemtp)))
-            out.append("\t%s j_%s = env->Call%sMethod(obj,mid_get_%s);\n".format(JNIType(elemtp),elem._1,remapToJNI(elemtp),elem._1))
-            out.append("\t%s %s = recvCPPfromJVM_%s(env,j_%s);\n".format(remapHost(elemtp),elem._1,remapHost(elemtp),elem._1))
+            if(Config.generateSerializable) {
+              out.append("\tjmethodID mid_get_%s = env->GetMethodID(cls,\"%s\",\"()Lppl/delite/runtime/data/DeliteArray%s;\");\n".format(elem._1,elem._1,elemtp.typeArguments.head))
+              out.append("\t%s j_%s = env->Call%sMethod(obj,mid_get_%s);\n".format(JNIType(elemtp),elem._1,remapToJNI(elemtp),elem._1))
+              out.append("\t%s %s = recvCPPfromJVM_%s(env,j_%s);\n".format(remapHost(elemtp),elem._1,remapHost(elemtp),elem._1))
+            }
+            else {
+              out.append("\tjmethodID mid_get_%s = env->GetMethodID(cls,\"%s\",\"()%s\");\n".format(elem._1,elem._1,JNITypeDescriptor(elemtp)))
+              out.append("\t%s j_%s = env->Call%sMethod(obj,mid_get_%s);\n".format(JNIType(elemtp),elem._1,remapToJNI(elemtp),elem._1))
+              out.append("\t%s %s = recvCPPfromJVM_%s(env,j_%s);\n".format(remapHost(elemtp),elem._1,remapHost(elemtp),elem._1))
+            }
           }
           else if (encounteredStructs.contains(structName(elemtp))) { 
             out.append("\tjmethodID mid_get_%s = env->GetMethodID(cls,\"%s\",\"()Lgenerated/scala/%s;\");\n".format(elem._1,elem._1,structName(elemtp)))
@@ -119,9 +168,16 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\t%s *%s = recvCPPfromJVM_%s(env,j_%s);\n".format(remapHost(elemtp),elem._1,mangledName(remapHost(elemtp)),elem._1))
           }
           else {
-            out.append("\tjmethodID mid_get_%s = env->GetMethodID(cls,\"%s\",\"()[%s\");\n".format(elem._1,elem._1,JNITypeDescriptor(elemtp.typeArguments.head)))
-            out.append("\t%s j_%s = env->Call%sMethod(obj,mid_get_%s);\n".format("jobject",elem._1,"Object",elem._1))
-            out.append("\t%s *%s = recvCPPfromJVM_%s(env,j_%s);\n".format(remapHost(elemtp),elem._1,mangledName(remapHost(elemtp)),elem._1))
+            if(Config.generateSerializable) {
+              out.append("\tjmethodID mid_get_%s = env->GetMethodID(cls,\"%s\",\"()Lppl/delite/runtime/data/DeliteArrayObject;\");\n".format(elem._1,elem._1))           
+              out.append("\t%s j_%s = env->Call%sMethod(obj,mid_get_%s);\n".format("jobject",elem._1,"Object",elem._1))
+              out.append("\t%s *%s = recvCPPfromJVM_%s(env,j_%s);\n".format(remapHost(elemtp),elem._1,mangledName(remapHost(elemtp)),elem._1))
+            }
+            else {
+              out.append("\tjmethodID mid_get_%s = env->GetMethodID(cls,\"%s\",\"()[%s\");\n".format(elem._1,elem._1,JNITypeDescriptor(elemtp.typeArguments.head)))
+              out.append("\t%s j_%s = env->Call%sMethod(obj,mid_get_%s);\n".format("jobject",elem._1,"Object",elem._1))
+              out.append("\t%s *%s = recvCPPfromJVM_%s(env,j_%s);\n".format(remapHost(elemtp),elem._1,mangledName(remapHost(elemtp)),elem._1))
+            }
           }
           out.append("\tsym->%s = %s;\n".format(elem._1,elem._1))
         }
@@ -135,12 +191,25 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         val signature = "%s *recvCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remapHost(tp),mangledName(remapHost(tp)))  
         out.append(signature + " {\n")
         if(isPrimitiveType(typeArg)) {
-          out.append("\tint length = env->GetArrayLength((%sArray)obj);\n".format(JNIType(typeArg)))
-          out.append("\t%s *dataPtr = (%s *)env->GetPrimitiveArrayCritical((%sArray)obj,0);\n".format(JNIType(typeArg),JNIType(typeArg),JNIType(typeArg)))
-          out.append("\t%s *sym = new %s(length);\n".format(remapHost(tp),remapHost(tp)))
-          out.append("\tmemcpy(sym->data, dataPtr, length*sizeof(%s));\n".format(remapHost(typeArg)))
-          out.append("\tenv->ReleasePrimitiveArrayCritical((%sArray)obj, dataPtr, 0);\n".format(JNIType(typeArg)))
-          out.append("\treturn sym;\n")
+          if(Config.generateSerializable) {
+            out.append("\tjclass cls = env->FindClass(\"ppl/delite/runtime/data/LocalDeliteArray%s\");\n".format(remapToJNI(typeArg)))
+            out.append("\tjmethodID mid = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
+            out.append("\tjobject arr = env->CallObjectMethod(obj,mid);\n")
+            out.append("\tint length = env->GetArrayLength((%sArray)arr);\n".format(JNIType(typeArg)))
+            out.append("\t%s *dataPtr = (%s *)env->GetPrimitiveArrayCritical((%sArray)arr,0);\n".format(JNIType(typeArg),JNIType(typeArg),JNIType(typeArg)))
+            out.append("\tHost%s *sym = new Host%s(length);\n".format(remapHost(tp),remapHost(tp)))
+            out.append("\tmemcpy(sym->data, dataPtr, length*sizeof(%s));\n".format(remapHost(typeArg)))
+            out.append("\tenv->ReleasePrimitiveArrayCritical((%sArray)arr, dataPtr, 0);\n".format(JNIType(typeArg)))
+            out.append("\treturn sym;\n")
+          }
+          else {
+            out.append("\tint length = env->GetArrayLength((%sArray)obj);\n".format(JNIType(typeArg)))
+            out.append("\t%s *dataPtr = (%s *)env->GetPrimitiveArrayCritical((%sArray)obj,0);\n".format(JNIType(typeArg),JNIType(typeArg),JNIType(typeArg)))
+            out.append("\t%s *sym = new %s(length);\n".format(remapHost(tp),remapHost(tp)))
+            out.append("\tmemcpy(sym->data, dataPtr, length*sizeof(%s));\n".format(remapHost(typeArg)))
+            out.append("\tenv->ReleasePrimitiveArrayCritical((%sArray)obj, dataPtr, 0);\n".format(JNIType(typeArg)))
+            out.append("\treturn sym;\n")
+          }
         }
         else {
           out.append("\tint length = env->GetArrayLength((%sArray)obj);\n".format(JNIType(typeArg)))

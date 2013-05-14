@@ -8,6 +8,7 @@ import scala.virtualization.lms.internal.Targets._
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.Config
 import ppl.delite.framework.Util._
+import ppl.delite.framework.extern.lib.ProtoBuf
 import scala.reflect.SourceContext
 import scala.collection.mutable.HashSet
 
@@ -128,6 +129,12 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
       e
   }).asInstanceOf[Def[A]]
 
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case s: AbstractStruct[_] => Nil
+    case NestedFieldUpdate(_,_,_) => Nil
+    case _ => super.aliasSyms(e)
+  }
+
   override def containSyms(e: Any): List[Sym[Any]] = e match {
     case s: AbstractStruct[_] => Nil //ignore nested mutability for Structs: this is only safe because we rewrite mutations to atomic operations
     case NestedFieldUpdate(_,_,_) => Nil
@@ -172,7 +179,7 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     case Struct(tag, elems) =>
       registerStruct(structName(sym.tp), elems)
       emitValDef(sym, "new " + structName(sym.tp) + "(" + elems.map{ e => 
-        if (isVarType(e._2.tp) && deliteInputs.contains(e._2)) quote(e._2) + ".get"
+        if (isVarType(e._2) && deliteInputs.contains(e._2)) quote(e._2) + ".get"
         else quote(e._2)
       }.mkString(",") + ")")
     case FieldApply(struct, index) =>
@@ -191,11 +198,14 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     case s if s <:< manifest[Record] && s != manifest[Nothing] => "generated.scala." + structName(m)
     case _ => super.remap(m)
   }
+  
+  private def isVarType[T](e: Exp[T]) = e.tp.erasure.getSimpleName == "Variable" && (e match { //TODO: this is fragile, based on behavior of var_new override in Structs.scala
+    case Def(Struct(_,_)) => false //Var(Struct) => Struct(Var)
+    case _ => true
+  })
 
-  private def isVarType[T](m: Manifest[T]) = m.erasure.getSimpleName == "Variable" && unapplyStructType(m.typeArguments(0)) == None
   private def isArrayType[T](m: Manifest[T]) = m.erasure.getSimpleName == "DeliteArray"
   private def isStringType[T](m: Manifest[T]) = m.erasure.getSimpleName == "String"
-  private def baseType[T](m: Manifest[T]) = if (isVarType(m)) mtype(m.typeArguments(0)) else m
   
   override def emitDataStructures(path: String) {
     val stream = new PrintWriter(path + "DeliteStructs.scala")
@@ -206,13 +216,143 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     }
     stream.close()
     super.emitDataStructures(path)
+
+    if (Config.generateSerializable) {
+      val protoFile = new File(path + "structs.proto")
+      val stream2 = new PrintWriter(protoFile)
+      stream2.println("package generated.scala;")
+      stream2.println("import \"messages.proto\";")
+      for ((name, elems) <- encounteredStructs) {
+        stream2.println("")
+        emitMessageDeclaration(name, elems)(stream2)
+      }
+      stream2.close()
+      ProtoBuf.compile(protoFile.getAbsolutePath, path)
+    }
+    super.emitDataStructures(path)
   }
 
   def emitStructDeclaration(name: String, elems: Seq[(String,Manifest[_])])(stream: PrintWriter) {
+    if (Config.generateSerializable) {
+      stream.println("object " + name + " {")
+      stream.println("def parseFrom(bytes: com.google.protobuf.ByteString) = {")
+      stream.println("val mssg = Structs." + name + ".parseFrom(bytes)")
+      emitStructDeserialization(name, elems, "mssg")(stream)
+      stream.println("\n}")
+      stream.print("def combine(lhs: " + name + ", " + "rhs: " + name + ") = ")
+      emitStructReduction(name, elems, "lhs", "rhs")(stream)
+      //TODO: Get rid of below. Just a hack for GPU cluster execution.
+      stream.println("def createLocal(len: Int) = new ppl.delite.runtime.data.LocalDeliteArrayObject[" + name + "](len)")
+      stream.println("\n}")
+    }
+
     stream.print("case class " + name + "(")
     stream.print(elems.map{ case (idx,tp) => "var " + idx + ": " + remap(tp) }.mkString(", "))
+    stream.println(") {")
+    if (Config.generateSerializable) {
+      stream.print("def toByteString = ")
+      emitStructSerialization(name, elems, "")(stream)
+      stream.println(".build.toByteString")
+    }
+    stream.println("}")
+  }
+
+  private def mangle(name: String) = name.split("_").map(toCamelCase).mkString("")
+  private def toCamelCase(name: String) = if (name.length > 0) name.substring(0,1).toUpperCase + (if (name.length > 1) name.substring(1) else "") else ""
+
+  def emitStructDeserialization(name: String, elems: Seq[(String,Manifest[_])], prefix: String)(stream: PrintWriter) {
+    def insertField(field: String, tp: Manifest[_]) = {
+      val name = structName(tp)
+      val getField = prefix + ".get" + mangle(field)
+      if (encounteredStructs.contains(name)) emitStructDeserialization(name, encounteredStructs(name), getField)(stream) 
+      else if (deVar(tp).erasure.getSimpleName == "DeliteArray") stream.print("ppl.delite.runtime.messages.Serialization.deserializeDeliteArray" + arrayRemap(deVar(tp).typeArguments(0)) + "(" + getField + ")")
+      else stream.print(getField)
+    }
+
+    stream.print("new " + name + "(")
+    var first = true
+    for ((field,tp) <- elems) {
+      if (!first) stream.print(",")
+      first = false
+      insertField(field,tp)
+    }
+    stream.print(")")
+  }
+
+  def emitStructSerialization(name: String, elems: Seq[(String,Manifest[_])], prefix: String)(stream: PrintWriter) {
+    def insertField(field: String, tp: Manifest[_]) = {
+      val name = structName(tp)
+      val fullField = prefix + field
+      if (encounteredStructs.contains(name)) emitStructSerialization(name, encounteredStructs(name), fullField+".")(stream)
+      else if (deVar(tp).erasure.getSimpleName == "DeliteArray") stream.print("ppl.delite.runtime.messages.Serialization.serializeDeliteArray(" + fullField + ")")
+      else stream.print(fullField)
+    }
+
+    stream.print("Structs." + name + ".newBuilder")
+    for ((field,tp) <- elems) {
+      stream.print(".set" + mangle(field) + "(")
+      insertField(field,tp)
+      stream.print(")")
+    }
+  }
+
+  def emitStructReduction(name: String, elems: Seq[(String,Manifest[_])], prefixL: String, prefixR: String)(stream: PrintWriter) {
+    def insertField(field: String, tp: Manifest[_]) = {
+      val name = structName(tp)
+      val lhs = prefixL + "." + field
+      val rhs = prefixR + "." + field
+      if (encounteredStructs.contains(name)) emitStructReduction(name, encounteredStructs(name), lhs, rhs)(stream)
+      else if (deVar(tp).erasure.getSimpleName == "DeliteArray") stream.print("ppl.delite.runtime.data.DeliteArray" + arrayRemap(deVar(tp).typeArguments(0)) + ".combine(" + lhs + "," + rhs + ")")
+      else if (deVar(tp).erasure.getSimpleName == "int") stream.print(lhs + " + " + rhs) //TODO: need something extensible / customizable
+      else if (deVar(tp).erasure.getSimpleName == "boolean") stream.print(lhs)
+      else throw new RuntimeException("don't know how to combine type " + deVar(tp))
+    }
+
+    stream.print("new " + name + "(")
+    var first = true
+    for ((field,tp) <- elems) {
+      if (!first) stream.print(",")
+      first = false
+      insertField(field,tp)
+    }
     stream.println(")")
   }
+
+  def emitMessageDeclaration(name: String, elems: Seq[(String,Manifest[_])])(stream: PrintWriter) {
+    stream.println("message " + name + " {")
+    var idx = 1
+    for ((field,tp) <- elems) {
+      stream.println("required " + protoRemap(tp) + " " + field + " = " + idx + ";")
+      idx += 1
+    }
+    stream.println("}")
+  }
+
+  private def deVar(tp: Manifest[_]) = if (tp.erasure == classOf[Variable[_]]) mtype(tp.typeArguments(0)) else mtype(tp)
+
+  private def arrayRemap(tp: Manifest[_]): String = {
+    val default = remap(tp) 
+    default match {
+      case "Int" | "Long" | "Double" | "Float" | "Char" | "Short" | "Byte" | "Boolean" => default
+      case _ => "Object" //[" + default + "]"
+    }
+  }
+ 
+  private def protoRemap(tp: Manifest[_]): String = deVar(tp).erasure.getSimpleName match {
+    case "int" => "sint32"
+    case "long" => "sint64"
+    case "float" => "float"
+    case "double" => "double"
+    case "char" => "uint32"
+    case "short" => "sint32"
+    case "boolean" => "bool"
+    case "byte" => "uint32"
+    case "String" => "string"
+    case _ if encounteredStructs.contains(structName(tp)) => structName(tp)
+    case "DeliteArray" => "ppl.delite.runtime.messages.ArrayMessage"
+    case other => throw new RuntimeException("don't know how to remap type " + other + " to Protocol Buffers")
+  }
+
 }
 
 trait CLikeGenDeliteStruct extends BaseGenStruct with CLikeCodegen {
@@ -243,6 +383,7 @@ trait CLikeGenDeliteStruct extends BaseGenStruct with CLikeCodegen {
     val structStream = new PrintWriter(path + deviceTarget.toString + "DeliteStructs.h")
     structStream.println("#ifndef __DELITESTRUCTS_H__")
     structStream.println("#define __DELITESTRUCTS_H__")
+    structStream.println("#include \"" + deviceTarget + "types.h\"")    
     structStream.println("#include \"" + hostTarget + "DeliteArray.h\"")
     structStream.println("#include \"" + deviceTarget + "DeliteArray.h\"")
     //println("Cuda Gen is generating " + encounteredStructs.map(_._1).mkString(","))
@@ -263,7 +404,12 @@ trait CLikeGenDeliteStruct extends BaseGenStruct with CLikeCodegen {
   }
 
   def emitStructDeclaration(path: String, name: String, elems: Seq[(String,Manifest[_])])
-  
+
+  override def getDataStructureHeaders(): String = {
+    val out = new StringBuilder
+    out.append("#include \"" + deviceTarget + "DeliteStructs.h\"\n")
+    super.getDataStructureHeaders() + out.toString
+  }  
 }
 
 trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaCodegen {
@@ -338,41 +484,37 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaCodegen {
       stream.println("\t}")
 
       //TODO: Below should be changed to use IR nodes
-      /*
-      if(prefix == "") {
-        stream.println("\t__device__ void dc_copy(" + name + " from) {")
-        for((idx,tp) <- elems) {
-          if(isPrimitiveType(baseType(tp))) stream.println("\t\t" + idx + " = from." + idx + ";")
-          else stream.println("\t\t" + idx + ".dc_copy(from." + idx + ");")
-        }
-        stream.println("\t}")
-        stream.println("\t__host__ " + name + " *dc_alloc() {")
-        stream.print("\t\treturn new " + name + "(")
-        stream.print(elems.map{ case (idx,tp) => if(!isPrimitiveType(baseType(tp))) ("*" + idx + ".dc_alloc()") else idx }.mkString(","))
-        stream.println(");")
-        stream.println("\t}")
-        // Only generate dc_apply, dc_update, dc_size when there is only 1 DeliteArray among the fields
-        val arrayElems = elems.filter(e => isArrayType(baseType(e._2)))
-        val generateDC = arrayElems.size > 0
-        val generateAssert = (arrayElems.size > 1) || (arrayElems.size==1 && generatedStructs.contains(remap(baseType(arrayElems(0)._2))))
-        if(generateDC) {
-          val (idx,tp) = elems.filter(e => isArrayType(baseType(e._2)))(0)
-          val argtp = if(generateAssert) "int" else remap(unwrapArrayType(tp))
-          stream.println("\t__host__ __device__ " + argtp + " dc_apply(int idx) {")
-          if(generateAssert) stream.println("\t\tassert(false);")
-          else stream.println("\t\treturn " + idx + ".apply(idx);")
-          stream.println("\t}")
-          stream.println("\t__host__ __device__ void dc_update(int idx," + argtp + " newVal) {")
-          if(generateAssert) stream.println("\t\tassert(false);")
-          else stream.println("\t\t" + idx + ".update(idx,newVal);")  
-          stream.println("\t}")
-          stream.println("\t__host__ __device__ int dc_size(void) {")
-          if(generateAssert) stream.println("\t\tassert(false);")
-          else stream.println("\t\treturn " + idx + ".length;")
-          stream.println("\t}")
-        }
+      stream.println("\t__device__ void dc_copy(" + deviceTarget + name + " from) {")
+      for((idx,tp) <- elems) {
+        if(isPrimitiveType(baseType(tp))) stream.println("\t\t" + idx + " = from." + idx + ";")
+        else stream.println("\t\t" + idx + ".dc_copy(from." + idx + ");")
       }
-      */
+      stream.println("\t}")
+      stream.println("\t__host__ " + deviceTarget + name + " *dc_alloc() {")
+      stream.print("\t\treturn new " + deviceTarget + name + "(")
+      stream.print(elems.map{ case (idx,tp) => if(!isPrimitiveType(baseType(tp))) ("*" + idx + ".dc_alloc()") else idx }.mkString(","))
+      stream.println(");")
+      stream.println("\t}")
+      // Only generate dc_apply, dc_update, dc_size when there is only 1 DeliteArray among the fields
+      val arrayElems = elems.filter(e => isArrayType(baseType(e._2)))
+      val generateDC = arrayElems.size > 0
+      val generateAssert = (arrayElems.size > 1) || (arrayElems.size==1 && generatedStructs.contains(remap(baseType(arrayElems(0)._2))))
+      if(generateDC) {
+        val (idx,tp) = elems.filter(e => isArrayType(baseType(e._2)))(0)
+        val argtp = if(generateAssert) "int" else remap(unwrapArrayType(tp))
+        stream.println("\t__host__ __device__ " + remap(argtp) + " dc_apply(int idx) {")
+        if(generateAssert) stream.println("\t\tassert(false);")
+        else stream.println("\t\treturn " + idx + ".apply(idx);")
+        stream.println("\t}")
+        stream.println("\t__host__ __device__ void dc_update(int idx," + argtp + " newVal) {")
+        if(generateAssert) stream.println("\t\tassert(false);")
+        else stream.println("\t\t" + idx + ".update(idx,newVal);")  
+        stream.println("\t}")
+        stream.println("\t__host__ __device__ int dc_size(void) {")
+        if(generateAssert) stream.println("\t\tassert(false);")
+        else stream.println("\t\treturn " + idx + ".length;")
+        stream.println("\t}")
+      }
       stream.println("};")
     
       // Wrapper class that holds both the device type and host type
@@ -395,7 +537,6 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaCodegen {
       case e: Exception => throw(e)
     }
   }
-
 }
 
 trait OpenCLGenDeliteStruct extends CLikeGenDeliteStruct with OpenCLCodegen {

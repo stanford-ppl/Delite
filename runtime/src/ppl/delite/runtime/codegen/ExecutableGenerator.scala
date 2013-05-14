@@ -51,6 +51,7 @@ trait ExecutableGenerator {
         makeNestedFunction(op)
       writeFunctionCall(op)
     }
+    finalizeBlock()
   }
 
   def executableName: String = executableName(location)
@@ -76,5 +77,5 @@ trait ExecutableGenerator {
   }
 
   protected def initializeBlock() { }
-
+  protected def finalizeBlock() { }
 }

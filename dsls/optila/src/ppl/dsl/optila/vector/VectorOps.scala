@@ -29,6 +29,7 @@ trait VectorOps extends Variables {
     def apply[A:Manifest](len: Rep[Int], isRow: Rep[Boolean])(implicit o: Overloaded1, ctx: SourceContext) = densevector_obj_new(len, isRow)
     def apply[A:Manifest](xs: A*)(implicit ctx: SourceContext) = DenseVector[A](xs.map(e=>unit(e)): _*)
     def apply[A:Manifest](xs: Rep[A]*)(implicit o: Overloaded1, ctx: SourceContext) = DenseVector[A](xs: _*)
+    def apply[A:Manifest](xs: Rep[DeliteArray[A]], isRow: Rep[Boolean])(implicit o: Overloaded2, ctx: SourceContext) = densevector_obj_fromarray(xs,isRow)
     def dense[A:Manifest](len: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = densevector_obj_new(len, isRow)
     def sparse[A:Manifest](len: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = sparsevector_obj_new(len, isRow)
     
@@ -496,8 +497,8 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp {
   case class VectorDistinct[A:Manifest,VA<:Vector[A]:Manifest](x: Interface[Vector[A]])(implicit val b: VectorBuilder[A,VA])
     extends DeliteOpSingleWithManifest[A,VA](reifyEffectsHere(vector_distinct_impl[A,VA](x)))
 
-  case class VectorClone[A:Manifest,VA<:Vector[A]:Manifest](x: Interface[Vector[A]])(implicit val b: VectorBuilder[A,VA])
-    extends DeliteOpSingleWithManifest[A,VA](reifyEffectsHere(vector_clone_impl[A,VA](x)))
+  //case class VectorClone[A:Manifest,VA<:Vector[A]:Manifest](x: Interface[Vector[A]])(implicit val b: VectorBuilder[A,VA])
+  //  extends DeliteOpSingleWithManifest[A,VA](reifyEffectsHere(vector_clone_impl[A,VA](x)))
 
   case class VectorPPrint[A](x: Interface[Vector[A]])(val b: Block[Unit]) // stupid limitation...
     extends DeliteOpSingleTask(b)
@@ -890,6 +891,18 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp {
     val o = implicitly[Ordering[A]]
     val p = implicitly[HasMinMax[A]]
   }
+
+  case class VectorClone[A:Manifest,VA<:Vector[A]:Manifest](intf: Interface[Vector[A]])(implicit val b: VectorBuilder[A,VA])
+    extends DeliteOpMap[A,A,VA] {
+
+    val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]
+    val size = copyTransformedOrElse(_.size)(intf.length)
+    override def alloc(len: Exp[Int]) = b.alloc(len, intf.isRow)
+    def func = e => e
+
+    val mA = manifest[A]
+    val mVA = manifest[VA]
+  }
   
   case class VectorMap[A:Manifest,B:Manifest,VB<:Vector[B]:Manifest](intf: Interface[Vector[A]], func: Exp[A] => Exp[B])(implicit val b: VectorBuilder[B,VB])
     extends DeliteOpMap[A,B,VB] {
@@ -1132,7 +1145,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp {
     case e@VectorSlice(x,start,end) => reflectPure(new { override val original = Some(f,e) } with VectorSlice(f(x),f(start),f(end))(e.mA,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])
     case e@VectorContains(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorContains(f(x),f(y))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@VectorDistinct(x) => reflectPure(new { override val original = Some(f,e) } with VectorDistinct(f(x))(e.mA, e.mR, e.b))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@VectorClone(x) => reflectPure(new { override val original = Some(f,e) } with VectorClone(f(x))(e.mA, e.mR, e.b))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@VectorClone(x) => reflectPure(new { override val original = Some(f,e) } with VectorClone(f(x))(e.mA, e.mVA, e.b))(mtype(manifest[A]),implicitly[SourceContext])
     //case e@VectorRepmat(x,i,j) => reflectPure(new { override val original = Some(f,e) } with VectorRepmat(f(x),f(i),f(j))(e.mA,e.mMA,e.b))(mtype(manifest[A]),implicitly[SourceContext])
     case e@VectorRepmat(x,i,j) => reflectPure(new { override val original = Some(f,e) } with VectorRepmat(f(x),f(i),f(j))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@VectorMkString(x,sep) => reflectPure(new { override val original = Some(f,e) } with VectorMkString(f(x),f(sep))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
@@ -1179,7 +1192,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp {
     case Reflect(e@VectorSlice(x,start,end), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorSlice(f(x),f(start),f(end))(e.mA, e.mR, e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorContains(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorContains(f(x),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorDistinct(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorDistinct(f(x))(e.mA, e.mR, e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@VectorClone(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorClone(f(x))(e.mA, e.mR, e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorClone(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorClone(f(x))(e.mA, e.mVA, e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     //case Reflect(e@VectorRepmat(x,i,j), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorRepmat(f(x),f(i),f(j))(e.mA,e.mMA,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorRepmat(x,i,j), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorRepmat(f(x),f(i),f(j))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorMkString(x,sep), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorMkString(f(x),f(sep))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))

@@ -25,7 +25,7 @@ object CudaCompile extends CCompile {
   }
 
   protected def configFile = "CUDA.xml"
-  protected def compileFlags = Array("-w", "-O3", "-lcublas", "-arch", "compute_"+arch, "-code", "sm_"+arch, "-shared", "-Xcompiler", "\'-fPIC\'")
+  protected def compileFlags = Array("-m64", "-w", "-O3", "-lcublas", "-arch", "compute_"+arch, "-code", "sm_"+arch, "-shared", "-Xcompiler", "\'-fPIC\'")
   protected def outputSwitch = "-o"
   override protected def auxSourceList = List(sourceCacheHome + "kernels" + sep + target + "helperFuncs." + ext, Config.deliteHome + sep + "runtime" + sep + target + sep + "DeliteCuda." + ext) 
 

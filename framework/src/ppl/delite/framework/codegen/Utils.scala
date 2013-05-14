@@ -8,16 +8,23 @@ trait Utils {
     if (!dsDir.exists) return
     val outDir = new File(to)
     outDir.mkdirs()
+    copyDirectory(dsDir)
 
-    for (f <- dsDir.listFiles) {
-      val outFile = to + File.separator + f.getName
-      val out = new BufferedWriter(new FileWriter(outFile))
-      for (line <- io.Source.fromFile(f).getLines) {
-        var remappedLine = dsmap(line)
-        remappedLine = remappedLine.replaceAll("ppl.delite.framework.datastruct", "generated")
-        out.write(remappedLine + System.getProperty("line.separator"))
+    def copyDirectory(dir: File) {
+      for (f <- dir.listFiles) {
+        if (f.isDirectory) 
+          copyDirectory(f)
+        else {
+          val outFile = to + File.separator + f.getName
+          val out = new BufferedWriter(new FileWriter(outFile))
+          for (line <- io.Source.fromFile(f).getLines) {
+            var remappedLine = dsmap(line)
+            remappedLine = remappedLine.replaceAll("ppl.delite.framework.datastruct", "generated")
+            out.write(remappedLine + System.getProperty("line.separator"))
+          }
+          out.close()
+        }
       }
-      out.close()
     }
   }
 }

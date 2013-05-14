@@ -65,6 +65,14 @@ trait DeliteCLikeGenVariables extends CLikeGenEffect {
       super.emitNode(sym, rhs)
     }
   }
+
+  override def getDataStructureHeaders(): String = {
+    val out = new StringBuilder
+    out.append("#include \"" + deviceTarget + "Ref.h\"\n")
+    if(isAcceleratorTarget) out.append("#include \"Host" + deviceTarget + "Ref.h\"\n")
+    super.getDataStructureHeaders() + out.toString
+  }
+
 }
 
 trait DeliteCudaGenVariables extends CudaGenEffect with DeliteCLikeGenVariables {

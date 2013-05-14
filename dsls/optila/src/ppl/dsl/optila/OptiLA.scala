@@ -62,7 +62,7 @@ trait OptiLAScalaOpsPkg extends Base
 trait OptiLAScalaOpsPkgExp extends OptiLAScalaOpsPkg with DSLOpsExp
   with EqualExp with IfThenElseExp with VariablesExp with WhileExp with TupleOpsExp with TupledFunctionsExp
   with ImplicitOpsExp with OrderingOpsExp with StringOpsExp with RangeOpsExp with IOOpsExp
-  with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp 
+  with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExpOpt with MiscOpsExp 
   with ListOpsExp with SeqOpsExp with MathOpsExp with CastingOpsExp with SetOpsExp with ObjectOpsExp
   with SynchronizedArrayBufferOpsExp with HashMapOpsExp with IterableOpsExp with ArrayBufferOpsExp with ExceptionOpsExp
 
@@ -101,7 +101,7 @@ trait OptiLACCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
 /**
  * This the trait that every OptiLA application must extend.
  */
-trait OptiLA extends OptiLATypes with Interfaces with OptiLAScalaOpsPkg with StructOps with DeliteCollectionOps with DeliteArrayOps
+trait OptiLA extends OptiLATypes with Interfaces with OptiLAScalaOpsPkg with StructOps with DeliteCollectionOps with DeliteArrayOps with DeliteFileReaderOps
   with GenericDefs with LanguageOps with ArithOps with CloneableOps with HasMinMaxOps
   with VectorOps with DenseVectorOps with SparseVectorOps with RangeVectorOps with DenseVectorViewOps with SparseVectorViewOps //with MatrixRowOps with MatrixColOps
   with MatrixOps with MatrixBuildableOps with DenseMatrixOps with SparseMatrixOps with SparseMatrixBuildableOps
@@ -130,7 +130,7 @@ trait OptiLACompiler extends OptiLA with OptiLAUtilities
 /**
  * These are the corresponding IR nodes for OptiLA.
  */
-trait OptiLAExp extends OptiLACompiler with InterfacesExp with OptiLAScalaOpsPkgExp with FunctionBlocksExp with DeliteOpsExp with DeliteArrayFatExp with StructExp with VariantsOpsExp
+trait OptiLAExp extends OptiLACompiler with InterfacesExp with OptiLAScalaOpsPkgExp with FunctionBlocksExp with DeliteOpsExp with DeliteArrayFatExp with StructExp with DeliteFileReaderOpsExp with VariantsOpsExp
   with LanguageOpsExp with ArithOpsExpOpt with CloneableOpsExp
   with VectorOpsExpOpt with DenseVectorOpsExpOpt with SparseVectorOpsExp with RangeVectorOpsExp with DenseVectorViewOpsExpOpt with SparseVectorViewOpsExpOpt //with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
   with MatrixOpsExpOpt with DenseMatrixOpsExpOpt with SparseMatrixOpsExp with SparseMatrixBuildableOpsExp
@@ -212,7 +212,7 @@ trait OptiLACodeGenBase extends GenericFatCodegen with SchedulingOpt {
 }
 
 trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg with OptiLAScalaGenExternal 
-  with ScalaGenDeliteOps with ScalaGenDeliteCollectionOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps
+  with ScalaGenDeliteOps with ScalaGenDeliteCollectionOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteFileReaderOps
   with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenSparseVectorOps
   with ScalaGenDenseVectorViewOps with ScalaGenSparseVectorViewOps with ScalaGenMatrixOps with ScalaGenDenseMatrixOps with ScalaGenSparseMatrixOps with ScalaGenSparseMatrixBuildableOps  
   //with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
@@ -294,18 +294,12 @@ trait OptiLACodeGenCuda extends OptiLACudaCodeGenPkg with OptiLACodeGenBase with
     }
   }
 
-  override def getDSLHeaders: String = {
+  override def getDataStructureHeaders(): String = {
     val out = new StringBuilder
-    out.append("#include <float.h>\n")
-    out.append("#include \"cudaRef.h\"\n")
     out.append("#include \"cudaList.h\"\n")
-    out.append("#include \"cudaDeliteArray.h\"\n")
-    out.append("#include \"HostcudaRef.h\"\n")
     out.append("#include \"HostcudaList.h\"\n")
-    out.append("#include \"HostcudaDeliteArray.h\"\n")
-    out.append("#include \"cudaDeliteStructs.h\"\n")
     out.append("#include \"library.h\"\n") // external library
-    out.toString
+    super.getDataStructureHeaders() + out.toString
   }
 
 }
@@ -329,14 +323,9 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
     }
   }
 
-  override def getDSLHeaders: String = {
+  override def getDataStructureHeaders(): String = {
     val out = new StringBuilder
-    out.append("#include <float.h>\n")
-    out.append("#include \"VectorImpl.h\"\n")
-    out.append("#include \"MatrixImpl.h\"\n")
-    out.append("#include \"RangeVectorImpl.h\"\n")
-    out.append("#include \"library.h\"\n") // external library
-    out.toString
+    super.getDataStructureHeaders() + out.toString
   }
 }
 
@@ -362,15 +351,10 @@ trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg /*with Opt
     }
   }
 
-  override def getDSLHeaders: String = {
+  override def getDataStructureHeaders(): String = {
     val out = new StringBuilder
-    out.append("#define string char\n")
-    out.append("#include <float.h>\n")
-    out.append("#include \"cppRef.h\"\n")
     out.append("#include \"cppList.h\"\n")    
-    out.append("#include \"cppDeliteArray.h\"\n")
-    out.append("#include \"cppDeliteStructs.h\"\n")
     //out.append("#include \"library.h\"\n") // external library
-    out.toString
+    super.getDataStructureHeaders() + out.toString
   }
 }
