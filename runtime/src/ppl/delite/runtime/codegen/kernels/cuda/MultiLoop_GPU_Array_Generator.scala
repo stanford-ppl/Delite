@@ -274,18 +274,26 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
 
     id match {
       case "Process" | "ReduceSpecKernel1" | "HashReduce1" | "PostProcess" =>
+        val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).map(o => "**" + o._2) ++ reductionList(op).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionSpecList(op).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2, tempIn_" + o._2) ++ reductionTupleList(op).map(o => "temp1_" + o._2 + ", temp1_" + o._2 + "_2, temp2_" + o._2 + ", temp2_" + o._2 + "_2") ++ hashReductionList(op).map(o => "key_" + o._2 + ", val_" + o._2 + ", offset_" + o._2 + ", idx_" + o._2) ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else "")) ++ tempAllocs(op).map(t => t.sym) ++ List("size, tempMemSize, tempMemPtr, tempMemUsage, loopIdx, act")
         if (op.needsPostProcess) {
           out.append(cudaLaunch(dimSize(opSize)+",1,1"))
+          out.append(args.mkString("(",",",");\n"))
         }
         else if (op.needsCombine) { 
           out.append(cudaLaunch("64,1,1"))
+          out.append(args.mkString("(",",",");\n"))
         }
         else {
-          out.append("if(" + dimSize(opSize) +" > 65536) { printf(\"Kernel Launch Failure: Grid size %d for GPU is too large even with maximum blockSize " + blockSize + "!\\n\"," + dimSize(op.size) + "); assert(false); }\n")
+          //out.append("if(" + dimSize(opSize) +" > 65536) { printf(\"Kernel Launch Failure: Grid size %d for GPU is too large even with maximum blockSize " + blockSize + "!\\n\"," + dimSize(op.size) + "); assert(false); }\n")
+          out.append("if(" + dimSize(opSize) + " > 65536) {\n")
+          out.append(cudaLaunch("65536,1,1"))
+          out.append(args.mkString("(",",",");\n"))
+          out.append("}\n")
+          out.append("else {\n")
           out.append(cudaLaunch(dimSize(opSize)+",1,1"))
+          out.append(args.mkString("(",",",");\n"))
+          out.append("}\n")
         }
-        val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).map(o => "**" + o._2) ++ reductionList(op).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionSpecList(op).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2, tempIn_" + o._2) ++ reductionTupleList(op).map(o => "temp1_" + o._2 + ", temp1_" + o._2 + "_2, temp2_" + o._2 + ", temp2_" + o._2 + "_2") ++ hashReductionList(op).map(o => "key_" + o._2 + ", val_" + o._2 + ", offset_" + o._2 + ", idx_" + o._2) ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else "")) ++ tempAllocs(op).map(t => t.sym) ++ List("size, tempMemSize, tempMemPtr, tempMemUsage, loopIdx, act")
-        out.append(args.mkString("(",",",");\n"))
       case "Combine" | "ReduceSpecKernel2" =>
         out.append("int num_blocks_" + id + " = min(64," + dimSize(opSize) + ");\n")
         out.append(cudaLaunch("1,1,1"))
@@ -500,10 +508,11 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
       out.append("}\n")
     }
     else {
-      out.append("if (idxX < " + opSize + ") {\n")
+      out.append("while (idxX < " + opSize + ") {\n")
       for((odata,osym) <- collectList(op)++foreachList(op)) {
         out.append("dev_process_" + funcNameSuffix(op,osym) + "(" + (odata.getInputs("process")++lastInputArgs(op)).mkString(",") + ");\n")
       }
+      out.append("idxX += blockDim.x * gridDim.x;\n")
       out.append("}\n")
     }
     writeKernelFooter(out)
@@ -511,10 +520,11 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
 
   private def writePostProcessKernel(out: StringBuilder, op: OP_MultiLoop) {
     writeKernelHeader(out, op, "PostProcess")
-    out.append("if(idxX < " + opSize + ") {\n") 
+    out.append("while(idxX < " + opSize + ") {\n") 
     for((odata,osym) <- collectList(op)) {
       out.append("dev_postprocess_" + funcNameSuffix(op,osym) + "(" + (odata.getInputs("postprocess")++lastInputArgs(op)).mkString(",") + ");\n")
     }
+    out.append("idxX += blockDim.x * gridDim.x;\n")
     out.append("}\n")
     writeKernelFooter(out)
   }

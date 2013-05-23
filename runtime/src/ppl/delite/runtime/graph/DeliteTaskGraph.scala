@@ -189,6 +189,7 @@ object DeliteTaskGraph {
       val antiDep = getOp(a)
       newop.addDependency(antiDep)
       antiDep.addConsumer(newop)
+      newop.addAntiDep(antiDep)
     }
 
     //handle control dependencies
@@ -365,6 +366,7 @@ object DeliteTaskGraph {
     var ifDeps = Set.empty[DeliteOP]
     for (depId <- depIds) ifDeps += getOp(depId)
     ifDeps ++= (predGraph._inputs.keySet ++ thenGraph._inputs.keySet ++ elseGraph._inputs.keySet) map { getOp(_) }
+    val ifAntiDeps = getFieldList(op, "antiDeps").map(getOp(_)).toSet
 
     //find inputs at nesting level of the IfThenElse
     val internalOps = (predGraph.ops ++ thenGraph.ops ++ elseGraph.ops).toSet
@@ -380,6 +382,7 @@ object DeliteTaskGraph {
     conditionOp.dependencies = ifDeps
     conditionOp.inputList = ifInputs.toList
     conditionOp.mutableInputs = ifMutableInputs
+    conditionOp.antiDeps = ifAntiDeps
 
     if (predValue == "") {
       for (tgt <- Targets.GPU) extractGPUMetadata(conditionOp, predGraph, graph, tgt)
@@ -415,6 +418,7 @@ object DeliteTaskGraph {
     var whileDeps = Set.empty[DeliteOP]
     for (depId <- depIds) whileDeps += getOp(depId)
     whileDeps ++= (predGraph._inputs.keySet ++ bodyGraph._inputs.keySet) map { getOp(_) }
+    val whileAntiDeps = getFieldList(op, "antiDeps").map(getOp(_)).toSet
 
     //find inputs at nesting level of the While
     val internalOps = (predGraph.ops ++ bodyGraph.ops).toSet
@@ -430,6 +434,7 @@ object DeliteTaskGraph {
     whileOp.dependencies = whileDeps
     whileOp.inputList = whileInputs.toList
     whileOp.mutableInputs = whileMutableInputs
+    whileOp.antiDeps = whileAntiDeps
 
     if (predValue == "") {
       for (tgt <- Targets.GPU) extractGPUMetadata(whileOp, predGraph, graph, tgt)
@@ -621,6 +626,7 @@ class DeliteTaskGraph {
     old.consumers = Set.empty
     old.inputList = Nil
     old.mutableInputs = Set.empty
+    old.antiDeps = Set.empty
   }
 
   def totalOps: Set[DeliteOP] = {

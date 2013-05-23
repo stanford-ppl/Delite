@@ -181,7 +181,7 @@ class CudaWhileGenerator(val whileLoop: OP_While, val location: Int, val kernelP
   }
 
   protected def callFunction(inputs: Seq[(DeliteOP,String)]) = {
-    "predicate_" + executableName(location) + "(" + inputs.map(i=>getSymDevice(i._1,i._2)).mkString(",") + ")"
+    "predicate_" + executableName(location) + "(" + inputArgs(whileLoop) + ")"
   }
 
   override protected def getSym(op: DeliteOP, name: String) = WhileCommon.getSym(whileLoop, baseId, op, name)

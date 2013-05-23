@@ -1,6 +1,6 @@
 package ppl.delite.runtime.codegen.sync
 
-import ppl.delite.runtime.graph.ops.{Notify, SendView, Send}
+import ppl.delite.runtime.graph.ops.{SendData, Notify, SendView, Send}
 import ppl.delite.runtime.codegen.CppExecutableGenerator
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.scheduler.OpHelper._
@@ -10,6 +10,13 @@ trait CppSyncObjectGenerator extends SyncObjectGenerator with CppExecutableGener
   protected def addSyncObject() {
     for (sender <- sync) {
       sender match {
+        case s: SendData =>
+          val outputType = if (isPrimitiveType(s.from.outputType(s.sym))) s.from.outputType(Targets.Cpp,s.sym)
+                           else s.from.outputType(Targets.Cpp,s.sym) + " *"
+          writePublicGet(s, getSym(s.from, s.sym), getSync(s.from, s.sym), outputType)
+          SyncObject(s, getSync(s.from, s.sym), outputType)
+          writePublicSet(s, getSym(s.from, s.sym), getSync(s.from, s.sym), outputType)
+
         case s: SendView =>
           val outputType = if (isPrimitiveType(s.from.outputType(s.sym))) s.from.outputType(Targets.Cpp,s.sym)
                            else s.from.outputType(Targets.Cpp,s.sym) + " *"

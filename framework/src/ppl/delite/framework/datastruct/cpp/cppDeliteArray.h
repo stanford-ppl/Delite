@@ -91,6 +91,8 @@ public:
       memcpy(result->data, data, sizeof(T) * n);
       return result;
     }
+
+    void release(void);
 };
 
 #endif

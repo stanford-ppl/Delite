@@ -616,9 +616,13 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
       stream.print(elems.map{ case (idx,tp) => remap(tp) + addRef(baseType(tp)) + " _" + idx }.mkString(","))
       stream.println(") {")
       stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = _" + idx + ";\n" }.mkString(""))
-      stream.println("\t}")  
+      stream.println("\t}")
+      // free
+      stream.println("\tvoid release(void) {")
+      stream.print(elems.filter(e => !isPrimitiveType(baseType(e._2))).map(e => e._1 + "->release();\n").mkString(""))
+      //stream.println("\tfree(this);")
+      stream.println("\t}")
       stream.println("};")
-
       stream.println("#endif")
       generatedStructs += name
       stream.close()

@@ -15,6 +15,7 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
   override protected def receiveData(s: ReceiveData) {
     getHostTarget(scheduledTarget(s.sender.from)) match {
       case Targets.Scala => writeGetter(s.sender.from, s.sender.sym, s.to, false)
+      case _ => super.receiveData(s)
     }
   }
 
@@ -34,7 +35,17 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
 
   override protected def receiveUpdate(s: ReceiveUpdate) {
     getHostTarget(scheduledTarget(s.sender.from)) match {
-      case Targets.Scala => writeRecvUpdater(s.sender.from, s.sender.sym); writeAwaiter(s.sender.from)
+      case Targets.Scala => 
+        s.sender.from.mutableInputsCondition.get(s.sender.sym) match {
+          case Some(lst) => 
+            out.append("if(")
+            out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
+            out.append(") {\n")
+            writeAwaiter(s.sender.from); writeRecvUpdater(s.sender.from, s.sender.sym); 
+            out.append("}\n")
+          case _ => 
+            writeAwaiter(s.sender.from); writeRecvUpdater(s.sender.from, s.sender.sym);
+        } 
       case _ => super.receiveUpdate(s)
     }
   }
@@ -71,8 +82,18 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
 
   override protected def sendUpdate(s: SendUpdate) {
     if (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty) {
-      writeSendUpdater(s.from, s.sym)
-      writeNotifier(s.from)
+      s.from.mutableInputsCondition.get(s.sym) match {
+        case Some(lst) => 
+          out.append("if(")
+          out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
+          out.append(") {\n")
+          writeSendUpdater(s.from, s.sym)
+          writeNotifier(s.from)
+          out.append("}\n")
+        case _ => 
+          writeSendUpdater(s.from, s.sym)
+          writeNotifier(s.from)
+      }      
       syncList += s
     }
     //else {
@@ -199,6 +220,23 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
 trait CppToCppSync extends SyncGenerator with CppExecutableGenerator with JNIFuncs {
 
   private val syncList = new ArrayBuffer[Send]
+
+  override protected def receiveData(s: ReceiveData) {
+    getHostTarget(scheduledTarget(s.sender.from)) match {
+      case Targets.Cpp => writeGetter(s.sender.from, s.sender.sym, s.to)
+      case _ => super.receiveData(s)
+    }
+  }
+
+  override protected def sendData(s: SendData) {
+    if (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Cpp).nonEmpty) {
+      writeSetter(s.from, s.sym)
+      syncList += s
+    }
+    //else {
+    super.sendData(s)  // TODO: always call super? (when multiple receivers have different host types)
+    //}
+  }
 
   override protected def receiveView(s: ReceiveView) {
     getHostTarget(scheduledTarget(s.sender.from)) match {
