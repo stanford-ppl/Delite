@@ -3400,8 +3400,8 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   def nullRef: String = "NULL"
 
   private def emitFieldsAndConstructor() {
-    val fields = kernelInputVals.map(i => deref(remap(i.tp)) + " " + quote(i)) ++ kernelInputVars.map(i => deref("Ref<" + remap(i.tp) + ">") + quote(i))
-    val constructorInputs = kernelInputVals.map(i => deref(remap(i.tp)) + " _" + quote(i)) ++ kernelInputVars.map(i => deref("Ref<" + remap(i.tp) + ">") + " _" + quote(i))
+    val fields = kernelInputVals.map(i => deref(remap(i.tp)) + " " + quote(i)) ++ kernelInputVars.map(i => deref(deviceTarget + "Ref<" + remap(i.tp) + ">") + quote(i))
+    val constructorInputs = kernelInputVals.map(i => deref(remap(i.tp)) + " _" + quote(i)) ++ kernelInputVars.map(i => deref(deviceTarget + "Ref<" + remap(i.tp) + ">") + " _" + quote(i))
 
     //print fields
     stream.println(fields.map(_ + ";\n").mkString(""))
