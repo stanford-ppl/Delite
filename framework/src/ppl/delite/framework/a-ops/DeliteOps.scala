@@ -29,6 +29,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   // hack: need to pass explicit type class parameters during mirroring, similar to mtype
   def ntype[A,B](n:Numeric[A]): Numeric[B] = n.asInstanceOf[Numeric[B]] 
   def otype[A,B](o:Ordering[A]): Ordering[B] = o.asInstanceOf[Ordering[B]]
+  def frtype[A,B](o:Fractional[A]): Fractional[B] = o.asInstanceOf[Fractional[B]]
   
   /* Markers to tell Delite op code generation what kind of strategy to use.
    * 
