@@ -589,15 +589,13 @@ trait CudaGenDeliteArrayOps extends BaseGenDeliteArrayOps with CudaGenFat with C
         //TODO: automatically figure out which access pattern is the best
         if(deliteInputs.contains(n)) { 
           val allocSym = registerTempAlloc(sym,a.mA,n)
-          stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",max(2*blockDim.x*gridDim.x,blockDim.x*(1+" + quote(outerLoopSize) + "/blockDim.x)));")
+          stream.println("cudaDeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = cudaDeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",max(2*blockDim.x*gridDim.x,blockDim.x*(1+" + quote(outerLoopSize) + "/blockDim.x)));")
           //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",blockDim.x*gridDim.x);")
-          //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + "*" + quote(n) + ",1);")
         }
         else if (boundMap.contains(n) && deliteInputs.contains(boundMap(n))) {
           val allocSym = registerTempAlloc(sym,a.mA,boundMap(n))
-          stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",max(2*blockDim.x*gridDim.x,blockDim.x*(1+" + quote(outerLoopSize) + "/blockDim.x)));")
+          stream.println("cudaDeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = cudaDeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",max(2*blockDim.x*gridDim.x,blockDim.x*(1+" + quote(outerLoopSize) + "/blockDim.x)));")
           //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + ",blockDim.x*gridDim.x);")
-          //stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + allocSym + "," + quote(outerLoopSym) + "*" + quote(n) + ",1);")
         }
         // If size is not known before launching the kernel, use temporary memory
         // TODO: Figure out the size is the same for all the threads
@@ -607,13 +605,13 @@ trait CudaGenDeliteArrayOps extends BaseGenDeliteArrayOps with CudaGenFat with C
           stream.println("}")
           stream.println(remap(a.mA) + " *" + quote(sym) + "Ptr = (" + remap(a.mA) + "*)(tempMemPtr + tempMemUsage[" + quote(outerLoopSym) + "]*" + quote(outerLoopSize) + ");") 
           stream.println("tempMemUsage[" + quote(outerLoopSym) + "] = tempMemUsage[" + quote(outerLoopSym) + "] + sizeof(" + remap(a.mA) + ")*" + quote(n) + ";")
-          stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = DeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + quote(sym) + "Ptr," + quote(outerLoopSym) + "*" + quote(n) + ",1);")
+          stream.println("cudaDeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = cudaDeliteArray< " + remap(a.mA) + " >(" + quote(n) + "," + quote(sym) + "Ptr," + quote(outerLoopSym) + "*" + quote(n) + ",1);")
         }
       }
       // Allocated only once for the entire kernel by helper function
       else {
-        stream.println("DeliteArray< " + remap(a.mA) + " > *" + quote(sym) + "_ptr = new DeliteArray< " + remap(a.mA) + " >(" + quote(n) + ");")
-        stream.println("DeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = *" + quote(sym) + "_ptr;")
+        stream.println("cudaDeliteArray< " + remap(a.mA) + " > *" + quote(sym) + "_ptr = new cudaDeliteArray< " + remap(a.mA) + " >(" + quote(n) + ");")
+        stream.println("cudaDeliteArray< " + remap(a.mA) + " > " + quote(sym) + " = *" + quote(sym) + "_ptr;")
       }
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + ".length")
@@ -632,17 +630,18 @@ trait CudaGenDeliteArrayOps extends BaseGenDeliteArrayOps with CudaGenFat with C
 
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
     case "DeliteArray" => m.typeArguments(0) match {
+      case p if !isPrimitiveType(p) => throw new GenerationFailedException("DeliteArray of type object is not supported on this branch.")
       case StructType(_,_) if Config.soaEnabled => structName(m)
       case s if s <:< manifest[Record] && Config.soaEnabled => structName(m) // occurs due to restaging
-      case arg => "DeliteArray< " + remap(arg) + " >"
+      case arg => "cudaDeliteArray< " + remap(arg) + " >"
     }
     case _ => super.remap(m)
   }
 
   override def getDataStructureHeaders(): String = {
     val out = new StringBuilder
-    out.append("#include \"DeliteArray.h\"\n")
-    out.append("#include \"HostDeliteArray.h\"\n")
+    out.append("#include \"" + deviceTarget + "DeliteArray.h\"\n")
+    out.append("#include \"Host" + deviceTarget + "DeliteArray.h\"\n")
     super.getDataStructureHeaders() + out.toString
   }
 }
@@ -665,28 +664,42 @@ trait OpenCLGenDeliteArrayOps extends BaseGenDeliteArrayOps with OpenCLGenFat wi
 
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
     case "DeliteArray" => m.typeArguments(0) match {
-      case s if s <:< manifest[Record] =>
-        throw new GenerationFailedException("OpenCLGen: Struct generation not possible")
-      case arg => "DeliteArray_" + remap(arg)
+      case StructType(_,_) if Config.soaEnabled => super.remap(m)
+      case s if s <:< manifest[Record] && Config.soaEnabled => super.remap(m) // occurs due to restaging
+      case arg => "OpenCLDeliteArray_" + remap(arg) + addRef(arg)
     }
     case _ => super.remap(m)
   }
 }
 
-trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenEffect with CGenDeliteStruct {
+trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenDeliteStruct with CGenDeliteOps {
   val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case a@DeliteArrayNew(n) => emitValDef(sym, "new DeliteArray< " + remap(a.mA) + " >(" + quote(n) + ")")
+    case a@DeliteArrayNew(n) => 
+      emitValDef(sym, "(" + remap(sym.tp) + " *) malloc(sizeof(" + remap(sym.tp) + "));")
+      stream.println(quote(sym) + "->data = (" + remap(a.mA) + addRef(a.mA) + " *)malloc(" + quote(n) + "*sizeof(" + remap(a.mA) + addRef(a.mA) + "));")
+      //TODO: remove below memory initialization. 
+      // This memset is currently needed for C target because JVM initializes arrays with 0
+      // and some DSL operations assume that. That should not be the case and moved into IR if init is needed.
+      stream.println("memset(" + quote(sym) + "->data,0," + quote(n) + "*sizeof(" + remap(a.mA) + addRef(a.mA) + "));")
+      stream.println(quote(sym) + "->length = " + quote(n) + ";")
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + "->length")
     case DeliteArrayApply(da, idx) =>
       emitValDef(sym, quote(da) + "->apply(" + quote(idx) + ")")
     case DeliteArrayUpdate(da, idx, x) =>
       stream.println(quote(da) + "->update(" + quote(idx) + ", " + quote(x) + ");")
+    case StructUpdate(struct, fields, idx, x) =>
+      stream.println(quote(struct) + "->" + fields.reduceLeft(_ + "->" + _) + "->update(" + quote(idx) + "," + quote(x) + ");")
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
       stream.println(quote(src) + "->copy(" + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ");")
+    case sc@StructCopy(src,srcPos,struct,fields,destPos,len) =>
+      val dest = quote(struct) + "->" + fields.reduceLeft(_ + "->" + _)
+      val elemM = src.tp.typeArguments(0)
+      val elemType = if(isPrimitiveType(elemM)) remap(elemM) else (remap(elemM)+"*")
+      stream.println("memcpy((" + dest + "->data)+" + quote(destPos) + ",(" + quote(src) + "->data)+" + quote(srcPos) + "," + quote(len) + "*sizeof(" + elemType + "));")
     //case DeliteArrayMkString(da,x) =>
     //  emitValDef(sym, quote(da) + ".mkString(" + quote(x) + ")")
     case DeliteArrayUnion(lhs,rhs) =>
@@ -703,20 +716,23 @@ trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenEffect with CGen
     //  stream.println("d")
     //  stream.println("}")
     case DeliteArrayRange(st,en) =>
-      emitValDef(sym, "new DeliteArray< int >(" + quote(st) + "," + quote(en) + ")")
+      emitValDef(sym, "new cppDeliteArray< int >(" + quote(st) + "," + quote(en) + ")")
     //case DeliteArrayToSeq(a) => emitValDef(sym, quote(a) + ".toSeq")
     case _ => super.emitNode(sym, rhs)
   }
 
-  override def remap[A](m: Manifest[A]): String = {
-    //if(m.erasure.isArray) 
-    //  "DeliteArray< " + remap(Manifest.classType(m.erasure.getComponentType)) + " >" 
-    //else {
-       m.erasure.getSimpleName match {
-        case "DeliteArray" => "DeliteArray< " + remap(m.typeArguments(0)) + " >"
-        case t_ => super.remap(m)
-      }
-    //}
+  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "DeliteArray" => m.typeArguments(0) match {
+      case StructType(_,_) if Config.soaEnabled => super.remap(m)
+      case s if s <:< manifest[Record] && Config.soaEnabled => super.remap(m) // occurs due to restaging
+      case arg => "cppDeliteArray< " + remap(arg) + addRef(arg) + " >"
+    }
+    case _ => super.remap(m)
   }
 
+  override def getDataStructureHeaders(): String = {
+    val out = new StringBuilder
+    out.append("#include \"" + deviceTarget + "DeliteArray.h\"\n")
+    super.getDataStructureHeaders() + out.toString
+  }
 }

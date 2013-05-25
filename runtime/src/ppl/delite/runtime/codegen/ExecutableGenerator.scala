@@ -1,9 +1,9 @@
 package ppl.delite.runtime.codegen
 
 import ppl.delite.runtime.graph.ops._
+import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.scheduler.OpList
 import collection.mutable.ArrayBuffer
-import ppl.delite.runtime.codegen.hosts.Hosts
 import sync.SyncObjectGenerator
 
 /**
@@ -70,7 +70,7 @@ trait ExecutableGenerator {
 
   protected def writeSyncObject()
 
-  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Hosts.Value): SyncObjectGenerator
+  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value): SyncObjectGenerator
   protected def getOpSym(op: DeliteOP) = getSym(op, "op_"+op.id)
   protected def getSym(op: DeliteOP, name: String): String = {
     "x"+name

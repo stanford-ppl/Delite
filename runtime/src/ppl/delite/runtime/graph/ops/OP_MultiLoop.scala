@@ -49,7 +49,7 @@ class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, f
     //map consumes header, multiloop's consumers remain unchanged
     dependencies = Set(h)
     inputList = List((h,h.id))
-    inputTypesMap = headerTypesMap
+    inputTypesMap = DeliteTaskGraph.combineTypesMap(List(headerTypesMap,inputTypesMap))
     graph.registerOp(h)
     h
   }

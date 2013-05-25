@@ -5,7 +5,7 @@ import ppl.delite.runtime.Config
 import java.lang.StringBuilder
 import tools.nsc.io.{Directory, Path}
 import java.io.{File, FileReader, FileWriter}
-import ppl.delite.runtime.graph.targets.OS
+import ppl.delite.runtime.graph.targets.{OS, Targets}
 
 object OpenCLCompile extends CCompile {
 
@@ -13,7 +13,7 @@ object OpenCLCompile extends CCompile {
   // (used to exclude those kernel files from the OpenCL kernel list)
   val externList = ArrayBuffer[String]()
 
-  def target = "opencl"
+  def target = Targets.OpenCL
   override def ext = "cpp"
 
   protected def configFile = "OpenCL.xml"

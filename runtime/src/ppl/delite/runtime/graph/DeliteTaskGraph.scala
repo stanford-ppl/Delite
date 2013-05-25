@@ -27,7 +27,7 @@ object DeliteTaskGraph {
   def buildFromParsedJSON(json: Any) = {
     implicit val graph = new DeliteTaskGraph
     json match {
-      case degm: Map[Any,Any] => parseDEGMap(degm)
+      case degm: Map[Any,Any] => try { parseDEGMap(degm) } catch { case e: Exception => e.printStackTrace; throw e; }
       case err@_ => mapNotFound(err)
     }
     graph

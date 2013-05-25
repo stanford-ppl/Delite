@@ -97,7 +97,7 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
 
   def generateMethodSignature(): String = {
     val str = new StringBuilder
-    str.append("#include \"cppHeader.hpp\"\n")
+    str.append("#include \"" + target + "helperFuncs.h\"\n")
     str.append(nested.outputType(target))
     str.append(' ')
     if (!isPrimitiveType(nested.outputType) && nested.outputType!="Unit") str.append(" *")

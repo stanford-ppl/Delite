@@ -4,7 +4,6 @@ import ppl.delite.runtime.graph.ops.{Notify, SendView, Send}
 import ppl.delite.runtime.codegen.CppExecutableGenerator
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.scheduler.OpHelper._
-import ppl.delite.runtime.codegen.hosts.Hosts
 
 trait CppSyncObjectGenerator extends SyncObjectGenerator with CppExecutableGenerator {
 
@@ -26,7 +25,7 @@ trait CppSyncObjectGenerator extends SyncObjectGenerator with CppExecutableGener
   }
 
   //private def consumerSet(sender: Send) = sender.receivers.map(_.to.scheduledResource)
-  private def consumerSet(sender: Send) = sender.receivers.map(_.to).filter(op=>Targets.getHostType(scheduledTarget(op))==Hosts.Cpp).map(_.scheduledResource)
+  private def consumerSet(sender: Send) = sender.receivers.map(_.to).filter(op=>Targets.getHostTarget(scheduledTarget(op))==Targets.Cpp).map(_.scheduledResource)
 
   private def writePublicGet(sender: Send, symName: String, syncName: String, outputType: String) {
     val locations = consumerSet(sender)

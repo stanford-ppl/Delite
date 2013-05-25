@@ -2,6 +2,7 @@ package ppl.delite.runtime.codegen
 
 import xml.XML
 import ppl.delite.runtime.Config
+import ppl.delite.runtime.graph.targets.Targets
 
 /**
  * Author: Kevin J. Brown
@@ -14,7 +15,7 @@ import ppl.delite.runtime.Config
 
 object CudaCompile extends CCompile {
 
-  def target = "cuda"
+  def target = Targets.Cuda
   override def ext = "cu"
 
   lazy val arch = {
@@ -26,6 +27,6 @@ object CudaCompile extends CCompile {
   protected def configFile = "CUDA.xml"
   protected def compileFlags = Array("-m64", "-w", "-O3", "-lcublas", "-arch", "compute_"+arch, "-code", "sm_"+arch, "-shared", "-Xcompiler", "\'-fPIC\'")
   protected def outputSwitch = "-o"
-  override protected def auxSourceList = List(sourceCacheHome + "kernels" + sep + "helperFuncs." + ext, Config.deliteHome + sep + "runtime" + sep + target + sep + "DeliteCuda." + ext) 
+  override protected def auxSourceList = List(sourceCacheHome + "kernels" + sep + target + "helperFuncs." + ext, Config.deliteHome + sep + "runtime" + sep + target + sep + "DeliteCuda." + ext) 
 
 }

@@ -3,7 +3,6 @@ package ppl.delite.runtime.codegen
 import kernels.cpp.CppMultiLoopHeaderGenerator
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.Config
-import ppl.delite.runtime.codegen.hosts.Hosts
 import ppl.delite.runtime.graph.targets.{OS, Targets}
 import collection.mutable.ArrayBuffer
 import sync._
@@ -23,7 +22,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     out.append("#include <stdlib.h>\n")
     out.append("#include <jni.h>\n")
     out.append("#include \"cppSyncObjects.h\"\n")
-    out.append("#include \"cppHeader.hpp\"\n")
+    out.append("#include \"" + Targets.Cpp + "helperFuncs.h\"\n")
     out.append("#include \""+CppMultiLoopHeaderGenerator.headerFile+".h\"\n")
     out.append("extern JNIEnv* env" + location + ";\n")
   }
@@ -84,7 +83,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     def resultName = if (returnsResult) getSymHost(op, op.getOutputs.head) else getOpSym(op)
 
     if (op.task == null) return //dummy op
-    if (op.outputType != "Unit") {
+    if (op.outputType(Targets.Cpp) != "void") {
       out.append(op.outputType(Targets.Cpp))
       out.append(' ')
       if (!isPrimitiveType(op.outputType)) out.append('*')
@@ -95,7 +94,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     out.append(op.getInputs.map(i=>getSymHost(i._1,i._2)).mkString("(",",",");\n"))
 
     if (!returnsResult) {
-      for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
+      for (name <- op.getOutputs if(op.outputType(Targets.Cpp,name)!="void")) {
         out.append(op.outputType(Targets.Cpp, name))
         if (!isPrimitiveType(op.outputType(name))) out.append('*')
         out.append(" " + getSymHost(op,name) + " = " + resultName + "->" + name + ";\n")
@@ -122,17 +121,17 @@ class CppMainExecutableGenerator(val location: Int, val kernelPath: String)
 
   def executableName(location: Int) = "Executable" + location
 
-  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Hosts.Value) = {
-    host match {
-      case Hosts.Scala => new ScalaMainExecutableGenerator(location, kernelPath) with ScalaSyncObjectGenerator {
+  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value) = {
+    target match {
+      case Targets.Scala => new ScalaMainExecutableGenerator(location, kernelPath) with ScalaSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
-      case Hosts.Cpp => new CppMainExecutableGenerator(location, kernelPath) with CppSyncObjectGenerator {
+      case Targets.Cpp => new CppMainExecutableGenerator(location, kernelPath) with CppSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
-      case _ => throw new RuntimeException("Unknown Host type " + host.toString)
+      case _ => throw new RuntimeException("Unknown Host type " + target.toString)
     }
   }
 }
@@ -141,7 +140,7 @@ object CppExecutableGenerator {
 
   val syncObjects = ArrayBuffer[String]()
   syncObjects += "#include <pthread.h>\n"
-  syncObjects += "#include \"cppHeader.hpp\"\n"
+  syncObjects += "#include \"" + Targets.Cpp + "helperFuncs.h\"\n"
   syncObjects += "#include \""+CppMultiLoopHeaderGenerator.headerFile+".h\"\n"
 
 

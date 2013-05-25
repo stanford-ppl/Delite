@@ -183,8 +183,8 @@ trait DeliteGPUGenIfThenElse extends GPUGenEffect with DeliteBaseGenIfThenElse {
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case DeliteIfThenElse(c,a,b,h) =>
-        isVoidType(sym.tp) match {
-          case true =>
+        remap(sym.tp) match {
+          case "void" =>
             stream.println(addTab() + "if (" + quote(c) + ") {")
             tabWidth += 1
             emitBlock(a)
@@ -192,26 +192,19 @@ trait DeliteGPUGenIfThenElse extends GPUGenEffect with DeliteBaseGenIfThenElse {
             stream.println(addTab() + "} else {")
             tabWidth += 1
             emitBlock(b)
-            getBlockResult(a).tp.toString match {
-              case "Nothing" => // e.g., ExceptionOps
-              case _ => stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
-            }
             tabWidth -= 1
             stream.println(addTab()+"}")
-          case false =>
+          case _ =>
             stream.println(addTab() + "%s %s;".format(remap(sym.tp),quote(sym)))
             stream.println(addTab() + "if (" + quote(c) + ") {")
             tabWidth += 1
             emitBlock(a)
-            stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(a))))
+            stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(a))))
             tabWidth -= 1
             stream.println(addTab() + "} else {")
             tabWidth += 1
             emitBlock(b)
-            getBlockResult(b).tp.toString match {
-              case "Nothing" => // e.g., ExceptionOps
-              case _ => stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
-            }
+            stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(b))))
             tabWidth -= 1
             stream.println(addTab()+"}")
           }

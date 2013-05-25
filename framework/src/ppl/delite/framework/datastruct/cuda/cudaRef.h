@@ -1,16 +1,16 @@
-#ifndef _DELITEREF_H_
-#define _DELITEREF_H_
+#ifndef _CUDA_REF_H_
+#define _CUDA_REF_H_
 
 template <class T>
-class Ref {
+class cudaRef {
 public:
     T data;
 
-    __host__ __device__ Ref(void) {
+    __host__ __device__ cudaRef(void) {
       data = NULL;
     }
 
-    __host__ __device__ Ref(T _data) {
+    __host__ __device__ cudaRef(T _data) {
       data = _data;
     }
 

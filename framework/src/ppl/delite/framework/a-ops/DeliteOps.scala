@@ -5,7 +5,7 @@ import java.io.{FileWriter, File, PrintWriter, StringWriter}
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericCodegen, GenericFatCodegen, GenerationFailedException}
-import ppl.delite.framework.{Config, Util}
+import ppl.delite.framework.{Config, Util, DeliteApplication}
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.extern.lib._
 import ppl.delite.framework.transform.LoopSoAOpt
@@ -1917,9 +1917,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     emitAbstractFatLoopHeader(kernelName, actType)
 
     emitMethod("size", remap(Manifest.Int), Nil) { emitReturn(quote(op.size)) }
-    emitVarDef("loopStart", remap(Manifest.Int), "0")
-    emitVarDef("loopSize", remap(Manifest.Int), "0")
-
+    
+    emitFieldDecl("loopStart", remap(Manifest.Int))
+    emitFieldDecl("loopSize", remap(Manifest.Int))
+    
     emitMethod("alloc", actType, Nil) {
       emitNewInstance("__act", actType)
       (symList zip op.body) foreach {
@@ -3268,16 +3269,15 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     }
     tabWidth = currentTab
 
-    def addRef(elem: Sym[Any], tp: String): String = {
-      if(inVars contains elem) {
-        "Ref< " + tp + " >"
-      }
-      else 
-        tp
+    def wrapRef(sym: Exp[Any]):String = {
+      if(inVars contains sym)
+        deviceTarget + "Ref< " + remap(sym.tp) + addRef(sym.tp) + " >"
+      else
+        remap(sym.tp)
     }
 
     val inputs = getFreeVarBlock(func,lastInputs).distinct
-    val paramStr = ((inputs++lastInputs).map(ele => addRef(ele,remap(ele.tp)) + " " + quote(ele)) ++ metaData.temps.map(t=>t.tp + " *" + t.sym) ++ List("size_t tempMemSize","char *tempMemPtr","int *tempMemUsage")).mkString(",")
+    val paramStr = ((inputs++lastInputs).map(ele => wrapRef(ele) + " " + quote(ele)) ++ metaData.temps.map(t=>t.tp + " *" + t.sym) ++ List("size_t tempMemSize","char *tempMemPtr","int *tempMemUsage")).mkString(",")
 
     header.append(devFuncPrefix + " %s dev_%s(%s) {\n".format(remap(getBlockResult(func).tp),postfix,paramStr))
     if(remap(getBlockResult(func).tp) != "void")
@@ -3298,7 +3298,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with GPUGenDeliteOps
 trait OpenCLGenDeliteOps extends OpenCLGenLoopsFat with GPUGenDeliteOps
 
 trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
-
+  
   import IR._
 
   private def deref(tpe: String): String = {
@@ -3331,7 +3331,9 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   }
 
   def releaseRef(varName: String) {
-    stream.println("free(" + varName + ");")
+    //TODO: Change this to decrement the reference count?
+    //stream.println("free(" + varName + ");")
+    stream.println(varName + " = NULL;")
   }
 
   def emitReturn(rhs: String) = {
@@ -3349,7 +3351,7 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   def emitClass(name: String)(body: => Unit) {
     stream.println("#ifndef __" + name + "__")
     stream.println("#define __" + name + "__")
-    stream.println("#include \"cppHeader.hpp\"")
+    stream.println("#include \"" + deviceTarget + "helperFuncs.h\"")
     stream.println("class " + name + " {")
     stream.println("public:")
     body

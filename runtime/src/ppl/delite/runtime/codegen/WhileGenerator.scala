@@ -4,7 +4,6 @@ import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.scheduler.OpList
 import ppl.delite.runtime.graph.ops._
-import ppl.delite.runtime.codegen.hosts.Hosts
 import sync._
 
 /**
@@ -62,17 +61,17 @@ trait WhileGenerator extends NestedGenerator {
   protected def endFunction()
   protected def callFunction(inputs: Seq[(DeliteOP,String)]): String
 
-  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Hosts.Value) = {
-    host match {
-      case Hosts.Scala => new ScalaWhileGenerator(whileLoop, location, kernelPath) with ScalaSyncObjectGenerator {
+  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value) = {
+    target match {
+      case Targets.Scala => new ScalaWhileGenerator(whileLoop, location, kernelPath) with ScalaSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
-      case Hosts.Cpp => new CppWhileGenerator(whileLoop, location, kernelPath) with CppSyncObjectGenerator {
+      case Targets.Cpp => new CppWhileGenerator(whileLoop, location, kernelPath) with CppSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
-      case _ => throw new RuntimeException("Unknown Host type " + host.toString)
+      case _ => throw new RuntimeException("Unknown Host type " + target.toString)
     }
   }
 }

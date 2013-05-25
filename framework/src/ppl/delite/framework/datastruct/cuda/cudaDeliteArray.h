@@ -1,5 +1,5 @@
-#ifndef _DELITEARRAY_H_
-#define _DELITEARRAY_H_
+#ifndef _CUDA_DELITEARRAY_H_
+#define _CUDA_DELITEARRAY_H_
 
 #include "DeliteCuda.h"
 
@@ -7,7 +7,7 @@
 #include <assert.h>
 
 template <class T>
-class DeliteArray {
+class cudaDeliteArray {
 public:
     T *data;
     int length;
@@ -16,13 +16,13 @@ public:
     int flag;
 
     // Constructor
-    __host__ __device__ DeliteArray(void) {
+    __host__ __device__ cudaDeliteArray(void) {
       length = 0;
       data = NULL;
     }
 
     /*
-    __device__ DeliteArray(int _length, T *basePtr) {
+    __device__ cudaDeliteArray(int _length, T *basePtr) {
       //int idx = threadIdx.x + blockIdx.x*blockDim.x;
       length = _length;
       //data = basePtr + idx*_length;
@@ -30,7 +30,7 @@ public:
     }
     */
 
-    __host__ DeliteArray(int _length) {
+    __host__ cudaDeliteArray(int _length) {
         length = _length;
         DeliteCudaMalloc((void**)&data,length*sizeof(T));
         offset = 0;
@@ -38,7 +38,7 @@ public:
         flag = 1;
     }
 
-    __host__ __device__ DeliteArray(int _length, T *_data, int _offset) {
+    __host__ __device__ cudaDeliteArray(int _length, T *_data, int _offset) {
         length = _length;
         data = _data; // + _offset * _length;
         offset = _offset *_length;
@@ -46,7 +46,7 @@ public:
         flag = 1;
     }
 
-    __host__ __device__ DeliteArray(int _length, T *_data, int _offset, int _stride) {
+    __host__ __device__ cudaDeliteArray(int _length, T *_data, int _offset, int _stride) {
         length = _length;
         data = _data; // + _offset*_length;
         offset = _offset;
@@ -83,17 +83,17 @@ public:
         update(idx,value);
     }
 
-    __host__ __device__ void dc_copy(DeliteArray<T> from) {
+    __host__ __device__ void dc_copy(cudaDeliteArray<T> from) {
       for(int i=0; i<length; i++)
         update(i,from.apply(i));
     }
 
-    __host__ DeliteArray<T> *dc_alloc(void) {
-      return new DeliteArray<T>(length);
+    __host__ cudaDeliteArray<T> *dc_alloc(void) {
+      return new cudaDeliteArray<T>(length);
     }
 
-    __host__ DeliteArray<T> *dc_alloc(int size) {
-       return new DeliteArray<T>(size);
+    __host__ cudaDeliteArray<T> *dc_alloc(int size) {
+      return new cudaDeliteArray<T>(size);
     }
 
     

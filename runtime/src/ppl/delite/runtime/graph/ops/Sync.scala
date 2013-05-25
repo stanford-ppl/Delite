@@ -3,7 +3,7 @@ package ppl.delite.runtime.graph.ops
 import collection.mutable
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.scheduler.{OpHelper, PartialSchedule}
-import collection.mutable.ArrayBuffer
+import collection.mutable.{ArrayBuffer,HashSet,HashMap}
 import ppl.delite.runtime.graph.targets.Targets
 
 /*
@@ -69,7 +69,7 @@ object Sync {
   //TODO: in sharedMemory can just send the pointer anyway, can be used later (Notify => SendView)
   def notify(from: DeliteOP, to: DeliteOP) = {
     val notifier = Notify(from, node(to.scheduledResource))
-    val potentialSenders: Set[Sync] = from.getOutputs.map(sym => SendData(sym, from, node(to.scheduledResource))) ++ from.getOutputs.map(sym => SendView(sym, from))
+    val potentialSenders: Set[Sync] = from.getOutputs.map(sym => SendData(sym, from, node(to.scheduledResource))) ++ from.getOutputs.map(sym => SendView(sym, from)) ++ from.getMutableInputs.map(mi => SendUpdate(mi._2, from, node(to.scheduledResource)))
     val otherSenders = potentialSenders.filter(syncSet contains _)
     notifier match {
       case _ if (from.scheduledResource == to.scheduledResource) => null
@@ -84,6 +84,7 @@ object Sync {
       case null =>
       case s: SendData => receive(s, to)
       case s: SendView => receiveView(s, to)
+      case s: SendUpdate => awaitUpdate(s, to)
       case n: Notify =>
         val awaiter = Await(n, to.scheduledResource)
         if (sender ne null) assert(node(to.scheduledResource) == n.toNode, "invalid notify/await pair")
@@ -112,12 +113,14 @@ object Sync {
     val updatee = ReceiveUpdate(updater, to.scheduledResource)
     if (updater ne null) assert(node(updatee.atResource) == updater.toNode, "invalid update pair")
     updater match {
-      case null =>
-      case _ if (syncSet contains updatee) =>
+      case null => 
+      case _ if (syncSet contains updatee) =>  
         // need to replace the receiveOp to be the earliest one in the schedule 
         val receiver = syncSet(updatee).asInstanceOf[ReceiveUpdate]
         val sch = schedule(to.scheduledResource)
         if(sch.indexOf(receiver.to) > sch.indexOf(to)) receiver.setReceiveOp(to)
+        val potentialNotifyAwait = Await(Notify(updater.from,node(to.scheduledResource)),to.scheduledResource)
+        if (syncSet contains potentialNotifyAwait) removeSendReceive(potentialNotifyAwait, to)        
       case _ => 
         val potentialNotifyAwait = Await(Notify(updater.from,node(to.scheduledResource)),to.scheduledResource)
         if (syncSet contains potentialNotifyAwait) removeSendReceive(potentialNotifyAwait, to)
@@ -157,6 +160,17 @@ object Sync {
     }
     for (sync <- syncSet.values) {
       sync match {
+        case s: SendData =>
+          schedule.insertAfter(s, s.from)
+          syncSet.remove(sync)
+        case r: ReceiveData =>
+          schedule.insertBefore(r, r.to)
+          syncSet.remove(sync)
+        case _ =>
+      }
+    }
+    for (sync <- syncSet.values) {
+      sync match {
         case s: Send =>
           schedule.insertAfter(s, s.from)
         case r: Receive =>
@@ -176,7 +190,7 @@ object Sync {
   }
 
   def canAcquire(from: Int, to: Int) = (OpHelper.scheduledTarget(from), OpHelper.scheduledTarget(to)) match {
-    case (Targets.Scala, Targets.Cpp) => true
+    //case (Targets.Scala, Targets.Cpp) => true
     case _ => false
   }
 
@@ -199,6 +213,17 @@ object Sync {
   private var _graph: DeliteTaskGraph = _
   private val visitedGraphs = new mutable.HashSet[DeliteTaskGraph]
 
+  def lastMutators(op: DeliteOP, sym: String) = {
+    val mset = new mutable.HashMap[Int,DeliteOP]
+    for (resource <- schedule; o <- resource) {
+      mutableDeps(o).find(_ == (op,sym)) match {
+        case Some(m) => mset += Pair(o.scheduledResource,o)
+        case _ => //
+      }
+    }
+    mset.values 
+  }
+
   def addSync(graph: DeliteTaskGraph) {
     _graph = graph
     visitedGraphs += graph //don't want to add sync to a graph more than once
@@ -211,13 +236,22 @@ object Sync {
       for (dep <- otherDeps(op)) { //could also be all deps
         await(notify(dep, op), op)
       }
+      for ((dep,sym) <- dataDeps(op)) {
+        for (mutator <- lastMutators(dep,sym) filter (m => mutableDepConsumers(m,sym) contains op)) {
+          awaitUpdate(update(sym, mutator, op), op)
+        }
+      }   
+      /*
       for ((dep,sym) <- mutableDeps(op)) { //write this as a broadcast and then optimize?
+        println("consumers of " + sym + ":" + mutableDepConsumers(op,sym))
         for (cons <- mutableDepConsumers(op, sym)) {
           if (_graph.inputs.map(_._2).contains(sym) || (schedule(cons.scheduledResource).availableAt(dep,sym,cons))) {
+            println("calling awaitUpdate:" + cons.toString)
             awaitUpdate(update(sym, op, cons), cons)
           }
         }
       }
+      */
 
       // Add Free nodes to the schedule if needed
       writeDataFrees(op)

@@ -5,6 +5,7 @@ import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.cost._
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.targets.Targets
+import ppl.delite.runtime.codegen.{Compilers,CCompile}
 
 /**
  * Author: Kevin J. Brown
@@ -96,6 +97,11 @@ trait StaticScheduler {
   }
 
   protected def scheduleOn(op: DeliteOP, schedule: PartialSchedule, resource: Int) {
+    //(op,Compilers(OpHelper.scheduledTarget(resource))) match {
+    //  case (o:OP_Single,c:CCompile) => c.addKernel(op.id)
+    //  case (o:OP_External,c:CCompile) => c.addKernel(op.id)
+    //  case _ => //
+    //}
     schedule(resource).add(op)
     op.scheduledResource = resource
     op.isSchedulable = true
@@ -124,7 +130,8 @@ trait StaticScheduler {
 
   //TODO: Separate hardware and programming model
   protected def scheduleOnGPU(op:DeliteOP) = {
-    if (Config.gpuWhiteList.size > 0) { // If white-list exists, then only white-list ops are scheduled on GPU
+    if (Config.numCuda + Config.numOpenCL == 0) false
+    else if (Config.gpuWhiteList.size > 0) { // If white-list exists, then only white-list ops are scheduled on GPU
       if (Config.gpuWhiteList.contains(op.id)) true
       else false
     }

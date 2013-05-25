@@ -67,7 +67,7 @@ trait OptiLAScalaOpsPkgExp extends OptiLAScalaOpsPkg with DSLOpsExp
   with SynchronizedArrayBufferOpsExp with HashMapOpsExp with IterableOpsExp with ArrayBufferOpsExp with ExceptionOpsExp
 
 trait OptiLAScalaCodeGenPkg extends ScalaGenDSLOps
-  with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenTupleOps
+  with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenTupleOps with ScalaGenTupledFunctions
   with ScalaGenImplicitOps with ScalaGenOrderingOps with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps
   with ScalaGenArrayOps with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps 
   with ScalaGenListOps with ScalaGenSeqOps with ScalaGenMathOps with ScalaGenCastingOps with ScalaGenSetOps with ScalaGenObjectOps
@@ -75,7 +75,7 @@ trait OptiLAScalaCodeGenPkg extends ScalaGenDSLOps
   { val IR: OptiLAScalaOpsPkgExp  }
 
 trait OptiLACudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with CudaGenOrderingOps
-  with CudaGenEqual with CudaGenIfThenElse with CudaGenVariables with CudaGenWhile with CudaGenTupleOps with CudaGenFunctions
+  with CudaGenEqual with CudaGenIfThenElse with CudaGenVariables with CudaGenWhile with CudaGenTupleOps /*with CudaGenTupledFunctions*/
   with CudaGenStringOps with CudaGenRangeOps with CudaGenIOOps with CudaGenArrayOps with CudaGenBooleanOps
   with CudaGenPrimitiveOps with CudaGenMiscOps
   with CudaGenListOps with CudaGenSeqOps with CudaGenMathOps with CudaGenCastingOps with CudaGenSetOps with CudaGenObjectOps
@@ -83,7 +83,7 @@ trait OptiLACudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with Cu
   { val IR: OptiLAScalaOpsPkgExp  }
 
 trait OptiLAOpenCLCodeGenPkg extends OpenCLGenDSLOps with OpenCLGenImplicitOps with OpenCLGenOrderingOps
-  with OpenCLGenEqual with OpenCLGenIfThenElse with OpenCLGenVariables with OpenCLGenWhile with OpenCLGenFunctions
+  with OpenCLGenEqual with OpenCLGenIfThenElse with OpenCLGenVariables with OpenCLGenWhile /*with OpenCLGenFunctions*/
   with OpenCLGenStringOps with OpenCLGenRangeOps with OpenCLGenIOOps with OpenCLGenArrayOps with OpenCLGenBooleanOps
   with OpenCLGenPrimitiveOps with OpenCLGenMiscOps //with OpenCLGenTupleOps
   with OpenCLGenListOps with OpenCLGenSeqOps with OpenCLGenMathOps with OpenCLGenCastingOps with OpenCLGenSetOps with OpenCLGenObjectOps
@@ -91,11 +91,11 @@ trait OptiLAOpenCLCodeGenPkg extends OpenCLGenDSLOps with OpenCLGenImplicitOps w
   { val IR: OptiLAScalaOpsPkgExp  }
 
 trait OptiLACCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderingOps
-  with CGenEqual with CGenIfThenElse with CGenVariables with CGenWhile with CGenFunctions
+  with CGenEqual with CGenIfThenElse with CGenVariables with CGenWhile with CGenTupleOps with CGenTupledFunctions
   with CGenStringOps with CGenRangeOps with CGenIOOps with CGenArrayOps with CGenBooleanOps
   with CGenPrimitiveOps with CGenMiscOps
   with CGenListOps with CGenSeqOps with CGenMathOps with CGenCastingOps with CGenSetOps with CGenObjectOps
-  with CGenSynchronizedArrayBufferOps with CGenHashMapOps with CGenIterableOps with CGenArrayBufferOps
+  with CGenSynchronizedArrayBufferOps with CGenHashMapOps with CGenIterableOps with CGenArrayBufferOps with CGenExceptionOps
   { val IR: OptiLAScalaOpsPkgExp  }
 
 /**
@@ -212,11 +212,10 @@ trait OptiLACodeGenBase extends GenericFatCodegen with SchedulingOpt {
 }
 
 trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg with OptiLAScalaGenExternal 
-  with ScalaGenDeliteOps with ScalaGenDeliteCollectionOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteFileReaderOps with ScalaGenTupledFunctions
+  with ScalaGenDeliteOps with ScalaGenDeliteCollectionOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteFileReaderOps
   with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenSparseVectorOps
   with ScalaGenDenseVectorViewOps with ScalaGenSparseVectorViewOps with ScalaGenMatrixOps with ScalaGenDenseMatrixOps with ScalaGenSparseMatrixOps with ScalaGenSparseMatrixBuildableOps  
   //with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
-  with ScalaGenExceptionOps
   with ScalaGenVariantsOps
   // -- choice of sparse matrix repr
   with ScalaGenSparseMatrixCSROps with ScalaGenSparseMatrixCOOOps with ScalaGenSparseVectorViewCSROps
@@ -271,11 +270,11 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
   }
 }
 
+
 trait OptiLACodeGenCuda extends OptiLACudaCodeGenPkg with OptiLACodeGenBase with OptiLACudaGenExternal 
-  with CudaGenDeliteOps with CudaGenDeliteCollectionOps with CudaGenDeliteStruct with CudaGenDeliteArrayOps with CudaGenDeliteArrayBufferOps //with CudaGenTupledFunctions 
+  with CudaGenDeliteOps with CudaGenDeliteCollectionOps with CudaGenDeliteStruct with CudaGenDeliteArrayOps with CudaGenDeliteArrayBufferOps 
   /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenVectorOps with CudaGenDenseVectorOps with CudaGenSparseVectorOps
   with CudaGenDenseVectorViewOps with CudaGenSparseVectorViewOps with CudaGenMatrixOps with CudaGenDenseMatrixOps with CudaGenSparseMatrixOps with CudaGenSparseMatrixBuildableOps
-  with CudaGenExceptionOps
   with CudaGenVariantsOps
   with CudaGenSparseMatrixCSROps with CudaGenSparseMatrixCOOOps with CudaGenSparseVectorViewCSROps
   with DeliteCudaGenAllOverrides with DeliteCppHostTransfer with OptiLACppHostTransfer with DeliteCudaDeviceTransfer with OptiLACudaDeviceTransfer { //with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
@@ -297,20 +296,8 @@ trait OptiLACodeGenCuda extends OptiLACudaCodeGenPkg with OptiLACodeGenBase with
 
   override def getDataStructureHeaders(): String = {
     val out = new StringBuilder
-    out.append("#include <float.h>\n")
-    out.append("#include \"Ref.h\"\n")
-    out.append("#include \"DeliteStructs.h\"\n")
-    out.append("#include \"DenseVector.h\"\n")
-    out.append("#include \"RangeVector.h\"\n")
-    out.append("#include \"List.h\"\n")
-    out.append("#include \"DeliteArray.h\"\n")
-    out.append("#include \"DenseMatrix.h\"\n")
-    out.append("#include \"HostRef.h\"\n")
-    out.append("#include \"HostDenseVector.h\"\n")
-    out.append("#include \"HostRangeVector.h\"\n")
-    out.append("#include \"HostList.h\"\n")
-    out.append("#include \"HostDeliteArray.h\"\n")
-    out.append("#include \"HostDenseMatrix.h\"\n")
+    out.append("#include \"cudaList.h\"\n")
+    out.append("#include \"HostcudaList.h\"\n")
     out.append("#include \"library.h\"\n") // external library
     super.getDataStructureHeaders() + out.toString
   }
@@ -338,16 +325,16 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
 
   override def getDataStructureHeaders(): String = {
     val out = new StringBuilder
-    out.append("#include \"VectorImpl.h\"\n")
-    out.append("#include \"MatrixImpl.h\"\n")
-    out.append("#include \"RangeVectorImpl.h\"\n")
     super.getDataStructureHeaders() + out.toString
   }
 }
 
-trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenDeliteOps
-  with CGenArithOps with CGenVectorOps with CGenDenseVectorOps with CGenDenseVectorViewOps with CGenMatrixOps with CGenDenseMatrixOps //with CGenMatrixRowOps
-  with CGenDeliteCollectionOps with CGenDeliteArrayOps
+trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg /*with OptiLACGenExternal*/  
+  with CGenDeliteOps with CGenDeliteCollectionOps with CGenDeliteStruct with CGenDeliteArrayOps /*with CGenDeliteArrayBufferOps*/
+  /*with CGenLanguageOps*/ with CGenArithOps with CGenVectorOps with CGenDenseVectorOps with CGenSparseVectorOps
+  with CGenDenseVectorViewOps /*with CGenSparseVectorViewOps*/ with CGenMatrixOps with CGenDenseMatrixOps with CGenSparseMatrixOps with CGenSparseMatrixBuildableOps 
+  with CGenVariantsOps
+  with CGenSparseMatrixCSROps with CGenSparseMatrixCOOOps /*with CGenSparseVectorViewCSROps*/
   with DeliteCGenAllOverrides with DeliteCppHostTransfer with OptiLACppHostTransfer
 {
   val IR: DeliteApplication with OptiLAExp
@@ -366,11 +353,8 @@ trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenD
 
   override def getDataStructureHeaders(): String = {
     val out = new StringBuilder
-    out.append("#include \"DeliteArray.h\"\n")
-    out.append("#include \"DenseVector.h\"\n")
-    out.append("#include \"RangeVector.h\"\n")
-    out.append("#include \"DeliteArray.h\"\n")
-    out.append("#include \"DenseMatrix.h\"\n")
+    out.append("#include \"cppList.h\"\n")    
+    //out.append("#include \"library.h\"\n") // external library
     super.getDataStructureHeaders() + out.toString
   }
 }
