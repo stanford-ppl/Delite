@@ -628,12 +628,24 @@ trait CudaGenDeliteArrayOps extends BaseGenDeliteArrayOps with CudaGenFat with C
     case _ => super.emitNode(sym, rhs)
   }
 
+  override def remapHost[A](m: Manifest[A]): String = {
+    if(isArrayType(baseType(m))) {
+      m.typeArguments(0) match {
+        case StructType(_,_) if Config.soaEnabled => super.remapHost(m)
+        case s if s <:< manifest[Record] && Config.soaEnabled => super.remapHost(m)  
+        case arg => hostTarget + "DeliteArray< " + remapHost(arg) + addRef(arg) + " >"
+      }
+    }
+    else 
+      super.remapHost(m)
+  }
+
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
     case "DeliteArray" => m.typeArguments(0) match {
-      case p if !isPrimitiveType(p) => throw new GenerationFailedException("DeliteArray of type object is not supported on this branch.")
-      case StructType(_,_) if Config.soaEnabled => structName(m)
-      case s if s <:< manifest[Record] && Config.soaEnabled => structName(m) // occurs due to restaging
-      case arg => "cudaDeliteArray< " + remap(arg) + " >"
+      //case p if !isPrimitiveType(p) => throw new GenerationFailedException("DeliteArray of type object is not supported on this branch.")
+      case StructType(_,_) if Config.soaEnabled => super.remap(m)
+      case s if s <:< manifest[Record] && Config.soaEnabled => super.remap(m) // occurs due to restaging
+      case arg => deviceTarget + "DeliteArray< " + remap(arg) + " >"
     }
     case _ => super.remap(m)
   }
@@ -728,6 +740,26 @@ trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenDeliteStruct wit
       case arg => "cppDeliteArray< " + remap(arg) + addRef(arg) + " >"
     }
     case _ => super.remap(m)
+  }
+
+  override def emitDataStructures(path: String) {
+    super.emitDataStructures(path)
+    val stream = new PrintWriter(path + deviceTarget + "DeliteArrayRelease.h")
+    stream.println("#include \"" + deviceTarget + "DeliteStructs.h\"")
+    for(tp <- dsTypesList if(isArrayType(tp) && remap(tp)!="string")) {
+      try {
+        tp.typeArguments(0) match {
+          case StructType(_,_) if Config.soaEnabled => 
+          case s if s <:< manifest[Record] && Config.soaEnabled => 
+          case _ => stream.println("template void " + remap(tp) + "::release(void);\n")    
+        }
+      }
+      catch {
+        case e: GenerationFailedException => //
+        case e: Exception => throw(e)
+      }
+    }
+    stream.close()
   }
 
   override def getDataStructureHeaders(): String = {

@@ -225,7 +225,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
           out.append("\tfor(int i=0; i<length; i++) {\n")
           //TODO: Move the null check to other place? (e.g. struct type transfer and delitearray primitive type transfer)
           out.append("\t\tjobject o = env->GetObjectArrayElement((%sArray)obj,i);\n".format(JNIType(typeArg)))
-          out.append("\t\tsym->data[i] = (o == NULL)? NULL : recvCPPfromJVM_%s(env, o);\n".format(mangledName(remap(typeArg))))
+          out.append("\t\tsym->data[i] = (o == NULL)? NULL : recvCPPfromJVM_%s(env, o);\n".format(mangledName(remapHost(typeArg))))
           out.append("\t\tenv->DeleteLocalRef(o);\n")
           out.append("\t}\n")
           out.append("\treturn sym;\n")

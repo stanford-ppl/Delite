@@ -619,7 +619,7 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
       stream.println("\t}")
       // free
       stream.println("\tvoid release(void) {")
-      stream.print(elems.filter(e => !isPrimitiveType(baseType(e._2))).map(e => e._1 + "->release();\n").mkString(""))
+      stream.print(elems.filter(e => !isPrimitiveType(baseType(e._2)) && remap(baseType(e._2))!="string").map(e => e._1 + "->release();\n").mkString(""))
       //stream.println("\tfree(this);")
       stream.println("\t}")
       stream.println("};")

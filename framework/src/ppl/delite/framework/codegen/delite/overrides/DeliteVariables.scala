@@ -2,7 +2,8 @@ package ppl.delite.framework.codegen.delite.overrides
 
 import java.io.PrintWriter
 import ppl.delite.framework.ops.DeliteOpsExp
-import scala.virtualization.lms.internal.{CLikeCodegen}
+import ppl.delite.framework.datastructures.CLikeGenDeliteStruct
+import scala.virtualization.lms.internal.{CLikeCodegen, GenerationFailedException}
 import scala.virtualization.lms.common._
 
 trait DeliteScalaGenVariables extends ScalaGenEffect {
@@ -82,5 +83,24 @@ trait DeliteOpenCLGenVariables extends OpenCLGenEffect with DeliteCLikeGenVariab
   override protected def reference: String = "."
 }
 
-trait DeliteCGenVariables extends CGenEffect with DeliteCLikeGenVariables
-
+trait DeliteCGenVariables extends CGenEffect with DeliteCLikeGenVariables with CLikeGenDeliteStruct {
+  val IR: VariablesExp with DeliteOpsExp
+  import IR._
+  
+  /*
+  override def emitDataStructures(path: String) {
+    super.emitDataStructures(path)
+    val stream = new PrintWriter(path + deviceTarget + "RefRelease.h")
+    for(tp <- dsTypesList.map(baseType) if(!isPrimitiveType(tp) && !isVoidType(tp))) {
+      try {
+        stream.println("template void " + deviceTarget + "Ref< " + remap(tp) + "* >::release(void);\n")
+      }
+      catch {
+        case e: GenerationFailedException => //
+        case e: Exception => throw(e)
+      }
+    }
+    stream.close()
+  }
+  */
+}

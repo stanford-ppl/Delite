@@ -41,6 +41,7 @@ trait ConditionGenerator extends NestedGenerator {
 
     //then block
     beginThenBlock()
+    setConditionVariable(true)
     if (condition.thenValue == "") {
       addKernelCalls(condition.thenGraph.schedule(location))
       if (hasOutput) {
@@ -52,11 +53,11 @@ trait ConditionGenerator extends NestedGenerator {
       writeReturn(false)
       writeValue(condition.thenValue)
     }
-    setConditionVariable(true)
     endThenBlock()
 
     //else block
     beginElseBlock()
+    setConditionVariable(false)
     if (condition.elseValue == "") {
       addKernelCalls(condition.elseGraph.schedule(location))
       if (hasOutput) {
@@ -68,7 +69,6 @@ trait ConditionGenerator extends NestedGenerator {
       writeReturn(false)
       writeValue(condition.elseValue)
     }
-    setConditionVariable(false)
     endElseBlock()
 
     writeMethodFooter()
