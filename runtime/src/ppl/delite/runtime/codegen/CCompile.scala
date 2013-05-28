@@ -5,7 +5,7 @@ import ppl.delite.runtime.Config
 import xml.XML
 import java.io.FileNotFoundException
 import tools.nsc.io.{Directory, Path, File}
-import ppl.delite.runtime.graph.targets.OS
+import ppl.delite.runtime.graph.targets.{OS, Targets}
 
 trait CCompile extends CodeCache {
   
@@ -26,10 +26,16 @@ trait CCompile extends CodeCache {
   //val binCacheHome = cacheHome + "bin" + sep + "runtime" + sep
 
   private val headerBuffer = new ArrayBuffer[(String, String)]
+  private val kernelBuffer = new ArrayBuffer[String] // list of kernel filenames to be included in the compilation (non-multiloop kernels)
+  protected def auxSourceList = List[String]() // additional source filenames to be included in the compilation
 
   def headers = headerBuffer.map(_._2)
 
   protected def deliteLibs = Config.deliteBuildHome + sep + "libraries" + sep + target
+
+  def addKernel(name: String) {
+    kernelBuffer += (name + "." + ext)
+  }
 
   def addHeader(source: String, name: String) {
     if (!headerBuffer.contains((source, name+".h")))
@@ -55,27 +61,26 @@ trait CCompile extends CodeCache {
   def compile() {
     if (sourceBuffer.length == 0) return
     cacheRuntimeSources((sourceBuffer ++ headerBuffer).toArray)
-    val kernelsList = Nil //Directory(sourceCacheHome + "kernels").deepFiles.withFilter(_.extension == ext).map(_.name)
-
+    
     if (modules.exists(_.needsCompile)) {
-      val includes = modules.map(m => config.headerPrefix + sourceCacheHome + m.name).toArray
+      val includes = modules.flatMap(m => List(config.headerPrefix + sourceCacheHome + m.name, config.headerPrefix + Compilers(Targets.getHostTarget(target)).sourceCacheHome + m.name)).toArray
       val libs = Directory(deliteLibs).files.withFilter(f => f.extension == OS.libExt).map(_.path).toArray
       val paths = includes ++ config.headerDir ++ Array(config.headerPrefix + Config.deliteHome + sep + "runtime" + sep + target) ++ config.libs ++ libs
-      val sources = (sourceBuffer.map(s => sourceCacheHome + "runtime" + sep + s._2) ++ List(sourceCacheHome + "kernels" + sep + "helperFuncs.cu") ++ List(Config.deliteHome + sep + "runtime" + sep + target + sep + "DeliteCuda.cu") ++ kernelsList.map(k => sourceCacheHome + "kernels" + sep + k)).toArray
+      val sources = (sourceBuffer.map(s => sourceCacheHome + "runtime" + sep + s._2) ++ kernelBuffer.map(k => sourceCacheHome + "kernels" + sep + k) ++ auxSourceList).toArray
       val dest = binCacheHome + target + "Host." + OS.libExt
-
       compile(dest, sources, paths)
     }
     sourceBuffer.clear()
     headerBuffer.clear()
+    kernelBuffer.clear()
   }
 
   def compile(destination: String, sources: Array[String], paths: Array[String]) {
     Path(destination).parent.createDirectory()
     val output = Array(outputSwitch, destination)
     val args = Array(config.compiler) ++ paths ++ compileFlags ++ output ++ sources
-    val process = Runtime.getRuntime.exec(args)
     println(args.mkString(" "))
+    val process = Runtime.getRuntime.exec(args)
     process.waitFor
     checkError(process, args)
   }
@@ -112,6 +117,9 @@ trait CCompile extends CodeCache {
     }
 
     if (process.exitValue != 0) {
+      sourceBuffer.clear()
+      headerBuffer.clear()
+      kernelBuffer.clear()
       if(Config.clusterMode == 2) // Send the error message to the master node
         ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(out.toString)
       else 

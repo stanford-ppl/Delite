@@ -8,7 +8,8 @@ import scala.virtualization.lms.common.{EffectExp, Variables}
 
 
 trait BinarizedGradientTemplateOps extends Variables with OverloadHack {
-
+  this: OptiML =>
+  
   object BinarizedGradientTemplate {
     def apply(radius: Rep[Int], rect: Rep[Rect], mask_list: Rep[DenseVector[Int]], level: Rep[Int], binary_gradients: Rep[DenseVector[Double]], match_list: Rep[IndexVectorDense], occlusions: Rep[DenseVector[DenseVector[Int]]], templates: Rep[DenseVector[BinarizedGradientTemplate]], hist: Rep[DenseVector[Float]]) = binarizedgradienttemplate_obj_new(radius, rect, mask_list, level, binary_gradients, match_list, occlusions, templates, hist)
   }
@@ -44,6 +45,8 @@ trait BinarizedGradientTemplateOps extends Variables with OverloadHack {
 }
 
 trait BinarizedGradientTemplateOpsExp extends BinarizedGradientTemplateOps with EffectExp {
+  this: OptiMLExp =>
+  
   case class BinarizedGradientTemplateObjectNew(radius: Exp[Int], rect: Exp[Rect], mask_list: Exp[DenseVector[Int]], level: Exp[Int], binary_gradients: Exp[DenseVector[Double]], match_list: Exp[IndexVectorDense], occlusions: Exp[DenseVector[DenseVector[Int]]], templates: Exp[DenseVector[BinarizedGradientTemplate]], hist: Exp[DenseVector[Float]]) extends Def[BinarizedGradientTemplate]
   case class BinarizedGradientTemplateRadius(__x: Exp[BinarizedGradientTemplate]) extends Def[Int]
   case class BinarizedGradientTemplateRect(__x: Exp[BinarizedGradientTemplate]) extends Def[Rect]

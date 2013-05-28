@@ -10,7 +10,6 @@
 
 package ppl.tests.scalatest.dsl.optiml
 
-import ppl.dsl.optiml.{Vector,RangeVector}
 import ppl.dsl.optiml.{OptiMLApplication, OptiMLApplicationRunner}
 import ppl.tests.scalatest._
 

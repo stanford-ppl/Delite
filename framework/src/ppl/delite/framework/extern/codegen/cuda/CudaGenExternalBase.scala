@@ -12,7 +12,7 @@ import ppl.delite.framework.extern.codegen.GenericGenExternal
 import ppl.delite.framework.ops._
 import ppl.delite.framework.codegen.delite._
 
-trait CudaGenExternalBase extends GenericGenExternal with CudaGenFat {
+trait CudaGenExternalBase extends GenericGenExternal with CudaGenFat with CudaGenDeliteOps {
   val IR: DeliteOpsExp
   import IR._
 
@@ -34,7 +34,11 @@ trait CudaGenExternalBase extends GenericGenExternal with CudaGenFat {
   }
 
   def emitMethodCall(sym: Sym[Any], e: DeliteOpExternal[_], lib: ExternalLibrary, args: List[String]) = {
-    emitAllocFunc(List((sym,e.allocVal)), "allocFunc_"+quote(sym), Nil, Map())
+    if(isNestedNode) throw new GenerationFailedException(quote(sym) + ": cannot call external libraries within kernels")
+    val allocInputs = emitMultiLoopAllocFunc(e.allocVal, "alloc_"+quote(sym), "", quote(sym), Map())
+    val elem = new LoopElem("EXTERN",Map())
+    elem.funcs += "alloc" -> allocInputs.map(quote)
+    metaData.outputs.put(sym, elem)
     stream.println(e.funcName + "(" + (args mkString ",") + ");")    
   }
   

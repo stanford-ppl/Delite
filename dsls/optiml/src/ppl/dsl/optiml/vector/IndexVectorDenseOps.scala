@@ -1,11 +1,10 @@
 package ppl.dsl.optiml.vector
 
-import ppl.dsl.optiml.{Vector, DenseVector, RangeVector, IndexVector, IndexVectorDense}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteCollectionOpsExp}
 import ppl.delite.framework.ops.DeliteCollection
-import ppl.delite.framework.datastructures.DeliteArray
+import ppl.delite.framework.datastructures.{DeliteStructsExp, DeliteArray}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.util.OverloadHack
 import scala.reflect.SourceContext
@@ -57,7 +56,7 @@ trait IndexVectorDenseOps extends Base with OverloadHack { this: OptiML =>
   def indexvectordense_new_unsafe(x: Rep[DenseVector[Int]])(implicit ctx: SourceContext): Rep[IndexVectorDense]  
 }
 
-trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOpsExp with VariablesExp with BaseFatExp { this: OptiMLExp => 
+trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOpsExp with VariablesExp with BaseFatExp with DeliteStructsExp { this: OptiMLExp => 
   //case class IndexVectorDenseLength(x: Exp[IndexVectorDense]) extends Def[Int]
   //case class IndexVectorDenseApply(x: Exp[IndexVectorDense], n: Exp[Int]) extends Def[Int]
   //case class IndexVectorDenseNewUnsafe(x: Exp[DenseVector[Int]]) extends Def[IndexVectorDense]
@@ -79,28 +78,19 @@ trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOp
   
   def isIndexDense[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.tp.erasure == classOf[IndexVectorDense]
   def asIndexDense[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[IndexVectorDense]]
-    
-  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
-    if (isIndexDense(x)) asIndexDense(x).length
-    else super.dc_size(x)
-  }
-  
-  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
-    if (isIndexDense(x)) (asIndexDense(x).apply(n)).asInstanceOf[Exp[A]]
-    else super.dc_apply(x,n)    
-  }
-  
-  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
-    if (isIndexDense(x)) asIndexDense(x).update(n,y.asInstanceOf[Exp[Int]])
-    else super.dc_update(x,n,y)        
-  }  
-  
+
   override def dc_alloc[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], size: Exp[Int])(implicit ctx: SourceContext): Exp[CA] = {
     if (isIndexDense(x)) {
       val out = IndexVector(size, asIndexDense(x).isRow)
       out.asInstanceOf[Exp[CA]]
     }
     else super.dc_alloc[A,CA](x,size)
+  }  
+
+  override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = {
+    val m = manifest[T]
+    if (m.erasure == classOf[IndexVectorDense]) Some((classTag(m), collection.immutable.List("_data" -> manifest[DeliteArray[Int]], "_length" -> manifest[Int], "_isRow" -> manifest[Boolean])))
+    else super.unapplyStructType
   }
   
   //////////////
@@ -125,7 +115,8 @@ trait IndexVectorDenseOpsExpOpt extends IndexVectorDenseOpsExp { this: OptiMLExp
     case Def(v@Reflect(IndexVectorDenseNew(l,r), u, es)) if context.contains(v) => l
     case Def(IndexVectorObjectFromVec(xs)) => xs.length
     case Def(v@Reflect(IndexVectorObjectFromVec(xs), u, es)) if context.contains(v) => xs.length
-    case _ => super.indexvectordense_length(x)
+    case Def(VectorSlice(a, start, end)) => end - start
+    case _ => super.indexvectordense_length(x) // densevector_length(x) // should work
   }
 
 
@@ -143,20 +134,4 @@ trait ScalaGenIndexVectorDenseOps extends ScalaGenFat {
   
 trait CGenIndexVectorDenseOps extends CGenFat {
   val IR: IndexVectorDenseOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    //case IndexVectorDenseLength(x) => emitValDef(sym, quote(x) + "->length")
-    //case IndexVectorDenseApply(x,n) => emitValDef(sym, quote(x) + "->data[" + quote(n) + "]")
-    // case IndexVectorDenseNewUnsafe(x) => 
-    //   stream.println("val " + quote(sym) + " = {")
-    //   stream.println("val res = new generated.scala.IndexVectorDense(0)")
-    //   stream.println("res._data = " + quote(x) + "._data")
-    //   stream.println("res._length = " + quote(x) + "._length")
-    //   stream.println("res._isRow = " + quote(x) + "._isRow")
-    //   stream.println("res")
-    //   stream.println("}")
-    case _ => super.emitNode(sym, rhs)
-  }
 }
-  

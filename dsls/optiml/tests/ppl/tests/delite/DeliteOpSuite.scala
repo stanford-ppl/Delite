@@ -30,6 +30,10 @@ trait DeliteMap extends DeliteTestModule with OptiMLApplication {
       i += 1
     }
 
+    val ve = Vector[Double](0,true)
+    val ve2 = ve map { e => 1 }
+    collect(ve2.length == 0)
+    
     mkReport
   }
 }
@@ -50,6 +54,14 @@ trait DeliteZip extends DeliteTestModule with OptiMLApplication {
       i += 1
     }
 
+    val ve1 = Vector[Double](0,true)
+    val ve2 = Vector[Double](0,true)    
+    val ve3 = ve1.zip(ve2) { (a,b) => 1 }
+    collect(ve3.length == 0)
+    
+    // TODO: one collection empty and the other not?
+    // what is expected behavior? (should be an exception)
+    
     mkReport
   }
 }
@@ -60,6 +72,9 @@ trait DeliteReduce extends DeliteTestModule with OptiMLApplication {
 
     val v = Vector.range(0, 1000)
     collect(v.sum == 499500)
+    
+    val ve = Vector[Int](0,true)
+    collect(ve.sum == 0)
 
     mkReport
   }
@@ -91,6 +106,10 @@ trait DeliteFilter extends DeliteTestModule with OptiMLApplication {
       i += 1
     }
 
+    val ve = Vector[Int](0,true)
+    val ve2 = ve.filter(_ % 2 == 1)
+    collect(ve2.length == 0)
+    
     mkReport
   }
 }
@@ -106,6 +125,11 @@ trait DeliteForeach extends DeliteTestModule with OptiMLApplication {
       }
     }
 
+    val ve = Vector[Int](0,true)
+    for (e <- ve) {
+      collect(false)
+    }
+    
     mkReport
   }
 }
@@ -138,6 +162,12 @@ trait DeliteNestedMap extends DeliteTestModule with OptiMLApplication {
       i += 1
     }
 
+    val res2 = Vector[Double](1,true) map { e =>
+      val ve = Vector[Double](0,true)
+      ve map { e => 10 }
+    }
+    collect(res2(0).length == 0)
+    
     mkReport
   }
 }
@@ -159,7 +189,14 @@ trait DeliteNestedZip extends DeliteTestModule with OptiMLApplication {
       collect(v3(i) == 3)
       i += 1
     }
-
+    
+    val res2 = Vector[Double](1,true) map { e =>
+      val ve1 = Vector.ones(0)
+      val ve2 = Vector[Double](0,true) map { e => 2. }
+      ve1 + ve2
+    }
+    collect(res2(0).length == 0)
+    
     mkReport
   }
 }
@@ -173,7 +210,13 @@ trait DeliteNestedReduce extends DeliteTestModule with OptiMLApplication {
       v.sum
     }
     collect(res(0) == 499500)
-
+    
+    val res2 = Vector[Double](1,true) map { e =>
+      val ve = Vector[Int](0, true)
+      ve.sum
+    }
+    collect(res2(0) == 0)
+    
     mkReport
   }
 }
@@ -205,7 +248,14 @@ trait DeliteNestedForeach extends DeliteTestModule with OptiMLApplication {
       }
       //e // fails with Unit return type because Java can't handle Array[Void]
     }
-
+    
+    Vector[Double](1,true) foreach { e =>
+      val ve = Vector[Int](0, true)
+      for (e <- ve) {
+        collect(false)
+      }
+    }
+    
     mkReport
   }
 }
@@ -237,6 +287,7 @@ class DeliteOpSuite extends DeliteSuite {
   def testDeliteForeach() { compileAndTest(DeliteForeachRunner) }
   def testDeliteZipWithReduceTuple() { compileAndTest(DeliteZipWithReduceTupleRunner, CHECK_MULTILOOP); }
   def testDeliteNestedMap() { compileAndTest(DeliteNestedMapRunner) }
+  
   def testDeliteNestedZip() { compileAndTest(DeliteNestedZipRunner) }
   def testDeliteNestedReduce() { compileAndTest(DeliteNestedReduceRunner, CHECK_MULTILOOP); }
   def testDeliteNestedMapReduce() { compileAndTest(DeliteNestedMapReduceRunner, CHECK_MULTILOOP); }

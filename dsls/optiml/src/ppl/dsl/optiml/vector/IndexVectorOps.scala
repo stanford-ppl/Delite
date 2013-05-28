@@ -1,6 +1,5 @@
 package ppl.dsl.optiml.vector
 
-import ppl.dsl.optiml.{DenseVector,Vector, IndexVector, IndexVectorRange, IndexVectorDense, Matrix, DenseMatrix}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.datastructures.DeliteArray
@@ -92,7 +91,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[Int]]]
     val size = copyTransformedOrElse(_.size)(intf.length)
     def zero = aV.empty
-    def alloc = DeliteArray(0)
+    def alloc(i: Exp[Int]) = DeliteArray(i)
     def mV = manifest[V]
     def aV = implicitly[Arith[V]]
   }
@@ -118,15 +117,14 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case e@IndexVectorObjectFromVec(x) => reflectPure(new { override val original = Some(f,e) } with IndexVectorObjectFromVec(f(x)))(mtype(manifest[A]), implicitly[SourceContext])
-    case e@IndexVectorConstruct(in,b) => reflectPure(new { override val original = Some(f,e) } with IndexVectorConstruct(f(in),f(b))(e.m))(mtype(manifest[A]), implicitly[SourceContext])
+    case e@IndexVectorObjectFromVec(x) => reflectPure(new { override val original = Some(f,e) } with IndexVectorObjectFromVec(f.intf(x)))(mtype(manifest[A]), implicitly[SourceContext])
+    case e@IndexVectorConstruct(in,b) => reflectPure(new { override val original = Some(f,e) } with IndexVectorConstruct(f.intf(in),f(b))(e.m))(mtype(manifest[A]), implicitly[SourceContext])
     case IndexVectorRangeNew(start,end) => indexvector_range(f(start),f(end))
-    case e@IndexVectorHash(x,kf,mf,rf) => reflectPure(new { override val original = Some(f,e) } with IndexVectorHash(f(x),f(kf),f(mf),f(rf))(e.mV,e.aV))(mtype(manifest[A]), implicitly[SourceContext])
-    case Reflect(e@IndexVectorObjectFromVec(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorObjectFromVec(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case e@IndexVectorHash(x,kf,mf,rf) => reflectPure(new { override val original = Some(f,e) } with IndexVectorHash(f.intf(x),f(kf),f(mf),f(rf))(e.mV,e.aV))(mtype(manifest[A]), implicitly[SourceContext])
+    case Reflect(e@IndexVectorObjectFromVec(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorObjectFromVec(f.intf(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@IndexVectorDenseNew(l,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorDenseNew(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-
-    case Reflect(e@IndexVectorConstruct(in,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorConstruct(f(in),f(b))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@IndexVectorHash(x,kf,mf,rf), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorHash(f(x),f(kf),f(mf),f(rf))(e.mV,e.aV), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@IndexVectorConstruct(in,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorConstruct(f.intf(in),f(b))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@IndexVectorHash(x,kf,mf,rf), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorHash(f.intf(x),f(kf),f(mf),f(rf))(e.mV,e.aV), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
 }
@@ -137,12 +135,4 @@ trait ScalaGenIndexVectorOps extends ScalaGenBase {
 
 trait CGenIndexVectorOps extends CGenBase {
   val IR: IndexVectorOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case v@IndexVectorDenseNew(len, isRow) =>
-      emitValDef(sym, "new IndexVectorDense(" + quote(len) + ", " + quote(isRow) + ")")
-
-    case _ => super.emitNode(sym, rhs)
-  }
 }

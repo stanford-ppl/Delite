@@ -3,7 +3,6 @@ package ppl.delite.runtime.codegen.sync
 import ppl.delite.runtime.graph.ops._
 import collection.mutable.{HashSet, ArrayBuffer}
 import ppl.delite.runtime.codegen.{ScalaExecutableGenerator, ExecutableGenerator}
-import ppl.delite.runtime.codegen.hosts.Hosts
 import ppl.delite.runtime.graph.targets.Targets
 
 trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
@@ -99,7 +98,7 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
 
   protected def writeSyncObject() {
     //if (syncList.nonEmpty) {
-      syncObjectGenerator(syncList, Hosts.Scala).makeSyncObjects
+      syncObjectGenerator(syncList, Targets.Scala).makeSyncObjects
     //}
   }
 

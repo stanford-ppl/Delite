@@ -2,7 +2,6 @@ package ppl.tests.scalatest.dsl.optiml
 
 import ppl.delite.framework.DeliteApplication
 import ppl.dsl.optiml.{OptiMLApplicationRunner, OptiMLApplication}
-import ppl.dsl.optila.{DenseVector}
 import ppl.tests.scalatest._
 
 object SumRunner extends DeliteTestRunner with OptiMLApplicationRunner with Sum

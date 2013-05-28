@@ -13,24 +13,21 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
   private val t = new ForwardPassTransformer {
     val IR: self.type = self
     override def transformStm(stm: Stm): Exp[Any] = stm match {
-      case TP(sym, Loop(size, v, body: DeliteCollectElem[a,i,ca])) if body.par == ParFlat /*FIXME: ParBuffer*/ => soaCollect[a,i,ca](size,v,body)(body.mA,body.mI,body.mCA) match {
-        case Some(newSym) => 
-          stm match {
-            case TP(sym, z:DeliteOpZipWith[_,_,_,_]) if(Config.enableGPUObjReduce) => 
-              encounteredZipWith += newSym -> z
-              printdbg("Register DeliteOpZipWith symbol ")
-              printdbg(newSym)
-              printdbg(z)
-            case _ => //
-          }
-          newSym
+      case TP(sym, Loop(size, v, body: DeliteCollectElem[a,i,ca])) => soaCollect[a,i,ca](size,v,body)(body.mA,body.mI,body.mCA) match {
+        case Some(newSym) => stm match {
+          case TP(sym, z:DeliteOpZipWith[_,_,_,_]) if(Config.enableGPUObjReduce) => 
+            encounteredZipWith += newSym -> z
+            printdbg("Register DeliteOpZipWith symbol: " + z.toString + " -> " + newSym.toString)
+            newSym
+          case _ => newSym
+        }
         case None => super.transformStm(stm)
       }
       case TP(sym, r:DeliteOpReduceLike[_]) if r.mutable => super.transformStm(stm) // mutable reduces don't work yet
-      case TP(sym, Loop(size, v, body: DeliteReduceElem[a])) => soaReduce[a](size,v,body)(body.mA) match {
+      /*case TP(sym, Loop(size, v, body: DeliteReduceElem[a])) => soaReduce[a](size,v,body)(body.mA) match {        
         case Some(newSym) => newSym
         case None => super.transformStm(stm)
-      }
+      }*/
       case TP(sym, Loop(size, v, body: DeliteHashReduceElem[k,v,cv])) => soaHashReduce[k,v,cv](size,v,body)(body.mK,body.mV,body.mCV) match {
         case Some(newSym) => newSym
         case None => super.transformStm(stm)
@@ -64,7 +61,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
     val alloc = t(body.allocN)
     alloc match {
     case StructBlock(tag,elems) =>
-      val cond2 = body.cond.map(t(_))
+      val condT = body.cond.map(t(_))
       def copyLoop[B:Manifest](f: Block[B]): Exp[DeliteArray[B]] = {
         val allocV = reflectMutableSym(fresh[DeliteArray[B]])
         val elemV = fresh[B]
@@ -78,15 +75,16 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
           sV = sizeV,
           allocVal = allocV,
           allocN = reifyEffects(DeliteArray[B](sizeV)),
-          func = f,//t(f),
+          func = f,
           update = reifyEffects(dc_update(allocV,tv,elemV)),
           finalizer = reifyEffects(allocV),
-          cond = cond2,
+          cond = condT,
           par = body.par,
           buf = DeliteBufferElem[B,DeliteArray[B],DeliteArray[B]](
             aV = buf_aV,
             iV = buf_iV,
             iV2 = buf_iV2,
+            appendable = reifyEffects(dc_appendable(allocV,tv,elemV)),
             append = reifyEffects(dc_append(allocV,tv,elemV)),
             setSize = reifyEffects(dc_set_logical_size(allocV,sizeV)),
             allocRaw = reifyEffects(dc_alloc[B,DeliteArray[B]](allocV,sizeV)),
@@ -103,18 +101,18 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         }
         val sz = body.par match {
           case ParFlat => t(size)
-          case ParBuffer => 
+          case ParBuffer | ParSimpleBuffer => 
 
           newElems(0)._2.length //TODO: we want to know the output size without having to pick one of the returned arrays arbitrarily (prevents potential DCE)... can we just grab the size out of the activation record somehow?
-          /*
+          /* //determine output size by counting:
           val rV1 = fresh[Int]
           val rV2 = fresh[Int]
 
           simpleLoop(t(size), t(v).asInstanceOf[Sym[Int]], DeliteReduceElem[Int](
             func = reifyEffects(unit(1)),
-            cond = cond2,
+            cond = condT,
             zero = reifyEffects(unit(0)),
-            accInit = reifyEffects(unit(0)), //?
+            accInit = reifyEffects(unit(0)),
             rV = (rV1,rV2),
             rFunc = reifyEffects(int_plus(rV1,rV2)),
             stripFirst = false
@@ -133,8 +131,11 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
 
       val newLoop = t(body.func) match {
         case u@Block(Def(a@Struct(ta,es))) if Config.soaEnabled => 
-          println("*** SOA " + u + " / " + a)
+          printlog("*** SOA " + u + " / " + a)
           soaTransform(ta,es)
+        case f2@Block(Def(a)) => 
+          printlog("*** Unable to SOA " + f2 + " / " + a)
+          copyLoop(f2)
         case f2 => copyLoop(f2)
       }
 
@@ -145,7 +146,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         val newElems = elems.map {
           case (df, _) if df == dataField => (df, newLoop)
           case (sf, _) if (sf == sizeField && body.par == ParFlat) => (sf, t(size))
-          case (sf, _) if (sf == sizeField && body.par == ParBuffer) => (sf, newLoop.length)
+          case (sf, _) if (sf == sizeField && (body.par == ParBuffer || body.par == ParSimpleBuffer)) => (sf, newLoop.length)
           case (f, Def(Reflect(NewVar(init),_,_))) => (f, t(init))
           case (f,v) => (f, t(v))
         }
@@ -170,12 +171,12 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
     case StructBlock(tag,elems) =>       
       def copyLoop[B:Manifest](f: Block[B], r: Block[B], z: Block[B], rv1: Exp[B], rv2: Exp[B]): Exp[B] = {
         simpleLoop(t(size), t(v).asInstanceOf[Sym[Int]], DeliteReduceElem[B](
-          func = f,//t(f),
+          func = f,
           cond = body.cond.map(t(_)),
-          zero = z,//t(z),
+          zero = z,
           accInit = reifyEffects(fatal(unit("accInit not transformed")))(manifest[B]), //unwrap this as well to support mutable reduce
-          rV = (t(rv1).asInstanceOf[Sym[B]], t(rv2).asInstanceOf[Sym[B]]),
-          rFunc = r,//t(r),
+          rV = (rv1.asInstanceOf[Sym[B]], rv2.asInstanceOf[Sym[B]]),
+          rFunc = r,
           stripFirst = !isPrimitiveType(manifest[B])
         ))
       }
@@ -233,16 +234,27 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
   def soaHashReduce[K:Manifest,V:Manifest,CV:Manifest](size: Exp[Int], v: Sym[Int], body: DeliteHashReduceElem[K,V,CV]): Option[Exp[CV]] = t(body.alloc) match {
     case StructBlock(tag,elems) =>
       def copyLoop[B:Manifest](f: Block[B], r: Block[B], z: Block[B], rv1: Exp[B], rv2: Exp[B]): Exp[DeliteArray[B]] = {
-        val allocV = fresh[DeliteArray[B]]
-        simpleLoop(t(size), t(v).asInstanceOf[Sym[Int]], DeliteHashReduceElem[K,B,DeliteArray[B]](
+        val allocV = reflectMutableSym(fresh[DeliteArray[B]])
+        val indexV = fresh[Int]
+        val sizeV = fresh[Int]
+        val elemV = fresh[B]
+        val tv = t(v).asInstanceOf[Sym[Int]]
+        simpleLoop(t(size), tv, DeliteHashReduceElem[K,B,DeliteArray[B]](
+          iV = indexV,
+          sV = sizeV,
+          eV = elemV,
           allocVal = allocV,
-          alloc = reifyEffects(DeliteArray.imm[B](unit(0))),
+          alloc = reifyEffects(DeliteArray[B](sizeV)),
           keyFunc = t(body.keyFunc),
-          valFunc = t(f),
+          valFunc = f,
+          apply = reifyEffects(dc_apply(allocV,indexV)),
+          update = reifyEffects(dc_update(allocV,indexV,elemV)),
+          append = reifyEffects(dc_append(allocV,tv,elemV)),
+          setSize = reifyEffects(dc_set_logical_size(allocV,sizeV)),
           cond = body.cond.map(t(_)),
-          zero = t(z),
-          rV = (t(rv1).asInstanceOf[Sym[B]], t(rv2).asInstanceOf[Sym[B]]),
-          rFunc = t(r)
+          zero = z,
+          rV = (rv1.asInstanceOf[Sym[B]], rv2.asInstanceOf[Sym[B]]),
+          rFunc = r
         ))
       }
 

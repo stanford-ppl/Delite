@@ -4,7 +4,7 @@ import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.scheduler.OpList
 import ppl.delite.runtime.graph.ops.{Send, DeliteOP, OP_Condition}
 import sync._
-import ppl.delite.runtime.codegen.hosts.Hosts
+import ppl.delite.runtime.graph.targets.Targets
 
 /**
  * Author: Kevin J. Brown
@@ -86,17 +86,17 @@ trait ConditionGenerator extends NestedGenerator {
   protected def beginElseBlock()
   protected def endElseBlock()
 
-  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Hosts.Value) = {
-    host match {
-      case Hosts.Scala => new ScalaConditionGenerator(condition, location, kernelPath) with ScalaSyncObjectGenerator {
+  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value) = {
+    target match {
+      case Targets.Scala => new ScalaConditionGenerator(condition, location, kernelPath) with ScalaSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
-      case Hosts.Cpp => new CppConditionGenerator(condition, location, kernelPath) with CppSyncObjectGenerator {
+      case Targets.Cpp => new CppConditionGenerator(condition, location, kernelPath) with CppSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
-      case _ => throw new RuntimeException("Unknown Host type " + host.toString)
+      case _ => throw new RuntimeException("Unknown Host type " + target.toString)
     }
   }
 

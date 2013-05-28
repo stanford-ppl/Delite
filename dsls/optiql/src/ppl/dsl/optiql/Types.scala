@@ -5,11 +5,11 @@ import ppl.delite.framework.datastructures._
 
 trait Types { this: OptiQL =>
  
-  abstract class Table[T] extends Record with DeliteCollection[T]
+  trait Table[T] extends DeliteCollection[T]
 
-  abstract class Grouping[K,V] extends Record with DeliteCollection[V]
+  trait Grouping[K,V] extends DeliteCollection[V]
 
-  abstract class Date
+  trait Date
 
   type Result = Record
 

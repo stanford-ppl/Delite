@@ -1,6 +1,5 @@
 package ppl.tests.scalatest
 
-import ppl.dsl.optiml.{Vector,RangeVector}
 import ppl.dsl.optiml.{OptiMLApplication, OptiMLApplicationRunner}
 
 object InfixOverridesRunner extends DeliteTestRunner with OptiMLApplicationRunner with InfixOverrides

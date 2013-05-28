@@ -121,6 +121,42 @@ trait DeliteGPUNestedMutation extends DeliteTestModule with OptiMLApplication {
   }
 }
 
+object DeliteGPUObjectReductionRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteGPUObjectReduction
+trait DeliteGPUObjectReduction extends DeliteTestModule with OptiMLApplication {
+  def main() = {
+    val in = Matrix.onesf(4096,4)
+    val out = ((0::in.numRows) { i => in(i).Clone }).sum
+
+    collect(out(0) == 4096.0f)
+    collect(out(1) == 4096.0f)
+    collect(out(2) == 4096.0f)
+    collect(out(3) == 4096.0f)
+    
+    mkReport
+  }
+}
+
+// This test checks if proper sync logic is inserted between CPU and GPU
+object DeliteGPUSyncRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteGPUSync
+trait DeliteGPUSync extends DeliteTestModule with OptiMLApplication {
+  def main() = {
+    
+    val x = Vector.zeros(10).mutable
+
+    for(i <- (0::10)) { x(i) = x(i) + i }  // mutation on GPU
+
+    val (y1,y2) = x.partition(i => i < 3.0)
+    collect(y1.length == 3)
+    collect(y2.length == 7)
+
+    x.insert(0,0.5)
+    collect(x(0)==0.5)
+    collect(x.length == 11)
+    
+    mkReport
+  }
+}
+
 class DeliteGPUSuite extends DeliteSuite {
   //def testDeliteGPUBLASMM() { compileAndTest(DeliteGPUBLASMMRunner); }
   //def testDeliteGPUBLASMV() { compileAndTest(DeliteGPUBLASMVRunner); }
@@ -129,4 +165,7 @@ class DeliteGPUSuite extends DeliteSuite {
   def testDeliteGPUMemLeak() { compileAndTest(DeliteGPUMemLeakRunner, CHECK_MULTILOOP); }
   def testDeliteGPUMutation() { compileAndTest(DeliteGPUMutationRunner, CHECK_MULTILOOP); }
   def testDeliteGPUNestedMutation() { compileAndTest(DeliteGPUNestedMutationRunner, CHECK_MULTILOOP); }
+  def testDeliteGPUObjectReduction() { compileAndTest(DeliteGPUObjectReductionRunner, CHECK_MULTILOOP); }
+  def testDeliteGPUSync() { compileAndTest(DeliteGPUSyncRunner, CHECK_MULTILOOP); }
+
 }

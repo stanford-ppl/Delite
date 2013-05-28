@@ -5,7 +5,6 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.ops.Sync
 import ppl.delite.runtime.graph.targets.Targets
-import ppl.delite.runtime.codegen.hosts.Hosts
 import ppl.delite.runtime.scheduler.{OpHelper, StaticSchedule, PartialSchedule}
 import ppl.delite.runtime.DeliteMesosExecutor
 
@@ -34,30 +33,32 @@ object Compilers {
     //generate executable(s) for all the ops in each proc
     //TODO: this is a poor method of separating CPU from GPU, should be encoded - essentially need to loop over all nodes
     val schedule = graph.schedule
+
     if(Config.clusterMode!=1) assert((Config.numThreads + (if(graph.targets(Targets.Cpp)) Config.numCpp else 0) + (if(graph.targets(Targets.Cuda)) Config.numCuda else 0) + (if(graph.targets(Targets.OpenCL)) Config.numOpenCL else 0)) == schedule.numResources)
     Sync.addSync(graph)
     
-
+    val scalaSchedule = schedule.slice(0, Config.numThreads)
+    if (Config.numThreads > 0) checkRequestedResource(scalaSchedule, Targets.Scala)
+    
     //TODO: Fix this!
     if(Config.clusterMode != 2 || Config.numCuda == 0) 
-      ScalaExecutableGenerator.makeExecutables(schedule.slice(0,Config.numThreads), graph.kernelPath)
+      ScalaExecutableGenerator.makeExecutables(scalaSchedule, graph.kernelPath)
     else 
       new ScalaMainExecutableGenerator(0, graph.kernelPath).makeExecutable(PartialSchedule(1).apply(0))
 
     // Hack to collect global inputTypesMap (TODO: Get rid of this)
     CppExecutableGenerator.typesMap = Map[Targets.Value, Map[String,String]]()
+    val cppSchedule = schedule.slice(Config.numThreads, Config.numThreads+Config.numCpp)
+    if (Config.numCpp > 0) checkRequestedResource(cppSchedule, Targets.Cpp)
     CppExecutableGenerator.collectInputTypesMap(graph)
-    CppExecutableGenerator.makeExecutables(schedule.slice(Config.numThreads, Config.numThreads+Config.numCpp), graph.kernelPath)
-
+    CppExecutableGenerator.makeExecutables(cppSchedule, graph.kernelPath)
+    CppMultiLoopHeaderGenerator.clear()
+    
     CudaExecutableGenerator.typesMap = Map[Targets.Value, Map[String,String]]()
+    val cudaSchedule = schedule.slice(Config.numThreads+Config.numCpp, Config.numThreads+Config.numCpp+Config.numCuda)
+    if (Config.numCuda > 0) checkRequestedResource(cudaSchedule, Targets.Cuda)
     CudaExecutableGenerator.collectInputTypesMap(graph)
-    CudaExecutableGenerator.makeExecutables(schedule.slice(Config.numThreads+Config.numCpp, Config.numThreads+Config.numCpp+Config.numCuda), graph.kernelPath)
-
-    /*
-    for (i <- Config.numThreads+Config.numCpp until Config.numThreads+Config.numCpp+Config.numCuda) {
-      CudaExecutableGenerator.makeExecutables(schedule.slice(i, i+1), graph.kernelPath)
-    }
-    */
+    CudaExecutableGenerator.makeExecutables(cudaSchedule, graph.kernelPath)
 
     if (Config.printSources) { //DEBUG option
       ScalaCompile.printSources()
@@ -74,12 +75,17 @@ object Compilers {
     DeliteMesosExecutor.classLoader = classLoader
 
     val queues = StaticSchedule(schedule.numResources)
-    for (i <- 0 until schedule.numResources) {
+    for (i <- 0 until schedule.numResources if !schedule(i).isEmpty) {
       val cls = classLoader.loadClass("Executable"+i) //load the Executable class
       val executable = cls.getMethod("self").invoke(null).asInstanceOf[DeliteExecutable] //retrieve the singleton instance
       queues(i) += executable
     }
     queues
+  }
+
+  def checkRequestedResource(schedule: PartialSchedule, target: Targets.Value) {
+    if (schedule.map(_.size).reduce(_ + _) == 0)
+      println("WARNING: no kernels scheduled on " + target)
   }
 
 }

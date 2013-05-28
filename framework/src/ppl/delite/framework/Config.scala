@@ -14,6 +14,7 @@ object Config {
 
   //var degFilename = System.getProperty("delite.deg.filename", "")
   var degFilename = getProperty("delite.deg.filename", "out.deg")
+  var restageFile = getProperty("delite.restage.filename", "restage-scopes.scala")
   var opfusionEnabled = getProperty("delite.enable.fusion", "true") != "false"
   var soaEnabled = getProperty("delite.enable.soa", "true") != "false"
   var generateCUDA = getProperty("delite.generate.cuda", "false") != "false"

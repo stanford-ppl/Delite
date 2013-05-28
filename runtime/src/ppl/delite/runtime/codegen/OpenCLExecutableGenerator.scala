@@ -13,7 +13,7 @@ trait OpenCLExecutableGenerator extends ExecutableGenerator {
     if (Config.profile) out.append("#define PROFILE_ENABLE\n")
     out.append("#include <CL/cl.h>\n") //OpenCL API
     out.append("#include \"DeliteOpenCL.cpp\"\n") //Delite-OpenCL interface for DSL
-    out.append("#include \"helperFuncs.cpp\"\n") //imports all dsl kernels and helper functions
+    out.append("#include \"" + target + "helperFuncs.cpp\"\n") //imports all dsl kernels and helper functions
     //out.append("#include \"clblas.h\"\n")
     //out.append("#include \"dsl.h\"\n")
     out.append(OpenCLCompile.headers.map(s => "#include \"" + s + "\"\n").mkString(""))

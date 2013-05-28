@@ -3,7 +3,6 @@ package ppl.delite.runtime.codegen
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.graph.ops.{Send, DeliteOP, OP_Variant}
-import ppl.delite.runtime.codegen.hosts.Hosts
 import sync.{CppSyncGenerator, CppSyncObjectGenerator, ScalaSyncObjectGenerator, ScalaSyncGenerator}
 
 /**
@@ -42,17 +41,17 @@ trait VariantGenerator extends NestedGenerator {
     addSource(out.toString)
   }
 
-  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Hosts.Value) = {
-    host match {
-      case Hosts.Scala => new ScalaVariantGenerator(variant, location, kernelPath) with ScalaSyncObjectGenerator {
+  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value) = {
+    target match {
+      case Targets.Scala => new ScalaVariantGenerator(variant, location, kernelPath) with ScalaSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
-      case Hosts.Cpp => new CppVariantGenerator(variant, location, kernelPath) with CppSyncObjectGenerator {
+      case Targets.Cpp => new CppVariantGenerator(variant, location, kernelPath) with CppSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
-      case _ => throw new RuntimeException("Unknown Host type " + host.toString)
+      case _ => throw new RuntimeException("Unknown Host type " + target.toString)
     }
   }
 }

@@ -1,6 +1,5 @@
 package ppl.dsl.optiml.stream
 
-import ppl.dsl.optiml.{Vector, Matrix, Stream}
 import ppl.dsl.optiml.{OptiMLLift, OptiMLCompiler, OptiML}
 
 trait StreamImplOps { this: OptiML =>

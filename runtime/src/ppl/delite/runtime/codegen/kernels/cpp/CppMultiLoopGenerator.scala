@@ -50,9 +50,10 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
   }
 
   protected def calculateRange(): (String,String) = {
-    out.append("int size = "+closure+"->size();\n")
-    out.append("int start = size*"+chunkIdx+"/"+numChunks+";\n")
-    out.append("int end = size*"+(chunkIdx+1)+"/"+numChunks+";\n")
+    out.append("int startOffset = "+closure+"->loopStart;\n")
+    out.append("int size = "+closure+"->loopSize;\n")
+    out.append("int start = startOffset + size*"+chunkIdx+"/"+numChunks+";\n")
+    out.append("int end = startOffset + size*"+(chunkIdx+1)+"/"+numChunks+";\n")
     ("start","end")
   }
 
@@ -183,6 +184,9 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
     }
     out.append(");\n")
 
+    out.append("closure->loopStart = 0;\n")
+    out.append("closure->loopSize = closure->size();\n")
+
     out.append("out = closure->alloc();\n")
     out.append("initSync();\n")
     out.append("}\n")
@@ -238,11 +242,13 @@ object CppMultiLoopHeaderGenerator {
   def className(op: OP_MultiLoop) = "MultiLoopHeader_" + op.id
 
   private[kernels] val headerList = new ArrayBuffer[String]
-  headerList += "#include \"cppHeader.hpp\"\n"
+  headerList += "#include \"" + Targets.Cpp + "helperFuncs.h\"\n"
 
   def headerFile = "multiLoopHeaders"
   def createHeaderFile() = {
     CppCompile.addHeader(headerList.mkString(""),headerFile)
   }
+
+  def clear() { headerList.clear }
 
 }

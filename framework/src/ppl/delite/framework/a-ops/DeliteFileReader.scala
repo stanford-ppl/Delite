@@ -15,7 +15,7 @@ trait DeliteFileReaderOps extends Base with DeliteArrayBufferOps {
   
 }
 
-trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with IOOpsExp with StringOpsExp with ArrayOpsExp with EqualExp with VariablesExp with WhileExp with DeliteArrayOpsExp with DeliteArrayBufferOpsExp with DeliteOpsExp {
+trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with IOOpsExp with StringOpsExp with ArrayOpsExp with EqualExp with VariablesExp with WhileExp with DeliteArrayOpsExpOpt with DeliteArrayBufferOpsExp with DeliteOpsExp {
 
   def dfr_readLines[A:Manifest](path: Rep[String], f: (Rep[String], Rep[DeliteArrayBuffer[A]]) => Rep[Unit]) = reflectPure(DeliteOpFileReaderReadLines(reifyEffects(path), f))
   case class DeliteOpFileReaderReadLines[A:Manifest](path: Block[String], func: (Rep[String], Rep[DeliteArrayBuffer[A]]) => Rep[Unit]) extends DeliteOpInput[DeliteArray[A]] {
@@ -26,7 +26,7 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with IOOpsExp with Stri
     val allocVal: Sym[DeliteArrayBuffer[A]] = copyTransformedOrElse(_.allocVal)(reflectMutableSym(fresh[DeliteArrayBuffer[A]])).asInstanceOf[Sym[DeliteArrayBuffer[A]]]
     val alloc: Block[DeliteArrayBuffer[A]] = copyTransformedBlockOrElse(_.alloc)(reifyEffects(DeliteArrayBuffer[A]()))
     val append: Block[Unit] = copyTransformedBlockOrElse(_.append)(reifyEffects(func(line, allocVal)))
-    val finalizer: Block[DeliteArray[A]] = copyTransformedBlockOrElse(_.finalizer)(reifyEffects{ dc_set_logical_size(allocVal, allocVal.length); darray_buffer_raw_data(allocVal) })
+    val finalizer: Block[DeliteArray[A]] = copyTransformedBlockOrElse(_.finalizer)(reifyEffects{ darray_buffer_raw_data(allocVal).take(allocVal.length) })
   }
 
   override def blocks(e: Any): List[Block[Any]] = e match {

@@ -36,22 +36,22 @@ trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExp
   }  
   
   override def mirrorDef[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Def[A] = e match {
-    case e@DeliteIfThenElse(c,a,b,h) => DeliteIfThenElse(f(c),f(a),f(b),h)(e.m)
+    case e@DeliteIfThenElse(c,a,b,h) => DeliteIfThenElse(f(c),f(a),f(b),h)(mtype(e.m))
     case _ => super.mirrorDef(e,f)
   }
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case Reflect(e@DeliteIfThenElse(c,a,b,h), u, es) => 
       if (f.hasContext)
-        __ifThenElse(f(c),f.reflectBlock(a),f.reflectBlock(b))(e.m,ctx)
+        __ifThenElse(f(c),f.reflectBlock(a),f.reflectBlock(b))(mtype(e.m),ctx)
       else {
-        reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteIfThenElse(f(c),f(a),f(b),h)(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))      
+        reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteIfThenElse(f(c),f(a),f(b),h)(mtype(e.m)), mapOver(f,u), f(es)))(mtype(manifest[A]))      
       }
     case e@DeliteIfThenElse(c,a,b,h) => 
       if (f.hasContext)
-        __ifThenElse(f(c),f.reflectBlock(a),f.reflectBlock(b))(e.m,ctx)
+        __ifThenElse(f(c),f.reflectBlock(a),f.reflectBlock(b))(mtype(e.m),ctx)
       else {
-        reflectPure(DeliteIfThenElse(f(c),f(a),f(b),h)(e.m))(mtype(manifest[A]), ctx) // FIXME: should apply pattern rewrites (ie call smart constructor)    
+        reflectPure(DeliteIfThenElse(f(c),f(a),f(b),h)(mtype(e.m)))(mtype(manifest[A]), ctx) // FIXME: should apply pattern rewrites (ie call smart constructor)    
       }
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
@@ -183,8 +183,8 @@ trait DeliteGPUGenIfThenElse extends GPUGenEffect with DeliteBaseGenIfThenElse {
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case DeliteIfThenElse(c,a,b,h) =>
-        isVoidType(sym.tp) match {
-          case true =>
+        remap(sym.tp) match {
+          case "void" =>
             stream.println(addTab() + "if (" + quote(c) + ") {")
             tabWidth += 1
             emitBlock(a)
@@ -192,26 +192,19 @@ trait DeliteGPUGenIfThenElse extends GPUGenEffect with DeliteBaseGenIfThenElse {
             stream.println(addTab() + "} else {")
             tabWidth += 1
             emitBlock(b)
-            getBlockResult(a).tp.toString match {
-              case "Nothing" => // e.g., ExceptionOps
-              case _ => stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
-            }
             tabWidth -= 1
             stream.println(addTab()+"}")
-          case false =>
+          case _ =>
             stream.println(addTab() + "%s %s;".format(remap(sym.tp),quote(sym)))
             stream.println(addTab() + "if (" + quote(c) + ") {")
             tabWidth += 1
             emitBlock(a)
-            stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(a))))
+            stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(a))))
             tabWidth -= 1
             stream.println(addTab() + "} else {")
             tabWidth += 1
             emitBlock(b)
-            getBlockResult(b).tp.toString match {
-              case "Nothing" => // e.g., ExceptionOps
-              case _ => stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
-            }
+            stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(b))))
             tabWidth -= 1
             stream.println(addTab()+"}")
           }

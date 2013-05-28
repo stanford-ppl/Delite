@@ -41,7 +41,7 @@ trait LAInputReaderOpsExp extends LAInputReaderOps with BaseFatExp {
     val numCols = reflectEffect(LAInputReadMatrixCols(filename, schemaBldr, delim)) //TODO: better way? need to return meta-data about the file parsing
     val array = DeliteFileReader.readLinesUnstructured(filename){ (line:Rep[String], buf:Rep[DeliteArrayBuffer[Elem]]) =>
       val elems = line.trim.split(delim)
-      (0::elems.length) foreach { i => buf += schemaBldr(elems(i)) }
+      (unit(0)::elems.length) foreach { i => buf += schemaBldr(elems(i)) }
     }
     densematrix_obj_fromarray(array, array.length/numCols, numCols).unsafeImmutable //WTF... without this struct unwrapping (?) can lead to a Reflect(Reflect(x)) in unrelated pieces of the program...
   }
@@ -49,10 +49,10 @@ trait LAInputReaderOpsExp extends LAInputReaderOps with BaseFatExp {
   def obj_lainput_read_vector[Row:Manifest](filename: Exp[String], schemaBldr: Exp[DenseVector[String]] => Exp[Row], delim: Exp[String])(implicit ctx: SourceContext) = {
     val array = DeliteFileReader.readLines(filename){ line =>
       val elems = line.trim.split(delim)
-      val v = (0::elems.length) map { i => elems(i) }
+      val v = (unit(0)::elems.length) map { i => elems(i) }
       schemaBldr(v)    
     }
-    densevector_obj_fromarray(array, true) 
+    densevector_obj_fromarray(array, unit(true)) 
   }
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {

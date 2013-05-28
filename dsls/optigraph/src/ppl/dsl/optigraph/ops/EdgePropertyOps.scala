@@ -1,5 +1,6 @@
 package ppl.dsl.optigraph.ops
 
+import reflect.{Manifest,SourceContext}
 import ppl.delite.framework.ops._
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
@@ -57,15 +58,15 @@ trait EdgePropertyOpsExp extends EdgePropertyOps with VariablesExp with BaseFatE
     
   case class EdgePropObjectNew[A](g: Exp[Graph], size: Exp[Int]) (val mP: Manifest[EdgeProperty[A]]) extends Def[EdgeProperty[A]]
   case class EdgePropSetAll[A:Manifest](in: Exp[EdgeProperty[A]], x: Exp[A]) extends DeliteOpIndexedLoop {
-    val size = dc_size(in)
+    val size = copyTransformedOrElse(_.size)(dc_size(in))
     def func = i => dc_update(in, i, x)
   }
   case class EdgePropDefer[A:Manifest](ep: Exp[EdgeProperty[A]], idx: Exp[Int], x: Exp[A]) extends Def[Unit]
-  case class EdgePropGetDef[A:Manifest](ep: Exp[EdgeProperty[A]], idx: Exp[Int]) extends Def[A]
+  case class EdgePropGetDef[A:Manifest](ep: Exp[EdgeProperty[A]], idx: Exp[Int]) extends DefWithManifest[A,A]
   case class EdgePropHasDef[A:Manifest](ep: Exp[EdgeProperty[A]], idx: Exp[Int]) extends Def[Boolean]
   case class EdgePropClearDef[A:Manifest](ep: Exp[EdgeProperty[A]], idx: Exp[Int]) extends Def[Unit]
   case class EdgePropAssignAll[A:Manifest](in: Exp[EdgeProperty[A]]) extends DeliteOpIndexedLoop {
-    val size = dc_size(in)
+    val size = copyTransformedOrElse(_.size)(dc_size(in))
     def func = i => {
       if(edgeprop_has_def(in, i)) {
     	dc_update(in, i, edgeprop_get_def(in, i))
@@ -112,6 +113,23 @@ trait EdgePropertyOpsExp extends EdgePropertyOps with VariablesExp with BaseFatE
       edgeprop_clear_def(ep, i)
     } 
   }
+  
+  //////////////
+  // mirroring
+    
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case e@EdgePropGetDef(ep,i) => edgeprop_get_def(f(ep),f(i))(e.mA)
+    case EdgePropHasDef(ep,i) => edgeprop_has_def(f(ep),f(i))
+    case Reflect(e@EdgePropObjectNew(g,s), u, es) => reflectMirrored(Reflect(EdgePropObjectNew(f(g),f(s))(e.mP), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@EdgePropDefer(ep,i,x), u, es) => reflectMirrored(Reflect(EdgePropDefer(f(ep),f(i),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@EdgePropGetDef(ep,i), u, es) => reflectMirrored(Reflect(EdgePropGetDef(f(ep),f(i))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@EdgePropHasDef(ep,i), u, es) => reflectMirrored(Reflect(EdgePropHasDef(f(ep),f(i)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@EdgePropClearDef(ep,i), u, es) => reflectMirrored(Reflect(EdgePropClearDef(f(ep),f(i)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@EdgePropAssignAll(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with EdgePropAssignAll(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@EdgePropSetAll(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with EdgePropSetAll(f(x),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??  
+  
 }
 
 trait BaseGenEdgePropertyOps extends GenericFatCodegen {

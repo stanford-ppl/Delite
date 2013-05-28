@@ -1,6 +1,6 @@
 package ppl.dsl.optigraph
 
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollection
 
 /**
  * OptiGraph (front-end) data types 

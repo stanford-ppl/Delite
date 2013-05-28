@@ -8,7 +8,8 @@ import scala.virtualization.lms.common.{EffectExp, Variables}
 
 
 trait BiGGDetectionOps extends Variables with OverloadHack {
-
+  this: OptiML =>
+  
   object BiGGDetection {
     def apply(name: Rep[String], score: Rep[Float], roi: Rep[Rect], mask: Rep[GrayscaleImage], index: Rep[Int], x: Rep[Int], y: Rep[Int], tpl: Rep[BinarizedGradientTemplate], crt_tpl: Rep[BinarizedGradientTemplate]) = biggdetection_obj_new(name, score, roi, mask, index, x, y, tpl, crt_tpl)
   }
@@ -44,6 +45,8 @@ trait BiGGDetectionOps extends Variables with OverloadHack {
 }
 
 trait BiGGDetectionOpsExp extends BiGGDetectionOps with EffectExp {
+  this: OptiMLExp =>
+  
   case class BiGGDetectionObjectNew(name: Exp[String], score: Exp[Float], roi: Exp[Rect], mask: Exp[GrayscaleImage], index: Exp[Int], x: Exp[Int], y: Exp[Int], tpl: Exp[BinarizedGradientTemplate], crt_tpl: Exp[BinarizedGradientTemplate]) extends Def[BiGGDetection]
   case class BiGGDetectionName(__x: Exp[BiGGDetection]) extends Def[String]
   case class BiGGDetectionScore(__x: Exp[BiGGDetection]) extends Def[Float]

@@ -8,7 +8,8 @@ import scala.virtualization.lms.common.{EffectExp, Variables}
 
 
 trait BinarizedGradientPyramidOps extends Variables with OverloadHack {
-
+  this: OptiML =>
+  
   object BinarizedGradientPyramid {
     def apply(pyramid: Rep[DenseVector[GrayscaleImage]], start_level: Rep[Int], levels: Rep[Int], fixedLevelIndex: Rep[Int]) = binarizedgradientpyramid_obj_new(pyramid, start_level, levels, fixedLevelIndex)
   }
@@ -34,6 +35,8 @@ trait BinarizedGradientPyramidOps extends Variables with OverloadHack {
 }
 
 trait BinarizedGradientPyramidOpsExp extends BinarizedGradientPyramidOps with EffectExp {
+  this: OptiMLExp =>
+  
   case class BinarizedGradientPyramidObjectNew(pyramid: Exp[DenseVector[GrayscaleImage]], start_level: Exp[Int], levels: Exp[Int], fixedLevelIndex: Exp[Int]) extends Def[BinarizedGradientPyramid]
   case class BinarizedGradientPyramidPyramid(__x: Exp[BinarizedGradientPyramid]) extends Def[DenseVector[GrayscaleImage]]
   case class BinarizedGradientPyramidStart_level(__x: Exp[BinarizedGradientPyramid]) extends Def[Int]

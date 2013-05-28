@@ -2,7 +2,7 @@ package ppl.dsl.optigraph.ops
 
 import java.io.{PrintWriter}
 
-import reflect.Manifest
+import reflect.{Manifest,SourceContext}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 import ppl.dsl.optigraph._
@@ -47,7 +47,7 @@ trait DeferrableOpsExp extends DeferrableOps with EffectExp {
   
   case class DefObjectNew[T](init: Rep[T])(val mD: Manifest[Deferrable[T]]) extends Def[Deferrable[T]]
   case class DefAssign[T:Manifest](d: Exp[Deferrable[T]]) extends Def[Unit]
-  case class DefGetValue[T:Manifest](d: Exp[Deferrable[T]]) extends Def[T]
+  case class DefGetValue[T:Manifest](d: Exp[Deferrable[T]]) extends DefWithManifest[T,T]
   case class DefSetValue[T:Manifest](d: Exp[Deferrable[T]], v: Exp[T]) extends Def[Unit]
   case class DefDefer[T:Manifest](d: Exp[Deferrable[T]], v: Exp[T]) extends Def[Unit]
   
@@ -59,6 +59,19 @@ trait DeferrableOpsExp extends DeferrableOps with EffectExp {
   def __equals[T:Manifest](d1: Exp[Deferrable[T]], d2: Exp[Deferrable[T]]) = {
     d1.value == d2.value
   }
+  
+  //////////////
+  // mirroring
+  
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case e@DefGetValue(d) => def_getvalue(f(d))(e.mA)
+    case Reflect(e@DefObjectNew(i), u, es) => reflectMirrored(Reflect(DefObjectNew(f(i))(e.mD), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DefSetValue(d,v), u, es) => reflectMirrored(Reflect(DefSetValue(f(d),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DefGetValue(d), u, es) => reflectMirrored(Reflect(DefGetValue(f(d))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DefAssign(d), u, es) => reflectMirrored(Reflect(DefAssign(f(d)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DefDefer(d,v), u, es) => reflectMirrored(Reflect(DefDefer(f(d),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??  
 }
 
 trait BaseGenDeferrableOps extends GenericNestedCodegen {

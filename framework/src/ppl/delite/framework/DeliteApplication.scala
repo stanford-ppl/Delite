@@ -12,12 +12,12 @@ import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
 import codegen.opencl.TargetOpenCL
 import codegen.scala.TargetScala
+import codegen.restage.TargetRestage
 import codegen.Target
 import ops.DeliteOpsExp
 import transform.DeliteTransform
-import datastructures.DeliteStructsExp
 
-trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransform with DeliteStructsExp {  
+trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransform {  
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
 
   /*
@@ -29,6 +29,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   lazy val cudaTarget = new TargetCuda{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val cppTarget = new TargetCpp{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val openclTarget = new TargetOpenCL{val IR: DeliteApplication.this.type = DeliteApplication.this}
+  lazy val restageTarget = new TargetRestage{val IR: DeliteApplication.this.type = DeliteApplication.this}
 
   def targets = {
     var target = List[DeliteApplicationTarget](scalaTarget)
@@ -51,6 +52,14 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   lazy val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
                                                val generators = DeliteApplication.this.generators; }
 
+  /*
+  private def setHostTargetCodegen(devicegen: GenericFatCodegen{ val IR: DeliteApplication.this.type }) = {
+    generators find { _.deviceTarget == devicegen.hostTarget } match {
+      case Some(hostgen) => devicegen.hostTargetCodegen = hostgen
+      case _ => throw new Exception("Cannot find the host target codegen of " + devicegen.toString) 
+    }
+  }
+  */
 
   /*
    * analyses

@@ -5,7 +5,7 @@ package object optiml {
   // inherited from OptiLA
   //
   // is there a less manual way of doing this?
-
+  /*
   type Vector[T] = optila.Vector[T]
   type DenseVector[T] = optila.DenseVector[T]
   type SparseVector[T] = optila.SparseVector[T]
@@ -25,4 +25,5 @@ package object optiml {
   type SparseMatrix[T] = optila.SparseMatrix[T]
   type SparseMatrixBuildable[T] = optila.SparseMatrixBuildable[T]
   //type SymmetricMatrix[T] = optila.SymmetricMatrix[T]
+  */
 }

@@ -16,7 +16,9 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
 
   case class DeliteWhile(cond: Block[Boolean], body: Block[Unit]) extends DeliteOpWhileLoop
 
-  override def __whileDo(cond: => Exp[Boolean], body: => Rep[Unit])(implicit ctx: SourceContext): Rep[Unit] = {
+  override def __whileDo(cond: => Exp[Boolean], body: => Rep[Unit])(implicit ctx: SourceContext): Rep[Unit] = delite_while(cond, body)
+    
+  def delite_while(cond: => Exp[Boolean], body: => Rep[Unit])(implicit ctx: SourceContext): Rep[Unit] = {
     //val c = reifyEffects(cond)
     //val a = reifyEffects(body)
     // TODO: reflectEffect(new While(c, a) with DeliteOpWhile))

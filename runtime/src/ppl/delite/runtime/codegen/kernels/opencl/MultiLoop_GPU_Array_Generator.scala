@@ -16,6 +16,9 @@ import ppl.delite.runtime.codegen.sync.JNIFuncs
 
 object MultiLoop_GPU_Array_Generator extends JNIFuncs {
 
+  def makeChunk(op: OP_MultiLoop): OP_MultiLoop = op
+
+  /*
   val target = Targets.OpenCL
 
   private val unwrappedList = ArrayBuffer[(String,String)]()
@@ -107,7 +110,7 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
 
   private def writeFileHeader(out: StringBuilder, op: OP_MultiLoop) {
     out.append("#include <CL/cl.h>\n")
-    out.append("#include \"helperFuncs.h\"\n")
+    out.append("#include \"" + target + "helperFuncs.h\"\n")
     out.append("#define MAX_GROUP 4\n")  //TODO: This will get removed by generelizing the GPU HashReduce
     //out.append("#include \"" + op.id + ".cu\"\n")
     //out.append("extern cl_context context;\n")
@@ -658,5 +661,5 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
   }
 
   private def getSymGPU(name: String) = name
-
+  */
 }

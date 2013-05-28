@@ -1,6 +1,7 @@
 package ppl.delite.runtime.graph.targets
 
 import ppl.delite.runtime.graph.ops.DeliteOP
+import scala.collection.mutable.HashMap
 
 /**
  * Author: Kevin J. Brown
@@ -14,93 +15,66 @@ import ppl.delite.runtime.graph.ops.DeliteOP
 trait GPUMetadata {
 
   var libCall: String = null
-  val blockSizeX = new OPData
-  val blockSizeY = new OPData
-  val blockSizeZ = new OPData
-  val dimSizeX = new OPData
-  val dimSizeY = new OPData
-  var inputs = Map[(DeliteOP, String), OPData]()
+
+  //var inputs = Map[(DeliteOP, String), OPData]()
   var temps = List[TempAlloc]()
-  //var temps: List[(OPData, String)] = Nil
-  var tempOps: List[DeliteOP] = Nil
   var outputs: List[(OPData, String)] = Nil
 
-  def apply(field: String) = field match {
-    case "gpuBlockSizeX" => blockSizeX
-    case "gpuBlockSizeY" => blockSizeY
-    case "gpuBlockSizeZ" => blockSizeZ
-    case "gpuDimSizeX" => dimSizeX
-    case "gpuDimSizeY" => dimSizeY
-    case other => error("unknown field: " + other)
-  }
-
+  /*
   def newInput(op: DeliteOP, sym: String) = {
-    val in = new OPData
+    val in = new OPData("",Map())
     inputs += (op,sym) -> in
     in
   }
-
+  */
+  
   def newTemp(sym: String, tp: String, size: String) = {
     val temp = TempAlloc(sym,tp,size)
     temps ::= temp
-
-    //val temp = new OPData
-    //temps ::= (temp, sym)
-    //temp
   }
 
-  def newOutput(sym: String) = {
-    val output = new OPData
+  def newOutput(sym: String, elemType: String, types: Map[String,String], funcs: Map[String,List[String]]) = {
+    val output = new OPData(elemType, types, funcs)
     outputs ::= (output, sym)
     output
   }
-
+  
+  /*
   def replaceInput(old: DeliteOP, op: DeliteOP, sym: String) {
     if (inputs contains (old, sym)) {
       val value = inputs((old, sym))
       inputs -= Pair(old, sym)
       inputs += (op, sym) -> value
 
-      blockSizeX.replaceInput(old, op, sym)
-      blockSizeY.replaceInput(old, op, sym)
-      blockSizeZ.replaceInput(old, op, sym)
-      dimSizeX.replaceInput(old, op, sym)
-      dimSizeY.replaceInput(old, op, sym)
       //for ((temp,name) <- temps) temp.replaceInput(old, op, sym)
       for ((output,name) <- outputs) output.replaceInput(old, op, sym)
     }
   }
+  */
 
 }
 
-final class OPData {
+final class OPData(val elemType: String, val types: Map[String,String], val funcs: Map[String, List[String]]) {
+  
+  def getType(tpe: String): String = types.get(tpe) match {
+    case Some(tpeName) => tpeName
+    case _ => throw new RuntimeException("Cannot find the type " + tpe)
+  }
 
-  var func: String = _
-  var funcReturn: String = _
-  var inputs: List[(DeliteOP,String)] = Nil
-  var resultType: String = _
+  def getInputs(name: String): List[String] = funcs.get(name) match {
+    case Some(list) => list
+    case _ => throw new RuntimeException("Cannot find the func name " + name)
+  }
+
   //TODO: Might want to separate for Cuda and OpenCL
   var objFields: Map[String,String] = _
 
-  //Added for new GPU execution model (might need to clean up)
-  var loopType: String = _
-  var hasCond: Boolean = false
-  var loopFuncInputs: List[String] = Nil
-  var loopFuncInputs_2: List[String] = Nil
-  var loopFuncOutputType: String = _
-  var loopFuncOutputType_2: String = _
-  var loopCondInputs: List[String] = Nil
-  var loopReduceInputs: List[String] = Nil
-  var loopReduceInputs_2: List[String] = Nil
-  var loopReduceParInputs: List[String] = Nil
-  var loopReduceParInputs_2: List[String] = Nil
-  var loopZeroInputs: List[String] = Nil
-  var loopZeroInputs_2: List[String] = Nil
-
+  /*
   private[targets] def replaceInput(old: DeliteOP, op: DeliteOP, sym: String) {
     if (inputs contains (old, sym))
       inputs = inputs.patch(inputs.indexOf((old,sym)), List((op,sym)), 1)
   }
+  */
 
 }
 

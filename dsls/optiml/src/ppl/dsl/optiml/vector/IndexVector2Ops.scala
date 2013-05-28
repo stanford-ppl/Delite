@@ -270,7 +270,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp with LoweringTra
         val t = deviceIndependentLowering
         val out = DenseMatrix(t(rowInd).length, t(colInd).length)(c.m,implicitly[SourceContext])
         // make sure that we transform the symbolically evaluated blk, and not the original lambda
-        reflectWrite(out)(IndexVector2ConstructMutable(t(rowInd), t(colInd), t(blk), out)(c.m))
+        reflectWrite(out)(IndexVector2ConstructMutable(t.intf(rowInd), t.intf(colInd), t(blk), out)(c.m))
         // don't forget - have to be explicit with manifests inside transformers
         (object_unsafe_immutable(out)(out.tp,implicitly[SourceContext])).asInstanceOf[Exp[A]]              
       }
@@ -282,10 +282,10 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp with LoweringTra
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case Reflect(e@IndexVector2ConstructMutable(r,c,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructMutable(f(r),f(c),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@IndexVector2ConstructRows(in,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructRows(f(in),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@IndexVector2ConstructMutable(r,c,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructMutable(f.intf(r),f.intf(c),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@IndexVector2ConstructRows(in,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructRows(f.intf(in),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
     // temporary: lancet compatibility
-    case Reflect(e@IndexVector2ConstructRows2(in,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructRows2(f(in),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@IndexVector2ConstructRows2(in,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructRows2(f.intf(in),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }

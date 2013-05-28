@@ -10,6 +10,7 @@ import ppl.delite.runtime.Config
 import tools.nsc.io._
 import java.io.FileWriter
 import collection.mutable.{ArrayBuffer, ListBuffer}
+import ppl.delite.runtime.graph.targets.Targets
 
 /**
  * @author Kevin J. Brown
@@ -22,8 +23,8 @@ trait CodeCache {
   val binCacheHome = cacheHome + "bin" + sep + "runtime" + sep
   protected var modules = List.empty[Module]
   
-  def target: String
-  def ext: String = target //source file extension
+  def target: Targets.Value
+  def ext: String = target.toString //source file extension
 
   def cacheDegSources(directory: Directory) {
     parseModules(directory)

@@ -189,6 +189,7 @@ trait Joe extends DeLisztApplication {
         var kinecv = 0.0
         kinecv = kine(c)
 
+        // FIXME: compiler crash in 2.10.0
         val pr = ( gamma(c) - 1.0 ) * ( JoeWithModels.rhoE(c) - 0.5 * dot(JoeWithModels.rhou(c),JoeWithModels.rhou(c)) / JoeWithModels.rho(c) - JoeWithModels.rho(c) * kinecv )
         press(c) = pr
         if ( pr <= 0.0 ) {

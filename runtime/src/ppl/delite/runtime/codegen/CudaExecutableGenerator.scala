@@ -5,7 +5,6 @@ import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.graph._
 import ppl.delite.runtime.scheduler.{OpList, PartialSchedule}
 import ppl.delite.runtime.{Config,Delite}
-import ppl.delite.runtime.codegen.hosts.Hosts
 import ppl.delite.runtime.graph.targets.{OS, Targets}
 import collection.mutable.ArrayBuffer
 import sync._
@@ -98,7 +97,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
     out.append("#include \"cublas.h\"\n") //cublas library
     out.append("#include \"DeliteCuda.h\"\n") //Delite-Cuda interface for DSL
     out.append("#include \"cudaSyncObjects.h\"\n")
-    out.append("#include \"helperFuncs.h\"\n")
+    out.append("#include \"" + Targets.Cuda + "helperFuncs.h\"\n")
     out.append("extern JNIEnv* env" + location + ";\n")
     out.append("extern cudaStream_t kernelStream;\n")
     out.append("extern cudaStream_t h2dStream;\n")
@@ -147,6 +146,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
   }
 
   protected def writeMethodFooter() {
+    out.append("DeliteCudaCheckError();\n")
     out.append("tempCudaMemFree();\n")
     out.append("}\n")
   }
@@ -211,21 +211,34 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
         out.append(op.task) //kernel name
         val args = op.getInputs.map(i=>getSymDevice(i._1,i._2))
         out.append(args.mkString("(",",",");\n"))
-      /*
       case _:OP_External =>
         assert(op.getOutputs.size == 1) //TODO: what does libCall support?
+        writeOutputAlloc(op)
         out.append(op.task) //kernel name
         out.append('(')
-        for (name <- op.getOutputs) {
-          if (op.outputType(name) != "Unit") out.append("*" + getSymDevice(op,name) + ",")
-        }
-        //writeInputs(op) //then all op inputs
+        out.append((op.getOutputs.toList++op.getInputs.map(i => i._2)).map(getSymDevice(op,_)).mkString(","))
         //out.append(",kernelStream") //TODO: what other libraries besides cuBlas do we use? how do we use the stream only with supported libraries?
         out.append(");\n")
-      */
     }
     out.append("addEvent(kernelStream, d2hStream);\n")
     //writeDataFrees(op)
+  }
+
+  protected def writeOutputAlloc(op: DeliteOP) {
+    for ((odata,osym) <- op.getGPUMetadata(Targets.Cuda).outputs if op.outputType(Targets.Cuda,osym)!="void") {// if !isPrimitiveType(op.outputType(osym))) {
+      out.append(op.outputType(Targets.Cuda, osym))
+      out.append(" *")
+      out.append(getSymDevice(op,osym))
+      out.append(";\n")
+      out.append("alloc_" + osym)
+      out.append('(')
+      out.append((odata.getInputs("alloc").map(i => getSymDevice(op,i)):+("&"+getSymDevice(op,osym))).mkString(","))
+      out.append(");\n")
+      out.append("cudaMemoryMap->insert(pair<void*,list<void*>*>(")
+      out.append(getSymDevice(op,osym))
+      out.append(",lastAlloc));\n")
+      out.append("lastAlloc = new list<void*>();\n")
+    }
   }
 
   protected def getSymCPU(name: String): String = {
@@ -251,17 +264,17 @@ class CudaMainExecutableGenerator(val location: Int, val kernelPath: String)
 
   def executableName(location: Int) = "Executable" + location
 
-  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Hosts.Value) = {
-    host match {
-      case Hosts.Scala => new ScalaMainExecutableGenerator(location, kernelPath) with ScalaSyncObjectGenerator {
+  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value) = {
+    target match {
+      case Targets.Scala => new ScalaMainExecutableGenerator(location, kernelPath) with ScalaSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
-      //case Hosts.Cpp => new CppMainExecutableGenerator(location, kernelPath) with CudaSyncObjectGenerator {
+      //case Targets.Cpp => new CppMainExecutableGenerator(location, kernelPath) with CudaSyncObjectGenerator {
       //  protected val sync = syncs
       //  override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       //}
-      case _ => throw new RuntimeException("Unknown Host type " + host.toString)
+      case _ => throw new RuntimeException("Unknown Host type " + target.toString)
     }
   }
 }
@@ -272,14 +285,14 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
 
   var syncLocation: Int = location
 
-  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Hosts.Value) = {
+  protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Targets.Value) = {
     host match {
-      case Hosts.Scala => new ScalaMainExecutableGenerator(syncLocation, kernelPath) with ScalaSyncObjectGenerator {
+      case Targets.Scala => new ScalaMainExecutableGenerator(syncLocation, kernelPath) with ScalaSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(syncLocation)
         override def consumerSet(sender: Send) = {  if(location == 0) scala.collection.mutable.HashSet(1) else scala.collection.mutable.HashSet(0) }
       }
-      //case Hosts.Cpp => new CppMainExecutableGenerator(location, kernelPath) with CudaSyncObjectGenerator {
+      //case Targets.Cpp => new CppMainExecutableGenerator(location, kernelPath) with CudaSyncObjectGenerator {
       //  protected val sync = syncs
       //  override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       //}
@@ -311,9 +324,9 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
   }
 
   override protected def writeSyncObject() {
-    syncObjectGenerator(localSyncObjects, Hosts.Scala).makeSyncObjects
+    syncObjectGenerator(localSyncObjects, Targets.Scala).makeSyncObjects
     syncLocation = 0
-    syncObjectGenerator(remoteSyncObjects, Hosts.Scala).makeSyncObjects
+    syncObjectGenerator(remoteSyncObjects, Targets.Scala).makeSyncObjects
   }
 
   override protected def writeFunctionCall(op: DeliteOP) {
@@ -420,8 +433,6 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
     super.writeMethodHeader()
     out.append("jclass clsMesosExecutor = env" + location + "->FindClass(\"ppl/delite/runtime/DeliteMesosExecutor\");\n")
   }
-
-  private def mangledName(name: String) = name.map(c => if(!c.isDigit && !c.isLetter) '_' else c) 
 
   private def writeGetter(dep: DeliteOP, sym: String, to: DeliteOP, view: Boolean) {
     addRemoteSync(SendData(sym,dep,1))
@@ -577,7 +588,7 @@ object CudaExecutableGenerator {
 
   val syncObjects = ArrayBuffer[String]()
   syncObjects += "#include <pthread.h>\n"
-  syncObjects += "#include \"helperFuncs.h\"\n"
+  syncObjects += "#include \"" + Targets.Cuda + "helperFuncs.h\"\n"
 
   var typesMap = Map[Targets.Value, Map[String,String]]()
 

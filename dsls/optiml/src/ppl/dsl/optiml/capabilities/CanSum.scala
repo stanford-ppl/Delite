@@ -1,7 +1,6 @@
 package ppl.dsl.optiml.capabilities
 
 import scala.virtualization.lms.common.{Variables, Base}
-import ppl.dsl.optiml.{DenseVector,DenseVectorView}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import scala.reflect.SourceContext
 

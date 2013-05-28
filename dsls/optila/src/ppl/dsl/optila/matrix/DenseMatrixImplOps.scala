@@ -126,7 +126,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
 
   def densematrix_rawupdate_impl[A:Manifest](x: Rep[DenseMatrix[A]], idx: Rep[Int], y: Rep[A]): Rep[Unit] = {
     val d = densematrix_raw_data(x)
-    darray_unsafe_update(d,idx,y) //d(idx) = y
+    darray_update(d,idx,y) //d(idx) = y
   }
   
   def densematrix_insertrow_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Vector[A]]): Rep[Unit] = {
@@ -136,7 +136,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     densematrix_insertspace(x, idx, x.numCols)
     val data = densematrix_raw_data(x)
     for (i <- idx until idx+x.numCols){
-      darray_unsafe_update(data,i,y(i-idx))
+      darray_update(data,i,y(i-idx))
     }
     densematrix_set_numrows(x, x.numRows+1)
   }
@@ -149,7 +149,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     densematrix_insertspace(x, idx, sz)
     val data = densematrix_raw_data(x)
     for (i <- idx until idx+sz){
-      darray_unsafe_update(data,i,xs.dcApply(i-idx))
+      darray_update(data,i,xs.dcApply(i-idx))
     }
     densematrix_set_numrows(x, x.numRows+xs.numRows)
   }
@@ -199,8 +199,8 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
   def densematrix_removerows_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], num: Rep[Int]): Rep[Unit] = {
     val idx = pos*x.numCols
     val len = num*x.numCols
-    val data = densematrix_raw_data(x)
-    darray_unsafe_copy(data, idx + len, data, idx, x.size - (idx + len))
+    val data = densematrix_raw_data(x)//.unsafeMutable
+    darray_copy(data, idx + len, data, idx, x.size - (idx + len))
     densematrix_set_numrows(x, x.numRows - num)
   }
 
@@ -231,15 +231,15 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     var n = max(4, data.length * 2)
     while (n < minLen) n = n*2
     val d = DeliteArray[A](n)
-    darray_unsafe_copy(data, 0, d, 0, x.size)
+    darray_copy(data, 0, d, 0, x.size)
     densematrix_set_raw_data(x, d.unsafeImmutable)
   }
 
   protected def densematrix_insertspace[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit] = {
     if (pos < 0 || pos > x.size) fatal("IndexOutOfBounds")
     densematrix_ensureextra(x,len)
-    val d = densematrix_raw_data(x)
-    darray_unsafe_copy(d, pos, d, pos + len, x.size - pos)
+    val d = densematrix_raw_data(x)//.unsafeMutable
+    darray_copy(d, pos, d, pos + len, x.size - pos)
   }
 
   protected def densematrix_chkpos[A:Manifest](x: Rep[DenseMatrix[A]], index: Rep[Int]) = {

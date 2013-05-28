@@ -80,11 +80,15 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with VariablesExp with 
     //reflectPure(DeliteCollectionSetLogicalSize(x,y))    
     fatal(unit("dc_set_logical_size called without any implementation on " + x.toString))    
   }  
-  /* returns true if the element was accepted and actually appended, false otherwise */
-  def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext): Exp[Boolean] = {
+  /* returns true if the element y can be appended to collection x */
+  def dc_appendable[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext): Exp[Boolean] = {
+    fatal(unit("dc_appendable called without any implementation on " + x.toString)) 
+  }
+  /* append the element y to the collection x, returns unit */
+  def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext): Exp[Unit] = {
     // reflectWrite(x)(DeliteCollectionAppend(x,i,y))
     // unit(true)
-    fatal(unit("dc_append called without any implementation on " + x.toString))    
+    fatal(unit("dc_append called without any implementation on " + x.toString + " with type " + x.tp.toString /*findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get*/))    
   }  
   def dc_alloc[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], size: Exp[Int])(implicit ctx: SourceContext): Exp[CA] = {
     fatal(unit("dc_alloc called without any implementation on " + x.toString))

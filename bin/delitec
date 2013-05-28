@@ -13,7 +13,7 @@ import delitecommon
 
 DSLs = ['optiml','optila','optiql','deliszt','optigraph','opticvx','multi-dsl']
 LMS_HOME = os.getenv("LMS_HOME")
-lms_version = "lms_2.10.0-M1-virtualized"
+lms_version = "lms_2.10.0/"
 
 def err(s):
     exit("error: " + s)
@@ -73,8 +73,10 @@ def stage(runner, params, opts):
     if opts.no_blas == False:
         java_opts = java_opts + " -Ddelite.extern.blas"
     if opts.cuda == True:
+        java_opts = java_opts + " -Ddelite.generate.cpp"
         java_opts = java_opts + " -Ddelite.generate.cuda"
     if opts.opencl == True:
+        java_opts = java_opts + " -Ddelite.generate.cpp"
         java_opts = java_opts + " -Ddelite.generate.opencl"
     if opts.cpp == True:
         java_opts = java_opts + " -Ddelite.generate.cpp"
@@ -91,7 +93,7 @@ def stage(runner, params, opts):
     if opts.debug == True:
         java_opts = java_opts + " -Ddelite.debug"
     if opts.xdebug == True:
-        java_opts = java_opts + " -Dlms.verbosity=3"
+        java_opts = java_opts + " -Dlms.verbosity=1"
     if opts.xnocache == False:
         java_opts = java_opts + " -Ddelite.cache.syms"
     if opts.dump_exception == True:
@@ -104,21 +106,26 @@ def stage(runner, params, opts):
     
     #add classpaths for Delite
     scala_major_id = delitecommon.scala_major_id
+    old_cp = os.getenv("CLASSPATH", "")
     cp = " -cp "
+    cp = cp + old_cp + os.pathsep
     cp = cp + LMS_HOME + "/*" + os.pathsep
     cp = cp + DELITE_HOME + "/framework/target/" + scala_major_id + "/classes" + os.pathsep
     
     #DSL cps
     for dsl in DSLs:
       cp = cp + DELITE_HOME + "/dsls/" + dsl + "/target/" + scala_major_id + "/classes" + os.pathsep
+      cp = cp + DELITE_HOME + "/dsls/" + dsl + "/target/" + scala_major_id + "/test-classes" + os.pathsep
       cp = cp + DELITE_HOME + "/apps/" + dsl + "/target/" + scala_major_id + "/classes" + os.pathsep
 
     #test cp
+    cp = cp + DELITE_HOME + "/framework/delite-test/target/" + scala_major_id + "/classes" + os.pathsep
     cp = cp + DELITE_HOME + "/tests/target/" + scala_major_id + "/classes" + os.pathsep
     cp = cp + DELITE_HOME + "/target/" + scala_major_id + "/test-classes" + os.pathsep
 
     #scala-virt cp
-    cp = cp + SCALA_VIRT_HOME + "/scala-library.jar" + os.pathsep
+    cp = cp + SCALA_VIRT_HOME + "/scala-library.jar" + os.pathsep  #TR should use /lib/*.jar?
+    cp = cp + SCALA_VIRT_HOME + "/scala-reflect.jar" + os.pathsep
     cp = cp + SCALA_VIRT_HOME + "/scala-compiler.jar"
 
     java_opts = java_opts + cp
@@ -133,7 +140,7 @@ def stage(runner, params, opts):
 
     print "==  Generating DEG file with options: " + str(opts)
     java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " " + runner + " " + ' '.join(params)
-    #print exec
+    #print java_cmd
     ecode = os.system(java_cmd)
     if ecode != 0:
         err("Delite compilation failed")

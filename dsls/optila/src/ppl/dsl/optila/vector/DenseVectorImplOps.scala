@@ -2,7 +2,6 @@ package ppl.dsl.optila.vector
 
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
-import ppl.dsl.optila.{DenseVector,DenseMatrix}
 import ppl.dsl.optila.{OptiLALift, OptiLACompiler, OptiLA}
 
 trait DenseVectorImplOps { this: OptiLA =>
@@ -17,8 +16,8 @@ trait DenseVectorImplOps { this: OptiLA =>
   def densevector_obj_uniform_impl(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]): Rep[DenseVector[Double]]
   def densevector_obj_flatten_impl[A:Manifest](pieces: Rep[DenseVector[DenseVector[A]]]): Rep[DenseVector[A]]
   
-  def densevector_apply_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int]): Rep[A]
-  def densevector_update_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit]
+  // def densevector_apply_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int]): Rep[A]
+  // def densevector_update_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit]
   def densevector_insert_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit]
   def densevector_insertall_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], xs: Rep[DenseVector[A]]): Rep[Unit]
   def densevector_copyfrom_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], xs: Rep[DenseVector[A]]): Rep[Unit]  
@@ -48,10 +47,12 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
   }
   
   def densevector_obj_fromunliftedseq_impl[A:Manifest](xs: Seq[Rep[A]]) = {
-    val out = densevector_obj_new[A](unit(0),unit(true))
+    val v = DenseVector[A](xs.length, true)
     // interpreted (not lifted)
-    xs.foreach { out <<= _ }
-    out.unsafeImmutable // return immutable object    
+    for (i <- (0 until xs.length): Range) { //range gets lifted by default in this scope, explicit typing prevents it
+      v(i) = xs(i)
+    }
+    v.unsafeImmutable 
   }
 
   def densevector_obj_ones_impl(length: Rep[Int]) = DenseVector[Double](length, true) mmap { e => 1. } 
@@ -102,15 +103,15 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
     }
   }
     
-  def densevector_apply_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int]): Rep[A] = {
-    val d = densevector_raw_data(v)
-    d(pos)
-  }
-  
-  def densevector_update_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {
-    val d = densevector_raw_data(v)
-    darray_unsafe_update(d,pos,x) 
-  }
+  // def densevector_apply_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int]): Rep[A] = {
+  //   val d = densevector_raw_data(v)
+  //   d(pos)
+  // }
+  // 
+  // def densevector_update_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {
+  //   val d = densevector_raw_data(v)//.unsafeMutable
+  //   darray_update(d,pos,x) 
+  // }
   
   def densevector_insert_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {
     densevector_insertspace(v,pos,1)
@@ -125,25 +126,25 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
   def densevector_copyfrom_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], xs: Rep[DenseVector[A]]): Rep[Unit] = {
     //chkRange(pos, pos + xs.length)
     var i = 0
-    val d = densevector_raw_data(v)
+    val d = densevector_raw_data(v)//.unsafeMutable
     while (i < xs.length) {
-      darray_unsafe_update(d,pos+i,xs(i))
+      darray_update(d,pos+i,xs(i))
       i += 1
     }
   }
 
   def densevector_removeall_impl[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit] = {
     //chkRange(pos, pos + len)
-    val data = densevector_raw_data(v)
-    darray_unsafe_copy(data, pos + len, data, pos, v.length - (pos + len))
+    val data = densevector_raw_data(v)//.unsafeMutable
+    darray_copy(data, pos + len, data, pos, v.length - (pos + len))
     densevector_set_length(v, v.length - len)
   }
 
   def densevector_trim_impl[A:Manifest](v: Rep[DenseVector[A]]): Rep[Unit] = {
-    val data = densevector_raw_data(v)
+    val data = densevector_raw_data(v)//.unsafeMutable
     if (v.length < data.length) {
       val outData = DeliteArray[A](v.length)
-      darray_unsafe_copy(data, 0, outData, 0, v.length)
+      darray_copy(data, 0, outData, 0, v.length)
       densevector_set_raw_data(v, outData.unsafeImmutable)
     }
   }
@@ -159,8 +160,8 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
 
   protected def densevector_insertspace[A:Manifest](v: Rep[DenseVector[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit] = {
     densevector_ensureextra(v,len)
-    val data = densevector_raw_data(v)
-    darray_unsafe_copy(data, pos, data, pos + len, v.length - pos)
+    val data = densevector_raw_data(v)//.unsafeMutable
+    darray_copy(data, pos, data, pos + len, v.length - pos)
     densevector_set_length(v, v.length + len)
   }
 
@@ -172,11 +173,11 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
   }
 
   protected def densevector_realloc[A:Manifest](v: Rep[DenseVector[A]], minLen: Rep[Int]): Rep[Unit] = {  
-    val data = densevector_raw_data(v)
+    val data = densevector_raw_data(v)//.unsafeMutable
     var n = Math.max(4, data.length * 2)
     while (n < minLen) n = n*2
     val d = DeliteArray[A](n)
-    darray_unsafe_copy(data, 0, d, 0, v.length)
+    darray_copy(data, 0, d, 0, v.length)
     densevector_set_raw_data(v, d.unsafeImmutable)
   }
   

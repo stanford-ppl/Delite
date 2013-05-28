@@ -4,7 +4,6 @@ import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common._
 import java.io.PrintWriter
 import scala.virtualization.lms.internal.{CLikeCodegen}
-import ppl.dsl.optila.{DenseVector,Vector,DenseMatrix,Matrix}
 import ppl.dsl.optila.{OptiLAExp, OptiLA}
 import scala.reflect.SourceContext
 
@@ -40,6 +39,9 @@ trait ArithOps extends Variables with OverloadHack {
   this: OptiLA =>
   
   type Arith[X] = ArithInternal[Rep,X]
+  
+  // hack: need to pass explicit type class parameters during mirroring, similar to mtype
+  def atype[A,B](a: Arith[A]): Arith[B] = a.asInstanceOf[Arith[B]]
 
   /**
    * Interface, enables using Ariths with operator notation. Note that the inclusion of these
@@ -63,93 +65,7 @@ trait ArithOps extends Variables with OverloadHack {
     def empty(implicit ctx: SourceContext): Rep[T] = arith.empty
     def zero(implicit ctx: SourceContext): Rep[T] = arith.zero(lhs)
   }
-
-
-  /**
-   * These infix methods support promoting one side of the binary op to a compatible type (precision widening).
-   *  
-   * This slightly asymmetric combination is the cleanest non-ambiguous way I've found to support most
-   * left- and right-hand side arithmetic conversions.  Still, the overloading and implicit resolution here is
-   * not fine-grained enough to cover all combinations of literal and Rep[] value promotions, so we add
-   * special-cases to cover other OptiML primitive widenings. 
-   * 
-   * See ArithmeticConversionSuite.scala for a list of test cases.
-   */     
-
-  // kind of works, but doesn't cover all cases (if we start with a Rep[L] and need to convert that to R, the wrong signature is still preferred)
-  def infix_-[L:Arith:Manifest,R](lhs: Rep[L], rhs: R)(implicit c: R => Rep[L], ctx: SourceContext): Rep[L] = implicitly[Arith[L]].-(lhs,c(rhs))
-  def infix_-[L:Manifest,R:Arith:Manifest](lhs: Rep[L], rhs: Rep[R])(implicit c: Rep[L] => Rep[R], ctx: SourceContext): Rep[R] = implicitly[Arith[R]].-(c(lhs),rhs)  
-
-  // special cases to fill the holes - note that some redundancy is required here to prevent auto primitive widening
-  def infix_-(lhs: Int, rhs: Rep[Int])(implicit ctx: SourceContext): Rep[Int] = implicitly[Arith[Int]].-(unit(lhs), rhs)
-  def infix_-(lhs: Float, rhs: Rep[Int])(implicit ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].-(unit(lhs),rhs)  
-  def infix_-(lhs: Float, rhs: Rep[Float])(implicit o: Overloaded1, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].-(unit(lhs), rhs)
-  def infix_-(lhs: Float, rhs: Rep[Double])(implicit o: Overloaded2, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].-(unit(lhs.toDouble), rhs)
-  def infix_-(lhs: Double, rhs: Rep[Int])(implicit ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].-(unit(lhs),rhs)  
-  def infix_-(lhs: Double, rhs: Rep[Float])(implicit o: Overloaded1, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].-(unit(lhs),rhs)
-  def infix_-(lhs: Rep[Int], rhs: Int)(implicit ctx: SourceContext): Rep[Int] = implicitly[Arith[Int]].-(lhs, unit(rhs))  
-  def infix_-(lhs: Rep[Int], rhs: Double)(implicit ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].-(lhs, unit(rhs))
-  def infix_-(lhs: Rep[Int], rhs: Float)(implicit ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].-(lhs, unit(rhs))
-  def infix_-(lhs: Rep[Float], rhs: Float)(implicit o: Overloaded1, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].-(lhs, unit(rhs))
-  def infix_-(lhs: Rep[Float], rhs: Double)(implicit o: Overloaded1, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].-(lhs, unit(rhs))
-  def infix_-(lhs: Rep[Float], rhs: Rep[Int])(implicit o: Overloaded1, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].-(lhs, repIntToRepFloat(rhs))
-  def infix_-(lhs: Rep[Double], rhs: Rep[Int])(implicit o: Overloaded2, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].-(lhs, repIntToRepDouble(rhs))
-  def infix_-(lhs: Rep[Double], rhs: Rep[Float])(implicit o: Overloaded3, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].-(lhs, repFloatToRepDouble(rhs))
-  
-  def infix_+[L:Arith:Manifest,R](lhs: Rep[L], rhs: R)(implicit c: R => Rep[L], ctx: SourceContext): Rep[L] = implicitly[Arith[L]].+(lhs,c(rhs))
-  def infix_+[L:Manifest,R:Arith:Manifest](lhs: Rep[L], rhs: Rep[R])(implicit c: Rep[L] => Rep[R], ctx: SourceContext): Rep[R] = implicitly[Arith[R]].+(c(lhs),rhs)  
-  
-  def infix_+(lhs: Int, rhs: Rep[Int])(implicit ctx: SourceContext): Rep[Int] = implicitly[Arith[Int]].+(unit(lhs), rhs)
-  def infix_+(lhs: Float, rhs: Rep[Int])(implicit ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].+(unit(lhs),rhs)  
-  def infix_+(lhs: Float, rhs: Rep[Float])(implicit o: Overloaded1, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].+(unit(lhs), rhs)
-  def infix_+(lhs: Float, rhs: Rep[Double])(implicit o: Overloaded2, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].+(unit(lhs.toDouble), rhs)
-  def infix_+(lhs: Double, rhs: Rep[Int])(implicit ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].+(unit(lhs),rhs)  
-  def infix_+(lhs: Double, rhs: Rep[Float])(implicit o: Overloaded1, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].+(unit(lhs),rhs)
-  def infix_+(lhs: Rep[Int], rhs: Int)(implicit ctx: SourceContext): Rep[Int] = implicitly[Arith[Int]].+(lhs, unit(rhs))  
-  def infix_+(lhs: Rep[Int], rhs: Double)(implicit ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].+(lhs, unit(rhs))
-  def infix_+(lhs: Rep[Int], rhs: Float)(implicit ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].+(lhs, unit(rhs))
-  def infix_+(lhs: Rep[Float], rhs: Float)(implicit o: Overloaded1, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].+(lhs, unit(rhs))
-  def infix_+(lhs: Rep[Float], rhs: Double)(implicit o: Overloaded1, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].+(lhs, unit(rhs))
-  def infix_+(lhs: Rep[Float], rhs: Rep[Int])(implicit o: Overloaded22, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].+(lhs, repIntToRepFloat(rhs))
-  def infix_+(lhs: Rep[Double], rhs: Rep[Int])(implicit o: Overloaded23, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].+(lhs, repIntToRepDouble(rhs))
-  def infix_+(lhs: Rep[Double], rhs: Rep[Float])(implicit o: Overloaded24, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].+(lhs, repFloatToRepDouble(rhs))
-  
-  def infix_*[L:Arith:Manifest,R](lhs: Rep[L], rhs: R)(implicit c: R => Rep[L], ctx: SourceContext): Rep[L] = implicitly[Arith[L]].*(lhs,c(rhs))
-  def infix_*[L:Manifest,R:Arith:Manifest](lhs: Rep[L], rhs: Rep[R])(implicit c: Rep[L] => Rep[R], ctx: SourceContext): Rep[R] = implicitly[Arith[R]].*(c(lhs),rhs)  
-  
-  def infix_*(lhs: Int, rhs: Rep[Int])(implicit ctx: SourceContext): Rep[Int] = implicitly[Arith[Int]].*(unit(lhs), rhs)
-  def infix_*(lhs: Float, rhs: Rep[Int])(implicit ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].*(unit(lhs),rhs)  
-  def infix_*(lhs: Float, rhs: Rep[Float])(implicit o: Overloaded1, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].*(unit(lhs), rhs)
-  def infix_*(lhs: Float, rhs: Rep[Double])(implicit o: Overloaded2, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].*(unit(lhs.toDouble), rhs)
-  def infix_*(lhs: Double, rhs: Rep[Int])(implicit ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].*(unit(lhs),rhs)  
-  def infix_*(lhs: Double, rhs: Rep[Float])(implicit o: Overloaded1, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].*(unit(lhs),rhs)
-  def infix_*(lhs: Rep[Int], rhs: Int)(implicit ctx: SourceContext): Rep[Int] = implicitly[Arith[Int]].*(lhs, unit(rhs))  
-  def infix_*(lhs: Rep[Int], rhs: Double)(implicit ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].*(lhs, unit(rhs))
-  def infix_*(lhs: Rep[Int], rhs: Float)(implicit ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].*(lhs, unit(rhs))
-  def infix_*(lhs: Rep[Float], rhs: Float)(implicit o: Overloaded1, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].*(lhs, unit(rhs))
-  def infix_*(lhs: Rep[Float], rhs: Double)(implicit o: Overloaded1, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].*(lhs, unit(rhs))
-  def infix_*(lhs: Rep[Float], rhs: Rep[Int])(implicit o: Overloaded7, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]].*(lhs, repIntToRepFloat(rhs))
-  def infix_*(lhs: Rep[Double], rhs: Rep[Int])(implicit o: Overloaded8, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].*(lhs, repIntToRepDouble(rhs))
-  def infix_*(lhs: Rep[Double], rhs: Rep[Float])(implicit o: Overloaded9, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]].*(lhs, repFloatToRepDouble(rhs))
-  
-  def infix_/[L:Arith:Manifest,R](lhs: Rep[L], rhs: R)(implicit c: R => Rep[L], ctx: SourceContext): Rep[L] = implicitly[Arith[L]]./(lhs,c(rhs))
-  def infix_/[L:Manifest,R:Arith:Manifest](lhs: Rep[L], rhs: Rep[R])(implicit c: Rep[L] => Rep[R], ctx: SourceContext): Rep[R] = implicitly[Arith[R]]./(c(lhs),rhs)  
-  
-  def infix_/(lhs: Int, rhs: Rep[Int])(implicit ctx: SourceContext): Rep[Int] = implicitly[Arith[Int]]./(unit(lhs), rhs)
-  def infix_/(lhs: Float, rhs: Rep[Int])(implicit ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]]./(unit(lhs),rhs)  
-  def infix_/(lhs: Float, rhs: Rep[Float])(implicit o: Overloaded1, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]]./(unit(lhs), rhs)
-  def infix_/(lhs: Float, rhs: Rep[Double])(implicit o: Overloaded2, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]]./(unit(lhs.toDouble), rhs)
-  def infix_/(lhs: Double, rhs: Rep[Int])(implicit ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]]./(unit(lhs),rhs)  
-  def infix_/(lhs: Double, rhs: Rep[Float])(implicit o: Overloaded1, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]]./(unit(lhs),rhs)
-  def infix_/(lhs: Rep[Int], rhs: Int)(implicit ctx: SourceContext): Rep[Int] = implicitly[Arith[Int]]./(lhs, unit(rhs))  
-  def infix_/(lhs: Rep[Int], rhs: Double)(implicit ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]]./(lhs, unit(rhs))
-  def infix_/(lhs: Rep[Int], rhs: Float)(implicit ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]]./(lhs, unit(rhs))
-  def infix_/(lhs: Rep[Float], rhs: Float)(implicit o: Overloaded1, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]]./(lhs, unit(rhs))
-  def infix_/(lhs: Rep[Float], rhs: Double)(implicit o: Overloaded1, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]]./(lhs, unit(rhs))
-  def infix_/(lhs: Rep[Float], rhs: Rep[Int])(implicit o: Overloaded10, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]]./(lhs, repIntToRepFloat(rhs))
-  def infix_/(lhs: Rep[Double], rhs: Rep[Int])(implicit o: Overloaded11, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]]./(lhs, repIntToRepDouble(rhs))
-  def infix_/(lhs: Rep[Double], rhs: Rep[Float])(implicit o: Overloaded12, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]]./(lhs, repFloatToRepDouble(rhs))
-  
+         
          
   /**
    * Vector
@@ -438,12 +354,12 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
   def arith_exp[T:Manifest:Numeric](lhs: Exp[T])(implicit ctx: SourceContext) = reflectPure(ArithExp(lhs))
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case e@ArithPlus(lhs,rhs) => reflectPure(ArithPlus(f(lhs),f(rhs))(e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@ArithMinus(lhs,rhs) => reflectPure(ArithMinus(f(lhs),f(rhs))(e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@ArithTimes(lhs,rhs) => reflectPure(ArithTimes(f(lhs),f(rhs))(e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@ArithFractionalDivide(lhs,rhs) => reflectPure(ArithFractionalDivide(f(lhs),f(rhs))(e.mA,e.f))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@ArithAbs(lhs) => reflectPure(ArithAbs(f(lhs))(e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@ArithExp(lhs) => reflectPure(ArithExp(f(lhs))(e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithPlus(lhs,rhs) => reflectPure(ArithPlus(f(lhs),f(rhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[A]]))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithMinus(lhs,rhs) => reflectPure(ArithMinus(f(lhs),f(rhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[A]]))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithTimes(lhs,rhs) => reflectPure(ArithTimes(f(lhs),f(rhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[A]]))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithFractionalDivide(lhs,rhs) => reflectPure(ArithFractionalDivide(f(lhs),f(rhs))(mtype(e.mA),e.f.asInstanceOf[Fractional[A]]))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithAbs(lhs) => reflectPure(ArithAbs(f(lhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[A]]))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithExp(lhs) => reflectPure(ArithExp(f(lhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[Any]]))(mtype(manifest[A]),implicitly[SourceContext])
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]] 
   
@@ -541,7 +457,11 @@ trait CLikeGenArithOps extends CLikeCodegen {
         case ArithMinus(a,b) => emitValDef(sym, quote(a) + " - " + quote(b))
         case ArithTimes(a,b) => emitValDef(sym, quote(a) + " * " + quote(b))
         case ArithFractionalDivide(a,b) => emitValDef(sym, quote(a) + " / " + quote(b))
+        case ArithAbs(x) if(remap(x.tp)=="float") => emitValDef(sym, "fabsf(" + quote(x) + ")")
+        case ArithAbs(x) if(remap(x.tp)=="double") => emitValDef(sym, "fabs(" + quote(x) + ")")
         case ArithAbs(x) => emitValDef(sym, "abs(" + quote(x) + ")")
+        case ArithExp(a) if(remap(a.tp)=="float") => emitValDef(sym, "expf(" + quote(a) + ")")
+        case ArithExp(a) if(remap(a.tp)=="double") => emitValDef(sym, "exp(" + quote(a) + ")")
         case ArithExp(a) => emitValDef(sym, "exp(" + quote(a) + ")")
         case _ => super.emitNode(sym, rhs)
       }

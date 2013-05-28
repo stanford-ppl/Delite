@@ -38,7 +38,7 @@ trait SSS extends DeLisztApplication {
       // TODO WHAT IS GOING ON HERE? maxforce = max(maxforce, springForce)
     }
     // TODO CONVERSIONS SUCK
-    deltat = 1.0f / maxforce*0.5f 
+    deltat = unit(1.0f) / maxforce*unit(0.5f) // FIXME conversion broke in 2.10.0
     for (ptcl <- vertices(mesh)) {
       // TODO IT WAS BACKWARDS BEFORE
       Velocity(ptcl) += Force(ptcl) * deltat

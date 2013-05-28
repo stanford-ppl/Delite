@@ -393,7 +393,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
           // markRead(f, i)
         }
         
-        case w@FieldUpdate(f,i,v) => {
+        case w@FieldUpdateDL(f,i,v) => {
           // Mark a write on the field for the current element... for i
           markWrite(f, i, w.moM)
         }
@@ -557,7 +557,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
           // Field accesses, check for triviality
           case FieldApply(f,i) =>
           
-          case FieldUpdate(f,i,v) => {
+          case FieldUpdateDL(f,i,v) => {
             i match {
               case Sym(i) if !moSyms.contains(i) => { trivial = false }
               case _ =>

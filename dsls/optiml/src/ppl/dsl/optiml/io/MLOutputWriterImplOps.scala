@@ -4,7 +4,7 @@ import scala.virtualization.lms.common.Base
 import scala.virtualization.lms.common.ScalaOpsPkg
 import ppl.dsl.optiml._
 
-trait MLOutputWriterImplOps { this: Base =>
+trait MLOutputWriterImplOps { this: OptiML =>
   def mloutput_write_img_pgm_impl(img: Rep[GrayscaleImage], filename: Rep[String]): Rep[Unit]
 }
 
@@ -29,7 +29,8 @@ trait MLOutputWriterImplOpsStandard extends MLOutputWriterImplOps {
     img.foreachRow( vec => {
       vec.foreach( p => {
         if (min != max) {
-          val pixel = (255.0 * (p - min) / (max - min)).AsInstanceOf[Int]
+          val a: Rep[Double] = unit(255.0) * (p - min) // TR M7: internal compiler errors for whole expression
+          val pixel = (a / (max - min)).AsInstanceOf[Int]
           xfs.write(pixel + "")
         }
         else

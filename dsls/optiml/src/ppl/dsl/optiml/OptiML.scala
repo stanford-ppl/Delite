@@ -4,12 +4,13 @@ import java.io._
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{Expressions, GenericFatCodegen, GenericCodegen}
-import ppl.delite.framework.{Config, DeliteApplication, DeliteInteractive, DeliteInteractiveRunner}
+import ppl.delite.framework.{Config, DeliteApplication, DeliteInteractive, DeliteInteractiveRunner, DeliteRestageOps, DeliteRestageOpsExp, DeliteRestageRunner}
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
 import ppl.delite.framework.codegen.cpp.TargetCpp
 import ppl.delite.framework.codegen.opencl.TargetOpenCL
+import ppl.delite.framework.codegen.restage.{DeliteCodeGenRestage,TargetRestage}
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteOpenCLGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
 import ppl.delite.framework.datastructures._
@@ -17,6 +18,7 @@ import ppl.delite.framework.datastructures._
 import ppl.dsl.optila.{OptiLAApplication}
 import ppl.dsl.optila.{OptiLAScalaOpsPkg, OptiLAScalaOpsPkgExp, OptiLA, OptiLAExp, OptiLACompiler, OptiLALift, OptiLAUtilities}
 import ppl.dsl.optila.{OptiLAScalaCodeGenPkg, OptiLACudaCodeGenPkg, OptiLAOpenCLCodeGenPkg, OptiLACCodeGenPkg, OptiLACodeGenBase, OptiLACodeGenScala, OptiLACodeGenCuda, OptiLACodeGenOpenCL, OptiLACodeGenC}
+import ppl.dsl.optila.capabilities.ScalaGenArithOps
 
 import ppl.dsl.optiml.io._
 import ppl.dsl.optiml.vector._
@@ -27,6 +29,7 @@ import ppl.dsl.optiml.library.cluster._
 import ppl.dsl.optiml.library.regression._
 import ppl.dsl.optiml.application._
 import ppl.dsl.optiml.capabilities._
+import ppl.dsl.optiml.transform._
 
 /**
  * Microbenchmark experiments: OptiMLApplicationRunners with optimizations disabled
@@ -44,12 +47,11 @@ trait OptiMLNoCSE extends Expressions {
 trait OptiMLApplicationRunner extends OptiMLApplicationRunnerBase with OptiMLExpOpt
 
 // ex. object GDARunner extends OptiMLApplicationRunner with GDA
-trait OptiMLApplicationRunnerBase extends OptiMLApplication with DeliteApplication
-
+trait OptiMLApplicationRunnerBase extends OptiMLApplication with DeliteApplication 
 // ex. trait GDA extends OptiMLApplication
 trait OptiMLApplication extends OptiLAApplication with OptiML with OptiMLLift with OptiMLLibrary {
   var args: Rep[Array[String]]
-  def main(): Unit
+  def main(): Unit  
 }
 
 trait OptiMLLibrary extends OptiMLKmeans with OptiMLLinReg {
@@ -61,10 +63,18 @@ trait OptiMLInteractive extends OptiMLApplication with DeliteInteractive
 
 trait OptiMLInteractiveRunner extends OptiMLApplicationRunner with DeliteInteractiveRunner
 
+// executes scope immediately
 object OptiML {
   def apply[R](b: => R) = new Scope[OptiMLInteractive, OptiMLInteractiveRunner, R](b)
 }
 
+// stages scope and generates re-stageable code
+trait OptiMLLower extends OptiMLApplication with DeliteRestageOps
+trait OptiMLLowerRunner extends OptiMLApplicationRunner with DeliteRestageRunner
+
+object OptiML_ {
+  def apply[R](b: => R) = new Scope[OptiMLLower, OptiMLLowerRunner, R](b)
+}
 
 /**
  * These are the portions of Scala imported into OptiML's scope.
@@ -92,7 +102,7 @@ trait OptiMLCCodeGenPkg extends OptiLACCodeGenPkg
 /**
  * This is the trait that every OptiML application must extend.
  */
-trait OptiML extends OptiMLScalaOpsPkg with OptiLA with StructOps
+trait OptiML extends OptiLA with OptiMLTypes with OptiMLScalaOpsPkg 
   with LanguageOps with ApplicationOps 
   with MLInputReaderOps with MLOutputWriterOps
   with CanSumOps
@@ -119,7 +129,7 @@ trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities wit
 /**
  * These are the corresponding IR nodes for OptiML.
  */
-trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp with StructExp
+trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp
   with LanguageOpsExpOpt with ApplicationOpsExp
   with MLInputReaderOpsExp with MLOutputWriterOpsExp
   with VectorOpsExpOpt with MatrixOpsExpOpt with DenseMatrixOpsExpOpt 
@@ -127,6 +137,8 @@ trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp 
   with StreamOpsExpOpt with StreamRowOpsExpOpt
   with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
   with GraphOpsExp with EdgeOpsExp with VertexOpsExp with VSetOpsExp
+  with MultiloopTransformExp
+  with DeliteRestageOpsExp
   with DeliteAllOverridesExp {
 
   // this: OptiMLApplicationRunner => why doesn't this work?
@@ -138,6 +150,7 @@ trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp 
       case _:TargetCuda => new OptiMLCodeGenCuda{val IR: OptiMLExp.this.type = OptiMLExp.this}
       case _:TargetOpenCL => new OptiMLCodeGenOpenCL{val IR: OptiMLExp.this.type = OptiMLExp.this}
       case _:TargetCpp => new OptiMLCodeGenC{val IR: OptiMLExp.this.type = OptiMLExp.this}
+      case _:TargetRestage => new OptiMLCodeGenRestage{val IR: OptiMLExp.this.type = OptiMLExp.this}
       case _ => err("optiml does not support this target")
     }
   }
@@ -172,12 +185,6 @@ trait OptiMLCodeGenBase extends OptiLACodeGenBase {
   val mlspecialize2 = Set[String]()  
   def genSpec2(f: File, outPath: String) = {}
 
-  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
-    case "IndexVectorDense" => IR.structName(m)
-    case "SupervisedTrainingSet" => IR.structName(m)
-    case "UnsupervisedTrainingSet" => IR.structName(m)
-    case _ => super.remap(m)
-  }
     
   override def emitDataStructures(path: String) {
     super.emitDataStructures(path) // get optila data structures
@@ -210,6 +217,18 @@ trait OptiMLCodeGenBase extends OptiLACodeGenBase {
         out.close()
       }
     }
+  }
+}
+
+// strategy is to inherit all of the base Scala generators and override what we need
+trait OptiMLCodeGenRestage extends OptiMLScalaCodeGenPkg with ScalaGenArithOps with DeliteCodeGenRestage { 
+  val IR: DeliteApplication with OptiMLExp
+  import IR._
+  
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case ArithAbs(x) => emitValDef(sym, "Math.abs(" + quote(x) + ")")
+    case ArithExp(x) => emitValDef(sym, "Math.exp(" + quote(x) + ")")
+    case _ => super.emitNode(sym, rhs)
   }
 }
 
@@ -281,7 +300,7 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
     var res = line.replaceAll("ppl.dsl.optiml.datastruct", "generated")
     res = res.replaceAll("import ppl.dsl.optila.datastruct.scala._", "")     
     res = res.replaceAll("ppl.delite.framework.datastruct", "generated")
-    res = res.replaceAll("ppl.dsl.optiml", "generated.scala")        
+    res = res.replaceAll(".*\\$", "generated.scala.")
     super.dsmap(res) // calls parmap
   }
 }
@@ -302,7 +321,9 @@ trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase wit
   import IR._
 }
 
-trait OptiMLCodeGenC extends OptiLACodeGenC with OptiMLCodeGenBase with OptiMLCCodeGenPkg with CGenIndexVectorOps with CGenIndexVectorDenseOps with OptiMLCppHostTransfer
+trait OptiMLCodeGenC extends OptiLACodeGenC with OptiMLCodeGenBase with OptiMLCCodeGenPkg with CGenIndexVectorOps 
+  with CGenVectorOps with CGenMatrixOps with CGenTrainingSetOps with DeliteCGenAllOverrides 
+  with OptiMLCppHostTransfer
 {
   val IR: DeliteApplication with OptiMLExp
   import IR._

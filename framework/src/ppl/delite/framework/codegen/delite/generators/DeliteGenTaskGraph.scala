@@ -3,7 +3,9 @@ package ppl.delite.framework.codegen.delite.generators
 import collection.mutable.{ArrayBuffer, ListBuffer, HashMap}
 import java.io.{StringWriter, FileWriter, File, PrintWriter}
 import scala.virtualization.lms.common.LoopFusionOpt
-import scala.virtualization.lms.internal.{GenerationFailedException}
+import scala.virtualization.lms.internal.{GenericCodegen, CLikeCodegen, ScalaCodegen, GenerationFailedException}
+import scala.virtualization.lms.internal.Targets._
+import ppl.delite.framework.ops.DeliteCollection
 import scala.reflect.SourceContext
 
 import ppl.delite.framework.codegen.delite.DeliteCodegen
@@ -29,7 +31,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
   }
 
   private def mutating(kernelContext: State, sym: Sym[Any]) : List[Sym[Any]] = kernelContext flatMap {
-    case Def(Reflect(x,u,effects)) => if (u.mstWrite contains sym) List(sym) else Nil
+    case Def(Reflect(x,u,effects)) => if (u.mayWrite contains sym) List(sym) else Nil
     case _ => Nil
   }
 
@@ -244,16 +246,22 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
         // record that this kernel was successfully generated
         supportedTargets += gen.toString
         if (!hasOutputSlotTypes) { // return type is sym type
-          if (resultIsVar && gen.toString=="scala") {
-            returnTypes += new Pair[String,String](gen.toString,"generated.scala.Ref[" + gen.remap(sym.head.tp) + "]") {
-              override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+          if (resultIsVar) {
+            gen match {
+              case g: ScalaCodegen =>
+                returnTypes += new Pair[String,String](g.toString,"generated.scala.Ref[" + g.remap(sym.head.tp) + "]") {
+                  override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+                }
+              case g: CLikeCodegen =>
+                returnTypes += new Pair[String,String](g.toString,g.deviceTarget.toString + "Ref< " + g.remap(sym.head.tp) + g.addRef(g.remap(sym.head.tp)) + " >") {
+                  override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+                }
+              case _ =>
+                returnTypes += new Pair[String,String](gen.toString,gen.remap(sym.head.tp)) {
+                  override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+                }     
             }
-          }
-          else if (resultIsVar && gen.toString=="cpp") {
-            returnTypes += new Pair[String,String](gen.toString,"Ref< " + gen.remap(sym.head.tp) + " >") {
-              override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
-            }
-          }
+          } 
           else {
             returnTypes += new Pair[String,String](gen.toString,gen.remap(sym.head.tp)) {
               override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
@@ -479,15 +487,15 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     if (remap(thenp.tp) != remap(elsep.tp))
       throw new RuntimeException("Delite conditional with different then and else return types: " + thenp + ", " + remap(thenp.tp) + " and " + elsep + ", " + remap(elsep.tp))
     
-    val returnTypesStr = for (gen <- generators) yield {
+    val returnTypesStr = (for (gen <- generators) yield {
       try {
-        "\"" + gen.toString + "\" : \"" + gen.remap(thenp.tp) + "\""
+        Some("\"" + gen.toString + "\" : \"" + gen.remap(thenp.tp) + "\"")
       } catch {
-        case e:GenerationFailedException => //
+        case e:GenerationFailedException => None
         case e:Exception => throw(e)
       }
-    }    
-    //val returnTypesStr = if(returnTypes.isEmpty) "" else returnTypes.mkString(",")
+    }) filter(_.isDefined) map(_.get)   
+    
     stream.println("  \"return-types\":{" + returnTypesStr.mkString(",") + "}")
     stream.println("},")
   }
@@ -516,18 +524,18 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     stream.print("  \"outputs\":[" + outputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")
     stream.print("  \"inputs\":[" + inputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")
     stream.print("  \"input-types\":{")
-    def addRef(gen:String, sym: Exp[Any], tp:String):String = {
+    def wrapRef(gen: GenericCodegen, sym: Exp[Any]):String = {
       if(inVars contains sym) {
         gen match {
-          case "scala" => "Ref[" + tp + "]"
-          case "cuda" | "cpp" | "opencl" => "Ref< " + tp + " >"
-          case _ => tp
+          case g: ScalaCodegen => "Ref[" + g.remap(sym.tp) + "]"
+          case g: CLikeCodegen => g.deviceTarget + "Ref< " + g.remap(sym.tp) + g.addRef(sym.tp) + " >"
+          case _ => gen.remap(sym.tp)
         }
       }
       else
-        tp
+        gen.remap(sym.tp)
     }
-    val inputTypesMap = inputs.map(i => "\"" + quote(i) + "\":{" + generators.filter(supportedTgt contains _.toString).map(gen => "\"" + gen.toString + "\":\"" + addRef(gen.toString,i,gen.remap(i.tp)) + "\"").mkString(",") + "}")
+    val inputTypesMap = inputs.map(i => "\"" + quote(i) + "\":{" + generators.filter(supportedTgt contains _.toString).map(gen => "\"" + gen.toString + "\":\"" + wrapRef(gen,i) + "\"").mkString(",") + "}")
     stream.print(inputTypesMap.mkString(","))
     stream.print("  },\n")
     stream.print("  \"mutableInputs\":[" + mutableInputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")

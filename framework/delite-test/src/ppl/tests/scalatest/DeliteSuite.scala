@@ -28,9 +28,11 @@ trait DeliteTestConfig {
   val cacheSyms = props.getProperty("tests.cacheSyms", "true").toBoolean
   val javaHome = new File(props.getProperty("java.home", ""))
   val scalaHome = new File(props.getProperty("scala.vanilla.home", ""))
+  val deliteHome = new File(props.getProperty("delite.home",""))
   val runtimeClasses = new File(props.getProperty("runtime.classes", ""))
   val runtimeExternalProc = false // scalaHome and runtimeClasses only required if runtimeExternalProc is true. should this be configurable? or should we just remove execTestExternal?
   val deliteTestTargets = props.getProperty("tests.targets", "scala").split(",")
+  val useBlas = props.getProperty("tests.extern.blas", "false").toBoolean
 }
 
 trait DeliteSuite extends Suite with DeliteTestConfig {
@@ -42,6 +44,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
 
   def validateParameters() {
     if (!javaHome.exists) throw new TestFailedException("java.home must be a valid path in delite.properties", 3)
+    else if (!deliteHome.exists) throw new TestFailedException("delite.home must be a valid path in delite.properties", 3)
     else if (!javaBin.exists) throw new TestFailedException("Could not find valid java installation in " + javaHome, 3)
     else if (runtimeExternalProc && !scalaHome.exists) throw new TestFailedException("scala.vanilla.home must be a valid path in delite.proeprties", 3)
     else if (runtimeExternalProc && (!scalaCompiler.exists || !scalaLibrary.exists)) throw new TestFailedException("Could not find valid scala installation in " + scalaHome, 3)
@@ -69,12 +72,14 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     for(t <- deliteTestTargets) {
       t match {
         case "scala" => 
-        case "cuda" => Config.generateCUDA = true
+        case "cuda" => Config.generateCUDA = true; Config.generateCpp = true
         case "cpp" => Config.generateCpp = true
-        case "opencl" => Config.generateOpenCL = true
+        case "opencl" => Config.generateOpenCL = true; Config.generateCpp = true
         case _ => println("Unknown test target: " + t)
       }
     }
+
+    if(useBlas) Config.useBlas = true
 
     // check if all multiloops in the test app are generated for specified targets
     if(checkMultiLoop) {
@@ -84,7 +89,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
       val graph = ppl.delite.runtime.Delite.loadDeliteDEG(degName(app))
       val targets = List("scala","cuda") // Add other targets 
       for(op <- graph.totalOps if op.isInstanceOf[OP_MultiLoop]) {
-        targets foreach { t =>  if(!op.supportsTarget(Targets.target(t))) assert(false) }
+        targets foreach { t =>  if(!op.supportsTarget(Targets(t))) assert(false) }
       }
       Config.generateCUDA = generateCUDA
     }
@@ -116,7 +121,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val save = Config.degFilename
     val buildDir = Config.buildDir
     val saveCacheSyms = Config.cacheSyms
-    val generatedDir = "generated" + java.io.File.separator + uniqueTestName(app)
+    val generatedDir = deliteHome + java.io.File.separator + "generated" + java.io.File.separator + uniqueTestName(app)
     try {
       Config.degFilename = degName(app)
       Config.buildDir = generatedDir
@@ -147,7 +152,12 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     // Setting up the env variables here does not apply
     //System.setProperty("delite.threads", threads.toString)
     //System.setProperty("delite.code.cache.home", "generatedCache" + java.io.File.separator + uniqueTestName)
-    Console.withOut(new PrintStream(new FileOutputStream(name))) {
+    
+    // Changed mkReport to directly write to a file instead of trying to capture the output stream here.
+    // This is to make the C target testing work, because native C stdout is not captured by this.
+    //Console.withOut(new PrintStream(new FileOutputStream(name))) {
+    val bstream = new ByteArrayOutputStream
+    Console.withOut(new PrintStream(bstream)) {
       println("test output for: " + app.toString)
       ppl.delite.runtime.Delite.embeddedMain(args, app.staticDataMap)
     }
@@ -155,7 +165,8 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val fis = new FileInputStream(name)
     fis.read(buf)
     fis.close()
-    val r = new String(buf)
+    val r = (new String(buf)) ++ bstream.toString
+    bstream.close()
     if (verbose) System.out.println(r)
     r
   }
@@ -173,7 +184,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
       val pb = new ProcessBuilder(java.util.Arrays.asList(cmd: _*))
       p = pb.start()
     } catch {
-      case e => e.printStackTrace()
+      case e: Throwable => e.printStackTrace()
     }
 
     var exited = 3.14
@@ -230,7 +241,7 @@ trait DeliteTestRunner extends DeliteTestModule with DeliteApplication
 
 // it is not ideal that the test module imports these things into the application under test
 trait DeliteTestModule extends DeliteTestConfig
-  with MiscOps with SynchronizedArrayBufferOps with StringOps {
+  with MiscOps with SynchronizedArrayBufferOps with StringOps with IOOps {
 
   //var args: Rep[Array[String]]
   def main(): Unit
@@ -253,7 +264,9 @@ trait DeliteTestModule extends DeliteTestConfig
   def collect(s: Rep[Boolean]) { collector += s }
 
   def mkReport(): Rep[Unit] = {
-    println(unit(MAGICDELIMETER) + (collector mkString unit(",")) + unit(MAGICDELIMETER))
+    val out = BufferedWriter(FileWriter(unit("test.tmp")))
+    out.write(unit(MAGICDELIMETER) + (collector mkString unit(",")) + unit(MAGICDELIMETER))
+    out.close
   }
 
   /*

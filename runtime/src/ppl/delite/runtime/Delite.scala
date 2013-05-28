@@ -36,7 +36,7 @@ object Delite {
   }
 
   private def printConfig() {
-    println("Delite Runtime executing with " + Config.numThreads + " CPU thread(s) and " + (Config.numCuda+Config.numOpenCL) + " GPU(s)")
+    println("Delite Runtime executing with: " + Config.numThreads + " Scala thread(s), " + Config.numCpp + " Cpp thread(s), " + Config.numCuda + " Cuda(s), " + Config.numOpenCL + " OpenCL(s)")
   }
 
   def main(args: Array[String]) {
@@ -63,7 +63,7 @@ object Delite {
     var executor: Executor = null
 
     def abnormalShutdown() {
-      executor.shutdown()
+      if (executor != null) executor.shutdown()
       if (!Config.noRegenerate && !Config.alwaysKeepCache)
         Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
     }
@@ -72,11 +72,12 @@ object Delite {
 
       //load task graph
       val graph = loadDeliteDEG(args(0))
+      //val graph = new TestGraph
     
       //Print warning if there is no op that supports the target
-      if(Config.numCpp>0 && !graph.targets(Targets.Cpp)) println("[WARNING] No Cpp target op is generated!")
-      if(Config.numCuda>0 && !graph.targets(Targets.Cuda)) println("[WARNING] No Cuda target op is generated!")
-      if(Config.numOpenCL>0 && !graph.targets(Targets.OpenCL)) println("[WARNING] No OpenCL target op is generated!")
+      if(Config.numCpp>0 && !graph.targets(Targets.Cpp)) { Config.numCpp = 0; println("[WARNING] No Cpp target op is generated!") }
+      if(Config.numCuda>0 && !graph.targets(Targets.Cuda)) { Config.numCuda = 0; println("[WARNING] No Cuda target op is generated!") }
+      if(Config.numOpenCL>0 && !graph.targets(Targets.OpenCL)) { Config.numOpenCL = 0; println("[WARNING] No OpenCL target op is generated!") }
 
       //TODO: combine into a single scheduler and executor
       scheduler = Config.scheduler match {
@@ -103,7 +104,6 @@ object Delite {
 
       executor.init() //call this first because could take a while and can be done in parallel
 
-      //val graph = new TestGraph
       Config.deliteBuildHome = graph.kernelPath
 
       //load kernels & data structures
