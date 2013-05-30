@@ -23,7 +23,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     val xfs = BufferedReader(FileReader(filename))
     var line = xfs.readLine()
     line = line.trim()
-    var dbls = line.split("\\\\s+")
+    var dbls = line.split("\\s+")
     val x = GrayscaleImage(0, dbls.length)
 
     while (line != null) {
@@ -33,7 +33,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
       line = xfs.readLine()
       if (line != null) {
         line = line.trim()
-        dbls = line.split("\\\\s+")
+        dbls = line.split("\\s+")
       }
     }
     xfs.close()
@@ -90,7 +90,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     var header = xs.readLine()
 
     var line = xs.readLine()
-    val counts = line.trim().split("\\\\s+")
+    val counts = line.trim().split("\\s+")
     val numDocs = Integer.parseInt(counts(0))
     val numTokens = Integer.parseInt(counts(1))
     if ((numDocs < 0) || (numTokens < 0)) {
@@ -106,7 +106,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     for (m <- 0 until numDocs) {
       line = xs.readLine()
       line = line.trim()
-      val nums = line.split("\\\\s+")
+      val nums = line.split("\\s+")
 
       val row = DenseVector[Double](numTokens,true)
       var cumsum = unit(0); var j = unit(1)

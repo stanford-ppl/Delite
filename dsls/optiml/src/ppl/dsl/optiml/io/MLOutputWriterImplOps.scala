@@ -17,11 +17,11 @@ trait MLOutputWriterImplOpsStandard extends MLOutputWriterImplOps {
   def mloutput_write_img_pgm_impl(img: Rep[GrayscaleImage], filename: Rep[String]): Rep[Unit] = {
     val xfs = BufferedWriter(FileWriter(filename))
 
-    xfs.write("P2\\n")
+    xfs.write("P2\n")
     xfs.write(String.valueOf(img.numCols))
     xfs.write(" ")
-    xfs.write(String.valueOf(img.numRows) + "\\n")
-    xfs.write("255\\n")
+    xfs.write(String.valueOf(img.numRows) + "\n")
+    xfs.write("255\n")
 
     val min = img.min
     val max = img.max
@@ -38,7 +38,7 @@ trait MLOutputWriterImplOpsStandard extends MLOutputWriterImplOps {
 
         xfs.write("\\t")
       })
-    xfs.write("\\n")
+    xfs.write("\n")
     })
 
     xfs.close()

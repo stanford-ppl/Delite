@@ -15,7 +15,7 @@ trait DeliteFileReaderOps extends Base with DeliteArrayBufferOps {
   
 }
 
-trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with IOOpsExp with StringOpsExp with ArrayOpsExp with EqualExp with VariablesExp with WhileExp with DeliteArrayOpsExpOpt with DeliteArrayBufferOpsExp with DeliteOpsExp {
+trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpOpt with DeliteArrayBufferOpsExp with DeliteOpsExp {
 
   def dfr_readLines[A:Manifest](path: Rep[String], f: (Rep[String], Rep[DeliteArrayBuffer[A]]) => Rep[Unit]) = reflectPure(DeliteOpFileReaderReadLines(reifyEffects(path), f))
   case class DeliteOpFileReaderReadLines[A:Manifest](path: Block[String], func: (Rep[String], Rep[DeliteArrayBuffer[A]]) => Rep[Unit]) extends DeliteOpInput[DeliteArray[A]] {
