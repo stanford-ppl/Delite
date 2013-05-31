@@ -159,7 +159,7 @@ trait SVMModel { this: OptiMLApplication =>
       i += 1
     }
 	*/
-    print("\\n")
+    print("\n")
 
     (weights, b)
   }

@@ -42,7 +42,7 @@ trait Regression extends OptiMLApplication {
 
     val inA = readMatrix(args(0))
     val inB = readVector(args(1))
-    val inC = readVector(args(2), parseTweet, "\\\\Q" + "|" + "\\\\E")
+    val inC = readVector(args(2), parseTweet, "\\Q" + "|" + "\\E")
     val inD = readVector(args(3))
 
     tic(inA,inB,inC,inD)

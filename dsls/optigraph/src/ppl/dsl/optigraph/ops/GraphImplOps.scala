@@ -107,7 +107,7 @@ trait GraphImplOpsStandard extends GraphImplOps {
     var record = input.readLine()
     var i = 0
     while (record != unit(null)) {
-      val fields = readVar(record).split("\\\\Q" + separator + "\\\\E")
+      val fields = readVar(record).split("\\Q" + separator + "\\E")
       addRecord(table, fields, shape)
       record = input.readLine()
       i += 1

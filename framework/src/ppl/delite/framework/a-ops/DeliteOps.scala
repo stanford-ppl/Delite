@@ -29,6 +29,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   // hack: need to pass explicit type class parameters during mirroring, similar to mtype
   def ntype[A,B](n:Numeric[A]): Numeric[B] = n.asInstanceOf[Numeric[B]] 
   def otype[A,B](o:Ordering[A]): Ordering[B] = o.asInstanceOf[Ordering[B]]
+  def frtype[A,B](o:Fractional[A]): Fractional[B] = o.asInstanceOf[Fractional[B]]
   
   /* Markers to tell Delite op code generation what kind of strategy to use.
    * 
@@ -2084,6 +2085,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
           if (elem.par == ParBuffer || elem.par == ParSimpleBuffer) {
             emitAssignment(fieldAccess("__act", quote(sym) + "_offset"),fieldAccess("rhs", quote(sym) + "_offset") + "+" + fieldAccess("rhs", quote(sym) + "_size"))
+            emitAssignment(fieldAccess("__act", quote(sym) + "_conditionals"),fieldAccess("__act", quote(sym) + "_conditionals") + "+" + fieldAccess("rhs", quote(sym) + "_conditionals"))
           }
         case (sym, elem: DeliteHashElem[_,_]) =>
           stream.println("assert(false, \"FIXME: hash not supported\")")
@@ -2103,7 +2105,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             emitValDef(elem.sV, fieldAccess("__act", quote(sym) + "_offset") + " + " + fieldAccess("__act",quote(sym) + "_size"))
             emitValDef(elem.allocVal, fieldAccess("__act", quote(sym) + "_buf"))
             emitBlock(elem.buf.allocRaw)
-            emitMethodCall(fieldAccess("__act",quote(sym) + "_data_set"),List(quote(getBlockResult(elem.buf.allocRaw))))
+            emitMethodCall(fieldAccess("__act",quote(sym) + "_data_set"),List(quote(getBlockResult(elem.buf.allocRaw)),fieldAccess("__act", quote(sym) + "_conditionals")))
             stream.println("} else {")
             emitAssignment(fieldAccess("__act",quote(sym) + "_data"), fieldAccess("__act", quote(sym) + "_buf"))
             stream.println("}")
@@ -2208,10 +2210,11 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             emitFieldDecl(quote(sym) + "_offset", remap(Manifest.Int))
             if (elem.cond.nonEmpty)
               emitFieldDecl(quote(sym) + "_conditionals", remap(Manifest.Int))
-            emitMethod(quote(sym)+"_data_set", remap(Manifest.Unit), List(("xs",remap(elem.allocVal.tp)))) {
+            emitMethod(quote(sym)+"_data_set", remap(Manifest.Unit), List(("xs",remap(elem.allocVal.tp)),("cs",remap(Manifest.Int)))) {
               emitAssignment(quote(sym) + "_data", "xs")
+              emitAssignment(quote(sym) + "_conditionals", "cs")
               stream.println("if (left_act " + refNotEq + " " + nullRef + ")")
-              emitMethodCall(fieldAccess("left_act",quote(sym)+"_data_set"),List("xs")) // XX linked frame
+              emitMethodCall(fieldAccess("left_act",quote(sym)+"_data_set"),List("xs","cs")) // XX linked frame
             }
           }
         case (sym, elem: DeliteHashElem[_,_]) => 

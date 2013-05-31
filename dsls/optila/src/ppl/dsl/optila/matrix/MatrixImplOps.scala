@@ -150,7 +150,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
         print(m(i,j))
         print(" ")
       }
-      print("]\\n")
+      print("]\n")
     }
   }
 

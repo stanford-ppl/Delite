@@ -101,7 +101,7 @@ trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {
 
 }
 
-trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenElse {
+trait DeliteScalaGenIfThenElse extends ScalaGenEffect with ScalaGenBooleanOps with DeliteBaseGenIfThenElse {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
@@ -213,10 +213,10 @@ trait DeliteGPUGenIfThenElse extends GPUGenEffect with DeliteBaseGenIfThenElse {
   }
 }
 
-trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteGPUGenIfThenElse
-trait DeliteOpenCLGenIfThenElse extends OpenCLGenEffect with DeliteGPUGenIfThenElse
+trait DeliteCudaGenIfThenElse extends CudaGenEffect with CudaGenBooleanOps with DeliteGPUGenIfThenElse
+trait DeliteOpenCLGenIfThenElse extends OpenCLGenEffect with OpenCLGenBooleanOps with DeliteGPUGenIfThenElse
 
-trait DeliteCGenIfThenElse extends CGenEffect with DeliteBaseGenIfThenElse {
+trait DeliteCGenIfThenElse extends CGenEffect with CGenBooleanOps with DeliteBaseGenIfThenElse {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
