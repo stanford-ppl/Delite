@@ -1816,7 +1816,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitBlock(elem.allocN)
         elem.par match {
           case ParBuffer | ParSimpleBuffer =>
-            emitValDef(quote(sym) + "_buf", remap(getBlockResult(elem.allocN).tp), quote(getBlockResult(elem.allocN)))
+            emitVarDef(quote(sym) + "_buf", remap(getBlockResult(elem.allocN).tp), quote(getBlockResult(elem.allocN)))
           case ParFlat =>
             emitValDef(quote(sym) + "_data", remap(getBlockResult(elem.allocN).tp), quote(getBlockResult(elem.allocN)))
         }
@@ -1888,7 +1888,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         // if we are using parallel buffers, set the logical size of the output since it
         // might be different than the physically appended size for some representations
         if (elem.par == ParBuffer || elem.par == ParSimpleBuffer) {
-          emitValDef(elem.allocVal, quote(sym) + "_buf")
+          emitVarDef(quote(elem.allocVal), remap(elem.allocVal.tp), quote(sym) + "_buf")
           getActFinal = quote(elem.allocVal)     
           if (elem.cond.nonEmpty)
             emitAssignment(quote(elem.sV), quote(sym) + "_conditionals")
@@ -1954,7 +1954,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     // processRange
     emitMethod("processRange", actType, List(("__act",actType),("start",remap(Manifest.Int)),("end",remap(Manifest.Int)))) {
       emitVarDef("idx", remap(Manifest.Int), "start")
-      emitValDef("__act2",actType,"init(__act,idx)") // TODO: change to use method call
+      emitValDef("isEmpty",remap(Manifest.Boolean),"end-start <= 0")
+      emitValDef("__act2",actType,"init(__act,idx,isEmpty)") // TODO: change to use method call
       emitAssignment("idx","idx + 1")
       stream.println("while (idx < end) {")
       emitMethodCall("process",List("__act2","idx"))
@@ -1964,7 +1965,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     }
 
     // init and compute first element
-    emitMethod("init", actType, List(("__act",actType),(quote(op.v),remap(op.v.tp)))) {
+    emitMethod("init", actType, List(("__act",actType),(quote(op.v),remap(op.v.tp)),("isEmpty",remap(Manifest.Boolean)))) {
       if (op.body exists (b => loopBodyNeedsCombine(b) || loopBodyNeedsPostProcess(b))) {
         emitNewInstance("__act2", actType)
         emitKernelMultiHashInit(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act2")
@@ -1983,7 +1984,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             emitAssignment(fieldAccess("__act2",quote(sym)+"_zero"),fieldAccess("__act",quote(sym)+"_zero")) 
             // should we throw an exception instead on an empty reduce?
             if (elem.stripFirst) {
-              stream.println("if (" + quote(op.size) + " == 0) // stripping the first iter: only initialize to zero if empty")
+              stream.println("if (isEmpty) // stripping the first iter: only initialize to zero if empty")
               emitAssignment(fieldAccess("__act2",quote(sym)),fieldAccess("__act2",quote(sym)+"_zero"))
             } else {
               if (isPrimitiveType(sym.tp)) {
@@ -2001,7 +2002,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             emitAssignment(fieldAccess("__act2",quote(sym)+"_2"), fieldAccess("__act2",quote(sym)+"_zero_2"))
         }
         // then emit first element initializers, if size is non-zero
-        stream.println("if (" + quote(op.size) + " > 0) {")
+        stream.println("if (!isEmpty) {")
         emitMultiLoopFuncs(op, symList)
         emitMultiHashElem(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act2")
         (symList zip op.body) foreach {
@@ -2023,7 +2024,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         stream.println("}")
         emitReturn("__act2")
       } else {
-        stream.println("if (" + quote(op.size) + " > 0) {")
+        stream.println("if (!isEmpty) {")
         emitMethodCall("process", List("__act",quote(op.v)))
         stream.println("}")
         emitReturn("__act")
@@ -2080,12 +2081,12 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     }
     // scan/postprocess follows
 
-    emitMethod("postCombine", remap(Manifest.Unit), List(("__act",actType),("rhs",actType))) {
+    emitMethod("postCombine", remap(Manifest.Unit), List(("__act",actType),("lhs",actType))) {
       (symList zip op.body) foreach {
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
           if (elem.par == ParBuffer || elem.par == ParSimpleBuffer) {
-            emitAssignment(fieldAccess("__act", quote(sym) + "_offset"),fieldAccess("rhs", quote(sym) + "_offset") + "+" + fieldAccess("rhs", quote(sym) + "_size"))
-            emitAssignment(fieldAccess("__act", quote(sym) + "_conditionals"),fieldAccess("__act", quote(sym) + "_conditionals") + "+" + fieldAccess("rhs", quote(sym) + "_conditionals"))
+            emitAssignment(fieldAccess("__act", quote(sym) + "_offset"),fieldAccess("lhs", quote(sym) + "_offset") + "+" + fieldAccess("lhs", quote(sym) + "_size"))
+            if (elem.cond.nonEmpty) emitAssignment(fieldAccess("__act", quote(sym) + "_conditionals"),fieldAccess("__act", quote(sym) + "_conditionals") + "+" + fieldAccess("lhs", quote(sym) + "_conditionals"))
           }
         case (sym, elem: DeliteHashElem[_,_]) =>
           stream.println("assert(false, \"FIXME: hash not supported\")")
@@ -2094,7 +2095,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         case (sym, elem: DeliteReduceTupleElem[_,_]) =>
       }
       //XX link act frames so we can set data later
-      emitAssignment(fieldAccess("__act","left_act"), "rhs")
+      emitAssignment(fieldAccess("__act","left_act"), "lhs")
     }
 
     emitMethod("postProcInit", remap(Manifest.Unit), List(("__act",actType))) { // only called for last chunk!!
@@ -2107,7 +2108,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             emitBlock(elem.buf.allocRaw)
             emitMethodCall(fieldAccess("__act",quote(sym) + "_data_set"),List(quote(getBlockResult(elem.buf.allocRaw)),fieldAccess("__act", quote(sym) + "_conditionals")))
             stream.println("} else {")
-            emitAssignment(fieldAccess("__act",quote(sym) + "_data"), fieldAccess("__act", quote(sym) + "_buf"))
+            emitMethodCall(fieldAccess("__act",quote(sym) + "_data_set"),List(fieldAccess("__act", quote(sym) + "_buf"),fieldAccess("__act", quote(sym) + "_conditionals")))
             stream.println("}")
           }
         case (sym, elem: DeliteHashElem[_,_]) =>
@@ -2208,8 +2209,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             emitFieldDecl(quote(sym) + "_buf", remap(elem.allocVal.tp))
             emitFieldDecl(quote(sym) + "_size", remap(Manifest.Int))
             emitFieldDecl(quote(sym) + "_offset", remap(Manifest.Int))
-            if (elem.cond.nonEmpty)
-              emitFieldDecl(quote(sym) + "_conditionals", remap(Manifest.Int))
+            emitFieldDecl(quote(sym) + "_conditionals", remap(Manifest.Int))
             emitMethod(quote(sym)+"_data_set", remap(Manifest.Unit), List(("xs",remap(elem.allocVal.tp)),("cs",remap(Manifest.Int)))) {
               emitAssignment(quote(sym) + "_data", "xs")
               emitAssignment(quote(sym) + "_conditionals", "cs")

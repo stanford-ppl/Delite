@@ -11,8 +11,6 @@ abstract class DeliteOpMultiLoop[A] {
   var loopSize: Int
   def alloc: A
   def processRange(__act: A, start: Int, end: Int): A //init+process
-  def init(__act: A, idx: Int): A
-  def process(__act: A, idx: Int): Unit
   def combine(__act: A, rhs: A): Unit
   def postCombine(__act: A, rhs: A): Unit
   def postProcInit(__act: A): Unit
