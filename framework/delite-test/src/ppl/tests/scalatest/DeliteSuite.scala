@@ -24,7 +24,7 @@ trait DeliteTestConfig {
   // test parameters
   val verbose = props.getProperty("tests.verbose", "false").toBoolean
   val verboseDefs = props.getProperty("tests.verboseDefs", "false").toBoolean
-  val threads = props.getProperty("tests.threads", "1")
+  val threads = props.getProperty("tests.threads", "1").toInt
   val cacheSyms = props.getProperty("tests.cacheSyms", "true").toBoolean
   val javaHome = new File(props.getProperty("java.home", ""))
   val scalaHome = new File(props.getProperty("scala.vanilla.home", ""))
@@ -100,14 +100,16 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     // Set runtime parameters for targets and execute runtime
     for(t <- deliteTestTargets) { 
       t match {
+        case "scala" => ppl.delite.runtime.Config.numThreads = threads
         case "cuda" => ppl.delite.runtime.Config.numCuda = 1
-        case "cpp" => ppl.delite.runtime.Config.numCpp = 1
+        case "cpp" => ppl.delite.runtime.Config.numCpp = threads
         case "opencl" => ppl.delite.runtime.Config.numOpenCL = 1
         case _ => 
       }
       val outStr = execTest(app, args, t) // if (runtimeExternalProc..)?
       checkTest(app, outStr)
       t match {
+        case "scala" => ppl.delite.runtime.Config.numThreads = 1
         case "cuda" => ppl.delite.runtime.Config.numCuda = 0
         case "cpp" => ppl.delite.runtime.Config.numCpp = 0
         case "opencl" => ppl.delite.runtime.Config.numOpenCL = 0
@@ -149,10 +151,6 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
   private def execTest(app: DeliteTestRunner, args: Array[String], target: String) = {
     println("EXECUTING(" + target + ")...")
     val name = "test.tmp"
-    // Setting up the env variables here does not apply
-    //System.setProperty("delite.threads", threads.toString)
-    //System.setProperty("delite.code.cache.home", "generatedCache" + java.io.File.separator + uniqueTestName)
-    
     // Changed mkReport to directly write to a file instead of trying to capture the output stream here.
     // This is to make the C target testing work, because native C stdout is not captured by this.
     //Console.withOut(new PrintStream(new FileOutputStream(name))) {

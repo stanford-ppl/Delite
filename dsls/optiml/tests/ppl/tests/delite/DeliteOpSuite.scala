@@ -278,19 +278,37 @@ trait DeliteIfThenElse extends DeliteTestModule with OptiMLApplication {
   }
 }
 
+object DeliteHorizontalElemsRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteHorizontalElems
+trait DeliteHorizontalElems extends DeliteTestModule with OptiMLApplication {
+  def main() = {
+    var i = 0
+    while (i < 10) { //small collection sizes, test with multiple threads!
+      val size = readVar(i) //why?
+      val v = Vector.ones(size)
+      collect(v.sum == size)
+      collect(v.count(_ > 1) == 0)
+      collect((0::size).filter(_ % 2 == 0).length == (size+1)/2)
+      collect(v.filter(_ > 1).length == 0)
+      collect(v.map(e => e + 1).length == size)
+      i += 1
+    }
+    mkReport
+  }
+}
+
 class DeliteOpSuite extends DeliteSuite {
-  def testDeliteMap() { compileAndTest(DeliteMapRunner, CHECK_MULTILOOP); }
-  def testDeliteZip() { compileAndTest(DeliteZipRunner, CHECK_MULTILOOP); }
-  def testDeliteReduce() { compileAndTest(DeliteReduceRunner, CHECK_MULTILOOP); }
-  def testDeliteMapReduce() { compileAndTest(DeliteMapReduceRunner, CHECK_MULTILOOP); }
-  def testDeliteFilter() { compileAndTest(DeliteFilterRunner); }
+  def testDeliteMap() { compileAndTest(DeliteMapRunner, CHECK_MULTILOOP) }
+  def testDeliteZip() { compileAndTest(DeliteZipRunner, CHECK_MULTILOOP) }
+  def testDeliteReduce() { compileAndTest(DeliteReduceRunner, CHECK_MULTILOOP) }
+  def testDeliteMapReduce() { compileAndTest(DeliteMapReduceRunner, CHECK_MULTILOOP) }
+  def testDeliteFilter() { compileAndTest(DeliteFilterRunner) }
   def testDeliteForeach() { compileAndTest(DeliteForeachRunner) }
-  def testDeliteZipWithReduceTuple() { compileAndTest(DeliteZipWithReduceTupleRunner, CHECK_MULTILOOP); }
+  def testDeliteZipWithReduceTuple() { compileAndTest(DeliteZipWithReduceTupleRunner, CHECK_MULTILOOP) }
   def testDeliteNestedMap() { compileAndTest(DeliteNestedMapRunner) }
-  
+  def testDeliteHorizontalElems() { compileAndTest(DeliteHorizontalElemsRunner, CHECK_MULTILOOP) }
   def testDeliteNestedZip() { compileAndTest(DeliteNestedZipRunner) }
-  def testDeliteNestedReduce() { compileAndTest(DeliteNestedReduceRunner, CHECK_MULTILOOP); }
-  def testDeliteNestedMapReduce() { compileAndTest(DeliteNestedMapReduceRunner, CHECK_MULTILOOP); }
+  def testDeliteNestedReduce() { compileAndTest(DeliteNestedReduceRunner, CHECK_MULTILOOP) }
+  def testDeliteNestedMapReduce() { compileAndTest(DeliteNestedMapReduceRunner, CHECK_MULTILOOP) }
   def testDeliteNestedForeach() { compileAndTest(DeliteNestedForeachRunner) }
   def testDeliteIfThenElse() { compileAndTest(DeliteIfThenElseRunner) }
 }
