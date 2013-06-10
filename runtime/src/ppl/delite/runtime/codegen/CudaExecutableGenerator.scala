@@ -10,7 +10,10 @@ import collection.mutable.ArrayBuffer
 import sync._
 import ppl.delite.runtime.graph.DeliteTaskGraph
 
-trait CudaExecutableGenerator extends ExecutableGenerator {
+trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
+
+  def deviceTarget = Targets.Cuda
+  def hostTarget = Targets.getHostTarget(deviceTarget)
 
   protected val getterList: ArrayBuffer[String] = ArrayBuffer()
   protected val available: ArrayBuffer[(DeliteOP,String)] = ArrayBuffer()
@@ -158,7 +161,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
     case c: OP_Condition => {
       val codegen = new CudaConditionGenerator(c, location, kernelPath)
       codegen.makeExecutable()
-      CudaCompile.addHeader(codegen.generateMethodSignature + ";\n", codegen.executableName(location))
+      CudaCompile.addHeader(codegen.generateMethodSignature + ";\nextern bool " + c.id.split('_').head + "_cond;\n", codegen.executableName(location))
     }
    case w: OP_While => {
       val codegen = new CudaWhileGenerator(w, location, kernelPath)
@@ -209,8 +212,8 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
           out.append(" " + getSymDevice(op,name) + " = ")
         }
         out.append(op.task) //kernel name
-        val args = op.getInputs.map(i=>getSymDevice(i._1,i._2))
-        out.append(args.mkString("(",",",");\n"))
+        //val args = op.getInputs.map(i=>getSymDevice(i._1,i._2))
+        out.append("(" + inputArgs(op) + ");\n")
       case _:OP_External =>
         assert(op.getOutputs.size == 1) //TODO: what does libCall support?
         writeOutputAlloc(op)
@@ -241,7 +244,11 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
     }
   }
 
-  protected def getSymCPU(name: String): String = {
+
+  //TODO: Remove using getSymCPU
+  protected def getSymCPU(name: String): String = getSymRemote(null, name)
+
+  protected def getSymRemote(op: DeliteOP, name: String): String = {
     "xC"+name
   }
 
@@ -256,6 +263,33 @@ trait CudaExecutableGenerator extends ExecutableGenerator {
   protected def writeSyncObject() {  }
 
   protected def isPrimitiveType(scalaType: String) = Targets.isPrimitiveType(scalaType)
+
+  // List of non-local symbols (among inputs) that require SendUpdate or ReceiveUpdate in current / nested schedule scope
+  // TODO: When we schedule host kernels on the same execution plan with device kernels,
+  //       need to separate updates only for the host from the updates for the remote (which includes the updates for the host)
+  protected def updateOps(op: OP_Nested): Seq[String] = {
+    val updates = op.nestedGraphs.flatMap { g =>
+      g.schedule(location).toArray flatMap {
+        case SendUpdate(sym, _, _) => List(sym)
+        case ReceiveUpdate(sender, _) => List(sender.sym)
+        case nested: OP_Nested => updateOps(nested) 
+        case _ => Nil
+      }
+    }
+    op.getInputs.map(_._2).filter(updates.contains(_))
+  }
+
+  protected def inputArgs(op: DeliteOP): String = {
+    op match {
+      case op: OP_Nested => 
+        op.getInputs.map(i => 
+          if (updateOps(op).contains(i._2)) getSymDevice(i._1,i._2) + "," + getSymHost(i._1,i._2) + "," + getSymRemote(i._1,i._2) 
+          else getSymDevice(i._1,i._2)
+        ).mkString(",")
+      case _ => 
+        op.getInputs.map(i => getSymDevice(i._1,i._2)).mkString(",")
+    }
+  }
 
 }
 

@@ -35,7 +35,17 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
 
   override protected def receiveUpdate(s: ReceiveUpdate) {
     getHostTarget(scheduledTarget(s.sender.from)) match {
-      case Targets.Scala => writeRecvUpdater(s.sender.from, s.sender.sym); writeAwaiter(s.sender.from)
+      case Targets.Scala => 
+        s.sender.from.mutableInputsCondition.get(s.sender.sym) match {
+          case Some(lst) => 
+            out.append("if(")
+            out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
+            out.append(") {\n")
+            writeAwaiter(s.sender.from); writeRecvUpdater(s.sender.from, s.sender.sym); 
+            out.append("}\n")
+          case _ => 
+            writeAwaiter(s.sender.from); writeRecvUpdater(s.sender.from, s.sender.sym);
+        } 
       case _ => super.receiveUpdate(s)
     }
   }
@@ -72,8 +82,18 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
 
   override protected def sendUpdate(s: SendUpdate) {
     if (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty) {
-      writeSendUpdater(s.from, s.sym)
-      writeNotifier(s.from)
+      s.from.mutableInputsCondition.get(s.sym) match {
+        case Some(lst) => 
+          out.append("if(")
+          out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
+          out.append(") {\n")
+          writeSendUpdater(s.from, s.sym)
+          writeNotifier(s.from)
+          out.append("}\n")
+        case _ => 
+          writeSendUpdater(s.from, s.sym)
+          writeNotifier(s.from)
+      }
       syncList += s
     }
     //else {
@@ -281,11 +301,21 @@ trait CudaSyncGenerator extends CudaToScalaSync {
       out.append(");\n")
     }
 
+    def writeHostRelease(fop: DeliteOP, sym: String) {
+      out.append(getSymHost(fop,sym))
+      out.append("->release();\n")
+    }
+
     //TODO: Separate JVM/Host/Device frees
     writeCudaFreeInit()
     for (f <- m.items) {
       writeCudaFree(f._2, isPrimitiveType(f._1.outputType(f._2)))
-      if (f._1.scheduledResource != location) writeJVMRelease(f._2)
+      
+      if ( (f._1.scheduledResource != location) || (f._1.getConsumers.filter(c => c.scheduledResource!=location && c.getInputs.map(_._2).contains(f._2)).nonEmpty) ) {
+        writeJVMRelease(f._2)
+        if (!isPrimitiveType(f._1.outputType(f._2)) && f._1.outputType(f._2)!="Unit") 
+          writeHostRelease(f._1,f._2)
+      }
     }
 
     //sync on kernel stream (if copied back guaranteed to have completed, so don't need sync on d2h stream)

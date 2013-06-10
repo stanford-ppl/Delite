@@ -24,7 +24,8 @@ trait CodeCache {
   protected var modules = List.empty[Module]
   
   def target: Targets.Value
-  def ext: String = target.toString //source file extension
+  def hostCompiler = Compilers(Targets.getHostTarget(target))
+  def ext: String = target.toString //source file extension 
 
   def cacheDegSources(directory: Directory) {
     parseModules(directory)

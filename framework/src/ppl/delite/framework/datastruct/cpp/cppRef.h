@@ -17,6 +17,9 @@ public:
     void set(T newVal) {
         data = newVal;
     }
+
+    void release(void);
+    
 };
 
 #endif

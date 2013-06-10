@@ -24,6 +24,8 @@ object Sync {
 
   private var syncSet = new mutable.HashMap[Sync, Sync] //basically a Set, but can retrieve the original instance
   private var freeList = new mutable.ArrayBuffer[Free]()
+  private var loopUpdates = new mutable.HashSet[Sync]
+
 
   def send(sym: String, from: DeliteOP, to: DeliteOP) = {
     val sender = SendData(sym, from, node(to.scheduledResource))
@@ -98,43 +100,51 @@ object Sync {
   //TODO: updates don't work across loop iterations (write seen as happening after read rather than before in DEG)
   //TODO: update trumps notify
   //TODO: updatee is in an outer scope - delay update
-  def update(sym: String, from: DeliteOP, to: DeliteOP) = {
+  def update(sym: String, from: DeliteOP, to: DeliteOP, isAntiDep: Boolean = false) = {
     val updater = SendUpdate(sym, from, node(to.scheduledResource))
     val source = from.getMutableInputs.find(_._2 == sym).get._1
     updater match {
       case _ if (from.scheduledResource == to.scheduledResource) => null //same thread
       case _ if (shouldView(sym, source, from) && shouldView(sym, source, to)) => null //update handled by hardware //TODO: if the updater has the *same* view as the receiver
       case _ if (syncSet contains updater) => syncSet(updater).asInstanceOf[SendUpdate] //multiple readers after mutation
-      case _ => addSend(updater, from)
+      case _ => addSend(updater, from, isAntiDep)
     }
   }
 
-  def awaitUpdate(updater: SendUpdate, to: DeliteOP) {
+  def awaitUpdate(updater: SendUpdate, to: DeliteOP, isAntiDep: Boolean = false) {
     val updatee = ReceiveUpdate(updater, to.scheduledResource)
     if (updater ne null) assert(node(updatee.atResource) == updater.toNode, "invalid update pair")
     updater match {
       case null => 
-      case _ if (syncSet contains updatee) =>  
+      /*case _ if (syncSet contains updatee) =>  
         // need to replace the receiveOp to be the earliest one in the schedule 
         val receiver = syncSet(updatee).asInstanceOf[ReceiveUpdate]
         val sch = schedule(to.scheduledResource)
         if(sch.indexOf(receiver.to) > sch.indexOf(to)) receiver.setReceiveOp(to)
         val potentialNotifyAwait = Await(Notify(updater.from,node(to.scheduledResource)),to.scheduledResource)
         if (syncSet contains potentialNotifyAwait) removeSendReceive(potentialNotifyAwait, to)        
-      case _ => 
+      */
+      case _ if (syncSet contains updatee) =>
+      case _ =>
         val potentialNotifyAwait = Await(Notify(updater.from,node(to.scheduledResource)),to.scheduledResource)
         if (syncSet contains potentialNotifyAwait) removeSendReceive(potentialNotifyAwait, to)
-        addReceive(updatee, to)
+        addReceive(updatee, to, isAntiDep)
     }
   }
 
-  private def addSend[T <: Send](sender: T, from: DeliteOP) = {
-    syncSet += Pair(sender,sender)
+  private def addSend[T <: Send](sender: T, from: DeliteOP, isAntiDep: Boolean = false) = {
+    if (isAntiDep)
+      loopUpdates += sender
+    else 
+      syncSet += Pair(sender,sender)
     sender
   }
 
-  private def addReceive[T <: Receive](receiver: T, to: DeliteOP) {
-    syncSet += Pair(receiver,receiver)
+  private def addReceive[T <: Receive](receiver: T, to: DeliteOP, isAntiDep: Boolean = false) {
+    if(isAntiDep)
+      loopUpdates += receiver
+    else 
+      syncSet += Pair(receiver,receiver)
     receiver.setReceiveOp(to)
     receiver.sender.receivers += receiver
   }
@@ -177,6 +187,13 @@ object Sync {
           schedule.insertBefore(r, r.to)
       }
     }
+    for (sync <- loopUpdates) {
+      sync match {
+        case s: SendUpdate => schedule(s.from.scheduledResource).add(s)
+        case r: ReceiveUpdate => schedule(r.to.scheduledResource).add(r)
+        case _ => throw new RuntimeException("Loop Update list cannot have this sync object")
+      }
+    }
   }
 
   private def addFreeToSchedule() {
@@ -213,15 +230,29 @@ object Sync {
   private var _graph: DeliteTaskGraph = _
   private val visitedGraphs = new mutable.HashSet[DeliteTaskGraph]
 
-  def lastMutators(op: DeliteOP, sym: String) = {
-    val mset = new mutable.HashMap[Int,DeliteOP]
+  private var scopeIsLoop: Boolean = false
+   
+  // Get all the mutators of sym
+  def allMutators(sym: String) = {
+    val mset = new mutable.HashSet[DeliteOP]
     for (resource <- schedule; o <- resource) {
-      mutableDeps(o).find(_ == (op,sym)) match {
-        case Some(m) => mset += Pair(o.scheduledResource,o)
+      o.getMutableInputs.find(_._2 == sym) match {
+        case Some(_) => mset += o
         case _ => //
       }
     }
-    mset.values 
+    mset
+  }
+
+  // Get the set of last mutators of sym
+  def lastMutators(sym: String) = {
+    allMutators(sym).filter(m => allMutators(sym).filter(_.getDependencies.contains(m)).isEmpty) 
+  }
+
+  // Get the set of last mutators of sym ocurring before op
+  def lastMutators(sym: String, op: DeliteOP) = {
+    val mutators = allMutators(sym).filter(op.getDependencies.contains(_))
+    mutators.filter(m => mutators.filter(_.getDependencies.contains(m)).isEmpty) 
   }
 
   def addSync(graph: DeliteTaskGraph) {
@@ -229,6 +260,8 @@ object Sync {
     visitedGraphs += graph //don't want to add sync to a graph more than once
 
     for (resource <- schedule; op <- resource) {
+      //println("op: " +op.id)
+      
       //add in this order to avoid the need for deletions
       for ((dep,sym) <- dataDeps(op)) {
         receive(send(sym, dep, op), op)
@@ -236,11 +269,25 @@ object Sync {
       for (dep <- otherDeps(op)) { //could also be all deps
         await(notify(dep, op), op)
       }
-      for ((dep,sym) <- dataDeps(op)) {
-        for (mutator <- lastMutators(dep,sym) filter (m => mutableDepConsumers(m,sym) contains op)) {
-          awaitUpdate(update(sym, mutator, op), op)
+      for ((dep,sym) <- op.getInputs) {
+        //println("dep,sym:" + dep.id + "," + sym)
+        for(m <- lastMutators(sym,op)) {
+          awaitUpdate(update(sym, m, op), op)
         }
-      }   
+      }
+
+      if (scopeIsLoop) {
+        //println("anti-deps:" + op.getAntiDeps.mkString(","))
+        for (dep <- op.getAntiDeps) {
+          //println("anti-dep:" + dep)
+          val antiDepInputs = op.getMutableInputs.filter(i => i._1.isInstanceOf[OP_Input] && dep.getInputs.contains(i))
+          for(o <- antiDepInputs if(lastMutators(o._2).contains(op))) {
+            //println("op: " + op.id + " adding anti deps:" + dep.id + ":" + syms.mkString(",")) 
+            awaitUpdate(update(o._2, op, dep, true), dep, true)
+          }
+        }
+      }
+
       /*
       for ((dep,sym) <- mutableDeps(op)) { //write this as a broadcast and then optimize?
         println("consumers of " + sym + ":" + mutableDepConsumers(op,sym))
@@ -259,16 +306,23 @@ object Sync {
       if (op.isInstanceOf[OP_Nested]) {
         val saveSync = syncSet
         val saveFree = freeList
+        val saveUpdate = loopUpdates
+        val saveScopeIsLoop = scopeIsLoop
+        if(op.isInstanceOf[OP_While]) scopeIsLoop = true else scopeIsLoop = false
         for (graph <- op.asInstanceOf[OP_Nested].nestedGraphs if !(visitedGraphs contains graph)) {
           syncSet = new mutable.HashMap[Sync,Sync]
           freeList = new mutable.ArrayBuffer[Free]
+          loopUpdates = new mutable.HashSet[Sync]
           addSync(graph)
         }
         syncSet = saveSync
         freeList = saveFree
+        loopUpdates = saveUpdate
+        scopeIsLoop = saveScopeIsLoop
         _graph = graph
       }
     }
+
     // Should be in this order: frees for an op should be emitted after all syncs for the op are emitted (sync may need to use it)
     addFreeToSchedule()
     addSyncToSchedule()

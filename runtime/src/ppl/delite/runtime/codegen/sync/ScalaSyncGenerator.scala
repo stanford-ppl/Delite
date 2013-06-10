@@ -22,7 +22,17 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
   }
 
   override protected def receiveUpdate(s: ReceiveUpdate) {
-    writeAwaiter(s.sender.from)
+    s.sender.from.mutableInputsCondition.get(s.sender.sym) match {
+      case Some(lst) => 
+        out.append("if(")
+        //TODO: remove naming convention dependency
+        out.append(lst.map(c => "Condition_" + c._1.id.split('_').head + "_" + location + "." + c._1.id.split('_').head + "_cond==" + c._2).mkString("&&"))
+        out.append(") {\n")
+        writeAwaiter(s.sender.from)
+        out.append("}\n")
+      case _ => 
+        writeAwaiter(s.sender.from)
+    } 
   }
 
   override def sendData(s: SendData) {
@@ -45,10 +55,18 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
   }
 
   override protected def sendUpdate(s: SendUpdate) {
-    writeNotifier(s.from)
+    s.from.mutableInputsCondition.get(s.sym) match {
+      case Some(lst) => 
+        out.append("if(")
+        out.append(lst.map(c => "Condition_" + c._1.id.split('_').head + "_" + location + "." + c._1.id.split('_').head  + "_cond==" + c._2).mkString("&&"))
+        out.append(") {\n")
+        writeNotifier(s.from)
+        out.append("}\n")
+      case _ => 
+        writeNotifier(s.from)
+    }
     syncList += s
   }
-
 
   private def writeGetter(dep: DeliteOP, sym: String) {
     out.append("val ")

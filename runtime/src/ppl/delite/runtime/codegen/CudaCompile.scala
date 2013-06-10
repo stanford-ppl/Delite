@@ -3,6 +3,7 @@ package ppl.delite.runtime.codegen
 import xml.XML
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.targets.Targets
+import tools.nsc.io._
 
 /**
  * Author: Kevin J. Brown
@@ -27,6 +28,9 @@ object CudaCompile extends CCompile {
   protected def configFile = "CUDA.xml"
   protected def compileFlags = Array("-m64", "-w", "-O3", "-lcublas", "-arch", "compute_"+arch, "-code", "sm_"+arch, "-shared", "-Xcompiler", "\'-fPIC\'")
   protected def outputSwitch = "-o"
-  override protected def auxSourceList = List(sourceCacheHome + "kernels" + sep + target + "helperFuncs." + ext, Config.deliteHome + sep + "runtime" + sep + target + sep + "DeliteCuda." + ext) 
+
+  lazy val deviceDSFiles = Directory(Path(sourceCacheHome + "datastructures")).files.toList.filter(f => f.extension==ext)
+  lazy val hostDSFiles = Directory(Path(hostCompiler.sourceCacheHome + "datastructures")).files.toList.filter(f => f.extension==hostCompiler.ext)
+  override protected def auxSourceList = (deviceDSFiles++hostDSFiles).map(_.toAbsolute.toString).distinct ++ List(sourceCacheHome + "kernels" + sep + target + "helperFuncs." + ext, Config.deliteHome + sep + "runtime" + sep + target + sep + "DeliteCuda." + ext) 
 
 }

@@ -41,6 +41,7 @@ trait ConditionGenerator extends NestedGenerator {
 
     //then block
     beginThenBlock()
+    setConditionVariable(true)
     if (condition.thenValue == "") {
       addKernelCalls(condition.thenGraph.schedule(location))
       if (hasOutput) {
@@ -56,6 +57,7 @@ trait ConditionGenerator extends NestedGenerator {
 
     //else block
     beginElseBlock()
+    setConditionVariable(false)
     if (condition.elseValue == "") {
       addKernelCalls(condition.elseGraph.schedule(location))
       if (hasOutput) {
@@ -76,6 +78,8 @@ trait ConditionGenerator extends NestedGenerator {
 
     addSource(out.toString)
   }
+
+  protected def setConditionVariable(cond: Boolean)
 
   protected def beginConditionBlock()
   protected def endConditionBlock()
@@ -105,6 +109,15 @@ trait ConditionGenerator extends NestedGenerator {
 class ScalaConditionGenerator(val condition: OP_Condition, val location: Int, val kernelPath: String)
   extends ConditionGenerator with ScalaNestedGenerator with ScalaSyncGenerator {
 
+  override protected def writeMethodHeader() {
+    out.append("var " + condition.id.split('_').head + "_cond :Boolean = false\n")
+    super.writeMethodHeader()
+  }
+
+  protected def setConditionVariable(cond: Boolean) {
+    out.append(condition.id.split('_').head + "_cond = " + cond + "\n")
+  }
+  
   protected def beginConditionBlock() {
     out.append("if (")
   }
@@ -140,6 +153,15 @@ class CppConditionGenerator(val condition: OP_Condition, val location: Int, val 
   extends ConditionGenerator with CppNestedGenerator with CppSyncGenerator {
 
 
+  override protected def writeMethodHeader() {
+    out.append("bool " + condition.id.split('_').head + "_cond;\n")
+    super.writeMethodHeader()
+  }
+
+  protected def setConditionVariable(cond: Boolean) {
+    out.append(condition.id.split('_').head + "_cond = " + cond + ";\n")
+  }
+
   protected def beginConditionBlock() {
     out.append("if (")
   }
@@ -173,6 +195,14 @@ class CppConditionGenerator(val condition: OP_Condition, val location: Int, val 
 class CudaConditionGenerator(val condition: OP_Condition, val location: Int, val kernelPath: String)
   extends ConditionGenerator with CudaNestedGenerator with CudaSyncGenerator {
 
+  override protected def writeMethodHeader() {
+    out.append("bool " + condition.id.split('_').head + "_cond;\n")
+    super.writeMethodHeader()
+  }
+
+  protected def setConditionVariable(cond: Boolean) {
+    out.append(condition.id.split('_').head + "_cond = " + cond + ";\n")
+  }
 
   protected def beginConditionBlock() {
     out.append("if (")
