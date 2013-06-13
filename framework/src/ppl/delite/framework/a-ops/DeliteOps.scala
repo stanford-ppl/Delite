@@ -1480,7 +1480,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   def emitKernelMultiHashDecl(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = "") {
     for ((cond,cps) <- ps.groupBy(_._2.cond)) {
-      for ((key,kps) <- cps.groupBy(_._2.keyFunc)) {
+      for ((key,kps) <- cps.groupBy(_._2.keyFunc)) {        
         emitFieldDecl(kps.map(p=>quote(p._1)).mkString("") + "_hash_pos", "generated.scala.container.HashMapImpl[" + remap(getBlockResult(key).tp) + "]")
         kps foreach { 
           case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
@@ -2278,7 +2278,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           }
           (symList zip op.body) foreach { 
             case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
-              emitAssignment(quote(sym)+"_hash_data",fieldAccess(quote(sym),"data"))
+              emitAssignment(quote(sym)+"_hash_data",quote(sym))
               releaseRef(quote(sym))
             case _ =>
           }
@@ -2306,12 +2306,12 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
               if (firstHash) {
                 val keyType = if (isPrimitiveType(elem.keyFunc.tp)) "ppl.delite.runtime.data.DeliteArray" + remap(elem.keyFunc.tp) else "ppl.delite.runtime.data.DeliteArrayObject[" + remap(elem.keyFunc.tp) + "]"
                 emitValDef("keys", keyType, deserialize(keyType))
-                //emitValDef("indices", "Array[Int]", deserialize("Array[Int]"))
-                emitAssignment(prefix+kernelName+"_hash_pos", "", "new generated.scala.container.HashMapImpl[" + remap(elem.keyFunc.tp) + "](keys.length*4,keys.length)")
+                //FIXME: kernelName is only correct if entire kernel is one hash_pos!
+                emitAssignment(prefix+kernelName+"_hash_pos", "", "new generated.scala.container.HashMapImpl[" + remap(elem.keyFunc.tp) + "](512,128)")
                 stream.println("for (i <- 0 until keys.length) " + prefix+kernelName+"_hash_pos.put(keys(i))") //FIXME!              
                 firstHash = false
               }
-              emitAssignment(prefix+quote(sym)+"_hash_data", "", deserialize(remap(sym.tp))+".data")
+              emitAssignment(prefix+quote(sym)+"_hash_data", "", deserialize(remap(sym.tp)))
             case (sym, elem: DeliteCollectElem[_,_,_]) =>
               emitAssignment(prefix+quote(sym), "", deserialize(remap(sym.tp)))
             case (sym, elem: DeliteForeachElem[_]) =>

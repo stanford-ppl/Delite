@@ -20,6 +20,11 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
 
     def copyTransformedElems(e: => Seq[(String, Rep[Any])]): Seq[(String, Rep[Any])] = 
       original.map(p=>(p._2.asInstanceOf[OpType]).elems.map(e=>(e._1,p._1(e._2)))).getOrElse(e)
+
+    override def equals(other: Any) = other match {
+      case o: DeliteStruct[T] => this.tag == o.tag && this.elems == o.elems
+      case _ => false
+    }
   }
 
   //the following is a HACK to make struct inputs appear in delite op kernel input lists while keeping them out of the read effects list

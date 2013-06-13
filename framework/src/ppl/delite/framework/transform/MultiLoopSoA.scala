@@ -259,7 +259,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
       }
 
       def soaTransform[B:Manifest](func: Block[B], rFunc: Block[B], zero: Block[B], rv1:Exp[B], rv2: Exp[B]): Exp[DeliteArray[B]] = func match {
-        case Block(f @ Def(Struct(_,_))) => rFunc match {
+        case Block(f @ Def(vf@Struct(_,_))) => rFunc match {
           case Block(r @ Def(Struct(tag,elems))) => zero match {
             case Block(z @ Def(Struct(_,_))) =>
               val ctx = implicitly[SourceContext]
@@ -268,8 +268,9 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
                 case (i, e) => (i, copyLoop(Block(field(f,i)(e.tp,ctx)), Block(field(r,i)(e.tp,ctx)), Block(field(z,i)(e.tp,ctx)), field(rv1,i)(e.tp,ctx), field(rv2,i)(e.tp,ctx))(e.tp))
               }
               struct[DeliteArray[B]](SoaTag(tag, newElems(0)._2.length), newElems) //TODO: output size
-            case Block(Def(a)) => 
-              Console.println(a)
+            case Block(s@Def(a)) => 
+              Console.println(f.toString + ": " + vf.toString + " with type " + f.tp.toString)
+              Console.println(s.toString + ": " + a.toString + " with type " + s.tp.toString)
               sys.error("transforming hashReduce elem but zero is not a struct and valFunc is")
           }
           case Block(Def(a)) =>
