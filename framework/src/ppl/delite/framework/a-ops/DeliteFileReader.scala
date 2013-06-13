@@ -126,7 +126,8 @@ trait ScalaGenDeliteFileReaderOps extends ScalaGenFat {
         
         if (Config.generateSerializable) {
           stream.println("def combine(act: " + actType + ", rhs: " + actType + ") {")
-            stream.println("act." + quote(sym) + " = " + remap(sym.tp) + ".combine(act." + quote(sym) + "," + "rhs." + quote(sym) + ")")
+          val obj = remap(sym.tp)
+          stream.println("act." + quote(sym) + " = " + obj.take(obj.indexOf("[")) + ".combine(act." + quote(sym) + "," + "rhs." + quote(sym) + ")")
           stream.println("}")
 
           stream.println("def serialize(): java.util.ArrayList[com.google.protobuf.ByteString] = {")
