@@ -3,10 +3,11 @@
 #include <jni.h>
 #include <time.h>
 #include <omp.h>
+#include <sys/time.h>
 
 using namespace std;
 
-int numThreads = 8;
+int numThreads = 1;
 
 struct ArrayQ1 {
 	int length;
@@ -316,6 +317,9 @@ JNIEXPORT jobject JNICALL Java_Query1_00024_query1(JNIEnv* jnienv, jobject thisO
     clock_t start = clock();
     //cout << start << endl;
 
+    struct timeval myprofiler_start, myprofiler_end;
+    gettimeofday(&myprofiler_start,NULL);
+
 	int length = 128;
 	jarray rf = jnienv->NewCharArray(length);
 	jarray ls = jnienv->NewCharArray(length);
@@ -346,16 +350,13 @@ JNIEXPORT jobject JNICALL Java_Query1_00024_query1(JNIEnv* jnienv, jobject thisO
 	//cout << call << endl;
     ArrayResult res = query1(in, date, out);
     //timeStop
-    clock_t end = clock();
+    gettimeofday(&myprofiler_end,NULL);
+    printf("Total Time : %ld [us]\n", ((myprofiler_end.tv_sec * 1000000 + myprofiler_end.tv_usec) - (myprofiler_start.tv_sec * 1000000 + myprofiler_start.tv_usec)));
+    //clock_t end = clock();
     //cout << end << endl;
     //cout << "Malloc Time: " << (call-start)*1.0/CLOCKS_PER_SEC << endl;
-    cout << "Time: " << (end-start)*1.0/CLOCKS_PER_SEC << endl;
+    //cout << "Time: " << (end-start)*1.0/CLOCKS_PER_SEC << endl;
 
-
-  // release thread buffers
-  //for (i = 1; i < numThreads; i++) {
-  //  release(?, bufs[i]);
-  //}
 
 	release(q, in.l_quantity); release(e, in.l_extendedprice); release(d, in.l_discount); release(t, in.l_tax); release(r, in.l_returnflag); release(l, in.l_linestatus); release(s, in.l_shipdate);
 	release(rf, out.returnFlag); release(ls, out.lineStatus); release(sq, out.sumQty); release(sb, out.sumBasePrice); release(sd, out.sumDiscountedPrice); 
