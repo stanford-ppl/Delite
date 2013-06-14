@@ -2,8 +2,11 @@
 #include <iostream>
 #include <jni.h>
 #include <time.h>
+#include <omp.h>
 
 using namespace std;
+
+int numThreads = 8;
 
 struct ArrayQ1 {
 	int length;
@@ -11,7 +14,7 @@ struct ArrayQ1 {
 	double* l_extendedprice;
 	double* l_discount;
 	double* l_tax;
-    jchar* l_returnflag;
+  jchar* l_returnflag;
 	jchar* l_linestatus;
 	int* l_shipdate;
 };
@@ -19,7 +22,7 @@ struct ArrayQ1 {
 struct ArrayResult {
 	int length;
 	jchar* returnFlag;
-    jchar* lineStatus;
+  jchar* lineStatus;
 	double* sumQty;
 	double* sumBasePrice;
 	double* sumDiscountedPrice;
@@ -50,61 +53,168 @@ void trim(ArrayResult* out, int length) {
 }
 
 ArrayResult query1(ArrayQ1 in, int date, ArrayResult out) {
-	int currentIndex = 0;
+ 	typedef pair <int, int> KV;
+  //int numThreads = omp_get_num_threads();
+  //printf("openmp get num threads: %d\n", numThreads);
+  
+  // thread-local buffers with fixed max size      
+	//unordered_map<int, int>* buf_maps = (unordered_map<int,int>*) malloc(numThreads*sizeof(unordered_map<int,int>)); 
+  unordered_map<int,int> buf_maps[numThreads];
+  //ArrayResult* bufs = (ArrayResult*) malloc(numThreads*sizeof(ArrayResult));
+  ArrayResult bufs[numThreads];
 
-	typedef pair <int, int> KV;
+  for (int i = 0; i < numThreads; i++) {
+    //bufs[i] = malloc(sizeof(ArrayResult));
+    int length = out.length;
+
+    bufs[i].length = length;
+    bufs[i].returnFlag = (jchar*) malloc(sizeof(jchar)*length); 
+    bufs[i].lineStatus = (jchar*) malloc(sizeof(jchar)*length);
+    bufs[i].sumQty = (double*) malloc(sizeof(double)*length);
+    bufs[i].sumBasePrice = (double*) malloc(sizeof(double)*length);
+    bufs[i].sumDiscountedPrice = (double*) malloc(sizeof(double)*length);
+    bufs[i].sumCharge = (double*) malloc(sizeof(double)*length);
+    bufs[i].avgQty = (double*) malloc(sizeof(double)*length);
+    bufs[i].avgPrice = (double*) malloc(sizeof(double)*length);
+    bufs[i].avgDiscount = (double*) malloc(sizeof(double)*length);
+    bufs[i].countOrder = (int*) malloc(sizeof(int)*length);
+  }  
+
+  #pragma omp parallel
+  { 
+  int currentIndex = 0;
+	int key; 
 	unordered_map<int, int> :: const_iterator mapValue;
 	pair < unordered_map<int, int> :: const_iterator, bool > success;
-	unordered_map<int, int> map;
-	int key;
 
+  int t = omp_get_thread_num();
+  #pragma omp for schedule(static)
 	for (int i = 0; i < in.length; i++) { //groupBy
+    //printf("tid: %d, input elem: %d\n", t, i);    
+
 		if (in.l_shipdate[i] < date) {
 			key = in.l_returnflag[i] << 16 + in.l_linestatus[i];
-			success = map.insert(KV(key, currentIndex));
+			success = buf_maps[t].insert(KV(key, currentIndex));
 			int idx;
 			if (success.second) { //new key
 				idx = currentIndex;
 				currentIndex++;
 			}
 			else { //existing key
-				mapValue = map.find(key);
+				mapValue = buf_maps[t].find(key);
+				idx = mapValue -> second;
+			}      
+
+			if (idx >= bufs[t].length) {
+				cout << "currentIdx = " << idx << endl;
+        cout << "bufs[t].length = " << bufs[t].length << endl;
+        resize(&bufs[t]);
+			}
+      
+			if (success.second) { //insert first elem
+        //printf("inserting into bufs[%d]\n", t);
+				bufs[t].returnFlag[idx] = in.l_returnflag[i];
+      	bufs[t].lineStatus[idx] = in.l_linestatus[i];
+      	bufs[t].sumQty[idx] = in.l_quantity[i];
+      	bufs[t].sumBasePrice[idx] = in.l_extendedprice[i];
+      	bufs[t].sumDiscountedPrice[idx] = discounted(in.l_extendedprice[i], in.l_discount[i]);
+      	bufs[t].sumCharge[idx] = charge(in.l_extendedprice[i], in.l_discount[i], in.l_tax[i]);
+      	bufs[t].avgQty[idx] = in.l_quantity[i];
+     		bufs[t].avgPrice[idx] = in.l_extendedprice[i];
+      	bufs[t].avgDiscount[idx] = in.l_discount[i];
+      	bufs[t].countOrder[idx] = 1;
+			}
+			else { //reduce with existing elem
+        //printf("reducing into bufs[%d]\n", t);
+      	bufs[t].sumQty[idx] += in.l_quantity[i];
+      	bufs[t].sumBasePrice[idx] += in.l_extendedprice[i];
+      	bufs[t].sumDiscountedPrice[idx] += discounted(in.l_extendedprice[i], in.l_discount[i]);
+      	bufs[t].sumCharge[idx] += charge(in.l_extendedprice[i], in.l_discount[i], in.l_tax[i]);
+      	bufs[t].avgQty[idx] += in.l_quantity[i];
+     		bufs[t].avgPrice[idx] += in.l_extendedprice[i];
+      	bufs[t].avgDiscount[idx] += in.l_discount[i];
+      	bufs[t].countOrder[idx] += 1;
+		  }
+		}
+	}
+
+  trim(&bufs[t], currentIndex);
+
+  }
+
+  // reduce thread-local buffers
+  //printf("reduce thread-local buffers\n");
+
+  // need copy for first buf?
+  //assert(bufs[0].length > 0);
+               
+  //out.returnFlag = bufs[0].returnFlag;
+  //out.lineStatus = bufs[0].lineStatus;
+  //out.sumQty = bufs[0].sumQty;
+  //out.sumBasePrice = bufs[0].sumBasePrice;
+  //out.sumDiscountedPrice = bufs[0].sumDiscountedPrice;
+  //out.sumCharge = bufs[0].sumCharge;
+  //out.avgQty = bufs[0].avgQty;
+  //out.avgDiscount = bufs[0].avgDiscount;
+  //out.countOrder = bufs[0].countOrder;
+      
+	unordered_map<int, int> out_map;
+	unordered_map<int, int> :: const_iterator mapValue;
+	unordered_map<int, int> :: const_iterator buf_mapValue;
+  pair < unordered_map<int, int> :: const_iterator, bool > success;
+  int currentIndex = 0;
+
+  for (int i = 0; i < numThreads; i++) {
+    for (int j = 0; j < bufs[i].length; j++) {
+      int key = bufs[i].returnFlag[j] << 16 + bufs[i].lineStatus[j];
+      buf_mapValue = buf_maps[i].find(key);        
+      int buf_idx = buf_mapValue -> second;
+			
+      success = out_map.insert(KV(key, currentIndex)); 
+      int idx;
+			if (success.second) { //new key
+				idx = currentIndex;
+				currentIndex++;
+			}
+			else { //existing key
+				mapValue = out_map.find(key);
 				idx = mapValue -> second;
 			}
 
 			if (idx >= out.length) {
 				cout << "currentIdx = " << idx << endl;
-                cout << "out.length = " << out.length << endl;
-                resize(&out);
+        cout << "out.length = " << out.length << endl;
+        resize(&out);
 			}
 
 			if (success.second) { //insert first elem
-				out.returnFlag[idx] = in.l_returnflag[i];
-      			out.lineStatus[idx] = in.l_linestatus[i];
-      			out.sumQty[idx] = in.l_quantity[i];
-      			out.sumBasePrice[idx] = in.l_extendedprice[i];
-      			out.sumDiscountedPrice[idx] = discounted(in.l_extendedprice[i], in.l_discount[i]);
-      			out.sumCharge[idx] = charge(in.l_extendedprice[i], in.l_discount[i], in.l_tax[i]);
-      			out.avgQty[idx] = in.l_quantity[i];
-     			out.avgPrice[idx] = in.l_extendedprice[i];
-      			out.avgDiscount[idx] = in.l_discount[i];
-      			out.countOrder[idx] = 1;
+				out.returnFlag[idx] = bufs[i].returnFlag[buf_idx];
+      	out.lineStatus[idx] = bufs[i].lineStatus[buf_idx];
+      	out.sumQty[idx] = bufs[i].sumQty[buf_idx];
+      	out.sumBasePrice[idx] = bufs[i].sumBasePrice[buf_idx];
+      	out.sumDiscountedPrice[idx] = bufs[i].sumDiscountedPrice[buf_idx];
+      	out.sumCharge[idx] = bufs[i].sumCharge[buf_idx];
+      	out.avgQty[idx] = bufs[i].avgQty[buf_idx];
+     		out.avgPrice[idx] = bufs[i].avgPrice[buf_idx];
+      	out.avgDiscount[idx] = bufs[i].avgDiscount[buf_idx];
+      	out.countOrder[idx] = bufs[i].countOrder[buf_idx];
 			}
 			else { //reduce with existing elem
-      			out.sumQty[idx] += in.l_quantity[i];
-      			out.sumBasePrice[idx] += in.l_extendedprice[i];
-      			out.sumDiscountedPrice[idx] += discounted(in.l_extendedprice[i], in.l_discount[i]);
-      			out.sumCharge[idx] += charge(in.l_extendedprice[i], in.l_discount[i], in.l_tax[i]);
-      			out.avgQty[idx] += in.l_quantity[i];
-     			out.avgPrice[idx] += in.l_extendedprice[i];
-      			out.avgDiscount[idx] += in.l_discount[i];
-      			out.countOrder[idx] += 1;
-			}
-		}
-	}
+      	out.sumQty[idx] += bufs[i].sumQty[buf_idx];
+      	out.sumBasePrice[idx] += bufs[i].sumBasePrice[buf_idx];
+      	out.sumDiscountedPrice[idx] += bufs[i].sumDiscountedPrice[buf_idx];
+      	out.sumCharge[idx] += bufs[i].sumCharge[buf_idx];
+      	out.avgQty[idx] += bufs[i].avgQty[buf_idx];
+     		out.avgPrice[idx] += bufs[i].avgPrice[buf_idx];
+      	out.avgDiscount[idx] += bufs[i].avgDiscount[buf_idx];
+      	out.countOrder[idx] += bufs[i].countOrder[buf_idx];
+		  }
+		} 
+  }
 
-	trim(&out, currentIndex);
+  trim(&out, currentIndex);
 
+  //#pragma omp parallel for
 	for (int i = 0; i < out.length; i++) { //average
 		int count = out.countOrder[i];
 		out.avgQty[i] /= count;
@@ -113,7 +223,6 @@ ArrayResult query1(ArrayQ1 in, int date, ArrayResult out) {
 	}
 
 	//sort: returnFlag then lineStatus
-	
 	return out;
 }
 
@@ -241,6 +350,12 @@ JNIEXPORT jobject JNICALL Java_Query1_00024_query1(JNIEnv* jnienv, jobject thisO
     //cout << end << endl;
     //cout << "Malloc Time: " << (call-start)*1.0/CLOCKS_PER_SEC << endl;
     cout << "Time: " << (end-start)*1.0/CLOCKS_PER_SEC << endl;
+
+
+  // release thread buffers
+  //for (i = 1; i < numThreads; i++) {
+  //  release(?, bufs[i]);
+  //}
 
 	release(q, in.l_quantity); release(e, in.l_extendedprice); release(d, in.l_discount); release(t, in.l_tax); release(r, in.l_returnflag); release(l, in.l_linestatus); release(s, in.l_shipdate);
 	release(rf, out.returnFlag); release(ls, out.lineStatus); release(sq, out.sumQty); release(sb, out.sumBasePrice); release(sd, out.sumDiscountedPrice); 
