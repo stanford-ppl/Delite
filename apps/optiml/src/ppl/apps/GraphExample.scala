@@ -1,5 +1,6 @@
 package ppl.apps
 
+import scala.virtualization.lms.common.Record
 import ppl.dsl.optiml._
 
 object GraphExampleRunner extends OptiMLApplicationRunner with GraphExample

@@ -11,9 +11,9 @@ MESOS_NATIVE_LIBRARY = os.getenv("MESOS_NATIVE_LIBRARY")
 DELITE_MEM = os.getenv("DELITE_MEM")
 
 scala_virt_prefix = "org.scala-lang.virtualized."
-scala_virt_version = "scala-2.10.1"
-#scala_major_id = '.'.join(scala_virt_version.split('.')[0:2]) 
-scala_major_id = "scala-2.10.1" 
+scala_virt_version = "scala-2.10.2-RC1"
+scala_major_id = '.'.join(scala_virt_version.split('.')[0:2]) 
+#scala_major_id = "scala-2.10.2-RC1" # the full version is needed only when scalaBinaryVersion is set in sbt
 props = {}
 
 def err(s):

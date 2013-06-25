@@ -13,6 +13,7 @@ import scala.virtualization.lms.internal._
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.analysis.TraversalAnalysis
 import ppl.delite.framework.datastruct.scala._
+import ppl.delite.framework.ops.DeliteCollection
 
 import ppl.dsl.deliszt.{DeLisztExp}
 import ppl.dsl.deliszt.datastruct.scala._

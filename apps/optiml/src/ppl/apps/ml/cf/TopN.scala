@@ -1,5 +1,6 @@
 package ppl.apps.ml.cf
 
+import scala.virtualization.lms.common.Record
 import ppl.dsl.optiml._
 import ppl.delite.framework.DeliteApplication
 

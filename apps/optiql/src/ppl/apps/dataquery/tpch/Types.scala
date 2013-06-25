@@ -1,6 +1,7 @@
 package ppl.apps.dataquery.tpch
 
 import ppl.dsl.optiql.OptiQLApplication
+import scala.virtualization.lms.common.Record
 
 trait Types { this: OptiQLApplication =>
 
