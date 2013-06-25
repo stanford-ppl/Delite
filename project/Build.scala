@@ -17,7 +17,7 @@ object DeliteBuild extends Build {
     //resolvers := Seq(mavenLocal, prereleaseScalaTest, Resolver.sonatypeRepo("snapshots"), Resolver.sonatypeRepo("releases")),
     organization := "stanford-ppl",
     scalaOrganization := "org.scala-lang.virtualized",
-    scalaHome := Some(file(Path.userHome + "/lib/scala-virtualized-scopes/build/pack")),
+    //scalaHome := Some(file(Path.userHome + "/scala/build/pack")),
     scalaVersion := virtScala,
     //scalaBinaryVersion := virtScala,
     publishArtifact in (Compile, packageDoc) := false,
