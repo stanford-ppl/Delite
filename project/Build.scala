@@ -2,7 +2,7 @@ import sbt._
 import Keys._
 
 object DeliteBuild extends Build {
-  val virtualization_lms_core = "EPFL" % "lms_2.10.2-RC1" % "0.3-SNAPSHOT"
+  val virtualization_lms_core = "EPFL" % "lms_2.10" % "0.3-SNAPSHOT"
   
   // -DshowSuppressedErrors=false
   System.setProperty("showSuppressedErrors", "false")
