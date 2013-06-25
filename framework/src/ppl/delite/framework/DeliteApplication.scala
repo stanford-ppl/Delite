@@ -197,8 +197,14 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
    * user code
    */
   def main(): Unit
-
-  def liftedMain(x: Rep[Array[String]]) = { this.args = x; val y = main(); this.args = null; unit(y) }
+  
+  /**
+   * For multi-scope staging, to extract the return value of a scope
+   */
+  def mainWithResult(): Any = main()
+  var _mainResult: Any = null // passes along whatever was returned by the block (could be staged or not staged, i.e. Rep[T] or T)
+  
+  def liftedMain(x: Rep[Array[String]]) = { this.args = x; val y = mainWithResult(); this._mainResult = y; this.args = null; unit(y) }
   
 
   private def nop = throw new RuntimeException("not implemented yet")

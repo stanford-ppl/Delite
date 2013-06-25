@@ -326,7 +326,7 @@ trait QueryableOpsExpOpt extends QueryableOpsExp { this: OptiQLExp =>
     }).asInstanceOf[(Exp[N],Exp[N])=>Exp[N]]
 
     def rewriteAverage[N](value: Exp[Any]) = (value match {
-      case Def(QueryableAverage(_,_,sum)) => (a:Exp[N],count:Exp[Int]) => numeric_divide(a, count)(sum.N,sum.mN,ctx)
+      case Def(QueryableAverage(_,_,sum)) => (a:Exp[N],count:Exp[Int]) => numeric_divide(a, count)(ntype(sum.N),mtype(sum.mN),ctx)
       case _ => (a:Exp[N],count:Exp[Int]) => a
     }).asInstanceOf[(Exp[N],Exp[Int])=>Exp[N]]
 

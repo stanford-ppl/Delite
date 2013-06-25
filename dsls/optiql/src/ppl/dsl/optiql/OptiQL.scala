@@ -35,10 +35,10 @@ trait OptiQLInteractive extends OptiQLApplication with DeliteInteractive
 trait OptiQLInteractiveRunner extends OptiQLApplicationRunner with DeliteInteractiveRunner
 
 trait OptiQLLower extends OptiQLApplication with DeliteRestageOps
-trait OptiQLLowerRunner extends OptiQLApplicationRunner with DeliteRestageRunner
+trait OptiQLLowerRunner[R] extends OptiQLApplicationRunner with DeliteRestageRunner[R]
 
 object OptiQL_ {
-  def apply[R](b: => R) = new Scope[OptiQLLower, OptiQLLowerRunner, R](b)
+  def apply[R](b: => R) = new Scope[OptiQLLower, OptiQLLowerRunner[R], R](b)
 }
 
 /**

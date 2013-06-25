@@ -1,7 +1,7 @@
 package ppl.dsl.optigraph.ops
 
 import scala.reflect.RefinedManifest
-import scala.virtualization.lms.common.{Base,BaseFatExp,StructExp,Variables}
+import scala.virtualization.lms.common.{Base,BaseFatExp,StructExp,Variables,Record}
 import ppl.dsl.optigraph.{GIterable, GSet, Graph, Node}
 import ppl.dsl.optigraph.{OptiGraphLift, OptiGraphCompiler, OptiGraph, OptiGraphExp}
 import ppl.delite.framework.datastructures.{DeliteArray,DeliteArrayBuffer}

@@ -1,5 +1,6 @@
 package ppl.dsl.optiql
 
+import scala.virtualization.lms.common.Record
 import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.datastructures._
 

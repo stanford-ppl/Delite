@@ -1,6 +1,6 @@
 package ppl.dsl.optiql.ops
 
-import scala.virtualization.lms.common.{Base, BaseFatExp, LiftVariables}
+import scala.virtualization.lms.common.{Base, BaseFatExp, LiftVariables, Record}
 import ppl.dsl.optiql._
 import ppl.delite.framework.datastructures.{DeliteArray, DeliteArrayBuffer}
 import java.io.PrintWriter
