@@ -37,10 +37,10 @@ trait OptiLAApplication extends OptiLA with OptiLALift {
 
 trait OptiLAInteractive extends OptiLAApplication with DeliteInteractive
 
-trait OptiLAInteractiveRunner extends OptiLAApplicationRunner with DeliteInteractiveRunner
+trait OptiLAInteractiveRunner[R] extends OptiLAApplicationRunner with DeliteInteractiveRunner[R]
 
 object OptiLA {
-  def apply[R](b: => R) = new Scope[OptiLAInteractive, OptiLAInteractiveRunner, R](b)
+  def apply[R](b: => R) = new Scope[OptiLAInteractive, OptiLAInteractiveRunner[R], R](b)
 }
 
 

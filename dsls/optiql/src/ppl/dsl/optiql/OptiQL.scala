@@ -32,7 +32,7 @@ trait OptiQL extends OptiQLScalaOpsPkg with TableOps with QueryableOps with Date
 }
 
 trait OptiQLInteractive extends OptiQLApplication with DeliteInteractive
-trait OptiQLInteractiveRunner extends OptiQLApplicationRunner with DeliteInteractiveRunner
+trait OptiQLInteractiveRunner[R] extends OptiQLApplicationRunner with DeliteInteractiveRunner[R]
 
 trait OptiQLLower extends OptiQLApplication with DeliteRestageOps
 trait OptiQLLowerRunner[R] extends OptiQLApplicationRunner with DeliteRestageRunner[R]

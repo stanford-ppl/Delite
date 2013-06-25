@@ -61,11 +61,11 @@ trait OptiMLLibrary extends OptiMLKmeans with OptiMLLinReg {
 
 trait OptiMLInteractive extends OptiMLApplication with DeliteInteractive
 
-trait OptiMLInteractiveRunner extends OptiMLApplicationRunner with DeliteInteractiveRunner
+trait OptiMLInteractiveRunner[R] extends OptiMLApplicationRunner with DeliteInteractiveRunner[R]
 
 // executes scope immediately
 object OptiML {
-  def apply[R](b: => R) = new Scope[OptiMLInteractive, OptiMLInteractiveRunner, R](b)
+  def apply[R](b: => R) = new Scope[OptiMLInteractive, OptiMLInteractiveRunner[R], R](b)
 }
 
 // stages scope and generates re-stageable code
