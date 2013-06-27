@@ -3191,7 +3191,11 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       val b = s.block
       if (!deliteKernel) {  //In the process of generating operations for deliteKernel type kernels (allow SingleTask to be inlined)
         emitBlock(b)
-        if(!isVoidType(sym.tp)) stream.println(addTab() + "%s %s = %s;".format(remap(sym.tp),quote(sym),quote(getBlockResult(b))))
+        if(!isVoidType(sym.tp)) {
+          stream.println(addTab() + "%s %s = %s;".format(remap(sym.tp),quote(sym),quote(getBlockResult(b))))
+          //if(processingHelperFunc && !isPrimitiveType(sym.tp))
+          //  stream.println(addTab() + "%s *%s_ptr = %s_ptr;".format(remap(sym.tp),quote(sym),quote(getBlockResult(b))))  
+        }
       }
       else {
     	  throw new GenerationFailedException("GPUGen: DeliteOpSingleTask is not GPUable")

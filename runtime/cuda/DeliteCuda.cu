@@ -25,30 +25,30 @@ cudaEvent_t addHostEvent(cudaStream_t stream) {
 }
 
 void freeCudaMemory(FreeItem item) {
-    list< pair<void*,bool> >::iterator iter;
-    for (iter = item.keys->begin(); iter != item.keys->end(); iter++) {
-        //cout << "object ref: " << (long) *iter << endl;
-        if(cudaMemoryMap->find((*iter).first) != cudaMemoryMap->end()) {
-        	list<void*>* freePtrList = cudaMemoryMap->find((*iter).first)->second;
-       		list<void*>::iterator iter2;
-        	for (iter2 = freePtrList->begin(); iter2 != freePtrList->end(); iter2++) {
-            	void* freePtr = *iter2;
-            	cudaFree(freePtr);
-            	//if (cudaFree(freePtr) != cudaSuccess)
-            	//    cout << "bad free pointer: " << (long) freePtr << endl;
-            	//else
-                	//cout << "freed successfully: " << (long) freePtr << endl;
-       		}
-        	cudaMemoryMap->erase((*iter).first);
-        	delete freePtrList;
-        	if(!((*iter).second)) free((*iter).first);
-		}
+  list< pair<void*,bool> >::iterator iter;
+  for (iter = item.keys->begin(); iter != item.keys->end(); iter++) {
+    //cout << "object ref: " << (long) *iter << endl;
+    if(cudaMemoryMap->find((*iter).first) != cudaMemoryMap->end()) {
+      list<void*>* freePtrList = cudaMemoryMap->find((*iter).first)->second;
+      list<void*>::iterator iter2;
+      for (iter2 = freePtrList->begin(); iter2 != freePtrList->end(); iter2++) {
+        void* freePtr = *iter2;
+        cudaFree(freePtr);
+        //if (cudaFree(freePtr) != cudaSuccess)
+        //    cout << "bad free pointer: " << (long) freePtr << endl;
+        //else
+        //cout << "freed successfully: " << (long) freePtr << endl;
+      }
+      cudaMemoryMap->erase((*iter).first);
+      delete freePtrList;
+      if(!((*iter).second)) free((*iter).first);
     }
-    delete item.keys;
+  }
+  delete item.keys;
 }
 
-void DeliteCudaMalloc(void** ptr, size_t size) {
-
+// collects cuda memory allocated for kernels completed at the moment
+void DeliteCudaGC(void) {
   while (freeList->size() != 0) {
     FreeItem item = freeList->front();
     if (cudaEventQuery(item.event) != cudaSuccess) {
@@ -58,6 +58,20 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
     cudaEventDestroy(item.event);
     freeCudaMemory(item);
   }
+}
+
+// collects all garbages and checks no remaining allocations left
+void DeliteCudaCheckGC(void) {
+  DeliteCudaGC();
+  if(freeList->size() != 0) 
+    cout << "WARNING: memory not collectd : count " << freeList->size() << endl; 
+}
+
+// allocates a chunk of cuda device memory
+// run GC before allocation
+void DeliteCudaMalloc(void** ptr, size_t size) {
+
+  DeliteCudaGC();
 
   while (cudaMalloc(ptr, size) != cudaSuccess) {
     if (freeList->size() == 0) {
@@ -77,11 +91,6 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
 }
 
 size_t cudaHeapSize = 1024*1204;
-char* bufferStart = 0;
-size_t bufferSize = 5368709120/4;
-char* bufferEnd;
-char* bufferCurrent;
-
 
 /* Implementations for temporary memory management */
 #define CUDAMEM_ALIGNMENT 64
@@ -89,20 +98,24 @@ char *tempCudaMemPtr;
 size_t tempCudaMemOffset;
 size_t tempCudaMemSize;
 
+// initialize cuda temporary device memory
 void tempCudaMemInit(double tempMemRate) {
   size_t free, total;
   cudaMemGetInfo(&free, &total);
   tempCudaMemSize = total * tempMemRate;
+  //cout << "initializing cuda temp mem.." << endl;
+  //cout << "Free:" << free << endl;
+  //cout << "Total:" << total << endl;
+  //cout << "tempMemSize:" << tempCudaMemSize << endl;
   tempCudaMemOffset = 0;
   if(cudaMalloc(&tempCudaMemPtr, tempCudaMemSize) != cudaSuccess) {
     cout << "FATAL (tempCudaMemInit): Insufficient device memory for tempCudaMem" << endl;
     exit(-1);
   }
-  //cout << "Free:" << free << endl;
-  //cout << "Total:" << total << endl;
-  //cout << "tempMemSize:" << tempCudaMemSize << endl;
+  //cout << "finished temp init" << endl;
 }
 
+// free cuda temporary memory
 void tempCudaMemFree(void) {
   if(cudaFree(tempCudaMemPtr) != cudaSuccess) {
     cout << "FATAL (tempCudaMemFree): Failed to free temporary memory" << endl;
@@ -110,14 +123,17 @@ void tempCudaMemFree(void) {
   }
 }
 
+// reset cuda temporary memory (called by each multiloop)
 void tempCudaMemReset(void) {
   tempCudaMemOffset = 0;
 }
 
+// return the size of available temporary memory
 size_t tempCudaMemAvailable(void) {
   return (tempCudaMemSize - tempCudaMemOffset - CUDAMEM_ALIGNMENT);
 }
 
+// allocates cuda device memory from temporary space
 void DeliteCudaMallocTemp(void** ptr, size_t size) {
   size_t alignedSize = CUDAMEM_ALIGNMENT * (1 + size / CUDAMEM_ALIGNMENT);
   if(tempCudaMemOffset + alignedSize > tempCudaMemSize) {
@@ -130,40 +146,57 @@ void DeliteCudaMallocTemp(void** ptr, size_t size) {
   }
 }
 
+// variables for cuda host memory
+char* bufferStart = 0;
+char* bufferEnd;
+char* bufferCurrent;
+
+// initialize cuda host memory (page-mapped system memory for asynchronous copy)
 void hostInit() {
-	cudaHostAlloc(&bufferStart, bufferSize, cudaHostAllocDefault);
-	bufferEnd = bufferStart + bufferSize;
-	bufferCurrent = bufferStart;
+  size_t free, total;
+  cudaMemGetInfo(&free, &total);
+  // allocate the host memory as much as the device memory (make it parameter?)
+  cudaHostAlloc(&bufferStart, total, cudaHostAllocDefault);
+  bufferEnd = bufferStart + total;
+  bufferCurrent = bufferStart;
 }
 
+// free cuda host memory
+void cudaHostMemFree(void) {
+  cudaFreeHost(bufferStart);
+  bufferStart = NULL;
+}
+
+// allocate cuda host memory
 void DeliteCudaMallocHost(void** ptr, size_t size) {
-	if (bufferStart == 0) hostInit();
-	if ((bufferCurrent + size) > bufferEnd)
-		bufferCurrent = bufferStart;
-	*ptr = bufferCurrent;
-	bufferCurrent += size;
+  size_t alignedSize = CUDAMEM_ALIGNMENT * (1 + size / CUDAMEM_ALIGNMENT);
+  if (bufferStart == 0) hostInit();
+  if ((bufferCurrent + alignedSize) > bufferEnd)
+    bufferCurrent = bufferStart;
+  *ptr = bufferCurrent;
+  bufferCurrent += alignedSize;
 }
 
 void DeliteCudaMemcpyHtoDAsync(void* dptr, void* sptr, size_t size) {
-	cudaMemcpyAsync(dptr, sptr, size, cudaMemcpyHostToDevice, h2dStream);
+  cudaMemcpyAsync(dptr, sptr, size, cudaMemcpyHostToDevice, h2dStream);
 }
 
 void DeliteCudaMemcpyDtoHAsync(void* dptr, void* sptr, size_t size) {
-	cudaMemcpyAsync(dptr, sptr, size, cudaMemcpyDeviceToHost, d2hStream);
-	cudaStreamSynchronize(d2hStream);
+  cudaMemcpyAsync(dptr, sptr, size, cudaMemcpyDeviceToHost, d2hStream);
+  cudaStreamSynchronize(d2hStream);
 }
 
 void DeliteCudaMemcpyDtoDAsync(void *dptr, void* sptr, size_t size) {
-	cudaMemcpyAsync(dptr, sptr, size, cudaMemcpyDeviceToDevice, kernelStream);
+  cudaMemcpyAsync(dptr, sptr, size, cudaMemcpyDeviceToDevice, kernelStream);
 }
 
 void DeliteCudaMemset(void *ptr, int value, size_t count) {
-	cudaMemset(ptr,value,count);
+  cudaMemset(ptr,value,count);
 }
 
 void DeliteCudaCheckError(void) {
-    cudaDeviceSynchronize();
-    printf("DeliteCuda ERROR: %s\n", cudaGetErrorString(cudaGetLastError()));
+  cudaDeviceSynchronize();
+  printf("DeliteCuda ERROR: %s\n", cudaGetErrorString(cudaGetLastError()));
 }
 
 // TODO: Remove this kernel from here by generate it 

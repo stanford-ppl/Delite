@@ -149,8 +149,10 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
   }
 
   protected def writeMethodFooter() {
-    out.append("DeliteCudaCheckError();\n")
     out.append("tempCudaMemFree();\n")
+    out.append("cudaHostMemFree();\n")
+    out.append("DeliteCudaCheckGC();\n")
+    out.append("DeliteCudaCheckError();\n")
     out.append("}\n")
   }
 
