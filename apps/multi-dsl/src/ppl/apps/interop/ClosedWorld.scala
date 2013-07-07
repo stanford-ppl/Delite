@@ -1,5 +1,7 @@
 package ppl.apps.interop
 
+import scala.virtualization.lms.common.Record
+
 import ppl.dsl.optiql.OptiQL_
 import ppl.dsl.optigraph.OptiGraph_
 import ppl.dsl.optiml.OptiML_
@@ -11,60 +13,40 @@ import ppl.dsl.optigraph.NodeProperty
 
 object CloseWorldCompose {
   
+  type Tweet = Record { val id: String; val time: String; val hour: Int; val fromId: Int; val toId: Int; val rt: Boolean; val language: String; val text: String }
+  
   def main(args: Array[String]) {
     println("scala 1")
-    
-    // if Scope return result isn't working, we'll need to use var tweets = _, and set the var inside the scope
-    
-    // need a path-independent record to be able to fix the DRef type
-    // type ExtTweet = ExtRecord{val id: String; val time: Date; val hour: Int; val fromId: Int; val toId: Int; val rt: Boolean; val language: String; val text: String}
-    // var tweets: DRef[(DeliteArray[ExtTweet],DeliteArray[ExtTweet])]
-    // def updateTweets(x: DRef[(DeliteArray[ExtTweet],DeliteArray[ExtTweet])] = tweets = x
-    
-    val QLResult: Box[Any] = Box(null)
-    // var accesses inside scopes get lifted, requiring getters and setters
-    // var QLResult: DRef[Any] = null
-    
+        
     BeginScopes() // marker to begin scope file
     
-    // val QLResult = 
-      OptiQL_ {
-        type Tweet = Record { val id: String; val time: Date; val hour: Int; val fromId: Int; val toId: Int; val rt: Boolean; val language: String; val text: String }
-        def Tweet(_id: Rep[String], _time: Rep[Date], _hour: Rep[Int], _fromId: Rep[Int], _toId: Rep[Int], _rt: Rep[Boolean], _language: Rep[String], _text: Rep[String]): Rep[Tweet] = new Record {
-          val id = _id;
-          val time = _time;
-          val hour = _hour;
-          val fromId = _fromId;
-          val toId = _toId;
-          val rt = _rt;
-          val language = _language;
-          val text = _text;
-        }      
-        def emptyTweet(): Rep[Tweet] = Tweet("", Date(""), 0, 0, 0, unit(true), "", "")
-            
-        // type Tweet = Record{val fromId: Int; val toId: Int; val text: String}
-        // val tweets: Rep[Table[Tweet]] = loadTweets() // elided
-        val tweets = TableInputReader(args(0), emptyTweet())      
-        //dtic("all", tweets)
-        dtic("optiql", tweets)
-        //val retweets = tweets Where(t => t.time >= Date("2009-06-23") && t.language == "en" && t.rt) 
-        val retweets = tweets Where(t => t.time >= Date("2008-01-01") && t.language == "en" && t.rt) 
-        val engtweets = tweets Where(t => t.language == "en") 
-        // println(result.toArray)
-        dtoc("optiql", retweets.size, engtweets.size)
-      
-        // is there something in the desugaring scopes that ignores the block result?
-        // without returnScopeResult, getting a block result of (), even the Scope result is of type R
-        // returnScopeResult(retweets.toArray,engtweets.toArray)      
-        // DRef(retweets.toArray,engtweets.toArray)
-        // Predef.println("foo")
-        // QLResult = DRef(retweets.toArray,engtweets.toArray) // looks like var assign is getting lifted here
-        QLResult.box(DRef((tweets.toArray,engtweets.toArray)))
-      }
+    val q = OptiQL_ {
+      def Tweet(_id: Rep[String], _time: Rep[String], _hour: Rep[Int], _fromId: Rep[Int], _toId: Rep[Int], _rt: Rep[Boolean], _language: Rep[String], _text: Rep[String]): Rep[Tweet] = new Tweet {
+        val id = _id;
+        val time = _time;
+        val hour = _hour;
+        val fromId = _fromId;
+        val toId = _toId;
+        val rt = _rt;
+        val language = _language;
+        val text = _text;
+      }      
+      def emptyTweet(): Rep[Tweet] = Tweet("", "", 0, 0, 0, unit(true), "", "")
+          
+      val tweets = TableInputReader(args(0), emptyTweet())      
+      //dtic("all", tweets)
+      dtic("optiql", tweets)
+      val retweets = tweets Where(t => Date(t.time) >= Date("2008-01-01") && t.language == "en" && t.rt) 
+      val engtweets = tweets Where(t => t.language == "en") 
+      // println(result.toArray)
+      dtoc("optiql", retweets.size, engtweets.size)
+    
+      DRef((retweets.toArray,engtweets.toArray))
+    }
     
     // println("tweets: " + tweets.toString)
      
-    OptiGraph_ {      
+    val g = OptiGraph_ {      
       // val da1 = DeliteArray[Int](12)
       // val da2 = DeliteArray[Int](12)
       // da1(0) = 0; da2(0) = 3
@@ -81,23 +63,14 @@ object CloseWorldCompose {
       // da1(11) = 3; da2(11) = 2
       // val da = da1.zip(da2)((i,j) => t2(i,j))
       // val G = Graph.fromArray(da)
-      type Tweet = Record { val id: String; val time: Int; val hour: Int; val fromId: Int; val toId: Int; val rt: Boolean; val language: String; val text: String }
-      // val in = lastScopeResult.AsInstanceOf[(DeliteArray[Tweet],DeliteArray[Tweet])]
-      val in = QLResult.unbox.asInstanceOf[DRef[(DeliteArray[Tweet],DeliteArray[Tweet])]].get
-      // val in = tweets.get.AsInstanceOf[(DeliteArray[Tweet],DeliteArray[Tweet])]
-      
-      //println("in.length: " + in.length)
-      //println("in(0): " + in(0))
-      //println("in(1): " + in(1))
-      // val in2 = in2.map(t => (t.fromId,t.toId))
-      // println("in2(0): " + in2(0))
-      // println("in2(1): " + in2(1))
+      val in = q.get
       //dtic("optigraph 1")
       val retweets = in._1
       val inEdges = retweets.map(t => (t.fromId,t.toId))
+            
       //dtoc("optigraph 1", inEdges)
       val G = Graph.fromArray(inEdges)  
-
+      
       // LCC
       // TODO: DeliteCodeGenRestage breaks when we have multiple Node Properties of different type
       dtic("optigraph", G)
@@ -149,13 +122,12 @@ object CloseWorldCompose {
             
       val RTarray = RT.toArray
       dtoc("optigraph", RTarray)
-      returnScopeResult((LCC.toArray, RTarray, retweets, in._2))
+      DRef((LCC.toArray, RTarray, retweets, in._2))
     }
-        
+    
     OptiML_ {
-      type Tweet = Record { val id: String; val time: Int; val hour: Int; val fromId: Int; val toId: Int; val rt: Boolean; val language: String; val text: String }
       // unweighted linear regression
-      val in = lastScopeResult.AsInstanceOf[(DeliteArray[Double],DeliteArray[Double],DeliteArray[Tweet],DeliteArray[Tweet])]
+      val in = g.get
       val inA = tuple4_get1(in)
       val inB = tuple4_get2(in)
       val retweets = tuple4_get3(in) //Vector.fromArray(tuple4_get3(in))
@@ -168,10 +140,8 @@ object CloseWorldCompose {
       //val spam = Vector("buy","cheap","sale","free","limited","textbook")
       val spam = Vector("buy","cheap","sale")
       
-      //val tweetsSpamFactor = Vector.fromArray(tweets).map(t => 1.0 / (Vector.fromArray(t.text.split(" ").AsInstanceOf[DeliteArray[String]]).count(w => spam.contains(w)) + 1))
       val tweetsSpamFactor = Vector.fromArray(tweets.map(_.text)).map{t => 1.0 / (spam.count{s => t; t.contains(s)}.AsInstanceOf[Double] + 1.0)}
       //tweetsSpamFactor.slice(0,5).pprint
-     // val retweetsSpamFactor = Vector.fromArray(retweets).map(t => 1.0 / (Vector.fromArray(t.text.split(" ").AsInstanceOf[DeliteArray[String]]).count(w => spam.contains(w)) + 1))
       val retweetsSpamFactor = Vector.fromArray(retweets.map(_.text)).map{t => 1.0 / (spam.count{s => t; t.contains(s)}.AsInstanceOf[Double] + 1.0)}
 
       //println("inA.length: " + inA.length)
@@ -199,13 +169,11 @@ object CloseWorldCompose {
 
       // compute other statistics on all tweets
       val tweetHours = Vector.fromArray(tweets.map(_.hour.AsInstanceOf[Double]))*tweetsSpamFactor
-      //val tweetHours = Vector.fromArray(tweets.map(_.hour.AsInstanceOf[Double]))
       val m = mean(tweetHours)
       val sdev = sqrt(square(tweetHours-m).sum) / tweetHours.length
       val dist = ((square(tweetHours-m) * (-1.0) / (2*sdev*sdev)).exp) / sqrt(2*Pi*sdev*sdev)
 
       val rtHours = Vector.fromArray(retweets.map(_.hour.AsInstanceOf[Double]))*retweetsSpamFactor 
-      //val rtHours = Vector.fromArray(retweets.map(_.hour.AsInstanceOf[Double]))
       val mRt = mean(rtHours)
       val sdevRt = sqrt(square(rtHours-mRt).sum) / rtHours.length
       val distRt = ((square(rtHours-mRt) * (-1.0) / (2*sdevRt*sdevRt)).exp) / sqrt(2*Pi*sdevRt*sdevRt)
@@ -234,8 +202,8 @@ object CloseWorldCompose {
       println("rt dist(0): " + distRt(0))
 
       // linreg.weighted(readMatrix(args(0),readVector(args(1)).t))
-      // println("got input from previous stage: " + previous(0).AsInstanceOf[DeliteArray[Int]]) 
       // println("optiml 2")
+      42
     }    
     
     EndScopes() // marker to complete the scope file

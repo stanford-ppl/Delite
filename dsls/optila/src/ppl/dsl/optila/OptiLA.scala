@@ -37,10 +37,10 @@ trait OptiLAApplication extends OptiLA with OptiLALift {
 
 trait OptiLAInteractive extends OptiLAApplication with DeliteInteractive
 
-trait OptiLAInteractiveRunner extends OptiLAApplicationRunner with DeliteInteractiveRunner
+trait OptiLAInteractiveRunner[R] extends OptiLAApplicationRunner with DeliteInteractiveRunner[R]
 
 object OptiLA {
-  def apply[R](b: => R) = new Scope[OptiLAInteractive, OptiLAInteractiveRunner, R](b)
+  def apply[R](b: => R) = new Scope[OptiLAInteractive, OptiLAInteractiveRunner[R], R](b)
 }
 
 
@@ -263,6 +263,9 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
   }
 
   override def dsmap(line: String) : String = {
+    // AKS TODO: fix remap to handle stuff like
+    // ppl.tests.scalatest.dsl.optiml.SparseSimpleMatrixArithmeticRunner$@5a3aa30b.type#generated.scala.OptiLATypes$DoubleSparseVector
+    
     var res = line.replaceAll("ppl.dsl.optila.datastruct", "generated")
     res = res.replaceAll("ppl.delite.framework.datastruct", "generated")
     res = res.replaceAll(".*\\$", "generated.scala.")

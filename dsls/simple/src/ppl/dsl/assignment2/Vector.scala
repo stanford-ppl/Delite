@@ -179,6 +179,6 @@ trait VectorImplOpsStandard extends VectorImplOps {
     for (i <- 0 until x.length) {
       print(x(i)); print(" ")
     }
-    print("]\\n")
+    print("]\n")
   }
 }

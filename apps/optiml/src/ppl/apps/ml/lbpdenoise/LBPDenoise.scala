@@ -1,5 +1,6 @@
 package ppl.apps.ml.lbpdenoise
 
+import scala.virtualization.lms.common.Record
 import ppl.delite.framework.DeliteApplication
 import ppl.dsl.optiml._
 

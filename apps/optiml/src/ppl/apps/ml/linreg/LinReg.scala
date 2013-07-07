@@ -35,7 +35,7 @@ trait LinReg extends OptiMLApplication {
     println("Unweighted linear regression")
     println("theta: ")
     theta.pprint
-    print("\\n")
+    print("\n")
 
     tic()
     val guess = linreg.weighted(x,y)
@@ -44,7 +44,7 @@ trait LinReg extends OptiMLApplication {
     println("Locally weighted linear regression")
     println("guess: ")
     guess.pprint
-    print("\\n")
+    print("\n")
 
     //PerformanceTimer.save("LinReg")
   }

@@ -67,7 +67,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     case c: OP_Condition => {
       val codegen = new CppConditionGenerator(c, location, kernelPath)
       codegen.makeExecutable()
-      CppCompile.addHeader(codegen.generateMethodSignature + ";\n", codegen.executableName(location))
+      CppCompile.addHeader(codegen.generateMethodSignature + ";\nextern bool " + c.id.split('_').head + "_cond;\n", codegen.executableName(location))
     }
    case w: OP_While => {
       val codegen = new CppWhileGenerator(w, location, kernelPath)

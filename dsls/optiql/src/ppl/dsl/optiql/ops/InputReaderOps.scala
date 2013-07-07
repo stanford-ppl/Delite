@@ -1,6 +1,6 @@
 package ppl.dsl.optiql.ops
 
-import scala.virtualization.lms.common.{Base, BaseFatExp, LiftVariables}
+import scala.virtualization.lms.common.{Base, BaseFatExp, LiftVariables, Record}
 import ppl.dsl.optiql._
 import ppl.delite.framework.datastructures.{DeliteArray, DeliteArrayBuffer}
 import java.io.PrintWriter
@@ -49,7 +49,7 @@ trait InputReaderImplOps { this: OptiQL =>
 trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift with OptiQLExp =>
 
   def optiql_table_input_reader_impl[T<:Record:Manifest](line: Rep[String], shape: Rep[T], separator: Rep[String]) = {
-    val fields = line.split("\\\\Q" + separator + "\\\\E")
+    val fields = line.split("\\Q" + separator + "\\E")
     createRecord(fields, shape)
   }
 

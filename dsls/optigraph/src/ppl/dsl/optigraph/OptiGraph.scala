@@ -93,10 +93,10 @@ trait OptiGraph extends OptiGraphScalaOpsPkg with DeliteCollectionOps with Delit
 }
 
 trait OptiGraphLower extends OptiGraphApplication with DeliteRestageOps
-trait OptiGraphLowerRunner extends OptiGraphApplicationRunner with DeliteRestageRunner
+trait OptiGraphLowerRunner[R] extends OptiGraphApplicationRunner with DeliteRestageRunner[R]
 
 object OptiGraph_ {
-  def apply[R](b: => R) = new Scope[OptiGraphLower, OptiGraphLowerRunner, R](b)
+  def apply[R](b: => R) = new Scope[OptiGraphLower, OptiGraphLowerRunner[R], R](b)
 }
 
 /**

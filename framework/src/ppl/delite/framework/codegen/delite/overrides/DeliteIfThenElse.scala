@@ -16,17 +16,17 @@ trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExp
     val m = manifest[T]
   }
 
-  override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T])(implicit ctx: SourceContext) = ifThenElse(cond, thenp, elsep, false)
+  override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T])(implicit ctx: SourceContext) = delite_ifThenElse(cond, thenp, elsep, false)
 
   // a 'flat' if is treated like any other statement in code motion, i.e. code will not be pushed explicitly into the branches
-  def flatIf[T:Manifest](cond: Rep[Boolean])(thenp: => Rep[T])(elsep: => Rep[T]) = ifThenElse(cond, thenp, elsep, true)
+  def flatIf[T:Manifest](cond: Rep[Boolean])(thenp: => Rep[T])(elsep: => Rep[T]) = delite_ifThenElse(cond, thenp, elsep, true)
 
-  def ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T], flat: Boolean): Rep[T] = cond match {
+  def delite_ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T], flat: Boolean): Rep[T] = cond match {
       // TODO: need to handle vars differently, this could be unsound  <--- don't understand ...
     case Const(true) => thenp
     case Const(false) => elsep
-    case Def(BooleanNegate(a)) => ifThenElse(a, elsep, thenp, flat)
-    case Def(NotEqual(a,b)) => ifThenElse(equals(a,b), elsep, thenp, flat)
+    case Def(BooleanNegate(a)) => delite_ifThenElse(a, elsep, thenp, flat)
+    case Def(NotEqual(a,b)) => delite_ifThenElse(equals(a,b), elsep, thenp, flat)
     case _ =>
       val a = reifyEffectsHere[T](thenp)
       val b = reifyEffectsHere[T](elsep)
@@ -101,7 +101,7 @@ trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {
 
 }
 
-trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenElse {
+trait DeliteScalaGenIfThenElse extends ScalaGenEffect with ScalaGenBooleanOps with DeliteBaseGenIfThenElse {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
@@ -213,10 +213,10 @@ trait DeliteGPUGenIfThenElse extends GPUGenEffect with DeliteBaseGenIfThenElse {
   }
 }
 
-trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteGPUGenIfThenElse
-trait DeliteOpenCLGenIfThenElse extends OpenCLGenEffect with DeliteGPUGenIfThenElse
+trait DeliteCudaGenIfThenElse extends CudaGenEffect with CudaGenBooleanOps with DeliteGPUGenIfThenElse
+trait DeliteOpenCLGenIfThenElse extends OpenCLGenEffect with OpenCLGenBooleanOps with DeliteGPUGenIfThenElse
 
-trait DeliteCGenIfThenElse extends CGenEffect with DeliteBaseGenIfThenElse {
+trait DeliteCGenIfThenElse extends CGenEffect with CGenBooleanOps with DeliteBaseGenIfThenElse {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {

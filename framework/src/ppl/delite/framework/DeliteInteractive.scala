@@ -18,15 +18,17 @@ trait DeliteInteractive extends SynchronizedArrayBufferOps {
   implicit def staticArrayBuffer[A:Manifest](x: ArrayBuffer[A]): Rep[ArrayBuffer[A]]
 }
 
-trait DeliteInteractiveRunner extends DeliteApplication with DeliteInteractive {
+trait DeliteInteractiveRunner[R] extends DeliteApplication with DeliteInteractive {
   def staticArrayBuffer[A:Manifest](x: ArrayBuffer[A]): Rep[ArrayBuffer[A]] = staticData(x)
   
-  def apply: Any
-  def main = apply
+  def apply: R
+  def result: R = _mainResult.asInstanceOf[R]
+  def main = error("should not be called")
+  override def mainWithResult = apply  
   def run = { 
     val name = "scope-temp"
     Config.degFilename = name
-    main(scala.Array())
+    liftedMain(unit(scala.Array()))
     ppl.delite.runtime.Delite.embeddedMain(scala.Array(name), staticDataMap) 
   }
   System.out.println("object created")

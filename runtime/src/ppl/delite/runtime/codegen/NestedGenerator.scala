@@ -4,7 +4,7 @@ import collection.mutable.ArrayBuffer
 import java.lang.annotation.Target
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.graph.targets.Targets
-import sync.SyncObjectGenerator
+import sync._
 
 /**
  * Author: Kevin J. Brown
@@ -160,12 +160,11 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
 
 trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator {
 
-  private val target = Targets.Cuda
   private val typesMap = CudaExecutableGenerator.typesMap
 
   def generateMethodSignature(): String = {
     val str = new StringBuilder
-    str.append(nested.outputType(target))
+    str.append(nested.outputType(deviceTarget))
     str.append(' ')
     if (!isPrimitiveType(nested.outputType) && nested.outputType!="Unit") str.append(" *")
     str.append(executableName)
@@ -195,10 +194,21 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator {
     for ((op,sym) <- inputs) {
       if (!first) str.append(", ")
       first = false
-      str.append(typesMap(target)(sym))
+      str.append(typesMap(deviceTarget)(sym))
       if (!isPrimitiveType(op.outputType(sym))) str.append(" *")
       str.append(' ')
       str.append(getSymDevice(op, sym))
+      if (updateOps(nested).contains(sym)) {
+        str.append(',')
+        str.append(typesMap(hostTarget)(sym))
+        if (!isPrimitiveType(op.outputType(sym))) str.append(" *")
+        str.append(' ')
+        str.append(getSymHost(op, sym))
+        str.append(',')
+        str.append(getJNIType(typesMap(Targets.Scala)(sym))) //FIXME: Use remote target
+        str.append(' ')
+        str.append(getSymRemote(op, sym)) 
+      }
     }
     str.toString
   }

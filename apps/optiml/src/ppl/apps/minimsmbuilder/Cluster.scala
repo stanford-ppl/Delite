@@ -22,6 +22,7 @@ package ppl.apps.minimsmbuilder
  */
 
 import reflect.{Manifest, SourceContext}
+import scala.virtualization.lms.common.Record
 import ppl.dsl.optiml._
 
 object MiniMSMApplicationRunner extends OptiMLApplicationRunner with Clarans 
@@ -163,7 +164,7 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
     
     var i = 0
     while (i < k) {
-      vprint("Finding Generator " + i + "\\n")
+      vprint("Finding Generator " + i + "\n")
       centerIndices(i) = newCenter
       //centerIndices <<= newCenter
       val distanceToNewCenter = oneToAll(theo,theo,newCenter)
@@ -223,7 +224,7 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
     //for (i <- 0::numLocalMinima) {
     var i = 0
     while (i < numLocalMinima) {
-      vprint(i + " of " + numLocalMinima + " local minima\\n")
+      vprint(i + " of " + numLocalMinima + " local minima\n")
       
       // the canonical clarans approach is to initialize the medoids that you
       // start from randomly, but instead we use the kcenters medoids
@@ -285,7 +286,7 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
         
         val newCost = sum(newDistances)
         if (newCost < currentCost) {
-          vprint("Accept\\n")
+          vprint("Accept\n")
           medoids = newMedoids.unsafeImmutable
           assignments = newAssignments.unsafeImmutable
           distanceToCurrent = newDistances.unsafeImmutable
@@ -293,7 +294,7 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
           j = 0
         }
         else {
-          vprint("Reject\\n")
+          vprint("Reject\n")
           j += 1
         }
       }

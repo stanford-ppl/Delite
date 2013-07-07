@@ -33,7 +33,7 @@ double ** ReadInputMatrix(char * filename, int & p_row, int & p_col) {
     pre_chr = chr;
   }
   infile.close();
-  //col++;
+  col++;
   p_row = row, p_col = col;
 
   if((p = (double**)malloc(row * sizeof(double*))) == NULL) cout<<"Cannot allocate memory";
@@ -92,7 +92,7 @@ int main(int argc,char *argv[]) {
 
   int alpha = 1;
   double tol = .001;
-  int maxIter = 30;
+  int maxIter = 100;
   int numThreads = atoi(argv[3]);
 
   omp_set_num_threads(numThreads);

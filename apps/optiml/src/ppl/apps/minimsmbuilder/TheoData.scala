@@ -22,6 +22,7 @@ package ppl.apps.minimsmbuilder
  */
 
 import reflect.{Manifest, SourceContext}
+import scala.virtualization.lms.common.Record
 import ppl.dsl.optiml._
 
 trait TheoData extends OptiMLApplication {

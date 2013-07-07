@@ -32,13 +32,13 @@ trait OptiQL extends OptiQLScalaOpsPkg with TableOps with QueryableOps with Date
 }
 
 trait OptiQLInteractive extends OptiQLApplication with DeliteInteractive
-trait OptiQLInteractiveRunner extends OptiQLApplicationRunner with DeliteInteractiveRunner
+trait OptiQLInteractiveRunner[R] extends OptiQLApplicationRunner with DeliteInteractiveRunner[R]
 
 trait OptiQLLower extends OptiQLApplication with DeliteRestageOps
-trait OptiQLLowerRunner extends OptiQLApplicationRunner with DeliteRestageRunner
+trait OptiQLLowerRunner[R] extends OptiQLApplicationRunner with DeliteRestageRunner[R]
 
 object OptiQL_ {
-  def apply[R](b: => R) = new Scope[OptiQLLower, OptiQLLowerRunner, R](b)
+  def apply[R](b: => R) = new Scope[OptiQLLower, OptiQLLowerRunner[R], R](b)
 }
 
 /**

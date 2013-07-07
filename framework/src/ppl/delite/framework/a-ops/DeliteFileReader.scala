@@ -15,7 +15,7 @@ trait DeliteFileReaderOps extends Base with DeliteArrayBufferOps {
   
 }
 
-trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with IOOpsExp with StringOpsExp with ArrayOpsExp with EqualExp with VariablesExp with WhileExp with DeliteArrayOpsExpOpt with DeliteArrayBufferOpsExp with DeliteOpsExp {
+trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpOpt with DeliteArrayBufferOpsExp with DeliteOpsExp {
 
   def dfr_readLines[A:Manifest](path: Rep[String], f: (Rep[String], Rep[DeliteArrayBuffer[A]]) => Rep[Unit]) = reflectPure(DeliteOpFileReaderReadLines(reifyEffects(path), f))
   case class DeliteOpFileReaderReadLines[A:Manifest](path: Block[String], func: (Rep[String], Rep[DeliteArrayBuffer[A]]) => Rep[Unit]) extends DeliteOpInput[DeliteArray[A]] {
@@ -126,7 +126,9 @@ trait ScalaGenDeliteFileReaderOps extends ScalaGenFat {
         
         if (Config.generateSerializable) {
           stream.println("def combine(act: " + actType + ", rhs: " + actType + ") {")
-            stream.println("act." + quote(sym) + " = " + remap(sym.tp) + ".combine(act." + quote(sym) + "," + "rhs." + quote(sym) + ")")
+          val tpe = remap(sym.tp)
+          val obj = if (tpe.contains("DeliteArrayObject")) tpe.take(tpe.indexOf("[")) else tpe
+          stream.println("act." + quote(sym) + " = " + obj + ".combine(act." + quote(sym) + "," + "rhs." + quote(sym) + ")")
           stream.println("}")
 
           stream.println("def serialize(): java.util.ArrayList[com.google.protobuf.ByteString] = {")

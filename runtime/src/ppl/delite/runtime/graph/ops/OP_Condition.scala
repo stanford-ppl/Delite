@@ -2,6 +2,7 @@ package ppl.delite.runtime.graph.ops
 
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.targets.Targets
+import scala.collection.mutable.HashSet
 
 /**
  *
@@ -40,7 +41,11 @@ class OP_Condition(val id: String, private[graph] var outputTypesMap: Map[Target
         r.dependencies = dependencies
         r.inputList = inputList
         r.mutableInputs = mutableInputs
+        r.filterMutableInputs(idx)
+        r.antiDeps = antiDeps
+        r.filterAntiDeps(idx)
         r.consumers = consumers
+
         for (tgt <- Targets.GPU) r.setGPUMetadata(tgt, getGPUMetadata(tgt))
         for (dep <- getDependencies) dep.addConsumer(r)
         for (c <- getConsumers) c.addDependency(r)
@@ -59,6 +64,38 @@ class OP_Condition(val id: String, private[graph] var outputTypesMap: Map[Target
     for (i <- 0 until indices.length)
       refineInputDeps(chunks(i), graph, indices(i))
     chunks
+  }
+
+  // leave only those mutable inputs last mutated by current schedule
+  override def filterMutableInputs(idx: Int) {
+    val mset = new HashSet[(DeliteOP,String)]
+    val ops = nestedGraphs.flatMap(_.schedule.map(l => l.toArray).flatten)
+    for(m <- mutableInputs) {
+      val thenOps = thenGraph.schedule.map(_.toArray).flatten
+      val elseOps = elseGraph.schedule.map(_.toArray).flatten
+      val thenMutators = thenOps.filter(_.getMutableInputs.map(_._2).contains(m._2))
+      val elseMutators = elseOps.filter(_.getMutableInputs.map(_._2).contains(m._2))
+      // should be either one mutator or none
+      val thenLastMutator = thenMutators.find(m => thenMutators.filter(_.getDependencies.contains(m)).isEmpty)
+      val elseLastMutator = elseMutators.find(m => elseMutators.filter(_.getDependencies.contains(m)).isEmpty)
+       
+      (thenLastMutator, elseLastMutator) match {
+        case (Some(tm),Some(em)) if(tm.scheduledResource==idx || em.scheduledResource==idx) =>
+          mset += m
+          if(tm.scheduledResource!=em.scheduledResource) {
+            val cond = tm.scheduledResource == idx
+            val mutator = if(cond) tm else em
+            mutator.mutableInputsCondition.get(m._2) match {
+              case Some(lst) => mutableInputsCondition += Pair(m._2, lst:+(this,cond))
+              case _ => mutableInputsCondition += Pair(m._2, List((this,cond)))
+            }
+          }
+        case (Some(tm),None) if(tm.scheduledResource==idx) => mset += m 
+        case (None,Some(em)) if(em.scheduledResource==idx) => mset += m
+        case _ =>  
+      }
+    }
+    mutableInputs = mset.toSet
   }
 
 }

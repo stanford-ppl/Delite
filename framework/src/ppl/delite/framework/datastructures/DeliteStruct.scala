@@ -20,6 +20,11 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
 
     def copyTransformedElems(e: => Seq[(String, Rep[Any])]): Seq[(String, Rep[Any])] = 
       original.map(p=>(p._2.asInstanceOf[OpType]).elems.map(e=>(e._1,p._1(e._2)))).getOrElse(e)
+
+    override def equals(other: Any) = other match {
+      case o: DeliteStruct[T] => this.tag == o.tag && this.elems == o.elems
+      case _ => false
+    }
   }
 
   //the following is a HACK to make struct inputs appear in delite op kernel input lists while keeping them out of the read effects list
@@ -617,9 +622,13 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
       stream.print(elems.map{ case (idx,tp) => remap(tp) + addRef(baseType(tp)) + " _" + idx }.mkString(","))
       stream.println(") {")
       stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = _" + idx + ";\n" }.mkString(""))
-      stream.println("\t}")  
+      stream.println("\t}")
+      // free
+      stream.println("\tvoid release(void) {")
+      stream.print(elems.filter(e => !isPrimitiveType(baseType(e._2)) && remap(baseType(e._2))!="string").map(e => e._1 + "->release();\n").mkString(""))
+      //stream.println("\tfree(this);")
+      stream.println("\t}")
       stream.println("};")
-
       stream.println("#endif")
       generatedStructs += name
       stream.close()

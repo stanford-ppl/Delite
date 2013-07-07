@@ -1,7 +1,7 @@
 package ppl.dsl.optigraph.ops
 
 import scala.reflect.RefinedManifest
-import scala.virtualization.lms.common.{Base,BaseFatExp,StructExp,Variables}
+import scala.virtualization.lms.common.{Base,BaseFatExp,StructExp,Variables,Record}
 import ppl.dsl.optigraph.{GIterable, GSet, Graph, Node}
 import ppl.dsl.optigraph.{OptiGraphLift, OptiGraphCompiler, OptiGraph, OptiGraphExp}
 import ppl.delite.framework.datastructures.{DeliteArray,DeliteArrayBuffer}
@@ -107,7 +107,7 @@ trait GraphImplOpsStandard extends GraphImplOps {
     var record = input.readLine()
     var i = 0
     while (record != unit(null)) {
-      val fields = readVar(record).split("\\\\Q" + separator + "\\\\E")
+      val fields = readVar(record).split("\\Q" + separator + "\\E")
       addRecord(table, fields, shape)
       record = input.readLine()
       i += 1

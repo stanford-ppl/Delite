@@ -13,7 +13,7 @@ import delitecommon
 
 DSLs = ['optiml','optila','optiql','deliszt','optigraph','opticvx','multi-dsl']
 LMS_HOME = os.getenv("LMS_HOME")
-lms_version = "lms_2.10.0/"
+lms_version = "lms_2.10"
 
 def err(s):
     exit("error: " + s)

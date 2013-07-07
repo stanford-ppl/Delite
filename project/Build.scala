@@ -12,14 +12,14 @@ object DeliteBuild extends Build {
   val scalaTestCompile = "org.scalatest" % "scalatest_2.10" % "2.0.M5b"
   val scalaTest = scalaTestCompile % "test"
 
-  val virtScala = Option(System.getenv("SCALA_VIRTUALIZED_VERSION")).getOrElse("2.10.0")
+  val virtScala = Option(System.getenv("SCALA_VIRTUALIZED_VERSION")).getOrElse("2.10.2-RC1")
   val virtBuildSettingsBase = Defaults.defaultSettings ++ Seq(
     //resolvers := Seq(mavenLocal, prereleaseScalaTest, Resolver.sonatypeRepo("snapshots"), Resolver.sonatypeRepo("releases")),
     organization := "stanford-ppl",
     scalaOrganization := "org.scala-lang.virtualized",
     //scalaHome := Some(file(Path.userHome + "/scala/build/pack")),
     scalaVersion := virtScala,
-    //scalaBinaryVersion := "2.10",
+    //scalaBinaryVersion := virtScala,
     publishArtifact in (Compile, packageDoc) := false,
     // needed for scala.tools, which is apparently not included in sbt's built in version
     libraryDependencies += virtualization_lms_core,

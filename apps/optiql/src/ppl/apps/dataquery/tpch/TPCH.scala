@@ -1,6 +1,7 @@
 package ppl.apps.dataquery.tpch
 
 import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
+import scala.virtualization.lms.common.Record
 
 object TPCHQ1 extends OptiQLApplicationRunner with TPCHQ1Trait
 object TPCHQ2 extends OptiQLApplicationRunner with TPCHQ2Trait

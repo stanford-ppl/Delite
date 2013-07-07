@@ -10,7 +10,7 @@ import ppl.dsl.optigraph.datastruct.scala._
 trait GraphInputReaderOps extends Base {
   object GraphInputReader {
     // TODO: define input format
-    def read(filename: Rep[String], delim: Rep[String] = unit("\\\\s+")):Rep[Graph] = read(filename, delim)
+    def read(filename: Rep[String], delim: Rep[String] = unit("\\s+")):Rep[Graph] = read(filename, delim)
   }
   def read(filename: Rep[String], delim: Rep[String]) : Rep[Graph]
 }

@@ -18,8 +18,8 @@ trait LAInputReaderOps extends Base {
   def readVector(filename: Rep[String])(implicit ctx: SourceContext) = readVector[Double](filename, v => v(unit(0)).toDouble)  
   
   // generic versions can be used to read files with different contents
-  def readMatrix[Elem:Manifest](filename: Rep[String], schemaBldr: Rep[String] => Rep[Elem], delim: Rep[String] = unit("\\\\s+"))(implicit ctx: SourceContext) = obj_lainput_read_matrix(filename, schemaBldr, delim)
-  def readVector[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row], delim: Rep[String] = unit("\\\\s+"))(implicit ctx: SourceContext) = obj_lainput_read_vector(filename, schemaBldr, delim)  
+  def readMatrix[Elem:Manifest](filename: Rep[String], schemaBldr: Rep[String] => Rep[Elem], delim: Rep[String] = unit("\\s+"))(implicit ctx: SourceContext) = obj_lainput_read_matrix(filename, schemaBldr, delim)
+  def readVector[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row], delim: Rep[String] = unit("\\s+"))(implicit ctx: SourceContext) = obj_lainput_read_vector(filename, schemaBldr, delim)  
 
   def obj_lainput_read_matrix[Elem:Manifest](filename: Rep[String], schemaBldr: Rep[String] => Rep[Elem], delim: Rep[String])(implicit ctx: SourceContext): Rep[DenseMatrix[Elem]]
   def obj_lainput_read_vector[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row], delim: Rep[String])(implicit ctx: SourceContext): Rep[DenseVector[Row]]  

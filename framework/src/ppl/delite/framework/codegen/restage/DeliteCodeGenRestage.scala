@@ -39,6 +39,7 @@ trait RestageCodegen extends ScalaCodegen with Config {
       out.println("import ppl.delite.framework.datastructures.{DeliteArray,DeliteArrayBuffer}")
       out.println("import ppl.delite.framework.ops.DeliteCollection")
       out.println("import scala.virtualization.lms.util.OverloadHack")
+      out.println("import scala.virtualization.lms.common.Record")
       out.println("import reflect.{RefinedManifest,SourceContext}")
       out.println()
       out.println("object RestageApplicationRunner extends DeliteILApplicationRunner with RestageApplication")

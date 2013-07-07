@@ -92,13 +92,13 @@ trait VectorImplOpsStandard extends VectorImplOps {
       for (i <- 0 until v.length){
         print(v(i)); print(" ");
       }
-      print("]\\n")
+      print("]\n")
     }
     else{
       for (i <- 0 until v.length){
         print("[")
         print(v(i))
-        print("]\\n")
+        print("]\n")
       }
     }
   }

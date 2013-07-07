@@ -252,6 +252,63 @@ final class RemoteDeliteArrayChar(var id: String, var chunkLengths: Array[Int]) 
   }
 }
 
+final class RemoteDeliteArrayBoolean(var id: String, var chunkLengths: Array[Int]) extends DeliteArrayBoolean with RemoteDeliteArray[Boolean] {
+
+  var offset = 0
+  var offsets = {
+    val off = new Array[Int](chunkLengths.length)
+    off(0) = 0
+    var sum = 0 
+    for (i <- 1 until chunkLengths.length) {
+      sum += chunkLengths(i-1)
+      off(i) = sum
+    }
+    off
+  }
+
+  def apply(i: Int) = getLocal.apply(i)
+  def update(i: Int, x: Boolean) = getLocal.update(i,x)
+  def readAt(i: Int) = apply(i)
+
+  def data = getLocal.data
+
+  private var local: LocalDeliteArrayBoolean = _
+
+  def hasArray = local ne null
+  val length = chunkLengths.reduce(_ + _)
+
+  def copy(srcPos: Int, dest: DeliteArrayBoolean, destPos: Int, len: Int) = {
+    System.arraycopy(this.data, srcPos, dest.data, destPos, len) 
+  }
+
+  def take(n: Int) = {
+    val res = new LocalDeliteArrayBoolean(n)
+    copy(0, res, 0, n)
+    res
+  }
+
+  def getLocal = if (local eq null) retrieveArray else local
+
+  private def retrieveArray = {
+    if (!hasArray) {
+      println("WARNING: transferring remote symbol " + id.split("_")(0))
+      val returnResults = DeliteMesosScheduler.getData(this.asInstanceOf[RemoteDeliteArray[_]])
+      val chunks = for (result <- returnResults) yield {
+        Serialization.deserialize(classOf[DeliteArrayInt], result.getOutput(0)).asInstanceOf[LocalDeliteArrayBoolean]
+      }
+      val length = chunks.map(_.length).sum
+      val result = new LocalDeliteArrayBoolean(length)
+      var offset = 0
+      for (chunk <- chunks) {
+        System.arraycopy(chunk.data, 0, result.data, offset, chunk.length)
+        offset += chunk.length
+      }
+      local = result
+    }
+    local
+  }
+}
+
 abstract class LocalDeliteArray[T:Manifest] extends DeliteArray[T] {
   type L <: LocalDeliteArray[T]
 
@@ -310,10 +367,6 @@ trait DeliteArrayByte extends DeliteArray[Byte] {
   def apply(i: Int): Byte
   def take(n: Int): DeliteArrayByte
 }
-trait DeliteArrayBoolean extends DeliteArray[Boolean] {
-  def apply(i: Int): Boolean
-  def take(n: Int): DeliteArrayBoolean
-}
 trait DeliteArrayObject[T] extends DeliteArray[T] {
   def data: Array[T]
   def apply(i: Int): T
@@ -365,11 +418,6 @@ class RemoteDeliteArrayByte(var id: String, var chunkLengths: Array[Int]) extend
   type L = LocalDeliteArrayByte
   def specializedClass = classOf[DeliteArrayByte]
   def createLocal(len: Int) = new LocalDeliteArrayByte(len)
-}
-class RemoteDeliteArrayBoolean(var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[Boolean] with DeliteArrayBoolean {
-  type L = LocalDeliteArrayBoolean
-  def specializedClass = classOf[DeliteArrayBoolean]
-  def createLocal(len: Int) = new LocalDeliteArrayBoolean(len)
 }
 class RemoteDeliteArrayObject[T:Manifest](var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[T] with DeliteArrayObject[T] {
   type L = LocalDeliteArrayObject[T]
@@ -488,6 +536,38 @@ abstract class DeliteArrayChar extends DeliteArray[Char] {
   def copy(srcPos: Int, dest: DeliteArrayChar, destPos: Int, len: Int)
 }
 
+final class LocalDeliteArrayBoolean(val data: Array[Boolean], var offset: Int) extends DeliteArrayBoolean {
+  def this(data: Array[Boolean]) = this(data, 0)
+  def this(len: Int) = this(new Array[Boolean](len), 0)
+  def this(len: Int, start: Int) = this(new Array[Boolean](len), start)
+
+  var id: String = _
+  var offsets: Array[Int] = _
+
+  val length = data.length
+  def apply(i: Int): Boolean = data(i-offset)
+  def readAt(i: Int) = data(i-offset)
+  def update(i: Int, x: Boolean) = data(i-offset) = x
+
+  def copy(srcPos: Int, dest: DeliteArrayBoolean, destPos: Int, len: Int) = {
+    System.arraycopy(this.data, srcPos, dest.data, destPos, len)
+  }
+
+  def take(n: Int) = {
+    val res = new LocalDeliteArrayBoolean(n, offset)
+    copy(0, res, 0, n)
+    res
+  }
+
+}
+abstract class DeliteArrayBoolean extends DeliteArray[Boolean] {
+  def data: Array[Boolean]
+  def apply(i: Int): Boolean
+  def update(i: Int, x: Boolean)
+  def take(i: Int): DeliteArrayBoolean
+  def copy(srcPos: Int, dest: DeliteArrayBoolean, destPos: Int, len: Int)
+}
+
 
 class LocalDeliteArrayShort(val data: Array[Short], var offset: Int) extends LocalDeliteArray[Short] with DeliteArrayShort {
   type L = LocalDeliteArrayShort
@@ -502,13 +582,6 @@ class LocalDeliteArrayByte(val data: Array[Byte], var offset: Int) extends Local
   def this(len: Int) = this(new Array[Byte](len), 0)
   def this(len: Int, start: Int) = this(new Array[Byte](len), start)
   def createLocal(len: Int, start: Int) = new LocalDeliteArrayByte(len, start)
-}
-class LocalDeliteArrayBoolean(val data: Array[Boolean], var offset: Int) extends LocalDeliteArray[Boolean] with DeliteArrayBoolean {
-  type L = LocalDeliteArrayBoolean
-  def this(data: Array[Boolean]) = this(data, 0)
-  def this(len: Int) = this(new Array[Boolean](len), 0)
-  def this(len: Int, start: Int) = this(new Array[Boolean](len), start)
-  def createLocal(len: Int, start: Int) = new LocalDeliteArrayBoolean(len, start)
 }
 class LocalDeliteArrayObject[T:Manifest](val data: Array[T], var offset: Int) extends LocalDeliteArray[T] with DeliteArrayObject[T] {
   type L = LocalDeliteArrayObject[T]

@@ -8,6 +8,7 @@
  */
 
 import ppl.dsl.optiml._
+import scala.virtualization.lms.common.Record
 import scala.reflect.SourceContext
 
 // DenseVector, DenseMatrix

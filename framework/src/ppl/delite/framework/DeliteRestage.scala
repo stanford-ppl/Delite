@@ -25,24 +25,11 @@ object ScopeCommunication {
   /* Path independent */  
   abstract class DRef[+T]  
   case class WrapSymAsDRef[T:Manifest](drefId: Int) extends DRef[T] 
-  
-  // used to wrap DRefs because outer vars get lifted improperly inside DSL scopes
-  // this is not necessary once scope return is working correctly
-  case class Box[T](x: DRef[T]) {
-    var _ref = x
     
-    // to avoid confusion with 'get' on the actual DRef
-    def unbox = _ref
-    def box(y: DRef[T]) { _ref = y }
-  }
-  
   // global id
   var curDrefId = 0  
   def drefBox(id: Int) = "dref_" + id  
 }
-
-// abstract class ExtRecord[T]
-// case class WrapRecAsExt[T:Manifest](recId: Int) extends ExtRecord[T]
 
 /**
  * Scope markers
@@ -128,7 +115,7 @@ trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp with StructExp
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case LastScopeResult() => lastScopeResult
-    case WrapDRefAsSym(id) => WrapDRefAsSym(id)
+    case WrapDRefAsSym(id) => toAtom(WrapDRefAsSym(id))
     case Reflect(SetDRefOutput(s,id),u,es) => reflectMirrored(Reflect(SetDRefOutput(f(s),id), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(ReturnScopeResult(n),u,es) => reflectMirrored(Reflect(ReturnScopeResult(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))   
     case Reflect(DeliteProfileStart(c,deps), u, es) => reflectMirrored(Reflect(DeliteProfileStart(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -138,14 +125,16 @@ trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp with StructExp
 
 }
 
-trait DeliteRestageRunner extends DeliteApplication with DeliteRestageOpsExp {  
+trait DeliteRestageRunner[R] extends DeliteApplication with DeliteRestageOpsExp {  
   this: DeliteArrayOpsExpOpt =>
   
   import EndScopes._
   import ScopeCommunication._
   
-  def apply: Any
-  def main = apply
+  def result: R = _mainResult.asInstanceOf[R] 
+  def apply: R
+  def main = error("should not be called")
+  override def mainWithResult = apply
   def run = { 
     // stage the program with re-stage generator (needs to include a generator for PreviousStageData(n))
     // val generator: RestageCodegen { val IR: DeliteRestageRunner.this.type } = getCodeGenPkg(restageTarget)

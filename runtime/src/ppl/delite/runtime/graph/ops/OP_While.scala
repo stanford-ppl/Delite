@@ -29,9 +29,12 @@ class OP_While(val id: String,
         val r = new OP_While(id+"_"+idx, inputTypesMap, predicateGraph, predicateValue, bodyGraph, bodyValue, outputSym)
         r.dependencies = dependencies
         r.inputList = inputList
-        val mset = (bodyGraph.schedule(idx).toArray(bodyGraph.schedule(idx).size).flatMap(op=>op.getMutableInputs) ++ predicateGraph.schedule(idx).toArray(predicateGraph.schedule(idx).size).flatMap(op=>op.getMutableInputs)).map(e => e._2).toSet
-        r.mutableInputs = mutableInputs filter (i => mset contains (i._2))
+        r.mutableInputs = mutableInputs
+        r.filterMutableInputs(idx)
         r.consumers = consumers
+        r.antiDeps = antiDeps
+        r.filterAntiDeps(idx)
+        
         for (tgt <- Targets.GPU) r.setGPUMetadata(tgt, getGPUMetadata(tgt))
         for (dep <- getDependencies) dep.addConsumer(r)
         for (c <- getConsumers) c.addDependency(r)

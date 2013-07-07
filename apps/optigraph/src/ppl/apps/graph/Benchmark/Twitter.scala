@@ -2,6 +2,7 @@ package ppl.apps.graph.Benchmark
 
 import ppl.dsl.optigraph._
 import ppl.delite.framework.DeliteApplication
+import scala.virtualization.lms.common.Record
 
 object TwitterRunner extends OptiGraphApplicationRunner with Twitter 
 

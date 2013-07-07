@@ -70,12 +70,19 @@ abstract class DeliteOP {
 
   final def removeConsumer(c: DeliteOP) {
     consumers -= c
+    if (antiDeps.contains(c)) {
+      antiDeps -= c
+    }
   }
 
   final def replaceConsumer(old: DeliteOP, c: DeliteOP) {
     assert(consumers contains old, old.toString + " is not a consumer of " + this.toString + ", cannot be replaced")
     consumers -= old
     consumers += c
+    if (antiDeps.contains(c)) {
+      antiDeps -= old
+      antiDeps += c
+    }
   }
 
   //this is a subset of dependencies and contains the kernel inputs in the order required to call the task
@@ -116,6 +123,17 @@ abstract class DeliteOP {
   final def addMutableInput(op: DeliteOP, name: String) {
     mutableInputs += Pair(op, name)
   }
+  
+  //mapping from mutated symbol to the condition list of nested blocks that make the mutation happen
+  val mutableInputsCondition = new collection.mutable.HashMap[String, List[(DeliteOP,Boolean)]]
+
+  //subset of dependencies for anti-deps
+  private[graph] var antiDeps = Set.empty[DeliteOP]
+
+  final def getAntiDeps: Set[DeliteOP] = antiDeps
+  final def addAntiDep(op: DeliteOP) {
+    antiDeps += op
+  } 
 
   var variant: OP_Variant = null
 
