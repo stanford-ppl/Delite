@@ -2,27 +2,28 @@ package ppl.delite.framework.datastruct.scala.io
 
 import java.io.{BufferedReader, FileReader, File}
 
-class FileStreamImpl(paths: String*) {
+final class FileStreamImpl(paths: String*) {
 
-  private[this] val jfiles = paths flatMap { path =>
+  private[this] final val jfiles = paths flatMap { path =>
     val jPath = new File(path)
     if (jPath.isDirectory) jPath.listFiles
     else if (jPath.isFile) Array(jPath)
     else throw new IllegalArgumentException("Path " + path + " does not appear to be a valid file or directory")
   }
 
-  val size: Long = jfiles.map(_.length).sum
+  final val size: Long = jfiles.map(_.length).sum
 
-  val numThreads: Int = ppl.delite.runtime.Config.numThreads
+  final val numThreads: Int = ppl.delite.runtime.Config.numThreads
 
-  private[this] val allReader = new Array[BufferedReader](numThreads)
-  private[this] val allIdx = new Array[Int](numThreads)
-  private[this] val allPos = new Array[Long](numThreads)
-  private[this] val allEnd = new Array[Long](numThreads) 
+  private[this] final val pad = 32
+  private[this] final val allReader = new Array[BufferedReader](pad*numThreads)
+  private[this] final val allIdx = new Array[Int](pad*numThreads)
+  private[this] final val allPos = new Array[Long](pad*numThreads)
+  private[this] final val allEnd = new Array[Long](pad*numThreads) 
 
-  def pos(idx: Int) = allPos(idx)
+  final def pos(idx: Int) = allPos(pad*idx)
 
-  def end(idx: Int) = allEnd(idx)
+  final def end(idx: Int) = allEnd(pad*idx)
 
   private def findFileOffset(start: Long) = {
     var offset = start
@@ -34,36 +35,36 @@ class FileStreamImpl(paths: String*) {
     (fileIdx, offset)
   }
 
-  def openAtNewLine(threadIdx: Int): Unit = { 
+  final def openAtNewLine(threadIdx: Int): Unit = { 
     var pos = threadIdx * size / numThreads
-    allEnd(threadIdx) = (threadIdx + 1) * size / numThreads
+    allEnd(pad*threadIdx) = (threadIdx + 1) * size / numThreads
     val (fileIdx, offset) = findFileOffset(pos)
     val reader = new BufferedReader(new FileReader(jfiles(fileIdx)))
     if (offset != 0) {
       reader.skip(offset-1)
       pos += reader.readLine().length //+1-1 //TODO: need to handle /r/n files
     }
-    allPos(threadIdx) = pos
-    allIdx(threadIdx) = fileIdx
-    allReader(threadIdx) = reader
+    allPos(pad*threadIdx) = pos
+    allIdx(pad*threadIdx) = fileIdx
+    allReader(pad*threadIdx) = reader
   }
 
-  def readLine(idx: Int): String = {
-    var line = allReader(idx).readLine()
+  final def readLine(idx: Int): String = {
+    var line = allReader(pad*idx).readLine()
     while (line eq null) {
-      allReader(idx).close()
-      allIdx(idx) += 1
-      if (allIdx(idx) >= jfiles.length) return null
-      allReader(idx) = new BufferedReader(new FileReader(jfiles(allIdx(idx))))
-      line = allReader(idx).readLine()
+      allReader(pad*idx).close()
+      allIdx(pad*idx) += 1
+      if (allIdx(pad*idx) >= jfiles.length) return null
+      allReader(pad*idx) = new BufferedReader(new FileReader(jfiles(allIdx(pad*idx))))
+      line = allReader(pad*idx).readLine()
     }
-    allPos(idx) += (line.length + 1) //TODO: need to handle /r/n files
+    allPos(pad*idx) += (line.length + 1) //TODO: need to handle /r/n files
     line
   }
   
-  def close(idx: Int): Unit = { 
-    allReader(idx).close()
-    allReader(idx) = null
+  final def close(idx: Int): Unit = { 
+    allReader(pad*idx).close()
+    allReader(pad*idx) = null
   }
 
 }
