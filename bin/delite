@@ -89,6 +89,7 @@ def run(deg, params, opts):
         java_opts = java_opts + " -Ddelite.cluster.isSlave"
     if delitecommon.DELITE_MEM != None:
         java_opts = java_opts + " -Xmx" + delitecommon.DELITE_MEM
+	java_opts = java_opts + " -Xms" + delitecommon.DELITE_MEM
 
 
     # add classpaths

@@ -540,7 +540,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val dmCR = manifest[CR]        
   }
   
-    
+
   abstract class DeliteOpReduceLike[A:Manifest] extends DeliteOpLoop[A] {
     type OpType <: DeliteOpReduceLike[A]
     final lazy val rV: (Sym[A],Sym[A]) = copyOrElse(_.rV)((if (mutable) reflectMutableSym(fresh[A]) else fresh[A], fresh[A])) // TODO: transform vars??
@@ -1788,19 +1788,20 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   // -- end emit reduce emit
 
-  def emitMultiLoopFuncs(op: AbstractFatLoop, symList: List[Sym[Any]]) {
-    val elemFuncs = op.body flatMap { // don't emit dependencies twice!
-      case elem: DeliteHashCollectElem[_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
-      case elem: DeliteHashReduceElem[_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
-      case elem: DeliteHashIndexElem[_,_] => elem.keyFunc :: elem.cond
-      case elem: DeliteCollectElem[_,_,_] => elem.func :: elem.cond
+  def getMultiLoopFuncs(op: AbstractFatLoop, symList: List[Sym[Any]]) = op.body flatMap { // don't emit dependencies twice!
+    case elem: DeliteHashCollectElem[_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
+    case elem: DeliteHashReduceElem[_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
+    case elem: DeliteHashIndexElem[_,_] => elem.keyFunc :: elem.cond
+    case elem: DeliteCollectElem[_,_,_] => elem.func :: elem.cond
 //      case elem: DeliteForeachElem[_] => elem.cond // only emit func inside condition! TODO: how to avoid emitting deps twice? // elem.func :: elem.cond
-      case elem: DeliteForeachElem[_] => List(elem.func)
-      case elem: DeliteReduceElem[_] => elem.func :: elem.cond
-      case elem: DeliteReduceTupleElem[_,_] => elem.func._1 :: elem.func._2 :: elem.cond
-    }
+    case elem: DeliteForeachElem[_] => List(elem.func)
+    case elem: DeliteReduceElem[_] => elem.func :: elem.cond
+    case elem: DeliteReduceTupleElem[_,_] => elem.func._1 :: elem.func._2 :: elem.cond
+  }
+
+  def emitMultiLoopFuncs(op: AbstractFatLoop, symList: List[Sym[Any]]) {
     // FIXME: without .distinct TPCHQ2 has duplicate definitions. this should be fixed in emitFatBlock.
-    emitFatBlock(elemFuncs.distinct) 
+    emitFatBlock(getMultiLoopFuncs(op, symList).distinct)
   }
 
   def emitInlineAbstractFatLoop(op: AbstractFatLoop, symList: List[Sym[Any]]) {
@@ -1953,14 +1954,30 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
     // processRange
     emitMethod("processRange", actType, List(("__act",actType),("start",remap(Manifest.Int)),("end",remap(Manifest.Int)))) {
-      emitVarDef("idx", remap(Manifest.Int), "start")
-      emitValDef("isEmpty",remap(Manifest.Boolean),"end-start <= 0")
-      emitValDef("__act2",actType,"init(__act,idx,isEmpty)") // TODO: change to use method call
-      emitAssignment("idx","idx + 1")
-      stream.println("while (idx < end) {")
-      emitMethodCall("process",List("__act2","idx"))
-      emitAssignment("idx","idx + 1")
-      stream.println("}")
+      //GROSS HACK ALERT!
+      val freeVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
+
+      val streamVars = freeVars.filter(_.tp == manifest[DeliteFileStream])
+      if (streamVars.length > 0) {
+        //assert(op.body.length == 1, "ERROR: horizontally fused FileReader loop; this is unsafe: " + op.body.mkString(","))
+        assert(streamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
+        val streamSym = streamVars(0)     
+        stream.println(fieldAccess(quote(streamSym), "openAtNewLine(start)"))
+        emitValDef("__act2",actType,"init(__act,start,false)")  
+        stream.println("while (" + fieldAccess(quote(streamSym),"pos(start)") + " < " + fieldAccess(quote(streamSym),"end(start)") + ") {")
+        emitMethodCall("process",List("__act2","start"))
+        stream.println("}")
+        stream.println(fieldAccess(quote(streamSym), "close(start)"))
+      }
+      else {
+        emitValDef("isEmpty",remap(Manifest.Boolean),"end-start <= 0")
+        emitValDef("__act2",actType,"init(__act,start,isEmpty)") // TODO: change to use method call
+        emitVarDef("idx", remap(Manifest.Int), "start + 1")
+        stream.println("while (idx < end) {")
+        emitMethodCall("process",List("__act2","idx"))
+        emitAssignment("idx","idx + 1")
+        stream.println("}")
+      }
       emitReturn("__act2")
     }
 

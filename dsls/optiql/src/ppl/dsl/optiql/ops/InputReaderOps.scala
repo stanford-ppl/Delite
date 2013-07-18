@@ -9,7 +9,7 @@ import reflect.{RefinedManifest, SourceContext}
 trait InputReaderOps extends Base { this: OptiQL =>
 
   object TableInputReader {
-    def apply[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String] = unit("|")) = optiql_table_input_reader(path, shape, separator)
+    def apply[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String] = unit("\\|")) = optiql_table_input_reader(path, shape, separator)
   }
 
   def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]): Rep[Table[T]]
@@ -23,7 +23,7 @@ trait InputReaderOpsExp extends InputReaderOps with BaseFatExp { this: OptiQLExp
   case class OptiQLTableFromSeq[T:Manifest](readBlock: Block[Table[T]]) extends DeliteOpSingleWithManifest[T,Table[T]](readBlock)
 
   def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]) = {
-    val array = DeliteFileReader.readLines(path){ line => optiql_table_input_reader_impl(line, shape, separator) }
+    val array = DeliteNewFileReader.readLines(path){ line => optiql_table_input_reader_impl(line, shape, separator) }
     Table(array, array.length)
   }
 
@@ -49,7 +49,7 @@ trait InputReaderImplOps { this: OptiQL =>
 trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift with OptiQLExp =>
 
   def optiql_table_input_reader_impl[T<:Record:Manifest](line: Rep[String], shape: Rep[T], separator: Rep[String]) = {
-    val fields = line.split("\\Q" + separator + "\\E")
+    val fields = line.split(separator)
     createRecord(fields, shape)
   }
 
@@ -65,9 +65,10 @@ trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift w
       tp.toString match {
         case s if s.contains("String") => (field, record(i))
         case "Double" => (field, Double.parseDouble(record(i)))
-        //case "Float" => (field, Float.parseFloat(record(i))
+        case "Float" => (field, Float.parseFloat(record(i)))
         case "Boolean" => (field, record(i) == "true")
         case "Int" => (field, Integer.parseInt(record(i)))
+        case "Long" => (field, Long.parseLong(record(i)))
         case "Char" => (field, record(i).charAt(0))
         case d if d.contains("Date") => (field, Date(record(i)))
         case _ => throw new RuntimeException("Unsupported record field type: " + tp.toString)

@@ -62,41 +62,43 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
     alloc match {
     case StructBlock(tag,elems) =>
       val condT = body.cond.map(t(_))
-      def copyLoop[B:Manifest](f: Block[B]): Exp[DeliteArray[B]] = {
-        val allocV = reflectMutableSym(fresh[DeliteArray[B]])
-        val elemV = fresh[B]
-        val sizeV = fresh[Int]
-        val buf_aV = fresh[DeliteArray[B]]
-        val buf_iV = fresh[Int]
-        val buf_iV2 = fresh[Int]
-        val tv = t(v).asInstanceOf[Sym[Int]]
-        simpleLoop(t(size), tv, DeliteCollectElem[B,DeliteArray[B],DeliteArray[B]](
-          eV = elemV,
-          sV = sizeV,
-          allocVal = allocV,
-          allocN = reifyEffects(DeliteArray[B](sizeV)),
-          func = f,
-          update = reifyEffects(dc_update(allocV,tv,elemV)),
-          finalizer = reifyEffects(allocV),
-          cond = condT,
-          par = body.par,
-          buf = DeliteBufferElem[B,DeliteArray[B],DeliteArray[B]](
-            aV = buf_aV,
-            iV = buf_iV,
-            iV2 = buf_iV2,
-            appendable = reifyEffects(dc_appendable(allocV,tv,elemV)),
-            append = reifyEffects(dc_append(allocV,tv,elemV)),
-            setSize = reifyEffects(dc_set_logical_size(allocV,sizeV)),
-            allocRaw = reifyEffects(dc_alloc[B,DeliteArray[B]](allocV,sizeV)),
-            copyRaw = reifyEffects(dc_copy(buf_aV,buf_iV,allocV,buf_iV2,sizeV))
-          )
-        ))
+      def copyLoop[B:Manifest](f: Block[B]): Exp[DeliteArray[B]] = f match {
+        case Block(Def(DeliteArrayApply(x,iv))) if (iv.equals(v) && body.par == ParFlat) => 
+          x.asInstanceOf[Exp[DeliteArray[B]]] //eliminate identity function loop
+        case Block(Def(a)) =>
+          val allocV = reflectMutableSym(fresh[DeliteArray[B]])
+          val elemV = fresh[B]
+          val sizeV = fresh[Int]
+          val buf_aV = fresh[DeliteArray[B]]
+          val buf_iV = fresh[Int]
+          val buf_iV2 = fresh[Int]
+          val tv = t(v).asInstanceOf[Sym[Int]]
+          simpleLoop(t(size), tv, DeliteCollectElem[B,DeliteArray[B],DeliteArray[B]](
+            eV = elemV,
+            sV = sizeV,
+            allocVal = allocV,
+            allocN = reifyEffects(DeliteArray[B](sizeV)),
+            func = f,
+            update = reifyEffects(dc_update(allocV,tv,elemV)),
+            finalizer = reifyEffects(allocV),
+            cond = condT,
+            par = body.par,
+            buf = DeliteBufferElem[B,DeliteArray[B],DeliteArray[B]](
+              aV = buf_aV,
+              iV = buf_iV,
+              iV2 = buf_iV2,
+              appendable = reifyEffects(dc_appendable(allocV,tv,elemV)),
+              append = reifyEffects(dc_append(allocV,tv,elemV)),
+              setSize = reifyEffects(dc_set_logical_size(allocV,sizeV)),
+              allocRaw = reifyEffects(dc_alloc[B,DeliteArray[B]](allocV,sizeV)),
+              copyRaw = reifyEffects(dc_copy(buf_aV,buf_iV,allocV,buf_iV2,sizeV))
+            )
+          ))
       }
 
       def soaTransform[B:Manifest](tag: StructTag[B], elems: Seq[(String,Exp[Any])]): Exp[DeliteArray[B]] = {
         val newElems = elems map {
           case (index, e @ Def(Struct(t,es))) => (index, soaTransform(t,es)(e.tp))
-          case (index, Def(DeliteArrayApply(x,iv))) if (iv.equals(v) && body.par == ParFlat) => (index, x) //eliminate identify function loop
           case (index, e) => (index, copyLoop(Block(e))(e.tp))
         }
         val sz = body.par match {
