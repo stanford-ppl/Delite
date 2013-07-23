@@ -1,6 +1,9 @@
 package ppl.delite.framework.datastruct.scala.io
 
-import java.io.{BufferedReader, FileReader, File}
+import java.io.{FileInputStream, File, IOException}
+import org.apache.hadoop.util.LineReader
+import org.apache.hadoop.io.Text
+
 
 final class FileStreamImpl(paths: String*) {
 
@@ -16,7 +19,7 @@ final class FileStreamImpl(paths: String*) {
   final val numThreads: Int = ppl.delite.runtime.Config.numThreads
 
   private[this] final val pad = 32
-  private[this] final val allReader = new Array[BufferedReader](pad*numThreads)
+  private[this] final val allReader = new Array[LineReader](pad*numThreads)
   private[this] final val allIdx = new Array[Int](pad*numThreads)
   private[this] final val allPos = new Array[Long](pad*numThreads)
   private[this] final val allEnd = new Array[Long](pad*numThreads) 
@@ -39,10 +42,11 @@ final class FileStreamImpl(paths: String*) {
     var pos = threadIdx * size / numThreads
     allEnd(pad*threadIdx) = (threadIdx + 1) * size / numThreads
     val (fileIdx, offset) = findFileOffset(pos)
-    val reader = new BufferedReader(new FileReader(jfiles(fileIdx)))
-    if (offset != 0) {
-      reader.skip(offset-1)
-      pos += reader.readLine().length //+1-1 //TODO: need to handle /r/n files
+    val byteStream = new FileInputStream(jfiles(fileIdx))
+    val reader = new LineReader(byteStream)
+    if (offset != 0) { //jump to next avaible new line (and valid UTF-8 char)
+      if (byteStream.skip(offset-1) != (offset-1)) throw new IOException("Unable to skip desired bytes in file")
+      pos += (reader.readLine(new Text) - 1)
     }
     allPos(pad*threadIdx) = pos
     allIdx(pad*threadIdx) = fileIdx
@@ -50,16 +54,17 @@ final class FileStreamImpl(paths: String*) {
   }
 
   final def readLine(idx: Int): String = {
-    var line = allReader(pad*idx).readLine()
-    while (line eq null) {
+    val line = new Text
+    var length = allReader(pad*idx).readLine(line)
+    while (length == 0) {
       allReader(pad*idx).close()
       allIdx(pad*idx) += 1
       if (allIdx(pad*idx) >= jfiles.length) return null
-      allReader(pad*idx) = new BufferedReader(new FileReader(jfiles(allIdx(pad*idx))))
-      line = allReader(pad*idx).readLine()
+      allReader(pad*idx) = new LineReader(new FileInputStream(jfiles(allIdx(pad*idx))))
+      length = allReader(pad*idx).readLine(line)
     }
-    allPos(pad*idx) += (line.length + 1) //TODO: need to handle /r/n files
-    line
+    allPos(pad*idx) += length
+    new String(line.getBytes)
   }
   
   final def close(idx: Int): Unit = { 

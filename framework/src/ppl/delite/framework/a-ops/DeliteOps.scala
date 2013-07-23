@@ -1685,11 +1685,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitBlock(elem.buf.append)
         emitAssignment(fieldAccess(prefixSym,quote(sym)+"_size"), fieldAccess(prefixSym,quote(sym)+"_size") + " + 1")
         stream.println("}")
-        if (elem.cond.nonEmpty) {
-          emitAssignment(fieldAccess(prefixSym,quote(sym)+"_conditionals"), fieldAccess(prefixSym,quote(sym)+"_conditionals") + " + 1")
-          stream.println("}")
-        }
-
+        emitAssignment(fieldAccess(prefixSym,quote(sym)+"_conditionals"), fieldAccess(prefixSym,quote(sym)+"_conditionals") + " + 1")
+        if (elem.cond.nonEmpty) stream.println("}")
       case ParFlat =>
         emitValDef(elem.allocVal, fieldAccess(prefixSym,quote(sym)+"_data"))
         if (elem.cond.nonEmpty) {
@@ -1891,10 +1888,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         if (elem.par == ParBuffer || elem.par == ParSimpleBuffer) {
           emitVarDef(quote(elem.allocVal), remap(elem.allocVal.tp), quote(sym) + "_buf")
           getActFinal = quote(elem.allocVal)     
-          if (elem.cond.nonEmpty)
-            emitAssignment(quote(elem.sV), quote(sym) + "_conditionals")
-          else
-            emitAssignment(quote(elem.sV), quote(op.size))
+          emitAssignment(quote(elem.sV), quote(sym) + "_conditionals")
           emitBlock(elem.buf.setSize)
         }
         else {
@@ -2107,7 +2101,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
           if (elem.par == ParBuffer || elem.par == ParSimpleBuffer) {
             emitAssignment(fieldAccess("__act", quote(sym) + "_offset"),fieldAccess("lhs", quote(sym) + "_offset") + "+" + fieldAccess("lhs", quote(sym) + "_size"))
-            if (elem.cond.nonEmpty) emitAssignment(fieldAccess("__act", quote(sym) + "_conditionals"),fieldAccess("__act", quote(sym) + "_conditionals") + "+" + fieldAccess("lhs", quote(sym) + "_conditionals"))
+            emitAssignment(fieldAccess("__act", quote(sym) + "_conditionals"),fieldAccess("__act", quote(sym) + "_conditionals") + "+" + fieldAccess("lhs", quote(sym) + "_conditionals"))
           }
         case (sym, elem: DeliteHashElem[_,_]) =>
           stream.println("assert(false, \"FIXME: hash not supported\")")
@@ -2142,7 +2136,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
     emitMethod("postProcess", remap(Manifest.Unit), List(("__act",actType))) {
       (symList zip op.body) foreach {
-        case (sym, elem: DeliteCollectElem[_,_,_]) => //FIXME: get rid of .data and adapt to new alloc style
+        case (sym, elem: DeliteCollectElem[_,_,_]) => 
           if (elem.par == ParBuffer || elem.par == ParSimpleBuffer) {
             // write size results from buf into data at offset
             stream.println("if (" + fieldAccess("__act",quote(sym)+"_data") + " " + refNotEq + " " + fieldAccess("__act",quote(sym)+"_buf") + ") {")   //TODO: Handle 'ne'
@@ -2170,12 +2164,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           emitVarDef(quote(elem.allocVal), remap(elem.allocVal.tp), fieldAccess("__act",quote(sym) + "_data"))
           getActFinal = quote(elem.allocVal)
           if (elem.par == ParBuffer || elem.par == ParSimpleBuffer) {
-            if (elem.cond.nonEmpty) {
-              emitValDef(elem.sV, fieldAccess("__act", quote(sym) + "_conditionals"))
-            }
-            else {
-              emitValDef(elem.sV, "loopSize")
-            }
+            emitValDef(elem.sV, fieldAccess("__act", quote(sym) + "_conditionals"))
             emitBlock(elem.buf.setSize)
           }
           emitBlock(elem.finalizer)

@@ -30,6 +30,8 @@ object DeliteBuild extends Build {
     libraryDependencies += "org.apache.commons" % "commons-math" % "2.2",
     libraryDependencies += "com.google.protobuf" % "protobuf-java" % "2.4.1",
     libraryDependencies += "org.apache.mesos" % "mesos" % "0.9.0-incubating",    
+    libraryDependencies += "org.apache.hadoop" % "hadoop-core" % "1.2.0",
+
 
     // used in delitec to access jars
     retrieveManaged := true,

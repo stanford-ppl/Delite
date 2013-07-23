@@ -10,9 +10,11 @@ trait InputReaderOps extends Base { this: OptiQL =>
 
   object TableInputReader {
     def apply[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String] = unit("\\|")) = optiql_table_input_reader(path, shape, separator)
+    def apply(path: Rep[String]) = optiql_table_line_reader(path)
   }
 
   def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]): Rep[Table[T]]
+  def optiql_table_line_reader(path: Rep[String]): Rep[Table[String]]
   def optiql_table_from_seq[T:Manifest](elems: Seq[Rep[T]]): Rep[Table[T]]
 
 }
@@ -24,6 +26,11 @@ trait InputReaderOpsExp extends InputReaderOps with BaseFatExp { this: OptiQLExp
 
   def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]) = {
     val array = DeliteNewFileReader.readLines(path){ line => optiql_table_input_reader_impl(line, shape, separator) }
+    Table(array, array.length)
+  }
+
+  def optiql_table_line_reader(path: Rep[String]) = {
+    val array = DeliteNewFileReader.readLines(path){ line => line }
     Table(array, array.length)
   }
 
@@ -49,7 +56,7 @@ trait InputReaderImplOps { this: OptiQL =>
 trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift with OptiQLExp =>
 
   def optiql_table_input_reader_impl[T<:Record:Manifest](line: Rep[String], shape: Rep[T], separator: Rep[String]) = {
-    val fields = line.split(separator)
+    val fields = line.split(separator,-1)
     createRecord(fields, shape)
   }
 
@@ -78,6 +85,7 @@ trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift w
     struct[T](AnonTag(rm), fields)
   }
 
+  //TODO: implement as map
   def optiql_table_from_seq_impl[T:Manifest](elems: Seq[Rep[T]]) = {
     val array = DeliteArray[T](elems.length)
     for (i <- (0 until elems.length): Range) {
