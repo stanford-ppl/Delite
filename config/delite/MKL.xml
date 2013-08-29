@@ -8,6 +8,7 @@
   <path> /opt/intel/mkl/include </path>
   <!-- insert name of header file that includes CBLAS functions -->
   <include> mkl.h </include>
+  <include> mkl_lapacke.h </include>
 </headers>
 <libs>
   <prefix> -L </prefix>
