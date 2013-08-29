@@ -4,10 +4,10 @@ import ppl.delite.framework._
 import ppl.delite.framework.codegen.scala._
 import java.io._
 
-object BLAS extends ExternalLibrary {
-  //val target = "scala" // this should be well-typed, but we don't have an IR reference yet, so we need to generalize that...  
-  val libName = "scalaBLAS"
-  val configFile = "BLAS.xml"  
+object MKL extends ExternalLibrary {
+  //val target = "scala" // this should be well-typed, but we don't have an IR reference yet, so we need to generalize that...
+  val libName = "scalaMKL"
+  val configFile = "MKL.xml"
   val ext = "c"
   val libExt = "so"
   // should we consider library linking machine dependent? do we have a different external lib
