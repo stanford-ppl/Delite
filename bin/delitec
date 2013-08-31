@@ -63,7 +63,6 @@ def checkLMSEnv():
           lms_home = delitecommon.DELITE_HOME + "/lib_managed/jars/EPFL/" + lms_version + "/"
           if not os.path.isdir(lms_home):
               err("couldn't find the LMS library at: " + lms_home + ". Please set the LMS_HOME environment variable or libs.lms.home entry in delite.properties manually.")
-          LMS_HOME = lms_home
 
 def stage(runner, params, opts):
     java_opts = os.getenv("JAVA_OPTS", "")
@@ -109,7 +108,10 @@ def stage(runner, params, opts):
     old_cp = os.getenv("CLASSPATH", "")
     cp = " -cp "
     cp = cp + old_cp + os.pathsep
-    cp = cp + LMS_HOME + "/*" + os.pathsep
+    if LMS_HOME is None:
+        cp = cp + delitecommon.DELITE_HOME + "/lib_managed/jars/EPFL/" + lms_version + "/*" + os.pathsep
+    else:
+        cp = cp + LMS_HOME + "/target/" + scala_major_id + "/classes" + os.pathsep
     cp = cp + DELITE_HOME + "/framework/target/" + scala_major_id + "/classes" + os.pathsep
     
     #DSL cps
