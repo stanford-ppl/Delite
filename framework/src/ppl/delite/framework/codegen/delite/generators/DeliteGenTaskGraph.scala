@@ -13,7 +13,8 @@ import ppl.delite.framework.ops._
 import ppl.delite.framework.Config
 import ppl.delite.framework.transform.LoopSoAOpt
 import ppl.delite.framework.datastructures.DeliteArray
-import ppl.delite.framework.analysis.StencilAnalysis
+import ppl.delite.framework.analysis.{LoopAnalysis,StencilAnalysis}
+import ppl.delite.framework.datastructures.DeliteArrayFatExp
 
 trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOpt {
   val IR: DeliteOpsExp
@@ -124,6 +125,23 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     gatherStencil(sym,rhs)        
     allStencils = /*allStencils ++*/ stencilAnalysis.getLoopStencils    
     
+    val loopAnalysis = new LoopAnalysis { val IR: DeliteGenTaskGraph.this.IR.type = DeliteGenTaskGraph.this.IR }
+    loopAnalysis.innerScope = this.innerScope
+
+    //TODO: get rid of
+    rhs match {
+      case SimpleFatLoop(_,_,_) | SimpleLoop(_,_,_) =>
+        loopAnalysis.analyze(sym, rhs) 
+        Predef.println("LOOP ANALYSIS:" + loopAnalysis.loopInfoBuffer.toString)   
+      case l:AbstractLoop[_] =>  
+        loopAnalysis.analyze(sym, rhs) 
+        Predef.println("LOOP ANALYSIS:" + loopAnalysis.loopInfoBuffer.toString)     
+      case Reflect(l:AbstractLoop[_],u,es) =>
+        loopAnalysis.analyze(sym, rhs) 
+        Predef.println("LOOP ANALYSIS:" + loopAnalysis.loopInfoBuffer.toString) 
+      case _ => //
+    }
+
     if (!skipEmission) for (gen <- generators) {
       val sep = java.io.File.separator
       val buildPath = Config.buildDir + sep + gen + sep + "kernels" + sep

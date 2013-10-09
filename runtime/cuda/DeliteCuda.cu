@@ -100,6 +100,7 @@ size_t tempCudaMemSize;
 
 // initialize cuda temporary device memory
 void tempCudaMemInit(double tempMemRate) {
+  DeliteCudaProfInit();
   size_t free, total;
   cudaMemGetInfo(&free, &total);
   tempCudaMemSize = total * tempMemRate;
@@ -197,6 +198,55 @@ void DeliteCudaMemset(void *ptr, int value, size_t count) {
 void DeliteCudaCheckError(void) {
   cudaDeviceSynchronize();
   printf("DeliteCuda ERROR: %s\n", cudaGetErrorString(cudaGetLastError()));
+}
+
+struct timeval start_t;
+struct timeval end_t;
+void DeliteCudaTic(void) {
+  cudaDeviceSynchronize();
+  gettimeofday(&start_t,NULL);
+}
+
+void DeliteCudaToc(void) {
+  cudaDeviceSynchronize();
+  gettimeofday(&end_t,NULL);
+  double exetime = (end_t.tv_sec*1000000+end_t.tv_usec) - (start_t.tv_sec*1000000+start_t.tv_usec);
+  cout << "DeliteCudaTimer(static) " << " " << (exetime)/1000.0 << " ms" << endl; 
+}
+
+//map<string,double> *cudaTimerMap = new map<string,double>();
+
+char **ticName;
+double *ticStart;
+int ticIdx;
+
+void DeliteCudaProfInit(void) {
+  ticName = new char*[1024];
+  ticStart = new double[1024];
+  ticIdx = 0;
+}
+
+void DeliteCudaTic(char *name) {
+  struct timeval t;
+
+  cudaDeviceSynchronize();
+  gettimeofday(&t,NULL);
+  ticStart[ticIdx] = t.tv_sec*1000000+t.tv_usec; 
+  ticName[ticIdx] = name;
+  ticIdx += 1;
+  //cudaTimerMap->insert(pair<string,double>(name, t.tv_sec*1000000+t.tv_usec));
+}
+
+void DeliteCudaToc(char *name) {
+  struct timeval t;
+  //map<string,double>::iterator it = cudaTimerMap->find(name);
+  //double start = (it==cudaTimerMap->end()) ? 0 : it->second;
+  //if(start != 0) cudaTimerMap->erase(it);
+  cudaDeviceSynchronize();
+  gettimeofday(&t,NULL);
+  double end = t.tv_sec*1000000+t.tv_usec;
+  ticIdx -= 1;
+  cout << "DeliteCudaTimer " << ticName[ticIdx] << " " << (end-ticStart[ticIdx])/1000.0 << " ms" << endl; 
 }
 
 // TODO: Remove this kernel from here by generate it 

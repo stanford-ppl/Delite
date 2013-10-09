@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/time.h>
 
 using namespace std;
 
@@ -49,6 +50,12 @@ extern void DeliteCudaMemcpyDtoHAsync(void* dptr, void* sptr, size_t size);
 extern void DeliteCudaMemcpyDtoDAsync(void *dptr, void* sptr, size_t size);
 extern void DeliteCudaMemset(void *ptr, int value, size_t count);
 extern void DeliteCudaCheckError(void);
+
+extern void DeliteCudaProfInit(void);
+extern void DeliteCudaTic(char *name);
+extern void DeliteCudaToc(char *name);
+extern void DeliteCudaTic(void);
+extern void DeliteCudaToc(void);
 
 //TODO: Remove this from here
 __global__ void kernel_offset(int *key, int *idx, int *offset, int size);

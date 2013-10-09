@@ -48,6 +48,7 @@ object Config {
   val alwaysKeepCache: Boolean = getProperty("delite.debug.alwaysKeepCache", "true") != "false"
   val gpuBlackList: Array[String] = { val p = getProperty("delite.debug.gpu.blacklist",""); if(p=="") Array() else p.split(",") }
   val gpuWhiteList: Array[String] = { val p = getProperty("delite.debug.gpu.whitelist",""); if(p=="") Array() else p.split(",") }
+  val gpuPerformance: Boolean = getProperty("delite.debug.gpu.perf", "false") != "false"
   val profile: Boolean = getProperty("delite.debug.profile", "false") != "false"
   val printSources: Boolean = getProperty("delite.debug.print.sources", "false") != "false"
 
