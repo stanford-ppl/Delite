@@ -16,29 +16,29 @@ import ppl.dsl.optila.OptiLAExp
 trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
   val IR: OptiLAExp
   import IR._
-  
+
   override def emitExternalNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case e@DenseMatrixTimesVectorBLAS(x,y) =>
       val args = scala.List("%1$s._data", "%2$s._data", "%3$s._data", "%1$s._numRows", "%1$s._numCols", "0", "1")
                  .map { _.format(quote(x), quote(y), quote(sym)) }
-      emitMethodCall(sym, e, BLAS, args)
-      
+      emitMethodCall(sym, e, MKL, args)
+
     case e@DenseMatrixMultiplyBLAS(x,y) =>
       val args = scala.List("%1$s._data", "%2$s._data", "%3$s._data", "%1$s._numRows", "%1$s._numCols", "%2$s._numCols")
                  .map { _.format(quote(x), quote(y), quote(sym)) }
-      emitMethodCall(sym, e, BLAS, args)
-    
+      emitMethodCall(sym, e, MKL, args)
+
     case e@DenseMatrixSigmoidVectorized(in) =>
       val args = scala.List("%1$s._data", "%2$s._data", "0", "%1$s._numRows*%1$s._numCols")
                  .map { _.format(quote(in), quote(sym)) }
-      emitMethodCall(sym, e, BLAS, args)  
-          
+      emitMethodCall(sym, e, MKL, args)
+
     case _ => super.emitExternalNode(sym,rhs)
   }
-    
+
   override def emitExternalLib(rhs: Def[Any]): Unit = rhs match {
     /**
-     * MatrixTimesVector 
+     * MatrixTimesVector
      */
     case e@DenseMatrixTimesVectorBLAS(x,y) =>
       val tp = e.mA.toString
@@ -46,7 +46,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
         case "Double" => "cblas_dgemv"
         case "Float" => "cblas_sgemv"
       }
-      emitInterfaceAndMethod(BLAS, e.funcName, 
+      emitInterfaceAndMethod(MKL, e.funcName,
         scala.List("mat1:Array[%1$s]", "vec2:Array[%1$s]", "vec3:Array[%1$s]", "mat_row:Int", "mat_col:Int", "vec_offset:Int", "vec_stride:Int") map { _.format(tp) },
         scala.List("j%1$sArray mat1", "j%1$sArray vec2", "j%1$sArray vec3", "jint mat_row", "jint mat_col", "jint vec_offset", "jint vec_stride") map { _.format(tp.toLowerCase) },
         """
@@ -65,10 +65,10 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
         	(*env)->ReleasePrimitiveArrayCritical(env, vec2, vec2_ptr, 0);
         	(*env)->ReleasePrimitiveArrayCritical(env, vec3, vec3_ptr, 0);
         }""".format(tp.toLowerCase, func))
-    
-    
+
+
     /**
-     * MatrixMultiply 
+     * MatrixMultiply
      */
     case e@DenseMatrixMultiplyBLAS(x,y) =>
       val tp = e.mA.toString
@@ -76,7 +76,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
         case "Double" => "cblas_dgemm"
         case "Float" => "cblas_sgemm"
       }
-      emitInterfaceAndMethod(BLAS, e.funcName, 
+      emitInterfaceAndMethod(MKL, e.funcName,
         scala.List("mat1:Array[%1$s]", "mat2:Array[%1$s]", "mat3:Array[%1$s]", "mat1_r:Int", "mat1_c:Int", "mat2_c:Int") map { _.format(tp) },
         scala.List("j%1$sArray mat1", "j%1$sArray mat2", "j%1$sArray mat3", "jint mat1_r", "jint mat1_c", "jint mat2_c") map { _.format(tp.toLowerCase) },
         """
@@ -92,10 +92,10 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
         	(*env)->ReleasePrimitiveArrayCritical(env, mat2, mat2_ptr, 0);
         	(*env)->ReleasePrimitiveArrayCritical(env, mat3, mat3_ptr, 0);
         }""".format(tp.toLowerCase, func))
-    
-    
-    /**    
-     * MatrixSigmoid 
+
+
+    /**
+     * MatrixSigmoid
      */
     case e@DenseMatrixSigmoidVectorized(in) =>
       val tp = e.mA.toString
@@ -104,7 +104,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
         case "Float" => "expf"
       }
       // TODO: should be just pure c++, not BLAS lib
-      emitInterfaceAndMethod(BLAS, e.funcName, 
+      emitInterfaceAndMethod(MKL, e.funcName,
         scala.List("vec1:Array[%1$s]", "vec2:Array[%1$s]", "start:Int", "end:Int") map { _.format(tp) },
         scala.List("j%1$sArray vec1", "j%1$sArray vec2", "jint start", "jint end") map { _.format(tp.toLowerCase) },
         """
@@ -121,8 +121,8 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
 
         	(*env)->ReleasePrimitiveArrayCritical(env, vec1, vec1_ptr, 0);
         	(*env)->ReleasePrimitiveArrayCritical(env, vec2, vec2_ptr, 0);
-        }""".format(tp.toLowerCase, func))  
-      
+        }""".format(tp.toLowerCase, func))
+
     case _ => super.emitExternalLib(rhs)
-  }     
+  }
 }
