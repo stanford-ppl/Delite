@@ -17,9 +17,8 @@ trait DeliteTestConfig {
   val MAGICDELIMETER = "!~x02$758209"
 
   val propFile = new File("delite.properties")
-  if (!propFile.exists) throw new TestFailedException("could not find delite.properties", 3)
-  val props = new java.util.Properties()
-  props.load(new FileReader(propFile))
+  val props = new java.util.Properties(System.getProperties)
+  if (propFile.exists) props.load(new FileReader(propFile))
 
   // test parameters
   val verbose = props.getProperty("tests.verbose", "false").toBoolean
