@@ -14,7 +14,7 @@ import java.io.{FileWriter, BufferedWriter, File}
 import ppl.delite.framework.codegen.{Utils, Target}
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.codegen.delite.overrides._
-import ppl.delite.framework.transform.MultiloopSoATransformExp
+import ppl.delite.framework.transform.MultiloopSoATransformWithReduceExp
 import ppl.delite.framework.{DeliteInteractive, DeliteInteractiveRunner, DeliteRestageOps, DeliteRestageOpsExp, DeliteRestageRunner}
 import ppl.delite.framework.codegen.restage.{DeliteCodeGenRestage,TargetRestage}
 
@@ -67,7 +67,7 @@ trait OptiQLCompiler extends OptiQL with IOOps with SeqOps with Variables with W
  */
 trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with TableOpsExp with DateOpsExp with DateImplOpsStandard with QueryableOpsExpOpt with OptiQLMiscOpsExp
   with InputReaderOpsExp with InputReaderImplOpsStandard with DeliteCollectionOpsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteFileReaderOpsExp with DSArrayOpsExp 
-  with DeliteRestageOpsExp with DeliteAllOverridesExp with MultiloopSoATransformExp {
+  with DeliteRestageOpsExp with DeliteAllOverridesExp with MultiloopSoATransformWithReduceExp {
 
   this: DeliteApplication with OptiQLApplication =>
 

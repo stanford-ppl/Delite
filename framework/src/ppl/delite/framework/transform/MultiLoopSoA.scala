@@ -7,42 +7,49 @@ import ppl.delite.framework.Util._
 import scala.virtualization.lms.common._
 import scala.reflect.SourceContext
 
+//NOTE: unwrapping reduces isn't always safe (rFunc may not be separable); only for use in DSLs with appropriate restrictions
+trait MultiloopSoATransformWithReduceExp extends MultiloopSoATransformExp {
+
+  //TODO: merge this into standard SoA transform and check safety
+  override def transformLoop(stm: Stm): Option[Exp[Any]] = stm match {
+    case TP(sym, r:DeliteOpReduceLike[_]) if r.mutable => None // mutable reduces don't work yet
+    case TP(sym, Loop(size, v, body: DeliteReduceElem[a])) => soaReduce[a](size,v,body)(body.mA)
+    case TP(sym, Loop(size, v, body: DeliteHashReduceElem[k,v,cv])) => soaHashReduce[k,v,cv](size,v,body)(body.mK,body.mV,body.mCV)
+    case _ => super.transformLoop(stm)
+  }
+
+}
+
 trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform with DeliteApplication
   with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp { self =>
 
   private val t = new ForwardPassTransformer {
     val IR: self.type = self
-    override def transformStm(stm: Stm): Exp[Any] = stm match {
-      case TP(sym, Loop(size, v, body: DeliteCollectElem[a,i,ca])) => soaCollect[a,i,ca](size,v,body)(body.mA,body.mI,body.mCA) match {
-        case Some(newSym) => stm match {
-          case TP(sym, z:DeliteOpZipWith[_,_,_,_]) if(Config.enableGPUObjReduce) => 
-            encounteredZipWith += newSym -> z
-            printdbg("Register DeliteOpZipWith symbol: " + z.toString + " -> " + newSym.toString)
-            newSym
-          case _ => newSym
-        }
-        case None => super.transformStm(stm)
-      }
-      case TP(sym, r:DeliteOpReduceLike[_]) if r.mutable => super.transformStm(stm) // mutable reduces don't work yet
-      /*case TP(sym, Loop(size, v, body: DeliteReduceElem[a])) => soaReduce[a](size,v,body)(body.mA) match {        
-        case Some(newSym) => newSym
-        case None => super.transformStm(stm)
-      }*/
-      case TP(sym, Loop(size, v, body: DeliteHashReduceElem[k,v,cv])) => soaHashReduce[k,v,cv](size,v,body)(body.mK,body.mV,body.mCV) match {
-        case Some(newSym) => newSym
-        case None => super.transformStm(stm)
-      }
-      /*case TP(sym, s: DeliteOpSingleTask[r]) => unwrapSingleTask(s)(s.mR) match {
-        case Some(newSym) => newSym
-        case None => super.transformStm(stm)
-      }*/
-      case _ => super.transformStm(stm)
+    override def transformStm(stm: Stm): Exp[Any] = transformLoop(stm) match {
+      case Some(newSym) => newSym
+      case None => super.transformStm(stm)
     }
 
     def replace[A](oldExp: Exp[A], newExp: Exp[A]) {
       subst += this(oldExp) -> newExp
       printlog("replacing " + oldExp.toString + " with " + newExp.toString)
     }
+  }
+
+  def transformLoop(stm: Stm): Option[Exp[Any]] = stm match {
+    case TP(sym, Loop(size, v, body: DeliteCollectElem[a,i,ca])) => soaCollect[a,i,ca](size,v,body)(body.mA,body.mI,body.mCA) match {
+      case s@Some(newSym) => stm match {
+        case TP(sym, z:DeliteOpZipWith[_,_,_,_]) if(Config.enableGPUObjReduce) => //TODO: remove this
+          encounteredZipWith += newSym -> z
+          printdbg("Register DeliteOpZipWith symbol: " + z.toString + " -> " + newSym.toString)
+          s
+        case _ => s
+      }
+      case None => None
+    }
+    //TODO: unwrap SingleTask / Composite nodes to expose the struct return type (have to handle Reifys)
+    //case TP(sym, s: DeliteOpSingleTask[r]) => unwrapSingleTask(s)(s.mR)
+    case _ => None
   }
 
   appendTransformer(t) //AoS to SoA should go last, right before fusion
