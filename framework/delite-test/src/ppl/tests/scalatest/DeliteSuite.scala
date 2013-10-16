@@ -148,7 +148,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
   }
 
   private def execTest(app: DeliteTestRunner, args: Array[String], target: String) = {
-    println("EXECUTING(" + target + ")...")
+    println("EXECUTING(" + target + ":" + threads + ")...")
     val name = "test.tmp"
     // Changed mkReport to directly write to a file instead of trying to capture the output stream here.
     // This is to make the C target testing work, because native C stdout is not captured by this.
