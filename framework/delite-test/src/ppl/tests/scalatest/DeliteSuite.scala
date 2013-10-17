@@ -134,8 +134,8 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
         if (verboseDefs) app.globalDefs.foreach { d => //TR print all defs
           println(d)
           val s = d match { case app.TP(sym,_) => sym; case app.TTP(syms,_,_) => syms(0); case _ => sys.error("unknown Stm type: " + d) }
-          val info = s.sourceInfo.drop(3).takeWhile(_.getMethodName != "main")
-          println(info.map(s => s.getFileName + ":" + s.getLineNumber).distinct.mkString(","))
+          val info = s.pos.drop(3).takeWhile(_.methodName != "main")
+          println(info.map(s => s.fileName + ":" + s.line).distinct.mkString(","))
         }
         //assert(!app.hadErrors) //TR should enable this check at some time ...
       }
