@@ -11,6 +11,7 @@ import scala.virtualization.lms.common._
 import scala.collection.mutable.{ ArrayBuffer, SynchronizedBuffer }
 import java.io.{ File, Console => _, _ }
 import java.io.FileSystem
+import scala.reflect.SourceContext
 
 trait DeliteTestConfig {
   // something arbitrary that we should never see in any test's output
@@ -27,9 +28,8 @@ trait DeliteTestConfig {
   val cacheSyms = props.getProperty("tests.cacheSyms", "true").toBoolean
   val javaHome = new File(props.getProperty("java.home", ""))
   val scalaHome = new File(props.getProperty("scala.vanilla.home", ""))
-  val deliteHome = new File(props.getProperty("delite.home",""))
   val runtimeClasses = new File(props.getProperty("runtime.classes", ""))
-  val runtimeExternalProc = false // scalaHome and runtimeClasses only required if runtimeExternalProc is true. should this be configurable? or should we just remove execTestExternal?
+  val runtimeExternalProc = false // javaHome, scalaHome and runtimeClasses only required if runtimeExternalProc is true. should this be configurable? or should we just remove execTestExternal?
   val deliteTestTargets = props.getProperty("tests.targets", "scala").split(",")
   val useBlas = props.getProperty("tests.extern.blas", "false").toBoolean
 }
@@ -42,9 +42,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
   val CHECK_MULTILOOP = true
 
   def validateParameters() {
-    if (!javaHome.exists) throw new TestFailedException("java.home must be a valid path in delite.properties", 3)
-    else if (!deliteHome.exists) throw new TestFailedException("delite.home must be a valid path in delite.properties", 3)
-    else if (!javaBin.exists) throw new TestFailedException("Could not find valid java installation in " + javaHome, 3)
+    if (runtimeExternalProc && !javaBin.exists) throw new TestFailedException("Could not find valid java installation in " + javaHome, 3)
     else if (runtimeExternalProc && !scalaHome.exists) throw new TestFailedException("scala.vanilla.home must be a valid path in delite.proeprties", 3)
     else if (runtimeExternalProc && (!scalaCompiler.exists || !scalaLibrary.exists)) throw new TestFailedException("Could not find valid scala installation in " + scalaHome, 3)
     else if (runtimeExternalProc && !runtimeClasses.exists) throw new TestFailedException("runtime.classes must be a valid path in delite.properties", 3)
@@ -67,10 +65,10 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val args = Array(degName(app))
     app.resultBuffer = new ArrayBuffer[Boolean] with SynchronizedBuffer[Boolean]
 
-    // Enable specified target code generators 
+    // Enable specified target code generators
     for(t <- deliteTestTargets) {
       t match {
-        case "scala" => 
+        case "scala" =>
         case "cuda" => Config.generateCUDA = true; Config.generateCpp = true
         case "cpp" => Config.generateCpp = true
         case "opencl" => Config.generateOpenCL = true; Config.generateCpp = true
@@ -86,7 +84,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
       Config.generateCUDA = true
       stageTest(app)
       val graph = ppl.delite.runtime.Delite.loadDeliteDEG(degName(app))
-      val targets = List("scala","cuda") // Add other targets 
+      val targets = List("scala","cuda") // Add other targets
       for(op <- graph.totalOps if op.isInstanceOf[OP_MultiLoop]) {
         targets foreach { t =>  if(!op.supportsTarget(Targets(t))) assert(false) }
       }
@@ -97,13 +95,13 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     }
 
     // Set runtime parameters for targets and execute runtime
-    for(t <- deliteTestTargets) { 
+    for(t <- deliteTestTargets) {
       t match {
         case "scala" => ppl.delite.runtime.Config.numThreads = threads
         case "cuda" => ppl.delite.runtime.Config.numCuda = 1
         case "cpp" => ppl.delite.runtime.Config.numCpp = threads
         case "opencl" => ppl.delite.runtime.Config.numOpenCL = 1
-        case _ => 
+        case _ =>
       }
       val outStr = execTest(app, args, t) // if (runtimeExternalProc..)?
       checkTest(app, outStr)
@@ -112,17 +110,17 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
         case "cuda" => ppl.delite.runtime.Config.numCuda = 0
         case "cpp" => ppl.delite.runtime.Config.numCpp = 0
         case "opencl" => ppl.delite.runtime.Config.numOpenCL = 0
-        case _ => 
+        case _ =>
       }
     }
   }
 
   private def stageTest(app: DeliteTestRunner) = {
     println("STAGING...")
-    val save = Config.degFilename
-    val buildDir = Config.buildDir
+    val saveDeg = Config.degFilename
+    val saveBuildDir = Config.buildDir
     val saveCacheSyms = Config.cacheSyms
-    val generatedDir = deliteHome + java.io.File.separator + "generated" + java.io.File.separator + uniqueTestName(app)
+    val generatedDir = Config.buildDir + java.io.File.separator + uniqueTestName(app)
     try {
       Config.degFilename = degName(app)
       Config.buildDir = generatedDir
@@ -138,11 +136,11 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
         }
         //assert(!app.hadErrors) //TR should enable this check at some time ...
       }
-    } finally { 
-      // concurrent access check 
+    } finally {
+      // concurrent access check
       assert(Config.buildDir == generatedDir)
-      Config.degFilename = save
-      Config.buildDir = buildDir
+      Config.degFilename = saveDeg
+      Config.buildDir = saveBuildDir
       Config.cacheSyms = saveCacheSyms
     }
   }
@@ -226,10 +224,8 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
   }
 }
 
-// how do we add our code generators? right now we expect a single codegen package being supplied by the dsl.
-// the workaround for now is that the dsl under test must include ArrayBuffer in its code gen
-trait DeliteTestRunner extends DeliteTestModule with DeliteApplication
-  with MiscOpsExp with SynchronizedArrayBufferOpsExp with StringOpsExp {
+trait DeliteTestRunner extends DeliteTestModule with DeliteApplication with DeliteTestOpsExp {
+  def delite_test_strconcat(s1: Rep[String], s2: Rep[String])(implicit pos: SourceContext): Rep[String] = s1 + s2
 
   var resultBuffer: ArrayBuffer[Boolean] = _
 
@@ -237,8 +233,11 @@ trait DeliteTestRunner extends DeliteTestModule with DeliteApplication
 }
 
 // it is not ideal that the test module imports these things into the application under test
-trait DeliteTestModule extends DeliteTestConfig
-  with MiscOps with SynchronizedArrayBufferOps with StringOps with IOOps {
+trait DeliteTestModule extends DeliteTestConfig with DeliteTestOps {
+  // StringOps members we need internally - supplied by StringOpsExp.
+  // These are abstract and renamed so we do not conflict with other ops mixed into a DeliteTestModule.
+  // we should do the same factoring with ArrayBufferOps and IOOps
+  def delite_test_strconcat(s1: Rep[String], s2: Rep[String])(implicit pos: SourceContext): Rep[String]
 
   //var args: Rep[Array[String]]
   def main(): Unit
@@ -262,7 +261,9 @@ trait DeliteTestModule extends DeliteTestConfig
 
   def mkReport(): Rep[Unit] = {
     val out = BufferedWriter(FileWriter(unit("test.tmp")))
-    out.write(unit(MAGICDELIMETER) + (collector mkString unit(",")) + unit(MAGICDELIMETER))
+    val s1 = delite_test_strconcat(unit(MAGICDELIMETER), (collector mkString unit(",")))
+    val s2 = delite_test_strconcat(s1, unit(MAGICDELIMETER))
+    out.write(s2)
     out.close
   }
 
@@ -282,4 +283,13 @@ trait DeliteTestModule extends DeliteTestConfig
 
   def test(): Rep[Unit]
   */
+}
+
+trait DeliteTestOps extends SynchronizedArrayBufferOps with IOOps
+trait DeliteTestOpsExp extends SynchronizedArrayBufferOpsExp with IOOpsExp with StringOpsExp
+
+// how do we add our code generators? right now we expect a single codegen package being supplied by the dsl.
+// the workaround for now is that the dsl under test must include ScalaGenDeliteTest in its code gen package
+trait ScalaGenDeliteTest extends ScalaGenSynchronizedArrayBufferOps with ScalaGenIOOps with ScalaGenStringOps {
+  val IR: DeliteTestOpsExp
 }
