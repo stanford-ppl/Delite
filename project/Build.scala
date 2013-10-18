@@ -40,7 +40,8 @@ object DeliteBuild extends Build {
   val virtBuildSettings = virtBuildSettingsBase ++ Seq(
     scalaSource in Compile <<= baseDirectory(_ / "src"),
     scalaSource in Test <<= baseDirectory(_ / "tests"),
-    parallelExecution in Test := false
+    parallelExecution in Test := false,
+    concurrentRestrictions in Global += Tags.limitAll(1) //we need tests to run in isolation across all projects
   )
 
 
@@ -94,10 +95,7 @@ object DeliteBuild extends Build {
 
   lazy val runtime = Project("runtime", file("runtime"), settings = virtBuildSettings)
 
-  lazy val tests = Project("tests", file("tests"), settings = virtBuildSettingsBase ++ Seq(
-    scalaSource in Test <<= baseDirectory(_ / "src"),
-    parallelExecution in Test := false
-    // don't appear to be able to depend on a different scala version simultaneously, so just using scala-virtualized for everything
-  )) dependsOn(framework, runtime, optiml, optimlApps, deliteTest)
-  //dependsOn(framework % "test->compile;compile->compile", optiml % "test->compile;compile->compile", optiql % "test", optimlApps % "test->compile;compile->compile", runtime % "test->compile;compile->compile")
+  //include all projects that should be built (dependsOn) and tested (aggregate)
+  lazy val tests = (Project("tests", file("project/boot"), settings = virtBuildSettings)
+    dependsOn(optimlApps, optiqlApps, optigraphApps, interopApps) aggregate(framework, deliteTest, optiml, optiql, optigraph))
 }

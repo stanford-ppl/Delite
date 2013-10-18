@@ -46,7 +46,7 @@ trait OptiMLKmeans {
       */
 
       //TODO: mutable reduce with accInit
-      val allWP = indexvector_hashreduce((0::m), i => c(i), i => x(i).Clone.unsafeImmutable, (a:Rep[DenseVector[Double]],b:Rep[DenseVector[Double]]) => a + b)
+      val allWP = indexvector_hashreduce((0::m), i => c(i), i => x(i).Clone, (a:Rep[DenseVector[Double]],b:Rep[DenseVector[Double]]) => a + b)
       val allP = indexvector_hashreduce((0::m), i => c(i), i => 1, (a:Rep[Int],b:Rep[Int]) => a + b)
 
       (0::numClusters, *) { j =>
