@@ -18,21 +18,21 @@ trait OptiLACudaGenExternal extends CudaGenExternalBase {
   import IR._
   
   override def emitExternalNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case e@DenseMatrixTimesVectorBLAS(x,y) =>
-      val args = scala.List("'t'", "%1$s->_numCols", "%1$s->_numRows", "%1$s->_data.data", "%2$s->_data.data", "%3$s->_data.data")
-                 .map { _.format(quote(x), quote(y), quote(sym)) }
+    case e@DenseMatrixTimesVectorBLAS(xR,xC,x,y) =>
+      val args = scala.List("'t'", "%1$s", "%2$s", "%3$s->data", "%4$s->data", "%5$s->data")
+                 .map { _.format(quote(xC), quote(xR), quote(x), quote(y), quote(sym)) }
       emitMethodCall(sym, e, cuBLAS, args)
       registerKernel(scala.List(sym))
 
-    case e@DenseMatrixMultiplyBLAS(x,y) =>
-      val args = scala.List("'n'", "'n'", "%2$s->_numCols", "%1$s->_numRows", "%2$s->_numRows", "1.0", "%2$s->_data.data", "%2$s->_numCols", "%1$s->_data.data", "%1$s->_numCols", "0.0", "%3$s->_data.data", "%3$s->_numCols")
-                 .map { _.format(quote(x), quote(y), quote(sym)) }
+    case e@DenseMatrixMultiplyBLAS(xR,xC,x,yR,yC,y) =>
+      val args = scala.List("'n'", "'n'", "%1$s", "%2$s", "%3$s", "1.0", "%4$s->data", "%1$s", "%5$s->data", "%6$s", "0.0", "%7$s->data", "%1$s")
+                 .map { _.format(quote(yC), quote(xR), quote(yR), quote(y), quote(x), quote(xC), quote(sym)) }
       emitMethodCall(sym, e, cuBLAS, args)
       registerKernel(scala.List(sym))
 
-    case e@DenseMatrixSigmoidVectorized(in) =>
-      val args = scala.List("%1$s->_data.data", "%2$s->_data.data", "%1$s->_numRows*%1$s->_numCols")
-                 .map { _.format(quote(in), quote(sym)) }
+    case e@DenseMatrixSigmoidVectorized(xR,xC,x) =>
+      val args = scala.List("%1$s->data", "%2$s->data", "%3$s*%4$s")
+                 .map { _.format(quote(x),quote(sym),quote(xR),quote(xC)) }
       emitMethodCall(sym, e, cuBLAS, args)
       registerKernel(scala.List(sym))
 
@@ -40,7 +40,7 @@ trait OptiLACudaGenExternal extends CudaGenExternalBase {
   }
     
   override def emitExternalLib(rhs: Def[Any]): Unit = rhs match {
-    case e@DenseMatrixTimesVectorBLAS(x,y) =>
+    case e@DenseMatrixTimesVectorBLAS(xR,xC,x,y) =>
       val tp = e.mA.toString.toLowerCase
       val func = tp match {
         case "double" => "cublasDgemv"
@@ -54,7 +54,7 @@ trait OptiLACudaGenExternal extends CudaGenExternalBase {
   %1$s(transpose, mat_col, mat_row, 1.0, mat1, mat_col, vec2, 1, 0.0, vec3, 1);
 }""".format(func))
 
-   case e@DenseMatrixMultiplyBLAS(x,y) =>
+   case e@DenseMatrixMultiplyBLAS(xR,xC,x,yR,yC,y) =>
       val tp = e.mA.toString.toLowerCase
       val func = tp match {
         case "double" => "cublasDgemm"
@@ -68,7 +68,7 @@ trait OptiLACudaGenExternal extends CudaGenExternalBase {
   %1$s(n1, n2, mat2_col, mat1_row, mat2_row, a, mat2, mat2_col_b, mat1, mat1_col, b, mat3, mat3_col);
 }""".format(func)) 
 
-   case e@DenseMatrixSigmoidVectorized(in) =>
+   case e@DenseMatrixSigmoidVectorized(xR,xC,x) =>
       val tp = e.mA.toString.toLowerCase
       val func = tp match {
         case "double" => "exp"
