@@ -22,6 +22,7 @@ abstract class DeliteOP {
   private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]]
   private[graph] var inputTypesMap: Map[Targets.Value, Map[String,String]]
   private[graph] val stencilMap = new collection.mutable.HashMap[String,Stencil]()
+  private[graph] val supportedTargets = new collection.mutable.ArrayBuffer[Targets.Value]
 
   def getOutputTypesMap = outputTypesMap
   def getInputTypesMap = inputTypesMap
@@ -33,7 +34,7 @@ abstract class DeliteOP {
   def inputType(target: Targets.Value, symbol: String): String = inputTypesMap(target)(symbol)
   def inputType(symbol: String) = inputTypesMap(Targets.Scala)(symbol)
 
-  def supportsTarget(target: Targets.Value) : Boolean = outputTypesMap contains target
+  def supportsTarget(target: Targets.Value) : Boolean = supportedTargets contains target
 
   def getOutputs = outputTypesMap.head._2.keySet - "functionReturn"
 

@@ -167,6 +167,11 @@ object DeliteTaskGraph {
       case other => error("OP Type not recognized: " + other)
     }
 
+    //handle supported targets
+    for (t <- getFieldList(op, "supportedTargets")) {
+      newop.supportedTargets += Targets(t)
+    }
+
     //handle inputs
     val inputs = getFieldList(op, "inputs")
     for(i <- inputs.reverse) {
@@ -206,7 +211,7 @@ object DeliteTaskGraph {
 
     //process target GPU metadata
     for (tgt <- Targets.GPU) {
-      if (resultMap.contains(tgt)) processGPUMetadata(op, newop, tgt)
+      if (newop.supportsTarget(tgt)) processGPUMetadata(op, newop, tgt)
     }
 
     //process kernel variant
@@ -225,19 +230,19 @@ object DeliteTaskGraph {
     val outputTypes = getFieldMap(op, "output-types")
     var resultMap = Map[Targets.Value,Map[String,String]]()
     for (target <- Targets.values) {
-      if (outputTypes.head._2.asInstanceOf[Map[String,String]] contains target.toString) { //target supported by both op and runtime
-        var outputMap = Map[String,String]()
-        for (output <- outputs) {
-          outputMap += output.toString -> getFieldString(getFieldMap(outputTypes, output), target.toString)
-        }
+      var outputMap = Map[String,String]()
+      for (output <- outputs if getFieldMap(outputTypes, output) contains target.toString) {
+        outputMap += output.toString -> getFieldString(getFieldMap(outputTypes, output), target.toString)
+      }
+      if (getFieldList(op, "supportedTargets") contains target.toString) {
         if (op contains "return-types") { //multiple outputs must return via a container type
           outputMap += "functionReturn" -> getFieldString(getFieldMap(op, "return-types"), target.toString)
         }
         else {
           outputMap += "functionReturn" -> outputMap.head._2 //single output can return directly
         }
-        resultMap += target -> outputMap
       }
+      if (outputMap.size > 0) resultMap += target -> outputMap
     }
     resultMap
   }
@@ -248,13 +253,11 @@ object DeliteTaskGraph {
     val inSet = inputTypes.asInstanceOf[Map[String,Map[String,String]]].keySet
 
     for (target <- Targets.values) {
-      if (!inSet.isEmpty && (inputTypes.head._2.asInstanceOf[Map[String,String]] contains target.toString)) {
-        var inputMap = Map[String,String]()
-        for (input <- inSet) {
-          inputMap += input.toString -> getFieldString(getFieldMap(inputTypes, input), target.toString)
-        }
-        inputTypesMap += target -> inputMap
+      var inputMap = Map[String,String]()
+      for (input <- inSet if getFieldMap(inputTypes, input) contains target.toString) {
+        inputMap += input.toString -> getFieldString(getFieldMap(inputTypes, input), target.toString)
       }
+      if (inputMap.size > 0) inputTypesMap += target -> inputMap
     }
     inputTypesMap
   }
