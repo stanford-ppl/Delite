@@ -48,7 +48,6 @@
         <h1 id='title_getting started'>Getting started with CUDA</h1>
         <p style="font-size: 10pt"> The following instructions are for the Unix and OSX platforms. Windows support is coming soon.</p>
 		
-		<p>[2013-03-01] GPU support on optiml-beta branch is not stable. Please use the branch "wip-merge" (also for LMS) for the latest GPU code generation. We will merge it to the main develop branch some time soon. </p>
 		
 		<p> In order to utilize the GPU, Delite requires that <a href="http://developer.nvidia.com/cuda-toolkit">CUDA 3.2 or later</a> be installed.  In addition Delite also requires the CUDA libraries Thrust and cuBLAS.  These libraries are included automatically with the CUDA toolkit download as of CUDA 4.0. </p>
 		
@@ -73,13 +72,13 @@
 		  
 		  <p> Almost done.  Now just open up <code>cuBLAS.xml</code> and modify the <code>&lt;compiler&gt;</code> tag with the path to <code>nvcc</code> and the <code>&lt;arch&gt;</code> tag with your GPU's compute capability just as you did in <code>CUDA.xml</code>. </p>
 
-		  <p> Congratulations! You're now ready to run OptiML applications on the GPU.  You can enable or disable gpu execution for each application.  In order to enable CUDA code generation in the compiler use the <code>"--gpu"</code> flag when calling <code>delitec</code>: </p>
+		  <p> Congratulations! You're now ready to run OptiML applications on the GPU.  You can enable or disable gpu execution for each application.  In order to enable CUDA code generation in the compiler use the <code>"--cuda"</code> flag when calling <code>delitec</code>: </p>
 		  
-		  <div class="highlight"><pre><code class="bash"> delitec AppRunner --gpu </code></pre></div>
+		  <div class="highlight"><pre><code class="bash"> delitec AppRunner --cuda </code></pre></div>
 		  
-		  <p> With this flag the compiler generates both Scala and CUDA versions of the application kernels.  You still have the option to run the application using only the CPU(s) or the CPU(s) and GPU.  In order to utilize the GPU when running the application, add the <code>"--gpu"</code> flag when calling <code>delite</code>: </p>
+		  <p> With this flag the compiler generates both Scala and CUDA versions of the application kernels.  You still have the option to run the application using only the CPU(s) or the CPU(s) and GPU.  In order to utilize the GPU when running the application, add the <code>"--cuda 1"</code> flag when calling <code>delite</code>: </p>
 		  
-		  <div class="highlight"><pre><code class="bash"> delite AppRunner [app_params] --gpu </code></pre></div>
+		  <div class="highlight"><pre><code class="bash"> delite AppRunner [app_params] --cuda 1 </code></pre></div>
 		  <br /><br />
 		  
 		  <h1 id='title_getting started'>Getting started with BLAS</h1>
