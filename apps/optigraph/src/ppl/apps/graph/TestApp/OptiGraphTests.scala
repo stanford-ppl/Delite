@@ -1056,7 +1056,7 @@ trait OptiGraphTests extends OptiGraphApplication {
     //var v = 0.0
     var cond = true
     //val n = G.Node(0)
-    while(cond) {
+    while(readVar(cond)) { // why need explicit readVar?
       diff.setValue(0.0)
       for(t <- G.Nodes) {
         val Val: Rep[Double] = ((1.0 - d) / N) + d * Sum(G.InNbrs(t)){
