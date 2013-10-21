@@ -48,97 +48,125 @@
         <h1 id='title_getting started'>Getting started</h1>
         <p style="font-size: 10pt"> The following instructions are for the Unix and OSX platforms. Windows support is coming soon.</p>
 
-        <p> Delite requires <a href="http://java.com">Java 1.6 or later</a>, <a href="http://python.org">Python 2.6</a>, <a href="http://git-scm.com">git</a> and <a href="https://github.com/harrah/xsbt/wiki">SBT 0.11.3</a>. Instructions for installing
-        these can be found at their respective websites.</p>
-        <br>
-        <div id="warn">
-          <p> Delite currently requires a pre-release version of <a href="/Delite/dists/sbt/0.12.0-Beta2/sbt-launch.jar">sbt.</a> 
-          <br><br>Download this jar and place it in an executable location, e.g. <code>~/bin/</code>. As with other versions of sbt, you will also need a simple shell script to run the jar. Create an executable script named 'sbt' in the same directory, containing the following line (our recommended parameters for running Delite):
-          <br><br>
-          <code>java -Xmx2g -XX:MaxPermSize=1g -XX:ReservedCodeCacheSize=128m -jar `dirname $0`/sbt-launch.jar "$@"</code>
-          <br><br>
-          If you have installed Delite before and are upgrading, you will need to run the command: 
-          <br><br><code>sbt "reboot full"</code><br><br>
-          from the LMS home directory before continuing the rest of the guide.
-          </p>
-        </div>
-       
-      <p>To get started, you first need to
-        download the source for <code>Delite</code> and <code>virtualization-lms-core</code>, the lightweight modular
-        staging library that Delite uses. Delite uses <a href="http://git-scm.com/">git</a> for version control (see <a href="http://book.git-scm.com/2_installing_git.html">here</a> for installation instructions).</p>
-      <p>
-        First, make a copy of the repository on your machine:
-        </p><p>
-        <div class="highlight"><pre><code class="bash">git clone git://github.com/stanford-ppl/Delite.git
-git clone git://github.com/TiarkRompf/virtualization-lms-core.git</code></pre></div> 
+        <h2 id='title_from binary'>From Binary</h2>
+        <p> <a href="downloads/optiml-0.3.1-alpha.tgz">Download the latest version of OptiML (0.3.1-alpha)</a> </p>
+        <p> Extract the distribution: </p>
+        <div class="highlight"><pre><code class="bash">tar -xzf optiml-0.3.1-alpha.tgz</code></pre></div>
+        <p> Add OptiML to your path: </p>
+        <div class="highlight"><pre><code class="bash">cd optiml-0.3.1-alpha
+export PATH=$PWD/bin:$PATH</code></pre></div>
+        <p> Run the OptiML REPL: </p>
+        <div class="highlight"><pre><code class="bash">optiml</code></pre></div>
+
+        <p> The first time you run the REPL, it will take a couple of minutes to download OptiML's dependencies. It will also take a short period to load OptiML 
+        inside the REPL. Because OptiML is an embedded DSL inside Scala, the OptiML REPL is the Scala REPL with OptiML types and operations pre-loaded. To start playing,
+        create a new DenseVector or new DenseMatrix: </p>
+
+        <div class="highlight"><pre><code class="scala">val m = DenseMatrix.rand(10,10)
+val v = DenseVector.rand(10)
+v+v</code></pre></div>
+
+        <p> Example applications are distributed with OptiML in the <code>apps</code> folder. To run an application, first we need to compile them: </p>
+        <div class="highlight"><pre><code class="bash">sbt compile</code></pre></div>
+        <p> Next, we can either run an interpreted version of our application directly, or <i>stage</i> it, to run DSL compilation and generate code for different targets.
+        The interpreter version is just a pure Scala library that can be used to develop and prototype before switching to the Delite version for high performance.
+        To run the interpreter version of logistic regression, run: </p>
         
-        <p>Next, we need to compile LMS so Delite can use it. From the same directory where we ran <code>git clone</code>, type </p> 
+        <div class="highlight"><pre><code class="bash">delitec LogRegInterpreter [input file] [output file]</code></pre></div>
+
+        <p> The logistic regression application is located in <code>apps/OptiML/src/LogReg.scala</code>. It expects a white-space delimited matrix of floating point values (one row per line)
+        as its input, and writes its output as a vector with one entry per line. </p>
+
+        <p> To run the Delite version of the application, we first <i>stage</i> it using <code>delitec</code>, and then run it using <code>delite</code>: </p>
+
+        <div class="highlight"><pre><code class="bash">delitec LogRegCompiler
+delite LogRegCompiler [input file] [output file] -t [num threads]
+</code></pre></div>
+
+        <p> You should notice that this version runs significantly faster than the interpreter version. To see the code that OptiML generated, look inside the <code>generated/</code> folder.
+        For example, with default arguments, we only attempt to generate parallel Scala kernels, which are located in <code>generated/scala/kernels</code>. Run </p>
+
+        <div class="highlight"><pre><code class="bash">delitec --help
+delite --help
+</code></pre></div>
+
+        <p> to see a list of options you can use when compiling and running the Delite high performance version of your application. </p>
+
+        <p> Good luck and happy hacking! Contact us at <a href=mailto:optiml@googlegroups.com>optiml@googlegroups.com</a> if you have any questions or run into any problems. </p>
+
+
+        <h2 id='title_from source'>From Source</h2>
+        <p> Delite requires <a href="http://java.com">Java 1.6 or later</a>, <a href="http://python.org">Python 2.6</a>, <a href="http://git-scm.com">git</a> and <a href="http://www.scala-sbt.org/">SBT 0.12</a>. Instructions for installing
+        these can be found at their respective websites. Be sure to increase the default heap size for your <code>sbt</code> executable script; a command that works well on most machines is:       
+       <p><div class="highlight" style="overflow: scroll"><pre><code class="bash">java -Xmx4g -XX:MaxPermSize=1g -XX:ReservedCodeCacheSize=128m -jar `dirname $0`/sbt-launch.jar "$@"</pre></code></div></p>
+        </p>
+      <p>To get started, you first need to
+        download the source for <code>virtualization-lms-core</code>, <code>Delite</code> and <code>Forge</code>. These three libraries provide 1) staging support to embed DSLs in scala, 2) a parallel and heterogeneous
+        compiler, and 3) the meta DSL that Delite DSLs are implemented in, respectively. Delite uses <a href="http://git-scm.com/">git</a> for version control (see <a href="http://book.git-scm.com/2_installing_git.html">here</a> for installation instructions).</p>
+      <p>
+        First, make a copy of the repositories on your machine:
+        </p><p>
+        <div class="highlight"><pre><code class="bash">git clone git@github.com:TiarkRompf/virtualization-lms-core.git
+git clone git@github.com:stanford-ppl/Delite.git 
+git clone git@github.com:stanford-ppl/Forge.git</code></pre></div>         
+        <p>Next, we need to compile each project and make them available to OptiML as a dependency. We'll start with LMS. From the same directory where we ran <code>git clone</code>, type </p> 
         <div class="highlight"><pre><code class="bash">cd virtualization-lms-core
-git checkout optiml-beta
+git checkout delite-develop
 sbt publish-local
 </code></pre></div>
 
-        <p> Now we are ready to compile and run Delite. Navigate back to the Delite directory and checkout the correct branch: </p>
+        <p> Now we are ready to compile Delite. Navigate back to the Delite directory and run: </p>
 <div class="highlight"><pre><code class="bash">cd ../Delite
-git checkout optiml-beta
-sbt clean
+sbt update
+sbt "; project framework; publish-local; project runtime; publish-local"
 </code></pre></div>
 
-        <p> The Delite repository currently includes several modules: </p>
-        <ol>
-          <li> <b>Applications:</b> these are example Delite applications written in a Delite DSL
-          <li> <b>DSLs:</b> prototype Delite DSLs (the main one right now is OptiML)
-          <li> <b>Framework:</b> The Delite Compiler Framework
-          <li> <b>Runtime:</b> The Delite Runtime
-          <li> <b>Tests:</b> tests for all Delite modules
-        </ol>
-
-        <p> For now, we'll get you up and running simple applications in the Delite environment so you can see what's going on.
-        If you are using IDEA, make sure that you have the <code>framework</code>, <code>dsls</code>, and
-        <code>virtualization-lms-core</code> modules in your classpath. Also make sure that you are using
-        the <code>scala-virtualized</code> compiler. The rest of this guide will assume a UNIX/bash environment and
-        use SBT and our shell scripts, but as long as IDEA is configured correctly, you should be able to follow along.
-        See <a href="source.html">here</a> for detailed IDEA build instructions.
-        </p>
-       <p>The easiest way to compile Delite and OptiML is to use Delite's build scripts. From the Delite root directory, they can be added to your path as follows: <p>
-<div class="highlight"><pre><code class="bash"> export PATH=$PATH:$PWD/bin</code></pre></div>
-
-        <p> Delite scripts require the JAVA_HOME environment variable to be set. If it is not already, you will need to set it: </p>
-<div class="highlight"><pre><code class="bash">export JAVA_HOME=[absolute path of Java installation] </code></pre></div> 
-
-        <p> We are all set to compile Delite and OptiML. This can be done simply by running thei following script, which simply uses SBT to compile the required projects. </p>
-<div class="highlight"><pre><code class="bash">build-optiml</code></pre></div> 
+        <p> We're almost done. Now we need to compile Forge, and run it to generate the most recent OptiML version: </p>
+<div class="highlight"><pre><code class="bash">cd ../Forge
+sbt update
+export FORGE_HOME=$PWD
+bin/update ppl.dsl.forge.examples.optiml.OptiMLDSLRunner OptiML
+</code></pre></div>
 
         <p>
-        Now we are ready to write "hello world" in OptiML. Existing OptiML applications are located in the <code>apps/optiml/src</code> directory from the root of the Delite repository. It is
+        The OptiML distribution is now located in the directory <code>$FORGE_HOME/published/OptiML</code>. We can run applications from there, or copy this directory
+        somewhere else (e.g. <code>~/OptiML</code>). For now, we'll assume we want to run from within the Forge directory tree (see <a href="https://github.com/stanford-ppl/Forge#using-an-existing-forge-dsl">the Forge instructions</a>)
+        for more detailed information on this setup.
+        </p>        
+        <p>        
+        Now we are ready to write "hello world" in OptiML. Existing OptiML applications are located in the <code>apps/OptiML/src</code> directory from the root of the Delite repository. It is
         easiest to add your application here, but you can add it anywhere you want as long as you update the SBT configuration to point to your new location. For now, let's open up a file
-        in <code>apps/optiml/src</code> called 'HelloWorld.scala' and copy this text in:
+        in <code>apps/OptiML/src</code> called 'HelloWorld.scala' and copy this text in:
         </p>
-        <div class="highlight"><pre><code class="scala"><span class="k">import</span> <span class="nn">ppl.dsl.optiml._</span>
-<span class="k">object</span> <span class="nc">HelloWorldRunner</span> <span class="k">extends</span> <span class="nc">OptiMLApplicationRunner</span> <span class="k">with</span> <span class="nc">HelloWorld</span> 
+        <div class="highlight"><pre><code class="scala"><span class="k">import</span> <span class="nn">optiml.compiler._</span>
+<span class="k">import</span> <span class="nn">optiml.library._</span>
+<span class="k">import</span> <span class="nn">optiml.shared._</span>
+
+<span class="k">object</span> <span class="nc">HelloWorldInterpreter</span> <span class="k">extends</span> <span class="nc">OptiMLApplicationInterpreter</span> <span class="k">with</span> <span class="nc">HelloWorld</span> 
+<span class="k">object</span> <span class="nc">HelloWorldCompiler</span> <span class="k">extends</span> <span class="nc">OptiMLApplicationCompiler</span> <span class="k">with</span> <span class="nc">HelloWorld</span> 
 <span class="k">trait</span> <span class="nc">HelloWorld</span> <span class="k">extends</span> <span class="nc">OptiMLApplication</span> <span class="o">{</span> 
   <span class="k">def</span> <span class="n">main() = println("</span><span class="s">hello world</span><span class="n">")</span>
-<span class="o">}</span>
-</pre></code></div>
+<span class="o">}</span></pre></code></div>
         <p>
+        OptiML comes with two versions: an interpreter, which is a pure Scala library implementation, and the compiler, which is the Delite implementation.
         All Delite applications have three phases: compiling (Scala), staging (DSL compilation), and executing (runtime). The first step, running the scala compiler,
         checks your application for syntactic and type correctness. Staging is where the main compilation happens: the DSL builds an IR of the program, optimizes it,
         and generates an execution graph along with code for multiple targets (e.g. Scala and CUDA). Finally, the Delite runtime reads in the execution graph and
-        generated kernels and executes the application.      
+        generated kernels and executes the application.
         </p>
         <p>
-        So without further ado, let's get to it. Starting from the root of the Delite repository, first compile using SBT (alternative, just run <code>build-optiml</code> again):
+        Since Delite compilation can take a while (but produces high performance code), the recommended strategy is to use the OptiML interpreter while developing and
+        prototyping, and then run the Delite version to scale out to larger datasets or heterogeneous hardware.
         </p>
-<div class="highlight"><pre><code class="bash">sbt "; project optiml-apps; compile"</code></pre></div> 
+        <p> So without further ado, let's get to it. Starting from the root of the Forge repository, first run the interpreter version: </p>
+<p><div class="highlight" style="overflow: scroll"><pre><code class="bash">bin/update -s 3 -r HelloWorldInterpreter ppl.dsl.forge.examples.optiml.OptiMLDSLRunner OptiML</code></pre></div></p>
+        <p> If all went well, you should see <code>hello world</code> printed to the console! </p>
+        <p> Now let's run the Delite version. Delite scripts require the JAVA_HOME environment variable to be set. If it is not already, you will need to set it: </p>
+<div class="highlight"><pre><code class="bash">export JAVA_HOME=[absolute path of Java installation] </code></pre></div> 
+        <p> Now we can run the compiler version simply by changing the parameters passed to the update script: </p>
         <p>
-        Next, we need to stage the application. We do this using the <code>delitec</code> script, where the argument to the script is the name of the <code>Runner</code> object that defines our application. Note that our <code>HelloWorld</code> application does not have a package, but if it does, we would need to include that. For example, to run the GDA application in OptiML, we would use <code>ppl.apps.ml.GDARunner</code>.  Of course, there is no magic here (it is just a Python script - look inside if you are interested in seeing what's happening).
-        </p>
-<div class="highlight"><pre><code class="bash">delitec HelloWorldRunner</code></pre></div> 
-        <p>The generated execution graph will be in 'HelloWorldRunner.deg'. Also look around in the folder 'generated/' - it contains code OptiML generated!</p>
-        <p>The last thing we need to do is execute our generated program (phase three). To do this, we invoke the Delite runtime using:</p><p>
-        <div class="highlight"><pre><code class="bash">delite HelloWorldRunner</code></pre></div>
-        </p>
-        <p>
+        <div class="highlight" style="overflow: scroll"><pre><code class="bash">bin/update -s 3 -d -r HelloWorldCompiler ppl.dsl.forge.examples.optiml.OptiMLDSLRunner OptiML</code></pre></div> 
+        </p><p>
         You should see output like the following:
         <div class="highlight"><pre><code class="bash">Delite Runtime executing with the following arguments:
 HelloWorldRunner.deg
@@ -149,8 +177,8 @@ hello world
 </code></pre></div>
       </p>
       <p>
-      Congratulations! You just ran your first OptiML application. Take some time to look at the generated DEG file, and the generated
-      kernels inside generated/ to see what went on behind the scenes.</p>
+      Congratulations! You just ran your first OptiML application. The generated execution graph will be in <code>published/OptiML/HelloWorldRunner.deg</code>. Also look around in the folder <code>published/OptiML/generated/</code> - it contains code OptiML generated!
+      Take some time to look at the generated DEG file, and the generated kernels to see what went on behind the scenes.</p>
 
 	  <p> Delite is capable of using CUDA to execute applications on the GPU as well as BLAS to accelerate certain matrix operations on the CPU.  These features require some additional setup in order to work with your environment. <a href="getting_started_native.html"> Click here for instructions.</a> </p>
       </div>
