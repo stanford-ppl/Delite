@@ -49,11 +49,11 @@
         <p style="font-size: 10pt"> The following instructions are for the Unix and OSX platforms. Windows support is coming soon.</p>
 
         <h2 id='title_from binary'>From Binary</h2>
-        <p> <a href="downloads/optiml-0.3.1-alpha.tgz">Download the latest version of OptiML (0.3.1-alpha)</a> </p>
+        <p> <a href="downloads/optiml-0.3.2-alpha.tgz">Download the latest version of OptiML (0.3.2-alpha)</a> </p>
         <p> Extract the distribution: </p>
-        <div class="highlight"><pre><code class="bash">tar -xzf optiml-0.3.1-alpha.tgz</code></pre></div>
+        <div class="highlight"><pre><code class="bash">tar -xzf optiml-0.3.2-alpha.tgz</code></pre></div>
         <p> Add OptiML to your path: </p>
-        <div class="highlight"><pre><code class="bash">cd optiml-0.3.1-alpha
+        <div class="highlight"><pre><code class="bash">cd optiml-0.3.2-alpha
 export PATH=$PWD/bin:$PATH</code></pre></div>
         <p> Run the OptiML REPL: </p>
         <div class="highlight"><pre><code class="bash">optiml</code></pre></div>
@@ -118,7 +118,8 @@ sbt publish-local
         <p> Now we are ready to compile Delite. Navigate back to the Delite directory and run: </p>
 <div class="highlight"><pre><code class="bash">cd ../Delite
 sbt update
-sbt "; project framework; publish-local; project runtime; publish-local"
+sbt "; project framework; publish-local; project runtime; publish-local; project delite-test; publish-local"
+export DELITE_HOME=$PWD
 </code></pre></div>
 
         <p> We're almost done. Now we need to compile Forge, and run it to generate the most recent OptiML version: </p>
