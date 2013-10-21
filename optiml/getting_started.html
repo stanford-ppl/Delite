@@ -84,13 +84,19 @@ delite LogRegCompiler [input file] [output file] -t [num threads]
 </code></pre></div>
 
         <p> You should notice that this version runs significantly faster than the interpreter version. To see the code that OptiML generated, look inside the <code>generated/</code> folder.
-        For example, with default arguments, we only attempt to generate parallel Scala kernels, which are located in <code>generated/scala/kernels</code>. Run </p>
+        With default arguments, we only attempt to generate parallel Scala kernels, which are located in <code>generated/scala/kernels</code>. Run </p>
 
         <div class="highlight"><pre><code class="bash">delitec --help
 delite --help
 </code></pre></div>
 
-        <p> to see a list of options you can use when compiling and running the Delite high performance version of your application. </p>
+        <p> to see a list of options you can use when compiling and running the Delite high performance version of your application. 
+        For example, to generate C++ kernels in addition to Scala kernels for logistic regression, we would use: </p>
+        <div class="highlight"><pre><code class="bash">delitec LogRegCompiler --cpp
+delite LogRegCompiler [input file] [output file] --cpp [num threads]
+</code></pre></div>
+
+        <p> The generated C++ kernels will be located in <code>generated/cpp/kernels</code>. In order to use the C++ and CUDA code generators, the configuration files in <code>config/delite/</code> must have correct paths. </p>
 
         <p> Good luck and happy hacking! Contact us at <a href=mailto:optiml@googlegroups.com>optiml@googlegroups.com</a> if you have any questions or run into any problems. </p>
 
