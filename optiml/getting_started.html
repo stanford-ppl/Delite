@@ -72,15 +72,15 @@ v+v</code></pre></div>
         The interpreter version is just a pure Scala library that can be used to develop and prototype before switching to the Delite version for high performance.
         To run the interpreter version of logistic regression, run: </p>
         
-        <div class="highlight"><pre><code class="bash">delitec LogRegInterpreter [input file] [output file]</code></pre></div>
+        <div class="highlight"><pre><code class="bash">delitec LogRegInterpreter [input training data file] [input label file]</code></pre></div>
 
-        <p> The logistic regression application is located in <code>apps/OptiML/src/LogReg.scala</code>. It expects a white-space delimited matrix of floating point values (one row per line)
-        as its input, and writes its output as a vector with one entry per line. </p>
+        <p> The logistic regression application is located in <code>apps/OptiML/src/LogReg.scala</code>. It expects a white-space delimited matrix of floating point values (one row per line) for
+        the training data and a vector with one entry per line (either 0 or 1 representing the classification of the corresponding data element) as its input. </p>
 
         <p> To run the Delite version of the application, we first <i>stage</i> it using <code>delitec</code>, and then run it using <code>delite</code>: </p>
 
         <div class="highlight"><pre><code class="bash">delitec LogRegCompiler
-delite LogRegCompiler [input file] [output file] -t [num threads]
+delite LogRegCompiler [input training data file] [input label input label] -t [num threads]
 </code></pre></div>
 
         <p> You should notice that this version runs significantly faster than the interpreter version. To see the code that OptiML generated, look inside the <code>generated/</code> folder.
@@ -93,7 +93,7 @@ delite --help
         <p> to see a list of options you can use when compiling and running the Delite high performance version of your application. 
         For example, to generate C++ kernels in addition to Scala kernels for logistic regression, we would use: </p>
         <div class="highlight"><pre><code class="bash">delitec LogRegCompiler --cpp
-delite LogRegCompiler [input file] [output file] --cpp [num threads]
+delite LogRegCompiler [input training data file] [input label file] --cpp [num threads]
 </code></pre></div>
 
         <p> The generated C++ kernels will be located in <code>generated/cpp/kernels</code>. In order to use the C++ and CUDA code generators, the configuration files in <code>config/delite/</code> must have correct paths. </p>
@@ -112,9 +112,9 @@ delite LogRegCompiler [input file] [output file] --cpp [num threads]
       <p>
         First, make a copy of the repositories on your machine:
         </p><p>
-        <div class="highlight"><pre><code class="bash">git clone git@github.com:TiarkRompf/virtualization-lms-core.git
-git clone git@github.com:stanford-ppl/Delite.git 
-git clone git@github.com:stanford-ppl/Forge.git</code></pre></div>         
+        <div class="highlight"><pre><code class="bash">git clone https://github.com/TiarkRompf/virtualization-lms-core.git
+git clone https://github.com/stanford-ppl/Delite.git 
+git clone https://github.com/stanford-ppl/Forge.git</code></pre></div>         
         <p>Next, we need to compile each project and make them available to OptiML as a dependency. We'll start with LMS. From the same directory where we ran <code>git clone</code>, type </p> 
         <div class="highlight"><pre><code class="bash">cd virtualization-lms-core
 git checkout delite-develop
@@ -122,7 +122,7 @@ sbt publish-local
 </code></pre></div>
 
         <p> Now we are ready to compile Delite. Navigate back to the Delite directory and run: </p>
-<div class="highlight"><pre><code class="bash">cd ../Delite
+<div class="highlight" style="overflow: scroll"><pre><code class="bash">cd ../Delite
 sbt update
 sbt "; project framework; publish-local; project runtime; publish-local; project delite-test; publish-local"
 export DELITE_HOME=$PWD
@@ -137,8 +137,8 @@ bin/update ppl.dsl.forge.examples.optiml.OptiMLDSLRunner OptiML
 
         <p>
         The OptiML distribution is now located in the directory <code>$FORGE_HOME/published/OptiML</code>. We can run applications from there, or copy this directory
-        somewhere else (e.g. <code>~/OptiML</code>). For now, we'll assume we want to run from within the Forge directory tree (see <a href="https://github.com/stanford-ppl/Forge#using-an-existing-forge-dsl">the Forge instructions</a>)
-        for more detailed information on this setup.
+        somewhere else (e.g. <code>~/OptiML</code>). For now, we'll assume we want to run from within the Forge directory tree (see <a href="https://github.com/stanford-ppl/Forge#using-an-existing-forge-dsl">the Forge instructions</a>
+        for more detailed information on this setup).
         </p>        
         <p>        
         Now we are ready to write "hello world" in OptiML. Existing OptiML applications are located in the <code>apps/OptiML/src</code> directory from the root of the Delite repository. It is
