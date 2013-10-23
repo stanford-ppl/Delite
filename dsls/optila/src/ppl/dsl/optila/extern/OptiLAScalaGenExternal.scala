@@ -18,19 +18,19 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
   import IR._
 
   override def emitExternalNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case e@DenseMatrixTimesVectorBLAS(x,y) =>
-      val args = scala.List("%1$s._data", "%2$s._data", "%3$s._data", "%1$s._numRows", "%1$s._numCols", "0", "1")
-                 .map { _.format(quote(x), quote(y), quote(sym)) }
+    case e@DenseMatrixTimesVectorBLAS(xR,xC,x,y) =>
+      val args = scala.List("%1$s", "%2$s", "%3$s", "%4$s", "%5$s", "0", "1")
+                 .map { _.format(quote(x), quote(y), quote(sym), quote(xR), quote(xC)) }
       emitMethodCall(sym, e, MKL, args)
 
-    case e@DenseMatrixMultiplyBLAS(x,y) =>
-      val args = scala.List("%1$s._data", "%2$s._data", "%3$s._data", "%1$s._numRows", "%1$s._numCols", "%2$s._numCols")
-                 .map { _.format(quote(x), quote(y), quote(sym)) }
+    case e@DenseMatrixMultiplyBLAS(xR,xC,x,yR,yC,y) =>
+      val args = scala.List("%1$s", "%2$s", "%3$s", "%4$s", "%5$s", "%6$s")
+                 .map { _.format(quote(x), quote(y), quote(sym), quote(xR), quote(xC), quote(yC)) }
       emitMethodCall(sym, e, MKL, args)
 
-    case e@DenseMatrixSigmoidVectorized(in) =>
-      val args = scala.List("%1$s._data", "%2$s._data", "0", "%1$s._numRows*%1$s._numCols")
-                 .map { _.format(quote(in), quote(sym)) }
+    case e@DenseMatrixSigmoidVectorized(xR,xC,x) =>
+      val args = scala.List("%1$s", "%2$s", "0", "%3$s*%4$s")
+                 .map { _.format(quote(x),quote(sym),quote(xR),quote(xC)) }
       emitMethodCall(sym, e, MKL, args)
 
     case _ => super.emitExternalNode(sym,rhs)
@@ -40,7 +40,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
     /**
      * MatrixTimesVector
      */
-    case e@DenseMatrixTimesVectorBLAS(x,y) =>
+    case e@DenseMatrixTimesVectorBLAS(xR,xC,x,y) =>
       val tp = e.mA.toString
       val func = tp match {
         case "Double" => "cblas_dgemv"
@@ -70,7 +70,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
     /**
      * MatrixMultiply
      */
-    case e@DenseMatrixMultiplyBLAS(x,y) =>
+    case e@DenseMatrixMultiplyBLAS(xR,xC,x,yR,yC,y) =>
       val tp = e.mA.toString
       val func = tp match {
         case "Double" => "cblas_dgemm"
@@ -97,7 +97,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
     /**
      * MatrixSigmoid
      */
-    case e@DenseMatrixSigmoidVectorized(in) =>
+    case e@DenseMatrixSigmoidVectorized(xR,xC,x) =>
       val tp = e.mA.toString
       val func = tp match {
         case "Double" => "exp"

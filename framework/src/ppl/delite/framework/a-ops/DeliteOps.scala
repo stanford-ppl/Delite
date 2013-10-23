@@ -13,7 +13,7 @@ import ppl.delite.framework.analysis.StencilExp
 
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
 trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with FunctionBlocksExp with IfThenElseFatExp
-    with PrimitiveOpsExp with VariantsOpsExp with DeliteCollectionOpsExp with DeliteReductionOpsExp with DeliteArrayOpsExp with StencilExp
+    with PrimitiveOpsExp with VariantsOpsExp with DeliteCollectionOpsExp with DeliteReductionOpsExp with DeliteArrayOpsExp with DeliteArrayFatExp with StencilExp
     with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp with StaticDataExp {
 
     val encounteredZipWith = new scala.collection.mutable.HashMap[Exp[Any], DeliteOpZipWith[_,_,_,_]]()
@@ -2863,7 +2863,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     emitHashReduceElemProcess(op, symList)
     (symList zip op.body) foreach {
       case (sym, elem:DeliteCollectElem[_,_,_]) =>
-        val freeVars = (getFreeVarBlock(Block(Combine((List(elem.func,elem.update)++elem.cond).map(getBlockResultFull))),List(elem.eV,elem.allocVal,op.v,sym))++List(sym)).filter(_ != op.size).distinct
+        val freeVars = (getFreeVarBlock(Block(Combine((List(elem.func,elem.update,elem.buf.appendable)++elem.cond).map(getBlockResultFull))),List(elem.eV,elem.allocVal,op.v,sym))++List(sym)).filter(_ != op.size).distinct
         val inputs = remapInputs(freeVars) 
         val e = metaData.outputs.get(sym).get
         e.funcs += "process" -> freeVars.map(quote)
@@ -3229,9 +3229,8 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       if (!deliteKernel) {  //In the process of generating operations for deliteKernel type kernels (allow SingleTask to be inlined)
         emitBlock(b)
         if(!isVoidType(sym.tp)) {
-          stream.println(addTab() + "%s %s = %s;".format(remap(sym.tp),quote(sym),quote(getBlockResult(b))))
-          //if(processingHelperFunc && !isPrimitiveType(sym.tp))
-          //  stream.println(addTab() + "%s *%s_ptr = %s_ptr;".format(remap(sym.tp),quote(sym),quote(getBlockResult(b))))  
+          emitValDef(sym, quote(getBlockResult(b)))
+          emitPtrDef(sym, getBlockResult(b))
         }
       }
       else {

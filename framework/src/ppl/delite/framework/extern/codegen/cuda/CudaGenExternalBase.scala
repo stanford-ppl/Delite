@@ -49,5 +49,11 @@ trait CudaGenExternalBase extends GenericGenExternal with CudaGenFat with CudaGe
       global + "\n" + funcSignature + body
     )
   }
+
+  override def getDataStructureHeaders(): String = {
+    val out = new StringBuilder
+    out.append("#include \"library.h\"\n")
+    super.getDataStructureHeaders() + out.toString
+  }
      
 }

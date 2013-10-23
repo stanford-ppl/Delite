@@ -316,26 +316,26 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   //   val a = implicitly[Arith[A]]
   // }
 
-  case class DenseMatrixMultiplyBLAS[A:Manifest:Arith](x: Exp[DenseMatrix[A]], y: Exp[DenseMatrix[A]]) extends DeliteOpExternal[DenseMatrix[A]] {
-    override def inputs = scala.List(x,y)
-    def alloc = DenseMatrix[A](x.numRows, y.numCols)
+  case class DenseMatrixMultiplyBLAS[A:Manifest:Arith](xR: Exp[Int], xC: Exp[Int], x: Exp[DeliteArray[A]], yR: Exp[Int], yC: Exp[Int], y: Exp[DeliteArray[A]]) extends DeliteOpExternal[DeliteArray[A]] {
+    override def inputs = scala.List(xR,xC,x,yR,yC,y)
+    def alloc = DeliteArray[A](xR * yC)
     val funcName = "matMult"
 
     val mA = manifest[A]
     val a = implicitly[Arith[A]]
   }
 
-  case class DenseMatrixTimesVectorBLAS[A:Manifest:Arith](x: Exp[DenseMatrix[A]], y: Exp[DenseVector[A]]) extends DeliteOpExternal[DenseVector[A]] {
+  case class DenseMatrixTimesVectorBLAS[A:Manifest:Arith](xR: Exp[Int], xC: Exp[Int], x: Exp[DeliteArray[A]], y: Exp[DeliteArray[A]]) extends DeliteOpExternal[DeliteArray[A]] {
     override def inputs = scala.List(x,y)
-    def alloc = Vector[A](x.numRows, unit(false))
+    def alloc = DeliteArray[A](xR)
     val funcName = "matMultV"
 
     val mA = manifest[A]
     val a = implicitly[Arith[A]]    
   }
   
-  case class DenseMatrixSigmoidVectorized[A:Manifest](in: Exp[DenseMatrix[A]]) extends DeliteOpExternal[DenseMatrix[A]] {
-    def alloc = DenseMatrix[A](in.numRows, in.numCols)    
+  case class DenseMatrixSigmoidVectorized[A:Manifest](xR: Exp[Int], xC: Exp[Int], x: Exp[DeliteArray[A]]) extends DeliteOpExternal[DeliteArray[A]] {
+    def alloc = DeliteArray[A](xR * xC)    
     val funcName = "matSigmoid"
     
     val mA = manifest[A]
@@ -393,7 +393,7 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   def densematrix_removerows[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], len: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(x)(DenseMatrixRemoveRows(x,pos,len))
   def densematrix_removecols[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], len: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(x)(DenseMatrixRemoveCols(x,pos,len))
   def densematrix_multiply[A:Manifest:Arith](x: Exp[DenseMatrix[A]], y: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = {
-    if (Config.useBlas && (manifest[A] == manifest[Double] || manifest[A] == manifest[Float])) reflectPure(DenseMatrixMultiplyBLAS(x,y))
+    if (Config.useBlas && (manifest[A] == manifest[Double] || manifest[A] == manifest[Float])) reflectPure(DenseMatrixObjectNewImm(reflectPure(DenseMatrixMultiplyBLAS(x.numRows,x.numCols,densematrix_raw_data(x),y.numRows,y.numCols,densematrix_raw_data(y))),x.numRows,y.numCols))
     else {
       (x.numRows,y.numRows) match {
         case (Const(3),Const(3)) if Config.generateCUDA => reflectPure(DenseMatrixMultiply3by3[A](x,y))
@@ -402,18 +402,24 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     }
   }
   def densematrix_times_vector[A:Manifest:Arith](x: Exp[DenseMatrix[A]], y: Exp[DenseVector[A]])(implicit ctx: SourceContext) = {
-    if (Config.useBlas && (manifest[A] == manifest[Double] || manifest[A] == manifest[Float])) reflectPure(DenseMatrixTimesVectorBLAS(x,y))
+    if (Config.useBlas && (manifest[A] == manifest[Double] || manifest[A] == manifest[Float])) reflectPure(DenseVectorNewImm(reflectPure(DenseMatrixTimesVectorBLAS(x.numRows,x.numCols,densematrix_raw_data(x),densevector_raw_data(y))),x.numRows,unit(false)))
     else reflectPure(MatrixTimesVector[A,DenseVector[A]](x,y))
   }
   
   def densematrix_inverse[A:Manifest](x: Exp[DenseMatrix[A]])(implicit conv: Exp[A] => Exp[Double], ctx: SourceContext) = reflectPure(DenseMatrixInverse(x))
   
   def densematrix_sigmoid[A:Manifest](x: Exp[DenseMatrix[A]])(implicit conv: Exp[A] => Exp[Double], ctx: SourceContext) = {
-    if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(DenseMatrixSigmoidVectorized(x.asInstanceOf[Exp[DenseMatrix[Double]]]))    
+    if (Config.useBlas && manifest[A] == manifest[Double]) {
+      val r = reflectPure(DenseMatrixSigmoidVectorized(x.numRows,x.numCols,densematrix_raw_data(x.asInstanceOf[Exp[DenseMatrix[Double]]])))
+      reflectPure(DenseMatrixObjectNewImm(r,x.numRows,x.numCols))    
+    }
     else reflectPure(MatrixSigmoid[A,DenseMatrix[Double],DenseMatrix[Double]](x))
   }
   def densematrix_sigmoidf[A:Manifest](x: Exp[DenseMatrix[A]])(implicit conv: Exp[A] => Exp[Float], ctx: SourceContext) = {
-    if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(DenseMatrixSigmoidVectorized(x.asInstanceOf[Exp[DenseMatrix[Float]]]))    
+    if (Config.useBlas && manifest[A] == manifest[Float]) {
+      val r = reflectPure(DenseMatrixSigmoidVectorized(x.numRows,x.numCols,densematrix_raw_data(x.asInstanceOf[Exp[DenseMatrix[Float]]])))
+      reflectPure(DenseMatrixObjectNewImm(r,x.numRows,x.numCols))     
+    }
     else reflectPure(MatrixSigmoidF[A,DenseMatrix[Float],DenseMatrix[Float]](x))
   }  
 
@@ -503,9 +509,9 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     //case e@DenseMatrixRawApply(x,i) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixRawApply(f(x),f(i))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@DenseMatrixInverse(x) => reflectPure(new {override val original = Some(f,e) } with DenseMatrixInverse(f(x))(e.mA,e.conv))(mtype(manifest[A]),implicitly[SourceContext])      
     //case e@DenseMatrixMultiply(x,y) => reflectPure(new {override val original = Some(f,e) } with DenseMatrixMultiply(f(x),f(y))(e.mA,e.a))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@DenseMatrixMultiplyBLAS(x,y) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixMultiplyBLAS(f(x),f(y))(e.mA,e.a))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@DenseMatrixTimesVectorBLAS(x,y) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixTimesVectorBLAS(f(x),f(y))(e.mA,e.a))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@DenseMatrixSigmoidVectorized(x) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixSigmoidVectorized(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@DenseMatrixMultiplyBLAS(xR,xC,x,yR,yC,y) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixMultiplyBLAS(f(xR),f(xC),f(x),f(yR),f(yC),f(y))(e.mA,e.a))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@DenseMatrixTimesVectorBLAS(xR,xC,x,y) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixTimesVectorBLAS(f(xR),f(xC),f(x),f(y))(e.mA,e.a))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@DenseMatrixSigmoidVectorized(xR,xC,x) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixSigmoidVectorized(f(xR),f(xC),f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     //case e@DenseMatrixTimesVector(x,y) => reflectPure(new {override val original = Some(f,e) } with DenseMatrixTimesVector(f(x),f(y))(e.m,e.a))(mtype(manifest[A]),implicitly[SourceContext])
     case e@DenseMatrixObjectConst(numRows,numCols,c) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixObjectConst(f(numRows),f(numCols),f(c))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@DenseMatrixMultiply3by3(x,y) => reflectPure(new { override val original = Some(f,e) } with DenseMatrixMultiply3by3(f(x),f(y))(e.mA,e.a))(mtype(manifest[A]),implicitly[SourceContext])
@@ -534,9 +540,9 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     //case Reflect(e@DenseMatrixRawApply(x,n), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixRawApply(f(x),f(n))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))          
     case Reflect(e@DenseMatrixInverse(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixInverse(f(x))(e.mA,e.conv), mapOver(f,u), f(es)))(mtype(manifest[A]))          
     //case Reflect(e@DenseMatrixMultiply(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixMultiply(f(x),f(y))(e.mA,e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))         
-    case Reflect(e@DenseMatrixMultiplyBLAS(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixMultiplyBLAS(f(x),f(y))(e.mA,e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))           
-    case Reflect(e@DenseMatrixTimesVectorBLAS(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixTimesVectorBLAS(f(x),f(y))(e.mA,e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))          
-    case Reflect(e@DenseMatrixSigmoidVectorized(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixSigmoidVectorized(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))          
+    case Reflect(e@DenseMatrixMultiplyBLAS(xR,xC,x,yR,yC,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixMultiplyBLAS(f(xR),f(xC),f(x),f(yR),f(yC),f(y))(e.mA,e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))           
+    case Reflect(e@DenseMatrixTimesVectorBLAS(xR,xC,x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixTimesVectorBLAS(f(xR),f(xC),f(x),f(y))(e.mA,e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))          
+    case Reflect(e@DenseMatrixSigmoidVectorized(xR,xC,x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixSigmoidVectorized(f(xR),f(xC),f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))          
     case Reflect(e@DenseMatrixUpdate(x,i,j,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixUpdate(f(x),f(i),f(j),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     //case Reflect(e@DenseMatrixRawUpdate(x,i,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixRawUpdate(f(x),f(i),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@DenseMatrixInsertRow(x,pos,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DenseMatrixInsertRow(f(x),f(pos),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))              
@@ -580,26 +586,26 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   }
 
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
-    case DenseMatrixMultiplyBLAS(a,b) => Nil
-    case DenseMatrixTimesVectorBLAS(a,v) => Nil
+    case DenseMatrixMultiplyBLAS(a,b,c,d,e,f) => Nil
+    case DenseMatrixTimesVectorBLAS(xR,xC,x,y) => Nil
     case _ => super.aliasSyms(e)
   }
 
   override def containSyms(e: Any): List[Sym[Any]] = e match {
-    case DenseMatrixMultiplyBLAS(a,b) => Nil
-    case DenseMatrixTimesVectorBLAS(a,v) => Nil
+    case DenseMatrixMultiplyBLAS(a,b,c,d,e,f) => Nil
+    case DenseMatrixTimesVectorBLAS(xR,xC,x,y) => Nil
     case _ => super.containSyms(e)
   }
 
   override def extractSyms(e: Any): List[Sym[Any]] = e match {
-    case DenseMatrixMultiplyBLAS(a,b) => Nil
-    case DenseMatrixTimesVectorBLAS(a,v) => Nil
+    case DenseMatrixMultiplyBLAS(a,b,c,d,e,f) => Nil
+    case DenseMatrixTimesVectorBLAS(xR,xC,x,y) => Nil
     case _ => super.extractSyms(e)
   }
 
   override def copySyms(e: Any): List[Sym[Any]] = e match {
-    case DenseMatrixMultiplyBLAS(a,b) => Nil
-    case DenseMatrixTimesVectorBLAS(a,v) => Nil
+    case DenseMatrixMultiplyBLAS(a,b,c,d,e,f) => Nil
+    case DenseMatrixTimesVectorBLAS(xR,xC,x,y) => Nil
     case _ => super.copySyms(e)
   } 
 }

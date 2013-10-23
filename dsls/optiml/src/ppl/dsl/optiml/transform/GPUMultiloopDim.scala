@@ -167,17 +167,17 @@ trait MultiloopTransformExp extends DeliteTransform
       while (i < size) {
         if (cond.nonEmpty) {
           if (cond.map(c=>c(i)).reduce((a,b) => a && b)) {
-            if (mutable) acc = (rFunc(acc.unsafeMutable,f(i))).unsafeImmutable 
-            else acc = rFunc(acc, f(i))
+            if (mutable) acc = (rFunc(readVar(acc).unsafeMutable,f(i))).unsafeImmutable 
+            else acc = rFunc(readVar(acc), f(i))
            }
         }
         else {
-          if (mutable) acc = (rFunc(acc.unsafeMutable,f(i))).unsafeImmutable
-          else acc = rFunc(acc, f(i))
+          if (mutable) acc = (rFunc(readVar(acc).unsafeMutable,f(i))).unsafeImmutable
+          else acc = rFunc(readVar(acc), f(i))
         }
         i += 1
       }
-      acc.unsafeImmutable      
+      readVar(acc).unsafeImmutable      
     }       
     
     // s.asInstanceOf[Sym[A]].atPhase(t) {

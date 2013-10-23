@@ -217,7 +217,7 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
 
     id match {
       case "Cond" =>
-        //out.append("if(" + dimSize(op.size) +" > 65536) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
+        //out.append("if(" + dimSize(op.size) +" > 65535) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
         for(o <- conditionList(op)) { putArg("int *","bitmap_"+o._2); }
         for((in,sym) <- op.getInputs) {
           if (metadata.inputs.contains((in,sym))) putArg(metadata.inputs((in,sym)).resultType,deref(in,sym)+sym+(if(needDeref(op,in,sym)) "_ptr" else ""))
@@ -225,7 +225,7 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
         }
         out.append(clLaunch)
       case "MapReduce" | "HashReduce1"=>
-        //out.append("if(" + dimSize(op.size) +" > 65536) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
+        //out.append("if(" + dimSize(op.size) +" > 65535) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
         op.getGPUMetadata(Targets.OpenCL).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).foreach(o => putArg(op.outputType(Targets.OpenCL,o._2),"**"+o._2))
         for(o <- conditionList(op)) { putArg("int *","bitmap_"+o._2); putArg("int *","scanmap_"+o._2); }
         for(o <- reductionList(op)++hashReductionList(op)) { putArg(o._1.loopFuncOutputType+" *","temp_"+o._2); putArg(o._1.loopFuncOutputType+" *","temp_"+o._2+"_2"); }

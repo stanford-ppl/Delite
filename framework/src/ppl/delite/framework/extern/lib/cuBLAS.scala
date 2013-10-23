@@ -7,8 +7,9 @@ object cuBLAS extends ExternalLibrary {
   val libName = "cudaBLAS"
   val configFile = "cuBLAS.xml"  
   val ext = "cu"
-  val libExt = "so"
-  def compileFlags = List( "-w", "-O3", "-arch", "compute_"+arch, "-code", "sm_"+arch, "-shared", "-Xcompiler", "-fPIC")
+  // TODO: go back to creating shared library (latest cuda compiler creates some issues linking shared object with other shared object)
+  val libExt = "o"
+  def compileFlags = List("-w", "-O3", "-arch", "compute_"+arch, "-code", "sm_"+arch, "-c", /*"-shared", */"-Xcompiler", "-fPIC")
   val outputSwitch = "-o"
 
   lazy val arch = {
@@ -22,6 +23,7 @@ object cuBLAS extends ExternalLibrary {
 #include <stdio.h>
 #include <limits>
 #include <cuda_runtime.h>
+#include <thrust/device_ptr.h>
 #include <thrust/transform.h>
 """ + configHeader.map(h => "#include \"" + h + "\"\n").mkString("")
 }

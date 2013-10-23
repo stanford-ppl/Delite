@@ -23,4 +23,10 @@ object OS {
     case Mac => "so"
   }
 
+  def objExt: String = theOS match {
+    case Linux => "o"
+    case Windows => libExt  // fix
+    case Mac => libExt  // fix
+  }
+
 }

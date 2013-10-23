@@ -18,6 +18,7 @@ trait OptiLAOpenCLGenExternal extends OpenCLGenExternalBase {
   import IR._
   
   override def emitExternalNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+/*
     case e@DenseMatrixTimesVectorBLAS(x,y) =>
       val args = scala.List("'t'", "%1$s->_numCols", "%1$s->_numRows", "%1$s->_data.data", "%2$s->_data.data", "%3$s->_data.data")
                  .map { _.format(quote(x), quote(y), quote(sym)) }
@@ -29,7 +30,7 @@ trait OptiLAOpenCLGenExternal extends OpenCLGenExternalBase {
                  .map { _.format(quote(x), quote(y), quote(sym)) }
       emitMethodCall(sym, e, clBLAS, args)
       registerKernel(scala.List(sym))
-
+*/
     case _ => super.emitExternalNode(sym, rhs)
   }
     
