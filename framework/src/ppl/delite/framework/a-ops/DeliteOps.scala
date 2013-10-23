@@ -422,6 +422,43 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val dmI = manifest[I]
     val dmCB = manifest[CB]
   }
+
+  abstract class DeliteOpMapIndices[A:Manifest,CA <: DeliteCollection[A]:Manifest] extends DeliteOpMapIndicesI[A,CA,CA] {
+    type OpType <: DeliteOpMapIndices[A,CA]
+    def finalizer(x: Exp[CA]) = x
+  }
+
+  abstract class DeliteOpMapIndicesI[A:Manifest,I <: DeliteCollection[A]:Manifest,CA <: DeliteCollection[A]:Manifest]
+    extends DeliteOpMapLike[A,I,CA] {
+    type OpType <: DeliteOpMapIndicesI[A,I,CA]
+    
+    def func: Exp[Int] => Exp[A]
+    
+    lazy val body: Def[CA] = copyBodyOrElse(DeliteCollectElem[A,I,CA](  
+      eV = this.eV,     
+      sV = this.sV,      
+      allocVal = this.allocVal,      
+      allocN = reifyEffects(this.alloc(sV)),
+      func = reifyEffects(this.func(v)),
+      update = reifyEffects(dc_update(allocVal,v,eV)),
+      finalizer = reifyEffects(this.finalizer(allocVal)),
+      par = dc_parallelization(allocVal, false),
+      buf = DeliteBufferElem(
+        iV = this.iV,
+        iV2 = this.iV2,
+        aV = this.aV,
+        append = reifyEffects(dc_append(allocVal,v,eV)),
+        appendable = reifyEffects(dc_appendable(allocVal,v,eV)),
+        setSize = reifyEffects(dc_set_logical_size(allocVal,sV)),
+        allocRaw = reifyEffects(dc_alloc[A,I](allocVal,sV)),
+        copyRaw = reifyEffects(dc_copy(aV,iV,allocVal,iV2,sV))        
+      )
+    ))
+    
+    val dmA = manifest[A]
+    val dmI = manifest[I]
+    val dmCA = manifest[CA]
+  }
     
   /**
    *  Currently conditionally appends values to buffers, which are concatenated in the combine stage.
