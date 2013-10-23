@@ -132,7 +132,7 @@ export DELITE_HOME=$PWD
 <div class="highlight"><pre><code class="bash">cd ../Forge
 sbt update
 export FORGE_HOME=$PWD
-bin/update ppl.dsl.forge.examples.optiml.OptiMLDSLRunner OptiML
+bin/update ppl.dsl.forge.dsls.optiml.OptiMLDSLRunner OptiML
 </code></pre></div>
 
         <p>
@@ -166,13 +166,13 @@ bin/update ppl.dsl.forge.examples.optiml.OptiMLDSLRunner OptiML
         prototyping, and then run the Delite version to scale out to larger datasets or heterogeneous hardware.
         </p>
         <p> So without further ado, let's get to it. Starting from the root of the Forge repository, first run the interpreter version: </p>
-<p><div class="highlight" style="overflow: scroll"><pre><code class="bash">bin/update -s 3 -r HelloWorldInterpreter ppl.dsl.forge.examples.optiml.OptiMLDSLRunner OptiML</code></pre></div></p>
+<p><div class="highlight" style="overflow: scroll"><pre><code class="bash">bin/update -s 3 -r HelloWorldInterpreter ppl.dsl.forge.dsls.optiml.OptiMLDSLRunner OptiML</code></pre></div></p>
         <p> If all went well, you should see <code>hello world</code> printed to the console! </p>
         <p> Now let's run the Delite version. Delite scripts require the JAVA_HOME environment variable to be set. If it is not already, you will need to set it: </p>
 <div class="highlight"><pre><code class="bash">export JAVA_HOME=[absolute path of Java installation] </code></pre></div> 
         <p> Now we can run the compiler version simply by changing the parameters passed to the update script: </p>
         <p>
-        <div class="highlight" style="overflow: scroll"><pre><code class="bash">bin/update -s 3 -d -r HelloWorldCompiler ppl.dsl.forge.examples.optiml.OptiMLDSLRunner OptiML</code></pre></div> 
+        <div class="highlight" style="overflow: scroll"><pre><code class="bash">bin/update -s 3 -d -r HelloWorldCompiler ppl.dsl.forge.dsls.optiml.OptiMLDSLRunner OptiML</code></pre></div> 
         </p><p>
         You should see output like the following:
         <div class="highlight"><pre><code class="bash">Delite Runtime executing with the following arguments:
