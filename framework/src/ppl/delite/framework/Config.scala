@@ -21,14 +21,14 @@ object Config {
   var generateCpp = getProperty("delite.generate.cpp", "false") != "false"
   var generateOpenCL = getProperty("delite.generate.opencl", "false") != "false"
   var generateSerializable = getProperty("delite.generate.serializable", "false") != "false"
-  var homeDir = getProperty("delite.home.dir", System.getProperty("user.dir"))
+  var homeDir = getProperty("delite.home.dir", sys.env.getOrElse("DELITE_HOME",System.getProperty("user.dir")))
   var buildDir = getProperty("delite.build.dir", "generated")
   var useBlas = getProperty("delite.extern.blas", "false") != "false"
   var nestedVariantsLevel = getProperty("nested.variants.level", "0").toInt
   var debug = getProperty("delite.debug","false") != "false"
   var cacheSyms = getProperty("delite.cache.syms","false") != "false"
   var collectStencil = System.getProperty("deliszt.stencil.enabled", "false") == "true"
-  var printGlobals = System.getProperty("delite.print_globals.enabled", "false") == "true"  
+  var printGlobals = System.getProperty("delite.print_globals.enabled", "false") == "true"
   val optimize = getProperty("delite.optimize", "0").toInt
   val enableGPUTransform = getProperty("delite.enable.gputransform","false") != "false"
   val enableGPUObjReduce = getProperty("delite.enable.gpu.objreduce","true") != "false"

@@ -13,7 +13,8 @@ import ppl.delite.framework.ops._
 import ppl.delite.framework.Config
 import ppl.delite.framework.transform.LoopSoAOpt
 import ppl.delite.framework.datastructures.DeliteArray
-import ppl.delite.framework.analysis.StencilAnalysis
+import ppl.delite.framework.analysis.{LoopAnalysis,StencilAnalysis}
+import ppl.delite.framework.datastructures.DeliteArrayFatExp
 
 trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOpt {
   val IR: DeliteOpsExp
@@ -124,6 +125,28 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     gatherStencil(sym,rhs)        
     allStencils = /*allStencils ++*/ stencilAnalysis.getLoopStencils    
     
+    /*
+    val loopAnalysis = new LoopAnalysis { val IR: DeliteGenTaskGraph.this.IR.type = DeliteGenTaskGraph.this.IR }
+    loopAnalysis.innerScope = this.innerScope
+
+    //TODO: get rid of
+    rhs match {
+      case SimpleFatLoop(_,_,_) | SimpleLoop(_,_,_) =>
+        loopAnalysis.analyze(sym, rhs) 
+        Predef.println("LOOP ANALYSIS:" + IR.loopMeta)   
+        loopAnalysis.mapping(deliteInputs)
+      case l:AbstractLoop[_] =>  
+        loopAnalysis.analyze(sym, rhs) 
+        Predef.println("LOOP ANALYSIS:" + IR.loopMeta)   
+        loopAnalysis.mapping(deliteInputs)
+      case Reflect(l:AbstractLoop[_],u,es) =>
+        loopAnalysis.analyze(sym, rhs) 
+        Predef.println("LOOP ANALYSIS:" + IR.loopMeta)   
+        loopAnalysis.mapping(deliteInputs)
+      case _ => //
+    }
+    */
+
     if (!skipEmission) for (gen <- generators) {
       val sep = java.io.File.separator
       val buildPath = Config.buildDir + sep + gen + sep + "kernels" + sep
@@ -392,25 +415,25 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
         // val arrayInputs = inputs.flatMap(getArrayInputs)
         // Predef.println("  array inputs are: ")
         // Predef.println(arrayInputs)
-        emitMultiLoop(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size, op.body.exists (loopBodyNeedsCombine _), op.body.exists (loopBodyNeedsPostProcess _), optContext, opStencil)
+        emitMultiLoop(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size, op.body.exists (loopBodyNeedsCombine _), op.body.exists (loopBodyNeedsPostProcess _), optContext, opStencil)
       case op: AbstractFatIfThenElse =>
         assert(sym.length == 1, "TODO: implement fat if then else")
-        emitIfThenElse(Block(op.cond), op.thenp.head, op.elsep.head, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
+        emitIfThenElse(Block(op.cond), op.thenp.head, op.elsep.head, kernelName, outputs, resultIsVar, inputs, inMutating, inControlDeps, antiDeps)
       case z =>
         z match {
           case op:AbstractLoop[_] => 
             // Predef.println("emitting DeliteLoop (" + sym + "), inputs are: ")
             // Predef.println(inputs)          
             // Predef.println("stencil is: " + opStencil)
-            emitMultiLoop(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size, loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body), optContext, opStencil)
-          case e:DeliteOpExternal[_] => emitExternal(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps)
-          case c:DeliteOpCondition[_] => emitIfThenElse(Block(c.cond), c.thenp, c.elsep, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-          case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-          case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, optContext)
-          case i:DeliteOpInput[_] => emitInput(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, optContext)
-          case f:DeliteOpForeach2[_,_] => emitForeach(f, kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps)
-          case f:DeliteOpForeachBounded[_,_,_] => emitForeach(f, kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps)
-          case _ => emitSingleTask(kernelName, outputs, inputs, inVars, inMutating, inControlDeps, antiDeps, if (outputs(0).sourceContexts.isEmpty) None else Some(outputs(0).sourceContexts.head)) // things that are not specified as DeliteOPs, emit as SingleTask nodes
+            emitMultiLoop(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size, loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body), optContext, opStencil)
+          case e:DeliteOpExternal[_] => emitExternal(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps)
+          case c:DeliteOpCondition[_] => emitIfThenElse(Block(c.cond), c.thenp, c.elsep, kernelName, outputs, resultIsVar, inputs, inMutating, inControlDeps, antiDeps)
+          case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, kernelName, outputs, resultIsVar, inputs, inMutating, inControlDeps, antiDeps)
+          case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, optContext)
+          case i:DeliteOpInput[_] => emitInput(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, optContext)
+          case f:DeliteOpForeach2[_,_] => emitForeach(f, kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps)
+          case f:DeliteOpForeachBounded[_,_,_] => emitForeach(f, kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps)
+          case _ => emitSingleTask(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, if (outputs(0).sourceContexts.isEmpty) None else Some(outputs(0).sourceContexts.head)) // things that are not specified as DeliteOPs, emit as SingleTask nodes
         }
     }
 
@@ -426,7 +449,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
    * @param antiDeps    a list of WAR dependencies (need to be committed in program order)
    */
 
-  def emitMultiLoop(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], size: Exp[Int], needsCombine: Boolean, needsPostProcess: Boolean,
+  def emitMultiLoop(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], size: Exp[Int], needsCombine: Boolean, needsPostProcess: Boolean,
                     sourceContext: Option[SourceContext], stencil: Stencil)
        (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
    stream.println("{\"type\":\"MultiLoop\",")
@@ -436,43 +459,43 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
    stream.print(",\"needsCombine\":" + needsCombine)
    stream.println(",\"needsPostProcess\":" + needsPostProcess)   
    emitStencil(inputs, stencil)   
-   emitExecutionOpCommon(id, outputs, inputs, inVars, mutableInputs, controlDeps, antiDeps)
+   emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps)
    stream.println("},")      
   }
   
-  def emitExternal(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitExternal(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"External\"")
     // TODO: add thread control, other configuration?
-    emitExecutionOpCommon(id, outputs, inputs, inVars, mutableInputs, controlDeps, antiDeps)
+    emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps)
     stream.println("},")
   }
 
-  def emitSingleTask(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], sourceContext: Option[SourceContext])
+  def emitSingleTask(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], sourceContext: Option[SourceContext])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"SingleTask\",")
     emitSourceContext(sourceContext, stream, id)
-    emitExecutionOpCommon(id, outputs, inputs, inVars, mutableInputs, controlDeps, antiDeps)
+    emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps)
     stream.println("},")
   }
 
-  def emitInput(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], sourceContext: Option[SourceContext])
+  def emitInput(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], sourceContext: Option[SourceContext])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Input\",")
     emitSourceContext(sourceContext, stream, id)
-    emitExecutionOpCommon(id, outputs, inputs, inVars, mutableInputs, controlDeps, antiDeps)
+    emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps)
     stream.println("},")
   }
 
-  def emitForeach(rhs: Def[Any], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitForeach(rhs: Def[Any], id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Foreach\"")
-    emitExecutionOpCommon(id, outputs, inputs, inVars, mutableInputs, controlDeps, antiDeps)
-    emitVariant(rhs, id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
+    emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps)
+    emitVariant(rhs, id, outputs, resultIsVar, inputs, mutableInputs, controlDeps, antiDeps)
     stream.println("},")
   }
 
-  def emitIfThenElse(cond: Block[Boolean], thenp: Block[Any], elsep: Block[Any], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitIfThenElse(cond: Block[Boolean], thenp: Block[Any], elsep: Block[Any], id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Conditional\",")
     stream.println("  \"outputId\" : \"" + id + "\",")
@@ -500,7 +523,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     stream.println("},")
   }
 
-  def emitWhileLoop(cond: Block[Boolean], body: Block[Unit], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitWhileLoop(cond: Block[Boolean], body: Block[Unit], id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.println("{\"type\":\"WhileLoop\",")
     stream.println("  \"outputId\" : \"" + id + "\",")
@@ -513,21 +536,17 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     stream.println("},")
   }
 
-  def emitControlFlowOpCommon(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitControlFlowOpCommon(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
   }
 
-  def emitExecutionOpCommon(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitExecutionOpCommon(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
-    stream.print(" , \"kernelId\" : \"" + id + "\" ")
-    stream.print(" , \"supportedTargets\": [" + supportedTgt.mkString("\"","\",\"","\"") + "],\n")
-    stream.print("  \"outputs\":[" + outputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")
-    stream.print("  \"inputs\":[" + inputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")
-    stream.print("  \"input-types\":{")
+    
     def wrapRef(gen: GenericCodegen, sym: Exp[Any]):String = {
-      if(inVars contains sym) {
+      if( inVars.contains(sym) || (outputs.contains(sym) && resultIsVar)) {
         gen match {
-          case g: ScalaCodegen => "Ref[" + g.remap(sym.tp) + "]"
+          case g: ScalaCodegen => "generated.scala.Ref[" + g.remap(sym.tp) + "]"
           case g: CLikeCodegen => g.deviceTarget + "Ref< " + g.remap(sym.tp) + g.addRef(sym.tp) + " >"
           case _ => gen.remap(sym.tp)
         }
@@ -535,9 +554,22 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
       else
         gen.remap(sym.tp)
     }
-    val inputTypesMap = inputs.map(i => "\"" + quote(i) + "\":{" + generators.filter(supportedTgt contains _.toString).map(gen => "\"" + gen.toString + "\":\"" + wrapRef(gen,i) + "\"").mkString(",") + "}")
-    stream.print(inputTypesMap.mkString(","))
-    stream.print("  },\n")
+
+    // get remap (with wrapping ref) of all targets that can generate the type of the given symbol
+    def remapAllTargets(sym: Exp[Any]) = (for (gen <- generators) yield {
+      try {
+        Some("\"" + gen.toString + "\" : \"" + wrapRef(gen,sym)  + "\"")
+      } catch {
+        case e:GenerationFailedException => None
+        case e:Exception => throw(e)
+      }
+    }) filter(_.isDefined) map(_.get)  
+
+    stream.print(" , \"kernelId\" : \"" + id + "\" ")
+    stream.print(" , \"supportedTargets\": [" + supportedTgt.mkString("\"","\",\"","\"") + "],\n")
+    stream.print("  \"outputs\":[" + outputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")
+    stream.print("  \"inputs\":[" + inputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")
+    stream.print("  \"input-types\":{" + inputs.map(s => "\"" + quote(s) + "\":{" + remapAllTargets(s).mkString(",") + "}").mkString(",") + "},\n")
     stream.print("  \"mutableInputs\":[" + mutableInputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")
     emitDepsCommon(controlDeps, antiDeps)
     val metadataStr = if (metadata.isEmpty) "" else metadata.mkString(",")
@@ -545,13 +577,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     val returnTypesStr = if(returnTypes.isEmpty) "" else returnTypes.mkString(",")
     if (!outputSlotTypes.isEmpty) {
       stream.println("  \"return-types\":{" + returnTypesStr + "},")
-      val rts = for (s <- outputs) yield {
-        val str = quote(s)
-        "\""+str+"\":{" + outputSlotTypes(str).mkString(",") + "}"
-      }
-      stream.println("  \"output-types\":{" + rts.mkString(",") + "}")
-    } else
-      stream.println("  \"output-types\":{\"" + quote(outputs(0)) + "\":{" + returnTypesStr + "}}")
+    }
+    stream.println("  \"output-types\":{" + outputs.map(s => "\"" + quote(s) + "\":{" + remapAllTargets(s).mkString(",") + "}").mkString(",") +  "}")
   }
 
 
@@ -576,7 +603,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
   
   var nested = 0
 
-  def emitVariant(rhs: Def[Any], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitVariant(rhs: Def[Any], id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
                  (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
 
     if (!rhs.isInstanceOf[Variant] || nested >= Config.nestedVariantsLevel) return
@@ -593,8 +620,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
 
     // variant
     rhs match {
-      case mvar:DeliteOpMapLikeWhileLoopVariant => emitMapLikeWhileLoopVariant(mvar, id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
-      case rvar:DeliteOpReduceLikeWhileLoopVariant => emitReduceLikeWhileLoopVariant(rvar, id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
+      case mvar:DeliteOpMapLikeWhileLoopVariant => emitMapLikeWhileLoopVariant(mvar, id, outputs, resultIsVar, inputs, mutableInputs, controlDeps, antiDeps)
+      case rvar:DeliteOpReduceLikeWhileLoopVariant => emitReduceLikeWhileLoopVariant(rvar, id, outputs, resultIsVar, inputs, mutableInputs, controlDeps, antiDeps)
       case _ =>
     }
 
@@ -608,7 +635,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     nested -= 1    
   }
 
-  def emitMapLikeWhileLoopVariant(vw: DeliteOpMapLikeWhileLoopVariant, id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitMapLikeWhileLoopVariant(vw: DeliteOpMapLikeWhileLoopVariant, id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
     (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
 
     // manually lift alloc out of the variant loop. TODO: this should not be required, see comment in DeliteOps.scala
@@ -620,7 +647,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     //scope = save
   }
 
-  def emitReduceLikeWhileLoopVariant(vw: DeliteOpReduceLikeWhileLoopVariant, id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitReduceLikeWhileLoopVariant(vw: DeliteOpReduceLikeWhileLoopVariant, id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
     (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
 
     //val save = scope

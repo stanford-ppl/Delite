@@ -22,8 +22,8 @@ class TestAppCodegen extends FileDiffSuite {
       app.globalDefs.foreach { d =>
         println(d)
         val s = d match { case app.TP(sym,_) => sym; case app.TTP(syms,_,_) => syms(0); }
-        val info = s.sourceInfo.drop(3).takeWhile(_.getMethodName!="main")
-        println(info.map(s=>s.getFileName+":"+s.getLineNumber).distinct.mkString(","))
+        val info = s.pos.drop(3).takeWhile(_.methodName!="main")
+        println(info.map(s=>s.fileName+":"+s.line).distinct.mkString(","))
         //println(info.mkString(","))
       }
     }
@@ -67,8 +67,8 @@ class TestAppCodegen extends FileDiffSuite {
         app.globalDefs.foreach { d =>
           println(d)
           val s = d match { case app.TP(sym,_) => sym; case app.TTP(syms,_,_) => syms(0); }
-          val info = s.sourceInfo.drop(3).takeWhile(_.getMethodName!="main")
-          println(info.map(s=>s.getFileName+":"+s.getLineNumber).distinct.mkString(","))
+          val info = s.pos.drop(3).takeWhile(_.methodName!="main")
+          println(info.map(s=>s.fileName+":"+s.line).distinct.mkString(","))
         }
       } finally {
         ppl.delite.framework.Config.opfusionEnabled = save

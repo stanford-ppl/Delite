@@ -228,6 +228,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
    */
   def darray_update[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int], x: Exp[T])(implicit ctx: SourceContext) = da match {
     case Def(Field(struct,name)) => recurseFields(struct, List(name), (s,f) => reflectWrite(s)(StructUpdate[T](s,f,i,x))) //Struct(Array)
+    case Def(Reflect(Field(struct,name),u,_)) if u == Control() => recurseFields(struct, List(name), (s,f) => reflectWrite(s)(StructUpdate[T](s,f,i,x))) //Struct(Array) 
     case Def(Reflect(Field(struct,name),_,_)) => recurseFields(struct, List(name), (s,f) => reflectWrite(struct)(StructUpdate[T](s,f,i,x))) //Struct(Array)
     case Def(Reflect(ReadVar(Variable(Def(Reflect(Field(struct,name),_,_)))),_,_)) => recurseFields(struct, List(name), (s,f) => reflectWrite(struct)(StructUpdate[T](s,f,i,x))) //Struct(Var(Array))
     case Def(Reflect(ReadVar(v),_,_)) => reflectWrite(v.e)(VarUpdate[T](v,i,x)) //Var(Array)
@@ -357,6 +358,14 @@ trait DeliteArrayStructTags extends Base with StructTags {
 
 trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags with StructExpOptCommon with DeliteStructsExp {
   this: DeliteOpsExp =>
+
+  object Loop {
+    def unapply[A](d: Def[A]): Option[(Exp[Int], Sym[Int], Def[A])] = d match {
+      case Reflect(l:AbstractLoop[_], u, es) if u == Control() => Some((l.size, l.v, l.body))          
+      case l:AbstractLoop[_] => Some((l.size, l.v, l.body))          
+      case _ => None
+    }
+  }
 
   object StructIR {
     def unapply[A](e: Exp[DeliteArray[A]]): Option[(StructTag[A], Exp[Int], Seq[(String,Exp[DeliteArray[Any]])])] = e match {

@@ -360,6 +360,13 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
     case e@ArithFractionalDivide(lhs,rhs) => reflectPure(ArithFractionalDivide(f(lhs),f(rhs))(mtype(e.mA),e.f.asInstanceOf[Fractional[A]]))(mtype(manifest[A]),implicitly[SourceContext])
     case e@ArithAbs(lhs) => reflectPure(ArithAbs(f(lhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[A]]))(mtype(manifest[A]),implicitly[SourceContext])
     case e@ArithExp(lhs) => reflectPure(ArithExp(f(lhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[Any]]))(mtype(manifest[A]),implicitly[SourceContext])
+
+    case Reflect(e@ArithPlus(lhs,rhs), u, es) => reflectMirrored(Reflect(ArithPlus(f(lhs),f(rhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[A]]), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@ArithMinus(lhs,rhs), u, es) => reflectMirrored(Reflect(ArithMinus(f(lhs),f(rhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[A]]), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@ArithTimes(lhs,rhs), u, es) => reflectMirrored(Reflect(ArithTimes(f(lhs),f(rhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[A]]), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@ArithFractionalDivide(lhs,rhs), u, es) => reflectMirrored(Reflect(ArithFractionalDivide(f(lhs),f(rhs))(mtype(e.mA),e.f.asInstanceOf[Fractional[A]]), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@ArithAbs(lhs), u, es) => reflectMirrored(Reflect(ArithAbs(f(lhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[A]]), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@ArithExp(lhs), u, es) => reflectMirrored(Reflect(ArithExp(f(lhs))(mtype(e.mA),e.n.asInstanceOf[Numeric[Any]]), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]] 
   

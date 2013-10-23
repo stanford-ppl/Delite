@@ -292,8 +292,8 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
         }
         else {
           //out.append("if(" + dimSize(opSize) +" > 65536) { printf(\"Kernel Launch Failure: Grid size %d for GPU is too large even with maximum blockSize " + blockSize + "!\\n\"," + dimSize(op.size) + "); assert(false); }\n")
-          out.append("if(" + dimSize(opSize) + " > 65536) {\n")
-          out.append(cudaLaunch("65536,1,1"))
+          out.append("if(" + dimSize(opSize) + " > 65535) {\n")
+          out.append(cudaLaunch("65535,1,1"))
           out.append(args.mkString("(",",",");\n"))
           out.append("}\n")
           out.append("else {\n")

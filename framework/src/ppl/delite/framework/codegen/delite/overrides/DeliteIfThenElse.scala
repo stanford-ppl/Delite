@@ -28,10 +28,10 @@ trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExp
     case Def(BooleanNegate(a)) => delite_ifThenElse(a, elsep, thenp, flat)
     case Def(NotEqual(a,b)) => delite_ifThenElse(equals(a,b), elsep, thenp, flat)
     case _ =>
-      val a = reifyEffectsHere[T](thenp)
-      val b = reifyEffectsHere[T](elsep)
-      val ae = summarizeEffects(a)
-      val be = summarizeEffects(b)
+      val a = reifyEffectsHere[T](thenp, true)
+      val b = reifyEffectsHere[T](elsep, true)
+      val ae = summarizeEffects(a).withoutControl
+      val be = summarizeEffects(b).withoutControl
       reflectEffectInternal(DeliteIfThenElse(cond,a,b,flat), ae orElse be)
   }  
   
