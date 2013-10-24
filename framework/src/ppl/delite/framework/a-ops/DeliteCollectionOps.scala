@@ -89,7 +89,7 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with VariablesExp with 
     // reflectWrite(x)(DeliteCollectionAppend(x,i,y))
     // unit(true)
     fatal(unit("dc_append called without any implementation on " + x.toString + " with type " + x.tp.toString /*findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get*/))    
-  }  
+  }
   def dc_alloc[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], size: Exp[Int])(implicit ctx: SourceContext): Exp[CA] = {
     fatal(unit("dc_alloc called without any implementation on " + x.toString))
   }  

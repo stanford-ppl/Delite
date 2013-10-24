@@ -92,25 +92,26 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
           
     def finalizer(x: Exp[I]) = cfinalizer(x)
     
-    lazy val body: Def[CA] = copyBodyOrElse(DeliteCollectElem[A,I,CA](  
-      eV = this.eV,     
-      sV = this.sV,      
-      allocVal = this.allocVal,      
-      allocN = reifyEffects(callocN(sV)),
+    lazy val body: Def[CA] = copyBodyOrElse(DeliteCollectElem[A,I,CA](       
       func = reifyEffects(cfunc(eV,v)),
-      update = reifyEffects(cupdate(allocVal,eV,v)),
-      finalizer = reifyEffects(this.finalizer(allocVal)),
       cond = ccond.map(cf => reifyEffects(cf(v))),
       par = cpar,
       buf = DeliteBufferElem[A,I,CA](
+        eV = this.eV,
+        sV = this.sV,
         iV = this.iV,
         iV2 = this.iV2,
-        aV = this.aV,
+        allocVal = this.allocVal,
+        aV2 = this.aV2,
+        alloc = reifyEffects(callocN(sV)),
+        apply = unusedBlock, 
+        update = reifyEffects(cupdate(allocVal,eV,v)),        
         appendable = reifyEffects(cappendable(allocVal,eV,v)),
         append = reifyEffects(cappend(allocVal,eV,v)),
         setSize = reifyEffects(csetSize(allocVal,sV)),
         allocRaw = reifyEffects(callocRaw(allocVal,sV)),
-        copyRaw = reifyEffects(ccopyRaw(aV,iV,allocVal,iV2,sV))
+        copyRaw = reifyEffects(ccopyRaw(aV2,iV,allocVal,iV2,sV)),
+        finalizer = reifyEffects(this.finalizer(allocVal))
       )
     ))
     

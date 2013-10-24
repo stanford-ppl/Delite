@@ -302,7 +302,6 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     
     case DeliteArrayGetActSize() => emitValDef(sym, "darray_unsafe_get_act_size()")
     case DeliteArraySetActBuffer(da) => emitValDef(sym, "darray_set_act_buf(" + quote(da) + ")")
-    case DeliteArraySetActFinal(da) => emitValDef(sym, "darray_set_act_final(" + quote(da) + ")")
     
     // structs
     case Struct(tag, elems) =>
@@ -335,10 +334,10 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     case StructUpdate(struct, fields, idx, x) =>
       assert(fields.length > 0)
       if (fields.length == 1) { // not nested
-        emitValDef(sym, "darray_update(field[DeliteArray["+remap(x.tp)+"]](" + quote(struct) + ", \"" + fields.head + "\"), " + quote(idx) + ", " + quote(x) + ")")
+        emitValDef(sym, "darray_update(field[DeliteArray["+remap(x.tp)+"]](" + quote(struct) + ", \"" + fields.head + "\"), " + quote(idx.head) + ", " + quote(x) + ")")
       }
       else {
-        emitValDef(sym, "darray_update(" + recordFieldLookup(struct, struct.tp, "", fields) + ", " + quote(idx) + ", " + quote(x) + ")")
+        emitValDef(sym, "darray_update(" + recordFieldLookup(struct, struct.tp, "", fields) + ", " + quote(idx.head) + ", " + quote(x) + ")")
       }
     
     // delite ops
@@ -389,31 +388,31 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
   def emitBufferElem(op: AbstractFatLoop, elem: DeliteCollectElem[_,_,_]) {
     // appendable
     stream.println("{ // appendable")
-    stream.println(makeBoundVarArgs(elem.allocVal,elem.eV,op.v))
+    stream.println(makeBoundVarArgs(elem.buf.allocVal,elem.buf.eV,op.v))
     emitBlock(elem.buf.appendable)
     stream.println(quote(getBlockResult(elem.buf.appendable)))
     stream.println("},")
     // append
     stream.println("{ // append")
-    stream.println(makeBoundVarArgs(elem.allocVal,elem.eV,op.v))
+    stream.println(makeBoundVarArgs(elem.buf.allocVal,elem.buf.eV,op.v))
     emitBlock(elem.buf.append)
     stream.println(quote(getBlockResult(elem.buf.append)))
     stream.println("},")
     // setSize
     stream.println("{ // setSize")
-    stream.println(makeBoundVarArgs(elem.allocVal,elem.sV))
+    stream.println(makeBoundVarArgs(elem.buf.allocVal,elem.buf.sV))
     emitBlock(elem.buf.setSize)
     stream.println(quote(getBlockResult(elem.buf.setSize)))
     stream.println("},")
     // allocRaw
     stream.println("{ // allocRaw")
-    stream.println(makeBoundVarArgs(elem.allocVal,elem.sV))  
+    stream.println(makeBoundVarArgs(elem.buf.allocVal,elem.buf.sV))  
     emitBlock(elem.buf.allocRaw)
     stream.println(quote(getBlockResult(elem.buf.allocRaw)))
     stream.println("},")
     // copyRaw
     stream.println("{ // copyRaw")
-    stream.println(makeBoundVarArgs(elem.buf.aV,elem.buf.iV,elem.allocVal,elem.buf.iV2,elem.sV))  
+    stream.println(makeBoundVarArgs(elem.buf.aV2,elem.buf.iV,elem.buf.allocVal,elem.buf.iV2,elem.buf.sV))  
     emitBlock(elem.buf.copyRaw)
     stream.println(quote(getBlockResult(elem.buf.copyRaw)))    
     stream.println("}")
@@ -431,27 +430,27 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
         stream.println(quote(op.size) + ",")
         // alloc func
         stream.println("{")
-        stream.println(makeBoundVarArgs(elem.sV))
-        emitBlock(elem.allocN)
-        stream.println(quote(getBlockResult(elem.allocN)))
+        stream.println(makeBoundVarArgs(elem.buf.sV))
+        emitBlock(elem.buf.alloc)
+        stream.println(quote(getBlockResult(elem.buf.alloc)))
         stream.println("},")
         // func
         stream.println("{")
-        stream.println(makeBoundVarArgs(elem.eV,op.v))
+        stream.println(makeBoundVarArgs(elem.buf.eV,op.v))
         emitBlock(elem.func)
         stream.println(quote(getBlockResult(elem.func)))
         stream.println("},")
         // update
         stream.println("{")
-        stream.println(makeBoundVarArgs(elem.allocVal,elem.eV,op.v))
-        emitBlock(elem.update)
-        stream.println(quote(getBlockResult(elem.update)))
+        stream.println(makeBoundVarArgs(elem.buf.allocVal,elem.buf.eV,op.v))
+        emitBlock(elem.buf.update)
+        stream.println(quote(getBlockResult(elem.buf.update)))
         stream.println("},")
         // finalizer
         stream.println("{")
-        stream.println(makeBoundVarArgs(elem.allocVal))
-        emitBlock(elem.finalizer)
-        stream.println(quote(getBlockResult(elem.finalizer)))
+        stream.println(makeBoundVarArgs(elem.buf.allocVal))
+        emitBlock(elem.buf.finalizer)
+        stream.println(quote(getBlockResult(elem.buf.finalizer)))
         // conditions
         stream.println("},")
         stream.print("scala.List(")

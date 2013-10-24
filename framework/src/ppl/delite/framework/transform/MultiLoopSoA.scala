@@ -14,14 +14,14 @@ trait MultiloopSoATransformWithReduceExp extends MultiloopSoATransformExp {
   override def transformLoop(stm: Stm): Option[Exp[Any]] = stm match {
     case TP(sym, r:DeliteOpReduceLike[_]) if r.mutable => None // mutable reduces don't work yet
     case TP(sym, Loop(size, v, body: DeliteReduceElem[a])) => soaReduce[a](size,v,body)(body.mA)
-    case TP(sym, Loop(size, v, body: DeliteHashReduceElem[k,v,cv])) => soaHashReduce[k,v,cv](size,v,body)(body.mK,body.mV,body.mCV)
+    case TP(sym, Loop(size, v, body: DeliteHashReduceElem[k,v,i,cv])) => soaHashReduce[k,v,i,cv](size,v,body)(body.mK,body.mV,body.mI,body.mCV)
     case _ => super.transformLoop(stm)
   }
 
 }
 
 trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform with DeliteApplication
-  with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp { self =>
+  with DeliteOpsExp with DeliteArrayFatExp { self =>
 
   private val t = new ForwardPassTransformer {
     val IR: self.type = self
@@ -65,14 +65,14 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
 
   //collect elems: unwrap outer struct if return type is a Struct && perform SoA transform if element type is a Struct
   def soaCollect[A:Manifest, I<:DeliteCollection[A]:Manifest, CA<:DeliteCollection[A]:Manifest](size: Exp[Int], v: Sym[Int], body: DeliteCollectElem[A,I,CA]): Option[Exp[CA]] = {
-    val alloc = t(body.allocN)
+    val alloc = t(body.buf.alloc)
     alloc match {
     case StructBlock(tag,elems) =>
       val condT = body.cond.map(t(_))
       def copyLoop[B:Manifest](f: Block[B]): Exp[DeliteArray[B]] = f match {
         case Block(Def(DeliteArrayApply(x,iv))) if (iv.equals(v) && body.par == ParFlat) => 
           x.asInstanceOf[Exp[DeliteArray[B]]] //eliminate identity function loop
-        case Block(Def(a)) =>
+        case _ =>
           val allocV = reflectMutableSym(fresh[DeliteArray[B]])
           val elemV = fresh[B]
           val sizeV = fresh[Int]
@@ -81,24 +81,25 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
           val buf_iV2 = fresh[Int]
           val tv = t(v).asInstanceOf[Sym[Int]]
           simpleLoop(t(size), tv, DeliteCollectElem[B,DeliteArray[B],DeliteArray[B]](
-            eV = elemV,
-            sV = sizeV,
-            allocVal = allocV,
-            allocN = reifyEffects(DeliteArray[B](sizeV)),
             func = f,
-            update = reifyEffects(dc_update(allocV,tv,elemV)),
-            finalizer = reifyEffects(allocV),
             cond = condT,
             par = body.par,
             buf = DeliteBufferElem[B,DeliteArray[B],DeliteArray[B]](
-              aV = buf_aV,
+              eV = elemV,
+              sV = sizeV,
+              allocVal = allocV,
+              aV2 = buf_aV,
               iV = buf_iV,
               iV2 = buf_iV2,
+              alloc = reifyEffects(DeliteArray[B](sizeV)),
+              apply = unusedBlock,
+              update = reifyEffects(dc_update(allocV,tv,elemV)),
               appendable = reifyEffects(dc_appendable(allocV,tv,elemV)),
               append = reifyEffects(dc_append(allocV,tv,elemV)),
               setSize = reifyEffects(dc_set_logical_size(allocV,sizeV)),
               allocRaw = reifyEffects(dc_alloc[B,DeliteArray[B]](allocV,sizeV)),
-              copyRaw = reifyEffects(dc_copy(buf_aV,buf_iV,allocV,buf_iV2,sizeV))
+              copyRaw = reifyEffects(dc_copy(buf_aV,buf_iV,allocV,buf_iV2,sizeV)),
+              finalizer = reifyEffects(allocV)
             )
           ))
       }
@@ -138,6 +139,11 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         return None
       }
 
+      if (body.iFunc.nonEmpty) {
+        printlog("unable to transform flatmap elem")
+        return None
+      }
+
       val newLoop = t(body.func) match {
         case u@Block(Def(a@Struct(ta,es))) if Config.soaEnabled => 
           printlog("*** SOA " + u + " / " + a)
@@ -162,9 +168,9 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         struct[I](tag, newElems)
       }
 
-      t.replace(body.allocVal, res) // TODO: use withSubstScope
+      t.replace(body.buf.allocVal, res) // TODO: use withSubstScope
       printlog("successfully transformed collect elem with type " + manifest[I].toString + " to " + res.toString)
-      Some(t.getBlockResult(t(body.finalizer)))
+      Some(t.getBlockResult(t(body.buf.finalizer)))
       
     case Block(Def(Reify(s@Def(a),_,_))) => printlog("unable to transform collect elem: found " + s.toString + ": " + a + " with type " + manifest[I].toString); None
     case a => printlog("unable to transform collect elem: found " + a + " with type " + manifest[I].toString); None
@@ -240,7 +246,9 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
 
 
   //hash reduce elems: similar to reduce elems; we only transform the values, not the keys
-  def soaHashReduce[K:Manifest,V:Manifest,CV:Manifest](size: Exp[Int], v: Sym[Int], body: DeliteHashReduceElem[K,V,CV]): Option[Exp[CV]] = t(body.alloc) match {
+  def soaHashReduce[K:Manifest,V:Manifest,I:Manifest,CV:Manifest](size: Exp[Int], v: Sym[Int], body: DeliteHashReduceElem[K,V,I,CV]): Option[Exp[CV]] = {
+    val alloc = t(body.buf.alloc) 
+    alloc match {
     case StructBlock(tag,elems) =>
       def copyLoop[B:Manifest](f: Block[B], r: Block[B], z: Block[B], rv1: Exp[B], rv2: Exp[B]): Exp[DeliteArray[B]] = {
         val allocV = reflectMutableSym(fresh[DeliteArray[B]])
@@ -248,22 +256,30 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         val sizeV = fresh[Int]
         val elemV = fresh[B]
         val tv = t(v).asInstanceOf[Sym[Int]]
-        simpleLoop(t(size), tv, DeliteHashReduceElem[K,B,DeliteArray[B]](
-          iV = indexV,
-          sV = sizeV,
-          eV = elemV,
-          allocVal = allocV,
-          alloc = reifyEffects(DeliteArray[B](sizeV)),
+        simpleLoop(t(size), tv, DeliteHashReduceElem[K,B,DeliteArray[B],DeliteArray[B]](
           keyFunc = t(body.keyFunc),
           valFunc = f,
-          apply = reifyEffects(dc_apply(allocV,indexV)),
-          update = reifyEffects(dc_update(allocV,indexV,elemV)),
-          append = reifyEffects(dc_append(allocV,tv,elemV)),
-          setSize = reifyEffects(dc_set_logical_size(allocV,sizeV)),
           cond = body.cond.map(t(_)),
           zero = z,
           rV = (rv1.asInstanceOf[Sym[B]], rv2.asInstanceOf[Sym[B]]),
-          rFunc = r
+          rFunc = r,
+          buf = DeliteBufferElem[B,DeliteArray[B],DeliteArray[B]](
+            eV = elemV,
+            sV = sizeV,
+            iV = indexV,
+            iV2 = unusedSym,
+            allocVal = allocV,
+            aV2 = unusedSym,
+            alloc = reifyEffects(DeliteArray[B](sizeV)),
+            apply = reifyEffects(dc_apply(allocV,indexV)),
+            update = reifyEffects(dc_update(allocV,indexV,elemV)),
+            appendable = unusedBlock,
+            append = reifyEffects(dc_append(allocV,tv,elemV)),
+            setSize = reifyEffects(dc_set_logical_size(allocV,sizeV)),
+            allocRaw = unusedBlock,
+            copyRaw = unusedBlock,
+            finalizer = reifyEffects(allocV)
+          )
         ))
       }
 
@@ -291,11 +307,11 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
           sys.error("transforming hashReduce elem but valFunc is not a struct and rFunc is")      
       }
 
-      val dataField = dc_data_field(t.getBlockResult(t(body.alloc)).asInstanceOf[Exp[DeliteCollection[V]]]) //TODO: ?
-      val sizeField = dc_size_field(t.getBlockResult(t(body.alloc)).asInstanceOf[Exp[DeliteCollection[V]]])
+      val dataField = dc_data_field(t.getBlockResult(alloc).asInstanceOf[Exp[DeliteCollection[V]]]) //FIXME
+      val sizeField = dc_size_field(t.getBlockResult(alloc).asInstanceOf[Exp[DeliteCollection[V]]])
 
-      if (dataField == "" && manifest[CV].erasure != classOf[DeliteArray[_]]) {
-        printlog("unable to transform hashReduce elem: no data field defined for " + manifest[CV].toString) 
+      if (dataField == "" && !isSubtype(manifest[I].erasure,classOf[DeliteArray[_]])) {
+        printlog("unable to transform hashReduce elem: no data field defined for " + manifest[I].toString)
         return None
       }
 
@@ -306,8 +322,8 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         case _ => copyLoop(t(body.valFunc), t(body.rFunc), t(body.zero), t(body.rV._1), t(body.rV._2))
       }
 
-      val res = if (manifest[CV].erasure == classOf[DeliteArray[_]]) {
-        newLoop.asInstanceOf[Exp[CV]]
+      val res = if (isSubtype(manifest[I].erasure, classOf[DeliteArray[_]])) {
+        newLoop
       }
       else {
         val newElems = elems.map {
@@ -316,13 +332,16 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
           case (f, Def(Reflect(NewVar(init),_,_))) => (f, t(init))
           case (f,v) => (f, t(v))
         }
-        struct[CV](tag, newElems)
+        struct[I](tag, newElems)
       }
-      Some(res)
+
+      t.replace(body.buf.allocVal, res) // TODO: use withSubstScope
+      printlog("successfully transformed hashReduce elem with type " + manifest[I].toString + " to " + res.toString)
+      Some(t.getBlockResult(t(body.buf.finalizer)))
       
     case Block(Def(Reify(Def(a),_,_))) => printlog("unable to transform hashReduce elem: found " + a + " with type " + manifest[CV].toString); None
     case _ => None
-  }
+  } }
 
   //case class FieldFromEffect[T](field: Exp[T], effects: Block[Unit]) extends Def[T]
   //val block = Block(Reify(Const(()), es, u))

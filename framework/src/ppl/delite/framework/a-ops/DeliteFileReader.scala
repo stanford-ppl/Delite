@@ -27,7 +27,7 @@ trait DeliteFileReaderOps extends Base with DeliteArrayBufferOps {
 
 }
 
-trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpOpt with DeliteArrayBufferOpsExp with DeliteOpsExp {
+trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpOpt with DeliteArrayBufferOpsExp with DeliteOpsExp with DeliteMapOpsExp {
 
   def dfr_readLines[A:Manifest](path: Rep[String], f: (Rep[String], Rep[DeliteArrayBuffer[A]]) => Rep[Unit]) = reflectPure(DeliteOpFileReaderReadLines(reifyEffects(path), f))
   case class DeliteOpFileReaderReadLines[A:Manifest](path: Block[String], func: (Rep[String], Rep[DeliteArrayBuffer[A]]) => Rep[Unit]) extends DeliteOpInput[DeliteArray[A]] {
@@ -135,24 +135,9 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
     def func: Exp[String] => Exp[A]
 
     lazy val body: Def[CA] = copyBodyOrElse(DeliteCollectElem[A,I,CA](
-      eV = this.eV,    
-      sV = this.sV,      
-      allocVal = this.allocVal,
-      allocN = reifyEffects(this.alloc(sV)),
-      func = reifyEffects(func(dfs_readLine(inputStream,v))), //FIXME: hack to keep readLine() bound
-      update = reifyEffects(dc_update(allocVal,v,eV)),
-      finalizer = reifyEffects(this.finalizer(allocVal)),
-      par = ParBuffer,
-      buf = DeliteBufferElem(
-        iV = this.iV,
-        iV2 = this.iV2,
-        aV = this.aV,
-        appendable = reifyEffects(dc_appendable(allocVal,v,eV)),
-        append = reifyEffects(dc_append(allocVal,v,eV)),
-        setSize = reifyEffects(dc_set_logical_size(allocVal,sV)),
-        allocRaw = reifyEffects(dc_alloc[A,I](allocVal,sV)),
-        copyRaw = reifyEffects(dc_copy(aV,iV,allocVal,iV2,sV))        
-      )      
+      func = reifyEffects(func(dfs_readLine(inputStream, v))),
+      par = dc_parallelization(allocVal, true),
+      buf = this.buf
     ))
 
     val dmA = manifest[A]

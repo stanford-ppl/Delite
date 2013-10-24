@@ -93,40 +93,45 @@ trait MultiLoop_SMP_Array_Generator {
 
     val acc = processRange(outSym,start,end)
 
-    // profiling
-    if (Config.profile)
-      endProfile()
+    def treeReduction(sync: String, needsCombine: Boolean) { //combines thread-local results and guarantees completion of all chunks by the time the master chunk returns
+      var half = chunkIdx
+      var step = 1
+      while ((half % 2 == 0) && (chunkIdx + step < numChunks)) { //half the chunks quit each iteration
+        half = half / 2
+        val neighbor = chunkIdx + step //the index of the chunk to reduce with
+        step *= 2
+
+        val neighborVal = get(sync, neighbor)
+        if (needsCombine) combine(acc, neighborVal) //combine activation records if needed
+      }
+      if (chunkIdx != 0) set(sync, chunkIdx, acc) //slave chunks store result
+    }
+
+    if (op.needsCombine) {
+      treeReduction("A", true)
+    }
 
     if (op.needsPostProcess) {
       if (chunkIdx != 0) {
-        val neighbor = chunkIdx - 1
-        postCombine(acc, get("B", neighbor)) //linear chain combine
+        postCombine(acc, get("B", chunkIdx-1)) //linear chain combine
+      } else {
+        postCombine(acc, "null")
       }
       if (chunkIdx == numChunks-1) {
         postProcInit(acc) //single-threaded
       }
 
-      if (numChunks > 1) set("B", chunkIdx, acc) // kick off others
+      if (numChunks > 1) set("B", chunkIdx, acc) // kick off next in chain
       if (chunkIdx != numChunks-1) get("B", numChunks-1) // wait for last one
       postProcess(acc) //parallel again
+    
     }
 
-    //tree reduction, combines thread-local results and guarantees completion of all chunks by the time the master chunk returns
-    var half = chunkIdx
-    var step = 1
-    while ((half % 2 == 0) && (chunkIdx + step < numChunks)) { //half the chunks quit each iteration
-      half = half / 2
-      val neighbor = chunkIdx + step //the index of the chunk to reduce with
-      step *= 2
+    if (Config.profile)
+      endProfile()
 
-      val neighborVal = get("A", neighbor)
-      if (op.needsCombine) combine(acc, neighborVal) //combine activation records if needed
-    }
-
-    if (chunkIdx != 0) { //slave chunks store result
-      set("A", chunkIdx, acc)
-    }
-    else { //master chunk returns it
+    if (op.needsPostProcess || !op.needsCombine) treeReduction("C", false) //barrier
+    if (chunkIdx == 0) { //master chunk returns result
       finalize(acc)
       returnResult(acc)
     }
@@ -149,12 +154,19 @@ trait MultiLoop_SMP_Array_Header_Generator {
 
     writeHeader()
 
-    for (i <- 1 until numChunks) //tree-reduce: sync for all chunks except 0
-      writeSync("A"+i)
+    if (op.needsCombine) { //tree-reduce: sync for all chunks except 0
+      for (i <- 1 until numChunks)
+        writeSync("A"+i)
+    }
 
     if (op.needsPostProcess && numChunks > 1) { //all chunks need to sync
       for (i <- 0 until numChunks)
         writeSync("B"+i)
+    }
+
+    if (op.needsPostProcess || !op.needsCombine) { //tree-reduce: sync for all chunks except 0
+      for (i <- 1 until numChunks) 
+        writeSync("C"+i)
     }
 
     writeFooter()

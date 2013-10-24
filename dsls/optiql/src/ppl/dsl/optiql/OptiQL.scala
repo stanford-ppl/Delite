@@ -22,12 +22,13 @@ import ppl.delite.framework.codegen.restage.{DeliteCodeGenRestage,TargetRestage}
 /**
  * These are the lifted scala constructs that only operate on the Rep world. These are usually safe to mix in
  */
-trait OptiQLScalaOpsPkg extends Base with MiscOps with BooleanOps with OrderingOps with PrimitiveOps with ObjectOps with StringOps with TupleOps with StructOps with NumericOps with ArrayOps with DeliteArrayOps with IfThenElse with Equal
+trait OptiQLScalaOpsPkg extends Base with MiscOps with BooleanOps with OrderingOps with PrimitiveOps with ObjectOps with StringOps with TupleOps with StructOps with NumericOps with ArrayOps with DeliteArrayOps with IfThenElse with Equal with CastingOps
 
 /**
  * This trait adds the Ops that are specific to OptiQL
  */
-trait OptiQL extends OptiQLScalaOpsPkg with TableOps with QueryableOps with DateOps with OptiQLMiscOps with InputReaderOps with Types {
+trait OptiQL extends OptiQLScalaOpsPkg with TableOps with QueryableOps with DateOps with OptiQLMiscOps with InputReaderOps with Types
+  with DeliteArrayOps with DeliteArrayBufferOps with DeliteMapOps {
   this: OptiQLApplication =>
 }
 
@@ -66,7 +67,7 @@ trait OptiQLCompiler extends OptiQL with IOOps with SeqOps with Variables with W
  * This trait comprises the IR nodes for OptiQL and the code required to instantiate code generators
  */
 trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with TableOpsExp with DateOpsExp with DateImplOpsStandard with QueryableOpsExpOpt with OptiQLMiscOpsExp
-  with InputReaderOpsExp with InputReaderImplOpsStandard with DeliteCollectionOpsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteFileReaderOpsExp with DSArrayOpsExp 
+  with InputReaderOpsExp with InputReaderImplOpsStandard with DeliteCollectionOpsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteMapOpsExp with DeliteFileReaderOpsExp with DSArrayOpsExp 
   with DeliteRestageOpsExp with DeliteAllOverridesExp with MultiloopSoATransformWithReduceExp {
 
   this: DeliteApplication with OptiQLApplication =>
@@ -151,7 +152,7 @@ trait OptiQLCodeGenRestage extends OptiQLScalaCodeGenPkg with DeliteCodeGenResta
 }
 
 trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg with ScalaGenOptiQLMiscOps with ScalaGenQueryableOps
-  with ScalaGenDeliteCollectionOps with ScalaGenDeliteOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteFileReaderOps with ScalaGenDSArrayOps with DeliteScalaGenAllOverrides {
+  with ScalaGenDeliteCollectionOps with ScalaGenDeliteOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteMapOps with ScalaGenDeliteFileReaderOps with ScalaGenDSArrayOps with DeliteScalaGenAllOverrides {
   val IR: DeliteApplication with OptiQLExp
 
   override def remap[A](m: Manifest[A]): String = m match {

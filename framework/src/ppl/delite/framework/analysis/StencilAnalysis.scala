@@ -234,7 +234,7 @@ trait StencilAnalysis extends FatBlockTraversal {
         
         addStencil(s, stencil)
         
-      case DeliteCollectElem(eV,sV,allocVal,allocN,func,update,finalizer,cond,par,buf) =>
+      case DeliteCollectElem(func,cond,par,buf,iFunc,iF,sF,eF) =>
         val stencil = new Stencil()
         
         log("  ++ found collect elem")
@@ -295,7 +295,7 @@ trait StencilAnalysis extends FatBlockTraversal {
         
         addStencil(s, stencil)
        
-      case DeliteHashReduceElem(iV,sV,eV,allocVal,alloc,keyFunc,valFunc,apply,update,append,setSize,cond,zero,rV,rFunc) =>
+      case DeliteHashReduceElem(keyFunc,valFunc,cond,zero,rV,rFunc,buf) =>
         val stencil = new Stencil
         
         log("  ++ found hash reduce elem")

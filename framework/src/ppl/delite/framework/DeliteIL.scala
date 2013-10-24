@@ -54,7 +54,7 @@ trait DeliteIL extends DeliteILScalaOpsPkg with DeliteILOps with DeliteCollectio
 }
 
 
-trait DeliteILExp extends DeliteIL with DeliteILScalaOpsPkgExp with DeliteILOpsExp with DeliteOpsExp with DeliteArrayFatExp with StructExp
+trait DeliteILExp extends DeliteIL with DeliteILScalaOpsPkgExp with DeliteILOpsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteMapOpsExp with StructExp
   with FunctionBlocksExp with ExpressionsOpt 
   with DeliteTransform with MultiloopSoATransformExp with DeliteAllOverridesExp {
 
@@ -91,7 +91,7 @@ trait DeliteILCodeGenBase extends GenericFatCodegen with SchedulingOpt {
 }
 
 trait DeliteILCodeGenScala extends DeliteILCodeGenBase with DeliteILScalaCodeGenPkg with DeliteILScalaGenExternal with ScalaGenDeliteILOps
-  with ScalaGenDeliteOps with ScalaGenDeliteCollectionOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenTupledFunctions  
+  with ScalaGenDeliteOps with ScalaGenDeliteCollectionOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteMapOps with ScalaGenTupledFunctions  
   with DeliteScalaGenAllOverrides { 
   
   val IR: DeliteApplication with DeliteILExp

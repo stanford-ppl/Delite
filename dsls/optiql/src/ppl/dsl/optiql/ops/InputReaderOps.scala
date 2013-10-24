@@ -9,8 +9,20 @@ import reflect.{RefinedManifest, SourceContext}
 trait InputReaderOps extends Base { this: OptiQL =>
 
   object TableInputReader {
-    def apply[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String] = unit("\\|")) = optiql_table_input_reader(path, shape, separator)
+    def apply[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String] = unit("\\|")) = {
+      Console.println("shape: " + shape)
+      optiql_table_input_reader(path, shape, separator)
+    }
     def apply(path: Rep[String]) = optiql_table_line_reader(path)
+    def apply[T:Manifest](path: Rep[String]): Rep[Table[T]] = {
+      manifest[T] match {
+        case r: RefinedManifest[T] => 
+          Console.println("found refined manifest: " + r.toString)
+        case a => 
+          Console.println("found " + a.toString)
+      }
+      Table() //optiql_table_input_reader(path, null.asInstanceOf[Rep[T]], unit("\\|"))
+    }
   }
 
   def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]): Rep[Table[T]]

@@ -40,6 +40,22 @@ trait DeliteMap extends DeliteTestBase {
   }
 }
 
+object DeliteFlatMapRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFlatMap
+trait DeliteFlatMap extends DeliteTestBase {
+  def main() = {
+
+    val v = DeliteArrayBuffer.fromFunction(1000){ i => i }
+    val v2 = v flatMap { i => DeliteArrayBuffer.fromFunction(10){ j => i }}
+    collectArray(v2, 10000, i => i/10)
+
+    val ve = DeliteArrayBuffer.fromFunction(0){ i => 0 }
+    val ve2 = ve flatMap { i => DeliteArrayBuffer.fromFunction(0) { j => i }}
+    collectArray(ve2, 0, i => i)
+
+    mkReport
+  }
+}
+
 object DeliteZipRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteZip
 trait DeliteZip extends DeliteTestBase {
   def main() = {

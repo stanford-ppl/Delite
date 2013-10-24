@@ -23,8 +23,8 @@ trait LoopAnalysis extends FatBlockTraversal with LoopFusionOpt with LoopSoAOpt 
   def analyzeBlock(bodies: List[Def[Any]]) { 
     bodies foreach { body =>
       val bodyType = body match {
-        case elem: DeliteHashCollectElem[_,_,_] => "hashcollect"
-        case elem: DeliteHashReduceElem[_,_,_] => "hashreduce"
+        case elem: DeliteHashCollectElem[_,_,_,_,_,_] => "hashcollect"
+        case elem: DeliteHashReduceElem[_,_,_,_] => "hashreduce"
         case elem: DeliteHashIndexElem[_,_] => "hashindex"
         case elem: DeliteCollectElem[_,_,_] => "collect"
         case elem: DeliteForeachElem[_] => "foreach"
@@ -94,8 +94,8 @@ trait LoopAnalysis extends FatBlockTraversal with LoopFusionOpt with LoopSoAOpt 
  
   def collectLoopBody(body: Def[Any]): List[Block[Any]] = {
     body match {
-      case elem: DeliteHashCollectElem[_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
-      case elem: DeliteHashReduceElem[_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
+      case elem: DeliteHashCollectElem[_,_,_,_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
+      case elem: DeliteHashReduceElem[_,_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
       case elem: DeliteHashIndexElem[_,_] => elem.keyFunc :: elem.cond
       case elem: DeliteCollectElem[_,_,_] => elem.func :: elem.cond
       case elem: DeliteForeachElem[_] => List(elem.func)
