@@ -179,14 +179,15 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     cond: List[Block[Boolean]] = Nil,
     par: DeliteParallelStrategy,
     buf: DeliteBufferElem[A,I,CA],
-    iFunc: Option[Block[I]] = None, //TODO: is there a cleaner way to merge flatMap functionality with Collect?
+    iFunc: Option[Block[DeliteCollection[A]]] = None, //TODO: is there a cleaner way to merge flatMap functionality with Collect?
     iF: Option[Sym[Int]] = None,
     sF: Option[Block[Int]] = None,
-    eF: Option[Sym[I]] = None
+    eF: Option[Sym[DeliteCollection[A]]] = None
   ) extends Def[CA] {
     val mA = manifest[A]
     val mI = manifest[I]
     val mCA = manifest[CA]
+    val mDCA = manifest[DeliteCollection[A]]
   }
   
   case class DeliteReduceElem[A:Manifest](
@@ -439,11 +440,11 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     
     // supplied by subclass
     val in: Exp[DeliteCollection[A]]
-    def func: Exp[A] => Exp[I]
+    def func: Exp[A] => Exp[DeliteCollection[B]]
 
-    final lazy val iFunc: Exp[I] = copyTransformedOrElse(_.iFunc)(func(dc_apply(in,v)))
+    final lazy val iFunc: Exp[DeliteCollection[B]] = copyTransformedOrElse(_.iFunc)(func(dc_apply(in,v)))
     final lazy val iF: Sym[Int] = copyTransformedOrElse(_.iF)(fresh[Int]).asInstanceOf[Sym[Int]]
-    final lazy val eF: Sym[I] = copyTransformedOrElse(_.eF)(fresh[I]).asInstanceOf[Sym[I]]
+    final lazy val eF: Sym[DeliteCollection[B]] = copyTransformedOrElse(_.eF)(fresh[DeliteCollection[B]](iFunc.tp)).asInstanceOf[Sym[DeliteCollection[B]]]
     
     // loop
     lazy val body: Def[CB] = copyBodyOrElse(DeliteCollectElem[B,I,CB](
@@ -1218,7 +1219,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
           cond = e.cond.map(fb(_)(manifest[Boolean])), //f(e.cond)
           par = e.par,
           buf = mirrorBuffer(e.buf),
-          iFunc = e.iFunc.map(fb(_)(e.mI)),
+          iFunc = e.iFunc.map(fb(_)(e.mDCA)),
           iF = e.iF.map(f(_).asInstanceOf[Sym[Int]]),
           sF = e.sF.map(fb(_)(manifest[Int])),
           eF = e.eF.map(f(_).asInstanceOf[Sym[i]])
@@ -1320,7 +1321,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   override def boundSyms(e: Any): List[Sym[Any]] = e match {
     case s: DeliteOpSingleTask[_] => effectSyms(s.block)
     case op: DeliteHashCollectElem[_,_,_,_,_,_] => effectSyms(op.keyFunc) ++ effectSyms(op.valFunc) ++ effectSyms(op.cond) ++ boundSyms(op.buf) ++ boundSyms(op.iBuf)
-    case op: DeliteHashReduceElem[_,_,_,_] => effectSyms(op.keyFunc) ++ effectSyms(op.valFunc) ++ effectSyms(op.cond) ++ effectSyms(op.zero) ++ effectSyms(op.rFunc) ++ boundSyms(op.buf)
+    case op: DeliteHashReduceElem[_,_,_,_] => List(op.rV._1, op.rV._2) ++ effectSyms(op.keyFunc) ++ effectSyms(op.valFunc) ++ effectSyms(op.cond) ++ effectSyms(op.zero) ++ effectSyms(op.rFunc) ++ boundSyms(op.buf)
     case op: DeliteHashIndexElem[_,_] => effectSyms(op.keyFunc) ++ effectSyms(op.cond)
     case e: DeliteOpExternal[_] => effectSyms(e.allocVal) /*::: super.effectSyms(e) */
     case fr: DeliteOpForeachReduce[_] => List(fr.v) ::: effectSyms(fr.funcBody)

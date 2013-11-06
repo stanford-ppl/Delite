@@ -227,8 +227,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
    */
   def darray_update[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int], x: Exp[T])(implicit ctx: SourceContext) = da match {
     case Def(Field(struct,name)) => recurseFields(struct, List(name), (s,f) => reflectWrite(s)(StructUpdate[T](s,f,List(i),x))) //Struct(Array)
-    case Def(Reflect(Field(struct,name),u,_)) if u == Control() => recurseFields(struct, List(name), (s,f) => reflectWrite(s)(StructUpdate[T](s,f,List(i),x))) //Struct(Array) 
-    case Def(Reflect(Field(struct,name),_,_)) => recurseFields(struct, List(name), (s,f) => reflectWrite(struct)(StructUpdate[T](s,f,List(i),x))) //Struct(Array)
+    case Def(Reflect(Field(struct,name),u,_)) => recurseFields(struct, List(name), (s,f) => reflectWrite(s)(StructUpdate[T](s,f,List(i),x))) //Struct(Array) 
     case Def(Reflect(ReadVar(Variable(Def(Reflect(Field(struct,name),_,_)))),_,_)) => recurseFields(struct, List(name), (s,f) => reflectWrite(struct)(StructUpdate[T](s,f,List(i),x))) //Struct(Var(Array))
     case Def(Reflect(ReadVar(v),_,_)) => reflectWrite(v.e)(VarUpdate[T](v,i,x)) //Var(Array)
     case Def(DeliteArrayApply(arr,j)) => recurseFields(arr, Nil, (s,f) => reflectWrite(s)(StructUpdate[T](s,f,List(j,i),x))) //Struct(Array(Array)) //TODO: generalize to arbitrary array nests?
@@ -406,7 +405,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
       len
     case StructType(tag, fields) if Config.soaEnabled =>
       val z = dlength(field(da,fields(0)._1)(mtype(darrayManifest(fields(0)._2)),ctx))(mtype(fields(0)._2),ctx)
-      printlog("**** fallback array length: " + z + " of " + da.toString)
+      printlog("**** fallback array length: " + z.toString + " of " + da.toString)
       z
     case _ => super.darray_length(da)
   }
@@ -491,11 +490,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
     case _ => super.darray_new_immutable(length)
   }
 
-  def darrayManifest(arg: Manifest[_]) = new Manifest[DeliteArray[_]] {
-    override val erasure = classOf[DeliteArray[_]]    
-    override val typeArguments = List(arg)
-    val runtimeClass = classOf[DeliteArray[_]]
-  }
+  def darrayManifest(arg: Manifest[_]) = makeManifest(classOf[DeliteArray[_]], List(arg))
 
   def deliteArrayPure[T:Manifest](da: Exp[DeliteArray[T]], elems: RefinedManifest[T])(implicit ctx: SourceContext): Exp[DeliteArray[T]] = {
     if (Config.soaEnabled)

@@ -9,23 +9,11 @@ import reflect.{RefinedManifest, SourceContext}
 trait InputReaderOps extends Base { this: OptiQL =>
 
   object TableInputReader {
-    def apply[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String] = unit("\\|")) = {
-      Console.println("shape: " + shape)
-      optiql_table_input_reader(path, shape, separator)
-    }
     def apply(path: Rep[String]) = optiql_table_line_reader(path)
-    def apply[T:Manifest](path: Rep[String]): Rep[Table[T]] = {
-      manifest[T] match {
-        case r: RefinedManifest[T] => 
-          Console.println("found refined manifest: " + r.toString)
-        case a => 
-          Console.println("found " + a.toString)
-      }
-      Table() //optiql_table_input_reader(path, null.asInstanceOf[Rep[T]], unit("\\|"))
-    }
+    def apply[T<:Record:Manifest](path: Rep[String], separator: Rep[String]): Rep[Table[T]] = optiql_table_input_reader(path, separator)
   }
 
-  def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]): Rep[Table[T]]
+  def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], separator: Rep[String]): Rep[Table[T]]
   def optiql_table_line_reader(path: Rep[String]): Rep[Table[String]]
   def optiql_table_from_seq[T:Manifest](elems: Seq[Rep[T]]): Rep[Table[T]]
 
@@ -36,8 +24,8 @@ trait InputReaderOpsExp extends InputReaderOps with BaseFatExp { this: OptiQLExp
   case class OptiQLTableInputReader[T:Manifest](readBlock: Block[Table[T]]) extends DeliteOpSingleWithManifest[T,Table[T]](readBlock)
   case class OptiQLTableFromSeq[T:Manifest](readBlock: Block[Table[T]]) extends DeliteOpSingleWithManifest[T,Table[T]](readBlock)
 
-  def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]) = {
-    val array = DeliteNewFileReader.readLines(path){ line => optiql_table_input_reader_impl(line, shape, separator) }
+  def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], separator: Rep[String]) = {
+    val array = DeliteNewFileReader.readLines(path){ line => optiql_table_input_reader_impl(line, separator) }
     Table(array, array.length)
   }
 
@@ -61,18 +49,18 @@ trait InputReaderOpsExp extends InputReaderOps with BaseFatExp { this: OptiQLExp
 }
 
 trait InputReaderImplOps { this: OptiQL =>
-  def optiql_table_input_reader_impl[T<:Record:Manifest](line: Rep[String], shape: Rep[T], separator: Rep[String]): Rep[T]
+  def optiql_table_input_reader_impl[T<:Record:Manifest](line: Rep[String], separator: Rep[String]): Rep[T]
   def optiql_table_from_seq[T:Manifest](elems: Seq[Rep[T]]): Rep[Table[T]]
 }
 
 trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift with OptiQLExp =>
 
-  def optiql_table_input_reader_impl[T<:Record:Manifest](line: Rep[String], shape: Rep[T], separator: Rep[String]) = {
+  def optiql_table_input_reader_impl[T<:Record:Manifest](line: Rep[String], separator: Rep[String]) = {
     val fields = line.split(separator,-1)
-    createRecord(fields, shape)
+    createRecord(fields)
   }
 
-  private def createRecord[T<:Record:Manifest](record: Rep[Array[String]], shape: Rep[T]) = {
+  private def createRecord[T<:Record:Manifest](record: Rep[Array[String]]) = {
     val rm = manifest[T] match {
       case rm: RefinedManifest[T] => rm
       case m => throw new RuntimeException("No RefinedManifest for type " + m.toString)
@@ -97,7 +85,7 @@ trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift w
     struct[T](AnonTag(rm), fields)
   }
 
-  //TODO: implement as map
+  //TODO: this is a map
   def optiql_table_from_seq_impl[T:Manifest](elems: Seq[Rep[T]]) = {
     val array = DeliteArray[T](elems.length)
     for (i <- (0 until elems.length): Range) {

@@ -85,8 +85,8 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
     def m = manifest[B]
   }
 
-  case class IndexVectorHash[V:Manifest:Arith](intf: Interface[IndexVector], keyFunc: Exp[Int] => Exp[Int], mapFunc: Exp[Int] => Exp[V], reduceFunc: (Exp[V],Exp[V]) => Exp[V]) 
-    extends DeliteOpHashMapReduce[Int, Int, V, DeliteArray[V]] {
+  case class IndexVectorHash[V:Manifest:Arith](intf: Interface[IndexVector], keyFunc: Exp[Int] => Exp[Int], valFunc: Exp[Int] => Exp[V], reduceFunc: (Exp[V],Exp[V]) => Exp[V]) 
+    extends DeliteOpMappedGroupByReduce[Int, Int, V, DeliteArray[V]] {
     
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[Int]]]
     val size = copyTransformedOrElse(_.size)(intf.length)

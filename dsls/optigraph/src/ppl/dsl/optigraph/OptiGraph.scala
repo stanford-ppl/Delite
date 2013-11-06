@@ -103,7 +103,7 @@ object OptiGraph_ {
  * OptiGraph IR
  */
 
-trait OptiGraphExp extends OptiGraphCompiler with OptiGraphScalaOpsPkgExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with StructExp with VariantsOpsExp
+trait OptiGraphExp extends OptiGraphCompiler with OptiGraphScalaOpsPkgExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteMapOpsExp with StructExp with VariantsOpsExp
   with LanguageOpsExp
   with GraphOpsExp with NodeOpsExp with EdgeOpsExp
   with NodePropertyOpsExp with EdgePropertyOpsExp

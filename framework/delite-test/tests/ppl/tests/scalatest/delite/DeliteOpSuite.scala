@@ -12,10 +12,8 @@ trait DeliteTestBase extends DeliteTestModule with DeliteTestDSLApplication {
 
   def collectArray[A:Manifest](buf: Rep[DeliteArrayBuffer[A]], expectedLength: Rep[Int], expectedValues: Rep[Int] => Rep[A]) {
     collect(buf.length == expectedLength)
-    var i = 0
-    while (i < buf.length) {
+    for (i <- 0 until buf.length) {
       collect(buf(i) == expectedValues(i))
-      i += 1
     }
   }
 }
@@ -158,6 +156,31 @@ trait DeliteZipWithReduceTuple extends DeliteTestBase {
   }
 }
 
+object DeliteGroupByRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGroupBy
+trait DeliteGroupBy extends DeliteTestBase {
+  def main() = {
+    /*val res = DeliteArrayBuffer.fromFunction(1000){ i => i } groupBy { i => i % 2 == 0 }
+    collect(res.size == 2)
+    collectArray(res(true), 500, i => 2*i)
+    collectArray(res(false), 500, i => 2*i+1)*/
+
+    /*val res2 = DeliteArrayBuffer.fromFunction(1000*1000){ i => i/1000 } groupBy { i => i }
+    collect(res2.size == 1000)
+    for (i <- 0 until res2.size) {
+      collectArray(res2(i), 1000, j => i)
+    }*/
+
+    val res2 = DeliteArrayBuffer.fromFunction(1000*1000){ i => new Record{ val a = infix_/(i,1000); val b = i }} groupBy { _.a }
+    collect(res2.size == 1000)
+    for (i <- 0 until res2.size) {
+      collectArray(res2(i).map(_.a), 1000, j => i)
+    }
+
+    /*val res3 = DeliteArrayBuffer.fromFunction(0){ i => i } groupBy { i => i }
+    collect(res3.size == 0)*/
+  }
+}
+
 object DeliteNestedMapRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteNestedMap
 trait DeliteNestedMap extends DeliteTestBase {
   def main() = {
@@ -288,12 +311,14 @@ trait DeliteHorizontalElems extends DeliteTestBase {
 
 class DeliteOpSuite extends DeliteSuite {
   def testDeliteMap() { compileAndTest(DeliteMapRunner, CHECK_MULTILOOP) }
+  def testDeliteFlatMap() { compileAndTest(DeliteFlatMapRunner) }
   def testDeliteZip() { compileAndTest(DeliteZipRunner, CHECK_MULTILOOP) }
   def testDeliteReduce() { compileAndTest(DeliteReduceRunner, CHECK_MULTILOOP) }
   def testDeliteMapReduce() { compileAndTest(DeliteMapReduceRunner, CHECK_MULTILOOP) }
   def testDeliteFilter() { compileAndTest(DeliteFilterRunner) }
   def testDeliteForeach() { compileAndTest(DeliteForeachRunner) }
   def testDeliteZipWithReduceTuple() { compileAndTest(DeliteZipWithReduceTupleRunner, CHECK_MULTILOOP) }
+  def testDeliteGroupBy() { compileAndTest(DeliteGroupByRunner) }
   def testDeliteNestedMap() { compileAndTest(DeliteNestedMapRunner) }
   def testDeliteHorizontalElems() { compileAndTest(DeliteHorizontalElemsRunner, CHECK_MULTILOOP) }
   def testDeliteNestedZip() { compileAndTest(DeliteNestedZipRunner) }

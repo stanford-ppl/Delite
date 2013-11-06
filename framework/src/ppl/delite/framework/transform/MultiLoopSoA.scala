@@ -250,16 +250,21 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
     val alloc = t(body.buf.alloc) 
     alloc match {
     case StructBlock(tag,elems) =>
+      val condT = body.cond.map(t(_))
+      val keyT = t(body.keyFunc)
+      val valT = t(body.valFunc)
+      val tv = t(v).asInstanceOf[Sym[Int]]
+      val sizeT = t(size)
+
       def copyLoop[B:Manifest](f: Block[B], r: Block[B], z: Block[B], rv1: Exp[B], rv2: Exp[B]): Exp[DeliteArray[B]] = {
         val allocV = reflectMutableSym(fresh[DeliteArray[B]])
         val indexV = fresh[Int]
         val sizeV = fresh[Int]
         val elemV = fresh[B]
-        val tv = t(v).asInstanceOf[Sym[Int]]
-        simpleLoop(t(size), tv, DeliteHashReduceElem[K,B,DeliteArray[B],DeliteArray[B]](
-          keyFunc = t(body.keyFunc),
+        simpleLoop(sizeT, tv, DeliteHashReduceElem[K,B,DeliteArray[B],DeliteArray[B]](
+          keyFunc = keyT,
           valFunc = f,
-          cond = body.cond.map(t(_)),
+          cond = condT,
           zero = z,
           rV = (rv1.asInstanceOf[Sym[B]], rv2.asInstanceOf[Sym[B]]),
           rFunc = r,
@@ -315,11 +320,11 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         return None
       }
 
-      val newLoop = t(body.valFunc) match {
+      val newLoop = valT match {
         case Block(Def(Struct(ta,es))) if Config.soaEnabled => 
           val (rv1, rv2) = unwrapRV(ta,es,body.rV)
-          soaTransform(t(body.valFunc), t(body.rFunc), t(body.zero), rv1, rv2)
-        case _ => copyLoop(t(body.valFunc), t(body.rFunc), t(body.zero), t(body.rV._1), t(body.rV._2))
+          soaTransform(valT, t(body.rFunc), t(body.zero), rv1, rv2)
+        case _ => copyLoop(valT, t(body.rFunc), t(body.zero), t(body.rV._1), t(body.rV._2))
       }
 
       val res = if (isSubtype(manifest[I].erasure, classOf[DeliteArray[_]])) {

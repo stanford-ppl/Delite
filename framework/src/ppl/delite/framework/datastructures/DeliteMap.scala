@@ -72,9 +72,16 @@ trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp { this: DeliteO
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@DeliteMapNewImm(k,v,i,s) => reflectPure(new {override val original = Some(f,e) } with DeliteMapNewImm(f(k),f(v),f(i),f(s))(e.mK,e.mV))(mtype(manifest[A]),implicitly[SourceContext])
+    case Reflect(e@DeliteMapNewImm(k,v,i,s), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMapNewImm(f(k),f(v),f(i),f(s))(e.mK,e.mV), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case e@DeliteIndexGet(i,k) => dindex_get(f(i),f(k))(e.mA,ctx)
+    case Reflect(e@DeliteIndexGet(i,k), u, es) => reflectMirrored(Reflect(DeliteIndexGet(f(i),f(k)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
+  
+  override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
+    case t if t.erasure == classOf[DeliteMap[_,_]] => Some((classTag(t), List("keys" -> darrayManifest(t.typeArguments(0)), "values" -> darrayManifest(t.typeArguments(1)), "index" -> makeManifest(classOf[DeliteIndex[_]], List(t.typeArguments(0))), "size" -> manifest[Int])))
+    case _ => super.unapplyStructType
+  }
 
 }
 

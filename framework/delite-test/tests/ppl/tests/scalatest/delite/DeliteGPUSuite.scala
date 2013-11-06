@@ -92,8 +92,8 @@ trait DeliteGPUNestedMutation extends DeliteTestModule with DeliteTestDSLApplica
 object DeliteGPUObjectReductionRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPUObjectReduction
 trait DeliteGPUObjectReduction extends DeliteTestModule with DeliteTestDSLApplication {
   def main() = {
-    val rows = 4096
-    val cols = 4
+    val rows = 4
+    val cols = 4096
 
     val in = DeliteArrayBuffer.fromFunction(rows*cols)(i => 1.0f)
     val out = DeliteArrayBuffer.fromFunction(rows) { i => 

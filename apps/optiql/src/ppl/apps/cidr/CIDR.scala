@@ -28,8 +28,6 @@ trait Example extends OptiQLApplication {
     val continent = _continent
   }
 
-  def Content(): Rep[Content] = Content("", 0, 0L, 0L, "", "", "", "")
-
   def printUsage() = {
     println("Usage: TestRunner <input CIDR file or directory>")
     exit(-1)
@@ -38,7 +36,7 @@ trait Example extends OptiQLApplication {
   def main() = {
     if (args.length < 1) printUsage()
     val path = args(0)
-    val data = Table.fromFile(path, Content(), ",")
+    val data = Table.fromFile[Content](path, ",")
 
     val c = data.Count(e => unit(true)) //why?
     println("total records processed: " + c)

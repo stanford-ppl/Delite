@@ -172,6 +172,11 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
     case _ => None
   }
 
+  def makeManifest[T](clazz: Class[T], args: List[Manifest[_]]) = new Manifest[T] {
+    override val typeArguments = args
+    val runtimeClass = clazz
+  }
+
 }
 
 
@@ -189,10 +194,8 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
       }.mkString(",") + ")")
     case FieldApply(struct, index) =>
       emitValDef(sym, quote(struct) + "." + index)
-      val lhs = struct match { case Def(lhs) => lhs.toString case _ => "?" }
     case FieldUpdate(struct, index, rhs) =>
       emitValDef(sym, quote(struct) + "." + index + " = " + quote(rhs))
-      val lhs = struct match { case Def(lhs) => lhs.toString case _ => "?" }
     case NestedFieldUpdate(struct, fields, rhs) =>
       emitValDef(sym, quote(struct) + "." + fields.reduceLeft(_ + "." + _) + " = " + quote(rhs))
     case _ => super.emitNode(sym, rhs)

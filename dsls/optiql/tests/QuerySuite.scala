@@ -23,6 +23,8 @@ trait TestRecord extends OptiQLApplication {
   lazy val items = Table(Item(0, 10, 2.49, 'N'), Item(1, 0, 49.95, 'B'), Item(2, 1000, 0.99, 'N'), Item(3, 18, 5.99, 'S'))
   val itemsSize = 4
 
+  lazy val items2 = Table(Item(0, 10, 2.49, 'N'), Item(1, 0, 49.95, 'B'), Item(2, 1000, 0.99, 'N'), Item(3, 18, 5.99, 'S'), Item(4, 22, 2.99, 'N'))
+
   lazy val emptyTable = Table[Item]()
 
   //allow some floating point error
@@ -35,7 +37,7 @@ trait TestRecord extends OptiQLApplication {
 
 object QueryableSelectRunner extends DeliteTestRunner with OptiQLApplicationRunner with QueryableSelectTest
 trait QueryableSelectTest extends DeliteTestModule with OptiQLApplication with TestRecord {
-  def main() {
+  def main() = {
     val scalarResult = items Select (item => item.id)
     
     collect(scalarResult.size == itemsSize)
@@ -63,7 +65,7 @@ trait QueryableSelectTest extends DeliteTestModule with OptiQLApplication with T
 
 object QueryableWhereRunner extends DeliteTestRunner with OptiQLApplicationRunner with QueryableWhereTest
 trait QueryableWhereTest extends DeliteTestModule with OptiQLApplication with TestRecord {
-  def main() {
+  def main() = {
     val result = items Where(_.status == 'N') Select(item => new Record {
       val id = item.id
       val maxRevenue = item.quantity * item.price
@@ -85,7 +87,7 @@ trait QueryableWhereTest extends DeliteTestModule with OptiQLApplication with Te
 
 object QueryableReduceRunner extends DeliteTestRunner with OptiQLApplicationRunner with QueryableReduceTest
 trait QueryableReduceTest extends DeliteTestModule with OptiQLApplication with TestRecord {
-  def main() {
+  def main() = {
     val sumQuantity = items Sum(_.quantity)
     collect(sumQuantity == 1028)
 
@@ -101,9 +103,9 @@ trait QueryableReduceTest extends DeliteTestModule with OptiQLApplication with T
   }
 }
 
-object QueryableGroupByRunner extends DeliteTestRunner with OptiQLApplicationRunner with QueryableGroupByTest
-trait QueryableGroupByTest extends DeliteTestModule with OptiQLApplication with TestRecord {
-  def main() {
+object QueryableGroupByReduceRunner extends DeliteTestRunner with OptiQLApplicationRunner with QueryableGroupByReduceTest
+trait QueryableGroupByReduceTest extends DeliteTestModule with OptiQLApplication with TestRecord {
+  def main() = {
     val res1 = items GroupBy(_.status) Select(g => new Record {
       val status = g.key
       val sumQuantity = g.Sum(_.quantity)
@@ -135,9 +137,21 @@ trait QueryableGroupByTest extends DeliteTestModule with OptiQLApplication with 
   }
 }
 
+object QueryableGroupByRunner extends DeliteTestRunner with OptiQLApplicationRunner with QueryableGroupByTest
+trait QueryableGroupByTest extends DeliteTestModule with OptiQLApplication with TestRecord {
+  def main() = {
+    val res = items GroupBy(_.status) SelectMany(g => g Select(_.quantity))
+    collect(res.size == items.size)
+    collect(res(0) == 10) //N
+    collect(res(1) == 1000) //N
+    collect(res(2) == 0) //B
+    collect(res(3) == 18) //S
+  }
+}
+
 object QueryableSortRunner extends DeliteTestRunner with OptiQLApplicationRunner with QueryableSortTest
 trait QueryableSortTest extends DeliteTestModule with OptiQLApplication with TestRecord {
-  def main() {
+  def main() = {
     val sort1 = items OrderBy(_.id)
     for (i <- 0 until itemsSize) {
       collect(sort1(i).id == i)
@@ -158,12 +172,21 @@ trait QueryableSortTest extends DeliteTestModule with OptiQLApplication with Tes
   }
 }
 
-/*object QueryableJoinRunner extends DeliteTestRunner with OptiQLApplicationRunner with QueryableJoinTest
+object QueryableJoinRunner extends DeliteTestRunner with OptiQLApplicationRunner with QueryableJoinTest
 trait QueryableJoinTest extends DeliteTestModule with OptiQLApplication with TestRecord {
-  def main() {
-    //TODO
+  def main() = {
+    val res = items Join(items2) WhereEq(_.id, _.id) Select((a,b) => new Record {
+      val id = a.id
+      val quantity = b.quantity
+    })
+
+    collect(res.size == items.size)
+    collect(res(0).id == 0 && res(0).quantity == 10)
+    collect(res(1).id == 1 && res(1).quantity == 0)
+    collect(res(2).id == 2 && res(2).quantity == 1000)
+    collect(res(3).id == 3 && res(3).quantity == 18)
   }
-}*/
+}
 
 
 class QuerySuite extends DeliteSuite {
@@ -171,6 +194,7 @@ class QuerySuite extends DeliteSuite {
   def testWhere() { compileAndTest(QueryableWhereRunner) }
   def testReduce() { compileAndTest(QueryableReduceRunner) }
   def testGroupBy() { compileAndTest(QueryableGroupByRunner) }
-  //def testSort() { compileAndTest(QueryableSortRunner) } //FIXME
+  def testGroupByReduce() { compileAndTest(QueryableGroupByReduceRunner) }
+  def testSort() { compileAndTest(QueryableSortRunner) }
+  def testJoin() { compileAndTest(QueryableJoinRunner) }
 }
-

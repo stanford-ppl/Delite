@@ -28,7 +28,7 @@ trait DeliteTestDSLLift extends LiftVariables with LiftEquals with LiftString wi
 
 trait DeliteTestDSLScalaOpsPkg extends Base
   with Equal with IfThenElse with Variables with While with TupledFunctions
-  with ImplicitOps with OrderingOps with StringOps
+  with ImplicitOps with OrderingOps with StringOps with RangeOps
   with BooleanOps with PrimitiveOps with MiscOps with TupleOps
   with CastingOps with ObjectOps with IOOps
   with ArrayOps with ExceptionOps
@@ -73,7 +73,7 @@ trait DeliteTestDSLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGen
   { val IR: DeliteTestDSLScalaOpsPkgExp  }
 
 
-trait DeliteTestDSL extends DeliteTestDSLScalaOpsPkg with StructOps with DeliteCollectionOps with DeliteArrayOps with DeliteArrayBufferOps with DeliteFileReaderOps {
+trait DeliteTestDSL extends DeliteTestDSLScalaOpsPkg with StructOps with DeliteCollectionOps with DeliteArrayOps with DeliteArrayBufferOps with DeliteMapOps with DeliteFileReaderOps {
   this: DeliteTestDSLApplication =>
 }
 
@@ -82,7 +82,7 @@ trait DeliteTestDSLCompiler extends DeliteTestDSL
   this: DeliteTestDSLApplication with DeliteTestDSLExp =>
 }
 
-trait DeliteTestDSLExp extends DeliteTestDSLCompiler with DeliteTestDSLScalaOpsPkgExp with FunctionBlocksExp with DeliteStructsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteFileReaderOpsExp
+trait DeliteTestDSLExp extends DeliteTestDSLCompiler with DeliteTestDSLScalaOpsPkgExp with FunctionBlocksExp with DeliteStructsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteMapOpsExp with DeliteFileReaderOpsExp
   with ExpressionsOpt with DeliteTransform with MultiloopSoATransformWithReduceExp with DeliteAllOverridesExp {
 
   this: DeliteApplication with DeliteTestDSLApplication with DeliteTestDSLExp =>
@@ -108,7 +108,7 @@ trait DeliteTestDSLCodeGenBase extends GenericFatCodegen with SchedulingOpt {
 }
 
 trait DeliteTestDSLCodeGenScala extends DeliteTestDSLCodeGenBase with DeliteTestDSLScalaCodeGenPkg
-  with ScalaGenDeliteOps with ScalaGenDeliteCollectionOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteFileReaderOps
+  with ScalaGenDeliteOps with ScalaGenDeliteCollectionOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteMapOps with ScalaGenDeliteFileReaderOps
   with DeliteScalaGenAllOverrides {
   
   val IR: DeliteApplication with DeliteTestDSLExp

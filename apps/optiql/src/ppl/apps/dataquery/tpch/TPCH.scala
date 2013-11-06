@@ -2,10 +2,10 @@ package ppl.apps.dataquery.tpch
 
 import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
 import scala.virtualization.lms.common.Record
-import ppl.delite.framework.datastructures.DeliteArrayBuffer
 
 object TPCHQ1 extends OptiQLApplicationRunner with TPCHQ1Trait
 object TPCHQ2 extends OptiQLApplicationRunner with TPCHQ2Trait
+object TPCHQ6 extends OptiQLApplicationRunner with TPCHQ6Trait
 object TPCHQ14 extends OptiQLApplicationRunner with TPCHQ14Trait
 
 trait TPCHBaseTrait extends OptiQLApplication with Types {
@@ -15,17 +15,25 @@ trait TPCHBaseTrait extends OptiQLApplication with Types {
     exit(-1)
   }
 
+  //timing decided at staging time so we can fuse across I/O when possible
+  val timeIO: Boolean = System.getProperty("tpch.time.io", "true") != "false"
+  override def tic(in: Rep[Any]*) = {
+    if (timeIO) super.tic() //start timing immediately
+    else super.tic(in:_*) //start timing after input loaded
+  }
+
   val queryName: String
   
   var tpchDataPath: Rep[String] = _
-  def loadCustomers() = TableInputReader(tpchDataPath+"/customer.tbl", Customer())
-  def loadLineItems() = TableInputReader[LineItem](tpchDataPath+"/lineitem.tbl")
-  def loadOrders() = TableInputReader(tpchDataPath+"/orders.tbl", Order())
-  def loadNations() = TableInputReader(tpchDataPath+"/nation.tbl", Nation())
-  def loadParts() = TableInputReader(tpchDataPath+"/part.tbl", Part())
-  def loadPartSuppliers() = TableInputReader(tpchDataPath+"/partsupp.tbl", PartSupplier())
-  def loadRegions() = TableInputReader(tpchDataPath+"/region.tbl", Region())
-  def loadSuppliers() = TableInputReader(tpchDataPath+"/supplier.tbl", Supplier())
+  val sep = "\\|"
+  def loadCustomers() = Table.fromFile[Customer](tpchDataPath+"/customer.tbl", sep)
+  def loadLineItems() = Table.fromFile[LineItem](tpchDataPath+"/lineitem.tbl", sep)
+  def loadOrders() = Table.fromFile[Order](tpchDataPath+"/orders.tbl", sep)
+  def loadNations() = Table.fromFile[Nation](tpchDataPath+"/nation.tbl", sep)
+  def loadRegions() = Table.fromFile[Region](tpchDataPath+"/region.tbl", sep)
+  def loadParts() = Table.fromFile[Part](tpchDataPath+"/part.tbl", sep)
+  def loadPartSuppliers() = Table.fromFile[PartSupplier](tpchDataPath+"/partsupp.tbl", sep)
+  def loadSuppliers() = Table.fromFile[Supplier](tpchDataPath+"/supplier.tbl", sep)
   
   def query(): Rep[_]
   
@@ -74,7 +82,7 @@ trait TPCHQ2Trait extends TPCHBaseTrait {
     val parts = loadParts(); val partSuppliers = loadPartSuppliers(); val suppliers = loadSuppliers(); val nations = loadNations(); val regions = loadRegions()
     tic(parts.size, partSuppliers.size, suppliers.size, nations.size, regions.size)
 
-    /* //succinct version where all join result types are inferred
+    /* //succinct version where all join result types are inferred, but we lose Scala's type checking
     val allSuppliers = regions.Where(_.r_name == "EUROPE")
       .Join(nations).WhereEq(_.r_regionkey, _.n_regionkey)
       .Join(suppliers).WhereEq(_.n_nationkey, _.s_nationkey)
@@ -141,12 +149,29 @@ trait TPCHQ2Trait extends TPCHBaseTrait {
         val s_address = s.s_address
         val s_phone = s.s_phone
         val s_comment = s.s_comment
-      })
-    
+      }) OrderByDescending(_.s_acctbal) ThenBy(_.n_name) ThenBy(_.s_name) ThenBy(_.p_partkey)
+      
     toc(res)
     res.printAsTable(10)
   }    
 }
+
+
+trait TPCHQ6Trait extends TPCHBaseTrait {
+  val queryName = "Q6"
+
+  def query() = {
+    val lineItems = loadLineItems()
+    tic(lineItems.size)
+
+    val q = lineItems Where (l => l.l_shipdate >= Date("1994-01-01") && l.l_shipdate < Date("1995-01-01") && l.l_discount >= 0.05 && l.l_discount <= 0.07 && l.l_quantity < 24) 
+    val revenue = q.Sum(l => l.l_extendedprice * l.l_discount)
+
+    toc(revenue)
+    println(revenue)
+  }
+}
+
 
 trait TPCHQ14Trait extends TPCHBaseTrait {
   val queryName = "Q14"
@@ -155,9 +180,9 @@ trait TPCHQ14Trait extends TPCHBaseTrait {
     val parts = loadParts(); val lineItems = loadLineItems()
     tic(parts.size, lineItems.size)
 
-    val q = /*lineItems.Join(parts)*/ parts.Join(lineItems)
+    val q = parts.Join(lineItems)
       .Where(li => li.l_shipdate >= Date("1995-09-01") && li.l_shipdate < Date("1995-10-01")).WhereEq(_.p_partkey, _.l_partkey)
-      .Select((p,l) => new Record { //TODO: this post-Join Select is very boilerplate but we need to get the type right
+      .Select((p,l) => new Record { //this post-Join Select is very boilerplate but we need to get the type right
         val l_extendedprice = l.l_extendedprice
         val l_discount = l.l_discount
         val p_type = p.p_type
