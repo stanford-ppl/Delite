@@ -16,6 +16,7 @@ trait InputReaderOps extends Base { this: OptiQL =>
   def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], separator: Rep[String]): Rep[Table[T]]
   def optiql_table_line_reader(path: Rep[String]): Rep[Table[String]]
   def optiql_table_from_seq[T:Manifest](elems: Seq[Rep[T]]): Rep[Table[T]]
+  def optiql_table_from_string[T<:Record:Manifest](data: Rep[String], rowSep: Rep[String], colSep: Rep[String]): Rep[Table[T]]
 
 }
 
@@ -25,17 +26,21 @@ trait InputReaderOpsExp extends InputReaderOps with BaseFatExp { this: OptiQLExp
   case class OptiQLTableFromSeq[T:Manifest](readBlock: Block[Table[T]]) extends DeliteOpSingleWithManifest[T,Table[T]](readBlock)
 
   def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], separator: Rep[String]) = {
-    val array = DeliteNewFileReader.readLines(path){ line => optiql_table_input_reader_impl(line, separator) }
-    Table(array, array.length)
+    Table(DeliteNewFileReader.readLines(path){ line => optiql_table_record_parser_impl[T](line, separator) })
   }
 
   def optiql_table_line_reader(path: Rep[String]) = {
-    val array = DeliteNewFileReader.readLines(path){ line => line }
-    Table(array, array.length)
+    Table(DeliteNewFileReader.readLines(path){ line => line })
   }
 
   def optiql_table_from_seq[T:Manifest](elems: Seq[Rep[T]]) = {
     reflectPure(OptiQLTableFromSeq(reifyEffectsHere(optiql_table_from_seq_impl(elems))))
+  }
+
+  //TODO: it's unfortunate that string split returns an Array rather than a DeliteArray, should we change the signature or have a conversion method?
+  def optiql_table_from_string[T<:Record:Manifest](data: Rep[String], rowSep: Rep[String], colSep: Rep[String]) = {
+    val jarray = data.split(rowSep)
+    Table(DeliteArray.fromFunction(jarray.length)(i => optiql_table_record_parser_impl[T](jarray(i), colSep)))
   }
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
@@ -49,14 +54,14 @@ trait InputReaderOpsExp extends InputReaderOps with BaseFatExp { this: OptiQLExp
 }
 
 trait InputReaderImplOps { this: OptiQL =>
-  def optiql_table_input_reader_impl[T<:Record:Manifest](line: Rep[String], separator: Rep[String]): Rep[T]
+  def optiql_table_record_parser_impl[T<:Record:Manifest](record: Rep[String], separator: Rep[String]): Rep[T]
   def optiql_table_from_seq[T:Manifest](elems: Seq[Rep[T]]): Rep[Table[T]]
 }
 
 trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift with OptiQLExp =>
 
-  def optiql_table_input_reader_impl[T<:Record:Manifest](line: Rep[String], separator: Rep[String]) = {
-    val fields = line.split(separator,-1)
+  def optiql_table_record_parser_impl[T<:Record:Manifest](record: Rep[String], separator: Rep[String]) = {
+    val fields = record.split(separator,-1)
     createRecord(fields)
   }
 

@@ -29,7 +29,7 @@ trait Example extends OptiQLApplication {
   }
 
   def printUsage() = {
-    println("Usage: TestRunner <input CIDR file or directory>")
+    println("Usage: TestRunner <input Akamai CIDR file or directory>")
     exit(-1)
   }
 

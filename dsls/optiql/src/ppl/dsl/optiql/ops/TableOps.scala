@@ -16,8 +16,12 @@ trait TableOps extends Base { this: OptiQL =>
   object Table {
 	  def apply[T:Manifest](initSize: Rep[Int]): Rep[Table[T]] = tableObjectApply(initSize)
 	  def apply[T:Manifest](data: Rep[DeliteArray[T]], size: Rep[Int]): Rep[Table[T]] = tableObjectApply(data, size)
+    def apply[T:Manifest](data: Rep[DeliteArray[T]])(implicit o: Overloaded1): Rep[Table[T]] = tableObjectApply(data, data.length)
     def apply[T:Manifest](elems: Rep[T]*): Rep[Table[T]] = optiql_table_from_seq(elems)
     def fromFile[T<:Record:Manifest](path: Rep[String], separator: Rep[String]): Rep[Table[T]] = optiql_table_input_reader(path, separator)
+    def fromFile(path: Rep[String]): Rep[Table[String]] = optiql_table_line_reader(path)
+    def fromString[T<:Record:Manifest](data: Rep[String], rowSeparator: Rep[String], columnSeparator: Rep[String]): Rep[Table[T]] = optiql_table_from_string(data, rowSeparator, columnSeparator)
+    def range(start: Rep[Int], end: Rep[Int]): Rep[Table[Int]] = tableObjectRange(start, end)
   }
 
   class TableRepOps[T:Manifest](t:Rep[Table[T]]) {
@@ -33,6 +37,7 @@ trait TableOps extends Base { this: OptiQL =>
   def tableObjectApply[T:Manifest](initSize: Rep[Int]): Rep[Table[T]]
   def tableObjectApply[T:Manifest](data: Rep[DeliteArray[T]], size: Rep[Int]): Rep[Table[T]]
   def tableSize[T:Manifest](t: Rep[Table[T]]): Rep[Int]
+  def tableObjectRange(start: Rep[Int], end: Rep[Int]): Rep[Table[Int]]
 
   // data exchange
   def tableToArray[T:Manifest](t: Rep[Table[T]]): Rep[DeliteArray[T]]
@@ -47,6 +52,8 @@ trait TableOpsExp extends TableOps with DeliteCollectionOpsExp with DeliteStruct
   def tableObjectApply[T:Manifest](): Exp[Table[T]] = tableObjectApply(unit(16))
   def tableObjectApply[T:Manifest](initSize: Exp[Int]): Exp[Table[T]] = struct(classTag[Table[T]], "data" -> fatal(unit("Table allocation within Delite Op not rewritten")), "size" -> initSize)
   def tableObjectApply[T:Manifest](data: Exp[DeliteArray[T]], size: Exp[Int]): Exp[Table[T]] = struct(classTag[Table[T]], "data" -> data, "size" -> size)
+
+  def tableObjectRange(start: Exp[Int], end: Exp[Int]) = Table(DeliteArray.fromFunction(end-start)(i => i + start))
 
   def tableToArray[T:Manifest](t: Exp[Table[T]]) = tableRawData(t)
   
