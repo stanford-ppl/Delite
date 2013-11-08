@@ -4,6 +4,7 @@ import java.io.PrintWriter
 import scala.virtualization.lms.common.{ScalaGenBase, ScalaGenEffect, BaseExp, Base}
 import reflect.SourceContext
 import ppl.dsl.optiql.{OptiQLCompiler, OptiQLLift, OptiQLExp, OptiQL}
+import ppl.delite.framework.datastructures.DeliteStructsExp
 
 
 trait DateOps extends Base { this: OptiQL =>
@@ -36,35 +37,34 @@ trait DateOps extends Base { this: OptiQL =>
 }
 
 trait DateOpsExp extends DateOps with BaseExp { this: OptiQLExp =>
-
-  case class DateObjectApply(str: Rep[String], dateBlock: Block[Date]) extends DeliteOpSingleTask[Date](dateBlock)
   
-  case class DateLessThan(ld: Rep[Date], rd: Rep[Date], ltBlock: Block[Boolean]) extends DeliteOpSingleTask[Boolean](ltBlock)
-  case class DateLessThanEqual(ld: Rep[Date], rd: Rep[Date], lteBlock: Block[Boolean]) extends DeliteOpSingleTask[Boolean](lteBlock)
-  case class DateGreaterThan(ld: Rep[Date], rd: Rep[Date], gtBlock: Block[Boolean]) extends DeliteOpSingleTask[Boolean](gtBlock)
-  case class DateGreaterThanEqual(ld: Rep[Date], rd: Rep[Date], gteBlock: Block[Boolean]) extends DeliteOpSingleTask[Boolean](gteBlock)
-  case class DateEqual(ld: Rep[Date], rd: Rep[Date], eqBlock: Block[Boolean]) extends DeliteOpSingleTask[Boolean](eqBlock)
-  case class DateNotEqual(ld: Rep[Date], rd: Rep[Date], neBlock: Block[Boolean]) extends DeliteOpSingleTask[Boolean](neBlock)
+  //single tasks on pure operations don't really do anything (due to code motion) and just hinder struct optimizations
+  /*case class DateObjectApply(str: Rep[String]) extends DeliteOpSingleTask[Date](reifyEffectsHere(optiql_date_from_string(str)))  
+  case class DateLessThan(ld: Rep[Date], rd: Rep[Date]) extends DeliteOpSingleTask[Boolean](reifyEffectsHere(optiql_date_lt(ld,rd)))
+  case class DateLessThanEqual(ld: Rep[Date], rd: Rep[Date]) extends DeliteOpSingleTask[Boolean](reifyEffectsHere(optiql_date_lte(ld,rd)))
+  case class DateGreaterThan(ld: Rep[Date], rd: Rep[Date]) extends DeliteOpSingleTask[Boolean](reifyEffectsHere(optiql_date_gt(ld,rd)))
+  case class DateGreaterThanEqual(ld: Rep[Date], rd: Rep[Date]) extends DeliteOpSingleTask[Boolean](reifyEffectsHere(optiql_date_gte(ld,rd)))
+  case class DateEqual(ld: Rep[Date], rd: Rep[Date]) extends DeliteOpSingleTask[Boolean](reifyEffectsHere(optiql_date_eq(ld,rd)))
+  case class DateNotEqual(ld: Rep[Date], rd: Rep[Date]) extends DeliteOpSingleTask[Boolean](reifyEffectsHere(optiql_date_ne(ld,rd)))*/
 
 
-  def dateObjectApply(str: Rep[String]) = DateObjectApply(str, reifyEffects(optiql_date_from_string(str)))
-  
-  def dateLessThan(ld: Rep[Date], rd: Rep[Date]) = DateLessThan(ld, rd, reifyEffects(optiql_date_lt(ld,rd)))
-  def dateLessThanEqual(ld: Rep[Date], rd: Rep[Date]) = DateLessThanEqual(ld, rd, reifyEffects(optiql_date_lte(ld,rd)))
-  def dateGreaterThan(ld: Rep[Date], rd: Rep[Date]) = DateGreaterThan(ld, rd, reifyEffects(optiql_date_gt(ld,rd)))
-  def dateGreaterThanEqual(ld: Rep[Date], rd: Rep[Date]) = DateGreaterThanEqual(ld, rd, reifyEffects(optiql_date_gte(ld,rd)))
-  def dateEqual(ld: Rep[Date], rd: Rep[Date]) = DateEqual(ld, rd, reifyEffects(optiql_date_eq(ld,rd)))
-  def dateNotEqual(ld: Rep[Date], rd: Rep[Date]) = DateNotEqual(ld, rd, reifyEffects(optiql_date_ne(ld,rd)))
+  def dateObjectApply(str: Rep[String]) = optiql_date_from_string(str)
+  def dateLessThan(ld: Rep[Date], rd: Rep[Date]) = optiql_date_lt(ld,rd)
+  def dateLessThanEqual(ld: Rep[Date], rd: Rep[Date]) = optiql_date_lte(ld,rd)
+  def dateGreaterThan(ld: Rep[Date], rd: Rep[Date]) = optiql_date_gt(ld,rd)
+  def dateGreaterThanEqual(ld: Rep[Date], rd: Rep[Date]) = optiql_date_gte(ld,rd)
+  def dateEqual(ld: Rep[Date], rd: Rep[Date]) = optiql_date_eq(ld,rd)
+  def dateNotEqual(ld: Rep[Date], rd: Rep[Date]) = optiql_date_ne(ld,rd)
 
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case DateObjectApply(str,block) => dateObjectApply(f(str))
-    case DateLessThan(ld,rd,block) => dateLessThan(f(ld),f(rd))
-    case DateLessThanEqual(ld,rd,block) => dateLessThanEqual(f(ld),f(rd))
-    case DateGreaterThan(ld,rd,block) => dateGreaterThan(f(ld),f(rd))
-    case DateGreaterThanEqual(ld,rd,block) => dateGreaterThanEqual(f(ld),f(rd))
-    case DateEqual(ld,rd,block) => dateEqual(f(ld),f(rd))
-    case DateNotEqual(ld,rd,block) => dateNotEqual(f(ld),f(rd))
+    /*case DateObjectApply(str) => dateObjectApply(f(str))
+    case DateLessThan(ld,rd) => dateLessThan(f(ld),f(rd))
+    case DateLessThanEqual(ld,rd) => dateLessThanEqual(f(ld),f(rd))
+    case DateGreaterThan(ld,rd) => dateGreaterThan(f(ld),f(rd))
+    case DateGreaterThanEqual(ld,rd) => dateGreaterThanEqual(f(ld),f(rd))
+    case DateEqual(ld,rd) => dateEqual(f(ld),f(rd))
+    case DateNotEqual(ld,rd) => dateNotEqual(f(ld),f(rd))*/
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
 }
@@ -79,15 +79,12 @@ trait DateImplOps { this: OptiQL =>
   def optiql_date_ne(ld: Rep[Date], rd: Rep[Date]): Rep[Boolean]
 }
 
-trait DateImplOpsStandard extends DateImplOps { this: OptiQLExp with OptiQLLift =>
+trait DateImplOpsStandard extends DateImplOps with DeliteStructsExp { this: OptiQLExp with OptiQLLift =>
 
   private def makeDate(year: Rep[Int], month: Rep[Int], day: Rep[Int]) = (year << 9) + (month << 5) + day
   private def year(date: Rep[Int]) = date >>> 9
   private def month(date: Rep[Int]) = (date >>> 5) & 0xf
   private def day(date: Rep[Int]) = date & 0x1f
-
-  private def infix_toDate(d: Rep[Int]): Rep[Date] = d.asInstanceOf[Rep[Date]]
-  private def infix_toInt(d: Rep[Date]): Rep[Int] = d.asInstanceOf[Rep[Int]]
 
   def optiql_date_from_string(str: Rep[String]): Rep[Date] = {
     val tokens = str.split("-")
@@ -104,5 +101,14 @@ trait DateImplOpsStandard extends DateImplOps { this: OptiQLExp with OptiQLLift 
   def optiql_date_gt(ld: Rep[Date], rd: Rep[Date]) = ld.toInt > rd.toInt
   def optiql_date_eq(ld: Rep[Date], rd: Rep[Date]) = ld.toInt == rd.toInt
   def optiql_date_ne(ld: Rep[Date], rd: Rep[Date]) = ld.toInt != rd.toInt
+
+  //trick to eliminate structs of a single field without relying on struct unwrapping optimizations
+  private def infix_toDate(d: Rep[Int]): Rep[Date] = d.asInstanceOf[Rep[Date]] //struct(classTag[Date], "value" -> d)
+  private def infix_toInt(d: Rep[Date]): Rep[Int] = d.asInstanceOf[Rep[Int]] //field[Int](d, "value")
+
+  /*override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
+    case t if t.erasure == classOf[Date] => Some(classTag(t), List("value" -> manifest[Int]))
+    case _ => super.unapplyStructType
+  }*/
 
 }

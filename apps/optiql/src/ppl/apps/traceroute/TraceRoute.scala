@@ -28,11 +28,11 @@ trait TraceRouteGraph extends OptiQLApplication {
   }
 
   type Edge = Record {
-    val src: String
-    val dst: String
+    val src: Int
+    val dst: Int
   }
 
-  def Edge(source: Rep[String], destination: Rep[String]): Rep[Edge] = new Record {
+  def Edge(source: Rep[Int], destination: Rep[Int]): Rep[Edge] = new Record {
     val src = source
     val dst = destination
   }
@@ -52,8 +52,12 @@ trait TraceRouteGraph extends OptiQLApplication {
 
     val allEdges = data SelectMany { r =>
       val hops = Table.fromString[Hop](r.trace, "\\|", ":") //OrderBy(_.id) //in general we should sort by hop id before making edges, but they're already sorted in the dataset
-      Table.range(0, hops.size-1) Select { i =>
-        Edge(hops(i).ip, hops(i+1).ip)
+      val ips = hops Select { h => 
+        val bytes = h.ip.split("\\.")
+        (bytes(0).toInt << 24) + (bytes(1).toInt << 16) + (bytes(2).toInt << 8) + bytes(3).toInt //better to store as Ints than Strings
+      }
+      Table.range(0, ips.size-1) Select { i =>
+        Edge(ips(i), ips(i+1))
       }
     }
 

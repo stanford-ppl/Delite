@@ -10,6 +10,11 @@ import scala.virtualization.lms.common.Record
 trait DeliteTestBase extends DeliteTestModule with DeliteTestDSLApplication {
   def Complex(re: Rep[Double], im: Rep[Double]) = new Record { val real = re; val imag = im }
 
+  type Chars = Record { val a: Char; val b: Char; val c: Char }
+  def Chars(a0: Rep[Char], b0: Rep[Char], c0: Rep[Char]): Rep[Chars] = new Record { val a = a0; val b = b0; val c = c0 }
+
+  def Single(a0: Rep[Int]) = new Record { val a = a0 }
+
   def collectArray[A:Manifest](buf: Rep[DeliteArrayBuffer[A]], expectedLength: Rep[Int], expectedValues: Rep[Int] => Rep[A]) {
     collect(buf.length == expectedLength)
     for (i <- 0 until buf.length) {
@@ -29,6 +34,10 @@ trait DeliteMap extends DeliteTestBase {
     val vs = DeliteArrayBuffer.fromFunction(500){ i => Complex(0.0, 0.0) }
     val vs2 = vs map { e => Complex(e.real + 5.0, e.imag - 5.0) }
     collectArray(vs2, 500, i => Complex(5, -5))
+
+    val va = DeliteArrayBuffer.fromFunction(500){ i => Single(i) }
+    println(va) //force creation of va
+    collectArray(va.map(_.a), 500, i => i)
 
     val ve = DeliteArrayBuffer.fromFunction(0){ i => 0 }
     val ve2 = ve map { e => 1 }
@@ -134,6 +143,14 @@ trait DeliteForeach extends DeliteTestBase {
     for (e <- ve) {
       collect(false) //shouldn't be executed
     }
+
+    val vb = DeliteArrayBuffer.fromFunction(500){ i => Chars('a', 'b', 'c') }
+    val arr = NewArray[Chars](vb.length) //an AoS array
+    vb forIndices { i => arr(i) = vb(i) } //force struct boxing
+    val vb2 = DeliteArrayBuffer.fromFunction(vb.length) { i => arr(i) } //force struct unboxing
+    collectArray(vb2.map(_.a), 500, i => unit('a'))
+    collectArray(vb2.map(_.b), 500, i => unit('b'))
+    collectArray(vb2.map(_.c), 500, i => unit('c'))
     
     mkReport
   }
@@ -159,25 +176,26 @@ trait DeliteZipWithReduceTuple extends DeliteTestBase {
 object DeliteGroupByRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGroupBy
 trait DeliteGroupBy extends DeliteTestBase {
   def main() = {
-    /*val res = DeliteArrayBuffer.fromFunction(1000){ i => i } groupBy { i => i % 2 == 0 }
+    val res = DeliteArrayBuffer.fromFunction(1000){ i => i } groupBy { i => i % 2 == 0 }
     collect(res.size == 2)
     collectArray(res(true), 500, i => 2*i)
-    collectArray(res(false), 500, i => 2*i+1)*/
+    collectArray(res(false), 500, i => 2*i+1)
 
-    /*val res2 = DeliteArrayBuffer.fromFunction(1000*1000){ i => i/1000 } groupBy { i => i }
+    val res2 = DeliteArrayBuffer.fromFunction(1000*1000){ i => i/1000 } groupBy { i => i }
     collect(res2.size == 1000)
     for (i <- 0 until res2.size) {
       collectArray(res2(i), 1000, j => i)
-    }*/
-
-    val res2 = DeliteArrayBuffer.fromFunction(1000*1000){ i => new Record{ val a = infix_/(i,1000); val b = i }} groupBy { _.a }
-    collect(res2.size == 1000)
-    for (i <- 0 until res2.size) {
-      collectArray(res2(i).map(_.a), 1000, j => i)
     }
 
-    /*val res3 = DeliteArrayBuffer.fromFunction(0){ i => i } groupBy { i => i }
-    collect(res3.size == 0)*/
+    val res3 = DeliteArrayBuffer.fromFunction(0){ i => i } groupBy { i => i }
+    collect(res3.size == 0)
+
+    val res4 = DeliteArrayBuffer.fromFunction(1000*1000){ i => new Record{ val a = infix_/(i,1000); val b = i }} groupBy { _.a }
+    collect(res4.size == 1000)
+    for (i <- 0 until res4.size) {
+      collectArray(res4(i).map(_.a), 1000, j => i)
+    }
+
   }
 }
 
@@ -315,10 +333,9 @@ class DeliteOpSuite extends DeliteSuite {
   def testDeliteZip() { compileAndTest(DeliteZipRunner, CHECK_MULTILOOP) }
   def testDeliteReduce() { compileAndTest(DeliteReduceRunner, CHECK_MULTILOOP) }
   def testDeliteMapReduce() { compileAndTest(DeliteMapReduceRunner, CHECK_MULTILOOP) }
-  def testDeliteFilter() { compileAndTest(DeliteFilterRunner) }
+  def testDeliteFilter() { compileAndTest(DeliteFilterRunner, CHECK_MULTILOOP) }
   def testDeliteForeach() { compileAndTest(DeliteForeachRunner) }
   def testDeliteZipWithReduceTuple() { compileAndTest(DeliteZipWithReduceTupleRunner, CHECK_MULTILOOP) }
-  def testDeliteGroupBy() { compileAndTest(DeliteGroupByRunner) }
   def testDeliteNestedMap() { compileAndTest(DeliteNestedMapRunner) }
   def testDeliteHorizontalElems() { compileAndTest(DeliteHorizontalElemsRunner, CHECK_MULTILOOP) }
   def testDeliteNestedZip() { compileAndTest(DeliteNestedZipRunner) }
@@ -326,4 +343,5 @@ class DeliteOpSuite extends DeliteSuite {
   def testDeliteNestedMapReduce() { compileAndTest(DeliteNestedMapReduceRunner, CHECK_MULTILOOP) }
   def testDeliteNestedForeach() { compileAndTest(DeliteNestedForeachRunner) }
   def testDeliteIfThenElse() { compileAndTest(DeliteIfThenElseRunner) }
+  def testDeliteGroupBy() { compileAndTest(DeliteGroupByRunner) }
 }

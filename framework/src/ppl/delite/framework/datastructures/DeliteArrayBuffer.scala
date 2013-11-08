@@ -165,7 +165,7 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     while (n < minLen) n = n * unit(2)
     val newData = DeliteArray[A](n)
     darray_copy(oldData, unit(0), newData, unit(0), d.length)
-    darray_buffer_set_raw_data(d, newData)
+    darray_buffer_set_raw_data(d, newData.unsafeImmutable)
   }
 
   /////////////////////

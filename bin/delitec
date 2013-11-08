@@ -122,6 +122,7 @@ def stage(runner, params, opts):
 
     #test cp
     cp = cp + DELITE_HOME + "/framework/delite-test/target/" + scala_major_id + "/classes" + os.pathsep
+    cp = cp + DELITE_HOME + "/framework/delite-test/target/" + scala_major_id + "/test-classes" + os.pathsep
     cp = cp + DELITE_HOME + "/tests/target/" + scala_major_id + "/classes" + os.pathsep
     cp = cp + DELITE_HOME + "/target/" + scala_major_id + "/test-classes" + os.pathsep
 

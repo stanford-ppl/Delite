@@ -172,8 +172,8 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
     case _ => None
   }
 
-  def makeManifest[T](clazz: Class[T], args: List[Manifest[_]]) = new Manifest[T] {
-    override val typeArguments = args
+  def makeManifest[T](clazz: Class[T], typeArgs: List[Manifest[_]]) = new Manifest[T] {
+    override val typeArguments = typeArgs
     val runtimeClass = clazz
   }
 
@@ -184,14 +184,59 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
   val IR: DeliteStructsExp with DeliteOpsExp
   import IR._
 
+  def sizeof(m: Manifest[_]) = m.toString match {
+    case "Boolean" => 1
+    case "Byte" => 8
+    case "Char" | "Short" => 16
+    case "Int" => 32
+    case _ => 64
+  }
+
+  def shiftOnString(elems: Seq[(String,Exp[Any])], tp: String) = {
+    var shift = 0
+    val str = for (e <- elems) yield {
+      val str = "(" + quote(e._2) + ".asInstanceOf["+tp+"] << " + shift + ")"  
+      shift += sizeof(e._2.tp)
+      str
+    }
+    str.mkString(" + ")
+  }
+
+  def shiftOffString(sym: Exp[Any], index: String, size: Int) = sym.tp match {
+    case StructType(_,elems) => 
+      val e = elems.find(_._1 == index).get
+      val shiftBy = size - elems.takeWhile(_._1 != index).map(e => sizeof(e._2)).sum - sizeof(e._2)
+      "((" + quote(sym) + " << " + shiftBy + ") >>> " + (size-sizeof(e._2)) + ").asInstanceOf[" + remap(e._2) + "]"
+    case _ => throw new RuntimeException("tried to generate unrecognized struct type: " + sym.tp.toString)
+  }
+
+  //TODO: we should be able to apply this to any struct, but we need a way of dealing with mutable instances vs. immutable instance (transformer?)
+  //for now special case tuples (always immutable)
+  def structSize(m: Manifest[_]) = m match {
+    case StructType(_,elems) if m.toString.contains("scala.Tuple") => elems.map(e => sizeof(e._2)).sum
+    case _ => java.lang.Integer.MAX_VALUE
+  }
+
+  def structCount(m: Manifest[_]) = m match {
+    case StructType(_,elems) => elems.length
+    case _ => java.lang.Integer.MAX_VALUE
+  }
+
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    //TODO: generalize primitive struct packing
+    case Struct(tag, elems) if structSize(sym.tp) <= 32 => //bit packing
+      emitValDef(sym, shiftOnString(elems, "Int"))
+    // case Struct(tag, elems) if structSize(sym.tp) <= 64 => //FIXME: Longs actually perform worse than case classes in our HashMapImpl
+    //   emitValDef(sym, shiftOnString(elems, "Long"))
     case Struct(tag, elems) =>
       registerStruct(structName(sym.tp), elems)
       emitValDef(sym, "new " + structName(sym.tp) + "(" + elems.map{ e => 
         if (isVarType(e._2) && deliteInputs.contains(e._2)) quote(e._2) + ".get"
         else quote(e._2)
       }.mkString(",") + ")")
+    case FieldApply(struct, index) if structSize(struct.tp) <= 32 =>
+      emitValDef(sym, shiftOffString(struct, index, 32))
+    // case FieldApply(struct, index) if structSize(struct.tp) <= 64 => 
+    //   emitValDef(sym, shiftOffString(struct, index, 64))
     case FieldApply(struct, index) =>
       emitValDef(sym, quote(struct) + "." + index)
     case FieldUpdate(struct, index, rhs) =>
@@ -201,7 +246,15 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     case _ => super.emitNode(sym, rhs)
   }
 
+  //because we remapped object types to primitive types above
+  override def isPrimitiveType[A](m: Manifest[A]) = remap(m) match {
+    case "Boolean" | "Byte" | "Char" | "Short" | "Int" | "Long" | "Float" | "Double" => true
+    case _ => false
+  }
+
   override def remap[A](m: Manifest[A]) = m match {
+    case StructType(_,_) if structSize(m) <= 32 => "Int"
+    // case StructType(_,_) if structSize(m) <= 64 => "Long"
     case StructType(_,_) => "generated.scala." + structName(m)
     case s if s <:< manifest[Record] && s != manifest[Nothing] => "generated.scala." + structName(m)
     case _ => super.remap(m)

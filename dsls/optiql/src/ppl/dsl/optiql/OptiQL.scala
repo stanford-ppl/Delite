@@ -157,26 +157,7 @@ trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg wi
 
   override def remap[A](m: Manifest[A]): String = m match {
     case m if m.erasure.getSimpleName == "Date" => "Int"
-    case m if m.toString == "scala.Tuple2[Char, Char]" => "Int"
-    case m if m.toString.startsWith("scala.collection.immutable.Map") // HACK-ish, maybe use a DSL type instead
-      && remap(m.typeArguments(0)) == "Int" => "generated.scala.container.HashMapImpl[" + remap(m.typeArguments(0)) + "]"
     case _ => dsmap(super.remap(m))
-  }
-
-  //because we remapped object types to primitive types above
-  override def isPrimitiveType[A](m: Manifest[A]) = remap(m) match {
-    case "Boolean" | "Byte" | "Char" | "Short" | "Int" | "Long" | "Float" | "Double" => true
-    case _ => false
-  }
-
-  override def emitNode(sym: IR.Sym[Any], rhs: IR.Def[Any]) = rhs match {
-    case IR.Struct(tag, elems) if sym.tp.toString == "scala.Tuple2[Char, Char]" =>
-      emitValDef(sym, "("+ quote(elems(0)._2) + ".toInt << 16) + " + quote(elems(1)._2))
-    case f@IR.FieldApply(s, index) if s.tp.toString == "scala.Tuple2[Char, Char]" && index == "_1" =>
-      emitValDef(sym, "((" + quote(s) + " & 0xffff0000) >>> 16).toChar")
-    case f@IR.FieldApply(s, index) if s.tp.toString == "scala.Tuple2[Char, Char]" && index == "_2" =>
-      emitValDef(sym, "(" + quote(s) + " & 0xffff).toChar")
-    case _ => super.emitNode(sym, rhs)
   }
 
   override def dsmap(line: String) : String = {
@@ -193,9 +174,6 @@ trait OptiQLCodeGenCuda extends OptiQLCodeGenBase with OptiQLCudaCodeGenPkg
   override def remap[A](m: Manifest[A]): String = {
     m match {
       case m if m.erasure.getSimpleName == "Date" => "int"
-      case m if m.toString == "scala.Tuple2" => "int" //HACK
-      case m if m.toString == "scala.Tuple2[Char, Char]" => "int"
-      case m if m.toString == "scala.Tuple2[Boolean, Boolean]" => "int"
       case _ => super.remap(m)
     }
   }
@@ -208,9 +186,6 @@ trait OptiQLCodeGenOpenCL extends OptiQLCodeGenBase with OptiQLOpenCLCodeGenPkg
   override def remap[A](m: Manifest[A]): String = {
     m match {
       case m if m.erasure.getSimpleName == "Date" => "int"
-      case m if m.toString == "scala.Tuple2" => "int" //HACK
-      case m if m.toString == "scala.Tuple2[Char, Char]" => "int"
-      case m if m.toString == "scala.Tuple2[Boolean, Boolean]" => "int"
       case _ => super.remap(m)
     }
   }

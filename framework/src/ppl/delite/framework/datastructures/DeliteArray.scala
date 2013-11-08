@@ -460,10 +460,26 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
     case _ => super.darray_take(da, n)
   }
 
-  //TODO: need to check this recursively?
+
+  //when we perform a field update, check if that field actually came from some outer DeliteArray
   override def field_update[T:Manifest](struct: Exp[Any], index: String, rhs: Exp[T]) = struct match {
     case Def(Struct(_,elems)) => elems.find(_._1 == index).get._2 match {
-      case Def(DeliteArrayApply(arr:Exp[DeliteArray[T]],j)) => darray_update(arr,j,rhs)
+      case Def(DeliteArrayApply(arr:Exp[DeliteArray[T]],j)) => darray_update(arr,j,rhs) //primitive apply node
+      case Def(Struct(_,es)) => //struct of apply nodes
+        var sArr: Exp[DeliteArray[T]] = null
+        var sj: Exp[Int] = null
+        def ifEqual(a: Exp[Any], j: Exp[Any]) {
+          if (sArr eq null) { sArr = a; sj = j }
+          else if (sArr != a || sj != j) super.field_update(struct, index, rhs) //fields not consistent
+        }
+        for ((idx,sym) <- es) { sym match {
+          case Def(DeliteArrayApply(pa,j)) => pa match { //outer physical array
+            case Def(FieldApply(arr:Exp[DeliteArray[T]], field)) if field == idx => ifEqual(arr,j) //outer logical array
+            case _ => super.field_update(struct, index, rhs)
+          }
+          case _ => super.field_update(struct, index, rhs)
+        } }
+        darray_update(sArr,sj,rhs)
       case _ => super.field_update(struct, index, rhs)
     }
     case _ => super.field_update(struct, index, rhs)
@@ -490,7 +506,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
     case _ => super.darray_new_immutable(length)
   }
 
-  def darrayManifest(arg: Manifest[_]) = makeManifest(classOf[DeliteArray[_]], List(arg))
+  def darrayManifest(typeArg: Manifest[_]) = makeManifest(classOf[DeliteArray[_]], List(typeArg))
 
   def deliteArrayPure[T:Manifest](da: Exp[DeliteArray[T]], elems: RefinedManifest[T])(implicit ctx: SourceContext): Exp[DeliteArray[T]] = {
     if (Config.soaEnabled)

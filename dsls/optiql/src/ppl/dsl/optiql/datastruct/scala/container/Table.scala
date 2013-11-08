@@ -1,4 +1,4 @@
-package ppl.dsl.optiql.datastruct.scala.container
+package generated.scala.container
 
 import ppl.delite.runtime.data._
 import scala.collection.mutable.HashMap
@@ -62,22 +62,23 @@ object Table {
   }
 
   private def getCaseClassFields(clazz: Class[_]) = {
-    clazz.getDeclaredMethods.filter(_.getName.endsWith("_$eq")).map(_.getName.stripSuffix("_$eq"))
+    val fields = clazz.getDeclaredMethods.filter(_.getName.endsWith("_$eq")).map(_.getName.stripSuffix("_$eq"))
+    if (fields.length == 0) Array("") else fields
   }
 
   private def readArray(x: Any, col: String, row: Int): String = x match {
-    case d: DeliteArray[_] if col != null => 
+    case d: DeliteArray[_] if col != "" => 
       val e = d.readAt(row)
       e.getClass.getMethod(col).invoke(e).toString
     case d: DeliteArray[_] => 
       d.readAt(row).toString
-    case a: Array[_] if col != null => 
+    case a: Array[_] if col != "" => 
       val e = a(row)
       e.getClass.getMethod(col).invoke(e).toString
     case a: Array[_] =>
       a(row).toString
-    case _ if col != null => 
-      readArray(x.getClass.getMethod(col).invoke(x), null, row)
+    case _ if col != "" => 
+      readArray(x.getClass.getMethod(col).invoke(x), "", row)
     case _ => 
       throw new IllegalArgumentException(x.getClass.getSimpleName + " cannot be printed as a table")
 

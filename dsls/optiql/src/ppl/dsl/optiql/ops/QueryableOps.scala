@@ -109,7 +109,7 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
 
   case class QueryableMax[T:Manifest, N:Ordering:Manifest](in: Exp[Table[T]], map: Exp[T] => Exp[N]) extends DeliteOpMapReduce[T, N] {
     val size = copyTransformedOrElse(_.size)(in.size)
-    def zero = unit(null).AsInstanceOf[N] //TODO: ??
+    def zero = minValue[N]
     def reduce = (a,b) => a max b
 
     val oN = implicitly[Ordering[N]]
@@ -119,7 +119,7 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
 
   case class QueryableMin[T:Manifest, N:Ordering:Manifest](in: Exp[Table[T]], map: Exp[T] => Exp[N]) extends DeliteOpMapReduce[T, N] {
     val size = copyTransformedOrElse(_.size)(in.size)
-    def zero = unit(null).AsInstanceOf[N] //TODO: ??
+    def zero = maxValue[N]
     def reduce = (a,b) => a min b
 
     val oN = implicitly[Ordering[N]]
@@ -176,6 +176,24 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
     case v if v <:< manifest[AnyVal] => unit(0).AsInstanceOf[T]
     case o => throw new IllegalArgumentException("Unknown Numeric type: " + o)
   }
+
+  protected def minValue[T:Manifest]: Exp[T] = (manifest[T] match {
+    case v if v == manifest[Int] => unit(scala.Int.MinValue)
+    case v if v == manifest[Long] => unit(scala.Long.MinValue)
+    case v if v == manifest[Double] => unit(scala.Double.MinValue)
+    case v if v == manifest[Float] => unit(scala.Float.MinValue)
+    case v if v == manifest[Char] => unit(scala.Char.MinValue)
+    case _ => unit(null).AsInstanceOf[T] //shouldn't be used for reference types
+  }).asInstanceOf[Exp[T]]
+
+  protected def maxValue[T:Manifest]: Exp[T] = (manifest[T] match {
+    case v if v == manifest[Int] => unit(scala.Int.MaxValue)
+    case v if v == manifest[Long] => unit(scala.Long.MaxValue)
+    case v if v == manifest[Double] => unit(scala.Double.MaxValue)
+    case v if v == manifest[Float] => unit(scala.Float.MaxValue)
+    case v if v == manifest[Char] => unit(scala.Char.MaxValue)
+    case _ => unit(null).AsInstanceOf[T] //shouldn't be used for reference types
+  }).asInstanceOf[Exp[T]]
 
   def queryable_select[T:Manifest, R:Manifest](s: Exp[Table[T]], resultSelector: Exp[T] => Exp[R]) = QueryableSelect(s, resultSelector)
 

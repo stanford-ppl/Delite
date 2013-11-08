@@ -91,8 +91,8 @@ trait QueryableReduceTest extends DeliteTestModule with OptiQLApplication with T
     val sumQuantity = items Sum(_.quantity)
     collect(sumQuantity == 1028)
 
-    val minQuantity = items Min(_.quantity)
-    collect(minQuantity == 0)
+    val minQuantity = items Min(_.price)
+    collect(minQuantity == 0.99)
 
     val maxId = items Max(_.id)
     collect(maxId == 3)
