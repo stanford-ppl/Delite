@@ -21,19 +21,7 @@ object CloseWorldCompose {
     BeginScopes() // marker to begin scope file
     
     val q = OptiQL_ {
-      def Tweet(_id: Rep[String], _time: Rep[String], _hour: Rep[Int], _fromId: Rep[Int], _toId: Rep[Int], _rt: Rep[Boolean], _language: Rep[String], _text: Rep[String]): Rep[Tweet] = new Tweet {
-        val id = _id;
-        val time = _time;
-        val hour = _hour;
-        val fromId = _fromId;
-        val toId = _toId;
-        val rt = _rt;
-        val language = _language;
-        val text = _text;
-      }      
-      def emptyTweet(): Rep[Tweet] = Tweet("", "", 0, 0, 0, unit(true), "", "")
-          
-      val tweets = TableInputReader(args(0), emptyTweet())      
+      val tweets = Table.fromFile[Tweet](args(0), "\\|")    
       //dtic("all", tweets)
       dtic("optiql", tweets)
       val retweets = tweets Where(t => Date(t.time) >= Date("2008-01-01") && t.language == "en" && t.rt) 

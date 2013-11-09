@@ -298,12 +298,6 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
   override def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext) = {
     if (isDeliteArrayBuffer(x)) {
       val buf = asDeliteArrayBuffer(x)
-      /* val arr = darray_buffer_raw_data(buf)
-      if (arr.length != y) {
-        val newArr = DeliteArray[A](y)
-        darray_unsafe_copy(arr, unit(0), newArr, unit(0), y)
-        darray_buffer_set_raw_data(buf, newArr.unsafeImmutable) //set the physical length as well so it can be returned from DeliteOps as a DeliteArray of the right size
-      } */
       darray_buffer_set_length(buf, y)
     }
     else super.dc_set_logical_size(x,y)        
@@ -327,7 +321,7 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
   }
   
   override def dc_alloc[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], size: Exp[Int])(implicit ctx: SourceContext): Exp[CA] = {
-    if (isDeliteArrayBuffer(x)) DeliteArrayBuffer[A](size).asInstanceOf[Exp[CA]]
+    if (isDeliteArrayBuffer(x)) darray_buffer_new[A](size,size).asInstanceOf[Exp[CA]] //flat alloc
     else super.dc_alloc[A,CA](x,size)
   } 
   

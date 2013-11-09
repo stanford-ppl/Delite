@@ -16,20 +16,20 @@ trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExp
     val m = manifest[T]
   }
 
-  override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T])(implicit ctx: SourceContext) = delite_ifThenElse(cond, thenp, elsep, false)
+  override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T])(implicit ctx: SourceContext) = delite_ifThenElse(cond, thenp, elsep, false, true)
 
   // a 'flat' if is treated like any other statement in code motion, i.e. code will not be pushed explicitly into the branches
-  def flatIf[T:Manifest](cond: Rep[Boolean])(thenp: => Rep[T])(elsep: => Rep[T]) = delite_ifThenElse(cond, thenp, elsep, true)
+  def flatIf[T:Manifest](cond: Rep[Boolean])(thenp: => Rep[T])(elsep: => Rep[T]) = delite_ifThenElse(cond, thenp, elsep, true, true)
 
-  def delite_ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T], flat: Boolean): Rep[T] = cond match {
+  def delite_ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T], flat: Boolean, controlFlag: Boolean): Rep[T] = cond match {
       // TODO: need to handle vars differently, this could be unsound  <--- don't understand ...
     case Const(true) => thenp
     case Const(false) => elsep
-    case Def(BooleanNegate(a)) => delite_ifThenElse(a, elsep, thenp, flat)
-    case Def(NotEqual(a,b)) => delite_ifThenElse(equals(a,b), elsep, thenp, flat)
+    case Def(BooleanNegate(a)) => delite_ifThenElse(a, elsep, thenp, flat, controlFlag)
+    case Def(NotEqual(a,b)) => delite_ifThenElse(equals(a,b), elsep, thenp, flat, controlFlag)
     case _ =>
-      val a = reifyEffectsHere[T](thenp, true)
-      val b = reifyEffectsHere[T](elsep, true)
+      val a = reifyEffectsHere[T](thenp, controlFlag)
+      val b = reifyEffectsHere[T](elsep, controlFlag)
       val ae = summarizeEffects(a).withoutControl
       val be = summarizeEffects(b).withoutControl
       reflectEffectInternal(DeliteIfThenElse(cond,a,b,flat), ae orElse be)
@@ -43,13 +43,13 @@ trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExp
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case Reflect(e@DeliteIfThenElse(c,a,b,h), u, es) => 
       if (f.hasContext)
-        __ifThenElse(f(c),f.reflectBlock(a),f.reflectBlock(b))(mtype(e.m),ctx)
+        delite_ifThenElse(f(c),f.reflectBlock(a),f.reflectBlock(b),h,false)(mtype(e.m))
       else {
         reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteIfThenElse(f(c),f(a),f(b),h)(mtype(e.m)), mapOver(f,u), f(es)))(mtype(manifest[A]))      
       }
     case e@DeliteIfThenElse(c,a,b,h) => 
       if (f.hasContext)
-        __ifThenElse(f(c),f.reflectBlock(a),f.reflectBlock(b))(mtype(e.m),ctx)
+        delite_ifThenElse(f(c),f.reflectBlock(a),f.reflectBlock(b),h,false)(mtype(e.m))
       else {
         reflectPure(DeliteIfThenElse(f(c),f(a),f(b),h)(mtype(e.m)))(mtype(manifest[A]), ctx) // FIXME: should apply pattern rewrites (ie call smart constructor)    
       }

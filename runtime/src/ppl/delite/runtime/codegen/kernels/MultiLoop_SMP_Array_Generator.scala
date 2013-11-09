@@ -114,8 +114,6 @@ trait MultiLoop_SMP_Array_Generator {
     if (op.needsPostProcess) {
       if (chunkIdx != 0) {
         postCombine(acc, get("B", chunkIdx-1)) //linear chain combine
-      } else {
-        postCombine(acc, "null")
       }
       if (chunkIdx == numChunks-1) {
         postProcInit(acc) //single-threaded

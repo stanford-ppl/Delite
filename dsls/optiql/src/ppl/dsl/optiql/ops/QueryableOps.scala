@@ -232,9 +232,10 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
     //use file size as an approximation of collection size? needs some rewrites to query the DeliteFileReader
     //if (first.size < second.size) {
       val firstGrouped = queryable_groupby_internal(first, firstKeySelector)
+      val empty = DeliteArrayBuffer(DeliteArray.imm[R](unit(0)),unit(0)) //note: control effects on IfThenElse require some manual hoisting
       queryable_flatmap_internal(second, (x2:Exp[T2]) => {
         if (firstGrouped.contains(secondKeySelector(x2))) firstGrouped.get(secondKeySelector(x2)).map(x1 => resultSelector(x1,x2))
-        else DeliteArrayBuffer(DeliteArray.imm[R](unit(0)),unit(0)) //no matches
+        else empty //no matches
       })
     /*} else {
       val secondGrouped = queryable_groupby_internal(second, secondKeySelector)

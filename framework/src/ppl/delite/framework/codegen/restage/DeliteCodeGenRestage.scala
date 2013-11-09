@@ -289,13 +289,14 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
 
     // delite array
     // HACK: GIterable should be a Record
-    case a@DeliteArrayNew(n) if sym.tp.typeArguments(0).erasure.getSimpleName == "GIterable" => emitValDef(sym, "DeliteArray[" + restageStructName(a.mA) + "](" + quote(n) + ")")
-    case a@DeliteArrayNew(n) => emitValDef(sym, "DeliteArray[" + remap(a.mA) + "](" + quote(n) + ")")
+    case a@DeliteArrayNew(n,m) if sym.tp.typeArguments(0).erasure.getSimpleName == "GIterable" => emitValDef(sym, "DeliteArray[" + restageStructName(m) + "](" + quote(n) + ")")
+    case a@DeliteArrayNew(n,m) => emitValDef(sym, "DeliteArray[" + remap(m) + "](" + quote(n) + ")")
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) => emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
     // new in wip-develop
     case StructCopy(src,srcPos,struct,fields,destPos,len) => 
       assert(fields.length == 1) // nested fields not supported yet
-      emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + ", field["+remap(src.tp)+"](" + quote(struct) + ",\"" + fields(0) + "\")," + quote(destPos) + "," + quote(len) + ")")
+      assert(destPos.length == 1)
+      emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + ", field["+remap(src.tp)+"](" + quote(struct) + ",\"" + fields(0) + "\")," + quote(destPos.head) + "," + quote(len) + ")")
     case VarCopy(src,srcPos,Variable(a),destPos,len) =>
       val dest = quote(a) + (if (deliteInputs contains a) ".get" else "")
       emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + "," + dest + "," + quote(destPos) + "," + quote(len) + ")")
@@ -333,6 +334,7 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
    
     case StructUpdate(struct, fields, idx, x) =>
       assert(fields.length > 0)
+      assert(idx.length == 1)
       if (fields.length == 1) { // not nested
         emitValDef(sym, "darray_update(field[DeliteArray["+remap(x.tp)+"]](" + quote(struct) + ", \"" + fields.head + "\"), " + quote(idx.head) + ", " + quote(x) + ")")
       }
