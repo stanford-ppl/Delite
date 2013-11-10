@@ -1873,7 +1873,6 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   def emitCollectElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteCollectElem[_,_,_], prefixSym: String = "") {
     elem.par match {
       case ParBuffer | ParSimpleBuffer =>
-        emitValDef(elem.buf.allocVal, fieldAccess(prefixSym,quote(sym)+"_buf"))
         if (elem.cond.nonEmpty) stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
         if (elem.iFunc.nonEmpty) {
           emitValDef(elem.eF.get, quote(getBlockResult(elem.iFunc.get)))
@@ -1881,6 +1880,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           stream.println("while (" + quote(elem.iF.get) + " < " + quote(getBlockResult(elem.sF.get)) + ") { //flatMap loop")
           emitBlock(elem.func)
         }
+        emitValDef(elem.buf.allocVal, fieldAccess(prefixSym,quote(sym)+"_buf"))
         emitValDef(elem.buf.eV, quote(getBlockResult(elem.func)))
         getActBuffer = List(fieldAccess(prefixSym, quote(sym) + "_buf"))
         getActSize = fieldAccess(prefixSym, quote(sym) + "_size")
@@ -1892,7 +1892,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitAssignment(fieldAccess(prefixSym,quote(sym)+"_conditionals"), fieldAccess(prefixSym,quote(sym)+"_conditionals") + " + 1")
         if (elem.iFunc.nonEmpty) {
           emitAssignment(quote(elem.iF.get), quote(elem.iF.get) + " + 1")
-          stream.println("}")
+          stream.println("}") //close flatmap loop
         }
         if (elem.cond.nonEmpty) stream.println("}")
       case ParFlat =>
