@@ -39,6 +39,10 @@ object SortingImpl {
   /**
    * Parallel sort testing cdoe
   */
+
+  /*
+   * commented because not jdk 1.6 compatible
+
   def main(args: Array[String]) {
     val len = 30000000
 
@@ -67,12 +71,12 @@ object SortingImpl {
       def compare(li: Int, ri: Int): Int = {
         val first = java.lang.Double.compare(a(li), a(ri))
         if (first != 0) return first
-        
+
         val second = java.lang.Long.compare(b(li), b(ri))
         if (second != 0) return second
 
         //val third = ...
-      
+
         second
       }
     }
@@ -151,7 +155,8 @@ object SortingImpl {
     check(tree_reduce(idx.clone, 64))
     val j = check(tree_reduce(idx.clone, 128))
     println("sorted time: " + time(sort(j,comp)))
-
   }
+
+  */
 
 }

@@ -33,25 +33,25 @@ trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExp
       val ae = summarizeEffects(a).withoutControl
       val be = summarizeEffects(b).withoutControl
       reflectEffectInternal(DeliteIfThenElse(cond,a,b,flat), ae orElse be)
-  }  
-  
+  }
+
   override def mirrorDef[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Def[A] = e match {
     case e@DeliteIfThenElse(c,a,b,h) => DeliteIfThenElse(f(c),f(a),f(b),h)(mtype(e.m))
     case _ => super.mirrorDef(e,f)
   }
-  
+
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case Reflect(e@DeliteIfThenElse(c,a,b,h), u, es) => 
+    case Reflect(e@DeliteIfThenElse(c,a,b,h), u, es) =>
       if (f.hasContext)
         delite_ifThenElse(f(c),f.reflectBlock(a),f.reflectBlock(b),h,false)(mtype(e.m))
       else {
-        reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteIfThenElse(f(c),f(a),f(b),h)(mtype(e.m)), mapOver(f,u), f(es)))(mtype(manifest[A]))      
+        reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteIfThenElse(f(c),f(a),f(b),h)(mtype(e.m)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       }
-    case e@DeliteIfThenElse(c,a,b,h) => 
+    case e@DeliteIfThenElse(c,a,b,h) =>
       if (f.hasContext)
         delite_ifThenElse(f(c),f.reflectBlock(a),f.reflectBlock(b),h,false)(mtype(e.m))
       else {
-        reflectPure(DeliteIfThenElse(f(c),f(a),f(b),h)(mtype(e.m)))(mtype(manifest[A]), ctx) // FIXME: should apply pattern rewrites (ie call smart constructor)    
+        reflectPure(DeliteIfThenElse(f(c),f(a),f(b),h)(mtype(e.m)))(mtype(manifest[A]), ctx) // FIXME: should apply pattern rewrites (ie call smart constructor)
       }
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
@@ -60,6 +60,11 @@ trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExp
   override def syms(e: Any): List[Sym[Any]] = e match {
     case DeliteIfThenElse(c, t, e, h) => syms(c):::syms(t):::syms(e)
     case _ => super.syms(e)
+  }
+
+  override def readSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteIfThenElse(c, t, e, h) => readSyms(c):::readSyms(t):::readSyms(e)
+    case _ => super.readSyms(e)
   }
 
   override def boundSyms(e: Any): List[Sym[Any]] = e match {
