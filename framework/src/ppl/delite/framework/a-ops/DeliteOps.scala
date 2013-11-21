@@ -1133,6 +1133,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case x: DeliteOpLoop[_] =>
       val z = x.body  //  <-- not lazy
       super.reflectEffect(d,u)
+    case x: DeliteOpExternal[_] =>
+      x.allocVal
+      super.reflectEffect(d,u)
     case _ =>
       super.reflectEffect(d,u)
   }
@@ -1144,6 +1147,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       super.reflectMirrored(zd)
     case Reflect(x: DeliteOpLoop[_], u, es) =>
       val z = x.body  //  <-- somehow not always evaluated? lazy val extends a strict val, what are the semantics?
+      super.reflectMirrored(zd)
+    case Reflect(x: DeliteOpExternal[_], u, es) =>
+      x.allocVal
       super.reflectMirrored(zd)
     case _ =>
       super.reflectMirrored(zd)
