@@ -9,6 +9,7 @@
 <libs>
   <prefix> -L </prefix>
   <library> -llapacke </library>
+  <library> -lblas </library>
 </libs>
 </DeliteExternalLib>
 
