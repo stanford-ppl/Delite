@@ -1,0 +1,14 @@
+<DeliteExternalLib>
+<compiler>gcc</compiler> <!-- path to C compiler (gcc, icc, etc.) -->
+<headers>
+  <prefix> -I </prefix>
+  <path> $JAVA_HOME/include/ </path>
+  <include> cblas.h </include>
+  <include> lapacke.h </include>
+</headers>
+<libs>
+  <prefix> -L </prefix>
+  <library> -llapacke </library>
+</libs>
+</DeliteExternalLib>
+

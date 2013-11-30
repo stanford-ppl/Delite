@@ -47,7 +47,7 @@ trait ExternalLibrary {
 
     // this call is based on the gcc/icc invocation signature.. do we need to generalize it?
     val args = Array(compiler) ++ headerDir ++ libs ++ compileFlags ++ outputFlags ++ Array(srcFile.toString)
-    val process = Runtime.getRuntime.exec(args, null, buildPath)
+    val process = Runtime.getRuntime.exec(Array("bash", "-c", args.mkString(" ")), null, buildPath)
     process.waitFor
     checkError(process, args)
   }

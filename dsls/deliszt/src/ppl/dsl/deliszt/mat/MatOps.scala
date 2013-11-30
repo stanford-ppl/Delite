@@ -531,11 +531,11 @@ trait ScalaGenMatOps extends ScalaGenBase {
     // all corresponding nodes should have their DeliteOpSingleTask second argument set to "true" (require inputs)
     case m@MatMultiply(x,y) if (Config.useBlas) =>
       emitValDef(sym,"generated.scala.Mat[" + remap(m.a) + "](" + quote(x) + ".numRows," + quote(y) + ".numCols)")
-      stream.println("scalaMKL.matMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,%s.numCols)".format(quote(x),quote(y),quote(sym),quote(x),quote(x),quote(y)))
+      stream.println("scalaLAPACK.matMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,%s.numCols)".format(quote(x),quote(y),quote(sym),quote(x),quote(x),quote(y)))
     case m@MatTimesVec(x,y) if (Config.useBlas) =>
       emitValDef(sym,"generated.scala.Mat[" + remap(m.a) + "](" + quote(x) + ".numRows, false)")
-      stream.println("scalaMKL.matVMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,0,1)".format(quote(x),quote(y),quote(sym),quote(x),quote(x)))
-      stream.println("scalaMKL.sigmoid(%s.data,%s.data,0,%s.numRows*%s.numCols)".format(quote(x),quote(sym),quote(x),quote(x)))
+      stream.println("scalaLAPACK.matVMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,0,1)".format(quote(x),quote(y),quote(sym),quote(x),quote(x)))
+      stream.println("scalaLAPACK.sigmoid(%s.data,%s.data,0,%s.numRows*%s.numCols)".format(quote(x),quote(sym),quote(x),quote(x)))
     case _ => super.emitNode(sym,rhs)
   }
 }
