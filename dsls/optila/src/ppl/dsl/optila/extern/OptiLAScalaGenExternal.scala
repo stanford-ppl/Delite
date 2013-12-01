@@ -21,17 +21,17 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
     case e@DenseMatrixTimesVectorBLAS(xR,xC,x,y) =>
       val args = scala.List("%1$s", "%2$s", "%3$s", "%4$s", "%5$s", "0", "1")
                  .map { _.format(quote(x), quote(y), quote(sym), quote(xR), quote(xC)) }
-      emitMethodCall(sym, e, MKL, args)
+      emitMethodCall(sym, e, LAPACK, args)
 
     case e@DenseMatrixMultiplyBLAS(xR,xC,x,yR,yC,y) =>
       val args = scala.List("%1$s", "%2$s", "%3$s", "%4$s", "%5$s", "%6$s")
                  .map { _.format(quote(x), quote(y), quote(sym), quote(xR), quote(xC), quote(yC)) }
-      emitMethodCall(sym, e, MKL, args)
+      emitMethodCall(sym, e, LAPACK, args)
 
     case e@DenseMatrixSigmoidVectorized(xR,xC,x) =>
       val args = scala.List("%1$s", "%2$s", "0", "%3$s*%4$s")
                  .map { _.format(quote(x),quote(sym),quote(xR),quote(xC)) }
-      emitMethodCall(sym, e, MKL, args)
+      emitMethodCall(sym, e, LAPACK, args)
 
     case _ => super.emitExternalNode(sym,rhs)
   }
@@ -46,7 +46,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
         case "Double" => "cblas_dgemv"
         case "Float" => "cblas_sgemv"
       }
-      emitInterfaceAndMethod(MKL, e.funcName,
+      emitInterfaceAndMethod(LAPACK, e.funcName,
         scala.List("mat1:Array[%1$s]", "vec2:Array[%1$s]", "vec3:Array[%1$s]", "mat_row:Int", "mat_col:Int", "vec_offset:Int", "vec_stride:Int") map { _.format(tp) },
         scala.List("j%1$sArray mat1", "j%1$sArray vec2", "j%1$sArray vec3", "jint mat_row", "jint mat_col", "jint vec_offset", "jint vec_stride") map { _.format(tp.toLowerCase) },
         """
@@ -76,7 +76,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
         case "Double" => "cblas_dgemm"
         case "Float" => "cblas_sgemm"
       }
-      emitInterfaceAndMethod(MKL, e.funcName,
+      emitInterfaceAndMethod(LAPACK, e.funcName,
         scala.List("mat1:Array[%1$s]", "mat2:Array[%1$s]", "mat3:Array[%1$s]", "mat1_r:Int", "mat1_c:Int", "mat2_c:Int") map { _.format(tp) },
         scala.List("j%1$sArray mat1", "j%1$sArray mat2", "j%1$sArray mat3", "jint mat1_r", "jint mat1_c", "jint mat2_c") map { _.format(tp.toLowerCase) },
         """
@@ -104,7 +104,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
         case "Float" => "expf"
       }
       // TODO: should be just pure c++, not BLAS lib
-      emitInterfaceAndMethod(MKL, e.funcName,
+      emitInterfaceAndMethod(LAPACK, e.funcName,
         scala.List("vec1:Array[%1$s]", "vec2:Array[%1$s]", "start:Int", "end:Int") map { _.format(tp) },
         scala.List("j%1$sArray vec1", "j%1$sArray vec2", "jint start", "jint end") map { _.format(tp.toLowerCase) },
         """

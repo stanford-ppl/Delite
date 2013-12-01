@@ -2,8 +2,7 @@
 <compiler>/opt/intel/composerxe/bin/icc</compiler> <!-- path to C compiler (gcc, icc, etc.) -->
 <headers>
   <prefix> -I </prefix>
-  <path> /home/kjbrown/java/jdk1.7.0_b147_x86_64/include </path> <!-- required for JNI -->
-  <path> /home/kjbrown/java/jdk1.7.0_b147_x86_64/include/linux </path>
+  <path> $JAVA_HOME/include/ </path>
   <!-- insert path to BLAS include directory here -->
   <path> /opt/intel/mkl/include </path>
   <!-- insert name of header file that includes CBLAS functions -->

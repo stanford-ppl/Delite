@@ -46,8 +46,8 @@ trait ExternalLibrary {
     val outputFlags = if (separateOutput) List(outputSwitch, destPath.toString) else List(outputSwitch+destPath.toString)
 
     // this call is based on the gcc/icc invocation signature.. do we need to generalize it?
-    val args = Array(compiler) ++ headerDir ++ libs ++ compileFlags ++ outputFlags ++ Array(srcFile.toString)
-    val process = Runtime.getRuntime.exec(args, null, buildPath)
+    val args = Array(compiler) ++ headerDir ++ compileFlags ++ outputFlags ++ Array(srcFile.toString) ++ libs
+    val process = Runtime.getRuntime.exec(Array("bash", "-c", args.mkString(" ")), null, buildPath)
     process.waitFor
     checkError(process, args)
   }
