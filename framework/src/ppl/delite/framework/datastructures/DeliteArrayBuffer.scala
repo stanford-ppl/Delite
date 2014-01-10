@@ -45,6 +45,7 @@ trait DeliteArrayBufferOps extends Base {
     def foreach(func: Rep[A] => Rep[Unit])(implicit ctx: SourceContext) = darray_buffer_foreach(d,func)
     def forIndices(func: Rep[Int] => Rep[Unit])(implicit ctx: SourceContext) = darray_buffer_forIndices(d,func)
     def groupBy[K:Manifest](key: Rep[A] => Rep[K])(implicit ctx: SourceContext) = darray_buffer_groupBy(d,key)
+    def groupByReduce[K:Manifest,V:Manifest](key: Rep[A] => Rep[K], value: Rep[A] => Rep[V], reduce: (Rep[V],Rep[V]) => Rep[V]) = darray_buffer_groupByReduce(d,key,value,reduce)
     def flatMap[B:Manifest](func: Rep[A] => Rep[DeliteArrayBuffer[B]])(implicit ctx: SourceContext) = darray_buffer_flatmap(d,func)
   }
 
@@ -68,6 +69,7 @@ trait DeliteArrayBufferOps extends Base {
   def darray_buffer_foreach[A:Manifest](d: Rep[DeliteArrayBuffer[A]], func: Rep[A] => Rep[Unit])(implicit ctx: SourceContext): Rep[Unit]
   def darray_buffer_forIndices[A:Manifest](d: Rep[DeliteArrayBuffer[A]], func: Rep[Int] => Rep[Unit])(implicit ctx: SourceContext): Rep[Unit]
   def darray_buffer_groupBy[A:Manifest,K:Manifest](d: Rep[DeliteArrayBuffer[A]], key: Rep[A] => Rep[K])(implicit ctx: SourceContext): Rep[DeliteMap[K,DeliteArrayBuffer[A]]]
+  def darray_buffer_groupByReduce[A:Manifest,K:Manifest,V:Manifest](d: Rep[DeliteArrayBuffer[A]], key: Rep[A] => Rep[K], value: Rep[A] => Rep[V], reduce: (Rep[V],Rep[V]) => Rep[V])(implicit ctx: SourceContext): Rep[DeliteMap[K,V]]
   def darray_buffer_flatmap[A:Manifest,B:Manifest](d: Rep[DeliteArrayBuffer[A]], func: Rep[A] => Rep[DeliteArrayBuffer[B]])(implicit ctx: SourceContext): Rep[DeliteArrayBuffer[B]]
 }
 
@@ -220,23 +222,6 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     val size = copyTransformedOrElse(_.size)(in.length)
   }
 
-  case class DeliteArrayBufferDistinct[A:Manifest,K:Manifest](in: Exp[DeliteArrayBuffer[A]], keyFunc: Exp[A] => Exp[K]) 
-    extends DeliteOpMappedGroupByReduce[A,K,K,DeliteArray[K]] {
-
-    def alloc(len: Exp[Int]) = DeliteArray[K](len)
-    val size = copyTransformedOrElse(_.size)(in.length)
-    def zero = unit(null).asInstanceOf[Exp[K]]
-    def valFunc = keyFunc
-    def reduceFunc = (a,b) => a
-  }
-
-  case class DeliteArrayBufferBuildIndex[A:Manifest,K:Manifest](in: Exp[DeliteArrayBuffer[A]], keyFunc: Exp[A] => Exp[K])
-    extends DeliteOpBuildIndex[A,K,DeliteIndex[K]] {
-    
-    def cond = null
-    val size = copyTransformedOrElse(_.size)(in.length)
-  }
-
   case class DeliteArrayBufferForeach[A:Manifest](in: Exp[DeliteArrayBuffer[A]], func: Rep[A] => Rep[Unit]) extends DeliteOpForeach[A] {
     def sync = null //unused
     val size = copyTransformedOrElse(_.size)(in.length)
@@ -265,13 +250,8 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     val df = DeliteArrayBufferForIndices(d,func)
     reflectEffect(df, summarizeEffects(df.body.asInstanceOf[DeliteForeachElem[A]].func).star andAlso Simple())
   }
-
-  def darray_buffer_groupBy[A:Manifest,K:Manifest](d: Exp[DeliteArrayBuffer[A]], key: Rep[A] => Rep[K])(implicit ctx: SourceContext): Exp[DeliteMap[K,DeliteArrayBuffer[A]]] = {
-    val keys = reflectPure(DeliteArrayBufferDistinct(d,key))
-    val values = reflectPure(DeliteArrayBufferGroupBy(d,key))
-    val index = reflectPure(DeliteArrayBufferBuildIndex(d,key))
-    reflectPure(DeliteMapNewImm(keys, values, index, values.length))
-  }
+  def darray_buffer_groupBy[A:Manifest,K:Manifest](d: Exp[DeliteArrayBuffer[A]], key: Rep[A] => Rep[K])(implicit ctx: SourceContext): Exp[DeliteMap[K,DeliteArrayBuffer[A]]] = DeliteMap(d, key, reflectPure(DeliteArrayBufferGroupBy(d,key)))
+  def darray_buffer_groupByReduce[A:Manifest,K:Manifest,V:Manifest](d: Rep[DeliteArrayBuffer[A]], key: Rep[A] => Rep[K], value: Rep[A] => Rep[V], reduce: (Rep[V],Rep[V]) => Rep[V])(implicit ctx: SourceContext): Rep[DeliteMap[K,V]] = DeliteMap(d, key, value, reduce)
 
 
   /////////////////////
@@ -354,8 +334,6 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
       case e@DeliteArrayBufferReduce(in,g,z) => reflectPure(new { override val original = Some(f,e) } with DeliteArrayBufferReduce(f(in),f(g),f(z))(e.dmA))(mtype(manifest[A]),implicitly[SourceContext])
     }    
     case e@DeliteArrayBufferGroupBy(in,k) => reflectPure(new { override val original = Some(f,e) } with DeliteArrayBufferGroupBy(f(in),f(k))(mtype(e.dmV),mtype(e.dmK)))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@DeliteArrayBufferDistinct(in,k) => reflectPure(new { override val original = Some(f,e) } with DeliteArrayBufferDistinct(f(in),f(k))(mtype(e.dmA),mtype(e.dmK)))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@DeliteArrayBufferBuildIndex(in,k) => reflectPure(new { override val original = Some(f,e) } with DeliteArrayBufferBuildIndex(f(in),f(k))(mtype(e.dmA),mtype(e.dmK)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@DeliteArrayBufferFlatMap(in,g) => reflectPure(new { override val original = Some(f,e) } with DeliteArrayBufferFlatMap(f(in),f(g))(mtype(e.dmA),mtype(e.dmB)))(mtype(manifest[A]),implicitly[SourceContext])
     case Reflect(e@DeliteArrayBufferMap(in,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteArrayBufferMap(f(in),f(g))(e.dmA,e.dmB), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@DeliteArrayBufferMapIndices(s,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteArrayBufferMapIndices(f(s),f(g))(e.dmA), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -365,8 +343,6 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
       case e@DeliteArrayBufferReduce(in,g,z) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteArrayBufferReduce(f(in),f(g),f(z))(e.dmA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     }    
     case Reflect(e@DeliteArrayBufferGroupBy(in,k), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteArrayBufferGroupBy(f(in),f(k))(mtype(e.dmV),mtype(e.dmK)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@DeliteArrayBufferDistinct(in,k), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteArrayBufferDistinct(f(in),f(k))(mtype(e.dmA),mtype(e.dmK)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@DeliteArrayBufferBuildIndex(in,k), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteArrayBufferBuildIndex(f(in),f(k))(mtype(e.dmA),mtype(e.dmK)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@DeliteArrayBufferFlatMap(in,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteArrayBufferFlatMap(f(in),f(g))(mtype(e.dmA),mtype(e.dmB)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@DeliteArrayBufferForeach(in,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteArrayBufferForeach(f(in),f(g))(mtype(e.mA)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@DeliteArrayBufferForIndices(in,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteArrayBufferForIndices(f(in),f(g))(mtype(e.mA)), mapOver(f,u), f(es)))(mtype(manifest[A]))

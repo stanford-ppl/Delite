@@ -13,8 +13,8 @@ import ppl.delite.framework.analysis.StencilExp
 
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
 trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with FunctionBlocksExp with IfThenElseFatExp
-    with PrimitiveOpsExp with VariantsOpsExp with DeliteCollectionOpsExp with DeliteReductionOpsExp with DeliteArrayOpsExp with DeliteArrayFatExp with StencilExp
-    with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp with StaticDataExp {
+    with PrimitiveOpsExp with VariantsOpsExp with DeliteCollectionOpsExp with DeliteReductionOpsExp with DeliteMapOpsExp with DeliteArrayFatExp with StencilExp
+    with OrderingOpsExp with EqualExpBridge with CastingOpsExp with ImplicitOpsExp with WhileExp with StaticDataExp {
 
     val encounteredZipWith = new scala.collection.mutable.HashMap[Exp[Any], DeliteOpZipWith[_,_,_,_]]()
 
@@ -1546,8 +1546,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             emitVarDef(quote(elem.buf.sV), remap(elem.buf.sV.tp), "128")
             emitBlock(elem.buf.alloc)
             emitVarDef(quote(sym) + "_hash_data", remap(getBlockResult(elem.buf.alloc).tp), quote(getBlockResult(elem.buf.alloc)))
-          case (sym, elem: DeliteHashReduceElem[_,_,_,_]) =>
-            emitVarDef(quote(elem.buf.sV), remap(elem.buf.sV.tp), "128")
+          case (sym, elem: DeliteHashReduceElem[_,_,_,_]) => 
+            emitVarDef(quote(elem.buf.sV), remap(elem.buf.sV.tp), "128") 
             emitBlock(elem.buf.alloc)
             emitVarDef(quote(sym) + "_hash_data", remap(getBlockResult(elem.buf.alloc).tp), quote(getBlockResult(elem.buf.alloc)))
           case (sym, elem: DeliteHashIndexElem[_,_]) =>
@@ -1590,13 +1590,13 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         val quotedGroup = kps.map(p=>quote(p._1)).mkString("")
         emitAssignment(fieldAccess(prefixSym, quotedGroup + "_hash_pos"), "new generated.scala.container.HashMapImpl(512,128)")
         emitAssignment(fieldAccess(prefixSym, quotedGroup + "_size"), "-1")
-        kps foreach {
-          case (sym, elem: DeliteHashCollectElem[_,_,_,_,_,_]) =>
+        kps foreach { 
+          case (sym, elem: DeliteHashCollectElem[_,_,_,_,_,_]) => 
             emitValDef(quote(elem.buf.sV), remap(elem.buf.sV.tp), "128")
             emitBlock(elem.buf.alloc)
             emitAssignment(fieldAccess(prefixSym, quote(sym) + "_hash_data"), quote(getBlockResult(elem.buf.alloc)))
-          case (sym, elem: DeliteHashReduceElem[_,_,_,_]) =>
-            emitValDef(quote(elem.buf.sV), remap(elem.buf.sV.tp), "128")
+          case (sym, elem: DeliteHashReduceElem[_,_,_,_]) => 
+            emitValDef(quote(elem.buf.sV), remap(elem.buf.sV.tp), "128") 
             emitBlock(elem.buf.alloc)
             emitAssignment(fieldAccess(prefixSym, quote(sym) + "_hash_data"), quote(getBlockResult(elem.buf.alloc)))
           case (sym, elem: DeliteHashIndexElem[_,_]) =>

@@ -5,6 +5,8 @@ import scala.virtualization.lms.common.Record
 
 object TPCHQ1 extends OptiQLApplicationRunner with TPCHQ1Trait
 object TPCHQ2 extends OptiQLApplicationRunner with TPCHQ2Trait
+object TPCHQ3 extends OptiQLApplicationRunner with TPCHQ3Trait
+object TPCHQ4 extends OptiQLApplicationRunner with TPCHQ4Trait
 object TPCHQ6 extends OptiQLApplicationRunner with TPCHQ6Trait
 object TPCHQ14 extends OptiQLApplicationRunner with TPCHQ14Trait
 
@@ -61,8 +63,8 @@ trait TPCHQ1Trait extends TPCHBaseTrait {
       val lineStatus = g.key._2
       val sumQty = g.Sum(_.l_quantity)
       val sumBasePrice = g.Sum(_.l_extendedprice)
-      val sumDiscountedPrice = g.Sum(l => l.l_extendedprice * (infix_-(1.0d, l.l_discount)))                // FIXME: ambiguous numeric ops problem and compiler crash in 2.10.0
-      val sumCharge = g.Sum(l=> l.l_extendedprice * infix_-(1.0d, l.l_discount) * infix_+(1.0d, l.l_tax))   // FIXME: ambiguous numeric ops problem and compiler crash in 2.10.0
+      val sumDiscountedPrice = g.Sum(l => l.l_extendedprice * (infix_-(1.0, l.l_discount)))                // FIXME: ambiguous numeric ops problem and compiler crash in 2.10.0
+      val sumCharge = g.Sum(l=> l.l_extendedprice * infix_-(1.0, l.l_discount) * infix_+(1.0, l.l_tax))   // FIXME: ambiguous numeric ops problem and compiler crash in 2.10.0
       val avgQty = g.Average(_.l_quantity)
       val avgPrice = g.Average(_.l_extendedprice)
       val avgDiscount = g.Average(_.l_discount)
@@ -88,8 +90,8 @@ trait TPCHQ2Trait extends TPCHBaseTrait {
       .Join(suppliers).WhereEq(_.n_nationkey, _.s_nationkey)
       .Join(partSuppliers).WhereEq(_.s_suppkey, _.ps_suppkey)
 
-    val res = allSuppliers.Join(parts)
-      .Where(p => (p.p_size == 15) && (p.p_type endsWith "BRASS")).WhereEq(_.ps_partkey, _.p_partkey)
+    val res = allSuppliers.Join(parts).Where(p => (p.p_size == 15) && (p.p_type endsWith "BRASS"))
+      .WhereEq(_.ps_partkey, _.p_partkey)
       .Where(s => s.ps_supplycost == allSuppliers.Where(_.ps_partkey == s.p_partkey).Min(_.ps_supplycost))
       .Select(s => new Record {
         val s_acctbal = s.s_acctbal
@@ -127,9 +129,8 @@ trait TPCHQ2Trait extends TPCHBaseTrait {
         val ps_supplycost = ps.ps_supplycost
       })    
 
-    val res = allSuppliers.Join(parts)
-      .Where(p => (p.p_size == 15) && (p.p_type endsWith "BRASS")).WhereEq(_.ps_partkey, _.p_partkey)
-      .Select((s,p) => new Record {
+    val res = allSuppliers.Join(parts).Where(p => (p.p_size == 15) && (p.p_type endsWith "BRASS"))
+      .WhereEq(_.ps_partkey, _.p_partkey).Select((s,p) => new Record {
         val s_acctbal = s.s_acctbal
         val s_name = s.s_name
         val n_name = s.n_name
@@ -154,6 +155,71 @@ trait TPCHQ2Trait extends TPCHBaseTrait {
     toc(res)
     res.printAsTable(10)
   }    
+}
+
+
+trait TPCHQ3Trait extends TPCHBaseTrait {
+  val queryName = "Q3"
+
+  def query() = {
+    val lineItems = loadLineItems(); val customers = loadCustomers(); val orders = loadOrders()
+    tic(lineItems.size, customers.size, orders.size)
+
+    val shippingOrders = customers.Where(_.c_mktsegment == "BUILDING")
+      .Join(orders).Where(_.o_orderdate < Date("1995-03-15"))
+      .WhereEq(_.c_custkey,_.o_custkey).Select((c,o) => new Record {
+        val o_orderkey = o.o_orderkey
+        val o_orderdate = o.o_orderdate
+        val o_shippriority = o.o_shippriority
+      })
+      .Join(lineItems).Where(_.l_shipdate > Date("1995-03-15"))
+      .WhereEq(_.o_orderkey, _.l_orderkey).Select((o,l) => new Record {
+        val l_orderkey = l.l_orderkey
+        val o_orderdate = o.o_orderdate
+        val o_shippriority = o.o_shippriority
+        val l_extendedprice = l.l_extendedprice
+        val l_discount = l.l_discount
+      })
+
+    val q = shippingOrders GroupBy(e => (e.l_orderkey, e.o_orderdate, e.o_shippriority)) Select { g => new Record {
+      val orderKey = g.key._1
+      val orderDate = g.key._2
+      val shipPriority = g.key._3
+      val revenue = g.Sum(l => l.l_extendedprice * infix_-(1.0, l.l_discount)) //FIXME: ambiguous numeric ops problem and compiler crash in 2.10.0
+    }} OrderByDescending(_.revenue) //ThenBy(_.orderDate) //FIXME: no Ordering defined on Date
+
+    toc(q)
+    q.printAsTable(10) //FIXME: Date.toString
+  }
+}
+
+
+trait TPCHQ4Trait extends TPCHBaseTrait {
+  val queryName = "Q4"
+
+  def query() = {
+    val lineItems = loadLineItems(); val orders = loadOrders()
+    tic(lineItems.size, orders.size)
+
+    /*val lateItems = lineItems Where(l => l.l_commitdate < l.l_receiptdate)
+    val lateOrders = orders.Where(o => o.o_orderdate >= Date("1993-07-01") && o.o_orderdate < Date("1993-10-01"))
+      .Where(o => lateItems.Count(l => l.l_orderkey == o.o_orderkey) > 0)*/
+
+    val lateOrders = orders.Where(o => o.o_orderdate >= Date("1993-07-01") && o.o_orderdate < Date("1993-10-01"))
+      .Join(lineItems).Where(l => l.l_commitdate < l.l_receiptdate)
+      .WhereEq(_.o_orderkey, _.l_orderkey).Select((o,l) => new Record {
+        val o_orderkey = o.o_orderkey
+        val o_orderpriority = o.o_orderpriority
+      }) Distinct(_.o_orderkey)
+    
+    val q = lateOrders GroupBy(_.o_orderpriority) Select { g => new Record {
+      val orderPriority = g.key
+      val orderCount = g.Count
+    }} OrderBy(_.orderPriority)
+
+    toc(q)
+    q.printAsTable()
+  }
 }
 
 

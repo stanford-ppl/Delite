@@ -46,10 +46,6 @@ trait Types { this: OptiQLApplication =>
     val l_comment = comment
   }
 
-  def LineItem(): Rep[LineItem] = LineItem(0, 0, 0, 0, 0, 0, 0, 0, unit('\0'), unit('\0'), Date(""), Date(""), Date(""), "", "", "")
-
-  type LineItemTable = Table[LineItem]
-
   type Customer = Record {
     val c_custkey: Int
     val c_name: String
@@ -73,10 +69,6 @@ trait Types { this: OptiQLApplication =>
     val c_comment = comment
   }
 
-  def Customer(): Rep[Customer] = Customer(0, "", "", 0, "", 0, "", "")
-
-  type CustomerTable = Table[Customer]
-
   type Nation = Record {
     val n_nationkey: Int
     val n_name: String
@@ -90,10 +82,6 @@ trait Types { this: OptiQLApplication =>
     val n_regionkey = regionKey
     val n_comment = comment
   }
-
-  def Nation(): Rep[Nation] = Nation(0, "", 0, "")
-
-  type NationTable = Table[Nation]
 
   type Order = Record {
     val o_orderkey: Int
@@ -121,10 +109,6 @@ trait Types { this: OptiQLApplication =>
     val o_comment = comment
   }
 
-  def Order(): Rep[Order] = Order(0, 0, unit('\0'), 0, Date(""), "", "", 0, "")
-
-  type OrderTable = Table[Order]
-
   type Part = Record {
     val p_partkey: Int
     val p_name: String
@@ -150,10 +134,6 @@ trait Types { this: OptiQLApplication =>
     val p_comment = comment
   }
 
-  def Part(): Rep[Part] = Part(0, "", "", "", "", 0, "", 0, "")
-
-  type PartTable = Table[Part]
-
   type PartSupplier = Record {
     val ps_partkey: Int
     val ps_suppkey: Int
@@ -171,10 +151,6 @@ trait Types { this: OptiQLApplication =>
     val ps_comment = comment
   }
 
-  def PartSupplier(): Rep[PartSupplier] = PartSupplier(unit(0), unit(0), unit(0), unit(0.0), unit(""))
-
-  type PartSupplierTable = Table[PartSupplier]
-
   type Region = Record {
     val r_regionkey: Int
     val r_name: String
@@ -186,10 +162,6 @@ trait Types { this: OptiQLApplication =>
     val r_name = name
     val r_comment = comment
   }
-
-  def Region(): Rep[Region] = Region(0,"","")
-
-  type RegionTable = Table[Region]
 
   type Supplier = Record {
     val s_suppkey: Int
@@ -211,9 +183,5 @@ trait Types { this: OptiQLApplication =>
     val s_acctbal = acctBal
     val s_comment = comment
   }
-
-  def Supplier(): Rep[Supplier] = Supplier(0, "", "", 0, "", 0, "")
-
-  type SupplierTable = Table[Supplier]
 
 }

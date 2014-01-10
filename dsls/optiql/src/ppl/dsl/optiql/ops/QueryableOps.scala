@@ -21,6 +21,8 @@ trait QueryableOps extends Base { this: OptiQL =>
     def Average[N:Numeric:Manifest](avgSelector: Rep[T] => Rep[N]) = queryable_average(s, avgSelector)
     def Count() = queryable_count(s)
     def Count(predicate: Rep[T] => Rep[Boolean]) = queryable_count_where(s, predicate)
+    def Distinct() = queryable_distinct(s, (k:Rep[T]) => k)
+    def Distinct[K:Manifest](keySelector: Rep[T] => Rep[K]) = queryable_distinct(s, keySelector)
     def OrderBy[K:Ordering:Manifest](keySelector: Rep[T] => Rep[K]) = queryable_orderby(s, keySelector)
     def OrderByDescending[K:Ordering:Manifest](keySelector: Rep[T] => Rep[K]) = queryable_orderbydescending(s, keySelector)
     def ThenBy[K:Ordering:Manifest](keySelector: Rep[T] => Rep[K]) = queryable_thenby(s, keySelector)
@@ -37,12 +39,7 @@ trait QueryableOps extends Base { this: OptiQL =>
     def WhereEq[K:Manifest](firstKeySelector: Rep[T1] => Rep[K], secondKeySelector: Rep[T2] => Rep[K]) = new Joinable2(first, firstKeySelector, second, secondKeySelector)
   }
 
-  class Joinable2[T1:Manifest, T2:Manifest, K:Manifest](
-    val first: Rep[Table[T1]],
-    val firstKeySelector: Rep[T1] => Rep[K],
-    val second: Rep[Table[T2]],
-    val secondKeySelector: Rep[T2] => Rep[K] 
-  ) {
+  class Joinable2[T1:Manifest, T2:Manifest, K:Manifest](first: Rep[Table[T1]], firstKeySelector: Rep[T1] => Rep[K], second: Rep[Table[T2]], secondKeySelector: Rep[T2] => Rep[K]) {
     def Select[R:Manifest](resultSelector: (Rep[T1], Rep[T2]) => Rep[R]) = queryable_join2(first, firstKeySelector, second, secondKeySelector, resultSelector)
   }
   
@@ -57,6 +54,7 @@ trait QueryableOps extends Base { this: OptiQL =>
   def queryable_average[T:Manifest, N:Numeric:Manifest](s: Rep[Table[T]], avgSelector: Rep[T] => Rep[N]): Rep[N]
   def queryable_count[T:Manifest](s: Rep[Table[T]]): Rep[Int]  
   def queryable_count_where[T:Manifest](s: Rep[Table[T]], predicate: Rep[T] => Rep[Boolean]): Rep[Int]
+  def queryable_distinct[T:Manifest, K:Manifest](s: Rep[Table[T]], keySelector: Rep[T] => Rep[K]): Rep[Table[T]]
   def queryable_max[T:Manifest, N:Ordering:Manifest](s: Rep[Table[T]], maxSelector: Rep[T] => Rep[N]): Rep[N]
   def queryable_min[T:Manifest, N:Ordering:Manifest](s: Rep[Table[T]], minSelector: Rep[T] => Rep[N]): Rep[N]
   def queryable_first[T:Manifest](s: Rep[Table[T]]): Rep[T]
@@ -157,6 +155,17 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
     def reduceFunc = (a,b) => a
   }
 
+  case class QueryableDistinct[T:Manifest, K:Manifest](in: Exp[Table[T]], keyFunc: Exp[T] => Exp[K]) extends DeliteOpGroupByReduce[K, T, Table[T]] {
+    def alloc(len: Exp[Int]) = Table[T](len)
+    val size = copyTransformedOrElse(_.size)(in.size)
+    def zero = zeroType[T]
+    def reduceFunc = (a,b) => a
+
+    val mT = manifest[T]
+    val mK = manifest[K]
+  }
+
+
   case class QueryableCountWhere[T:Manifest](in: Exp[Table[T]], cond: Exp[T] => Exp[Boolean]) extends DeliteOpFilterReduce[T,Int] {
     val size = copyTransformedOrElse(_.size)(in.size)
     def zero = unit(0)
@@ -172,9 +181,8 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
 
   protected def zeroType[T:Manifest]: Exp[T] = manifest[T] match { //need a more robust solution, e.g. type class
     case StructType(tag,elems) => struct[T](tag, elems.map(e => (e._1, zeroType(e._2))))
-    case s if s == manifest[String] => unit("").asInstanceOf[Rep[T]]
     case v if v <:< manifest[AnyVal] => unit(0).AsInstanceOf[T]
-    case o => throw new IllegalArgumentException("Unknown Numeric type: " + o)
+    case _ => unit(null).AsInstanceOf[T]
   }
 
   protected def minValue[T:Manifest]: Exp[T] = (manifest[T] match {
@@ -264,6 +272,8 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
 
   def queryable_count_where[T:Manifest](s: Exp[Table[T]], predicate: Exp[T] => Exp[Boolean]) = reflectPure(QueryableCountWhere(s, predicate))
 
+  def queryable_distinct[T:Manifest, K:Manifest](s: Rep[Table[T]], keySelector: Rep[T] => Rep[K]) = reflectPure(QueryableDistinct(s, keySelector))
+
   def queryable_first[T:Manifest](s: Exp[Table[T]]) = reflectPure(QueryableFirst(s))
 
   def queryable_last[T:Manifest](s: Exp[Table[T]]) = reflectPure(QueryableLast(s))
@@ -329,6 +339,7 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
     case e@QueryableMax(in,g) => reflectPure(new { override val original = Some(f,e) } with QueryableMax(f(in),f(g))(mtype(e.mT),otype(e.oN),mtype(e.mN)))(mtype(manifest[A]),implicitly[SourceContext])      
     case e@QueryableMin(in,g) => reflectPure(new { override val original = Some(f,e) } with QueryableMin(f(in),f(g))(mtype(e.mT),otype(e.oN),mtype(e.mN)))(mtype(manifest[A]),implicitly[SourceContext])      
     case e@QueryableGroupBy(in,g) => reflectPure(new { override val original = Some(f,e) } with QueryableGroupBy(f(in),f(g))(mtype(e.mT),mtype(e.mK)))(mtype(manifest[A]),implicitly[SourceContext])      
+    case e@QueryableDistinct(in,g) => reflectPure(new { override val original = Some(f,e) } with QueryableDistinct(f(in),f(g))(mtype(e.mT),mtype(e.mK)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@QueryableCount(in) => reflectPure(new { override val original = Some(f,e) } with QueryableCount(f(in))(mtype(e.mA)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@QueryableCountWhere(in,c) => reflectPure(new { override val original = Some(f,e) } with QueryableCountWhere(f(in),f(c))(mtype(e.mT)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@QueryableFirst(in) => reflectPure(new { override val original = Some(f,e) } with QueryableFirst(f(in))(mtype(e.mR)))(mtype(manifest[A]),implicitly[SourceContext])
