@@ -13,7 +13,7 @@ trait DeliteFileReaderOps extends Base with DeliteArrayBufferOps {
     def readLinesUnstructured[A:Manifest](path: Rep[String])(f: (Rep[String], Rep[DeliteArrayBuffer[A]]) => Rep[Unit]): Rep[DeliteArray[A]] = dfr_readLines(path, f)
   }
   def dfr_readLines[A:Manifest](path: Rep[String], f: (Rep[String], Rep[DeliteArrayBuffer[A]]) => Rep[Unit]): Rep[DeliteArray[A]]
- 
+
 
   object DeliteFileStream {
     def apply(paths: Seq[Rep[String]])(implicit pos: SourceContext) = dfs_new(paths)
@@ -46,23 +46,23 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
   override def blocks(e: Any): List[Block[Any]] = e match {
     case i: DeliteOpFileReaderReadLines[_] => super.blocks(i) ::: blocks(i.alloc) ::: blocks(i.append) ::: blocks(i.finalizer)
     case _ => super.blocks(e)
-  }  
-  
+  }
+
   override def syms(e: Any): List[Sym[Any]] = e match {
     case i: DeliteOpFileReaderReadLines[_] => super.syms(i) ::: syms(i.alloc) ::: syms(i.append) ::: syms(i.finalizer)
     case _ => super.syms(e)
   }
-    
+
   override def readSyms(e: Any): List[Sym[Any]] = e match {
     case i: DeliteOpFileReaderReadLines[_] => super.readSyms(i) ::: readSyms(i.alloc) ::: readSyms(i.append) ::: readSyms(i.finalizer)
     case _ => super.readSyms(e)
   }
-  
+
   override def boundSyms(e: Any): List[Sym[Any]] = e match {
     case i: DeliteOpFileReaderReadLines[_] => super.boundSyms(i) ::: effectSyms(i.alloc) ::: effectSyms(i.append) ::: syms(i.line) ::: syms(i.allocVal) ::: effectSyms(i.finalizer)
     case _ => super.boundSyms(e)
   }
-  
+
   override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
     case i: DeliteOpFileReaderReadLines[_] => super.symsFreq(i) ::: freqNormal(i.alloc) ::: freqHot(i.append) ::: freqNormal(i.finalizer)
     case _ => super.symsFreq(e)
@@ -74,7 +74,7 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
   }
 
   override def containSyms(e: Any): List[Sym[Any]] = e match {
-    case i: DeliteOpFileReaderReadLines[_] => Nil    
+    case i: DeliteOpFileReaderReadLines[_] => Nil
     case _ => super.containSyms(e)
   }
 
@@ -89,7 +89,7 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
   }
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case e@DeliteOpFileReaderReadLines(path,func) => reflectPure(new { override val original = Some(f,e) } with DeliteOpFileReaderReadLines(f(path),f(func))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])      
+    case e@DeliteOpFileReaderReadLines(path,func) => reflectPure(new { override val original = Some(f,e) } with DeliteOpFileReaderReadLines(f(path),f(func))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case Reflect(e@DeliteOpFileReaderReadLines(path,func), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteOpFileReaderReadLines(f(path),f(func))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case e@DeliteOpFileReader(paths, func) => reflectPure(new { override val original = Some(f,e) } with DeliteOpFileReader(f(paths),f(func))(e.dmA))(mtype(manifest[A]),implicitly[SourceContext])
     case Reflect(e@DeliteOpFileReader(paths,func), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteOpFileReader(f(paths),f(func))(e.dmA), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -123,7 +123,7 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
   def dnfw_readLines[A:Manifest](paths: Seq[Exp[String]], f: Exp[String] => Exp[A])(implicit pos: SourceContext) = reflectPure(DeliteOpFileReader(paths, f))
   def dnfw_readLinesFlattened[A:Manifest](paths: Seq[Exp[String]], f: Exp[String] => Exp[DeliteCollection[A]])(implicit pos: SourceContext) = reflectPure(DeliteOpFileReaderFlat(paths, f))
 
-  case class DeliteOpFileReader[A:Manifest](paths: Seq[Exp[String]], func: Exp[String] => Exp[A]) extends DeliteOpFileReaderI[A,DeliteArray[A],DeliteArray[A]] {    
+  case class DeliteOpFileReader[A:Manifest](paths: Seq[Exp[String]], func: Exp[String] => Exp[A]) extends DeliteOpFileReaderI[A,DeliteArray[A],DeliteArray[A]] {
     val inputStream = DeliteFileStream(paths)
     val size = copyTransformedOrElse(_.size)(dfs_numThreads(inputStream))
     def finalizer(x: Exp[DeliteArray[A]]) = x
@@ -133,7 +133,7 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
   abstract class DeliteOpFileReaderI[A:Manifest, I<:DeliteCollection[A]:Manifest, CA<:DeliteCollection[A]:Manifest]
     extends DeliteOpMapLike[A,I,CA] {
     type OpType <: DeliteOpFileReaderI[A,I,CA]
-  
+
     val inputStream: Exp[DeliteFileStream]
     def func: Exp[String] => Exp[A]
 
@@ -148,7 +148,7 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
     val dmCA = manifest[CA]
   }
 
-  case class DeliteOpFileReaderFlat[A:Manifest](paths: Seq[Exp[String]], func: Exp[String] => Exp[DeliteCollection[A]]) extends DeliteOpFileReaderFlatI[A,DeliteArray[A],DeliteArray[A]] {    
+  case class DeliteOpFileReaderFlat[A:Manifest](paths: Seq[Exp[String]], func: Exp[String] => Exp[DeliteCollection[A]]) extends DeliteOpFileReaderFlatI[A,DeliteArray[A],DeliteArray[A]] {
     val inputStream = DeliteFileStream(paths)
     val size = copyTransformedOrElse(_.size)(dfs_numThreads(inputStream))
     def finalizer(x: Exp[DeliteArray[A]]) = x
@@ -165,17 +165,17 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
     final lazy val iFunc: Exp[DeliteCollection[A]] = copyTransformedOrElse(_.iFunc)(func(dfs_readLine(inputStream,v)))
     final lazy val iF: Sym[Int] = copyTransformedOrElse(_.iF)(fresh[Int]).asInstanceOf[Sym[Int]]
     final lazy val eF: Sym[DeliteCollection[A]] = copyTransformedOrElse(_.eF)(fresh[DeliteCollection[A]](iFunc.tp)).asInstanceOf[Sym[DeliteCollection[A]]]
-    
+
     lazy val body: Def[CA] = copyBodyOrElse(DeliteCollectElem[A,I,CA](
       iFunc = Some(reifyEffects(this.iFunc)),
       iF = Some(this.iF),
-      sF = Some(reifyEffects(dc_size(iFunc))),
+      sF = Some(reifyEffects(dc_size(eF))), //note: applying dc_size directly to iFunc can lead to iFunc being duplicated (during mirroring?)
       eF = Some(this.eF),
       func = reifyEffects(dc_apply(eF,iF)),
       par = dc_parallelization(allocVal, true),
       buf = this.buf
     ))
-    
+
     val dmA = manifest[A]
     val dmI = manifest[I]
     val dmCA = manifest[CA]
@@ -233,7 +233,7 @@ trait ScalaGenDeliteFileReaderOps extends ScalaGenFat {
       val actType = "activation_" + quote(sym)
       stream.println("final class " + actType + " {")
         stream.println("var " + quote(sym) + ": " + remap(sym.tp) + " = _")
-        
+
         if (Config.generateSerializable) {
           stream.println("def combine(act: " + actType + ", rhs: " + actType + ") {")
           val tpe = remap(sym.tp)
