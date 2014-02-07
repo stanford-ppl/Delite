@@ -70,6 +70,10 @@ trait DeliteFlatMap extends DeliteTestBase {
     val v2 = v flatMap { i => DeliteArrayBuffer.fromFunction(10){ j => i }}
     collectBuf(v2, 10000, i => i/10)
 
+    val vm = DeliteArrayBuffer.fromFunction(100){ i => i }
+    val vm2 = vm flatMap { i => DeliteArrayBuffer(DeliteArray[Int](2), 2).map{ j => j + i }}
+    collectBuf(vm2, 200, i => i/2)
+
     val ve = DeliteArrayBuffer.fromFunction(0){ i => 0 }
     val ve2 = ve flatMap { i => DeliteArrayBuffer.fromFunction(0) { j => i }}
     collectBuf(ve2, 0, i => i)

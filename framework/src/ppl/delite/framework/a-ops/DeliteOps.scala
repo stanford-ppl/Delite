@@ -451,7 +451,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     lazy val body: Def[CB] = copyBodyOrElse(DeliteCollectElem[B,I,CB](
       iFunc = Some(reifyEffects(this.iFunc)),
       iF = Some(this.iF),
-      sF = Some(reifyEffects(dc_size(iFunc))),
+      sF = Some(reifyEffects(dc_size(eF))), //note: applying dc_size directly to iFunc can lead to iFunc being duplicated (during mirroring?)
       eF = Some(this.eF),
       func = reifyEffects(dc_apply(eF,iF)),
       par = dc_parallelization(allocVal, true),
@@ -1882,6 +1882,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         if (elem.cond.nonEmpty) stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
         if (elem.iFunc.nonEmpty) {
           emitValDef(elem.eF.get, quote(getBlockResult(elem.iFunc.get)))
+          emitBlock(elem.sF.get)
           emitVarDef(quote(elem.iF.get), remap(elem.iF.get.tp), "0")
           stream.println("while (" + quote(elem.iF.get) + " < " + quote(getBlockResult(elem.sF.get)) + ") { //flatMap loop")
           emitBlock(elem.func)
@@ -2003,7 +2004,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     case elem: DeliteHashCollectElem[_,_,_,_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
     case elem: DeliteHashReduceElem[_,_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
     case elem: DeliteHashIndexElem[_,_] => elem.keyFunc :: elem.cond
-    case elem: DeliteCollectElem[_,_,_] if elem.iFunc.nonEmpty => elem.iFunc.get :: elem.sF.get :: elem.cond
+    case elem: DeliteCollectElem[_,_,_] if elem.iFunc.nonEmpty => elem.iFunc.get :: elem.cond
     case elem: DeliteCollectElem[_,_,_] => elem.func :: elem.cond
     //case elem: DeliteForeachElem[_] => elem.cond // only emit func inside condition! TODO: how to avoid emitting deps twice? // elem.func :: elem.cond
     case elem: DeliteForeachElem[_] => List(elem.func)

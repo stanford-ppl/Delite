@@ -269,6 +269,7 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
   private def isStringType[T](m: Manifest[T]) = m.erasure.getSimpleName == "String"
   
   override def emitDataStructures(path: String) {
+    new File(path) mkdirs // doesn't necessarily exist
     val stream = new PrintWriter(path + "DeliteStructs.scala")
     stream.println("package generated.scala")
     for ((name, elems) <- encounteredStructs) {
