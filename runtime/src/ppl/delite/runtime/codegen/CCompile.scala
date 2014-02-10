@@ -65,22 +65,22 @@ trait CCompile extends CodeCache {
     cacheRuntimeSources((sourceBuffer ++ headerBuffer).toArray)
     
     if (modules.exists(_.needsCompile)) {
-      val includes = modules.flatMap(m => List(config.headerPrefix + sourceCacheHome + m.name, config.headerPrefix + Compilers(Targets.getHostTarget(target)).sourceCacheHome + m.name)).toArray
-      val libs = Directory(deliteLibs).files.withFilter(f => f.extension == OS.libExt || f.extension == OS.objExt).map(_.path).toArray
-      val paths = includes ++ config.headerDir ++ Array(config.headerPrefix + Config.deliteHome + sep + "runtime" + sep + target) ++ config.libs ++ libs
+      val includes = modules.flatMap(m => List(config.headerPrefix + sourceCacheHome + m.name, config.headerPrefix + Compilers(Targets.getHostTarget(target)).sourceCacheHome + m.name)).toArray ++ 
+                     config.headerDir ++ Array(config.headerPrefix + Config.deliteHome + sep + "runtime" + sep + target)
+      val libs = config.libs ++ Directory(deliteLibs).files.withFilter(f => f.extension == OS.libExt || f.extension == OS.objExt).map(_.path)
       val sources = (sourceBuffer.map(s => sourceCacheHome + "runtime" + sep + s._2) ++ kernelBuffer.map(k => sourceCacheHome + "kernels" + sep + k) ++ auxSourceList).toArray
       val dest = binCacheHome + target + "Host." + OS.libExt
-      compile(dest, sources, paths)
+      compile(dest, sources, includes, libs)
     }
     sourceBuffer.clear()
     headerBuffer.clear()
     kernelBuffer.clear()
   }
 
-  def compile(destination: String, sources: Array[String], paths: Array[String]) {
+  def compile(destination: String, sources: Array[String], includes: Array[String], libs: Array[String]) {
     Path(destination).parent.createDirectory()
     val output = Array(outputSwitch, destination)
-    val args = Array(config.compiler) ++ paths ++ compileFlags ++ output ++ sources
+    val args = Array(config.compiler) ++ includes ++ libs ++ compileFlags ++ output ++ sources
     println(args.mkString(" "))
     val process = Runtime.getRuntime.exec(args)
     process.waitFor
@@ -91,7 +91,7 @@ trait CCompile extends CodeCache {
     val root = Config.deliteHome + sep + "runtime" + sep + target + sep + target + "Init."
     val source = root + ext
     val dest = root + OS.libExt
-    compile(dest, Array(source), config.headerDir)
+    compile(dest, Array(source), config.headerDir, Array[String]())
   }
 
   protected def checkError(process: Process, args: Array[String]) {
