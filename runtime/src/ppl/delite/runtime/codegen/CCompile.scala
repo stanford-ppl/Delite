@@ -11,6 +11,7 @@ trait CCompile extends CodeCache {
   
   protected class CompilerConfig(
     val compiler: String, 
+    val make: String,
     val headerDir: Array[String],
     val sourceHeader: Array[String],
     val libs: Array[String],
@@ -49,13 +50,14 @@ trait CCompile extends CodeCache {
 
     val body = XML.loadFile(configFile.jfile)
     val compiler = (body \\ "compiler").text.trim
+    val make = (body \\ "make").text.trim
     val headerPrefix = (body \\ "headers" \ "prefix").text.trim
     val headerDir = body \\ "headers" flatMap { e => val prefix = e \ "prefix"; e \\ "path" map { prefix.text.trim + _.text.trim } } toArray
     val sourceHeader = body \\ "headers" flatMap { e => e \\ "include" map { _.text.trim } } toArray
     val libPrefix = (body \\ "libs" \ "prefix").text.trim
     val libs = body \\ "libs" flatMap { e => val prefix = e \ "prefix"; (e \\ "path").map(p => prefix.text.trim + p.text.trim) ++ (e \\ "library").map(l => l.text.trim) } toArray
 
-    new CompilerConfig(compiler, headerDir, sourceHeader, libs, headerPrefix, libPrefix)
+    new CompilerConfig(compiler, make, headerDir, sourceHeader, libs, headerPrefix, libPrefix)
   }
 
   def compile() {
