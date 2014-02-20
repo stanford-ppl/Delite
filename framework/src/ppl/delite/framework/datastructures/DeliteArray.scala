@@ -217,7 +217,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   
   override def dc_copy[A:Manifest](src: Exp[DeliteCollection[A]], srcPos: Exp[Int], dst: Exp[DeliteCollection[A]], dstPos: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
     if (isDeliteArray(src) && isDeliteArray(dst)) {
-      darray_unsafe_copy(asDeliteArray(src), srcPos, asDeliteArray(dst), dstPos, size)
+      darray_copy(asDeliteArray(src), srcPos, asDeliteArray(dst), dstPos, size)
     }
     else super.dc_copy(src,srcPos,dst,dstPos,size)
   }

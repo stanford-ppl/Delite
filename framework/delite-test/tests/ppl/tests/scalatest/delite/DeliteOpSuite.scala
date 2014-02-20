@@ -410,6 +410,51 @@ trait DeliteHorizontalElems extends DeliteTestBase {
   }
 }
 
+object DeliteFileReaderRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFileReader
+trait DeliteFileReader extends DeliteTestBase {
+  def main() = {
+    val path = "framework/delite-test/tests/ppl/tests/scalatest/delite/test.txt"
+    val numLines = 3
+    val numElems = 6
+    val elem = unit("a")
+
+    val a1 = DeliteNewFileReader.readLines(path){ line => 
+      val fields = line.split(" ")
+      fields(0)
+    }
+    collectArray(a1, numLines, i => elem)
+
+    val a2 = DeliteNewFileReader.readLines(path){ line => 
+      val fields = line.split(" ")
+      (fields(0), fields(0))
+    }
+    collectArray(a2, numLines, i => (elem, elem))
+
+    val a3 = DeliteNewFileReader.readLines(path){ line => 
+      val fields = line.split(" ")
+      DeliteArray.fromFunction(fields.length)(i => fields(i))
+    }
+    collect(a3.length == numLines)
+    for (i <- 0 until a3.length) {
+      collectArray(a3(i), i+1, i => elem)
+    }
+
+    val a4 = DeliteNewFileReader.readLinesFlattened(path){ line => 
+      val fields = line.split(" ")
+      DeliteArray.fromFunction(fields.length)(i => fields(i))
+    }
+    collectArray(a4, numElems, i => elem)
+
+    val a5 = DeliteNewFileReader.readLinesFlattened(path){ line => 
+      val fields = line.split(" ")
+      DeliteArray.fromFunction(fields.length)(i => (fields(i), fields(i)))
+    }
+    collectArray(a5, numElems, i => (elem,elem))
+    
+    mkReport
+  }
+}
+
 class DeliteOpSuite extends DeliteSuite {
   def testDeliteMap() { compileAndTest(DeliteMapRunner, CHECK_MULTILOOP) }
   def testDeliteFlatMap() { compileAndTest(DeliteFlatMapRunner) }
@@ -428,4 +473,5 @@ class DeliteOpSuite extends DeliteSuite {
   def testDeliteIfThenElse() { compileAndTest(DeliteIfThenElseRunner) }
   def testDeliteGroupBy() { compileAndTest(DeliteGroupByRunner) }
   def testDeliteGroupByReduce() { compileAndTest(DeliteGroupByReduceRunner) }
+  def testDeliteFileReader() { compileAndTest(DeliteFileReaderRunner) }
 }
