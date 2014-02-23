@@ -11,8 +11,8 @@ trait DeliteMapOps extends Base {
 
   object DeliteMap {
     def apply[A:Manifest,K:Manifest,V:Manifest](
-      coll: Rep[DeliteCollection[A]], 
-      keyFunc: Rep[A] => Rep[K], 
+      coll: Rep[DeliteCollection[A]],
+      keyFunc: Rep[A] => Rep[K],
       valFunc: Rep[A] => Rep[V] = (e:Rep[A]) => e,
       conflictRes: (Rep[V],Rep[V]) => Rep[V] = (a:Rep[V],b:Rep[V]) => a
     ) = dmap_fromCollection(coll,keyFunc,valFunc,conflictRes)
@@ -43,7 +43,7 @@ trait DeliteMapOps extends Base {
 
 }
 
-trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp { this: DeliteOpsExp with PrimitiveOpsExp with OrderingOpsExp with EqualExpBridge =>
+trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp with EqualExpBridgeOpt with PrimitiveOpsExp with OrderingOpsExp { this: DeliteOpsExp =>
 
   trait DeliteIndex[K]
 
@@ -63,7 +63,7 @@ trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp { this: DeliteO
     def zero = unit(null).asInstanceOf[Exp[V]]
   }
 
-  case class DeliteMapKeys[A:Manifest,K:Manifest](in: Exp[DeliteCollection[A]], keyFunc: Exp[A] => Exp[K]) 
+  case class DeliteMapKeys[A:Manifest,K:Manifest](in: Exp[DeliteCollection[A]], keyFunc: Exp[A] => Exp[K])
     extends DeliteOpMappedGroupByReduce[A,K,K,DeliteArray[K]] {
 
     def alloc(len: Exp[Int]) = DeliteArray[K](len)
@@ -75,7 +75,7 @@ trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp { this: DeliteO
 
   case class DeliteMapBuildIndex[A:Manifest,K:Manifest](in: Exp[DeliteCollection[A]], keyFunc: Exp[A] => Exp[K])
     extends DeliteOpBuildIndex[A,K,DeliteIndex[K]] {
-    
+
     def cond = null
     val size = copyTransformedOrElse(_.size)(dc_size(in))
   }
@@ -123,7 +123,7 @@ trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp { this: DeliteO
     case Reflect(e@DeliteMapBuildIndex(in,k), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMapBuildIndex(f(in),f(k))(mtype(e.dmA),mtype(e.dmK)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
-  
+
   override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
     case t if t.erasure == classOf[DeliteMap[_,_]] => Some((classTag(t), List("keys" -> darrayManifest(t.typeArguments(0)), "values" -> darrayManifest(t.typeArguments(1)), "index" -> makeManifest(classOf[DeliteIndex[_]], List(t.typeArguments(0))), "size" -> manifest[Int])))
     case _ => super.unapplyStructType
@@ -131,7 +131,7 @@ trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp { this: DeliteO
 
 }
 
-trait ScalaGenDeliteMapOps extends ScalaGenEffect {
+trait ScalaGenDeliteMapOps extends ScalaGenEffect with ScalaGenEqual {
   val IR: DeliteMapOpsExp
   import IR._
 

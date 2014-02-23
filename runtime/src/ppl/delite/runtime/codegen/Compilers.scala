@@ -12,7 +12,7 @@ import ppl.delite.runtime.DeliteMesosExecutor
  * Author: Kevin J. Brown
  * Date: Dec 2, 2010
  * Time: 9:41:08 PM
- * 
+ *
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
@@ -36,29 +36,33 @@ object Compilers {
 
     if(Config.clusterMode!=1) assert((Config.numThreads + (if(graph.targets(Targets.Cpp)) Config.numCpp else 0) + (if(graph.targets(Targets.Cuda)) Config.numCuda else 0) + (if(graph.targets(Targets.OpenCL)) Config.numOpenCL else 0)) == schedule.numResources)
     Sync.addSync(graph)
-    
+
     val scalaSchedule = schedule.slice(0, Config.numThreads)
     if (Config.numThreads > 0) checkRequestedResource(scalaSchedule, Targets.Scala)
-    
+
     //TODO: Fix this!
-    if(Config.clusterMode != 2 || Config.numCuda == 0) 
+    if(Config.clusterMode != 2 || Config.numCuda == 0)
       ScalaExecutableGenerator.makeExecutables(scalaSchedule, graph.kernelPath)
-    else 
+    else
       new ScalaMainExecutableGenerator(0, graph.kernelPath).makeExecutable(PartialSchedule(1).apply(0))
 
     // Hack to collect global inputTypesMap (TODO: Get rid of this)
-    CppExecutableGenerator.typesMap = Map[Targets.Value, Map[String,String]]()
-    val cppSchedule = schedule.slice(Config.numThreads, Config.numThreads+Config.numCpp)
-    if (Config.numCpp > 0) checkRequestedResource(cppSchedule, Targets.Cpp)
-    CppExecutableGenerator.collectInputTypesMap(graph)
-    CppExecutableGenerator.makeExecutables(cppSchedule, graph.kernelPath)
-    CppMultiLoopHeaderGenerator.clear()
-    
-    CudaExecutableGenerator.typesMap = Map[Targets.Value, Map[String,String]]()
-    val cudaSchedule = schedule.slice(Config.numThreads+Config.numCpp, Config.numThreads+Config.numCpp+Config.numCuda)
-    if (Config.numCuda > 0) checkRequestedResource(cudaSchedule, Targets.Cuda)
-    CudaExecutableGenerator.collectInputTypesMap(graph)
-    CudaExecutableGenerator.makeExecutables(cudaSchedule, graph.kernelPath)
+    if (Config.numCpp > 0) {
+      CppExecutableGenerator.typesMap = Map[Targets.Value, Map[String,String]]()
+      val cppSchedule = schedule.slice(Config.numThreads, Config.numThreads+Config.numCpp)
+      checkRequestedResource(cppSchedule, Targets.Cpp)
+      CppExecutableGenerator.collectInputTypesMap(graph)
+      CppExecutableGenerator.makeExecutables(cppSchedule, graph.kernelPath)
+      CppMultiLoopHeaderGenerator.clear()
+    }
+
+    if (Config.numCuda > 0) {
+      CudaExecutableGenerator.typesMap = Map[Targets.Value, Map[String,String]]()
+      val cudaSchedule = schedule.slice(Config.numThreads+Config.numCpp, Config.numThreads+Config.numCpp+Config.numCuda)
+      if (Config.numCuda > 0) checkRequestedResource(cudaSchedule, Targets.Cuda)
+      CudaExecutableGenerator.collectInputTypesMap(graph)
+      CudaExecutableGenerator.makeExecutables(cudaSchedule, graph.kernelPath)
+    }
 
     if (Config.printSources) { //DEBUG option
       ScalaCompile.printSources()
