@@ -413,7 +413,7 @@ trait DeliteHorizontalElems extends DeliteTestBase {
 object DeliteFileReaderRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFileReader
 trait DeliteFileReader extends DeliteTestBase {
   def main() = {
-    val path = "framework/delite-test/tests/ppl/tests/scalatest/delite/test.txt"
+    val path = sys.env.get("DELITE_HOME").map(_ + "/").getOrElse("") + "framework/delite-test/tests/ppl/tests/scalatest/delite/test.txt"
     val numLines = 3
     val numElems = 6
     val elem = unit("a")
