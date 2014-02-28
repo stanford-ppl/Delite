@@ -88,10 +88,6 @@ trait StaticScheduler {
 			  }        
 				splitNotEmpty(w, graph, schedule, List(w.predicateGraph.schedule, w.bodyGraph.schedule), resourceList)			
       }
-      case v: OP_Variant => {
-        scheduleFlat(v.variantGraph)
-        splitNotEmpty(v, graph, schedule, List(v.variantGraph.schedule), resourceList)
-      }
       case err => error("Control OP type not recognized: " + err.getClass.getSimpleName)
     }
   }

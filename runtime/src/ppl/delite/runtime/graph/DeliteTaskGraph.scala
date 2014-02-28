@@ -53,7 +53,6 @@ object DeliteTaskGraph {
         case "Foreach" => processCommon(op, "OP_Foreach")
         case "Conditional" => processIfThenElseTask(op)
         case "WhileLoop" => processWhileTask(op)
-        case "SubGraph" => processSubGraph(op)
         case "Arguments" => processArgumentsTask(op)
         case "EOP" => processEOPTask(op) //end of program
         case "EOG" => //end of nested graph, do nothing
@@ -214,15 +213,6 @@ object DeliteTaskGraph {
       if (newop.supportsTarget(tgt)) processGPUMetadata(op, newop, tgt)
     }
 
-    //process kernel variant
-    op.get("variant") match {
-      case None => //do nothing
-      case Some(field) => field match {
-        case map: Map[Any,Any] => newop.variant = processVariant(newop, resultMap, inputTypesMap, map)
-        case err => mapNotFound(err)
-      }
-    }
-
   }
 
   def processOutputTypes(op: Map[Any,Any]) = {
@@ -312,24 +302,6 @@ object DeliteTaskGraph {
     newGraph._kernelPath = graph._kernelPath
     newGraph._superGraph = graph
     newGraph
-  }
-
-  def processVariant(op: DeliteOP, resultType: Map[Targets.Value,Map[String,String]], inputTypesMap: Map[Targets.Value,Map[String,String]], graph: Map[Any, Any])(implicit outerGraph: DeliteTaskGraph) = {
-    val varGraph = newGraph
-    parseOps(getFieldList(graph, "ops"))(varGraph)
-    if (getFieldString(graph, "outputType") == "symbol") {
-      val resultSym = getFieldString(graph, "outputValue")
-      varGraph._result = (getOp(resultSym)(varGraph), resultSym)
-    }
-    else
-      assert(getFieldString(graph, "outputValue") == "()") //only const a variant should return is a Unit literal
-
-    val v = new OP_Variant(op.id, resultType, inputTypesMap, op, varGraph)
-
-    for (tgt <- Targets.GPU) {
-      extractGPUMetadata(v, varGraph, outerGraph, tgt)
-    }
-    v
   }
 
   def parseSubGraph(op: Map[Any,Any], prefix: String)(implicit graph: DeliteTaskGraph) = {
@@ -453,43 +425,6 @@ object DeliteTaskGraph {
     //add to graph
     graph.registerOp(whileOp)
     graph._result = (whileOp, whileOp.getOutputs.head)
-  }
-
-  //TODO: this, while, and if can probably be factored
-  def processSubGraph(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
-    // get id
-    val id = getFieldString(op,"outputId")
-    val (bodyGraph, bodyValue) = parseSubGraph(op, "")
-    assert(bodyValue == "")
-
-    val resultMap = processOutputTypes(op)
-
-    val depIds = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
-    var graphDeps = Set.empty[DeliteOP]
-    for (depId <- depIds) graphDeps += getOp(depId)
-    graphDeps ++= bodyGraph._inputs.keySet map { getOp(_) }
-
-    //find inputs at nesting level of the SubGraph
-    val internalOps = bodyGraph.ops.toSet
-    var graphInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
-    graphInputs ++= (for ((op,sym) <- Seq(bodyGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
-    val graphMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
-    val inputTypesMap = combineTypesMap(internalOps.map(_.inputTypesMap).toList)
-
-    val graphOp = new OP_Variant(id, resultMap, inputTypesMap, null, bodyGraph)
-    graphOp.dependencies = graphDeps
-    graphOp.inputList = graphInputs.toList
-    graphOp.mutableInputs = graphMutableInputs
-
-    for (tgt <- Targets.GPU) extractGPUMetadata(graphOp, bodyGraph, graph, tgt)
-
-    //add consumer edges
-    for (dep <- graphDeps)
-      dep.addConsumer(graphOp)
-
-    //add to graph
-    graph.registerOp(graphOp)
-    graph._result = (graphOp, graphOp.getOutputs.head)
   }
 
   // Change Metadata apply method from Target -> specific metadata in DeliteOP

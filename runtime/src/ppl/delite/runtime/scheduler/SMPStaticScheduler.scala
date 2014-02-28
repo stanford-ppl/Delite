@@ -74,8 +74,7 @@ final class SMPStaticScheduler extends StaticScheduler with ParallelUtilizationC
 				else {
 					split(op, graph, schedule, Seq(0))
 				} 
-      case _ => {
-        //if (op.variant != null) addNested(op.variant, graph, schedule, Range(0, numThreads)) else
+      case _ => {        
         if (op.isDataParallel) split(op, graph, schedule, Range(0, numThreads))
         else cluster(op, schedule)
       }

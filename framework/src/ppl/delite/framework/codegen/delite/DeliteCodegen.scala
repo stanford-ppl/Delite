@@ -21,6 +21,7 @@ import ppl.delite.framework.analysis.StencilAnalysis
 import generators.{DeliteGenTaskGraph}
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
 
+// FIXME: now that syms and friends is in the IR, all this ifGenAgree(..) crap is not necessary.
 
 /**
  * Notice that this is using Effects by default, also we are mixing in the Delite task graph code generator
@@ -35,7 +36,7 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
 
   // should be set by DeliteApplication if there are any transformations to be run before codegen
   var transformers: List[WorklistTransformer{val IR: DeliteCodegen.this.IR.type}] = Nil
-  
+
   // per kernel, used by DeliteGenTaskGraph
   var controlDeps: List[Sym[Any]] = _
   var emittedNodes: List[Sym[Any]] = _
@@ -94,7 +95,7 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
         Some(current)
       } else
     	  sourceContext
-    
+
     stream.print("  \"sourceContext\": {\n    ")
     val (fileName, line, opName) =
       if (parentContext.isEmpty) ("<unknown file>", 0, id) else {
@@ -105,7 +106,7 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     stream.print("\"opName\": \"" + opName + "\",\n    ")
     stream.print("\"line\": \"" + line + "\" }")
   }
-  
+
 /*
 {"SymbolMap": [
   {"symbol": "x8", "sourceContext": {
@@ -134,14 +135,14 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     }
     stream.println("] }")
   }
-  
+
   def runTransformations[A:Manifest](b: Block[A]): Block[A] = {
     printlog("DeliteCodegen: applying transformations")
-    var curBlock = b  
-    printlog("  Transformers: " + transformers)    
+    var curBlock = b
+    printlog("  Transformers: " + transformers)
     val maxTransformIter = 3 // TODO: make configurable
     for (t <- transformers) {
-      printlog("  Block before transformation: " + curBlock)    
+      printlog("  Block before transformation: " + curBlock)
       printlog("  map: " + t.nextSubst)
       var i = 0
       while (!t.isDone && i < maxTransformIter) {
@@ -150,19 +151,19 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
         i += 1
       }
       if (i == maxTransformIter) printlog("  warning: transformer " + t + " did not converge in " + maxTransformIter + " iterations")
-      printlog("  Block after transformation: " + curBlock) 
+      printlog("  Block after transformation: " + curBlock)
     }
-    printlog("DeliteCodegen: done transforming")    
-    curBlock   
+    printlog("DeliteCodegen: done transforming")
+    curBlock
   }
-  
+
   def emitSource[A:Manifest](args: List[Sym[_]], body: Block[A], className: String, stream: PrintWriter): List[(Sym[Any],Any)] = {
     val y = runTransformations(body)
     val staticData = getFreeDataBlock(y)
 
     printlog("-- emitSource")
     availableDefs.foreach(printlog(_))
-    
+
     stream.println("{\"DEG\":{\n"+
                    "\"version\" : 0.1,\n"+
                    "\"kernelpath\" : \"" + Config.buildDir  + "\",\n"+
@@ -183,7 +184,7 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
       printer.flush
       writer.flush
     }
-    
+
     stream.flush
     staticData
   }
@@ -229,7 +230,7 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
         }
 
         def emitAnyNode(syms: List[Sym[Any]], rhs: Any) = rhs match { //should this be part of the API or always hidden (with only emitNode and emitFatNode public)
-          case d: Def[_] => 
+          case d: Def[_] =>
             assert(syms.length == 1)
             emitNode(syms(0), d)
           case fd: FatDef =>
@@ -247,7 +248,7 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
 
  /**
   * Return a list of all effectful operations rooted at start.
-  */  
+  */
   def getEffectsBlock(start: Def[Any]): List[Sym[Any]] = {
     val nodes = boundSyms(start) filter { case Def(Reflect(x, u, effects)) => true; case _ => false }
     nodes.distinct

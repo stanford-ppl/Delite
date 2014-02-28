@@ -100,19 +100,19 @@ trait SimpleVectorCodegenBase extends GenericFatCodegen {
 }
 
 trait SimpleVectorCodegenScala extends SimpleVectorCodegenBase with SimpleVectorScalaCodeGenPkg
-  with ScalaGenDeliteOps with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps with DeliteScalaGenAllOverrides {
+  with ScalaGenDeliteOps with ScalaGenDeliteCollectionOps with DeliteScalaGenAllOverrides {
 
   val IR: DeliteApplication with SimpleVectorExp
 }
 
 trait SimpleVectorCodegenCuda extends SimpleVectorCodegenBase with SimpleVectorCudaCodeGenPkg
-  with CudaGenDeliteOps with CudaGenVariantsOps with DeliteCudaGenAllOverrides {
+  with CudaGenDeliteOps with DeliteCudaGenAllOverrides {
 
   val IR: DeliteApplication with SimpleVectorExp
 }
 
 trait SimpleVectorCodegenC extends SimpleVectorCodegenBase with SimpleVectorCCodeGenPkg
-  with CGenDeliteOps with CGenVariantsOps with DeliteCGenAllOverrides {
+  with CGenDeliteOps with DeliteCGenAllOverrides {
 
   val IR: DeliteApplication with SimpleVectorExp
 }

@@ -130,7 +130,7 @@ trait OptiLACompiler extends OptiLA with OptiLAUtilities
 /**
  * These are the corresponding IR nodes for OptiLA.
  */
-trait OptiLAExp extends OptiLACompiler with InterfacesExp with OptiLAScalaOpsPkgExp with FunctionBlocksExp with DeliteOpsExp with DeliteArrayFatExp with StructExp with DeliteFileReaderOpsExp with VariantsOpsExp
+trait OptiLAExp extends OptiLACompiler with InterfacesExp with OptiLAScalaOpsPkgExp with FunctionBlocksExp with DeliteOpsExp with DeliteArrayFatExp with StructExp with DeliteFileReaderOpsExp
   with LanguageOpsExp with ArithOpsExpOpt with CloneableOpsExp
   with VectorOpsExpOpt with DenseVectorOpsExpOpt with SparseVectorOpsExp with RangeVectorOpsExp with DenseVectorViewOpsExpOpt with SparseVectorViewOpsExpOpt //with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
   with MatrixOpsExpOpt with DenseMatrixOpsExpOpt with SparseMatrixOpsExp with SparseMatrixBuildableOpsExp
@@ -216,7 +216,6 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
   with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenSparseVectorOps
   with ScalaGenDenseVectorViewOps with ScalaGenSparseVectorViewOps with ScalaGenMatrixOps with ScalaGenDenseMatrixOps with ScalaGenSparseMatrixOps with ScalaGenSparseMatrixBuildableOps  
   //with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
-  with ScalaGenVariantsOps
   // -- choice of sparse matrix repr
   with ScalaGenSparseMatrixCSROps with ScalaGenSparseMatrixCOOOps with ScalaGenSparseVectorViewCSROps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
@@ -277,8 +276,7 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
 trait OptiLACodeGenCuda extends OptiLACudaCodeGenPkg with OptiLACodeGenBase with OptiLACudaGenExternal 
   with CudaGenDeliteOps with CudaGenDeliteCollectionOps with CudaGenDeliteStruct with CudaGenDeliteArrayOps with CudaGenDeliteArrayBufferOps 
   /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenVectorOps with CudaGenDenseVectorOps with CudaGenSparseVectorOps
-  with CudaGenDenseVectorViewOps with CudaGenSparseVectorViewOps with CudaGenMatrixOps with CudaGenDenseMatrixOps with CudaGenSparseMatrixOps with CudaGenSparseMatrixBuildableOps
-  with CudaGenVariantsOps
+  with CudaGenDenseVectorViewOps with CudaGenSparseVectorViewOps with CudaGenMatrixOps with CudaGenDenseMatrixOps with CudaGenSparseMatrixOps with CudaGenSparseMatrixBuildableOps  
   with CudaGenSparseMatrixCSROps with CudaGenSparseMatrixCOOOps with CudaGenSparseVectorViewCSROps
   with DeliteCudaGenAllOverrides with DeliteCppHostTransfer with OptiLACppHostTransfer with DeliteCudaDeviceTransfer with OptiLACudaDeviceTransfer { //with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
   val IR: DeliteApplication with OptiLAExp
@@ -309,7 +307,7 @@ trait OptiLACodeGenCuda extends OptiLACudaCodeGenPkg with OptiLACodeGenBase with
 
 trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg with OptiLAOpenCLGenExternal with OpenCLGenDeliteOps
   with OpenCLGenArithOps with OpenCLGenVectorOps with OpenCLGenDenseVectorOps with OpenCLGenDenseVectorViewOps with OpenCLGenMatrixOps with OpenCLGenDenseMatrixOps 
-  with OpenCLGenVariantsOps with OpenCLGenDeliteCollectionOps with OpenCLGenDeliteArrayOps
+  with OpenCLGenDeliteCollectionOps with OpenCLGenDeliteArrayOps
   with DeliteOpenCLGenAllOverrides
 {
   val IR: DeliteApplication with OptiLAExp
@@ -335,8 +333,7 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
 trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg /*with OptiLACGenExternal*/  
   with CGenDeliteOps with CGenDeliteCollectionOps with CGenDeliteStruct with CGenDeliteArrayOps /*with CGenDeliteArrayBufferOps*/
   /*with CGenLanguageOps*/ with CGenArithOps with CGenVectorOps with CGenDenseVectorOps with CGenSparseVectorOps
-  with CGenDenseVectorViewOps /*with CGenSparseVectorViewOps*/ with CGenMatrixOps with CGenDenseMatrixOps with CGenSparseMatrixOps with CGenSparseMatrixBuildableOps 
-  with CGenVariantsOps
+  with CGenDenseVectorViewOps /*with CGenSparseVectorViewOps*/ with CGenMatrixOps with CGenDenseMatrixOps with CGenSparseMatrixOps with CGenSparseMatrixBuildableOps  
   with CGenSparseMatrixCSROps with CGenSparseMatrixCOOOps /*with CGenSparseVectorViewCSROps*/
   with DeliteCGenAllOverrides with DeliteCppHostTransfer with OptiLACppHostTransfer
 {

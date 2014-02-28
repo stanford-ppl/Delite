@@ -97,7 +97,7 @@ trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with Languag
   with MathOpsExp
   with IntMOpsExp
   with LoopColoringOpsExp
-  with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp
+  with DeliteOpsExp with DeliteAllOverridesExp
   with FieldOpsExpOpt with FieldImplOpsStandard with MatOpsExpOpt with MatImplOpsStandard with VecOpsExpOpt with VecImplOpsStandard {
 
   this: DeliteApplication with DeLisztApplication with DeLisztExp => // can't be DeLisztApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
@@ -162,7 +162,7 @@ trait DeLisztCodeGenBase extends GenericFatCodegen {
 }
 
 trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps 
-  with ScalaGenArithOps with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
+  with ScalaGenArithOps with ScalaGenDeliteCollectionOps
   with ScalaGenFieldOps with ScalaGenIntMOps with ScalaGenMeshPrivateOps with ScalaGenMeshSetOps
   with ScalaGenMatOps with ScalaGenVecOps with ScalaGenLoopColoringOps /*with LoopColoringOpt*/ // LoopColoringOpt only needed here for debugging (it's mixed into DeLiszt's DeliteCodeGenPkg)
   with DeliteScalaGenAllOverrides with DeLisztScalaGenExternal { //with ScalaGenMLInputReaderOps {
@@ -341,7 +341,7 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
 }
 
 trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg with CudaGenDeliteOps with CudaGenLanguageOps
-  with CudaGenArithOps with CudaGenVariantsOps with CudaGenDeliteCollectionOps
+  with CudaGenArithOps with CudaGenDeliteCollectionOps
   with CudaGenFieldOps with CudaGenIntMOps with CudaGenMeshPrivateOps with CudaGenMeshSetOps
   with CudaGenMatOps with CudaGenVecOps with CudaGenDataStruct
   with DeliteCudaGenAllOverrides with DeLisztCudaGenExternal

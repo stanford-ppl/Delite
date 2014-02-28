@@ -48,8 +48,7 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
   //TODO: can/should this be factored out? need some kind of factory for each target
   protected def makeNestedFunction(op: DeliteOP) = op match {
     case c: OP_Condition => new ScalaConditionGenerator(c, location, kernelPath).makeExecutable()
-    case w: OP_While => new ScalaWhileGenerator(w, location, kernelPath).makeExecutable()
-    case v: OP_Variant => new ScalaVariantGenerator(v, location, kernelPath).makeExecutable()
+    case w: OP_While => new ScalaWhileGenerator(w, location, kernelPath).makeExecutable()    
     case err => sys.error("Unrecognized OP type: " + err.getClass.getSimpleName)
   }
 
