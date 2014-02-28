@@ -28,7 +28,7 @@ trait ProfileLift extends LiftScala { // allow apps to use all of Scala
 /* IR packages */
 trait Profile extends ScalaOpsPkg with ProfileOps with ProfileArrayOps
 trait ProfileExp extends Profile with ScalaOpsPkgExp with ProfileOpsExp
-  with ProfileArrayOpsExp with DeliteOpsExp with VariantsOpsExp 
+  with ProfileArrayOpsExp with DeliteOpsExp
   with DeliteAllOverridesExp {
 
   this: DeliteApplication with ProfileApplication with ProfileExp =>
@@ -68,7 +68,7 @@ trait ProfileCodeGenBase extends GenericFatCodegen with codegen.Utils {
 
 trait ProfileCodeGenScala extends ProfileCodeGenBase with ScalaCodeGenPkg 
   with ScalaGenDeliteOps with ScalaGenProfileOps with ScalaGenProfileArrayOps
-  with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps 
+  with ScalaGenDeliteCollectionOps 
   with DeliteScalaGenAllOverrides {
       
   val IR: DeliteApplication with ProfileExp

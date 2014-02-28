@@ -136,8 +136,6 @@ abstract class DeliteOP {
     antiDeps += op
   } 
 
-  var variant: OP_Variant = null
-
   def id: String
 
   //TODO: more versatile/useful to match on the specific type of OP rather than simply dataParallel/sequential buckets?

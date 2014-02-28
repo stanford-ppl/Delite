@@ -73,8 +73,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
       val codegen = new CppWhileGenerator(w, location, kernelPath)
       codegen.makeExecutable()
       CppCompile.addHeader(codegen.generateMethodSignature + ";\n", codegen.executableName(location))
-    }
-    //case v: OP_Variant => new CVariantGenerator(v, location, kernelPath).makeExecutable()
+    }    
     case err => println("Cannot generate op" + op.id) //sys.error("Unrecognized OP type: " + err.getClass.getSimpleName)
   }
 

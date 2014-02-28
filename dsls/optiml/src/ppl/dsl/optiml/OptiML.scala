@@ -237,7 +237,7 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
   with ScalaGenVectorOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps with ScalaGenIndexVectorDenseOps with ScalaGenIndexVector2Ops 
   with ScalaGenStreamOps with ScalaGenStreamRowOps
   with ScalaGenGraphOps with ScalaGenEdgeOps with ScalaGenVertexOps with ScalaGenVSetOps
-  with ScalaGenTrainingSetOps with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
+  with ScalaGenTrainingSetOps with ScalaGenDeliteCollectionOps
   with ScalaGenImageOps with ScalaGenGrayscaleImageOps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
   

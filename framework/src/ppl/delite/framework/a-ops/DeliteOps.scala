@@ -13,7 +13,7 @@ import ppl.delite.framework.analysis.StencilExp
 
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
 trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with FunctionBlocksExp with IfThenElseFatExp
-    with PrimitiveOpsExp with VariantsOpsExp with DeliteCollectionOpsExp with DeliteReductionOpsExp with DeliteMapOpsExp with DeliteArrayFatExp with StencilExp
+    with PrimitiveOpsExp with DeliteCollectionOpsExp with DeliteReductionOpsExp with DeliteMapOpsExp with DeliteArrayFatExp with StencilExp
     with OrderingOpsExp with EqualExpBridge with CastingOpsExp with ImplicitOpsExp with WhileExp with StaticDataExp {
 
     val encounteredZipWith = new scala.collection.mutable.HashMap[Exp[Any], DeliteOpZipWith[_,_,_,_]]()
@@ -1018,29 +1018,14 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    */
 
   @deprecated("DeliteOpForeach2 should only be used if sync is required. It will be removed as soon as sync works with DeliteOpForeach", "") // TODO: swap names with DeliteOpForeach
-  abstract class DeliteOpForeach2[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[Unit] with DeliteOpMapLikeWhileLoopVariant {
+  abstract class DeliteOpForeach2[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[Unit] {
     val in: Exp[C[A]]
     val v: Sym[A]
     val func: Block[Unit]
     val i: Sym[Int]
     val sync: Block[List[Any]]
 
-    lazy val alloc = Const()
-    /*lazy val variant = {
-      implicit val mA: Manifest[A] = v.tp.asInstanceOf[Manifest[A]]
-      reifyEffects {
-        var index = var_new(unit(0))
-        var vs = var_new(unit(null).AsInstanceOf[A])
-        while (index < in.size) {
-          vs = in(index)
-          rebind(v.asInstanceOf[Sym[A]], ReadVar(vs))
-          //reflectEffect(findDefinition(func.asInstanceOf[Sym[Unit]]).get.rhs)
-          var x = var_new(func)
-          index += 1
-        }
-        alloc
-      }
-    }*/
+    lazy val alloc = Const()    
   }
 
   // TODO: should we make all DeliteOps be boundable? This is probably not the right way to do this anyways.

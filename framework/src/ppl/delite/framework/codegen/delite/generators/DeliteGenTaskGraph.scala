@@ -496,7 +496,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Foreach\"")
     emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps)
-    emitVariant(rhs, id, outputs, resultIsVar, inputs, mutableInputs, controlDeps, antiDeps)
     stream.println("},")
   }
 
@@ -604,75 +603,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     }
     stream.print(stencilMap.mkString(","))
     stream.println("}")
-  }
-
-  var nested = 0
-
-  def emitVariant(rhs: Def[Any], id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
-                 (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
-
-    if (!rhs.isInstanceOf[Variant] || nested >= Config.nestedVariantsLevel) return
-
-    nested += 1
-
-    // pre
-    val saveMutatingDeps = kernelMutatingDeps
-    val saveInputDeps = kernelInputDeps
-    kernelMutatingDeps = Map()
-    kernelInputDeps = Map()
-    stream.print(",\"variant\": {")
-    stream.print("\"ops\":[" )
-
-    // variant
-    rhs match {
-      case mvar:DeliteOpMapLikeWhileLoopVariant => emitMapLikeWhileLoopVariant(mvar, id, outputs, resultIsVar, inputs, mutableInputs, controlDeps, antiDeps)
-      case rvar:DeliteOpReduceLikeWhileLoopVariant => emitReduceLikeWhileLoopVariant(rvar, id, outputs, resultIsVar, inputs, mutableInputs, controlDeps, antiDeps)
-      case _ =>
-    }
-
-    // post
-    emitEOG()
-    emitOutput(getBlockResult(Block(rhs.asInstanceOf[Variant].variant))) // FIXME: block?
-    stream.println("}")
-    kernelInputDeps = saveInputDeps
-    kernelMutatingDeps = saveMutatingDeps
-
-    nested -= 1
-  }
-
-  def emitMapLikeWhileLoopVariant(vw: DeliteOpMapLikeWhileLoopVariant, id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
-    (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
-
-    // manually lift alloc out of the variant loop. TODO: this should not be required, see comment in DeliteOps.scala
-    // we should be able to remove this when we merge with opfusing
-    //val save = scope
-    emitBlock(Block(vw.alloc)) //FIXME: block?
-    //scope = appendScope()
-    emitBlock(Block(vw.variant)) //FIXME: block?
-    //scope = save
-  }
-
-  def emitReduceLikeWhileLoopVariant(vw: DeliteOpReduceLikeWhileLoopVariant, id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
-    (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
-
-    //val save = scope
-    emitBlock(Block(vw.Index)) //FIXME: block?
-    emitBlock(Block(vw.Acc)) //FIXME: block?
-    //scope = appendScope()
-
-    def emitSubGraphOp(block: Block[Any], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]]) {
-      stream.print("{\"type\":\"SubGraph\", ")
-      val resultId = if (quote(getBlockResult(block)) == "()") quote(block.res) else quote(getBlockResult(block)) //TODO: :(
-      stream.print("\"outputId\":\"" + resultId + "\",\n")
-      emitDepsCommon(controlDeps, antiDeps)
-      emitSubGraph("", block)
-      emitOutput(block.res)
-      stream.println("},")
-    }
-
-    emitSubGraphOp(Block(vw.init), Nil, Nil) //FIXME: block?
-    emitSubGraphOp(Block(vw.variant), List(vw.init), Nil) //FIXME: block?
-    //scope = save
   }
 
   def emitConstOrSym(x: Exp[Any], prefix: String) = x match {
