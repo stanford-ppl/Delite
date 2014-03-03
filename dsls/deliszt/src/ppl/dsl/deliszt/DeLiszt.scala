@@ -6,7 +6,6 @@ import java.io._
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericFatCodegen, GenerationFailedException}
 import ppl.delite.framework.{Config, DeliteApplication}
-import ppl.delite.framework.analysis.TraversalAnalysis
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda

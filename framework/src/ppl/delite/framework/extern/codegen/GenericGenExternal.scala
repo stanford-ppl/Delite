@@ -2,8 +2,7 @@ package ppl.delite.framework.extern.codegen
 
 import _root_.scala.virtualization.lms.common._
 import _root_.scala.virtualization.lms.internal._
-import collection.mutable.{ListBuffer}
-import collection.mutable.{HashSet, HashMap, Map => MMap}
+import collection.mutable.{ListBuffer, HashSet, HashMap}
 import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
 
 import ppl.delite.framework.{Config, DeliteApplication}
@@ -61,13 +60,13 @@ trait GenericGenExternal extends GenericNestedCodegen {
   def hdrName(lib: ExternalLibrary) = lib.name  // default header file name is library name
   val hdrExt: String // generator specific interface file / header file extension
   
-  override def initializeGenerator(buildDir:String, args: Array[String], _analysisResults: MMap[String,Any]): Unit = {
+  override def initializeGenerator(buildDir:String, args: Array[String]): Unit = {
     headerDir.mkdirs()
     nativeDir.mkdirs() 
     
     libDir.mkdirs()
 
-    super.initializeGenerator(buildDir, args, _analysisResults)
+    super.initializeGenerator(buildDir, args)
   }
   
   override def finalizeGenerator() {

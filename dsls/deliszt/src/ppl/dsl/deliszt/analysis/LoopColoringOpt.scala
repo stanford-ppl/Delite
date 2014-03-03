@@ -120,8 +120,11 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
     
     if(Config.collectStencil) {
       // Get the map of for loops to Stencil
-      val forMap = analysisResults("StencilCollectorStencils").asInstanceOf[ForMap]
-      val msMap = analysisResults("StencilCollectorMeshsets").asInstanceOf[MeshSetMap]
+
+      val forMap: ForMap = throw new UnsupportedOperationException("Deliszt stencil analysis needs to be updated to be a traversal")
+      val msMap: MeshSetMap = throw new UnsupportedOperationException("Deliszt stencil analysis needs to be updated to be a traversal")
+      // val forMap = analysisResults("StencilCollectorStencils").asInstanceOf[ForMap]
+      // val msMap = analysisResults("StencilCollectorMeshsets").asInstanceOf[MeshSetMap]
          
       if(firstRun) {
         colog("Top level loops")

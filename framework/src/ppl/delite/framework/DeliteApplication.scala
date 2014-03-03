@@ -6,7 +6,6 @@ import scala.tools.nsc.io._
 import scala.virtualization.lms.common.{BaseExp, Base}
 import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen, Transforming, GenerationFailedException}
 
-import analysis.{MockStream, TraversalAnalysis}
 import codegen.cpp.TargetCpp
 import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
@@ -61,13 +60,6 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   }
   */
 
-  /*
-   * analyses
-   */
-  lazy val analyses: List[TraversalAnalysis{ val IR: DeliteApplication.this.type }] = List()
-  
-  // Store and retrieve
-  val analysisResults = MMap[String,Any]()
    
   /*
    * misc state
@@ -99,20 +91,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       writer.write("datastructures:\n")
       writer.write("kernels:datastructures\n")
       writer.close()
-    }
-    
-    //System.out.println("Running analysis")
-    
-    // Run any analyses defined
-    for(a <- analyses) {
-      val baseDir = Config.buildDir + File.separator + a.toString + File.separator
-      a.initializeGenerator(baseDir + "kernels" + File.separator, args, analysisResults)
-      a.traverse(liftedMain) match {
-        case Some(result) => { analysisResults(a.className) = result }
-        case _ =>
-      }
-    }
-    reset
+    }  
     
     // set transformers to be applied before codegen
     deliteGenerator.transformers = transformers
@@ -125,20 +104,20 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       //TODO: Remove c generator specialization
       val baseDir = Config.buildDir + File.separator + g.toString + File.separator
       writeModules(baseDir)
-      g.initializeGenerator(baseDir + "kernels" + File.separator, args, analysisResults)
+      g.initializeGenerator(baseDir + "kernels" + File.separator, args)
     }
 
     if (Config.debug) {
       if (Config.degFilename.endsWith(".deg")) {
         val streamScala = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg",".scala")))
         val baseDir = Config.buildDir + File.separator + codegen.toString + File.separator
-        codegen.initializeGenerator(baseDir + "kernels" + File.separator, args, analysisResults) // whole scala application (for testing)
+        codegen.initializeGenerator(baseDir + "kernels" + File.separator, args) // whole scala application (for testing)
         codegen.emitSource(liftedMain, "Application", streamScala) // whole scala application (for testing)
         // TODO: dot output
         reset
       }
     }
-    deliteGenerator.initializeGenerator(Config.buildDir, args, analysisResults)
+    deliteGenerator.initializeGenerator(Config.buildDir, args)
     val sd = deliteGenerator.emitSource(liftedMain, "Application", stream)    
     deliteGenerator.finalizeGenerator()
 

@@ -19,11 +19,36 @@ import ppl.dsl.deliszt.{DeLisztExp}
 import ppl.dsl.deliszt.datastruct.scala._
 import ppl.dsl.deliszt.{MeshObj, Cell}
 
-trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
+class MockStream extends ByteArrayOutputStream { 
+   override def flush() {}
+   override def close() {}
+   def print(line: String) {}
+}
+
+trait DeLisztCodeGenAnalysis extends GenericFatCodegen with OverloadHack {
   val IR: DeliteApplication with DeLisztExp
   import IR._
   
   import Stencil._
+
+  // The stencil collector analysis is currently implemented as a mock code generator.  
+  // It should be re-implemented as a Traversal (which didn't exist at the time).
+
+  implicit val mockStream: PrintWriter = new PrintWriter(new MockStream())
+  val className: String
+  var _result: Option[Any] = None
+
+  def traverseNode(sym: Sym[Any], a: Def[Any]) = withStream(mockStream)(emitNode(sym, a))
+  def traverseBlock(b: Block[Any])(implicit o: Overloaded1) = withStream(mockStream)(emitBlock(b))
+  def traverse[A:Manifest,B:Manifest](f: Exp[A] => Exp[B]) = { emitSource(f, className, mockStream); result }
+  def emitValDef(sym: Sym[Any], rhs: String) {}
+  def emitAssignment(lhs: String, rhs: String) {}
+  def result: Option[Any] = _result
+  
+  def emitSource[A : Manifest](args: List[Sym[_]], body: Block[A], className: String, stream: PrintWriter): List[(Sym[Any], Any)] = {
+    traverseBlock(body)
+    Nil
+  }
 
   def multiset(e: Exp[_], f: Int => MeshSet) : MeshSet = {
     MultipleMeshSet.apply(moValue(e), f)
@@ -63,11 +88,11 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   var indexSym : Sym[Any] = null
   var moSyms : ISet[Int] = null
   
-  override def initializeGenerator(buildDir:String, args: Array[String], _analysisResults: MMap[String,Any]): Unit = {
-    super.initializeGenerator(buildDir, args, _analysisResults)
+  override def initializeGenerator(buildDir:String, args: Array[String]): Unit = {
+    super.initializeGenerator(buildDir, args)
     
-    analysisResults("StencilCollectorStencils") = forMap
-    analysisResults("StencilCollectorMeshsets") = msMap
+    // analysisResults("StencilCollectorStencils") = forMap
+    // analysisResults("StencilCollectorMeshsets") = msMap
   
     MeshLoader.init(if(args.length > 0) args(0) else "liszt.cfg")
   }
