@@ -123,7 +123,8 @@ def run(deg, params, opts):
         delitecommon.printEnv()
 
     print "== executing application: " + deg + " " + ' '.join(params)
-    print "== with options: " + java_opts + "\n" 
+    if opts.verbose:
+        print "== with options: " + java_opts + "\n" 
     java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " ppl.delite.runtime.Delite " + deg + " " + ' '.join(params)
     #print java_cmd
     if opts.directory != "":
