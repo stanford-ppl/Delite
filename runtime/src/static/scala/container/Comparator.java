@@ -1,4 +1,4 @@
-package ppl.delite.framework.datastruct.scala.container;
+package generated.scala.container;
 
 public interface Comparator {
 	int compare(int o1, int o2);

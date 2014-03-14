@@ -1,4 +1,4 @@
-package ppl.delite.framework.datastruct.scala
+package generated.scala
 
 
 /**

@@ -442,6 +442,7 @@ trait CLikeGenDeliteStruct extends BaseGenStruct with CLikeCodegen {
   protected def isNestedArrayType[T](m: Manifest[T]) = isArrayType(baseType(m)) && !isPrimitiveType(unwrapArrayType(m))
 
   override def emitDataStructures(path: String) {
+    new File(path) mkdirs // doesn't necessarily exist
     val structStream = new PrintWriter(path + deviceTarget.toString + "DeliteStructs.h")
     structStream.println("#ifndef __DELITESTRUCTS_H__")
     structStream.println("#define __DELITESTRUCTS_H__")

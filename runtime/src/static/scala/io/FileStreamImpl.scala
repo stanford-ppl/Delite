@@ -1,4 +1,4 @@
-package ppl.delite.framework.datastruct.scala.io
+package generated.scala.io
 
 import java.io.{FileInputStream, File, IOException}
 import java.nio.charset.Charset

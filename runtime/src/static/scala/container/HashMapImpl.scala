@@ -1,4 +1,4 @@
-package ppl.delite.framework.datastruct.scala.container
+package generated.scala.container
 
 
 // specialization bug on multiple ctors: (_indices: Array[Int], _keys: Array[K], _values: Array[V], _sz: Int)

@@ -61,14 +61,6 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     result(0)
   }
 
-  override def emitDataStructures(path: String): Unit = {
-    val s = File.separator
-    for (g <- generators) {
-      val dsRoot = Config.homeDir + s+"framework"+s+"src"+s+"ppl"+s+"delite"+s+"framework"+s+"datastruct"+s+g
-      copyDataStructures(dsRoot, path+s+g+s+"datastructures")
-    }
-  }
-
   // TODO: move to some other place? --> get rid of duplicate in embedded generators!
   override def fatten(e: Stm): Stm = ifGenAgree(_.fatten(e))
 

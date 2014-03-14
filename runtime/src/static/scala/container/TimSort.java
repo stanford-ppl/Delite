@@ -23,7 +23,7 @@
  * questions.
  */
 
-package ppl.delite.framework.datastruct.scala.container;
+package generated.scala.container;
 
 /**
  * A stable, adaptive, iterative mergesort that requires far fewer than

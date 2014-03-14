@@ -18,19 +18,20 @@ import ppl.delite.runtime.graph.targets.Targets
  
 trait CodeCache {
 
-  val cacheHome = Config.codeCacheHome + File.separator + target + File.separator
-  val sourceCacheHome = cacheHome + "src" + File.separator
+  val cacheHome = Config.codeCacheHome + sep + target + sep
+  val sourceCacheHome = cacheHome + "src" + sep
   val binCacheHome = cacheHome + "bin" + sep + "runtime" + sep
   protected var modules = List.empty[Module]
   
   def target: Targets.Value
   def hostCompiler = Compilers(Targets.getHostTarget(target))
-  def ext: String = target.toString //source file extension 
+  def ext: String = target.toString //source file extension
+  def staticResources: String =  Config.deliteHome + sep + "runtime" + sep + "src" + sep + "static" + sep + target + sep
 
   def cacheDegSources(directory: Directory) {
     parseModules(directory)
     for (m <- modules if (m.name != "runtime")) {
-      val sourceDir = Directory(Path(directory.path + File.separator + m.name))
+      val sourceDir = Directory(Path(directory.path + sep + m.name))
       val cacheDir = Directory(Path(sourceCacheHome + m.name))
       if (!directoriesMatch(sourceDir, cacheDir)) {
         copyDirectory(sourceDir, cacheDir)

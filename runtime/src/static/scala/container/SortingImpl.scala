@@ -1,4 +1,4 @@
-package ppl.delite.framework.datastruct.scala.container
+package generated.scala.container
 
 import java.util.Arrays
 

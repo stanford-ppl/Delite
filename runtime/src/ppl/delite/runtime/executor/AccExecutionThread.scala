@@ -30,7 +30,7 @@ class AccExecutionThread(deviceNum: Int) extends ExecutionThread {
   private def loadSlave() {
     def loadGPU(target: String, compiler: CCompile) = {
       val sep = File.separator
-      val path = Config.deliteHome + sep + "runtime" + sep + target + sep + target + "Init." + OS.libExt
+      val path = compiler.staticResources + target + "Init." + OS.libExt
       val lib = new File(path)
       if (!lib.exists)
         compiler.compileInit()
