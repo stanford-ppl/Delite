@@ -1,5 +1,6 @@
 package ppl.delite.framework.ops
 
+import scala.virtualization.lms.internal.GenerationFailedException
 import scala.virtualization.lms.common._
 import scala.reflect.{SourceContext, RefinedManifest}
 import ppl.delite.framework.datastructures._
@@ -296,5 +297,37 @@ trait ScalaGenDeliteFileReaderOps extends ScalaGenFat {
     input.close()
     buffer
   } */
+
+}
+
+trait CGenDeliteFileReaderOps extends CGenFat {
+  val IR: DeliteFileReaderOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case op: DeliteOpFileReaderReadLines[_] => 
+      throw new GenerationFailedException("DeliteOpFileReaderReadLines is the old interface: C++ target does not support it.")
+    case DeliteFileStreamNew(paths) =>
+      // C++ variable length args does not allow string types, so use underlying char *
+      emitValDef(sym, "new cppFileStream(" + paths.length + "," + paths.map(quote(_) + ".c_str()").mkString(",") + ")")
+    case DeliteFileStreamReadLine(stream,idx) =>
+      emitValDef(sym, quote(stream) + "->readLine(" + quote(idx) + ")")
+    case DeliteFileStreamSize(stream) =>
+      emitValDef(sym, quote(stream) + "->size")
+    case DeliteFileStreamNumThreads(stream) =>
+      emitValDef(sym, quote(stream) + "->numThreads")
+    case _ => super.emitNode(sym, rhs)
+  }
+
+  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "DeliteFileStream" => "cppFileStream"
+    case _ => super.remap(m)
+  }
+
+  override def getDataStructureHeaders(): String = {
+    val out = new StringBuilder
+    out.append("#include \"cppFileStream.h\"\n")
+    super.getDataStructureHeaders() + out.toString
+  }
 
 }

@@ -432,7 +432,7 @@ trait CLikeGenDeliteStruct extends BaseGenStruct with CLikeCodegen {
   }
 
   protected def isVarType[T](m: Manifest[T]) = m.erasure.getSimpleName == "Variable" && unapplyStructType(m.typeArguments(0)) == None
-  protected def isArrayType[T](m: Manifest[T]) = m.erasure.getSimpleName == "DeliteArray"
+  protected def isArrayType[T](m: Manifest[T]) = m.erasure.getSimpleName == "DeliteArray" || m.erasure.isArray
   protected def isStringType[T](m: Manifest[T]) = m.erasure.getSimpleName == "String"
   protected def baseType[T](m: Manifest[T]) = if (isVarType(m)) mtype(m.typeArguments(0)) else m
   protected def unwrapArrayType[T](m: Manifest[T]): Manifest[_] = baseType(m) match {

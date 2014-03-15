@@ -13,7 +13,7 @@ public:
     // Constructor
     cppDeliteArray(int _length) {
         length = _length;
-        data = (T *)malloc(length*sizeof(T));
+        data = new T[length];
     }
 
     cppDeliteArray(T *_data, int _length) {

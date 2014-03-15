@@ -4,7 +4,7 @@ import java.io.{FileWriter, File, PrintWriter}
 import scala.collection.mutable.{Map => MMap}
 import scala.tools.nsc.io._
 import scala.virtualization.lms.common.{BaseExp, Base}
-import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen, Transforming, GenerationFailedException}
+import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen, Transforming, GenerationFailedException, CCodegen, CudaCodegen}
 
 import codegen.cpp.TargetCpp
 import codegen.cuda.TargetCuda
@@ -105,16 +105,28 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       val baseDir = Config.buildDir + File.separator + g.toString + File.separator
       writeModules(baseDir)
       g.initializeGenerator(baseDir + "kernels" + File.separator, args)
+      g match {
+        case gen:CCodegen => gen.headerStream.println("#include \"DeliteCpp.h\"")
+        case gen:CudaCodegen => gen.headerStream.println("#include \"DeliteCuda.h\"")
+        case _ =>
+      }
     }
 
+    // Generate a single source output for each generator when in debug mode
     if (Config.debug) {
       if (Config.degFilename.endsWith(".deg")) {
-        val streamScala = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg",".scala")))
-        val baseDir = Config.buildDir + File.separator + codegen.toString + File.separator
-        codegen.initializeGenerator(baseDir + "kernels" + File.separator, args) // whole scala application (for testing)
-        codegen.emitSource(liftedMain, "Application", streamScala) // whole scala application (for testing)
-        // TODO: dot output
-        reset
+        for (g <- generators) {
+          val streamDebug = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg","." + g.toString)))
+          val baseDir = Config.buildDir + File.separator + g.toString + File.separator
+          g.initializeGenerator(baseDir + "kernels" + File.separator, args)
+          g match {
+            case gen: CCodegen => streamDebug.println("#include \"DeliteStandaloneMain.h\"\n")
+            case _ => //
+          }
+          g.emitSource(liftedMain, "Application", streamDebug)
+          // TODO: dot output
+          reset
+        }
       }
     }
     deliteGenerator.initializeGenerator(Config.buildDir, args)
@@ -180,8 +192,8 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   /**
    * For multi-scope staging, to extract the return value of a scope
    */
-  def mainWithResult(): Any = main()
-  var _mainResult: Any = null // passes along whatever was returned by the block (could be staged or not staged, i.e. Rep[T] or T)
+  def mainWithResult(): Unit = main()
+  var _mainResult: Unit = () //null // passes along whatever was returned by the block (could be staged or not staged, i.e. Rep[T] or T)
   
   def liftedMain(x: Rep[Array[String]]) = { this.args = x; val y = mainWithResult(); this._mainResult = y; this.args = null; unit(y) }
   

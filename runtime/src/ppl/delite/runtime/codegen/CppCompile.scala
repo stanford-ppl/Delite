@@ -50,7 +50,7 @@ SOURCECACHE_HOME = %3$s
 BINCACHE_HOME = %4$s
 INCLUDES = %5$s
 
-CFLAGS = -O3 -fPIC -w
+CFLAGS = -O3 -fPIC -w -std=c++0x
 LDFLAGS = -shared -fPIC %6$s
 SOURCES = $(wildcard $(SOURCECACHE_HOME)/kernels/*.cpp) $(wildcard $(SOURCECACHE_HOME)/runtime/*.cpp) $(wildcard $(DELITE_HOME)/runtime/cpp/*.cpp) 
 OBJECTS = $(SOURCES:.cpp=.o)
@@ -63,12 +63,12 @@ $(OUTPUT): $(OBJECTS)
 	$(CC) $(OBJECTS) $(LDFLAGS) -o $(OUTPUT)
 
 %%.o: %%.cpp
-	$(CC) -c $(INCLUDES) $(CFLAGS) $< -o $@ 
+	$(CC) -c -DDELITE_CPP=%7$s $(INCLUDES) $(CFLAGS) $< -o $@ 
 
 clean:
 	rm -f $(OBJECTS) $(OUTPUT)
 
 .PHONY: all clean
-""".format(config.compiler,Config.deliteHome,sourceCacheHome,binCacheHome,includes.mkString(" "),libs.mkString(" "))
+""".format(config.compiler,Config.deliteHome,sourceCacheHome,binCacheHome,includes.mkString(" "),libs.mkString(" "),Config.numCpp)
 
 }

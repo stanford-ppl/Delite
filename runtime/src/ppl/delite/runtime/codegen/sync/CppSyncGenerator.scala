@@ -123,7 +123,7 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     out.append("\",\"()")
     out.append(getJNIOutputType(dep.outputType(Targets.Scala,sym)))
     out.append("\"));\n")
-    val ref = if (isPrimitiveType(dep.outputType(sym))) "" else "*"
+    val ref = if (isPrimitiveType(dep.outputType(sym)) || dep.outputType(sym) == "java.lang.String") "" else "*"
     val devType = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
     if (view)
       out.append("%s %s%s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))

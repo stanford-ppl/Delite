@@ -770,13 +770,8 @@ trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenDeliteStruct wit
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case a@DeliteArrayNew(n,m) => 
-      emitValDef(sym, "(" + remap(sym.tp) + " *) malloc(sizeof(" + remap(sym.tp) + "));")
-      stream.println(quote(sym) + "->data = (" + remap(m) + addRef(m) + " *)malloc(" + quote(n) + "*sizeof(" + remap(m) + addRef(m) + "));")
-      //TODO: remove below memory initialization. 
-      // This memset is currently needed for C target because JVM initializes arrays with 0
-      // and some DSL operations assume that. That should not be the case and moved into IR if init is needed.
-      stream.println("memset(" + quote(sym) + "->data,0," + quote(n) + "*sizeof(" + remap(m) + addRef(m) + "));")
-      stream.println(quote(sym) + "->length = " + quote(n) + ";")
+      // NOTE: DSL operations should not rely on the fact that JVM initializes arrays with 0
+      emitValDef(sym, "new " + remap(sym.tp) + "(" + quote(n) + ")")
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + "->length")
     case DeliteArrayApply(da, idx) =>
@@ -784,7 +779,8 @@ trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenDeliteStruct wit
     case DeliteArrayUpdate(da, idx, x) =>
       stream.println(quote(da) + "->update(" + quote(idx) + ", " + quote(x) + ");")
     case StructUpdate(struct, fields, idx, x) =>
-      stream.println(quote(struct) + fields.mkString("->","->","->") + idx.take(idx.length-1).map(i=>"apply("+quote(i)+")").mkString("->") + "->update(" + quote(idx(idx.length-1)) + "," + quote(x) + ");")
+      val nestedApply = if (idx.length > 1) idx.take(idx.length-1).map(i=>"apply("+quote(i)+")").mkString("","->","->") else ""
+      stream.println(quote(struct) + fields.mkString("->","->","->") + nestedApply + "update(" + quote(idx(idx.length-1)) + "," + quote(x) + ");")
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
       stream.println(quote(src) + "->copy(" + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ");")
     case sc@StructCopy(src,srcPos,struct,fields,destPos,len) =>
@@ -798,6 +794,11 @@ trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenDeliteStruct wit
       emitValDef(sym, quote(lhs) + "->intersect(" + quote(rhs) + ")")
     case DeliteArrayTake(lhs,n) =>
       emitValDef(sym, quote(lhs) + "->take(" + quote(n) + ")")
+    case DeliteArrayGetActSize() =>
+      emitValDef(sym, getActSize)
+    case DeliteArraySetActBuffer(da) =>
+      stream.println(getActBuffer.head + " = " + quote(da) + ";")
+      getActBuffer.tail.foreach(buf => stream.println(buf + " = " + quote(da) + ";"))
     case _ => super.emitNode(sym, rhs)
   }
 
@@ -807,6 +808,10 @@ trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenDeliteStruct wit
       case s if s <:< manifest[Record] && Config.soaEnabled => super.remap(m) // occurs due to restaging
       case arg => "cppDeliteArray< " + remap(arg) + addRef(arg) + " >"
     }
+    // remap normal scala array to cppDeliteArray
+    case _ if m.erasure.isArray =>
+      val arg = Manifest.classType(m.erasure.getComponentType)
+      "cppDeliteArray< " + remap(arg) + " >" 
     case _ => super.remap(m)
   }
 

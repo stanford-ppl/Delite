@@ -89,9 +89,13 @@ trait CppExecutableGenerator extends ExecutableGenerator {
       out.append(resultName)
       out.append(" = ")
     }
-    out.append(op.task) //kernel name
-    out.append(op.getInputs.map(i=>getSymHost(i._1,i._2)).mkString("(",",",");\n"))
 
+    out.append(op.task) //kernel name
+    op match {
+      case args: Arguments => out.append("(" + Arguments.args.length + Arguments.args.map("\""+_+"\"").mkString(",",",",");\n"))
+      case _ => out.append(op.getInputs.map(i=>getSymHost(i._1,i._2)).mkString("(",",",");\n"))
+    }
+   
     if (!returnsResult) {
       for (name <- op.getOutputs if(op.outputType(Targets.Cpp,name)!="void")) {
         out.append(op.outputType(Targets.Cpp, name))
@@ -111,7 +115,10 @@ trait CppExecutableGenerator extends ExecutableGenerator {
 
   protected def writeSyncObject() {  }
 
-  protected def isPrimitiveType(scalaType: String) = Targets.isPrimitiveType(scalaType)
+  protected def isPrimitiveType(scalaType: String) = scalaType match {
+    case "java.lang.String" => true
+    case _ => Targets.isPrimitiveType(scalaType)
+  }
 
 }
 

@@ -180,5 +180,8 @@ abstract class DeliteOP {
    * these methods/state are used for code generation
    */
   var scheduledResource = -1
-
+  def scheduledOn(target: Targets.Value): Boolean = {
+    if (Targets.resourceIDs(target) contains scheduledResource) true
+    else false
+  }
 }

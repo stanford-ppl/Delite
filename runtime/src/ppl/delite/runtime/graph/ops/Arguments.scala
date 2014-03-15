@@ -23,12 +23,14 @@ object Arguments {
 
 final class Arguments(val id: String) extends OP_Executable {
 
-  var outputTypesMap = Map(Targets.Scala->Map(id -> "Array[java.lang.String]", "functionReturn"->"Array[java.lang.String]"))
+  var outputTypesMap = Map(Targets.Scala->Map(id -> "Array[java.lang.String]", "functionReturn"->"Array[java.lang.String]"),
+                           Targets.Cpp->Map(id -> "cppDeliteArray< string >", "functionReturn"->"cppDeliteArray< string >"))
   var inputTypesMap: Map[Targets.Value, Map[String,String]] = Map()
 
   def isDataParallel = false
 
-  def task = "ppl.delite.runtime.graph.ops.ArgsKernel"
+  def task = if (scheduledOn(Targets.Cpp)) "cppArgsGet" 
+             else "ppl.delite.runtime.graph.ops.ArgsKernel"
 
   def cost = 0
   def size = 0
