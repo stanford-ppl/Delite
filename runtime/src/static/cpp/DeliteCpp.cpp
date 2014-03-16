@@ -96,7 +96,7 @@ cppDeliteArray< string > *cppArgsGet(int num, ...) {
   va_start(arguments, num);
   for(int i=0; i<num; i++) {
     char *pathname = va_arg(arguments, char *);
-    cppArgs->data[0] = string(pathname);
+    cppArgs->data[i] = string(pathname);
   }
   va_end(arguments);
   return cppArgs;

@@ -6,7 +6,9 @@ int main(int argc, char *argv[]) {
 
   printf("** Starting Standalone C++ Execution **\n"); 
 
-  omp_set_num_threads(1);
+  // set the number of threads for parallel execution
+  omp_set_num_threads(DELITE_CPP);
+
   // create x0 symbol for user inputs
   cppDeliteArray< string > *x0 = new cppDeliteArray< string >(argc-1);
   for(int i=0; i<argc-1; i++) {

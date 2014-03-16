@@ -62,7 +62,7 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
     else {
       cluster(op, schedule, resourceList)
       Compilers(OpHelper.scheduledTarget(resourceList(0))) match {
-        case c:CCompile => c.addKernel(op.id)
+        case c:CCompile => c.addKernel(op)
         case _ => //
       }
     }
@@ -74,7 +74,7 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
     else {
       scheduleOn(op, schedule, gpu)
       Compilers(OpHelper.scheduledTarget(gpu)) match {
-        case c:CCompile => c.addKernel(op.id)
+        case c:CCompile => c.addKernel(op)
         case _ => throw new RuntimeException("GPU compiler should be extending C compiler.")
       }
       //SingleTask_GPU_Generator(op)

@@ -6,6 +6,7 @@ import xml.XML
 import java.io.FileNotFoundException
 import tools.nsc.io.{Directory, Path, File}
 import ppl.delite.runtime.graph.targets.{OS, Targets}
+import ppl.delite.runtime.graph.ops._
 
 trait CCompile extends CodeCache {
   
@@ -34,8 +35,11 @@ trait CCompile extends CodeCache {
 
   protected def deliteLibs = Config.deliteBuildHome + sep + "libraries" + sep + target
 
-  def addKernel(name: String) {
-    kernelBuffer += (name + "." + ext)
+  def addKernel(op: DeliteOP) { 
+    op match {
+      case _:EOP | _:Arguments => // kernelBuffer is used to hold the actual generated kernels to compile 
+      case _ => kernelBuffer += (op.id + "." + ext)
+    }
   }
 
   def addHeader(source: String, name: String) {

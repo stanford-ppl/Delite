@@ -811,7 +811,7 @@ trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenDeliteStruct wit
     // remap normal scala array to cppDeliteArray
     case _ if m.erasure.isArray =>
       val arg = Manifest.classType(m.erasure.getComponentType)
-      "cppDeliteArray< " + remap(arg) + " >" 
+      "cppDeliteArray< " + remap(arg) + addRef(arg) + " >" 
     case _ => super.remap(m)
   }
 
