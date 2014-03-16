@@ -162,7 +162,10 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
                    "\"targets\": [" + generators.map("\""+_+"\"").mkString(",")  + "],\n"+
                    "\"ops\": [")
 
-    stream.println("{\"type\" : \"Arguments\" , \"kernelId\" : \"x0\"},")
+    // sometimes, statements outside the main method gets lifted (e.g., Hogwild), 
+    // and the argument symbol is no longer x0
+    assert(args.length == 1)
+    stream.println("{\"type\" : \"Arguments\" , \"kernelId\" : \"" + quote(args(0)) + "\"},")
     withStream(stream)(emitBlock(y))
     //stream.println(quote(getBlockResult(y)))
     stream.println("{\"type\":\"EOP\"}\n]}}")
