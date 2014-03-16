@@ -12,6 +12,7 @@
 #include <omp.h>
 #include "DeliteCpp.h"
 #include "cpptypes.h"
+#include "library.h"
 #include "cppDeliteStructs.h"
 #include "cppDeliteArray.h"
 #include "cppFileStream.h"

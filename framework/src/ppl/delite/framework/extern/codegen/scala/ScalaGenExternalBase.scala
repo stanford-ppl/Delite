@@ -40,10 +40,11 @@ System.load("%s")
   }
   
   def emitInterfaceAndMethod(lib: ExternalLibrary, funcName: String, scalaArgs: List[String], cArgs: List[String], body: String) = {
+    val funcSignature = "JNIEXPORT void JNICALL Java_generated_scala_" + lib.name + "_00024_"+funcName+"(JNIEnv *env, jobject obj, " + (cArgs mkString ",") + ")"
     // generated.scala is hardcoded as a package name in many places; should this be more flexible? does it matter?
     super.emitInterfaceAndMethod(lib, funcName,
       "def " + funcName + "(" + (scalaArgs mkString ",") + ")",
-      "JNIEXPORT void JNICALL Java_generated_scala_" + lib.name + "_00024_"+funcName+"(JNIEnv *env, jobject obj, " + (cArgs mkString ",") + ")"+body
+      "extern \"C\" " + funcSignature + ";\n" + funcSignature + body   
     )
   }
     

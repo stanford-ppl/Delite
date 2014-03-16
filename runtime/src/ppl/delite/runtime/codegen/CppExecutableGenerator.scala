@@ -92,7 +92,11 @@ trait CppExecutableGenerator extends ExecutableGenerator {
 
     out.append(op.task) //kernel name
     op match {
-      case args: Arguments => out.append("(" + Arguments.args.length + Arguments.args.map("\""+_+"\"").mkString(",",",",");\n"))
+      case args: Arguments => 
+        if(Arguments.args.length > 0)
+          out.append("(" + Arguments.args.length + Arguments.args.map("\""+_+"\"").mkString(",",",",");\n"))
+        else
+          out.append("(" + Arguments.args.length + ");\n") 
       case _ => out.append(op.getInputs.map(i=>getSymHost(i._1,i._2)).mkString("(",",",");\n"))
     }
    

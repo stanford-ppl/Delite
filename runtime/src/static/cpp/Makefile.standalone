@@ -13,7 +13,7 @@ NUM_THREADS = 1
 
 CC = g++
 CFLAGS = -std=c++0x -fopenmp -O3
-LDFLAGS = -fopenmp
+LDFLAGS = -fopenmp $(wildcard $(GENERATED_HOME)/libraries/cpp/*.so) 
 INCLUDES = -I$(GENERATED_HOME)/cpp/datastructures -I$(GENERATED_HOME)/cpp/kernels -I$(DELITE_HOME)/runtime/src/static/cpp
 SOURCES = $(TARGET).cpp $(DELITE_HOME)/runtime/src/static/cpp/DeliteStandaloneMain.cpp $(DELITE_HOME)/runtime/src/static/cpp/DeliteCpp.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
