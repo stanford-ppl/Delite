@@ -82,8 +82,7 @@ trait DeliteRestageOps extends Base {
   def delite_profile_stop(component: Rep[String], deps: Seq[Rep[Any]])(implicit ctx: SourceContext): Rep[Unit]
 }
 
-trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp with StructExp 
-  with RangeOpsExp with HashMapOpsExp {
+trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp {
   this: DeliteArrayOpsExpOpt =>
   
   import ScopeCommunication._
@@ -153,8 +152,6 @@ trait DeliteRestageRunner[R] extends DeliteApplication with DeliteRestageOpsExp 
     
     // main(scala.Array())
     // ppl.delite.runtime.Delite.embeddedMain(scala.Array(restageFile), staticDataMap) 
-  }
-    
-  System.out.println("object created")
+  }      
   run
 }

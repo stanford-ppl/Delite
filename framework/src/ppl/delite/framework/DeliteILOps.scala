@@ -42,7 +42,6 @@ trait DeliteILOps extends Variables with StructOps with StructTags with DeliteAr
   
   // expose delite array stuff that is needed for buffer elems
   def darray_unsafe_set_act_buf[A:Manifest](da: Rep[DeliteArray[A]]): Rep[Unit]
-  def darray_unsafe_set_act_final[A:Manifest](da: Rep[DeliteArray[A]]): Rep[Unit]
   def darray_unsafe_get_act_size(): Rep[Int]
   def darray_unsafe_copy[T:Manifest](src: Rep[DeliteArray[T]], srcPos: Rep[Int], dest: Rep[DeliteArray[T]], destPos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
   

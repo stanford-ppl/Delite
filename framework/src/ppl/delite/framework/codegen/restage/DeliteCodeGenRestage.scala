@@ -88,12 +88,47 @@ trait RestageFatCodegen extends GenericFatCodegen with RestageCodegen {
 
 }
 
-// for now just lumping all the Delite restage generators together in one place..
+// restage generators for LMS common ops
+trait LMSCodeGenRestage extends RestageFatCodegen {
+  val IR: Expressions with Effects with FatExpressions with DeliteRestageOpsExp 
+          with IOOpsExp with PrimitiveOpsExp with MathOpsExp with RangeOpsExp with HashMapOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {    
+    // scala
+    case m@HashMapNew() => emitValDef(sym, "HashMap[" + remap(m.mK) + "," + remap(m.mV) + "]()")
+    case HashMapApply(m,k) => emitValDef(sym, quote(m) + "(" + quote(k) + ")")
+    case HashMapUpdate(m,k,v)  => emitValDef(sym, quote(m) + "(" + quote(k) + ") = " + quote(v))
+    case HashMapContains(m,i) => emitValDef(sym, quote(m) + ".contains(" + quote(i) + ")")  
+    case ObjBrApply(f) => emitValDef(sym, "BufferedReader(" + quote(f) + ")")
+    case ObjFrApply(s) => emitValDef(sym, "FileReader(" + quote(s) + ")")    
+    case ObjIntegerParseInt(s) => emitValDef(sym, "Integer.parseInt(" + quote(s) + ")")
+    case IntFloatValue(lhs) => emitValDef(sym, quote(lhs) + ".floatValueL()")
+    case MathMax(x,y) => emitValDef(sym, "Math.max(" + quote(x) + ", " + quote(y) + ")")
+    case MathLog(x) => emitValDef(sym, "Math.log(" + quote(x) + ")")
+    case MathSqrt(x) => emitValDef(sym, "Math.sqrt(" + quote(x) + ")")
+    case MathExp(x) => emitValDef(sym, "Math.exp(" + quote(x) + ")")
+
+    // Range foreach
+    // !! this is unfortunate: we need the var to be typed differently, but most of this is copy/paste
+    case RangeForeach(start, end, i, body) => {
+      stream.println("var " + quote(i) + " = " + quote(start))
+      stream.println("val " + quote(sym) + " = " + "while (" + quote(i) + " < " + quote(end) + ") {")
+      emitBlock(body)
+      stream.println(quote(getBlockResult(body)))
+      stream.println(quote(i) + " = " + quote(i) + " + 1")
+      stream.println("}")
+    }
+
+    case _ => super.emitNode(sym, rhs)
+  }       
+}
+
+// restage generators for Delite common ops
 trait DeliteCodeGenRestage extends RestageFatCodegen 
   with ScalaGenDeliteCollectionOps with ScalaGenDeliteArrayOps with ScalaGenDeliteStruct with DeliteScalaGenAllOverrides {
     
   val IR: Expressions with Effects with FatExpressions with DeliteRestageOpsExp 
-          with IOOpsExp with PrimitiveOpsExp with MathOpsExp with RangeOpsExp with HashMapOpsExp
           with DeliteCollectionOpsExp with DeliteArrayFatExp with DeliteOpsExp with DeliteAllOverridesExp
   import IR._
   import ppl.delite.framework.Util._
@@ -240,41 +275,18 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
       emitValDef(sym, "drefGlobals("+id+").asInstanceOf[Rep["+remap(sym.tp)+"]]")
       // emitValDef(sym, drefBox(id)+".asInstanceOf[Rep["+remap(sym.tp)+"]]")
     
-    // scala
-    case m@HashMapNew() => emitValDef(sym, "HashMap[" + remap(m.mK) + "," + remap(m.mV) + "]()")
-    case HashMapApply(m,k) => emitValDef(sym, quote(m) + "(" + quote(k) + ")")
-    case HashMapUpdate(m,k,v)  => emitValDef(sym, quote(m) + "(" + quote(k) + ") = " + quote(v))
-    case HashMapContains(m,i) => emitValDef(sym, quote(m) + ".contains(" + quote(i) + ")")  
-    case ObjBrApply(f) => emitValDef(sym, "BufferedReader(" + quote(f) + ")")
-    case ObjFrApply(s) => emitValDef(sym, "FileReader(" + quote(s) + ")")    
+    // LMS stuff pulled in by Delite
+    case NewVar(init) => stream.println("var " + quote(sym) + " = " + quote(init))    
     case ThrowException(m) => emitValDef(sym, "fatal(" + quote(m) + ")")
-    case NewVar(init) => stream.println("var " + quote(sym) + " = " + quote(init))
-    case ObjIntegerParseInt(s) => emitValDef(sym, "Integer.parseInt(" + quote(s) + ")")
-    case IntFloatValue(lhs) => emitValDef(sym, quote(lhs) + ".floatValueL()")
     case RepIsInstanceOf(x,mA,mB) => emitValDef(sym, quote(x) + ".isInstanceOf[Rep[" + remap(mB) + "]]")
     case RepAsInstanceOf(x,mA,mB) => emitValDef(sym, quote(x) + ".asInstanceOf[Rep[" + remap(mB) + "]]")    
-    case MathMax(x,y) => emitValDef(sym, "Math.max(" + quote(x) + ", " + quote(y) + ")")
-    case MathLog(x) => emitValDef(sym, "Math.log(" + quote(x) + ")")
-    case MathSqrt(x) => emitValDef(sym, "Math.sqrt(" + quote(x) + ")")
-    case MathExp(x) => emitValDef(sym, "Math.exp(" + quote(x) + ")")
-    case ObjectUnsafeImmutable(x) => emitValDef(sym, quote(x) + ".unsafeImmutable()")
+    case ObjectUnsafeImmutable(x) => emitValDef(sym, quote(x) + ".unsafeImmutable()")      
 
     // profiling
     case DeliteProfileStart(x,deps) if deps == Nil =>  emitValDef(sym, "tic(" + quote(x) + ")") 
     case DeliteProfileStart(x,deps) => emitValDef(sym, "tic(" + quote(x) + ", " + deps.map(quote(_)).mkString(",") + ")") 
     case DeliteProfileStop(x,deps) if deps == Nil =>  emitValDef(sym, "toc(" + quote(x) + ")")
     case DeliteProfileStop(x,deps) => emitValDef(sym, "toc(" + quote(x) + ", " + deps.map(quote(_)).mkString(",") + ")")
-
-    // Range foreach
-    // !! this is unfortunate: we need the var to be typed differently, but most of this is copy/paste
-    case RangeForeach(start, end, i, body) => {
-      stream.println("var " + quote(i) + " = " + quote(start))
-      stream.println("val " + quote(sym) + " = " + "while (" + quote(i) + " < " + quote(end) + ") {")
-      emitBlock(body)
-      stream.println(quote(getBlockResult(body)))
-      stream.println(quote(i) + " = " + quote(i) + " + 1")
-      stream.println("}")
-    }
     
     // if then else
     // !! redundant - copy paste of LMS if/then/else just to avoid DeliteIfThenElse getting a hold of it, which is put in scope by the individual DSLs

@@ -96,7 +96,7 @@ trait StencilAnalysis extends FatBlockTraversal {
        else {
          if (z.length > 1) {
            log("    !! found multiple loops corresponding to loop index:")         
-           println(z)
+           log(z.toString)
          }
          log("    found loopSize: " + strDef(z(0)._2) + " from loop " + z(0)._1.toString)
          // log("      i was: " + i.toString + ", bound sym of loop is: " + z(0)._1.v.toString)

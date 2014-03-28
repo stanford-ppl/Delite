@@ -28,10 +28,9 @@ trait DeliteInteractiveRunner[R] extends DeliteApplication with DeliteInteractiv
   def run = { 
     val name = "scope-temp"
     Config.degFilename = name
-    liftedMain(unit(scala.Array()))
-    ppl.delite.runtime.Delite.embeddedMain(scala.Array(name), staticDataMap) 
-  }
-  System.out.println("object created")
+    main(scala.Array())    
+    ppl.delite.runtime.Delite.embeddedMain(scala.Array(name), staticDataMap)
+  }  
   run
 }
 

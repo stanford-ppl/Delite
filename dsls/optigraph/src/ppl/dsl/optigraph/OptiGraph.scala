@@ -12,7 +12,7 @@ import ppl.delite.framework.codegen.delite.DeliteCodeGenPkg
 import ppl.delite.framework.transform.ForeachReduceTransformExp
 import ppl.delite.framework.ops._
 import ppl.delite.framework.{DeliteInteractive, DeliteInteractiveRunner, DeliteRestageOps, DeliteRestageOpsExp, DeliteRestageRunner}
-import ppl.delite.framework.codegen.restage.{DeliteCodeGenRestage,TargetRestage}
+import ppl.delite.framework.codegen.restage.{DeliteCodeGenRestage,LMSCodeGenRestage,TargetRestage}
 
 //import ppl.dsl.optigraph.io._
 import ppl.dsl.optigraph.ops._
@@ -186,7 +186,7 @@ trait OptiGraphCodeGenBase extends GenericFatCodegen {
   }
 }
 
-trait OptiGraphCodeGenRestage extends OptiGraphScalaCodeGenPkg with DeliteCodeGenRestage { 
+trait OptiGraphCodeGenRestage extends OptiGraphScalaCodeGenPkg with DeliteCodeGenRestage with LMSCodeGenRestage { 
   val IR: DeliteApplication with OptiGraphExp  
   import IR._
 

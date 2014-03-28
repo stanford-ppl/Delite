@@ -16,7 +16,7 @@ import ppl.delite.framework.datastructures._
 import ppl.delite.framework.codegen.delite.overrides._
 import ppl.delite.framework.transform.MultiloopSoATransformWithReduceExp
 import ppl.delite.framework.{DeliteInteractive, DeliteInteractiveRunner, DeliteRestageOps, DeliteRestageOpsExp, DeliteRestageRunner}
-import ppl.delite.framework.codegen.restage.{DeliteCodeGenRestage,TargetRestage}
+import ppl.delite.framework.codegen.restage.{DeliteCodeGenRestage,LMSCodeGenRestage,TargetRestage}
 
 
 /**
@@ -138,7 +138,7 @@ trait OptiQLCodeGenBase extends GenericFatCodegen {
   }
 }
 
-trait OptiQLCodeGenRestage extends OptiQLScalaCodeGenPkg with DeliteCodeGenRestage { 
+trait OptiQLCodeGenRestage extends OptiQLScalaCodeGenPkg with DeliteCodeGenRestage with LMSCodeGenRestage { 
   val IR: DeliteApplication with OptiQLExp
   import IR._
 

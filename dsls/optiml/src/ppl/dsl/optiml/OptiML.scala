@@ -10,7 +10,7 @@ import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
 import ppl.delite.framework.codegen.cpp.TargetCpp
 import ppl.delite.framework.codegen.opencl.TargetOpenCL
-import ppl.delite.framework.codegen.restage.{DeliteCodeGenRestage,TargetRestage}
+import ppl.delite.framework.codegen.restage.{DeliteCodeGenRestage,LMSCodeGenRestage,TargetRestage}
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteOpenCLGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
 import ppl.delite.framework.datastructures._
@@ -221,7 +221,7 @@ trait OptiMLCodeGenBase extends OptiLACodeGenBase {
 }
 
 // strategy is to inherit all of the base Scala generators and override what we need
-trait OptiMLCodeGenRestage extends OptiMLScalaCodeGenPkg with ScalaGenArithOps with DeliteCodeGenRestage { 
+trait OptiMLCodeGenRestage extends OptiMLScalaCodeGenPkg with ScalaGenArithOps with DeliteCodeGenRestage with LMSCodeGenRestage { 
   val IR: DeliteApplication with OptiMLExp
   import IR._
   
