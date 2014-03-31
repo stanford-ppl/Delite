@@ -38,7 +38,7 @@ object DeliteTaskGraph {
     graph._version = getFieldDouble(deg, "version")
     graph._kernelPath = getFieldString(deg, "kernelpath")
     parseOps(getFieldList(deg, "ops"))
-    graph._targets = graph.totalOps.flatMap(o => o.getOutputTypesMap.keySet)
+    graph._targets = graph.totalOps.filter(o => !o.isInstanceOf[Arguments]).flatMap(o => o.getOutputTypesMap.keySet)
   }
 
   def parseOps(ops: List[Any])(implicit graph: DeliteTaskGraph) {
@@ -451,6 +451,7 @@ object DeliteTaskGraph {
   def processArgumentsTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     val id = getFieldString(op, "kernelId")
     val args = new Arguments(id)
+    args.supportedTargets append (Targets.Scala, Targets.Cpp)
     graph.registerOp(args)
     graph._result = (args, id)
   }

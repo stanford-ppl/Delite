@@ -50,7 +50,7 @@ trait GenericGenExternal extends GenericNestedCodegen {
   lazy val headerDir = new File(Config.buildDir + "/" + this.toString + "/kernels/")
   
   /* location for generated native method wrappers */
-  lazy val nativeDir = new File(Config.buildDir + "/native/")
+  lazy val nativeDir = new File(Config.buildDir + "/native/" + this.toString)
   
   /* location for compiled .so shared libraries */
   lazy val libDir = new File(Config.buildDir + "/libraries/" + this.toString)

@@ -89,9 +89,17 @@ trait CppExecutableGenerator extends ExecutableGenerator {
       out.append(resultName)
       out.append(" = ")
     }
-    out.append(op.task) //kernel name
-    out.append(op.getInputs.map(i=>getSymHost(i._1,i._2)).mkString("(",",",");\n"))
 
+    out.append(op.task) //kernel name
+    op match {
+      case args: Arguments => 
+        if(Arguments.args.length > 0)
+          out.append("(" + Arguments.args.length + Arguments.args.map("\""+_+"\"").mkString(",",",",");\n"))
+        else
+          out.append("(" + Arguments.args.length + ");\n") 
+      case _ => out.append(op.getInputs.map(i=>getSymHost(i._1,i._2)).mkString("(",",",");\n"))
+    }
+   
     if (!returnsResult) {
       for (name <- op.getOutputs if(op.outputType(Targets.Cpp,name)!="void")) {
         out.append(op.outputType(Targets.Cpp, name))
@@ -111,7 +119,10 @@ trait CppExecutableGenerator extends ExecutableGenerator {
 
   protected def writeSyncObject() {  }
 
-  protected def isPrimitiveType(scalaType: String) = Targets.isPrimitiveType(scalaType)
+  protected def isPrimitiveType(scalaType: String) = scalaType match {
+    case "java.lang.String" => true
+    case _ => Targets.isPrimitiveType(scalaType)
+  }
 
 }
 
@@ -187,12 +198,14 @@ class ScalaNativeExecutableGenerator(override val location: Int, override val ke
   }
 
   private def writeNativeLoad() {
+    val degName = ppl.delite.runtime.Delite.inputArgs(0).split('.')
+    val appName = degName(degName.length-2)
     val tgt = OpHelper.scheduledTarget(location)
     out.append("@native def host" + executableName(location) + ": Unit\n")
     out.append("System.load(\"\"\"")
     out.append(Compilers(tgt).binCacheHome)
     out.append(tgt)
-    out.append("Host.")
+    out.append("Host" + appName + ".")
     out.append(OS.libExt)
     out.append("\"\"\")\n")
   }

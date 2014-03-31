@@ -230,7 +230,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
             case op: AbstractLoop[_] =>
               hasOutputSlotTypes = true
               "void"
-            case _ => "void"
+            case _ => gen.remap(sym.head.tp)
           }
           case ("opencl", op: AbstractFatLoop) =>
             hasOutputSlotTypes = true
@@ -243,7 +243,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
             case op: AbstractLoop[_] =>
               hasOutputSlotTypes = true
               "void"
-            case _ => "void"
+            case _ => gen.remap(sym.head.tp)
           }
           case _ =>
             assert(sym.length == 1) // if not set hasOutputSlotTypes and use activation record

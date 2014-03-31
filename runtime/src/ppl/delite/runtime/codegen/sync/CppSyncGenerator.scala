@@ -12,6 +12,11 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
 
   private val syncList = new ArrayBuffer[Send]
   
+  private def isPurePrimitiveType(tp: String): Boolean = {
+    if(isPrimitiveType(tp) && tp != "java.lang.String") true
+    else false
+  }
+
   override protected def receiveData(s: ReceiveData) {
     getHostTarget(scheduledTarget(s.sender.from)) match {
       case Targets.Scala => writeGetter(s.sender.from, s.sender.sym, s.to, false)
@@ -127,7 +132,7 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     val devType = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
     if (view)
       out.append("%s %s%s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
-    else if(isPrimitiveType(dep.outputType(sym)))
+    else if(isPurePrimitiveType(dep.outputType(sym)))
       out.append("%s %s = (%s)%s;\n".format(devType,getSymHost(dep,sym),devType,getSymCPU(sym)))
     else
       out.append("%s %s%s = recvCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
@@ -163,7 +168,7 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     val devType = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
     if (view)
       out.append("%s %s = sendViewCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))
-    else if(isPrimitiveType(op.outputType(sym)))
+    else if(isPurePrimitiveType(op.outputType(sym)))
       out.append("%s %s = (%s)%s;\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),getJNIType(op.outputType(sym)),getSymHost(op,sym)))
     else
       out.append("%s %s = sendCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))

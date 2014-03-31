@@ -33,7 +33,7 @@ object Config {
   val scheduler: String = getProperty("delite.scheduler", "default")
   val executor: String = getProperty("delite.executor", "default")
   val numRuns: Int = getProperty("delite.runs", "1").toInt
-  val deliteHome: String = getProperty("delite.home", System.getProperty("user.dir"))
+  val deliteHome: String = getProperty("delite.home", sys.env.getOrElse("DELITE_HOME",System.getProperty("user.dir")))
   val codeCacheHome: String = getProperty("delite.code.cache.home", deliteHome + java.io.File.separator + "generatedCache") //+ (new java.util.Random).nextInt(100).toString
   val useFsc: Boolean = getProperty("delite.usefsc", "false") != "false"
   val tempCudaMemRate: Double = getProperty("delite.tempcudamem", "0.3").toDouble         /* proportions of the cuda device memory used for temporary allocations */

@@ -330,8 +330,8 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
   }
 }
 
-trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg /*with OptiLACGenExternal*/  
-  with CGenDeliteOps with CGenDeliteCollectionOps with CGenDeliteStruct with CGenDeliteArrayOps /*with CGenDeliteArrayBufferOps*/
+trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with OptiLACGenExternal  
+  with CGenDeliteOps with CGenDeliteCollectionOps with CGenDeliteStruct with CGenDeliteArrayOps with CGenDeliteFileReaderOps /*with CGenDeliteArrayBufferOps*/
   /*with CGenLanguageOps*/ with CGenArithOps with CGenVectorOps with CGenDenseVectorOps with CGenSparseVectorOps
   with CGenDenseVectorViewOps /*with CGenSparseVectorViewOps*/ with CGenMatrixOps with CGenDenseMatrixOps with CGenSparseMatrixOps with CGenSparseMatrixBuildableOps  
   with CGenSparseMatrixCSROps with CGenSparseMatrixCOOOps /*with CGenSparseVectorViewCSROps*/
