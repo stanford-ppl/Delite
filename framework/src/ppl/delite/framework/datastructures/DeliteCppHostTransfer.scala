@@ -166,7 +166,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("\tjclass cls = env->GetObjectClass(obj);\n")
         for(elem <- encounteredStructs(structName(tp))) {
           val elemtp = baseType(elem._2)
-          if(isPurePrimitiveType(elemtp)) {
+          if(isPrimitiveType(elemtp)) {
             if(Config.generateSerializable) {
               out.append("\tjmethodID mid_get_%s = env->GetMethodID(cls,\"%s\",\"()Lppl/delite/runtime/data/DeliteArray%s;\");\n".format(elem._1,elem._1,elemtp.typeArguments.head))
               out.append("\t%s j_%s = env->Call%sMethod(obj,mid_get_%s);\n".format(JNIType(elemtp),elem._1,remapToJNI(elemtp),elem._1))
@@ -360,9 +360,10 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         var args = ""
         for(elem <- encounteredStructs(structName(tp))) {
           val elemtp = baseType(elem._2)
-          if(isPurePrimitiveType(elemtp)) {
+          if(isPrimitiveType(elemtp)) {
             out.append("\tjmethodID mid_%s = env->GetMethodID(cls,\"%s_$eq\",\"(%s)V\");\n".format(elem._1,elem._1,JNITypeDescriptor(elemtp)))
-            out.append("\tenv->CallVoidMethod(obj,mid_%s,sym->%s);\n".format(elem._1,elem._1))
+            out.append("\t%s obj_%s = sendCPPtoJVM_%s(env,sym->%s);\n".format(JNIType(elemtp), elem._1,mangledName(remapHost(elemtp)),elem._1))
+            out.append("\tenv->CallVoidMethod(obj,mid_%s,obj_%s);\n".format(elem._1,elem._1))
           }
           else if (encounteredStructs.contains(structName(elemtp))) { 
             out.append("\tjmethodID mid_%s = env->GetMethodID(cls,\"%s\",\"()Lgenerated/scala/%s;\");\n".format(elem._1,elem._1,structName(elemtp)))
@@ -433,9 +434,10 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         var args = ""
         for(elem <- encounteredStructs(structName(tp))) {
           val elemtp = baseType(elem._2)
-          if(isPurePrimitiveType(elemtp)) {
+          if(isPrimitiveType(elemtp)) {
             out.append("\tjmethodID mid_%s = env->GetMethodID(cls,\"%s\",\"()%s\");\n".format(elem._1,elem._1,JNITypeDescriptor(elemtp)))
-            out.append("\tsym->%s = env->Call%sMethod(obj,mid_%s);\n".format(elem._1,remapToJNI(elemtp),elem._1))
+            out.append("\t%s obj_%s = env->Call%sMethod(obj, mid_%s);\n".format(JNIType(elemtp),elem._1,remapToJNI(elemtp),elem._1))
+            out.append("\tsym->%s = recvCPPfromJVM_%s(env,obj_%s);\n".format(elem._1,mangledName(remapHost(elemtp)),elem._1))
           }
           else if (encounteredStructs.contains(structName(elemtp))) { 
             out.append("\tjmethodID mid_%s = env->GetMethodID(cls,\"%s\",\"()Lgenerated/scala/%s;\");\n".format(elem._1,elem._1,structName(elemtp)))

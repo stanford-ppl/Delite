@@ -431,7 +431,12 @@ trait CLikeGenDeliteStruct extends BaseGenStruct with CLikeCodegen {
     case _ => super.remap(m)
   }
 
-  protected def isVarType[T](m: Manifest[T]) = m.erasure.getSimpleName == "Variable" && unapplyStructType(m.typeArguments(0)) == None
+  protected def isVarType[T](e: Exp[T]) = e.tp.erasure.getSimpleName == "Variable" && (e match { //TODO: this is fragile, based on behavior of var_new override in Structs.scala
+    case Def(Struct(_,_)) => false //Var(Struct) => Struct(Var)
+    case _ => true
+  })
+
+  protected def isVarType[T](m: Manifest[T]) = m.erasure.getSimpleName == "Variable" // && unapplyStructType(m.typeArguments(0)) == None
   protected def isArrayType[T](m: Manifest[T]) = m.erasure.getSimpleName == "DeliteArray" || m.erasure.isArray
   protected def isStringType[T](m: Manifest[T]) = m.erasure.getSimpleName == "String"
   protected def baseType[T](m: Manifest[T]) = if (isVarType(m)) mtype(m.typeArguments(0)) else m
@@ -485,13 +490,13 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaCodegen {
       // Within kernel, place on stack
       if(isNestedNode) {
         stream.println(remap(sym.tp) + " " + quote(sym) + " = " + remap(sym.tp) + "(" + elems.map{ e => 
-          if (isVarType(e._2.tp) && deliteInputs.contains(e._2)) quote(e._2) + ".get()"
+          if (isVarType(e._2) && deliteInputs.contains(e._2)) quote(e._2) + ".get()"
           else quote(e._2)
         }.mkString(",") + ");")
       }
       else {
         stream.println(remap(sym.tp) + " *" + quote(sym) + "_ptr = new " + remap(sym.tp) + "(" + elems.map{ e => 
-          if (isVarType(e._2.tp) && deliteInputs.contains(e._2)) quote(e._2) + "->get()"
+          if (isVarType(e._2) && deliteInputs.contains(e._2)) quote(e._2) + "->get()"
           else quote(e._2)
         }.mkString(",") + ");")
         stream.println(remap(sym.tp) + " " + quote(sym) + " = *" + quote(sym) + "_ptr;")
@@ -592,8 +597,8 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaCodegen {
       stream.println("#endif")
       generatedStructs += name
       stream.close()
-      elems foreach { e => dsTypesList.add(baseType(e._2).asInstanceOf[Manifest[Any]]) }
-      elems foreach { e => dsTypesList.add(unwrapArrayType(e._2).asInstanceOf[Manifest[Any]]) }
+      elems foreach { e => val t = baseType(e._2); dsTypesList.add((t.asInstanceOf[Manifest[Any]],remap(t))) }
+      elems foreach { e => val t = unwrapArrayType(e._2); dsTypesList.add((t.asInstanceOf[Manifest[Any]],remap(t))) }
     }
     catch {
       case e: GenerationFailedException => generationFailedStructs += name; (new File(path + deviceTarget + name + ".h")).delete; throw(e)
@@ -625,7 +630,7 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
       }.mkString(""))
       */
       stream.println(remap(sym.tp) + " *" + quote(sym) + " = new " + remap(sym.tp) + "(" + elems.map{ e => 
-         if (isVarType(e._2.tp) && deliteInputs.contains(e._2)) quote(e._2) + "->get()"
+         if (isVarType(e._2) && deliteInputs.contains(e._2)) quote(e._2) + "->get()"
          else quote(e._2)
       }.mkString(",") + ");")
       printlog("WARNING: emitting " + remap(sym.tp) + " struct " + quote(sym))    
@@ -647,7 +652,7 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
     try {
       stream.println("#ifndef __" + deviceTarget + name + "__")
       stream.println("#define __" + deviceTarget + name + "__")
-      
+      stream.println("using namespace std;")
       val dependentStructTypes = elems.map(e => 
         if(encounteredStructs.contains(structName(baseType(e._2)))) structName(baseType(e._2))
         else if(encounteredStructs.contains(structName(unwrapArrayType(e._2)))) structName(unwrapArrayType(e._2))
@@ -689,9 +694,9 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
       stream.println("#endif")
       generatedStructs += name
       stream.close()
-      elems foreach { e => dsTypesList.add(baseType(e._2).asInstanceOf[Manifest[Any]]) }
-      elems foreach { e => dsTypesList.add(unwrapArrayType(e._2).asInstanceOf[Manifest[Any]]) }
-      //println("dsTyps:" + dsTypesList.toString)
+      elems foreach { e => val t = baseType(e._2); dsTypesList.add((t.asInstanceOf[Manifest[Any]],remap(t))) }
+      elems foreach { e => val t = unwrapArrayType(e._2); dsTypesList.add((t.asInstanceOf[Manifest[Any]],remap(t))) }
+      println("dsTyps:" + dsTypesList.toString)
     }
     catch {
       case e: GenerationFailedException => generationFailedStructs += name; (new File(path + deviceTarget + name + ".h")).delete; throw(e)

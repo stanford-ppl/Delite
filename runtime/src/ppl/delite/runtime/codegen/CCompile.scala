@@ -38,6 +38,7 @@ trait CCompile extends CodeCache {
   def addKernel(op: DeliteOP) { 
     op match {
       case _:EOP | _:Arguments => // kernelBuffer is used to hold the actual generated kernels to compile 
+      case _ if kernelBuffer.contains (op.id + "." + ext) => // same kernel may be used multiple times in a deg 
       case _ => kernelBuffer += (op.id + "." + ext)
     }
   }

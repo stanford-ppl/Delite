@@ -22,7 +22,7 @@ cppDeliteArray<string> *string_split(string str, string pattern) {
   */
 
   //Since regex is not working, we currently only support 
-  assert(strcmp(pattern.c_str(),"\\s+")==0 && "Currently only regex \\s+ is supported for C++ target");
+  assert((strcmp(pattern.c_str(),"\\s+")==0 || strcmp(pattern.c_str()," ")==0) && "Currently only regex \\s+ is supported for C++ target");
   string token;
   stringstream ss(str); 
   vector<string> elems;

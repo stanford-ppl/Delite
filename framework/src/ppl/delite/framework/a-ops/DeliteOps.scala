@@ -3566,13 +3566,6 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
 
   import IR._
 
-  private def deref(tpe: String): String = {
-    tpe match {
-      case "bool" | "char" | "CHAR" | "short" | "int" | "long" | "float" | "double" | "void" => tpe + " "
-      case _ => tpe + " *"
-    }
-  }
-
   def quotearg(x: Sym[Any]) = quotetp(x) + " " + quote(x)
   def quotetp(x: Sym[Any]) = remap(x.tp)
 
@@ -3581,7 +3574,7 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   }
 
   def emitMethod(name:String, outputType: String, inputs:List[(String,String)])(body: => Unit) {
-    stream.println(deref(outputType) + name + "(" + inputs.map(i => deref(i._2) + i._1).mkString(",") + ") {")
+    stream.println(remapWithRef(outputType) + name + "(" + inputs.map(i => remapWithRef(i._2) + i._1).mkString(",") + ") {")
     body
     stream.println("}\n")
   }
@@ -3609,7 +3602,7 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
     tpe match {
       case "void" => //
       case _ =>
-        stream.println(deref(tpe) + name + ";")
+        stream.println(remapWithRef(tpe) + name + ";")
     }
   }
 
@@ -3636,7 +3629,7 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
     tpe match {
       case "void" => //
       case _ =>
-        stream.println(deref(tpe) + name + " = " + init + ";")
+        stream.println(remapWithRef(tpe) + name + " = " + init + ";")
     }
   }
 
@@ -3668,8 +3661,8 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   def nullRef: String = "NULL"
 
   private def emitFieldsAndConstructor() {
-    val fields = kernelInputVals.map(i => deref(remap(i.tp)) + " " + quote(i)) ++ kernelInputVars.map(i => deref(deviceTarget + "Ref<" + remap(i.tp) + ">") + quote(i))
-    val constructorInputs = kernelInputVals.map(i => deref(remap(i.tp)) + " _" + quote(i)) ++ kernelInputVars.map(i => deref(deviceTarget + "Ref<" + remap(i.tp) + ">") + " _" + quote(i))
+    val fields = kernelInputVals.map(i => remapWithRef(i.tp) + quote(i)) ++ kernelInputVars.map(i => remapWithRef(deviceTarget + "Ref<" + remap(i.tp) + ">") + quote(i))
+    val constructorInputs = kernelInputVals.map(i => remapWithRef(i.tp) + " _" + quote(i)) ++ kernelInputVars.map(i => remapWithRef(deviceTarget + "Ref<" + remap(i.tp) + ">") + " _" + quote(i))
 
     //print fields
     stream.println(fields.map(_ + ";\n").mkString(""))

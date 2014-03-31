@@ -784,10 +784,10 @@ trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenDeliteStruct wit
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
       stream.println(quote(src) + "->copy(" + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ");")
     case sc@StructCopy(src,srcPos,struct,fields,destPos,len) =>
-      val dest = quote(struct) + fields.mkString("->","->","->") + destPos.take(destPos.length-1).map(i=>"apply("+quote(i)+")").mkString("->")
-      val elemM = src.tp.typeArguments(0)
-      val elemType = if(isPrimitiveType(elemM)) remap(elemM) else (remap(elemM)+"*")
-      stream.println("memcpy((" + dest + "->data)+" + quote(destPos(destPos.length-1)) + ",(" + quote(src) + "->data)+" + quote(srcPos) + "," + quote(len) + "*sizeof(" + elemType + "));")
+      val nestedApply = if (destPos.length > 1) destPos.take(destPos.length-1).map(i=>"apply("+quote(i)+")").mkString("","->","->") else ""
+      val dest = quote(struct) + fields.mkString("->","->","->") + nestedApply
+      val elemType = remapWithRef(src.tp.typeArguments(0))
+      stream.println("memcpy((" + dest + "data)+" + quote(destPos(destPos.length-1)) + ",(" + quote(src) + "->data)+" + quote(srcPos) + "," + quote(len) + "*sizeof(" + elemType + "));")
     case DeliteArrayUnion(lhs,rhs) =>
       emitValDef(sym, quote(lhs) + "->arrayunion(" + quote(rhs) + ")")
     case DeliteArrayIntersect(lhs,rhs) =>
@@ -802,24 +802,23 @@ trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenDeliteStruct wit
     case _ => super.emitNode(sym, rhs)
   }
 
-  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
-    case "DeliteArray" => m.typeArguments(0) match {
-      case StructType(_,_) if Config.soaEnabled => super.remap(m)
-      case s if s <:< manifest[Record] && Config.soaEnabled => super.remap(m) // occurs due to restaging
-      case arg => "cppDeliteArray< " + remap(arg) + addRef(arg) + " >"
+  override def remap[A](m: Manifest[A]): String = {
+    if (isArrayType(m)) {
+      m.typeArguments.head match {
+        case StructType(_,_) if Config.soaEnabled => super.remap(m)
+        case s if s <:< manifest[Record] && Config.soaEnabled => super.remap(m) // occurs due to restaging
+        case arg => "cppDeliteArray< " + remapWithRef(arg) + " >"
+      }
     }
-    // remap normal scala array to cppDeliteArray
-    case _ if m.erasure.isArray =>
-      val arg = Manifest.classType(m.erasure.getComponentType)
-      "cppDeliteArray< " + remap(arg) + addRef(arg) + " >" 
-    case _ => super.remap(m)
+    else 
+      super.remap(m)
   }
 
   override def emitDataStructures(path: String) {
     super.emitDataStructures(path)
     val stream = new PrintWriter(path + deviceTarget + "DeliteArrayRelease.h")
     stream.println("#include \"" + deviceTarget + "DeliteStructs.h\"")
-    for(tp <- dsTypesList if(isArrayType(tp) && remap(tp)!="string")) {
+    for(tp <- dsTypesList.map(_._1) if(isArrayType(tp))) {
       try {
         tp.typeArguments(0) match {
           case StructType(_,_) if Config.soaEnabled => 

@@ -198,12 +198,14 @@ class ScalaNativeExecutableGenerator(override val location: Int, override val ke
   }
 
   private def writeNativeLoad() {
+    val degName = ppl.delite.runtime.Delite.inputArgs(0).split('.')
+    val appName = degName(degName.length-2)
     val tgt = OpHelper.scheduledTarget(location)
     out.append("@native def host" + executableName(location) + ": Unit\n")
     out.append("System.load(\"\"\"")
     out.append(Compilers(tgt).binCacheHome)
     out.append(tgt)
-    out.append("Host.")
+    out.append("Host" + appName + ".")
     out.append(OS.libExt)
     out.append("\"\"\")\n")
   }
