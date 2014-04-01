@@ -54,7 +54,8 @@ trait OptiQLLift extends LiftString with LiftPrimitives with LiftNumeric {
  * Scala IR nodes
  */
 trait OptiQLScalaOpsPkgExp extends OptiQLScalaOpsPkg with MiscOpsExp with IOOpsExp with SeqOpsExp with OrderingOpsExp with BooleanOpsExp with EqualExp with MathOpsExp
-  with PrimitiveOpsExp with ObjectOpsExp with StringOpsExp with TupleOpsExp with StructExp with NumericOpsExp with ArrayOpsExp with ArrayBufferOpsExp with IfThenElseExp with StructFatExpOptCommon with CastingOpsExp
+  with PrimitiveOpsExp with ObjectOpsExp with StringOpsExp with TupleOpsExp with StructExp with NumericOpsExp with ArrayOpsExp with ArrayBufferOpsExp with IfThenElseExp
+  with StructFatExpOptCommon with CastingOpsExp with RangeOpsExp with HashMapOpsExp
 
 /**
  * Ops available only to the compiler, and not our applications
