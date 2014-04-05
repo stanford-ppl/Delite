@@ -94,24 +94,25 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
       stageTest(app)
     }
 
+
     // Set runtime parameters for targets and execute runtime
     for(t <- deliteTestTargets) {
+      // reset runtime configs
+      ppl.delite.runtime.Config.numThreads = 1
+      ppl.delite.runtime.Config.numCuda = 0
+      ppl.delite.runtime.Config.numCpp = 0
+      ppl.delite.runtime.Config.numOpenCL = 0
+
+      // set runtime config only needed for the current target
       t match {
         case "scala" => ppl.delite.runtime.Config.numThreads = threads
         case "cuda" => ppl.delite.runtime.Config.numCuda = 1
         case "cpp" => ppl.delite.runtime.Config.numCpp = threads
         case "opencl" => ppl.delite.runtime.Config.numOpenCL = 1
-        case _ =>
+        case _ => assert(false)
       }
       val outStr = execTest(app, args, t) // if (runtimeExternalProc..)?
       checkTest(app, outStr)
-      t match {
-        case "scala" => ppl.delite.runtime.Config.numThreads = 1
-        case "cuda" => ppl.delite.runtime.Config.numCuda = 0
-        case "cpp" => ppl.delite.runtime.Config.numCpp = 0
-        case "opencl" => ppl.delite.runtime.Config.numOpenCL = 0
-        case _ =>
-      }
     }
   }
 

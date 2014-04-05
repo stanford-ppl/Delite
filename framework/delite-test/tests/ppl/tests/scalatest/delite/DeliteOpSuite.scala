@@ -71,7 +71,7 @@ trait DeliteFlatMap extends DeliteTestBase {
     collectBuf(v2, 10000, i => i/10)
 
     val vm = DeliteArrayBuffer.fromFunction(100){ i => i }
-    val vm2 = vm flatMap { i => DeliteArrayBuffer(DeliteArray[Int](2), 2).map{ j => j + i }}
+    val vm2 = vm flatMap { i => DeliteArrayBuffer(DeliteArray.fromFunction(2){ j => 0 }, 2).map{ j => j + i }}
     collectBuf(vm2, 200, i => i/2)
 
     val ve = DeliteArrayBuffer.fromFunction(0){ i => 0 }
@@ -111,12 +111,12 @@ object DeliteReduceRunner extends DeliteTestRunner with DeliteTestDSLApplication
 trait DeliteReduce extends DeliteTestBase {
   def main() = {
 
-    collect(DeliteArray[Int](1000).reduce( _ + _, 0) == 0)
+    collect(DeliteArray.fromFunction(1000){ i => 0 }.reduce( _ + _, 0) == 0)
 
-    val v = DeliteArrayBuffer(DeliteArray[Int](1000), 1000)
+    val v = DeliteArrayBuffer(DeliteArray.fromFunction(1000){ i => 0 } , 1000)
     collect(v.reduce( _ + _ )(0) == 0)
 
-    val ve = DeliteArrayBuffer[Int]()
+    val ve = DeliteArrayBuffer.fromFunction(0){ i => 0 }
     collect(ve.reduce( _ + _ )(0) == 0)
 
     mkReport
@@ -317,12 +317,12 @@ trait DeliteNestedReduce extends DeliteTestBase {
   def main() = {
     
     val a = DeliteArray.fromFunction(1){ i => i } map { e => 
-      DeliteArray[Int](e).reduce( _ + _, 0)
+      DeliteArray.fromFunction(e){ i => 0 }.reduce( _ + _, 0)
     }
     collect(a(0) == 0)
 
     val res = DeliteArrayBuffer.fromFunction(1){ i => i } map { e => 
-      DeliteArrayBuffer[Int](e).reduce( _ + _ )(0)
+      DeliteArrayBuffer.fromFunction(e){ i => 0 } .reduce( _ + _ )(0)
     }
     collect(res(0) == 0)
     
