@@ -681,9 +681,10 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
       // constructor
       stream.println("\t" + deviceTarget + name + "(void) { }")
       stream.print("\t" + deviceTarget + name + "(")
-      stream.print(elems.map{ case (idx,tp) => remap(tp) + addRef(baseType(tp)) + " _" + idx }.mkString(","))
+      //NOTE: for some reason, having the name __real or __imag produces compile error. reserverd keywords?
+      stream.print(elems.map{ case (idx,tp) => remap(tp) + addRef(baseType(tp)) + " arg_" + idx }.mkString(","))
       stream.println(") {")
-      stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = _" + idx + ";\n" }.mkString(""))
+      stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = arg_" + idx + ";\n" }.mkString(""))
       stream.println("\t}")
       // free
       stream.println("\tvoid release(void) {")

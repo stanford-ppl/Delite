@@ -13,7 +13,8 @@ public:
     // Constructor
     cppDeliteArray(int _length) {
         length = _length;
-        data = new T[length];
+        //TODO: remove initialization to zero
+        data = new T[length]();
     }
 
     cppDeliteArray(T *_data, int _length) {
