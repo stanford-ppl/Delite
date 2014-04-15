@@ -118,8 +118,7 @@ class ScalaConditionGenerator(val condition: OP_Condition, val location: Int, va
   extends ConditionGenerator with ScalaNestedGenerator with ScalaSyncGenerator {
 
   override protected def writeMethodHeader() {
-    if (declCondVar)
-      out.append("var " + condition.id.split('_').head + "_cond :Boolean = false\n")
+    out.append("var " + condition.id.split('_').head + "_cond :Boolean = false\n")
     super.writeMethodHeader()
   }
 
