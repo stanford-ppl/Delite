@@ -108,11 +108,11 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with VariablesExp with 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@DeliteCollectionApply(x, n) => dc_apply(f(x), f(n))(e.mA,ctx)
     case DeliteCollectionSize(x) => dc_size(f(x))
-    case Reflect(e@DeliteCollectionApply(l,r), u, es) => reflectMirrored(Reflect(DeliteCollectionApply(f(l),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(DeliteCollectionSize(l), u, es) => reflectMirrored(Reflect(DeliteCollectionSize(f(l)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(DeliteCollectionUpdate(l,i,r), u, es) => reflectMirrored(Reflect(DeliteCollectionUpdate(f(l),f(i),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(DeliteCollectionAppend(l,i,r), u, es) => reflectMirrored(Reflect(DeliteCollectionAppend(f(l),f(i),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(dc@DeliteCollectionUnsafeSetData(x, d), u, es) => reflectMirrored(Reflect(DeliteCollectionUnsafeSetData(f(x),f(d))(dc.m), mapOver(f,u), f(es)))(mtype(manifest[Unit]))
+    case Reflect(e@DeliteCollectionApply(l,r), u, es) => reflectMirrored(Reflect(DeliteCollectionApply(f(l),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(DeliteCollectionSize(l), u, es) => reflectMirrored(Reflect(DeliteCollectionSize(f(l)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(DeliteCollectionUpdate(l,i,r), u, es) => reflectMirrored(Reflect(DeliteCollectionUpdate(f(l),f(i),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(DeliteCollectionAppend(l,i,r), u, es) => reflectMirrored(Reflect(DeliteCollectionAppend(f(l),f(i),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(dc@DeliteCollectionUnsafeSetData(x, d), u, es) => reflectMirrored(Reflect(DeliteCollectionUnsafeSetData(f(x),f(d))(dc.m), mapOver(f,u), f(es)))(mtype(manifest[Unit]), ctx)
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
   

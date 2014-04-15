@@ -56,7 +56,7 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
       if (f.hasContext) 
         __whileDo(f.reflectBlock(cond), f.reflectBlock(block))
       else
-        reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteWhile(f(cond),f(block)), mapOver(f,u), f(es)))(mtype(manifest[A]))      
+        reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteWhile(f(cond),f(block)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)      
       }
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
