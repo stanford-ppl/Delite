@@ -20,6 +20,14 @@ trait ConditionGenerator extends NestedGenerator {
   val condition: OP_Condition
   val nested = condition
 
+  // cond variable is declared by the first scheduled resources for each target
+  def declCondVar: Boolean = {
+    val targetResources = Targets.resourceIDs(Targets.getByLocation(location))
+    val scheduledIDs = targetResources.filter(i => condition.nestedGraphs.map(_.schedule(i).isEmpty) contains false)
+    if (scheduledIDs.head == location) true
+    else false
+  }
+
   def makeExecutable() {
     val hasOutput = condition.outputType != "Unit"
 
@@ -110,7 +118,8 @@ class ScalaConditionGenerator(val condition: OP_Condition, val location: Int, va
   extends ConditionGenerator with ScalaNestedGenerator with ScalaSyncGenerator {
 
   override protected def writeMethodHeader() {
-    out.append("var " + condition.id.split('_').head + "_cond :Boolean = false\n")
+    if (declCondVar)
+      out.append("var " + condition.id.split('_').head + "_cond :Boolean = false\n")
     super.writeMethodHeader()
   }
 
@@ -152,9 +161,9 @@ class ScalaConditionGenerator(val condition: OP_Condition, val location: Int, va
 class CppConditionGenerator(val condition: OP_Condition, val location: Int, val kernelPath: String)
   extends ConditionGenerator with CppNestedGenerator with CppSyncGenerator {
 
-
   override protected def writeMethodHeader() {
-    out.append("bool " + condition.id.split('_').head + "_cond;\n")
+    if (declCondVar)
+      out.append("bool " + condition.id.split('_').head + "_cond;\n")
     super.writeMethodHeader()
   }
 
@@ -196,7 +205,8 @@ class CudaConditionGenerator(val condition: OP_Condition, val location: Int, val
   extends ConditionGenerator with CudaNestedGenerator with CudaSyncGenerator {
 
   override protected def writeMethodHeader() {
-    out.append("bool " + condition.id.split('_').head + "_cond;\n")
+    if (declCondVar)
+      out.append("bool " + condition.id.split('_').head + "_cond;\n")
     super.writeMethodHeader()
   }
 

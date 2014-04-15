@@ -103,4 +103,12 @@ object Targets extends Enumeration {
     }
   }
 
+  def getByLocation(location: Int): Value = {
+    if (location < Config.numThreads) Scala
+    else if (location < Config.numThreads+Config.numCpp) Cpp
+    else if (location < Config.numThreads+Config.numCpp+Config.numCuda) Cuda
+    else if (location < Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL) OpenCL
+    else throw new RuntimeException("requested location " + location + " is not in the range of available resources.")
+  }
+
 }
