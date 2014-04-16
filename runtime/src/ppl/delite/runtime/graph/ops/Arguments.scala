@@ -23,8 +23,9 @@ object Arguments {
 
 final class Arguments(val id: String) extends OP_Executable {
 
-  var outputTypesMap = Map(Targets.Scala->Map(id -> "Array[java.lang.String]", "functionReturn"->"Array[java.lang.String]"),
-                           Targets.Cpp->Map(id -> "cppDeliteArray< string >", "functionReturn"->"cppDeliteArray< string >"))
+  var outputTypesMap = Map(Targets.Scala->Map(id -> "Array[java.lang.String]", "functionReturn"->"Array[java.lang.String]"))
+  if (Config.numCpp > 0)
+    outputTypesMap += Targets.Cpp->Map(id -> "cppDeliteArray< string >", "functionReturn"->"cppDeliteArray< string >")
   var inputTypesMap: Map[Targets.Value, Map[String,String]] = Map()
 
   def isDataParallel = false
