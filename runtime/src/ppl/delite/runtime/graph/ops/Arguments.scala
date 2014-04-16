@@ -1,6 +1,7 @@
 package ppl.delite.runtime.graph.ops
 
 import ppl.delite.runtime.graph.targets.Targets
+import ppl.delite.runtime.Config
 
 /**
  * Author: Kevin J. Brown
