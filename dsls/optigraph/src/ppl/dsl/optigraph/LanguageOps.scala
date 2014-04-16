@@ -105,9 +105,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case Reflect(e@WallTime(), u, es) => reflectMirrored(Reflect(WallTime(), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@ProfileStart(deps), u, es) => reflectMirrored(Reflect(ProfileStart(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@ProfileStop(deps), u, es) => reflectMirrored(Reflect(ProfileStop(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@WallTime(), u, es) => reflectMirrored(Reflect(WallTime(), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@ProfileStart(deps), u, es) => reflectMirrored(Reflect(ProfileStart(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@ProfileStop(deps), u, es) => reflectMirrored(Reflect(ProfileStop(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??  
   
