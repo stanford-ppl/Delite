@@ -170,8 +170,10 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
       out.append("%s %s = sendViewCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))
     else if(isPurePrimitiveType(op.outputType(sym)))
       out.append("%s %s = (%s)%s;\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),getJNIType(op.outputType(sym)),getSymHost(op,sym)))
-    else
+    else {
       out.append("%s %s = sendCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))
+      out.append("JNIObjectMap->insert(std::pair<int,jobject>(%s,%s));\n".format(sym.filter(_.isDigit),getSymCPU(sym)))
+    }
 
     out.append("env")
     out.append(location)
@@ -211,7 +213,7 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
   private def writeSendUpdater(op: DeliteOP, sym: String) {
     val devType = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
     assert(!isPrimitiveType(op.inputType(sym)))
-    out.append("sendUpdateCPPtoJVM_%s(env%s,%s,%s);\n".format(mangledName(devType),location,getSymCPU(sym),getSymHost(op,sym)))
+    out.append("sendUpdateCPPtoJVM_%s(env%s,JNIObjectMap->find(%s)->second,%s);\n".format(mangledName(devType),location,sym.filter(_.isDigit),getSymHost(op,sym)))
   }
 
   override protected def writeSyncObject() {

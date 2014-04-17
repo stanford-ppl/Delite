@@ -128,3 +128,7 @@ string readFirstLineFile(string filename) {
   return line;
 }
 
+/* helper methods and data structures only required for execution with Delite */
+#ifndef __DELITE_CPP_STANDALONE__
+std::map<int,jobject> *JNIObjectMap = new std::map<int,jobject>();
+#endif

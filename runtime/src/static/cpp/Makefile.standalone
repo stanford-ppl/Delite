@@ -24,7 +24,7 @@ $(TARGET): $(OBJECTS)
 	$(CC) $(OBJECTS) $(LDFLAGS) -o $(TARGET)
 
 %.o: %.cpp
-	$(CC) -c -O3 -DDELITE_CPP=$(NUM_THREADS) $(INCLUDES) $(CFLAGS) $< -o $@ 
+	$(CC) -c -O3 -D__DELITE_CPP_STANDALONE__ -DDELITE_CPP=$(NUM_THREADS) $(INCLUDES) $(CFLAGS) $< -o $@
 
 .PHONY: clean
 clean:
