@@ -4,6 +4,7 @@ import ppl.delite.runtime.graph.ops._
 import collection.mutable.{HashSet, ArrayBuffer}
 import ppl.delite.runtime.codegen.{ScalaExecutableGenerator, ExecutableGenerator}
 import ppl.delite.runtime.graph.targets.Targets
+import ppl.delite.runtime.Config
 
 trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
 
@@ -69,10 +70,14 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
   }
 
   private def writeGetter(dep: DeliteOP, sym: String) {
-    var tmp1 = "-" + sym + "-" + dep.scheduledResource
-    var tmp2 = "\"__sync-\" + Thread.currentThread.getName() + \"-\" + MemoryProfiler.getNameOfCurrKernel(Thread.currentThread.getName()) + \"" + tmp1 + "\""
-    var dbgStmt = "PerformanceTimer.start(" + tmp2 + ", Thread.currentThread.getName(), false)\n"
-    out.append(dbgStmt)
+    var dbgStmt = ""
+    var tmp2 = ""
+    if (Config.profile) {
+      var tmp1 = "-" + sym + "-" + dep.scheduledResource
+      tmp2 = "\"__sync-\" + Thread.currentThread.getName() + \"-\" + MemoryProfiler.getNameOfCurrKernel(Thread.currentThread.getName()) + \"" + tmp1 + "\""
+      dbgStmt = "PerformanceTimer.start(" + tmp2 + ", Thread.currentThread.getName(), false)\n"
+      out.append(dbgStmt)
+    }
 
     out.append("val ")
     out.append(getSym(dep, sym))
@@ -86,15 +91,21 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
     out.append(getSym(dep, sym))
     out.append('\n')
 
-    dbgStmt = "PerformanceTimer.stop(" + tmp2 + ", false)\n"
-    out.append(dbgStmt)
+    if (Config.profile) {
+      dbgStmt = "PerformanceTimer.stop(" + tmp2 + ", false)\n"
+      out.append(dbgStmt)
+    }
   }
 
   private def writeAwaiter(dep: DeliteOP) {
-    var tmp1 = "-" + dep.id + "-" + dep.scheduledResource
-    var tmp2 = "\"__sync-\" + Thread.currentThread.getName() + \"-\" + MemoryProfiler.getNameOfCurrKernel(Thread.currentThread.getName()) + \"" + tmp1 + "\""
-    var dbgStmt = "PerformanceTimer.start(" + tmp2 + ", Thread.currentThread.getName(), false)\n"
-    out.append(dbgStmt)
+    var dbgStmt = ""
+    var tmp2 = ""
+    if (Config.profile) {
+      var tmp1 = "-" + dep.id + "-" + dep.scheduledResource
+      tmp2 = "\"__sync-\" + Thread.currentThread.getName() + \"-\" + MemoryProfiler.getNameOfCurrKernel(Thread.currentThread.getName()) + \"" + tmp1 + "\""
+      dbgStmt = "PerformanceTimer.start(" + tmp2 + ", Thread.currentThread.getName(), false)\n"
+      out.append(dbgStmt)
+    }
 
     out.append("Sync_" + executableName(dep.scheduledResource))
     out.append(".get")
@@ -103,8 +114,10 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
     out.append(getOpSym(dep))
     out.append('\n')
 
-    dbgStmt = "PerformanceTimer.stop(" + tmp2 + ", false)\n"
-    out.append(dbgStmt)
+    if (Config.profile) {
+      dbgStmt = "PerformanceTimer.stop(" + tmp2 + ", false)\n"
+      out.append(dbgStmt)
+    }
   }
 
   private def writeSetter(op: DeliteOP, sym: String) {
