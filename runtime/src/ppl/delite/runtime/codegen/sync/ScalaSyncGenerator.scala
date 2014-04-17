@@ -69,14 +69,28 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
     syncList += s
   }
 
+  private def createSyncKernelName(depSym: String, depThread: Int) = {
+    var tmp = "-" + depSym + "-" + depThread
+    var syncKernelName = "\"__sync-\" + Thread.currentThread.getName() + \"-\" + MemoryProfiler.getNameOfCurrKernel(Thread.currentThread.getName()) + \"" + tmp + "\""
+    
+    syncKernelName
+  }
+
+  private def instrumentSyncStart(syncKernelName: String) {
+    var dbgStmt = "PerformanceTimer.start(" + syncKernelName + ", Thread.currentThread.getName(), false)\n"
+    out.append(dbgStmt)
+  }
+
+  private def instrumentSyncStop(syncKernelName: String) {
+    var dbgStmt = "PerformanceTimer.stop(" + syncKernelName + ", false)\n"
+    out.append(dbgStmt)
+  }
+
   private def writeGetter(dep: DeliteOP, sym: String) {
-    var dbgStmt = ""
-    var tmp2 = ""
+    var syncKernelName = ""
     if (Config.profile) {
-      var tmp1 = "-" + sym + "-" + dep.scheduledResource
-      tmp2 = "\"__sync-\" + Thread.currentThread.getName() + \"-\" + MemoryProfiler.getNameOfCurrKernel(Thread.currentThread.getName()) + \"" + tmp1 + "\""
-      dbgStmt = "PerformanceTimer.start(" + tmp2 + ", Thread.currentThread.getName(), false)\n"
-      out.append(dbgStmt)
+      syncKernelName = createSyncKernelName(sym, dep.scheduledResource)
+      instrumentSyncStart(syncKernelName)
     }
 
     out.append("val ")
@@ -92,19 +106,15 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
     out.append('\n')
 
     if (Config.profile) {
-      dbgStmt = "PerformanceTimer.stop(" + tmp2 + ", false)\n"
-      out.append(dbgStmt)
+      instrumentSyncStop(syncKernelName)
     }
   }
 
   private def writeAwaiter(dep: DeliteOP) {
-    var dbgStmt = ""
-    var tmp2 = ""
+    var syncKernelName = ""
     if (Config.profile) {
-      var tmp1 = "-" + dep.id + "-" + dep.scheduledResource
-      tmp2 = "\"__sync-\" + Thread.currentThread.getName() + \"-\" + MemoryProfiler.getNameOfCurrKernel(Thread.currentThread.getName()) + \"" + tmp1 + "\""
-      dbgStmt = "PerformanceTimer.start(" + tmp2 + ", Thread.currentThread.getName(), false)\n"
-      out.append(dbgStmt)
+      syncKernelName = createSyncKernelName(dep.id, dep.scheduledResource)
+      instrumentSyncStart(syncKernelName)
     }
 
     out.append("Sync_" + executableName(dep.scheduledResource))
@@ -115,8 +125,7 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
     out.append('\n')
 
     if (Config.profile) {
-      dbgStmt = "PerformanceTimer.stop(" + tmp2 + ", false)\n"
-      out.append(dbgStmt)
+      instrumentSyncStop(syncKernelName)
     }
   }
 
