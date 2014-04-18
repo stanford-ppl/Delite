@@ -25,7 +25,7 @@ trait MLOutputWriterOpsExp extends MLOutputWriterOps with BaseFatExp { this: MLO
   def obj_mloutput_write_img_pgm(img: Exp[GrayscaleImage], filename: Exp[String])(implicit ctx: SourceContext) = reflectEffect(MLOutputWriteImgPgm(img,filename))
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
-    case Reflect(d@MLOutputWriteImgPgm(img,fn), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,d) } with MLOutputWriteImgPgm(f(img),f(fn)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(d@MLOutputWriteImgPgm(img,fn), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,d) } with MLOutputWriteImgPgm(f(img),f(fn)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]      
 }

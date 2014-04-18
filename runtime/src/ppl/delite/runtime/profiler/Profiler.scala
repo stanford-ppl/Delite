@@ -115,12 +115,12 @@ object Profiler {
   def iterableToJSArray[T](arrName: String, values: Iterable[T], quoted: Boolean = true): String = {
     val arr = (for (v <- values) yield (if (quoted) "\"" + v + "\"" else v)
                ).mkString("[", ", ", "]")
-    "var " + arrName + " = " + arr + ";"
+    arr
   }
   
   def listOfListsToJSArray[T](arrName: String, values: List[List[T]]): String = {
     val arr = (for (v <- values) yield v.mkString("[", ", ", "]")).mkString("[", ", ", "]")
-    "var " + arrName + " = " + arr + ";"
+    arr
   }
   
   trait TaskInfo {
@@ -139,7 +139,7 @@ object Profiler {
         val fromTiming = timing
         val duration =   timing.elapsedMicros
         val startNanos = (timing.startTime - globalStartNanos) / 1000
-        val kernel =     safeSourceInfo(timing)._3
+        val kernel =     timing.component
         val location =   threadId
         val line = {
           val (fileName, line, opName) = Profiler.sourceInfo.get(timing.component) match {
@@ -196,11 +196,20 @@ var parallelTasks = [[1, 4, 6], [2, 3, 5]];
         case other => List()
       })
     }).distinct
-    val threadId: Map[String, Int] = Map() ++ (for (elem <- threads zipWithIndex) yield elem)
+
+    val ThreadName = "^ExecutionThread-(\\d+)$".r
+    var threadId: Map[String, Int] = Map()
+    for (th <- threads) {
+      th match {
+        case ThreadName(tid) => threadId += th -> tid.toInt
+        case "main" => threadId += th -> (threads.length - 1)
+        case _ => println("WARNING: Thread name does not match expected format: " + th)
+      }
+    }
     
     // output res array (TODO: improve names)
     val resJS = iterableToJSArray("res", (for ((t, i) <- threads.zipWithIndex) yield "T"+i))
-    writer.println(resJS)
+    writer.println("    \"res\": " + resJS + ",")
     
     val initTaskInfos =  allTimings map { timing => TaskInfo(timing, threadId(timing.threadName), globalAppStartNanos) }
     
@@ -230,14 +239,14 @@ var parallelTasks = [[1, 4, 6], [2, 3, 5]];
     val linesJS =      iterableToJSArray("line_in_source", taskInfos.map(_.line).map("'" + _ + "'"), false)
     val tooltipsJS =   iterableToJSArray("tooltip", taskInfos.map(_.tooltip), false)
     val parallelTasksJS = listOfListsToJSArray("parallelTasks", parallelTaskIndices)
-    
-    writer.println(durationJS)
-    writer.println(startNanosJS)
-    writer.println(kernelsJS)
-    writer.println(locationsJS)
-    writer.println(linesJS)
-    writer.println(tooltipsJS)
-    writer.println(parallelTasksJS)
+
+    writer.println("    \"duration\": " + durationJS + ",")
+    writer.println("    \"start\": " + startNanosJS + ",")
+    writer.println("    \"kernels\": " + kernelsJS + ",")
+    writer.println("    \"location\": " + locationsJS + ",")
+    //writer.println("    \"line_in_source\": " + linesJS + ",")
+    //writer.println("    \"tooltip\": " + tooltipsJS + ",")
+    writer.println("    \"parallelTasks\": " + parallelTasksJS)
   }
 
   def emitProfileData(dir: File, fileName: String, globalStartNanos: Long, stats: Map[String, List[Timing]]) {
@@ -247,13 +256,17 @@ var parallelTasks = [[1, 4, 6], [2, 3, 5]];
     
     def emitProperties(props: List[String]) {
       props.foreach(prop => writer.println("profileDataObj." + prop + " = " + prop + ";"))
-	}
+    }
     
-    writer.println("function profileData() {")
+    writer.println("{\"Profile\":{")
+    writer.println("  \"PerfProfile\": {")
     emitProfileDataArrays(globalStartNanos, stats, writer)
-    writer.println("var profileDataObj = new Object();")
-    emitProperties(List("res", "duration", "start", "kernels", "location", "line_in_source", "tooltip"))
-    writer.println("return profileDataObj; }")
+    writer.println("  },")
+    
+    // Dumping memory profile data
+    writer.println("")
+    MemoryProfiler.dumpProfile(writer)
+    writer.println("}}")
     
     writer.flush()
     fileWriter.flush()

@@ -65,11 +65,11 @@ trait DeferrableOpsExp extends DeferrableOps with EffectExp {
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@DefGetValue(d) => def_getvalue(f(d))(e.mA)
-    case Reflect(e@DefObjectNew(i), u, es) => reflectMirrored(Reflect(DefObjectNew(f(i))(e.mD), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@DefSetValue(d,v), u, es) => reflectMirrored(Reflect(DefSetValue(f(d),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@DefGetValue(d), u, es) => reflectMirrored(Reflect(DefGetValue(f(d))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@DefAssign(d), u, es) => reflectMirrored(Reflect(DefAssign(f(d)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@DefDefer(d,v), u, es) => reflectMirrored(Reflect(DefDefer(f(d),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@DefObjectNew(i), u, es) => reflectMirrored(Reflect(DefObjectNew(f(i))(e.mD), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DefSetValue(d,v), u, es) => reflectMirrored(Reflect(DefSetValue(f(d),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DefGetValue(d), u, es) => reflectMirrored(Reflect(DefGetValue(f(d))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DefAssign(d), u, es) => reflectMirrored(Reflect(DefAssign(f(d)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DefDefer(d,v), u, es) => reflectMirrored(Reflect(DefDefer(f(d),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)    
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??  
 }

@@ -30,6 +30,7 @@ object RPC_Generator {
 
   private def writeHeader(out: StringBuilder, op: DeliteOP, kernelPath: String) {
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
+    out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
     out.append("import ppl.delite.runtime.messages.Messages._\n")
     out.append("import ppl.delite.runtime.messages.Serialization\n")
     out.append("import ppl.delite.runtime.graph._\n")

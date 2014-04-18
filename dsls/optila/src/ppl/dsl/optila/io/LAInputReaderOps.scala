@@ -56,9 +56,9 @@ trait LAInputReaderOpsExp extends LAInputReaderOps with BaseFatExp {
   }
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
-    case Reflect(d@LAInputReadVector(fn,s,delim), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,d) } with LAInputReadVector(f(fn),f(s),f(delim))(d.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(d@LAInputReadMatrix(fn,s,delim), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,d) } with LAInputReadMatrix(f(fn),f(s),f(delim))(d.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(d@LAInputReadMatrixCols(fn,s,delim), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,d) } with LAInputReadMatrixCols(f(fn),f(s),f(delim))(d.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(d@LAInputReadVector(fn,s,delim), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,d) } with LAInputReadVector(f(fn),f(s),f(delim))(d.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+    case Reflect(d@LAInputReadMatrix(fn,s,delim), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,d) } with LAInputReadMatrix(f(fn),f(s),f(delim))(d.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+    case Reflect(d@LAInputReadMatrixCols(fn,s,delim), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,d) } with LAInputReadMatrixCols(f(fn),f(s),f(delim))(d.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]  
 }
