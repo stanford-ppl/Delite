@@ -6,14 +6,12 @@ import ConfigParser
 USER_HOME = os.getenv("HOME")
 DELITE_HOME = os.getenv("DELITE_HOME")
 JAVA_HOME = os.getenv("JAVA_HOME")
+HYPER_HOME = os.getenv("HYPER_HOME")
 MESOS_NATIVE_LIBRARY = os.getenv("MESOS_NATIVE_LIBRARY")
 DELITE_MEM = os.getenv("DELITE_MEM")
 
 scala_major_id = "scala-2.10"
 lms_version = "lms_2.10"
-script_path = os.path.dirname(__file__)
-# base directory for the project, i.e. drops the '/bin' from script_path
-script_home = os.path.split(script_path)[0]
 
 props = {}
 
@@ -56,7 +54,7 @@ def loadProps():
 def checkCommonEnv():
     global USER_HOME
     global JAVA_HOME
-    global SCALA_VIRT_HOME
+    global HYPER_HOME
     global MESOS_NATIVE_LIBRARY
     global DELITE_MEM
 
@@ -65,6 +63,12 @@ def checkCommonEnv():
             JAVA_HOME = props["java.home"]
         else:
             err("The JAVA_HOME environment variable must be defined or the java.home entry in delite.properties must be set.")
+
+    if HYPER_HOME is None:
+        if "hyper.home" in props:
+            HYPER_HOME = props["hyper.home"]
+        else:
+            HYPER_HOME = DELITE_HOME
 
     if MESOS_NATIVE_LIBRARY is None:
         if "mesos.lib" in props:

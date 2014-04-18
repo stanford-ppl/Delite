@@ -576,19 +576,13 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case a@DeliteArrayNew(n,m) if Config.generateSerializable && isPrimitiveType(m) => 
       emitValDef(sym, "new ppl.delite.runtime.data.LocalDeliteArray" + remap(m) + "(" + quote(n) + ")")
-      if (ppl.delite.runtime.Config.profile) {
-        emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
-      }
+      if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
     case a@DeliteArrayNew(n,m) if Config.generateSerializable =>
       emitValDef(sym, "new ppl.delite.runtime.data.LocalDeliteArrayObject[" + remap(m) + "](" + quote(n) + ")")
-      if (ppl.delite.runtime.Config.profile) {
-        emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
-      }
+      if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
     case a@DeliteArrayNew(n,m) =>
       emitValDef(sym, "new Array[" + remap(m) + "](" + quote(n) + ")")
-      if (ppl.delite.runtime.Config.profile) {
-        emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
-      }
+      if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + ".length //" + quotePos(sym))
     case DeliteArrayApply(da, idx) =>
