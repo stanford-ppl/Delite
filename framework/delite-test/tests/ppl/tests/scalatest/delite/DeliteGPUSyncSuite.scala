@@ -250,4 +250,5 @@ class DeliteGPUSyncSuite extends DeliteSuite {
   def testDeliteGPULoopSync7() { compileAndTest(DeliteGPULoopSync7Runner, CHECK_MULTILOOP); }
   def testDeliteGPULoopSync8() { compileAndTest(DeliteGPULoopSync8Runner, CHECK_MULTILOOP); }
   def testDeliteGPULoopSync9() { compileAndTest(DeliteGPULoopSync9Runner, CHECK_MULTILOOP); }
+  def testDeliteGPULoopSync10() { compileAndTest(DeliteGPULoopSync10Runner, CHECK_MULTILOOP); }
 }
