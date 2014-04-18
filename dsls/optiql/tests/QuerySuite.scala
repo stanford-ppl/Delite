@@ -146,6 +146,7 @@ trait QueryableGroupByTest extends DeliteTestModule with OptiQLApplication with 
     collect(res(1) == 1000) //N
     collect(res(2) == 0) //B
     collect(res(3) == 18) //S
+    mkReport
   }
 }
 
@@ -185,6 +186,7 @@ trait QueryableJoinTest extends DeliteTestModule with OptiQLApplication with Tes
     collect(res(1).id == 1 && res(1).quantity == 0)
     collect(res(2).id == 2 && res(2).quantity == 1000)
     collect(res(3).id == 3 && res(3).quantity == 18)
+    mkReport
   }
 }
 
