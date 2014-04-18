@@ -56,9 +56,9 @@ trait SVMModel { this: OptiMLApplication =>
       print(".")
       iter += 1
       var num_changed_alphas = 0
-      var i = 0
-      while(i < numSamples){ //TR
-      //for (i <- 0 until numSamples) {
+      //var i = 0
+      //while(i < numSamples){ //TR
+      for (i <- 0 until numSamples) {
         // TODO: x761 -- code is recalculating alphas from original definition here
         val alphasOld = alphas.Clone
         
@@ -132,7 +132,7 @@ trait SVMModel { this: OptiMLApplication =>
             } // negative eta?
           } // L != H?
         } // main if (select alphas)
-        i += 1 //TR
+        //i += 1 //TR
       } // for i = 1 to numSamples
 
       if (num_changed_alphas == 0){
