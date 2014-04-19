@@ -61,20 +61,18 @@ class cppFileStream {
         printf("error reading file (%s)\n", strerror(errno));
         assert(false);
       }
-      allReader[pad*threadIdx] = fp;
 
       if (offset != 0) {
         // jump to the offset
-        if(lseek(fileno(fp), offset, SEEK_SET) == -1) {
+        if(lseek(fileno(fp), offset-1, SEEK_SET) == -1) {
           assert(false && "lseek call failed");
         }
         // find the next newline after offset
-        // TODO: check why scala uses length-a
         char *line = allText[pad*threadIdx];
-        if (fgets(line, MAX_BUFSIZE, allReader[pad*threadIdx]) == NULL) {
+        if (fgets(line, MAX_BUFSIZE, fp) == NULL) {
           assert(false && "first fgets failed");
         }
-        pos += strlen(line);
+        pos += strlen(line) - 1;
       }
       allPos[pad*threadIdx] = pos;
       allIdx[pad*threadIdx] = fileIdx;
