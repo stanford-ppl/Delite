@@ -686,6 +686,20 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
       stream.println(") {")
       stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = arg_" + idx + ";\n" }.mkString(""))
       stream.println("\t}")
+
+      // equals
+      val elemEquals = elems.map { e =>
+        if (encounteredStructs.contains(structName(baseType(e._2)))) {
+          e._1 + "->equals(to->" + e._1 + ")"
+        }
+        else {
+          e._1 + " == to->" + e._1
+        }
+      }.mkString("(",") && (",")")
+      stream.println("\tbool equals(" + deviceTarget + name + addRef() + " to) {")
+      stream.println("\t\treturn " + elemEquals + ";")
+      stream.println("\t}")
+
       // free
       stream.println("\tvoid release(void) {")
       stream.print(elems.filter(e => !isPrimitiveType(baseType(e._2)) && remap(baseType(e._2))!="string").map(e => e._1 + "->release();\n").mkString(""))
