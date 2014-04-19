@@ -48,18 +48,15 @@ object Compilers {
 
     // Hack to collect global inputTypesMap (TODO: Get rid of this)
     if (Config.numCpp > 0) {
-      CppExecutableGenerator.typesMap = Map[Targets.Value, Map[String,String]]()
       val cppSchedule = schedule.slice(Config.numThreads, Config.numThreads+Config.numCpp)
       checkRequestedResource(cppSchedule, Targets.Cpp)
       CppExecutableGenerator.collectInputTypesMap(graph)
       CppExecutableGenerator.makeExecutables(cppSchedule, graph.kernelPath)
-      CppMultiLoopHeaderGenerator.clear()
     }
 
     if (Config.numCuda > 0) {
-      CudaExecutableGenerator.typesMap = Map[Targets.Value, Map[String,String]]()
       val cudaSchedule = schedule.slice(Config.numThreads+Config.numCpp, Config.numThreads+Config.numCpp+Config.numCuda)
-      if (Config.numCuda > 0) checkRequestedResource(cudaSchedule, Targets.Cuda)
+      checkRequestedResource(cudaSchedule, Targets.Cuda)
       CudaExecutableGenerator.collectInputTypesMap(graph)
       CudaExecutableGenerator.makeExecutables(cudaSchedule, graph.kernelPath)
     }
@@ -78,6 +75,15 @@ object Compilers {
     val classLoader = ScalaCompile.compile
     DeliteMesosExecutor.classLoader = classLoader
 
+    // clear for the next run (required to run tests correctly)
+    if (Config.numCpp > 0) {
+      CppExecutableGenerator.clear()
+      CppMultiLoopHeaderGenerator.clear()
+    }
+    if (Config.numCuda > 0) {
+      CudaExecutableGenerator.clear()
+    }
+    
     val queues = StaticSchedule(schedule.numResources)
     for (i <- 0 until schedule.numResources if !schedule(i).isEmpty) {
       val cls = classLoader.loadClass("Executable"+i) //load the Executable class

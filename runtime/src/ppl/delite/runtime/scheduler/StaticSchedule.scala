@@ -41,7 +41,7 @@ class StaticSchedule(val resources: Array[ArrayBuffer[DeliteExecutable]]) {
 object PartialSchedule {
   def apply(numResources: Int) = {
     val r = new Array[OpList](numResources)
-    for (i <- 0 until numResources) r(i) = new OpList
+    for (i <- 0 until numResources) r(i) = new OpList(r, i)
     new PartialSchedule(r)
   }
 
@@ -50,7 +50,7 @@ object PartialSchedule {
   }
 }
 
-class OpList {
+class OpList(val siblings: Array[OpList] = null, val resourceID: Int = -1) {
   private val list = new LinkedList[DeliteOP]
 
   def +=(elem: DeliteOP) = add(elem)
