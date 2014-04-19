@@ -30,7 +30,7 @@ trait MultiLoop_SMP_Array_Generator {
 
   def makeChunk() {
     val src = makeKernel()
-
+    addSource(src, kernelName)
   }
 
   protected val out = new StringBuilder
@@ -76,20 +76,22 @@ trait MultiLoop_SMP_Array_Generator {
   protected def postProcInit(acc: String)
   protected def postCombine(acc: String, neighbor: String)
   protected def finalize(acc: String)
-  protected def dynamicScheduler(output: String, chunkIdx: String): String
+  protected def dynamicScheduler(outputSym: String) : String 
 
   protected def beginProfile()
   protected def endProfile()
 
   protected def writeKernel(op: OP_MultiLoop) {
     writeKernelHeader()
-
     // profiling
     if (Config.profile)
       beginProfile()
 
-    val outSym = allocateOutput() //has to be called only once (not in while loop)
-    val acc = dynamicScheduler(outSym,chunkIdx.toString)
+    //determine range of chunk
+    //val (start,end) = calculateRange()
+    val outSym = allocateOutput()
+
+    val acc = dynamicScheduler(outSym)//processRange(outSym,start,end)
 
     def treeReduction(sync: String, needsCombine: Boolean) { //combines thread-local results and guarantees completion of all chunks by the time the master chunk returns
       var half = chunkIdx
@@ -139,35 +141,23 @@ trait MultiLoop_SMP_Array_Generator {
 
 
 trait MultiLoop_SMP_Array_Header_Generator {
-  //add a synchronous queue in here that write kernal pulls
-  //work out of, queue contain some representation of range 
-  //that should be operated over. built up in make header 
-  //and get in.  Lock example in codegen/examples/ExampleExecutable
-
-  //Actually can just add in an atomic integer that gets incremented 
-  //with the value to pull from, also need to store an end value and 
-  //a chunk increment value.  inside of loop above call calculate range
-  //where calculate range will atomically increment this integer variable
-  //and 
 
   val op: OP_MultiLoop
   val numChunks: Int
   val graph: DeliteTaskGraph
+
   protected val out = new StringBuilder
 
   def makeHeader() = {
 
     writeHeader()
-
     val numDynamicChunks = 4
-    val chunksIn = if(numDynamicChunks <= numChunks) numChunks else numDynamicChunks 
+    val chunksIn = if(numDynamicChunks <= numChunks || numChunks == 1) numChunks else numDynamicChunks
     writeSynchronizedOffset(chunksIn.toString)
-
     dynamicWriteSync(chunksIn.toString)
 
     if (op.needsCombine) { //tree-reduce: sync for all chunks except 0
       for (i <- 1 until numChunks)
-        //write sync generates a get and a put
         writeSync("A"+i)
     }
 
@@ -193,11 +183,11 @@ trait MultiLoop_SMP_Array_Header_Generator {
 
   protected def writeHeader()
   protected def writeFooter()
-  protected def writeSynchronizedOffset(numDynamicChunks: String)
   protected def writeSync(key: String)
-  protected def dynamicWriteSync(len: String)
   protected def kernelName: String
   protected def className: String
   protected def addSource(source: String, name: String)
+  protected def dynamicWriteSync(len: String)
+  protected def writeSynchronizedOffset(numDynamicChunks: String)
 
 }

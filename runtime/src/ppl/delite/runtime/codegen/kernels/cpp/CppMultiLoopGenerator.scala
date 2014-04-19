@@ -56,7 +56,7 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
     out.append("int end = startOffset + size*"+(chunkIdx+1)+"/"+numChunks+";\n")
     ("start","end")
   }
-  protected def dynamicScheduler(outputSym: String, chunkIdx: String): String = {
+  protected def dynamicScheduler(outputSym: String): String = {
     "acc"
   }
   protected def allocateOutput(): String = {

@@ -51,14 +51,17 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     out.append(result+"\n")
   }
 
-  protected def dynamicScheduler(outputSym: String,chunkIdx: String) : String = {
+  protected def dynamicScheduler(outputSym: String) : String = {
+    out.append("println(\"dynamic Schduler\")\n")
     out.append("var start = "+headerObject+".getOffset()\n")
-    out.append("val dChunkSize = "+headerObject + ".dynamicChunkSize")
-    out.append("val numDynamicChunks = "+headerObject + ".numDynamicChunks")
+    out.append("val dChunkSize = "+headerObject + ".dynamicChunkSize\n")
+    out.append("val numDynamicChunks = "+headerObject + ".numDynamicChunks\n")
 
     out.append("while(start < "+closure+".loopSize){\n")
+    out.append("println(\"dynamic loop1\")\n")
+
     //Maybe you can make this faster?  Can you go past loop Size?  What happens? ASK KEVIN
-    out.append("val end = if((start+dChunkSize)<"+closure+".loopSize) start+dChunkSize else "+closure+".loopSize\n")
+    out.append("val end = if((start+dChunkSize) < "+closure+".loopSize) (start+dChunkSize) else "+closure+".loopSize\n")
     out.append("val accDynamic = "+closure+".processRange("+outputSym+",start,end)\n")
     out.append("val dChunkIdx = start/dChunkSize\n")
     out.append(headerObject+".dynamicSet(dChunkIdx,accDynamic)\n")
@@ -66,16 +69,21 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     out.append("start = "+headerObject+".getOffset()\n")
     out.append("}\n")
     out.append("val dynamicChunksPerThread = (numDynamicChunks+"+numChunks+"-1)/"+numChunks+"\n")
-    out.append("var ii = 1 + ("+chunkIdx+" * dynamicChunksPerThread)\n")
+    out.append("var i = 1 + ("+chunkIdx+" * dynamicChunksPerThread)\n")
     out.append("val acc = ")
-    out.append(headerObject+".dynamicGet(ii-1)\n")
+    out.append(headerObject+".dynamicGet(i-1)\n")
+/*
+    out.append("while((i < dynamicChunksPerThread*(1+"+chunkIdx+")) && (i < "+closure+".loopSize)){\n")
+    out.append("println(\"dynamic loop2\")\n")
 
-    out.append("while(ii < dynamicChunksPerThread*"+chunkIdx+" && ii < numDynamicChunks){\n")
-    out.append("combine(acc,")
-    out.append(headerObject+".dynamicGet(ii)\n")
+    out.append(closure+".combine(acc, ")
 
-    out.append("ii += 1\n")
+    out.append(headerObject+".dynamicGet(i))\n")
+
+    out.append("i += 1\n")
     out.append("}\n")
+    out.append("println(\"exiting\")\n")
+    */
     "acc"
   }
 
@@ -234,7 +242,7 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
     out.append("private val offset = new AtomicInteger(0)\n")
     out.append("val numDynamicChunks = " + numDynamicChunks+"\n")
     out.append("val dynamicChunkSize = ((closure.loopSize+" + numDynamicChunks + "-1)/" + numDynamicChunks + ")\n")
-    out.append("def getOffset : Int = { offset.getAndAdd(dynamicChunkSize) }\n")
+    out.append("def getOffset() : Int = { offset.getAndAdd(dynamicChunkSize) }\n")
   }
   protected def writeSync(key: String) {
     val outputType = op.outputType
