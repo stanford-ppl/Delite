@@ -51,6 +51,34 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     out.append(result+"\n")
   }
 
+  protected def dynamicScheduler(outputSym: String,chunkIdx: String) : String = {
+    out.append("var start = "+headerObject+".getOffset()\n")
+    out.append("val dChunkSize = "+headerObject + ".dynamicChunkSize")
+    out.append("val numDynamicChunks = "+headerObject + ".numDynamicChunks")
+
+    out.append("while(start < "+closure+".loopSize){\n")
+    //Maybe you can make this faster?  Can you go past loop Size?  What happens? ASK KEVIN
+    out.append("val end = if((start+dChunkSize)<"+closure+".loopSize) start+dChunkSize else "+closure+".loopSize\n")
+    out.append("val accDynamic = "+closure+".processRange("+outputSym+",start,end)\n")
+    out.append("val dChunkIdx = start/dChunkSize\n")
+    out.append(headerObject+".dynamicSet(dChunkIdx,accDynamic)\n")
+
+    out.append("start = "+headerObject+".getOffset()\n")
+    out.append("}\n")
+    out.append("val dynamicChunksPerThread = (numDynamicChunks+"+numChunks+"-1)/"+numChunks+"\n")
+    out.append("var ii = 1 + ("+chunkIdx+" * dynamicChunksPerThread)\n")
+    out.append("val acc = ")
+    out.append(headerObject+".dynamicGet(ii-1)\n")
+
+    out.append("while(ii < dynamicChunksPerThread*"+chunkIdx+" && ii < numDynamicChunks){\n")
+    out.append("combine(acc,")
+    out.append(headerObject+".dynamicGet(ii)\n")
+
+    out.append("ii += 1\n")
+    out.append("}\n")
+    "acc"
+  }
+
   //TODO: is the division logic really target dependent?
   protected def calculateRange(): (String,String) = {
     out.append("val startOffset = "+closure+".loopStart\n")
@@ -117,6 +145,7 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   protected def addSource(source: String, name: String) = ScalaCompile.addSource(source, name)
 
   protected def writeHeader() {
+    out.append("import java.util.concurrent.atomic._\n")
     writeObject()
     writeClass()
   }
@@ -199,6 +228,14 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
     out.append(" = closure.alloc\n")
   }
 
+  //add code to code generate an atomic integer method
+  //you can pull and set from this 
+  protected def writeSynchronizedOffset(numDynamicChunks: String){
+    out.append("private val offset = new AtomicInteger(0)\n")
+    out.append("val numDynamicChunks = " + numDynamicChunks+"\n")
+    out.append("val dynamicChunkSize = ((closure.loopSize+" + numDynamicChunks + "-1)/" + numDynamicChunks + ")\n")
+    out.append("def getOffset : Int = { offset.getAndAdd(dynamicChunkSize) }\n")
+  }
   protected def writeSync(key: String) {
     val outputType = op.outputType
 
@@ -231,6 +268,26 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
     out.append(" = result; notReady")
     out.append(key)
     out.append(" = false }\n")
+  }
+
+  protected def dynamicWriteSync(len: String) {
+    val outputType = op.outputType
+
+    out.append("private val dynamicNotReady = new AtomicIntegerArray("+len+")\n")
+    out.append("private val _dynamicResult")
+    out.append(" : Array[")
+    out.append(outputType)
+    out.append("] = new Array["+outputType+"]("+len+")\n")
+
+    out.append("def dynamicGet(i: Int) :")
+    out.append(outputType)
+    out.append(" = { while (dynamicNotReady.get(i)==0) { }; _dynamicResult(i) }\n")
+
+    out.append("def dynamicSet")
+    out.append("(i: Int,dynamicResult: ")
+    out.append(outputType)
+    out.append(") { _dynamicResult(i)")
+    out.append(" = dynamicResult; dynamicNotReady.set(i,1);}\n")
   }
 
   protected def className = "MultiLoopHeader_" + op.id
