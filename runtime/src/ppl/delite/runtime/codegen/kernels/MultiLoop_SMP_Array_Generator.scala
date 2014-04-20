@@ -76,7 +76,8 @@ trait MultiLoop_SMP_Array_Generator {
   protected def postProcInit(acc: String)
   protected def postCombine(acc: String, neighbor: String)
   protected def finalize(acc: String)
-  protected def dynamicScheduler(outputSym: String) : String 
+  protected def dynamicScheduler(outputSym: String): String
+  protected def dynamicCombine(acc: String)
 
   protected def beginProfile()
   protected def endProfile()
@@ -108,6 +109,7 @@ trait MultiLoop_SMP_Array_Generator {
     }
 
     if (op.needsCombine) {
+      dynamicCombine(acc)
       treeReduction("A", true)
     }
 

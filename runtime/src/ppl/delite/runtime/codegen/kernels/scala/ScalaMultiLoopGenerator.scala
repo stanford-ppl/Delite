@@ -51,7 +51,7 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     out.append(result+"\n")
   }
 
-  protected def dynamicScheduler(outputSym: String) : String = {
+  protected def dynamicScheduler(outputSym: String): String = {
     out.append("println(\"dynamic Schduler\")\n")
     out.append("var start = "+headerObject+".getOffset()\n")
     out.append("val dChunkSize = "+headerObject + ".dynamicChunkSize\n")
@@ -69,22 +69,20 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     out.append("start = "+headerObject+".getOffset()\n")
     out.append("}\n")
     out.append("val dynamicChunksPerThread = (numDynamicChunks+"+numChunks+"-1)/"+numChunks+"\n")
-    out.append("var i = 1 + ("+chunkIdx+" * dynamicChunksPerThread)\n")
+    out.append("val dIndex = ("+chunkIdx+" * dynamicChunksPerThread)\n")
     out.append("val acc = ")
-    out.append(headerObject+".dynamicGet(i-1)\n")
-/*
-    out.append("while((i < dynamicChunksPerThread*(1+"+chunkIdx+")) && (i < "+closure+".loopSize)){\n")
+    out.append(headerObject+".dynamicGet(dIndex)\n")
+    "acc"
+  }
+  protected def dynamicCombine(acc: String) = {
+    out.append("var i = 1+dIndex\n")
+    out.append("while((i < (dynamicChunksPerThread+dIndex)) && (i < "+closure+".loopSize)){\n")
     out.append("println(\"dynamic loop2\")\n")
-
-    out.append(closure+".combine(acc, ")
-
-    out.append(headerObject+".dynamicGet(i))\n")
+    out.append(closure+".combine("+acc+","+headerObject+".dynamicGet(i))\n")
 
     out.append("i += 1\n")
     out.append("}\n")
     out.append("println(\"exiting\")\n")
-    */
-    "acc"
   }
 
   //TODO: is the division logic really target dependent?
