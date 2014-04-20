@@ -52,14 +52,11 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
   }
 
   protected def dynamicScheduler(outputSym: String): String = {
-    out.append("println(\"dynamic Schduler\")\n")
     out.append("var start = "+headerObject+".getOffset()\n")
     out.append("val dChunkSize = "+headerObject + ".dynamicChunkSize\n")
     out.append("val numDynamicChunks = "+headerObject + ".numDynamicChunks\n")
 
     out.append("while(start < "+closure+".loopSize){\n")
-    out.append("println(\"dynamic loop1\")\n")
-
     //Maybe you can make this faster?  Can you go past loop Size?  What happens? ASK KEVIN
     out.append("val end = if((start+dChunkSize) < "+closure+".loopSize) (start+dChunkSize) else "+closure+".loopSize\n")
     out.append("val accDynamic = "+closure+".processRange("+outputSym+",start,end)\n")
@@ -70,14 +67,18 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     out.append("}\n")
     out.append("val dynamicChunksPerThread = (numDynamicChunks+"+numChunks+"-1)/"+numChunks+"\n")
     out.append("val dIndex = ("+chunkIdx+" * dynamicChunksPerThread)\n")
+    out.append("println(\""+chunkIdx+"dChunkSize: \"+ dChunkSize + \"  dynamicChunksPerThread: \" + dynamicChunksPerThread)\n")
+    out.append("println(\""+chunkIdx+"dInde1: \"+dIndex)\n")
     out.append("val acc = ")
     out.append(headerObject+".dynamicGet(dIndex)\n")
     "acc"
   }
   protected def dynamicCombine(acc: String) = {
     out.append("var i = 1+dIndex\n")
-    out.append("while((i < (dynamicChunksPerThread+dIndex)) && (i < "+closure+".loopSize)){\n")
-    out.append("println(\"dynamic loop2\")\n")
+    out.append("while((i < (dynamicChunksPerThread+dIndex)) && ((i*dChunkSize) < "+closure+".loopSize)){\n")
+    out.append("println(\""+chunkIdx+"dInde2: \"+dIndex)\n")
+    out.append("println(\""+chunkIdx+"loopSize: \"+"+closure+".loopSize + \"  i: \" + i)\n")
+
     out.append(closure+".combine("+acc+","+headerObject+".dynamicGet(i))\n")
 
     out.append("i += 1\n")

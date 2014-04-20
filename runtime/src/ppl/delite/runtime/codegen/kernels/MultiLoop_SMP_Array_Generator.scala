@@ -91,7 +91,8 @@ trait MultiLoop_SMP_Array_Generator {
     //determine range of chunk
     //val (start,end) = calculateRange()
     val outSym = allocateOutput()
-
+    
+    //val (start,end) = calculateRange()
     val acc = dynamicScheduler(outSym)//processRange(outSym,start,end)
 
     def treeReduction(sync: String, needsCombine: Boolean) { //combines thread-local results and guarantees completion of all chunks by the time the master chunk returns
