@@ -44,9 +44,11 @@ object MemoryProfiler
   	def emitMemProfileDataArrays(writer: PrintWriter, stats: Map[String, List[Int]]) {
   		writer.println("	\"MemProfile\": {")
   		for (id <- stats.keys) {
-  			var allocationLengths = stats(id).foldLeft("")((a,b) => a + "," + b).trim()
-  			allocationLengths = allocationLengths.substring(1, allocationLengths.length())
-  			writer.println("		\"" + id + "\" : [" + allocationLengths + "],")
+  			//var allocationLengths = stats(id).foldLeft("")((a,b) => a + "," + b).trim()
+  			//allocationLengths = allocationLengths.substring(1, allocationLengths.length())
+  			//writer.println("		\"" + id + "\" : [" + allocationLengths + "],")
+  			var allocationLengths = Profiler.iterableToJSArray(id, stats(id), false)
+  			writer.println("		\"" + id + "\" : " + allocationLengths + ",")
   		}
 
   		writer.println("		\"dummy\": []")
