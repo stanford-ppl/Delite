@@ -49,7 +49,7 @@ trait MLInputReaderOpsExp extends MLInputReaderOps with BaseFatExp { this: MLInp
   def obj_mlinput_read_template_models(directory: Exp[String])(implicit ctx: SourceContext) = reflectEffect(MLInputReadTemplateModels(directory))
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case Reflect(e@MLInputReadTokenMatrix(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MLInputReadTokenMatrix(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@MLInputReadTokenMatrix(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MLInputReadTokenMatrix(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }

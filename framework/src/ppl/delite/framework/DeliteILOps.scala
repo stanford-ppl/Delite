@@ -207,12 +207,12 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case GetScopeResult() => getScopeResult
-    case Reflect(SetScopeResult(n),u,es) => reflectMirrored(Reflect(SetScopeResult(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))   
+    case Reflect(SetScopeResult(n),u,es) => reflectMirrored(Reflect(SetScopeResult(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)   
     
     case e@DeliteILCollect(s,a,fu,up,fi,c,p,ape,ap,sz,al,co) => reflectPure(new { override val original = Some(f,e) } with DeliteILCollect(f(s),f(a),f(fu),f(up),f(fi),c.map(f(_)),p,f(ape),f(ap),f(sz),f(al),f(co))(mtype(e.mA),mtype(e.mI),mtype(e.mCA)))(mtype(manifest[A]),implicitly[SourceContext])  
-    case Reflect(e@DeliteILCollect(s,a,fu,up,fi,c,p,ape,ap,sz,al,co), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILCollect(f(s),f(a),f(fu),f(up),f(fi),c.map(f(_)),p,f(ape),f(ap),f(sz),f(al),f(co))(mtype(e.mA),mtype(e.mI),mtype(e.mCA)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DeliteILCollect(s,a,fu,up,fi,c,p,ape,ap,sz,al,co), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILCollect(f(s),f(a),f(fu),f(up),f(fi),c.map(f(_)),p,f(ape),f(ap),f(sz),f(al),f(co))(mtype(e.mA),mtype(e.mI),mtype(e.mCA)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case e@DeliteILForeach(s,fu) => reflectPure(new { override val original = Some(f,e) } with DeliteILForeach(f(s),f(fu))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])  
-    case Reflect(e@DeliteILForeach(s,fu), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILForeach(f(s),f(fu))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DeliteILForeach(s,fu), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILForeach(f(s),f(fu))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case e@DeliteILReduce(s,rf,c,rz,ra,rrf,sf) => 
       e.asInstanceOf[DeliteILReduce[A]] match {
         case e@DeliteILReduce(s,rf,c,rz,ra,rrf,sf) => 
@@ -221,15 +221,15 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
     case Reflect(e@DeliteILReduce(s,rf,c,rz,ra,rrf,sf), u, es) => 
       e.asInstanceOf[DeliteILReduce[A]] match {
         case e@DeliteILReduce(s,rf,c,rz,ra,rrf,sf) => 
-          reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILReduce(f(s),f(rf),c.map(f(_)),() => f(rz()),() => f(ra()),f(rrf),sf)(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+          reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILReduce(f(s),f(rf),c.map(f(_)),() => f(rz()),() => f(ra()),f(rrf),sf)(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
       }
     case e@DeliteILExtern(s,fu,i) => reflectPure(new { override val original = Some(f,e) } with DeliteILExtern(s,() => f(fu()),f(i))(mtype(e.mA)))(mtype(manifest[A]),pos)  
-    case Reflect(e@DeliteILExtern(s,fu,i), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILExtern(s,() => f(fu()),f(i))(mtype(e.mA)), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@DeliteILExtern(s,fu,i), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILExtern(s,() => f(fu()),f(i))(mtype(e.mA)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)    
     case e@DeliteILSingleTask(fu) => reflectPure(new { override val original = Some(f,e) } with DeliteILSingleTask(() => f(fu()))(mtype(e.mA)))(mtype(manifest[A]),implicitly[SourceContext])  
-    case Reflect(e@DeliteILSingleTask(fu), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILSingleTask(() => f(fu()))(mtype(e.mA)), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@DeliteILSingleTask(fu), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILSingleTask(() => f(fu()))(mtype(e.mA)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)    
 
-    case Reflect(ProfileStart(c,deps), u, es) => reflectMirrored(Reflect(ProfileStart(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(ProfileStop(c,deps), u, es) => reflectMirrored(Reflect(ProfileStop(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(ProfileStart(c,deps), u, es) => reflectMirrored(Reflect(ProfileStart(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+    case Reflect(ProfileStop(c,deps), u, es) => reflectMirrored(Reflect(ProfileStop(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]  

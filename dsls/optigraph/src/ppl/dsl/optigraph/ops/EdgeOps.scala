@@ -47,9 +47,9 @@ trait EdgeOpsExp extends EdgeOps with EffectExp {
     case EdgeFrom(x) => edge_from(f(x))
     case EdgeTo(x) => edge_to(f(x))
     case EdgeId(x) => edge_id(f(x))
-    case Reflect(e@EdgeFrom(x), u, es) => reflectMirrored(Reflect(EdgeFrom(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@EdgeTo(x), u, es) => reflectMirrored(Reflect(EdgeTo(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@EdgeId(x), u, es) => reflectMirrored(Reflect(EdgeId(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@EdgeFrom(x), u, es) => reflectMirrored(Reflect(EdgeFrom(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@EdgeTo(x), u, es) => reflectMirrored(Reflect(EdgeTo(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@EdgeId(x), u, es) => reflectMirrored(Reflect(EdgeId(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??  
   

@@ -190,10 +190,10 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
     case e@StreamRawElem(x,idx) => reflectPure(StreamRawElem(f(x),f(idx)))(mtype(manifest[A]), implicitly[SourceContext])
     case e@StreamChunkElem(x,idx,j) => reflectPure(new { override val original = Some(f,e) } with StreamChunkElem(f(x),f(idx),f(j))(mtype(manifest[A])))(mtype(manifest[A]), implicitly[SourceContext])    
     case e@StreamChunkRow(x,idx,o) => reflectPure(StreamChunkRow(f(x),f(idx),f(o)))(mtype(manifest[A]), implicitly[SourceContext])    
-    case Reflect(e@StreamInitRow(x,i,o), u, es) => reflectMirrored(Reflect(StreamInitRow(f(x),f(i),f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@StreamForeachRow(rows,x,i,b,s), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with StreamForeachRow(f(rows),f(x),f(i),f(b),f(s)), mapOver(f,u), f(es)))(mtype(manifest[A]))  
-    case Reflect(e@StreamInitAndForeachRow(rows,x,i,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with StreamInitAndForeachRow(f(rows),f(x),f(i),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@StreamInitChunk(x,o), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with StreamInitChunk(f(x),f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@StreamInitRow(x,i,o), u, es) => reflectMirrored(Reflect(StreamInitRow(f(x),f(i),f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@StreamForeachRow(rows,x,i,b,s), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with StreamForeachRow(f(rows),f(x),f(i),f(b),f(s)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)  
+    case Reflect(e@StreamInitAndForeachRow(rows,x,i,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with StreamInitAndForeachRow(f(rows),f(x),f(i),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@StreamInitChunk(x,o), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with StreamInitChunk(f(x),f(o)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }

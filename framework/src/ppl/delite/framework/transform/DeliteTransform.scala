@@ -1,5 +1,6 @@
 package ppl.delite.framework.transform
 
+import reflect.{SourceContext}
 import scala.virtualization.lms.common.{ObjectOpsExp,WorklistTransformer}
 import ppl.delite.framework.DeliteApplication
 
@@ -35,8 +36,8 @@ trait DeliteTransform extends LoweringTransform with ObjectOpsExp {
    */
    
    // investigate: is this necessary?
-   def reflectTransformed[A:Manifest](t: Transformer, x: Exp[A], u: Summary, es: List[Exp[Any]]): Exp[A] = {
+   def reflectTransformed[A:Manifest](t: Transformer, x: Exp[A], u: Summary, es: List[Exp[Any]])(implicit ctx: SourceContext): Exp[A] = {
      // co-opt ObjectUnsafeImmutable as a dummy Def wrapper for the transformed Reflect
-     reflectMirrored(Reflect(ObjectUnsafeImmutable(x), mapOver(t,u), t(es)))(mtype(manifest[A]))        
+     reflectMirrored(Reflect(ObjectUnsafeImmutable(x), mapOver(t,u), t(es)))(mtype(manifest[A]), ctx)        
    }    
 }

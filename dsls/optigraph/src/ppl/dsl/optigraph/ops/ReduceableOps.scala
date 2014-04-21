@@ -168,16 +168,16 @@ trait ReduceableOpsExp extends ReduceableOps with EffectExp {
     // implemented via method on real data structure
     case e@RedGetValue(r) => red_getvalue(f(r))(e.mA)
 
-    case Reflect(e@RedGetValue(r), u, es) => reflectMirrored(Reflect(RedGetValue(f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@RedSetValue(r,x), u, es) => reflectMirrored(Reflect(RedSetValue(f(r),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@RedObjectNew(x), u, es) => reflectMirrored(Reflect(RedObjectNew(f(x))(e.mR), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@RedSum(r,v), u, es) => reflectMirrored(Reflect(RedSum(f(r),f(v))(e.mT,e.mN), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@RedProd(r,v), u, es) => reflectMirrored(Reflect(RedProd(f(r),f(v))(e.mT,e.mN), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@RedCount(r,v), u, es) => reflectMirrored(Reflect(RedCount(f(r),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@RedMin(r,v), u, es) => reflectMirrored(Reflect(RedMin(f(r),f(v))(e.mT,e.mO), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@RedMax(r,v), u, es) => reflectMirrored(Reflect(RedMax(f(r),f(v))(e.mT,e.mO), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@RedAll(r,v), u, es) => reflectMirrored(Reflect(RedAll(f(r),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@RedAny(r,v), u, es) => reflectMirrored(Reflect(RedAny(f(r),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@RedGetValue(r), u, es) => reflectMirrored(Reflect(RedGetValue(f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@RedSetValue(r,x), u, es) => reflectMirrored(Reflect(RedSetValue(f(r),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@RedObjectNew(x), u, es) => reflectMirrored(Reflect(RedObjectNew(f(x))(e.mR), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@RedSum(r,v), u, es) => reflectMirrored(Reflect(RedSum(f(r),f(v))(e.mT,e.mN), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@RedProd(r,v), u, es) => reflectMirrored(Reflect(RedProd(f(r),f(v))(e.mT,e.mN), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@RedCount(r,v), u, es) => reflectMirrored(Reflect(RedCount(f(r),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@RedMin(r,v), u, es) => reflectMirrored(Reflect(RedMin(f(r),f(v))(e.mT,e.mO), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@RedMax(r,v), u, es) => reflectMirrored(Reflect(RedMax(f(r),f(v))(e.mT,e.mO), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@RedAll(r,v), u, es) => reflectMirrored(Reflect(RedAll(f(r),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@RedAny(r,v), u, es) => reflectMirrored(Reflect(RedAny(f(r),f(v)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 

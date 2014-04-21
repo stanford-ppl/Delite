@@ -249,9 +249,9 @@ trait MultiloopTransformOuter extends ForwardPassTransformer with BaseDeliteOpsT
       
     case TP(s,Reflect(l:DeliteOpLoop[_], u, es)) if (inMultiloop < 2 && shouldTransformLoop(l)) =>
       val newSym = l.body match {
-        case e:DeliteCollectElem[a,i,c] => reflectTransformed(this.asInstanceOf[IR.Transformer], (transformCollectToWhile(s,l,e)(e.mA,e.mI,e.mCA)), u, es)(e.mCA) // cast needed why?
+        case e:DeliteCollectElem[a,i,c] => reflectTransformed(this.asInstanceOf[IR.Transformer], (transformCollectToWhile(s,l,e)(e.mA,e.mI,e.mCA)), u, es)(e.mCA, s.pos.head) // cast needed why?
         case e:DeliteForeachElem[_] => reflectTransformed(this.asInstanceOf[IR.Transformer], (transformForeachToWhile(s,l,e)(e.mA)), u, es) 
-        case e:DeliteReduceElem[a] => reflectTransformed(this.asInstanceOf[IR.Transformer], (transformReduceToWhile(s,l,e)(e.mA)), u, es)(e.mA)       
+        case e:DeliteReduceElem[a] => reflectTransformed(this.asInstanceOf[IR.Transformer], (transformReduceToWhile(s,l,e)(e.mA)), u, es)(e.mA, s.pos.head)       
         case _ => super.transformStm(stm)        
       }
       newSym

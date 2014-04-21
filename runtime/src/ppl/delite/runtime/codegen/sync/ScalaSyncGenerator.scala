@@ -4,6 +4,7 @@ import ppl.delite.runtime.graph.ops._
 import collection.mutable.{HashSet, ArrayBuffer}
 import ppl.delite.runtime.codegen.{ScalaExecutableGenerator, ExecutableGenerator}
 import ppl.delite.runtime.graph.targets.Targets
+import ppl.delite.runtime.Config
 
 trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
 
@@ -68,7 +69,30 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
     syncList += s
   }
 
+  private def createSyncKernelName(depSym: String, depThread: Int) = {
+    var tmp = "-" + depSym + "-" + depThread
+    var syncKernelName = "\"__sync-\" + Thread.currentThread.getName() + \"-\" + MemoryProfiler.getNameOfCurrKernel(Thread.currentThread.getName()) + \"" + tmp + "\""
+    
+    syncKernelName
+  }
+
+  private def instrumentSyncStart(syncKernelName: String) {
+    var dbgStmt = "PerformanceTimer.start(" + syncKernelName + ", Thread.currentThread.getName(), false)\n"
+    out.append(dbgStmt)
+  }
+
+  private def instrumentSyncStop(syncKernelName: String) {
+    var dbgStmt = "PerformanceTimer.stop(" + syncKernelName + ", false)\n"
+    out.append(dbgStmt)
+  }
+
   private def writeGetter(dep: DeliteOP, sym: String) {
+    var syncKernelName = ""
+    if (Config.profile) {
+      syncKernelName = createSyncKernelName(sym, dep.scheduledResource)
+      instrumentSyncStart(syncKernelName)
+    }
+
     out.append("val ")
     out.append(getSym(dep, sym))
     out.append(" : ")
@@ -80,15 +104,29 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
     out.append('_')
     out.append(getSym(dep, sym))
     out.append('\n')
+
+    if (Config.profile) {
+      instrumentSyncStop(syncKernelName)
+    }
   }
 
   private def writeAwaiter(dep: DeliteOP) {
+    var syncKernelName = ""
+    if (Config.profile) {
+      syncKernelName = createSyncKernelName(dep.id, dep.scheduledResource)
+      instrumentSyncStart(syncKernelName)
+    }
+
     out.append("Sync_" + executableName(dep.scheduledResource))
     out.append(".get")
     out.append(location)
     out.append('_')
     out.append(getOpSym(dep))
     out.append('\n')
+
+    if (Config.profile) {
+      instrumentSyncStop(syncKernelName)
+    }
   }
 
   private def writeSetter(op: DeliteOP, sym: String) {

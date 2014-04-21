@@ -91,19 +91,19 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@DeliteOpFileReaderReadLines(path,func) => reflectPure(new { override val original = Some(f,e) } with DeliteOpFileReaderReadLines(f(path),f(func))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
-    case Reflect(e@DeliteOpFileReaderReadLines(path,func), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteOpFileReaderReadLines(f(path),f(func))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DeliteOpFileReaderReadLines(path,func), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteOpFileReaderReadLines(f(path),f(func))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case e@DeliteOpFileReader(paths, func) => reflectPure(new { override val original = Some(f,e) } with DeliteOpFileReader(f(paths),f(func))(e.dmA))(mtype(manifest[A]),implicitly[SourceContext])
-    case Reflect(e@DeliteOpFileReader(paths,func), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteOpFileReader(f(paths),f(func))(e.dmA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DeliteOpFileReader(paths,func), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteOpFileReader(f(paths),f(func))(e.dmA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case e@DeliteOpFileReaderFlat(paths, func) => reflectPure(new { override val original = Some(f,e) } with DeliteOpFileReaderFlat(f(paths),f(func))(e.dmA))(mtype(manifest[A]),implicitly[SourceContext])
-    case Reflect(e@DeliteOpFileReaderFlat(paths,func), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteOpFileReaderFlat(f(paths),f(func))(e.dmA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DeliteOpFileReaderFlat(paths,func), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteOpFileReaderFlat(f(paths),f(func))(e.dmA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case DeliteFileStreamNew(paths) => dfs_new(f(paths))
-    case Reflect(DeliteFileStreamNew(paths), u, es) => reflectMirrored(Reflect(DeliteFileStreamNew(f(paths)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(DeliteFileStreamNew(paths), u, es) => reflectMirrored(Reflect(DeliteFileStreamNew(f(paths)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case DeliteFileStreamReadLine(stream,idx) => dfs_readLine(f(stream),f(idx))
-    case Reflect(DeliteFileStreamReadLine(stream,idx), u, es) => reflectMirrored(Reflect(DeliteFileStreamReadLine(f(stream), f(idx)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(DeliteFileStreamReadLine(stream,idx), u, es) => reflectMirrored(Reflect(DeliteFileStreamReadLine(f(stream), f(idx)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case DeliteFileStreamSize(stream) => dfs_size(f(stream))
-    case Reflect(DeliteFileStreamSize(stream), u, es) => reflectMirrored(Reflect(DeliteFileStreamSize(f(stream)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(DeliteFileStreamSize(stream), u, es) => reflectMirrored(Reflect(DeliteFileStreamSize(f(stream)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case DeliteFileStreamNumThreads(stream) => dfs_numThreads(f(stream))
-    case Reflect(DeliteFileStreamNumThreads(stream), u, es) => reflectMirrored(Reflect(DeliteFileStreamNumThreads(f(stream)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(DeliteFileStreamNumThreads(stream), u, es) => reflectMirrored(Reflect(DeliteFileStreamNumThreads(f(stream)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
 

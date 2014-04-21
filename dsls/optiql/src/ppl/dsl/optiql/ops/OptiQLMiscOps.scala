@@ -28,9 +28,9 @@ trait OptiQLMiscOpsExp extends OptiQLMiscOps with EffectExp { this : OptiQLExp =
   def tablePrintAsTable[T:Manifest](t: Exp[Table[T]], max_rows: Rep[Int]): Exp[Unit] = reflectEffect(TablePrintAsTable(t, max_rows)) //TODO: port pretty print function from plain Scala
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case Reflect(OptiQLProfileStart(x), u, es) => reflectMirrored(Reflect(OptiQLProfileStart(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(OptiQLProfileStop(x), u, es) => reflectMirrored(Reflect(OptiQLProfileStop(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(TablePrintAsTable(x,m), u, es) => reflectMirrored(Reflect(TablePrintAsTable(f(x),f(m)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(OptiQLProfileStart(x), u, es) => reflectMirrored(Reflect(OptiQLProfileStart(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(OptiQLProfileStop(x), u, es) => reflectMirrored(Reflect(OptiQLProfileStop(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(TablePrintAsTable(x,m), u, es) => reflectMirrored(Reflect(TablePrintAsTable(f(x),f(m)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
 

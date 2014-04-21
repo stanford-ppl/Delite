@@ -112,15 +112,15 @@ trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp with EqualExpBr
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@DeliteMapNewImm(k,v,i,s) => reflectPure(new {override val original = Some(f,e) } with DeliteMapNewImm(f(k),f(v),f(i),f(s))(e.mK,e.mV))(mtype(manifest[A]),implicitly[SourceContext])
-    case Reflect(e@DeliteMapNewImm(k,v,i,s), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMapNewImm(f(k),f(v),f(i),f(s))(e.mK,e.mV), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DeliteMapNewImm(k,v,i,s), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMapNewImm(f(k),f(v),f(i),f(s))(e.mK,e.mV), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case e@DeliteIndexGet(i,k) => dindex_get(f(i),f(k))(e.mA,ctx)
-    case Reflect(e@DeliteIndexGet(i,k), u, es) => reflectMirrored(Reflect(DeliteIndexGet(f(i),f(k)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DeliteIndexGet(i,k), u, es) => reflectMirrored(Reflect(DeliteIndexGet(f(i),f(k)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case e@DeliteMapValues(in,k,v,r) => reflectPure(new { override val original = Some(f,e) } with DeliteMapValues(f(in),f(k),f(v),f(r))(mtype(e.dmA),mtype(e.dmK),mtype(e.dmV)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@DeliteMapKeys(in,k) => reflectPure(new { override val original = Some(f,e) } with DeliteMapKeys(f(in),f(k))(mtype(e.dmA),mtype(e.dmK)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@DeliteMapBuildIndex(in,k) => reflectPure(new { override val original = Some(f,e) } with DeliteMapBuildIndex(f(in),f(k))(mtype(e.dmA),mtype(e.dmK)))(mtype(manifest[A]),implicitly[SourceContext])
-    case Reflect(e@DeliteMapValues(in,k,v,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMapValues(f(in),f(k),f(v),f(r))(mtype(e.dmA),mtype(e.dmK),mtype(e.dmV)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@DeliteMapKeys(in,k), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMapKeys(f(in),f(k))(mtype(e.dmA),mtype(e.dmK)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@DeliteMapBuildIndex(in,k), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMapBuildIndex(f(in),f(k))(mtype(e.dmA),mtype(e.dmK)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@DeliteMapValues(in,k,v,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMapValues(f(in),f(k),f(v),f(r))(mtype(e.dmA),mtype(e.dmK),mtype(e.dmV)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DeliteMapKeys(in,k), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMapKeys(f(in),f(k))(mtype(e.dmA),mtype(e.dmK)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DeliteMapBuildIndex(in,k), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMapBuildIndex(f(in),f(k))(mtype(e.dmA),mtype(e.dmK)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
 

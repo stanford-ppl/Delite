@@ -31,8 +31,8 @@ trait LAOutputWriterOpsExp extends LAOutputWriterOps with BaseFatExp { this: Opt
   def obj_laoutput_write_vector[A:Manifest](v: Interface[Vector[A]], filename: Exp[String], conv: Exp[A] => Exp[Double])(implicit ctx: SourceContext) = reflectEffect(LAOutputWriteVector(v,filename,conv))
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
-    case Reflect(d@LAOutputWriteVector(x,fn,c), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,d) } with LAOutputWriteVector(f(x),f(fn),f(c)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(d@LAOutputWriteMatrix(x,fn,c), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,d) } with LAOutputWriteMatrix(f(x),f(fn),f(c)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(d@LAOutputWriteVector(x,fn,c), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,d) } with LAOutputWriteVector(f(x),f(fn),f(c)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+    case Reflect(d@LAOutputWriteMatrix(x,fn,c), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,d) } with LAOutputWriteMatrix(f(x),f(fn),f(c)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]    
 }

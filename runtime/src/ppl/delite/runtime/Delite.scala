@@ -5,7 +5,7 @@ import executor._
 import graph.ops.{EOP_Global, Arguments}
 import graph.targets.Targets
 import graph.{TestGraph, DeliteTaskGraph}
-import profiler.{PerformanceTimer, Profiler}
+import profiler.{PerformanceTimer, Profiler, MemoryProfiler}
 import scheduler._
 import tools.nsc.io._
 

@@ -120,13 +120,13 @@ trait EdgePropertyOpsExp extends EdgePropertyOps with VariablesExp with BaseFatE
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@EdgePropGetDef(ep,i) => edgeprop_get_def(f(ep),f(i))(e.mA)
     case EdgePropHasDef(ep,i) => edgeprop_has_def(f(ep),f(i))
-    case Reflect(e@EdgePropObjectNew(g,s), u, es) => reflectMirrored(Reflect(EdgePropObjectNew(f(g),f(s))(e.mP), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@EdgePropDefer(ep,i,x), u, es) => reflectMirrored(Reflect(EdgePropDefer(f(ep),f(i),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@EdgePropGetDef(ep,i), u, es) => reflectMirrored(Reflect(EdgePropGetDef(f(ep),f(i))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@EdgePropHasDef(ep,i), u, es) => reflectMirrored(Reflect(EdgePropHasDef(f(ep),f(i)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@EdgePropClearDef(ep,i), u, es) => reflectMirrored(Reflect(EdgePropClearDef(f(ep),f(i)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@EdgePropAssignAll(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with EdgePropAssignAll(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@EdgePropSetAll(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with EdgePropSetAll(f(x),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@EdgePropObjectNew(g,s), u, es) => reflectMirrored(Reflect(EdgePropObjectNew(f(g),f(s))(e.mP), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@EdgePropDefer(ep,i,x), u, es) => reflectMirrored(Reflect(EdgePropDefer(f(ep),f(i),f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@EdgePropGetDef(ep,i), u, es) => reflectMirrored(Reflect(EdgePropGetDef(f(ep),f(i))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@EdgePropHasDef(ep,i), u, es) => reflectMirrored(Reflect(EdgePropHasDef(f(ep),f(i)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@EdgePropClearDef(ep,i), u, es) => reflectMirrored(Reflect(EdgePropClearDef(f(ep),f(i)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@EdgePropAssignAll(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with EdgePropAssignAll(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@EdgePropSetAll(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with EdgePropSetAll(f(x),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??  
   

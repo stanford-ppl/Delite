@@ -115,10 +115,10 @@ trait DeliteRestageOpsExp extends DeliteRestageOps with EffectExp {
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case LastScopeResult() => lastScopeResult
     case WrapDRefAsSym(id) => toAtom(WrapDRefAsSym(id))
-    case Reflect(SetDRefOutput(s,id),u,es) => reflectMirrored(Reflect(SetDRefOutput(f(s),id), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(ReturnScopeResult(n),u,es) => reflectMirrored(Reflect(ReturnScopeResult(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))   
-    case Reflect(DeliteProfileStart(c,deps), u, es) => reflectMirrored(Reflect(DeliteProfileStart(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(DeliteProfileStop(c,deps), u, es) => reflectMirrored(Reflect(DeliteProfileStop(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(SetDRefOutput(s,id),u,es) => reflectMirrored(Reflect(SetDRefOutput(f(s),id), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+    case Reflect(ReturnScopeResult(n),u,es) => reflectMirrored(Reflect(ReturnScopeResult(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)   
+    case Reflect(DeliteProfileStart(c,deps), u, es) => reflectMirrored(Reflect(DeliteProfileStart(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+    case Reflect(DeliteProfileStop(c,deps), u, es) => reflectMirrored(Reflect(DeliteProfileStop(f(c),f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]  
 

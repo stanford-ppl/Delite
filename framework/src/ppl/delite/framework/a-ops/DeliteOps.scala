@@ -1126,7 +1126,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   }
 
   // HACK lazy val bites again: must make sure that block is evaluated!
-  override def reflectMirrored[A:Manifest](zd: Reflect[A]): Exp[A] = zd match {
+  override def reflectMirrored[A:Manifest](zd: Reflect[A])(implicit pos: SourceContext): Exp[A] = zd match {
     case Reflect(x:DeliteOpSingleTask[_], u, es) =>
       x.block
       super.reflectMirrored(zd)

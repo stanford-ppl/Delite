@@ -258,8 +258,8 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp with LoweringTra
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case Reflect(e@IndexVector2ConstructMutable(r,c,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructMutable(f.intf(r),f.intf(c),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@IndexVector2ConstructRows(in,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructRows(f.intf(in),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@IndexVector2ConstructMutable(r,c,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructMutable(f.intf(r),f.intf(c),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@IndexVector2ConstructRows(in,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructRows(f.intf(in),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)    
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }

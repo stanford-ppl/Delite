@@ -92,11 +92,11 @@ trait ForeachReduceTransformExp extends DeliteTransform
       }
     
     // reflected
-    case Reflect(e@TransformedForeach(s,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with TransformedForeach(f(s),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@TransformedForeach(s,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with TransformedForeach(f(s),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@TransformedReduce(v,s,z,rhs,r), u, es) => 
       e.asInstanceOf[TransformedReduce[A]] match {
         case e@TransformedReduce(v,s,z,rhs,r) => 
-          reflectMirrored(Reflect(new { override val original = Some(f,e) } with TransformedReduce(f(v).asInstanceOf[Sym[Int]],f(s),f(z),f(rhs),f(r))(e.mR), mapOver(f,u), f(es)))(mtype(manifest[A]))
+          reflectMirrored(Reflect(new { override val original = Some(f,e) } with TransformedReduce(f(v).asInstanceOf[Sym[Int]],f(s),f(z),f(rhs),f(r))(e.mR), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
       }
     
     case _ => super.mirror(e,f)

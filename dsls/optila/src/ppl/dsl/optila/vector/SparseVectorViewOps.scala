@@ -131,12 +131,12 @@ trait SparseVectorViewOpsExp extends SparseVectorViewCompilerOps with DeliteColl
     case e@SparseVectorViewSource(x) => reflectPure(SparseVectorViewSource(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])    
     case e@SparseVectorViewApply(x,n) => reflectPure(new { override val original = Some(f,e) } with SparseVectorViewApply(f(x),f(n))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])    
         
-    case Reflect(e@SparseVectorViewLength(x), u, es) => reflectMirrored(Reflect(SparseVectorViewLength(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@SparseVectorViewIsRow(x), u, es) => reflectMirrored(Reflect(SparseVectorViewIsRow(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@SparseVectorViewStart(x), u, es) => reflectMirrored(Reflect(SparseVectorViewStart(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@SparseVectorViewStride(x), u, es) => reflectMirrored(Reflect(SparseVectorViewStride(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
-    case Reflect(e@SparseVectorViewSource(x), u, es) => reflectMirrored(Reflect(SparseVectorViewSource(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
-    case Reflect(e@SparseVectorViewApply(x,n), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseVectorViewApply(f(x),f(n))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SparseVectorViewLength(x), u, es) => reflectMirrored(Reflect(SparseVectorViewLength(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@SparseVectorViewIsRow(x), u, es) => reflectMirrored(Reflect(SparseVectorViewIsRow(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@SparseVectorViewStart(x), u, es) => reflectMirrored(Reflect(SparseVectorViewStart(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@SparseVectorViewStride(x), u, es) => reflectMirrored(Reflect(SparseVectorViewStride(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)    
+    case Reflect(e@SparseVectorViewSource(x), u, es) => reflectMirrored(Reflect(SparseVectorViewSource(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)    
+    case Reflect(e@SparseVectorViewApply(x,n), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseVectorViewApply(f(x),f(n))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??  
 }
