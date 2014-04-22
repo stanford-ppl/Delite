@@ -52,40 +52,54 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
   }
 
   protected def dynamicScheduler(outputSym: String): String = {
-    out.append("var start = "+headerObject+".getOffset()\n")
-    out.append("val dChunkSize = "+headerObject + ".dynamicChunkSize\n")
+    out.append("var dIdx = "+headerObject+".getDynamicChunkIndex()\n")
     out.append("val numDynamicChunks = "+headerObject + ".numDynamicChunks\n")
-
-    out.append("while(start < "+closure+".loopSize){\n")
-    //Maybe you can make this faster?  Can you go past loop Size?  What happens? ASK KEVIN
-    out.append("val end = if((start+dChunkSize) < "+closure+".loopSize) (start+dChunkSize) else "+closure+".loopSize\n")
+    out.append("val startOffset = "+closure+".loopStart\n")
+    out.append("val size: Long = "+closure+".loopSize\n")
+    out.append("while(dIdx < numDynamicChunks){\n")
+    out.append("val start: Int = (startOffset + size*dIdx/numDynamicChunks).asInstanceOf[Int]\n")
+    out.append("val end: Int = (startOffset + size*(dIdx+1)/numDynamicChunks).asInstanceOf[Int]\n")  
+    //out.append("println(\"start: \" + start + \" end: \" +end + \" loopSize: \" + "+closure+".loopSize)\n")
     out.append("val accDynamic = "+closure+".processRange("+outputSym+",start,end)\n")
-    out.append("val dChunkIdx = start/dChunkSize\n")
-    out.append(headerObject+".dynamicSet(dChunkIdx,accDynamic)\n")
-
-    out.append("start = "+headerObject+".getOffset()\n")
+    out.append(headerObject+".dynamicSet(dIdx,accDynamic)\n")
+    out.append("dIdx = "+headerObject+".getDynamicChunkIndex()\n")
     out.append("}\n")
-    out.append("val dynamicChunksPerThread = (numDynamicChunks+"+numChunks+"-1)/"+numChunks+"\n")
-    out.append("val dIndex = ("+chunkIdx+" * dynamicChunksPerThread)\n")
-    out.append("println(\""+chunkIdx+"dChunkSize: \"+ dChunkSize + \"  dynamicChunksPerThread: \" + dynamicChunksPerThread)\n")
-    out.append("println(\""+chunkIdx+"dInde1: \"+dIndex)\n")
-    out.append("val acc = ")
-    out.append(headerObject+".dynamicGet(dIndex)\n")
+
+    //out.append("val dynamicChunksPerThread = (numDynamicChunks+"+numChunks+"-1)/"+numChunks+"\n")
+    out.append("val myThreadDynamicIndexStart = ("+chunkIdx+"*numDynamicChunks)/"+numChunks+"\n")
+    out.append("val myThreadDynamicIndexEnd = (("+chunkIdx+"+1)*numDynamicChunks)/"+numChunks+"\n")    
+    out.append("val acc = "+headerObject+".dynamicGet(myThreadDynamicIndexStart)\n")
     "acc"
   }
   protected def dynamicCombine(acc: String) = {
-    out.append("var i = 1+dIndex\n")
-    out.append("while((i < (dynamicChunksPerThread+dIndex)) && ((i*dChunkSize) < "+closure+".loopSize)){\n")
-    out.append("println(\""+chunkIdx+"dInde2: \"+dIndex)\n")
-    out.append("println(\""+chunkIdx+"loopSize: \"+"+closure+".loopSize + \"  i: \" + i)\n")
-
+    out.append("var i = 1+myThreadDynamicIndexStart\n")
+    out.append("while(i < myThreadDynamicIndexEnd){\n")
     out.append(closure+".combine("+acc+","+headerObject+".dynamicGet(i))\n")
-
     out.append("i += 1\n")
     out.append("}\n")
-    out.append("println(\"exiting\")\n")
   }
-
+  protected def dynamicPostCombine(acc: String) = {
+    if (chunkIdx != 0) {
+      postCombine(acc, get("B", chunkIdx-1)) //linear chain combine
+    }
+    out.append("var j = 1+myThreadDynamicIndexStart\n")
+    out.append("var old = "+acc+"\n")
+    out.append("while(j < myThreadDynamicIndexEnd){\n")
+    out.append(closure+".postCombine("+headerObject+".dynamicGet(j),old)\n")
+    out.append("old = "+headerObject+".dynamicGet(j)\n")
+    out.append("j += 1\n")
+    out.append("}\n")
+    if (chunkIdx == numChunks-1) {
+      postProcInit("old") 
+    }
+    if(numChunks > 1) set("B", chunkIdx, "old")
+    if (chunkIdx != numChunks-1) get("B", numChunks-1) // wait for last one
+    //Why do I need to do acc as well if it was combined?
+    postProcess(acc)
+    out.append("if(old != "+ acc+ ") {\n")
+    postProcess("old") 
+    out.append("}\n")
+  }
   //TODO: is the division logic really target dependent?
   protected def calculateRange(): (String,String) = {
     out.append("val startOffset = "+closure+".loopStart\n")
@@ -237,11 +251,12 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
 
   //add code to code generate an atomic integer method
   //you can pull and set from this 
-  protected def writeSynchronizedOffset(numDynamicChunks: String){
+  protected def writeSynchronizedOffset(){
+    out.append("private val proposedNumberOfDynamicChunks = 2*"+numChunks+"\n")
+    out.append("val numDynamicChunks = if(proposedNumberOfDynamicChunks <= "+numChunks+" || "+numChunks+" == 1 || closure.loopSize < proposedNumberOfDynamicChunks) "+numChunks+" else proposedNumberOfDynamicChunks\n")
+    //out.append("println(\"numDynamicChunks: \" + numDynamicChunks)\n")
     out.append("private val offset = new AtomicInteger(0)\n")
-    out.append("val numDynamicChunks = " + numDynamicChunks+"\n")
-    out.append("val dynamicChunkSize = ((closure.loopSize+" + numDynamicChunks + "-1)/" + numDynamicChunks + ")\n")
-    out.append("def getOffset() : Int = { offset.getAndAdd(dynamicChunkSize) }\n")
+    out.append("def getDynamicChunkIndex() : Int = { offset.getAndAdd(1) }\n")
   }
   protected def writeSync(key: String) {
     val outputType = op.outputType
@@ -277,14 +292,14 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
     out.append(" = false }\n")
   }
 
-  protected def dynamicWriteSync(len: String) {
+  protected def dynamicWriteSync() {
     val outputType = op.outputType
 
-    out.append("private val dynamicNotReady = new AtomicIntegerArray("+len+")\n")
+    out.append("private val dynamicNotReady = new AtomicIntegerArray(numDynamicChunks)\n")
     out.append("private val _dynamicResult")
     out.append(" : Array[")
     out.append(outputType)
-    out.append("] = new Array["+outputType+"]("+len+")\n")
+    out.append("] = new Array["+outputType+"](numDynamicChunks)\n")
 
     out.append("def dynamicGet(i: Int) :")
     out.append(outputType)

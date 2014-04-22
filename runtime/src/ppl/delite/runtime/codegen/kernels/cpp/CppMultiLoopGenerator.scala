@@ -57,9 +57,12 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
     ("start","end")
   }
   protected def dynamicScheduler(outputSym: String) : String = {
-    "accß"
+    "acc"
   }
   protected def dynamicCombine(acc: String) = {
+    out.append("")
+  }
+  protected def dynamicPostCombine(acc: String) = {
     out.append("")
   }
 
@@ -201,7 +204,7 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
   protected val syncList = new ArrayBuffer[String]
 
   //TODO: fill in
-  protected def writeSynchronizedOffset(dynamicChunkSize: String){
+  protected def writeSynchronizedOffset(){
     out.append("")
   }
   protected def writeSync(key: String) {
@@ -231,7 +234,7 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
     out.append("pthread_mutex_unlock(&lock"+key+");\n")
     out.append("}\n")
   }
-  protected def dynamicWriteSync(len: String) {
+  protected def dynamicWriteSync() {
     out.append("")
   }
   protected def initSync() {
