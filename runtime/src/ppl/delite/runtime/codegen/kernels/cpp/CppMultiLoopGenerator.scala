@@ -65,7 +65,6 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
   protected def dynamicPostCombine(acc: String) = {
     out.append("")
   }
-
   protected def allocateOutput(): String = {
     out.append(master.outputType(Targets.Cpp)+"* out = "+headerObject+"->out;\n")
     "out"

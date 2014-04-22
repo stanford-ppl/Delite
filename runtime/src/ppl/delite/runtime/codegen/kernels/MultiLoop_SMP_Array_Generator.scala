@@ -79,7 +79,6 @@ trait MultiLoop_SMP_Array_Generator {
   protected def dynamicScheduler(outputSym: String): String
   protected def dynamicCombine(acc: String)
   protected def dynamicPostCombine(acc: String)
-
   protected def beginProfile()
   protected def endProfile()
 
@@ -126,12 +125,9 @@ trait MultiLoop_SMP_Array_Generator {
       finalize(acc)
       returnResult(acc)
     }
-
     writeKernelFooter()
   }
-
 }
-
 
 trait MultiLoop_SMP_Array_Header_Generator {
 
