@@ -24,6 +24,7 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
   protected def writeHeader() {
     out.append("import ppl.delite.runtime.codegen.DeliteExecutable\n") //base trait
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
+    out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
     ScalaExecutableGenerator.writePath(kernelPath, out) //package of scala kernels
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     if (!this.isInstanceOf[SyncObjectGenerator]) writeJNIInitializer(locations)
@@ -57,6 +58,9 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
     def resultName = if (returnsResult) getSym(op, op.getOutputs.head) else getOpSym(op)
 
     if (op.task == null) return //dummy op
+    if (Config.profile)
+      out.append("MemoryProfiler.pushNameOfCurrKernel(Thread.currentThread.getName(),\"" + op.id + "\")\n")
+
     if (Config.profile && !op.isInstanceOf[OP_MultiLoop])
       out.append("PerformanceTimer.start(\""+op.id+"\", Thread.currentThread.getName(), false)\n")
     out.append("val ")
@@ -75,6 +79,9 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
     out.append(")\n")
     if (Config.profile && !op.isInstanceOf[OP_MultiLoop])
       out.append("PerformanceTimer.stop(\""+op.id+"\", false)\n")
+
+    if (Config.profile)
+      out.append("MemoryProfiler.popNameOfCurrKernel(Thread.currentThread.getName())\n")
 
     if (!returnsResult) {
       for (name <- op.getOutputs) {

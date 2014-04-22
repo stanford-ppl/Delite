@@ -41,6 +41,7 @@ trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator
 
   override protected def writeHeader() {
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
+    out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
     ScalaExecutableGenerator.writePath(kernelPath, out) //package of scala kernels
 
     val locationsRecv = nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Receive])).map(_.asInstanceOf[Receive].sender.from.scheduledResource).toSet

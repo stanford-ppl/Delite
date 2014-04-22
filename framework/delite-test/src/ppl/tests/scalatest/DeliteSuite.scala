@@ -157,10 +157,12 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
       println("test output for: " + app.toString)
       ppl.delite.runtime.Delite.embeddedMain(args, app.staticDataMap)
     }
-    val buf = new Array[Byte](new File(name).length().toInt)
+    val reportFile = new File(name)
+    val buf = new Array[Byte](reportFile.length.toInt)
     val fis = new FileInputStream(name)
     fis.read(buf)
     fis.close()
+    reportFile.delete() //we don't want any other test to find this file
     val r = (new String(buf)) ++ bstream.toString
     bstream.close()
     if (verbose) System.out.println(r)

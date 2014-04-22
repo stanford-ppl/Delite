@@ -97,18 +97,14 @@ def run(deg, params, opts):
     cp = " -cp "
     cp = cp + old_cp + os.pathsep
     cp = cp + delitecommon.DELITE_HOME + "/runtime/target/" + delitecommon.scala_major_id + "/classes" + os.pathsep
-    cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-library.jar" + os.pathsep #TR should use /lib/*.jar?
-    cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-compiler.jar" + os.pathsep
-    cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-reflect.jar" + os.pathsep
-    # lms math ops generated apache math for performance
-    cp = cp + delitecommon.DELITE_HOME + "/lib_managed/jars/org.apache.commons/commons-math/commons-math-2.2.jar" + os.pathsep 
-    # mesos jars
-    cp = cp + delitecommon.DELITE_HOME + "/lib_managed/jars/org.apache.mesos/mesos/mesos-0.9.0-incubating.jar" + os.pathsep
-    cp = cp + delitecommon.DELITE_HOME + "/lib_managed/jars/com.google.protobuf/protobuf-java/protobuf-java-2.4.1.jar" + os.pathsep
-    cp = cp + delitecommon.DELITE_HOME + "/lib_managed/jars/org.apache.hadoop/hadoop-core/hadoop-core-1.2.0.jar" + os.pathsep
-    cp = cp + delitecommon.DELITE_HOME + "/lib_managed/jars/commons-logging/commons-logging/commons-logging-1.1.1.jar" + os.pathsep
 
-    # needed by deliszt
+    # add all managed libs 
+    # caveat: scalatest pulls in some non-virtualized scala dependencies but they conflict with the scala-virtualized versions
+    jars = [os.path.join(d,f) for (d, n, fs) in os.walk(delitecommon.HYPER_HOME + "/lib_managed/") if not (d.count("org.scala-lang") > 0 and d.count("virtualized") == 0) for f in fs]
+    for j in jars:
+        cp = cp + j + os.pathsep
+
+    # unsafe accessor
     bootcp = " -Xbootclasspath/a:"
     bootcp = bootcp + delitecommon.DELITE_HOME + "/unsafe_classes/unsafe.jar"
 
