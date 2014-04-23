@@ -16,6 +16,7 @@ def main():
     parser = OptionParser(usage)
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose")
     parser.add_option("-t", "--threads", dest="num_threads", default="1", help="num execution threads e.g. 4")
+    parser.add_option("-c", "--dynamicChunks", dest="num_dynamic_chunks", default="1", help="num dynamic chunks e.g. 4")
     parser.add_option("--cpp", dest="num_cpp", default="0", help="number of cpp execution threads")
     parser.add_option("--cuda", dest="num_cuda", default="0", help="number of cuda execution threads")
     parser.add_option("--opencl", dest="num_opencl", default="0", help="number of opencl execution threads")
@@ -79,7 +80,7 @@ def run(deg, params, opts):
     if opts.codecache == "":
         opts.codecache = delitecommon.DELITE_HOME + os.sep + "generatedCache"
 
-    java_opts = java_opts + " -Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) + " -Ddelite.cpp=" + opts.num_cpp + " -Ddelite.cuda=" + opts.num_cuda + " -Ddelite.opencl=" + opts.num_opencl + " -Ddelite.runs=" + opts.num_runs + " -Ddelite.executor=" + opts.executor + " -Ddelite.scheduler=" + opts.scheduler + " -Ddelite.master=" + opts.master + " -Ddelite.slaves=" + str(opts.num_nodes) + " -Ddelite.code.cache.home=" + opts.codecache
+    java_opts = java_opts + " -Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) + " -Ddelite.numDynamicChunks=" + str(opts.num_dynamic_chunks) +" -Ddelite.cpp=" + opts.num_cpp + " -Ddelite.cuda=" + opts.num_cuda + " -Ddelite.opencl=" + opts.num_opencl + " -Ddelite.runs=" + opts.num_runs + " -Ddelite.executor=" + opts.executor + " -Ddelite.scheduler=" + opts.scheduler + " -Ddelite.master=" + opts.master + " -Ddelite.slaves=" + str(opts.num_nodes) + " -Ddelite.code.cache.home=" + opts.codecache
 
     if opts.no_regen == True:
         java_opts = java_opts + " -Ddelite.debug.noregenerate"

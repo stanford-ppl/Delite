@@ -252,7 +252,8 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   //add code to code generate an atomic integer method
   //you can pull and set from this 
   protected def writeSynchronizedOffset(){
-    out.append("private val proposedNumberOfDynamicChunks = 8*"+numChunks+"\n")
+    println("Number of dynamic chunks: " + Config.numDynamicChunks)
+    out.append("private val proposedNumberOfDynamicChunks = "+Config.numDynamicChunks+"\n")
     out.append("val numDynamicChunks = if(proposedNumberOfDynamicChunks <= "+numChunks+" || "+numChunks+" == 1 || closure.loopSize < proposedNumberOfDynamicChunks) "+numChunks+" else proposedNumberOfDynamicChunks\n")
     //out.append("println(\"numDynamicChunks: \" + numDynamicChunks)\n")
     out.append("private val offset = new AtomicInteger(0)\n")
