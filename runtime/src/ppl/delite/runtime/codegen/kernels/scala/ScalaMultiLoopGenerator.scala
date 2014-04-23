@@ -52,7 +52,7 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
   }
 
   protected def dynamicScheduler(outputSym: String): String = {
-    out.append("var dIdx = "+headerObject+".getDynamicChunkIndex()\n")
+    out.append("var dIdx = "+chunkIdx+"\n")
     out.append("val numDynamicChunks = "+headerObject + ".numDynamicChunks\n")
     out.append("val startOffset = "+closure+".loopStart\n")
     out.append("val size: Long = "+closure+".loopSize\n")
@@ -256,7 +256,7 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
     out.append("private val proposedNumberOfDynamicChunks = "+Config.numDynamicChunks+"\n")
     out.append("val numDynamicChunks = if(proposedNumberOfDynamicChunks <= "+numChunks+" || "+numChunks+" == 1 || closure.loopSize < proposedNumberOfDynamicChunks) "+numChunks+" else proposedNumberOfDynamicChunks\n")
     //out.append("println(\"numDynamicChunks: \" + numDynamicChunks)\n")
-    out.append("private val offset = new AtomicInteger(0)\n")
+    out.append("private val offset = new AtomicInteger("+numChunks+")\n")
     out.append("def getDynamicChunkIndex() : Int = { offset.getAndAdd(1) }\n")
   }
   protected def writeSync(key: String) {
