@@ -23,7 +23,7 @@ trait SparseVectorViewCSROpsExp extends SparseVectorViewCompilerOps with DeliteC
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@SparseVectorViewNew(x,s,str,l,r) => reflectPure(SparseVectorViewNew(f(x),f(s),f(str),f(l),f(r))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
-    case Reflect(e@SparseVectorViewNew(x,s,str,l,r), u, es) => reflectMirrored(Reflect(SparseVectorViewNew(f(x),f(s),f(str),f(l),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))        
+    case Reflect(e@SparseVectorViewNew(x,s,str,l,r), u, es) => reflectMirrored(Reflect(SparseVectorViewNew(f(x),f(s),f(str),f(l),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)        
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??  
 }

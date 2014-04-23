@@ -116,14 +116,14 @@ trait SparseMatrixCOOOpsExp extends SparseMatrixCOOCompilerOps with DeliteCollec
     case e@SparseMatrixCOOToCSR(x) => reflectPure(new { override val original = Some(f,e) } with SparseMatrixCOOToCSR(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     
     // reflected
-    case Reflect(e@SparseMatrixCOONew(x,y), u, es) => reflectMirrored(Reflect(SparseMatrixCOONew(f(x),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
-    case Reflect(e@SparseMatrixCOORawData(x), u, es) => reflectMirrored(Reflect(SparseMatrixCOORawData(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
-    case Reflect(e@SparseMatrixCOORawColIndices(x), u, es) => reflectMirrored(Reflect(SparseMatrixCOORawColIndices(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
-    case Reflect(e@SparseMatrixCOORawRowIndices(x), u, es) => reflectMirrored(Reflect(SparseMatrixCOORawRowIndices(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))        
-    case Reflect(e@SparseMatrixCOOSetRawData(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCOOSetRawData(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))       
-    case Reflect(e@SparseMatrixCOOSetRawColIndices(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCOOSetRawColIndices(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))       
-    case Reflect(e@SparseMatrixCOOSetRawRowIndices(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCOOSetRawRowIndices(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))           
-    case Reflect(e@SparseMatrixCOOToCSR(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixCOOToCSR(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))      
+    case Reflect(e@SparseMatrixCOONew(x,y), u, es) => reflectMirrored(Reflect(SparseMatrixCOONew(f(x),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)    
+    case Reflect(e@SparseMatrixCOORawData(x), u, es) => reflectMirrored(Reflect(SparseMatrixCOORawData(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)    
+    case Reflect(e@SparseMatrixCOORawColIndices(x), u, es) => reflectMirrored(Reflect(SparseMatrixCOORawColIndices(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)    
+    case Reflect(e@SparseMatrixCOORawRowIndices(x), u, es) => reflectMirrored(Reflect(SparseMatrixCOORawRowIndices(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)        
+    case Reflect(e@SparseMatrixCOOSetRawData(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCOOSetRawData(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)       
+    case Reflect(e@SparseMatrixCOOSetRawColIndices(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCOOSetRawColIndices(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)       
+    case Reflect(e@SparseMatrixCOOSetRawRowIndices(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCOOSetRawRowIndices(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)           
+    case Reflect(e@SparseMatrixCOOToCSR(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixCOOToCSR(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)      
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
     

@@ -167,16 +167,16 @@ trait SparseMatrixCSROpsExp extends SparseMatrixCSRCompilerOps with DeliteCollec
     case e@SparseMatrixCSRZipNZIntersection(x,y,g) => reflectPure(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZIntersection(f(x),f(y),f(g))(e.mA,e.mB,e.mC))(mtype(manifest[A]),implicitly[SourceContext])
     
     // reflected
-    case Reflect(e@SparseMatrixCSRNew(x,y), u, es) => reflectMirrored(Reflect(SparseMatrixCSRNew(f(x),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
-    case Reflect(e@SparseMatrixCSRRawData(x), u, es) => reflectMirrored(Reflect(SparseMatrixCSRRawData(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
-    case Reflect(e@SparseMatrixCSRRawColIndices(x), u, es) => reflectMirrored(Reflect(SparseMatrixCSRRawColIndices(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
-    case Reflect(e@SparseMatrixCSRRawRowPtr(x), u, es) => reflectMirrored(Reflect(SparseMatrixCSRRawRowPtr(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))    
-    case Reflect(e@SparseMatrixCSRSetRawData(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCSRSetRawData(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))       
-    case Reflect(e@SparseMatrixCSRSetRawColIndices(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCSRSetRawColIndices(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))       
-    case Reflect(e@SparseMatrixCSRSetRawRowPtr(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCSRSetRawRowPtr(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))       
-    case Reflect(e@SparseMatrixCSRRowIndices(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixCSRRowIndices(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@SparseMatrixCSRZipNZUnion(x,y,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZUnion(f(x),f(y),f(g))(e.mA,e.mB,e.mC), mapOver(f,u), f(es)))(mtype(manifest[A]))    
-    case Reflect(e@SparseMatrixCSRZipNZIntersection(x,y,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZIntersection(f(x),f(y),f(g))(e.mA,e.mB,e.mC), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@SparseMatrixCSRNew(x,y), u, es) => reflectMirrored(Reflect(SparseMatrixCSRNew(f(x),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)    
+    case Reflect(e@SparseMatrixCSRRawData(x), u, es) => reflectMirrored(Reflect(SparseMatrixCSRRawData(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)    
+    case Reflect(e@SparseMatrixCSRRawColIndices(x), u, es) => reflectMirrored(Reflect(SparseMatrixCSRRawColIndices(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)    
+    case Reflect(e@SparseMatrixCSRRawRowPtr(x), u, es) => reflectMirrored(Reflect(SparseMatrixCSRRawRowPtr(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)    
+    case Reflect(e@SparseMatrixCSRSetRawData(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCSRSetRawData(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)       
+    case Reflect(e@SparseMatrixCSRSetRawColIndices(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCSRSetRawColIndices(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)       
+    case Reflect(e@SparseMatrixCSRSetRawRowPtr(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixCSRSetRawRowPtr(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)       
+    case Reflect(e@SparseMatrixCSRRowIndices(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixCSRRowIndices(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@SparseMatrixCSRZipNZUnion(x,y,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZUnion(f(x),f(y),f(g))(e.mA,e.mB,e.mC), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)    
+    case Reflect(e@SparseMatrixCSRZipNZIntersection(x,y,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixCSRZipNZIntersection(f(x),f(y),f(g))(e.mA,e.mB,e.mC), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)    
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??  
   

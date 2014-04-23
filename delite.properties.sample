@@ -1,10 +1,6 @@
 # Delite project properties
 [delite]
 
-# uncomment to override default scala.virtualized.home location.
-# equivalent to setting the SCALA_VIRT_HOME environment variable.
-#scala.virtualized.home=/home/user/scala/scala-virtualized/dists/latest
-
 # location of the JVM to use with Delite. 
 # equivalent to setting the JAVA_HOME environment variable.
 #java.home=/home/user/java/jdk1.7.0_b121_x86_64

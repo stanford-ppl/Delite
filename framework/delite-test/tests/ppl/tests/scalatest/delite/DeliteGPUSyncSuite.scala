@@ -37,7 +37,9 @@ trait DeliteGPULoopSync1 extends DeliteTestModule with DeliteTestDSLApplication 
       val sum = v.reduce( _ + _ )(0.0)
       collect(sum == 1.5*i*(i+1)/2)
       i += 1
-    } 
+    }
+    
+    mkReport
   }
 }
 
@@ -55,6 +57,8 @@ trait DeliteGPULoopSync2 extends DeliteTestModule with DeliteTestDSLApplication 
       collect(sum1 == sum2)
       i += 1
     }
+    
+    mkReport
   }
 }
 
@@ -72,6 +76,8 @@ trait DeliteGPULoopSync3 extends DeliteTestModule with DeliteTestDSLApplication 
     val sum1 = v.reduce(_ + _)(0.0) //sum on GPU
     val sum2 = v(0) + v(1) + v(2) + v(3) + v(4) // sum on CPU
     collect(sum1 == sum2)   
+  
+    mkReport
   }
 }
 
@@ -93,6 +99,8 @@ trait DeliteGPULoopSync4 extends DeliteTestModule with DeliteTestDSLApplication 
       collect(sum1 == sum2)
       i += 1
     }  
+  
+    mkReport
   }
 }
 
@@ -113,6 +121,8 @@ trait DeliteGPULoopSync5 extends DeliteTestModule with DeliteTestDSLApplication 
     val sum1 = v.reduce(_ + _)(0.0) // sum on GPU
     val sum2 = v(0) + v(1) + v(2) + v(3) + v(4) // sum on CPU    
     collect(sum1 == sum2)
+  
+    mkReport
   }
 }
 
@@ -133,6 +143,8 @@ trait DeliteGPULoopSync6 extends DeliteTestModule with DeliteTestDSLApplication 
       collect(sum1 == sum2)
       i += 1
     }  
+ 
+    mkReport
   }
 }
 
@@ -153,6 +165,8 @@ trait DeliteGPULoopSync7 extends DeliteTestModule with DeliteTestDSLApplication 
     val sum1 = v.reduce(_ + _)(0.0) // sum on GPU
     val sum2 = v(0) + v(1) + v(2) + v(3) + v(4) // sum on CPU    
     collect(sum1 == sum2)
+  
+    mkReport
   }
 }
 
@@ -169,6 +183,8 @@ trait DeliteGPULoopSync8 extends DeliteTestModule with DeliteTestDSLApplication 
       collect(sum1 == sum2)
       i += 1 // mutation on CPU
     } 
+  
+    mkReport
   }
 }
 
@@ -187,6 +203,8 @@ trait DeliteGPULoopSync9 extends DeliteTestModule with DeliteTestDSLApplication 
       collect(sum1 == sum2)
       i += 1
     }
+  
+    mkReport
   }
 }
 
@@ -216,6 +234,8 @@ trait DeliteGPULoopSync10 extends DeliteTestModule with DeliteTestDSLApplication
 
     splitCondition(unit(0.0).AsInstanceOf[Int] == 0)
     splitCondition(unit(1.0).AsInstanceOf[Int] == 0)
+  
+    mkReport
   }
 }
 
@@ -230,4 +250,5 @@ class DeliteGPUSyncSuite extends DeliteSuite {
   def testDeliteGPULoopSync7() { compileAndTest(DeliteGPULoopSync7Runner, CHECK_MULTILOOP); }
   def testDeliteGPULoopSync8() { compileAndTest(DeliteGPULoopSync8Runner, CHECK_MULTILOOP); }
   def testDeliteGPULoopSync9() { compileAndTest(DeliteGPULoopSync9Runner, CHECK_MULTILOOP); }
+  def testDeliteGPULoopSync10() { compileAndTest(DeliteGPULoopSync10Runner, CHECK_MULTILOOP); }
 }

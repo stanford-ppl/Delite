@@ -12,8 +12,7 @@ from time import localtime, strftime
 import delitecommon
 
 DSLs = ['optiml','optila','optiql','deliszt','optigraph','opticvx','multi-dsl']
-LMS_HOME = os.getenv("LMS_HOME")
-lms_version = "lms_2.10"
+LMS_HOME = os.getenv("LMS_HOME") #should be set if LMS is provided directly from class files rather than a lib_managed jar
 
 def err(s):
     exit("error: " + s)
@@ -60,7 +59,7 @@ def checkLMSEnv():
                 LMS_HOME = lms_home
 
     if LMS_HOME is None:
-          lms_home = delitecommon.DELITE_HOME + "/lib_managed/jars/EPFL/" + lms_version + "/"
+          lms_home = delitecommon.HYPER_HOME + "/lib_managed/jars/EPFL/" + delitecommon.lms_version + "/"
           if not os.path.isdir(lms_home):
               err("couldn't find the LMS library at: " + lms_home + ". Please set the LMS_HOME environment variable or libs.lms.home entry in delite.properties manually.")
 
@@ -99,19 +98,15 @@ def stage(runner, params, opts):
         java_opts = java_opts + " -Ddelite.dump.exception"
     java_opts = java_opts + " -Dnested.variants.level=0"
     
-    scala_virt_version = delitecommon.scala_virt_version
     DELITE_HOME = delitecommon.DELITE_HOME
-    SCALA_VIRT_HOME = delitecommon.SCALA_VIRT_HOME
     
     #add classpaths for Delite
     scala_major_id = delitecommon.scala_major_id
     old_cp = os.getenv("CLASSPATH", "")
     cp = " -cp "
     cp = cp + old_cp + os.pathsep
-    if LMS_HOME is None:
-        cp = cp + delitecommon.DELITE_HOME + "/lib_managed/jars/EPFL/" + lms_version + "/*" + os.pathsep
-    else:
-        cp = cp + LMS_HOME + "/target/" + scala_major_id + "/classes" + os.pathsep
+    if LMS_HOME:
+      cp = cp + LMS_HOME + "/target/" + scala_major_id + "/classes" + os.pathsep
     cp = cp + DELITE_HOME + "/framework/target/" + scala_major_id + "/classes" + os.pathsep
     
     #DSL cps
@@ -126,10 +121,11 @@ def stage(runner, params, opts):
     cp = cp + DELITE_HOME + "/tests/target/" + scala_major_id + "/classes" + os.pathsep
     cp = cp + DELITE_HOME + "/target/" + scala_major_id + "/test-classes" + os.pathsep
 
-    #scala-virt cp
-    cp = cp + SCALA_VIRT_HOME + "/scala-library.jar" + os.pathsep  #TR should use /lib/*.jar?
-    cp = cp + SCALA_VIRT_HOME + "/scala-reflect.jar" + os.pathsep
-    cp = cp + SCALA_VIRT_HOME + "/scala-compiler.jar"
+    # add all managed libs 
+    # caveat: scalatest pulls in some non-virtualized scala dependencies but they conflict with the scala-virtualized versions
+    jars = [os.path.join(d,f) for (d, n, fs) in os.walk(delitecommon.HYPER_HOME + "/lib_managed/") if not (d.count("org.scala-lang") > 0 and d.count("virtualized") == 0) for f in fs]
+    for j in jars:
+      cp = cp + j + os.pathsep
 
     java_opts = java_opts + cp
     #os.putenv("JAVA_OPTS", java_opts)
@@ -138,8 +134,12 @@ def stage(runner, params, opts):
     os.putenv("LD_PRELOAD", delitecommon.JAVA_HOME + "/jre/lib/amd64/libjsig.so")
     
     if opts.verbose:
-       delitecommon.printEnv()
-       print("LMS_HOME = " + LMS_HOME)
+      delitecommon.printEnv()
+      if LMS_HOME: 
+        print("LMS_HOME = " + LMS_HOME)
+      else:
+        print("LMS_HOME is UNDEFINED")
+      print(java_opts)
 
     print "==  Generating DEG file with options: " + str(opts)
     java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " " + runner + " " + ' '.join(params)

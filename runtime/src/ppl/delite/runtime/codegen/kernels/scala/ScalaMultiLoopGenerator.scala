@@ -25,6 +25,7 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
 
   protected def writeHeader() {
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
+    out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
     ScalaExecutableGenerator.writePath(kernelPath, out)
     out.append("object ")
     out.append(kernelName)
