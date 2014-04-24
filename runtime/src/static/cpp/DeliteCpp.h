@@ -37,6 +37,8 @@ string readFirstLineFile(string filename);
 
 #ifndef __DELITE_CPP_STANDALONE__
 extern std::map<int,jobject> *JNIObjectMap;
+jobject JNIObjectMap_find(int key);
+void JNIObjectMap_insert(int key, jobject value);
 #endif
 
 #endif
