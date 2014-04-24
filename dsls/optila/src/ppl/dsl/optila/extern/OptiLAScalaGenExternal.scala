@@ -82,9 +82,9 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
         """
         {
         	jboolean copy;
-        	j%1$s *mat1_ptr = env->GetPrimitiveArrayCritical((jarray)mat1, &copy);
-        	j%1$s *mat2_ptr = env->GetPrimitiveArrayCritical((jarray)mat2, &copy);
-        	j%1$s *mat3_ptr = env->GetPrimitiveArrayCritical((jarray)mat3, &copy);
+        	j%1$s *mat1_ptr = (j%1$s*)env->GetPrimitiveArrayCritical((jarray)mat1, &copy);
+        	j%1$s *mat2_ptr = (j%1$s*)env->GetPrimitiveArrayCritical((jarray)mat2, &copy);
+        	j%1$s *mat3_ptr = (j%1$s*)env->GetPrimitiveArrayCritical((jarray)mat3, &copy);
 
         	%2$s(CblasRowMajor, CblasNoTrans, CblasNoTrans, mat1_r, mat2_c, mat1_c, 1.0, mat1_ptr, mat1_c, mat2_ptr, mat2_c, 0.0, mat3_ptr, mat2_c);
 
