@@ -11,6 +11,13 @@ import ppl.delite.runtime.scheduler.{OpHelper, OpList, PartialSchedule}
 
 trait CppExecutableGenerator extends ExecutableGenerator {
 
+  // To get a non-conflicting index for a variable name used to temporarily store jobject
+  private var index = 0
+  protected def getSyncVarIdx = {
+    index += 1
+    index
+  }
+
   protected def addSource(source: String) {
     // Add extern header files for generated kernels at walk-time
     val externs = CppCompile.headers.map(s => "#include \"" + s + "\"\n").mkString("")
