@@ -45,7 +45,7 @@ public:
     
     // Additional functions
     void copy(int srcOffset, cppDeliteArray<T> *dest, int destOffset, int length) {
-      memcpy(dest->data + destOffset, data + srcOffset, sizeof(T) * length);
+      memmove(dest->data + destOffset, data + srcOffset, sizeof(T) * length);
     }
 
     cppDeliteArray<T> *arrayunion(cppDeliteArray<T> *rhs) {
