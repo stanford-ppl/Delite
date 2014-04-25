@@ -159,9 +159,24 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
 }
 
 
-trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator {
+trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator with SyncGenerator {
 
   private val typesMap = CudaExecutableGenerator.typesMap
+
+  // referential primitive is a primitive type result of a CUDA kernel stored on the device (e.g. reduction)
+  def isReferentialPrimitive(op: DeliteOP, sym: String): Boolean = {
+    if(isPrimitiveType(op.outputType(sym))) {
+      op match {
+        case n:OP_Nested => false // referentialPrimitive is returned as a normal primitive type from nested OPs (converted internally)
+        case i:OP_Input if(i.op.isInstanceOf[OP_Nested]) => false
+        case i:OP_Input if(i.op.scheduledResource == location) => true
+        case _ if(op.scheduledResource == location) => true
+        case _ => false
+      }
+    }
+    else 
+      false 
+  }
 
   def generateMethodSignature(): String = {
     val str = new StringBuilder
@@ -196,7 +211,7 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator {
       if (!first) str.append(", ")
       first = false
       str.append(typesMap(deviceTarget)(sym))
-      if (!isPrimitiveType(op.outputType(sym))) str.append(" *")
+      if (!isPrimitiveType(op.outputType(sym)) || isReferentialPrimitive(op,sym)) str.append(" *")
       str.append(' ')
       str.append(getSymDevice(op, sym))
       if (updateOps(nested).contains(sym)) {
@@ -224,7 +239,13 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator {
   }
 
   protected def writeOutput(op: DeliteOP, name: String, newLine: Boolean = true) {
-    out.append(getSymDevice(op, name))
+    val devType = CudaExecutableGenerator.typesMap(Targets.Cuda)(name)
+    //TODO: put this into cuda sync generator
+    //TODO: make sure symbol is not freed before recvCuda is called
+    if (isReferentialPrimitive(op,name)) 
+      out.append("recvCuda_%s(%s)".format(mangledName(devType),getSymDevice(op,name)))
+    else 
+      out.append(getSymDevice(op, name))
     if (newLine) out.append(";\n")
   }
 

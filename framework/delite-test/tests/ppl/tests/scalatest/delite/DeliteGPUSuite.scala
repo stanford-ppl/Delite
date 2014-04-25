@@ -109,6 +109,48 @@ trait DeliteGPUObjectReduction extends DeliteTestModule with DeliteTestDSLApplic
   }
 }
 
+object DeliteGPUReferencePrimitive1Runner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPUReferencePrimitive1
+trait DeliteGPUReferencePrimitive1 extends DeliteTestModule with DeliteTestDSLApplication {
+  def main() = {
+
+    val v = DeliteArrayBuffer.fromFunction(10)(i => 1).mutable
+
+    val result = if(v(0) < 2) {
+      v forIndices { i => v(i) = i }
+      v.reduce(_ + _)(0) // returned by GPU (returner), and is referential primitive
+    }
+    else {
+      3
+    }
+
+    collect(result == 45)
+
+    mkReport
+  }
+}
+
+object DeliteGPUReferencePrimitive2Runner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPUReferencePrimitive2
+trait DeliteGPUReferencePrimitive2 extends DeliteTestModule with DeliteTestDSLApplication {
+  def main() = {
+
+    val v = DeliteArrayBuffer.fromFunction(10)(i => 1).mutable
+    val s = v.reduce(_ + _)(0) // s is referential primitive, passed into conditional block as input
+    collect(s == 10)
+
+    val result = if(v(0) < 2) {
+      v forIndices { i => v(i) = s }
+      v(0)
+    }
+    else {
+      3
+    }
+
+    collect(result == 10)
+
+    mkReport
+  }
+}
+
 class DeliteGPUSuite extends DeliteSuite {
   def testDeliteGPUCond() { compileAndTest(DeliteGPUCondRunner, CHECK_MULTILOOP); }
   def testDeliteGPUCondReturn() { compileAndTest(DeliteGPUCondReturnRunner, CHECK_MULTILOOP); }
@@ -116,4 +158,6 @@ class DeliteGPUSuite extends DeliteSuite {
   def testDeliteGPUMutation() { compileAndTest(DeliteGPUMutationRunner, CHECK_MULTILOOP); }
   def testDeliteGPUNestedMutation() { compileAndTest(DeliteGPUNestedMutationRunner, CHECK_MULTILOOP); }
   def testDeliteGPUObjectReduction() { compileAndTest(DeliteGPUObjectReductionRunner, CHECK_MULTILOOP); }
+  def testDeliteGPUReferencePrimitive1() { compileAndTest(DeliteGPUReferencePrimitive1Runner, CHECK_MULTILOOP); }
+  def testDeliteGPUReferencePrimitive2() { compileAndTest(DeliteGPUReferencePrimitive2Runner, CHECK_MULTILOOP); }
 }

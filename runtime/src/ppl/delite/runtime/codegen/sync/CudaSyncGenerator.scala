@@ -167,7 +167,7 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
     out.append(location)
     out.append('_')
     if(sym == "") out.append(getOpSym(dep))
-    else out.append(getSym(dep,sym))
+    else out.append(getOpSym(dep)+getSym(dep,sym))
     out.append("\",\"()V")
     out.append("\"));\n")
   }
@@ -187,9 +187,13 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
       out.append("%s *%s = recvCuda_%s(%s);\n".format(hostType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
       out.append("%s %s = sendViewCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(hostType),location,getSymHost(op,sym)))
     }
-    else if(isPrimitiveType(op.outputType(sym))) {
-      out.append("%s %s = recvCuda_%s(%s);\n".format(getCPrimitiveType(op.outputType(sym)),getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+    else if(isPrimitiveType(op.outputType(sym)) && op.isInstanceOf[OP_Nested]) {
+      out.append("%s %s = (%s)%s;\n".format(hostType,getSymHost(op,sym),hostType,getSymDevice(op,sym)))
       out.append("%s %s = (%s)%s;\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),getJNIType(op.outputType(sym)),getSymHost(op,sym)))
+    }
+    else if(isPrimitiveType(op.outputType(sym))) {
+      out.append("%s %s = recvCuda_%s(%s);\n".format(hostType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+      out.append("%s %s = (%s)%s;\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),getJNIType(op.outputType(sym)),getSymHost(op,sym)))      
     }
     else if(devType.startsWith("DeliteArray<")) {
       devType match { //TODO: Fix this for nested object types
@@ -233,7 +237,7 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
     out.append(location)
     out.append(",\"set_")
     if(sym == "") out.append(getOpSym(op))
-    else out.append(getSym(op,sym))
+    else out.append(getOpSym(op)+getSym(op,sym))
     out.append("\",\"(")
     out.append(getJNIArgType("Unit"))
     out.append(")V\"),")
@@ -314,9 +318,10 @@ trait CudaSyncGenerator extends CudaToScalaSync {
       writeCudaFree(f._2, isPrimitiveType(f._1.outputType(f._2)))
       
       if ( (f._1.scheduledResource != location) || (f._1.getConsumers.filter(c => c.scheduledResource!=location && c.getInputs.map(_._2).contains(f._2)).nonEmpty) ) {
-        writeJVMRelease(f._2)
-        if (!isPrimitiveType(f._1.outputType(f._2)) && f._1.outputType(f._2)!="Unit") 
+        if (!isPrimitiveType(f._1.outputType(f._2)) && f._1.outputType(f._2)!="Unit") {
+          writeJVMRelease(f._2)
           writeHostRelease(f._1,f._2)
+        }
       }
     }
 

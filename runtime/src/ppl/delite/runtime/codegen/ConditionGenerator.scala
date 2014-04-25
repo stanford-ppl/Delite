@@ -256,5 +256,5 @@ private[codegen] object ConditionCommon {
   }
 
   def getSym(condition: OP_Condition, baseId: String, op: DeliteOP, name: String) = "x" + suffix(condition, baseId, op, name)
-  def getSync(condition: OP_Condition, baseId: String, op: DeliteOP, name: String) = "Result_" + suffix(condition, baseId, op, name)
+  def getSync(condition: OP_Condition, baseId: String, op: DeliteOP, name: String) = "Result_" + op.id + "_" + suffix(condition, baseId, op, name)
 }

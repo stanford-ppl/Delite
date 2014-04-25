@@ -46,10 +46,10 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
             out.append("if(")
             out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
             out.append(") {\n")
-            writeAwaiter(s.sender.from); writeRecvUpdater(s.sender.from, s.sender.sym); 
+            writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym); 
             out.append("}\n")
           case _ => 
-            writeAwaiter(s.sender.from); writeRecvUpdater(s.sender.from, s.sender.sym);
+            writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym);
         } 
       case _ => super.receiveUpdate(s)
     }
@@ -93,11 +93,11 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
           out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
           out.append(") {\n")
           writeSendUpdater(s.from, s.sym)
-          writeNotifier(s.from)
+          writeNotifier(s.from, s.sym)
           out.append("}\n")
         case _ => 
           writeSendUpdater(s.from, s.sym)
-          writeNotifier(s.from)
+          writeNotifier(s.from, s.sym)
       }      
       syncList += s
     }
@@ -152,7 +152,7 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     out.append(location)
     out.append('_')
     if(sym == "") out.append(getOpSym(dep))
-    else out.append(getSym(dep,sym))
+    else out.append(getOpSym(dep)+getSym(dep,sym))
     out.append("\",\"()V")
     out.append("\"));\n")
   }
@@ -204,7 +204,7 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     out.append(location)
     out.append(",\"set_")
     if(sym == "") out.append(getOpSym(op))
-    else out.append(getSym(op,sym))
+    else out.append(getOpSym(op)+getSym(op,sym))
     out.append("\",\"(")
     out.append(getJNIArgType("Unit"))
     out.append(")V\"),")

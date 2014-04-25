@@ -121,7 +121,7 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
     out.append(location)
     out.append('_')
     if(sym == "") out.append(getOpSym(dep))
-    else out.append(getSym(dep,sym))
+    else out.append(getOpSym(dep)+getSym(dep,sym))
     out.append('\n')
 
     if (Config.profile) {
@@ -143,7 +143,7 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
     out.append("Sync_" + executableName(op.scheduledResource))
     out.append(".set_")
     if(sym == "") out.append(getOpSym(op))
-    else out.append(getSym(op,sym))
+    else out.append(getOpSym(op)+getSym(op,sym))
     out.append("(())\n")
   }
 
