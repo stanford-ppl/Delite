@@ -711,7 +711,6 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
       stream.close()
       elems foreach { e => val t = baseType(e._2); dsTypesList.add((t.asInstanceOf[Manifest[Any]],remap(t))) }
       elems foreach { e => val t = unwrapArrayType(e._2); dsTypesList.add((t.asInstanceOf[Manifest[Any]],remap(t))) }
-      println("dsTyps:" + dsTypesList.toString)
     }
     catch {
       case e: GenerationFailedException => generationFailedStructs += name; (new File(path + deviceTarget + name + ".h")).delete; throw(e)
