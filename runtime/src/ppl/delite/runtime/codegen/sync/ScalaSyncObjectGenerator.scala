@@ -29,11 +29,11 @@ trait ScalaSyncObjectGenerator extends SyncObjectGenerator with ScalaExecutableG
             generatedSyncObjects += getOpSync(s.from)
           }
         case s: SendUpdate =>
-          if(!generatedSyncObjects.contains(getOpSync(s.from))) {
-            writePublicGet(s, getOpSym(s.from), getOpSync(s.from), "Unit")
-            SyncObject(s, getOpSync(s.from), "Unit")
-            writePublicSet(s, getOpSym(s.from), getOpSync(s.from), "Unit")
-            generatedSyncObjects += getOpSync(s.from)
+          if(!generatedSyncObjects.contains(getSync(s.from, s.sym))) {
+            writePublicGet(s, getSym(s.from, s.sym), getSync(s.from, s.sym), "Unit")
+            SyncObject(s, getSync(s.from, s.sym), "Unit")
+            writePublicSet(s, getSym(s.from, s.sym), getSync(s.from, s.sym), "Unit")
+            generatedSyncObjects += getSync(s.from, s.sym)
           }
       }
     }

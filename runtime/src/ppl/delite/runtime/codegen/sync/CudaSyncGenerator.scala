@@ -41,10 +41,10 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
             out.append("if(")
             out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
             out.append(") {\n")
-            writeAwaiter(s.sender.from); writeRecvUpdater(s.sender.from, s.sender.sym); 
+            writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym); 
             out.append("}\n")
           case _ => 
-            writeAwaiter(s.sender.from); writeRecvUpdater(s.sender.from, s.sender.sym);
+            writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym);
         } 
       case _ => super.receiveUpdate(s)
     }
@@ -88,11 +88,11 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
           out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
           out.append(") {\n")
           writeSendUpdater(s.from, s.sym)
-          writeNotifier(s.from)
+          writeNotifier(s.from, s.sym)
           out.append("}\n")
         case _ => 
           writeSendUpdater(s.from, s.sym)
-          writeNotifier(s.from)
+          writeNotifier(s.from, s.sym)
       }
       syncList += s
     }
@@ -153,7 +153,7 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
     }
   }
 
-  private def writeAwaiter(dep: DeliteOP) {
+  private def writeAwaiter(dep: DeliteOP, sym: String = "") {
     out.append("env")
     out.append(location)
     out.append("->CallStaticVoid")
@@ -166,7 +166,8 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
     out.append(",\"get")
     out.append(location)
     out.append('_')
-    out.append(getOpSym(dep))
+    if(sym == "") out.append(getOpSym(dep))
+    else out.append(getSym(dep,sym))
     out.append("\",\"()V")
     out.append("\"));\n")
   }
@@ -221,7 +222,7 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
     out.append(");\n")
   }
 
-  private def writeNotifier(op: DeliteOP) {
+  private def writeNotifier(op: DeliteOP, sym: String = "") {
     out.append("env")
     out.append(location)
     out.append("->CallStaticVoidMethod(cls")
@@ -231,7 +232,8 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
     out.append("->GetStaticMethodID(cls")
     out.append(location)
     out.append(",\"set_")
-    out.append(getOpSym(op))
+    if(sym == "") out.append(getOpSym(op))
+    else out.append(getSym(op,sym))
     out.append("\",\"(")
     out.append(getJNIArgType("Unit"))
     out.append(")V\"),")
