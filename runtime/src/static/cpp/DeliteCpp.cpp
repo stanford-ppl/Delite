@@ -128,3 +128,19 @@ string readFirstLineFile(string filename) {
   return line;
 }
 
+/* helper methods and data structures only required for execution with Delite */
+#ifndef __DELITE_CPP_STANDALONE__
+pthread_mutex_t lock_objmap = PTHREAD_MUTEX_INITIALIZER;
+std::map<int,jobject> *JNIObjectMap = new std::map<int,jobject>();
+jobject JNIObjectMap_find(int key) {
+  pthread_mutex_lock (&lock_objmap);
+  jobject ret = JNIObjectMap->find(key)->second;
+  pthread_mutex_unlock (&lock_objmap);
+  return ret;
+}
+void JNIObjectMap_insert(int key, jobject value) {
+  pthread_mutex_lock (&lock_objmap);
+  JNIObjectMap->insert(std::pair<int,jobject>(key,value));
+  pthread_mutex_unlock (&lock_objmap);
+}
+#endif

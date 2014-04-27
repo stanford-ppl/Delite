@@ -175,7 +175,10 @@ trait CppSyncObjectGenerator extends SyncObjectGenerator with CppExecutableGener
       out.append(" = 0;\n")
     }
     out.append("int " + syncName + "::putIndex = 0;\n")
-    if (outputType != "void") out.append(outputType + " " + syncName + "::_result = NULL;\n")
+    if (outputType == "string")
+      out.append(outputType + " " + syncName + "::_result = string();\n")
+    else if (outputType != "void")
+      out.append(outputType + " " + syncName + "::_result = NULL;\n")
     out.append("pthread_mutex_t " + syncName + "::lock = PTHREAD_MUTEX_INITIALIZER;\n")
     out.append("pthread_cond_t " + syncName + "::notEmpty = PTHREAD_COND_INITIALIZER;\n")
     out.append("pthread_cond_t " + syncName + "::notFull = PTHREAD_COND_INITIALIZER;\n")

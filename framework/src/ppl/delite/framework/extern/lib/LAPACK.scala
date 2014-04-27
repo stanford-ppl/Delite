@@ -18,7 +18,7 @@ object LAPACK extends ExternalLibrary {
   override lazy val header = """
 #include <stdlib.h>
 #include <stdio.h>
-
+#include <math.h>
 #include <jni.h>
 """ + configHeader.map(h => "#include \"" + h + "\"\n").mkString("")
 }

@@ -681,10 +681,25 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
       // constructor
       stream.println("\t" + deviceTarget + name + "(void) { }")
       stream.print("\t" + deviceTarget + name + "(")
-      stream.print(elems.map{ case (idx,tp) => remap(tp) + addRef(baseType(tp)) + " _" + idx }.mkString(","))
+      //NOTE: for some reason, having the name __real or __imag produces compile error. reserverd keywords?
+      stream.print(elems.map{ case (idx,tp) => remap(tp) + addRef(baseType(tp)) + " arg_" + idx }.mkString(","))
       stream.println(") {")
-      stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = _" + idx + ";\n" }.mkString(""))
+      stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = arg_" + idx + ";\n" }.mkString(""))
       stream.println("\t}")
+
+      // equals
+      val elemEquals = elems.map { e =>
+        if (encounteredStructs.contains(structName(baseType(e._2)))) {
+          e._1 + "->equals(to->" + e._1 + ")"
+        }
+        else {
+          e._1 + " == to->" + e._1
+        }
+      }.mkString("(",") && (",")")
+      stream.println("\tbool equals(" + deviceTarget + name + addRef() + " to) {")
+      stream.println("\t\treturn " + elemEquals + ";")
+      stream.println("\t}")
+
       // free
       stream.println("\tvoid release(void) {")
       stream.print(elems.filter(e => !isPrimitiveType(baseType(e._2)) && remap(baseType(e._2))!="string").map(e => e._1 + "->release();\n").mkString(""))
@@ -696,7 +711,6 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
       stream.close()
       elems foreach { e => val t = baseType(e._2); dsTypesList.add((t.asInstanceOf[Manifest[Any]],remap(t))) }
       elems foreach { e => val t = unwrapArrayType(e._2); dsTypesList.add((t.asInstanceOf[Manifest[Any]],remap(t))) }
-      println("dsTyps:" + dsTypesList.toString)
     }
     catch {
       case e: GenerationFailedException => generationFailedStructs += name; (new File(path + deviceTarget + name + ".h")).delete; throw(e)

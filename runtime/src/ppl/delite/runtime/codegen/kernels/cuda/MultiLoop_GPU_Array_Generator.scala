@@ -1,7 +1,7 @@
 package ppl.delite.runtime.codegen.kernels.cuda
 
 import tools.nsc.io._
-import ppl.delite.runtime.graph.ops.{OP_Executable, DeliteOP, OP_MultiLoop}
+import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.graph.targets.{OPData, Targets, TempAlloc}
 import collection.mutable.{ArrayBuffer,HashSet}
 import ppl.delite.runtime.codegen.sync.JNIFuncs
@@ -82,9 +82,17 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
   }
 
   private def needDeref(op:OP_MultiLoop, in: DeliteOP, sym:String): Boolean = {
-    //println("in: " + in.id + "," + in.scheduledResource)
-    //println("op: " + op.id + "," + op.scheduledResource)
-    isPrimitiveType(in.outputType(sym)) && (in.scheduledResource==op.scheduledResource)
+    if(isPrimitiveType(in.outputType(sym))) {
+      in match {
+        case n:OP_Nested => false // referentialPrimitive is returned as a normal primitive type from nested OPs (converted internally)
+        case i:OP_Input if(i.op.isInstanceOf[OP_Nested]) => false
+        case i:OP_Input if(i.op.scheduledResource == op.scheduledResource) => true
+        case _ if(in.scheduledResource == op.scheduledResource) => true
+        case _ => false
+      }
+    }
+    else 
+      false 
   }
 
   private def addDeref(out: StringBuilder, op: OP_MultiLoop) = {

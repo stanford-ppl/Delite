@@ -13,7 +13,8 @@ public:
     // Constructor
     cppDeliteArray(int _length) {
         length = _length;
-        data = new T[length];
+        //TODO: remove initialization to zero
+        data = new T[length]();
     }
 
     cppDeliteArray(T *_data, int _length) {
@@ -44,7 +45,7 @@ public:
     
     // Additional functions
     void copy(int srcOffset, cppDeliteArray<T> *dest, int destOffset, int length) {
-      memcpy(dest->data + destOffset, data + srcOffset, sizeof(T) * length);
+      memmove(dest->data + destOffset, data + srcOffset, sizeof(T) * length);
     }
 
     cppDeliteArray<T> *arrayunion(cppDeliteArray<T> *rhs) {

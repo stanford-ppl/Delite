@@ -32,9 +32,14 @@ object CppCompile extends CCompile {
       writer.close()
     }
 
+    if (config.compiler == "")
+      throw new RuntimeException("compiler path is not set. Please specify in $DELITE_HOME/config/delite/CPP.xml. (<compiler> /usr/bin/g++ </compiler>")
     if (config.make == "")
       throw new RuntimeException("make command path is not set. Please specify in $DELITE_HOME/config/delite/CPP.xml. (<make> /usr/bin/make </make>")
+    if (config.headerDir.length == 0)
+      throw new RuntimeException("JNI header paths are not set. Please specify in $DELITE_HOME/config/delite/CPP.xml.")
     
+
     //TODO: How many parallel jobs? For now, the number of processors.
     val args = Array(config.make, "-s", "-j", Runtime.getRuntime.availableProcessors.toString, "-f", makefile, "all")
     println("compile command: " + args.mkString(" "))

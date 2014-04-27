@@ -29,10 +29,10 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
         //TODO: remove naming convention dependency
         out.append(lst.map(c => "Condition_" + c._1.id.split('_').head + "_" + location + "." + c._1.id.split('_').head + "_cond==" + c._2).mkString("&&"))
         out.append(") {\n")
-        writeAwaiter(s.sender.from)
+        writeAwaiter(s.sender.from, s.sender.sym)
         out.append("}\n")
       case _ => 
-        writeAwaiter(s.sender.from)
+        writeAwaiter(s.sender.from, s.sender.sym)
     } 
   }
 
@@ -61,10 +61,10 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
         out.append("if(")
         out.append(lst.map(c => "Condition_" + c._1.id.split('_').head + "_" + location + "." + c._1.id.split('_').head  + "_cond==" + c._2).mkString("&&"))
         out.append(") {\n")
-        writeNotifier(s.from)
+        writeNotifier(s.from, s.sym)
         out.append("}\n")
       case _ => 
-        writeNotifier(s.from)
+        writeNotifier(s.from, s.sym)
     }
     syncList += s
   }
@@ -110,18 +110,18 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
     }
   }
 
-  private def writeAwaiter(dep: DeliteOP) {
+  private def writeAwaiter(dep: DeliteOP, sym: String = "") {
     var syncKernelName = ""
     if (Config.profile) {
       syncKernelName = createSyncKernelName(dep.id, dep.scheduledResource)
       instrumentSyncStart(syncKernelName)
     }
-
     out.append("Sync_" + executableName(dep.scheduledResource))
     out.append(".get")
     out.append(location)
     out.append('_')
-    out.append(getOpSym(dep))
+    if(sym == "") out.append(getOpSym(dep))
+    else out.append(getOpSym(dep)+getSym(dep,sym))
     out.append('\n')
 
     if (Config.profile) {
@@ -139,10 +139,11 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
     out.append('\n')
   }
 
-  private def writeNotifier(op: DeliteOP) {
+  private def writeNotifier(op: DeliteOP, sym: String = "") {
     out.append("Sync_" + executableName(op.scheduledResource))
     out.append(".set_")
-    out.append(getOpSym(op))
+    if(sym == "") out.append(getOpSym(op))
+    else out.append(getOpSym(op)+getSym(op,sym))
     out.append("(())\n")
   }
 
