@@ -14,7 +14,7 @@ function getProfileData(degFileNodes, rawProfileData, config) {
 function updateMemUsageOfDNodes(memProfile, dependencyData) {
     for(n in memProfile) {
         if (n != "dummy") {
-            var totMemUsage = sum(memProfile[n])
+            var totMemUsage = memProfile[n]
             var id = dependencyData.nodeNameToId[n]
             var dNode = dependencyData.nodes[id]
             if (dNode.type == "InternalNode") {  

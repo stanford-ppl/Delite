@@ -8,6 +8,6 @@
   },
 
   "MemProfile": {
-  	"dummy": []
+  	"dummy": 0
   }
 }}
