@@ -41,10 +41,10 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
             out.append("if(")
             out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
             out.append(") {\n")
-            writeAwaiter(s.sender.from); writeRecvUpdater(s.sender.from, s.sender.sym); 
+            writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym); 
             out.append("}\n")
           case _ => 
-            writeAwaiter(s.sender.from); writeRecvUpdater(s.sender.from, s.sender.sym);
+            writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym);
         } 
       case _ => super.receiveUpdate(s)
     }
@@ -88,11 +88,11 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
           out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
           out.append(") {\n")
           writeSendUpdater(s.from, s.sym)
-          writeNotifier(s.from)
+          writeNotifier(s.from, s.sym)
           out.append("}\n")
         case _ => 
           writeSendUpdater(s.from, s.sym)
-          writeNotifier(s.from)
+          writeNotifier(s.from, s.sym)
       }
       syncList += s
     }
@@ -153,7 +153,7 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
     }
   }
 
-  private def writeAwaiter(dep: DeliteOP) {
+  private def writeAwaiter(dep: DeliteOP, sym: String = "") {
     out.append("env")
     out.append(location)
     out.append("->CallStaticVoid")
@@ -166,7 +166,8 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
     out.append(",\"get")
     out.append(location)
     out.append('_')
-    out.append(getOpSym(dep))
+    if(sym == "") out.append(getOpSym(dep))
+    else out.append(getOpSym(dep)+getSym(dep,sym))
     out.append("\",\"()V")
     out.append("\"));\n")
   }
@@ -186,9 +187,13 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
       out.append("%s *%s = recvCuda_%s(%s);\n".format(hostType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
       out.append("%s %s = sendViewCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(hostType),location,getSymHost(op,sym)))
     }
-    else if(isPrimitiveType(op.outputType(sym))) {
-      out.append("%s %s = recvCuda_%s(%s);\n".format(getCPrimitiveType(op.outputType(sym)),getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+    else if(isPrimitiveType(op.outputType(sym)) && op.isInstanceOf[OP_Nested]) {
+      out.append("%s %s = (%s)%s;\n".format(hostType,getSymHost(op,sym),hostType,getSymDevice(op,sym)))
       out.append("%s %s = (%s)%s;\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),getJNIType(op.outputType(sym)),getSymHost(op,sym)))
+    }
+    else if(isPrimitiveType(op.outputType(sym))) {
+      out.append("%s %s = recvCuda_%s(%s);\n".format(hostType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+      out.append("%s %s = (%s)%s;\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),getJNIType(op.outputType(sym)),getSymHost(op,sym)))      
     }
     else if(devType.startsWith("DeliteArray<")) {
       devType match { //TODO: Fix this for nested object types
@@ -221,7 +226,7 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
     out.append(");\n")
   }
 
-  private def writeNotifier(op: DeliteOP) {
+  private def writeNotifier(op: DeliteOP, sym: String = "") {
     out.append("env")
     out.append(location)
     out.append("->CallStaticVoidMethod(cls")
@@ -231,7 +236,8 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
     out.append("->GetStaticMethodID(cls")
     out.append(location)
     out.append(",\"set_")
-    out.append(getOpSym(op))
+    if(sym == "") out.append(getOpSym(op))
+    else out.append(getOpSym(op)+getSym(op,sym))
     out.append("\",\"(")
     out.append(getJNIArgType("Unit"))
     out.append(")V\"),")
@@ -312,9 +318,10 @@ trait CudaSyncGenerator extends CudaToScalaSync {
       writeCudaFree(f._2, isPrimitiveType(f._1.outputType(f._2)))
       
       if ( (f._1.scheduledResource != location) || (f._1.getConsumers.filter(c => c.scheduledResource!=location && c.getInputs.map(_._2).contains(f._2)).nonEmpty) ) {
-        writeJVMRelease(f._2)
-        if (!isPrimitiveType(f._1.outputType(f._2)) && f._1.outputType(f._2)!="Unit") 
+        if (!isPrimitiveType(f._1.outputType(f._2)) && f._1.outputType(f._2)!="Unit") {
+          writeJVMRelease(f._2)
           writeHostRelease(f._1,f._2)
+        }
       }
     }
 

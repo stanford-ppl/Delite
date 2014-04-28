@@ -26,7 +26,7 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
     out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
     ScalaExecutableGenerator.writePath(kernelPath, out) //package of scala kernels
-    val locations = Range.inclusive(0,location).toSet
+    val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     if (!this.isInstanceOf[SyncObjectGenerator]) writeJNIInitializer(locations)
     out.append("object ")
     out.append(executableName)

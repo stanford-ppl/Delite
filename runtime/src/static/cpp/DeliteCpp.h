@@ -12,7 +12,14 @@
 #include <string>
 #include <regex>
 #include <vector>
+#include <map>
 #include "cppDeliteArray.h"
+
+/* helper methods and data structures only required for execution with Delite */
+#ifndef __DELITE_CPP_STANDALONE__
+#include <jni.h>
+#endif
+
 using namespace std;
 
 cppDeliteArray< string >* string_split(string str, string pattern);
@@ -27,5 +34,11 @@ string string_plus(string str1, string str2);
 cppDeliteArray< string > *cppArgsGet(int num, ...);
 template<class T> string convert_to_string(T in);
 string readFirstLineFile(string filename);
+
+#ifndef __DELITE_CPP_STANDALONE__
+extern std::map<int,jobject> *JNIObjectMap;
+jobject JNIObjectMap_find(int key);
+void JNIObjectMap_insert(int key, jobject value);
+#endif
 
 #endif

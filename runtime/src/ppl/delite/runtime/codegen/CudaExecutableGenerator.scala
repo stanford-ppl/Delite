@@ -660,10 +660,14 @@ object CudaExecutableGenerator {
         new CudaDynamicExecutableGenerator(location, kernelPath).makeExecutable(sch) // native execution plan
       else 
         new CudaMainExecutableGenerator(location, kernelPath).makeExecutable(sch) // native execution plan
-      new ScalaNativeExecutableGenerator(location, kernelPath).makeExecutable() // JNI launcher scala source
+      new ScalaNativeExecutableGenerator(location, kernelPath).makeExecutable(sch) // JNI launcher scala source
     }
     // Register header file for the Cpp sync objects
     CudaCompile.addHeader(syncObjects.mkString(""),"cudaSyncObjects")
   }
 
+  def clear() { 
+    syncObjects.clear 
+    typesMap = Map[Targets.Value, Map[String,String]]()
+  }
 }
