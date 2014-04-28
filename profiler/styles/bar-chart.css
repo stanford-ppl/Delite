@@ -1,0 +1,17 @@
+.barChart {
+	margin: 5 0 0 5;
+}
+
+.barChart rect {
+  fill: steelblue;
+}
+
+.barChart text {
+  fill: white;
+  font: 10px sans-serif;
+  text-anchor: end;
+}
+
+.bar:hover {
+    fill: brown;
+}

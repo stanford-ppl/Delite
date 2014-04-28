@@ -1,0 +1,114 @@
+/* This code has been adapted from http://thecodeplayer.com/walkthrough/vertical-accordion-menu-using-jquery-css3 */
+
+/*custom font for text*/
+@import url(http://fonts.googleapis.com/css?family=Nunito);
+/*CSS file for fontawesome - an iconfont we will be using. This CSS file imported contains the font-face declaration. More info: http://fortawesome.github.io/Font-Awesome/ */
+@import url(http://thecodeplayer.com/uploads/fonts/fontawesome/css/font-awesome.min.css);
+
+/*Basic reset*/
+* {margin: 0; padding: 0;}
+
+body {
+	font-family: Nunito, arial, verdana;
+}
+
+#accordian {
+	position: fixed;
+	background: #004050;
+	width: 200px;
+	height: 100%;
+	color: white;
+	box-shadow: 
+		0 5px 15px 1px rgba(0, 0, 0, 0.6), 
+		0 0 200px 1px rgba(255, 255, 255, 0.5);
+	overflow-y: auto;
+}
+
+/*heading styles*/
+#accordian h3 {
+	font-size: 12px;
+	line-height: 34px;
+	padding: 0 10px;
+	cursor: pointer;
+	/*fallback for browsers not supporting gradients*/
+background: #003040; 
+	background: linear-gradient(#003040, #002535);
+}
+/*heading hover effect*/
+#accordian h3:hover {
+	text-shadow: 0 0 1px rgba(255, 255, 255, 0.7);
+}
+/*iconfont styles*/
+#accordian h3 span {
+	font-size: 16px;
+	margin-right: 10px;
+}
+/*list items*/
+#accordian li {
+	list-style-type: none;
+}
+/*links*/
+#accordian ul ul li a {
+	color: white;
+	text-decoration: none;
+	font-size: 11px;
+	line-height: 27px;
+	display: block;
+	padding: 0 15px;
+	/*transition for smooth hover animation*/
+	transition: all 0.15s;
+}
+
+.sidebarTable  {
+	color: white;
+	background: white;
+	text-decoration: none;
+	font-size: 10px;
+	line-height: 27px;
+	display: block;
+	width: 200px;
+	border: 1px solid black;
+	text-align: center;
+	border-collapse: collapse;
+}
+
+.sidebarTable th {
+	border-width: 1px;
+	border-style: solid;
+	border-color: #666666;
+	background-color: #dedede;
+	color: black;
+}
+
+.sidebarTable td {
+	border-width: 1px;
+	border-style: solid;
+	border-color: #666666;
+	background-color: #ffffff;
+	color: black;
+}
+
+/*hover effect on links*/
+#accordian ul ul li a:hover {
+	background: #003545;
+	/*border-left: 5px solid lightgreen;*/
+}
+/*Lets hide the non active LIs by default*/
+#accordian ul ul {
+	display: none;
+}
+
+#accordian li.active ul {
+	display: block;
+}
+
+#startButton {
+	width: 120;
+	height: 20;
+	-moz-border-radius: 8;
+	-webkit-border-radius: 8;
+	border: 2px solid red;
+	margin: 0 0 0 22;
+	background: white
+}
+
