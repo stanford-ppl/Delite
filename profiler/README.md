@@ -3,6 +3,11 @@ Delite debugger
 
 The tool provides a platform to visualize the profile data collected from a Delite application, thereby making it easier to debug performanc issues in the app.
 
+How do I profile my app?
+=========================
+
+* Use the --profile flag while invoking delitec/delite 
+
 Using the tool
 ===============
 
@@ -49,13 +54,13 @@ The main window of the tool is divided into 3 primary regions:
   * Provides a fine-grained view of the app's execution timeline at the level of threads. Each rectangle represents the execution of a kernel by a particular thread.
   * Each line corresponds to a different thread. If the app was run using 4 threads, there would 5 lines in the timeline view. The first 4 would correspond to the 4 threads and the last one would merely illustrate the overall app execution.
   * Nodes are colored in the following manner:
-    * Grey nodes
+    * Gray nodes
       * Represent the time spent waiting on a synchronization barrier.
       * Clicking on the node would display relevant information in 'Sync Node Info' section on the sidebar. The field 'Dep. Kernel' indicates the kernel that the sync node is waiting for to complete and 'Dep. Thread' indicates the thread that's executing the kernel
-    * Non-grey nodes: Represent the execution of a kernel. Clicking on a node displays relevant information in the 'Kernel Info table'
+    * Non-gray nodes: Represent the execution of a kernel. Clicking on a node displays relevant information in the 'Kernel Info table'
 
 Other features
 ==============
 
-* *Level Filter:* This can be used to drill down into the timeline nodes that have nested kernels within them. For example, a WhileLoop node would have conditional and body op kernels within it. Selecting Level 1 would break down the WhileLoop timeline node into its component nodes.
+* *Level Filter:* This can be used to drill down into the timeline nodes that have nested kernels within them. For example, a WhileLoop node would have conditional and body op kernels within it. Selecting Level 1 would break down each WhileLoop timeline node into its component nodes.
 * *Zoom:* Use the zoom box on the sidebar to zoom in and out of the timeline view
