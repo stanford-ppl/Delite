@@ -38,20 +38,28 @@ object MemoryProfiler
 	    case "char" | "short" => 16
 	    case "int" | "float" => 32
 	    case "double" | "long" => 64
-	    case _ => 64 // TODO: could be DeliteArray, ie, in the case of nested arrays. This approximation is incorrect
+	    case _ => 64
+  	}
+
+  	def sum(l:List[Int]) = {
+  		var res = 0
+  		for (n <- l) {
+  			res += n
+  		}
+
+  		res
   	}
 
   	def emitMemProfileDataArrays(writer: PrintWriter, stats: Map[String, List[Int]]) {
   		writer.println("	\"MemProfile\": {")
   		for (id <- stats.keys) {
-  			//var allocationLengths = stats(id).foldLeft("")((a,b) => a + "," + b).trim()
-  			//allocationLengths = allocationLengths.substring(1, allocationLengths.length())
-  			//writer.println("		\"" + id + "\" : [" + allocationLengths + "],")
-  			var allocationLengths = Profiler.iterableToJSArray(id, stats(id), false)
-  			writer.println("		\"" + id + "\" : " + allocationLengths + ",")
+  			//var allocationLengths = Profiler.iterableToJSArray(id, stats(id), false)
+  			//writer.println("		\"" + id + "\" : " + allocationLengths + ",")
+  			val totalMemAllocation = sum(stats(id))
+  			writer.println("		\"" + id + "\" : " + totalMemAllocation + ",")
   		}
 
-  		writer.println("		\"dummy\": []")
+  		writer.println("		\"dummy\": 0")
   		writer.println("	}")
   	}
 
