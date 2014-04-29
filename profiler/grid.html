@@ -381,6 +381,11 @@
 				var nodeId = profData.dependencyData.nodeNameToId[nodeName]
 				var node = profData.dependencyData.nodes[nodeId]
 				config.populateKernelInfoTable(node)
+
+				var sc = node.sourceContext
+				config.highlightLineInEditor(sc.file, sc.line)
+
+				graphController.markNeighbors(nodeId)
 			}
 
 			$(document).ready(function () {
