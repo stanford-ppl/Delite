@@ -190,7 +190,8 @@ var parallelTasks = [[1, 4, 6], [2, 3, 5]];
     }
     
     // only include timings started after globalAppStartNanos
-    val allTimings = allInitTimings filter { _.startTime >= globalAppStartNanos }
+    //val allTimings = allInitTimings filter { _.startTime >= globalAppStartNanos }
+    val allTimings = allInitTimings
     
     val threads = (allTimings.flatMap { timing =>
       timing.threadName :: (timing match {

@@ -33,7 +33,7 @@
 							<li>
 								<a href="#">
 									<input type="button" value="Choose src dir        " onclick="document.getElementById('srcDirInput').click();" />
-									<span id="srcDirName">(Src_directory_name)</span>
+									<span id="srcFileName">(Src_file_name)</span>
 									<input type="file" id="srcDirInput" name="files[]"  multiple webkitdirectory="" directory="" style="display: none;" />
 								</a>
 							</li>
@@ -76,7 +76,7 @@
 							<li>
 								<a href="#">
 									<span>Zoom </span>
-									<input type="text" id="timelineZoom" size="5" value="100" style="text-align: right"> %
+									<input type="text" id="timelineZoom" size="5" value="100" style="text-align: right; margin: 0 0 0 5"> %
 								</a>
 							</li>
 						</ul>
@@ -84,6 +84,12 @@
 					<li class="active">
 						<h3>Kernel Info</h3>
 						<ul>
+							<li>
+								<a href="#">
+									<span>Search</span>
+									<input type="text" id="searchKernel" size="5" value="" style="text-align: right; margin: 0 0 0 5; width: 120">
+								</a>
+							</li>
 							<li>
 								<table id="kernelInfoTable" class="sidebarTable">
 									<th>Property</th>
@@ -200,7 +206,9 @@
 	      	var threadLevelSyncStats = []
 
 	      	var getDisplayTextForTime = function(d) {
-	      		return d.name + " (" + d.percentage_time.toFixed(2) + "%)"
+	      		var timeInMs = (d.time/1000).toFixed(0)
+	    		var timeStr = " (" + timeInMs + "ms:" + d.percentage_time.toFixed(0) + "%)"
+	      		return d.name + timeStr
 	      	}
 
 	      	var getDisplayTextForMemUsage = function(d) {
@@ -240,6 +248,12 @@
 	      	$('#timelineZoom').keyup(function(event){
 			    if(event.keyCode == 13){
 			        timelineController.zoom($(this).val() / 100)
+			    }
+			})
+
+			$('#searchKernel').keyup(function(event){
+			    if(event.keyCode == 13){
+			        searchNode($(this).val())
 			    }
 			})
 
@@ -283,6 +297,7 @@
 	    			if (file != viewState.appSourceFileName) readFile(file)
 					viewState.highlightedLine = highlightLine(line)
 					viewState.appSourceFileName = file
+					$("#srcFileName").text(file)
 	    		} else {
 	    			console.log("WARNING: Selected kernel's sourceContext does not match the source file being viewed")
 	    		}
@@ -295,7 +310,9 @@
 	    	}
 
 	    	function populateKernelInfoTable(node) {
-	    		var values = [node.name, node.type, node.target, node.percentage_time.toFixed(2) + " %", node.execTime.pct.toFixed(0) + "/" + node.syncTime.pct.toFixed(0) + " %", node.memUsage + " B"]
+	    		var timeInMs = (node.time/1000).toFixed(0)
+	    		var timeStr = timeInMs + "ms (" + node.percentage_time.toFixed(0) + "%)"
+	    		var values = [node.name, node.type, node.target, timeStr , node.execTime.pct.toFixed(0) + "/" + node.syncTime.pct.toFixed(0) + " %", node.memUsage + " B"]
 	    		var table = $("#kernelInfoTable")[0]
 	    		values.forEach(function(v, i) {
 	    			var row = table.rows[i + 1]
@@ -327,7 +344,7 @@
 
 			function getTopNodes(nodes, comparisonField, count) {
 			    var topNodes = []
-			    var relevantAttrs = ["id", "name", comparisonField]
+			    var relevantAttrs = ["id", "name", "time", comparisonField] // HACK: 'time' field need not be included when computing top nodes based on mem usage
 			    var clonedNodes = nodes.filter(function(n) {return n.type != "InternalNode"})
 			    			   		   .map(function(n) {return cloneNode(n, relevantAttrs)})
 			    clonedNodes.sort(function(n1,n2) {return n2[comparisonField] - n1[comparisonField]})
@@ -358,6 +375,12 @@
 			    } else {
 			    	alert("Please upload the DEG file and the profile data (profData.js) and retry")
 			    }
+			}
+
+			function searchNode(nodeName) {
+				var nodeId = profData.dependencyData.nodeNameToId[nodeName]
+				var node = profData.dependencyData.nodes[nodeId]
+				config.populateKernelInfoTable(node)
 			}
 
 			$(document).ready(function () {

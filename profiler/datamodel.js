@@ -279,11 +279,13 @@ function initializeNodeDataFromDegFile(node, level, numThreads) {
     var thenOpsData = [] // for 'Conditional' nodes
     var elseOpsData = [] // for 'Conditional' nodes
 
-    function processChildNodes(childNodes) {
+    function processChildNodes(childNodes) {    
         var res = []
-        childNodes.forEach(function(cn) {
-            res = res.concat(initializeNodeDataFromDegFile(cn, level + 1, numThreads))
-        })
+        if (childNodes) {
+            childNodes.forEach(function(cn) {
+                res = res.concat(initializeNodeDataFromDegFile(cn, level + 1, numThreads))
+            })
+        }
 
         return res
     }
