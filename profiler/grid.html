@@ -222,24 +222,16 @@
 	      	$("#colorSchemeForGraph").change(function() {
 	      		var colorScheme = $(this).val()
 	      		if (colorScheme == "time") {
-	      			$('.dataflowSvg').hide()
-	      			$("#dfg").css("overflow-y", "auto")
-	      			$(".barChart").remove()
+	      			setUpDivToGenerateBarChart()
 	      			createBarChart("#dfg", topNodesBasedOnTime, "percentage_time", getDisplayTextForTime, config)
 	      		} else if (colorScheme == "memUsage") {
-	      			$('.dataflowSvg').hide()
-	      			$("#dfg").css("overflow-y", "auto")
-	      			$(".barChart").remove()
+	      			setUpDivToGenerateBarChart()
 	      			createBarChart("#dfg", topNodesBasedOnMemUsage, "memUsage", getDisplayTextForMemUsage, config)
 	      		} else if (colorScheme == "threadLevelSyncStats") {
-	      			$('.dataflowSvg').hide()
-	      			$("#dfg").css("overflow-y", "auto")
-	      			$(".barChart").remove()
+	      			setUpDivToGenerateBarChart()
 	      			createBarChart("#dfg", threadLevelSyncStats, "syncTimePct", getDisplayTextForThreadLevelSync, config)
 	      		} else {
-	      			$(".barChart").hide()
-	      			$("#dfg").css("overflow-y", "hidden")
-	      			$('.dataflowSvg').show()
+	      			setUpDivToGenerateDEGGraph()
 		      		graphController.changeColoringScheme(colorScheme)
 		      		viewState.graphViewMode = colorScheme
 		      	}
@@ -262,7 +254,6 @@
 
 			function filterNodesOnTimeline() {
 				var selectedLevel = parseInt($("#timelineLevelFilter").val())
-	      		console.log(selectedLevel)
 	      		for (var i = 0; i < 4; i++) {
 	      			var filter = "level=level-" + i
 	      			if (i != selectedLevel) {
@@ -361,7 +352,7 @@
 				if ((viewState.degFile != "") && (viewState.profileDataFile != "")) {
 					editor = createEditor("code")
 		      		profData = getProfileData(degOps, profileData.Profile, config)
-		      		graphController = createDataFlowGraph(cola, "#dfg", profData.dependencyData, viewState, config)
+		      		graphController = createDataFlowGraph("top", -1, cola, "#dfg", profData.dependencyData, viewState, config)
 
 		      		topNodesBasedOnTime = getTopNodes(profData.dependencyData.nodes, "percentage_time", 20)
 		      		topNodesBasedOnMemUsage = getTopNodes(profData.dependencyData.nodes, "memUsage", 20)
@@ -388,9 +379,19 @@
 				graphController.markNeighbors(nodeId)
 			}
 
+	      	function setUpDivToGenerateBarChart() {
+	      		$('.dataflowSvg').hide()
+      			$("#dfg").css("overflow-y", "auto")
+      			$(".barChart").remove()
+	      	}
+
+	      	function setUpDivToGenerateDEGGraph() {
+	      		$(".barChart").hide()
+      			$("#dfg").css("overflow-y", "hidden")
+      			$('.dataflowSvg').show()
+	      	}
+
 			$(document).ready(function () {
-				console.log($("#container").width())
-				console.log($("#accordian").width())
 				$("#right").css("width", $("#container").width() - $("#accordian").width())
 				/*
 				$('#accordian > ul > li').click(function() {

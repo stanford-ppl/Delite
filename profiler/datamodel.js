@@ -230,8 +230,6 @@ function getThreadLevelPerfStats(timelineData, numThreads) {
         td.syncTime.pct = ((td.syncTime.abs * 100) / appTime).toFixed(2)
     }
 
-    console.log(threadToData)
-
     return threadToData
 }
 

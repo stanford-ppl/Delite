@@ -59,6 +59,7 @@ function createTimeline(timelineDivClass, profileData, config) {
 			.domain([0, numLanes])
 			.range([0, chartHeight]);
 	
+	$(".timelineWrapper").remove() // Removing timeline graphs generated in previous debug sessions, if any
 	var div2 = d3.select(timelineDivClass)
 				.append("div")
 				.attr("float", "right")
