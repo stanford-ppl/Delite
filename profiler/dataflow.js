@@ -1,4 +1,9 @@
 
+var graphCache = {}
+var isFirstGraph = true
+var nodesToDisplay = []
+var edges = []
+
 function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem, dataModel, viewState, config) {
 	// Points regarding the hierarchical display of DEG nodes:
 	// (i)  Every graph view would correspond to a certain parentId.
@@ -15,124 +20,13 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 	var nodes = dataModel["nodes"]
 	var nodeNameToId = dataModel["nodeNameToId"]
 
-	// TODO: Refactor this function
-	function computeDisplayAttrsOfNodes(nodes) {
-		function mapToTopLevelParents(n, attr) {
-			return n[attr].map(function(n) {return getTopLevelParent(nodes[n], nodes)})
-		}
-
-		function mapChildNodesDepsToParent(n1, childNodes) {
-			if(childNodes) {
-				childNodes.forEach(function(n2) {
-					n1.displayInputs = n1.displayInputs.concat(mapToTopLevelParents(n2, "inputs"))
-					n1.displayOutputs = n1.displayOutputs.concat(mapToTopLevelParents(n2, "outputs"))
-				})
-			}
-		}
-
-		var nodesToDisplay = []
-		nodes.filter(function(n) {return n.type != "InternalNode"}).forEach(function(n) {
-			if (n.parentId == graphParentId) {
-				console.log(n)
-				nodesToDisplay.push(n)
-				n.isPeripheralNodeForDisplay = false
-				n.displayInputs = mapToTopLevelParents(n, "inputs")
-				n.displayOutputs = mapToTopLevelParents(n, "outputs")
-
-				if (n.type == "WhileLoop") {
-					mapChildNodesDepsToParent(n, n.condOps)
-					mapChildNodesDepsToParent(n, n.bodyOps)
-				} else if (n.type == "Conditional") {
-					mapChildNodesDepsToParent(n, n.condOps)
-					mapChildNodesDepsToParent(n, n.thenOps)
-					mapChildNodesDepsToParent(n, n.elseOps)
-				}
-			} else {
-				n.isPeripheralNodeForDisplay = true
-				n.displayInputs = []
-				n.displayOutputs = []
-			}
-
-			n.displayInputs = n.displayInputs.filter(function(i) {return i != n.id})
-			n.displayOutputs = n.displayOutputs.filter(function(i) {return i != n.id})
-
-			$.unique(n.displayInputs)
-			$.unique(n.displayOutputs)
-		})
-
-		// Adding peripheral nodes, ie, the ones that are inputs/outputs of nodesToDisplay
-		if (graphParentId != -1) { // optimization
-			var tmp = []
-			nodesToDisplay.forEach(function(n) {
-				var inputs = n.displayInputs.map(function(i) {return nodes[i]})
-				inputs.forEach(function(n) {if (n.parentId != graphParentId) {n.displayOutputs.push(n.id)}})
-				tmp = tmp.concat(inputs)
-
-				var outputs = n.displayOutputs.map(function(i) {return nodes[i]})
-				outputs.forEach(function(n) {if (n.parentId != graphParentId) {n.displayInputs.push(n.id)}})
-				tmp = tmp.concat(outputs)
-			})
-
-			$.unique(tmp)
-			nodesToDisplay = nodesToDisplay.concat(tmp)
-		}
-
-		return {"nodes": nodes, "nodesToDisplay": nodesToDisplay}
-	}
-
-	function getTopLevelParent(n, nodes) {
-		var parent = n
-		while ((parent.parentId != -1) && (parent.parentId != graphParentId)) {
-			parent = nodes[parent.parentId]
-		}
-
-		console.log("Parent: " + n.name + " => " + parent.name)
-		return parent.id
-	}
-
-	function mapNodeIdToDisplayIndex(nodesToDisplay) {
-		var nodeIdToDisplayIndex = {}
-		nodesToDisplay.forEach(function(n, i) {nodeIdToDisplayIndex[n.id] = i})
-
-		return nodeIdToDisplayIndex
-	}
-
-	function computeEdges(nodes, nodeIdToDisplayIndex) {
-		var edges = []
-		nodes.forEach(function (n) {
-			var id = toDisplayIndex(n.id)
-			n.displayInputs.forEach(function(m) {
-				edges.push({source: toDisplayIndex(m), target: id})
-			})
-		})
-
-		return edges
-	}
-
-	function isNestedNode(n) {
-		return ((n.type == "WhileLoop") || (n.type == "Conditional"))
-	}
-
-	function doubleClickHandler(d) {
-		if (isNestedNode(d)) {
-			$("#" + graphId).remove()
-			var subGraphId = "g_" + d.name
-			createDataFlowGraph(subGraphId, d.id, colaObj, destinationDivElem, dataModel, viewState, config)
-		}
-	}
-
 	var res = computeDisplayAttrsOfNodes(nodes)
 	nodes = res.nodes
-	var nodesToDisplay = res.nodesToDisplay
-	var nodeIdToDisplayIndex = mapNodeIdToDisplayIndex(nodesToDisplay)
-	var edges = computeEdges(nodesToDisplay, nodeIdToDisplayIndex)
+	nodesToDisplay = res.nodesToDisplay
+	assignDisplayIndices(nodesToDisplay)
+	edges = computeEdges(nodesToDisplay)
 
-	console.log(nodes)
-	console.log(nodesToDisplay)
-	console.log(nodeIdToDisplayIndex)
-	console.log(edges)
-
-	$(".dataflowSvg").remove() // Removing DEG graphs generated in previous debug sessions, if any
+	//$(".dataflowSvg").remove() // Removing DEG graphs generated in previous debug sessions, if any
 	var graph = d3.select(destinationDivElem).append("svg")
 		.attr("class", 'dataflowSvg')
 		.attr("id", graphId)
@@ -150,7 +44,7 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 	var graphElements = graph.append('g')
 
 	graph.append('svg:defs').append('svg:marker')
-		.attr('id', 'end-arrow')
+		.attr('id', 'end-arrow-' + graphId)
 		.attr('viewBox', '0 -5 10 10')
 		.attr('refX', 8)
 		.attr('markerWidth', 6)
@@ -175,6 +69,22 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 
 	//var constraints = generateConstraints()
 
+	console.log(graphParentId)
+	console.log(nodes)
+	//console.log(nodesToDisplay)
+	console.log(edges)
+
+	console.log("nodesToDisplay: ")
+	nodesToDisplay.forEach(function(n) {
+		var s = n.name + " => idx: " + n.displayIndex + ", inp: " + n.displayInputs.length + ", out: " + n.displayOutputs.length
+		console.log(s)
+	})
+
+	console.log("edges: ")
+	edges.forEach(function(e) {
+		console.log(e)
+	})
+
 	cola
 	    .linkDistance(150)
 	    .avoidOverlaps(true)
@@ -188,7 +98,8 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 	var link = graphElements.selectAll(".link")
 	    .data(edges)
 	    .enter().append("line")
-	    .attr("class", "link");
+	    .attr("class", "link")
+	    .attr("marker-end", "url(#end-arrow-" + graphId + ")");
 
 	var margin = 6, pad = 12;
 	var node = graphElements.selectAll(".node")
@@ -218,8 +129,8 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 	        d.height = b.height + extra;
 	    });
 
-	cola = cola.start(20, 20, 20)
 	var ticks = 0
+	cola = cola.start(20, 20, 20)
 	cola.on("tick", function () {
 	    node.each(function (d) { d.innerBounds = d.bounds.inflate(-margin); })
 	        .attr("x", function (d) { return d.innerBounds.x; })
@@ -246,7 +157,8 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 	return new controller()
 
 	function toDisplayIndex(nodeId) {
-		return nodeIdToDisplayIndex[nodeId]
+		//return nodeIdToDisplayIndex[nodeId]
+		return nodes[nodeId].displayIndex
 	}
 
 	function redraw() {
@@ -277,25 +189,173 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 	    }
 	}
 
-	// TODO: User should have the option to choose whether to include datadeps, antideps, control deps, etc. in color coding
-	//		 Need to rewrite the function to consider the currently selected mode and counts of all these 3 types of deps 
-	//		 when determining color
-	/*
-	function colorNodeBasedOnDataDeps(n) {
-	    if (n.numInputs > 0) {
-	        if (n.numOutputs > 0){
-	            return "orange"
-	        }
-	        return "red"
-	    } else {    // numInputs == 0
-	        if (n.numOutputs > 0) {
-	            return "green"
-	        } else {
-	            return "lightblue"
-	        }
-	    }
+	function cacheCurrentGraph(gid, nodesToDisplay) {
+		var nodeIdToDisplayAttrs = {}
+		nodesToDisplay.forEach(function(n) {
+			var o = {}
+			o.id = n.id
+			o.displayInputs = n.displayInputs
+			o.displayOutputs = n.displayOutputs
+			o.isPeripheralNodeForDisplay = n.isPeripheralNodeForDisplay
+			o.displayIndex = n.displayIndex
+			nodeIdToDisplayAttrs[n.id] = o
+		})
+
+		graphCache[gid] = nodeIdToDisplayAttrs
 	}
-	*/
+
+	function fetchGraphFromCache(gid) {
+		var cache = graphCache[gid]
+		console.log("Printing cache contents")
+		console.log(cache)
+		nodesToDisplay = []
+		edges = []
+		for(var nid in cache) {
+			var o = cache[nid]
+			n = nodes[o.id]
+			nodesToDisplay.push(n)
+			n.displayInputs = o.displayInputs
+			n.displayOutputs = o.displayOutputs
+			n.isPeripheralNodeForDisplay = o.isPeripheralNodeForDisplay
+			n.displayIndex = o.displayIndex
+		}
+
+		edges = computeEdges(nodesToDisplay)
+		$("#" + gid).show()
+
+		console.log("Cache contents fetched")
+		console.log("nodesToDisplay")
+		console.log(nodesToDisplay)
+		console.log("edges")
+		console.log(edges)
+	}
+
+	// TODO: Refactor this function
+	function computeDisplayAttrsOfNodes(nodes) {
+		function mapToTopLevelParents(n, attr) {
+			return n[attr].map(function(n) {return getTopLevelParent(nodes[n], nodes)})
+		}
+
+		function mapChildNodesDepsToParent(n1, childNodes) {
+			if(childNodes) {
+				childNodes.forEach(function(n2) {
+					n1.displayInputs = n1.displayInputs.concat(mapToTopLevelParents(n2, "inputs"))
+					n1.displayOutputs = n1.displayOutputs.concat(mapToTopLevelParents(n2, "outputs"))
+				})
+			}
+		}
+
+		var filteredNodes = []
+		nodes.filter(function(n) {return n.type != "InternalNode"}).forEach(function(n) {
+			if (n.parentId == graphParentId) {
+				filteredNodes.push(n)
+				n.isPeripheralNodeForDisplay = false
+				n.displayInputs = mapToTopLevelParents(n, "inputs")
+				n.displayOutputs = mapToTopLevelParents(n, "outputs")
+
+				if (n.type == "WhileLoop") {
+					mapChildNodesDepsToParent(n, n.condOps)
+					mapChildNodesDepsToParent(n, n.bodyOps)
+				} else if (n.type == "Conditional") {
+					mapChildNodesDepsToParent(n, n.condOps)
+					mapChildNodesDepsToParent(n, n.thenOps)
+					mapChildNodesDepsToParent(n, n.elseOps)
+				}
+			} else {
+				n.isPeripheralNodeForDisplay = true
+				n.displayInputs = []
+				n.displayOutputs = []
+			}
+
+			n.displayInputs = n.displayInputs.filter(function(i) {return i != n.id})
+			n.displayOutputs = n.displayOutputs.filter(function(i) {return i != n.id})
+
+			$.unique(n.displayInputs)
+			$.unique(n.displayOutputs)
+		})
+
+		// Adding peripheral nodes, ie, the ones that are inputs/outputs of filteredNodes
+		if (graphParentId != -1) { // optimization
+			var tmp = []
+			filteredNodes.forEach(function(n) {
+				var inputs = n.displayInputs.map(function(i) {return nodes[i]})
+				inputs.forEach(function(n) {if (n.parentId != graphParentId) {
+					n.displayOutputs.push(n.id)
+					tmp.push(n)
+				}})
+
+				var outputs = n.displayOutputs.map(function(i) {return nodes[i]})
+				outputs.forEach(function(n) {if (n.parentId != graphParentId) {
+					n.displayInputs.push(n.id)
+					tmp.push(n)
+				}})
+			})
+
+			$.unique(tmp)
+			filteredNodes = filteredNodes.concat(tmp)
+		}
+
+		return {"nodes": nodes, "nodesToDisplay": filteredNodes}
+	}
+
+	function getTopLevelParent(n, nodes) {
+		var parent = n
+		while ((parent.parentId != -1) && (parent.parentId != graphParentId)) {
+			parent = nodes[parent.parentId]
+		}
+
+		return parent.id
+	}
+
+	function assignDisplayIndices(nodesToDisplay) {
+		nodesToDisplay.forEach(function(n, i) {n.displayIndex = i})
+	}
+
+	function computeEdges(nodes) {
+		console.log("Calling computeEdges")
+		console.log(nodes)
+		var edges = []
+		nodes.forEach(function (n) {
+			var id = n.displayIndex
+			n.displayInputs.forEach(function(m) {
+				edges.push({source: toDisplayIndex(m), target: id})
+			})
+		})
+
+		return edges
+	}
+
+	function isNestedNode(n) {
+		return ((n.type == "WhileLoop") || (n.type == "Conditional"))
+	}
+
+	function doubleClickHandler(d) {
+		console.log("Double-clicked node " + d.name)
+		if (isNestedNode(d)) {
+			$("#" + graphId).hide()
+			var subGraphId = "g_" + d.name
+			if (subGraphId in graphCache) {
+				fetchGraphFromCache(subGraphId)
+			} else {
+				cacheCurrentGraph(graphId, nodesToDisplay)
+				createDataFlowGraph(subGraphId, d.id, colaObj, destinationDivElem, dataModel, viewState, config)
+				return	
+			}
+		} else { // TODO: The 'else' branch is merely for testing. Remove it in the final code.
+			$("#" + graphId).hide()
+			if (!(graphId in graphCache)) {
+				cacheCurrentGraph(graphId, nodesToDisplay)
+			}
+
+			fetchGraphFromCache("top")
+		}
+
+		///*
+		console.log(nodes)
+		console.log(nodesToDisplay)
+		console.log(edges)
+		//*/
+	}
 
 	function colorNodeBasedOnDataDeps(n) {
 		if (n.isPeripheralNodeForDisplay) {
@@ -332,7 +392,8 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 	            var s = e.source
 	            var t = e.target
 	            var minDiffInY = (t.depth - s.depth) * 15
-	            constraints.push({"axis": "y", "left": toDisplayIndex(s.id), "right": toDisplayIndex(t.id), "gap": minDiffInY})
+	            //constraints.push({"axis": "y", "left": toDisplayIndex(s.id), "right": toDisplayIndex(t.id), "gap": minDiffInY})
+	            constraints.push({"axis": "y", "left": s.displayIndex, "right": t.displayIndex, "gap": minDiffInY})
 	         })
 
 	    return constraints
@@ -384,6 +445,17 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 		var s = nodeIds.reduce(function(p,c,i,a) {return p + "[nodeId=" + c + "],"}, "")
 		s = s.substring(0,s.length - 1)
 		$(s).fadeTo(0, 1)
+	}
+
+	function printList(lst, attrs) {
+		lst.forEach(function(n) {
+			var s = ""
+			attrs.forEach(function(a) {
+				s += n[a] + " , "
+			})
+
+			console.log(s)
+		})
 	}
 
 	function controller()
