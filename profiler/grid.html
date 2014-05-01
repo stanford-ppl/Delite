@@ -52,6 +52,7 @@
 									<span>Metric</span>	
 									<select id="colorSchemeForGraph">
 										<option value="datadeps">Data Deps</option>
+										<option value="nodeType">Node Type</option>
 										<option value="time">Exec Time</option>
 										<option value="memUsage">Mem Usage</option>
 										<option value="threadLevelSyncStats">Thread Sync</option>
@@ -350,6 +351,9 @@
 
 			function startDebugSession() {
 				if ((viewState.degFile != "") && (viewState.profileDataFile != "")) {
+					$(".dataflowSvg").remove() // Removing DEG graphs generated in previous debug sessions, if any
+					$(".timelineWrapper").remove()
+
 					editor = createEditor("code")
 		      		profData = getProfileData(degOps, profileData.Profile, config)
 		      		graphController = createDataFlowGraph("top", -1, cola, "#dfg", profData.dependencyData, viewState, config)

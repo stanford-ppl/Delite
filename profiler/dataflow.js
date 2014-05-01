@@ -1,8 +1,7 @@
 
 var graphCache = {}
-var isFirstGraph = true
-var nodesToDisplay = []
-var edges = []
+var graphStack = [] //keeps track of the hierarchical view
+var graphParentLevel = -1
 
 function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem, dataModel, viewState, config) {
 	// Points regarding the hierarchical display of DEG nodes:
@@ -11,8 +10,8 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 	//		correspond to the id of the WhileLoop
 	// (ii)	Only nodes whose parentId == the graphParentId can have non-empty displayInputs and displayOutputs
 	// (iii)We maintain a cache of all views generated so far. Following are the data points that's cached for each view:
-	//			(a) nodesToDisplay and nodeIdToDisplayIndex
-	//			(b) dislpayInputs and displayOutputs of each node 
+	//			(a) nodesToDisplay
+	//			(b) dislpayInputs, displayOutputs and displayIndex of each node 
 	//			(c) graphId of the view. This is used to hide/show each view
 
 	hljs.initHighlightingOnLoad();
@@ -20,13 +19,18 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 	var nodes = dataModel["nodes"]
 	var nodeNameToId = dataModel["nodeNameToId"]
 
+	if (graphParentId == -1) {
+		graphParentLevel = -1
+	} else {
+		graphParentLevel = nodes[graphParentId].level
+	}
+
 	var res = computeDisplayAttrsOfNodes(nodes)
 	nodes = res.nodes
-	nodesToDisplay = res.nodesToDisplay
+	var nodesToDisplay = res.nodesToDisplay
 	assignDisplayIndices(nodesToDisplay)
-	edges = computeEdges(nodesToDisplay)
+	var edges = computeEdges(nodesToDisplay)
 
-	//$(".dataflowSvg").remove() // Removing DEG graphs generated in previous debug sessions, if any
 	var graph = d3.select(destinationDivElem).append("svg")
 		.attr("class", 'dataflowSvg')
 		.attr("id", graphId)
@@ -68,22 +72,6 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 								    .range(["white", "red"]);						  
 
 	//var constraints = generateConstraints()
-
-	console.log(graphParentId)
-	console.log(nodes)
-	//console.log(nodesToDisplay)
-	console.log(edges)
-
-	console.log("nodesToDisplay: ")
-	nodesToDisplay.forEach(function(n) {
-		var s = n.name + " => idx: " + n.displayIndex + ", inp: " + n.displayInputs.length + ", out: " + n.displayOutputs.length
-		console.log(s)
-	})
-
-	console.log("edges: ")
-	edges.forEach(function(e) {
-		console.log(e)
-	})
 
 	cola
 	    .linkDistance(150)
@@ -157,7 +145,6 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 	return new controller()
 
 	function toDisplayIndex(nodeId) {
-		//return nodeIdToDisplayIndex[nodeId]
 		return nodes[nodeId].displayIndex
 	}
 
@@ -189,7 +176,7 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 	    }
 	}
 
-	function cacheCurrentGraph(gid, nodesToDisplay) {
+	function cacheCurrentGraph(gid, parentId, parentLevel, nodesToDisplay) {
 		var nodeIdToDisplayAttrs = {}
 		nodesToDisplay.forEach(function(n) {
 			var o = {}
@@ -201,17 +188,20 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 			nodeIdToDisplayAttrs[n.id] = o
 		})
 
-		graphCache[gid] = nodeIdToDisplayAttrs
+		var data = {"nodeIdToDisplayAttrs": nodeIdToDisplayAttrs, "graphParentId": parentId, "graphParentLevel": parentLevel}
+		graphCache[gid] = data
 	}
 
 	function fetchGraphFromCache(gid) {
-		var cache = graphCache[gid]
-		console.log("Printing cache contents")
-		console.log(cache)
+		var data = graphCache[gid]
+		graphParentLevel = data.graphParentLevel
+		graphParentId = data.graphParentId
+
+		var nodeIdToDisplayAttrs = data.nodeIdToDisplayAttrs
 		nodesToDisplay = []
 		edges = []
-		for(var nid in cache) {
-			var o = cache[nid]
+		for(var nid in nodeIdToDisplayAttrs) {
+			var o = nodeIdToDisplayAttrs[nid]
 			n = nodes[o.id]
 			nodesToDisplay.push(n)
 			n.displayInputs = o.displayInputs
@@ -222,12 +212,6 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 
 		edges = computeEdges(nodesToDisplay)
 		$("#" + gid).show()
-
-		console.log("Cache contents fetched")
-		console.log("nodesToDisplay")
-		console.log(nodesToDisplay)
-		console.log("edges")
-		console.log(edges)
 	}
 
 	// TODO: Refactor this function
@@ -312,8 +296,6 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 	}
 
 	function computeEdges(nodes) {
-		console.log("Calling computeEdges")
-		console.log(nodes)
 		var edges = []
 		nodes.forEach(function (n) {
 			var id = n.displayIndex
@@ -330,31 +312,45 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 	}
 
 	function doubleClickHandler(d) {
-		console.log("Double-clicked node " + d.name)
 		if (isNestedNode(d)) {
 			$("#" + graphId).hide()
+
+			
+			if (graphParentLevel < d.level) {
+				graphStack.push(graphId)
+			}
+
 			var subGraphId = "g_" + d.name
+			var topOfGraphStack = graphStack.slice(-1)[0]
+			if (topOfGraphStack == subGraphId) {
+				graphStack.pop()
+			}
+
 			if (subGraphId in graphCache) {
 				fetchGraphFromCache(subGraphId)
 			} else {
-				cacheCurrentGraph(graphId, nodesToDisplay)
-				createDataFlowGraph(subGraphId, d.id, colaObj, destinationDivElem, dataModel, viewState, config)
-				return	
+				cacheCurrentGraph(graphId, graphParentId, graphParentLevel, nodesToDisplay)
+				createDataFlowGraph(subGraphId, d.id, colaObj, destinationDivElem, dataModel, viewState, config)	
+				return
 			}
 		} else { // TODO: The 'else' branch is merely for testing. Remove it in the final code.
-			$("#" + graphId).hide()
-			if (!(graphId in graphCache)) {
-				cacheCurrentGraph(graphId, nodesToDisplay)
+			if (graphStack.length > 0) { // if view is not in the top-most level
+				$("#" + graphId).hide()
+				if (!(graphId in graphCache)) {
+					cacheCurrentGraph(graphId, graphParentId, graphParentLevel, nodesToDisplay)
+				}
+
+				var previousView = graphStack.pop()
+				fetchGraphFromCache(previousView)
 			}
-
-			fetchGraphFromCache("top")
 		}
+	}
 
-		///*
-		console.log(nodes)
-		console.log(nodesToDisplay)
-		console.log(edges)
-		//*/
+	function printNodes(nodes) {
+		nodes.forEach(function(n) {
+			var s = n.name + " => idx: " + n.displayIndex + ", inp: " + n.displayInputs.length + ", out: " + n.displayOutputs.length
+			console.log(s)
+		})
 	}
 
 	function colorNodeBasedOnDataDeps(n) {
@@ -375,6 +371,20 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 	            return "lightblue"
 	        }
 	    }
+	}
+
+	function colorNodeBasedOnType(type) {
+		if (type == "SingleTask") {
+			return "lightblue"
+		} else if (type == "WhileLoop") {
+			return "red"
+		} else if (type == "MultiLoop") {
+			return "orange"
+		} else if (type == "Conditional") {
+			return "green"
+		} else {
+			return "pink"
+		}
 	}
 
 	function getOpacity(d) {
@@ -447,17 +457,6 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 		$(s).fadeTo(0, 1)
 	}
 
-	function printList(lst, attrs) {
-		lst.forEach(function(n) {
-			var s = ""
-			attrs.forEach(function(a) {
-				s += n[a] + " , "
-			})
-
-			console.log(s)
-		})
-	}
-
 	function controller()
 	{
 		this.highlightNode = highlightNode;
@@ -484,6 +483,9 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 			if (scheme == "datadeps") {
 				graphElements.selectAll(".dataflow-kernel")
 			    			 .attr("fill", function(d) {return colorNodeBasedOnDataDeps(d)})
+			} else if (scheme == "nodeType") {
+				graphElements.selectAll(".dataflow-kernel")
+			    			 .attr("fill", function(d) {return colorNodeBasedOnType(d.type)})
 			} else if (scheme == "time") {
 				graphElements.selectAll(".dataflow-kernel")
 			    			 .attr("fill", function(d) {return colorNodeBasedOnTimeTaken(d.percentage_time)})
