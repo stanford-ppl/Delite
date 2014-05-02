@@ -9,7 +9,7 @@ package ppl.delite.runtime.graph.ops
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.graph._
 
-class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, func: String, private[graph] var outputTypesMap: Map[Targets.Value,Map[String,String]], private[graph] var inputTypesMap: Map[Targets.Value,Map[String,String]], val needsCombine: Boolean, val needsPostProcess: Boolean) extends OP_Executable {
+class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, val numDynamicChunks: String, val numDynamicChunksIsConst: Boolean, func: String, private[graph] var outputTypesMap: Map[Targets.Value,Map[String,String]], private[graph] var inputTypesMap: Map[Targets.Value,Map[String,String]], val needsCombine: Boolean, val needsPostProcess: Boolean) extends OP_Executable {
 
   final def isDataParallel = true
 
@@ -30,7 +30,7 @@ class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, f
    */
   def chunk(i: Int): OP_MultiLoop = {
 	  // TODO: aks (pass a sane size, sizeIsConst for the chunk?)
-    val r = new OP_MultiLoop(id+"_"+i, size, sizeIsConst, function, Targets.unitTypes(id+"_"+i, outputTypesMap), inputTypesMap, needsCombine, needsPostProcess) //chunks all return Unit
+    val r = new OP_MultiLoop(id+"_"+i, size, sizeIsConst, numDynamicChunks, numDynamicChunksIsConst,function, Targets.unitTypes(id+"_"+i, outputTypesMap), inputTypesMap, needsCombine, needsPostProcess) //chunks all return Unit
     r.dependencies = dependencies //lists are immutable so can be shared
     r.inputList = inputList
     for (dep <- getDependencies) dep.addConsumer(r)

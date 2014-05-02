@@ -157,11 +157,13 @@ object DeliteTaskGraph {
       case "OP_MultiLoop" =>
         val size = getFieldString(op, "sizeValue")
         val sizeIsConst = getFieldString(op, "sizeType") == "const"
+        val numDynamicChunks = getFieldString(op, "numDynamicChunksValue")
+        val numDynamicChunksIsConst = getFieldString(op, "numDynamicChunksType") == "const"
         if (resultMap(Targets.Scala).values.contains("Unit")) //FIXME: handle foreaches
           if (Config.clusterMode == 1) println("WARNING: ignoring stencil of op with Foreach: " + id)
         else
           processStencil(op)
-        new OP_MultiLoop(id, size, sizeIsConst, "kernel_"+id, resultMap, inputTypesMap, getFieldBoolean(op, "needsCombine"), getFieldBoolean(op, "needsPostProcess"))
+        new OP_MultiLoop(id, size, sizeIsConst, numDynamicChunks, numDynamicChunksIsConst, "kernel_"+id, resultMap, inputTypesMap, getFieldBoolean(op, "needsCombine"), getFieldBoolean(op, "needsPostProcess"))
       case "OP_Foreach" => new OP_Foreach(id, "kernel_"+id, resultMap, inputTypesMap)
       case other => error("OP Type not recognized: " + other)
     }

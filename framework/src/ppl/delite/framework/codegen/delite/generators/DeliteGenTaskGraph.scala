@@ -415,17 +415,19 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
         // val arrayInputs = inputs.flatMap(getArrayInputs)
         // Predef.println("  array inputs are: ")
         // Predef.println(arrayInputs)
-        emitMultiLoop(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size, op.body.exists (loopBodyNeedsCombine _), op.body.exists (loopBodyNeedsPostProcess _), optContext, opStencil)
+        emitMultiLoop(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size, Const[Int](0), op.body.exists (loopBodyNeedsCombine _), op.body.exists (loopBodyNeedsPostProcess _), optContext, opStencil)
       case op: AbstractFatIfThenElse =>
         assert(sym.length == 1, "TODO: implement fat if then else")
         emitIfThenElse(Block(op.cond), op.thenp.head, op.elsep.head, kernelName, outputs, resultIsVar, inputs, inMutating, inControlDeps, antiDeps, optContext)
       case z =>
         z match {
+          case op:DeliteOpLoop[_] =>
+            emitMultiLoop(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size, op.numDynamicChunks, loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body), optContext, opStencil)
           case op:AbstractLoop[_] =>
             // Predef.println("emitting DeliteLoop (" + sym + "), inputs are: ")
             // Predef.println(inputs)
             // Predef.println("stencil is: " + opStencil)
-            emitMultiLoop(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size, loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body), optContext, opStencil)
+            emitMultiLoop(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size, Const[Int](0), loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body), optContext, opStencil)
           case e:DeliteOpExternal[_] => emitExternal(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps)
           case c:DeliteOpCondition[_] => emitIfThenElse(Block(c.cond), c.thenp, c.elsep, kernelName, outputs, resultIsVar, inputs, inMutating, inControlDeps, antiDeps, optContext)
           case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, kernelName, outputs, resultIsVar, inputs, inMutating, inControlDeps, antiDeps, optContext)
@@ -454,13 +456,15 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
    * @param antiDeps    a list of WAR dependencies (need to be committed in program order)
    */
 
-  def emitMultiLoop(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], size: Exp[Int], needsCombine: Boolean, needsPostProcess: Boolean,
+  def emitMultiLoop(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], size: Exp[Int], numDynamicChunks: Exp[Int], needsCombine: Boolean, needsPostProcess: Boolean,
                     sourceContext: Option[SourceContext], stencil: Stencil)
        (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
    stream.println("{\"type\":\"MultiLoop\",")
    emitSourceContext(sourceContext, stream, id)
    stream.println(",\n")
    emitConstOrSym(size, "size")
+   stream.println(",\n")
+   emitConstOrSym(numDynamicChunks, "numDynamicChunks")
    stream.print(",\"needsCombine\":" + needsCombine)
    stream.println(",\"needsPostProcess\":" + needsPostProcess)
    emitStencil(inputs, stencil)
