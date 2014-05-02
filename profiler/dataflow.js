@@ -1,39 +1,47 @@
 
-var graphCache = {}
-var graphStack = [] //keeps track of the hierarchical view
-var graphParentLevel = -1
-
-function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem, dataModel, viewState, config) {
-	// Points regarding the hierarchical display of DEG nodes:
-	// (i)  Every graph view would correspond to a certain parentId.
-	//		If this is -1, its the top-level view. If we're within WhileLoop, the parentId would
-	//		correspond to the id of the WhileLoop
-	// (ii)	Only nodes whose parentId == the graphParentId can have non-empty displayInputs and displayOutputs
-	// (iii)We maintain a cache of all views generated so far. Following are the data points that's cached for each view:
-	//			(a) nodesToDisplay
-	//			(b) dislpayInputs, displayOutputs and displayIndex of each node 
-	//			(c) graphId of the view. This is used to hide/show each view
-
+function createDataFlowGraph(cola, destinationDivElem, dataModel, viewState, config) {
 	hljs.initHighlightingOnLoad();
-	var cola = colaObj.d3adaptor();
+	var cola = cola.d3adaptor();
 	var nodes = dataModel["nodes"]
 	var nodeNameToId = dataModel["nodeNameToId"]
 
-	if (graphParentId == -1) {
-		graphParentLevel = -1
-	} else {
-		graphParentLevel = nodes[graphParentId].level
+	// Filter out the nodes that need to displayed as per the config
+	//updateInputsDataOfWhileLoops(nodes)
+
+	var res = filterNodes(nodes)
+	var nodesToDisplay = res.nodesToDisplay
+	var nodeIdToDisplayIndex = res.nodeIdToDisplayIndex
+
+	var edges = computeEdges(nodesToDisplay, nodeIdToDisplayIndex)
+
+	function filterNodes(nodes) {
+		// TODO: We would need to adjust the edges based on the level
+		// eg: If x1 depends on x2, which is an inner component of WhileLoop x3,
+		// then the edge should be from x3 to x1. Does that sound right?
+		var nodeIdToDisplayIndex = {}
+		var nodesToDisplay = nodes.filter(function(n) {return (n.type != "InternalNode")})
+		nodesToDisplay.forEach(function(n, i) {nodeIdToDisplayIndex[n.id] = i})
+
+		return {"nodesToDisplay": nodesToDisplay, "nodeIdToDisplayIndex": nodeIdToDisplayIndex}
 	}
 
-	var res = computeDisplayAttrsOfNodes(nodes)
-	nodes = res.nodes
-	var nodesToDisplay = res.nodesToDisplay
-	assignDisplayIndices(nodesToDisplay)
-	var edges = computeEdges(nodesToDisplay)
+	function toDisplayIndex(nodeId) {
+		return nodeIdToDisplayIndex[nodeId]
+	}
+
+	function computeEdges(nodes, nodeIdToDisplayIndex) {
+		var edges = []
+		nodes.forEach(function (n) {
+			n.inputs.forEach(function(m) {
+				edges.push({source: toDisplayIndex(m), target: toDisplayIndex(n.id)})
+			})
+		})
+
+		return edges
+	}
 
 	var graph = d3.select(destinationDivElem).append("svg")
-		.attr("class", 'dataflowSvg')
-		.attr("id", graphId)
+		.attr('class', 'dataflowSvg')
 		.attr("width", "100%")
 		.attr("height", "100%")
 		.attr("pointer-events", "all");
@@ -47,8 +55,12 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 
 	var graphElements = graph.append('g')
 
+	function redraw() {
+		graphElements.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")");
+	}
+
 	graph.append('svg:defs').append('svg:marker')
-		.attr('id', 'end-arrow-' + graphId)
+		.attr('id', 'end-arrow')
 		.attr('viewBox', '0 -5 10 10')
 		.attr('refX', 8)
 		.attr('markerWidth', 6)
@@ -59,98 +71,7 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 		.attr('stroke-width', '0px')
 		.attr('fill', '#000');
 
-	//calcDepthOfNodes()
-
-	var maxTimeTakenByAKernel = nodesToDisplay.map(function(n) {return n.percentage_time}).sort(function(a,b) {return b - a})[1]
-	var colorNodeBasedOnTimeTaken = d3.scale.linear()
-								    .domain([0, maxTimeTakenByAKernel])
-								    .range(["white", "red"]);
-
-	var maxMemUsageByAKernel = nodesToDisplay.map(function(n) {return n.memUsage}).sort(function(a,b) {return b - a})[1]
-	var colorNodeBasedOnMemUsage = d3.scale.linear()
-							    	.domain([0, maxMemUsageByAKernel])
-								    .range(["white", "red"]);						  
-
-	//var constraints = generateConstraints()
-
-	cola
-	    .linkDistance(150)
-	    .avoidOverlaps(true)
-	    .size(getColaDimensions())
-	    .nodes(nodesToDisplay)
-	    .links(edges)
-	    //.flowLayout('y')
-	    //.constraints(constraints)
-	    .jaccardLinkLengths()
-
-	var link = graphElements.selectAll(".link")
-	    .data(edges)
-	    .enter().append("line")
-	    .attr("class", "link")
-	    .attr("marker-end", "url(#end-arrow-" + graphId + ")");
-
-	var margin = 6, pad = 12;
-	var node = graphElements.selectAll(".node")
-	    .data(nodesToDisplay)
-	    .enter().append("rect")
-	    .attr("fill", colorNodeBasedOnDataDeps)
-	    .attr("opacity", getOpacity)
-	    .attr("rx", 5).attr("ry", 5)
-	    .attr("nodeId", function(d) {return d.id})
-	    .on("click", nodeClickHandler)
-	    .on("dblclick", doubleClickHandler)
-	    .attr("class", "dataflow-kernel")
-	    .call(cola.drag);
-
-	var label = graphElements.selectAll(".label")
-	    .data(nodesToDisplay)
-	    .enter().append("text")
-	    .attr("class", "label")
-	    .text(function (d) { return d.name; })
-	    .on("click", nodeClickHandler)
-	    .on("dblclick", doubleClickHandler)
-	    .call(cola.drag)
-	    .each(function (d) {
-	        var b = this.getBBox();
-	        var extra = 2 * margin + 2 * pad;
-	        d.width = b.width + extra;
-	        d.height = b.height + extra;
-	    });
-
-	var ticks = 0
-	cola = cola.start(20, 20, 20)
-	cola.on("tick", function () {
-	    node.each(function (d) { d.innerBounds = d.bounds.inflate(-margin); })
-	        .attr("x", function (d) { return d.innerBounds.x; })
-	        .attr("y", function (d) { return d.innerBounds.y; })
-	        .attr("width", function (d) { return d.innerBounds.width(); })
-	        .attr("height", function (d) { return d.innerBounds.height(); });
-
-	    link.each(function (d) {
-		        vpsc.makeEdgeBetween(d, d.source.innerBounds, d.target.innerBounds, 5);})
-	        .attr("x1", function (d) { return d.sourceIntersection.x; })
-	        .attr("y1", function (d) { return d.sourceIntersection.y; })
-	        .attr("x2", function (d) { return d.arrowStart.x; })
-	        .attr("y2", function (d) { return d.arrowStart.y; });
-
-	    label.attr("x", function (d) { return d.x })
-	         .attr("y", function (d) { return d.y + (margin + pad) / 2 });
-
-	    ticks++
-	    if (ticks > 5) {
-	    	cola.stop()	
-	    }
-	});
-
-	return new controller()
-
-	function toDisplayIndex(nodeId) {
-		return nodes[nodeId].displayIndex
-	}
-
-	function redraw() {
-		graphElements.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")");
-	}
+	calcDepthOfNodes()
 
 	function calcDepthOfNodes() {
 	    var startingNodes = nodesToDisplay.filter(function(n) {return (n != undefined) && (n.numInputs == 0) && (n.controlDeps) && (n.antiDeps)})
@@ -176,196 +97,17 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 	    }
 	}
 
-	function cacheCurrentGraph(gid, parentId, parentLevel, nodesToDisplay) {
-		var nodeIdToDisplayAttrs = {}
-		nodesToDisplay.forEach(function(n) {
-			var o = {}
-			o.id = n.id
-			o.displayInputs = n.displayInputs
-			o.displayOutputs = n.displayOutputs
-			o.isPeripheralNodeForDisplay = n.isPeripheralNodeForDisplay
-			o.displayIndex = n.displayIndex
-			nodeIdToDisplayAttrs[n.id] = o
-		})
-
-		var data = {"nodeIdToDisplayAttrs": nodeIdToDisplayAttrs, "graphParentId": parentId, "graphParentLevel": parentLevel}
-		graphCache[gid] = data
-	}
-
-	function fetchGraphFromCache(gid) {
-		var data = graphCache[gid]
-		graphParentLevel = data.graphParentLevel
-		graphParentId = data.graphParentId
-
-		var nodeIdToDisplayAttrs = data.nodeIdToDisplayAttrs
-		nodesToDisplay = []
-		edges = []
-		for(var nid in nodeIdToDisplayAttrs) {
-			var o = nodeIdToDisplayAttrs[nid]
-			n = nodes[o.id]
-			nodesToDisplay.push(n)
-			n.displayInputs = o.displayInputs
-			n.displayOutputs = o.displayOutputs
-			n.isPeripheralNodeForDisplay = o.isPeripheralNodeForDisplay
-			n.displayIndex = o.displayIndex
-		}
-
-		edges = computeEdges(nodesToDisplay)
-		$("#" + gid).show()
-	}
-
-	// TODO: Refactor this function
-	function computeDisplayAttrsOfNodes(nodes) {
-		function mapToTopLevelParents(n, attr) {
-			return n[attr].map(function(n) {return getTopLevelParent(nodes[n], nodes)})
-		}
-
-		function mapChildNodesDepsToParent(n1, childNodes) {
-			if(childNodes) {
-				childNodes.forEach(function(n2) {
-					n1.displayInputs = n1.displayInputs.concat(mapToTopLevelParents(n2, "inputs"))
-					n1.displayOutputs = n1.displayOutputs.concat(mapToTopLevelParents(n2, "outputs"))
-				})
-			}
-		}
-
-		var filteredNodes = []
-		nodes.filter(function(n) {return n.type != "InternalNode"}).forEach(function(n) {
-			if (n.parentId == graphParentId) {
-				filteredNodes.push(n)
-				n.isPeripheralNodeForDisplay = false
-				n.displayInputs = mapToTopLevelParents(n, "inputs")
-				n.displayOutputs = mapToTopLevelParents(n, "outputs")
-
-				if (n.type == "WhileLoop") {
-					mapChildNodesDepsToParent(n, n.condOps)
-					mapChildNodesDepsToParent(n, n.bodyOps)
-				} else if (n.type == "Conditional") {
-					mapChildNodesDepsToParent(n, n.condOps)
-					mapChildNodesDepsToParent(n, n.thenOps)
-					mapChildNodesDepsToParent(n, n.elseOps)
-				}
-			} else {
-				n.isPeripheralNodeForDisplay = true
-				n.displayInputs = []
-				n.displayOutputs = []
-			}
-
-			n.displayInputs = n.displayInputs.filter(function(i) {return i != n.id})
-			n.displayOutputs = n.displayOutputs.filter(function(i) {return i != n.id})
-
-			$.unique(n.displayInputs)
-			$.unique(n.displayOutputs)
-		})
-
-		// Adding peripheral nodes, ie, the ones that are inputs/outputs of filteredNodes
-		if (graphParentId != -1) { // optimization
-			var tmp = []
-			filteredNodes.forEach(function(n) {
-				var inputs = n.displayInputs.map(function(i) {return nodes[i]})
-				inputs.forEach(function(n) {if (n.parentId != graphParentId) {
-					n.displayOutputs.push(n.id)
-					tmp.push(n)
-				}})
-
-				var outputs = n.displayOutputs.map(function(i) {return nodes[i]})
-				outputs.forEach(function(n) {if (n.parentId != graphParentId) {
-					n.displayInputs.push(n.id)
-					tmp.push(n)
-				}})
-			})
-
-			$.unique(tmp)
-			filteredNodes = filteredNodes.concat(tmp)
-		}
-
-		return {"nodes": nodes, "nodesToDisplay": filteredNodes}
-	}
-
-	function getTopLevelParent(n, nodes) {
-		var parent = n
-		while ((parent.parentId != -1) && (parent.parentId != graphParentId)) {
-			parent = nodes[parent.parentId]
-		}
-
-		return parent.id
-	}
-
-	function assignDisplayIndices(nodesToDisplay) {
-		nodesToDisplay.forEach(function(n, i) {n.displayIndex = i})
-	}
-
-	function computeEdges(nodes) {
-		var edges = []
-		nodes.forEach(function (n) {
-			var id = n.displayIndex
-			n.displayInputs.forEach(function(m) {
-				edges.push({source: toDisplayIndex(m), target: id})
-			})
-		})
-
-		return edges
-	}
-
-	function isNestedNode(n) {
-		return ((n.type == "WhileLoop") || (n.type == "Conditional"))
-	}
-
-	function doubleClickHandler(d) {
-		if (isNestedNode(d)) {
-			$("#" + graphId).hide()
-
-			
-			if (graphParentLevel < d.level) {
-				graphStack.push(graphId)
-			}
-
-			var subGraphId = "g_" + d.name
-			var topOfGraphStack = graphStack.slice(-1)[0]
-			if (topOfGraphStack == subGraphId) {
-				graphStack.pop()
-			}
-
-			if (subGraphId in graphCache) {
-				fetchGraphFromCache(subGraphId)
-			} else {
-				cacheCurrentGraph(graphId, graphParentId, graphParentLevel, nodesToDisplay)
-				createDataFlowGraph(subGraphId, d.id, colaObj, destinationDivElem, dataModel, viewState, config)	
-				return
-			}
-		} else { // TODO: The 'else' branch is merely for testing. Remove it in the final code.
-			if (graphStack.length > 0) { // if view is not in the top-most level
-				$("#" + graphId).hide()
-				if (!(graphId in graphCache)) {
-					cacheCurrentGraph(graphId, graphParentId, graphParentLevel, nodesToDisplay)
-				}
-
-				var previousView = graphStack.pop()
-				fetchGraphFromCache(previousView)
-			}
-		}
-	}
-
-	function printNodes(nodes) {
-		nodes.forEach(function(n) {
-			var s = n.name + " => idx: " + n.displayIndex + ", inp: " + n.displayInputs.length + ", out: " + n.displayOutputs.length
-			console.log(s)
-		})
-	}
-
+	// TODO: User should have the option to choose whether to include datadeps, antideps, control deps, etc. in color coding
+	//		 Need to rewrite the function to consider the currently selected mode and counts of all these 3 types of deps 
+	//		 when determining color
 	function colorNodeBasedOnDataDeps(n) {
-		if (n.isPeripheralNodeForDisplay) {
-			return "gray"
-		}
-
-		var numOutputs = n.displayOutputs.length
-	    if (n.displayInputs.length > 0) {
-	        if (numOutputs > 0){
+	    if (n.numInputs > 0) {
+	        if (n.numOutputs > 0){
 	            return "orange"
 	        }
 	        return "red"
-	    } else {
-	        if (numOutputs > 0) {
+	    } else {    // numInputs == 0
+	        if (n.numOutputs > 0) {
 	            return "green"
 	        } else {
 	            return "lightblue"
@@ -373,46 +115,99 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 	    }
 	}
 
-	function colorNodeBasedOnType(type) {
-		if (type == "SingleTask") {
-			return "lightblue"
-		} else if (type == "WhileLoop") {
-			return "red"
-		} else if (type == "MultiLoop") {
-			return "orange"
-		} else if (type == "Conditional") {
-			return "green"
-		} else {
-			return "pink"
-		}
-	}
+	var maxTimeTakenByAKernel = nodesToDisplay.map(function(n) {return n.percentage_time}).sort(function(a,b) {return b - a})[1]
+	var colorNodeBasedOnTimeTaken = d3.scale.linear()
+								    .domain([0, maxTimeTakenByAKernel])
+								    .range(["white", "red"]);
 
-	function getOpacity(d) {
-		if (d.isPeripheralNodeForDisplay) {
-			return 0.2
-		}
+	var maxMemUsageByAKernel = nodesToDisplay.map(function(n) {return n.memUsage}).sort(function(a,b) {return b - a})[1]
+	var colorNodeBasedOnMemUsage = d3.scale.linear()
+							    	.domain([0, maxMemUsageByAKernel])
+								    .range(["white", "red"]);						  
 
-		return 1
-	}
-
+	var constraints = []
 	function generateConstraints() {
-		var constraints = []
 	    edges.map(function(e) {return {source: nodesToDisplay[e.source], target: nodesToDisplay[e.target]}})
 	         .forEach(function(e) {
 	            var s = e.source
 	            var t = e.target
 	            var minDiffInY = (t.depth - s.depth) * 15
-	            //constraints.push({"axis": "y", "left": toDisplayIndex(s.id), "right": toDisplayIndex(t.id), "gap": minDiffInY})
-	            constraints.push({"axis": "y", "left": s.displayIndex, "right": t.displayIndex, "gap": minDiffInY})
+	            constraints.push({"axis": "y", "left": toDisplayIndex(s.id), "right": toDisplayIndex(t.id), "gap": minDiffInY})
 	         })
-
-	    return constraints
 	}
+
+	generateConstraints()
 
 	function getColaDimensions() {
 		var p = $('.dataflowSvg').parent()
 		return [p.width(), p.height()];
 	}
+
+	cola
+	    .linkDistance(150)
+	    .avoidOverlaps(true)
+	    //.flowLayout('y')
+	    .size(getColaDimensions())
+	    .nodes(nodesToDisplay)
+	    .links(edges)
+	    //.constraints(constraints)
+	    .jaccardLinkLengths()
+
+	var link = graphElements.selectAll(".link")
+	    .data(edges)
+	    .enter().append("line")
+	    .attr("class", "link");
+
+	var margin = 6, pad = 12;
+	var node = graphElements.selectAll(".node")
+	    .data(nodesToDisplay)
+	    .enter().append("rect")
+	    .attr("fill", colorNodeBasedOnDataDeps)
+	    .attr("rx", 5).attr("ry", 5)
+	    .attr("nodeId", function(d) {return d.id})
+	    .on("click", nodeClickHandler)
+	    .attr("class", "dataflow-kernel")
+	    .call(cola.drag);
+
+	var label = graphElements.selectAll(".label")
+	    .data(nodesToDisplay)
+	    .enter().append("text")
+	    .attr("class", "label")
+	    .text(function (d) { return d.name; })
+	    .on("click", nodeClickHandler)
+	    .call(cola.drag)
+	    .each(function (d) {
+	        var b = this.getBBox();
+	        var extra = 2 * margin + 2 * pad;
+	        d.width = b.width + extra;
+	        d.height = b.height + extra;
+	    });
+
+	var ticks = 0
+	//cola.start(20, 20, 20).on("tick", function () {
+	cola = cola.start(20, 20, 20)
+	cola.on("tick", function () {
+	    node.each(function (d) { d.innerBounds = d.bounds.inflate(-margin); })
+	        .attr("x", function (d) { return d.innerBounds.x; })
+	        .attr("y", function (d) { return d.innerBounds.y; })
+	        .attr("width", function (d) { return d.innerBounds.width(); })
+	        .attr("height", function (d) { return d.innerBounds.height(); });
+
+	    link.each(function (d) {
+		        vpsc.makeEdgeBetween(d, d.source.innerBounds, d.target.innerBounds, 5);})
+	        .attr("x1", function (d) { return d.sourceIntersection.x; })
+	        .attr("y1", function (d) { return d.sourceIntersection.y; })
+	        .attr("x2", function (d) { return d.arrowStart.x; })
+	        .attr("y2", function (d) { return d.arrowStart.y; });
+
+	    label.attr("x", function (d) { return d.x })
+	         .attr("y", function (d) { return d.y + (margin + pad) / 2 });
+
+	    ticks++
+	    if (ticks > 5) {
+	    	cola.stop()	
+	    }
+	});
 
 	function nodeClickHandler(node) {
 		var sc = node.sourceContext
@@ -427,7 +222,6 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 		highlightNodes(arr)
 	}
 
-	/*
 	function getNeighbors(node) {
 		var neighbors = []
 		if (node.type == "WhileLoop") {
@@ -437,15 +231,6 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 			neighbors = neighbors.concat(node.inputs)
 			neighbors = neighbors.concat(node.outputs)
 		}
-
-		return neighbors
-	}
-	*/
-
-	function getNeighbors(node) {
-		var neighbors = []
-		neighbors = neighbors.concat(node.displayInputs)
-		neighbors = neighbors.concat(node.displayOutputs)
 
 		return neighbors
 	}
@@ -483,9 +268,6 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 			if (scheme == "datadeps") {
 				graphElements.selectAll(".dataflow-kernel")
 			    			 .attr("fill", function(d) {return colorNodeBasedOnDataDeps(d)})
-			} else if (scheme == "nodeType") {
-				graphElements.selectAll(".dataflow-kernel")
-			    			 .attr("fill", function(d) {return colorNodeBasedOnType(d.type)})
 			} else if (scheme == "time") {
 				graphElements.selectAll(".dataflow-kernel")
 			    			 .attr("fill", function(d) {return colorNodeBasedOnTimeTaken(d.percentage_time)})
@@ -495,5 +277,36 @@ function createDataFlowGraph(graphId, graphParentId, colaObj, destinationDivElem
 			}
 		}
 	}
+
+	return new controller()
+
+	/*
+	function updateInputsDataOfWhileLoops(nodes) {
+		function helper(ns) {
+			var inputs = []
+			var outputs = []
+			ns.forEach(function(n) {
+				inputs = inputs.concat(n.inputs)
+				outputs = outputs.concat(n.outputs)
+			})
+
+			return {"inputs": inputs, "outputs": outputs}
+		}
+
+		nodes.filter(function(n) {return n.type == "WhileLoop"})
+			.forEach(function(n) {
+			 	updateInputsDataOfWhileLoops(n.condOps)
+			 	updateInputsDataOfWhileLoops(n.bodyOps)
+
+			 	tmp = helper(n.condOps)
+			 	n.inputs = n.inputs.concat(tmp.inputs)
+			 	n.outputs = n.inputs.concat(tmp.outputs)
+
+			 	tmp = helper(n.bodyOps)
+			 	n.inputs = n.inputs.concat(tmp.inputs)
+			 	n.outputs = n.inputs.concat(tmp.outputs)
+		})
+	}
+	*/
 }
 

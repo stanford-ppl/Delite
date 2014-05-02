@@ -52,7 +52,6 @@
 									<span>Metric</span>	
 									<select id="colorSchemeForGraph">
 										<option value="datadeps">Data Deps</option>
-										<option value="nodeType">Node Type</option>
 										<option value="time">Exec Time</option>
 										<option value="memUsage">Mem Usage</option>
 										<option value="threadLevelSyncStats">Thread Sync</option>
@@ -223,16 +222,24 @@
 	      	$("#colorSchemeForGraph").change(function() {
 	      		var colorScheme = $(this).val()
 	      		if (colorScheme == "time") {
-	      			setUpDivToGenerateBarChart()
+	      			$('.dataflowSvg').hide()
+	      			$("#dfg").css("overflow-y", "auto")
+	      			$(".barChart").remove()
 	      			createBarChart("#dfg", topNodesBasedOnTime, "percentage_time", getDisplayTextForTime, config)
 	      		} else if (colorScheme == "memUsage") {
-	      			setUpDivToGenerateBarChart()
+	      			$('.dataflowSvg').hide()
+	      			$("#dfg").css("overflow-y", "auto")
+	      			$(".barChart").remove()
 	      			createBarChart("#dfg", topNodesBasedOnMemUsage, "memUsage", getDisplayTextForMemUsage, config)
 	      		} else if (colorScheme == "threadLevelSyncStats") {
-	      			setUpDivToGenerateBarChart()
+	      			$('.dataflowSvg').hide()
+	      			$("#dfg").css("overflow-y", "auto")
+	      			$(".barChart").remove()
 	      			createBarChart("#dfg", threadLevelSyncStats, "syncTimePct", getDisplayTextForThreadLevelSync, config)
 	      		} else {
-	      			setUpDivToGenerateDEGGraph()
+	      			$(".barChart").hide()
+	      			$("#dfg").css("overflow-y", "hidden")
+	      			$('.dataflowSvg').show()
 		      		graphController.changeColoringScheme(colorScheme)
 		      		viewState.graphViewMode = colorScheme
 		      	}
@@ -255,6 +262,7 @@
 
 			function filterNodesOnTimeline() {
 				var selectedLevel = parseInt($("#timelineLevelFilter").val())
+	      		console.log(selectedLevel)
 	      		for (var i = 0; i < 4; i++) {
 	      			var filter = "level=level-" + i
 	      			if (i != selectedLevel) {
@@ -351,12 +359,9 @@
 
 			function startDebugSession() {
 				if ((viewState.degFile != "") && (viewState.profileDataFile != "")) {
-					$(".dataflowSvg").remove() // Removing DEG graphs generated in previous debug sessions, if any
-					$(".timelineWrapper").remove()
-
 					editor = createEditor("code")
 		      		profData = getProfileData(degOps, profileData.Profile, config)
-		      		graphController = createDataFlowGraph("top", -1, cola, "#dfg", profData.dependencyData, viewState, config)
+		      		graphController = createDataFlowGraph(cola, "#dfg", profData.dependencyData, viewState, config)
 
 		      		topNodesBasedOnTime = getTopNodes(profData.dependencyData.nodes, "percentage_time", 20)
 		      		topNodesBasedOnMemUsage = getTopNodes(profData.dependencyData.nodes, "memUsage", 20)
@@ -383,19 +388,9 @@
 				graphController.markNeighbors(nodeId)
 			}
 
-	      	function setUpDivToGenerateBarChart() {
-	      		$('.dataflowSvg').hide()
-      			$("#dfg").css("overflow-y", "auto")
-      			$(".barChart").remove()
-	      	}
-
-	      	function setUpDivToGenerateDEGGraph() {
-	      		$(".barChart").hide()
-      			$("#dfg").css("overflow-y", "hidden")
-      			$('.dataflowSvg').show()
-	      	}
-
 			$(document).ready(function () {
+				console.log($("#container").width())
+				console.log($("#accordian").width())
 				$("#right").css("width", $("#container").width() - $("#accordian").width())
 				/*
 				$('#accordian > ul > li').click(function() {
