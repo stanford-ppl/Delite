@@ -20,9 +20,9 @@ trait DeliteArrayOps extends StringOps {
     def sortIndices(length: Rep[Int])(comparator: (Rep[Int],Rep[Int]) => Rep[Int]) = darray_sortIndices(length, comparator)
   }
 
-  implicit def repDArrayToDArrayOps[T:Manifest](da: Rep[DeliteArray[T]]) = new DeliteArrayOpsCls(da)
+  implicit def repDArrayToDArrayOps[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext) = new DeliteArrayOpsCls(da)
 
-  class DeliteArrayOpsCls[T:Manifest](da: Rep[DeliteArray[T]]) {
+  class DeliteArrayOpsCls[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext) {
     def length: Rep[Int] = darray_length(da)
     def apply(i: Rep[Int]): Rep[T] = darray_apply(da,i)
     def update(i: Rep[Int], x: Rep[T]): Rep[Unit] = darray_update(da,i,x)
