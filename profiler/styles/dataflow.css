@@ -20,7 +20,7 @@
     stroke: #000;
     stroke-width: 3px;
     opacity: 0.7;
-    /*marker-end: url(#end-arrow);*/
+    marker-end: url(#end-arrow);
 }
 
 .label {
