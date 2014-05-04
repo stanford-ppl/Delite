@@ -133,6 +133,7 @@ object Delite {
         val numTimes = Config.numRuns
         for (i <- 1 to numTimes) {
           println("Beginning Execution Run " + i)
+          PerformanceTimer.clearAll()
           val globalStart = System.currentTimeMillis
           val globalStartNanos = System.nanoTime()
           PerformanceTimer.start("all", false)

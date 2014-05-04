@@ -157,10 +157,17 @@ object PerformanceTimer
     println("[METRICS]: total time for component " + component + ": " + total)
   }
 
+  /*
   def clearAll() {
     for((k,v) <- times) {
       v.clear
     }
+  }
+  */
+
+  def clearAll() {
+    times.clear()
+    stats = Map()
   }
 
   def printAll(globalStart: Long, globalStartNanos: Long) {
