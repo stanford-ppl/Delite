@@ -4,10 +4,6 @@ function createDataFlowGraph(cola, destinationDivElem, dataModel, viewState, con
 	var cola = cola.d3adaptor();
 	var nodes = dataModel["nodes"]
 	var nodeNameToId = dataModel["nodeNameToId"]
-
-	// Filter out the nodes that need to displayed as per the config
-	//updateInputsDataOfWhileLoops(nodes)
-
 	var res = filterNodes(nodes)
 	var nodesToDisplay = res.nodesToDisplay
 	var nodeIdToDisplayIndex = res.nodeIdToDisplayIndex
@@ -46,14 +42,21 @@ function createDataFlowGraph(cola, destinationDivElem, dataModel, viewState, con
 		.attr("height", "100%")
 		.attr("pointer-events", "all");
 
+	var zoom = d3.behavior.zoom()
+	zoom.on("zoom", redraw)
+	zoom.scale(0.3)
+	//zoom.translate([180,0])
+
 	graph.append('rect')
 		.attr('class', 'background')
 		.attr('width', "100%")
 		.attr('height', "100%")
 		.on("click", function() {$(".dataflow-kernel").fadeTo(0, 1)})
-		.call(d3.behavior.zoom().on("zoom", redraw));
+		.call(zoom);
 
 	var graphElements = graph.append('g')
+							 //.attr("transform", "scale(0.3)translate(180,0)")
+							 .attr("transform", "scale(0.3)")
 
 	function redraw() {
 		graphElements.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")");
@@ -265,10 +268,10 @@ function createDataFlowGraph(cola, destinationDivElem, dataModel, viewState, con
 		}
 
 		function changeColoringScheme(scheme) {
-			if (scheme == "datadeps") {
+			if (scheme == "dataDeps") {
 				graphElements.selectAll(".dataflow-kernel")
 			    			 .attr("fill", function(d) {return colorNodeBasedOnDataDeps(d)})
-			} else if (scheme == "time") {
+			} else if (scheme == "performance") {
 				graphElements.selectAll(".dataflow-kernel")
 			    			 .attr("fill", function(d) {return colorNodeBasedOnTimeTaken(d.percentage_time)})
 			} else if (scheme == "memUsage") {
@@ -279,34 +282,5 @@ function createDataFlowGraph(cola, destinationDivElem, dataModel, viewState, con
 	}
 
 	return new controller()
-
-	/*
-	function updateInputsDataOfWhileLoops(nodes) {
-		function helper(ns) {
-			var inputs = []
-			var outputs = []
-			ns.forEach(function(n) {
-				inputs = inputs.concat(n.inputs)
-				outputs = outputs.concat(n.outputs)
-			})
-
-			return {"inputs": inputs, "outputs": outputs}
-		}
-
-		nodes.filter(function(n) {return n.type == "WhileLoop"})
-			.forEach(function(n) {
-			 	updateInputsDataOfWhileLoops(n.condOps)
-			 	updateInputsDataOfWhileLoops(n.bodyOps)
-
-			 	tmp = helper(n.condOps)
-			 	n.inputs = n.inputs.concat(tmp.inputs)
-			 	n.outputs = n.inputs.concat(tmp.outputs)
-
-			 	tmp = helper(n.bodyOps)
-			 	n.inputs = n.inputs.concat(tmp.inputs)
-			 	n.outputs = n.inputs.concat(tmp.outputs)
-		})
-	}
-	*/
 }
 
