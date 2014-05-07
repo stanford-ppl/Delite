@@ -335,7 +335,7 @@ trait CppSyncGenerator extends CppToScalaSync with CppToCppSync {
     //case r: Receive if (getHostTarget(scheduledTarget(r.sender.from)) == Targets.Scala) => addSync(r)
     //case s: Send if (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty) => addSync(s)
     case s: Sync => addSync(s) //TODO: if sync companion also Scala
-    case m: Free => println("[warning] freeing " + m.items.map(_._2).mkString(",") + " is not inserted.")
+    case m: Free => //println("[warning] freeing " + m.items.map(_._2).mkString(",") + " is not inserted.")
     case _ => super.makeNestedFunction(op)
   }
 }
