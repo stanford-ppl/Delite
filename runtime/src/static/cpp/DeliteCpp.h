@@ -13,6 +13,7 @@
 #include <regex>
 #include <vector>
 #include <map>
+#include <sstream>
 #include "cppDeliteArray.h"
 
 /* helper methods and data structures only required for execution with Delite */
