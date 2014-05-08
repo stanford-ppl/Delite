@@ -162,7 +162,10 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     println(dep.id + ":" + sym)
     println(dep.getInputTypesMap.toString)
     assert(!isPrimitiveType(dep.inputType(sym)))
-    out.append("recvUpdateCPPfromJVM_%s(env%s,%s,%s);\n".format(mangledName(devType),location,getSymCPU(sym),getSymHost(dep,sym)))
+    val idx = getSyncVarIdx
+    out.append("jobject _find_%s = JNIObjectMap_find(%s);\n".format(idx,sym.filter(_.isDigit)))
+    out.append("recvUpdateCPPfromJVM_%s(env%s,_find_%s,%s);\n".format(mangledName(devType),location,idx,getSymHost(dep,sym)))
+    out.append("JNIObjectMap_insert(%s,_find_%s);\n".format(sym.filter(_.isDigit),idx))
   }
 
   private def writeSetter(op: DeliteOP, sym: String, view: Boolean) {
