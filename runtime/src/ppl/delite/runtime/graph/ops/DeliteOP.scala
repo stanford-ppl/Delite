@@ -20,21 +20,18 @@ abstract class DeliteOP {
   def task : String
 
   private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]]
-  private[graph] var inputTypesMap: Map[Targets.Value, Map[String,String]]
   private[graph] val stencilMap = new collection.mutable.HashMap[String,Stencil]()
-  private[graph] val supportedTargets = new collection.mutable.ArrayBuffer[Targets.Value]
+  private[graph] val supportedTargets = new collection.mutable.HashSet[Targets.Value]
 
   def getOutputTypesMap = outputTypesMap
-  def getInputTypesMap = inputTypesMap
-
   def outputType(target: Targets.Value, symbol: String): String = outputTypesMap(target)(symbol)
   def outputType(target: Targets.Value): String = outputTypesMap(target)("functionReturn")
   def outputType(symbol: String) = outputTypesMap(Targets.Scala)(symbol)
   def outputType = outputTypesMap(Targets.Scala)("functionReturn")
-  def inputType(target: Targets.Value, symbol: String): String = inputTypesMap(target)(symbol)
-  def inputType(symbol: String) = inputTypesMap(Targets.Scala)(symbol)
+  def inputType(target: Targets.Value, symbol: String): String = getInputs.find(_._2 == symbol).get._1.outputType(target,symbol)
+  def inputType(symbol: String): String = inputType(Targets.Scala, symbol)
 
-  def supportsTarget(target: Targets.Value) : Boolean = supportedTargets contains target
+  def supportsTarget(target: Targets.Value): Boolean = supportedTargets contains target
 
   def getOutputs = outputTypesMap.head._2.keySet - "functionReturn"
 

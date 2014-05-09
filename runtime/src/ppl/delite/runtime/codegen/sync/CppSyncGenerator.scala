@@ -129,7 +129,7 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     out.append(getJNIOutputType(dep.outputType(Targets.Scala,sym)))
     out.append("\"));\n")
     val ref = if (isPrimitiveType(dep.outputType(sym))) "" else "*"
-    val devType = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
+    val devType = dep.outputType(Targets.Cpp, sym)
     if (view)
       out.append("%s %s%s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
     else if(isPurePrimitiveType(dep.outputType(sym)))
@@ -158,15 +158,13 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
   }
 
   private def writeRecvUpdater(dep: DeliteOP, sym:String) {
-    val devType = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
-    println(dep.id + ":" + sym)
-    println(dep.getInputTypesMap.toString)
+    val devType = dep.inputType(Targets.Cpp, sym)
     assert(!isPrimitiveType(dep.inputType(sym)))
     out.append("recvUpdateCPPfromJVM_%s(env%s,%s,%s);\n".format(mangledName(devType),location,getSymCPU(sym),getSymHost(dep,sym)))
   }
 
   private def writeSetter(op: DeliteOP, sym: String, view: Boolean) {
-    val devType = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
+    val devType = op.outputType(Targets.Cpp, sym)
     if (view)
       out.append("%s %s = sendViewCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))
     else if(isPurePrimitiveType(op.outputType(sym)))
@@ -213,7 +211,7 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
   }
 
   private def writeSendUpdater(op: DeliteOP, sym: String) {
-    val devType = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
+    val devType = op.inputType(Targets.Cpp, sym)
     assert(!isPrimitiveType(op.inputType(sym)))
     val idx = getSyncVarIdx
     out.append("jobject _find_%s = JNIObjectMap_find(%s);\n".format(idx,sym.filter(_.isDigit)))
@@ -285,7 +283,7 @@ trait CppToCppSync extends SyncGenerator with CppExecutableGenerator with JNIFun
   }
 
   private def writeGetter(dep: DeliteOP, sym: String, to: DeliteOP) {
-    out.append(CppExecutableGenerator.typesMap(Targets.Cpp)(sym))
+    out.append(dep.outputType(Targets.Cpp, sym))
     out.append(' ')
     if (!isPrimitiveType(dep.outputType(sym))) out.append(" *")
     out.append(getSymHost(dep, sym))

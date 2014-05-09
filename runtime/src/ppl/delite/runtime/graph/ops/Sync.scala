@@ -368,7 +368,6 @@ abstract class Sync extends DeliteOP {
   def isDataParallel = false
   def task = null
   private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]] = null
-  private[graph] var inputTypesMap: Map[Targets.Value, Map[String,String]] = null
 }
 
 abstract class PCM_M extends DeliteOP {
@@ -376,7 +375,6 @@ abstract class PCM_M extends DeliteOP {
   def isDataParallel = false
   def task = null
   private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]] = null
-  private[graph] var inputTypesMap: Map[Targets.Value, Map[String,String]] = null
 }
 
 abstract class Send extends Sync {

@@ -160,25 +160,6 @@ object CppExecutableGenerator {
   syncObjects += "#include \"" + Targets.Cpp + "helperFuncs.h\"\n"
   syncObjects += "#include \""+CppMultiLoopHeaderGenerator.headerFile+".h\"\n"
 
-
-  var typesMap = Map[Targets.Value, Map[String,String]]()
-
-  //TODO: Remove this not to use global structure for type information
-  def collectInputTypesMap(graph: DeliteTaskGraph) {
-    for (resource <- graph.schedule; op <- resource) {
-      if (op.getInputTypesMap != null)
-        typesMap = DeliteTaskGraph.combineTypesMap(List(op.getInputTypesMap,typesMap))
-      if (op.getOutputTypesMap != null)
-        typesMap = DeliteTaskGraph.combineTypesMap(List(op.getOutputTypesMap,typesMap))
-
-      if (op.isInstanceOf[OP_Nested]) {
-        for (subgraph <- op.asInstanceOf[OP_Nested].nestedGraphs) {
-          collectInputTypesMap(subgraph)
-        }
-      }
-    }
-  }
-
   def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
     for (sch <- schedule if sch.size > 0) {
       val location = sch.peek.scheduledResource
@@ -197,7 +178,6 @@ object CppExecutableGenerator {
 
   def clear() { 
     syncObjects.clear 
-    typesMap = Map[Targets.Value, Map[String,String]]()
   }
 
 }

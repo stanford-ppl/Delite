@@ -503,7 +503,7 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
     out.append(getJNIOutputType(dep.outputType(Targets.Scala,sym)))
     out.append("\"));\n")
     val ref = if (isPrimitiveType(dep.outputType(sym))) "" else "*"
-    val devType = CudaExecutableGenerator.typesMap(Targets.Cuda)(sym)
+    val devType = dep.outputType(Targets.Cuda, sym)
     if (view) {
       out.append("Host%s %s%s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
       out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
@@ -536,7 +536,7 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
 
   private def writeSetter(op: DeliteOP, sym: String, view: Boolean) {
     addLocalSync(SendData(sym,op,0))
-    val devType = CudaExecutableGenerator.typesMap(Targets.Cuda)(sym)
+    val devType = op.outputType(Targets.Cuda, sym)
     if (view) {
       out.append("Host%s %s = recvCuda_%s(%s);\n".format(devType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
       out.append("%s *%s = sendViewCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))
@@ -635,24 +635,6 @@ object CudaExecutableGenerator {
   syncObjects += "#include <pthread.h>\n"
   syncObjects += "#include \"" + Targets.Cuda + "helperFuncs.h\"\n"
 
-  var typesMap = Map[Targets.Value, Map[String,String]]()
-
-  //TODO: Remove this not to use global structure for type information
-  def collectInputTypesMap(graph: DeliteTaskGraph) {
-    for (resource <- graph.schedule; op <- resource) {
-      if (op.getInputTypesMap != null)
-        typesMap = DeliteTaskGraph.combineTypesMap(List(op.getInputTypesMap,typesMap))
-      if (op.getOutputTypesMap != null)
-        typesMap = DeliteTaskGraph.combineTypesMap(List(op.getOutputTypesMap,typesMap))
-
-      if (op.isInstanceOf[OP_Nested]) {
-        for (subgraph <- op.asInstanceOf[OP_Nested].nestedGraphs) {
-          collectInputTypesMap(subgraph)
-        }
-      }
-    }
-  }
-
   def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
     for (sch <- schedule if sch.size > 0) {
       val location = sch.peek.scheduledResource
@@ -668,6 +650,5 @@ object CudaExecutableGenerator {
 
   def clear() { 
     syncObjects.clear 
-    typesMap = Map[Targets.Value, Map[String,String]]()
   }
 }

@@ -94,7 +94,6 @@ trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator
 trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
 
   private val target = Targets.Cpp
-  private val typesMap = CppExecutableGenerator.typesMap
 
   def generateMethodSignature(): String = {
     val str = new StringBuilder
@@ -129,7 +128,7 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
     for ((op,sym) <- inputs) {
       if (!first) str.append(", ")
       first = false
-      str.append(typesMap(target)(sym))
+      str.append(op.outputType(target,sym))
       if (!isPrimitiveType(op.outputType(sym))) str.append(" *")
       str.append(' ')
       str.append(getSymHost(op, sym))
@@ -160,8 +159,6 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
 
 
 trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator with SyncGenerator {
-
-  private val typesMap = CudaExecutableGenerator.typesMap
 
   // referential primitive is a primitive type result of a CUDA kernel stored on the device (e.g. reduction)
   def isReferentialPrimitive(op: DeliteOP, sym: String): Boolean = {
@@ -210,18 +207,18 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
     for ((op,sym) <- inputs) {
       if (!first) str.append(", ")
       first = false
-      str.append(typesMap(deviceTarget)(sym))
+      str.append(op.outputType(deviceTarget, sym))
       if (!isPrimitiveType(op.outputType(sym)) || isReferentialPrimitive(op,sym)) str.append(" *")
       str.append(' ')
       str.append(getSymDevice(op, sym))
       if (updateOps(nested).contains(sym)) {
         str.append(',')
-        str.append(typesMap(hostTarget)(sym))
+        str.append(op.outputType(hostTarget,sym))
         if (!isPrimitiveType(op.outputType(sym))) str.append(" *")
         str.append(' ')
         str.append(getSymHost(op, sym))
         str.append(',')
-        str.append(getJNIType(typesMap(Targets.Scala)(sym))) //FIXME: Use remote target
+        str.append(getJNIType(op.outputType(Targets.Scala, sym))) //FIXME: Use remote target
         str.append(' ')
         str.append(getSymRemote(op, sym)) 
       }
@@ -239,7 +236,7 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
   }
 
   protected def writeOutput(op: DeliteOP, name: String, newLine: Boolean = true) {
-    val devType = CudaExecutableGenerator.typesMap(Targets.Cuda)(name)
+    val devType = op.outputType(Targets.Cuda, name)
     //TODO: put this into cuda sync generator
     //TODO: make sure symbol is not freed before recvCuda is called
     if (isReferentialPrimitive(op,name)) 

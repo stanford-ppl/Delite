@@ -46,18 +46,15 @@ object Compilers {
     else
       new ScalaMainExecutableGenerator(0, graph.kernelPath).makeExecutable(PartialSchedule(1).apply(0))
 
-    // Hack to collect global inputTypesMap (TODO: Get rid of this)
     if (Config.numCpp > 0) {
       val cppSchedule = schedule.slice(Config.numThreads, Config.numThreads+Config.numCpp)
       checkRequestedResource(cppSchedule, Targets.Cpp)
-      CppExecutableGenerator.collectInputTypesMap(graph)
       CppExecutableGenerator.makeExecutables(cppSchedule, graph.kernelPath)
     }
 
     if (Config.numCuda > 0) {
       val cudaSchedule = schedule.slice(Config.numThreads+Config.numCpp, Config.numThreads+Config.numCpp+Config.numCuda)
       checkRequestedResource(cudaSchedule, Targets.Cuda)
-      CudaExecutableGenerator.collectInputTypesMap(graph)
       CudaExecutableGenerator.makeExecutables(cudaSchedule, graph.kernelPath)
     }
 
@@ -84,11 +81,20 @@ object Compilers {
       CudaExecutableGenerator.clear()
     }
     
-    val queues = StaticSchedule(schedule.numResources)
-    for (i <- 0 until schedule.numResources if !schedule(i).isEmpty) {
-      val cls = classLoader.loadClass("Executable"+i) //load the Executable class
-      val executable = cls.getMethod("self").invoke(null).asInstanceOf[DeliteExecutable] //retrieve the singleton instance
-      queues(i) += executable
+    createSchedule(classLoader, schedule.numResources)
+  }
+
+  def createSchedule(classLoader: ClassLoader, numResources: Int) = {
+    val queues = StaticSchedule(numResources)
+    for (i <- 0 until numResources) {
+      try {
+        val cls = classLoader.loadClass("Executable"+i) //load the Executable class
+        val executable = cls.getMethod("self").invoke(null).asInstanceOf[DeliteExecutable] //retrieve the singleton instance
+        queues(i) += executable
+      }
+      catch {
+        case c: ClassNotFoundException => //just skip it
+      }
     }
     queues
   }

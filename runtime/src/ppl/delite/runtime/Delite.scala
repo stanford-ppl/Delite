@@ -56,11 +56,12 @@ object Delite {
     printConfig()
 
     //extract application arguments
-    Arguments.args = args.drop(1)
+    Arguments.args ::= args.drop(1)
     Arguments.staticDataMap = staticData
 
     var scheduler: StaticScheduler = null
     var executor: Executor = null
+    var appResult: Any = null
 
     def abnormalShutdown() {
       if (executor != null) executor.shutdown()
@@ -137,7 +138,7 @@ object Delite {
           val globalStartNanos = System.nanoTime()
           PerformanceTimer.start("all", false)
           executor.run(executable)
-          EOP_Global.await //await the end of the application program
+          appResult = EOP_Global.take() //await the end of the application program
           PerformanceTimer.stop("all", false)
           PerformanceTimer.printAll(globalStart, globalStartNanos)
           if (Config.dumpProfile) PerformanceTimer.dumpProfile(globalStart, globalStartNanos)
@@ -145,8 +146,6 @@ object Delite {
           System.gc()
         }
       }
-
-      //println("Done Executing " + numTimes + " Runs")
       
       if(Config.dumpStats)
         PerformanceTimer.dumpStats()
@@ -158,9 +157,11 @@ object Delite {
       case e: Exception => abnormalShutdown(); throw e       
     }
     finally {
-      Arguments.args = null
+      Arguments.args = Nil
       Arguments.staticDataMap = null
     }
+
+    appResult
   }
 
   def loadDeliteDEG(filename: String) = {

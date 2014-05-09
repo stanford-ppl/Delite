@@ -17,20 +17,15 @@ import ppl.delite.runtime.graph.targets.Targets
  * This OP should always be inserted by the scheduler such that it is the last to run (depends on the "result" node of the task graph
  * Execution of the kernel will shut down the Delite Runtime
  */
-class EOP extends OP_Executable {
+class EOP(val id: String, var outputTypesMap: Map[Targets.Value,Map[String,String]], result: (String,String)) extends OP_Executable {
 
   /**
    * OP features
    */
 
-  var outputTypesMap = Map(Targets.Scala->Map(id -> "Unit", "functionReturn"->"Unit"))
-  var inputTypesMap = Map[Targets.Value,Map[String,String]]()
-
   def isDataParallel = false
 
   def task = "ppl.delite.runtime.graph.ops.EOP_Kernel"
-
-  def id = "eop"
 
   def cost = 0
   def size = 0
@@ -45,11 +40,13 @@ object EOP_Global {
   private val lock = new ReentrantLock
   private val end = lock.newCondition
   private var notDone: Boolean = true
+  private var result: Any = null
 
-  def signal {
+  def put(res: Any) {
     lock.lock
     try {
       notDone = false
+      result = res
       end.signal
     }
     finally {
@@ -57,22 +54,27 @@ object EOP_Global {
     }
   }
 
-  def await {
+  def take(): Any = {
+    var res: Any = null
     lock.lock
     try {
       while (notDone) end.await
       notDone = true //reset for re-use
+      res = result
+      result = null
     }
     finally {
       lock.unlock
     }
+    res
   }  
 }
 
 object EOP_Kernel {
 
-  def apply() {
-    EOP_Global.signal
+  def apply[T](result: T) = {
+    EOP_Global.put(result)
+    result
   }
 
 }

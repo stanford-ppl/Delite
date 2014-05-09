@@ -13,22 +13,15 @@ import ppl.delite.runtime.Config
  */
 
 object Arguments {
-  var args: Array[String] = _
+  var args: List[Any] = Nil
   var staticDataMap: Map[String,_] = _
   
   def staticData[T](id: String): T = {
-    //System.err.println("*** lookup static data with id " + id + " in " + staticDataMap)    
     staticDataMap(id).asInstanceOf[T]
   }
 }
 
-final class Arguments(val id: String) extends OP_Executable {
-
-  var outputTypesMap = Map(Targets.Scala->Map(id -> "Array[java.lang.String]", "functionReturn"->"Array[java.lang.String]"))
-  if (Config.numCpp > 0)
-    outputTypesMap += Targets.Cpp->Map(id -> "cppDeliteArray< string >", "functionReturn"->"cppDeliteArray< string >")
-
-  var inputTypesMap: Map[Targets.Value, Map[String,String]] = Map()
+final class Arguments(val id: String, var outputTypesMap: Map[Targets.Value,Map[String,String]]) extends OP_Executable {
 
   def isDataParallel = false
 
@@ -41,5 +34,5 @@ final class Arguments(val id: String) extends OP_Executable {
 }
 
 object ArgsKernel {
-  def apply(): Array[String] = Arguments.args
+  def apply[T](): T = Arguments.args(0).asInstanceOf[T]
 }

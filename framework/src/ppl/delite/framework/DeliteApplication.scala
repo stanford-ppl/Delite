@@ -123,14 +123,14 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
             case gen: CCodegen => streamDebug.println("#include \"DeliteStandaloneMain.h\"\n")
             case _ => //
           }
-          g.emitSource(liftedMain, "Application", streamDebug)
+          g.emitSource(stagedFunc, functionName, streamDebug)(fmA,fmB)
           // TODO: dot output
           reset
         }
       }
     }
     deliteGenerator.initializeGenerator(Config.buildDir, args)
-    val sd = deliteGenerator.emitSource(liftedMain, "Application", stream)    
+    val sd = deliteGenerator.emitSource(stagedFunc, functionName, stream)(fmA,fmB)
     deliteGenerator.finalizeGenerator()
 
     for (g <- generators) {
@@ -195,8 +195,21 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   def mainWithResult(): Unit = main()
   var _mainResult: Unit = () //null // passes along whatever was returned by the block (could be staged or not staged, i.e. Rep[T] or T)
   
-  def liftedMain(x: Rep[Array[String]]) = { this.args = x; val y = mainWithResult(); this._mainResult = y; this.args = null; unit(y) }
+  def liftedMain(x: Rep[Array[String]]): Rep[Unit] = { this.args = x; val y = mainWithResult(); this._mainResult = y; this.args = null; unit(y) }
   
+  /**
+   * Used when staging a function (to be called by external code) rather than an entire app
+  */
+  def functionName = "Application"
 
-  private def nop = throw new RuntimeException("not implemented yet")
+  def registerFunction[A:Manifest,B:Manifest](func: Rep[A] => Rep[B]) = {
+    stagedFunc = func
+    fmA = manifest[A]
+    fmB = manifest[B]
+  }
+
+  private var stagedFunc: Rep[Any] => Rep[Any] = (liftedMain _).asInstanceOf[Rep[Any] => Rep[Any]]
+  private var fmA: Manifest[Any] = manifest[Array[String]].asInstanceOf[Manifest[Any]]
+  private var fmB: Manifest[Any] = manifest[Unit].asInstanceOf[Manifest[Any]]
+
 }
