@@ -50,10 +50,10 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
   }
 
   protected def calculateRange(): (String,String) = {
-    out.append("int startOffset = "+closure+"->loopStart;\n")
-    out.append("int size = "+closure+"->loopSize;\n")
-    out.append("int start = startOffset + size*"+chunkIdx+"/"+numChunks+";\n")
-    out.append("int end = startOffset + size*"+(chunkIdx+1)+"/"+numChunks+";\n")
+    out.append("int64_t startOffset = "+closure+"->loopStart;\n")
+    out.append("int64_t size = "+closure+"->loopSize;\n")
+    out.append("int64_t start = startOffset + size*"+chunkIdx+"/"+numChunks+";\n")
+    out.append("int64_t end = startOffset + size*"+(chunkIdx+1)+"/"+numChunks+";\n")
     ("start","end")
   }
 
