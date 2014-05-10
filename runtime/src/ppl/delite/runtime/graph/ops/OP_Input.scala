@@ -15,7 +15,7 @@ import ppl.delite.runtime.graph.targets.Targets
  * An input to a DeliteTaskGraph
  * Used to register OPs' dependencies on the input to the (sub)graph
  */
-class OP_Input(op: DeliteOP) extends DeliteOP {
+class OP_Input(val op: DeliteOP) extends DeliteOP {
 
   def id = "input_" + op.id
 

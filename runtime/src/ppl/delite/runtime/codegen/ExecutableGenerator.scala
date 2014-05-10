@@ -32,8 +32,10 @@ trait ExecutableGenerator {
   protected val out: StringBuilder = new StringBuilder
   val location: Int
   val kernelPath: String
+  var opList: OpList = _
 
   def makeExecutable(ops: OpList) {
+    opList = ops
     writeHeader()
     writeMethodHeader()
     addKernelCalls(ops)

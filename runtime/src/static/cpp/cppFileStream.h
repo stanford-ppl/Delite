@@ -55,20 +55,24 @@ class cppFileStream {
       allEnd[pad*threadIdx] = (threadIdx + 1) * size / numThreads;
       int fileIdx; long offset;
       findFileOffset(pos, fileIdx, offset);
+      char *filename = files.at(fileIdx);
       FILE *fp = fopen(files.at(fileIdx),"r");
-      allReader[pad*threadIdx] = fp;
+      if (fp == NULL) {
+        printf("error reading file (%s)\n", strerror(errno));
+        assert(false);
+      }
+
       if (offset != 0) {
         // jump to the offset
-        if(lseek(fileno(fp), offset, SEEK_SET) == -1) {
+        if(lseek(fileno(fp), offset-1, SEEK_SET) == -1) {
           assert(false && "lseek call failed");
         }
         // find the next newline after offset
-        // TODO: check why scala uses length-a
         char *line = allText[pad*threadIdx];
-        if (fgets(line, MAX_BUFSIZE, allReader[pad*threadIdx]) == NULL) {
+        if (fgets(line, MAX_BUFSIZE, fp) == NULL) {
           assert(false && "first fgets failed");
         }
-        pos += strlen(line);
+        pos += strlen(line) - 1;
       }
       allPos[pad*threadIdx] = pos;
       allIdx[pad*threadIdx] = fileIdx;
@@ -87,7 +91,14 @@ class cppFileStream {
           return "";
         else 
           fclose(allReader[pad*idx]);
-        allReader[pad*idx] = fopen(files.at(allIdx[pad*idx]), "r");
+        FILE *fp = fopen(files.at(allIdx[pad*idx]), "r");
+        if (fp == NULL) {
+          printf("error reading file (%s)\n", strerror(errno));
+          assert(false);
+        }
+        else {
+          allReader[pad*idx] = fp;
+        }
         if (fgets(line, MAX_BUFSIZE, allReader[pad*idx]) == NULL) 
           assert(false  && "fgets failed");
       }
@@ -126,7 +137,10 @@ class cppFileStream {
         }
         else {
           // append to the list of files
-          files.push_back(pathname);
+          // NOTE: explicit copy is required since the pathname (char*) given to constructor may be freed outside.
+          char *p = (char *)malloc(strlen(pathname)+1);
+          strcpy(p, pathname);
+          files.push_back(p);
           filelengths.push_back(st.st_size);
           size += st.st_size;
         }
@@ -148,6 +162,9 @@ class cppFileStream {
       for(int i=0; i<numThreads; i++)
         free(allText[i*pad]);
       free(allText);
+      for(vector<char*>::iterator it = files.begin(); it != files.end(); ++it) {
+        free(*it);
+      }
     }
 };
 

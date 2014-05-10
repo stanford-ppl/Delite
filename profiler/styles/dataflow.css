@@ -1,0 +1,38 @@
+.background {
+    stroke: white;
+    stroke-width: 1px;
+    fill: #DDD;
+}
+
+.node {
+    stroke: black;
+    stroke-width: 1.5px;
+    cursor: move;
+    fill: lightcoral;
+}
+
+.dataflow-kernel {
+    stroke: black;
+}
+
+.link {
+    fill: none;
+    stroke: #000;
+    stroke-width: 3px;
+    opacity: 0.7;
+    marker-end: url(#end-arrow);
+}
+
+.label {
+    fill: black;
+    font-family: Verdana;
+    font-size: 25px;
+    text-anchor: middle;
+    cursor: move;
+}
+
+.link {
+    fill: white;
+    stroke: black;
+    stroke-width: 1.5px;
+}

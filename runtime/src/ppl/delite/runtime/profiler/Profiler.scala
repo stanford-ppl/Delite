@@ -134,12 +134,14 @@ object Profiler {
   }
   
   object TaskInfo {
-    def apply(timing: Timing, threadId: Int, globalStartNanos: Long): TaskInfo =
+    //def apply(timing: Timing, threadId: Int, globalStartNanos: Long): TaskInfo =
+    def apply(timing: Timing, threadId: Int, globalStartNanos: Long, appendChunkIdToKernelName: Boolean = false): TaskInfo =
       new TaskInfo {
         val fromTiming = timing
         val duration =   timing.elapsedMicros
         val startNanos = (timing.startTime - globalStartNanos) / 1000
-        val kernel =     timing.component
+        //val kernel =     timing.component
+        val kernel =    if (appendChunkIdToKernelName) timing.component + "_" + threadId else timing.component
         val location =   threadId
         val line = {
           val (fileName, line, opName) = Profiler.sourceInfo.get(timing.component) match {
@@ -188,7 +190,8 @@ var parallelTasks = [[1, 4, 6], [2, 3, 5]];
     }
     
     // only include timings started after globalAppStartNanos
-    val allTimings = allInitTimings filter { _.startTime >= globalAppStartNanos }
+    //val allTimings = allInitTimings filter { _.startTime >= globalAppStartNanos }
+    val allTimings = allInitTimings
     
     val threads = (allTimings.flatMap { timing =>
       timing.threadName :: (timing match {
@@ -213,6 +216,7 @@ var parallelTasks = [[1, 4, 6], [2, 3, 5]];
     
     val initTaskInfos =  allTimings map { timing => TaskInfo(timing, threadId(timing.threadName), globalAppStartNanos) }
     
+    /*
     // expand task infos to include chunk tasks
     val taskInfos = initTaskInfos flatMap { taskInfo =>
       taskInfo :: (taskInfo.fromTiming match {
@@ -221,6 +225,18 @@ var parallelTasks = [[1, 4, 6], [2, 3, 5]];
             TaskInfo(chunkTiming, threadId(chunkTiming.threadName), globalAppStartNanos)
           }).toList
         case other => List()
+      })
+    }
+    */
+
+    // expand task infos to include chunk tasks
+    val taskInfos = initTaskInfos flatMap { taskInfo =>
+      (taskInfo.fromTiming match {
+        case mt: MultiTiming =>
+          (mt.timings map { chunkTiming =>
+            TaskInfo(chunkTiming, threadId(chunkTiming.threadName), globalAppStartNanos, true)
+          }).toList
+        case other => List(taskInfo)
       })
     }
     

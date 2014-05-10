@@ -203,5 +203,5 @@ private[codegen] object WhileCommon {
   }
 
   def getSym(whileLoop: OP_While, baseId: String, op: DeliteOP, name: String) = "x" + suffix(whileLoop, baseId, op, name)
-  def getSync(whileLoop: OP_While, baseId: String, op: DeliteOP, name: String) = "Result_" + suffix(whileLoop, baseId, op, name)
+  def getSync(whileLoop: OP_While, baseId: String, op: DeliteOP, name: String) = "Result_" + op.id + "_" + suffix(whileLoop, baseId, op, name)
 }

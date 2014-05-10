@@ -46,10 +46,10 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
             out.append("if(")
             out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
             out.append(") {\n")
-            writeAwaiter(s.sender.from); writeRecvUpdater(s.sender.from, s.sender.sym); 
+            writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym); 
             out.append("}\n")
           case _ => 
-            writeAwaiter(s.sender.from); writeRecvUpdater(s.sender.from, s.sender.sym);
+            writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym);
         } 
       case _ => super.receiveUpdate(s)
     }
@@ -93,11 +93,11 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
           out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
           out.append(") {\n")
           writeSendUpdater(s.from, s.sym)
-          writeNotifier(s.from)
+          writeNotifier(s.from, s.sym)
           out.append("}\n")
         case _ => 
           writeSendUpdater(s.from, s.sym)
-          writeNotifier(s.from)
+          writeNotifier(s.from, s.sym)
       }      
       syncList += s
     }
@@ -138,7 +138,7 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
       out.append("%s %s%s = recvCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
   }
 
-  private def writeAwaiter(dep: DeliteOP) {
+  private def writeAwaiter(dep: DeliteOP, sym: String = "") {
     out.append("env")
     out.append(location)
     out.append("->CallStaticVoid")
@@ -151,7 +151,8 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     out.append(",\"get")
     out.append(location)
     out.append('_')
-    out.append(getOpSym(dep))
+    if(sym == "") out.append(getOpSym(dep))
+    else out.append(getOpSym(dep)+getSym(dep,sym))
     out.append("\",\"()V")
     out.append("\"));\n")
   }
@@ -170,8 +171,10 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
       out.append("%s %s = sendViewCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))
     else if(isPurePrimitiveType(op.outputType(sym)))
       out.append("%s %s = (%s)%s;\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),getJNIType(op.outputType(sym)),getSymHost(op,sym)))
-    else
+    else {
       out.append("%s %s = sendCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))
+      out.append("JNIObjectMap_insert(%s,%s);\n".format(sym.filter(_.isDigit),getSymCPU(sym)))
+    }
 
     out.append("env")
     out.append(location)
@@ -190,7 +193,7 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     out.append(");\n")
   }
 
-  private def writeNotifier(op: DeliteOP) {
+  private def writeNotifier(op: DeliteOP, sym: String = "") {
     out.append("env")
     out.append(location)
     out.append("->CallStaticVoidMethod(cls")
@@ -200,7 +203,8 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     out.append("->GetStaticMethodID(cls")
     out.append(location)
     out.append(",\"set_")
-    out.append(getOpSym(op))
+    if(sym == "") out.append(getOpSym(op))
+    else out.append(getOpSym(op)+getSym(op,sym))
     out.append("\",\"(")
     out.append(getJNIArgType("Unit"))
     out.append(")V\"),")
@@ -211,7 +215,10 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
   private def writeSendUpdater(op: DeliteOP, sym: String) {
     val devType = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
     assert(!isPrimitiveType(op.inputType(sym)))
-    out.append("sendUpdateCPPtoJVM_%s(env%s,%s,%s);\n".format(mangledName(devType),location,getSymCPU(sym),getSymHost(op,sym)))
+    val idx = getSyncVarIdx
+    out.append("jobject _find_%s = JNIObjectMap_find(%s);\n".format(idx,sym.filter(_.isDigit)))
+    out.append("sendUpdateCPPtoJVM_%s(env%s,_find_%s,%s);\n".format(mangledName(devType),location,idx,getSymHost(op,sym)))
+    out.append("JNIObjectMap_insert(%s,_find_%s);\n".format(sym.filter(_.isDigit),idx))
   }
 
   override protected def writeSyncObject() {

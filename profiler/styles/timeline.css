@@ -1,0 +1,62 @@
+html,body
+{
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-y:hidden;
+}
+
+.chart {
+	shape-rendering: crispEdges;
+}
+
+.mini {
+	/*width: 100%;*/
+	height: 100%;
+}
+
+.mini text {
+	font: 9px sans-serif;	
+}
+
+.main text {
+	font: 12px sans-serif;	
+}
+
+.timingNode {
+	stroke-width: 1;	
+	stroke: black;
+}
+
+.timelineWrapper {
+	overflow-x: auto;
+	overflow-y: auto; 
+}
+
+.brush .extent {
+	stroke: gray;
+	fill: dodgerblue;
+	fill-opacity: .365;
+}
+
+.tooltip {
+    position: absolute;
+    text-align: left;
+    width: 100px;
+    color:white;
+    padding: 10px;
+    font: 8px sans-serif;
+    background: lightslategray;
+    pointer-events: none;
+    border-collapse: collapse;
+}
+
+.tooltipValue {
+    border:1px solid black;
+}
+
+.sync-node {
+	opacity: 0.4;
+	stroke-width: 1;	
+	stroke: black;	
+}

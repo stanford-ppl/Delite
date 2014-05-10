@@ -3695,4 +3695,15 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
 
     case _ => super.emitNode(sym,rhs)
   }
+
+  // Prevent C++ kernel generation for HashElems. Not supported yet.
+  override def emitKernelMultiHashInit(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = ""){
+    if (ps.length > 0)
+      throw new GenerationFailedException("CGen: DeliteHashElems are not yet supported for C++ target.")
+  }
+  override def emitInlineMultiHashInit(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = "") {
+    if (ps.length > 0)
+      throw new GenerationFailedException("CGen: DeliteHashElems are not yet supported for C++ target.")
+  }
+
 }

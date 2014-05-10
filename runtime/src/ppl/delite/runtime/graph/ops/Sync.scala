@@ -127,7 +127,7 @@ object Sync {
       case _ if (syncSet contains updatee) =>
       case _ =>
         val potentialNotifyAwait = Await(Notify(updater.from,node(to.scheduledResource)),to.scheduledResource)
-        if (syncSet contains potentialNotifyAwait) removeSendReceive(potentialNotifyAwait, to)
+        if (syncSet contains potentialNotifyAwait) removeSendReceive(syncSet(potentialNotifyAwait).asInstanceOf[Await], to)
         addReceive(updatee, to, isAntiDep)
     }
   }

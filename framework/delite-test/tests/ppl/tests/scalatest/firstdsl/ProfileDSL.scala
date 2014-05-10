@@ -6,8 +6,10 @@ import ppl.delite.framework._
 import ppl.delite.framework.codegen._
 import ppl.delite.framework.ops._
 import ppl.delite.framework.ops.DeliteCollection
+import ppl.delite.framework.datastructures._
 import codegen.delite.overrides._
 import codegen.scala.TargetScala
+import codegen.cpp.TargetCpp
 import java.io.File
 
 /* Profile DSL front-end types */
@@ -40,6 +42,9 @@ trait ProfileExp extends Profile with ScalaOpsPkgExp with ProfileOpsExp
       case _:TargetScala => new ProfileCodeGenScala {
         val IR: ProfileExp.this.type = ProfileExp.this
       }
+      case _:TargetCpp => new ProfileCodeGenC {
+        val IR: ProfileExp.this.type = ProfileExp.this
+      }
       case _ => throw new IllegalArgumentException("unsupported target")
     }
   }
@@ -49,6 +54,14 @@ trait ProfileExp extends Profile with ScalaOpsPkgExp with ProfileOpsExp
 trait ProfileCodeGenBase extends GenericFatCodegen with codegen.Utils {
   val IR: DeliteApplication with ProfileExp
   override def initialDefs = IR.deliteGenerator.availableDefs
+}
+
+trait ProfileCodeGenScala extends ProfileCodeGenBase with ScalaCodeGenPkg
+  with ScalaGenDeliteOps with ScalaGenProfileOps with ScalaGenProfileArrayOps
+  with ScalaGenDeliteCollectionOps
+  with DeliteScalaGenAllOverrides {
+
+  val IR: DeliteApplication with ProfileExp
   
   def dsmap(s: String) = {
     var res = s.replaceAll("ppl.tests.scalatest.firstdsl.datastruct", "generated")
@@ -66,10 +79,11 @@ trait ProfileCodeGenBase extends GenericFatCodegen with codegen.Utils {
   }
 }
 
-trait ProfileCodeGenScala extends ProfileCodeGenBase with ScalaCodeGenPkg 
-  with ScalaGenDeliteOps with ScalaGenProfileOps with ScalaGenProfileArrayOps
-  with ScalaGenDeliteCollectionOps 
-  with DeliteScalaGenAllOverrides {
+trait ProfileCodeGenC extends ProfileCodeGenBase with CCodeGenPkg
+  with CGenDeliteOps with CGenDeliteStruct with DeliteCppHostTransfer
+  /*with CGenProfileOps with CGenProfileArrayOps */
+  with CGenDeliteCollectionOps
+  with DeliteCGenAllOverrides {
       
   val IR: DeliteApplication with ProfileExp
 }

@@ -11,6 +11,13 @@ import ppl.delite.runtime.scheduler.{OpHelper, OpList, PartialSchedule}
 
 trait CppExecutableGenerator extends ExecutableGenerator {
 
+  // To get a non-conflicting index for a variable name used to temporarily store jobject
+  private var index = 0
+  protected def getSyncVarIdx = {
+    index += 1
+    index
+  }
+
   protected def addSource(source: String) {
     // Add extern header files for generated kernels at walk-time
     val externs = CppCompile.headers.map(s => "#include \"" + s + "\"\n").mkString("")
@@ -37,7 +44,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     out.append(" {\n")
     out.append("env" + location + " = jnienv;\n")
 
-    val locations = Range(0,Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL).toSet
+    val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     writeJNIInitializer(locations)
   }
 
@@ -176,18 +183,29 @@ object CppExecutableGenerator {
     for (sch <- schedule if sch.size > 0) {
       val location = sch.peek.scheduledResource
       new CppMainExecutableGenerator(location, kernelPath).makeExecutable(sch) // native execution plan
-      new ScalaNativeExecutableGenerator(location, kernelPath).makeExecutable() // JNI launcher scala source
+      new ScalaNativeExecutableGenerator(location, kernelPath).makeExecutable(sch) // JNI launcher scala source
     }
     // Register header file for the Cpp sync objects
-    CppCompile.addHeader(syncObjects.mkString(""),"cppSyncObjects")
+    val str = new StringBuilder
+    str.append("#include <pthread.h>\n")
+    str.append("#include \"cpphelperFuncs.h\"\n")
+    str.append("#include \"multiLoopHeaders.h\"\n")
+    str.append(syncObjects.mkString(""))
+    CppCompile.addHeader(str.toString,"cppSyncObjects")
     CppMultiLoopHeaderGenerator.createHeaderFile()
+  }
+
+  def clear() { 
+    syncObjects.clear 
+    typesMap = Map[Targets.Value, Map[String,String]]()
   }
 
 }
 
 class ScalaNativeExecutableGenerator(override val location: Int, override val kernelPath: String) extends ScalaMainExecutableGenerator(location, kernelPath) {
 
-  def makeExecutable() {
+  override def makeExecutable(ops: OpList) {
+    opList = ops
     writeHeader()
     writeNativeLoad()
     writeMethodHeader()
