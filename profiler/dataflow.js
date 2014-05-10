@@ -167,7 +167,7 @@ function createDataFlowGraph(cola, destinationDivElem, dataModel, viewState, con
 	    .enter().append("rect")
 	    .attr("fill", colorNodeBasedOnDataDeps)
 	    .attr("rx", 5).attr("ry", 5)
-	    .attr("nodeId", function(d) {return d.id})
+	    .attr("id", function(d) {return "dfg-" + d.id})
 	    .on("click", nodeClickHandler)
 	    .attr("class", "dataflow-kernel")
 	    .call(cola.drag);
@@ -186,10 +186,10 @@ function createDataFlowGraph(cola, destinationDivElem, dataModel, viewState, con
 	        d.height = b.height + extra;
 	    });
 
+	var kernel_nodes = $(".dataflow-kernel") // to optimize dom_selection.
+
 	var ticks = 0
-	//cola.start(20, 20, 20).on("tick", function () {
-	cola = cola.start(20, 20, 20)
-	cola.on("tick", function () {
+	cola.start(20, 20, 20).on("tick", function () {
 	    node.each(function (d) { d.innerBounds = d.bounds.inflate(-margin); })
 	        .attr("x", function (d) { return d.innerBounds.x; })
 	        .attr("y", function (d) { return d.innerBounds.y; })
@@ -239,10 +239,10 @@ function createDataFlowGraph(cola, destinationDivElem, dataModel, viewState, con
 	}
 
 	function highlightNodes(nodeIds) {
-		$(".dataflow-kernel").fadeTo(0, 0.1)
-		var s = nodeIds.reduce(function(p,c,i,a) {return p + "[nodeId=" + c + "],"}, "")
-		s = s.substring(0,s.length - 1)
-		$(s).fadeTo(0, 1)
+		kernel_nodes.fadeTo(0, 0.1)
+		nodeIds.forEach(function(i) {
+			$("#dfg-" + i).fadeTo(0, 1)
+		})
 	}
 
 	function controller()
