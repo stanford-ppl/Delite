@@ -143,6 +143,8 @@ function getTicTocRegions(perfProfile, nodeNameToId, config) {
         }
     }
 
+    ticTocRegions.sort(function(r1,r2) {return r2.duration - r1.duration})
+
     return ticTocRegions
 }
 
