@@ -162,36 +162,9 @@ object Profiler {
       }
   }
   
-  def emitProfileDataArrays(globalStartNanos: Long, stats: Map[String, List[Timing]], writer: PrintWriter) {
-/*
-var duration = [280, 800, 400, 500, 1500, 600];
-var start = [1000, 10, 800, 820, 2, 200];
-var kernels = ["x174", "x277", "x107", "x135", "x108", "x99"];
-var location = [0, 1, 2, 1, 3, 0];
-var line_in_source = ['&lt;unknown file&gt;:0','HelloWorld4.scala:8','HelloWorld4.scala:9','HelloWorld4.scala:12','HelloWorld4.scala:14','&lt;unknown file&gt;:0'];
-var tooltip = ['<b>Start time: </b>1000us </br><b>Duration:</b> 280us</br><b>OPType:</b> OP_Single </br><b>Source:</b> HelloWorld4.scala:9','<b>Start time: </b>10us </br><b>Duration:</b> 800us</br><b>OPType:</b> OP_Single </br><b>Source:</b> HelloWorld4.scala:9','<b>Start time: </b>800us </br><b>Duration:</b> 400us</br><b>OPType:</b> OP_Single </br><b>Source:</b> HelloWorld4.scala:9','<b>Start time: </b>820us </br><b>Duration:</b> 500us</br><b>OPType:</b> OP_Single </br><b>Source:</b> HelloWorld4.scala:9','<b>Start time: </b>2us </br><b>Duration:</b> 1500us</br><b>OPType:</b> OP_Single </br><b>Source:</b> HelloWorld4.scala:9','<b>Start time: </b>200us </br><b>Duration:</b> 600us</br><b>OPType:</b> OP_Single </br><b>Source:</b> HelloWorld4.scala:9'];
-
-var res = ["T0", "T1", "T2", "T3", "T4", "T5"];
-
-var parallelTasks = [[1, 4, 6], [2, 3, 5]];
-*/
-    
-    val allInitTimings = (for (id <- stats.keys; timing <- stats(id)) yield timing).toList
-
-    // for skipping input
-    val globalAppStartNanos = stats.get("app") match {
-      case Some(appStats) =>
-      	//println("found stats for app")
-        val appStart = appStats(0).startTime
-        //println("app start nanos: "+appStart)
-      	appStart
-      case None =>
-        globalStartNanos        
-    }
-    
-    // only include timings started after globalAppStartNanos
-    //val allTimings = allInitTimings filter { _.startTime >= globalAppStartNanos }
-    val allTimings = allInitTimings
+  def emitProfileDataArrays(globalStartNanos: Long, stats: List[Timing], writer: PrintWriter) {
+    val globalAppStartNanos = globalStartNanos
+    val allTimings = stats
     
     val threads = (allTimings.flatMap { timing =>
       timing.threadName :: (timing match {
@@ -216,19 +189,6 @@ var parallelTasks = [[1, 4, 6], [2, 3, 5]];
     
     val initTaskInfos =  allTimings map { timing => TaskInfo(timing, threadId(timing.threadName), globalAppStartNanos) }
     
-    /*
-    // expand task infos to include chunk tasks
-    val taskInfos = initTaskInfos flatMap { taskInfo =>
-      taskInfo :: (taskInfo.fromTiming match {
-        case mt: MultiTiming =>
-          (mt.timings map { chunkTiming =>
-            TaskInfo(chunkTiming, threadId(chunkTiming.threadName), globalAppStartNanos)
-          }).toList
-        case other => List()
-      })
-    }
-    */
-
     // expand task infos to include chunk tasks
     val taskInfos = initTaskInfos flatMap { taskInfo =>
       (taskInfo.fromTiming match {
@@ -265,7 +225,7 @@ var parallelTasks = [[1, 4, 6], [2, 3, 5]];
     writer.println("    \"parallelTasks\": " + parallelTasksJS)
   }
 
-  def emitProfileData(dir: File, fileName: String, globalStartNanos: Long, stats: Map[String, List[Timing]]) {
+  def emitProfileData(dir: File, fileName: String, globalStartNanos: Long, stats: List[Timing]) {
     val dataFile = new File(dir, fileName)
     val fileWriter = new FileWriter(dataFile)
     val writer = new PrintWriter(fileWriter)
@@ -293,31 +253,10 @@ var parallelTasks = [[1, 4, 6], [2, 3, 5]];
    *  
    *  Requires system property stats.output.dir to be set.
    */
-  def writeProfile(globalStart: Long, globalStartNanos: Long, stats: Map[String, List[Timing]]) {
+  def writeProfile(globalStart: Long, globalStartNanos: Long, stats: List[Timing]) {
     val directory = getOrCreateOutputDirectory()
     // emit JS file containing the profile data
 	  emitProfileData(directory, "profileData.js", globalStartNanos, stats)
-  }
-  
-  def writeProfile(globalStart: Long, stats: Map[String, List[Timing]], writer: PrintWriter) {
-    for (id <- stats.keys) {
-      val timings = stats(id).flatMap(p => {
-        val postfix = if (p.isInstanceOf[MultiTiming]) {
-          "MultiLoop: " + p.asInstanceOf[MultiTiming].timings.mkString(" ")
-        } else
-          ""
-        
-        val source = sourceInfo.get(id) match {
-          case None => "<unknown file>"
-          case Some((fileName, line, opName)) => fileName + ":" + line
-        }
-        
-        val microsElapsed = (p.endTime - p.startTime) / 1000        
-        List(p.threadName, microsElapsed + "us", postfix, source)
-      })
-      writer.println(id + " " + timings.mkString(" "))
-    }
-    writer.flush()
   }
   
   /** Generates HTML profile.

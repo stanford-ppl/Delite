@@ -52,6 +52,7 @@ trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator
     out.append("object ")
     out.append(executableName)
     out.append(" {\n")
+    out.append("val threadName = Thread.currentThread.getName()\n")
   }
 
   override protected def writeMethodHeader() {
