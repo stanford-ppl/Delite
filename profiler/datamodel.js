@@ -91,7 +91,7 @@ function getDataForTimelineView(perfProfile, dependencyData, config) {
             o["end"] = o["start"] + o["duration"]
             o["node"] = nodes[o.id]
             o["level"] = getTNodeLevel(o)
-            o["displayText"] = getDisplayTextForTimelineNode(o.name)
+            o["displayText"] = getDisplayTextForTimelineNode(o.name, config.syncNodeRegex)
             o["childNodes"] = [] // important for nested nodes such as WhileLoop, IfThenElse, etc.
             o["syncNodes"] = []
             o["parentId"] = -1
@@ -116,7 +116,7 @@ function getDataForTimelineView(perfProfile, dependencyData, config) {
         }
     }
 
-    assignSyncNodesToParents(dataForTimelineView, dependencyData, syncNodes)
+    assignSyncNodesToParents(dataForTimelineView, dependencyData, syncNodes, config)
     updateChildNodesOfTNodes(dataForTimelineView, maxNodeLevel, dependencyData)
     assignTNodesToTicTocRegions(dataForTimelineView, ticTocRegions, maxNodeLevel)
     updateTicTocRegionsData(ticTocRegions, totalAppTime)
@@ -411,8 +411,8 @@ function initializeNodeDataFromDegFile(node, level, numThreads) {
                     parentId        : -1,  // -1 indicates top-level node. For child nodes, this field will be overwritten in assignNodeIds function
                     time            : 0,
                     percentage_time : 0,
-                    execTime        : {"abs": NaN, "pct": NaN},
-                    syncTime        : {"abs": NaN, "pct": NaN},
+                    execTime        : {"abs": null, "pct": null},
+                    syncTime        : {"abs": null, "pct": null},
                     sourceContext   : {},
                     runs            : [], // timing data for each time this node was executed in the app
                     memUsage        : 0, // in bytes
@@ -441,6 +441,8 @@ function createInternalNode(name, level) {
         type            : "InternalNode",
         condOps         : [],
         bodyOps         : [],
+        thenOps         : [],
+        elseOps         : [],
         componentNodes  : [],
         partitions      : [],   // For MultiLoop and WhileLoop nodes: the different partitions such as x234_1, 
                                             // x234_2, x234_h, etc. This data will be provided by the timing info
@@ -448,27 +450,25 @@ function createInternalNode(name, level) {
         parentId        : -1,  // -1 indicates top-level node. For child nodes, this field will be overwritten in assignNodeIds function
         time            : 0,
         percentage_time : 0,
-        execTime        : {"abs": NaN, "pct": NaN},
-        syncTime        : {"abs": NaN, "pct": NaN},
+        execTime        : {"abs": null, "pct": null},
+        syncTime        : {"abs": null, "pct": null},
         memUsage        : 0,
     }
 }
 
-function getDisplayTextForTimelineNode(name) {
-    var m = name.match(config.syncNodeRegex)
+function getDisplayTextForTimelineNode(name, syncNodeRegex) {
+    var m = name.match(syncNodeRegex)
     if (m) {
-        //return m[3] + "(T" + m[4] + ")"
         return ""
     } 
 
     return name
 }
 
-function assignSyncNodesToParents(dataForTimelineView, dependencyData, syncNodes) {
+function assignSyncNodesToParents(dataForTimelineView, dependencyData, syncNodes, config) {
     syncNodes.forEach(function(n) {
         var m = n.name.match(config.syncNodeRegex)
         var parentName = m[2]
-
         n.dep_kernel = m[3]
         n.dep_thread = "T" + m[4]
 
