@@ -142,7 +142,11 @@ jobject JNIObjectMap_find(int key) {
 }
 void JNIObjectMap_insert(int key, jobject value) {
   pthread_mutex_lock (&lock_objmap);
-  JNIObjectMap->insert(std::pair<int,jobject>(key,value));
+  std::map<int,jobject>::iterator it = JNIObjectMap->find(key);
+  if(it != JNIObjectMap->end()) 
+    it->second = value;
+  else
+    JNIObjectMap->insert(std::pair<int,jobject>(key,value));
   pthread_mutex_unlock (&lock_objmap);
 }
 #endif
