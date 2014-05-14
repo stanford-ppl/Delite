@@ -116,19 +116,8 @@ object Sync {
     if (updater ne null) assert(node(updatee.atResource) == updater.toNode, "invalid update pair")
     updater match {
       case null => 
-      /*case _ if (syncSet contains updatee) =>  
-        // need to replace the receiveOp to be the earliest one in the schedule 
-        val receiver = syncSet(updatee).asInstanceOf[ReceiveUpdate]
-        val sch = schedule(to.scheduledResource)
-        if(sch.indexOf(receiver.to) > sch.indexOf(to)) receiver.setReceiveOp(to)
-        val potentialNotifyAwait = Await(Notify(updater.from,node(to.scheduledResource)),to.scheduledResource)
-        if (syncSet contains potentialNotifyAwait) removeSendReceive(potentialNotifyAwait, to)        
-      */
       case _ if (syncSet contains updatee) =>
-      case _ =>
-        val potentialNotifyAwait = Await(Notify(updater.from,node(to.scheduledResource)),to.scheduledResource)
-        if (syncSet contains potentialNotifyAwait) removeSendReceive(syncSet(potentialNotifyAwait).asInstanceOf[Await], to)
-        addReceive(updatee, to, isAntiDep)
+      case _ => addReceive(updatee, to, isAntiDep)
     }
   }
 
@@ -147,12 +136,6 @@ object Sync {
       syncSet += Pair(receiver,receiver)
     receiver.setReceiveOp(to)
     receiver.sender.receivers += receiver
-  }
-
-  private def removeSendReceive[T <: Receive](receiver: T, to: DeliteOP) {
-    syncSet -= receiver
-    receiver.sender.receivers -= receiver
-    if(receiver.sender.receivers.size==0) syncSet -= receiver.sender
   }
 
   private def addSyncToSchedule() {
@@ -252,14 +235,14 @@ object Sync {
 
     for (resource <- schedule; op <- resource) {
       //println("op: " +op.id)
-      
       //add in this order to avoid the need for deletions
+
+      // data deps
       for ((dep,sym) <- dataDeps(op)) {
         receive(send(sym, dep, op), op)
       }
-      for (dep <- otherDeps(op)) { //could also be all deps
-        await(notify(dep, op), op)
-      }
+
+      // mutable input deps
       for ((dep,sym) <- op.getInputs) {
         //println("dep,sym:" + dep.id + "," + sym)
         for(m <- lastMutators(sym,op)) {
@@ -267,6 +250,12 @@ object Sync {
         }
       }
 
+      // control deps
+      for (dep <- otherDeps(op)) { //could also be all deps
+        await(notify(dep, op), op)
+      }
+
+      // anti deps
       if (scopeIsLoop) {
         //println("anti-deps:" + op.getAntiDeps.mkString(","))
         for (dep <- op.getAntiDeps) {
@@ -278,18 +267,6 @@ object Sync {
           }
         }
       }
-
-      /*
-      for ((dep,sym) <- mutableDeps(op)) { //write this as a broadcast and then optimize?
-        println("consumers of " + sym + ":" + mutableDepConsumers(op,sym))
-        for (cons <- mutableDepConsumers(op, sym)) {
-          if (_graph.inputs.map(_._2).contains(sym) || (schedule(cons.scheduledResource).availableAt(dep,sym,cons))) {
-            println("calling awaitUpdate:" + cons.toString)
-            awaitUpdate(update(sym, op, cons), cons)
-          }
-        }
-      }
-      */
 
       // Add Free nodes to the schedule if needed
       writeDataFrees(op)
