@@ -155,38 +155,29 @@ object Sync {
     if(receiver.sender.receivers.size==0) syncSet -= receiver.sender
   }
 
-  //TODO: Fix this hack
   private def addSyncToSchedule() {
-    for (sync <- syncSet.values) {
+    val (updateSyncs,nonUpdateSyncs) = syncSet.values.partition(s => s.isInstanceOf[SendUpdate] || s.isInstanceOf[ReceiveUpdate])
+
+    for (sync <- nonUpdateSyncs) {
       sync match {
-        case s: Notify =>
+        case s: Send if !s.isInstanceOf[SendUpdate] =>
           schedule.insertAfter(s, s.from)
-          syncSet.remove(sync)
-        case r: Await =>
-          schedule.insertBefore(r, r.to)
-          syncSet.remove(sync)
-        case _ =>
-      }
-    }
-    for (sync <- syncSet.values) {
-      sync match {
-        case s: SendData =>
-          schedule.insertAfter(s, s.from)
-          syncSet.remove(sync)
-        case r: ReceiveData =>
-          schedule.insertBefore(r, r.to)
-          syncSet.remove(sync)
-        case _ =>
-      }
-    }
-    for (sync <- syncSet.values) {
-      sync match {
-        case s: Send =>
-          schedule.insertAfter(s, s.from)
-        case r: Receive =>
+        case r: Receive if !r.isInstanceOf[ReceiveUpdate] =>
           schedule.insertBefore(r, r.to)
       }
     }
+    // update nodes needs to be added afterwards 
+    // e.g., when sched-1(C++) creates a symbol, sched-2(Java) updates and sched-3(C++) uses it,
+    // sched-3 should get the symbol first from shed-1 and then receive update.
+    for (sync <- updateSyncs) {
+      sync match {
+        case s: SendUpdate =>
+          schedule.insertAfter(s, s.from)
+        case r: ReceiveUpdate =>
+          schedule.insertBefore(r, r.to)
+      }
+    }
+    // updates for loop carried dependencies are appended at the end of the schedule
     for (sync <- loopUpdates) {
       sync match {
         case s: SendUpdate => schedule(s.from.scheduledResource).add(s)
