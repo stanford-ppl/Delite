@@ -71,8 +71,10 @@ object Sync {
   //TODO: in sharedMemory can just send the pointer anyway, can be used later (Notify => SendView)
   def notify(from: DeliteOP, to: DeliteOP) = {
     val notifier = Notify(from, node(to.scheduledResource))
-    val potentialSenders: Set[Sync] = from.getOutputs.map(sym => SendData(sym, from, node(to.scheduledResource))) ++ from.getOutputs.map(sym => SendView(sym, from)) ++ from.getMutableInputs.map(mi => SendUpdate(mi._2, from, node(to.scheduledResource)))
-    val otherSenders = potentialSenders.filter(syncSet contains _)
+    val potentialSenders: Set[Send] = from.getOutputs.map(sym => SendData(sym, from, node(to.scheduledResource))) ++ from.getOutputs.map(sym => SendView(sym, from)) ++ from.getMutableInputs.map(mi => SendUpdate(mi._2, from, node(to.scheduledResource)))
+    // want to replace notify with existing senders only when the corresponding receiver already exists on the target schedule	
+    // (e.g., shed-1 sendData to sched-2, and sched-1 noitfy to sched-3: better not to replace await with recvData unless sched-3 already has it)
+    val otherSenders = potentialSenders.filter(s => syncSet.contains(s) && s.receivers.map(_.scheduledResource).contains(to.scheduledResource))
     notifier match {
       case _ if (from.scheduledResource == to.scheduledResource) => null
       case _ if (syncSet contains notifier) => syncSet(notifier).asInstanceOf[Notify]
