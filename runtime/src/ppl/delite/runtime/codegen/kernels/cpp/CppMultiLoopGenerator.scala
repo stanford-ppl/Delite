@@ -50,6 +50,15 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
     out.append("return "+result+";\n")
   }
 
+  protected def release(name: String, cond: Option[String] = None) {
+    if (Config.cppMemMgr == "refcnt") {
+      cond match {
+        case Some(c) => out.append("if(" + c + ") delete " + name + ";\n")
+        case None => out.append("delete " + name + ";\n")
+      }
+    }
+  }
+
   protected def calculateRange(): (String,String) = {
     out.append("int64_t startOffset = "+closure+"->loopStart;\n")
     out.append("int64_t size = "+closure+"->loopSize;\n")

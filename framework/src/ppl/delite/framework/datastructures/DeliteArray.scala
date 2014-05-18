@@ -882,6 +882,7 @@ public:
     data = new __TARG__[_length];
     length = _length;
     id = 0;
+    //printf("allocated __T__, size %d, %p\n",_length,this);
   }
 
   __T__(__TARG__ *_data, int _length) {

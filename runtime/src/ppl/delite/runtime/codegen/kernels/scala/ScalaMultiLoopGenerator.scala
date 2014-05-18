@@ -52,6 +52,10 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     out.append(result+"\n")
   }
 
+  protected def release(name: String, cond: Option[String] = None) {
+    // Nothing to do (JVM GC)
+  }
+
   //TODO: is the division logic really target dependent?
   protected def calculateRange(): (String,String) = {
     out.append("val startOffset = "+closure+".loopStart\n")

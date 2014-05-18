@@ -741,6 +741,7 @@ struct __T__D {
       //NOTE: for some reason, having the name __real or __imag produces compile error. reserverd keywords?
       stream.print(elems.map{ case (idx,tp) => remap(tp) + addRef(baseType(tp)) + " arg_" + idx }.mkString(","))
       stream.println(") {")
+      //stream.println("\t\tprintf(\"allocated %s\\n\");".format(name))
       stream.println("\t\tid = 0;")
       stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = arg_" + idx + ";\n" }.mkString(""))
       stream.println("\t}")
