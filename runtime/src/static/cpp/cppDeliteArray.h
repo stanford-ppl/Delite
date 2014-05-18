@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+/*
 template <class T>
 class cppDeliteArray {
 public:
@@ -95,5 +96,5 @@ public:
 
     void release(void);
 };
-
+*/
 #endif

@@ -1,3 +1,4 @@
+/*
 #ifndef _CPP_REF_H_
 #define _CPP_REF_H_
 
@@ -23,3 +24,4 @@ public:
 };
 
 #endif
+*/

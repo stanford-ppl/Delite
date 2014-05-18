@@ -1,6 +1,10 @@
 #include "DeliteCpp.h"
 
-cppDeliteArray<string> *string_split(string str, string pattern) {
+#ifdef MEMMGR_REFCNT
+std::shared_ptr<cppDeliteArraystring> string_split(string str, string pattern) {
+#else
+cppDeliteArraystring *string_split(string str, string pattern) {
+#endif
   //TODO: current g++ does not fully support c++11 regex, 
   //      so below code does not work.
   /*
@@ -22,7 +26,7 @@ cppDeliteArray<string> *string_split(string str, string pattern) {
   */
 
   //Since regex is not working, we currently only support 
-  assert((strcmp(pattern.c_str(),"\\s+")==0 || strcmp(pattern.c_str()," ")==0) && "Currently only regex \\s+ is supported for C++ target");
+  assert((pattern.compare("\\s+")==0 || pattern.compare(" ")==0) && "Currently only regex \\s+ is supported for C++ target");
   string token;
   stringstream ss(str); 
   vector<string> elems;
@@ -30,7 +34,11 @@ cppDeliteArray<string> *string_split(string str, string pattern) {
     elems.push_back(token);
   
   //construct cppDeliteArray from vector
-  cppDeliteArray<string> *ret = new cppDeliteArray<string>(elems.size());
+#ifdef MEMMGR_REFCNT
+  std::shared_ptr<cppDeliteArraystring> ret(new cppDeliteArraystring(elems.size()), cppDeliteArraystringD());
+#else
+  cppDeliteArraystring *ret = new cppDeliteArraystring(elems.size());
+#endif
   for(int i=0; i<elems.size(); i++)
     ret->update(i,elems.at(i));
   return ret;
@@ -90,8 +98,13 @@ string string_plus(string str1, string str2) {
 }
 
 
-cppDeliteArray< string > *cppArgsGet(int num, ...) {
-  cppDeliteArray< string > *cppArgs = new cppDeliteArray< string >(num);
+#ifdef MEMMGR_REFCNT
+std::shared_ptr<cppDeliteArraystring> cppArgsGet(int num, ...) {
+  std::shared_ptr<cppDeliteArraystring> cppArgs(new cppDeliteArraystring(num), cppDeliteArraystringD());
+#else
+cppDeliteArraystring *cppArgsGet(int num, ...) {
+  cppDeliteArraystring *cppArgs = new cppDeliteArraystring(num);
+#endif
   va_list arguments;
   va_start(arguments, num);
   for(int i=0; i<num; i++) {

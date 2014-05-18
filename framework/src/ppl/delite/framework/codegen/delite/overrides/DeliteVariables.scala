@@ -5,6 +5,7 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.datastructures.CLikeGenDeliteStruct
 import scala.virtualization.lms.internal.{CLikeCodegen, GenerationFailedException}
 import scala.virtualization.lms.common._
+import scala.collection.mutable.HashSet
 
 trait DeliteScalaGenVariables extends ScalaGenEffect {
   val IR: VariablesExp with DeliteOpsExp
@@ -47,7 +48,16 @@ trait DeliteCLikeGenVariables extends CLikeGenEffect {
     var gen = false
     if (symIsResult) {
       rhs match {
-        case NewVar(init) => stream.println("%sRef< %s%s > *%s = new %sRef< %s%s >(%s);\n".format(deviceTarget,remap(sym.tp),addRef(init.tp),quote(sym),deviceTarget,remap(sym.tp),addRef(init.tp),quote(init))); gen = true
+        case NewVar(init) => 
+          if(cppMemMgr == "refcnt") {
+            val tpeString = deviceTarget+"Ref"+unwrapSharedPtr(remap(sym.tp))
+            stream.println("%s %s(new %s(%s),%sD());".format(wrapSharedPtr(tpeString),quote(sym),tpeString,quote(init),tpeString))
+          }
+          else {
+            val tpeString = deviceTarget+"Ref"+remap(sym.tp)
+            stream.println("%s *%s = new %s(%s);".format(tpeString,quote(sym),tpeString,quote(init)))
+          }
+          gen = true
         case _ => // pass
       }
     }
@@ -69,8 +79,8 @@ trait DeliteCLikeGenVariables extends CLikeGenEffect {
 
   override def getDataStructureHeaders(): String = {
     val out = new StringBuilder
-    out.append("#include \"" + deviceTarget + "Ref.h\"\n")
-    if(isAcceleratorTarget) out.append("#include \"Host" + deviceTarget + "Ref.h\"\n")
+    out.append("#include \"" + deviceTarget + "DeliteVariables.h\"\n")
+    if(isAcceleratorTarget) out.append("#include \"Host" + deviceTarget + "DeliteVariables.h\"\n")
     super.getDataStructureHeaders() + out.toString
   }
 
@@ -86,21 +96,116 @@ trait DeliteOpenCLGenVariables extends OpenCLGenEffect with DeliteCLikeGenVariab
 trait DeliteCGenVariables extends CGenEffect with DeliteCLikeGenVariables with CLikeGenDeliteStruct {
   val IR: VariablesExp with DeliteOpsExp
   import IR._
+
+  private val generatedDeliteVariable = HashSet[String]()
+
+  private val deliteVariableString = """
+#include <pthread.h>
+#include <map>
+
+extern std::map<int,int> *RefCnt;
+extern pthread_mutex_t RefCntLock;
+
+class __T__ {
+public:
+  __TARG__ data;
+  int id;
+
+  __T__(__TARG__ _data) {
+    data = _data;
+    id = 0;
+  }
+
+  __TARG__ get(void) {
+    return data;
+  }
+
+  void set(__TARG__ newVal) {
+      data = newVal;
+  }    
+
+  void setGlobalRefCnt(int cnt) {
+    // need lock?
+    printf("setting the global ref count for %d to %d\n",id,cnt);
+    pthread_mutex_lock(&RefCntLock);
+    std::map<int,int>::iterator it = RefCnt->find(id);
+    if(it==RefCnt->end())
+      RefCnt->insert(std::pair<int,int>(id,cnt));
+    else
+      it->second = cnt;
+    pthread_mutex_unlock(&RefCntLock);
+  }
+};
+
+struct __T__D {
+  void operator()(__T__ *p) {
+    //printf("__T__: deleting %p\n",p);
+    __DESTRUCT_ELEMS__
+    /*
+    if(p->id == 0) {
+      printf("__T__: deleting locally\n");
+      __DESTRUCT_ELEMS__
+    }
+    else {
+      pthread_mutex_lock(&RefCntLock);
+      std::map<int,int>::iterator it = RefCnt->find(p->id);
+      if(it==RefCnt->end()) {
+        printf("__T__: warning! key not found %d\n",p->id);
+        pthread_mutex_unlock(&RefCntLock);
+      }
+      else {
+        int cnt = it->second;
+        if(cnt == 1) {
+          printf("__T__: freeing data id: %d!\n",p->id);
+          RefCnt->erase(p->id);
+          pthread_mutex_unlock(&RefCntLock);
+          __DESTRUCT_ELEMS__
+        }
+        else {
+          printf("__T__ id:%d decrementing global ref count: %d -> %d\n", p->id, cnt, cnt-1);
+          it->second = cnt - 1;
+          pthread_mutex_unlock(&RefCntLock);
+        }
+      }
+    }
+    */
+  }
+};
+
+"""
   
-  /*
   override def emitDataStructures(path: String) {
     super.emitDataStructures(path)
-    val stream = new PrintWriter(path + deviceTarget + "RefRelease.h")
-    for(tp <- dsTypesList.map(baseType) if(!isPrimitiveType(tp) && !isVoidType(tp))) {
-      try {
-        stream.println("template void " + deviceTarget + "Ref< " + remap(tp) + "* >::release(void);\n")
-      }
-      catch {
-        case e: GenerationFailedException => //
-        case e: Exception => throw(e)
-      }
+    val stream = new PrintWriter(path + deviceTarget + "DeliteVariables.h")
+    stream.println("#include \"" + deviceTarget + "DeliteStructs.h\"")
+    stream.println("#include \"" + deviceTarget + "DeliteArrays.h\"")
+    for((tp,name) <- dsTypesList if(!isVoidType(name))) {
+      emitDeliteVariable(tp, path, stream)
     }
     stream.close()
   }
-  */
+
+  private def emitDeliteVariable(m: Manifest[_], path: String, header: PrintWriter) {
+    try {
+      val mString =
+        if (cppMemMgr == "refcnt") deviceTarget + "Ref" + unwrapSharedPtr(remap(m))
+        else deviceTarget + "Ref" + remap(m)
+      if(!generatedDeliteVariable.contains(mString)) {
+        val stream = new PrintWriter(path + mString + ".h")
+        stream.println("#ifndef __" + mString + "__")
+        stream.println("#define __" + mString + "__")
+        val destructFields = if(cppMemMgr=="refcnt" && !isPrimitiveType(baseType(m))) "\t(p->data).reset();\n" else ""
+        stream.println(deliteVariableString.replaceAll("__T__",mString).replaceAll("__TARG__",remap(m)+addRef(baseType(m))).replaceAll("__DESTRUCT_ELEMS__",destructFields)) 
+        stream.println("#endif")
+        stream.close()
+        header.println("#include \"" + mString + ".h\"")
+        generatedDeliteVariable.add(mString)
+      }
+    }
+    catch {
+      case e: GenerationFailedException => //
+      case e: Exception => throw(e)  
+    }
+  }
+
 }

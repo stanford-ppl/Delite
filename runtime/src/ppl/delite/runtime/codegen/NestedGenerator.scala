@@ -2,6 +2,7 @@ package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
 import java.lang.annotation.Target
+import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.graph.targets.Targets
 import sync._
@@ -101,7 +102,7 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
     str.append("#include \"" + target + "helperFuncs.h\"\n")
     str.append(nested.outputType(target))
     str.append(' ')
-    if (!isPrimitiveType(nested.outputType) && nested.outputType!="Unit") str.append(" *")
+    if (!isPrimitiveType(nested.outputType) && nested.outputType!="Unit" && Config.cppMemMgr!="refcnt") str.append(" *")
     str.append(executableName)
     str.append('(')
     str.append(generateInputs())
@@ -130,7 +131,7 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
       if (!first) str.append(", ")
       first = false
       str.append(typesMap(target)(sym))
-      if (!isPrimitiveType(op.outputType(sym))) str.append(" *")
+      str.append(addRef(op.outputType(sym)))
       str.append(' ')
       str.append(getSymHost(op, sym))
     }

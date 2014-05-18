@@ -1,12 +1,12 @@
 package ppl.delite.runtime.codegen.sync
 
-
 import ppl.delite.runtime.graph.ops._
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.targets.{OS, Targets}
 import ppl.delite.runtime.codegen._
 import ppl.delite.runtime.scheduler.OpHelper._
 import ppl.delite.runtime.graph.targets.Targets._
+import ppl.delite.runtime.Config
 
 trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIFuncs {
 
@@ -128,7 +128,7 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     out.append("\",\"()")
     out.append(getJNIOutputType(dep.outputType(Targets.Scala,sym)))
     out.append("\"));\n")
-    val ref = if (isPrimitiveType(dep.outputType(sym))) "" else "*"
+    val ref = "" //if (isPrimitiveType(dep.outputType(sym))) "" else "*"
     val devType = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
     if (view)
       out.append("%s %s%s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
@@ -288,9 +288,11 @@ trait CppToCppSync extends SyncGenerator with CppExecutableGenerator with JNIFun
   }
 
   private def writeGetter(dep: DeliteOP, sym: String, to: DeliteOP) {
-    out.append(CppExecutableGenerator.typesMap(Targets.Cpp)(sym))
+    val tpe = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
+    out.append(tpe)
     out.append(' ')
-    if (!isPrimitiveType(dep.outputType(sym))) out.append(" *")
+    //if (!isPrimitiveType(dep.outputType(sym))) out.append(" *")
+    if (tpe.startsWith("MultiLoopHeader")) out.append(" *")
     out.append(getSymHost(dep, sym))
     out.append(" = ")
     out.append("get")
@@ -338,6 +340,19 @@ trait CppSyncGenerator extends CppToScalaSync with CppToCppSync {
     //case r: Receive if (getHostTarget(scheduledTarget(r.sender.from)) == Targets.Scala) => addSync(r)
     //case s: Send if (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty) => addSync(s)
     case s: Sync => addSync(s) //TODO: if sync companion also Scala
+    /*
+    case Free(o,items) if (Config.cppMemMgr == "refcnt") => 
+      val freeItems = items.filter(i => !isPrimitiveType(i._1.outputType(i._2)))
+      if(freeItems.size > 0) {
+        for(item <- freeItems) {
+          val tpe = CppExecutableGenerator.typesMap(Targets.Cpp)(item._2)
+          if(tpe.startsWith("std::shared_ptr"))
+            out.append("" + getSymHost(item._1,item._2) + ".reset();\n")
+          else if(tpe != "void" && item._1.scheduledResource==location) // for multiloop header (only the producer deletes it)
+            out.append("delete " + getSymHost(item._1,item._2) + ";\n")
+        }
+      }
+    */
     case m: Free => //println("[warning] freeing " + m.items.map(_._2).mkString(",") + " is not inserted.")
     case _ => super.makeNestedFunction(op)
   }

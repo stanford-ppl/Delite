@@ -7,6 +7,7 @@ import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatC
 import ppl.delite.framework.ops._
 import ppl.delite.framework.Util._
 import ppl.delite.framework.Config
+import scala.collection.mutable.HashSet
 
 
 trait DeliteArray[T] extends DeliteCollection[T] 
@@ -757,7 +758,7 @@ trait OpenCLGenDeliteArrayOps extends BaseGenDeliteArrayOps with OpenCLGenFat wi
     case DeliteArrayApply(da, idx) =>
       emitValDef(sym, remap(da.tp) + "_apply(" + quote(da) + "," + quote(idx) + ")")
     case DeliteArrayUpdate(da, idx, x) =>
-      emitValDef(sym, remap(da.tp) + "_update(" + quote(da) + "," + quote(idx) + "," + quote(x) + ")")
+      stream.println(remap(da.tp) + "_update(" + quote(da) + "," + quote(idx) + "," + quote(x) + ");")
     case _ => super.emitNode(sym, rhs)
   }
 
@@ -778,7 +779,10 @@ trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenDeliteStruct wit
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case a@DeliteArrayNew(n,m) => 
       // NOTE: DSL operations should not rely on the fact that JVM initializes arrays with 0
-      emitValDef(sym, "new " + remap(sym.tp) + "(" + quote(n) + ")")
+      if (cppMemMgr == "refcnt")  
+        stream.println(remap(sym.tp) + " " + quote(sym) + "(new " + unwrapSharedPtr(remap(sym.tp)) + "(" + quote(n) + "), " + unwrapSharedPtr(remap(sym.tp)) + "D());")
+      else
+        emitValDef(sym, "new " + remap(sym.tp) + "(" + quote(n) + ")")
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + "->length")
     case DeliteArrayApply(da, idx) =>
@@ -789,7 +793,10 @@ trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenDeliteStruct wit
       val nestedApply = if (idx.length > 1) idx.take(idx.length-1).map(i=>"apply("+quote(i)+")").mkString("","->","->") else ""
       stream.println(quote(struct) + fields.mkString("->","->","->") + nestedApply + "update(" + quote(idx(idx.length-1)) + "," + quote(x) + ");")
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
-      stream.println(quote(src) + "->copy(" + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ");")
+      //TODO: use memcpy?
+      stream.println("for(int i=0; i<" + quote(len) + "; i++) {")
+      stream.println(quote(dest) + "->update(" + quote(destPos) + "+i," + quote(src) + "->apply(" + quote(srcPos) + "+i));")
+      stream.println("}")
     case sc@StructCopy(src,srcPos,struct,fields,destPos,len) =>
       val nestedApply = if (destPos.length > 1) destPos.take(destPos.length-1).map(i=>"apply("+quote(i)+")").mkString("","->","->") else ""
       val dest = quote(struct) + fields.mkString("->","->","->") + nestedApply
@@ -815,13 +822,15 @@ trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenDeliteStruct wit
       m.typeArguments.head match {
         case StructType(_,_) if Config.soaEnabled => super.remap(m)
         case s if s <:< manifest[Record] && Config.soaEnabled => super.remap(m) // occurs due to restaging
-        case arg => "cppDeliteArray< " + remapWithRef(arg) + " >"
+        case arg if (cppMemMgr == "refcnt") => wrapSharedPtr(deviceTarget + "DeliteArray" + unwrapSharedPtr(remap(arg)))
+        case arg => deviceTarget + "DeliteArray" + remap(arg)
       }
     }
     else 
       super.remap(m)
   }
 
+/*
   override def emitDataStructures(path: String) {
     super.emitDataStructures(path)
     val stream = new PrintWriter(path + deviceTarget + "DeliteArrayRelease.h")
@@ -841,10 +850,141 @@ trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenDeliteStruct wit
     }
     stream.close()
   }
+*/
+
+  override def emitDataStructures(path: String) {
+    super.emitDataStructures(path)
+    val stream = new PrintWriter(path + deviceTarget + "DeliteArrays.h")
+    stream.println("#include \"" + deviceTarget + "DeliteStructs.h\"")
+    for((tp,name) <- dsTypesList if(isArrayType(tp))) {
+      emitDeliteArray(tp, path, stream)
+    }
+    stream.close()
+  }
+
+  private val generatedDeliteArray = HashSet[String]()
+   
+  private val deliteArrayString = """
+#include <pthread.h>
+#include <map>
+
+using namespace std;
+extern map<int,int> *RefCnt;
+extern pthread_mutex_t RefCntLock;
+
+class __T__ {
+public:
+  __TARG__ *data;
+  int length;
+  int id;
+  
+  __T__(int _length) {
+    data = new __TARG__[_length];
+    length = _length;
+    id = 0;
+  }
+
+  __T__(__TARG__ *_data, int _length) {
+    data = _data;
+    length = _length;
+    id = 0;
+  }
+
+  __TARG__ apply(int idx) {
+    return data[idx];
+  }
+
+  void update(int idx, __TARG__ val) {
+    data[idx] = val;
+  }
+
+  void print(void) {
+    printf("length is %d\n", length);
+  }
+
+  void setGlobalRefCnt(int cnt) {
+    // need lock?
+    printf("setting the global ref count for %d to %d\n",id,cnt);
+    pthread_mutex_lock(&RefCntLock);
+    std::map<int,int>::iterator it = RefCnt->find(id);
+    if(it==RefCnt->end())
+      RefCnt->insert(std::pair<int,int>(id,cnt));
+    else
+      it->second = cnt;
+    pthread_mutex_unlock(&RefCntLock);
+  }
+};
+
+struct __T__D {
+  void operator()(__T__ *p) {
+    //printf("__T__: deleting %p\n",p);
+    delete[] p->data;
+    /*
+    if(p->id == 0) {
+      printf("__T__: deleting locally\n");
+      delete[] p->data;
+    }
+    else {
+      pthread_mutex_lock(&RefCntLock);
+      std::map<int,int>::iterator it = RefCnt->find(p->id);
+      if(it==RefCnt->end()) {
+        printf("__T__: warning! key not found %d\n",p->id);
+        pthread_mutex_unlock(&RefCntLock);
+      }
+      else {
+        int cnt = it->second;
+        if(cnt == 1) {
+          printf("__T__ freeing data id: %d!\n",p->id);
+          RefCnt->erase(p->id);
+          pthread_mutex_unlock(&RefCntLock);   
+          delete[] p->data;
+          //TODO: delete p
+        }
+        else {
+          printf("__T__ id:%d decrementing global ref count: %d -> %d\n", p->id, cnt, cnt-1);
+          it->second = cnt - 1;
+          pthread_mutex_unlock(&RefCntLock);  
+        }
+      }
+    }
+    */
+  }
+};
+
+"""
+
+  private def emitDeliteArray(m: Manifest[_], path: String, header: PrintWriter) {
+    try {
+      //Need this check?
+      val mString = unwrapSharedPtr(remap(m))
+      val mArg = m.typeArguments(0)
+      val mArgString = unwrapSharedPtr(remap(mArg))
+      val shouldGenerate = mArg match {
+        case StructType(_,_) if Config.soaEnabled => false 
+        case s if s <:< manifest[Record] && Config.soaEnabled => false 
+        case _ => true
+      }
+      if(!generatedDeliteArray.contains(mString) && shouldGenerate) {
+        val stream = new PrintWriter(path + mString + ".h")
+        stream.println("#ifndef __" + mString + "__")
+        stream.println("#define __" + mString + "__")
+        if(!isPrimitiveType(mArg)) stream.println("#include \"" + mArgString + ".h\"")
+        stream.println(deliteArrayString.replaceAll("__T__",mString).replaceAll("__TARG__",remap(mArg)))    
+        stream.println("#endif")
+        stream.close()
+        header.println("#include \"" + mString + ".h\"")
+        generatedDeliteArray.add(mString)
+      }
+    }
+    catch {
+      case e: GenerationFailedException => //
+      case e: Exception => throw(e)  
+    }
+  }
 
   override def getDataStructureHeaders(): String = {
     val out = new StringBuilder
-    out.append("#include \"" + deviceTarget + "DeliteArray.h\"\n")
+    out.append("#include \"" + deviceTarget + "DeliteArrays.h\"\n")
     super.getDataStructureHeaders() + out.toString
   }
 }

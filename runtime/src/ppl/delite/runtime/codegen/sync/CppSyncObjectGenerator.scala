@@ -4,6 +4,7 @@ import ppl.delite.runtime.graph.ops.{SendData, Notify, SendView, Send}
 import ppl.delite.runtime.codegen.CppExecutableGenerator
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.scheduler.OpHelper._
+import ppl.delite.runtime.Config
 
 trait CppSyncObjectGenerator extends SyncObjectGenerator with CppExecutableGenerator {
 
@@ -12,6 +13,7 @@ trait CppSyncObjectGenerator extends SyncObjectGenerator with CppExecutableGener
       sender match {
         case s: SendData =>
           val outputType = if (isPrimitiveType(s.from.outputType(s.sym))) s.from.outputType(Targets.Cpp,s.sym)
+                           else if(s.from.outputType(Targets.Cpp,s.sym).startsWith("std::shared_ptr")) s.from.outputType(Targets.Cpp,s.sym)
                            else s.from.outputType(Targets.Cpp,s.sym) + " *"
           writePublicGet(s, getSym(s.from, s.sym), getSync(s.from, s.sym), outputType)
           SyncObject(s, getSync(s.from, s.sym), outputType)
@@ -19,6 +21,7 @@ trait CppSyncObjectGenerator extends SyncObjectGenerator with CppExecutableGener
 
         case s: SendView =>
           val outputType = if (isPrimitiveType(s.from.outputType(s.sym))) s.from.outputType(Targets.Cpp,s.sym)
+                           else if(s.from.outputType(Targets.Cpp,s.sym).startsWith("std::shared_ptr")) s.from.outputType(Targets.Cpp,s.sym)
                            else s.from.outputType(Targets.Cpp,s.sym) + " *"
           writePublicGet(s, getSym(s.from, s.sym), getSync(s.from, s.sym), outputType)
           SyncObject(s, getSync(s.from, s.sym), outputType)
@@ -77,6 +80,8 @@ trait CppSyncObjectGenerator extends SyncObjectGenerator with CppExecutableGener
     out.append('\n')
   }
 
+  private def rmSharedPtr(tpe: String): String = tpe.replaceAll("std::shared_ptr<","").replaceAll(">","")
+
   private def SyncObject(sender: Send, syncName: String, outputType: String) {
 
     val header = new StringBuilder
@@ -132,9 +137,18 @@ trait CppSyncObjectGenerator extends SyncObjectGenerator with CppExecutableGener
       if (outputType != "void") header.append("%1$s res = %2$s::_result;".format(outputType,syncName))
       header.append("%s::takeIndex".format(syncName))
       header.append(cons)
-      header.append("+= 1; %1$s::count -= 1; if (%1$s::count == 0) { /* TODO: free _result */".format(syncName))
+      header.append("+= 1; %1$s::count -= 1; if (%1$s::count == 0) { ".format(syncName))
+      if (outputType.startsWith("std::shared_ptr")) {
+        header.append("%s::_result.reset();".format(syncName))
+      }
       header.append(" pthread_cond_signal(&%1$s::notFull); };".format(syncName))
-      if (outputType != "void") header.append("return res;")
+      /*
+      if (outputType.startsWith("std::shared_ptr")) 
+        header.append("return %1$s(res.get(),%2$sD());".format(outputType,rmSharedPtr(outputType)))
+      else 
+      */
+      if (outputType != "void") 
+        header.append("return res;")
       header.append(" }\n".format(syncName))
     }
 
@@ -153,7 +167,18 @@ trait CppSyncObjectGenerator extends SyncObjectGenerator with CppExecutableGener
     header.append(outputType)
     if (outputType != "void") header.append(" result")
     header.append(") {")
-    if (outputType != "void") header.append(" %1$s::_result = result;".format(syncName))
+    /*
+    if (outputType.startsWith("std::shared_ptr")) {
+      //TODO: better way of extracting the numbers for the id
+      header.append(" result->id = %s;".format(syncName.replaceAll("Resultx","")))
+      header.append(" %1$s::_result = %2$s(result.get(),%3$sD());".format(syncName,outputType,rmSharedPtr(outputType)))
+      header.append(" result->setGlobalRefCnt(%s);".format(numConsumers+1))
+    }
+    else 
+    */
+    if (outputType != "void") { 
+      header.append(" %1$s::_result = result;".format(syncName))
+    }
     header.append("%1$s::count = ".format(syncName))
     header.append(numConsumers)
     header.append("; %1$s::putIndex += 1; pthread_cond_broadcast(&%1$s::notEmpty); }\n".format(syncName))
@@ -175,10 +200,8 @@ trait CppSyncObjectGenerator extends SyncObjectGenerator with CppExecutableGener
       out.append(" = 0;\n")
     }
     out.append("int " + syncName + "::putIndex = 0;\n")
-    if (outputType == "string")
-      out.append(outputType + " " + syncName + "::_result = string();\n")
-    else if (outputType != "void")
-      out.append(outputType + " " + syncName + "::_result = NULL;\n")
+    if (outputType != "void") 
+      out.append(outputType + " " + syncName + "::_result;\n")
     out.append("pthread_mutex_t " + syncName + "::lock = PTHREAD_MUTEX_INITIALIZER;\n")
     out.append("pthread_cond_t " + syncName + "::notEmpty = PTHREAD_COND_INITIALIZER;\n")
     out.append("pthread_cond_t " + syncName + "::notFull = PTHREAD_COND_INITIALIZER;\n")

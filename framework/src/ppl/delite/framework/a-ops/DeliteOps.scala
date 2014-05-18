@@ -2409,6 +2409,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       (symList zip op.body) foreach {
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
           emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), fieldAccess("__act",quote(sym) + "_data"))
+          releaseRef(fieldAccess("__act",quote(sym)+"_data"))
           getActBuffer = List(quote(elem.buf.allocVal))
           if (elem.par == ParBuffer || elem.par == ParSimpleBuffer) {
             emitValDef(elem.buf.sV, fieldAccess("__act", quote(sym) + "_conditionals"))
@@ -3566,6 +3567,11 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
 
   import IR._
 
+  override def addRef(tpe: String): String = {
+    if (tpe startsWith "activation") " *"
+    else super.addRef(tpe)
+  }
+  
   def quotearg(x: Sym[Any]) = quotetp(x) + " " + quote(x)
   def quotetp(x: Sym[Any]) = remap(x.tp)
 
@@ -3580,7 +3586,7 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   }
 
   def emitNewInstance(varName: String, typeName:String) {
-    stream.println(typeName + "* " + varName + " = new " + typeName + "();")
+    stream.println(typeName + addRef(typeName) + varName + " = new " + typeName + "();")
   }
 
   def fieldAccess(className: String, varName: String): String = {
@@ -3591,7 +3597,8 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   def releaseRef(varName: String) {
     //TODO: Change this to decrement the reference count?
     //stream.println("free(" + varName + ");")
-    stream.println(varName + " = NULL;")
+    //stream.println(varName + " = NULL;")
+    //stream.println(varName + ".reset();")
   }
 
   def emitReturn(rhs: String) = {
@@ -3675,17 +3682,13 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case s:DeliteOpSingleTask[_] => {
+    case s:DeliteOpSingleTask[_] =>
       //printlog("EMIT single "+s)
       // always wrap single tasks in methods to reduce JIT compilation unit size
       val b = s.block
       emitBlock(b)
-      if (isVoidType(sym.tp)) { }
-      else if (isPrimitiveType(sym.tp))
-        stream.println(remap(sym.tp) + " " + quote(sym) + " = " + quote(getBlockResult(b)) + ";")
-      else
-        stream.println(remap(sym.tp) + " *" + quote(sym) + " = " + quote(getBlockResult(b)) + ";")
-    }
+      if (!isVoidType(sym.tp)) 
+        stream.println(remap(sym.tp) + addRef(sym.tp) + quote(sym) + " = " + quote(getBlockResult(b)) + ";")
 
     case op: AbstractLoop[_] =>
       // TODO: we'd like to always have fat loops but currently they are not allowed to have effects

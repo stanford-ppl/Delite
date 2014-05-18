@@ -63,8 +63,19 @@ object Targets extends Enumeration {
   }
 
 
-  def isPrimitiveType(scalaType: String): Boolean = scalaType match { //should include Target type in determination, but for now everyone agrees
-    case "Boolean" | "Byte" | "Char" | "Short" | "Int" | "Long" | "Float" | "Double" | "Unit" => true
+  def isPrimitiveType(tpe: String): Boolean = isPrimitiveType(Targets.Scala, tpe)
+
+  def isPrimitiveType(target: Value, tpe: String): Boolean = target match {
+    case Scala => 
+      tpe match {
+        case "Boolean" | "Byte" | "Char" | "Short" | "Int" | "Long" | "Float" | "Double" | "Unit" => true
+        case _ => false 
+      }
+    case Cpp =>
+      tpe match {
+        case "bool" | "int8_t" | "uint16_t" | "int16_t" | "int32_t" | "int64_t" | "float" | "double" | "void" => true
+        case _ => false 
+      }
     case _ => false
   }
 

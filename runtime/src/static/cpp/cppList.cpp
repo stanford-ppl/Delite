@@ -1,3 +1,4 @@
+/*
 #include "cppList.h"
 
 template<> void cppList<int>::release(void) { free(data); }
@@ -13,3 +14,4 @@ template<class T> void cppList<T>::release(void) {
   free(data);
 }
 
+*/

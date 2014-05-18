@@ -452,8 +452,8 @@ trait CLikeGenDeliteStruct extends BaseGenStruct with CLikeCodegen {
     structStream.println("#ifndef __DELITESTRUCTS_H__")
     structStream.println("#define __DELITESTRUCTS_H__")
     structStream.println("#include \"" + deviceTarget + "types.h\"")    
-    structStream.println("#include \"" + hostTarget + "DeliteArray.h\"")
-    structStream.println("#include \"" + deviceTarget + "DeliteArray.h\"")
+    //structStream.println("#include \"" + hostTarget + "DeliteArray.h\"")
+    //structStream.println("#include \"" + deviceTarget + "DeliteArray.h\"")
     //println("Cuda Gen is generating " + encounteredStructs.map(_._1).mkString(","))
     for ((name, elems) <- encounteredStructs if !generatedStructs.contains(name)) {
       try {
@@ -618,21 +618,27 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
   val IR: DeliteStructsExp with DeliteOpsExp
   import IR._
 
+  override def remap[A](m: Manifest[A]) = m match {
+    case StructType(_,_) => wrapSharedPtr(deviceTarget.toString + structName(m))
+    case s if s <:< manifest[Record] && s != manifest[Nothing] => wrapSharedPtr(deviceTarget.toString + structName(m))
+    case _ => super.remap(m)
+  }
+
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case Struct(tag, elems) =>
       registerStruct(structName(sym.tp), elems)
-      /*
-      emitValDef(sym, "(" + remap(sym.tp) + " *)malloc(sizeof(" + remap(sym.tp) + "));")
-      stream.println(elems.map{ e =>
-        quote(sym) + "->" + e._2 + " = " + 
-        (if (isVarType(e._2.tp) && deliteInputs.contains(e._2)) quote(e._2) + "->get()"
-        else quote(e._2)) + ";"
-      }.mkString(""))
-      */
-      stream.println(remap(sym.tp) + " *" + quote(sym) + " = new " + remap(sym.tp) + "(" + elems.map{ e => 
-         if (isVarType(e._2) && deliteInputs.contains(e._2)) quote(e._2) + "->get()"
-         else quote(e._2)
-      }.mkString(",") + ");")
+      if (cppMemMgr == "refcnt") {      
+        stream.println(remap(sym.tp) + " " + quote(sym) + "(new " + unwrapSharedPtr(remap(sym.tp)) + "(" + elems.map{ e => 
+           if (isVarType(e._2) && deliteInputs.contains(e._2)) quote(e._2) + "->get()"
+           else quote(e._2)
+        }.mkString(",") + ")," + unwrapSharedPtr(remap(sym.tp)) + "D());")
+      }
+      else {
+        stream.println(remapWithRef(sym.tp) + quote(sym) + " = new " + remap(sym.tp) + "(" + elems.map{ e => 
+          if (isVarType(e._2) && deliteInputs.contains(e._2)) quote(e._2) + "->get()"
+          else quote(e._2)
+        }.mkString(",") + ")," + unwrapSharedPtr(remap(sym.tp)) + "D());")     
+      }
       printlog("WARNING: emitting " + remap(sym.tp) + " struct " + quote(sym))    
     case FieldApply(struct, index) =>
       emitValDef(sym, quote(struct) + "->" + index)
@@ -645,6 +651,43 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
     case _ => super.emitNode(sym, rhs)
   }
 
+  private val destructorString = """
+struct __T__D {
+  void operator()(__T__ *p) {
+    //printf("__T__: deleting %p\n",p);
+    __DESTRUCT_ELEMS__
+    /*
+    if(p->id == 0) {
+      printf("__T__: deleting locally\n");
+      __DESTRUCT_ELEMS__
+    }
+    else {
+      pthread_mutex_lock(&RefCntLock);
+      std::map<int,int>::iterator it = RefCnt->find(p->id);
+      if(it==RefCnt->end()) {
+        printf("__T__: warning! key not found %d\n",p->id);
+        pthread_mutex_unlock(&RefCntLock);
+      }
+      else {
+        int cnt = it->second;
+        if(cnt == 1) {
+          printf("__T__: freeing data id: %d!\n",p->id);
+          RefCnt->erase(p->id);
+          pthread_mutex_unlock(&RefCntLock);
+          __DESTRUCT_ELEMS__
+        }
+        else {
+          printf("__T__ id:%d decrementing global ref count: %d -> %d\n", p->id, cnt, cnt-1);
+          it->second = cnt - 1;
+          pthread_mutex_unlock(&RefCntLock);
+        }
+      }
+    }
+    */
+  }
+};
+"""
+
   //TODO: Merge with other C-like codegen (when merged with wip-gpuref)
   // currently CUDA codegen uses stack for struct type datastructure.
   override def emitStructDeclaration(path: String, name: String, elems: Seq[(String,Manifest[_])]) {
@@ -652,13 +695,22 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
     try {
       stream.println("#ifndef __" + deviceTarget + name + "__")
       stream.println("#define __" + deviceTarget + name + "__")
+      
       stream.println("using namespace std;")
+      
+      stream.println("#include <pthread.h>")
+      stream.println("#include <map>")
+      stream.println("extern std::map<int,int> *RefCnt;")
+      stream.println("extern pthread_mutex_t RefCntLock;")
+     
       val dependentStructTypes = elems.map(e => 
         if(encounteredStructs.contains(structName(baseType(e._2)))) structName(baseType(e._2))
         else if(encounteredStructs.contains(structName(unwrapArrayType(e._2)))) structName(unwrapArrayType(e._2))
         else remap(baseType(e._2)).replaceAll(deviceTarget,"")  // SoA transfromed types
       ).distinct
         
+      val dependentArrayTypes = elems.filter(e => isArrayType(baseType(e._2))).map(e => unwrapSharedPtr(remap(e._2))).distinct
+
       dependentStructTypes foreach { t =>
         if (encounteredStructs.contains(t)) {
           stream.println("#include \"" + deviceTarget + t + ".h\"") 
@@ -669,7 +721,11 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
             emitStructDeclaration(path, t, encounteredStructs(t))
           }
         }
-      }   
+      }
+
+      dependentArrayTypes foreach { t=>
+        stream.println("#include \"" + t + ".h\"")
+      }
       
       if(isAcceleratorTarget)
         stream.println("#include \"" + hostTarget + name + ".h\"")
@@ -677,13 +733,15 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
       stream.println("class " + deviceTarget + name + " {")
       // fields
       stream.println("public:")
+      stream.println("\tint id;")
       stream.print(elems.map{ case (idx,tp) => "\t" + remap(tp) + " " + addRef(baseType(tp)) + idx + ";\n" }.mkString(""))
       // constructor
-      stream.println("\t" + deviceTarget + name + "(void) { }")
+      stream.println("\t" + deviceTarget + name + "(void) { id = 0; }")
       stream.print("\t" + deviceTarget + name + "(")
       //NOTE: for some reason, having the name __real or __imag produces compile error. reserverd keywords?
       stream.print(elems.map{ case (idx,tp) => remap(tp) + addRef(baseType(tp)) + " arg_" + idx }.mkString(","))
       stream.println(") {")
+      stream.println("\t\tid = 0;")
       stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = arg_" + idx + ";\n" }.mkString(""))
       stream.println("\t}")
 
@@ -696,17 +754,35 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
           e._1 + " == to->" + e._1
         }
       }.mkString("(",") && (",")")
-      stream.println("\tbool equals(" + deviceTarget + name + addRef() + " to) {")
+      if (cppMemMgr == "refcnt")
+        stream.println("\tbool equals(" + wrapSharedPtr(deviceTarget.toString + name) + " to) {")
+      else
+        stream.println("\tbool equals(" + deviceTarget + name + addRef() + " to) {")
       stream.println("\t\treturn " + elemEquals + ";")
       stream.println("\t}")
 
-      // free
-      stream.println("\tvoid release(void) {")
-      stream.print(elems.filter(e => !isPrimitiveType(baseType(e._2)) && remap(baseType(e._2))!="string").map(e => e._1 + "->release();\n").mkString(""))
-      //stream.println("\tfree(this);")
+      stream.println("\tvoid setGlobalRefCnt(int cnt) {")
+      stream.println("\t\tpthread_mutex_lock(&RefCntLock);")
+      stream.println("\t\tstd::map<int,int>::iterator it = RefCnt->find(id);")
+      stream.println("\t\tif(it==RefCnt->end())")
+      stream.println("\t\t\tRefCnt->insert(std::pair<int,int>(id,cnt));")
+      stream.println("\t\telse")
+      stream.println("\t\t\tit->second = cnt;")
+      stream.println("\t\tpthread_mutex_unlock(&RefCntLock);")
       stream.println("\t}")
+      // free
+      //stream.println("\tvoid release(void) {")
+      //stream.print(elems.filter(e => !isPrimitiveType(baseType(e._2)) && remap(baseType(e._2))!="string").map(e => e._1 + "->release();\n").mkString(""))
+      //stream.println("\tfree(this);")
+      //stream.println("\t}")
       stream.println("};")
+      
+      //destructor
+      val elemD = elems.filter(e => !isPrimitiveType(baseType(e._2))).map{ case (idx,tp) => "\t(p->" + idx + ").reset();\n" }.mkString("")
+      stream.println(destructorString.replaceAll("__T__",deviceTarget+name).replaceAll("__DESTRUCT_ELEMS__",elemD))
+      
       stream.println("#endif")
+
       generatedStructs += name
       stream.close()
       elems foreach { e => val t = baseType(e._2); dsTypesList.add((t.asInstanceOf[Manifest[Any]],remap(t))) }
