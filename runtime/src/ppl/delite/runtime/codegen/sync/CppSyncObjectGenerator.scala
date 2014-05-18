@@ -142,11 +142,6 @@ trait CppSyncObjectGenerator extends SyncObjectGenerator with CppExecutableGener
         header.append("%s::_result.reset();".format(syncName))
       }
       header.append(" pthread_cond_signal(&%1$s::notFull); };".format(syncName))
-      /*
-      if (outputType.startsWith("std::shared_ptr")) 
-        header.append("return %1$s(res.get(),%2$sD());".format(outputType,rmSharedPtr(outputType)))
-      else 
-      */
       if (outputType != "void") 
         header.append("return res;")
       header.append(" }\n".format(syncName))
@@ -167,15 +162,6 @@ trait CppSyncObjectGenerator extends SyncObjectGenerator with CppExecutableGener
     header.append(outputType)
     if (outputType != "void") header.append(" result")
     header.append(") {")
-    /*
-    if (outputType.startsWith("std::shared_ptr")) {
-      //TODO: better way of extracting the numbers for the id
-      header.append(" result->id = %s;".format(syncName.replaceAll("Resultx","")))
-      header.append(" %1$s::_result = %2$s(result.get(),%3$sD());".format(syncName,outputType,rmSharedPtr(outputType)))
-      header.append(" result->setGlobalRefCnt(%s);".format(numConsumers+1))
-    }
-    else 
-    */
     if (outputType != "void") { 
       header.append(" %1$s::_result = result;".format(syncName))
     }

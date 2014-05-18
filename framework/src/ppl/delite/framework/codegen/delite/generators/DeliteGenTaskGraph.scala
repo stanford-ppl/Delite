@@ -275,8 +275,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
                 returnTypes += new Pair[String,String](g.toString,"generated.scala.Ref[" + g.remap(sym.head.tp) + "]") {
                   override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
                 }
+              case g: CLikeCodegen if cppMemMgr =="recnt" =>
+                returnTypes += new Pair[String,String](g.toString,g.wrapSharedPtr(g.deviceTarget.toString + "Ref" + g.unwrapSharedPtr(g.remap(sym.head.tp)))) {
+                  override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+                }
               case g: CLikeCodegen =>
-                returnTypes += new Pair[String,String](g.toString,g.deviceTarget.toString + g.wrapSharedPtr("Ref" + g.remap(sym.head.tp))) {
+                returnTypes += new Pair[String,String](g.toString,g.deviceTarget.toString + "Ref" + g.remap(sym.head.tp)) {
                   override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
                 }
               case _ =>
@@ -555,7 +559,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
       if( inVars.contains(sym) || (outputs.contains(sym) && resultIsVar)) {
         gen match {
           case g: ScalaCodegen => "generated.scala.Ref[" + g.remap(sym.tp) + "]"
-          case g: CLikeCodegen => g.wrapSharedPtr(g.deviceTarget + "Ref" + g.unwrapSharedPtr(g.remap(sym.tp)))
+          case g: CLikeCodegen if cppMemMgr == "refcnt" => g.wrapSharedPtr(g.deviceTarget.toString + "Ref" + g.unwrapSharedPtr(g.remap(sym.tp)))
+          case g: CLikeCodegen => g.deviceTarget + "Ref" + g.remap(sym.tp)
           case _ => gen.remap(sym.tp)
         }
       }

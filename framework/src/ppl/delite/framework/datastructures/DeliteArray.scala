@@ -717,8 +717,8 @@ trait CudaGenDeliteArrayOps extends BaseGenDeliteArrayOps with CudaGenFat with C
   }
 
   override def remapHost[A](m: Manifest[A]): String = {
-    if(isArrayType(baseType(m))) {
-      m.typeArguments(0) match {
+    if(isArrayType(m)) {
+      m.typeArguments.head match {
         case StructType(_,_) if Config.soaEnabled => super.remapHost(m)
         case s if s <:< manifest[Record] && Config.soaEnabled => super.remapHost(m)  
         case arg => hostTarget + "DeliteArray< " + remapHost(arg) + addRef(arg) + " >"
@@ -728,14 +728,17 @@ trait CudaGenDeliteArrayOps extends BaseGenDeliteArrayOps with CudaGenFat with C
       super.remapHost(m)
   }
 
-  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
-    case "DeliteArray" => m.typeArguments(0) match {
-      //case p if !isPrimitiveType(p) => throw new GenerationFailedException("DeliteArray of type object is not supported on this branch.")
-      case StructType(_,_) if Config.soaEnabled => super.remap(m)
-      case s if s <:< manifest[Record] && Config.soaEnabled => super.remap(m) // occurs due to restaging
-      case arg => deviceTarget + "DeliteArray< " + remap(arg) + " >"
+  override def remap[A](m: Manifest[A]): String = {
+    if (isArrayType(m)) {
+      m.typeArguments.head match {
+        //case p if !isPrimitiveType(p) => throw new GenerationFailedException("DeliteArray of type object is not supported on this branch.")
+        case StructType(_,_) if Config.soaEnabled => super.remap(m)
+        case s if s <:< manifest[Record] && Config.soaEnabled => super.remap(m) // occurs due to restaging
+        case arg => deviceTarget + "DeliteArray< " + remap(arg) + " >"
+      }
     }
-    case _ => super.remap(m)
+    else
+      super.remap(m)
   }
 
   override def getDataStructureHeaders(): String = {
@@ -793,16 +796,17 @@ trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenDeliteStruct wit
       val nestedApply = if (idx.length > 1) idx.take(idx.length-1).map(i=>"apply("+quote(i)+")").mkString("","->","->") else ""
       stream.println(quote(struct) + fields.mkString("->","->","->") + nestedApply + "update(" + quote(idx(idx.length-1)) + "," + quote(x) + ");")
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
-      //TODO: use memcpy?
-      stream.println("for(int i=0; i<" + quote(len) + "; i++) {")
-      stream.println(quote(dest) + "->update(" + quote(destPos) + "+i," + quote(src) + "->apply(" + quote(srcPos) + "+i));")
-      stream.println("}")
+      stream.println("if((" + quote(src) + "->data==" + quote(dest) + "->data) && (" + quote(srcPos) + "<" + quote(destPos) + "))")
+      stream.println("std::copy_backward(" + quote(src) + "->data+" + quote(srcPos) + "," + quote(src) + "->data+" + quote(srcPos) + "+" + quote(len) + "," + quote(dest) + "->data+" + quote(destPos) + "+" + quote(len) + ");")
+      stream.println("else ")
+      stream.println("std::copy(" + quote(src) + "->data+" + quote(srcPos) + "," + quote(src) + "->data+" + quote(srcPos) + "+" + quote(len) + "," + quote(dest) + "->data+" + quote(destPos) + ");")
     case sc@StructCopy(src,srcPos,struct,fields,destPos,len) =>
       val nestedApply = if (destPos.length > 1) destPos.take(destPos.length-1).map(i=>"apply("+quote(i)+")").mkString("","->","->") else ""
       val dest = quote(struct) + fields.mkString("->","->","->") + nestedApply
-      val elemType = remapWithRef(src.tp.typeArguments(0))
-      //NOTE: memcpy may result in undefined behavior when src/dst have overlapping regions. memmove guarantees correctness.
-      stream.println("memmove((" + dest + "data)+" + quote(destPos(destPos.length-1)) + ",(" + quote(src) + "->data)+" + quote(srcPos) + "," + quote(len) + "*sizeof(" + elemType + "));")
+      stream.println("if((" + quote(src) + "->data==" + dest + "data) && (" + quote(srcPos) + "<" + quote(destPos(destPos.length-1)) + "))")
+      stream.println("std::copy_backward(" + quote(src) + "->data+" + quote(srcPos) + "," + quote(src) + "->data+" + quote(srcPos) + "+" + quote(len) + "," + dest + "data+" + quote(destPos(destPos.length-1)) + "+" + quote(len) + ");")
+      stream.println("else")
+      stream.println("std::copy(" + quote(src) + "->data+" + quote(srcPos) + "," + quote(src) + "->data+" + quote(srcPos) + "+" + quote(len) + "," + dest + "data+" + quote(destPos(destPos.length-1)) + ");")
     case DeliteArrayUnion(lhs,rhs) =>
       emitValDef(sym, quote(lhs) + "->arrayunion(" + quote(rhs) + ")")
     case DeliteArrayIntersect(lhs,rhs) =>
@@ -869,26 +873,21 @@ trait CGenDeliteArrayOps extends BaseGenDeliteArrayOps with CGenDeliteStruct wit
 #include <map>
 
 using namespace std;
-extern map<int,int> *RefCnt;
-extern pthread_mutex_t RefCntLock;
 
 class __T__ {
 public:
   __TARG__ *data;
   int length;
-  int id;
   
   __T__(int _length) {
-    data = new __TARG__[_length];
+    data = new __TARG__[_length]();
     length = _length;
-    id = 0;
     //printf("allocated __T__, size %d, %p\n",_length,this);
   }
 
   __T__(__TARG__ *_data, int _length) {
     data = _data;
     length = _length;
-    id = 0;
   }
 
   __TARG__ apply(int idx) {
@@ -902,53 +901,12 @@ public:
   void print(void) {
     printf("length is %d\n", length);
   }
-
-  void setGlobalRefCnt(int cnt) {
-    // need lock?
-    printf("setting the global ref count for %d to %d\n",id,cnt);
-    pthread_mutex_lock(&RefCntLock);
-    std::map<int,int>::iterator it = RefCnt->find(id);
-    if(it==RefCnt->end())
-      RefCnt->insert(std::pair<int,int>(id,cnt));
-    else
-      it->second = cnt;
-    pthread_mutex_unlock(&RefCntLock);
-  }
 };
 
 struct __T__D {
   void operator()(__T__ *p) {
     //printf("__T__: deleting %p\n",p);
     delete[] p->data;
-    /*
-    if(p->id == 0) {
-      printf("__T__: deleting locally\n");
-      delete[] p->data;
-    }
-    else {
-      pthread_mutex_lock(&RefCntLock);
-      std::map<int,int>::iterator it = RefCnt->find(p->id);
-      if(it==RefCnt->end()) {
-        printf("__T__: warning! key not found %d\n",p->id);
-        pthread_mutex_unlock(&RefCntLock);
-      }
-      else {
-        int cnt = it->second;
-        if(cnt == 1) {
-          printf("__T__ freeing data id: %d!\n",p->id);
-          RefCnt->erase(p->id);
-          pthread_mutex_unlock(&RefCntLock);   
-          delete[] p->data;
-          //TODO: delete p
-        }
-        else {
-          printf("__T__ id:%d decrementing global ref count: %d -> %d\n", p->id, cnt, cnt-1);
-          it->second = cnt - 1;
-          pthread_mutex_unlock(&RefCntLock);  
-        }
-      }
-    }
-    */
   }
 };
 
@@ -956,10 +914,9 @@ struct __T__D {
 
   private def emitDeliteArray(m: Manifest[_], path: String, header: PrintWriter) {
     try {
-      //Need this check?
-      val mString = unwrapSharedPtr(remap(m))
       val mArg = m.typeArguments(0)
-      val mArgString = unwrapSharedPtr(remap(mArg))
+      val mString = if (cppMemMgr == "refcnt") unwrapSharedPtr(remap(m)) else remap(m)
+      val mArgString = if (cppMemMgr == "refcnt") unwrapSharedPtr(remap(mArg)) else remap(mArg)
       val shouldGenerate = mArg match {
         case StructType(_,_) if Config.soaEnabled => false 
         case s if s <:< manifest[Record] && Config.soaEnabled => false 
@@ -970,7 +927,7 @@ struct __T__D {
         stream.println("#ifndef __" + mString + "__")
         stream.println("#define __" + mString + "__")
         if(!isPrimitiveType(mArg)) stream.println("#include \"" + mArgString + ".h\"")
-        stream.println(deliteArrayString.replaceAll("__T__",mString).replaceAll("__TARG__",remap(mArg)))    
+        stream.println(deliteArrayString.replaceAll("__T__",mString).replaceAll("__TARG__",remapWithRef(mArg)))
         stream.println("#endif")
         stream.close()
         header.println("#include \"" + mString + ".h\"")

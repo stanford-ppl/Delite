@@ -103,17 +103,12 @@ trait DeliteCGenVariables extends CGenEffect with DeliteCLikeGenVariables with C
 #include <pthread.h>
 #include <map>
 
-extern std::map<int,int> *RefCnt;
-extern pthread_mutex_t RefCntLock;
-
 class __T__ {
 public:
   __TARG__ data;
-  int id;
 
   __T__(__TARG__ _data) {
     data = _data;
-    id = 0;
   }
 
   __TARG__ get(void) {
@@ -123,63 +118,30 @@ public:
   void set(__TARG__ newVal) {
       data = newVal;
   }    
-
-  void setGlobalRefCnt(int cnt) {
-    // need lock?
-    printf("setting the global ref count for %d to %d\n",id,cnt);
-    pthread_mutex_lock(&RefCntLock);
-    std::map<int,int>::iterator it = RefCnt->find(id);
-    if(it==RefCnt->end())
-      RefCnt->insert(std::pair<int,int>(id,cnt));
-    else
-      it->second = cnt;
-    pthread_mutex_unlock(&RefCntLock);
-  }
 };
 
 struct __T__D {
   void operator()(__T__ *p) {
     //printf("__T__: deleting %p\n",p);
     __DESTRUCT_ELEMS__
-    /*
-    if(p->id == 0) {
-      printf("__T__: deleting locally\n");
-      __DESTRUCT_ELEMS__
-    }
-    else {
-      pthread_mutex_lock(&RefCntLock);
-      std::map<int,int>::iterator it = RefCnt->find(p->id);
-      if(it==RefCnt->end()) {
-        printf("__T__: warning! key not found %d\n",p->id);
-        pthread_mutex_unlock(&RefCntLock);
-      }
-      else {
-        int cnt = it->second;
-        if(cnt == 1) {
-          printf("__T__: freeing data id: %d!\n",p->id);
-          RefCnt->erase(p->id);
-          pthread_mutex_unlock(&RefCntLock);
-          __DESTRUCT_ELEMS__
-        }
-        else {
-          printf("__T__ id:%d decrementing global ref count: %d -> %d\n", p->id, cnt, cnt-1);
-          it->second = cnt - 1;
-          pthread_mutex_unlock(&RefCntLock);
-        }
-      }
-    }
-    */
   }
 };
 
 """
-  
+
+  private def shouldGenerate(m: Manifest[_]): Boolean = m match {
+    case _ if (isPrimitiveType(m)) => true
+    case _ if (isArrayType(m)) => true
+    case _ if (encounteredStructs.contains(structName(baseType(m)))) => true
+    case _ => false
+  }
+
   override def emitDataStructures(path: String) {
     super.emitDataStructures(path)
     val stream = new PrintWriter(path + deviceTarget + "DeliteVariables.h")
     stream.println("#include \"" + deviceTarget + "DeliteStructs.h\"")
     stream.println("#include \"" + deviceTarget + "DeliteArrays.h\"")
-    for((tp,name) <- dsTypesList if(!isVoidType(name))) {
+    for((tp,name) <- dsTypesList if shouldGenerate(tp)) {
       emitDeliteVariable(tp, path, stream)
     }
     stream.close()

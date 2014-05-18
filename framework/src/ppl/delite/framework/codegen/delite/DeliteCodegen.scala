@@ -175,7 +175,15 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     }
     for (gen <- generators) {
       gen match {
-        case g: CLikeCodegen => nestedManifests(args(0).tp) foreach { m => g.dsTypesList.add((m,g.remap(m))) }
+        case g: CLikeCodegen => nestedManifests(args(0).tp) foreach { m =>
+          try {
+            g.dsTypesList.add((m,g.remap(m)))
+          }
+          catch {
+            case e: GenerationFailedException => None
+            case e: Exception => throw(e)
+          }
+        }
         case _ => //
       }
     }

@@ -109,17 +109,16 @@ trait CppExecutableGenerator extends ExecutableGenerator {
    
     if (!returnsResult) {
       for (name <- op.getOutputs if(op.outputType(Targets.Cpp,name)!="void")) {
-        out.append(op.outputType(Targets.Cpp, name))
-        //if (!isPrimitiveType(op.outputType(name))) out.append('*')
+        out.append(op.outputType(Targets.Cpp, name) + addRef(op.outputType(name)))
         out.append(" " + getSymHost(op,name) + " = " + resultName + "->" + name + ";\n")
-        //if (!isPrimitiveType(op.outputType(name)))
-        //  out.append(resultName + "->" + name + ".reset();")
       }
       // Delete activation record and multiloop header
       assert(op.isInstanceOf[OP_MultiLoop] && op.getInputs.size==1)
-      val (multiloop_h_op,multiloop_h_sym) = op.getInputs.head
-      out.append("delete " + resultName + ";\n")
-      out.append("delete " + getSymHost(multiloop_h_op,multiloop_h_sym) + ";\n")
+      if (Config.cppMemMgr == "refcnt") {
+        val (multiloop_h_op,multiloop_h_sym) = op.getInputs.head
+        out.append("delete " + resultName + ";\n")
+        out.append("delete " + getSymHost(multiloop_h_op,multiloop_h_sym) + ";\n")
+      }
     }
   }
 

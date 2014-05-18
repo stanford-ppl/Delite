@@ -128,14 +128,13 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     out.append("\",\"()")
     out.append(getJNIOutputType(dep.outputType(Targets.Scala,sym)))
     out.append("\"));\n")
-    val ref = "" //if (isPrimitiveType(dep.outputType(sym))) "" else "*"
     val devType = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
     if (view)
-      out.append("%s %s%s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
+      out.append("%s %s%s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(devType,addRef(dep.outputType(sym)),getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
     else if(isPurePrimitiveType(dep.outputType(sym)))
       out.append("%s %s = (%s)%s;\n".format(devType,getSymHost(dep,sym),devType,getSymCPU(sym)))
     else
-      out.append("%s %s%s = recvCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
+      out.append("%s %s%s = recvCPPfromJVM_%s(env%s,%s);\n".format(devType,addRef(dep.outputType(sym)),getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
   }
 
   private def writeAwaiter(dep: DeliteOP, sym: String = "") {
@@ -291,8 +290,8 @@ trait CppToCppSync extends SyncGenerator with CppExecutableGenerator with JNIFun
     val tpe = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
     out.append(tpe)
     out.append(' ')
-    //if (!isPrimitiveType(dep.outputType(sym))) out.append(" *")
     if (tpe.startsWith("MultiLoopHeader")) out.append(" *")
+    else out.append(addRef(dep.outputType(sym)))
     out.append(getSymHost(dep, sym))
     out.append(" = ")
     out.append("get")

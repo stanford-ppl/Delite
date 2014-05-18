@@ -40,7 +40,7 @@ object Config {
   val taskQueueSize: Int = getProperty("delite.task.queue.size", "1024").toInt
 
   // memory management type for C++ target (refcnt or gc)
-  val cppMemMgr = System.getProperty("delite.cpp.memmgr","refcnt")
+  val cppMemMgr = System.getProperty("delite.cpp.memmgr","malloc")
 
   /* GPU optimization */
   val gpuOptTrans: Boolean = getProperty("delite.gpu.opt.trans", "false") != "false"

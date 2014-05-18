@@ -3668,8 +3668,10 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   def nullRef: String = "NULL"
 
   private def emitFieldsAndConstructor() {
-    val fields = kernelInputVals.map(i => remapWithRef(i.tp) + quote(i)) ++ kernelInputVars.map(i => remapWithRef(deviceTarget + "Ref<" + remap(i.tp) + ">") + quote(i))
-    val constructorInputs = kernelInputVals.map(i => remapWithRef(i.tp) + " _" + quote(i)) ++ kernelInputVars.map(i => remapWithRef(deviceTarget + "Ref<" + remap(i.tp) + ">") + " _" + quote(i))
+    val fields = if (cppMemMgr == "refcnt") kernelInputVals.map(i => remapWithRef(i.tp) + quote(i)) ++ kernelInputVars.map(i => wrapSharedPtr(deviceTarget.toString + "Ref" + unwrapSharedPtr(remap(i.tp))) + " " + quote(i))
+                 else kernelInputVals.map(i => remapWithRef(i.tp) + quote(i)) ++ kernelInputVars.map(i => remapWithRef(deviceTarget.toString + "Ref" + remap(i.tp)) + quote(i))
+    val constructorInputs = if (cppMemMgr == "refcnt") kernelInputVals.map(i => remapWithRef(i.tp) + " _" + quote(i)) ++ kernelInputVars.map(i => wrapSharedPtr(deviceTarget.toString + "Ref" + unwrapSharedPtr(remap(i.tp))) + " _" + quote(i))
+                            else kernelInputVals.map(i => remapWithRef(i.tp) + " _" + quote(i)) ++ kernelInputVars.map(i => remapWithRef(deviceTarget.toString + "Ref" + remap(i.tp)) + " _" + quote(i))
 
     //print fields
     stream.println(fields.map(_ + ";\n").mkString(""))
