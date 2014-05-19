@@ -35,6 +35,7 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
 
   protected def writeMethodHeader() {
     out.append("def run() {\n")
+    out.append("val threadName = Thread.currentThread.getName()\n")
   }
 
   protected def writeMethodFooter() {
@@ -58,11 +59,13 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
     def resultName = if (returnsResult) getSym(op, op.getOutputs.head) else getOpSym(op)
 
     if (op.task == null) return //dummy op
-    if (Config.profile)
-      out.append("MemoryProfiler.pushNameOfCurrKernel(Thread.currentThread.getName(),\"" + op.id + "\")\n")
+    if (Config.profile) {
+      out.append("MemoryProfiler.pushNameOfCurrKernel(threadName,\"" + op.id + "\")\n")
+      if (!op.isInstanceOf[OP_MultiLoop]) {
+        out.append("PerformanceTimer.start(\""+op.id+"\", threadName, false)\n")
+      }
+    }
 
-    if (Config.profile && !op.isInstanceOf[OP_MultiLoop])
-      out.append("PerformanceTimer.start(\""+op.id+"\", Thread.currentThread.getName(), false)\n")
     out.append("val ")
     out.append(resultName)
     out.append(" : ")
@@ -77,11 +80,14 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
       out.append(getSym(input, name))
     }
     out.append(")\n")
-    if (Config.profile && !op.isInstanceOf[OP_MultiLoop])
-      out.append("PerformanceTimer.stop(\""+op.id+"\", false)\n")
 
-    if (Config.profile)
-      out.append("MemoryProfiler.popNameOfCurrKernel(Thread.currentThread.getName())\n")
+    if (Config.profile) {
+      if (!op.isInstanceOf[OP_MultiLoop]) {
+        out.append("PerformanceTimer.stop(\""+op.id+"\", threadName, false)\n")
+      }
+
+      out.append("MemoryProfiler.popNameOfCurrKernel(threadName)\n")
+    }
 
     if (!returnsResult) {
       for (name <- op.getOutputs) {

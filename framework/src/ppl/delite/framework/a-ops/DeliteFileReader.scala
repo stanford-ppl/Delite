@@ -92,10 +92,10 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@DeliteOpFileReaderReadLines(path,func) => reflectPure(new { override val original = Some(f,e) } with DeliteOpFileReaderReadLines(f(path),f(func))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case Reflect(e@DeliteOpFileReaderReadLines(path,func), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteOpFileReaderReadLines(f(path),f(func))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
-    case e@DeliteOpFileReader(paths, func) => reflectPure(new { override val original = Some(f,e) } with DeliteOpFileReader(f(paths),f(func))(e.dmA))(mtype(manifest[A]),implicitly[SourceContext])
-    case Reflect(e@DeliteOpFileReader(paths,func), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteOpFileReader(f(paths),f(func))(e.dmA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
-    case e@DeliteOpFileReaderFlat(paths, func) => reflectPure(new { override val original = Some(f,e) } with DeliteOpFileReaderFlat(f(paths),f(func))(e.dmA))(mtype(manifest[A]),implicitly[SourceContext])
-    case Reflect(e@DeliteOpFileReaderFlat(paths,func), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteOpFileReaderFlat(f(paths),f(func))(e.dmA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case e@DeliteOpFileReader(paths, func) => reflectPure(new { override val original = Some(f,e) } with DeliteOpFileReader(f(paths),f(func))(e.dmA,ctx))(mtype(manifest[A]),implicitly[SourceContext])
+    case Reflect(e@DeliteOpFileReader(paths,func), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteOpFileReader(f(paths),f(func))(e.dmA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case e@DeliteOpFileReaderFlat(paths, func) => reflectPure(new { override val original = Some(f,e) } with DeliteOpFileReaderFlat(f(paths),f(func))(e.dmA,ctx))(mtype(manifest[A]),implicitly[SourceContext])
+    case Reflect(e@DeliteOpFileReaderFlat(paths,func), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteOpFileReaderFlat(f(paths),f(func))(e.dmA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case DeliteFileStreamNew(paths) => dfs_new(f(paths))
     case Reflect(DeliteFileStreamNew(paths), u, es) => reflectMirrored(Reflect(DeliteFileStreamNew(f(paths)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case DeliteFileStreamReadLine(stream,idx) => dfs_readLine(f(stream),f(idx))
@@ -113,18 +113,18 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
   def dfs_new(paths: Seq[Exp[String]])(implicit pos: SourceContext) = reflectPure(DeliteFileStreamNew(paths))
 
   case class DeliteFileStreamReadLine(stream: Exp[DeliteFileStream], idx: Exp[Int]) extends Def[String]
-  def dfs_readLine(stream: Exp[DeliteFileStream], idx: Exp[Int]): Exp[String] = reflectPure(DeliteFileStreamReadLine(stream, idx))
+  def dfs_readLine(stream: Exp[DeliteFileStream], idx: Exp[Int])(implicit pos: SourceContext): Exp[String] = reflectPure(DeliteFileStreamReadLine(stream, idx))
 
   case class DeliteFileStreamSize(stream: Exp[DeliteFileStream]) extends Def[Long]
-  def dfs_size(stream: Exp[DeliteFileStream]): Exp[Long] = reflectPure(DeliteFileStreamSize(stream))
+  def dfs_size(stream: Exp[DeliteFileStream])(implicit pos: SourceContext): Exp[Long] = reflectPure(DeliteFileStreamSize(stream))
 
   case class DeliteFileStreamNumThreads(stream: Exp[DeliteFileStream]) extends Def[Int]
-  def dfs_numThreads(stream: Exp[DeliteFileStream]) = reflectPure(DeliteFileStreamNumThreads(stream))
+  def dfs_numThreads(stream: Exp[DeliteFileStream])(implicit pos: SourceContext) = reflectPure(DeliteFileStreamNumThreads(stream))
 
   def dnfw_readLines[A:Manifest](paths: Seq[Exp[String]], f: Exp[String] => Exp[A])(implicit pos: SourceContext) = reflectPure(DeliteOpFileReader(paths, f))
   def dnfw_readLinesFlattened[A:Manifest](paths: Seq[Exp[String]], f: Exp[String] => Exp[DeliteCollection[A]])(implicit pos: SourceContext) = reflectPure(DeliteOpFileReaderFlat(paths, f))
 
-  case class DeliteOpFileReader[A:Manifest](paths: Seq[Exp[String]], func: Exp[String] => Exp[A]) extends DeliteOpFileReaderI[A,DeliteArray[A],DeliteArray[A]] {
+  case class DeliteOpFileReader[A:Manifest](paths: Seq[Exp[String]], func: Exp[String] => Exp[A])(implicit pos: SourceContext) extends DeliteOpFileReaderI[A,DeliteArray[A],DeliteArray[A]] {
     val inputStream = DeliteFileStream(paths)
     val size = copyTransformedOrElse(_.size)(dfs_numThreads(inputStream))
     def finalizer(x: Exp[DeliteArray[A]]) = x
@@ -149,7 +149,7 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
     val dmCA = manifest[CA]
   }
 
-  case class DeliteOpFileReaderFlat[A:Manifest](paths: Seq[Exp[String]], func: Exp[String] => Exp[DeliteCollection[A]]) extends DeliteOpFileReaderFlatI[A,DeliteArray[A],DeliteArray[A]] {
+  case class DeliteOpFileReaderFlat[A:Manifest](paths: Seq[Exp[String]], func: Exp[String] => Exp[DeliteCollection[A]])(implicit pos: SourceContext) extends DeliteOpFileReaderFlatI[A,DeliteArray[A],DeliteArray[A]] {
     val inputStream = DeliteFileStream(paths)
     val size = copyTransformedOrElse(_.size)(dfs_numThreads(inputStream))
     def finalizer(x: Exp[DeliteArray[A]]) = x

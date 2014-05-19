@@ -50,11 +50,12 @@
 							<li>
 								<a href="#">
 									<span>Metric</span>	
-									<select id="colorSchemeForGraph">
-										<option value="datadeps">Data Deps</option>
-										<option value="time">Exec Time</option>
+									<select id="globalStatsMetric">
+										<option value="degView">DEG View</option>
+										<option value="performance">Performance</option>
 										<option value="memUsage">Mem Usage</option>
 										<option value="threadLevelSyncStats">Thread Sync</option>
+										<option value="ticTocRegionStats">Tic-Toc Regions</option>
 									</select>
 								</a>
 							</li>
@@ -148,8 +149,12 @@
 			</div>
 			<div id="right">
 				<div id="code"></div>
-				<div id="dfg">
+				<div id="dfgHeader">
+					<label for="globalViewOptions" id="globalViewOptionsLabel">Global View</label>
+					<select id="globalViewOptions">
+					</select>
 				</div>
+				<div id="dfg"></div>
 				<div id="timeline"></div>
 			</div>
 		</div>
@@ -177,7 +182,7 @@
 	    	viewState.degFile = ""
 	    	viewState.profileDataFile = ""
 	    	viewState.highlightedLine = new aceRange(0,0,0,0)
-	    	viewState.graphViewMode = $("#colorSchemeForGraph").val()
+	    	viewState.globalStatsMetric = ""
 	    	viewState.selectedLevel = -1
 
 	    	var config = {}
@@ -219,30 +224,50 @@
 	      		return d.name + " (" + d.syncTimePct + "%)"
 	      	}
 
-	      	$("#colorSchemeForGraph").change(function() {
-	      		var colorScheme = $(this).val()
-	      		if (colorScheme == "time") {
-	      			$('.dataflowSvg').hide()
-	      			$("#dfg").css("overflow-y", "auto")
-	      			$(".barChart").remove()
+	      	var getDisplayTextForRegionsData = function(d) {
+	      		return d.name + " (" + d.percentage_time + "%)"
+	      	}
+
+	      	function onChangeRegionOption() {
+	      		if (viewState.globalStatsMetric == "ticTocRegionStats") {
+	      			var selectedRegionName = $(this).val()
+	      			if (selectedRegionName == "__global") {
+	      				displayOverallRegionsData()	
+	      			} else { // display overall percentage data for regions
+	      				var regions = profData.timelineData.ticTocRegions
+	      				var selectedRegion = regions.filter(function(r) {return r.name == selectedRegionName})[0]
+	      				displayKernelInfoForRegion(selectedRegion)
+	      			}
+	      		}
+	      	}
+
+	      	function onChangeDEGViewOption() {
+	      		var view = $(this).val()
+	      		graphController.changeColoringScheme(view)
+	      	}
+
+	      	$("#globalStatsMetric").change(function() {
+	      		var metric = $(this).val()
+	      		if (metric == "performance") {
+	      			clearDivForBarChartDisplay()
 	      			createBarChart("#dfg", topNodesBasedOnTime, "percentage_time", getDisplayTextForTime, config)
-	      		} else if (colorScheme == "memUsage") {
-	      			$('.dataflowSvg').hide()
-	      			$("#dfg").css("overflow-y", "auto")
-	      			$(".barChart").remove()
+	      		} else if (metric == "memUsage") {
+	      			clearDivForBarChartDisplay()
 	      			createBarChart("#dfg", topNodesBasedOnMemUsage, "memUsage", getDisplayTextForMemUsage, config)
-	      		} else if (colorScheme == "threadLevelSyncStats") {
-	      			$('.dataflowSvg').hide()
-	      			$("#dfg").css("overflow-y", "auto")
-	      			$(".barChart").remove()
+	      		} else if (metric == "threadLevelSyncStats") {
+	      			clearDivForBarChartDisplay()
 	      			createBarChart("#dfg", threadLevelSyncStats, "syncTimePct", getDisplayTextForThreadLevelSync, config)
-	      		} else {
+	      		} else if (metric == "ticTocRegionStats") {
+	      			displayOverallRegionsData()
+	      		} else if (metric == "degView") {
 	      			$(".barChart").hide()
 	      			$("#dfg").css("overflow-y", "hidden")
 	      			$('.dataflowSvg').show()
-		      		graphController.changeColoringScheme(colorScheme)
-		      		viewState.graphViewMode = colorScheme
+		      		setUpSelectTagForDEGView()
+		      		graphController.changeColoringScheme("dataDeps")
 		      	}
+
+		      	setGlobalStatsMetric(metric)
 	      	})
 
 	      	$('#timelineZoom').keyup(function(event){
@@ -260,9 +285,81 @@
 	      	$("#timelineLevelFilter").change(filterNodesOnTimeline)
 	      	$('#startButton').click(startDebugSession)
 
+	      	function setUpSelectTagForDEGView() {
+	      		var sel = $("#globalViewOptions").empty()
+	      		var views = ["dataDeps", "memUsage", "performance"]
+	      		var viewLabels = ["Data Dependencies", "Memory Allocation", "Performance"]
+	      		$.each(views, function(i, v) {
+	      			sel.append($("<option/>", {
+	      				value: v,
+	      				text: viewLabels[i]
+	      			}))
+	      		})
+
+	      		$("#globalViewOptions").change(onChangeDEGViewOption)
+	      	}
+
+	      	function setUpSelectTagForRegions(regions) {
+	      		var sel = $("#globalViewOptions").empty()
+	      		sel.append('<option value="__global">All</option>')
+	      		$.each(regions, function(i, r) {
+	      			sel.append($("<option/>", {
+				        value: r.name,
+				        text: r.name
+				    }))
+	      		})
+
+      			$("#globalViewOptions").change(onChangeRegionOption)
+	      	}
+
+	      	function displayOverallRegionsData() {
+	      		clearDivForBarChartDisplay()
+      			var regions = profData.timelineData.ticTocRegions
+      			createBarChart("#dfg", regions, "percentage_time", getDisplayTextForRegionsData, config)
+      			setUpSelectTagForRegions(regions)
+	      	}
+
+	      	function displayKernelInfoForRegion(region) {
+	      		function getDisplayText(d) {
+	      			var timeInMs = (d.abs / 1000).toFixed(0)
+		      		return d.name + " (" + d.abs + "ms : " + d.pct + "%)"
+		      	}
+
+	      		var childNodes = []
+  				var childToPerf = region.childToPerf
+  				for (k in region.childToPerf) {
+  					var o = {}
+  					o.name = k
+  					o.id = childToPerf[k].id
+  					o.abs = childToPerf[k].abs
+  					o.pct = childToPerf[k].pct
+  					childNodes.push(o)
+  				}
+
+  				childNodes.sort(function(a,b) {return b.pct - a.pct})
+  				clearDivForBarChartDisplay()
+  				createBarChart("#dfg", childNodes, "pct", getDisplayText, config)
+	      	}
+
+	      	function clearDivForBarChartDisplay() {
+				$('.dataflowSvg').hide()
+      			$("#dfg").css("overflow-y", "auto")
+      			$(".barChart").remove()
+	      	}
+
+	      	function setGlobalStatsMetric(metric) {
+	      		viewState.globalStatsMetric = metric
+	      		$("#globalViewOptionsLabel").text($("#globalStatsMetric option:selected").text())
+
+	      		if ((metric == "ticTocRegionStats") || (metric == "degView")) {
+	      			$("#globalViewOptions").css("opacity", 1)
+	      		} else {
+	      			$("#globalViewOptions").css("opacity", 0)
+	      		}
+	      	}
+
 			function filterNodesOnTimeline() {
 				var selectedLevel = parseInt($("#timelineLevelFilter").val())
-	      		console.log(selectedLevel)
 	      		for (var i = 0; i < 4; i++) {
 	      			var filter = "level=level-" + i
 	      			if (i != selectedLevel) {
@@ -359,6 +456,9 @@
 
 			function startDebugSession() {
 				if ((viewState.degFile != "") && (viewState.profileDataFile != "")) {
+					setGlobalStatsMetric($("#globalStatsMetric").val())
+					setUpSelectTagForDEGView()
+
 					editor = createEditor("code")
 		      		profData = getProfileData(degOps, profileData.Profile, config)
 		      		graphController = createDataFlowGraph(cola, "#dfg", profData.dependencyData, viewState, config)
@@ -389,9 +489,8 @@
 			}
 
 			$(document).ready(function () {
-				console.log($("#container").width())
-				console.log($("#accordian").width())
 				$("#right").css("width", $("#container").width() - $("#accordian").width())
+				$("#dfg").css("height", $("#dfg").height() - $("#dfgHeader").height())
 				/*
 				$('#accordian > ul > li').click(function() {
 					$("#accordian ul li").removeClass("active")

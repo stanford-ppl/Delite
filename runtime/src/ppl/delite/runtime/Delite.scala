@@ -130,26 +130,31 @@ object Delite {
         DeliteMesosExecutor.awaitWork()
       }
       else { //master executor (including single-node execution)
+        val totalNumThreads = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL
+        PerformanceTimer.initializeStats(totalNumThreads)
+        MemoryProfiler.initializeStats(totalNumThreads)
         val numTimes = Config.numRuns
+        
         for (i <- 1 to numTimes) {
           println("Beginning Execution Run " + i)
+          PerformanceTimer.clearAll()
           val globalStart = System.currentTimeMillis
           val globalStartNanos = System.nanoTime()
           PerformanceTimer.start("all", false)
           executor.run(executable)
           EOP_Global.await //await the end of the application program
           PerformanceTimer.stop("all", false)
-          PerformanceTimer.printAll(globalStart, globalStartNanos)
+          //PerformanceTimer.printAll(globalStart, globalStartNanos)
           if (Config.dumpProfile) PerformanceTimer.dumpProfile(globalStart, globalStartNanos)
-          if (Config.dumpStats) PerformanceTimer.dumpStats()        
+          //if (Config.dumpStats) PerformanceTimer.dumpStats()        
           System.gc()
         }
       }
 
       //println("Done Executing " + numTimes + " Runs")
       
-      if(Config.dumpStats)
-        PerformanceTimer.dumpStats()
+      //if(Config.dumpStats)
+        //PerformanceTimer.dumpStats()
 
       executor.shutdown()
     }

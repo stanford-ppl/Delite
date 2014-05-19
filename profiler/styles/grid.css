@@ -25,11 +25,20 @@
   	height: 70%;
 }
 
+#dfgHeader {
+	position: absolute;
+  	width: 50%;
+  	height: 35px;
+  	left: 50%;
+  	background: #DDD;
+}
+
 #dfg {
 	position: absolute;
   	width: 50%;
   	height: 70%;
   	left: 50%;
+  	top: 35px;
 }
 
 #timeline {
@@ -38,4 +47,15 @@
   	width: 100%;
   	height: 30%;
   	top: 70%;
+}
+
+#globalViewOptions {
+	margin-top: 7;
+	opacity: 0;
+}
+
+#globalViewOptionsLabel {
+	margin: 12 15 0 10;
+	font-family: arial;
+	font-size: 11;
 }
