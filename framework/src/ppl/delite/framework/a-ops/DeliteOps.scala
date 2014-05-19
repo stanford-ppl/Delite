@@ -1835,14 +1835,16 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitValDef(quotedGroup + "_sze", remap(manifest[Int]), fieldAccess(fieldAccess(prefixSym, quotedGroup + "_hash_pos"), "size"))
         kps foreach {
           case (sym, elem: DeliteHashCollectElem[_,_,_,_,_,_]) => //TODO: finalizer
-            emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_data"))
-            getActBuffer = List(quote(elem.buf.allocVal))
             if (prefixSym == "") {
+              emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_hash_data"))
+              getActBuffer = List(quote(elem.buf.allocVal))
               emitAssignment(quote(elem.buf.sV), quotedGroup + "_sze")
               emitBlock(elem.buf.setSize)
               emitValDef(quote(sym), remap(sym.tp), quote(elem.buf.allocVal))
             }
             else {
+              emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_data"))
+              getActBuffer = List(quote(elem.buf.allocVal))
               emitValDef(quote(elem.buf.sV), remap(elem.buf.sV.tp), quotedGroup + "_sze")
               emitBlock(elem.buf.setSize)
               emitAssignment(fieldAccess(prefixSym, quote(sym)), quote(elem.buf.allocVal))
