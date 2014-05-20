@@ -26,6 +26,7 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
 
   protected def writeHeader() {
     out.append("#include \""+CppMultiLoopHeaderGenerator.className(master) + ".cpp\"\n")
+    out.append("#include \"DeliteCppProfiler.h\"\n")
     CppMultiLoopHeaderGenerator.headerList += kernelSignature + ";\n"
   }
 
@@ -96,10 +97,15 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
     "neighbor"+syncObject+idx
   }
 
-  //TODO: add profiling for c++ kernels
-  protected def beginProfile() { }
+  protected def beginProfile() {
+    val chunkName = master.id + "_" + chunkIdx
+    out.append("DeliteCppTimerStart(" + chunkIdx + ",\""+chunkName+"\");\n")
+  }
 
-  protected def endProfile() {  }
+  protected def endProfile() {
+    val chunkName = master.id + "_" + chunkIdx
+    out.append("DeliteCppTimerStop(" + chunkIdx + ",\""+chunkName+"\");\n")
+  }
 
   protected def kernelName = {
     "MultiLoop_" + master.id + "_Chunk_" + chunkIdx

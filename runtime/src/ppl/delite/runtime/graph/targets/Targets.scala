@@ -111,4 +111,16 @@ object Targets extends Enumeration {
     else throw new RuntimeException("requested location " + location + " is not in the range of available resources.")
   }
 
+  // get the relative location within a resource type
+  def getRelativeLocation(location: Int): Int = {
+    getByLocation(location) match {
+      case Targets.Scala => location
+      case Targets.Cpp => location - Config.numThreads
+      case Targets.Cuda => location - Config.numThreads - Config.numCpp
+      case Targets.OpenCL => location - Config.numThreads - Config.numCpp - Config.numCuda
+      case t => throw new RuntimeException("unkown resource type (" + t + ") for location " + location)
+    }
+
+  }
+
 }
