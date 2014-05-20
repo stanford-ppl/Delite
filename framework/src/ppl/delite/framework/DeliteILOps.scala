@@ -111,7 +111,8 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
         allocRaw = reifyEffects(callocRaw(allocVal,sV)),
         copyRaw = reifyEffects(ccopyRaw(aV2,iV,allocVal,iV2,sV)),
         finalizer = reifyEffects(this.finalizer(allocVal))
-      )
+      ),
+      numDynamicChunks = this.numDynamicChunks
     ))
     
     val mA = manifest[A]
@@ -144,7 +145,8 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
   
   case class DeliteILForeach[A:Manifest](size: Exp[Int], ffunc: Exp[Int] => Exp[Unit]) extends DeliteOpLoop[Unit] {
     lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
-      func = reifyEffects(ffunc(v))   
+      func = reifyEffects(ffunc(v)),
+      numDynamicChunks = this.numDynamicChunks   
     ))    
     
     val mA = manifest[A]
@@ -165,7 +167,8 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
       accInit = reifyEffects(raccInit()),
       rV = this.rV,
       rFunc = reifyEffects(rrfunc(rV._1, rV._2)),
-      stripFirst = rstripFirst
+      stripFirst = rstripFirst,
+      numDynamicChunks = this.numDynamicChunks
     ))    
     
     val mA = manifest[A]
