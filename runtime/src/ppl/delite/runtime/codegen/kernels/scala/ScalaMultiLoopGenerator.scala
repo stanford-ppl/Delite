@@ -104,13 +104,13 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
   protected def beginProfile() {
     //out.append("PerformanceTimer.startChunked(\""+master.id+"\", Thread.currentThread.getName(), "+numChunks+", "+chunkIdx+")\n")
     val chunkName = master.id + "_" + chunkIdx
-    out.append("PerformanceTimer.start(\""+chunkName+"\", Thread.currentThread.getName(), false)\n")
+    out.append("PerformanceTimer.start(\""+chunkName+"\", threadName, false)\n")
   }
 
   protected def endProfile() {
-    val chunkName = master.id + "_" + chunkIdx
     //out.append("PerformanceTimer.stopChunked(\""+master.id+"\", "+chunkIdx+")\n")
-    out.append("PerformanceTimer.stop(\""+chunkName+"\", Thread.currentThread.getName(), false)\n")
+    val chunkName = master.id + "_" + chunkIdx
+    out.append("PerformanceTimer.stop(\""+chunkName+"\", threadName, false)\n")
   }
 
   protected def kernelName = "MultiLoop_" + master.id + "_Chunk_" + chunkIdx
