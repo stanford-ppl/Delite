@@ -60,6 +60,22 @@ object PerformanceTimer
     stop(component, "main", printMessage)
   }
 
+  // Currently only used by C++ to dump the profile results, need to refactor the code
+  def addTiming(component: String, threadId: Int, startTime: Long, endTime: Long): Unit = {
+    val threadName = threadToId.find(_._2 == threadId) match { 
+      case Some((name,id)) => name
+      case None => throw new RuntimeException("cannot find thread name for id " + threadId)
+    }
+    var stats = statsNewFormat(threadId)
+    val t = new Timing(threadName, startTime, component)
+    t.endTime = endTime
+    if (!stats.contains(component)) {
+      stats += component -> List[Timing]()
+    }
+    stats += component -> (t :: stats(component))
+    statsNewFormat(threadId) = stats
+  }
+
   def clearAll() {
     statsNewFormat.clear()
     initializeStats(threadCount)

@@ -13,6 +13,7 @@
 #include <regex>
 #include <vector>
 #include <map>
+#include <sstream>
 #include "cppDeliteArray.h"
 
 /* helper methods and data structures only required for execution with Delite */
@@ -23,12 +24,12 @@
 using namespace std;
 
 cppDeliteArray< string >* string_split(string str, string pattern);
-int string_toInt(string str);
+int32_t string_toInt(string str);
 float string_toFloat(string str);
 double string_toDouble(string str);
 bool string_toBoolean(string str);
 string string_trim(string str);
-char string_charAt(string str, int idx);
+int8_t string_charAt(string str, int idx);
 bool string_startsWith(string str, string substr);
 string string_plus(string str1, string str2);
 cppDeliteArray< string > *cppArgsGet(int num, ...);

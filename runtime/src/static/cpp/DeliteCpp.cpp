@@ -36,7 +36,7 @@ cppDeliteArray<string> *string_split(string str, string pattern) {
   return ret;
 }
 
-int string_toInt(string str) {
+int32_t string_toInt(string str) {
   return atoi(str.c_str());
 }
 
@@ -74,7 +74,7 @@ string string_trim(string str) {
   return ltrim(rtrim(ret));
 }
 
-char string_charAt(string str, int idx) {
+int8_t string_charAt(string str, int idx) {
   return str.at(idx);
 }
 
@@ -109,10 +109,12 @@ template<class T> string convert_to_string(T in) {
 }
 
 // Explicit instantiation of template functions to enable separate compilation
-template string convert_to_string<char>(char);
-template string convert_to_string<short>(short);
-template string convert_to_string<int>(int);
-template string convert_to_string<long>(long);
+template string convert_to_string<bool>(bool);
+template string convert_to_string<int8_t>(int8_t);
+template string convert_to_string<uint16_t>(uint16_t);
+template string convert_to_string<int16_t>(int16_t);
+template string convert_to_string<int32_t>(int32_t);
+template string convert_to_string<int64_t>(int64_t);
 template string convert_to_string<float>(float);
 template string convert_to_string<double>(double);
 template string convert_to_string<string>(string);
@@ -140,7 +142,11 @@ jobject JNIObjectMap_find(int key) {
 }
 void JNIObjectMap_insert(int key, jobject value) {
   pthread_mutex_lock (&lock_objmap);
-  JNIObjectMap->insert(std::pair<int,jobject>(key,value));
+  std::map<int,jobject>::iterator it = JNIObjectMap->find(key);
+  if(it != JNIObjectMap->end()) 
+    it->second = value;
+  else
+    JNIObjectMap->insert(std::pair<int,jobject>(key,value));
   pthread_mutex_unlock (&lock_objmap);
 }
 #endif

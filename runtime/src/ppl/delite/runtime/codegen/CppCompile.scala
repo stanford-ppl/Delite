@@ -16,7 +16,7 @@ object CppCompile extends CCompile {
   protected def outputSwitch = "-o"
   
   private val dsFiles = Directory(Path(sourceCacheHome + "datastructures")).files.toList
-  override protected def auxSourceList = dsFiles.filter(_.extension == ext).map(_.toAbsolute.toString) :+ (sourceCacheHome + "kernels" + sep + target + "helperFuncs." + ext) :+ (staticResources + "DeliteCpp." + ext)
+  override protected def auxSourceList = dsFiles.filter(_.extension == ext).map(_.toAbsolute.toString) :+ (sourceCacheHome + "kernels" + sep + target + "helperFuncs." + ext) :+ (staticResources + "DeliteCpp." + ext) :+ (staticResources + "DeliteCppProfiler." + ext)
 
   override def compile(destination: String, sources: Array[String], includes: Array[String], libs: Array[String]) {
     val destDir = Path(destination).parent

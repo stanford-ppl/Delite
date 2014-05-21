@@ -26,6 +26,7 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
 
   protected def writeHeader() {
     out.append("#include \""+CppMultiLoopHeaderGenerator.className(master) + ".cpp\"\n")
+    out.append("#include \"DeliteCppProfiler.h\"\n")
     CppMultiLoopHeaderGenerator.headerList += kernelSignature + ";\n"
   }
 
@@ -50,10 +51,10 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
   }
 
   protected def calculateRange(): (String,String) = {
-    out.append("int startOffset = "+closure+"->loopStart;\n")
-    out.append("int size = "+closure+"->loopSize;\n")
-    out.append("int start = startOffset + size*"+chunkIdx+"/"+numChunks+";\n")
-    out.append("int end = startOffset + size*"+(chunkIdx+1)+"/"+numChunks+";\n")
+    out.append("int64_t startOffset = "+closure+"->loopStart;\n")
+    out.append("int64_t size = "+closure+"->loopSize;\n")
+    out.append("int64_t start = startOffset + size*"+chunkIdx+"/"+numChunks+";\n")
+    out.append("int64_t end = startOffset + size*"+(chunkIdx+1)+"/"+numChunks+";\n")
     ("start","end")
   }
 
@@ -96,10 +97,15 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
     "neighbor"+syncObject+idx
   }
 
-  //TODO: add profiling for c++ kernels
-  protected def beginProfile() { }
+  protected def beginProfile() {
+    val chunkName = master.id + "_" + chunkIdx
+    out.append("DeliteCppTimerStart(" + chunkIdx + ",\""+chunkName+"\");\n")
+  }
 
-  protected def endProfile() {  }
+  protected def endProfile() {
+    val chunkName = master.id + "_" + chunkIdx
+    out.append("DeliteCppTimerStop(" + chunkIdx + ",\""+chunkName+"\");\n")
+  }
 
   protected def kernelName = {
     "MultiLoop_" + master.id + "_Chunk_" + chunkIdx
