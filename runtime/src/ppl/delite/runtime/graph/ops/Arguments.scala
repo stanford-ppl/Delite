@@ -25,8 +25,12 @@ object Arguments {
 final class Arguments(val id: String) extends OP_Executable {
 
   var outputTypesMap = Map(Targets.Scala->Map(id -> "Array[java.lang.String]", "functionReturn"->"Array[java.lang.String]"))
-  if (Config.numCpp > 0)
-    outputTypesMap += Targets.Cpp->Map(id -> "cppDeliteArray< string >", "functionReturn"->"cppDeliteArray< string >")
+  if (Config.numCpp > 0) {
+    if (Config.cppMemMgr=="refcnt")
+      outputTypesMap += Targets.Cpp->Map(id -> "std::shared_ptr<cppDeliteArraystring>", "functionReturn"->"std::shared_ptr<cppDeliteArraystring>")
+    else
+      outputTypesMap += Targets.Cpp->Map(id -> "cppDeliteArraystring", "functionReturn"->"cppDeliteArraystring")
+  }
 
   var inputTypesMap: Map[Targets.Value, Map[String,String]] = Map()
 
