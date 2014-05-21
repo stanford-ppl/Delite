@@ -67,11 +67,7 @@
 							<li>
 								<a href="#">
 									<span>Level Filter</span>	
-									<select id="timelineLevelFilter">
-										<option value="0">Level 0</option>
-										<option value="1">Level 1</option>
-										<option value="2">Level 2</option>
-									</select>
+									<select id="timelineLevelFilter"></select>
 								</a>
 							</li>
 							<li>
@@ -88,7 +84,7 @@
 							<li>
 								<a href="#">
 									<span>Search</span>
-									<input type="text" id="searchKernel" size="5" value="" style="text-align: right; margin: 0 0 0 5; width: 120">
+									<input type="text" id="searchKernel" size="5" value="" style="text-align: left; margin: 0 0 0 5; width: 120">
 								</a>
 							</li>
 							<li>
@@ -285,10 +281,20 @@
 	      	$("#timelineLevelFilter").change(filterNodesOnTimeline)
 	      	$('#startButton').click(startDebugSession)
 
+	      	function setUpTimelineLevelFilter(maxNodeLevel) {
+	      		var sel = $("#timelineLevelFilter")
+	      		for (var i = 0; i <= maxNodeLevel; i++) {
+	      			sel.append($("<option/>", {
+	      				value: i,
+	      				text: "Level " + i
+	      			}))
+	      		}
+	      	}
+
 	      	function setUpSelectTagForDEGView() {
 	      		var sel = $("#globalViewOptions").empty()
-	      		var views = ["dataDeps", "memUsage", "performance"]
-	      		var viewLabels = ["Data Dependencies", "Memory Allocation", "Performance"]
+	      		var views = ["dataDeps", "memUsage", "performance", "nodeType"]
+	      		var viewLabels = ["Data Dependencies", "Memory Allocation", "Performance", "Type of Kernel"]
 	      		$.each(views, function(i, v) {
 	      			sel.append($("<option/>", {
 	      				value: v,
@@ -407,9 +413,17 @@
 	    	}
 
 	    	function populateKernelInfoTable(node) {
+	    		function helper(num) {
+	    			if (num) return num.toFixed(0)
+	    			return "NA"
+	    		} 
+
 	    		var timeInMs = (node.time/1000).toFixed(0)
 	    		var timeStr = timeInMs + "ms (" + node.percentage_time.toFixed(0) + "%)"
-	    		var values = [node.name, node.type, node.target, timeStr , node.execTime.pct.toFixed(0) + "/" + node.syncTime.pct.toFixed(0) + " %", node.memUsage + " B"]
+	    		var execTimePct = helper(node.execTime.pct)
+	    		var syncTimePct = helper(node.syncTime.pct)
+	    		var memUsage = node.memUsage + " B"
+	    		var values = [node.name, node.type, node.target, timeStr , execTimePct + "/" + syncTimePct + " %", memUsage]
 	    		var table = $("#kernelInfoTable")[0]
 	    		values.forEach(function(v, i) {
 	    			var row = table.rows[i + 1]
@@ -461,6 +475,7 @@
 
 					editor = createEditor("code")
 		      		profData = getProfileData(degOps, profileData.Profile, config)
+		      		setUpTimelineLevelFilter(profData.dependencyData.maxNodeLevel)
 		      		graphController = createDataFlowGraph(cola, "#dfg", profData.dependencyData, viewState, config)
 
 		      		topNodesBasedOnTime = getTopNodes(profData.dependencyData.nodes, "percentage_time", 20)
@@ -491,6 +506,12 @@
 			$(document).ready(function () {
 				$("#right").css("width", $("#container").width() - $("#accordian").width())
 				$("#dfg").css("height", $("#dfg").height() - $("#dfgHeader").height())
+				$(window).resize(function() {
+					console.log("rigth: " + $("#right").height())
+					console.log("code: " + $("#code").height())
+					console.log("dfg: " + $("#dfg").height())
+					console.log("timeline: " + $("#timeline").height())
+				})
 				/*
 				$('#accordian > ul > li').click(function() {
 					$("#accordian ul li").removeClass("active")

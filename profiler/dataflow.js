@@ -118,6 +118,16 @@ function createDataFlowGraph(cola, destinationDivElem, dataModel, viewState, con
 	    }
 	}
 
+	function colorNodeBasedOnType(type) {
+		switch(type) {
+			case 'MultiLoop'  : return "red"
+			case 'WhileLoop'  : return "orange"
+			case 'SingleTask' : return "lightblue"
+			case 'Conditional': return "green"
+			default			  : return "white"
+		}
+	}
+
 	var maxTimeTakenByAKernel = nodesToDisplay.map(function(n) {return n.percentage_time}).sort(function(a,b) {return b - a})[1]
 	var colorNodeBasedOnTimeTaken = d3.scale.linear()
 								    .domain([0, maxTimeTakenByAKernel])
@@ -277,6 +287,9 @@ function createDataFlowGraph(cola, destinationDivElem, dataModel, viewState, con
 			} else if (scheme == "memUsage") {
 				graphElements.selectAll(".dataflow-kernel")
 			    			 .attr("fill", function(d) {return colorNodeBasedOnMemUsage(d.memUsage)})
+			} else if (scheme == "nodeType") {
+				graphElements.selectAll(".dataflow-kernel")
+			    			 .attr("fill", function(d) {return colorNodeBasedOnType(d.type)})
 			}
 		}
 	}
