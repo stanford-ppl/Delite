@@ -5,7 +5,7 @@ import executor._
 import graph.ops.{EOP_Global, Arguments}
 import graph.targets.Targets
 import graph.{TestGraph, DeliteTaskGraph}
-import profiler.{PerformanceTimer, Profiler, MemoryProfiler}
+import profiler.{PerformanceTimer, Profiler, MemoryProfiler, SamplerThread}
 import scheduler._
 import tools.nsc.io._
 
@@ -141,20 +141,29 @@ object Delite {
           val globalStart = System.currentTimeMillis
           val globalStartNanos = System.nanoTime()
           PerformanceTimer.start("all", false)
+
+          //val samplerThread = new SamplerThread(100)
+          //samplerThread.start
+
           executor.run(executable)
           EOP_Global.await //await the end of the application program
+
+          //samplerThread.interrupt()
+          //samplerThread.dumpProfile()
+
           PerformanceTimer.stop("all", false)
           //PerformanceTimer.printAll(globalStart, globalStartNanos)
+          PerformanceTimer.printStatsForNonKernelComps()
           if (Config.dumpProfile) PerformanceTimer.dumpProfile(globalStart, globalStartNanos)
-          //if (Config.dumpStats) PerformanceTimer.dumpStats()        
+          if (Config.dumpStats) PerformanceTimer.dumpStats()        
           System.gc()
         }
       }
 
       //println("Done Executing " + numTimes + " Runs")
       
-      //if(Config.dumpStats)
-        //PerformanceTimer.dumpStats()
+      if(Config.dumpStats)
+        PerformanceTimer.dumpStats()
 
       executor.shutdown()
     }
