@@ -90,10 +90,17 @@ object PerformanceTimer
     arr.flatMap(m => m.flatMap(kv => kv._2)).toList
   }
 
-  /**
-   * dump stats to values provided by config parameters
-   */
-   /*
+  def printStatsForNonKernelComps() {
+    val nonKernelCompsToTimings = statsNewFormat(threadCount) // the last entry in the stats array does not correspond 
+                    // to an actual execution thread. Rather, it just stores data for 'all' and tic-toc regions
+    nonKernelCompsToTimings.foreach(kv => {
+      kv._2.foreach(timing => {
+        val str = "[METRICS]: Time for component " + kv._1 + ": " +  (timing.elapsedMicros.toFloat / 1000000).formatted("%.6f") + "s"
+        println(str)
+      })
+    })
+  }
+
   def dumpStats() {
     assert(Config.dumpStats)
     dumpStats(Config.dumpStatsComponent)
@@ -113,7 +120,11 @@ object PerformanceTimer
   }
 
   def dumpStats(component: String, stream: PrintWriter)  {
-    times.get(component) map { _.map(_.formatted("%.2f")).mkString("\n") } foreach { stream.print }
+    statsNewFormat.foreach(m => {
+      if (m.contains(component)) {
+        val str = m(component).map(t => t.elapsedMicros).mkString("\n")
+        stream.print(str)
+      }
+    })
   }
-  */
 }
