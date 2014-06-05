@@ -1,6 +1,7 @@
 package ppl.delite.runtime.codegen
 
 import kernels.cpp.CppMultiLoopHeaderGenerator
+import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.targets.{OS, Targets}
@@ -77,12 +78,12 @@ trait CppExecutableGenerator extends ExecutableGenerator {
   //TODO: can/should this be factored out? need some kind of factory for each target
   protected def makeNestedFunction(op: DeliteOP) = op match {
     case c: OP_Condition => {
-      val codegen = new CppConditionGenerator(c, location, kernelPath)
+      val codegen = new CppConditionGenerator(c, location, graph)
       codegen.makeExecutable()
       CppCompile.addHeader(codegen.generateMethodSignature + ";\nextern bool " + c.id.split('_').head + "_cond;\n", codegen.executableName(location))
     }
    case w: OP_While => {
-      val codegen = new CppWhileGenerator(w, location, kernelPath)
+      val codegen = new CppWhileGenerator(w, location, graph)
       codegen.makeExecutable()
       CppCompile.addHeader(codegen.generateMethodSignature + ";\n", codegen.executableName(location))
     }    
@@ -159,18 +160,18 @@ trait CppExecutableGenerator extends ExecutableGenerator {
   protected def addRef(scalaType: String): String = if (isPrimitiveType(scalaType)) " " else addRef()
 }
 
-class CppMainExecutableGenerator(val location: Int, val kernelPath: String)
+class CppMainExecutableGenerator(val location: Int, val graph: DeliteTaskGraph)
   extends CppExecutableGenerator with CppSyncGenerator {
 
   def executableName(location: Int) = "Executable" + location
 
   protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value) = {
     target match {
-      case Targets.Scala => new ScalaMainExecutableGenerator(location, kernelPath) with ScalaSyncObjectGenerator {
+      case Targets.Scala => new ScalaMainExecutableGenerator(location, graph) with ScalaSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
-      case Targets.Cpp => new CppMainExecutableGenerator(location, kernelPath) with CppSyncObjectGenerator {
+      case Targets.Cpp => new CppMainExecutableGenerator(location, graph) with CppSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
@@ -186,11 +187,11 @@ object CppExecutableGenerator {
   syncObjects += "#include \"" + Targets.Cpp + "helperFuncs.h\"\n"
   syncObjects += "#include \""+CppMultiLoopHeaderGenerator.headerFile+".h\"\n"
 
-  def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
+  def makeExecutables(schedule: PartialSchedule, graph: DeliteTaskGraph) {
     for (sch <- schedule if sch.size > 0) {
       val location = sch.peek.scheduledResource
-      new CppMainExecutableGenerator(location, kernelPath).makeExecutable(sch) // native execution plan
-      new ScalaNativeExecutableGenerator(location, kernelPath).makeExecutable(sch) // JNI launcher scala source
+      new CppMainExecutableGenerator(location, graph).makeExecutable(sch) // native execution plan
+      new ScalaNativeExecutableGenerator(location, graph).makeExecutable(sch) // JNI launcher scala source
     }
     // Register header file for the Cpp sync objects
     val str = new StringBuilder
@@ -208,7 +209,7 @@ object CppExecutableGenerator {
 
 }
 
-class ScalaNativeExecutableGenerator(override val location: Int, override val kernelPath: String) extends ScalaMainExecutableGenerator(location, kernelPath) {
+class ScalaNativeExecutableGenerator(override val location: Int, override val graph: DeliteTaskGraph) extends ScalaMainExecutableGenerator(location, graph) {
 
   override def makeExecutable(ops: OpList) {
     opList = ops

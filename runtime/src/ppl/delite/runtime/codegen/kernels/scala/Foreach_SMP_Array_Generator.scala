@@ -21,20 +21,20 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
 
 object Foreach_SMP_Array_Generator {
 
-  def makeChunk(op: OP_Foreach, chunkIdx: Int, numChunks: Int, kernelPath: String): OP_Foreach = {
+  def makeChunk(op: OP_Foreach, chunkIdx: Int, numChunks: Int, graph: DeliteTaskGraph): OP_Foreach = {
     val chunk = if (chunkIdx == 0) op else op.chunk(chunkIdx)
-    ScalaCompile.addSource(makeKernel(chunk, op, chunkIdx, numChunks, kernelPath), kernelName(op, chunkIdx))
+    ScalaCompile.addSource(makeKernel(chunk, op, chunkIdx, numChunks, graph), kernelName(op, chunkIdx))
     chunk
   }
 
-  private def makeKernel(op: OP_Foreach, master: OP_Foreach, chunkIdx: Int, numChunks: Int, kernelPath: String) = {
+  private def makeKernel(op: OP_Foreach, master: OP_Foreach, chunkIdx: Int, numChunks: Int, graph: DeliteTaskGraph) = {
     val out = new StringBuilder
 
     //update the op with this kernel
     updateOP(op, master, chunkIdx)
 
     //the header
-    writeHeader(out, master, chunkIdx, kernelPath)
+    writeHeader(out, master, chunkIdx, graph)
 
     //the kernel
     writeKernel(out, op, master, chunkIdx, numChunks)
@@ -50,8 +50,9 @@ object Foreach_SMP_Array_Generator {
     op.setKernelName(kernelName(master, idx))
   }
 
-  private def writeHeader(out: StringBuilder, master: OP_Foreach, idx: Int, kernelPath: String) {
-    ScalaExecutableGenerator.writePath(kernelPath, out)
+  private def writeHeader(out: StringBuilder, master: OP_Foreach, idx: Int, graph: DeliteTaskGraph) {
+    ScalaExecutableGenerator.writePackage(graph, out)
+    ScalaExecutableGenerator.writePath(graph, out)
     out.append("import java.util.concurrent.locks.ReentrantLock\n")
     out.append("object ")
     out.append(kernelName(master, idx))
@@ -104,7 +105,7 @@ object Foreach_SMP_Array_Header_Generator {
     val out = new StringBuilder
 
     //the header
-    writeObject(out, op, graph.kernelPath)
+    writeObject(out, op, graph)
 
     //the kernel
     writeClass(out, op)
@@ -120,8 +121,9 @@ object Foreach_SMP_Array_Header_Generator {
     op.header(kernelName(op), graph)
   }
 
-  private def writeObject(out: StringBuilder, op: OP_Foreach, kernelPath: String) {
-    ScalaExecutableGenerator.writePath(kernelPath, out)
+  private def writeObject(out: StringBuilder, op: OP_Foreach, graph: DeliteTaskGraph) {
+    ScalaExecutableGenerator.writePackage(graph, out)
+    ScalaExecutableGenerator.writePath(graph, out)
     out.append("import java.util.concurrent.ConcurrentHashMap\n")
     out.append("import java.util.concurrent.locks.ReentrantLock\n")
     out.append("object ")

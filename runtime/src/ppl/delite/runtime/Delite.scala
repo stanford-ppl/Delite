@@ -197,7 +197,7 @@ object Delite {
 
   def findExecutables(appName: String): StaticSchedule = {
     val numResources = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL
-    Compilers.createSchedule(this.getClass.getClassLoader, numResources)
+    Compilers.createSchedule(this.getClass.getClassLoader, appName, numResources)
   }
 
   //abnormal shutdown

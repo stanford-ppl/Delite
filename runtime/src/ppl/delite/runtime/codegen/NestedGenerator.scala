@@ -1,5 +1,6 @@
 package ppl.delite.runtime.codegen
 
+import ppl.delite.runtime.graph.DeliteTaskGraph
 import collection.mutable.ArrayBuffer
 import java.lang.annotation.Target
 import ppl.delite.runtime.Config
@@ -41,9 +42,10 @@ trait NestedGenerator extends ExecutableGenerator {
 trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator {
 
   override protected def writeHeader() {
+    ScalaExecutableGenerator.writePackage(graph, out)
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
     out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
-    ScalaExecutableGenerator.writePath(kernelPath, out) //package of scala kernels
+    ScalaExecutableGenerator.writePath(graph, out) //package of scala kernels
 
     val locationsRecv = nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Receive])).map(_.asInstanceOf[Receive].sender.from.scheduledResource).toSet
     val locations = if (nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Send])).nonEmpty) Set(location) union locationsRecv

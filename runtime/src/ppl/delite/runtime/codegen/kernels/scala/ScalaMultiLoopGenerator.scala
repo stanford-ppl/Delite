@@ -7,16 +7,16 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.Config
 
 object ScalaMultiLoopGenerator {
-  def makeChunks(op: OP_MultiLoop, numChunks: Int, kernelPath: String) = {
+  def makeChunks(op: OP_MultiLoop, numChunks: Int, graph: DeliteTaskGraph) = {
     for (idx <- 0 until numChunks) yield {
       val chunk = if (idx == 0) op else op.chunk(idx)
-      (new ScalaMultiLoopGenerator(chunk, op, idx, numChunks, kernelPath)).makeChunk()
+      (new ScalaMultiLoopGenerator(chunk, op, idx, numChunks, graph)).makeChunk()
       chunk
     }
   }
 }
 
-class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val chunkIdx: Int, val numChunks: Int, val kernelPath: String) extends MultiLoop_SMP_Array_Generator {
+class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val chunkIdx: Int, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Generator {
 
   protected val headerObject = "head"
   protected val closure = "head.closure"
@@ -24,9 +24,10 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
   protected def addSource(source: String, name: String) = ScalaCompile.addSource(source, name)
 
   protected def writeHeader() {
+    ScalaExecutableGenerator.writePackage(graph, out)
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
     out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
-    ScalaExecutableGenerator.writePath(kernelPath, out)
+    ScalaExecutableGenerator.writePath(graph, out)
     out.append("object ")
     out.append(kernelName)
     out.append(" {\n")
@@ -136,7 +137,8 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   }
 
   protected def writeObject() {
-    ScalaExecutableGenerator.writePath(graph.kernelPath, out)
+    ScalaExecutableGenerator.writePackage(graph, out)
+    ScalaExecutableGenerator.writePath(graph, out)
     out.append("object ")
     out.append(kernelName)
     out.append(" {\n")

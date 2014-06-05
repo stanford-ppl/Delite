@@ -26,7 +26,7 @@ trait MultiLoop_SMP_Array_Generator {
   val master: OP_MultiLoop
   val chunkIdx: Int
   val numChunks: Int
-  val kernelPath: String
+  val graph: DeliteTaskGraph
 
   def makeChunk() {
     val src = makeKernel()

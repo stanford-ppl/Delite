@@ -9,16 +9,16 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.Config
 
 object CppMultiLoopGenerator {
-  def makeChunks(op: OP_MultiLoop, numChunks: Int, kernelPath: String) = {
+  def makeChunks(op: OP_MultiLoop, numChunks: Int, graph: DeliteTaskGraph) = {
     for (idx <- 0 until numChunks) yield {
       val chunk = if (idx == 0) op else op.chunk(idx)
-      (new CppMultiLoopGenerator(chunk, op, idx, numChunks, kernelPath)).makeChunk()
+      (new CppMultiLoopGenerator(chunk, op, idx, numChunks, graph)).makeChunk()
       chunk
     }
   }
 }
 
-class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val chunkIdx: Int, val numChunks: Int, val kernelPath: String) extends MultiLoop_SMP_Array_Generator {
+class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val chunkIdx: Int, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Generator {
 
   protected val headerObject = "head"
   protected val closure = "head->closure"

@@ -9,6 +9,7 @@ import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, Gener
 import codegen.cpp.TargetCpp
 import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
+import codegen.delite.overrides.DeliteAllOverridesExp
 import codegen.opencl.TargetOpenCL
 import codegen.scala.TargetScala
 import codegen.restage.TargetRestage
@@ -16,7 +17,7 @@ import codegen.Target
 import ops.DeliteOpsExp
 import transform.DeliteTransform
 
-trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransform {  
+trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransform with DeliteAllOverridesExp {  
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
 
   /*
@@ -200,7 +201,6 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   /**
    * Used when staging a function (to be called by external code) rather than an entire app
   */
-  def functionName = "Application"
 
   def registerFunction[A:Manifest,R:Manifest](func: Rep[A] => Rep[R]) = {
     stagedFunc = func

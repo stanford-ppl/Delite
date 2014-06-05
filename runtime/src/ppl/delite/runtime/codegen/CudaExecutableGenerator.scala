@@ -161,12 +161,12 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
   //TODO: can/should this be factored out? need some kind of factory for each target
   protected def makeNestedFunction(op: DeliteOP) = op match {
     case c: OP_Condition => {
-      val codegen = new CudaConditionGenerator(c, location, kernelPath)
+      val codegen = new CudaConditionGenerator(c, location, graph)
       codegen.makeExecutable()
       CudaCompile.addHeader(codegen.generateMethodSignature + ";\nextern bool " + c.id.split('_').head + "_cond;\n", codegen.executableName(location))
     }
    case w: OP_While => {
-      val codegen = new CudaWhileGenerator(w, location, kernelPath)
+      val codegen = new CudaWhileGenerator(w, location, graph)
       codegen.makeExecutable()
       CudaCompile.addHeader(codegen.generateMethodSignature + ";\n", codegen.executableName(location))
     }
@@ -304,18 +304,18 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
 
 }
 
-class CudaMainExecutableGenerator(val location: Int, val kernelPath: String)
+class CudaMainExecutableGenerator(val location: Int, val graph: DeliteTaskGraph)
   extends CudaExecutableGenerator with CudaSyncGenerator {
 
   def executableName(location: Int) = "Executable" + location
 
   protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value) = {
     target match {
-      case Targets.Scala => new ScalaMainExecutableGenerator(location, kernelPath) with ScalaSyncObjectGenerator {
+      case Targets.Scala => new ScalaMainExecutableGenerator(location, graph) with ScalaSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
-      //case Targets.Cpp => new CppMainExecutableGenerator(location, kernelPath) with CudaSyncObjectGenerator {
+      //case Targets.Cpp => new CppMainExecutableGenerator(location, graph) with CudaSyncObjectGenerator {
       //  protected val sync = syncs
       //  override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       //}
@@ -325,19 +325,19 @@ class CudaMainExecutableGenerator(val location: Int, val kernelPath: String)
 }
 
 //TODO: Some location symbols are hard-coded. Change them.
-class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) extends CudaExecutableGenerator with CudaSyncGenerator {
+class CudaDynamicExecutableGenerator(val location: Int, val graph: DeliteTaskGraph) extends CudaExecutableGenerator with CudaSyncGenerator {
   def executableName(location: Int) = "Executable" + location
 
   var syncLocation: Int = location
 
   protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Targets.Value) = {
     host match {
-      case Targets.Scala => new ScalaMainExecutableGenerator(syncLocation, kernelPath) with ScalaSyncObjectGenerator {
+      case Targets.Scala => new ScalaMainExecutableGenerator(syncLocation, graph) with ScalaSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(syncLocation)
         override def consumerSet(sender: Send) = {  if(location == 0) scala.collection.mutable.HashSet(1) else scala.collection.mutable.HashSet(0) }
       }
-      //case Targets.Cpp => new CppMainExecutableGenerator(location, kernelPath) with CudaSyncObjectGenerator {
+      //case Targets.Cpp => new CppMainExecutableGenerator(location, graph) with CudaSyncObjectGenerator {
       //  protected val sync = syncs
       //  override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       //}
@@ -635,14 +635,14 @@ object CudaExecutableGenerator {
   syncObjects += "#include <pthread.h>\n"
   syncObjects += "#include \"" + Targets.Cuda + "helperFuncs.h\"\n"
 
-  def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
+  def makeExecutables(schedule: PartialSchedule, graph: DeliteTaskGraph) {
     for (sch <- schedule if sch.size > 0) {
       val location = sch.peek.scheduledResource
       if(Config.clusterMode == 2) 
-        new CudaDynamicExecutableGenerator(location, kernelPath).makeExecutable(sch) // native execution plan
+        new CudaDynamicExecutableGenerator(location, graph).makeExecutable(sch) // native execution plan
       else 
-        new CudaMainExecutableGenerator(location, kernelPath).makeExecutable(sch) // native execution plan
-      new ScalaNativeExecutableGenerator(location, kernelPath).makeExecutable(sch) // JNI launcher scala source
+        new CudaMainExecutableGenerator(location, graph).makeExecutable(sch) // native execution plan
+      new ScalaNativeExecutableGenerator(location, graph).makeExecutable(sch) // JNI launcher scala source
     }
     // Register header file for the Cpp sync objects
     CudaCompile.addHeader(syncObjects.mkString(""),"cudaSyncObjects")

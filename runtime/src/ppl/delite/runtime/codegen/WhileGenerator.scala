@@ -1,6 +1,7 @@
 package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
+import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.scheduler.OpList
 import ppl.delite.runtime.graph.ops._
@@ -63,11 +64,11 @@ trait WhileGenerator extends NestedGenerator {
 
   protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value) = {
     target match {
-      case Targets.Scala => new ScalaWhileGenerator(whileLoop, location, kernelPath) with ScalaSyncObjectGenerator {
+      case Targets.Scala => new ScalaWhileGenerator(whileLoop, location, graph) with ScalaSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
-      case Targets.Cpp => new CppWhileGenerator(whileLoop, location, kernelPath) with CppSyncObjectGenerator {
+      case Targets.Cpp => new CppWhileGenerator(whileLoop, location, graph) with CppSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
@@ -76,7 +77,7 @@ trait WhileGenerator extends NestedGenerator {
   }
 }
 
-class ScalaWhileGenerator(val whileLoop: OP_While, val location: Int, val kernelPath: String)
+class ScalaWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: DeliteTaskGraph)
   extends WhileGenerator with ScalaNestedGenerator with ScalaSyncGenerator {
 
   protected def beginWhile(predicate: String) {
@@ -110,7 +111,7 @@ class ScalaWhileGenerator(val whileLoop: OP_While, val location: Int, val kernel
 
 }
 
-class CppWhileGenerator(val whileLoop: OP_While, val location: Int, val kernelPath: String)
+class CppWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: DeliteTaskGraph)
   extends WhileGenerator with CppNestedGenerator with CppSyncGenerator {
 
   protected def beginWhile(predicate: String) {
@@ -151,7 +152,7 @@ class CppWhileGenerator(val whileLoop: OP_While, val location: Int, val kernelPa
 
 }
 
-class CudaWhileGenerator(val whileLoop: OP_While, val location: Int, val kernelPath: String)
+class CudaWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: DeliteTaskGraph)
   extends WhileGenerator with CudaNestedGenerator with CudaSyncGenerator {
 
   protected def beginWhile(predicate: String) {
