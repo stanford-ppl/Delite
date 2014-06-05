@@ -13,7 +13,7 @@ import ppl.delite.runtime.Config
  */
 
 object Arguments {
-  var args: List[Any] = Nil
+  var args: Seq[Any] = Nil
   var staticDataMap: Map[String,_] = _
 
   def getArg[T](idx: Int): T = {

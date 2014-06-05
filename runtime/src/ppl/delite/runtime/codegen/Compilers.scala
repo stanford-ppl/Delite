@@ -40,6 +40,8 @@ object Compilers {
     val scalaSchedule = schedule.slice(0, Config.numThreads)
     if (Config.numThreads > 0) checkRequestedResource(scalaSchedule, Targets.Scala)
 
+    SavedEnvironmentGenerator.generateEnvironment(graph)
+
     //TODO: Fix this!
     if(Config.clusterMode != 2 || Config.numCuda == 0)
       ScalaExecutableGenerator.makeExecutables(scalaSchedule, graph.kernelPath)

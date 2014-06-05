@@ -104,7 +104,6 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       //TODO: Remove c generator specialization
       val baseDir = Config.buildDir + File.separator + g.toString + File.separator
       writeModules(baseDir)
-      if (g.toString == "scala") generateScalaWrapper(g, baseDir)
       g.initializeGenerator(baseDir + "kernels" + File.separator, args)
       g match {
         case gen:CCodegen => gen.headerStream.println("#include \"DeliteCpp.h\"")
@@ -159,19 +158,6 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
     */
 
     staticDataMap = Map() ++ sd map { case (s,d) => (deliteGenerator.quote(s), d) }
-  }
-
-  final def generateScalaWrapper(gen: GenericFatCodegen{val IR: DeliteApplication.this.type}, baseDir: String) = {
-      val stream = new PrintWriter(baseDir+functionName+".scala")
-      val args = fm.dropRight(1).map(gen.remap(_))
-      val argNames = Range(0,args.length).map(i=>"in"+i) //TODO: user-friendly arg names
-      val res = gen.remap(fm.last)
-      stream.println("package generated.scala")
-      stream.println("object " + functionName + " extends (("+args.mkString(", ")+")=>("+res+")) {")
-      stream.println("def apply("+argNames.zip(args).map(a => a._1 + ":" + a._2).mkString(", ")+"): "+res+" = {")
-      stream.println("ppl.delite.runtime.Delite.run(\""+functionName+"\","+argNames.mkString(",")+").asInstanceOf["+res+"]")
-      stream.println("}\n}")
-      stream.close()
   }
 
   final def generateScalaSource(name: String, stream: PrintWriter) = {

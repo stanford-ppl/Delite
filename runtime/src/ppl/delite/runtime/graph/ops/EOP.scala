@@ -17,7 +17,7 @@ import ppl.delite.runtime.graph.targets.Targets
  * This OP should always be inserted by the scheduler such that it is the last to run (depends on the "result" node of the task graph
  * Execution of the kernel will shut down the Delite Runtime
  */
-class EOP(val id: String, var outputTypesMap: Map[Targets.Value,Map[String,String]], result: (String,String)) extends OP_Executable {
+class EOP(val id: String, var outputTypesMap: Map[Targets.Value,Map[String,String]], val result: (String,String)) extends OP_Executable {
 
   /**
    * OP features
@@ -72,7 +72,9 @@ object EOP_Global {
 
 object EOP_Kernel {
 
-  def apply[T](result: T) = {
+  def apply[T](): T = apply(null.asInstanceOf[T])
+
+  def apply[T](result: T): T = {
     EOP_Global.put(result)
     result
   }
