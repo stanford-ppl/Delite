@@ -10,7 +10,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
   val IR: Expressions
   import IR._
 
-  override def emitSendSlave(tp: Manifest[Any]): (String,String) = {
+  override def emitSendSlave(tp: Manifest[_]): (String,String) = {
     if (tp.erasure == classOf[Variable[AnyVal]]) {
       val out = new StringBuilder
       val typeArg = tp.typeArguments.head
@@ -91,7 +91,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
     }
   }
 
-  override def emitRecvSlave(tp: Manifest[Any]): (String,String) = {
+  override def emitRecvSlave(tp: Manifest[_]): (String,String) = {
     if (tp.erasure == classOf[Variable[AnyVal]]) {
       val out = new StringBuilder
       val typeArg = tp.typeArguments.head
@@ -157,7 +157,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
   }
   */
 
-  override def emitSendUpdateSlave(tp: Manifest[Any]): (String,String) = {
+  override def emitSendUpdateSlave(tp: Manifest[_]): (String,String) = {
     if (tp.erasure == classOf[Variable[AnyVal]]) {
       val out = new StringBuilder
       val typeArg = tp.typeArguments.head
@@ -201,7 +201,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
     }
   }
 
-  override def emitRecvUpdateSlave(tp: Manifest[Any]): (String,String) = {
+  override def emitRecvUpdateSlave(tp: Manifest[_]): (String,String) = {
     if (tp.erasure == classOf[Variable[AnyVal]]) {
       val out = new StringBuilder
       val typeArg = tp.typeArguments.head

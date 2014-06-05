@@ -6,6 +6,7 @@ import ppl.delite.runtime.codegen.{CppExecutableGenerator, CppCompile}
 import ppl.delite.runtime.graph.targets.Targets
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.DeliteTaskGraph
+import ppl.delite.runtime.Config
 
 object CppMultiLoopGenerator {
   def makeChunks(op: OP_MultiLoop, numChunks: Int, kernelPath: String) = {
@@ -26,6 +27,7 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
 
   protected def writeHeader() {
     out.append("#include \""+CppMultiLoopHeaderGenerator.className(master) + ".cpp\"\n")
+    out.append("#include \"DeliteCppProfiler.h\"\n")
     CppMultiLoopHeaderGenerator.headerList += kernelSignature + ";\n"
   }
 
@@ -49,11 +51,20 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
     out.append("return "+result+";\n")
   }
 
+  protected def release(name: String, cond: Option[String] = None) {
+    if (Config.cppMemMgr == "refcnt") {
+      cond match {
+        case Some(c) => out.append("if(" + c + ") delete " + name + ";\n")
+        case None => out.append("delete " + name + ";\n")
+      }
+    }
+  }
+
   protected def calculateRange(): (String,String) = {
-    out.append("int startOffset = "+closure+"->loopStart;\n")
-    out.append("int size = "+closure+"->loopSize;\n")
-    out.append("int start = startOffset + size*"+chunkIdx+"/"+numChunks+";\n")
-    out.append("int end = startOffset + size*"+(chunkIdx+1)+"/"+numChunks+";\n")
+    out.append("int64_t startOffset = "+closure+"->loopStart;\n")
+    out.append("int64_t size = "+closure+"->loopSize;\n")
+    out.append("int64_t start = startOffset + size*"+chunkIdx+"/"+numChunks+";\n")
+    out.append("int64_t end = startOffset + size*"+(chunkIdx+1)+"/"+numChunks+";\n")
     ("start","end")
   }
 
@@ -96,10 +107,15 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
     "neighbor"+syncObject+idx
   }
 
-  //TODO: add profiling for c++ kernels
-  protected def beginProfile() { }
+  protected def beginProfile() {
+    val chunkName = master.id + "_" + chunkIdx
+    out.append("DeliteCppTimerStart(" + chunkIdx + ",\""+chunkName+"\");\n")
+  }
 
-  protected def endProfile() {  }
+  protected def endProfile() {
+    val chunkName = master.id + "_" + chunkIdx
+    out.append("DeliteCppTimerStop(" + chunkIdx + ",\""+chunkName+"\");\n")
+  }
 
   protected def kernelName = {
     "MultiLoop_" + master.id + "_Chunk_" + chunkIdx
@@ -124,6 +140,7 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
 
   protected def writeFooter() {
     initSync()
+    writeDestructor()
     out.append("};\n")
     out.append("#endif\n")
 
@@ -145,9 +162,13 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
     out.append("public: \n")
   }
 
+  def addRef(name: String) = {
+    if (isPrimitiveType(op.inputType(name)) || Config.cppMemMgr=="refcnt") " "
+    else " * "
+  }
+
   protected def kernelSignature = {
-    def ref(name: String) = if(!isPrimitiveType(op.inputType(name))) "* " else " "
-    className + "* " + kernelName + op.getInputs.map(in => op.inputType(Targets.Cpp, in._2) + ref(in._2) + in._2).mkString("(", ", ", ")")
+    className + "* " + kernelName + op.getInputs.map(in => op.inputType(Targets.Cpp, in._2) + addRef(in._2) + in._2).mkString("(", ", ", ")")
   }
 
   protected def writeKernelFunction(stream: StringBuilder) {
@@ -172,7 +193,7 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
       if (!first) out.append(", ")
       first = false
       out.append(op.inputType(Targets.Cpp, name))
-      if (!isPrimitiveType(op.inputType(name))) out.append("*")
+      out.append(addRef(name))
       out.append(" in")
       out.append(inIdx)
       inIdx += 1
@@ -234,6 +255,13 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
       out.append("pthread_cond_init(&cond"+key+", NULL);\n")
       out.append("notReady"+key+ " = true;\n")
     }
+    out.append("}\n")
+  }
+
+  protected def writeDestructor() {
+    out.append("~" + className + "() {\n")
+    out.append("delete closure;\n")
+    out.append("//out will be released by the caller\n")
     out.append("}\n")
   }
 

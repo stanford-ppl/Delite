@@ -1,3 +1,4 @@
+/*
 #include "cppDeliteArray.h"
 
 template<> void cppDeliteArray<int>::release(void) { free(data); }
@@ -20,3 +21,4 @@ template<class T> void cppDeliteArray<T>::release(void) {
 
 // compiler generated template releases
 #include "cppDeliteArrayRelease.h"
+*/

@@ -21,7 +21,7 @@ trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExp
   // a 'flat' if is treated like any other statement in code motion, i.e. code will not be pushed explicitly into the branches
   def flatIf[T:Manifest](cond: Rep[Boolean])(thenp: => Rep[T])(elsep: => Rep[T]) = delite_ifThenElse(cond, thenp, elsep, true, true)
 
-  def delite_ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T], flat: Boolean, controlFlag: Boolean): Rep[T] = cond match {
+  def delite_ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T], flat: Boolean, controlFlag: Boolean)(implicit ctx: SourceContext): Rep[T] = cond match {
       // TODO: need to handle vars differently, this could be unsound  <--- don't understand ...
     case Const(true) => thenp
     case Const(false) => elsep
@@ -43,13 +43,13 @@ trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExp
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case Reflect(e@DeliteIfThenElse(c,a,b,h), u, es) =>
       if (f.hasContext)
-        delite_ifThenElse(f(c),f.reflectBlock(a),f.reflectBlock(b),h,false)(mtype(e.m))
+        delite_ifThenElse(f(c),f.reflectBlock(a),f.reflectBlock(b),h,false)(mtype(e.m), ctx)
       else {
         reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteIfThenElse(f(c),f(a),f(b),h)(mtype(e.m)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
       }
     case e@DeliteIfThenElse(c,a,b,h) =>
       if (f.hasContext)
-        delite_ifThenElse(f(c),f.reflectBlock(a),f.reflectBlock(b),h,false)(mtype(e.m))
+        delite_ifThenElse(f(c),f.reflectBlock(a),f.reflectBlock(b),h,false)(mtype(e.m), ctx)
       else {
         reflectPure(DeliteIfThenElse(f(c),f(a),f(b),h)(mtype(e.m)))(mtype(manifest[A]), ctx) // FIXME: should apply pattern rewrites (ie call smart constructor)
       }
@@ -235,10 +235,7 @@ trait DeliteCGenIfThenElse extends CGenEffect with CGenBooleanOps with DeliteBas
               emitBlock(b)
               stream.println("}")
             case _ =>
-              if (isPrimitiveType(sym.tp))
-                stream.println("%s %s;".format(remap(sym.tp),quote(sym)))
-              else
-                stream.println("%s *%s;".format(remap(sym.tp),quote(sym)))
+              stream.println("%s %s;".format(remapWithRef(sym.tp),quote(sym)))
               stream.println("if (" + quote(c) + ") {")
               emitBlock(a)
               stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(a))))

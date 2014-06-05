@@ -431,8 +431,9 @@ object DeliteTaskGraph {
    */
   def processArgumentsTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     val id = getFieldString(op, "kernelId")
+    val argIdx = getFieldString(op, "index").toInt
     val argTypes = processReturnTypes(op, id)
-    val args = new Arguments(id, argTypes)
+    val args = new Arguments(id, argIdx, argTypes)
     args.supportedTargets ++= argTypes.keySet
     graph.registerOp(args)
     graph._result = (args, id)

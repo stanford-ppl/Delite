@@ -1,6 +1,10 @@
 #include "DeliteCpp.h"
 
-cppDeliteArray<string> *string_split(string str, string pattern) {
+#ifdef MEMMGR_REFCNT
+std::shared_ptr<cppDeliteArraystring> string_split(string str, string pattern) {
+#else
+cppDeliteArraystring *string_split(string str, string pattern) {
+#endif
   //TODO: current g++ does not fully support c++11 regex, 
   //      so below code does not work.
   /*
@@ -22,7 +26,7 @@ cppDeliteArray<string> *string_split(string str, string pattern) {
   */
 
   //Since regex is not working, we currently only support 
-  assert((strcmp(pattern.c_str(),"\\s+")==0 || strcmp(pattern.c_str()," ")==0) && "Currently only regex \\s+ is supported for C++ target");
+  assert((pattern.compare("\\s+")==0 || pattern.compare(" ")==0) && "Currently only regex \\s+ is supported for C++ target");
   string token;
   stringstream ss(str); 
   vector<string> elems;
@@ -30,13 +34,17 @@ cppDeliteArray<string> *string_split(string str, string pattern) {
     elems.push_back(token);
   
   //construct cppDeliteArray from vector
-  cppDeliteArray<string> *ret = new cppDeliteArray<string>(elems.size());
+#ifdef MEMMGR_REFCNT
+  std::shared_ptr<cppDeliteArraystring> ret(new cppDeliteArraystring(elems.size()), cppDeliteArraystringD());
+#else
+  cppDeliteArraystring *ret = new cppDeliteArraystring(elems.size());
+#endif
   for(int i=0; i<elems.size(); i++)
     ret->update(i,elems.at(i));
   return ret;
 }
 
-int string_toInt(string str) {
+int32_t string_toInt(string str) {
   return atoi(str.c_str());
 }
 
@@ -74,7 +82,7 @@ string string_trim(string str) {
   return ltrim(rtrim(ret));
 }
 
-char string_charAt(string str, int idx) {
+int8_t string_charAt(string str, int idx) {
   return str.at(idx);
 }
 
@@ -90,8 +98,13 @@ string string_plus(string str1, string str2) {
 }
 
 
-cppDeliteArray< string > *cppArgsGet(int num, ...) {
-  cppDeliteArray< string > *cppArgs = new cppDeliteArray< string >(num);
+#ifdef MEMMGR_REFCNT
+std::shared_ptr<cppDeliteArraystring> cppArgsGet(int num, ...) {
+  std::shared_ptr<cppDeliteArraystring> cppArgs(new cppDeliteArraystring(num), cppDeliteArraystringD());
+#else
+cppDeliteArraystring *cppArgsGet(int num, ...) {
+  cppDeliteArraystring *cppArgs = new cppDeliteArraystring(num);
+#endif
   va_list arguments;
   va_start(arguments, num);
   for(int i=0; i<num; i++) {
@@ -109,10 +122,12 @@ template<class T> string convert_to_string(T in) {
 }
 
 // Explicit instantiation of template functions to enable separate compilation
-template string convert_to_string<char>(char);
-template string convert_to_string<short>(short);
-template string convert_to_string<int>(int);
-template string convert_to_string<long>(long);
+template string convert_to_string<bool>(bool);
+template string convert_to_string<int8_t>(int8_t);
+template string convert_to_string<uint16_t>(uint16_t);
+template string convert_to_string<int16_t>(int16_t);
+template string convert_to_string<int32_t>(int32_t);
+template string convert_to_string<int64_t>(int64_t);
 template string convert_to_string<float>(float);
 template string convert_to_string<double>(double);
 template string convert_to_string<string>(string);
@@ -140,7 +155,11 @@ jobject JNIObjectMap_find(int key) {
 }
 void JNIObjectMap_insert(int key, jobject value) {
   pthread_mutex_lock (&lock_objmap);
-  JNIObjectMap->insert(std::pair<int,jobject>(key,value));
+  std::map<int,jobject>::iterator it = JNIObjectMap->find(key);
+  if(it != JNIObjectMap->end()) 
+    it->second = value;
+  else
+    JNIObjectMap->insert(std::pair<int,jobject>(key,value));
   pthread_mutex_unlock (&lock_objmap);
 }
 #endif

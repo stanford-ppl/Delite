@@ -66,7 +66,7 @@ def checkLMSEnv():
 def stage(runner, params, opts):
     java_opts = os.getenv("JAVA_OPTS", "")
 
-    build_dir = opts.build_dir + "/generated/"
+    build_dir = opts.build_dir + os.sep + "generated" + os.sep
     java_opts = java_opts + " -server" + " -Ddelite.home.dir=" + delitecommon.DELITE_HOME + " -Ddelite.build.dir=" + build_dir + " -Ddelite.deg.filename=" + runner + ".deg"
     if opts.no_blas == False:
         java_opts = java_opts + " -Ddelite.extern.blas"
@@ -147,6 +147,13 @@ def stage(runner, params, opts):
     ecode = os.system(java_cmd)
     if ecode != 0:
         err("Delite compilation failed")
+
+    #jar generated code
+    jar_cmd = delitecommon.JAVA_HOME + "/bin/jar cfM " + runner + ".jar " + runner + ".deg -C " + opts.build_dir + " generated"
+    #print jar_cmd
+    ecode = os.system(jar_cmd)
+    if ecode != 0:
+        err("Unable to jar Delite compilation output")
 
 if __name__ == "__main__":
     main()

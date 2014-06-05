@@ -1,5 +1,5 @@
 
-function createBarChart(parentDivId, data, comparisonAttr, getText, config) {
+function createBarChart(parentDivId, data, comparisonAttr, getDisplayText, config) {
 	var svg = d3.select(parentDivId)
 				.append("svg")
 			 	.attr("class", "barChart")
@@ -10,7 +10,7 @@ function createBarChart(parentDivId, data, comparisonAttr, getText, config) {
 	    barHeight = 20;
 
 	var x = d3.scale.linear()
-	    .domain([0, d3.max(data, function(d) {return d[comparisonAttr]})])
+	    .domain([-2, d3.max(data, function(d) {return parseFloat(d[comparisonAttr])})])
 	    .range([0, width - 50]);
 
 	var chart = d3.select(".barChart")
@@ -33,13 +33,12 @@ function createBarChart(parentDivId, data, comparisonAttr, getText, config) {
 	    .attr("x", function(d) { return x(d[comparisonAttr]) - 3; })
 	    .attr("y", barHeight / 2)
 	    .attr("dy", ".35em")
-	    .text(getText)
+	    .text(getDisplayText)
 	    .on("click", nodeClickHandler)
 
 }
 
 function nodeClickHandler(d) {
-	console.log("Hi")
 	config.populateKernelInfoTableById(d.id)
 	config.highlightLineInEditorByKernelId(d.id)
 }

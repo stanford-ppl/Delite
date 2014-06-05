@@ -80,7 +80,7 @@ trait ProfileCodeGenScala extends ProfileCodeGenBase with ScalaCodeGenPkg
 }
 
 trait ProfileCodeGenC extends ProfileCodeGenBase with CCodeGenPkg
-  with CGenDeliteOps with CGenDeliteStruct with DeliteCppHostTransfer
+  with CGenDeliteOps with CGenDeliteStruct with CGenDeliteArrayOps with DeliteCppHostTransfer
   /*with CGenProfileOps with CGenProfileArrayOps */
   with CGenDeliteCollectionOps
   with DeliteCGenAllOverrides {

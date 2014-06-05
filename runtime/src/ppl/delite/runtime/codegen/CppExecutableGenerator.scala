@@ -28,6 +28,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     out.append("#include <stdio.h>\n")
     out.append("#include <stdlib.h>\n")
     out.append("#include <jni.h>\n")
+    out.append("#include \"DeliteCppProfiler.h\"\n")
     out.append("#include \"cppSyncObjects.h\"\n")
     out.append("#include \"" + Targets.Cpp + "helperFuncs.h\"\n")
     out.append("#include \""+CppMultiLoopHeaderGenerator.headerFile+".h\"\n")
@@ -43,6 +44,8 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     out.append(function)
     out.append(" {\n")
     out.append("env" + location + " = jnienv;\n")
+    if (Config.profile)
+      out.append("InitDeliteCppTimer(" + Targets.getRelativeLocation(location) + ");\n")
 
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     writeJNIInitializer(locations)
@@ -64,6 +67,8 @@ trait CppExecutableGenerator extends ExecutableGenerator {
   }
 
   protected def writeMethodFooter() {
+    if (Config.profile) 
+      out.append("DeliteCppTimerDump(" + Targets.getRelativeLocation(location) + "," + location + ",env" + location + ");\n")
     out.append("}\n")
   }
 
@@ -89,10 +94,17 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     def resultName = if (returnsResult) getSymHost(op, op.getOutputs.head) else getOpSym(op)
 
     if (op.task == null) return //dummy op
+
+    if (Config.profile) {
+      if (!op.isInstanceOf[OP_MultiLoop]) {
+        out.append("DeliteCppTimerStart(" + Targets.getRelativeLocation(location) + ",\""+op.id+"\");\n")
+      }
+    }
+
     if (op.outputType(Targets.Cpp) != "void") {
       out.append(op.outputType(Targets.Cpp))
       out.append(' ')
-      if (!isPrimitiveType(op.outputType)) out.append('*')
+      if (!isPrimitiveType(op.outputType) && !op.outputType(Targets.Cpp).startsWith("std::shared_ptr")) out.append('*')
       out.append(resultName)
       out.append(" = ")
     }
@@ -107,11 +119,23 @@ trait CppExecutableGenerator extends ExecutableGenerator {
       case _ => out.append(op.getInputs.map(i=>getSymHost(i._1,i._2)).mkString("(",",",");\n"))
     }
    
+    if (Config.profile) {
+      if (!op.isInstanceOf[OP_MultiLoop]) {
+        out.append("DeliteCppTimerStop(" + Targets.getRelativeLocation(location) + ",\""+op.id+"\");\n")
+      }
+    }
+
     if (!returnsResult) {
       for (name <- op.getOutputs if(op.outputType(Targets.Cpp,name)!="void")) {
-        out.append(op.outputType(Targets.Cpp, name))
-        if (!isPrimitiveType(op.outputType(name))) out.append('*')
+        out.append(op.outputType(Targets.Cpp, name) + addRef(op.outputType(name)))
         out.append(" " + getSymHost(op,name) + " = " + resultName + "->" + name + ";\n")
+      }
+      // Delete activation record and multiloop header
+      assert(op.isInstanceOf[OP_MultiLoop] && op.getInputs.size==1)
+      if (Config.cppMemMgr == "refcnt") {
+        val (multiloop_h_op,multiloop_h_sym) = op.getInputs.head
+        out.append("delete " + resultName + ";\n")
+        out.append("delete " + getSymHost(multiloop_h_op,multiloop_h_sym) + ";\n")
       }
     }
   }
@@ -131,6 +155,8 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     case _ => Targets.isPrimitiveType(scalaType)
   }
 
+  private def addRef(): String = if (Config.cppMemMgr == "refcnt") " " else " *"
+  protected def addRef(scalaType: String): String = if (isPrimitiveType(scalaType)) " " else addRef()
 }
 
 class CppMainExecutableGenerator(val location: Int, val kernelPath: String)

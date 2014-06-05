@@ -104,6 +104,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       //TODO: Remove c generator specialization
       val baseDir = Config.buildDir + File.separator + g.toString + File.separator
       writeModules(baseDir)
+      if (g.toString == "scala") generateScalaWrapper(g, baseDir)
       g.initializeGenerator(baseDir + "kernels" + File.separator, args)
       g match {
         case gen:CCodegen => gen.headerStream.println("#include \"DeliteCpp.h\"")
@@ -123,14 +124,14 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
             case gen: CCodegen => streamDebug.println("#include \"DeliteStandaloneMain.h\"\n")
             case _ => //
           }
-          g.emitSource(stagedFunc, functionName, streamDebug)(fmA,fmB)
+          emitRegisteredSource(g, streamDebug)
           // TODO: dot output
           reset
         }
       }
     }
     deliteGenerator.initializeGenerator(Config.buildDir, args)
-    val sd = deliteGenerator.emitSource(stagedFunc, functionName, stream)(fmA,fmB)
+    val sd = emitRegisteredSource(deliteGenerator, stream)
     deliteGenerator.finalizeGenerator()
 
     for (g <- generators) {
@@ -158,6 +159,19 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
     */
 
     staticDataMap = Map() ++ sd map { case (s,d) => (deliteGenerator.quote(s), d) }
+  }
+
+  final def generateScalaWrapper(gen: GenericFatCodegen{val IR: DeliteApplication.this.type}, baseDir: String) = {
+      val stream = new PrintWriter(baseDir+functionName+".scala")
+      val args = fm.dropRight(1).map(gen.remap(_))
+      val argNames = Range(0,args.length).map(i=>"in"+i) //TODO: user-friendly arg names
+      val res = gen.remap(fm.last)
+      stream.println("package generated.scala")
+      stream.println("object " + functionName + " extends (("+args.mkString(", ")+")=>("+res+")) {")
+      stream.println("def apply("+argNames.zip(args).map(a => a._1 + ":" + a._2).mkString(", ")+"): "+res+" = {")
+      stream.println("ppl.delite.runtime.Delite.run(\""+functionName+"\","+argNames.mkString(",")+").asInstanceOf["+res+"]")
+      stream.println("}\n}")
+      stream.close()
   }
 
   final def generateScalaSource(name: String, stream: PrintWriter) = {
@@ -202,14 +216,47 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   */
   def functionName = "Application"
 
-  def registerFunction[A:Manifest,B:Manifest](func: Rep[A] => Rep[B]) = {
+  def registerFunction[A:Manifest,R:Manifest](func: Rep[A] => Rep[R]) = {
     stagedFunc = func
-    fmA = manifest[A]
-    fmB = manifest[B]
+    arity = 1
+    fm = List(manifest[A],manifest[R])
   }
 
-  private var stagedFunc: Rep[Any] => Rep[Any] = (liftedMain _).asInstanceOf[Rep[Any] => Rep[Any]]
-  private var fmA: Manifest[Any] = manifest[Array[String]].asInstanceOf[Manifest[Any]]
-  private var fmB: Manifest[Any] = manifest[Unit].asInstanceOf[Manifest[Any]]
+  def registerFunction[A:Manifest,B:Manifest,R:Manifest](func: (Rep[A],Rep[B]) => Rep[R]) = {
+    stagedFunc = func
+    arity = 2
+    fm = List(manifest[A],manifest[B],manifest[R])
+  }
+
+  def registerFunction[A:Manifest,B:Manifest,C:Manifest,R:Manifest](func: (Rep[A],Rep[B],Rep[C]) => Rep[R]) = {
+    stagedFunc = func
+    arity = 3
+    fm = List(manifest[A],manifest[B],manifest[C],manifest[R])
+  }
+
+  def registerFunction[A:Manifest,B:Manifest,C:Manifest,D:Manifest,R:Manifest](func: (Rep[A],Rep[B],Rep[C],Rep[D]) => Rep[R]) = {
+    stagedFunc = func
+    arity = 4
+    fm = List(manifest[A],manifest[B],manifest[C],manifest[D],manifest[R])
+  }
+
+  def registerFunction[A:Manifest,B:Manifest,C:Manifest,D:Manifest,E:Manifest,R:Manifest](func: (Rep[A],Rep[B],Rep[C],Rep[D],Rep[E]) => Rep[R]) = {
+    stagedFunc = func
+    arity = 5
+    fm = List(manifest[A],manifest[B],manifest[C],manifest[D],manifest[E],manifest[R])
+  }
+
+  def emitRegisteredSource(gen: GenericFatCodegen{val IR: DeliteApplication.this.type}, stream: PrintWriter): List[(Sym[Any], Any)] = arity match {
+    case 1 => gen.emitSource(stagedFunc.asInstanceOf[Rep[Any]=>Rep[Any]], functionName, stream)(fm(0),fm(1))
+    case 2 => gen.emitSource2(stagedFunc.asInstanceOf[(Rep[Any],Rep[Any])=>Rep[Any]], functionName, stream)(fm(0),fm(1),fm(2))
+    case 3 => gen.emitSource3(stagedFunc.asInstanceOf[(Rep[Any],Rep[Any],Rep[Any])=>Rep[Any]], functionName, stream)(fm(0),fm(1),fm(2),fm(3))
+    case 4 => gen.emitSource4(stagedFunc.asInstanceOf[(Rep[Any],Rep[Any],Rep[Any],Rep[Any])=>Rep[Any]], functionName, stream)(fm(0),fm(1),fm(2),fm(3),fm(4))
+    case 5 => gen.emitSource5(stagedFunc.asInstanceOf[(Rep[Any],Rep[Any],Rep[Any],Rep[Any],Rep[Any])=>Rep[Any]], functionName, stream)(fm(0),fm(1),fm(2),fm(3),fm(4),fm(5))
+    case _ => throw new RuntimeException("Unsupported function arity for emitSource: " + arity)
+  }
+
+  private var stagedFunc: Any = (liftedMain _)
+  private var fm: List[Manifest[Any]] = List(manifest[Array[String]],manifest[Unit]).asInstanceOf[List[Manifest[Any]]]
+  private var arity = 1
 
 }
