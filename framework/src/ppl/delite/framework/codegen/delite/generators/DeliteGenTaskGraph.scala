@@ -126,42 +126,40 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     allStencils = /*allStencils ++*/ stencilAnalysis.getLoopStencils
 
 
-    //compute result types for all targets independently of whether or not the kernel itself could be generated
-    val resultGens = (for (gen <- generators) yield {
-      try { 
-        val tpe = for (s <- sym) yield gen.remap(s.tp) //could throw exception, all or nothing
-        Some(gen)
-      }
-      catch {
-        case e:GenerationFailedException => None
-        case e:Exception => throw(e)
-      }
-    }).filter(_.isDefined).map(_.get)
-
     val hasOutputSlotTypes = rhs match {
       case op: AbstractLoop[_] => true
       case op: AbstractFatLoop => true
       case _ => false
     }
 
-    class JsonPair(_1: String, _2: String) extends Pair[String,String](_1,_2) {
+    class JsonPair(_1: String, _2: String) extends Pair(_1,_2) {
       override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
     }
 
-    for (gen <- resultGens) {
-      val tpeStr = for (s <- sym) yield {
-        val tpeStr = gen match {
-          case g:ScalaCodegen if resultIsVar => "generated.scala.Ref[" + g.remap(s.tp) + "]"
-          case g: CLikeCodegen if resultIsVar && cppMemMgr == "recnt" => g.wrapSharedPtr(g.deviceTarget.toString + "Ref" + g.unwrapSharedPtr(g.remap(sym.head.tp)))
-          case g:CLikeCodegen if resultIsVar => g.deviceTarget.toString + "Ref" + g.remap(sym.head.tp)
-          case g => g.remap(s.tp)
+    //compute result types for all syms for all targets independently of whether or not the kernel itself could be generated
+    for (gen <- generators) {
+      var genReturnType: String = null
+      val tpes = for (s <- sym) {
+        try {
+          val tpeStr = gen match {
+            case g:ScalaCodegen if resultIsVar => "generated.scala.Ref[" + g.remap(s.tp) + "]"
+            case g:CLikeCodegen if resultIsVar && cppMemMgr == "recnt" => g.wrapSharedPtr(g.deviceTarget.toString + "Ref" + g.unwrapSharedPtr(g.remap(sym.head.tp)))
+            case g:CLikeCodegen if resultIsVar => g.deviceTarget.toString + "Ref" + g.remap(sym.head.tp)
+            case g => g.remap(s.tp)
+          }
+          genReturnType = tpeStr
+          outputSlotTypes.getOrElseUpdate(quote(s), new ListBuffer) += new JsonPair(gen.toString, tpeStr)
         }
-        outputSlotTypes.getOrElseUpdate(quote(s), new ListBuffer) += new JsonPair(gen.toString, tpeStr)
-        tpeStr
+        catch {
+          case e:GenerationFailedException => //
+          case e:Exception => throw(e)
+        }
       }
 
-      val retStr = if (hasOutputSlotTypes) "activation_" + kernelName else tpeStr.head
-      returnTypes += new JsonPair(gen.toString, retStr)
+      if (genReturnType != null) {
+        val retStr = if (hasOutputSlotTypes) "activation_" + kernelName else genReturnType
+        returnTypes += new JsonPair(gen.toString, retStr)
+      }
     }
 
     if (!skipEmission) for (gen <- generators) {
@@ -269,7 +267,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
 
         //add MetaData
         if (gen.hasMetaData) {
-          metadata += new JsonPair(gen.toString, gen.getMetaData)
+          metadata += new Pair(gen.toString, gen.getMetaData) {
+            override def toString = "\"" + _1 + "\" : " + _2 //note slightly different than standard JsonPair
+          }
         }
 
         kstream.close()
