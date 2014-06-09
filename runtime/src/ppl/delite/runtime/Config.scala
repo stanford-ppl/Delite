@@ -51,6 +51,7 @@ object Config {
   val gpuPerformance: Boolean = getProperty("delite.debug.gpu.perf", "false") != "false"
   val profile: Boolean = getProperty("delite.debug.profile", "false") != "false"
   val printSources: Boolean = getProperty("delite.debug.print.sources", "false") != "false"
+  val memSamplingInterval: Long = getProperty("delite.debug.memSamplingInterval", "10").toLong
 
 
   var degFilename = System.getProperty("delite.deg.filename", "out.deg")

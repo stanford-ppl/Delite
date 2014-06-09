@@ -145,7 +145,7 @@ object Delite {
           val globalStartNanos = System.nanoTime()
           val jvmUpTimeAtAppStart = ManagementFactory.getRuntimeMXBean().getUptime()
 
-          SamplerThread.interval = 10
+          SamplerThread.interval = Config.memSamplingInterval
           SamplerThread.globalT = globalStartNanos
           SamplerThread.start
           PerformanceTimer.start("all", false)

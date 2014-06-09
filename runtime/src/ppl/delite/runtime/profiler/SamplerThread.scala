@@ -6,7 +6,7 @@ import java.lang.Runtime
 import java.lang.management.ManagementFactory
 
 object SamplerThread extends Thread {
-	var interval = 1000
+	var interval: Long = 1000
 	private var continue: Boolean = true
 	private var hitException: Boolean = false
 	private var exception: String = "" // If the thread hit an exception, the message would be stored in this string
@@ -18,9 +18,7 @@ object SamplerThread extends Thread {
 		while(continue) {
 			try {
 				profile()
-				Predef.println("time: " + ((System.nanoTime() - globalT)/1000))
 				Thread.sleep(interval)
-				Predef.println("time: " + ((System.nanoTime() - globalT)/1000))
 			} catch {
 				case i: InterruptedException => continue = false //another thread threw an exception -> exit silently
 		        case e: Exception => {
