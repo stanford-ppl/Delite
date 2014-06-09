@@ -86,3 +86,33 @@ function readProfileDataFile(evt) {
 function addProfileDataFileHandler(inputButtonId) {
   document.getElementById(inputButtonId).addEventListener('change', readProfileDataFile, false);
 }
+
+// ====================
+//  Read GC Stats file
+// ====================
+
+var gcEvents = []
+function readGCStatsFile(evt) {
+  var reader = new FileReader()
+  reader.onload = (function() {
+    return function(e) {
+      var t = parseInt(profileData.Profile.Init.JVMUpTimeAtAppStart)
+      gcEvents = parseGCStatsDump(e.target.result, t)
+    };
+  })();
+
+  if (evt.target.files.length > 0) {
+    var file = evt.target.files[0]
+    reader.readAsText(file)
+    viewState.gcStatsFile = file.name
+
+    $("#gcStatsFileName").text(viewState.gcStatsFile)
+    if (viewState.degFile != "") {
+      $("#startButton").css("border", "2px solid green")
+    }
+  }
+}
+
+function addGCStatsFileHandler(inputButtonId) {
+  $("#" + inputButtonId).on("change", readGCStatsFile)
+}

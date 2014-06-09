@@ -7,8 +7,33 @@ function getProfileData(degFileNodes, rawProfileData, config) {
     updateSyncAndExecTimesOfKernels(timelineData.timing, dependencyData.maxNodeLevel)
     updateMemUsageOfDNodes(rawProfileData.MemProfile, dependencyData)
     var threadLevelPerfStats = getThreadLevelPerfStats(timelineData, numThreads)
+    var memUsageData = convertToStreamGraphFormat(rawProfileData.MemUsageSamples)
 
-    return {"dependencyData": dependencyData, "timelineData": timelineData, "threadLevelPerfStats": threadLevelPerfStats}
+    return {"dependencyData": dependencyData, 
+            "timelineData": timelineData, 
+            "threadLevelPerfStats": threadLevelPerfStats,
+            "memUsageData": memUsageData
+           }
+}
+
+function convertToStreamGraphFormat(rawSamples) {
+    function addSampleToAggrRes(sample, timeStamp) {
+        sample.forEach(function (stat, i) {
+            data.push({key: statNames[i], value: stat, time: timeStamp})
+        })
+    }
+
+    var data = []
+    var statNames = rawSamples["0"]
+    for (timeStamp in rawSamples) {
+        var t = parseInt(timeStamp)
+        if (t > 0) {
+            var sample = rawSamples[timeStamp]
+            addSampleToAggrRes(sample, t)
+        }
+    }
+
+    return data
 }
 
 function updateMemUsageOfDNodes(memProfile, dependencyData) {
@@ -28,7 +53,7 @@ function updateMemUsageOfDNodes(memProfile, dependencyData) {
 }
 
 function getNumberOfThreads(perfProfile) {
-    return (perfProfile.location.filter(onlyUnique).length - 1)
+    return perfProfile.res.length - 1
 }
 
 function getDependencyData(degFileNodes, numThreads) {
@@ -91,7 +116,8 @@ function getDataForTimelineView(perfProfile, dependencyData, config) {
             o["end"] = o["start"] + o["duration"]
             o["node"] = nodes[o.id]
             o["level"] = getTNodeLevel(o)
-            o["displayText"] = getDisplayTextForTimelineNode(o.name, config.syncNodeRegex)
+            //o["displayText"] = getDisplayTextForTimelineNode(o.name, config.syncNodeRegex)
+            o["displayText"] = getDisplayTextForTimelineNode(o, config.syncNodeRegex)
             o["childNodes"] = [] // important for nested nodes such as WhileLoop, IfThenElse, etc.
             o["syncNodes"] = []
             o["parentId"] = -1
@@ -137,6 +163,7 @@ function getTicTocRegions(perfProfile, nodeNameToId, config) {
             o["duration"] = perfProfile.duration[i]
             o["end"] = o["start"] + o["duration"]
             o["percentage_time"] = 0 // % of the total app time
+            o["parent"] = null
             o["childNodes"] = []
             o["childToPerf"] = {} // maps each child node to abs_time and % of the region's time taken by the child
             ticTocRegions.push(o)
@@ -248,6 +275,7 @@ function updateChildNodesOfTNodes(dataForTimelineView, maxNodeLevel, dependencyD
                         if ((p.start <= n.start) && (n.end <= p.end)) {
                             p.childNodes.push(n)
                             n.parentId = p.id
+                            n.parent = p
                             break;
                         }
                     }
@@ -453,17 +481,22 @@ function createInternalNode(name, level) {
         execTime        : {"abs": null, "pct": null},
         syncTime        : {"abs": null, "pct": null},
         memUsage        : 0,
+        sourceContext   : {},
     }
 }
 
-function getDisplayTextForTimelineNode(name, syncNodeRegex) {
-    var m = name.match(syncNodeRegex)
+function getDisplayTextForTimelineNode(tNode, syncNodeRegex) {
+    var m = tNode.name.match(syncNodeRegex)
     if (m) {
         return ""
+    } else if (tNode.node) {
+        return tNode.node.sourceContext.opName
     } 
 
     return name
 }
+
+
 
 function assignSyncNodesToParents(dataForTimelineView, dependencyData, syncNodes, config) {
     syncNodes.forEach(function(n) {
@@ -502,11 +535,12 @@ function createPartitionNodes(numNodes, parentName, level) {
 }
 
 function updateSourceContext(node, sc) {
-    var sourceContext = {"file": "", "line": 0}
+    var sourceContext = {"file": "", "line": 0, "opName": ""}
     if (sc) {
         var arr = sc.fileName.split("/")
         sourceContext.file = arr[arr.length - 1]
         sourceContext.line = parseInt(sc.line)
+        sourceContext.opName = sc.opName
     } else {
         console.log("WARNING: SourceContext info not available for kernel: " + ((node.name)))
     }
@@ -584,12 +618,6 @@ function getOrElse(obj, defaultObj) {
 
 function sum(arr) {
     return arr.reduce(function(a,b) {return a + b}, 0)
-}
-
-// helper function used to find unique values in a given array
-// obtained from http://stackoverflow.com/questions/1960473/unique-values-in-an-array
-function onlyUnique(value, index, self) { 
-    return self.indexOf(value) === index;
 }
 
 function max(a,b) {

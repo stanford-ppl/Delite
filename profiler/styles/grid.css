@@ -22,7 +22,7 @@
 #code {
 	position: absolute;
   	width: 50%;
-  	height: 70%;
+  	height: 50%;
 }
 
 #dfgHeader {
@@ -33,12 +33,16 @@
   	background: #DDD;
 }
 
-#dfg {
+#dfg, #generalInfo {
 	position: absolute;
   	width: 50%;
-  	height: 70%;
+  	height: 50%;
   	left: 50%;
   	top: 35px;
+}
+
+#generalInfo {
+  	display: none;
 }
 
 #timeline {
@@ -46,7 +50,30 @@
   	background: #DDD;
   	width: 100%;
   	height: 30%;
-  	top: 70%;
+  	/*top: 70%;*/
+  	top: 80%;
+}
+
+#memory {
+	position: absolute;
+	background: rgb(49, 130, 189);
+	width: 100%;
+	height: 20%;
+	top: 60%;
+	overflow-x: auto;
+	font-size: 10;
+	font-family: sans-serif;
+}
+
+#gcStats {
+	position: absolute;
+	background: #DDD;
+	width: 100%;
+	height: 10%;
+	top: 50%;
+	overflow-x: auto;
+	font-size: 10;
+	font-family: sans-serif;
 }
 
 #globalViewOptions {
