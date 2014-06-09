@@ -81,9 +81,14 @@ object PerformanceTimer
     initializeStats(threadCount)
   }
   
+  /*
   def dumpProfile(globalStart: Long, globalStartNanos: Long) { 
     var stats = toList(statsNewFormat)   
     Profiler.writeProfile(globalStart, globalStartNanos, stats)
+  }*/
+
+  def getTimingStats(): List[Timing] = {
+    toList(statsNewFormat)
   }
 
   def toList(arr: ArrayBuffer[Map[String, List[Timing]]]): List[Timing] = {

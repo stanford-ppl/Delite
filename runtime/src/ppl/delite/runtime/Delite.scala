@@ -8,6 +8,7 @@ import graph.{TestGraph, DeliteTaskGraph}
 import profiler.{PerformanceTimer, Profiler, MemoryProfiler, SamplerThread}
 import scheduler._
 import tools.nsc.io._
+import java.lang.management.ManagementFactory
 
 /**
  * Author: Kevin J. Brown
@@ -133,34 +134,35 @@ object Delite {
         val totalNumThreads = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL
         PerformanceTimer.initializeStats(totalNumThreads)
         MemoryProfiler.initializeStats(totalNumThreads)
+
         val numTimes = Config.numRuns
         
         for (i <- 1 to numTimes) {
           println("Beginning Execution Run " + i)
           PerformanceTimer.clearAll()
-          val globalStart = System.currentTimeMillis
-          val globalStartNanos = System.nanoTime()
-          PerformanceTimer.start("all", false)
 
-          //val samplerThread = new SamplerThread(100)
-          //samplerThread.start
+          //val globalStart = System.currentTimeMillis
+          val globalStartNanos = System.nanoTime()
+          val jvmUpTimeAtAppStart = ManagementFactory.getRuntimeMXBean().getUptime()
+
+          SamplerThread.interval = 10
+          SamplerThread.globalT = globalStartNanos
+          SamplerThread.start
+          PerformanceTimer.start("all", false)
 
           executor.run(executable)
           EOP_Global.await //await the end of the application program
 
-          //samplerThread.interrupt()
-          //samplerThread.dumpProfile()
-
+          SamplerThread.interrupt()
           PerformanceTimer.stop("all", false)
           //PerformanceTimer.printAll(globalStart, globalStartNanos)
           PerformanceTimer.printStatsForNonKernelComps()
-          if (Config.dumpProfile) PerformanceTimer.dumpProfile(globalStart, globalStartNanos)
+          //if (Config.dumpProfile) PerformanceTimer.dumpProfile(globalStart, globalStartNanos)
+          if (Config.dumpProfile) Profiler.dumpProfile(globalStartNanos, jvmUpTimeAtAppStart)
           if (Config.dumpStats) PerformanceTimer.dumpStats()        
           System.gc()
         }
       }
-
-      //println("Done Executing " + numTimes + " Runs")
       
       if(Config.dumpStats)
         PerformanceTimer.dumpStats()
