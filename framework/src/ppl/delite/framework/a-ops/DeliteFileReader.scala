@@ -309,7 +309,10 @@ trait CGenDeliteFileReaderOps extends CGenFat {
       throw new GenerationFailedException("DeliteOpFileReaderReadLines is the old interface: C++ target does not support it.")
     case DeliteFileStreamNew(paths) =>
       // C++ variable length args does not allow string types, so use underlying char *
-      emitValDef(sym, "new cppFileStream(" + paths.length + "," + paths.map(quote(_) + ".c_str()").mkString(",") + ")")
+      if (cppMemMgr == "refcnt")
+        stream.println(remap(sym.tp) + " " + quote(sym) + "(new cppFileStream(" + paths.length + "," + paths.map(quote(_) + ".c_str()").mkString(",") + "));")
+      else
+        emitValDef(sym, "new cppFileStream(" + paths.length + "," + paths.map(quote(_) + ".c_str()").mkString(",") + ")")
     case DeliteFileStreamReadLine(stream,idx) =>
       emitValDef(sym, quote(stream) + "->readLine(" + quote(idx) + ")")
     case DeliteFileStreamSize(stream) =>
@@ -320,6 +323,7 @@ trait CGenDeliteFileReaderOps extends CGenFat {
   }
 
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "DeliteFileStream" if (cppMemMgr == "refcnt") => wrapSharedPtr("cppFileStream")
     case "DeliteFileStream" => "cppFileStream"
     case _ => super.remap(m)
   }

@@ -104,7 +104,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     if (op.outputType(Targets.Cpp) != "void") {
       out.append(op.outputType(Targets.Cpp))
       out.append(' ')
-      if (!isPrimitiveType(op.outputType)) out.append('*')
+      if (!isPrimitiveType(op.outputType) && !op.outputType(Targets.Cpp).startsWith("std::shared_ptr")) out.append('*')
       out.append(resultName)
       out.append(" = ")
     }
@@ -127,9 +127,15 @@ trait CppExecutableGenerator extends ExecutableGenerator {
 
     if (!returnsResult) {
       for (name <- op.getOutputs if(op.outputType(Targets.Cpp,name)!="void")) {
-        out.append(op.outputType(Targets.Cpp, name))
-        if (!isPrimitiveType(op.outputType(name))) out.append('*')
+        out.append(op.outputType(Targets.Cpp, name) + addRef(op.outputType(name)))
         out.append(" " + getSymHost(op,name) + " = " + resultName + "->" + name + ";\n")
+      }
+      // Delete activation record and multiloop header
+      assert(op.isInstanceOf[OP_MultiLoop] && op.getInputs.size==1)
+      if (Config.cppMemMgr == "refcnt") {
+        val (multiloop_h_op,multiloop_h_sym) = op.getInputs.head
+        out.append("delete " + resultName + ";\n")
+        out.append("delete " + getSymHost(multiloop_h_op,multiloop_h_sym) + ";\n")
       }
     }
   }
@@ -149,6 +155,8 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     case _ => Targets.isPrimitiveType(scalaType)
   }
 
+  private def addRef(): String = if (Config.cppMemMgr == "refcnt") " " else " *"
+  protected def addRef(scalaType: String): String = if (isPrimitiveType(scalaType)) " " else addRef()
 }
 
 class CppMainExecutableGenerator(val location: Int, val kernelPath: String)

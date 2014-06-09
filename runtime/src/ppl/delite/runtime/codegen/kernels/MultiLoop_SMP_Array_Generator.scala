@@ -60,6 +60,7 @@ trait MultiLoop_SMP_Array_Generator {
   protected def writeKernelHeader()
   protected def writeKernelFooter()
   protected def returnResult(result: String)
+  protected def release(name: String, cond: Option[String] = None)
   protected def kernelName: String
   protected def addSource(source: String, name: String)
 
@@ -102,7 +103,10 @@ trait MultiLoop_SMP_Array_Generator {
         step *= 2
 
         val neighborVal = get(sync, neighbor)
-        if (needsCombine) combine(acc, neighborVal) //combine activation records if needed
+        if (needsCombine) {
+          combine(acc, neighborVal) //combine activation records if needed
+          if (!op.needsPostProcess) release(neighborVal) //release rhs activation record
+        }
       }
       if (chunkIdx != 0) set(sync, chunkIdx, acc) //slave chunks store result
     }
@@ -122,7 +126,9 @@ trait MultiLoop_SMP_Array_Generator {
       if (numChunks > 1) set("B", chunkIdx, acc) // kick off next in chain
       if (chunkIdx != numChunks-1) get("B", numChunks-1) // wait for last one
       postProcess(acc) //parallel again
-    
+
+      // release activation records except the master chunk
+      if (chunkIdx != 0) release(acc)
     }
 
     if (Config.profile)
@@ -131,6 +137,7 @@ trait MultiLoop_SMP_Array_Generator {
     if (op.needsPostProcess || !op.needsCombine) treeReduction("C", false) //barrier
     if (chunkIdx == 0) { //master chunk returns result
       finalize(acc)
+      release(outSym, Some(acc+"!="+outSym))
       returnResult(acc)
     }
 

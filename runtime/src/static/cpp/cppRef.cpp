@@ -1,3 +1,4 @@
+/*
 #include "cppRef.h"
 
 template<> void cppRef<int>::release(void) {  }
@@ -10,3 +11,4 @@ template<> void cppRef<short>::release(void) {  }
 template<class T> void cppRef<T>::release(void) { 
   data->release();
 }
+*/

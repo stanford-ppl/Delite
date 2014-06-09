@@ -14,7 +14,7 @@
 #include <vector>
 #include <map>
 #include <sstream>
-#include "cppDeliteArray.h"
+#include "cppDeliteArraystring.h"
 
 /* helper methods and data structures only required for execution with Delite */
 #ifndef __DELITE_CPP_STANDALONE__
@@ -23,7 +23,13 @@
 
 using namespace std;
 
-cppDeliteArray< string >* string_split(string str, string pattern);
+#ifdef MEMMGR_REFCNT
+std::shared_ptr<cppDeliteArraystring> string_split(string str, string pattern);
+std::shared_ptr<cppDeliteArraystring> cppArgsGet(int num, ...);
+#else
+cppDeliteArraystring *string_split(string str, string pattern);
+cppDeliteArraystring *cppArgsGet(int num, ...);
+#endif
 int32_t string_toInt(string str);
 float string_toFloat(string str);
 double string_toDouble(string str);
@@ -32,7 +38,6 @@ string string_trim(string str);
 int8_t string_charAt(string str, int idx);
 bool string_startsWith(string str, string substr);
 string string_plus(string str1, string str2);
-cppDeliteArray< string > *cppArgsGet(int num, ...);
 template<class T> string convert_to_string(T in);
 string readFirstLineFile(string filename);
 

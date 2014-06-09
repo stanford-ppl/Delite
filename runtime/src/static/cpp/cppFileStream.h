@@ -22,8 +22,8 @@ using namespace std;
 #define MAX_BUFSIZE 1048576
 
 // switch for priting debugging message
-#define DFS_DEBUG(...) fprintf(stderr, "[DEBUG-DeliteFS] "); fprintf(stderr, __VA_ARGS__)
-//#define DFS_DEBUG(...)
+//#define DFS_DEBUG(...) fprintf(stderr, "[DEBUG-DeliteFS] "); fprintf(stderr, __VA_ARGS__)
+#define DFS_DEBUG(...)
 
 //TODO: check if need to compile with _FILE_OFFSET_BITS == 64?
 class cppFileStream {
