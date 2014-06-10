@@ -32,6 +32,8 @@ object SavedEnvironmentGenerator {
     out.append("Config.numOpenCL = " + Config.numOpenCL + "\n")
     out.append("Config.executor = \"" + Config.executor + "\"\n")
     out.append("Config.performWalk = false\n")
+    val expected = for (i <- 0 until graph.schedule.numResources if !graph.schedule(i).isEmpty) yield i
+    out.append("Delite.expectedResources = Seq(" + expected.mkString(",") + ")\n")
     out.append("}\n}\n")
 
     ScalaCompile.addSource(out.toString, "SavedApp")

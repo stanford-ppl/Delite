@@ -83,25 +83,18 @@ object Compilers {
       CudaExecutableGenerator.clear()
     }
     
-    createSchedule(classLoader, ScalaExecutableGenerator.getPackage(graph), schedule.numResources)
+    val expectedResources = for (i <- 0 until schedule.numResources if !schedule(i).isEmpty) yield i
+    createSchedule(classLoader, ScalaExecutableGenerator.getPackage(graph), schedule.numResources, expectedResources)
   }
 
-  def createSchedule(classLoader: ClassLoader, path: String, numResources: Int) = {
+  def createSchedule(classLoader: ClassLoader, path: String, numResources: Int, expectedResources: Seq[Int]) = {
     val queues = StaticSchedule(numResources)
-    var failed = true
     val prefix = if (path == "") "" else path+"."
-    for (i <- 0 until numResources) {
-      try {
-        val cls = classLoader.loadClass(prefix+"Executable"+i) //load the Executable class
-        val executable = cls.getMethod("self").invoke(null).asInstanceOf[DeliteExecutable] //retrieve the singleton instance
-        queues(i) += executable
-        failed = false
-      }
-      catch {
-        case c: ClassNotFoundException => //just skip it
-      }
+    for (i <- expectedResources) {
+      val cls = classLoader.loadClass(prefix+"Executable"+i) //load the Executable class
+      val executable = cls.getMethod("self").invoke(null).asInstanceOf[DeliteExecutable] //retrieve the singleton instance
+      queues(i) += executable
     }
-    if (failed) throw new RuntimeException("Unable to load generated classes at " + prefix+"Executable$")
     queues
   }
 

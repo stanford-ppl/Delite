@@ -26,6 +26,8 @@ object Delite {
   //TODO: Remove this. This is only used for cluster version GPU runtime code generation.
   var inputArgs: Array[String] = _
 
+  var expectedResources: Seq[Int] = Seq() //TODO: better way to pass this through?
+
   private def printArgs(args: Array[String]) {
     if(args.length == 0) {
       println("Not enough arguments.\nUsage: [Launch Runtime Command] filename.deg arguments*")
@@ -197,7 +199,7 @@ object Delite {
 
   def findExecutables(appName: String): StaticSchedule = {
     val numResources = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL
-    Compilers.createSchedule(this.getClass.getClassLoader, appName, numResources)
+    Compilers.createSchedule(this.getClass.getClassLoader, appName, numResources, expectedResources)
   }
 
   //abnormal shutdown

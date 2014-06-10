@@ -31,7 +31,7 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     out.append("object ")
     out.append(kernelName)
     out.append(" {\n")
-    out.append("val threadName = Thread.currentThread.getName()\n")
+    if (Config.profile) out.append("val threadName = Thread.currentThread.getName()\n")
   }
 
   protected def writeFooter(){
