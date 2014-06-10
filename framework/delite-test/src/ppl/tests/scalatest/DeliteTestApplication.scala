@@ -12,7 +12,8 @@ object DeliteTestFunctionRunner extends DeliteTestDSLApplicationRunner with Deli
 
 trait DeliteTestFunction extends DeliteTestDSLApplication {
   def main() = {
-    val res = testFunction(DeliteArray.fromFunction(i => i.toDouble), 1, 2.0)
+    val a = DeliteArray.fromFunction(100){ i => i.toDouble }
+    val res = testFunction(a, 1, 2.0)
     println(res)
   }
 
