@@ -19,9 +19,10 @@ function createTimeline(timelineDivClass, profileData, config) {
 		chartWidth = parentDiv.width() * 2.5,
 		chartHeight = parentDiv.height();
 
+    var initialXRange = [m[3], chartWidth]
 	var x = d3.scale.linear()
 			.domain([timeBegin, timeEnd + 50])
-			.range([m[3], chartWidth]);
+			.range(initialXRange);
 
 	var y = d3.scale.linear()
 			.domain([0, numLanes])
@@ -65,7 +66,8 @@ function createTimeline(timelineDivClass, profileData, config) {
 		.attr("class", "laneText");
 
 	//timeline item rects
-	timelineGraph.append("g").selectAll("nodes")
+	createTimelineNodes(items, "node")
+	/*timelineGraph.append("g").selectAll("nodes")
 		.data(items)
 		.enter().append("rect")
 		.attr("class", function(d) {return getClassNameForRect(d) + " " + getLevelAttr(d)})
@@ -75,26 +77,27 @@ function createTimeline(timelineDivClass, profileData, config) {
 		.attr("height", rectHeight)
 		.attr("id", function(d) {return d.id})
 		.attr("name", function(d) {return getNodeName(d.name)})
-		.attr("title", "rectangle")
 		.attr("vector-effect", "non-scaling-stroke") // from http://stackoverflow.com/questions/10357292/how-to-make-stroke-width-immune-to-the-current-transformation-matrix
 		.style("fill", getRectFill)
 		.on("click", selectNode)
-		.on("dblclick", dblClickHandler)
+		.on("dblclick", dblClickHandler)*/
+	
 
 	//timeline labels
 	var minDurationReqForDisplayingLabel = 0.05 * profileData.timelineData.totalAppTime
 	var eventsWithLabel = items.filter(function(d) {return (d.end - d.start) >= minDurationReqForDisplayingLabel})
-	timelineGraph.append("g").selectAll(".miniLabels")
+	createTimelineLabels(eventsWithLabel, "miniLabels")
+	/*timelineGraph.append("g").selectAll(".miniLabels")
 		.data(eventsWithLabel)
 		.enter().append("text")
 		.text(getText)
 		.attr("x", function(d) {return (x(d.start) + x(d.end))/2;})
 		.attr("y", function(d) {return y(d.lane + .5);})
 		.attr("dy", ".5ex")
-		.attr("title", "sample title")
+		.attr("id", function(d) {return d.id + "-label"})
 		.attr("class", function(d) {return "timelineNodeName " + getLevelAttr(d)})
 		.on("click", selectNode)
-		.attr("text-anchor", "middle")
+		.attr("text-anchor", "middle")*/
 
 	function convertDataToTimelineFormat(data) {
 		var res = []
@@ -119,7 +122,6 @@ function createTimeline(timelineDivClass, profileData, config) {
 			.attr("height", rectHeight)
 			.attr("id", function(d) {return d.id})
 			.attr("name", function(d) {return getNodeName(d.name)})
-			.attr("title", "rectangle")
 			.attr("vector-effect", "non-scaling-stroke") // from http://stackoverflow.com/questions/10357292/how-to-make-stroke-width-immune-to-the-current-transformation-matrix
 			.style("fill", getRectFill)
 			.on("click", selectNode)
@@ -134,6 +136,7 @@ function createTimeline(timelineDivClass, profileData, config) {
 			.attr("x", function(d) {return (x(d.start) + x(d.end))/2;})
 			.attr("y", function(d) {return y(d.lane + .5);})
 			.attr("dy", ".5ex")
+			.attr("id", function(d) {return d.id + "-label"})
 			.attr("class", function(d) {return className + " timelineNodeName " + getLevelAttr(d)})
 			.on("click", selectNode)
 			.attr("text-anchor", "middle")
@@ -150,15 +153,16 @@ function createTimeline(timelineDivClass, profileData, config) {
 			if ((tNode.parentId == -1) && (stackOfHiddenNodes.length > 0)) {
 				var selector = stackOfHiddenNodes[0][0]
 				$(selector).show()
+				$(selector + "-label").show()
 				stackOfHiddenNodes.length = 0 // clear the array
 				isStackChanged = true
 			}
 
-			var childNodes = tNode.childNodes
+			var childNodes = tNode.childNodes.concat(tNode.syncNodes)
 			var rectSelector = "#" + d3.event.target.id
 			stackOfHiddenNodes.push([rectSelector, tNode])
-			console.log("rectSelector: " + rectSelector)
 			$(rectSelector).hide()
+			$(rectSelector + "-label").hide()
 
 			$(".childNode").remove()
 			createTimelineNodes(childNodes, "childNode")
@@ -205,6 +209,7 @@ function createTimeline(timelineDivClass, profileData, config) {
 		if (selectedLevel == 0) {
 			var rectSelector = stackOfHiddenNodes[selectedLevel][0]
 			$(rectSelector).show()
+			$(rectSelector + "-label").show()
 		} else {
 			var tNode = stackOfHiddenNodes[selectedLevel][1]
 	  		displayNode(tNode)
@@ -282,14 +287,6 @@ function createTimeline(timelineDivClass, profileData, config) {
 		return name
 	}
 
-	function getOpacity(d) {
-		if (config.syncNodeRegex.test(d.name)) {
-			return 0.1
-		}
-
-		return 1.0
-	}
-
 	function getClassNameForRect(d) {
 		if (config.syncNodeRegex.test(d.name)) {
 			return "sync-node"
@@ -303,7 +300,6 @@ function createTimeline(timelineDivClass, profileData, config) {
 	}
 
 	function scroll(numPixels) {
-		console.log("Scrolling " + numPixels)
 		document.getElementsByClassName("timelineWrapper")[0].scrollLeft = numPixels
 	}
 
@@ -316,11 +312,23 @@ function createTimeline(timelineDivClass, profileData, config) {
 	}
 
 	// NOTE: Performs horizontal zoom only
-	function zoom(scale) {
+	/*function zoom(scale) {
 		var t = "scale(" + scale + ", 1)"
 		d3.selectAll(".timingNode").attr("transform", t)
 		d3.selectAll(".sync-node").attr("transform", t)			
 		d3.selectAll(".timelineNodeName").attr("x", function(d) {return scale*((x(d.start) + x(d.end))/2);})
+		d3.select(".chart").attr("width", scale * chartWidth)
+		d3.selectAll(".laneLine").attr("x2", scale * chartWidth)
+	}*/
+
+	function zoom(scale) {
+		x.range([scale * initialXRange[0], scale * initialXRange[1]])	
+
+		d3.selectAll(".timingNode, .sync-node")
+		  .attr("x", function(d) {return x(d.start)})
+		  .attr("width", function(d) {return x(d.end) - x(d.start);})
+
+		d3.selectAll(".timelineNodeName").attr("x", function(d) {return ((x(d.start) + x(d.end))/2);})
 		d3.select(".chart").attr("width", scale * chartWidth)
 		d3.selectAll(".laneLine").attr("x2", scale * chartWidth)
 	}
