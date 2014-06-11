@@ -112,11 +112,13 @@ trait CppExecutableGenerator extends ExecutableGenerator {
 
     out.append(op.task) //kernel name
     op match {
-      case args: Arguments => 
-        if(Arguments.args.length > 0)
-          out.append("(" + Arguments.args.length + Arguments.args.map("\""+_+"\"").mkString(",",",",");\n"))
+      case _:Arguments => 
+        assert(Arguments.args.length == 1 && Arguments.args(0).isInstanceOf[Array[String]], "ERROR: Custom input arguments are not currently suppored with Cpp target")
+        val args = Arguments.args(0).asInstanceOf[Array[String]]
+        if(args.length > 0)
+          out.append("(" + args.length + args.map("\""+_+"\"").mkString(",",",",");\n"))
         else
-          out.append("(" + Arguments.args.length + ");\n") 
+          out.append("(" + args.length + ");\n") 
       case _ => out.append(op.getInputs.map(i=>getSymHost(i._1,i._2)).mkString("(",",",");\n"))
     }
    
