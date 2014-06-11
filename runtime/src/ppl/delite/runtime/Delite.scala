@@ -134,6 +134,7 @@ object Delite {
         val totalNumThreads = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL
         PerformanceTimer.initializeStats(totalNumThreads)
         MemoryProfiler.initializeStats(totalNumThreads)
+        SamplerThread.interval = Config.memSamplingInterval
 
         val numTimes = Config.numRuns
         
@@ -145,21 +146,28 @@ object Delite {
           val globalStartNanos = System.nanoTime()
           val jvmUpTimeAtAppStart = ManagementFactory.getRuntimeMXBean().getUptime()
 
-          SamplerThread.interval = Config.memSamplingInterval
-          SamplerThread.globalT = globalStartNanos
-          SamplerThread.start
-          PerformanceTimer.start("all", false)
+          if (i == numTimes) {
+            if (Config.dumpProfile) {
+              SamplerThread.globalT = globalStartNanos
+              SamplerThread.start
+            }
+            
+            PerformanceTimer.start("all", false)
+          }
 
           executor.run(executable)
           EOP_Global.await //await the end of the application program
 
-          SamplerThread.interrupt()
-          PerformanceTimer.stop("all", false)
-          //PerformanceTimer.printAll(globalStart, globalStartNanos)
-          PerformanceTimer.printStatsForNonKernelComps()
-          //if (Config.dumpProfile) PerformanceTimer.dumpProfile(globalStart, globalStartNanos)
-          if (Config.dumpProfile) Profiler.dumpProfile(globalStartNanos, jvmUpTimeAtAppStart)
-          if (Config.dumpStats) PerformanceTimer.dumpStats()        
+          if (i == numTimes) {
+            if (Config.dumpProfile) SamplerThread.interrupt()
+            PerformanceTimer.stop("all", false)
+            //PerformanceTimer.printAll(globalStart, globalStartNanos)
+            PerformanceTimer.printStatsForNonKernelComps()
+            //if (Config.dumpProfile) PerformanceTimer.dumpProfile(globalStart, globalStartNanos)
+            if (Config.dumpProfile) Profiler.dumpProfile(globalStartNanos, jvmUpTimeAtAppStart)    
+          }
+
+          if (Config.dumpStats) PerformanceTimer.dumpStats() 
           System.gc()
         }
       }
