@@ -128,7 +128,7 @@ object PerformanceTimer
     statsNewFormat.foreach(m => {
       if (m.contains(component)) {
         val str = m(component).map(t => t.elapsedMicros).mkString("\n")
-        stream.print(str)
+        stream.println(str)
       }
     })
   }
