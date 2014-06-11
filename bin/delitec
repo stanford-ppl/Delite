@@ -38,6 +38,7 @@ def main():
     parser.add_option("--Xnocache", dest="xnocache", action="store_true", default=False, help="disables caching during staging; may reduce memory footprint but decrease code gen performance")
     parser.add_option("-d", "--dest", action="store", dest="build_dir", default=os.getenv("PWD"), help="output location for generated files")
     parser.add_option("--dump_exception", dest="dump_exception", action="store_true", default=False, help="Dump generation failed exceptions")
+    parser.add_option("--jar", dest="jar_app", action="store_true", default=False, help="save generated output in a jar for distribution")
 
     (opts, args) = parser.parse_args()
     if len(args) < 1:
@@ -149,11 +150,12 @@ def stage(runner, params, opts):
         err("Delite compilation failed")
 
     #jar generated code
-    jar_cmd = delitecommon.JAVA_HOME + "/bin/jar cfM " + runner + ".jar " + runner + ".deg -C " + opts.build_dir + " generated"
-    #print jar_cmd
-    ecode = os.system(jar_cmd)
-    if ecode != 0:
-        err("Unable to jar Delite compilation output")
+    if opts.jar_app == True:
+        jar_cmd = delitecommon.JAVA_HOME + "/bin/jar cfM " + runner + ".jar " + runner + ".deg -C " + opts.build_dir + " generated"
+        #print jar_cmd
+        ecode = os.system(jar_cmd)
+        if ecode != 0:
+            err("Unable to jar Delite compilation output")
 
 if __name__ == "__main__":
     main()
