@@ -5,9 +5,10 @@ import executor._
 import graph.ops.{EOP_Global, Arguments}
 import graph.targets.Targets
 import graph.{TestGraph, DeliteTaskGraph}
-import profiler.{PerformanceTimer, Profiler, MemoryProfiler}
+import profiler.{PerformanceTimer, Profiler, MemoryProfiler, SamplerThread}
 import scheduler._
 import tools.nsc.io._
+import java.lang.management.ManagementFactory
 
 /**
  * Author: Kevin J. Brown
@@ -151,13 +152,18 @@ object Delite {
           PerformanceTimer.clearAll()
           val globalStart = System.currentTimeMillis
           val globalStartNanos = System.nanoTime()
+          val jvmUpTimeAtAppStart = ManagementFactory.getRuntimeMXBean().getUptime()
+
           PerformanceTimer.start("all", false)
           executor.run(executable)
           appResult = EOP_Global.take() //await the end of the application program          
           PerformanceTimer.stop("all", false)
+
           //PerformanceTimer.printAll(globalStart, globalStartNanos)
-          if (Config.dumpProfile) PerformanceTimer.dumpProfile(globalStart, globalStartNanos)
-          //if (Config.dumpStats) PerformanceTimer.dumpStats()        
+          PerformanceTimer.printStatsForNonKernelComps()
+          //if (Config.dumpProfile) PerformanceTimer.dumpProfile(globalStart, globalStartNanos)
+          if (Config.dumpProfile) Profiler.dumpProfile(globalStartNanos, jvmUpTimeAtAppStart)  
+          if (Config.dumpStats) PerformanceTimer.dumpStats()        
           System.gc()
         }
       }
