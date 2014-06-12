@@ -11,6 +11,9 @@ object PerformanceTimer
   var threadCount = 0
   var statsNewFormat = new ArrayBuffer[Map[String, List[Timing]]]()
   var threadToId: Map[String, Int] = Map()
+  // HACK: This is a temporary solution
+  // This is a list of timing data for the component that is tracked using Config.dumpStatsComponent
+  var statsForTrackedComponent = new mutable.ArrayBuffer[Double]()
 
   def initializeStats(numThreads: Int) = synchronized {
     threadCount = numThreads
@@ -53,6 +56,9 @@ object PerformanceTimer
       
       case timing :: previousTimings =>
         timing.endTime = endTime
+        if (component == Config.dumpStatsComponent) {
+          statsForTrackedComponent += (timing.endTime - timing.startTime) / 1000D
+        }
     }
   }
 
@@ -120,16 +126,22 @@ object PerformanceTimer
     if(Config.dumpStatsOverwrite == false && timesFile.exists)
       throw new RuntimeException("stats file " + timesFile + " already exists")
     val fileStream = new PrintWriter(new FileWriter(timesFile))
-    dumpStats(component, fileStream)
+    //dumpStats(component, fileStream)
+    dumpStats(fileStream)
     fileStream.close
   }
 
-  def dumpStats(component: String, stream: PrintWriter)  {
+  /*def dumpStats(component: String, stream: PrintWriter)  {
     statsNewFormat.foreach(m => {
       if (m.contains(component)) {
         val str = m(component).map(t => t.elapsedMicros).mkString("\n")
         stream.println(str)
       }
     })
+  }*/
+
+  def dumpStats(stream: PrintWriter)  {
+    val s = statsForTrackedComponent.map(t => t.formatted("%.2f")).mkString("\n")
+    stream.print(s)
   }
 }
