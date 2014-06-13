@@ -438,12 +438,17 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         val signature = "void sendUpdateCPPtoJVM_%s(JNIEnv *env, jobject &obj, %s %ssym)".format(mangledName(remapHost(tp)),remapHost(tp),addRef(tp))
         out.append(signature + " {\n")
         if (isPurePrimitiveType(typeArg)) {
-          out.append("\t%sArray arr = env->New%sArray(sym->length);\n".format(JNIType(typeArg),remapToJNI(typeArg)))
-          out.append("\t%s *dataPtr = (%s *)env->GetPrimitiveArrayCritical((%sArray)arr,0);\n".format(JNIType(typeArg),JNIType(typeArg),JNIType(typeArg)))
+          out.append("\tint length = env->GetArrayLength((%sArray)obj);\n".format(JNIType(typeArg)))
+          //this check is needed to create a new array if the size has been changed (same for the emitRecvUpdate implementation below)
+          //(e.g., this was nested array of a struct and mutation changed the array object)
+          out.append("\tif(length != sym->length) {\n")
+          out.append("\t\t%sArray arr = env->New%sArray(sym->length);\n".format(JNIType(typeArg),remapToJNI(typeArg)))
+          out.append("\t\tenv->DeleteLocalRef(obj);\n") // Is it safe to release here?
+          out.append("\t\tobj = (jobject)arr;\n")
+          out.append("\t}\n")
+          out.append("\t\t%s *dataPtr = (%s *)env->GetPrimitiveArrayCritical((%sArray)obj,0);\n".format(JNIType(typeArg),JNIType(typeArg),JNIType(typeArg)))
           out.append("\tmemcpy(dataPtr, sym->data, sym->length*sizeof(%s));\n".format(remapHost(typeArg)))
-          out.append("\tenv->DeleteLocalRef(obj);\n") // Is it safe to release here?
-          out.append("\tobj = (jobject)arr;\n")
-          out.append("\tenv->ReleasePrimitiveArrayCritical((%sArray)arr, dataPtr, 0);\n".format(JNIType(typeArg)))
+          out.append("\tenv->ReleasePrimitiveArrayCritical((%sArray)obj, dataPtr, 0);\n".format(JNIType(typeArg)))
         }
         else {
           out.append("\tassert(false);\n")
@@ -510,11 +515,13 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         val signature = "void recvUpdateCPPfromJVM_%s(JNIEnv *env, jobject obj, %s %ssym)".format(mangledName(remapHost(tp)),remapHost(tp),addRef(tp))
         out.append(signature + " {\n")
         if (isPurePrimitiveType(typeArg)) {
-          out.append("\tsym->length = env->GetArrayLength((%sArray)obj);\n".format(JNIType(typeArg)))
-          out.append("\tsym->data = (%s*)realloc((void*)(sym->data),sizeof(%s)*sym->length);\n".format(remapHost(typeArg),remapHost(typeArg)))
+          out.append("\tint length = env->GetArrayLength((%sArray)obj);\n".format(JNIType(typeArg)))
+          out.append("\tif(length != sym->length)\n")
+          out.append("\t\tsym->data = (%s*)realloc((void*)(sym->data),sizeof(%s)*length);\n".format(remapHost(typeArg),remapHost(typeArg)))
+          out.append("\tsym->length = length;\n")
           out.append("\t%s *dataPtr = (%s*)env->GetPrimitiveArrayCritical((%sArray)obj,0);\n".format(JNIType(typeArg),JNIType(typeArg),JNIType(typeArg)))
-          out.append("\tmemcpy(sym->data, dataPtr, sym->length*sizeof(%s));\n".format(remapHost(typeArg)))
-          out.append("\tenv->ReleasePrimitiveArrayCritical((%sArray)obj, dataPtr, 0);\n".format(JNIType(typeArg)))  
+          out.append("\tmemcpy(sym->data, dataPtr, length*sizeof(%s));\n".format(remapHost(typeArg)))
+          out.append("\tenv->ReleasePrimitiveArrayCritical((%sArray)obj, dataPtr, 0);\n".format(JNIType(typeArg)))
         }
         else {
           out.append("\tassert(false);\n")

@@ -506,6 +506,21 @@ object DeliteTaskGraph {
       //}
     }
 
+    //aux meta
+    val aux = getFieldMap(metadataMap, "aux").asInstanceOf[Map[Any,Any]]
+    if(aux.get("multiDim").isDefined) {
+      for (m <- getFieldList(aux,"multiDim").asInstanceOf[List[Map[Any,Any]]]) {
+        val level = getFieldString(m,"level").toInt
+        val dim = getFieldString(m,"dim")
+        val size = getFieldString(m,"size").toInt
+        val spanMap = getFieldMap(m,"span").asInstanceOf[Map[Any,Any]]
+        val spanTpe = getFieldString(spanMap,"tpe")
+        val spanSize = getFieldString(spanMap,"size")
+        metadata.mapping.append(Mapping(level,dim,size,spanTpe,spanSize))
+        println("added metadata: " + metadata.mapping.last)
+      }
+    }
+
   }
 
   def unsupportedType(err:String) = throw new RuntimeException("Unsupported Op Type found: " + err)

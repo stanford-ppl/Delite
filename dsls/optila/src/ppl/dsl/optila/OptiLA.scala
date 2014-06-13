@@ -282,27 +282,6 @@ trait OptiLACodeGenCuda extends OptiLACudaCodeGenPkg with OptiLACodeGenBase with
   val IR: DeliteApplication with OptiLAExp
 
   import IR._
-
-  // Maps the scala type to cuda type
-  override def remap[A](m: Manifest[A]) : String = {
-    m.toString match {
-      case "Array[Int]" => "DeliteArray< int >"
-      case "Array[Long]" => "DeliteArray< long >"
-      case "Array[Float]" => "DeliteArray< float >"
-      case "Array[Double]" => "DeliteArray< double >"
-      case "Array[Boolean]" => "DeliteArray< bool >"
-      case _ => super.remap(m)
-    }
-  }
-
-  override def getDataStructureHeaders(): String = {
-    val out = new StringBuilder
-    out.append("#include \"cudaList.h\"\n")
-    out.append("#include \"HostcudaList.h\"\n")
-    out.append("#include \"library.h\"\n") // external library
-    super.getDataStructureHeaders() + out.toString
-  }
-
 }
 
 trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg with OptiLAOpenCLGenExternal with OpenCLGenDeliteOps
@@ -312,22 +291,6 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
 {
   val IR: DeliteApplication with OptiLAExp
   import IR._
-
-  override def remap[A](m: Manifest[A]) : String = {
-    m.toString match {
-      case "Array[Int]" => "DeliteArray_int"
-      case "Array[Long]" => "DeliteArray_long"
-      case "Array[Float]" => "DeliteArray_float"
-      case "Array[Double]" => "DeliteArray_double"
-      case "Array[Boolean]" => "DeliteArray_bool"
-      case _ => super.remap(m)
-    }
-  }
-
-  override def getDataStructureHeaders(): String = {
-    val out = new StringBuilder
-    super.getDataStructureHeaders() + out.toString
-  }
 }
 
 trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with OptiLACGenExternal  
@@ -339,22 +302,4 @@ trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with OptiL
 {
   val IR: DeliteApplication with OptiLAExp
   import IR._
-
-  override def remap[A](m: Manifest[A]) : String = {
-    m.toString match {
-      case "Array[Int]" => "DeliteArray< int >"
-      case "Array[Long]" => "DeliteArray< long >"
-      case "Array[Float]" => "DeliteArray< float >"
-      case "Array[Double]" => "DeliteArray< double >"
-      case "Array[Boolean]" => "DeliteArray< bool >"
-      case _ => super.remap(m)
-    }
-  }
-
-  override def getDataStructureHeaders(): String = {
-    val out = new StringBuilder
-    out.append("#include \"cppList.h\"\n")    
-    //out.append("#include \"library.h\"\n") // external library
-    super.getDataStructureHeaders() + out.toString
-  }
 }

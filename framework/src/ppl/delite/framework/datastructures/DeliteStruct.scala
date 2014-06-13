@@ -5,7 +5,7 @@ import scala.reflect.{RefinedManifest, SourceContext}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{CudaCodegen,OpenCLCodegen,CCodegen,CLikeCodegen,GenerationFailedException}
 import scala.virtualization.lms.internal.Targets._
-import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.delite.framework.ops.{DeliteOpsExp,CudaGenDeliteOps}
 import ppl.delite.framework.Config
 import ppl.delite.framework.Util._
 import ppl.delite.framework.extern.lib.ProtoBuf
@@ -480,7 +480,7 @@ trait CLikeGenDeliteStruct extends BaseGenStruct with CLikeCodegen {
   }  
 }
 
-trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaCodegen {
+trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps {
   val IR: DeliteStructsExp with DeliteOpsExp
   import IR._
 
@@ -518,12 +518,15 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaCodegen {
     try {
       stream.println("#ifndef __" + deviceTarget + name + "__")
       stream.println("#define __" + deviceTarget + name + "__")
-      val dependentStructTypes = elems.map(e => 
+
+      val dependentStructTypes = elems.map(e =>
         if(encounteredStructs.contains(structName(baseType(e._2)))) structName(baseType(e._2))
         else if(encounteredStructs.contains(structName(unwrapArrayType(e._2)))) structName(unwrapArrayType(e._2))
         else remap(baseType(e._2)).replaceAll(deviceTarget,"")  // SoA transfromed types
       ).distinct
       
+      val dependentArrayTypes = if (cppMemMgr == "refcnt") elems.filter(e => isArrayType(baseType(e._2))).map(e => unwrapSharedPtr(remap(e._2))).distinct
+                                else elems.filter(e => isArrayType(baseType(e._2))).map(e => remap(e._2)).distinct
       dependentStructTypes foreach { t =>
         if (encounteredStructs.contains(t)) {
           stream.println("#include \"" + deviceTarget + t + ".h\"") 
@@ -536,6 +539,10 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaCodegen {
         }
       }   
       
+      stream.println("//")
+      dependentArrayTypes foreach { t=>
+        stream.println("#include \"" + t + ".h\"")
+      }
       if(isAcceleratorTarget)
         stream.println("#include \"" + hostTarget + name + ".h\"")
 
@@ -566,7 +573,7 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaCodegen {
       // Only generate dc_apply, dc_update, dc_size when there is only 1 DeliteArray among the fields
       val arrayElems = elems.filter(e => isArrayType(baseType(e._2)))
       val generateDC = arrayElems.size > 0
-      val generateAssert = (arrayElems.size > 1) || (arrayElems.size==1 && generatedStructs.contains(remap(baseType(arrayElems(0)._2))))
+      val generateAssert = (arrayElems.size > 1) || (dependentArrayTypes.intersect(dependentStructTypes.map(deviceTarget.toString+_)).nonEmpty)
       if(generateDC) {
         val (idx,tp) = elems.filter(e => isArrayType(baseType(e._2)))(0)
         val argtp = if(generateAssert) "int" else remap(unwrapArrayType(tp))
@@ -669,11 +676,6 @@ struct __T__D {
     try {
       stream.println("#ifndef __" + deviceTarget + name + "__")
       stream.println("#define __" + deviceTarget + name + "__")
-      
-      stream.println("using namespace std;")
-      
-      stream.println("#include <pthread.h>")
-      stream.println("#include <map>")
 
       val dependentStructTypes = elems.map(e => 
         if(encounteredStructs.contains(structName(baseType(e._2)))) structName(baseType(e._2))
@@ -702,6 +704,7 @@ struct __T__D {
       if(isAcceleratorTarget)
         stream.println("#include \"" + hostTarget + name + ".h\"")
 
+      stream.println("using namespace std;")
       stream.println("class " + deviceTarget + name + " {")
       // fields
       stream.println("public:")

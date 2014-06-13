@@ -188,7 +188,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
     for (o <- op.getOutputs if op.outputType(o)!="Unit")
       available += Pair(op,o)
 
-    if(Config.gpuPerformance) 
+    if (Config.profile)
       out.append("DeliteCudaTic(\"" + op.id + "\");\n")
 
     op match {
@@ -200,7 +200,6 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
         val args = op.getInputs.map(i => deref(i._1,i._2) + getSymDevice(i._1,i._2))
         out.append(args.mkString("(",",",");\n"))
       case op:OP_MultiLoop =>
-        
         for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
           out.append(op.outputType(Targets.Cuda, name))
           out.append(" *" + getSymDevice(op,name) + ";\n")
@@ -211,7 +210,6 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
         val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").map(o => "&"+getSymDevice(op,o._2)).toList ++ op.getInputs.map(i=>getSymDevice(i._1,i._2)) :+ size
         
         out.append(args.mkString("(",",",");\n"))
-
       case _:OP_Nested =>
         for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
           out.append(op.outputType(Targets.Cuda, name))
@@ -231,7 +229,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
         out.append(");\n")
     }
 
-    if(Config.gpuPerformance) 
+    if (Config.profile)
       out.append("DeliteCudaToc(\"" + op.id + "\");\n")
     
     out.append("addEvent(kernelStream, d2hStream);\n")

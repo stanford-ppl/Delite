@@ -1,7 +1,7 @@
 package ppl.delite.runtime.graph.targets
 
 import ppl.delite.runtime.graph.ops.DeliteOP
-import scala.collection.mutable.HashMap
+import scala.collection.mutable.{HashMap,ListBuffer}
 
 /**
  * Author: Kevin J. Brown
@@ -19,6 +19,7 @@ trait GPUMetadata {
   //var inputs = Map[(DeliteOP, String), OPData]()
   var temps = List[TempAlloc]()
   var outputs: List[(OPData, String)] = Nil
+  val mapping = new ListBuffer[Mapping]()
 
   /*
   def newInput(op: DeliteOP, sym: String) = {
@@ -53,6 +54,8 @@ trait GPUMetadata {
   */
 
 }
+
+case class Mapping(level: Int, dim: String, size: Int, spanTpe: String, spanSize: String)
 
 final class OPData(val elemType: String, val types: Map[String,String], val funcs: Map[String, List[String]]) {
   

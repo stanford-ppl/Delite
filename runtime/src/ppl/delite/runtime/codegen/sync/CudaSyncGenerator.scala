@@ -308,8 +308,8 @@ trait CudaSyncGenerator extends CudaToScalaSync {
     }
 
     def writeHostRelease(fop: DeliteOP, sym: String) {
-      out.append(getSymHost(fop,sym))
-      out.append("->release();\n")
+      //out.append(getSymHost(fop,sym))
+      //out.append("->release();\n")
     }
 
     //TODO: Separate JVM/Host/Device frees

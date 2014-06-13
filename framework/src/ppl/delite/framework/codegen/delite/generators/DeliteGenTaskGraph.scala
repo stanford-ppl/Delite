@@ -13,7 +13,7 @@ import ppl.delite.framework.ops._
 import ppl.delite.framework.Config
 import ppl.delite.framework.transform.LoopSoAOpt
 import ppl.delite.framework.datastructures.DeliteArray
-import ppl.delite.framework.analysis.{LoopAnalysis,StencilAnalysis}
+import ppl.delite.framework.analysis.{NestedLoopMappingAnalysis,StencilAnalysis}
 import ppl.delite.framework.datastructures.DeliteArrayFatExp
 
 trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOpt {
@@ -125,27 +125,22 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     gatherStencil(sym,rhs)
     allStencils = /*allStencils ++*/ stencilAnalysis.getLoopStencils
 
-    /*
-    val loopAnalysis = new LoopAnalysis { val IR: DeliteGenTaskGraph.this.IR.type = DeliteGenTaskGraph.this.IR }
-    loopAnalysis.innerScope = this.innerScope
+    // Run GPU multi-dim mapping analysis
+    if(Config.enableGPUMultiDim) {
+      val loopAnalysis = new NestedLoopMappingAnalysis { val IR: DeliteGenTaskGraph.this.IR.type = DeliteGenTaskGraph.this.IR }
+      loopAnalysis.innerScope = this.innerScope
 
-    //TODO: get rid of
-    rhs match {
-      case SimpleFatLoop(_,_,_) | SimpleLoop(_,_,_) =>
-        loopAnalysis.analyze(sym, rhs)
-        Predef.println("LOOP ANALYSIS:" + IR.loopMeta)
-        loopAnalysis.mapping(deliteInputs)
-      case l:AbstractLoop[_] =>
-        loopAnalysis.analyze(sym, rhs)
-        Predef.println("LOOP ANALYSIS:" + IR.loopMeta)
-        loopAnalysis.mapping(deliteInputs)
-      case Reflect(l:AbstractLoop[_],u,es) =>
-        loopAnalysis.analyze(sym, rhs)
-        Predef.println("LOOP ANALYSIS:" + IR.loopMeta)
-        loopAnalysis.mapping(deliteInputs)
-      case _ => //
+      val runAnalysis = rhs match {
+        case SimpleFatLoop(_,_,_) | SimpleLoop(_,_,_) => true
+        case _: AbstractLoop[_] => true
+        case Reflect(_:AbstractLoop[_],u,es) => true
+        case _ => false
+      }
+      if (runAnalysis) {
+        loopAnalysis.start(sym, rhs, deliteInputs)
+        loopAnalysis.printResult(sym)
+      }
     }
-    */
 
     if (!skipEmission) for (gen <- generators) {
       val sep = java.io.File.separator
