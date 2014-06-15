@@ -63,8 +63,19 @@ object Targets extends Enumeration {
   }
 
 
-  def isPrimitiveType(scalaType: String): Boolean = scalaType match { //should include Target type in determination, but for now everyone agrees
-    case "Boolean" | "Byte" | "Char" | "Short" | "Int" | "Long" | "Float" | "Double" | "Unit" => true
+  def isPrimitiveType(tpe: String): Boolean = isPrimitiveType(Targets.Scala, tpe)
+
+  def isPrimitiveType(target: Value, tpe: String): Boolean = target match {
+    case Scala => 
+      tpe match {
+        case "Boolean" | "Byte" | "Char" | "Short" | "Int" | "Long" | "Float" | "Double" | "Unit" => true
+        case _ => false 
+      }
+    case Cpp =>
+      tpe match {
+        case "bool" | "int8_t" | "uint16_t" | "int16_t" | "int32_t" | "int64_t" | "float" | "double" | "void" => true
+        case _ => false 
+      }
     case _ => false
   }
 
@@ -109,6 +120,18 @@ object Targets extends Enumeration {
     else if (location < Config.numThreads+Config.numCpp+Config.numCuda) Cuda
     else if (location < Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL) OpenCL
     else throw new RuntimeException("requested location " + location + " is not in the range of available resources.")
+  }
+
+  // get the relative location within a resource type
+  def getRelativeLocation(location: Int): Int = {
+    getByLocation(location) match {
+      case Targets.Scala => location
+      case Targets.Cpp => location - Config.numThreads
+      case Targets.Cuda => location - Config.numThreads - Config.numCpp
+      case Targets.OpenCL => location - Config.numThreads - Config.numCpp - Config.numCuda
+      case t => throw new RuntimeException("unkown resource type (" + t + ") for location " + location)
+    }
+
   }
 
 }

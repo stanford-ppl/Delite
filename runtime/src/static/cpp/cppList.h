@@ -1,3 +1,4 @@
+/*
 #ifndef _CPP_LIST_H_
 #define _CPP_LIST_H_
 
@@ -102,3 +103,4 @@ public:
 };
 
 #endif
+*/

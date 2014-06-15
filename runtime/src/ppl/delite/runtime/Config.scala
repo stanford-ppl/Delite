@@ -31,14 +31,19 @@ object Config {
   val numSlaves: Int = getProperty("delite.slaves", "0").toInt
   val clusterMode: Int = if (getProperty("delite.cluster.isSlave", "false") != "false") 2 else if (numSlaves > 0) 1 else 0
   val masterAddress: String = getProperty("delite.master", "")
-  val scheduler: String = getProperty("delite.scheduler", "default")
-  val executor: String = getProperty("delite.executor", "default")
+  var scheduler: String = getProperty("delite.scheduler", "default")
+  var executor: String = getProperty("delite.executor", "default")
   val numRuns: Int = getProperty("delite.runs", "1").toInt
   val deliteHome: String = getProperty("delite.home", sys.env.getOrElse("DELITE_HOME",System.getProperty("user.dir")))
   val codeCacheHome: String = getProperty("delite.code.cache.home", deliteHome + java.io.File.separator + "generatedCache") //+ (new java.util.Random).nextInt(100).toString
   val useFsc: Boolean = getProperty("delite.usefsc", "false") != "false"
   val tempCudaMemRate: Double = getProperty("delite.tempcudamem", "0.3").toDouble         /* proportions of the cuda device memory used for temporary allocations */
   val taskQueueSize: Int = getProperty("delite.task.queue.size", "1024").toInt
+  var performWalk: Boolean = getProperty("delite.walk", "true") != "false"
+  var performRun: Boolean = getProperty("delite.run", "true") != "false"
+
+  // memory management type for C++ target (refcnt or gc)
+  val cppMemMgr = System.getProperty("delite.cpp.memmgr","malloc")
 
   /* GPU optimization */
   val gpuOptTrans: Boolean = getProperty("delite.gpu.opt.trans", "false") != "false"

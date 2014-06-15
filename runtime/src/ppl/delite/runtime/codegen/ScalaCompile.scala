@@ -22,11 +22,11 @@ object ScalaCompile extends CodeCache {
 
     for (module <- modules if (module.needsCompile)) {
       val sources = Directory(Path(sourceCacheHome + module.name)).deepFiles.filter(f => f.extension == ext || f.extension == javaExt).map(_.path).toArray
-      val classes = module.deps.map(d => Path(classCacheHome + d.name).path).toArray
-      compile(classCacheHome + module.name, sources, classes)
+      val classes = Array(classCacheHome)
+      compile(classCacheHome, sources, classes)
     }
 
-    ScalaClassLoader.fromURLs(modules.map(m => Path(classCacheHome + m.name).toURL), this.getClass.getClassLoader)
+    ScalaClassLoader.fromURLs(Seq(Path(classCacheHome).toURL), this.getClass.getClassLoader)
   }
 
   def compile(destination: String, sources: Array[String], classPaths: Array[String]) {

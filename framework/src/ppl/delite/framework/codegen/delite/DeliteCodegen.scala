@@ -75,8 +75,6 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   override def shouldApplyFusion(currentScope: List[Stm])(result: List[Exp[Any]]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result))
 
 
-
-
   def emitSourceContext(sourceContext: Option[SourceContext], stream: PrintWriter, id: String) {
     // obtain root parent source context (if any)
     val parentContext: Option[SourceContext] =
@@ -86,7 +84,7 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
           current = current.parent.get
         Some(current)
       } else
-    	  sourceContext
+        sourceContext
 
     stream.print("  \"sourceContext\": {\n    ")
     val (fileName, line, opName) =
@@ -99,20 +97,6 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     stream.print("\"line\": \"" + line + "\" }")
   }
 
-/*
-{"SymbolMap": [
-  {"symbol": "x8", "sourceContext": {
-    "fileName": "/Users/phaller/git/Delite-rw/apps/scala/src/ppl/apps/ml/gda/GDA.scala",
-    "opName": "length",
-    "line": "16" }
-  }
-  {"symbol": "x9", "sourceContext": {
-    "fileName": "/Users/phaller/git/Delite-rw/apps/scala/src/ppl/apps/ml/gda/GDA.scala",
-    "opName": "count",
-    "line": "18" }
-  }
-] }
- */
   def emitSymbolSourceContext(stream: PrintWriter): Unit = {
     // output header
     stream.println("{\"SymbolMap\": [")
@@ -149,6 +133,9 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     curBlock
   }
 
+  def emitBlockHeader(syms: List[Sym[Any]], appName: String) { }
+  def emitBlockFooter(result: Exp[Any]) { }
+
   def emitSource[A:Manifest](args: List[Sym[_]], body: Block[A], className: String, stream: PrintWriter): List[(Sym[Any],Any)] = {
     val y = runTransformations(body)
     val staticData = getFreeDataBlock(y)
@@ -156,19 +143,11 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     printlog("-- emitSource")
     availableDefs.foreach(printlog(_))
 
-    stream.println("{\"DEG\":{\n"+
-                   "\"version\" : 0.1,\n"+
-                   "\"kernelpath\" : \"" + Config.buildDir  + "\",\n"+
-                   "\"targets\": [" + generators.map("\""+_+"\"").mkString(",")  + "],\n"+
-                   "\"ops\": [")
-
-    // sometimes, statements outside the main method gets lifted (e.g., Hogwild), 
-    // and the argument symbol is no longer x0
-    assert(args.length == 1)
-    stream.println("{\"type\" : \"Arguments\" , \"kernelId\" : \"" + quote(args(0)) + "\"},")
-    withStream(stream)(emitBlock(y))
-    //stream.println(quote(getBlockResult(y)))
-    stream.println("{\"type\":\"EOP\"}\n]}}")
+    withStream(stream) {
+      emitBlockHeader(args, className)
+      emitBlock(y)
+      emitBlockFooter(getBlockResult(y))
+    }
 
     if (Config.enableProfiler) {
       val symbolsFilename =

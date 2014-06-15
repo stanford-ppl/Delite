@@ -1,14 +1,26 @@
 package ppl.delite.runtime.codegen.sync
 
-
 import ppl.delite.runtime.graph.ops._
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.targets.{OS, Targets}
 import ppl.delite.runtime.codegen._
 import ppl.delite.runtime.scheduler.OpHelper._
 import ppl.delite.runtime.graph.targets.Targets._
+import ppl.delite.runtime.Config
 
-trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIFuncs {
+trait CppSyncProfiler extends CppExecutableGenerator {
+  protected def withProfile(s: Receive)(emitSync: => Unit) {
+    if (Config.profile) {
+      out.append("DeliteCppTimerStart(" + Targets.getRelativeLocation(location) + ",\""+s.sender.from.id + "-" + s.to.id +"\");\n")
+    }
+    emitSync
+    if (Config.profile) {
+      out.append("DeliteCppTimerStop(" + Targets.getRelativeLocation(location) + ",\""+s.sender.from.id + "-" + s.to.id +"\");\n")
+    }
+  }
+}
+
+trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIFuncs with CppSyncProfiler {
 
   private val syncList = new ArrayBuffer[Send]
   
@@ -19,21 +31,21 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
 
   override protected def receiveData(s: ReceiveData) {
     getHostTarget(scheduledTarget(s.sender.from)) match {
-      case Targets.Scala => writeGetter(s.sender.from, s.sender.sym, s.to, false)
+      case Targets.Scala => withProfile(s) { writeGetter(s.sender.from, s.sender.sym, s.to, false) }
       case _ => super.receiveData(s)
     }
   }
 
   override protected def receiveView(s: ReceiveView) {
     getHostTarget(scheduledTarget(s.sender.from)) match {
-      case Targets.Scala => writeGetter(s.sender.from, s.sender.sym, s.to, true)
+      case Targets.Scala => withProfile(s) { writeGetter(s.sender.from, s.sender.sym, s.to, true) }
       case _ => super.receiveView(s)
     }
   }
 
   override protected def awaitSignal(s: Await) {
     getHostTarget(scheduledTarget(s.sender.from)) match {
-      case Targets.Scala => writeAwaiter(s.sender.from)
+      case Targets.Scala => withProfile(s) { writeAwaiter(s.sender.from) }
       case _ => super.awaitSignal(s)
     }
   }
@@ -41,16 +53,18 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
   override protected def receiveUpdate(s: ReceiveUpdate) {
     getHostTarget(scheduledTarget(s.sender.from)) match {
       case Targets.Scala => 
-        s.sender.from.mutableInputsCondition.get(s.sender.sym) match {
-          case Some(lst) => 
-            out.append("if(")
-            out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
-            out.append(") {\n")
-            writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym); 
-            out.append("}\n")
-          case _ => 
-            writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym);
-        } 
+        withProfile(s) { 
+          s.sender.from.mutableInputsCondition.get(s.sender.sym) match {
+            case Some(lst) => 
+              out.append("if(")
+              out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
+              out.append(") {\n")
+              writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym); 
+              out.append("}\n")
+            case _ => 
+              writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym);
+          } 
+        }
       case _ => super.receiveUpdate(s)
     }
   }
@@ -128,14 +142,13 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     out.append("\",\"()")
     out.append(getJNIOutputType(dep.outputType(Targets.Scala,sym)))
     out.append("\"));\n")
-    val ref = if (isPrimitiveType(dep.outputType(sym))) "" else "*"
-    val devType = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
+    val devType = dep.outputType(Targets.Cpp, sym)
     if (view)
-      out.append("%s %s%s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
+      out.append("%s %s%s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(devType,addRef(dep.outputType(sym)),getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
     else if(isPurePrimitiveType(dep.outputType(sym)))
       out.append("%s %s = (%s)%s;\n".format(devType,getSymHost(dep,sym),devType,getSymCPU(sym)))
     else
-      out.append("%s %s%s = recvCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
+      out.append("%s %s%s = recvCPPfromJVM_%s(env%s,%s);\n".format(devType,addRef(dep.outputType(sym)),getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
   }
 
   private def writeAwaiter(dep: DeliteOP, sym: String = "") {
@@ -158,15 +171,16 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
   }
 
   private def writeRecvUpdater(dep: DeliteOP, sym:String) {
-    val devType = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
-    println(dep.id + ":" + sym)
-    println(dep.getInputTypesMap.toString)
+    val devType = dep.inputType(Targets.Cpp, sym)
     assert(!isPrimitiveType(dep.inputType(sym)))
-    out.append("recvUpdateCPPfromJVM_%s(env%s,%s,%s);\n".format(mangledName(devType),location,getSymCPU(sym),getSymHost(dep,sym)))
+    val idx = getSyncVarIdx
+    out.append("jobject _find_%s = JNIObjectMap_find(%s);\n".format(idx,sym.filter(_.isDigit)))
+    out.append("recvUpdateCPPfromJVM_%s(env%s,_find_%s,%s);\n".format(mangledName(devType),location,idx,getSymHost(dep,sym)))
+    out.append("JNIObjectMap_insert(%s,_find_%s);\n".format(sym.filter(_.isDigit),idx))
   }
 
   private def writeSetter(op: DeliteOP, sym: String, view: Boolean) {
-    val devType = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
+    val devType = op.outputType(Targets.Cpp, sym)
     if (view)
       out.append("%s %s = sendViewCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))
     else if(isPurePrimitiveType(op.outputType(sym)))
@@ -213,7 +227,7 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
   }
 
   private def writeSendUpdater(op: DeliteOP, sym: String) {
-    val devType = CppExecutableGenerator.typesMap(Targets.Cpp)(sym)
+    val devType = op.inputType(Targets.Cpp, sym)
     assert(!isPrimitiveType(op.inputType(sym)))
     val idx = getSyncVarIdx
     out.append("jobject _find_%s = JNIObjectMap_find(%s);\n".format(idx,sym.filter(_.isDigit)))
@@ -229,13 +243,13 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
   }
 }
 
-trait CppToCppSync extends SyncGenerator with CppExecutableGenerator with JNIFuncs {
+trait CppToCppSync extends SyncGenerator with CppExecutableGenerator with JNIFuncs with CppSyncProfiler {
 
   private val syncList = new ArrayBuffer[Send]
 
   override protected def receiveData(s: ReceiveData) {
     getHostTarget(scheduledTarget(s.sender.from)) match {
-      case Targets.Cpp => writeGetter(s.sender.from, s.sender.sym, s.to)
+      case Targets.Cpp => withProfile(s) { writeGetter(s.sender.from, s.sender.sym, s.to) }
       case _ => super.receiveData(s)
     }
   }
@@ -252,14 +266,14 @@ trait CppToCppSync extends SyncGenerator with CppExecutableGenerator with JNIFun
 
   override protected def receiveView(s: ReceiveView) {
     getHostTarget(scheduledTarget(s.sender.from)) match {
-      case Targets.Cpp => writeGetter(s.sender.from, s.sender.sym, s.to)
+      case Targets.Cpp => withProfile(s) { writeGetter(s.sender.from, s.sender.sym, s.to) }
       case _ => super.receiveView(s)
     }
   }
 
   override protected def awaitSignal(s: Await) {
     getHostTarget(scheduledTarget(s.sender.from)) match {
-      case Targets.Cpp => writeAwaiter(s.sender.from)
+      case Targets.Cpp => withProfile(s) { writeAwaiter(s.sender.from) }
       case _ => super.awaitSignal(s)
     }
   }
@@ -285,9 +299,11 @@ trait CppToCppSync extends SyncGenerator with CppExecutableGenerator with JNIFun
   }
 
   private def writeGetter(dep: DeliteOP, sym: String, to: DeliteOP) {
-    out.append(CppExecutableGenerator.typesMap(Targets.Cpp)(sym))
+    val tpe = dep.outputType(Targets.Cpp, sym)
+    out.append(tpe)
     out.append(' ')
-    if (!isPrimitiveType(dep.outputType(sym))) out.append(" *")
+    if (tpe.startsWith("MultiLoopHeader")) out.append(" *")
+    else out.append(addRef(dep.outputType(sym)))
     out.append(getSymHost(dep, sym))
     out.append(" = ")
     out.append("get")
@@ -335,7 +351,20 @@ trait CppSyncGenerator extends CppToScalaSync with CppToCppSync {
     //case r: Receive if (getHostTarget(scheduledTarget(r.sender.from)) == Targets.Scala) => addSync(r)
     //case s: Send if (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty) => addSync(s)
     case s: Sync => addSync(s) //TODO: if sync companion also Scala
-    case m: Free => println("[warning] freeing " + m.items.map(_._2).mkString(",") + " is not inserted.")
+    /*
+    case Free(o,items) if (Config.cppMemMgr == "refcnt") => 
+      val freeItems = items.filter(i => !isPrimitiveType(i._1.outputType(i._2)))
+      if(freeItems.size > 0) {
+        for(item <- freeItems) {
+          val tpe = CppExecutableGenerator.typesMap(Targets.Cpp)(item._2)
+          if(tpe.startsWith("std::shared_ptr"))
+            out.append("" + getSymHost(item._1,item._2) + ".reset();\n")
+          else if(tpe != "void" && item._1.scheduledResource==location) // for multiloop header (only the producer deletes it)
+            out.append("delete " + getSymHost(item._1,item._2) + ";\n")
+        }
+      }
+    */
+    case m: Free => //println("[warning] freeing " + m.items.map(_._2).mkString(",") + " is not inserted.")
     case _ => super.makeNestedFunction(op)
   }
 }

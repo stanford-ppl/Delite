@@ -127,7 +127,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   /**
    * The base class for most data parallel Delite ops.
    */
-  abstract class DeliteOpLoop[A:Manifest] extends AbstractLoop[A] with DeliteOp[A] {
+  abstract class DeliteOpLoop[A:Manifest](implicit ctx: SourceContext) extends AbstractLoop[A] with DeliteOp[A] {
     type OpType <: DeliteOpLoop[A]
     def copyBodyOrElse(e: => Def[A]): Def[A] = original.map(p=>mirrorLoopBody(p._2.asInstanceOf[OpType].body,p._1)).getOrElse(e)
     final lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(fresh[Int]).asInstanceOf[Sym[Int]]
@@ -361,7 +361,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     * It now supports allocating a result of type I (which will be modified during construction) and
     * returning a result of type CA by invoking the 'finalizer' method.
     */
-    abstract class DeliteOpMapLike[A:Manifest, I <: DeliteCollection[A]:Manifest, CA <: DeliteCollection[A]:Manifest] extends DeliteOpLoop[CA] {
+    abstract class DeliteOpMapLike[A:Manifest, I <: DeliteCollection[A]:Manifest, CA <: DeliteCollection[A]:Manifest](implicit ctx: SourceContext) extends DeliteOpLoop[CA] {
       type OpType <: DeliteOpMapLike[A,I,CA]
 
       // ideally we would leave these abstract: how can we specify that at least one of the two should be supplied,
@@ -412,14 +412,14 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    *               the operation is mutable; (=> DeliteCollection[B]).
    */
   abstract class DeliteOpMap[A:Manifest,
-                             B:Manifest, CB <: DeliteCollection[B]:Manifest]
+                             B:Manifest, CB <: DeliteCollection[B]:Manifest](implicit ctx: SourceContext)
     extends DeliteOpMapI[A,B,CB,CB] {
     type OpType <: DeliteOpMap[A,B,CB]
 
     def finalizer(x: Exp[CB]) = x
   }
 
-  abstract class DeliteOpMapI[A:Manifest,B:Manifest,I <: DeliteCollection[B]:Manifest,CB <: DeliteCollection[B]:Manifest]
+  abstract class DeliteOpMapI[A:Manifest,B:Manifest,I <: DeliteCollection[B]:Manifest,CB <: DeliteCollection[B]:Manifest](implicit ctx: SourceContext)
     extends DeliteOpMapLike[B,I,CB] {
     type OpType <: DeliteOpMapI[A,B,I,CB]
 
@@ -447,14 +447,14 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val dmCB = manifest[CB]
   }
 
-  abstract class DeliteOpFlatMap[A:Manifest, B:Manifest, CB<:DeliteCollection[B]:Manifest]
+  abstract class DeliteOpFlatMap[A:Manifest, B:Manifest, CB<:DeliteCollection[B]:Manifest](implicit ctx: SourceContext)
     extends DeliteOpFlatMapI[A,B,CB,CB] {
     type OpType <: DeliteOpFlatMap[A,B,CB]
 
     def finalizer(x: Exp[CB]) = x
   }
 
-  abstract class DeliteOpFlatMapI[A:Manifest, B:Manifest, I<:DeliteCollection[B]:Manifest, CB<:DeliteCollection[B]:Manifest]
+  abstract class DeliteOpFlatMapI[A:Manifest, B:Manifest, I<:DeliteCollection[B]:Manifest, CB<:DeliteCollection[B]:Manifest](implicit ctx: SourceContext)
     extends DeliteOpMapLike[B,I,CB] {
     type OpType <: DeliteOpFlatMapI[A,B,I,CB]
 
@@ -484,12 +484,12 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val dmCB = manifest[CB]
   }
 
-  abstract class DeliteOpMapIndices[A:Manifest,CA <: DeliteCollection[A]:Manifest] extends DeliteOpMapIndicesI[A,CA,CA] {
+  abstract class DeliteOpMapIndices[A:Manifest,CA <: DeliteCollection[A]:Manifest](implicit ctx: SourceContext) extends DeliteOpMapIndicesI[A,CA,CA] {
     type OpType <: DeliteOpMapIndices[A,CA]
     def finalizer(x: Exp[CA]) = x
   }
 
-  abstract class DeliteOpMapIndicesI[A:Manifest,I <: DeliteCollection[A]:Manifest,CA <: DeliteCollection[A]:Manifest]
+  abstract class DeliteOpMapIndicesI[A:Manifest,I <: DeliteCollection[A]:Manifest,CA <: DeliteCollection[A]:Manifest](implicit ctx: SourceContext)
     extends DeliteOpMapLike[A,I,CA] {
     type OpType <: DeliteOpMapIndicesI[A,I,CA]
 
@@ -512,7 +512,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    *  Note that it is also implicitly a Map-Filter (it accepts a mapping function). Should this be renamed?
    */
   abstract class DeliteOpFilter[A:Manifest,
-                                B:Manifest, CB <: DeliteCollection[B]:Manifest]
+                                B:Manifest, CB <: DeliteCollection[B]:Manifest](implicit ctx: SourceContext)
     extends DeliteOpFilterI[A,B,CB,CB] {
     type OpType <: DeliteOpFilter[A,B,CB]
 
@@ -520,7 +520,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   }
 
   abstract class DeliteOpFilterI[A:Manifest,
-                                B:Manifest, I <: DeliteCollection[B]:Manifest, CB <: DeliteCollection[B]:Manifest]
+                                B:Manifest, I <: DeliteCollection[B]:Manifest, CB <: DeliteCollection[B]:Manifest](implicit ctx: SourceContext)
     extends DeliteOpMapLike[B,I,CB] {
     type OpType <: DeliteOpFilterI[A,B,I,CB]
 
@@ -559,7 +559,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    */
   abstract class DeliteOpZipWith[A:Manifest,
                                  B:Manifest,
-                                 R:Manifest, CR <: DeliteCollection[R]:Manifest]
+                                 R:Manifest, CR <: DeliteCollection[R]:Manifest](implicit ctx: SourceContext)
     extends DeliteOpZipWithI[A,B,R,CR,CR] {
     type OpType <: DeliteOpZipWith[A,B,R,CR]
 
@@ -569,7 +569,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   abstract class DeliteOpZipWithI[A:Manifest,
                                  B:Manifest,
                                  R:Manifest,
-                                 I <: DeliteCollection[R]:Manifest, CR <: DeliteCollection[R]:Manifest]
+                                 I <: DeliteCollection[R]:Manifest, CR <: DeliteCollection[R]:Manifest](implicit ctx: SourceContext)
     extends DeliteOpMapLike[R,I,CR] {
     type OpType <: DeliteOpZipWithI[A,B,R,I,CR]
 
@@ -597,7 +597,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   }
 
 
-  abstract class DeliteOpReduceLike[A:Manifest] extends DeliteOpLoop[A] {
+  abstract class DeliteOpReduceLike[A:Manifest](implicit ctx: SourceContext) extends DeliteOpLoop[A] {
     type OpType <: DeliteOpReduceLike[A]
     final lazy val rV: (Sym[A],Sym[A]) = copyOrElse(_.rV)((if (mutable) reflectMutableSym(fresh[A]) else fresh[A], fresh[A])) // TODO: transform vars??
     val mutable: Boolean = false
@@ -612,7 +612,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * @param  zero  the "empty" value - must have value equality
    * @param  func  the reduction function; ([Exp[A],Exp[A]) => Exp[A]. Must be associative.
    */
-  abstract class DeliteOpReduce[A:Manifest] extends DeliteOpReduceLike[A] {
+  abstract class DeliteOpReduce[A:Manifest](implicit ctx: SourceContext) extends DeliteOpReduceLike[A] {
     type OpType <: DeliteOpReduce[A]
 
     // supplied by subclass
@@ -645,7 +645,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * @param  map     the mapping function; Exp[A] => Exp[R]
    * @param  reduce  the reduction function; ([Exp[R],Exp[R]) => Exp[R]. Must be associative.
    */
-  abstract class DeliteOpMapReduce[A:Manifest,R:Manifest]
+  abstract class DeliteOpMapReduce[A:Manifest,R:Manifest](implicit ctx: SourceContext)
     extends DeliteOpReduceLike[R] {
     type OpType <: DeliteOpMapReduce[A,R]
 
@@ -668,7 +668,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   }
 
   // should this be folded into DeliteOpMapReduce (or into DeliteOpFilter)?
-  abstract class DeliteOpFilterReduce[A:Manifest,R:Manifest]
+  abstract class DeliteOpFilterReduce[A:Manifest,R:Manifest](implicit ctx: SourceContext)
     extends DeliteOpReduceLike[R] {
     type OpType <: DeliteOpFilterReduce[A,R]
 
@@ -694,7 +694,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
 
   // reduce tuple in parallel, return first component
-  abstract class DeliteOpFilterReduceFold[R:Manifest]
+  abstract class DeliteOpFilterReduceFold[R:Manifest](implicit ctx: SourceContext)
     extends DeliteOpLoop[R] {
     type OpType <: DeliteOpFilterReduceFold[R]
 
@@ -734,7 +734,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * @param  zip     the zipWith function; reified version of (Exp[A],Exp[B]) => Exp[R]
    * @param  reduce  the reduction function; reified version of ([Exp[R],Exp[R]) => Exp[R]. Must be associative.
    */
-  abstract class DeliteOpZipWithReduce[A:Manifest,B:Manifest,R:Manifest]
+  abstract class DeliteOpZipWithReduce[A:Manifest,B:Manifest,R:Manifest](implicit ctx: SourceContext)
     extends DeliteOpReduceLike[R] {
     type OpType <: DeliteOpZipWithReduce[A,B,R]
 
@@ -758,7 +758,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   }
 
   // reduce tuple in parallel, return first component
-  abstract class DeliteOpZipWithReduceTuple[A:Manifest,B:Manifest,R:Manifest,Q:Manifest]
+  abstract class DeliteOpZipWithReduceTuple[A:Manifest,B:Manifest,R:Manifest,Q:Manifest](implicit ctx: SourceContext)
     extends DeliteOpLoop[R] {
     type OpType <: DeliteOpZipWithReduceTuple[A,B,R,Q]
 
@@ -794,7 +794,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * @param  sync   a function from an index to a list of objects that should be locked, in a total ordering,
    *                prior to chunk execution, and unlocked after; (Exp[Int] => Exp[List[Any]])
    */
-  abstract class DeliteOpForeach[A:Manifest] extends DeliteOpLoop[Unit] { //DeliteOp[Unit] {
+  abstract class DeliteOpForeach[A:Manifest](implicit ctx: SourceContext) extends DeliteOpLoop[Unit] { //DeliteOp[Unit] {
     type OpType <: DeliteOpForeach[A]
     val in: Exp[DeliteCollection[A]]
     val size: Exp[Int]
@@ -818,7 +818,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * @param  size   the size of the input collection
    * @param  func   the foreach function Exp[A] => Exp[Unit]
    */
-  abstract class DeliteOpForeachReduce[A:Manifest] extends DeliteOp[Unit]  { //DeliteOpLoop[Unit] {
+  abstract class DeliteOpForeachReduce[A:Manifest](implicit ctx: SourceContext) extends DeliteOp[Unit]  { //DeliteOpLoop[Unit] {
     type OpType <: DeliteOpForeachReduce[A]
     val in: Exp[DeliteCollection[A]]
     val size: Exp[Int]
@@ -845,7 +845,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
      }
   }
 
-  abstract class DeliteOpIndexedLoop extends DeliteOpLoop[Unit] {
+  abstract class DeliteOpIndexedLoop(implicit ctx: SourceContext) extends DeliteOpLoop[Unit] {
     type OpType <: DeliteOpIndexedLoop
     val size: Exp[Int]
     def func: Exp[Int] => Exp[Unit]
@@ -857,7 +857,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     ))
   }
 
-  abstract class DeliteOpHashCollectLike[K:Manifest, V:Manifest, I:Manifest, CV:Manifest, CI:Manifest, CCV: Manifest] extends DeliteOpLoop[CCV] {
+  abstract class DeliteOpHashCollectLike[K:Manifest, V:Manifest, I:Manifest, CV:Manifest, CI:Manifest, CCV: Manifest](implicit ctx: SourceContext) extends DeliteOpLoop[CCV] {
     type OpType <: DeliteOpHashCollectLike[K,V,I,CV,CI,CCV]
     final lazy val allocVal: Sym[CI] = copyTransformedOrElse(_.allocVal)(reflectMutableSym(fresh[CI])).asInstanceOf[Sym[CI]]
     final lazy val aV2: Sym[CI] = copyTransformedOrElse(_.aV2)(fresh[CI]).asInstanceOf[Sym[CI]]
@@ -874,7 +874,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     def finalizerI(x: Exp[I]): Exp[CV]
   }
 
-  abstract class DeliteOpBuildIndex[A:Manifest, K:Manifest, CV:Manifest] extends DeliteOpLoop[CV] {
+  abstract class DeliteOpBuildIndex[A:Manifest, K:Manifest, CV:Manifest](implicit ctx: SourceContext) extends DeliteOpLoop[CV] {
     type OpType <: DeliteOpBuildIndex[A,K,CV]
 
     val in: Exp[DeliteCollection[A]]
@@ -892,25 +892,25 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val dmCV = manifest[CV]
   }
 
-  abstract class DeliteOpGroupBy[K:Manifest, V: Manifest, CV<:DeliteCollection[V]:Manifest, CCV<:DeliteCollection[CV]:Manifest] extends DeliteOpMappedGroupBy[V,K,V,CV,CCV] {
+  abstract class DeliteOpGroupBy[K:Manifest, V: Manifest, CV<:DeliteCollection[V]:Manifest, CCV<:DeliteCollection[CV]:Manifest](implicit ctx: SourceContext) extends DeliteOpMappedGroupBy[V,K,V,CV,CCV] {
     type OpType <: DeliteOpGroupBy[K,V,CV,CCV]
     val in: Exp[DeliteCollection[V]]
     def valFunc: Exp[V] => Exp[V] = v => v
   }
 
-  abstract class DeliteOpMappedGroupBy[A:Manifest, K:Manifest, V:Manifest, CV<:DeliteCollection[V]:Manifest, CCV<:DeliteCollection[CV]:Manifest] extends DeliteOpFilteredGroupBy[A,K,V,CV,CCV] {
+  abstract class DeliteOpMappedGroupBy[A:Manifest, K:Manifest, V:Manifest, CV<:DeliteCollection[V]:Manifest, CCV<:DeliteCollection[CV]:Manifest](implicit ctx: SourceContext) extends DeliteOpFilteredGroupBy[A,K,V,CV,CCV] {
     type OpType <: DeliteOpMappedGroupBy[A,K,V,CV,CCV]
     val in: Exp[DeliteCollection[A]]
     def cond: Exp[A] => Exp[Boolean] = null
   }
 
-  abstract class DeliteOpFilteredGroupBy[A:Manifest, K:Manifest, V:Manifest, CV<:DeliteCollection[V]:Manifest, CCV<:DeliteCollection[CV]:Manifest] extends DeliteOpFilteredGroupByI[A,K,V,CV,CV,CCV,CCV] {
+  abstract class DeliteOpFilteredGroupBy[A:Manifest, K:Manifest, V:Manifest, CV<:DeliteCollection[V]:Manifest, CCV<:DeliteCollection[CV]:Manifest](implicit ctx: SourceContext) extends DeliteOpFilteredGroupByI[A,K,V,CV,CV,CCV,CCV] {
     type OpType <: DeliteOpFilteredGroupBy[A,K,V,CV,CCV]
     def finalizer(x: Exp[CCV]) = x
     def finalizerI(x: Exp[CV]) = x
   }
 
-  abstract class DeliteOpFilteredGroupByI[A:Manifest, K:Manifest, V:Manifest, I<:DeliteCollection[V]:Manifest, CV<:DeliteCollection[V]:Manifest, CI<:DeliteCollection[I]:Manifest, CCV<:DeliteCollection[CV]:Manifest] extends DeliteOpHashCollectLike[K,V,I,CV,CI,CCV] {
+  abstract class DeliteOpFilteredGroupByI[A:Manifest, K:Manifest, V:Manifest, I<:DeliteCollection[V]:Manifest, CV<:DeliteCollection[V]:Manifest, CI<:DeliteCollection[I]:Manifest, CCV<:DeliteCollection[CV]:Manifest](implicit ctx: SourceContext) extends DeliteOpHashCollectLike[K,V,I,CV,CI,CCV] {
     type OpType <: DeliteOpFilteredGroupByI[A,K,V,I,CV,CI,CCV]
     val in: Exp[DeliteCollection[A]]
 
@@ -972,7 +972,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val dmCCV = manifest[CCV]
   }
 
-  abstract class DeliteOpHashReduceLike[K:Manifest, V:Manifest, I<:DeliteCollection[V]:Manifest, CV<:DeliteCollection[V]:Manifest] extends DeliteOpLoop[CV] {
+  abstract class DeliteOpHashReduceLike[K:Manifest, V:Manifest, I<:DeliteCollection[V]:Manifest, CV<:DeliteCollection[V]:Manifest](implicit ctx: SourceContext) extends DeliteOpLoop[CV] {
     type OpType <: DeliteOpHashReduceLike[K,V,I,CV]
     final lazy val rV: (Sym[V],Sym[V]) = copyOrElse(_.rV)((fresh[V], fresh[V]))
     final lazy val allocVal: Sym[I] = copyTransformedOrElse(_.allocVal)(reflectMutableSym(fresh[I])).asInstanceOf[Sym[I]]
@@ -983,22 +983,22 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     def finalizer(x: Exp[I]): Exp[CV]
   }
 
-  abstract class DeliteOpGroupByReduce[K:Manifest, V:Manifest, CV <: DeliteCollection[V]:Manifest] extends DeliteOpMappedGroupByReduce[V,K,V,CV] {
+  abstract class DeliteOpGroupByReduce[K:Manifest, V:Manifest, CV <: DeliteCollection[V]:Manifest](implicit ctx: SourceContext) extends DeliteOpMappedGroupByReduce[V,K,V,CV] {
     type OpType <: DeliteOpGroupByReduce[K,V,CV]
     def valFunc: Exp[V] => Exp[V] = v => v
   }
 
-  abstract class DeliteOpMappedGroupByReduce[A:Manifest, K:Manifest, V:Manifest, CV <: DeliteCollection[V]:Manifest] extends DeliteOpFilteredGroupByReduce[A,K,V,CV] {
+  abstract class DeliteOpMappedGroupByReduce[A:Manifest, K:Manifest, V:Manifest, CV <: DeliteCollection[V]:Manifest](implicit ctx: SourceContext) extends DeliteOpFilteredGroupByReduce[A,K,V,CV] {
     type OpType <: DeliteOpMappedGroupByReduce[A,K,V,CV]
     def cond: Exp[A] => Exp[Boolean] = null
   }
 
-  abstract class DeliteOpFilteredGroupByReduce[A:Manifest, K:Manifest, V:Manifest, CV<:DeliteCollection[V]:Manifest] extends DeliteOpFilteredGroupByReduceI[A,K,V,CV,CV] {
+  abstract class DeliteOpFilteredGroupByReduce[A:Manifest, K:Manifest, V:Manifest, CV<:DeliteCollection[V]:Manifest](implicit ctx: SourceContext) extends DeliteOpFilteredGroupByReduceI[A,K,V,CV,CV] {
     type OpType <: DeliteOpFilteredGroupByReduce[A,K,V,CV]
     def finalizer(x: Exp[CV]) = x
   }
 
-  abstract class DeliteOpFilteredGroupByReduceI[A:Manifest, K:Manifest, V:Manifest, I<:DeliteCollection[V]:Manifest, CV<:DeliteCollection[V]:Manifest] extends DeliteOpHashReduceLike[K,V,I,CV] {
+  abstract class DeliteOpFilteredGroupByReduceI[A:Manifest, K:Manifest, V:Manifest, I<:DeliteCollection[V]:Manifest, CV<:DeliteCollection[V]:Manifest](implicit ctx: SourceContext) extends DeliteOpHashReduceLike[K,V,I,CV] {
     type OpType <: DeliteOpFilteredGroupByReduceI[A,K,V,I,CV]
     val in: Exp[DeliteCollection[A]]
 
@@ -2452,6 +2452,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       (symList zip op.body) foreach {
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
           emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), fieldAccess("__act",quote(sym) + "_data"))
+          releaseRef(fieldAccess("__act",quote(sym)+"_data"))
           getActBuffer = List(quote(elem.buf.allocVal))
           if (elem.par == ParBuffer || elem.par == ParSimpleBuffer) {
             emitValDef(elem.buf.sV, fieldAccess("__act", quote(sym) + "_conditionals"))
@@ -3609,6 +3610,11 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
 
   import IR._
 
+  override def addRef(tpe: String): String = {
+    if (tpe startsWith "activation") " *"
+    else super.addRef(tpe)
+  }
+  
   def quotearg(x: Sym[Any]) = quotetp(x) + " " + quote(x)
   def quotetp(x: Sym[Any]) = remap(x.tp)
 
@@ -3623,7 +3629,7 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   }
 
   def emitNewInstance(varName: String, typeName:String) {
-    stream.println(typeName + "* " + varName + " = new " + typeName + "();")
+    stream.println(typeName + addRef(typeName) + varName + " = new " + typeName + "();")
   }
 
   def fieldAccess(className: String, varName: String): String = {
@@ -3634,7 +3640,8 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   def releaseRef(varName: String) {
     //TODO: Change this to decrement the reference count?
     //stream.println("free(" + varName + ");")
-    stream.println(varName + " = NULL;")
+    //stream.println(varName + " = NULL;")
+    //stream.println(varName + ".reset();")
   }
 
   def emitReturn(rhs: String) = {
@@ -3704,8 +3711,10 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   def nullRef: String = "NULL"
 
   private def emitFieldsAndConstructor() {
-    val fields = kernelInputVals.map(i => remapWithRef(i.tp) + quote(i)) ++ kernelInputVars.map(i => remapWithRef(deviceTarget + "Ref<" + remap(i.tp) + ">") + quote(i))
-    val constructorInputs = kernelInputVals.map(i => remapWithRef(i.tp) + " _" + quote(i)) ++ kernelInputVars.map(i => remapWithRef(deviceTarget + "Ref<" + remap(i.tp) + ">") + " _" + quote(i))
+    val fields = if (cppMemMgr == "refcnt") kernelInputVals.map(i => remapWithRef(i.tp) + quote(i)) ++ kernelInputVars.map(i => wrapSharedPtr(deviceTarget.toString + "Ref" + unwrapSharedPtr(remap(i.tp))) + " " + quote(i))
+                 else kernelInputVals.map(i => remapWithRef(i.tp) + quote(i)) ++ kernelInputVars.map(i => remapWithRef(deviceTarget.toString + "Ref" + remap(i.tp)) + quote(i))
+    val constructorInputs = if (cppMemMgr == "refcnt") kernelInputVals.map(i => remapWithRef(i.tp) + " _" + quote(i)) ++ kernelInputVars.map(i => wrapSharedPtr(deviceTarget.toString + "Ref" + unwrapSharedPtr(remap(i.tp))) + " _" + quote(i))
+                            else kernelInputVals.map(i => remapWithRef(i.tp) + " _" + quote(i)) ++ kernelInputVars.map(i => remapWithRef(deviceTarget.toString + "Ref" + remap(i.tp)) + " _" + quote(i))
 
     //print fields
     stream.println(fields.map(_ + ";\n").mkString(""))
@@ -3718,17 +3727,13 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case s:DeliteOpSingleTask[_] => {
+    case s:DeliteOpSingleTask[_] =>
       //printlog("EMIT single "+s)
       // always wrap single tasks in methods to reduce JIT compilation unit size
       val b = s.block
       emitBlock(b)
-      if (isVoidType(sym.tp)) { }
-      else if (isPrimitiveType(sym.tp))
-        stream.println(remap(sym.tp) + " " + quote(sym) + " = " + quote(getBlockResult(b)) + ";")
-      else
-        stream.println(remap(sym.tp) + " *" + quote(sym) + " = " + quote(getBlockResult(b)) + ";")
-    }
+      if (!isVoidType(sym.tp)) 
+        stream.println(remap(sym.tp) + addRef(sym.tp) + quote(sym) + " = " + quote(getBlockResult(b)) + ";")
 
     case op: AbstractLoop[_] =>
       // TODO: we'd like to always have fat loops but currently they are not allowed to have effects

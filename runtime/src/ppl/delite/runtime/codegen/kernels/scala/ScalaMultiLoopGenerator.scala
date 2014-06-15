@@ -7,16 +7,16 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.Config
 
 object ScalaMultiLoopGenerator {
-  def makeChunks(op: OP_MultiLoop, numChunks: Int, kernelPath: String) = {
+  def makeChunks(op: OP_MultiLoop, numChunks: Int, graph: DeliteTaskGraph) = {
     for (idx <- 0 until numChunks) yield {
       val chunk = if (idx == 0) op else op.chunk(idx)
-      (new ScalaMultiLoopGenerator(chunk, op, idx, numChunks, kernelPath)).makeChunk()
+      (new ScalaMultiLoopGenerator(chunk, op, idx, numChunks, graph)).makeChunk()
       chunk
     }
   }
 }
 
-class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val chunkIdx: Int, val numChunks: Int, val kernelPath: String) extends MultiLoop_SMP_Array_Generator {
+class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val chunkIdx: Int, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Generator {
 
   protected val headerObject = "head"
   protected val closure = "head.closure"
@@ -24,12 +24,14 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
   protected def addSource(source: String, name: String) = ScalaCompile.addSource(source, name)
 
   protected def writeHeader() {
+    ScalaExecutableGenerator.writePackage(graph, out)
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
     out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
-    ScalaExecutableGenerator.writePath(kernelPath, out)
+    ScalaExecutableGenerator.writePath(graph, out)
     out.append("object ")
     out.append(kernelName)
     out.append(" {\n")
+    if (Config.profile) out.append("val threadName = Thread.currentThread.getName()\n")
   }
 
   protected def writeFooter(){
@@ -101,6 +103,10 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     out.append("j += 1\n")
     out.append("}\n")
   }
+  protected def release(name: String, cond: Option[String] = None) {
+    // Nothing to do (JVM GC)
+  }
+
   //TODO: is the division logic really target dependent?
   protected def calculateRange(): (String,String) = {
     out.append("val startOffset = "+closure+".loopStart\n")
@@ -150,11 +156,15 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
   }
 
   protected def beginProfile() {
-    out.append("PerformanceTimer.startChunked(\""+master.id+"\", Thread.currentThread.getName(), "+numChunks+", "+chunkIdx+")\n")
+    //out.append("PerformanceTimer.startChunked(\""+master.id+"\", Thread.currentThread.getName(), "+numChunks+", "+chunkIdx+")\n")
+    val chunkName = master.id + "_" + chunkIdx
+    out.append("PerformanceTimer.start(\""+chunkName+"\", Thread.currentThread.getName(), false)\n")
   }
 
   protected def endProfile() {
-    out.append("PerformanceTimer.stopChunked(\""+master.id+"\", "+chunkIdx+")\n")
+    val chunkName = master.id + "_" + chunkIdx
+    //out.append("PerformanceTimer.stopChunked(\""+master.id+"\", "+chunkIdx+")\n")
+    out.append("PerformanceTimer.stop(\""+chunkName+"\", Thread.currentThread.getName(), false)\n")
   }
 
   protected def kernelName = "MultiLoop_" + master.id + "_Chunk_" + chunkIdx
@@ -177,7 +187,8 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   }
 
   protected def writeObject() {
-    ScalaExecutableGenerator.writePath(graph.kernelPath, out)
+    ScalaExecutableGenerator.writePackage(graph, out)
+    ScalaExecutableGenerator.writePath(graph, out)
     out.append("object ")
     out.append(kernelName)
     out.append(" {\n")

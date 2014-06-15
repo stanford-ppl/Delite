@@ -12,11 +12,11 @@ object CppCompile extends CCompile {
   override def ext = "cpp"
 
   protected def configFile = "CPP.xml"
-  protected def compileFlags = Array("-w", "-O3", "-shared", "-fPIC")
+  protected def compileFlags = Array("-w", "-O3", "-shared", "-fPIC", "-std=c++0x")
   protected def outputSwitch = "-o"
   
   private val dsFiles = Directory(Path(sourceCacheHome + "datastructures")).files.toList
-  override protected def auxSourceList = dsFiles.filter(_.extension == ext).map(_.toAbsolute.toString) :+ (sourceCacheHome + "kernels" + sep + target + "helperFuncs." + ext) :+ (staticResources + "DeliteCpp." + ext)
+  override protected def auxSourceList = dsFiles.filter(_.extension == ext).map(_.toAbsolute.toString) :+ (sourceCacheHome + "kernels" + sep + target + "helperFuncs." + ext) :+ (staticResources + "DeliteCpp." + ext) :+ (staticResources + "DeliteCppProfiler." + ext)
 
   override def compile(destination: String, sources: Array[String], includes: Array[String], libs: Array[String]) {
     val destDir = Path(destination).parent
@@ -60,7 +60,7 @@ CFLAGS = -O3 -fPIC -w -std=c++0x
 LDFLAGS = -shared -fPIC %6$s
 SOURCES = %7$s
 OBJECTS = $(SOURCES:.cpp=.o)
-OUTPUT = $(BINCACHE_HOME)/cppHost%9$s.so
+OUTPUT = $(BINCACHE_HOME)/cppHost%8$s.so
 
 all: $(OUTPUT)
 
@@ -69,12 +69,12 @@ $(OUTPUT): $(OBJECTS)
 	$(CC) $(OBJECTS) $(LDFLAGS) -o $(OUTPUT)
 
 %%.o: %%.cpp
-	$(CC) -c -DDELITE_CPP=%8$s $(INCLUDES) $(CFLAGS) $< -o $@ 
+	$(CC) -c -DDELITE_CPP=%9$s -DMEMMGR_%10$s $(INCLUDES) $(CFLAGS) $< -o $@ 
 
 clean:
 	rm -f $(OBJECTS) $(OUTPUT)
 
 .PHONY: all clean
-""".format(config.compiler,Config.deliteHome,sourceCacheHome,binCacheHome,includes.mkString(" "),libs.mkString(" "),sources.mkString(" "),Config.numCpp, output)
+""".format(config.compiler,Config.deliteHome,sourceCacheHome,binCacheHome,includes.mkString(" "),libs.mkString(" "),sources.mkString(" "),output,Config.numCpp,Config.cppMemMgr.toUpperCase)
 
 }

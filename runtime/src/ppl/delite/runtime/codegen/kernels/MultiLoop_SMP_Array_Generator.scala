@@ -26,7 +26,7 @@ trait MultiLoop_SMP_Array_Generator {
   val master: OP_MultiLoop
   val chunkIdx: Int
   val numChunks: Int
-  val kernelPath: String
+  val graph: DeliteTaskGraph
 
   def makeChunk() {
     val src = makeKernel()
@@ -60,6 +60,7 @@ trait MultiLoop_SMP_Array_Generator {
   protected def writeKernelHeader()
   protected def writeKernelFooter()
   protected def returnResult(result: String)
+  protected def release(name: String, cond: Option[String] = None)
   protected def kernelName: String
   protected def addSource(source: String, name: String)
 
@@ -104,7 +105,10 @@ trait MultiLoop_SMP_Array_Generator {
         step *= 2
 
         val neighborVal = get(sync, neighbor)
-        if (needsCombine) combine(acc, neighborVal) //combine activation records if needed
+        if (needsCombine) {
+          combine(acc, neighborVal) //combine activation records if needed
+          if (!op.needsPostProcess) release(neighborVal) //release rhs activation record
+        }
       }
       if (chunkIdx != 0) set(sync, chunkIdx, acc) //slave chunks store result
     }
@@ -123,6 +127,7 @@ trait MultiLoop_SMP_Array_Generator {
     if (op.needsPostProcess || !op.needsCombine) treeReduction("C", false) //barrier
     if (chunkIdx == 0) { //master chunk returns result
       finalize(acc)
+      release(outSym, Some(acc+"!="+outSym))
       returnResult(acc)
     }
     writeKernelFooter()

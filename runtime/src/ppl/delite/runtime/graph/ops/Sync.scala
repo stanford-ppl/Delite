@@ -71,8 +71,10 @@ object Sync {
   //TODO: in sharedMemory can just send the pointer anyway, can be used later (Notify => SendView)
   def notify(from: DeliteOP, to: DeliteOP) = {
     val notifier = Notify(from, node(to.scheduledResource))
-    val potentialSenders: Set[Sync] = from.getOutputs.map(sym => SendData(sym, from, node(to.scheduledResource))) ++ from.getOutputs.map(sym => SendView(sym, from)) ++ from.getMutableInputs.map(mi => SendUpdate(mi._2, from, node(to.scheduledResource)))
-    val otherSenders = potentialSenders.filter(syncSet contains _)
+    val potentialSenders: Set[Send] = from.getOutputs.map(sym => SendData(sym, from, node(to.scheduledResource))) ++ from.getOutputs.map(sym => SendView(sym, from)) ++ from.getMutableInputs.map(mi => SendUpdate(mi._2, from, node(to.scheduledResource)))
+    // want to replace notify with existing senders only when the corresponding receiver already exists on the target schedule	
+    // (e.g., shed-1 sendData to sched-2, and sched-1 noitfy to sched-3: better not to replace await with recvData unless sched-3 already has it)
+    val otherSenders = potentialSenders.filter(s => syncSet.contains(s) && s.receivers.map(_.scheduledResource).contains(to.scheduledResource))
     notifier match {
       case _ if (from.scheduledResource == to.scheduledResource) => null
       case _ if (syncSet contains notifier) => syncSet(notifier).asInstanceOf[Notify]
@@ -116,19 +118,8 @@ object Sync {
     if (updater ne null) assert(node(updatee.atResource) == updater.toNode, "invalid update pair")
     updater match {
       case null => 
-      /*case _ if (syncSet contains updatee) =>  
-        // need to replace the receiveOp to be the earliest one in the schedule 
-        val receiver = syncSet(updatee).asInstanceOf[ReceiveUpdate]
-        val sch = schedule(to.scheduledResource)
-        if(sch.indexOf(receiver.to) > sch.indexOf(to)) receiver.setReceiveOp(to)
-        val potentialNotifyAwait = Await(Notify(updater.from,node(to.scheduledResource)),to.scheduledResource)
-        if (syncSet contains potentialNotifyAwait) removeSendReceive(potentialNotifyAwait, to)        
-      */
       case _ if (syncSet contains updatee) =>
-      case _ =>
-        val potentialNotifyAwait = Await(Notify(updater.from,node(to.scheduledResource)),to.scheduledResource)
-        if (syncSet contains potentialNotifyAwait) removeSendReceive(syncSet(potentialNotifyAwait).asInstanceOf[Await], to)
-        addReceive(updatee, to, isAntiDep)
+      case _ => addReceive(updatee, to, isAntiDep)
     }
   }
 
@@ -149,44 +140,29 @@ object Sync {
     receiver.sender.receivers += receiver
   }
 
-  private def removeSendReceive[T <: Receive](receiver: T, to: DeliteOP) {
-    syncSet -= receiver
-    receiver.sender.receivers -= receiver
-    if(receiver.sender.receivers.size==0) syncSet -= receiver.sender
-  }
-
-  //TODO: Fix this hack
   private def addSyncToSchedule() {
-    for (sync <- syncSet.values) {
+    val (updateSyncs,nonUpdateSyncs) = syncSet.values.partition(s => s.isInstanceOf[SendUpdate] || s.isInstanceOf[ReceiveUpdate])
+
+    for (sync <- nonUpdateSyncs) {
       sync match {
-        case s: Notify =>
+        case s: Send if !s.isInstanceOf[SendUpdate] =>
           schedule.insertAfter(s, s.from)
-          syncSet.remove(sync)
-        case r: Await =>
-          schedule.insertBefore(r, r.to)
-          syncSet.remove(sync)
-        case _ =>
-      }
-    }
-    for (sync <- syncSet.values) {
-      sync match {
-        case s: SendData =>
-          schedule.insertAfter(s, s.from)
-          syncSet.remove(sync)
-        case r: ReceiveData =>
-          schedule.insertBefore(r, r.to)
-          syncSet.remove(sync)
-        case _ =>
-      }
-    }
-    for (sync <- syncSet.values) {
-      sync match {
-        case s: Send =>
-          schedule.insertAfter(s, s.from)
-        case r: Receive =>
+        case r: Receive if !r.isInstanceOf[ReceiveUpdate] =>
           schedule.insertBefore(r, r.to)
       }
     }
+    // update nodes needs to be added afterwards 
+    // e.g., when sched-1(C++) creates a symbol, sched-2(Java) updates and sched-3(C++) uses it,
+    // sched-3 should get the symbol first from shed-1 and then receive update.
+    for (sync <- updateSyncs) {
+      sync match {
+        case s: SendUpdate =>
+          schedule.insertAfter(s, s.from)
+        case r: ReceiveUpdate =>
+          schedule.insertBefore(r, r.to)
+      }
+    }
+    // updates for loop carried dependencies are appended at the end of the schedule
     for (sync <- loopUpdates) {
       sync match {
         case s: SendUpdate => schedule(s.from.scheduledResource).add(s)
@@ -261,14 +237,14 @@ object Sync {
 
     for (resource <- schedule; op <- resource) {
       //println("op: " +op.id)
-      
       //add in this order to avoid the need for deletions
+
+      // data deps
       for ((dep,sym) <- dataDeps(op)) {
         receive(send(sym, dep, op), op)
       }
-      for (dep <- otherDeps(op)) { //could also be all deps
-        await(notify(dep, op), op)
-      }
+
+      // mutable input deps
       for ((dep,sym) <- op.getInputs) {
         //println("dep,sym:" + dep.id + "," + sym)
         for(m <- lastMutators(sym,op)) {
@@ -276,6 +252,12 @@ object Sync {
         }
       }
 
+      // control deps
+      for (dep <- otherDeps(op)) { //could also be all deps
+        await(notify(dep, op), op)
+      }
+
+      // anti deps
       if (scopeIsLoop) {
         //println("anti-deps:" + op.getAntiDeps.mkString(","))
         for (dep <- op.getAntiDeps) {
@@ -287,18 +269,6 @@ object Sync {
           }
         }
       }
-
-      /*
-      for ((dep,sym) <- mutableDeps(op)) { //write this as a broadcast and then optimize?
-        println("consumers of " + sym + ":" + mutableDepConsumers(op,sym))
-        for (cons <- mutableDepConsumers(op, sym)) {
-          if (_graph.inputs.map(_._2).contains(sym) || (schedule(cons.scheduledResource).availableAt(dep,sym,cons))) {
-            println("calling awaitUpdate:" + cons.toString)
-            awaitUpdate(update(sym, op, cons), cons)
-          }
-        }
-      }
-      */
 
       // Add Free nodes to the schedule if needed
       writeDataFrees(op)
@@ -368,7 +338,6 @@ abstract class Sync extends DeliteOP {
   def isDataParallel = false
   def task = null
   private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]] = null
-  private[graph] var inputTypesMap: Map[Targets.Value, Map[String,String]] = null
 }
 
 abstract class PCM_M extends DeliteOP {
@@ -376,7 +345,6 @@ abstract class PCM_M extends DeliteOP {
   def isDataParallel = false
   def task = null
   private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]] = null
-  private[graph] var inputTypesMap: Map[Targets.Value, Map[String,String]] = null
 }
 
 abstract class Send extends Sync {

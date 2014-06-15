@@ -151,9 +151,8 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val name = "test.tmp"
     // Changed mkReport to directly write to a file instead of trying to capture the output stream here.
     // This is to make the C target testing work, because native C stdout is not captured by this.
-    //Console.withOut(new PrintStream(new FileOutputStream(name))) {
-    val bstream = new ByteArrayOutputStream
-    Console.withOut(new PrintStream(bstream)) {
+    val screenOrVoid = if (verbose) System.out else new PrintStream(new ByteArrayOutputStream())
+    Console.withOut(screenOrVoid) {
       println("test output for: " + app.toString)
       ppl.delite.runtime.Delite.embeddedMain(args, app.staticDataMap)
     }
@@ -163,10 +162,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     fis.read(buf)
     fis.close()
     reportFile.delete() //we don't want any other test to find this file
-    val r = (new String(buf)) ++ bstream.toString
-    bstream.close()
-    if (verbose) System.out.println(r)
-    r
+    new String(buf)
   }
 
   private def execTestExternal(args: Array[String]) = {

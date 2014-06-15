@@ -65,24 +65,25 @@ function getDependencyData(degFileNodes, numThreads) {
     return {"nodes": nodes, "nodeNameToId": nodeNameToId, "maxNodeLevel": getMaxNodeLevel(nodes)}
 }
 
+function isValidKernel(n, nodeNameToId, config) {
+    return (config.syncNodeRegex.test(n) || (n in nodeNameToId))
+}
+
 function getDataForTimelineView(perfProfile, dependencyData, config) {
     var nodes = dependencyData.nodes
     var nodeNameToId = dependencyData.nodeNameToId
     var dataForTimelineView = {}
     var syncNodes = []
+    var ticTocRegions = getTicTocRegions(perfProfile, nodeNameToId, config)
     var totalAppTime = 0
 
     var maxNodeLevel = dependencyData.maxNodeLevel
     for (var i = 0; i <= maxNodeLevel; i++) dataForTimelineView[i] = {}
 
-    function isValidKernel(n) {
-        return (config.syncNodeRegex.test(n) || (n in nodeNameToId))
-    }
-
     for (var i in perfProfile.kernels) {
         var o = {}
         o["name"] = perfProfile.kernels[i]
-        if (isValidKernel(o.name)) {
+        if (isValidKernel(o.name, nodeNameToId, config)) {
             o["id"] = nodeNameToId[o.name]
             o["lane"] = perfProfile.location[i]
             o["start"] = perfProfile.start[i]
@@ -90,7 +91,7 @@ function getDataForTimelineView(perfProfile, dependencyData, config) {
             o["end"] = o["start"] + o["duration"]
             o["node"] = nodes[o.id]
             o["level"] = getTNodeLevel(o)
-            o["displayText"] = getDisplayTextForTimelineNode(o.name)
+            o["displayText"] = getDisplayTextForTimelineNode(o.name, config.syncNodeRegex)
             o["childNodes"] = [] // important for nested nodes such as WhileLoop, IfThenElse, etc.
             o["syncNodes"] = []
             o["parentId"] = -1
@@ -98,9 +99,9 @@ function getDataForTimelineView(perfProfile, dependencyData, config) {
             o["dep_kernel"] = "" // important for sync nodes - specifies the kernel the sync was expecting to complete
             o["execTime"] = {"abs": NaN, "pct": NaN}
             o["syncTime"] = {"abs": NaN, "pct": NaN}
+            o["ticTocRegions"] = []
      
             if (!(config.syncNodeRegex.test(o.name))) {
-                //console.log(o)
                 nodes[o.id].time += o.duration
                 o.type = "execution"
                 addToMap(dataForTimelineView[o.level], o.name, o)
@@ -115,10 +116,92 @@ function getDataForTimelineView(perfProfile, dependencyData, config) {
         }
     }
 
-    assignSyncNodesToParents(dataForTimelineView, dependencyData, syncNodes)
+    assignSyncNodesToParents(dataForTimelineView, dependencyData, syncNodes, config)
     updateChildNodesOfTNodes(dataForTimelineView, maxNodeLevel, dependencyData)
+    assignTNodesToTicTocRegions(dataForTimelineView, ticTocRegions, maxNodeLevel)
+    updateTicTocRegionsData(ticTocRegions, totalAppTime)
 
-    return {"timing": dataForTimelineView, "lanes": perfProfile.res, "totalAppTime": totalAppTime}
+    return {"timing": dataForTimelineView, "lanes": perfProfile.res, "totalAppTime": totalAppTime, "ticTocRegions": ticTocRegions}
+}
+
+function getTicTocRegions(perfProfile, nodeNameToId, config) {
+    var ticTocRegions = []
+    var kernels = perfProfile.kernels
+    var id = 0
+    for (var i in kernels) {
+        if (!(isValidKernel(kernels[i], nodeNameToId, config))) {
+            var o = {}
+            o["id"] = id++
+            o["name"] = perfProfile.kernels[i]
+            o["start"] = perfProfile.start[i]
+            o["duration"] = perfProfile.duration[i]
+            o["end"] = o["start"] + o["duration"]
+            o["percentage_time"] = 0 // % of the total app time
+            o["childNodes"] = []
+            o["childToPerf"] = {} // maps each child node to abs_time and % of the region's time taken by the child
+            ticTocRegions.push(o)
+        }
+    }
+
+    ticTocRegions.sort(function(r1,r2) {return r2.duration - r1.duration})
+
+    return ticTocRegions
+}
+
+function assignTNodesToTicTocRegions(dataForTimelineView, ticTocRegions, maxNodeLevel) {
+    var nodes = getExecutionTNodes(dataForTimelineView, maxNodeLevel)
+    nodes.forEach(function(n) {
+        var regions = findTicTocRegionsForTNode(n, ticTocRegions)
+        n.ticTocRegions = regions
+        regions.forEach(function(r) {
+            r.childNodes.push(n)
+        })
+    })
+}
+
+function getExecutionTNodes(dataForTimelineView, maxNodeLevel) {
+    var res = []
+    for (var i = maxNodeLevel; i >= 0; i--) {
+        var childNodes = dataForTimelineView[i]
+        for (cname in childNodes) {
+            var childRuns = childNodes[cname]
+            if ((childRuns.length > 0) && (childRuns[0].type == "execution")) {
+                res = res.concat(childRuns)
+            }
+        }
+    }
+
+    return res
+}
+
+function findTicTocRegionsForTNode(tNode, ticTocRegions) {
+    return ticTocRegions.filter(function(r) {return ((r.start <= tNode.start) && (tNode.end <= r.end))})
+}
+
+function updateTicTocRegionsData(ticTocRegions, totalAppTime) {
+    function incAbsTime(map, name, id, inc) {
+        if (!(name in map)) {
+            map[name] = {"id": id, "abs": 0, "pct": 0}
+        }
+
+        map[name].abs += inc
+    }
+
+    function computePct(map, durationOfRegion) {
+        for (k in map) {
+            var d = map[k]
+            d.pct = ((d.abs * 100) / durationOfRegion).toFixed(2)
+        }
+    }
+
+    ticTocRegions.forEach(function(r) {
+        r.percentage_time = ((r.duration * 100) / totalAppTime).toFixed(2)
+        r.childNodes.forEach(function(n) {
+            incAbsTime(r.childToPerf, n.name, n.id, n.duration)
+        })
+
+        computePct(r.childToPerf, r.duration)
+    })
 }
 
 function getMaxNodeLevel(nodes) {
@@ -230,8 +313,6 @@ function getThreadLevelPerfStats(timelineData, numThreads) {
         td.syncTime.pct = ((td.syncTime.abs * 100) / appTime).toFixed(2)
     }
 
-    console.log(threadToData)
-
     return threadToData
 }
 
@@ -330,8 +411,8 @@ function initializeNodeDataFromDegFile(node, level, numThreads) {
                     parentId        : -1,  // -1 indicates top-level node. For child nodes, this field will be overwritten in assignNodeIds function
                     time            : 0,
                     percentage_time : 0,
-                    execTime        : {"abs": NaN, "pct": NaN},
-                    syncTime        : {"abs": NaN, "pct": NaN},
+                    execTime        : {"abs": null, "pct": null},
+                    syncTime        : {"abs": null, "pct": null},
                     sourceContext   : {},
                     runs            : [], // timing data for each time this node was executed in the app
                     memUsage        : 0, // in bytes
@@ -360,6 +441,8 @@ function createInternalNode(name, level) {
         type            : "InternalNode",
         condOps         : [],
         bodyOps         : [],
+        thenOps         : [],
+        elseOps         : [],
         componentNodes  : [],
         partitions      : [],   // For MultiLoop and WhileLoop nodes: the different partitions such as x234_1, 
                                             // x234_2, x234_h, etc. This data will be provided by the timing info
@@ -367,35 +450,31 @@ function createInternalNode(name, level) {
         parentId        : -1,  // -1 indicates top-level node. For child nodes, this field will be overwritten in assignNodeIds function
         time            : 0,
         percentage_time : 0,
-        execTime        : {"abs": NaN, "pct": NaN},
-        syncTime        : {"abs": NaN, "pct": NaN},
+        execTime        : {"abs": null, "pct": null},
+        syncTime        : {"abs": null, "pct": null},
         memUsage        : 0,
     }
 }
 
-function getDisplayTextForTimelineNode(name) {
-    var m = name.match(config.syncNodeRegex)
+function getDisplayTextForTimelineNode(name, syncNodeRegex) {
+    var m = name.match(syncNodeRegex)
     if (m) {
-        //return m[3] + "(T" + m[4] + ")"
         return ""
     } 
 
     return name
 }
 
-function assignSyncNodesToParents(dataForTimelineView, dependencyData, syncNodes) {
+function assignSyncNodesToParents(dataForTimelineView, dependencyData, syncNodes, config) {
     syncNodes.forEach(function(n) {
         var m = n.name.match(config.syncNodeRegex)
         var parentName = m[2]
-
         n.dep_kernel = m[3]
         n.dep_thread = "T" + m[4]
 
         if (parentName == "null") { // top-level sync barrier
             n.level = 0
         } else {
-            //console.log(parentName)
-            //console.log(dependencyData)
             var parentId = dependencyData.nodeNameToId[parentName]
             var parentLevel = dependencyData.nodes[parentId].level
             var parent = dataForTimelineView[parentLevel][parentName].filter(function(p) {
@@ -455,16 +534,20 @@ function assignNodeIds(nodes) {
         node.componentNodes.forEach(function(comp) {nodeNameToId[comp] = node.id}) 
     })
 
-    nextId = assignParentIdsToDNodes(nodes, nodeNameToId, nextId)
+    nextId = assignInheritedParentAttrsToDNodes(nodes, nodeNameToId, nextId)
 
     return nodeNameToId
 }
 
-function assignParentIdsToDNodes(nodes, nodeNameToId, nextId) {
+function assignInheritedParentAttrsToDNodes(nodes, nodeNameToId, nextId) {
     function helper(parent, childType) {
         parent[childType].forEach(function(n) {
             n.parentId = parent.id
             n.target = parent.target
+
+            if (n.type == "InternalNode") {
+                n.sourceContext = parent.sourceContext
+            }
         })
     }
 
@@ -476,8 +559,8 @@ function assignParentIdsToDNodes(nodes, nodeNameToId, nextId) {
             helper(node, "thenOps")
             helper(node, "elseOps")
 
-            nextId = assignParentIdsToDNodes(node.condOps, nodeNameToId, nextId)
-            nextId = assignParentIdsToDNodes(node.bodyOps, nodeNameToId, nextId)
+            nextId = assignInheritedParentAttrsToDNodes(node.condOps, nodeNameToId, nextId)
+            nextId = assignInheritedParentAttrsToDNodes(node.bodyOps, nodeNameToId, nextId)
     })
 
     return nextId
