@@ -117,10 +117,11 @@ trait MultiLoop_SMP_Array_Generator {
       dynamicCombine(acc)
       treeReduction("A", true)
     }
+
     if (op.needsPostProcess) {
       dynamicPostCombine(acc)
     }
-
+    
     if (Config.profile)
       endProfile()
 
