@@ -74,8 +74,21 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
     out.append("")
   }
   protected def dynamicPostCombine(acc: String) = {
-    out.append("")
+    if (chunkIdx != 0) {
+      postCombine(acc, get("B", chunkIdx-1)) //linear chain combine
+    }
+    if (chunkIdx == numChunks-1) {
+      postProcInit(acc) //single-threaded
+    }
+
+    if (numChunks > 1) set("B", chunkIdx, acc) // kick off next in chain
+    if (chunkIdx != numChunks-1) get("B", numChunks-1) // wait for last one
+    postProcess(acc) //parallel again
+
+    // release activation records except the master chunk
+    if (chunkIdx != 0) release(acc)
   }
+  
   protected def allocateOutput(): String = {
     out.append(master.outputType(Targets.Cpp)+"* out = "+headerObject+"->out;\n")
     "out"
