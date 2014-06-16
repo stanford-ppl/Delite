@@ -68,7 +68,7 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
     ("start","end")
   }
   protected def dynamicScheduler(outputSym: String) : String = {
-    out.append("int64_t dIdx = "+chunkIdx+"\n")
+    out.append("int64_t dIdx = "+chunkIdx+";\n")
     out.append("int64_t numDynamicChunks = "+headerObject + "->numDynamicChunks;\n")
     out.append("int64_t startOffset = "+closure+"->loopStart;\n")
     out.append("int64_t size = "+closure+"->loopSize;\n")
@@ -277,17 +277,18 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
   protected def writeSynchronizedOffset(){
     if(op.numDynamicChunks == -1){
       //do formula
-      out.append("int64_t proposedNumberOfDynamicChunks = closure.loopSize/(40*"+numChunks+")+" +op.numDynamicChunks+ "\n")
+      out.append("int64_t proposedNumberOfDynamicChunks = closure.loopSize/(40*"+numChunks+")+" +op.numDynamicChunks+ ";\n")
     }
     else {
-      out.append("int64_t proposedNumberOfDynamicChunks = "+op.numDynamicChunks+ "\n")
+      out.append("int64_t proposedNumberOfDynamicChunks = "+op.numDynamicChunks+ ";\n")
     }
     //out.append("println(\"numDynamicChunks: \" + numDynamicChunks)\n")
-    out.append("int64_t numDynamicChunks = (proposedNumberOfDynamicChunks <= "+numChunks+" || "+numChunks+" == 1 || closure.loopSize < proposedNumberOfDynamicChunks) "+numChunks+": proposedNumberOfDynamicChunks\n")
+    out.append("int64_t numDynamicChunks = (proposedNumberOfDynamicChunks <= "+numChunks+" || "+numChunks+" == 1 || closure.loopSize < proposedNumberOfDynamicChunks) "+numChunks+": proposedNumberOfDynamicChunks;\n")
     //out.append("println(\"proposedNumDynamicChunks: \" + proposedNumberOfDynamicChunks)\n")
     //out.append("println(\"numChunks: \" + numDynamicChunks)\n")
-    out.append("std::atomic<int> offset = "+numChunks+"\n")
-    out.append("int getDynamicChunkIndex() { int result = offset; ++offset; return result;}\n")  }
+    out.append("std::atomic<int> offset = "+numChunks+";\n")
+    out.append("int getDynamicChunkIndex() { int result = offset; ++offset; return result;}\n")  
+  }
   protected def writeSync(key: String) {
     syncList += key //need a way to initialize these fields in C++
     val outputType = op.outputType(Targets.Cpp)
@@ -319,7 +320,7 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
     val outputType = op.outputType
 
     out.append("std::array<std::atomic<int>,numDynamicChunks> dynamicNotReady;\n")
-    out.append("std::array<"+outputType+",numDynamicChunks> _dynamicResult;")
+    out.append("std::array<"+outputType+",numDynamicChunks> _dynamicResult;\n")
 
     out.append(outputType + " dynamicGet(int64_t i) {\n")
     out.append(" while (dynamicNotReady[i]==0) { };\n")
