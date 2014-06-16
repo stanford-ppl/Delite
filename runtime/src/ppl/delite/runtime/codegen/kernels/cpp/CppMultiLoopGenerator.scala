@@ -68,24 +68,53 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
     ("start","end")
   }
   protected def dynamicScheduler(outputSym: String) : String = {
+    out.append("int64_t dIdx = "+chunkIdx+"\n")
+    out.append("int64_t numDynamicChunks = "+headerObject + "->numDynamicChunks;\n")
+    out.append("int64_t startOffset = "+closure+"->loopStart;\n")
+    out.append("int64_t size = "+closure+"->loopSize;\n")
+    out.append("while(dIdx < numDynamicChunks){\n")
+    out.append("int64_t start = (int64_t)(startOffset + size*dIdx/numDynamicChunks);\n")
+    out.append("int64_t end = (int64_t)(startOffset + size*(dIdx+1)/numDynamicChunks);\n")  
+    //out.append("println(\"start: \" + start + \" end: \" +end + \" loopSize: \" + "+closure+".loopSize)\n")
+    out.append("int64_t accDynamic = "+closure+"->processRange("+outputSym+",start,end);\n")
+    out.append(headerObject+"->dynamicSet(dIdx,accDynamic);\n")
+    out.append("dIdx = "+headerObject+"->getDynamicChunkIndex();\n")
+    out.append("}\n")
+
+    out.append("int64_t myThreadDynamicIndexStart = ("+chunkIdx+"*numDynamicChunks)/"+numChunks+";\n")
+    out.append("int64_t myThreadDynamicIndexEnd = (("+chunkIdx+"+1)*numDynamicChunks)/"+numChunks+";\n")    
+    out.append(master.outputType(Targets.Cpp)+"* acc = "+headerObject+"->dynamicGet(myThreadDynamicIndexStart);\n")
     "acc"
   }
   protected def dynamicCombine(acc: String) = {
-    out.append("")
+    out.append("int64_t i = 1+myThreadDynamicIndexStart;\n")
+    out.append("while(i < myThreadDynamicIndexEnd){\n")
+    out.append(closure+"->combine("+acc+","+headerObject+"->dynamicGet(i));\n")
+    out.append("++i;\n")
+    out.append("}\n")
   }
   protected def dynamicPostCombine(acc: String) = {
     if (chunkIdx != 0) {
       postCombine(acc, get("B", chunkIdx-1)) //linear chain combine
     }
+    out.append("int64_t j = 1+myThreadDynamicIndexStart;\n")
+    out.append("int64_t old = "+acc+";\n")
+    out.append("while(j < myThreadDynamicIndexEnd){\n")
+    out.append(closure+"->postCombine("+headerObject+"->dynamicGet(j),old);\n")
+    out.append("old = "+headerObject+"->dynamicGet(j);\n")
+    out.append("++j;\n")
+    out.append("}\n")
     if (chunkIdx == numChunks-1) {
-      postProcInit(acc) //single-threaded
+      postProcInit("old") 
     }
-
-    if (numChunks > 1) set("B", chunkIdx, acc) // kick off next in chain
+    if(numChunks > 1) set("B", chunkIdx, "old")
     if (chunkIdx != numChunks-1) get("B", numChunks-1) // wait for last one
-    postProcess(acc) //parallel again
 
-    // release activation records except the master chunk
+    out.append("j = myThreadDynamicIndexStart;\n")
+    out.append("while(j < myThreadDynamicIndexEnd){\n")
+    out.append(closure+"->postProcess("+headerObject+"->dynamicGet(j));\n")
+    out.append("++j;\n")
+    out.append("}\n")
     if (chunkIdx != 0) release(acc)
   }
   
@@ -174,6 +203,9 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
 
   protected def writeClassHeader() {
     out.append("#include <pthread.h>\n")
+    out.append("#include <atomic>\n")
+    out.append("#include <array>\n")
+    out.append("\n")
     out.append("#include \""+op.id+".cpp\"\n")
     out.append("#ifndef HEADER_"+op.id+"\n")
     out.append("#define HEADER_"+op.id+"\n")
@@ -243,8 +275,19 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
 
   //TODO: fill in
   protected def writeSynchronizedOffset(){
-    out.append("")
-  }
+    if(op.numDynamicChunks == -1){
+      //do formula
+      out.append("int64_t proposedNumberOfDynamicChunks = closure.loopSize/(40*"+numChunks+")+" +op.numDynamicChunks+ "\n")
+    }
+    else {
+      out.append("int64_t proposedNumberOfDynamicChunks = "+op.numDynamicChunks+ "\n")
+    }
+    //out.append("println(\"numDynamicChunks: \" + numDynamicChunks)\n")
+    out.append("int64_t numDynamicChunks = (proposedNumberOfDynamicChunks <= "+numChunks+" || "+numChunks+" == 1 || closure.loopSize < proposedNumberOfDynamicChunks) "+numChunks+": proposedNumberOfDynamicChunks\n")
+    //out.append("println(\"proposedNumDynamicChunks: \" + proposedNumberOfDynamicChunks)\n")
+    //out.append("println(\"numChunks: \" + numDynamicChunks)\n")
+    out.append("std::atomic<int> offset = "+numChunks+"\n")
+    out.append("int getDynamicChunkIndex() { int result = offset; ++offset; return result;}\n")  }
   protected def writeSync(key: String) {
     syncList += key //need a way to initialize these fields in C++
     val outputType = op.outputType(Targets.Cpp)
@@ -273,7 +316,17 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
     out.append("}\n")
   }
   protected def dynamicWriteSync() {
-    out.append("")
+    val outputType = op.outputType
+
+    out.append("std::array<std::atomic<int>,numDynamicChunks> dynamicNotReady;\n")
+    out.append("std::array<"+outputType+",numDynamicChunks> _dynamicResult;")
+
+    out.append(outputType + " dynamicGet(int64_t i) {\n")
+    out.append(" while (dynamicNotReady[i]==0) { };\n")
+    out.append("return _dynamicResult[i] }\n")
+
+    out.append("void dynamicSet(int64_t i,"+outputType+" dynamicResult){\n")
+    out.append(" _dynamicResult[i] = dynamicResult; dynamicNotReady[i] = 1;}\n")
   }
   protected def initSync() {
     out.append("void initSync() {\n")
