@@ -274,7 +274,7 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
     //out.append("println(\"numDynamicChunks: \" + numDynamicChunks)\n")
     out.append("val numDynamicChunks = if(proposedNumberOfDynamicChunks <= "+numChunks+" || "+numChunks+" == 1 || closure.loopSize < proposedNumberOfDynamicChunks) "+numChunks+" else proposedNumberOfDynamicChunks\n")
     //out.append("println(\"proposedNumDynamicChunks: \" + proposedNumberOfDynamicChunks)\n")
-    out.append("println(\"numChunks: \" + numDynamicChunks)\n")
+    //out.append("println(\"numChunks: \" + numDynamicChunks)\n")
     out.append("private val offset = new AtomicInteger("+numChunks+")\n")
     out.append("def getDynamicChunkIndex() : Int = { offset.getAndAdd(1) }\n")
   }
