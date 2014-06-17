@@ -68,6 +68,8 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
     ("start","end")
   }
   protected def dynamicScheduler(outputSym: String) : String = {
+    val (start,end) = calculateRange()
+    processRange(outSym,start,end)
     "acc"
   }
   protected def dynamicCombine(acc: String) = {
