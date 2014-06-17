@@ -268,13 +268,6 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
 
     out.append("out = closure->alloc();\n")
     out.append("initSync();\n")
-    out.append("}\n")
-  }
-
-  protected val syncList = new ArrayBuffer[String]
-
-  //TODO: fill in
-  protected def writeSynchronizedOffset(){
     if(op.numDynamicChunks == -1){
       //do formula
       out.append("int64_t proposedNumberOfDynamicChunks = closure.loopSize/(40*"+numChunks+")+" +op.numDynamicChunks+ ";\n")
@@ -284,9 +277,20 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
     }
     //out.append("println(\"numDynamicChunks: \" + numDynamicChunks)\n")
     out.append("int64_t numDynamicChunks = (proposedNumberOfDynamicChunks <= "+numChunks+" || "+numChunks+" == 1 || closure.loopSize < proposedNumberOfDynamicChunks) "+numChunks+": proposedNumberOfDynamicChunks;\n")
+    out.append("std::array<std::atomic<int>,this.numDynamicChunks> dynamicNotReady;\n")
+    out.append("std::array<"+op.outputType(Targets.Cpp)+",this.numDynamicChunks> _dynamicResult;\n")
+    out.append("void dynamicSet(int64_t i,"+op.outputType(Targets.Cpp)+" dynamicResult);\n")
+    out.append("std::atomic<int> offset = "+numChunks+";\n")
+    out.append("int getDynamicChunkIndex();\n")
+    out.append("}\n")
+  }
+
+  protected val syncList = new ArrayBuffer[String]
+
+  //TODO: fill in
+  protected def writeSynchronizedOffset(){
     //out.append("println(\"proposedNumDynamicChunks: \" + proposedNumberOfDynamicChunks)\n")
     //out.append("println(\"numChunks: \" + numDynamicChunks)\n")
-    out.append("std::atomic<int> offset = "+numChunks+";\n")
     out.append("int getDynamicChunkIndex() { int result = offset; ++offset; return result;}\n")  
   }
   protected def writeSync(key: String) {
@@ -317,17 +321,14 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
     out.append("}\n")
   }
   protected def dynamicWriteSync() {
-    val outputType = op.outputType
-
-    out.append("std::array<std::atomic<int>,numDynamicChunks> dynamicNotReady;\n")
-    out.append("std::array<"+outputType+",numDynamicChunks> _dynamicResult;\n")
+    val outputType = op.outputType(Targets.Cpp)
 
     out.append(outputType + " dynamicGet(int64_t i) {\n")
     out.append(" while (dynamicNotReady[i]==0) { };\n")
-    out.append("return _dynamicResult[i] }\n")
+    out.append("return _dynamicResult[i];\n }\n")
 
     out.append("void dynamicSet(int64_t i,"+outputType+" dynamicResult){\n")
-    out.append(" _dynamicResult[i] = dynamicResult; dynamicNotReady[i] = 1;}\n")
+    out.append(" _dynamicResult[i] = dynamicResult;\n dynamicNotReady[i] = 1;\n}\n")
   }
   protected def initSync() {
     out.append("void initSync() {\n")
