@@ -65,7 +65,6 @@ trait MultiLoop_SMP_Array_Generator {
   protected def addSource(source: String, name: String)
 
   //runtime services
-  protected def calculateRange(): (String, String)
   protected def get(syncObject: String, idx: Int): String
   protected def set(syncObject: String, idx: Int, value: String)
 
@@ -90,11 +89,9 @@ trait MultiLoop_SMP_Array_Generator {
       beginProfile()
 
     //determine range of chunk
-    //val (start,end) = calculateRange()
     val outSym = allocateOutput()
     
-    //val (start,end) = calculateRange()
-    var acc = dynamicScheduler(outSym)//processRange(outSym,start,end)
+    var acc = dynamicScheduler(outSym)
 
     def treeReduction(sync: String, needsCombine: Boolean) { //combines thread-local results and guarantees completion of all chunks by the time the master chunk returns
       var half = chunkIdx

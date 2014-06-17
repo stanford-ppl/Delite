@@ -24,7 +24,6 @@ object Config {
   }
 
   var numThreads: Int = getProperty("delite.threads", "1").toInt  /* scala target threads */
-  var numDynamicChunks: Int = getProperty("delite.numDynamicChunks", "1").toInt  /* scala target threads */
   var numCpp: Int = getProperty("delite.cpp", "0").toInt         /* cpp target threads */
   var numCuda: Int = getProperty("delite.cuda", "0").toInt        /* cuda target threads */
   var numOpenCL: Int = getProperty("delite.opencl", "0").toInt    /* opencl target threads */
