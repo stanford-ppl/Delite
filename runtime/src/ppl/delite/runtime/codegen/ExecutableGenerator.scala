@@ -1,5 +1,6 @@
 package ppl.delite.runtime.codegen
 
+import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.scheduler.OpList
@@ -31,7 +32,7 @@ trait ExecutableGenerator {
 
   protected val out: StringBuilder = new StringBuilder
   val location: Int
-  val kernelPath: String
+  val graph: DeliteTaskGraph
   var opList: OpList = _
 
   def makeExecutable(ops: OpList) {

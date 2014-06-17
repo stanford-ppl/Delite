@@ -9,6 +9,7 @@ import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, Gener
 import codegen.cpp.TargetCpp
 import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
+import codegen.delite.overrides.DeliteAllOverridesExp
 import codegen.opencl.TargetOpenCL
 import codegen.scala.TargetScala
 import codegen.restage.TargetRestage
@@ -16,7 +17,7 @@ import codegen.Target
 import ops.DeliteOpsExp
 import transform.DeliteTransform
 
-trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransform {  
+trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransform with DeliteAllOverridesExp {  
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
 
   /*
@@ -123,14 +124,14 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
             case gen: CCodegen => streamDebug.println("#include \"DeliteStandaloneMain.h\"\n")
             case _ => //
           }
-          g.emitSource(liftedMain, "Application", streamDebug)
+          emitRegisteredSource(g, streamDebug)
           // TODO: dot output
           reset
         }
       }
     }
     deliteGenerator.initializeGenerator(Config.buildDir, args)
-    val sd = deliteGenerator.emitSource(liftedMain, "Application", stream)    
+    val sd = emitRegisteredSource(deliteGenerator, stream)
     deliteGenerator.finalizeGenerator()
 
     for (g <- generators) {
@@ -195,8 +196,53 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   def mainWithResult(): Unit = main()
   var _mainResult: Unit = () //null // passes along whatever was returned by the block (could be staged or not staged, i.e. Rep[T] or T)
   
-  def liftedMain(x: Rep[Array[String]]) = { this.args = x; val y = mainWithResult(); this._mainResult = y; this.args = null; unit(y) }
+  def liftedMain(x: Rep[Array[String]]): Rep[Unit] = { this.args = x; val y = mainWithResult(); this._mainResult = y; this.args = null; unit(y) }
   
+  /**
+   * Used when staging a function (to be called by external code) rather than an entire app
+  */
 
-  private def nop = throw new RuntimeException("not implemented yet")
+  def registerFunction[A:Manifest,R:Manifest](func: Rep[A] => Rep[R]) = {
+    stagedFunc = func
+    arity = 1
+    fm = List(manifest[A],manifest[R])
+  }
+
+  def registerFunction[A:Manifest,B:Manifest,R:Manifest](func: (Rep[A],Rep[B]) => Rep[R]) = {
+    stagedFunc = func
+    arity = 2
+    fm = List(manifest[A],manifest[B],manifest[R])
+  }
+
+  def registerFunction[A:Manifest,B:Manifest,C:Manifest,R:Manifest](func: (Rep[A],Rep[B],Rep[C]) => Rep[R]) = {
+    stagedFunc = func
+    arity = 3
+    fm = List(manifest[A],manifest[B],manifest[C],manifest[R])
+  }
+
+  def registerFunction[A:Manifest,B:Manifest,C:Manifest,D:Manifest,R:Manifest](func: (Rep[A],Rep[B],Rep[C],Rep[D]) => Rep[R]) = {
+    stagedFunc = func
+    arity = 4
+    fm = List(manifest[A],manifest[B],manifest[C],manifest[D],manifest[R])
+  }
+
+  def registerFunction[A:Manifest,B:Manifest,C:Manifest,D:Manifest,E:Manifest,R:Manifest](func: (Rep[A],Rep[B],Rep[C],Rep[D],Rep[E]) => Rep[R]) = {
+    stagedFunc = func
+    arity = 5
+    fm = List(manifest[A],manifest[B],manifest[C],manifest[D],manifest[E],manifest[R])
+  }
+
+  def emitRegisteredSource(gen: GenericFatCodegen{val IR: DeliteApplication.this.type}, stream: PrintWriter): List[(Sym[Any], Any)] = arity match {
+    case 1 => gen.emitSource(stagedFunc.asInstanceOf[Rep[Any]=>Rep[Any]], functionName, stream)(fm(0),fm(1))
+    case 2 => gen.emitSource2(stagedFunc.asInstanceOf[(Rep[Any],Rep[Any])=>Rep[Any]], functionName, stream)(fm(0),fm(1),fm(2))
+    case 3 => gen.emitSource3(stagedFunc.asInstanceOf[(Rep[Any],Rep[Any],Rep[Any])=>Rep[Any]], functionName, stream)(fm(0),fm(1),fm(2),fm(3))
+    case 4 => gen.emitSource4(stagedFunc.asInstanceOf[(Rep[Any],Rep[Any],Rep[Any],Rep[Any])=>Rep[Any]], functionName, stream)(fm(0),fm(1),fm(2),fm(3),fm(4))
+    case 5 => gen.emitSource5(stagedFunc.asInstanceOf[(Rep[Any],Rep[Any],Rep[Any],Rep[Any],Rep[Any])=>Rep[Any]], functionName, stream)(fm(0),fm(1),fm(2),fm(3),fm(4),fm(5))
+    case _ => throw new RuntimeException("Unsupported function arity for emitSource: " + arity)
+  }
+
+  private var stagedFunc: Any = (liftedMain _)
+  private var fm: List[Manifest[Any]] = List(manifest[Array[String]],manifest[Unit]).asInstanceOf[List[Manifest[Any]]]
+  private var arity = 1
+
 }

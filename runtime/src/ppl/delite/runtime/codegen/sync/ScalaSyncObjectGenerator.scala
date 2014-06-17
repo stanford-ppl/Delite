@@ -138,7 +138,8 @@ trait ScalaSyncObjectGenerator extends SyncObjectGenerator with ScalaExecutableG
   }
 
   override protected def writeHeader() = {
-    ScalaExecutableGenerator.writePath(kernelPath, out)
+    ScalaExecutableGenerator.writePackage(graph, out)
+    ScalaExecutableGenerator.writePath(graph, out)
     out.append("import java.util.concurrent.locks._\n") //locking primitives
     out.append("object ")
     out.append(executableName)

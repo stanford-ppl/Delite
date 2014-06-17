@@ -8,7 +8,6 @@ import ppl.delite.runtime.graph.targets.Targets
  */
 
 class OP_While(val id: String,
-               var inputTypesMap: Map[Targets.Value, Map[String,String]],
                val predicateGraph: DeliteTaskGraph, val predicateValue: String,
                val bodyGraph: DeliteTaskGraph, val bodyValue: String,
                outputSymbol: String = null)
@@ -26,7 +25,7 @@ class OP_While(val id: String,
     val chunks =
       for (idx <- indices) yield {
         val outputSym = if (idx == indices(0)) this.id else null
-        val r = new OP_While(id+"_"+idx, inputTypesMap, predicateGraph, predicateValue, bodyGraph, bodyValue, outputSym)
+        val r = new OP_While(id+"_"+idx, predicateGraph, predicateValue, bodyGraph, bodyValue, outputSym)
         r.dependencies = dependencies
         r.inputList = inputList
         r.mutableInputs = mutableInputs

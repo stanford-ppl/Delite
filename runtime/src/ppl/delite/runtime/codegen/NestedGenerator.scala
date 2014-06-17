@@ -1,5 +1,6 @@
 package ppl.delite.runtime.codegen
 
+import ppl.delite.runtime.graph.DeliteTaskGraph
 import collection.mutable.ArrayBuffer
 import java.lang.annotation.Target
 import ppl.delite.runtime.Config
@@ -41,9 +42,10 @@ trait NestedGenerator extends ExecutableGenerator {
 trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator {
 
   override protected def writeHeader() {
+    ScalaExecutableGenerator.writePackage(graph, out)
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
     out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
-    ScalaExecutableGenerator.writePath(kernelPath, out) //package of scala kernels
+    ScalaExecutableGenerator.writePath(graph, out) //package of scala kernels
 
     val locationsRecv = nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Receive])).map(_.asInstanceOf[Receive].sender.from.scheduledResource).toSet
     val locations = if (nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Send])).nonEmpty) Set(location) union locationsRecv
@@ -53,7 +55,7 @@ trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator
     out.append("object ")
     out.append(executableName)
     out.append(" {\n")
-    out.append("val threadName = Thread.currentThread.getName()\n")
+    if (Config.profile) out.append("val threadName = Thread.currentThread.getName()\n")
   }
 
   override protected def writeMethodHeader() {
@@ -96,7 +98,6 @@ trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator
 trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
 
   private val target = Targets.Cpp
-  private val typesMap = CppExecutableGenerator.typesMap
 
   def generateMethodSignature(): String = {
     val str = new StringBuilder
@@ -131,7 +132,7 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
     for ((op,sym) <- inputs) {
       if (!first) str.append(", ")
       first = false
-      str.append(typesMap(target)(sym))
+      str.append(op.outputType(target,sym))
       str.append(addRef(op.outputType(sym)))
       str.append(' ')
       str.append(getSymHost(op, sym))
@@ -162,8 +163,6 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
 
 
 trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator with SyncGenerator {
-
-  private val typesMap = CudaExecutableGenerator.typesMap
 
   // referential primitive is a primitive type result of a CUDA kernel stored on the device (e.g. reduction)
   def isReferentialPrimitive(op: DeliteOP, sym: String): Boolean = {
@@ -212,18 +211,18 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
     for ((op,sym) <- inputs) {
       if (!first) str.append(", ")
       first = false
-      str.append(typesMap(deviceTarget)(sym))
+      str.append(op.outputType(deviceTarget, sym))
       if (!isPrimitiveType(op.outputType(sym)) || isReferentialPrimitive(op,sym)) str.append(" *")
       str.append(' ')
       str.append(getSymDevice(op, sym))
       if (updateOps(nested).contains(sym)) {
         str.append(',')
-        str.append(typesMap(hostTarget)(sym))
+        str.append(op.outputType(hostTarget,sym))
         if (!isPrimitiveType(op.outputType(sym))) str.append(" *")
         str.append(' ')
         str.append(getSymHost(op, sym))
         str.append(',')
-        str.append(getJNIType(typesMap(Targets.Scala)(sym))) //FIXME: Use remote target
+        str.append(getJNIType(op.outputType(Targets.Scala, sym))) //FIXME: Use remote target
         str.append(' ')
         str.append(getSymRemote(op, sym)) 
       }
@@ -241,7 +240,7 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
   }
 
   protected def writeOutput(op: DeliteOP, name: String, newLine: Boolean = true) {
-    val devType = CudaExecutableGenerator.typesMap(Targets.Cuda)(name)
+    val devType = op.outputType(Targets.Cuda, name)
     //TODO: put this into cuda sync generator
     //TODO: make sure symbol is not freed before recvCuda is called
     if (isReferentialPrimitive(op,name)) 

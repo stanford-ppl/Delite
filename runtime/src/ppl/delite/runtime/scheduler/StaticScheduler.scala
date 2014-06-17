@@ -45,7 +45,7 @@ trait StaticScheduler {
     val header = OpHelper.expand(op, resourceList.length, graph, OpHelper.scheduledTarget(resourceList(0)))
     scheduleOn(header, schedule, resourceList(0)) //pick a resource out of the list to do the header
 
-    val chunks = OpHelper.split(op, resourceList.length, graph.kernelPath, OpHelper.scheduledTarget(resourceList(0)))
+    val chunks = OpHelper.split(op, resourceList.length, graph, OpHelper.scheduledTarget(resourceList(0)))
     for ((resource, idx) <- resourceList zip (0 until resourceList.length)) {
       scheduleOn(chunks(idx), schedule, resource)
     }

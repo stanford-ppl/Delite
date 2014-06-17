@@ -9,16 +9,16 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.Config
 
 object CppMultiLoopGenerator {
-  def makeChunks(op: OP_MultiLoop, numChunks: Int, kernelPath: String) = {
+  def makeChunks(op: OP_MultiLoop, numChunks: Int, graph: DeliteTaskGraph) = {
     for (idx <- 0 until numChunks) yield {
       val chunk = if (idx == 0) op else op.chunk(idx)
-      (new CppMultiLoopGenerator(chunk, op, idx, numChunks, kernelPath)).makeChunk()
+      (new CppMultiLoopGenerator(chunk, op, idx, numChunks, graph)).makeChunk()
       chunk
     }
   }
 }
 
-class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val chunkIdx: Int, val numChunks: Int, val kernelPath: String) extends MultiLoop_SMP_Array_Generator {
+class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val chunkIdx: Int, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Generator {
 
   protected val headerObject = "head"
   protected val closure = "head->closure"
@@ -60,14 +60,36 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
     }
   }
 
-  protected def calculateRange(): (String,String) = {
+  protected def dynamicScheduler(outputSym: String) : String = {
+    //used to be calculate range
     out.append("int64_t startOffset = "+closure+"->loopStart;\n")
     out.append("int64_t size = "+closure+"->loopSize;\n")
     out.append("int64_t start = startOffset + size*"+chunkIdx+"/"+numChunks+";\n")
     out.append("int64_t end = startOffset + size*"+(chunkIdx+1)+"/"+numChunks+";\n")
-    ("start","end")
+    processRange(outputSym,"start","end")
+    "acc"
   }
 
+  protected def dynamicCombine(acc: String) = {
+    out.append("")
+  }
+  
+  protected def dynamicPostCombine(acc: String) = {
+    if (chunkIdx != 0) {
+      postCombine(acc, get("B", chunkIdx-1)) //linear chain combine
+    }
+    if (chunkIdx == numChunks-1) {
+      postProcInit(acc) //single-threaded
+    }
+
+    if (numChunks > 1) set("B", chunkIdx, acc) // kick off next in chain
+    if (chunkIdx != numChunks-1) get("B", numChunks-1) // wait for last one
+    postProcess(acc) //parallel again
+
+    // release activation records except the master chunk
+    if (chunkIdx != 0) release(acc)
+  }
+  
   protected def allocateOutput(): String = {
     out.append(master.outputType(Targets.Cpp)+"* out = "+headerObject+"->out;\n")
     "out"
@@ -220,6 +242,10 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
 
   protected val syncList = new ArrayBuffer[String]
 
+  //TODO: fill in
+  protected def writeSynchronizedOffset(){
+    out.append("")
+  }
   protected def writeSync(key: String) {
     syncList += key //need a way to initialize these fields in C++
     val outputType = op.outputType(Targets.Cpp)
@@ -247,7 +273,9 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
     out.append("pthread_mutex_unlock(&lock"+key+");\n")
     out.append("}\n")
   }
-
+  protected def dynamicWriteSync() {
+    out.append("")
+  }
   protected def initSync() {
     out.append("void initSync() {\n")
     for (key <- syncList) {

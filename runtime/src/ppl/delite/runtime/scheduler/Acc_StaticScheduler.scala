@@ -106,15 +106,15 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
   //TODO: refactor this
   override protected def split(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resourceList: Seq[Int]) {
     OpHelper.scheduledTarget(resourceList(0)) match { //TODO: fix - target the same for all resources?
-      case Targets.Cuda => splitGPU(op, schedule)
-      case Targets.OpenCL => splitGPU(op, schedule)
+      case Targets.Cuda => splitGPU(op, graph, schedule)
+      case Targets.OpenCL => splitGPU(op, graph, schedule)
       case _ => super.split(op, graph, schedule, resourceList)
     }
   }
 
-  private def splitGPU(op: DeliteOP, schedule: PartialSchedule) {
+  private def splitGPU(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
     op.scheduledResource = gpu //TODO: fix this - part of scheduleOn
-    val chunk = OpHelper.split(op, 1, "", OpHelper.scheduledTarget(op))(0)
+    val chunk = OpHelper.split(op, 1, graph, OpHelper.scheduledTarget(op))(0)
     scheduleOn(chunk, schedule, gpu)
   }
 

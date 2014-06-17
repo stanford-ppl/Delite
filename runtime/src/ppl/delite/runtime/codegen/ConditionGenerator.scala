@@ -2,6 +2,7 @@ package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.scheduler.OpList
+import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.ops.{Send, DeliteOP, OP_Condition}
 import sync._
 import ppl.delite.runtime.graph.targets.Targets
@@ -100,11 +101,11 @@ trait ConditionGenerator extends NestedGenerator {
 
   protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value) = {
     target match {
-      case Targets.Scala => new ScalaConditionGenerator(condition, location, kernelPath) with ScalaSyncObjectGenerator {
+      case Targets.Scala => new ScalaConditionGenerator(condition, location, graph) with ScalaSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
-      case Targets.Cpp => new CppConditionGenerator(condition, location, kernelPath) with CppSyncObjectGenerator {
+      case Targets.Cpp => new CppConditionGenerator(condition, location, graph) with CppSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
@@ -114,7 +115,7 @@ trait ConditionGenerator extends NestedGenerator {
 
 }
 
-class ScalaConditionGenerator(val condition: OP_Condition, val location: Int, val kernelPath: String)
+class ScalaConditionGenerator(val condition: OP_Condition, val location: Int, val graph: DeliteTaskGraph)
   extends ConditionGenerator with ScalaNestedGenerator with ScalaSyncGenerator {
 
   override protected def writeMethodHeader() {
@@ -157,7 +158,7 @@ class ScalaConditionGenerator(val condition: OP_Condition, val location: Int, va
 
 }
 
-class CppConditionGenerator(val condition: OP_Condition, val location: Int, val kernelPath: String)
+class CppConditionGenerator(val condition: OP_Condition, val location: Int, val graph: DeliteTaskGraph)
   extends ConditionGenerator with CppNestedGenerator with CppSyncGenerator {
 
   override protected def writeMethodHeader() {
@@ -200,7 +201,7 @@ class CppConditionGenerator(val condition: OP_Condition, val location: Int, val 
   def executableName(location: Int) = "Condition_" + baseId + "_" + location
 }
 
-class CudaConditionGenerator(val condition: OP_Condition, val location: Int, val kernelPath: String)
+class CudaConditionGenerator(val condition: OP_Condition, val location: Int, val graph: DeliteTaskGraph)
   extends ConditionGenerator with CudaNestedGenerator with CudaSyncGenerator {
 
   override protected def writeMethodHeader() {

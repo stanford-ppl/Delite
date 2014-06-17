@@ -13,37 +13,45 @@ import ppl.delite.runtime.Config
  */
 
 object Arguments {
-  var args: Array[String] = _
+  var args: Seq[Any] = Nil
   var staticDataMap: Map[String,_] = _
+
+  def getArg[T](idx: Int): T = {
+    if (args.length > idx) args(idx).asInstanceOf[T]
+    else throw new RuntimeException("Insufficient input arguments supplied: " + args.mkString(","))
+  }
   
   def staticData[T](id: String): T = {
-    //System.err.println("*** lookup static data with id " + id + " in " + staticDataMap)    
     staticDataMap(id).asInstanceOf[T]
   }
 }
 
-final class Arguments(val id: String) extends OP_Executable {
-
-  var outputTypesMap = Map(Targets.Scala->Map(id -> "Array[java.lang.String]", "functionReturn"->"Array[java.lang.String]"))
-  if (Config.numCpp > 0) {
-    if (Config.cppMemMgr=="refcnt")
-      outputTypesMap += Targets.Cpp->Map(id -> "std::shared_ptr<cppDeliteArraystring>", "functionReturn"->"std::shared_ptr<cppDeliteArraystring>")
-    else
-      outputTypesMap += Targets.Cpp->Map(id -> "cppDeliteArraystring", "functionReturn"->"cppDeliteArraystring")
-  }
-
-  var inputTypesMap: Map[Targets.Value, Map[String,String]] = Map()
+final class Arguments(val id: String, val argIdx: Int, var outputTypesMap: Map[Targets.Value,Map[String,String]]) extends OP_Executable {
 
   def isDataParallel = false
 
-  def task = if (scheduledOn(Targets.Cpp)) "cppArgsGet" 
-             else "ppl.delite.runtime.graph.ops.ArgsKernel"
+  def task = if (scheduledOn(Targets.Cpp)) "cppArgsGet" //TODO: multi-arg Cpp support
+             else "ppl.delite.runtime.graph.ops.ArgsKernel" + argIdx
 
   def cost = 0
   def size = 0
 
+  assert(argIdx < 5, "Cannot currently support DEG with more than 5 Arguments")
+
 }
 
-object ArgsKernel {
-  def apply(): Array[String] = Arguments.args
+object ArgsKernel0 {
+  def apply[T](): T = Arguments.getArg(0)
+}
+object ArgsKernel1 {
+  def apply[T](): T = Arguments.getArg(1)
+}
+object ArgsKernel2 {
+  def apply[T](): T = Arguments.getArg(2)
+}
+object ArgsKernel3 {
+  def apply[T](): T = Arguments.getArg(3)
+}
+object ArgsKernel4 {
+  def apply[T](): T = Arguments.getArg(4)
 }

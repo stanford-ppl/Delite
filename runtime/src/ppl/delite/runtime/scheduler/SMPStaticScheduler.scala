@@ -59,13 +59,13 @@ final class SMPStaticScheduler extends StaticScheduler with ParallelUtilizationC
 			case i: OP_FileReader =>
         if (Config.clusterMode == 1) println("scheduling input op " + op.id + " as " + op.partition)
         if (Config.clusterMode == 1 && op.partition.isInstanceOf[Distributed])
-          OpHelper.remote(op, graph.kernelPath)
+          OpHelper.remote(op, graph)
         cluster(op, schedule)
       case l: OP_MultiLoop => 
 				if (shouldParallelize(l, Map[String,Int]())) {
           if (Config.clusterMode == 1) println("scheduling loop op " + op.id + " as " + op.partition)
           if (Config.clusterMode == 1 && op.partition.isInstanceOf[Distributed]) {
-            OpHelper.remote(op, graph.kernelPath) //TODO: master should be assigned first chunk?
+            OpHelper.remote(op, graph) //TODO: master should be assigned first chunk?
             cluster(op, schedule)
           }
           else 

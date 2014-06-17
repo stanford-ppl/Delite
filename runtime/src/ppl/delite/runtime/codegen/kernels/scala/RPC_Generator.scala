@@ -9,11 +9,11 @@ import ppl.delite.runtime.Config
 
 object RPC_Generator {
 
-  def makeKernel(op: DeliteOP, kernelPath: String) {
+  def makeKernel(op: DeliteOP, graph: DeliteTaskGraph) {
     val out = new StringBuilder
 
     updateOP(op)
-    writeHeader(out, op, kernelPath)
+    writeHeader(out, op, graph)
     writeKernel(out, op)
     writeFooter(out)
 
@@ -28,13 +28,14 @@ object RPC_Generator {
     }
   }
 
-  private def writeHeader(out: StringBuilder, op: DeliteOP, kernelPath: String) {
+  private def writeHeader(out: StringBuilder, op: DeliteOP, graph: DeliteTaskGraph) {
+    ScalaExecutableGenerator.writePackage(graph, out)
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
     out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
     out.append("import ppl.delite.runtime.messages.Messages._\n")
     out.append("import ppl.delite.runtime.messages.Serialization\n")
     out.append("import ppl.delite.runtime.graph._\n")
-    ScalaExecutableGenerator.writePath(kernelPath, out)
+    ScalaExecutableGenerator.writePath(graph, out)
     out.append("object ")
     out.append(kernelName(op))
     out.append(" {\n")

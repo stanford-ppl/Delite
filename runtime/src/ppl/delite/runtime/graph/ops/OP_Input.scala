@@ -20,7 +20,6 @@ class OP_Input(val op: DeliteOP) extends DeliteOP {
   def id = "input_" + op.id
 
   private[graph] var outputTypesMap = op.outputTypesMap
-  private[graph] var inputTypesMap = op.inputTypesMap
   private[graph] override val stencilMap = op.stencilMap
 
   override def partition = op.partition

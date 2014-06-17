@@ -102,7 +102,8 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
               allocRaw = reifyEffects(dc_alloc[B,DeliteArray[B]](allocV,sizeV)),
               copyRaw = reifyEffects(dc_copy(buf_aV,buf_iV,allocV,buf_iV2,sizeV)),
               finalizer = reifyEffects(allocV)
-            )
+            ),
+            numDynamicChunks = body.numDynamicChunks
           ))
       }
 
@@ -194,7 +195,8 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
           accInit = reifyEffects(fatal(unit("accInit not transformed")))(manifest[B]), //unwrap this as well to support mutable reduce
           rV = (rv1.asInstanceOf[Sym[B]], rv2.asInstanceOf[Sym[B]]),
           rFunc = r,
-          stripFirst = !isPrimitiveType(manifest[B])
+          stripFirst = !isPrimitiveType(manifest[B]),
+          numDynamicChunks = body.numDynamicChunks
         ))
       }
 
@@ -286,7 +288,8 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
             allocRaw = unusedBlock,
             copyRaw = unusedBlock,
             finalizer = reifyEffects(allocV)
-          )
+          ),
+          numDynamicChunks = body.numDynamicChunks
         ))
       }
 

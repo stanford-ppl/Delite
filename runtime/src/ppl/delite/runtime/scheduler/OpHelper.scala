@@ -30,15 +30,15 @@ object OpHelper {
     case other => sys.error("OP type not recognized: " + other.getClass.getSimpleName)
   }
 
-  def split(op: DeliteOP, numChunks: Int, kernelPath: String, target: Targets.Value): Seq[DeliteOP] = op match {
+  def split(op: DeliteOP, numChunks: Int, graph: DeliteTaskGraph, target: Targets.Value): Seq[DeliteOP] = op match {
     case multi: OP_MultiLoop => target match {
-      case Targets.Scala => ScalaMultiLoopGenerator.makeChunks(multi, numChunks, kernelPath)
-      case Targets.Cpp => CppMultiLoopGenerator.makeChunks(multi, numChunks, kernelPath)
+      case Targets.Scala => ScalaMultiLoopGenerator.makeChunks(multi, numChunks, graph)
+      case Targets.Cpp => CppMultiLoopGenerator.makeChunks(multi, numChunks, graph)
       case Targets.Cuda => assert(numChunks == 1); Seq(cuda.MultiLoop_GPU_Array_Generator.makeChunk(multi))
       case Targets.OpenCL => assert(numChunks == 1); Seq(opencl.MultiLoop_GPU_Array_Generator.makeChunk(multi))
     }
     case foreach: OP_Foreach => scheduledTarget(op) match {
-      case Targets.Scala => for (chunkIdx <- 0 until numChunks) yield Foreach_SMP_Array_Generator.makeChunk(foreach, chunkIdx, numChunks, kernelPath)
+      case Targets.Scala => for (chunkIdx <- 0 until numChunks) yield Foreach_SMP_Array_Generator.makeChunk(foreach, chunkIdx, numChunks, graph)
       case _ => foreach.setKernelName(foreach.function); Seq(foreach)
     }
     case single: OP_Single => error("OP Single cannot be split")
@@ -56,9 +56,9 @@ object OpHelper {
     else throw new RuntimeException("Cannot find a target for resource ID " + location)
   }
 
-  def remote(op: DeliteOP, kernelPath: String) = op match {
-    case multi: OP_MultiLoop => RPC_Generator.makeKernel(multi, kernelPath)
-    case file: OP_FileReader => RPC_Generator.makeKernel(file, kernelPath)
+  def remote(op: DeliteOP, graph: DeliteTaskGraph) = op match {
+    case multi: OP_MultiLoop => RPC_Generator.makeKernel(multi, graph)
+    case file: OP_FileReader => RPC_Generator.makeKernel(file, graph)
     case single: OP_Single => sys.error("OP Single cannot be executed remotely")
     case other => sys.error("OP type not recognized: " + other.getClass.getSimpleName)
   }

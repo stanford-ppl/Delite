@@ -35,7 +35,8 @@ trait ForeachReduceTransformExp extends DeliteTransform
       zero = this.zero,
       rV = this.rV,
       rFunc = reifyEffects(rFunc(this.rV._1, this.rV._2)),  
-      stripFirst = false
+      stripFirst = false,
+      numDynamicChunks = this.numDynamicChunks
     ))            
     
     val mR = manifest[R]

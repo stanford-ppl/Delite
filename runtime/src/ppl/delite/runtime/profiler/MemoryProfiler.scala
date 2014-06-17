@@ -75,15 +75,17 @@ object MemoryProfiler
 
 	def emitMemProfileDataArrays(writer: PrintWriter, stats: ArrayBuffer[Map[String, List[Int]]]) {
 		var aggrStats = aggregateStatsFromAllThreads(stats)
-
-  		writer.println("	\"MemProfile\": {")
+		
+		var tabs = "  "
+		var twoTabs = tabs + tabs
+  		writer.println(tabs + "\"MemProfile\": {")
   		for (kv <- aggrStats) {
   			val totalMemAllocation = sum(kv._2)
-  			writer.println("		\"" + kv._1 + "\" : " + totalMemAllocation + ",")
+  			writer.println(twoTabs + "\"" + kv._1 + "\" : " + totalMemAllocation + ",")
   		}
 
-  		writer.println("		\"dummy\": 0")
-  		writer.println("	}")
+  		writer.println(twoTabs + "\"dummy\": 0")
+  		writer.print(tabs + "}")
   	}
 
 	def aggregateStatsFromAllThreads(stats: ArrayBuffer[Map[String, List[Int]]]): Map[String, List[Int]] = {

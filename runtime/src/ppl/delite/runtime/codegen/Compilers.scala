@@ -40,25 +40,24 @@ object Compilers {
     val scalaSchedule = schedule.slice(0, Config.numThreads)
     if (Config.numThreads > 0) checkRequestedResource(scalaSchedule, Targets.Scala)
 
+    SavedEnvironmentGenerator.generateEnvironment(graph)
+
     //TODO: Fix this!
     if(Config.clusterMode != 2 || Config.numCuda == 0)
-      ScalaExecutableGenerator.makeExecutables(scalaSchedule, graph.kernelPath)
+      ScalaExecutableGenerator.makeExecutables(scalaSchedule, graph)
     else
-      new ScalaMainExecutableGenerator(0, graph.kernelPath).makeExecutable(PartialSchedule(1).apply(0))
+      new ScalaMainExecutableGenerator(0, graph).makeExecutable(PartialSchedule(1).apply(0))
 
-    // Hack to collect global inputTypesMap (TODO: Get rid of this)
     if (Config.numCpp > 0) {
       val cppSchedule = schedule.slice(Config.numThreads, Config.numThreads+Config.numCpp)
       checkRequestedResource(cppSchedule, Targets.Cpp)
-      CppExecutableGenerator.collectInputTypesMap(graph)
-      CppExecutableGenerator.makeExecutables(cppSchedule, graph.kernelPath)
+      CppExecutableGenerator.makeExecutables(cppSchedule, graph)
     }
 
     if (Config.numCuda > 0) {
       val cudaSchedule = schedule.slice(Config.numThreads+Config.numCpp, Config.numThreads+Config.numCpp+Config.numCuda)
       checkRequestedResource(cudaSchedule, Targets.Cuda)
-      CudaExecutableGenerator.collectInputTypesMap(graph)
-      CudaExecutableGenerator.makeExecutables(cudaSchedule, graph.kernelPath)
+      CudaExecutableGenerator.makeExecutables(cudaSchedule, graph)
     }
 
     if (Config.printSources) { //DEBUG option
@@ -84,9 +83,15 @@ object Compilers {
       CudaExecutableGenerator.clear()
     }
     
-    val queues = StaticSchedule(schedule.numResources)
-    for (i <- 0 until schedule.numResources if !schedule(i).isEmpty) {
-      val cls = classLoader.loadClass("Executable"+i) //load the Executable class
+    val expectedResources = for (i <- 0 until schedule.numResources if !schedule(i).isEmpty) yield i
+    createSchedule(classLoader, ScalaExecutableGenerator.getPackage(graph), schedule.numResources, expectedResources)
+  }
+
+  def createSchedule(classLoader: ClassLoader, path: String, numResources: Int, expectedResources: Seq[Int]) = {
+    val queues = StaticSchedule(numResources)
+    val prefix = if (path == "") "" else path+"."
+    for (i <- expectedResources) {
+      val cls = classLoader.loadClass(prefix+"Executable"+i) //load the Executable class
       val executable = cls.getMethod("self").invoke(null).asInstanceOf[DeliteExecutable] //retrieve the singleton instance
       queues(i) += executable
     }
