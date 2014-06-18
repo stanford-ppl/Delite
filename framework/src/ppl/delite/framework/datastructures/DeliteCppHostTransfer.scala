@@ -45,6 +45,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         val out = new StringBuilder
         val signature = "jobject sendCPPtoJVM_%s(JNIEnv *env, %s %ssym)".format(mangledName(remapHost(tp)),remapHost(tp),addRef(tp))
         out.append(signature + " {\n")
+        out.append("\tif(sym == %s) return NULL;\n".format(nullValue(tp)))
         var args = ""
         for(elem <- encounteredStructs(structName(tp))) {
           val elemtp = baseType(elem._2)
