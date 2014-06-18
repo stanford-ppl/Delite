@@ -519,14 +519,14 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps {
       stream.println("#ifndef __" + deviceTarget + name + "__")
       stream.println("#define __" + deviceTarget + name + "__")
 
-      val dependentStructTypes = elems.map(e =>
-        if(encounteredStructs.contains(structName(baseType(e._2)))) structName(baseType(e._2))
-        else if(encounteredStructs.contains(structName(unwrapArrayType(e._2)))) structName(unwrapArrayType(e._2))
-        else remap(baseType(e._2)).replaceAll(deviceTarget,"")  // SoA transfromed types
-      ).distinct
+      val dependentStructTypes = elems.map(e => baseType(e._2)).collect{ case m@StructType(_,_) => structName(m) }.distinct
+
+      val dependentArrayTypes = elems.map(e => baseType(e._2)).filter{
+        case StructType(_,_) => false
+        case m if isArrayType(m) => true
+        case _ => false
+      }.map(m => remap(m)).distinct
       
-      val dependentArrayTypes = if (cppMemMgr == "refcnt") elems.filter(e => isArrayType(baseType(e._2))).map(e => unwrapSharedPtr(remap(e._2))).distinct
-                                else elems.filter(e => isArrayType(baseType(e._2))).map(e => remap(e._2)).distinct
       dependentStructTypes foreach { t =>
         if (encounteredStructs.contains(t)) {
           stream.println("#include \"" + deviceTarget + t + ".h\"") 
@@ -539,7 +539,6 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps {
         }
       }   
       
-      stream.println("//")
       dependentArrayTypes foreach { t=>
         stream.println("#include \"" + t + ".h\"")
       }
@@ -573,7 +572,8 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps {
       // Only generate dc_apply, dc_update, dc_size when there is only 1 DeliteArray among the fields
       val arrayElems = elems.filter(e => isArrayType(baseType(e._2)))
       val generateDC = arrayElems.size > 0
-      val generateAssert = (arrayElems.size > 1) || (dependentArrayTypes.intersect(dependentStructTypes.map(deviceTarget.toString+_)).nonEmpty)
+      val generateAssert = (arrayElems.size > 1) || elems.map(e=>baseType(e._2)).collect{ case m@StructType(_,_) if isArrayType(m) => true }.nonEmpty
+
       if(generateDC) {
         val (idx,tp) = elems.filter(e => isArrayType(baseType(e._2)))(0)
         val argtp = if(generateAssert) "int" else remap(unwrapArrayType(tp))
