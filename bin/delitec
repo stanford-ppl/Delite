@@ -84,7 +84,7 @@ def stage(runner, params, opts):
     if opts.no_fusion == True:
         java_opts = java_opts + " -Ddelite.enable.fusion=false"
     if opts.no_soa == True:
-	java_opts = java_opts + " -Ddelite.enable.soa=false"
+        java_opts = java_opts + " -Ddelite.enable.soa=false"
     if opts.profile == True:
         java_opts = java_opts + " -Ddelite.enable.profiler=true"
     if opts.optimize > 0:
@@ -107,7 +107,7 @@ def stage(runner, params, opts):
     cp = " -cp "
     cp = cp + old_cp + os.pathsep
     if LMS_HOME:
-      cp = cp + LMS_HOME + "/target/" + scala_major_id + "/classes" + os.pathsep
+        cp = cp + LMS_HOME + "/target/" + scala_major_id + "/classes" + os.pathsep
     cp = cp + DELITE_HOME + "/framework/target/" + scala_major_id + "/classes" + os.pathsep
     
     #DSL cps
