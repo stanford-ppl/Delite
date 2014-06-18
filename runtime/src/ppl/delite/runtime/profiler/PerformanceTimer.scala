@@ -11,6 +11,9 @@ object PerformanceTimer
   var threadCount = 0
   var statsNewFormat = new ArrayBuffer[Map[String, List[Timing]]]()
   var threadToId: Map[String, Int] = Map()
+  // HACK: This is a temporary solution
+  // This is a list of timing data for the component that is tracked using Config.dumpStatsComponent
+  var statsForTrackedComponent = new mutable.ArrayBuffer[Double]()
 
   def initializeStats(numThreads: Int) = synchronized {
     threadCount = numThreads
@@ -53,6 +56,9 @@ object PerformanceTimer
       
       case timing :: previousTimings =>
         timing.endTime = endTime
+        if (component == Config.dumpStatsComponent) {
+          statsForTrackedComponent += (timing.endTime - timing.startTime) / 1000D
+        }
     }
   }
 
@@ -81,19 +87,31 @@ object PerformanceTimer
     initializeStats(threadCount)
   }
   
+  /*
   def dumpProfile(globalStart: Long, globalStartNanos: Long) { 
     var stats = toList(statsNewFormat)   
     Profiler.writeProfile(globalStart, globalStartNanos, stats)
+  }*/
+
+  def getTimingStats(): List[Timing] = {
+    toList(statsNewFormat)
   }
 
   def toList(arr: ArrayBuffer[Map[String, List[Timing]]]): List[Timing] = {
     arr.flatMap(m => m.flatMap(kv => kv._2)).toList
   }
 
-  /**
-   * dump stats to values provided by config parameters
-   */
-   /*
+  def printStatsForNonKernelComps() {
+    val nonKernelCompsToTimings = statsNewFormat(threadCount) // the last entry in the stats array does not correspond 
+                    // to an actual execution thread. Rather, it just stores data for 'all' and tic-toc regions
+    nonKernelCompsToTimings.foreach(kv => {
+      kv._2.foreach(timing => {
+        val str = "[METRICS]: Time for component " + kv._1 + ": " +  (timing.elapsedMicros.toFloat / 1000000).formatted("%.6f") + "s"
+        println(str)
+      })
+    })
+  }
+
   def dumpStats() {
     assert(Config.dumpStats)
     dumpStats(Config.dumpStatsComponent)
@@ -108,12 +126,22 @@ object PerformanceTimer
     if(Config.dumpStatsOverwrite == false && timesFile.exists)
       throw new RuntimeException("stats file " + timesFile + " already exists")
     val fileStream = new PrintWriter(new FileWriter(timesFile))
-    dumpStats(component, fileStream)
+    //dumpStats(component, fileStream)
+    dumpStats(fileStream)
     fileStream.close
   }
 
-  def dumpStats(component: String, stream: PrintWriter)  {
-    times.get(component) map { _.map(_.formatted("%.2f")).mkString("\n") } foreach { stream.print }
+  /*def dumpStats(component: String, stream: PrintWriter)  {
+    statsNewFormat.foreach(m => {
+      if (m.contains(component)) {
+        val str = m(component).map(t => t.elapsedMicros).mkString("\n")
+        stream.println(str)
+      }
+    })
+  }*/
+
+  def dumpStats(stream: PrintWriter)  {
+    val s = statsForTrackedComponent.map(t => t.formatted("%.2f")).mkString("\n")
+    stream.print(s)
   }
-  */
 }

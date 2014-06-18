@@ -132,18 +132,24 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     type OpType <: DeliteOpLoop[A]
     def copyBodyOrElse(e: => Def[A]): Def[A] = original.map(p=>mirrorLoopBody(p._2.asInstanceOf[OpType].body,p._1)).getOrElse(e)
     final lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(fresh[Int]).asInstanceOf[Sym[Int]]
+    val numDynamicChunks:Int = 0
+  }
+  
+  trait DeliteLoopElem {
+    val numDynamicChunks:Int
   }
 
   //case class DeliteOpFatLoop(val size: Exp[Int], val v: Sym[Int], val body: List[Def[Any]]) extends AbstractFatLoop with DeliteFatOp
 
   // for use in loops:
 
-  case class DeliteForeachElem[A:Manifest](
-    func: Block[A]
+  case class DeliteForeachElem[A:Manifest] (
+    func: Block[A],
+    numDynamicChunks: Int
     //sync: Block[List[Any]] // FIXME: don't want to create lists at runtime...
     // TODO: this is sort of broken right now, re-enable when we figure out how to make this work without emitting dependencies twice
     //cond: List[Exp[Boolean]] = Nil
-  ) extends Def[Unit] {
+  ) extends Def[Unit] with DeliteLoopElem {
     val mA = manifest[A]
   }
 
@@ -183,8 +189,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     iFunc: Option[Block[DeliteCollection[A]]] = None, //TODO: is there a cleaner way to merge flatMap functionality with Collect?
     iF: Option[Sym[Int]] = None,
     sF: Option[Block[Int]] = None,
-    eF: Option[Sym[DeliteCollection[A]]] = None
-  ) extends Def[CA] {
+    eF: Option[Sym[DeliteCollection[A]]] = None,
+    numDynamicChunks: Int
+  ) extends Def[CA] with DeliteLoopElem {
     val mA = manifest[A]
     val mI = manifest[I]
     val mCA = manifest[CA]
@@ -198,8 +205,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     accInit: Block[A],
     rV: (Sym[A], Sym[A]),
     rFunc: Block[A],
-    stripFirst: Boolean
-  ) extends Def[A] {
+    stripFirst: Boolean,
+    numDynamicChunks: Int
+  ) extends Def[A] with DeliteLoopElem {
     val mA = manifest[A]
   }
 
@@ -211,8 +219,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     rVSeq: ((Sym[A], Sym[B]),(Sym[A], Sym[B])),
     rFuncPar: (Block[A],Block[B]),
     rFuncSeq: (Block[A],Block[B]),
-    stripFirst: Boolean
-  ) extends Def[A] {
+    stripFirst: Boolean,
+    numDynamicChunks: Int
+  ) extends Def[A] with DeliteLoopElem {
     val mA = manifest[A]
     val mB = manifest[B]
   }
@@ -228,8 +237,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     cond: List[Block[Boolean]] = Nil,
     buf: DeliteBufferElem[I,CI,CCV],
     iBuf: DeliteBufferElem[V,I,CV],
-    iBufSize: Block[Int]
-  ) extends DeliteHashElem[K,CCV] {
+    iBufSize: Block[Int],
+    numDynamicChunks: Int
+  ) extends DeliteHashElem[K,CCV] with DeliteLoopElem {
     val mK = manifest[K]
     val mV = manifest[V]
     val mI = manifest[I]
@@ -245,8 +255,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     zero: Block[V], //TODO: necessary?
     rV: (Sym[V], Sym[V]),
     rFunc: Block[V],
-    buf: DeliteBufferElem[V,I,CV]
-  ) extends DeliteHashElem[K,CV] {
+    buf: DeliteBufferElem[V,I,CV],
+    numDynamicChunks: Int
+  ) extends DeliteHashElem[K,CV] with DeliteLoopElem {
     val mK = manifest[K]
     val mV = manifest[V]
     val mI = manifest[I]
@@ -255,8 +266,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
   case class DeliteHashIndexElem[K:Manifest,CV:Manifest](
     keyFunc: Block[K],
-    cond: List[Block[Boolean]] = Nil
-  ) extends DeliteHashElem[K,CV] {
+    cond: List[Block[Boolean]] = Nil,
+    numDynamicChunks: Int
+  ) extends DeliteHashElem[K,CV] with DeliteLoopElem {
     val mK = manifest[K]
     val mCV = manifest[CV]
   }
@@ -279,6 +291,10 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case e:DeliteHashIndexElem[_,_] => true
     case e:DeliteCollectElem[_,_,_] => false //e.par == ParBuffer //e.cond.nonEmpty
     case _ => false
+  }
+  def loopBodyNumDynamicChunks[A](e: Def[A]) = e match {
+    case e:DeliteLoopElem => e.numDynamicChunks
+    case _ => 0
   }
 
   def loopBodyNeedsPostProcess[A](e: Def[A]) = e match {
@@ -412,6 +428,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val in: Exp[DeliteCollection[A]]
     //val size: Exp[Int] // could be dc_size(in), but we want type-specific pattern matching to work
     def func: Exp[A] => Exp[B]
+    //val numChunks: Int
 
     // bound var for map function, may be required by transformers
     lazy val fin: Exp[A] = copyTransformedOrElse(_.fin)(dc_apply(in,v))
@@ -419,8 +436,10 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     // loop
     lazy val body: Def[CB] = copyBodyOrElse(DeliteCollectElem[B,I,CB](
       func = reifyEffects(this.func(fin)),
+      //numChunks = this.numChunks,
       par = dc_parallelization(allocVal, false),
-      buf = this.buf
+      buf = this.buf,
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -456,7 +475,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       eF = Some(this.eF),
       func = reifyEffects(dc_apply(eF,iF)),
       par = dc_parallelization(allocVal, true),
-      buf = this.buf
+      buf = this.buf,
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -479,7 +499,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     lazy val body: Def[CA] = copyBodyOrElse(DeliteCollectElem[A,I,CA](
       func = reifyEffects(this.func(v)),
       par = dc_parallelization(allocVal, false),
-      buf = this.buf
+      buf = this.buf,
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -515,7 +536,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       func = reifyEffects(this.func(dc_apply(in,v))),
       cond = reifyEffects(this.cond(dc_apply(in,v)))::Nil,
       par = dc_parallelization(allocVal, true),
-      buf = this.buf
+      buf = this.buf,
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -564,7 +586,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     lazy val body: Def[CR] = copyBodyOrElse(DeliteCollectElem[R,I,CR](
       func = reifyEffects(this.func(fin._1,fin._2)),
       par = dc_parallelization(allocVal, false),
-      buf = this.buf
+      buf = this.buf,
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -605,7 +628,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       accInit = reifyEffects(this.accInit),
       rV = this.rV,
       rFunc = reifyEffects(this.func(rV._1, rV._2)),
-      stripFirst = !isPrimitiveType(manifest[A]) && !this.mutable
+      stripFirst = !isPrimitiveType(manifest[A]) && !this.mutable,
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -639,7 +663,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       accInit = reifyEffects(this.accInit),
       rV = this.rV,
       rFunc = reifyEffects(reduce(rV._1, rV._2)),
-      stripFirst = !isPrimitiveType(manifest[R]) && !this.mutable
+      stripFirst = !isPrimitiveType(manifest[R]) && !this.mutable,
+      numDynamicChunks = this.numDynamicChunks
     ))
   }
 
@@ -663,7 +688,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       accInit = reifyEffects(this.accInit),
       rV = this.rV,
       rFunc = reifyEffects(reduce(rV._1, rV._2)),
-      stripFirst = !isPrimitiveType(manifest[R]) && !this.mutable
+      stripFirst = !isPrimitiveType(manifest[R]) && !this.mutable,
+      numDynamicChunks = this.numDynamicChunks
     ))
   }
 
@@ -692,7 +718,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       rVSeq = this.rVSeq,
       rFuncPar = /*reifyEffects*/(reducePar(rVPar._1, rVPar._2)),  //FIXME: tupled reify
       rFuncSeq = /*reifyEffects*/(reduceSeq(rVSeq._1, rVSeq._2)),  //FIXME: tupled reify
-      stripFirst = false //(!isPrimitiveType(manifest[R]) || !isPrimitiveType(manifest[R])) && !this.mutable
+      stripFirst = false, //(!isPrimitiveType(manifest[R]) || !isPrimitiveType(manifest[R])) && !this.mutable
+      numDynamicChunks = this.numDynamicChunks
     ))
   }
 
@@ -726,7 +753,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       accInit = reifyEffects(this.accInit),
       rV = this.rV,
       rFunc = reifyEffects(reduce(rV._1, rV._2)),
-      stripFirst = !isPrimitiveType(manifest[R]) && !this.mutable
+      stripFirst = !isPrimitiveType(manifest[R]) && !this.mutable,
+      numDynamicChunks = this.numDynamicChunks
     ))
   }
 
@@ -752,7 +780,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       rVSeq = this.rV,
       rFuncPar = /*reifyEffects*/(reduce(rV._1, rV._2)),  //FIXME: tupled reify
       rFuncSeq = /*reifyEffects*/(reduce(rV._1, rV._2)),  //FIXME: tupled reify
-      stripFirst = (!isPrimitiveType(manifest[R]) || !isPrimitiveType(manifest[R])) && !this.mutable
+      stripFirst = (!isPrimitiveType(manifest[R]) || !isPrimitiveType(manifest[R])) && !this.mutable,
+      numDynamicChunks = this.numDynamicChunks
     ))
   }
 
@@ -775,7 +804,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
     final lazy val i: Sym[Int] = copyOrElse(_.i)(fresh[Int])
     lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
-      func = reifyEffects(this.func(dc_apply(in,v)))
+      func = reifyEffects(this.func(dc_apply(in,v))),
+      numDynamicChunks = this.numDynamicChunks
       //sync = reifyEffects(this.sync(i))
     ))
   }
@@ -822,7 +852,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     def func: Exp[Int] => Exp[Unit]
 
     lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
-      func = reifyEffects(this.func(v))
+      func = reifyEffects(this.func(v)),
+      numDynamicChunks = this.numDynamicChunks
       //sync = reifyEffects(unit(List()))
     ))
   }
@@ -853,7 +884,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
     lazy val body: Def[CV] = copyBodyOrElse(DeliteHashIndexElem[K,CV](
       keyFunc = reifyEffects(this.keyFunc(dc_apply(in,v))),
-      cond = if (this.cond == null) Nil else reifyEffects(this.cond(dc_apply(in,v)))::Nil
+      cond = if (this.cond == null) Nil else reifyEffects(this.cond(dc_apply(in,v)))::Nil,
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -928,7 +960,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
         allocRaw = reifyEffects(dc_alloc[I,CI](this.allocVal,sV)),
         copyRaw = unusedBlock,
         finalizer = reifyEffects(this.finalizer(this.allocVal))
-      )
+      ),
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -999,7 +1032,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
         allocRaw = unusedBlock, //reifyEffects(dc_alloc[V,I](allocVal,sV)),
         copyRaw = unusedBlock, //reifyEffects(dc_copy(aV2,iV,allocVal,iV2,sV)),
         finalizer = reifyEffects(this.finalizer(allocVal))
-      )
+      ),
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -1195,7 +1229,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
           cond = e.cond.map(fb(_)(manifest[Boolean])),
           buf = mirrorBuffer(e.buf),
           iBuf = mirrorBuffer(e.iBuf),
-          iBufSize = fb(e.iBufSize)(manifest[Int])
+          iBufSize = fb(e.iBufSize)(manifest[Int]),
+          numDynamicChunks = e.numDynamicChunks
         )(e.mK,e.mV,e.mI,e.mCV,e.mCI,e.mCCV)).asInstanceOf[Def[A]]
       case e: DeliteHashReduceElem[k,v,i,cv] =>
         (DeliteHashReduceElem[k,v,i,cv](
@@ -1205,12 +1240,14 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
           zero = fb(e.zero)(e.mV),
           rV = (f(e.rV._1).asInstanceOf[Sym[v]], f(e.rV._2).asInstanceOf[Sym[v]]), // need to transform bound vars ??
           rFunc = fb(e.rFunc)(e.mV),
-          buf = mirrorBuffer(e.buf)
+          buf = mirrorBuffer(e.buf),
+          numDynamicChunks = e.numDynamicChunks
         )(e.mK,e.mV,e.mI,e.mCV)).asInstanceOf[Def[A]]
       case e: DeliteHashIndexElem[k,cv] =>
         (DeliteHashIndexElem[k,cv](
           keyFunc = fb(e.keyFunc)(e.mK),
-          cond = e.cond.map(fb(_)(manifest[Boolean]))
+          cond = e.cond.map(fb(_)(manifest[Boolean])),
+          numDynamicChunks = e.numDynamicChunks
         )(e.mK,e.mCV)).asInstanceOf[Def[A]]
       case e: DeliteCollectElem[a,i,ca] =>
         (DeliteCollectElem[a,i,ca]( // need to be a case class for equality (do we rely on equality?)
@@ -1221,11 +1258,13 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
           iFunc = e.iFunc.map(fb(_)(e.mDCA)),
           iF = e.iF.map(f(_).asInstanceOf[Sym[Int]]),
           sF = e.sF.map(fb(_)(manifest[Int])),
-          eF = e.eF.map(f(_).asInstanceOf[Sym[i]])
+          eF = e.eF.map(f(_).asInstanceOf[Sym[i]]),
+          numDynamicChunks = e.numDynamicChunks
         )(e.mA,e.mI,e.mCA)).asInstanceOf[Def[A]]
       case e: DeliteForeachElem[a] =>
         (DeliteForeachElem[a](
-          func = fb(e.func)(e.mA)
+          func = fb(e.func)(e.mA),
+          numDynamicChunks = e.numDynamicChunks
           //sync = f(e.sync)
 //          cond = f(e.cond)
         )(e.mA)).asInstanceOf[Def[A]] // reasonable?
@@ -1237,7 +1276,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
           accInit = fb(e.accInit)(e.mA),
           rV = (f(e.rV._1).asInstanceOf[Sym[a]], f(e.rV._2).asInstanceOf[Sym[a]]), // need to transform bound vars ??
           rFunc = fb(e.rFunc)(e.mA),
-          stripFirst = e.stripFirst
+          stripFirst = e.stripFirst,
+          numDynamicChunks = e.numDynamicChunks
         )(e.mA)).asInstanceOf[Def[A]]
       case e: DeliteReduceTupleElem[a,b] =>
         (DeliteReduceTupleElem[a,b](
@@ -1248,7 +1288,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
           rVSeq = ((f(e.rVSeq._1._1).asInstanceOf[Sym[a]], f(e.rVSeq._1._2).asInstanceOf[Sym[b]]),(f(e.rVSeq._2._1).asInstanceOf[Sym[a]], f(e.rVSeq._2._2).asInstanceOf[Sym[b]])), // need to transform bound vars ??
           rFuncPar = (fb(e.rFuncPar._1)(e.mA),fb(e.rFuncPar._2)(e.mB)),
           rFuncSeq = (fb(e.rFuncSeq._1)(e.mA),fb(e.rFuncSeq._2)(e.mB)),
-          stripFirst = e.stripFirst
+          stripFirst = e.stripFirst,
+          numDynamicChunks = e.numDynamicChunks
         )(e.mA,e.mB)).asInstanceOf[Def[A]]
     }
   }
@@ -1835,14 +1876,16 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitValDef(quotedGroup + "_sze", remap(manifest[Int]), fieldAccess(fieldAccess(prefixSym, quotedGroup + "_hash_pos"), "size"))
         kps foreach {
           case (sym, elem: DeliteHashCollectElem[_,_,_,_,_,_]) => //TODO: finalizer
-            emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_data"))
-            getActBuffer = List(quote(elem.buf.allocVal))
             if (prefixSym == "") {
+              emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_hash_data"))
+              getActBuffer = List(quote(elem.buf.allocVal))
               emitAssignment(quote(elem.buf.sV), quotedGroup + "_sze")
               emitBlock(elem.buf.setSize)
               emitValDef(quote(sym), remap(sym.tp), quote(elem.buf.allocVal))
             }
             else {
+              emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_data"))
+              getActBuffer = List(quote(elem.buf.allocVal))
               emitValDef(quote(elem.buf.sV), remap(elem.buf.sV.tp), quotedGroup + "_sze")
               emitBlock(elem.buf.setSize)
               emitAssignment(fieldAccess(prefixSym, quote(sym)), quote(elem.buf.allocVal))

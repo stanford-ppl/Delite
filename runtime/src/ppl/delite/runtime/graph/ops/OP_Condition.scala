@@ -9,7 +9,6 @@ import scala.collection.mutable.HashSet
  */
 
 class OP_Condition(val id: String, private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]],
-                   private[graph] var inputTypesMap: Map[Targets.Value, Map[String,String]],
                    val predicateGraph: DeliteTaskGraph, val predicateValue: String,
                    val thenGraph: DeliteTaskGraph, val thenValue: String,
                    val elseGraph: DeliteTaskGraph, val elseValue: String)
@@ -36,7 +35,7 @@ class OP_Condition(val id: String, private[graph] var outputTypesMap: Map[Target
     val chunks =
       for (idx <- indices) yield {
         val resultMap = if (idx == returnerIdx) outputTypesMap else Targets.unitTypes(id+"_"+idx)
-        val r = new OP_Condition(id+"_"+idx, resultMap, inputTypesMap, predicateGraph, predicateValue,
+        val r = new OP_Condition(id+"_"+idx, resultMap, predicateGraph, predicateValue,
         thenGraph, thenValue, elseGraph, elseValue)
         r.dependencies = dependencies
         r.inputList = inputList
