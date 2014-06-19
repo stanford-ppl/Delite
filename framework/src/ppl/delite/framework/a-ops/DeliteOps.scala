@@ -578,6 +578,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     type OpType <: DeliteOpReduceLike[A]
     final lazy val rV: (Sym[A],Sym[A]) = copyOrElse(_.rV)((if (mutable) reflectMutableSym(fresh[A]) else fresh[A], fresh[A])) // TODO: transform vars??
     val mutable: Boolean = false
+    val stripFirst = !isPrimitiveType(manifest[A]) && !this.mutable
+
     def accInit: Exp[A] = fatal(unit("DeliteOpReduce accInit called without any implementation on " + manifest[A].toString))
   }
 
@@ -596,15 +598,15 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val in: Exp[DeliteCollection[A]]
     def zero: Exp[A]
     def func: (Exp[A], Exp[A]) => Exp[A]
-
+    
     // loop
     lazy val body: Def[A] = copyBodyOrElse(DeliteReduceElem[A](
       func = reifyEffects(dc_apply(in,v)),
       zero = reifyEffects(this.zero),
-      accInit = reifyEffects(this.accInit),
+      accInit = if (isPrimitiveType(manifest[A])) reifyEffects(zero) else reifyEffects(this.accInit),
       rV = this.rV,
       rFunc = reifyEffects(this.func(rV._1, rV._2)),
-      stripFirst = !isPrimitiveType(manifest[A]) && !this.mutable
+      stripFirst = this.stripFirst
     ))
 
     val dmA = manifest[A]
@@ -630,15 +632,15 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     def zero: Exp[R]
     def map: Exp[A] => Exp[R]
     def reduce: (Exp[R], Exp[R]) => Exp[R]
-
+    
     // loop
     lazy val body: Def[R] = copyBodyOrElse(DeliteReduceElem[R](
       func = reifyEffects(map(dc_apply(in,v))),
       zero = reifyEffects(this.zero),
-      accInit = reifyEffects(this.accInit),
+      accInit = if (isPrimitiveType(manifest[R])) reifyEffects(zero) else reifyEffects(this.accInit),
       rV = this.rV,
       rFunc = reifyEffects(reduce(rV._1, rV._2)),
-      stripFirst = !isPrimitiveType(manifest[R]) && !this.mutable
+      stripFirst = this.stripFirst
     ))
   }
 
@@ -653,16 +655,16 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     def func: Exp[A] => Exp[R]
     def reduce: (Exp[R], Exp[R]) => Exp[R]
     def cond: Exp[A] => Exp[Boolean] // does this need to be more general (i.e. a List?)
-
+    
     // loop
     lazy val body: Def[R] = copyBodyOrElse(DeliteReduceElem[R](
       func = reifyEffects(this.func(dc_apply(in,v))),
       cond = reifyEffects(this.cond(dc_apply(in,v)))::Nil,
       zero = reifyEffects(this.zero),
-      accInit = reifyEffects(this.accInit),
+      accInit = if (isPrimitiveType(manifest[R])) reifyEffects(zero) else reifyEffects(this.accInit),
       rV = this.rV,
       rFunc = reifyEffects(reduce(rV._1, rV._2)),
-      stripFirst = !isPrimitiveType(manifest[R]) && !this.mutable
+      stripFirst = this.stripFirst
     ))
   }
 
@@ -717,15 +719,15 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     def zero: Exp[R]
     def zip: (Exp[A], Exp[B]) => Exp[R]
     def reduce: (Exp[R], Exp[R]) => Exp[R]
-
+    
     // loop
     lazy val body: Def[R] = copyBodyOrElse(DeliteReduceElem[R](
       func = reifyEffects(zip(dc_apply(inA,v), dc_apply(inB,v))),
       zero = reifyEffects(this.zero),
-      accInit = reifyEffects(this.accInit),
+      accInit = if (isPrimitiveType(manifest[R])) reifyEffects(zero) else reifyEffects(this.accInit),
       rV = this.rV,
       rFunc = reifyEffects(reduce(rV._1, rV._2)),
-      stripFirst = !isPrimitiveType(manifest[R]) && !this.mutable
+      stripFirst = this.stripFirst
     ))
   }
 
@@ -886,8 +888,20 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     def valFunc: Exp[A] => Exp[V]
     def cond: Exp[A] => Exp[Boolean]
 
-    final lazy val ibufVal: Exp[I] = copyTransformedOrElse(_.ibufVal)(dc_apply(allocVal,iV)) //this is necessary to make nested collections with SoA work properly (rewrites can't kick in on a bound sym)
-    final lazy val ibufVal2: Exp[I] = copyTransformedOrElse(_.ibufVal2)(dc_apply(aV2,iV2))
+    final lazy val ibufVal: Exp[I] = 
+      if (Config.soaEnabled) {
+        copyTransformedOrElse(_.ibufVal)(dc_apply(allocVal,iV)) // this is necessary to make nested collections with SoA work properly (rewrites can't kick in on a bound sym)
+      }
+      else {
+        copyTransformedOrElse(_.ibufVal)(reflectMutableSym(fresh[I]).asInstanceOf[Sym[I]])
+      }
+    final lazy val ibufVal2: Exp[I] = 
+      if (Config.soaEnabled) {
+        copyTransformedOrElse(_.ibufVal2)(dc_apply(aV2,iV2))
+      }
+      else {
+        copyTransformedOrElse(_.ibufVal2)(reflectMutableSym(fresh[I]).asInstanceOf[Sym[I]]) 
+      }
 
     lazy val body: Def[CCV] = copyBodyOrElse(DeliteHashCollectElem[K,V,I,CV,CI,CCV](
       keyFunc = reifyEffects(this.keyFunc(dc_apply(in,v))),
@@ -899,15 +913,15 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
         sV = this.sV,
         iV = this.iiV,
         iV2 = this.iiV2,
-        allocVal = unusedSym,
-        aV2 = unusedSym,
-        alloc = unusedBlock,
-        apply = unusedBlock,
+        allocVal = if (Config.soaEnabled) unusedSym else this.ibufVal.asInstanceOf[Sym[I]],
+        aV2 = if (Config.soaEnabled) unusedSym else this.ibufVal2.asInstanceOf[Sym[I]],
+        alloc = reifyEffects(this.allocI(sV)),
+        apply = unusedBlock, 
         update = unusedBlock,
         appendable = unusedBlock,
-        append = reifyEffects(dc_append(ibufVal,v,eV)),
+        append = reifyEffects(dc_append(ibufVal,v,eV)), // with SoA enabled, this short-circuits directly to contents of allocVal
         setSize = reifyEffects(dc_set_logical_size(ibufVal,sV)),
-        allocRaw = unusedBlock,
+        allocRaw = if (Config.soaEnabled) unusedBlock else reifyEffects(dc_apply(this.aV2,this.iV2)), // co-opting this field to tunnel the bound apply through
         copyRaw = reifyEffects(dc_copy(ibufVal2,iiV2,ibufVal,iiV,sV)),
         finalizer = reifyEffects(this.finalizerI(ibufVal))
       ),
@@ -919,10 +933,12 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
         allocVal = this.allocVal,
         aV2 = this.aV2,
         alloc = reifyEffects(this.alloc(sV)),
-        apply = unusedBlock,
-        update = reifyEffects(dc_update(this.allocVal,iV,dc_alloc[V,I](ibufVal,sV))),
+        apply = if (Config.soaEnabled) unusedBlock else reifyEffects(dc_apply(allocVal,iV)),
+        // update = reifyEffects(dc_update(this.allocVal,iV,dc_alloc[V,I](ibufVal,sV))), // why does this use dc_alloc on iBufVal, while append below uses allocI? this one is apparently used only in postProcess, while append is used in process.
+        update = if (Config.soaEnabled) reifyEffects(dc_update(this.allocVal,iV,dc_alloc[V,I](ibufVal,sV))) else reifyEffects(dc_update(this.allocVal,iV,ibufVal.unsafeImmutable)), 
         appendable = unusedBlock,
-        append = reifyEffects(dc_append(this.allocVal,v,this.allocI(sV))),
+        // append = reifyEffects(dc_append(this.allocVal,v,this.allocI(sV))), // without SoA, we lose the mutable allocI here. why is the allocI (iBuf allocation) hidden down here instead of using iBuf.alloc above? must have something to do with the rewrites on iBufVal..
+        append = if (Config.soaEnabled) reifyEffects(dc_append(this.allocVal,v,this.allocI(sV))) else reifyEffects(dc_append(this.allocVal,v,ibufVal.unsafeImmutable)), 
         setSize = reifyEffects(dc_set_logical_size(this.allocVal,sV)),
         allocRaw = reifyEffects(dc_alloc[I,CI](this.allocVal,sV)),
         copyRaw = unusedBlock,
@@ -1612,6 +1628,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
               emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_hash_data"))
               getActBuffer = List(fieldAccess(prefixSym, quote(sym) + "_hash_data"), quote(elem.buf.allocVal))
               getActSize = quotedGroup + "_sze"
+              if (!Config.soaEnabled) {
+                emitBlock(elem.iBuf.alloc)
+                emitValDef(quote(elem.iBuf.allocVal), remap(getBlockResult(elem.iBuf.alloc).tp), quote(getBlockResult(elem.iBuf.alloc)))
+              }
               emitBlock(elem.buf.append)
               //append elem to inner buffer
               emitValDef(quote(elem.buf.iV), remap(elem.buf.iV.tp), getActSize)
@@ -1632,6 +1652,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
               emitValDef(quote(elem.buf.iV), remap(elem.buf.iV.tp), quotedGroup + "_idx")
               emitValDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_hash_data"))
               emitValDef(quote(elem.iBuf.eV), remap(elem.iBuf.eV.tp), quote(getBlockResult(elem.valFunc)))
+              if (!Config.soaEnabled) {
+                emitBlock(elem.buf.apply)
+                emitValDef(quote(elem.iBuf.allocVal), remap(getBlockResult(elem.buf.apply).tp), quote(getBlockResult(elem.buf.apply)))
+              }
               emitBlock(elem.iBuf.append) //append to inner buffer
             case (sym, elem: DeliteHashReduceElem[_,_,_,_]) =>
               if (elem.rFunc != Block(elem.rV._1)) { //else drop
@@ -1790,6 +1814,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
                   stream.println("if (pos != -1 && pos < " + fieldAccess("currentAct",quotedGroup+"_size") + ") {")
                     emitValDef(elem.buf.iV2, "pos")
                     emitValDef(elem.buf.aV2, fieldAccess("currentAct",quote(sym)+"_hash_data"))
+                    if (!Config.soaEnabled) {
+                      emitBlock(elem.iBuf.allocRaw)
+                      emitValDef(quote(elem.iBuf.aV2), remap(getBlockResult(elem.iBuf.allocRaw).tp), quote(getBlockResult(elem.iBuf.allocRaw)))  
+                    }
                     emitBlock(elem.iBufSize)
                     emitAssignment(quote(sym)+"_values_size", quote(sym)+"_values_size + " + quote(getBlockResult(elem.iBufSize)))
                   stream.println("}")
@@ -1797,6 +1825,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
                 stream.println("}")
 
                 emitValDef(elem.buf.sV, quote(sym)+"_values_size")
+                if (!Config.soaEnabled) {
+                  emitBlock(elem.iBuf.alloc)
+                  emitValDef(quote(elem.iBuf.allocVal), remap(getBlockResult(elem.iBuf.alloc).tp), quote(getBlockResult(elem.iBuf.alloc)))
+                }
                 emitBlock(elem.buf.update)
 
                 emitVarDef(quote(sym)+"_offset", remap(Manifest.Int), "0")
@@ -1807,6 +1839,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
                   stream.println("if (pos != -1 && pos < " + fieldAccess("currentAct",quotedGroup+"_size") + ") {")
                     emitValDef(elem.buf.iV2, "pos")
                     emitValDef(elem.buf.aV2, fieldAccess("currentAct",quote(sym)+"_hash_data"))
+                    if (!Config.soaEnabled) {
+                      emitBlock(elem.iBuf.allocRaw)
+                      emitValDef(quote(elem.iBuf.aV2), remap(getBlockResult(elem.iBuf.allocRaw).tp), quote(getBlockResult(elem.iBuf.allocRaw)))  
+                    }
                     emitBlock(elem.iBufSize)
                     emitValDef(elem.iBuf.sV, quote(getBlockResult(elem.iBufSize)))
                     emitValDef(elem.iBuf.iV, quote(sym)+"_offset")
@@ -1834,7 +1870,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitValDef(quotedGroup + "_sze", remap(manifest[Int]), fieldAccess(fieldAccess(prefixSym, quotedGroup + "_hash_pos"), "size"))
         kps foreach {
           case (sym, elem: DeliteHashCollectElem[_,_,_,_,_,_]) => //TODO: finalizer
-            emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_data"))
+            emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_hash_data"))
             getActBuffer = List(quote(elem.buf.allocVal))
             if (prefixSym == "") {
               emitAssignment(quote(elem.buf.sV), quotedGroup + "_sze")

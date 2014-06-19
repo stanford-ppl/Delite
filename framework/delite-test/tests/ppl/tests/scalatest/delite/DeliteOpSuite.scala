@@ -385,6 +385,17 @@ trait DeliteIfThenElse extends DeliteTestBase {
       collect(false)
     }
 
+    // check a conditional with an effect in a branch that returns a constant (previously caused a DEG parse error)
+    val z = 
+      if (p > 1) {
+        13
+      }
+      else {
+        println("cond_check")
+        3
+      }
+    collect(z == 3)
+
     mkReport
   }
 }
