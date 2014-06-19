@@ -1,6 +1,7 @@
 #ifndef __DELITE_CPP_H__
 #define __DELITE_CPP_H__
 
+#include <stdint.h>
 #include <cstdarg>
 #include <iostream>
 #include <fstream>
@@ -10,7 +11,6 @@
 #include <locale>
 #include <assert.h>
 #include <string>
-#include <regex>
 #include <vector>
 #include <map>
 #include <sstream>

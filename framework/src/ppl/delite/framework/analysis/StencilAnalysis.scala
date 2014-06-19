@@ -221,7 +221,7 @@ trait StencilAnalysis extends FatBlockTraversal {
   def process[A](s: Sym[A], v: Sym[Int], body: Def[_]) { 
     body match {
         
-      case DeliteForeachElem(func) =>
+      case DeliteForeachElem(func,numDynamicChunks) =>
         val stencil = new Stencil()
         
         log("  ++ found foreach elem")
@@ -234,7 +234,7 @@ trait StencilAnalysis extends FatBlockTraversal {
         
         addStencil(s, stencil)
         
-      case DeliteCollectElem(func,cond,par,buf,iFunc,iF,sF,eF) =>
+      case DeliteCollectElem(func,cond,par,buf,iFunc,iF,sF,eF,numDynamicChunks) =>
         val stencil = new Stencil()
         
         log("  ++ found collect elem")
@@ -247,7 +247,7 @@ trait StencilAnalysis extends FatBlockTraversal {
         
         addStencil(s, stencil)
       
-      case DeliteReduceElem(func,cond,zero,accInit,rV,rFunc,stripFirst) =>
+      case DeliteReduceElem(func,cond,zero,accInit,rV,rFunc,stripFirst,numDynamicChunks) =>
         val stencil = new Stencil()
         
         log("  ++ found reduce elem")
@@ -268,7 +268,7 @@ trait StencilAnalysis extends FatBlockTraversal {
         
         addStencil(s, stencil)
               
-      case DeliteReduceTupleElem(func,cond,zero,rVPar,rVSeq,rFuncPar,rFuncSeq,stripFirst) =>
+      case DeliteReduceTupleElem(func,cond,zero,rVPar,rVSeq,rFuncPar,rFuncSeq,stripFirst,numDynamicChunks) =>
         val stencil = new Stencil
         
         log("  ++ found reduce tuple elem")
@@ -295,7 +295,7 @@ trait StencilAnalysis extends FatBlockTraversal {
         
         addStencil(s, stencil)
        
-      case DeliteHashReduceElem(keyFunc,valFunc,cond,zero,rV,rFunc,buf) =>
+      case DeliteHashReduceElem(keyFunc,valFunc,cond,zero,rV,rFunc,buf,numDynamicChunks) =>
         val stencil = new Stencil
         
         log("  ++ found hash reduce elem")

@@ -1,6 +1,7 @@
 package ppl.delite.runtime.graph
 
 import ops._
+import targets._
 
 /**
  * Author: Kevin J. Brown
@@ -12,7 +13,7 @@ import ops._
  */
 
 class TestGraph extends SingleGraph { //test choice
-  val EOP = new EOP
+  val EOP = new EOP("eop", Map(Targets.Scala->Map("eop" -> "Unit", "functionReturn"->"Unit")), ("",""))
   EOP.addDependency(_result._1)
   _result._1.addConsumer(EOP)
   _result = (EOP, EOP.id)

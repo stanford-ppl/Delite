@@ -9,12 +9,13 @@ import ppl.delite.framework.{Config, Util, DeliteApplication}
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.extern.lib._
 import ppl.delite.framework.transform.LoopSoAOpt
-import ppl.delite.framework.analysis.StencilExp
+import ppl.delite.framework.analysis.{StencilExp,NestedLoopMappingExp}
+import scala.collection.mutable.{HashSet,HashMap}
 
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
 trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with FunctionBlocksExp with IfThenElseFatExp
     with PrimitiveOpsExp with DeliteCollectionOpsExp with DeliteReductionOpsExp with DeliteMapOpsExp with DeliteArrayFatExp with StencilExp
-    with OrderingOpsExp with EqualExpBridge with CastingOpsExp with ImplicitOpsExp with WhileExp with StaticDataExp {
+    with OrderingOpsExp with EqualExpBridge with CastingOpsExp with ImplicitOpsExp with WhileExp with StaticDataExp with NestedLoopMappingExp {
 
     val encounteredZipWith = new scala.collection.mutable.HashMap[Exp[Any], DeliteOpZipWith[_,_,_,_]]()
 
@@ -131,18 +132,24 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     type OpType <: DeliteOpLoop[A]
     def copyBodyOrElse(e: => Def[A]): Def[A] = original.map(p=>mirrorLoopBody(p._2.asInstanceOf[OpType].body,p._1)).getOrElse(e)
     final lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(fresh[Int]).asInstanceOf[Sym[Int]]
+    val numDynamicChunks:Int = 0
+  }
+  
+  trait DeliteLoopElem {
+    val numDynamicChunks:Int
   }
 
   //case class DeliteOpFatLoop(val size: Exp[Int], val v: Sym[Int], val body: List[Def[Any]]) extends AbstractFatLoop with DeliteFatOp
 
   // for use in loops:
 
-  case class DeliteForeachElem[A:Manifest](
-    func: Block[A]
+  case class DeliteForeachElem[A:Manifest] (
+    func: Block[A],
+    numDynamicChunks: Int
     //sync: Block[List[Any]] // FIXME: don't want to create lists at runtime...
     // TODO: this is sort of broken right now, re-enable when we figure out how to make this work without emitting dependencies twice
     //cond: List[Exp[Boolean]] = Nil
-  ) extends Def[Unit] {
+  ) extends Def[Unit] with DeliteLoopElem {
     val mA = manifest[A]
   }
 
@@ -182,8 +189,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     iFunc: Option[Block[DeliteCollection[A]]] = None, //TODO: is there a cleaner way to merge flatMap functionality with Collect?
     iF: Option[Sym[Int]] = None,
     sF: Option[Block[Int]] = None,
-    eF: Option[Sym[DeliteCollection[A]]] = None
-  ) extends Def[CA] {
+    eF: Option[Sym[DeliteCollection[A]]] = None,
+    numDynamicChunks: Int
+  ) extends Def[CA] with DeliteLoopElem {
     val mA = manifest[A]
     val mI = manifest[I]
     val mCA = manifest[CA]
@@ -197,8 +205,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     accInit: Block[A],
     rV: (Sym[A], Sym[A]),
     rFunc: Block[A],
-    stripFirst: Boolean
-  ) extends Def[A] {
+    stripFirst: Boolean,
+    numDynamicChunks: Int
+  ) extends Def[A] with DeliteLoopElem {
     val mA = manifest[A]
   }
 
@@ -210,8 +219,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     rVSeq: ((Sym[A], Sym[B]),(Sym[A], Sym[B])),
     rFuncPar: (Block[A],Block[B]),
     rFuncSeq: (Block[A],Block[B]),
-    stripFirst: Boolean
-  ) extends Def[A] {
+    stripFirst: Boolean,
+    numDynamicChunks: Int
+  ) extends Def[A] with DeliteLoopElem {
     val mA = manifest[A]
     val mB = manifest[B]
   }
@@ -227,8 +237,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     cond: List[Block[Boolean]] = Nil,
     buf: DeliteBufferElem[I,CI,CCV],
     iBuf: DeliteBufferElem[V,I,CV],
-    iBufSize: Block[Int]
-  ) extends DeliteHashElem[K,CCV] {
+    iBufSize: Block[Int],
+    numDynamicChunks: Int
+  ) extends DeliteHashElem[K,CCV] with DeliteLoopElem {
     val mK = manifest[K]
     val mV = manifest[V]
     val mI = manifest[I]
@@ -244,8 +255,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     zero: Block[V], //TODO: necessary?
     rV: (Sym[V], Sym[V]),
     rFunc: Block[V],
-    buf: DeliteBufferElem[V,I,CV]
-  ) extends DeliteHashElem[K,CV] {
+    buf: DeliteBufferElem[V,I,CV],
+    numDynamicChunks: Int
+  ) extends DeliteHashElem[K,CV] with DeliteLoopElem {
     val mK = manifest[K]
     val mV = manifest[V]
     val mI = manifest[I]
@@ -254,8 +266,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
   case class DeliteHashIndexElem[K:Manifest,CV:Manifest](
     keyFunc: Block[K],
-    cond: List[Block[Boolean]] = Nil
-  ) extends DeliteHashElem[K,CV] {
+    cond: List[Block[Boolean]] = Nil,
+    numDynamicChunks: Int
+  ) extends DeliteHashElem[K,CV] with DeliteLoopElem {
     val mK = manifest[K]
     val mCV = manifest[CV]
   }
@@ -278,6 +291,10 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case e:DeliteHashIndexElem[_,_] => true
     case e:DeliteCollectElem[_,_,_] => false //e.par == ParBuffer //e.cond.nonEmpty
     case _ => false
+  }
+  def loopBodyNumDynamicChunks[A](e: Def[A]) = e match {
+    case e:DeliteLoopElem => e.numDynamicChunks
+    case _ => 0
   }
 
   def loopBodyNeedsPostProcess[A](e: Def[A]) = e match {
@@ -411,6 +428,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val in: Exp[DeliteCollection[A]]
     //val size: Exp[Int] // could be dc_size(in), but we want type-specific pattern matching to work
     def func: Exp[A] => Exp[B]
+    //val numChunks: Int
 
     // bound var for map function, may be required by transformers
     lazy val fin: Exp[A] = copyTransformedOrElse(_.fin)(dc_apply(in,v))
@@ -418,8 +436,10 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     // loop
     lazy val body: Def[CB] = copyBodyOrElse(DeliteCollectElem[B,I,CB](
       func = reifyEffects(this.func(fin)),
+      //numChunks = this.numChunks,
       par = dc_parallelization(allocVal, false),
-      buf = this.buf
+      buf = this.buf,
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -455,7 +475,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       eF = Some(this.eF),
       func = reifyEffects(dc_apply(eF,iF)),
       par = dc_parallelization(allocVal, true),
-      buf = this.buf
+      buf = this.buf,
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -478,7 +499,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     lazy val body: Def[CA] = copyBodyOrElse(DeliteCollectElem[A,I,CA](
       func = reifyEffects(this.func(v)),
       par = dc_parallelization(allocVal, false),
-      buf = this.buf
+      buf = this.buf,
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -514,7 +536,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       func = reifyEffects(this.func(dc_apply(in,v))),
       cond = reifyEffects(this.cond(dc_apply(in,v)))::Nil,
       par = dc_parallelization(allocVal, true),
-      buf = this.buf
+      buf = this.buf,
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -563,7 +586,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     lazy val body: Def[CR] = copyBodyOrElse(DeliteCollectElem[R,I,CR](
       func = reifyEffects(this.func(fin._1,fin._2)),
       par = dc_parallelization(allocVal, false),
-      buf = this.buf
+      buf = this.buf,
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -606,7 +630,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       accInit = if (isPrimitiveType(manifest[A])) reifyEffects(zero) else reifyEffects(this.accInit),
       rV = this.rV,
       rFunc = reifyEffects(this.func(rV._1, rV._2)),
-      stripFirst = this.stripFirst
+      stripFirst = this.stripFirst,
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -640,7 +665,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       accInit = if (isPrimitiveType(manifest[R])) reifyEffects(zero) else reifyEffects(this.accInit),
       rV = this.rV,
       rFunc = reifyEffects(reduce(rV._1, rV._2)),
-      stripFirst = this.stripFirst
+      stripFirst = this.stripFirst,
+      numDynamicChunks = this.numDynamicChunks
     ))
   }
 
@@ -664,7 +690,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       accInit = if (isPrimitiveType(manifest[R])) reifyEffects(zero) else reifyEffects(this.accInit),
       rV = this.rV,
       rFunc = reifyEffects(reduce(rV._1, rV._2)),
-      stripFirst = this.stripFirst
+      stripFirst = this.stripFirst,
+      numDynamicChunks = this.numDynamicChunks
     ))
   }
 
@@ -693,7 +720,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       rVSeq = this.rVSeq,
       rFuncPar = /*reifyEffects*/(reducePar(rVPar._1, rVPar._2)),  //FIXME: tupled reify
       rFuncSeq = /*reifyEffects*/(reduceSeq(rVSeq._1, rVSeq._2)),  //FIXME: tupled reify
-      stripFirst = false //(!isPrimitiveType(manifest[R]) || !isPrimitiveType(manifest[R])) && !this.mutable
+      stripFirst = false, //(!isPrimitiveType(manifest[R]) || !isPrimitiveType(manifest[R])) && !this.mutable
+      numDynamicChunks = this.numDynamicChunks
     ))
   }
 
@@ -727,7 +755,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       accInit = if (isPrimitiveType(manifest[R])) reifyEffects(zero) else reifyEffects(this.accInit),
       rV = this.rV,
       rFunc = reifyEffects(reduce(rV._1, rV._2)),
-      stripFirst = this.stripFirst
+      stripFirst = this.stripFirst,
+      numDynamicChunks = this.numDynamicChunks
     ))
   }
 
@@ -753,7 +782,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       rVSeq = this.rV,
       rFuncPar = /*reifyEffects*/(reduce(rV._1, rV._2)),  //FIXME: tupled reify
       rFuncSeq = /*reifyEffects*/(reduce(rV._1, rV._2)),  //FIXME: tupled reify
-      stripFirst = (!isPrimitiveType(manifest[R]) || !isPrimitiveType(manifest[R])) && !this.mutable
+      stripFirst = (!isPrimitiveType(manifest[R]) || !isPrimitiveType(manifest[R])) && !this.mutable,
+      numDynamicChunks = this.numDynamicChunks
     ))
   }
 
@@ -776,7 +806,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
     final lazy val i: Sym[Int] = copyOrElse(_.i)(fresh[Int])
     lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
-      func = reifyEffects(this.func(dc_apply(in,v)))
+      func = reifyEffects(this.func(dc_apply(in,v))),
+      numDynamicChunks = this.numDynamicChunks
       //sync = reifyEffects(this.sync(i))
     ))
   }
@@ -823,7 +854,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     def func: Exp[Int] => Exp[Unit]
 
     lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
-      func = reifyEffects(this.func(v))
+      func = reifyEffects(this.func(v)),
+      numDynamicChunks = this.numDynamicChunks
       //sync = reifyEffects(unit(List()))
     ))
   }
@@ -854,7 +886,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
     lazy val body: Def[CV] = copyBodyOrElse(DeliteHashIndexElem[K,CV](
       keyFunc = reifyEffects(this.keyFunc(dc_apply(in,v))),
-      cond = if (this.cond == null) Nil else reifyEffects(this.cond(dc_apply(in,v)))::Nil
+      cond = if (this.cond == null) Nil else reifyEffects(this.cond(dc_apply(in,v)))::Nil,
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -943,7 +976,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
         allocRaw = reifyEffects(dc_alloc[I,CI](this.allocVal,sV)),
         copyRaw = unusedBlock,
         finalizer = reifyEffects(this.finalizer(this.allocVal))
-      )
+      ),
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -1014,7 +1048,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
         allocRaw = unusedBlock, //reifyEffects(dc_alloc[V,I](allocVal,sV)),
         copyRaw = unusedBlock, //reifyEffects(dc_copy(aV2,iV,allocVal,iV2,sV)),
         finalizer = reifyEffects(this.finalizer(allocVal))
-      )
+      ),
+      numDynamicChunks = this.numDynamicChunks
     ))
 
     val dmA = manifest[A]
@@ -1210,7 +1245,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
           cond = e.cond.map(fb(_)(manifest[Boolean])),
           buf = mirrorBuffer(e.buf),
           iBuf = mirrorBuffer(e.iBuf),
-          iBufSize = fb(e.iBufSize)(manifest[Int])
+          iBufSize = fb(e.iBufSize)(manifest[Int]),
+          numDynamicChunks = e.numDynamicChunks
         )(e.mK,e.mV,e.mI,e.mCV,e.mCI,e.mCCV)).asInstanceOf[Def[A]]
       case e: DeliteHashReduceElem[k,v,i,cv] =>
         (DeliteHashReduceElem[k,v,i,cv](
@@ -1220,12 +1256,14 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
           zero = fb(e.zero)(e.mV),
           rV = (f(e.rV._1).asInstanceOf[Sym[v]], f(e.rV._2).asInstanceOf[Sym[v]]), // need to transform bound vars ??
           rFunc = fb(e.rFunc)(e.mV),
-          buf = mirrorBuffer(e.buf)
+          buf = mirrorBuffer(e.buf),
+          numDynamicChunks = e.numDynamicChunks
         )(e.mK,e.mV,e.mI,e.mCV)).asInstanceOf[Def[A]]
       case e: DeliteHashIndexElem[k,cv] =>
         (DeliteHashIndexElem[k,cv](
           keyFunc = fb(e.keyFunc)(e.mK),
-          cond = e.cond.map(fb(_)(manifest[Boolean]))
+          cond = e.cond.map(fb(_)(manifest[Boolean])),
+          numDynamicChunks = e.numDynamicChunks
         )(e.mK,e.mCV)).asInstanceOf[Def[A]]
       case e: DeliteCollectElem[a,i,ca] =>
         (DeliteCollectElem[a,i,ca]( // need to be a case class for equality (do we rely on equality?)
@@ -1236,11 +1274,13 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
           iFunc = e.iFunc.map(fb(_)(e.mDCA)),
           iF = e.iF.map(f(_).asInstanceOf[Sym[Int]]),
           sF = e.sF.map(fb(_)(manifest[Int])),
-          eF = e.eF.map(f(_).asInstanceOf[Sym[i]])
+          eF = e.eF.map(f(_).asInstanceOf[Sym[i]]),
+          numDynamicChunks = e.numDynamicChunks
         )(e.mA,e.mI,e.mCA)).asInstanceOf[Def[A]]
       case e: DeliteForeachElem[a] =>
         (DeliteForeachElem[a](
-          func = fb(e.func)(e.mA)
+          func = fb(e.func)(e.mA),
+          numDynamicChunks = e.numDynamicChunks
           //sync = f(e.sync)
 //          cond = f(e.cond)
         )(e.mA)).asInstanceOf[Def[A]] // reasonable?
@@ -1252,7 +1292,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
           accInit = fb(e.accInit)(e.mA),
           rV = (f(e.rV._1).asInstanceOf[Sym[a]], f(e.rV._2).asInstanceOf[Sym[a]]), // need to transform bound vars ??
           rFunc = fb(e.rFunc)(e.mA),
-          stripFirst = e.stripFirst
+          stripFirst = e.stripFirst,
+          numDynamicChunks = e.numDynamicChunks
         )(e.mA)).asInstanceOf[Def[A]]
       case e: DeliteReduceTupleElem[a,b] =>
         (DeliteReduceTupleElem[a,b](
@@ -1263,7 +1304,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
           rVSeq = ((f(e.rVSeq._1._1).asInstanceOf[Sym[a]], f(e.rVSeq._1._2).asInstanceOf[Sym[b]]),(f(e.rVSeq._2._1).asInstanceOf[Sym[a]], f(e.rVSeq._2._2).asInstanceOf[Sym[b]])), // need to transform bound vars ??
           rFuncPar = (fb(e.rFuncPar._1)(e.mA),fb(e.rFuncPar._2)(e.mB)),
           rFuncSeq = (fb(e.rFuncSeq._1)(e.mA),fb(e.rFuncSeq._2)(e.mB)),
-          stripFirst = e.stripFirst
+          stripFirst = e.stripFirst,
+          numDynamicChunks = e.numDynamicChunks
         )(e.mA,e.mB)).asInstanceOf[Def[A]]
     }
   }
@@ -1870,14 +1912,16 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitValDef(quotedGroup + "_sze", remap(manifest[Int]), fieldAccess(fieldAccess(prefixSym, quotedGroup + "_hash_pos"), "size"))
         kps foreach {
           case (sym, elem: DeliteHashCollectElem[_,_,_,_,_,_]) => //TODO: finalizer
-            emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_hash_data"))
-            getActBuffer = List(quote(elem.buf.allocVal))
             if (prefixSym == "") {
+              emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_hash_data"))
+              getActBuffer = List(quote(elem.buf.allocVal))
               emitAssignment(quote(elem.buf.sV), quotedGroup + "_sze")
               emitBlock(elem.buf.setSize)
               emitValDef(quote(sym), remap(sym.tp), quote(elem.buf.allocVal))
             }
             else {
+              emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), fieldAccess(prefixSym, quote(sym) + "_data")) 
+              getActBuffer = List(quote(elem.buf.allocVal))
               emitValDef(quote(elem.buf.sV), remap(elem.buf.sV.tp), quotedGroup + "_sze")
               emitBlock(elem.buf.setSize)
               emitAssignment(fieldAccess(prefixSym, quote(sym)), quote(elem.buf.allocVal))
@@ -2802,8 +2846,382 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
 
 }
 
+trait GPUGenDeliteOpsOpt extends GPUGenDeliteOps {
+  import IR._
+
+  var multiDimMapping: Boolean = false
+  var currentLoopLevel: Int = 0
+  var maxLoopLevel: Int = 0
+
+  private def getDimIdx(level: Int): String = {
+    loopAnalysisResult.get(level) match {
+      case Some((DimX,_,_)) => "threadIdx.x"
+      case Some((DimY,_,_)) => "threadIdx.y"
+      case Some((DimZ,_,_)) => "threadIdx.z"
+      case _ => throw new GenerationFailedException("getCurrentDimIdx")
+    }
+  }
+
+  private def getDimGlobalIdx(level: Int): String = {
+    loopAnalysisResult.get(level) match {
+      case Some((DimX,_,_)) => "blockIdx.x * blockDim.x + threadIdx.x"
+      case Some((DimY,_,_)) => "blockIdx.y * blockDim.y + threadIdx.y"
+      case Some((DimZ,_,_)) => "blockIdx.z * blockDim.z + threadIdx.z"
+      case _ => throw new GenerationFailedException("getCurrentDimGlobalIdx")
+    }
+  }
+
+  private def getDimStride(level: Int): String = {
+    loopAnalysisResult.get(level) match {
+      case Some((DimX,_,_)) => "gridDim.x * blockDim.x"
+      case Some((DimY,_,_)) => "gridDim.y * blockDim.y"
+      case Some((DimZ,_,_)) => "gridDim.z * blockDim.z"
+      case _ => throw new GenerationFailedException("getCurrentDimGlobalIdx")
+    }
+  }
+
+  private def getCurrentDimIdx: String = getDimIdx(currentLoopLevel)
+  private def getCurrentDimGlobalIdx: String = getDimGlobalIdx(currentLoopLevel)
+  private def getCurrentDimStride: String = getDimStride(currentLoopLevel)
+
+  private def getDimSize(level: Int): String = {
+    loopAnalysisResult.get(level) match {
+    // Note: using blockDim.x to allocate shared memory is not allowed.
+    // They should be constants
+/*
+      case Some((DimX,_,_)) => "blockDim.x"
+      case Some((DimY,_,_)) => "blockDim.y"
+      case Some((DimZ,_,_)) => "blockDim.z"
+*/
+      case Some((_,size,_)) => size.toString
+      case _ => throw new GenerationFailedException("getCurrentDimSize")
+    }
+  }
+
+  private def getCurrentDimSize: String = getDimSize(currentLoopLevel)
+
+  private def getOuterLoopDimSizes: List[String] = {
+    val indices = (0 until loopAnalysisResult.size).filter(_ < currentLoopLevel)
+    indices.map(getDimSize).toList
+  }
+
+  private def getInnerLoopDimIndices: List[String] = {
+    val indices = (0 until loopAnalysisResult.size).filter(_ > currentLoopLevel)
+    indices.map(getDimIdx).toList
+  }
+  private def getOuterLoopDimIndices: List[String] = {
+    val indices = (0 until loopAnalysisResult.size).filter(_ < currentLoopLevel)
+    indices.map(getDimIdx).toList
+  }
+  def getInnerLoopGuard: String = {
+    val indices = (0 until loopAnalysisResult.size).filter(_ > currentLoopLevel)
+    "if(" + indices.map(i => "(" + getDimIdx(i) + "== 0)").mkString("&&") + ")"
+  }
+
+
+  override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef) = rhs match {
+    case op: AbstractFatLoop if (loopAnalysisResult.size > 1) =>
+      multiDimMapping = true
+      maxLoopLevel = loopAnalysisResult.size - 1
+      if (deliteKernel) {
+        currentLoopLevel = 0
+        emitKernelAbstractFatLoop(op, symList)
+        metaData.auxMeta.append(("multiDim","[" + loopAnalysisResult.map(m => "{\"level\":\"" + m._1 + "\"," + m._2._1 + ",\"size\":\"" + m._2._2 + "\"," + m._2._3.toString(quote) + "}").mkString(",") + "]"))
+      }
+      else { currentLoopLevel += 1; emitInlineAbstractFatLoop(op, symList); currentLoopLevel -= 1; }
+    case _ =>
+      multiDimMapping = false
+      super.emitFatNode(symList, rhs)
+  }
+
+  override def emitInlineAbstractFatLoop(op: AbstractFatLoop, symList: List[Sym[Any]]) {
+    if (multiDimMapping == false) {
+      super.emitInlineAbstractFatLoop(op, symList)
+    }
+    else {
+      (symList zip op.body) foreach {
+        //TODO: Check if primitive type operations
+        case (sym, elem: DeliteCollectElem[_,_,_]) =>
+          boundMap.put(elem.buf.sV,op.size)
+          emitVarDef(quote(elem.buf.sV), remap(elem.buf.sV.tp), quote(op.size))
+          emitBlock(elem.buf.alloc) //This will generate alloc failure exception
+          emitValDef(quote(sym) + "_data", remap(getBlockResult(elem.buf.alloc).tp), quote(getBlockResult(elem.buf.alloc)))
+          emitVarDef(quote(sym) + "_size", remap(Manifest.Int), "0")
+          //throw new GenerationFailedException("GPUGen: Inlined DeliteCollectElem is not supported yet due to memory allocations.\n" + quotePos(sym))
+        case (sym, elem: DeliteForeachElem[_]) =>
+        case (sym, elem: DeliteReduceElem[_]) =>
+          emitBlock(elem.zero)
+          stream.println("%s %s = %s;".format(remap(elem.zero.tp),quote(sym),quote(getBlockResult(elem.zero))))
+        case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+          emitFatBlock(List(elem.zero._1,elem.zero._2))
+          stream.println("%s %s = %s;".format(remap(elem.zero._1.tp),quote(sym),quote(getBlockResult(elem.zero._1))))
+          stream.println("%s %s_2 = %s;".format(remap(elem.zero._2.tp),quote(sym),quote(getBlockResult(elem.zero._2))))
+        case _ =>
+          throw new GenerationFailedException("GPUGen: Unsupported Elem Type!")
+      }
+
+
+      loopAnalysisResult.get(currentLoopLevel) match {
+        case Some((_,_,SpanOne(_))) =>
+          stream.println("int " + quote(op.v) + " = " + getCurrentDimGlobalIdx + ";")
+          //stream.println("if (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(","))
+          stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(","))
+
+        case _ =>
+          stream.println("int " + quote(op.v) + " = " + getCurrentDimIdx + ";")
+          stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(","))
+      }
+
+      // body
+      emitMultiLoopFuncs(op, symList)
+      (symList zip op.body) foreach {
+        case (sym, elem: DeliteCollectElem[_,_,_]) =>
+          emitValDef(elem.buf.eV, quote(getBlockResult(elem.func)))
+          emitValDef(elem.buf.allocVal, quote(sym)+"_data")
+          emitBlock(elem.buf.update)
+        case (sym, elem: DeliteForeachElem[_]) =>
+        case (sym, elem: DeliteReduceElem[_]) =>
+          stream.println("//start emitReduceElem")
+          emitReduceElem(op, sym, elem)
+          stream.println("//end emitReduceElem")
+        case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+          stream.println("//start emitReduceTupleElem")
+          emitReduceTupleElem(op, sym, elem)
+          stream.println("//end emitReduceTupleElem")
+        case _ =>
+          throw new GenerationFailedException("GPUGen: Unsupported Elem Type!")
+      }
+
+      loopAnalysisResult.get(currentLoopLevel) match {
+        //case Some((_,_,SpanOne(_))) =>
+        //  stream.println(quote(op.v) + " += " + getCurrentDimSize + ";")
+        case Some((_,_,SpanAll)) =>
+          stream.println(quote(op.v) + " += " + getCurrentDimSize + ";")
+        case Some((_,_,SpanOne(_))) =>
+          stream.println(quote(op.v) + " += " + getCurrentDimStride + ";")
+        case _ => //
+      }
+      stream.println(/*{*/"} // end fat loop " + symList.map(quote).mkString(","))
+
+      (symList zip op.body) foreach {
+        case (sym, elem: DeliteCollectElem[_,_,_]) =>
+          emitValDef(elem.buf.allocVal, quote(sym) + "_data")
+          emitBlock(elem.buf.finalizer)
+          emitValDef(sym, quote(getBlockResult(elem.buf.finalizer)))
+        case (sym, elem: DeliteForeachElem[_]) =>
+        case (sym, elem: DeliteReduceElem[_]) =>
+          // reduce across threads in this dimension
+          stream.println("__shared__ " + remap(sym.tp) + " shared_" + quote(sym) + getOuterLoopDimSizes.map("["+_+"]").mkString("") + "[" + getCurrentDimSize + "];")
+          stream.println("shared_" + quote(sym) + getOuterLoopDimIndices.map("["+_+"]").mkString("") + "[" + getCurrentDimIdx + "] = " + quote(sym) + ";")
+          stream.println("__syncthreads();")
+          stream.println("if(" + getCurrentDimIdx + " == 0) { for(int i=1; i<" + getCurrentDimSize + "; i++) { " + quote(sym) + " += shared_" + quote(sym) + getOuterLoopDimIndices.map("["+_+"]").mkString("") + "[i]; } }")
+        case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+      }
+    }
+  }
+
+  override def remapInputs(inputs: List[Sym[Any]], size: Exp[Int] = outerLoopSize, v: Sym[Int] = outerLoopSym.asInstanceOf[Sym[Int]]) : List[String] = {
+    if (multiDimMapping == false) {
+      super.remapInputs(inputs, size, v)
+    }
+    else {
+      // last inputs always added to any device functions
+      def lastInputs = (size match {
+        case s@Sym(_) => List(size).map(i => remap(i.tp) + " " + quote(i))
+        case _ => List("int size")
+      }) ++ List("TEMP_"+kernelName+" size_t tempMemSize","char *tempMemPtr","int *tempMemUsage, activation_"+kernelName+" act")
+
+      inputs.filter(_ != size).map(s =>
+        if(inVars contains s)
+          deviceTarget + "Ref" + remap(s.tp) + " " + quote(s)
+        else
+          remap(s.tp) + " " + quote(s)
+      ) ++ lastInputs
+    }
+  }
+
+  // emit process functions
+  override def emitProcessMethods(op: AbstractFatLoop, symList: List[Sym[Any]]): Unit = {
+    if (multiDimMapping == false) {
+      super.emitProcessMethods(op, symList)
+    }
+    else {
+      emitHashReduceElemProcess(op, symList)
+      (symList zip op.body) foreach {
+        case (sym, elem:DeliteCollectElem[_,_,_]) =>
+          val freeVars = (getFreeVarBlock(Block(Combine((List(elem.func,elem.buf.update,elem.buf.appendable)++elem.cond).map(getBlockResultFull))),List(elem.buf.eV,elem.buf.allocVal,op.v,sym))++List(sym)).filter(_ != op.size).distinct
+          val inputs = remapInputs(freeVars)
+          val e = metaData.outputs.get(sym).get
+          e.funcs += "process" -> freeVars.map(quote)
+          stream.println("__device__ void dev_process_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+          //emitBlock(elem.func)
+          //emitValDef(elem.eV, quote(getBlockResult(elem.func)))
+          //if(multiDimMapping)
+          //emitValDef(op.v, getCurrentDimGlobalIdx)
+          loopAnalysisResult.get(currentLoopLevel) match {
+            case Some((_,_,SpanOne(_))) =>
+              stream.println("int " + quote(op.v) + " = " + getCurrentDimGlobalIdx + ";")
+              stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(","))
+            case _ =>
+              stream.println("int " + quote(op.v) + " = " + getCurrentDimIdx + ";")
+              stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(","))
+          }
+
+          elem.par match {
+            case ParSimpleBuffer =>
+              //emitValDef(elem.allocVal, "act." + quote(sym) + "_buf")
+              emitFatBlock(elem.cond)
+              if (elem.cond.nonEmpty) stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
+              emitBlock(elem.buf.appendable)
+              stream.println("if (" + quote(getBlockResult(elem.buf.appendable)) + ") {")
+              //emitValDef(elem.allocVal, "act." + quote(sym) + "_buf")
+              //emitBlock(elem.update)
+              stream.println("act." + quote(sym) + "_bitmap[" + quote(op.v) + "] = 1;")
+              stream.println("}")
+              if (elem.cond.nonEmpty) {
+                // Need this for GPU?
+                // stream.println(quote(sym) + "_conditionals[" + quote(op.v) + "] += 1;")
+                stream.println("}")
+              }
+            case ParFlat =>
+              emitBlock(elem.func)
+              emitValDef(elem.buf.eV, quote(getBlockResult(elem.func)))
+              emitValDef(elem.buf.allocVal, quote(sym))
+              //if(multiDimMapping)
+              //  stream.println("if (" + getInnerLoopDimIndices.map(_ + "==0").mkString("&&") + ") {")
+              emitBlock(elem.buf.update)
+              //if(multiDimMapping)
+              //  stream.println("}")
+            case _ =>
+          }
+          loopAnalysisResult.get(currentLoopLevel) match {
+            case Some((_,_,SpanAll)) =>
+              stream.println(quote(op.v) + " += " + getCurrentDimSize + ";")
+            case Some((_,_,SpanOne(_))) =>
+              stream.println(quote(op.v) + " += " + getCurrentDimStride + ";")
+            case _ => //
+          }
+          stream.println("}")
+          stream.println("}")
+
+        case (sym, elem:DeliteForeachElem[_]) =>
+          val freeVars = getFreeVarBlock(elem.func,List(op.v)).filter(_ != op.size).distinct
+          val inputs = remapInputs(freeVars)
+          val e = metaData.outputs.get(sym).get
+          e.funcs += "process" -> freeVars.map(quote)
+          stream.println("__device__ void dev_process_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+          //emitValDef(op.v, getCurrentDimGlobalIdx)
+          loopAnalysisResult.get(currentLoopLevel) match {
+            case Some((_,_,SpanOne(_))) =>
+              stream.println("int " + quote(op.v) + " = " + getCurrentDimGlobalIdx + ";")
+              stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(","))
+            case _ =>
+              stream.println("int " + quote(op.v) + " = " + getCurrentDimIdx + ";")
+              stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(","))
+          }
+          emitBlock(elem.func)
+          loopAnalysisResult.get(currentLoopLevel) match {
+            case Some((_,_,SpanAll)) =>
+              stream.println(quote(op.v) + " += " + getCurrentDimSize + ";")
+            case Some((_,_,SpanOne(_))) =>
+              stream.println(quote(op.v) + " += " + getCurrentDimStride + ";")
+            case _ => //
+          }
+          stream.println("}")
+          stream.println("}")
+
+        case (sym, elem: DeliteReduceElem[_]) if(encounteredZipWith contains getBlockResult(elem.rFunc)) =>
+          val freeVars = getFreeVarBlock(elem.func,List(op.v)).filter(_ != op.size).distinct
+          val inputs = remapInputs(freeVars)
+          val e = metaData.outputs.get(sym).get
+          e.funcs += "process" -> freeVars.map(quote)
+          stream.println("__device__ " + remap(sym.tp) + " dev_process_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+          emitValDef(op.v, getCurrentDimGlobalIdx)
+          emitBlock(elem.func)
+          stream.println("return " + quote(getBlockResult(elem.func)) + ";")
+          stream.println("}")
+
+        case (sym, elem:DeliteReduceElem[_]) =>
+          val freeVars = getFreeVarBlock(Block(Combine((List(elem.func,elem.rFunc,elem.zero)++elem.cond).map(getBlockResultFull))),List(elem.rV._1,elem.rV._2,op.v)).filter(_ != op.size).distinct
+          val inputs = remapInputs(freeVars ++ List(elem.rV._1))
+          val e = metaData.outputs.get(sym).get
+          e.funcs += "process" -> freeVars.map(quote)
+          stream.println("__device__ " + remap(sym.tp) + " dev_process_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+          emitValDef(op.v, getCurrentDimGlobalIdx)
+          emitBlock(elem.func)
+          emitValDef(elem.rV._2, quote(getBlockResult(elem.func)))
+          if(elem.cond.nonEmpty) {
+            emitFatBlock(elem.cond)
+            stream.println("if(" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
+            if (elem.stripFirst) {
+              emitBlock(elem.zero)
+              stream.println(remap(sym.tp) + " " + quote(sym) + "_zero = " + quote(getBlockResult(elem.zero)) + ";")
+              stream.println("if(" + quote(elem.rV._1) + " == " + quote(sym) + "_zero) {")
+              stream.println("return " + quote(elem.rV._2) + ";")
+              stream.println("}")
+              stream.println("else {")
+              emitBlock(elem.rFunc)
+              stream.println("return " + quote(getBlockResult(elem.rFunc)) + ";")
+              stream.println("}")
+            }
+            else {
+              emitBlock(elem.rFunc)
+              stream.println("return " + quote(getBlockResult(elem.rFunc)) + ";")
+            }
+            stream.println("}")
+            stream.println("else {")
+            stream.println("return " + quote(elem.rV._1) + ";")
+            stream.println("}")
+          }
+          else {
+            emitBlock(elem.rFunc)
+            stream.println("return " + quote(getBlockResult(elem.rFunc)) + ";")
+          }
+          stream.println("}")
+
+        case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+          val freeVars = getFreeVarBlock(Block(Combine((List(elem.func._1,elem.func._2,elem.rFuncSeq._1,elem.rFuncSeq._2)++elem.cond).map(getBlockResultFull))),List(elem.rVSeq._1._1,elem.rVSeq._1._2,elem.rVSeq._2._1,elem.rVSeq._2._2,op.v)).filter(_ != op.size).distinct
+          val e = metaData.outputs.get(sym).get
+          e.funcs += "process" -> freeVars.map(quote)
+          for(i <- 1 until 3) {
+            val (rVSeq1, rVSeq2, rFuncSeq) = if(i == 1) (elem.rVSeq._1._1, elem.rVSeq._2._1, elem.rFuncSeq._1)
+                                             else (elem.rVSeq._1._2, elem.rVSeq._2._2, elem.rFuncSeq._2)
+            val inputs = remapInputs(freeVars ++ List(elem.rVSeq._1._1,elem.rVSeq._1._2))
+            stream.println("__device__ " + remap(sym.tp) + " dev_process" + i + "_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+            emitValDef(op.v, getCurrentDimGlobalIdx)
+            emitFatBlock(List(elem.func._1,elem.func._2))
+            emitValDef(elem.rVSeq._2._1, quote(getBlockResult(elem.func._1)))
+            emitValDef(elem.rVSeq._2._2, quote(getBlockResult(elem.func._2)))
+            if(elem.cond.nonEmpty) {
+              emitFatBlock(elem.cond)
+              stream.println("if(" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
+              assert(!elem.stripFirst)
+              emitBlock(rFuncSeq)
+              stream.println("return " + quote(getBlockResult(rFuncSeq)) + ";")
+              stream.println("}")
+              stream.println("else {")
+              stream.println("return " + quote(rVSeq1) + ";")
+              stream.println("}")
+            }
+            else {
+              emitBlock(rFuncSeq)
+              stream.println("return " + quote(getBlockResult(rFuncSeq)) + ";")
+            }
+            stream.println("}")
+          }
+
+        case _ => //
+      }
+    }
+  }
+
+
+}
+
 trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
   import IR._
+
+  var kernelName: String = _
 
   def emitVarDef(name: String, tpe: String, init: String) {
     tpe match {
@@ -2916,6 +3334,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     }
     stream.println("int " + quote(op.v) + " = 0;")
     stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(","))
+
     // body
     emitMultiLoopFuncs(op, symList)
     (symList zip op.body) foreach {
@@ -2949,12 +3368,20 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     }
   }
 
-  def emitKernelAbstractFatLoop(op: AbstractFatLoop, symList: List[Sym[Any]]) {
-    outerLoopSize = op.size
-    outerLoopSym = op.v
-    tabWidth += 1
+  def remapInputs(inputs: List[Sym[Any]], size: Exp[Int] = outerLoopSize, v: Sym[Int] = outerLoopSym.asInstanceOf[Sym[Int]]) : List[String] = {
+      // last inputs always added to any device functions
+      def lastInputs = (size match {
+        case s@Sym(_) => List(v, size).map(i => remap(i.tp) + " " + quote(i))
+        case _ => List(v).map(i => remap(i.tp) + " " + quote(i)) ++ List("int size")
+      }) ++ List("TEMP_"+kernelName+" size_t tempMemSize","char *tempMemPtr","int *tempMemUsage, activation_"+kernelName+" act")
 
-    val kernelName = symList.map(quote).mkString("")
+      inputs.filter(_ != size).map(s =>
+        if(inVars contains s)
+          deviceTarget + "Ref" + remap(s.tp) + " " + quote(s)
+        else
+          remap(s.tp) + " " + quote(s)
+      ) ++ lastInputs
+  }
 
     def emitHashReduceElemProcess(op: AbstractFatLoop, symList: List[Sym[Any]]) {
       val keyGroups = (symList zip op.body) collect { case (sym, elem: DeliteHashReduceElem[_,_,_,_]) => (sym,elem) } groupBy (_._2.keyFunc)
@@ -2982,138 +3409,14 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       }
     }
 
+  def funcNameSuffixSyms(syms: List[Sym[Any]]): String = {
+    kernelName+"_"+syms.map(quote(_)).mkString("")
+  }
 
-    // last inputs always added to any device functions
-    def lastInputs(size: Exp[Int], v: Sym[Int]) = (size match {
-      case s@Sym(_) => List(v, size).map(i => remap(i.tp) + " " + quote(i))
-      case _ => List(v).map(i => remap(i.tp) + " " + quote(i)) ++ List("int size")
-    }) ++ List("TEMP_"+symList.map(quote).mkString("")+" size_t tempMemSize","char *tempMemPtr","int *tempMemUsage, activation_"+kernelName+" act")
-
-    def funcNameSuffixSyms(syms: List[Sym[Any]]): String = {
-      symList.map(quote).mkString("")+"_"+syms.map(quote(_)).mkString("")
-    }
-
-    def funcNameSuffix(sym: Sym[Any]): String = funcNameSuffixSyms(List(sym))
-
-
-    def remapInputs(inputs: List[Sym[Any]], size: Exp[Int] = op.size, v: Sym[Int] = op.v) : List[String] = {
-      inputs.filter(_ != size).map(s =>
-        if(inVars contains s)
-          deviceTarget + "Ref< " + remap(s.tp) + " > " + quote(s)
-        else
-          remap(s.tp) + " " + quote(s)
-      ) ++ lastInputs(size,v)
-    }
-
-    // register metadata for each elem and check GenerationFailedException conditions
-    (symList zip op.body) foreach { s =>
-      s match {
-        case (sym, elem:DeliteCollectElem[_,_,_]) =>
-          if (elem.par == ParBuffer) throw new GenerationFailedException("GPUGen DeliteOps: ParBuffer is not supported.")
-          if (!isPrimitiveType(elem.mA)) throw new GenerationFailedException("GPUGen DeliteOps: output of collect elem is non-primitive type.")
-          if(elem.par == ParFlat)
-            metaData.outputs.put(sym, new LoopElem("COLLECT",Map("mA"->remap(elem.mA),"mI"->remap(elem.mI),"mCA"->remap(elem.mCA))))
-          else
-            metaData.outputs.put(sym, new LoopElem("COLLECT_BUF",Map("mA"->remap(elem.mA),"mI"->remap(elem.mI),"mCA"->remap(elem.mCA))))
-        case (sym, elem:DeliteForeachElem[_]) =>
-          metaData.outputs.put(sym, new LoopElem("FOREACH",Map("mA"->remap(elem.mA))))
-          /*throw new GenerationFailedException("GPUGen DeliteOps: GPU ForEachElem is temporarily disabled..")
-          metaData.outputs.put(sym,new TransferFunc)
-          lf.tpe = "FOREACH"*/
-        case (sym, elem: DeliteReduceElem[_]) =>
-          if(!isPrimitiveType(sym.tp)) {
-            if(encounteredZipWith contains getBlockResult(elem.rFunc)) {
-              val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
-              if(isPrimitiveType(z.dmR)) metaData.outputs.put(sym, new LoopElem("REDUCE_SPEC",Map("mA"->remap(elem.mA),"dmR"->remap(z.dmR))))
-              else throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceElem with non-primitive types is not supported.")
-            }
-            else {
-              throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceElem with non-primitive types is not supported.")
-            }
-          }
-          else {
-            metaData.outputs.put(sym, new LoopElem("REDUCE",Map("mA"->remap(elem.mA))))
-          }
-        case (sym, elem: DeliteReduceTupleElem[_,_]) =>
-          if(!isPrimitiveType(sym.tp)) throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceTupleElem with non-primitive types is not supported.")
-          if(elem.cond.nonEmpty && elem.stripFirst) throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceTupleElem with condition + stripFirst is not supported.")
-          metaData.outputs.put(sym, new LoopElem("REDUCE_TUPLE",Map("mA"->remap(elem.mA),"mB"->remap(elem.mB))))
-        case (sym, elem: DeliteHashReduceElem[_,_,_,_]) =>
-
-          // Currently only support limited types of hash-reduce on GPU
-          // keys should be dense perfect hash (0 ~ N-1 for N keys)
-          // reduction needs to be primitive type reduction
-          //if(elem.cond.nonEmpty) throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem with condition is not supported.")
-          //if(!isPrimitiveType(elem.mV)) throw new GenerationFailedException("GPUGen DeliteOPs: DeliteHashReduceElem only supports primitve type reduction.")
-          if(remap(elem.mK) != "int") throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem only supports perfect hash.")
-
-          if(!isPrimitiveType(elem.mV)) {
-            if(encounteredZipWith contains getBlockResult(elem.rFunc)) {
-              val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
-              if(isPrimitiveType(z.dmR)) metaData.outputs.put(sym, new LoopElem("HASH_REDUCE_SPEC",Map("mK"->remap(elem.mK),"mV"->remap(elem.mV),"mCV"->remap(elem.mCV),"dmR"->remap(z.dmR))))
-              else throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem with non-primitive types is not supported.")
-            }
-            else {
-              throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem with non-primitive types is not supported.")
-            }
-          }
-          else {
-            metaData.outputs.put(sym, new LoopElem("HASH_REDUCE",Map("mK"->remap(elem.mK),"mV"->remap(elem.mV),"mCV"->remap(elem.mCV))))
-          }
-        case (sym, _) =>
-          throw new GenerationFailedException("GPUGen DeliteOps: Unsupported Elem type for " + quote(sym))
-      }
-    }
-
-    isNestedNode = true;
-
-    // emit init functions
-    (symList zip op.body) foreach {
-      case (sym, elem:DeliteReduceElem[_]) =>
-        val initFunc = if(elem.stripFirst || isPrimitiveType(sym.tp)) elem.zero else elem.accInit
-        val freeVars = getFreeVarBlock(initFunc,Nil).filter(_ != op.size).distinct
-        val inputs = remapInputs(freeVars)
-        val e = metaData.outputs.get(sym).get
-        e.funcs += "init" -> freeVars.map(quote)
-        stream.println("__device__ " + remap(sym.tp) + " dev_init_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
-        emitBlock(initFunc)
-        stream.println("return " + quote(getBlockResult(initFunc)) + ";")
-        stream.println("}")
-        if(e.elemType == "REDUCE_SPEC") {
-          val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
-          stream.println("__device__ " + remap(z.dmR) + " dev_spcinit_" + funcNameSuffix(sym) + "(void) { return 0; }")
-        }
-      case (sym, elem: DeliteReduceTupleElem[_,_]) =>
-        //TODO: would it affect the performance to have separate inputs for zero1 and zero2?
-        val freeVars = getFreeVarBlock(Block(Combine(List(elem.zero._1,elem.zero._2).map(getBlockResultFull))),Nil).filter(_ != op.size).distinct
-        val inputs = remapInputs(freeVars)
-        val e = metaData.outputs.get(sym).get
-        e.funcs += "init" -> freeVars.map(quote)
-        stream.println("__device__ " + remap(sym.tp) + " dev_init1_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
-        emitBlock(elem.zero._1)
-        stream.println("return " + quote(getBlockResult(elem.zero._1)) + ";")
-        stream.println("}")
-        stream.println("__device__ " + remap(sym.tp) + " dev_init2_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
-        emitBlock(elem.zero._2)
-        stream.println("return " + quote(getBlockResult(elem.zero._2)) + ";")
-        stream.println("}")
-      case (sym, elem: DeliteHashReduceElem[_,_,_,_]) =>
-        val freeVars = getFreeVarBlock(elem.zero,Nil).filter(_ != op.size).distinct
-        val inputs = remapInputs(freeVars)
-        val e = metaData.outputs.get(sym).get
-        e.funcs += "init" -> freeVars.map(quote)
-        stream.println("__device__ " + remap(elem.mV) + " dev_init_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
-        emitBlock(elem.zero)
-        stream.println("return " + quote(getBlockResult(elem.zero)) + ";")
-        stream.println("}")
-        if(e.elemType == "HASH_REDUCE_SPEC") {
-          val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
-          stream.println("__device__ " + remap(z.dmR) + " dev_spcinit_" + funcNameSuffix(sym) + "(void) { return 0; }")
-        }
-      case _ => //
-    }
+  def funcNameSuffix(sym: Sym[Any]): String = funcNameSuffixSyms(List(sym))
 
     // emit process functions
+  def emitProcessMethods(op: AbstractFatLoop, symList: List[Sym[Any]]): Unit = {
     emitHashReduceElemProcess(op, symList)
     (symList zip op.body) foreach {
       case (sym, elem:DeliteCollectElem[_,_,_]) =>
@@ -3237,6 +3540,124 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
 
       case _ => //
     }
+  }
+
+  def emitKernelAbstractFatLoop(op: AbstractFatLoop, symList: List[Sym[Any]]) {
+    outerLoopSize = op.size
+    outerLoopSym = op.v
+    tabWidth += 1
+    kernelName = symList.map(quote).mkString("")
+
+    // register metadata for each elem and check GenerationFailedException conditions
+    (symList zip op.body) foreach { s =>
+      s match {
+        case (sym, elem:DeliteCollectElem[_,_,_]) =>
+          if (elem.par == ParBuffer) throw new GenerationFailedException("GPUGen DeliteOps: ParBuffer is not supported.")
+          if (!isPrimitiveType(elem.mA)) throw new GenerationFailedException("GPUGen DeliteOps: output of collect elem is non-primitive type.")
+          if (elem.iFunc.isDefined) throw new GenerationFailedException("GPUGen DeliteOps: Flatmap is now allowed for GPU")
+          if(elem.par == ParFlat)
+            metaData.outputs.put(sym, new LoopElem("COLLECT",Map("mA"->remap(elem.mA),"mI"->remap(elem.mI),"mCA"->remap(elem.mCA))))
+          else
+            metaData.outputs.put(sym, new LoopElem("COLLECT_BUF",Map("mA"->remap(elem.mA),"mI"->remap(elem.mI),"mCA"->remap(elem.mCA))))
+        case (sym, elem:DeliteForeachElem[_]) =>
+          metaData.outputs.put(sym, new LoopElem("FOREACH",Map("mA"->remap(elem.mA))))
+          /*throw new GenerationFailedException("GPUGen DeliteOps: GPU ForEachElem is temporarily disabled..")
+          metaData.outputs.put(sym,new TransferFunc)
+          lf.tpe = "FOREACH"*/
+        case (sym, elem: DeliteReduceElem[_]) =>
+          if(!isPrimitiveType(sym.tp)) {
+            if(encounteredZipWith contains getBlockResult(elem.rFunc)) {
+              val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+              if(isPrimitiveType(z.dmR)) metaData.outputs.put(sym, new LoopElem("REDUCE_SPEC",Map("mA"->remap(elem.mA),"dmR"->remap(z.dmR))))
+              else throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceElem with non-primitive types is not supported.")
+            }
+            else {
+              throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceElem with non-primitive types is not supported.")
+            }
+          }
+          else {
+            metaData.outputs.put(sym, new LoopElem("REDUCE",Map("mA"->remap(elem.mA))))
+          }
+        case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+          if(!isPrimitiveType(sym.tp)) throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceTupleElem with non-primitive types is not supported.")
+          if(elem.cond.nonEmpty && elem.stripFirst) throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceTupleElem with condition + stripFirst is not supported.")
+          metaData.outputs.put(sym, new LoopElem("REDUCE_TUPLE",Map("mA"->remap(elem.mA),"mB"->remap(elem.mB))))
+        case (sym, elem: DeliteHashReduceElem[_,_,_,_]) =>
+
+          // Currently only support limited types of hash-reduce on GPU
+          // keys should be dense perfect hash (0 ~ N-1 for N keys)
+          // reduction needs to be primitive type reduction
+          //if(elem.cond.nonEmpty) throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem with condition is not supported.")
+          //if(!isPrimitiveType(elem.mV)) throw new GenerationFailedException("GPUGen DeliteOPs: DeliteHashReduceElem only supports primitve type reduction.")
+          if(remap(elem.mK) != "int") throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem only supports perfect hash.")
+
+          if(!isPrimitiveType(elem.mV)) {
+            if(encounteredZipWith contains getBlockResult(elem.rFunc)) {
+              val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+              if(isPrimitiveType(z.dmR)) metaData.outputs.put(sym, new LoopElem("HASH_REDUCE_SPEC",Map("mK"->remap(elem.mK),"mV"->remap(elem.mV),"mCV"->remap(elem.mCV),"dmR"->remap(z.dmR))))
+              else throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem with non-primitive types is not supported.")
+            }
+            else {
+              throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem with non-primitive types is not supported.")
+            }
+          }
+          else {
+            metaData.outputs.put(sym, new LoopElem("HASH_REDUCE",Map("mK"->remap(elem.mK),"mV"->remap(elem.mV),"mCV"->remap(elem.mCV))))
+          }
+        case (sym, _) =>
+          throw new GenerationFailedException("GPUGen DeliteOps: Unsupported Elem type for " + quote(sym))
+      }
+    }
+
+    isNestedNode = true;
+
+    // emit init functions
+    (symList zip op.body) foreach {
+      case (sym, elem:DeliteReduceElem[_]) =>
+        val initFunc = if(elem.stripFirst || isPrimitiveType(sym.tp)) elem.zero else elem.accInit
+        val freeVars = getFreeVarBlock(initFunc,Nil).filter(_ != op.size).distinct
+        val inputs = remapInputs(freeVars)
+        val e = metaData.outputs.get(sym).get
+        e.funcs += "init" -> freeVars.map(quote)
+        stream.println("__device__ " + remap(sym.tp) + " dev_init_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        emitBlock(initFunc)
+        stream.println("return " + quote(getBlockResult(initFunc)) + ";")
+        stream.println("}")
+        if(e.elemType == "REDUCE_SPEC") {
+          val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+          stream.println("__device__ " + remap(z.dmR) + " dev_spcinit_" + funcNameSuffix(sym) + "(void) { return 0; }")
+        }
+      case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+        //TODO: would it affect the performance to have separate inputs for zero1 and zero2?
+        val freeVars = getFreeVarBlock(Block(Combine(List(elem.zero._1,elem.zero._2).map(getBlockResultFull))),Nil).filter(_ != op.size).distinct
+        val inputs = remapInputs(freeVars)
+        val e = metaData.outputs.get(sym).get
+        e.funcs += "init" -> freeVars.map(quote)
+        stream.println("__device__ " + remap(sym.tp) + " dev_init1_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        emitBlock(elem.zero._1)
+        stream.println("return " + quote(getBlockResult(elem.zero._1)) + ";")
+        stream.println("}")
+        stream.println("__device__ " + remap(sym.tp) + " dev_init2_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        emitBlock(elem.zero._2)
+        stream.println("return " + quote(getBlockResult(elem.zero._2)) + ";")
+        stream.println("}")
+      case (sym, elem: DeliteHashReduceElem[_,_,_,_]) =>
+        val freeVars = getFreeVarBlock(elem.zero,Nil).filter(_ != op.size).distinct
+        val inputs = remapInputs(freeVars)
+        val e = metaData.outputs.get(sym).get
+        e.funcs += "init" -> freeVars.map(quote)
+        stream.println("__device__ " + remap(elem.mV) + " dev_init_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        emitBlock(elem.zero)
+        stream.println("return " + quote(getBlockResult(elem.zero)) + ";")
+        stream.println("}")
+        if(e.elemType == "HASH_REDUCE_SPEC") {
+          val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
+          stream.println("__device__ " + remap(z.dmR) + " dev_spcinit_" + funcNameSuffix(sym) + "(void) { return 0; }")
+        }
+      case _ => //
+    }
+
+    emitProcessMethods(op, symList)
 
     // emit post-process functions
     (symList zip op.body) foreach {
@@ -3381,7 +3802,12 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       case (sym, elem:DeliteCollectElem[_,_,_]) =>
         val e = metaData.outputs.get(sym).get
         val allocInputs = elem.par match {
-          case ParSimpleBuffer => emitMultiLoopAllocFunc(elem.buf.alloc,"alloc_"+quote(sym),actName,quote(sym)+"_data",Map(elem.buf.sV->("act."+quote(sym)+"_conditionals")))
+          case ParSimpleBuffer =>
+            //TODO: enable below by generating both alloc and allocRaw
+            if (getFreeVarBlock(elem.buf.allocRaw,List(elem.buf.sV)).isEmpty)
+              emitMultiLoopAllocFunc(elem.buf.allocRaw,"alloc_"+quote(sym),actName,quote(sym)+"_data",Map(elem.buf.sV->("act."+quote(sym)+"_conditionals")))
+            else
+              throw new GenerationFailedException("allocRaw block refers to alloc block")
           case _ => emitMultiLoopAllocFunc(elem.buf.alloc,"alloc_"+quote(sym),actName,quote(sym)+"_data",Map(elem.buf.sV->("act.size")))
         }
         e.funcs += "alloc" -> allocInputs.map(quote)
@@ -3550,8 +3976,8 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     out.append(derefParams)
     out.append(blockString)
     out.append("}\n")
-    if(!helperFuncList.contains(funcName)) helperFuncStream.println(out.toString)
-    helperFuncList += funcName
+    if(!helperFuncList.contains(funcName+actType)) helperFuncStream.println(out.toString)
+    helperFuncList += funcName+actType
 
     processingHelperFunc = false
     inputs
@@ -3573,7 +3999,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
 
     def wrapRef(sym: Exp[Any]):String = {
       if(inVars contains sym)
-        deviceTarget + "Ref< " + remap(sym.tp) + addRef(sym.tp) + " >"
+        deviceTarget + "Ref" + remap(sym.tp) + addRef(sym.tp)
       else
         remap(sym.tp)
     }
@@ -3595,9 +4021,9 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
 
 }
 
-trait CudaGenDeliteOps extends CudaGenLoopsFat with GPUGenDeliteOps
+trait CudaGenDeliteOps extends CudaGenLoopsFat with GPUGenDeliteOpsOpt
 
-trait OpenCLGenDeliteOps extends OpenCLGenLoopsFat with GPUGenDeliteOps
+trait OpenCLGenDeliteOps extends OpenCLGenLoopsFat with GPUGenDeliteOpsOpt
 
 trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
 

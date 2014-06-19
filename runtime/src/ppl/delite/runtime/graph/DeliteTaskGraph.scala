@@ -37,6 +37,7 @@ object DeliteTaskGraph {
     val deg = getFieldMap(degm, "DEG")
     graph._version = getFieldDouble(deg, "version")
     graph._kernelPath = getFieldString(deg, "kernelpath")
+    graph._appName = getFieldString(deg, "name")
     parseOps(getFieldList(deg, "ops"))
     graph._targets = graph.totalOps.filter(o => !o.isInstanceOf[Arguments]).flatMap(o => o.getOutputTypesMap.keySet)
   }
@@ -138,7 +139,6 @@ object DeliteTaskGraph {
     val id = getFieldString(op, "kernelId")
 
     val resultMap = processOutputTypes(op)
-    val inputTypesMap = processInputTypes(op)
 
     // source context
     val (fileName, line, opName) = getFieldMapOption(op, "sourceContext") match {
@@ -151,18 +151,20 @@ object DeliteTaskGraph {
     Delite.sourceInfo += (id -> (fileName, line, opName))
 	
     val newop = opType match {
-      case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap, inputTypesMap)
-      case "OP_External" => new OP_External(id, "kernel_"+id, resultMap, inputTypesMap)
-      case "OP_FileReader" => new OP_FileReader(id, "kernel_"+id, resultMap, inputTypesMap)
+      case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
+      case "OP_External" => new OP_External(id, "kernel_"+id, resultMap)
+      case "OP_FileReader" => new OP_FileReader(id, "kernel_"+id, resultMap)
       case "OP_MultiLoop" =>
         val size = getFieldString(op, "sizeValue")
         val sizeIsConst = getFieldString(op, "sizeType") == "const"
+        val numDynamicChunks = getFieldString(op, "numDynamicChunksValue")
+        val numDynamicChunksIsConst = getFieldString(op, "numDynamicChunksType") == "const"
         if (resultMap(Targets.Scala).values.contains("Unit")) //FIXME: handle foreaches
           if (Config.clusterMode == 1) println("WARNING: ignoring stencil of op with Foreach: " + id)
         else
           processStencil(op)
-        new OP_MultiLoop(id, size, sizeIsConst, "kernel_"+id, resultMap, inputTypesMap, getFieldBoolean(op, "needsCombine"), getFieldBoolean(op, "needsPostProcess"))
-      case "OP_Foreach" => new OP_Foreach(id, "kernel_"+id, resultMap, inputTypesMap)
+        new OP_MultiLoop(id, size, sizeIsConst, numDynamicChunks, numDynamicChunksIsConst, "kernel_"+id, resultMap, getFieldBoolean(op, "needsCombine"), getFieldBoolean(op, "needsPostProcess"))
+      case "OP_Foreach" => new OP_Foreach(id, "kernel_"+id, resultMap)
       case other => error("OP Type not recognized: " + other)
     }
 
@@ -237,21 +239,6 @@ object DeliteTaskGraph {
     resultMap
   }
 
-  def processInputTypes(op: Map[Any,Any]) = {
-    val inputTypes = getFieldMap(op, "input-types")
-    var inputTypesMap = Map[Targets.Value,Map[String,String]]()
-    val inSet = inputTypes.asInstanceOf[Map[String,Map[String,String]]].keySet
-
-    for (target <- Targets.values) {
-      var inputMap = Map[String,String]()
-      for (input <- inSet if getFieldMap(inputTypes, input) contains target.toString) {
-        inputMap += input.toString -> getFieldString(getFieldMap(inputTypes, input), target.toString)
-      }
-      if (inputMap.size > 0) inputTypesMap += target -> inputMap
-    }
-    inputTypesMap
-  }
-
   //FIXME: should be based on compiler IR node type rather than just output type
   def isPrimitiveType(tp: String) = tp match {
     case "Int" | "Long" | "Float" | "Double" | "Char" | "Short" | "Byte" | "Boolean" | "Unit" => true
@@ -322,6 +309,16 @@ object DeliteTaskGraph {
     (subGraph, value)
   }
 
+  def processReturnTypes(op: Map[Any, Any], id: String) = {
+    val outputTypes = getFieldMap(op, "return-types")
+    var resultMap = Map[Targets.Value, Map[String,String]]()
+    for (target <- Targets.values) {
+      if (outputTypes contains target.toString)
+        resultMap += target -> Map(id -> outputTypes(target.toString), "functionReturn" -> outputTypes(target.toString))
+    }
+    resultMap
+  }
+
   def processIfThenElseTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     // get id
     val id = getFieldString(op,"outputId")
@@ -330,13 +327,7 @@ object DeliteTaskGraph {
     val (thenGraph, thenValue) = parseSubGraph(op, "then")
     val (elseGraph, elseValue) = parseSubGraph(op, "else")
 
-    val outputTypes = getFieldMap(op, "return-types")
-    var resultMap = Map[Targets.Value, Map[String,String]]()
-    for (target <- Targets.values) {
-      if (outputTypes contains target.toString)
-        resultMap += target -> Map(id -> outputTypes(target.toString), "functionReturn" -> outputTypes(target.toString))
-    }
-
+    val resultMap = processReturnTypes(op, id)
     val depIds = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
     var ifDeps = Set.empty[DeliteOP]
     for (depId <- depIds) ifDeps += getOp(depId)
@@ -349,11 +340,7 @@ object DeliteTaskGraph {
     ifInputs ++= (for ((op,sym) <- Seq(predGraph.result, thenGraph.result, elseGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
     val ifMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
 
-    //TODO: Would it be better to generate more type information in DEG and make it general to all targets?
-    val condTypeMap:List[Map[Targets.Value,Map[String,String]]] = if (predValue == "") Targets.GPU.map(t => Map(t -> Map(predGraph.result._2 -> "bool"))) else Nil
-    val inputTypesMap = combineTypesMap(condTypeMap ++ internalOps.map(_.inputTypesMap).toList ++ Seq(predGraph.result, thenGraph.result, elseGraph.result).filter(_._1.isInstanceOf[OP_Input]).map(_._1.outputTypesMap).toList)
-
-    val conditionOp = new OP_Condition(id, resultMap, inputTypesMap, predGraph, predValue, thenGraph, thenValue, elseGraph, elseValue)
+    val conditionOp = new OP_Condition(id, resultMap, predGraph, predValue, thenGraph, thenValue, elseGraph, elseValue)
     conditionOp.dependencies = ifDeps
     conditionOp.inputList = ifInputs.toList
     conditionOp.mutableInputs = ifMutableInputs
@@ -401,11 +388,7 @@ object DeliteTaskGraph {
     whileInputs ++= (for ((op,sym) <- Seq(predGraph.result, bodyGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
     val whileMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
 
-    //TODO: Would it be better to generate more type information in DEG and make it general to all targets?
-    val condTypeMap:List[Map[Targets.Value,Map[String,String]]] = if (predValue == "") Targets.GPU.map(t => Map(t -> Map(predGraph.result._2 -> "bool"))) else Nil
-    val inputTypesMap = combineTypesMap(condTypeMap ++ internalOps.map(_.inputTypesMap).toList ++ Seq(predGraph.result, bodyGraph.result).filter(_._1.isInstanceOf[OP_Input]).map(_._1.outputTypesMap).toList)
-
-    val whileOp = new OP_While(id, inputTypesMap, predGraph, predValue, bodyGraph, bodyValue)
+    val whileOp = new OP_While(id, predGraph, predValue, bodyGraph, bodyValue)
     whileOp.dependencies = whileDeps
     whileOp.inputList = whileInputs.toList
     whileOp.mutableInputs = whileMutableInputs
@@ -445,13 +428,15 @@ object DeliteTaskGraph {
 
   /**
    * Add the Arguments op to the task graph
-   * This op feeds all application ops that consume command line arguments
+   * This op feeds all application ops that consume command line / external arguments
    * By definition it has no dependencies
    */
   def processArgumentsTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     val id = getFieldString(op, "kernelId")
-    val args = new Arguments(id)
-    args.supportedTargets append (Targets.Scala, Targets.Cpp)
+    val argIdx = getFieldString(op, "index").toInt
+    val argTypes = processReturnTypes(op, id)
+    val args = new Arguments(id, argIdx, argTypes)
+    args.supportedTargets ++= argTypes.keySet
     graph.registerOp(args)
     graph._result = (args, id)
   }
@@ -461,10 +446,24 @@ object DeliteTaskGraph {
    * This op follows the application result
    */
   def processEOPTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
-    val result = graph._result._1
-    val EOP = new EOP
-    EOP.addDependency(result) //EOP depends on result of application
-    result.addConsumer(EOP)
+    val id = "eop"
+    val resultTypes = processReturnTypes(op, id)
+    val value = getFieldString(op, "Value")
+    val tpe = getFieldString(op, "Type")
+    
+    val EOP = new EOP(id, resultTypes, (tpe,value))
+    if (tpe == "symbol") {
+      val result = getOp(value)
+      EOP.addInput(result, value)
+      EOP.addDependency(result)
+      result.addConsumer(EOP)
+    }
+    else { //const output, but EOP still needs to depend on result of application
+      val result = graph._result._1
+      EOP.addDependency(result) 
+      result.addConsumer(EOP)
+    }
+    
     graph.registerOp(EOP)
     graph._result = (EOP, EOP.id)
   }
@@ -506,6 +505,21 @@ object DeliteTaskGraph {
       //}
     }
 
+    //aux meta
+    val aux = getFieldMap(metadataMap, "aux").asInstanceOf[Map[Any,Any]]
+    if(aux.get("multiDim").isDefined) {
+      for (m <- getFieldList(aux,"multiDim").asInstanceOf[List[Map[Any,Any]]]) {
+        val level = getFieldString(m,"level").toInt
+        val dim = getFieldString(m,"dim")
+        val size = getFieldString(m,"size").toInt
+        val spanMap = getFieldMap(m,"span").asInstanceOf[Map[Any,Any]]
+        val spanTpe = getFieldString(spanMap,"tpe")
+        val spanSize = getFieldString(spanMap,"size")
+        metadata.mapping.append(Mapping(level,dim,size,spanTpe,spanSize))
+        println("added metadata: " + metadata.mapping.last)
+      }
+    }
+
   }
 
   def unsupportedType(err:String) = throw new RuntimeException("Unsupported Op Type found: " + err)
@@ -528,6 +542,7 @@ class DeliteTaskGraph {
   protected var _version = 0.0
   protected var _targets: Set[Targets.Value] = null
   protected var _kernelPath = ""
+  protected var _appName = ""
 
   protected val _ops = new HashMap[String, DeliteOP]
   protected val _inputs = new HashMap[String, OP_Input]
@@ -540,6 +555,7 @@ class DeliteTaskGraph {
   def version: Double = _version
   def targets: Set[Targets.Value] = _targets
   def kernelPath: String = _kernelPath
+  def appName: String = _appName
   def superGraph: DeliteTaskGraph = _superGraph
   def symbols: Set[String] = _ops.keys.toSet
   def ops: Set[DeliteOP] = _ops.values.toSet

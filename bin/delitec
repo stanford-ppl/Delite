@@ -27,6 +27,7 @@ def main():
     parser.add_option("--nb", dest="no_blas", action="store_true", default=False, help="disable blas calls")
     parser.add_option("--nf", dest="no_fusion", action="store_true", default=False, help="disables op fusion")
     parser.add_option("--ns", dest="no_soa", action="store_true", default=False, help="disables soa transform")
+    parser.add_option("--nm", dest="no_multidimgpu", action="store_true", default=False, help="disables multidim GPU codegen")
     parser.add_option("--cuda", dest="cuda", action="store_true", default=False, help="enables CUDA generation")
     parser.add_option("--opencl", dest="opencl", action="store_true", default=False, help="enables OpenCL generation")
     parser.add_option("--cpp", dest="cpp", action="store_true", default=False, help="enables cpp generation")
@@ -38,6 +39,7 @@ def main():
     parser.add_option("--Xnocache", dest="xnocache", action="store_true", default=False, help="disables caching during staging; may reduce memory footprint but decrease code gen performance")
     parser.add_option("-d", "--dest", action="store", dest="build_dir", default=os.getenv("PWD"), help="output location for generated files")
     parser.add_option("--dump_exception", dest="dump_exception", action="store_true", default=False, help="Dump generation failed exceptions")
+    parser.add_option("--jar", dest="jar_app", action="store_true", default=False, help="save generated output in a jar for distribution")
 
     (opts, args) = parser.parse_args()
     if len(args) < 1:
@@ -66,7 +68,7 @@ def checkLMSEnv():
 def stage(runner, params, opts):
     java_opts = os.getenv("JAVA_OPTS", "")
 
-    build_dir = opts.build_dir + "/generated/"
+    build_dir = opts.build_dir + os.sep + "generated" + os.sep
     java_opts = java_opts + " -server" + " -Ddelite.home.dir=" + delitecommon.DELITE_HOME + " -Ddelite.build.dir=" + build_dir + " -Ddelite.deg.filename=" + runner + ".deg"
     if opts.no_blas == False:
         java_opts = java_opts + " -Ddelite.extern.blas"
@@ -83,7 +85,7 @@ def stage(runner, params, opts):
     if opts.no_fusion == True:
         java_opts = java_opts + " -Ddelite.enable.fusion=false"
     if opts.no_soa == True:
-	java_opts = java_opts + " -Ddelite.enable.soa=false"
+        java_opts = java_opts + " -Ddelite.enable.soa=false"
     if opts.profile == True:
         java_opts = java_opts + " -Ddelite.enable.profiler=true"
     if opts.optimize > 0:
@@ -96,6 +98,8 @@ def stage(runner, params, opts):
         java_opts = java_opts + " -Ddelite.cache.syms"
     if opts.dump_exception == True:
         java_opts = java_opts + " -Ddelite.dump.exception"
+    if opts.no_multidimgpu == True:
+        java_opts = java_opts + " -Ddelite.enable.gpu.multidim=false"
     java_opts = java_opts + " -Dnested.variants.level=0"
     
     DELITE_HOME = delitecommon.DELITE_HOME
@@ -106,7 +110,7 @@ def stage(runner, params, opts):
     cp = " -cp "
     cp = cp + old_cp + os.pathsep
     if LMS_HOME:
-      cp = cp + LMS_HOME + "/target/" + scala_major_id + "/classes" + os.pathsep
+        cp = cp + LMS_HOME + "/target/" + scala_major_id + "/classes" + os.pathsep
     cp = cp + DELITE_HOME + "/framework/target/" + scala_major_id + "/classes" + os.pathsep
     
     #DSL cps
@@ -114,6 +118,9 @@ def stage(runner, params, opts):
       cp = cp + DELITE_HOME + "/dsls/" + dsl + "/target/" + scala_major_id + "/classes" + os.pathsep
       cp = cp + DELITE_HOME + "/dsls/" + dsl + "/target/" + scala_major_id + "/test-classes" + os.pathsep
       cp = cp + DELITE_HOME + "/apps/" + dsl + "/target/" + scala_major_id + "/classes" + os.pathsep
+
+    #Delite app cp
+    cp = cp + DELITE_HOME + "/apps/delite/target/" + scala_major_id + "/classes" + os.pathsep
 
     #test cp
     cp = cp + DELITE_HOME + "/framework/delite-test/target/" + scala_major_id + "/classes" + os.pathsep
@@ -147,6 +154,14 @@ def stage(runner, params, opts):
     ecode = os.system(java_cmd)
     if ecode != 0:
         err("Delite compilation failed")
+
+    #jar generated code
+    if opts.jar_app == True:
+        jar_cmd = delitecommon.JAVA_HOME + "/bin/jar cfM " + runner + ".jar " + runner + ".deg -C " + opts.build_dir + " generated"
+        #print jar_cmd
+        ecode = os.system(jar_cmd)
+        if ecode != 0:
+            err("Unable to jar Delite compilation output")
 
 if __name__ == "__main__":
     main()

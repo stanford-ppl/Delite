@@ -25,6 +25,19 @@ case object All extends Stencil {
   }
 }
 
+case class Const(const: Int) extends Stencil {
+  def combine(other: Stencil) = {
+    //TODO: what should be the combine result with a const stencil?
+    println("WARNING: combine Const stencil with other stencil")
+    other
+  }
+
+  def withArray(array: RemoteDeliteArray[_]) = {
+    println("WARNING: 'Const' stencil on RemoteArray: will be satisfied with remote reads")
+    None
+  }
+}
+
 case object One extends Stencil {
   def combine(other: Stencil) = other match {
     case One => One
@@ -38,6 +51,7 @@ case class Interval(start: String, stride: String, length: String) extends Stenc
   def combine(other: Stencil) = other match {
     case Empty => other.combine(this)
     case All => other.combine(this)
+    case Const(c) => other.combine(this)
     case One => this
     case Interval(s,t,l) if (s == start && t == stride && l == length) => this 
     case _ => sys.error("don't know how to combine stencils " + this + " and " + other)
@@ -50,6 +64,7 @@ case class KnownInterval(start: Int, stride: Int, length: Int) extends Stencil {
   def combine(other: Stencil) = other match {
     case Empty => other.combine(this)
     case All => other.combine(this)
+    case Const(c) => other.combine(this)
     case One => this
     case KnownInterval(s,t,l) if (t == stride) => if (l > length) other else this
     case _ => sys.error("don't know how to combine stencils " + this + " and " + other)
@@ -66,6 +81,9 @@ object Stencil {
     case "none" => Empty
     case "all" => All
     case "one" => One
+    case c if c.startsWith("const") =>
+      val const = c.substring(6,c.length-1).toInt
+      Const(const)
     case r if r.startsWith("range") => 
       val syms = r.substring(6,r.length-1).split(",")
       Interval(syms(0), syms(1), syms(2))

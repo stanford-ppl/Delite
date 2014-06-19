@@ -6,6 +6,8 @@
 *.DS_Store
 *.~
 *.o
+*.so
+Makefile
 /local.properties
 delite.properties
 target/

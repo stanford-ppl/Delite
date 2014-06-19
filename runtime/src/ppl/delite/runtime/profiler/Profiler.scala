@@ -66,10 +66,10 @@ object Profiler {
       
       // parse source context
       val (fileName, line, opName) = getFieldMapOption(mapping, "sourceContext") match {
-	  	case None =>
-	  	  ("<unknown file>", 0, symbolName)
+      case None =>
+        ("<unknown file>", 0, symbolName)
         case Some(sourceContext) =>
-	  	  (getFieldString(sourceContext, "fileName"), getFieldString(sourceContext, "line").toInt, getFieldString(sourceContext, "opName"))
+        (getFieldString(sourceContext, "fileName"), getFieldString(sourceContext, "line").toInt, getFieldString(sourceContext, "opName"))
       }
       (symbolName, (fileName, opName, line))
     })
@@ -134,13 +134,11 @@ object Profiler {
   }
   
   object TaskInfo {
-    //def apply(timing: Timing, threadId: Int, globalStartNanos: Long): TaskInfo =
     def apply(timing: Timing, threadId: Int, globalStartNanos: Long, appendChunkIdToKernelName: Boolean = false): TaskInfo =
       new TaskInfo {
         val fromTiming = timing
         val duration =   timing.elapsedMicros
         val startNanos = (timing.startTime - globalStartNanos) / 1000
-        //val kernel =     timing.component
         val kernel =    if (appendChunkIdToKernelName) timing.component + "_" + threadId else timing.component
         val location =   threadId
         val line = {
@@ -219,13 +217,13 @@ object Profiler {
     writer.println("    \"duration\": " + durationJS + ",")
     writer.println("    \"start\": " + startNanosJS + ",")
     writer.println("    \"kernels\": " + kernelsJS + ",")
-    writer.println("    \"location\": " + locationsJS + ",")
+    writer.println("    \"location\": " + locationsJS)
     //writer.println("    \"line_in_source\": " + linesJS + ",")
     //writer.println("    \"tooltip\": " + tooltipsJS + ",")
-    writer.println("    \"parallelTasks\": " + parallelTasksJS)
+    //writer.println("    \"parallelTasks\": " + parallelTasksJS)
   }
 
-  def emitProfileData(dir: File, fileName: String, globalStartNanos: Long, stats: List[Timing]) {
+  def emitProfileData(dir: File, fileName: String, globalStartNanos: Long, jvmUpTimeAtAppStart: Long, timingStats: List[Timing]) {
     val dataFile = new File(dir, fileName)
     val fileWriter = new FileWriter(dataFile)
     val writer = new PrintWriter(fileWriter)
@@ -235,28 +233,40 @@ object Profiler {
     }
     
     writer.println("{\"Profile\":{")
+    writer.println("  \"Init\": {")
+    writer.println("    \"SystemNanoTimeAtAppStart\": " + globalStartNanos + ",")
+    writer.println("    \"JVMUpTimeAtAppStart\": " + jvmUpTimeAtAppStart)
+    writer.println("  },")
+
     writer.println("  \"PerfProfile\": {")
-    emitProfileDataArrays(globalStartNanos, stats, writer)
+    emitProfileDataArrays(globalStartNanos, timingStats, writer)
     writer.println("  },")
     
-    // Dumping memory profile data
     writer.println("")
     MemoryProfiler.dumpProfile(writer)
+    writer.println(",")
+
+    SamplerThread.dumpProfile(writer, globalStartNanos)
     writer.println("}}")
     
     writer.flush()
     fileWriter.flush()
     fileWriter.close()
   }
+
+  def dumpProfile(globalStartNanos: Long, jvmUpTimeAtAppStart: Long) {
+    val timingStats = PerformanceTimer.getTimingStats()
+    writeProfileDataToFile(globalStartNanos, jvmUpTimeAtAppStart, timingStats)
+  }
   
   /** Writes profile to JavaScript file (profileData.js).
    *  
    *  Requires system property stats.output.dir to be set.
    */
-  def writeProfile(globalStart: Long, globalStartNanos: Long, stats: List[Timing]) {
+  def writeProfileDataToFile(globalStartNanos: Long, jvmUpTimeAtAppStart: Long, timingStats: List[Timing]) {
     val directory = getOrCreateOutputDirectory()
-    // emit JS file containing the profile data
-	  emitProfileData(directory, "profileData.js", globalStartNanos, stats)
+    val file = "profileData.js"
+    emitProfileData(directory, file, globalStartNanos, jvmUpTimeAtAppStart, timingStats)
   }
   
   /** Generates HTML profile.
@@ -269,7 +279,7 @@ object Profiler {
   def main(args: Array[String]) {
     // only generate HTML profile
     // TODO: check that symbols.json and profileData.js have already been generated
-	
+  
     // read symbol source info from file
     val symbolsFilename =
       Config.degFilename.substring(0, Config.degFilename.length() - 4) + "-symbols.json"

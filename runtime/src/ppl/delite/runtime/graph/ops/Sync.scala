@@ -94,6 +94,9 @@ object Sync {
         if (sender ne null) assert(node(to.scheduledResource) == n.toNode, "invalid notify/await pair")
         awaiter match {
           case _ if (syncSet contains awaiter) =>
+            // since ops in a schedule are traversed in order while adding syncs,
+            // it is guaranteed that 'awaiter' is a sync before current op
+            // so we don't need to add a new notify/await
           case _ => addReceive(awaiter, to)
         }
     }
@@ -120,6 +123,18 @@ object Sync {
       case null => 
       case _ if (syncSet contains updatee) =>
       case _ => addReceive(updatee, to, isAntiDep)
+      /*
+      case _ =>
+        // For previous notify/await pairs from the same op to the same node && same destination op, promote to sendUpdate/recvUpdate
+        // NOTE: Consider a mutable op and two dependent ops (on the same schedule, one await and another on recvUpdate)
+        //       If the order from the sender side is notify and then sendUpdate, and recvUpdate comes earlier than await?
+        val potentialNotifyAwait = Await(Notify(updater.from,node(to.scheduledResource)),to.scheduledResource)
+        syncSet.get(potentialNotifyAwait) match {
+          case Some(na@Await(Notify(_,_),_)) if na.to == to => removeSendReceive(na, to)
+          case _ => //
+        }
+        addReceive(updatee, to, isAntiDep)
+      */
     }
   }
 
@@ -163,13 +178,10 @@ object Sync {
       }
     }
     // updates for loop carried dependencies are appended at the end of the schedule
-    for (sync <- loopUpdates) {
-      sync match {
-        case s: SendUpdate => schedule(s.from.scheduledResource).add(s)
-        case r: ReceiveUpdate => schedule(r.to.scheduledResource).add(r)
-        case _ => throw new RuntimeException("Loop Update list cannot have this sync object")
-      }
-    }
+    // SendUpdate should be all added before receiveUpdate syncs are added to prevent deadlock
+    // (e.g., sched-1 and sched-2 both has loop updates to send as in )
+    loopUpdates collect { case s: SendUpdate => schedule(s.from.scheduledResource).add(s) }
+    loopUpdates collect { case r: ReceiveUpdate => schedule(r.to.scheduledResource).add(r) }
   }
 
   private def addFreeToSchedule() {
@@ -338,7 +350,6 @@ abstract class Sync extends DeliteOP {
   def isDataParallel = false
   def task = null
   private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]] = null
-  private[graph] var inputTypesMap: Map[Targets.Value, Map[String,String]] = null
 }
 
 abstract class PCM_M extends DeliteOP {
@@ -346,7 +357,6 @@ abstract class PCM_M extends DeliteOP {
   def isDataParallel = false
   def task = null
   private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]] = null
-  private[graph] var inputTypesMap: Map[Targets.Value, Map[String,String]] = null
 }
 
 abstract class Send extends Sync {

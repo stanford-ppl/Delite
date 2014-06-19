@@ -10,6 +10,7 @@ import ppl.delite.framework.datastructures._
 import codegen.delite.overrides._
 import codegen.scala.TargetScala
 import codegen.cpp.TargetCpp
+import codegen.cuda.TargetCuda
 import java.io.File
 
 /* Profile DSL front-end types */
@@ -39,12 +40,9 @@ trait ProfileExp extends Profile with ScalaOpsPkgExp with ProfileOpsExp
     GenericFatCodegen{val IR: ProfileExp.this.type} = {
     
     t match {
-      case _:TargetScala => new ProfileCodeGenScala {
-        val IR: ProfileExp.this.type = ProfileExp.this
-      }
-      case _:TargetCpp => new ProfileCodeGenC {
-        val IR: ProfileExp.this.type = ProfileExp.this
-      }
+      case _:TargetScala => new ProfileCodeGenScala { val IR: ProfileExp.this.type = ProfileExp.this }
+      case _:TargetCpp => new ProfileCodeGenC { val IR: ProfileExp.this.type = ProfileExp.this }
+      case _:TargetCuda => new ProfileCodeGenCuda { val IR: ProfileExp.this.type = ProfileExp.this }
       case _ => throw new IllegalArgumentException("unsupported target")
     }
   }
@@ -85,5 +83,14 @@ trait ProfileCodeGenC extends ProfileCodeGenBase with CCodeGenPkg
   with CGenDeliteCollectionOps
   with DeliteCGenAllOverrides {
       
+  val IR: DeliteApplication with ProfileExp
+}
+
+trait ProfileCodeGenCuda extends ProfileCodeGenBase with CudaCodeGenPkg
+  with CudaGenDeliteOps with CudaGenDeliteStruct with CudaGenDeliteArrayOps with DeliteCppHostTransfer with DeliteCudaDeviceTransfer
+  /*with CudaGenProfileOps with CudaGenProfileArrayOps */
+  with CudaGenDeliteCollectionOps
+  with DeliteCudaGenAllOverrides {
+
   val IR: DeliteApplication with ProfileExp
 }

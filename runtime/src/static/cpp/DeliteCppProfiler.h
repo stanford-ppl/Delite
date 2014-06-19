@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sys/time.h>
 #include <jni.h>
+#include <stdint.h>
 
 using namespace std;
 
