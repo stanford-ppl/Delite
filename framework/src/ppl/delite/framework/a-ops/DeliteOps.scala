@@ -2822,7 +2822,7 @@ trait GPUGenDeliteOpsOpt extends GPUGenDeliteOps {
       case Some((DimX,_,_)) => "threadIdx.x"
       case Some((DimY,_,_)) => "threadIdx.y"
       case Some((DimZ,_,_)) => "threadIdx.z"
-      case _ => throw new RuntimeException("getCurrentDimIdx")
+      case _ => throw new GenerationFailedException("getCurrentDimIdx")
     }
   }
 
@@ -2831,7 +2831,7 @@ trait GPUGenDeliteOpsOpt extends GPUGenDeliteOps {
       case Some((DimX,_,_)) => "blockIdx.x * blockDim.x + threadIdx.x"
       case Some((DimY,_,_)) => "blockIdx.y * blockDim.y + threadIdx.y"
       case Some((DimZ,_,_)) => "blockIdx.z * blockDim.z + threadIdx.z"
-      case _ => throw new RuntimeException("getCurrentDimGlobalIdx")
+      case _ => throw new GenerationFailedException("getCurrentDimGlobalIdx")
     }
   }
 
@@ -2840,7 +2840,7 @@ trait GPUGenDeliteOpsOpt extends GPUGenDeliteOps {
       case Some((DimX,_,_)) => "gridDim.x * blockDim.x"
       case Some((DimY,_,_)) => "gridDim.y * blockDim.y"
       case Some((DimZ,_,_)) => "gridDim.z * blockDim.z"
-      case _ => throw new RuntimeException("getCurrentDimGlobalIdx")
+      case _ => throw new GenerationFailedException("getCurrentDimGlobalIdx")
     }
   }
 
@@ -2858,7 +2858,7 @@ trait GPUGenDeliteOpsOpt extends GPUGenDeliteOps {
       case Some((DimZ,_,_)) => "blockDim.z"
 */
       case Some((_,size,_)) => size.toString
-      case _ => throw new RuntimeException("getCurrentDimSize")
+      case _ => throw new GenerationFailedException("getCurrentDimSize")
     }
   }
 

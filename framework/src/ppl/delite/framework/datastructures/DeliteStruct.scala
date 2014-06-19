@@ -449,8 +449,8 @@ trait CLikeGenDeliteStruct extends BaseGenStruct with CLikeCodegen {
   override def emitDataStructures(path: String) {
     new File(path) mkdirs // doesn't necessarily exist
     val structStream = new PrintWriter(path + deviceTarget.toString + "DeliteStructs.h")
-    structStream.println("#ifndef __DELITESTRUCTS_H__")
-    structStream.println("#define __DELITESTRUCTS_H__")
+    structStream.println("#ifndef __" + deviceTarget.toString + "_DELITESTRUCTS_H__")
+    structStream.println("#define __" + deviceTarget.toString + "_DELITESTRUCTS_H__")
     structStream.println("#include \"" + deviceTarget + "types.h\"")    
     //structStream.println("#include \"" + hostTarget + "DeliteArray.h\"")
     //structStream.println("#include \"" + deviceTarget + "DeliteArray.h\"")

@@ -27,6 +27,7 @@ def main():
     parser.add_option("--nb", dest="no_blas", action="store_true", default=False, help="disable blas calls")
     parser.add_option("--nf", dest="no_fusion", action="store_true", default=False, help="disables op fusion")
     parser.add_option("--ns", dest="no_soa", action="store_true", default=False, help="disables soa transform")
+    parser.add_option("--nm", dest="no_multidimgpu", action="store_true", default=False, help="disables multidim GPU codegen")
     parser.add_option("--cuda", dest="cuda", action="store_true", default=False, help="enables CUDA generation")
     parser.add_option("--opencl", dest="opencl", action="store_true", default=False, help="enables OpenCL generation")
     parser.add_option("--cpp", dest="cpp", action="store_true", default=False, help="enables cpp generation")
@@ -97,6 +98,8 @@ def stage(runner, params, opts):
         java_opts = java_opts + " -Ddelite.cache.syms"
     if opts.dump_exception == True:
         java_opts = java_opts + " -Ddelite.dump.exception"
+    if opts.no_multidimgpu == True:
+        java_opts = java_opts + " -Ddelite.enable.gpu.multidim=false"
     java_opts = java_opts + " -Dnested.variants.level=0"
     
     DELITE_HOME = delitecommon.DELITE_HOME
