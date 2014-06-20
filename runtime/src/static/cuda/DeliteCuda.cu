@@ -197,7 +197,10 @@ void DeliteCudaMemset(void *ptr, int value, size_t count) {
 
 void DeliteCudaCheckError(void) {
   cudaDeviceSynchronize();
-  printf("DeliteCuda ERROR: %s\n", cudaGetErrorString(cudaGetLastError()));
+  if (cudaPeekAtLastError() != cudaSuccess) {
+    cout << "DeliteCuda execution failed: " << cudaGetErrorString(cudaPeekAtLastError()) << endl;
+    exit(-1);
+  }
 }
 
 struct timeval start_t;
