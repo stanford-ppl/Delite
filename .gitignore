@@ -11,7 +11,7 @@ Makefile
 /local.properties
 delite.properties
 target/
-config/
+config/delite/*.xml
 *lib_managed
 *src_managed
 project/boot

@@ -1,7 +1,0 @@
-<DeliteExternalLib>
-<compiler></compiler> <!-- C++ compiler path -->
-<make></make> <!-- make path -->
-<headers>
-<!-- JNI headers -->
-</headers>
-</DeliteExternalLib>

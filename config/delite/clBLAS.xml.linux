@@ -3,11 +3,11 @@
 <headers>
   <prefix> -I </prefix>
   <path> /usr/local/cuda/include </path>
-  <path> /home/hyouklee/delite/Delite/runtime/opencl/blas </path>
+  <path> $DELITE_HOME/runtime/opencl/blas </path>
 </headers>
 <libs>
     <prefix> -L </prefix>
-    <path> /home/hyouklee/delite/Delite/runtime/opencl/blas </path>
+    <path> $DELITE_HOME/runtime/opencl/blas </path>
 </libs>
 </DeliteExternalLib>
 
