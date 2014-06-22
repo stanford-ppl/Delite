@@ -57,7 +57,7 @@ object PerformanceTimer
       case timing :: previousTimings =>
         timing.endTime = endTime
         if (component == Config.dumpStatsComponent) {
-          statsForTrackedComponent += (timing.endTime - timing.startTime) / 1000D
+          statsForTrackedComponent += (timing.endTime - timing.startTime)
         }
     }
   }
@@ -101,7 +101,6 @@ object PerformanceTimer
                     // to an actual execution thread. Rather, it just stores data for 'all' and tic-toc regions
     nonKernelCompsToTimings.foreach(kv => {
       kv._2.foreach(timing => {
-        //val str = "[METRICS]: Time for component " + kv._1 + ": " +  (timing.elapsedMicros.toFloat / 1000000).formatted("%.6f") + "s"
         val str = "[METRICS]: Time for component " + kv._1 + ": " +  (timing.elapsedMillis.toFloat / 1000).formatted("%.3f") + "s"
         println(str)
       })
@@ -122,7 +121,6 @@ object PerformanceTimer
     if(Config.dumpStatsOverwrite == false && timesFile.exists)
       throw new RuntimeException("stats file " + timesFile + " already exists")
     val fileStream = new PrintWriter(new FileWriter(timesFile))
-    //dumpStats(component, fileStream)
     dumpStats(fileStream)
     fileStream.close
   }
