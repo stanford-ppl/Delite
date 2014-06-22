@@ -61,7 +61,7 @@ object SingleTask_GPU_Generator { //extends CudaGPUExecutableGenerator {
   private def writePrimitiveRemap(op: DeliteOP, out: StringBuilder) {
     for ((in, sym) <- op.getInputs if isPrimitiveType(in.outputType(sym))) {
       if(in.scheduledResource==op.scheduledResource) {
-        out.append(CudaExecutableGenerator.typesMap(Targets.Cuda)(sym))
+        out.append(in.outputType(Targets.Cuda, sym))
         out.append(' ')
         out.append(sym)
         out.append('=')
@@ -92,11 +92,11 @@ object SingleTask_GPU_Generator { //extends CudaGPUExecutableGenerator {
         if (!first) out.append(", ")
         first = false
         if(in.scheduledResource==op.scheduledResource) {
-          out.append(CudaExecutableGenerator.typesMap(Targets.Cuda)(sym))
+          out.append(in.outputType(Targets.Cuda, sym))
           out.append(" *" + sym + "_ptr")
         }
         else {
-          out.append(CudaExecutableGenerator.typesMap(Targets.Cuda)(sym))
+          out.append(in.outputType(Targets.Cuda, sym))
           out.append(" " + sym)
         }
       }

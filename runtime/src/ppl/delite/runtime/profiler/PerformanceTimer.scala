@@ -11,6 +11,9 @@ object PerformanceTimer
   var threadCount = 0
   var statsNewFormat = new ArrayBuffer[Map[String, List[Timing]]]()
   var threadToId: Map[String, Int] = Map()
+  // HACK: This is a temporary solution
+  // This is a list of timing data for the component that is tracked using Config.dumpStatsComponent
+  var statsForTrackedComponent = new mutable.ArrayBuffer[Double]()
 
   def initializeStats(numThreads: Int) = synchronized {
     threadCount = numThreads
@@ -32,7 +35,7 @@ object PerformanceTimer
       stats += component -> List[Timing]()
     }
 
-    val startTime = System.nanoTime()
+    val startTime = System.currentTimeMillis
     val previous = stats(component)
     val current = (new Timing(threadName, startTime, component)) :: previous
     stats += component -> current
@@ -46,13 +49,16 @@ object PerformanceTimer
   def stop(component: String, threadName: String, printMessage: Boolean) = {
     val threadId = threadToId(threadName)
     var stats = statsNewFormat(threadId)
-    val endTime = System.nanoTime()
+    val endTime = System.currentTimeMillis 
     stats(component) match {
       case List() =>
         error("cannot stop timing that doesn't exist")
       
       case timing :: previousTimings =>
         timing.endTime = endTime
+        if (component == Config.dumpStatsComponent) {
+          statsForTrackedComponent += (timing.endTime - timing.startTime) / 1000D
+        }
     }
   }
 
@@ -62,6 +68,7 @@ object PerformanceTimer
 
   // Currently only used by C++ to dump the profile results, need to refactor the code
   def addTiming(component: String, threadId: Int, startTime: Long, endTime: Long): Unit = {
+    Predef.println((startTime < endTime) + " startTime: " + startTime + "  endTime: " + endTime)
     val threadName = threadToId.find(_._2 == threadId) match { 
       case Some((name,id)) => name
       case None => throw new RuntimeException("cannot find thread name for id " + threadId)
@@ -80,12 +87,6 @@ object PerformanceTimer
     statsNewFormat.clear()
     initializeStats(threadCount)
   }
-  
-  /*
-  def dumpProfile(globalStart: Long, globalStartNanos: Long) { 
-    var stats = toList(statsNewFormat)   
-    Profiler.writeProfile(globalStart, globalStartNanos, stats)
-  }*/
 
   def getTimingStats(): List[Timing] = {
     toList(statsNewFormat)
@@ -100,7 +101,8 @@ object PerformanceTimer
                     // to an actual execution thread. Rather, it just stores data for 'all' and tic-toc regions
     nonKernelCompsToTimings.foreach(kv => {
       kv._2.foreach(timing => {
-        val str = "[METRICS]: Time for component " + kv._1 + ": " +  (timing.elapsedMicros.toFloat / 1000000).formatted("%.6f") + "s"
+        //val str = "[METRICS]: Time for component " + kv._1 + ": " +  (timing.elapsedMicros.toFloat / 1000000).formatted("%.6f") + "s"
+        val str = "[METRICS]: Time for component " + kv._1 + ": " +  (timing.elapsedMillis.toFloat / 1000).formatted("%.3f") + "s"
         println(str)
       })
     })
@@ -120,16 +122,13 @@ object PerformanceTimer
     if(Config.dumpStatsOverwrite == false && timesFile.exists)
       throw new RuntimeException("stats file " + timesFile + " already exists")
     val fileStream = new PrintWriter(new FileWriter(timesFile))
-    dumpStats(component, fileStream)
+    //dumpStats(component, fileStream)
+    dumpStats(fileStream)
     fileStream.close
   }
 
-  def dumpStats(component: String, stream: PrintWriter)  {
-    statsNewFormat.foreach(m => {
-      if (m.contains(component)) {
-        val str = m(component).map(t => t.elapsedMicros).mkString("\n")
-        stream.println(str)
-      }
-    })
+  def dumpStats(stream: PrintWriter)  {
+    val s = statsForTrackedComponent.map(t => t.formatted("%.2f")).mkString("\n")
+    stream.print(s)
   }
 }

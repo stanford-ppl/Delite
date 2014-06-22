@@ -18,6 +18,7 @@ object OpenCLCompile extends CCompile {
 
   protected def configFile = "OpenCL.xml"
   protected def compileFlags = Array("-w", "-O3", "-shared", "-fPIC", "-lOpenCL")
+  protected def linkFlags = Array()
   protected def outputSwitch = "-o"
 
   override def compile() {

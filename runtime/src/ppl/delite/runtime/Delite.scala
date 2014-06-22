@@ -27,6 +27,8 @@ object Delite {
   //TODO: Remove this. This is only used for cluster version GPU runtime code generation.
   var inputArgs: Array[String] = _
 
+  var expectedResources: Seq[Int] = Seq() //TODO: better way to pass this through?
+
   private def printArgs(args: Array[String]) {
     if(args.length == 0) {
       println("Not enough arguments.\nUsage: [Launch Runtime Command] filename.deg arguments*")
@@ -51,17 +53,39 @@ object Delite {
 
   def embeddedMain(args: Array[String], staticData: Map[String,_]) {
     inputArgs = args
-    mainThread = Thread.currentThread
-    
     printArgs(args)
     printConfig()
 
-    //extract application arguments
-    Arguments.args = args.drop(1)
-    Arguments.staticDataMap = staticData
+    walkAndRun(args(0), List(args.drop(1)), staticData)
+  }
 
-    var scheduler: StaticScheduler = null
-    var executor: Executor = null
+  def execute(degFile: String, args:Any*) = {
+    walkAndRun(degFile, args, Map())
+  }
+
+  def executeCached(classPrefix: String, args: Any*) = {
+    walkAndRun(classPrefix, args, Map())
+  }
+
+  def walkAndRun(appName: String, args: Seq[Any], staticData: Map[String,_]) = {
+    mainThread = Thread.currentThread
+
+    //extract application arguments
+    Arguments.args = args
+    Arguments.staticDataMap = staticData
+    var appResult: Any = null
+
+    //TODO: combine into a single scheduler and executor
+    val executor = Config.executor match {
+      case "SMP" => new SMPExecutor
+      case "ACC" => new SMP_Acc_Executor
+      case "default" => {
+        if (Config.numCpp+Config.numCuda+Config.numOpenCL==0) new SMPExecutor
+        else if (Config.clusterMode == 1) new SMPExecutor
+        else new SMP_Acc_Executor
+      }
+      case _ => throw new IllegalArgumentException("Requested executor is not recognized")
+    }
 
     def abnormalShutdown() {
       if (executor != null) executor.shutdown()
@@ -69,10 +93,9 @@ object Delite {
         Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
     }
 
-    try {
-
+    def walkTime() = {
       //load task graph
-      val graph = loadDeliteDEG(args(0))
+      val graph = loadDeliteDEG(appName)
       //val graph = new TestGraph
     
       //Print warning if there is no op that supports the target
@@ -80,30 +103,16 @@ object Delite {
       if(Config.numCuda>0 && !graph.targets(Targets.Cuda)) { Config.numCuda = 0; println("[WARNING] No Cuda target op is generated!") }
       if(Config.numOpenCL>0 && !graph.targets(Targets.OpenCL)) { Config.numOpenCL = 0; println("[WARNING] No OpenCL target op is generated!") }
 
-      //TODO: combine into a single scheduler and executor
-      scheduler = Config.scheduler match {
+      val scheduler = Config.scheduler match {
         case "SMP" => new SMPStaticScheduler
         case "ACC" => new Acc_StaticScheduler
         case "default" => {
-          if (Config.numCpp+Config.numCuda+Config.numOpenCL==0 || ((graph.targets.size==1) && (graph.targets(Targets.Scala)))) new SMPStaticScheduler
+          if (Config.numCpp+Config.numCuda+Config.numOpenCL==0) new SMPStaticScheduler
           else if (Config.clusterMode == 1) new SMPStaticScheduler
           else new Acc_StaticScheduler
         }
         case _ => throw new IllegalArgumentException("Requested scheduler is not recognized")
       }
-
-      executor = Config.executor match {
-        case "SMP" => new SMPExecutor
-        case "ACC" => new SMP_Acc_Executor
-        case "default" => {
-          if (Config.numCpp+Config.numCuda+Config.numOpenCL==0 || ((graph.targets.size==1) && (graph.targets(Targets.Scala)))) new SMPExecutor
-          else if (Config.clusterMode == 1) new SMPExecutor
-          else new SMP_Acc_Executor
-        }
-        case _ => throw new IllegalArgumentException("Requested executor is not recognized")
-      }
-
-      executor.init() //call this first because could take a while and can be done in parallel
 
       Config.deliteBuildHome = graph.kernelPath
 
@@ -117,8 +126,10 @@ object Delite {
       scheduler.schedule(graph)
 
       //compile
-      val executable = Compilers.compileSchedule(graph)
+      Compilers.compileSchedule(graph)
+    }
 
+    def runTime(executable: StaticSchedule) {
       //execute
       if (Config.clusterMode == 2) { //slave executor
         //DeliteMesosExecutor.executor = executor.asInstanceOf[SMPExecutor].threadPool
@@ -139,7 +150,7 @@ object Delite {
         val numTimes = Config.numRuns
         
         for (i <- 1 to numTimes) {
-          println("Beginning Execution Run " + i)
+          if (Config.performWalk) println("Beginning Execution Run " + i)
           PerformanceTimer.clearAll()
 
           //val globalStart = System.currentTimeMillis
@@ -156,25 +167,25 @@ object Delite {
           }
 
           executor.run(executable)
-          EOP_Global.await //await the end of the application program
+          appResult = EOP_Global.take() //await the end of the application program  
 
           if (i == numTimes) {
             if (Config.dumpProfile) SamplerThread.interrupt()
             PerformanceTimer.stop("all", false)
-            //PerformanceTimer.printAll(globalStart, globalStartNanos)
             PerformanceTimer.printStatsForNonKernelComps()
-            //if (Config.dumpProfile) PerformanceTimer.dumpProfile(globalStart, globalStartNanos)
             if (Config.dumpProfile) Profiler.dumpProfile(globalStartNanos, jvmUpTimeAtAppStart)    
           }
 
-          if (Config.dumpStats) PerformanceTimer.dumpStats() 
+          if (Config.dumpStats) PerformanceTimer.dumpStats()        
           System.gc()
         }
       }
-      
-      if(Config.dumpStats)
-        PerformanceTimer.dumpStats()
+    }
 
+    try {
+      executor.init() //call this first because could take a while and can be done in parallel
+      val executable = if (Config.performWalk) walkTime() else findExecutables(appName)
+      if (Config.performRun) runTime(executable)  
       executor.shutdown()
     }
     catch {
@@ -182,9 +193,11 @@ object Delite {
       case e: Exception => abnormalShutdown(); throw e       
     }
     finally {
-      Arguments.args = null
+      Arguments.args = Nil
       Arguments.staticDataMap = null
     }
+
+    appResult
   }
 
   def loadDeliteDEG(filename: String) = {
@@ -199,6 +212,11 @@ object Delite {
       if (graph.targets contains target)
         Compilers(target).cacheDegSources(Directory(Path(graph.kernelPath + File.separator + Compilers(target).target + File.separator).toAbsolute))
     }
+  }
+
+  def findExecutables(appName: String): StaticSchedule = {
+    val numResources = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL
+    Compilers.createSchedule(this.getClass.getClassLoader, appName, numResources, expectedResources)
   }
 
   //abnormal shutdown

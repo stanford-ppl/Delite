@@ -66,10 +66,10 @@ object Profiler {
       
       // parse source context
       val (fileName, line, opName) = getFieldMapOption(mapping, "sourceContext") match {
-	  	case None =>
-	  	  ("<unknown file>", 0, symbolName)
+      case None =>
+        ("<unknown file>", 0, symbolName)
         case Some(sourceContext) =>
-	  	  (getFieldString(sourceContext, "fileName"), getFieldString(sourceContext, "line").toInt, getFieldString(sourceContext, "opName"))
+        (getFieldString(sourceContext, "fileName"), getFieldString(sourceContext, "line").toInt, getFieldString(sourceContext, "opName"))
       }
       (symbolName, (fileName, opName, line))
     })
@@ -125,7 +125,8 @@ object Profiler {
   
   trait TaskInfo {
     val fromTiming: Timing
-    val startNanos: Long
+    //val startNanos: Long
+    val start: Long 
     val duration: Long
     val kernel: String
     val location: Int
@@ -137,8 +138,10 @@ object Profiler {
     def apply(timing: Timing, threadId: Int, globalStartNanos: Long, appendChunkIdToKernelName: Boolean = false): TaskInfo =
       new TaskInfo {
         val fromTiming = timing
-        val duration =   timing.elapsedMicros
-        val startNanos = (timing.startTime - globalStartNanos) / 1000
+        //val duration =   timing.elapsedMicros
+        val duration =   timing.elapsedMillis
+        //val startNanos = (timing.startTime - globalStartNanos) / 1000
+        val start = timing.startTime
         val kernel =    if (appendChunkIdToKernelName) timing.component + "_" + threadId else timing.component
         val location =   threadId
         val line = {
@@ -150,8 +153,8 @@ object Profiler {
         }
         val tooltip = {
           val html =
-          "<b>Start time:</b> " + ((timing.startTime - globalStartNanos) / 1000) + "us</br>" +
-          "<b>Duration:</b> " + timing.elapsedMicros + "us</br>" +
+          //"<b>Start time:</b> " + ((timing.startTime - globalStartNanos) / 1000) + "us</br>" +
+          //"<b>Duration:</b> " + timing.elapsedMicros + "us</br>" +
           "<b>OPType:</b> " + deliteOpType(timing.component) + "</br>" +
           "<b>Kernel:</b> " + timing.component + "</br>" +
           "<b>Source:</b> " + line
@@ -207,7 +210,8 @@ object Profiler {
     }
     
     val durationJS =   iterableToJSArray("duration", taskInfos.map(_.duration), false)
-    val startNanosJS = iterableToJSArray("start", taskInfos.map(_.startNanos), false)
+    //val startNanosJS = iterableToJSArray("start", taskInfos.map(_.startNanos), false)
+    val startJS = iterableToJSArray("start", taskInfos.map(_.start), false)
     val kernelsJS =    iterableToJSArray("kernels", taskInfos.map(_.kernel))
     val locationsJS =  iterableToJSArray("location", taskInfos.map(_.location), false)
     val linesJS =      iterableToJSArray("line_in_source", taskInfos.map(_.line).map("'" + _ + "'"), false)
@@ -215,7 +219,8 @@ object Profiler {
     val parallelTasksJS = listOfListsToJSArray("parallelTasks", parallelTaskIndices)
 
     writer.println("    \"duration\": " + durationJS + ",")
-    writer.println("    \"start\": " + startNanosJS + ",")
+    //writer.println("    \"start\": " + startNanosJS + ",")
+    writer.println("    \"start\": " + startJS + ",")
     writer.println("    \"kernels\": " + kernelsJS + ",")
     writer.println("    \"location\": " + locationsJS)
     //writer.println("    \"line_in_source\": " + linesJS + ",")
@@ -279,7 +284,7 @@ object Profiler {
   def main(args: Array[String]) {
     // only generate HTML profile
     // TODO: check that symbols.json and profileData.js have already been generated
-	
+  
     // read symbol source info from file
     val symbolsFilename =
       Config.degFilename.substring(0, Config.degFilename.length() - 4) + "-symbols.json"
@@ -294,7 +299,7 @@ object Profiler {
     
     val htmlFile = new File(getOrCreateOutputDirectory(), Config.statsOutputFilename)
     val fileWriter = new PrintWriter(new FileWriter(htmlFile))
-    Visualizer.writeHtmlProfile(fileWriter, symbolMap)
+    //Visualizer.writeHtmlProfile(fileWriter, symbolMap)
   }
   
   def getOrCreateOutputDirectory(): File = {

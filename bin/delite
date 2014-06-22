@@ -7,6 +7,8 @@ import math
 from socket import gethostname
 from string import *
 from time import localtime, strftime
+import fileinput
+import shutil
 
 import delitecommon
 from delitecommon import *
@@ -30,6 +32,8 @@ def main():
     parser.add_option("--ip", dest="ip_address", default="0.0.0.0", help="override the ip address Delite binds to")
     parser.add_option("--codecache", dest="codecache", default="", help="directory for runtime code cache")
     parser.add_option("-d", "--directory", dest="directory", default="", help="change directory to the specified one before running")
+    parser.add_option("--jar", dest="jar_cache", action="store_true", default=False, help="save compiled executables in a jar for later execution")
+    parser.add_option("--walk-only", dest="walk_only", action="store_true", default=False, help="Only generate executables, don't run them.  Typically used with --jar")
 
     (opts, args) = parser.parse_args()
     if len(args) < 1:
@@ -43,15 +47,24 @@ def parseBuildDir(deg):
         err("couldn't find DEG file " + deg)
 
     with open(deg) as f:
-      head = [f.next() for x in xrange(3)]
+      head = [f.next() for x in xrange(4)]
     
     fields = ''.join(head).split(",")
     kernelpath = fields[len(fields)-2].split(":") 
-    build_dir = kernelpath[len(kernelpath)-1]
-    if (build_dir.strip('\n') == ""):
+    build_dir = kernelpath[len(kernelpath)-1].strip().strip("\"").strip("\n")
+    if (build_dir == ""):
       err("DEG file " + deg + " appears to be invalid; could not parse kernelpath")
 
     return build_dir
+
+def updateBuildDir(deg, build_dir):
+    path_key = "\"kernelpath\" : \""
+    for line in fileinput.input(deg, inplace=True):
+        if path_key in line:
+            old_path = line.lstrip(path_key).rstrip("\",\n")
+            print line.replace(old_path, build_dir),
+        else:
+            print line,
 
 def run(deg, params, opts):
     java_opts = os.getenv("JAVA_OPTS", "")
@@ -62,7 +75,27 @@ def run(deg, params, opts):
       else:
         deg = deg + ".deg"
 
-    build_dir = parseBuildDir(deg)
+    if opts.directory != "":
+        os.chdir(opts.directory)
+
+    build_dir = ""
+    if deg.endswith(".jar"):
+        build_dir = os.getenv("PWD")+os.sep+"generated"+os.sep #override default kernel path to extracted dir
+        if os.path.isdir(build_dir):
+            shutil.rmtree(build_dir)
+        jar_cmd = delitecommon.JAVA_HOME + "/bin/jar xf " + deg 
+        ecode = os.system(jar_cmd)
+        if ecode != 0:
+            err("Unable to extract jar: " + deg)
+        degFileName = deg.split(os.sep)
+        degFileName = degFileName[len(degFileName)-1].replace(".jar",".deg") #TODO: allow users to name the jar differently from deg
+        deg = degFileName
+
+    if build_dir == "":
+        build_dir = parseBuildDir(deg)
+    else:
+        updateBuildDir(deg, build_dir)
+
     ld_library_path = filter(len, os.getenv("LD_LIBRARY_PATH", "").split(":"))
     ld_library_path.append(build_dir+os.sep+"libraries") 
     os.putenv("LD_LIBRARY_PATH", ":".join(ld_library_path))
@@ -79,7 +112,7 @@ def run(deg, params, opts):
     if opts.codecache == "":
         opts.codecache = delitecommon.DELITE_HOME + os.sep + "generatedCache"
 
-    java_opts = java_opts + " -Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) + " -Ddelite.cpp=" + opts.num_cpp + " -Ddelite.cuda=" + opts.num_cuda + " -Ddelite.opencl=" + opts.num_opencl + " -Ddelite.runs=" + opts.num_runs + " -Ddelite.executor=" + opts.executor + " -Ddelite.scheduler=" + opts.scheduler + " -Ddelite.master=" + opts.master + " -Ddelite.slaves=" + str(opts.num_nodes) + " -Ddelite.code.cache.home=" + opts.codecache
+    java_opts = java_opts + " -Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) +" -Ddelite.cpp=" + opts.num_cpp + " -Ddelite.cuda=" + opts.num_cuda + " -Ddelite.opencl=" + opts.num_opencl + " -Ddelite.runs=" + opts.num_runs + " -Ddelite.executor=" + opts.executor + " -Ddelite.scheduler=" + opts.scheduler + " -Ddelite.master=" + opts.master + " -Ddelite.slaves=" + str(opts.num_nodes) + " -Ddelite.code.cache.home=" + opts.codecache
 
     if opts.no_regen == True:
         java_opts = java_opts + " -Ddelite.debug.noregenerate"
@@ -87,9 +120,11 @@ def run(deg, params, opts):
 		java_opts = java_opts + " -Dprofile.output.dir=profile -Dprofile.dump=true -Ddelite.debug.profile=true -Xloggc:profile/gcStats.txt -XX:+PrintGCDetails -Ddelite.debug.memSamplingInterval=14"
     if opts.isSlave == True:
         java_opts = java_opts + " -Ddelite.cluster.isSlave"
+    if opts.walk_only == True:
+        java_opts = java_opts + " -Ddelite.run=false"
     if delitecommon.DELITE_MEM != None:
         java_opts = java_opts + " -Xmx" + delitecommon.DELITE_MEM
-	java_opts = java_opts + " -Xms" + delitecommon.DELITE_MEM
+        java_opts = java_opts + " -Xms" + delitecommon.DELITE_MEM
 
 
     # add classpaths    
@@ -121,13 +156,21 @@ def run(deg, params, opts):
     print "== executing application: " + deg + " " + ' '.join(params)
     if opts.verbose:
         print "== with options: " + java_opts + "\n" 
+
     java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " ppl.delite.runtime.Delite " + deg + " " + ' '.join(params)
     #print java_cmd
-    if opts.directory != "":
-        os.chdir(opts.directory)
     ecode = os.system(java_cmd)
     if ecode != 0:
         err("Delite execution failed")
+
+    if opts.jar_cache == True:
+        scala_class_root = opts.codecache + os.sep + "scala" + os.sep + "classes" + os.sep + "jar"
+        cache_root = opts.codecache + os.sep + ".." + os.sep
+        jar_cmd = delitecommon.JAVA_HOME + "/bin/jar cfM " + deg.rstrip(".deg") + "-bin.jar -C " + cache_root + " generatedCache -C " + scala_class_root + " ."
+        print jar_cmd
+        ecode = os.system(jar_cmd)
+        if ecode != 0:
+            err("Unable to jar Delite compiled executables")
 
 if __name__ == "__main__":
     main()

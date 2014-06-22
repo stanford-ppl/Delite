@@ -124,8 +124,8 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
     out.append(getJNIOutputType(dep.outputType(Targets.Scala,sym)))
     out.append("\"));\n")
     val ref = if (isPrimitiveType(dep.outputType(sym))) "" else "*"
-    val devType = CudaExecutableGenerator.typesMap(Targets.Cuda)(sym)
-    val hostType = CudaExecutableGenerator.typesMap(Targets.Cpp)(sym)
+    val devType = dep.outputType(Targets.Cuda, sym)
+    val hostType = dep.outputType(Targets.Cpp, sym)
     if (view) {
       out.append("%s %s%s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(hostType,ref,getSymHost(dep,sym),mangledName(hostType),location,getSymCPU(sym)))
       out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
@@ -173,16 +173,16 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
   }
 
   private def writeRecvUpdater(dep: DeliteOP, sym:String) {
-    val hostType = CudaExecutableGenerator.typesMap(Targets.Cpp)(sym)
-    val devType = CudaExecutableGenerator.typesMap(Targets.Cuda)(sym)
+    val hostType = dep.inputType(Targets.Cpp, sym)
+    val devType = dep.inputType(Targets.Cuda, sym)
     assert(!isPrimitiveType(dep.inputType(sym)))
     out.append("recvUpdateCPPfromJVM_%s(env%s,%s,%s);\n".format(mangledName(hostType),location,getSymCPU(sym),getSymHost(dep,sym)))
     out.append("sendUpdateCuda_%s(%s, %s);\n".format(mangledName(devType),getSymDevice(dep,sym),getSymHost(dep,sym)))
   }
 
   private def writeSetter(op: DeliteOP, sym: String, view: Boolean) {
-    val hostType = CudaExecutableGenerator.typesMap(Targets.Cpp)(sym) 
-    val devType = CudaExecutableGenerator.typesMap(Targets.Cuda)(sym)
+    val hostType = op.outputType(Targets.Cpp, sym) 
+    val devType = op.outputType(Targets.Cuda, sym)
     if (view) {
       out.append("%s *%s = recvCuda_%s(%s);\n".format(hostType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
       out.append("%s %s = sendViewCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(hostType),location,getSymHost(op,sym)))
@@ -246,8 +246,8 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
   }
 
   private def writeSendUpdater(op: DeliteOP, sym: String) {
-    val devType = CudaExecutableGenerator.typesMap(Targets.Cuda)(sym)
-    val hostType = CudaExecutableGenerator.typesMap(Targets.Cpp)(sym)
+    val devType = op.inputType(Targets.Cuda, sym)
+    val hostType = op.inputType(Targets.Cpp, sym)
     assert(!isPrimitiveType(op.inputType(sym)))
     out.append("recvUpdateCuda_%s(%s, %s);\n".format(mangledName(devType),getSymDevice(op,sym),getSymHost(op,sym)))
     out.append("sendUpdateCPPtoJVM_%s(env%s,%s,%s);\n".format(mangledName(hostType),location,getSymCPU(sym),getSymHost(op,sym)))
@@ -308,8 +308,8 @@ trait CudaSyncGenerator extends CudaToScalaSync {
     }
 
     def writeHostRelease(fop: DeliteOP, sym: String) {
-      out.append(getSymHost(fop,sym))
-      out.append("->release();\n")
+      //out.append(getSymHost(fop,sym))
+      //out.append("->release();\n")
     }
 
     //TODO: Separate JVM/Host/Device frees

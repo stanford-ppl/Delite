@@ -46,6 +46,8 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
   }
   */
 
+  def useMultiDimMapping(op: OP_MultiLoop) = getMapping(op).length > 0
+
   private def collectList(op: OP_MultiLoop): List[(OPData,String)] = {
     op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.elemType.startsWith("COLLECT"))
   }
@@ -162,7 +164,7 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
     out.append(kernelName(op))
     out.append(op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").map(o => op.outputType(Targets.Cuda, o._2) + "** " + o._2).mkString("(",", ",""))
     if ((op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").size>0) && (op.getInputs.size>0)) out.append(", ")
-    writeInputs(out,op,true)
+    out.append(getInputParams(op,true).mkString(","))
     out.append(", int size")
     out.append(")\n")
   }
@@ -175,7 +177,8 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
     
     writeProcessKernel(out, op)
 
-    writePostProcessKernel(out, op)  
+    if(op.needsPostProcess)
+      writePostProcessKernel(out, op)
     if(op.needsCombine) {
       writeCombineKernel(out,op)
       writeReduceSpecKernel(out,op)
@@ -188,6 +191,7 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
       writeHashReduceKernel(out,op,true)
   }
 
+  // emit the main multiloop method that is called in execution plans
   private def writeKernelLauncher(out: StringBuilder, op: OP_MultiLoop) {
     writeLauncherHeader(out, op)
     out.append("{\n")
@@ -209,7 +213,7 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
     
     // allocate outputs for non-buffer type loops
     writeOutputAllocs(out, op, output_static++output_dynamic) // TODO: remove output_dynamic from the list
-    
+
     // call process kernel
     writeKernelCall(out, op, "Process")
     
@@ -219,9 +223,11 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
     
     // allocate outputs for buffer type loops (size is only known after scan kernel)
     writeOutputAllocs(out, op, output_dynamic)
-    
-    writeKernelCall(out, op, "PostProcess")
 
+    if(op.needsPostProcess)
+      writeKernelCall(out, op, "PostProcess")
+
+    //TODO: put guard
     writeHashReducePreKernelCall(out, op)
 
     if(op.needsCombine) { 
@@ -264,24 +270,105 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
 
   private def opSize = "size"
 
+  private def getMapping(op: OP_MultiLoop) = {
+    op.getGPUMetadata(Targets.Cuda).mapping
+  }
+
+  // New implementation of writeKernelCall
   private def writeKernelCall(out: StringBuilder, op: OP_MultiLoop, id: String) {
+    val funcName = kernelName(op) + id
+
+    def deref(op: DeliteOP, tp: String) = if (isPrimitiveType(op.outputType(tp))) "" else "*"
+    val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).map(o => if(o._1.elemType.startsWith("COLLECT")) "*act."+o._2+"_data" else "*act."+o._2) ++
+    //reductionList(op).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionSpecList(op).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2, tempIn_" + o._2) ++
+    //reductionTupleList(op).map(o => "temp1_" + o._2 + ", temp1_" + o._2 + "_2, temp2_" + o._2 + ", temp2_" + o._2 + "_2") ++
+    //hashReductionList(op).map(o => "key_" + o._2 + ", val_" + o._2 + ", " + o._2 + "_hash_data, offset_" + o._2 + ", idx_" + o._2) ++
+    op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else "")) ++
+    //tempAllocs(op).map(t => t.sym) ++
+    List("size, tempMemSize, tempMemPtr, tempMemUsage, loopIdx, act")
+
+    val asserts = ArrayBuffer[String]()
+
+    //TODO: get below parameters values at runtime by calling CUDA API
+    val MAX_GRID_DIM = List(65535,65535,65535)
+    val MAX_BLOCK_DIM = List(1024,1024,64)
+    val MAX_THREADS = 1024
+
+    // a grid can have x, y, and z dimension
+    val dimSize = List("x","y","z") map { dim =>
+      getMapping(op).find(_.dim == dim) match {
+        case Some(m) if(m.spanTpe=="one") =>
+          // span type one will launch multiple thread blocks
+          // TODO: handle when the size is too big
+          val maxGridDim = MAX_GRID_DIM(dim match {case "x" => 0; case "y" => 1; case "z" => 2; case _ => throw new RuntimeException("unknown dim"+dim);})
+          "min(" + maxGridDim + ",1 + (" + m.spanSize + " - 1)/" + m.size + ")"
+        case _ => "1"
+      }
+    }
+
+    // a thread block can have x, y, and z dimension
+    val blockSize = List("x","y","z") map { dim =>
+      getMapping(op).find(_.dim == dim) match {
+        case Some(m) => m.size
+        case _ => "1"
+      }
+    }
+
+    // write kernel call
+    id match {
+      case "Process" if useMultiDimMapping(op) =>
+        out.append(dimSize.zipWithIndex.map(e => "(" + e._1 + "<=" + MAX_GRID_DIM(e._2) + ")").mkString("if(!(","&&",")) printf(\"[WARNING] Grid size too big..\\n\");\n"))
+        out.append(blockSize.zipWithIndex.map(e => "(" + e._1 + "<=" + MAX_BLOCK_DIM(e._2) + ")").mkString("assert(","&&",");\n"))
+        out.append(blockSize.mkString("assert((","*",")<="+MAX_THREADS+");\n"))
+        out.append(funcName + "<<<" + dimSize.mkString("dim3(",",",")") + "," + blockSize.mkString("dim3(",",",")") + ",0,kernelStream>>>")
+        out.append(args.mkString("(",",",");\n"))
+      case _ if useMultiDimMapping(op) =>
+        assert(false, "Runtime codegen for multi-dim mapping other than process function is not implemented")
+      case _ => writeKernelCall_old(out, op, id)
+    }
+  }
+
+  // Old implementation of writeKernelCall
+  private def writeKernelCall_old(out: StringBuilder, op: OP_MultiLoop, id: String) {
     val blockSize = blockSizeConfig(op) 
 
     def dimSize(size: String) = //if(id=="HashReduce1" || id=="HashReduce2") "1 +((" + size + "-1)/(" + blockSize + "/MAX_GROUP))"
                                 if(id=="HashReduce" || id=="HashReduceSpec") size
                                 else if(op.needsCombine && id!="PostProcess") "1 +((" + size + "-1)/" + blockSize + "/2)"
                                 else "1 +((" + size + "-1)/" + blockSize + ")"
-    
     def deref(op: DeliteOP, tp: String) = if (isPrimitiveType(op.outputType(tp))) "" else "*"
     def cudaLaunch(dimConfig: String): String = {
       val str = new StringBuilder
       str.append(kernelName(op))
       str.append(id)
       str.append("<<<dim3(") //kernel dimensions
-      str.append(dimConfig)
+      /*
+      if(op.getGPUMetadata(Targets.Cuda).mapping.length > 0) {
+        for(dim <- List("x","y")) {
+          op.getGPUMetadata(Targets.Cuda).mapping.find(_.dim==dim) match {
+            case Some(m) if(m.spanTpe=="one") => str.append("1 + (" + m.spanSize + " - 1)/" + m.size + ",")
+            case _ => str.append("1,")
+          }
+        }
+        str.append("1")
+      }
+      else
+      */
+        str.append(dimConfig)
       str.append("),dim3(")
-      str.append(blockSize)
-      str.append(",1,1),0,")
+      /*
+      if(op.getGPUMetadata(Targets.Cuda).mapping.length > 0) {
+        str.append(op.getGPUMetadata(Targets.Cuda).mapping.find(_.dim=="x").get.size)
+        str.append(",")
+        str.append(op.getGPUMetadata(Targets.Cuda).mapping.find(_.dim=="y").get.size)
+        str.append(",1")
+      }
+      else {
+        */
+        str.append(blockSize)
+        str.append(",1,1")
+      //}
+      str.append("),0,")
       str.append("kernelStream")
       str.append(">>>")
       str.toString
@@ -375,7 +462,7 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
     val params = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).map(o => op.outputType(Targets.Cuda, o._2) + " " + o._2) ++ reductionList(op).map(o => o._1.getType("mA") + " *temp_" + o._2 + "," + o._1.getType("mA") + " *temp_" + o._2 + "_2") ++ (reductionSpecList(op).map(o => o._1.getType("dmR") + " *temp_" + o._2 + "," + o._1.getType("dmR") + " *temp_" + o._2 + "_2," + o._1.getType("mA") + " *tempIn_" + o._2)) ++ reductionTupleList(op).map(o => o._1.getType("mA") + " *temp1_" + o._2 + "," + o._1.getType("mA") + " *temp1_" + o._2 + "_2," + o._1.getType("mB") + " *temp2_" + o._2 + "," + o._1.getType("mB") + " *temp2_" + o._2 + "_2") ++ hashReductionList(op).map(o => o._1.getType("mK") + " *key_" + o._2 + "," + o._1.getType("mV") + " *val_" + o._2 + ", " + o._1.getType("mV") + " *" + o._2 + "_hash_data, int *offset_" + o._2 + ", int *idx_" + o._2)
     out.append(params.mkString(","))
     if (params.nonEmpty && op.getInputs.nonEmpty) out.append(',')
-    writeInputs(out,op,false)
+    out.append(getInputParams(op,false).mkString(","))
     if (params.nonEmpty || op.getInputs.nonEmpty) out.append(',')
     out.append(List("TEMP_"+op.id+" int size, size_t tempMemSize","char *tempMemPtr","int *tempMemUsage, int loopIdx, activation_"+op.id+" act").mkString(","))
     out.append(") {\n")
@@ -386,11 +473,31 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
     }
     else {
       out.append("int idxX = blockIdx.x * blockDim.x + threadIdx.x;\n")
+      out.append("int x = idxX;\n")
+      out.append("int y = blockIdx.y * blockDim.y + threadIdx.y;\n")
     }
     out.append("int tid = threadIdx.x;\n")
     addDeref(out, op)
     allocateSharedMem(out, op)
   }
+
+  private def writeKernelHeader_new(out: StringBuilder, op: OP_MultiLoop, id: String) {
+    val funcName = kernelName(op) + id
+    val dimVariables = getMapping(op).map(m => "int %1$s = blockIdx.%1$s * blockDim.%1$s + threadIdx.%1$s;".format(m.dim))
+    val params = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).map(o => op.outputType(Targets.Cuda, o._2) + " " + o._2) ++ reductionList(op).map(o => o._1.getType("mA") + " *temp_" + o._2 + "," + o._1.getType("mA") + " *temp_" + o._2 + "_2") ++ (reductionSpecList(op).map(o => o._1.getType("dmR") + " *temp_" + o._2 + "," + o._1.getType("dmR") + " *temp_" + o._2 + "_2," + o._1.getType("mA") + " *tempIn_" + o._2)) ++ reductionTupleList(op).map(o => o._1.getType("mA") + " *temp1_" + o._2 + "," + o._1.getType("mA") + " *temp1_" + o._2 + "_2," + o._1.getType("mB") + " *temp2_" + o._2 + "," + o._1.getType("mB") + " *temp2_" + o._2 + "_2") ++ hashReductionList(op).map(o => o._1.getType("mK") + " *key_" + o._2 + "," + o._1.getType("mV") + " *val_" + o._2 + ", " + o._1.getType("mV") + " *" + o._2 + "_hash_data, int *offset_" + o._2 + ", int *idx_" + o._2) ++
+                 getInputParams(op,false) ++
+                 List("TEMP_"+op.id+" int size, size_t tempMemSize","char *tempMemPtr","int *tempMemUsage, int loopIdx, activation_"+op.id+" act")
+
+    out.append("__global__ void " + funcName)
+    out.append(params.mkString("(",",",") {\n"))
+    out.append(dimVariables.mkString("","\n","\n"))
+
+    //TODO: enable below
+    //This is to add * for the input arguments that are primitive types and gerenated from a GPU kernel (stored in a dev mem ptr)
+    //addDeref(out, op)
+    //allocateSharedMem(out, op)
+  }
+
 
   private def writeKernelFooter(out: StringBuilder) {
     out.append("}\n") //end if, end kernel
@@ -404,10 +511,38 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
 
   //TODO: Add temporary allocations here?
   private def lastInputArgs(op: OP_MultiLoop): List[String] = {
-    List("idxX",opSize) ++ tempAllocs(op).map(_.sym) ++ List("tempMemSize","tempMemPtr","tempMemUsage","act")
+    if(op.getGPUMetadata(Targets.Cuda).mapping.length > 0)
+      List(opSize) ++ tempAllocs(op).map(_.sym) ++ List("tempMemSize","tempMemPtr","tempMemUsage","act")
+    else
+      List("idxX",opSize) ++ tempAllocs(op).map(_.sym) ++ List("tempMemSize","tempMemPtr","tempMemUsage","act")
   }
 
   private def writeProcessKernel(out: StringBuilder, op: OP_MultiLoop) {
+    if (useMultiDimMapping(op)) {
+      writeKernelHeader_new(out, op, "Process")
+      if (op.needsCombine) {
+        assert(false, "combine is not implemented for multi-dim mapping")
+      }
+      else {
+        val spanOnes = getMapping(op).filter(_.spanTpe=="one")
+        //spanOnes foreach { s =>
+        //  out.append("while( " + s.dim + " < " + s.spanSize + ") {\n")
+        //}
+        for((odata,osym) <- collectList(op)++foreachList(op)) {
+          out.append("dev_process_" + funcNameSuffix(op,osym) + "(" + (odata.getInputs("process")++lastInputArgs(op)).mkString(",") + ");\n")
+        }
+        //spanOnes.reverse foreach { s =>
+        //  out.append("%1$s += blockDim.%1$s * gridDim.%1$s;\n".format(s.dim))
+        //  out.append("}\n")
+        //}
+      }
+      writeKernelFooter(out)
+    }
+    else
+      writeProcessKernel_old(out, op)
+  }
+
+  private def writeProcessKernel_old(out: StringBuilder, op: OP_MultiLoop) {
     writeKernelHeader(out, op, "Process")
     if(op.needsCombine) {    
       for((odata,osym) <- reductionList(op)) {
@@ -518,11 +653,18 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
       out.append("}\n")
     }
     else {
-      out.append("while (idxX < " + opSize + ") {\n")
+      if(op.getGPUMetadata(Targets.Cuda).mapping.length > 0) {
+        out.append("while( " + op.getGPUMetadata(Targets.Cuda).mapping.find(_.level==0).get.dim + " < " + opSize + ") {\n")
+      }
+      else
+        out.append("while (idxX < " + opSize + ") {\n")
       for((odata,osym) <- collectList(op)++foreachList(op)) {
         out.append("dev_process_" + funcNameSuffix(op,osym) + "(" + (odata.getInputs("process")++lastInputArgs(op)).mkString(",") + ");\n")
       }
-      out.append("idxX += blockDim.x * gridDim.x;\n")
+      if(op.getGPUMetadata(Targets.Cuda).mapping.length > 0)
+        out.append("%1$s += blockDim.%1$s * gridDim.%1$s;\n".format(op.getGPUMetadata(Targets.Cuda).mapping.find(_.level==0).get.dim))
+      else
+        out.append("idxX += blockDim.x * gridDim.x;\n")
       out.append("}\n")
     }
     writeKernelFooter(out)
@@ -1035,27 +1177,24 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
       out.append("__shared__ " + odata.getType("dmR") + " smem_" + osym + "[256];\n")
   }
 
-  private def writeInputs(out: StringBuilder, op: OP_MultiLoop, reference: Boolean) {
-    var first = true
-
-    for ((in, sym) <- op.getInputs) {
+  // This method is shared for launcher function generation and kernel function generation.
+  // Launcher function wants pointer type input for objects
+  // Kernel function wants dereferenced type input for objects (without *)
+  // This is indicated by the input 'reference'
+  private def getInputParams(op: OP_MultiLoop, reference: Boolean) = {
+    op.getInputs.map { i =>
+      val (in,sym) = i
       if (!isPrimitiveType(in.outputType(sym))) {
-        if (!first) out.append(", ")
-        first = false
-        out.append(op.inputType(target,sym))
-        if (reference) out.append("*")
-        out.append(" " + sym)
+        op.inputType(target,sym) + (if(reference) "*" else "") + " " + sym
       }
       else {
-        if (!first) out.append(", ")
-        first = false
+        // This is to handle primitive type inputs stored in GPU device memory (generated by another GPU kernel).
+        // The kernel gets a pointer to the location and dereference it at the beginning of the kernel to get the value.
         if(needDeref(op,in,sym)) {
-          out.append(getCPrimitiveType(in.outputType(sym)))
-          out.append(" *" + sym + "_ptr")
+          getCPrimitiveType(in.outputType(sym)) + " *" + sym + "_ptr"
         }
         else {
-          out.append(getCPrimitiveType(in.outputType(sym)))
-          out.append(" " + sym)
+          getCPrimitiveType(in.outputType(sym)) + " " + sym
         }
       }
     }

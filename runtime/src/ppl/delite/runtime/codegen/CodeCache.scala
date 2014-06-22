@@ -143,15 +143,14 @@ trait CodeCache {
     allMatch
   }
 
-  protected def copyDirectory(source: Directory, destination: Directory) {
-    if (destination exists)
-      destination.deleteRecursively()
+  protected def copyDirectory(source: Directory, destination: Directory, mergeDestination: Boolean = false) {
+    if (!mergeDestination) destination.deleteRecursively()
     destination.createDirectory()
 
     val base = destination.toString + File.separator
 
     for (dir <- source.dirs)
-      copyDirectory(dir, Directory(Path(base + dir.name)))
+      copyDirectory(dir, Directory(Path(base + dir.name)), mergeDestination)
 
     for (file <- source.files)
       file.copyTo(Path(base + file.name))

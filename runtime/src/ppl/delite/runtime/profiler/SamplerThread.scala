@@ -81,5 +81,3 @@ object SamplerThread extends Thread {
 }
 
 class ProfileData(val timeStamp: Long, val maxMemory: Long, val totalMemory: Long, val freeMemory: Long, val usedMemory: Long, val gcCount: Long, val gcTime: Long) {}
-
-

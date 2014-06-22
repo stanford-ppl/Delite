@@ -5,6 +5,7 @@ package ppl.delite.runtime.profiler
  * 
  * @author Philipp Haller
  */
+/*
 class Timing(val threadName: String, val startTime: Long, val component: String) {
   private var _endTime: Long = 0L
   private var done = false
@@ -25,6 +26,23 @@ class Timing(val threadName: String, val startTime: Long, val component: String)
   
   override def toString =
     /*"Timing for " + component + " (" +*/ elapsedMicros + "us"
+}
+*/
+
+class Timing(val threadName: String, val startTime: Long, val component: String) {
+  private var _endTime: Long = 0L
+  private var done = false
+  
+  def endTime: Long = _endTime
+  def endTime_=(time: Long) {
+    _endTime = time
+    done = true
+  }
+  
+  def isDone: Boolean = done
+  //def elapsedMicros: Long = ((endTime - startTime) / 1000)
+  def elapsedMillis: Long = endTime - startTime
+  override def toString = elapsedMillis + "ms"
 }
 
 /**
@@ -65,13 +83,13 @@ class MultiTiming(thread: String, start: Long, val numChunks: Int, component: St
       this.endTime = time
   }
   
-  def loadImbalance: Double = {
+  /*def loadImbalance: Double = {
     val totalTime = timings.foldLeft(0L)((elapsed: Long, t: Timing) => elapsed + t.elapsedMicros)
     val idealPerThread = totalTime / numChunks
     val shortest = timings.map(t => t.elapsedMicros).min
     val imbalance = (idealPerThread - shortest).toDouble / idealPerThread.toDouble
     imbalance
-  }
+  }*/
   
   /*override def toString =
     "MultiTiming for " + component

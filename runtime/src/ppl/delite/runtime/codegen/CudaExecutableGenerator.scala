@@ -161,12 +161,12 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
   //TODO: can/should this be factored out? need some kind of factory for each target
   protected def makeNestedFunction(op: DeliteOP) = op match {
     case c: OP_Condition => {
-      val codegen = new CudaConditionGenerator(c, location, kernelPath)
+      val codegen = new CudaConditionGenerator(c, location, graph)
       codegen.makeExecutable()
       CudaCompile.addHeader(codegen.generateMethodSignature + ";\nextern bool " + c.id.split('_').head + "_cond;\n", codegen.executableName(location))
     }
    case w: OP_While => {
-      val codegen = new CudaWhileGenerator(w, location, kernelPath)
+      val codegen = new CudaWhileGenerator(w, location, graph)
       codegen.makeExecutable()
       CudaCompile.addHeader(codegen.generateMethodSignature + ";\n", codegen.executableName(location))
     }
@@ -188,7 +188,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
     for (o <- op.getOutputs if op.outputType(o)!="Unit")
       available += Pair(op,o)
 
-    if(Config.gpuPerformance) 
+    if (Config.profile)
       out.append("DeliteCudaTic(\"" + op.id + "\");\n")
 
     op match {
@@ -200,7 +200,6 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
         val args = op.getInputs.map(i => deref(i._1,i._2) + getSymDevice(i._1,i._2))
         out.append(args.mkString("(",",",");\n"))
       case op:OP_MultiLoop =>
-        
         for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
           out.append(op.outputType(Targets.Cuda, name))
           out.append(" *" + getSymDevice(op,name) + ";\n")
@@ -211,7 +210,6 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
         val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").map(o => "&"+getSymDevice(op,o._2)).toList ++ op.getInputs.map(i=>getSymDevice(i._1,i._2)) :+ size
         
         out.append(args.mkString("(",",",");\n"))
-
       case _:OP_Nested =>
         for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
           out.append(op.outputType(Targets.Cuda, name))
@@ -231,7 +229,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
         out.append(");\n")
     }
 
-    if(Config.gpuPerformance) 
+    if (Config.profile)
       out.append("DeliteCudaToc(\"" + op.id + "\");\n")
     
     out.append("addEvent(kernelStream, d2hStream);\n")
@@ -304,18 +302,18 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
 
 }
 
-class CudaMainExecutableGenerator(val location: Int, val kernelPath: String)
+class CudaMainExecutableGenerator(val location: Int, val graph: DeliteTaskGraph)
   extends CudaExecutableGenerator with CudaSyncGenerator {
 
   def executableName(location: Int) = "Executable" + location
 
   protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value) = {
     target match {
-      case Targets.Scala => new ScalaMainExecutableGenerator(location, kernelPath) with ScalaSyncObjectGenerator {
+      case Targets.Scala => new ScalaMainExecutableGenerator(location, graph) with ScalaSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       }
-      //case Targets.Cpp => new CppMainExecutableGenerator(location, kernelPath) with CudaSyncObjectGenerator {
+      //case Targets.Cpp => new CppMainExecutableGenerator(location, graph) with CudaSyncObjectGenerator {
       //  protected val sync = syncs
       //  override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       //}
@@ -325,19 +323,19 @@ class CudaMainExecutableGenerator(val location: Int, val kernelPath: String)
 }
 
 //TODO: Some location symbols are hard-coded. Change them.
-class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) extends CudaExecutableGenerator with CudaSyncGenerator {
+class CudaDynamicExecutableGenerator(val location: Int, val graph: DeliteTaskGraph) extends CudaExecutableGenerator with CudaSyncGenerator {
   def executableName(location: Int) = "Executable" + location
 
   var syncLocation: Int = location
 
   protected def syncObjectGenerator(syncs: ArrayBuffer[Send], host: Targets.Value) = {
     host match {
-      case Targets.Scala => new ScalaMainExecutableGenerator(syncLocation, kernelPath) with ScalaSyncObjectGenerator {
+      case Targets.Scala => new ScalaMainExecutableGenerator(syncLocation, graph) with ScalaSyncObjectGenerator {
         protected val sync = syncs
         override def executableName(location: Int) = executableNamePrefix + super.executableName(syncLocation)
         override def consumerSet(sender: Send) = {  if(location == 0) scala.collection.mutable.HashSet(1) else scala.collection.mutable.HashSet(0) }
       }
-      //case Targets.Cpp => new CppMainExecutableGenerator(location, kernelPath) with CudaSyncObjectGenerator {
+      //case Targets.Cpp => new CppMainExecutableGenerator(location, graph) with CudaSyncObjectGenerator {
       //  protected val sync = syncs
       //  override def executableName(location: Int) = executableNamePrefix + super.executableName(location)
       //}
@@ -503,7 +501,7 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
     out.append(getJNIOutputType(dep.outputType(Targets.Scala,sym)))
     out.append("\"));\n")
     val ref = if (isPrimitiveType(dep.outputType(sym))) "" else "*"
-    val devType = CudaExecutableGenerator.typesMap(Targets.Cuda)(sym)
+    val devType = dep.outputType(Targets.Cuda, sym)
     if (view) {
       out.append("Host%s %s%s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(devType,ref,getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
       out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
@@ -536,7 +534,7 @@ class CudaDynamicExecutableGenerator(val location: Int, val kernelPath: String) 
 
   private def writeSetter(op: DeliteOP, sym: String, view: Boolean) {
     addLocalSync(SendData(sym,op,0))
-    val devType = CudaExecutableGenerator.typesMap(Targets.Cuda)(sym)
+    val devType = op.outputType(Targets.Cuda, sym)
     if (view) {
       out.append("Host%s %s = recvCuda_%s(%s);\n".format(devType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
       out.append("%s *%s = sendViewCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))
@@ -635,32 +633,14 @@ object CudaExecutableGenerator {
   syncObjects += "#include <pthread.h>\n"
   syncObjects += "#include \"" + Targets.Cuda + "helperFuncs.h\"\n"
 
-  var typesMap = Map[Targets.Value, Map[String,String]]()
-
-  //TODO: Remove this not to use global structure for type information
-  def collectInputTypesMap(graph: DeliteTaskGraph) {
-    for (resource <- graph.schedule; op <- resource) {
-      if (op.getInputTypesMap != null)
-        typesMap = DeliteTaskGraph.combineTypesMap(List(op.getInputTypesMap,typesMap))
-      if (op.getOutputTypesMap != null)
-        typesMap = DeliteTaskGraph.combineTypesMap(List(op.getOutputTypesMap,typesMap))
-
-      if (op.isInstanceOf[OP_Nested]) {
-        for (subgraph <- op.asInstanceOf[OP_Nested].nestedGraphs) {
-          collectInputTypesMap(subgraph)
-        }
-      }
-    }
-  }
-
-  def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
+  def makeExecutables(schedule: PartialSchedule, graph: DeliteTaskGraph) {
     for (sch <- schedule if sch.size > 0) {
       val location = sch.peek.scheduledResource
       if(Config.clusterMode == 2) 
-        new CudaDynamicExecutableGenerator(location, kernelPath).makeExecutable(sch) // native execution plan
+        new CudaDynamicExecutableGenerator(location, graph).makeExecutable(sch) // native execution plan
       else 
-        new CudaMainExecutableGenerator(location, kernelPath).makeExecutable(sch) // native execution plan
-      new ScalaNativeExecutableGenerator(location, kernelPath).makeExecutable(sch) // JNI launcher scala source
+        new CudaMainExecutableGenerator(location, graph).makeExecutable(sch) // native execution plan
+      new ScalaNativeExecutableGenerator(location, graph).makeExecutable(sch) // JNI launcher scala source
     }
     // Register header file for the Cpp sync objects
     CudaCompile.addHeader(syncObjects.mkString(""),"cudaSyncObjects")
@@ -668,6 +648,5 @@ object CudaExecutableGenerator {
 
   def clear() { 
     syncObjects.clear 
-    typesMap = Map[Targets.Value, Map[String,String]]()
   }
 }

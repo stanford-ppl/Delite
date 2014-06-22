@@ -1,7 +1,9 @@
 <DeliteExternalLib>
-<compiler></compiler> <!-- C++ compiler path -->
-<make></make> <!-- make path -->
-<headers>
+	<compiler>/usr/bin/clang++</compiler> <!-- C++ compiler path -->
+	<make>/usr/bin/make</make> <!-- make path -->
+	<headers>
+		<prefix> -I </prefix>
+		<path> /System/Library/Frameworks/JavaVM.framework/Headers </path>
 <!-- JNI headers -->
 </headers>
 </DeliteExternalLib>

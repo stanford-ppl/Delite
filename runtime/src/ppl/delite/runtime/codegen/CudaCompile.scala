@@ -26,11 +26,11 @@ object CudaCompile extends CCompile {
   }
 
   protected def configFile = "CUDA.xml"
-  protected def compileFlags = Array("-m64", "-w", "-O3", "-lcublas", "-arch", "compute_"+arch, "-code", "sm_"+arch, "-shared", "-Xcompiler", "\'-fPIC\'")
+  protected def compileFlags = Array("-m64", "-w", "-O3", "-arch", "compute_"+arch, "-code", "sm_"+arch, "-shared", "-Xcompiler", "\'-fPIC\'")
+  protected def linkFlags = Array("-lcublas", "-shared", "-Xcompiler", "\'-fPIC\'")
   protected def outputSwitch = "-o"
 
   lazy val deviceDSFiles = Directory(Path(sourceCacheHome + "datastructures")).files.toList.filter(f => f.extension==ext)
   lazy val hostDSFiles = Directory(Path(hostCompiler.sourceCacheHome + "datastructures")).files.toList.filter(f => f.extension==hostCompiler.ext)
   override protected def auxSourceList = (deviceDSFiles++hostDSFiles).map(_.toAbsolute.toString).distinct ++ List(sourceCacheHome + "kernels" + sep + target + "helperFuncs." + ext, staticResources + "DeliteCuda." + ext) 
-
 }
