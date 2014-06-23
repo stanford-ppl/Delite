@@ -516,7 +516,6 @@ object DeliteTaskGraph {
         val spanTpe = getFieldString(spanMap,"tpe")
         val spanSize = getFieldString(spanMap,"size")
         metadata.mapping.append(Mapping(level,dim,size,spanTpe,spanSize))
-        println("added metadata: " + metadata.mapping.last)
       }
     }
 

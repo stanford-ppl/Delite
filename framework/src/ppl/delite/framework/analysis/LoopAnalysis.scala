@@ -269,9 +269,9 @@ trait NestedLoopMappingAnalysis extends FatBlockTraversal with LoopFusionOpt wit
   }
 
   def printResult(sym: List[Sym[Any]]): Unit = {
-    println("[Mapping result for loop " + sym.mkString("") + "]")
+    printInfo("[Mapping result for loop " + sym.mkString("") + "]")
     for ((i,mapping) <- loopAnalysisResult) {
-      println("level " + i + " ==> " + mapping)
+      printInfo("level " + i + " ==> " + mapping)
     }
   }
 

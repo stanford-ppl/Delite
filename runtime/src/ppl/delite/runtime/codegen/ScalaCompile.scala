@@ -22,15 +22,18 @@ object ScalaCompile extends CodeCache {
 
     for (module <- modules if (module.needsCompile)) {
       val sources = Directory(Path(sourceCacheHome + module.name)).deepFiles.filter(f => f.extension == ext || f.extension == javaExt).map(_.path).toArray
-      val classes = Array(classCacheHome)
-      compile(classCacheHome, sources, classes)
+      val classes = module.deps.map(d => Path(classCacheHome + d.name).path).toArray
+      compile(classCacheHome + module.name, sources, classes)
     }
-
-    ScalaClassLoader.fromURLs(Seq(Path(classCacheHome).toURL), this.getClass.getClassLoader)
+    unifyClasses()
+    
+    ScalaClassLoader.fromURLs(modules.map(m => Path(classCacheHome + m.name).toURL), this.getClass.getClassLoader)
   }
 
   def compile(destination: String, sources: Array[String], classPaths: Array[String]) {
-    Directory(Path(destination)).createDirectory()
+    val dir = Directory(Path(destination))
+    dir.deleteRecursively() //clear out any old classes
+    dir.createDirectory()
 
     val currentCp = this.getClass.getClassLoader match {
       case ctx: java.net.URLClassLoader => ctx.getURLs.map(_.getPath).mkString(File.pathSeparator)
@@ -70,6 +73,16 @@ object ScalaCompile extends CodeCache {
       val fileManager = compiler.getStandardFileManager(null, null, null)
       def javaCompile() = compiler.getTask(null, fileManager, null, args, null, fileManager.getJavaFileObjects(javaSources:_*)).call()
       if (!javaCompile()) sys.error("Compilation failed")
+    }
+  }
+
+  //copy all classes to a single location with matching directory structure and classpaths
+  private def unifyClasses() {
+    val dir = Directory(Path(classCacheHome + "jar"))
+    dir.deleteRecursively() //clear out any old classes
+
+    for (m <- modules) {
+      copyDirectory(Directory(Path(classCacheHome + m.name)), dir, true)
     }
   }
 
