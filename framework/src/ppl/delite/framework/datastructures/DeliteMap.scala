@@ -63,6 +63,9 @@ trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp with EqualExpBr
     def zero = unit(null).asInstanceOf[Exp[V]]
   }
 
+  // FIXME: it looks like in some cases, this can cause an identical loop to be emitted twice, 
+  //        since valFunc and keyFunc are the same and used in different fields of the resulting elem. 
+  //        in particular, if the keyFunc has an effect somewhere, then it will not be removed by .distinct in getMultiLoopFuncs.
   case class DeliteMapKeys[A:Manifest,K:Manifest](in: Exp[DeliteCollection[A]], keyFunc: Exp[A] => Exp[K])
     extends DeliteOpMappedGroupByReduce[A,K,K,DeliteArray[K]] {
 

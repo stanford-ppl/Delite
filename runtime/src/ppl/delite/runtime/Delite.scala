@@ -5,10 +5,9 @@ import executor._
 import graph.ops.{EOP_Global, Arguments}
 import graph.targets.Targets
 import graph.{TestGraph, DeliteTaskGraph}
-import profiler.{PerformanceTimer, Profiler, MemoryProfiler, SamplerThread}
+import profiler.Profiling
 import scheduler._
 import tools.nsc.io._
-import java.lang.management.ManagementFactory
 
 /**
  * Author: Kevin J. Brown
@@ -120,7 +119,7 @@ object Delite {
       loadSources(graph)
 
       //initialize profiler
-      Profiler.init(sourceInfo, graph)
+      Profiling.init(graph)
       
       //schedule
       scheduler.schedule(graph)
@@ -142,33 +141,15 @@ object Delite {
         DeliteMesosExecutor.awaitWork()
       }
       else { //master executor (including single-node execution)
-        val totalNumThreads = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL
-        PerformanceTimer.initializeStats(totalNumThreads)
-        MemoryProfiler.initializeStats(totalNumThreads)
-        val numTimes = Config.numRuns
-        
-        for (i <- 1 to numTimes) {
+        for (i <- 1 to Config.numRuns) {
           if (Config.performWalk) println("Beginning Execution Run " + i)
-          PerformanceTimer.clearAll()
-          val globalStart = System.currentTimeMillis
-          val globalStartNanos = System.nanoTime()
-          val jvmUpTimeAtAppStart = ManagementFactory.getRuntimeMXBean().getUptime()
-
-          PerformanceTimer.start("all", false)
+          Profiling.startRun()
           executor.run(executable)
-          appResult = EOP_Global.take() //await the end of the application program          
-          PerformanceTimer.stop("all", false)
-
-          //PerformanceTimer.printAll(globalStart, globalStartNanos)
-          PerformanceTimer.printStatsForNonKernelComps()
-          //if (Config.dumpProfile) PerformanceTimer.dumpProfile(globalStart, globalStartNanos)
-          if (Config.dumpProfile) Profiler.dumpProfile(globalStartNanos, jvmUpTimeAtAppStart)  
-          if (Config.dumpStats) PerformanceTimer.dumpStats()        
+          appResult = EOP_Global.take() //await the end of the application program   
+          Profiling.endRun()           
           System.gc()
         }
-      }
-      
-      //if(Config.dumpStats) PerformanceTimer.dumpStats()
+      }      
     }
 
     try {
@@ -179,7 +160,7 @@ object Delite {
     }
     catch {
       case i: InterruptedException => abnormalShutdown(); throw outstandingException //a worker thread threw the original exception        
-      case e: Exception => abnormalShutdown(); throw e       
+      case e: Throwable => abnormalShutdown(); throw e
     }
     finally {
       Arguments.args = Nil
@@ -214,7 +195,4 @@ object Delite {
     mainThread.interrupt()
   }
 
-  // maps op ids to the op's source info (fileName, line, opName)
-  // used in the profiler
-  var sourceInfo: Map[String, (String, Int, String)] = Map()
 }

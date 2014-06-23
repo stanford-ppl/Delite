@@ -576,16 +576,24 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
   def emitSubGraph(prefix: String, e: Block[Any]) = e match {
     case Block(c:Const[Any]) => stream.println("  \"" + prefix + "Type\": \"const\",")
                                 stream.println("  \"" + prefix + "Value\": \"" + escape(quote(c)) + "\",")
-    case Block(s:Sym[Any]) =>  stream.println("  \"" + prefix + "Type\": \"symbol\",")
-                        stream.println("  \"" + prefix + "Ops\": [")
-                        val saveMutatingDeps = kernelMutatingDeps
-                        val saveInputDeps = kernelInputDeps
-                        kernelMutatingDeps = Map()
-                        kernelInputDeps = Map()
-                        emitBlock(e)
-                        emitEOG()
-                        kernelInputDeps = saveInputDeps
-                        kernelMutatingDeps = saveMutatingDeps
+
+    case Block(s:Sym[Any]) =>   getBlockResult(e) match {
+                                  // if we have a non-unit constant return value, we need to be able to parse it directly
+                                  case c: Const[Any] if c.tp != manifest[Unit] =>
+                                    stream.println("  \"" + prefix + "Type\": \"const\",")
+                                    stream.println("  \"" + prefix + "Value\": \"" + escape(quote(c)) + "\",")
+                                  case _ => 
+                                    stream.println("  \"" + prefix + "Type\": \"symbol\",")
+                                }
+                                stream.println("  \"" + prefix + "Ops\": [")
+                                val saveMutatingDeps = kernelMutatingDeps
+                                val saveInputDeps = kernelInputDeps
+                                kernelMutatingDeps = Map()
+                                kernelInputDeps = Map()
+                                emitBlock(e)
+                                emitEOG()
+                                kernelInputDeps = saveInputDeps
+                                kernelMutatingDeps = saveMutatingDeps
   }
 
   private def makeString(list: List[Exp[Any]]) = {
