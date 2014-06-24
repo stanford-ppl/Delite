@@ -31,7 +31,7 @@ object Config {
   val optimize = getProperty("delite.optimize", "0").toInt
   val enableGPUTransform = getProperty("delite.enable.gputransform","false") != "false"
   val enableGPUObjReduce = getProperty("delite.enable.gpu.objreduce","true") != "false"
-  val enableGPUMultiDim = getProperty("delite.enable.gpu.multidim","true") != "false"
+  val enableGPUMultiDim = getProperty("delite.enable.gpu.multidim","false") != "false"
 
   //Print generationFailedException info
   val dumpException: Boolean = getProperty("delite.dump.exception", "false") != "false"
