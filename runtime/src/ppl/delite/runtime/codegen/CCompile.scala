@@ -112,7 +112,7 @@ trait CCompile extends CodeCache {
 
     //TODO: How many parallel jobs? For now, the number of processors.
     val args = Array(config.make, "-s", "-j", Runtime.getRuntime.availableProcessors.toString, "-f", makefile, "all")
-    val process = Runtime.getRuntime.exec(args)
+    val process = Runtime.getRuntime.exec(Array("bash", "-c", args.mkString(" ")))
     process.waitFor
     checkError(process, args)
   }
