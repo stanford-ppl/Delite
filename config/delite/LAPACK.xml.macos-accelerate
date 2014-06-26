@@ -1,16 +1,16 @@
 <DeliteExternalLib>
-<compiler>gcc</compiler> <!-- path to C compiler (gcc, icc, etc.) -->
+<compiler> gcc </compiler> <!-- path to C compiler (gcc, icc, etc.) -->
 <headers>
   <prefix> -I </prefix>
-  <path> $JAVA_HOME/include/ </path>
-  <path> $JAVA_HOME/include/darwin/ </path>
-  <path> $LAPACK_HOME/lapacke/include </path>
+  <path> ${JAVA_HOME}/include/ </path>
+  <path> ${JAVA_HOME}/include/darwin/ </path>
+  <path> ${LAPACK_HOME}/lapacke/include </path>
   <include> cblas.h </include>
   <include> lapacke.h </include>
 </headers>
 <libs>
   <prefix> -L </prefix>
-  <path> $LAPACK_HOME </path>
+  <path> ${LAPACK_HOME} </path>
   <library> -llapacke </library>
   <library> -framework Accelerate </library>
 </libs>

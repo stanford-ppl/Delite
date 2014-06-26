@@ -3,8 +3,8 @@
 <headers>
   <prefix> -I </prefix>
   <!-- insert path to JNI include directory -->
-  <path> $JAVA_HOME/include </path> <!-- required for JNI -->
-  <path> $JAVA_HOME/include/linux </path>
+  <path> ${JAVA_HOME}/include </path> <!-- required for JNI -->
+  <path> ${JAVA_HOME}/include/linux </path>
   <!-- insert path to BLAS include directory -->
   <path> /opt/intel/mkl/include </path>
   <!-- insert name of header file that includes CBLAS functions -->
