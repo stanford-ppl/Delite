@@ -7,11 +7,6 @@ import ppl.delite.framework.transform._
 // you can pick and choose your overrides, these are provided for convenience
 trait DeliteAllOverridesExp extends DeliteIfThenElseExp /*with DeliteOpMap*/ with DeliteWhileExp {
   this: DeliteOpsExp =>
-
-  /**
-   * Applications can override this to generate custom function names & non-colliding classpaths
-   */
-  def functionName: String = ""
 }
 
 trait DeliteScalaGenAllOverrides extends DeliteScalaGenVariables with DeliteScalaGenIfThenElse /*with DeliteScalaGenRange*/ with DeliteScalaGenWhile  {
@@ -26,14 +21,6 @@ trait DeliteScalaGenAllOverrides extends DeliteScalaGenVariables with DeliteScal
       case `nothing` => "Nothing"
       case _ => super.remap(m)
     }
-  }
-  
-  override def emitFileHeader() {
-    // This override was moved here from LMS,
-    // because it was breaking stuff there (not sure
-    // this is the best place to put it/TODO)
-    val appQualifier = if (IR.functionName == "") "" else "."+IR.functionName.toLowerCase+"p"
-    stream.println("package generated." + this.toString + appQualifier)
   }
 }
 

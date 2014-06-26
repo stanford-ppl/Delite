@@ -287,6 +287,7 @@ object DeliteTaskGraph {
     val newGraph = new DeliteTaskGraph
     newGraph._version = graph._version
     newGraph._kernelPath = graph._kernelPath
+    newGraph._appName = graph._appName
     newGraph._superGraph = graph
     newGraph
   }

@@ -168,7 +168,6 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   protected def addSource(source: String, name: String) = ScalaCompile.addSource(source, name)
 
   protected def writeHeader() {
-    out.append("import java.util.concurrent.atomic._\n")
     writeObject()
     writeClass()
   }
@@ -180,6 +179,7 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   protected def writeObject() {
     ScalaExecutableGenerator.writePackage(graph, out)
     ScalaExecutableGenerator.writePath(graph, out)
+    out.append("import java.util.concurrent.atomic._\n")
     out.append("object ")
     out.append(kernelName)
     out.append(" {\n")

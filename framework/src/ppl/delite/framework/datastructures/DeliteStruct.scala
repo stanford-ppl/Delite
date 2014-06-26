@@ -177,6 +177,11 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
     val runtimeClass = clazz
   }
 
+  /**
+   * Applications can override this to generate custom function names & non-colliding classpaths
+   */
+  def functionName: String = ""
+
 }
 
 
@@ -222,6 +227,16 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     case _ => java.lang.Integer.MAX_VALUE
   }
 
+  //FIXME: this is really more general than just structs
+  def packageName = {
+    val appQualifier = if (functionName == "") "" else "."+functionName.toLowerCase+"p"
+    "generated." + this.toString + appQualifier
+  }
+
+  override def emitFileHeader() {
+    stream.println("package " + packageName)
+  }
+
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case Struct(tag, elems) if structSize(sym.tp) <= 32 => //bit packing
       emitValDef(sym, shiftOnString(elems, "Int"))
@@ -229,7 +244,7 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     //   emitValDef(sym, shiftOnString(elems, "Long"))
     case Struct(tag, elems) =>
       registerStruct(structName(sym.tp), elems)
-      emitValDef(sym, "new " + structName(sym.tp) + "(" + elems.map{ e => 
+      emitValDef(sym, "new " + remap(sym.tp) + "(" + elems.map{ e => 
         if (isVarType(e._2) && deliteInputs.contains(e._2)) quote(e._2) + ".get"
         else quote(e._2)
       }.mkString(",") + ")")
@@ -255,7 +270,7 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
   override def remap[A](m: Manifest[A]) = m match {
     case StructType(_,_) if structSize(m) <= 32 => "Int"
     // case StructType(_,_) if structSize(m) <= 64 => "Long"
-    case StructType(_,_) => "generated.scala." + structName(m)
+    case StructType(_,_) => packageName + "." + structName(m)
     case s if s <:< manifest[Record] && s != manifest[Nothing] => "generated.scala." + structName(m)
     case _ => super.remap(m)
   }
@@ -271,7 +286,7 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
   override def emitDataStructures(path: String) {
     new File(path) mkdirs // doesn't necessarily exist
     val stream = new PrintWriter(path + "DeliteStructs.scala")
-    stream.println("package generated.scala")
+    withStream(stream)(emitFileHeader)
     for ((name, elems) <- encounteredStructs) {
       stream.println("")
       emitStructDeclaration(name, elems)(stream)
