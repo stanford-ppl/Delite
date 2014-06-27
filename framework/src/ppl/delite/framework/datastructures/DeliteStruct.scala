@@ -227,14 +227,9 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     case _ => java.lang.Integer.MAX_VALUE
   }
 
-  //FIXME: this is really more general than just structs
   def packageName = {
     val appQualifier = if (functionName == "") "" else "."+functionName.toLowerCase+"p"
     "generated." + this.toString + appQualifier
-  }
-
-  override def emitFileHeader() {
-    stream.println("package " + packageName)
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
