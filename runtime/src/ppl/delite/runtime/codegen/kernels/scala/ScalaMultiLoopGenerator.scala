@@ -257,7 +257,7 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   protected def writeSynchronizedOffset(){
     if(op.numDynamicChunks == "-1"){
       //do formula
-      out.append("private val proposedNumberOfDynamicChunks = (closure.loopSize/(Math.log10(closure.loopSize.toDouble)*120.0)).toInt\n")
+      out.append("private val proposedNumberOfDynamicChunks = (closure.loopSize/(Math.log10(closure.loopSize.toDouble)*(500.0/"+numChunks+") )).toInt\n")
     }
     else {
       out.append("private val proposedNumberOfDynamicChunks = "+op.numDynamicChunks+ "\n")
