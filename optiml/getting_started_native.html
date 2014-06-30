@@ -61,11 +61,11 @@
 		  <br />
 		  <li>Within the <code>&lt;headers&gt;</code> tag, add the path to <code>"jni.h"</code> of your current JDK distribution as shown below:
 		  
-		  <div class="highlight"><pre><code class="bash"> &lt;path&gt; <em>absolute_path_to_jdk_home_dir</em>/include &lt;/path&gt; </code></pre></div>
+		  <div class="highlight"><pre><code class="bash"> &lt;path&gt; ${JAVA_HOME}/include &lt;/path&gt; </code></pre></div>
 		  
-		  For Linux machines, add the additional path to <code>"jni_md.h"</code>:
+		  If using an Oracle JVM, add the additional path to <code>"jni_md.h"</code> (/include/linux for Linux and /include/darwin for OS X):
 		  
-		  <div class="highlight"><pre><code class="bash"> &lt;path&gt; <em>absolute_path_to_jdk_home_dir</em>/include/linux &lt;/path&gt; </code></pre></div>
+		  <div class="highlight"><pre><code class="bash"> &lt;path&gt; ${JAVA_HOME}/include/linux &lt;/path&gt; </code></pre></div>
 		  
 		  These are required because Delite links the generated CUDA code to the generated Scala code via JNI. </li>
 		  </list>
@@ -87,12 +87,11 @@
 		  <list>
 		    <li> Within the <code>&lt;compiler&gt;</code> tag, add the absolute path to the C compiler installed on your machine (e.g., <code>gcc</code>, <code>icc</code>) </li>
 			<br />
-			<li> Within the <code>&lt;headers&gt;</code> tag, add the absolute path to <code>"jni.h"</code> provided by your JDK
-			<div class="highlight"><pre><code class="bash"> &lt;path&gt; <em>absolute_path_to_jdk_home_dir</em>/include &lt;/path&gt; </code></pre></div>
-		  
-		    For Linux machines, add the additional path to <code>"jni_md.h"</code>:
-		  
-		    <div class="highlight"><pre><code class="bash"> &lt;path&gt; <em>absolute_path_to_jdk_home_dir</em>/include/linux &lt;path&gt; </code></pre></div>
+
+		    <li>Within the <code>&lt;headers&gt;</code> tag, add the path to <code>"jni.h"</code> of your current JDK distribution as shown below:
+		    <div class="highlight"><pre><code class="bash"> &lt;path&gt; ${JAVA_HOME}/include &lt;/path&gt; </code></pre></div>
+		    If using an Oracle JVM, add the additional path to <code>"jni_md.h"</code> (/include/linux for Linux and /include/darwin for OS X):
+		    <div class="highlight"><pre><code class="bash"> &lt;path&gt; ${JAVA_HOME}/include/linux &lt;/path&gt; </code></pre></div>
 		    </li>
 		    <li> Similary add the absolute path(s) to all include directory for BLAS. </li>
 			<br />

@@ -42,7 +42,7 @@
         </p>
         <h3>Step 1: Instrumentation</h3>
         <p>
-        When staging the Delite application, enable instrumentation by setting the delite.enable.profiler system property to true. After staging the application, the Delite compiler generates a JSON file myapp-symbols.json if the name of the generated DEG file is myapp.deg. This JSON file contains the source information of all symbols of the application.</p>
+        When staging the Delite application, enable instrumentation by adding the --profile flag.
         <p>
         Example (GDA):
         <div class="highlight"><pre><code class="bash">delitec --profile ppl.apps.ml.gda.GDARunner</code></pre></div>
@@ -57,11 +57,9 @@
         </p><p>
         <h3>Step 3: Generating a Web-based Visualization</h3>
         </p><p>
-        This generates a static HTML page ([stats.output.filename]) visualizing the collected profiling information. The generated html page will by default be in <code>$PWD/profile</code>.
-        </p><p>
-        Example (GDA):
-        <div class="highlight"><pre><code class="bash">delitep ppl.apps.ml.gda.GDARunner</code></pre></div>
-        <!--<div class="highlight" style="overflow: scroll"><pre><code class="bash">java -Dstats.output.dir=profile -Dstats.output.filename=profile-gda.html -Ddelite.deg.filename=gda.deg -cp runtime/target/scala-2.10.0-M1-virtualized/classes:$SCALA_HOME/lib/scala-library.jar:$SCALA_HOME/lib/scala-compiler.jar ppl.delite.runtime.profiler.Profiler</code></pre></div>-->
+          Open profile/grid.html in a Chrome browser (The tool has not been tested for other browsers)
+          On the siderbar located at the left, you would find a section named 'Inputs' at the top. Upload the DEG file and profile data file (named profile/profileData.js in the app's working directory) using the buttons provided. The src_dir input is optional. If provided, it would enable the tool to locate the source line corresponding to each kernel.
+          Once the files have been uploaded correctly, the 'View' button would turn green, indicating that the input files have been uploaded. Click the 'View' button' to start generating the visualization. Since the tool is in its initial version, it may take some time to generate the visualizations.
         </p>
       </div>
       <div id='footer'>Copyright &copy; 2011</div>
