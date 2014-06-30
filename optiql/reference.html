@@ -1,0 +1,170 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>OptiQL &mdash; Reference</title>
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import '../css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='http://stanford-ppl.github.com/Delite/' title="OptiQL">OptiQL</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Welcome</a></li>
+              <li><a href="getting_started.html">Getting Started</a></li>
+              <li><a href="reference.html">Reference</a><li>
+              <li><a href='http://stanford-ppl.github.com/Delite/index.html'>Delite</a></li>
+            </ol>
+          </li>
+        </ol>
+      </div>
+      <div id='content'>
+        <h1 id='title_welcome'>Types and Operations References</h1>
+        <p> 
+<h2>Primitive Types:</h2>
+
+<code>Int</code>, <code>Long</code>, <code>Float</code>, <code>Double</code>:
+  <br />defines standard arithmetic functions (+, -, *, /)
+  <br />defines standard ordering/comparison operations (<, <=, >, >=, ==, !=)
+<br /><br />
+<code>Boolean</code>:
+  <br />defines equality and standard binary operations (&&, ||)
+<br /><br />
+<code>Char</code>, <code>Date</code>:
+  <br />defines standard ordering/comparison operations (<, <=, >, >=, ==, !=)
+<br /><br />
+<code>String</code>:
+  <br />defines startsWith, endsWith, contains, split
+<br /><br />
+
+<h2>Record Types:</h2>
+Records compose primitive types into a schema. Anonymous records can be easily declared inline as in:
+<div class="highlight"><pre><code class="scala">table Select( row =>
+  new Record {
+    val foo = row.a
+    val bar = row.b
+  }
+)</code></pre></div>
+The resulting table will be composed of records that contain fields named "foo" and "bar".
+</br /><br />
+Records can also be given a name using type aliases, for example:
+<div class="highlight"><pre><code class="scala">type Nation = Record {
+  val nationkey: Int
+  val name: String
+  val regionkey: Int
+}</code></pre></div>
+Named records are primarily useful for using OptiQL's parsing functions, which require the schema to be passed in explicitly.  In all other cases type inference allows the type to be omitted from the source code, making anonymous records just as useful as named records.
+
+<h3>Tuples</h3>
+Tuples are completely equivalent to Records in OptiQL except for the fact that fields are automatically named using standard Scala conventions (<code>_1</code>, <code>_2</code>, etc.).  They can provide a cheap syntactic alternative to declaring small anonymous records in-line.
+
+<h3>Known Issues with Records</h3>
+There is currently a bug in the Scala REPL that prevents Record types from resolving correctly. Note that this only affects the REPL; the normal compiled and interpreted modes of OptiQL function correctly.<br />
+When using the REPL this issue can be worked around in one of two ways:<br />
+1) Replace all field accesses, e.g., <code>record.foo</code>, with <code>record.selectDynamic[A]("foo")</code> where <code>A</code> is the type of the field foo (e.g., <code>Int</code>)<br />
+2) Declare schemas using Tuples or <code>case class</code> rather than a Record, e.g., <br />
+<code>case class Nation(nationkey: Int, name: String, regionkey: Int)</code>
+
+<h2>Table[A]</h2>
+The <code>Table</code> is the primary collection type availabe in OptiQL.  Every <code>Table</code> has a schema defined by 
+the type paramter <code>A</code>, where <code>A</code> can be any of the primitive or <code>Record</code> types listed above. Each element of type <code>A</code> in the <code>Table</code> logically forms a row of the table.  If <code>A</code> is a <code>Record</code> type, each field of <code>A</code> logically forms a column of the <code>Table</code>.  If <code>A</code> is a primitive type, the <code>Table</code> only has one column (with type <code>A</code>).
+
+<h3>Static Methods</h3>
+
+<strong>Table(args: A*): Rep[Table[A]]</strong></br >
+Creates a table from the given sequence, e.g., <code>Table(1,2,3,4,5)</code> will create a <code>Table[Int]</code> with rows valued 1 through 5
+<br /><br />
+<strong>Table.range(start: Rep[Int], end: Rep[Int]): Rep[Table[Int]]</strong><br />
+Creates a table containing every <code>Int</code> value in <code>[start, end)</code>
+<br /><br />
+<strong>Table.fromFile(path: Rep[String])(selector: Rep[String] => Rep[A]): Rep[Table[A]]</strong><br />
+Creates a <code>Table[A]</code> by reading in the file that exists at path.  Each line of the file will be provided as a <code>String</code> input to the selector, and the selector function should parse that line into a record of the desired type <code>A</code>.  Records will be stored in the table in the order in which they existed in the file.
+<br /><br />
+<strong>Table.fromFile[A](path: Rep[String], separator: Rep[String]): Rep[Table[A]]</strong><br />
+Creates a <code>Table[A]</code> by reading in the file that exists at path. The type parameter <code>A</code> must be passed explicitly to this function; it cannot be inferred.  Each line of the file will be be automatically parsed according to the schema of type <code>A</code> and the column separator provided. The separator can be any valid regular expression.  This function assumes each column can simply be parsed directly based on its type, e.g., if the type is a <code>Double</code> it uses a standard string-to-double conversion function.  For more complicated file formats, use the alternative <code>fromFile</code> function above. Records will be stored in the table in the order in which they existed in the file. Example: <br/>
+<code>Table.fromFile[Nation]("/path/to/nation_table", ",")</code>
+
+<h3>Instance Methods</h3>
+<strong>Select(selector: Rep[A] => Rep[B]): Rep[Table[B]]</strong><br />
+Transforms every record in the table to a new schema as specified by the selector function. Example:
+<div class="highlight"><pre><code class="scala">val result = lineItems Select( row =>
+  new Record {
+    val extendedPrice = row.extendedPrice
+    val quantity = row.quantity
+  }
+)</code></pre></div>
+will produce a new table <code>result</code> with only the <code>extendedPrice</code> and <code>quantity</code> fields contained in the schema for <code>lineItems</code>.
+<br /><br />
+<strong>SelectMany(selector: Rep[A] => Rep[Table[B]]): Rep[Table[B]]</strong><br />
+Transforms every record in the table to a new set of records with a new schema as specified by the selector function.  The result is a flat <code>Table[B]</code> produced by concatenating the intermediate tables produced by the selector function.
+<br /><br />
+<strong>Where(predicate: Rep[A] => Rep[Boolean]): Rep[Table[A]]</strong><br />
+Produces a table containing the subset of records that pass the provided predicate, maintaining the order of those that pass.
+<br /><br />
+<strong>Distinct: Rep[Table[A]]</strong><br />
+Produces a new table with all duplicate records eliminated.  There is no guaranteed ordering of the resulting records.
+<br ><br />
+<strong>Distinct(keySelector: Rep[A] => Rep[K]): Rep[Table[A]]</strong><br />
+Produces a new table with all duplicate records eliminated, where duplicates are determined by the user provided keySelector.
+<br /><br />
+<strong>GroupBy(keySelector: Rep[A] => Rep[K]): Rep[Table[(K,Table[A])]]</strong><br />
+Produces a nested table of groups formed by grouping each of the records in the input table according to the keySelector function.  This operation should typically be followed by a <code>Select</code> which forms a flat table by aggregating each group.
+Each created group in the result table defines two methods, <code>key</code> and <code>values</code>, which are used to access the group's key and the records corresponding to that key, respectively.  There is no guaranteed ordering of the resulting groups.
+<br /><br />
+<strong>Sum(selector: Rep[A] => Rep[R]): Rep[R]</strong><br />
+Returns the sum of all the values generated by applying the selector function to each record in the table. The selector result type <code>R</code> must be one of the primitive numeric types (Int, Long, Float, Double).
+<br /><br />
+<strong>Average(selector: Rep[A] => Rep[R]): Rep[R]</strong><br />
+Returns the average of all the values generated by applying the selector function to each record in the table. The selector result type <code>R</code> must be one of the primitive numeric types (Int, Long, Float, Double).
+<br /><br />
+<strong>Max(selector: Rep[A] => Rep[R]): Rep[R]</strong><br />
+Returns the maximum of all the values generated by applying the selector function to each record in the table. The selector result type <code>R</code> must be a primitive orderable type.
+<br /><br />
+<strong>Min(selector: A => R): Rep[R]</strong><br />
+Returns the minimum of all the values generated by applying the selector function to each record in the table. The selector result type <code>R</code> must be a primitive orderable type.
+<br /><br />
+<strong>Count(predicate: Rep[A] ==> Rep[Boolean]): Rep[Int]</strong><br />
+Returns the total number of records in the table that satisfy the given predicate.
+<br /><br />
+<strong>OrderBy(selector: (Rep[A] => Rep[K])*): Rep[Table[A]]</strong><br />
+Orders the records in the table using the selector function as the sorting criterion.  The result type <code>K</code> of the selector must be a primitive orderable type.  Each selector argument must be wrapped in <code>asc</code> to sort in ascending order or <code>desc</code> to sort in descending order.  Each successive selector is only applied if all of the preceding selectors determine that two records are equal. Example:<br />
+<code>table OrderBy(asc(_.quantity), desc(_.price))</code> <br />
+sorts records first by the quantity field in ascending order and if the quantities are equal then by the price field in descending order.
+<br /><br />
+<strong>Join(tableB: Rep[Table[B]])(selectorA: Rep[A] => Rep[K], selectorB: Rep[B] => Rep[K])(resultSelector: (Rep[A],Rep[B]) => Rep[R]): Rep[Table[R]]</strong><br />
+Produces a new table by performing an inner join between this table and the table passed as the first argument.  Records in each table are checked for equality by applying the provided selector function to each (selectorA for the first table and selectorB for the second table) and checking the result of the two functions for equality.  Pairs of records that are considered equal are then passed to the resultSelector which combines them into a single record for inclusion in the output table. Example:<br />
+<div class="highlight"><pre><code class="scala">parts.Join(lineItems)(_.p_partkey, _.l_partkey)(
+  (p,l) => new Record {
+    val l_discount = l.l_discount
+    val p_type = p.p_type
+})</code></pre></div>
+joins all <code>parts</code> records and <code>lineItems</code> records that have the same <code>partkey</code> field and defines a new result schema by combining pieces of the two original schemas.
+<br /><br />
+<strong>Count: Rep[Int]</strong><br />
+Returns the total number of records in the the table.
+<br /><br />
+<strong>apply(i: Rep[Int]): Rep[A]</strong><br />
+Returns the <emph>ith</emph> record in the table.
+<br /><br />
+<strong>printAsTable(maxRows: Rep[Int])</strong><br />
+Prints the table to stdout in a user-readable row-by-column format. Each column is named according to the table's schema. The maximum number of rows to print is an optional argument.
+<br /><br />
+<strong>writeAsJSON(path: Rep[String])</strong><br />
+Writes the table in JSON format to the file path specified.
+<br />
+      </div>
+      <div id='footer'>Copyright &copy; 2011</div>
+    </div>
+  </body>
+</html>

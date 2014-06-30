@@ -1,0 +1,74 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>OptiQL &mdash; Getting Started</title>
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import '../css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='http://stanford-ppl.github.com/Delite/' title="OptiQL">OptiQL</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Welcome</a></li>
+              <li><a href="getting_started.html">Getting Started</a></li>
+              <li><a href="reference.html">Reference</a><li>
+              <li><a href='http://stanford-ppl.github.com/Delite/index.html'>Delite</a></li>
+            </ol>
+          </li>
+        </ol>
+      </div>
+      <div id='content'> 
+        <h1 id='title_getting started'>Getting started</h1>
+        <p style="font-size: 10pt"> The following instructions are for the Unix and OSX platforms. Windows support is coming soon.</p>
+
+        <h2 id='title_from binary'>From Binary</h2>
+        <p> <a href="downloads/optiql-0.1-alpha.tgz">Download the latest version of OptiQL</a> </p>
+        <p> Extract the distribution: </p>
+        <div class="highlight"><pre><code class="bash">tar -xzf optiql-0.1-alpha.tgz</code></pre></div>
+        <p> Add OptiQL to your path (or preprend <code>bin/</code> to all of the following shell commands): </p>
+        <div class="highlight"><pre><code class="bash">cd optiql-0.1-alpha
+export PATH=$PWD/bin:$PATH</code></pre></div>
+        <p> Run the OptiQL REPL: </p>
+        <div class="highlight"><pre><code class="bash">optiql</code></pre></div>
+
+        <p> The first time you run the REPL, it may take a couple of minutes to download OptiQL's dependencies. It will also take a short period to load OptiQL 
+        inside the REPL. Because OptiQL is an embedded DSL inside Scala, the OptiQL REPL is the Scala REPL with OptiQL types and operations pre-loaded. To start playing,
+        create a new Table:</p>
+
+        <div class="highlight"><pre><code class="scala">val t = Table(1,2,3,4,5)
+t Average(r => r*r)
+</code></pre></div>
+
+        <p> Example applications are distributed with OptiQL in the <code>apps</code> folder. To run an application, first we need to compile them: </p>
+        <div class="highlight"><pre><code class="bash">sbt compile</code></pre></div>
+        <p> Next, we can either run an interpreted version of our application directly, or <i>stage</i> it, to run DSL compilation and generate code for different targets.
+        The interpreter version is just a pure Scala library that can be used to develop and prototype before switching to the Delite version for high performance.
+        To run the interpreter version of TPC-H Query 1, run: </p>
+        
+        <div class="highlight"><pre><code class="bash">delitec TPCHQ1Interpreter [TPC-H data directory] </code></pre></div>
+
+        <p> The data should be in the standard text format provided by the official TPC-H benchmarking scripts. </p>
+
+        <p> To run the Delite version of the application, we first <i>stage</i> it using <code>delitec</code>, and then run it using <code>delite</code>: </p>
+
+        <div class="highlight"><pre><code class="bash">delitec TPCHQ1Compiler
+delite TPCHQ1Compiler [TPC-H data directory] -t [num threads]
+</code></pre></div>
+
+        <p> You should notice that this version runs significantly faster than the interpreter version. To see the code that OptiQL generated, look inside the <code>generated/</code> folder.
+      <div id='footer'>Copyright &copy; 2011</div>
+    </div>
+  </body>
+</html>
