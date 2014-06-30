@@ -113,11 +113,11 @@ delite LogRegCompiler [input training data file] [input label file] --cpp [num t
         These three repositories have been packaged into a singe repository called <code>hyperdsl</code> using git submodules. First, make a copy of the <code>hyperdsl</code> repository and its submodules on your machine:
         </p><p>
         <div class="highlight"><pre><code class="bash">git clone https://github.com/stanford-ppl/hyperdsl.git
-        cd hyperdsl 
-        git submodule update --init</code></pre></div>         
+cd hyperdsl 
+git submodule update --init</code></pre></div>         
         <p>Next, we need to compile each project and make them available to OptiML as a dependency. From the hyperdsl directory type </p> 
         <div class="highlight"><pre><code class="bash">source init-env.sh
-          sbt compile</code></pre></div>
+sbt compile</code></pre></div>
 
         <p> We're almost done. Now we need to compile Forge, and run it to generate the most recent OptiML version: </p>
 <div class="highlight"><pre><code class="bash">forge/bin/update ppl.dsl.forge.dsls.optiml.OptiMLDSLRunner OptiML</code></pre></div>
