@@ -51,7 +51,7 @@
 		
 		<p> In order to utilize the GPU, Delite requires that <a href="http://developer.nvidia.com/cuda-toolkit">CUDA 3.2 or later</a> be installed.  In addition Delite also requires the CUDA libraries Thrust and cuBLAS.  These libraries are included automatically with the CUDA toolkit download as of CUDA 4.0. </p>
 		
-		<p> Once installed, you must add the information necessary for Delite to connect to the CUDA installation in Delite's configuration files. From the Delite home directory navigate to <code>config/delite</code> and open up <code>CUDA.xml</code> in a text editor.  You must now modify 3 pieces of information:</p>
+		<p> Once installed, you must add the information necessary for Delite to connect to the CUDA installation in Delite's configuration files. From the Delite home directory navigate to <code>config/delite</code> and create <code>CUDA.xml</code> with a text editor.  An example template is available in this directory that you can copy and then modify. You must now add 3 pieces of information:</p>
 		<br />
 		<list> 
 		  <li>Within the <code>&lt;compiler&gt;</code> tag, add the absolute path to <code>nvcc</code>.  For example
@@ -82,7 +82,7 @@
 		  <br /><br />
 		  
 		  <h1 id='title_getting started'>Getting started with BLAS</h1>
-		  <p> OptiML can optionally utilize BLAS libraries for performing certain linear algebra operations on the CPU.  It is highly recommended that you provide OptiML with a BLAS implementation as certain dense matrix operations (e.g., matrix multiplication) are significantly faster than OptiML's default implementation.  You should be able to use any implementation of BLAS that adheres to the CBLAS specification (e.g., MKL, GotoBLAS).  Once BLAS is installed on your machine, from the Delite home directory navigate to <code>config/delite</code> and open <code>BLAS.xml</code> in a text editor.  You must now modify a few pieces of information so that Delite can link to BLAS when compiling.  An example of a typical <code>BLAS.xml</code> file is provided in <code>BLAS.xml.example</code>. </p>
+		  <p> OptiML can optionally utilize BLAS libraries for performing certain linear algebra operations on the CPU.  It is highly recommended that you provide OptiML with a BLAS implementation as certain dense matrix operations (e.g., matrix multiplication) are significantly faster than OptiML's default implementation.  You should be able to use any implementation of BLAS that adheres to the CBLAS specification (e.g., MKL, GotoBLAS).  Once BLAS is installed on your machine, from the Delite home directory navigate to <code>config/delite</code> and create <code>BLAS.xml</code> in a text editor.  You must now add a few pieces of information so that Delite can link to BLAS when compiling.  A few example templates are available in this directory that you can copy and then modify.</p>
 		  <br />
 		  <list>
 		    <li> Within the <code>&lt;compiler&gt;</code> tag, add the absolute path to the C compiler installed on your machine (e.g., <code>gcc</code>, <code>icc</code>) </li>
@@ -93,7 +93,7 @@
 		    If using an Oracle JVM, add the additional path to <code>"jni_md.h"</code> (/include/linux for Linux and /include/darwin for OS X):
 		    <div class="highlight"><pre><code class="bash"> &lt;path&gt; ${JAVA_HOME}/include/linux &lt;/path&gt; </code></pre></div>
 		    </li>
-		    <li> Similary add the absolute path(s) to all include directory for BLAS. </li>
+		    <li> Similary add the absolute path(s) to all include directories for BLAS. </li>
 			<br />
 			<li> Finally for <code>&lt;headers&gt;</code>, add the name of the header file that contains the CBLAS interface within the <code>&lt;include&gt;</code> tag.  This is typically <code>"cblas.h"</code> (or <code>"mkl.h"</code> if using MKL). </li>
 			<br />

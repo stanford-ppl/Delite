@@ -102,7 +102,7 @@ delite LogRegCompiler [input training data file] [input label file] --cpp [num t
 
 
         <h2 id='title_from source'>From Source</h2>
-        <p> Delite requires <a href="http://java.com">Java 1.6 or later</a>, <a href="http://python.org">Python 2.6</a>, <a href="http://git-scm.com">git</a> and <a href="http://www.scala-sbt.org/">SBT 0.12</a>. Instructions for installing
+        <p> Delite requires <a href="http://java.com">Java 1.6 or later</a>, <a href="http://python.org">Python 2.6</a>, <a href="http://git-scm.com">git</a> and <a href="http://www.scala-sbt.org/">SBT 0.13</a>. Instructions for installing
         these can be found at their respective websites. Be sure to increase the default heap size for your <code>sbt</code> executable script; a command that works well on most machines is:       
        <p><div class="highlight" style="overflow: scroll"><pre><code class="bash">java -Xmx4g -XX:MaxPermSize=1g -XX:ReservedCodeCacheSize=128m -jar `dirname $0`/sbt-launch.jar "$@"</pre></code></div></p>
         </p>
@@ -110,34 +110,21 @@ delite LogRegCompiler [input training data file] [input label file] --cpp [num t
         download the source for <code>virtualization-lms-core</code>, <code>Delite</code> and <code>Forge</code>. These three libraries provide 1) staging support to embed DSLs in scala, 2) a parallel and heterogeneous
         compiler, and 3) the meta DSL that Delite DSLs are implemented in, respectively. Delite uses <a href="http://git-scm.com/">git</a> for version control (see <a href="http://book.git-scm.com/2_installing_git.html">here</a> for installation instructions).</p>
       <p>
-        First, make a copy of the repositories on your machine:
+        These three repositories have been packaged into a singe repository called <code>hyperdsl</code> using git submodules. First, make a copy of the <code>hyperdsl</code> repository and its submodules on your machine:
         </p><p>
-        <div class="highlight"><pre><code class="bash">git clone https://github.com/TiarkRompf/virtualization-lms-core.git
-git clone https://github.com/stanford-ppl/Delite.git 
-git clone https://github.com/stanford-ppl/Forge.git</code></pre></div>         
-        <p>Next, we need to compile each project and make them available to OptiML as a dependency. We'll start with LMS. From the same directory where we ran <code>git clone</code>, type </p> 
-        <div class="highlight"><pre><code class="bash">cd virtualization-lms-core
-git checkout delite-develop
-sbt publish-local
-</code></pre></div>
-
-        <p> Now we are ready to compile Delite. Navigate back to the Delite directory and run: </p>
-<div class="highlight" style="overflow: scroll"><pre><code class="bash">cd ../Delite
-sbt update
-sbt "; project framework; publish-local; project runtime; publish-local; project delite-test; publish-local"
-export DELITE_HOME=$PWD
-</code></pre></div>
+        <div class="highlight"><pre><code class="bash">git clone https://github.com/stanford-ppl/hyperdsl.git
+        cd hyperdsl 
+        git submodule update --init</code></pre></div>         
+        <p>Next, we need to compile each project and make them available to OptiML as a dependency. From the hyperdsl directory type </p> 
+        <div class="highlight"><pre><code class="bash">source init-env.sh
+          sbt compile</code></pre></div>
 
         <p> We're almost done. Now we need to compile Forge, and run it to generate the most recent OptiML version: </p>
-<div class="highlight"><pre><code class="bash">cd ../Forge
-sbt update
-export FORGE_HOME=$PWD
-bin/update ppl.dsl.forge.dsls.optiml.OptiMLDSLRunner OptiML
-</code></pre></div>
+<div class="highlight"><pre><code class="bash">forge/bin/update ppl.dsl.forge.dsls.optiml.OptiMLDSLRunner OptiML</code></pre></div>
 
         <p>
-        The OptiML distribution is now located in the directory <code>$FORGE_HOME/published/OptiML</code>. We can run applications from there, or copy this directory
-        somewhere else (e.g. <code>~/OptiML</code>). For now, we'll assume we want to run from within the Forge directory tree (see <a href="https://github.com/stanford-ppl/Forge#using-an-existing-forge-dsl">the Forge instructions</a>
+        The OptiML distribution is now located in the directory <code>published/OptiML</code>. We can run applications from there, or copy this directory
+        somewhere else (e.g. <code>~/OptiML</code>). For now, we'll assume we want to run from within the current directory tree (see <a href="https://github.com/stanford-ppl/Forge#using-an-existing-forge-dsl">the Forge instructions</a>
         for more detailed information on this setup).
         </p>        
         <p>        
