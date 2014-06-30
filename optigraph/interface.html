@@ -162,6 +162,86 @@
         </tr>
         </table>
 
+        <h2><font color="0033CC"><center>Provided Functions</center></font></h2>
+        <p></p>
+        <table class="imagetable">
+        <tr>
+          <th>Function</th><th>Description</th><th>Parallel</th>
+        </tr>
+        <tr>
+          <td><code>apply(Int) : T</code></td><td>Return element at index.</td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>apply(Node) : T</code></td><td>Return element at node id.</td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>update(Int,T) : Unit</code></td><td>Write element at index.</td><td> </td>
+        </tr>
+        <tr>
+          <td><code>append(T) : Unit</code></td><td>Append Element.</td><td>No.</td>
+        </tr>
+        <tr>
+          <td><code>getRawArray : Array(T)</code></td><td>Access raw data.</td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>getRawArrayBuffer : ArrayBuffer(T)</code></td><td>Access raw data.</td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>resize(MInt) : Unit</code></td><td>Resize array to specified length.</td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>concat(NodeData(T)) : Unit</code></td><td>Append NodeData to self.</td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>-(NodeData(T)) : NodeData(T)</code></td><td>NodeData subtract.</td><td>Yes</td>
+        </tr>
+        <tr>
+          <td><code>+(NodeData(T)) : NodeData(T)</code></td><td>NodeData addition.</td><td>Yes</td>
+        </tr>
+        <tr>
+          <td><code>pack(NodeData(T)) : NodeData(T)</code></td><td>Zip elems to tuples.</td><td>Yes</td>
+        </tr>
+        <tr>
+          <td><code>map((T => R) : NodeData(R))</code></td><td>Map elems.</td><td>Yes</td>
+        </tr>
+        <tr>
+          <td><code>flatMap(T => NodeData(R) : NodeData(R))</code></td><td>Flatmap elems.</td><td>Yes</td>
+        </tr>
+        <tr>
+          <td><code>foreach(T => Unit) : Unit</code></td><td>Foreach elem.</td><td>Yes</td>
+        </tr>
+        <tr>
+          <td><code>reduce(((T,T) => T) : T)</code></td><td>Reduce elems.</td><td>Yes.</td>
+        </tr>
+        <tr>
+          <td><code>groupBy((T => K, T => V) : HashMap(K, ArrayBuffer(V)))</code></td><td>Group By</td><td>Yes</td>
+        </tr>
+        <tr>
+          <td><code>groupByReduce((T => K, T => V, (V,V) => V)) : HashMap(K,V)</code></td><td>GroupByReduce</td><td>Yes</td>
+        </tr>
+        <tr>
+          <td><code>mapreduce(T => R, (R,R) => R, T => Boolean)</code></td><td>map reduce</td><td>Yes</td>
+        </tr>
+        <tr>
+          <td><code>distinct : NodeData(T)</code></td><td>Return collection with distinc elements.</td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>sort : NodeData(R)</code></td><td>Return sorted collection.</td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>sortBy(Int => R) : NodeData(T)</code></td><td>Sort collection by function.</td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>sortIndiciesBy(Int => R) : NodeData(T)</code></td><td>Sort indices by.</td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>print : Unit</code></td><td>Prints elems in collection.</td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>forloop(Int => Unit) : Unit</code></td><td>Serial for loop.</td><td>Yes</td>
+        </tr>
+        </table>
+
 
         <p>Specification page still under construction!</p>
 
