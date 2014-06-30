@@ -1,0 +1,668 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>OptiGraph &mdash; Welcome</title>
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import '../css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='index.html' title="OptiGraph"></a></div>
+          <div class='home'> <img src="graph.jpg" alt="Smiley face" width="125" height="125"></div>
+          <div class='home'><a href='http://stanford-ppl.github.com/Delite/optigraph' title="OptiGraph">OptiGraph</a></div> 
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Overview</a></li>
+              <li><a href='example.html'>Example</a></li>
+              <li><a href='interface.html'>DSL Specification</a></li>
+              <li><a href='../index.html'>Delite</a></li>
+            </ol>
+          </li>
+        </ol>
+      </div>
+      <div id='content'>
+        <h1 id='title_example'>Example</h1>
+        <p>
+          This is an illustrative example of a OptiGraph program.
+          To run this code, create a file named 'HelloGraph.scala' <code>forge/apps/OptiGraph/src</code>
+          and then compile it using the instructions on our getting started page.
+        </p>
+
+
+
+
+<head>
+  <title></title>
+  <meta http-equiv="content-type" content="text/html; charset=None">
+  <style type="text/css">
+td.linenos { background-color: #f0f0f0; padding-right: 10px; }
+span.lineno { background-color: #f0f0f0; padding: 0 5px 0 5px; }
+pre { line-height: 125%; }
+body .hll { background-color: #49483e }
+body  { background: #272822; color: #f8f8f2 }
+body .c { color: #75715e } /* Comment */
+body .err { color: #960050; background-color: #1e0010 } /* Error */
+body .k { color: #66d9ef } /* Keyword */
+body .l { color: #ae81ff } /* Literal */
+body .n { color: #f8f8f2 } /* Name */
+body .o { color: #f92672 } /* Operator */
+body .p { color: #f8f8f2 } /* Punctuation */
+body .cm { color: #75715e } /* Comment.Multiline */
+body .cp { color: #75715e } /* Comment.Preproc */
+body .c1 { color: #75715e } /* Comment.Single */
+body .cs { color: #75715e } /* Comment.Special */
+body .ge { font-style: italic } /* Generic.Emph */
+body .gs { font-weight: bold } /* Generic.Strong */
+body .kc { color: #66d9ef } /* Keyword.Constant */
+body .kd { color: #66d9ef } /* Keyword.Declaration */
+body .kn { color: #f92672 } /* Keyword.Namespace */
+body .kp { color: #66d9ef } /* Keyword.Pseudo */
+body .kr { color: #66d9ef } /* Keyword.Reserved */
+body .kt { color: #66d9ef } /* Keyword.Type */
+body .ld { color: #e6db74 } /* Literal.Date */
+body .m { color: #ae81ff } /* Literal.Number */
+body .s { color: #e6db74 } /* Literal.String */
+body .na { color: #a6e22e } /* Name.Attribute */
+body .nb { color: #f8f8f2 } /* Name.Builtin */
+body .nc { color: #a6e22e } /* Name.Class */
+body .no { color: #66d9ef } /* Name.Constant */
+body .nd { color: #a6e22e } /* Name.Decorator */
+body .ni { color: #f8f8f2 } /* Name.Entity */
+body .ne { color: #a6e22e } /* Name.Exception */
+body .nf { color: #a6e22e } /* Name.Function */
+body .nl { color: #f8f8f2 } /* Name.Label */
+body .nn { color: #f8f8f2 } /* Name.Namespace */
+body .nx { color: #a6e22e } /* Name.Other */
+body .py { color: #f8f8f2 } /* Name.Property */
+body .nt { color: #f92672 } /* Name.Tag */
+body .nv { color: #f8f8f2 } /* Name.Variable */
+body .ow { color: #f92672 } /* Operator.Word */
+body .w { color: #f8f8f2 } /* Text.Whitespace */
+body .mf { color: #ae81ff } /* Literal.Number.Float */
+body .mh { color: #ae81ff } /* Literal.Number.Hex */
+body .mi { color: #ae81ff } /* Literal.Number.Integer */
+body .mo { color: #ae81ff } /* Literal.Number.Oct */
+body .sb { color: #e6db74 } /* Literal.String.Backtick */
+body .sc { color: #e6db74 } /* Literal.String.Char */
+body .sd { color: #e6db74 } /* Literal.String.Doc */
+body .s2 { color: #e6db74 } /* Literal.String.Double */
+body .se { color: #ae81ff } /* Literal.String.Escape */
+body .sh { color: #e6db74 } /* Literal.String.Heredoc */
+body .si { color: #e6db74 } /* Literal.String.Interpol */
+body .sx { color: #e6db74 } /* Literal.String.Other */
+body .sr { color: #e6db74 } /* Literal.String.Regex */
+body .s1 { color: #e6db74 } /* Literal.String.Single */
+body .ss { color: #e6db74 } /* Literal.String.Symbol */
+body .bp { color: #f8f8f2 } /* Name.Builtin.Pseudo */
+body .vc { color: #f8f8f2 } /* Name.Variable.Class */
+body .vg { color: #f8f8f2 } /* Name.Variable.Global */
+body .vi { color: #f8f8f2 } /* Name.Variable.Instance */
+body .il { color: #ae81ff } /* Literal.Number.Integer.Long */
+
+  </style>
+</head>
+<body>
+
+<div class="highlight" style="background: #272822"><pre style="line-height: 125%"><span style="color: #66d9ef">import</span> <span style="color: #f8f8f2">optigraph.compiler._</span>
+<span style="color: #66d9ef">import</span> <span style="color: #f8f8f2">optigraph.library._</span>
+<span style="color: #66d9ef">import</span> <span style="color: #f8f8f2">optigraph.shared._</span>
+
+<span style="color: #75715e">// This object lets us run the Delite version of the code</span>
+<span style="color: #66d9ef">object</span> <span style="color: #a6e22e">HelloGraphCompiler</span> <span style="color: #66d9ef">extends</span> <span style="color: #a6e22e">OptiGraphApplicationCompiler</span> <span style="color: #66d9ef">with</span> <span style="color: #a6e22e">HelloGraph</span>
+
+<span style="color: #75715e">// This object lets us run the Scala library version of the code</span>
+<span style="color: #66d9ef">object</span> <span style="color: #a6e22e">HelloGraphInterpreter</span> <span style="color: #66d9ef">extends</span> <span style="color: #a6e22e">OptiGraphApplicationInterpreter</span> 
+<span style="color: #66d9ef">  with</span> <span style="color: #a6e22e">HelloGraph</span>
+
+<span style="color: #66d9ef">trait</span> <span style="color: #a6e22e">HelloGraph</span> <span style="color: #66d9ef">extends</span> <span style="color: #a6e22e">OptiGraphApplication</span> <span style="color: #f92672">{</span>
+  <span style="color: #66d9ef">def</span> <span style="color: #f8f8f2">main</span><span style="color: #f92672">()</span> <span style="color: #66d9ef">=</span> <span style="color: #f92672">{</span>
+
+    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">srcNodes</span> <span style="color: #66d9ef">=</span> <span style="color: #a6e22e">NodeData</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">fromFunction</span><span style="color: #f92672">(</span><span style="color: #ae81ff">10</span><span style="color: #f92672">,</span><span style="color: #f8f8f2">i</span> <span style="color: #66d9ef">=&gt;</span> <span style="color: #f8f8f2">i</span><span style="color: #f92672">)</span>
+    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">dstNodes</span> <span style="color: #66d9ef">=</span> <span style="color: #a6e22e">NodeData</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">fromFunction</span><span style="color: #f92672">(</span><span style="color: #ae81ff">10</span><span style="color: #f92672">,</span><span style="color: #f8f8f2">i</span> <span style="color: #66d9ef">=&gt;</span> <span style="color: #ae81ff">9</span><span style="color: #f92672">-</span><span style="color: #f8f8f2">i</span><span style="color: #f92672">)</span>
+    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">edgeList</span> <span style="color: #66d9ef">=</span> <span style="color: #f8f8f2">srcNodes</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">pack</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">dstNodes</span><span style="color: #f92672">)</span>
+
+    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">dg</span> <span style="color: #66d9ef">=</span> <span style="color: #f8f8f2">directedGraphFromEdgeList</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">edgeList</span><span style="color: #f92672">)</span>
+
+    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">dt</span> <span style="color: #66d9ef">=</span> <span style="color: #f8f8f2">sumOverNodes</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">dg</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">nodes</span><span style="color: #f92672">){</span> <span style="color: #f8f8f2">n</span> <span style="color: #66d9ef">=&gt;</span>
+        <span style="color: #f8f8f2">sumOverNeighbors</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">dg</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">inNeighbors</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">n</span><span style="color: #f92672">)){</span> <span style="color: #f8f8f2">nbr</span> <span style="color: #66d9ef">=&gt;</span>
+          <span style="color: #66d9ef">if</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">nbr</span> <span style="color: #f92672">&gt;=</span> <span style="color: #f8f8f2">n</span><span style="color: #f92672">)</span> <span style="color: #ae81ff">1</span>
+          <span style="color: #66d9ef">else</span> <span style="color: #ae81ff">0</span>
+        <span style="color: #f92672">}</span>
+      <span style="color: #f92672">}</span>
+
+    <span style="color: #f8f8f2">println</span><span style="color: #f92672">(</span><span style="color: #e6db74">&quot;nbr &gt;= n: &quot;</span> <span style="color: #f92672">+</span> <span style="color: #f8f8f2">dt</span><span style="color: #f92672">)</span>
+
+    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">dupSrcNodes</span> <span style="color: #66d9ef">=</span> <span style="color: #f8f8f2">srcNodes</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">concat</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">dstNodes</span><span style="color: #f92672">)</span>
+    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">dupDstNodes</span> <span style="color: #66d9ef">=</span> <span style="color: #f8f8f2">dstNodes</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">concat</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">srcNodes</span><span style="color: #f92672">)</span>
+    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">dupEdgeList</span> <span style="color: #66d9ef">=</span> <span style="color: #f8f8f2">dupSrcNodes</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">pack</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">dupDstNodes</span><span style="color: #f92672">)</span>
+
+    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">ug</span> <span style="color: #66d9ef">=</span> <span style="color: #f8f8f2">undirectedGraphFromEdgeList</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">dupEdgeList</span><span style="color: #f92672">)</span>
+
+    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">ut</span> <span style="color: #66d9ef">=</span> <span style="color: #f8f8f2">sumOverNodes</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">ug</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">nodes</span><span style="color: #f92672">){</span> <span style="color: #f8f8f2">n</span> <span style="color: #66d9ef">=&gt;</span>
+        <span style="color: #f8f8f2">sumOverNeighbors</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">ug</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">neighbors</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">n</span><span style="color: #f92672">)){</span> <span style="color: #f8f8f2">nbr</span> <span style="color: #66d9ef">=&gt;</span>
+          <span style="color: #66d9ef">if</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">nbr</span> <span style="color: #f92672">&gt;=</span> <span style="color: #f8f8f2">n</span><span style="color: #f92672">)</span> <span style="color: #ae81ff">1</span>
+          <span style="color: #66d9ef">else</span> <span style="color: #ae81ff">0</span>
+      <span style="color: #f92672">}</span>
+    <span style="color: #f92672">}</span>
+
+    <span style="color: #f8f8f2">println</span><span style="color: #f92672">(</span><span style="color: #e6db74">&quot;nbr &gt;= n: &quot;</span> <span style="color: #f92672">+</span> <span style="color: #f8f8f2">ut</span><span style="color: #f92672">)</span>
+
+  <span style="color: #f92672">}</span>
+<span style="color: #f92672">}</span>
+</pre></div>
+</body>
+
+   
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+
+
+
+
+        <p>
+          This code is mostly boilerplate, and is needed to setup the application.  First, we
+          import the DSL code.  Then, we create both the HelloGraphInterpreter and HelloGraphCompiler
+          objects.   HelloGraphInterpreter produces an object that can be run in interpreter mode.  HelloGraphCompiler will produce our high performance Delite code. Both objects extend the trait HelloGraph which will hold our application example application.  This is an idiom commonly used in Forge code.
+        </p>
+
+
+
+<head>
+  <title></title>
+  <meta http-equiv="content-type" content="text/html; charset=None">
+  <style type="text/css">
+td.linenos { background-color: #f0f0f0; padding-right: 10px; }
+span.lineno { background-color: #f0f0f0; padding: 0 5px 0 5px; }
+pre { line-height: 125%; }
+body .hll { background-color: #49483e }
+body  { background: #272822; color: #f8f8f2 }
+body .c { color: #75715e } /* Comment */
+body .err { color: #960050; background-color: #1e0010 } /* Error */
+body .k { color: #66d9ef } /* Keyword */
+body .l { color: #ae81ff } /* Literal */
+body .n { color: #f8f8f2 } /* Name */
+body .o { color: #f92672 } /* Operator */
+body .p { color: #f8f8f2 } /* Punctuation */
+body .cm { color: #75715e } /* Comment.Multiline */
+body .cp { color: #75715e } /* Comment.Preproc */
+body .c1 { color: #75715e } /* Comment.Single */
+body .cs { color: #75715e } /* Comment.Special */
+body .ge { font-style: italic } /* Generic.Emph */
+body .gs { font-weight: bold } /* Generic.Strong */
+body .kc { color: #66d9ef } /* Keyword.Constant */
+body .kd { color: #66d9ef } /* Keyword.Declaration */
+body .kn { color: #f92672 } /* Keyword.Namespace */
+body .kp { color: #66d9ef } /* Keyword.Pseudo */
+body .kr { color: #66d9ef } /* Keyword.Reserved */
+body .kt { color: #66d9ef } /* Keyword.Type */
+body .ld { color: #e6db74 } /* Literal.Date */
+body .m { color: #ae81ff } /* Literal.Number */
+body .s { color: #e6db74 } /* Literal.String */
+body .na { color: #a6e22e } /* Name.Attribute */
+body .nb { color: #f8f8f2 } /* Name.Builtin */
+body .nc { color: #a6e22e } /* Name.Class */
+body .no { color: #66d9ef } /* Name.Constant */
+body .nd { color: #a6e22e } /* Name.Decorator */
+body .ni { color: #f8f8f2 } /* Name.Entity */
+body .ne { color: #a6e22e } /* Name.Exception */
+body .nf { color: #a6e22e } /* Name.Function */
+body .nl { color: #f8f8f2 } /* Name.Label */
+body .nn { color: #f8f8f2 } /* Name.Namespace */
+body .nx { color: #a6e22e } /* Name.Other */
+body .py { color: #f8f8f2 } /* Name.Property */
+body .nt { color: #f92672 } /* Name.Tag */
+body .nv { color: #f8f8f2 } /* Name.Variable */
+body .ow { color: #f92672 } /* Operator.Word */
+body .w { color: #f8f8f2 } /* Text.Whitespace */
+body .mf { color: #ae81ff } /* Literal.Number.Float */
+body .mh { color: #ae81ff } /* Literal.Number.Hex */
+body .mi { color: #ae81ff } /* Literal.Number.Integer */
+body .mo { color: #ae81ff } /* Literal.Number.Oct */
+body .sb { color: #e6db74 } /* Literal.String.Backtick */
+body .sc { color: #e6db74 } /* Literal.String.Char */
+body .sd { color: #e6db74 } /* Literal.String.Doc */
+body .s2 { color: #e6db74 } /* Literal.String.Double */
+body .se { color: #ae81ff } /* Literal.String.Escape */
+body .sh { color: #e6db74 } /* Literal.String.Heredoc */
+body .si { color: #e6db74 } /* Literal.String.Interpol */
+body .sx { color: #e6db74 } /* Literal.String.Other */
+body .sr { color: #e6db74 } /* Literal.String.Regex */
+body .s1 { color: #e6db74 } /* Literal.String.Single */
+body .ss { color: #e6db74 } /* Literal.String.Symbol */
+body .bp { color: #f8f8f2 } /* Name.Builtin.Pseudo */
+body .vc { color: #f8f8f2 } /* Name.Variable.Class */
+body .vg { color: #f8f8f2 } /* Name.Variable.Global */
+body .vi { color: #f8f8f2 } /* Name.Variable.Instance */
+body .il { color: #ae81ff } /* Literal.Number.Integer.Long */
+
+  </style>
+</head>
+<body>
+
+<div class="highlight" style="background: #272822"><pre style="line-height: 125%"><span style="color: #66d9ef">import</span> <span style="color: #f8f8f2">optigraph.compiler._</span>
+<span style="color: #66d9ef">import</span> <span style="color: #f8f8f2">optigraph.library._</span>
+<span style="color: #66d9ef">import</span> <span style="color: #f8f8f2">optigraph.shared._</span>
+
+<span style="color: #75715e">// This object lets us run the Delite version of the code</span>
+<span style="color: #66d9ef">object</span> <span style="color: #a6e22e">HelloGraphCompiler</span> <span style="color: #66d9ef">extends</span> <span style="color: #a6e22e">OptiGraphApplicationCompiler</span> <span style="color: #66d9ef">with</span> <span style="color: #a6e22e">HelloGraph</span>
+
+<span style="color: #75715e">// This object lets us run the Scala library version of the code</span>
+<span style="color: #66d9ef">object</span> <span style="color: #a6e22e">HelloGraphInterpreter</span> <span style="color: #66d9ef">extends</span> <span style="color: #a6e22e">OptiGraphApplicationInterpreter</span> 
+<span style="color: #66d9ef"> with</span> <span style="color: #a6e22e">HelloGraph</span>
+
+<span style="color: #66d9ef">trait</span> <span style="color: #a6e22e">HelloGraph</span> <span style="color: #66d9ef">extends</span> <span style="color: #a6e22e">OptiGraphApplication</span> <span style="color: #f92672">{</span>
+  <span style="color: #66d9ef">def</span> <span style="color: #f8f8f2">main</span><span style="color: #f92672">()</span> <span style="color: #66d9ef">=</span> <span style="color: #f92672">{</span>
+</pre></div>
+</body>
+
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+
+        <p>
+          This is where we create the variables used in the problem.  In this case we declare two NodeData variables <code>srcNodes</code> and <code>dstNodes</code>.  The NodeData trait is akin to a Vector
+          object for graphs.  We pack these NodeData objects together to create an <code>edgeList</code> of integer tuples.   The <code>edgeList</code> variable holds pairs of src-dst nodes to create our graph.
+        </p>
+
+
+
+
+<head>
+  <title></title>
+  <meta http-equiv="content-type" content="text/html; charset=None">
+  <style type="text/css">
+td.linenos { background-color: #f0f0f0; padding-right: 10px; }
+span.lineno { background-color: #f0f0f0; padding: 0 5px 0 5px; }
+pre { line-height: 125%; }
+body .hll { background-color: #49483e }
+body  { background: #272822; color: #f8f8f2 }
+body .c { color: #75715e } /* Comment */
+body .err { color: #960050; background-color: #1e0010 } /* Error */
+body .k { color: #66d9ef } /* Keyword */
+body .l { color: #ae81ff } /* Literal */
+body .n { color: #f8f8f2 } /* Name */
+body .o { color: #f92672 } /* Operator */
+body .p { color: #f8f8f2 } /* Punctuation */
+body .cm { color: #75715e } /* Comment.Multiline */
+body .cp { color: #75715e } /* Comment.Preproc */
+body .c1 { color: #75715e } /* Comment.Single */
+body .cs { color: #75715e } /* Comment.Special */
+body .ge { font-style: italic } /* Generic.Emph */
+body .gs { font-weight: bold } /* Generic.Strong */
+body .kc { color: #66d9ef } /* Keyword.Constant */
+body .kd { color: #66d9ef } /* Keyword.Declaration */
+body .kn { color: #f92672 } /* Keyword.Namespace */
+body .kp { color: #66d9ef } /* Keyword.Pseudo */
+body .kr { color: #66d9ef } /* Keyword.Reserved */
+body .kt { color: #66d9ef } /* Keyword.Type */
+body .ld { color: #e6db74 } /* Literal.Date */
+body .m { color: #ae81ff } /* Literal.Number */
+body .s { color: #e6db74 } /* Literal.String */
+body .na { color: #a6e22e } /* Name.Attribute */
+body .nb { color: #f8f8f2 } /* Name.Builtin */
+body .nc { color: #a6e22e } /* Name.Class */
+body .no { color: #66d9ef } /* Name.Constant */
+body .nd { color: #a6e22e } /* Name.Decorator */
+body .ni { color: #f8f8f2 } /* Name.Entity */
+body .ne { color: #a6e22e } /* Name.Exception */
+body .nf { color: #a6e22e } /* Name.Function */
+body .nl { color: #f8f8f2 } /* Name.Label */
+body .nn { color: #f8f8f2 } /* Name.Namespace */
+body .nx { color: #a6e22e } /* Name.Other */
+body .py { color: #f8f8f2 } /* Name.Property */
+body .nt { color: #f92672 } /* Name.Tag */
+body .nv { color: #f8f8f2 } /* Name.Variable */
+body .ow { color: #f92672 } /* Operator.Word */
+body .w { color: #f8f8f2 } /* Text.Whitespace */
+body .mf { color: #ae81ff } /* Literal.Number.Float */
+body .mh { color: #ae81ff } /* Literal.Number.Hex */
+body .mi { color: #ae81ff } /* Literal.Number.Integer */
+body .mo { color: #ae81ff } /* Literal.Number.Oct */
+body .sb { color: #e6db74 } /* Literal.String.Backtick */
+body .sc { color: #e6db74 } /* Literal.String.Char */
+body .sd { color: #e6db74 } /* Literal.String.Doc */
+body .s2 { color: #e6db74 } /* Literal.String.Double */
+body .se { color: #ae81ff } /* Literal.String.Escape */
+body .sh { color: #e6db74 } /* Literal.String.Heredoc */
+body .si { color: #e6db74 } /* Literal.String.Interpol */
+body .sx { color: #e6db74 } /* Literal.String.Other */
+body .sr { color: #e6db74 } /* Literal.String.Regex */
+body .s1 { color: #e6db74 } /* Literal.String.Single */
+body .ss { color: #e6db74 } /* Literal.String.Symbol */
+body .bp { color: #f8f8f2 } /* Name.Builtin.Pseudo */
+body .vc { color: #f8f8f2 } /* Name.Variable.Class */
+body .vg { color: #f8f8f2 } /* Name.Variable.Global */
+body .vi { color: #f8f8f2 } /* Name.Variable.Instance */
+body .il { color: #ae81ff } /* Literal.Number.Integer.Long */
+
+  </style>
+</head>
+<body>
+
+<div class="highlight" style="background: #272822"><pre style="line-height: 125%">    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">srcNodes</span> <span style="color: #66d9ef">=</span> <span style="color: #a6e22e">NodeData</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">fromFunction</span><span style="color: #f92672">(</span><span style="color: #ae81ff">10</span><span style="color: #f92672">,</span><span style="color: #f8f8f2">i</span> <span style="color: #66d9ef">=&gt;</span> <span style="color: #f8f8f2">i</span><span style="color: #f92672">)</span>
+    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">dstNodes</span> <span style="color: #66d9ef">=</span> <span style="color: #a6e22e">NodeData</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">fromFunction</span><span style="color: #f92672">(</span><span style="color: #ae81ff">10</span><span style="color: #f92672">,</span><span style="color: #f8f8f2">i</span> <span style="color: #66d9ef">=&gt;</span> <span style="color: #ae81ff">9</span><span style="color: #f92672">-</span><span style="color: #f8f8f2">i</span><span style="color: #f92672">)</span>
+    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">edgeList</span> <span style="color: #66d9ef">=</span> <span style="color: #f8f8f2">srcNodes</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">pack</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">dstNodes</span><span style="color: #f92672">)</span>
+</pre></div>
+</body>
+
+
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+
+        <p>
+         Here the call to <code>directedGraphFromEdgeList</code> does exactly what it suggests.  We
+         take an edge list and create a DSL graph object from it.  We just created our first graph!
+         Typically graphs are created from <code>.txt</code> files that are laid out as an adjacency list
+         or an edge list.  See the OptiGraph code documentation for specialized file parsers for OptiGraph.
+        </p>
+
+
+
+<head>
+  <title></title>
+  <meta http-equiv="content-type" content="text/html; charset=None">
+  <style type="text/css">
+td.linenos { background-color: #f0f0f0; padding-right: 10px; }
+span.lineno { background-color: #f0f0f0; padding: 0 5px 0 5px; }
+pre { line-height: 125%; }
+body .hll { background-color: #49483e }
+body  { background: #272822; color: #f8f8f2 }
+body .c { color: #75715e } /* Comment */
+body .err { color: #960050; background-color: #1e0010 } /* Error */
+body .k { color: #66d9ef } /* Keyword */
+body .l { color: #ae81ff } /* Literal */
+body .n { color: #f8f8f2 } /* Name */
+body .o { color: #f92672 } /* Operator */
+body .p { color: #f8f8f2 } /* Punctuation */
+body .cm { color: #75715e } /* Comment.Multiline */
+body .cp { color: #75715e } /* Comment.Preproc */
+body .c1 { color: #75715e } /* Comment.Single */
+body .cs { color: #75715e } /* Comment.Special */
+body .ge { font-style: italic } /* Generic.Emph */
+body .gs { font-weight: bold } /* Generic.Strong */
+body .kc { color: #66d9ef } /* Keyword.Constant */
+body .kd { color: #66d9ef } /* Keyword.Declaration */
+body .kn { color: #f92672 } /* Keyword.Namespace */
+body .kp { color: #66d9ef } /* Keyword.Pseudo */
+body .kr { color: #66d9ef } /* Keyword.Reserved */
+body .kt { color: #66d9ef } /* Keyword.Type */
+body .ld { color: #e6db74 } /* Literal.Date */
+body .m { color: #ae81ff } /* Literal.Number */
+body .s { color: #e6db74 } /* Literal.String */
+body .na { color: #a6e22e } /* Name.Attribute */
+body .nb { color: #f8f8f2 } /* Name.Builtin */
+body .nc { color: #a6e22e } /* Name.Class */
+body .no { color: #66d9ef } /* Name.Constant */
+body .nd { color: #a6e22e } /* Name.Decorator */
+body .ni { color: #f8f8f2 } /* Name.Entity */
+body .ne { color: #a6e22e } /* Name.Exception */
+body .nf { color: #a6e22e } /* Name.Function */
+body .nl { color: #f8f8f2 } /* Name.Label */
+body .nn { color: #f8f8f2 } /* Name.Namespace */
+body .nx { color: #a6e22e } /* Name.Other */
+body .py { color: #f8f8f2 } /* Name.Property */
+body .nt { color: #f92672 } /* Name.Tag */
+body .nv { color: #f8f8f2 } /* Name.Variable */
+body .ow { color: #f92672 } /* Operator.Word */
+body .w { color: #f8f8f2 } /* Text.Whitespace */
+body .mf { color: #ae81ff } /* Literal.Number.Float */
+body .mh { color: #ae81ff } /* Literal.Number.Hex */
+body .mi { color: #ae81ff } /* Literal.Number.Integer */
+body .mo { color: #ae81ff } /* Literal.Number.Oct */
+body .sb { color: #e6db74 } /* Literal.String.Backtick */
+body .sc { color: #e6db74 } /* Literal.String.Char */
+body .sd { color: #e6db74 } /* Literal.String.Doc */
+body .s2 { color: #e6db74 } /* Literal.String.Double */
+body .se { color: #ae81ff } /* Literal.String.Escape */
+body .sh { color: #e6db74 } /* Literal.String.Heredoc */
+body .si { color: #e6db74 } /* Literal.String.Interpol */
+body .sx { color: #e6db74 } /* Literal.String.Other */
+body .sr { color: #e6db74 } /* Literal.String.Regex */
+body .s1 { color: #e6db74 } /* Literal.String.Single */
+body .ss { color: #e6db74 } /* Literal.String.Symbol */
+body .bp { color: #f8f8f2 } /* Name.Builtin.Pseudo */
+body .vc { color: #f8f8f2 } /* Name.Variable.Class */
+body .vg { color: #f8f8f2 } /* Name.Variable.Global */
+body .vi { color: #f8f8f2 } /* Name.Variable.Instance */
+body .il { color: #ae81ff } /* Literal.Number.Integer.Long */
+
+  </style>
+</head>
+<body>
+
+<div class="highlight" style="background: #272822"><pre style="line-height: 125%">    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">dg</span> <span style="color: #66d9ef">=</span> <span style="color: #f8f8f2">directedGraphFromEdgeList</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">edgeList</span><span style="color: #f92672">)</span>
+</pre></div>
+</body>
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+
+
+        <p>
+          This code introduces us to our first parallel graph operations <code>sumOverNodes</code>
+          and <code>sumOverNodes</code>.  I'd like to think the names are descriptive enough.  
+          Effectively what we accomplish here is traversing all of the nodes in the graph and counting
+          the number of neighbors of that node on incoming edges that have an id larger than the
+          current node id.  These sum over methods boil down to a  parallel mapreduce under the covers.
+        </p>
+
+
+
+<head>
+  <title></title>
+  <meta http-equiv="content-type" content="text/html; charset=None">
+  <style type="text/css">
+td.linenos { background-color: #f0f0f0; padding-right: 10px; }
+span.lineno { background-color: #f0f0f0; padding: 0 5px 0 5px; }
+pre { line-height: 125%; }
+body .hll { background-color: #49483e }
+body  { background: #272822; color: #f8f8f2 }
+body .c { color: #75715e } /* Comment */
+body .err { color: #960050; background-color: #1e0010 } /* Error */
+body .k { color: #66d9ef } /* Keyword */
+body .l { color: #ae81ff } /* Literal */
+body .n { color: #f8f8f2 } /* Name */
+body .o { color: #f92672 } /* Operator */
+body .p { color: #f8f8f2 } /* Punctuation */
+body .cm { color: #75715e } /* Comment.Multiline */
+body .cp { color: #75715e } /* Comment.Preproc */
+body .c1 { color: #75715e } /* Comment.Single */
+body .cs { color: #75715e } /* Comment.Special */
+body .ge { font-style: italic } /* Generic.Emph */
+body .gs { font-weight: bold } /* Generic.Strong */
+body .kc { color: #66d9ef } /* Keyword.Constant */
+body .kd { color: #66d9ef } /* Keyword.Declaration */
+body .kn { color: #f92672 } /* Keyword.Namespace */
+body .kp { color: #66d9ef } /* Keyword.Pseudo */
+body .kr { color: #66d9ef } /* Keyword.Reserved */
+body .kt { color: #66d9ef } /* Keyword.Type */
+body .ld { color: #e6db74 } /* Literal.Date */
+body .m { color: #ae81ff } /* Literal.Number */
+body .s { color: #e6db74 } /* Literal.String */
+body .na { color: #a6e22e } /* Name.Attribute */
+body .nb { color: #f8f8f2 } /* Name.Builtin */
+body .nc { color: #a6e22e } /* Name.Class */
+body .no { color: #66d9ef } /* Name.Constant */
+body .nd { color: #a6e22e } /* Name.Decorator */
+body .ni { color: #f8f8f2 } /* Name.Entity */
+body .ne { color: #a6e22e } /* Name.Exception */
+body .nf { color: #a6e22e } /* Name.Function */
+body .nl { color: #f8f8f2 } /* Name.Label */
+body .nn { color: #f8f8f2 } /* Name.Namespace */
+body .nx { color: #a6e22e } /* Name.Other */
+body .py { color: #f8f8f2 } /* Name.Property */
+body .nt { color: #f92672 } /* Name.Tag */
+body .nv { color: #f8f8f2 } /* Name.Variable */
+body .ow { color: #f92672 } /* Operator.Word */
+body .w { color: #f8f8f2 } /* Text.Whitespace */
+body .mf { color: #ae81ff } /* Literal.Number.Float */
+body .mh { color: #ae81ff } /* Literal.Number.Hex */
+body .mi { color: #ae81ff } /* Literal.Number.Integer */
+body .mo { color: #ae81ff } /* Literal.Number.Oct */
+body .sb { color: #e6db74 } /* Literal.String.Backtick */
+body .sc { color: #e6db74 } /* Literal.String.Char */
+body .sd { color: #e6db74 } /* Literal.String.Doc */
+body .s2 { color: #e6db74 } /* Literal.String.Double */
+body .se { color: #ae81ff } /* Literal.String.Escape */
+body .sh { color: #e6db74 } /* Literal.String.Heredoc */
+body .si { color: #e6db74 } /* Literal.String.Interpol */
+body .sx { color: #e6db74 } /* Literal.String.Other */
+body .sr { color: #e6db74 } /* Literal.String.Regex */
+body .s1 { color: #e6db74 } /* Literal.String.Single */
+body .ss { color: #e6db74 } /* Literal.String.Symbol */
+body .bp { color: #f8f8f2 } /* Name.Builtin.Pseudo */
+body .vc { color: #f8f8f2 } /* Name.Variable.Class */
+body .vg { color: #f8f8f2 } /* Name.Variable.Global */
+body .vi { color: #f8f8f2 } /* Name.Variable.Instance */
+body .il { color: #ae81ff } /* Literal.Number.Integer.Long */
+
+  </style>
+</head>
+<body>
+
+<div class="highlight" style="background: #272822"><pre style="line-height: 125%">    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">dt</span> <span style="color: #66d9ef">=</span> <span style="color: #f8f8f2">sumOverNodes</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">dg</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">nodes</span><span style="color: #f92672">){</span> <span style="color: #f8f8f2">n</span> <span style="color: #66d9ef">=&gt;</span>
+        <span style="color: #f8f8f2">sumOverNeighbors</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">dg</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">inNeighbors</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">n</span><span style="color: #f92672">)){</span> <span style="color: #f8f8f2">nbr</span> <span style="color: #66d9ef">=&gt;</span>
+          <span style="color: #66d9ef">if</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">nbr</span> <span style="color: #f92672">&gt;=</span> <span style="color: #f8f8f2">n</span><span style="color: #f92672">)</span> <span style="color: #ae81ff">1</span>
+          <span style="color: #66d9ef">else</span> <span style="color: #ae81ff">0</span>
+        <span style="color: #f92672">}</span>
+      <span style="color: #f92672">}</span>
+</pre></div>
+</body>
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+
+
+
+        <p>
+          The next chunk of code is very similar but you will notice some slight differences.  Namely
+          we are operating on an undirected graph now.  First we do some manipulation on the NodeData
+          objects in order to prepare an edgelist with undirected edges.  Namely we have to make sure 
+          we have duplicate edges!  After creating an undirected graph you should notice that the operations
+          on the undirected graph are very similar to the directed graph.  Incoming edges and outgoing edges
+          are really the same thing here so we just access <code>neighbors</code> now.  You should notice that 
+          our final count doubles.  We have twice the number of edges now!
+        </p>
+
+
+
+
+<head>
+  <title></title>
+  <meta http-equiv="content-type" content="text/html; charset=None">
+  <style type="text/css">
+td.linenos { background-color: #f0f0f0; padding-right: 10px; }
+span.lineno { background-color: #f0f0f0; padding: 0 5px 0 5px; }
+pre { line-height: 125%; }
+body .hll { background-color: #49483e }
+body  { background: #272822; color: #f8f8f2 }
+body .c { color: #75715e } /* Comment */
+body .err { color: #960050; background-color: #1e0010 } /* Error */
+body .k { color: #66d9ef } /* Keyword */
+body .l { color: #ae81ff } /* Literal */
+body .n { color: #f8f8f2 } /* Name */
+body .o { color: #f92672 } /* Operator */
+body .p { color: #f8f8f2 } /* Punctuation */
+body .cm { color: #75715e } /* Comment.Multiline */
+body .cp { color: #75715e } /* Comment.Preproc */
+body .c1 { color: #75715e } /* Comment.Single */
+body .cs { color: #75715e } /* Comment.Special */
+body .ge { font-style: italic } /* Generic.Emph */
+body .gs { font-weight: bold } /* Generic.Strong */
+body .kc { color: #66d9ef } /* Keyword.Constant */
+body .kd { color: #66d9ef } /* Keyword.Declaration */
+body .kn { color: #f92672 } /* Keyword.Namespace */
+body .kp { color: #66d9ef } /* Keyword.Pseudo */
+body .kr { color: #66d9ef } /* Keyword.Reserved */
+body .kt { color: #66d9ef } /* Keyword.Type */
+body .ld { color: #e6db74 } /* Literal.Date */
+body .m { color: #ae81ff } /* Literal.Number */
+body .s { color: #e6db74 } /* Literal.String */
+body .na { color: #a6e22e } /* Name.Attribute */
+body .nb { color: #f8f8f2 } /* Name.Builtin */
+body .nc { color: #a6e22e } /* Name.Class */
+body .no { color: #66d9ef } /* Name.Constant */
+body .nd { color: #a6e22e } /* Name.Decorator */
+body .ni { color: #f8f8f2 } /* Name.Entity */
+body .ne { color: #a6e22e } /* Name.Exception */
+body .nf { color: #a6e22e } /* Name.Function */
+body .nl { color: #f8f8f2 } /* Name.Label */
+body .nn { color: #f8f8f2 } /* Name.Namespace */
+body .nx { color: #a6e22e } /* Name.Other */
+body .py { color: #f8f8f2 } /* Name.Property */
+body .nt { color: #f92672 } /* Name.Tag */
+body .nv { color: #f8f8f2 } /* Name.Variable */
+body .ow { color: #f92672 } /* Operator.Word */
+body .w { color: #f8f8f2 } /* Text.Whitespace */
+body .mf { color: #ae81ff } /* Literal.Number.Float */
+body .mh { color: #ae81ff } /* Literal.Number.Hex */
+body .mi { color: #ae81ff } /* Literal.Number.Integer */
+body .mo { color: #ae81ff } /* Literal.Number.Oct */
+body .sb { color: #e6db74 } /* Literal.String.Backtick */
+body .sc { color: #e6db74 } /* Literal.String.Char */
+body .sd { color: #e6db74 } /* Literal.String.Doc */
+body .s2 { color: #e6db74 } /* Literal.String.Double */
+body .se { color: #ae81ff } /* Literal.String.Escape */
+body .sh { color: #e6db74 } /* Literal.String.Heredoc */
+body .si { color: #e6db74 } /* Literal.String.Interpol */
+body .sx { color: #e6db74 } /* Literal.String.Other */
+body .sr { color: #e6db74 } /* Literal.String.Regex */
+body .s1 { color: #e6db74 } /* Literal.String.Single */
+body .ss { color: #e6db74 } /* Literal.String.Symbol */
+body .bp { color: #f8f8f2 } /* Name.Builtin.Pseudo */
+body .vc { color: #f8f8f2 } /* Name.Variable.Class */
+body .vg { color: #f8f8f2 } /* Name.Variable.Global */
+body .vi { color: #f8f8f2 } /* Name.Variable.Instance */
+body .il { color: #ae81ff } /* Literal.Number.Integer.Long */
+
+  </style>
+</head>
+<body>
+
+<div class="highlight" style="background: #272822"><pre style="line-height: 125%">    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">dupSrcNodes</span> <span style="color: #66d9ef">=</span> <span style="color: #f8f8f2">srcNodes</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">concat</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">dstNodes</span><span style="color: #f92672">)</span>
+    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">dupDstNodes</span> <span style="color: #66d9ef">=</span> <span style="color: #f8f8f2">dstNodes</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">concat</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">srcNodes</span><span style="color: #f92672">)</span>
+    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">dupEdgeList</span> <span style="color: #66d9ef">=</span> <span style="color: #f8f8f2">dupSrcNodes</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">pack</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">dupDstNodes</span><span style="color: #f92672">)</span>
+
+    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">ug</span> <span style="color: #66d9ef">=</span> <span style="color: #f8f8f2">undirectedGraphFromEdgeList</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">dupEdgeList</span><span style="color: #f92672">)</span>
+
+    <span style="color: #66d9ef">val</span> <span style="color: #f8f8f2">ut</span> <span style="color: #66d9ef">=</span> <span style="color: #f8f8f2">sumOverNodes</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">ug</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">nodes</span><span style="color: #f92672">){</span> <span style="color: #f8f8f2">n</span> <span style="color: #66d9ef">=&gt;</span>
+        <span style="color: #f8f8f2">sumOverNeighbors</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">ug</span><span style="color: #f92672">.</span><span style="color: #f8f8f2">neighbors</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">n</span><span style="color: #f92672">)){</span> <span style="color: #f8f8f2">nbr</span> <span style="color: #66d9ef">=&gt;</span>
+          <span style="color: #66d9ef">if</span><span style="color: #f92672">(</span><span style="color: #f8f8f2">nbr</span> <span style="color: #f92672">&gt;=</span> <span style="color: #f8f8f2">n</span><span style="color: #f92672">)</span> <span style="color: #ae81ff">1</span>
+          <span style="color: #66d9ef">else</span> <span style="color: #ae81ff">0</span>
+      <span style="color: #f92672">}</span>
+    <span style="color: #f92672">}</span>
+</pre></div>
+</body>
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+
+
+        <p>
+          Congrats you have build your first OptiGraph application!
+        </p>
+        <p></p>
+
+      <div id='footer'>Copyright &copy; 2014</div>
+    </div>
+  </body>
+</html>

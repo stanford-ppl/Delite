@@ -1,7 +1,7 @@
 <html>
   <head>
     <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
-    <title>OptiML &mdash; Welcome</title>
+    <title>OptiGraph &mdash; Welcome</title>
     <style type='text/css'>
       @import '../css/default.css';
       @import '../css/syntax.css';
@@ -15,28 +15,38 @@
   <body>
     <div id='outer'>
       <div id='header'>
-        <div class='home'><a href='http://stanford-ppl.github.com/Delite/' title="OptiGraph">OptiGraph</a></div>
+        <div class='home'><a href='index.html' title="OptiGraph"></a></div>
+          <div class='home'> <img src="graph.jpg" alt="Smiley face" width="125" height="125"></div>
+          <div class='home'><a href='http://stanford-ppl.github.com/Delite/optigraph' title="OptiGraph">OptiGraph</a></div>
       </div>
       <div id='menu'>
         <ol>
           <li>Start Here
             <ol>
-              <li><a href='index.html'>Welcome</a></li>
-              <li><a href='http://stanford-ppl.github.com/Delite/index.html'>Delite</a></li>
+              <li><a href='index.html'>Overview</a></li>
+              <li><a href='example.html'>Example</a></li>
+              <li><a href='interface.html'>DSL Specification</a></li>
+              <li><a href='../index.html'>Delite</a></li>
             </ol>
           </li>
         </ol>
       </div>
       <div id='content'>
-        <h1 id='title_welcome'>Welcome</h1>
+        <h1 id='title_overview'>Overview</h1>
         <p> 
-          Coming soon!
+          OptiGraph is a domain-specific language for graph analysis.
+          OptiGraph is developed as a research project from Stanford University's
+          <a href="http://ppl.stanford.edu/main/">Pervasive Parallelism Laboratory (PPL)</a>.
         </p>
-<h2 id="news">News</h2>
-<ul>
-</ul>
+        <p>
+          OptiGraph is designed in Forge; a meta-dsl framework on top of Delite.  It allows for graph applications to be written in a purely functional manner.  Much of the work for OptiGraph is based off of and extends Green-Marl.  Our current implemenation
+          of OptiGraph stores the graph in a compressed sparse row layout.
+        </p>
+        <p>
+          OptiGraph is currently under rapid development.
+        </p>
       </div>
-      <div id='footer'>Copyright &copy; 2011</div>
+      <div id='footer'>Copyright &copy; 2014</div>
     </div>
   </body>
 </html>
