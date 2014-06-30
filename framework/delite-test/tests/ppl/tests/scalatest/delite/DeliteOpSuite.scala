@@ -160,10 +160,9 @@ object DeliteFilterRunner extends DeliteTestRunner with DeliteTestDSLApplication
 trait DeliteFilter extends DeliteTestBase {
   def main() = {
 
-    //TODO: doesn't work in CUDA codegen
-    // val a1 = DeliteArray.fromFunction(50){ i => i }
-    // val a2 = a1.filter(_ % 2 == 1)
-    // collectArray(a2, 25, i => a1(1+i*2))
+    val a1 = DeliteArray.fromFunction(50){ i => i }
+    val a2 = a1.filter(_ % 2 == 1)
+    collectArray(a2, 25, i => a1(1+i*2))
 
     val v1 = DeliteArrayBuffer.fromFunction(100){ i => i }
     val v2 = v1.filter(_ % 2 == 1)
