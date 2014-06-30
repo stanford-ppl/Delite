@@ -1,0 +1,171 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>OptiGraph &mdash; Welcome</title>
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import '../css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='index.html' title="OptiGraph"></a></div>
+          <div class='home'> <img src="graph.jpg" alt="Smiley face" width="125" height="125"></div>
+          <div class='home'><a href='http://stanford-ppl.github.com/Delite/optigraph' title="OptiGraph">OptiGraph</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Overview</a></li>
+              <li><a href='example.html'>Example</a></li>
+              <li><a href='interface.html'>DSL Specification</a></li>
+              <li><a href='../index.html'>Delite</a></li>
+            </ol>
+          </li>
+        </ol>
+      </div>
+      <div id='content'>
+        <h1 id='title_overview'>Interface Specification</h1>
+
+        <!-- CSS goes in the document HEAD or added to your external stylesheet -->
+        <style type="text/css">
+        table.imagetable {
+          font-family: verdana,arial,sans-serif;
+          font-size:11px;
+          color:#333333;
+          border-width: 1px;
+          border-color: #999999;
+          border-collapse: collapse;
+        }
+        table.imagetable th {
+          background:#b5cfd2 url('cell-blue.jpg');
+          border-width: 1px;
+          padding: 8px;
+          border-style: solid;
+          border-color: #999999;
+        }
+        table.imagetable td {
+          background:#E0E0E0 url('cell-white.jpg');
+          border-width: 1px;
+          padding: 8px;
+          border-style: solid;
+          border-color: #999999;
+        }
+        </style>
+        <!-- Table goes in the document BODY -->
+
+        <h2><font color="0033CC"><center>UndirectedGraph</center></font></h2>
+        <p></p>
+        <table class="imagetable">
+        <tr>
+          <th>Function</th><th>Description</th><th>Parallel</th>
+        </tr>
+        <tr>
+          <td><code>isDirected : False</code></td><td></td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>numNodes: Int</code></td><td>Returns number of nodes.</td><td>No</td>
+        </tr>    
+        <tr>
+          <td><code>numEdges: Int</code></td><td>Returns number of edges.</td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>totalWeight : Double</code></td><td>Total weight of graph.</td><td>Yes</td>
+        </tr>        
+        <tr>
+          <td><code>weightedDegree(Node) : Double</code></td><td>Total degree of nodes edges.</td><td>Yes</td>
+        </tr>
+        <tr>
+          <td><code>numSelfLoops(Node) : Double</code></td><td>Number of self loops.</td><td>No</td>
+        </tr>       
+         <tr>
+          <td><code>degree(Node) : MInt</code></td><td>Number of edges to/from node.</td><td>No</td>
+        </tr> 
+        <tr>
+          <td><code>nodes: NodeIdView</code></td><td>Gives view of integers from 0:numNodes.</td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>neighbors(Node): NeighborView</code></td><td>Returns neighborhood of a node.</td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>foreachNode(Node => Unit) : Unit</code></td><td></td><td>Yes</td>
+        </tr>
+        <tr>
+          <td><code>mapNodes(Node => R) : NodeData(R)</code></td><td></td><td>Yes</td>
+        </tr>        
+        <tr>
+          <td><code>getExternalID(Node) : Int</code></td><td>Returns the external ID of node.</td><td>No</td>
+        </tr>  
+        <tr>
+          <td><code>commonNeighbors(Node,Node) : Long</code></td><td>Counts the number of common neighbors between two nodes.</td><td>No</td>
+        </tr>          
+        <tr>
+          <td><code>getNeighborsAndWeights(Node) : Tup2(NeighborView(MInt),NeighborView(Double))</code></td><td>Returns views of neighbors and respective weights.</td><td>No</td>
+        </tr>   
+        </table>
+
+        <h2><font color="0033CC"><center>DirectedGraph</center></font></h2>
+        <p></p>
+        <table class="imagetable">
+        <tr>
+          <th>Function</th><th>Description</th><th>Parallel</th>
+        </tr>
+        <tr>
+          <td><code>isDirected : True</code></td><td></td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>numNodes: Int</code></td><td>Returns number of nodes.</td><td>No</td>
+        </tr>    
+        <tr>
+          <td><code>numEdges: Int</code></td><td>Returns number of edges.</td><td>No</td>
+        </tr>      
+         <tr>
+          <td><code>outDegree(Node) : MInt</code></td><td>Number of outgoing edges</td><td>No</td>
+        </tr>
+         <tr>
+          <td><code>inDegree(Node) : MInt</code></td><td>Number of incoming edges</td><td>No</td>
+        </tr>
+        <tr>
+          <td><code>outNeighbors(Node): NeighborView</code></td><td>Returns neighborhood of a outgoing edges.</td><td>No</td>
+        </tr>        <tr>
+          <td><code>inNeighbors(Node): NeighborView</code></td><td>Returns neighborhood of a incoming edges.</td><td>No</td>
+        </tr>  
+        <tr>
+          <td><code>foreachNode(Node => Unit) : Unit</code></td><td></td><td>Yes</td>
+        </tr>
+        <tr>
+          <td><code>mapNodes(Node => R) : NodeData(R)</code></td><td></td><td>Yes</td>
+        </tr>        
+        <tr>
+          <td><code>getExternalID(Node) : Int</code></td><td>Returns the external ID of node.</td><td>No</td>
+        </tr>  
+        </table>
+
+        <h2><font color="0033CC"><center>Provided Functions</center></font></h2>
+        <p></p>
+        <table class="imagetable">
+        <tr>
+          <th>Function</th><th>Description</th><th>Parallel</th>
+        </tr>
+        <tr>
+          <td><code>sumOverNodes(NodeIdView)(Node => R) : R</code></td><td>Sums over the neighbors of a node.</td><td>Yes</td>
+        </tr>
+        <tr>
+          <td><code>sumOverNeighbors(NeighborView)(Node => R) : R</code></td><td>Sums over the neighbors of a node.</td><td>Yes</td>
+        </tr>
+        </table>
+
+
+
+      </div>
+      <div id='footer'>Copyright &copy; 2014</div>
+    </div>
+  </body>
+</html>
