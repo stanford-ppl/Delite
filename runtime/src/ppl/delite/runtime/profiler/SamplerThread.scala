@@ -30,7 +30,7 @@ object SamplerThread extends Thread {
 	}
 
 	def profile() {
-		val time = System.nanoTime()
+		val time = System.currentTimeMillis
 		val maxMemory: Long = runtime.maxMemory()
 		val totalMemory: Long = runtime.totalMemory()
 		val freeMemory: Long = runtime.freeMemory()
@@ -71,7 +71,8 @@ object SamplerThread extends Thread {
   		for (s <- samples) {
   			writer.println(",")  			
   			val data = List(s.maxMemory, s.totalMemory, s.usedMemory) mkString ","
-  			val timeStamp = (s.timeStamp - globalStartNanos) / 1000
+  			//val timeStamp = (s.timeStamp - globalStartNanos) / 1000
+  			val timeStamp = (s.timeStamp - globalStartNanos)
   			writer.print(twoTabs + "\"" + timeStamp + "\" : [" + data + "]")
   		}
 

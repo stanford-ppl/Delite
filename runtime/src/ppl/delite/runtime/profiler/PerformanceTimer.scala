@@ -74,8 +74,8 @@ object PerformanceTimer
       case None => throw new RuntimeException("cannot find thread name for id " + threadId)
     }
     var stats = statsNewFormat(threadId)
-    val t = new Timing(threadName, startTime, component)
-    t.endTime = endTime
+    val t = new Timing(threadName, startTime/1000L, component)
+    t.endTime = endTime/1000L
     if (!stats.contains(component)) {
       stats += component -> List[Timing]()
     }

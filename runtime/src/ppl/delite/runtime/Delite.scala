@@ -154,7 +154,8 @@ object Delite {
           PerformanceTimer.clearAll()
 
           //val globalStart = System.currentTimeMillis
-          val globalStartNanos = System.nanoTime()
+          //val globalStartNanos = System.nanoTime()
+          val globalStartNanos = System.currentTimeMillis
           val jvmUpTimeAtAppStart = ManagementFactory.getRuntimeMXBean().getUptime()
 
           if (i == numTimes) {
