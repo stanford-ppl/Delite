@@ -1,9 +1,30 @@
 #include "DeliteCpp.h"
 
+bool regex_metachar(char c) {
+  switch (c) {
+    case '\\': case '^': case '$': case '.': case '|': case '?':
+    case '*': case '+': case '(': case ')': case '[': case '{':
+      return true;
+    default:
+      return false;
+  }
+}
+
+char find_delim(string pattern) {
+  if (pattern.length()==1 && !regex_metachar(pattern.at(0))) {
+    return pattern.at(0);
+  }
+  else if (pattern.length()==2 && pattern.at(0)=='\\' && regex_metachar(pattern.at(1))) {
+    return pattern.at(1);
+  }
+  else
+    return -1;
+}
+
 #ifdef MEMMGR_REFCNT
-std::shared_ptr<cppDeliteArraystring> string_split(string str, string pattern) {
+std::shared_ptr<cppDeliteArraystring> string_split(string str, string pattern, int32_t lim) {
 #else
-cppDeliteArraystring *string_split(string str, string pattern) {
+cppDeliteArraystring *string_split(string str, string pattern, int32_t lim) {
 #endif
   //TODO: current g++ does not fully support c++11 regex, 
   //      so below code does not work.
@@ -25,14 +46,52 @@ cppDeliteArraystring *string_split(string str, string pattern) {
   return ret;
   */
 
-  //Since regex is not working, we currently only support 
-  assert((pattern.compare("\\s+")==0 || pattern.compare(" ")==0) && "Currently only regex \\s+ is supported for C++ target");
+  //Since above code is not working, we currently only support simple regular expressions
+  // http://stackoverflow.com/questions/236129/how-to-split-a-string-in-c
+  vector<string> elems;
+  int num_tokens = 0;
   string token;
   stringstream ss(str); 
-  vector<string> elems;
-  while (ss >> token)
-    elems.push_back(token);
+  char delim;
+  if (pattern.compare("\\s+")==0) {
+    while (ss >> token) {
+      num_tokens += 1;
+      if (num_tokens == lim) {
+        string remainder;
+        getline(ss, remainder, (char)NULL);
+        elems.push_back(token+remainder);
+        break;
+      }
+      else {
+        elems.push_back(token);
+      }
+    }
+  }
+  else if ((delim = find_delim(pattern)) != -1) {
+    while (getline(ss, token, delim)) {
+      num_tokens += 1;
+      if (num_tokens == lim) {
+        string remainder;
+        getline(ss, remainder, (char)NULL);
+        elems.push_back(token+remainder);
+        break;
+      }
+      else {
+        elems.push_back(token);
+      }
+    }
+  }
+  else {
+    assert(false && "Given regex is not supported");
+  }
   
+  // remove the trailing empty strings when the limit is 0
+  if (lim == 0) {
+    while(elems.back().compare("") == 0) {
+      elems.pop_back();
+    }
+  }
+
   //construct cppDeliteArray from vector
 #ifdef MEMMGR_REFCNT
   std::shared_ptr<cppDeliteArraystring> ret(new cppDeliteArraystring(elems.size()), cppDeliteArraystringD());
@@ -142,6 +201,45 @@ string readFirstLineFile(string filename) {
   fs.close();
   return line;
 }
+
+template <class K>
+uint32_t delite_hashcode(K key) {
+  return key->hashcode();
+}
+
+template<> uint32_t delite_hashcode<bool>(bool key) { return (uint32_t) key; }
+template<> uint32_t delite_hashcode<int8_t>(int8_t key) { return (uint32_t) key; }
+template<> uint32_t delite_hashcode<uint16_t>(uint16_t key) { return (uint32_t) key; }
+template<> uint32_t delite_hashcode<int32_t>(int32_t key) { return (uint32_t) key; }
+template<> uint32_t delite_hashcode<int64_t>(int64_t key) { return (uint32_t) key; }
+template<> uint32_t delite_hashcode<float>(float key) { return (uint32_t) key; }
+template<> uint32_t delite_hashcode<double>(double key) { return (uint32_t) key; }
+template<> uint32_t delite_hashcode<string>(string key) {
+  //http://docs.oracle.com/javase/1.5.0/docs/api/java/lang/String.html#hashCode%28%29
+  int32_t multiplier = 1;
+  int32_t hc = 0;
+  int n = key.length();
+  for(int i=n-1; i>=0; i--) {
+    hc += multiplier * key.at(i);
+    multiplier *= 31;
+  }
+  return (uint32_t)hc;
+}
+
+template <class K>
+bool delite_equals(K key1, K key2) {
+  return key1->equals(key2);
+}
+
+template<> bool delite_equals<bool>(bool key1, bool key2) { return key1 == key2; }
+template<> bool delite_equals<int8_t>(int8_t key1, int8_t key2) { return key1 == key2; }
+template<> bool delite_equals<uint16_t>(uint16_t key1, uint16_t key2) { return key1 == key2; }
+template<> bool delite_equals<int32_t>(int32_t key1, int32_t key2) { return key1 == key2; }
+template<> bool delite_equals<int64_t>(int64_t key1, int64_t key2) { return key1 == key2; }
+template<> bool delite_equals<float>(float key1, float key2) { return key1 == key2; }
+template<> bool delite_equals<double>(double key1, double key2) { return key1 == key2; }
+template<> bool delite_equals<string>(string key1, string key2) { return key1.compare(key2) == 0; }
+
 
 /* helper methods and data structures only required for execution with Delite */
 #ifndef __DELITE_CPP_STANDALONE__

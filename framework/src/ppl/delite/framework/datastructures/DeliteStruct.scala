@@ -707,9 +707,14 @@ struct __T__D {
         }
       }
 
+      stream.println("#include \"DeliteCpp.h\"")
+
       dependentArrayTypes foreach { t=>
         stream.println("#include \"" + t + ".h\"")
       }
+
+      val dependentMapTypes = elems.filter(e => e._2.erasure.getSimpleName == "DeliteIndex")
+      if (dependentMapTypes.nonEmpty) stream.println("#include \"" + deviceTarget + "HashMap.h\"")
       
       if(isAcceleratorTarget)
         stream.println("#include \"" + hostTarget + name + ".h\"")
@@ -743,6 +748,15 @@ struct __T__D {
       else
         stream.println("\tbool equals(" + deviceTarget + name + addRef() + " to) {")
       stream.println("\t\treturn " + elemEquals + ";")
+      stream.println("\t}")
+
+      // hashcode
+      val elemHashcode = elems.map { e =>
+        if (isPrimitiveType(baseType(e._2))) "delite_hashcode(" + e._1 + ")"
+        else e._1 + "->hashcode()"
+      }.mkString("(",") ^ (",")")
+      stream.println("\tuint32_t hashcode(void) {")
+      stream.println("\t\treturn " + elemHashcode + ";")
       stream.println("\t}")
 
       // free

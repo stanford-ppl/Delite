@@ -719,6 +719,7 @@ trait CLikeGenDeliteArrayOps extends BaseGenDeliteArrayOps with CLikeGenDeliteSt
     super.emitDataStructures(path)
     val stream = new PrintWriter(path + deviceTarget + "DeliteArrays.h")
     stream.println("#include \"" + deviceTarget + "DeliteStructs.h\"")
+    stream.println("#include \"" + deviceTarget + "HashMap.h\"")
     for((tp,name) <- dsTypesList if(isArrayType(tp))) {
       emitDeliteArray(tp, path, stream)
     }
@@ -1003,6 +1004,10 @@ public:
 
   void print(void) {
     printf("length is %d\n", length);
+  }
+
+  uint32_t hashcode(void) {
+    return (uintptr_t)this;
   }
 };
 
