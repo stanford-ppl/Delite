@@ -3,6 +3,7 @@
 		<title>Layout test</title>
 	</head>
 	<body>
+		<link rel="stylesheet" href="misc/jquery-ui-1.11.0/jquery-ui.min.css">
 		<link rel="stylesheet" type="text/css" href="styles/grid.css" />
     	<link rel="stylesheet" type="text/css" href="styles/sidebar.css" />
 	  	<link rel="stylesheet" type="text/css" href="styles/editor.css">
@@ -11,176 +12,195 @@
 	  	<link rel="stylesheet" type="text/css" href="styles/bar-chart.css">
 	  	<link rel="stylesheet" type="text/css" href="styles/stack-graph.css">
 	  	<link rel="stylesheet" type="text/css" href="styles/table.css">
+		<link rel="stylesheet" type="text/css" href="styles/tab-view.css">
+	  	<link rel="stylesheet" type="text/css" href="styles/compare-runs.css">
 	  	<!--link rel="stylesheet" type="text/css" href="bootstrap-3.1.1-dist/css/bootstrap.mod.css"-->
 	  	<link rel="stylesheet" type="text/css" href="contextMenu/contextMenu.css">
 
-	  	<div id="container">
-			<div id="accordian">
-				<ul>
-					<li class="active">
-						<h3>Inputs</h3>
-						<ul>
-							<li>
-								<a href="#">
-									<input type="button" value="Upload DEG file     " onclick="document.getElementById('degFileInput').click();" />
-									<span id="degFileName">(DEG_file)</span>
-									<input type="file" id="degFileInput" name="files[]" style="display: none;" />
-								</a>
-							</li>
-							<li>
-								<a href="#">
-									<input type="button" value="Upload profile data" onclick="document.getElementById('profDataInput').click();" />
-									<span id="profDataFileName">(Profile_data)</span>
-									<input type="file" id="profDataInput" name="files[]" style="display: none;" />
-									<!--input type="file" id="profDataInput" name="files[]" multiple webkitdirectory="" directory="" style="display: none;" /-->
-								</a>
-							</li>
-							<li>
-								<a href="#">
-									<input type="button" value="Upload GC Stats    " onclick="document.getElementById('gcStatsInput').click();" />
-									<span id="gcStatsFileName">(GC_Stats_File)</span>
-									<input type="file" id="gcStatsInput" name="files[]" style="display: none;" />
-									<!--input type="file" id="profDataInput" name="files[]" multiple webkitdirectory="" directory="" style="display: none;" /-->
-								</a>
-							</li>
-							<li>
-								<a href="#">
-									<input type="button" value="Upload src dir        " onclick="document.getElementById('srcDirInput').click();" />
-									<span id="srcFileName">(Src_file_name)</span>
-									<input type="file" id="srcDirInput" name="files[]"  multiple webkitdirectory="" directory="" style="display: none;" />
-								</a>
-							</li>
-							<li>
-								<a href="#">
-									<button type="button" id="startButton"/>View</button>
-								</a>
-							</li>
-						</ul>
-					</li>
-					<li class="active">
-						<h3>Global Stats</h3>
-						<ul>
-							<li>
-								<a href="#">
-									<span>Metric</span>	
-									<select id="globalStatsMetric">
-										<option value="degView">DEG View</option>
-										<option value="performance">Performance</option>
-										<option value="memUsage">Mem Usage</option>
-										<option value="threadLevelSyncStats">Thread Sync</option>
-										<option value="ticTocRegionStats">Tic-Toc Regions</option>
-										<option value="gcEventStats">GC Event</option>
-									</select>
-								</a>
-							</li>
-						</ul>
-					</li>
-					<li class="active">
-						<h3>Timeline</h3>
-						<ul>
-							<li>
-								<a href="#">
-									<span>Level Filter</span>	
-									<select id="timelineLevelFilter"></select>
-								</a>
-							</li>
-							<li>
-								<a href="#">
-									<span>Zoom </span>
-									<input type="text" id="timelineZoom" size="5" value="100" style="text-align: right; margin: 0 0 0 5"> %
-								</a>
-							</li>
-							<li>
-								<a href="#">
-									<span>Hidden Nodes</span>
-									<select id="timelineHiddenNodeList"></select>
-								</a>
-							</li>
-						</ul>
+	  	<div id="tabs">
+			<ul>
+				<li><a href="#container">Overview</a></li>
+				<li><a href="#containerCompareRuns">Compare runs</a></li>
+			</ul>
+		  	<div id="container">
+				<div id="accordian">
+					<ul>
+						<li class="active">
+							<h3>Inputs</h3>
+							<ul>
+								<li>
+									<a href="#">
+										<input type="button" value="Upload DEG file     " onclick="document.getElementById('degFileInput').click();" />
+										<span id="degFileName">(DEG_file)</span>
+										<input type="file" id="degFileInput" name="files[]" style="display: none;" />
+									</a>
+								</li>
+								<li>
+									<a href="#">
+										<input type="button" value="Upload profile data" onclick="document.getElementById('profDataInput').click();" />
+										<span id="profDataFileName">(Profile_data)</span>
+										<input type="file" id="profDataInput" name="files[]" style="display: none;" />
+										<!--input type="file" id="profDataInput" name="files[]" multiple webkitdirectory="" directory="" style="display: none;" /-->
+									</a>
+								</li>
+								<li>
+									<a href="#">
+										<input type="button" value="Upload GC Stats    " onclick="document.getElementById('gcStatsInput').click();" />
+										<span id="gcStatsFileName">(GC_Stats_File)</span>
+										<input type="file" id="gcStatsInput" name="files[]" style="display: none;" />
+										<!--input type="file" id="profDataInput" name="files[]" multiple webkitdirectory="" directory="" style="display: none;" /-->
+									</a>
+								</li>
+								<li>
+									<a href="#">
+										<input type="button" value="Upload src dir        " onclick="document.getElementById('srcDirInput').click();" />
+										<span id="srcFileName">(Src_file_name)</span>
+										<input type="file" id="srcDirInput" name="files[]"  multiple webkitdirectory="" directory="" style="display: none;" />
+									</a>
+								</li>
+								<li>
+									<a href="#">
+										<button type="button" id="startButton"/>View</button>
+									</a>
+								</li>
+							</ul>
+						</li>
+						<li class="active">
+							<h3>Global Stats</h3>
+							<ul>
+								<li>
+									<a href="#">
+										<span>Metric</span>	
+										<select id="globalStatsMetric">
+											<option value="degView">DEG View</option>
+											<option value="performance">Performance</option>
+											<option value="memUsage">Mem Usage</option>
+											<option value="threadLevelSyncStats">Thread Sync</option>
+											<option value="ticTocRegionStats">Tic-Toc Regions</option>
+											<option value="gcEventStats">GC Event</option>
+										</select>
+									</a>
+								</li>
+							</ul>
+						</li>
+						<li class="active">
+							<h3>Timeline</h3>
+							<ul>
+								<li>
+									<a href="#">
+										<span>Level Filter</span>	
+										<select id="timelineLevelFilter"></select>
+									</a>
+								</li>
+								<li>
+									<a href="#">
+										<span>Zoom </span>
+										<input type="text" id="timelineZoom" size="5" value="100" style="text-align: right; margin: 0 0 0 5"> %
+									</a>
+								</li>
+								<li>
+									<a href="#">
+										<span>Hidden Nodes</span>
+										<select id="timelineHiddenNodeList"></select>
+									</a>
+								</li>
+							</ul>
 
-					</li>
-					<li class="active">
-						<h3>Kernel Info</h3>
-						<ul>
-							<li>
-								<a href="#">
-									<span>Search</span>
-									<input type="text" id="searchKernel" size="5" value="" style="text-align: left; margin: 0 0 0 5; width: 120">
-								</a>
-							</li>
-							<li>
-								<table id="kernelInfoTable" class="sidebarTable">
-									<th>Property</th>
-									<th>Value</th> 
-									<tr>
-										<td>Name</td>
-										<td></td> 
-									</tr>
-									<tr>
-										<td>Type</td>
-										<td></td> 
-									</tr>
-									<tr>
-										<td>Target</td>
-										<td></td> 
-									</tr>
-									<tr>
-										<td>Time (%)</td>
-										<td></td> 
-									</tr>
-									<tr>
-										<td>Exec/Sync Time (%)</td>
-										<td></td> 
-									</tr>
-									<tr>
-										<td>Mem Usage (B)</td>
-										<td></td> 
-									</tr>
-								</table>
-							</li>
-						</ul>	
-					<li class="active">
-						<h3>Sync Node Info</h3>
-						<ul>
-							<li>
-								<table id="syncNodeInfoTable" class="sidebarTable">
-									<th>Property</th>
-									<th>Value</th> 
-									<tr>
-										<td>Dep. Thread</td>
-										<td></td> 
-									</tr>
-									<tr>
-										<td>Dep. Kernel</td>
-										<td></td> 
-									</tr>
-									<tr>
-										<td>Time (%)</td>
-										<td></td> 
-									</tr>
-								</table>
-							</li>
-						</ul>
-					</li>
-				</ul>
-			</div>
-			<div id="right">
-				<div id="code"></div>
-				<div id="dfgHeader">
-					<label for="globalViewOptions" id="globalViewOptionsLabel">Global View</label>
-					<select id="globalViewOptions">
-					</select>
+						</li>
+						<li class="active">
+							<h3>Kernel Info</h3>
+							<ul>
+								<li>
+									<a href="#">
+										<span>Search</span>
+										<input type="text" id="searchKernel" size="5" value="" style="text-align: left; margin: 0 0 0 5; width: 120">
+									</a>
+								</li>
+								<li>
+									<table id="kernelInfoTable" class="sidebarTable">
+										<th>Property</th>
+										<th>Value</th> 
+										<tr>
+											<td>Name</td>
+											<td></td> 
+										</tr>
+										<tr>
+											<td>Type</td>
+											<td></td> 
+										</tr>
+										<tr>
+											<td>Target</td>
+											<td></td> 
+										</tr>
+										<tr>
+											<td>Time (%)</td>
+											<td></td> 
+										</tr>
+										<tr>
+											<td>Exec/Sync Time (%)</td>
+											<td></td> 
+										</tr>
+										<tr>
+											<td>Mem Usage (B)</td>
+											<td></td> 
+										</tr>
+									</table>
+								</li>
+							</ul>	
+						<li class="active">
+							<h3>Sync Node Info</h3>
+							<ul>
+								<li>
+									<table id="syncNodeInfoTable" class="sidebarTable">
+										<th>Property</th>
+										<th>Value</th> 
+										<tr>
+											<td>Dep. Thread</td>
+											<td></td> 
+										</tr>
+										<tr>
+											<td>Dep. Kernel</td>
+											<td></td> 
+										</tr>
+										<tr>
+											<td>Time (%)</td>
+											<td></td> 
+										</tr>
+									</table>
+								</li>
+							</ul>
+						</li>
+					</ul>
 				</div>
-				<div id="dfg"></div>
-				<div id="generalInfo"></div>
-				<div id="gcStats"></div>
-				<div id="memory"></div>
-				<div id="timeline"></div>
+				<div id="right">
+					<div id="code"></div>
+					<div id="dfgHeader">
+						<label for="globalViewOptions" id="globalViewOptionsLabel">Global View</label>
+						<select id="globalViewOptions"></select>
+					</div>
+					<div id="dfg"></div>
+					<div id="generalInfo"></div>
+					<div id="gcStats"></div>
+					<div id="memory"></div>
+					<div id="timeline"></div>
+				</div>
+			</div>
+			<div id="containerCompareRuns">
+				<div id="compareRunsHeader">
+					<input type="button" id="addProfileDataBtn" value="Upload profile data" onclick="document.getElementById('_addProfileDataBtn').click();" />
+					<input type="file" id="_addProfileDataBtn" name="files[]" style="display: none;" />
+					<select id="compareRunsMetricOptions">
+						<option>Timeline</option>
+					</select>
+					<label for="compareRunsMetricOptions" id="compareRunsMetricOptionsLabel">Metric</label>
+				</div>
+				<div id="viewRunsDiv"></div>
 			</div>
 		</div>
 
 		<!-- external libraries -->
-        <script type="text/javascript" src="lib/jquery.min.js"></script>
+		<script type="text/javascript" src="lib/jquery.min.js"></script>
+		<script src="misc/jquery-ui-1.11.0/jquery-ui.min.js"></script>
 	    <script type="text/javascript" src="lib/ace.js" charset="utf-8"></script>
 	    <script type="text/javascript" src="lib/d3.min.js"></script>
 	    <script type="text/javascript" src="lib/highlight.pack.js"></script>
@@ -200,6 +220,14 @@
         <script type="text/javascript" src="gcStats.js"></script>
         <script type="text/javascript" src="gcStats-graph.js"></script>
         <script type="text/javascript" src="table.js"></script>
+        <script type="text/javascript" src="compare-runs.js"></script>
         <script type="text/javascript" src="main.js"></script>
+
+		<script type="text/javascript">
+			$("#tabs").tabs({
+				active: 0,
+				heightStyle: "fill",
+			});
+		</script>
 	</body>	
 </html>

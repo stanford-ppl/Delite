@@ -3,6 +3,7 @@
 	width: 100%;
 	height: 100%;
 	overflow-x: hidden;
+	/*overflow-y: auto;*/
 }
 
 #sidebar {
@@ -79,6 +80,7 @@
 #globalViewOptions {
 	margin-top: 7;
 	opacity: 0;
+	font-size: 11;
 }
 
 #globalViewOptionsLabel {

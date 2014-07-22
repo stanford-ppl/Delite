@@ -1,5 +1,5 @@
 
-function createTimeline(timelineDivClass, profileData, config) {
+function createTimeline(parentDivId, profileData, config) {
 	// TODO: Rename the variable 'items' 
 	var items = convertDataToTimelineFormat(profileData.timelineData.timing)
 	var rectHeight = 20;
@@ -14,7 +14,7 @@ function createTimeline(timelineDivClass, profileData, config) {
 	var	timeBegin = tmp.begin - tmp.duration * 0.01
 	var	timeEnd = tmp.end + tmp.duration * 0.01
 
-	var parentDiv = $('#timeline')
+	var parentDiv = $(parentDivId)
 	var m = [20, 15, 15, 120], //top right bottom left
 		chartWidth = parentDiv.width() * 2.5,
 		chartHeight = parentDiv.height();
@@ -28,7 +28,7 @@ function createTimeline(timelineDivClass, profileData, config) {
 			.domain([0, numLanes])
 			.range([0, chartHeight]);
 	
-	var div2 = d3.select(timelineDivClass)
+	var div2 = d3.select(parentDivId)
 				.append("div")
 				.attr("float", "right")
 				.attr("class", "timelineWrapper")
@@ -38,6 +38,7 @@ function createTimeline(timelineDivClass, profileData, config) {
 	var chart = div2
 				.append("svg")
 				.attr("width", chartWidth)
+				.attr("height", chartHeight)
 				.attr("class", "chart");
 
 	var timelineGraph = chart.append("g")
@@ -374,7 +375,7 @@ function createTimeline(timelineDivClass, profileData, config) {
 // Code for displaying tooltip tables
 
 /*
-var table = d3.select(timelineDivClass).append("table")
+var table = d3.select(parentDivId).append("table")
     .attr("class", "tooltip")
     .attr("position", "absolute")
     .style("opacity", 0);

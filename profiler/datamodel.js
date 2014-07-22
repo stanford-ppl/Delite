@@ -505,24 +505,11 @@ function assignSyncNodesToParents(dataForTimelineView, dependencyData, syncNodes
         n.dep_kernel = m[3]
         n.dep_thread = "T" + m[4]
 
-        console.log("n: " + n.name)
-        console.log("parentName: " + parentName)
-        console.log("dep_kernel: " + n.dep_kernel)
-        console.log("dep_thread: " + n.dep_thread)
-        if (n.name == "__sync-ExecutionThread-1-x955-x954_2-2") {
-            console.log(dependencyData)
-        }
-
         if (parentName == "null") { // top-level sync barrier
             n.level = 0
         } else {
             var parentId = dependencyData.nodeNameToId[parentName]
             var parentLevel = dependencyData.nodes[parentId].level
-            if (n.name == "__sync-ExecutionThread-1-x955-x954_2-2") {
-                console.log(dataForTimelineView[parentLevel])
-                console.log(dataForTimelineView[parentLevel][parentName])
-            }
-
             var parent = dataForTimelineView[parentLevel][parentName].filter(function(p) {
                 return (p.start <= n.start) && (n.end <= p.end)
             })[0]   // There should be just one element in the filtered list anyways
