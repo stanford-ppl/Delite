@@ -29,7 +29,7 @@ using namespace std;
 class cppFileStream {
   public:
     vector<char*> files;
-    vector<int> filelengths;
+    vector<uint64_t> filelengths;
     long size;
     int numThreads;
 
