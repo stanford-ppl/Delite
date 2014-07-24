@@ -94,7 +94,10 @@ public:
     _length -= end-start;
   }
 
-  friend std::ostream& operator<< (std::ostream &out, const string &str);
+  friend std::ostream& operator<< (std::ostream &out, const string &str) {
+    out << str.c_str();
+    return out;
+  }
 
 };
 
