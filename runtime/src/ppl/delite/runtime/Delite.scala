@@ -21,7 +21,7 @@ import tools.nsc.io._
 object Delite {
 
   private var mainThread: Thread = _
-  private var outstandingException: Exception = _
+  private var outstandingException: Throwable = _
 
   //TODO: Remove this. This is only used for cluster version GPU runtime code generation.
   var inputArgs: Array[String] = _
@@ -190,7 +190,7 @@ object Delite {
   }
 
   //abnormal shutdown
-  def shutdown(reason: Exception) {
+  def shutdown(reason: Throwable) {
     outstandingException = reason
     mainThread.interrupt()
   }

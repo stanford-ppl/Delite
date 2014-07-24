@@ -13,7 +13,6 @@ import delitecommon
 
 DSLs = ['optiml','optila','optiql','deliszt','optigraph','opticvx','multi-dsl']
 LMS_HOME = os.getenv("LMS_HOME") #should be set if LMS is provided directly from class files rather than a lib_managed jar
-DELITE_HOME = os.getenv("DELITE_HOME")
 
 def err(s):
     exit("error: " + s)
@@ -46,7 +45,6 @@ def main():
     if len(args) < 1:
         parser.error("an application file must be passed to delitec as an argument")
     
-    os.system("rm -rf " + DELITE_HOME + "/generatedCache")
     delitecommon.initialize()
     checkLMSEnv()
     stage(args[0], args[1:len(args)], opts)
