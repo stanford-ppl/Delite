@@ -200,7 +200,7 @@ trait OptiQLCodeGenOpenCL extends OptiQLCodeGenBase with OptiQLOpenCLCodeGenPkg
 
 }
 
-trait OptiQLCodeGenC extends OptiQLCodeGenBase with OptiQLCCodeGenPkg
+trait OptiQLCodeGenC extends OptiQLCodeGenBase with OptiQLCCodeGenPkg with CGenDeliteFileReaderOps
   with CGenDeliteCollectionOps with CGenDeliteOps with CGenDeliteArrayOps with CGenDeliteStruct with DeliteCGenAllOverrides with DeliteCppHostTransfer {
   val IR: DeliteApplication with OptiQLExp
 
