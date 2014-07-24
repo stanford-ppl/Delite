@@ -299,6 +299,12 @@ template<> bool delite_equals<float>(float key1, float key2) { return key1 == ke
 template<> bool delite_equals<double>(double key1, double key2) { return key1 == key2; }
 template<> bool delite_equals<string>(string key1, string key2) { return key1.compare(key2) == 0; }
 
+#ifndef __USE_STD_STRING__
+std::ostream& operator<< (std::ostream &out, string &str) {
+  out << (const void *)(str.c_str());
+  return out;
+}
+#endif
 
 /* helper methods and data structures only required for execution with Delite */
 #ifndef __DELITE_CPP_STANDALONE__

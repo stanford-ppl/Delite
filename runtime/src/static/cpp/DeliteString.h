@@ -1,15 +1,17 @@
 #include <string.h>
 #include <assert.h>
+#include <iostream>
 
 namespace delite
 {
 
 class string {
-public:
+private:
   const char *_ptr;
   size_t _length;
   int _offset;
   
+public:
   string() {
     _ptr = NULL;
     _length = 0;
@@ -91,6 +93,9 @@ public:
     }
     _length -= end-start;
   }
+
+  friend std::ostream& operator<< (std::ostream &out, const string &str);
+
 };
 
 } // namespace delite
