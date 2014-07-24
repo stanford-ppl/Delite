@@ -719,7 +719,6 @@ struct __T__D {
       if(isAcceleratorTarget)
         stream.println("#include \"" + hostTarget + name + ".h\"")
 
-      stream.println("using namespace std;")
       stream.println("class " + deviceTarget + name + " {")
       // fields
       stream.println("public:")

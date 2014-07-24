@@ -81,7 +81,6 @@ public:
 
   int32_t put(K key) {
     uint32_t hc = delite_hashcode<K>(key) * 0x9e3775cd;
-    //cout << "hashcode is " << hc << endl;
     uint32_t relbits0 = relbits;
     uint32_t pos = (hc >> (32 - relbits0)) * 2;
     int32_t currelem = indices[pos];
@@ -95,7 +94,6 @@ public:
     }
     
     if (currelem == -1) {
-      //cout << " new key " << endl;
       int32_t datapos = sz;
       indices[pos] = datapos;
       indices[pos + 1] = hc;
@@ -105,7 +103,6 @@ public:
       grow();
       return datapos;
     } else {
-      //cout << " update key " << endl;
       int32_t datapos = currelem;
       keys[datapos] = key;
       return datapos;
@@ -121,7 +118,6 @@ public:
 
   void grow(void) {
     if (sz <= (loadfactor_d2 * indices_length)) return;
-    cout << "growing" << endl;
     int32_t *nindices = new int32_t[indices_length * 2];
     std::fill_n(nindices, indices_length*2, -1);;
     K *nkeys = new K[keys_length * 2]();
@@ -265,7 +261,6 @@ public:
 
   int32_t put(K *key) {
     uint32_t hc = key->hashcode() * 0x9e3775cd;
-    //cout << "hashcode is " << hc << endl;
     uint32_t relbits0 = relbits;
     uint32_t pos = (hc >> (32 - relbits0)) * 2;
     int32_t currelem = indices[pos];
@@ -279,7 +274,6 @@ public:
     }
     
     if (currelem == -1) {
-      //cout << " new key " << endl;
       int32_t datapos = sz;
       indices[pos] = datapos;
       indices[pos + 1] = hc;
@@ -289,7 +283,6 @@ public:
       grow();
       return datapos;
     } else {
-      //cout << " update key " << endl;
       int32_t datapos = currelem;
       keys[datapos] = key;
       return datapos;
@@ -305,7 +298,6 @@ public:
 
   void grow(void) {
     if (sz <= (loadfactor_d2 * indices_length)) return;
-    cout << "growing" << endl;
     int32_t *nindices = new int32_t[indices_length * 2];
     std::fill_n(nindices, indices_length*2, -1);;
     K **nkeys = new K*[keys_length * 2]();

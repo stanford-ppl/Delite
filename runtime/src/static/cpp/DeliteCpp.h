@@ -15,13 +15,12 @@
 #include <map>
 #include <sstream>
 #include "cppDeliteArraystring.h"
+#include "DeliteNamespaces.h"
 
 /* helper methods and data structures only required for execution with Delite */
 #ifndef __DELITE_CPP_STANDALONE__
 #include <jni.h>
 #endif
-
-using namespace std;
 
 #ifdef MEMMGR_REFCNT
 std::shared_ptr<cppDeliteArraystring> string_split(const string &str, const string &pattern, int32_t lim);

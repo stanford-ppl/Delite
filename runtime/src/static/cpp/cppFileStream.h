@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <vector>
 #include <string.h>
+#include <cstring>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -15,8 +16,7 @@
 #include <string>
 #include <errno.h>
 #include <fcntl.h>
-
-using namespace std;
+#include "DeliteNamespaces.h"
 
 // each line of file is limited to 1M characters
 #define MAX_BUFSIZE 1048576
@@ -28,8 +28,8 @@ using namespace std;
 //TODO: check if need to compile with _FILE_OFFSET_BITS == 64?
 class cppFileStream {
   public:
-    vector<char*> files;
-    vector<uint64_t> filelengths;
+    std::vector<char*> files;
+    std::vector<uint64_t> filelengths;
     long size;
     int numThreads;
 
@@ -162,7 +162,7 @@ class cppFileStream {
       for(int i=0; i<numThreads; i++)
         free(allText[i*pad]);
       free(allText);
-      for(vector<char*>::iterator it = files.begin(); it != files.end(); ++it) {
+      for(std::vector<char*>::iterator it = files.begin(); it != files.end(); ++it) {
         free(*it);
       }
     }

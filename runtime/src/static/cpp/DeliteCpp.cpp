@@ -49,17 +49,21 @@ cppDeliteArraystring *string_split(const string &str, const string &pattern, int
 
   //Since above code is not working, we currently only support simple regular expressions
   // http://stackoverflow.com/questions/236129/how-to-split-a-string-in-c
-  vector<string> elems;
+  std::vector<std::string> elems;
   int num_tokens = 0;
-  string token;
-  stringstream ss(str); 
+  std::string token;
+#ifdef __USE_STD_STRING__
+  std::stringstream ss(str);
+#else
+  std::stringstream ss(std::string(str.c_str()));
+#endif
   char delim;
   //string *tokens = new string[20];
   if (pattern.compare("\\s+")==0) {
     while (ss >> token) {
       num_tokens += 1;
       if (num_tokens == lim) {
-        string remainder;
+        std::string remainder;
         getline(ss, remainder, (char)NULL);
         elems.push_back(token+remainder);
         break;
@@ -88,7 +92,7 @@ cppDeliteArraystring *string_split(const string &str, const string &pattern, int
     while (getline(ss, token, delim)) {
       num_tokens += 1;
       if (num_tokens == lim) {
-        string remainder;
+        std::string remainder;
         getline(ss, remainder, (char)NULL);
         elems.push_back(token+remainder);
         break;
@@ -116,8 +120,13 @@ cppDeliteArraystring *string_split(const string &str, const string &pattern, int
   cppDeliteArraystring *ret = new cppDeliteArraystring(elems.size());
   //cppDeliteArraystring *ret = new cppDeliteArraystring(tokens, num_tokens);
 #endif
+#ifdef __USE_STD_STRING__
   for(int i=0; i<elems.size(); i++)
     ret->update(i,elems.at(i));
+#else
+  for(int i=0; i<elems.size(); i++)
+    ret->update(i,string(elems.at(i).c_str()));
+#endif
   return ret;
 }
 
@@ -151,7 +160,11 @@ string &ltrim(string &s) {
 }
 
 string &rtrim(string &s) {
+#ifdef __USE_STD_STRING__
   s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+#else
+  assert(false);
+#endif
   return s;
 }
 
@@ -205,9 +218,13 @@ cppDeliteArraystring *cppArgsGet(int num, ...) {
 }
 
 template<class T> string convert_to_string(T in) {
-  ostringstream convert;
+  std::ostringstream convert;
   convert << in;
+#ifdef __USE_STD_STRING__
   return convert.str();
+#else
+  return string(convert.str().c_str());
+#endif
 }
 
 // Explicit instantiation of template functions to enable separate compilation
@@ -219,10 +236,13 @@ template string convert_to_string<int32_t>(int32_t);
 template string convert_to_string<int64_t>(int64_t);
 template string convert_to_string<float>(float);
 template string convert_to_string<double>(double);
-template string convert_to_string<string>(string);
 template string convert_to_string<void*>(void*);
+template<> string convert_to_string<string>(string str) {
+  return str;
+}
 
 string readFirstLineFile(string filename) {
+#ifdef __USE_STD_STRING__
   ifstream fs(filename.c_str());
   string line;
   if (fs.good()) {
@@ -230,6 +250,15 @@ string readFirstLineFile(string filename) {
   }
   fs.close();
   return line;
+#else
+  std::ifstream fs(filename.c_str());
+  std::string line;
+  if (fs.good()) {
+    getline(fs, line);
+  }
+  fs.close();
+  return string(line.c_str());
+#endif
 }
 
 template <class K>

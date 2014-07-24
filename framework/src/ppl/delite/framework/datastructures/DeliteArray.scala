@@ -977,7 +977,7 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
   }
 
   protected val deliteArrayString = """
-using namespace std;
+#include "DeliteNamespaces.h"
 class __T__ {
 public:
   __TARG__ *data;

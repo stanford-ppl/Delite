@@ -164,7 +164,7 @@ trait DeliteCGenVariables extends CGenEffect with DeliteCLikeGenVariables {
   }
 
   protected val deliteVariableString: String = """
-using namespace std;
+#include "DeliteNamespaces.h"
 class __T__ {
 public:
   __TARG__ data;
