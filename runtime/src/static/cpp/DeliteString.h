@@ -26,6 +26,15 @@ public:
     _offset = 0;
   }
 
+  string(const char *sptr, int length) {
+    _length = length;
+    char *buf = new char[_length+1];
+    strncpy(buf,sptr,length);
+    buf[length] = 0;
+    _ptr = buf;
+    _offset = 0;
+  }
+
   string(const char *sptr, int length, int offset) {
     _ptr = sptr;
     _length = length;
@@ -74,8 +83,10 @@ public:
   }
 
   string substr(int offset, int length) const {
-    assert(false);
-    return string(c_str(), length, offset);
+    if (_offset + length < _length)
+      return string(c_str()+offset, length);
+    else
+      return string(c_str()+offset, length, 0);
   }
 
   //TODO: what if the caller mutates the returned pointer? should return const char *?
@@ -99,6 +110,20 @@ public:
     return out;
   }
 
+  //http://www.docjar.com/html/api/java/lang/String.java.html
+  string trim(void) const {
+    int st = 0;
+    int len = _length;
+    int off = _offset;
+    const char *val = _ptr;
+    while ((st < len) && (val[off + st] <= ' ')) {
+      st++;
+    }
+    while ((st < len) && (val[off + len - 1] <= ' ')) {
+      len--;
+    }
+    return ((st > 0) || (len < _length)) ? substr(st, len-st) : *this;
+  }
 };
 
 } // namespace delite

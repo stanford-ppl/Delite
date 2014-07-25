@@ -153,6 +153,7 @@ bool string_toBoolean(const string &str) {
     assert(false && "Cannot parse boolean string");
 }
 
+#ifdef __USE_STD_STRING__
 // Code from http://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
 string &ltrim(string &s) {
   s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
@@ -160,11 +161,7 @@ string &ltrim(string &s) {
 }
 
 string &rtrim(string &s) {
-#ifdef __USE_STD_STRING__
   s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
-#else
-  assert(false);
-#endif
   return s;
 }
 
@@ -172,6 +169,11 @@ string string_trim(const string &str) {
   string ret = str;
   return ltrim(rtrim(ret));
 }
+#else
+string string_trim(const string &str) {
+  return str.trim();
+}
+#endif
 
 int8_t string_charAt(const string &str, int idx) {
   return str.at(idx);
@@ -241,7 +243,7 @@ template<> string convert_to_string<string>(string str) {
   return str;
 }
 
-string readFirstLineFile(string filename) {
+string readFirstLineFile(const string &filename) {
 #ifdef __USE_STD_STRING__
   ifstream fs(filename.c_str());
   string line;
