@@ -1006,6 +1006,10 @@ public:
     printf("length is %d\n", length);
   }
 
+  bool equals(__T__ *to) {
+    return this == this;
+  }
+
   uint32_t hashcode(void) {
     return (uintptr_t)this;
   }

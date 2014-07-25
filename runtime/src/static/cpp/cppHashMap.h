@@ -6,6 +6,8 @@
 #include <algorithm>
 #include "DeliteCpp.h"
 
+//Note: Use unsigned integer types to enable right shift with fill zeros (e.g., hc)
+
 template <class K>
 class cppHashMap {
 private:
@@ -74,7 +76,7 @@ public:
     int32_t currhash = indices[pos + 1];
 
     int32_t mask = indices_length - 1;
-    while (currelem != -1 && (currhash != hc)) { // delite_equals<K>(keys[currelem],key)) {
+    while (currelem != -1 && ((currhash != hc) || (keys[currelem] != key))) {
       pos = (pos + 2) & mask;
       currelem = indices[pos];
       currhash = indices[pos + 1];
@@ -91,7 +93,7 @@ public:
     int32_t currhash = indices[pos + 1];
     
     int32_t mask = indices_length - 1;
-    while (currelem != -1 && (currhash != hc)) {// || delite_equals<K>(keys[currelem],key))) {
+    while (currelem != -1 && ((currhash != hc) || (keys[currelem] != key))) {
       pos = (pos + 2) & mask;
       currelem = indices[pos];
       currhash = indices[pos + 1];
@@ -125,7 +127,7 @@ public:
     int32_t *nindices = new int32_t[indices_length * 2];
     std::fill_n(nindices, indices_length*2, -1);;
     K *nkeys = new K[keys_length * 2]();
-    int32_t relbits = numTrailingZeros(indices_length);
+    relbits = numTrailingZeros(indices_length);
     int32_t mask = 2 * indices_length - 1;
 
     // copy raw data
@@ -137,8 +139,8 @@ public:
     while (i < indices_length) {
       int32_t elem = indices[i];
       if (elem != -1) {
-        int32_t hash = indices[i + 1];
-        int32_t pos = (hash >> (32 - relbits0)) * 2;
+        uint32_t hash = indices[i + 1];
+        uint32_t pos = (hash >> (32 - relbits0)) * 2;
         
         // insert it into nindices
         int32_t currelem = nindices[pos];
@@ -258,7 +260,7 @@ public:
     int32_t currhash = indices[pos + 1];
 
     int32_t mask = indices_length - 1;
-    while (currelem != -1 && (currhash != hc)) { // delite_equals<K>(keys[currelem],key)) {
+    while (currelem != -1 && ((currhash != hc) || !(keys[currelem]->equals(key)))) {
       pos = (pos + 2) & mask;
       currelem = indices[pos];
       currhash = indices[pos + 1];
@@ -275,7 +277,7 @@ public:
     int32_t currhash = indices[pos + 1];
     
     int32_t mask = indices_length - 1;
-    while (currelem != -1 && (currhash != hc)) {// || delite_equals<K>(keys[currelem],key))) {
+    while (currelem != -1 && ((currhash != hc) || !(keys[currelem]->equals(key)))) {
       pos = (pos + 2) & mask;
       currelem = indices[pos];
       currhash = indices[pos + 1];
@@ -309,7 +311,7 @@ public:
     int32_t *nindices = new int32_t[indices_length * 2];
     std::fill_n(nindices, indices_length*2, -1);;
     K **nkeys = new K*[keys_length * 2]();
-    int32_t relbits = numTrailingZeros(indices_length);
+    relbits = numTrailingZeros(indices_length);
     int32_t mask = 2 * indices_length - 1;
 
     // copy raw data
@@ -321,8 +323,8 @@ public:
     while (i < indices_length) {
       int32_t elem = indices[i];
       if (elem != -1) {
-        int32_t hash = indices[i + 1];
-        int32_t pos = (hash >> (32 - relbits0)) * 2;
+        uint32_t hash = indices[i + 1];
+        uint32_t pos = (hash >> (32 - relbits0)) * 2;
         
         // insert it into nindices
         int32_t currelem = nindices[pos];
