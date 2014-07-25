@@ -5,6 +5,7 @@
 namespace delite
 {
 
+//TODO: compare http://code.google.com/p/re2/source/browse/re2/stringpiece.h
 class string {
 private:
   const char *_ptr;

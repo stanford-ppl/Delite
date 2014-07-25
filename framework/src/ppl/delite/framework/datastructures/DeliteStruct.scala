@@ -753,9 +753,15 @@ struct __T__D {
       val elemHashcode = elems.map { e =>
         if (isPrimitiveType(baseType(e._2))) "delite_hashcode(" + e._1 + ")"
         else e._1 + "->hashcode()"
-      }.mkString("(",") ^ (",")")
+      }
       stream.println("\tuint32_t hashcode(void) {")
-      stream.println("\t\treturn " + elemHashcode + ";")
+      stream.println("\t\tint32_t hc;")
+      stream.println("\t\tint32_t ret = 0;")
+      for(hc <- elemHashcode) {
+        stream.println("\t\thc = " + hc + ";")
+        stream.println("\t\tret = ret * 41 + hc;")
+      }
+      stream.println("\t\treturn ret;")
       stream.println("\t}")
 
       // free

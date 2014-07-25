@@ -60,6 +60,10 @@ public:
     return hm;
   }
 
+  int32_t indsz(void) { return indices_length; }
+
+  int32_t datasz(void) { return keys_length; }
+
   int32_t size(void) { return sz; }
 
   int32_t get(K key) {
@@ -239,6 +243,10 @@ public:
     for(int i=0; i<n; i++) hm->put(i);
     return hm;
   }
+
+  int32_t indsz(void) { return indices_length; }
+
+  int32_t datasz(void) { return keys_length; }
 
   int32_t size(void) { return sz; }
 

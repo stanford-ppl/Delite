@@ -173,10 +173,10 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
           out.append("\tjclass cls = env->FindClass(\"generated/scala/container/HashMapImpl$mc%s$sp\");\n".format(JNITypeDescriptor(tp_key)))
         else
           out.append("\tjclass cls = env->FindClass(\"generated/scala/container/HashMapImpl\");\n")
-        out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(Lscala/reflect/Manifest;)V\");\n")
-        out.append("\tjobject obj = env->NewObject(cls,mid,m);\n")
+        out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(IILscala/reflect/Manifest;)V\");\n")
+        out.append("\tjobject obj = env->NewObject(cls,mid,sym->indsz(),sym->datasz(),m);\n")
         out.append("\tfor(int i=0; i<sym->size(); i++) {\n")
-        out.append("\t\t%s jkey = sendCPPtoJVM_%s(env,sym->get(keys[i]));\n".format(JNIType(tp_key),mangledName(remapHost(tp_key))))
+        out.append("\t\t%s jkey = sendCPPtoJVM_%s(env,keys[i]);\n".format(JNIType(tp_key),mangledName(remapHost(tp_key))))
         out.append("\t\tjmethodID mid_put = env->GetMethodID(cls,\"put\",\"(%s)I\");\n".format(JNITypeDescriptor(tp_key)))
         out.append("\t\tenv->CallIntMethod(obj,mid_put,jkey);\n")
         if (!isPurePrimitiveType(tp_key)) out.append("\t\tenv->DeleteLocalRef(jkey);\n")
