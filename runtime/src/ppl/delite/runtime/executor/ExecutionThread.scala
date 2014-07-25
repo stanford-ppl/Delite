@@ -38,7 +38,7 @@ class ExecutionThread extends Runnable {
       }
       catch {
         case i: InterruptedException => continue = false //another thread threw an exception -> exit silently
-        case e: Exception => {
+        case e: Throwable => {
           Delite.shutdown(e)
           continue = false
         }
