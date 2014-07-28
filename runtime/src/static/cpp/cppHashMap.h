@@ -76,7 +76,7 @@ public:
     int32_t currhash = indices[pos + 1];
 
     int32_t mask = indices_length - 1;
-    while (currelem != -1 && ((currhash != hc) || (keys[currelem] != key))) {
+    while (currelem != -1 && ((currhash != hc) || !(delite_equals(keys[currelem],key)))) {
       pos = (pos + 2) & mask;
       currelem = indices[pos];
       currhash = indices[pos + 1];
@@ -93,7 +93,7 @@ public:
     int32_t currhash = indices[pos + 1];
     
     int32_t mask = indices_length - 1;
-    while (currelem != -1 && ((currhash != hc) || (keys[currelem] != key))) {
+    while (currelem != -1 && ((currhash != hc) || !(delite_equals(keys[currelem],key)))) {
       pos = (pos + 2) & mask;
       currelem = indices[pos];
       currhash = indices[pos + 1];
