@@ -29,6 +29,12 @@ public:
         int socketId = threadId / numCoresPerSocket % numSockets;
         return socketId;
     }
+
+    int activeSockets() {
+        if (numThreads >= numCores()) return numSockets;
+        else return threadToSocket(numThreads-1)+1;
+    }
+
 };
 
 #endif

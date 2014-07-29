@@ -2193,7 +2193,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     stream.println(/*{*/"} // end fat loop " + symList.map(quote).mkString(","))
     
     if (streamVars.length > 0) {
-      emitValDef(quote(streamVars(0))+"_stream_d",remap(Manifest.Unit),fieldAccess(quote(streamVars(0))+"_stream","close()"))
+      stream.println(fieldAccess(quote(streamVars(0))+"_stream","close();"))
     }
 
     // finalizer
@@ -2285,7 +2285,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         stream.println("while (" + fieldAccess(streamSym,"position") + " < end) {")
         emitMethodCall("process",List("__act2","-1","tid",streamSym))
         stream.println("}")
-        emitValDef(streamSym+"_d",remap(Manifest.Unit),fieldAccess(streamSym,"close()"))
+        stream.println(fieldAccess(streamSym,"close();"))
       }
       else {
         emitValDef("isEmpty",remap(Manifest.Boolean),"end-start <= 0")
@@ -4103,7 +4103,7 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
 
   def emitVarDef(name: String, tpe: String, init: String) {
     tpe match {
-      case "void" => stream.println(init + ";")
+      case "void" => //
       case _ =>
         stream.println(remapWithRef(tpe) + name + " = " + init + ";")
     }

@@ -35,7 +35,7 @@ trait CCompile extends CodeCache {
 
   def headers = headerBuffer.map(_._2)
 
-  protected def deliteLibs = Config.deliteBuildHome + sep + "libraries" + sep + target
+  protected def deliteLibs = Seq(Config.deliteBuildHome + sep + "libraries" + sep + target, staticResources)
 
   def addKernel(op: DeliteOP) { 
     op match {
@@ -74,7 +74,7 @@ trait CCompile extends CodeCache {
     if (modules.exists(_.needsCompile)) {
       val includes = modules.flatMap(m => List(config.headerPrefix + sourceCacheHome + m.name, config.headerPrefix + Compilers(Targets.getHostTarget(target)).sourceCacheHome + m.name)).toArray ++ 
                      config.headerDir ++ Array(config.headerPrefix + staticResources)
-      val libs = config.libs ++ Directory(deliteLibs).files.withFilter(f => f.extension == OS.libExt || f.extension == OS.objExt).map(_.path)
+      val libs = config.libs ++ deliteLibs.map(Directory(_).files.withFilter(f => f.extension == OS.libExt).map(_.path)).flatten
       val sources = (sourceBuffer.map(s => sourceCacheHome + "runtime" + sep + s._2) ++ kernelBuffer.map(k => sourceCacheHome + "kernels" + sep + k) ++ auxSourceList).toArray
       val degName = ppl.delite.runtime.Delite.inputArgs(0).split('.')
       val configString = Config.numThreads.toString + Config.numCpp + Config.numCuda + Config.numOpenCL

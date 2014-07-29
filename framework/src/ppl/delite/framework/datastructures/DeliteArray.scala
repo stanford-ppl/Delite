@@ -939,12 +939,13 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case a@DeliteArrayNew(n,m,t) => 
       // NOTE: DSL operations should not rely on the fact that JVM initializes arrays with 0
-      if (t.partition) stream.println("//partitioned array follows")
       stream.println("assert(" + quote(n) + " < (size_t)-1);")
-      if (cppMemMgr == "refcnt")  
+      if (t.partition)
+        emitValDef(sym, "new " + remap(sym.tp) + "Numa("+quote(n)+",0,config->activeSockets())")
+      else if (cppMemMgr == "refcnt")  
         stream.println(remap(sym.tp) + " " + quote(sym) + "(new " + unwrapSharedPtr(remap(sym.tp)) + "(" + quote(n) + "), " + unwrapSharedPtr(remap(sym.tp)) + "D());")
       else
-        emitValDef(sym, "new " + remap(sym.tp) + "Local(" + quote(n) + ")")
+        emitValDef(sym, "new " + remap(sym.tp) + "(" + quote(n) + ")")
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + "->length")
     case DeliteArrayApply(da, idx) =>
@@ -986,35 +987,30 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
   }
 
   protected val deliteArrayString = """
+#include <numa.h>
 using namespace std;
+
 class __T__ {
 public:
-  __TARG__ *data; //FIXME
-  size_t length;
-  virtual __TARG__ apply(size_t idx) =0;
-  virtual void update(size_t idx, __TARG__ val) =0;
-};
-
-class __T__Local: public __T__ {
-public:
   __TARG__ *data;
+  size_t length;
 
-  __T__Local(size_t _length) {
+  __T__(size_t _length) {
     data = new __TARG__[_length]();
     length = _length;
     //printf("allocated __T__, size %lu, %p\n",_length,this);
   }
 
-  __T__Local(__TARG__ *_data, size_t _length) {
+  __T__(__TARG__ *_data, size_t _length) {
     data = _data;
     length = _length;
   }
 
-  __TARG__ apply(size_t idx) {
+  virtual __TARG__ apply(size_t idx) {
     return data[idx];
   }
 
-  void update(size_t idx, __TARG__ val) {
+  virtual void update(size_t idx, __TARG__ val) {
     data[idx] = val;
   }
 
@@ -1023,8 +1019,8 @@ public:
   }
 };
 
-struct __T__LocalD {
-  void operator()(__T__Local *p) {
+struct __T__D {
+  void operator()(__T__ *p) {
     //printf("__T__: deleting %p\n",p);
     delete[] p->data;
   }
@@ -1037,10 +1033,9 @@ public:
   size_t *starts;
   size_t *ends;
   size_t numChunks;
-  __TARG__ *data = NULL;
 
-  __T__Numa(size_t _length, size_t _numGhostCells, size_t _numChunks) {
-    length = _length;
+  __T__Numa(size_t _length, size_t _numGhostCells, size_t _numChunks) : __T__(NULL, _length) {
+    //FIXME: transfer function rely on data field
     numGhostCells = _numGhostCells;
     numChunks = _numChunks;
     wrapper = (__TARG__ **)malloc(numChunks*sizeof(__TARG__*));

@@ -30,7 +30,7 @@ class cppFileStream {
   private:
     vector<char*> files;
     vector<size_t> fileLengths;
-    size_t size;
+    size_t idx;
 
     FILE *reader;
     char *text;
@@ -45,7 +45,7 @@ class cppFileStream {
     }
 
   public:
-    size_t idx;
+    size_t size;
     size_t position;
 
     cppFileStream* openCopyAtNewLine(size_t start) {
