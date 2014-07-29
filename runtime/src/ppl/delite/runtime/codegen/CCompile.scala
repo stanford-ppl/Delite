@@ -89,7 +89,7 @@ trait CCompile extends CodeCache {
   def compileInit(root: String) {
     val source = root + "." + ext
     val dest = root + "." + OS.libExt
-    compile(dest, Array(source), config.headerDir, Array())
+    compile(dest, Array(source), config.headerDir, config.libs)
   }
 
   // emit Makefile and call make
