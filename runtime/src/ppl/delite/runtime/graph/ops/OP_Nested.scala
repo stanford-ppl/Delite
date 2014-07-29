@@ -3,6 +3,8 @@ package ppl.delite.runtime.graph.ops
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import scala.collection.mutable.{HashSet,HashMap}
+import scala.collection.immutable.SortedSet
+
 /**
  * Author: Kevin J. Brown
  * Date: 1/20/11
@@ -62,7 +64,7 @@ abstract class OP_Nested extends DeliteOP {
       }
       if(lastMutators.filter(_.scheduledResource == idx).nonEmpty) mset += m
     }
-    mutableInputs = mset.toSet
+    mutableInputs = SortedSet.empty[(DeliteOP,String)] ++ mset
     //val mset = nestedGraphs.flatMap(_.schedule(idx).toArray.flatMap(op=>op.getMutableInputs)).map(_._2).toSet
     //mutableInputs = mutableInputs filter (i => mset contains (i._2))    
   }

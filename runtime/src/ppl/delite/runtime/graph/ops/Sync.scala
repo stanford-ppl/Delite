@@ -156,7 +156,7 @@ object Sync {
   }
 
   private def addSyncToSchedule() {
-    val (updateSyncs,nonUpdateSyncs) = syncSet.values.partition(s => s.isInstanceOf[SendUpdate] || s.isInstanceOf[ReceiveUpdate])
+    val (updateSyncs,nonUpdateSyncs) = syncSet.values.toSeq.sortBy(_.toString).partition(s => s.isInstanceOf[SendUpdate] || s.isInstanceOf[ReceiveUpdate])
 
     for (sync <- nonUpdateSyncs) {
       sync match {
@@ -208,11 +208,11 @@ object Sync {
     case Targets.OpenCL => resource
   }
 
-  def dataDeps(op: DeliteOP) = op.getInputs.toSet -- _graph.inputs
+  def dataDeps(op: DeliteOP) = op.getInputSet -- _graph.inputs
   def allDeps(op: DeliteOP) = op.getDependencies -- _graph.inputOps
   def otherDeps(op: DeliteOP) = allDeps(op) -- dataDeps(op).map(_._1)
   def mutableDeps(op: DeliteOP) = op.getMutableInputs -- _graph.inputs
-  def mutableDepConsumers(op: DeliteOP, sym: String) = op.consumers.filter(c => c.getInputs.exists(_._2 == sym))
+  def mutableDepConsumers(op: DeliteOP, sym: String) = op.getConsumers.filter(c => c.getInputs.exists(_._2 == sym))
 
   private def schedule = _graph.schedule
   private var _graph: DeliteTaskGraph = _

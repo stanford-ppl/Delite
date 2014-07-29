@@ -89,7 +89,8 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
     var notDone = true
     val deps = op.getDependencies
     while (i < resourceList.length && notDone) {
-      if (deps.contains(schedule(resourceList(i)).peekLast)) {
+      val last = schedule(resourceList(i)).peekLast
+      if (last != null && deps.contains(last)) {
         scheduleOn(op, schedule, resourceList(i))
         notDone = false
         if (nextThread == i) nextThread = (nextThread + 1) % resourceList.length

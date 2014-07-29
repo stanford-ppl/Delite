@@ -14,9 +14,12 @@ import scala.collection.mutable.HashSet
 
 trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsExp with OrderingOpsExp => // FIXME: mix in prim somewhere else
 	
+  case class PartitionTag[T](name: String, var partition: Boolean) extends StructTag[T]
+  def deliteStructTag[T:Manifest] = PartitionTag[T](structName(manifest[T]), false)
+
   abstract class DeliteStruct[T:Manifest] extends AbstractStruct[T] with DeliteOp[T] {
     type OpType <: DeliteStruct[T]
-    val tag = classTag[T]
+    val tag = deliteStructTag[T]
 
     def copyTransformedElems(e: => Seq[(String, Rep[Any])]): Seq[(String, Rep[Any])] = 
       original.map(p=>(p._2.asInstanceOf[OpType]).elems.map(e=>(e._1,p._1(e._2)))).getOrElse(e)

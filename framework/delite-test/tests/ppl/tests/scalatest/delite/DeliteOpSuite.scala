@@ -443,19 +443,19 @@ trait DeliteFileReader extends DeliteTestBase {
     val numElems = 6
     val elem = unit("a")
 
-    val a1 = DeliteNewFileReader.readLines(path){ line => 
+    val a1 = DeliteFileReader.readLines(path){ line => 
       val fields = line.split(" ")
       fields(0)
     }
     collectArray(a1, numLines, i => elem)
 
-    val a2 = DeliteNewFileReader.readLines(path){ line => 
+    val a2 = DeliteFileReader.readLines(path){ line => 
       val fields = line.split(" ")
       (fields(0), fields(0))
     }
     collectArray(a2, numLines, i => (elem, elem))
 
-    val a3 = DeliteNewFileReader.readLines(path){ line => 
+    val a3 = DeliteFileReader.readLines(path){ line => 
       val fields = line.split(" ")
       DeliteArray.fromFunction(fields.length)(i => fields(i))
     }
@@ -464,13 +464,13 @@ trait DeliteFileReader extends DeliteTestBase {
       collectArray(a3(i), i+1, i => elem)
     }
 
-    val a4 = DeliteNewFileReader.readLinesFlattened(path){ line => 
+    val a4 = DeliteFileReader.readLinesFlattened(path){ line => 
       val fields = line.split(" ")
       DeliteArray.fromFunction(fields.length)(i => fields(i))
     }
     collectArray(a4, numElems, i => elem)
 
-    val a5 = DeliteNewFileReader.readLinesFlattened(path){ line => 
+    val a5 = DeliteFileReader.readLinesFlattened(path){ line => 
       val fields = line.split(" ")
       DeliteArray.fromFunction(fields.length)(i => (fields(i), fields(i)))
     }

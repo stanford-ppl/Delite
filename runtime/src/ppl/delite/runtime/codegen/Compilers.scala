@@ -30,6 +30,8 @@ object Compilers {
   }
 
   def compileSchedule(graph: DeliteTaskGraph): StaticSchedule = {
+    CodeCache.clearChecksum() //about to create new code so temporarily invalidate the cache
+
     //generate executable(s) for all the ops in each proc
     //TODO: this is a poor method of separating CPU from GPU, should be encoded - essentially need to loop over all nodes
     val schedule = graph.schedule
@@ -84,7 +86,10 @@ object Compilers {
     }
     
     val expectedResources = for (i <- 0 until schedule.numResources if !schedule(i).isEmpty) yield i
-    createSchedule(classLoader, ScalaExecutableGenerator.getPackage(graph), schedule.numResources, expectedResources)
+    val executables = createSchedule(classLoader, ScalaExecutableGenerator.getPackage(graph), schedule.numResources, expectedResources)
+
+    CodeCache.addChecksum() //if we've reached this point everything has compiled and loaded successfully
+    executables
   }
 
   def createSchedule(classLoader: ClassLoader, path: String, numResources: Int, expectedResources: Seq[Int]) = {

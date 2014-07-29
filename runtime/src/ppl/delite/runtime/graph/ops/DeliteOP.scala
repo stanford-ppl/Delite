@@ -2,6 +2,7 @@ package ppl.delite.runtime.graph.ops
 
 import ppl.delite.runtime.graph._
 import ppl.delite.runtime.graph.targets._
+import scala.collection.immutable.SortedSet
 
 /**
  * Author: Kevin J. Brown
@@ -11,6 +12,11 @@ import ppl.delite.runtime.graph.targets._
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
+
+object DeliteOP {
+  //the ordering is arbitary, we just want the generated code to be consistent for the sake of the code cache
+  implicit val deliteOpOrdering: Ordering[DeliteOP] = Ordering.by(_.id)
+}
 
 abstract class DeliteOP {
 
@@ -33,13 +39,13 @@ abstract class DeliteOP {
 
   def supportsTarget(target: Targets.Value): Boolean = supportedTargets contains target
 
-  def getOutputs = outputTypesMap.head._2.keySet - "functionReturn"
+  def getOutputs = SortedSet.empty[String] ++ (outputTypesMap.head._2.keySet - "functionReturn")
 
   def stencil(symbol: String) = stencilMap(symbol)
   def stencilOrElse(symbol: String)(orElse: => Stencil) = stencilMap.getOrElse(symbol, orElse)
 
   //set of all incoming graph edges for this op
-  private[graph] var dependencies = Set.empty[DeliteOP]
+  private[graph] var dependencies = SortedSet.empty[DeliteOP]
 
   final def getDependencies : Set[DeliteOP] = dependencies
 
@@ -58,7 +64,7 @@ abstract class DeliteOP {
   }
 
   //set of all outgoing graph edges for this op
-  private[graph] var consumers = Set.empty[DeliteOP]
+  private[graph] var consumers = SortedSet.empty[DeliteOP]
 
   final def getConsumers : Set[DeliteOP] = consumers
 
@@ -87,6 +93,7 @@ abstract class DeliteOP {
   private[graph] var inputList: List[(DeliteOP, String)] = Nil
 
   final def getInputs : Seq[(DeliteOP, String)] = inputList
+  final def getInputSet: Set[(DeliteOP, String)] = SortedSet(inputList:_*)
 
   final def addInput(op: DeliteOP, name: String) {
     inputList = (op, name) :: inputList
@@ -114,7 +121,7 @@ abstract class DeliteOP {
   }
 
   //subset of inputs containing only the inputs that the op can mutate
-  private[graph] var mutableInputs = Set.empty[(DeliteOP, String)]
+  private[graph] var mutableInputs = SortedSet.empty[(DeliteOP, String)]
 
   final def getMutableInputs : Set[(DeliteOP, String)] = mutableInputs
 
@@ -126,7 +133,7 @@ abstract class DeliteOP {
   val mutableInputsCondition = new collection.mutable.HashMap[String, List[(DeliteOP,Boolean)]]
 
   //subset of dependencies for anti-deps
-  private[graph] var antiDeps = Set.empty[DeliteOP]
+  private[graph] var antiDeps = SortedSet.empty[DeliteOP]
 
   final def getAntiDeps: Set[DeliteOP] = antiDeps
   final def addAntiDep(op: DeliteOP) {

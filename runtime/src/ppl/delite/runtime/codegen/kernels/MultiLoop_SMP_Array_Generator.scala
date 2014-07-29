@@ -70,15 +70,11 @@ trait MultiLoop_SMP_Array_Generator {
 
   //the compiler multiLoop api
   protected def allocateOutput(): String
-  protected def processRange(output: String, start: String, end: String): String
+  protected def processLocal(outputSym: String): String
+  protected def combineLocal(acc: String)
   protected def combine(acc: String, neighbor: String)
-  protected def postProcess(acc: String)
-  protected def postProcInit(acc: String)
-  protected def postCombine(acc: String, neighbor: String)
   protected def finalize(acc: String)
-  protected def dynamicScheduler(outputSym: String): String
-  protected def dynamicCombine(acc: String)
-  protected def dynamicPostCombine(acc: String)
+  protected def postCombine(acc: String)
   protected def beginProfile()
   protected def endProfile()
 
@@ -91,7 +87,7 @@ trait MultiLoop_SMP_Array_Generator {
     //determine range of chunk
     val outSym = allocateOutput()
     
-    var acc = dynamicScheduler(outSym)
+    var acc = processLocal(outSym)
 
     def treeReduction(sync: String, needsCombine: Boolean) { //combines thread-local results and guarantees completion of all chunks by the time the master chunk returns
       var half = chunkIdx
@@ -111,11 +107,11 @@ trait MultiLoop_SMP_Array_Generator {
     }
 
     if (op.needsCombine) {
-      dynamicCombine(acc)
+      combineLocal(acc)
       treeReduction("A", true)
     }
     if (op.needsPostProcess) {
-      dynamicPostCombine(acc)
+      postCombine(acc)
     }
 
     if (Config.profile)

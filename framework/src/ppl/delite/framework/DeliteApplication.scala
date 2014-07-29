@@ -15,7 +15,7 @@ import codegen.scala.TargetScala
 import codegen.restage.TargetRestage
 import codegen.Target
 import ops.DeliteOpsExp
-import transform.DeliteTransform
+import transform.{DeliteTransform, DistributedArrayTransformer}
 
 trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransform with DeliteAllOverridesExp {  
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
@@ -96,6 +96,8 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
     
     // set transformers to be applied before codegen
     deliteGenerator.transformers = transformers
+    val distributedTransformer = new DistributedArrayTransformer{ val IR: DeliteApplication.this.type = DeliteApplication.this }
+    deliteGenerator.transformers :+= distributedTransformer
     
     //System.out.println("Staging application")
     

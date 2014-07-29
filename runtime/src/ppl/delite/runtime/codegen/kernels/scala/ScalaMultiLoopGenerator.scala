@@ -54,16 +54,16 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     out.append(result+"\n")
   }
 
-  protected def dynamicScheduler(outputSym: String): String = {
+  protected def processLocal(outputSym: String): String = {
     out.append("var dIdx = "+chunkIdx+"\n")
     out.append("val numDynamicChunks = "+headerObject + ".numDynamicChunks\n")
     out.append("val startOffset = "+closure+".loopStart\n")
     out.append("val size: Long = "+closure+".loopSize\n")
     out.append("while(dIdx < numDynamicChunks){\n")
-    out.append("val start: Int = (startOffset + size*dIdx/numDynamicChunks).asInstanceOf[Int]\n")
-    out.append("val end: Int = (startOffset + size*(dIdx+1)/numDynamicChunks).asInstanceOf[Int]\n")  
+    out.append("val start: Long = (startOffset + size*dIdx/numDynamicChunks)\n")
+    out.append("val end: Long = (startOffset + size*(dIdx+1)/numDynamicChunks)\n")  
     //out.append("println(\"start: \" + start + \" end: \" +end + \" loopSize: \" + "+closure+".loopSize)\n")
-    out.append("val accDynamic = "+closure+".processRange("+outputSym+",start,end)\n")
+    out.append("val accDynamic = "+closure+".processRange("+outputSym+",start,end,"+chunkIdx+")\n")
     out.append(headerObject+".dynamicSet(dIdx,accDynamic)\n")
     out.append("dIdx = "+headerObject+".getDynamicChunkIndex()\n")
     out.append("}\n")
@@ -73,21 +73,23 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     out.append("val acc = "+headerObject+".dynamicGet(myThreadDynamicIndexStart)\n")
     "acc"
   }
-  protected def dynamicCombine(acc: String) = {
+
+  protected def combineLocal(acc: String) = {
     out.append("var i = 1+myThreadDynamicIndexStart\n")
     out.append("while(i < myThreadDynamicIndexEnd){\n")
-    out.append(closure+".combine("+acc+","+headerObject+".dynamicGet(i))\n")
+    combine(acc, headerObject+".dynamicGet(i)")
     out.append("i += 1\n")
     out.append("}\n")
   }
-  protected def dynamicPostCombine(acc: String) = {
+
+  protected def postCombine(acc: String) = {
     if (chunkIdx != 0) {
       postCombine(acc, get("B", chunkIdx-1)) //linear chain combine
     }
     out.append("var j = 1+myThreadDynamicIndexStart\n")
     out.append("var old = "+acc+"\n")
     out.append("while(j < myThreadDynamicIndexEnd){\n")
-    out.append(closure+".postCombine("+headerObject+".dynamicGet(j),old)\n")
+    postCombine(headerObject+".dynamicGet(j)", "old")
     out.append("old = "+headerObject+".dynamicGet(j)\n")
     out.append("j += 1\n")
     out.append("}\n")
@@ -99,10 +101,11 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
 
     out.append("j = myThreadDynamicIndexStart\n")
     out.append("while(j < myThreadDynamicIndexEnd){\n")
-    out.append(closure+".postProcess("+headerObject+".dynamicGet(j))\n")
+    postProcess(headerObject+".dynamicGet(j)")
     out.append("j += 1\n")
     out.append("}\n")
   }
+
   protected def release(name: String, cond: Option[String] = None) {
     // Nothing to do (JVM GC)
   }
@@ -112,29 +115,24 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     "out"
   }
 
-  protected def processRange(outputSym: String, start: String, end: String) = {
-    out.append("val acc = "+closure+".processRange("+outputSym+","+start+","+end+")\n")
-    "acc"
-  }
-
   protected def combine(acc: String, neighbor: String) {
-    out.append(closure+".combine("+acc+", "+neighbor+")\n")
+    out.append(closure+".combine("+acc+", "+neighbor+", "+chunkIdx+")\n")
   }
 
   protected def postProcess(acc: String) {
-    out.append(closure+".postProcess("+acc+")\n")
+    out.append(closure+".postProcess("+acc+","+chunkIdx+")\n")
   }
 
   protected def postProcInit(acc: String) {
-    out.append(closure+".postProcInit("+acc+")\n")
+    out.append(closure+".postProcInit("+acc+","+chunkIdx+")\n")
   }
 
   protected def postCombine(acc: String, neighbor: String) {
-    out.append(closure+".postCombine("+acc+", "+neighbor+")\n")
+    out.append(closure+".postCombine("+acc+", "+neighbor+", "+chunkIdx+")\n")
   }
 
   protected def finalize(acc: String) {
-    out.append(closure+".finalize("+acc+")\n")
+    out.append(closure+".finalize("+acc+","+chunkIdx+")\n")
   }
 
   protected def set(syncObject: String, idx: Int, value: String) {
@@ -252,22 +250,17 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
     out.append(" = closure.alloc\n")
   }
 
-  //add code to code generate an atomic integer method
-  //you can pull and set from this 
   protected def writeSynchronizedOffset(){
-    if(op.numDynamicChunks == "-1"){
-      //do formula
-      out.append("private val proposedNumberOfDynamicChunks = (closure.loopSize/(Math.log10(closure.loopSize.toDouble)*(500.0/"+numChunks+") )).toInt\n")
-    }
-    else {
-      out.append("private val proposedNumberOfDynamicChunks = "+op.numDynamicChunks+ "\n")
-    }
-    //For Debug
-    //out.append("println(\"numDynamicChunks: \" + numDynamicChunks)\n")
+    out.append("private val proposedNumberOfDynamicChunks = ")
+    if(op.numDynamicChunks == "-1")
+      out.append("(closure.loopSize/(Math.log10(closure.loopSize.toDouble)*(500.0/"+numChunks+"))).toInt\n")
+    else
+      out.append(op.numDynamicChunks+"\n")
     out.append("val numDynamicChunks = if(proposedNumberOfDynamicChunks <= "+numChunks+" || "+numChunks+" == 1 || closure.loopSize < proposedNumberOfDynamicChunks) "+numChunks+" else proposedNumberOfDynamicChunks\n")
     out.append("private val offset = new AtomicInteger("+numChunks+")\n")
     out.append("def getDynamicChunkIndex() : Int = { offset.getAndAdd(1) }\n")
   }
+
   protected def writeSync(key: String) {
     val outputType = op.outputType
 
@@ -305,21 +298,18 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   protected def dynamicWriteSync() {
     val outputType = op.outputType
 
-    out.append("private val dynamicNotReady = new AtomicIntegerArray(numDynamicChunks)\n")
-    out.append("private val _dynamicResult")
-    out.append(" : Array[")
+    out.append("private val dynamicResult = new AtomicReferenceArray[")
     out.append(outputType)
-    out.append("] = new Array["+outputType+"](numDynamicChunks)\n")
+    out.append("](numDynamicChunks)\n")
 
     out.append("def dynamicGet(i: Int) :")
     out.append(outputType)
-    out.append(" = { while (dynamicNotReady.get(i)==0) { }; _dynamicResult(i) }\n")
+    out.append(" = { while (dynamicResult.get(i) eq null) { }; dynamicResult.get(i) }\n")
 
     out.append("def dynamicSet")
-    out.append("(i: Int,dynamicResult: ")
+    out.append("(i: Int, res: ")
     out.append(outputType)
-    out.append(") { _dynamicResult(i)")
-    out.append(" = dynamicResult; dynamicNotReady.set(i,1);}\n")
+    out.append(") { dynamicResult.set(i,res) }\n")
   }
 
   protected def className = "MultiLoopHeader_" + op.id

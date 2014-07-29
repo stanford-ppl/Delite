@@ -87,7 +87,8 @@ final class SMPStaticScheduler extends StaticScheduler with ParallelUtilizationC
     var notDone = true
     val deps = op.getDependencies
     while (i < numThreads && notDone) {
-      if (deps.contains(schedule(i).peekLast)) {
+      val last = schedule(i).peekLast
+      if (last != null && deps.contains(last)) {
         scheduleOn(op, schedule, i)
         notDone = false
         if (nextThread == i) nextThread = (nextThread + 1) % numThreads

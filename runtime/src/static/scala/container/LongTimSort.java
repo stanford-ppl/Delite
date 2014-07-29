@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2009 Google Inc.  All Rights Reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -58,7 +59,7 @@ package generated.scala.container;
  *
  * @author Josh Bloch
  */
-class TimSort {
+class LongTimSort {
     /**
      * This is the minimum sized sequence that will be merged.  Shorter
      * sequences will be lengthened by calling binarySort.  If the entire
@@ -81,12 +82,12 @@ class TimSort {
     /**
      * The array being sorted.
      */
-    private final int[] a;
+    private final long[] a;
 
     /**
      * The comparator for this sort.
      */
-    private final Comparator c;
+    private final LongComparator c;
 
     /**
      * When we get into galloping mode, we stay there until both runs win less
@@ -111,9 +112,13 @@ class TimSort {
     private static final int INITIAL_TMP_STORAGE_LENGTH = 256;
 
     /**
-     * Temp storage for merges.
+     * Temp storage for merges. A workspace array may optionally be
+     * provided in constructor, and if so will be used as long as it
+     * is big enough.
      */
-    private int[] tmp;
+    private long[] tmp;
+    private int tmpBase; // base of tmp array slice
+    private int tmpLen;  // length of tmp array slice
 
     /**
      * A stack of pending runs yet to be merged.  Run i starts at
@@ -134,17 +139,30 @@ class TimSort {
      *
      * @param a the array to be sorted
      * @param c the comparator to determine the order of the sort
+     * @param work a workspace array (slice)
+     * @param workBase origin of usable space in work array
+     * @param workLen usable size of work array
      */
-    private TimSort(int[] a, Comparator c) {
+    private LongTimSort(long[] a, LongComparator c, long[] work, int workBase, int workLen) {
         this.a = a;
         this.c = c;
 
         // Allocate temp storage (which may be increased later if necessary)
         int len = a.length;
-        @SuppressWarnings({"unchecked", "UnnecessaryLocalVariable"})
-        int[] newArray = new int[len < 2 * INITIAL_TMP_STORAGE_LENGTH ?
-                                        len >>> 1 : INITIAL_TMP_STORAGE_LENGTH];
-        tmp = newArray;
+        int tlen = (len < 2 * INITIAL_TMP_STORAGE_LENGTH) ?
+            len >>> 1 : INITIAL_TMP_STORAGE_LENGTH;
+        if (work == null || workLen < tlen || workBase + tlen > work.length) {
+            @SuppressWarnings({"unchecked", "UnnecessaryLocalVariable"})
+            long[] newArray = new long[tlen];
+            tmp = newArray;
+            tmpBase = 0;
+            tmpLen = tlen;
+        }
+        else {
+            tmp = work;
+            tmpBase = workBase;
+            tmpLen = workLen;
+        }
 
         /*
          * Allocate runs-to-be-merged stack (which cannot be expanded).  The
@@ -158,28 +176,36 @@ class TimSort {
          */
         int stackLen = (len <    120  ?  5 :
                         len <   1542  ? 10 :
-                        len < 119151  ? 19 : 40);
+                        len < 119151  ? 24 : 40);
         runBase = new int[stackLen];
         runLen = new int[stackLen];
     }
 
     /*
-     * The next two methods (which are package private and static) constitute
-     * the entire API of this class.  Each of these methods obeys the contract
-     * of the public method with the same signature in java.util.Arrays.
+     * The next method (package private and static) constitutes the
+     * entire API of this class.
      */
 
-    static void sort(int[] a, Comparator c) {
-        sort(a, 0, a.length, c);
-    }
+    /**
+     * Sorts the given range, using the given workspace array slice
+     * for temp storage when possible. This method is designed to be
+     * invoked from public methods (in class Arrays) after performing
+     * any necessary array bounds checks and expanding parameters into
+     * the required forms.
+     *
+     * @param a the array to be sorted
+     * @param lo the index of the first element, inclusive, to be sorted
+     * @param hi the index of the last element, exclusive, to be sorted
+     * @param c the comparator to use
+     * @param work a workspace array (slice)
+     * @param workBase origin of usable space in work array
+     * @param workLen usable size of work array
+     * @since 1.8
+     */
+    static void sort(long[] a, int lo, int hi, LongComparator c,
+                         long[] work, int workBase, int workLen) {
+        assert c != null && a != null && lo >= 0 && lo <= hi && hi <= a.length;
 
-    static void sort(int[] a, int lo, int hi, Comparator c) {
-        if (c == null) {
-            java.util.Arrays.sort(a, lo, hi);
-            return;
-        }
-
-        rangeCheck(a.length, lo, hi);
         int nRemaining  = hi - lo;
         if (nRemaining < 2)
             return;  // Arrays of size 0 and 1 are always sorted
@@ -196,7 +222,7 @@ class TimSort {
          * extending short natural runs to minRun elements, and merging runs
          * to maintain stack invariant.
          */
-        TimSort ts = new TimSort(a, c);
+        LongTimSort ts = new LongTimSort(a, c, work, workBase, workLen);
         int minRun = minRunLength(nRemaining);
         do {
             // Identify next run
@@ -243,13 +269,12 @@ class TimSort {
      * @param c comparator to used for the sort
      */
     @SuppressWarnings("fallthrough")
-    private static void binarySort(int[] a, int lo, int hi, int start,
-                                       Comparator c) {
+    private static void binarySort(long[] a, int lo, int hi, int start, LongComparator c) {
         assert lo <= start && start <= hi;
         if (start == lo)
             start++;
         for ( ; start < hi; start++) {
-            int pivot = a[start];
+            long pivot = a[start];
 
             // Set left (and right) to the index where a[start] (pivot) belongs
             int left = lo;
@@ -313,8 +338,7 @@ class TimSort {
      * @return  the length of the run beginning at the specified position in
      *          the specified array
      */
-    private static int countRunAndMakeAscending(int[] a, int lo, int hi,
-                                                    Comparator c) {
+    private static int countRunAndMakeAscending(long[] a, int lo, int hi, LongComparator c) {
         assert lo < hi;
         int runHi = lo + 1;
         if (runHi == hi)
@@ -340,10 +364,10 @@ class TimSort {
      * @param lo the index of the first element in the range to be reversed
      * @param hi the index after the last element in the range to be reversed
      */
-    private static void reverseRange(int[] a, int lo, int hi) {
+    private static void reverseRange(long[] a, int lo, int hi) {
         hi--;
         while (lo < hi) {
-            int t = a[lo];
+            long t = a[lo];
             a[lo++] = a[hi];
             a[hi--] = t;
         }
@@ -503,8 +527,7 @@ class TimSort {
      *    the first k elements of a should precede key, and the last n - k
      *    should follow it.
      */
-    private static int gallopLeft(int key, int[] a, int base, int len, int hint,
-                                      Comparator c) {
+    private static int gallopLeft(long key, long[] a, int base, int len, int hint, LongComparator c) {
         assert len > 0 && hint >= 0 && hint < len;
         int lastOfs = 0;
         int ofs = 1;
@@ -573,8 +596,7 @@ class TimSort {
      * @param c the comparator used to order the range, and to search
      * @return the int k,  0 <= k <= n such that a[b + k - 1] <= key < a[b + k]
      */
-    private static int gallopRight(int key, int[] a, int base, int len,
-                                       int hint, Comparator c) {
+    private static int gallopRight(long key, long[] a, int base, int len, int hint, LongComparator c) {
         assert len > 0 && hint >= 0 && hint < len;
 
         int ofs = 1;
@@ -651,13 +673,12 @@ class TimSort {
         assert len1 > 0 && len2 > 0 && base1 + len1 == base2;
 
         // Copy first run into temp array
-        int[] a = this.a; // For performance
-        int[] tmp = ensureCapacity(len1);
-        System.arraycopy(a, base1, tmp, 0, len1);
-
-        int cursor1 = 0;       // Indexes into tmp array
+        long[] a = this.a; // For performance
+        long[] tmp = ensureCapacity(len1);
+        int cursor1 = tmpBase; // Indexes into tmp array
         int cursor2 = base2;   // Indexes int a
         int dest = base1;      // Indexes int a
+        System.arraycopy(a, base1, tmp, cursor1, len1);
 
         // Move first element of second run and deal with degenerate cases
         a[dest++] = a[cursor2++];
@@ -671,7 +692,7 @@ class TimSort {
             return;
         }
 
-        Comparator c = this.c;  // Use local variable for performance
+        LongComparator c = this.c;  // Use local variable for performance
         int minGallop = this.minGallop;    //  "    "       "     "      "
     outer:
         while (true) {
@@ -768,18 +789,19 @@ class TimSort {
         assert len1 > 0 && len2 > 0 && base1 + len1 == base2;
 
         // Copy second run into temp array
-        int[] a = this.a; // For performance
-        int[] tmp = ensureCapacity(len2);
-        System.arraycopy(a, base2, tmp, 0, len2);
+        long[] a = this.a; // For performance
+        long[] tmp = ensureCapacity(len2);
+        int tmpBase = this.tmpBase;
+        System.arraycopy(a, base2, tmp, tmpBase, len2);
 
         int cursor1 = base1 + len1 - 1;  // Indexes into a
-        int cursor2 = len2 - 1;          // Indexes into tmp array
+        int cursor2 = tmpBase + len2 - 1; // Indexes into tmp array
         int dest = base2 + len2 - 1;     // Indexes into a
 
         // Move last element of first run and deal with degenerate cases
         a[dest--] = a[cursor1--];
         if (--len1 == 0) {
-            System.arraycopy(tmp, 0, a, dest - (len2 - 1), len2);
+            System.arraycopy(tmp, tmpBase, a, dest - (len2 - 1), len2);
             return;
         }
         if (len2 == 1) {
@@ -790,7 +812,7 @@ class TimSort {
             return;
         }
 
-        Comparator c = this.c;  // Use local variable for performance
+        LongComparator c = this.c;  // Use local variable for performance
         int minGallop = this.minGallop;    //  "    "       "     "      "
     outer:
         while (true) {
@@ -838,7 +860,7 @@ class TimSort {
                 if (--len2 == 1)
                     break outer;
 
-                count2 = len2 - gallopLeft(a[cursor1], tmp, 0, len2, len2 - 1, c);
+                count2 = len2 - gallopLeft(a[cursor1], tmp, tmpBase, len2, len2 - 1, c);
                 if (count2 != 0) {
                     dest -= count2;
                     cursor2 -= count2;
@@ -870,7 +892,7 @@ class TimSort {
         } else {
             assert len1 == 0;
             assert len2 > 0;
-            System.arraycopy(tmp, 0, a, dest - (len2 - 1), len2);
+            System.arraycopy(tmp, tmpBase, a, dest - (len2 - 1), len2);
         }
     }
 
@@ -882,8 +904,8 @@ class TimSort {
      * @param minCapacity the minimum required capacity of the tmp array
      * @return tmp, whether or not it grew
      */
-    private int[] ensureCapacity(int minCapacity) {
-        if (tmp.length < minCapacity) {
+    private long[] ensureCapacity(int minCapacity) {
+        if (tmpLen < minCapacity) {
             // Compute smallest power of 2 > minCapacity
             int newSize = minCapacity;
             newSize |= newSize >> 1;
@@ -899,30 +921,11 @@ class TimSort {
                 newSize = Math.min(newSize, a.length >>> 1);
 
             @SuppressWarnings({"unchecked", "UnnecessaryLocalVariable"})
-            int[] newArray = new int[newSize];
+            long[] newArray = new long[newSize];
             tmp = newArray;
+            tmpLen = newSize;
+            tmpBase = 0;
         }
         return tmp;
-    }
-
-    /**
-     * Checks that fromIndex and toIndex are in range, and throws an
-     * appropriate exception if they aren't.
-     *
-     * @param arrayLen the length of the array
-     * @param fromIndex the index of the first element of the range
-     * @param toIndex the index after the last element of the range
-     * @throws IllegalArgumentException if fromIndex > toIndex
-     * @throws ArrayIndexOutOfBoundsException if fromIndex < 0
-     *         or toIndex > arrayLen
-     */
-    private static void rangeCheck(int arrayLen, int fromIndex, int toIndex) {
-        if (fromIndex > toIndex)
-            throw new IllegalArgumentException("fromIndex(" + fromIndex +
-                       ") > toIndex(" + toIndex+")");
-        if (fromIndex < 0)
-            throw new ArrayIndexOutOfBoundsException(fromIndex);
-        if (toIndex > arrayLen)
-            throw new ArrayIndexOutOfBoundsException(toIndex);
     }
 }

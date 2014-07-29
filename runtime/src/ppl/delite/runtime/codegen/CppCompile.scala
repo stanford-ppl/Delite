@@ -15,6 +15,11 @@ object CppCompile extends CCompile {
                                else Array("-w", "-O3", "-fPIC")
   protected def linkFlags = Array("-shared", "-fPIC")
   protected def outputSwitch = "-o"
+  override protected def optionalFeatures = {
+    config.features.collect {
+      case "numa" => "__DELITE_CPP_NUMA__"
+    }
+  }
   
   private val dsFiles = Directory(Path(sourceCacheHome + "datastructures")).files.toList
   override protected def auxSourceList = dsFiles.filter(_.extension == ext).map(_.toAbsolute.toString) :+ (sourceCacheHome + "kernels" + sep + target + "helperFuncs." + ext) :+ (staticResources + "DeliteCpp." + ext) :+ (staticResources + "DeliteCppProfiler." + ext)

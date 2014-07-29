@@ -1,6 +1,7 @@
 package ppl.delite.runtime.graph
 
 import java.io.File
+import scala.collection.immutable.SortedSet
 import _root_.scala.util.parsing.json.JSON
 import ops._
 import targets._
@@ -10,6 +11,7 @@ import ppl.delite.runtime.scheduler.PartialSchedule
 import collection.mutable.{HashSet, HashMap}
 
 object DeliteTaskGraph {
+  import DeliteOP._
 
   //implicit conversion to strings
   implicit def anyToString(obj: Any): String = obj.toString
@@ -330,13 +332,13 @@ object DeliteTaskGraph {
 
     val resultMap = processReturnTypes(op, id)
     val depIds = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
-    var ifDeps = Set.empty[DeliteOP]
+    var ifDeps = SortedSet.empty[DeliteOP]
     for (depId <- depIds) ifDeps += getOp(depId)
     ifDeps ++= (predGraph._inputs.keySet ++ thenGraph._inputs.keySet ++ elseGraph._inputs.keySet) map { getOp(_) }
-    val ifAntiDeps = getFieldList(op, "antiDeps").map(getOp(_)).toSet
+    val ifAntiDeps = SortedSet(getFieldList(op, "antiDeps").map(getOp(_)):_*)
 
     //find inputs at nesting level of the IfThenElse
-    val internalOps = (predGraph.ops ++ thenGraph.ops ++ elseGraph.ops).toSet
+    val internalOps = SortedSet.empty[DeliteOP] ++ predGraph.ops ++ thenGraph.ops ++ elseGraph.ops
     var ifInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
     ifInputs ++= (for ((op,sym) <- Seq(predGraph.result, thenGraph.result, elseGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
     val ifMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
@@ -378,13 +380,13 @@ object DeliteTaskGraph {
     val (bodyGraph, bodyValue) = parseSubGraph(op, "body")
 
     val depIds = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
-    var whileDeps = Set.empty[DeliteOP]
+    var whileDeps = SortedSet.empty[DeliteOP]
     for (depId <- depIds) whileDeps += getOp(depId)
     whileDeps ++= (predGraph._inputs.keySet ++ bodyGraph._inputs.keySet) map { getOp(_) }
-    val whileAntiDeps = getFieldList(op, "antiDeps").map(getOp(_)).toSet
+    val whileAntiDeps = SortedSet(getFieldList(op, "antiDeps").map(getOp(_)):_*)
 
     //find inputs at nesting level of the While
-    val internalOps = (predGraph.ops ++ bodyGraph.ops).toSet
+    val internalOps = SortedSet.empty[DeliteOP] ++ predGraph.ops ++ bodyGraph.ops
     var whileInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
     whileInputs ++= (for ((op,sym) <- Seq(predGraph.result, bodyGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
     val whileMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
@@ -557,10 +559,10 @@ class DeliteTaskGraph {
   def kernelPath: String = _kernelPath
   def appName: String = _appName
   def superGraph: DeliteTaskGraph = _superGraph
-  def symbols: Set[String] = _ops.keys.toSet
-  def ops: Set[DeliteOP] = _ops.values.toSet
-  def inputOps: Set[DeliteOP] = _inputs.values.toSet
-  def inputs: Set[(OP_Input,String)] = _inputs.toSet[(String,OP_Input)].map(i=>Pair(i._2,i._1))
+  def symbols: Set[String] = SortedSet.empty[String] ++ _ops.keys
+  def ops: Set[DeliteOP] = SortedSet.empty[DeliteOP] ++ _ops.values
+  def inputOps: Set[DeliteOP] = SortedSet.empty[DeliteOP] ++ _inputs.values
+  def inputs: Set[(OP_Input,String)] = SortedSet.empty[(OP_Input,String)](Ordering.by(_._2)) ++ _inputs.map(i=>Pair(i._2,i._1))
 
   def replaceOp(old: DeliteOP, op: DeliteOP) {
     //update ops
@@ -577,11 +579,11 @@ class DeliteTaskGraph {
     registerOp(op, true)
 
     //clear op
-    old.dependencies = Set.empty
-    old.consumers = Set.empty
+    old.dependencies = SortedSet.empty
+    old.consumers = SortedSet.empty
     old.inputList = Nil
-    old.mutableInputs = Set.empty
-    old.antiDeps = Set.empty
+    old.mutableInputs = SortedSet.empty
+    old.antiDeps = SortedSet.empty
   }
 
   def totalOps: Set[DeliteOP] = {

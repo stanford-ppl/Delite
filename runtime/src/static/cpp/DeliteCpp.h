@@ -15,11 +15,14 @@
 #include <map>
 #include <sstream>
 #include "cppDeliteArraystring.h"
+#include "Config.h"
 
 /* helper methods and data structures only required for execution with Delite */
 #ifndef __DELITE_CPP_STANDALONE__
 #include <jni.h>
 #endif
+
+extern Config* config;
 
 using namespace std;
 

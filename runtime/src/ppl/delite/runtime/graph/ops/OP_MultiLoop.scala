@@ -8,6 +8,7 @@ package ppl.delite.runtime.graph.ops
 
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.graph._
+import scala.collection.immutable.SortedSet
 
 class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, val numDynamicChunks: String, val numDynamicChunksIsConst: Boolean, func: String, private[graph] var outputTypesMap: Map[Targets.Value,Map[String,String]], val needsCombine: Boolean, val needsPostProcess: Boolean) extends OP_Executable {
 
@@ -47,7 +48,7 @@ class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, v
     h.addConsumer(this)
     for (dep <- getDependencies) dep.replaceConsumer(this, h)
     //map consumes header, multiloop's consumers remain unchanged
-    dependencies = Set(h)
+    dependencies = SortedSet(h)
     inputList = List((h,h.id))
     graph.registerOp(h)
     h

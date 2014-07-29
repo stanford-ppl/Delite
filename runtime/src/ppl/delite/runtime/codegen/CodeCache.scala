@@ -9,12 +9,51 @@ package ppl.delite.runtime.codegen
 import ppl.delite.runtime.Config
 import tools.nsc.io._
 import java.io.FileWriter
+import java.security.MessageDigest
 import collection.mutable.{ArrayBuffer, ListBuffer}
 import ppl.delite.runtime.graph.targets.Targets
 
 /**
  * @author Kevin J. Brown
  */
+
+object CodeCache {
+  private val checksum = File(Config.codeCacheHome + File.separator + "cache.checksum")
+  private val dir = Directory(Config.codeCacheHome)
+
+  def verifyCache() {
+    if (!Config.alwaysKeepCache && (!checksum.exists || !checksumEqual)) {
+      println("[DELITE]: Clearing corrupt code cache")
+      dir.deleteRecursively()
+    }
+  }
+
+  private def checksumEqual(): Boolean = {
+    val saved = checksum.bytes().toArray
+    val current = computeChecksum
+    if (saved.length != current.length) return false
+    for (i <- 0 until saved.length) {
+      if (saved(i) != current(i)) return false
+    }
+    true
+  }
+
+  private def computeChecksum() = {
+    val hash = MessageDigest.getInstance("md5")
+    for (file <- dir.deepFiles if file.name != "cache.checksum") { //we only check file names rather than entire contents for simplicity and speed
+      hash.update(file.name.getBytes)
+    }
+    hash.digest
+  }
+
+  def clearChecksum() {
+    checksum.delete()
+  }
+
+  def addChecksum() {
+    checksum.writeBytes(computeChecksum)
+  }
+}
  
 trait CodeCache {
 
@@ -110,7 +149,7 @@ trait CodeCache {
       writer.close()
     }
 
-    if (!directoriesMatch(tempDir, dir)) { //TODO: due to using HashSets, this isn't perfect (generated code ordering varies)
+    if (!directoriesMatch(tempDir, dir)) {
       copyDirectory(tempDir, dir)
       modules.last.needsCompile = true
     }

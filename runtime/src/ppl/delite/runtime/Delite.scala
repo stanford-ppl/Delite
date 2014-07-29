@@ -178,6 +178,7 @@ object Delite {
   }
 
   def loadSources(graph: DeliteTaskGraph) {
+    CodeCache.verifyCache()
     for (target <- Targets.values) {
       if (graph.targets contains target)
         Compilers(target).cacheDegSources(Directory(Path(graph.kernelPath + File.separator + Compilers(target).target + File.separator).toAbsolute))

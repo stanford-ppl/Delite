@@ -24,7 +24,7 @@ trait DeliteTestConfig {
   // test parameters
   val verbose = props.getProperty("tests.verbose", "false").toBoolean
   val verboseDefs = props.getProperty("tests.verboseDefs", "false").toBoolean
-  val threads = props.getProperty("tests.threads", "1").toInt
+  val threads = props.getProperty("tests.threads", "1").split(",").map(_.toInt)
   val cacheSyms = props.getProperty("tests.cacheSyms", "true").toBoolean
   val javaHome = new File(props.getProperty("java.home", ""))
   val scalaHome = new File(props.getProperty("scala.vanilla.home", ""))
@@ -96,23 +96,25 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
 
 
     // Set runtime parameters for targets and execute runtime
-    for(t <- deliteTestTargets) {
-      // reset runtime configs
-      ppl.delite.runtime.Config.numThreads = 1
-      ppl.delite.runtime.Config.numCuda = 0
-      ppl.delite.runtime.Config.numCpp = 0
-      ppl.delite.runtime.Config.numOpenCL = 0
+    for(target <- deliteTestTargets) {
+      for (num <- threads) {
+        def runtimeConfig(numScala: Int = 1, numCpp: Int = 0, numCuda: Int = 0, numOpenCL: Int = 0) {
+          ppl.delite.runtime.Config.numThreads = numScala
+          ppl.delite.runtime.Config.numCpp = numCpp
+          ppl.delite.runtime.Config.numCuda = numCuda
+          ppl.delite.runtime.Config.numOpenCL = numOpenCL
+        }
 
-      // set runtime config only needed for the current target
-      t match {
-        case "scala" => ppl.delite.runtime.Config.numThreads = threads
-        case "cuda" => ppl.delite.runtime.Config.numCuda = 1
-        case "cpp" => ppl.delite.runtime.Config.numCpp = threads
-        case "opencl" => ppl.delite.runtime.Config.numOpenCL = 1
-        case _ => assert(false)
+        target match {
+          case "scala" => runtimeConfig(numScala = num)
+          case "cpp" => runtimeConfig(numCpp = num)
+          case "cuda" => runtimeConfig(numScala = num, numCuda = 1) //scala or cpp (or both) for host?
+          case "opencl" => runtimeConfig(numScala = num, numOpenCL = 1)
+          case _ => assert(false)
+        }
+        val outStr = execTest(app, args, target, num)
+        checkTest(app, outStr)
       }
-      val outStr = execTest(app, args, t) // if (runtimeExternalProc..)?
-      checkTest(app, outStr)
     }
   }
 
@@ -135,7 +137,6 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
           val info = s.pos.drop(3).takeWhile(_.methodName != "main")
           println(info.map(s => s.fileName + ":" + s.line).distinct.mkString(","))
         }
-        //assert(!app.hadErrors) //TR should enable this check at some time ...
       }
     } finally {
       // concurrent access check
@@ -146,7 +147,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     }
   }
 
-  private def execTest(app: DeliteTestRunner, args: Array[String], target: String) = {
+  private def execTest(app: DeliteTestRunner, args: Array[String], target: String, threads: Int) = {
     println("EXECUTING(" + target + ":" + threads + ")...")
     val name = "test.tmp"
     // Changed mkReport to directly write to a file instead of trying to capture the output stream here.
@@ -173,7 +174,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val output = new File("test.tmp")
     try {
       val javaProc = javaBin.toString
-      val javaArgs = "-server -d64 -XX:+UseCompressedOops -XX:+DoEscapeAnalysis -Xmx16g -Ddelite.threads=" + threads + " -cp " + runtimeClasses + ":" + scalaLibrary + ":" + scalaCompiler
+      val javaArgs = "-server -d64 -XX:+UseCompressedOops -XX:+DoEscapeAnalysis -Xmx16g -Ddelite.threads=" + threads(0) + " -cp " + runtimeClasses + ":" + scalaLibrary + ":" + scalaCompiler
       val cmd = Array(javaProc) ++ javaArgs.split(" ") ++ Array("ppl.delite.runtime.Delite") ++ args
       val pb = new ProcessBuilder(java.util.Arrays.asList(cmd: _*))
       p = pb.start()

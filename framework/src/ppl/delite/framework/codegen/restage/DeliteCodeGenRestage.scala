@@ -301,8 +301,8 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
 
     // delite array
     // HACK: GIterable should be a Record
-    case a@DeliteArrayNew(n,m) if sym.tp.typeArguments(0).erasure.getSimpleName == "GIterable" => emitValDef(sym, "DeliteArray[" + restageStructName(m) + "](" + quote(n) + ")")
-    case a@DeliteArrayNew(n,m) => emitValDef(sym, "DeliteArray[" + remap(m) + "](" + quote(n) + ")")
+    case a@DeliteArrayNew(n,m,t) if sym.tp.typeArguments(0).erasure.getSimpleName == "GIterable" => emitValDef(sym, "DeliteArray[" + restageStructName(m) + "](" + quote(n) + ")")
+    case a@DeliteArrayNew(n,m,t) => emitValDef(sym, "DeliteArray[" + remap(m) + "](" + quote(n) + ")")
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) => emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
     // new in wip-develop
     case StructCopy(src,srcPos,struct,fields,destPos,len) => 

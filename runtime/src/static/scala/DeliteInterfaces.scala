@@ -6,16 +6,16 @@ package generated.scala
  */
 
 abstract class DeliteOpMultiLoop[A] {
-  def size: Int
-  var loopStart: Int
-  var loopSize: Int
+  def size: Long
+  var loopStart: Long
+  var loopSize: Long
   def alloc: A
-  def processRange(__act: A, start: Int, end: Int): A //init+process
-  def combine(__act: A, rhs: A): Unit
-  def postCombine(__act: A, rhs: A): Unit
-  def postProcInit(__act: A): Unit
-  def postProcess(__act: A): Unit
-  def finalize(__act: A): Unit
+  def processRange(__act: A, start: Long, end: Long, tid: Long): A //init+process
+  def combine(__act: A, rhs: A, tid: Long): Unit
+  def postCombine(__act: A, rhs: A, tid: Long): Unit
+  def postProcInit(__act: A, tid: Long): Unit
+  def postProcess(__act: A, tid: Long): Unit
+  def finalize(__act: A, tid: Long): Unit
   def initAct: A
 }
 
@@ -23,7 +23,7 @@ abstract class DeliteOpMultiLoop[A] {
  * Ref
  */
 
-class Ref[@specialized(Boolean, Int, Long, Float, Double) T](v: T) {
+class Ref[@specialized T](v: T) {
   private[this] var _v = v
 
   def get = _v
