@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <vector>
 #include <string.h>
+#include <cstring>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -15,8 +16,7 @@
 #include <string>
 #include <errno.h>
 #include <fcntl.h>
-
-using namespace std;
+#include "DeliteNamespaces.h"
 
 // each line of file is limited to 1M characters
 #define MAX_BUFSIZE 1048576
@@ -28,14 +28,14 @@ using namespace std;
 //TODO: check if need to compile with _FILE_OFFSET_BITS == 64?
 class cppFileStream {
   private:
-    vector<char*> files;
-    vector<size_t> fileLengths;
+    std::vector<char*> files;
+    std::vector<uint64_t> fileLengths;
     size_t idx;
 
     FILE *reader;
     char *text;
 
-    void findFileOffset(size_t start, size_t &fileIdx, size_t &offset) {
+    void findFileOffset(uint64_t start, size_t &fileIdx, uint64_t &offset) {
       offset = start;
       fileIdx = 0;
       while (offset >= fileLengths.at(fileIdx)) {
@@ -45,16 +45,16 @@ class cppFileStream {
     }
 
   public:
-    size_t size;
-    size_t position;
+    uint64_t size;
+    uint64_t position;
 
-    cppFileStream* openCopyAtNewLine(size_t start) {
+    cppFileStream* openCopyAtNewLine(uint64_t start) {
       cppFileStream* copy = new cppFileStream(size, &files, &fileLengths);
       copy->openAtNewLine(start);
       return copy;
     }
 
-    void openAtNewLine(size_t start) { 
+    void openAtNewLine(uint64_t start) { 
       findFileOffset(start, idx, position);
       reader = fopen(files.at(idx),"r");
       text = (char *)malloc(MAX_BUFSIZE*sizeof(char));
@@ -99,10 +99,10 @@ class cppFileStream {
       return str;
     }
 
-    cppFileStream(size_t size, vector<char*> *_files, vector<size_t> *_fileLengths) {
-      size = size;
+    cppFileStream(uint64_t _size, std::vector<char*> *_files, std::vector<uint64_t> *_fileLengths) {
+      size = _size;
       //could share the files but then the free logic becomes confusing
-      for (int i = 0; i < _files->size(); i++) {
+      for (size_t i = 0; i < _files->size(); i++) {
         char *pathname = _files->at(i);
         char *p = (char *)malloc(strlen(pathname)+1);
         strcpy(p, pathname);
@@ -116,7 +116,7 @@ class cppFileStream {
       va_list arguments;
       DFS_DEBUG("number of paths is %d\n", num);
       va_start(arguments, num);
-      for(int i=0; i<num; i++) {
+      for(size_t i=0; i<num; i++) {
         char *pathname = va_arg(arguments, char *);
         DFS_DEBUG("pathname is %s\n", pathname);
 
@@ -148,7 +148,7 @@ class cppFileStream {
     ~cppFileStream() {
       free(reader);
       free(text);
-      for(vector<char*>::iterator it = files.begin(); it != files.end(); ++it) {
+      for(std::vector<char*>::iterator it = files.begin(); it != files.end(); ++it) {
         free(*it);
       }
     }

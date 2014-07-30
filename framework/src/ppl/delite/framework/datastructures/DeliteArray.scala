@@ -722,6 +722,7 @@ trait CLikeGenDeliteArrayOps extends BaseGenDeliteArrayOps with CLikeGenDeliteSt
     super.emitDataStructures(path)
     val stream = new PrintWriter(path + deviceTarget + "DeliteArrays.h")
     stream.println("#include \"" + deviceTarget + "DeliteStructs.h\"")
+    stream.println("#include \"" + deviceTarget + "HashMap.h\"")
     for((tp,name) <- dsTypesList if(isArrayType(tp))) {
       emitDeliteArray(tp, path, stream)
     }
@@ -987,8 +988,10 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
   }
 
   protected val deliteArrayString = """
+#include "DeliteNamespaces.h"
+#ifdef __DELITE_CPP_NUMA__
 #include <numa.h>
-using namespace std;
+#endif
 
 class __T__ {
 public:
@@ -1017,6 +1020,14 @@ public:
   void print(void) {
     printf("length is %lu\n", length);
   }
+
+  bool equals(__T__ *to) {
+    return this == this;
+  }
+
+  uint32_t hashcode(void) {
+    return (uintptr_t)this;
+  }
 };
 
 struct __T__D {
@@ -1026,6 +1037,7 @@ struct __T__D {
   }
 };
 
+#ifdef __DELITE_CPP_NUMA__
 class __T__Numa: public __T__ {
 public:
   __TARG__ **wrapper;
@@ -1078,5 +1090,6 @@ public:
   }
 
 };
+#endif
 """
 }

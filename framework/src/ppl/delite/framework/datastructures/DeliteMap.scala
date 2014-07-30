@@ -148,3 +148,25 @@ trait ScalaGenDeliteMapOps extends ScalaGenEffect with ScalaGenEqual {
     case _ => super.remap(m)
   }
 }
+
+trait CGenDeliteMapOps extends CGenEffect with CGenEqual {
+  val IR: DeliteMapOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case DeliteIndexGet(index, key) => emitValDef(sym, quote(index) + "->get(" + quote(key) + ")")
+    case _ => super.emitNode(sym, rhs)
+  }
+
+  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "DeliteIndex" if (cppMemMgr == "refcnt") => wrapSharedPtr("cppHashMap<" + unwrapSharedPtr(remapWithRef(m.typeArguments(0))) + ">")
+    case "DeliteIndex" => "cppHashMap<" + remapWithRef(m.typeArguments(0)) + ">"
+    case _ => super.remap(m)
+  }
+
+  override def getDataStructureHeaders(): String = {
+    val out = new StringBuilder
+    out.append("#include \"cppHashMap.h\"\n")
+    super.getDataStructureHeaders() + out.toString
+  }
+}

@@ -24,8 +24,8 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
     isPrimitiveType(tp) && remap(tp) != "string"
   }
 
-  override def emitSend(tp: Manifest[_], peer: Targets.Value): (String,String) = {
-    if (peer == Targets.JVM) {
+  override def emitSend(tp: Manifest[_], peer: Targets.Value): (String,String) = peer match {
+    case Targets.JVM =>
       if (tp.erasure == classOf[Variable[AnyVal]]) {
         val out = new StringBuilder
         val typeArg = tp.typeArguments.head
@@ -57,7 +57,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             args = args + "Lgenerated/scala/"+ structName(elemtp) + ";"
             out.append("\t%s %s = sendCPPtoJVM_%s(env,sym->%s);\n".format(JNIType(elemtp),elem._1,mangledName(remapHost(elemtp)),elem._1))
           }
-          else { // TODO: Fix this for cluster
+          else if (isArrayType(elemtp)) { // TODO: Fix this for cluster
             if(Config.generateSerializable) { //FIX: Is this the cluster mode option?
               if(isPrimitiveType(elemtp.typeArguments.head))
                 args = args + "Lppl/delite/runtime/data/DeliteArray" + elemtp.typeArguments.head + ";"
@@ -70,6 +70,11 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
               out.append("\t%s %s = sendCPPtoJVM_%s(env,sym->%s);\n".format(JNIType(elemtp),elem._1,mangledName(remapHost(elemtp)),elem._1))
             }
           }
+          else if (elemtp.erasure.getSimpleName == "DeliteIndex") {
+            args = args + "Lgenerated/scala/container/HashMapImpl;"
+            out.append("\t%s %s = sendCPPtoJVM_%s(env,sym->%s);\n".format(JNIType(elemtp),elem._1,mangledName(remapHost(elemtp)),elem._1))
+          }
+          else throw new GenerationFailedException("DeliteCppHostTransfer: Unknown elem type for struct: " + remap(elemtp))
         }
         if (cppMemMgr == "refcnt")
           out.append("\tjclass cls = env->FindClass(\"generated/scala/%s\");\n".format(unwrapSharedPtr(remapHost(tp)).replaceAll(hostTarget,"")))
@@ -157,11 +162,32 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("}\n")
         (signature+";\n", out.toString)
       }
+      else if (tp.erasure.getSimpleName == "DeliteIndex") {
+        val out = new StringBuilder
+        val signature = "jobject sendCPPtoJVM_%s(JNIEnv *env, %s %ssym)".format(mangledName(remapHost(tp)),remapHost(tp),addRef(tp))
+        out.append(signature + " {\n")
+        val tp_key = tp.typeArguments(0)
+        out.append("\t%s *keys = sym->unsafeKeys();\n".format(remapWithRef(tp_key)))
+        out.append("\tjobject m = makeManifest_%s(env);\n".format(mangledName(remapHost(tp_key))))
+        if (isPurePrimitiveType(tp_key))
+          out.append("\tjclass cls = env->FindClass(\"generated/scala/container/HashMapImpl$mc%s$sp\");\n".format(JNITypeDescriptor(tp_key)))
+        else
+          out.append("\tjclass cls = env->FindClass(\"generated/scala/container/HashMapImpl\");\n")
+        out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(IILscala/reflect/Manifest;)V\");\n")
+        out.append("\tjobject obj = env->NewObject(cls,mid,sym->indsz(),sym->datasz(),m);\n")
+        out.append("\tfor(int i=0; i<sym->size(); i++) {\n")
+        out.append("\t\t%s jkey = sendCPPtoJVM_%s(env,keys[i]);\n".format(JNIType(tp_key),mangledName(remapHost(tp_key))))
+        out.append("\t\tjmethodID mid_put = env->GetMethodID(cls,\"put\",\"(%s)I\");\n".format(JNITypeDescriptor(tp_key)))
+        out.append("\t\tenv->CallIntMethod(obj,mid_put,jkey);\n")
+        if (!isPurePrimitiveType(tp_key)) out.append("\t\tenv->DeleteLocalRef(jkey);\n")
+        out.append("\t}\n")
+        out.append("\treturn obj;\n")
+        out.append("\t}\n")
+        (signature+";\n", out.toString)
+      }
       else 
         super.emitSend(tp, peer)
-    }
-    else
-      super.emitSend(tp, peer)
+    case _ => super.emitSend(tp, peer)
   }
 
   override def emitRecv(tp: Manifest[_], peer: Targets.Value): (String,String) = {
@@ -280,6 +306,14 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("}\n")
         (signature+";\n", out.toString)
       }
+      else if (tp.erasure.getSimpleName == "DeliteIndex") {
+        val out = new StringBuilder
+        val signature = "%s %srecvCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remapHost(tp),addRef(tp),mangledName(remapHost(tp)))
+        out.append(signature + " {\n")
+        out.append("assert(false);\n")
+        out.append("}\n")
+        (signature+";\n", out.toString)
+      }
       else
         super.emitRecv(tp,peer)
     }
@@ -317,6 +351,14 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         val signature = "jobject sendViewCPPtoJVM_%s(JNIEnv *env, %s %ssym)".format(mangledName(remapHost(tp)),remapHost(tp),addRef(tp))
         out.append(signature + " {\n")
         out.append("\tassert(false);\n")  
+        out.append("}\n")
+        (signature+";\n", out.toString)
+      }
+      else if (tp.erasure.getSimpleName == "DeliteIndex") {
+        val out = new StringBuilder
+        val signature = "jobject sendViewCPPtoJVM_%s(JNIEnv *env, %s %ssym)".format(mangledName(remapHost(tp)),remapHost(tp),addRef(tp))
+        out.append(signature + " {\n")
+        out.append("assert(false);\n")
         out.append("}\n")
         (signature+";\n", out.toString)
       }
@@ -373,6 +415,14 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         else {
           out.append("\tassert(false);\n")
         }    
+        out.append("}\n")
+        (signature+";\n", out.toString)
+      }
+      else if (tp.erasure.getSimpleName == "DeliteIndex") {
+        val out = new StringBuilder
+        val signature = "%s %srecvViewCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remapHost(tp),addRef(tp),mangledName(remapHost(tp)))
+        out.append(signature + " {\n")
+        out.append("assert(false);\n")
         out.append("}\n")
         (signature+";\n", out.toString)
       }
@@ -457,6 +507,14 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("}\n")
         (signature+";\n", out.toString)
       }
+      else if (tp.erasure.getSimpleName == "DeliteIndex") {
+        val out = new StringBuilder
+        val signature = "void sendUpdateCPPtoJVM_%s(JNIEnv *env, jobject &obj, %s %ssym)".format(mangledName(remapHost(tp)),remapHost(tp),addRef(tp))
+        out.append(signature + " {\n")
+        out.append("assert(false);\n")
+        out.append("}\n")
+        (signature+";\n", out.toString)
+      }
       else
         super.emitSendUpdate(tp, peer)  
     }
@@ -527,6 +585,14 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         else {
           out.append("\tassert(false);\n")
         }
+        out.append("}\n")
+        (signature+";\n", out.toString)
+      }
+      else if (tp.erasure.getSimpleName == "DeliteIndex") {
+        val out = new StringBuilder
+        val signature = "void recvUpdateCPPfromJVM_%s(JNIEnv *env, jobject obj, %s %ssym)".format(mangledName(remapHost(tp)),remapHost(tp),addRef(tp))
+        out.append(signature + " {\n")
+        out.append("assert(false);\n")
         out.append("}\n")
         (signature+";\n", out.toString)
       }
