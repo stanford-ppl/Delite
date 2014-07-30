@@ -32,9 +32,12 @@ trait DistributedArrayTransformer extends ForwardPassTransformer {
   }
 
   def markPartitioned[T](sym: Sym[T], v: Sym[Int], d: Def[T]) {
-    def symIsPartitioned(e: Exp[Any]) = e match {
+    def symIsPartitioned(e: Exp[Any]): Boolean = e match {
+      case Def(Loop(_,_,body:DeliteCollectElem[_,_,_])) if body.par == ParFlat => symIsPartitioned(getBlockResult(body.buf.alloc))
+      case Def(Loop(_,_,body:DeliteCollectElem[_,_,_])) => symIsPartitioned(getBlockResult(body.buf.allocRaw))
       case Partitionable(t) => t.partition
       case e if e.tp == manifest[DeliteFileStream] => true //TODO: should be configurable
+      //case Def(a) => Console.println("no partition for: " + a.toString); false
       case _ => false
     }
 
@@ -50,19 +53,23 @@ trait DistributedArrayTransformer extends ForwardPassTransformer {
     def setPartitioned(e: Exp[Any]): Unit = e match {
       case Def(Struct(_,elems)) => elems.foreach(e => setPartitioned(e._2)) //partition every array in struct (?)
       case Partitionable(t) => t.partition = true
+      case Def(a) => Console.println("WARNING: tried to partition " + e.toString + ": " + a.toString)
       case _ => Console.println("WARNING: tried to partition " + e.toString)
     }
 
+    Console.println("considering: " + sym.toString +": " + d.toString)
+    //Console.println(getFatDependentStuff(initialDefs)(List(v)).mkString("\n"))
     if (inputIsPartitioned) {
       checkAccessStencil(sym,d)
       d match {
-        case Loop(_,_,body:DeliteCollectElem[_,_,_]) if body.par == ParFlat => Console.println("partitoning " + d.toString); setPartitioned(getBlockResult(body.buf.alloc))
-        case Loop(_,_,body:DeliteCollectElem[_,_,_]) => Console.println("partitoning " + d.toString); setPartitioned(getBlockResult(body.buf.allocRaw))
+        case Loop(_,_,body:DeliteCollectElem[_,_,_]) if body.par == ParFlat => Console.println("partitioning " + d.toString); setPartitioned(getBlockResult(body.buf.alloc))
+        case Loop(_,_,body:DeliteCollectElem[_,_,_]) => Console.println("partitioning " + d.toString); setPartitioned(getBlockResult(body.buf.allocRaw))
         case _ => //other loop types (Reduce) will produce result on master
       }
     } else {
       Console.println("input not partitioned!")
     }
+    Console.println("")
   }
 
   def checkAccessStencil[T](sym: Sym[T], d: Def[T]) {
