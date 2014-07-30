@@ -13,6 +13,8 @@ import scala.collection.mutable.HashSet
 trait DeliteArray[T] extends DeliteCollection[T] 
 
 trait DeliteArrayOps extends RuntimeServiceOps with StringOps {
+
+  var partitionArray: Boolean = false
   
   object DeliteArray {
     def apply[T:Manifest](length: Rep[Int])(implicit ctx: SourceContext) = darray_new(length)
@@ -242,8 +244,8 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   //////////////////
   // public methods
     
-  def darray_new[T:Manifest](length: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(DeliteArrayNew(length,manifest[T],PartitionTag("DeliteArray",false)))
-  def darray_new_immutable[T:Manifest](length: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DeliteArrayNew(length,manifest[T],PartitionTag("DeliteArray",false)))
+  def darray_new[T:Manifest](length: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(DeliteArrayNew(length,manifest[T],PartitionTag("DeliteArray",partitionArray)))
+  def darray_new_immutable[T:Manifest](length: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DeliteArrayNew(length,manifest[T],PartitionTag("DeliteArray",partitionArray)))
   def darray_length[T:Manifest](da: Exp[DeliteArray[T]])(implicit ctx: SourceContext) = reflectPure(DeliteArrayLength[T](da))
   def darray_apply[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DeliteArrayApply[T](da,i))
   
@@ -941,12 +943,17 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
     case a@DeliteArrayNew(n,m,t) => 
       // NOTE: DSL operations should not rely on the fact that JVM initializes arrays with 0
       stream.println("assert(" + quote(n) + " < (size_t)-1);")
-      if (t.partition)
+      if (t.partition) {
+        stream.println("//partitioned array follows")
+        stream.println("#ifdef __DELITE_CPP_NUMA__")
         emitValDef(sym, "new " + remap(sym.tp) + "Numa("+quote(n)+",0,config->activeSockets())")
-      else if (cppMemMgr == "refcnt")  
+        stream.println("#else")
+      }
+      if (cppMemMgr == "refcnt")  
         stream.println(remap(sym.tp) + " " + quote(sym) + "(new " + unwrapSharedPtr(remap(sym.tp)) + "(" + quote(n) + "), " + unwrapSharedPtr(remap(sym.tp)) + "D());")
       else
         emitValDef(sym, "new " + remap(sym.tp) + "(" + quote(n) + ")")
+      if (t.partition) stream.println("#endif")
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + "->length")
     case DeliteArrayApply(da, idx) =>
