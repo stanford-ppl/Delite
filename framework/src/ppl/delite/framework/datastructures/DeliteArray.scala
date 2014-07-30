@@ -940,7 +940,7 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
       if (cppMemMgr == "refcnt")  
         stream.println(remap(sym.tp) + " " + quote(sym) + "(new " + unwrapSharedPtr(remap(sym.tp)) + "(" + quote(n) + "), " + unwrapSharedPtr(remap(sym.tp)) + "D());")
       else
-        emitValDef(sym, "new " + remap(sym.tp) + "(" + quote(n) + ")")
+        emitValDef(sym, "new (DELITE_HEAP_LOCATION) " + remap(sym.tp) + "(" + quote(n) + ", DELITE_HEAP_LOCATION )")
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + "->length")
     case DeliteArrayApply(da, idx) =>
@@ -978,16 +978,15 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
 
   protected val deliteArrayString = """
 #include "DeliteNamespaces.h"
-class __T__ {
+#include "DeliteMemory.h"
+class __T__ : public DeliteMemory {
 public:
   __TARG__ *data;
   int length;
 
-  __T__(int _length) {
-    data = new __TARG__[_length]();
-    length = _length;
-    //printf("allocated __T__, size %d, %p\n",_length,this);
-  }
+  __T__(int _length, int heapIdx): data((__TARG__ *)(DeliteHeapAlloc(sizeof(__TARG__)*_length,heapIdx))), length(_length) { }
+
+  __T__(int _length): data((__TARG__ *)(new __TARG__[_length])), length(_length) { }
 
   __T__(__TARG__ *_data, int _length) {
     data = _data;

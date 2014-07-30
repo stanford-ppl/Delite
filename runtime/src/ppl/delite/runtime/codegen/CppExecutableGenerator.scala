@@ -48,6 +48,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     if (Config.profile)
       out.append("InitDeliteCppTimer(" + Targets.getRelativeLocation(location) + ");\n")
 
+    out.append("DeliteHeapInit(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + ");\n")
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     writeJNIInitializer(locations)
   }
@@ -70,6 +71,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
   protected def writeMethodFooter() {
     if (Config.profile) 
       out.append("DeliteCppTimerDump(" + Targets.getRelativeLocation(location) + "," + location + ",env" + location + ");\n")
+    out.append("DeliteHeapClear(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + ");\n")
     out.append("}\n")
   }
 

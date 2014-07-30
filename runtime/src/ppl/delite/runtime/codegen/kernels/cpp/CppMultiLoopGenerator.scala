@@ -26,7 +26,7 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
   protected def addSource(source: String, name: String) = CppCompile.addSource(source, name)
 
   protected def writeHeader() {
-    out.append("#include \""+CppMultiLoopHeaderGenerator.className(master) + ".cpp\"\n")
+    out.append("#include \""+CppMultiLoopHeaderGenerator.className(master) + ".h\"\n")
     out.append("#include \"DeliteCppProfiler.h\"\n")
     CppMultiLoopHeaderGenerator.headerList += kernelSignature + ";\n"
   }
@@ -148,7 +148,8 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
 
 class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Header_Generator {
 
-  protected def addSource(source: String, name: String) = CppCompile.addSource(source, name)
+  //NOTE: Header is just a class, so put into header list instead of source list
+  protected def addSource(source: String, name: String) = CppCompile.addHeader(source, name)
 
   protected def isPrimitiveType(scalaType: String) = scalaType match {
     case "java.lang.String" => true
@@ -168,8 +169,8 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
 
     val stream = new StringBuilder
     writeKernelFunction(stream)
-    addSource(stream.toString, kernelName)
-    CppMultiLoopHeaderGenerator.headerList += "#include \"" + className + ".cpp\"\n"
+    CppCompile.addSource(stream.toString, kernelName)
+    CppMultiLoopHeaderGenerator.headerList += "#include \"" + className + ".h\"\n"
     CppMultiLoopHeaderGenerator.headerList += kernelSignature + ";\n"
   }
 
@@ -194,7 +195,7 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
   }
 
   protected def writeKernelFunction(stream: StringBuilder) {
-    stream.append("#include \"" + className + ".cpp\"\n")
+    stream.append("#include \"" + className + ".h\"\n")
 
     stream.append(kernelSignature)
     stream.append(" {\n")
