@@ -10,7 +10,12 @@ import sync._
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.scheduler.{OpHelper, OpList, PartialSchedule}
 
-trait CppExecutableGenerator extends ExecutableGenerator {
+trait CppResourceInfoGenerator {
+  protected def resourceInfoType = "resourceInfo_t"
+  protected def resourceInfoSym = "resourceInfo"
+}
+
+trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfoGenerator {
 
   // To get a non-conflicting index for a variable name used to temporarily store jobject
   private var index = 0
@@ -45,6 +50,8 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     out.append(function)
     out.append(" {\n")
     out.append("env" + location + " = jnienv;\n")
+    out.append(resourceInfoType + " " + resourceInfoSym + ";\n")
+    out.append(resourceInfoSym + ".thread_id = " + Targets.getRelativeLocation(location) + ";\n")
     if (Config.profile)
       out.append("InitDeliteCppTimer(" + Targets.getRelativeLocation(location) + ");\n")
 
@@ -121,7 +128,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
           out.append("(" + args.length + args.map("\""+_+"\"").mkString(",",",",");\n"))
         else
           out.append("(" + args.length + ");\n") 
-      case _ => out.append(op.getInputs.map(i=>getSymHost(i._1,i._2)).mkString("(",",",");\n"))
+      case _ => out.append((resourceInfoSym+:op.getInputs.map(i=>getSymHost(i._1,i._2))).mkString("(",",",");\n"))
     }
    
     if (Config.profile) {

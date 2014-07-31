@@ -95,7 +95,7 @@ trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator
 
 }
 
-trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
+trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator with CppResourceInfoGenerator {
 
   private val target = Targets.Cpp
 
@@ -128,10 +128,11 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
 
   protected def generateInputs(inputs: Seq[(DeliteOP,String)] = nested.getInputs): String = {
     val str = new StringBuilder
-    var first = true
+    str.append(resourceInfoType)
+    str.append(" &")
+    str.append(resourceInfoSym)
     for ((op,sym) <- inputs) {
-      if (!first) str.append(", ")
-      first = false
+      str.append(", ")
       str.append(op.outputType(target,sym))
       str.append(addRef(op.outputType(sym)))
       str.append(' ')

@@ -2293,7 +2293,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         val streamSym = streamVars(0)
         emitMethodCall(fieldAccess(quote(streamSym),"openAtNewLine"),List("start"))
         emitValDef("isEmpty",remap(Manifest.Boolean),fieldAccess(quote(streamSym),"end(start)") + " - " + fieldAccess(quote(streamSym),"pos(start)") + " <= 0")
-        emitValDef("__act2",actType,"init(__act,start,isEmpty)")
+        emitValDef("__act2",actType,methodCall("init",List("__act","start","isEmpty")))
         stream.println("while (" + fieldAccess(quote(streamSym),"pos(start)") + " < " + fieldAccess(quote(streamSym),"end(start)") + ") {")
         emitMethodCall("process",List("__act2","start"))
         stream.println("}")
@@ -2301,7 +2301,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       }
       else {
         emitValDef("isEmpty",remap(Manifest.Boolean),"end-start <= 0")
-        emitValDef("__act2",actType,"init(__act,start,isEmpty)") // TODO: change to use method call
+        emitValDef("__act2",actType,methodCall("init",List("__act","start","isEmpty")))
         emitVarDef("idx", remap(Manifest.Int), "start + 1")
         stream.println("while (idx < end) {")
         emitMethodCall("process",List("__act2","idx"))
@@ -4065,7 +4065,7 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   def quotetp(x: Sym[Any]) = remap(x.tp)
 
   def methodCall(name: String, inputs: List[String] = Nil): String = {
-    name + "(" + inputs.mkString(",") + ")"
+    name + "(" + (resourceInfoSym::inputs).mkString(",") + ")"
   }
 
   def emitMethodCall(name:String, inputs: List[String]) {
@@ -4073,7 +4073,7 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   }
 
   def emitMethod(name:String, outputType: String, inputs:List[(String,String)])(body: => Unit) {
-    stream.println(remapWithRef(outputType) + name + "(" + inputs.map(i => remapWithRef(i._2) + i._1).mkString(",") + ") {")
+    stream.println(remapWithRef(outputType) + name + "(" + ((resourceInfoType+" &"+resourceInfoSym)::inputs.map(i => remapWithRef(i._2) + i._1)).mkString(",") + ") {")
     body
     stream.println("}\n")
   }

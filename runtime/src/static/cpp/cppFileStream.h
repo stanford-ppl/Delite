@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include "DeliteNamespaces.h"
+#include "DeliteCpp.h"
 
 // each line of file is limited to 1M characters
 #define MAX_BUFSIZE 1048576
@@ -50,7 +51,7 @@ class cppFileStream {
       }
     }
 
-    void openAtNewLine(int threadIdx) { 
+    void openAtNewLine(resourceInfo_t &resourceInfo, int threadIdx) {
       long pos = threadIdx * size / numThreads;
       allEnd[pad*threadIdx] = (threadIdx + 1) * size / numThreads;
       int fileIdx; long offset;
@@ -150,7 +151,7 @@ class cppFileStream {
       DFS_DEBUG("total size of file is %ld\n", size);
     }
 
-    void close(int idx) { 
+    void close(resourceInfo_t resourceInfo, int idx) {
       fclose(allReader[pad*idx]);
     }
 

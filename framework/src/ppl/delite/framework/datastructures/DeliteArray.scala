@@ -940,7 +940,7 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
       if (cppMemMgr == "refcnt")  
         stream.println(remap(sym.tp) + " " + quote(sym) + "(new " + unwrapSharedPtr(remap(sym.tp)) + "(" + quote(n) + "), " + unwrapSharedPtr(remap(sym.tp)) + "D());")
       else
-        emitValDef(sym, "new (DELITE_HEAP_LOCATION) " + remap(sym.tp) + "(" + quote(n) + ", DELITE_HEAP_LOCATION )")
+        emitValDef(sym, "new (" + resourceInfoSym + ".thread_id) " + remap(sym.tp) + "(" + quote(n) + ", " + resourceInfoSym + ".thread_id)")
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + "->length")
     case DeliteArrayApply(da, idx) =>
