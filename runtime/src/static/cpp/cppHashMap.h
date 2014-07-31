@@ -11,7 +11,7 @@
 template <class K>
 class cppHashMap {
 private:
-  const static float loadfactor_d2 = 0.4f / 2;
+  constexpr static float loadfactor_d2 = 0.4f / 2;
   int32_t *indices;
   uint32_t indices_length;
   K *keys;
@@ -195,7 +195,7 @@ public:
 template <class K>
 class cppHashMap<K*> {
 private:
-  const static float loadfactor_d2 = 0.4f / 2;
+  constexpr static float loadfactor_d2 = 0.4f / 2;
   int32_t *indices;
   uint32_t indices_length;
   K **keys;

@@ -1054,23 +1054,20 @@ public:
   size_t numChunks;
 
   __T__Numa(size_t _length, size_t _numGhostCells, size_t _numChunks) : __T__(NULL, _length) {
-    //FIXME: transfer function rely on data field
+    //FIXME: transfer functions rely on data field
     numGhostCells = _numGhostCells;
     numChunks = _numChunks;
     wrapper = (__TARG__ **)malloc(numChunks*sizeof(__TARG__*));
     starts = (size_t *)malloc(numChunks*sizeof(size_t)); //TODO: custom partitioning
     ends = (size_t *)malloc(numChunks*sizeof(size_t));
     for (int sid = 0; sid < numChunks; sid++) {
-      starts[sid] = max(length * sid / numChunks - numGhostCells, (size_t)0);
-      ends[sid] = min(length * (sid+1) / numChunks + numGhostCells, length);
+      starts[sid] = std::max(length * sid / numChunks - numGhostCells, (size_t)0);
+      ends[sid] = std::min(length * (sid+1) / numChunks + numGhostCells, length);
       allocInternal(sid, ends[sid]-starts[sid]);
     }
   }
 
   void allocInternal(int socketId, size_t length) {
-    //wrapper[socketId] = (__TARG__*)malloc(length*sizeof(__TARG__));
-    //bitmask* nodemask = numa_get_membind();
-    //printf("allocating for socket %d, allowed: %d, %d, %d, %d\n", socketId, numa_bitmask_isbitset(nodemask, 0), numa_bitmask_isbitset(nodemask, 1), numa_bitmask_isbitset(nodemask, 2), numa_bitmask_isbitset(nodemask, 3));
     wrapper[socketId] = (__TARG__*)numa_alloc_onnode(length*sizeof(__TARG__), socketId);
   }
 
@@ -1078,7 +1075,19 @@ public:
     for (size_t sid = 0; sid < numChunks; sid++) {
       if (idx < ends[sid]) return wrapper[sid][idx-starts[sid]]; //read from first location found
     }
-    assert(false);
+    assert(false); //throw runtime_exception
+  }
+
+  //read locally if available, else remotely
+  __TARG__ applyAt(size_t idx, size_t sid) {
+    //size_t sid = config->threadToSocket(tid);
+    size_t offset = starts[sid];
+    if (idx >= offset && idx < ends[sid]) return wrapper[sid][idx-offset];
+    return apply(idx);
+  }
+
+  __TARG__ unsafe_apply(size_t socketId, size_t idx) {
+    return wrapper[socketId][idx];
   }
 
   void update(size_t idx, __TARG__ value) {
@@ -1088,11 +1097,15 @@ public:
     }
   }
 
-  __TARG__ applyAt(size_t socketId, size_t idx) {
-    return wrapper[socketId][idx];
+  //update locally, ghosts need to be explicitly synchronized
+  void updateAt(size_t idx, __TARG__ value, size_t sid) {
+    //size_t sid = config->threadToSocket(tid);
+    size_t offset = starts[sid];
+    if (idx >= offset && idx < ends[sid]) wrapper[sid][idx-offset] = value;
+    //else throw runtime_exception
   }
 
-  void updateAt(size_t socketId, size_t idx, __TARG__ value) {
+  void unsafe_update(size_t socketId, size_t idx, __TARG__ value) {
     wrapper[socketId][idx] = value;
   }
 
