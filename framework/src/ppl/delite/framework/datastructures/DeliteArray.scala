@@ -1035,13 +1035,6 @@ public:
     return (uintptr_t)this;
   }
 
-  bool equals(__T__ *to) {
-    return this == this;
-  }
-
-  uint32_t hashcode(void) {
-    return (uintptr_t)this;
-  }
 };
 
 struct __T__D {

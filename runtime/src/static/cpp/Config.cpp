@@ -95,7 +95,7 @@ JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_AccExecutionThread_initi
     if (numa_available() >= 0) {
         int socketId = config->threadToSocket(threadId);
         if (socketId < numa_num_configured_nodes()) {
-            printf("[DELITE]: Binding thread %d to cpu %d, socket %d\n", threadId, threadId, socketId);
+            printf("[delite]: Binding thread %d to cpu %d, socket %d\n", threadId, threadId, socketId);
             bitmask* cpumask = numa_allocate_cpumask();
             numa_bitmask_setbit(cpumask, threadId);
             numa_sched_setaffinity(0, cpumask);

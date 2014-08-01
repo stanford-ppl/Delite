@@ -70,7 +70,7 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
     out.append("while(dIdx < numDynamicChunks){\n")
     out.append("size_t start = (startOffset + size*dIdx/numDynamicChunks);\n")
     out.append("size_t end = (startOffset + size*(dIdx+1)/numDynamicChunks);\n")  
-    out.append(outputType+"* accDynamic = "+closure+"->processRange("+outputSym+",start,end,"+chunkIdx+");\n")
+    out.append(outputType+"* accDynamic = "+closure+"->processRange("+resourceInfoSym+","+outputSym+",start,end,"+chunkIdx+");\n")
     out.append(headerObject+"->dynamicSet(dIdx,accDynamic);\n")
     out.append("dIdx = "+headerObject+"->getDynamicChunkIndex();\n")
     out.append("}\n")
