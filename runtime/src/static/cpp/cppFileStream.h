@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include "DeliteNamespaces.h"
+#include "DeliteCpp.h"
 
 // each line of file is limited to 1M characters
 #define MAX_BUFSIZE 1048576

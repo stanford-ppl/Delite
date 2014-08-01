@@ -4065,7 +4065,7 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   def quotetp(x: Sym[Any]) = remap(x.tp)
 
   def methodCall(name: String, inputs: List[String] = Nil): String = {
-    name + "(" + inputs.mkString(",") + ")"
+    name + "(" + (resourceInfoSym::inputs).mkString(",") + ")"
   }
 
   def emitMethodCall(name:String, inputs: List[String]) {
@@ -4073,7 +4073,7 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
   }
 
   def emitMethod(name:String, outputType: String, inputs:List[(String,String)])(body: => Unit) {
-    stream.println(remapWithRef(outputType) + name + "(" + inputs.map(i => remapWithRef(i._2) + i._1).mkString(",") + ") {")
+    stream.println(remapWithRef(outputType) + name + "(" + ((resourceInfoType+" &"+resourceInfoSym)::inputs.map(i => remapWithRef(i._2) + i._1)).mkString(",") + ") {")
     body
     stream.println("}\n")
   }

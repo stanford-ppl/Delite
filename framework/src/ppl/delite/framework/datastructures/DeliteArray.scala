@@ -946,13 +946,13 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
       if (t.partition) {
         stream.println("//partitioned array follows")
         stream.println("#ifdef __DELITE_CPP_NUMA__")
-        emitValDef(sym, "new " + remap(sym.tp) + "Numa("+quote(n)+",0,config->activeSockets())")
+        emitValDef(sym, "new (" + resourceInfoSym + ".thread_id) " + remap(sym.tp) + "Numa("+quote(n)+",0,config->activeSockets())")
         stream.println("#else")
       }
       if (cppMemMgr == "refcnt")  
         stream.println(remap(sym.tp) + " " + quote(sym) + "(new " + unwrapSharedPtr(remap(sym.tp)) + "(" + quote(n) + "), " + unwrapSharedPtr(remap(sym.tp)) + "D());")
       else
-        emitValDef(sym, "new " + remap(sym.tp) + "(" + quote(n) + ")")
+        emitValDef(sym, "new (" + resourceInfoSym + ".thread_id) " + remap(sym.tp) + "(" + quote(n) + ", " + resourceInfoSym + ".thread_id)")
       if (t.partition) stream.println("#endif")
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + "->length")
@@ -996,20 +996,19 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
 
   protected val deliteArrayString = """
 #include "DeliteNamespaces.h"
+#include "DeliteMemory.h"
 #ifdef __DELITE_CPP_NUMA__
 #include <numa.h>
 #endif
 
-class __T__ {
+class __T__ : public DeliteMemory {
 public:
   __TARG__ *data;
   size_t length;
 
-  __T__(size_t _length) {
-    data = new __TARG__[_length]();
-    length = _length;
-    //printf("allocated __T__, size %lu, %p\n",_length,this);
-  }
+  __T__(int _length, int heapIdx): data((__TARG__ *)(DeliteHeapAlloc(sizeof(__TARG__)*_length,heapIdx))), length(_length) { }
+
+  __T__(int _length): data((__TARG__ *)(new __TARG__[_length])), length(_length) { }
 
   __T__(__TARG__ *_data, size_t _length) {
     data = _data;
@@ -1026,6 +1025,14 @@ public:
 
   void print(void) {
     printf("length is %lu\n", length);
+  }
+
+  bool equals(__T__ *to) {
+    return this == this;
+  }
+
+  uint32_t hashcode(void) {
+    return (uintptr_t)this;
   }
 
   bool equals(__T__ *to) {
