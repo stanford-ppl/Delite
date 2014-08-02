@@ -6,11 +6,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h>
 
 //#define DHEAP_DEBUG(...) fprintf(stderr, "[DEBUG-DeliteHeap] "); fprintf(stderr, __VA_ARGS__)
 #define DHEAP_DEBUG(...)
 
-void DeliteHeapInit(int idx, int numThreads);
+void DeliteHeapInit(int idx, int numThreads, size_t heapSize);
 void DeliteHeapClear(int idx, int numThreads);
 char *DeliteHeapAlloc(size_t sz, int idx);
 

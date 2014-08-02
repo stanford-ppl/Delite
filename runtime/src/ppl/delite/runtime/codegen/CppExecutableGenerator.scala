@@ -55,7 +55,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfoGen
     if (Config.profile)
       out.append("InitDeliteCppTimer(" + Targets.getRelativeLocation(location) + ");\n")
 
-    out.append("DeliteHeapInit(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + ");\n")
+    out.append("DeliteHeapInit(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + "," + Config.cppHeapSize + "ULL);\n")
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     writeJNIInitializer(locations)
   }

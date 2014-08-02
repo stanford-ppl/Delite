@@ -1,7 +1,5 @@
 #include "DeliteMemory.h"
 
-//TODO: pass the size of the heap as a parameter to DeliteHeapInit?
-size_t DeliteHeapSize = 1024ULL * 1024ULL * 1024ULL * 32ULL; 
 char **DeliteHeap;
 size_t *DeliteHeapOffset;
 
@@ -25,13 +23,19 @@ void delite_barrier(int numThreads) {
     pthread_mutex_unlock(&heapInitLock);
 }
 
-void DeliteHeapInit(int idx, int numThreads) {
+void DeliteHeapInit(int idx, int numThreads, size_t heapSize) {
+  if (heapSize == 0) {
+    int64_t pages = sysconf(_SC_PHYS_PAGES);
+    int64_t page_size = sysconf(_SC_PAGE_SIZE);
+    heapSize = pages * page_size / 4; // use 25% of physical memory as heap
+  }
+
   if (idx == 0) {
     DeliteHeap = new char*[numThreads << paddingShift];
     DeliteHeapOffset = new size_t[numThreads << paddingShift];
   }
-  char *ptr = (char*)malloc(DeliteHeapSize/numThreads);
-  memset(ptr, 0, DeliteHeapSize/numThreads);
+  char *ptr = (char*)malloc(heapSize/numThreads);
+  memset(ptr, 0, heapSize/numThreads);
 
   if (numThreads > 1) {
     delite_barrier(numThreads);
@@ -40,10 +44,11 @@ void DeliteHeapInit(int idx, int numThreads) {
   // Now all the threads allocated and initialized their own heap
   DeliteHeap[idx << paddingShift] = ptr;
   DeliteHeapOffset[idx << paddingShift] = 0;
-  DHEAP_DEBUG("finished heap initialization for resource %d, size: %lld\n", idx, DeliteHeapSize/numThreads);
+  DHEAP_DEBUG("finished heap initialization for resource %d, size: %lld\n", idx, heapSize/numThreads);
 }
 
 void DeliteHeapClear(int idx, int numThreads) {
+  size_t heapUsage = DeliteHeapOffset[idx << paddingShift];
   if (numThreads > 1) {
     delite_barrier(numThreads);
   }
@@ -52,7 +57,7 @@ void DeliteHeapClear(int idx, int numThreads) {
     delete[] DeliteHeap;
     delete[] DeliteHeapOffset;
   }
-  DHEAP_DEBUG("finished heap clear for resource %d, size: %lld\n", idx, DeliteHeapOffset[idx << paddingShift]);
+  DHEAP_DEBUG("finished heap clear for resource %d, used: %lld\n", idx, heapUsage);
 }
 
 char *DeliteHeapAlloc(size_t sz, int idx) {
