@@ -18,6 +18,7 @@
 #include <fcntl.h>
 #include "DeliteNamespaces.h"
 #include "DeliteCpp.h"
+#include "DeliteMemory.h"
 
 // each line of file is limited to 1M characters
 #define MAX_BUFSIZE 1048576
@@ -83,7 +84,7 @@ class cppFileStream {
     long pos(int idx) { return allPos[pad*idx]; }
     long end(int idx) { return allEnd[pad*idx]; }
 
-    string readLine(int idx) {
+    string readLine(const resourceInfo_t &resourceInfo, int idx) {
       char *line = allText[pad*idx];
       if (fgets(line, MAX_BUFSIZE, allReader[pad*idx]) == NULL) {
         // read the next file
@@ -103,8 +104,11 @@ class cppFileStream {
         if (fgets(line, MAX_BUFSIZE, allReader[pad*idx]) == NULL) 
           assert(false  && "fgets failed");
       }
-      allPos[pad*idx] += strlen(line);
-      string str(line);
+      size_t length = strlen(line);
+      allPos[pad*idx] += length;
+      char *strptr = new (resourceInfo) char[length+1];
+      strcpy(strptr, line);
+      string str(strptr, length, 0);
       str.erase(std::remove(str.begin(), str.end(), '\n'), str.end());
       str.erase(std::remove(str.begin(), str.end(), '\r'), str.end());
       return str;

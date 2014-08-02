@@ -16,6 +16,7 @@
 #include <sstream>
 #include "cppDeliteArraystring.h"
 #include "DeliteNamespaces.h"
+#include "DeliteDatastructures.h"
 
 /* helper methods and data structures only required for execution with Delite */
 #ifndef __DELITE_CPP_STANDALONE__
@@ -23,10 +24,10 @@
 #endif
 
 #ifdef MEMMGR_REFCNT
-std::shared_ptr<cppDeliteArraystring> string_split(const string &str, const string &pattern, int32_t lim);
+std::shared_ptr<cppDeliteArraystring> string_split(const resourceInfo_t &resourceInfo, const string &str, const string &pattern, int32_t lim);
 std::shared_ptr<cppDeliteArraystring> cppArgsGet(int num, ...);
 #else
-cppDeliteArraystring *string_split(const string &str, const string &pattern, int32_t lim);
+cppDeliteArraystring *string_split(const resourceInfo_t &resourceInfo, const string &str, const string &pattern, int32_t lim);
 cppDeliteArraystring *cppArgsGet(int num, ...);
 #endif
 int32_t string_toInt(const string &str);
@@ -44,12 +45,6 @@ template<class T> string convert_to_string(T in);
 string readFirstLineFile(const string &filename);
 template<class K> uint32_t delite_hashcode(K key);
 template<class K> bool delite_equals(K key1, K key2);
-
-// structure to keep thread-local resource information
-typedef struct {
-  int thread_id;
-  int socket_id;
-} resourceInfo_t;
 
 #ifndef __DELITE_CPP_STANDALONE__
 extern std::map<int,jobject> *JNIObjectMap;

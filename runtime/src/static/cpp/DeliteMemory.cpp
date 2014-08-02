@@ -69,4 +69,10 @@ char *DeliteHeapAlloc(size_t sz, int idx) {
   return ptr;
 }
 
+void *operator new(size_t sz, const resourceInfo_t &resourceInfo) {
+  return DeliteHeapAlloc(sz, resourceInfo.thread_id);
+}
 
+void *operator new[](size_t sz, const resourceInfo_t &resourceInfo) {
+  return DeliteHeapAlloc(sz, resourceInfo.thread_id);
+}

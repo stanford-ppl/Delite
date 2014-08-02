@@ -22,10 +22,20 @@ char find_delim(const string &pattern) {
     return -1;
 }
 
+string *growStringArray(const resourceInfo_t &resourceInfo, string *input, int &length) {
+  string *result = new (resourceInfo) string[length * 4];
+  for(int i=0; i<length; i++) {
+    result[i] = input[i];
+  }
+  length *= 4;
+  return result;
+}
+
+#ifdef __USE_STD_STRING__
 #ifdef MEMMGR_REFCNT
-std::shared_ptr<cppDeliteArraystring> string_split(const string &str, const string &pattern, int32_t lim) {
+std::shared_ptr<cppDeliteArraystring> string_split(const resourceInfo_t &resourceInfo, const string &str, const string &pattern, int32_t lim) {
 #else
-cppDeliteArraystring *string_split(const string &str, const string &pattern, int32_t lim) {
+cppDeliteArraystring *string_split(const resourceInfo_t &resourceInfo, const string &str, const string &pattern, int32_t lim) {
 #endif
   //TODO: current g++ does not fully support c++11 regex, 
   //      so below code does not work.
@@ -52,13 +62,8 @@ cppDeliteArraystring *string_split(const string &str, const string &pattern, int
   std::vector<std::string> elems;
   int num_tokens = 0;
   std::string token;
-#ifdef __USE_STD_STRING__
   std::stringstream ss(str);
-#else
-  std::stringstream ss(std::string(str.c_str()));
-#endif
   char delim;
-  //string *tokens = new string[20];
   if (pattern.compare("\\s+")==0) {
     while (ss >> token) {
       num_tokens += 1;
@@ -74,21 +79,6 @@ cppDeliteArraystring *string_split(const string &str, const string &pattern, int
     }
   }
   else if ((delim = find_delim(pattern)) != -1) {
-    /*
-    // performance optimization
-    int length = str.length();
-    char *ptr = new char[length+1];
-    char *base = ptr;
-    strcpy(ptr, str.c_str());
-    ptr[length] = 0;
-    for(int i=0; i<length; i++) {
-      if(base[i] == delim) {
-        base[i] = 0;
-        tokens[num_tokens++] = string(ptr);
-        ptr = base + i + 1;
-      }
-    }
-    */
     while (getline(ss, token, delim)) {
       num_tokens += 1;
       if (num_tokens == lim) {
@@ -118,17 +108,71 @@ cppDeliteArraystring *string_split(const string &str, const string &pattern, int
   std::shared_ptr<cppDeliteArraystring> ret(new cppDeliteArraystring(elems.size()), cppDeliteArraystringD());
 #else
   cppDeliteArraystring *ret = new cppDeliteArraystring(elems.size());
-  //cppDeliteArraystring *ret = new cppDeliteArraystring(tokens, num_tokens);
 #endif
-#ifdef __USE_STD_STRING__
   for(int i=0; i<elems.size(); i++)
     ret->update(i,elems.at(i));
+  return ret;
+}
+#else // of __USE_STD_STRING__
+#ifdef MEMMGR_REFCNT
+std::shared_ptr<cppDeliteArraystring> string_split(const resourceInfo_t &resourceInfo, const string &str, const string &pattern, int32_t lim) {
 #else
-  for(int i=0; i<elems.size(); i++)
-    ret->update(i,string(elems.at(i).c_str()));
+cppDeliteArraystring *string_split(const resourceInfo_t &resourceInfo, const string &str, const string &pattern, int32_t lim) {
+#endif
+  if (lim > 0) assert(false && "string_split with lim > 0 is not implemented yet");
+
+  int strarrlen = 8; // default length for tokens array
+  string *tokens = new (resourceInfo) string[strarrlen];
+  int num_tokens = 0;
+  int length = str.length();
+  char *strptr = new (resourceInfo) char[length+1];
+  strcpy(strptr, str.c_str());
+  char delim;
+  if (pattern.compare("\\s+")==0) {
+    char *ptr = strtok(strptr," \t");
+    while (ptr != NULL) {
+      tokens[num_tokens++] = string(ptr, strlen(ptr), 0);
+      ptr = strtok(NULL, " \t");
+      if(num_tokens == strarrlen) {
+        tokens = growStringArray(resourceInfo, tokens, strarrlen);
+      }
+    }
+  }
+  else if ((delim = find_delim(pattern)) != -1) {
+    int offset = 0;
+    for (int i=0; i<length; i++) {
+      if (strptr[i] == delim) {
+        strptr[i] = 0;
+        tokens[num_tokens++] = string(strptr+offset,i-offset,0);
+        offset = i + 1;
+        if(num_tokens == strarrlen) {
+          tokens = growStringArray(resourceInfo, tokens, strarrlen);
+        }
+      }
+    }
+    tokens[num_tokens++] = string(strptr+offset, length-offset, 0);
+    //remove the trailing empty strings when the limit is 0
+    if (lim == 0) {
+      int i = num_tokens-1;
+      while (tokens[i].length() == 0 && i >= 0) {
+        tokens[i] = string();
+        i--;
+      }
+    }
+  }
+  else {
+    fprintf(stderr, "regex: %s\n", pattern.c_str());
+    assert(false && "Given regex is not supported");
+  }
+
+#ifdef MEMMGR_REFCNT
+  std::shared_ptr<cppDeliteArraystring> ret(new cppDeliteArraystring(tokens, num_tokens), cppDeliteArraystringD());
+#else
+  cppDeliteArraystring *ret = new cppDeliteArraystring(tokens, num_tokens);
 #endif
   return ret;
 }
+#endif // of __USE_STD_STRING__
 
 int32_t string_toInt(const string &str) {
   return atoi(str.c_str());
