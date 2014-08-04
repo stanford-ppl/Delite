@@ -946,7 +946,7 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
       if (t.partition) {
         stream.println("//partitioned array follows")
         stream.println("#ifdef __DELITE_CPP_NUMA__")
-        emitValDef(sym, "new (" + resourceInfoSym + ".thread_id) " + remap(sym.tp) + "Numa("+quote(n)+",0,config->activeSockets())")
+        emitValDef(sym, "new (" + resourceInfoSym + ".thread_id) " + remap(sym.tp) + "("+quote(n)+",0,config->activeSockets())")
         stream.println("#else")
       }
       if (cppMemMgr == "refcnt")  
@@ -1005,22 +1005,49 @@ class __T__ : public DeliteMemory {
 public:
   __TARG__ *data;
   size_t length;
+  const bool isNuma;
+#ifdef __DELITE_CPP_NUMA__
+  __TARG__ **wrapper;
+  size_t numGhostCells; // constant for all internal arrays
+  size_t *starts;
+  size_t *ends;
+  size_t numChunks;
+#endif
 
-  __T__(int _length, int heapIdx): data((__TARG__ *)(DeliteHeapAlloc(sizeof(__TARG__)*_length,heapIdx))), length(_length) { }
+  __T__(int _length, int heapIdx): data((__TARG__ *)(DeliteHeapAlloc(sizeof(__TARG__)*_length,heapIdx))), length(_length), isNuma(false) { }
 
-  __T__(int _length): data((__TARG__ *)(new __TARG__[_length])), length(_length) { }
+  __T__(int _length): data((__TARG__ *)(new __TARG__[_length])), length(_length), isNuma(false) { }
 
-  __T__(__TARG__ *_data, size_t _length) {
-    data = _data;
-    length = _length;
-  }
+  __T__(__TARG__ *_data, size_t _length): data(_data), length(_length), isNuma(false) { }
 
-  virtual __TARG__ apply(size_t idx) {
+  __TARG__ apply(size_t idx) {
+#ifdef __DELITE_CPP_NUMA__
+    if (isNuma) {
+      for (size_t sid = 0; sid < numChunks; sid++) {
+        if (idx < ends[sid]) return wrapper[sid][idx-starts[sid]]; //read from first location found
+      }
+      assert(false); //throw runtime_exception
+    }
+    else
+      return data[idx];
+#else
     return data[idx];
+#endif
   }
 
-  virtual void update(size_t idx, __TARG__ val) {
+  void update(size_t idx, __TARG__ val) {
+#ifdef __DELITE_CPP_NUMA__
+    if (isNuma) {
+      for (size_t sid = 0; sid < numChunks; sid++) {
+        size_t offset = starts[sid];
+        if (idx >= offset && idx < ends[sid]) wrapper[sid][idx-offset] = val; //update all ghosts
+      }
+    }
+    else
+      data[idx] = val;
+#else
     data[idx] = val;
+#endif
   }
 
   void print(void) {
@@ -1034,26 +1061,9 @@ public:
   uint32_t hashcode(void) {
     return (uintptr_t)this;
   }
-
-};
-
-struct __T__D {
-  void operator()(__T__ *p) {
-    //printf("__T__: deleting %p\n",p);
-    delete[] p->data;
-  }
-};
-
+  
 #ifdef __DELITE_CPP_NUMA__
-class __T__Numa: public __T__ {
-public:
-  __TARG__ **wrapper;
-  size_t numGhostCells; // constant for all internal arrays
-  size_t *starts;
-  size_t *ends;
-  size_t numChunks;
-
-  __T__Numa(size_t _length, size_t _numGhostCells, size_t _numChunks) : __T__(NULL, _length) {
+  __T__(size_t _length, size_t _numGhostCells, size_t _numChunks) : data(NULL), length(_length), isNuma(true) {
     //FIXME: transfer functions rely on data field
     numGhostCells = _numGhostCells;
     numChunks = _numChunks;
@@ -1071,13 +1081,6 @@ public:
     wrapper[socketId] = (__TARG__*)numa_alloc_onnode(length*sizeof(__TARG__), socketId);
   }
 
-  __TARG__ apply(size_t idx) {
-    for (size_t sid = 0; sid < numChunks; sid++) {
-      if (idx < ends[sid]) return wrapper[sid][idx-starts[sid]]; //read from first location found
-    }
-    assert(false); //throw runtime_exception
-  }
-
   //read locally if available, else remotely
   __TARG__ applyAt(size_t idx, size_t sid) {
     //size_t sid = config->threadToSocket(tid);
@@ -1088,13 +1091,6 @@ public:
 
   __TARG__ unsafe_apply(size_t socketId, size_t idx) {
     return wrapper[socketId][idx];
-  }
-
-  void update(size_t idx, __TARG__ value) {
-    for (size_t sid = 0; sid < numChunks; sid++) {
-      size_t offset = starts[sid];
-      if (idx >= offset && idx < ends[sid]) wrapper[sid][idx-offset] = value; //update all ghosts
-    }
   }
 
   //update locally, ghosts need to be explicitly synchronized
@@ -1108,8 +1104,15 @@ public:
   void unsafe_update(size_t socketId, size_t idx, __TARG__ value) {
     wrapper[socketId][idx] = value;
   }
+#endif
 
 };
-#endif
+
+struct __T__D {
+  void operator()(__T__ *p) {
+    //printf("__T__: deleting %p\n",p);
+    delete[] p->data;
+  }
+};
 """
 }

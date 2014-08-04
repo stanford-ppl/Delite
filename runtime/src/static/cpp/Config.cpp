@@ -50,7 +50,7 @@ void initializeConfig(int numThreads) {
     
     //detect physical config
     int numSockets = getNumSockets() + 1;
-    int numCoresPerSocket = getNumCoresPerSocket();
+    int numCoresPerSocket = getNumCoresPerSocket() / 2; //TODO: divide by 2 is to ignore hyper-threading. Better way?
     int numCores = numCoresPerSocket * numSockets;
 
     //detect numa config
