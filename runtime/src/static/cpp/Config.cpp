@@ -56,7 +56,7 @@ void initializeConfig(int numThreads) {
     //detect numa config
     #ifdef __DELITE_CPP_NUMA__
     if (numa_available() >= 0) {
-        int numCpus = numa_num_configured_cpus();
+        int numCpus = numa_num_configured_cpus() / 2;
         if (numCoresPerSocket <= 0) {
             printf("[WARNING]: Unable to automatically determine number of physical cores, assuming %d\n", numCpus);
             numCores = numCpus;
