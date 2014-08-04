@@ -16,6 +16,7 @@ object DeliteBuild extends Build {
     libraryDependencies += "org.scala-lang.virtualized" % "scala-library" % virtScala,
     libraryDependencies += "org.scala-lang.virtualized" % "scala-compiler" % virtScala,
     libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.1.2",
+    libraryDependencies += "org.zeromq" % "jqmq" % "3.1.0",
 
     libraryDependencies += "org.apache.commons" % "commons-math" % "2.2",
     libraryDependencies += "com.google.protobuf" % "protobuf-java" % "2.4.1",
