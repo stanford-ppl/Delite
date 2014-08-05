@@ -384,12 +384,6 @@ function searchNode(nodeName) {
 $(document).ready(function () {
 	$("#right").css("width", $("#container").width() - $("#accordian").width())
 	$("#dfg").css("height", $("#dfg").height() - $("#dfgHeader").height())
-	$(window).resize(function() {
-		/*console.log("rigth: " + $("#right").height())
-		console.log("code: " + $("#code").height())
-		console.log("dfg: " + $("#dfg").height())
-		console.log("timeline: " + $("#timeline").height())*/
-	})
 	/*
 	$('#accordian > ul > li').click(function() {
 		$("#accordian ul li").removeClass("active")
