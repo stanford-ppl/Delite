@@ -13,8 +13,8 @@
 #define DHEAP_DEBUG(...)
 
 // Delite Custom Memory APIs
-void DeliteHeapInit(int idx, int numThreads, size_t heapSize);
-void DeliteHeapClear(int idx, int numThreads);
+void DeliteHeapInit(int idx, int numThreads, int numLiveThreads, int initializer, size_t heapSize);
+void DeliteHeapClear(int idx, int numThreads, int numLiveThreads, int finalizer);
 char *DeliteHeapAlloc(size_t sz, int idx);
 
 // globally overloaded new operators

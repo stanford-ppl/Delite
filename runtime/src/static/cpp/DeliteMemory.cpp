@@ -10,50 +10,53 @@ int heapInitCnt = 0;
 // align thread-local variables with 64 bytes to avoid false sharing
 const int paddingShift = 6;
 
-void delite_barrier(int numThreads) {
+void delite_barrier(int cnt) {
+  if (cnt > 1) {
     pthread_mutex_lock(&heapInitLock);
     heapInitCnt += 1;
-    if (heapInitCnt < numThreads) {
+    if (heapInitCnt < cnt) {
       pthread_cond_wait(&heapInitCond, &heapInitLock);
     }
-    if (heapInitCnt == numThreads) {
+    if (heapInitCnt == cnt) {
       pthread_cond_broadcast(&heapInitCond);
       heapInitCnt = 0;
     }
     pthread_mutex_unlock(&heapInitLock);
+  }
 }
 
-void DeliteHeapInit(int idx, int numThreads, size_t heapSize) {
+// idx: the resource (thread) index for initialization
+// numThreads: the total number of threads (max number of possible thread ids)
+// numLiveThreads: the actual number of threads that has some work scheduled (they're calling this init)
+// heapSize: total heap size (aggregation for all the threads)
+void DeliteHeapInit(int idx, int numThreads, int numLiveThreads, int initializer, size_t heapSize) {
   if (heapSize == 0) {
     int64_t pages = sysconf(_SC_PHYS_PAGES);
     int64_t page_size = sysconf(_SC_PAGE_SIZE);
     heapSize = pages * page_size / 4; // use 25% of physical memory as heap
   }
 
-  if (idx == 0) {
+  if (idx == initializer) {
     DeliteHeap = new char*[numThreads << paddingShift];
     DeliteHeapOffset = new size_t[numThreads << paddingShift];
   }
-  char *ptr = (char*)malloc(heapSize/numThreads);
-  memset(ptr, 0, heapSize/numThreads);
+  size_t localHeapSize = heapSize / numLiveThreads;
+  char *ptr = (char*)malloc(localHeapSize);
+  memset(ptr, 0, localHeapSize);
 
-  if (numThreads > 1) {
-    delite_barrier(numThreads);
-  }
+  delite_barrier(numLiveThreads);
 
   // Now all the threads allocated and initialized their own heap
   DeliteHeap[idx << paddingShift] = ptr;
   DeliteHeapOffset[idx << paddingShift] = 0;
-  DHEAP_DEBUG("finished heap initialization for resource %d, size: %lld\n", idx, heapSize/numThreads);
+  DHEAP_DEBUG("finished heap initialization for resource %d, size: %lld\n", idx, localHeapSize);
 }
 
-void DeliteHeapClear(int idx, int numThreads) {
+void DeliteHeapClear(int idx, int numThreads, int numLiveThreads, int finalizer) {
   size_t heapUsage = DeliteHeapOffset[idx << paddingShift];
-  if (numThreads > 1) {
-    delite_barrier(numThreads);
-  }
+  delite_barrier(numLiveThreads);
   delete[] DeliteHeap[idx << paddingShift];
-  if (idx == 0) {
+  if (idx == finalizer) {
     delete[] DeliteHeap;
     delete[] DeliteHeapOffset;
   }
