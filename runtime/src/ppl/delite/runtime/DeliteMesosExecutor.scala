@@ -241,6 +241,7 @@ object DeliteMesosExecutor {
   var classLoader = this.getClass.getClassLoader
   val results = new HashMap[String,ArrayList[DeliteArray[_]]]
 
+  //TODO: Place HashMap inside of DeliteArray and modify it.  Play similar context in here.
   def getResult(id: String, offset: Int) = {
     if(opTarget==Targets.Scala && needsCopy(id,Targets.Scala)) {
       putTask(Targets.resourceIDs(Targets.Cuda)(0),Task("get_"+id))
@@ -494,6 +495,7 @@ object DeliteMesosExecutor {
     driver.sendFrameworkMessage(mssg.toByteArray)
   }
 
+  //Use to modify delite array
   def getData(request: RequestData) = {    
     opTarget=Targets.Scala
     val id = request.getId.getId.split("_")
