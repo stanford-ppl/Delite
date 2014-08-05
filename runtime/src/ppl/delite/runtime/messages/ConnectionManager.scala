@@ -1,3 +1,4 @@
+
 package ppl.delite.runtime.messages
 
 import java.nio._
@@ -8,7 +9,7 @@ import java.util.concurrent.{CountDownLatch, Executors}
 import scala.collection.mutable.{ArrayBuffer, HashMap, SynchronizedMap, SynchronizedQueue, Queue}
 
 case class ConnectionManagerId(val host: String, val port: Int) {
-
+  /*
   val socketAddr: InetSocketAddress = {
     var address: InetAddress = null
     for (addr <- InetAddress.getAllByName(host) if address eq null) {
@@ -20,6 +21,7 @@ case class ConnectionManagerId(val host: String, val port: Int) {
   }
   
   def toSocketAddress() = socketAddr
+  */
 }
 
 object ConnectionManagerId {
@@ -27,7 +29,7 @@ object ConnectionManagerId {
     new ConnectionManagerId(socketAddress.getHostName, socketAddress.getPort)
   }
 }
-  
+/*  
 class ConnectionManager(port: Int) {
 
   def this() = this(0)
@@ -80,6 +82,7 @@ class ConnectionManager(port: Int) {
 
   def run() {
     try {
+      /*
       while(!selectorThread.isInterrupted) {
         for( (connectionManagerId, sendingConnection) <- connectionRequests) {
           sendingConnection.connect() 
@@ -142,6 +145,7 @@ class ConnectionManager(port: Int) {
           }
         }
       }
+      */
     } catch {
       case e: Exception => log("Error in select loop", e)
     }
@@ -479,3 +483,4 @@ object ConnectionManager {
     }
   }
 }
+*/

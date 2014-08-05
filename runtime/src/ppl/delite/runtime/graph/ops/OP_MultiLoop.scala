@@ -55,8 +55,9 @@ class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, v
   }
 
   override def partition = { //TODO: "free" partition could be local or distributed...
-    if (getInputs.isEmpty) Local
-    else getInputs.map(i => i._1.partition(i._2)).reduceLeft(_ combine _)
+    //if (getInputs.isEmpty) Local
+    //else getInputs.map(i => i._1.partition(i._2)).reduceLeft(_ combine _)
+    Distributed(Set(id))
   }
 
   override def partition(sym: String) = {

@@ -2253,7 +2253,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             emitBlock(elem.buf.alloc)
             if (Config.generateSerializable) {
               val arraySym = if (!remap(elem.buf.alloc.tp).contains("DeliteArray")) fieldAccess(quote(getBlockResult(elem.buf.alloc)), dc_data_field(getBlockResult(elem.buf.alloc))(elem.mA)) else quote(getBlockResult(elem.buf.alloc))
-              emitAssignment(fieldAccess(arraySym,"offset"), "loopStart") //FIXME: extremely hacky
+              emitAssignment(fieldAccess(arraySym,"offset"), "loopStart.toInt") //FIXME: extremely hacky
             }
             emitAssignment(fieldAccess("__act",quote(sym)+"_data"),quote(getBlockResult(elem.buf.alloc)))
         }

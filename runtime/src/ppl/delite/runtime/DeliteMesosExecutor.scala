@@ -71,7 +71,8 @@ class DeliteMesosExecutor extends Executor {
         try {
           val info = LaunchInfo.parseFrom(task.getData)
           
-          val networkId = DeliteMesosExecutor.network.id
+          /*
+          //val networkId = DeliteMesosExecutor.network.id
           val taskStarted = TaskStatus.newBuilder.setTaskId(task.getTaskId).setState(TaskState.TASK_RUNNING)
             .setData(CommInfo.newBuilder.setSlaveIdx(info.getSlaveIdx).addSlaveAddress(networkId.host).addSlavePort(networkId.port).build.toByteString).build
           driver.sendStatusUpdate(taskStarted)
@@ -87,6 +88,7 @@ class DeliteMesosExecutor extends Executor {
           Delite.embeddedMain(args, Map())
 
           DeliteMesosExecutor.network.stop()
+         */
           driver.sendStatusUpdate(status(TaskState.TASK_FINISHED))
         }
         catch {
@@ -178,8 +180,8 @@ object DeliteMesosExecutor {
   private var noWork = true
   private var message: Any = _
 
-  private lazy val network: ConnectionManager = new ConnectionManager
-  private val networkMap = new HashMap[Int,ConnectionManagerId]
+  //private lazy val network: ConnectionManager = new ConnectionManager
+  private val networkMap = new HashMap[Int,String]
   var numSlaves = 0
   var slaveIdx = 0
   
@@ -253,15 +255,20 @@ object DeliteMesosExecutor {
   def processSlaves(info: CommInfo) {
     slaveIdx = info.getSlaveIdx
     numSlaves = info.getSlaveAddressCount
+
+    throw new RuntimeException("ERROR: ProcessSlaves will not work.")
+/*
     if (network.id != ConnectionManagerId(info.getSlaveAddress(slaveIdx), info.getSlavePort(slaveIdx)))
       throw new RuntimeException("ERROR: slaves socket addresses don't agree")
     for (i <- 0 until numSlaves) {
       networkMap.put(i, ConnectionManagerId(info.getSlaveAddress(i), info.getSlavePort(i)))
     }
     DeliteMesosExecutor.sendDebugMessage("my peers are " + info.getSlaveAddressList.toArray.mkString(", "))
+  */
   }
 
   def main(args: Array[String]) {
+    /*
     network.onReceiveMessage((msg: Message, id: ConnectionManagerId) => { //TODO: refactor me
       sendDebugMessage("received request")
       val bytes = msg.asInstanceOf[BufferMessage].buffers(0).array
@@ -272,7 +279,7 @@ object DeliteMesosExecutor {
       sendDebugMessage("satisfying remote read")
       Some(Message.createBufferMessage(response.toByteString.asReadOnlyByteBuffer, msg.id))
     })
-
+    */
     driver = new MesosExecutorDriver(new DeliteMesosExecutor)
     graph = Delite.loadDeliteDEG(args(0))
     driver.run()
@@ -416,7 +423,7 @@ object DeliteMesosExecutor {
   def launchWorkScala(op: RemoteOp) {
     opTarget = Targets.Scala
     val id = op.getId.getId
-    //sendDebugMessage("launching op " + id)
+    sendDebugMessage("launching op " + id)
     
     val cls = op.getType match {
       case RemoteOp.Type.INPUT => classLoader.loadClass("generated.scala.kernel_"+id)
@@ -510,11 +517,15 @@ object DeliteMesosExecutor {
       .setData(RequestData.newBuilder.setId(Id.newBuilder.setId(id)).setIdx(idx))
       .build.toByteString.asReadOnlyByteBuffer
 
+    throw new RuntimeException("ERORR: RequestData will not work")
+    /*  
     val resBytes = network.sendMessageSync(networkMap.get(location), Message.createBufferMessage(mssg)).get.asInstanceOf[BufferMessage].buffers(0).array
     val result = DeliteSlaveMessage.parseFrom(resBytes)
     result.getType match {
       case DeliteSlaveMessage.Type.RESULT => sendDebugMessage("remote received"); result.getResult
     }
+    */
+    null
   }
 
   var loopStart = 0

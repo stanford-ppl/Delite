@@ -84,12 +84,12 @@ object RPC_Generator {
     out.append("var slaveIdx = 1\n")
     out.append("while (slaveIdx < res.length) {\n") //TODO: could parallelize reduce across slaves, then send result to master
       out.append("val act2 = activation_" + op.id + ".deserialize(res(slaveIdx).getOutputList)\n")
-      out.append("closure.combine(act,act2)\n")
+      out.append("closure.combine(act,act2,0)\n")
       out.append("slaveIdx += 1\n")
     out.append("}\n")
 
     op match {
-      case m: OP_MultiLoop if m.needsCombine => out.append("closure.finalize(act)\n") //TODO: should this be called by master, slaves, or both?
+      case m: OP_MultiLoop if m.needsCombine => out.append("closure.finalize(act,0)\n") //TODO: should this be called by master, slaves, or both?
       case _ =>
     }
 

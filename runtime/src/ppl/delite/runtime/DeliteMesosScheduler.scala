@@ -84,12 +84,16 @@ class DeliteMesosScheduler(private val executor: ExecutorInfo) extends Scheduler
       val cpus = offer.getResources(0)
       val mem = offer.getResources(1)
 
+      
       val mssg = LaunchInfo.newBuilder
-        .setMasterAddress(DeliteMesosScheduler.network.id.host)
-        .setMasterPort(DeliteMesosScheduler.network.id.port)
+        .setMasterAddress("n0001")
+        .setMasterPort(0)
         .setSlaveIdx(idx)
       for (arg <- DeliteMesosScheduler.appArgs) mssg.addArg(arg)
+      
       idx += 1
+
+      println("Here " + idx)
 
       val task = TaskInfo.newBuilder
         .setName(taskId)
@@ -103,7 +107,7 @@ class DeliteMesosScheduler(private val executor: ExecutorInfo) extends Scheduler
 
       val tasks = new java.util.LinkedList[TaskInfo]  
       tasks.add(task)
-      driver.launchTasks(offer.getId, tasks)
+      driver.launchTasks(offer.getId, tasks)      
     }
   }
 
@@ -131,7 +135,7 @@ class DeliteMesosScheduler(private val executor: ExecutorInfo) extends Scheduler
    */
   def statusUpdate(driver: SchedulerDriver, status: TaskStatus) {
     def abnormalShutdown(reason: Exception) {
-      DeliteMesosScheduler.network.stop()
+      //DeliteMesosScheduler.network.stop()
       driver.stop()
       Delite.shutdown(reason)
     }
@@ -226,8 +230,8 @@ object DeliteMesosScheduler {
   private val remoteCompleted = remoteLock.newCondition
   private var notCompleted = true
   private var remoteResult: Array[ReturnResult] = _
-  private lazy val network: ConnectionManager = new ConnectionManager
-  private val networkMap = new HashMap[Int, ConnectionManagerId]
+  //private lazy val network: ConnectionManager = new ConnectionManager
+  private val networkMap = new HashMap[Int, String]
 
   def main(args: Array[String]) {
     appArgs = args
@@ -236,7 +240,7 @@ object DeliteMesosScheduler {
       sys.error("No master node specified")
 
     val sep = java.io.File.separator
-    appArgs(0) = Config.deliteHome + sep + appArgs(0) //should be part of the 'delite' script?
+    //appArgs(0) = Config.deliteHome + sep + appArgs(0) //should be part of the 'delite' script?
     println(appArgs.mkString(", "))
     val noregen = if(Config.noRegenerate) "--noregen" else ""
     val executorCmd = Config.deliteHome + sep + "bin" + sep + "delite " + noregen + " --isSlave -d " + System.getProperty("user.dir") + " -t " + Config.numThreads + " --cuda " + Config.numCuda + " --codecache " + Config.deliteHome+"/generatedCacheSlave " + appArgs.mkString(" ")
@@ -252,21 +256,22 @@ object DeliteMesosScheduler {
       .setName("Delite Runtime")
       .build
 
+      /*
     network.onReceiveMessage((msg: Message, id: ConnectionManagerId) => { 
       println("Received [" + msg + "] from [" + id + "]")
       None
-    })
+    })*/
 
     driver = new MesosSchedulerDriver(new DeliteMesosScheduler(executor), framework, master)
     driver.start() //TODO: sanity check successful connection
     Delite.embeddedMain(args, Map())
     
-    network.stop()
+    //network.stop()
     driver.stop()
   }
 
   def addSlaveToNetwork(info: CommInfo) {
-    networkMap.put(info.getSlaveIdx, ConnectionManagerId(info.getSlaveAddress(0), info.getSlavePort(0)))
+    networkMap.put(info.getSlaveIdx, info.getSlaveAddress(0) + ":" + info.getSlavePort(0))
     //network.sendMessageAsync(networkMap.get(info.getSlaveIdx), Message.createBufferMessage(java.nio.ByteBuffer.allocate(10)))
 
     if (networkMap.size == slaves.length) { //broadcast network map to slaves
@@ -274,8 +279,8 @@ object DeliteMesosScheduler {
         val slaveInfo = CommInfo.newBuilder.setSlaveIdx(i)
         for (j <- 0 until slaves.length) {
           val networkId = networkMap.get(j)
-          slaveInfo.addSlaveAddress(networkId.host)
-          slaveInfo.addSlavePort(networkId.port)
+          //slaveInfo.addSlaveAddress(networkId.host)
+          //slaveInfo.addSlavePort(networkId.port)
         }
         val mssg = DeliteMasterMessage.newBuilder
           .setType(DeliteMasterMessage.Type.INFO)
