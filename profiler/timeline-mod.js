@@ -62,7 +62,6 @@ TimelineGraph.prototype.draw = function() {
 		.attr("height", chartHeight)
 		.attr("class", "chart");
 
-	//var timelineGraph = chart.append("g")
 	this.timelineGraph = chart.append("g")
 		.attr("width", chartWidth)
 		.attr("class", "mini");
