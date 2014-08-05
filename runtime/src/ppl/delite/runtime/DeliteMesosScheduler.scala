@@ -9,7 +9,9 @@ import ppl.delite.runtime.data.RemoteDeliteArray
 import ppl.delite.runtime.graph.Stencil
 import ppl.delite.runtime.messages.Messages._
 import ppl.delite.runtime.messages._
-
+import java.net._
+import java.nio.channels._
+import java.nio.channels.spi._
 
 class DeliteMesosScheduler(private val executor: ExecutorInfo) extends Scheduler {
 
@@ -231,7 +233,7 @@ object DeliteMesosScheduler {
   private var notCompleted = true
   private var remoteResult: Array[ReturnResult] = _
   //private lazy val network: ConnectionManager = new ConnectionManager
-  private val networkMap = new HashMap[Int, String]
+  private val networkMap = new HashMap[Int, ConnectionManagerId]
 
   def main(args: Array[String]) {
     appArgs = args
@@ -271,7 +273,11 @@ object DeliteMesosScheduler {
   }
 
   def addSlaveToNetwork(info: CommInfo) {
-    networkMap.put(info.getSlaveIdx, info.getSlaveAddress(0) + ":" + info.getSlavePort(0))
+    val serverChannel = ServerSocketChannel.open()
+    //val id = InetAddress.getLocalHost.getHostName  + ":" + serverChannel.socket.getLocalPort
+    //println("MY ID: " + id)
+
+    networkMap.put(info.getSlaveIdx, ConnectionManagerId(info.getSlaveAddress(0),info.getSlavePort(0)))
     //network.sendMessageAsync(networkMap.get(info.getSlaveIdx), Message.createBufferMessage(java.nio.ByteBuffer.allocate(10)))
 
     if (networkMap.size == slaves.length) { //broadcast network map to slaves
@@ -279,8 +285,8 @@ object DeliteMesosScheduler {
         val slaveInfo = CommInfo.newBuilder.setSlaveIdx(i)
         for (j <- 0 until slaves.length) {
           val networkId = networkMap.get(j)
-          //slaveInfo.addSlaveAddress(networkId.host)
-          //slaveInfo.addSlavePort(networkId.port)
+          slaveInfo.addSlaveAddress(networkId.host)
+          slaveInfo.addSlavePort(networkId.port)
         }
         val mssg = DeliteMasterMessage.newBuilder
           .setType(DeliteMasterMessage.Type.INFO)

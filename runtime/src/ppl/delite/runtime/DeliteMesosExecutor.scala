@@ -16,6 +16,9 @@ import ppl.delite.runtime.graph.ops.{DeliteOP,OP_MultiLoop}
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.data._
+import java.net._
+import java.nio.channels._
+import java.nio.channels.spi._
 
 class DeliteMesosExecutor extends Executor {
   
@@ -70,25 +73,26 @@ class DeliteMesosExecutor extends Executor {
       def run() {
         try {
           val info = LaunchInfo.parseFrom(task.getData)
-          
-          /*
+          //InetAddress.getLocalHost.getHostName  + ":" + serverChannel.socket.getLocalPort
           //val networkId = DeliteMesosExecutor.network.id
+
+          //Send My Address and Port to Master 
           val taskStarted = TaskStatus.newBuilder.setTaskId(task.getTaskId).setState(TaskState.TASK_RUNNING)
-            .setData(CommInfo.newBuilder.setSlaveIdx(info.getSlaveIdx).addSlaveAddress(networkId.host).addSlavePort(networkId.port).build.toByteString).build
+            .setData(CommInfo.newBuilder.setSlaveIdx(info.getSlaveIdx).addSlaveAddress(InetAddress.getLocalHost.getHostAddress).addSlavePort(5000).build.toByteString).build
           driver.sendStatusUpdate(taskStarted)
 
           val args = info.getArgList.toArray(new Array[String](0))
 
-          DeliteMesosExecutor.networkMap.put(-1, ConnectionManagerId(info.getMasterAddress, info.getMasterPort))
+          DeliteMesosExecutor.networkMap.put(-1,ConnectionManagerId(info.getMasterAddress,info.getMasterPort))
           
           DeliteMesosExecutor.sendDebugMessage("my master is " + info.getMasterAddress + ":" + info.getMasterPort)
-          DeliteMesosExecutor.sendDebugMessage("my connection is " + DeliteMesosExecutor.network.id.host + ":" + DeliteMesosExecutor.network.id.port)
+          //DeliteMesosExecutor.sendDebugMessage("my connection is " + DeliteMesosExecutor.network.id.host + ":" + DeliteMesosExecutor.network.id.port)
           DeliteMesosExecutor.sendDebugMessage("my input args are " + args.mkString(", "))
 
-          Delite.embeddedMain(args, Map())
+          Delite.embeddedMain(args, Map()) //actually starts to run program
 
-          DeliteMesosExecutor.network.stop()
-         */
+          //DeliteMesosExecutor.network.stop()
+
           driver.sendStatusUpdate(status(TaskState.TASK_FINISHED))
         }
         catch {
@@ -181,7 +185,7 @@ object DeliteMesosExecutor {
   private var message: Any = _
 
   //private lazy val network: ConnectionManager = new ConnectionManager
-  private val networkMap = new HashMap[Int,String]
+  private val networkMap = new HashMap[Int,ConnectionManagerId]
   var numSlaves = 0
   var slaveIdx = 0
   
@@ -256,15 +260,15 @@ object DeliteMesosExecutor {
     slaveIdx = info.getSlaveIdx
     numSlaves = info.getSlaveAddressCount
 
-    throw new RuntimeException("ERROR: ProcessSlaves will not work.")
-/*
-    if (network.id != ConnectionManagerId(info.getSlaveAddress(slaveIdx), info.getSlavePort(slaveIdx)))
-      throw new RuntimeException("ERROR: slaves socket addresses don't agree")
+    //throw new RuntimeException("ERROR: ProcessSlaves will not work.")
+    //PULLS in the directory of all slaves.
+
+    //if (network.id != ConnectionManagerId(info.getSlaveAddress(slaveIdx), info.getSlavePort(slaveIdx)))
+    //  throw new RuntimeException("ERROR: slaves socket addresses don't agree")
     for (i <- 0 until numSlaves) {
-      networkMap.put(i, ConnectionManagerId(info.getSlaveAddress(i), info.getSlavePort(i)))
+      networkMap.put(i, ConnectionManagerId(info.getSlaveAddress(i),info.getSlavePort(i)))
     }
     DeliteMesosExecutor.sendDebugMessage("my peers are " + info.getSlaveAddressList.toArray.mkString(", "))
-  */
   }
 
   def main(args: Array[String]) {
