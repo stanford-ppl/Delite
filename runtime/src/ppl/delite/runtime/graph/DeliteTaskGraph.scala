@@ -5,7 +5,7 @@ import _root_.scala.util.parsing.json.JSON
 import ops._
 import targets._
 import ppl.delite.runtime.Config
-import ppl.delite.runtime.Delite
+import ppl.delite.runtime.profiler.Profiler
 import ppl.delite.runtime.scheduler.PartialSchedule
 import collection.mutable.{HashSet, HashMap}
 
@@ -96,7 +96,7 @@ object DeliteTaskGraph {
   def getFieldMapOption(map: Map[Any, Any], field: String): Option[Map[Any, Any]] = {
     map.get(field) match {
       case Some(field) => field match {
-        case map: Map[Any, Any] => Some(map)
+        case map: Map[Any,Any] => Some(map)
         case err@_ => None
       }
       case None => None
@@ -148,7 +148,7 @@ object DeliteTaskGraph {
     }
 
     // TODO: maybe it would be better to add source info to DeliteOP?
-    Delite.sourceInfo += (id -> (fileName, line, opName))
+    Profiler.sourceInfo += (id -> (fileName, line, opName))
 	
     val newop = opType match {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
@@ -287,6 +287,7 @@ object DeliteTaskGraph {
     val newGraph = new DeliteTaskGraph
     newGraph._version = graph._version
     newGraph._kernelPath = graph._kernelPath
+    newGraph._appName = graph._appName
     newGraph._superGraph = graph
     newGraph
   }

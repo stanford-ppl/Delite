@@ -1,0 +1,3 @@
+<DeliteExternalLib>
+<compiler> ~/mesos-0.9.0/third_party/protobuf-2.4.1/src/protoc </compiler>
+</DeliteExternalLib>

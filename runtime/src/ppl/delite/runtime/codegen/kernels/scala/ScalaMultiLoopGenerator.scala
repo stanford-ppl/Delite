@@ -168,7 +168,6 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   protected def addSource(source: String, name: String) = ScalaCompile.addSource(source, name)
 
   protected def writeHeader() {
-    out.append("import java.util.concurrent.atomic._\n")
     writeObject()
     writeClass()
   }
@@ -180,6 +179,7 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   protected def writeObject() {
     ScalaExecutableGenerator.writePackage(graph, out)
     ScalaExecutableGenerator.writePath(graph, out)
+    out.append("import java.util.concurrent.atomic._\n")
     out.append("object ")
     out.append(kernelName)
     out.append(" {\n")
@@ -255,9 +255,9 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   //add code to code generate an atomic integer method
   //you can pull and set from this 
   protected def writeSynchronizedOffset(){
-    if(op.numDynamicChunks == -1){
+    if(op.numDynamicChunks == "-1"){
       //do formula
-      out.append("private val proposedNumberOfDynamicChunks = closure.loopSize/(40*"+numChunks+")+" +op.numDynamicChunks+ "\n")
+      out.append("private val proposedNumberOfDynamicChunks = (closure.loopSize/(Math.log10(closure.loopSize.toDouble)*(500.0/"+numChunks+") )).toInt\n")
     }
     else {
       out.append("private val proposedNumberOfDynamicChunks = "+op.numDynamicChunks+ "\n")

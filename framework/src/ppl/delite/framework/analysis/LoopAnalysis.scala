@@ -211,7 +211,7 @@ trait NestedLoopMappingAnalysis extends FatBlockTraversal with LoopFusionOpt wit
   private def processArrayAccess(i: Exp[Int]) {
     printInfo("processing array access " + quote(i))
     i match {
-      case Def(LoopIndex(l)) =>
+      case LoopIndex(l) =>
         addSoftC(1, l, currentLoop)
       case Def(IntPlus(_,LoopIndex(l))) =>
         addSoftC(1, l, currentLoop)
@@ -433,7 +433,8 @@ trait NestedLoopMappingAnalysis extends FatBlockTraversal with LoopFusionOpt wit
 
       // apply constraints from user (considered as hard constraints)
       userConstraints foreach { line =>
-        val (level,constraint) = (line.split(":")(0).trim.toInt,line.split(":")(1).trim)
+        val tokens: Array[String] = line.split(":")
+        val (level,constraint) = (tokens(0).trim.toInt, tokens(1).trim)
         solution.get(level) match {
           case Some(mappingForLevel) =>
             if (pass && constraint.startsWith("dim")) {

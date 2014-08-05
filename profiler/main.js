@@ -334,8 +334,8 @@ function startDebugSession() {
 		editor = createEditor("code")
   		profData = getProfileData(degOps, profileData.Profile, config)
   		//setUpTimelineLevelFilter(profData.dependencyData.maxNodeLevel)
-  		//graphController = createDataFlowGraph(cola, "#dfg", profData.dependencyData, viewState, config)
-  		graphController = {}
+  		graphController = createDataFlowGraph(cola, "#dfg", profData.dependencyData, viewState, config)
+  		//graphController = {}
 
   		// This is the data to be visualized using bar charts
   		topNodesBasedOnTime = getTopNodes(profData.dependencyData.nodes, "percentage_time", 20)
@@ -346,8 +346,15 @@ function startDebugSession() {
   			syncTimePct: o.syncTime.pct
   		}})
 
-      	timelineController = createTimeline("#timeline", profData, config)
-  		$("#timelineHiddenNodeList").change(timelineController.timelineScopeSelHandler) 
+      	//timelineController = createTimeline("#timeline", profData, config)
+      	timelineController = new TimelineGraph("#timeline", profData, config)
+      	timelineController.draw();
+  		//$("#timelineHiddenNodeList").change(timelineController.timelineScopeSelHandler) 
+  		//var f = function() {timelineController.timelineScopeSelHandler()}
+  		//$("#timelineHiddenNodeList").change(f) 	
+  		$("#timelineHiddenNodeList").change({
+  			graph: timelineController
+  		}, timelineController.timelineScopeSelHandler) 
 
       	//filterNodesOnTimeline()
       	createStackGraph("#memory", profData.memUsageData, timelineController.xScale)

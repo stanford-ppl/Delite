@@ -1,0 +1,9 @@
+<DeliteExternalLib>
+<compiler> /usr/bin/g++ </compiler>
+<make> /usr/bin/make </make>
+<headers>
+  <prefix> -I </prefix>
+  <path> ${JAVA_HOME}/include </path> <!-- required for JNI -->
+  <path> ${JAVA_HOME}/include/linux </path>
+</headers>
+</DeliteExternalLib>

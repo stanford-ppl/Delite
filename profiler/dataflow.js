@@ -199,7 +199,6 @@ function createDataFlowGraph(cola, destinationDivElem, dataModel, viewState, con
 	var kernel_nodes = $(".dataflow-kernel") // to optimize dom_selection.
 
 	var ticks = 0
-	/*
 	cola.start(20, 20, 20).on("tick", function () {
 	    node.each(function (d) { d.innerBounds = d.bounds.inflate(-margin); })
 	        .attr("x", function (d) { return d.innerBounds.x; })
@@ -221,7 +220,7 @@ function createDataFlowGraph(cola, destinationDivElem, dataModel, viewState, con
 	    if (ticks > 5) {
 	    	cola.stop()	
 	    }
-	});*/
+	});
 
 	function nodeClickHandler(node) {
 		var sc = node.sourceContext

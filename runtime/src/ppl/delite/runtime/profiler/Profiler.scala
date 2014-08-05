@@ -1,11 +1,12 @@
 package ppl.delite.runtime
 package profiler
 
-import java.io.{BufferedWriter, File, PrintWriter, FileWriter}
+import java.io.{File, PrintWriter}
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.ops._
 import scala.util.parsing.json.JSON
+import tools.nsc.io.Path
 
 /**
  * Manages, inputs, and outputs profiling data.
@@ -17,7 +18,7 @@ object Profiler {
   var sourceInfo: Map[String, (String, Int, String)] = Map()
   var graph: Option[DeliteTaskGraph] = None
   
-  def getFieldMap(map: Map[Any, Any], field: String): Map[Any,Any] = {
+  private def getFieldMap(map: Map[Any, Any], field: String): Map[Any,Any] = {
     map.get(field) match {
       case Some(field) => field match {
         case map: Map[Any,Any] => map
@@ -27,17 +28,17 @@ object Profiler {
     }
   }
 
-  def getFieldMapOption(map: Map[Any, Any], field: String): Option[Map[Any, Any]] = {
+  private def getFieldMapOption(map: Map[Any, Any], field: String): Option[Map[Any, Any]] = {
     map.get(field) match {
       case Some(field) => field match {
-        case map: Map[Any, Any] => Some(map)
+        case map: Map[Any,Any] => Some(map)
         case err => None
       }
       case None => None
     }
   }
   
-  def getFieldList(map: Map[Any, Any], field: String): List[Any] = {
+  private def getFieldList(map: Map[Any, Any], field: String): List[Any] = {
     map.get(field) match {
       case Some(field) => field match {
         case list: List[Any] => list
@@ -47,14 +48,14 @@ object Profiler {
     }
   }
 
-  def getFieldString(map: Map[Any, Any], field:String): String = {
+  private def getFieldString(map: Map[Any, Any], field:String): String = {
     map.get(field) match {
       case Some(field) => field.toString
       case None => error("field not found")
     }
   }
 
-  def mapFromParsedJSON(json: Any): Map[String, (String, String, Int)] = {
+  private def mapFromParsedJSON(json: Any): Map[String, (String, String, Int)] = {
     val symMap = json match {
       case m: Map[Any, Any] => m
       case err => error("JSON map not found")
@@ -75,20 +76,19 @@ object Profiler {
     })
   }
   
-  def init(info: Map[String, (String, Int, String)], taskGraph: DeliteTaskGraph) {
-    sourceInfo = info
+  def init(taskGraph: DeliteTaskGraph) {
     graph = Some(taskGraph)
   }
   
-  def relativePath(fileName: String): String = {
+  private def relativePath(fileName: String): String = {
     val i = fileName.lastIndexOf('/')
     fileName.substring(i + 1)
   }
   
-  def deliteOpByIdOrNone(id: String): Option[DeliteOP] =
+  private def deliteOpByIdOrNone(id: String): Option[DeliteOP] =
     graph.get.ops.find(_.id == id)
   
-  def deliteOpType(id: String): String = {
+  private def deliteOpType(id: String): String = {
     val opOpt = deliteOpByIdOrNone(id)
     if (opOpt.isEmpty) "ALL"
     else {
@@ -112,15 +112,12 @@ object Profiler {
       case Some(tuple) => tuple
     }
   
-  def iterableToJSArray[T](arrName: String, values: Iterable[T], quoted: Boolean = true): String = {
-    val arr = (for (v <- values) yield (if (quoted) "\"" + v + "\"" else v)
-               ).mkString("[", ", ", "]")
-    arr
+  private def iterableToJSArray[T](arrName: String, values: Iterable[T], quoted: Boolean = true): String = {
+    (for (v <- values) yield (if (quoted) "\"" + v + "\"" else v)).mkString("[", ", ", "]")
   }
   
-  def listOfListsToJSArray[T](arrName: String, values: List[List[T]]): String = {
-    val arr = (for (v <- values) yield v.mkString("[", ", ", "]")).mkString("[", ", ", "]")
-    arr
+  private def listOfListsToJSArray[T](arrName: String, values: List[List[T]]): String = {
+    (for (v <- values) yield v.mkString("[", ", ", "]")).mkString("[", ", ", "]")
   }
   
   trait TaskInfo {
@@ -228,15 +225,9 @@ object Profiler {
     //writer.println("    \"parallelTasks\": " + parallelTasksJS)
   }
 
-  def emitProfileData(dir: File, fileName: String, globalStartNanos: Long, jvmUpTimeAtAppStart: Long, timingStats: List[Timing]) {
-    val dataFile = new File(dir, fileName)
-    val fileWriter = new FileWriter(dataFile)
-    val writer = new PrintWriter(fileWriter)
-    
-    def emitProperties(props: List[String]) {
-      props.foreach(prop => writer.println("profileDataObj." + prop + " = " + prop + ";"))
-    }
-    
+  def emitProfileData(file: File, globalStartNanos: Long, jvmUpTimeAtAppStart: Long, timingStats: List[Timing]) {
+    val writer = new PrintWriter(file)
+
     writer.println("{\"Profile\":{")
     writer.println("  \"Init\": {")
     writer.println("    \"SystemNanoTimeAtAppStart\": " + globalStartNanos + ",")
@@ -254,9 +245,7 @@ object Profiler {
     SamplerThread.dumpProfile(writer, globalStartNanos)
     writer.println("}}")
     
-    writer.flush()
-    fileWriter.flush()
-    fileWriter.close()
+    writer.close()
   }
 
   def dumpProfile(globalStartNanos: Long, jvmUpTimeAtAppStart: Long) {
@@ -269,6 +258,7 @@ object Profiler {
    *  Requires system property stats.output.dir to be set.
    */
   def writeProfileDataToFile(globalStartNanos: Long, jvmUpTimeAtAppStart: Long, timingStats: List[Timing]) {
+<<<<<<< HEAD
     val directory = getOrCreateOutputDirectory()
     val file = "profileData.js"
 	  emitProfileData(directory, file, globalStartNanos, jvmUpTimeAtAppStart, timingStats)
@@ -310,6 +300,11 @@ object Profiler {
     else if(directory.isDirectory == false)
       throw new RuntimeException("profileOutputDirectory doesn't refer to a directory")
     directory
+=======
+    val directory = Path(Config.profileOutputDirectory).createDirectory()
+    val file = directory / "profileData.js"
+    emitProfileData(file.jfile, globalStartNanos, jvmUpTimeAtAppStart, timingStats)
+>>>>>>> develop
   }
   
 }

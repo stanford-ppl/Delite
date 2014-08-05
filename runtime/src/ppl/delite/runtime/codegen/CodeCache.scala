@@ -147,19 +147,17 @@ trait CodeCache {
     if (!mergeDestination) destination.deleteRecursively()
     destination.createDirectory()
 
-    val base = destination.toString + File.separator
-
     for (dir <- source.dirs)
-      copyDirectory(dir, Directory(Path(base + dir.name)), mergeDestination)
+      copyDirectory(dir, destination / Directory(dir.name), mergeDestination)
 
     for (file <- source.files)
-      file.copyTo(Path(base + file.name))
+      file.copyTo(destination / file.name)
   }
 
   def printSources() {
     for (i <- 0 until sourceBuffer.length) {
       print(sourceBuffer(i))
-      print("\n /*********/ \n \n")
+      println("\n /*********/ \n")
     }
   }
 

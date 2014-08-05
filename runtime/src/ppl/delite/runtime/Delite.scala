@@ -5,10 +5,9 @@ import executor._
 import graph.ops.{EOP_Global, Arguments}
 import graph.targets.Targets
 import graph.{TestGraph, DeliteTaskGraph}
-import profiler.{PerformanceTimer, Profiler, MemoryProfiler, SamplerThread}
+import profiler.Profiling
 import scheduler._
 import tools.nsc.io._
-import java.lang.management.ManagementFactory
 
 /**
  * Author: Kevin J. Brown
@@ -22,7 +21,7 @@ import java.lang.management.ManagementFactory
 object Delite {
 
   private var mainThread: Thread = _
-  private var outstandingException: Exception = _
+  private var outstandingException: Throwable = _
 
   //TODO: Remove this. This is only used for cluster version GPU runtime code generation.
   var inputArgs: Array[String] = _
@@ -120,7 +119,7 @@ object Delite {
       loadSources(graph)
 
       //initialize profiler
-      Profiler.init(sourceInfo, graph)
+      Profiling.init(graph)
       
       //schedule
       scheduler.schedule(graph)
@@ -142,6 +141,7 @@ object Delite {
         DeliteMesosExecutor.awaitWork()
       }
       else { //master executor (including single-node execution)
+<<<<<<< HEAD
         val totalNumThreads = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL
         PerformanceTimer.initializeStats(totalNumThreads)
         MemoryProfiler.initializeStats(totalNumThreads)
@@ -181,6 +181,17 @@ object Delite {
           System.gc()
         }
       }
+=======
+        for (i <- 1 to Config.numRuns) {
+          if (Config.performWalk) println("Beginning Execution Run " + i)
+          Profiling.startRun()
+          executor.run(executable)
+          appResult = EOP_Global.take() //await the end of the application program   
+          Profiling.endRun()           
+          System.gc()
+        }
+      }      
+>>>>>>> develop
     }
 
     try {
@@ -191,7 +202,7 @@ object Delite {
     }
     catch {
       case i: InterruptedException => abnormalShutdown(); throw outstandingException //a worker thread threw the original exception        
-      case e: Exception => abnormalShutdown(); throw e       
+      case e: Throwable => abnormalShutdown(); throw e
     }
     finally {
       Arguments.args = Nil
@@ -221,12 +232,9 @@ object Delite {
   }
 
   //abnormal shutdown
-  def shutdown(reason: Exception) {
+  def shutdown(reason: Throwable) {
     outstandingException = reason
     mainThread.interrupt()
   }
 
-  // maps op ids to the op's source info (fileName, line, opName)
-  // used in the profiler
-  var sourceInfo: Map[String, (String, Int, String)] = Map()
 }

@@ -1,9 +1,0 @@
-<DeliteExternalLib>
-<compiler> /usr/bin/g++ </compiler>
-<make> /usr/bin/make </make>
-<headers>
-  <prefix> -I </prefix>
-  <path> /home/kjbrown/java/jdk1.7.0_b147_x86_64/include </path> <!-- required for JNI -->
-  <path> /home/kjbrown/java/jdk1.7.0_b147_x86_64/include/linux </path>
-</headers>
-</DeliteExternalLib>

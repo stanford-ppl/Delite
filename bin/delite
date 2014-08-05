@@ -167,7 +167,7 @@ def run(deg, params, opts):
         scala_class_root = opts.codecache + os.sep + "scala" + os.sep + "classes" + os.sep + "jar"
         cache_root = opts.codecache + os.sep + ".." + os.sep
         jar_cmd = delitecommon.JAVA_HOME + "/bin/jar cfM " + deg.rstrip(".deg") + "-bin.jar -C " + cache_root + " generatedCache -C " + scala_class_root + " ."
-        print jar_cmd
+        #print jar_cmd
         ecode = os.system(jar_cmd)
         if ecode != 0:
             err("Unable to jar Delite compiled executables")

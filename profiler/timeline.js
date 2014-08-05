@@ -113,6 +113,7 @@ function createTimeline(parentDivId, profileData, config) {
 	}
 
 	function createTimelineNodes(data, className) {
+		console.log("Calling createTimelineNodes")
 		timelineGraph.append("g").selectAll("." + className)
 			.data(data)
 			.enter().append("rect")
