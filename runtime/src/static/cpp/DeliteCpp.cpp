@@ -128,11 +128,13 @@ cppDeliteArraystring *string_split(const resourceInfo_t &resourceInfo, const str
   char *strptr = new (resourceInfo) char[length+1];
   strcpy(strptr, str.c_str());
   char delim;
+  char *savePtr;
   if (pattern.compare("\\s+")==0) {
-    char *ptr = strtok(strptr," \t");
+    //NOTE: strtok() is not thread-safe, so use strtok_r()
+    char *ptr = strtok_r(strptr, " \t", &savePtr);
     while (ptr != NULL) {
       tokens[num_tokens++] = string(ptr, strlen(ptr), 0);
-      ptr = strtok(NULL, " \t");
+      ptr = strtok_r(NULL, " \t", &savePtr);
       if(num_tokens == strarrlen) {
         tokens = growStringArray(resourceInfo, tokens, strarrlen);
       }
