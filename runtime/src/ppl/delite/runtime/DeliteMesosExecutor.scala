@@ -6,7 +6,8 @@ import com.google.protobuf.ByteString
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.ArrayBlockingQueue
-import java.util.{ArrayList,HashMap}
+import java.util.HashSet
+import java.util.{ArrayList,HashMap,Set}
 import ppl.delite.runtime.data._
 import ppl.delite.runtime.executor.ThreadPool
 import ppl.delite.runtime.codegen.DeliteExecutable
@@ -242,6 +243,58 @@ object DeliteMesosExecutor {
   var classLoader = this.getClass.getClassLoader
   val results = new HashMap[String,ArrayList[DeliteArray[_]]]
 
+  def setupPushDirectories(nodes: DeliteArray[Int], edges: DeliteArray[Int]){
+    sendDebugMessage("Local length: " + nodes.length)
+    for(i <- 0 until nodes.length) 
+      sendDebugMessage("NODES i: " + i + " data: " + nodes.readAt(i+nodes.offset))
+    for(i <- 0 until edges.length) 
+      sendDebugMessage("EDGES i: " + i + " data: " + edges.readAt(i+edges.offset))   
+
+    var expected = 0;
+    val pushSlaves:Array[HashSet[Integer]] = new Array[HashSet[Integer]](nodes.length)
+    val ghosts = new HashSet[Integer]()
+    
+    for(i <- 0 until nodes.length){
+      pushSlaves(i) = new HashSet[Integer]()
+      var end = if((nodes.offset+i+1) < (nodes.length+nodes.offset)) nodes.readAt(nodes.offset+i+1) else edges.length+edges.offset
+      sendDebugMessage("End of loop: " + end)
+      
+      for(j <- nodes.readAt(nodes.offset+i) until end){
+        sendDebugMessage("On neighbor index: " + j)
+        var k = 0
+        var found = false
+        val dir = nodes.offsets
+        var pushID = dir.length-1
+
+        //Could change this to a binary search to make faster.
+        while(k < dir.length && !found){
+          sendDebugMessage("DIR i: " + k + " dir: " + dir(k));
+          if(dir(k) > edges.readAt(j)){
+            pushID = k-1
+            found = true
+          }
+          k += 1
+        }
+        if(edges.readAt(j) < nodes.offset || edges.readAt(j) >= (nodes.offset+nodes.length)){
+          if(!pushSlaves(i).contains(pushID)){
+            sendDebugMessage("Adding node: " + (i+nodes.offset) + " pushID: " + pushID);
+            pushSlaves(i).add(pushID)
+          }
+          if(!ghosts.contains(edges.readAt(j))){
+            expected += 1
+            ghosts.add(edges.readAt(j))
+          }
+          
+        }
+      }//end edges for
+    }//end nodes for
+    //numExpected = expected;
+    //remoteAdjs = new int[expected][];
+    //remotePRs = new double[expected];
+    //return pushSlaves;
+    println("Setup Directories on Slave: " + slaveIdx)
+  }
+
   //TODO: Place HashMap inside of DeliteArray and modify it.  Play similar context in here.
   def getResult(id: String, offset: Int) = {
     if(opTarget==Targets.Scala && needsCopy(id,Targets.Scala)) {
@@ -438,7 +491,7 @@ object DeliteMesosExecutor {
     val cls = op.getType match {
       case RemoteOp.Type.INPUT => classLoader.loadClass("generated.scala.kernel_"+id)
       case RemoteOp.Type.MULTILOOP => 
-        loopStart = op.getStartIdx(slaveIdx)
+        loopStart = if (op.getStartIdx(slaveIdx) < 0) 0 else op.getStartIdx(slaveIdx)
         loopSize = if (op.getStartIdxCount > slaveIdx+1) op.getStartIdx(slaveIdx+1)-loopStart else -1
         //sendDebugMessage("looping from " + loopStart + " to " + (loopStart+loopSize))
         classLoader.loadClass("MultiLoopHeader_"+id)

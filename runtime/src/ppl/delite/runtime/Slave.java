@@ -43,7 +43,6 @@ public class Slave {
 
     context.term();
   }
-
   //Listens for slave to slave data communication
   private static class slave_slave_listener implements Runnable {
     public void run() {

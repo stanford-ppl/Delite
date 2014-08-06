@@ -449,7 +449,14 @@ final class LocalDeliteArrayDouble(val data: Array[Double], var offset: Int) ext
   var offsets: Array[Int] = _
 
   val length = data.length
-  def apply(i: Int): Double = data(i-offset)
+  def apply(i: Int): Double = {
+    if(i < offset || i >= (offset+data.length)){
+      0.0
+    }
+    else{
+      data(i-offset)
+    }
+  }
   def readAt(i: Int) = data(i-offset)
   def update(i: Int, x: Double) = data(i-offset) = x
   
@@ -481,7 +488,14 @@ final class LocalDeliteArrayInt(val data: Array[Int], var offset: Int) extends D
   var offsets: Array[Int] = _
 
   val length = data.length
-  def apply(i: Int): Int = data(i-offset)
+  def apply(i: Int): Int = {
+    if(i < offset || i >= (offset+data.length)){
+      1
+    }
+    else{
+      data(i-offset)
+    }
+  }
   def readAt(i: Int) = data(i-offset)
   def update(i: Int, x: Int) = data(i-offset) = x
 

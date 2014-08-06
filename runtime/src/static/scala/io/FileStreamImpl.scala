@@ -77,7 +77,7 @@ final class FileStreamImpl(charset: Charset, delimiter: Array[Byte], jfiles: Arr
     reader = new LineReader(byteStream, delimiter)
     text = new Text
     idx = fileIdx
-    pos = offset
+    pos = start
     if (offset != 0) { //jump to next avaible new line (and valid char)
       if (byteStream.skip(offset-1) != (offset-1)) throw new IOException("Unable to skip desired bytes in file")
       pos += (reader.readLine(text) - 1)

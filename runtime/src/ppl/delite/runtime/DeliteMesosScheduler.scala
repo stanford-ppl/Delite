@@ -245,7 +245,7 @@ object DeliteMesosScheduler {
     //appArgs(0) = Config.deliteHome + sep + appArgs(0) //should be part of the 'delite' script?
     println(appArgs.mkString(", "))
     val noregen = if(Config.noRegenerate) "--noregen" else ""
-    val executorCmd = Config.deliteHome + sep + "bin" + sep + "delite " + noregen + " --isSlave -d " + System.getProperty("user.dir") + " -t " + Config.numThreads + " --cuda " + Config.numCuda + " --codecache " + Config.deliteHome+"/generatedCacheSlave " + appArgs.mkString(" ")
+    val executorCmd = Config.deliteHome + sep + "bin" + sep + "delite " + noregen + " --isSlave -d " + System.getProperty("user.dir") + " -t " + Config.numThreads + " --cuda " + Config.numCuda + " --codecache " + "/tmp/generatedCacheSlave " + appArgs.mkString(" ")
     println(executorCmd) 
 
     val executor = ExecutorInfo.newBuilder
@@ -313,7 +313,7 @@ object DeliteMesosScheduler {
       val bounds = (stencils zip args).filter(_._2.isInstanceOf[RemoteDeliteArray[_]]).map(a => a._1.withArray(a._2.asInstanceOf[RemoteDeliteArray[_]]))
       bounds.foldLeft(None:Option[Array[Int]])(combineLoopBounds) match {
         case Some(loopBounds) => loopBounds
-        case None => Array.fill(1)(0) //TODO: should run result locally (need to call a MultiLoop on master)
+        case None => Array.fill(slaves.length)(-1) //TODO: should run result locally (need to call a MultiLoop on master)
       }
   }
 

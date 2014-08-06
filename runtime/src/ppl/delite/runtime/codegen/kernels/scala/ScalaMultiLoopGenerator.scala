@@ -237,8 +237,23 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
     out.append(")\n")
 
     if (Config.clusterMode == 2) {
-      out.append("closure.loopStart = ppl.delite.runtime.DeliteMesosExecutor.loopStart\n")
-      out.append("closure.loopSize = if (ppl.delite.runtime.DeliteMesosExecutor.loopSize != -1) ppl.delite.runtime.DeliteMesosExecutor.loopSize else closure.size - closure.loopStart\n")
+      val ins = op.getInputs.filter(i => i._1.outputType(i._2).contains("Stream"))
+      if (ins.length > 0) {
+        val stream = "in" + op.getInputs.indexOf(ins(0))
+        out.append("closure.loopStart = 0\n")
+        out.append("closure.loopSize = "+stream+".size\n")
+      } else {
+        val range = scala.io.Source.fromFile("/tmp/range.txt").getLines.map(_.toInt).toSeq
+        out.append("closure.loopStart = "+range(0)+"\n")
+        out.append("closure.loopSize = "+(range(1)-range(0))+"\n")
+      //out.append("closure.loopStart = ppl.delite.runtime.DeliteMesosExecutor.loopStart\n")
+      //out.append("closure.loopSize = if (ppl.delite.runtime.DeliteMesosExecutor.loopSize != -1) ppl.delite.runtime.DeliteMesosExecutor.loopSize else closure.size - closure.loopStart\n")
+      //out.append("val slaveIdx = ppl.delite.runtime.DeliteMesosExecutor.slaveIdx\n")
+      //out.append("val numSlaves = ppl.delite.runtime.DeliteMesosExecutor.numSlaves\n")
+      //out.append("closure.loopStart = closure.size*slaveIdx/numSlaves\n")
+      //out.append("closure.loopSize = closure.size*(slaveIdx+1)/numSlaves - closure.loopStart\n")
+      out.append("ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(\"loop: from \" + closure.loopStart + \" to \" + (closure.loopStart+closure.loopSize))\n")
+      }
     }
     else {
       out.append("closure.loopStart = 0\n")
