@@ -88,8 +88,8 @@ class DeliteMesosScheduler(private val executor: ExecutorInfo) extends Scheduler
 
       
       val mssg = LaunchInfo.newBuilder
-        .setMasterAddress("n0001")
-        .setMasterPort(0)
+        .setMasterAddress(InetAddress.getLocalHost.getHostAddress)
+        .setMasterPort(5050)
         .setSlaveIdx(idx)
       for (arg <- DeliteMesosScheduler.appArgs) mssg.addArg(arg)
       
@@ -326,6 +326,7 @@ object DeliteMesosScheduler {
       val remoteOp = RemoteOp.newBuilder.setId(Id.newBuilder.setId(id)).setType(tpe)
       for (start <- loopBounds) remoteOp.addStartIdx(start)
       for (arg <- args) remoteOp.addInput(Serialization.serialize(arg))
+      //for (arg <- args) println("serialized: " + arg + ": " + arg.getClass.getSimpleName)
 
       val mssg = DeliteMasterMessage.newBuilder
         .setType(DeliteMasterMessage.Type.OP)

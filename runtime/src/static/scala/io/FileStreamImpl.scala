@@ -4,6 +4,7 @@ import java.io.{FileInputStream, File, IOException}
 import java.nio.charset.Charset
 import org.apache.hadoop.util.LineReader
 import org.apache.hadoop.io.Text
+import com.google.protobuf.ByteString
 
 /**
  * Creates a single logical file stream by concatenating the streams of an arbitrary number of physical files
@@ -35,6 +36,11 @@ object FileStreamImpl {
     if (dec.maxCharsPerByte != 1f || dec.averageCharsPerByte != 1f)
       throw new IOException("Unsupported Charset: " + charset.displayName)
     charset
+  }
+
+  def parseFrom(s: ByteString) = {
+    val paths = s.toStringUtf8.split(",")
+    apply(paths)
   }
 
 }
@@ -111,6 +117,10 @@ final class FileStreamImpl(charset: Charset, delimiter: Array[Byte], jfiles: Arr
     reader.close()
     reader = null
     text = null
+  }
+
+  final def toByteString = {
+    ByteString.copyFromUtf8(jfiles.map(_.getAbsolutePath).mkString(","))
   }
 
 }

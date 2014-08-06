@@ -185,7 +185,8 @@ object DeliteMesosExecutor {
   private var message: Any = _
 
   //private lazy val network: ConnectionManager = new ConnectionManager
-  private val networkMap = new HashMap[Int,ConnectionManagerId]
+  private val networkMap = new HashMap[Integer,ConnectionManagerId]
+  private val mySlave : Slave = new Slave
   var numSlaves = 0
   var slaveIdx = 0
   
@@ -267,8 +268,12 @@ object DeliteMesosExecutor {
     //if (network.id != ConnectionManagerId(info.getSlaveAddress(slaveIdx), info.getSlavePort(slaveIdx)))
     //  throw new RuntimeException("ERROR: slaves socket addresses don't agree")
     for (i <- 0 until numSlaves) {
+      println("putting: " + i)
       networkMap.put(i, ConnectionManagerId(info.getSlaveAddress(i),info.getSlavePort(i)))
     }
+
+    mySlave.init(slaveIdx,networkMap,numSlaves)
+
     DeliteMesosExecutor.sendDebugMessage("my peers are " + info.getSlaveAddressList.toArray.mkString(", "))
   }
 

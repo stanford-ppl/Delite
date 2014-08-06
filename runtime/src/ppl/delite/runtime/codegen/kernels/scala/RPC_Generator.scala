@@ -67,7 +67,7 @@ object RPC_Generator {
         case other => other.toString
       }) else Seq()
     out.append(stencils.mkString(", Seq(",",",")"))
-    out.append(op.getInputs.map(_._2).mkString(", Seq(",",","))\n"))
+    out.append(op.getInputs.map(_._2).mkString(", Seq[Any](",",","))\n"))
 
     //construct outputs
     out.append("val act = activation_" + op.id + ".deserialize(res(0).getOutputList)\n")

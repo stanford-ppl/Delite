@@ -8,22 +8,7 @@ import java.net._
 import java.util.concurrent.{CountDownLatch, Executors}
 import scala.collection.mutable.{ArrayBuffer, HashMap, SynchronizedMap, SynchronizedQueue, Queue}
 
-case class ConnectionManagerId(val host: String, val port: Int) {
-  /*
-  val socketAddr: InetSocketAddress = {
-    var address: InetAddress = null
-    for (addr <- InetAddress.getAllByName(host) if address eq null) {
-      //println("considering " + addr)
-      if (addr.isReachable(10)) address = addr
-    }
-    if (address eq null) throw new RuntimeException("unable to establish local socket connection")
-    new InetSocketAddress(address, port)
-  }
-  
-  def toSocketAddress() = socketAddr
-  */
-}
-
+case class ConnectionManagerId(val host: String, val port: Int)
 object ConnectionManagerId {
   def fromSocketAddress(socketAddress: InetSocketAddress): ConnectionManagerId = {
     new ConnectionManagerId(socketAddress.getHostName, socketAddress.getPort)
