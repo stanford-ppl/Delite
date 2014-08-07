@@ -89,7 +89,7 @@ public class Slave {
       ZMQ.Context context = ZMQ.context(1);
       ZMQ.Socket responder = context.socket(ZMQ.DEALER);
 
-      System.out.println("Getting Slave IDX: " + localID + " numSlaves: " + numSlaves + " hmSize: " + directory.size());
+      //System.out.println("Getting Slave IDX: " + localID + " numSlaves: " + numSlaves + " hmSize: " + directory.size());
 
       ConnectionManagerId cm = directory.get(localID);
       String listener = "tcp://"  + cm.host() + ":" + cm.port();
@@ -101,13 +101,19 @@ public class Slave {
       try{
         Thread.sleep(1000);
       } catch(InterruptedException e){}
-      DeliteMesosExecutor.donePushing_$eq(true);
+      DeliteMesosExecutor.doneInit_$eq(true);
 
+      waitForStateLock();
       while (!Thread.currentThread().isInterrupted()) {
         byte[] request = responder.recv(0);
         unpackDynamicDataMessage(request,data.idMap(),data.ghostData());
         numRecieved++;
-        DeliteMesosExecutor.sendDebugMessage("\t NUMRECIEVED: " + numRecieved + " NUMEXPECTING: " + numExpecting);
+        if(numRecieved == numExpecting){
+          DeliteMesosExecutor.donePushing_$eq(true); 
+          numRecieved = 0;
+          waitForStateLock();
+        }
+        //DeliteMesosExecutor.sendDebugMessage("\t NUMRECIEVED: " + numRecieved + " NUMEXPECTING: " + numExpecting);
       }
 
       responder.close();
@@ -123,7 +129,7 @@ public class Slave {
         for(int i=0;i<length;++i){
           //type dependent
           double cur = ByteBuffer.wrap(data).getDouble(BYTE_FIELD_SIZE+INT_FIELD_SIZE+BYTE_FIELD_SIZE+INT_FIELD_SIZE+i*(DOUBLE_FIELD_SIZE+size));
-          DeliteMesosExecutor.sendDebugMessage("RECIEVED INDEX: " + index + " DATA: " + cur);
+          //DeliteMesosExecutor.sendDebugMessage("RECIEVED INDEX: " + index + " DATA: " + cur);
           int keyIndx = nd.put(index);
           dat[keyIndx] = cur;
         }
@@ -137,7 +143,7 @@ public class Slave {
 
       ZMQ.Socket[] requester = new ZMQ.Socket[numSlaves];
 
-      System.out.println("Slave IDX: " + localID + " numSlaves: " + numSlaves + " hmSize: " + directory.size());
+      //System.out.println("Slave IDX: " + localID + " numSlaves: " + numSlaves + " hmSize: " + directory.size());
 
       Iterator it = directory.entrySet().iterator();
       while (it.hasNext()) {
@@ -146,11 +152,11 @@ public class Slave {
         ConnectionManagerId id = pairs.getValue();
         String host = id.host();
         int port = id.port();
-        System.out.println("SlaveID: " + slvIdx + " host: " + host + ':' + port);
+        //System.out.println("SlaveID: " + slvIdx + " host: " + host + ':' + port);
 
         if(slvIdx != -1 && slvIdx != localID){
           String name = "tcp://"  + host + ":" + port;
-          DeliteMesosExecutor.sendDebugMessage("\tSENDER INDEX: " + slvIdx + " name: " + name);
+          //DeliteMesosExecutor.sendDebugMessage("\tSENDER INDEX: " + slvIdx + " name: " + name);
           requester[slvIdx] = context.socket(ZMQ.DEALER);
           requester[slvIdx].connect(name);
         } 
@@ -162,21 +168,14 @@ public class Slave {
 
         pushData(pushSlavesMaster,requester);      
 
-        while(numRecieved < numExpecting){}
-        numRecieved = 0;
-        
-        DeliteMesosExecutor.donePushing_$eq(true); 
-        DeliteMesosExecutor.sendDebugMessage("ITERATION: " + numIterations);
+        //DeliteMesosExecutor.sendDebugMessage("ITERATION: " + numIterations);
         numIterations++;
-        if(numIterations > 100){
-          finished = true;
-        }
         //data.idMap() = new HashMapIntIntImpl(data.length*5,data.length*5);
       }
       context.term();
     }
     public void pushData(HashSet<Integer>[] pushSlaves, ZMQ.Socket[] requester) { 
-      DeliteMesosExecutor.sendDebugMessage("\tPUSHING PRs");
+      //DeliteMesosExecutor.sendDebugMessage("\tPUSHING PRs");
       for(int i=0;i<data.length();i++){
         byte[] message = packDataMessage((byte)0,i+data.offset(),data.readAt(i+data.offset())/localDegs[i],DOUBLE_FIELD_SIZE);
         distributeDataMessage(pushSlaves[i],requester,message);
@@ -186,7 +185,7 @@ public class Slave {
       Iterator iterator = pushSlaves.iterator();
       while(iterator.hasNext()){
         Integer cur = (Integer) iterator.next();
-        DeliteMesosExecutor.sendDebugMessage("\t Sending to slave ID: " + cur + " " + message.length);
+        //DeliteMesosExecutor.sendDebugMessage("\t Sending to slave ID: " + cur + " " + message.length);
         requester[cur].send(message, 0);
       }
     }
@@ -249,6 +248,7 @@ public class Slave {
     }
     public static void packDouble(byte[] message, int index, double data){
       //copy length into message
+      //DeliteMesosExecutor.sendDebugMessage("Sending index: " + index + " data: " + data);
       ByteBuffer bbuff = ByteBuffer.allocate(DOUBLE_FIELD_SIZE);
       bbuff.putDouble(data); 
       byte[] b = bbuff.array();

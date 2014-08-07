@@ -80,7 +80,7 @@ class DeliteMesosExecutor extends Executor {
 
           //Send My Address and Port to Master 
           val taskStarted = TaskStatus.newBuilder.setTaskId(task.getTaskId).setState(TaskState.TASK_RUNNING)
-            .setData(CommInfo.newBuilder.setSlaveIdx(info.getSlaveIdx).addSlaveAddress(InetAddress.getLocalHost.getHostAddress).addSlavePort(7022).build.toByteString).build
+            .setData(CommInfo.newBuilder.setSlaveIdx(info.getSlaveIdx).addSlaveAddress(InetAddress.getLocalHost.getHostAddress).addSlavePort(7054).build.toByteString).build
           driver.sendStatusUpdate(taskStarted)
 
           val args = info.getArgList.toArray(new Array[String](0))
@@ -199,7 +199,9 @@ object DeliteMesosExecutor {
 
   @volatile
   var donePushing = false
-  
+  @volatile
+  var doneInit = false
+
   private var graph: DeliteTaskGraph = _
 
   // task queues for workers 
@@ -257,7 +259,7 @@ object DeliteMesosExecutor {
     prs match {
       case e:LocalDeliteArrayDouble => 
         e.allocGhostData(expected)
-        mySlave.setGhostData(e);
+        mySlave.setGhostData(e)
       case _ => 
         throw new RuntimeException("cannot alloc ghost data for arbitrary type") 
     }
@@ -352,8 +354,8 @@ object DeliteMesosExecutor {
     mySlave.init(slaveIdx,networkMap,numSlaves)
 
     //To guarantee that the listeners are setup
-    while(!donePushing){}
-    donePushing = false;
+    while(!doneInit){}
+    doneInit = false;
 
     DeliteMesosExecutor.sendDebugMessage("my peers are " + info.getSlaveAddressList.toArray.mkString(", "))
   }

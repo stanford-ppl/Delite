@@ -457,11 +457,12 @@ final class LocalDeliteArrayDouble(val data: Array[Double], var offset: Int) ext
 
   val length = data.length
   def apply(i: Int): Double = {
-    println("APPLYING")
+    //println("APPLYING")
     if(i < offset || i >= (offset+data.length)){
       val indx = idMap.get(i)
-      println("\tGHOST DATA LENGTH: " + ghostData.length)
-      println("\tAccessing GHOST DATA: " + indx)
+      //ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage("\tindex: " + i +  " map idx: " + indx)
+      //println("\tGHOST DATA LENGTH: " + ghostData.length)
+      //println("\tAccessing GHOST DATA: " + indx)
       ghostData(indx)
     }
     else{
