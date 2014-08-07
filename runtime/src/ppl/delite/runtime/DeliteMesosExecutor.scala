@@ -20,6 +20,7 @@ import ppl.delite.runtime.data._
 import java.net._
 import java.nio.channels._
 import java.nio.channels.spi._
+import java.util.Random
 
 class DeliteMesosExecutor extends Executor {
   
@@ -79,7 +80,7 @@ class DeliteMesosExecutor extends Executor {
 
           //Send My Address and Port to Master 
           val taskStarted = TaskStatus.newBuilder.setTaskId(task.getTaskId).setState(TaskState.TASK_RUNNING)
-            .setData(CommInfo.newBuilder.setSlaveIdx(info.getSlaveIdx).addSlaveAddress(InetAddress.getLocalHost.getHostAddress).addSlavePort(5000).build.toByteString).build
+            .setData(CommInfo.newBuilder.setSlaveIdx(info.getSlaveIdx).addSlaveAddress(InetAddress.getLocalHost.getHostAddress).addSlavePort(7022).build.toByteString).build
           driver.sendStatusUpdate(taskStarted)
 
           val args = info.getArgList.toArray(new Array[String](0))
@@ -185,11 +186,19 @@ object DeliteMesosExecutor {
   private var noWork = true
   private var message: Any = _
 
+  var firstIteration = true
+
   //private lazy val network: ConnectionManager = new ConnectionManager
   private val networkMap = new HashMap[Integer,ConnectionManagerId]
   private val mySlave : Slave = new Slave
   var numSlaves = 0
   var slaveIdx = 0
+  var expected = 0;
+  private var localDegrees:Array[Int] = _
+
+
+  @volatile
+  var donePushing = false
   
   private var graph: DeliteTaskGraph = _
 
@@ -243,23 +252,37 @@ object DeliteMesosExecutor {
   var classLoader = this.getClass.getClassLoader
   val results = new HashMap[String,ArrayList[DeliteArray[_]]]
 
+
+  def pushData(prs: DeliteArray[_]){
+    prs match {
+      case e:LocalDeliteArrayDouble => 
+        e.allocGhostData(expected)
+        mySlave.setGhostData(e);
+      case _ => 
+        throw new RuntimeException("cannot alloc ghost data for arbitrary type") 
+    }
+    while(!donePushing){}
+    donePushing = false;
+    sendDebugMessage("FINISHED PUSHING DATA")
+  }
   def setupPushDirectories(nodes: DeliteArray[Int], edges: DeliteArray[Int]){
+    localDegrees = new Array[Int](nodes.length)
     sendDebugMessage("Local length: " + nodes.length)
     for(i <- 0 until nodes.length) 
       sendDebugMessage("NODES i: " + i + " data: " + nodes.readAt(i+nodes.offset))
     for(i <- 0 until edges.length) 
       sendDebugMessage("EDGES i: " + i + " data: " + edges.readAt(i+edges.offset))   
 
-    var expected = 0;
     val pushSlaves:Array[HashSet[Integer]] = new Array[HashSet[Integer]](nodes.length)
     val ghosts = new HashSet[Integer]()
     
     for(i <- 0 until nodes.length){
       pushSlaves(i) = new HashSet[Integer]()
-      var end = if((nodes.offset+i+1) < (nodes.length+nodes.offset)) nodes.readAt(nodes.offset+i+1) else edges.length+edges.offset
+      val end = if((nodes.offset+i+1) < (nodes.length+nodes.offset)) nodes.readAt(nodes.offset+i+1) else edges.length+edges.offset
+      val start = nodes.readAt(nodes.offset+i)
       sendDebugMessage("End of loop: " + end)
-      
-      for(j <- nodes.readAt(nodes.offset+i) until end){
+      localDegrees(i) = end - start
+      for(j <- start until end){
         sendDebugMessage("On neighbor index: " + j)
         var k = 0
         var found = false
@@ -268,13 +291,13 @@ object DeliteMesosExecutor {
 
         //Could change this to a binary search to make faster.
         while(k < dir.length && !found){
-          sendDebugMessage("DIR i: " + k + " dir: " + dir(k));
           if(dir(k) > edges.readAt(j)){
             pushID = k-1
             found = true
           }
           k += 1
         }
+
         if(edges.readAt(j) < nodes.offset || edges.readAt(j) >= (nodes.offset+nodes.length)){
           if(!pushSlaves(i).contains(pushID)){
             sendDebugMessage("Adding node: " + (i+nodes.offset) + " pushID: " + pushID);
@@ -286,13 +309,14 @@ object DeliteMesosExecutor {
           }
           
         }
+  
       }//end edges for
     }//end nodes for
-    //numExpected = expected;
-    //remoteAdjs = new int[expected][];
-    //remotePRs = new double[expected];
-    //return pushSlaves;
-    println("Setup Directories on Slave: " + slaveIdx)
+
+    mySlave.setGhostInfo(expected,pushSlaves,localDegrees)
+
+    firstIteration = false
+    sendDebugMessage("Setup Directories on Slave: " + slaveIdx)
   }
 
   //TODO: Place HashMap inside of DeliteArray and modify it.  Play similar context in here.
@@ -326,6 +350,10 @@ object DeliteMesosExecutor {
     }
 
     mySlave.init(slaveIdx,networkMap,numSlaves)
+
+    //To guarantee that the listeners are setup
+    while(!donePushing){}
+    donePushing = false;
 
     DeliteMesosExecutor.sendDebugMessage("my peers are " + info.getSlaveAddressList.toArray.mkString(", "))
   }

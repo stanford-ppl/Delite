@@ -445,13 +445,24 @@ final class LocalDeliteArrayDouble(val data: Array[Double], var offset: Int) ext
   def this(len: Int) = this(new Array[Double](len), 0)
   def this(len: Int, start: Int) = this(new Array[Double](len), start)
 
+  var idMap: HashMapIntIntImpl = new HashMapIntIntImpl(data.length*5,data.length*5)
+  var ghostData: Array[Double] = _
+
+  def allocGhostData(len: Int){
+    ghostData =  new Array[Double](len)
+  }
+
   var id: String = _
   var offsets: Array[Int] = _
 
   val length = data.length
   def apply(i: Int): Double = {
+    println("APPLYING")
     if(i < offset || i >= (offset+data.length)){
-      0.0
+      val indx = idMap.get(i)
+      println("\tGHOST DATA LENGTH: " + ghostData.length)
+      println("\tAccessing GHOST DATA: " + indx)
+      ghostData(indx)
     }
     else{
       data(i-offset)

@@ -1,4 +1,4 @@
-package ppl.delite.runtime
+package ppl.delite.runtime.data
 
 // specialization bug on multiple ctors: (_indices: Array[Int], _keys: Array[K], _values: Array[V], _sz: Int)
 final class HashMapIntIntImpl(indsz: Int, datasz: Int) {
