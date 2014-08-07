@@ -70,12 +70,12 @@ public class Slave {
     new Thread(new slave_slave_listener()).start();
     new Thread(new slave_slave_sender()).start();     
 
-    System.out.println("Ending zeroMQ");
+    //System.out.println("Ending zeroMQ");
 
     context.term();
   }
   public void setGhostInfo(int numExpec, HashSet<Integer>[] psIn) {
-    numExpecting = numExpec; //CHANGEME
+    numExpecting = numExpec;
     pushSlavesMaster = psIn;
   }
   public void setNodeInfo(LocalDeliteArrayInt dataIn){
@@ -139,7 +139,7 @@ public class Slave {
         double[] dat = data.ghostData();
         //type dependent
         double cur = ByteBuffer.wrap(message).getDouble(BYTE_FIELD_SIZE+INT_FIELD_SIZE+BYTE_FIELD_SIZE+INT_FIELD_SIZE);
-        DeliteMesosExecutor.sendDebugMessage("\tPR RECIEVED INDEX: " + index + " DATA: " + cur);
+        //DeliteMesosExecutor.sendDebugMessage("\tPR RECIEVED INDEX: " + index + " DATA: " + cur);
         int keyIndx = nd.put(index);
         dat[keyIndx] = cur;
       } else if(id == 1){
@@ -149,7 +149,7 @@ public class Slave {
         for(int i=0;i<length;++i){
           //type dependent
           int cur = ByteBuffer.wrap(message).getInt(BYTE_FIELD_SIZE+INT_FIELD_SIZE+BYTE_FIELD_SIZE+INT_FIELD_SIZE+i*(size));
-          DeliteMesosExecutor.sendDebugMessage("\tEDGE RECIEVED INDEX: " + (index+i) + " DATA: " + cur);
+          //DeliteMesosExecutor.sendDebugMessage("\tEDGE RECIEVED INDEX: " + (index+i) + " DATA: " + cur);
           int keyIndx = nd.put(index+i);
           dat[keyIndx] = cur;
         }
@@ -158,7 +158,7 @@ public class Slave {
           int[] dat = nodes.ghostData();
           //type dependent
           int cur = ByteBuffer.wrap(message).getInt(BYTE_FIELD_SIZE+INT_FIELD_SIZE+BYTE_FIELD_SIZE+INT_FIELD_SIZE);
-          DeliteMesosExecutor.sendDebugMessage("\tNODE RECIEVED INDEX: " + index + " DATA: " + cur);
+          //DeliteMesosExecutor.sendDebugMessage("\tNODE RECIEVED INDEX: " + index + " DATA: " + cur);
           int keyIndx = nd.put(index);
           dat[keyIndx] = cur;
       }
@@ -197,7 +197,7 @@ public class Slave {
       while(!finished){
         waitForStateLock();
 
-        pushPRData(pushSlavesMaster,requester); //CHANGEME
+        pushTCData(pushSlavesMaster,requester); //CHANGEME
         
         DeliteMesosExecutor.sendDebugMessage("ITERATION: " + numIterations);
         numIterations++;
@@ -205,17 +205,17 @@ public class Slave {
       context.term();
     }
     public void pushPRData(HashSet<Integer>[] pushSlaves, ZMQ.Socket[] requester) { 
-      DeliteMesosExecutor.sendDebugMessage("\tPUSHING PRs");
-      for(int i=0;i<data.length();i++){
+      //DeliteMesosExecutor.sendDebugMessage("\tPUSHING PRs");
+      for(int i=0;i<data.data().length;i++){
         byte[] message = packDataMessage((byte)0,i+data.offset(),data.readAt(i+data.offset()),DOUBLE_FIELD_SIZE);
         distributeDataMessage(pushSlaves[i],requester,message);
       }
     }
     public void pushTCData(HashSet<Integer>[] pushSlaves, ZMQ.Socket[] requester) { 
-      DeliteMesosExecutor.sendDebugMessage("\tPUSHING ADJs");
-      for(int i=0;i<nodes.length();i++){
-        int end = edges.length()+edges.offset();
-        if((nodes.offset()+i+1) < (nodes.length()+nodes.offset())) 
+      //DeliteMesosExecutor.sendDebugMessage("\tPUSHING ADJs");
+      for(int i=0;i<nodes.data().length;i++){
+        int end = edges.data().length+edges.offset();
+        if((nodes.offset()+i+1) < (nodes.data().length+nodes.offset())) 
           end = nodes.readAt(nodes.offset()+i+1);
         int start = nodes.readAt(nodes.offset()+i);
 
@@ -224,7 +224,7 @@ public class Slave {
       }
     }
     public void pushNodeData(ZMQ.Socket[] requester) { 
-      for(int i=0;i<nodes.length();i++){
+      for(int i=0;i<nodes.data().length;i++){
         byte[] message = packDataMessage((byte)2,i+nodes.offset(),nodes.readAt(i+nodes.offset()));
         for(int j=0;j<requester.length;j++){
           if(j != localID){
@@ -237,7 +237,7 @@ public class Slave {
       Iterator iterator = pushSlaves.iterator();
       while(iterator.hasNext()){
         Integer cur = (Integer) iterator.next();
-        DeliteMesosExecutor.sendDebugMessage("\t Sending to slave ID: " + cur + " " + message.length);
+        //DeliteMesosExecutor.sendDebugMessage("\t Sending to slave ID: " + cur + " " + message.length);
         requester[cur].send(message, 0);
       }
     }    

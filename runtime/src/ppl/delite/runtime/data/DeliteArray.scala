@@ -4,7 +4,7 @@ import ppl.delite.runtime.messages._
 import ppl.delite.runtime.DeliteMesosScheduler
 
 trait DeliteArray[T] {
-  def length: Int
+  var length: Int
   def readAt(i: Int): T
 
   var id: String
@@ -41,7 +41,7 @@ abstract class RemoteDeliteArrayImpl[T:Manifest] extends DeliteArray[T] with Rem
   private var local: L = _
 
   def hasArray = local ne null
-  val length = chunkLengths.reduce(_ + _)
+  var length = chunkLengths.reduce(_ + _)
 
   def copy(srcPos: Int, dest: DeliteArray[T], destPos: Int, len: Int) = dest match {
     case d:RemoteDeliteArrayImpl[T] => System.arraycopy(this.getLocal.data, srcPos, d.getLocal.data, destPos, len) 
@@ -63,7 +63,7 @@ abstract class RemoteDeliteArrayImpl[T:Manifest] extends DeliteArray[T] with Rem
       val chunks = for (result <- returnResults) yield {
         Serialization.deserialize(specializedClass, result.getOutput(0)).asInstanceOf[LocalDeliteArray[T]]
       }
-      val length = chunks.map(_.length).sum
+      var length = chunks.map(_.length).sum
       val result = createLocal(length)
       var offset = 0
       for (chunk <- chunks) {
@@ -102,7 +102,7 @@ final class RemoteDeliteArrayDouble(var id: String, var chunkLengths: Array[Int]
   private var local: LocalDeliteArrayDouble = _
 
   def hasArray = local ne null
-  val length = chunkLengths.reduce(_ + _)
+  var length = chunkLengths.reduce(_ + _)
 
   def copy(srcPos: Int, dest: DeliteArrayDouble, destPos: Int, len: Int) = dest match {
     case d:RemoteDeliteArrayDouble => System.arraycopy(this.getLocal.data, srcPos, d.getLocal.data, destPos, len) 
@@ -160,7 +160,7 @@ final class RemoteDeliteArrayInt(var id: String, var chunkLengths: Array[Int]) e
   private var local: LocalDeliteArrayInt = _
 
   def hasArray = local ne null
-  val length = chunkLengths.reduce(_ + _)
+  var length = chunkLengths.reduce(_ + _)
 
   def copy(srcPos: Int, dest: DeliteArrayInt, destPos: Int, len: Int) = dest match {
     case d:RemoteDeliteArrayInt => System.arraycopy(this.getLocal.data, srcPos, d.getLocal.data, destPos, len) 
@@ -218,7 +218,7 @@ final class RemoteDeliteArrayChar(var id: String, var chunkLengths: Array[Int]) 
   private var local: LocalDeliteArrayChar = _
 
   def hasArray = local ne null
-  val length = chunkLengths.reduce(_ + _)
+  var length = chunkLengths.reduce(_ + _)
 
   def copy(srcPos: Int, dest: DeliteArrayChar, destPos: Int, len: Int) = {
     System.arraycopy(this.data, srcPos, dest.data, destPos, len) 
@@ -275,7 +275,7 @@ final class RemoteDeliteArrayBoolean(var id: String, var chunkLengths: Array[Int
   private var local: LocalDeliteArrayBoolean = _
 
   def hasArray = local ne null
-  val length = chunkLengths.reduce(_ + _)
+  var length = chunkLengths.reduce(_ + _)
 
   def copy(srcPos: Int, dest: DeliteArrayBoolean, destPos: Int, len: Int) = {
     System.arraycopy(this.data, srcPos, dest.data, destPos, len) 
@@ -317,7 +317,7 @@ abstract class LocalDeliteArray[T:Manifest] extends DeliteArray[T] {
   var offsets: Array[Int] = _
   var id: String = _
 
-  val length = data.length
+  var length = data.length
 
   def apply(i: Int): T = data(i-offset) /* try { data(i-offset) } catch { case a: ArrayIndexOutOfBoundsException => 
     remoteRead(i)
@@ -455,7 +455,7 @@ final class LocalDeliteArrayDouble(val data: Array[Double], var offset: Int) ext
   var id: String = _
   var offsets: Array[Int] = _
 
-  val length = data.length
+  var length = data.length
   def apply(i: Int): Double = {
     //println("APPLYING")
     if(i < offset || i >= (offset+data.length)){
@@ -506,17 +506,17 @@ final class LocalDeliteArrayInt(val data: Array[Int], var offset: Int) extends D
     ghostData =  new Array[Int](len)
   }
 
-  val length = data.length
+  var length = data.length
   def apply(i: Int): Int = {
     if(i < offset || i >= (offset+data.length)){
       val indx = idMap.get(i)
-      ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(id + "\tindex: " + i + " DATA: " +  ghostData(indx) +  " map idx: " + indx)
+      //ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(id + "\tindex: " + i + " DATA: " +  ghostData(indx) +  " map idx: " + indx)
       //println("\tGHOST DATA LENGTH: " + ghostData.length)
       //println("\tAccessing GHOST DATA: " + indx)
       ghostData(indx)
     }
     else{
-      ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(id + "\tindex: " + i + " data: " + data(i-offset))
+      //ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(id + "\tindex: " + i + " data: " + data(i-offset))
       data(i-offset)
     }
   }
@@ -550,7 +550,7 @@ final class LocalDeliteArrayChar(val data: Array[Char], var offset: Int) extends
   var id: String = _
   var offsets: Array[Int] = _
 
-  val length = data.length
+  var length = data.length
   def apply(i: Int): Char = data(i-offset)
   def readAt(i: Int) = data(i-offset)
   def update(i: Int, x: Char) = data(i-offset) = x
@@ -582,7 +582,7 @@ final class LocalDeliteArrayBoolean(val data: Array[Boolean], var offset: Int) e
   var id: String = _
   var offsets: Array[Int] = _
 
-  val length = data.length
+  var length = data.length
   def apply(i: Int): Boolean = data(i-offset)
   def readAt(i: Int) = data(i-offset)
   def update(i: Int, x: Boolean) = data(i-offset) = x

@@ -78,12 +78,13 @@ object Serialization {
       case a:RemoteDeliteArray[_] =>
         val mssg = ArrayMessage.newBuilder.setId(Id.newBuilder.setId(a.id))
         for (len <- a.offsets) mssg.addOffset(len)
+        mssg.addOffset(a.length)
         mssg.build
       case a:LocalDeliteArrayInt =>
-        val buf = ByteBuffer.allocate(length*4)
-        buf.asIntBuffer.put(a.data, offset, length)
+        val buf = ByteBuffer.allocate(a.data.length*4)
+        buf.asIntBuffer.put(a.data, offset, a.data.length)
         val array = ByteString.copyFrom(buf)
-        ArrayMessage.newBuilder.setLength(length).setArray(array).build
+        ArrayMessage.newBuilder.setLength(a.data.length).setArray(array).build
       case a:LocalDeliteArrayLong => 
         val buf = ByteBuffer.allocate(length*8)
         buf.asLongBuffer.put(a.data, offset, length)
@@ -96,10 +97,10 @@ object Serialization {
         ArrayMessage.newBuilder.setLength(length).setArray(array).build
       case a:LocalDeliteArrayDouble => 
         //ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(a.data.mkString("local array: [ ", " ", " ]"))
-        val buf = ByteBuffer.allocate(length*8)
-        buf.asDoubleBuffer.put(a.data, offset, length)
+        val buf = ByteBuffer.allocate(a.data.length*8)
+        buf.asDoubleBuffer.put(a.data, offset, a.data.length)
         val array = ByteString.copyFrom(buf)
-        ArrayMessage.newBuilder.setLength(length).setArray(array).build
+        ArrayMessage.newBuilder.setLength(a.data.length).setArray(array).build
       case a:LocalDeliteArrayChar => 
         val buf = ByteBuffer.allocate(length*2)
         buf.asCharBuffer.put(a.data, offset, length)
@@ -347,10 +348,11 @@ object Serialization {
     val symId = splitId(0)
     val offset = splitId(1).toInt
     val res = ppl.delite.runtime.DeliteMesosExecutor.getResult(symId, offset).asInstanceOf[DeliteArray[T]]
-    val offsets = new Array[Int](offsetList.size)
+    val offsets = new Array[Int](offsetList.size-1)
     for (i <- 0 until offsets.length) offsets(i) = offsetList.get(i)
     res.offsets = offsets
     res.offset = offsets(ppl.delite.runtime.DeliteMesosExecutor.slaveIdx)
+    res.length = offsetList.get(offsetList.size-1)
     res.id = id
     res
   }

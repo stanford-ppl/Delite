@@ -265,25 +265,27 @@ object DeliteMesosExecutor {
     }
     while(!donePushing){}
     donePushing = false;
-    sendDebugMessage("FINISHED PUSHING DATA")
+    //sendDebugMessage("FINISHED PUSHING DATA")
   }
-  def setupPushDirectories(nodes: DeliteArray[Int], edges: DeliteArray[Int]){
-    sendDebugMessage("Local length: " + nodes.length)
-    for(i <- 0 until nodes.length) 
-      sendDebugMessage("NODES i: " + i + " data: " + nodes.readAt(i+nodes.offset))
-    for(i <- 0 until edges.length) 
-      sendDebugMessage("EDGES i: " + i + " data: " + edges.readAt(i+edges.offset))   
+  def setupPushDirectories(_nodes: DeliteArray[Int], _edges: DeliteArray[Int]){
+    val nodes = _nodes.asInstanceOf[DeliteArrayInt]
+    val edges = _edges.asInstanceOf[DeliteArrayInt]
+    //sendDebugMessage("Local length: " + nodes.data.length)
+    //for(i <- 0 until nodes.data.length) 
+    //  sendDebugMessage("NODES i: " + i + " data: " + nodes.readAt(i+nodes.offset))
+    //for(i <- 0 until edges.data.length) 
+    //  sendDebugMessage("EDGES i: " + i + " data: " + edges.readAt(i+edges.offset))   
 
-    val pushSlaves:Array[HashSet[Integer]] = new Array[HashSet[Integer]](nodes.length)
+    val pushSlaves:Array[HashSet[Integer]] = new Array[HashSet[Integer]](nodes.data.length)
     val ghosts = new HashSet[Integer]()
     
-    for(i <- 0 until nodes.length){
+    for(i <- 0 until nodes.data.length){
       pushSlaves(i) = new HashSet[Integer]()
-      val end = if((nodes.offset+i+1) < (nodes.length+nodes.offset)) nodes.readAt(nodes.offset+i+1) else edges.length+edges.offset
+      val end = if((nodes.offset+i+1) < (nodes.data.length+nodes.offset)) nodes.readAt(nodes.offset+i+1) else edges.data.length+edges.offset
       val start = nodes.readAt(nodes.offset+i)
-      sendDebugMessage("End of loop: " + end)
+      //sendDebugMessage("End of loop: " + end)
       for(j <- start until end){
-        sendDebugMessage("On neighbor index: " + j)
+        //sendDebugMessage("On neighbor index: " + j)
         var k = 0
         var found = false
         val dir = nodes.offsets
@@ -298,9 +300,9 @@ object DeliteMesosExecutor {
           k += 1
         }
 
-        if(edges.readAt(j) < nodes.offset || edges.readAt(j) >= (nodes.offset+nodes.length)){
+        if(edges.readAt(j) < nodes.offset || edges.readAt(j) >= (nodes.offset+nodes.data.length)){
           if(!pushSlaves(i).contains(pushID)){
-            sendDebugMessage("Adding node: " + (i+nodes.offset) + " pushID: " + pushID);
+            //sendDebugMessage("Adding node: " + (i+nodes.offset) + " pushID: " + pushID);
             pushSlaves(i).add(pushID)
           }
           if(!ghosts.contains(edges.readAt(j))){
@@ -324,10 +326,10 @@ object DeliteMesosExecutor {
 
     while(!donePushing){}
     donePushing = false;
-    sendDebugMessage("FINISHED RECIEVING NODE INDICIE DATA")
+    //sendDebugMessage("FINISHED RECIEVING NODE INDICIE DATA")
 
     firstIteration = false
-    sendDebugMessage("Setup Directories on Slave: " + slaveIdx)
+    //sendDebugMessage("Setup Directories on Slave: " + slaveIdx)
   }
 
   //TODO: Place HashMap inside of DeliteArray and modify it.  Play similar context in here.
@@ -356,7 +358,7 @@ object DeliteMesosExecutor {
     //if (network.id != ConnectionManagerId(info.getSlaveAddress(slaveIdx), info.getSlavePort(slaveIdx)))
     //  throw new RuntimeException("ERROR: slaves socket addresses don't agree")
     for (i <- 0 until numSlaves) {
-      println("putting: " + i)
+      //println("putting: " + i)
       networkMap.put(i, ConnectionManagerId(info.getSlaveAddress(i),info.getSlavePort(i)))
     }
 

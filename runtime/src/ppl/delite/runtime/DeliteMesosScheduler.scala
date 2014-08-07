@@ -67,11 +67,11 @@ class DeliteMesosScheduler(private val executor: ExecutorInfo) extends Scheduler
       DeliteMesosScheduler.slaves ::= offer.getSlaveId
 
       val cpus = offer.getResources(0)
-      assert(cpus.getName == "cpus")
+      //assert(cpus.getName == "cpus")
       println("cpus offered: " + cpus.getScalar.getValue)
 
       val mem = offer.getResources(1)
-      assert(mem.getName == "mem")
+      //assert(mem.getName == "mem")
       println("mem offered: " + mem.getScalar.getValue)
     }
 
