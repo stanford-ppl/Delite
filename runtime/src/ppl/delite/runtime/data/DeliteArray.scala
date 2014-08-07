@@ -499,12 +499,24 @@ final class LocalDeliteArrayInt(val data: Array[Int], var offset: Int) extends D
   var id: String = _
   var offsets: Array[Int] = _
 
+  var idMap: HashMapIntIntImpl = new HashMapIntIntImpl(data.length*5,data.length*5)
+  var ghostData: Array[Int] = _
+
+  def allocGhostData(len: Int){
+    ghostData =  new Array[Int](len)
+  }
+
   val length = data.length
   def apply(i: Int): Int = {
     if(i < offset || i >= (offset+data.length)){
-      1
+      val indx = idMap.get(i)
+      ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(id + "\tindex: " + i + " DATA: " +  ghostData(indx) +  " map idx: " + indx)
+      //println("\tGHOST DATA LENGTH: " + ghostData.length)
+      //println("\tAccessing GHOST DATA: " + indx)
+      ghostData(indx)
     }
     else{
+      ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(id + "\tindex: " + i + " data: " + data(i-offset))
       data(i-offset)
     }
   }

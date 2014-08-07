@@ -80,7 +80,7 @@ class DeliteMesosExecutor extends Executor {
 
           //Send My Address and Port to Master 
           val taskStarted = TaskStatus.newBuilder.setTaskId(task.getTaskId).setState(TaskState.TASK_RUNNING)
-            .setData(CommInfo.newBuilder.setSlaveIdx(info.getSlaveIdx).addSlaveAddress(InetAddress.getLocalHost.getHostAddress).addSlavePort(7054).build.toByteString).build
+            .setData(CommInfo.newBuilder.setSlaveIdx(info.getSlaveIdx).addSlaveAddress(InetAddress.getLocalHost.getHostAddress).addSlavePort(3001).build.toByteString).build
           driver.sendStatusUpdate(taskStarted)
 
           val args = info.getArgList.toArray(new Array[String](0))
@@ -194,8 +194,6 @@ object DeliteMesosExecutor {
   var numSlaves = 0
   var slaveIdx = 0
   var expected = 0;
-  private var localDegrees:Array[Int] = _
-
 
   @volatile
   var donePushing = false
@@ -254,12 +252,14 @@ object DeliteMesosExecutor {
   var classLoader = this.getClass.getClassLoader
   val results = new HashMap[String,ArrayList[DeliteArray[_]]]
 
-
-  def pushData(prs: DeliteArray[_]){
-    prs match {
-      case e:LocalDeliteArrayDouble => 
-        e.allocGhostData(expected)
-        mySlave.setGhostData(e)
+  def pushData(data: DeliteArray[_]){
+    data match {
+      case pr:LocalDeliteArrayDouble => 
+        pr.allocGhostData(expected)
+        mySlave.setGhostDataPR(pr)
+      case e:LocalDeliteArrayInt =>
+        e.allocGhostData(expected*100)  //just overallocate idk
+        mySlave.setGhostDataTC(e)
       case _ => 
         throw new RuntimeException("cannot alloc ghost data for arbitrary type") 
     }
@@ -268,7 +268,6 @@ object DeliteMesosExecutor {
     sendDebugMessage("FINISHED PUSHING DATA")
   }
   def setupPushDirectories(nodes: DeliteArray[Int], edges: DeliteArray[Int]){
-    localDegrees = new Array[Int](nodes.length)
     sendDebugMessage("Local length: " + nodes.length)
     for(i <- 0 until nodes.length) 
       sendDebugMessage("NODES i: " + i + " data: " + nodes.readAt(i+nodes.offset))
@@ -283,7 +282,6 @@ object DeliteMesosExecutor {
       val end = if((nodes.offset+i+1) < (nodes.length+nodes.offset)) nodes.readAt(nodes.offset+i+1) else edges.length+edges.offset
       val start = nodes.readAt(nodes.offset+i)
       sendDebugMessage("End of loop: " + end)
-      localDegrees(i) = end - start
       for(j <- start until end){
         sendDebugMessage("On neighbor index: " + j)
         var k = 0
@@ -309,13 +307,24 @@ object DeliteMesosExecutor {
             expected += 1
             ghosts.add(edges.readAt(j))
           }
-          
         }
-  
       }//end edges for
     }//end nodes for
+    
+    mySlave.setGhostInfo(expected,pushSlaves)
 
-    mySlave.setGhostInfo(expected,pushSlaves,localDegrees)
+    nodes match {
+      case e:LocalDeliteArrayInt => 
+        e.allocGhostData(expected)
+        mySlave.setNodeInfo(e)
+      case _ =>
+        throw new RuntimeException("Node Inidicies must be of type localDeliteArrayInt") 
+    }
+
+
+    while(!donePushing){}
+    donePushing = false;
+    sendDebugMessage("FINISHED RECIEVING NODE INDICIE DATA")
 
     firstIteration = false
     sendDebugMessage("Setup Directories on Slave: " + slaveIdx)
