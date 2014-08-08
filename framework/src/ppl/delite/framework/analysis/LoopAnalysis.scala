@@ -365,8 +365,8 @@ trait NestedLoopMappingAnalysis extends FatBlockTraversal with LoopFusionOpt wit
     // permutation set for a loop mapping
     val permSet = HashSet[(Dimension,Int,Span)]()
     for(d <- List(DimX,DimY,DimZ)) {
-      //for(b <- (4 until 10).map(1 << _)) {
-      for(b <- (0 to 10).map(1 << _)) {
+      for(b <- (4 until 10).map(1 << _)) {
+      //for(b <- (0 to 10).map(1 << _)) {
         for(s <- List(SpanOne,SpanAll)) {
           permSet += ((d,b,s))
         }
