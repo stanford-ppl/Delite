@@ -73,7 +73,7 @@ trait CCompile extends CodeCache {
     
     if (modules.exists(_.needsCompile)) {
       val includes = modules.flatMap(m => List(config.headerPrefix + sourceCacheHome + m.name, config.headerPrefix + Compilers(Targets.getHostTarget(target)).sourceCacheHome + m.name)).toArray ++ 
-                     config.headerDir ++ Array(config.headerPrefix + staticResources)
+                     config.headerDir ++ Array(config.headerPrefix + staticResources, config.headerPrefix + hostCompiler.staticResources)
       val libs = config.libs ++ Directory(deliteLibs).files.withFilter(f => f.extension == OS.libExt || f.extension == OS.objExt).map(_.path)
       val sources = (sourceBuffer.map(s => sourceCacheHome + "runtime" + sep + s._2) ++ kernelBuffer.map(k => sourceCacheHome + "kernels" + sep + k) ++ auxSourceList).toArray
       val degName = ppl.delite.runtime.Delite.inputArgs(0).split('.')
