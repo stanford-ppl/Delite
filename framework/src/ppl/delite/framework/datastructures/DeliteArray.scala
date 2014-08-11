@@ -215,7 +215,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
       val size = darray_unsafe_get_act_size
       val length = arr.length
       if (size >= length) {
-        val n = if (length < unit(16)) unit(16) else length*unit(2)
+        val n = if (length < unit(16)) unit(16) else { if (length*unit(2)<unit(0)) unit(2147483647) else length*unit(2) }
         val newArr = DeliteArray[A](n)
         darray_copy(arr, unit(0), newArr, unit(0), length)
         newArr(size) = y
@@ -1006,13 +1006,11 @@ public:
   __TARG__ *data;
   size_t length;
   const bool isNuma;
-#ifdef __DELITE_CPP_NUMA__
   __TARG__ **wrapper;
   size_t numGhostCells; // constant for all internal arrays
   size_t *starts;
   size_t *ends;
   size_t numChunks;
-#endif
 
   __T__(int _length, int heapIdx): data((__TARG__ *)(DeliteHeapAlloc(sizeof(__TARG__)*_length,heapIdx))), length(_length), isNuma(false) { }
 
@@ -1021,7 +1019,6 @@ public:
   __T__(__TARG__ *_data, size_t _length): data(_data), length(_length), isNuma(false) { }
 
   __TARG__ apply(size_t idx) {
-#ifdef __DELITE_CPP_NUMA__
     if (isNuma) {
       for (size_t sid = 0; sid < numChunks; sid++) {
         if (idx < ends[sid]) return wrapper[sid][idx-starts[sid]]; //read from first location found
@@ -1030,13 +1027,9 @@ public:
     }
     else
       return data[idx];
-#else
-    return data[idx];
-#endif
   }
 
   void update(size_t idx, __TARG__ val) {
-#ifdef __DELITE_CPP_NUMA__
     if (isNuma) {
       for (size_t sid = 0; sid < numChunks; sid++) {
         size_t offset = starts[sid];
@@ -1045,9 +1038,6 @@ public:
     }
     else
       data[idx] = val;
-#else
-    data[idx] = val;
-#endif
   }
 
   void print(void) {

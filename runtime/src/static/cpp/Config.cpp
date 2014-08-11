@@ -50,13 +50,13 @@ void initializeConfig(int numThreads) {
     
     //detect physical config
     int numSockets = getNumSockets() + 1;
-    int numCoresPerSocket = getNumCoresPerSocket() / 2; //TODO: divide by 2 is to ignore hyper-threading. Better way?
+    int numCoresPerSocket = getNumCoresPerSocket(); //TODO: divide by 2 is to ignore hyper-threading. Better way?
     int numCores = numCoresPerSocket * numSockets;
 
     //detect numa config
     #ifdef __DELITE_CPP_NUMA__
     if (numa_available() >= 0) {
-        int numCpus = numa_num_configured_cpus() / 2;
+        int numCpus = numa_num_configured_cpus();
         if (numCoresPerSocket <= 0) {
             printf("[WARNING]: Unable to automatically determine number of physical cores, assuming %d\n", numCpus);
             numCores = numCpus;
