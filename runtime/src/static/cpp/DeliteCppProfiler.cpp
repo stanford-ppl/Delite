@@ -39,8 +39,13 @@ void DeliteCppTimerStop(int32_t tid, string _name) {
   gettimeofday(&stop,NULL);
 
   std::string name = std::string(_name.c_str());
-  std::map<std::string,std::vector<cpptimer_t>*> *timermap = timermaps[tid];
-  timermap->find(name)->second->back().end = stop;
+  for(int i=0; i<DELITE_CPP; i++) {
+    std::map<std::string,std::vector<cpptimer_t>*> *timermap = timermaps[i];
+    if(timermap->find(name) != timermap->end()) {
+      timermap->find(name)->second->back().end = stop;
+      break;
+    }
+  }
 }
 
 void DeliteCppTimerDump(int32_t tid, int32_t rid, JNIEnv* env) {
