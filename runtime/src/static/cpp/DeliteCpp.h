@@ -49,12 +49,6 @@ string readFirstLineFile(const string &filename);
 template<class K> uint32_t delite_hashcode(K key);
 template<class K> bool delite_equals(K key1, K key2);
 
-// structure to keep thread-local resource information
-typedef struct {
-  int thread_id;
-  int socket_id;
-} resourceInfo_t;
-
 #ifndef __DELITE_CPP_STANDALONE__
 extern std::map<int,jobject> *JNIObjectMap;
 jobject JNIObjectMap_find(int key);

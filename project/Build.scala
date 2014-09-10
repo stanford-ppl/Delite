@@ -41,29 +41,17 @@ object DeliteBuild extends Build {
     settings = virtBuildSettings) aggregate(framework, runtime, deliteTest)
 
   lazy val framework = Project("framework", file("framework"), settings = virtBuildSettings) dependsOn(runtime) // dependency to runtime because of Scopes
-
   lazy val deliteTest = Project("delite-test", file("framework/delite-test"), settings = virtBuildSettings) dependsOn(framework, runtime)
 
-  lazy val dsls = Project("dsls", file("dsls"), settings = virtBuildSettings) aggregate(optila, optiml, optiql, optimesh, optigraph, opticvx) 
-  lazy val optila = Project("optila", file("dsls/optila"), settings = virtBuildSettings) dependsOn(framework, deliteTest)
-  lazy val optiml = Project("optiml", file("dsls/optiml"), settings = virtBuildSettings) dependsOn(optila, deliteTest)
+  lazy val dsls = Project("dsls", file("dsls"), settings = virtBuildSettings) aggregate(optiql)
   lazy val optiql = Project("optiql", file("dsls/optiql"), settings = virtBuildSettings) dependsOn(framework, deliteTest)
-  lazy val optimesh = Project("optimesh", file("dsls/deliszt"), settings = virtBuildSettings) dependsOn(framework, deliteTest)
-  lazy val optigraph = Project("optigraph", file("dsls/optigraph"), settings = virtBuildSettings) dependsOn(framework, deliteTest)
-  lazy val opticvx = Project("opticvx", file("dsls/opticvx"), settings = virtBuildSettings) dependsOn(framework, deliteTest)
 
-  lazy val apps = Project("apps", file("apps"), settings = virtBuildSettings) aggregate(optimlApps, optiqlApps, optimeshApps, optigraphApps, opticvxApps, interopApps, deliteApps)
-  lazy val optimlApps = Project("optiml-apps", file("apps/optiml"), settings = virtBuildSettings) dependsOn(optiml)
+  lazy val apps = Project("apps", file("apps"), settings = virtBuildSettings) aggregate(optiqlApps)
   lazy val optiqlApps = Project("optiql-apps", file("apps/optiql"), settings = virtBuildSettings) dependsOn(optiql)
-  lazy val optimeshApps = Project("optimesh-apps", file("apps/deliszt"), settings = virtBuildSettings) dependsOn(optimesh)
-  lazy val optigraphApps = Project("optigraph-apps", file("apps/optigraph"), settings = virtBuildSettings) dependsOn(optigraph)
-  lazy val opticvxApps = Project("opticvx-apps", file("apps/opticvx"), settings = virtBuildSettings) dependsOn(opticvx)
-  lazy val interopApps = Project("interop-apps", file("apps/multi-dsl"), settings = virtBuildSettings) dependsOn(optiml, optiql, optigraph) // dependsOn(dsls) not working
-  lazy val deliteApps = Project("delite-apps", file("apps/delite"), settings = virtBuildSettings) dependsOn(deliteTest) // dependsOn(dsls) not working
 
   lazy val runtime = Project("runtime", file("runtime"), settings = virtBuildSettings)
 
   //include all projects that should be built (dependsOn) and tested (aggregate)
   lazy val tests = (Project("tests", file("project/boot"), settings = virtBuildSettings)
-    dependsOn(optimlApps, optiqlApps, optigraphApps, interopApps, deliteApps) aggregate(framework, deliteTest, optiml, optiql, optigraph))
+    dependsOn(optiqlApps) aggregate(framework, deliteTest, optiql))
 }
