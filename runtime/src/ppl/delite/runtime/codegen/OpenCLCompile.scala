@@ -6,6 +6,7 @@ import java.lang.StringBuilder
 import tools.nsc.io.{Directory, Path}
 import java.io.{File, FileReader, FileWriter}
 import ppl.delite.runtime.graph.targets.{OS, Targets}
+import ppl.delite.runtime.graph.DeliteTaskGraph
 
 object OpenCLCompile extends CCompile {
 
@@ -21,8 +22,8 @@ object OpenCLCompile extends CCompile {
   protected def linkFlags = Array()
   protected def outputSwitch = "-o"
 
-  override def compile() {
-    super.compile()
+  override def compile(graph: DeliteTaskGraph) {
+    super.compile(graph)
     collectKernels()
   }
 

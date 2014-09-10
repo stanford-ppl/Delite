@@ -28,12 +28,12 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
       out.append(freeItem)
       out.append(";\n")
       out.append(freeItem)
-      out.append(".keys = new list< pair<void*,bool> >();\n")
+      out.append(".keys = new std::list< std::pair<void*,bool> >();\n")
     }
 
     def writeFree(sym: String, isPrim: Boolean) {
       if (count == 0) writeFreeInit()
-      out.append("pair<void*,bool> ")
+      out.append("std::pair<void*,bool> ")
       out.append(getSymDevice(op,sym))
       out.append("_pair(")
       out.append(getSymDevice(op,sym))
@@ -128,7 +128,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
     out.append("tempCudaMemInit(" + Config.tempCudaMemRate + ");\n")  // Allocate temporary device memory used for multiloops
     out.append("cudaDeviceSetLimit(cudaLimitMallocHeapSize, cudaHeapSize);\n") // Allocate heap device memory
     out.append("cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);\n") // 48KB L1 and 16KB Shared mem
-    out.append("map<char*,void*>* outputMap = new map<char*,void*>();\n")
+    out.append("std::map<char*,void*>* outputMap = new std::map<char*,void*>();\n")
     val locations = Range(0,Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL).toSet
     writeJNIInitializer(locations)
   }
@@ -246,10 +246,10 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
       out.append('(')
       out.append((odata.getInputs("alloc").map(i => getSymDevice(op,i)):+("&"+getSymDevice(op,osym))).mkString(","))
       out.append(");\n")
-      out.append("cudaMemoryMap->insert(pair<void*,list<void*>*>(")
+      out.append("cudaMemoryMap->insert(std::pair<void*,std::list<void*>*>(")
       out.append(getSymDevice(op,osym))
       out.append(",lastAlloc));\n")
-      out.append("lastAlloc = new list<void*>();\n")
+      out.append("lastAlloc = new std::list<void*>();\n")
     }
   }
 
@@ -422,7 +422,7 @@ class CudaDynamicExecutableGenerator(val location: Int, val graph: DeliteTaskGra
             op.outputType(name) match {
               case da if da.startsWith("ppl.delite.runtime.data.DeliteArrayObject") => throw new RuntimeException("Cannot output object delitearray type!")
               case da if da.startsWith("ppl.delite.runtime.data.DeliteArray") =>
-                out.append("outputMap->insert(pair<char*,void*>(\"" + getSymDevice(op,name) + "\","+getSymDevice(op,name)+"));\n")
+                out.append("outputMap->insert(std::pair<char*,void*>(\"" + getSymDevice(op,name) + "\","+getSymDevice(op,name)+"));\n")
                 out.append("jintArray arr" + name + " = env" + location + "->NewIntArray(1);\n")
                 out.append("jint *dataPtr" + name + " = (jint *)env" + location + "->GetPrimitiveArrayCritical((jintArray)arr" + name + ",0);\n")
                 out.append("dataPtr" + name + "[0] = " + getSymDevice(op,name) + "->length;\n")
@@ -520,15 +520,15 @@ class CudaDynamicExecutableGenerator(val location: Int, val graph: DeliteTaskGra
         case Interval(start,stride,length) => out.append("%s = sendCudaTrans_%s(%s,%s);\n".format(getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym),getSymDevice(dep,length.trim)))
         case _ => out.append("%s = sendCuda_%s(%s);\n".format(getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
       }
-      out.append("outputMap->insert(pair<char*,void*>(\"%s\",%s));\n".format(getSymDevice(dep,sym),getSymDevice(dep,sym)))
+      out.append("outputMap->insert(std::pair<char*,void*>(\"%s\",%s));\n".format(getSymDevice(dep,sym),getSymDevice(dep,sym)))
       out.append("}\n")
       out.append("else {\n")
       out.append("%s = (%s%s)(outputMap->find(\"%s\")->second);\n".format(getSymDevice(dep,sym),devType,ref,getSymDevice(dep,sym)))
       out.append("}\n")
-      out.append("cudaMemoryMap->insert(pair<void*,list<void*>*>(")
+      out.append("cudaMemoryMap->insert(std::pair<void*,std::list<void*>*>(")
       out.append(getSymDevice(dep,sym))
       out.append(",lastAlloc));\n")
-      out.append("lastAlloc = new list<void*>();\n")
+      out.append("lastAlloc = new std::list<void*>();\n")
     }
   }
 
@@ -581,12 +581,12 @@ class CudaDynamicExecutableGenerator(val location: Int, val graph: DeliteTaskGra
     out.append(freeItem(op))
     out.append(";\n")
     out.append(freeItem(op))
-    out.append(".keys = new list< pair<void*,bool> >();\n")
+    out.append(".keys = new std::list< std::pair<void*,bool> >();\n")
   }
 
   private def writeFreeInput(op: DeliteOP, sym: String, isPrim: Boolean = false) {
     out.append("if(outputMap->find(\"" + getSymDevice(op,sym) + "\") != outputMap->end()) {\n")
-    out.append("pair<void*,bool> ")
+    out.append("std::pair<void*,bool> ")
     out.append(getSymDevice(op,sym))
     out.append("_pair(")
     out.append("outputMap->find(\"" + getSymDevice(op,sym) + "\")->second")
@@ -602,7 +602,7 @@ class CudaDynamicExecutableGenerator(val location: Int, val graph: DeliteTaskGra
   
   private def writeFreeOutput(op: DeliteOP, sym: String, isPrim: Boolean = false) {
     out.append("if(outputMap->find(\"" + getSymDevice(op,sym) + "\") != outputMap->end()) {\n")
-    out.append("pair<void*,bool> ")
+    out.append("std::pair<void*,bool> ")
     out.append(getSymDevice(op,sym))
     out.append("_pair(")
     out.append("outputMap->find(\"" + getSymDevice(op,sym) + "\")->second")

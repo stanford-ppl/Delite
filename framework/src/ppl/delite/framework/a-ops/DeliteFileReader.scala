@@ -316,7 +316,7 @@ trait CGenDeliteFileReaderOps extends CGenFat {
       else
         emitValDef(sym, "new cppFileStream(" + paths.length + "," + paths.map(quote(_) + ".c_str()").mkString(",") + ")")
     case DeliteFileStreamReadLine(stream,idx) =>
-      emitValDef(sym, quote(stream) + "->readLine(" + quote(idx) + ")")
+      emitValDef(sym, quote(stream) + "->readLine(" + resourceInfoSym + "," + quote(idx) + ")")
     case DeliteFileStreamSize(stream) =>
       emitValDef(sym, quote(stream) + "->size")
     case DeliteFileStreamNumThreads(stream) =>

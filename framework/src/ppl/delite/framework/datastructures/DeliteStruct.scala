@@ -653,7 +653,7 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
         }.mkString(",") + ")," + unwrapSharedPtr(remap(sym.tp)) + "D());")
       }
       else {
-        stream.println(remapWithRef(sym.tp) + quote(sym) + " = new " + remap(sym.tp) + "(" + elems.map{ e => 
+        stream.println(remapWithRef(sym.tp) + quote(sym) + " = new (" + resourceInfoSym + ".thread_id) " + remap(sym.tp) + "(" + elems.map{ e =>
           if (isVarType(e._2) && deliteInputs.contains(e._2)) quote(e._2) + "->get()"
           else quote(e._2)
         }.mkString(",") + ");")
@@ -707,15 +707,21 @@ struct __T__D {
         }
       }
 
+      stream.println("#include \"DeliteCpp.h\"")
+      stream.println("#include \"DeliteMemory.h\"")
+
       dependentArrayTypes foreach { t=>
         stream.println("#include \"" + t + ".h\"")
       }
+
+      val dependentMapTypes = elems.filter(e => e._2.erasure.getSimpleName == "DeliteIndex")
+      if (dependentMapTypes.nonEmpty) stream.println("#include \"" + deviceTarget + "HashMap.h\"")
       
       if(isAcceleratorTarget)
         stream.println("#include \"" + hostTarget + name + ".h\"")
 
-      stream.println("using namespace std;")
-      stream.println("class " + deviceTarget + name + " {")
+      stream.println("class " + deviceTarget + name + " : public DeliteMemory {")
+
       // fields
       stream.println("public:")
       stream.print(elems.map{ case (idx,tp) => "\t" + remap(tp) + " " + addRef(baseType(tp)) + idx + ";\n" }.mkString(""))
@@ -743,6 +749,21 @@ struct __T__D {
       else
         stream.println("\tbool equals(" + deviceTarget + name + addRef() + " to) {")
       stream.println("\t\treturn " + elemEquals + ";")
+      stream.println("\t}")
+
+      // hashcode
+      val elemHashcode = elems.map { e =>
+        if (isPrimitiveType(baseType(e._2))) "delite_hashcode(" + e._1 + ")"
+        else e._1 + "->hashcode()"
+      }
+      stream.println("\tuint32_t hashcode(void) {")
+      stream.println("\t\tint32_t hc;")
+      stream.println("\t\tint32_t ret = 0;")
+      for(hc <- elemHashcode) {
+        stream.println("\t\thc = " + hc + ";")
+        stream.println("\t\tret = ret * 41 + hc;")
+      }
+      stream.println("\t\treturn ret;")
       stream.println("\t}")
 
       // free
