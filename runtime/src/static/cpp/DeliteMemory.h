@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+#include <sched.h>
 
 //#define DHEAP_DEBUG(...) fprintf(stderr, "[DEBUG-DeliteHeap] "); fprintf(stderr, __VA_ARGS__)
 #define DHEAP_DEBUG(...)

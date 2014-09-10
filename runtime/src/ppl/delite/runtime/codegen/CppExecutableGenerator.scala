@@ -52,6 +52,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfoGen
     out.append("env" + location + " = jnienv;\n")
     out.append(resourceInfoType + " " + resourceInfoSym + ";\n")
     out.append(resourceInfoSym + ".thread_id = " + Targets.getRelativeLocation(location) + ";\n")
+    out.append(resourceInfoSym + ".socket_id = config->threadToSocket(" + Targets.getRelativeLocation(location) + ");\n")
     if (Config.profile)
       out.append("InitDeliteCppTimer(" + Targets.getRelativeLocation(location) + ");\n")
 

@@ -26,6 +26,14 @@ void delite_barrier(int numThreads) {
 }
 
 void DeliteHeapInit(int idx, int numThreads) {
+  cpu_set_t cpuset;
+  pthread_t thread = pthread_self();
+  CPU_ZERO(&cpuset);
+  CPU_SET(idx, &cpuset);
+  if(pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) != 0) {
+    printf("[WARNING] pthread_setaffinity_np failed for thread %d\n", idx);
+  }
+
   if (idx == 0) {
     DeliteHeap = new char*[numThreads << paddingShift];
     DeliteHeapOffset = new size_t[numThreads << paddingShift];

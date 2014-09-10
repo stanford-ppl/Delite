@@ -2289,7 +2289,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         assert(streamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
         val streamSym = quote(streamVars(0))+"_stream"
         emitValDef(streamSym, remap(streamVars(0).tp), fieldAccess(quote(streamVars(0)),"openCopyAtNewLine(start)"))
-        emitValDef("isEmpty",remap(Manifest.Boolean), "end - " + fieldAccess(streamSym,"position") + " <= 0")
+        emitValDef("isEmpty",remap(Manifest.Boolean), "end <= " + fieldAccess(streamSym,"position"))
         emitValDef("__act2",actType,methodCall("init",List("__act","-1","isEmpty","tid",streamSym)))
         stream.println("while (" + fieldAccess(streamSym,"position") + " < end) {")
         emitMethodCall("process",List("__act2","-1","tid",streamSym))
