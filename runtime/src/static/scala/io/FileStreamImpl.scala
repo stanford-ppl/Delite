@@ -4,6 +4,7 @@ import java.io.{FileInputStream, File, IOException}
 import java.nio.charset.Charset
 import org.apache.hadoop.util.LineReader
 import org.apache.hadoop.io.Text
+import com.google.protobuf.ByteString
 
 /**
  * Creates a single logical file stream by concatenating the streams of an arbitrary number of physical files
@@ -17,6 +18,11 @@ object FileStreamImpl {
   def apply(paths: Seq[String]): FileStreamImpl = FileStreamImpl(null, paths)
   def apply(charset: String, paths: Seq[String]): FileStreamImpl = new FileStreamImpl(checkCharset(charset), null, getFiles(paths))
   def bytes(delimiter: Array[Byte], paths: Seq[String]): FileStreamImpl = new FileStreamImpl(null, delimiter, getFiles(paths))
+
+  def parseFrom(s: ByteString) = {
+    val paths = s.toStringUtf8.split(",")
+    apply(paths)
+  }
 
   private def getFiles(paths:Seq[String]) = paths.toArray flatMap { path =>
     val jPath = new File(path)
@@ -71,7 +77,7 @@ final class FileStreamImpl(charset: Charset, delimiter: Array[Byte], jfiles: Arr
     reader = new LineReader(byteStream, delimiter)
     text = new Text
     idx = fileIdx
-    pos = offset
+    pos = start
     if (offset != 0) { //jump to next avaible new line (and valid char)
       if (byteStream.skip(offset-1) != (offset-1)) throw new IOException("Unable to skip desired bytes in file")
       pos += (reader.readLine(text) - 1)
@@ -112,5 +118,7 @@ final class FileStreamImpl(charset: Charset, delimiter: Array[Byte], jfiles: Arr
     reader = null
     text = null
   }
+
+  final def toByteString = ByteString.copyFromUtf8(jfiles.map(_.getAbsolutePath).mkString(","))
 
 }
