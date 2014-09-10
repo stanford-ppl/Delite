@@ -7,6 +7,8 @@ import java.io.FileNotFoundException
 import tools.nsc.io.{Directory, Path, File}
 import ppl.delite.runtime.graph.targets.{OS, Targets}
 import ppl.delite.runtime.graph.ops._
+import ppl.delite.runtime.graph.DeliteTaskGraph
+import ppl.delite.runtime.scheduler._
 import java.io.FileWriter
 
 trait CCompile extends CodeCache {
@@ -67,7 +69,7 @@ trait CCompile extends CodeCache {
     new CompilerConfig(compiler, make, headerDir, sourceHeader, libs, headerPrefix, libPrefix, features)
   }
 
-  def compile() {
+  def compile(graph: DeliteTaskGraph) {
     if (sourceBuffer.length == 0) return
     cacheRuntimeSources((sourceBuffer ++ headerBuffer).toArray)
     
@@ -98,7 +100,7 @@ trait CCompile extends CodeCache {
     destDir.createDirectory()
 
     // generate Makefile
-    val makefile = destDir + File.separator + "Makefile"
+    val makefile = destDir + sep + "Makefile"
     if(!Config.noRegenerate) {
       val writer = new FileWriter(makefile)
       writer.write(makefileString(destination, sources, includes, libs, optionalFeatures))
@@ -169,8 +171,12 @@ LDFLAGS = %7$s
 SOURCES = %8$s
 OBJECTS = $(SOURCES:.%9$s=.o)
 OUTPUT = %10$s
+DELITE_HEAP_LOCATION = -1
 
 all: $(OUTPUT)
+
+# target-specific variables for each source
+%13$s
 
 # The order of objects and libraries matter because of the dependencies
 $(OUTPUT): $(OBJECTS)

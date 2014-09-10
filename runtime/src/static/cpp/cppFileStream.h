@@ -18,6 +18,7 @@
 #include <fcntl.h>
 #include "DeliteNamespaces.h"
 #include "DeliteCpp.h"
+#include "DeliteMemory.h"
 
 // each line of file is limited to 1M characters
 #define MAX_BUFSIZE 1048576
@@ -49,14 +50,16 @@ class cppFileStream {
     uint64_t size;
     uint64_t position;
 
-    cppFileStream* openCopyAtNewLine(uint64_t start) {
+    cppFileStream* openCopyAtNewLine(resourceInfo_t &resourceInfo, uint64_t start) {
       cppFileStream* copy = new cppFileStream(size, &files, &fileLengths);
       copy->openAtNewLine(start);
       return copy;
     }
 
-    void openAtNewLine(uint64_t start) { 
-      findFileOffset(start, idx, position);
+    void openAtNewLine(resourceInfo_t &resourceInfo, uint64_t start) { 
+      position = start;
+      uint64_t offset;
+      findFileOffset(start, idx, offset);
       reader = fopen(files.at(idx),"r");
       text = (char *)malloc(MAX_BUFSIZE*sizeof(char));
 
@@ -65,9 +68,9 @@ class cppFileStream {
         assert(false);
       }
 
-      if (position != 0) {
+      if (offset != 0) {
         // jump to the offset
-        if(lseek(fileno(reader), position-1, SEEK_SET) == -1) {
+        if(lseek(fileno(reader), offset-1, SEEK_SET) == -1) {
           assert(false && "lseek call failed");
         }
         // find the next newline after offset
@@ -78,7 +81,7 @@ class cppFileStream {
       }
     }
 
-    string readLine() {
+    string readLine(const resourceInfo_t &resourceInfo) {
       char *line = text;
       while (fgets(line, MAX_BUFSIZE, reader) == NULL) {
         // read the next file
@@ -94,7 +97,9 @@ class cppFileStream {
         }
       }
       position += strlen(line);
-      string str(line);
+      char *strptr = new (resourceInfo) char[length+1];
+      strcpy(strptr, line);
+      string str(strptr, length, 0);
       str.erase(std::remove(str.begin(), str.end(), '\n'), str.end());
       str.erase(std::remove(str.begin(), str.end(), '\r'), str.end());
       return str;
@@ -142,7 +147,7 @@ class cppFileStream {
       DFS_DEBUG("total size of file is %ld\n", size);
     }
 
-    void close() { 
+    void close(resourceInfo_t resourceInfo) { 
       fclose(reader);
     }
 

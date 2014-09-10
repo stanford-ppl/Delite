@@ -3,11 +3,9 @@
 
 #include "DeliteCuda.h"
 
-using namespace std;
-
-list<void*>* lastAlloc = new list<void*>();
-queue<FreeItem>* freeList = new queue<FreeItem>();
-map<void*,list<void*>*>* cudaMemoryMap = new map<void*,list<void*>*>();
+std::list<void*>* lastAlloc = new std::list<void*>();
+std::queue<FreeItem>* freeList = new std::queue<FreeItem>();
+std::map<void*,std::list<void*>*>* cudaMemoryMap = new std::map<void*,std::list<void*>*>();
 
 void addEvent(cudaStream_t fromStream, cudaStream_t toStream) {
   cudaEvent_t event;
@@ -25,19 +23,19 @@ cudaEvent_t addHostEvent(cudaStream_t stream) {
 }
 
 void freeCudaMemory(FreeItem item) {
-  list< pair<void*,bool> >::iterator iter;
+  std::list< std::pair<void*,bool> >::iterator iter;
   for (iter = item.keys->begin(); iter != item.keys->end(); iter++) {
-    //cout << "object ref: " << (long) *iter << endl;
+    //std::cout << "object ref: " << (long) *iter << std::endl;
     if(cudaMemoryMap->find((*iter).first) != cudaMemoryMap->end()) {
-      list<void*>* freePtrList = cudaMemoryMap->find((*iter).first)->second;
-      list<void*>::iterator iter2;
+      std::list<void*>* freePtrList = cudaMemoryMap->find((*iter).first)->second;
+      std::list<void*>::iterator iter2;
       for (iter2 = freePtrList->begin(); iter2 != freePtrList->end(); iter2++) {
         void* freePtr = *iter2;
         cudaFree(freePtr);
         //if (cudaFree(freePtr) != cudaSuccess)
-        //    cout << "bad free pointer: " << (long) freePtr << endl;
+        //    std::cout << "bad free pointer: " << (long) freePtr << std::endl;
         //else
-        //cout << "freed successfully: " << (long) freePtr << endl;
+        //std::cout << "freed successfully: " << (long) freePtr << std::endl;
       }
       cudaMemoryMap->erase((*iter).first);
       delete freePtrList;
@@ -64,7 +62,7 @@ void DeliteCudaGC(void) {
 void DeliteCudaCheckGC(void) {
   DeliteCudaGC();
   if(freeList->size() != 0) 
-    cout << "WARNING: memory not collectd : count " << freeList->size() << endl; 
+    std::cout << "WARNING: memory not collectd : count " << freeList->size() << std::endl;
 }
 
 // allocates a chunk of cuda device memory
@@ -75,7 +73,7 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
 
   while (cudaMalloc(ptr, size) != cudaSuccess) {
     if (freeList->size() == 0) {
-      cout << "FATAL: Insufficient device memory" << endl;
+      std::cout << "FATAL: Insufficient device memory" << std::endl;
       exit(-1);
     }
     FreeItem item = freeList->front();
@@ -104,22 +102,22 @@ void tempCudaMemInit(double tempMemRate) {
   size_t free, total;
   cudaMemGetInfo(&free, &total);
   tempCudaMemSize = total * tempMemRate;
-  //cout << "initializing cuda temp mem.." << endl;
-  //cout << "Free:" << free << endl;
-  //cout << "Total:" << total << endl;
-  //cout << "tempMemSize:" << tempCudaMemSize << endl;
+  //std::cout << "initializing cuda temp mem.." << std::endl;
+  //std::cout << "Free:" << free << std::endl;
+  //std::cout << "Total:" << total << std::endl;
+  //std::cout << "tempMemSize:" << tempCudaMemSize << std::endl;
   tempCudaMemOffset = 0;
   if(cudaMalloc(&tempCudaMemPtr, tempCudaMemSize) != cudaSuccess) {
-    cout << "FATAL (tempCudaMemInit): Insufficient device memory for tempCudaMem" << endl;
+    std::cout << "FATAL (tempCudaMemInit): Insufficient device memory for tempCudaMem" << std::endl;
     exit(-1);
   }
-  //cout << "finished temp init" << endl;
+  //std::cout << "finished temp init" << std::endl;
 }
 
 // free cuda temporary memory
 void tempCudaMemFree(void) {
   if(cudaFree(tempCudaMemPtr) != cudaSuccess) {
-    cout << "FATAL (tempCudaMemFree): Failed to free temporary memory" << endl;
+    std::cout << "FATAL (tempCudaMemFree): Failed to free temporary memory" << std::endl;
     exit(-1);
   }
 }
@@ -138,7 +136,7 @@ size_t tempCudaMemAvailable(void) {
 void DeliteCudaMallocTemp(void** ptr, size_t size) {
   size_t alignedSize = CUDAMEM_ALIGNMENT * (1 + size / CUDAMEM_ALIGNMENT);
   if(tempCudaMemOffset + alignedSize > tempCudaMemSize) {
-    cout << "FATAL(DeliteCudaMallocTemp): Insufficient device memory for tempCudaMem" << endl;
+    std::cout << "FATAL(DeliteCudaMallocTemp): Insufficient device memory for tempCudaMem" << std::endl;
     exit(-1);
   }
   else {
@@ -152,7 +150,7 @@ char* bufferStart = 0;
 char* bufferEnd;
 char* bufferCurrent;
 
-// initialize cuda host memory (page-mapped system memory for asynchronous copy)
+// initialize cuda host memory (page-std::mapped system memory for asynchronous copy)
 void hostInit() {
   size_t free, total;
   cudaMemGetInfo(&free, &total);
@@ -198,7 +196,7 @@ void DeliteCudaMemset(void *ptr, int value, size_t count) {
 void DeliteCudaCheckError(void) {
   cudaDeviceSynchronize();
   if (cudaPeekAtLastError() != cudaSuccess) {
-    cout << "DeliteCuda execution failed: " << cudaGetErrorString(cudaPeekAtLastError()) << endl;
+    std::cout << "DeliteCuda execution failed: " << cudaGetErrorString(cudaPeekAtLastError()) << std::endl;
     exit(-1);
   }
 }
@@ -214,10 +212,10 @@ void DeliteCudaToc(void) {
   cudaDeviceSynchronize();
   gettimeofday(&end_t,NULL);
   double exetime = (end_t.tv_sec*1000000+end_t.tv_usec) - (start_t.tv_sec*1000000+start_t.tv_usec);
-  cout << "DeliteCudaTimer(static) " << " " << (exetime)/1000.0 << " ms" << endl; 
+  std::cout << "DeliteCudaTimer(static) " << " " << (exetime)/1000.0 << " ms" << std::endl;
 }
 
-//map<string,double> *cudaTimerMap = new map<string,double>();
+//std::map<string,double> *cudaTimerMap = new std::map<string,double>();
 
 char **ticName;
 double *ticStart;
@@ -242,14 +240,14 @@ void DeliteCudaTic(char *name) {
 
 void DeliteCudaToc(char *name) {
   struct timeval t;
-  //map<string,double>::iterator it = cudaTimerMap->find(name);
+  //std::map<string,double>::iterator it = cudaTimerMap->find(name);
   //double start = (it==cudaTimerMap->end()) ? 0 : it->second;
   //if(start != 0) cudaTimerMap->erase(it);
   cudaDeviceSynchronize();
   gettimeofday(&t,NULL);
   double end = t.tv_sec*1000000+t.tv_usec;
   ticIdx -= 1;
-  cout << "DeliteCudaTimer " << ticName[ticIdx] << " " << (end-ticStart[ticIdx])/1000.0 << " ms" << endl; 
+  std::cout << "DeliteCudaTimer " << ticName[ticIdx] << " " << (end-ticStart[ticIdx])/1000.0 << " ms" << std::endl;
 }
 
 // TODO: Remove this kernel from here by generate it 

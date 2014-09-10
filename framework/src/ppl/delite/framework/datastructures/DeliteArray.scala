@@ -1005,6 +1005,24 @@ class __T__ : public DeliteMemory {
 public:
   __TARG__ *data;
   size_t length;
+
+  __T__(int _length, int heapIdx): data((__TARG__ *)(DeliteHeapAlloc(sizeof(__TARG__)*_length,heapIdx))), length(_length) { }
+
+  __T__(int _length): data((__TARG__ *)(new __TARG__[_length])), length(_length) { }
+
+  void print(void) {
+    printf("length is %lu\n", length);
+  }
+
+  bool equals(__T__ *to) {
+    return this == this;
+  }
+
+  uint32_t hashcode(void) {
+    return (uintptr_t)this;
+  }
+  
+#ifdef __DELITE_CPP_NUMA__
   const bool isNuma;
   __TARG__ **wrapper;
   size_t numGhostCells; // constant for all internal arrays
@@ -1017,6 +1035,24 @@ public:
   __T__(int _length): data((__TARG__ *)(new __TARG__[_length])), length(_length), isNuma(false) { }
 
   __T__(__TARG__ *_data, size_t _length): data(_data), length(_length), isNuma(false) { }
+
+  __T__(size_t _length, size_t _numGhostCells, size_t _numChunks) : data(NULL), length(_length), isNuma(true) {
+    //FIXME: transfer functions rely on data field
+    numGhostCells = _numGhostCells;
+    numChunks = _numChunks;
+    wrapper = (__TARG__ **)malloc(numChunks*sizeof(__TARG__*));
+    starts = (size_t *)malloc(numChunks*sizeof(size_t)); //TODO: custom partitioning
+    ends = (size_t *)malloc(numChunks*sizeof(size_t));
+    for (int sid = 0; sid < numChunks; sid++) {
+      starts[sid] = std::max(length * sid / numChunks - numGhostCells, (size_t)0);
+      ends[sid] = std::min(length * (sid+1) / numChunks + numGhostCells, length);
+      allocInternal(sid, ends[sid]-starts[sid]);
+    }
+  }
+
+  void allocInternal(int socketId, size_t length) {
+    wrapper[socketId] = (__TARG__*)numa_alloc_onnode(length*sizeof(__TARG__), socketId);
+  }
 
   __TARG__ apply(size_t idx) {
     if (isNuma) {
@@ -1038,37 +1074,6 @@ public:
     }
     else
       data[idx] = val;
-  }
-
-  void print(void) {
-    printf("length is %lu\n", length);
-  }
-
-  bool equals(__T__ *to) {
-    return this == this;
-  }
-
-  uint32_t hashcode(void) {
-    return (uintptr_t)this;
-  }
-  
-#ifdef __DELITE_CPP_NUMA__
-  __T__(size_t _length, size_t _numGhostCells, size_t _numChunks) : data(NULL), length(_length), isNuma(true) {
-    //FIXME: transfer functions rely on data field
-    numGhostCells = _numGhostCells;
-    numChunks = _numChunks;
-    wrapper = (__TARG__ **)malloc(numChunks*sizeof(__TARG__*));
-    starts = (size_t *)malloc(numChunks*sizeof(size_t)); //TODO: custom partitioning
-    ends = (size_t *)malloc(numChunks*sizeof(size_t));
-    for (int sid = 0; sid < numChunks; sid++) {
-      starts[sid] = std::max(length * sid / numChunks - numGhostCells, (size_t)0);
-      ends[sid] = std::min(length * (sid+1) / numChunks + numGhostCells, length);
-      allocInternal(sid, ends[sid]-starts[sid]);
-    }
-  }
-
-  void allocInternal(int socketId, size_t length) {
-    wrapper[socketId] = (__TARG__*)numa_alloc_onnode(length*sizeof(__TARG__), socketId);
   }
 
   //read locally if available, else remotely

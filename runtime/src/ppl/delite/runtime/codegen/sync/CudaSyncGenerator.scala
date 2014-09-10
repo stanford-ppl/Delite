@@ -146,10 +146,10 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
       }
       else
         out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
-      out.append("cudaMemoryMap->insert(pair<void*,list<void*>*>(")
+      out.append("cudaMemoryMap->insert(std::pair<void*,std::list<void*>*>(")
       out.append(getSymDevice(dep,sym))
       out.append(",lastAlloc));\n")
-      out.append("lastAlloc = new list<void*>();\n")
+      out.append("lastAlloc = new std::list<void*>();\n")
     }
   }
 
@@ -282,11 +282,11 @@ trait CudaSyncGenerator extends CudaToScalaSync {
       out.append(freeItem)
       out.append(";\n")
       out.append(freeItem)
-      out.append(".keys = new list< pair<void*,bool> >();\n")
+      out.append(".keys = new std::list< std::pair<void*,bool> >();\n")
     }
 
     def writeCudaFree(sym: String, isPrim: Boolean) {
-      out.append("pair<void*,bool> ")
+      out.append("std::pair<void*,bool> ")
       out.append(getSymDevice(op,sym))
       out.append("_pair(")
       out.append(getSymDevice(op,sym))

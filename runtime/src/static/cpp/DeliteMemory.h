@@ -6,14 +6,21 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h>
 #include <sched.h>
+#include "DeliteDatastructures.h"
 
 //#define DHEAP_DEBUG(...) fprintf(stderr, "[DEBUG-DeliteHeap] "); fprintf(stderr, __VA_ARGS__)
 #define DHEAP_DEBUG(...)
 
-void DeliteHeapInit(int idx, int numThreads);
-void DeliteHeapClear(int idx, int numThreads);
+// Delite Custom Memory APIs
+void DeliteHeapInit(int idx, int numThreads, int numLiveThreads, int initializer, size_t heapSize);
+void DeliteHeapClear(int idx, int numThreads, int numLiveThreads, int finalizer);
 char *DeliteHeapAlloc(size_t sz, int idx);
+
+// globally overloaded new operators
+void *operator new(size_t sz, const resourceInfo_t &resourceInfo);
+void *operator new[](size_t sz, const resourceInfo_t &resourceInfo);
 
 class DeliteMemory {
 public:

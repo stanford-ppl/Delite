@@ -5,13 +5,13 @@
 #include <iostream>
 #include <algorithm>
 #include "DeliteCpp.h"
+#define LOADFACTOR_D2 0.2f
 
 //Note: Use unsigned integer types to enable right shift with fill zeros (e.g., hc)
 
 template <class K>
 class cppHashMap {
 private:
-  constexpr static float loadfactor_d2 = 0.4f / 2;
   int32_t *indices;
   uint32_t indices_length;
   K *keys;
@@ -120,11 +120,11 @@ public:
     std::cout << "size: " << sz << std::endl;
     std::cout << "indices length: " << indices_length << std::endl;
     std::cout << "data length: " << keys_length << std::endl;
-    std::cout << "growth threashold: " << (int32_t)(loadfactor_d2*indices_length) << std::endl;
+    std::cout << "growth threashold: " << (int32_t)(LOADFACTOR_D2*indices_length) << std::endl;
   }
 
   void grow(void) {
-    if (sz <= (loadfactor_d2 * indices_length)) return;
+    if (sz <= (LOADFACTOR_D2 * indices_length)) return;
     int32_t *nindices = new int32_t[indices_length * 2];
     std::fill_n(nindices, indices_length*2, -1);;
     K *nkeys = new K[keys_length * 2]();
@@ -197,7 +197,6 @@ public:
 template <class K>
 class cppHashMap<K*> {
 private:
-  constexpr static float loadfactor_d2 = 0.4f / 2;
   int32_t *indices;
   uint32_t indices_length;
   K **keys;
@@ -306,11 +305,11 @@ public:
     std::cout << "size: " << sz << std::endl;
     std::cout << "indices length: " << indices_length << std::endl;
     std::cout << "data length: " << keys_length << std::endl;
-    std::cout << "growth threashold: " << (int32_t)(loadfactor_d2*indices_length) << std::endl;
+    std::cout << "growth threashold: " << (int32_t)(LOADFACTOR_D2*indices_length) << std::endl;
   }
 
   void grow(void) {
-    if (sz <= (loadfactor_d2 * indices_length)) return;
+    if (sz <= (LOADFACTOR_D2 * indices_length)) return;
     int32_t *nindices = new int32_t[indices_length * 2];
     std::fill_n(nindices, indices_length*2, -1);;
     K **nkeys = new K*[keys_length * 2]();

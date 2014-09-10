@@ -69,9 +69,9 @@ object Compilers {
       OpenCLCompile.printSources()
     }
 
-    if (Config.numCpp>0 && graph.targets(Targets.Cpp)) CppCompile.compile()
-    if (Config.numCuda>0 && graph.targets(Targets.Cuda)) CudaCompile.compile()
-    if (Config.numOpenCL>0 && graph.targets(Targets.OpenCL)) OpenCLCompile.compile()
+    if (Config.numCpp>0 && graph.targets(Targets.Cpp)) CppCompile.compile(graph)
+    if (Config.numCuda>0 && graph.targets(Targets.Cuda)) CudaCompile.compile(graph)
+    if (Config.numOpenCL>0 && graph.targets(Targets.OpenCL)) OpenCLCompile.compile(graph)
 
     val classLoader = ScalaCompile.compile
     DeliteMesosExecutor.classLoader = classLoader
