@@ -128,9 +128,9 @@ sbt compile</code></pre></div>
         for more detailed information on this setup).
         </p>        
         <p>        
-        Now we are ready to write "hello world" in OptiML. Existing OptiML applications are located in the <code>apps/OptiML/src</code> directory from the root of the Delite repository. It is
+        Now we are ready to write "hello world" in OptiML. Existing OptiML applications are located in <code>apps/src</code> inside the published OptiML directory. It is
         easiest to add your application here, but you can add it anywhere you want as long as you update the SBT configuration to point to your new location. For now, let's open up a file
-        in <code>apps/OptiML/src</code> called 'HelloWorld.scala' and copy this text in:
+        in <code>apps/src</code> called 'HelloWorld.scala' and copy this text in:
         </p>
         <div class="highlight"><pre><code class="scala"><span class="k">import</span> <span class="nn">optiml.compiler._</span>
 <span class="k">import</span> <span class="nn">optiml.library._</span>
@@ -152,16 +152,18 @@ sbt compile</code></pre></div>
         Since Delite compilation can take a while (but produces high performance code), the recommended strategy is to use the OptiML interpreter while developing and
         prototyping, and then run the Delite version to scale out to larger datasets or heterogeneous hardware.
         </p>
-        <p> So without further ado, let's get to it. Starting from the root of the Forge repository, first run the interpreter version: </p>
-<p><div class="highlight" style="overflow: scroll"><pre><code class="bash">bin/update -s 3 -r HelloWorldInterpreter ppl.dsl.forge.dsls.optiml.OptiMLDSLRunner OptiML</code></pre></div></p>
+        <p> So without further ado, let's get to it. Starting from the published OptiML directory, first compile the application and then run the interpreter version: </p>
+<p><div class="highlight" style="overflow: scroll"><pre><code class="bash">sbt compile
+bin/delitec HelloWorldInterpreter</code></pre></div></p>
         <p> If all went well, you should see <code>hello world</code> printed to the console! </p>
         <p> Now let's run the Delite version. Delite scripts require the JAVA_HOME environment variable to be set. If it is not already, you will need to set it: </p>
 <div class="highlight"><pre><code class="bash">export JAVA_HOME=[absolute path of Java installation] </code></pre></div> 
-        <p> Now we can run the compiler version simply by changing the parameters passed to the update script: </p>
+        <p> Now we can run the compiler version simply by changing the argument to the Delite: </p>
         <p>
-        <div class="highlight" style="overflow: scroll"><pre><code class="bash">bin/update -s 3 -d -r HelloWorldCompiler ppl.dsl.forge.dsls.optiml.OptiMLDSLRunner OptiML</code></pre></div> 
+        <div class="highlight" style="overflow: scroll"><pre><code class="bash">bin/delitec HelloWorldCompiler
+bin/delite HelloWorldCompiler</code></pre></div> 
         </p><p>
-        You should see output like the following:
+        In this case <code>delitec</code> generates new code for the application rather than interpreting the application directly, and <code>delite</code> runs the generated code. You should see output like the following:
         <div class="highlight"><pre><code class="bash">Delite Runtime executing with the following arguments:
 HelloWorldRunner.deg
 Delite Runtime executing with 1 CPU thread(s) and 0 GPU(s)
