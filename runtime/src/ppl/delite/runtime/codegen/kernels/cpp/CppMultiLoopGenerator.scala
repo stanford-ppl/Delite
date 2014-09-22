@@ -2,7 +2,7 @@ package ppl.delite.runtime.codegen.kernels.cpp
 
 import ppl.delite.runtime.graph.ops.OP_MultiLoop
 import ppl.delite.runtime.codegen.kernels.{MultiLoop_SMP_Array_Header_Generator, MultiLoop_SMP_Array_Generator}
-import ppl.delite.runtime.codegen.{CppExecutableGenerator, CppCompile, CppResourceInfoGenerator}
+import ppl.delite.runtime.codegen.{CppExecutableGenerator, CppCompile, CppResourceInfo}
 import ppl.delite.runtime.graph.targets.Targets
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.DeliteTaskGraph
@@ -18,7 +18,7 @@ object CppMultiLoopGenerator {
   }
 }
 
-class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val chunkIdx: Int, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Generator with CppResourceInfoGenerator {
+class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val chunkIdx: Int, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Generator with CppResourceInfo {
 
   protected val headerObject = "head"
   protected val closure = "head->closure"
@@ -48,9 +48,9 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
     out.append("}\n")
   }
 
-  protected def returnResult(result: String) {
-    out.append("return "+result+";\n")
-  }
+  // protected def returnResult(result: String) {
+  //   out.append("return "+result+";\n")
+  // }
 
   protected def release(name: String, cond: Option[String] = None) {
     if (Config.cppMemMgr == "refcnt") {
@@ -61,100 +61,110 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
     }
   }
 
-  protected def processLocal(outputSym: String): String = {
-    val outputType = master.outputType(Targets.Cpp)
-    out.append("size_t dIdx = "+chunkIdx+";\n")
-    out.append("size_t numDynamicChunks = "+headerObject + "->numDynamicChunks;\n")
-    out.append("size_t startOffset = "+closure+"->loopStart;\n")
-    out.append("size_t size = "+closure+"->loopSize;\n")
-    out.append("while(dIdx < numDynamicChunks){\n")
-    out.append("size_t start = (startOffset + size*dIdx/numDynamicChunks);\n")
-    out.append("size_t end = (startOffset + size*(dIdx+1)/numDynamicChunks);\n")  
-    out.append(outputType+"* accDynamic = "+closure+"->processRange("+resourceInfoSym+","+outputSym+",start,end,"+chunkIdx+");\n")
-    out.append(headerObject+"->dynamicSet(dIdx,accDynamic);\n")
-    out.append("dIdx = "+headerObject+"->getDynamicChunkIndex();\n")
-    out.append("}\n")
+  // protected def processLocal() = {
+  //   val outputType = master.outputType(Targets.Cpp)
+  //   out.append("size_t dIdx = "+chunkIdx+";\n")
+  //   out.append("size_t numDynamicChunks = "+headerObject + "->numDynamicChunks;\n")
+  //   out.append("size_t startOffset = "+closure+"->loopStart;\n")
+  //   out.append("size_t size = "+closure+"->loopSize;\n")
+  //   out.append("while(dIdx < numDynamicChunks){\n")
+  //   out.append("size_t start = (startOffset + size*dIdx/numDynamicChunks);\n")
+  //   out.append("size_t end = (startOffset + size*(dIdx+1)/numDynamicChunks);\n")  
+  //   out.append(outputType+"* accDynamic = "+closure+"->processRange("+resourceInfoSym+","+outputSym+",start,end,"+chunkIdx+");\n")
+  //   out.append(headerObject+"->dynamicSet(dIdx,accDynamic);\n")
+  //   out.append("dIdx = "+headerObject+"->getDynamicChunkIndex();\n")
+  //   out.append("}\n")
 
-    out.append("size_t myThreadDynamicIndexStart = ("+chunkIdx+"*numDynamicChunks)/"+numChunks+";\n")
-    out.append("size_t myThreadDynamicIndexEnd = (("+chunkIdx+"+1)*numDynamicChunks)/"+numChunks+";\n")    
-    out.append(outputType+"* acc = "+headerObject+"->dynamicGet(myThreadDynamicIndexStart);\n")
-    "acc"
-  }
+  //   out.append("size_t myThreadDynamicIndexStart = ("+chunkIdx+"*numDynamicChunks)/"+numChunks+";\n")
+  //   out.append("size_t myThreadDynamicIndexEnd = (("+chunkIdx+"+1)*numDynamicChunks)/"+numChunks+";\n")    
+  //   out.append(outputType+"* acc = "+headerObject+"->dynamicGet(myThreadDynamicIndexStart);\n")
+  //   "acc"
+  // }
 
-  protected def combineLocal(acc: String) = {
-    out.append("for(size_t i = 1+myThreadDynamicIndexStart; i < myThreadDynamicIndexEnd; i++) {\n")
-    combine(acc, headerObject+"->dynamicGet(i)")
-    out.append("}\n")
-  }
+  // protected def combineLocal() = {
+  //   out.append("for(size_t i = 1+myThreadDynamicIndexStart; i < myThreadDynamicIndexEnd; i++) {\n")
+  //   combine(acc, headerObject+"->dynamicGet(i)")
+  //   out.append("}\n")
+  // }
 
-  protected def postCombine(acc: String) = {
-    val outputType = master.outputType(Targets.Cpp)
-    if (chunkIdx != 0) {
-      postCombine(acc, get("B", chunkIdx-1)) //linear chain combine
-    }
+  protected def processLocal() { }
+  protected def combineLocal() { }
+  protected def combineRemote(){ }
+  protected def postCombine() { }
+  protected def postProcess() { }
+  protected def finalizer() { }
+  protected def returnResult() { }
+  protected def barrier() { }
+
+  // protected def postCombine(acc: String) = {
+  //   //TODO: release rhs activation records
+  //   val outputType = master.outputType(Targets.Cpp)
+  //   if (chunkIdx != 0) {
+  //     postCombine(acc, get("B", chunkIdx-1)) //linear chain combine
+  //   }
     
-    out.append(outputType +"* old = "+acc+";\n")
-    out.append("for (size_t j = 1+myThreadDynamicIndexStart; j < myThreadDynamicIndexEnd; j++) {\n")
-    postCombine(headerObject+"->dynamicGet(j)", "old")
-    out.append("old = "+headerObject+"->dynamicGet(j);\n")
-    out.append("}\n")
+  //   out.append(outputType +"* old = "+acc+";\n")
+  //   out.append("for (size_t j = 1+myThreadDynamicIndexStart; j < myThreadDynamicIndexEnd; j++) {\n")
+  //   postCombine(headerObject+"->dynamicGet(j)", "old")
+  //   out.append("old = "+headerObject+"->dynamicGet(j);\n")
+  //   out.append("}\n")
 
-    if (chunkIdx == numChunks-1) {
-      postProcInit("old") 
-    }
-    if(numChunks > 1) set("B", chunkIdx, "old")
-    if (chunkIdx != numChunks-1) get("B", numChunks-1) // wait for last one
+  //   if (chunkIdx == numChunks-1) {
+  //     postProcInit("old") 
+  //   }
+  //   if(numChunks > 1) set("B", chunkIdx, "old")
+  //   if (chunkIdx != numChunks-1) get("B", numChunks-1) // wait for last one
     
-    out.append("for(size_t j = myThreadDynamicIndexStart; j < myThreadDynamicIndexEnd; j++){\n")    
-    postProcess(headerObject+"->dynamicGet(j)")
-    out.append("}\n")
-  }
+  //   out.append("for(size_t j = myThreadDynamicIndexStart; j < myThreadDynamicIndexEnd; j++){\n")    
+  //   postProcess(headerObject+"->dynamicGet(j)")
+  //   out.append("}\n")
+  // }
   
-  protected def allocateOutput(): String = {
-    out.append(master.outputType(Targets.Cpp)+"* out = "+headerObject+"->out;\n")
-    "out"
-  }
+  // protected def allocateOutput(): String = {
+  //   out.append(master.outputType(Targets.Cpp)+"* out = "+headerObject+"->out;\n")
+  //   "out"
+  // }
 
-  protected def processRange(outputSym: String, start: String, end: String) = {
-    out.append(master.outputType(Targets.Cpp)+"* acc = "+closure+"->processRange("+resourceInfoSym+","+outputSym+","+start+","+end+","+chunkIdx+");\n")
-    "acc"
-  }
+  // protected def processRange(outputSym: String, start: String, end: String) = {
+  //   out.append(master.outputType(Targets.Cpp)+"* acc = "+closure+"->processRange("+resourceInfoSym+","+outputSym+","+start+","+end+","+chunkIdx+");\n")
+  //   "acc"
+  // }
 
-  protected def combine(acc: String, neighbor: String) {
-    out.append(closure+"->combine("+resourceInfoSym+","+acc+", "+neighbor+", "+chunkIdx+");\n")
-  }
+  // protected def combine(acc: String, neighbor: String) {
+  //   out.append(closure+"->combine("+resourceInfoSym+","+acc+", "+neighbor+", "+chunkIdx+");\n")
+  // }
 
-  protected def postProcess(acc: String) {
-    out.append(closure+"->postProcess("+resourceInfoSym+","+acc+", "+chunkIdx+");\n")
-  }
+  // protected def postProcess(acc: String) {
+  //   out.append(closure+"->postProcess("+resourceInfoSym+","+acc+", "+chunkIdx+");\n")
+  // }
 
-  protected def postProcInit(acc: String) {
-    out.append(closure+"->postProcInit("+resourceInfoSym+","+acc+","+chunkIdx+");\n")
-  }
+  // protected def postProcInit(acc: String) {
+  //   out.append(closure+"->postProcInit("+resourceInfoSym+","+acc+","+chunkIdx+");\n")
+  // }
 
-  protected def postCombine(acc: String, neighbor: String) {
-    out.append(closure+"->postCombine("+resourceInfoSym+","+acc+", "+neighbor+", "+chunkIdx+");\n")
-  }
+  // protected def postCombine(acc: String, neighbor: String) {
+  //   out.append(closure+"->postCombine("+resourceInfoSym+","+acc+", "+neighbor+", "+chunkIdx+");\n")
+  // }
 
-  protected def finalize(acc: String) {
-    out.append(closure+"->finalize("+resourceInfoSym+","+acc+","+chunkIdx+");\n")
-  }
+  // protected def finalize(acc: String) {
+  //   out.append(closure+"->finalize("+resourceInfoSym+","+acc+","+chunkIdx+");\n")
+  // }
 
-  protected def set(syncObject: String, idx: Int, value: String) {
-    out.append(headerObject+"->set"+syncObject+idx+"("+value+");\n")
-  }
+  // protected def set(syncObject: String, idx: Int, value: String) {
+  //   out.append(headerObject+"->set"+syncObject+idx+"("+value+");\n")
+  // }
 
-  protected def get(syncObject: String, idx: Int) = {
-    out.append(master.outputType(Targets.Cpp)+"* neighbor"+syncObject+idx+" = "+headerObject+"->get"+syncObject+idx+"();\n")
-    "neighbor"+syncObject+idx
-  }
+  // protected def get(syncObject: String, idx: Int) = {
+  //   out.append(master.outputType(Targets.Cpp)+"* neighbor"+syncObject+idx+" = "+headerObject+"->get"+syncObject+idx+"();\n")
+  //   "neighbor"+syncObject+idx
+  // }
 
   protected def beginProfile() {
     val chunkName = master.id + "_" + chunkIdx
     out.append("DeliteCppTimerStart(" + chunkIdx + ",\""+chunkName+"\");\n")
   }
 
-  protected def endProfile() {
+  protected def endProfile(isMaster: Boolean) {
     val chunkName = master.id + "_" + chunkIdx
     out.append("DeliteCppTimerStop(" + chunkIdx + ",\""+chunkName+"\");\n")
   }
@@ -166,7 +176,7 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
 }
 
 
-class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Header_Generator with CppResourceInfoGenerator {
+class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Header_Generator with CppResourceInfo {
 
   //NOTE: Header is just a class, so put into header list instead of source list
   protected def addSource(source: String, name: String) = CppCompile.addHeader(source, name)
@@ -309,6 +319,9 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
     out.append("void dynamicSet(size_t i, "+outputType+"* res) {\n")
     out.append("dynamicResult[i].store(res);\n}\n")
   }
+
+  protected def writeScheduler() { }
+  protected def writeActSync(key: String) { }
 
   protected def initSync() {
     val outputType = op.outputType(Targets.Cpp)

@@ -23,7 +23,7 @@ object CodeCache {
 
   def verifyCache() {
     if (!Config.alwaysKeepCache && (!checksum.exists || !checksumEqual)) {
-      println("[DELITE]: Clearing corrupt code cache")
+      if (Config.verbose) println("[delite]: Clearing corrupt code cache")
       dir.deleteRecursively()
     }
   }

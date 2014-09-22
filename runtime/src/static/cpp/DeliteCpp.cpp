@@ -317,7 +317,6 @@ string readFirstLineFile(const string &filename) {
 template <class K>
 uint32_t delite_hashcode(K key) {
   return key->hashcode();
-<<<<<<< HEAD
 }
 
 template<> uint32_t delite_hashcode<bool>(bool key) { return (uint32_t) key; }
@@ -339,29 +338,6 @@ template<> uint32_t delite_hashcode<string>(string key) {
   return (uint32_t)hc;
 }
 
-=======
-}
-
-template<> uint32_t delite_hashcode<bool>(bool key) { return (uint32_t) key; }
-template<> uint32_t delite_hashcode<int8_t>(int8_t key) { return (uint32_t) key; }
-template<> uint32_t delite_hashcode<uint16_t>(uint16_t key) { return (uint32_t) key; }
-template<> uint32_t delite_hashcode<int32_t>(int32_t key) { return (uint32_t) key; }
-template<> uint32_t delite_hashcode<int64_t>(int64_t key) { return (uint32_t) key; }
-template<> uint32_t delite_hashcode<float>(float key) { return (uint32_t) key; }
-template<> uint32_t delite_hashcode<double>(double key) { return (uint32_t) key; }
-template<> uint32_t delite_hashcode<string>(string key) {
-  //http://docs.oracle.com/javase/1.5.0/docs/api/java/lang/String.html#hashCode%28%29
-  int32_t multiplier = 1;
-  int32_t hc = 0;
-  int n = key.length();
-  for(int i=n-1; i>=0; i--) {
-    hc += multiplier * key.at(i);
-    multiplier *= 31;
-  }
-  return (uint32_t)hc;
-}
-
->>>>>>> develop
 template <class K>
 bool delite_equals(K key1, K key2) {
   return key1->equals(key2);

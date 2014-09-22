@@ -8,7 +8,12 @@ import ppl.delite.runtime.graph.targets.{OS, Targets}
 import collection.mutable.ArrayBuffer
 import sync._
 
-trait ScalaExecutableGenerator extends ExecutableGenerator {
+trait ScalaResourceInfo {
+  protected def resourceInfoType = "generated.scala.ResourceInfo"
+  protected def resourceInfoSym = "resourceInfo"
+}
+
+trait ScalaExecutableGenerator extends ExecutableGenerator with ScalaResourceInfo {
 
   protected def addSource(source: String) {
     ScalaCompile.addSource(source, executableName)
@@ -38,6 +43,7 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
   protected def writeMethodHeader() {
     out.append("def run() {\n")
     if (Config.profile) out.append("val threadName = Thread.currentThread.getName()\n")
+    out.append("val "+resourceInfoSym+" = new "+resourceInfoType+"("+Targets.getRelativeLocation(location)+","+Config.numThreads+")\n")
   }
 
   protected def writeMethodFooter() {
@@ -57,8 +63,9 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
   }
 
   protected def writeFunctionCall(op: DeliteOP) {
-    def returnsResult = op.outputType(op.getOutputs.head) == op.outputType
-    def resultName = if (returnsResult) getSym(op, op.getOutputs.head) else getOpSym(op)
+    def dummyOutput = op.isInstanceOf[OP_MultiLoop] && Targets.getRelativeLocation(location) > 0
+    def returnsResult = op.outputType(op.getOutputs.head) == op.outputType || dummyOutput
+    def resultName = if (returnsResult && !dummyOutput) getSym(op, op.getOutputs.head) else getOpSym(op)
 
     if (op.task == null) return //dummy op
     if (Config.profile) {
@@ -75,10 +82,9 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
     out.append(" = ")
     out.append(op.task)
     out.append('(')
-    var first = true
+    out.append(resourceInfoSym)
     for ((input, name) <- op.getInputs) {
-      if (!first) out.append(',') //no comma before first argument
-      first = false
+      out.append(", ")
       out.append(getSym(input, name))
     }
     out.append(")\n")

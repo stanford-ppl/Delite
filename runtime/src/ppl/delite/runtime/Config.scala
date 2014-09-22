@@ -54,9 +54,10 @@ object Config {
   val gpuOptTrans: Boolean = getProperty("delite.gpu.opt.trans", "false") != "false"
 
   /* Debug options */
+  val verbose: Boolean = getProperty("delite.verbose", "false") != "false"
   val queueSize: Int = getProperty("delite.debug.queue.size", "128").toInt
   val noRegenerate: Boolean = getProperty("delite.debug.noregenerate", "false") != "false"
-  val alwaysKeepCache: Boolean = getProperty("delite.debug.alwaysKeepCache", "false") != "false"
+  val alwaysKeepCache: Boolean = noRegenerate || (getProperty("delite.debug.alwaysKeepCache", "false") != "false")
   val gpuBlackList: Array[String] = { val p = getProperty("delite.debug.gpu.blacklist",""); if(p=="") Array() else p.split(",") }
   val gpuWhiteList: Array[String] = { val p = getProperty("delite.debug.gpu.whitelist",""); if(p=="") Array() else p.split(",") }
   val gpuPerformance: Boolean = getProperty("delite.debug.gpu.perf", "false") != "false"

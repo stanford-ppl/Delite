@@ -31,7 +31,7 @@ class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, v
    */
   def chunk(i: Int): OP_MultiLoop = {
 	  // TODO: aks (pass a sane size, sizeIsConst for the chunk?)
-    val r = new OP_MultiLoop(id+"_"+i, size, sizeIsConst, numDynamicChunks, numDynamicChunksIsConst, function, Targets.unitTypes(id+"_"+i, outputTypesMap), needsCombine, needsPostProcess) //chunks all return Unit
+    val r = new OP_MultiLoop(id+"_"+i, size, sizeIsConst, numDynamicChunks, numDynamicChunksIsConst, function, outputTypesMap, needsCombine, needsPostProcess)
     r.dependencies = dependencies //lists are immutable so can be shared
     r.inputList = inputList
     for (dep <- getDependencies) dep.addConsumer(r)

@@ -656,7 +656,7 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
         }.mkString(",") + ")," + unwrapSharedPtr(remap(sym.tp)) + "D());")
       }
       else {
-        stream.println(remapWithRef(sym.tp) + quote(sym) + " = new (" + resourceInfoSym + ".thread_id) " + remap(sym.tp) + "(" + elems.map{ e =>
+        stream.println(remapWithRef(sym.tp) + quote(sym) + " = new (" + resourceInfoSym + ".threadId) " + remap(sym.tp) + "(" + elems.map{ e =>
           if (isVarType(e._2) && deliteInputs.contains(e._2)) quote(e._2) + "->get()"
           else quote(e._2)
         }.mkString(",") + ");")

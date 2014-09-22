@@ -1,9 +1,10 @@
 #ifndef _DELITE_CONFIG_
 #define _DELITE_CONFIG_
 
+#include <stdlib.h>
 #include <iostream>
 #include <jni.h>
-#include <mutex>         
+#include <pthread.h>
 #include "Config.h"
 
 #ifdef __DELITE_CPP_NUMA__
@@ -12,27 +13,17 @@
 
 
 Config* config = 0;
-std::mutex init_mtx;
+pthread_mutex_t init_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 // heavy-handed, but doesn't appear there is another good way
 int getCpuInfo(FILE* pipe) {
     if (!pipe) return -1;
 
     char buffer[128];
-    std::string result = "";
-    while(!feof(pipe)) {
-        if(fgets(buffer, 128, pipe) != NULL)
-            result += buffer;
-    }
+    buffer[0] = 0;
+    fgets(buffer, 128, pipe);
     pclose(pipe);
-
-    try {	
-        int info = std::stoi(result);
-        return info;
-    }
-    catch(std::exception const &e) {
-	   return -1;
-    }
+    return atoi(buffer);
 }
 
 int getNumCoresPerSocket() {
@@ -42,15 +33,15 @@ int getNumCoresPerSocket() {
 
 int getNumSockets() {
     FILE* pipe = popen("grep 'physical id' /proc/cpuinfo 2> /dev/null | tail -1 | cut -d ':' -f 2 | tr -d ' '", "r");
-    return getCpuInfo(pipe);
+    return getCpuInfo(pipe) + 1;
 }
 
 void initializeConfig(int numThreads) {
     config = new Config(numThreads);
     
     //detect physical config
-    int numSockets = getNumSockets() + 1;
-    int numCoresPerSocket = getNumCoresPerSocket(); //TODO: divide by 2 is to ignore hyper-threading. Better way?
+    int numSockets = getNumSockets();
+    int numCoresPerSocket = getNumCoresPerSocket();
     int numCores = numCoresPerSocket * numSockets;
 
     //detect numa config
@@ -85,11 +76,9 @@ void initializeConfig(int numThreads) {
 extern "C" JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_AccExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads);
 
 JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_AccExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads) {
-    init_mtx.lock();
-    if (!config) {
-        initializeConfig(numThreads);
-    }
-    init_mtx.unlock();
+    pthread_mutex_lock(&init_mtx); 
+    if (!config) initializeConfig(numThreads);
+    pthread_mutex_unlock(&init_mtx);
 
     #ifdef __DELITE_CPP_NUMA__
     if (numa_available() >= 0) {

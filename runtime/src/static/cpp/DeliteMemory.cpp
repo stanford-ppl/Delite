@@ -45,7 +45,7 @@ void DeliteHeapInit(int idx, int numThreads, int numLiveThreads, int initializer
     int64_t pages = sysconf(_SC_PHYS_PAGES);
     int64_t page_size = sysconf(_SC_PAGE_SIZE);
     heapSize = pages * page_size / 4; // use 25% of physical memory as heap
-    if (heapSize > DEFAULT_MAX_HEAP) heapSize = DEFAULT_MAX_HEAP
+    if (heapSize > DEFAULT_MAX_HEAP) heapSize = DEFAULT_MAX_HEAP;
   }
 
   if (idx == initializer) {
@@ -85,9 +85,9 @@ char *DeliteHeapAlloc(size_t sz, int idx) {
 }
 
 void *operator new(size_t sz, const resourceInfo_t &resourceInfo) {
-  return DeliteHeapAlloc(sz, resourceInfo.thread_id);
+  return DeliteHeapAlloc(sz, resourceInfo.threadId);
 }
 
 void *operator new[](size_t sz, const resourceInfo_t &resourceInfo) {
-  return DeliteHeapAlloc(sz, resourceInfo.thread_id);
+  return DeliteHeapAlloc(sz, resourceInfo.threadId);
 }

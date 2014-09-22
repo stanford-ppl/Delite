@@ -39,7 +39,7 @@ trait NestedGenerator extends ExecutableGenerator {
 
 }
 
-trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator {
+trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator with ScalaResourceInfo {
 
   override protected def writeHeader() {
     ScalaExecutableGenerator.writePackage(graph, out)
@@ -71,10 +71,9 @@ trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator
   }
 
   protected def writeInputs(inputs: Seq[(DeliteOP,String)] = nested.getInputs) {
-    var first = true
+    out.append(resourceInfoSym+": "+resourceInfoType)
     for ((op,sym) <- inputs) {
-      if (!first) out.append(", ")
-      first = false
+      out.append(", ")
       out.append(getSym(op, sym))
       out.append(": ")
       out.append(op.outputType(sym))
@@ -95,7 +94,7 @@ trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator
 
 }
 
-trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator with CppResourceInfoGenerator {
+trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator with CppResourceInfo {
 
   private val target = Targets.Cpp
 

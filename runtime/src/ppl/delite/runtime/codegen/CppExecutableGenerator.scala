@@ -10,12 +10,12 @@ import sync._
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.scheduler.{OpHelper, OpList, PartialSchedule}
 
-trait CppResourceInfoGenerator {
+trait CppResourceInfo {
   protected def resourceInfoType = "resourceInfo_t"
   protected def resourceInfoSym = "resourceInfo"
 }
 
-trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfoGenerator {
+trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
 
   // To get a non-conflicting index for a variable name used to temporarily store jobject
   private var index = 0
@@ -51,8 +51,8 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfoGen
     out.append(" {\n")
     out.append("env" + location + " = jnienv;\n")
     out.append(resourceInfoType + " " + resourceInfoSym + ";\n")
-    out.append(resourceInfoSym + ".thread_id = " + Targets.getRelativeLocation(location) + ";\n")
-    out.append(resourceInfoSym + ".socket_id = config->threadToSocket(" + Targets.getRelativeLocation(location) + ");\n")
+    out.append(resourceInfoSym + ".threadId = " + Targets.getRelativeLocation(location) + ";\n")
+    out.append(resourceInfoSym + ".socketId = config->threadToSocket(" + Targets.getRelativeLocation(location) + ");\n")
     if (Config.profile) out.append("InitDeliteCppTimer(" + Targets.getRelativeLocation(location) + ");\n")
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     val cppLocations = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp)

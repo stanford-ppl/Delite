@@ -3,8 +3,8 @@
 
 // structure to keep thread-local resource information
 typedef struct {
-  int thread_id;
-  int socket_id;
+  int threadId;
+  int socketId;
 } resourceInfo_t;
 
 #endif
