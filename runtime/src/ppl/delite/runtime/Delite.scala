@@ -141,47 +141,6 @@ object Delite {
         DeliteMesosExecutor.awaitWork()
       }
       else { //master executor (including single-node execution)
-<<<<<<< HEAD
-        val totalNumThreads = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL
-        PerformanceTimer.initializeStats(totalNumThreads)
-        MemoryProfiler.initializeStats(totalNumThreads)
-        SamplerThread.interval = Config.memSamplingInterval
-
-        val numTimes = Config.numRuns
-        
-        for (i <- 1 to numTimes) {
-          if (Config.performWalk) println("Beginning Execution Run " + i)
-          PerformanceTimer.clearAll()
-
-          //val globalStart = System.currentTimeMillis
-          //val globalStartNanos = System.nanoTime()
-          val globalStartNanos = System.currentTimeMillis
-          val jvmUpTimeAtAppStart = ManagementFactory.getRuntimeMXBean().getUptime()
-
-          if (i == numTimes) {
-            if (Config.dumpProfile) {
-              SamplerThread.globalT = globalStartNanos
-              SamplerThread.start
-            }
-            
-            PerformanceTimer.start("all", false)
-          }
-
-          executor.run(executable)
-          appResult = EOP_Global.take() //await the end of the application program  
-
-          if (i == numTimes) {
-            if (Config.dumpProfile) SamplerThread.interrupt()
-            PerformanceTimer.stop("all", false)
-            PerformanceTimer.printStatsForNonKernelComps()
-            if (Config.dumpProfile) Profiler.dumpProfile(globalStartNanos, jvmUpTimeAtAppStart)    
-          }
-
-          if (Config.dumpStats) PerformanceTimer.dumpStats()        
-          System.gc()
-        }
-      }
-=======
         for (i <- 1 to Config.numRuns) {
           if (Config.performWalk) println("Beginning Execution Run " + i)
           Profiling.startRun()
@@ -191,7 +150,6 @@ object Delite {
           System.gc()
         }
       }      
->>>>>>> develop
     }
 
     try {

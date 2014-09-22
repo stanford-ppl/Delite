@@ -258,53 +258,9 @@ object Profiler {
    *  Requires system property stats.output.dir to be set.
    */
   def writeProfileDataToFile(globalStartNanos: Long, jvmUpTimeAtAppStart: Long, timingStats: List[Timing]) {
-<<<<<<< HEAD
-    val directory = getOrCreateOutputDirectory()
-    val file = "profileData.js"
-	  emitProfileData(directory, file, globalStartNanos, jvmUpTimeAtAppStart, timingStats)
-  }
-  
-  /** Generates HTML profile.
-   *  
-   *  Requires system properties stats.output.dir, stats.output.filename,
-   *  and delite.deg.filename to be set.
-   *  
-   *  Requires that the following files have been generated: symbols.json, profileData.js
-   */
-  def main(args: Array[String]) {
-    // only generate HTML profile
-    // TODO: check that symbols.json and profileData.js have already been generated
-  
-    // read symbol source info from file
-    val symbolsFilename =
-      Config.degFilename.substring(0, Config.degFilename.length() - 4) + "-symbols.json"
-    val contents = scala.io.Source.fromFile(symbolsFilename).mkString
-    
-    // maps a symbol (name) to its source context(s): name -> (fileName, opName, line)
-    val symbolMap: Map[String, (String, String, Int)] =
-      JSON.parseFull(contents) match { // parse JSON into map
-        case Some(json) => mapFromParsedJSON(json)
-        case None => throw new RuntimeException("Couldn't parse the symbols file")
-      }
-    
-    val htmlFile = new File(getOrCreateOutputDirectory(), Config.statsOutputFilename)
-    val fileWriter = new PrintWriter(new FileWriter(htmlFile))
-    //Visualizer.writeHtmlProfile(fileWriter, symbolMap)
-  }
-  
-  def getOrCreateOutputDirectory(): File = {
-    // check that directory is there or make it
-    val directory = new File(Config.profileOutputDirectory)
-    if(directory.exists == false)
-      directory.mkdirs
-    else if(directory.isDirectory == false)
-      throw new RuntimeException("profileOutputDirectory doesn't refer to a directory")
-    directory
-=======
     val directory = Path(Config.profileOutputDirectory).createDirectory()
     val file = directory / "profileData.js"
     emitProfileData(file.jfile, globalStartNanos, jvmUpTimeAtAppStart, timingStats)
->>>>>>> develop
   }
   
 }
