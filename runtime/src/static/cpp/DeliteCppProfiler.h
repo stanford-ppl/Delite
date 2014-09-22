@@ -5,8 +5,7 @@
 #include <sys/time.h>
 #include <jni.h>
 #include <stdint.h>
-
-using namespace std;
+#include "DeliteNamespaces.h"
 
 typedef struct {
   struct timeval start;

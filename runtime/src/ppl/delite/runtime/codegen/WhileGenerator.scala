@@ -141,7 +141,7 @@ class CppWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: D
   }
 
   protected def callFunction(inputs: Seq[(DeliteOP,String)]) = {
-    "predicate_" + executableName(location) + "(" + inputs.map(i=>getSymHost(i._1,i._2)).mkString(",") + ")"
+    "predicate_" + executableName(location) + "(" + (resourceInfoSym+:inputs.map(i=>getSymHost(i._1,i._2))).mkString(",") + ")"
   }
 
   override protected def getSym(op: DeliteOP, name: String) = WhileCommon.getSym(whileLoop, baseId, op, name)

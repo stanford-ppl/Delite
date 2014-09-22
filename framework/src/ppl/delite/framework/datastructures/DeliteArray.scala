@@ -719,6 +719,7 @@ trait CLikeGenDeliteArrayOps extends BaseGenDeliteArrayOps with CLikeGenDeliteSt
     super.emitDataStructures(path)
     val stream = new PrintWriter(path + deviceTarget + "DeliteArrays.h")
     stream.println("#include \"" + deviceTarget + "DeliteStructs.h\"")
+    stream.println("#include \"" + deviceTarget + "HashMap.h\"")
     for((tp,name) <- dsTypesList if(isArrayType(tp))) {
       emitDeliteArray(tp, path, stream)
     }
@@ -939,7 +940,7 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
       if (cppMemMgr == "refcnt")  
         stream.println(remap(sym.tp) + " " + quote(sym) + "(new " + unwrapSharedPtr(remap(sym.tp)) + "(" + quote(n) + "), " + unwrapSharedPtr(remap(sym.tp)) + "D());")
       else
-        emitValDef(sym, "new " + remap(sym.tp) + "(" + quote(n) + ")")
+        emitValDef(sym, "new (" + resourceInfoSym + ".thread_id) " + remap(sym.tp) + "(" + quote(n) + ", " + resourceInfoSym + ".thread_id)")
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + "->length")
     case DeliteArrayApply(da, idx) =>
@@ -976,17 +977,16 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
   }
 
   protected val deliteArrayString = """
-using namespace std;
-class __T__ {
+#include "DeliteNamespaces.h"
+#include "DeliteMemory.h"
+class __T__ : public DeliteMemory {
 public:
   __TARG__ *data;
   int length;
 
-  __T__(int _length) {
-    data = new __TARG__[_length]();
-    length = _length;
-    //printf("allocated __T__, size %d, %p\n",_length,this);
-  }
+  __T__(int _length, int heapIdx): data((__TARG__ *)(DeliteHeapAlloc(sizeof(__TARG__)*_length,heapIdx))), length(_length) { }
+
+  __T__(int _length): data((__TARG__ *)(new __TARG__[_length])), length(_length) { }
 
   __T__(__TARG__ *_data, int _length) {
     data = _data;
@@ -1003,6 +1003,14 @@ public:
 
   void print(void) {
     printf("length is %d\n", length);
+  }
+
+  bool equals(__T__ *to) {
+    return this == this;
+  }
+
+  uint32_t hashcode(void) {
+    return (uintptr_t)this;
   }
 };
 

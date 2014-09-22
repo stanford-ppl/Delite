@@ -2,7 +2,7 @@ package ppl.delite.runtime.codegen.kernels.cpp
 
 import ppl.delite.runtime.graph.ops.OP_MultiLoop
 import ppl.delite.runtime.codegen.kernels.{MultiLoop_SMP_Array_Header_Generator, MultiLoop_SMP_Array_Generator}
-import ppl.delite.runtime.codegen.{CppExecutableGenerator, CppCompile}
+import ppl.delite.runtime.codegen.{CppExecutableGenerator, CppCompile, CppResourceInfoGenerator}
 import ppl.delite.runtime.graph.targets.Targets
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.DeliteTaskGraph
@@ -18,7 +18,7 @@ object CppMultiLoopGenerator {
   }
 }
 
-class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val chunkIdx: Int, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Generator {
+class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val chunkIdx: Int, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Generator with CppResourceInfoGenerator {
 
   protected val headerObject = "head"
   protected val closure = "head->closure"
@@ -26,7 +26,7 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
   protected def addSource(source: String, name: String) = CppCompile.addSource(source, name)
 
   protected def writeHeader() {
-    out.append("#include \""+CppMultiLoopHeaderGenerator.className(master) + ".cpp\"\n")
+    out.append("#include \""+CppMultiLoopHeaderGenerator.className(master) + ".h\"\n")
     out.append("#include \"DeliteCppProfiler.h\"\n")
     CppMultiLoopHeaderGenerator.headerList += kernelSignature + ";\n"
   }
@@ -40,7 +40,8 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
 
   protected def kernelSignature = {
     op.outputType(Targets.Cpp) + "* " + kernelName + "(" +
-      op.inputType(Targets.Cpp, op.getInputs.head._2) + "* " + headerObject + ")"
+    resourceInfoType + " &" + resourceInfoSym + "," +
+    op.inputType(Targets.Cpp, op.getInputs.head._2) + "* " + headerObject + ")"
   }
 
   protected def writeKernelFooter() {
@@ -96,28 +97,28 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
   }
 
   protected def processRange(outputSym: String, start: String, end: String) = {
-    out.append(master.outputType(Targets.Cpp)+"* acc = "+closure+"->processRange("+outputSym+","+start+","+end+");\n")
+    out.append(master.outputType(Targets.Cpp)+"* acc = "+closure+"->processRange("+resourceInfoSym+","+outputSym+","+start+","+end+");\n")
     "acc"
   }
 
   protected def combine(acc: String, neighbor: String) {
-    out.append(closure+"->combine("+acc+", "+neighbor+");\n")
+    out.append(closure+"->combine("+resourceInfoSym+","+acc+", "+neighbor+");\n")
   }
 
   protected def postProcess(acc: String) {
-    out.append(closure+"->postProcess("+acc+");\n")
+    out.append(closure+"->postProcess("+resourceInfoSym+","+acc+");\n")
   }
 
   protected def postProcInit(acc: String) {
-    out.append(closure+"->postProcInit("+acc+");\n")
+    out.append(closure+"->postProcInit("+resourceInfoSym+","+acc+");\n")
   }
 
   protected def postCombine(acc: String, neighbor: String) {
-    out.append(closure+"->postCombine("+acc+", "+neighbor+");\n")
+    out.append(closure+"->postCombine("+resourceInfoSym+","+acc+", "+neighbor+");\n")
   }
 
   protected def finalize(acc: String) {
-    out.append(closure+"->finalize("+acc+");\n")
+    out.append(closure+"->finalize("+resourceInfoSym+","+acc+");\n")
   }
 
   protected def set(syncObject: String, idx: Int, value: String) {
@@ -146,9 +147,10 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
 }
 
 
-class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Header_Generator {
+class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Header_Generator with CppResourceInfoGenerator {
 
-  protected def addSource(source: String, name: String) = CppCompile.addSource(source, name)
+  //NOTE: Header is just a class, so put into header list instead of source list
+  protected def addSource(source: String, name: String) = CppCompile.addHeader(source, name)
 
   protected def isPrimitiveType(scalaType: String) = scalaType match {
     case "java.lang.String" => true
@@ -168,8 +170,8 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
 
     val stream = new StringBuilder
     writeKernelFunction(stream)
-    addSource(stream.toString, kernelName)
-    CppMultiLoopHeaderGenerator.headerList += "#include \"" + className + ".cpp\"\n"
+    CppCompile.addSource(stream.toString, kernelName)
+    CppMultiLoopHeaderGenerator.headerList += "#include \"" + className + ".h\"\n"
     CppMultiLoopHeaderGenerator.headerList += kernelSignature + ";\n"
   }
 
@@ -190,16 +192,16 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
   }
 
   protected def kernelSignature = {
-    className + "* " + kernelName + op.getInputs.map(in => op.inputType(Targets.Cpp, in._2) + addRef(in._2) + in._2).mkString("(", ", ", ")")
+    className + "* " + kernelName + ((resourceInfoType+" &"+resourceInfoSym)+:op.getInputs.map(in => op.inputType(Targets.Cpp, in._2) + addRef(in._2) + in._2)).mkString("(", ", ", ")")
   }
 
   protected def writeKernelFunction(stream: StringBuilder) {
-    stream.append("#include \"" + className + ".cpp\"\n")
+    stream.append("#include \"" + className + ".h\"\n")
 
     stream.append(kernelSignature)
     stream.append(" {\n")
     stream.append("return new " + /*CppMultiLoopHeaderGenerator.className(master) + "::" + */ className)
-    stream.append(op.getInputs.map(_._2).mkString("(",", ",");\n"))
+    stream.append((resourceInfoSym+:op.getInputs.map(_._2)).mkString("(",", ",");\n"))
     stream.append("}\n")
   }
 
@@ -209,11 +211,12 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
 
     out.append(className)
     out.append("(")
+    out.append(resourceInfoType)
+    out.append(" &")
+    out.append(resourceInfoSym)
     var inIdx = 0
-    var first = true
     for ((input, name) <- op.getInputs) {
-      if (!first) out.append(", ")
-      first = false
+      out.append(", ")
       out.append(op.inputType(Targets.Cpp, name))
       out.append(addRef(name))
       out.append(" in")
@@ -233,9 +236,9 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
     out.append(");\n")
 
     out.append("closure->loopStart = 0;\n")
-    out.append("closure->loopSize = closure->size();\n")
+    out.append("closure->loopSize = closure->size(" + resourceInfoSym + ");\n")
 
-    out.append("out = closure->alloc();\n")
+    out.append("out = closure->alloc(" + resourceInfoSym + ");\n")
     out.append("initSync();\n")
     out.append("}\n")
   }

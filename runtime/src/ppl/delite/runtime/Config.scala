@@ -40,6 +40,7 @@ object Config {
   val taskQueueSize: Int = getProperty("delite.task.queue.size", "1024").toInt
   var performWalk: Boolean = getProperty("delite.walk", "true") != "false"
   var performRun: Boolean = getProperty("delite.run", "true") != "false"
+  val cppHeapSize: Long = getProperty("delite.cpp.heap.size","0").toLong
 
   // memory management type for C++ target (refcnt or gc)
   val cppMemMgr = System.getProperty("delite.cpp.memmgr","malloc")

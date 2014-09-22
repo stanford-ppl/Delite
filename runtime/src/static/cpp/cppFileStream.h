@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <vector>
 #include <string.h>
+#include <cstring>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -15,8 +16,9 @@
 #include <string>
 #include <errno.h>
 #include <fcntl.h>
-
-using namespace std;
+#include "DeliteNamespaces.h"
+#include "DeliteCpp.h"
+#include "DeliteMemory.h"
 
 // each line of file is limited to 1M characters
 #define MAX_BUFSIZE 1048576
@@ -28,8 +30,8 @@ using namespace std;
 //TODO: check if need to compile with _FILE_OFFSET_BITS == 64?
 class cppFileStream {
   public:
-    vector<char*> files;
-    vector<int> filelengths;
+    std::vector<char*> files;
+    std::vector<uint64_t> filelengths;
     long size;
     int numThreads;
 
@@ -50,7 +52,7 @@ class cppFileStream {
       }
     }
 
-    void openAtNewLine(int threadIdx) { 
+    void openAtNewLine(resourceInfo_t &resourceInfo, int threadIdx) {
       long pos = threadIdx * size / numThreads;
       allEnd[pad*threadIdx] = (threadIdx + 1) * size / numThreads;
       int fileIdx; long offset;
@@ -82,7 +84,7 @@ class cppFileStream {
     long pos(int idx) { return allPos[pad*idx]; }
     long end(int idx) { return allEnd[pad*idx]; }
 
-    string readLine(int idx) {
+    string readLine(const resourceInfo_t &resourceInfo, int idx) {
       char *line = allText[pad*idx];
       if (fgets(line, MAX_BUFSIZE, allReader[pad*idx]) == NULL) {
         // read the next file
@@ -102,8 +104,11 @@ class cppFileStream {
         if (fgets(line, MAX_BUFSIZE, allReader[pad*idx]) == NULL) 
           assert(false  && "fgets failed");
       }
-      allPos[pad*idx] += strlen(line);
-      string str(line);
+      size_t length = strlen(line);
+      allPos[pad*idx] += length;
+      char *strptr = new (resourceInfo) char[length+1];
+      strcpy(strptr, line);
+      string str(strptr, length, 0);
       str.erase(std::remove(str.begin(), str.end(), '\n'), str.end());
       str.erase(std::remove(str.begin(), str.end(), '\r'), str.end());
       return str;
@@ -150,7 +155,7 @@ class cppFileStream {
       DFS_DEBUG("total size of file is %ld\n", size);
     }
 
-    void close(int idx) { 
+    void close(resourceInfo_t resourceInfo, int idx) {
       fclose(allReader[pad*idx]);
     }
 
@@ -162,7 +167,7 @@ class cppFileStream {
       for(int i=0; i<numThreads; i++)
         free(allText[i*pad]);
       free(allText);
-      for(vector<char*>::iterator it = files.begin(); it != files.end(); ++it) {
+      for(std::vector<char*>::iterator it = files.begin(); it != files.end(); ++it) {
         free(*it);
       }
     }

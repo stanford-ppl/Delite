@@ -56,6 +56,7 @@ trait DeliteCLikeGenVariables extends CLikeGenEffect with CLikeGenDeliteStruct {
     val stream = new PrintWriter(path + deviceTarget + "DeliteVariables.h")
     stream.println("#include \"" + deviceTarget + "DeliteStructs.h\"")
     stream.println("#include \"" + deviceTarget + "DeliteArrays.h\"")
+    stream.println("#include \"" + deviceTarget + "HashMap.h\"")
     for((tp,name) <- dsTypesList if shouldGenerate(tp)) {
       emitDeliteVariable(tp, path, stream)
     }
@@ -163,7 +164,7 @@ trait DeliteCGenVariables extends CGenEffect with DeliteCLikeGenVariables {
   }
 
   protected val deliteVariableString: String = """
-using namespace std;
+#include "DeliteNamespaces.h"
 class __T__ {
 public:
   __TARG__ data;

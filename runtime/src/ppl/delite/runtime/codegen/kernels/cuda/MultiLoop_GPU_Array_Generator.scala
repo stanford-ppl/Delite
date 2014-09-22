@@ -979,10 +979,10 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
         out.append("act." + osym + "_data;\n")
       }
       // register allocations related to this output symbol
-      out.append("cudaMemoryMap->insert(pair<void*,list<void*>*>(")
+      out.append("cudaMemoryMap->insert(std::pair<void*,std::list<void*>*>(")
       out.append("*" + osym)
       out.append(",lastAlloc));\n")
-      out.append("lastAlloc = new list<void*>();\n")
+      out.append("lastAlloc = new std::list<void*>();\n")
     }
   }
 
@@ -995,10 +995,10 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
       out.append(");\n")
       
       // insert possibly additional allocations to the list
-      //out.append("assert(cudaMemoryMap->find(*" + osym + ") != (std::map<void*,list<void*>*>::end));\n")
-      out.append("list<void*> *allocs_" + osym + " = cudaMemoryMap->find(act." + osym + ")->second;\n")
+      //out.append("assert(cudaMemoryMap->find(*" + osym + ") != (std::map<void*,std::list<void*>*>::end));\n")
+      out.append("std::list<void*> *allocs_" + osym + " = cudaMemoryMap->find(act." + osym + ")->second;\n")
       out.append("allocs_"+osym+"->insert(allocs_"+osym+"->end(),lastAlloc->begin(),lastAlloc->end());\n")
-      out.append("lastAlloc = new list<void*>();\n")
+      out.append("lastAlloc = new std::list<void*>();\n")
     }
 
     for (osym <- op.getOutputs if op.outputType(target,osym)!="void") {
