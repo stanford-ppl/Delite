@@ -93,7 +93,7 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
 
   protected def postCombine() {
     out.append(s"""//post combine
-  if (tid != 0) $closure.postCombine($resourceInfoSym, act, $headerObject.get(tid-1))
+  if (tid != 0) $closure.postCombine($resourceInfoSym, act, $headerObject.getP(tid-1))
   var j = localStart + 1
   var currentAct = act
   while (j < localEnd) {
@@ -103,6 +103,7 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     j += 1
   }
   if (tid == numThreads-1) $closure.postProcInit($resourceInfoSym, currentAct)
+  $headerObject.setP(tid, currentAct)
   \n""")
   }
 
@@ -158,6 +159,8 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   protected def writeObject() {
     ScalaExecutableGenerator.writePackage(graph, out)
     ScalaExecutableGenerator.writePath(graph, out)
+    out.append("import ppl.delite.runtime.Delite\n")
+    out.append("import ppl.delite.runtime.executor.DeliteExecutable\n")
     out.append("object " + kernelName + " {\n")
     writeObjectApply()
     out.append("}\n")
@@ -166,7 +169,11 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   protected def writeObjectApply() {
     val typedArgs = ((resourceInfoSym+":"+resourceInfoType)+:op.getInputs.map(in => in._2 + ": " + in._1.outputType(in._2))).mkString(", ")
     val unTypedArgs = (resourceInfoSym+:op.getInputs.map(_._2)).mkString(", ")
-    out.append(s"""def apply($typedArgs) = new $className($unTypedArgs)\n""")
+    if (Config.scheduler == "dynamic") {
+      out.append(s"""def apply($typedArgs) = launchThreads($resourceInfoSym, new $className($unTypedArgs))\n""")
+      writeThreadLaunch()
+    }
+    else out.append(s"""def apply($typedArgs) = new $className($unTypedArgs)\n""")
   }
 
   protected def writeClass() {
@@ -206,13 +213,30 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   }
 
   protected def writeActSync(key: String) {
-    val size = if (key == "C") "numThreads" else "numChunks"
+    val size = if (key == "") "numChunks" else "numThreads"
     val outputType = op.outputType
     out.append(s"""//$key sync
   private[this] val results$key = new java.util.concurrent.atomic.AtomicReferenceArray[$outputType]($size)
   def get$key(i: Int): $outputType = { while (results$key.get(i) eq null) { }; results$key.get(i) }
   def set$key(i: Int, res: $outputType): Unit = { results$key.set(i,res) }
   \n""")
+  }
+
+  protected def writeThreadLaunch() {
+    out.append(s"""//thread launch
+  def launchThreads($resourceInfoSym: $resourceInfoType, head: $className) = {
+    var i = 1
+    while (i < $resourceInfoSym.numThreads) {
+      val r = new $resourceInfoType(i, $resourceInfoSym.numThreads)
+      val executable = new DeliteExecutable {
+        def run() = MultiLoop_${op.id}(r, head)
+      }
+      Delite.executor.runOne(i, executable)
+      i += 1
+    }
+    head
+  }
+  """)
   }
 
   protected def className = "MultiLoopHeader_" + op.id

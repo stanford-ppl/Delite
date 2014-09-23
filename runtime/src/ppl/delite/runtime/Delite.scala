@@ -20,6 +20,9 @@ import tools.nsc.io._
 
 object Delite {
 
+  private var _executor: Executor = _
+  def executor = _executor
+
   private var mainThread: Thread = _
   private var outstandingException: Throwable = _
 
@@ -75,15 +78,10 @@ object Delite {
     var appResult: Any = null
 
     //TODO: combine into a single scheduler and executor
-    val executor = Config.executor match {
-      case "SMP" => new SMPExecutor
-      case "ACC" => new SMP_Acc_Executor
-      case "default" => {
-        if (Config.numCpp+Config.numCuda+Config.numOpenCL==0) new SMPExecutor
-        else if (Config.clusterMode == 1) new SMPExecutor
-        else new SMP_Acc_Executor
-      }
-      case _ => throw new IllegalArgumentException("Requested executor is not recognized")
+    _executor = Config.executor match {
+      case "default" => new MultiAccExecutor
+      case "acc" => new MultiAccExecutor
+      case e => throw new IllegalArgumentException("Requested executor is not recognized ("+e+")")
     }
 
     def abnormalShutdown() {
@@ -103,14 +101,9 @@ object Delite {
       if(Config.numOpenCL>0 && !graph.targets(Targets.OpenCL)) { Config.numOpenCL = 0; println("[WARNING] No OpenCL target op is generated!") }
 
       val scheduler = Config.scheduler match {
-        case "SMP" => new SMPStaticScheduler
-        case "ACC" => new Acc_StaticScheduler
-        case "default" => {
-          if (Config.numCpp+Config.numCuda+Config.numOpenCL==0) new SMPStaticScheduler
-          else if (Config.clusterMode == 1) new SMPStaticScheduler
-          else new Acc_StaticScheduler
-        }
-        case _ => throw new IllegalArgumentException("Requested scheduler is not recognized")
+        case "static" => new AccStaticScheduler(Config.numThreads, Config.numCpp, Config.numCuda, Config.numOpenCL)
+        case "dynamic" => new AccStaticScheduler(1, 0, 0, 0)
+        case e => throw new IllegalArgumentException("Requested scheduler is not recognized ("+e+")")
       }
 
       Config.deliteBuildHome = graph.kernelPath
@@ -131,13 +124,6 @@ object Delite {
     def runTime(executable: StaticSchedule) {
       //execute
       if (Config.clusterMode == 2) { //slave executor
-        //DeliteMesosExecutor.executor = executor.asInstanceOf[SMPExecutor].threadPool
-        if(executor.isInstanceOf[SMPExecutor])
-          DeliteMesosExecutor.executor = executor.asInstanceOf[SMPExecutor].threadPool
-        else {
-          DeliteMesosExecutor.executor = executor.asInstanceOf[SMP_Acc_Executor].smpExecutor.threadPool
-          executor.asInstanceOf[SMP_Acc_Executor].runAcc(executable)
-        }
         DeliteMesosExecutor.awaitWork()
       }
       else { //master executor (including single-node execution)

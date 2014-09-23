@@ -1,4 +1,4 @@
-package ppl.delite.runtime.codegen
+package ppl.delite.runtime.executor
 
 /**
  * Author: Kevin J. Brown
@@ -12,5 +12,7 @@ package ppl.delite.runtime.codegen
 abstract class DeliteExecutable {
 
   def run() : Unit
+
+  def self = this
 
 }

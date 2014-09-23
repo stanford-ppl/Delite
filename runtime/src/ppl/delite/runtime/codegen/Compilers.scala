@@ -3,6 +3,7 @@ package ppl.delite.runtime.codegen
 import kernels.cpp.CppMultiLoopHeaderGenerator
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.Config
+import ppl.delite.runtime.executor.DeliteExecutable
 import ppl.delite.runtime.graph.ops.Sync
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.scheduler.{OpHelper, StaticSchedule, PartialSchedule}
@@ -36,7 +37,6 @@ object Compilers {
     //TODO: this is a poor method of separating CPU from GPU, should be encoded - essentially need to loop over all nodes
     val schedule = graph.schedule
 
-    if(Config.clusterMode!=1) assert((Config.numThreads + (if(graph.targets(Targets.Cpp)) Config.numCpp else 0) + (if(graph.targets(Targets.Cuda)) Config.numCuda else 0) + (if(graph.targets(Targets.OpenCL)) Config.numOpenCL else 0)) == schedule.numResources)
     Sync.addSync(graph)
 
     val scalaSchedule = schedule.slice(0, Config.numThreads)

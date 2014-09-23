@@ -7,19 +7,6 @@ import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.codegen.{Compilers,CCompile}
 
-/**
- * Author: Kevin J. Brown
- * Date: Dec 3, 2010
- * Time: 11:49:23 PM
- * 
- * Pervasive Parallelism Laboratory (PPL)
- * Stanford University
- */
-
-/**
- * The base class of all static / walk-time schedulers
- * Defines the public interface for the rest of the Delite Runtime
- */
 
 trait StaticScheduler {
   this: AbstractCostModel =>
@@ -30,7 +17,7 @@ trait StaticScheduler {
 
   protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule)
 
-  protected def scheduleSequential(graph: DeliteTaskGraph)
+  protected def scheduleSequential(graph: DeliteTaskGraph, resource: Int)
 
   protected def enqueueRoots(graph: DeliteTaskGraph, opQueue: OpList) {
     for (op <- graph.ops) {
@@ -54,14 +41,14 @@ trait StaticScheduler {
 	protected def addSequential(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resource: Int) {
 		op match {
 			case c: OP_Condition => {
-				scheduleSequential(c.predicateGraph)
-				scheduleSequential(c.thenGraph)
-				scheduleSequential(c.elseGraph)				
+				scheduleSequential(c.predicateGraph, resource)
+				scheduleSequential(c.thenGraph, resource)
+				scheduleSequential(c.elseGraph, resource)
 				splitNotEmpty(c, graph, schedule, List(c.predicateGraph.schedule, c.thenGraph.schedule, c.elseGraph.schedule), Seq(resource))			
 			}
 			case w: OP_While => {
-				scheduleSequential(w.predicateGraph)
-				scheduleSequential(w.bodyGraph)
+				scheduleSequential(w.predicateGraph, resource)
+				scheduleSequential(w.bodyGraph, resource)
 				splitNotEmpty(w, graph, schedule, List(w.predicateGraph.schedule, w.bodyGraph.schedule), Seq(resource))			
 			}
 			case op if op.isDataParallel => split(op, graph, schedule, Seq(resource))
@@ -83,8 +70,8 @@ trait StaticScheduler {
         	scheduleFlat(w.bodyGraph)
 				}
 				else {					
-					scheduleSequential(w.predicateGraph)
-					scheduleSequential(w.bodyGraph)
+					scheduleSequential(w.predicateGraph, 0) //TODO: shouldn't assume this
+					scheduleSequential(w.bodyGraph, 0)
 			  }        
 				splitNotEmpty(w, graph, schedule, List(w.predicateGraph.schedule, w.bodyGraph.schedule), resourceList)			
       }
@@ -93,11 +80,6 @@ trait StaticScheduler {
   }
 
   protected def scheduleOn(op: DeliteOP, schedule: PartialSchedule, resource: Int) {
-    //(op,Compilers(OpHelper.scheduledTarget(resource))) match {
-    //  case (o:OP_Single,c:CCompile) => c.addKernel(op.id)
-    //  case (o:OP_External,c:CCompile) => c.addKernel(op.id)
-    //  case _ => //
-    //}
     schedule(resource).add(op)
     op.scheduledResource = resource
     op.isSchedulable = true
@@ -120,24 +102,6 @@ trait StaticScheduler {
     for (op <- graph.ops) {
       if (!op.isScheduled)
         error("Graph dependencies are unsatisfiable")
-    }
-  }
-
-
-  //TODO: Separate hardware and programming model
-  protected def scheduleOnGPU(op:DeliteOP) = {
-    if (Config.numCuda + Config.numOpenCL == 0) false
-    else if (Config.gpuWhiteList.size > 0) { // If white-list exists, then only white-list ops are scheduled on GPU
-      if (Config.gpuWhiteList.contains(op.id)) true
-      else false
-    }
-    else { // Otherwise, all the ops except black-list ops are scheduled on GPU
-      if (Config.gpuBlackList.contains(op.id))
-        false
-      else if (!op.supportsTarget(Targets.Cuda) && !op.supportsTarget(Targets.OpenCL))
-        false
-      else
-        true
     }
   }
 

@@ -1,6 +1,6 @@
 package ppl.delite.runtime.scheduler
 
-import ppl.delite.runtime.codegen.DeliteExecutable
+import ppl.delite.runtime.executor.DeliteExecutable
 import ppl.delite.runtime.graph.ops.DeliteOP
 import java.util.LinkedList
 import collection.mutable.ArrayBuffer
@@ -29,6 +29,11 @@ object StaticSchedule {
 class StaticSchedule(val resources: Array[ArrayBuffer[DeliteExecutable]]) {
 
   def apply(idx: Int) = resources(idx)
+
+  def slice(indices: Seq[Int]) = {
+    val r = for (i <- indices if i < resources.length) yield resources(i)
+    new StaticSchedule(r.toArray)
+  }
 
   /**
    * Currently this class only holds a single scheduling object

@@ -120,6 +120,7 @@ trait MultiLoop_SMP_Array_Header_Generator {
     writeScheduler()
     writeActSync("")
     writeActSync("C")
+    writeActSync("P")
     writeFooter()
 
     //add header for compilation

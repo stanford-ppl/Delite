@@ -322,6 +322,7 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
 
   protected def writeScheduler() { }
   protected def writeActSync(key: String) { }
+  protected def writeThreadLaunch() { }
 
   protected def initSync() {
     val outputType = op.outputType(Targets.Cpp)

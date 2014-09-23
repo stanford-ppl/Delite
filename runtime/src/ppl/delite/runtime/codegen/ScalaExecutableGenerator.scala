@@ -29,7 +29,8 @@ trait ScalaExecutableGenerator extends ExecutableGenerator with ScalaResourceInf
 
   protected def writeHeader() {
     ScalaExecutableGenerator.writePackage(graph, out)
-    out.append("import ppl.delite.runtime.codegen.DeliteExecutable\n") //base trait
+    out.append("import ppl.delite.runtime.executor.DeliteExecutable\n") //base trait
+    out.append("import ppl.delite.runtime.Config\n") //base trait
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
     out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
     ScalaExecutableGenerator.writePath(graph, out) //package of scala kernels
@@ -43,7 +44,7 @@ trait ScalaExecutableGenerator extends ExecutableGenerator with ScalaResourceInf
   protected def writeMethodHeader() {
     out.append("def run() {\n")
     if (Config.profile) out.append("val threadName = Thread.currentThread.getName()\n")
-    out.append("val "+resourceInfoSym+" = new "+resourceInfoType+"("+Targets.getRelativeLocation(location)+","+Config.numThreads+")\n")
+    out.append("val "+resourceInfoSym+" = new "+resourceInfoType+"("+Targets.getRelativeLocation(location)+",Config.numThreads)\n")
   }
 
   protected def writeMethodFooter() {
@@ -51,7 +52,6 @@ trait ScalaExecutableGenerator extends ExecutableGenerator with ScalaResourceInf
   }
 
   protected def writeFooter() {
-    addAccessor() //provides a reference to the object instance
     out.append("}\n") //end object
   }
 
@@ -110,10 +110,6 @@ trait ScalaExecutableGenerator extends ExecutableGenerator with ScalaResourceInf
         out.append('\n')
       }
     }
-  }
-
-  protected def addAccessor() {
-    out.append("def self = this\n")
   }
 
 }

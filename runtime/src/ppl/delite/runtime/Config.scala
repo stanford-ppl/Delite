@@ -30,7 +30,7 @@ object Config {
   val numSlaves: Int = getProperty("delite.slaves", "0").toInt
   val clusterMode: Int = if (getProperty("delite.cluster.isSlave", "false") != "false") 2 else if (numSlaves > 0) 1 else 0
   val masterAddress: String = getProperty("delite.master", "")
-  var scheduler: String = getProperty("delite.scheduler", "default")
+  var scheduler: String = getProperty("delite.scheduler", "dynamic")
   var executor: String = getProperty("delite.executor", "default")
   val numRuns: Int = getProperty("delite.runs", "1").toInt
   val deliteHome: String = getProperty("delite.home", sys.env.getOrElse("DELITE_HOME",System.getProperty("user.dir")))
@@ -79,6 +79,7 @@ object Config {
   
 	val whileCostThreshold: Int = getProperty("delite.while.threshold", "-1").toInt
 	val loopCostThreshold: Int = getProperty("delite.loop.threshold", "-1").toInt
+  val enableTaskParallelism: Boolean = getProperty("delite.scheduler.enableTaskParallelism", "false") != "false"
 	 
   /***********
     * Statistics and Metrics Section

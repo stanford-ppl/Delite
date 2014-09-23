@@ -2,38 +2,35 @@ package ppl.delite.runtime.scheduler
 
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.DeliteTaskGraph
-import ppl.delite.runtime.graph.ops.{OP_Nested, DeliteOP}
+import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.cost._
 import ppl.delite.runtime.codegen.kernels.cuda.SingleTask_GPU_Generator
 import ppl.delite.runtime.codegen.{Compilers,CCompile}
 
 
-final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilizationCostModel {
+class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: Int) extends StaticScheduler with ParallelUtilizationCostModel {
 
-  private val numScala = Config.numThreads
-  private val numCPUs = numScala
-  private val numCpp = Config.numCpp
   private val gpu = numScala + numCpp
-  private val numResources = numScala + numCpp + Config.numCuda + Config.numOpenCL
+  private val numResources = numScala + numCpp + numCuda + numOpenCL
 
   def schedule(graph: DeliteTaskGraph) {
     //traverse nesting & schedule sub-graphs, starting with outermost graph
     scheduleFlat(graph)
   }
 
-  protected def scheduleSequential(graph: DeliteTaskGraph) = scheduleFlat(graph, true)
+  protected def scheduleSequential(graph: DeliteTaskGraph, resource: Int) = scheduleFlat(graph, resource)
 
-  protected def scheduleFlat(graph: DeliteTaskGraph) = scheduleFlat(graph, false)
+  protected def scheduleFlat(graph: DeliteTaskGraph) = scheduleFlat(graph, -1)
 
-  protected def scheduleFlat(graph: DeliteTaskGraph, sequential: Boolean) {
+  protected def scheduleFlat(graph: DeliteTaskGraph, resource: Int) {
     val opQueue = new OpList
     val schedule = PartialSchedule(numResources)
     enqueueRoots(graph, opQueue)
     while (!opQueue.isEmpty) {
       val op = opQueue.remove
-      if (sequential)
-        addSequential(op, graph, schedule, gpu) //TODO: sequential should have a resource with it
+      if (resource >= 0)
+        addSequential(op, graph, schedule, resource)
       else
         scheduleOne(op, graph, schedule)
       enqueueRoots(graph, opQueue)
@@ -42,25 +39,34 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
     graph.schedule = schedule
   }
 
+  //TODO: the redundancy between addSequential() and scheduleOne() with a singleton resource list is confusing
   protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
+    def selectTarget(op: DeliteOP, sequential: Boolean) = scheduleOnTarget(op) match {
+      case Targets.Scala => 
+        val resources = if (sequential) Seq(0) else Range(0, numScala)
+        scheduleMultiCore(op, graph, schedule, resources)
+      case Targets.Cpp =>
+        val resources = if (sequential) Seq(numScala) else Range(numScala, numScala+numCpp)
+        scheduleMultiCore(op, graph, schedule, resources)
+      case Targets.Cuda => scheduleGPU(op, graph, schedule)
+      case Targets.OpenCL => scheduleGPU(op, graph, schedule)
+    }
+
     op match {
       case c: OP_Nested => addNested(c, graph, schedule, Range(0, numResources))
-      case _ => {
-        scheduleOnTarget(op) match {
-          case Targets.Scala => scheduleMultiCore(op, graph, schedule, Range(0, numScala))
-          case Targets.Cpp => scheduleMultiCore(op, graph, schedule, Range(numScala, numScala+numCpp))
-          case Targets.Cuda => scheduleGPU(op, graph, schedule)
-          case Targets.OpenCL => scheduleGPU(op, graph, schedule)
-        }
-      }
+      case l: OP_MultiLoop => 
+        if (shouldParallelize(l, Map[String,Int]())) selectTarget(op, false)
+        else selectTarget(op, true)
+      case _ => selectTarget(op, false)
     }
   }
 
-  private def scheduleMultiCore(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resourceList: Seq[Int]) {
+  protected def scheduleMultiCore(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resourceList: Seq[Int]) {
     if (op.isDataParallel)
       split(op, graph, schedule, resourceList)
     else {
-      cluster(op, schedule, resourceList)
+      if (Config.enableTaskParallelism) cluster(op, schedule, resourceList)
+      else scheduleOn(op, schedule, resourceList(0))
       Compilers(OpHelper.scheduledTarget(resourceList(0))) match {
         case c:CCompile => c.addKernel(op)
         case _ => //
@@ -68,7 +74,7 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
     }
   }
 
-  private def scheduleGPU(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
+  protected def scheduleGPU(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
     if (op.isDataParallel)
       split(op, graph, schedule, Seq(gpu))
     else {
@@ -77,13 +83,12 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
         case c:CCompile => c.addKernel(op)
         case _ => throw new RuntimeException("GPU compiler should be extending C compiler.")
       }
-      //SingleTask_GPU_Generator(op)
     }
   }
 
   private var nextThread = 0
 
-  private def cluster(op: DeliteOP, schedule: PartialSchedule, resourceList: Seq[Int]) {
+  protected def cluster(op: DeliteOP, schedule: PartialSchedule, resourceList: Seq[Int]) {
     //look for best place to put this op (simple nearest-neighbor clustering)
     var i = 0
     var notDone = true
@@ -104,7 +109,6 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
     }
   }
 
-  //TODO: refactor this
   override protected def split(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resourceList: Seq[Int]) {
     OpHelper.scheduledTarget(resourceList(0)) match { //TODO: fix - target the same for all resources?
       case Targets.Cuda => splitGPU(op, graph, schedule)
@@ -119,12 +123,26 @@ final class Acc_StaticScheduler extends StaticScheduler with ParallelUtilization
     scheduleOn(chunk, schedule, gpu)
   }
 
-  private def scheduleOnTarget(op: DeliteOP) = {
+  protected def scheduleOnTarget(op: DeliteOP) = {
     if (scheduleOnGPU(op)) {   
       if (op.supportsTarget(Targets.Cuda)) Targets.Cuda else Targets.OpenCL
     }
     else if (op.supportsTarget(Targets.Cpp) && numCpp > 0) Targets.Cpp
     else Targets.Scala
+  }
+
+  //TODO: Separate hardware and programming model
+  protected def scheduleOnGPU(op:DeliteOP) = {
+    if (Config.numCuda + Config.numOpenCL == 0) false
+    else if (Config.gpuWhiteList.size > 0) { // If white-list exists, then only white-list ops are scheduled on GPU
+      if (Config.gpuWhiteList.contains(op.id)) true
+      else false
+    }
+    else { // Otherwise, all the ops except black-list ops are scheduled on GPU
+      if (Config.gpuBlackList.contains(op.id)) false
+      else if (!op.supportsTarget(Targets.Cuda) && !op.supportsTarget(Targets.OpenCL)) false
+      else true
+    }
   }
 
 }

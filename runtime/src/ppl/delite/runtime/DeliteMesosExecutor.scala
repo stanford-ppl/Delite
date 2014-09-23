@@ -8,8 +8,7 @@ import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.{ArrayList,HashMap}
 import ppl.delite.runtime.data._
-import ppl.delite.runtime.executor.ThreadPool
-import ppl.delite.runtime.codegen.DeliteExecutable
+import ppl.delite.runtime.executor.DeliteExecutable
 import ppl.delite.runtime.messages.Messages._
 import ppl.delite.runtime.messages._
 import ppl.delite.runtime.graph.ops.{DeliteOP,OP_MultiLoop}
@@ -231,7 +230,6 @@ object DeliteMesosExecutor {
 
   private var opTarget: Targets.Value = _
 
-  var executor: ThreadPool = _
   var classLoader = this.getClass.getClassLoader
   val results = new HashMap[String,ArrayList[DeliteArray[_]]]
 
@@ -459,7 +457,7 @@ object DeliteMesosExecutor {
                 case i: java.lang.reflect.InvocationTargetException => if (i.getCause != null) throw i.getCause else throw i
               } }
             }
-            executor.submitOne(i, exec)
+            Delite.executor.runOne(i, exec)
           }
           result.get
       } 

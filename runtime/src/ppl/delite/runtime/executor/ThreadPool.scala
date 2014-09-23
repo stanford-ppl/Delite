@@ -1,38 +1,23 @@
 package ppl.delite.runtime.executor
 
-import ppl.delite.runtime.codegen.DeliteExecutable
 import ppl.delite.runtime.scheduler.StaticSchedule
 
 /**
- * Author: Kevin J. Brown
- * Date: Oct 10, 2010
- * Time: 10:23:53 PM
- * 
- * Pervasive Parallelism Laboratory (PPL)
- * Stanford University
- */
-
-/**
  * An interface for initializing and submitting work to execution threads
- *
- * @author Kevin J. Brown
- * @param numThreads the number of threads in the pool
  */
 
-class ThreadPool(numThreads: Int) {
+class ThreadPool(numThreads: Int, executor: Int => ExecutionThread) {
 
   private val pool = new Array[ExecutionThread](numThreads)
   private val threads = new Array[Thread](numThreads)
 
-  def init {
-    var i = 0
-    while (i < numThreads) {
-      val worker = new ExecutionThread
+  def init() {
+    for (i <- 0 until numThreads) {
+      val worker = executor(i)
       pool(i) = worker
-      val thread = new Thread(worker, "ExecutionThread-"+i) //spawn new machine thread
+      val thread = new Thread(worker, worker.getClass.getSimpleName+i) //spawn new machine thread
       threads(i) = thread
       thread.start
-      i += 1
     }
   }
 
@@ -43,8 +28,8 @@ class ThreadPool(numThreads: Int) {
     }
   }
 
-  def submitOne(id: Int, work: DeliteExecutable) {
-    pool(id).queue.put(work)
+  def submitOne(location: Int, item: DeliteExecutable) {
+    pool(location).queue.put(item)
   }
 
   /**
@@ -53,8 +38,8 @@ class ThreadPool(numThreads: Int) {
    * @param the StaticSchedule to be submitted for execution
    */
   def submitAll(schedule: StaticSchedule) {
-    assert(pool.length == schedule.resources.length)
-    for (i <- 0 until pool.length) {
+    assert(pool.length >= schedule.resources.length)
+    for (i <- 0 until schedule.resources.length) {
       for (exec <- schedule.resources(i)) {
         pool(i).queue.put(exec)
       }

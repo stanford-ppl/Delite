@@ -1,11 +1,11 @@
 #include <jni.h>
 #include <cuda_runtime.h>
 
-extern "C" JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_AccExecutionThread_initializeDevice(JNIEnv* env, jobject obj, jint deviceNum);
+extern "C" JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_CudaExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads);
 
-JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_AccExecutionThread_initializeDevice(JNIEnv* env, jobject obj, jint deviceNum) {
+JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_CudaExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads) {
 	//chose device num
-  if(cudaSuccess != cudaSetDevice(deviceNum)) {
+  if(cudaSuccess != cudaSetDevice(threadId)) {
     printf("FATAL : GPU device could not be initialized. \n");	
     exit(1);
   }
