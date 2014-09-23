@@ -138,7 +138,8 @@ object Profiler {
         //val duration =   timing.elapsedMicros
         val duration =   timing.elapsedMillis
         //val startNanos = (timing.startTime - globalStartNanos) / 1000
-        val start = timing.startTime - globalStartNanos
+        //val start = timing.startTime - globalStartNanos
+        val start = timing.startTime
         val kernel =    if (appendChunkIdToKernelName) timing.component + "_" + threadId else timing.component
         val location =   threadId
         val line = {
