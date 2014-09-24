@@ -104,7 +104,7 @@ object Compilers {
   }
 
   def checkRequestedResource(schedule: PartialSchedule, target: Targets.Value) {
-    if (schedule.map(_.size).reduce(_ + _) == 0)
+    if (schedule.map(_.size).foldLeft(0)(_ + _) == 0)
       println("WARNING: no kernels scheduled on " + target)
   }
 

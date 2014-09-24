@@ -4085,6 +4085,7 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
 
   def fieldAccess(className: String, varName: String): String = {
     if (className == "") varName
+    else if (className == resourceInfoSym) className + "." + varName //only struct currently passed on the stack
     else className + "->" + varName
   }
 

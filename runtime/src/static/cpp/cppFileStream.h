@@ -50,13 +50,13 @@ class cppFileStream {
     uint64_t size;
     uint64_t position;
 
-    cppFileStream* openCopyAtNewLine(resourceInfo_t &resourceInfo, uint64_t start) {
+    cppFileStream* openCopyAtNewLine(uint64_t start) {
       cppFileStream* copy = new cppFileStream(size, &files, &fileLengths);
       copy->openAtNewLine(start);
       return copy;
     }
 
-    void openAtNewLine(resourceInfo_t &resourceInfo, uint64_t start) { 
+    void openAtNewLine(uint64_t start) { 
       position = start;
       uint64_t offset;
       findFileOffset(start, idx, offset);
@@ -96,7 +96,8 @@ class cppFileStream {
           assert(false);
         }
       }
-      position += strlen(line);
+      size_t length = strlen(line);
+      position += length;
       char *strptr = new (resourceInfo) char[length+1];
       strcpy(strptr, line);
       string str(strptr, length, 0);
@@ -147,7 +148,7 @@ class cppFileStream {
       DFS_DEBUG("total size of file is %ld\n", size);
     }
 
-    void close(resourceInfo_t resourceInfo) { 
+    void close() { 
       fclose(reader);
     }
 

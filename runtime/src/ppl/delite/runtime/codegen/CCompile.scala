@@ -176,13 +176,13 @@ all: $$(OUTPUT)
 
 # The order of objects and libraries matter because of the dependencies
 $$(OUTPUT): $$(OBJECTS)
-  $$(CC) $$(OBJECTS) $$(LDFLAGS) -o $$(OUTPUT)
+\t$$(CC) $$(OBJECTS) $$(LDFLAGS) -o $$(OUTPUT)
 
-%%.o: %%.${ext}
-  $$(CC) -c -DDELITE_CPP=${Config.numCpp} -DMEMMGR_${Config.cppMemMgr} ${features.map("-D"+_)} $$(INCLUDES) $$(CFLAGS) $$< -o $$@
+%.o: %.${ext}
+\t$$(CC) -c -DDELITE_CPP=${Config.numCpp} -DMEMMGR_${Config.cppMemMgr.toUpperCase} ${features.map("-D"+_).mkString(" ")} $$(INCLUDES) $$(CFLAGS) $$< -o $$@
 
 clean:
-  rm -f $$(OBJECTS) $$(OUTPUT)
+\trm -f $$(OBJECTS) $$(OUTPUT)
 
 .PHONY: all clean
 

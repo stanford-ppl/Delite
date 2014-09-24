@@ -32,15 +32,6 @@ void delite_barrier(int cnt) {
 // numLiveThreads: the actual number of threads that has some work scheduled (they're calling this init)
 // heapSize: total heap size (aggregation for all the threads)
 void DeliteHeapInit(int idx, int numThreads, int numLiveThreads, int initializer, size_t heapSize) {
-  cpu_set_t cpuset;
-  pthread_t thread = pthread_self();
-
-  CPU_ZERO(&cpuset);
-  CPU_SET(idx, &cpuset);
-  if(pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) != 0) {
-    printf("[WARNING] pthread_setaffinity_np failed for thread %d\n", idx);
-  }
-
   if (heapSize == 0) {
     int64_t pages = sysconf(_SC_PHYS_PAGES);
     int64_t page_size = sysconf(_SC_PAGE_SIZE);
@@ -66,12 +57,13 @@ void DeliteHeapInit(int idx, int numThreads, int numLiveThreads, int initializer
 
 void DeliteHeapClear(int idx, int numThreads, int numLiveThreads, int finalizer) {
   size_t heapUsage = DeliteHeapOffset[idx << paddingShift];
-  delite_barrier(numLiveThreads);
+  /*delite_barrier(numLiveThreads);
   delete[] DeliteHeap[idx << paddingShift];
   if (idx == finalizer) {
     delete[] DeliteHeap;
     delete[] DeliteHeapOffset;
-  }
+  }*/
+  DeliteHeapOffset[idx << paddingShift] = 0;
   DHEAP_DEBUG("finished heap clear for resource %d, used: %lld\n", idx, heapUsage);
 }
 

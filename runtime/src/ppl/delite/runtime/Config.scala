@@ -28,6 +28,7 @@ object Config {
   var numCuda: Int = getProperty("delite.cuda", "0").toInt        /* cuda target threads */
   var numOpenCL: Int = getProperty("delite.opencl", "0").toInt    /* opencl target threads */
   val numSlaves: Int = getProperty("delite.slaves", "0").toInt
+  val pinThreads: Boolean = getProperty("delite.pinThreads", "false") != false
   val clusterMode: Int = if (getProperty("delite.cluster.isSlave", "false") != "false") 2 else if (numSlaves > 0) 1 else 0
   val masterAddress: String = getProperty("delite.master", "")
   var scheduler: String = getProperty("delite.scheduler", "dynamic")
@@ -40,15 +41,15 @@ object Config {
   val taskQueueSize: Int = getProperty("delite.task.queue.size", "1024").toInt
   var performWalk: Boolean = getProperty("delite.walk", "true") != "false"
   var performRun: Boolean = getProperty("delite.run", "true") != "false"
+
+  // memory management for C++ (refcnt or gc)
+  val cppMemMgr = System.getProperty("delite.cpp.memmgr","malloc")
   val cppHeapSize: Long = getProperty("delite.cpp.heap.size","0") match {
     case s if s.toLowerCase.endsWith("k") => s.dropRight(1).toLong * 1024
     case s if s.toLowerCase.endsWith("m") => s.dropRight(1).toLong * 1024 * 1024
     case s if s.toLowerCase.endsWith("g") => s.dropRight(1).toLong * 1024 * 1024 * 1024
     case s => s.toLong
   }
-
-  // memory management type for C++ target (refcnt or gc)
-  val cppMemMgr = System.getProperty("delite.cpp.memmgr","malloc")
 
   /* GPU optimization */
   val gpuOptTrans: Boolean = getProperty("delite.gpu.opt.trans", "false") != "false"

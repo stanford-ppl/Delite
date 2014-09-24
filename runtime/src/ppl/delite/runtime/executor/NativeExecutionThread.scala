@@ -23,8 +23,6 @@ class NativeExecutionThread(threadId: Int, numThreads: Int) extends ExecutionThr
 
   @native def initializeThread(threadId: Int, numThreads:Int): Unit
 
-  initNative()
-
   protected def loadNative(fileName: String, compiler: CCompile) = {
     val sep = File.separator
     val root = compiler.staticResources + fileName
@@ -34,19 +32,16 @@ class NativeExecutionThread(threadId: Int, numThreads: Int) extends ExecutionThr
     System.load(path)
   }
 
-  //load native init library (and create it if absent)
-  protected def initNative() { }
-
 }
 
 class CppExecutionThread(threadId: Int, numThreads: Int) extends NativeExecutionThread(threadId, numThreads) {
-  override def initNative() { loadNative("Config", CppCompile) }
+  loadNative("Config", CppCompile)
 }
 
 class CudaExecutionThread(threadId: Int, numThreads: Int) extends NativeExecutionThread(threadId, numThreads) {
-  override def initNative() { loadNative("cudaInit", CudaCompile) }
+  loadNative("cudaInit", CudaCompile)
 }
 
 class OpenCLExecutionThread(threadId: Int, numThreads: Int) extends NativeExecutionThread(threadId, numThreads) {
-  override def initNative() { loadNative("openclInit", OpenCLCompile) }
+  loadNative("openclInit", OpenCLCompile)
 }

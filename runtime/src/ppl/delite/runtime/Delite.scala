@@ -102,7 +102,7 @@ object Delite {
 
       val scheduler = Config.scheduler match {
         case "static" => new AccStaticScheduler(Config.numThreads, Config.numCpp, Config.numCuda, Config.numOpenCL)
-        case "dynamic" => new AccStaticScheduler(1, 0, 0, 0)
+        case "dynamic" => new AccStaticScheduler(if (Config.numThreads > 0) 1 else 0, if (Config.numCpp > 0) 1 else 0, Config.numCuda, Config.numOpenCL)
         case e => throw new IllegalArgumentException("Requested scheduler is not recognized ("+e+")")
       }
 
