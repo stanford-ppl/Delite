@@ -32,10 +32,9 @@ object ScalaCompile extends CodeCache {
     }
     unifyClasses()
     
-    val res = ScalaClassLoader.fromURLs(modules.map(m => Path(classCacheHome + m.name).toURL), this.getClass.getClassLoader)
     val time = (System.currentTimeMillis - start)/1e3
     if (Config.verbose) println("[delite]: finished scala compile in " + time + "s")
-    res
+    ScalaClassLoader.fromURLs(modules.map(m => Path(classCacheHome + m.name).toURL), this.getClass.getClassLoader)
   }
 
   def compile(destination: String, sources: Array[String], classPaths: Array[String]) {

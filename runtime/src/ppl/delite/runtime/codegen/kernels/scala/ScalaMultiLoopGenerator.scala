@@ -38,10 +38,10 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
   }
 
   protected def writeKernelHeader() {
-    out.append(s"""def apply($resourceInfoSym: $resourceInfoType, $headerObject: ${op.getInputs.head._1.outputType}): ${op.outputType} = {\n""")
-    out.append(s"""val tid = $resourceInfoSym.threadId\n""")
-    out.append(s"""val numThreads = $resourceInfoSym.numThreads\n""")
-    out.append(s"""val closure = $headerObject.closure\n""")
+    out.append(s"def apply($resourceInfoSym: $resourceInfoType, $headerObject: ${op.getInputs.head._1.outputType}): ${op.outputType} = {\n")
+    out.append(s"val tid = $resourceInfoSym.threadId\n")
+    out.append(s"val numThreads = $resourceInfoSym.numThreads\n")
+    out.append(s"val closure = $headerObject.closure\n")
   }
 
   protected def writeKernelFooter() {
@@ -118,7 +118,7 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
   }
 
   protected def finalizer() {
-    out.append(s"""if (tid == 0) $closure.finalize($resourceInfoSym, act)\n""")
+    out.append(s"if (tid == 0) $closure.finalize($resourceInfoSym, act)\n")
   }
 
   protected def returnResult() {
@@ -126,7 +126,7 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
   }
 
   protected def barrier() {
-    out.append(s"""$headerObject.barrier.await()\n""")
+    out.append(s"$headerObject.barrier.await()\n")
   }
 
   protected def beginProfile() {
@@ -170,17 +170,17 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
     val typedArgs = ((resourceInfoSym+":"+resourceInfoType)+:op.getInputs.map(in => in._2 + ": " + in._1.outputType(in._2))).mkString(", ")
     val unTypedArgs = (resourceInfoSym+:op.getInputs.map(_._2)).mkString(", ")
     if (Config.scheduler == "dynamic") {
-      out.append(s"""def apply($typedArgs) = launchThreads($resourceInfoSym, new $className($unTypedArgs))\n""")
+      out.append(s"def apply($typedArgs) = launchThreads($resourceInfoSym, new $className($unTypedArgs))\n")
       writeThreadLaunch()
     }
-    else out.append(s"""def apply($typedArgs) = new $className($unTypedArgs)\n""")
+    else out.append(s"def apply($typedArgs) = new $className($unTypedArgs)\n")
   }
 
   protected def writeClass() {
     val typedArgs = ((resourceInfoSym+":"+resourceInfoType)+:op.getInputs.map(in => in._2 + ": " + in._1.outputType(in._2))).mkString(", ")
     val unTypedArgs = (resourceInfoSym+:op.getInputs.map(_._2)).mkString(", ")
-    out.append(s"""final class $className($typedArgs) {\n""")
-    out.append(s"""val closure = ${op.function}($unTypedArgs)\n""")
+    out.append(s"final class $className($typedArgs) {\n")
+    out.append(s"val closure = ${op.function}($unTypedArgs)\n")
 
     if (Config.clusterMode == 2) {
       out.append("closure.loopStart = ppl.delite.runtime.DeliteMesosExecutor.loopStart\n")
@@ -205,7 +205,7 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   protected def writeScheduler() {
     out.append(s"""//scheduler
   private[this] val defaultChunks = ${defaultChunks}
-  val numChunks = if (numThreads == 1 || defaultChunks <= numThreads || closure.loopSize < defaultChunks) numThreads else defaultChunks
+  val numChunks = if (numThreads == 1 || $defaultChunks <= numThreads || closure.loopSize < $defaultChunks) numThreads else $defaultChunks
   private[this] val offset = new java.util.concurrent.atomic.AtomicInteger(numThreads)
   def getNextChunkIdx(): Int = offset.getAndAdd(1)
   val barrier = new java.util.concurrent.CyclicBarrier(numThreads)

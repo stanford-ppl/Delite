@@ -7,7 +7,6 @@ import java.io.FileNotFoundException
 import tools.nsc.io.{Directory, Path, File}
 import ppl.delite.runtime.graph.targets.{OS, Targets}
 import ppl.delite.runtime.graph.ops._
-import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.scheduler._
 import java.io.FileWriter
 
@@ -55,7 +54,7 @@ trait CCompile extends CodeCache {
   protected def loadConfig(f: String): CompilerConfig = {
     // parse XML, return configuration
     val configFile = File(Config.deliteHome + sep + "config" + sep + "delite" + sep + f)
-    if (!configFile.isValid) throw new FileNotFoundException("could not load compiler configuration: " + configFile)
+    if (!configFile.exists) throw new FileNotFoundException("could not load compiler configuration: " + configFile)
 
     val body = XML.loadFile(configFile.jfile)
     val compiler = (body \\ "compiler").text.trim
@@ -69,8 +68,10 @@ trait CCompile extends CodeCache {
     new CompilerConfig(compiler, make, headerDir, sourceHeader, libs, headerPrefix, libPrefix, features)
   }
 
-  def compile(graph: DeliteTaskGraph) {
+  def compile() {
     if (sourceBuffer.length == 0) return
+    if (Config.verbose) println("[delite]: starting C compile")
+    val start = System.currentTimeMillis
     cacheRuntimeSources((sourceBuffer ++ headerBuffer).toArray)
     
     if (modules.exists(_.needsCompile)) {
@@ -83,6 +84,9 @@ trait CCompile extends CodeCache {
       val dest = binCacheHome + target + "Host" + degName(degName.length-2) + "_" + configString + "." + OS.libExt
       compile(dest, sources, includes, libs)
     }
+
+    val time = (System.currentTimeMillis - start)/1e3
+    if (Config.verbose) println("[delite]: finished C compile in " + time + "s")
     sourceBuffer.clear()
     headerBuffer.clear()
     kernelBuffer.clear()

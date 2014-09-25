@@ -17,6 +17,7 @@
 void DeliteHeapInit(int idx, int numThreads, int numLiveThreads, int initializer, size_t heapSize);
 void DeliteHeapClear(int idx, int numThreads, int numLiveThreads, int finalizer);
 char *DeliteHeapAlloc(size_t sz, int idx);
+void delite_barrier(unsigned int count);
 
 // globally overloaded new operators
 void *operator new(size_t sz, const resourceInfo_t &resourceInfo);

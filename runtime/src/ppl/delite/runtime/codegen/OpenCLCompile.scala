@@ -22,8 +22,8 @@ object OpenCLCompile extends CCompile {
   protected def linkFlags = Array()
   protected def outputSwitch = "-o"
 
-  override def compile(graph: DeliteTaskGraph) {
-    super.compile(graph)
+  override def compile() {
+    super.compile()
     collectKernels()
   }
 

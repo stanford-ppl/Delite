@@ -5,10 +5,15 @@
 #include <iostream>
 #include <jni.h>
 #include <pthread.h>
+#include <sched.h>
 #include "Config.h"
 
 #ifdef __DELITE_CPP_NUMA__
 #include <numa.h>
+#endif
+
+#ifdef __sun
+#include <sys/processor.h>
 #endif
 
 
@@ -82,10 +87,9 @@ JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_in
 
   #ifdef __linux__
     cpu_set_t cpu;
-    CPU_ZERO(&cpuset);
-    CPU_SET(threadId, &cpuset);
+    CPU_ZERO(&cpu);
+    CPU_SET(threadId, &cpu);
     sched_setaffinity(0, sizeof(cpu_set_t), &cpu);
-    printf("[delite]: Binding thread %d to cpu %d, socket %d\n", threadId, threadId, socketId);
         
     #ifdef __DELITE_CPP_NUMA__
       if (numa_available() >= 0) {
@@ -95,7 +99,8 @@ JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_in
           numa_bitmask_setbit(nodemask, socketId);
           numa_set_membind(nodemask);
         }
-    }
+        printf("[delite]: Binding thread %d to cpu %d, socket %d\n", threadId, threadId, socketId);
+      }
     #endif
   #endif
 

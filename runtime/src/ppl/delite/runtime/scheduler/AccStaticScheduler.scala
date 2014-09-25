@@ -11,8 +11,10 @@ import ppl.delite.runtime.codegen.{Compilers,CCompile}
 
 class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: Int) extends StaticScheduler with ParallelUtilizationCostModel {
 
-  private val gpu = numScala + numCpp
-  private val numResources = numScala + numCpp + numCuda + numOpenCL
+  private val totalScala = Config.numThreads
+  private val totalCpp = Config.numCpp
+  private val gpu = totalScala + totalCpp
+  private val numResources = totalScala + totalCpp + Config.numCuda + Config.numOpenCL
 
   def schedule(graph: DeliteTaskGraph) {
     //traverse nesting & schedule sub-graphs, starting with outermost graph
@@ -46,7 +48,7 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
         val resources = if (sequential) Seq(0) else Range(0, numScala)
         scheduleMultiCore(op, graph, schedule, resources)
       case Targets.Cpp =>
-        val resources = if (sequential) Seq(numScala) else Range(numScala, numScala+numCpp)
+        val resources = if (sequential) Seq(totalScala) else Range(totalScala, totalScala+numCpp)
         scheduleMultiCore(op, graph, schedule, resources)
       case Targets.Cuda => scheduleGPU(op, graph, schedule)
       case Targets.OpenCL => scheduleGPU(op, graph, schedule)
@@ -133,7 +135,7 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
 
   //TODO: Separate hardware and programming model
   protected def scheduleOnGPU(op:DeliteOP) = {
-    if (Config.numCuda + Config.numOpenCL == 0) false
+    if (numCuda + numOpenCL == 0) false
     else if (Config.gpuWhiteList.size > 0) { // If white-list exists, then only white-list ops are scheduled on GPU
       if (Config.gpuWhiteList.contains(op.id)) true
       else false

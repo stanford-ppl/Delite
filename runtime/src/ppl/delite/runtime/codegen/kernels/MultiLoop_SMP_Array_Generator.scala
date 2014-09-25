@@ -119,8 +119,8 @@ trait MultiLoop_SMP_Array_Header_Generator {
     writeHeader()
     writeScheduler()
     writeActSync("")
-    writeActSync("C")
-    writeActSync("P")
+    if (op.needsCombine) writeActSync("C")
+    if (op.needsPostProcess) writeActSync("P")
     writeFooter()
 
     //add header for compilation

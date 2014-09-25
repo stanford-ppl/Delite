@@ -36,12 +36,12 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
 
   protected def writeKernelHeader() {
     out.append(kernelSignature + "{\n")
-    out.append(s"""int tid = $resourceInfoSym.threadId;\n""")
-    out.append(s"""int numThreads = $resourceInfoSym.numThreads;\n""")
+    out.append(s"int tid = $resourceInfoSym.threadId;\n")
+    out.append(s"int numThreads = $resourceInfoSym.numThreads;\n")
   }
 
   protected def kernelSignature = {
-    s"""${op.outputType(Targets.Cpp)}* $kernelName($resourceInfoType &$resourceInfoSym, ${op.getInputs.head._1.outputType}* $headerObject)"""
+    s"${op.outputType(Targets.Cpp)}* $kernelName($resourceInfoType &$resourceInfoSym, ${op.getInputs.head._1.outputType}* $headerObject)"
   }
 
   protected def writeKernelFooter() {
@@ -49,7 +49,7 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
   }
 
   protected def processLocal() = {
-    val outputType = master.outputType(Targets.Cpp)
+    val outputType = master.outputType(Targets.Cpp)+"*"
     out.append(s"""//process local
   size_t dIdx = tid;
   size_t numChunks = $headerObject->numChunks;
@@ -91,10 +91,10 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
   }
 
   protected def postCombine() {
-    val outputType = master.outputType(Targets.Cpp)
+    val outputType = master.outputType(Targets.Cpp)+"*"
     out.append(s"""//post combine
   if (tid != 0) $closure->postCombine($resourceInfoSym, act, $headerObject->getP(tid-1));
-  var currentAct = act
+  $outputType currentAct = act;
   for(size_t j=localStart+1; j<localEnd; j++) {
     $outputType rhsAct = $headerObject->get(j);
     $closure->postCombine($resourceInfoSym, rhsAct, currentAct);
@@ -114,7 +114,7 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
   }
 
   protected def finalizer() {
-    out.append(s"""if (tid == 0) $closure->finalize($resourceInfoSym, act);\n""")
+    out.append(s"if (tid == 0) $closure->finalize($resourceInfoSym, act);\n")
   }
 
   protected def returnResult() {
@@ -122,7 +122,7 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
   }
 
   protected def barrier() {
-    out.append(s"""$headerObject->barrier->await();\n""")
+    out.append(s"delite_barrier(numThreads);\n")
   }
 
   protected def release(name: String, cond: Option[String] = None) {
@@ -215,91 +215,64 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
 
     val typedArgs = ((resourceInfoType+" &"+resourceInfoSym)+:op.getInputs.map(in => in._1.outputType(Targets.Cpp,in._2)+addRef(in._2)+" "+in._2)).mkString(", ")
     val unTypedArgs = (/*resourceInfoSym+:*/op.getInputs.map(_._2)).mkString(", ")
-    out.append(s"""$className($typedArgs) {\n""")
-    out.append(s"""closure = new ${op.function}($unTypedArgs);\n""")
-
-    out.append("closure->loopStart = 0;\n")
-    out.append("closure->loopSize = closure->size(" + resourceInfoSym + ");\n")
-    out.append("int numThreads = "+resourceInfoSym+".numThreads;\n")
-    out.append("out = closure->alloc(" + resourceInfoSym + ");\n")
-    //out.append("initSync();\n")
-    out.append("}\n")
+    out.append(s"""$className($typedArgs) {
+  closure = new ${op.function}($unTypedArgs);
+  closure->loopStart = 0;
+  closure->loopSize = closure->size($resourceInfoSym);
+  numThreads = $resourceInfoSym.numThreads;
+  out = closure->alloc($resourceInfoSym);
+  initSync();
+}
+\n""")
   }
 
   protected val syncList = new ArrayBuffer[String]
 
-  // protected def writeSynchronizedOffset(){
-  //   out.append("std::atomic_size_t offset;\n")
-  //   out.append("size_t numDynamicChunks;\n")
-  //   out.append("size_t getDynamicChunkIndex() { return offset.fetch_add(1); }\n")
-  // }
+  protected def writeActSync(key: String) {
+    val outputType = op.outputType(Targets.Cpp)+"*"
+    syncList += key //need a way to initialize these fields in C++
+    out.append(s"""//$key sync
+  $outputType* results$key;
+  pthread_mutex_t* lock$key;
+  pthread_cond_t* cond$key;
+  bool* notReady$key;
 
-  // protected def writeSync(key: String) {
-  //   syncList += key //need a way to initialize these fields in C++
-  //   val outputType = op.outputType(Targets.Cpp)
+  $outputType get$key(size_t i) { 
+    pthread_mutex_lock(&lock$key[i]);
+    while (notReady$key[i]) { 
+      pthread_cond_wait(&cond$key[i], &lock$key[i]);
+    }
+    pthread_mutex_unlock(&lock$key[i]);
+    return results$key[i];
+  }
+  void set$key(size_t i, $outputType res) { 
+    pthread_mutex_lock(&lock$key[i]);
+    results$key[i] = res;
+    notReady$key[i] = false;
+    pthread_cond_broadcast(&cond$key[i]);
+    pthread_mutex_unlock(&lock$key[i]);
+  }
+  \n""")
+  }
 
-  //   out.append("pthread_mutex_t lock"+key+";\n")
-  //   out.append("pthread_cond_t cond"+key+";\n")
+  protected def writeScheduler() {
+    out.append(s"""//scheduler
+  size_t numThreads;
+  size_t numChunks;
+  size_t offset;
+  pthread_mutex_t offset_lock;
+  size_t getNextChunkIdx() {
+    size_t idx;
+    pthread_mutex_lock(&offset_lock);
+    idx = offset;
+    offset += 1;
+    pthread_mutex_unlock(&offset_lock);
+    return idx;
+  }
+  \n""")
+  }
 
-  //   out.append("bool notReady"+key+";\n")
-  //   out.append(outputType+ "* _result"+key+";\n")
-
-  //   out.append(outputType+"* get"+key+"(){\n")
-  //   out.append("pthread_mutex_lock(&lock"+key+");\n")
-  //   out.append("while(notReady"+key+") {\n")
-  //   out.append("pthread_cond_wait(&cond"+key+", &lock"+key+");\n")
-  //   out.append("}\n")
-  //   out.append("pthread_mutex_unlock(&lock"+key+");\n")
-  //   out.append("return _result"+key+";\n")
-  //   out.append("}\n")
-
-  //   out.append("void set"+key+"("+outputType+"* result) {\n")
-  //   out.append("pthread_mutex_lock(&lock"+key+");\n")
-  //   out.append("_result"+key + " = result;\n")
-  //   out.append("notReady"+key+" = false;\n")
-  //   out.append("pthread_cond_broadcast(&cond"+key+");\n")
-  //   out.append("pthread_mutex_unlock(&lock"+key+");\n")
-  //   out.append("}\n")
-  // }
-
-  // protected def dynamicWriteSync() {
-  //   val outputType = op.outputType(Targets.Cpp)
-  //   out.append("std::atomic<"+outputType+"*>* dynamicResult;\n")
-  //   out.append(outputType+"* dynamicGet(size_t i) {\n")
-  //   out.append("while(dynamicResult[i].load() == NULL) { }\nreturn dynamicResult[i].load();\n}\n")
-
-  //   out.append("void dynamicSet(size_t i, "+outputType+"* res) {\n")
-  //   out.append("dynamicResult[i].store(res);\n}\n")
-  // }
-
-  //   protected def defaultChunks() = {
-  //   if(op.numDynamicChunks == "-1")
-  //     "(closure.loopSize/(Math.log10(closure.loopSize.toDouble)*(500.0/numThreads))).toInt"
-  //   else
-  //     op.numDynamicChunks
-  // }
-
-  // protected def writeScheduler() {
-  //   out.append(s"""//scheduler
-  // private[this] val defaultChunks = ${defaultChunks}
-  // val numChunks = if (numThreads == 1 || defaultChunks <= numThreads || closure.loopSize < defaultChunks) numThreads else defaultChunks
-  // private[this] val offset = new java.util.concurrent.atomic.AtomicInteger(numThreads)
-  // def getNextChunkIdx(): Int = offset.getAndAdd(1)
-  // val barrier = new java.util.concurrent.CyclicBarrier(numThreads)
-  // \n""")
-  // }
-
-  // protected def writeActSync(key: String) {
-  //   val size = if (key == "") "numChunks" else "numThreads"
-  //   val outputType = op.outputType
-  //   out.append(s"""//$key sync
-  // private[this] val results$key = new java.util.concurrent.atomic.AtomicReferenceArray[$outputType]($size)
-  // def get$key(i: Int): $outputType = { while (results$key.get(i) eq null) { }; results$key.get(i) }
-  // def set$key(i: Int, res: $outputType): Unit = { results$key.set(i,res) }
-  // \n""")
-  // }
-
-  // protected def writeThreadLaunch() {
+  protected def writeThreadLaunch() {
   //   out.append(s"""//thread launch
   // def launchThreads($resourceInfoSym: $resourceInfoType, head: $className) = {
   //   var i = 1
@@ -314,40 +287,50 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
   //   head
   // }
   // """)
-  // }
+  }
 
-  protected def writeScheduler() { }
-  protected def writeActSync(key: String) { }
-  protected def writeThreadLaunch() { }
+  protected def defaultChunks() = {
+    if(op.numDynamicChunks == "-1")
+      "(size_t)(closure->loopSize/(log10((double)closure->loopSize)*(500.0/numThreads)))"
+    else
+      op.numDynamicChunks
+  }
 
-  protected def initSync() { }
+  protected def initSync() {
+    val outputType = op.outputType(Targets.Cpp)+"*"
+    out.append(s"""  void initSync() {
+    size_t defaultChunks = ${defaultChunks};
+    if (numThreads == 1 || defaultChunks <= numThreads || closure->loopSize < defaultChunks) numChunks = numThreads; else numChunks = defaultChunks;
+    offset = numThreads;
+    pthread_mutex_init(&offset_lock, NULL);
+    \n""")
 
-  // protected def initSync() {
-  //   val outputType = op.outputType(Targets.Cpp)
-  //   out.append("void initSync() {\n")
-  //   for (key <- syncList) {
-  //     out.append("pthread_mutex_init(&lock"+key+", NULL);\n")
-  //     out.append("pthread_cond_init(&cond"+key+", NULL);\n")
-  //     out.append("notReady"+key+ " = true;\n")
-  //   }
-
-  //   out.append("size_t proposedNumberOfDynamicChunks = ")
-  //   if(op.numDynamicChunks == "-1")
-  //     out.append("(size_t)(closure->loopSize/(log10((double)closure->loopSize)*(500.0/"+numChunks+")));\n")
-  //   else
-  //     out.append(op.numDynamicChunks+";\n")
-  //   out.append("if(proposedNumberOfDynamicChunks <= "+numChunks+" || "+numChunks+" == 1 || closure->loopSize < proposedNumberOfDynamicChunks) numDynamicChunks = "+numChunks+"; else numDynamicChunks = proposedNumberOfDynamicChunks;\n")
-  //   out.append("offset.store("+numChunks+");\n")
-
-  //   out.append("dynamicResult = new std::atomic<"+outputType+"*>[numDynamicChunks];\n")
-  //   out.append("for (size_t i = 0; i < numDynamicChunks; i++){\n")
-  //   out.append("dynamicResult[i].store(NULL);\n")
-  //   out.append("}\n}\n")
-  // }
+    for (key <- syncList) {
+      val size = if (key == "") "numChunks" else "numThreads"
+      out.append(s"""//$key sync
+    results$key = new $outputType[$size];
+    lock$key = new pthread_mutex_t[$size];
+    cond$key = new pthread_cond_t[$size];
+    notReady$key = new bool[$size];
+    for(size_t i=0; i<$size; i++) {
+      pthread_mutex_init(&lock$key[i], NULL);
+      pthread_cond_init(&cond$key[i], NULL);
+      notReady$key[i] = true;
+    }
+  """)
+    }
+    out.append("}\n")
+  }
 
   protected def writeDestructor() {
     out.append("~" + className + "() {\n")
     out.append("delete closure;\n")
+    for (key <- syncList) {
+      out.append(s"delete results$key;\n")
+      out.append(s"delete lock$key;\n")
+      out.append(s"delete cond$key;\n")
+      out.append(s"delete notReady$key;\n")
+    }
     //out will be released by the caller
     out.append("}\n")
   }

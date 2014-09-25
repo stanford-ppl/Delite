@@ -28,7 +28,7 @@ object Config {
   var numCuda: Int = getProperty("delite.cuda", "0").toInt        /* cuda target threads */
   var numOpenCL: Int = getProperty("delite.opencl", "0").toInt    /* opencl target threads */
   val numSlaves: Int = getProperty("delite.slaves", "0").toInt
-  val pinThreads: Boolean = getProperty("delite.pinThreads", "false") != false
+  val pinThreads: Boolean = getProperty("delite.pinThreads", "false") != "false"
   val clusterMode: Int = if (getProperty("delite.cluster.isSlave", "false") != "false") 2 else if (numSlaves > 0) 1 else 0
   val masterAddress: String = getProperty("delite.master", "")
   var scheduler: String = getProperty("delite.scheduler", "dynamic")

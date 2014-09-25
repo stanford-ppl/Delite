@@ -1,29 +1,28 @@
 #include "DeliteMemory.h"
 
-#define DEFAULT_MAX_HEAP 32*1024*1024*1024
+#define DEFAULT_MAX_HEAP 32ULL*1024*1024*1024
 
 char **DeliteHeap;
 size_t *DeliteHeapOffset;
 
-pthread_mutex_t heapInitLock = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t heapInitCond = PTHREAD_COND_INITIALIZER;
-int heapInitCnt = 0;
+pthread_mutex_t barrier_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t barrier_cond = PTHREAD_COND_INITIALIZER;
+unsigned int arrivedCount = 0;
 
 // align thread-local variables with 64 bytes to avoid false sharing
 const int paddingShift = 6;
 
-void delite_barrier(int cnt) {
-  if (cnt > 1) {
-    pthread_mutex_lock(&heapInitLock);
-    heapInitCnt += 1;
-    if (heapInitCnt < cnt) {
-      pthread_cond_wait(&heapInitCond, &heapInitLock);
+void delite_barrier(unsigned int count) {
+  if (count > 1) {
+    pthread_mutex_lock(&barrier_lock);
+    arrivedCount += 1;
+    if (arrivedCount >= count) {
+      arrivedCount = 0;
+      pthread_cond_broadcast(&barrier_cond);
+    } else {
+      pthread_cond_wait(&barrier_cond, &barrier_lock);
     }
-    if (heapInitCnt == cnt) {
-      pthread_cond_broadcast(&heapInitCond);
-      heapInitCnt = 0;
-    }
-    pthread_mutex_unlock(&heapInitLock);
+    pthread_mutex_unlock(&barrier_lock);
   }
 }
 
@@ -33,9 +32,13 @@ void delite_barrier(int cnt) {
 // heapSize: total heap size (aggregation for all the threads)
 void DeliteHeapInit(int idx, int numThreads, int numLiveThreads, int initializer, size_t heapSize) {
   if (heapSize == 0) {
-    int64_t pages = sysconf(_SC_PHYS_PAGES);
-    int64_t page_size = sysconf(_SC_PAGE_SIZE);
-    heapSize = pages * page_size / 4; // use 25% of physical memory as heap
+    int64_t memSize = 4ULL*1024*1024*1024; //FIXME
+    #if defined(_SC_PHYS_PAGES)
+      int64_t pages = sysconf(_SC_PHYS_PAGES);
+      int64_t page_size = sysconf(_SC_PAGE_SIZE);
+      memSize = pages * page_size;
+    #endif
+    heapSize = memSize / 4; // use 25% of physical memory as heap
     if (heapSize > DEFAULT_MAX_HEAP) heapSize = DEFAULT_MAX_HEAP;
   }
 
