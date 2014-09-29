@@ -505,6 +505,7 @@ function assignSyncNodesToParents(dataForTimelineView, dependencyData, syncNodes
         n.dep_kernel = m[3]
         n.dep_thread = "T" + m[4]
 
+
         if (parentName == "null") { // top-level sync barrier
             n.level = 0
         } else {
