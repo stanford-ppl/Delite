@@ -199,6 +199,7 @@ object Profiler {
       })
     }
     
+    /*
     val parallelTaskIndices = taskInfos map { taskInfo =>
       val component = taskInfo.fromTiming.component
       // generate list of parallel task infos (their indices)
@@ -206,15 +207,15 @@ object Profiler {
         case (info, _) => info.fromTiming.component == component
       }).map(_._2)
     }
+    */
     
     val durationJS =   iterableToJSArray("duration", taskInfos.map(_.duration), false)
-    //val startNanosJS = iterableToJSArray("start", taskInfos.map(_.startNanos), false)
     val startJS = iterableToJSArray("start", taskInfos.map(_.start), false)
     val kernelsJS =    iterableToJSArray("kernels", taskInfos.map(_.kernel))
     val locationsJS =  iterableToJSArray("location", taskInfos.map(_.location), false)
-    val linesJS =      iterableToJSArray("line_in_source", taskInfos.map(_.line).map("'" + _ + "'"), false)
-    val tooltipsJS =   iterableToJSArray("tooltip", taskInfos.map(_.tooltip), false)
-    val parallelTasksJS = listOfListsToJSArray("parallelTasks", parallelTaskIndices)
+    //val linesJS =      iterableToJSArray("line_in_source", taskInfos.map(_.line).map("'" + _ + "'"), false)
+    //val tooltipsJS =   iterableToJSArray("tooltip", taskInfos.map(_.tooltip), false)
+    //val parallelTasksJS = listOfListsToJSArray("parallelTasks", parallelTaskIndices)
 
     writer.println("    \"duration\": " + durationJS + ",")
     //writer.println("    \"start\": " + startNanosJS + ",")
