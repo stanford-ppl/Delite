@@ -24,11 +24,11 @@ object Profiling {
     globalStartNanos = System.nanoTime()
     jvmUpTime = ManagementFactory.getRuntimeMXBean().getUptime()
     PerformanceTimer.start("all", false)
-    SamplerThread.start()
+    if (Config.dumpProfile) SamplerThread.start()
   }
 
   def endRun() {
-    SamplerThread.stop()
+    if (Config.dumpProfile) SamplerThread.stop()
     PerformanceTimer.stop("all", false)
     PerformanceTimer.printStatsForNonKernelComps()
     if (Config.dumpProfile) Profiler.dumpProfile(globalStartNanos, jvmUpTime)  
