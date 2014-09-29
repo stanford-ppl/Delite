@@ -6,7 +6,7 @@ import java.lang.Runtime
 import java.lang.management.ManagementFactory
 
 object SamplerThread extends Thread {
-	var interval: Long = 1000
+	var interval: Long = 50
 	private var continue: Boolean = true
 	private var hitException: Boolean = false
 	private var exception: String = "" // If the thread hit an exception, the message would be stored in this string
@@ -72,7 +72,8 @@ object SamplerThread extends Thread {
   			writer.println(",")  			
   			val data = List(s.maxMemory, s.totalMemory, s.usedMemory) mkString ","
   			//val timeStamp = (s.timeStamp - globalStartNanos) / 1000
-  			val timeStamp = (s.timeStamp - globalStartNanos)
+  			//val timeStamp = (s.timeStamp - globalStartNanos)
+  			val timeStamp = s.timeStamp
   			writer.print(twoTabs + "\"" + timeStamp + "\" : [" + data + "]")
   		}
 
