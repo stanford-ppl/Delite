@@ -235,8 +235,7 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
       i += 1
     }
     head
-  }
-  """)
+  }\n""")
   }
 
   protected def className = "MultiLoopHeader_" + op.id

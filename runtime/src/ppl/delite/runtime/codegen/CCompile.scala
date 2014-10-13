@@ -20,13 +20,14 @@ trait CCompile extends CodeCache {
     val libs: Array[String],
     val headerPrefix: String, 
     val libPrefix: String,
+    val compileFlags: String,
+    val linkFlags: String,
     val features: Array[String]
   )
 
   protected def configFile: String // name of file, will always be searched for inside config/delite/
   protected def compileFlags: Array[String] // machine-independent flags that are always passed to the compiler for this lib
   protected def linkFlags: Array[String] // machine-independent flags that are always passed to the linker for this lib
-  protected def outputSwitch: String // compiler parameter that allows us to specify destination dir (e.g. -o)
   protected def optionalFeatures: Array[String] = Array() //features (e.g., headers) that users can enable but we don't want to require
   protected lazy val config = loadConfig(configFile)
   
@@ -64,8 +65,10 @@ trait CCompile extends CodeCache {
     val sourceHeader = body \\ "headers" flatMap { e => e \\ "include" map { _.text.trim } } toArray
     val libPrefix = (body \\ "libs" \ "prefix").text.trim
     val libs = body \\ "libs" flatMap { e => val prefix = e \ "prefix"; (e \\ "path").map(p => prefix.text.trim + p.text.trim) ++ (e \\ "library").map(l => l.text.trim) } toArray
+    val compileFlags = (body \\ "compileFlags").text.trim
+    val linkFlags = (body \\ "linkFlags").text.trim
     val features = (body \\ "feature" map { _.text.trim }).toArray
-    new CompilerConfig(compiler, make, headerDir, sourceHeader, libs, headerPrefix, libPrefix, features)
+    new CompilerConfig(compiler, make, headerDir, sourceHeader, libs, headerPrefix, libPrefix, compileFlags, linkFlags, features)
   }
 
   def compile() {
@@ -170,8 +173,8 @@ SOURCECACHE_HOME = ${sourceCacheHome}
 BINCACHE_HOME = ${binCacheHome}
 INCLUDES = ${includes.mkString(" ")}
 
-CFLAGS = ${compileFlags.mkString(" ")}
-LDFLAGS = ${(linkFlags ++ libs).mkString(" ")}
+CFLAGS = ${(compileFlags ++ Array(config.compileFlags)).mkString(" ")}
+LDFLAGS = ${(linkFlags ++ Array(config.linkFlags) ++ libs).mkString(" ")}
 SOURCES = ${sources.mkString(" ")}
 OBJECTS = $$(SOURCES:.${ext}=.o)
 OUTPUT = ${destination}

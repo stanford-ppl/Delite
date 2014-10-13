@@ -19,6 +19,7 @@
 
 Config* config = 0;
 pthread_mutex_t init_mtx = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t init_cond = PTHREAD_COND_INITIALIZER;
 
 // heavy-handed, but doesn't appear there is another good way
 int getCpuInfo(FILE* pipe) {
@@ -107,6 +108,16 @@ JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_in
   #ifdef __sun
     processor_bind(P_LWPID, P_MYID, threadId, NULL);
   #endif
+}
+
+extern "C" JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_entry(JNIEnv* env, jobject obj);
+
+JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_entry(JNIEnv* env, jobject obj) {
+  printf("[delite]: %p\n", pthread_self());
+
+  pthread_mutex_lock(&init_mtx);
+  pthread_cond_wait(&init_cond, &init_mtx);
+  pthread_mutex_unlock(&init_mtx);
 }
 
 #endif

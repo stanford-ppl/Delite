@@ -1,9 +1,11 @@
 <DeliteExternalLib>
 <compiler> /usr/bin/g++ </compiler>
 <make> /usr/bin/make </make>
+<compileFlags> -w -O3 -fPIC -pthread </compileFlags>
 <headers>
   <prefix> -I </prefix>
   <path> ${JAVA_HOME}/include </path> <!-- required for JNI -->
   <path> ${JAVA_HOME}/include/linux </path>
 </headers>
+<linkFlags> -shared -fPIC -pthread </linkFlags>
 </DeliteExternalLib>
