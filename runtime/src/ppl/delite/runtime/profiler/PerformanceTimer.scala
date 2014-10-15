@@ -11,6 +11,10 @@ object PerformanceTimer
   var threadCount = 0
   var statsNewFormat = new ArrayBuffer[Map[String, List[Timing]]]()
   var threadToId: Map[String, Int] = Map()
+  
+  var jvmUpTimeAtAppStart = 0
+  var appStartTimeInMillis = 0
+
   // HACK: This is a temporary solution
   // This is a list of timing data for the component that is tracked using Config.dumpStatsComponent
   var statsForTrackedComponent = new mutable.ArrayBuffer[Double]()
@@ -25,6 +29,9 @@ object PerformanceTimer
 
     threadToId += "main" -> numThreads
     statsNewFormat += Map[String, List[Timing]]()
+
+    jvmUpTimeAtAppStart = ManagementFactory.getRuntimeMXBean().getUptime()
+    appStartTimeInMillis = System.currentTimeMillis
   }
 
   def start(component: String, threadName: String, printMessage: Boolean) = {

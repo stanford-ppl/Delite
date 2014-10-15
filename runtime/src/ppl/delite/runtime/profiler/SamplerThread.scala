@@ -71,8 +71,6 @@ object SamplerThread extends Thread {
   		for (s <- samples) {
   			writer.println(",")  			
   			val data = List(s.maxMemory, s.totalMemory, s.usedMemory) mkString ","
-  			//val timeStamp = (s.timeStamp - globalStartNanos) / 1000
-  			//val timeStamp = (s.timeStamp - globalStartNanos)
   			val timeStamp = s.timeStamp
   			writer.print(twoTabs + "\"" + timeStamp + "\" : [" + data + "]")
   		}

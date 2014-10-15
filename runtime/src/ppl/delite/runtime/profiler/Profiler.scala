@@ -208,7 +208,7 @@ object Profiler {
       }).map(_._2)
     }
     */
-    
+
     val durationJS =   iterableToJSArray("duration", taskInfos.map(_.duration), false)
     val startJS = iterableToJSArray("start", taskInfos.map(_.start), false)
     val kernelsJS =    iterableToJSArray("kernels", taskInfos.map(_.kernel))
@@ -233,7 +233,9 @@ object Profiler {
     writer.println("{\"Profile\":{")
     writer.println("  \"Init\": {")
     writer.println("    \"SystemNanoTimeAtAppStart\": " + globalStartNanos + ",")
-    writer.println("    \"JVMUpTimeAtAppStart\": " + jvmUpTimeAtAppStart)
+    //writer.println("    \"JVMUpTimeAtAppStart\": " + jvmUpTimeAtAppStart)
+    writer.println("    \"JVMUpTimeAtAppStart\": " + PerformanceTimer.jvmUpTimeAtAppStart + ",")
+    writer.println("    \"AppStartTimeInMillis\": " + PerformanceTimer.appStartTimeInMillis)
     writer.println("  },")
 
     writer.println("  \"PerfProfile\": {")
