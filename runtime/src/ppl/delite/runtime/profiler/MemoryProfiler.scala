@@ -10,7 +10,7 @@ import scala.collection.mutable.Stack
 object MemoryProfiler
 {
 	var threadCount = 0
-  	var stats = new ArrayBuffer[Map[String, List[Int]]]()
+  	var stats = new ArrayBuffer[Map[String, List[Long]]]()
   	var threadToCurrKernel = new ArrayBuffer[Stack[String]]()
   	var threadToId: Map[String, Int] = Map()
 
@@ -19,12 +19,12 @@ object MemoryProfiler
 		for (i <- List.range(0, numThreads)) {
 		  val threadName = "ExecutionThread-" + i
 		  threadToId += threadName -> i
-		  stats += Map[String, List[Int]]()
+		  stats += Map[String, List[Long]]()
 		  threadToCurrKernel += new Stack[String]()
 		}
 
 		threadToId += "main" -> numThreads
-		stats += Map[String, List[Int]]()
+		stats += Map[String, List[Long]]()
 		threadToCurrKernel += new Stack[String]()
 	}
 
@@ -36,10 +36,10 @@ object MemoryProfiler
 		if (stack.length > 0) kernelCurrentlyExecutedByThread = getNameOfCurrKernel(threadName)
 	
 		if (!stats(threadId).contains(kernelCurrentlyExecutedByThread)) {
-        	stats(threadId) += kernelCurrentlyExecutedByThread -> List[Int]()
+        	stats(threadId) += kernelCurrentlyExecutedByThread -> List[Long]()
 	    }
 
-	    val arrayMemSize = arrayLength * sizeOf(elemType)
+	    val arrayMemSize = arrayLength.toLong * sizeOf(elemType).toLong
 	    var kernelToAlloc = stats(threadId)
 	    val current = arrayMemSize :: kernelToAlloc(kernelCurrentlyExecutedByThread)
 	    stats(threadId) += kernelCurrentlyExecutedByThread -> current
@@ -73,7 +73,7 @@ object MemoryProfiler
   		emitMemProfileDataArrays(writer, stats)
   	}
 
-	def emitMemProfileDataArrays(writer: PrintWriter, stats: ArrayBuffer[Map[String, List[Int]]]) {
+	def emitMemProfileDataArrays(writer: PrintWriter, stats: ArrayBuffer[Map[String, List[Long]]]) {
 		var aggrStats = aggregateStatsFromAllThreads(stats)
 		
 		var tabs = "  "
@@ -88,13 +88,13 @@ object MemoryProfiler
   		writer.print(tabs + "}")
   	}
 
-	def aggregateStatsFromAllThreads(stats: ArrayBuffer[Map[String, List[Int]]]): Map[String, List[Int]] = {
-		var aggrStats = Map[String, List[Int]]()
+	def aggregateStatsFromAllThreads(stats: ArrayBuffer[Map[String, List[Long]]]): Map[String, List[Long]] = {
+		var aggrStats = Map[String, List[Long]]()
 		for (m <- stats) {
 			for (kv <- m) {
 				var kernel = kv._1
 				if (!aggrStats.contains(kernel)) {
-					aggrStats += kernel -> List[Int]()
+					aggrStats += kernel -> List[Long]()
 				}
 
 				var memAllocation = kv._2
@@ -114,8 +114,8 @@ object MemoryProfiler
 	    case _ => 64
   	}
 
-  	def sum(l:List[Int]) = {
-  		var res = 0
+  	def sum(l:List[Long]) = {
+  		var res = 0L
   		for (n <- l) {
   			res += n
   		}

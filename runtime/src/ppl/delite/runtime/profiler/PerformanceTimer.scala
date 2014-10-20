@@ -5,6 +5,7 @@ import java.io.{BufferedWriter, File, PrintWriter, FileWriter}
 import java.util.concurrent.ConcurrentHashMap
 import scala.collection.mutable.ArrayBuffer
 import ppl.delite.runtime.Config
+import java.lang.management.ManagementFactory
 
 object PerformanceTimer
 {
@@ -12,8 +13,8 @@ object PerformanceTimer
   var statsNewFormat = new ArrayBuffer[Map[String, List[Timing]]]()
   var threadToId: Map[String, Int] = Map()
   
-  var jvmUpTimeAtAppStart = 0
-  var appStartTimeInMillis = 0
+  var jvmUpTimeAtAppStart = 0L
+  var appStartTimeInMillis = 0L
 
   // HACK: This is a temporary solution
   // This is a list of timing data for the component that is tracked using Config.dumpStatsComponent
