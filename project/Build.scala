@@ -3,7 +3,7 @@ import Keys._
 
 object DeliteBuild extends Build {
   val virtualization_lms_core = "EPFL" % "lms_2.10" % "0.3-SNAPSHOT"
-  
+
   System.setProperty("showSuppressedErrors", "false")
 
   val virtScala = Option(System.getenv("SCALA_VIRTUALIZED_VERSION")).getOrElse("2.10.2")
@@ -19,8 +19,10 @@ object DeliteBuild extends Build {
 
     libraryDependencies += "org.apache.commons" % "commons-math" % "2.2",
     libraryDependencies += "com.google.protobuf" % "protobuf-java" % "2.4.1",
-    libraryDependencies += "org.apache.mesos" % "mesos" % "0.9.0-incubating",    
-    libraryDependencies += "org.apache.hadoop" % "hadoop-core" % "1.2.0",
+    libraryDependencies += "org.apache.mesos" % "mesos" % "0.20.1",
+    libraryDependencies += "org.apache.hadoop" % "hadoop-common" % "2.5.1",
+    libraryDependencies += "org.apache.hadoop" % "hadoop-client" % "2.3.0",
+    libraryDependencies += "org.apache.hadoop" % "hadoop-hdfs" % "2.3.0",
 
     retrieveManaged := true,
     scalacOptions += "-Yno-generic-signatures",
@@ -35,7 +37,7 @@ object DeliteBuild extends Build {
   )
 
   // build targets
-  
+
   //default project: just the dependencies needed to export Delite to others (e.g., Forge)
   lazy val delite = Project("delite", file("."), //root directory required to be default
     settings = virtBuildSettings) aggregate(framework, runtime, deliteTest)

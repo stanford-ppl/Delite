@@ -9,7 +9,7 @@ import ppl.delite.framework.Config
 trait DeliteFileStream
 
 trait DeliteFileReaderOps extends Base with DeliteArrayBufferOps {
-  
+
   object DeliteFileReader {
     def readLines[A:Manifest](paths: Rep[String]*)(f: Rep[String] => Rep[A])(implicit pos: SourceContext) = dfr_readLines(paths, unit(null), f)
     def readLinesFlattened[A:Manifest](paths: Rep[String]*)(f: Rep[String] => Rep[DeliteCollection[A]])(implicit pos: SourceContext) = dfr_readLinesFlattened(paths, unit(null), f)
@@ -149,9 +149,9 @@ trait ScalaGenDeliteFileReaderOps extends ScalaGenFat {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case DeliteFileStreamNew(paths, charset, Const(null)) =>
-      emitValDef(sym, "generated.scala.io.FileStreamImpl(" + quote(charset) + "," + paths.map(quote).mkString("Seq(",",",")") + ")")
+      emitValDef(sym, "generated.scala.io.DeliteFileStream("+paths.map(quote).mkString("Seq(",",",")") + ", Some(" + quote(charset) + "), None)")
     case DeliteFileStreamNew(paths, Const(null), delimiter) =>
-      emitValDef(sym, "generated.scala.io.FileStreamImpl.bytes(" + quote(delimiter) + "," + paths.map(quote).mkString("Seq(",",",")") + ")")
+      emitValDef(sym, "generated.scala.io.DeliteFileStream("+paths.map(quote).mkString("Seq(",",",")") + ", None, Some("+quote(delimiter) + "))")
     case DeliteFileStreamReadLine(stream,idx) =>
       emitValDef(sym, quote(stream) + "_stream.readLine()")
     case DeliteFileStreamReadBytes(stream,idx) =>
@@ -162,7 +162,7 @@ trait ScalaGenDeliteFileReaderOps extends ScalaGenFat {
   }
 
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
-    case "DeliteFileStream" => "generated.scala.io.FileStreamImpl"
+    case "DeliteFileStream" => "generated.scala.io.DeliteFileStream"
     case _ => super.remap(m)
   }
 
@@ -173,13 +173,13 @@ trait CGenDeliteFileReaderOps extends CGenFat {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case DeliteFileStreamNew(paths, Const(null), Const(null)) => 
+    case DeliteFileStreamNew(paths, Const(null), Const(null)) =>
       // C++ variable length args does not allow string types, so use underlying char *
       if (cppMemMgr == "refcnt")
         stream.println(remap(sym.tp) + " " + quote(sym) + "(new cppFileStream(" + paths.length + "," + paths.map(quote(_) + ".c_str()").mkString(",") + "));")
       else
         emitValDef(sym, "new cppFileStream(" + paths.length + "," + paths.map(quote(_) + ".c_str()").mkString(",") + ")")
-    case DeliteFileStreamNew(paths, charset, delimiter) => 
+    case DeliteFileStreamNew(paths, charset, delimiter) =>
       throw new GenerationFailedException("FileReader: custom charset/delimiter is not suppported by C codegen")
     case DeliteFileStreamReadLine(stream,idx) =>
       emitValDef(sym, quote(stream) + "_stream->readLine("+resourceInfoSym+")")
