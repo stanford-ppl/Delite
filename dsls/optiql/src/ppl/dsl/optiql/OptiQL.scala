@@ -18,6 +18,7 @@ import ppl.delite.framework.codegen.delite.overrides._
 import ppl.delite.framework.transform.MultiloopSoATransformWithReduceExp
 import ppl.delite.framework.{DeliteInteractive, DeliteInteractiveRunner, DeliteRestageOps, DeliteRestageOpsExp, DeliteRestageRunner}
 import ppl.delite.framework.codegen.restage.{DeliteCodeGenRestage,LMSCodeGenRestage,TargetRestage}
+import ppl.tests.scalatest._
 
 
 /**
@@ -55,7 +56,7 @@ trait OptiQLLift extends LiftString with LiftPrimitives with LiftNumeric {
  * Scala IR nodes
  */
 trait OptiQLScalaOpsPkgExp extends OptiQLScalaOpsPkg with MiscOpsExp with IOOpsExp with SeqOpsExp with OrderingOpsExp with BooleanOpsExp with EqualExp with MathOpsExp
-  with PrimitiveOpsExp with ObjectOpsExp with StringOpsExp with TupleOpsExp with StructExp with NumericOpsExp with ArrayOpsExp with ArrayBufferOpsExp with IfThenElseExp
+  with PrimitiveOpsExp with ObjectOpsStructExp with StringOpsExp with TupleOpsExp with StructExp with NumericOpsExp with ArrayOpsExp with ArrayBufferOpsExp with IfThenElseExp
   with StructFatExpOptCommon with CastingOpsExp with RangeOpsExp with HashMapOpsExp
 
 /**
@@ -70,7 +71,7 @@ trait OptiQLCompiler extends OptiQL with IOOps with SeqOps with Variables with W
  */
 trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with TableOpsExp with DateOpsExp with DateImplOpsStandard with QueryableOpsExpOpt with OptiQLMiscOpsExp
   with InputReaderOpsExp with InputReaderImplOpsStandard with DeliteCollectionOpsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteMapOpsExp with DeliteFileReaderOpsExp with DSArrayOpsExp 
-  with DeliteRestageOpsExp with DeliteAllOverridesExp with MultiloopSoATransformWithReduceExp {
+  with DeliteRestageOpsExp with DeliteTestOpsExp with DeliteLMSForwarderExp with DeliteAllOverridesExp with MultiloopSoATransformWithReduceExp {
 
   this: DeliteApplication with OptiQLApplication =>
 
@@ -160,7 +161,7 @@ trait OptiQLCodeGenRestage extends OptiQLScalaCodeGenPkg with DeliteCodeGenResta
 }
 
 trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg with ScalaGenOptiQLMiscOps with ScalaGenQueryableOps
-  with ScalaGenDeliteCollectionOps with ScalaGenDeliteOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteMapOps with ScalaGenDeliteFileReaderOps with ScalaGenDSArrayOps with DeliteScalaGenAllOverrides {
+  with ScalaGenDeliteCollectionOps with ScalaGenDeliteOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteMapOps with ScalaGenDeliteFileReaderOps with ScalaGenDSArrayOps with ScalaGenDeliteTest with DeliteScalaGenAllOverrides {
   val IR: DeliteApplication with OptiQLExp
 
   override def remap[A](m: Manifest[A]): String = m match {
