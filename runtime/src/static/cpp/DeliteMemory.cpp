@@ -1,7 +1,9 @@
 #include "DeliteMemory.h"
 
-char **DeliteHeap;
-size_t *DeliteHeapOffset;
+std::list<char *> **DeliteHeapBlockList;  // list of allocated heap blocks for each thread
+char **DeliteHeapCurrentBlock;            // current heap block pointer for each thread
+size_t *DeliteHeapOffset;                 // offset of the current heap block for each thread
+size_t DeliteHeapBlockSize;               // size of a heap block
 
 pthread_mutex_t heapInitLock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t heapInitCond = PTHREAD_COND_INITIALIZER;
@@ -36,48 +38,65 @@ void DeliteHeapInit(int idx, int numThreads, int numLiveThreads, int initializer
   CPU_ZERO(&cpuset);
   CPU_SET(idx, &cpuset);
   if(pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) != 0) {
-    printf("[WARNING] pthread_setaffinity_np failed for thread %d\n", idx);
+    DHEAP_DEBUG("[WARNING] pthread_setaffinity_np failed for thread %d\n", idx);
   }
 
   if (heapSize == 0) {
     int64_t pages = sysconf(_SC_PHYS_PAGES);
     int64_t page_size = sysconf(_SC_PAGE_SIZE);
-    heapSize = pages * page_size / 4; // use 25% of physical memory as heap
+    heapSize = pages * page_size / 8; // TODO: what is the proper size for each heap block?
   }
 
   if (idx == initializer) {
-    DeliteHeap = new char*[numThreads << paddingShift];
+    DeliteHeapBlockList = new std::list<char*>*[numThreads << paddingShift];
+    DeliteHeapCurrentBlock = new char*[numThreads << paddingShift];
     DeliteHeapOffset = new size_t[numThreads << paddingShift];
   }
-  size_t localHeapSize = heapSize / numLiveThreads;
-  char *ptr = (char*)malloc(localHeapSize);
-  memset(ptr, 0, localHeapSize);
+  DeliteHeapBlockSize = heapSize / numLiveThreads;
+  char *ptr = new char[DeliteHeapBlockSize];
+  memset(ptr, 0, DeliteHeapBlockSize);
 
   delite_barrier(numLiveThreads);
 
   // Now all the threads allocated and initialized their own heap
-  DeliteHeap[idx << paddingShift] = ptr;
+  DeliteHeapBlockList[idx << paddingShift] = new std::list<char*>(1,ptr);
+  DeliteHeapCurrentBlock[idx << paddingShift] = ptr;
   DeliteHeapOffset[idx << paddingShift] = 0;
-  DHEAP_DEBUG("finished heap initialization for resource %d, size: %lld\n", idx, localHeapSize);
+  DHEAP_DEBUG("finished heap initialization for resource %d, size: %lld\n", idx, DeliteHeapBlockSize);
 }
 
 void DeliteHeapClear(int idx, int numThreads, int numLiveThreads, int finalizer) {
-  size_t heapUsage = DeliteHeapOffset[idx << paddingShift];
+  std::list<char*> *blocklist = DeliteHeapBlockList[idx << paddingShift];
+  size_t heapUsage = DeliteHeapOffset[idx << paddingShift] + (blocklist->size() - 1) * DeliteHeapBlockSize;
   delite_barrier(numLiveThreads);
-  delete[] DeliteHeap[idx << paddingShift];
+  for (std::list<char*>::iterator iter = blocklist->begin(); iter != blocklist->end(); iter++) {
+    delete[] *iter;
+  }
   if (idx == finalizer) {
-    delete[] DeliteHeap;
+    delete[] DeliteHeapBlockList;
+    delete[] DeliteHeapCurrentBlock;
     delete[] DeliteHeapOffset;
   }
   DHEAP_DEBUG("finished heap clear for resource %d, used: %lld\n", idx, heapUsage);
 }
 
 char *DeliteHeapAlloc(size_t sz, int idx) {
-  char *ptr = DeliteHeap[idx << paddingShift] + DeliteHeapOffset[idx << paddingShift];
-  DHEAP_DEBUG("DeliteHeapAlloc called for idx %d with size %d\n", idx, sz);
   //TODO: Need alignment for each type (passed as paramter)?
   size_t alignedSize = (sz+0x0008) & 0xFFFFFFF8;
-  DeliteHeapOffset[idx << paddingShift] += alignedSize;
+  size_t currentOffset = DeliteHeapOffset[idx << paddingShift];
+  size_t newOffset = currentOffset + alignedSize;
+  // allocate a new heap block if more space is needed
+  if (newOffset > DeliteHeapBlockSize) {
+    currentOffset = 0;
+    newOffset = alignedSize;
+    char *newBlock = new char[DeliteHeapBlockSize];
+    DeliteHeapBlockList[idx << paddingShift]->push_back(newBlock);
+    DeliteHeapCurrentBlock[idx << paddingShift] = newBlock;
+    DHEAP_DEBUG("Used all available heap for thread %d. Allocating more memory.\n", idx);
+  }
+  char *ptr = DeliteHeapCurrentBlock[idx << paddingShift] + currentOffset; 
+  DHEAP_DEBUG("DeliteHeapAlloc called for idx %d with size %d\n", idx, sz);
+  DeliteHeapOffset[idx << paddingShift] = newOffset;
   return ptr;
 }
 
