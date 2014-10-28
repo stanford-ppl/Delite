@@ -62,7 +62,8 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
 
     if (op.task == null) return //dummy op
     if (Config.profile) {
-      out.append("MemoryProfiler.pushNameOfCurrKernel(threadName,\"" + op.id + "\")\n")
+      out.append("MemoryProfiler.pushNameOfCurrKernel(threadName,\"" + getOpId(op) + "\")\n")
+
       if (!op.isInstanceOf[OP_MultiLoop]) {
         out.append("PerformanceTimer.start(\""+op.id+"\", threadName, false)\n")
       }
@@ -110,6 +111,15 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
     out.append("def self = this\n")
   }
 
+  def getOpId(op: DeliteOP) : String = {
+    val isMultiLoop = op.isInstanceOf[OP_MultiLoop]
+    var opId = op.id
+    if (isMultiLoop && (!op.id.contains('_'))) {
+      opId = op.id + "_0"
+    }
+
+    return opId
+  }
 }
 
 class ScalaMainExecutableGenerator(val location: Int, val graph: DeliteTaskGraph)
