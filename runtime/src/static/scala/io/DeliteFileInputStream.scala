@@ -13,17 +13,16 @@ import org.apache.hadoop.util.LineReader
  * Constructs a logical file stream by concatenating the streams of an arbitrary number of physical files.
  * The stream can be opened at any byte offset and it will automatically seek to the next full line.
  * Each path in the stream can be backed by a different Hadoop-supported filesystem (inclues local, HDFS and S3).
- *
- * Currently supports UTF-8 and extended-ASCII charsets; should be extensible to any multi-byte charset that
- * is self-synchronizing (e.g., UTF-16)). Also supports binary files via a user-provided custom record delimiter.
  */
-object DeliteFileStream {
+object DeliteFileInputStream {
 
-  /* Construct a new DeliteFileStream */
-  def apply(paths: Seq[String], charsetName: Option[String] = None, delimiter: Option[Array[Byte]] = None): DeliteFileStream = {
-    val charset = charsetName map { checkCharset }
+  /* Construct a new DeliteFileInputStream */
+  def apply(paths: Seq[String], charsetName: Option[String] = None, delimiter: Option[Array[Byte]] = None): DeliteFileInputStream = {
+    val charset = charsetName map { checkCharset } getOrElse Charset.defaultCharset
     val conf = new Configuration()
-    new DeliteFileStream(conf, getFiles(conf, paths), charset, delimiter)
+    // We pre-load the file handles so that we can easily copy the stream wrapper instance at run-time
+    val fileHandles = getFiles(conf, paths)
+    new DeliteFileInputStream(conf, fileHandles, charset, delimiter)
   }
 
   /* Each path must refer to a valid filesystem, based on the Hadoop configuration object. */
@@ -42,7 +41,7 @@ object DeliteFileStream {
 
   /* Validate that the specified charset name is legal and supported */
   private def checkCharset(charsetName: String) = {
-    val charset = if (charsetName eq null) Charset.defaultCharset else Charset.forName(charsetName)
+    val charset = Charset.forName(charsetName)
     val dec = charset.newDecoder
     if (dec.maxCharsPerByte != 1f || dec.averageCharsPerByte != 1f)
       throw new IOException("Unsupported Charset: " + charset.displayName)
@@ -51,7 +50,7 @@ object DeliteFileStream {
 
 }
 
-class DeliteFileStream(conf: Configuration, files: Array[FileStatus], charset: Option[Charset], delimiter: Option[Array[Byte]]) {
+class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], charset: Charset, delimiter: Option[Array[Byte]]) {
   private[this] var reader: LineReader = _
   private[this] var text: Text = _
   private[this] var pos: Long = _
@@ -59,6 +58,11 @@ class DeliteFileStream(conf: Configuration, files: Array[FileStatus], charset: O
   final val size: Long = files.map(_.getLen).sum
   final def position = pos
 
+  /* Initialize. This is only required / used when opening a stream directly (i.e. not via multiloop) */
+  if (size > 0) {
+    openAtNewLine(0)
+  }
+  
   /* Determine the file that this logical index corresponds to, as well as the byte offset within the file. */
   private def findFileOffset(start: Long) = {
     var offset = start
@@ -71,8 +75,8 @@ class DeliteFileStream(conf: Configuration, files: Array[FileStatus], charset: O
   }
 
   /*
-   * Return an input stream and offset corresponding to the logical index 'start'.
-   * Offset refers to the number of bytes inside the physical resource that this streams starts at.
+   * Return an input stream and offset corresponding to the logical byte index 'start'.
+   * Offset refers to the number of bytes inside the physical resource that this stream starts at.
    */
   def getInputStream(start: Long) = {
     if (start >= size) throw new IndexOutOfBoundsException("Cannot load stream at pos " + start + ", stream size is: " + size)
@@ -86,8 +90,9 @@ class DeliteFileStream(conf: Configuration, files: Array[FileStatus], charset: O
     (byteStream, offset)
   }
 
-  /* Set the line reader to a newline-aligned input stream corresponding to logical index 'start' */
+  /* Set the line reader to a newline-aligned input stream corresponding to logical byte index 'start' */
   final def openAtNewLine(start: Long) {
+    close()
     val (byteStream, offset) = getInputStream(start)
     reader = new LineReader(byteStream, delimiter.getOrElse(null))
     text = new Text
@@ -97,9 +102,9 @@ class DeliteFileStream(conf: Configuration, files: Array[FileStatus], charset: O
     }
   }
 
-  /* Construct a copy of this DeliteFileStream, starting at logical index 'start' */
-  final def openCopyAtNewLine(start: Long): DeliteFileStream = {
-    val copy = new DeliteFileStream(conf, files, charset, delimiter)
+  /* Construct a copy of this DeliteFileInputStream, starting at logical byte index 'start' */
+  final def openCopyAtNewLine(start: Long): DeliteFileInputStream = {
+    val copy = new DeliteFileInputStream(conf, files, charset, delimiter)
     copy.openAtNewLine(start)
     copy
   }
@@ -108,6 +113,7 @@ class DeliteFileStream(conf: Configuration, files: Array[FileStatus], charset: O
   private def readLineInternal() {
     var length = reader.readLine(text)
     if (length == 0) {
+      reader.close()        
       if (pos+1 > size) {
         text = null
         return
@@ -124,11 +130,9 @@ class DeliteFileStream(conf: Configuration, files: Array[FileStatus], charset: O
 
   /* Read the next line and interpret it as a String */
   final def readLine(): String = {
-    if (!charset.isDefined) throw new UnsupportedOperationException("readLine() cannot be called without a charset defined")
-
     readLineInternal()
     if (text eq null) null
-    else new String(text.getBytes, 0, text.getLength, charset.get)
+    else new String(text.getBytes, 0, text.getLength, charset)
   }
 
   /* Read the next line and interpret it as bytes */
@@ -142,10 +146,12 @@ class DeliteFileStream(conf: Configuration, files: Array[FileStatus], charset: O
     }
   }
 
-  /* Close the DeliteFileStream */
+  /* Close the DeliteFileInputStream */
   final def close(): Unit = {
-    reader.close()
-    reader = null
+    if (reader != null) {
+      reader.close()
+      reader = null
+    }
     text = null
   }
 }

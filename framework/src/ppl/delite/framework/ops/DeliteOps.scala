@@ -2156,7 +2156,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     }
     
     val freeVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
-    val streamVars = freeVars.filter(_.tp == manifest[DeliteFileStream])
+    val streamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
     if (streamVars.length > 0) {
       assert(streamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
       val streamSym = streamVars(0)
@@ -2276,7 +2276,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     //should be initialized manually in processRange()
     val inVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
     val extraArgs = inVars collect { sym => sym match {
-      case s if s.tp == manifest[DeliteFileStream] => (quote(s)+"_stream", remap(s.tp))
+      case s if s.tp == manifest[DeliteFileInputStream] => (quote(s)+"_stream", remap(s.tp))
     }}
 
     // processRange
@@ -2284,7 +2284,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       //GROSS HACK ALERT!
       val freeVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
 
-      val streamVars = freeVars.filter(_.tp == manifest[DeliteFileStream])
+      val streamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
       if (streamVars.length > 0) {
         assert(streamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
         val streamSym = quote(streamVars(0))+"_stream"
