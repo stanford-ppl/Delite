@@ -137,6 +137,10 @@ def stage(runner, params, opts):
     for j in jars:
       cp = cp + j + os.pathsep
 
+    # temporarily add local scala-virtualized classes
+    # TODO: remove this after pulling 2.11 remotely from maven
+    cp = cp + os.getenv("SCALA_VIRTUALIZED_HOME") + "/lib/*" + os.pathsep
+
     java_opts = java_opts + cp
     #os.putenv("JAVA_OPTS", java_opts)
 

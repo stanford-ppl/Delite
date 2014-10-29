@@ -1,5 +1,8 @@
 package ppl.delite.runtime
 
+import java.io.File
+import org.apache.commons.io._
+
 import codegen._
 import executor._
 import graph.ops.{EOP_Global, Arguments}
@@ -7,7 +10,6 @@ import graph.targets.Targets
 import graph.{TestGraph, DeliteTaskGraph}
 import profiler.Profiling
 import scheduler._
-import tools.nsc.io._
 
 /**
  * Author: Kevin J. Brown
@@ -34,7 +36,7 @@ object Delite {
   private def printArgs(args: Array[String]) {
     if(args.length == 0) {
       println("Not enough arguments.\nUsage: [Launch Runtime Command] filename.deg arguments*")
-      exit(-1)
+      sys.exit(-1)
     }
     println("Delite Runtime executing with the following arguments:")
     println(args.mkString(","))
@@ -87,7 +89,7 @@ object Delite {
     def abnormalShutdown() {
       if (executor != null) executor.shutdown()
       if (!Config.alwaysKeepCache)
-        Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
+        FileUtils.deleteDirectory(new File(Config.codeCacheHome)) //clear the code cache (could be corrupted)        
     }
 
     def walkTime() = {
@@ -157,17 +159,17 @@ object Delite {
   }
 
   def loadDeliteDEG(filename: String) = {
-    val deg = Path(filename)
+    val deg = new File(filename)
     if (!deg.isFile)
       error(filename + " does not exist")
-    DeliteTaskGraph(deg.jfile)
+    DeliteTaskGraph(deg)
   }
 
   def loadSources(graph: DeliteTaskGraph) {
     CodeCache.verifyCache()
     for (target <- Targets.values) {
       if (graph.targets contains target)
-        Compilers(target).cacheDegSources(Directory(Path(graph.kernelPath + File.separator + Compilers(target).target + File.separator).toAbsolute))
+        Compilers(target).cacheDegSources((new File(graph.kernelPath + File.separator + Compilers(target).target + File.separator)).getAbsoluteFile)
     }
   }
 
