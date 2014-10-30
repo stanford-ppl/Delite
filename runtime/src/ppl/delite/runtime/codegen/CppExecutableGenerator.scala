@@ -52,6 +52,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfoGen
     out.append("env" + location + " = jnienv;\n")
     out.append(resourceInfoType + " " + resourceInfoSym + ";\n")
     out.append(resourceInfoSym + ".thread_id = " + Targets.getRelativeLocation(location) + ";\n")
+    out.append(resourceInfoSym + ".rand = new DeliteCppRandom();\n")
     out.append("InitDeliteCppTimer(" + Targets.getRelativeLocation(location) + ");\n")
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     val cppLocations = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp)
