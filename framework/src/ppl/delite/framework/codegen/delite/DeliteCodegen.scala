@@ -43,7 +43,7 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
 
   // global, used by DeliteGenTaskGraph
   var kernelMutatingDeps = Map[Sym[Any],List[Sym[Any]]]() // from kernel to its mutating deps
-  var kernelInputDeps = Map[Sym[Any],List[Sym[Any]]]() // from kernel to its input deps
+  var effectKernelReads = Map[Sym[Any],List[Sym[Any]]]() // from effectful kernel to its read set
 
   // results of stencil analysis, used by DeliteGenTaskGraph
   var allStencils: HashMap[Exp[Any],Stencil] = _
