@@ -12,7 +12,7 @@ import scala.collection.mutable.HashSet
 
 trait DeliteArray[T] extends DeliteCollection[T] 
 
-trait DeliteArrayOps extends RuntimeServiceOps {
+trait DeliteArrayOps extends Base {
 
   var partitionArray: Boolean = false
   
@@ -77,7 +77,7 @@ trait DeliteArrayCompilerOps extends DeliteArrayOps {
   def darray_unsafe_copy[T:Manifest](src: Rep[DeliteArray[T]], srcPos: Rep[Int], dest: Rep[DeliteArray[T]], destPos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
 }
 
-trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTags with DeliteCollectionOpsExp with DeliteStructsExp with RuntimeServiceOpsExp {
+trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTags with DeliteCollectionOpsExp with DeliteStructsExp {
   this: DeliteOpsExp with DeliteMapOpsExp =>
   
   //////////////////
@@ -195,12 +195,6 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
     else super.dc_set_logical_size(x,y)        
   }
   
-  override def dc_parallelization[A:Manifest](x: Exp[DeliteCollection[A]], hasConditions: Boolean)(implicit ctx: SourceContext) = {
-    if (isDeliteArray(x)) {
-      if (hasConditions) ParSimpleBuffer else ParFlat
-    }
-    else super.dc_parallelization(x, hasConditions)
-  }
   override def dc_appendable[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
     if (isDeliteArray(x)) { unit(true) }
     else super.dc_appendable(x,i,y)

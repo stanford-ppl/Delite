@@ -341,10 +341,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
 
     // anti deps: for each of my mutating inputs, look at the kernels already generated and see if any of them
     // read it, add that kernel as an anti-dep
-    val antiDeps = (kernelInputDeps filter { case (s, in) => (!(inMutating intersect in).isEmpty) }).keys.toList
+    val antiDeps = (effectKernelReads filter { case (s, in) => (!(inMutating intersect in).isEmpty) }).keys.toList
 
     // add this kernel to global generated state
-    sym foreach { s => kernelInputDeps += { s -> inputs } }
+    sym collect { case s@Def(Reflect(x,u,es)) => effectKernelReads += { s -> (u.mayRead ++ u.mstRead).distinct } }
     sym foreach { s => kernelMutatingDeps += { s -> inMutating } }
 
     // debug
@@ -589,12 +589,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
                                 }
                                 stream.println("  \"" + prefix + "Ops\": [")
                                 val saveMutatingDeps = kernelMutatingDeps
-                                val saveInputDeps = kernelInputDeps
+                                val saveEffectKernelReads = effectKernelReads
                                 kernelMutatingDeps = Map()
-                                kernelInputDeps = Map()
+                                effectKernelReads = Map()
                                 emitBlock(e)
                                 emitEOG()
-                                kernelInputDeps = saveInputDeps
+                                effectKernelReads = saveEffectKernelReads
                                 kernelMutatingDeps = saveMutatingDeps
   }
 

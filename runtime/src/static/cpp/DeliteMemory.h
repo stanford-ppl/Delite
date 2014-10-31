@@ -2,6 +2,7 @@
 #define __DELITE_MEMORY_H__
 
 #include <memory>
+#include <list>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

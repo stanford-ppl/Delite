@@ -78,7 +78,7 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
    * Return an input stream and offset corresponding to the logical byte index 'start'.
    * Offset refers to the number of bytes inside the physical resource that this stream starts at.
    */
-  def getInputStream(start: Long) = {
+  private def getInputStream(start: Long) = {
     if (start >= size) throw new IndexOutOfBoundsException("Cannot load stream at pos " + start + ", stream size is: " + size)
 
     val (fileIdx, offset) = findFileOffset(start)
