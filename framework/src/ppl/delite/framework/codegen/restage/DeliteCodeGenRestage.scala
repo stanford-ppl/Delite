@@ -9,7 +9,7 @@ import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.delite.overrides._
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.{DeliteRestageOps,DeliteRestageOpsExp}
-import ppl.delite.framework.ops.{DeliteOpsExp,DeliteCollection,DeliteCollectionOpsExp,ScalaGenDeliteCollectionOps}
+import ppl.delite.framework.ops.{DeliteOpsExp,DeliteCollection,DeliteCollectionOpsExp}
 import ppl.delite.framework.ScopeCommunication._
 
 trait TargetRestage extends Target {
@@ -126,7 +126,7 @@ trait LMSCodeGenRestage extends RestageFatCodegen {
 
 // restage generators for Delite common ops
 trait DeliteCodeGenRestage extends RestageFatCodegen 
-  with ScalaGenDeliteCollectionOps with ScalaGenDeliteArrayOps with ScalaGenDeliteStruct with DeliteScalaGenAllOverrides {
+  with ScalaGenDeliteArrayOps with ScalaGenDeliteStruct with DeliteScalaGenAllOverrides {
     
   val IR: Expressions with Effects with FatExpressions with DeliteRestageOpsExp 
           with DeliteCollectionOpsExp with DeliteArrayFatExp with DeliteOpsExp with DeliteAllOverridesExp
