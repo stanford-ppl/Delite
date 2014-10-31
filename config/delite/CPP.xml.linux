@@ -1,6 +1,6 @@
 <DeliteExternalLib>
 <compiler> /usr/bin/g++ </compiler>
-<make> /usr/bin/make </make>
+<make> /usr/bin/make -s -j </make>
 <compileFlags> -w -O3 -fPIC -pthread </compileFlags>
 <headers>
   <prefix> -I </prefix>
