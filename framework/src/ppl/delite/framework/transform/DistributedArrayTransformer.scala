@@ -1,7 +1,7 @@
 package ppl.delite.framework.transform
 
 import scala.virtualization.lms.internal.FatBlockTraversal
-import ppl.delite.framework.ops.{DeliteOpsExp, DeliteFileReaderOpsExp, DeliteCollection, DeliteFileStream}
+import ppl.delite.framework.ops.{DeliteOpsExp, DeliteFileReaderOpsExp, DeliteCollection, DeliteFileInputStream}
 import ppl.delite.framework.datastructures.{DeliteArrayOpsExp, DeliteStructsExp, DeliteArray}
 
 
@@ -36,7 +36,7 @@ trait DistributedArrayTransformer extends ForwardPassTransformer {
       case Def(Loop(_,_,body:DeliteCollectElem[_,_,_])) if body.par == ParFlat => symIsPartitioned(getBlockResult(body.buf.alloc))
       case Def(Loop(_,_,body:DeliteCollectElem[_,_,_])) => symIsPartitioned(getBlockResult(body.buf.allocRaw))
       case Partitionable(t) => t.partition
-      case e if e.tp == manifest[DeliteFileStream] => true //TODO: should be configurable
+      case e if e.tp == manifest[DeliteFileInputStream] => true //TODO: should be configurable
       //case Def(a) => Console.println("no partition for: " + a.toString); false
       case _ => false
     }
@@ -44,9 +44,9 @@ trait DistributedArrayTransformer extends ForwardPassTransformer {
     //this only checks for array accesses dependent on the loop index... is this sufficient/correct?
     def inputIsPartitioned = getFatDependentStuff(initialDefs)(List(v)).exists(stm => stm match {
       case TP(s, DeliteArrayApply(arr,idx)) => symIsPartitioned(arr)
-      //case TP(s, DeliteFileStreamReadLine(stream,idx)) => symIsPartitioned(stream)
+      //case TP(s, DeliteFileInputStreamReadLine(stream,idx)) => symIsPartitioned(stream)
       //do we want to mach on specific nodes (above) or all nodes that consume a sym of the right type (below)?
-      case TP(s,d) if syms(d).exists(_.tp == manifest[DeliteFileStream]) => syms(d).filter(_.tp == manifest[DeliteFileStream]).exists(symIsPartitioned)
+      case TP(s,d) if syms(d).exists(_.tp == manifest[DeliteFileInputStream]) => syms(d).filter(_.tp == manifest[DeliteFileInputStream]).exists(symIsPartitioned)
       case _ => false
     })
 

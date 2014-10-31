@@ -6,9 +6,7 @@ import java.io.PrintWriter
 import scala.virtualization.lms.internal.{GenericNestedCodegen,GenerationFailedException}
 import scala.reflect.SourceContext
 
-trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExpBridge with DeliteOpsExp {
-
-  this: DeliteOpsExp =>
+trait DeliteIfThenElseExp extends IfThenElseFatExp with DeliteOpsExp {
 
   // there is a lot of code duplication between DeliteIfThenElse and IfThenElse in lms -- do we really need a separate DeliteIfThenElse?
 
@@ -25,8 +23,8 @@ trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExp
       // TODO: need to handle vars differently, this could be unsound  <--- don't understand ...
     case Const(true) => thenp
     case Const(false) => elsep
-    case Def(BooleanNegate(a)) => delite_ifThenElse(a, elsep, thenp, flat, controlFlag)
-    case Def(NotEqual(a,b)) => delite_ifThenElse(equals(a,b), elsep, thenp, flat, controlFlag)
+    case Def(DBooleanNegate(a)) => delite_ifThenElse(a, elsep, thenp, flat, controlFlag)
+    case Def(DNotEqual(a,b)) => delite_ifThenElse(delite_equals(a,b), elsep, thenp, flat, controlFlag)
     case _ =>
       val a = reifyEffectsHere[T](thenp, controlFlag)
       val b = reifyEffectsHere[T](elsep, controlFlag)
@@ -106,7 +104,7 @@ trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {
 
 }
 
-trait DeliteScalaGenIfThenElse extends ScalaGenEffect with ScalaGenBooleanOps with DeliteBaseGenIfThenElse {
+trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenElse {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
@@ -218,10 +216,10 @@ trait DeliteGPUGenIfThenElse extends GPUGenEffect with DeliteBaseGenIfThenElse {
   }
 }
 
-trait DeliteCudaGenIfThenElse extends CudaGenEffect with CudaGenBooleanOps with DeliteGPUGenIfThenElse
-trait DeliteOpenCLGenIfThenElse extends OpenCLGenEffect with OpenCLGenBooleanOps with DeliteGPUGenIfThenElse
+trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteGPUGenIfThenElse
+trait DeliteOpenCLGenIfThenElse extends OpenCLGenEffect with DeliteGPUGenIfThenElse
 
-trait DeliteCGenIfThenElse extends CGenEffect with CGenBooleanOps with DeliteBaseGenIfThenElse {
+trait DeliteCGenIfThenElse extends CGenEffect with DeliteBaseGenIfThenElse {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {

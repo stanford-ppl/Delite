@@ -108,8 +108,8 @@ trait StencilAnalysis extends FatBlockTraversal {
      // can we have anything else?
      //   stuff like start = (v+2)*numCols is not allowed (along with other arbitrary index arithmetic)
      def startMultiplier(i: Exp[Int]): Option[Exp[Int]] = i match {
-       case Def(IntTimes(a,b)) if a == ref => Some(b)
-       case Def(IntTimes(a,b)) if b == ref => Some(a)
+       case Def(DIntTimes(a,b)) if a == ref => Some(b)
+       case Def(DIntTimes(a,b)) if b == ref => Some(a)
        case _ => 
         log("    !! could not find startMultiplier for " + i.toString)
         None
@@ -120,46 +120,46 @@ trait StencilAnalysis extends FatBlockTraversal {
        // current context. if the index is bound to the outer loop, the chunk size is equal that loop's length.
             
        // index*stride + start
-       case Def(IntPlus(Def(IntTimes(a,b)),c)) if a != ref && loopSize(a).isDefined && startMultiplier(c).isDefined => 
+       case Def(DIntPlus(Def(DIntTimes(a,b)),c)) if a != ref && loopSize(a).isDefined && startMultiplier(c).isDefined => 
          log("    found index*stride + start")
          log("    IntPlus(IntTimes(" + strDef(a) + ", " + strDef(b) + "), " + strDef(c) + ")")
          Some(startMultiplier(c).get,b,loopSize(a).get)
       
        // stride*index + start 
-       case Def(IntPlus(Def(IntTimes(a,b)),c)) if b != ref && loopSize(b).isDefined && startMultiplier(c).isDefined =>
+       case Def(DIntPlus(Def(DIntTimes(a,b)),c)) if b != ref && loopSize(b).isDefined && startMultiplier(c).isDefined =>
          log("    found stride*index + start")
          log("    IntPlus(IntTimes(" + strDef(a) + ", " + strDef(b) + "), " + strDef(c) + ")")
          Some(startMultiplier(c).get,a,loopSize(b).get)
        
        // start + index*stride 
-       case Def(IntPlus(a,Def(IntTimes(b,c)))) if b != ref && loopSize(b).isDefined && startMultiplier(a).isDefined => 
+       case Def(DIntPlus(a,Def(DIntTimes(b,c)))) if b != ref && loopSize(b).isDefined && startMultiplier(a).isDefined => 
          log("    found start + index*stride")
          log("    found IntPlus(" + strDef(a) + ", IntTimes(" + strDef(b) + ", " + strDef(c) + "))")
          Some(startMultiplier(a).get,c,loopSize(b).get)
         
        // start + stride*index
-       case Def(IntPlus(a,Def(IntTimes(b,c)))) if c != ref && loopSize(c).isDefined && startMultiplier(a).isDefined => 
+       case Def(DIntPlus(a,Def(DIntTimes(b,c)))) if c != ref && loopSize(c).isDefined && startMultiplier(a).isDefined => 
          log("    found start + stride*index")
          log("    found IntPlus(" + strDef(a) + ", IntTimes(" + strDef(b) + ", " + strDef(c) + "))")
          Some(startMultiplier(a).get,b,loopSize(c).get)       
       
        // index + start (i.e. stride == 1)
-       case Def(IntPlus(a,b)) if a != ref && loopSize(a).isDefined && startMultiplier(b).isDefined =>
+       case Def(DIntPlus(a,b)) if a != ref && loopSize(a).isDefined && startMultiplier(b).isDefined =>
          log("    found index + start")
          log("    found IntPlus(" + strDef(a) + ", " + strDef(b) + ")")
          Some(startMultiplier(b).get,Const(1),loopSize(a).get)       
 
        // start + index (i.e. stride == 1)
-       case Def(IntPlus(a,b)) if b != ref && loopSize(b).isDefined && startMultiplier(a).isDefined =>
+       case Def(DIntPlus(a,b)) if b != ref && loopSize(b).isDefined && startMultiplier(a).isDefined =>
          log("    found start + index")
          log("    found IntPlus(" + strDef(a) + ", " + strDef(b) + ")")
          Some(startMultiplier(a).get,Const(1),loopSize(b).get)       
        
-       case Def(IntPlus(Def(IntTimes(a,b)),c)) => 
+       case Def(DIntPlus(Def(DIntTimes(a,b)),c)) => 
          log("    xx IntPlus(IntTimes(" + strDef(a) + ", " + strDef(b) + "), " + strDef(c) + ")")
          None
          
-       case Def(IntPlus(a,Def(IntTimes(b,c)))) => 
+       case Def(DIntPlus(a,Def(DIntTimes(b,c)))) => 
          log("    xx found IntPlus(" + strDef(a) + ", IntTimes(" + strDef(b) + ", " + strDef(c) + "))")
          None
       

@@ -12,11 +12,10 @@ import ppl.delite.framework.transform.LoopSoAOpt
 import ppl.delite.framework.analysis.{StencilExp,NestedLoopMappingExp}
 import scala.collection.mutable.{HashSet,HashMap}
 
-trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with FunctionBlocksExp with IfThenElseFatExp
-    with PrimitiveOpsExp with DeliteCollectionOpsExp with DeliteReductionOpsExp with DeliteMapOpsExp with DeliteArrayFatExp with StencilExp
-    with OrderingOpsExp with EqualExpBridge with CastingOpsExp with ImplicitOpsExp with WhileExp with StaticDataExp with NestedLoopMappingExp {
+trait DeliteOpsExp extends DeliteInternalOpsExp with DeliteCollectionOpsExp with DeliteReductionOpsExp with DeliteMapOpsExp with DeliteArrayFatExp 
+  with StencilExp with NestedLoopMappingExp {
 
-    val encounteredZipWith = new scala.collection.mutable.HashMap[Exp[Any], DeliteOpZipWith[_,_,_,_]]()
+  val encounteredZipWith = new scala.collection.mutable.HashMap[Exp[Any], DeliteOpZipWith[_,_,_,_]]()
 
 /*
   //may try this some time to wrap functions that are passed as case class args...
@@ -967,10 +966,10 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
         alloc = reifyEffects(this.alloc(sV)),
         apply = if (Config.soaEnabled) unusedBlock else reifyEffects(dc_apply(allocVal,iV)),
         // update = reifyEffects(dc_update(this.allocVal,iV,dc_alloc[V,I](ibufVal,sV))), // why does this use dc_alloc on iBufVal, while append below uses allocI? this one is apparently used only in postProcess, while append is used in process.
-        update = if (Config.soaEnabled) reifyEffects(dc_update(this.allocVal,iV,dc_alloc[V,I](ibufVal,sV))) else reifyEffects(dc_update(this.allocVal,iV,ibufVal.unsafeImmutable)), 
+        update = if (Config.soaEnabled) reifyEffects(dc_update(this.allocVal,iV,dc_alloc[V,I](ibufVal,sV))) else reifyEffects(dc_update(this.allocVal,iV,delite_unsafe_immutable(ibufVal))), 
         appendable = unusedBlock,
         // append = reifyEffects(dc_append(this.allocVal,v,this.allocI(sV))), // without SoA, we lose the mutable allocI here. why is the allocI (iBuf allocation) hidden down here instead of using iBuf.alloc above? must have something to do with the rewrites on iBufVal..
-        append = if (Config.soaEnabled) reifyEffects(dc_append(this.allocVal,v,this.allocI(sV))) else reifyEffects(dc_append(this.allocVal,v,ibufVal.unsafeImmutable)), 
+        append = if (Config.soaEnabled) reifyEffects(dc_append(this.allocVal,v,this.allocI(sV))) else reifyEffects(dc_append(this.allocVal,v,delite_unsafe_immutable(ibufVal))), 
         setSize = reifyEffects(dc_set_logical_size(this.allocVal,sV)),
         allocRaw = reifyEffects(dc_alloc[I,CI](this.allocVal,sV)),
         copyRaw = unusedBlock,
@@ -2157,7 +2156,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     }
     
     val freeVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
-    val streamVars = freeVars.filter(_.tp == manifest[DeliteFileStream])
+    val streamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
     if (streamVars.length > 0) {
       assert(streamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
       val streamSym = streamVars(0)
@@ -2277,7 +2276,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     //should be initialized manually in processRange()
     val inVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
     val extraArgs = inVars collect { sym => sym match {
-      case s if s.tp == manifest[DeliteFileStream] => (quote(s)+"_stream", remap(s.tp))
+      case s if s.tp == manifest[DeliteFileInputStream] => (quote(s)+"_stream", remap(s.tp))
     }}
 
     // processRange
@@ -2285,7 +2284,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       //GROSS HACK ALERT!
       val freeVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
 
-      val streamVars = freeVars.filter(_.tp == manifest[DeliteFileStream])
+      val streamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
       if (streamVars.length > 0) {
         assert(streamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
         val streamSym = quote(streamVars(0))+"_stream"
@@ -2696,7 +2695,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
 }
 
-trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite with GenericGenDeliteOps { // not sure where to mix in ScalaGenStaticData
+trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite with GenericGenDeliteOps with ScalaGenDeliteInternalOps { // not sure where to mix in ScalaGenStaticData
   import IR._
 
   def quotearg(x: Sym[Any]) = quote(x) + ": " + quotetp(x)
@@ -4049,11 +4048,11 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
 
 }
 
-trait CudaGenDeliteOps extends CudaGenLoopsFat with GPUGenDeliteOpsOpt
+trait CudaGenDeliteOps extends CudaGenLoopsFat with GPUGenDeliteOpsOpt with CudaGenDeliteInternalOps
 
-trait OpenCLGenDeliteOps extends OpenCLGenLoopsFat with GPUGenDeliteOpsOpt
+trait OpenCLGenDeliteOps extends OpenCLGenLoopsFat with GPUGenDeliteOpsOpt with OpenCLGenDeliteInternalOps
 
-trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps {
+trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDeliteInternalOps {
 
   import IR._
 

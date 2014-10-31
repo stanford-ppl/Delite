@@ -12,7 +12,7 @@ import scala.collection.mutable.HashSet
 
 trait DeliteArray[T] extends DeliteCollection[T] 
 
-trait DeliteArrayOps extends RuntimeServiceOps with StringOps {
+trait DeliteArrayOps extends RuntimeServiceOps {
 
   var partitionArray: Boolean = false
   
@@ -45,9 +45,6 @@ trait DeliteArrayOps extends RuntimeServiceOps with StringOps {
     def toSeq = darray_toseq(da)
   }
     
-  implicit def darrayToString[A:Manifest](x: Rep[DeliteArray[A]]): Rep[String] = "[ " + repDArrayToDArrayOps(x).mkString(unit(" ")) + " ]"
-  def infix_+[A:Manifest](lhs: String, rhs: Rep[DeliteArray[A]]) = string_plus(unit(lhs), darrayToString[A](rhs))
-  
   def darray_new[T:Manifest](length: Rep[Int])(implicit ctx: SourceContext): Rep[DeliteArray[T]]
   def darray_new_immutable[T:Manifest](length: Rep[Int])(implicit ctx: SourceContext): Rep[DeliteArray[T]]
   def darray_length[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext): Rep[Int]
@@ -80,7 +77,7 @@ trait DeliteArrayCompilerOps extends DeliteArrayOps {
   def darray_unsafe_copy[T:Manifest](src: Rep[DeliteArray[T]], srcPos: Rep[Int], dest: Rep[DeliteArray[T]], destPos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
 }
 
-trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTags with DeliteCollectionOpsExp with DeliteStructsExp with RuntimeServiceOpsExp with EffectExp with PrimitiveOpsExp with EqualExpBridge {
+trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTags with DeliteCollectionOpsExp with DeliteStructsExp with RuntimeServiceOpsExp {
   this: DeliteOpsExp with DeliteMapOpsExp =>
   
   //////////////////
@@ -188,7 +185,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   override def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext) = {
     if (isDeliteArray(x)) {
       val arr = asDeliteArray(x)
-      if (arr.length > y) { //trim
+      if (delite_greater_than(arr.length, y)) { //trim
         val newArr = DeliteArray[A](y)
         darray_unsafe_copy(arr, unit(0), newArr, unit(0), y)
         darray_unsafe_set_act_buf(newArr)
@@ -214,8 +211,8 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
       val arr = asDeliteArray(x)
       val size = darray_unsafe_get_act_size
       val length = arr.length
-      if (size >= length) {
-        val n = if (length < unit(16)) unit(16) else { if (length*unit(2)<unit(0)) unit(2147483647) else length*unit(2) }
+      if (delite_greater_than(size, delite_int_minus(length, unit(1)))) {
+        val n = if (delite_less_than(length, unit(16))) unit(16) else { if (delite_less_than(delite_int_times(length,unit(2)),unit(0))) unit(2147483647) else delite_int_times(length,unit(2)) }
         val newArr = DeliteArray[A](n)
         darray_copy(arr, unit(0), newArr, unit(0), length)
         newArr(size) = y
@@ -294,7 +291,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   def darray_intersect[A:Manifest](lhs: Exp[DeliteArray[A]], rhs: Exp[DeliteArray[A]])(implicit ctx: SourceContext) = reflectPure(DeliteArrayIntersect(lhs,rhs))
   def darray_take[A:Manifest](lhs: Exp[DeliteArray[A]], n: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DeliteArrayTake(lhs,n))
   def darray_sort[A:Manifest](lhs: Exp[DeliteArray[A]])(implicit ctx: SourceContext) = reflectPure(DeliteArraySort(lhs))
-  def darray_range(st: Exp[Int], en: Exp[Int])(implicit ctx: SourceContext) = darray_fromfunction(en-st, i => i+st)
+  def darray_range(st: Exp[Int], en: Exp[Int])(implicit ctx: SourceContext) = darray_fromfunction(delite_int_minus(en,st), i => delite_int_plus(i,st))
   def darray_mapfilter[A:Manifest,B:Manifest](lhs: Exp[DeliteArray[A]], map: Exp[A] => Exp[B], cond: Exp[A] => Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(DeliteArrayMapFilter(lhs,map,cond))
   def darray_toseq[A:Manifest](a: Exp[DeliteArray[A]])(implicit ctx: SourceContext) = DeliteArrayToSeq(a)
   def darray_fromfunction[T:Manifest](length: Rep[Int], func: Rep[Int] => Rep[T])(implicit ctx: SourceContext) = reflectPure(DeliteArrayFromFunction(length,func))
@@ -935,7 +932,7 @@ trait OpenCLGenDeliteArrayOps extends CLikeGenDeliteArrayOps with OpenCLGenFat w
 
 }
 
-trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct with CGenDeliteOps with CGenEqual with CGenRuntimeServiceOps {
+trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct with CGenDeliteOps with CGenRuntimeServiceOps {
   val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
 

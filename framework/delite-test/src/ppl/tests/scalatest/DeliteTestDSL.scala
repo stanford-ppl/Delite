@@ -83,7 +83,7 @@ trait DeliteTestDSLCompiler extends DeliteTestDSL
 }
 
 trait DeliteTestDSLExp extends DeliteTestDSLCompiler with DeliteTestDSLScalaOpsPkgExp with FunctionBlocksExp with DeliteStructsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteMapOpsExp with DeliteFileReaderOpsExp
-  with ExpressionsOpt with DeliteTransform with MultiloopSoATransformWithReduceExp with DeliteAllOverridesExp {
+  with ExpressionsOpt with DeliteTransform with MultiloopSoATransformWithReduceExp with DeliteTestOpsExp with DeliteLMSForwarderExp with DeliteAllOverridesExp {
 
   this: DeliteApplication with DeliteTestDSLApplication with DeliteTestDSLExp =>
 
@@ -109,7 +109,7 @@ trait DeliteTestDSLCodeGenBase extends GenericFatCodegen with SchedulingOpt {
 
 trait DeliteTestDSLCodeGenScala extends DeliteTestDSLCodeGenBase with DeliteTestDSLScalaCodeGenPkg
   with ScalaGenDeliteOps with ScalaGenDeliteCollectionOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteMapOps with ScalaGenDeliteFileReaderOps
-  with DeliteScalaGenAllOverrides {
+  with ScalaGenDeliteTest with DeliteScalaGenAllOverrides {
   
   val IR: DeliteApplication with DeliteTestDSLExp
 }

@@ -1,17 +1,21 @@
 package ppl.tests.scalatest
 
 import org.scalatest._
-import ppl.delite.framework.DeliteApplication
+
+import scala.virtualization.lms.common._
+
 import ppl.delite.framework.Config
 import ppl.delite.framework.codegen.Target
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.runtime.graph._
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.graph.targets.Targets
-import scala.virtualization.lms.common._
-import scala.collection.mutable.{ ArrayBuffer, SynchronizedBuffer }
+
+import java.io.{FileWriter, BufferedWriter}
 import java.io.{ File, Console => _, _ }
 import java.io.FileSystem
 import scala.reflect.SourceContext
+import scala.collection.mutable.{ ArrayBuffer, SynchronizedBuffer }
 
 trait DeliteTestConfig {
   // something arbitrary that we should never see in any test's output
@@ -224,56 +228,27 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
   }
 }
 
-trait DeliteTestRunner extends DeliteTestModule with DeliteApplication with DeliteTestOpsExp {
-  def delite_test_strconcat(s1: Rep[String], s2: Rep[String])(implicit pos: SourceContext): Rep[String] = s1 + s2
-
+trait DeliteTestRunner extends DeliteTestModule with DeliteApplication with DeliteTestOpsExp {  
   var resultBuffer: ArrayBuffer[Boolean] = _
 
   def collector: Rep[ArrayBuffer[Boolean]] = staticData(resultBuffer)
 }
 
-// it is not ideal that the test module imports these things into the application under test
 trait DeliteTestModule extends DeliteTestConfig with DeliteTestOps {
-  // StringOps members we need internally - supplied by StringOpsExp.
-  // These are abstract and renamed so we do not conflict with other ops mixed into a DeliteTestModule.
-  // we should do the same factoring with ArrayBufferOps and IOOps
-  def delite_test_strconcat(s1: Rep[String], s2: Rep[String])(implicit pos: SourceContext): Rep[String]
-
   //var args: Rep[Array[String]]
   def main(): Unit
 
-  //var collector: Rep[ArrayBuffer[Boolean]] = null.asInstanceOf[Rep[ArrayBuffer[Boolean]]]
-  //  lazy val ctest = ArrayBuffer[Boolean]()
-  //
-  //  def collect(s: Rep[Boolean]) {
-  //    // interpreted if/then/else!
-  //    //if (collector == null) collector = ArrayBuffer[Boolean]()
-  //    ctest append s
-  //  }
-  //
-  //  def mkReport() {
-  //    println(MAGICDELIMETER + (ctest mkString unit(",")) + MAGICDELIMETER)
-  //  }
-
   def collector: Rep[ArrayBuffer[Boolean]]
 
-  def collect(s: Rep[Boolean]) { collector += s }
+  def collect(s: Rep[Boolean]) { delite_test_append(collector, s) }
 
   def mkReport(): Rep[Unit] = {
-    val out = BufferedWriter(FileWriter(unit("test.tmp")))
-    val s1 = delite_test_strconcat(unit(MAGICDELIMETER), (collector mkString unit(",")))
+    val out = delite_test_bw_new(delite_test_fw_new(unit("test.tmp")))
+    val s1 = delite_test_strconcat(unit(MAGICDELIMETER), (delite_test_mkstring(collector, unit(","))))
     val s2 = delite_test_strconcat(s1, unit(MAGICDELIMETER))
-    out.write(s2)
-    out.close
+    delite_test_bw_write(out, s2)
+    delite_test_bw_close(out)
   }
-
-  /*
-  def collect(s: Rep[Boolean])(implicit c: Rep[ArrayBuffer[Boolean]]) { c += s }
-
-  def mkReport(implicit c: Rep[ArrayBuffer[Boolean]]): Rep[Unit] = {
-    println(MAGICDELIMETER + (c mkString unit(",")) + MAGICDELIMETER)
-  }
-  */
 
   /*
   def main() = {
@@ -285,11 +260,69 @@ trait DeliteTestModule extends DeliteTestConfig with DeliteTestOps {
   */
 }
 
-trait DeliteTestOps extends SynchronizedArrayBufferOps with IOOps
-trait DeliteTestOpsExp extends SynchronizedArrayBufferOpsExp with IOOpsExp with StringOpsExp
+/*
+ * These are the internal nodes required by DeliteTestModule. We implement them here to avoid any
+ * dependence on LMS common ops, which would get imported into the application under test and
+ * could cause collisions.
+ */
+trait DeliteTestOps extends Base {
+  def delite_test_mkstring[A:Manifest](l: Rep[ArrayBuffer[A]], sep: Rep[String])(implicit pos: SourceContext): Rep[String]
+  def delite_test_append[A:Manifest](l: Rep[ArrayBuffer[A]], e: Rep[A])(implicit pos: SourceContext): Rep[Unit]
+  def delite_test_strconcat(s1: Rep[String], s2: Rep[String])(implicit pos: SourceContext): Rep[String]
+  def delite_test_fw_new(s: Rep[String])(implicit pos: SourceContext): Rep[FileWriter]
+  def delite_test_bw_new(f: Rep[FileWriter])(implicit pos: SourceContext): Rep[BufferedWriter]
+  def delite_test_bw_write(b: Rep[BufferedWriter], s: Rep[String])(implicit pos: SourceContext): Rep[Unit]
+  def delite_test_bw_close(b: Rep[BufferedWriter])(implicit pos: SourceContext): Rep[Unit]
+}
+
+trait DeliteTestOpsExp extends DeliteTestOps with EffectExp {
+  case class DeliteTestMkString[A:Manifest](l: Exp[ArrayBuffer[A]], sep: Exp[String]) extends Def[String]
+  case class DeliteTestAppend[A:Manifest](l: Exp[ArrayBuffer[A]], e: Exp[A]) extends Def[Unit]
+  case class DeliteTestStrConcat(s: Exp[String], o: Exp[String]) extends Def[String]
+  case class DeliteTestFwNew(s: Exp[String]) extends Def[FileWriter]
+  case class DeliteTestBwNew(f: Exp[FileWriter]) extends Def[BufferedWriter]
+  case class DeliteTestBwWrite(b: Exp[BufferedWriter], s: Exp[String]) extends Def[Unit]
+  case class DeliteTestBwClose(b: Exp[BufferedWriter]) extends Def[Unit]
+ 
+  def delite_test_mkstring[A:Manifest](l: Exp[ArrayBuffer[A]], sep: Exp[String])(implicit pos: SourceContext) = DeliteTestMkString(l, sep)
+  def delite_test_append[A:Manifest](l: Exp[ArrayBuffer[A]], e: Exp[A])(implicit pos: SourceContext) = reflectWrite(l)(DeliteTestAppend(l, e))
+  def delite_test_strconcat(s: Exp[String], o: Exp[String])(implicit pos: SourceContext): Exp[String] = DeliteTestStrConcat(s,o)
+  def delite_test_fw_new(s: Exp[String])(implicit pos: SourceContext) = reflectEffect(DeliteTestFwNew(s))
+  def delite_test_bw_new(f: Exp[FileWriter])(implicit pos: SourceContext) = reflectEffect(DeliteTestBwNew(f))
+  def delite_test_bw_write(b: Exp[BufferedWriter], s: Exp[String])(implicit pos: SourceContext) = reflectEffect(DeliteTestBwWrite(b,s))
+  def delite_test_bw_close(b: Exp[BufferedWriter])(implicit pos: SourceContext) = reflectEffect(DeliteTestBwClose(b))
+
+  override def mirrorDef[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Def[A] = (e match {
+    case DeliteTestMkString(l,r) => DeliteTestMkString(f(l),f(r))
+    case DeliteTestAppend(l,r) => DeliteTestAppend(f(l),f(r))
+    case _ => super.mirrorDef(e,f)
+  }).asInstanceOf[Def[A]] // why??
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
+    case DeliteTestStrConcat(a,b) => delite_test_strconcat(f(a),f(b))
+    case Reflect(DeliteTestFwNew(s), u, es) => reflectMirrored(Reflect(DeliteTestFwNew(f(s)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+    case Reflect(DeliteTestBwNew(x), u, es) => reflectMirrored(Reflect(DeliteTestBwNew(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+    case Reflect(DeliteTestBwWrite(b,s), u, es) => reflectMirrored(Reflect(DeliteTestBwWrite(f(b),f(s)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+    case Reflect(DeliteTestBwClose(b), u, es) => reflectMirrored(Reflect(DeliteTestBwClose(f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+    case _ => super.mirror(e,f)
+  }).asInstanceOf[Exp[A]]
+}
 
 // how do we add our code generators? right now we expect a single codegen package being supplied by the dsl.
 // the workaround for now is that the dsl under test must include ScalaGenDeliteTest in its code gen package
-trait ScalaGenDeliteTest extends ScalaGenSynchronizedArrayBufferOps with ScalaGenIOOps with ScalaGenStringOps {
+trait ScalaGenDeliteTest extends ScalaGenBase {
   val IR: DeliteTestOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case DeliteTestMkString(l, sep) => emitValDef(sym, quote(l) + ".mkString(" + quote(sep) + ")")
+    case DeliteTestAppend(l, e) => emitValDef(sym, quote(l) + " += " + quote(e))
+    case DeliteTestStrConcat(s1,s2) => emitValDef(sym, "%s+%s".format(quote(s1), quote(s2)))
+    case DeliteTestBwNew(f) => emitValDef(sym, "new java.io.BufferedWriter(" + quote(f) + ")")
+    case DeliteTestFwNew(s) => emitValDef(sym, "new java.io.FileWriter(" + quote(s) + ")")
+    case DeliteTestBwWrite(b,s) => emitValDef(sym, quote(b) + ".write(" + quote(s) + ")")
+    case DeliteTestBwClose(b) => emitValDef(sym, quote(b) + ".close()")
+    case _ => super.emitNode(sym, rhs)
+  }
 }
+

@@ -35,6 +35,16 @@ trait RuntimeServiceOpsExp extends RuntimeServiceOps with EffectExp {
   }).asInstanceOf[Exp[A]]
 }
 
+trait ScalaGenRuntimeServiceOps extends ScalaGenEffect with GenericGenDeliteOps {
+  val IR: RuntimeServiceOpsExp with DeliteOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case RuntimeQueryNumThreads() => emitValDef(sym, fieldAccess(resourceInfoSym,"numThreads"))
+    case _ => super.emitNode(sym, rhs)
+  }
+}
+
 trait CGenRuntimeServiceOps extends CGenEffect {
   val IR: RuntimeServiceOpsExp
   import IR._

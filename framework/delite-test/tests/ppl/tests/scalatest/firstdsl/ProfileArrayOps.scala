@@ -1,7 +1,7 @@
 package ppl.tests.scalatest.firstdsl
 
 import reflect.{Manifest, SourceContext}
-import scala.virtualization.lms.common.{NumericOpsExp, FractionalOpsExp, Base}
+import scala.virtualization.lms.common.{Base, NumericOpsExp, FractionalOpsExp, PrimitiveOpsExp}
 import scala.virtualization.lms.common.ScalaGenBase
 import ppl.delite.framework.ops.{DeliteCollectionOpsExp,DeliteOpsExp}
 import ppl.delite.framework.ops.DeliteCollection
@@ -21,7 +21,7 @@ trait ProfileArrayOps extends Base {
   def profile_length(x: Rep[ProfileArray]): Rep[Int]
 }
 
-trait ProfileArrayOpsExp extends ProfileArrayOps with NumericOpsExp
+trait ProfileArrayOpsExp extends ProfileArrayOps with NumericOpsExp with PrimitiveOpsExp
   with FractionalOpsExp with DeliteCollectionOpsExp with DeliteOpsExp {
 
   // a Delite parallel operation! was it really that easy?

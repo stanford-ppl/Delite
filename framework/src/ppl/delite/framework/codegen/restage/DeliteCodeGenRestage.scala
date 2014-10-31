@@ -278,9 +278,9 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     // LMS stuff pulled in by Delite
     case NewVar(init) => stream.println("var " + quote(sym) + " = " + quote(init))    
     case ThrowException(m) => emitValDef(sym, "fatal(" + quote(m) + ")")
-    case RepIsInstanceOf(x,mA,mB) => emitValDef(sym, quote(x) + ".isInstanceOf[Rep[" + remap(mB) + "]]")
-    case RepAsInstanceOf(x,mA,mB) => emitValDef(sym, quote(x) + ".asInstanceOf[Rep[" + remap(mB) + "]]")    
-    case ObjectUnsafeImmutable(x) => emitValDef(sym, quote(x) + ".unsafeImmutable()")      
+
+    // delite internal
+    case DUnsafeImmutable(x) => emitValDef(sym, quote(x) + ".unsafeImmutable()")
 
     // profiling
     case DeliteProfileStart(x,deps) if deps == Nil =>  emitValDef(sym, "tic(" + quote(x) + ")") 

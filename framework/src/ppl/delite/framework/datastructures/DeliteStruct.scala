@@ -12,7 +12,7 @@ import ppl.delite.framework.extern.lib.ProtoBuf
 import scala.reflect.SourceContext
 import scala.collection.mutable.HashSet
 
-trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsExp with OrderingOpsExp => // FIXME: mix in prim somewhere else
+trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
 	
   case class PartitionTag[T](name: String, var partition: Boolean) extends StructTag[T]
   def deliteStructTag[T:Manifest] = PartitionTag[T](structName(manifest[T]), false)
@@ -113,24 +113,24 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
 
   // TODO: get rid of entirely or just use mirrorDef
   def mirrorDD[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Def[A] = (e match {
-    case IntTimes(a,b) => 
+    case DIntTimes(a,b) =>
       printlog("warning: encountered effectful primitive def during mirror "+e)
-      IntTimes(f(a),f(b))
-    case IntPlus(a,b) => 
+      DIntTimes(f(a),f(b))
+    case DIntPlus(a,b) =>
       printlog("warning: encountered effectful primitive def during mirror "+e)
-      IntPlus(f(a),f(b))
-    case IntMinus(a,b) => 
+      DIntPlus(f(a),f(b))
+    case DIntMinus(a,b) =>
       printlog("warning: encountered effectful primitive def during mirror "+e)
-      IntMinus(f(a),f(b))
-    case IntMod(a,b) => 
+      DIntMinus(f(a),f(b))
+    case DIntMod(a,b) =>
       printlog("warning: encountered effectful primitive def during mirror "+e)
-      IntMod(f(a),f(b))
-    case IntDivide(a,b) => 
+      DIntMod(f(a),f(b))
+    case DIntDivide(a,b) =>
       printlog("warning: encountered effectful primitive def during mirror "+e)
-      IntDivide(f(a),f(b)) //xx
-    case e@OrderingLT(a,b) =>
+      DIntDivide(f(a),f(b)) //xx
+    case e@DLessThan(a,b) =>
       printlog("warning: encountered effectful primitive def during mirror "+e)
-      OrderingLT(f(a),f(b))(null.asInstanceOf[Ordering[Any]],manifest[Any]) //HACK
+      DLessThan(f(a),f(b))(null.asInstanceOf[Ordering[Any]],manifest[Any]) //HACK
     case e@Reflect(a,u,es) => Reflect(mirrorDD(a,f),mapOver(f,u),f(es))
     case _ => 
       printerr("FAIL: "+e)
@@ -151,12 +151,12 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp with PrimitiveOpsE
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case Reflect(NestedFieldUpdate(struct, fields, rhs), u, es) => reflectMirrored(Reflect(NestedFieldUpdate(f(struct), fields, f(rhs)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
-    case Reflect(x@IntTimes(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
-    case Reflect(x@IntPlus(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
-    case Reflect(x@IntMinus(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
-    case Reflect(x@IntMod(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
-    case Reflect(x@IntDivide(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
-    case Reflect(x@OrderingLT(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case Reflect(x@DIntTimes(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case Reflect(x@DIntPlus(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case Reflect(x@DIntMinus(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case Reflect(x@DIntMod(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case Reflect(x@DIntDivide(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
+    case Reflect(x@DLessThan(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
 
