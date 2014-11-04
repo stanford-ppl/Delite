@@ -11,7 +11,6 @@ import scala.reflect.SourceContext
 import ppl.delite.framework.codegen.delite.DeliteCodegen
 import ppl.delite.framework.ops._
 import ppl.delite.framework.Config
-import ppl.delite.framework.transform.LoopSoAOpt
 import ppl.delite.framework.datastructures.DeliteArray
 import ppl.delite.framework.analysis.{NestedLoopMappingAnalysis,StencilAnalysis}
 import ppl.delite.framework.datastructures.DeliteArrayFatExp

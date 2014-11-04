@@ -65,6 +65,13 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
     }
   }
 
+  def registerFused(newElems: Seq[(String,Exp[Any])]): Unit = {
+    val cbf = newElems.collect({ case (_, Def(c: CanBeFused)) => c })
+    if (cbf.length > 1) {
+      cbf.tail.foreach({ c => cbf.head.registerFusion(c) })
+    }
+  }
+
   //collect elems: unwrap outer struct if return type is a Struct && perform SoA transform if element type is a Struct
   def soaCollect[A:Manifest, I<:DeliteCollection[A]:Manifest, CA<:DeliteCollection[A]:Manifest](size: Exp[Int], v: Sym[Int], body: DeliteCollectElem[A,I,CA])(implicit pos: SourceContext): Option[Exp[CA]] = {
     val alloc = t(body.buf.alloc)
@@ -112,6 +119,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
           case (index, e @ Def(Struct(t,es))) => (index, soaTransform(t,es)(e.tp))
           case (index, e) => (index, copyLoop(Block(e))(e.tp))
         }
+        registerFused(newElems)
         val sz = body.par match {
           case ParFlat => t(size)
           case ParBuffer | ParSimpleBuffer => 
@@ -168,6 +176,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
           case (f, Def(Reflect(NewVar(init),_,_))) => (f, t(init))
           case (f,v) => (f, t(v))
         }
+        registerFused(newElems)
         struct[I](tag, newElems)
       }
 
@@ -210,6 +219,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
                 case (i, c@Const(_)) => (i, c)
                 case (i, e) => (i, copyLoop(Block(field(f,i)(e.tp,ctx)), Block(field(r,i)(e.tp,ctx)), Block(field(z,i)(e.tp,ctx)), field(rv1,i)(e.tp,ctx), field(rv2,i)(e.tp,ctx))(e.tp))
               }
+              registerFused(newElems)
               struct[B](tag, newElems)
             case Block(Def(a)) => 
               Console.println(a)
@@ -238,6 +248,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         case (index, e @ Def(Struct(t,es))) => (index, makeRV(t,es)(e.tp))
         case (index, e) => (index, fresh(e.tp))
       }
+      registerFused(newElems)
       struct[B](tag, newElems)
     }
 
@@ -302,6 +313,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
                 case (i, e @ Def(Struct(_,_))) => (i, soaTransform(Block(field(f,i)(e.tp,ctx)), Block(field(r,i)(e.tp,ctx)), Block(field(z,i)(e.tp,ctx)), field(rv1,i)(e.tp,ctx), field(rv2,i)(e.tp,ctx))(e.tp))
                 case (i, e) => (i, copyLoop(Block(field(f,i)(e.tp,ctx)), Block(field(r,i)(e.tp,ctx)), Block(field(z,i)(e.tp,ctx)), field(rv1,i)(e.tp,ctx), field(rv2,i)(e.tp,ctx))(e.tp))
               }
+              registerFused(newElems)
               struct[DeliteArray[B]](SoaTag(tag, newElems(0)._2.length), newElems) //TODO: output size
             case Block(s@Def(a)) => 
               Console.println(f.toString + ": " + vf.toString + " with type " + f.tp.toString)
@@ -342,6 +354,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
           case (f, Def(Reflect(NewVar(init),_,_))) => (f, t(init))
           case (f,v) => (f, t(v))
         }
+        registerFused(newElems)
         struct[I](tag, newElems)
       }
 
@@ -361,37 +374,6 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
     case Block(Def(e@Struct(_,_))) => Console.println("unwrapped sequential: " + e.toString); Some(e)
     //case Block(Def(Reify(Def(Struct(_,_)),es,u))) => Console.println("unwrapped sequential with reify: " + e.toString)
     case Block(Def(a)) => Console.println("failed on sequential: " + a.toString); None
-  }
-
-}
-
-trait LoopSoAOpt extends BaseGenLoopsFat with LoopFusionOpt {
-  val IR: DeliteOpsExp
-  import IR._
-
-  //pre-fuse any loops that have been split by SoA transform
-  //such loops have the same 'size' sym, the same 'v' sym, and are in the same scope
-  override def focusExactScopeFat[A](resultB: List[Block[Any]])(body: List[Stm] => A): A = {
-    val result = resultB.map(getBlockResultFull) flatMap { case Combine(xs) => xs case x => List(x) }
-    val currentScope = innerScope
-    val levelScope = getExactScope(currentScope)(result) //top-level scope
-    
-    val loops = levelScope collect { case t@TTP(_, _, SimpleFatLoop(_,_,_)) => t }
-    val splitLoops = loops groupBy { case TTP(_, _, SimpleFatLoop(size,v,bodies)) => v }
-
-    val fusedLoops = splitLoops map {
-      case (v, l) if l.length == 1 => l.head
-      case (v, l) => 
-        val size = l.map(_.rhs.asInstanceOf[AbstractFatLoop].size) reduceLeft { (s1,s2) => assert(s1 == s2); s1 }
-        val t = TTP(l.flatMap(_.lhs), l.flatMap(_.mhs), SimpleFatLoop(size, v, l.flatMap(_.rhs.asInstanceOf[AbstractFatLoop].body)))
-        printlog("fusing split SoA loop: " + t.toString)
-        t
-    }
-
-    val remainder = currentScope diff loops
-    val newScope = remainder ++ fusedLoops
-    innerScope = getSchedule(newScope)(result) //get the order right
-    super.focusExactScopeFat(resultB)(body) //call LoopFusionOpt
   }
 
 }

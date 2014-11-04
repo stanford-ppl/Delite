@@ -11,7 +11,6 @@ import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollection}
 import ppl.delite.framework.datastructures.{DeliteArray,DeliteArrayOpsExp,DeliteArrayFatExp,BaseGenDeliteArrayOps}
 import ppl.delite.framework.Config
-import ppl.delite.framework.transform.LoopSoAOpt
 import ppl.delite.framework.ops.BaseDeliteOpsTraversalFat
 
 //TODO:
@@ -54,7 +53,7 @@ trait NestedLoopMappingExp extends Expressions {
   val loopAnalysisResult = new HashMap[Int, (Dimension,Int,Span)]
 }
 
-trait NestedLoopMappingAnalysis extends FatBlockTraversal with LoopFusionOpt with LoopSoAOpt with BaseGenDeliteArrayOps with BaseDeliteOpsTraversalFat {
+trait NestedLoopMappingAnalysis extends FatBlockTraversal with CombineTTPScheduling with BaseGenDeliteArrayOps with BaseDeliteOpsTraversalFat {
   val IR: DeliteOpsExp
   import IR._
 
