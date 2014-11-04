@@ -23,7 +23,7 @@ trait RestageCodegen extends ScalaCodegen with Config {
   import IR._
 
   // should be set by DeliteRestage if there are any transformations to be run before codegen
-  var transformers: List[WorklistTransformer{val IR: RestageCodegen.this.IR.type}] = Nil
+  var transformers: List[FixpointTransformer{val IR: RestageCodegen.this.IR.type}] = Nil
   
   override def kernelFileExt = "scala"
 

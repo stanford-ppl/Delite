@@ -1,7 +1,7 @@
 package ppl.delite.framework.transform
 
 import reflect.{SourceContext}
-import scala.virtualization.lms.common.{ObjectOpsExp,WorklistTransformer}
+import scala.virtualization.lms.common.{ObjectOpsExp,FixpointTransformer}
 import ppl.delite.framework.DeliteApplication
 
 trait DeliteTransform extends LoweringTransform with ObjectOpsExp {
@@ -12,7 +12,7 @@ trait DeliteTransform extends LoweringTransform with ObjectOpsExp {
   object deviceDependentLowering extends LoweringTransformer
   
   // list of all transformers to be applied
-  private var _transformers: List[WorklistTransformer] = List(deviceIndependentLowering,deviceDependentLowering) 
+  private var _transformers: List[FixpointTransformer] = List(deviceIndependentLowering,deviceDependentLowering) 
   
   /*
    * return the set of transformers to be applied
@@ -22,11 +22,11 @@ trait DeliteTransform extends LoweringTransform with ObjectOpsExp {
   /*
    * api for registering new transformers with Delite
    */     
-  def prependTransformer(t: WorklistTransformer) {
+  def prependTransformer(t: FixpointTransformer) {
     _transformers ::= t
   }
   
-  def appendTransformer(t: WorklistTransformer) {
+  def appendTransformer(t: FixpointTransformer) {
     _transformers :+= t
   }
   
