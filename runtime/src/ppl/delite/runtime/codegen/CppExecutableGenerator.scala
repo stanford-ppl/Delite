@@ -55,7 +55,8 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
     out.append(resourceInfoSym + ".numThreads = config->numThreads;\n")
     out.append(resourceInfoSym + ".socketId = config->threadToSocket(" + Targets.getRelativeLocation(location) + ");\n")
     out.append(resourceInfoSym + ".numSockets = config->numSockets;\n")
-    if (Config.profile) out.append("InitDeliteCppTimer(" + Targets.getRelativeLocation(location) + ");\n")
+    out.append(resourceInfoSym + ".rand = new DeliteCppRandom();\n")
+    out.append("InitDeliteCppTimer(" + Targets.getRelativeLocation(location) + ");\n")
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     val cppLocations = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp)
     val numActiveCpps = cppLocations.size
@@ -84,7 +85,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
     val cppLocations = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp)
     val numActiveCpps = cppLocations.size
     val finalizerIdx = Targets.getRelativeLocation(cppLocations.min)
-    if (Config.profile) out.append("DeliteCppTimerDump(" + Targets.getRelativeLocation(location) + "," + location + ",env" + location + ");\n")
+    out.append("DeliteCppTimerDump(" + Targets.getRelativeLocation(location) + "," + location + ",env" + location + ");\n")
     out.append("DeliteHeapClear(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + "," + numActiveCpps + "," + finalizerIdx + ");\n")
     out.append("}\n")
   }

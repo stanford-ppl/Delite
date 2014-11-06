@@ -225,23 +225,17 @@ trait DeliteCGenIfThenElse extends CGenEffect with DeliteBaseGenIfThenElse {
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
       rhs match {
         case DeliteIfThenElse(c,a,b,h) =>
-          remap(sym.tp) match {
-            case "void" =>
-              stream.println("if (" + quote(c) + ") {")
-              emitBlock(a)
-              stream.println("} else {")
-              emitBlock(b)
-              stream.println("}")
-            case _ =>
-              stream.println("%s %s;".format(remapWithRef(sym.tp),quote(sym)))
-              stream.println("if (" + quote(c) + ") {")
-              emitBlock(a)
-              stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(a))))
-              stream.println("} else {")
-              emitBlock(b)
-              stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(b))))
-              stream.println("}")
-          }
+          if (remap(sym.tp) != "void")
+            stream.println("%s %s;".format(remapWithRef(sym.tp),quote(sym)))
+          stream.println("if (" + quote(c) + ") {")
+          emitBlock(a)
+          if (remap(getBlockResult(a).tp) != "void")
+            stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(a))))
+          stream.println("} else {")
+          emitBlock(b)
+          if (remap(getBlockResult(b).tp) != "void")
+            stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(b))))
+          stream.println("}")
         case _ => super.emitNode(sym, rhs)
       }
     }

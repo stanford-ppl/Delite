@@ -171,6 +171,8 @@ public:
   K *unsafeKeys(resourceInfo_t &resourceInfo) { return keys; }
   K *unsafeKeys(void) { return keys; }
 
+  uint32_t hashcode(void) { return (uintptr_t)this; }
+
   // currently not used
   /*
   int32_t *unsafeIndices(void) { return indices };
@@ -356,6 +358,7 @@ public:
   K **unsafeKeys(resourceInfo_t &resourceInfo) { return keys; }
   K **unsafeKeys(void) { return keys; }
 
+  uint32_t hashcode(void) { return (uintptr_t)this; }
 };
 
 template <class T>

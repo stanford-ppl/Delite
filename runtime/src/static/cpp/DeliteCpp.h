@@ -18,6 +18,7 @@
 #include "Config.h"
 #include "DeliteNamespaces.h"
 #include "DeliteDatastructures.h"
+#include "DeliteCppProfiler.h"
 
 /* helper methods and data structures only required for execution with Delite */
 #ifndef __DELITE_CPP_STANDALONE__
