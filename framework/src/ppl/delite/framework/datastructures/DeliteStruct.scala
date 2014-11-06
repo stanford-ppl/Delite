@@ -497,8 +497,17 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps {
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case Struct(tag, elems) =>
       registerStruct(structName(sym.tp), elems)
+      if(deliteResult.get.contains(sym)) {
+        stream.println(remap(sym.tp) + " *" + quote(sym) + " = new " + remap(sym.tp) + "(" + elems.map{ e => 
+          val prefix = if (!isPrimitiveType(baseType(e._2.tp))) "*" else "" 
+          if (isVarType(e._2) && deliteInputs.contains(e._2)) "(" + quote(e._2) + "->data)"
+          else prefix + quote(e._2)
+        }.mkString(",") + ");")
+        stream.println(quote(sym) + "->incRefCnt();")
+        isGPUable = true
+      }
       // Within kernel, place on stack
-      if(isNestedNode) {
+      else if(isNestedNode) {
         stream.println(remap(sym.tp) + " " + quote(sym) + " = " + remap(sym.tp) + "(" + elems.map{ e => 
           if (isVarType(e._2) && deliteInputs.contains(e._2)) quote(e._2) + ".get()"
           else quote(e._2)
@@ -513,7 +522,18 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps {
       }
       printlog("WARNING: emitting " + remap(sym.tp) + " struct " + quote(sym))    
     case FieldApply(struct, index) =>
-      emitValDef(sym, quote(struct) + "." + index)
+      //TODO: how to safely check if this node is a single node in the singletask, rather than in the MultiLoop?
+      if(deliteResult.get.contains(sym)) {
+        if (isPrimitiveType(sym.tp))
+          emitValDef(sym, quote(struct) + "->" + index)
+        else {
+          stream.println(remap(sym.tp) + " *" + quote(sym) + " = new " + remap(sym.tp) + "(" + quote(struct) + "->" + index + ");")
+          stream.println(quote(sym) + "->incRefCnt();")
+        }
+        isGPUable = true
+      }
+      else
+        emitValDef(sym, quote(struct) + "." + index)
       printlog("WARNING: emitting field access: " + quote(struct) + "." + index)
     case FieldUpdate(struct, index, rhs) =>
       emitValDef(sym, quote(struct) + "." + index + " = " + quote(rhs))
@@ -555,7 +575,7 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps {
       if(isAcceleratorTarget)
         stream.println("#include \"" + hostTarget + name + ".h\"")
 
-      stream.println("class " + deviceTarget + name + " {")
+      stream.println("class " + deviceTarget + name + " : public DeliteCudaMemory {")
       // fields
       stream.println("public:")
       stream.print(elems.map{ case (idx,tp) => "\t" + remap(tp) + " " + idx + ";\n" }.mkString(""))
@@ -565,6 +585,22 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps {
       stream.print(elems.map{ case (idx,tp) => remap(tp) + " _" + idx }.mkString(","))
       stream.println(") {")
       stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = _" + idx + ";\n" }.mkString(""))
+      stream.println("\t}")
+      stream.println("\t__host__ __device__ " + deviceTarget + name + "(" + deviceTarget + name + " &in) {")
+      stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = in." + idx + ";\n" }.mkString(""))
+      stream.println("\t}")
+      stream.println("\t__host__ __device__ " + deviceTarget + name + "(const " + deviceTarget + name + " &in) {")
+      stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = in." + idx + ";\n" }.mkString(""))
+      stream.println("\t}")
+      stream.println("\t__host__ void incRefCnt(void) {")
+      for((idx,tp) <- elems if(!isPrimitiveType(baseType(tp)))) {
+        stream.println("\t\t" + idx + ".incRefCnt();")
+      }
+      stream.println("\t}")
+      stream.println("\t__host__ void decRefCnt(void) {")
+      for((idx,tp) <- elems if(!isPrimitiveType(baseType(tp)))) {
+        stream.println("\t\t" + idx + ".decRefCnt();")
+      }
       stream.println("\t}")
 
       //TODO: Below should be changed to use IR nodes

@@ -136,6 +136,8 @@ trait StaticScheduler {
         false
       else if (!op.supportsTarget(Targets.Cuda) && !op.supportsTarget(Targets.OpenCL))
         false
+      //else if (op.isInstanceOf[OP_Single] && op.getInputs.map(_._1).filterNot(_.scheduledOn(Targets.Cuda)).nonEmpty)
+      //  false
       else
         true
     }

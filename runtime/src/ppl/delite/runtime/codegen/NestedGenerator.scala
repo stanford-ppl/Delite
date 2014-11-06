@@ -169,6 +169,8 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
   def isReferentialPrimitive(op: DeliteOP, sym: String): Boolean = {
     if(isPrimitiveType(op.outputType(sym))) {
       op match {
+        case n:OP_Single => false
+        case i:OP_Input if(i.op.isInstanceOf[OP_Single]) => false
         case n:OP_Nested => false // referentialPrimitive is returned as a normal primitive type from nested OPs (converted internally)
         case i:OP_Input if(i.op.isInstanceOf[OP_Nested]) => false
         case i:OP_Input if(i.op.scheduledResource == location) => true
@@ -182,6 +184,7 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
 
   def generateMethodSignature(): String = {
     val str = new StringBuilder
+    str.append("#include \"cudahelperFuncs.h\"\n")
     str.append(nested.outputType(deviceTarget))
     str.append(' ')
     if (!isPrimitiveType(nested.outputType) && nested.outputType!="Unit") str.append(" *")

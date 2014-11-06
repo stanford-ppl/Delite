@@ -146,10 +146,10 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
       }
       else
         out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
-      out.append("cudaMemoryMap->insert(std::pair<void*,std::list<void*>*>(")
-      out.append(getSymDevice(dep,sym))
-      out.append(",lastAlloc));\n")
-      out.append("lastAlloc = new std::list<void*>();\n")
+//      out.append("cudaMemoryMap->insert(std::pair<void*,std::list<void*>*>(")
+//      out.append(getSymDevice(dep,sym))
+//      out.append(",lastAlloc));\n")
+//      out.append("lastAlloc = new std::list<void*>();\n")
     }
   }
 
@@ -183,26 +183,17 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
   private def writeSetter(op: DeliteOP, sym: String, view: Boolean) {
     val hostType = op.outputType(Targets.Cpp, sym) 
     val devType = op.outputType(Targets.Cuda, sym)
-    if (view) {
-      out.append("%s *%s = recvCuda_%s(%s);\n".format(hostType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
-      out.append("%s %s = sendViewCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(hostType),location,getSymHost(op,sym)))
-    }
-    else if(isPrimitiveType(op.outputType(sym)) && op.isInstanceOf[OP_Nested]) {
-      out.append("%s %s = (%s)%s;\n".format(hostType,getSymHost(op,sym),hostType,getSymDevice(op,sym)))
+    if (isPrimitiveType(op.outputType(sym))) {
+      op match {
+        // if op is MultiLoop, the value needs to be copied from device to host
+        case _:OP_MultiLoop => out.append("%s %s = recvCuda_%s(%s);\n".format(hostType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+        case _ => out.append("%s %s = (%s)%s;\n".format(hostType,getSymHost(op,sym),hostType,getSymDevice(op,sym)))
+      }
       out.append("%s %s = (%s)%s;\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),getJNIType(op.outputType(sym)),getSymHost(op,sym)))
     }
-    else if(isPrimitiveType(op.outputType(sym))) {
-      out.append("%s %s = recvCuda_%s(%s);\n".format(hostType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
-      out.append("%s %s = (%s)%s;\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),getJNIType(op.outputType(sym)),getSymHost(op,sym)))      
-    }
-    else if(devType.startsWith("DeliteArray<")) {
-      devType match { //TODO: Fix this for nested object types
-        case "DeliteArray< bool >" | "DeliteArray< char >" | "DeliteArray< CHAR >" | "DeliteArray< short >" | "DeliteArray< int >" | "DeiteArray< long >" | "DeliteArray< float >" | "DeliteArray< double >" => 
-          out.append("Host%s *%s = recvCuda_%s(%s);\n".format(devType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
-        case _ => //DeliteArrayObject Type
-          out.append("HostDeliteArray< Host%s  *%s = recvCuda_%s(%s);\n".format(devType.drop(13),getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
-      }
-      out.append("%s %s = sendCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(devType),location,getSymHost(op,sym)))
+    else if (view) {
+      out.append("%s *%s = recvCuda_%s(%s);\n".format(hostType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+      out.append("%s %s = sendViewCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(hostType),location,getSymHost(op,sym)))
     }
     else {
       out.append("%s *%s = recvCuda_%s(%s);\n".format(hostType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
@@ -282,11 +273,11 @@ trait CudaSyncGenerator extends CudaToScalaSync {
       out.append(freeItem)
       out.append(";\n")
       out.append(freeItem)
-      out.append(".keys = new std::list< std::pair<void*,bool> >();\n")
+      out.append(".keys = new std::list< std::pair<DeliteCudaMemory*,bool> >();\n")
     }
 
     def writeCudaFree(sym: String, isPrim: Boolean) {
-      out.append("std::pair<void*,bool> ")
+      out.append("std::pair<DeliteCudaMemory*,bool> ")
       out.append(getSymDevice(op,sym))
       out.append("_pair(")
       out.append(getSymDevice(op,sym))
@@ -314,7 +305,7 @@ trait CudaSyncGenerator extends CudaToScalaSync {
 
     //TODO: Separate JVM/Host/Device frees
     writeCudaFreeInit()
-    for (f <- m.items) {
+    for (f <- m.items if !isPrimitiveType(f._1.outputType(f._2))) {
       writeCudaFree(f._2, isPrimitiveType(f._1.outputType(f._2)))
       
       if ( (f._1.scheduledResource != location) || (f._1.getConsumers.filter(c => c.scheduledResource!=location && c.getInputs.map(_._2).contains(f._2)).nonEmpty) ) {

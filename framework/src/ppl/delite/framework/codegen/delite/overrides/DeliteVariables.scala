@@ -42,7 +42,7 @@ trait DeliteCLikeGenVariables extends CLikeGenEffect with CLikeGenDeliteStruct {
 
   protected val deliteVariableString: String
   protected def typeString(m: Manifest[_]): String
-  private val generatedDeliteVariable = HashSet[String]()
+  protected val generatedDeliteVariable = HashSet[String]()
 
   private def shouldGenerate(m: Manifest[_]): Boolean = m match {
     case _ if (isPrimitiveType(m)) => true
@@ -63,14 +63,14 @@ trait DeliteCLikeGenVariables extends CLikeGenEffect with CLikeGenDeliteStruct {
     stream.close()
   }
 
-  private def emitDeliteVariable(m: Manifest[_], path: String, header: PrintWriter) {
+  def emitDeliteVariable(m: Manifest[_], path: String, header: PrintWriter) {
     try {
       val mString = typeString(m)
       if(!generatedDeliteVariable.contains(mString)) {
         val stream = new PrintWriter(path + mString + ".h")
         stream.println("#ifndef __" + mString + "__")
         stream.println("#define __" + mString + "__")
-        stream.println(deliteVariableString.replaceAll("__T__",mString).replaceAll("__TARG__",remap(m)+addRef(baseType(m))))
+        stream.println(deliteVariableString.replaceAll("__T__",mString).replaceAll("__TARG__",remap(m)+addRef(baseType(m))).replaceAll("__NON_PRIMITIVE__",(!isPrimitiveType(baseType(m))).toString))
         stream.println("#endif")
         stream.close()
         header.println("#include \"" + mString + ".h\"")
@@ -98,16 +98,19 @@ trait DeliteCudaGenVariables extends CudaGenEffect with DeliteCLikeGenVariables 
 
   protected def typeString(m: Manifest[_]) = deviceTarget + "Ref" + remap(m)
   protected val deliteVariableString: String = """
-class __T__ {
+class __T__ : public DeliteCudaMemory {
 public:
   __TARG__ data;
 
   __host__ __device__ __T__(void) {
-      data = NULL;
   }
 
   __host__ __device__ __T__(__TARG__ _data) {
     data = _data;
+  }
+
+  __host__ __device__ __T__(__T__ &in) {
+    data = in.data;
   }
 
   __host__ __device__ __TARG__ get(void) {
@@ -117,17 +120,99 @@ public:
   __host__ __device__ void set(__TARG__ newVal) {
       data = newVal;
   }
+#if __NON_PRIMITIVE__
+  __host__ void incRefCnt(void) {
+    data.incRefCnt();
+  }
+  __host__ void decRefCnt(void) {
+    data.decRefCnt();
+  }
+#else
+  __host__ void incRefCnt(void) { }
+  __host__ void decRefCnt(void) { }
+#endif
 };
 """
 
   def reference: String = "."
 
+  override def emitDeliteVariable(m: Manifest[_], path: String, header: PrintWriter) {
+    try {
+      val mString = typeString(m)
+      if(!generatedDeliteVariable.contains(mString)) {
+        val stream = new PrintWriter(path + mString + ".h")
+        stream.println("#ifndef __" + mString + "__")
+        stream.println("#define __" + mString + "__")
+        stream.println(deliteVariableString.replaceAll("__T__",mString).replaceAll("__TARG__",remap(m)).replaceAll("__NON_PRIMITIVE__",(!isPrimitiveType(baseType(m))).toString))
+        stream.println("#endif")
+        stream.close()
+        header.println("#include \"" + mString + ".h\"")
+        generatedDeliteVariable.add(mString)
+      }
+    }
+    catch {
+      case e: GenerationFailedException => //
+      case e: Exception => throw(e)
+    }
+  }
+
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
+    val symIsResult = !deliteResult.isEmpty && (deliteResult.get contains sym)
     var gen = false
+    if (symIsResult) {
+      rhs match {
+        case NewVar(init) =>
+          val tpeString = deviceTarget+"Ref"+remap(sym.tp)
+          if (isPrimitiveType(init.tp))
+            throw new GenerationFailedException("")
+            //stream.println("%s *%s = new %s(%s);".format(tpeString,quote(sym),tpeString,quote(init)))
+          
+          else
+            stream.println("%s *%s = new %s(*%s);".format(tpeString,quote(sym),tpeString,quote(init)))
+          stream.println(quote(sym) + "->incRefCnt();")
+          gen = true
+          isGPUable = true
+        case _ => // pass
+      }
+    }
+
     if (!(deliteInputs intersect syms(rhs)).isEmpty) {
       rhs match {
-        case ReadVar(Variable(a)) => emitValDef(sym, quote(a) + reference + "get()"); gen = true
-        case Assign(Variable(a), b) => stream.println(quote(a) + reference + "set(" + quote(b) + ");"); gen = true
+        case ReadVar(Variable(a)) => 
+          if(deliteResult.get.contains(sym)) {
+            if (isPrimitiveType(sym.tp)) {
+              throw new GenerationFailedException("")
+            
+              emitValDef(sym, quote(a) + "->get()")
+            }
+            else {
+              stream.println(remap(sym.tp) + " *" + quote(sym) + " = new " + remap(sym.tp) + "(" + quote(a) + "->get());")
+              stream.println(quote(sym) + "->incRefCnt();")
+            }
+            isGPUable = true
+          }
+          else {
+            emitValDef(sym, quote(a) + reference + "get()")
+          }
+          gen = true
+        case Assign(Variable(a), b) => 
+          if(deliteResult.get.contains(sym)) {
+            if (!isPrimitiveType(sym.tp)) {
+              stream.println(quote(a) + "->get().decRefCnt();")
+              stream.println(quote(a) + "->set(*(" + quote(b) + "));")
+              stream.println(quote(b) + "->incRefCnt();")
+            }
+            else {
+              throw new GenerationFailedException("")
+            
+              stream.println(quote(a) + "->set(" + quote(b) + ");") 
+            }
+            isGPUable = true
+          }
+          else {
+            stream.println(quote(a) + reference + "set(" + quote(b) + ");")
+          }
+          gen = true
         case VarPlusEquals(Variable(a), b) => stream.println(quote(a) + reference + "set(" + quote(a) + reference + "get() + " + quote(b) + ");"); gen = true
         case VarMinusEquals(Variable(a), b) => stream.println(quote(a) + reference + "set(" + quote(a) + reference + "get() - " + quote(b) + ");"); gen = true
         case _ => // pass

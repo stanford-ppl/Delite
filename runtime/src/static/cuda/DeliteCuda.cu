@@ -3,9 +3,36 @@
 
 #include "DeliteCuda.h"
 
+std::map<void*,int32_t> *refCntMap = new std::map<void*,int32_t>();
 std::list<void*>* lastAlloc = new std::list<void*>();
 std::queue<FreeItem>* freeList = new std::queue<FreeItem>();
-std::map<void*,std::list<void*>*>* cudaMemoryMap = new std::map<void*,std::list<void*>*>();
+std::map<DeliteCudaMemory*,std::list<void*>*>* cudaMemoryMap = new std::map<DeliteCudaMemory*,std::list<void*>*>();
+
+void DeliteCudaIncRefCnt(void *ptr) {
+  if (refCntMap->count(ptr) == 0) {
+    refCntMap->insert(std::pair<void*,int32_t>(ptr,1));
+  }
+  else {
+    int32_t newcnt = refCntMap->find(ptr)->second + 1;
+    refCntMap->at(ptr) = newcnt;
+    CUDA_DEBUG("incrementing refcnt of %p to %d\n", ptr, newcnt);
+  }
+}
+
+void DeliteCudaDecRefCnt(void *ptr) {
+  int32_t refcnt = refCntMap->find(ptr)->second;
+  if (refcnt == 1) {
+    // free
+    cudaFree(ptr);
+    refCntMap->erase(ptr);
+    CUDA_DEBUG("free pointer of %p\n", ptr);
+  }
+  else {
+    int32_t newcnt = refCntMap->find(ptr)->second - 1;
+    refCntMap->at(ptr) = newcnt;
+    CUDA_DEBUG("decrementing refcnt of %p to %d\n", ptr, newcnt);
+  }
+}
 
 void addEvent(cudaStream_t fromStream, cudaStream_t toStream) {
   cudaEvent_t event;
@@ -23,9 +50,13 @@ cudaEvent_t addHostEvent(cudaStream_t stream) {
 }
 
 void freeCudaMemory(FreeItem item) {
-  std::list< std::pair<void*,bool> >::iterator iter;
+  std::list< std::pair<DeliteCudaMemory*,bool> >::iterator iter;
   for (iter = item.keys->begin(); iter != item.keys->end(); iter++) {
+    if (!((*iter).second)) {
+      (*iter).first->decRefCnt();
+    }
     //std::cout << "object ref: " << (long) *iter << std::endl;
+/*
     if(cudaMemoryMap->find((*iter).first) != cudaMemoryMap->end()) {
       std::list<void*>* freePtrList = cudaMemoryMap->find((*iter).first)->second;
       std::list<void*>::iterator iter2;
@@ -41,6 +72,7 @@ void freeCudaMemory(FreeItem item) {
       delete freePtrList;
       if(!((*iter).second)) free((*iter).first);
     }
+*/
   }
   delete item.keys;
 }
@@ -86,6 +118,8 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
     freeCudaMemory(item);
   }
   lastAlloc->push_back(*ptr);
+  refCntMap->insert(std::pair<void*,int32_t>(*ptr,1));
+  CUDA_DEBUG("setup refcnt of pointer of %p\n", *ptr);
 }
 
 size_t cudaHeapSize = 1024*1204;

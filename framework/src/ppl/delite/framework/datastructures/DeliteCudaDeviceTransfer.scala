@@ -11,13 +11,16 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
   import IR._
 
   override def emitSendSlave(tp: Manifest[_]): (String,String) = {
-    if (tp.erasure == classOf[Variable[AnyVal]]) {
+    if (tp.erasure == classOf[Variable[Any]]) {
       val out = new StringBuilder
       val typeArg = tp.typeArguments.head
-      if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
-      val signature = "%sRef%s *sendCuda_%s(%sRef%s *sym)".format(deviceTarget,remap(typeArg),mangledName(deviceTarget+"Ref"+remap(tp)),hostTarget,remap(typeArg))
+      val signature = "%sRef%s *sendCuda_%s(%sRef%s *sym)".format(deviceTarget,remap(typeArg),mangledName(deviceTarget+"Ref"+remap(tp)),hostTarget,remapHost(typeArg))
       out.append(signature + " {\n")
-      out.append("\t%sRef%s *sym_dev = new %sRef%s(sym->get());\n".format(deviceTarget,remap(typeArg),deviceTarget,remap(typeArg)))
+      if (isPrimitiveType(typeArg))
+        out.append("\t%s data = sym->get();\n".format(remap(typeArg)))
+      else
+        out.append("\t%s data = *sendCuda_%s(sym->get());\n".format(remap(typeArg),mangledName(remap(typeArg))))
+      out.append("\t%sRef%s *sym_dev = new %sRef%s(data);\n".format(deviceTarget,remap(typeArg),deviceTarget,remap(typeArg)))
       out.append("\treturn sym_dev;\n")
       out.append("}\n")
       (signature+";\n", out.toString)
@@ -92,13 +95,16 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
   }
 
   override def emitRecvSlave(tp: Manifest[_]): (String,String) = {
-    if (tp.erasure == classOf[Variable[AnyVal]]) {
+    if (tp.erasure == classOf[Variable[Any]]) {
       val out = new StringBuilder
       val typeArg = tp.typeArguments.head
-      if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
       val signature = "%sRef%s *recvCuda_%s(%sRef%s *sym_dev)".format(hostTarget,remapHost(typeArg),mangledName(deviceTarget+"Ref"+remap(tp)),deviceTarget,remap(typeArg))
       out.append(signature + " {\n")
-      out.append("assert(false);\n")
+      if (isPrimitiveType(typeArg))
+        out.append("%s data = sym_dev->get();\n".format(remapHost(typeArg)))
+      else
+        out.append("%s *data = recvCuda_%s(&(sym_dev->data));\n".format(remapHost(typeArg),mangledName(remap(tp))))
+      out.append("\treturn new %sRef%s(data);\n".format(hostTarget,remapHost(typeArg)))
       out.append("}\n")
       (signature+";\n", out.toString)
     }
@@ -158,13 +164,17 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
   */
 
   override def emitSendUpdateSlave(tp: Manifest[_]): (String,String) = {
-    if (tp.erasure == classOf[Variable[AnyVal]]) {
+    if (tp.erasure == classOf[Variable[Any]]) {
       val out = new StringBuilder
       val typeArg = tp.typeArguments.head
-      if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
-      val signature = "void sendUpdateCuda_%s(%sRef%s *sym_dev, %sRef%s *sym)".format(mangledName(deviceTarget+"Ref"+remap(tp)),deviceTarget,remap(typeArg),hostTarget,remap(typeArg))
+      val signature = "void sendUpdateCuda_%s(%sRef%s *sym_dev, %sRef%s *sym)".format(mangledName(deviceTarget+"Ref"+remap(tp)),deviceTarget,remap(typeArg),hostTarget,remapHost(typeArg))
       out.append(signature + " {\n")
-      out.append("sym_dev->data = sym->data;\n")
+      if (isPrimitiveType(typeArg)) {
+        out.append("sym_dev->set(sym->get());\n")
+      }
+      else {
+        out.append("\tsendUpdateCuda_%s(&(sym_dev->data),sym->get());\n".format(mangledName(remap(tp))))
+      }
       out.append("}\n")
       (signature+";\n", out.toString)
     }
@@ -202,13 +212,17 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
   }
 
   override def emitRecvUpdateSlave(tp: Manifest[_]): (String,String) = {
-    if (tp.erasure == classOf[Variable[AnyVal]]) {
+    if (tp.erasure == classOf[Variable[Any]]) {
       val out = new StringBuilder
       val typeArg = tp.typeArguments.head
-      if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
-      val signature = "void recvUpdateCuda_%s(%sRef%s *sym_dev, %sRef%s *sym)".format(mangledName(deviceTarget+"Ref"+remap(tp)),deviceTarget,remap(typeArg),hostTarget,remap(typeArg))
+      val signature = "void recvUpdateCuda_%s(%sRef%s *sym_dev, %sRef%s *sym)".format(mangledName(deviceTarget+"Ref"+remap(tp)),deviceTarget,remap(typeArg),hostTarget,remapHost(typeArg))
       out.append(signature + " {\n")
-      out.append("assert(false);\n")
+      if (isPrimitiveType(typeArg)) {
+        out.append("\tsym->set(sym_dev->get());\n")
+      }
+      else {
+        out.append("\trecvUpdateCuda_%s(&(sym_dev->data), sym->get());\n".format(mangledName(remap(typeArg))))
+      }
       out.append("}\n")
       (signature+";\n", out.toString)
     }

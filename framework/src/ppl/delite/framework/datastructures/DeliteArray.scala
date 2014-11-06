@@ -745,7 +745,7 @@ trait CLikeGenDeliteArrayOps extends BaseGenDeliteArrayOps with CLikeGenDeliteSt
         stream.println("#ifndef __" + mString + "__")
         stream.println("#define __" + mString + "__")
         if(!isPrimitiveType(mArg)) stream.println("#include \"" + mArgString + ".h\"")
-        stream.println(deliteArrayString.replaceAll("__T__",mString).replaceAll("__TARG__",remapWithRef(mArg)))
+        stream.println(deliteArrayString.replaceAll("__T__",mString).replaceAll("__TARG__",remapWithRef(mArg)).replaceAll("__NON_PRIMITIVE__",(!isPrimitiveType(mArg)).toString))
         stream.println("#endif")
         stream.close()
         header.println("#include \"" + mString + ".h\"")
@@ -828,7 +828,7 @@ trait CudaGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CudaGenFat with 
   protected val deliteArrayString = """
 #include "DeliteCuda.h"
 
-class __T__ {
+class __T__ : public DeliteCudaMemory {
 public:
     __TARG__ *data;
     int length;
@@ -849,6 +849,26 @@ public:
         flag = 1;
         DeliteCudaMalloc((void**)&data,length*sizeof(__TARG__));
     }
+
+    __host__ __device__ __T__(__T__ &in) {
+        length = in.length;
+        offset = in.offset;
+        stride = in.stride;
+        flag = in.flag;
+        data = in.data;
+    }
+
+#if __NON_PRIMITIVE__
+    __host__ void incRefCnt(void) { }
+    __host__ void decRefCnt(void) { }
+#else
+    __host__ void incRefCnt(void) {
+      DeliteCudaIncRefCnt((void*)data);
+    }
+    __host__ void decRefCnt(void) {
+      DeliteCudaDecRefCnt((void*)data);
+    }
+#endif
 
     __host__ __device__ __T__(int _length, __TARG__ *_data, int _offset) {
         length = _length;
