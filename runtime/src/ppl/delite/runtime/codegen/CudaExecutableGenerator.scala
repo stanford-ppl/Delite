@@ -215,7 +215,9 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
         
         out.append(args.mkString("(",",",");\n"))
       case _:OP_Nested =>
-        for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
+        assert(op.getOutputs.size == 1)
+        val name = op.getOutputs.head
+        if(op.outputType(name)!="Unit") {
           out.append(op.outputType(Targets.Cuda, name))
           if (!isPrimitiveType(op.outputType(name))) out.append('*')
           out.append(" " + getSymDevice(op,name) + " = ")
@@ -223,6 +225,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
         out.append(op.task) //kernel name
         //val args = op.getInputs.map(i=>getSymDevice(i._1,i._2))
         out.append("(" + inputArgs(op) + ");\n")
+        if (!isPrimitiveType(op.outputType(name))) out.append(getSymDevice(op,name) + "->incRefCnt();\n")
       case _:OP_External =>
         assert(op.getOutputs.size == 1) //TODO: what does libCall support?
         writeOutputAlloc(op)

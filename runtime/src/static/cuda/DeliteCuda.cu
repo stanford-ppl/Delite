@@ -9,14 +9,10 @@ std::queue<FreeItem>* freeList = new std::queue<FreeItem>();
 std::map<DeliteCudaMemory*,std::list<void*>*>* cudaMemoryMap = new std::map<DeliteCudaMemory*,std::list<void*>*>();
 
 void DeliteCudaIncRefCnt(void *ptr) {
-  if (refCntMap->count(ptr) == 0) {
-    refCntMap->insert(std::pair<void*,int32_t>(ptr,1));
-  }
-  else {
-    int32_t newcnt = refCntMap->find(ptr)->second + 1;
-    refCntMap->at(ptr) = newcnt;
-    CUDA_DEBUG("incrementing refcnt of %p to %d\n", ptr, newcnt);
-  }
+  assert(refCntMap->count(ptr) > 0);
+  int32_t newcnt = refCntMap->find(ptr)->second + 1;
+  refCntMap->at(ptr) = newcnt;
+  CUDA_DEBUG("[INCR] pointer %p to %d\n", ptr, newcnt);
 }
 
 void DeliteCudaDecRefCnt(void *ptr) {
@@ -25,12 +21,12 @@ void DeliteCudaDecRefCnt(void *ptr) {
     // free
     cudaFree(ptr);
     refCntMap->erase(ptr);
-    CUDA_DEBUG("free pointer of %p\n", ptr);
+    CUDA_DEBUG("[FREE] pointer %p\n", ptr);
   }
   else {
     int32_t newcnt = refCntMap->find(ptr)->second - 1;
     refCntMap->at(ptr) = newcnt;
-    CUDA_DEBUG("decrementing refcnt of %p to %d\n", ptr, newcnt);
+    CUDA_DEBUG("[DECR] pointer %p to %d\n", ptr, newcnt);
   }
 }
 
@@ -119,7 +115,7 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
   }
   lastAlloc->push_back(*ptr);
   refCntMap->insert(std::pair<void*,int32_t>(*ptr,1));
-  CUDA_DEBUG("setup refcnt of pointer of %p\n", *ptr);
+  CUDA_DEBUG("[INIT] pointer %p\n", *ptr);
 }
 
 size_t cudaHeapSize = 1024*1204;
