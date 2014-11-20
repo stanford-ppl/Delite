@@ -25,6 +25,8 @@
 #endif
 
 extern Config* config;
+extern resourceInfo_t* resourceInfos;
+extern void initializeThread(int threadId, int numThreads);
 
 #ifdef MEMMGR_REFCNT
 std::shared_ptr<cppDeliteArraystring> string_split(const resourceInfo_t &resourceInfo, const string &str, const string &pattern, int32_t lim);

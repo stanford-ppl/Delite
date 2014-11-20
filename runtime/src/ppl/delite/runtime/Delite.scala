@@ -77,7 +77,6 @@ object Delite {
     Arguments.staticDataMap = staticData
     var appResult: Any = null
 
-    //TODO: combine into a single scheduler and executor
     _executor = Config.executor match {
       case "default" => new MultiAccExecutor
       case "acc" => new MultiAccExecutor

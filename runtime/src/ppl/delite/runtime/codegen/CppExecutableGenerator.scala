@@ -50,11 +50,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
     out.append(function)
     out.append(" {\n")
     out.append("env" + location + " = jnienv;\n")
-    out.append(resourceInfoType + " " + resourceInfoSym + ";\n")
-    out.append(resourceInfoSym + ".threadId = " + Targets.getRelativeLocation(location) + ";\n")
-    out.append(resourceInfoSym + ".numThreads = config->numThreads;\n")
-    out.append(resourceInfoSym + ".socketId = config->threadToSocket(" + Targets.getRelativeLocation(location) + ");\n")
-    out.append(resourceInfoSym + ".numSockets = config->numSockets;\n")
+    out.append(resourceInfoType + " " + resourceInfoSym + " = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
     if (Config.profile) out.append("InitDeliteCppTimer(" + Targets.getRelativeLocation(location) + ");\n")
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     val cppLocations = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp)

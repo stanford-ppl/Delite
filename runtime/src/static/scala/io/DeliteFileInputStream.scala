@@ -29,7 +29,6 @@ object DeliteFileInputStream {
   private def getFiles(conf: Configuration, paths:Seq[String]) = paths.toArray flatMap { p =>
     val hPath = new Path(p)
     val fs = hPath.getFileSystem(conf)
-    val status = fs.getFileStatus(hPath)
 
     if (fs.isDirectory(hPath)) {
       // return sorted list of file statuses (numbered file chunks should be parsed in order)
@@ -59,9 +58,7 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
   final def position = pos
 
   /* Initialize. This is only required / used when opening a stream directly (i.e. not via multiloop) */
-  if (size > 0) {
-    openAtNewLine(0)
-  }
+  if (size > 0) open()
   
   /* Determine the file that this logical index corresponds to, as well as the byte offset within the file. */
   private def findFileOffset(start: Long) = {
@@ -109,20 +106,25 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
     copy
   }
 
+  final def open() {
+    openAtNewLine(0)
+  }
+
   /* Read the next line */
   private def readLineInternal() {
     var length = reader.readLine(text)
     if (length == 0) {
       reader.close()        
-      if (pos+1 > size) {
+      if (pos >= size) {
         text = null
         return
       }
       else {
-        val (nextByteStream, offset) = getInputStream(pos+1)
+        val (nextByteStream, offset) = getInputStream(pos)
+        assert(offset == 0, "Incorrectly skipped to offset " + offset + " in the stream")
         reader = new LineReader(nextByteStream, delimiter.getOrElse(null))
         length = reader.readLine(text)
-        assert(length != 0, "Filesystem returned an invalid input stream for position " + (pos+1))
+        assert(length != 0, "Filesystem returned an invalid input stream for position " + pos)
       }
     }
     pos += length
@@ -153,5 +155,6 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
       reader = null
     }
     text = null
+    pos = 0
   }
 }

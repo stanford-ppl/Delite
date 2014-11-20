@@ -7,6 +7,8 @@
 #include <pthread.h>
 #include <sched.h>
 #include "Config.h"
+#include "DeliteDataStructures.h"
+#include "DeliteMemory.h"
 
 #ifdef __DELITE_CPP_NUMA__
 #include <numa.h>
@@ -17,7 +19,8 @@
 #endif
 
 
-Config* config = 0;
+Config* config = NULL;
+resourceInfo_t* resourceInfos = NULL;
 pthread_mutex_t init_mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t init_cond = PTHREAD_COND_INITIALIZER;
 
@@ -55,13 +58,13 @@ void initializeConfig(int numThreads) {
   if (numa_available() >= 0) {
     int numCpus = numa_num_configured_cpus();
     if (numCoresPerSocket <= 0) {
-        printf("[WARNING]: Unable to automatically determine number of physical cores, assuming %d\n", numCpus);
+        fprintf(stderr, "[WARNING]: Unable to automatically determine number of physical cores, assuming %d\n", numCpus);
         numCores = numCpus;
     }
 
     int numNodes = numa_num_configured_nodes();
     if (numSockets > 0 && numSockets != numNodes) {
-      printf("[WARNING]: Found %d sockets but %d NUMA nodes. Using %d nodes\n", numSockets, numNodes, numNodes);
+      fprintf(stderr, "[WARNING]: Found %d sockets but %d NUMA nodes. Using %d nodes\n", numSockets, numNodes, numNodes);
     }
     numSockets = numNodes;
     numCoresPerSocket = numCores / numSockets; //potentially re-distribute cores across nodes
@@ -71,21 +74,28 @@ void initializeConfig(int numThreads) {
   if (numSockets > 0 && numCoresPerSocket > 0) {
     config->numSockets = numSockets;
     config->numCoresPerSocket = numCoresPerSocket;
-    printf("[delite]: Detected machine configuration of %d socket(s) with %d core(s) per socket.\n", config->numSockets, config->numCoresPerSocket);
+    fprintf(stderr, "[delite]: Detected machine configuration of %d socket(s) with %d core(s) per socket.\n", config->numSockets, config->numCoresPerSocket);
   }
   else {
-    printf("[WARNING]: Unable to automatically detect machine configuration.  Assuming %d socket(s) with %d core(s) per socket.\n", config->numSockets, config->numCoresPerSocket);
+    fprintf(stderr, "[WARNING]: Unable to automatically detect machine configuration.  Assuming %d socket(s) with %d core(s) per socket.\n", config->numSockets, config->numCoresPerSocket);
   }
 }
 
-
-extern "C" JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads);
-
-JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads) {
+void initializeGlobal(int threadId, int numThreads) {
   pthread_mutex_lock(&init_mtx); 
-  if (!config) initializeConfig(numThreads);
+  if (!config) {
+    initializeConfig(numThreads);
+    resourceInfos = new resourceInfo_t[numThreads];
+  }
   pthread_mutex_unlock(&init_mtx);
+  
+  resourceInfos[threadId].threadId = threadId;
+  resourceInfos[threadId].numThreads = numThreads;
+  resourceInfos[threadId].socketId = config->threadToSocket(threadId);
+  resourceInfos[threadId].numSockets = config->numSockets;
+}
 
+void initializeThread(int threadId, int numThreads) {
   #ifdef __linux__
     cpu_set_t cpu;
     CPU_ZERO(&cpu);
@@ -100,7 +110,7 @@ JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_in
           numa_bitmask_setbit(nodemask, socketId);
           numa_set_membind(nodemask);
         }
-        printf("[delite]: Binding thread %d to cpu %d, socket %d\n", threadId, threadId, socketId);
+        //fprintf(stderr, "[delite]: Binding thread %d to cpu %d, socket %d\n", threadId, threadId, socketId);
       }
     #endif
   #endif
@@ -110,14 +120,10 @@ JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_in
   #endif
 }
 
-extern "C" JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_entry(JNIEnv* env, jobject obj);
-
-JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_entry(JNIEnv* env, jobject obj) {
-  printf("[delite]: %p\n", pthread_self());
-
-  pthread_mutex_lock(&init_mtx);
-  pthread_cond_wait(&init_cond, &init_mtx);
-  pthread_mutex_unlock(&init_mtx);
+extern "C" JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads);
+JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads) {
+  initializeGlobal(threadId, numThreads);
+  initializeThread(threadId, numThreads);
 }
 
 #endif

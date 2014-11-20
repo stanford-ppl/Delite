@@ -200,12 +200,20 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
   }
 
   protected def writeKernelFunction(stream: StringBuilder) {
-    stream.append("#include \"" + className + ".h\"\n")
+    stream.append("#include \"multiLoopHeaders.h\"\n")
+
+    if (Config.scheduler == "dynamic") {
+      writeThreadLaunchFunction(stream)
+    }
 
     stream.append(kernelSignature)
     stream.append(" {\n")
-    stream.append("return new " + className)
+    stream.append(className + "* header = new " + className)
     stream.append((resourceInfoSym+:op.getInputs.map(_._2)).mkString("(",", ",");\n"))
+    if (Config.scheduler == "dynamic") {
+      writeThreadLaunch(stream)
+    }
+    stream.append("return header;\n")
     stream.append("}\n")
   }
 
@@ -272,21 +280,24 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
   \n""")
   }
 
-  protected def writeThreadLaunch() {
-  //   out.append(s"""//thread launch
-  // def launchThreads($resourceInfoSym: $resourceInfoType, head: $className) = {
-  //   var i = 1
-  //   while (i < $resourceInfoSym.numThreads) {
-  //     val r = new $resourceInfoType(i, $resourceInfoSym.numThreads)
-  //     val executable = new DeliteExecutable {
-  //       def run() = MultiLoop_${op.id}(r, head)
-  //     }
-  //     Delite.executor.runOne(i, executable)
-  //     i += 1
-  //   }
-  //   head
-  // }
-  // """)
+  protected def writeThreadLaunchFunction(stream: StringBuilder) {
+    stream.append(s"""
+  void* launchFunc_${op.id}(void* arg) {
+    std::pair<$resourceInfoType*, $className*>* in = (std::pair<$resourceInfoType*, $className*>*)arg;
+    initializeThread(in->first->threadId, in->first->numThreads);
+    MultiLoop_${op.id}(*in->first, in->second);
+  }
+  \n""")
+  }
+
+  protected def writeThreadLaunch(stream: StringBuilder) {
+    stream.append(s"""//thread launch
+  for (int i=1; i<resourceInfo.numThreads; i++) {
+    std::pair<$resourceInfoType*, $className*>* arg = new std::pair<$resourceInfoType*, $className*>(&resourceInfos[i], header);
+    pthread_t thread;
+    pthread_create(&thread, NULL, launchFunc_${op.id}, (void*)arg);
+  }
+  """)
   }
 
   protected def defaultChunks() = {
