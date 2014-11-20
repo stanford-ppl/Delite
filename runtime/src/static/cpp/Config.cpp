@@ -93,6 +93,7 @@ void initializeGlobal(int threadId, int numThreads) {
   resourceInfos[threadId].numThreads = numThreads;
   resourceInfos[threadId].socketId = config->threadToSocket(threadId);
   resourceInfos[threadId].numSockets = config->numSockets;
+  resourceInfos[threadId].rand = new DeliteCppRandom();
 }
 
 void initializeThread(int threadId, int numThreads) {

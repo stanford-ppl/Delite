@@ -3,7 +3,7 @@
 #define DEFAULT_MAX_HEAP 32ULL*1024*1024*1024
 #define DEFAULT_BLOCK_SIZE 4UL*1024*1024 //TODO: how to select this?
 
-std::list<char *> **DeliteHeapBlockList;  // list of allocated heap blocks for each thread
+std::list<char *> **DeliteHeapBlockList = NULL;  // list of allocated heap blocks for each thread
 char **DeliteHeapCurrentBlock;            // current heap block pointer for each thread
 size_t *DeliteHeapCurrentBlockSize;       // remaining size of the current heap block for each thread
 
@@ -44,7 +44,7 @@ void DeliteHeapInit(int idx, int numThreads, int numLiveThreads, int initializer
   }*/
   //TODO: we currently don't enforce heapSize... do we need this?
 
-  if (idx == initializer) {
+  if (idx == initializer && DeliteHeapBlockList == NULL) {
     size_t padSize = numThreads << PADDING_SHIFT;
     DeliteHeapBlockList = new std::list<char*>*[padSize];
     DeliteHeapCurrentBlock = new char*[padSize];
