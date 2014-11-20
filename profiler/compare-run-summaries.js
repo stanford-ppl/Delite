@@ -27,11 +27,12 @@ var kernelSummariesDisplayed = {};
 function enableViewDataBtnIfAllProcDone() {
 	for (var file in fileToProcessingDone) {
 		if (!(fileToProcessingDone[file])) {
+			$("#initializeViewsBtn")[0].disabled = true;
 			return;
 		}
 	}
 
-	// Enable the initializeViewsBtn
+	$("#initializeViewsBtn")[0].disabled = false;
 }
 
 function readExecutionProfiles(evt) {
@@ -40,20 +41,24 @@ function readExecutionProfiles(evt) {
 	if (files.length > 0) {
 		for (var i = 0; i < files.length; i++) {
 			var reader = new FileReader();
-			reader.onload = function(e) {
-				var data = JSON.parse(e.target.result);
-				var executionProfile = getExecutionProfile(data.Profile, profData.dependencyData, config);
-				executionProfile.fileName = e.name;
-				var numThreads = executionProfile.numThreads;
-				if (!(numThreads in threadCountToExecutionProfile)) {
-					threadCountToExecutionProfile[numThreads] = executionProfile;
-					fileToProcessingDone[e.name] = true;
-					enableViewDataBtnIfAllProcDone();
-				}
-			}
-
 			var file = files[i];
-			fileToProcessingDone[file] = false;
+			reader.onload = (function(currFile) {
+				var fileName = file.name;
+
+				return function(e) {
+					var data = JSON.parse(e.target.result);
+					var executionProfile = getExecutionProfile(data.Profile, profData.dependencyData, config);
+					executionProfile.fileName = e.name;
+					var numThreads = executionProfile.numThreads;
+					if (!(numThreads in threadCountToExecutionProfile)) {
+						threadCountToExecutionProfile[numThreads] = executionProfile;
+						fileToProcessingDone[fileName] = true;
+						enableViewDataBtnIfAllProcDone();
+				}
+			}})(file);
+
+			fileToProcessingDone[file.name] = false;
+			$("#initializeViewsBtn")[0].disabled = true;
 			reader.readAsText(file);
 		}
 	}
