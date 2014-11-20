@@ -117,7 +117,7 @@ def run(deg, params, opts):
     if opts.no_regen == True:
         java_opts = java_opts + " -Ddelite.debug.noregenerate"
     if opts.profile == True:
-		java_opts = java_opts + " -Dprofile.output.dir=profile -Dprofile.dump=true -Ddelite.debug.profile=true -Xloggc:profile/gcStats.txt -XX:+PrintGCDetails -Ddelite.debug.memSamplingInterval=14"
+               java_opts = java_opts + " -Dprofile.output.dir=profile -Dprofile.dump=true -Ddelite.debug.profile=true -Xloggc:profile/gcStats.txt -XX:+PrintGCDetails -Ddelite.debug.memSamplingInterval=14"
     if opts.isSlave == True:
         java_opts = java_opts + " -Ddelite.cluster.isSlave"
     if opts.walk_only == True:

@@ -1,23 +1,12 @@
 
 function createStackGraph(parentDivId, data, xScale) {
-	//var margin = {top: 0, right: 0, bottom: 0, left: 20}
 	var margin = {top: 0, right: 15, bottom: 0, left: 120}
     var parentDiv = $(parentDivId)
     var width = parentDiv.width() * 2.5
     var height = parentDiv.height() - margin.top - margin.bottom
 
-	/*
-	var x = d3.scale.linear()
-	    	  .range([0, width]);
-	x.domain(d3.extent(data, function(d) { return d.time; }))
-	
-	*/
-
 	var x = xScale
-
-	var y = d3.scale.linear()
-	    	  .range([height, 0])
-			  
+	var y = d3.scale.linear().range([height, 0])		  
 	var z = d3.scale.category20c();
 
 	var yAxis = d3.svg.axis()
@@ -70,13 +59,23 @@ function createStackGraph(parentDivId, data, xScale) {
 		.append("rect")
 		.attr("class", "point")
 		.attr("x", function(d) { return x(d.time) - markerDimension/2}) // 'd' => a single data point within a given series
-		//.attr("y", function(d) { return y(d.y) - markerDimension/2})
 		.attr("y", function(d) { return y(d.y)})
 		.attr("width", markerDimension)
 		.attr("height", markerDimension)
 		.style("fill", "orange")
-		.on("mouseenter", function (d) { showPopover.call(this, d); })
-   		.on("mouseleave",  function (d) { removePopovers(); })
+		.on("click", markerClickHandler);
+		//.on("mouseenter", function (d) { showPopover.call(this, d); })
+   		//.on("mouseleave",  function (d) { removePopovers(); })
+
+   	function markerClickHandler(d, i) {
+   		var table = $("#memUsageInfoTable")[0];
+   		for (var j = 1; j <= 3; j++) {
+   			var row = table.rows[j];
+   			var memTypeValuePair = layers[j - 1].values[i];
+   			row.cells[0].innerHTML = memTypeValuePair.key;
+   			row.cells[1].innerHTML = memUsageValueToStr(memTypeValuePair.value);
+   		}
+   	}
 
    	function removePopovers () {
 	  $('.popover').remove()
@@ -95,21 +94,4 @@ function createStackGraph(parentDivId, data, xScale) {
 	  }});
 	  $(this).popover('show')
 	}
-
-	/*
-	svg.append("g")
-	  .attr("class", "y axis")
-	  .call(yAxis)
-	*/
 }
-
-/*
-var data = []
-data.push({key: "Max Memory", value: 100, time: 100})
-data.push({key: "Total Memory", value: 32, time: 100})
-data.push({key: "Free Memory", value: 20, time: 100})
-data.push({key: "Max Memory", value: 100, time: 200})
-data.push({key: "Total Memory", value: 54, time: 200})
-data.push({key: "Free Memory", value: 42, time: 200})
-data.push({key: "Max Memory", value: 100, time: 300})
-*/

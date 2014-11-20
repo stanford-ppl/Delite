@@ -6,34 +6,34 @@
 	communicate with each other.
 */
 
-var viewState = {}
-viewState.highlightedGraphNode = -1
-viewState.appSourceFileName = ""
-viewState.degFile = ""
-viewState.profileDataFile = ""
-viewState.gcStatsFile = ""
-viewState.highlightedLine = new aceRange(0,0,0,0)
-viewState.globalStatsMetric = ""
-viewState.selectedLevel = -1
+var viewState = {};
+viewState.highlightedGraphNode = -1;
+viewState.appSourceFileName = "";
+viewState.degFile = "";
+viewState.profileDataFile = "";
+viewState.gcStatsFile = "";
+viewState.highlightedLine = new aceRange(0,0,0,0);
+viewState.globalStatsMetric = "";
+viewState.selectedLevel = -1;
 
-var config = {}
-config.markGraphNode = markGraphNode
-config.markNeighborsOnGraph = markNeighborsOnGraph
-config.highlightLineInEditor = highlightLineInEditor
-config.highlightLineInEditorByKernelId = highlightLineInEditorByKernelId
-config.populateKernelInfoTable = populateKernelInfoTable
-config.populateKernelInfoTableById = populateKernelInfoTableById
-config.populateSyncNodeInfoTable = populateSyncNodeInfoTable
-config.displayGCEventStats = displayGCEventStats
-config.enableNodeClickHandler = true // for bar-charts.
-config.syncNodeRegex = /__sync-ExecutionThread-(\d+)-(.*)-(.*)-(\d+)$/
-config.re_partition = /^(.*)_(\d+)$/
-config.re_header = /^(.*)_h$/
+var config = {};
+config.markGraphNode = markGraphNode;
+config.markNeighborsOnGraph = markNeighborsOnGraph;
+config.highlightLineInEditor = highlightLineInEditor;
+config.highlightLineInEditorByKernelId = highlightLineInEditorByKernelId;
+config.populateGCEventInfoTable = populateGCEventInfoTable;
+config.populateKernelInfoTable = populateKernelInfoTable;
+config.populateKernelInfoTableById = populateKernelInfoTableById;
+config.populateSyncNodeInfoTable = populateSyncNodeInfoTable;
+config.enableNodeClickHandler = true; // for bar-charts.
+config.syncNodeRegex = /__sync-ExecutionThread-(\d+)-(.*)-(.*)-(\d+)$/;
+config.re_partition = /^(.*)_(\d+)$/;
+config.re_header = /^(.*)_h$/;
 
-addAppSourceFileHandler("srcDirInput", editor)
-addDegFileHandler("degFileInput")
-addProfileDataFileHandler("profDataInput")
-addGCStatsFileHandler("gcStatsInput")
+addAppSourceFileHandler("srcDirInput", editor);
+addDegFileHandler("degFileInput");
+addProfileDataFileHandler("profDataInput");
+addGCStatsFileHandler("gcStatsInput");
 
 var editor = {}
 var profData = {}
@@ -43,84 +43,71 @@ var topNodesBasedOnTime = []
 var topNodesBasedOnMemUsage = []
 var threadLevelSyncStats = []
 
-var getDisplayTextForTime = function(d) {
-	var timeInMs = (d.time/1000).toFixed(0)
-	var timeStr = " (" + timeInMs + "ms:" + d.percentage_time.toFixed(0) + "%)"
-	return d.name + timeStr
-}
-
-var getDisplayTextForMemUsage = function(d) {
-	return d.name + " (" + d.memUsage + "B)"
-}
-
-var getDisplayTextForThreadLevelSync = function(d) {
-	return d.name + " (" + d.syncTimePct + "%)"
-}
-
-var getDisplayTextForRegionsData = function(d) {
-	return d.name + " (" + d.percentage_time + "%)"
-}
-
-function onChangeRegionOption() {
-	if (viewState.globalStatsMetric == "ticTocRegionStats") {
-		var selectedRegionName = $(this).val()
-		if (selectedRegionName == "__global") {
-			displayOverallRegionsData()	
-		} else { // display overall percentage data for regions
-			var regions = profData.timelineData.ticTocRegions
-			var selectedRegion = regions.filter(function(r) {return r.name == selectedRegionName})[0]
-			displayKernelInfoForRegion(selectedRegion)
-		}
-	}
-}
-
-function onChangeDEGViewOption() {
-	var view = $(this).val()
-	graphController.changeColoringScheme(view)
-}
 
 $("#globalStatsMetric").change(function() {
-	$("#generalInfo").hide()
-	$("#dfgHeader").show()
-	$("#dfg").show()
+	$("#generalInfo").hide();
+	$("#dfgHeader").show();
+	$("#dfg").show();
 
-	var metric = $(this).val()
+	var metric = $(this).val();
 	if (metric == "performance") {
-		clearDivForBarChartDisplay()
-		createBarChart("#dfg", topNodesBasedOnTime, "percentage_time", getDisplayTextForTime, config)
+		clearDivForBarChartDisplay();
+		createBarChart("#dfg", topNodesBasedOnTime, "totalTimePct", getDisplayTextForTime, config);
 	} else if (metric == "memUsage") {
-		clearDivForBarChartDisplay()
-		createBarChart("#dfg", topNodesBasedOnMemUsage, "memUsage", getDisplayTextForMemUsage, config)
+		clearDivForBarChartDisplay();
+		createBarChart("#dfg", topNodesBasedOnMemUsage, "memUsage", getDisplayTextForMemUsage, config);
 	} else if (metric == "threadLevelSyncStats") {
-		clearDivForBarChartDisplay()
-		createBarChart("#dfg", threadLevelSyncStats, "syncTimePct", getDisplayTextForThreadLevelSync, config)
+		clearDivForBarChartDisplay();
+		createBarChart("#dfg", threadLevelSyncStats, "syncTimePct", getDisplayTextForThreadLevelSync, config);
 	} else if (metric == "ticTocRegionStats") {
-		displayOverallRegionsData()
+		displayOverallRegionsData();
 	} else if (metric == "degView") {
-		$(".barChart").hide()
-		$("#dfg").css("overflow-y", "hidden")
-		$('.dataflowSvg').show()
-		setUpSelectTagForDEGView()
-		graphController.changeColoringScheme("dataDeps")
+		$(".barChart").hide();
+		$("#dfg").css("overflow-y", "hidden");
+		$('.dataflowSvg').show();
+		setUpSelectTagForDEGView();
+		graphController.changeColoringScheme("dataDeps");
 	}
 
-	setGlobalStatsMetric(metric)
-})
+	setGlobalStatsMetric(metric);
+});
 
 $('#timelineZoom').keyup(function(event){
     if(event.keyCode == 13){
-        timelineController.zoom($(this).val() / 100)
+        timelineController.zoom($(this).val() / 100);
     }
-})
+});
 
 $('#searchKernel').keyup(function(event){
     if(event.keyCode == 13){
         searchNode($(this).val())
     }
-})
+});
 
-$("#timelineLevelFilter").change(filterNodesOnTimeline)
-$('#startButton').click(startDebugSession)
+$("#timelineLevelFilter").change(filterNodesOnTimeline);
+$('#startButton').click(startDebugSession);
+
+$(window).resize(function() {
+	$("#right").css("width", $("#container").width() - $("#accordian").width());
+	//$("#panel-1").css("height", $(window).height());
+});
+
+$(document).ready(function() {
+	$("#right").css("width", $("#container").width() - $("#accordian").width());
+	$("#dfg").css("height", $("#dfg").height() - $("#dfgHeader").height());
+});
+
+function getDisplayTextForTime(d) {
+	return d.name + " (" + getDisplayTextForTimeAbsPctPair(d.totalTimeAbs, d.totalTimePct) + ")";
+}
+
+function getDisplayTextForMemUsage(d) {
+	return d.name + " (" + memUsageValueToStr(d.memUsage) + ")";
+}
+
+function getDisplayTextForThreadLevelSync(d) {
+	return d.name + " (" + d.syncTimePct + "%)"
+}
 
 function setUpTimelineLevelFilter(maxNodeLevel) {
 	var sel = $("#timelineLevelFilter")
@@ -143,49 +130,76 @@ function setUpSelectTagForDEGView() {
 		}))
 	})
 
-	$("#globalViewOptions").change(onChangeDEGViewOption)
+	document.getElementById('globalViewOptions').onchange = onChangeDEGViewOption;
 }
 
-function setUpSelectTagForRegions(regions) {
-	var sel = $("#globalViewOptions").empty()
-	sel.append('<option value="__global">All</option>')
-	$.each(regions, function(i, r) {
-		sel.append($("<option/>", {
-        value: r.name,
-        text: r.name
-    }))
-	})
-
-	$("#globalViewOptions").change(onChangeRegionOption)
+function onChangeDEGViewOption() {
+	var view = $(this).val()
+	graphController.changeColoringScheme(view)
 }
 
 function displayOverallRegionsData() {
-	clearDivForBarChartDisplay()
-	var regions = profData.timelineData.ticTocRegions
-	createBarChart("#dfg", regions, "percentage_time", getDisplayTextForRegionsData, config)
-	setUpSelectTagForRegions(regions)
+	clearDivForBarChartDisplay();
+	var regionDataPoints = profData.executionProfile.ticTocRegions.map(function(region) { return {
+		"name" : region.name,
+		"totalTimeAbs" : region.totalTime.abs,
+		"totalTimePct" : region.totalTime.pct
+	}});
+
+	regionDataPoints.sort(function(p1,p2) { return p2.totalTimePct - p1.totalTimePct; });
+	createBarChart("#dfg", regionDataPoints, "totalTimePct", getDisplayTextForTime, config);
+	setUpSelectTagForRegions(regionDataPoints);
 }
 
-function displayKernelInfoForRegion(region) {
-	function getDisplayText(d) {
-		var timeInMs = (d.abs / 1000).toFixed(0)
-		return d.name + " (" + d.abs + "ms : " + d.pct + "%)"
+function setUpSelectTagForRegions(regions) {
+	var sel = $("#globalViewOptions").empty();
+	sel.append('<option value="__global">All</option>');
+	$.each(regions, function(i, r) {
+		sel.append($("<option/>", {
+	        value: r.name,
+	        text: "Region '" + r.name + "'"
+    	}))
+	});
+
+	document.getElementById('globalViewOptions').onchange = onChangeRegionOption;
+}
+
+function onChangeRegionOption() {
+	function getDisplayTextForRegionComp(d) {
+		return d.name + " (" + getDisplayTextForTimeAbsPctPair(d.abs, d.pct) + ")";
 	}
 
-	var childNodes = []
-	var childToPerf = region.childToPerf
-	for (k in region.childToPerf) {
-		var o = {}
-		o.name = k
-		o.id = childToPerf[k].id
-		o.abs = childToPerf[k].abs
-		o.pct = childToPerf[k].pct
-		childNodes.push(o)
+	if (viewState.globalStatsMetric == "ticTocRegionStats") {
+		var selectedRegionName = $(this).val()
+		if (selectedRegionName == "__global") {
+			displayOverallRegionsData()	
+		} else { // display overall percentage data for regions
+			var regions = profData.executionProfile.ticTocRegions
+			var selectedRegion = regions.filter(function(r) {return r.name == selectedRegionName})[0]
+			var topNodesBasedOnTime = getTopNodesFromTicTocRegionBasedOnTime(selectedRegion, 20);
+			clearDivForBarChartDisplay();
+			createBarChart("#dfg", topNodesBasedOnTime, "pct", getDisplayTextForRegionComp, config);
+		}
+	}
+}
+
+function getTopNodesFromTicTocRegionBasedOnTime(region, N) {
+	var childNodes = [];
+	var childToPerf = region.childToPerf;
+	for (name in region.childToPerf) {
+		childNodes.push({
+			"name" : name,
+			"abs"  : childToPerf[name].abs,
+			"pct"  : childToPerf[name].pct
+		})
 	}
 
-	childNodes.sort(function(a,b) {return b.pct - a.pct})
-	clearDivForBarChartDisplay()
-	createBarChart("#dfg", childNodes, "pct", getDisplayText, config)
+	childNodes.sort(function(a,b) {return b.pct - a.pct});
+	if (childNodes.length < N) {
+		return childNodes;
+	}
+
+	return childNodes.slice(0, N);
 }
 
 function clearDivForBarChartDisplay() {
@@ -253,32 +267,58 @@ function highlightLineInEditorByKernelId(nodeId) {
 
 function populateKernelInfoTable(node) {
 	function helper(num) {
-		if (num) return num.toFixed(0)
+		if (num != undefined) return num.toFixed(0)
 		return "NA"
-	} 
+	};
 
-	function getEffectiveNodeType(n) {
-		if (n.type == "InternalNode") {
-			var parent = profData.dependencyData.nodes[n.parentId]
-			return parent.type
-		}
-
-		return n.type
+	var dNode = (node.node) ? node.node : node;
+	var nodeType = dNode.type;
+	var target = dNode.target;
+	var values = [];
+	var summary = profData.executionProfile.nodeNameToSummary[node.name];
+	if (summary) {
+		var timeStr = getDisplayTextForTimeAbsPctPair(summary.totalTime.abs, summary.totalTime.pct);
+		var execTimePct = helper(summary.execTime.pct);
+		var syncTimePct = helper(summary.syncTime.pct);
+		var memUsage = memUsageValueToStr(summary.memUsage);
+		values = [node.name, nodeType, target, timeStr , execTimePct + "/" + syncTimePct + " %", memUsage];
+	} else {
+		values = [node.name, nodeType, target, "-" , "-", "-"];
 	}
-
-	var nodeType = getEffectiveNodeType(node)
-	var timeInMs = (node.time/1000).toFixed(0)
-	var timeStr = timeInMs + "ms (" + node.percentage_time.toFixed(0) + "%)"
-	var execTimePct = helper(node.execTime.pct)
-	var syncTimePct = helper(node.syncTime.pct)
-	var memUsage = node.memUsage + " B"
-	var values = [node.name, nodeType, node.target, timeStr , execTimePct + "/" + syncTimePct + " %", memUsage]
-	var table = $("#kernelInfoTable")[0]
+	
+	var table = $("#kernelInfoTable")[0];
 	values.forEach(function(v, i) {
-		var row = table.rows[i + 1]
-		row.cells[1].innerHTML = values[i]
+		var row = table.rows[i + 1];
+		row.cells[1].innerHTML = values[i];
 	})
 }
+
+/*
+function populateKernelInfoTable(node) {
+	function helper(num) {
+		if (num != undefined) return num.toFixed(0)
+		return "NA"
+	};
+
+	var dNode = (node.node) ? node.node : node;
+	var nodeType = dNode.type;
+	var target = dNode.target;
+	var summary = profData.executionProfile.nodeNameToSummary[node.name];
+	
+	var timeStr = getDisplayTextForTimeAbsPctPair(summary.totalTime.abs, summary.totalTime.pct);
+	var execTimePct = helper(summary.execTime.pct);
+	var syncTimePct = helper(summary.syncTime.pct);
+	//var memUsage = summary.memUsage + " B";
+	var memUsage = memUsageValueToStr(summary.memUsage);
+
+	var values = [node.name, nodeType, target, timeStr , execTimePct + "/" + syncTimePct + " %", memUsage];
+	var table = $("#kernelInfoTable")[0];
+	values.forEach(function(v, i) {
+		var row = table.rows[i + 1];
+		row.cells[1].innerHTML = values[i];
+	})
+}
+*/
 
 function populateSyncNodeInfoTable(node) {
 	var properties = ["Dep. Thread", "Dep. Kernel", "Time (%)"]
@@ -295,35 +335,57 @@ function populateKernelInfoTableById(nodeId) {
 	populateKernelInfoTable(node)
 }
 
-function cloneNode(node, attrs) {
-	var o = {}
-	attrs.forEach(function(a) {o[a] = node[a]})
+function getTopNodesBasedOnTotalTime(nodeNameToSummary, dependencyData, count) {
+	var nodeNameAttrPairs = [];
+	for (var name in nodeNameToSummary) {
+		if (!isPartitionNode(name, config)) {
+			var dNode = getDNodeCorrespondingToTNode(name, dependencyData, config);
+			if (dNode && (dNode.level == 0)) {
+				var totalTime = nodeNameToSummary[name].totalTime;
+				nodeNameAttrPairs.push({
+					"name": name, 
+					"totalTimeAbs": totalTime.abs, 
+					"totalTimePct": totalTime.pct,
+					"node": dNode
+				});
+			}
+		}
+	}
 
-	return o
+	nodeNameAttrPairs.sort(function(p1,p2) { return p2.totalTimePct - p1.totalTimePct; });
+
+	return nodeNameAttrPairs.slice(0,count);
 }
 
-function getTopNodes(nodes, comparisonField, count) {
-    var topNodes = []
-    var relevantAttrs = ["id", "name", "time", comparisonField] // HACK: 'time' field need not be included when computing top nodes based on mem usage
-    var clonedNodes = nodes.filter(function(n) {return n.type != "InternalNode"})
-    			   		   .map(function(n) {return cloneNode(n, relevantAttrs)})
-    clonedNodes.sort(function(n1,n2) {return n2[comparisonField] - n1[comparisonField]})
+function getTopNodesBasedOnMemUsage(nodeNameToSummary, dependencyData, count) {
+	var nodeNameAttrPairs = [];
+	for (var name in nodeNameToSummary) {
+		if (!isPartitionNode(name, config)) {
+			var dNode = getDNodeCorrespondingToTNode(name, dependencyData, config);
+			if (dNode && (dNode.level == 0)) {
+				nodeNameAttrPairs.push({
+					"name": name, 
+					"memUsage": nodeNameToSummary[name].memUsage,
+					"node": dNode
+				});
+			}
+		}
+	}
 
-    if (count > clonedNodes.length) count = clonedNodes.length
-    for (var i = 0; i < count; i++) {
-        topNodes.push(clonedNodes[i])
-    }
+	nodeNameAttrPairs.sort(function(p1,p2) { return p2.memUsage - p1.memUsage; });
 
-    return topNodes
+	return nodeNameAttrPairs.slice(0, count);
 }
 
-function displayGCEventStats(data) {
-	$("#dfg").hide()
-	$("#dfgHeader").hide()
-	$("#generalInfo").show()
-	$("#infoTable").remove()
-
-	createTable("infoTable", "#generalInfo", data)
+function populateGCEventInfoTable(data) {
+	var table = $("#gcEventInfoTable")[0];
+	var youngGenGCInfo = data[0];
+	data.forEach(function(rowData, i) {
+		var row = table.rows[i + 1];
+		rowData.forEach(function(v, i) {
+			row.cells[i].innerHTML = v;
+		});
+	});
 }
 
 function startDebugSession() {
@@ -333,41 +395,52 @@ function startDebugSession() {
 
 		editor = createEditor("code")
   		profData = getProfileData(degOps, profileData.Profile, config)
-  		//setUpTimelineLevelFilter(profData.dependencyData.maxNodeLevel)
   		graphController = createDataFlowGraph(cola, "#dfg", profData.dependencyData, viewState, config)
   		//graphController = {}
 
   		// This is the data to be visualized using bar charts
-  		topNodesBasedOnTime = getTopNodes(profData.dependencyData.nodes, "percentage_time", 20)
-  		topNodesBasedOnMemUsage = getTopNodes(profData.dependencyData.nodes, "memUsage", 20)
+  		topNodesBasedOnTime = getTopNodesBasedOnTotalTime(profData.executionProfile.nodeNameToSummary, profData.dependencyData, 20);
+  		topNodesBasedOnMemUsage = getTopNodesBasedOnMemUsage(profData.executionProfile.nodeNameToSummary, profData.dependencyData, 20);
 
-  		threadLevelSyncStats = profData.threadLevelPerfStats.map(function(o, i) {return {
+  		maxTimeTakenByAKernel = topNodesBasedOnTime[0].totalTimePct;
+  		maxMemUsageByAKernel = topNodesBasedOnMemUsage[0].memUsage;
+  		setTimeAndMemColorScales();
+
+		threadLevelSyncStats = profData.executionProfile.threadLevelPerfStats.map(function(o, i) {return {
   			name: "T" + i,
   			syncTimePct: o.syncTime.pct
   		}})
 
-      	//timelineController = createTimeline("#timeline", profData, config)
-      	timelineController = new TimelineGraph("#timeline", profData, config)
+      	timelineController = new TimelineGraph("mainTimeline", "-main", "#timeline", profData, "#timelineHiddenNodeList", config)
       	timelineController.draw();
-  		//$("#timelineHiddenNodeList").change(timelineController.timelineScopeSelHandler) 
-  		//var f = function() {timelineController.timelineScopeSelHandler()}
-  		//$("#timelineHiddenNodeList").change(f) 	
+  			
   		$("#timelineHiddenNodeList").change({
   			graph: timelineController
   		}, timelineController.timelineScopeSelHandler) 
 
-      	//filterNodesOnTimeline()
-      	createStackGraph("#memory", profData.memUsageData, timelineController.xScale)
+      	createStackGraph("#memory", profData.executionProfile.memUsageData, timelineController.xScale)
       	createGCStatsGraph("#gcStats", gcEvents, timelineController.xScale, config)
 
-		$(".timelineWrapper").on("scroll", function() {
-			var tmp = $(".timelineWrapper")[0]
-			$("#memory")[0].scrollLeft = tmp.scrollLeft
-			$("#gcStats")[0].scrollLeft = tmp.scrollLeft
-		})
+		setUpSynchronizedScrolling();
+		//lockScrollingOfComparisonRuns();
     } else {
-    	alert("Please upload the DEG file and the profile data (profData.js) and retry")
+    	alert("Please upload the DEG file and the profile data (profData.js) and retry");
     }
+}
+
+function setUpSynchronizedScrolling() {
+	$("#timelineWrapper-main").on("scroll", function() {
+		var tmp = $("#timelineWrapper-main")[0];
+		$("#memory")[0].scrollLeft = tmp.scrollLeft;
+		$("#gcStats")[0].scrollLeft = tmp.scrollLeft;
+	});
+}
+
+function lockScrollingOfComparisonRuns() {
+	$("#viewRunsDiv").on("scroll", function() {
+		var scrollAmt = $("viewRunsDiv")[0].scrollLeft;
+		$(".comp-timeline").scrollLeft(scrollAmt);
+	});
 }
 
 function searchNode(nodeName) {
@@ -380,24 +453,3 @@ function searchNode(nodeName) {
 
 	graphController.markNeighbors(nodeId)
 }
-
-$(document).ready(function () {
-	$("#right").css("width", $("#container").width() - $("#accordian").width())
-	$("#dfg").css("height", $("#dfg").height() - $("#dfgHeader").height())
-	/*
-	$('#accordian > ul > li').click(function() {
-		$("#accordian ul li").removeClass("active")
-	    $(this).addClass("active")
-
-	    var checkElement = $(this).next()
-	    if ((checkElement.is("ul")) && (checkElement.is(":visible"))) {
-	        return false
-	    }
-	    if ((checkElement.is('ul')) && (!checkElement.is(':visible'))) {
-	        $("#accordian ul:visible").slideUp("normal")
-	        checkElement.slideDown("normal")
-	        return false
-	    }
-  	})
-	*/
-})

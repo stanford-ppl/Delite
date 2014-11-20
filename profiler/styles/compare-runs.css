@@ -1,0 +1,73 @@
+
+#containerCompareRuns {
+	width: 100%;
+	height: 100%;
+	font-family: Nunito, arial, verdana;
+	font-size: 15;
+}
+
+#compareRunsHeader {
+	width: 100%;
+	height: 50;
+}
+
+#addProfileDataBtn {
+	width: 150;
+	height: 20;
+	margin: 12 0 0 0;
+}
+
+#compareRunsMetricOptions {
+	float: right;
+	margin: 4 4 0 0;
+	font-size: 11;
+}
+
+#compareRunsMetricOptionsLabel {
+	float: right;
+	margin: 4 25 0 0;
+	font-family: arial;
+	font-size: 11;
+}
+
+#viewRunsDiv {
+	width: 100%;
+	height: 100%;
+	overflow-y: auto;
+}
+
+.run-headers {
+    height: 20px;
+    width: 100%;
+    border-top: 1px solid black;
+}
+
+.runs {
+    height: 30%;
+    width: 100%;
+}
+
+.runs-0 {
+    background: #CDD;
+}
+
+.runs-1 {
+    background: #DDD;
+}
+
+.close-run {
+    float: right;
+    font-size: 10;
+    height: 18;
+    margin: 3 3 0 0;
+    -webkit-border-radius: 5;
+}
+
+.timeline-level-selector {
+	float: right;
+    font-size: 10;
+    width: 100;
+    height: 8;
+    margin: 3 30 0 0;
+    -webkit-border-radius: 5;
+}

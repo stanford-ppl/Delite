@@ -25,9 +25,8 @@ function GCEvent(gcEntry, start) {
 		default    : console.error("Unexpected type of GC entry found: " + line); return
 	}
 
-	this.start = start // in microseconds
-	//this.duration = getDurationInMicros(gcEntry, this.type) // In microseconds
-	this.duration = getDurationInMillis(gcEntry, this.type) // In milliseconds
+	this.start = start // in milliseconds
+	this.duration = getDurationInMillis(gcEntry, this.type)
 	this.youngGenStats = getYoungGenStats(gcEntry, this.type)
 	this.oldGenStats = getOldGenStats(gcEntry, this.type)
 	this.heapStats = getHeapStats(gcEntry, this.type)
@@ -45,8 +44,7 @@ function parseGCStatsDump(dump, jvmpUpTimeAtAppStart) {
 	dump.split("\n").forEach(function (line) {
 		if (regexForGCEntry.test(line)) {
 			var gcEntry = line.split(delimiters)
-			//var start = (getStartTimeInMillis(gcEntry) - jvmpUpTimeAtAppStart) * 1e+03
-			var start = getStartTimeInMillis(gcEntry) - jvmpUpTimeAtAppStart
+			var start = getStartTimeInMillis(gcEntry)
 			if (start > 0) gcEvents.push(new GCEvent(gcEntry, start))
 		}
 	})
@@ -61,13 +59,6 @@ function parseGCStatsDump(dump, jvmpUpTimeAtAppStart) {
 function getStartTimeInMillis(gcEntry) {
 	return (parseFloat(gcEntry[0]) * 1000)
 }
-
-/*function getDurationInMicros(gcEntry, gcType) {
-	switch(gcType) {
-		case MAJOR_GC: return parseFloat(gcEntry[10]) * 1e+06
-		case MINOR_GC: return parseFloat(gcEntry[5]) * 1e+06
-	}
-}*/
 
 function getDurationInMillis(gcEntry, gcType) {
 	switch(gcType) {

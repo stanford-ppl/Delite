@@ -49,7 +49,7 @@ function readDegFile(evt) {
     viewState.degFile = degFile.name
 
     $("#degFileName").text(viewState.degFile)
-    if (viewState.profileDataFile != "") {
+    if ((viewState.profileDataFile != "") && (viewState.gcStatsFile != "")) {
       $("#startButton").css("border", "2px solid green")
     }
   }
@@ -77,7 +77,7 @@ function readProfileDataFile(evt) {
     viewState.profileDataFile = evt.target.files[0].name
 
     $("#profDataFileName").text(viewState.profileDataFile)
-    if (viewState.degFile != "") {
+    if ((viewState.degFile != "") && (viewState.gcStatsFile != "")) {
       $("#startButton").css("border", "2px solid green")
     }
   }
@@ -107,7 +107,7 @@ function readGCStatsFile(evt) {
     viewState.gcStatsFile = file.name
 
     $("#gcStatsFileName").text(viewState.gcStatsFile)
-    if (viewState.degFile != "") {
+    if ((viewState.degFile != "") && (viewState.profileDataFile != "")) {
       $("#startButton").css("border", "2px solid green")
     }
   }

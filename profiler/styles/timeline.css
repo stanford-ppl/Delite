@@ -23,13 +23,14 @@
 	font: 12px sans-serif;	
 }
 
-.timingNode {
+.kernelNode {
 	stroke-width: 1;	
 	stroke: black;
 }
 
 .timelineWrapper {
-	overflow-x: auto;
+	/*overflow-x: auto;*/
+	overflow-x: inherit;
 	overflow-y: auto; 
 }
 
