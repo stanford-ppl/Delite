@@ -12,8 +12,12 @@ $("#compareRunSummariesMetricOptions").change(function() {
 var kernelSummariesChart = "#compareKernelSummariesDiv";
 $('#compareSummariesOfKernelTxtBx').keyup(function(event){
     if(event.keyCode == 13){
-        displaySummariesOfKernel($(this).val())
+        displaySummariesOfKernel($(this).val());
     }
+});
+
+$("#compareKernelSummariesMetricOptions").change(function() {
+	displaySummariesOfKernel($(this).val());
 });
 
 var threadCountToExecutionProfile = {};
