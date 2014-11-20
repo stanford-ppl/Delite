@@ -1,13 +1,13 @@
 package ppl.delite.runtime.scheduler
 
 import ppl.delite.runtime.Config
-import ppl.delite.runtime.graph.DeliteTaskGraph
+import ppl.delite.runtime.DeliteMesosScheduler
+import ppl.delite.runtime.graph._
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.cost._
 import ppl.delite.runtime.codegen.kernels.cuda.SingleTask_GPU_Generator
 import ppl.delite.runtime.codegen.{Compilers,CCompile}
-
 
 class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: Int) extends StaticScheduler with ParallelUtilizationCostModel {
 
@@ -44,7 +44,7 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
   //TODO: the redundancy between addSequential() and scheduleOne() with a singleton resource list is confusing
   protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
     def selectTarget(op: DeliteOP, sequential: Boolean) = scheduleOnTarget(op) match {
-      case Targets.Scala => 
+      case Targets.Scala =>
         val resources = if (sequential) Seq(0) else Range(0, numScala)
         scheduleMultiCore(op, graph, schedule, resources)
       case Targets.Cpp =>
@@ -54,11 +54,65 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
       case Targets.OpenCL => scheduleGPU(op, graph, schedule)
     }
 
+    def scheduleMultiLoop(l: OP_MultiLoop) {
+      if (shouldParallelize(l, Map[String,Int]())) selectTarget(op, false)
+      else selectTarget(op, true)
+    }
+
+    def checkPartition(partition: Partition) = {
+      if (partition == Local) {
+        val distributedInputs = op.getInputs map { i => i._1.partition(i._2) } collect { case d@Distributed(x) => d }
+        if (!distributedInputs.isEmpty) {
+          DeliteMesosScheduler.warn("op " + op.id + " is partitioned locally but consumes distributed partitions " + distributedInputs.map(_.id.mkString("[",",","]")).mkString(","))
+        }
+      }
+    }
+
+    // stencil is also checked later (in DeliteMesosScheduler), when dispatching the job. But let's do a sanity check here.
+    // inputDistributedPartitions foreach { p =>
+    //   val ids = p.id
+    //   ids foreach { i =>
+    //     stencilOrElse(i)(Empty) match {
+    //       case All => DeliteMesosScheduler.warn("stencil of op " + id + " for distributed input " + i + " is ALL")
+    //       case _ => // really we should check for matching stencils with ops in 'ids'
+    //     }
+    //   }
+    // }
+
     op match {
       case c: OP_Nested => addNested(c, graph, schedule, Range(0, numResources))
-      case l: OP_MultiLoop => 
-        if (shouldParallelize(l, Map[String,Int]())) selectTarget(op, false)
-        else selectTarget(op, true)
+
+      // Is OP_FileReader (or DeliteOpInput) still being used?
+      case i: OP_FileReader if Config.clusterMode == 1 =>
+        val partition = op.partition
+        checkPartition(partition)
+        println("scheduling input op " + op.id + " as " +partition)
+        if (partition.isInstanceOf[Distributed]) {
+          OpHelper.remote(op, graph)
+          cluster(op, schedule, Range(0, numScala))
+        }
+        else {
+          selectTarget(op, false)
+        }
+
+      case l: OP_MultiLoop if Config.clusterMode == 1 =>
+        val partition = op.partition
+        checkPartition(partition)
+        println("scheduling loop op " + op.id + " as " + partition)
+        if (partition.isInstanceOf[Distributed]) {
+          OpHelper.remote(op, graph)
+          cluster(op, schedule, Range(0, numScala))
+        }
+        else {
+          scheduleMultiLoop(l)
+        }
+
+      case l: OP_MultiLoop => scheduleMultiLoop(l)
+
+      case _ if Config.clusterMode == 1 =>
+        checkPartition(op.partition)
+        selectTarget(op, false)
+
       case _ => selectTarget(op, false)
     }
   }
@@ -126,7 +180,7 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
   }
 
   protected def scheduleOnTarget(op: DeliteOP) = {
-    if (scheduleOnGPU(op)) {   
+    if (scheduleOnGPU(op)) {
       if (op.supportsTarget(Targets.Cuda)) Targets.Cuda else Targets.OpenCL
     }
     else if (op.supportsTarget(Targets.Cpp) && numCpp > 0) Targets.Cpp

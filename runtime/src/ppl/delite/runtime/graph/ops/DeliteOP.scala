@@ -44,6 +44,15 @@ abstract class DeliteOP {
   def stencil(symbol: String) = stencilMap(symbol)
   def stencilOrElse(symbol: String)(orElse: => Stencil) = stencilMap.getOrElse(symbol, orElse)
 
+  // set of all aliases for this op
+  private[graph] var aliases = SortedSet.empty[DeliteOP]
+
+  final def getAliases : Set[DeliteOP] = aliases
+
+  final def addAlias(a: DeliteOP) {
+    aliases += a
+  }
+
   //set of all incoming graph edges for this op
   private[graph] var dependencies = SortedSet.empty[DeliteOP]
 
@@ -128,7 +137,7 @@ abstract class DeliteOP {
   final def addMutableInput(op: DeliteOP, name: String) {
     mutableInputs += Pair(op, name)
   }
-  
+
   //mapping from mutated symbol to the condition list of nested blocks that make the mutation happen
   val mutableInputsCondition = new collection.mutable.HashMap[String, List[(DeliteOP,Boolean)]]
 
@@ -138,7 +147,7 @@ abstract class DeliteOP {
   final def getAntiDeps: Set[DeliteOP] = antiDeps
   final def addAntiDep(op: DeliteOP) {
     antiDeps += op
-  } 
+  }
 
   def id: String
 
@@ -146,9 +155,39 @@ abstract class DeliteOP {
   //TODO: should revisit this when we have more complex dataParallel patterns
   def isDataParallel : Boolean
 
-  def partition: Partition = Local
-  def partition(symbol: String): Partition = partition
 
+  /**
+   * Partitioning
+   */
+
+  // lookup all ops that consume this op and compute a join over their stencils
+  def globalStencil(excludeAliases: Set[DeliteOP] = Set.empty): Stencil = {
+    // we consider each output individually, since if we just use "this.id",
+    // that can return a fused id, which we do not have stencils for
+    val outputs = getOutputs
+
+    // collect relevant stencils from all ops that consume 1 or more of our outputs
+    def outputStencilsFrom(o: DeliteOP): Set[Stencil] = o match {
+      case nested:OP_Nested =>
+        nested.nestedGraphs.toSet.flatMap((g: DeliteTaskGraph) => g.ops.flatMap(o => outputStencilsFrom(o)))
+      case _ =>
+        val consumes = outputs intersect o.getInputs.map(_._2).toSet
+        consumes.map(i => o.stencilOrElse(i)(Empty))
+    }
+
+    val consumerStencils = getConsumers flatMap { op => outputStencilsFrom(op) }
+    val aliasStencils = (getAliases diff excludeAliases) map { op => op.globalStencil(excludeAliases + this) }
+    (consumerStencils ++ aliasStencils).reduceLeft(_ combine _ )
+  }
+
+  def partition: Partition = partition(id)
+
+  def partition(symbol: String): Partition = Local
+
+
+  /**
+   * GPU
+   */
   private var cudaMetadata: GPUMetadata = new CudaMetadata
   private var openclMetadata: GPUMetadata = new OpenCLMetadata
   def getGPUMetadata(tgt: Targets.Value): GPUMetadata = tgt match {

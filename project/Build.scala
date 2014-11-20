@@ -18,11 +18,11 @@ object DeliteBuild extends Build {
     libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.1.2",
 
     libraryDependencies += "org.apache.commons" % "commons-math" % "2.2",
-    libraryDependencies += "com.google.protobuf" % "protobuf-java" % "2.4.1",
+    libraryDependencies += "com.google.protobuf" % "protobuf-java" % "2.5.0",
     libraryDependencies += "org.apache.mesos" % "mesos" % "0.20.1",
     libraryDependencies += "org.apache.hadoop" % "hadoop-common" % "2.5.1",
-    libraryDependencies += "org.apache.hadoop" % "hadoop-client" % "2.3.0",
-    libraryDependencies += "org.apache.hadoop" % "hadoop-hdfs" % "2.3.0",
+    libraryDependencies += "org.apache.hadoop" % "hadoop-client" % "2.5.1",
+    libraryDependencies += "org.apache.hadoop" % "hadoop-hdfs" % "2.5.1",
 
     retrieveManaged := true,
     scalacOptions += "-Yno-generic-signatures",

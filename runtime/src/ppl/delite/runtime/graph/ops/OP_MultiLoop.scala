@@ -6,6 +6,7 @@
 
 package ppl.delite.runtime.graph.ops
 
+import ppl.delite.runtime.DeliteMesosScheduler
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.graph._
 import scala.collection.immutable.SortedSet
@@ -54,19 +55,29 @@ class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, v
     h
   }
 
-  override def partition = { //TODO: "free" partition could be local or distributed...
-    if (getInputs.isEmpty) Local
-    else getInputs.map(i => i._1.partition(i._2)).reduceLeft(_ combine _)
-  }
-
+  // This strategy will try to distribute all multiloops with disjoint stencils, even though they might be small, which could be
+  // very inefficient. Previously we only tried to distribute "input" ops (and ops that consumed them), which is one way of being
+  // more specific. We may want to consider explicitly using size hints (or at the very least checking for a constant op size),
+  // and using that to make the partitioning decision.
+  //
+  // The reasoning to move to default distributed was:
+  //   1) We aren't currently using DeliteOpInput anymore
+  //   2) It is better to distribute a small collection than try to not distribute a huge collection
   override def partition(sym: String) = {
-    val opPartition = partition
-    if (needsCombine) Local //TODO: need to know needsCombine per output symbol rather than globally
-    else if (needsPostProcess) { //TODO: likewise for needsPostProcess
-      if (opPartition == Local) Local
-      else Distributed(Set(id)) //fresh logical partition 
+    if (getInputs.isEmpty) Distributed(Set(id)) // default to Distributed when unconstrained
+    else {
+      val stencil = globalStencil()
+
+      val desiredPartition =
+        if (needsCombine) Local // TODO: need to know needsCombine per output symbol rather than globally
+        else if (stencil == All /*|| stencil == Empty*/) Local // by partitioning "Empty" stencils are distributed, we are being very permissive
+        else Distributed(getOutputs)
+
+      val inputPartitions = getInputs.map(i => i._1.partition(i._2)).toList
+      val chosenPartition = (desiredPartition :: inputPartitions).reduceLeft(_ combine _)
+
+      chosenPartition
     }
-    else opPartition
   }
 
 }

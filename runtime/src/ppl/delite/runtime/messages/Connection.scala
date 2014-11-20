@@ -8,6 +8,7 @@ import java.nio.channels._
 import java.nio.channels.spi._
 import java.net._
 
+import ppl.delite.runtime.Config
 
 abstract class Connection(val channel: SocketChannel, val selector: Selector,
                           val remoteConnectionManagerId: ConnectionManagerId) {
@@ -18,7 +19,7 @@ abstract class Connection(val channel: SocketChannel, val selector: Selector,
          ))
   }
 
-  protected def log(mssg: String) = println(mssg)
+  protected def log(mssg: String) = if (Config.verbose) println(mssg)
   protected def log(mssg: String, e: Exception) = println(mssg)
 
   channel.configureBlocking(false)
@@ -36,12 +37,12 @@ abstract class Connection(val channel: SocketChannel, val selector: Selector,
 
   def getRemoteAddress() = channel.socket.getRemoteSocketAddress().asInstanceOf[InetSocketAddress]
 
-  def read() { 
-    throw new UnsupportedOperationException("Cannot read on connection of type " + this.getClass.toString) 
+  def read() {
+    throw new UnsupportedOperationException("Cannot read on connection of type " + this.getClass.toString)
   }
-  
-  def write() { 
-    throw new UnsupportedOperationException("Cannot write on connection of type " + this.getClass.toString) 
+
+  def write() {
+    throw new UnsupportedOperationException("Cannot write on connection of type " + this.getClass.toString)
   }
 
   def close() {
@@ -63,16 +64,16 @@ abstract class Connection(val channel: SocketChannel, val selector: Selector,
     if (onExceptionCallback != null) {
       onExceptionCallback(this, e)
     } else {
-      log("Error in connection to " + remoteConnectionManagerId + 
+      log("Error in connection to " + remoteConnectionManagerId +
         " and OnExceptionCallback not registered", e)
     }
   }
-  
+
   def callOnCloseCallback() {
     if (onCloseCallback != null) {
       onCloseCallback(this)
     } else {
-      log("Connection to " + remoteConnectionManagerId + 
+      log("Connection to " + remoteConnectionManagerId +
         " closed and OnExceptionCallback not registered")
     }
 
@@ -80,7 +81,7 @@ abstract class Connection(val channel: SocketChannel, val selector: Selector,
 
   def changeConnectionKeyInterest(ops: Int) {
     if (onKeyInterestChangeCallback != null) {
-      onKeyInterestChangeCallback(this, ops) 
+      onKeyInterestChangeCallback(this, ops)
     } else {
       throw new Exception("OnKeyInterestChangeCallback not registered")
     }
@@ -114,11 +115,11 @@ class SendingConnection(val address: InetSocketAddress, selector_ : Selector,
 
   class Outbox(fair: Int = 0) {
     val messages = new Queue[Message]()
-    val defaultChunkSize = 65536  //32768 //16384 
+    val defaultChunkSize = 65536  //32768 //16384
     var nextMessageToBeUsed = 0
 
     def addMessage(message: Message) {
-      messages.synchronized{ 
+      messages.synchronized{
         /*messages += message*/
         messages.enqueue(message)
         log("Added [" + message + "] to outbox for sending to [" + remoteConnectionManagerId + "]")
@@ -145,7 +146,7 @@ class SendingConnection(val address: InetSocketAddress, selector_ : Selector,
               message.started = true
               message.startTime = System.currentTimeMillis
             }
-            return chunk 
+            return chunk
           } else {
             message.finishTime = System.currentTimeMillis
             log("Finished sending [" + message + "] to [" + remoteConnectionManagerId +
@@ -155,7 +156,7 @@ class SendingConnection(val address: InetSocketAddress, selector_ : Selector,
       }
       None
     }
-    
+
     private def getChunkRR(): Option[MessageChunk] = {
       messages.synchronized {
         while (!messages.isEmpty) {
@@ -172,7 +173,7 @@ class SendingConnection(val address: InetSocketAddress, selector_ : Selector,
               message.startTime = System.currentTimeMillis
             }
             log("Sending chunk from [" + message+ "] to [" + remoteConnectionManagerId + "]")
-            return chunk 
+            return chunk
           } else {
             message.finishTime = System.currentTimeMillis
             log("Finished sending [" + message + "] to [" + remoteConnectionManagerId +
@@ -183,13 +184,13 @@ class SendingConnection(val address: InetSocketAddress, selector_ : Selector,
       None
     }
   }
-  
-  val outbox = new Outbox(1) 
+
+  val outbox = new Outbox(1)
   val currentBuffers = new ArrayBuffer[ByteBuffer]()
 
   /*channel.socket.setSendBufferSize(256 * 1024)*/
 
-  override def getRemoteAddress() = address 
+  override def getRemoteAddress() = address
 
   def send(message: Message) {
     outbox.synchronized {
@@ -233,7 +234,7 @@ class SendingConnection(val address: InetSocketAddress, selector_ : Selector,
           outbox.synchronized {
             outbox.getChunk() match {
               case Some(chunk) => {
-                currentBuffers ++= chunk.buffers 
+                currentBuffers ++= chunk.buffers
               }
               case None => {
                 changeConnectionKeyInterest(0)
@@ -243,7 +244,7 @@ class SendingConnection(val address: InetSocketAddress, selector_ : Selector,
             }
           }
         }
-        
+
         if (currentBuffers.size > 0) {
           val buffer = currentBuffers(0)
           val remainingBytes = buffer.remaining
@@ -257,7 +258,7 @@ class SendingConnection(val address: InetSocketAddress, selector_ : Selector,
         }
       }
     } catch {
-      case e: Exception => { 
+      case e: Exception => {
         log("Error writing in connection to " + remoteConnectionManagerId, e)
         callOnExceptionCallback(e)
         close()
@@ -267,37 +268,37 @@ class SendingConnection(val address: InetSocketAddress, selector_ : Selector,
 }
 
 
-class ReceivingConnection(channel_ : SocketChannel, selector_ : Selector) 
+class ReceivingConnection(channel_ : SocketChannel, selector_ : Selector)
   extends Connection(channel_, selector_) {
-  
+
   class Inbox() {
     val messages = new HashMap[Int, BufferMessage]()
-    
+
     def getChunk(header: MessageChunkHeader): Option[MessageChunk] = {
-      
+
       def createNewMessage: BufferMessage = {
         val newMessage = Message.create(header).asInstanceOf[BufferMessage]
         newMessage.started = true
         newMessage.startTime = System.currentTimeMillis
-        log("Starting to receive [" + newMessage + "] from [" + remoteConnectionManagerId + "]") 
+        log("Starting to receive [" + newMessage + "] from [" + remoteConnectionManagerId + "]")
         messages += ((newMessage.id, newMessage))
         newMessage
       }
-      
+
       val message = messages.getOrElseUpdate(header.id, createNewMessage)
       log("Receiving chunk of [" + message + "] from [" + remoteConnectionManagerId + "]")
       message.getChunkForReceiving(header.chunkSize)
     }
-    
+
     def getMessageForChunk(chunk: MessageChunk): Option[BufferMessage] = {
-      messages.get(chunk.header.id) 
+      messages.get(chunk.header.id)
     }
 
     def removeMessage(message: Message) {
       messages -= message.id
     }
   }
-  
+
   val inbox = new Inbox()
   val headerBuffer: ByteBuffer = ByteBuffer.allocate(MessageChunkHeader.HEADER_SIZE)
   var onReceiveCallback: (Connection , Message) => Unit = null
@@ -338,9 +339,9 @@ class ReceivingConnection(channel_ : SocketChannel, selector_ : Selector)
             case _ => throw new Exception("Message of unknown type received")
           }
         }
-        
+
         if (currentChunk == null) throw new Exception("No message chunk to receive data")
-       
+
         val bytesRead = channel.read(currentChunk.buffer)
         if (bytesRead == 0) {
           return
@@ -348,14 +349,14 @@ class ReceivingConnection(channel_ : SocketChannel, selector_ : Selector)
           close()
           return
         }
-        
+
         if (currentChunk.buffer.remaining == 0) {
           /*println("Filled buffer at " + System.currentTimeMillis)*/
           val bufferMessage = inbox.getMessageForChunk(currentChunk).get
           if (bufferMessage.isCompletelyReceived) {
             bufferMessage.flip
             bufferMessage.finishTime = System.currentTimeMillis
-            log("Finished receiving [" + bufferMessage + "] from [" + remoteConnectionManagerId + "] in " + bufferMessage.timeTaken) 
+            log("Finished receiving [" + bufferMessage + "] from [" + remoteConnectionManagerId + "] in " + bufferMessage.timeTaken)
             if (onReceiveCallback != null) {
               onReceiveCallback(this, bufferMessage)
             }
@@ -365,13 +366,13 @@ class ReceivingConnection(channel_ : SocketChannel, selector_ : Selector)
         }
       }
     } catch {
-      case e: Exception  => { 
+      case e: Exception  => {
         log("Error reading from connection to " + remoteConnectionManagerId, e)
         callOnExceptionCallback(e)
         close()
       }
     }
   }
-  
+
   def onReceive(callback: (Connection, Message) => Unit) {onReceiveCallback = callback}
 }

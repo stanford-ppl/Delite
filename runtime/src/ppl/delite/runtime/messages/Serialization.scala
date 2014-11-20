@@ -2,10 +2,13 @@ package ppl.delite.runtime.messages
 
 import com.google.protobuf.ByteString
 import java.nio.ByteBuffer
+
+import scala.reflect.runtime.universe.TypeTag
+
+import generated.scala.io.DeliteFileInputStream
 import ppl.delite.runtime.data._
 import ppl.delite.runtime.messages.Messages._
 import ppl.delite.runtime.DeliteMesosExecutor
-
 
 object Serialization {
 
@@ -20,18 +23,18 @@ object Serialization {
   private var lookupId = false
   var symId: String = _
 
-  //TODO: Move this to somewhere else. 
-  //This is only used to check if a new array data is sent from the master so that GPU can update its stale copy.  
+  //TODO: Move this to somewhere else.
+  //This is only used to check if a new array data is sent from the master so that GPU can update its stale copy.
   var updated: Boolean = false
 
   private var copyLength = -1
   private var copyOffset = 0
 
-  def serialize[T](value: T): ByteString = serialize(value, false, null, 0, -1)
-  def serialize[T](value: T, sendId: Boolean, symId: String): ByteString = serialize(value, sendId, symId, 0, -1)
-  def serialize[T](value: T, offset: Int, length: Int): ByteString = serialize(value, false, null, offset, length)
+  def serialize[T:TypeTag](value: T): ByteString = serialize(value, false, null, 0, -1)
+  def serialize[T:TypeTag](value: T, sendId: Boolean, symId: String): ByteString = serialize(value, sendId, symId, 0, -1)
+  def serialize[T:TypeTag](value: T, offset: Int, length: Int): ByteString = serialize(value, false, null, offset, length)
 
-  def serialize[T](value: T, sendId: Boolean, symId: String, offset: Int, length: Int): ByteString = {
+  def serialize[T:TypeTag](value: T, sendId: Boolean, symId: String, offset: Int, length: Int): ByteString = {
     this.sendId = sendId //initialize stack
     copyLength = length
     copyOffset = offset
@@ -48,11 +51,12 @@ object Serialization {
       case v:Byte => UIntMessage.newBuilder.setValue(v).build.toByteString
       case v:Short => IntMessage.newBuilder.setValue(v).build.toByteString
       case s:String => StringMessage.newBuilder.setValue(s).build.toByteString
-      case a:DeliteArray[_] => serializeDeliteArray(a).toByteString
-      case a: Array[Int] => serializeDeliteArray(new LocalDeliteArrayInt(a)).toByteString
-      case a: Array[Char] => serializeDeliteArray(new LocalDeliteArrayChar(a)).toByteString
-      case a: Array[Double] => serializeDeliteArray(new LocalDeliteArrayDouble(a)).toByteString
-      case a: Array[Any] => serializeDeliteArray(new LocalDeliteArrayObject(a)).toByteString
+      case a:DeliteArray[_] => serializeDeliteArray(a, implicitly[TypeTag[T]]).toByteString
+      case a: Array[Int] => serializeDeliteArray(new LocalDeliteArrayInt(a), implicitly[TypeTag[T]]).toByteString
+      case a: Array[Char] => serializeDeliteArray(new LocalDeliteArrayChar(a), implicitly[TypeTag[T]]).toByteString
+      case a: Array[Double] => serializeDeliteArray(new LocalDeliteArrayDouble(a), implicitly[TypeTag[T]]).toByteString
+      case a: Array[Any] => serializeDeliteArray(new LocalDeliteArrayObject(a), implicitly[TypeTag[T]]).toByteString
+      case i: DeliteFileInputStream => i.serialize
       case other =>
         try {
           other.getClass.getMethod("toByteString").invoke(other).asInstanceOf[ByteString]
@@ -65,52 +69,52 @@ object Serialization {
 
   //TODO: for large arrays we probably want to avoid protobufs (extra copies)
   //seems to require 2 different interfaces? (ByteBuffer vs ByteString)
-  def serializeDeliteArray(array: DeliteArray[_]): ArrayMessage = {
+  def serializeDeliteArray(array: DeliteArray[_], tag: TypeTag[_]): ArrayMessage = {
     val length = if (copyLength == -1) array.length else copyLength
     //DeliteMesosExecutor.sendDebugMessage("produced array of length: " + length)
     val offset = this.copyOffset
     array match {
-      case a:DeliteArray[_] if sendId => 
+      case a:DeliteArray[_] if sendId =>
         val symOffset = nextOffset
         saveLocally(symId, symOffset, a)
         val id = symId + "_" + symOffset
-        ArrayMessage.newBuilder.setId(Id.newBuilder.setId(id)).setLength(length).build
+        ArrayMessage.newBuilder.setId(Id.newBuilder.setId(id)).setLength(length).setType(tag.tpe.toString).build
       case a:RemoteDeliteArray[_] =>
-        val mssg = ArrayMessage.newBuilder.setId(Id.newBuilder.setId(a.id))
+        val mssg = ArrayMessage.newBuilder.setId(Id.newBuilder.setId(a.id)).setType(tag.tpe.toString)
         for (len <- a.offsets) mssg.addOffset(len)
         mssg.build
       case a:LocalDeliteArrayInt =>
         val buf = ByteBuffer.allocate(length*4)
         buf.asIntBuffer.put(a.data, offset, length)
-        val array = ByteString.copyFrom(buf)
+        val array = ByteString.copyFrom(buf.array)
         ArrayMessage.newBuilder.setLength(length).setArray(array).build
-      case a:LocalDeliteArrayLong => 
+      case a:LocalDeliteArrayLong =>
         val buf = ByteBuffer.allocate(length*8)
         buf.asLongBuffer.put(a.data, offset, length)
-        val array = ByteString.copyFrom(buf)
+        val array = ByteString.copyFrom(buf.array)
         ArrayMessage.newBuilder.setLength(length).setArray(array).build
-      case a:LocalDeliteArrayFloat => 
+      case a:LocalDeliteArrayFloat =>
         val buf = ByteBuffer.allocate(length*4)
         buf.asFloatBuffer.put(a.data, offset, length)
-        val array = ByteString.copyFrom(buf)
+        val array = ByteString.copyFrom(buf.array)
         ArrayMessage.newBuilder.setLength(length).setArray(array).build
-      case a:LocalDeliteArrayDouble => 
+      case a:LocalDeliteArrayDouble =>
         //ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(a.data.mkString("local array: [ ", " ", " ]"))
         val buf = ByteBuffer.allocate(length*8)
         buf.asDoubleBuffer.put(a.data, offset, length)
-        val array = ByteString.copyFrom(buf)
+        val array = ByteString.copyFrom(buf.array)
         ArrayMessage.newBuilder.setLength(length).setArray(array).build
-      case a:LocalDeliteArrayChar => 
+      case a:LocalDeliteArrayChar =>
         val buf = ByteBuffer.allocate(length*2)
         buf.asCharBuffer.put(a.data, offset, length)
-        val array = ByteString.copyFrom(buf)
+        val array = ByteString.copyFrom(buf.array)
         ArrayMessage.newBuilder.setLength(length).setArray(array).build
-      case a:LocalDeliteArrayShort => 
+      case a:LocalDeliteArrayShort =>
         val buf = ByteBuffer.allocate(length*2)
         buf.asShortBuffer.put(a.data, offset, length)
-        val array = ByteString.copyFrom(buf)
+        val array = ByteString.copyFrom(buf.array)
         ArrayMessage.newBuilder.setLength(length).setArray(array).build
-      case a:LocalDeliteArrayBoolean => 
+      case a:LocalDeliteArrayBoolean =>
         val arr = a.data
         val buf = ByteBuffer.allocate(length)
         var i = offset
@@ -119,15 +123,15 @@ object Serialization {
           buf.put(x)
           i += 1
         }
-        val array = ByteString.copyFrom(buf)
+        val array = ByteString.copyFrom(buf.array)
         ArrayMessage.newBuilder.setLength(length).setArray(array).build
-      case a:LocalDeliteArrayByte => 
+      case a:LocalDeliteArrayByte =>
         val array = ByteString.copyFrom(a.data, offset, length)
         ArrayMessage.newBuilder.setLength(length).setArray(array).build
       case a:LocalDeliteArrayObject[_] =>
         val arr = a.data
         var i = offset
-        
+
         val serialize = try {
           arr(i).getClass.getMethod("toByteString")
         }
@@ -140,9 +144,9 @@ object Serialization {
         val saveLength = copyLength
         copyLength = -1
 
-        val mssg = ArrayMessage.newBuilder.setLength(length)
+        val mssg = ArrayMessage.newBuilder.setLength(length).setType(tag.tpe.toString)
         while (i < offset+length) {
-          mssg.addObject(serialize.invoke(arr(i)).asInstanceOf[ByteString])         
+          mssg.addObject(serialize.invoke(arr(i)).asInstanceOf[ByteString])
           i += 1
         }
 
@@ -175,7 +179,24 @@ object Serialization {
       case tpe if tpe == classOf[DeliteArrayShort] => deserializeDeliteArrayShort(ArrayMessage.parseFrom(bytes))
       case tpe if tpe == classOf[DeliteArrayByte] => deserializeDeliteArrayByte(ArrayMessage.parseFrom(bytes))
       case tpe if tpe == classOf[DeliteArrayBoolean] => deserializeDeliteArrayBoolean(ArrayMessage.parseFrom(bytes))
-      //case tp if tp == classOf[DeliteArrayObject[_]] => deserializeDeliteArrayObject(tpe(1), ArrayMessage.parseFrom(bytes))
+
+      case tpe if tpe == classOf[DeliteArrayObject[_]] =>
+        val mssg = ArrayMessage.parseFrom(bytes)
+        val fullTpe = mssg.getType
+        // TODO: currently only handling singly-nested arrays. Any other object will fail in the match.
+        val innerTpe = fullTpe.substring(fullTpe.lastIndexOf("[")+1,fullTpe.lastIndexOf("]"))
+        innerTpe match {
+          case "ppl.delite.runtime.data.DeliteArrayInt" => deserializeDeliteArrayObject[DeliteArrayInt](mssg)
+          case "ppl.delite.runtime.data.DeliteArrayShort" => deserializeDeliteArrayObject[DeliteArrayShort](mssg)
+          case "ppl.delite.runtime.data.DeliteArrayLong" => deserializeDeliteArrayObject[DeliteArrayLong](mssg)
+          case "ppl.delite.runtime.data.DeliteArrayFloat" => deserializeDeliteArrayObject[DeliteArrayFloat](mssg)
+          case "ppl.delite.runtime.data.DeliteArrayDouble" => deserializeDeliteArrayObject[DeliteArrayDouble](mssg)
+          case "ppl.delite.runtime.data.DeliteArrayBoolean" => deserializeDeliteArrayObject[DeliteArrayBoolean](mssg)
+          case "ppl.delite.runtime.data.DeliteArrayChar" => deserializeDeliteArrayObject[DeliteArrayChar](mssg)
+          case _ => throw new UnsupportedOperationException("don't know how to deserialize: " + fullTpe)
+        }
+
+      case tpe if tpe == classOf[DeliteFileInputStream] => DeliteFileInputStream.deserialize(bytes)
       case other =>
         try {
           other.getMethod("parseFrom", classOf[ByteString]).invoke(null, bytes)
@@ -191,7 +212,7 @@ object Serialization {
     if (mssg.hasArray) {
       val byteBuffer = mssg.getArray.asReadOnlyByteBuffer
       val array = new Array[Int](byteBuffer.capacity / 4)
-      byteBuffer.asIntBuffer.get(array) 
+      byteBuffer.asIntBuffer.get(array)
       updated = true
       new LocalDeliteArrayInt(array)
     }
@@ -206,7 +227,7 @@ object Serialization {
     if (mssg.hasArray) {
       val byteBuffer = mssg.getArray.asReadOnlyByteBuffer
       val array = new Array[Long](byteBuffer.capacity / 8)
-      byteBuffer.asLongBuffer.get(array) 
+      byteBuffer.asLongBuffer.get(array)
       updated = true
       new LocalDeliteArrayLong(array)
     }
@@ -221,7 +242,7 @@ object Serialization {
     if (mssg.hasArray) {
       val byteBuffer = mssg.getArray.asReadOnlyByteBuffer
       val array = new Array[Float](byteBuffer.capacity / 4)
-      byteBuffer.asFloatBuffer.get(array) 
+      byteBuffer.asFloatBuffer.get(array)
       updated = true
       new LocalDeliteArrayFloat(array)
     }
@@ -252,7 +273,7 @@ object Serialization {
     if (mssg.hasArray) {
       val byteBuffer = mssg.getArray.asReadOnlyByteBuffer
       val array = new Array[Char](byteBuffer.capacity / 2)
-      byteBuffer.asCharBuffer.get(array) 
+      byteBuffer.asCharBuffer.get(array)
       updated = true
       new LocalDeliteArrayChar(array)
     }
@@ -267,7 +288,7 @@ object Serialization {
     if (mssg.hasArray) {
       val byteBuffer = mssg.getArray.asReadOnlyByteBuffer
       val array = new Array[Short](byteBuffer.capacity / 2)
-      byteBuffer.asShortBuffer.get(array) 
+      byteBuffer.asShortBuffer.get(array)
       updated = true
       new LocalDeliteArrayShort(array)
     }
@@ -282,7 +303,7 @@ object Serialization {
     if (mssg.hasArray) {
       val byteBuffer = mssg.getArray.asReadOnlyByteBuffer
       val array = new Array[Byte](byteBuffer.capacity)
-      byteBuffer.get(array) 
+      byteBuffer.get(array)
       updated = true
       new LocalDeliteArrayByte(array)
     }
@@ -327,7 +348,7 @@ object Serialization {
         i += 1
       }
       updated = true
-      new LocalDeliteArrayObject[T](array)    
+      new LocalDeliteArrayObject[T](array)
     }
     else {
       val id = mssg.getId.getId

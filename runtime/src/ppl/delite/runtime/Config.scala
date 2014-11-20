@@ -6,7 +6,7 @@ import graph.targets.OS
  * Author: Kevin J. Brown
  * Date: Oct 11, 2010
  * Time: 1:43:14 AM
- * 
+ *
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
@@ -31,6 +31,7 @@ object Config {
   val pinThreads: Boolean = getProperty("delite.pinThreads", "false") != "false"
   val clusterMode: Int = if (getProperty("delite.cluster.isSlave", "false") != "false") 2 else if (numSlaves > 0) 1 else 0
   val masterAddress: String = getProperty("delite.master", "")
+  val messagePort: Int = getProperty("delite.message.port", "0").toInt
   var scheduler: String = getProperty("delite.scheduler", "dynamic")
   var executor: String = getProperty("delite.executor", "default")
   val numRuns: Int = getProperty("delite.runs", "1").toInt
@@ -67,7 +68,7 @@ object Config {
 
 
   var degFilename = System.getProperty("delite.deg.filename", "out.deg")
-  
+
   /**
    * DEG specific, set after its parsed
    * TODO: handle this more rigorously
@@ -77,11 +78,11 @@ object Config {
   /***********
    *	Cost Modeling
    */
-  
+
 	val whileCostThreshold: Int = getProperty("delite.while.threshold", "-1").toInt
 	val loopCostThreshold: Int = getProperty("delite.loop.threshold", "-1").toInt
   val enableTaskParallelism: Boolean = getProperty("delite.scheduler.enableTaskParallelism", "false") != "false"
-	 
+
   /***********
     * Statistics and Metrics Section
     */
