@@ -61,7 +61,7 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
 
     def checkPartition(partition: Partition) = {
       if (partition == Local) {
-        val distributedInputs = op.getInputs map { i => i._1.partition(i._2) } collect { case d@Distributed(x) => d }
+        val distributedInputs = op.getInputs map { i => i._1.outputPartition } collect { case d@Distributed(x) => d }
         if (!distributedInputs.isEmpty) {
           DeliteMesosScheduler.warn("op " + op.id + " is partitioned locally but consumes distributed partitions " + distributedInputs.map(_.id.mkString("[",",","]")).mkString(","))
         }

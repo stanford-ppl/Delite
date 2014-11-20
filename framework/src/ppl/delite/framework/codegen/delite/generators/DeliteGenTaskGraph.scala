@@ -393,7 +393,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     // See DeliteStructs.scala containsSyms for more info.
     val saveDeliteStructContainsAliases = _deliteStructContainsAliases
     _deliteStructContainsAliases = true
-    val aliases = allAliases(rhs,deliteStructAliasMode) filter { a => sym.map(_.tp).contains(a.tp) } // try to be a little more precise w.r.t. runtime aliases
+    val aliases = allAliases(rhs,deliteStructAliasMode)
+    // println("aliases for " + sym + "(" + rhs.toString + "): " + aliases)
     _deliteStructContainsAliases = saveDeliteStructContainsAliases
 
     // emit task graph node

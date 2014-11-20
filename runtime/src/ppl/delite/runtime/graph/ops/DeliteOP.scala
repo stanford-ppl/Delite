@@ -40,6 +40,7 @@ abstract class DeliteOP {
   def supportsTarget(target: Targets.Value): Boolean = supportedTargets contains target
 
   def getOutputs = SortedSet.empty[String] ++ (outputTypesMap.head._2.keySet - "functionReturn")
+  def outputIncludesDeliteArray = getOutputTypesMap(Targets.Scala).values.exists(t => t.contains("runtime.data.DeliteArray"))
 
   def stencil(symbol: String) = stencilMap(symbol)
   def stencilOrElse(symbol: String)(orElse: => Stencil) = stencilMap.getOrElse(symbol, orElse)
@@ -160,6 +161,13 @@ abstract class DeliteOP {
    * Partitioning
    */
 
+  // We try to be a little more precise here w.r.t. aliases that we consider in the stencil.
+  // The idea is we only care about aliases that are DeliteArrays or possibly those with type "Unit",
+  // as these can be transitive alias connectors (e.g. var assignment).
+  def getArrayAliases: Set[DeliteOP] = {
+    getAliases filter { a => a.outputIncludesDeliteArray || a.outputType == "Unit" }
+  }
+
   // lookup all ops that consume this op and compute a join over their stencils
   def globalStencil(excludeAliases: Set[DeliteOP] = Set.empty): Stencil = {
     // we consider each output individually, since if we just use "this.id",
@@ -176,13 +184,15 @@ abstract class DeliteOP {
     }
 
     val consumerStencils = getConsumers flatMap { op => outputStencilsFrom(op) }
-    val aliasStencils = (getAliases diff excludeAliases) map { op => op.globalStencil(excludeAliases + this) }
-    (consumerStencils ++ aliasStencils).reduceLeft(_ combine _ )
+    val aliasStencils = (getArrayAliases diff excludeAliases) map { op => op.globalStencil(excludeAliases + this) }
+    (consumerStencils ++ aliasStencils).foldLeft(Empty: Stencil)(_ combine _ )
   }
 
-  def partition: Partition = partition(id)
+  // Where to schedule this op
+  def partition: Partition = Local
 
-  def partition(symbol: String): Partition = Local
+  // Where this ops outputs will live after its finished (e.g. reduces becomes local)
+  def outputPartition: Partition = Local
 
 
   /**
