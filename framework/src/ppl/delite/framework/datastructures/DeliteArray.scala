@@ -973,6 +973,39 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
     case DeliteArraySetActBuffer(da) =>
       stream.println(getActBuffer.head + " = " + quote(da) + ";")
       getActBuffer.tail.foreach(buf => stream.println(buf + " = " + quote(da) + ";"))
+    case a@DeliteArraySort(x) if !Config.generateSerializable => 
+      if (cppMemMgr == "refcnt")  
+        stream.println(remap(sym.tp) + " " + quote(sym) + "(new " + unwrapSharedPtr(remap(sym.tp)) + "(" + quote(x) + "->length), " + unwrapSharedPtr(remap(sym.tp)) + "D());")
+      else
+        emitValDef(sym, "new (" + resourceInfoSym + ".thread_id) " + remap(sym.tp) + "(" + quote(x) + "->length, " + resourceInfoSym + ".thread_id)")
+      stream.println("std::copy(" + quote(x) + "->data, " + quote(x) + "->data+" + quote(x) + "->length," + quote(sym) + "->data);")
+      stream.println("std::sort(" + quote(sym) + "->data, " + quote(sym) + "->data + " + quote(sym) + "->length);")
+    case a@DeliteArraySortIndices(len,sV,comp) if !Config.generateSerializable =>
+      val freeVars = getFreeVarBlock(comp, List(sV._1,sV._2))
+      if (cppMemMgr == "refcnt")  
+        stream.println(remap(sym.tp) + " " + quote(sym) + "(new " + unwrapSharedPtr(remap(sym.tp)) + "(" + quote(len) + "), " + unwrapSharedPtr(remap(sym.tp)) + "D());")
+      else
+        emitValDef(sym, "new (" + resourceInfoSym + ".thread_id) " + remap(sym.tp) + "(" + quote(len) + ", " + resourceInfoSym + ".thread_id)")
+      stream.println("for (int64_t i=0; i<" + quote(len) + "; i++) { " + quote(sym) + "->data[i] = i; }")
+      stream.println("struct comparator_" + quote(getBlockResult(comp)) + " comp_" + quote(getBlockResult(comp)) + " = " + freeVars.map(quote(_)).mkString("{",",","};"))
+      stream.println("std::sort(" + quote(sym) + "->data, " + quote(sym) + "->data + " + quote(sym) + "->length, comp_" + quote(getBlockResult(comp)) + ");")
+
+      //Declare the comparator in helperfunc header. (TODO: Use C++11 closure and embed in the kernel)
+      withStream(headerStream) {
+        stream.println("#ifndef __COMPARATOR_" + quote(getBlockResult(comp)) + "__")
+        stream.println("#define __COMPARATOR_" + quote(getBlockResult(comp)) + "__")
+        stream.println("struct comparator_" + quote(getBlockResult(comp)) + "{")
+        freeVars.foreach { v => stream.println(remapWithRef(v.tp) + " " + quote(v) + ";") }
+        stream.println("bool operator()(" + remap(sV._1.tp) + " o1, " + remap(sV._2.tp) + " o2){")
+        emitValDef(sV._1, "o1")
+        emitValDef(sV._2, "o2")
+        emitBlock(comp)
+        stream.println("return " + quote(getBlockResult(comp)) + " < 0;")
+        stream.println("}")
+        stream.println("};")
+        stream.println("#endif")
+      }
+
     case _ => super.emitNode(sym, rhs)
   }
 
