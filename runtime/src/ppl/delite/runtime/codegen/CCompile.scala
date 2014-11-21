@@ -120,7 +120,7 @@ trait CCompile extends CodeCache {
       throw new RuntimeException("JNI header paths are not set. Please specify in $DELITE_HOME/config/delite/" + configFile + " (<headers> </headers>)")
 
     //TODO: How many parallel jobs? For now, the number of processors.
-    val args = Array(config.make, "-s", "-j", Runtime.getRuntime.availableProcessors.toString, "-f", makefile, "all")
+    val args = Array(config.make, "-s", "-j", (4*Runtime.getRuntime.availableProcessors).toString, "-f", makefile, "all")
     val process = Runtime.getRuntime.exec(args)
     process.waitFor
     checkError(process, args)
