@@ -67,8 +67,8 @@ class ConnectionManager(port: Int) {
   serverChannel.socket.bind(new InetSocketAddress(port))
   serverChannel.register(selector, SelectionKey.OP_ACCEPT)
 
-  private def log(mssg: String) = if (Config.verbose) println(mssg)
-  private def log(mssg: String, e: Exception) = println(mssg)
+  private def log(mssg: String) = if (Config.printConnection) println("[connection manager]: " + mssg)
+  private def log(mssg: String, e: Exception) = println("[connection manager error]: " + mssg)
 
   val id = ConnectionManagerId(InetAddress.getLocalHost.getHostName, serverChannel.socket.getLocalPort)
   log("Bound socket to port " + serverChannel.socket.getLocalPort() + " with id = " + id)

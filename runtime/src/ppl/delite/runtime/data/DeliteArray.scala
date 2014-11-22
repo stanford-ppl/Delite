@@ -196,8 +196,8 @@ abstract class RemoteDeliteArrayImpl[T:Manifest] extends DeliteArray[T] with Rem
   def readAt(i: Int) = if (local eq null) remoteRead(i) else local(i)
 
   private def remoteRead(i: Int): T = {
-    var location = offsets.indexWhere(_ >= i) - 1
-    if (location < 0) location = offsets.length - 1
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
     val result = ppl.delite.runtime.DeliteMesosScheduler.requestData(id, location, i)
     Serialization.deserialize(manifest[T].erasure.asInstanceOf[Class[T]], result.getOutput(0))
   }
@@ -265,8 +265,8 @@ final class RemoteDeliteArrayDouble(var id: String, var chunkLengths: Array[Int]
   def readAt(i: Int) = if (local eq null) remoteRead(i) else local(i)
 
   private def remoteRead(i: Int) = {
-    var location = offsets.indexWhere(_ >= i) - 1
-    if (location < 0) location = offsets.length - 1
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
     val result = ppl.delite.runtime.DeliteMesosScheduler.requestData(id, location, i)
     Serialization.deserialize(classOf[Double], result.getOutput(0))
   }
@@ -330,8 +330,8 @@ final class RemoteDeliteArrayInt(var id: String, var chunkLengths: Array[Int]) e
   def readAt(i: Int) = if (local eq null) remoteRead(i) else local(i)
 
   private def remoteRead(i: Int) = {
-    var location = offsets.indexWhere(_ >= i) - 1
-    if (location < 0) location = offsets.length - 1
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
     val result = ppl.delite.runtime.DeliteMesosScheduler.requestData(id, location, i)
     Serialization.deserialize(classOf[Int], result.getOutput(0))
   }
@@ -394,8 +394,8 @@ final class RemoteDeliteArrayChar(var id: String, var chunkLengths: Array[Int]) 
   def readAt(i: Int) = if (local eq null) remoteRead(i) else local(i)
 
   private def remoteRead(i: Int) = {
-    var location = offsets.indexWhere(_ >= i) - 1
-    if (location < 0) location = offsets.length - 1
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
     val result = ppl.delite.runtime.DeliteMesosScheduler.requestData(id, location, i)
     Serialization.deserialize(classOf[Char], result.getOutput(0))
   }
@@ -458,8 +458,8 @@ final class RemoteDeliteArrayBoolean(var id: String, var chunkLengths: Array[Int
   def readAt(i: Int) = if (local eq null) remoteRead(i) else local(i)
 
   private def remoteRead(i: Int) = {
-    var location = offsets.indexWhere(_ >= i) - 1
-    if (location < 0) location = offsets.length - 1
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
     val result = ppl.delite.runtime.DeliteMesosScheduler.requestData(id, location, i)
     Serialization.deserialize(classOf[Boolean], result.getOutput(0))
   }
@@ -524,6 +524,9 @@ abstract class LocalDeliteArray[T:Manifest] extends DeliteArray[T] {
 
   val data: Array[T]
   var offset: Int
+
+  // Offsets and id are intentionally null initially; the first time this array is deserialized from a RemoteArray, these will be set.
+  // Before then, no remote reads should be requested on this array (its offset has never been broadcast to anyone but the master).  
   var offsets: Array[Int] = _
   var id: String = _
 
@@ -548,8 +551,8 @@ abstract class LocalDeliteArray[T:Manifest] extends DeliteArray[T] {
     }
 
   private def remoteRead(i: Int): T = {
-    var location = offsets.indexWhere(_ >= i) - 1
-    if (location < 0) location = offsets.length - 1
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
     val result = ppl.delite.runtime.DeliteMesosExecutor.requestData(id, location, i)
     Serialization.deserialize(manifest[T].erasure.asInstanceOf[Class[T]], result.getOutput(0))
   }
@@ -597,8 +600,8 @@ final class LocalDeliteArrayDouble(val data: Array[Double], var offset: Int) ext
     }
 
   private def remoteRead(i: Int): Double = {
-    var location = offsets.indexWhere(_ >= i) - 1
-    if (location < 0) location = offsets.length - 1
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
     val result = ppl.delite.runtime.DeliteMesosExecutor.requestData(id, location, i)
     Serialization.deserialize(classOf[Double], result.getOutput(0))
   }
@@ -643,8 +646,8 @@ final class LocalDeliteArrayInt(val data: Array[Int], var offset: Int) extends D
     }
 
   private def remoteRead(i: Int): Int = {
-    var location = offsets.indexWhere(_ >= i) - 1
-    if (location < 0) location = offsets.length - 1
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
     val result = ppl.delite.runtime.DeliteMesosExecutor.requestData(id, location, i)
     Serialization.deserialize(classOf[Int], result.getOutput(0))
   }
@@ -689,8 +692,8 @@ final class LocalDeliteArrayChar(val data: Array[Char], var offset: Int) extends
     }
 
   private def remoteRead(i: Int): Char = {
-    var location = offsets.indexWhere(_ >= i) - 1
-    if (location < 0) location = offsets.length - 1
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
     val result = ppl.delite.runtime.DeliteMesosExecutor.requestData(id, location, i)
     Serialization.deserialize(classOf[Char], result.getOutput(0))
   }
@@ -735,8 +738,8 @@ final class LocalDeliteArrayBoolean(val data: Array[Boolean], var offset: Int) e
     }
 
   private def remoteRead(i: Int): Boolean = {
-    var location = offsets.indexWhere(_ >= i) - 1
-    if (location < 0) location = offsets.length - 1
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
     val result = ppl.delite.runtime.DeliteMesosExecutor.requestData(id, location, i)
     Serialization.deserialize(classOf[Boolean], result.getOutput(0))
   }

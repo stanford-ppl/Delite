@@ -58,9 +58,21 @@ object RPC_Generator {
   }
 
   private def writeKernel(out: StringBuilder, op: DeliteOP) {
+    // construct the closure, so that we can read out the size
+    out.append("val closure = ")
+    op match {
+      case _:OP_MultiLoop =>
+        out.append("kernel_" + op.id)
+        out.append((resourceInfoSym+:(op.getInputs.map(_._2))).mkString("(",",",")\n"))
+
+      // TODO: remove
+      // case _:OP_FileReader =>
+      //   out.append("new activation_" + op.id + "\n")
+    }
+
     // launch
     val tpe = if (op.isInstanceOf[OP_MultiLoop]) "RemoteOp.Type.MULTILOOP" else "RemoteOp.Type.INPUT"
-    out.append("val res = ppl.delite.runtime.DeliteMesosScheduler.launchAllSlaves(\"" + op.id + "\"," + tpe)
+    out.append("val res = ppl.delite.runtime.DeliteMesosScheduler.launchAllSlaves(\"" + op.id + "\"," + tpe + ", closure.size("+resourceInfoSym+")")
 
     val stencils =
       if (op.isInstanceOf[OP_MultiLoop]) {
@@ -78,14 +90,6 @@ object RPC_Generator {
     out.append("val act = activation_" + op.id + ".deserialize(res(0).getOutputList)\n")
 
     // reduce results from other slaves
-    out.append("val closure = ")
-    op match {
-      case _:OP_MultiLoop =>
-        out.append("kernel_" + op.id)
-        out.append((resourceInfoSym+:(op.getInputs.map(in => "null.asInstanceOf[" + in._1.outputType(in._2) + "]"))).mkString("(",",",")\n"))
-      case _:OP_FileReader =>
-        out.append("new activation_" + op.id + "\n")
-    }
     out.append("var slaveIdx = 1\n")
     out.append("while (slaveIdx < res.length) {\n") //TODO: could parallelize reduce across slaves, then send result to master
       out.append("val act2 = activation_" + op.id + ".deserialize(res(slaveIdx).getOutputList)\n")
@@ -94,11 +98,11 @@ object RPC_Generator {
     out.append("}\n")
 
 
-    // TODO: Decide what to do with this. It probably should only be run on slaves (which happens during launchSlaveTasks()) anyway.
+    // TODO: Decide what to do with this. should this be called by master, slaves, or both?
     //       Calling it here (i.e. on the master) currently results in an NPE, since the deserialized activation record does not contain _data fields.
 
     // op match {
-    //   case m: OP_MultiLoop if m.needsCombine => out.append("closure.finalize("+resourceInfoSym+",act)\n") //TODO: should this be called by master, slaves, or both?
+    //   case m: OP_MultiLoop if m.needsCombine => out.append("closure.finalize("+resourceInfoSym+",act)\n") //TODO:
     //   case _ =>
     // }
 

@@ -98,9 +98,10 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with VariablesExp with 
   }   
 
   // - Struct transformation methods
-  def dc_data_field[A:Manifest](x: Exp[DeliteCollection[A]]): String = ""
+  def dc_data_field(tp: Manifest[_]): String = ""
 
-  def dc_size_field[A:Manifest](x: Exp[DeliteCollection[A]]): String = ""
+  def dc_size_field(tp: Manifest[_]): String = ""
+
 
   //////////////
   // mirroring

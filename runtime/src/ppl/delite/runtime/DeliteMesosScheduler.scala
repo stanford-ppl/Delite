@@ -61,16 +61,12 @@ class DeliteMesosScheduler(private val executor: ExecutorInfo) extends Scheduler
       val offer = offersIter.next
       idx += 1
       slaves ::= offer.getHostname
-      println("slave offered @ " + offer.getHostname)
       DeliteMesosScheduler.slaves ::= offer.getSlaveId
 
-      val cpus = offer.getResources(0)
-      assert(cpus.getName == "cpus")
-      println("cpus offered: " + cpus.getScalar.getValue)
-
-      val mem = offer.getResources(1)
-      assert(mem.getName == "mem")
-      println("mem offered: " + mem.getScalar.getValue)
+      println("slave offered @ " + offer.getHostname)
+      for (i <- 0 until offer.getResourcesCount) {
+        println("  " + offer.getResources(i).getName + " : " + offer.getResources(i).getScalar.getValue)
+      }
     }
 
     DeliteMesosScheduler.slaves = DeliteMesosScheduler.slaves.reverse
@@ -88,6 +84,7 @@ class DeliteMesosScheduler(private val executor: ExecutorInfo) extends Scheduler
         .setMasterAddress(DeliteMesosScheduler.network.id.host)
         .setMasterPort(DeliteMesosScheduler.network.id.port)
         .setSlaveIdx(idx)
+
       for (arg <- DeliteMesosScheduler.appArgs) mssg.addArg(arg)
       idx += 1
 
@@ -242,8 +239,9 @@ object DeliteMesosScheduler {
     val sep = java.io.File.separator
     appArgs(0) = Config.deliteHome + sep + appArgs(0) //should be part of the 'delite' script?
     println(appArgs.mkString(", "))
-    val noregen = if(Config.noRegenerate) "--noregen" else ""
-    val executorCmd = Config.deliteHome + sep + "bin" + sep + "delite " + noregen + " --isSlave -d " + System.getProperty("user.dir") + " -t " + Config.numThreads + " --cuda " + Config.numCuda + " --codecache " + Config.deliteHome+"/generatedCacheSlave " + appArgs.mkString(" ")
+    val noregen = if (Config.noRegenerate) "--noregen" else ""
+    val verbose = if (Config.verbose) "-v" else ""
+    val executorCmd = Config.deliteHome + sep + "bin" + sep + "delite " + verbose + " " + noregen + " --isSlave -d " + System.getProperty("user.dir") + " -t " + Config.numThreads + " --cuda " + Config.numCuda + " --codecache " + Config.deliteHome+"/generatedCacheSlave " + appArgs.mkString(" ")
     println(executorCmd)
 
     val executor = ExecutorInfo.newBuilder
@@ -292,7 +290,7 @@ object DeliteMesosScheduler {
   }
 
   // TODO: move me to scheduler and improve algorithm
-  private def schedule(id: String, tpe: RemoteOp.Type, stencils: Seq[Stencil], args: Seq[Any]): Array[Int] = tpe match {
+  private def schedule(id: String, tpe: RemoteOp.Type, size: Long, stencils: Seq[Stencil], args: Seq[Any]): Array[Int] = tpe match {
     case RemoteOp.Type.INPUT => //don't know the file partitioning, so just distribute to everyone //TODO: fix this?
       Array.fill(slaves.length)(0)
 
@@ -321,13 +319,17 @@ object DeliteMesosScheduler {
       val bounds = stencilsWithArrays.map(sa => sa._1.withArray(sa._2))
       bounds.foldLeft(None:Option[Array[Int]])(combineLoopBounds) match {
         case Some(loopBounds) => loopBounds
-        case None => Array.fill(1)(0) //TODO: should run result locally (need to call a MultiLoop on master)
+        case None =>
+          // If we don't know the bounds, distribute to everyone with uniform chunks, and let the dust settle where it may (wild west remote reads)
+          // This should typically only occur for ops that construct an array out of the ether (like I/O)
+          if (size <= 0) Array.fill(0)(1) // run on 1 slave (could run on master)
+          else Array.tabulate(slaves.length)(i => (i*size/slaves.length).toInt)
       }
   }
 
   // We require the serializedArgs to be passed in, because we don't have any type info (manifest) here, which is required to call serialize.
-  def launchAllSlaves(id: String, tpe: RemoteOp.Type, stencils: Seq[Stencil], args: Seq[Any], serializedArgs: Seq[ByteString]): Array[ReturnResult] = {
-    val loopBounds = schedule(id, tpe, stencils, args)
+  def launchAllSlaves(id: String, tpe: RemoteOp.Type, size: Long, stencils: Seq[Stencil], args: Seq[Any], serializedArgs: Seq[ByteString]): Array[ReturnResult] = {
+    val loopBounds = schedule(id, tpe, size, stencils, args)
     this.remoteResult = new Array(loopBounds.length)
     activeSlaves = loopBounds.length
     //log("sending message to slaves")

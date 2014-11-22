@@ -19,8 +19,8 @@ abstract class Connection(val channel: SocketChannel, val selector: Selector,
          ))
   }
 
-  protected def log(mssg: String) = if (Config.verbose) println(mssg)
-  protected def log(mssg: String, e: Exception) = println(mssg)
+  protected def log(mssg: String) = if (Config.printConnection) println("[connection]: " + mssg)
+  protected def log(mssg: String, e: Exception) = println("[connection error]: " + mssg)
 
   channel.configureBlocking(false)
   channel.socket.setTcpNoDelay(true)

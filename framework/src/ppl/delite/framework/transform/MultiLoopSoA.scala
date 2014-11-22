@@ -134,8 +134,8 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         struct[DeliteArray[B]](SoaTag(tag,sz), newElems)
       }
 
-      val dataField = dc_data_field(t.getBlockResult(alloc))
-      val sizeField = dc_size_field(t.getBlockResult(alloc))
+      val dataField = dc_data_field(t.getBlockResult(alloc).tp)
+      val sizeField = dc_size_field(t.getBlockResult(alloc).tp)
 
       if (dataField == "" && !isSubtype(manifest[I].erasure,classOf[DeliteArray[_]])) {
         printlog("unable to transform collect elem: no data field defined for " + manifest[I].toString)
@@ -317,8 +317,8 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
           sys.error("transforming hashReduce elem but valFunc is not a struct and rFunc is")      
       }
 
-      val dataField = dc_data_field(t.getBlockResult(alloc).asInstanceOf[Exp[DeliteCollection[V]]]) //FIXME
-      val sizeField = dc_size_field(t.getBlockResult(alloc).asInstanceOf[Exp[DeliteCollection[V]]])
+      val dataField = dc_data_field(t.getBlockResult(alloc).tp) //FIXME
+      val sizeField = dc_size_field(t.getBlockResult(alloc).tp)
 
       if (dataField == "" && !isSubtype(manifest[I].erasure,classOf[DeliteArray[_]])) {
         printlog("unable to transform hashReduce elem: no data field defined for " + manifest[I].toString)

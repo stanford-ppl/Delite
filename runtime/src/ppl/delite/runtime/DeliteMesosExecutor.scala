@@ -52,18 +52,7 @@ class DeliteMesosExecutor extends Executor {
    * until this callback has returned.
    */
   def launchTask(driver: ExecutorDriver, task: TaskInfo) {
-    def status(state: TaskState) = {
-      TaskStatus.newBuilder
-        .setTaskId(task.getTaskId)
-        .setState(state)
-        .build
-    }
-
-    def exceptionToString(e: Exception) = {
-      val stringWriter = new java.io.StringWriter
-      e.printStackTrace(new java.io.PrintWriter(stringWriter))
-      stringWriter.toString
-    }
+    DeliteMesosExecutor.task = task
 
     val runner = new Runnable {
       def run() {
@@ -91,12 +80,10 @@ class DeliteMesosExecutor extends Executor {
           Delite.embeddedMain(args, Map())
 
           DeliteMesosExecutor.network.stop()
-          driver.sendStatusUpdate(status(TaskState.TASK_FINISHED))
+          driver.sendStatusUpdate(DeliteMesosExecutor.status(TaskState.TASK_FINISHED))
         }
         catch {
-          case e: Exception => //serialize the exception and forward to the master
-            DeliteMesosExecutor.sendWarningMessage(exceptionToString(e))
-            driver.sendStatusUpdate(status(TaskState.TASK_FAILED))
+          case e: Exception => DeliteMesosExecutor.forwardException(e)
         }
       }
     }
@@ -114,12 +101,7 @@ class DeliteMesosExecutor extends Executor {
    */
   def killTask(driver: ExecutorDriver, taskId: TaskID) {
     println("WARNING: task killed")
-    val status = TaskStatus.newBuilder
-      .setTaskId(taskId)
-      .setState(TaskState.TASK_KILLED)
-      .build
-
-    driver.sendStatusUpdate(status)
+    driver.sendStatusUpdate(DeliteMesosExecutor.status(TaskState.TASK_KILLED))
   }
 
   /**
@@ -160,6 +142,7 @@ class DeliteMesosExecutor extends Executor {
    */
   def shutdown(driver: ExecutorDriver) {
     println("WARNING: executor shutting down")
+    DeliteMesosExecutor.network.stop()
   }
 
   /**
@@ -176,7 +159,8 @@ class DeliteMesosExecutor extends Executor {
 object DeliteMesosExecutor {
 
   private var driver: MesosExecutorDriver = _
-
+  private var task: TaskInfo = _
+  
   private val remoteLock = new ReentrantLock
   private val hasWork = remoteLock.newCondition
   private var noWork = true
@@ -235,6 +219,25 @@ object DeliteMesosExecutor {
 
   private var opTarget: Targets.Value = _
 
+  def status(state: TaskState) = {
+    TaskStatus.newBuilder
+      .setTaskId(task.getTaskId)
+      .setState(state)
+      .build
+  }
+
+  def forwardException(e: Exception) = {
+    def exceptionToString(e: Exception) = {
+      val stringWriter = new java.io.StringWriter
+      e.printStackTrace(new java.io.PrintWriter(stringWriter))
+      stringWriter.toString
+    }
+    // serialize the exception and forward to the master
+    sendWarningMessage(exceptionToString(e))
+    driver.sendStatusUpdate(status(TaskState.TASK_FAILED))
+    throw e
+  }
+
   var classLoader = this.getClass.getClassLoader
   val results = new HashMap[String,ArrayList[DeliteArray[_]]]
 
@@ -261,7 +264,7 @@ object DeliteMesosExecutor {
     for (i <- 0 until numSlaves) {
       networkMap.put(i, ConnectionManagerId(info.getSlaveAddress(i), info.getSlavePort(i)))
     }
-    DeliteMesosExecutor.sendDebugMessage("my peers are " + info.getSlaveAddressList.toArray.mkString(", "))
+    sendDebugMessage("my peers are " + info.getSlaveAddressList.toArray.mkString(", "))
   }
 
   def main(args: Array[String]) {
@@ -269,9 +272,15 @@ object DeliteMesosExecutor {
       sendDebugMessage("received request")
       val bytes = msg.asInstanceOf[BufferMessage].buffers(0).array
       val mssg = DeliteSlaveMessage.parseFrom(bytes)
-      val response = mssg.getType match {
-        case DeliteSlaveMessage.Type.DATA => getData(mssg.getData)
-      }
+      val response =
+        try {
+          mssg.getType match {
+            case DeliteSlaveMessage.Type.DATA => getData(mssg.getData)
+          }
+        }
+        catch {
+          case e: Exception => forwardException(e)
+        } 
       sendDebugMessage("satisfying remote read")
       Some(Message.createBufferMessage(response.toByteString.asReadOnlyByteBuffer, msg.id))
     })
