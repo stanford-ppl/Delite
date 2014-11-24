@@ -121,10 +121,9 @@ trait CCompile extends CodeCache {
     if (config.headerDir.length == 0)
       throw new RuntimeException("JNI header paths are not set. Please specify in $DELITE_HOME/config/delite/" + configFile + " (<headers> </headers>)")
 
-    //TODO: How many parallel jobs? For now, the number of processors.
     val args = config.make.split(" ") ++ Array("-f", makefile, "all")
     val process = Runtime.getRuntime.exec(args)
-    process.waitFor
+    process.waitFor()
     checkError(process, args)
   }
 
@@ -152,17 +151,22 @@ trait CCompile extends CodeCache {
       out.append('\n')
     }
 
-    if (process.exitValue != 0) {
-      sourceBuffer.clear()
-      headerBuffer.clear()
-      kernelBuffer.clear()
+    if (Config.verbose || process.exitValue != 0) {
       if(Config.clusterMode == 2) // Send the error message to the master node
         ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(out.toString)
       else 
         println(out.toString)
+    }
+
+    if (process.exitValue != 0) {
+      sourceBuffer.clear()
+      headerBuffer.clear()
+      kernelBuffer.clear()
       sys.error(target + " compilation failed with exit value " + process.exitValue)
     }
   }
+
+  protected def verbosity = if (Config.verbose) "-DDELITE_VERBOSE" else ""
 
   // string for the Makefile
   def makefileString(destination: String, sources: Array[String], includes: Array[String], libs: Array[String], features:Array[String]) = s"""
@@ -186,7 +190,7 @@ $$(OUTPUT): $$(OBJECTS)
 \t$$(CC) $$(OBJECTS) $$(LDFLAGS) -o $$(OUTPUT)
 
 %.o: %.${ext}
-\t$$(CC) -c -DDELITE_CPP=${Config.numCpp} -DMEMMGR_${Config.cppMemMgr.toUpperCase} ${features.map("-D"+_).mkString(" ")} $$(INCLUDES) $$(CFLAGS) $$< -o $$@
+\t$$(CC) -c ${verbosity} -DDELITE_CPP=${Config.numCpp} -DMEMMGR_${Config.cppMemMgr.toUpperCase} ${features.map("-D"+_).mkString(" ")} $$(INCLUDES) $$(CFLAGS) $$< -o $$@
 
 clean:
 \trm -f $$(OBJECTS) $$(OUTPUT)

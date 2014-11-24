@@ -1,10 +1,10 @@
 #include <jni.h>
 
-extern "C" JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_GPUExecutionThread_initializeDevice(JNIEnv* env, jobject obj, jint deviceNum);
+extern "C" JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_OpenCLExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads);
 
 //TODO: Check initialization errors!
 //TODO: Move more stuffs to the initialization phase
-JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_GPUExecutionThread_initializeDevice(JNIEnv* env, jobject obj, jint deviceNum) {
+JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_OpenCLExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads) {
 
     printf("OpenCL device is being initialized....\n");
 

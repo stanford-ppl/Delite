@@ -50,13 +50,13 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
     out.append(function)
     out.append(" {\n")
     out.append("env" + location + " = jnienv;\n")
-    out.append(resourceInfoType + " " + resourceInfoSym + " = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
-    if (Config.profile) out.append("InitDeliteCppTimer(" + Targets.getRelativeLocation(location) + ");\n")
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     val cppLocations = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp)
     val numActiveCpps = cppLocations.size
     val initializerIdx = Targets.getRelativeLocation(cppLocations.min)
-    out.append("DeliteHeapInit(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + "," + numActiveCpps + "," + initializerIdx + "," + Config.cppHeapSize + "ULL);\n")
+    out.append("initializeAll(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + "," + numActiveCpps + "," + Config.cppHeapSize + "ULL);\n")
+    if (Config.profile) out.append("InitDeliteCppTimer(" + Targets.getRelativeLocation(location) + ");\n")
+    out.append(resourceInfoType + " " + resourceInfoSym + " = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
     writeJNIInitializer(locations)
   }
 
@@ -81,7 +81,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
     val numActiveCpps = cppLocations.size
     val finalizerIdx = Targets.getRelativeLocation(cppLocations.min)
     if (Config.profile) out.append("DeliteCppTimerDump(" + Targets.getRelativeLocation(location) + "," + location + ",env" + location + ");\n")
-    out.append("DeliteHeapClear(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + "," + numActiveCpps + "," + finalizerIdx + ");\n")
+    out.append("clearAll(" + Config.numCpp + "," + numActiveCpps + ");\n")
     out.append("}\n")
   }
 

@@ -284,7 +284,7 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
     stream.append(s"""
   void* launchFunc_${op.id}(void* arg) {
     std::pair<$resourceInfoType*, $className*>* in = (std::pair<$resourceInfoType*, $className*>*)arg;
-    initializeThread(in->first->threadId, in->first->numThreads);
+    initializeThread(in->first->threadId);
     MultiLoop_${op.id}(*in->first, in->second);
   }
   \n""")

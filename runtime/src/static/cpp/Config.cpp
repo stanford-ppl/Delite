@@ -7,8 +7,8 @@
 #include <pthread.h>
 #include <sched.h>
 #include "Config.h"
-#include "DeliteDataStructures.h"
-#include "DeliteMemory.h"
+#include "DeliteDatastructures.h"
+#include "DeliteCpp.h"
 
 #ifdef __DELITE_CPP_NUMA__
 #include <numa.h>
@@ -58,13 +58,13 @@ void initializeConfig(int numThreads) {
   if (numa_available() >= 0) {
     int numCpus = numa_num_configured_cpus();
     if (numCoresPerSocket <= 0) {
-        fprintf(stderr, "[WARNING]: Unable to automatically determine number of physical cores, assuming %d\n", numCpus);
+        VERBOSE("WARNING: Unable to automatically determine number of physical cores, assuming %d\n", numCpus);
         numCores = numCpus;
     }
 
     int numNodes = numa_num_configured_nodes();
     if (numSockets > 0 && numSockets != numNodes) {
-      fprintf(stderr, "[WARNING]: Found %d sockets but %d NUMA nodes. Using %d nodes\n", numSockets, numNodes, numNodes);
+      VERBOSE("WARNING: Found %d sockets but %d NUMA nodes. Using %d nodes\n", numSockets, numNodes, numNodes);
     }
     numSockets = numNodes;
     numCoresPerSocket = numCores / numSockets; //potentially re-distribute cores across nodes
@@ -74,29 +74,42 @@ void initializeConfig(int numThreads) {
   if (numSockets > 0 && numCoresPerSocket > 0) {
     config->numSockets = numSockets;
     config->numCoresPerSocket = numCoresPerSocket;
-    fprintf(stderr, "[delite]: Detected machine configuration of %d socket(s) with %d core(s) per socket.\n", config->numSockets, config->numCoresPerSocket);
+    VERBOSE("Detected machine configuration of %d socket(s) with %d core(s) per socket.\n", config->numSockets, config->numCoresPerSocket);
   }
   else {
-    fprintf(stderr, "[WARNING]: Unable to automatically detect machine configuration.  Assuming %d socket(s) with %d core(s) per socket.\n", config->numSockets, config->numCoresPerSocket);
+    VERBOSE("WARNING: Unable to automatically detect machine configuration.  Assuming %d socket(s) with %d core(s) per socket.\n", config->numSockets, config->numCoresPerSocket);
   }
 }
 
-void initializeGlobal(int threadId, int numThreads) {
+void initializeGlobal(int numThreads, size_t heapSize) {
   pthread_mutex_lock(&init_mtx); 
   if (!config) {
     initializeConfig(numThreads);
     resourceInfos = new resourceInfo_t[numThreads];
+    for (int i=0; i<numThreads; i++) {
+      resourceInfos[i].threadId = i;
+      resourceInfos[i].numThreads = numThreads;
+      resourceInfos[i].socketId = config->threadToSocket(i);
+      resourceInfos[i].numSockets = config->numSockets;
+      resourceInfos[i].rand = new DeliteCppRandom();
+    }
+    DeliteHeapInit(numThreads, heapSize);
   }
   pthread_mutex_unlock(&init_mtx);
-  
-  resourceInfos[threadId].threadId = threadId;
-  resourceInfos[threadId].numThreads = numThreads;
-  resourceInfos[threadId].socketId = config->threadToSocket(threadId);
-  resourceInfos[threadId].numSockets = config->numSockets;
-  resourceInfos[threadId].rand = new DeliteCppRandom();
 }
 
-void initializeThread(int threadId, int numThreads) {
+void freeGlobal(int numThreads) {
+  pthread_mutex_lock(&init_mtx);
+  if (config) {
+    DeliteHeapClear(numThreads);
+    delete[] resourceInfos;
+    delete config;
+    config = NULL;
+  }
+  pthread_mutex_unlock(&init_mtx);
+}
+
+void initializeThread(int threadId) {
   #ifdef __linux__
     cpu_set_t cpu;
     CPU_ZERO(&cpu);
@@ -111,7 +124,7 @@ void initializeThread(int threadId, int numThreads) {
           numa_bitmask_setbit(nodemask, socketId);
           numa_set_membind(nodemask);
         }
-        //fprintf(stderr, "[delite]: Binding thread %d to cpu %d, socket %d\n", threadId, threadId, socketId);
+        //VERBOSE("Binding thread %d to cpu %d, socket %d\n", threadId, threadId, socketId);
       }
     #endif
   #endif
@@ -121,10 +134,15 @@ void initializeThread(int threadId, int numThreads) {
   #endif
 }
 
-extern "C" JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads);
-JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads) {
-  initializeGlobal(threadId, numThreads);
-  initializeThread(threadId, numThreads);
+void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize) {
+  initializeGlobal(numThreads, heapSize);
+  initializeThread(threadId);
+  delite_barrier(numLiveThreads); //ensure fully initialized before any continue
+}
+
+void clearAll(int numThreads, int numLiveThreads) {
+  delite_barrier(numLiveThreads); //first wait for all threads to arrive
+  freeGlobal(numThreads);
 }
 
 #endif

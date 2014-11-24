@@ -25,9 +25,17 @@
 #include <jni.h>
 #endif
 
+#ifdef DELITE_VERBOSE
+#define VERBOSE(...) fprintf(stderr, "[delite]: "); fprintf(stderr, __VA_ARGS__)
+#else
+#define VERBOSE(...)
+#endif
+
 extern Config* config;
 extern resourceInfo_t* resourceInfos;
-extern void initializeThread(int threadId, int numThreads);
+void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize);
+void initializeThread(int threadId);
+void clearAll(int numThreads, int numLiveThreads);
 
 #ifdef MEMMGR_REFCNT
 std::shared_ptr<cppDeliteArraystring> string_split(const resourceInfo_t &resourceInfo, const string &str, const string &pattern, int32_t lim);

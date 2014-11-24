@@ -15,8 +15,8 @@
 #define DHEAP_DEBUG(...)
 
 // Delite Custom Memory APIs
-void DeliteHeapInit(int idx, int numThreads, int numLiveThreads, int initializer, size_t heapSize);
-void DeliteHeapClear(int idx, int numThreads, int numLiveThreads, int finalizer);
+void DeliteHeapInit(int numThreads, size_t heapSize);
+void DeliteHeapClear(int numThreads);
 char *DeliteHeapAlloc(size_t sz, int idx);
 void delite_barrier(unsigned int count);
 

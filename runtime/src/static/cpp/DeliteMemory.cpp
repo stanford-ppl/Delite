@@ -31,7 +31,7 @@ void delite_barrier(unsigned int count) {
   }
 }
 
-void DeliteHeapInit(int idx, int numThreads, int numLiveThreads, int initializer, size_t heapSize) {
+void DeliteHeapInit(int numThreads, size_t heapSize) {
   /*if (heapSize == 0) {
     int64_t memSize = 2ULL*1024*1024*1024; //FIXME
     #ifdef _SC_PHYS_PAGES
@@ -44,24 +44,20 @@ void DeliteHeapInit(int idx, int numThreads, int numLiveThreads, int initializer
   }*/
   //TODO: we currently don't enforce heapSize... do we need this?
 
-  if (idx == initializer && DeliteHeapBlockList == NULL) {
-    size_t padSize = numThreads << PADDING_SHIFT;
-    DeliteHeapBlockList = new std::list<char*>*[padSize];
-    DeliteHeapCurrentBlock = new char*[padSize];
-    DeliteHeapCurrentBlockSize = new size_t[padSize];
-    DeliteHeapSavedBlock = new char*[padSize];
-    DeliteHeapSavedBlockSize = new size_t[padSize];
+  size_t padSize = numThreads << PADDING_SHIFT;
+  DeliteHeapBlockList = new std::list<char*>*[padSize];
+  DeliteHeapCurrentBlock = new char*[padSize];
+  DeliteHeapCurrentBlockSize = new size_t[padSize];
+  DeliteHeapSavedBlock = new char*[padSize];
+  DeliteHeapSavedBlockSize = new size_t[padSize];
 
-    for (int i=0; i<numThreads; i++) {
-      size_t padIdx = i << PADDING_SHIFT;
-      DeliteHeapBlockList[padIdx] = new std::list<char*>();
-      DeliteHeapCurrentBlock[padIdx] = NULL;
-      DeliteHeapCurrentBlockSize[padIdx] = 0;
-      DHEAP_DEBUG("finished heap initialization for resource %d\n", idx);
-    }
+  for (int i=0; i<numThreads; i++) {
+    size_t padIdx = i << PADDING_SHIFT;
+    DeliteHeapBlockList[padIdx] = new std::list<char*>();
+    DeliteHeapCurrentBlock[padIdx] = NULL;
+    DeliteHeapCurrentBlockSize[padIdx] = 0;
+    DHEAP_DEBUG("finished heap initialization for resource %d\n", i);
   }
-
-  delite_barrier(numLiveThreads);
 }
 
 void DeliteHeapAllocBlock(size_t minSize, int idx) {
@@ -105,24 +101,24 @@ void *operator new[](size_t sz, const resourceInfo_t &resourceInfo) {
   return DeliteHeapAlloc(sz, resourceInfo.threadId);
 }
 
-void DeliteHeapClear(int idx, int numThreads, int numLiveThreads, int finalizer) {
-  delite_barrier(numLiveThreads); //first wait for all threads to finish working
-  
-  if (idx == finalizer) {
-    for (int i=0; i<numThreads; i++) {
-      size_t padIdx = i << PADDING_SHIFT;
-      std::list<char*> *blocklist = DeliteHeapBlockList[padIdx];
-      size_t heapUsage = blocklist->size();
-      for (std::list<char*>::iterator iter = blocklist->begin(); iter != blocklist->end(); iter++) {
-        delete[] *iter;
-      }
-
-      blocklist->clear();
-      DeliteHeapCurrentBlock[padIdx] = NULL;
-      DeliteHeapCurrentBlockSize[padIdx] = 0;
-      DHEAP_DEBUG("finished heap clear for resource %d, used %d blocks (%dMB blocks).\n", idx, heapUsage, DEFAULT_BLOCK_SIZE/1024/1024);
+void DeliteHeapClear(int numThreads) {
+  for (int i=0; i<numThreads; i++) {
+    size_t padIdx = i << PADDING_SHIFT;
+    std::list<char*> *blocklist = DeliteHeapBlockList[padIdx];
+    size_t heapUsage = blocklist->size();
+    for (std::list<char*>::iterator iter = blocklist->begin(); iter != blocklist->end(); iter++) {
+      delete[] *iter;
     }
+    delete blocklist;
+
+    DHEAP_DEBUG("finished heap clear for resource %d, used %d blocks (%dMB blocks).\n", i, heapUsage, DEFAULT_BLOCK_SIZE/1024/1024);
   }
+
+  delete[] DeliteHeapBlockList;
+  delete[] DeliteHeapCurrentBlock;
+  delete[] DeliteHeapCurrentBlockSize;
+  delete[] DeliteHeapSavedBlock;
+  delete[] DeliteHeapSavedBlockSize;
 }
 
 /* saves the current position in the heap */
