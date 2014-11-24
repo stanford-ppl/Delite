@@ -58,7 +58,8 @@ trait TableOpsExp extends TableOps with DeliteCollectionOpsExp with DeliteStruct
   def tableToArray[T:Manifest](t: Exp[Table[T]]) = tableRawData(t)
   
   //delite collection ops  
-  def isTable[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.tp.erasure,classOf[Table[A]])  
+  def isTableTpe(x: Manifest[_])(implicit ctx: SourceContext) = isSubtype(x.erasure,classOf[Table[_]])
+  def isTable[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isTableTpe(x.tp)
   def asTable[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[Table[A]]]
     
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
@@ -71,13 +72,13 @@ trait TableOpsExp extends TableOps with DeliteCollectionOpsExp with DeliteStruct
     else super.dc_apply(x,n)    
   }
 
-  override def dc_data_field[A:Manifest](x: Exp[DeliteCollection[A]]) = {
-    if (isTable(x)) "data"
+  override def dc_data_field(x: Manifest[_]) = {
+    if (isTableTpe(x)) "data"
     else super.dc_data_field(x)
   }
 
-  override def dc_size_field[A:Manifest](x: Exp[DeliteCollection[A]]) = {
-    if (isTable(x)) "size"
+  override def dc_size_field(x: Manifest[_]) = {
+    if (isTableTpe(x)) "size"
     else super.dc_size_field(x)
   }
 

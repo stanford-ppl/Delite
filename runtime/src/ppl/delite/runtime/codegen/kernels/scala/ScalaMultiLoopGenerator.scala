@@ -1,6 +1,7 @@
 package ppl.delite.runtime.codegen.kernels.scala
 
-import ppl.delite.runtime.codegen.{ScalaExecutableGenerator, ScalaCompile, ScalaResourceInfo}
+import ppl.delite.runtime.codegen.{ScalaExecutableGenerator, ScalaCompile}
+import ppl.delite.runtime.codegen.ScalaResourceInfo._
 import ppl.delite.runtime.graph.ops.OP_MultiLoop
 import ppl.delite.runtime.codegen.kernels.{MultiLoop_SMP_Array_Header_Generator, MultiLoop_SMP_Array_Generator}
 import ppl.delite.runtime.graph.DeliteTaskGraph
@@ -16,7 +17,7 @@ object ScalaMultiLoopGenerator {
   }
 }
 
-class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val chunkIdx: Int, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Generator with ScalaResourceInfo {
+class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val chunkIdx: Int, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Generator {
 
   protected val headerObject = "head"
   protected val closure = "closure"
@@ -143,7 +144,7 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
 }
 
 
-class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Header_Generator with ScalaResourceInfo {
+class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Header_Generator {
 
   protected def addSource(source: String, name: String) = ScalaCompile.addSource(source, name)
 

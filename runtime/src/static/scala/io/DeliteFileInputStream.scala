@@ -1,7 +1,7 @@
 package generated.scala.io
 
 import com.google.protobuf.ByteString
-import java.io.{InputStream, IOException}
+import java.io.{InputStream, IOException, DataInput, DataOutput}
 import java.nio.charset.Charset
 
 import org.apache.hadoop.conf._
@@ -47,18 +47,45 @@ object DeliteFileInputStream {
     charset
   }
 
+  /* Deserialization for a DeliteFileInputStream, using Hadoop serialization for Hadoop objects */
+  def deserialize(bytes: ByteString): DeliteFileInputStream = {
+    val in = new java.io.DataInputStream(bytes.newInput)
+    val conf = new Configuration()
+    conf.readFields(in)
+    val filesLen = in.readInt()
+    val files = Array.fill(filesLen) {
+      val fs = new FileStatus()
+      fs.readFields(in)
+      fs
+    }
+    val charset = Charset.defaultCharset
+    val delimiterExists = in.readBoolean()
+    val delimiter =
+      if (delimiterExists) {
+        val delimiterLen = in.readInt()
+        Some(Array.fill(delimiterLen) { in.readByte() })
+      }
+      else None
+
+    val dfis = new DeliteFileInputStream(conf, files, charset, delimiter)
+    val pos = in.readLong()
+    dfis.openAtNewLine(pos)
+    dfis
+  }
+
 }
 
 class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], charset: Charset, delimiter: Option[Array[Byte]]) {
-  private[this] var reader: LineReader = _
-  private[this] var text: Text = _
-  private[this] var pos: Long = _
+  var reader: LineReader = _
+  var text: Text = _
+  var pos: Long = _
 
   final val size: Long = files.map(_.getLen).sum
   final def position = pos
 
   /* Initialize. This is only required / used when opening a stream directly (i.e. not via multiloop) */
   if (size > 0) open()
+ 
   
   /* Determine the file that this logical index corresponds to, as well as the byte offset within the file. */
   private def findFileOffset(start: Long) = {
@@ -157,4 +184,35 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
     text = null
     pos = 0
   }
+
+
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Serialization
+  /////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Serialize the DeliteFileInputStream using Hadoop serialization for Hadoop objects.
+   */
+  def serialize: ByteString = {
+    val outBytes = ByteString.newOutput
+    val out = new java.io.DataOutputStream(outBytes)
+    conf.write(out)
+    out.writeInt(files.length)
+    files.foreach(f => f.write(out))
+    if (charset != Charset.defaultCharset) throw new UnsupportedOperationException("Don't know how to serialize custom charset " + charset)
+    if (delimiter.isDefined) {
+      out.writeBoolean(true)
+      out.writeInt(delimiter.get.length)
+      delimiter.get.foreach { b => out.writeByte(b) }
+    }
+    else {
+      out.writeBoolean(false)
+    }
+    out.writeLong(pos)
+    outBytes.toByteString
+  }
+
+  /* Deserialization is static (see DeliteFileInputStream.deserialize) */
+
 }

@@ -107,7 +107,7 @@ def run(deg, params, opts):
         if delitecommon.MESOS_NATIVE_LIBRARY is None:
             err("MESOS_NATIVE_LIBRARY must be set in the environment or included in delite.properties")
         else:
-            os.putenv("MESOS_NATIVE_LIBRARY", delitecommon.MESOS_NATIVE_LIBRARY)
+            os.putenv("MESOS_NATIVE_JAVA_LIBRARY", delitecommon.MESOS_NATIVE_LIBRARY)
             os.putenv("LIBPROCESS_IP", opts.ip_address)
 
     if opts.codecache == "":

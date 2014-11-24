@@ -60,9 +60,10 @@ trait DeliteCollectionOpsExp extends ExceptionOpsExp with BaseFatExp { this: Del
   }   
 
   // - Struct transformation methods
-  def dc_data_field[A:Manifest](x: Exp[DeliteCollection[A]]): String = ""
+  def dc_data_field(tp: Manifest[_]): String = ""
 
-  def dc_size_field[A:Manifest](x: Exp[DeliteCollection[A]]): String = ""
+  def dc_size_field(tp: Manifest[_]): String = ""
+
 
   private def undefined[A](method: String, x: Exp[DeliteCollection[A]]) = {
     throw new RuntimeException("no static implementation found for " + method + " on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get + " of type: " + x.tp)

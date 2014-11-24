@@ -6,6 +6,7 @@
 
 package ppl.delite.runtime.graph.ops
 
+import ppl.delite.runtime.DeliteMesosScheduler
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.graph._
 import scala.collection.immutable.SortedSet
@@ -54,19 +55,55 @@ class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, v
     h
   }
 
-  override def partition = { //TODO: "free" partition could be local or distributed...
-    if (getInputs.isEmpty) Distributed(Set(id))
-    else getInputs.map(i => i._1.partition(i._2)).reduceLeft(_ combine _)
+
+  def consumesHeader: Boolean = {
+    inputList.length > 0 && (inputList(0)._2 == id+"_h")
   }
 
-  override def partition(sym: String) = {
-    val opPartition = partition
-    if (needsCombine) Local //TODO: need to know needsCombine per output symbol rather than globally
-    else if (needsPostProcess) { //TODO: likewise for needsPostProcess
-      if (opPartition == Local) Local
-      else Distributed(Set(id)) //fresh logical partition 
-    }
-    else opPartition
+  // This strategy will try to distribute all multiloops with disjoint stencils, unless all of their array inputs are local
+  // (locality-preserving, if possible). This could result in distributing tiny loops, which is will be very inefficient. We
+  // may want to consider explicitly using size hints (or at the very least checking for a constant op size), and using that
+  // to make the partitioning decision.
+  override def partition = {
+    val stencil = globalStencil()
+    val inputPartitions = getInputs.map(i => i._1.outputPartition).toList
+    val inputArrayPartitions = getInputArrayPartitions
+
+    val desiredPartition =
+      if (stencil == All /*|| stencil == Empty*/) Local // by partitioning "Empty" stencils are distributed, we are being very permissive
+      else if (inputArrayPartitions.length > 0 && inputArrayPartitions.forall(_ == Local)) Local // if all our array inputs are local, we want to be too
+      else Distributed(getOutputs)
+
+    // Distributed if we chose distributed OR any of our inputs are distributed
+    (desiredPartition :: inputPartitions).reduceLeft(_ combine _)
   }
+
+  override def outputPartition = {
+    if (needsCombine) Local // TODO: need to know needsCombine per output symbol rather than globally
+    else partition
+  }
+
+  // We consider only inputArrayPartitions when optimizing for locality, instead of all inputs, because some Local inputs
+  // are fine (can be broadcast, are field reads, etc.). An alternative to this strategy it to consider all inputs, but use
+  // an explicit whitelist (see commented out method below).
+  def getInputArrayPartitions = {
+    // Ops in the task graph are mutable, and if we have been rewired to a header, we need to forward to the original inputs.
+    val inputs = if (consumesHeader) getInputs.apply(0)._1.getInputs else getInputs
+    val arrays = inputs.filter(i => i._1.outputIncludesDeliteArray)
+    // Input delite arrays can come from struct unwrapping, which are local even when the array is distributed, so we have to check aliases
+    arrays.flatMap(i => i._1.getAliases.map(_.outputPartition) + i._1.outputPartition)
+  }
+
+  // The wrappers are partitioned locally, but these can be run distributed. This whitelist serves a similar purpose
+  // to the old OP_FileReader tag. We could also try to whitelist other operations here that we don't mind being local
+  // (field accesses, struct creation).
+  //
+  // This is an alternative to getInputArrayPartitions: we only need it if we consider all inputs when deciding a partition.
+  // def whitelist(inputs: Seq[DeliteOP]) = {
+  //   inputs exists { o =>
+  //     o.outputType == "generated.scala.io.DeliteFileInputStream"    ||
+  //     o.outputType == "generated.scala.io.DeliteFileOutputStream"
+  //   }
+  // }
 
 }

@@ -40,9 +40,19 @@ abstract class DeliteOP {
   def supportsTarget(target: Targets.Value): Boolean = supportedTargets contains target
 
   def getOutputs = SortedSet.empty[String] ++ (outputTypesMap.head._2.keySet - "functionReturn")
+  def outputIncludesDeliteArray = getOutputTypesMap(Targets.Scala).values.exists(t => t.contains("runtime.data.DeliteArray"))
 
   def stencil(symbol: String) = stencilMap(symbol)
   def stencilOrElse(symbol: String)(orElse: => Stencil) = stencilMap.getOrElse(symbol, orElse)
+
+  // set of all aliases for this op
+  private[graph] var aliases = SortedSet.empty[DeliteOP]
+
+  final def getAliases : Set[DeliteOP] = aliases
+
+  final def addAlias(a: DeliteOP) {
+    aliases += a
+  }
 
   //set of all incoming graph edges for this op
   private[graph] var dependencies = SortedSet.empty[DeliteOP]
@@ -128,7 +138,7 @@ abstract class DeliteOP {
   final def addMutableInput(op: DeliteOP, name: String) {
     mutableInputs += Pair(op, name)
   }
-  
+
   //mapping from mutated symbol to the condition list of nested blocks that make the mutation happen
   val mutableInputsCondition = new collection.mutable.HashMap[String, List[(DeliteOP,Boolean)]]
 
@@ -138,7 +148,7 @@ abstract class DeliteOP {
   final def getAntiDeps: Set[DeliteOP] = antiDeps
   final def addAntiDep(op: DeliteOP) {
     antiDeps += op
-  } 
+  }
 
   def id: String
 
@@ -146,9 +156,48 @@ abstract class DeliteOP {
   //TODO: should revisit this when we have more complex dataParallel patterns
   def isDataParallel : Boolean
 
-  def partition: Partition = Local
-  def partition(symbol: String): Partition = partition
 
+  /**
+   * Partitioning
+   */
+
+  // We try to be a little more precise here w.r.t. aliases that we consider in the stencil.
+  // The idea is we only care about aliases that are DeliteArrays or possibly those with type "Unit",
+  // as these can be transitive alias connectors (e.g. var assignment).
+  def getArrayAliases: Set[DeliteOP] = {
+    getAliases filter { a => a.outputIncludesDeliteArray || a.outputType == "Unit" }
+  }
+
+  // lookup all ops that consume this op and compute a join over their stencils
+  def globalStencil(excludeAliases: Set[DeliteOP] = Set.empty): Stencil = {
+    // we consider each output individually, since if we just use "this.id",
+    // that can return a fused id, which we do not have stencils for
+    val outputs = getOutputs
+
+    // collect relevant stencils from all ops that consume 1 or more of our outputs
+    def outputStencilsFrom(o: DeliteOP): Set[Stencil] = o match {
+      case nested:OP_Nested =>
+        nested.nestedGraphs.toSet.flatMap((g: DeliteTaskGraph) => g.ops.flatMap(o => outputStencilsFrom(o)))
+      case _ =>
+        val consumes = outputs intersect o.getInputs.map(_._2).toSet
+        consumes.map(i => o.stencilOrElse(i)(Empty))
+    }
+
+    val consumerStencils = getConsumers flatMap { op => outputStencilsFrom(op) }
+    val aliasStencils = (getArrayAliases diff excludeAliases) map { op => op.globalStencil(excludeAliases + this) }
+    (consumerStencils ++ aliasStencils).foldLeft(Empty: Stencil)(_ combine _ )
+  }
+
+  // Where to schedule this op
+  def partition: Partition = Local
+
+  // Where this ops outputs will live after its finished (e.g. reduces becomes local)
+  def outputPartition: Partition = Local
+
+
+  /**
+   * GPU
+   */
   private var cudaMetadata: GPUMetadata = new CudaMetadata
   private var openclMetadata: GPUMetadata = new OpenCLMetadata
   def getGPUMetadata(tgt: Targets.Value): GPUMetadata = tgt match {

@@ -382,11 +382,21 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
 
     // result is a single stencil representing all the info we have for this op's inputs
     val opStencil = if (sym == Nil) new Stencil() else sym.map(i => allStencils.getOrElse(i, new Stencil())).reduce((a,b) => a ++ b)
-    
+
     def loopBodyAverageDynamicChunks[A](e: List[Def[A]]) = {
       e.map(i => loopBodyNumDynamicChunks(i)).reduce((a,b) => a + b)/e.length
     }
-    
+
+    // compute aliases
+
+    // We need to use a special flag to propagate DeliteStruct "containsSyms" aliases, which are generally turned off to suppress nested mutable errors.
+    // See DeliteStructs.scala containsSyms for more info.
+    val saveDeliteStructContainsAliases = _deliteStructContainsAliases
+    _deliteStructContainsAliases = true
+    val aliases = allAliases(rhs,deliteStructAliasMode)
+    // println("aliases for " + sym + "(" + rhs.toString + "): " + aliases)
+    _deliteStructContainsAliases = saveDeliteStructContainsAliases
+
     // emit task graph node
     rhs match {
       case op: AbstractFatLoop =>
@@ -396,7 +406,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
         // val arrayInputs = inputs.flatMap(getArrayInputs)
         // Predef.println("  array inputs are: ")
         // Predef.println(arrayInputs)val i = (a match {
-        emitMultiLoop(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size, loopBodyAverageDynamicChunks(op.body), op.body.exists (loopBodyNeedsCombine _), op.body.exists (loopBodyNeedsPostProcess _), optContext, opStencil)
+        emitMultiLoop(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, aliases, op.size, loopBodyAverageDynamicChunks(op.body), op.body.exists (loopBodyNeedsCombine _), op.body.exists (loopBodyNeedsPostProcess _), optContext, opStencil)
       case op: AbstractFatIfThenElse =>
         assert(sym.length == 1, "TODO: implement fat if then else")
         emitIfThenElse(Block(op.cond), op.thenp.head, op.elsep.head, kernelName, outputs, resultIsVar, inputs, inMutating, inControlDeps, antiDeps, optContext)
@@ -407,15 +417,15 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
             // Predef.println("emitting DeliteLoop (" + sym + "), inputs are: ")
             // Predef.println(inputs)
             // Predef.println("stencil is: " + opStencil)
-            emitMultiLoop(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, op.size,  loopBodyNumDynamicChunks(op.body), loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body), optContext, opStencil)
-          case e:DeliteOpExternal[_] => emitExternal(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps)
+            emitMultiLoop(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, aliases, op.size, loopBodyNumDynamicChunks(op.body), loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body), optContext, opStencil)
+          case e:DeliteOpExternal[_] => emitExternal(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, aliases)
           case c:DeliteOpCondition[_] => emitIfThenElse(Block(c.cond), c.thenp, c.elsep, kernelName, outputs, resultIsVar, inputs, inMutating, inControlDeps, antiDeps, optContext)
           case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, kernelName, outputs, resultIsVar, inputs, inMutating, inControlDeps, antiDeps, optContext)
-          case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, optContext)
-          case i:DeliteOpInput[_] => emitInput(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, optContext)
-          case f:DeliteOpForeach2[_,_] => emitForeach(f, kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps)
-          case f:DeliteOpForeachBounded[_,_,_] => emitForeach(f, kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps)
-          case _ => emitSingleTask(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, if (outputs(0).sourceContexts.isEmpty) None else Some(outputs(0).sourceContexts.head)) // things that are not specified as DeliteOPs, emit as SingleTask nodes
+          case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, aliases, optContext)
+          case i:DeliteOpInput[_] => emitInput(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, aliases, optContext)
+          case f:DeliteOpForeach2[_,_] => emitForeach(f, kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, aliases)
+          case f:DeliteOpForeachBounded[_,_,_] => emitForeach(f, kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, aliases)
+          case _ => emitSingleTask(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, aliases, if (outputs(0).sourceContexts.isEmpty) None else Some(outputs(0).sourceContexts.head)) // things that are not specified as DeliteOPs, emit as SingleTask nodes
         }
     }
 
@@ -424,7 +434,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
   }
 
   /**
-   * DEG quotes - handles descrepancies between quoting constants in code vs. in the DEG 
+   * DEG quotes - handles descrepancies between quoting constants in code vs. in the DEG
    */
   override def quote(x: Exp[Any]) = x match {
     case Const(s: String) => super.quote(x).replaceAllLiterally("\"","\\\"") //escape constant quoted strings
@@ -439,7 +449,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
    * @param antiDeps    a list of WAR dependencies (need to be committed in program order)
    */
 
-  def emitMultiLoop(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], size: Exp[Int], numDynamicChunks: Int, needsCombine: Boolean, needsPostProcess: Boolean,
+  def emitMultiLoop(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], aliases: List[Exp[Any]], size: Exp[Int], numDynamicChunks: Int, needsCombine: Boolean, needsPostProcess: Boolean,
                     sourceContext: Option[SourceContext], stencil: Stencil)
        (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
    stream.println("{\"type\":\"MultiLoop\",")
@@ -451,38 +461,38 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
    stream.print(",\"needsCombine\":" + needsCombine)
    stream.println(",\"needsPostProcess\":" + needsPostProcess)
    emitStencil(inputs, stencil)
-   emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps)
+   emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps, aliases)
    stream.println("},")
   }
 
-  def emitExternal(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitExternal(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], aliases: List[Exp[Any]])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"External\"")
     // TODO: add thread control, other configuration?
-    emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps)
+    emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps, aliases)
     stream.println("},")
   }
 
-  def emitSingleTask(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], sourceContext: Option[SourceContext])
+  def emitSingleTask(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], aliases: List[Exp[Any]], sourceContext: Option[SourceContext])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"SingleTask\",")
     emitSourceContext(sourceContext, stream, id)
-    emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps)
+    emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps, aliases)
     stream.println("},")
   }
 
-  def emitInput(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], sourceContext: Option[SourceContext])
+  def emitInput(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], aliases: List[Exp[Any]], sourceContext: Option[SourceContext])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Input\",")
     emitSourceContext(sourceContext, stream, id)
-    emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps)
+    emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps, aliases)
     stream.println("},")
   }
 
-  def emitForeach(rhs: Def[Any], id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitForeach(rhs: Def[Any], id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], aliases: List[Exp[Any]])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Foreach\"")
-    emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps)
+    emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps, aliases)
     stream.println("},")
   }
 
@@ -526,7 +536,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
   }
 
-  def emitExecutionOpCommon(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitExecutionOpCommon(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], aliases: List[Exp[Any]])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
 
     stream.print(" , \"kernelId\" : \"" + id + "\" ")
@@ -540,9 +550,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     stream.print("  \"metadata\":{" + metadataStr + "},\n")
     val returnTypesStr = if(returnTypes.isEmpty) "" else returnTypes.mkString(",")
     stream.println("  \"return-types\":{" + returnTypesStr + "},")
-    stream.println("  \"output-types\":{" + outputs.map(s => "\"" + quote(s) + "\":{" + outputSlotTypes(quote(s)).mkString(",") + "}").mkString(",") +  "}")
+    stream.println("  \"output-types\":{" + outputs.map(s => "\"" + quote(s) + "\":{" + outputSlotTypes(quote(s)).mkString(",") + "}").mkString(",") +  "},")
+    stream.println("  \"aliases\":[" + makeString(aliases) + "]")
   }
-
 
   def emitDepsCommon(controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], last:Boolean = false) {
     stream.print("  \"controlDeps\":[" + makeString(controlDeps) + "],\n")
@@ -584,7 +594,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
                                   case c: Const[Any] if c.tp != manifest[Unit] =>
                                     stream.println("  \"" + prefix + "Type\": \"const\",")
                                     stream.println("  \"" + prefix + "Value\": \"" + quote(c) + "\",")
-                                  case _ => 
+                                  case _ =>
                                     stream.println("  \"" + prefix + "Type\": \"symbol\",")
                                 }
                                 stream.println("  \"" + prefix + "Ops\": [")

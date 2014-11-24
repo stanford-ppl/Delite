@@ -39,7 +39,8 @@ trait NestedGenerator extends ExecutableGenerator {
 
 }
 
-trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator with ScalaResourceInfo {
+trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator {
+  import ScalaResourceInfo._
 
   override protected def writeHeader() {
     ScalaExecutableGenerator.writePackage(graph, out)
@@ -175,8 +176,8 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
         case _ => false
       }
     }
-    else 
-      false 
+    else
+      false
   }
 
   def generateMethodSignature(): String = {
@@ -224,7 +225,7 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
         str.append(',')
         str.append(getJNIType(op.outputType(Targets.Scala, sym))) //FIXME: Use remote target
         str.append(' ')
-        str.append(getSymRemote(op, sym)) 
+        str.append(getSymRemote(op, sym))
       }
     }
     str.toString
@@ -243,9 +244,9 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
     val devType = op.outputType(Targets.Cuda, name)
     //TODO: put this into cuda sync generator
     //TODO: make sure symbol is not freed before recvCuda is called
-    if (isReferentialPrimitive(op,name)) 
+    if (isReferentialPrimitive(op,name))
       out.append("recvCuda_%s(%s)".format(mangledName(devType),getSymDevice(op,name)))
-    else 
+    else
       out.append(getSymDevice(op, name))
     if (newLine) out.append(";\n")
   }
