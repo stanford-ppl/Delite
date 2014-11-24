@@ -131,10 +131,10 @@ trait CCompile extends CodeCache {
     val errorStream = process.getErrorStream
     val inputStream = process.getInputStream
     val out = new StringBuilder
-
+    
+    out.append("--" + target + " compile args: " + args.mkString(","))
     var err = errorStream.read()
     if (err != -1) {
-      out.append("--" + target + " compile args: " + args.mkString(","))
       while (err != -1) {
         out.append(err.asInstanceOf[Char])
         err = errorStream.read()
