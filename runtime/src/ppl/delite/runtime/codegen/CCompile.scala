@@ -34,6 +34,7 @@ trait CCompile extends CodeCache {
   private val headerBuffer = new ArrayBuffer[(String, String)]
   private val kernelBuffer = new ArrayBuffer[String] // list of kernel filenames to be included in the compilation (non-multiloop kernels)
   protected def auxSourceList = List[String]() // additional source filenames to be included in the compilation
+  protected val shared = CppCompile
 
   def headers = headerBuffer.map(_._2)
 
@@ -79,7 +80,7 @@ trait CCompile extends CodeCache {
     
     if (modules.exists(_.needsCompile)) {
       val includes = (modules.flatMap(m => List(config.headerPrefix + sourceCacheHome + m.name, config.headerPrefix + Compilers(Targets.getHostTarget(target)).sourceCacheHome + m.name)).toArray ++ 
-                     config.headerDir ++ Array(config.headerPrefix + staticResources)).distinct
+                     config.headerDir ++ Array(config.headerPrefix + staticResources, config.headerPrefix + shared.staticResources)).distinct
       val libs = config.libs ++ deliteLibs.map(Directory(_).files.withFilter(f => f.extension == OS.libExt).map(_.path)).flatten
       val sources = (sourceBuffer.map(s => sourceCacheHome + "runtime" + sep + s._2) ++ kernelBuffer.map(k => sourceCacheHome + "kernels" + sep + k) ++ auxSourceList).toArray
       val degName = ppl.delite.runtime.Delite.inputArgs(0).split('.')
