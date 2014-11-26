@@ -50,6 +50,7 @@ trait DeliteArrayOps extends RuntimeServiceOps {
   def darray_length[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext): Rep[Int]
   def darray_apply[T:Manifest](da: Rep[DeliteArray[T]], i: Rep[Int])(implicit ctx: SourceContext): Rep[T]
   def darray_update[T:Manifest](da: Rep[DeliteArray[T]], i: Rep[Int], x: Rep[T])(implicit ctx: SourceContext): Rep[Unit]
+  def darray_clone[T:Manifest](d: Rep[DeliteArray[T]])(implicit ctx: SourceContext): Rep[DeliteArray[T]]
   def darray_mutable[T:Manifest](d: Rep[DeliteArray[T]])(implicit ctx: SourceContext): Rep[DeliteArray[T]]
   def darray_copy[T:Manifest](src: Rep[DeliteArray[T]], srcPos: Rep[Int], dest: Rep[DeliteArray[T]], destPos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
   def darray_map[A:Manifest,B:Manifest](a: Rep[DeliteArray[A]], f: Rep[A] => Rep[B])(implicit ctx: SourceContext): Rep[DeliteArray[B]]    
@@ -118,6 +119,14 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
 
     val size = copyTransformedOrElse(_.size)(in.length)
     override def alloc(len: Exp[Int]) = DeliteArray[B](len)
+  }
+
+  case class DeliteArrayClone[A:Manifest](in: Exp[DeliteArray[A]])(implicit ctx: SourceContext)
+    extends DeliteOpMap[A,A,DeliteArray[A]] {
+
+    val size = copyTransformedOrElse(_.size)(in.length)
+    def func = e => e
+    override def alloc(len: Exp[Int]) = DeliteArray[A](len)
   }
   
   case class DeliteArrayZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[DeliteArray[A]], inB: Exp[DeliteArray[B]],
@@ -295,8 +304,11 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   def darray_mapfilter[A:Manifest,B:Manifest](lhs: Exp[DeliteArray[A]], map: Exp[A] => Exp[B], cond: Exp[A] => Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(DeliteArrayMapFilter(lhs,map,cond))
   def darray_toseq[A:Manifest](a: Exp[DeliteArray[A]])(implicit ctx: SourceContext) = DeliteArrayToSeq(a)
   def darray_fromfunction[T:Manifest](length: Rep[Int], func: Rep[Int] => Rep[T])(implicit ctx: SourceContext) = reflectPure(DeliteArrayFromFunction(length,func))
-  
-  def darray_mutable[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext) = reflectMutable(DeliteArrayMap(da,(e:Rep[T])=>e))
+  def darray_clone[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext) = da match {
+    case s: Sym[_] if !isWritableSym(s) => da
+    case _ => reflectPure(DeliteArrayClone(da))
+  }
+  def darray_mutable[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext) = reflectMutable(DeliteArrayClone(da))
   def darray_sortIndices(length: Exp[Int], comparator: (Exp[Int], Exp[Int]) => Exp[Int])(implicit ctx: SourceContext) = {
     val sV = (fresh[Int],fresh[Int])
     reflectPure(DeliteArraySortIndices(length, sV, reifyEffects(comparator(sV._1,sV._2))))
@@ -383,22 +395,26 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
     case DeliteArrayCopy(s,sp,d,dp,l) => Nil
+    case DeliteArrayClone(self) => Nil
     case _ => super.aliasSyms(e)
   }
 
   override def containSyms(e: Any): List[Sym[Any]] = e match {
     case NewVar(Def(Reflect(DeliteArrayNew(_,_,_),_,_))) => Nil  //ignore nested mutability for Var(Array): this is only safe because we rewrite mutations on Var(Array) to atomic operations
     case DeliteArrayCopy(s,sp,d,dp,l) => Nil
+    case DeliteArrayClone(self) => Nil
     case _ => super.containSyms(e)
   }
 
   override def extractSyms(e: Any): List[Sym[Any]] = e match {
     case DeliteArrayCopy(s,sp,d,dp,l) => Nil
+    case DeliteArrayClone(self) => Nil
     case _ => super.extractSyms(e)
   }
 
   override def copySyms(e: Any): List[Sym[Any]] = e match {
     case DeliteArrayCopy(s,sp,d,dp,l) => Nil // ??
+    case DeliteArrayClone(self) => syms(self)
     case _ => super.copySyms(e)
   }    
 
