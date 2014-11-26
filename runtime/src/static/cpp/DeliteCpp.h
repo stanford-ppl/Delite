@@ -38,10 +38,10 @@ void initializeThread(int threadId);
 void clearAll(int numThreads, int numLiveThreads);
 
 #ifdef MEMMGR_REFCNT
-std::shared_ptr<cppDeliteArraystring> string_split(const resourceInfo_t &resourceInfo, const string &str, const string &pattern, int32_t lim);
+std::shared_ptr<cppDeliteArraystring> string_split(const resourceInfo_t *resourceInfo, const string &str, const string &pattern, int32_t lim);
 std::shared_ptr<cppDeliteArraystring> cppArgsGet(int num, ...);
 #else
-cppDeliteArraystring *string_split(const resourceInfo_t &resourceInfo, const string &str, const string &pattern, int32_t lim);
+cppDeliteArraystring *string_split(const resourceInfo_t *resourceInfo, const string &str, const string &pattern, int32_t lim);
 cppDeliteArraystring *cppArgsGet(int num, ...);
 #endif
 int32_t string_toInt(const string &str);

@@ -123,47 +123,31 @@ trait CCompile extends CodeCache {
       throw new RuntimeException("JNI header paths are not set. Please specify in $DELITE_HOME/config/delite/" + configFile + " (<headers> </headers>)")
 
     val args = config.make.split(" ") ++ Array("-f", makefile, "all")
-    val process = Runtime.getRuntime.exec(args)
+    val pb = new java.lang.ProcessBuilder(args:_*)
+    pb.redirectErrorStream(true) //merge stdout and stderr
+    val outFile = File("compile.out")
+    pb.redirectOutput(outFile.jfile)
+    val process = pb.start()
     process.waitFor()
-    checkError(process, args)
+    checkError(process, args, outFile)
   }
 
-  protected def checkError(process: Process, args: Array[String]) {
-    val errorStream = process.getErrorStream
-    val inputStream = process.getInputStream
-    val out = new StringBuilder
-    
-    out.append("--" + target + " compile args: " + args.mkString(","))
-    var err = errorStream.read()
-    if (err != -1) {
-      while (err != -1) {
-        out.append(err.asInstanceOf[Char])
-        err = errorStream.read()
-      }
-      out.append('\n')
-    }
-
-    var in = inputStream.read()
-    if (in != -1) {
-      while (in != -1) {
-        out.append(in.asInstanceOf[Char])
-        in = inputStream.read()
-      }
-      out.append('\n')
-    }
-
+  protected def checkError(process: Process, args: Array[String], file: File) {
+    val out = "--" + target + " compile args: " + args.mkString(",")
     if (Config.verbose || process.exitValue != 0) {
       if(Config.clusterMode == 2) // Send the error message to the master node
-        ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(out.toString)
+        ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(out)
       else 
-        println(out.toString)
+        println(out)
     }
 
-    if (process.exitValue != 0) {
+    if (process.exitValue == 0) {
+      file.delete() //remove log
+    } else {
       sourceBuffer.clear()
       headerBuffer.clear()
       kernelBuffer.clear()
-      sys.error(target + " compilation failed with exit value " + process.exitValue)
+      sys.error(target + " compilation failed with exit value " + process.exitValue + " (log in "+file+")")
     }
   }
 

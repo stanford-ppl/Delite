@@ -21,8 +21,8 @@ char *DeliteHeapAlloc(size_t sz, int idx);
 void delite_barrier(unsigned int count);
 
 // globally overloaded new operators
-void *operator new(size_t sz, const resourceInfo_t &resourceInfo);
-void *operator new[](size_t sz, const resourceInfo_t &resourceInfo);
+void *operator new(size_t sz, const resourceInfo_t *resourceInfo);
+void *operator new[](size_t sz, const resourceInfo_t *resourceInfo);
 
 class DeliteMemory {
 public:
@@ -31,9 +31,9 @@ public:
     return malloc(sz);
   }
   
-  void* operator new(size_t sz, int heapIdx) {
+  void* operator new(size_t sz, const resourceInfo_t *resourceInfo) {
     DHEAP_DEBUG("Allocation from Idx %d with size %d\n", heapIdx, sz);
-    return DeliteHeapAlloc(sz, heapIdx);
+    return DeliteHeapAlloc(sz, resourceInfo->threadId);
   }
 
   /*

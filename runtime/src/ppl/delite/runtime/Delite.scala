@@ -165,8 +165,11 @@ object Delite {
   def loadSources(graph: DeliteTaskGraph) {
     CodeCache.verifyCache()
     for (target <- Targets.values) {
-      if (graph.targets contains target)
-        Compilers(target).cacheDegSources(Directory(Path(graph.kernelPath + File.separator + Compilers(target).target + File.separator).toAbsolute))
+      if (graph.targets contains target) {
+        val dir = Directory(Path(graph.kernelPath + File.separator + Compilers(target).target + File.separator).toAbsolute)
+        if (!dir.exists) throw new java.io.FileNotFoundException("generated " + target + " directory does not exist")
+        Compilers(target).cacheDegSources(dir)
+      }
     }
   }
 

@@ -21,7 +21,7 @@ char find_delim(const string &pattern) {
     return -1;
 }
 
-string *growStringArray(const resourceInfo_t &resourceInfo, string *input, int &length) {
+string *growStringArray(const resourceInfo_t *resourceInfo, string *input, int &length) {
   string *result = new (resourceInfo) string[length * 4];
   for(int i=0; i<length; i++) {
     result[i] = input[i];
@@ -32,9 +32,9 @@ string *growStringArray(const resourceInfo_t &resourceInfo, string *input, int &
 
 #ifdef __USE_STD_STRING__
 #ifdef MEMMGR_REFCNT
-std::shared_ptr<cppDeliteArraystring> string_split(const resourceInfo_t &resourceInfo, const string &str, const string &pattern, int32_t lim) {
+std::shared_ptr<cppDeliteArraystring> string_split(const resourceInfo_t *resourceInfo, const string &str, const string &pattern, int32_t lim) {
 #else
-cppDeliteArraystring *string_split(const resourceInfo_t &resourceInfo, const string &str, const string &pattern, int32_t lim) {
+cppDeliteArraystring *string_split(const resourceInfo_t *resourceInfo, const string &str, const string &pattern, int32_t lim) {
 #endif
   //TODO: current g++ does not fully support c++11 regex, 
   //      so below code does not work.
@@ -120,9 +120,9 @@ cppDeliteArraystring *string_split(const resourceInfo_t &resourceInfo, const str
 }
 #else // of __USE_STD_STRING__
 #ifdef MEMMGR_REFCNT
-std::shared_ptr<cppDeliteArraystring> string_split(const resourceInfo_t &resourceInfo, const string &str, const string &pattern, int32_t lim) {
+std::shared_ptr<cppDeliteArraystring> string_split(const resourceInfo_t *resourceInfo, const string &str, const string &pattern, int32_t lim) {
 #else
-cppDeliteArraystring *string_split(const resourceInfo_t &resourceInfo, const string &str, const string &pattern, int32_t lim) {
+cppDeliteArraystring *string_split(const resourceInfo_t *resourceInfo, const string &str, const string &pattern, int32_t lim) {
 #endif
   if (lim > 0) assert(false && "string_split with lim > 0 is not implemented yet");
 

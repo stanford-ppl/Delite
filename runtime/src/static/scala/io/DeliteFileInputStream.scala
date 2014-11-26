@@ -76,9 +76,9 @@ object DeliteFileInputStream {
 }
 
 class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], charset: Charset, delimiter: Option[Array[Byte]]) {
-  var reader: LineReader = _
-  var text: Text = _
-  var pos: Long = _
+  private[this] var reader: LineReader = _
+  private[this] var text: Text = _
+  private[this] var pos: Long = _
 
   final val size: Long = files.map(_.getLen).sum
   final def position = pos

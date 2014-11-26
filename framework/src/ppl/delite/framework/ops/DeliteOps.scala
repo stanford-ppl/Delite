@@ -1456,9 +1456,9 @@ trait DeliteOpsExp extends DeliteInternalOpsExp with DeliteCollectionOpsExp with
   override def copySyms(e: Any): List[Sym[Any]] = e match {
     case s: DeliteOpSingleTask[_] => Nil
     case e: DeliteOpExternal[_] => syms(e.allocVal)
-    case op: DeliteCollectElem[_,_,_] => syms(op.buf.alloc)
-    case op: DeliteHashCollectElem[_,_,_,_,_,_] => syms(op.buf.alloc)
-    case op: DeliteHashReduceElem[_,_,_,_] => syms(op.buf.alloc)
+    case op: DeliteCollectElem[_,_,_] => Nil //syms(op.buf.alloc)
+    case op: DeliteHashCollectElem[_,_,_,_,_,_] => Nil //syms(op.buf.alloc)
+    case op: DeliteHashReduceElem[_,_,_,_] => Nil //syms(op.buf.alloc)
     case op: DeliteForeachElem[_] => Nil
     case op: DeliteReduceElem[_] => Nil
     case op: DeliteReduceTupleElem[_,_] => Nil
@@ -4099,7 +4099,7 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
   }
 
   def emitMethod(name:String, outputType: String, inputs:List[(String,String)])(body: => Unit) {
-    stream.println(unalteredMethodHeader(name, outputType, ((resourceInfoType,resourceInfoSym))::inputs) + " {")
+    stream.println(unalteredMethodHeader(name, outputType, ((resourceInfoSym,resourceInfoType))::inputs) + " {")
     body
     stream.println("}\n")
   }
@@ -4129,7 +4129,6 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
 
   def fieldAccess(className: String, varName: String): String = {
     if (className == "") varName
-    else if (className == resourceInfoSym) className + "." + varName //only struct currently passed on the stack
     else className + "->" + varName
   }
 

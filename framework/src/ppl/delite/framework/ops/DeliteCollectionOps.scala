@@ -66,7 +66,7 @@ trait DeliteCollectionOpsExp extends ExceptionOpsExp with BaseFatExp { this: Del
 
 
   private def undefined[A](method: String, x: Exp[DeliteCollection[A]]) = {
-    throw new RuntimeException("no static implementation found for " + method + " on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get + " of type: " + x.tp)
+    fatal(unit("no static implementation found for " + method + " on " + x.toString + " of type: " + x.tp))
   }
 
 }

@@ -81,7 +81,7 @@ class cppFileStream {
       }
     }
 
-    string readLine(const resourceInfo_t &resourceInfo) {
+    string readLine(const resourceInfo_t *resourceInfo) {
       char *line = text;
       while (fgets(line, MAX_BUFSIZE, reader) == NULL) {
         // read the next file

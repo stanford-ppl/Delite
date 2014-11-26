@@ -36,12 +36,12 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
 
   protected def writeKernelHeader() {
     out.append(kernelSignature + "{\n")
-    out.append(s"int tid = $resourceInfoSym.threadId;\n")
-    out.append(s"int numThreads = $resourceInfoSym.numThreads;\n")
+    out.append(s"int tid = $resourceInfoSym->threadId;\n")
+    out.append(s"int numThreads = $resourceInfoSym->numThreads;\n")
   }
 
   protected def kernelSignature = {
-    s"${op.outputType(Targets.Cpp)}* $kernelName($resourceInfoType &$resourceInfoSym, ${op.getInputs.head._1.outputType}* $headerObject)"
+    s"${op.outputType(Targets.Cpp)}* $kernelName($resourceInfoType *$resourceInfoSym, ${op.getInputs.head._1.outputType}* $headerObject)"
   }
 
   protected def writeKernelFooter() {
@@ -196,7 +196,7 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
   }
 
   protected def kernelSignature = {
-    className + "* " + kernelName + ((resourceInfoType+" &"+resourceInfoSym)+:op.getInputs.map(in => op.inputType(Targets.Cpp, in._2) + addRef(in._2) + in._2)).mkString("(", ", ", ")")
+    className + "* " + kernelName + ((resourceInfoType+" *"+resourceInfoSym)+:op.getInputs.map(in => op.inputType(Targets.Cpp, in._2) + addRef(in._2) + in._2)).mkString("(", ", ", ")")
   }
 
   protected def writeKernelFunction(stream: StringBuilder) {
@@ -221,13 +221,13 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
     out.append(op.function + "* closure;\n")
     out.append(op.outputType(Targets.Cpp) + "* out;\n")
 
-    val typedArgs = ((resourceInfoType+" &"+resourceInfoSym)+:op.getInputs.map(in => in._1.outputType(Targets.Cpp,in._2)+addRef(in._2)+" "+in._2)).mkString(", ")
+    val typedArgs = ((resourceInfoType+" *"+resourceInfoSym)+:op.getInputs.map(in => in._1.outputType(Targets.Cpp,in._2)+addRef(in._2)+" "+in._2)).mkString(", ")
     val unTypedArgs = (/*resourceInfoSym+:*/op.getInputs.map(_._2)).mkString(", ")
     out.append(s"""$className($typedArgs) {
   closure = new ${op.function}($unTypedArgs);
   closure->loopStart = 0;
   closure->loopSize = closure->size($resourceInfoSym);
-  numThreads = $resourceInfoSym.numThreads;
+  numThreads = $resourceInfoSym->numThreads;
   out = closure->alloc($resourceInfoSym);
   initSync();
 }
@@ -285,14 +285,14 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
   void* launchFunc_${op.id}(void* arg) {
     std::pair<$resourceInfoType*, $className*>* in = (std::pair<$resourceInfoType*, $className*>*)arg;
     initializeThread(in->first->threadId);
-    MultiLoop_${op.id}(*in->first, in->second);
+    MultiLoop_${op.id}(in->first, in->second);
   }
   \n""")
   }
 
   protected def writeThreadLaunch(stream: StringBuilder) {
     stream.append(s"""//thread launch
-  for (int i=1; i<resourceInfo.numThreads; i++) {
+  for (int i=1; i<resourceInfo->numThreads; i++) {
     std::pair<$resourceInfoType*, $className*>* arg = new std::pair<$resourceInfoType*, $className*>(&resourceInfos[i], header);
     pthread_t thread;
     pthread_create(&thread, NULL, launchFunc_${op.id}, (void*)arg);
