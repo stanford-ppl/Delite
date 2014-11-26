@@ -74,6 +74,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
         return
       case NewVar(x) => resultIsVar = true // if sym is a NewVar, we must mangle the result type
       case e: DeliteOpExternal[_] => external = true
+      case w: DeliteOpWhileLoop => skipEmission = true
+      case c: DeliteOpCondition[_] => skipEmission = true
       case _ => // continue and attempt to generate kernel
     }
 

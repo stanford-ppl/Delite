@@ -372,25 +372,27 @@ trait LoopSoAOpt extends BaseGenLoopsFat with LoopFusionOpt {
   //pre-fuse any loops that have been split by SoA transform
   //such loops have the same 'size' sym, the same 'v' sym, and are in the same scope
   override def focusExactScopeFat[A](resultB: List[Block[Any]])(body: List[Stm] => A): A = {
-    val result = resultB.map(getBlockResultFull) flatMap { case Combine(xs) => xs case x => List(x) }
-    val currentScope = innerScope
-    val levelScope = getExactScope(currentScope)(result) //top-level scope
-    
-    val loops = levelScope collect { case t@TTP(_, _, SimpleFatLoop(_,_,_)) => t }
-    val splitLoops = loops groupBy { case TTP(_, _, SimpleFatLoop(size,v,bodies)) => v }
+    if (Config.soaEnabled) {
+      val result = resultB.map(getBlockResultFull) flatMap { case Combine(xs) => xs case x => List(x) }
+      val currentScope = innerScope
+      val levelScope = getExactScope(currentScope)(result) //top-level scope
 
-    val fusedLoops = splitLoops map {
-      case (v, l) if l.length == 1 => l.head
-      case (v, l) => 
-        val size = l.map(_.rhs.asInstanceOf[AbstractFatLoop].size) reduceLeft { (s1,s2) => assert(s1 == s2); s1 }
-        val t = TTP(l.flatMap(_.lhs), l.flatMap(_.mhs), SimpleFatLoop(size, v, l.flatMap(_.rhs.asInstanceOf[AbstractFatLoop].body)))
-        printlog("fusing split SoA loop: " + t.toString)
-        t
+      val loops = levelScope collect { case t@TTP(_, _, SimpleFatLoop(_,_,_)) => t }
+      val splitLoops = loops groupBy { case TTP(_, _, SimpleFatLoop(size,v,bodies)) => v }
+
+      val fusedLoops = splitLoops map {
+        case (v, l) if l.length == 1 => l.head
+        case (v, l) =>
+          val size = l.map(_.rhs.asInstanceOf[AbstractFatLoop].size) reduceLeft { (s1,s2) => assert(s1 == s2); s1 }
+          val t = TTP(l.flatMap(_.lhs), l.flatMap(_.mhs), SimpleFatLoop(size, v, l.flatMap(_.rhs.asInstanceOf[AbstractFatLoop].body)))
+          printlog("fusing split SoA loop: " + t.toString)
+          t
+      }
+
+      val remainder = currentScope diff loops
+      val newScope = remainder ++ fusedLoops
+      innerScope = getSchedule(newScope)(result) //get the order right
     }
-
-    val remainder = currentScope diff loops
-    val newScope = remainder ++ fusedLoops
-    innerScope = getSchedule(newScope)(result) //get the order right
     super.focusExactScopeFat(resultB)(body) //call LoopFusionOpt
   }
 
