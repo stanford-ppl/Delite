@@ -20,19 +20,21 @@ trait CCompile extends CodeCache {
     val libs: Array[String],
     val headerPrefix: String, 
     val libPrefix: String,
+    val compileFlags: String,
+    val linkFlags: String,
     val features: Array[String]
   )
 
   protected def configFile: String // name of file, will always be searched for inside config/delite/
   protected def compileFlags: Array[String] // machine-independent flags that are always passed to the compiler for this lib
   protected def linkFlags: Array[String] // machine-independent flags that are always passed to the linker for this lib
-  protected def outputSwitch: String // compiler parameter that allows us to specify destination dir (e.g. -o)
   protected def optionalFeatures: Array[String] = Array() //features (e.g., headers) that users can enable but we don't want to require
   protected lazy val config = loadConfig(configFile)
   
   private val headerBuffer = new ArrayBuffer[(String, String)]
   private val kernelBuffer = new ArrayBuffer[String] // list of kernel filenames to be included in the compilation (non-multiloop kernels)
   protected def auxSourceList = List[String]() // additional source filenames to be included in the compilation
+  protected val shared = CppCompile
 
   def headers = headerBuffer.map(_._2)
 
@@ -64,8 +66,10 @@ trait CCompile extends CodeCache {
     val sourceHeader = body \\ "headers" flatMap { e => e \\ "include" map { _.text.trim } } toArray
     val libPrefix = (body \\ "libs" \ "prefix").text.trim
     val libs = body \\ "libs" flatMap { e => val prefix = e \ "prefix"; (e \\ "path").map(p => prefix.text.trim + p.text.trim) ++ (e \\ "library").map(l => l.text.trim) } toArray
+    val compileFlags = (body \\ "compileFlags").text.trim
+    val linkFlags = (body \\ "linkFlags").text.trim
     val features = (body \\ "feature" map { _.text.trim }).toArray
-    new CompilerConfig(compiler, make, headerDir, sourceHeader, libs, headerPrefix, libPrefix, features)
+    new CompilerConfig(compiler, make, headerDir, sourceHeader, libs, headerPrefix, libPrefix, compileFlags, linkFlags, features)
   }
 
   def compile() {
@@ -76,7 +80,7 @@ trait CCompile extends CodeCache {
     
     if (modules.exists(_.needsCompile)) {
       val includes = (modules.flatMap(m => List(config.headerPrefix + sourceCacheHome + m.name, config.headerPrefix + Compilers(Targets.getHostTarget(target)).sourceCacheHome + m.name)).toArray ++ 
-                     config.headerDir ++ Array(config.headerPrefix + staticResources)).distinct
+                     config.headerDir ++ Array(config.headerPrefix + staticResources, config.headerPrefix + shared.staticResources)).distinct
       val libs = config.libs ++ deliteLibs.map(Directory(_).files.withFilter(f => f.extension == OS.libExt).map(_.path)).flatten
       val sources = (sourceBuffer.map(s => sourceCacheHome + "runtime" + sep + s._2) ++ kernelBuffer.map(k => sourceCacheHome + "kernels" + sep + k) ++ auxSourceList).toArray
       val degName = ppl.delite.runtime.Delite.inputArgs(0).split('.')
@@ -118,48 +122,36 @@ trait CCompile extends CodeCache {
     if (config.headerDir.length == 0)
       throw new RuntimeException("JNI header paths are not set. Please specify in $DELITE_HOME/config/delite/" + configFile + " (<headers> </headers>)")
 
-    //TODO: How many parallel jobs? For now, the number of processors.
-    val args = Array(config.make, "-s", "-j", "-f", makefile, "all")
-    val process = Runtime.getRuntime.exec(args)
-    process.waitFor
-    checkError(process, args)
+    val args = config.make.split(" ") ++ Array("-f", makefile, "all")
+    val pb = new java.lang.ProcessBuilder(args:_*)
+    pb.redirectErrorStream(true) //merge stdout and stderr
+    val outFile = File("compile.out")
+    pb.redirectOutput(outFile.jfile)
+    val process = pb.start()
+    process.waitFor()
+    checkError(process, args, outFile)
   }
 
-  protected def checkError(process: Process, args: Array[String]) {
-    val errorStream = process.getErrorStream
-    val inputStream = process.getInputStream
-    val out = new StringBuilder
-
-    var err = errorStream.read()
-    if (err != -1) {
-      out.append("--" + target + " compile args: " + args.mkString(","))
-      while (err != -1) {
-        out.append(err.asInstanceOf[Char])
-        err = errorStream.read()
-      }
-      out.append('\n')
+  protected def checkError(process: Process, args: Array[String], file: File) {
+    val out = "--" + target + " compile args: " + args.mkString(",")
+    if (Config.verbose || process.exitValue != 0) {
+      if(Config.clusterMode == 2) // Send the error message to the master node
+        ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(out)
+      else 
+        println(out)
     }
 
-    var in = inputStream.read()
-    if (in != -1) {
-      while (in != -1) {
-        out.append(in.asInstanceOf[Char])
-        in = inputStream.read()
-      }
-      out.append('\n')
-    }
-
-    if (process.exitValue != 0) {
+    if (process.exitValue == 0) {
+      file.delete() //remove log
+    } else {
       sourceBuffer.clear()
       headerBuffer.clear()
       kernelBuffer.clear()
-      if(Config.clusterMode == 2) // Send the error message to the master node
-        ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(out.toString)
-      else 
-        println(out.toString)
-      sys.error(target + " compilation failed with exit value " + process.exitValue)
+      sys.error(target + " compilation failed with exit value " + process.exitValue + " (log in "+file+")")
     }
   }
+
+  protected def verbosity = if (Config.verbose) "-DDELITE_VERBOSE" else ""
 
   // string for the Makefile
   def makefileString(destination: String, sources: Array[String], includes: Array[String], libs: Array[String], features:Array[String]) = s"""
@@ -170,8 +162,8 @@ SOURCECACHE_HOME = ${sourceCacheHome}
 BINCACHE_HOME = ${binCacheHome}
 INCLUDES = ${includes.mkString(" ")}
 
-CFLAGS = ${compileFlags.mkString(" ")}
-LDFLAGS = ${(linkFlags ++ libs).mkString(" ")}
+CFLAGS = ${(compileFlags ++ Array(config.compileFlags)).mkString(" ")}
+LDFLAGS = ${(linkFlags ++ Array(config.linkFlags) ++ libs).mkString(" ")}
 SOURCES = ${sources.mkString(" ")}
 OBJECTS = $$(SOURCES:.${ext}=.o)
 OUTPUT = ${destination}
@@ -183,7 +175,7 @@ $$(OUTPUT): $$(OBJECTS)
 \t$$(CC) $$(OBJECTS) $$(LDFLAGS) -o $$(OUTPUT)
 
 %.o: %.${ext}
-\t$$(CC) -c -DDELITE_CPP=${Config.numCpp} -DMEMMGR_${Config.cppMemMgr.toUpperCase} ${features.map("-D"+_).mkString(" ")} $$(INCLUDES) $$(CFLAGS) $$< -o $$@
+\t$$(CC) -c ${verbosity} -DDELITE_CPP=${Config.numCpp} -DMEMMGR_${Config.cppMemMgr.toUpperCase} ${features.map("-D"+_).mkString(" ")} $$(INCLUDES) $$(CFLAGS) $$< -o $$@
 
 clean:
 \trm -f $$(OBJECTS) $$(OUTPUT)

@@ -30,7 +30,8 @@ trait DeliteTestBase extends DeliteTestModule with DeliteTestDSLApplication {
   }
 }
 
-object DeliteMapRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteMap
+object DeliteMapRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteMap
+object DeliteMapSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteMap
 trait DeliteMap extends DeliteTestBase {
   def main() = {
 
@@ -58,7 +59,8 @@ trait DeliteMap extends DeliteTestBase {
   }
 }
 
-object DeliteFlatMapRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFlatMap
+object DeliteFlatMapRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteFlatMap
+object DeliteFlatMapSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFlatMap
 trait DeliteFlatMap extends DeliteTestBase {
   def main() = {
 
@@ -82,7 +84,8 @@ trait DeliteFlatMap extends DeliteTestBase {
   }
 }
 
-object DeliteZipRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteZip
+object DeliteZipRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteZip
+object DeliteZipSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteZip
 trait DeliteZip extends DeliteTestBase {
   def main() = {
 
@@ -107,7 +110,8 @@ trait DeliteZip extends DeliteTestBase {
   }
 }
 
-object DeliteReduceRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteReduce
+object DeliteReduceRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteReduce
+object DeliteReduceSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteReduce
 trait DeliteReduce extends DeliteTestBase {
   def main() = {
 
@@ -125,7 +129,8 @@ trait DeliteReduce extends DeliteTestBase {
 
 // TODO: Current GPU reduce only works for commutative reduce operators.
 // Enable this test when this gets fixed.
-object DeliteReduce2Runner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteReduce2
+object DeliteReduce2Runner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteReduce2
+object DeliteReduce2SuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteReduce2
 trait DeliteReduce2 extends DeliteTestBase {
   def main() = {
 
@@ -137,8 +142,8 @@ trait DeliteReduce2 extends DeliteTestBase {
   }
 }
 
-
-object DeliteMapReduceRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteMapReduce
+object DeliteMapReduceRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteMapReduce
+object DeliteMapReduceSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteMapReduce
 trait DeliteMapReduce extends DeliteTestBase {
   def main() = {
 
@@ -156,7 +161,8 @@ trait DeliteMapReduce extends DeliteTestBase {
   }
 }
 
-object DeliteFilterRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFilter
+object DeliteFilterRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteFilter
+object DeliteFilterSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFilter
 trait DeliteFilter extends DeliteTestBase {
   def main() = {
 
@@ -176,7 +182,8 @@ trait DeliteFilter extends DeliteTestBase {
   }
 }
 
-object DeliteForeachRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteForeach
+object DeliteForeachRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteForeach
+object DeliteForeachSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteForeach
 trait DeliteForeach extends DeliteTestBase {
   def main() = {
 
@@ -204,7 +211,8 @@ trait DeliteForeach extends DeliteTestBase {
   }
 }
 
-object DeliteZipWithReduceTupleRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteZipWithReduceTuple
+object DeliteZipWithReduceTupleRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteZipWithReduceTuple
+object DeliteZipWithReduceTupleSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteZipWithReduceTuple
 trait DeliteZipWithReduceTuple extends DeliteTestBase {
   def main() = {
 
@@ -221,7 +229,8 @@ trait DeliteZipWithReduceTuple extends DeliteTestBase {
   }
 }
 
-object DeliteGroupByRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGroupBy
+object DeliteGroupByRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteGroupBy
+object DeliteGroupBySuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGroupBy
 trait DeliteGroupBy extends DeliteTestBase {
   def main() = {
     
@@ -249,7 +258,8 @@ trait DeliteGroupBy extends DeliteTestBase {
   }
 }
 
-object DeliteGroupByReduceRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGroupByReduce
+object DeliteGroupByReduceRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteGroupByReduce
+object DeliteGroupByReduceSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGroupByReduce
 trait DeliteGroupByReduce extends DeliteTestBase {
   def main() = {
     
@@ -274,7 +284,8 @@ trait DeliteGroupByReduce extends DeliteTestBase {
   }
 }
 
-object DeliteNestedMapRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteNestedMap
+object DeliteNestedMapRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteNestedMap
+object DeliteNestedMapSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteNestedMap
 trait DeliteNestedMap extends DeliteTestBase {
   def main() = {
     
@@ -297,7 +308,8 @@ trait DeliteNestedMap extends DeliteTestBase {
   }
 }
 
-object DeliteNestedZipRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteNestedZip
+object DeliteNestedZipRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteNestedZip
+object DeliteNestedZipSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteNestedZip
 trait DeliteNestedZip extends DeliteTestBase {
   def main() = {
     
@@ -326,7 +338,8 @@ trait DeliteNestedZip extends DeliteTestBase {
   }
 }
 
-object DeliteNestedReduceRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteNestedReduce
+object DeliteNestedReduceRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteNestedReduce
+object DeliteNestedReduceSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteNestedReduce
 trait DeliteNestedReduce extends DeliteTestBase {
   def main() = {
     
@@ -344,7 +357,8 @@ trait DeliteNestedReduce extends DeliteTestBase {
   }
 }
 
-object DeliteNestedMapReduceRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteNestedMapReduce
+object DeliteNestedMapReduceRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteNestedMapReduce
+object DeliteNestedMapReduceSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteNestedMapReduce
 trait DeliteNestedMapReduce extends DeliteTestBase {
   def main() = {
     
@@ -362,7 +376,8 @@ trait DeliteNestedMapReduce extends DeliteTestBase {
   }
 }
 
-object DeliteNestedForeachRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteNestedForeach
+object DeliteNestedForeachRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteNestedForeach
+object DeliteNestedForeachSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteNestedForeach
 trait DeliteNestedForeach extends DeliteTestBase {
   def main() = {
 
@@ -386,7 +401,8 @@ trait DeliteNestedForeach extends DeliteTestBase {
   }
 }
 
-object DeliteIfThenElseRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteIfThenElse
+object DeliteIfThenElseRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteIfThenElse
+object DeliteIfThenElseSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteIfThenElse
 trait DeliteIfThenElse extends DeliteTestBase {
   def main() = {
 
@@ -414,7 +430,8 @@ trait DeliteIfThenElse extends DeliteTestBase {
   }
 }
 
-object DeliteHorizontalElemsRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteHorizontalElems
+object DeliteHorizontalElemsRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteHorizontalElems
+object DeliteHorizontalElemsSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteHorizontalElems
 trait DeliteHorizontalElems extends DeliteTestBase {
   def main() = {
     
@@ -435,7 +452,8 @@ trait DeliteHorizontalElems extends DeliteTestBase {
   }
 }
 
-object DeliteFileReaderRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFileReader
+object DeliteFileReaderRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteFileReader
+object DeliteFileReaderSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFileReader
 trait DeliteFileReader extends DeliteTestBase {
   def main() = {
     val path = sys.env.get("DELITE_HOME").map(_ + "/").getOrElse("") + "framework/delite-test/tests/ppl/tests/scalatest/delite/test.txt"
@@ -481,23 +499,23 @@ trait DeliteFileReader extends DeliteTestBase {
 }
 
 class DeliteOpSuite extends DeliteSuite {
-  def testDeliteMap() { compileAndTest(DeliteMapRunner, CHECK_MULTILOOP) }
-  def testDeliteFlatMap() { compileAndTest(DeliteFlatMapRunner) }
-  def testDeliteZip() { compileAndTest(DeliteZipRunner, CHECK_MULTILOOP) }
-  def testDeliteReduce() { compileAndTest(DeliteReduceRunner, CHECK_MULTILOOP) }
-  //def testDeliteReduce2() { compileAndTest(DeliteReduce2Runner, CHECK_MULTILOOP) }
-  def testDeliteMapReduce() { compileAndTest(DeliteMapReduceRunner, CHECK_MULTILOOP) }
-  def testDeliteFilter() { compileAndTest(DeliteFilterRunner, CHECK_MULTILOOP) }
-  def testDeliteForeach() { compileAndTest(DeliteForeachRunner) }
-  def testDeliteZipWithReduceTuple() { compileAndTest(DeliteZipWithReduceTupleRunner, CHECK_MULTILOOP) }
-  def testDeliteNestedMap() { compileAndTest(DeliteNestedMapRunner) }
-  def testDeliteHorizontalElems() { compileAndTest(DeliteHorizontalElemsRunner, CHECK_MULTILOOP) }
-  def testDeliteNestedZip() { compileAndTest(DeliteNestedZipRunner) }
-  def testDeliteNestedReduce() { compileAndTest(DeliteNestedReduceRunner, CHECK_MULTILOOP) }
-  def testDeliteNestedMapReduce() { compileAndTest(DeliteNestedMapReduceRunner, CHECK_MULTILOOP) }
-  def testDeliteNestedForeach() { compileAndTest(DeliteNestedForeachRunner) }
-  def testDeliteIfThenElse() { compileAndTest(DeliteIfThenElseRunner) }
-  def testDeliteGroupBy() { compileAndTest(DeliteGroupByRunner) }
-  def testDeliteGroupByReduce() { compileAndTest(DeliteGroupByReduceRunner) }
-  def testDeliteFileReader() { compileAndTest(DeliteFileReaderRunner) }
+  def testDeliteMap() { compileAndTest(DeliteMapSuiteRunner, CHECK_MULTILOOP) }
+  def testDeliteFlatMap() { compileAndTest(DeliteFlatMapSuiteRunner) }
+  def testDeliteZip() { compileAndTest(DeliteZipSuiteRunner, CHECK_MULTILOOP) }
+  def testDeliteReduce() { compileAndTest(DeliteReduceSuiteRunner, CHECK_MULTILOOP) }
+  //def testDeliteReduce2() { compileAndTest(DeliteReduce2SuiteRunner, CHECK_MULTILOOP) }
+  def testDeliteMapReduce() { compileAndTest(DeliteMapReduceSuiteRunner, CHECK_MULTILOOP) }
+  def testDeliteFilter() { compileAndTest(DeliteFilterSuiteRunner, CHECK_MULTILOOP) }
+  def testDeliteForeach() { compileAndTest(DeliteForeachSuiteRunner) }
+  def testDeliteZipWithReduceTuple() { compileAndTest(DeliteZipWithReduceTupleSuiteRunner, CHECK_MULTILOOP) }
+  def testDeliteNestedMap() { compileAndTest(DeliteNestedMapSuiteRunner) }
+  def testDeliteHorizontalElems() { compileAndTest(DeliteHorizontalElemsSuiteRunner, CHECK_MULTILOOP) }
+  def testDeliteNestedZip() { compileAndTest(DeliteNestedZipSuiteRunner) }
+  def testDeliteNestedReduce() { compileAndTest(DeliteNestedReduceSuiteRunner, CHECK_MULTILOOP) }
+  def testDeliteNestedMapReduce() { compileAndTest(DeliteNestedMapReduceSuiteRunner, CHECK_MULTILOOP) }
+  def testDeliteNestedForeach() { compileAndTest(DeliteNestedForeachSuiteRunner) }
+  def testDeliteIfThenElse() { compileAndTest(DeliteIfThenElseSuiteRunner) }
+  def testDeliteGroupBy() { compileAndTest(DeliteGroupBySuiteRunner) }
+  def testDeliteGroupByReduce() { compileAndTest(DeliteGroupByReduceSuiteRunner) }
+  def testDeliteFileReader() { compileAndTest(DeliteFileReaderSuiteRunner) }
 }

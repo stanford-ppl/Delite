@@ -66,7 +66,7 @@ public:
 
   int32_t datasz(void) { return keys_length; }
 
-  int32_t size(resourceInfo_t &resourceInfo) { return sz; }
+  int32_t size(resourceInfo_t *resourceInfo) { return sz; }
   int32_t size(void) { return sz; }
 
   int32_t get(K key) {
@@ -168,8 +168,10 @@ public:
 
   }
   
-  K *unsafeKeys(resourceInfo_t &resourceInfo) { return keys; }
+  K *unsafeKeys(resourceInfo_t *resourceInfo) { return keys; }
   K *unsafeKeys(void) { return keys; }
+
+  uint32_t hashcode(void) { return (uintptr_t)this; }
 
   // currently not used
   /*
@@ -251,7 +253,7 @@ public:
 
   int32_t datasz(void) { return keys_length; }
 
-  int32_t size(resourceInfo_t &resourceInfo) { return sz; }
+  int32_t size(resourceInfo_t *resourceInfo) { return sz; }
   int32_t size(void) { return sz; }
 
   int32_t get(K *key) {
@@ -353,9 +355,10 @@ public:
 
   }
   
-  K **unsafeKeys(resourceInfo_t &resourceInfo) { return keys; }
+  K **unsafeKeys(resourceInfo_t *resourceInfo) { return keys; }
   K **unsafeKeys(void) { return keys; }
 
+  uint32_t hashcode(void) { return (uintptr_t)this; }
 };
 
 template <class T>

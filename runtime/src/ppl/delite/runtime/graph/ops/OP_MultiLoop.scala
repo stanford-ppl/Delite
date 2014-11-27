@@ -55,6 +55,7 @@ class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, v
     h
   }
 
+
   def consumesHeader: Boolean = {
     inputList.length > 0 && (inputList(0)._2 == id+"_h")
   }

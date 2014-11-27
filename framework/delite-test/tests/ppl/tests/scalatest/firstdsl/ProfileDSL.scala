@@ -57,8 +57,7 @@ trait ProfileCodeGenBase extends GenericFatCodegen with codegen.Utils {
 
 trait ProfileCodeGenScala extends ProfileCodeGenBase with ScalaCodeGenPkg
   with ScalaGenDeliteOps with ScalaGenProfileOps with ScalaGenProfileArrayOps
-  with ScalaGenDeliteCollectionOps with ScalaGenDeliteTest
-  with DeliteScalaGenAllOverrides {
+  with ScalaGenDeliteTest with DeliteScalaGenAllOverrides {
 
   val IR: DeliteApplication with ProfileExp
   
@@ -81,7 +80,6 @@ trait ProfileCodeGenScala extends ProfileCodeGenBase with ScalaCodeGenPkg
 trait ProfileCodeGenC extends ProfileCodeGenBase with CCodeGenPkg
   with CGenDeliteOps with CGenDeliteStruct with CGenDeliteArrayOps with DeliteCppHostTransfer
   /*with CGenProfileOps with CGenProfileArrayOps */
-  with CGenDeliteCollectionOps
   with DeliteCGenAllOverrides {
       
   val IR: DeliteApplication with ProfileExp
@@ -90,7 +88,6 @@ trait ProfileCodeGenC extends ProfileCodeGenBase with CCodeGenPkg
 trait ProfileCodeGenCuda extends ProfileCodeGenBase with CudaCodeGenPkg
   with CudaGenDeliteOps with CudaGenDeliteStruct with CudaGenDeliteArrayOps with DeliteCppHostTransfer with DeliteCudaDeviceTransfer
   /*with CudaGenProfileOps with CudaGenProfileArrayOps */
-  with CudaGenDeliteCollectionOps
   with DeliteCudaGenAllOverrides {
 
   val IR: DeliteApplication with ProfileExp

@@ -2,6 +2,7 @@
 #define __DELITE_MEMORY_H__
 
 #include <memory>
+#include <list>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,14 +15,14 @@
 #define DHEAP_DEBUG(...)
 
 // Delite Custom Memory APIs
-void DeliteHeapInit(int idx, int numThreads, int numLiveThreads, int initializer, size_t heapSize);
-void DeliteHeapClear(int idx, int numThreads, int numLiveThreads, int finalizer);
+void DeliteHeapInit(int numThreads, size_t heapSize);
+void DeliteHeapClear(int numThreads);
 char *DeliteHeapAlloc(size_t sz, int idx);
 void delite_barrier(unsigned int count);
 
 // globally overloaded new operators
-void *operator new(size_t sz, const resourceInfo_t &resourceInfo);
-void *operator new[](size_t sz, const resourceInfo_t &resourceInfo);
+void *operator new(size_t sz, const resourceInfo_t *resourceInfo);
+void *operator new[](size_t sz, const resourceInfo_t *resourceInfo);
 
 class DeliteMemory {
 public:
@@ -30,9 +31,9 @@ public:
     return malloc(sz);
   }
   
-  void* operator new(size_t sz, int heapIdx) {
+  void* operator new(size_t sz, const resourceInfo_t *resourceInfo) {
     DHEAP_DEBUG("Allocation from Idx %d with size %d\n", heapIdx, sz);
-    return DeliteHeapAlloc(sz, heapIdx);
+    return DeliteHeapAlloc(sz, resourceInfo->threadId);
   }
 
   /*

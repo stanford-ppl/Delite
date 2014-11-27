@@ -7,6 +7,8 @@
 #include <pthread.h>
 #include <sched.h>
 #include "Config.h"
+#include "DeliteDatastructures.h"
+#include "DeliteCpp.h"
 
 #ifdef __DELITE_CPP_NUMA__
 #include <numa.h>
@@ -17,8 +19,10 @@
 #endif
 
 
-Config* config = 0;
+Config* config = NULL;
+resourceInfo_t* resourceInfos = NULL;
 pthread_mutex_t init_mtx = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t init_cond = PTHREAD_COND_INITIALIZER;
 
 // heavy-handed, but doesn't appear there is another good way
 int getCpuInfo(FILE* pipe) {
@@ -54,13 +58,13 @@ void initializeConfig(int numThreads) {
   if (numa_available() >= 0) {
     int numCpus = numa_num_configured_cpus();
     if (numCoresPerSocket <= 0) {
-        printf("[WARNING]: Unable to automatically determine number of physical cores, assuming %d\n", numCpus);
+        VERBOSE("WARNING: Unable to automatically determine number of physical cores, assuming %d\n", numCpus);
         numCores = numCpus;
     }
 
     int numNodes = numa_num_configured_nodes();
     if (numSockets > 0 && numSockets != numNodes) {
-      printf("[WARNING]: Found %d sockets but %d NUMA nodes. Using %d nodes\n", numSockets, numNodes, numNodes);
+      VERBOSE("WARNING: Found %d sockets but %d NUMA nodes. Using %d nodes\n", numSockets, numNodes, numNodes);
     }
     numSockets = numNodes;
     numCoresPerSocket = numCores / numSockets; //potentially re-distribute cores across nodes
@@ -70,21 +74,42 @@ void initializeConfig(int numThreads) {
   if (numSockets > 0 && numCoresPerSocket > 0) {
     config->numSockets = numSockets;
     config->numCoresPerSocket = numCoresPerSocket;
-    printf("[delite]: Detected machine configuration of %d socket(s) with %d core(s) per socket.\n", config->numSockets, config->numCoresPerSocket);
+    VERBOSE("Detected machine configuration of %d socket(s) with %d core(s) per socket.\n", config->numSockets, config->numCoresPerSocket);
   }
   else {
-    printf("[WARNING]: Unable to automatically detect machine configuration.  Assuming %d socket(s) with %d core(s) per socket.\n", config->numSockets, config->numCoresPerSocket);
+    VERBOSE("WARNING: Unable to automatically detect machine configuration.  Assuming %d socket(s) with %d core(s) per socket.\n", config->numSockets, config->numCoresPerSocket);
   }
 }
 
-
-extern "C" JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads);
-
-JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads) {
+void initializeGlobal(int numThreads, size_t heapSize) {
   pthread_mutex_lock(&init_mtx); 
-  if (!config) initializeConfig(numThreads);
+  if (!config) {
+    initializeConfig(numThreads);
+    resourceInfos = new resourceInfo_t[numThreads];
+    for (int i=0; i<numThreads; i++) {
+      resourceInfos[i].threadId = i;
+      resourceInfos[i].numThreads = numThreads;
+      resourceInfos[i].socketId = config->threadToSocket(i);
+      resourceInfos[i].numSockets = config->numSockets;
+      resourceInfos[i].rand = new DeliteCppRandom();
+    }
+    DeliteHeapInit(numThreads, heapSize);
+  }
   pthread_mutex_unlock(&init_mtx);
+}
 
+void freeGlobal(int numThreads) {
+  pthread_mutex_lock(&init_mtx);
+  if (config) {
+    DeliteHeapClear(numThreads);
+    delete[] resourceInfos;
+    delete config;
+    config = NULL;
+  }
+  pthread_mutex_unlock(&init_mtx);
+}
+
+void initializeThread(int threadId) {
   #ifdef __linux__
     cpu_set_t cpu;
     CPU_ZERO(&cpu);
@@ -99,7 +124,7 @@ JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_in
           numa_bitmask_setbit(nodemask, socketId);
           numa_set_membind(nodemask);
         }
-        printf("[delite]: Binding thread %d to cpu %d, socket %d\n", threadId, threadId, socketId);
+        //VERBOSE("Binding thread %d to cpu %d, socket %d\n", threadId, threadId, socketId);
       }
     #endif
   #endif
@@ -107,6 +132,17 @@ JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_NativeExecutionThread_in
   #ifdef __sun
     processor_bind(P_LWPID, P_MYID, threadId, NULL);
   #endif
+}
+
+void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize) {
+  initializeGlobal(numThreads, heapSize);
+  initializeThread(threadId);
+  delite_barrier(numLiveThreads); //ensure fully initialized before any continue
+}
+
+void clearAll(int numThreads, int numLiveThreads) {
+  delite_barrier(numLiveThreads); //first wait for all threads to arrive
+  freeGlobal(numThreads);
 }
 
 #endif

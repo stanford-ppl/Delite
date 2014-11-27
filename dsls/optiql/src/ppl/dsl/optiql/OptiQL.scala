@@ -161,7 +161,7 @@ trait OptiQLCodeGenRestage extends OptiQLScalaCodeGenPkg with DeliteCodeGenResta
 }
 
 trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg with ScalaGenOptiQLMiscOps with ScalaGenQueryableOps
-  with ScalaGenDeliteCollectionOps with ScalaGenDeliteOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteMapOps with ScalaGenDeliteFileReaderOps with ScalaGenDSArrayOps with ScalaGenDeliteTest with DeliteScalaGenAllOverrides {
+  with ScalaGenDeliteOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteMapOps with ScalaGenDeliteFileReaderOps with ScalaGenDSArrayOps with ScalaGenDeliteTest with DeliteScalaGenAllOverrides {
   val IR: DeliteApplication with OptiQLExp
 
   override def remap[A](m: Manifest[A]): String = m match {
@@ -177,7 +177,7 @@ trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg wi
 }
 
 trait OptiQLCodeGenCuda extends OptiQLCodeGenBase with OptiQLCudaCodeGenPkg
-  with CudaGenDeliteCollectionOps with CudaGenDeliteOps with CudaGenDeliteStruct with CudaGenDeliteArrayOps with CudaGenDSArrayOps with DeliteCudaGenAllOverrides with DeliteCppHostTransfer with DeliteCudaDeviceTransfer {
+  with CudaGenDeliteOps with CudaGenDeliteStruct with CudaGenDeliteArrayOps with CudaGenDSArrayOps with DeliteCudaGenAllOverrides with DeliteCppHostTransfer with DeliteCudaDeviceTransfer {
   val IR: DeliteApplication with OptiQLExp
 
   override def remap[A](m: Manifest[A]): String = {
@@ -189,7 +189,7 @@ trait OptiQLCodeGenCuda extends OptiQLCodeGenBase with OptiQLCudaCodeGenPkg
 }
 
 trait OptiQLCodeGenOpenCL extends OptiQLCodeGenBase with OptiQLOpenCLCodeGenPkg
-  with OpenCLGenDeliteCollectionOps with OpenCLGenDeliteOps with OpenCLGenDeliteStruct with OpenCLGenDeliteArrayOps with OpenCLGenDSArrayOps with DeliteOpenCLGenAllOverrides {
+  with OpenCLGenDeliteOps with OpenCLGenDeliteStruct with OpenCLGenDeliteArrayOps with OpenCLGenDSArrayOps with DeliteOpenCLGenAllOverrides {
   val IR: DeliteApplication with OptiQLExp
 
   override def remap[A](m: Manifest[A]): String = {
@@ -202,7 +202,7 @@ trait OptiQLCodeGenOpenCL extends OptiQLCodeGenBase with OptiQLOpenCLCodeGenPkg
 }
 
 trait OptiQLCodeGenC extends OptiQLCodeGenBase with OptiQLCCodeGenPkg with CGenDeliteFileReaderOps
-  with CGenDeliteCollectionOps with CGenDeliteOps with CGenDeliteArrayOps with CGenDeliteStruct with DeliteCGenAllOverrides with DeliteCppHostTransfer {
+  with CGenDeliteOps with CGenDeliteArrayOps with CGenDeliteStruct with DeliteCGenAllOverrides with DeliteCppHostTransfer {
   val IR: DeliteApplication with OptiQLExp
 
   override def remap[A](m: Manifest[A]): String = {

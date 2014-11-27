@@ -129,7 +129,7 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator wit
   protected def generateInputs(inputs: Seq[(DeliteOP,String)] = nested.getInputs): String = {
     val str = new StringBuilder
     str.append(resourceInfoType)
-    str.append(" &")
+    str.append(" *")
     str.append(resourceInfoSym)
     for ((op,sym) <- inputs) {
       str.append(", ")

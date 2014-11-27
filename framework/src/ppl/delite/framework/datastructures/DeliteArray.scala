@@ -12,7 +12,7 @@ import scala.collection.mutable.HashSet
 
 trait DeliteArray[T] extends DeliteCollection[T] 
 
-trait DeliteArrayOps extends RuntimeServiceOps {
+trait DeliteArrayOps extends Base {
 
   var partitionArray: Boolean = false
   
@@ -73,7 +73,7 @@ trait DeliteArrayOps extends RuntimeServiceOps {
   def darray_set_act_buf[A:Manifest](da: Rep[DeliteArray[A]]): Rep[Unit]
 }
 
-trait DeliteArrayCompilerOps extends DeliteArrayOps {
+trait DeliteArrayCompilerOps extends DeliteArrayOps with RuntimeServiceOps {
   def darray_unsafe_update[T:Manifest](x: Rep[DeliteArray[T]], n: Rep[Int], y: Rep[T])(implicit ctx: SourceContext): Rep[Unit]
   def darray_unsafe_copy[T:Manifest](src: Rep[DeliteArray[T]], srcPos: Rep[Int], dest: Rep[DeliteArray[T]], destPos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
 }
@@ -204,12 +204,6 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
     else super.dc_set_logical_size(x,y)        
   }
   
-  override def dc_parallelization[A:Manifest](x: Exp[DeliteCollection[A]], hasConditions: Boolean)(implicit ctx: SourceContext) = {
-    if (isDeliteArray(x)) {
-      if (hasConditions) ParSimpleBuffer else ParFlat
-    }
-    else super.dc_parallelization(x, hasConditions)
-  }
   override def dc_appendable[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
     if (isDeliteArray(x)) { unit(true) }
     else super.dc_appendable(x,i,y)
@@ -602,7 +596,7 @@ trait BaseGenDeliteArrayOps extends GenericFatCodegen {
 
 }
 
-trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteStruct with ScalaGenDeliteOps {
+trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteStruct with ScalaGenDeliteOps with ScalaGenRuntimeServiceOps {
   val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
 
@@ -959,13 +953,13 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
       if (t.partition) {
         stream.println("//partitioned array follows")
         stream.println("#ifdef __DELITE_CPP_NUMA__")
-        emitValDef(sym, "new (" + resourceInfoSym + ".threadId) " + remap(sym.tp) + "("+quote(n)+",0,config->activeSockets())")
+        emitValDef(sym, "new (" + resourceInfoSym + ") " + remap(sym.tp) + "("+quote(n)+",0,config->activeSockets())")
         stream.println("#else")
       }
       if (cppMemMgr == "refcnt")  
         stream.println(remap(sym.tp) + " " + quote(sym) + "(new " + unwrapSharedPtr(remap(sym.tp)) + "(" + quote(n) + "), " + unwrapSharedPtr(remap(sym.tp)) + "D());")
       else
-        emitValDef(sym, "new (" + resourceInfoSym + ".threadId) " + remap(sym.tp) + "(" + quote(n) + ", " + resourceInfoSym + ".threadId)")
+        emitValDef(sym, "new (" + resourceInfoSym + ") " + remap(sym.tp) + "(" + quote(n) + ", " + resourceInfoSym + ")")
       if (t.partition) stream.println("#endif")
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + "->length")
@@ -981,10 +975,8 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
       stream.println("std::copy_backward(" + quote(src) + "->data+" + quote(srcPos) + "," + quote(src) + "->data+" + quote(srcPos) + "+" + quote(len) + "," + quote(dest) + "->data+" + quote(destPos) + "+" + quote(len) + ");")
       stream.println("else {")
       //stream.println("std::copy(" + quote(src) + "->data+" + quote(srcPos) + "," + quote(src) + "->data+" + quote(srcPos) + "+" + quote(len) + "," + quote(dest) + "->data+" + quote(destPos) + ");")
-      stream.println("size_t "+quote(dest)+"_d = "+quote(destPos)+";")
-      stream.println("for (size_t s="+quote(srcPos)+"; s<"+quote(srcPos)+"+"+quote(len)+"; s++){")
-      stream.println(quote(dest)+"->update("+quote(dest)+"_d, "+quote(src)+"->apply(s));")
-      stream.println(quote(dest)+"_d++;")
+      stream.println("for (size_t s="+quote(srcPos)+", d="+quote(destPos)+"; s<"+quote(srcPos)+"+"+quote(len)+"; s++, d++){")
+      stream.println(quote(dest)+"->update(d, "+quote(src)+"->apply(s));")
       stream.println("}\n}")
     case sc@StructCopy(src,srcPos,struct,fields,destPos,len) =>
       val nestedApply = if (destPos.length > 1) destPos.take(destPos.length-1).map(i=>"apply("+quote(i)+")").mkString("","->","->") else ""
@@ -1019,7 +1011,7 @@ public:
   __TARG__ *data;
   int length;
 
-  __T__(int _length, int heapIdx): data((__TARG__ *)(DeliteHeapAlloc(sizeof(__TARG__)*_length,heapIdx))), length(_length) { }
+  __T__(int _length, resourceInfo_t *resourceInfo): data((__TARG__ *)(new (resourceInfo) __TARG__[_length])), length(_length) { }
 
   __T__(int _length): data((__TARG__ *)(new __TARG__[_length])), length(_length) { }
 
@@ -1064,7 +1056,7 @@ struct __T__D {
   size_t *ends;
   size_t numChunks;
 
-  __T__(int _length, int heapIdx): data((__TARG__ *)(DeliteHeapAlloc(sizeof(__TARG__)*_length,heapIdx))), length(_length), isNuma(false) { }
+  __T__(int _length, resourceInfo_t *resourceInfo): data((__TARG__ *)(new (resourceInfo) __TARG__[_length])), length(_length), isNuma(false) { }
 
   __T__(int _length): data((__TARG__ *)(new __TARG__[_length])), length(_length), isNuma(false) { }
 

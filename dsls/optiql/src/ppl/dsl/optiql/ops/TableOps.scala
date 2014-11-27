@@ -88,19 +88,24 @@ trait TableOpsExp extends TableOps with DeliteCollectionOpsExp with DeliteStruct
     else super.unapplyStructType
   }
   
-  /* override def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext) = {
-    if (isTable(x)) dc_set_logical_size(asTable(x).data, y)
+  override def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext) = {
+    if (isTable(x)) fatal(unit("Table not unwrapped")) //dc_set_logical_size(tableRawData(asTable(x)), y)
     else super.dc_set_logical_size(x,y)        
   }
   
   override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
-    if (isTable(x)) dc_update(asTable(x).data, n, y)
+    if (isTable(x)) fatal(unit("Table not unwrapped")) //dc_update(tableRawData(asTable(x)), n, y)
     else super.dc_update(x,n,y)        
   }
   
   override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
-    if (isTable(x)) dc_append(asTable(x).data, i, y)
+    if (isTable(x)) fatal(unit("Table not unwrapped")) //dc_append(tableRawData(asTable(x)), i, y)
     else super.dc_append(x,i,y)        
+  }
+
+  override def dc_appendable[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isTable(x)) fatal(unit("Table not unwrapped"))
+    else super.dc_appendable(x,i,y)
   }
   
   override def dc_alloc[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], size: Exp[Int])(implicit ctx: SourceContext): Exp[CA] = {
@@ -110,9 +115,9 @@ trait TableOpsExp extends TableOps with DeliteCollectionOpsExp with DeliteStruct
   
   override def dc_copy[A:Manifest](src: Exp[DeliteCollection[A]], srcPos: Exp[Int], dst: Exp[DeliteCollection[A]], dstPos: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
     if (isTable(src) && isTable(dst)) {
-      dc_copy(asTable(src).data, srcPos, asTable(dst).data, dstPos, size)
+      fatal(unit("Table not unwrapped")) //dc_copy(tableRawData(asTable(src)), srcPos, tableRawData(asTable(dst)), dstPos, size)
     }
     else super.dc_copy(src,srcPos,dst,dstPos,size)
-  } */
+  }
 
 }

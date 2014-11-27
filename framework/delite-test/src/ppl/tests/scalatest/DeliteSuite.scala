@@ -208,7 +208,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
 
       exited =
         try { p.exitValue() }
-        catch { case e => 3.14 }
+        catch { case e: Throwable => 3.14 }
     }
 
     buf.toString
@@ -228,19 +228,16 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
   }
 }
 
-trait DeliteTestRunner extends DeliteTestModule with DeliteApplication with DeliteTestOpsExp {  
+trait DeliteTestStandaloneRunner extends DeliteTestModule with DeliteTestOpsExp with DeliteApplication {
+  def collect(s: Rep[Boolean]) = delite_test_println(s)
+  def mkReport() = { }
+}
+
+trait DeliteTestRunner extends DeliteTestModule with DeliteTestConfig with DeliteTestOpsExp with DeliteApplication {  
   var resultBuffer: ArrayBuffer[Boolean] = _
 
   def collector: Rep[ArrayBuffer[Boolean]] = staticData(resultBuffer)
-}
-
-trait DeliteTestModule extends DeliteTestConfig with DeliteTestOps {
-  //var args: Rep[Array[String]]
-  def main(): Unit
-
-  def collector: Rep[ArrayBuffer[Boolean]]
-
-  def collect(s: Rep[Boolean]) { delite_test_append(collector, s) }
+  def collect(s: Rep[Boolean]) = delite_test_append(collector, s)
 
   def mkReport(): Rep[Unit] = {
     val out = delite_test_bw_new(delite_test_fw_new(unit("test.tmp")))
@@ -250,14 +247,11 @@ trait DeliteTestModule extends DeliteTestConfig with DeliteTestOps {
     delite_test_bw_close(out)
   }
 
-  /*
-  def main() = {
-    test()
-    out
-  }
+}
 
-  def test(): Rep[Unit]
-  */
+trait DeliteTestModule extends Base {
+  def collect(s: Rep[Boolean]): Rep[Unit]
+  def mkReport(): Rep[Unit]
 }
 
 /*
@@ -273,6 +267,7 @@ trait DeliteTestOps extends Base {
   def delite_test_bw_new(f: Rep[FileWriter])(implicit pos: SourceContext): Rep[BufferedWriter]
   def delite_test_bw_write(b: Rep[BufferedWriter], s: Rep[String])(implicit pos: SourceContext): Rep[Unit]
   def delite_test_bw_close(b: Rep[BufferedWriter])(implicit pos: SourceContext): Rep[Unit]
+  def delite_test_println(s: Rep[Any])(implicit pos: SourceContext): Rep[Unit]
 }
 
 trait DeliteTestOpsExp extends DeliteTestOps with EffectExp {
@@ -283,6 +278,7 @@ trait DeliteTestOpsExp extends DeliteTestOps with EffectExp {
   case class DeliteTestBwNew(f: Exp[FileWriter]) extends Def[BufferedWriter]
   case class DeliteTestBwWrite(b: Exp[BufferedWriter], s: Exp[String]) extends Def[Unit]
   case class DeliteTestBwClose(b: Exp[BufferedWriter]) extends Def[Unit]
+  case class DeliteTestPrintLn(s: Exp[Any]) extends Def[Unit]
  
   def delite_test_mkstring[A:Manifest](l: Exp[ArrayBuffer[A]], sep: Exp[String])(implicit pos: SourceContext) = DeliteTestMkString(l, sep)
   def delite_test_append[A:Manifest](l: Exp[ArrayBuffer[A]], e: Exp[A])(implicit pos: SourceContext) = reflectWrite(l)(DeliteTestAppend(l, e))
@@ -291,12 +287,13 @@ trait DeliteTestOpsExp extends DeliteTestOps with EffectExp {
   def delite_test_bw_new(f: Exp[FileWriter])(implicit pos: SourceContext) = reflectEffect(DeliteTestBwNew(f))
   def delite_test_bw_write(b: Exp[BufferedWriter], s: Exp[String])(implicit pos: SourceContext) = reflectEffect(DeliteTestBwWrite(b,s))
   def delite_test_bw_close(b: Exp[BufferedWriter])(implicit pos: SourceContext) = reflectEffect(DeliteTestBwClose(b))
+  def delite_test_println(s: Rep[Any])(implicit pos: SourceContext): Rep[Unit] = reflectEffect(DeliteTestPrintLn(s))
 
   override def mirrorDef[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Def[A] = (e match {
     case DeliteTestMkString(l,r) => DeliteTestMkString(f(l),f(r))
     case DeliteTestAppend(l,r) => DeliteTestAppend(f(l),f(r))
     case _ => super.mirrorDef(e,f)
-  }).asInstanceOf[Def[A]] // why??
+  }).asInstanceOf[Def[A]]
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case DeliteTestStrConcat(a,b) => delite_test_strconcat(f(a),f(b))
@@ -304,6 +301,7 @@ trait DeliteTestOpsExp extends DeliteTestOps with EffectExp {
     case Reflect(DeliteTestBwNew(x), u, es) => reflectMirrored(Reflect(DeliteTestBwNew(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case Reflect(DeliteTestBwWrite(b,s), u, es) => reflectMirrored(Reflect(DeliteTestBwWrite(f(b),f(s)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case Reflect(DeliteTestBwClose(b), u, es) => reflectMirrored(Reflect(DeliteTestBwClose(f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+    case Reflect(DeliteTestPrintLn(s), u, es) => reflectMirrored(Reflect(DeliteTestPrintLn(f(s)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
 }
@@ -322,6 +320,7 @@ trait ScalaGenDeliteTest extends ScalaGenBase {
     case DeliteTestFwNew(s) => emitValDef(sym, "new java.io.FileWriter(" + quote(s) + ")")
     case DeliteTestBwWrite(b,s) => emitValDef(sym, quote(b) + ".write(" + quote(s) + ")")
     case DeliteTestBwClose(b) => emitValDef(sym, quote(b) + ".close()")
+    case DeliteTestPrintLn(s) => emitValDef(sym, "println(" + quote(s) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }
