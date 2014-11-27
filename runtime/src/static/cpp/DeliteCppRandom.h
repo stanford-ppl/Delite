@@ -47,8 +47,16 @@ class DeliteCppRandom {
         haveNextNextGaussian = false;
     }
 	
-    int32_t nextInt(int32_t mod) {
-      return nextInt() / mod;
+    int32_t nextInt(int32_t n) {
+        if ((n & -n) == n) // i.e., n is a power of 2
+            return (int32_t)((n * (int64_t)next(31)) >> 31);
+        
+        int32_t bits, val;
+        do {
+            bits = next(31);
+            val = bits % n;
+        } while (bits - val + (n-1) < 0);
+        return val;
     }
 
     int32_t nextInt() {

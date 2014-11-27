@@ -959,10 +959,8 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
       stream.println("std::copy_backward(" + quote(src) + "->data+" + quote(srcPos) + "," + quote(src) + "->data+" + quote(srcPos) + "+" + quote(len) + "," + quote(dest) + "->data+" + quote(destPos) + "+" + quote(len) + ");")
       stream.println("else {")
       //stream.println("std::copy(" + quote(src) + "->data+" + quote(srcPos) + "," + quote(src) + "->data+" + quote(srcPos) + "+" + quote(len) + "," + quote(dest) + "->data+" + quote(destPos) + ");")
-      stream.println("size_t "+quote(dest)+"_d = "+quote(destPos)+";")
-      stream.println("for (size_t s="+quote(srcPos)+"; s<"+quote(srcPos)+"+"+quote(len)+"; s++){")
-      stream.println(quote(dest)+"->update("+quote(dest)+"_d, "+quote(src)+"->apply(s));")
-      stream.println(quote(dest)+"_d++;")
+      stream.println("for (size_t s="+quote(srcPos)+", d="+quote(destPos)+"; s<"+quote(srcPos)+"+"+quote(len)+"; s++, d++){")
+      stream.println(quote(dest)+"->update(d, "+quote(src)+"->apply(s));")
       stream.println("}\n}")
     case sc@StructCopy(src,srcPos,struct,fields,destPos,len) =>
       val nestedApply = if (destPos.length > 1) destPos.take(destPos.length-1).map(i=>"apply("+quote(i)+")").mkString("","->","->") else ""
