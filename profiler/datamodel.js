@@ -372,7 +372,9 @@ function updateTimeTakenByPartitionedKernels(dependencyData, executionProfile) {
             var headerTime = executionProfile.totalTime(headerNodeName).abs;
             var maxTimeAmongParitions = getMaxTimeAmongParitions(executionProfile, dNode.name);
             var totalTime = headerTime + maxTimeAmongParitions;
-            executionProfile.setTotalTime(dNode.name, totalTime);
+            //executionProfile.setTotalTime(dNode.name, totalTime);
+            // Dont use setTotalTime since the loop node may have been inside a conditional and may have not run in this execution
+            executionProfile.trySetTotalTime(dNode.name, totalTime);
         }
     })
 }

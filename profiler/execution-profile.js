@@ -41,6 +41,13 @@ ExecutionProfile.prototype.setTotalTime = function(nodeName, time) {
 	this.nodeNameToSummary[nodeName].totalTime.abs = time;
 }
 
+ExecutionProfile.prototype.trySetTotalTime = function(nodeName, time) {
+	var s = this.nodeNameToSummary[nodeName];
+	if (s) {
+		s.totalTime.abs = time;
+	}
+}
+
 ExecutionProfile.prototype.incrementTotalTime = function(nodeName, inc) {
 	this.nodeNameToSummary[nodeName].totalTime.abs += inc;
 }
