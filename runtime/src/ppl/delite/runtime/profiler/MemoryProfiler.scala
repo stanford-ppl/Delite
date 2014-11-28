@@ -28,6 +28,13 @@ object MemoryProfiler
 		threadToCurrKernel += new Stack[String]()
 	}
 
+	def clearAll() {
+		stats.clear()
+		threadToCurrKernel.clear()
+		threadToId = Map()
+		initializeStats(threadCount)
+	}
+
 	def logArrayAllocation(component: String, arrayLength: Int, elemType: String) = {
 		var threadName = Thread.currentThread.getName()
 		var threadId = threadToId(threadName)

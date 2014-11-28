@@ -160,12 +160,10 @@ function getExecutionProfile(rawProfileData, dependencyData, config) {
                 syncNodes.push(tNode);
             }
         } else {
-            //var start = perfProfile.start[i];
             var region = new TicTocRegion(name, start, duration, executionProfile.numThreads);
             ticTocRegions.push(region);
 
             if (name == "all") {
-                //executionProfile.setTotalAppTime(perfProfile.duration[i]);
                 executionProfile.totalAppTime = duration;
                 executionProfile.appStartTime = start;
                 executionProfile.appEndTime = start + duration;

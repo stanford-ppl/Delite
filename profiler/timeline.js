@@ -35,6 +35,9 @@ function TimelineGraph(classStr, nameSuffix, parentDivId, profileData, timelineL
 	this.laneColors = null;
 	this.timelineGraph = null;
 	this.chartWidth = 0;
+	this.parentDivWidth = -1; // HACK: This field is used as a hack
+	this.parentDivHeight = -1; // HACK: This field is used as a hack
+	this.jvmUpTimeAtAppStart = 0; // HACK: This field is used as a hack
 	this.xScale = null;
 	this.yScale = null;
 	this.initialXRange = null;
@@ -66,12 +69,20 @@ TimelineGraph.prototype.draw = function() {
 	var	timeEnd = tmp.end + tmp.duration * 0.01;
 
 	var parentDiv = $(this.parentDivId);
-	var m = [20, 15, 15, 120]; //top right bottom left
-	var	chartWidth = parentDiv.width() * 2.5;
-	var	chartHeight = parentDiv.height();
+	if (this.parentDivWidth == -1) {
+		this.parentDivWidth = parentDiv.width();
+	}
+
+	if (this.parentDivHeight == -1) {
+		this.parentDivHeight = parentDiv.height();
+	}
+
+	var	chartWidth = this.parentDivWidth * 2.5;
+	var	chartHeight = this.parentDivHeight;
 
 	this.chartWidth = chartWidth;
 
+	var m = [20, 15, 15, 120]; //top right bottom left
     var initialXRange = [m[3], chartWidth]
 	var x = d3.scale.linear()
 		.domain([timeBegin, timeEnd + 50])
@@ -80,6 +91,9 @@ TimelineGraph.prototype.draw = function() {
 	this.initialXRange = initialXRange;
 	if (this.xScale == null) {
 		this.xScale = x;
+	} else if (this.jvmUpTimeAtAppStart > 0) {
+		var currXDomain = this.xScale.domain();
+		this.xScale.domain([currXDomain[0] + this.jvmUpTimeAtAppStart, currXDomain[1] + this.jvmUpTimeAtAppStart]);	
 	}
 
 	var	numLanes = lanes.length;
@@ -94,7 +108,7 @@ TimelineGraph.prototype.draw = function() {
 		.attr("class", TIMELINE_CONTAINER_ID_PREFIX + " " + this.classStr)
 		.attr("id", this.containerId);
 
-	$(toIdSelector(this.containerId)).css("width", "" + parentDiv.width() + "px")
+	$(toIdSelector(this.containerId)).css("width", "" + this.parentDivWidth + "px")
 
 	var chart = div2
 		.append("svg")

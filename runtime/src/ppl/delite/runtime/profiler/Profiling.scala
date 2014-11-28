@@ -20,10 +20,15 @@ object Profiling {
   }
 
   def startRun() {
+    PerformanceTimer.recordAppStartTimeStats()
+
     PerformanceTimer.clearAll()
+    MemoryProfiler.clearAll()
+
     globalStartNanos = System.nanoTime()
     jvmUpTime = ManagementFactory.getRuntimeMXBean().getUptime()
     PerformanceTimer.start("all", false)
+    
     if (Config.dumpProfile) SamplerThread.start()
   }
 

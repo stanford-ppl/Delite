@@ -68,8 +68,11 @@ function initializeViews(evt) {
 	var metric = $("#compareRunSummariesMetricOptions").val();
 	var xSeries = [];
 	var dataSeries = {};
+	var xScale = getCommmonXScaleForTimelineComp(threadCountToExecutionProfile);
+	var numExecProfiles = 0;
 
 	for (var n in threadCountToExecutionProfile) {
+		numExecProfiles++;
 		xSeries.push(n);
 		executionProfile = threadCountToExecutionProfile[n];
 		for (var i in executionProfile.ticTocRegions) {
@@ -85,10 +88,26 @@ function initializeViews(evt) {
 
 			addToMap(dataSeries, region.name, absTime);
 		}
+
+		displayTimelineView(executionProfile, cloneXScale(xScale));
 	}
+
+	var idSelectorForLastTimeline = toIdSelector(TIMELINE_CONTAINER_ID_PREFIX + "-" + numExecProfiles);
+	$(idSelectorForLastTimeline).css("overflow-x", "auto");
+	setUpSyncScrollingForTimelines(numExecProfiles);
 
 	createLineChart(runSummariesChart, xSeries, dataSeries, "Number of Threads", "Time (ms)");
 	displaySummariesOfKernel("");
+}
+
+function setUpSyncScrollingForTimelines(numTimelines) {
+	var idSelectorForLastTimeline = toIdSelector(TIMELINE_CONTAINER_ID_PREFIX + "-" + numTimelines);
+	$(idSelectorForLastTimeline).on("scroll", function() {
+		var tmp = $(idSelectorForLastTimeline)[0];
+		for (var i = 1; i < numTimelines; i++) {
+			$("#" + TIMELINE_CONTAINER_ID_PREFIX + "-" + i)[0].scrollLeft = tmp.scrollLeft;
+		}
+	});
 }
 
 function createLineChart(parentDivIdSelector, xSeries, dataSeries, xAxisLabel, yAxisLabel) {
@@ -156,47 +175,13 @@ function displaySummariesOfKernel(kernel) {
 	createLineChart(kernelSummariesChart, xSeries, dataSeries, "Number of Threads", "Time (ms)");
 }
 
-function addToMap(dict, k, v) {
-	if (!(k in dict)) {
-		dict[k] = [];
-	}
-
-	dict[k].push(v);
-}
-
-/*
-function readExecutionProfiles(evt) {
-	var files = evt.target.files;
-	if (files.length > 0) {
-		for (var i = 0; i < files.length; i++) {
-			var file = files[i];
-			var reader = new FileReader();
-			reader.onload = (function(e) {
-				var fileName = e.name;
-				return function(e) {
-					console.log(fileName);
-					var data = JSON.parse(e.target.result);
-					var executionProfile = getExecutionProfile(data.Profile, profData.dependencyData, config);
-					executionProfile.fileName = fileName;
-					var numThreads = executionProfile.numThreads;
-					if (!(numThreads in threadCountToExecutionProfile)) {
-						threadCountToExecutionProfile[numThreads] = executionProfile;
-					}
-				}
-			})(file);
-
-			reader.readAsText(file);
-		}
-	}
-}
-
-function createTimelineForComparison(executionProfile) {
+function displayTimelineView(executionProfile, xScale) {
 	createHeaderDiv(divId, containerDivId);
 	$("#" + getHeaderDivId(divId)).append(executionProfile.fileName);
 	createCloseButton(divId, "#" + getHeaderDivId(divId));
 	createRunDiv(divId, containerDivId);
 
-	var timelineDataModel = {
+	timelineDataModel = {
 		"executionProfile": executionProfile,
 		"dependencyData": profData.dependencyData,
 	};
@@ -207,10 +192,45 @@ function createTimelineForComparison(executionProfile) {
 	var timelineLevelSelectionId = "#" + getLevelSelectorId(divId);
 	var timeline = new TimelineGraph(timelineClassStr, timelineElemsNameSuffix, timelineParentDivId, 
 									 timelineDataModel, timelineLevelSelectionId ,config);
+	timeline.parentDivWidth = $("#tabs").width();
+	timeline.parentDivHeight = $("#panel-3").height() * 0.3;
+	timeline.xScale = xScale;
+	timeline.jvmUpTimeAtAppStart = executionProfile.jvmUpTimeAtAppStart;
 	timeline.draw();
 
 	createLevelSelector(divId, "#" + getHeaderDivId(divId), timeline);
 
 	divId++;
 }
-//*/
+
+function getCommmonXScaleForTimelineComp(threadCountToExecutionProfile) {
+	var maxTc = 0;
+	var maxAppTime = Number.MIN_VALUE;
+
+	for (var tc in threadCountToExecutionProfile) {
+		var p = threadCountToExecutionProfile[tc];
+		if (p.totalAppTime > maxAppTime) {
+			maxTc = tc;
+			maxAppTime = p.totalAppTime;
+		}
+	}
+
+	var	timeBegin = 0 - (maxAppTime * 0.01);
+	var	timeEnd = maxAppTime * 1.01;
+	return d3.scale.linear()
+		.domain([timeBegin, timeEnd + 50])
+		.range([120, $("#tabs").width() * 2.5]);
+}
+
+function cloneXScale(xScale) {
+	var clone = d3.scale.linear().domain(xScale.domain()).range(xScale.range());
+	return clone;
+}
+
+function addToMap(dict, k, v) {
+	if (!(k in dict)) {
+		dict[k] = [];
+	}
+
+	dict[k].push(v);
+}

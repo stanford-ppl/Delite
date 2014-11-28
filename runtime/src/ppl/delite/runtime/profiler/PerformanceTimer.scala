@@ -30,7 +30,9 @@ object PerformanceTimer
 
     threadToId += "main" -> numThreads
     statsNewFormat += Map[String, List[Timing]]()
+  }
 
+  def recordAppStartTimeStats() = synchronized {
     jvmUpTimeAtAppStart = ManagementFactory.getRuntimeMXBean().getUptime()
     appStartTimeInMillis = System.currentTimeMillis
   }
