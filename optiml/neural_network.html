@@ -1,0 +1,136 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>Deep Learning with Delite and OptiML</title>
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import '../css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='http://stanford-ppl.github.com/Delite/optiml/' title="OptiML">OptiML</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Welcome</a></li>
+              <li><a href='getting_started.html'>Getting Started</a></li>
+              <li><a href="examples.html">Examples</a></li>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="debugging.html">Debugging</a></li>
+              <li><a href="getting_started_native.html">Native Libraries and CUDA</a></li>
+              <li><a href="http://groups.google.com/group/optiml">Mailing List</a></li>
+              <li><a href="downloads/optiml-spec.pdf">Language Specification</a></li>
+              <li><a href='http://stanford-ppl.github.com/Delite/index.html'>Delite</a></li>
+            </ol>
+          </li> 
+          <!--
+          <li>Reference
+            <ol>
+              <li><a href='api/0.3/index.html'>ScalaDoc API</a></li>
+              <li>&nbsp;</li>
+              <li><a href='sponsors.html'>Sponsors</a></li>
+              <li class="logo"><a href="http://ppl.stanford.edu"><img width="110" alt="Stanford Pervasive Parallelism Lab" src='images/ppl_logo_small.png'></a></li>
+            </ol>
+          </li>
+          -->
+        </ol>
+      </div>
+      <div id='content'> 
+        <h1>Deep Learning with Delite and OptiML</h1>
+
+        <h2>Introduction</h2>
+        <p> This page describes how to train deep neural networks using OptiML. For instructions to get OptiML set up, click <a href="getting_started.html">here</a>. For help, contact optiml@googlegroups.com.</p>
+
+        <h2>Contents</h2>
+        <ol>
+          <li><a href="#mnist">Example 1: MNIST handwritten digit recognition (convolutional networks)</a></li>
+          <li><a href="#stock">Example 2: Stock Market Prediction (recurrent networks)</a></li>
+<!--          <li><a href="#docs">Documentation</a></li>    -->
+        </ol>
+
+        <h2 id='mnist'>MNIST handwritten digit recognition (convolutional networks)</h2>
+        <p> This section describes how to train a convolutional neural network on the MNIST dataset. More complicated datasets, such as ImageNet, can be trained in the same way.</p>
+        <p> Start from the <code>apps/src/</code> directory described in the <a href="examples.html">Examples</a> page. From here, navigate to the <code>NeuralNetwork</code> directory: </p>
+        <div class="highlight"><pre><code class="bash">cd NeuralNetwork/</code></pre></div>
+        <p> This directory contains the OptiML neural network library, as well as scripts used to generate the networks. First, get the mnist dataset: </p>
+        <div class="highlight"><pre><code class="bash">cd examples/mnist/
+python get_mnist.py</code></pre></div>
+        <p> This should take around one minute, and formats the data in tsv form for OptiML to read. You can also visualize the digits using the script <code>visualize.py</code>, which by default displays images from the training set. To visualize image #1000 in the training set, run (optional) : </p>
+        <div class="highlight"><pre><code class="bash">python visualize.py 1000
+display img_1000.png</code></pre></div>
+
+        <p> Now that the data is generated, return to the <code>NeuralNetwork</code> directory to generate a network: </p>
+        <div class="highlight"><pre><code class="bash">cd ../../</code></pre></div>
+
+        <p> Networks are specified in an XML file. For an example file, see <code>cnn_example.xml</code>, which shows all of the possible XML tags and their attributes. For mnist, we will use <code>mnist.xml</code>, which contains 2 convolution layers, 2 pooling layers, a fully-connected layer, and a softmax layer. </p>
+
+        <p> Generate the network with the following command: </p>
+        <div class="highlight"><pre><code class="bash">python generate_cnn.py mnist.xml</code></pre></div>
+
+        <p> The output describes that an OptiML source file, <code>mnist_tutorial.scala</code>, has been created describing the network you specified, as well as a number of parameter files. We will modify one of these parameter files to increase the number of training epochs from 1 to 5. This will do 5 passes over the training data. The training data has 50,000 images, and with a mini-batch size of 100, 5 epochs will run 2500 forward/backward passes over the data. </p> 
+        
+        <p> Open the file <code>mnist_tutorial/global_params.txt</code> and modify the first line, replacing 1 with 5. The first few lines of the file should now look like this: </p>
+        <div class="highlight"><pre><code class="bash">5 ; Num Epochs
+100 ; Mini-Batch size
+0 ; Read model from file
+1 ; Write model back to file
+...</code></pre></div>
+
+        <p> Now train the network. This is done by running the application specified by the generated <code>mnist_tutorial.scala</code>, as described in the <a href="getting_started_native.html">getting started instructions</a>: </p>
+        <div class="highlight"><pre><code class="bash">sbt compile
+bin/delitec mnist_tutorialCompiler --cuda
+bin/delite mnist_tutorialCompiler --cuda 1</code></pre></div>
+        <p> The <code>cuda</code> flags are optional but accelerate training. Once this completes, the network is partially trained and the weights are saved. To continue training, modify line 3 in <code>mnist_tutorial/global_params.txt</code> to change 0 to 1. This instructs the network to read in the weights where it left off. Then, run the network again using the <code>bin/delite mnist_tutorialCompiler --cuda 1</code> command above. You can also increase the number of epochs and modify other parameters. </p>
+        
+        <h2 id='stock'>Stock Market Prediction (recurrent networks)</h2>
+
+        <p> You can generate recurrent neural networks in the same way as convolutional neural networks for the MNIST example above, but instead using the script <code>generate_rnn.py</code>. Refer to the <code>rnn_example.xml</code> network for the required XML format. </p>
+
+        <p> To run the stock market example, first generate the dataset. Note: this script requires numpy/scipy to run. Also, the data is randomly generated each time the script is run, and so the script can optionally display and plot the data. To generate the data without displaying or plotting it, run: </p>
+
+        <div class="highlight"><pre><code class="bash">cd examples/stock_market
+python make_dataset.py</code></pre></div>
+        
+        <p> If you have matplotlib, instead run: </p>
+
+        <div class="highlight"><pre><code class="bash">cd examples/stock_market
+python make_dataset.py show_data plot_data</code></pre></div>
+
+        <p> This plots one of the stock prices and also shows the required action/class at each time step (see the script for action to class mappings, e.g. 1 = "sell", 3 = "buy"). </p>
+
+        <p> Next, generate the stock market example. </p>
+
+        <div class="highlight"><pre><code class="bash">cd ../../
+python generate_rnn.py rnn_example.xml</code></pre></div>
+        
+        <p> As before, the training parameters can be modified. Open the file <code>RNNExample/global_params.txt</code> and modify the first line (epochs), replacing 1 with 25. </p>
+
+        <p> Now train the network: </p>
+        <div class="highlight"><pre><code class="bash">sbt compile
+bin/delitec RNNExampleCompiler
+bin/delite RNNExampleCompiler</code></pre></div>
+
+        <p> Once this completes, the network is partially trained and the weights are saved. To continue training, modify line 3 in <code>RNNExample/global_params.txt</code> to change 0 to 1. This instructs the network to read in the weights where it left off. Then, run the network again using the <code>bin/delite RNNExampleCompiler --cuda 1</code> command above. You can also increase the number of epochs and modify other parameters. </p>
+<!--
+        <h2 id='docs'>Documentation</h2>
+
+        <p> The examples above along with the XML files in the <code>NeuralNetwork/</code> directory show how to specify and generate a network. </p>
+
+        <div class="highlight"><pre><code class="bash">sbt compile
+bin/delite RNNExampleCompiler</code></pre></div>
+-->
+        <br /> <br /> <br />
+        
+        <div id='footer'>Copyright &copy; 2011</div>
+    </div>
+  </body>
+</html>
