@@ -1168,10 +1168,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           var idx = -1
           def deserialize(tp: String) = {
             idx += 1
-            if (tp.contains("DeliteArrayObject")) //FIXME: need to handle this generically
-              "ppl.delite.runtime.messages.Serialization.deserializeDeliteArrayObject["+tp.substring(tp.indexOf("[")+1,tp.lastIndexOf("]"))+"](ppl.delite.runtime.messages.Messages.ArrayMessage.parseFrom(bytes.get("+idx+")))"
-            else
-              "ppl.delite.runtime.messages.Serialization.deserialize(classOf["+tp+"], bytes.get(" + idx + "))"
+            "ppl.delite.runtime.messages.Serialization.deserialize(classOf["+tp+"], bytes.get(" + idx + "))"
           }
           emitValDef("act", "activation_"+kernelName, "new activation_"+kernelName)
           val prefix = "act."

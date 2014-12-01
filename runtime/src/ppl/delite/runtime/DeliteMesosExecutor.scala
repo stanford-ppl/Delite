@@ -160,7 +160,7 @@ object DeliteMesosExecutor {
 
   private var driver: MesosExecutorDriver = _
   private var task: TaskInfo = _
-  
+
   private val remoteLock = new ReentrantLock
   private val hasWork = remoteLock.newCondition
   private var noWork = true
@@ -275,12 +275,12 @@ object DeliteMesosExecutor {
       val response =
         try {
           mssg.getType match {
-            case DeliteSlaveMessage.Type.DATA => getData(mssg.getData)
+            case DeliteSlaveMessage.Type.DATA => buildData(mssg.getData)
           }
         }
         catch {
           case e: Exception => forwardException(e)
-        } 
+        }
       sendDebugMessage("satisfying remote read")
       Some(Message.createBufferMessage(response.toByteString.asReadOnlyByteBuffer, msg.id))
     })
@@ -331,7 +331,7 @@ object DeliteMesosExecutor {
     message match {
       case work: RemoteOp if(scheduleOn(work)==Targets.Cuda) => launchWorkCuda(work)
       case work: RemoteOp => launchWorkScala(work)
-      case request: RequestData => driver.sendFrameworkMessage(getData(request).toByteArray)
+      case request: RequestData => driver.sendFrameworkMessage(buildData(request).toByteArray)
     }
     awaitWork()
   }
@@ -508,7 +508,7 @@ object DeliteMesosExecutor {
     driver.sendFrameworkMessage(mssg.toByteArray)
   }
 
-  def getData(request: RequestData) = {
+  def buildData(request: RequestData) = {
     opTarget=Targets.Scala
     val id = request.getId.getId.split("_")
     assert(id.length == 2)

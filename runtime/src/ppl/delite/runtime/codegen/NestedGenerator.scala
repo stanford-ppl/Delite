@@ -95,7 +95,8 @@ trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator
 
 }
 
-trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator with CppResourceInfo {
+trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
+  import CppResourceInfo._
 
   private val target = Targets.Cpp
 

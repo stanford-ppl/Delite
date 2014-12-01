@@ -35,13 +35,19 @@ object Serialization {
   def serialize[T:TypeTag](value: T, offset: Int, length: Int): ByteString = serialize(value, false, null, offset, length)
 
   def serialize[T:TypeTag](value: T, sendId: Boolean, symId: String, offset: Int, length: Int): ByteString = {
-    this.sendId = sendId //initialize stack
-    copyLength = length
-    copyOffset = offset
+    // initialize stack
+    val saveSendId = this.sendId
+    val saveCopyLength = this.copyLength
+    val saveCopyOffset = this.copyOffset
+    val saveSymId = this.symId
+    val saveIdOffset = this.idOffset
+    this.sendId = sendId
+    this.copyLength = length
+    this.copyOffset = offset
     this.symId = symId
-    idOffset = 0
+    this.idOffset = 0
 
-    value match {
+    val out = value match {
       case v:Int => IntMessage.newBuilder.setValue(v).build.toByteString
       case v:Long => LongMessage.newBuilder.setValue(v).build.toByteString
       case v:Float => FloatMessage.newBuilder.setValue(v).build.toByteString
@@ -65,6 +71,13 @@ object Serialization {
           case e: NoSuchMethodException => throw new UnsupportedOperationException("don't know how to serialize " + other.getClass.getSimpleName)
         }
     }
+
+    this.sendId = saveSendId
+    this.copyLength = saveCopyLength
+    this.copyOffset = saveCopyOffset
+    this.symId = saveSymId
+    this.idOffset = saveIdOffset
+    out
   }
 
   //TODO: for large arrays we probably want to avoid protobufs (extra copies)

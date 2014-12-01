@@ -477,14 +477,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     stream.println("},")
   }
 
-  def emitInput(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], aliases: List[Exp[Any]], sourceContext: Option[SourceContext])
-        (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
-    stream.print("{\"type\":\"Input\",")
-    emitSourceContext(sourceContext, stream, id)
-    emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps, aliases)
-    stream.println("},")
-  }
-
   def emitForeach(rhs: Def[Any], id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], aliases: List[Exp[Any]])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Foreach\"")

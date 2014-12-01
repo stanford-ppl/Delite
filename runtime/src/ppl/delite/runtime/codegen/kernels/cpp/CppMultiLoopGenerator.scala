@@ -18,7 +18,8 @@ object CppMultiLoopGenerator {
   }
 }
 
-class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val chunkIdx: Int, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Generator with CppResourceInfo {
+class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val chunkIdx: Int, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Generator {
+  import CppResourceInfo._
 
   protected val headerObject = "head"
   protected val closure = "head->closure"
@@ -150,7 +151,8 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
 }
 
 
-class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Header_Generator with CppResourceInfo {
+class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val graph: DeliteTaskGraph) extends MultiLoop_SMP_Array_Header_Generator {
+  import CppResourceInfo._
 
   //NOTE: Header is just a class, so put into header list instead of source list
   protected def addSource(source: String, name: String) = CppCompile.addHeader(source, name)
@@ -245,15 +247,15 @@ class CppMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, val 
   pthread_cond_t* cond$key;
   bool* notReady$key;
 
-  $outputType get$key(size_t i) { 
+  $outputType get$key(size_t i) {
     pthread_mutex_lock(&lock$key[i]);
-    while (notReady$key[i]) { 
+    while (notReady$key[i]) {
       pthread_cond_wait(&cond$key[i], &lock$key[i]);
     }
     pthread_mutex_unlock(&lock$key[i]);
     return results$key[i];
   }
-  void set$key(size_t i, $outputType res) { 
+  void set$key(size_t i, $outputType res) {
     pthread_mutex_lock(&lock$key[i]);
     results$key[i] = res;
     notReady$key[i] = false;

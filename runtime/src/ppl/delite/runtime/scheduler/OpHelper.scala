@@ -12,7 +12,7 @@ import ppl.delite.runtime.Config
  * Author: Kevin J. Brown
  * Date: 12/18/10
  * Time: 6:04 PM
- * 
+ *
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
@@ -58,7 +58,6 @@ object OpHelper {
 
   def remote(op: DeliteOP, graph: DeliteTaskGraph) = op match {
     case multi: OP_MultiLoop => RPC_Generator.makeKernel(multi, graph)
-    case file: OP_FileReader => RPC_Generator.makeKernel(file, graph)
     case single: OP_Single => sys.error("OP Single cannot be executed remotely")
     case other => sys.error("OP type not recognized: " + other.getClass.getSimpleName)
   }

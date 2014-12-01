@@ -346,7 +346,7 @@ object DeliteMesosScheduler {
       driver.sendFrameworkMessage(executorId, slaves(slaveIdx), mssg.toByteArray)
     }
 
-    //await results
+    // await results
     var remoteResult: Array[ReturnResult] = null
     remoteLock.lock()
     try {
@@ -363,7 +363,7 @@ object DeliteMesosScheduler {
     remoteResult
   }
 
-  def getData(array: RemoteDeliteArray[_]): Array[ReturnResult] = {
+  def requestBulkData(array: RemoteDeliteArray[_]): Array[ReturnResult] = {
     val chunks = array.chunkLengths.length
     this.remoteResult = new Array(chunks)
     activeSlaves = chunks
@@ -376,7 +376,7 @@ object DeliteMesosScheduler {
       driver.sendFrameworkMessage(executorId, slaves(slaveIdx), mssg.toByteArray)
     }
 
-    //await results
+    // await results
     var remoteResult: Array[ReturnResult] = null
     remoteLock.lock()
     try {

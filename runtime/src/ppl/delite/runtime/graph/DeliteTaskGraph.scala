@@ -53,7 +53,6 @@ object DeliteTaskGraph {
       opType match {
         case "SingleTask" => processCommon(op, "OP_Single")
         case "External" => processCommon(op, "OP_External")
-        case "Input" => processCommon(op, "OP_FileReader")
         case "MultiLoop" => processCommon(op, "OP_MultiLoop")
         case "Foreach" => processCommon(op, "OP_Foreach")
         case "Conditional" => processIfThenElseTask(op)
@@ -157,7 +156,6 @@ object DeliteTaskGraph {
     val newop = opType match {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
       case "OP_External" => new OP_External(id, "kernel_"+id, resultMap)
-      case "OP_FileReader" => new OP_FileReader(id, "kernel_"+id, resultMap)
       case "OP_MultiLoop" =>
         val size = getFieldString(op, "sizeValue")
         val sizeIsConst = getFieldString(op, "sizeType") == "const"
@@ -275,7 +273,7 @@ object DeliteTaskGraph {
     val stencilMap = getFieldMap(degOp, "stencil")
     for (in <- getFieldList(degOp, "inputs")) {
       val localStencil = Stencil(getFieldString(stencilMap, in))
-      if (localStencil != Empty && (op.isInstanceOf[OP_FileReader] || op.isInstanceOf[OP_MultiLoop])) {
+      if (localStencil != Empty && op.isInstanceOf[OP_MultiLoop]) {
         if (Config.clusterMode == 1) DeliteMesosScheduler.log("adding stencil " + localStencil + " for input " + in + " of op " + op.id)
         op.stencilMap(in) = localStencil
       }

@@ -82,19 +82,6 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
     op match {
       case c: OP_Nested => addNested(c, graph, schedule, Range(0, numResources))
 
-      // Is OP_FileReader (or DeliteOpInput) still being used?
-      case i: OP_FileReader if Config.clusterMode == 1 =>
-        val partition = op.partition
-        checkPartition(partition)
-        println("scheduling input op " + op.id + " as " +partition)
-        if (partition.isInstanceOf[Distributed]) {
-          OpHelper.remote(op, graph)
-          cluster(op, schedule, Range(0, numScala))
-        }
-        else {
-          selectTarget(op, false)
-        }
-
       case l: OP_MultiLoop if Config.clusterMode == 1 =>
         val partition = op.partition
         checkPartition(partition)
