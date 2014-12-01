@@ -32,5 +32,5 @@ object CudaCompile extends CCompile {
 
   lazy val deviceDSFiles = Directory(Path(sourceCacheHome + "datastructures")).files.toList.filter(f => f.extension==ext)
   lazy val hostDSFiles = Directory(Path(hostCompiler.sourceCacheHome + "datastructures")).files.toList.filter(f => f.extension==hostCompiler.ext)
-  override protected def auxSourceList = (deviceDSFiles++hostDSFiles).map(_.toAbsolute.toString).distinct ++ List(sourceCacheHome + "kernels" + sep + target + "helperFuncs." + ext, staticResources + "DeliteCuda." + ext) 
+  override protected def auxSourceList = (deviceDSFiles++hostDSFiles).map(_.toAbsolute.toString).distinct ++ List(sourceCacheHome + "kernels" + sep + target + "helperFuncs." + ext, staticResources + "DeliteCuda." + ext, staticResources + "DeliteCudaProfiler." + ext) 
 }
