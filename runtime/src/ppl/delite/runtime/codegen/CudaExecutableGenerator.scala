@@ -187,7 +187,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
     for (o <- op.getOutputs if op.outputType(o)!="Unit")
       available += Pair(op,o)
 
-    if (Config.profile)
+    if (Config.profile && !op.isInstanceOf[OP_Single])
       out.append("DeliteCudaTic(\"" + op.id + "\");\n")
 
     op match {
@@ -236,7 +236,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
         out.append(");\n")
     }
 
-    if (Config.profile)
+    if (Config.profile && !op.isInstanceOf[OP_Single])
       out.append("DeliteCudaToc(\"" + op.id + "\");\n")
     
     out.append("addEvent(kernelStream, d2hStream);\n")
