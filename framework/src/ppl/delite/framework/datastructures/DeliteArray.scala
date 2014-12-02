@@ -805,22 +805,22 @@ trait CudaGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CudaGenFat with 
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + ".length")
     case DeliteArrayApply(da, idx) =>
-      emitValDef(sym, quote(da) + ".apply(" + quote(idx) + ")")
+      emitValDef(sym, quote(da) + ".data[" + quote(idx) + "]")
     case DeliteArrayUpdate(da, idx, x) =>
       if(multiDimMapping && (currentLoopLevel < maxLoopLevel))
-        stream.println(getInnerLoopGuard + "{" + quote(da) + ".update(" + quote(idx) + "," + quote(x) + "); }")
+        stream.println(getInnerLoopGuard + "{" + quote(da) + ".data[" + quote(idx) + "] = " + quote(x) + "; }")
       else
-        stream.println(quote(da) + ".update(" + quote(idx) + "," + quote(x) + ");")
+        stream.println(quote(da) + ".data[" + quote(idx) + "] = " + quote(x) + ";")
     case StructUpdate(struct, fields, idx, x) =>
       if(idx.size > 1)
         throw new GenerationFailedException("CudaCodegen: Does not support nested array update inside struct.\n")
       if(multiDimMapping && (currentLoopLevel < maxLoopLevel))
-        stream.println(getInnerLoopGuard + "{" + quote(struct) + "." + fields.reduceLeft(_ + "." + _) + ".update(" + quote(idx.head) + "," + quote(x) + "); }")
+        stream.println(getInnerLoopGuard + "{" + quote(struct) + "." + fields.reduceLeft(_ + "." + _) + ".data[" + quote(idx.head) + "] = " + quote(x) + "; }")
       else
-        stream.println(quote(struct) + "." + fields.reduceLeft(_ + "." + _) + ".update(" + quote(idx.head) + "," + quote(x) + ");")
+        stream.println(quote(struct) + "." + fields.reduceLeft(_ + "." + _) + ".data[" + quote(idx.head) + "] = " + quote(x) + ";")
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
       stream.println("for(int i=0; i<"+quote(len)+"; i++) {")
-      stream.println(quote(dest) + ".update(" + quote(destPos) + "+i," + quote(src) + ".apply(" + quote(srcPos) + "+i));")
+      stream.println(quote(dest) + ".data[" + quote(destPos) + "+i] = " + quote(src) + ".data[" + quote(srcPos) + "+i];")
       stream.println("}")
     case _ => super.emitNode(sym, rhs)
   }
