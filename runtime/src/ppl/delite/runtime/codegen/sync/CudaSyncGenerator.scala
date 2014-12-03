@@ -11,9 +11,14 @@ import ppl.delite.runtime.graph._
 
 trait CudaSyncProfiler extends CudaExecutableGenerator {
   protected def withProfile(sync: Sync)(emitSync: => Unit) {
+    def getKernelName: String = this match {
+      case n:NestedGenerator => n.nested.id
+      case _ => "null"
+    }
+
     val syncOpName = sync match {
-      case s:Send => "__sync-ExecutionThread-" + s.receivers.head.to.scheduledResource + "-" + s.receivers.head.to.id + "-" + s.from.id + "-" + s.from.scheduledResource
-      case r:Receive => "__sync-ExecutionThread-" + r.to.scheduledResource + "-" + r.to.id + "-" + r.sender.from.id + "-" + r.sender.from.scheduledResource
+      case s:Send => throw new RuntimeException("Only receiver is profiling the sync")
+      case r:Receive => "__sync-ExecutionThread-" + r.to.scheduledResource + "-" + getKernelName + "-" + r.sender.from.id + "-" + r.sender.from.scheduledResource
     }
     if (Config.profile) out.append("DeliteCudaTimerStart(" + Targets.getRelativeLocation(location) + ",\"" + syncOpName + "\");\n")
     emitSync
@@ -67,7 +72,7 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
 
   override protected def sendData(s: SendData) {
     if (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty) {
-      withProfile(s) { writeSetter(s.from, s.sym, false) }
+      writeSetter(s.from, s.sym, false)
       syncList += s
     }
     //else {
@@ -77,7 +82,7 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
 
   override protected def sendView(s: SendView) {
     if (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty) {
-      withProfile(s) { writeSetter(s.from, s.sym, true) }
+      writeSetter(s.from, s.sym, true)
       syncList += s
     }
     //else {
@@ -87,7 +92,7 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
 
   override protected def sendSignal(s: Notify) {
     if (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty) {
-      withProfile(s) { writeNotifier(s.from) }
+      writeNotifier(s.from)
       syncList += s
     }
     //else {
@@ -97,19 +102,17 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
 
   override protected def sendUpdate(s: SendUpdate) {
     if (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty) {
-      withProfile(s) {
-        s.from.mutableInputsCondition.get(s.sym) match {
-          case Some(lst) =>
-            out.append("if(")
-            out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
-            out.append(") {\n")
-            writeSendUpdater(s.from, s.sym)
-            writeNotifier(s.from, s.sym)
-            out.append("}\n")
-          case _ =>
-            writeSendUpdater(s.from, s.sym)
-            writeNotifier(s.from, s.sym)
-        }
+      s.from.mutableInputsCondition.get(s.sym) match {
+        case Some(lst) =>
+          out.append("if(")
+          out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
+          out.append(") {\n")
+          writeSendUpdater(s.from, s.sym)
+          writeNotifier(s.from, s.sym)
+          out.append("}\n")
+        case _ =>
+          writeSendUpdater(s.from, s.sym)
+          writeNotifier(s.from, s.sym)
       }
       syncList += s
     }
