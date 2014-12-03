@@ -85,13 +85,15 @@ void initializeGlobal(int numThreads, size_t heapSize) {
       resourceInfos[i].rand = new DeliteCppRandom(i);
     }
     DeliteHeapInit(numThreads, heapSize);
+    InitDeliteCppTimer(numThreads);
   }
   pthread_mutex_unlock(&init_mtx);
 }
 
-void freeGlobal(int numThreads) {
+void freeGlobal(int numThreads, int offset, JNIEnv *env) {
   pthread_mutex_lock(&init_mtx);
   if (config) {
+    DeliteCppTimerDump(offset, env);
     DeliteHeapClear(numThreads);
     delete[] resourceInfos;
     delete config;
@@ -106,9 +108,9 @@ void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heap
   delite_barrier(numLiveThreads); //ensure fully initialized before any continue
 }
 
-void clearAll(int numThreads, int numLiveThreads) {
+void clearAll(int numThreads, int numLiveThreads, int offset, JNIEnv *env) {
   delite_barrier(numLiveThreads); //first wait for all threads to arrive
-  freeGlobal(numThreads);
+  freeGlobal(numThreads, offset, env);
 }
 
 #endif

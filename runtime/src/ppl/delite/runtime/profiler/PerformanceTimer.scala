@@ -5,8 +5,7 @@ import java.io.{BufferedWriter, File, PrintWriter, FileWriter}
 import java.util.concurrent.ConcurrentHashMap
 import ppl.delite.runtime.Config
 
-object PerformanceTimer
-{
+object PerformanceTimer {
   var threadCount = 0
   var statsNewFormat = new ArrayBuffer[Map[String, List[Timing]]]()
   var threadToId: Map[String, Int] = Map()
@@ -55,7 +54,7 @@ object PerformanceTimer
       case timing :: previousTimings =>
         timing.endTime = endTime
         if (component == Config.dumpStatsComponent) {
-          statsForTrackedComponent += (timing.endTime - timing.startTime) / 1000D
+          statsForTrackedComponent += (timing.endTime - timing.startTime) / 1e3
         }
     }
   }
@@ -79,6 +78,10 @@ object PerformanceTimer
       stats += component -> List[Timing]()
     }
     stats += component -> (t :: stats(component))
+    
+    if (component == Config.dumpStatsComponent) {
+      statsForTrackedComponent += (endTime - startTime) / 1e3
+    }
   }
 
   def clearAll() {

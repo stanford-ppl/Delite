@@ -35,7 +35,7 @@ extern Config* config;
 extern resourceInfo_t* resourceInfos;
 void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize);
 void initializeThread(int threadId);
-void clearAll(int numThreads, int numLiveThreads);
+void clearAll(int numThreads, int numLiveThreads, int offset, JNIEnv *env);
 
 #ifdef MEMMGR_REFCNT
 std::shared_ptr<cppDeliteArraystring> string_split(const resourceInfo_t *resourceInfo, const string &str, const string &pattern, int32_t lim);

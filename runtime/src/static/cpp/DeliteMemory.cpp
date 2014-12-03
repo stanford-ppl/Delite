@@ -72,7 +72,7 @@ void DeliteHeapAllocBlock(size_t minSize, int idx) {
   DeliteHeapBlockList[padIdx]->push_back(newBlock);
   DeliteHeapCurrentBlock[padIdx] = newBlock;
   DeliteHeapCurrentBlockSize[padIdx] = blockSize;
-  DHEAP_DEBUG("Insufficient existing heap space for thread %d. Allocating %lld bytes.\n", idx, blockSize);
+  DHEAP_DEBUG("Insufficient existing heap space for thread %d. Allocating %lld MB.\n", idx, blockSize/1024/1024);
 }
 
 char *DeliteHeapAlloc(size_t sz, int idx) {
@@ -111,7 +111,7 @@ void DeliteHeapClear(int numThreads) {
     }
     delete blocklist;
 
-    DHEAP_DEBUG("finished heap clear for resource %d, used %d blocks (%dMB blocks).\n", i, heapUsage, DEFAULT_BLOCK_SIZE/1024/1024);
+    DHEAP_DEBUG("finished heap clear for resource %d, used %d blocks (%lld MB blocks).\n", i, heapUsage, DEFAULT_BLOCK_SIZE/1024/1024);
   }
 
   delete[] DeliteHeapBlockList;

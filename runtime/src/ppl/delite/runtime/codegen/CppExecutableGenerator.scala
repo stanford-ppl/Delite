@@ -53,7 +53,6 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
     out.append("initializeAll(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + "," + numActiveCpps + "," + Config.cppHeapSize + "ULL);\n")
-    if (Config.profile) out.append("InitDeliteCppTimer(" + Targets.getRelativeLocation(location) + ");\n")
     out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
     out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
     writeJNIInitializer(locations)
@@ -77,8 +76,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
   protected def writeMethodFooter() {
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
-    if (Config.profile) out.append("DeliteCppTimerDump(" + Targets.getRelativeLocation(location) + "," + location + ",env" + location + ");\n")
-    out.append("clearAll(" + Config.numCpp + "," + numActiveCpps + ");\n")
+    out.append("clearAll(" + Config.numCpp + "," + numActiveCpps + "," + Config.numThreads + ",env" + location + ");\n")
     out.append("}\n")
   }
 
