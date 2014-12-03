@@ -20,7 +20,7 @@ import ppl.delite.runtime.graph.targets.Targets
  */
 class MultiAccExecutor extends Executor {
 
-  private val threadPools = Map(Targets.Scala -> new ThreadPool(Config.numThreads, i => if (Config.pinThreads) new CppExecutionThread(i, Config.numThreads) else new ExecutionThread()), 
+  private val threadPools = Map(Targets.Scala -> new ThreadPool(Config.numThreads, i => if (Config.pinThreads) new PinnedExecutionThread(i, Config.numThreads) else new ExecutionThread()), 
                                 Targets.Cpp -> new ThreadPool(Config.numCpp, i => new CppExecutionThread(i, Config.numCpp)), 
                                 Targets.Cuda -> new ThreadPool(Config.numCuda, i => new CudaExecutionThread(i, Config.numCuda)), 
                                 Targets.OpenCL -> new ThreadPool(Config.numOpenCL, i => new OpenCLExecutionThread(i, Config.numOpenCL))

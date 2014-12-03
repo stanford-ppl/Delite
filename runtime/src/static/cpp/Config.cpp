@@ -3,20 +3,11 @@
 
 #include <stdlib.h>
 #include <iostream>
-#include <jni.h>
 #include <pthread.h>
-#include <sched.h>
 #include "Config.h"
 #include "DeliteDatastructures.h"
 #include "DeliteCpp.h"
-
-#ifdef __DELITE_CPP_NUMA__
-#include <numa.h>
-#endif
-
-#ifdef __sun
-#include <sys/processor.h>
-#endif
+#include "cppInit.h"
 
 
 Config* config = NULL;
@@ -91,7 +82,7 @@ void initializeGlobal(int numThreads, size_t heapSize) {
       resourceInfos[i].numThreads = numThreads;
       resourceInfos[i].socketId = config->threadToSocket(i);
       resourceInfos[i].numSockets = config->numSockets;
-      resourceInfos[i].rand = new DeliteCppRandom();
+      resourceInfos[i].rand = new DeliteCppRandom(i);
     }
     DeliteHeapInit(numThreads, heapSize);
   }
@@ -107,31 +98,6 @@ void freeGlobal(int numThreads) {
     config = NULL;
   }
   pthread_mutex_unlock(&init_mtx);
-}
-
-void initializeThread(int threadId) {
-  #ifdef __linux__
-    cpu_set_t cpu;
-    CPU_ZERO(&cpu);
-    CPU_SET(threadId, &cpu);
-    sched_setaffinity(0, sizeof(cpu_set_t), &cpu);
-        
-    #ifdef __DELITE_CPP_NUMA__
-      if (numa_available() >= 0) {
-        int socketId = config->threadToSocket(threadId);
-        if (socketId < numa_num_configured_nodes()) {
-          bitmask* nodemask = numa_allocate_nodemask();
-          numa_bitmask_setbit(nodemask, socketId);
-          numa_set_membind(nodemask);
-        }
-        //VERBOSE("Binding thread %d to cpu %d, socket %d\n", threadId, threadId, socketId);
-      }
-    #endif
-  #endif
-
-  #ifdef __sun
-    processor_bind(P_LWPID, P_MYID, threadId, NULL);
-  #endif
 }
 
 void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize) {

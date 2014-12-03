@@ -34,6 +34,33 @@ object DeliteTaskGraph {
       case degm: Map[Any,Any] => try { parseDEGMap(degm) } catch { case e: Exception => e.printStackTrace; throw e; }
       case err@_ => mapNotFound(err)
     }
+    enforceRestrictions(graph)
+  }
+
+  def visitAll(graph: DeliteTaskGraph, func: DeliteOP => Unit) {
+    for (op <- graph.ops) op match {
+      case n:OP_Nested => n.nestedGraphs.foreach(visitAll(_,func))
+      case _ => func(op)
+    }
+  }
+
+  def enforceRestrictions(graph: DeliteTaskGraph)  = {
+    //FIXME: this is required because we can't currently have a C++ file reader interoperate with a Scala file writer,
+    //so we only allow C++ file reading when there are no file writers in the program
+    //this should be removed when that is fixed
+    val outputStream = "DeliteFileOutputStream"
+    val inputStream = "DeliteFileInputStream"
+    var hasOutput = false
+
+    visitAll(graph, op => { if (op.outputType contains outputStream) hasOutput = true })
+    if (hasOutput) {
+      visitAll(graph, op => {
+        if ((op.outputType contains inputStream) || (op.getInputs.exists(i => i._1.outputType(i._2) contains inputStream))) {
+          op.supportedTargets.clear()
+          op.supportedTargets += Targets.Scala
+        }
+      })
+    }
     graph
   }
 

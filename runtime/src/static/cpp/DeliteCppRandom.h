@@ -18,10 +18,10 @@ class DeliteCppRandom {
     bool haveNextNextGaussian;
 	
     public:
-    const static int64_t INITIAL_SEED = 100;
 
-    DeliteCppRandom(void) {
-        this->seed = initialScramble((int64_t)time(NULL));
+    DeliteCppRandom(int32_t threadId) {
+        int64_t seedUniquifier = 8682522807148013LL; //TODO: better spread of seeds across threads
+        this->seed = initialScramble(seedUniquifier + threadId + (int64_t)clock());
     	haveNextNextGaussian = false;
     }
 
