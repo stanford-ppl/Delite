@@ -1,8 +1,8 @@
 #include "DeliteMemory.h"
 
-#define DEFAULT_MAX_HEAP 32ULL*1024*1024*1024
-#define DEFAULT_BLOCK_SIZE 4UL*1024*1024 //TODO: how to select this?
+#define DEFAULT_BLOCK_SIZE 1UL*1024*1024
 
+size_t defaultBlockSize;
 std::list<char *> **DeliteHeapBlockList = NULL;  // list of allocated heap blocks for each thread
 char **DeliteHeapCurrentBlock;            // current heap block pointer for each thread
 size_t *DeliteHeapCurrentBlockSize;       // remaining size of the current heap block for each thread
@@ -32,17 +32,11 @@ void delite_barrier(unsigned int count) {
 }
 
 void DeliteHeapInit(int numThreads, size_t heapSize) {
-  /*if (heapSize == 0) {
-    int64_t memSize = 2ULL*1024*1024*1024; //FIXME
-    #ifdef _SC_PHYS_PAGES
-      int64_t pages = sysconf(_SC_PHYS_PAGES);
-      int64_t page_size = sysconf(_SC_PAGE_SIZE);
-      memSize = pages * page_size;
-    #endif
-    heapSize = memSize / 2; // use 50% of physical memory as heap by default
-    if (heapSize > DEFAULT_MAX_HEAP) heapSize = DEFAULT_MAX_HEAP;
-  }*/
-  //TODO: we currently don't enforce heapSize... do we need this?
+  if (heapSize != 0) {
+    defaultBlockSize = heapSize / numThreads;
+  } else {
+    defaultBlockSize = DEFAULT_BLOCK_SIZE;
+  }
 
   size_t padSize = numThreads << PADDING_SHIFT;
   DeliteHeapBlockList = new std::list<char*>*[padSize];
@@ -62,7 +56,7 @@ void DeliteHeapInit(int numThreads, size_t heapSize) {
 
 void DeliteHeapAllocBlock(size_t minSize, int idx) {
   size_t padIdx = idx << PADDING_SHIFT;
-  size_t blockSize = std::max(minSize, DEFAULT_BLOCK_SIZE);
+  size_t blockSize = std::max(minSize, defaultBlockSize);
   char *newBlock = new char[blockSize];
   if (!newBlock) {
     fprintf(stderr, "[ERROR]: Out of memory!");
@@ -111,7 +105,7 @@ void DeliteHeapClear(int numThreads) {
     }
     delete blocklist;
 
-    DHEAP_DEBUG("finished heap clear for resource %d, used %d blocks (%lld MB blocks).\n", i, heapUsage, DEFAULT_BLOCK_SIZE/1024/1024);
+    DHEAP_DEBUG("finished heap clear for resource %d, used %d blocks (%lld MB blocks).\n", i, heapUsage, defaultBlockSize/1024/1024);
   }
 
   delete[] DeliteHeapBlockList;
@@ -132,7 +126,7 @@ void DeliteHeapMark(int idx) {
 void DeliteHeapReset(int idx) {
   //FIXME: this leaks all blocks allocated between the mark and the current position!
   size_t padIdx = idx << PADDING_SHIFT;
-  DHEAP_DEBUG("reseting heap for resource %d, used %dMB.\n", idx, (DeliteHeapSavedBlockSize[padIdx]-DeliteHeapCurrentBlockSize[padIdx])/1024/1024);
+  DHEAP_DEBUG("reseting heap for resource %d, used %lld MB.\n", idx, (DeliteHeapSavedBlockSize[padIdx]-DeliteHeapCurrentBlockSize[padIdx])/1024/1024);
   DeliteHeapCurrentBlock[padIdx] = DeliteHeapSavedBlock[padIdx];
   DeliteHeapCurrentBlockSize[padIdx] = DeliteHeapSavedBlockSize[padIdx];
 }

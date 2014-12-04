@@ -8,7 +8,9 @@
 #include "DeliteDatastructures.h"
 #include "DeliteCpp.h"
 #include "cppInit.h"
-
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 Config* config = NULL;
 resourceInfo_t* resourceInfos = NULL;
@@ -75,6 +77,9 @@ void initializeConfig(int numThreads) {
 void initializeGlobal(int numThreads, size_t heapSize) {
   pthread_mutex_lock(&init_mtx); 
   if (!config) {
+    #ifdef _OPENMP
+    omp_set_num_threads(numThreads);
+    #endif
     initializeConfig(numThreads);
     resourceInfos = new resourceInfo_t[numThreads];
     for (int i=0; i<numThreads; i++) {

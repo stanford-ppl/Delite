@@ -61,6 +61,20 @@ object DeliteTaskGraph {
         }
       })
     }
+
+    //if the multiloop reader fails to generate for a target the filestream should not be on that target either
+    //this is required because we currently don't allow stream objects to be copied between targets
+    var streams: List[DeliteOP] = Nil
+    visitAll(graph, op => { if (op.outputType contains inputStream) streams = op :: streams })
+    for (op <- streams) {
+      val supported = op.getConsumers.map(_.supportedTargets).reduce(_ intersect _) intersect op.supportedTargets
+      for (o <- (op.getConsumers + op)) {
+        o.supportedTargets.clear()
+        o.supportedTargets ++= supported
+      }
+      assert(op.supportedTargets.size > 0, "ERROR: There were no common supported targets for FileStream " + op.id)
+    }
+
     graph
   }
 
