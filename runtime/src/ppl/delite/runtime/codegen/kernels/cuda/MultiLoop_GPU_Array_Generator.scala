@@ -684,63 +684,68 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
   private def writeCombineKernel(out: StringBuilder, op: OP_MultiLoop) {
     writeKernelHeader(out, op, "Combine")
     out.append("blockSize = 64;\n")
+    for((odata,osym) <- reductionList(op)) {
+      out.append(s"smem_${osym}[threadIdx.x] = temp_${osym}[threadIdx.x];\n")
+    }
+    for((odata,osym) <- reductionTupleList(op)) {
+      out.append(s"smem1_${osym}[threadIdx.x] = temp1_${osym}[threadIdx.x];\n")
+      out.append(s"smem2_${osym}[threadIdx.x] = temp2_${osym}[threadIdx.x];\n")
+    }
+    out.append("__syncthreads();\n")
+    /*
+    for(blockSize <- List(512,256,128)) {
+      out.append(s"if(blockSize >= ${blockSize}) { if (threadIdx.x < ${blockSize/2}) {")
       for((odata,osym) <- reductionList(op)) {
-        out.append("smem_" + osym + "[threadIdx.x] = temp_" + osym + "[threadIdx.x];\n")
+        val args = (odata.getInputs("combine")++List(s"smem_${osym}[threadIdx.x]",s"smem_${osym}[threadIdx.x+${blockSize/2}]")++lastInputArgs(op)).mkString(",")
+        out.append(s"smem_${osym}[threadIdx.x] = dev_combine_${funcNameSuffix(op,osym)} ($args);\n")
       }
       for((odata,osym) <- reductionTupleList(op)) {
-        out.append("smem1_" + osym + "[threadIdx.x] = temp1_" + osym + "[threadIdx.x];\n")
-        out.append("smem2_" + osym + "[threadIdx.x] = temp2_" + osym + "[threadIdx.x];\n")
+        val args = (odata.getInputs("combine")++List(s"smem1_${osym}[threadIdx.x]",s"smem2_${osym}[threadIdx.x]",s"smem1_${osym}[threadIdx.x+${blockSize/2}]",s"smem2_${osym}[threadIdx.x+${blockSize/2}]")++lastInputArgs(op)).mkString(",")
+        out.append(s"smem1_${osym}[threadIdx.x] = dev_combine1_${funcNameSuffix(op,osym)} ($args);\n")
+        out.append(s"smem2_${osym}[threadIdx.x] = dev_combine2_${funcNameSuffix(op,osym)} ($args);\n")
       }
-      out.append("__syncthreads();\n")
-      for(blockSize <- List(512,256,128)) {
-        out.append("if(blockSize >= " + blockSize + ") { if (threadIdx.x < " + blockSize/2 + ") { ")
-        for((odata,osym) <- reductionList(op)) {
-          out.append("smem_" + osym + "[threadIdx.x] = dev_combine_" + funcNameSuffix(op,osym) + (odata.getInputs("combine")++List("smem_"+osym+"[threadIdx.x]","smem_"+osym+"[threadIdx.x+" + blockSize/2 + "]")++lastInputArgs(op)).mkString("(",",","); "))
-        }
-        for((odata,osym) <- reductionTupleList(op)) {
-          out.append("smem1_" + osym + "[threadIdx.x] = dev_combine1_" + funcNameSuffix(op,osym) + (odata.getInputs("combine")++List("smem1_"+osym+"[threadIdx.x]","smem2_"+osym+"[threadIdx.x]","smem1_"+osym+"[threadIdx.x+" + blockSize/2 + "]","smem2_"+osym+"[threadIdx.x+" + blockSize/2 + "]")++lastInputArgs(op)).mkString("(",",","); "))
-          out.append("smem2_" + osym + "[threadIdx.x] = dev_combine2_" + funcNameSuffix(op,osym) + (odata.getInputs("combine")++List("smem1_"+osym+"[threadIdx.x]","smem2_"+osym+"[threadIdx.x]","smem1_"+osym+"[threadIdx.x+" + blockSize/2 + "]","smem2_"+osym+"[threadIdx.x+" + blockSize/2 + "]")++lastInputArgs(op)).mkString("(",",","); "))
-        }
-        out.append(" } __syncthreads(); }\n")
-      }
-      out.append("if(threadIdx.x < 32) {\n")
+      out.append(" } __syncthreads(); }\n")
+    }
+    */
+    out.append("if(threadIdx.x < 32) {\n")
+    for((odata,osym) <- reductionList(op)) {
+      //Sublime scala plugin not recognizing string interpolation..
+      val tpeA = odata.getType("mA")
+      out.append(s"volatile ${tpeA} * sdata_${osym} = smem_${osym};\n")
+    }
+    for((odata,osym) <- reductionTupleList(op)) {
+      val tpeA = odata.getType("mA")
+      val tpeB = odata.getType("mB")
+      out.append("volatile ${tpeA} * sdata1_${osym} = smem1_${osym};\n")
+      out.append("volatile ${tpeB} * sdata2_${osym} = smem2_${osym};\n")
+    }
+    for(blockSize <- List(64,32,16,8,4,2)) {
+      out.append("if (blockSize >= " + blockSize + ") { ")
       for((odata,osym) <- reductionList(op)) {
-        out.append("volatile " + odata.getType("mA") + "* sdata_" + osym + " = smem_" + osym + ";\n")
+        val sharedmem = if (isPrimitiveType(op.outputType(osym))) "sdata" else "smem"
+        val args = (odata.getInputs("combine")++List(s"${sharedmem}_${osym}[threadIdx.x]",s"${sharedmem}_${osym}[threadIdx.x+${blockSize/2}]")++lastInputArgs(op)).mkString(",")
+        out.append(s"${sharedmem}_${osym}[threadIdx.x] = (threadIdx.x+${blockSize/2} > size) ? ${sharedmem}_${osym}[threadIdx.x] : dev_combine_${funcNameSuffix(op,osym)} ($args);")
+        if (!isPrimitiveType(op.outputType(osym))) out.append("__syncthreads();")
+        out.append("\n")
       }
       for((odata,osym) <- reductionTupleList(op)) {
-        out.append("volatile " + odata.getType("mA") + "* sdata1_" + osym + " = smem1_" + osym + ";\n")
-        out.append("volatile " + odata.getType("mB") + "* sdata2_" + osym + " = smem2_" + osym + ";\n")
-      }
-      for(blockSize <- List(64,32,16,8,4,2)) {
-        out.append("if (blockSize >= " + blockSize + ") { ")
-        for((odata,osym) <- reductionList(op)) {
-          if(isPrimitiveType(op.outputType(osym))) 
-            out.append("sdata_" + osym + "[threadIdx.x] = dev_combine_" + funcNameSuffix(op,osym) + (odata.getInputs("combine")++List("sdata_"+osym+"[threadIdx.x]","sdata_"+osym+"[threadIdx.x+" + blockSize/2 + "]")++lastInputArgs(op)).mkString("(",",","); "))
-          else 
-            out.append("smem_" + osym + "[threadIdx.x] = dev_combine_" + funcNameSuffix(op,osym) + (odata.getInputs("combine")++List("smem_"+osym+"[threadIdx.x]","smem_"+osym+"[threadIdx.x+" + blockSize/2 + "]")++lastInputArgs(op)).mkString("(",",","); __syncthreads();"))
-        }
-        for((odata,osym) <- reductionTupleList(op)) {
-          if(isPrimitiveType(op.outputType(osym))) { 
-            out.append("sdata1_" + osym + "[threadIdx.x] = dev_combine1_" + funcNameSuffix(op,osym) + (odata.getInputs("combine")++List("sdata1_"+osym+"[threadIdx.x]","sdata2_"+osym+"[threadIdx.x]","sdata1_"+osym+"[threadIdx.x+" + blockSize/2 + "]","sdata2_"+osym+"[threadIdx.x+" + blockSize/2 + "]")++lastInputArgs(op)).mkString("(",",","); "))
-            out.append("sdata2_" + osym + "[threadIdx.x] = dev_combine2_" + funcNameSuffix(op,osym) + (odata.getInputs("combine")++List("sdata1_"+osym+"[threadIdx.x]","sdata2_"+osym+"[threadIdx.x]","sdata1_"+osym+"[threadIdx.x+" + blockSize/2 + "]","sdata2_"+osym+"[threadIdx.x+" + blockSize/2 + "]")++lastInputArgs(op)).mkString("(",",","); "))  
-          } 
-          else {
-            out.append("smem1_" + osym + "[threadIdx.x] = dev_combine1_" + funcNameSuffix(op,osym) + (odata.getInputs("combine")++List("smem1_"+osym+"[threadIdx.x]","smem2_"+osym+"[threadIdx.x]","smem1_"+osym+"[threadIdx.x+" + blockSize/2 + "]","smem2_"+osym+"[threadIdx.x+" + blockSize/2 + "]")++lastInputArgs(op)).mkString("(",",","); "))
-            out.append("smem2_" + osym + "[threadIdx.x] = dev_combine2_" + funcNameSuffix(op,osym) + (odata.getInputs("combine")++List("smem1_"+osym+"[threadIdx.x]","smem2_"+osym+"[threadIdx.x]","smem1_"+osym+"[threadIdx.x+" + blockSize/2 + "]","smem2_"+osym+"[threadIdx.x+" + blockSize/2 + "]")++lastInputArgs(op)).mkString("(",",","); "))  
-          }
-        }
-        out.append("}\n")
+        val sharedmem = if (isPrimitiveType(op.outputType(osym))) "sdata" else "smem"
+        val args = (odata.getInputs("combine")++List(s"${sharedmem}1_${osym}[threadIdx.x]",s"${sharedmem}2_${osym}[threadIdx.x]",s"${sharedmem}1_${osym}[threadIdx.x+${blockSize/2}]",s"${sharedmem}2_${osym}[threadIdx.x+${blockSize/2}]")++lastInputArgs(op)).mkString(",")
+        out.append(s"${sharedmem}1_${osym}[threadIdx.x] = (threadIdx.x+${blockSize/2} > size) ? ${sharedmem}1_${osym}[threadIdx.x] : dev_combine1_${funcNameSuffix(op,osym)} ($args);\n")
+        out.append(s"${sharedmem}2_${osym}[threadIdx.x] = (threadIdx.x+${blockSize/2} > size) ? ${sharedmem}2_${osym}[threadIdx.x] : dev_combine2_${funcNameSuffix(op,osym)} ($args);\n")
       }
       out.append("}\n")
-      out.append("if(threadIdx.x == 0) {\n")
-      for((odata,osym) <- reductionList(op)) {
-        out.append("temp_" + osym + "_2[blockIdx.x] = smem_" + osym + "[0];\n")
-      }
-      for((odata,osym) <- reductionTupleList(op)) {
-        out.append("temp1_" + osym + "_2[blockIdx.x] = smem1_" + osym + "[0];\n")
-        out.append("temp2_" + osym + "_2[blockIdx.x] = smem2_" + osym + "[0];\n")
-      }
-      out.append("}\n")
+    }
+    out.append("}\n")
+    out.append("if(threadIdx.x == 0) {\n")
+    for((odata,osym) <- reductionList(op)) {
+      out.append(s"temp_${osym}_2[blockIdx.x] = smem_${osym}[0];\n")
+    }
+    for((odata,osym) <- reductionTupleList(op)) {
+      out.append(s"temp1_${osym}_2[blockIdx.x] = smem1_${osym}[0];\n")
+      out.append(s"temp2_${osym}_2[blockIdx.x] = smem2_${osym}[0];\n")
+    }
+    out.append("}\n")
 
     writeKernelFooter(out)
   }
