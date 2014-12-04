@@ -6,6 +6,7 @@ import ppl.delite.runtime.DeliteMesosScheduler
 trait DeliteArray[T] {
   def length: Int
   def readAt(i: Int): T
+  def data: Array[T] // triggers a bulk fetch for RemoteArrays
 
   var id: String
   var offsets: Array[Int]

@@ -628,7 +628,9 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
       emitValDef(sym, "System.arraycopy(" + quote(src) + "," + quote(srcPos) + ".toInt," + quote(dest) + "," + quote(destPos) + ".toInt," + quote(len) + ".toInt)")
     case DeliteArrayTake(lhs,n) =>
       emitValDef(sym, quote(lhs) + ".take(" + quote(n) + ")")
-    case DeliteArrayMkString(da,x) if !Config.generateSerializable =>
+    case DeliteArrayMkString(da,x) if Config.generateSerializable =>
+      emitValDef(sym, quote(da) + ".data.mkString(" + quote(x) + ")")
+    case DeliteArrayMkString(da,x) =>
       emitValDef(sym, quote(da) + ".mkString(" + quote(x) + ")")
     case DeliteArrayUnion(lhs,rhs) if !Config.generateSerializable =>
       emitValDef(sym, quote(lhs) + " union " + quote(rhs))

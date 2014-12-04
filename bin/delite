@@ -29,6 +29,7 @@ def main():
     parser.add_option("-n", "--nodes", dest="num_nodes", default=0, help="(maximum) number of cluster nodes")
     parser.add_option("--isSlave", dest="isSlave", action="store_true", default=False)
     parser.add_option("-m", "--master", dest="master", default="0.0.0.0:5050", help="master ip address and port for cluster runtime")
+    parser.add_option("--slaveImage", dest="slaveImage", action="store", default="", help="container image name to use when launching a slave process")
     parser.add_option("--ip", dest="ip_address", default="0.0.0.0", help="override the ip address Delite binds to")
     parser.add_option("--codecache", dest="codecache", default="", help="directory for runtime code cache")
     parser.add_option("-d", "--directory", dest="directory", default="", help="change directory to the specified one before running")
@@ -42,16 +43,16 @@ def main():
 
     delitecommon.initialize()
     run(args[0], args[1:len(args)], opts)
- 
+
 def parseBuildDir(deg):
     if not os.path.isfile(deg):
         err("couldn't find DEG file " + deg)
 
     with open(deg) as f:
       head = [f.next() for x in xrange(4)]
-    
+
     fields = ''.join(head).split(",")
-    kernelpath = fields[len(fields)-2].split(":") 
+    kernelpath = fields[len(fields)-2].split(":")
     build_dir = kernelpath[len(kernelpath)-1].strip().strip("\"").strip("\n")
     if (build_dir == ""):
       err("DEG file " + deg + " appears to be invalid; could not parse kernelpath")
@@ -84,7 +85,7 @@ def run(deg, params, opts):
         build_dir = os.getenv("PWD")+os.sep+"generated"+os.sep #override default kernel path to extracted dir
         if os.path.isdir(build_dir):
             shutil.rmtree(build_dir)
-        jar_cmd = delitecommon.JAVA_HOME + "/bin/jar xf " + deg 
+        jar_cmd = delitecommon.JAVA_HOME + "/bin/jar xf " + deg
         ecode = os.system(jar_cmd)
         if ecode != 0:
             err("Unable to extract jar: " + deg)
@@ -98,9 +99,9 @@ def run(deg, params, opts):
         updateBuildDir(deg, build_dir)
 
     ld_library_path = filter(len, os.getenv("LD_LIBRARY_PATH", "").split(":"))
-    ld_library_path.append(build_dir+os.sep+"libraries") 
+    ld_library_path.append(build_dir+os.sep+"libraries")
     os.putenv("LD_LIBRARY_PATH", ":".join(ld_library_path))
-    
+
     if opts.num_nodes > 0 or opts.isSlave:
         #MESOS_LIB = delitecommon.MESOS_HOME + os.sep+"src"+os.sep+".libs"
         #ld_library_path.append(MESOS_LIB)
@@ -123,6 +124,8 @@ def run(deg, params, opts):
         java_opts = java_opts + " -Dprofile.output.dir=profile -Dprofile.dump=true -Ddelite.debug.profile=true"
     if opts.isSlave == True:
         java_opts = java_opts + " -Ddelite.cluster.isSlave"
+    if opts.slaveImage != "":
+        java_opts = java_opts + " -Ddelite.slave.image="+opts.slaveImage
     if opts.walk_only == True:
         java_opts = java_opts + " -Ddelite.run=false"
     if opts.pin_threads == True:
@@ -132,13 +135,13 @@ def run(deg, params, opts):
         java_opts = java_opts + " -Xms" + delitecommon.DELITE_MEM
 
 
-    # add classpaths    
+    # add classpaths
     old_cp = os.getenv("CLASSPATH", "")
     cp = " -cp "
     cp = cp + old_cp + os.pathsep
     cp = cp + delitecommon.DELITE_HOME + "/runtime/target/" + delitecommon.scala_major_id + "/classes" + os.pathsep
 
-    # add all managed libs 
+    # add all managed libs
     # caveat: scalatest pulls in some non-virtualized scala dependencies but they conflict with the scala-virtualized versions
     jars = [os.path.join(d,f) for (d, n, fs) in os.walk(delitecommon.HYPER_HOME + "/lib_managed/") if not (d.count("org.scala-lang") > 0 and d.count("virtualized") == 0) for f in fs]
     for j in jars:
@@ -154,13 +157,13 @@ def run(deg, params, opts):
     #MKL ENV
     os.putenv("LD_PRELOAD", delitecommon.JAVA_HOME + "/jre/lib/amd64/libjsig.so")
     os.putenv("OMP_NUM_THREADS", str(opts.num_threads))
-    
+
     if opts.verbose:
         delitecommon.printEnv()
 
     print "== executing application: " + deg + " " + ' '.join(params)
     if opts.verbose:
-        print "== with options: " + java_opts + "\n" 
+        print "== with options: " + java_opts + "\n"
 
     java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " ppl.delite.runtime.Delite " + deg + " " + ' '.join(params)
     #print java_cmd

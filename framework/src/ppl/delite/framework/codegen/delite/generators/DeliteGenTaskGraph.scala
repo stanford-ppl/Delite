@@ -390,11 +390,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
 
     // We need to use a special flag to propagate DeliteStruct "containsSyms" aliases, which are generally turned off to suppress nested mutable errors.
     // See DeliteStructs.scala containsSyms for more info.
-    val saveDeliteStructContainsAliases = _deliteStructContainsAliases
-    _deliteStructContainsAliases = true
+    val saveDeliteStructAliases = _deliteStructAliases
+    _deliteStructAliases = true
     val aliases = allAliases(rhs,deliteStructAliasMode)
     // println("aliases for " + sym + "(" + rhs.toString + "): " + aliases)
-    _deliteStructContainsAliases = saveDeliteStructContainsAliases
+    _deliteStructAliases = saveDeliteStructAliases
 
     // emit task graph node
     rhs match {

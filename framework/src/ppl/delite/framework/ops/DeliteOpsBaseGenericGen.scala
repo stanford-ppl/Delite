@@ -106,13 +106,13 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   // Because emitMethod and emitMethodCall are being overridden to pass additional runtime arguments now,
   // we need these "clean" versions for certain cases (e.g. serialization). This is ugly, and should be unified.
-
   def unalteredMethodCall(name:String, inputs: List[String] = Nil): String = methodCall(name, inputs)
   def emitUnalteredMethodCall(name:String, inputs: List[String]) = emitMethodCall(name, inputs)
   def emitUnalteredMethod(name:String, outputType: String, inputs:List[(String,String)])(body: => Unit) = emitMethod(name, outputType, inputs)(body)
 
   // variable for loop nest level (used for adding openmp pragma)
   var loopLevel: Int = 0
+
 
   /**
    * MultiLoop components
@@ -689,10 +689,12 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     }
 
     val freeVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
-    val streamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
-    if (streamVars.length > 0) {
-      assert(streamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
-      val streamSym = streamVars(0)
+    val inputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
+    val outputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileOutputStream])
+
+    if (inputStreamVars.length > 0) {
+      assert(inputStreamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
+      val streamSym = inputStreamVars(0)
       emitValDef(quote(streamSym)+"_stream", remap(streamSym.tp), fieldAccess(quote(streamSym),"openCopyAtNewLine(0)"))
       stream.println("while (" + fieldAccess(quote(streamSym)+"_stream", "position") + " < " + quote(op.size) + ") {")
     }
@@ -734,8 +736,13 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     }
     stream.println(/*{*/"} // end fat loop " + symList.map(quote).mkString(","))
 
-    if (streamVars.length > 0) {
-      stream.println(fieldAccess(quote(streamVars(0))+"_stream","close();"))
+    if (inputStreamVars.length > 0) {
+      stream.println(fieldAccess(quote(inputStreamVars(0))+"_stream","close();"))
+    }
+
+    if (outputStreamVars.length > 0) {
+      val streamSyms = outputStreamVars.map(s => quote(s))
+      streamSyms foreach { s => emitUnalteredMethodCall(s + ".close", Nil) }
     }
 
     // finalizer
@@ -814,14 +821,15 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
     // processRange
     emitMethod("processRange", actType, List(("__act",actType),("start",remap(Manifest.Long)),("end",remap(Manifest.Long)))) {
-      //GROSS HACK ALERT!
+      //GROSS HACK ALERT: custom codegen for DeliteFileInputStream and DeliteFileOutputStream!
       val freeVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
+      val inputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
+      val outputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileOutputStream])
 
-      val streamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
-      if (streamVars.length > 0) {
-        assert(streamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
-        val streamSym = quote(streamVars(0))+"_stream"
-        emitValDef(streamSym, remap(streamVars(0).tp), fieldAccess(quote(streamVars(0)),"openCopyAtNewLine(start)"))
+      if (inputStreamVars.length > 0) {
+        assert(inputStreamVars.length == 1, "ERROR: don't know how to handle multiple input streams at once")
+        val streamSym = quote(inputStreamVars(0))+"_stream"
+        emitValDef(streamSym, remap(inputStreamVars(0).tp), fieldAccess(quote(inputStreamVars(0)),"openCopyAtNewLine(start)"))
         emitValDef("isEmpty",remap(Manifest.Boolean), "end <= " + fieldAccess(streamSym,"position"))
         emitValDef("__act2",actType,methodCall("init",List("__act","-1","isEmpty",streamSym)))
         stream.println("while (" + fieldAccess(streamSym,"position") + " < end) {")
@@ -839,6 +847,12 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitAssignment("idx","idx + 1")
         stream.println("}")
       }
+
+      if (outputStreamVars.length > 0) {
+        val streamSyms = outputStreamVars.map(s => quote(s))
+        streamSyms foreach { s => emitUnalteredMethodCall(s + ".close", List(resourceInfoSym)) }
+      }
+
       emitReturn("__act2")
     }
 

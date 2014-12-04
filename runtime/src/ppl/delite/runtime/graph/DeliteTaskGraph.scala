@@ -168,10 +168,7 @@ object DeliteTaskGraph {
 
     // handle stencil
     if (newop.isInstanceOf[OP_MultiLoop]) {
-      if (resultMap(Targets.Scala).values.contains("Unit")) { //FIXME: handle foreaches
-        if (Config.clusterMode == 1) DeliteMesosScheduler.warn("WARNING: ignoring stencil of op with Foreach: " + id)
-      }
-      else processStencil(newop, op)
+      processStencil(newop, op)
     }
 
     // handle aliases
@@ -465,6 +462,14 @@ object DeliteTaskGraph {
       val result = graph._result._1
       EOP.addDependency(result)
       result.addConsumer(EOP)
+    }
+
+    // We can have a situation where the graph ends with multiple effectful nodes that
+    // do not depend on each other (e.g. independent writes), so we must be careful
+    // to also depend on any of these leftover leaves, as well.
+    for ((id,op) <- graph._ops if op.getConsumers.size == 0) {
+      EOP.addDependency(op)
+      op.addConsumer(EOP)
     }
 
     graph.registerOp(EOP)

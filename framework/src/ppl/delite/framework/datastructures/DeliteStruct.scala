@@ -138,21 +138,22 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
   }).asInstanceOf[Def[A]]
 
 
-  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
-    case s: DeliteStruct[_] => Nil
-    case NestedFieldUpdate(_,_,_) => Nil
-    case _ => super.aliasSyms(e)
-  }
-
   // We need containSyms to be defined properly in order to get true deep aliases.
   // (allAliases computes aliases in one direction only, from later objects to earlier objects, and the links are determined by containSyms).
   // However, because of the nested mutability rewrites, we cannot define it consistently, or else all the structs start looking mutable.
   // We use these flags to turn on the proper definition only when computing final aliases.
-  var _deliteStructContainsAliases = false
+  var _deliteStructAliases = false
   object deliteStructAliasMode extends AliasCacheMode
 
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case s: DeliteStruct[_] => Nil
+    case NestedFieldUpdate(_,_,_) => Nil
+    case FieldApply(s:Sym[Any],x) if _deliteStructAliases && (dc_data_field(s.tp) == x) => List(s)
+    case _ => super.aliasSyms(e)
+  }
+
   override def containSyms(e: Any): List[Sym[Any]] = e match {
-    case s: DeliteStruct[_] if _deliteStructContainsAliases => s.elems.collect { case (k,v:Sym[Any]) => v }.toList
+    case s: DeliteStruct[_] if _deliteStructAliases => s.elems.collect { case (k,v:Sym[Any]) => v }.toList
     case s: DeliteStruct[_] => Nil // ignore nested mutability for Structs: this is only safe because we rewrite mutations to atomic operations
     case NestedFieldUpdate(_,_,_) => Nil
     case _ => super.containSyms(e)
@@ -388,10 +389,10 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
       insertField(field,tp)
       stream.print(")")
     }
-  }  
+  }
 
   // -- Struct reduction
-  
+
   def delite_array_combine(arrayTp: Manifest[_], lhs: String, rhs: String) = {
     "ppl.delite.runtime.data.DeliteArray" + arrayRemap(deVar(arrayTp).typeArguments(0)) + ".combine(" + lhs + "," + rhs + ")"
   }
@@ -400,7 +401,7 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
   // Note that it is not clear how to define this function for a non-static partitioning, since the DSL is unaware
   // of the splitting context (e.g. partitioning a matrix along columns or rows). Perhaps we need a way of identifying the
   // partitioning dimension, and then to pass that back as part of dc_combine?
-  def dc_combine[A](structType: Manifest[A], elems: Seq[(String,Manifest[_])], prefixL: String, prefixR: String): Seq[(String,Manifest[_],String)] = {    
+  def dc_combine[A](structType: Manifest[A], elems: Seq[(String,Manifest[_])], prefixL: String, prefixR: String): Seq[(String,Manifest[_],String)] = {
     elems map { case (field, tp) =>
       val lhs = prefixL + "." + field
       val rhs = prefixR + "." + field
@@ -413,7 +414,7 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
         else throw new RuntimeException("don't know how to combine type " + deVar(tp))
       (field, tp, newValue)
     }
-    
+
   }
 
   def makeNewStruct(name: String, elems: Seq[(String,Manifest[_],String)]) = {
@@ -431,9 +432,9 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
 
   def emitStructReduction(name: String, structType: Manifest[_], elems: Seq[(String,Manifest[_])], prefixL: String, prefixR: String)(stream: PrintWriter) {
     val newElems = dc_combine(structType, elems, prefixL, prefixR)
-    stream.println(makeNewStruct(name, newElems))    
+    stream.println(makeNewStruct(name, newElems))
   }
-  
+
   // -- end Struct reduction
 
   def emitMessageDeclaration(name: String, elems: Seq[(String,Manifest[_])])(stream: PrintWriter) {

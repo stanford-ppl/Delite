@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 
 import scala.reflect.runtime.universe.TypeTag
 
-import generated.scala.io.DeliteFileInputStream
+import generated.scala.io.{DeliteFileInputStream, DeliteFileOutputStream}
 import ppl.delite.runtime.data._
 import ppl.delite.runtime.messages.Messages._
 import ppl.delite.runtime.DeliteMesosExecutor
@@ -63,6 +63,7 @@ object Serialization {
       case a: Array[Double] => serializeDeliteArray(new LocalDeliteArrayDouble(a), implicitly[TypeTag[T]]).toByteString
       case a: Array[Any] => serializeDeliteArray(new LocalDeliteArrayObject(a), implicitly[TypeTag[T]]).toByteString
       case i: DeliteFileInputStream => i.serialize
+      case o: DeliteFileOutputStream => o.serialize
       case other =>
         try {
           other.getClass.getMethod("toByteString").invoke(other).asInstanceOf[ByteString]
@@ -210,6 +211,7 @@ object Serialization {
         }
 
       case tpe if tpe == classOf[DeliteFileInputStream] => DeliteFileInputStream.deserialize(bytes)
+      case tpe if tpe == classOf[DeliteFileOutputStream] => DeliteFileOutputStream.deserialize(bytes)
       case other =>
         try {
           other.getMethod("parseFrom", classOf[ByteString]).invoke(null, bytes)

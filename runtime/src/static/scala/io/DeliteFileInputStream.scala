@@ -84,9 +84,13 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
   final def position = pos
 
   /* Initialize. This is only required / used when opening a stream directly (i.e. not via multiloop) */
-  if (size > 0) open()
- 
-  
+  if (size > 0) {
+    open()
+  }
+  else {
+    throw new IOException("DeliteFileInputStream opened with size == 0. Paths were: " + files.map(_.getPath.getName).mkString("[",",","]"))
+  }
+
   /* Determine the file that this logical index corresponds to, as well as the byte offset within the file. */
   private def findFileOffset(start: Long) = {
     var offset = start
@@ -141,7 +145,7 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
   private def readLineInternal() {
     var length = reader.readLine(text)
     if (length == 0) {
-      reader.close()        
+      reader.close()
       if (pos >= size) {
         text = null
         return

@@ -45,7 +45,7 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
   protected def writeMethodHeader() {
     out.append("def run() {\n")
     if (Config.profile) out.append("val threadName = Thread.currentThread.getName()\n")
-    out.append("val "+resourceInfoSym+" = new "+resourceInfoType+"("+Targets.getRelativeLocation(location)+",Config.numThreads)\n")
+    out.append("val "+resourceInfoSym+" = new "+resourceInfoType+"(0,Config.numSlaves,"+Targets.getRelativeLocation(location)+",Config.numThreads)\n")
   }
 
   protected def writeMethodFooter() {
