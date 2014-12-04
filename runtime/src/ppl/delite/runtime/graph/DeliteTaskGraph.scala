@@ -67,12 +67,12 @@ object DeliteTaskGraph {
     var streams: List[DeliteOP] = Nil
     visitAll(graph, op => { if (op.outputType contains inputStream) streams = op :: streams })
     for (op <- streams) {
-      val supported = op.getConsumers.map(_.supportedTargets).reduce(_ intersect _) intersect op.supportedTargets
+      val supported = op.getConsumers.filter(_.isInstanceOf[OP_Executable]).map(_.supportedTargets).reduce(_ intersect _) intersect op.supportedTargets
       for (o <- (op.getConsumers + op)) {
         o.supportedTargets.clear()
         o.supportedTargets ++= supported
       }
-      assert(op.supportedTargets.size > 0, "ERROR: There were no common supported targets for FileStream " + op.id)
+      assert(op.supportedTargets.size > 0, "ERROR: There are no common supported targets for FileStream " + op.id)
     }
 
     graph
