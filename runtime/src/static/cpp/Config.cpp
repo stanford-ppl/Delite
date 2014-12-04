@@ -90,6 +90,7 @@ void initializeGlobal(int numThreads, size_t heapSize) {
       resourceInfos[i].rand = new DeliteCppRandom(i);
     }
     DeliteHeapInit(numThreads, heapSize);
+    initializeThreadPool(numThreads);
     InitDeliteCppTimer(numThreads);
   }
   pthread_mutex_unlock(&init_mtx);
