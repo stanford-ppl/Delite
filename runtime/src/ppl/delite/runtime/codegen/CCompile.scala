@@ -7,7 +7,6 @@ import java.io.FileNotFoundException
 import tools.nsc.io.{Directory, Path, File}
 import ppl.delite.runtime.graph.targets.{OS, Targets}
 import ppl.delite.runtime.graph.ops._
-import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.scheduler._
 import java.io.FileWriter
 
@@ -20,22 +19,26 @@ trait CCompile extends CodeCache {
     val sourceHeader: Array[String],
     val libs: Array[String],
     val headerPrefix: String, 
-    val libPrefix: String
+    val libPrefix: String,
+    val compileFlags: String,
+    val linkFlags: String,
+    val features: Array[String]
   )
 
   protected def configFile: String // name of file, will always be searched for inside config/delite/
   protected def compileFlags: Array[String] // machine-independent flags that are always passed to the compiler for this lib
   protected def linkFlags: Array[String] // machine-independent flags that are always passed to the linker for this lib
-  protected def outputSwitch: String // compiler parameter that allows us to specify destination dir (e.g. -o)
+  protected def optionalFeatures: Array[String] = Array() //features (e.g., headers) that users can enable but we don't want to require
   protected lazy val config = loadConfig(configFile)
   
   private val headerBuffer = new ArrayBuffer[(String, String)]
   private val kernelBuffer = new ArrayBuffer[String] // list of kernel filenames to be included in the compilation (non-multiloop kernels)
   protected def auxSourceList = List[String]() // additional source filenames to be included in the compilation
+  protected val shared = CppCompile
 
   def headers = headerBuffer.map(_._2)
 
-  protected def deliteLibs = Config.deliteBuildHome + sep + "libraries" + sep + target
+  protected def deliteLibs = Seq(Config.deliteBuildHome + sep + "libraries" + sep + target, staticResources)
 
   def addKernel(op: DeliteOP) { 
     op match {
@@ -53,7 +56,7 @@ trait CCompile extends CodeCache {
   protected def loadConfig(f: String): CompilerConfig = {
     // parse XML, return configuration
     val configFile = File(Config.deliteHome + sep + "config" + sep + "delite" + sep + f)
-    if (!configFile.isValid) throw new FileNotFoundException("could not load compiler configuration: " + configFile)
+    if (!configFile.exists) throw new FileNotFoundException("could not load compiler configuration: " + configFile)
 
     val body = XML.loadFile(configFile.jfile)
     val compiler = (body \\ "compiler").text.trim
@@ -63,44 +66,44 @@ trait CCompile extends CodeCache {
     val sourceHeader = body \\ "headers" flatMap { e => e \\ "include" map { _.text.trim } } toArray
     val libPrefix = (body \\ "libs" \ "prefix").text.trim
     val libs = body \\ "libs" flatMap { e => val prefix = e \ "prefix"; (e \\ "path").map(p => prefix.text.trim + p.text.trim) ++ (e \\ "library").map(l => l.text.trim) } toArray
-
-    new CompilerConfig(compiler, make, headerDir, sourceHeader, libs, headerPrefix, libPrefix)
+    val compileFlags = (body \\ "compileFlags").text.trim
+    val linkFlags = (body \\ "linkFlags").text.trim
+    val features = (body \\ "feature" map { _.text.trim }).toArray
+    new CompilerConfig(compiler, make, headerDir, sourceHeader, libs, headerPrefix, libPrefix, compileFlags, linkFlags, features)
   }
 
-  def compile(graph: DeliteTaskGraph) {
+  def compile() {
     if (sourceBuffer.length == 0) return
+    if (Config.verbose) println("[delite]: starting C compile")
+    val start = System.currentTimeMillis
     cacheRuntimeSources((sourceBuffer ++ headerBuffer).toArray)
     
     if (modules.exists(_.needsCompile)) {
-      val includes = modules.flatMap(m => List(config.headerPrefix + sourceCacheHome + m.name, config.headerPrefix + Compilers(Targets.getHostTarget(target)).sourceCacheHome + m.name)).toArray ++ 
-                     config.headerDir ++ Array(config.headerPrefix + staticResources, config.headerPrefix + hostCompiler.staticResources)
-      val libs = config.libs ++ Directory(deliteLibs).files.withFilter(f => f.extension == OS.libExt || f.extension == OS.objExt).map(_.path)
+      val includes = (modules.flatMap(m => List(config.headerPrefix + sourceCacheHome + m.name, config.headerPrefix + Compilers(Targets.getHostTarget(target)).sourceCacheHome + m.name)).toArray ++ 
+                     config.headerDir ++ Array(config.headerPrefix + staticResources, config.headerPrefix + shared.staticResources)).distinct
+      val libs = config.libs ++ deliteLibs.map(Directory(_).files.withFilter(f => f.extension == OS.libExt).map(_.path)).flatten
       val sources = (sourceBuffer.map(s => sourceCacheHome + "runtime" + sep + s._2) ++ kernelBuffer.map(k => sourceCacheHome + "kernels" + sep + k) ++ auxSourceList).toArray
       val degName = ppl.delite.runtime.Delite.inputArgs(0).split('.')
-      val dest = binCacheHome + target + "Host" + degName(degName.length-2) + "." + OS.libExt
-      def opsFromSchedule(s: PartialSchedule): Seq[DeliteOP] = {
-        s.map(_.toArray()).flatten.flatMap(_ match {
-          case m: OP_Nested => m.nestedGraphs.flatMap(g => opsFromSchedule(g.schedule))
-          case o@_ => Array(o)
-        })
-      }
-      val scheduleMap = opsFromSchedule(graph.schedule).flatMap(o => List((o.task,o.scheduledResource),(o.id,o.scheduledResource))).toMap
-      compile(dest, sources, includes, libs, scheduleMap)
+      val configString = Config.numThreads.toString + Config.numCpp + Config.numCuda + Config.numOpenCL
+      val dest = binCacheHome + target + "Host" + degName(degName.length-2) + "_" + configString + "." + OS.libExt
+      compile(dest, sources, includes, libs)
     }
+
+    val time = (System.currentTimeMillis - start)/1e3
+    if (Config.verbose) println("[delite]: finished C compile in " + time + "s")
     sourceBuffer.clear()
     headerBuffer.clear()
     kernelBuffer.clear()
   }
 
-  def compileInit() {
-    val root = staticResources + sep + target + "Init."
-    val source = root + ext
-    val dest = root + OS.libExt
-    compile(dest, Array(source), config.headerDir, Array[String](), Map[String,Int]())
+  def compileInit(root: String) {
+    val source = root + "." + ext
+    val dest = root + "." + OS.libExt
+    compile(dest, Array(source), config.headerDir, config.libs)
   }
 
   // emit Makefile and call make
-  def compile(destination: String, sources: Array[String], includes: Array[String], libs: Array[String], scheduleMap: Map[String,Int]) {
+  def compile(destination: String, sources: Array[String], includes: Array[String], libs: Array[String]) {
     val destDir = Path(destination).parent
     destDir.createDirectory()
 
@@ -108,7 +111,7 @@ trait CCompile extends CodeCache {
     val makefile = destDir + sep + "Makefile"
     if(!Config.noRegenerate) {
       val writer = new FileWriter(makefile)
-      writer.write(makefileString(destination, sources, includes, libs, scheduleMap))
+      writer.write(makefileString(destination, sources, includes, libs, optionalFeatures))
       writer.close()
     }
 
@@ -119,83 +122,65 @@ trait CCompile extends CodeCache {
     if (config.headerDir.length == 0)
       throw new RuntimeException("JNI header paths are not set. Please specify in $DELITE_HOME/config/delite/" + configFile + " (<headers> </headers>)")
 
-    //TODO: How many parallel jobs? For now, the number of processors * 4.
-    val args = Array(config.make, "-s", "-j", (4 * Runtime.getRuntime.availableProcessors).toString, "-f", makefile, "all")
-    val process = Runtime.getRuntime.exec(args)
-    process.waitFor
-    checkError(process, args)
+    val args = config.make.split(" ") ++ Array("-f", makefile, "all")
+    val pb = new java.lang.ProcessBuilder(args:_*)
+    pb.redirectErrorStream(true) //merge stdout and stderr
+    val outFile = File("compile.log")
+    pb.redirectOutput(outFile.jfile)
+    val process = pb.start()
+    process.waitFor()
+    checkError(process, args, outFile)
   }
 
-  protected def checkError(process: Process, args: Array[String]) {
-    val errorStream = process.getErrorStream
-    val inputStream = process.getInputStream
-    val out = new StringBuilder
-
-    var err = errorStream.read()
-    if (err != -1) {
-      out.append("--" + target + " compile args: " + args.mkString(","))
-      while (err != -1) {
-        out.append(err.asInstanceOf[Char])
-        err = errorStream.read()
-      }
-      out.append('\n')
+  protected def checkError(process: Process, args: Array[String], file: File) {
+    val out = "--" + target + " compile args: " + args.mkString(",")
+    if (Config.verbose || process.exitValue != 0) {
+      if(Config.clusterMode == 2) // Send the error message to the master node
+        ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(out)
+      else 
+        println(out)
     }
 
-    var in = inputStream.read()
-    if (in != -1) {
-      while (in != -1) {
-        out.append(in.asInstanceOf[Char])
-        in = inputStream.read()
-      }
-      out.append('\n')
-    }
-
-    if (process.exitValue != 0) {
+    if (process.exitValue == 0) {
+      file.delete() //remove log
+    } else {
       sourceBuffer.clear()
       headerBuffer.clear()
       kernelBuffer.clear()
-      if(Config.clusterMode == 2) // Send the error message to the master node
-        ppl.delite.runtime.DeliteMesosExecutor.sendDebugMessage(out.toString)
-      else 
-        println(out.toString)
-      sys.error(target + " compilation failed with exit value " + process.exitValue)
+      sys.error(target + " compilation failed with exit value " + process.exitValue + " (log in "+file+")")
     }
   }
 
+  protected def verbosity = if (Config.verbose) "-DDELITE_VERBOSE" else ""
+
   // string for the Makefile
-  def makefileString(destination: String, sources: Array[String], includes: Array[String], libs: Array[String], scheduleMap: Map[String,Int]) = """
+  def makefileString(destination: String, sources: Array[String], includes: Array[String], libs: Array[String], features:Array[String]) = s"""
 ## Makefile: Generated by Delite Runtime ##
-CC = %1$s
-DELITE_HOME = %2$s
-SOURCECACHE_HOME = %3$s
-BINCACHE_HOME = %4$s
-INCLUDES = %5$s
+CC = ${config.compiler}
+DELITE_HOME = ${Config.deliteHome}
+SOURCECACHE_HOME = ${sourceCacheHome}
+BINCACHE_HOME = ${binCacheHome}
+INCLUDES = ${includes.mkString(" ")}
 
-CFLAGS = %6$s
-LDFLAGS = %7$s
-SOURCES = %8$s
-OBJECTS = $(SOURCES:.%9$s=.o)
-OUTPUT = %10$s
-DELITE_HEAP_LOCATION = -1
+CFLAGS = ${(compileFlags ++ Array(config.compileFlags)).mkString(" ")}
+LDFLAGS = ${(linkFlags ++ Array(config.linkFlags) ++ libs).mkString(" ")}
+SOURCES = ${sources.mkString(" ")}
+OBJECTS = $$(SOURCES:.${ext}=.o)
+OUTPUT = ${destination}
 
-all: $(OUTPUT)
-
-# target-specific variables for each source
-%13$s
+all: $$(OUTPUT)
 
 # The order of objects and libraries matter because of the dependencies
-$(OUTPUT): $(OBJECTS)
-	$(CC) $(OBJECTS) $(LDFLAGS) -o $(OUTPUT)
+$$(OUTPUT): $$(OBJECTS)
+\t$$(CC) $$(OBJECTS) $$(LDFLAGS) -o $$(OUTPUT)
 
-%%.o: %%.%9$s
-	$(CC) -c -DDELITE_CPP=%11$s -DMEMMGR_%12$s -DDELITE_HEAP_LOCATION=$(DELITE_HEAP_LOCATION) $(INCLUDES) $(CFLAGS) $< -o $@
+%.o: %.${ext}
+\t$$(CC) -c ${verbosity} -DDELITE_CPP=${Config.numCpp} -DMEMMGR_${Config.cppMemMgr.toUpperCase} ${features.map("-D"+_).mkString(" ")} $$(INCLUDES) $$(CFLAGS) $$< -o $$@
 
 clean:
-	rm -f $(OBJECTS) $(OUTPUT)
+\trm -f $$(OBJECTS) $$(OUTPUT)
 
 .PHONY: all clean
-""".format(config.compiler,Config.deliteHome,sourceCacheHome,binCacheHome,includes.mkString(" "),
-           compileFlags.mkString(" "),(linkFlags++libs).mkString(" "),sources.mkString(" "),ext,destination,
-           Config.numCpp,Config.cppMemMgr.toUpperCase,
-           sources.map(s => (s,scheduleMap.getOrElse(s.split(sep).last.dropRight(ext.length+1),-1))).filter(_._2 >= 0).map(r => r._1.dropRight(ext.length)+"o: DELITE_HEAP_LOCATION := "+Targets.getRelativeLocation(r._2)).mkString("\n"))
+
+"""
 }

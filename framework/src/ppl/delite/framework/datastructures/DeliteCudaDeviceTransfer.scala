@@ -27,7 +27,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
       val signature = "%s *sendCuda_%s(%s *sym)".format(remap(tp),mangledName(remap(tp)),remapHost(tp))
       out.append(signature + " {\n")
       out.append("\t%s *sym_dev = new %s();\n".format(remap(tp),remap(tp)))
-      for(elem <- encounteredStructs(structName(tp))) {
+      for(elem <- encounteredStructs(structName(tp))._2) {
         val elemtp = baseType(elem._2)
         if(isPrimitiveType(elemtp)) {
           out.append("\tsym_dev->%s = sym->%s;\n".format(elem._1,elem._1))
@@ -107,7 +107,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
       val signature = "%s *recvCuda_%s(%s *sym_dev)".format(remapHost(tp),mangledName(remap(tp)),remap(tp))
       out.append(signature + " {\n")
       out.append("\t%s *sym = new %s();\n".format(remapHost(tp),remapHost(tp)))
-      for(elem <- encounteredStructs(structName(tp))) {
+      for(elem <- encounteredStructs(structName(tp))._2) {
         val elemtp = baseType(elem._2)
         if(isPrimitiveType(elemtp)) {
           out.append("\tsym->%s = sym_dev->%s;\n".format(elem._1,elem._1))
@@ -172,7 +172,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
       val out = new StringBuilder
       val signature = "void sendUpdateCuda_%s(%s *sym_dev, %s *sym)".format(mangledName(remap(tp)),remap(tp),remapHost(tp))
       out.append(signature + " {\n")
-      for(elem <- encounteredStructs(structName(tp))) {
+      for(elem <- encounteredStructs(structName(tp))._2) {
         val elemtp = baseType(elem._2)
         if(isPrimitiveType(elemtp)) {
           out.append("\tsym_dev->%s = sym->%s;\n".format(elem._1,elem._1))
@@ -216,7 +216,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
       val out = new StringBuilder
       val signature = "void recvUpdateCuda_%s(%s *sym_dev, %s *sym)".format(mangledName(remap(tp)),remap(tp),remapHost(tp))
       out.append(signature + " {\n")
-      for(elem <- encounteredStructs(structName(tp))) {
+      for(elem <- encounteredStructs(structName(tp))._2) {
         val elemtp = baseType(elem._2)
         if(isPrimitiveType(elemtp)) {
           out.append("\tsym->%s = sym_dev->%s;\n".format(elem._1,elem._1))

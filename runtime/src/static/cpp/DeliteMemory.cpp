@@ -1,109 +1,132 @@
 #include "DeliteMemory.h"
 
-std::list<char *> **DeliteHeapBlockList;  // list of allocated heap blocks for each thread
-char **DeliteHeapCurrentBlock;            // current heap block pointer for each thread
-size_t *DeliteHeapOffset;                 // offset of the current heap block for each thread
-size_t DeliteHeapBlockSize;               // size of a heap block
+#define DEFAULT_BLOCK_SIZE 1UL*1024*1024
 
-pthread_mutex_t heapInitLock = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t heapInitCond = PTHREAD_COND_INITIALIZER;
-int heapInitCnt = 0;
+size_t defaultBlockSize;
+std::list<char *> **DeliteHeapBlockList = NULL;  // list of allocated heap blocks for each thread
+char **DeliteHeapCurrentBlock;            // current heap block pointer for each thread
+size_t *DeliteHeapCurrentBlockSize;       // remaining size of the current heap block for each thread
+
+char **DeliteHeapSavedBlock;
+size_t *DeliteHeapSavedBlockSize;
+
+pthread_mutex_t barrier_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t barrier_cond = PTHREAD_COND_INITIALIZER;
+unsigned int arrivedCount = 0;
 
 // align thread-local variables with 64 bytes to avoid false sharing
-const int paddingShift = 6;
+#define PADDING_SHIFT 6
 
-void delite_barrier(int cnt) {
-  if (cnt > 1) {
-    pthread_mutex_lock(&heapInitLock);
-    heapInitCnt += 1;
-    if (heapInitCnt < cnt) {
-      pthread_cond_wait(&heapInitCond, &heapInitLock);
+void delite_barrier(unsigned int count) {
+  if (count > 1) {
+    pthread_mutex_lock(&barrier_lock);
+    arrivedCount += 1;
+    if (arrivedCount >= count) {
+      arrivedCount = 0;
+      pthread_cond_broadcast(&barrier_cond);
+    } else {
+      pthread_cond_wait(&barrier_cond, &barrier_lock);
     }
-    if (heapInitCnt == cnt) {
-      pthread_cond_broadcast(&heapInitCond);
-      heapInitCnt = 0;
-    }
-    pthread_mutex_unlock(&heapInitLock);
+    pthread_mutex_unlock(&barrier_lock);
   }
 }
 
-// idx: the resource (thread) index for initialization
-// numThreads: the total number of threads (max number of possible thread ids)
-// numLiveThreads: the actual number of threads that has some work scheduled (they're calling this init)
-// heapSize: total heap size (aggregation for all the threads)
-void DeliteHeapInit(int idx, int numThreads, int numLiveThreads, int initializer, size_t heapSize) {
-  cpu_set_t cpuset;
-  pthread_t thread = pthread_self();
-
-  CPU_ZERO(&cpuset);
-  CPU_SET(idx, &cpuset);
-  if(pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) != 0) {
-    DHEAP_DEBUG("[WARNING] pthread_setaffinity_np failed for thread %d\n", idx);
+void DeliteHeapInit(int numThreads, size_t heapSize) {
+  if (heapSize != 0) {
+    defaultBlockSize = heapSize / numThreads;
+  } else {
+    defaultBlockSize = DEFAULT_BLOCK_SIZE;
   }
 
-  if (heapSize == 0) {
-    int64_t pages = sysconf(_SC_PHYS_PAGES);
-    int64_t page_size = sysconf(_SC_PAGE_SIZE);
-    heapSize = pages * page_size / 8; // TODO: what is the proper size for each heap block?
+  size_t padSize = numThreads << PADDING_SHIFT;
+  DeliteHeapBlockList = new std::list<char*>*[padSize];
+  DeliteHeapCurrentBlock = new char*[padSize];
+  DeliteHeapCurrentBlockSize = new size_t[padSize];
+  DeliteHeapSavedBlock = new char*[padSize];
+  DeliteHeapSavedBlockSize = new size_t[padSize];
+
+  for (int i=0; i<numThreads; i++) {
+    size_t padIdx = i << PADDING_SHIFT;
+    DeliteHeapBlockList[padIdx] = new std::list<char*>();
+    DeliteHeapCurrentBlock[padIdx] = NULL;
+    DeliteHeapCurrentBlockSize[padIdx] = 0;
+    DHEAP_DEBUG("finished heap initialization for resource %d\n", i);
   }
-
-  if (idx == initializer) {
-    DeliteHeapBlockList = new std::list<char*>*[numThreads << paddingShift];
-    DeliteHeapCurrentBlock = new char*[numThreads << paddingShift];
-    DeliteHeapOffset = new size_t[numThreads << paddingShift];
-  }
-  DeliteHeapBlockSize = heapSize / numLiveThreads;
-  char *ptr = new char[DeliteHeapBlockSize];
-  memset(ptr, 0, DeliteHeapBlockSize);
-
-  delite_barrier(numLiveThreads);
-
-  // Now all the threads allocated and initialized their own heap
-  DeliteHeapBlockList[idx << paddingShift] = new std::list<char*>(1,ptr);
-  DeliteHeapCurrentBlock[idx << paddingShift] = ptr;
-  DeliteHeapOffset[idx << paddingShift] = 0;
-  DHEAP_DEBUG("finished heap initialization for resource %d, size: %lld\n", idx, DeliteHeapBlockSize);
 }
 
-void DeliteHeapClear(int idx, int numThreads, int numLiveThreads, int finalizer) {
-  std::list<char*> *blocklist = DeliteHeapBlockList[idx << paddingShift];
-  size_t heapUsage = DeliteHeapOffset[idx << paddingShift] + (blocklist->size() - 1) * DeliteHeapBlockSize;
-  delite_barrier(numLiveThreads);
-  for (std::list<char*>::iterator iter = blocklist->begin(); iter != blocklist->end(); iter++) {
-    delete[] *iter;
+void DeliteHeapAllocBlock(size_t minSize, int idx) {
+  size_t padIdx = idx << PADDING_SHIFT;
+  size_t blockSize = std::max(minSize, defaultBlockSize);
+  char *newBlock = new char[blockSize];
+  if (!newBlock) {
+    fprintf(stderr, "[ERROR]: Out of memory!");
+    exit(-1);
   }
-  if (idx == finalizer) {
-    delete[] DeliteHeapBlockList;
-    delete[] DeliteHeapCurrentBlock;
-    delete[] DeliteHeapOffset;
-  }
-  DHEAP_DEBUG("finished heap clear for resource %d, used: %lld\n", idx, heapUsage);
+  memset(newBlock, 0, blockSize);
+  DeliteHeapBlockList[padIdx]->push_back(newBlock);
+  DeliteHeapCurrentBlock[padIdx] = newBlock;
+  DeliteHeapCurrentBlockSize[padIdx] = blockSize;
+  DHEAP_DEBUG("Insufficient existing heap space for thread %d. Allocating %lld MB.\n", idx, blockSize/1024/1024);
 }
 
 char *DeliteHeapAlloc(size_t sz, int idx) {
   //TODO: Need alignment for each type (passed as paramter)?
-  size_t alignedSize = (sz+0x0008) & 0xFFFFFFF8;
-  size_t currentOffset = DeliteHeapOffset[idx << paddingShift];
-  size_t newOffset = currentOffset + alignedSize;
-  // allocate a new heap block if more space is needed
-  if (newOffset > DeliteHeapBlockSize) {
-    currentOffset = 0;
-    newOffset = alignedSize;
-    char *newBlock = new char[DeliteHeapBlockSize];
-    DeliteHeapBlockList[idx << paddingShift]->push_back(newBlock);
-    DeliteHeapCurrentBlock[idx << paddingShift] = newBlock;
-    DHEAP_DEBUG("Used all available heap for thread %d. Allocating more memory.\n", idx);
-  }
-  char *ptr = DeliteHeapCurrentBlock[idx << paddingShift] + currentOffset; 
   DHEAP_DEBUG("DeliteHeapAlloc called for idx %d with size %d\n", idx, sz);
-  DeliteHeapOffset[idx << paddingShift] = newOffset;
+  size_t padIdx = idx << PADDING_SHIFT;
+  size_t alignedSize = (sz+0x0008) & 0xFFFFFFF8;
+  
+  size_t blockSize = DeliteHeapCurrentBlockSize[padIdx];
+  // allocate a new heap block if more space is needed
+  if (alignedSize > blockSize) {
+    DeliteHeapAllocBlock(alignedSize, idx);
+  }
+
+  char* ptr = DeliteHeapCurrentBlock[padIdx];
+  DeliteHeapCurrentBlock[padIdx] += alignedSize;
+  DeliteHeapCurrentBlockSize[padIdx] -= alignedSize;
   return ptr;
 }
 
-void *operator new(size_t sz, const resourceInfo_t &resourceInfo) {
-  return DeliteHeapAlloc(sz, resourceInfo.thread_id);
+void *operator new(size_t sz, const resourceInfo_t *resourceInfo) {
+  return DeliteHeapAlloc(sz, resourceInfo->threadId);
 }
 
-void *operator new[](size_t sz, const resourceInfo_t &resourceInfo) {
-  return DeliteHeapAlloc(sz, resourceInfo.thread_id);
+void *operator new[](size_t sz, const resourceInfo_t *resourceInfo) {
+  return DeliteHeapAlloc(sz, resourceInfo->threadId);
+}
+
+void DeliteHeapClear(int numThreads) {
+  for (int i=0; i<numThreads; i++) {
+    size_t padIdx = i << PADDING_SHIFT;
+    std::list<char*> *blocklist = DeliteHeapBlockList[padIdx];
+    size_t heapUsage = blocklist->size();
+    for (std::list<char*>::iterator iter = blocklist->begin(); iter != blocklist->end(); iter++) {
+      delete[] *iter;
+    }
+    delete blocklist;
+
+    DHEAP_DEBUG("finished heap clear for resource %d, used %d blocks (%lld MB blocks).\n", i, heapUsage, defaultBlockSize/1024/1024);
+  }
+
+  delete[] DeliteHeapBlockList;
+  delete[] DeliteHeapCurrentBlock;
+  delete[] DeliteHeapCurrentBlockSize;
+  delete[] DeliteHeapSavedBlock;
+  delete[] DeliteHeapSavedBlockSize;
+}
+
+/* saves the current position in the heap */
+void DeliteHeapMark(int idx) {
+  size_t padIdx = idx << PADDING_SHIFT;
+  DeliteHeapSavedBlock[padIdx] = DeliteHeapCurrentBlock[padIdx];
+  DeliteHeapSavedBlockSize[padIdx] = DeliteHeapCurrentBlockSize[padIdx];
+}
+
+/* resets the heap to the previous mark */
+void DeliteHeapReset(int idx) {
+  //FIXME: this leaks all blocks allocated between the mark and the current position!
+  size_t padIdx = idx << PADDING_SHIFT;
+  DHEAP_DEBUG("reseting heap for resource %d, used %lld MB.\n", idx, (DeliteHeapSavedBlockSize[padIdx]-DeliteHeapCurrentBlockSize[padIdx])/1024/1024);
+  DeliteHeapCurrentBlock[padIdx] = DeliteHeapSavedBlock[padIdx];
+  DeliteHeapCurrentBlockSize[padIdx] = DeliteHeapSavedBlockSize[padIdx];
 }

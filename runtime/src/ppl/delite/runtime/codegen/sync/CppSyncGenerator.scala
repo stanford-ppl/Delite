@@ -57,7 +57,7 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
           s.sender.from.mutableInputsCondition.get(s.sender.sym) match {
             case Some(lst) => 
               out.append("if(")
-              out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
+              out.append(lst.map(c => c._1.id.split('_').head + "_cond == "+c._2).mkString("&&"))
               out.append(") {\n")
               writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym); 
               out.append("}\n")
@@ -104,7 +104,7 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
       s.from.mutableInputsCondition.get(s.sym) match {
         case Some(lst) => 
           out.append("if(")
-          out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
+          out.append(lst.map(c => c._1.id.split('_').head + "_cond == "+c._2).mkString("&&"))
           out.append(") {\n")
           writeSendUpdater(s.from, s.sym)
           writeNotifier(s.from, s.sym)

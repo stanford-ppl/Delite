@@ -17,16 +17,23 @@ object ScalaCompile extends CodeCache {
   def javaExt = "java"
 
   def compile: ClassLoader = {
+    if (Config.verbose) println("[delite]: starting scala compile")
+    val start = System.currentTimeMillis
     cacheRuntimeSources(sourceBuffer.toArray)
     sourceBuffer.clear()
 
     for (module <- modules if (module.needsCompile)) {
+      val start = System.currentTimeMillis
       val sources = Directory(Path(sourceCacheHome + module.name)).deepFiles.filter(f => f.extension == ext || f.extension == javaExt).map(_.path).toArray
       val classes = module.deps.map(d => Path(classCacheHome + d.name).path).toArray
       compile(classCacheHome + module.name, sources, classes)
+      val time = (System.currentTimeMillis - start)/1e3
+      if (Config.verbose) println("[delite]: compiled " + module.name + " in " + time + "s")
     }
     unifyClasses()
     
+    val time = (System.currentTimeMillis - start)/1e3
+    if (Config.verbose) println("[delite]: finished scala compile in " + time + "s")
     ScalaClassLoader.fromURLs(modules.map(m => Path(classCacheHome + m.name).toURL), this.getClass.getClassLoader)
   }
 

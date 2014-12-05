@@ -20,6 +20,9 @@ import tools.nsc.io._
 
 object Delite {
 
+  private var _executor: Executor = _
+  def executor = _executor
+
   private var mainThread: Thread = _
   private var outstandingException: Throwable = _
 
@@ -74,21 +77,15 @@ object Delite {
     Arguments.staticDataMap = staticData
     var appResult: Any = null
 
-    //TODO: combine into a single scheduler and executor
-    val executor = Config.executor match {
-      case "SMP" => new SMPExecutor
-      case "ACC" => new SMP_Acc_Executor
-      case "default" => {
-        if (Config.numCpp+Config.numCuda+Config.numOpenCL==0) new SMPExecutor
-        else if (Config.clusterMode == 1) new SMPExecutor
-        else new SMP_Acc_Executor
-      }
-      case _ => throw new IllegalArgumentException("Requested executor is not recognized")
+    _executor = Config.executor match {
+      case "default" => new MultiAccExecutor
+      case "acc" => new MultiAccExecutor
+      case e => throw new IllegalArgumentException("Requested executor is not recognized ("+e+")")
     }
 
     def abnormalShutdown() {
       if (executor != null) executor.shutdown()
-      if (!Config.noRegenerate && !Config.alwaysKeepCache)
+      if (!Config.alwaysKeepCache)
         Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
     }
 
@@ -103,14 +100,9 @@ object Delite {
       if(Config.numOpenCL>0 && !graph.targets(Targets.OpenCL)) { Config.numOpenCL = 0; println("[WARNING] No OpenCL target op is generated!") }
 
       val scheduler = Config.scheduler match {
-        case "SMP" => new SMPStaticScheduler
-        case "ACC" => new Acc_StaticScheduler
-        case "default" => {
-          if (Config.numCpp+Config.numCuda+Config.numOpenCL==0) new SMPStaticScheduler
-          else if (Config.clusterMode == 1) new SMPStaticScheduler
-          else new Acc_StaticScheduler
-        }
-        case _ => throw new IllegalArgumentException("Requested scheduler is not recognized")
+        case "static" => new AccStaticScheduler(Config.numThreads, Config.numCpp, Config.numCuda, Config.numOpenCL)
+        case "dynamic" => new AccStaticScheduler(if (Config.numThreads > 0) 1 else 0, if (Config.numCpp > 0) 1 else 0, Config.numCuda, Config.numOpenCL)
+        case e => throw new IllegalArgumentException("Requested scheduler is not recognized ("+e+")")
       }
 
       Config.deliteBuildHome = graph.kernelPath
@@ -131,13 +123,6 @@ object Delite {
     def runTime(executable: StaticSchedule) {
       //execute
       if (Config.clusterMode == 2) { //slave executor
-        //DeliteMesosExecutor.executor = executor.asInstanceOf[SMPExecutor].threadPool
-        if(executor.isInstanceOf[SMPExecutor])
-          DeliteMesosExecutor.executor = executor.asInstanceOf[SMPExecutor].threadPool
-        else {
-          DeliteMesosExecutor.executor = executor.asInstanceOf[SMP_Acc_Executor].smpExecutor.threadPool
-          executor.asInstanceOf[SMP_Acc_Executor].runAcc(executable)
-        }
         DeliteMesosExecutor.awaitWork()
       }
       else { //master executor (including single-node execution)
@@ -178,9 +163,13 @@ object Delite {
   }
 
   def loadSources(graph: DeliteTaskGraph) {
+    CodeCache.verifyCache()
     for (target <- Targets.values) {
-      if (graph.targets contains target)
-        Compilers(target).cacheDegSources(Directory(Path(graph.kernelPath + File.separator + Compilers(target).target + File.separator).toAbsolute))
+      if (graph.targets contains target) {
+        val dir = Directory(Path(graph.kernelPath + File.separator + Compilers(target).target + File.separator).toAbsolute)
+        if (!dir.exists) throw new java.io.FileNotFoundException("generated " + target + " directory does not exist")
+        Compilers(target).cacheDegSources(dir)
+      }
     }
   }
 

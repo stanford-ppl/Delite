@@ -3,6 +3,7 @@ package ppl.delite.runtime.graph.ops
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.targets.Targets
 import scala.collection.mutable.HashSet
+import scala.collection.immutable.SortedSet
 
 /**
  *
@@ -94,7 +95,7 @@ class OP_Condition(val id: String, private[graph] var outputTypesMap: Map[Target
         case _ =>  
       }
     }
-    mutableInputs = mset.toSet
+    mutableInputs = SortedSet.empty[(DeliteOP,String)] ++ mset
   }
 
 }

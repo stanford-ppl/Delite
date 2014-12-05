@@ -77,7 +77,7 @@ trait DeliteArrayBufferCompilerOps extends DeliteArrayBufferOps {
   def darray_buffer_unsafe_result[A:Manifest](d: Rep[DeliteArrayBuffer[A]])(implicit ctx: SourceContext): Rep[DeliteArray[A]]
 }
 
-trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollectionOpsExp with StructExp with PrimitiveOpsExp with EqualExp with VariablesExp with DeliteStructsExp {
+trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollectionOpsExp with DeliteStructsExp {
   this: DeliteArrayOpsExpOpt with DeliteOpsExp with DeliteMapOpsExp =>
 
   /////////////////////////////////
@@ -107,7 +107,7 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     //darray_buffer_insert(d, d.length, elem)
     darray_buffer_ensureextra(d,unit(1))
     darray_buffer_update(d,d.length,elem)
-    darray_buffer_set_length(d, d.length+unit(1))
+    darray_buffer_set_length(d, delite_int_plus(d.length,unit(1)))
   }
 
   def darray_buffer_appendAll[A:Manifest](d: Exp[DeliteArrayBuffer[A]], elems: Exp[DeliteArray[A]])(implicit ctx: SourceContext): Exp[Unit] = {
@@ -118,7 +118,7 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     val data = darray_buffer_raw_data(d)
     val result = DeliteArray[A](d.length)
     darray_copy(data, unit(0), result, unit(0), d.length)
-    result.unsafeImmutable
+    delite_unsafe_immutable(result)
   }
 
   def darray_buffer_unsafe_result[A:Manifest](d: Exp[DeliteArrayBuffer[A]])(implicit ctx: SourceContext): Exp[DeliteArray[A]] = {
@@ -149,25 +149,25 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
   protected def darray_buffer_insertspace[A:Manifest](d: Exp[DeliteArrayBuffer[A]], pos: Exp[Int], len: Exp[Int]): Exp[Unit] = {
     darray_buffer_ensureextra(d,len)
     val data = darray_buffer_raw_data(d)
-    darray_copy(data, pos, data, pos + len, d.length - pos)
-    darray_buffer_set_length(d, d.length + len)
+    darray_copy(data, pos, data, delite_int_plus(pos, len), delite_int_minus(d.length, pos))
+    darray_buffer_set_length(d, delite_int_plus(d.length, len))
   }
 
   protected def darray_buffer_ensureextra[A:Manifest](d: Exp[DeliteArrayBuffer[A]], extra: Exp[Int]): Exp[Unit] = {
     val data = darray_buffer_raw_data(d)
-    if (data.length - d.length < extra) {
-      darray_buffer_realloc(d, d.length + extra)
+    if (delite_less_than(delite_int_minus(data.length, d.length), extra)) {    
+      darray_buffer_realloc(d, delite_int_plus(d.length, extra))
     }
   }
 
   protected def darray_buffer_realloc[A:Manifest](d: Exp[DeliteArrayBuffer[A]], minLen: Exp[Int]): Exp[Unit] = {  
     val oldData = darray_buffer_raw_data(d)
-    val doubleLength = oldData.length * unit(2)
-    val n = var_new(if (unit(4) > doubleLength) unit(4) else doubleLength)
-    while (n < minLen) n = n * unit(2)
+    val doubleLength = delite_int_times(oldData.length, unit(2))
+    val n = var_new(if (delite_greater_than(unit(4), doubleLength)) unit(4) else doubleLength)
+    while (delite_less_than(n, minLen)) n = delite_int_times(n, unit(2))
     val newData = DeliteArray[A](n)
     darray_copy(oldData, unit(0), newData, unit(0), d.length)
-    darray_buffer_set_raw_data(d, newData.unsafeImmutable)
+    darray_buffer_set_raw_data(d, delite_unsafe_immutable(newData))
   }
 
   /////////////////////
@@ -256,8 +256,9 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
 
   /////////////////////
   // delite collection
-    
-  def isDeliteArrayBuffer[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.tp.erasure,classOf[DeliteArrayBuffer[A]])  
+  
+  def isDeliteArrayBufferTpe(x: Manifest[_])(implicit ctx: SourceContext) = isSubtype(x.erasure,classOf[DeliteArrayBuffer[_]])    
+  def isDeliteArrayBuffer[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isDeliteArrayBufferTpe(x.tp)
   def asDeliteArrayBuffer[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[DeliteArrayBuffer[A]]]
     
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
@@ -312,13 +313,13 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     else super.dc_copy(src,srcPos,dst,dstPos,size)
   }
 
-  override def dc_data_field[A:Manifest](x: Exp[DeliteCollection[A]]) = {
-    if (isDeliteArrayBuffer(x)) "data"
+  override def dc_data_field(x: Manifest[_]) = {
+    if (isDeliteArrayBufferTpe(x)) "data"
     else super.dc_data_field(x)
   }
 
-  override def dc_size_field[A:Manifest](x: Exp[DeliteCollection[A]]) = {
-    if (isDeliteArrayBuffer(x)) "length"
+  override def dc_size_field(x: Manifest[_]) = {
+    if (isDeliteArrayBufferTpe(x)) "length"
     else super.dc_size_field(x)
   }
 
