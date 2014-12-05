@@ -37,13 +37,6 @@ object DeliteTaskGraph {
     enforceRestrictions(graph)
   }
 
-  def visitAll(graph: DeliteTaskGraph, func: DeliteOP => Unit) {
-    for (op <- graph.ops) op match {
-      case n:OP_Nested => n.nestedGraphs.foreach(visitAll(_,func))
-      case _ => func(op)
-    }
-  }
-
   def enforceRestrictions(graph: DeliteTaskGraph)  = {
     //FIXME: this is required because we can't currently have a C++ file reader interoperate with a Scala file writer,
     //so we only allow C++ file reading when there are no file writers in the program
@@ -52,20 +45,20 @@ object DeliteTaskGraph {
     val inputStream = "DeliteFileInputStream"
     var hasOutput = false
 
-    visitAll(graph, op => { if (op.outputType contains outputStream) hasOutput = true })
+    graph.visitAll { op => if (op.outputType contains outputStream) hasOutput = true }
     if (hasOutput) {
-      visitAll(graph, op => {
+      graph.visitAll { op =>
         if ((op.outputType contains inputStream) || (op.getInputs.exists(i => i._1.outputType(i._2) contains inputStream))) {
           op.supportedTargets.clear()
           op.supportedTargets += Targets.Scala
         }
-      })
+      }
     }
 
     //if the multiloop reader fails to generate for a target the filestream should not be on that target either
     //this is required because we currently don't allow stream objects to be copied between targets
     var streams: List[DeliteOP] = Nil
-    visitAll(graph, op => { if (op.outputType contains inputStream) streams = op :: streams })
+    graph.visitAll { op => if (op.outputType contains inputStream) streams = op :: streams }
     for (op <- streams) {
       val supported = op.getConsumers.filter(_.isInstanceOf[OP_Executable]).map(_.supportedTargets).reduce(_ intersect _) intersect op.supportedTargets
       for (o <- (op.getConsumers + op)) {
@@ -634,5 +627,12 @@ class DeliteTaskGraph {
       case m: OP_Nested => m.nestedGraphs.flatMap(g => g.totalOps)
       case o@_ => Seq(o)
     }).toSet ++ inputOps
+  }
+
+  def visitAll(func: DeliteOP => Unit) {
+    for (op <- ops) op match {
+      case n:OP_Nested => n.nestedGraphs.foreach(_.visitAll(func))
+      case _ => func(op)
+    }
   }
 }
