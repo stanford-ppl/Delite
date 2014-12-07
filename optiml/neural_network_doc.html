@@ -1,0 +1,303 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>Deep Learning with Delite and OptiML</title>
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import '../css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='http://stanford-ppl.github.com/Delite/optiml/' title="OptiML">OptiML</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Welcome</a></li>
+              <li><a href='getting_started.html'>Getting Started</a></li>
+              <li><a href="examples.html">Examples</a></li>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="debugging.html">Debugging</a></li>
+              <li><a href="getting_started_native.html">Native Libraries and CUDA</a></li>
+              <li><a href="http://groups.google.com/group/optiml">Mailing List</a></li>
+              <li><a href="downloads/optiml-spec.pdf">Language Specification</a></li>
+              <li><a href='http://stanford-ppl.github.com/Delite/index.html'>Delite</a></li>
+            </ol>
+          </li> 
+          <!--
+          <li>Reference
+            <ol>
+              <li><a href='api/0.3/index.html'>ScalaDoc API</a></li>
+              <li>&nbsp;</li>
+              <li><a href='sponsors.html'>Sponsors</a></li>
+              <li class="logo"><a href="http://ppl.stanford.edu"><img width="110" alt="Stanford Pervasive Parallelism Lab" src='images/ppl_logo_small.png'></a></li>
+            </ol>
+          </li>
+          -->
+        </ol>
+      </div>
+      <div id='content'> 
+        <h1>Deep Learning with Delite and OptiML</h1>
+
+        <h2>Introduction</h2>
+
+        <p> The <a href="neural_network.html">deep learning examples</a> are the fastest way to become familiar with deep learning in OptiML. This page provides a user reference guide. </p>
+
+        <h2>Contents</h2>
+        <ol>
+          <li><a href="#xml">XML File Format</a></li>
+          <li><a href="#dataset">Dataset Layout</a></li>
+          <li><a href="#generation">Network Generation</a></li>
+          <li><a href="#run">Running the Network</a></li>
+        </ol>
+
+        <h2 id='xml'>XML File Format</h2>
+
+        <p>See <code>cnn_example.xml</code> and <code>rnn_example.xml</code> (in the <code>NeuralNetwork/</code> directory) for examples of all the XML tags and their supported attributes.</p>
+        
+        <p> Networks are specified in XML files. Each XML file contains a <code>net</code> tag, as well as a number of <code>layer</code> tags within this <code>net</code> tag. The XML file is used as input to a generator script (either <code>generate_cnn.py</code>, for convolutional neural networks, or <code>generate_rnn.py</code>, for recurrent neural networks). The generator script generates a scala (OptiML) file implementing the neural network. This file calls functions implemented in <code>NetLib.scala</code>. The generator script also creates parameter files for the network, allowing things like the learning rate or momentum to be modified per-layer.</p>
+
+        <h3>net tag</h3>
+        <p> The net tag has the following attributes:</p>
+        <ul>
+          <li>
+            <b>name</b> -- 
+            The name of the network<br />
+            <u>Legal Values:</u>
+            Any string, no spaces or punctuation allowed except _<br />
+            <u>Required:</u>
+            Yes <br />
+            <u>Description:</u>
+            When the network is generated, a subdirectory with this name will be created in the <code>NeuralNetwork/</code> directory. That subdirectory will contain a scala (OptiML) source file with this same name, and it will also be the name of the <code>OptiMLApplication</code> implemented in that file.
+          </li>
+          <li>
+            <b>dataset_path</b> --
+            The path to the dataset<br />
+            <u>Legal Values:</u>
+            Either an absolute path or a path relative to <code>published/OptiML</code> directory (where the app is run from) that contains the dataset files.<br />            
+            <u>Required:</u>
+            Yes <br />
+            <u>Description:</u>
+            See <a href="#dataset">Dataset Layout</a> for the contents of the dataset directory.
+          </li>
+          <li>
+            <b>blas</b> --
+            Uses BLAS (or cuBLAS on the GPU) GEMM instead of OptiML parallel dot products to do matrix multiplication. <br />
+            <u>Legal Values:</u>
+            "1" uses BLAS library calls for every GEMM, "0" (default) does not. <br />
+            <u>Required:</u>
+            No (default: "0") <br />
+          </li>
+        </ul>
+
+        <p> Convolutional neural networks (i.e. XML files read by generate_cnn.py) additionally have the following attributes:</p>
+        <ul>
+          <li>
+            <b>img_size</b> -- 
+            Input image size<br />
+            <u>Legal Values:</u>
+            Square images specified in the following format: "32x32"<br />
+            <u>Required:</u>
+            Yes<br />
+          </li>
+          <li>
+            <b>colormap</b> -- 
+            Whether input images are RGB or Grayscale<br />
+            <u>Legal Values:</u>
+            "RGB" or "Grayscale"<br />
+            <u>Required:</u>
+            Only if images are RGB (default: "Grayscale")<br />
+          </li>
+          <li>
+            <b>num_input_channels</b> -- 
+            An alternative to <code>colormap</code>. Specifies the number of channels of an input image (RGB = "3", Grayscale = "1", etc.)<br />
+            <u>Legal Values:</u>
+            Any integer string (e.g. "4")<br />
+            <u>Required:</u>
+            No (default: "1")<br />
+            <u>Description:</u>
+            Use num_input_channels to specify the number of input channels in each row of your input data. E.g. a grayscale image has 1
+            and an RGB image has 3. "colormap" is a shorthand for num_input_channels, i.e. colormap="Grayscale" is analogous 
+            to num_input_channels="1" and colormap="RGB" is analogous to num_input_channels="3". If num_input_channels is specified,
+            colormap is not needed. If both are specified, colormap is ignored. If neither is specified, the default is Grayscale (1 channel).
+          </li>
+          <li>
+            <b>lr_cmd_line_arg</b> -- 
+            This specifies whether the learning rate should be an input
+            through the command line ("1") or a separate parameter file ("0"). <br />
+            <u>Legal Values:</u>
+            "0" (learning rate through parameter files) or "1" (learning rate as input argument)<br />
+            <u>Required:</u>
+            No (default: "0")<br />
+            <u>Description:</u>
+            If specified, the network can be trained by running, for example: <br />
+            <code>delite CNNExampleCompiler 0.01</code> <br />
+            or with CUDA, <br />
+            <code>delite CNNExampleCompiler --cude 1 0.01</code> <br />
+            This is useful if you want to quickly or programmatically set all layers to have the
+            same learning rate (rather than modifying the parameter file for
+            each layer)
+          </li>
+          <li>
+            <b>input_size</b> --
+            This is an alternative to the img_size attribute. Use this attribute when the inputs to the network 
+            are not images, but arbitrary data vectors. <br />
+            <u>Legal Values:</u>
+            Any integer string (e.g. "400")<br />
+            <u>Required:</u>
+            Either this or img_size is required<br />
+            <u>Description:</u>
+            While generate_cnn.py is meant to generate convolutional 
+            networks that take 2D images as input (i.e. networks that do 2D 
+            convolution and pooling), it can also generate networks which contain
+            only fully-connected / softmax layers. These have no 2D spatial 
+            interpretation and just treat the input as a 1D vector. That means that
+            generate_cnn.py can generate networks for any type of input data. <br />
+
+            If the generated network contains convolution or pooling layers, 
+            i.e. layers with 2D computations, then img_size must be specified 
+            and the size must be square. If input_size is specified instead, it 
+            will result in an error during network generation. <br />
+            
+            But if the network only contains fully-connected and softmax layers (1D computations), then either img_size 
+            or input_size can be used to specify the size of the input vector.
+            E.g. for networks with no convolution/pooling, all these are equivalent: <br /> <br />
+
+                    img_size="20x20" <br />
+                    img_size="40x10" <br />
+                    img_size="400x1" <br />
+                    img_size="1x400" <br />
+                    input_size="400" <br /> <br />
+
+            Here each input example is a vector with 400 elements, and e.g. could be
+            a 20x20 image or any length 400 vector of arbitrary data. Note that if
+            the network contains any convolution or pooling layers, then only the 
+            first attribute is valid. 
+          </li>
+        </ul>
+
+        <p> Recurrent neural networks (i.e. XML files read by generate_rnn.py) additionally have the following attributes:</p>
+
+        <ul>
+          <li>
+            <b>samples_per_window</b> -- 
+            The number of samples per time window <br />
+            <u>Legal Values:</u>
+            Any integer string (e.g. "25")<br />
+            <u>Required:</u>
+            Yes<br />
+            <u>Description:</u>
+            For example if input data is speech, sampled at 1 kHz, and every time step or interval is 10ms, then set the value to "10", because every 10ms window we have 10 input data points.
+          </li>
+        </ul>
+
+        <h3>layer tag</h3>
+        
+        <p>The net tag contains a number of layer tags, which define the architecture of the network (For convolutional networks, only a single "stack" of layers is supported, not any directed acyclic connectivity. Similarly for recurrent networks, only a single "stack" of layers is specified in the XML file, with implied connectivities between each hidden layer at time t and its corresponding hidden layer at time t+1.) The order in which layer tags appear specifies their order in the network, from top to bottom (so the final layer listed is the output layer, and the first layer listed takes input from the dataset).</p>
+        
+        <p>The following layer types are supported (see cnn_example.xml for an example containing all of the layers and their usage)</p>
+        <ul>
+          <li><b><code>CONVOLUTION</code></b> -- valid in XML files read by generate_cnn.py only (not valid in recurrent networks)</li>
+          <li><b><code>MAX_POOL</code></b> -- valid in XML files read by generate_cnn.py only (not valid in recurrent networks)</li>
+          <li><b><code>FULLY_CONNECTED</code></b></li>
+          <li><b><code>SOFTMAX</code></b> -- valid as the final layer only</li>
+        </ul>
+
+        <h5>Mandatory attributes</h5>
+        
+        <p>All layer tags have the following mandatory attributes:</p>
+        <ul>
+          <li><b>name</b> -- currently only used for comments in the code</li>
+          <li><b>type</b> -- one of the supported layer types above (e.g. CONVOLUTION, in all capitals)</li>
+        </ul>
+
+        <p>All layer tags except for MAX_POOL layers also have the following mandatory attribute:</p>
+        <ul>
+          <li><b>num_hidden</b> -- For convolutional layers, this is the number of output feature maps of that layer. For softmax layers, this is the number of outputs (classes). For fully-connected layers, this is the number of hidden units.</li>
+        </ul>
+
+        <p>Max-pool layers require the <b>pool_size</b> attribute, which is an integer, e.g. "2". This specifies the pooling size (2x2 in this example). Overlapping pooling is currently not supported.</p>
+
+        <p>Convolutional layers require the <b>kernel_size</b> attribute, which is an odd integer, e.g. "5". This specifies that convolution kernels (receptive fields) of size 5x5 be used. A stride of 1 is used. Other strides are currently not supported. Furthermore, convolutions do not change feature map sizes, i.e. padding is added automatically to maintain feature map size. Variable padding is also currently not supported.</p>
+        
+        <h5>Optional attributes</h5>
+        
+        <p>Fully-connected layers optionally support the <b>dropout</b> attribute, which is a number between 0 and 1, e.g. "0.5". This specifies the dropout probability during training of each hidden unit activation (default: "0").</p>
+        
+        <p>Convolution and fully-connected layers have the following optional attribute:</p>
+        <ul>
+          <li><b>activation</b> -- (optional, default: "ReLU") The type of output activation unit. Options are <code>LINEAR</code> (no activation), <code>LOGISTIC</code> (sigmoid between 0 and 1), and <code>ReLU</code> (Rectified linear).</li>
+        </ul>
+
+        <h2 id='dataset'>Dataset Layout</h2>
+        
+        <p> See the <code>examples/</code> directory for dataset examples. The dataset is specified by six files: <code>train_data.txt</code>, <code>train_labels.txt</code>, <code>val_data.txt</code>, <code>val_labels.txt</code>, <code>test_data.txt</code> and <code>test_labels.txt</code> (test_data and test_labels are optional). The *_data files specify a matrix and the *_labels files a vector. The data matrix is in tsv format, with one example per row, i.e. each line is a row of the matrix, with elements in the row separated by tabs. The labels vector has 1 entry per line.</p>
+
+        <p> For image data (convolutional networks), where each example is an image (or a number of images, e.g. 3 RGB colormaps), concatenate each row of the images to form a single vector. For example, for a dataset containing 32x32 RGB images, each row of the data files will have length (32x32x3 =) 3072. For a training set of 10,000 images, the data matrix will therefore have 10,000 rows and 3072 columns. Columns 0-1023 correspond to the 32x32 red colormap, the next 1024 elements to the green colormap, and the final 1024 to the blue colormap (the RGB ordering can be changed as long as each colormap is specified by 1024 consecutive columns). Within this group of 1024 columns, the first 32 columns represents row 1 of that colormap, the next 32 row 2, etc.</p>
+
+        <p> For time series data (recurrent networks), all the samples in an example are concatenated into a single row. For example for speech data, if each audio sample lasts 10 seconds, with a sample rate of 1kHz, the row length will be 10,000. The time step (interval size) is then specfied in the XML file: e.g. if there are 20 samples per time window, then this row of size 10,000 corresponds to 500 time windows. Finally, because input data is specified as a single matrix, each row much have the same length. This means that each example must have the same number of total samples (each row must have the same number of columns). In cases where this is unrealistic (e.g. in speech not all utterances have the same duration), all examples should be padded to have the same length. </p>
+
+        <p> The networks above describe how to handle inputs which are 2-dimensional (e.g. images, for which convolutional networks are used) or time-series (for which recurrent networks are used). For data which is neither 2-dimensional nor time-series, a convolutional network should still be used (i.e. generate the XML file with generate_cnn.py), but one that contains no convolution/pooling, only fully-connected layers and softmax. See the input_size attribute in the XML section for more details. </p>
+
+        <h2 id='generation'>Network Generation</h2>
+
+        <p> The <a href="neural_network.html">examples</a> page describes how to generate networks, once the XML file and dataset have been created. The XML file is used as input to a generator script (either <code>generate_cnn.py</code>, for convolutional neural networks, or <code>generate_rnn.py</code>, for recurrent neural networks). The generator script generates a scala (OptiML) file implementing the neural network. This file calls functions implemented in <code>NetLib.scala</code>. The generator script also creates parameter files for the network, allowing things like the learning rate or momentum to be modified per-layer.</p>
+
+        <p> Note that the generated files are placed in a new subdirectory of the <code>NeuralNetwork/</code> apps directory. In the future this directory may be an input argument during generation, but currently all generated files are placed in this subdirectory which is relative to <code>published/OptiML/</code>. Specifically, relative to <code>published/OptiML/</code>, the generated files are placed in: <code>apps/src/NeuralNetwork/<b>name</b></code>.
+
+        <p> Network generation does the following:</p>
+        <ul>
+          <li>Create a subdirectory in NeuralNetwork/ for this new network, with the name given in the XML file</li>
+          <li>Create a .scala (OptiML) source file for this network</li>
+          <li>Create a global_params.txt file, described below</li>
+          <li>Create a layer_*_params.txt file for each layer in the network, described below</li>
+          <li>Create a checkpoints subdirectory to store weight checkpoints during training</li>
+        </ul>
+
+        <p> The generated OptiML source file contains two modes, either training or testing. The mode is specified in the global parameters file. The parameter files specify how to run the network, including hyper-parameters such as learning rate and momentum as well as the number of training epochs and how often to create a "checkpoint" by saving the weights during training. The network application reads these files to determine what to do. The generated OptiML source file also contains gradient checking code, which is commented out by default but can be uncommented for debugging if experimenting with new algorithms.</p>
+        
+        <p> Note that information describing the network architecture (such as the number of layers) was all specified <i>before</i> code generation in the XML file describing the network. Information describing how to <i>run</i> the network (such as the number of epochs to run) is described in these automatically generated parameter files, which are read every time the network is run and can be changed without having to recompile or regenerate any code.</p>
+
+        <h2 id='run'>Running the Network</h2>
+
+        <p> The <a href="neural_network.html">examples</a> page describes how to run networks. Note that the generated code contains hard-coded directory paths pointing to the dataset as well as saved training weights, layer parameters, etc. For this reason, it is important that the networks be run from the <code>published/OptiML/</code> directory. In the future the hard-coded directory to the parameter files may instead be an input argument during generation, but currently all generated files are placed in a subdirectory relative to <code>published/OptiML/</code>, specifically <code>apps/src/NeuralNetwork/<b>name</b></code>, and so it is important that the call to <code>delite</code> be made from the <code>OptiML/</code>directory.</p>
+
+        <p> This section describes the settings in the automatically generated parameter files, which describe how to run the network.</p>
+
+        <h3>global_params.txt</h3>
+
+        <p>The generated file global_params.txt specifies the number of epochs to run and the mini-batch size during training. It also specifies how often during training to check the current network performance. This can be done on the training or validation set. For example, every 10 epochs you may instruct the network to run on the training and validation sets. This will determine the error and cross entropy on each dataset. Or, if you only want to run the check on the validation set every 10 epochs, you can omit the training set from the check by setting its frequency to "0 epochs" (and similarly you can omit the validation set). You can also specify the mini-batch size during these checks in the global_params.txt file.</p>
+        
+        <p>Just as you can run checks on the training/validation sets every few epochs, you can also choose to save the network weights to the checkpoints/ directory every few epochs, and also keep a copy of the most recent weights that the network can read in. The latest weights are stored in the same directory as the parameter files, and all previous checkpoints (including a copy of the latest weights) are stored in the checkpoints directory. I.e. every time a checkpoint epoch is reached, two things will be done:</p>
+
+        <ul>
+          <li>A unique checkpoint will be created for these weights in the checkpoints directory</li>
+          <li>The latest weights will be updated in the parameters directory</li>
+        </ul>
+        
+        <p>If you want to stop training and then restart where you left off, set the "Read model from file" and "Read momentum from file" parameters to "1" in global_params.txt. If these are set, then instead of initializing the weights from random values, the network will read in the weight and momentum files stored in the root directory for the network (the directory where the parameter files are). For example if the network contains only a single layer, it will read in the files w0.txt and b0.txt (layer 0 weights and biases), as well as dw0.txt and db0.txt (layer 0 momentum for weights and biases, if the "Read momentum from file" option is set). In order for this to work, at least one checkpoint must have already been saved. Then you can stop training the network at any time and restart, and it will pick up from the previous checkpoint. Alternatively, previous checkpoints can be copied into the network root directory (e.g. overwriting w0.txt and b0.txt in the example above), in which case the network will start from that checkpoint.</p>
+        
+        <p>global_params.txt also lets you select whether you want to train the network (Test mode = "0") or test on the test set (Test mode = "1").</p>
+
+        <h5>Automatic Learning Rate Reduction</h5>
+
+        <p> If you specify in global_params.txt that the validation set should be run periodically, then automatically the network will record the validation error over time in a log file (and the same is true for the training error). If the validation error ever increases, then the network will automatically reduce the learning rates by a factor of 10 and continue training (recall that initial learning rates for each layer can be set in the layer parameter files, or all at once for all layers by specifying the net attribute lr_cmd_line_arg).</p>
+
+        <h3>layer_*_params.txt</h3>
+
+        <p> Parameter files are also generated for each layer. These can be used to modify the learning rate, momentum, L2 regularization, as well as ranges of initial weights and biases. Weights are initalized randomly from a normal distribution with mean 0 and variance 1. The random weights from this distribution are then multiplied by your setting of the "initial weights" parameter. Similarly, the biases are initialized at constant 1, and then multiplied by the value of the "initial biases" parameter (except for softmax layers which always have biases initialized to 0).</p>
+
+        <br /> <br /> <br />
+        
+        <div id='footer'>Copyright &copy; 2011</div>
+    </div>
+  </body>
+</html>
