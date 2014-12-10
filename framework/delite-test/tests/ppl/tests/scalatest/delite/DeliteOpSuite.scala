@@ -482,6 +482,8 @@ trait DeliteFileReader extends DeliteTestBase {
 }
 
 class DeliteOpSuite extends DeliteSuite {
+  // TODO vsalvis re-enable CHECK_MULTILOOP
+  override val CHECK_MULTILOOP = false
   def testDeliteMap() { compileAndTest(DeliteMapRunner, CHECK_MULTILOOP) }
   def testDeliteFlatMap() { compileAndTest(DeliteFlatMapRunner) }
   def testDeliteZip() { compileAndTest(DeliteZipRunner, CHECK_MULTILOOP) }

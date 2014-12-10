@@ -88,7 +88,7 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
     val mR = manifest[R]
   }
 
-  case class QueryableSelectMany[T:Manifest, R:Manifest](in: Exp[Table[T]], func: Exp[T] => Exp[Table[R]]) extends DeliteOpFlatMap[T, R, Table[R]] {
+  case class QueryableSelectMany[T:Manifest, R:Manifest](in: Exp[Table[T]], flatMapFunc: Exp[T] => Exp[Table[R]]) extends DeliteOpFlatMap[T, R, Table[R]] {
     override def alloc(len: Exp[Int]) = Table(len)
     val size = copyTransformedOrElse(_.size)(in.size)
     val mT = manifest[T]

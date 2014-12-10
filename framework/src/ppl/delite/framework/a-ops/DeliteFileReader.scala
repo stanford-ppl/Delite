@@ -139,7 +139,7 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
     def func: Exp[String] => Exp[A]
 
     lazy val body: Def[CA] = copyBodyOrElse(DeliteCollectElem[A,I,CA](
-      func = reifyEffects(func(dfs_readLine(inputStream, v))),
+      collectFunc = reifyEffects(func(dfs_readLine(inputStream, v))),
       par = dc_parallelization(allocVal, true),
       buf = this.buf,
       numDynamicChunks = this.numDynamicChunks
@@ -173,7 +173,7 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
       iF = Some(this.iF),
       sF = Some(reifyEffects(dc_size(eF))), //note: applying dc_size directly to iFunc can lead to iFunc being duplicated (during mirroring?)
       eF = Some(this.eF),
-      func = reifyEffects(dc_apply(eF,iF)),
+      collectFunc = reifyEffects(dc_apply(eF,iF)),
       par = dc_parallelization(allocVal, true),
       buf = this.buf,
       numDynamicChunks = this.numDynamicChunks

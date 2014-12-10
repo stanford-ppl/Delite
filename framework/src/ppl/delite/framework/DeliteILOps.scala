@@ -92,7 +92,7 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
     def finalizer(x: Exp[I]) = cfinalizer(x)
     
     lazy val body: Def[CA] = copyBodyOrElse(DeliteCollectElem[A,I,CA](       
-      func = reifyEffects(cfunc(eV,v)),
+      collectFunc = reifyEffects(cfunc(eV,v)),
       cond = ccond.map(cf => reifyEffects(cf(v))),
       par = cpar,
       buf = DeliteBufferElem[A,I,CA](
@@ -140,7 +140,7 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
     context = save
     val refTp = a1.tp
     val c = DeliteILCollect(size,allocN,func,update,finalizer,cond,parStrategy,appendable,append,setSize,allocRaw,copyRaw)(manifest[A],refTp,refTp.asInstanceOf[Manifest[CA]]) // HACK: forcing I and CA to be the same in order to retain RefinedManifest from I
-    reflectEffect(c, summarizeEffects(c.body.asInstanceOf[DeliteCollectElem[_,_,_]].func).star)(refTp.asInstanceOf[Manifest[CA]],implicitly[SourceContext])
+    reflectEffect(c, summarizeEffects(c.body.asInstanceOf[DeliteCollectElem[_,_,_]].collectFunc).star)(refTp.asInstanceOf[Manifest[CA]],implicitly[SourceContext])
   }  
   
   case class DeliteILForeach[A:Manifest](size: Exp[Int], ffunc: Exp[Int] => Exp[Unit]) extends DeliteOpLoop[Unit] {

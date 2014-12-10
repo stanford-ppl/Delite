@@ -11,7 +11,6 @@ import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollection}
 import ppl.delite.framework.datastructures.{DeliteArray,DeliteArrayOpsExp,DeliteArrayFatExp,BaseGenDeliteArrayOps}
 import ppl.delite.framework.Config
-import ppl.delite.framework.ops.BaseDeliteOpsTraversalFat
 
 //TODO:
 // 1. Unroll the loop if some operations in the loop body cannot be generated for GPU (e.g., OP_Extern)
@@ -53,7 +52,7 @@ trait NestedLoopMappingExp extends Expressions {
   val loopAnalysisResult = new HashMap[Int, (Dimension,Int,Span)]
 }
 
-trait NestedLoopMappingAnalysis extends FatBlockTraversal with CombineTTPScheduling with BaseGenDeliteArrayOps with BaseDeliteOpsTraversalFat {
+trait NestedLoopMappingAnalysis extends FatBlockTraversal with CombineTTPScheduling with BaseGenDeliteArrayOps {
   val IR: DeliteOpsExp
   import IR._
 
@@ -321,7 +320,7 @@ trait NestedLoopMappingAnalysis extends FatBlockTraversal with CombineTTPSchedul
       case elem: DeliteHashCollectElem[_,_,_,_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
       case elem: DeliteHashReduceElem[_,_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
       case elem: DeliteHashIndexElem[_,_] => elem.keyFunc :: elem.cond
-      case elem: DeliteCollectElem[_,_,_] => elem.func :: elem.cond
+      case elem: DeliteCollectElem[_,_,_] => elem.collectFunc :: elem.cond
       case elem: DeliteForeachElem[_] => List(elem.func)
       case elem: DeliteReduceElem[_] => elem.func :: elem.cond
       case elem: DeliteReduceTupleElem[_,_] => elem.func._1 :: elem.func._2 :: elem.cond

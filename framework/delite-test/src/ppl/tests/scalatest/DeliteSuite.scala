@@ -129,11 +129,19 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
       val screenOrVoid = if (verbose) System.out else new PrintStream(new ByteArrayOutputStream())
       Console.withOut(screenOrVoid) {
         app.main(Array())
-        if (verboseDefs) app.globalDefs.foreach { d => //TR print all defs
-          println(d)
-          val s = d match { case app.TP(sym,_) => sym; case app.TTP(syms,_,_) => syms(0); case _ => sys.error("unknown Stm type: " + d) }
-          val info = s.pos.drop(3).takeWhile(_.methodName != "main")
-          println(info.map(s => s.fileName + ":" + s.line).distinct.mkString(","))
+        if (verboseDefs) {
+          var scannedSize = 0
+          while (scannedSize < app.globalDefs.length) {
+            // printing lazy vals may cause app.globalDefs to grow
+            val unscanned = app.globalDefs.drop(scannedSize)
+            unscanned.foreach { d => // print all defs
+              println(d)
+              val s = d match { case app.TP(sym,_) => sym; case app.TTP(syms,_,_) => syms(0); case _ => sys.error("unknown Stm type: " + d) }
+              val info = s.pos.drop(3).takeWhile(_.methodName != "main")
+              println(info.map(s => s.fileName + ":" + s.line).distinct.mkString(","))
+            }
+            scannedSize += unscanned.length
+          }
         }
         //assert(!app.hadErrors) //TR should enable this check at some time ...
       }

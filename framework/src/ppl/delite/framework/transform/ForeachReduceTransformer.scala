@@ -5,7 +5,7 @@ import reflect.{Manifest, SourceContext}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{AbstractSubstTransformer,Transforming}
 import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.ops.{DeliteOpsExp, BaseDeliteOpsTraversalFat}
+import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.Config
 

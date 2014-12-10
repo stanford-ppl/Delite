@@ -1,10 +1,10 @@
 package ppl.delite.framework.transform
 
-import ppl.delite.framework.ops.{DeliteOpsExp,BaseDeliteOpsTraversalFat}
+import ppl.delite.framework.ops.DeliteOpsExp
 
 import scala.virtualization.lms.common._
 
-trait ForwardPassTransformer extends WorklistTransformer /*with BaseDeliteOpsTraversalFat*/ {
+trait ForwardPassTransformer extends WorklistTransformer {
   val IR: DeliteOpsExp
   import IR._
   

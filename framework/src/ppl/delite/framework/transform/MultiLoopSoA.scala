@@ -90,7 +90,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
           val buf_iV2 = fresh[Int]
           val tv = t(v).asInstanceOf[Sym[Int]]
           simpleLoop(t(size), tv, DeliteCollectElem[B,DeliteArray[B],DeliteArray[B]](
-            func = f,
+            collectFunc = f,
             cond = condT,
             par = body.par,
             buf = DeliteBufferElem[B,DeliteArray[B],DeliteArray[B]](
@@ -155,7 +155,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         return None
       }
 
-      val newLoop = t(body.func) match {
+      val newLoop = t(body.collectFunc) match {
         case u@Block(Def(a@Struct(ta,es))) if Config.soaEnabled => 
           printlog("*** SOA " + u + " / " + a)
           soaTransform(ta,es)

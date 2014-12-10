@@ -201,7 +201,7 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     def func = e => e
   }
 
-  case class DeliteArrayBufferFlatMap[A:Manifest,B:Manifest](in: Exp[DeliteArrayBuffer[A]], func: Exp[A] => Exp[DeliteArrayBuffer[B]])
+  case class DeliteArrayBufferFlatMap[A:Manifest,B:Manifest](in: Exp[DeliteArrayBuffer[A]], flatMapFunc: Exp[A] => Exp[DeliteArrayBuffer[B]])
     extends DeliteOpFlatMap[A,B,DeliteArrayBuffer[B]] {
 
     override def alloc(len: Exp[Int]) = darray_buffer_new[B](len) //buffer

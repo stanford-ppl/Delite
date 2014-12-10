@@ -448,11 +448,11 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
         emitBlock(elem.buf.alloc)
         stream.println(quote(getBlockResult(elem.buf.alloc)))
         stream.println("},")
-        // func
+        // collectFunc
         stream.println("{")
         stream.println(makeBoundVarArgs(elem.buf.eV,op.v))
-        emitBlock(elem.func)
-        stream.println(quote(getBlockResult(elem.func)))
+        emitBlock(elem.collectFunc)
+        stream.println(quote(getBlockResult(elem.collectFunc)))
         stream.println("},")
         // update
         stream.println("{")

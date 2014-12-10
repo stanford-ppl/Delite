@@ -4,7 +4,7 @@ import java.io._
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{AbstractSubstTransformer,Transforming}
 import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollection, BaseDeliteOpsTraversalFat}
+import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollection}
 import ppl.delite.framework.Config
 import ppl.delite.framework.transform.{DeliteTransform,ForwardPassTransformer}
 import ppl.dsl.optila.vector.DenseVectorOpsExp
@@ -195,7 +195,7 @@ trait MultiloopTransformExp extends DeliteTransform
 }
 
 /* Always parallelize inner multiloop, if GPUable */ 
-trait MultiloopTransformOuter extends ForwardPassTransformer with BaseDeliteOpsTraversalFat with LoopFusionOpt {  
+trait MultiloopTransformOuter extends ForwardPassTransformer with BaseLoopsTraversalFat {
   val IR: LoopsFatExp with IfThenElseFatExp with MultiloopTransformExp with DenseVectorOpsExp
   import IR._
   

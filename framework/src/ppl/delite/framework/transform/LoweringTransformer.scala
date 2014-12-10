@@ -1,6 +1,6 @@
 package ppl.delite.framework.transform
 
-import ppl.delite.framework.ops.{BaseDeliteOpsTraversalFat, DeliteOpsExp}
+import ppl.delite.framework.ops.DeliteOpsExp
 
 import scala.virtualization.lms.common._
 
@@ -32,7 +32,7 @@ import scala.virtualization.lms.common._
  /* adapted from LMS TestWorklistTransform2.scala */
 trait LoweringTransform extends BaseFatExp with EffectExp with IfThenElseFatExp with LoopsFatExp with DeliteOpsExp { self =>  
   /* class to extend for a custom LoweringTransformer, most likely to ensure a particular phase ordering */
-  class LoweringTransformer extends WorklistTransformer /*with BaseDeliteOpsTraversalFat*/ { val IR: self.type = self }
+  class LoweringTransformer extends WorklistTransformer { val IR: self.type = self }
   
   // ---------- Exp api
   

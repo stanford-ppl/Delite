@@ -65,15 +65,10 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   override def fatten(e: Stm): Stm = ifGenAgree(_.fatten(e))
 
   // fusion stuff...
-  override def unapplySimpleIndex(e: Def[Any]) = ifGenAgree(_.unapplySimpleIndex(e))
-  override def unapplySimpleDomain(e: Def[Int]) = ifGenAgree(_.unapplySimpleDomain(e))
-  override def unapplySimpleCollect(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollect(e))
-  override def unapplySimpleCollectIf(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollectIf(e))
-
-  override def applyAddCondition(e: Def[Any], c: List[Exp[Boolean]]): Def[Any] = ifGenAgree(_.applyAddCondition(e,c))
-
-  override def shouldApplyFusion(currentScope: List[Stm])(result: List[Exp[Any]]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result))
-
+  // override def unapplySimpleIndex(e: Def[Any]) = ifGenAgree(_.unapplySimpleIndex(e))
+  // override def unapplySimpleDomain(e: Def[Int]) = ifGenAgree(_.unapplySimpleDomain(e))
+  // override def unapplySimpleCollect(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollect(e))
+  // override def unapplySimpleCollectIf(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollectIf(e))
 
   def emitSourceContext(sourceContext: Option[SourceContext], stream: PrintWriter, id: String) {
     // obtain root parent source context (if any)

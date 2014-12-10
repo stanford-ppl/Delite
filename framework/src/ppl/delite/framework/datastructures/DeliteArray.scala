@@ -19,6 +19,10 @@ trait DeliteArrayOps extends StringOps {
     def imm[T:Manifest](length: Rep[Int])(implicit ctx: SourceContext) = darray_new_immutable(length)
     def fromFunction[T:Manifest](length: Rep[Int])(func: Rep[Int] => Rep[T])(implicit ctx: SourceContext) = darray_fromfunction(length, func)
     def sortIndices(length: Rep[Int])(comparator: (Rep[Int],Rep[Int]) => Rep[Int])(implicit ctx: SourceContext) = darray_sortIndices(length, comparator)
+    // Used by the new loop fusion, map is represented as flatMap(singleton), and then codegen
+    // specializes to generate map code. Therefore don't want to move singleton out of the loop,
+    // because then it might be allocated needlessly.
+    def singletonInLoop[T:Manifest](elem: => Rep[T], index: Rep[Int])(implicit ctx: SourceContext) = darray_singletonInLoop(elem, index)
   }
 
   implicit def repDArrayToDArrayOps[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext) = new DeliteArrayOpsCls(da)
@@ -69,6 +73,7 @@ trait DeliteArrayOps extends StringOps {
   def darray_range(st: Rep[Int], en: Rep[Int])(implicit ctx: SourceContext): Rep[DeliteArray[Int]]
   def darray_toseq[A:Manifest](a: Rep[DeliteArray[A]])(implicit ctx: SourceContext): Rep[Seq[A]]
   def darray_fromfunction[T:Manifest](length: Rep[Int], func: Rep[Int] => Rep[T])(implicit ctx: SourceContext): Rep[DeliteArray[T]]
+  def darray_singletonInLoop[T:Manifest](elem: => Rep[T], index: Rep[Int])(implicit ctx: SourceContext): Rep[DeliteArray[T]]
 
   def darray_set_act_buf[A:Manifest](da: Rep[DeliteArray[A]]): Rep[Unit]
 }
@@ -85,6 +90,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   // codegen ops
 
   case class DeliteArrayNew[T](length: Exp[Int], m:Manifest[T]) extends Def[DeliteArray[T]] //pass in manifest explicitly so it becomes part of equality (cse) check
+  case class DeliteArraySingletonInLoop[T:Manifest](elem: Block[T], index: Exp[Int]) extends DefWithManifest[T,DeliteArray[T]]
   case class DeliteArrayLength[T:Manifest](da: Exp[DeliteArray[T]]) extends DefWithManifest[T,Int]
   case class DeliteArrayApply[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int]) extends DefWithManifest[T,T]
   case class DeliteArrayUpdate[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int], x: Exp[T]) extends DefWithManifest[T,Unit]
@@ -152,7 +158,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
     override def alloc(len: Exp[Int]) = DeliteArray[A](len)
   }
 
-  case class DeliteArrayFlatMap[A:Manifest,B:Manifest](in: Exp[DeliteArray[A]], func: Exp[A] => Exp[DeliteArray[B]])
+  case class DeliteArrayFlatMap[A:Manifest,B:Manifest](in: Exp[DeliteArray[A]], flatMapFunc: Exp[A] => Exp[DeliteArray[B]])
     extends DeliteOpFlatMap[A,B,DeliteArray[B]] {
 
     override def alloc(len: Exp[Int]) = DeliteArray[B](len)
@@ -243,6 +249,12 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   // public methods
     
   def darray_new[T:Manifest](length: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(DeliteArrayNew(length,manifest[T]))
+  def darray_singletonInLoop[T:Manifest](elem: => Rep[T], index: Exp[Int])(implicit ctx: SourceContext) = {
+    // TODO vsalvis double check this, what do reflectMutable and reflectPure do?
+    val reifiedElem = reifyEffectsHere(elem)
+    val elemEff = summarizeEffects(reifiedElem)
+    reflectEffect(DeliteArraySingletonInLoop(reifiedElem, index), elemEff)
+  }
   def darray_new_immutable[T:Manifest](length: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DeliteArrayNew(length,manifest[T]))
   def darray_length[T:Manifest](da: Exp[DeliteArray[T]])(implicit ctx: SourceContext) = reflectPure(DeliteArrayLength[T](da))
   def darray_apply[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DeliteArrayApply[T](da,i))
@@ -321,6 +333,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
     (e match {
       case SimpleStruct(SoaTag(tag, length), elems) => struct(SoaTag(tag, f(length)), elems map { case (k,v) => (k, f(v)) })      
       case e@DeliteArrayNew(l,m) => darray_new_immutable(f(l))(m,pos)
+      case e@DeliteArraySingletonInLoop(elem, index) => reflectPure(DeliteArraySingletonInLoop(f(elem), f(index)))(mtype(manifest[A]),pos)
       case DeliteArrayLength(a) => darray_length(f(a))
       case e@DeliteArrayApply(a,x) => darray_apply(f(a),f(x))(e.mA,pos)
       case e@DeliteArrayTake(a,x) => darray_take(f(a),f(x))(e.mA,pos)
@@ -341,6 +354,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
       case e@DeliteArraySortIndices(l,s,c) => reflectPure(DeliteArraySortIndices(f(l), (f(s._1).asInstanceOf[Sym[Int]],f(s._2).asInstanceOf[Sym[Int]]), f(c))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
       case Reflect(SimpleStruct(SoaTag(tag, length), elems), u, es) => reflectMirrored(Reflect(SimpleStruct(SoaTag(tag, f(length)), elems map { case (k,v) => (k, f(v)) }), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
       case Reflect(e@DeliteArrayNew(l,m), u, es) => reflectMirrored(Reflect(DeliteArrayNew(f(l),m), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+      case Reflect(e@DeliteArraySingletonInLoop(block, index), u, es) => reflectMirrored(Reflect(DeliteArraySingletonInLoop(reifyEffectsHere(f.reflectBlock(block))(mtype(manifest[A].typeArguments(0))), f(index))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
       case Reflect(e@DeliteArrayLength(a), u, es) => reflectMirrored(Reflect(DeliteArrayLength(f(a))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
       case Reflect(e@DeliteArrayApply(l,r), u, es) => reflectMirrored(Reflect(DeliteArrayApply(f(l),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
       case Reflect(e@DeliteArrayUpdate(l,i,r), u, es) => reflectMirrored(Reflect(DeliteArrayUpdate(f(l),f(i),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)   
@@ -405,6 +419,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
 
   override def boundSyms(e: Any): List[Sym[Any]] = e match {
     case DeliteArraySortIndices(len, v, comp) => syms(v) ++ effectSyms(comp)
+    case DeliteArraySingletonInLoop(block, index) => effectSyms(block)
     case _ => super.boundSyms(e)
   }
 
@@ -605,6 +620,10 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
     case a@DeliteArrayNew(n,m) =>
       emitValDef(sym, "new Array[" + remap(m) + "](" + quote(n) + ")")
       if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
+    case a@DeliteArraySingletonInLoop(elem, index) =>
+      emitBlock(elem)
+      emitValDef(sym, "Array(" + quote(getBlockResult(elem)) + ")")
+      if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, Const(1), a.mA.erasure.getSimpleName)
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + ".length //" + quotePos(sym))
     case DeliteArrayApply(da, idx) =>

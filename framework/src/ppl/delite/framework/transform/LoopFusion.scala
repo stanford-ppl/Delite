@@ -13,14 +13,12 @@ trait LoopFusionExp extends DeliteTransform with LoweringTransform with DeliteAp
   // val IR: DeliteOpsExp
   // import IR._
 
-  override def shouldApplyFusion = Config.opfusionEnabled
+  override def shouldDoFusion = Config.opfusionEnabled
   
-  if (shouldApplyFusion) {
-	appendTransformer(new LoopFusionVerticalTransformer { val IR: self.type = self })
-  	appendTransformer(new LoopFusionHorizontalTransformer { val IR: self.type = self })
+  if (shouldDoFusion) {
+    appendTransformer(new LoopFusionVerticalTransformer { val IR: self.type = self })
+    appendTransformer(new LoopFusionHorizontalTransformer { val IR: self.type = self })
   }
-
-
 
   // def unapplySimpleIndex(e: Def[Any]): Option[(Exp[Any], Exp[Int])] = None
   // def unapplySimpleDomain(e: Def[Any]): Option[Exp[Any]] = None
