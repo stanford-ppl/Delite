@@ -8,7 +8,13 @@ import ppl.delite.runtime.graph.targets.{OS, Targets}
 import collection.mutable.ArrayBuffer
 import sync._
 
+object ScalaResourceInfo {
+  def resourceInfoType = "generated.scala.ResourceInfo"
+  def resourceInfoSym = "resourceInfo"
+}
+
 trait ScalaExecutableGenerator extends ExecutableGenerator {
+  import ScalaResourceInfo._
 
   protected def addSource(source: String) {
     ScalaCompile.addSource(source, executableName)
@@ -24,7 +30,8 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
 
   protected def writeHeader() {
     ScalaExecutableGenerator.writePackage(graph, out)
-    out.append("import ppl.delite.runtime.codegen.DeliteExecutable\n") //base trait
+    out.append("import ppl.delite.runtime.executor.DeliteExecutable\n") //base trait
+    out.append("import ppl.delite.runtime.Config\n") //base trait
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
     out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
     ScalaExecutableGenerator.writePath(graph, out) //package of scala kernels
@@ -38,6 +45,7 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
   protected def writeMethodHeader() {
     out.append("def run() {\n")
     if (Config.profile) out.append("val threadName = Thread.currentThread.getName()\n")
+    out.append("val "+resourceInfoSym+" = new "+resourceInfoType+"("+Targets.getRelativeLocation(location)+",Config.numThreads)\n")
   }
 
   protected def writeMethodFooter() {
@@ -45,20 +53,20 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
   }
 
   protected def writeFooter() {
-    addAccessor() //provides a reference to the object instance
     out.append("}\n") //end object
   }
 
   //TODO: can/should this be factored out? need some kind of factory for each target
   protected def makeNestedFunction(op: DeliteOP) = op match {
     case c: OP_Condition => new ScalaConditionGenerator(c, location, graph).makeExecutable()
-    case w: OP_While => new ScalaWhileGenerator(w, location, graph).makeExecutable()    
+    case w: OP_While => new ScalaWhileGenerator(w, location, graph).makeExecutable()
     case err => sys.error("Unrecognized OP type: " + err.getClass.getSimpleName)
   }
 
   protected def writeFunctionCall(op: DeliteOP) {
-    def returnsResult = op.outputType(op.getOutputs.head) == op.outputType
-    def resultName = if (returnsResult) getSym(op, op.getOutputs.head) else getOpSym(op)
+    def dummyOutput = op.isInstanceOf[OP_MultiLoop] && Targets.getRelativeLocation(location) > 0
+    def returnsResult = op.outputType(op.getOutputs.head) == op.outputType || dummyOutput
+    def resultName = if (returnsResult && !dummyOutput) getSym(op, op.getOutputs.head) else getOpSym(op)
 
     if (op.task == null) return //dummy op
     if (Config.profile) {
@@ -76,10 +84,9 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
     out.append(" = ")
     out.append(op.task)
     out.append('(')
-    var first = true
+    out.append(resourceInfoSym)
     for ((input, name) <- op.getInputs) {
-      if (!first) out.append(',') //no comma before first argument
-      first = false
+      out.append(", ")
       out.append(getSym(input, name))
     }
     out.append(")\n")
@@ -107,6 +114,7 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
     }
   }
 
+<<<<<<< HEAD
   protected def addAccessor() {
     out.append("def self = this\n")
   }
@@ -120,6 +128,8 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
 
     return opId
   }
+=======
+>>>>>>> develop
 }
 
 class ScalaMainExecutableGenerator(val location: Int, val graph: DeliteTaskGraph)

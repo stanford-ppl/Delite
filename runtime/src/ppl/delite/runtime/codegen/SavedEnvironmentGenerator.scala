@@ -26,11 +26,12 @@ object SavedEnvironmentGenerator {
     out.append("}\n")
 
     out.append("def initEnv() {\n")
-    out.append("Config.numThreads = " + Config.numThreads + "\n")
+    if (Config.scheduler != "dynamic") out.append("Config.numThreads = " + Config.numThreads + "\n")
     out.append("Config.numCpp = " + Config.numCpp + "\n")
     out.append("Config.numCuda = " + Config.numCuda + "\n")
     out.append("Config.numOpenCL = " + Config.numOpenCL + "\n")
     out.append("Config.executor = \"" + Config.executor + "\"\n")
+    out.append("Config.scheduler = \"" + Config.scheduler + "\"\n")
     out.append("Config.performWalk = false\n")
     val expected = for (i <- 0 until graph.schedule.numResources if !graph.schedule(i).isEmpty) yield i
     out.append("Delite.expectedResources = Seq(" + expected.mkString(",") + ")\n")

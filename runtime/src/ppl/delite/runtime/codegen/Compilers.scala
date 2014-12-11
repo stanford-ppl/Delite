@@ -3,6 +3,7 @@ package ppl.delite.runtime.codegen
 import kernels.cpp.CppMultiLoopHeaderGenerator
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.Config
+import ppl.delite.runtime.executor.DeliteExecutable
 import ppl.delite.runtime.graph.ops.Sync
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.scheduler.{OpHelper, StaticSchedule, PartialSchedule}
@@ -30,11 +31,12 @@ object Compilers {
   }
 
   def compileSchedule(graph: DeliteTaskGraph): StaticSchedule = {
+    CodeCache.clearChecksum() //about to create new code so temporarily invalidate the cache
+
     //generate executable(s) for all the ops in each proc
     //TODO: this is a poor method of separating CPU from GPU, should be encoded - essentially need to loop over all nodes
     val schedule = graph.schedule
 
-    if(Config.clusterMode!=1) assert((Config.numThreads + (if(graph.targets(Targets.Cpp)) Config.numCpp else 0) + (if(graph.targets(Targets.Cuda)) Config.numCuda else 0) + (if(graph.targets(Targets.OpenCL)) Config.numOpenCL else 0)) == schedule.numResources)
     Sync.addSync(graph)
 
     val scalaSchedule = schedule.slice(0, Config.numThreads)
@@ -67,9 +69,9 @@ object Compilers {
       OpenCLCompile.printSources()
     }
 
-    if (Config.numCpp>0 && graph.targets(Targets.Cpp)) CppCompile.compile(graph)
-    if (Config.numCuda>0 && graph.targets(Targets.Cuda)) CudaCompile.compile(graph)
-    if (Config.numOpenCL>0 && graph.targets(Targets.OpenCL)) OpenCLCompile.compile(graph)
+    if (Config.numCpp>0 && graph.targets(Targets.Cpp)) CppCompile.compile()
+    if (Config.numCuda>0 && graph.targets(Targets.Cuda)) CudaCompile.compile()
+    if (Config.numOpenCL>0 && graph.targets(Targets.OpenCL)) OpenCLCompile.compile()
 
     val classLoader = ScalaCompile.compile
     DeliteMesosExecutor.classLoader = classLoader
@@ -84,7 +86,10 @@ object Compilers {
     }
     
     val expectedResources = for (i <- 0 until schedule.numResources if !schedule(i).isEmpty) yield i
-    createSchedule(classLoader, ScalaExecutableGenerator.getPackage(graph), schedule.numResources, expectedResources)
+    val executables = createSchedule(classLoader, ScalaExecutableGenerator.getPackage(graph), schedule.numResources, expectedResources)
+
+    CodeCache.addChecksum() //if we've reached this point everything has compiled and loaded successfully
+    executables
   }
 
   def createSchedule(classLoader: ClassLoader, path: String, numResources: Int, expectedResources: Seq[Int]) = {
@@ -99,7 +104,7 @@ object Compilers {
   }
 
   def checkRequestedResource(schedule: PartialSchedule, target: Targets.Value) {
-    if (schedule.map(_.size).reduce(_ + _) == 0)
+    if (schedule.map(_.size).foldLeft(0)(_ + _) == 0)
       println("WARNING: no kernels scheduled on " + target)
   }
 

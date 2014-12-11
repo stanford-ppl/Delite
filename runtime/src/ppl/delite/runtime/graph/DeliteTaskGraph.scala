@@ -1,15 +1,19 @@
 package ppl.delite.runtime.graph
 
 import java.io.File
+import scala.collection.immutable.SortedSet
+import scala.collection.mutable.{HashSet, HashMap}
 import _root_.scala.util.parsing.json.JSON
-import ops._
-import targets._
+
 import ppl.delite.runtime.Config
+import ppl.delite.runtime.DeliteMesosScheduler
 import ppl.delite.runtime.profiler.Profiler
 import ppl.delite.runtime.scheduler.PartialSchedule
-import collection.mutable.{HashSet, HashMap}
+import ops._
+import targets._
 
 object DeliteTaskGraph {
+  import DeliteOP._
 
   //implicit conversion to strings
   implicit def anyToString(obj: Any): String = obj.toString
@@ -30,6 +34,40 @@ object DeliteTaskGraph {
       case degm: Map[Any,Any] => try { parseDEGMap(degm) } catch { case e: Exception => e.printStackTrace; throw e; }
       case err@_ => mapNotFound(err)
     }
+    enforceRestrictions(graph)
+  }
+
+  def enforceRestrictions(graph: DeliteTaskGraph)  = {
+    //FIXME: this is required because we can't currently have a C++ file reader interoperate with a Scala file writer,
+    //so we only allow C++ file reading when there are no file writers in the program
+    //this should be removed when that is fixed
+    val outputStream = "DeliteFileOutputStream"
+    val inputStream = "DeliteFileInputStream"
+    var hasOutput = false
+
+    graph.visitAll { op => if (op.outputType contains outputStream) hasOutput = true }
+    if (hasOutput) {
+      graph.visitAll { op =>
+        if ((op.outputType contains inputStream) || (op.getInputs.exists(i => i._1.outputType(i._2) contains inputStream))) {
+          op.supportedTargets.clear()
+          op.supportedTargets += Targets.Scala
+        }
+      }
+    }
+
+    //if the multiloop reader fails to generate for a target the filestream should not be on that target either
+    //this is required because we currently don't allow stream objects to be copied between targets
+    var streams: List[DeliteOP] = Nil
+    graph.visitAll { op => if (op.outputType contains inputStream) streams = op :: streams }
+    for (op <- streams) {
+      val supported = op.getConsumers.filter(_.isInstanceOf[OP_Executable]).map(_.supportedTargets).reduce(_ intersect _) intersect op.supportedTargets
+      for (o <- (op.getConsumers + op)) {
+        o.supportedTargets.clear()
+        o.supportedTargets ++= supported
+      }
+      assert(op.supportedTargets.size > 0, "ERROR: There are no common supported targets for FileStream " + op.id)
+    }
+
     graph
   }
 
@@ -102,7 +140,7 @@ object DeliteTaskGraph {
       case None => None
     }
   }
-  
+
   def getFieldMap(map: Map[Any, Any], field: String): Map[Any,Any] = {
     map.get(field) match {
       case Some(field) => field match {
@@ -149,7 +187,7 @@ object DeliteTaskGraph {
 
     // TODO: maybe it would be better to add source info to DeliteOP?
     Profiler.sourceInfo += (id -> (fileName, line, opName))
-	
+
     val newop = opType match {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
       case "OP_External" => new OP_External(id, "kernel_"+id, resultMap)
@@ -159,21 +197,40 @@ object DeliteTaskGraph {
         val sizeIsConst = getFieldString(op, "sizeType") == "const"
         val numDynamicChunks = getFieldString(op, "numDynamicChunksValue")
         val numDynamicChunksIsConst = getFieldString(op, "numDynamicChunksType") == "const"
-        if (resultMap(Targets.Scala).values.contains("Unit")) //FIXME: handle foreaches
-          if (Config.clusterMode == 1) println("WARNING: ignoring stencil of op with Foreach: " + id)
-        else
-          processStencil(op)
         new OP_MultiLoop(id, size, sizeIsConst, numDynamicChunks, numDynamicChunksIsConst, "kernel_"+id, resultMap, getFieldBoolean(op, "needsCombine"), getFieldBoolean(op, "needsPostProcess"))
       case "OP_Foreach" => new OP_Foreach(id, "kernel_"+id, resultMap)
       case other => error("OP Type not recognized: " + other)
     }
 
-    //handle supported targets
+    // handle stencil
+    if (newop.isInstanceOf[OP_MultiLoop]) {
+      if (resultMap(Targets.Scala).values.contains("Unit")) { //FIXME: handle foreaches
+        if (Config.clusterMode == 1) DeliteMesosScheduler.warn("WARNING: ignoring stencil of op with Foreach: " + id)
+      }
+      else processStencil(newop, op)
+    }
+
+    // handle aliases
+    val aliases = getFieldList(op, "aliases")
+    for (a <- aliases) {
+      try {
+        val alias = findOp(a) // don't use getOp - might be in a different subgraph
+        newop.addAlias(alias)
+        alias.addAlias(newop)
+      }
+      catch {
+        case e: RuntimeException =>
+          // some of the aliases may not be Delite kernels - those can be safely ignored.
+          DeliteMesosScheduler.log("for op " + newop.id + ", ignoring alias " + a + " - could not find op")
+      }
+    }
+
+    // handle supported targets
     for (t <- getFieldList(op, "supportedTargets")) {
       newop.supportedTargets += Targets(t)
     }
 
-    //handle inputs
+    // handle inputs
     val inputs = getFieldList(op, "inputs")
     for(i <- inputs.reverse) {
       val input = getOp(i)
@@ -182,14 +239,14 @@ object DeliteTaskGraph {
       input.addConsumer(newop)
     }
 
-    //handle mutable inputs
+    // handle mutable inputs
     val mutableInputs = getFieldList(op, "mutableInputs")
     for (m <- mutableInputs) {
       val mutable = getOp(m)
       newop.addMutableInput(mutable, m)
     }
 
-    //handle anti dependencies
+    // handle anti dependencies
     val antiDeps = getFieldList(op, "antiDeps")
     for(a <- antiDeps) {
       val antiDep = getOp(a)
@@ -198,7 +255,7 @@ object DeliteTaskGraph {
       newop.addAntiDep(antiDep)
     }
 
-    //handle control dependencies
+    // handle control dependencies
     val controlDeps = getFieldList(op, "controlDeps")
     for(c <- controlDeps) {
       val controlDep = getOp(c)
@@ -206,11 +263,11 @@ object DeliteTaskGraph {
       controlDep.addConsumer(newop)
     }
 
-    //add new op to graph list of ops
+    // add new op to graph list of ops
     graph.registerOp(newop)
     graph._result = (newop, newop.getOutputs.head)
 
-    //process target GPU metadata
+    // process target GPU metadata
     for (tgt <- Targets.GPU) {
       if (newop.supportsTarget(tgt)) processGPUMetadata(op, newop, tgt)
     }
@@ -245,35 +302,16 @@ object DeliteTaskGraph {
     case _ => false
   }
 
-  def processStencil(op: Map[Any,Any])(implicit graph: DeliteTaskGraph) = {
-    val stencilMap = getFieldMap(op, "stencil")
-    for (in <- getFieldList(op, "inputs")) {
+  // processStencil simply saves the stencil of the current op in the graph. To compute a conservative
+  // join, e.g. when deciding how to partition of an array, now requires a separate pass over the graph.
+  // We now compute the globalStencil in DeliteOP.
+  def processStencil(op: DeliteOP, degOp: Map[Any,Any])(implicit graph: DeliteTaskGraph) = {
+    val stencilMap = getFieldMap(degOp, "stencil")
+    for (in <- getFieldList(degOp, "inputs")) {
       val localStencil = Stencil(getFieldString(stencilMap, in))
-      traverseInputs(findOp(in), in)
-
-      def updateStencil(op: DeliteOP, in: String) {
-        if (localStencil != Empty && (op.isInstanceOf[OP_FileReader] || op.isInstanceOf[OP_MultiLoop]))
-          if (Config.clusterMode == 1) println("adding " + localStencil + " to output " + in + " of op " + op)
-        val globalStencil = op.stencilMap
-        if (globalStencil contains in) globalStencil(in) = globalStencil(in) combine localStencil
-        else globalStencil(in) = localStencil
-      }
-
-      //alias propagation, seems very sketchy...
-      def traverseInputs(op: DeliteOP, in: String)(implicit graph: DeliteTaskGraph) {
-        if (!isPrimitiveType(op.outputType)) {
-          updateStencil(op, in)
-          op match {
-            case o:OP_Single => 
-              o.getInputs.foreach(i => traverseInputs(findOp(i._2), i._2))
-            case o:OP_Condition => 
-              val resT = o.thenGraph.result._2
-              if (resT != null) traverseInputs(findOp(resT)(o.thenGraph), resT)(o.thenGraph)
-              val resE = o.elseGraph.result._2
-              if (resE != null) traverseInputs(findOp(resE)(o.elseGraph), resE)(o.elseGraph)
-            case _ => 
-          }
-        }
+      if (localStencil != Empty && (op.isInstanceOf[OP_FileReader] || op.isInstanceOf[OP_MultiLoop])) {
+        if (Config.clusterMode == 1) DeliteMesosScheduler.log("adding stencil " + localStencil + " for input " + in + " of op " + op.id)
+        op.stencilMap(in) = localStencil
       }
     }
   }
@@ -330,13 +368,13 @@ object DeliteTaskGraph {
 
     val resultMap = processReturnTypes(op, id)
     val depIds = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
-    var ifDeps = Set.empty[DeliteOP]
+    var ifDeps = SortedSet.empty[DeliteOP]
     for (depId <- depIds) ifDeps += getOp(depId)
     ifDeps ++= (predGraph._inputs.keySet ++ thenGraph._inputs.keySet ++ elseGraph._inputs.keySet) map { getOp(_) }
-    val ifAntiDeps = getFieldList(op, "antiDeps").map(getOp(_)).toSet
+    val ifAntiDeps = SortedSet(getFieldList(op, "antiDeps").map(getOp(_)):_*)
 
     //find inputs at nesting level of the IfThenElse
-    val internalOps = (predGraph.ops ++ thenGraph.ops ++ elseGraph.ops).toSet
+    val internalOps = SortedSet.empty[DeliteOP] ++ predGraph.ops ++ thenGraph.ops ++ elseGraph.ops
     var ifInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
     ifInputs ++= (for ((op,sym) <- Seq(predGraph.result, thenGraph.result, elseGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
     val ifMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
@@ -378,13 +416,13 @@ object DeliteTaskGraph {
     val (bodyGraph, bodyValue) = parseSubGraph(op, "body")
 
     val depIds = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
-    var whileDeps = Set.empty[DeliteOP]
+    var whileDeps = SortedSet.empty[DeliteOP]
     for (depId <- depIds) whileDeps += getOp(depId)
     whileDeps ++= (predGraph._inputs.keySet ++ bodyGraph._inputs.keySet) map { getOp(_) }
-    val whileAntiDeps = getFieldList(op, "antiDeps").map(getOp(_)).toSet
+    val whileAntiDeps = SortedSet(getFieldList(op, "antiDeps").map(getOp(_)):_*)
 
     //find inputs at nesting level of the While
-    val internalOps = (predGraph.ops ++ bodyGraph.ops).toSet
+    val internalOps = SortedSet.empty[DeliteOP] ++ predGraph.ops ++ bodyGraph.ops
     var whileInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
     whileInputs ++= (for ((op,sym) <- Seq(predGraph.result, bodyGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
     val whileMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
@@ -451,7 +489,7 @@ object DeliteTaskGraph {
     val resultTypes = processReturnTypes(op, id)
     val value = getFieldString(op, "Value")
     val tpe = getFieldString(op, "Type")
-    
+
     val EOP = new EOP(id, resultTypes, (tpe,value))
     if (tpe == "symbol") {
       val result = getOp(value)
@@ -461,10 +499,10 @@ object DeliteTaskGraph {
     }
     else { //const output, but EOP still needs to depend on result of application
       val result = graph._result._1
-      EOP.addDependency(result) 
+      EOP.addDependency(result)
       result.addConsumer(EOP)
     }
-    
+
     graph.registerOp(EOP)
     graph._result = (EOP, EOP.id)
   }
@@ -476,7 +514,7 @@ object DeliteTaskGraph {
     val metadataAll = getFieldMap(op, "metadata")
     val metadataMap = getFieldMap(metadataAll, tgt.toString)
     val metadata = newop.getGPUMetadata(tgt)
-  
+
     //TODO: Add feature to unwrap/wrap OpenCL datastructures
     /*
     for (input <- getFieldList(metadataMap, "gpuInputs").reverse) { //input list
@@ -557,10 +595,10 @@ class DeliteTaskGraph {
   def kernelPath: String = _kernelPath
   def appName: String = _appName
   def superGraph: DeliteTaskGraph = _superGraph
-  def symbols: Set[String] = _ops.keys.toSet
-  def ops: Set[DeliteOP] = _ops.values.toSet
-  def inputOps: Set[DeliteOP] = _inputs.values.toSet
-  def inputs: Set[(OP_Input,String)] = _inputs.toSet[(String,OP_Input)].map(i=>Pair(i._2,i._1))
+  def symbols: Set[String] = SortedSet.empty[String] ++ _ops.keys
+  def ops: Set[DeliteOP] = SortedSet.empty[DeliteOP] ++ _ops.values
+  def inputOps: Set[DeliteOP] = SortedSet.empty[DeliteOP] ++ _inputs.values
+  def inputs: Set[(OP_Input,String)] = SortedSet.empty[(OP_Input,String)](Ordering.by(_._2)) ++ _inputs.map(i=>Pair(i._2,i._1))
 
   def replaceOp(old: DeliteOP, op: DeliteOP) {
     //update ops
@@ -577,11 +615,11 @@ class DeliteTaskGraph {
     registerOp(op, true)
 
     //clear op
-    old.dependencies = Set.empty
-    old.consumers = Set.empty
+    old.dependencies = SortedSet.empty
+    old.consumers = SortedSet.empty
     old.inputList = Nil
-    old.mutableInputs = Set.empty
-    old.antiDeps = Set.empty
+    old.mutableInputs = SortedSet.empty
+    old.antiDeps = SortedSet.empty
   }
 
   def totalOps: Set[DeliteOP] = {
@@ -589,5 +627,12 @@ class DeliteTaskGraph {
       case m: OP_Nested => m.nestedGraphs.flatMap(g => g.totalOps)
       case o@_ => Seq(o)
     }).toSet ++ inputOps
+  }
+
+  def visitAll(func: DeliteOP => Unit) {
+    for (op <- ops) op match {
+      case n:OP_Nested => n.nestedGraphs.foreach(_.visitAll(func))
+      case _ => func(op)
+    }
   }
 }

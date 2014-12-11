@@ -22,13 +22,12 @@ object CudaCompile extends CCompile {
   lazy val arch = {
     val body = XML.loadFile(Config.deliteHome + sep + "config" + sep + "delite" + sep + configFile)
     val arch = (body \\ "arch").text.trim
-    arch.split('.').reduceLeft(_ + _) //remove 'dot' if it exists (e.g., 2.0 => 20)
+    arch.split(',').map(_.trim.split('.').reduceLeft(_ + _)) //remove 'dot' if it exists (e.g., 2.0 => 20)
   }
 
   protected def configFile = "CUDA.xml"
-  protected def compileFlags = Array("-m64", "-w", "-O3", "-arch", "compute_"+arch, "-code", "sm_"+arch, "-shared", "-Xcompiler", "\'-fPIC\'")
+  protected def compileFlags = Array("-m64", "-w", "-O3", "-shared", "-Xcompiler", "\'-fPIC\'") ++ arch.flatMap(a => Array("-gencode", "arch=compute_"+a+",code=sm_"+a))
   protected def linkFlags = Array("-lcublas", "-shared", "-Xcompiler", "\'-fPIC\'")
-  protected def outputSwitch = "-o"
 
   lazy val deviceDSFiles = Directory(Path(sourceCacheHome + "datastructures")).files.toList.filter(f => f.extension==ext)
   lazy val hostDSFiles = Directory(Path(hostCompiler.sourceCacheHome + "datastructures")).files.toList.filter(f => f.extension==hostCompiler.ext)

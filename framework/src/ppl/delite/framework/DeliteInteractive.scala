@@ -14,7 +14,7 @@ import codegen.scala.TargetScala
 import codegen.Target
 import ops.DeliteOpsExp
 
-trait DeliteInteractive extends SynchronizedArrayBufferOps {
+trait DeliteInteractive extends Base {
   implicit def staticArrayBuffer[A:Manifest](x: ArrayBuffer[A]): Rep[ArrayBuffer[A]]
 }
 

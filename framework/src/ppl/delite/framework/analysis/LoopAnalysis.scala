@@ -213,9 +213,9 @@ trait NestedLoopMappingAnalysis extends FatBlockTraversal with LoopFusionOpt wit
     i match {
       case LoopIndex(l) =>
         addSoftC(1, l, currentLoop)
-      case Def(IntPlus(_,LoopIndex(l))) =>
+      case Def(DIntPlus(_,LoopIndex(l))) =>
         addSoftC(1, l, currentLoop)
-      case Def(IntPlus(LoopIndex(l),_)) =>
+      case Def(DIntPlus(LoopIndex(l),_)) =>
         addSoftC(1, l, currentLoop)
       /*
       case LoopIndex(l) if l.level == currentLevel-1 =>

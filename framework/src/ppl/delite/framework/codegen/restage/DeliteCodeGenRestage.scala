@@ -9,7 +9,7 @@ import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.delite.overrides._
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.{DeliteRestageOps,DeliteRestageOpsExp}
-import ppl.delite.framework.ops.{DeliteOpsExp,DeliteCollection,DeliteCollectionOpsExp,ScalaGenDeliteCollectionOps}
+import ppl.delite.framework.ops.{DeliteOpsExp,DeliteCollection,DeliteCollectionOpsExp}
 import ppl.delite.framework.ScopeCommunication._
 
 trait TargetRestage extends Target {
@@ -126,7 +126,7 @@ trait LMSCodeGenRestage extends RestageFatCodegen {
 
 // restage generators for Delite common ops
 trait DeliteCodeGenRestage extends RestageFatCodegen 
-  with ScalaGenDeliteCollectionOps with ScalaGenDeliteArrayOps with ScalaGenDeliteStruct with DeliteScalaGenAllOverrides {
+  with ScalaGenDeliteArrayOps with ScalaGenDeliteStruct with DeliteScalaGenAllOverrides {
     
   val IR: Expressions with Effects with FatExpressions with DeliteRestageOpsExp 
           with DeliteCollectionOpsExp with DeliteArrayFatExp with DeliteOpsExp with DeliteAllOverridesExp
@@ -278,9 +278,9 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     // LMS stuff pulled in by Delite
     case NewVar(init) => stream.println("var " + quote(sym) + " = " + quote(init))    
     case ThrowException(m) => emitValDef(sym, "fatal(" + quote(m) + ")")
-    case RepIsInstanceOf(x,mA,mB) => emitValDef(sym, quote(x) + ".isInstanceOf[Rep[" + remap(mB) + "]]")
-    case RepAsInstanceOf(x,mA,mB) => emitValDef(sym, quote(x) + ".asInstanceOf[Rep[" + remap(mB) + "]]")    
-    case ObjectUnsafeImmutable(x) => emitValDef(sym, quote(x) + ".unsafeImmutable()")      
+
+    // delite internal
+    case DUnsafeImmutable(x) => emitValDef(sym, quote(x) + ".unsafeImmutable()")
 
     // profiling
     case DeliteProfileStart(x,deps) if deps == Nil =>  emitValDef(sym, "tic(" + quote(x) + ")") 
@@ -301,8 +301,8 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
 
     // delite array
     // HACK: GIterable should be a Record
-    case a@DeliteArrayNew(n,m) if sym.tp.typeArguments(0).erasure.getSimpleName == "GIterable" => emitValDef(sym, "DeliteArray[" + restageStructName(m) + "](" + quote(n) + ")")
-    case a@DeliteArrayNew(n,m) => emitValDef(sym, "DeliteArray[" + remap(m) + "](" + quote(n) + ")")
+    case a@DeliteArrayNew(n,m,t) if sym.tp.typeArguments(0).erasure.getSimpleName == "GIterable" => emitValDef(sym, "DeliteArray[" + restageStructName(m) + "](" + quote(n) + ")")
+    case a@DeliteArrayNew(n,m,t) => emitValDef(sym, "DeliteArray[" + remap(m) + "](" + quote(n) + ")")
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) => emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
     // new in wip-develop
     case StructCopy(src,srcPos,struct,fields,destPos,len) => 

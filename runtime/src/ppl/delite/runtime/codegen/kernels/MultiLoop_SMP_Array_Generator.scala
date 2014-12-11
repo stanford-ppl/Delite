@@ -59,76 +59,51 @@ trait MultiLoop_SMP_Array_Generator {
   protected def writeFooter()
   protected def writeKernelHeader()
   protected def writeKernelFooter()
-  protected def returnResult(result: String)
-  protected def release(name: String, cond: Option[String] = None)
   protected def kernelName: String
   protected def addSource(source: String, name: String)
 
-  //runtime services
-  protected def get(syncObject: String, idx: Int): String
-  protected def set(syncObject: String, idx: Int, value: String)
-
-  //the compiler multiLoop api
-  protected def allocateOutput(): String
-  protected def processRange(output: String, start: String, end: String): String
-  protected def combine(acc: String, neighbor: String)
-  protected def postProcess(acc: String)
-  protected def postProcInit(acc: String)
-  protected def postCombine(acc: String, neighbor: String)
-  protected def finalize(acc: String)
-  protected def dynamicScheduler(outputSym: String): String
-  protected def dynamicCombine(acc: String)
-  protected def dynamicPostCombine(acc: String)
+  protected def processLocal()
+  protected def combineLocal()
+  protected def combineRemote()
+  protected def postCombine()
+  protected def postProcess()
+  protected def finalizer()
+  protected def returnResult()
+  protected def barrier()
   protected def beginProfile()
-  protected def endProfile()
+  protected def endProfile(isMaster: Boolean)
 
   protected def writeKernel(op: OP_MultiLoop) {
     writeKernelHeader()
-    // profiling
-    if (Config.profile)
-      beginProfile()
-
-    //determine range of chunk
-    val outSym = allocateOutput()
     
-    var acc = dynamicScheduler(outSym)
+    if (Config.profile) beginProfile()
 
-    def treeReduction(sync: String, needsCombine: Boolean) { //combines thread-local results and guarantees completion of all chunks by the time the master chunk returns
-      var half = chunkIdx
-      var step = 1
-      while ((half % 2 == 0) && (chunkIdx + step < numChunks)) { //half the chunks quit each iteration
-        half = half / 2
-        val neighbor = chunkIdx + step //the index of the chunk to reduce with
-        step *= 2
-
-        val neighborVal = get(sync, neighbor)
-        if (needsCombine) {
-          combine(acc, neighborVal) //combine activation records if needed
-          if (!op.needsPostProcess) release(neighborVal) //release rhs activation record
-        }
-      }
-      if (chunkIdx != 0) set(sync, chunkIdx, acc) //slave chunks store result
-    }
+    processLocal()
+    if (Config.profile && !op.needsCombine && !op.needsPostProcess) endProfile(false)
 
     if (op.needsCombine) {
-      dynamicCombine(acc)
-      treeReduction("A", true)
+      combineLocal()
+      combineRemote()
+      if (Config.profile && !op.needsPostProcess) endProfile(false)
+      barrier()
     }
+
     if (op.needsPostProcess) {
-      dynamicPostCombine(acc)
+      postCombine()
+      barrier()
+      postProcess()
+      if (Config.profile) endProfile(false)
+      barrier()
     }
 
-    if (Config.profile)
-      endProfile()
+    if (!op.needsPostProcess && !op.needsCombine) barrier()
 
-    if (op.needsPostProcess || !op.needsCombine) treeReduction("C", false) //barrier
-    if (chunkIdx == 0) { //master chunk returns result
-      finalize(acc)
-      release(outSym, Some(acc+"!="+outSym))
-      returnResult(acc)
-    }
+    finalizer()
+    if (Config.profile) endProfile(true)
+    returnResult()
     writeKernelFooter()
   }
+
 }
 
 trait MultiLoop_SMP_Array_Header_Generator {
@@ -142,24 +117,10 @@ trait MultiLoop_SMP_Array_Header_Generator {
   def makeHeader() = {
 
     writeHeader()
-    writeSynchronizedOffset()
-    dynamicWriteSync()
-
-    if (op.needsCombine) { //tree-reduce: sync for all chunks except 0
-      for (i <- 1 until numChunks)
-        writeSync("A"+i)
-    }
-
-    if (op.needsPostProcess && numChunks > 1) { //all chunks need to sync
-      for (i <- 0 until numChunks)
-        writeSync("B"+i)
-    }
-
-    if (op.needsPostProcess || !op.needsCombine) { //tree-reduce: sync for all chunks except 0
-      for (i <- 1 until numChunks) 
-        writeSync("C"+i)
-    }
-
+    writeScheduler()
+    writeActSync("")
+    if (op.needsCombine) writeActSync("C")
+    if (op.needsPostProcess) writeActSync("P")
     writeFooter()
 
     //add header for compilation
@@ -172,11 +133,10 @@ trait MultiLoop_SMP_Array_Header_Generator {
 
   protected def writeHeader()
   protected def writeFooter()
-  protected def writeSync(key: String)
+  protected def writeScheduler()
+  protected def writeActSync(key: String)
   protected def kernelName: String
   protected def className: String
   protected def addSource(source: String, name: String)
-  protected def dynamicWriteSync()
-  protected def writeSynchronizedOffset()
 
 }

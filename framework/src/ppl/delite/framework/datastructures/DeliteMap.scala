@@ -43,7 +43,7 @@ trait DeliteMapOps extends Base {
 
 }
 
-trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp with EqualExpBridgeOpt with PrimitiveOpsExp with OrderingOpsExp { this: DeliteOpsExp =>
+trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp { this: DeliteOpsExp =>
 
   trait DeliteIndex[K]
 
@@ -110,7 +110,7 @@ trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp with EqualExpBr
   }
 
   def dmap_contains[K:Manifest,V:Manifest](dm: Rep[DeliteMap[K,V]], key: Rep[K])(implicit ctx: SourceContext) = {
-    notequals(dindex_get(dmap_index(dm), key), unit(-1))
+    delite_notequals(dindex_get(dmap_index(dm), key), unit(-1))
   }
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
@@ -134,7 +134,7 @@ trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp with EqualExpBr
 
 }
 
-trait ScalaGenDeliteMapOps extends ScalaGenEffect with ScalaGenEqual {
+trait ScalaGenDeliteMapOps extends ScalaGenEffect {
   val IR: DeliteMapOpsExp
   import IR._
 
@@ -149,7 +149,7 @@ trait ScalaGenDeliteMapOps extends ScalaGenEffect with ScalaGenEqual {
   }
 }
 
-trait CGenDeliteMapOps extends CGenEffect with CGenEqual {
+trait CGenDeliteMapOps extends CGenEffect {
   val IR: DeliteMapOpsExp
   import IR._
 
