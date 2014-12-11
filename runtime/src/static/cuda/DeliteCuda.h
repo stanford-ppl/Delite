@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include "DeliteCudaProfiler.h"
 
 extern size_t cudaHeapSize;
 
