@@ -70,6 +70,12 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   // override def unapplySimpleCollect(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollect(e))
   // override def unapplySimpleCollectIf(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollectIf(e))
 
+  // override def applyAddCondition(e: Def[Any], c: List[Exp[Boolean]]): Def[Any] = ifGenAgree(_.applyAddCondition(e,c))
+  // override def canApplyAddCondition(e: Def[Any]): Boolean = ifGenAgree(_.canApplyAddCondition(e))
+
+  // override def shouldApplyFusion(currentScope: List[Stm])(result: List[Exp[Any]]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result))
+
+
   def emitSourceContext(sourceContext: Option[SourceContext], stream: PrintWriter, id: String) {
     // obtain root parent source context (if any)
     val parentContext: Option[SourceContext] =

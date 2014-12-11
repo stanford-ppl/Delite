@@ -41,17 +41,17 @@ final class Arguments(val id: String, val argIdx: Int, var outputTypesMap: Map[T
 }
 
 object ArgsKernel0 {
-  def apply[T](): T = Arguments.getArg(0)
+  def apply[T](info: generated.scala.ResourceInfo): T = Arguments.getArg(0)
 }
 object ArgsKernel1 {
-  def apply[T](): T = Arguments.getArg(1)
+  def apply[T](info: generated.scala.ResourceInfo): T = Arguments.getArg(1)
 }
 object ArgsKernel2 {
-  def apply[T](): T = Arguments.getArg(2)
+  def apply[T](info: generated.scala.ResourceInfo): T = Arguments.getArg(2)
 }
 object ArgsKernel3 {
-  def apply[T](): T = Arguments.getArg(3)
+  def apply[T](info: generated.scala.ResourceInfo): T = Arguments.getArg(3)
 }
 object ArgsKernel4 {
-  def apply[T](): T = Arguments.getArg(4)
+  def apply[T](info: generated.scala.ResourceInfo): T = Arguments.getArg(4)
 }

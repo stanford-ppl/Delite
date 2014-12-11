@@ -6,6 +6,7 @@ import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.scheduler.OpList
 import ppl.delite.runtime.graph.ops._
 import sync._
+import ScalaResourceInfo._
 
 /**
  * Author: Kevin J. Brown
@@ -101,7 +102,7 @@ class ScalaWhileGenerator(val whileLoop: OP_While, val location: Int, val graph:
   }
 
   protected def callFunction(inputs: Seq[(DeliteOP,String)]) = {
-    "predicate(" + inputs.map(i=>getSym(i._1,i._2)).mkString(",") + ")"
+    "predicate(" + (resourceInfoSym+:inputs.map(i=>getSym(i._1,i._2))).mkString(",") + ")"
   }
 
   override protected def getSym(op: DeliteOP, name: String) = WhileCommon.getSym(whileLoop, baseId, op, name)

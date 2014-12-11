@@ -2,6 +2,7 @@ package ppl.delite.runtime.graph.ops
 
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.graph.DeliteTaskGraph
+import scala.collection.immutable.SortedSet
 
 /**
  * Author: Kevin J. Brown
@@ -49,7 +50,7 @@ class OP_Foreach(val id: String, func: String, private[graph] var outputTypesMap
     h.addConsumer(this)
     for (dep <- getDependencies) dep.replaceConsumer(this, h)
     //map consumes header, map's consumers remain unchanged
-    dependencies = Set(h)
+    dependencies = SortedSet(h)
     inputList = List((h,h.id))
     graph.registerOp(h)
     h

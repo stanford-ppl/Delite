@@ -22,7 +22,7 @@ object Targets extends Enumeration {
   /**
    * Return the value of a target
    */
-  def apply(s: String): Value = s.toLowerCase() match {
+  def apply(s: String): Value = s.toLowerCase match {
     case "scala" => Scala
     case "cuda" => Cuda
     case "opencl" => OpenCL
@@ -92,26 +92,22 @@ object Targets extends Enumeration {
     case _ => Class.forName(scalaType)
   }
 
-  def getHostTarget(target: Value): Targets.Value = {
-    target match {
-      case Targets.Scala => Targets.Scala
-      case Targets.Cpp => Targets.Cpp
-      case Targets.Cuda => Targets.Cpp
-      case Targets.OpenCL => Targets.Cpp
-      case _ => throw new IllegalArgumentException("Cannot find a host target for target " + target)
-    }
+  def getHostTarget(target: Value): Targets.Value = target match {
+    case Targets.Scala => Targets.Scala
+    case Targets.Cpp => Targets.Cpp
+    case Targets.Cuda => Targets.Cpp
+    case Targets.OpenCL => Targets.Cpp
+    case _ => throw new IllegalArgumentException("Cannot find a host target for target " + target)
   }
 
   def getHostTarget(target: String): Targets.Value = getHostTarget(Targets(target))
-  
-  def resourceIDs(target: Value): Seq[Int] = {
-    target match {
-      case Targets.Scala => 0 until Config.numThreads
-      case Targets.Cpp => Config.numThreads until Config.numThreads+Config.numCpp
-      case Targets.Cuda => Config.numThreads+Config.numCpp until Config.numThreads+Config.numCpp+Config.numCuda
-      case Targets.OpenCL => Config.numThreads+Config.numCpp+Config.numCuda until Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL
-      case _ => throw new RuntimeException("Cannot find a resource IDs for target " + target)
-    }
+
+  def resourceIDs(target: Value): Seq[Int] = target match {
+    case Targets.Scala => 0 until Config.numThreads
+    case Targets.Cpp => Config.numThreads until Config.numThreads+Config.numCpp
+    case Targets.Cuda => Config.numThreads+Config.numCpp until Config.numThreads+Config.numCpp+Config.numCuda
+    case Targets.OpenCL => Config.numThreads+Config.numCpp+Config.numCuda until Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL
+    case t => throw new RuntimeException("unkown resource type (" + t + ")") 
   }
 
   def getByLocation(location: Int): Value = {
@@ -123,15 +119,12 @@ object Targets extends Enumeration {
   }
 
   // get the relative location within a resource type
-  def getRelativeLocation(location: Int): Int = {
-    getByLocation(location) match {
-      case Targets.Scala => location
-      case Targets.Cpp => location - Config.numThreads
-      case Targets.Cuda => location - Config.numThreads - Config.numCpp
-      case Targets.OpenCL => location - Config.numThreads - Config.numCpp - Config.numCuda
-      case t => throw new RuntimeException("unkown resource type (" + t + ") for location " + location)
-    }
-
+  def getRelativeLocation(location: Int): Int = getByLocation(location) match {
+    case Targets.Scala => location
+    case Targets.Cpp => location - Config.numThreads
+    case Targets.Cuda => location - Config.numThreads - Config.numCpp
+    case Targets.OpenCL => location - Config.numThreads - Config.numCpp - Config.numCuda
+    case t => throw new RuntimeException("unkown resource type (" + t + ") for location " + location)
   }
 
 }

@@ -20,6 +20,8 @@ abstract class Executor {
 
   def run(schedule: StaticSchedule)
 
+  def runOne(location: Int, item: DeliteExecutable)
+
   def init()
 
   def shutdown()

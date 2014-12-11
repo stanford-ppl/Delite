@@ -32,6 +32,7 @@ object Config {
   val enableGPUTransform = getProperty("delite.enable.gputransform","false") != "false"
   val enableGPUObjReduce = getProperty("delite.enable.gpu.objreduce","true") != "false"
   val enableGPUMultiDim = getProperty("delite.enable.gpu.multidim","false") != "false"
+  val intSize = getProperty("delite.integer.size", "default")
 
   //Print generationFailedException info
   val dumpException: Boolean = getProperty("delite.dump.exception", "false") != "false"

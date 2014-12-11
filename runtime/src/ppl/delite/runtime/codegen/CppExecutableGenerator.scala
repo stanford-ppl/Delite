@@ -10,12 +10,12 @@ import sync._
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.scheduler.{OpHelper, OpList, PartialSchedule}
 
-trait CppResourceInfoGenerator {
+trait CppResourceInfo {
   protected def resourceInfoType = "resourceInfo_t"
   protected def resourceInfoSym = "resourceInfo"
 }
 
-trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfoGenerator {
+trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
 
   // To get a non-conflicting index for a variable name used to temporarily store jobject
   private var index = 0
@@ -50,15 +50,11 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfoGen
     out.append(function)
     out.append(" {\n")
     out.append("env" + location + " = jnienv;\n")
-    out.append(resourceInfoType + " " + resourceInfoSym + ";\n")
-    out.append(resourceInfoSym + ".thread_id = " + Targets.getRelativeLocation(location) + ";\n")
-    if (Config.profile)
-      out.append("InitDeliteCppTimer(" + Targets.getRelativeLocation(location) + ");\n")
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
-    val cppLocations = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp)
-    val numActiveCpps = cppLocations.size
-    val initializerIdx = Targets.getRelativeLocation(cppLocations.min)
-    out.append("DeliteHeapInit(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + "," + numActiveCpps + "," + initializerIdx + "," + Config.cppHeapSize + "ULL);\n")
+    val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
+    out.append("initializeAll(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + "," + numActiveCpps + "," + Config.cppHeapSize + "ULL);\n")
+    out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
+    out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
     writeJNIInitializer(locations)
   }
 
@@ -79,12 +75,8 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfoGen
 
   protected def writeMethodFooter() {
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
-    val cppLocations = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp)
-    val numActiveCpps = cppLocations.size
-    val finalizerIdx = Targets.getRelativeLocation(cppLocations.min)
-    if (Config.profile) 
-      out.append("DeliteCppTimerDump(" + Targets.getRelativeLocation(location) + "," + location + ",env" + location + ");\n")
-    out.append("DeliteHeapClear(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + "," + numActiveCpps + "," + finalizerIdx + ");\n")
+    val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
+    out.append("clearAll(" + Config.numCpp + "," + numActiveCpps + "," + Config.numThreads + ",env" + location + ");\n")
     out.append("}\n")
   }
 
@@ -242,13 +234,11 @@ class ScalaNativeExecutableGenerator(override val location: Int, override val gr
   private def writeNativeLoad() {
     val degName = ppl.delite.runtime.Delite.inputArgs(0).split('.')
     val appName = degName(degName.length-2)
+    val configString = Config.numThreads.toString + Config.numCpp + Config.numCuda + Config.numOpenCL
     val tgt = OpHelper.scheduledTarget(location)
     out.append("@native def host" + executableName(location) + ": Unit\n")
     out.append("System.load(\"\"\"")
-    out.append(Compilers(tgt).binCacheHome)
-    out.append(tgt)
-    out.append("Host" + appName + ".")
-    out.append(OS.libExt)
+    out.append(Compilers(tgt).binCacheHome + tgt + "Host" + appName + "_" + configString + "." + OS.libExt)
     out.append("\"\"\")\n")
   }
 

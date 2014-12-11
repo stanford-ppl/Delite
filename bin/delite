@@ -16,7 +16,7 @@ from delitecommon import *
 def main():
     usage = "usage: %prog <application runner> [args] [options]"
     parser = OptionParser(usage)
-    parser.add_option("-v", "--verbose", action="store_true", dest="verbose")
+    parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False, help="enable verbose logging")
     parser.add_option("-t", "--threads", dest="num_threads", default="1", help="num execution threads e.g. 4")
     parser.add_option("--cpp", dest="num_cpp", default="0", help="number of cpp execution threads")
     parser.add_option("--cuda", dest="num_cuda", default="0", help="number of cuda execution threads")
@@ -24,7 +24,7 @@ def main():
     parser.add_option("-r", "--runs", dest="num_runs", default="1", type="string", help="the number of times the runtime will execute the applications")
     parser.add_option("-p", "--profile", dest="profile", action="store_true", default=False, help="enables application profiling")
     parser.add_option("--executor", dest="executor", default="default", type="string", help="the type of executor")
-    parser.add_option("--scheduler", dest="scheduler", default="default", type="string", help="the type of scheduler")
+    parser.add_option("--scheduler", dest="scheduler", default="dynamic", type="string", help="the type of scheduler")
     parser.add_option("--noregen", dest="no_regen", action="store_true", default=False, help="Disables regeneration of runtime execution plans")
     parser.add_option("-n", "--nodes", dest="num_nodes", default=0, help="(maximum) number of cluster nodes")
     parser.add_option("--isSlave", dest="isSlave", action="store_true", default=False)
@@ -34,6 +34,7 @@ def main():
     parser.add_option("-d", "--directory", dest="directory", default="", help="change directory to the specified one before running")
     parser.add_option("--jar", dest="jar_cache", action="store_true", default=False, help="save compiled executables in a jar for later execution")
     parser.add_option("--walk-only", dest="walk_only", action="store_true", default=False, help="Only generate executables, don't run them.  Typically used with --jar")
+    parser.add_option("--pin", dest="pin_threads", action="store_true", default=False, help="Pin JVM threads to CPUs (requires native code support)")
 
     (opts, args) = parser.parse_args()
     if len(args) < 1:
@@ -106,7 +107,7 @@ def run(deg, params, opts):
         if delitecommon.MESOS_NATIVE_LIBRARY is None:
             err("MESOS_NATIVE_LIBRARY must be set in the environment or included in delite.properties")
         else:
-            os.putenv("MESOS_NATIVE_LIBRARY", delitecommon.MESOS_NATIVE_LIBRARY)
+            os.putenv("MESOS_NATIVE_JAVA_LIBRARY", delitecommon.MESOS_NATIVE_LIBRARY)
             os.putenv("LIBPROCESS_IP", opts.ip_address)
 
     if opts.codecache == "":
@@ -114,6 +115,8 @@ def run(deg, params, opts):
 
     java_opts = java_opts + " -Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) +" -Ddelite.cpp=" + opts.num_cpp + " -Ddelite.cuda=" + opts.num_cuda + " -Ddelite.opencl=" + opts.num_opencl + " -Ddelite.runs=" + opts.num_runs + " -Ddelite.executor=" + opts.executor + " -Ddelite.scheduler=" + opts.scheduler + " -Ddelite.master=" + opts.master + " -Ddelite.slaves=" + str(opts.num_nodes) + " -Ddelite.code.cache.home=" + opts.codecache
 
+    if opts.verbose == True:
+        java_opts = java_opts + " -Ddelite.verbose"
     if opts.no_regen == True:
         java_opts = java_opts + " -Ddelite.debug.noregenerate"
     if opts.profile == True:
@@ -122,6 +125,8 @@ def run(deg, params, opts):
         java_opts = java_opts + " -Ddelite.cluster.isSlave"
     if opts.walk_only == True:
         java_opts = java_opts + " -Ddelite.run=false"
+    if opts.pin_threads == True:
+        java_opts = java_opts + " -Ddelite.pinThreads"
     if delitecommon.DELITE_MEM != None:
         java_opts = java_opts + " -Xmx" + delitecommon.DELITE_MEM
         java_opts = java_opts + " -Xms" + delitecommon.DELITE_MEM

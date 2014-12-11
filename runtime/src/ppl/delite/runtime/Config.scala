@@ -6,7 +6,7 @@ import graph.targets.OS
  * Author: Kevin J. Brown
  * Date: Oct 11, 2010
  * Time: 1:43:14 AM
- * 
+ *
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
@@ -28,9 +28,11 @@ object Config {
   var numCuda: Int = getProperty("delite.cuda", "0").toInt        /* cuda target threads */
   var numOpenCL: Int = getProperty("delite.opencl", "0").toInt    /* opencl target threads */
   val numSlaves: Int = getProperty("delite.slaves", "0").toInt
+  val pinThreads: Boolean = getProperty("delite.pinThreads", "false") != "false"
   val clusterMode: Int = if (getProperty("delite.cluster.isSlave", "false") != "false") 2 else if (numSlaves > 0) 1 else 0
   val masterAddress: String = getProperty("delite.master", "")
-  var scheduler: String = getProperty("delite.scheduler", "default")
+  val messagePort: Int = getProperty("delite.message.port", "0").toInt
+  var scheduler: String = getProperty("delite.scheduler", "dynamic")
   var executor: String = getProperty("delite.executor", "default")
   val numRuns: Int = getProperty("delite.runs", "1").toInt
   val deliteHome: String = getProperty("delite.home", sys.env.getOrElse("DELITE_HOME",System.getProperty("user.dir")))
@@ -40,27 +42,34 @@ object Config {
   val taskQueueSize: Int = getProperty("delite.task.queue.size", "1024").toInt
   var performWalk: Boolean = getProperty("delite.walk", "true") != "false"
   var performRun: Boolean = getProperty("delite.run", "true") != "false"
-  val cppHeapSize: Long = getProperty("delite.cpp.heap.size","0").toLong
 
-  // memory management type for C++ target (refcnt or gc)
+  // memory management for C++ (refcnt or gc)
   val cppMemMgr = System.getProperty("delite.cpp.memmgr","malloc")
+  val cppHeapSize: Long = getProperty("delite.cpp.heap.size","0") match {
+    case s if s.toLowerCase.endsWith("k") => s.dropRight(1).toLong * 1024
+    case s if s.toLowerCase.endsWith("m") => s.dropRight(1).toLong * 1024 * 1024
+    case s if s.toLowerCase.endsWith("g") => s.dropRight(1).toLong * 1024 * 1024 * 1024
+    case s => s.toLong
+  }
 
   /* GPU optimization */
   val gpuOptTrans: Boolean = getProperty("delite.gpu.opt.trans", "false") != "false"
 
   /* Debug options */
+  val verbose: Boolean = getProperty("delite.verbose", "false") != "false"
   val queueSize: Int = getProperty("delite.debug.queue.size", "128").toInt
   val noRegenerate: Boolean = getProperty("delite.debug.noregenerate", "false") != "false"
-  val alwaysKeepCache: Boolean = getProperty("delite.debug.alwaysKeepCache", "true") != "false"
+  val alwaysKeepCache: Boolean = noRegenerate || (getProperty("delite.debug.alwaysKeepCache", "false") != "false")
   val gpuBlackList: Array[String] = { val p = getProperty("delite.debug.gpu.blacklist",""); if(p=="") Array() else p.split(",") }
   val gpuWhiteList: Array[String] = { val p = getProperty("delite.debug.gpu.whitelist",""); if(p=="") Array() else p.split(",") }
   val gpuPerformance: Boolean = getProperty("delite.debug.gpu.perf", "false") != "false"
   val profile: Boolean = getProperty("delite.debug.profile", "false") != "false"
   val printSources: Boolean = getProperty("delite.debug.print.sources", "false") != "false"
+  val printConnection: Boolean = getProperty("delite.debug.print.connection", "false") != "false"
 
 
   var degFilename = System.getProperty("delite.deg.filename", "out.deg")
-  
+
   /**
    * DEG specific, set after its parsed
    * TODO: handle this more rigorously
@@ -70,10 +79,11 @@ object Config {
   /***********
    *	Cost Modeling
    */
-  
+
 	val whileCostThreshold: Int = getProperty("delite.while.threshold", "-1").toInt
 	val loopCostThreshold: Int = getProperty("delite.loop.threshold", "-1").toInt
-	 
+  val enableTaskParallelism: Boolean = getProperty("delite.scheduler.enableTaskParallelism", "false") != "false"
+
   /***********
     * Statistics and Metrics Section
     */

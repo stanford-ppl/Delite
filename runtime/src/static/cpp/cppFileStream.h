@@ -16,6 +16,7 @@
 #include <string>
 #include <errno.h>
 #include <fcntl.h>
+#include <dirent.h>
 #include "DeliteNamespaces.h"
 #include "DeliteCpp.h"
 #include "DeliteMemory.h"
@@ -23,89 +24,91 @@
 // each line of file is limited to 1M characters
 #define MAX_BUFSIZE 1048576
 
-// switch for priting debugging message
+// switch for printing debugging message
 //#define DFS_DEBUG(...) fprintf(stderr, "[DEBUG-DeliteFS] "); fprintf(stderr, __VA_ARGS__)
 #define DFS_DEBUG(...)
 
 //TODO: check if need to compile with _FILE_OFFSET_BITS == 64?
 class cppFileStream {
-  public:
+  private:
     std::vector<char*> files;
-    std::vector<uint64_t> filelengths;
-    long size;
-    int numThreads;
+    std::vector<uint64_t> fileLengths;
+    size_t idx;
 
-    // padding to avoid false sharing between threads
-    static const int pad = 32;
-    FILE **allReader;
-    unsigned int *allIdx;
-    long *allPos;
-    long *allEnd;
-    char **allText;
+    FILE *reader;
+    char *text;
 
-    void findFileOffset(long start, int &fileIdx, long &offset) {
+    void findFileOffset(uint64_t start, size_t &fileIdx, uint64_t &offset) {
       offset = start;
       fileIdx = 0;
-      while (offset >= filelengths.at(fileIdx)) {
-        offset -= filelengths.at(fileIdx);
+      while (offset >= fileLengths.at(fileIdx)) {
+        offset -= fileLengths.at(fileIdx);
         fileIdx += 1;
       }
     }
 
-    void openAtNewLine(resourceInfo_t &resourceInfo, int threadIdx) {
-      long pos = threadIdx * size / numThreads;
-      allEnd[pad*threadIdx] = (threadIdx + 1) * size / numThreads;
-      int fileIdx; long offset;
-      findFileOffset(pos, fileIdx, offset);
-      char *filename = files.at(fileIdx);
-      FILE *fp = fopen(files.at(fileIdx),"r");
-      if (fp == NULL) {
-        printf("error reading file (%s)\n", strerror(errno));
+    void addFile(char *pathname, uint64_t file_size) {
+      // NOTE: explicit copy is required since the pathname (char*) given to constructor may be freed outside.
+      VERBOSE("adding file %s of size %lu\n", pathname, file_size);
+      char *p = (char *)malloc(strlen(pathname)+1);
+      strcpy(p, pathname);
+      files.push_back(p);
+      fileLengths.push_back(file_size);
+      size += file_size;
+    }
+
+  public:
+    uint64_t size;
+    uint64_t position;
+
+    cppFileStream* openCopyAtNewLine(uint64_t start) {
+      cppFileStream* copy = new cppFileStream(size, &files, &fileLengths);
+      copy->openAtNewLine(start);
+      return copy;
+    }
+
+    void openAtNewLine(uint64_t start) { 
+      position = start;
+      uint64_t offset;
+      findFileOffset(start, idx, offset);
+      reader = fopen(files.at(idx), "r");
+      text = (char *)malloc(MAX_BUFSIZE*sizeof(char));
+
+      if (reader == NULL) {
+        fprintf(stderr, "error reading file %s (%s)\n", files.at(idx), strerror(errno));
         assert(false);
       }
 
       if (offset != 0) {
         // jump to the offset
-        if(lseek(fileno(fp), offset-1, SEEK_SET) == -1) {
+        if(lseek(fileno(reader), offset-1, SEEK_SET) == -1) {
           assert(false && "lseek call failed");
         }
         // find the next newline after offset
-        char *line = allText[pad*threadIdx];
-        if (fgets(line, MAX_BUFSIZE, fp) == NULL) {
+        if (fgets(text, MAX_BUFSIZE, reader) == NULL) {
           assert(false && "first fgets failed");
         }
-        pos += strlen(line) - 1;
+        position += strlen(text) - 1;
       }
-      allPos[pad*threadIdx] = pos;
-      allIdx[pad*threadIdx] = fileIdx;
-      allReader[pad*threadIdx] = fp;
     }
 
-    long pos(int idx) { return allPos[pad*idx]; }
-    long end(int idx) { return allEnd[pad*idx]; }
-
-    string readLine(const resourceInfo_t &resourceInfo, int idx) {
-      char *line = allText[pad*idx];
-      if (fgets(line, MAX_BUFSIZE, allReader[pad*idx]) == NULL) {
+    string readLine(const resourceInfo_t *resourceInfo) {
+      char *line = text;
+      while (fgets(line, MAX_BUFSIZE, reader) == NULL) {
         // read the next file
-        allIdx[pad*idx] += 1;
-        if (allIdx[pad*idx] >= files.size()) 
+        idx += 1;
+        if (idx >= files.size()) 
           return "";
         else 
-          fclose(allReader[pad*idx]);
-        FILE *fp = fopen(files.at(allIdx[pad*idx]), "r");
-        if (fp == NULL) {
-          printf("error reading file (%s)\n", strerror(errno));
+          fclose(reader);
+        reader = fopen(files.at(idx), "r");
+        if (reader == NULL) {
+          fprintf(stderr, "error reading file %s (%s)\n", files.at(idx), strerror(errno));
           assert(false);
         }
-        else {
-          allReader[pad*idx] = fp;
-        }
-        if (fgets(line, MAX_BUFSIZE, allReader[pad*idx]) == NULL) 
-          assert(false  && "fgets failed");
       }
       size_t length = strlen(line);
-      allPos[pad*idx] += length;
+      position += length;
       char *strptr = new (resourceInfo) char[length+1];
       strcpy(strptr, line);
       string str(strptr, length, 0);
@@ -114,40 +117,49 @@ class cppFileStream {
       return str;
     }
 
-    cppFileStream(int num, ...) {
-      size = 0;
-      //TODO: get the number of threads at runtime instead of preprocessor pragma?
-      numThreads = DELITE_CPP;
-      allReader = (FILE **)malloc(numThreads * pad * sizeof(FILE *));
-      allIdx = (unsigned int *)malloc(numThreads * pad * sizeof(unsigned int));
-      allPos = (long *)malloc(numThreads * pad * sizeof(long));
-      allEnd = (long *)malloc(numThreads * pad * sizeof(long));
-      allText = (char **)malloc(numThreads * pad * sizeof(char *));
-      for(int i=0; i<numThreads; i++) {
-        allText[i*pad] = (char *)malloc(MAX_BUFSIZE*sizeof(char));
+    cppFileStream(uint64_t _size, std::vector<char*> *_files, std::vector<uint64_t> *_fileLengths) {
+      size = _size;
+      //could share the files but then the free logic becomes confusing
+      for (size_t i = 0; i < _files->size(); i++) {
+        char *pathname = _files->at(i);
+        char *p = (char *)malloc(strlen(pathname)+1);
+        strcpy(p, pathname);
+        files.push_back(p);
+        fileLengths.push_back(_fileLengths->at(i));
       }
+    }
 
+    cppFileStream(size_t num, ...) {
+      size = 0;
       va_list arguments;
       DFS_DEBUG("number of paths is %d\n", num);
       va_start(arguments, num);
-      for(int i=0; i<num; i++) {
+      for(size_t i=0; i<num; i++) {
         char *pathname = va_arg(arguments, char *);
         DFS_DEBUG("pathname is %s\n", pathname);
 
         // check if file or directory
         struct stat st;
         lstat(pathname, &st);
-        if(S_ISDIR(st.st_mode)) {
-          assert(false && "Directory paths are not supported yet");
+        if (S_ISDIR(st.st_mode)) {
+          fprintf(stderr, "Path %s is a directory, which is not currently supported\n", pathname);
+          exit(-1);
+          //FIXME: the below code doesn't function properly with Delite's scala file writer
+          // DIR *dir = opendir(pathname);
+          // struct dirent *dp;
+          // while ((dp = readdir(dir)) != NULL) {
+          //   struct stat st;
+          //   lstat(dp->d_name, &st);
+          //   if (dp->d_name[0] != '.') addFile(dp->d_name, st.st_size); //TODO: robustify
+          // }
+          // closedir(dir);
+        }
+        else if (S_ISREG(st.st_mode)) {
+          addFile(pathname, st.st_size);
         }
         else {
-          // append to the list of files
-          // NOTE: explicit copy is required since the pathname (char*) given to constructor may be freed outside.
-          char *p = (char *)malloc(strlen(pathname)+1);
-          strcpy(p, pathname);
-          files.push_back(p);
-          filelengths.push_back(st.st_size);
-          size += st.st_size;
+          fprintf(stderr, "Path %s does not appear to be a valid file or directory\n", pathname);
+          exit(-1);
         }
       }
       va_end(arguments);
@@ -155,18 +167,13 @@ class cppFileStream {
       DFS_DEBUG("total size of file is %ld\n", size);
     }
 
-    void close(resourceInfo_t resourceInfo, int idx) {
-      fclose(allReader[pad*idx]);
+    void close() { 
+      fclose(reader);
     }
 
     ~cppFileStream() {
-      free(allReader);
-      free(allIdx);
-      free(allPos);
-      free(allEnd);
-      for(int i=0; i<numThreads; i++)
-        free(allText[i*pad]);
-      free(allText);
+      free(reader);
+      free(text);
       for(std::vector<char*>::iterator it = files.begin(); it != files.end(); ++it) {
         free(*it);
       }

@@ -26,11 +26,11 @@ trait InputReaderOpsExp extends InputReaderOps with BaseFatExp { this: OptiQLExp
   case class OptiQLTableFromSeq[T:Manifest](readBlock: Block[Table[T]]) extends DeliteOpSingleWithManifest[T,Table[T]](readBlock)
 
   def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], separator: Rep[String]) = {
-    Table(DeliteNewFileReader.readLines(path){ line => optiql_table_record_parser_impl[T](line, separator) })
+    Table(DeliteFileReader.readLines(path){ line => optiql_table_record_parser_impl[T](line, separator) })
   }
 
   def optiql_table_line_reader(path: Rep[String]) = {
-    Table(DeliteNewFileReader.readLines(path){ line => line })
+    Table(DeliteFileReader.readLines(path){ line => line })
   }
 
   def optiql_table_from_seq[T:Manifest](elems: Seq[Rep[T]]) = {

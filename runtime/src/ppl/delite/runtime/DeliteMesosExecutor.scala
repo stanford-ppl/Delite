@@ -8,8 +8,7 @@ import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.{ArrayList,HashMap}
 import ppl.delite.runtime.data._
-import ppl.delite.runtime.executor.ThreadPool
-import ppl.delite.runtime.codegen.DeliteExecutable
+import ppl.delite.runtime.executor.DeliteExecutable
 import ppl.delite.runtime.messages.Messages._
 import ppl.delite.runtime.messages._
 import ppl.delite.runtime.graph.ops.{DeliteOP,OP_MultiLoop}
@@ -18,7 +17,7 @@ import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.data._
 
 class DeliteMesosExecutor extends Executor {
-  
+
   /**
    * Invoked once the executor driver has been able to successfully
    * connect with Mesos. In particular, a scheduler can pass some
@@ -53,24 +52,18 @@ class DeliteMesosExecutor extends Executor {
    * until this callback has returned.
    */
   def launchTask(driver: ExecutorDriver, task: TaskInfo) {
-    def status(state: TaskState) = {
-      TaskStatus.newBuilder
-        .setTaskId(task.getTaskId)
-        .setState(state)
-        .build
-    }
-
-    def exceptionToString(e: Exception) = {
-      val stringWriter = new java.io.StringWriter
-      e.printStackTrace(new java.io.PrintWriter(stringWriter))
-      stringWriter.toString
-    }
+    DeliteMesosExecutor.task = task
 
     val runner = new Runnable {
       def run() {
         try {
+          // Without this, we get a ServiceLoader exception trying to load org.apache.hadoop.hdfs.DistributedFileSystem (which comes from the
+          // the hadoop-hdfs jar which is on the classpath when launching the slave Delite instance. Adding this fixes things, but why is it
+          // necessary?
+          Thread.currentThread().setContextClassLoader(DeliteMesosExecutor.classLoader)
+
           val info = LaunchInfo.parseFrom(task.getData)
-          
+
           val networkId = DeliteMesosExecutor.network.id
           val taskStarted = TaskStatus.newBuilder.setTaskId(task.getTaskId).setState(TaskState.TASK_RUNNING)
             .setData(CommInfo.newBuilder.setSlaveIdx(info.getSlaveIdx).addSlaveAddress(networkId.host).addSlavePort(networkId.port).build.toByteString).build
@@ -79,7 +72,7 @@ class DeliteMesosExecutor extends Executor {
           val args = info.getArgList.toArray(new Array[String](0))
 
           DeliteMesosExecutor.networkMap.put(-1, ConnectionManagerId(info.getMasterAddress, info.getMasterPort))
-          
+
           DeliteMesosExecutor.sendDebugMessage("my master is " + info.getMasterAddress + ":" + info.getMasterPort)
           DeliteMesosExecutor.sendDebugMessage("my connection is " + DeliteMesosExecutor.network.id.host + ":" + DeliteMesosExecutor.network.id.port)
           DeliteMesosExecutor.sendDebugMessage("my input args are " + args.mkString(", "))
@@ -87,12 +80,10 @@ class DeliteMesosExecutor extends Executor {
           Delite.embeddedMain(args, Map())
 
           DeliteMesosExecutor.network.stop()
-          driver.sendStatusUpdate(status(TaskState.TASK_FINISHED))
+          driver.sendStatusUpdate(DeliteMesosExecutor.status(TaskState.TASK_FINISHED))
         }
         catch {
-          case e: Exception => //serialize the exception and forward to the master
-            DeliteMesosExecutor.sendDebugMessage(exceptionToString(e))
-            driver.sendStatusUpdate(status(TaskState.TASK_FAILED))
+          case e: Exception => DeliteMesosExecutor.forwardException(e)
         }
       }
     }
@@ -110,12 +101,7 @@ class DeliteMesosExecutor extends Executor {
    */
   def killTask(driver: ExecutorDriver, taskId: TaskID) {
     println("WARNING: task killed")
-    val status = TaskStatus.newBuilder
-      .setTaskId(taskId)
-      .setState(TaskState.TASK_KILLED)
-      .build
-
-    driver.sendStatusUpdate(status)
+    driver.sendStatusUpdate(DeliteMesosExecutor.status(TaskState.TASK_KILLED))
   }
 
   /**
@@ -156,6 +142,7 @@ class DeliteMesosExecutor extends Executor {
    */
   def shutdown(driver: ExecutorDriver) {
     println("WARNING: executor shutting down")
+    DeliteMesosExecutor.network.stop()
   }
 
   /**
@@ -172,20 +159,21 @@ class DeliteMesosExecutor extends Executor {
 object DeliteMesosExecutor {
 
   private var driver: MesosExecutorDriver = _
-
+  private var task: TaskInfo = _
+  
   private val remoteLock = new ReentrantLock
   private val hasWork = remoteLock.newCondition
   private var noWork = true
   private var message: Any = _
 
-  private lazy val network: ConnectionManager = new ConnectionManager
+  private lazy val network: ConnectionManager = new ConnectionManager(Config.messagePort)
   private val networkMap = new HashMap[Int,ConnectionManagerId]
   var numSlaves = 0
   var slaveIdx = 0
-  
+
   private var graph: DeliteTaskGraph = _
 
-  // task queues for workers 
+  // task queues for workers
   private val numResources = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL
   case class Task(name: String, start: Int = -1, size: Int = -1, inputCopy: Array[Boolean] = null)
   private val taskQueues = new Array[ArrayBlockingQueue[Task]](numResources)
@@ -208,7 +196,7 @@ object DeliteMesosExecutor {
     val v = versionID.getOrElse(id, VersionID(0,new Array[Int](numResources)))
     v.w = v.w + 1
     for(target <- targets) v.r(Targets.resourceIDs(target)(0)) = v.w
-    versionID.put(id, v) 
+    versionID.put(id, v)
   }
   private def needsCopy(sym: String, target: Targets.Value): Boolean = {
     var stale = true
@@ -231,14 +219,32 @@ object DeliteMesosExecutor {
 
   private var opTarget: Targets.Value = _
 
-  var executor: ThreadPool = _
+  def status(state: TaskState) = {
+    TaskStatus.newBuilder
+      .setTaskId(task.getTaskId)
+      .setState(state)
+      .build
+  }
+
+  def forwardException(e: Exception) = {
+    def exceptionToString(e: Exception) = {
+      val stringWriter = new java.io.StringWriter
+      e.printStackTrace(new java.io.PrintWriter(stringWriter))
+      stringWriter.toString
+    }
+    // serialize the exception and forward to the master
+    sendWarningMessage(exceptionToString(e))
+    driver.sendStatusUpdate(status(TaskState.TASK_FAILED))
+    throw e
+  }
+
   var classLoader = this.getClass.getClassLoader
   val results = new HashMap[String,ArrayList[DeliteArray[_]]]
 
   def getResult(id: String, offset: Int) = {
     if(opTarget==Targets.Scala && needsCopy(id,Targets.Scala)) {
       putTask(Targets.resourceIDs(Targets.Cuda)(0),Task("get_"+id))
-      val syncObjectCls = classLoader.loadClass("Sync_Executable"+Targets.resourceIDs(Targets.Cuda)(0)) 
+      val syncObjectCls = classLoader.loadClass("Sync_Executable"+Targets.resourceIDs(Targets.Cuda)(0))
       val r = syncObjectCls.getDeclaredMethods.find(_.getName == "get0_x" + id).get.invoke(null,Array():_*)
       syncVersionID(id, Targets.Scala)
       val dummySerialization = Serialization.serialize(r, true, id) // Just to update the result table with LocalDeliteArrays
@@ -246,7 +252,7 @@ object DeliteMesosExecutor {
     }
     val res = results.get(id)
     if (res == null || res.size <= offset)
-      throw new RuntimeException("data for " + id + "_" + offset + " not found") 
+      throw new RuntimeException("data for " + id + "_" + offset + " not found")
     res.get(offset)
   }
 
@@ -258,7 +264,7 @@ object DeliteMesosExecutor {
     for (i <- 0 until numSlaves) {
       networkMap.put(i, ConnectionManagerId(info.getSlaveAddress(i), info.getSlavePort(i)))
     }
-    DeliteMesosExecutor.sendDebugMessage("my peers are " + info.getSlaveAddressList.toArray.mkString(", "))
+    sendDebugMessage("my peers are " + info.getSlaveAddressList.toArray.mkString(", "))
   }
 
   def main(args: Array[String]) {
@@ -266,9 +272,15 @@ object DeliteMesosExecutor {
       sendDebugMessage("received request")
       val bytes = msg.asInstanceOf[BufferMessage].buffers(0).array
       val mssg = DeliteSlaveMessage.parseFrom(bytes)
-      val response = mssg.getType match {
-        case DeliteSlaveMessage.Type.DATA => getData(mssg.getData)
-      }
+      val response =
+        try {
+          mssg.getType match {
+            case DeliteSlaveMessage.Type.DATA => getData(mssg.getData)
+          }
+        }
+        catch {
+          case e: Exception => forwardException(e)
+        } 
       sendDebugMessage("satisfying remote read")
       Some(Message.createBufferMessage(response.toByteString.asReadOnlyByteBuffer, msg.id))
     })
@@ -282,6 +294,17 @@ object DeliteMesosExecutor {
     if (driver != null) {
       val mssg = DeliteSlaveMessage.newBuilder
         .setType(DeliteSlaveMessage.Type.DEBUG)
+        .setDebug(DebugMessage.newBuilder.setMessage(message))
+        .build
+      driver.sendFrameworkMessage(mssg.toByteArray)
+    }
+    else println(message)
+  }
+
+  def sendWarningMessage(message: String) {
+    if (driver != null) {
+      val mssg = DeliteSlaveMessage.newBuilder
+        .setType(DeliteSlaveMessage.Type.WARNING)
         .setDebug(DebugMessage.newBuilder.setMessage(message))
         .build
       driver.sendFrameworkMessage(mssg.toByteArray)
@@ -320,7 +343,7 @@ object DeliteMesosExecutor {
     sendDebugMessage("CUDA: Launching op " + id + "on CUDA")
 
     //TODO: Why below is not working for struct type inputs?
-    // Set sync objects for kernel inputs 
+    // Set sync objects for kernel inputs
     /*
     val o = graph.totalOps.find(_.id == op.getId.getId).get
     val inputSyms = o.getInputs.map(i => i._2)
@@ -335,8 +358,8 @@ object DeliteMesosExecutor {
       arg
     }
     */
-    
-    // Set sync objects for kernel inputs 
+
+    // Set sync objects for kernel inputs
     val o = graph.totalOps.find(_.id == op.getId.getId).get
     val inputSyms = o.getInputs.map(i => i._2)
     val cls = classLoader.loadClass("generated.scala.kernel_" + id)
@@ -356,7 +379,7 @@ object DeliteMesosExecutor {
       idx += 1
       arg
     }
-    
+
     //sendDebugMessage("CUDA: Input copy is done")
 
     val s = System.currentTimeMillis()
@@ -371,8 +394,8 @@ object DeliteMesosExecutor {
     sendDebugMessage("CUDA: Put Task")
     for(i <- inputSyms) syncVersionID(i, Targets.Cuda)
 
-    // Wait for the result 
-    val syncObjectCls = classLoader.loadClass("Sync_Executable"+Targets.resourceIDs(Targets.Cuda)(0)) 
+    // Wait for the result
+    val syncObjectCls = classLoader.loadClass("Sync_Executable"+Targets.resourceIDs(Targets.Cuda)(0))
     val resultClass = classLoader.loadClass("generated.scala.activation_"+id)
     val kernelClass = classLoader.loadClass("generated.scala.kernel_"+id)
     val applyMethod = kernelClass.getDeclaredMethods.find(_.getName == "apply").get
@@ -380,25 +403,25 @@ object DeliteMesosExecutor {
     val initActMethod = multiLoop.getClass.getDeclaredMethods.find(_.getName == "initAct").get
     val result = initActMethod.invoke(multiLoop,Array():_*)
     for(output <- o.getOutputs) {
-      val m = resultClass.getDeclaredMethods.find(_.getName == output + "_$eq").get 
+      val m = resultClass.getDeclaredMethods.find(_.getName == output + "_$eq").get
       val r = syncObjectCls.getDeclaredMethods.find(_.getName == "get0_x" + output).get.invoke(null,Array():_*)
       m.invoke(result,Array(r):_*)
     }
     val finalizeM = resultClass.getDeclaredMethods.find(_.getName == "unwrap")
     finalizeM match {
       case Some(m) => m.invoke(result,Array():_*) // Hash type activation record
-      case _ => 
+      case _ =>
     }
-    
+
     val e = System.currentTimeMillis()
     sendDebugMessage("CUDA execution (op " + id + "):" + (e-s))
 
     // Update the version number
     //TODO: allow non-blocking calls for struct type outputs
     val blockingCall = o.asInstanceOf[OP_MultiLoop].needsCombine || o.asInstanceOf[OP_MultiLoop].needsPostProcess || o.getOutputs.map(o.outputType(_)).exists(t => !t.startsWith("ppl.delite.runtime.data.DeliteArray"))
-    if(blockingCall) 
+    if(blockingCall)
       updateVersionIDs(id, List(Targets.Cuda,Targets.Scala))
-    else 
+    else
       updateVersionIDs(id, List(Targets.Cuda))
 
     // Send output message to master
@@ -416,11 +439,11 @@ object DeliteMesosExecutor {
   def launchWorkScala(op: RemoteOp) {
     opTarget = Targets.Scala
     val id = op.getId.getId
-    //sendDebugMessage("launching op " + id)
-    
+    sendDebugMessage("launching op " + id)
+
     val cls = op.getType match {
       case RemoteOp.Type.INPUT => classLoader.loadClass("generated.scala.kernel_"+id)
-      case RemoteOp.Type.MULTILOOP => 
+      case RemoteOp.Type.MULTILOOP =>
         loopStart = op.getStartIdx(slaveIdx)
         loopSize = if (op.getStartIdxCount > slaveIdx+1) op.getStartIdx(slaveIdx+1)-loopStart else -1
         //sendDebugMessage("looping from " + loopStart + " to " + (loopStart+loopSize))
@@ -429,7 +452,7 @@ object DeliteMesosExecutor {
     }
 
     val method = cls.getDeclaredMethods.find(_.getName == "apply").get
-    val types = method.getParameterTypes //or use the DEG?
+    val types = method.getParameterTypes.drop(1) // the first argument in the op is resourceInfo, which is not sent over the wire. //or use the DEG?
     var idx = 0
     val args: Array[Object] = for (tpe <- types) yield {
       val arg = Serialization.deserialize(tpe, op.getInput(idx), true)
@@ -438,20 +461,22 @@ object DeliteMesosExecutor {
     }
 
     val s = System.currentTimeMillis()
-    val serResults = try { 
+    val serResults = try {
       val result = op.getType match {
         case RemoteOp.Type.INPUT =>
           method.invoke(null, args:_*)
         case RemoteOp.Type.MULTILOOP =>
-          val header = method.invoke(null, args:_*) //TODO: for map-like ops we can return this immediately rather than waiting for work to complete
+          val headerArgsWithResourceInfo = (new generated.scala.ResourceInfo(0, Config.numThreads)) :: args.toList // multiloop header ignores threadId in resourceInfo
+          val header = method.invoke(null, headerArgsWithResourceInfo:_*) //TODO: for map-like ops we can return this immediately rather than waiting for work to complete
           val result = new Future[Any]
 
           for (i <- 0 until Config.numThreads) {
-            val loopCls = classLoader.loadClass("MultiLoop_"+id+"_Chunk_"+i)
+            val loopCls = classLoader.loadClass("MultiLoop_"+id)
             val loopM = loopCls.getDeclaredMethods.find(_.getName == "apply").get
+            val resourceInfo = new generated.scala.ResourceInfo(i, Config.numThreads)
             val exec = new DeliteExecutable {
               def run() { try {
-                val res = loopM.invoke(null, header)
+                val res = loopM.invoke(null, resourceInfo, header)
                 if (i == 0) {
                   result.set(res)
                 }
@@ -459,10 +484,10 @@ object DeliteMesosExecutor {
                 case i: java.lang.reflect.InvocationTargetException => if (i.getCause != null) throw i.getCause else throw i
               } }
             }
-            executor.submitOne(i, exec)
+            Delite.executor.runOne(i, exec)
           }
           result.get
-      } 
+      }
       result.getClass.getMethod("serialize").invoke(result).asInstanceOf[java.util.List[ByteString]]
     } catch {
       case i: java.lang.reflect.InvocationTargetException => if (i.getCause != null) throw i.getCause else throw i
@@ -483,13 +508,13 @@ object DeliteMesosExecutor {
     driver.sendFrameworkMessage(mssg.toByteArray)
   }
 
-  def getData(request: RequestData) = {    
+  def getData(request: RequestData) = {
     opTarget=Targets.Scala
     val id = request.getId.getId.split("_")
     assert(id.length == 2)
     val key = id(0)
     val offset = id(1).toInt
-    sendDebugMessage("requesting data " + key)
+    sendDebugMessage("delivering data " + key)
     val res = getResult(key, offset)
     val data = if (request.hasIdx) res.readAt(request.getIdx) else res
 
@@ -504,8 +529,8 @@ object DeliteMesosExecutor {
   }
 
   def requestData(id: String, location: Int, idx: Int): ReturnResult = {
-    sendDebugMessage("requesting remote read of " + id + " at index " + idx)
-    val mssg = DeliteMasterMessage.newBuilder 
+    sendWarningMessage("requesting remote read of " + id + " at index " + idx)
+    val mssg = DeliteMasterMessage.newBuilder
       .setType(DeliteMasterMessage.Type.DATA)
       .setData(RequestData.newBuilder.setId(Id.newBuilder.setId(id)).setIdx(idx))
       .build.toByteString.asReadOnlyByteBuffer
