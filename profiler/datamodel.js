@@ -35,6 +35,22 @@ function convertToStreamGraphFormat(rawProfileData) {
     return data
 }
 
+function getSupportedTargets(supportedTargetsStrArr) {
+    var supportedTargets = [false, false, false];
+    for (var i in supportedTargetsStrArr) {
+        var t = supportedTargetsStrArr[i];
+        if (t == "scala") {
+            supportedTargets[TARGET_SCALA] = true;
+        } else if (t == "cpp") {
+            supportedTargets[TARGET_CPP] = true;
+        } else if (t == "cuda") {
+            supportedTargets[TARGET_CUDA] = true;
+        }
+    }
+
+    return supportedTargets;
+}
+
 function updateMemUsageOfDNodes(memProfile, dependencyData, executionProfile, config) {
     for(nodeName in memProfile) {
         if (nodeName != "dummy") {
@@ -132,6 +148,7 @@ function getExecutionProfile(rawProfileData, dependencyData, config) {
 
     var executionProfile = new ExecutionProfile();
     executionProfile.numThreads = getNumberOfThreads(perfProfile);
+    executionProfile.enabledTargets = getSupportedTargets(rawProfileData.Init.EnabledTargets);
 
     var syncNodes = [];
     var ticTocRegions = [];
@@ -139,6 +156,8 @@ function getExecutionProfile(rawProfileData, dependencyData, config) {
 
     for (var i in perfProfile.kernels) {
         var name = perfProfile.kernels[i];
+
+
         var duration = perfProfile.duration[i];
         var start = (perfProfile.start[i] - appStartTimeInMillis) + jvmUpTimeAtAppStart;
 
@@ -352,8 +371,6 @@ function isLoopNode(dNode) {
             (dNode.type == "WhileLoop"));
 }
 
-
-
 function updateTimeTakenByPartitionedKernels(dependencyData, executionProfile) {
     function getMaxTimeAmongParitions(executionProfile, nodeName) {
         var maxTime = 0;
@@ -366,15 +383,19 @@ function updateTimeTakenByPartitionedKernels(dependencyData, executionProfile) {
         return maxTime;
     }
 
+    function isTargetCuda(supportedTargets, enabledTargets) {
+        return ( supportedTargets[TARGET_CUDA] && enabledTargets[TARGET_CUDA] );
+    }
+
     dependencyData.nodes.forEach(function (dNode) {
-        if(isLoopNode(dNode)) {
-            var headerNodeName = dNode.name + "_h";
+        var nodeName = dNode.name;
+        var summary = executionProfile.nodeNameToSummary[nodeName];
+        if(isLoopNode(dNode) && (!isTargetCuda(dNode.supportedTargets, executionProfile.enabledTargets))) {
+            var headerNodeName = nodeName + "_h";
             var headerTime = executionProfile.totalTime(headerNodeName).abs;
-            var maxTimeAmongParitions = getMaxTimeAmongParitions(executionProfile, dNode.name);
+            var maxTimeAmongParitions = getMaxTimeAmongParitions(executionProfile, nodeName);
             var totalTime = headerTime + maxTimeAmongParitions;
-            //executionProfile.setTotalTime(dNode.name, totalTime);
-            // Dont use setTotalTime since the loop node may have been inside a conditional and may have not run in this execution
-            executionProfile.trySetTotalTime(dNode.name, totalTime);
+            executionProfile.trySetTotalTime(nodeName, totalTime);
         }
     })
 }
@@ -492,7 +513,8 @@ function initializeNodeDataFromDegFile(node, level) {
                     depth           : 0, 
                     controlDeps     : getOrElse(node.controlDeps, []), 
                     antiDeps        : getOrElse(node.antiDeps, []),
-                    target          : getKernelTargetPlatform(node.supportedTargets, "unknown"),
+                    //target          : getKernelTargetPlatform(node.supportedTargets, "unknown"),
+                    supportedTargets: getSupportedTargets(node.supportedTargets),
                     type            : getOrElse(nodeType, "unknown"),
                     condOps         : condOpsData,
                     bodyOps         : bodyOpsData,
@@ -601,8 +623,7 @@ function assignInheritedParentAttrsToDNodes(nodes, nodeNameToId, nextId) {
     function helper(parent, childType) {
         parent[childType].forEach(function(n) {
             n.parentId = parent.id
-            n.target = parent.target
-
+            
             if (n.type == "InternalNode") {
                 n.sourceContext = parent.sourceContext
             }

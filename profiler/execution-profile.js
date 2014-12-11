@@ -4,6 +4,9 @@
 //====================================================
 
 var defaultTime = new Time(0, 0);
+var TARGET_SCALA = 0;
+var TARGET_CPP = 1;
+var TARGET_CUDA = 2;
 
 //====================================================
 // Data structures used in the backend data model
@@ -21,6 +24,7 @@ function ExecutionProfile() {
 	this.totalAppTime = 0;
 	this.appStartTime = 0;
 	this.appEndTime = 0;
+	this.enabledTargets = [false, false, false]; // The different targets enabled for the run
 }
 
 ExecutionProfile.prototype.tryAddNode = function(nodeName) {

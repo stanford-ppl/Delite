@@ -265,6 +265,16 @@ function highlightLineInEditorByKernelId(nodeId) {
 	highlightLineInEditor(sc.file, sc.line)
 }
 
+function computeTarget(supportedTargets, enabledTargets) {
+	if ( supportedTargets[TARGET_CUDA] && enabledTargets[TARGET_CUDA] ) {
+		return "cuda";
+	} else if ( supportedTargets[TARGET_CPP] && enabledTargets[TARGET_CPP] ) {
+		return "cpp";
+	}
+
+	return "scala";
+}
+
 function populateKernelInfoTable(node) {
 	function helper(num) {
 		if (num != undefined) return num.toFixed(0)
@@ -273,7 +283,7 @@ function populateKernelInfoTable(node) {
 
 	var dNode = (node.node) ? node.node : node;
 	var nodeType = dNode.type;
-	var target = dNode.target;
+	var target = computeTarget(dNode.supportedTargets, profData.executionProfile.enabledTargets);
 	var values = [];
 	var summary = profData.executionProfile.nodeNameToSummary[node.name];
 	if (summary) {
@@ -292,33 +302,6 @@ function populateKernelInfoTable(node) {
 		row.cells[1].innerHTML = values[i];
 	})
 }
-
-/*
-function populateKernelInfoTable(node) {
-	function helper(num) {
-		if (num != undefined) return num.toFixed(0)
-		return "NA"
-	};
-
-	var dNode = (node.node) ? node.node : node;
-	var nodeType = dNode.type;
-	var target = dNode.target;
-	var summary = profData.executionProfile.nodeNameToSummary[node.name];
-	
-	var timeStr = getDisplayTextForTimeAbsPctPair(summary.totalTime.abs, summary.totalTime.pct);
-	var execTimePct = helper(summary.execTime.pct);
-	var syncTimePct = helper(summary.syncTime.pct);
-	//var memUsage = summary.memUsage + " B";
-	var memUsage = memUsageValueToStr(summary.memUsage);
-
-	var values = [node.name, nodeType, target, timeStr , execTimePct + "/" + syncTimePct + " %", memUsage];
-	var table = $("#kernelInfoTable")[0];
-	values.forEach(function(v, i) {
-		var row = table.rows[i + 1];
-		row.cells[1].innerHTML = values[i];
-	})
-}
-*/
 
 function populateSyncNodeInfoTable(node) {
 	var properties = ["Dep. Thread", "Dep. Kernel", "Time (%)"]
