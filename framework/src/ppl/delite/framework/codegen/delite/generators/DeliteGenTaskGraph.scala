@@ -76,9 +76,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen with CombineTTPScheduling {
       case _ => // continue and attempt to generate kernel
     }
 
-    // validate that generators agree on inputs (similar to schedule validation in DeliteCodegen)
-    //val dataDeps = ifGenAgree(g => (g.syms(rhs) ++ g.getFreeVarNode(rhs)).distinct, true)
-
     val dataDeps = { // don't use getFreeVarNode...
       val bound = boundSyms(rhs)
       val used = syms(rhs)
