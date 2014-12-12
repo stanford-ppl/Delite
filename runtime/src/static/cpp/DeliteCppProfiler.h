@@ -16,9 +16,9 @@ typedef struct {
   bool isKernel;
 } cpptimer_t;
 
-void InitDeliteCppTimer(int32_t tid);
+void InitDeliteCppTimer(int32_t numThreads);
 void DeliteCppTimerStart(int32_t tid, string name, bool isKernel = true);
 void DeliteCppTimerStop(int32_t tid, string name);
-void DeliteCppTimerDump(int32_t tid, int32_t rid, JNIEnv* env);
+void DeliteCppTimerDump(int32_t offset, JNIEnv* env);
 
 #endif

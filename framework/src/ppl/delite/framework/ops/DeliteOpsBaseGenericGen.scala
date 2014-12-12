@@ -114,6 +114,13 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   // variable for loop nest level (used for adding openmp pragma)
   var loopLevel: Int = 0
 
+  //marks alloc calls that create the outputs of the kernel
+  var kernelAlloc = false
+  def allocGlobal[T](block: => Unit) {
+    kernelAlloc = true
+    block
+    kernelAlloc = false
+  }
 
   /**
    * MultiLoop components
@@ -791,7 +798,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             stream.println("// " + fieldAccess("__act",quote(sym)) + " stays null for now")
           case ParFlat =>
             emitValDef(elem.buf.sV, typeCast("loopSize",remap(Manifest.Int)))
-            emitBlock(elem.buf.alloc)
+            allocGlobal(emitBlock(elem.buf.alloc))
             if (Config.generateSerializable) {
               val arraySym = if (!remap(elem.buf.alloc.tp).contains("DeliteArray")) fieldAccess(quote(getBlockResult(elem.buf.alloc)), dc_data_field(getBlockResult(elem.buf.alloc).tp)) else quote(getBlockResult(elem.buf.alloc))
               emitAssignment(fieldAccess(arraySym,"offset"), typeCast("loopStart",remap(Manifest.Int))) //FIXME: extremely hacky
@@ -1005,7 +1012,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             stream.println("if (" + fieldAccess("__act", quote(sym) + "_offset") + " > 0) {")
             emitValDef(elem.buf.sV, fieldAccess("__act", quote(sym) + "_offset") + " + " + fieldAccess("__act",quote(sym) + "_size"))
             emitValDef(elem.buf.allocVal, fieldAccess("__act", quote(sym) + "_buf"))
-            emitBlock(elem.buf.allocRaw)
+            allocGlobal(emitBlock(elem.buf.allocRaw))
             emitMethodCall(fieldAccess("__act",quote(sym) + "_data_set"),List(quote(getBlockResult(elem.buf.allocRaw)),fieldAccess("__act", quote(sym) + "_conditionals")))
             stream.println("} else {")
             emitMethodCall(fieldAccess("__act",quote(sym) + "_data_set"),List(fieldAccess("__act", quote(sym) + "_buf"),fieldAccess("__act", quote(sym) + "_conditionals")))
@@ -1050,7 +1057,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           getActBuffer = List(quote(elem.buf.allocVal))
           if (elem.par == ParBuffer || elem.par == ParSimpleBuffer) {
             emitValDef(elem.buf.sV, fieldAccess("__act", quote(sym) + "_conditionals"))
-            emitBlock(elem.buf.setSize)
+            allocGlobal(emitBlock(elem.buf.setSize))
           }
           emitBlock(elem.buf.finalizer)
           emitAssignment(fieldAccess("__act",quote(sym)), quote(getBlockResult(elem.buf.finalizer)))

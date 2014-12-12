@@ -36,6 +36,11 @@ abstract class NativeExecutionThread(threadId: Int, numThreads: Int) extends Exe
 
 class CppExecutionThread(threadId: Int, numThreads: Int) extends ExecutionThread
 
+class PinnedExecutionThread(threadId: Int, numThreads: Int) extends NativeExecutionThread(threadId, numThreads) {
+  @native def initializeThread(threadId: Int, numThreads: Int): Unit
+  loadNative("cppInit", CppCompile)
+}
+
 class CudaExecutionThread(threadId: Int, numThreads: Int) extends NativeExecutionThread(threadId, numThreads) {
   @native def initializeThread(threadId: Int, numThreads:Int): Unit
   loadNative("cudaInit", CudaCompile)

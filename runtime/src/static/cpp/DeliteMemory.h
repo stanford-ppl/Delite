@@ -32,7 +32,7 @@ public:
   }
   
   void* operator new(size_t sz, const resourceInfo_t *resourceInfo) {
-    DHEAP_DEBUG("Allocation from Idx %d with size %d\n", heapIdx, sz);
+    DHEAP_DEBUG("Allocation from thread %d with size %d\n", resourceInfo->threadId, sz);
     return DeliteHeapAlloc(sz, resourceInfo->threadId);
   }
 

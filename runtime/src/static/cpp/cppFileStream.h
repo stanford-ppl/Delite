@@ -16,6 +16,7 @@
 #include <string>
 #include <errno.h>
 #include <fcntl.h>
+#include <dirent.h>
 #include "DeliteNamespaces.h"
 #include "DeliteCpp.h"
 #include "DeliteMemory.h"
@@ -46,6 +47,16 @@ class cppFileStream {
       }
     }
 
+    void addFile(char *pathname, uint64_t file_size) {
+      // NOTE: explicit copy is required since the pathname (char*) given to constructor may be freed outside.
+      VERBOSE("adding file %s of size %lu\n", pathname, file_size);
+      char *p = (char *)malloc(strlen(pathname)+1);
+      strcpy(p, pathname);
+      files.push_back(p);
+      fileLengths.push_back(file_size);
+      size += file_size;
+    }
+
   public:
     uint64_t size;
     uint64_t position;
@@ -60,11 +71,11 @@ class cppFileStream {
       position = start;
       uint64_t offset;
       findFileOffset(start, idx, offset);
-      reader = fopen(files.at(idx),"r");
+      reader = fopen(files.at(idx), "r");
       text = (char *)malloc(MAX_BUFSIZE*sizeof(char));
 
       if (reader == NULL) {
-        printf("error reading file (%s)\n", strerror(errno));
+        fprintf(stderr, "error reading file %s (%s)\n", files.at(idx), strerror(errno));
         assert(false);
       }
 
@@ -92,7 +103,7 @@ class cppFileStream {
           fclose(reader);
         reader = fopen(files.at(idx), "r");
         if (reader == NULL) {
-          printf("error reading file (%s)\n", strerror(errno));
+          fprintf(stderr, "error reading file %s (%s)\n", files.at(idx), strerror(errno));
           assert(false);
         }
       }
@@ -130,17 +141,25 @@ class cppFileStream {
         // check if file or directory
         struct stat st;
         lstat(pathname, &st);
-        if(S_ISDIR(st.st_mode)) {
-          assert(false && "Directory paths are not supported yet");
+        if (S_ISDIR(st.st_mode)) {
+          fprintf(stderr, "Path %s is a directory, which is not currently supported\n", pathname);
+          exit(-1);
+          //FIXME: the below code doesn't function properly with Delite's scala file writer
+          // DIR *dir = opendir(pathname);
+          // struct dirent *dp;
+          // while ((dp = readdir(dir)) != NULL) {
+          //   struct stat st;
+          //   lstat(dp->d_name, &st);
+          //   if (dp->d_name[0] != '.') addFile(dp->d_name, st.st_size); //TODO: robustify
+          // }
+          // closedir(dir);
+        }
+        else if (S_ISREG(st.st_mode)) {
+          addFile(pathname, st.st_size);
         }
         else {
-          // append to the list of files
-          // NOTE: explicit copy is required since the pathname (char*) given to constructor may be freed outside.
-          char *p = (char *)malloc(strlen(pathname)+1);
-          strcpy(p, pathname);
-          files.push_back(p);
-          fileLengths.push_back(st.st_size);
-          size += st.st_size;
+          fprintf(stderr, "Path %s does not appear to be a valid file or directory\n", pathname);
+          exit(-1);
         }
       }
       va_end(arguments);

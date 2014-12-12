@@ -3,20 +3,11 @@
 
 #include <stdlib.h>
 #include <iostream>
-#include <jni.h>
 #include <pthread.h>
-#include <sched.h>
 #include "Config.h"
 #include "DeliteDatastructures.h"
 #include "DeliteCpp.h"
-
-#ifdef __DELITE_CPP_NUMA__
-#include <numa.h>
-#endif
-
-#ifdef __sun
-#include <sys/processor.h>
-#endif
+#include "cppInit.h"
 
 
 Config* config = NULL;
@@ -91,16 +82,19 @@ void initializeGlobal(int numThreads, size_t heapSize) {
       resourceInfos[i].numThreads = numThreads;
       resourceInfos[i].socketId = config->threadToSocket(i);
       resourceInfos[i].numSockets = config->numSockets;
-      resourceInfos[i].rand = new DeliteCppRandom();
+      resourceInfos[i].rand = new DeliteCppRandom(i);
     }
     DeliteHeapInit(numThreads, heapSize);
+    initializeThreadPool(numThreads);
+    InitDeliteCppTimer(numThreads);
   }
   pthread_mutex_unlock(&init_mtx);
 }
 
-void freeGlobal(int numThreads) {
+void freeGlobal(int numThreads, int offset, JNIEnv *env) {
   pthread_mutex_lock(&init_mtx);
   if (config) {
+    DeliteCppTimerDump(offset, env);
     DeliteHeapClear(numThreads);
     delete[] resourceInfos;
     delete config;
@@ -109,40 +103,15 @@ void freeGlobal(int numThreads) {
   pthread_mutex_unlock(&init_mtx);
 }
 
-void initializeThread(int threadId) {
-  #ifdef __linux__
-    cpu_set_t cpu;
-    CPU_ZERO(&cpu);
-    CPU_SET(threadId, &cpu);
-    sched_setaffinity(0, sizeof(cpu_set_t), &cpu);
-        
-    #ifdef __DELITE_CPP_NUMA__
-      if (numa_available() >= 0) {
-        int socketId = config->threadToSocket(threadId);
-        if (socketId < numa_num_configured_nodes()) {
-          bitmask* nodemask = numa_allocate_nodemask();
-          numa_bitmask_setbit(nodemask, socketId);
-          numa_set_membind(nodemask);
-        }
-        //VERBOSE("Binding thread %d to cpu %d, socket %d\n", threadId, threadId, socketId);
-      }
-    #endif
-  #endif
-
-  #ifdef __sun
-    processor_bind(P_LWPID, P_MYID, threadId, NULL);
-  #endif
-}
-
 void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize) {
   initializeGlobal(numThreads, heapSize);
   initializeThread(threadId);
   delite_barrier(numLiveThreads); //ensure fully initialized before any continue
 }
 
-void clearAll(int numThreads, int numLiveThreads) {
+void clearAll(int numThreads, int numLiveThreads, int offset, JNIEnv *env) {
   delite_barrier(numLiveThreads); //first wait for all threads to arrive
-  freeGlobal(numThreads);
+  freeGlobal(numThreads, offset, env);
 }
 
 #endif

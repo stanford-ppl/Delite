@@ -125,7 +125,7 @@ trait CCompile extends CodeCache {
     val args = config.make.split(" ") ++ Array("-f", makefile, "all")
     val pb = new java.lang.ProcessBuilder(args:_*)
     pb.redirectErrorStream(true) //merge stdout and stderr
-    val outFile = File("compile.out")
+    val outFile = File("compile.log")
     pb.redirectOutput(outFile.jfile)
     val process = pb.start()
     process.waitFor()
