@@ -30,9 +30,17 @@ object DeliteFileInputStream {
     val hPath = new Path(p)
     val fs = hPath.getFileSystem(conf)
 
+    // recurse into sub-directories
+    def listStatus(p: Path): Array[FileStatus] = {
+      fs.listStatus(p) flatMap { s =>
+        if (s.isDirectory) listStatus(s.getPath)
+        else Array(s)
+      }
+    }
+
     if (fs.isDirectory(hPath)) {
       // return sorted list of file statuses (numbered file chunks should be parsed in order)
-      fs.listStatus(hPath).sortBy(f => f.getPath.getName)
+      listStatus(hPath).sortBy(f => f.getPath.getName)
     }
     else if (fs.isFile(hPath)) Array(fs.getFileStatus(hPath))
     else throw new IllegalArgumentException("Path " + p + " does not appear to be a valid file or directory")

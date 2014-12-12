@@ -70,6 +70,7 @@ trait BaseGenDeliteOps extends BaseDeliteOpsTraversalFat with BaseGenLoopsFat wi
     deliteKernel = saveKernel
     ret
   }
+
 }
 
 /* CPU-like target code generation for DeliteOps */
@@ -386,8 +387,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
                 emitVarDef(quote(sym)+"_act_idx", remap(Manifest.Int), "0")
                 emitVarDef(quote(sym)+"_values_size", remap(Manifest.Int), "0")
                 stream.println("while (" + quote(sym)+"_act_idx < " + numThreads + ") {")
-                  emitValDef("currentAct", actType, arrayApply("all_acts",quote(sym)+"_act_idx"))
-                  emitValDef("pos", remap(Manifest.Int), fieldAccess(fieldAccess("currentAct", quotedGroup+"_hash_pos"), "get("+arrayApply(quotedGroup+"_globalKeys",quotedGroup+"_idx")+")"))
+                  emitValDef("currentAct", actType, arrayApply("all_acts",quote(sym)+castInt32("_act_idx")))
+                  emitValDef("pos", remap(Manifest.Int), fieldAccess(fieldAccess("currentAct", quotedGroup+"_hash_pos"), "get("+arrayApply(quotedGroup+"_globalKeys",castInt32(quotedGroup+"_idx"))+")"))
                   stream.println("if (pos != -1 && pos < " + fieldAccess("currentAct",quotedGroup+"_size") + ") {")
                     emitValDef(elem.buf.iV2, "pos")
                     emitValDef(elem.buf.aV2, fieldAccess("currentAct",quote(sym)+"_hash_data"))
@@ -411,8 +412,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
                 emitVarDef(quote(sym)+"_offset", remap(Manifest.Int), "0")
                 emitAssignment(quote(sym)+"_act_idx", "0")
                 stream.println("while (" + quote(sym)+"_act_idx < " + numThreads + ") {")
-                  emitValDef("currentAct", actType, arrayApply("all_acts",quote(sym)+"_act_idx"))
-                  emitValDef("pos", remap(Manifest.Int), fieldAccess(fieldAccess("currentAct", quotedGroup+"_hash_pos"), "get("+arrayApply(quotedGroup+"_globalKeys",quotedGroup+"_idx")+")"))
+                  emitValDef("currentAct", actType, arrayApply("all_acts",castInt32(quote(sym)+"_act_idx")))
+                  emitValDef("pos", remap(Manifest.Int), fieldAccess(fieldAccess("currentAct", quotedGroup+"_hash_pos"), "get("+arrayApply(quotedGroup+"_globalKeys",castInt32(quotedGroup+"_idx"))+")"))
                   stream.println("if (pos != -1 && pos < " + fieldAccess("currentAct",quotedGroup+"_size") + ") {")
                     emitValDef(elem.buf.iV2, "pos")
                     emitValDef(elem.buf.aV2, fieldAccess("currentAct",quote(sym)+"_hash_data"))
@@ -871,7 +872,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
               emitAssignment(fieldAccess("__act2",quote(sym)+"_data"),fieldAccess("__act",quote(sym)+"_data"))
             }
           case (sym, elem: DeliteHashElem[_,_]) =>
-          case (sym, elem: DeliteForeachElem[_]) => // nothing needed - this case only happens if a ForeachElem is fused with something else that needs combine
+          case (sym, elem: DeliteForeachElem[_]) =>
+            // this case only happens if a ForeachElem is fused with something else that needs combine
+            emitVarDef(quote(sym), remap(sym.tp), "()")  //TODO: Need this for other targets? (Currently, other targets just don't generate unit types)
           case (sym, elem: DeliteReduceElem[_]) =>
             emitAssignment(fieldAccess("__act2",quote(sym)+"_zero"),fieldAccess("__act",quote(sym)+"_zero"))
             // should we throw an exception instead on an empty reduce?
