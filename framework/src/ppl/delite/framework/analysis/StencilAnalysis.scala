@@ -241,7 +241,7 @@ trait StencilAnalysis extends FatBlockTraversal {
 
         addStencil(s, stencil)
 
-      case DeliteCollectElem(func,cond,par,buf,iFunc,iF,sF,eF,numDynamicChunks) =>
+      case DeliteCollectElem(func,par,buf,iFunc,iF,sF,eF,numDynamicChunks) =>
         val stencil = new Stencil()
 
         log("  ++ found collect elem")

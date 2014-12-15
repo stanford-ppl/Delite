@@ -92,8 +92,14 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
     def finalizer(x: Exp[I]) = cfinalizer(x)
     
     lazy val body: Def[CA] = copyBodyOrElse(DeliteCollectElem[A,I,CA](       
-      collectFunc = reifyEffects(cfunc(eV,v)),
-      cond = ccond.map(cf => reifyEffects(cf(v))),
+      collectFunc = { sys.error("DeliteILOps need to do something with cconds"); reifyEffects(cfunc(eV,v)) },
+      // TODO vsalvis what to do with ccond?
+        // if (conds.isEmpty) cfunc(eV,v) else {
+        //   val singleCond = ccond.map(cf => cf(v)).reduce({ (a, b) => boolean_and(a, b) })
+        //   IfThenElse(singleCond, )
+        //   cfunc(eV,v)
+        // }
+//      cond = ccond.map(cf => reifyEffects(cf(v))),
       par = cpar,
       buf = DeliteBufferElem[A,I,CA](
         eV = this.eV,

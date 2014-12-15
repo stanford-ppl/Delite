@@ -253,7 +253,8 @@ trait DeliteOpsExp extends DeliteOpsExpIR with DeliteInternalOpsExp with DeliteC
     def cond: Exp[A] => Exp[Boolean]
 
     override def flatMapFunc = copyOrElse(_.flatMapFunc)({ a: Exp[A] => 
-      IfThenElse(cond(a), reifyEffects(DeliteArray.singletonInLoop(func(a), v)), reifyEffects(DeliteArray.emptyInLoop[B](v)) })
+      IfThenElse(cond(a), reifyEffects(DeliteArray.singletonInLoop(func(a), v)), reifyEffects(DeliteArray.emptyInLoop[B](v)))
+    })
   }
 
   /**

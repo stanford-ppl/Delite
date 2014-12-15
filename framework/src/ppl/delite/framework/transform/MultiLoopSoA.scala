@@ -77,7 +77,6 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
     val alloc = t(body.buf.alloc)
     alloc match {
     case StructBlock(tag,elems) =>
-      val condT = body.cond.map(t(_))
       def copyLoop[B:Manifest](f: Block[B]): Exp[DeliteArray[B]] = f match {
         case Block(Def(DeliteArrayApply(x,iv))) if (iv.equals(v) && body.par == ParFlat) => 
           x.asInstanceOf[Exp[DeliteArray[B]]] //eliminate identity function loop
@@ -91,7 +90,6 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
           val tv = t(v).asInstanceOf[Sym[Int]]
           simpleLoop(t(size), tv, DeliteCollectElem[B,DeliteArray[B],DeliteArray[B]](
             collectFunc = f,
-            cond = condT,
             par = body.par,
             buf = DeliteBufferElem[B,DeliteArray[B],DeliteArray[B]](
               eV = elemV,

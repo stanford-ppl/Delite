@@ -145,7 +145,6 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
 
   case class DeliteCollectElem[A:Manifest, I <: DeliteCollection[A]:Manifest, CA <: DeliteCollection[A]:Manifest](
     collectFunc: Block[A],
-    cond: List[Block[Boolean]] = Nil,
     par: DeliteParallelStrategy,
     buf: DeliteBufferElem[A,I,CA],
     iFunc: Option[Block[DeliteCollection[A]]] = None, //TODO: is there a cleaner way to merge flatMap functionality with Collect?
@@ -278,11 +277,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case e: DeliteHashCollectElem[_,_,_,_,_,_] => (summarizeEffects(e.keyFunc) andAlso summarizeEffects(e.valFunc)).star
     case e: DeliteHashReduceElem[_,_,_,_] => (summarizeEffects(e.keyFunc) andAlso summarizeEffects(e.valFunc) andAlso summarizeEffects(e.rFunc)).star // TODO writable reduce
     case e: DeliteHashIndexElem[_,_] => summarizeEffects(e.keyFunc).star
-    case e: DeliteCollectElem[_,_,_] =>
-      val ec = if (e.cond.nonEmpty) e.cond.map(summarizeEffects).reduce((s1,s2) => s1 andThen s2) else Pure()
-      val ef = summarizeEffects(e.collectFunc)
-      // ef.star
-      ef.star andAlso ec // should be (ef andAlso ec).star? there is an issue with orElse setting resAlloc to false
+    case e: DeliteCollectElem[_,_,_] => summarizeEffects(e.collectFunc).star
     //case e: DeliteReduceElem[_] => (summarizeEffects(e.func) andThen summarizeEffects(e.rFunc)).star
     case e: DeliteReduceElem[_] =>
       // explicitly remove writes to the accumulator -- can we generalize this somehow?
@@ -438,7 +433,6 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
       case e: DeliteCollectElem[a,i,ca] =>
         (DeliteCollectElem[a,i,ca]( // need to be a case class for equality (do we rely on equality?)
           collectFunc = fb(e.collectFunc)(e.mA),
-          cond = e.cond.map(fb(_)(manifest[Boolean])), //f(e.cond)
           par = e.par,
           buf = mirrorBuffer(e.buf),
           iFunc = e.iFunc.map(fb(_)(e.mDCA)),
@@ -490,7 +484,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteHashCollectElem[_,_,_,_,_,_] => blocks(op.keyFunc) ::: blocks(op.valFunc) ::: blocks(op.cond) ::: blocks(op.buf) ::: blocks(op.iBuf) ::: blocks(op.iBufSize)
     case op: DeliteHashReduceElem[_,_,_,_] => blocks(op.keyFunc) ::: blocks(op.valFunc) ::: blocks(op.cond) ::: blocks(op.zero) ::: blocks(op.rFunc) ::: blocks(op.buf)
     case op: DeliteHashIndexElem[_,_] => blocks(op.keyFunc) ::: blocks(op.cond)
-    case op: DeliteCollectElem[_,_,_] => blocks(op.collectFunc) ::: blocks(op.cond) ::: blocks(op.buf) ::: blocks(op.iFunc)
+    case op: DeliteCollectElem[_,_,_] => blocks(op.collectFunc) ::: blocks(op.buf) ::: blocks(op.iFunc)
     case op: DeliteBufferElem[_,_,_] => blocks(op.alloc) ::: blocks(op.apply) ::: blocks(op.update) ::: blocks(op.appendable) ::: blocks(op.append) ::: blocks(op.setSize) ::: blocks(op.allocRaw) ::: blocks(op.copyRaw) ::: blocks(op.finalizer)
 //    case op: DeliteForeachElem[_] => blocks(op.func) ::: blocks(op.cond) ::: blocks(op.sync)
     case op: DeliteForeachElem[_] => blocks(op.func) //::: blocks(op.sync)
@@ -509,7 +503,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteHashIndexElem[_,_] => syms(op.keyFunc) ++ syms(op.cond)
     case e: DeliteOpAbstractExternal[_] =>  super.syms(e) ::: syms(e.allocVal)
     case fr: DeliteOpAbstractForeachReduce[_] => syms(fr.funcBody)
-    case op: DeliteCollectElem[_,_,_] => syms(op.collectFunc) ::: syms(op.cond) ::: syms(op.buf) ::: syms(op.iFunc) ::: syms(op.sF)
+    case op: DeliteCollectElem[_,_,_] => syms(op.collectFunc) ::: syms(op.buf) ::: syms(op.iFunc) ::: syms(op.sF)
     case op: DeliteBufferElem[_,_,_] => syms(op.alloc) ::: syms(op.apply) ::: syms(op.update) ::: syms(op.appendable) ::: syms(op.append) ::: syms(op.setSize) ::: syms(op.allocRaw) ::: syms(op.copyRaw) ::: syms(op.finalizer)
 //    case op: DeliteForeachElem[_] => syms(op.func) ::: syms(op.cond) ::: syms(op.sync)
     case op: DeliteForeachElem[_] => syms(op.func) //::: syms(op.sync)
@@ -526,7 +520,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteHashIndexElem[_,_] => readSyms(op.keyFunc) ++ readSyms(op.cond)
     case e: DeliteOpAbstractExternal[_] => super.readSyms(e) ::: readSyms(e.allocVal)
     case fr: DeliteOpAbstractForeachReduce[_] => readSyms(fr.funcBody)
-    case op: DeliteCollectElem[_,_,_] => readSyms(op.collectFunc) ::: readSyms(op.cond) ::: readSyms(op.buf) ::: readSyms(op.iFunc) ::: readSyms(op.sF)
+    case op: DeliteCollectElem[_,_,_] => readSyms(op.collectFunc) ::: readSyms(op.buf) ::: readSyms(op.iFunc) ::: readSyms(op.sF)
     case op: DeliteBufferElem[_,_,_] => readSyms(op.alloc) ::: readSyms(op.apply) ::: readSyms(op.update) ::: readSyms(op.appendable) ::: readSyms(op.append) ::: readSyms(op.setSize) ::: readSyms(op.allocRaw) ::: readSyms(op.copyRaw) ::: readSyms(op.finalizer)
 //    case op: DeliteForeachElem[_] => readSyms(op.func) ::: readSyms(op.cond) ::: readSyms(op.sync)
     case op: DeliteForeachElem[_] => readSyms(op.func) //::: readSyms(op.sync)
@@ -542,7 +536,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteHashIndexElem[_,_] => effectSyms(op.keyFunc) ++ effectSyms(op.cond)
     case e: DeliteOpAbstractExternal[_] => effectSyms(e.allocVal) /*::: super.effectSyms(e) */
     case fr: DeliteOpAbstractForeachReduce[_] => List(fr.v) ::: effectSyms(fr.funcBody)
-    case op: DeliteCollectElem[_,_,_] => effectSyms(op.collectFunc)  ::: effectSyms(op.cond) ::: boundSyms(op.buf) ::: effectSyms(op.iFunc) ::: effectSyms(op.sF) ::: op.iF.toList ::: op.eF.toList
+    case op: DeliteCollectElem[_,_,_] => effectSyms(op.collectFunc)  ::: boundSyms(op.buf) ::: effectSyms(op.iFunc) ::: effectSyms(op.sF) ::: op.iF.toList ::: op.eF.toList
     case op: DeliteBufferElem[_,_,_] => List(op.eV, op.sV, op.allocVal, op.aV2, op.iV, op.iV2) ::: effectSyms(op.alloc) ::: effectSyms(op.apply) ::: effectSyms(op.update) ::: effectSyms(op.appendable) ::: effectSyms(op.append) ::: effectSyms(op.setSize) ::: effectSyms(op.allocRaw) ::: effectSyms(op.copyRaw) ::: effectSyms(op.finalizer)
 //    case op: DeliteForeachElem[_] => effectSyms(op.func) ::: effectSyms(op.cond) ::: effectSyms(op.sync)
     case op: DeliteForeachElem[_] => effectSyms(op.func) //::: effectSyms(op.sync)
@@ -560,7 +554,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteHashIndexElem[_,_] => freqHot(op.keyFunc) ++ freqHot(op.cond)
     case e: DeliteOpAbstractExternal[_] => super.symsFreq(e) ::: freqNormal(e.allocVal)
     case fr: DeliteOpAbstractForeachReduce[_] => freqHot(fr.funcBody)
-    case op: DeliteCollectElem[_,_,_] => freqHot(op.cond) ::: freqHot(op.collectFunc) ::: symsFreq(op.buf) ::: freqHot(op.iFunc) ::: freqHot(op.sF)
+    case op: DeliteCollectElem[_,_,_] => freqHot(op.collectFunc) ::: symsFreq(op.buf) ::: freqHot(op.iFunc) ::: freqHot(op.sF)
     case op: DeliteBufferElem[_,_,_] => freqNormal(op.alloc) ::: freqHot(op.apply) ::: freqHot(op.update) ::: freqHot(op.appendable) ::: freqHot(op.append) ::: freqNormal(op.setSize) ::: freqNormal(op.allocRaw) ::: freqNormal(op.copyRaw) ::: freqNormal(op.finalizer)
 //    case op: DeliteForeachElem[_] => freqNormal(op.sync) ::: freqHot(op.cond) ::: freqHot(op.func)
     case op: DeliteForeachElem[_] => /*freqNormal(op.sync) :::*/ freqHot(op.func)

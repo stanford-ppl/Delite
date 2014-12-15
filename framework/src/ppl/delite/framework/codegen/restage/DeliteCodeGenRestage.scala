@@ -465,18 +465,7 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
         stream.println(makeBoundVarArgs(elem.buf.allocVal))
         emitBlock(elem.buf.finalizer)
         stream.println(quote(getBlockResult(elem.buf.finalizer)))
-        // conditions
         stream.println("},")
-        stream.print("scala.List(")
-        for (i <- 0 until elem.cond.length) {
-          stream.println("{")
-          stream.println(makeBoundVarArgs(op.v))
-          emitBlock(elem.cond(i))
-          stream.println(quote(getBlockResult(elem.cond(i))))
-          stream.print("}")
-          if (i < elem.cond.length - 1) stream.println(",")
-        }
-        stream.println("),")
         // par
         stream.println("\"" + elem.par.toString + "\",")
         // buffer

@@ -78,12 +78,12 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     kernelAlloc = false
   }
 
-  // Matches on CollectElems that represent a FlatMap that is actually a map,
-  // so that Codegen can emit map code and avoid the intermediate allocation
+  // Matches on CollectElems that represent a FlatMap that is actually a map
+  // and extracts the map element so that Codegen can emit map code and avoid
+  // the intermediate allocation
   object FlatmapSpecializedToMap {
-    // (elem.par, elem.iFunc, elem.cond)
-    def unapply(triple: Tuple3[DeliteParallelStrategy, Option[Block[DeliteCollection[_]]], List[Block[Boolean]]]): Option[Block[Any]] = triple match {
-      case (ParFlat, Some(iFuncVal), Nil) => getBlockResult(iFuncVal) match {
+    def unapply(elem: DeliteCollectElem[_, _, _]): Option[Block[Any]] = (elem.par, elem.iFunc) match {
+      case (ParFlat, Some(iFuncVal)) => getBlockResult(iFuncVal) match {
         case Def(EatReflect(DeliteArraySingletonInLoop(siElem, _))) => Some(siElem)
         case _ => None
       }
@@ -91,12 +91,12 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     }
   }
 
-  // Matches on CollectElems that represent a FlatMap that is actually a filter,
-  // so that Codegen can emit filter code and avoid the intermediate allocation
+  // Matches on CollectElems that represent a FlatMap that is actually a filter
+  // and extracts the condition and the element so that Codegen can emit filter
+  // code and avoid the intermediate allocation
   object FlatmapSpecializedToFilter {
-    // (elem.par, elem.iFunc, elem.cond)
-    def unapply(triple: Tuple3[DeliteParallelStrategy, Option[Block[DeliteCollection[_]]], List[Block[Boolean]]]): Option[(Exp[Boolean], Block[Any])] = triple match {
-      case (par, Some(iFuncVal), Nil) => par match {
+    def unapply(elem: DeliteCollectElem[_, _, _]): Option[(Exp[Boolean], Block[Any])] = (elem.par, elem.iFunc) match {
+      case (par, Some(iFuncVal)) => par match {
         case ParBuffer | ParSimpleBuffer => getBlockResult(iFuncVal) match {
           case Def(EatReflect(IfThenElse(cond, Block(Def(EatReflect(DeliteArraySingletonInLoop(thenElem, _)))), Block(Def(DeliteArrayEmptyInLoop(_,_)))))) => Some((cond, thenElem))
           case _ => None
@@ -479,8 +479,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   // --- end hash reduce
 
-  def emitCollectElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteCollectElem[_,_,_], prefixSym: String = "") {
-    (elem.par, elem.iFunc, elem.cond) match {
+  def emitCollectElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteCollectElem[_,_,_], prefixSym: String = "") = {
+    elem match {
       case FlatmapSpecializedToMap(singleElem) =>
         emitValDef(elem.buf.eV, quote(getBlockResult(singleElem)))
         emitValDef(elem.buf.allocVal, fieldAccess(prefixSym,quote(sym)+"_data"))
@@ -489,7 +489,6 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       case FlatmapSpecializedToFilter(cond, thenElem) =>
         stream.println("if (" + quote(cond) + ") {")
         emitValDef(elem.buf.allocVal, fieldAccess(prefixSym,quote(sym)+"_buf"))
-        stream.println("// quoting elem: " + getBlockResult(thenElem) + " instead of emitting " + elem.collectFunc + " and iFunc " + elem.iFunc)
         emitValDef(elem.buf.eV, quote(getBlockResult(thenElem)))
         getActBuffer = List(fieldAccess(prefixSym, quote(sym) + "_buf"))
         getActSize = fieldAccess(prefixSym, quote(sym) + "_size")
@@ -501,8 +500,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitAssignment(fieldAccess(prefixSym,quote(sym)+"_conditionals"), fieldAccess(prefixSym,quote(sym)+"_conditionals") + " + 1")
         stream.println("}")
 
-      case (ParBuffer,_,_) | (ParSimpleBuffer,_,_) =>
-        if (elem.cond.nonEmpty) stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
+      case _ if (elem.par == ParBuffer || elem.par == ParSimpleBuffer) =>
         if (elem.iFunc.nonEmpty) {
           emitValDef(elem.eF.get, quote(getBlockResult(elem.iFunc.get)))
           emitBlock(elem.sF.get)
@@ -524,22 +522,17 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           emitAssignment(quote(elem.iF.get), quote(elem.iF.get) + " + 1")
           stream.println("}") //close flatmap loop
         }
-        if (elem.cond.nonEmpty) stream.println("}")
 
-      case (ParFlat, Some(_), _) => 
+      case _ if (elem.par == ParFlat && elem.iFunc.isDefined) => 
         // This case should never happen, ParFlat is used for map-like ops
         // without an iFunc, if an iFunc is specified either one of the buffer
         // strategies should be used (flatmap case), unless the flatmap should
         // can be specialized to map.
         sys.error("CollectElem with ParFlat parallel strategy, but iFunc is not empty and also not matched by FlatmapSpecializedToMap.")
 
-      case (ParFlat,_,_) =>
+      case _ if (elem.par == ParFlat) =>
         emitValDef(elem.buf.eV, quote(getBlockResult(elem.collectFunc)))
         emitValDef(elem.buf.allocVal, fieldAccess(prefixSym,quote(sym)+"_data"))
-        if (elem.cond.nonEmpty) {
-          stream.println("//ERROR: need to test for conds " + elem.cond)
-          println("ERROR: need to test for conds " + elem.cond)
-        }
         emitBlock(elem.buf.update)
     }
   }
@@ -635,11 +628,11 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     case elem: DeliteHashCollectElem[_,_,_,_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
     case elem: DeliteHashReduceElem[_,_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
     case elem: DeliteHashIndexElem[_,_] => elem.keyFunc :: elem.cond
-    case elem: DeliteCollectElem[_,_,_] => (elem.par, elem.iFunc, elem.cond) match {
+    case elem: DeliteCollectElem[_,_,_] => (elem.par, elem.iFunc) match {
       case FlatmapSpecializedToMap(singleElem) => List(singleElem)
       case FlatmapSpecializedToFilter(cond, thenElem) => List(reifyEffects(cond), thenElem)
-      case (_,Some(iFuncVal),_) => iFuncVal :: elem.cond
-      case _ => elem.collectFunc :: elem.cond
+      case (_,Some(iFuncVal)) => List(iFuncVal)
+      case _ => List(elem.collectFunc)
     }
     //case elem: DeliteForeachElem[_] => elem.cond // only emit func inside condition! TODO: how to avoid emitting deps twice? // elem.func :: elem.cond
     case elem: DeliteForeachElem[_] => List(elem.func)

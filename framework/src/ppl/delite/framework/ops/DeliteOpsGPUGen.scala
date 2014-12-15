@@ -34,7 +34,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       //case elem: DeliteHashCollectElem[_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
       //case elem: DeliteHashReduceElem[_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
       //case elem: DeliteHashIndexElem[_,_] => elem.keyFunc :: elem.cond
-      case elem: DeliteCollectElem[_,_,_] => elem.collectFunc :: elem.cond
+      case elem: DeliteCollectElem[_,_,_] => List(elem.collectFunc)
       case elem: DeliteForeachElem[_] => List(elem.func)
       case elem: DeliteReduceElem[_] => elem.func :: elem.cond
       case elem: DeliteReduceTupleElem[_,_] => elem.func._1 :: elem.func._2 :: elem.cond
@@ -207,7 +207,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     emitHashReduceElemProcess(op, symList)
     (symList zip op.body) foreach {
       case (sym, elem:DeliteCollectElem[_,_,_]) =>
-        val freeVars = (getFreeVarBlock(Block(Combine((List(elem.collectFunc,elem.buf.update,elem.buf.appendable)++elem.cond).map(getBlockResultFull))),List(elem.buf.eV,elem.buf.allocVal,op.v,sym))++List(sym)).filter(_ != op.size).distinct
+        val freeVars = (getFreeVarBlock(Block(Combine((List(elem.collectFunc,elem.buf.update,elem.buf.appendable)).map(getBlockResultFull))),List(elem.buf.eV,elem.buf.allocVal,op.v,sym))++List(sym)).filter(_ != op.size).distinct
         val inputs = remapInputs(freeVars)
         val e = metaData.outputs.get(sym).get
         e.funcs += "process" -> freeVars.map(quote)
@@ -217,19 +217,12 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         elem.par match {
           case ParSimpleBuffer =>
             //emitValDef(elem.allocVal, "act." + quote(sym) + "_buf")
-            emitFatBlock(elem.cond)
-            if (elem.cond.nonEmpty) stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
             emitBlock(elem.buf.appendable)
             stream.println("if (" + quote(getBlockResult(elem.buf.appendable)) + ") {")
             //emitValDef(elem.allocVal, "act." + quote(sym) + "_buf")
             //emitBlock(elem.update)
             stream.println("act." + quote(sym) + "_bitmap[" + quote(op.v) + "] = 1;")
             stream.println("}")
-            if (elem.cond.nonEmpty) {
-              // Need this for GPU?
-              // stream.println(quote(sym) + "_conditionals[" + quote(op.v) + "] += 1;")
-              stream.println("}")
-            }
           case ParFlat =>
             emitBlock(elem.collectFunc)
             emitValDef(elem.buf.eV, quote(getBlockResult(elem.collectFunc)))
@@ -449,7 +442,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     // emit post-process functions
     (symList zip op.body) foreach {
       case (sym, elem:DeliteCollectElem[_,_,_]) =>
-        val freeVars = (getFreeVarBlock(Block(Combine((List(elem.collectFunc,elem.buf.update)++elem.cond).map(getBlockResultFull))),List(elem.buf.eV,elem.buf.allocVal,op.v,sym))++List(sym)).filter(_ != op.size).distinct
+        val freeVars = (getFreeVarBlock(Block(Combine((List(elem.collectFunc,elem.buf.update)).map(getBlockResultFull))),List(elem.buf.eV,elem.buf.allocVal,op.v,sym))++List(sym)).filter(_ != op.size).distinct
         val inputs = remapInputs(freeVars)
         val e = metaData.outputs.get(sym).get
         e.funcs += "postprocess" -> freeVars.map(quote)
@@ -457,12 +450,10 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         elem.par match {
           case ParSimpleBuffer =>
             emitValDef(elem.buf.allocVal, quote(sym))
-            if (elem.cond.nonEmpty) stream.println("if (act."+quote(sym)+"_bitmap[" + quote(op.v) + "] == 1) {")
             emitBlock(elem.collectFunc)
             emitValDef(elem.buf.eV, quote(getBlockResult(elem.collectFunc)))
             stream.println(quote(op.v) + " = act." + quote(sym) + "_scanmap[" + quote(op.v) + "];")
             emitBlock(elem.buf.update)
-            if (elem.cond.nonEmpty) stream.println("}")
           case _ =>
         }
         stream.println("}")
@@ -1011,7 +1002,7 @@ trait GPUGenDeliteOpsOpt extends GPUGenDeliteOps {
       emitHashReduceElemProcess(op, symList)
       (symList zip op.body) foreach {
         case (sym, elem:DeliteCollectElem[_,_,_]) =>
-          val freeVars = (getFreeVarBlock(Block(Combine((List(elem.collectFunc,elem.buf.update,elem.buf.appendable)++elem.cond).map(getBlockResultFull))),List(elem.buf.eV,elem.buf.allocVal,op.v,sym))++List(sym)).filter(_ != op.size).distinct
+          val freeVars = (getFreeVarBlock(Block(Combine((List(elem.collectFunc,elem.buf.update,elem.buf.appendable)).map(getBlockResultFull))),List(elem.buf.eV,elem.buf.allocVal,op.v,sym))++List(sym)).filter(_ != op.size).distinct
           val inputs = remapInputs(freeVars)
           val e = metaData.outputs.get(sym).get
           e.funcs += "process" -> freeVars.map(quote)
@@ -1032,19 +1023,12 @@ trait GPUGenDeliteOpsOpt extends GPUGenDeliteOps {
           elem.par match {
             case ParSimpleBuffer =>
               //emitValDef(elem.allocVal, "act." + quote(sym) + "_buf")
-              emitFatBlock(elem.cond)
-              if (elem.cond.nonEmpty) stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
               emitBlock(elem.buf.appendable)
               stream.println("if (" + quote(getBlockResult(elem.buf.appendable)) + ") {")
               //emitValDef(elem.allocVal, "act." + quote(sym) + "_buf")
               //emitBlock(elem.update)
               stream.println("act." + quote(sym) + "_bitmap[" + quote(op.v) + "] = 1;")
               stream.println("}")
-              if (elem.cond.nonEmpty) {
-                // Need this for GPU?
-                // stream.println(quote(sym) + "_conditionals[" + quote(op.v) + "] += 1;")
-                stream.println("}")
-              }
             case ParFlat =>
               emitBlock(elem.collectFunc)
               emitValDef(elem.buf.eV, quote(getBlockResult(elem.collectFunc)))
