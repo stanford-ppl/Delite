@@ -109,7 +109,7 @@ trait DeliteTestDSLCodeGenBase extends GenericFatCodegen with SchedulingOpt {
 
 trait DeliteTestDSLCodeGenScala extends DeliteTestDSLCodeGenBase with DeliteTestDSLScalaCodeGenPkg
   with ScalaGenDeliteOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteArrayBufferOps with ScalaGenDeliteMapOps with ScalaGenDeliteFileReaderOps
-  with ScalaGenDeliteTest with DeliteScalaGenAllOverrides {
+  with ScalaGenDeliteTest with DeliteScalaGenAllOverrides with ScalaGenIfThenElseFat {
   
   val IR: DeliteApplication with DeliteTestDSLExp
 }

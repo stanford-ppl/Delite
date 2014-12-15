@@ -245,28 +245,15 @@ trait DeliteOpsExp extends DeliteOpsExpIR with DeliteInternalOpsExp with DeliteC
 
   abstract class DeliteOpFilterI[A:Manifest,
                                 B:Manifest, I <: DeliteCollection[B]:Manifest, CB <: DeliteCollection[B]:Manifest](implicit ctx: SourceContext)
-    extends DeliteOpMapLike[B,I,CB] {
+    extends DeliteOpFlatMapI[A,B,I,CB] {
     type OpType <: DeliteOpFilterI[A,B,I,CB]
 
     // supplied by subclass
-    val in: Exp[DeliteCollection[A]]
-    //val size: Exp[Int] // could be dc_size(in), but we want type-specific pattern matching to work
     def func: Exp[A] => Exp[B]
-    def cond: Exp[A] => Exp[Boolean] // does this need to be more general (i.e. a List?)
+    def cond: Exp[A] => Exp[Boolean]
 
-    // loop
-    lazy val body: Def[CB] = copyBodyOrElse(DeliteCollectElem[B,I,CB](
-      collectFunc = reifyEffects(this.func(dc_apply(in,v))),
-      cond = reifyEffects(this.cond(dc_apply(in,v)))::Nil,
-      par = dc_parallelization(allocVal, true),
-      buf = this.buf,
-      numDynamicChunks = this.numDynamicChunks
-    ))
-
-    val dmA = manifest[A]
-    val dmB = manifest[B]
-    val dmI = manifest[I]
-    val dmCB = manifest[CB]
+    override def flatMapFunc = copyOrElse(_.flatMapFunc)({ a: Exp[A] => 
+      IfThenElse(cond(a), reifyEffects(DeliteArray.singletonInLoop(func(a), v)), reifyEffects(DeliteArray.emptyInLoop[B](v)) })
   }
 
   /**

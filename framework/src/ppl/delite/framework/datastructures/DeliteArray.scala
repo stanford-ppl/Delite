@@ -25,6 +25,7 @@ trait DeliteArrayOps extends Base {
     // specializes to generate map code. Therefore don't want to move singleton out of the loop,
     // because then it might be allocated needlessly.
     def singletonInLoop[T:Manifest](elem: => Rep[T], index: Rep[Int])(implicit ctx: SourceContext) = darray_singletonInLoop(elem, index)
+    def emptyInLoop[T:Manifest](index: Rep[Int])(implicit ctx: SourceContext) = darray_emptyInLoop(index)
   }
 
   implicit def repDArrayToDArrayOps[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext) = new DeliteArrayOpsCls(da)
@@ -73,6 +74,7 @@ trait DeliteArrayOps extends Base {
   def darray_toseq[A:Manifest](a: Rep[DeliteArray[A]])(implicit ctx: SourceContext): Rep[Seq[A]]
   def darray_fromfunction[T:Manifest](length: Rep[Int], func: Rep[Int] => Rep[T])(implicit ctx: SourceContext): Rep[DeliteArray[T]]
   def darray_singletonInLoop[T:Manifest](elem: => Rep[T], index: Rep[Int])(implicit ctx: SourceContext): Rep[DeliteArray[T]]
+  def darray_emptyInLoop[T:Manifest](index: Rep[Int])(implicit ctx: SourceContext): Rep[DeliteArray[T]]
 
   def darray_set_act_buf[A:Manifest](da: Rep[DeliteArray[A]]): Rep[Unit]
 }
@@ -88,8 +90,9 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   //////////////////
   // codegen ops
 
-  case class DeliteArrayNew[T](length: Exp[Int], m:Manifest[T], tag: PartitionTag[T]) extends Def[DeliteArray[T]] //pass in manifest explicitly so it becomes part of equality (cse) check
+  case class DeliteArrayNew[T](length: Exp[Int], m:Manifest[T], tag: PartitionTag[T]) extends Def[DeliteArray[T]] // pass in manifest explicitly so it becomes part of equality (cse) check
   case class DeliteArraySingletonInLoop[T:Manifest](elem: Block[T], index: Exp[Int]) extends DefWithManifest[T,DeliteArray[T]]
+  case class DeliteArrayEmptyInLoop[T:Manifest](index: Exp[Int], m:Manifest[T]) extends DefWithManifest[T,DeliteArray[T]] // pass in manifest explicitly so it becomes part of equality (cse) check
   case class DeliteArrayLength[T:Manifest](da: Exp[DeliteArray[T]]) extends DefWithManifest[T,Int]
   case class DeliteArrayApply[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int]) extends DefWithManifest[T,T]
   case class DeliteArrayUpdate[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int], x: Exp[T]) extends DefWithManifest[T,Unit]
@@ -249,6 +252,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
     val elemEff = summarizeEffects(reifiedElem)
     reflectEffect(DeliteArraySingletonInLoop(reifiedElem, index), elemEff)
   }
+  def darray_emptyInLoop[T:Manifest](index: Rep[Int])(implicit ctx: SourceContext) = reflectPure(DeliteArrayEmptyInLoop[T](index, manifest[T]))
   def darray_length[T:Manifest](da: Exp[DeliteArray[T]])(implicit ctx: SourceContext) = reflectPure(DeliteArrayLength[T](da))
   def darray_apply[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DeliteArrayApply[T](da,i))
   
@@ -327,6 +331,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
       case SimpleStruct(SoaTag(tag, length), elems) => struct(SoaTag(tag, f(length)), elems map { case (k,v) => (k, f(v)) })      
       case e@DeliteArrayNew(l,m,t) => darray_new_immutable(f(l))(m,pos)
       case e@DeliteArraySingletonInLoop(elem, index) => reflectPure(DeliteArraySingletonInLoop(f(elem), f(index)))(mtype(manifest[A]),pos)
+      case e@DeliteArrayEmptyInLoop(index, m) => reflectPure(DeliteArrayEmptyInLoop(f(index), m))(mtype(m), pos)
       case DeliteArrayLength(a) => darray_length(f(a))
       case e@DeliteArrayApply(a,x) => darray_apply(f(a),f(x))(e.mA,pos)
       case e@DeliteArrayUpdate(l,i,r) => darray_unsafe_update(f(l),f(i),f(r))
@@ -615,10 +620,13 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
       stream.println("if (" + quote(n) + " > Int.MaxValue) throw new RuntimeException(\"Allocation size too large for 32-bit runtime\")")
       emitValDef(sym, "new Array[" + remap(m) + "](" + quote(n) + ".toInt)")
       if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
-    case a@DeliteArraySingletonInLoop(elem, index) =>
+    case a@DeliteArraySingletonInLoop(elem, _) =>
       emitBlock(elem)
       emitValDef(sym, "Array(" + quote(getBlockResult(elem)) + ")")
       if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, Const(1), a.mA.erasure.getSimpleName)
+    case a@DeliteArrayEmptyInLoop(_, _) =>
+      emitValDef(sym, "Array()")
+      if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, Const(0), a.mA.erasure.getSimpleName)
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + ".length")
     case DeliteArrayApply(da, idx) =>

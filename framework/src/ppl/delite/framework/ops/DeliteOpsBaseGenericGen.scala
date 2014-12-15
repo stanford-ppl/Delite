@@ -84,8 +84,23 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     // (elem.par, elem.iFunc, elem.cond)
     def unapply(triple: Tuple3[DeliteParallelStrategy, Option[Block[DeliteCollection[_]]], List[Block[Boolean]]]): Option[Block[Any]] = triple match {
       case (ParFlat, Some(iFuncVal), Nil) => getBlockResult(iFuncVal) match {
-        case Def(DeliteArraySingletonInLoop(siElem, _)) => Some(siElem)
-        case Def(Reflect(DeliteArraySingletonInLoop(siElem, _), _,_)) => Some(siElem)
+        case Def(EatReflect(DeliteArraySingletonInLoop(siElem, _))) => Some(siElem)
+        case _ => None
+      }
+      case _ => None
+    }
+  }
+
+  // Matches on CollectElems that represent a FlatMap that is actually a filter,
+  // so that Codegen can emit filter code and avoid the intermediate allocation
+  object FlatmapSpecializedToFilter {
+    // (elem.par, elem.iFunc, elem.cond)
+    def unapply(triple: Tuple3[DeliteParallelStrategy, Option[Block[DeliteCollection[_]]], List[Block[Boolean]]]): Option[(Exp[Boolean], Block[Any])] = triple match {
+      case (par, Some(iFuncVal), Nil) => par match {
+        case ParBuffer | ParSimpleBuffer => getBlockResult(iFuncVal) match {
+          case Def(EatReflect(IfThenElse(cond, Block(Def(EatReflect(DeliteArraySingletonInLoop(thenElem, _)))), Block(Def(DeliteArrayEmptyInLoop(_,_)))))) => Some((cond, thenElem))
+          case _ => None
+        }
         case _ => None
       }
       case _ => None
@@ -471,6 +486,21 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitValDef(elem.buf.allocVal, fieldAccess(prefixSym,quote(sym)+"_data"))
         emitBlock(elem.buf.update)
 
+      case FlatmapSpecializedToFilter(cond, thenElem) =>
+        stream.println("if (" + quote(cond) + ") {")
+        emitValDef(elem.buf.allocVal, fieldAccess(prefixSym,quote(sym)+"_buf"))
+        stream.println("// quoting elem: " + getBlockResult(thenElem) + " instead of emitting " + elem.collectFunc + " and iFunc " + elem.iFunc)
+        emitValDef(elem.buf.eV, quote(getBlockResult(thenElem)))
+        getActBuffer = List(fieldAccess(prefixSym, quote(sym) + "_buf"))
+        getActSize = fieldAccess(prefixSym, quote(sym) + "_size")
+        emitBlock(elem.buf.appendable)
+        stream.println("if (" + quote(getBlockResult(elem.buf.appendable)) + ") {")
+        emitBlock(elem.buf.append)
+        emitAssignment(fieldAccess(prefixSym,quote(sym)+"_size"), fieldAccess(prefixSym,quote(sym)+"_size") + " + 1")
+        stream.println("}")
+        emitAssignment(fieldAccess(prefixSym,quote(sym)+"_conditionals"), fieldAccess(prefixSym,quote(sym)+"_conditionals") + " + 1")
+        stream.println("}")
+
       case (ParBuffer,_,_) | (ParSimpleBuffer,_,_) =>
         if (elem.cond.nonEmpty) stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
         if (elem.iFunc.nonEmpty) {
@@ -607,6 +637,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     case elem: DeliteHashIndexElem[_,_] => elem.keyFunc :: elem.cond
     case elem: DeliteCollectElem[_,_,_] => (elem.par, elem.iFunc, elem.cond) match {
       case FlatmapSpecializedToMap(singleElem) => List(singleElem)
+      case FlatmapSpecializedToFilter(cond, thenElem) => List(reifyEffects(cond), thenElem)
       case (_,Some(iFuncVal),_) => iFuncVal :: elem.cond
       case _ => elem.collectFunc :: elem.cond
     }
