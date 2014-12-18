@@ -87,42 +87,32 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
      ccond: List[Exp[Int] => Exp[Boolean]], cpar: DeliteParallelStrategy, 
      cappendable: (Exp[I],Exp[A],Exp[Int]) => Exp[Boolean], cappend: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit], csetSize: (Exp[I],Exp[Int]) => Exp[Unit], callocRaw: (Exp[I],Exp[Int]) => Exp[I], ccopyRaw: (Exp[I],Exp[Int],Exp[I],Exp[Int],Exp[Int]) => Exp[Unit]
     ) extends DeliteOpMapLike[A,I,CA] {
-    
           
     def finalizer(x: Exp[I]) = cfinalizer(x)
-    
-    lazy val body: Def[CA] = copyBodyOrElse(DeliteCollectElem[A,I,CA](       
-      collectFunc = { sys.error("DeliteILOps need to do something with cconds"); reifyEffects(cfunc(eV,v)) },
-      // TODO vsalvis what to do with ccond?
-        // if (conds.isEmpty) cfunc(eV,v) else {
-        //   val singleCond = ccond.map(cf => cf(v)).reduce({ (a, b) => boolean_and(a, b) })
-        //   IfThenElse(singleCond, )
-        //   cfunc(eV,v)
-        // }
-//      cond = ccond.map(cf => reifyEffects(cf(v))),
-      par = cpar,
-      buf = DeliteBufferElem[A,I,CA](
-        eV = this.eV,
-        sV = this.sV,
-        iV = this.iV,
-        iV2 = this.iV2,
-        allocVal = this.allocVal,
-        aV2 = this.aV2,
-        alloc = reifyEffects(callocN(sV)),
-        apply = unusedBlock, 
-        update = reifyEffects(cupdate(allocVal,eV,v)),        
-        appendable = reifyEffects(cappendable(allocVal,eV,v)),
-        append = reifyEffects(cappend(allocVal,eV,v)),
-        setSize = reifyEffects(csetSize(allocVal,sV)),
-        allocRaw = reifyEffects(callocRaw(allocVal,sV)),
-        copyRaw = reifyEffects(ccopyRaw(aV2,iV,allocVal,iV2,sV)),
-        finalizer = reifyEffects(this.finalizer(allocVal))
-      ),
-      numDynamicChunks = this.numDynamicChunks
-    ))
-    
+    def mapFunc() = cfunc(eV,v)
+
+    // TODO what to do with ccond?
+    override lazy val par = cpar
+    override lazy val buf = DeliteBufferElem[A,I,CA](
+      eV = this.eV,
+      sV = this.sV,
+      iV = this.iV,
+      iV2 = this.iV2,
+      allocVal = this.allocVal,
+      aV2 = this.aV2,
+      alloc = reifyEffects(callocN(sV)),
+      apply = unusedBlock, 
+      update = reifyEffects(cupdate(allocVal,eV,v)),        
+      appendable = reifyEffects(cappendable(allocVal,eV,v)),
+      append = reifyEffects(cappend(allocVal,eV,v)),
+      setSize = reifyEffects(csetSize(allocVal,sV)),
+      allocRaw = reifyEffects(callocRaw(allocVal,sV)),
+      copyRaw = reifyEffects(ccopyRaw(aV2,iV,allocVal,iV2,sV)),
+      finalizer = reifyEffects(this.finalizer(allocVal))
+    )
+
     val mA = manifest[A]
-    val mI = manifest[I]  
+    val mI = manifest[I]
     val mCA = manifest[CA]  
   }
   

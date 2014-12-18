@@ -83,8 +83,276 @@ trait DeliteOpsExp extends DeliteOpsExpIR with DeliteInternalOpsExp with DeliteC
    *  to represent this fused thing as a single parallel op (we have to unroll it).
    *  It would be nice to be general, so that we could have e.g. a ZipZipReduce op that is
    *  automatically fused and still a single IR node. OpComposite?
+   */
+
+  /**
+   * DeliteOpFlatMapLike is the base type for all Delite ops with collect elem bodies,
+   * representing loops that create an output collection with elements of type O.
    *
-   *  NOTE ABOUT ZERO:
+   * It now supports allocating an intermediate result of type I (which will be modified during
+   * construction) and returning a result of type CO by invoking the 'finalizer' method.
+   */
+  abstract class DeliteOpFlatMapLike[O:Manifest, I<:DeliteCollection[O]:Manifest, CO<:DeliteCollection[O]:Manifest](implicit ctx: SourceContext)
+      extends DeliteOpLoop[CO] {
+    type OpType <: DeliteOpFlatMapLike[O,I,CO]
+
+    // supplied by subclass, use bound index variable v
+    def flatMapLikeFunc(): Exp[DeliteCollection[O]]
+    val unknownOutputSize = true // override with false for map-like operations where input=output size
+    lazy val par = dc_parallelization(allocVal, unknownOutputSize)
+    // TODO vsalvis what are these?
+    // ideally we would leave these abstract: how can we specify that at least one of the two should be supplied,
+    // while keeping collect a unified abstraction?
+    // this version should be overridden if par == ParFlat and the other version is not suitable (e.g. DenseMatrix)
+    def alloc: Exp[I] = throw new IllegalArgumentException("alloc in DeliteOpMapLike should have been overridden")
+    // this version should be overridden if par == ParBuffer
+    def alloc(i: Exp[Int]): Exp[I] = alloc
+    def finalizer(x: Exp[I]): Exp[CO]
+
+    // FlatMap loop bound vars
+    final lazy val iFunc: Exp[DeliteCollection[O]] = copyTransformedOrElse(_.iFunc)(flatMapLikeFunc())
+    final lazy val iF: Sym[Int] = copyTransformedOrElse(_.iF)(fresh[Int]).asInstanceOf[Sym[Int]]
+    final lazy val eF: Sym[DeliteCollection[O]] = copyTransformedOrElse(_.eF)(fresh[DeliteCollection[O]](iFunc.tp)).asInstanceOf[Sym[DeliteCollection[O]]]
+    // Buffer bound vars
+    final lazy val eV: Sym[O] = copyTransformedOrElse(_.eV)(fresh[O]).asInstanceOf[Sym[O]]
+    final lazy val sV: Sym[Int] = copyTransformedOrElse(_.sV)(fresh[Int]).asInstanceOf[Sym[Int]]
+    final lazy val allocVal: Sym[I] = copyTransformedOrElse(_.allocVal)(reflectMutableSym(fresh[I])).asInstanceOf[Sym[I]]
+    final lazy val iV: Sym[Int] = copyTransformedOrElse(_.iV)(fresh[Int]).asInstanceOf[Sym[Int]]
+    final lazy val iV2: Sym[Int] = copyTransformedOrElse(_.iV2)(fresh[Int]).asInstanceOf[Sym[Int]]
+    final lazy val aV2: Sym[I] = copyTransformedOrElse(_.aV2)(fresh[I]).asInstanceOf[Sym[I]]
+
+    // buffer elem
+    lazy val buf = DeliteBufferElem(
+      eV = this.eV,
+      sV = this.sV,
+      iV = this.iV,
+      iV2 = this.iV2,
+      allocVal = this.allocVal,
+      aV2 = this.aV2,
+      alloc = reifyEffects(this.alloc(sV)),
+      apply = unusedBlock, //reifyEffects(dc_apply(allocVal,v)),
+      update = reifyEffects(dc_update(allocVal,v,eV)),
+      append = reifyEffects(dc_append(allocVal,v,eV)),
+      appendable = reifyEffects(dc_appendable(allocVal,v,eV)),
+      setSize = reifyEffects(dc_set_logical_size(allocVal,sV)),
+      allocRaw = reifyEffects(dc_alloc[O,I](allocVal,sV)),
+      copyRaw = reifyEffects(dc_copy(aV2,iV,allocVal,iV2,sV)),
+      finalizer = reifyEffects(this.finalizer(allocVal))
+    )
+
+    // loop elem
+    lazy val body: Def[CO] = copyBodyOrElse(DeliteCollectElem[O,I,CO](
+      iFunc = Some(reifyEffects(this.iFunc)),
+      iF = Some(this.iF),
+      sF = Some(reifyEffects(dc_size(eF))), //note: applying dc_size directly to iFunc can lead to iFunc being duplicated (during mirroring?)
+      eF = Some(this.eF),
+      collectFunc = reifyEffects(dc_apply(eF,iF)),
+      par = this.par,
+      buf = this.buf,
+      numDynamicChunks = this.numDynamicChunks
+    ))
+
+    val dmO = manifest[O]
+    val dmI = manifest[I]
+    val dmCO = manifest[CO]
+  }
+
+  /**
+   * DeliteOpMapLike is the special case of FlatMap where the each loop iteration generates one
+   * output element. The output size is therefore the same as the input/loop size. Code
+   * generation can be specialized to avoid the intermediate allocation of a collection of size
+   * 1 at each iteration. See FlatmapSpecializedToMap.
+   *
+   * Depending on the number of input collections the following subclasses can be used:
+   * - 0 input collections: DeliteOpMapIndices
+   * - 1 input collection (of type A): DeliteOpMap
+   * - 2 input collections (of type A and B): DeliteOpZipWith
+   */
+   abstract class DeliteOpMapLike[O:Manifest, I <: DeliteCollection[O]:Manifest, CO <: DeliteCollection[O]:Manifest](implicit ctx: SourceContext)
+      extends DeliteOpFlatMapLike[O,I,CO] {
+    type OpType <: DeliteOpMapLike[O,I,CO]
+
+    // supplied by subclass, produces the element for each iteration index
+    def mapFunc(): Exp[O]
+
+    override def flatMapLikeFunc() = DeliteArray.singletonInLoop(mapFunc(), v)
+    override val unknownOutputSize = false
+   }
+
+
+  /**
+   * Parallel map over the indices from 0 to (size - 1).
+   *
+   * @param  size  the size of the loop, which is the same as the output size
+   * @param  func  the mapping function Exp[Int] => Exp[O]
+   * @param  alloc the function returning the output collection
+   */
+  abstract class DeliteOpMapIndices[O:Manifest, CO <: DeliteCollection[O]:Manifest](implicit ctx: SourceContext)
+      extends DeliteOpMapIndicesI[O,CO,CO] {
+    type OpType <: DeliteOpMapIndices[O,CO]
+
+    def finalizer(x: Exp[CO]) = x
+  }
+
+  /** DeliteOpMapIndices with intermediate collection type. */
+  abstract class DeliteOpMapIndicesI[O:Manifest, I <: DeliteCollection[O]:Manifest, CO <: DeliteCollection[O]:Manifest](implicit ctx: SourceContext)
+      extends DeliteOpMapLike[O,CO,CO] {
+    type OpType <: DeliteOpMapIndicesI[O,I,CO]
+
+    // supplied by subclass, produces the element for each iteration index
+    def func: Exp[Int] => Exp[O]
+    
+    override def mapFunc() = func(v)
+  }
+
+  /**
+   * Parallel map from DeliteCollection[A] => DeliteCollection[O]. Input functions can depend on free
+   * variables, but they cannot depend on other elements of the input or output collection (disjoint access).
+   *
+   * @param  in    the input collection
+   * @param  size  the size of the input collection
+   * @param  func  the mapping function Exp[A] => Exp[O]
+   * @param  alloc function returning the output collection. If it is the same as the input collection,
+   *               the operation is mutable; (=> DeliteCollection[O]).
+   */
+  abstract class DeliteOpMap[A:Manifest, O:Manifest, CO <: DeliteCollection[O]:Manifest](implicit ctx: SourceContext)
+      extends DeliteOpMapI[A,O,CO,CO] {
+    type OpType <: DeliteOpMap[A,O,CO]
+
+    def finalizer(x: Exp[CO]) = x
+  }
+
+  /** DeliteOpMap with intermediate collection type. */
+  abstract class DeliteOpMapI[A:Manifest, O:Manifest, I <: DeliteCollection[O]:Manifest,CO <: DeliteCollection[O]:Manifest](implicit ctx: SourceContext)
+      extends DeliteOpMapLike[O,I,CO] {
+    type OpType <: DeliteOpMapI[A,O,I,CO]
+
+    // supplied by subclass
+    val in: Exp[DeliteCollection[A]]
+    def func: Exp[A] => Exp[O]
+
+    // bound var for map function, may be required by transformers
+    lazy val fin: Exp[A] = copyTransformedOrElse(_.fin)(dc_apply(in,v))
+    override def mapFunc() = func(fin)
+
+    val dmA = manifest[A]
+  }
+
+
+  /**
+   * Parallel 2 element zipWith-(map) from (DeliteCollection[A],DeliteCollection[B]) => DeliteCollection[O].
+   * Input functions can depend on free variables, but they cannot depend on other elements of the input or
+   * output collection (disjoint access).
+   *
+   * @param  inA   the first input collection
+   * @param  inB   the second input collection
+   * @param  size  the size of the collections (should be the same)
+   * @param  func  the zipWith function; ([Exp[A],Exp[B]) => Exp[O]
+   * @param  alloc function returning the output collection. If it is the same as the input collection,
+   *               the operation is mutable; (=> DeliteCollection[B]).
+   */
+  abstract class DeliteOpZipWith[A:Manifest, B:Manifest, O:Manifest, CO <: DeliteCollection[O]:Manifest](implicit ctx: SourceContext)
+      extends DeliteOpZipWithI[A,B,O,CO,CO] {
+    type OpType <: DeliteOpZipWith[A,B,O,CO]
+
+    def finalizer(x: Exp[CO]) = x
+  }
+
+  /** DeliteOpZipWith with intermediate collection type. */
+  abstract class DeliteOpZipWithI[A:Manifest, B:Manifest, O:Manifest, I <: DeliteCollection[O]:Manifest, CO <: DeliteCollection[O]:Manifest](implicit ctx: SourceContext)
+      extends DeliteOpMapLike[O,I,CO] {
+    type OpType <: DeliteOpZipWithI[A,B,O,I,CO]
+
+    // supplied by subclass
+    val inA: Exp[DeliteCollection[A]]
+    val inB: Exp[DeliteCollection[B]]
+    def func: (Exp[A], Exp[B]) => Exp[O]
+
+    // bound var for map function, may be required by transformers
+    lazy val fin: (Exp[A],Exp[B]) = (copyTransformedOrElse(_.fin._1)(dc_apply(inA,v)),copyTransformedOrElse(_.fin._2)(dc_apply(inB,v)))
+    override def mapFunc() = func(fin._1,fin._2)
+
+    val dmA = manifest[A]
+    val dmB = manifest[B]
+  }
+
+
+  /**
+   * Parallel flatMap from DeliteCollection[A] => DeliteCollection[O]. Input functions can depend on free
+   * variables, but they cannot depend on other elements of the input or output collection (disjoint access).
+   *
+   * @param  in    the input collection
+   * @param  size  the size of the input collection
+   * @param  func  the mapping function Exp[A] => Exp[DeliteCollection[O]]
+   * @param  alloc function returning the output collection. If it is the same as the input collection,
+   *               the operation is mutable; (=> DeliteCollection[O]).
+   */
+  abstract class DeliteOpFlatMap[A:Manifest, O:Manifest, CO<:DeliteCollection[O]:Manifest](implicit ctx: SourceContext)
+      extends DeliteOpFlatMapI[A,O,CO,CO] {
+    type OpType <: DeliteOpFlatMap[A,O,CO]
+
+    def finalizer(x: Exp[CO]) = x
+  }
+
+  /** DeliteOpFlatMap with intermediate collection type. */
+  abstract class DeliteOpFlatMapI[A:Manifest, O:Manifest, I<:DeliteCollection[O]:Manifest, CO<:DeliteCollection[O]:Manifest](implicit ctx: SourceContext)
+      extends DeliteOpFlatMapLike[O,I,CO] {
+    type OpType <: DeliteOpFlatMapI[A,O,I,CO]
+
+    // supplied by subclass
+    val in: Exp[DeliteCollection[A]]
+    def func: Exp[A] => Exp[DeliteCollection[O]]
+
+    // bound var for map function, may be required by transformers
+    lazy val fin: Exp[A] = copyTransformedOrElse(_.fin)(dc_apply(in,v))
+    override def flatMapLikeFunc() = func(fin)
+
+    val dmA = manifest[A]
+  }
+
+
+  /**
+   * Parallel (map)-filter from DeliteCollection[A] => DeliteCollection[O]. Input functions can depend on free
+   * variables, but they cannot depend on other elements of the input or output collection (disjoint access).
+   * Currently appends values that pass the condition to buffers, which are concatenated in the combine stage.
+   *
+   * @param  in    the input collection
+   * @param  size  the size of the input collection
+   * @param  func  the mapping function Exp[A] => Exp[O]
+   * @param  cond  the filter condition function Exp[A] => Exp[Boolean]
+   * @param  alloc function returning the output collection. If it is the same as the input collection,
+   *               the operation is mutable; (=> DeliteCollection[O]).
+   */
+  abstract class DeliteOpFilter[A:Manifest, O:Manifest, CO <: DeliteCollection[O]:Manifest](implicit ctx: SourceContext)
+      extends DeliteOpFilterI[A,O,CO,CO] {
+    type OpType <: DeliteOpFilter[A,O,CO]
+
+    def finalizer(x: Exp[CO]) = x
+  }
+
+  /** DeliteOpFilter with intermediate collection type. */
+  abstract class DeliteOpFilterI[A:Manifest, O:Manifest, I <: DeliteCollection[O]:Manifest, CO <: DeliteCollection[O]:Manifest](implicit ctx: SourceContext)
+      extends DeliteOpFlatMapLike[O,I,CO] {
+    type OpType <: DeliteOpFilterI[A,O,I,CO]
+
+    // supplied by subclass
+    val in: Exp[DeliteCollection[A]]
+    def func: Exp[A] => Exp[O]
+    def cond: Exp[A] => Exp[Boolean]
+
+    // bound var for map function, may be required by transformers
+    lazy val fin: Exp[A] = copyTransformedOrElse(_.fin)(dc_apply(in,v))
+    override def flatMapLikeFunc() = IfThenElse(cond(fin), reifyEffects(DeliteArray.singletonInLoop(func(fin), v)), reifyEffects(DeliteArray.emptyInLoop[O](v)))
+
+    val dmA = manifest[A]
+  }
+
+
+  /**
+   * DeliteOpReduceLike is the base type for all Delite ops with reduce elem bodies,
+   * representing loops that create a single output element of type A.
+   *
+   * NOTE ABOUT ZERO:
    *    the supplied zero parameter is required to have value equality *in the generated code*
    *    it will not be used unless the collection is empty or in a conditional reduce where the
    *    first (or more) conditions fail. In both cases, we never try to actually reduce a zero
@@ -93,222 +361,6 @@ trait DeliteOpsExp extends DeliteOpsExpIR with DeliteInternalOpsExp with DeliteC
    *    if stripFirst is set to false, i.e. for a mutable reduction, then the accInit value is used
    *    to allocate the accumulator, and it IS used in the initial reduction.
    */
-
-   /**
-    * DeliteOpMapLike is the base type for all Delite ops with collect elem bodies.
-    *
-    * It now supports allocating a result of type I (which will be modified during construction) and
-    * returning a result of type CA by invoking the 'finalizer' method.
-    */
-    abstract class DeliteOpMapLike[A:Manifest, I <: DeliteCollection[A]:Manifest, CA <: DeliteCollection[A]:Manifest](implicit ctx: SourceContext) extends DeliteOpLoop[CA] {
-      type OpType <: DeliteOpMapLike[A,I,CA]
-
-      // ideally we would leave these abstract: how can we specify that at least one of the two should be supplied,
-      // while keeping collect a unified abstraction?
-
-      // this version should be overridden if par == ParFlat and the other version is not suitable (e.g. DenseMatrix)
-      def alloc: Exp[I] = throw new IllegalArgumentException("alloc in DeliteOpMapLike should have been overridden")
-      // this version should be overridden if par == ParBuffer
-      def alloc(i: Exp[Int]): Exp[I] = alloc
-      def finalizer(x: Exp[I]): Exp[CA]
-
-      // bound vars
-      final lazy val eV: Sym[A] = copyTransformedOrElse(_.eV)(fresh[A]).asInstanceOf[Sym[A]]
-      final lazy val sV: Sym[Int] = copyTransformedOrElse(_.sV)(fresh[Int]).asInstanceOf[Sym[Int]]
-      final lazy val allocVal: Sym[I] = copyTransformedOrElse(_.allocVal)(reflectMutableSym(fresh[I])).asInstanceOf[Sym[I]]
-      final lazy val iV: Sym[Int] = copyTransformedOrElse(_.iV)(fresh[Int]).asInstanceOf[Sym[Int]]
-      final lazy val iV2: Sym[Int] = copyTransformedOrElse(_.iV2)(fresh[Int]).asInstanceOf[Sym[Int]]
-      final lazy val aV2: Sym[I] = copyTransformedOrElse(_.aV2)(fresh[I]).asInstanceOf[Sym[I]]
-
-      lazy val buf = DeliteBufferElem(
-        eV = this.eV,
-        sV = this.sV,
-        iV = this.iV,
-        iV2 = this.iV2,
-        allocVal = this.allocVal,
-        aV2 = this.aV2,
-        alloc = reifyEffects(this.alloc(sV)),
-        apply = unusedBlock, //reifyEffects(dc_apply(allocVal,v)),
-        update = reifyEffects(dc_update(allocVal,v,eV)),
-        append = reifyEffects(dc_append(allocVal,v,eV)),
-        appendable = reifyEffects(dc_appendable(allocVal,v,eV)),
-        setSize = reifyEffects(dc_set_logical_size(allocVal,sV)),
-        allocRaw = reifyEffects(dc_alloc[A,I](allocVal,sV)),
-        copyRaw = reifyEffects(dc_copy(aV2,iV,allocVal,iV2,sV)),
-        finalizer = reifyEffects(this.finalizer(allocVal))
-      )
-    }
-
-
-  /**
-   * Parallel map from DeliteCollection[A] => DeliteCollection[B]. Input functions can depend on free
-   * variables, but they cannot depend on other elements of the input or output collection (disjoint access).
-   *
-   * @param  in    the input collection
-   * @param  size  the size of the input collection
-   * @param  func  the mapping function Exp[A] => Exp[B]
-   * @param  alloc function returning the output collection. if it is the same as the input collection,
-   *               the operation is mutable; (=> DeliteCollection[B]).
-   */
-  abstract class DeliteOpMap[A:Manifest,
-                             B:Manifest, CB <: DeliteCollection[B]:Manifest](implicit ctx: SourceContext)
-    extends DeliteOpMapI[A,B,CB,CB] {
-    type OpType <: DeliteOpMap[A,B,CB]
-
-    def finalizer(x: Exp[CB]) = x
-  }
-
-  abstract class DeliteOpMapI[A:Manifest,B:Manifest,I <: DeliteCollection[B]:Manifest,CB <: DeliteCollection[B]:Manifest](implicit ctx: SourceContext)
-    extends DeliteOpFlatMapI[A,B,I,CB] {
-    type OpType <: DeliteOpMapI[A,B,I,CB]
-
-    def func: Exp[A] => Exp[B]
-
-    // bound var for map function, may be required by transformers
-    lazy val fin: Exp[A] = copyTransformedOrElse(_.fin)(dc_apply(in,v))
-    override def flatMapFunc = copyOrElse(_.flatMapFunc)({ a: Exp[A] => DeliteArray.singletonInLoop(func(a), v) })
-    override val unknownOutputSize = false
-  }
-
-  abstract class DeliteOpFlatMap[A:Manifest, B:Manifest, CB<:DeliteCollection[B]:Manifest](implicit ctx: SourceContext)
-    extends DeliteOpFlatMapI[A,B,CB,CB] {
-    type OpType <: DeliteOpFlatMap[A,B,CB]
-
-    def finalizer(x: Exp[CB]) = x
-  }
-
-  abstract class DeliteOpFlatMapI[A:Manifest, B:Manifest, I<:DeliteCollection[B]:Manifest, CB<:DeliteCollection[B]:Manifest](implicit ctx: SourceContext)
-    extends DeliteOpMapLike[B,I,CB] {
-    type OpType <: DeliteOpFlatMapI[A,B,I,CB]
-
-    // supplied by subclass
-    val in: Exp[DeliteCollection[A]]
-    def flatMapFunc: Exp[A] => Exp[DeliteCollection[B]]
-
-    final lazy val iFunc: Exp[DeliteCollection[B]] = copyTransformedOrElse(_.iFunc)(flatMapFunc(dc_apply(in,v)))
-    final lazy val iF: Sym[Int] = copyTransformedOrElse(_.iF)(fresh[Int]).asInstanceOf[Sym[Int]]
-    final lazy val eF: Sym[DeliteCollection[B]] = copyTransformedOrElse(_.eF)(fresh[DeliteCollection[B]](iFunc.tp)).asInstanceOf[Sym[DeliteCollection[B]]]
-    val unknownOutputSize = true // override with false for map-like operations where input=output size
-
-    // loop
-    lazy val body: Def[CB] = copyBodyOrElse(DeliteCollectElem[B,I,CB](
-      iFunc = Some(reifyEffects(this.iFunc)),
-      iF = Some(this.iF),
-      sF = Some(reifyEffects(dc_size(eF))), //note: applying dc_size directly to iFunc can lead to iFunc being duplicated (during mirroring?)
-      eF = Some(this.eF),
-      collectFunc = reifyEffects(dc_apply(eF,iF)),
-      par = dc_parallelization(allocVal, unknownOutputSize),
-      buf = this.buf,
-      numDynamicChunks = this.numDynamicChunks
-    ))
-
-    val dmA = manifest[A]
-    val dmB = manifest[B]
-    val dmI = manifest[I]
-    val dmCB = manifest[CB]
-  }
-
-  abstract class DeliteOpMapIndices[A:Manifest,CA <: DeliteCollection[A]:Manifest](implicit ctx: SourceContext) extends DeliteOpMapIndicesI[A,CA,CA] {
-    type OpType <: DeliteOpMapIndices[A,CA]
-    def finalizer(x: Exp[CA]) = x
-  }
-
-  abstract class DeliteOpMapIndicesI[A:Manifest,I <: DeliteCollection[A]:Manifest,CA <: DeliteCollection[A]:Manifest](implicit ctx: SourceContext)
-    extends DeliteOpMapLike[A,I,CA] {
-    type OpType <: DeliteOpMapIndicesI[A,I,CA]
-
-    def func: Exp[Int] => Exp[A]
-
-    lazy val body: Def[CA] = copyBodyOrElse(DeliteCollectElem[A,I,CA](
-      collectFunc = reifyEffects(this.func(v)),
-      par = dc_parallelization(allocVal, false),
-      buf = this.buf,
-      numDynamicChunks = this.numDynamicChunks
-    ))
-
-    val dmA = manifest[A]
-    val dmI = manifest[I]
-    val dmCA = manifest[CA]
-  }
-
-  /**
-   *  Currently conditionally appends values to buffers, which are concatenated in the combine stage.
-   *  Note that it is also implicitly a Map-Filter (it accepts a mapping function). Should this be renamed?
-   */
-  abstract class DeliteOpFilter[A:Manifest,
-                                B:Manifest, CB <: DeliteCollection[B]:Manifest](implicit ctx: SourceContext)
-    extends DeliteOpFilterI[A,B,CB,CB] {
-    type OpType <: DeliteOpFilter[A,B,CB]
-
-    def finalizer(x: Exp[CB]) = x
-  }
-
-  abstract class DeliteOpFilterI[A:Manifest,
-                                B:Manifest, I <: DeliteCollection[B]:Manifest, CB <: DeliteCollection[B]:Manifest](implicit ctx: SourceContext)
-    extends DeliteOpFlatMapI[A,B,I,CB] {
-    type OpType <: DeliteOpFilterI[A,B,I,CB]
-
-    // supplied by subclass
-    def func: Exp[A] => Exp[B]
-    def cond: Exp[A] => Exp[Boolean]
-
-    override def flatMapFunc = copyOrElse(_.flatMapFunc)({ a: Exp[A] => 
-      IfThenElse(cond(a), reifyEffects(DeliteArray.singletonInLoop(func(a), v)), reifyEffects(DeliteArray.emptyInLoop[B](v)))
-    })
-  }
-
-  /**
-   * Parallel 2 element zipWith from (DeliteCollection[A],DeliteCollection[B]) => DeliteCollection[R].
-   * Input functions can depend on free variables, but they cannot depend on other elements of the input or
-   * output collection (disjoint access).
-   *
-   * @param  inA   the first input collection
-   * @param  inB   the second input collection
-   * @param  size  the size of the collections (should be the same)
-   * @param  func  the zipWith function; ([Exp[A],Exp[B]) => Exp[R]
-   * @param  alloc function returning the output collection. if it is the same as the input collection,
-   *               the operation is mutable; (=> DeliteCollection[B]).
-   */
-  abstract class DeliteOpZipWith[A:Manifest,
-                                 B:Manifest,
-                                 R:Manifest, CR <: DeliteCollection[R]:Manifest](implicit ctx: SourceContext)
-    extends DeliteOpZipWithI[A,B,R,CR,CR] {
-    type OpType <: DeliteOpZipWith[A,B,R,CR]
-
-    def finalizer(x: Exp[CR]) = x
-  }
-
-  abstract class DeliteOpZipWithI[A:Manifest,
-                                 B:Manifest,
-                                 R:Manifest,
-                                 I <: DeliteCollection[R]:Manifest, CR <: DeliteCollection[R]:Manifest](implicit ctx: SourceContext)
-    extends DeliteOpMapLike[R,I,CR] {
-    type OpType <: DeliteOpZipWithI[A,B,R,I,CR]
-
-    // supplied by subclass
-    val inA: Exp[DeliteCollection[A]]
-    val inB: Exp[DeliteCollection[B]]
-    def func: (Exp[A], Exp[B]) => Exp[R]
-
-    // bound var for map function, may be required by transformers
-    lazy val fin: (Exp[A],Exp[B]) = (copyTransformedOrElse(_.fin._1)(dc_apply(inA,v)),copyTransformedOrElse(_.fin._2)(dc_apply(inB,v)))
-
-    // loop
-    lazy val body: Def[CR] = copyBodyOrElse(DeliteCollectElem[R,I,CR](
-      collectFunc = reifyEffects(this.func(fin._1,fin._2)),
-      par = dc_parallelization(allocVal, false),
-      buf = this.buf,
-      numDynamicChunks = this.numDynamicChunks
-    ))
-
-    val dmA = manifest[A]
-    val dmB = manifest[B]
-    val dmR = manifest[R]
-    val dmI = manifest[I]
-    val dmCR = manifest[CR]
-  }
-
-
   abstract class DeliteOpReduceLike[A:Manifest](implicit ctx: SourceContext) extends DeliteOpLoop[A] {
     type OpType <: DeliteOpReduceLike[A]
     final lazy val rV: (Sym[A],Sym[A]) = copyOrElse(_.rV)((if (mutable) reflectMutableSym(fresh[A]) else fresh[A], fresh[A])) // TODO: transform vars??

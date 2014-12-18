@@ -348,7 +348,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           if(!isPrimitiveType(sym.tp)) {
             if(encounteredZipWith contains getBlockResult(elem.rFunc)) {
               val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
-              if(isPrimitiveType(z.dmR)) metaData.outputs.put(sym, new LoopElem("REDUCE_SPEC",Map("mA"->remap(elem.mA),"dmR"->remap(z.dmR))))
+              if(isPrimitiveType(z.dmO)) metaData.outputs.put(sym, new LoopElem("REDUCE_SPEC",Map("mA"->remap(elem.mA),"dmR"->remap(z.dmO))))
               else throw new GenerationFailedException("GPUGen DeliteOps: DeliteReduceElem with non-primitive types is not supported.")
             }
             else {
@@ -374,7 +374,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
           if(!isPrimitiveType(elem.mV)) {
             if(encounteredZipWith contains getBlockResult(elem.rFunc)) {
               val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
-              if(isPrimitiveType(z.dmR)) metaData.outputs.put(sym, new LoopElem("HASH_REDUCE_SPEC",Map("mK"->remap(elem.mK),"mV"->remap(elem.mV),"mCV"->remap(elem.mCV),"dmR"->remap(z.dmR))))
+              if(isPrimitiveType(z.dmO)) metaData.outputs.put(sym, new LoopElem("HASH_REDUCE_SPEC",Map("mK"->remap(elem.mK),"mV"->remap(elem.mV),"mCV"->remap(elem.mCV),"dmR"->remap(z.dmO))))
               else throw new GenerationFailedException("GPUGen DeliteOps: DeliteHashReduceElem with non-primitive types is not supported.")
             }
             else {
@@ -405,7 +405,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         stream.println("}")
         if(e.elemType == "REDUCE_SPEC") {
           val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
-          stream.println("__device__ " + remap(z.dmR) + " dev_spcinit_" + funcNameSuffix(sym) + "(void) { return 0; }")
+          stream.println("__device__ " + remap(z.dmO) + " dev_spcinit_" + funcNameSuffix(sym) + "(void) { return 0; }")
         }
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
         //TODO: would it affect the performance to have separate inputs for zero1 and zero2?
@@ -432,7 +432,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         stream.println("}")
         if(e.elemType == "HASH_REDUCE_SPEC") {
           val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
-          stream.println("__device__ " + remap(z.dmR) + " dev_spcinit_" + funcNameSuffix(sym) + "(void) { return 0; }")
+          stream.println("__device__ " + remap(z.dmO) + " dev_spcinit_" + funcNameSuffix(sym) + "(void) { return 0; }")
         }
       case _ => //
     }
@@ -471,7 +471,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         val inputs = remapInputs(freeVars ++ List(z.inA.asInstanceOf[Sym[_]],z.inB.asInstanceOf[Sym[_]]),z.size,z.v) //Hack : Set size to be a const!
         val e = metaData.outputs.getOrElse(sym,new LoopElem)
         e.loopReduceInputs = freeVars.map(quote)
-        stream.println("__device__ " + remap(z.dmR) + " dev_combine_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        stream.println("__device__ " + remap(z.dmO) + " dev_combine_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
         emitBlock(zbody.func)
         stream.println("return " + quote(getBlockResult(zbody.func)) + ";")
         stream.println("}")
@@ -489,7 +489,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         val freeVars = getFreeVarBlock(Block(Combine(List(zbody.collectFunc).map(getBlockResultFull))),List(z.fin._1.asInstanceOf[Sym[_]],z.fin._2.asInstanceOf[Sym[_]])).filter(_ != op.size).distinct
         //val inputs = (freeVars ++ List(z.fin._1,z.fin._2)).map(i => remap(i.tp) + " " + quote(i))
         val inputs = remapInputs(freeVars ++ List(z.fin._1.asInstanceOf[Sym[_]],z.fin._2.asInstanceOf[Sym[_]]))
-        stream.println("__device__ " + remap(z.dmR) + " dev_combine_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        stream.println("__device__ " + remap(z.dmO) + " dev_combine_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
         emitBlock(result)
         stream.println("return " + quote(getBlockResult(result)) + ";")
         stream.println("}")
@@ -552,7 +552,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         val inputs = remapInputs(freeVars ++ List(z.fin._1.asInstanceOf[Sym[_]],z.fin._2.asInstanceOf[Sym[_]]))
         val e = metaData.outputs.get(sym).get
         e.funcs += "combine" -> freeVars.map(quote)
-        stream.println("__device__ " + remap(z.dmR) + " dev_combine_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
+        stream.println("__device__ " + remap(z.dmO) + " dev_combine_" + funcNameSuffix(sym) + "(" + inputs.mkString(",") + ") {")
         emitBlock(result)
         stream.println("return " + quote(getBlockResult(result)) + ";")
         stream.println("}")
