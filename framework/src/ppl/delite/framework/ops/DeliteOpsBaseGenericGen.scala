@@ -71,6 +71,12 @@ trait BaseGenDeliteOps extends BaseDeliteOpsTraversalFat with BaseGenLoopsFat wi
     ret
   }
 
+  // We don't override quote because we should not convert all Int sites,
+  // but only particular ones (e.g. variable instantation).
+  def quoteWithPrecision(x: Exp[Any]) = x match {
+    case Const(i: Int) if Config.intSize == "long" => i.toString + "L"
+    case _ => quote(x)
+  }
 }
 
 /* CPU-like target code generation for DeliteOps */

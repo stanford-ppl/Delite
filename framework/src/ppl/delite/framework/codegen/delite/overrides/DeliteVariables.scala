@@ -1,13 +1,13 @@
 package ppl.delite.framework.codegen.delite.overrides
 
 import java.io.PrintWriter
-import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.delite.framework.ops.{DeliteOpsExp, BaseGenDeliteOps}
 import ppl.delite.framework.datastructures.CLikeGenDeliteStruct
 import scala.virtualization.lms.internal.{CLikeCodegen, GenerationFailedException}
 import scala.virtualization.lms.common._
 import scala.collection.mutable.HashSet
 
-trait DeliteScalaGenVariables extends ScalaGenEffect {
+trait DeliteScalaGenVariables extends BaseGenDeliteOps with ScalaGenEffect {
   val IR: VariablesExp with DeliteOpsExp
   import IR._
 
@@ -17,7 +17,7 @@ trait DeliteScalaGenVariables extends ScalaGenEffect {
 
     if (symIsResult) {
       rhs match {
-        case NewVar(init) => emitValDef(sym, "new generated.scala.Ref(" + quote(init) + ")"); gen = true
+        case NewVar(init) => emitValDef(sym, "new generated.scala.Ref(" + quoteWithPrecision(init) + ")"); gen = true
         case _ => // pass
       }
     }
