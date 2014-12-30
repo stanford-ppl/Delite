@@ -241,13 +241,13 @@ trait StencilAnalysis extends FatBlockTraversal {
 
         addStencil(s, stencil)
 
-      case DeliteCollectElem(func,par,buf,iFunc,iF,sF,eF,numDynamicChunks) =>
+      case DeliteCollectElem(iFunc,_,_,_,_,_,_,_,_) =>
         val stencil = new Stencil()
 
         log("  ++ found collect elem")
-        log("    func is: " + strDef(func.res))
-        val schedule = buildScheduleForResult(func)
-        log("    schedule for func is: " + schedule)
+        log("    iFunc is: " + strDef(iFunc.res))
+        val schedule = buildScheduleForResult(iFunc)
+        log("    schedule for iFunc is: " + schedule)
         log("    loop bound sym is: " + v.toString)
 
         schedule.foreach(examine(_,v,stencil,schedule))

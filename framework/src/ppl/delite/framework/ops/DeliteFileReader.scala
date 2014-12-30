@@ -77,13 +77,14 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
   }
 
   abstract class DeliteOpFileReaderI[A:Manifest, I<:DeliteCollection[A]:Manifest, CA<:DeliteCollection[A]:Manifest]
-      extends DeliteOpFlatMapLike[A,I,CA] {
+      extends DeliteOpMapLike[A,I,CA] {
     type OpType <: DeliteOpFileReaderI[A,I,CA]
 
     def func: Exp[Int] => Exp[A]
 
-    override def flatMapLikeFunc(): Exp[DeliteCollection[A]] = DeliteArraySingletonInLoop(reifyEffects(func(v)), v)
-    
+    override def mapFunc(): Exp[A] = func(v)
+    // despite being logically a map, the output size will only be known at runtime
+    override val unknownOutputSize = true
     val dmA = manifest[A]
     val dmCA = manifest[CA]
   }

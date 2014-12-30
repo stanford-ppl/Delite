@@ -64,7 +64,7 @@ trait LoopFusionExp extends DeliteTransform with LoweringTransform with DeliteAp
   //   case e: DeliteHashCollectElem[_,_,_,_,_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))(e.mK,e.mV,e.mI,e.mCV,e.mCI,e.mCCV)
   //   case e: DeliteHashReduceElem[_,_,_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))(e.mK,e.mV,e.mI,e.mCV)
   //   case e: DeliteHashIndexElem[_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))(e.mK,e.mCV)
-  //   case e: DeliteCollectElem[_,_,_] => e.copy(par = ParBuffer, cond = e.cond ++ c.map(Block(_)))(e.mA, e.mI, e.mCA)
+  //   case e: DeliteCollectElem[_,_,_] => e.copy(strategy = OutputBuffer, cond = e.cond ++ c.map(Block(_)))(e.mA, e.mI, e.mCA)
   //   case e: DeliteReduceElem[_] => e.copy(cond = e.cond ++ c.map(Block(_)))(e.mA)
   //   case e: DeliteReduceTupleElem[_,_] => e.copy(cond = e.cond ++ c.map(Block(_)))(e.mA,e.mB)
   //   case _ => super.applyAddCondition(e,c)

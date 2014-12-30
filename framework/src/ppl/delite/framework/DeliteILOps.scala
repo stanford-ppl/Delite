@@ -82,17 +82,15 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
   case class SetScopeResult(n: Rep[Any]) extends Def[Unit]
   def setScopeResult(n: Rep[Any]) = reflectEffect(SetScopeResult(n))
   
-  case class DeliteILCollect[A:Manifest,I<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest]
-    (size: Exp[Int], callocN: Exp[Int] => Exp[I], cfunc: (Exp[A], Exp[Int]) => Exp[A], cupdate: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit], cfinalizer: Exp[I] => Exp[CA],
-     ccond: List[Exp[Int] => Exp[Boolean]], cpar: DeliteParallelStrategy, 
-     cappendable: (Exp[I],Exp[A],Exp[Int]) => Exp[Boolean], cappend: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit], csetSize: (Exp[I],Exp[Int]) => Exp[Unit], callocRaw: (Exp[I],Exp[Int]) => Exp[I], ccopyRaw: (Exp[I],Exp[Int],Exp[I],Exp[Int],Exp[Int]) => Exp[Unit]
-    ) extends DeliteOpMapLike[A,I,CA] {
+  case class DeliteILCollect[A:Manifest,I<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest](
+      size: Exp[Int], callocN: Exp[Int] => Exp[I], cfunc: (Exp[A], Exp[Int]) => Exp[DeliteCollection[A]], cupdate: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit], cfinalizer: Exp[I] => Exp[CA],
+      cunknownOutputSize: Boolean, clinearOutputCollection: Boolean, cappendable: (Exp[I],Exp[A],Exp[Int]) => Exp[Boolean], cappend: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit],
+      csetSize: (Exp[I],Exp[Int]) => Exp[Unit], callocRaw: (Exp[I],Exp[Int]) => Exp[I], ccopyRaw: (Exp[I],Exp[Int],Exp[I],Exp[Int],Exp[Int]) => Exp[Unit])
+      extends DeliteOpFlatMapLike[A,I,CA] {
           
     def finalizer(x: Exp[I]) = cfinalizer(x)
-    def mapFunc() = cfunc(eV,v)
+    def flatMapLikeFunc(): Exp[DeliteCollection[A]] = cfunc(eV,v)
 
-    // TODO what to do with ccond?
-    override lazy val par = cpar
     override lazy val buf = DeliteBufferElem[A,I,CA](
       eV = this.eV,
       sV = this.sV,
@@ -116,16 +114,10 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
     val mCA = manifest[CA]  
   }
   
-  def collect[A:Manifest,I<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest]
-    (size: Exp[Int], allocN: Exp[Int] => Exp[I], func: (Exp[A], Exp[Int]) => Exp[A], update: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit], finalizer: Exp[I] => Exp[CA],
-     cond: List[Exp[Int] => Exp[Boolean]], par: String, 
-     appendable: (Exp[I],Exp[A],Exp[Int]) => Exp[Boolean], append: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit], setSize: (Exp[I],Exp[Int]) => Exp[Unit], allocRaw: (Exp[I],Exp[Int]) => Exp[I], copyRaw: (Exp[I],Exp[Int],Exp[I],Exp[Int],Exp[Int]) => Exp[Unit]
-    ) = {
-    
-    val parStrategy = par match {
-      case "ParFlat" => ParFlat
-      case "ParBuffer" => ParBuffer
-    }
+  def collect[A:Manifest,I<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest](
+      size: Exp[Int], allocN: Exp[Int] => Exp[I], func: (Exp[A], Exp[Int]) => Exp[DeliteCollection[A]], update: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit], finalizer: Exp[I] => Exp[CA],
+      unknownOutputSize: Boolean, linearOutputCollection: Boolean, appendable: (Exp[I],Exp[A],Exp[Int]) => Exp[Boolean], append: (Exp[I],Exp[A],Exp[Int]) => Exp[Unit],
+      setSize: (Exp[I],Exp[Int]) => Exp[Unit], allocRaw: (Exp[I],Exp[Int]) => Exp[I], copyRaw: (Exp[I],Exp[Int],Exp[I],Exp[Int],Exp[Int]) => Exp[Unit]) = {
     
     // -- hack: need to get the RefinedManifest from allocN, but we don't want to expose its effects
     // if we enclose it in a reify, we lose the manifest
@@ -135,8 +127,9 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
     val a1 = allocN(fresh[Int])
     context = save
     val refTp = a1.tp
-    val c = DeliteILCollect(size,allocN,func,update,finalizer,cond,parStrategy,appendable,append,setSize,allocRaw,copyRaw)(manifest[A],refTp,refTp.asInstanceOf[Manifest[CA]]) // HACK: forcing I and CA to be the same in order to retain RefinedManifest from I
-    reflectEffect(c, summarizeEffects(c.body.asInstanceOf[DeliteCollectElem[_,_,_]].collectFunc).star)(refTp.asInstanceOf[Manifest[CA]],implicitly[SourceContext])
+
+    val c = DeliteILCollect(size,allocN,func,update,finalizer,unknownOutputSize,linearOutputCollection,appendable,append,setSize,allocRaw,copyRaw)(manifest[A],refTp,refTp.asInstanceOf[Manifest[CA]]) // HACK: forcing I and CA to be the same in order to retain RefinedManifest from I
+    reflectEffect(c, summarizeEffects(c.body.asInstanceOf[DeliteCollectElem[_,_,_]].iFunc).star)(refTp.asInstanceOf[Manifest[CA]],implicitly[SourceContext])
   }  
   
   case class DeliteILForeach[A:Manifest](size: Exp[Int], ffunc: Exp[Int] => Exp[Unit]) extends DeliteOpLoop[Unit] {
@@ -208,8 +201,8 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
     case GetScopeResult() => getScopeResult
     case Reflect(SetScopeResult(n),u,es) => reflectMirrored(Reflect(SetScopeResult(f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)   
     
-    case e@DeliteILCollect(s,a,fu,up,fi,c,p,ape,ap,sz,al,co) => reflectPure(new { override val original = Some(f,e) } with DeliteILCollect(f(s),f(a),f(fu),f(up),f(fi),c.map(f(_)),p,f(ape),f(ap),f(sz),f(al),f(co))(mtype(e.mA),mtype(e.mI),mtype(e.mCA)))(mtype(manifest[A]),implicitly[SourceContext])  
-    case Reflect(e@DeliteILCollect(s,a,fu,up,fi,c,p,ape,ap,sz,al,co), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILCollect(f(s),f(a),f(fu),f(up),f(fi),c.map(f(_)),p,f(ape),f(ap),f(sz),f(al),f(co))(mtype(e.mA),mtype(e.mI),mtype(e.mCA)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+    case e@DeliteILCollect(s,a,fu,up,fi,uos,loc,ape,ap,sz,al,co) => reflectPure(new { override val original = Some(f,e) } with DeliteILCollect(f(s),f(a),f(fu),f(up),f(fi),uos,loc,f(ape),f(ap),f(sz),f(al),f(co))(mtype(e.mA),mtype(e.mI),mtype(e.mCA)))(mtype(manifest[A]),implicitly[SourceContext])  
+    case Reflect(e@DeliteILCollect(s,a,fu,up,fi,uos,loc,ape,ap,sz,al,co), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILCollect(f(s),f(a),f(fu),f(up),f(fi),uos,loc,f(ape),f(ap),f(sz),f(al),f(co))(mtype(e.mA),mtype(e.mI),mtype(e.mCA)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case e@DeliteILForeach(s,fu) => reflectPure(new { override val original = Some(f,e) } with DeliteILForeach(f(s),f(fu))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])  
     case Reflect(e@DeliteILForeach(s,fu), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteILForeach(f(s),f(fu))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case e@DeliteILReduce(s,rf,c,rz,ra,rrf,sf) => 

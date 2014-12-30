@@ -439,7 +439,7 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
       case (sym, elem: DeliteCollectElem[_,_,_]) => 
         stream.println("// " + sym.toString + "=" + elem + " / " + Def.unapply(sym))
         stream.println("val " + quote(sym) + " = collect[" + remap(elem.mA) + "," + remap(elem.mI) + "," + remap(elem.mCA) + "](")
-        // stream.println("val " + quote(sym) + " = collect(")
+
         // loop size
         stream.println(quote(op.size) + ",")
         // alloc func
@@ -448,11 +448,11 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
         emitBlock(elem.buf.alloc)
         stream.println(quote(getBlockResult(elem.buf.alloc)))
         stream.println("},")
-        // collectFunc
+        // iFunc
         stream.println("{")
         stream.println(makeBoundVarArgs(elem.buf.eV,op.v))
-        emitBlock(elem.collectFunc)
-        stream.println(quote(getBlockResult(elem.collectFunc)))
+        emitBlock(elem.iFunc)
+        stream.println(quote(getBlockResult(elem.iFunc)))
         stream.println("},")
         // update
         stream.println("{")
@@ -466,8 +466,10 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
         emitBlock(elem.buf.finalizer)
         stream.println(quote(getBlockResult(elem.buf.finalizer)))
         stream.println("},")
-        // par
-        stream.println("\"" + elem.par.toString + "\",")
+        // unknownOutputSize
+        stream.println(elem.unknownOutputSize + ",")
+        // linearOutputCollection
+        stream.println(elem.linearOutputCollection + ",")
         // buffer
         emitBufferElem(op, elem)
         stream.println(")")

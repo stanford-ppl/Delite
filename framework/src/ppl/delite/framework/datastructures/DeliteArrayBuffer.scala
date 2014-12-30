@@ -284,13 +284,6 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     else super.dc_set_logical_size(x,y)        
   }
   
-  override def dc_parallelization[A:Manifest](x: Exp[DeliteCollection[A]], hasConditions: Boolean)(implicit ctx: SourceContext) = {
-    if (isDeliteArrayBuffer(x)) {
-      if (hasConditions) ParSimpleBuffer else ParFlat
-    }
-    else super.dc_parallelization(x, hasConditions)
-  }
-
   override def dc_appendable[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
     if (isDeliteArrayBuffer(x)) { unit(true) }
     else super.dc_appendable(x,i,y)

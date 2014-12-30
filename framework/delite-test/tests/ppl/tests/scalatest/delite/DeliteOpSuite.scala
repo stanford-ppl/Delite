@@ -467,7 +467,6 @@ trait DeliteFileReader extends DeliteTestBase {
     }
     collectArray(a1, numLines, i => elem)
 
-    // TODO vsalvis fix this test
     val a2 = DeliteFileReader.readLines(path){ line => 
       val fields = line.split(" ")
       (fields(0), fields(0))

@@ -96,18 +96,20 @@ trait DeliteOpsExp extends DeliteOpsExpIR with DeliteInternalOpsExp with DeliteC
       extends DeliteOpLoop[CO] {
     type OpType <: DeliteOpFlatMapLike[O,I,CO]
 
-    // supplied by subclass, use bound index variable v
+    // Behavior supplied by subclasses
+    
+    // the flatmap function, can use bound index variable this.v
     def flatMapLikeFunc(): Exp[DeliteCollection[O]]
-    val unknownOutputSize = true // override with false for map-like operations where input=output size
-    lazy val par = dc_parallelization(allocVal, unknownOutputSize)
-    // TODO vsalvis what are these?
-    // ideally we would leave these abstract: how can we specify that at least one of the two should be supplied,
-    // while keeping collect a unified abstraction?
-    // this version should be overridden if par == ParFlat and the other version is not suitable (e.g. DenseMatrix)
-    def alloc: Exp[I] = throw new IllegalArgumentException("alloc in DeliteOpMapLike should have been overridden")
-    // this version should be overridden if par == ParBuffer
-    def alloc(i: Exp[Int]): Exp[I] = alloc
+    // Allocates the intermediate result collection. The size passed is 0 if
+    // the OutputStrategy is OutputBuffer, and it is op.size (the input size of
+    // this loop) if it is OutputFlat.
+    def alloc(size: Exp[Int]): Exp[I] = throw new IllegalArgumentException("alloc in DeliteOpFlatMapLike should have been overridden")
+    // the finalizer to transform the intermediate result collection of type I
+    // to the final output collection of type CO
     def finalizer(x: Exp[I]): Exp[CO]
+    // true in the general flatMap case, false for a fixed-size map where the
+    // output size is known before runtime
+    val unknownOutputSize = true
 
     // FlatMap loop bound vars
     final lazy val iFunc: Exp[DeliteCollection[O]] = copyTransformedOrElse(_.iFunc)(flatMapLikeFunc())
@@ -131,25 +133,33 @@ trait DeliteOpsExp extends DeliteOpsExpIR with DeliteInternalOpsExp with DeliteC
       aV2 = this.aV2,
       alloc = reifyEffects(this.alloc(sV)),
       apply = unusedBlock, //reifyEffects(dc_apply(allocVal,v)),
+      // update used if strategy == OutputFlat
       update = reifyEffects(dc_update(allocVal,v,eV)),
+      // append etc. used if strategy == OutputBuffer (linear buffer)
       append = reifyEffects(dc_append(allocVal,v,eV)),
       appendable = reifyEffects(dc_appendable(allocVal,v,eV)),
       setSize = reifyEffects(dc_set_logical_size(allocVal,sV)),
       allocRaw = reifyEffects(dc_alloc[O,I](allocVal,sV)),
       copyRaw = reifyEffects(dc_copy(aV2,iV,allocVal,iV2,sV)),
+      // finalizer used to transform from DC[I] to DC[CO]
       finalizer = reifyEffects(this.finalizer(allocVal))
     )
 
     // loop elem
     lazy val body: Def[CO] = copyBodyOrElse(DeliteCollectElem[O,I,CO](
-      iFunc = Some(reifyEffects(this.iFunc)),
-      iF = Some(this.iF),
-      sF = Some(reifyEffects(dc_size(eF))), //note: applying dc_size directly to iFunc can lead to iFunc being duplicated (during mirroring?)
-      eF = Some(this.eF),
-      collectFunc = reifyEffects(dc_apply(eF,iF)),
-      par = this.par,
+      iFunc = reifyEffects(this.iFunc),
+      unknownOutputSize = this.unknownOutputSize,
+      // true if the output collection allocated by alloc is linear and supports
+      // append etc. for OutputBuffer strategy
+      linearOutputCollection = dc_linear_buffer(this.allocVal),
+      // strategy is defined as:
+      // if (unknownOutputSize && linearOutputCollection) OutputBuffer else OutputFlat
       buf = this.buf,
-      numDynamicChunks = this.numDynamicChunks
+      numDynamicChunks = this.numDynamicChunks,
+      eF = this.eF,
+      iF = this.iF,
+      sF = reifyEffects(dc_size(eF)),
+      aF = reifyEffects(dc_apply(eF,iF))
     ))
 
     val dmO = manifest[O]
@@ -157,11 +167,27 @@ trait DeliteOpsExp extends DeliteOpsExpIR with DeliteInternalOpsExp with DeliteC
     val dmCO = manifest[CO]
   }
 
+  override def getCollectElemType(elem: DeliteCollectElem[_,_,_]): DeliteCollectElemType = {
+    val iFuncRes = elem.iFunc match {
+      case Block(Def(Reify(x, _, _))) => x
+      case Block(x) => x
+    }
+    iFuncRes match {
+      case Def(EatReflect(DeliteArraySingletonInLoop(siElem, _))) if (!elem.unknownOutputSize) =>
+        CollectMap(siElem)
+      case Def(EatReflect(DeliteArraySingletonInLoop(siElem, _))) if (elem.unknownOutputSize) =>
+        CollectDynamicMap(siElem)
+      case Def(EatReflect(IfThenElse(cond, Block(Def(EatReflect(DeliteArraySingletonInLoop(thenElem, _)))), Block(Def(DeliteArrayEmptyInLoop(_,_)))))) => 
+        CollectFilter(cond, thenElem)
+      case _ => CollectFlatMap()
+    }
+  }
+
   /**
    * DeliteOpMapLike is the special case of FlatMap where the each loop iteration generates one
    * output element. The output size is therefore the same as the input/loop size. Code
    * generation can be specialized to avoid the intermediate allocation of a collection of size
-   * 1 at each iteration. See FlatmapSpecializedToMap.
+   * 1 at each iteration. See DeliteCollectElemType.
    *
    * Depending on the number of input collections the following subclasses can be used:
    * - 0 input collections: DeliteOpMapIndices
@@ -178,7 +204,6 @@ trait DeliteOpsExp extends DeliteOpsExpIR with DeliteInternalOpsExp with DeliteC
     override def flatMapLikeFunc() = DeliteArray.singletonInLoop(mapFunc(), v)
     override val unknownOutputSize = false
    }
-
 
   /**
    * Parallel map over the indices from 0 to (size - 1).
