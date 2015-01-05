@@ -3,6 +3,7 @@ package ppl.delite.runtime.data
 import ppl.delite.runtime.messages._
 import ppl.delite.runtime.DeliteMesosScheduler
 
+
 trait DeliteArray[T] {
   def length: Int
   def readAt(i: Int): T

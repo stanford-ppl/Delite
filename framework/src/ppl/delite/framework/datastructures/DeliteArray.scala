@@ -633,37 +633,97 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    // serializable (cluster)
     case a@DeliteArrayNew(n,m,t) if Config.generateSerializable && isPrimitiveType(m) =>
       emitValDef(sym, "new ppl.delite.runtime.data.LocalDeliteArray" + remap(m) + "(" + quote(n) + ")")
       if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
+
     case a@DeliteArrayNew(n,m,t) if Config.generateSerializable =>
       emitValDef(sym, "new ppl.delite.runtime.data.LocalDeliteArrayObject[" + remap(m) + "](" + quote(n) + ")")
       if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
+
+
+    // ragged (big)
+    // We can't generate a native array even when the size could fit, because the return type has to be consistent.
+    case a@DeliteArrayNew(n,m,t) if Config.intSize == "long" =>
+      if (t.partition) stream.println("//partitioned array follows")
+      if (isPrimitiveType(m))
+        emitValDef(sym, "new ppl.delite.runtime.data.RaggedNativeArray"+remap(m)+"("+quote(n)+")")
+      else
+        emitValDef(sym, "new ppl.delite.runtime.data.RaggedNativeArrayObject["+remap(m)+"]("+quote(n)+")")
+      if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
+
+    case a@DeliteArrayFromSeq(elems) if Config.intSize == "long" =>
+      if (isPrimitiveType(a.mA))
+        emitValDef(sym, "new ppl.delite.runtime.data.RaggedNativeArray"+remap(a.mA)+"("+elems.length+")")
+      else
+        emitValDef(sym, "new ppl.delite.runtime.data.RaggedNativeArrayObject["+remap(a.mA)+"]("+elems.length+")")
+      for (i <- 0 until elems.length) {
+        stream.println(quote(sym) + "(" + i + ") = " + quote(elems(i)))
+      }
+      stream.println(quote(sym))
+
+    case DeliteArrayApply(da, idx) if Config.intSize == "long" =>
+      emitValDef(sym, quote(da) + "(" + quote(idx) + ")")
+
+    case DeliteArrayUpdate(da, idx, x) if Config.intSize == "long" =>
+      emitValDef(sym, quote(da) + "(" + quote(idx) + ") = " + quote(x))
+
+
+    // serializable or ragged
+    case DeliteArrayCopy(src,srcPos,dest,destPos,len) if Config.generateSerializable || Config.intSize == "long" =>
+      emitValDef(sym, quote(src) + ".copy(" + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
+
+    case StructCopy(src,srcPos,struct,fields,destPos,len) if Config.generateSerializable || Config.intSize == "long" =>
+      val dest = quote(struct) + "." + fields.mkString(".") + destPos.take(destPos.length-1).map(e=>"("+quote(e)+")").mkString("")
+      emitValDef(sym, quote(src) + ".copy(" + quote(srcPos) + "," + dest + "," + quote(destPos(destPos.length-1)) + "," + quote(len) + ")")
+
+    case VarCopy(src,srcPos,Variable(a),destPos,len) if Config.generateSerializable || Config.intSize == "long" =>
+      val dest = quote(a) + (if (deliteInputs contains a) ".get" else "")
+      emitValDef(sym, quote(src) + ".copy(" + quote(srcPos) + "," + dest + "," + quote(destPos) + "," + quote(len) + ")")
+
+
+    // local and common
     case a@DeliteArrayNew(n,m,t) =>
       if (t.partition) stream.println("//partitioned array follows")
       stream.println("if (" + quote(n) + " > Int.MaxValue) throw new RuntimeException(\"Allocation size too large for 32-bit runtime\")")
       emitValDef(sym, "new Array[" + remap(m) + "](" + quote(n) + ".toInt)")
       if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
+
+    case a@DeliteArrayFromSeq(elems) if !Config.generateSerializable =>
+      emitValDef(sym, "new Array[" + remap(a.mA) + "](" + elems.length + ")")
+      for (i <- 0 until elems.length) {
+        stream.println(quote(sym) + "(" + i + ") = " + quote(elems(i)))
+      }
+      stream.println(quote(sym))
+
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + ".length")
+
     case DeliteArrayApply(da, idx) =>
       emitValDef(sym, quote(da) + "(" + quote(idx) + ".toInt)")
+
     case DeliteArrayUpdate(da, idx, x) =>
       emitValDef(sym, quote(da) + "(" + quote(idx) + ".toInt) = " + quote(x))
-    case DeliteArrayCopy(src,srcPos,dest,destPos,len) if Config.generateSerializable =>
-      emitValDef(sym, quote(src) + ".copy(" + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
+
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
       emitValDef(sym, "System.arraycopy(" + quote(src) + "," + quote(srcPos) + ".toInt," + quote(dest) + "," + quote(destPos) + ".toInt," + quote(len) + ".toInt)")
+
     case DeliteArrayTake(lhs,n) =>
       emitValDef(sym, quote(lhs) + ".take(" + quote(n) + ")")
+
     case DeliteArrayMkString(da,x) if Config.generateSerializable =>
       emitValDef(sym, quote(da) + ".data.mkString(" + quote(x) + ")")
+
     case DeliteArrayMkString(da,x) =>
       emitValDef(sym, quote(da) + ".mkString(" + quote(x) + ")")
+
     case DeliteArrayUnion(lhs,rhs) if !Config.generateSerializable =>
       emitValDef(sym, quote(lhs) + " union " + quote(rhs))
+
     case DeliteArrayIntersect(lhs,rhs) if !Config.generateSerializable =>
       emitValDef(sym, quote(lhs) + " intersect " + quote(rhs))
+
     case a@DeliteArraySort(x) if !Config.generateSerializable =>
       stream.println("val " + quote(sym) + " = {")
       stream.println("val d = new Array[" + remap(a.mA) + "](" + quote(x) + ".length" + ")")
@@ -671,6 +731,7 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
       stream.println("generated.scala.container.SortingImpl.sort(d)")
       stream.println("d")
       stream.println("}")
+
     case a@DeliteArraySortIndices(len,sV,comp) if !Config.generateSerializable =>
       val tp = remap(Manifest.Int)
       stream.println("val " + quote(sym) + " = {")
@@ -687,46 +748,46 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
       stream.println("generated.scala.container.SortingImpl.sort(d,comp)")
       stream.println("d")
       stream.println("}")
+
     case DeliteArrayToSeq(a) if !Config.generateSerializable =>
       emitValDef(sym, quote(a) + ".toSeq")
-    case a@DeliteArrayFromSeq(elems) if !Config.generateSerializable =>
-      emitValDef(sym, "new Array[" + remap(a.mA) + "](" + elems.length + ")")
-      for (i <- 0 until elems.length) {
-        stream.println(quote(sym) + "(" + i + ") = " + quote(elems(i)))
-      }
-      stream.println(quote(sym))
+
     case StructUpdate(struct, fields, idx, x) =>
       emitValDef(sym, quote(struct) + "." + fields.mkString(".") + idx.map(e=>"("+quote(e)+".toInt)").mkString("") + " = " + quote(x))
+
     case VarUpdate(Variable(a), idx, x) =>
       val readVar = if (deliteInputs contains a) ".get" else ""
       emitValDef(sym, quote(a) + readVar + "(" + quote(idx) + ".toInt) = " + quote(x))
-    case StructCopy(src,srcPos,struct,fields,destPos,len) if Config.generateSerializable =>
-      val dest = quote(struct) + "." + fields.mkString(".") + destPos.take(destPos.length-1).map(e=>"("+quote(e)+")").mkString("")
-      emitValDef(sym, quote(src) + ".copy(" + quote(srcPos) + "," + dest + "," + quote(destPos(destPos.length-1)) + "," + quote(len) + ")")
+
     case StructCopy(src,srcPos,struct,fields,destPos,len) =>
       val dest = quote(struct) + "." + fields.mkString(".") + destPos.take(destPos.length-1).map(e=>"("+quote(e)+".toInt)").mkString("")
       emitValDef(sym, "System.arraycopy(" + quote(src) + "," + quote(srcPos) + ".toInt," + dest + "," + quote(destPos(destPos.length-1)) + ".toInt," + quote(len) + ".toInt)")
-    case VarCopy(src,srcPos,Variable(a),destPos,len) if Config.generateSerializable =>
-      val dest = quote(a) + (if (deliteInputs contains a) ".get" else "")
-      emitValDef(sym, quote(src) + ".copy(" + quote(srcPos) + "," + dest + "," + quote(destPos) + "," + quote(len) + ")")
+
     case VarCopy(src,srcPos,Variable(a),destPos,len) =>
       val dest = quote(a) + (if (deliteInputs contains a) ".get" else "")
       emitValDef(sym, "System.arraycopy(" + quote(src) + "," + quote(srcPos) + ".toInt," + dest + "," + quote(destPos) + ".toInt," + quote(len) + ".toInt)")
+
     case DeliteArrayGetActSize() =>
       emitValDef(sym, getActSize)
+
     case DeliteArraySetActBuffer(da) =>
       emitValDef(sym, getActBuffer.head + " = " + quote(da))
       getActBuffer.tail.foreach(buf => stream.println(buf + " = " + quote(da)))
+
     case _ => super.emitNode(sym, rhs)
   }
 
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "DeliteArraySeq" if Config.intSize == "long" && isPrimitiveType(m.typeArguments(0)) => "ppl.delite.runtime.data.RaggedNativeArray" + remap(m.typeArguments(0))
+    case "DeliteArraySeq" if Config.intSize == "long" => "ppl.delite.runtime.data.RaggedNativeArrayObject[" + remap(m.typeArguments(0)) + "]"
     case "DeliteArraySeq" => "Array[" + remap(m.typeArguments(0)) + "]" // workaround for issues with SoA'ing literal sequence arrays
     case "DeliteArray" => m.typeArguments(0) match {
       case StructType(_,_) if Config.soaEnabled => super.remap(m)
       case s if s <:< manifest[Record] && Config.soaEnabled => super.remap(m) // occurs due to restaging
       case arg if isPrimitiveType(arg) && Config.generateSerializable => "ppl.delite.runtime.data.DeliteArray" + remap(arg)
       case arg if Config.generateSerializable => "ppl.delite.runtime.data.DeliteArrayObject[" + remap(arg) + "]"
+      case arg if isPrimitiveType(arg) && Config.intSize == "long" => "ppl.delite.runtime.data.RaggedNativeArray" + remap(arg)
+      case arg if Config.intSize == "long" => "ppl.delite.runtime.data.RaggedNativeArrayObject[" + remap(arg) + "]"
       case arg => "Array[" + remap(arg) + "]"
     }
     case _ => super.remap(m)
@@ -996,7 +1057,7 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
       if (cppMemMgr == "refcnt")
         stream.println(remap(sym.tp) + " " + quote(sym) + "(new " + unwrapSharedPtr(remap(sym.tp)) + "(" + quote(n) + "), " + unwrapSharedPtr(remap(sym.tp)) + "D());")
       else {
-        if (kernelAlloc) emitValDef(sym, "new (" + resourceInfoSym + ") " + remap(sym.tp) + "(" + quote(n)+ ")") //internal array on global heap 
+        if (kernelAlloc) emitValDef(sym, "new (" + resourceInfoSym + ") " + remap(sym.tp) + "(" + quote(n)+ ")") //internal array on global heap
         else emitValDef(sym, "new (" + resourceInfoSym + ") " + remap(sym.tp) + "(" + quote(n) + ", " + resourceInfoSym + ")") //internal array on local heap
       }
       if (t.partition) stream.println("#endif")

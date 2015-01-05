@@ -16,8 +16,8 @@ object DeliteFileOutputStream {
   /* Construct a new DeliteFileOutputStream */
   def apply(path: String, sequential: Boolean, resourceInfo: ResourceInfo): DeliteFileOutputStream = {
     val conf = new Configuration()
-    val numFiles = 
-      if (sequential) 1 
+    val numFiles =
+      if (sequential) 1
       else {
         if (resourceInfo.numSlaves == 0) resourceInfo.numThreads else resourceInfo.numSlaves*resourceInfo.numThreads
       }
@@ -46,13 +46,19 @@ class DeliteFileOutputStream(conf: Configuration, path: String, numFiles: Int) {
    * The input path must refer to a valid filesystem, based on the Hadoop configuration object.
    */
   private def getFilePaths(conf: Configuration, path:String, numFiles: Int) = {
+    // delete destination if it exists
+    val basePath = new Path(path)
+    val baseFs = basePath.getFileSystem(conf)
+    if (baseFs.exists(basePath)) {
+      baseFs.delete(basePath, true)
+    }
+
     // We assume the logical file starts at physical index 0 and at ends at physical index numFiles-1
     // The chunk files are written to a directory at 'path', with each chunk inside this output directory.
     // The output can be reconstructed by alphanumerically sorting the chunks, which is what DeliteFileInputStream does.
     val chunkPaths =
       if (numFiles > 1) {
-        val basePath = new Path(path)
-        basePath.getFileSystem(conf).mkdirs(basePath)
+        baseFs.mkdirs(basePath)
         (0 until numFiles) map { i => path + Path.SEPARATOR + basePath.getName() + "_" + "%04d".format(i) }
       }
       else {
