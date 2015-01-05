@@ -583,24 +583,57 @@ trait DeliteArrayFatExp extends DeliteArrayOpsExpOpt with StructFatExpOptCommon 
   this: DeliteOpsExp with DeliteMapOpsExp =>
 }
 
-trait BaseGenDeliteArrayOps extends GenericFatCodegen {
-  val IR: DeliteArrayFatExp with DeliteOpsExp
-  import IR._
+trait DeliteArrayExtractors extends LoopFusionCore {
+  this: DeliteOpsExp with DeliteArrayOpsExp =>
   
   override def unapplySimpleIndex(e: Def[Any]): Option[(Exp[Any], Exp[Int])] = e match {
     case DeliteArrayApply(da, idx) => Some((da,idx))
     case _ => super.unapplySimpleIndex(e)
   }
-
-  override def unapplySimpleDomain(e: Def[Int]): Option[Exp[Any]] = e match {
+  override def unapplySimpleDomain(e: Def[Any]): Option[Exp[Any]] = e match {
     //case DeliteArrayLength(da) => Some(da)
     case DeliteArrayLength(a @ Def(Loop(_,_,_:DeliteCollectElem[_,_,_]))) => Some(a) // exclude hash elems
     case _ => super.unapplySimpleDomain(e)
   }
+  override def unapplyFixedDomain(e: Def[Any]): Option[Exp[Int]] = e match {
+    case EatReflect(loop: AbstractLoop[_]) => loop.body match {
+      case elem: DeliteCollectElem[_,_,_] if (elem.unknownOutputSize) => None
+      case _ => super.unapplyFixedDomain(e)
+    }
+    case _ => super.unapplyFixedDomain(e)
+  }
 
+  override def unapplyEmptyColl(a: Def[Any]): Boolean = a match {
+    case DeliteArrayEmptyInLoop(_, _) => true
+    case _ => super.unapplyEmptyColl(a)
+  }
+  override def unapplyEmptyCollNewEmpty[T:Manifest](a: (Def[Any], Exp[T], Option[Sym[Int]])): Option[Exp[T]] = a match {
+    case (da@DeliteArrayEmptyInLoop(_, _), b, None) =>
+      Some(darray_emptyInLoop(fresh[Int])(mtype(b.tp.typeArguments(0)), mpos(da.pos)).asInstanceOf[Exp[T]])
+    case (da@DeliteArrayEmptyInLoop(_, _), b, Some(index)) =>
+      Some(darray_emptyInLoop(index)(mtype(b.tp.typeArguments(0)), mpos(da.pos)).asInstanceOf[Exp[T]])
+    case _ => super.unapplyEmptyCollNewEmpty[T](a)
+  }
+  override def unapplySingletonColl(a: Def[Any]): Option[Exp[Any]] = a match {
+    case DeliteArraySingletonInLoop(Block(elem), index) => Some(elem)
+    case _ => super.unapplySingletonColl(a)
+  }
+  override def ignoreIndex(e: Def[Any], index: Sym[Int]): Boolean = e match {
+    case Reflect(DeliteArraySingletonInLoop(_, `index`), _, deps) => !deps.contains(index)
+    case DeliteArraySingletonInLoop(_, `index`) => true
+    case DeliteArrayEmptyInLoop(`index`,_) => true
+    case _ => super.ignoreIndex(e, index)
+  }
+
+  override def unapplyMultiCollect[T](e: Def[T]) = e match {
+    case c: DeliteCollectElem[_,_,_] => c.iFunc match {
+      case Block(inner) => Some(inner.asInstanceOf[Exp[T]])
+    }
+    case _ => super.unapplyMultiCollect(e)
+  }
 }
 
-trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteStruct with ScalaGenDeliteOps with ScalaGenRuntimeServiceOps {
+trait ScalaGenDeliteArrayOps extends GenericFatCodegen with ScalaGenDeliteStruct with ScalaGenDeliteOps with ScalaGenRuntimeServiceOps {
   val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
 
@@ -708,7 +741,7 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
 
 }
 
-trait CLikeGenDeliteArrayOps extends BaseGenDeliteArrayOps with CLikeGenDeliteStruct {
+trait CLikeGenDeliteArrayOps extends GenericFatCodegen with CLikeGenDeliteStruct {
   val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
 

@@ -129,7 +129,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     // body
     emitMultiLoopFuncs(op, symList)
     (symList zip op.body) foreach {
-      case (sym, elem: DeliteCollectElem[_,_,_]) => elem match {
+      case (sym, elem: DeliteCollectElem[_,_,_]) => getCollectElemType(elem) match {
         case CollectAnyMap(mapElem) => 
           emitValDef(elem.buf.eV, quote(getBlockResult(mapElem)))
           emitValDef(elem.buf.allocVal, quote(sym)+"_data")
@@ -212,7 +212,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
   def emitProcessMethods(op: AbstractFatLoop, symList: List[Sym[Any]]): Unit = {
     emitHashReduceElemProcess(op, symList)
     (symList zip op.body) foreach {
-      case (sym, elem:DeliteCollectElem[_,_,_]) => elem match {
+      case (sym, elem:DeliteCollectElem[_,_,_]) => getCollectElemType(elem) match {
         case CollectAnyMap(mapElem) =>
           val freeVars = (getFreeVarBlock(Block(Combine((List(mapElem,elem.buf.update,elem.buf.appendable)).map(getBlockResultFull))),List(elem.buf.eV,elem.buf.allocVal,op.v,sym))++List(sym)).filter(_ != op.size).distinct
           val inputs = remapInputs(freeVars)
@@ -449,7 +449,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
 
     // emit post-process functions
     (symList zip op.body) foreach {
-      case (sym, elem:DeliteCollectElem[_,_,_]) => elem match {
+      case (sym, elem:DeliteCollectElem[_,_,_]) => getCollectElemType(elem) match {
           case CollectAnyMap(mapElem) =>
             val freeVars = (getFreeVarBlock(Block(Combine((List(mapElem,elem.buf.update)).map(getBlockResultFull))),List(elem.buf.eV,elem.buf.allocVal,op.v,sym))++List(sym)).filter(_ != op.size).distinct
             val inputs = remapInputs(freeVars)
@@ -489,7 +489,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         // FIXIT: Hacky way of generating zip function
         val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
         val prevInnerScope = innerScope
-        val result = z.body.asInstanceOf[DeliteCollectElem[_,_,_]] match {
+        val result = getCollectElemType(z.body.asInstanceOf[DeliteCollectElem[_,_,_]]) match {
           case CollectAnyMap(mapElem) => mapElem
           case _ => sys.error("ERROR: GPUGenDeliteOps.emitKernelAbstractFatLoop saw zipWith that isn't map")
         }
@@ -552,7 +552,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       case (sym, elem: DeliteHashReduceElem[_,_,_,_]) if(encounteredZipWith contains getBlockResult(elem.rFunc)) =>
         // FIXIT: Hacky way of generating zip function
         val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
-        val result = z.body.asInstanceOf[DeliteCollectElem[_,_,_]] match {
+        val result = getCollectElemType(z.body.asInstanceOf[DeliteCollectElem[_,_,_]]) match {
           case CollectAnyMap(mapElem) => mapElem
           case _ => sys.error("ERROR: GPUGenDeliteOps.emitKernelAbstractFatLoop saw zipWith that isn't map.")
         }
@@ -940,7 +940,7 @@ trait GPUGenDeliteOpsOpt extends GPUGenDeliteOps {
       // body
       emitMultiLoopFuncs(op, symList)
       (symList zip op.body) foreach {
-        case (sym, elem: DeliteCollectElem[_,_,_]) => elem match {
+        case (sym, elem: DeliteCollectElem[_,_,_]) => getCollectElemType(elem) match {
           case CollectAnyMap(mapElem) => 
             emitValDef(elem.buf.eV, quote(getBlockResult(mapElem)))
             emitValDef(elem.buf.allocVal, quote(sym)+"_data")
@@ -1015,7 +1015,7 @@ trait GPUGenDeliteOpsOpt extends GPUGenDeliteOps {
     else {
       emitHashReduceElemProcess(op, symList)
       (symList zip op.body) foreach {
-        case (sym, elem:DeliteCollectElem[_,_,_]) => elem match {
+        case (sym, elem:DeliteCollectElem[_,_,_]) => getCollectElemType(elem) match {
           case CollectAnyMap(mapElem) => 
             val freeVars = (getFreeVarBlock(Block(Combine((List(mapElem,elem.buf.update,elem.buf.appendable)).map(getBlockResultFull))),List(elem.buf.eV,elem.buf.allocVal,op.v,sym))++List(sym)).filter(_ != op.size).distinct
             val inputs = remapInputs(freeVars)

@@ -3,13 +3,13 @@ package ppl.delite.framework.analysis
 import java.io._
 import scala.collection.mutable.{HashMap,HashSet,ArrayBuffer}
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.{Expressions,AbstractSubstTransformer,Transforming,FatBlockTraversal}
+import scala.virtualization.lms.internal.{Expressions,AbstractSubstTransformer,Transforming,FatBlockTraversal,GenericFatCodegen}
 import scala.reflect.SourceContext
 import scala.io.Source
 
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollection}
-import ppl.delite.framework.datastructures.{DeliteArray,DeliteArrayOpsExp,DeliteArrayFatExp,BaseGenDeliteArrayOps}
+import ppl.delite.framework.datastructures.{DeliteArray,DeliteArrayOpsExp,DeliteArrayFatExp}
 import ppl.delite.framework.Config
 
 //TODO:
@@ -52,7 +52,8 @@ trait NestedLoopMappingExp extends Expressions {
   val loopAnalysisResult = new HashMap[Int, (Dimension,Int,Span)]
 }
 
-trait NestedLoopMappingAnalysis extends FatBlockTraversal with CombineTTPScheduling with BaseGenDeliteArrayOps {
+// is GenericFatCodegen really needed here?
+trait NestedLoopMappingAnalysis extends FatBlockTraversal with CombineTTPScheduling with GenericFatCodegen {
   val IR: DeliteOpsExp
   import IR._
 
