@@ -21,7 +21,7 @@ trait RaggedArray[T]
 ///////////////////////////////////////////////////////////////////////////////
 
 object RaggedNativeArray {
-  // Constructor used for string split
+  // Constructor used for string split (returns a RaggedNativeArrayObject[String])
   def apply[T:Manifest](a: Array[T]) = {
     val out = new RaggedNativeArrayObject[T](a.length)
     for (i <- 0 until a.length) out(i) = a(i)
@@ -36,7 +36,7 @@ trait RaggedNativeArray[T] extends RaggedArray[T] {
   def length: Long
   def apply(i: Long): T
   def update(i: Long, y: T)
-  def mkString(s: String) = data.map(_.mkString(s)).mkString(s)
+  def mkString(s: String): String
 
   def copy(_srcPos: Long, dest: RaggedNativeArray[T], _destPos: Long, len: Long) = {
     var srcPos = _srcPos
@@ -78,6 +78,33 @@ final class RaggedNativeArrayInt(n: Long) extends RaggedNativeArray[Int] {
     val j = (i % elemsPerArray).toInt
     data(a).update(j, y)
   }
+
+  def mkString(s: String) = data.map(_.mkString(s)).mkString(s)
+}
+
+final class RaggedNativeArrayLong(n: Long) extends RaggedNativeArray[Long] {
+  val numArrays = (n / elemsPerArray).toInt+1
+  val data = new Array[Array[Long]](numArrays)
+  for (i <- 0 until data.length) {
+    val size = if (i == data.length-1) (n % elemsPerArray).toInt else elemsPerArray
+    data(i) = new Array[Long](size)
+  }
+
+  def length: Long = n
+
+  def apply(i: Long): Long = {
+    val a = (i / elemsPerArray).toInt
+    val j = (i % elemsPerArray).toInt
+    data(a).apply(j)
+  }
+
+  def update(i: Long, y: Long) = {
+    val a = (i / elemsPerArray).toInt
+    val j = (i % elemsPerArray).toInt
+    data(a).update(j, y)
+  }
+
+  def mkString(s: String) = data.map(_.mkString(s)).mkString(s)
 }
 
 final class RaggedNativeArrayDouble(n: Long) extends RaggedNativeArray[Double] {
@@ -101,6 +128,8 @@ final class RaggedNativeArrayDouble(n: Long) extends RaggedNativeArray[Double] {
     val j = (i % elemsPerArray).toInt
     data(a).update(j, y)
   }
+
+  def mkString(s: String) = data.map(_.mkString(s)).mkString(s)
 }
 
 final class RaggedNativeArrayFloat(n: Long) extends RaggedNativeArray[Float] {
@@ -124,6 +153,8 @@ final class RaggedNativeArrayFloat(n: Long) extends RaggedNativeArray[Float] {
     val j = (i % elemsPerArray).toInt
     data(a).update(j, y)
   }
+
+  def mkString(s: String) = data.map(_.mkString(s)).mkString(s)
 }
 
 final class RaggedNativeArrayBoolean(n: Long) extends RaggedNativeArray[Boolean] {
@@ -147,6 +178,8 @@ final class RaggedNativeArrayBoolean(n: Long) extends RaggedNativeArray[Boolean]
     val j = (i % elemsPerArray).toInt
     data(a).update(j, y)
   }
+
+  def mkString(s: String) = data.map(_.mkString(s)).mkString(s)
 }
 
 class RaggedNativeArrayObject[T:Manifest](n: Long) extends RaggedNativeArray[T] {
@@ -170,9 +203,10 @@ class RaggedNativeArrayObject[T:Manifest](n: Long) extends RaggedNativeArray[T] 
     val j = (i % elemsPerArray).toInt
     data(a).update(j, y)
   }
+
+  def mkString(s: String) = data.map(_.mkString(s)).mkString(s)
 }
 
-final class RaggedNativeArrayLong(n: Long) extends RaggedNativeArrayObject[Long](n)
 final class RaggedNativeArrayShort(n: Long) extends RaggedNativeArrayObject[Short](n)
 final class RaggedNativeArrayByte(n: Long) extends RaggedNativeArrayObject[Byte](n)
 final class RaggedNativeArrayChar(n: Long) extends RaggedNativeArrayObject[Char](n)
