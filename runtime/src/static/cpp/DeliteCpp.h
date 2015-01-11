@@ -18,19 +18,32 @@
 #include "Config.h"
 #include "DeliteNamespaces.h"
 #include "DeliteDatastructures.h"
+#include "DeliteCppProfiler.h"
 
 /* helper methods and data structures only required for execution with Delite */
 #ifndef __DELITE_CPP_STANDALONE__
 #include <jni.h>
 #endif
 
+#ifdef DELITE_VERBOSE
+#define VERBOSE(...) fprintf(stderr, "[delite]: "); fprintf(stderr, __VA_ARGS__)
+#else
+#define VERBOSE(...)
+#endif
+
 extern Config* config;
+extern resourceInfo_t* resourceInfos;
+void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize);
+void initializeThread(int threadId);
+void clearAll(int numThreads, int numLiveThreads, int offset, JNIEnv *env);
+void initializeThreadPool(int numThreads);
+void submitWork(int threadId, void *(*work) (void *), void *arg);
 
 #ifdef MEMMGR_REFCNT
-std::shared_ptr<cppDeliteArraystring> string_split(const resourceInfo_t &resourceInfo, const string &str, const string &pattern, int32_t lim);
+std::shared_ptr<cppDeliteArraystring> string_split(const resourceInfo_t *resourceInfo, const string &str, const string &pattern, int32_t lim);
 std::shared_ptr<cppDeliteArraystring> cppArgsGet(int num, ...);
 #else
-cppDeliteArraystring *string_split(const resourceInfo_t &resourceInfo, const string &str, const string &pattern, int32_t lim);
+cppDeliteArraystring *string_split(const resourceInfo_t *resourceInfo, const string &str, const string &pattern, int32_t lim);
 cppDeliteArraystring *cppArgsGet(int num, ...);
 #endif
 int32_t string_toInt(const string &str);

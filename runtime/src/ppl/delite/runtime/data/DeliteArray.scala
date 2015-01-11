@@ -3,14 +3,154 @@ package ppl.delite.runtime.data
 import ppl.delite.runtime.messages._
 import ppl.delite.runtime.DeliteMesosScheduler
 
+
 trait DeliteArray[T] {
   def length: Int
   def readAt(i: Int): T
+  def data: Array[T] // triggers a bulk fetch for RemoteArrays
 
   var id: String
   var offsets: Array[Int]
   var offset: Int
 }
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Delite Array Objects
+///////////////////////////////////////////////////////////////////////////////
+
+object DeliteArrayDouble {
+  def combine(lhs: DeliteArrayDouble, rhs: DeliteArrayDouble) = (lhs, rhs) match {
+    case (l: RemoteDeliteArrayDouble, r: RemoteDeliteArrayDouble) => new RemoteDeliteArrayDouble(l.id, l.chunkLengths ++ r.chunkLengths)
+  }
+}
+
+object DeliteArrayInt {
+  def combine(lhs: DeliteArrayInt, rhs: DeliteArrayInt) = (lhs, rhs) match {
+    case (l: RemoteDeliteArrayInt, r: RemoteDeliteArrayInt) => new RemoteDeliteArrayInt(l.id, l.chunkLengths ++ r.chunkLengths)
+  }
+}
+
+object DeliteArrayChar {
+  def combine(lhs: DeliteArrayChar, rhs: DeliteArrayChar) = (lhs, rhs) match {
+    case (l: RemoteDeliteArrayChar, r: RemoteDeliteArrayChar) => new RemoteDeliteArrayChar(l.id, l.chunkLengths ++ r.chunkLengths)
+  }
+}
+
+object DeliteArrayBoolean {
+  def combine(lhs: DeliteArrayBoolean, rhs: DeliteArrayBoolean) = (lhs, rhs) match {
+    case (l: RemoteDeliteArrayBoolean, r: RemoteDeliteArrayBoolean) => new RemoteDeliteArrayBoolean(l.id, l.chunkLengths ++ r.chunkLengths)
+  }
+}
+
+object DeliteArrayLong {
+  def combine(lhs: DeliteArrayLong, rhs: DeliteArrayLong) = (lhs, rhs) match {
+    case (l: RemoteDeliteArrayLong, r: RemoteDeliteArrayLong) => new RemoteDeliteArrayLong(l.id, l.chunkLengths ++ r.chunkLengths)
+  }
+}
+
+object DeliteArrayFloat {
+  def combine(lhs: DeliteArrayFloat, rhs: DeliteArrayFloat) = (lhs, rhs) match {
+    case (l: RemoteDeliteArrayFloat, r: RemoteDeliteArrayFloat) => new RemoteDeliteArrayFloat(l.id, l.chunkLengths ++ r.chunkLengths)
+  }
+}
+
+object DeliteArrayShort {
+  def combine(lhs: DeliteArrayShort, rhs: DeliteArrayShort) = (lhs, rhs) match {
+    case (l: RemoteDeliteArrayShort, r: RemoteDeliteArrayShort) => new RemoteDeliteArrayShort(l.id, l.chunkLengths ++ r.chunkLengths)
+  }
+}
+
+object DeliteArrayByte {
+  def combine(lhs: DeliteArrayByte, rhs: DeliteArrayByte) = (lhs, rhs) match {
+    case (l: RemoteDeliteArrayByte, r: RemoteDeliteArrayByte) => new RemoteDeliteArrayByte(l.id, l.chunkLengths ++ r.chunkLengths)
+  }
+}
+
+object DeliteArrayObject {
+  def combine[T:Manifest](lhs: DeliteArrayObject[_], rhs: DeliteArrayObject[_]) = (lhs, rhs) match {
+    case (l: RemoteDeliteArrayObject[_], r: RemoteDeliteArrayObject[_]) => new RemoteDeliteArrayObject[T](l.id, l.chunkLengths ++ r.chunkLengths)
+  }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Delite Array interfaces
+///////////////////////////////////////////////////////////////////////////////
+
+abstract class DeliteArrayDouble extends DeliteArray[Double] {
+  def data: Array[Double]
+  def apply(i: Int): Double
+  def update(i: Int, x: Double)
+  def take(i: Int): DeliteArrayDouble
+  def copy(srcPos: Int, dest: DeliteArrayDouble, destPos: Int, len: Int)
+}
+
+abstract class DeliteArrayInt extends DeliteArray[Int] {
+  def data: Array[Int]
+  def apply(i: Int): Int
+  def update(i: Int, x: Int)
+  def take(i: Int): DeliteArrayInt
+  def copy(srcPos: Int, dest: DeliteArrayInt, destPos: Int, len: Int)
+}
+
+abstract class DeliteArrayChar extends DeliteArray[Char] {
+  def data: Array[Char]
+  def apply(i: Int): Char
+  def update(i: Int, x: Char)
+  def take(i: Int): DeliteArrayChar
+  def copy(srcPos: Int, dest: DeliteArrayChar, destPos: Int, len: Int)
+}
+
+abstract class DeliteArrayBoolean extends DeliteArray[Boolean] {
+  def data: Array[Boolean]
+  def apply(i: Int): Boolean
+  def update(i: Int, x: Boolean)
+  def take(i: Int): DeliteArrayBoolean
+  def copy(srcPos: Int, dest: DeliteArrayBoolean, destPos: Int, len: Int)
+}
+
+trait DeliteArrayLong extends DeliteArray[Long] {
+  def apply(i: Int): Long
+  def take(n: Int): DeliteArrayLong
+}
+
+trait DeliteArrayFloat extends DeliteArray[Float] {
+  def apply(i: Int): Float
+  def take(n: Int): DeliteArrayFloat
+}
+
+trait DeliteArrayShort extends DeliteArray[Short] {
+  def apply(i: Int): Short
+  def take(n: Int): DeliteArrayShort
+}
+
+trait DeliteArrayByte extends DeliteArray[Byte] {
+  def apply(i: Int): Byte
+  def take(n: Int): DeliteArrayByte
+}
+
+trait DeliteArrayObject[T] extends DeliteArray[T] {
+  def data: Array[T]
+  def apply(i: Int): T
+  def update(i: Int, x: T)
+  def take(i: Int): DeliteArrayObject[T]
+  def copy(srcPos: Int, dest: DeliteArray[T], destPos: Int, len: Int)
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Remote Delite Array
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Currently the assumption seems to be that RemoteArrays are only ever instantiated on the master,
+ * and LocalArrays are (usuaully) instantiated on slaves. LocalArrays may also be instantiated on
+ * the master for a local multiloop, but should never miss a read, since it is fully populated.
+ *
+ * This is because saveLocally and lookupLocally in Serialization.scala will save and load local arrays.
+ * The odd part here is that now both RemoteArrays and LocalArrays can have misses and require remote reads.
+ */
 
 trait RemoteDeliteArray[T] extends DeliteArray[T] {
   def chunkLengths: Array[Int]
@@ -24,7 +164,7 @@ abstract class RemoteDeliteArrayImpl[T:Manifest] extends DeliteArray[T] with Rem
   var offsets = {
     val off = new Array[Int](chunkLengths.length)
     off(0) = 0
-    var sum = 0 
+    var sum = 0
     for (i <- 1 until chunkLengths.length) {
       sum += chunkLengths(i-1)
       off(i) = sum
@@ -32,10 +172,8 @@ abstract class RemoteDeliteArrayImpl[T:Manifest] extends DeliteArray[T] with Rem
     off
   }
 
-  def apply(i: Int) = getLocal.apply(i)
-  def update(i: Int, x: T) = getLocal.update(i,x)
-  def readAt(i: Int) = apply(i)
-
+  def apply(i: Int) = readAt(i)
+  def update(i: Int, x: T) = throw new UnsupportedOperationException("update on RemoteArray " + id) // TODO: how does update work if not local? the remote version will be stale.
   def data = getLocal.data
 
   private var local: L = _
@@ -44,7 +182,7 @@ abstract class RemoteDeliteArrayImpl[T:Manifest] extends DeliteArray[T] with Rem
   val length = chunkLengths.reduce(_ + _)
 
   def copy(srcPos: Int, dest: DeliteArray[T], destPos: Int, len: Int) = dest match {
-    case d:RemoteDeliteArrayImpl[T] => System.arraycopy(this.getLocal.data, srcPos, d.getLocal.data, destPos, len) 
+    case d:RemoteDeliteArrayImpl[T] => System.arraycopy(this.getLocal.data, srcPos, d.getLocal.data, destPos, len)
     case d:LocalDeliteArray[T] => System.arraycopy(this.getLocal.data, srcPos, d.data, destPos, len)
   }
 
@@ -56,10 +194,21 @@ abstract class RemoteDeliteArrayImpl[T:Manifest] extends DeliteArray[T] with Rem
 
   def getLocal = if (local eq null) retrieveArray else local
 
+  // TODO: Perhaps we should switch to a bulk fetch (getLocal) after some number of individual reads?
+  // def readAt(i: Int) = getLocal.apply(i)
+  def readAt(i: Int) = if (local eq null) remoteRead(i) else local(i)
+
+  private def remoteRead(i: Int): T = {
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
+    val result = ppl.delite.runtime.DeliteMesosScheduler.requestData(id, location, i)
+    Serialization.deserialize(manifest[T].erasure.asInstanceOf[Class[T]], result.getOutput(0))
+  }
+
   private def retrieveArray = {
     if (!hasArray) {
-      println("WARNING: transferring remote symbol " + id.split("_")(0))
-      val returnResults = DeliteMesosScheduler.getData(this)
+      DeliteMesosScheduler.warn("transferring remote symbol " + id.split("_")(0))
+      val returnResults = DeliteMesosScheduler.requestBulkData(this)
       val chunks = for (result <- returnResults) yield {
         Serialization.deserialize(specializedClass, result.getOutput(0)).asInstanceOf[LocalDeliteArray[T]]
       }
@@ -86,7 +235,7 @@ final class RemoteDeliteArrayDouble(var id: String, var chunkLengths: Array[Int]
   var offsets = {
     val off = new Array[Int](chunkLengths.length)
     off(0) = 0
-    var sum = 0 
+    var sum = 0
     for (i <- 1 until chunkLengths.length) {
       sum += chunkLengths(i-1)
       off(i) = sum
@@ -94,9 +243,8 @@ final class RemoteDeliteArrayDouble(var id: String, var chunkLengths: Array[Int]
     off
   }
 
-  def apply(i: Int) = getLocal.apply(i)
-  def update(i: Int, x: Double) = getLocal.update(i,x)
-  def readAt(i: Int) = apply(i)
+  def apply(i: Int) = readAt(i)
+  def update(i: Int, x: Double) = throw new UnsupportedOperationException("update on RemoteArray " + id)
   def data = getLocal.data
 
   private var local: LocalDeliteArrayDouble = _
@@ -105,7 +253,7 @@ final class RemoteDeliteArrayDouble(var id: String, var chunkLengths: Array[Int]
   val length = chunkLengths.reduce(_ + _)
 
   def copy(srcPos: Int, dest: DeliteArrayDouble, destPos: Int, len: Int) = dest match {
-    case d:RemoteDeliteArrayDouble => System.arraycopy(this.getLocal.data, srcPos, d.getLocal.data, destPos, len) 
+    case d:RemoteDeliteArrayDouble => System.arraycopy(this.getLocal.data, srcPos, d.getLocal.data, destPos, len)
     case d:LocalDeliteArrayDouble => System.arraycopy(this.getLocal.data, srcPos, d.data, destPos, len)
   }
 
@@ -117,10 +265,19 @@ final class RemoteDeliteArrayDouble(var id: String, var chunkLengths: Array[Int]
 
   def getLocal = if (local eq null) retrieveArray else local
 
+  def readAt(i: Int) = if (local eq null) remoteRead(i) else local(i)
+
+  private def remoteRead(i: Int) = {
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
+    val result = ppl.delite.runtime.DeliteMesosScheduler.requestData(id, location, i)
+    Serialization.deserialize(classOf[Double], result.getOutput(0))
+  }
+
   private def retrieveArray = {
     if (!hasArray) {
-      println("WARNING: transferring remote symbol " + id.split("_")(0))
-      val returnResults = DeliteMesosScheduler.getData(this.asInstanceOf[RemoteDeliteArray[_]])
+      DeliteMesosScheduler.warn("transferring remote symbol " + id.split("_")(0))
+      val returnResults = DeliteMesosScheduler.requestBulkData(this.asInstanceOf[RemoteDeliteArray[_]])
       val chunks = for (result <- returnResults) yield {
         Serialization.deserialize(classOf[DeliteArrayDouble], result.getOutput(0)).asInstanceOf[LocalDeliteArrayDouble]
       }
@@ -143,7 +300,7 @@ final class RemoteDeliteArrayInt(var id: String, var chunkLengths: Array[Int]) e
   var offsets = {
     val off = new Array[Int](chunkLengths.length)
     off(0) = 0
-    var sum = 0 
+    var sum = 0
     for (i <- 1 until chunkLengths.length) {
       sum += chunkLengths(i-1)
       off(i) = sum
@@ -151,10 +308,8 @@ final class RemoteDeliteArrayInt(var id: String, var chunkLengths: Array[Int]) e
     off
   }
 
-  def apply(i: Int) = getLocal.apply(i)
-  def update(i: Int, x: Int) = getLocal.update(i,x)
-  def readAt(i: Int) = apply(i)
-
+  def apply(i: Int) = readAt(i)
+  def update(i: Int, x: Int) = throw new UnsupportedOperationException("update on RemoteArray " + id)
   def data = getLocal.data
 
   private var local: LocalDeliteArrayInt = _
@@ -163,7 +318,7 @@ final class RemoteDeliteArrayInt(var id: String, var chunkLengths: Array[Int]) e
   val length = chunkLengths.reduce(_ + _)
 
   def copy(srcPos: Int, dest: DeliteArrayInt, destPos: Int, len: Int) = dest match {
-    case d:RemoteDeliteArrayInt => System.arraycopy(this.getLocal.data, srcPos, d.getLocal.data, destPos, len) 
+    case d:RemoteDeliteArrayInt => System.arraycopy(this.getLocal.data, srcPos, d.getLocal.data, destPos, len)
     case d:LocalDeliteArrayInt => System.arraycopy(this.getLocal.data, srcPos, d.data, destPos, len)
   }
 
@@ -175,10 +330,19 @@ final class RemoteDeliteArrayInt(var id: String, var chunkLengths: Array[Int]) e
 
   def getLocal = if (local eq null) retrieveArray else local
 
+  def readAt(i: Int) = if (local eq null) remoteRead(i) else local(i)
+
+  private def remoteRead(i: Int) = {
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
+    val result = ppl.delite.runtime.DeliteMesosScheduler.requestData(id, location, i)
+    Serialization.deserialize(classOf[Int], result.getOutput(0))
+  }
+
   private def retrieveArray = {
     if (!hasArray) {
-      println("WARNING: transferring remote symbol " + id.split("_")(0))
-      val returnResults = DeliteMesosScheduler.getData(this.asInstanceOf[RemoteDeliteArray[_]])
+      DeliteMesosScheduler.warn("transferring remote symbol " + id.split("_")(0))
+      val returnResults = DeliteMesosScheduler.requestBulkData(this.asInstanceOf[RemoteDeliteArray[_]])
       val chunks = for (result <- returnResults) yield {
         Serialization.deserialize(classOf[DeliteArrayInt], result.getOutput(0)).asInstanceOf[LocalDeliteArrayInt]
       }
@@ -201,7 +365,7 @@ final class RemoteDeliteArrayChar(var id: String, var chunkLengths: Array[Int]) 
   var offsets = {
     val off = new Array[Int](chunkLengths.length)
     off(0) = 0
-    var sum = 0 
+    var sum = 0
     for (i <- 1 until chunkLengths.length) {
       sum += chunkLengths(i-1)
       off(i) = sum
@@ -209,10 +373,8 @@ final class RemoteDeliteArrayChar(var id: String, var chunkLengths: Array[Int]) 
     off
   }
 
-  def apply(i: Int) = getLocal.apply(i)
-  def update(i: Int, x: Char) = getLocal.update(i,x)
-  def readAt(i: Int) = apply(i)
-
+  def apply(i: Int) = readAt(i)
+  def update(i: Int, x: Char) = throw new UnsupportedOperationException("update on RemoteArray " + id)
   def data = getLocal.data
 
   private var local: LocalDeliteArrayChar = _
@@ -221,7 +383,7 @@ final class RemoteDeliteArrayChar(var id: String, var chunkLengths: Array[Int]) 
   val length = chunkLengths.reduce(_ + _)
 
   def copy(srcPos: Int, dest: DeliteArrayChar, destPos: Int, len: Int) = {
-    System.arraycopy(this.data, srcPos, dest.data, destPos, len) 
+    System.arraycopy(this.data, srcPos, dest.data, destPos, len)
   }
 
   def take(n: Int) = {
@@ -232,12 +394,21 @@ final class RemoteDeliteArrayChar(var id: String, var chunkLengths: Array[Int]) 
 
   def getLocal = if (local eq null) retrieveArray else local
 
+  def readAt(i: Int) = if (local eq null) remoteRead(i) else local(i)
+
+  private def remoteRead(i: Int) = {
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
+    val result = ppl.delite.runtime.DeliteMesosScheduler.requestData(id, location, i)
+    Serialization.deserialize(classOf[Char], result.getOutput(0))
+  }
+
   private def retrieveArray = {
     if (!hasArray) {
-      println("WARNING: transferring remote symbol " + id.split("_")(0))
-      val returnResults = DeliteMesosScheduler.getData(this.asInstanceOf[RemoteDeliteArray[_]])
+      DeliteMesosScheduler.warn("transferring remote symbol " + id.split("_")(0))
+      val returnResults = DeliteMesosScheduler.requestBulkData(this.asInstanceOf[RemoteDeliteArray[_]])
       val chunks = for (result <- returnResults) yield {
-        Serialization.deserialize(classOf[DeliteArrayInt], result.getOutput(0)).asInstanceOf[LocalDeliteArrayChar]
+        Serialization.deserialize(classOf[DeliteArrayChar], result.getOutput(0)).asInstanceOf[LocalDeliteArrayChar]
       }
       val length = chunks.map(_.length).sum
       val result = new LocalDeliteArrayChar(length)
@@ -258,7 +429,7 @@ final class RemoteDeliteArrayBoolean(var id: String, var chunkLengths: Array[Int
   var offsets = {
     val off = new Array[Int](chunkLengths.length)
     off(0) = 0
-    var sum = 0 
+    var sum = 0
     for (i <- 1 until chunkLengths.length) {
       sum += chunkLengths(i-1)
       off(i) = sum
@@ -266,10 +437,8 @@ final class RemoteDeliteArrayBoolean(var id: String, var chunkLengths: Array[Int
     off
   }
 
-  def apply(i: Int) = getLocal.apply(i)
-  def update(i: Int, x: Boolean) = getLocal.update(i,x)
-  def readAt(i: Int) = apply(i)
-
+  def apply(i: Int) = readAt(i)
+  def update(i: Int, x: Boolean) = throw new UnsupportedOperationException("update on RemoteArray " + id)
   def data = getLocal.data
 
   private var local: LocalDeliteArrayBoolean = _
@@ -278,7 +447,7 @@ final class RemoteDeliteArrayBoolean(var id: String, var chunkLengths: Array[Int
   val length = chunkLengths.reduce(_ + _)
 
   def copy(srcPos: Int, dest: DeliteArrayBoolean, destPos: Int, len: Int) = {
-    System.arraycopy(this.data, srcPos, dest.data, destPos, len) 
+    System.arraycopy(this.data, srcPos, dest.data, destPos, len)
   }
 
   def take(n: Int) = {
@@ -289,12 +458,21 @@ final class RemoteDeliteArrayBoolean(var id: String, var chunkLengths: Array[Int
 
   def getLocal = if (local eq null) retrieveArray else local
 
+  def readAt(i: Int) = if (local eq null) remoteRead(i) else local(i)
+
+  private def remoteRead(i: Int) = {
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
+    val result = ppl.delite.runtime.DeliteMesosScheduler.requestData(id, location, i)
+    Serialization.deserialize(classOf[Boolean], result.getOutput(0))
+  }
+
   private def retrieveArray = {
     if (!hasArray) {
-      println("WARNING: transferring remote symbol " + id.split("_")(0))
-      val returnResults = DeliteMesosScheduler.getData(this.asInstanceOf[RemoteDeliteArray[_]])
+      DeliteMesosScheduler.warn("transferring remote symbol " + id.split("_")(0))
+      val returnResults = DeliteMesosScheduler.requestBulkData(this.asInstanceOf[RemoteDeliteArray[_]])
       val chunks = for (result <- returnResults) yield {
-        Serialization.deserialize(classOf[DeliteArrayInt], result.getOutput(0)).asInstanceOf[LocalDeliteArrayBoolean]
+        Serialization.deserialize(classOf[DeliteArrayBoolean], result.getOutput(0)).asInstanceOf[LocalDeliteArrayBoolean]
       }
       val length = chunks.map(_.length).sum
       val result = new LocalDeliteArrayBoolean(length)
@@ -309,28 +487,75 @@ final class RemoteDeliteArrayBoolean(var id: String, var chunkLengths: Array[Int
   }
 }
 
+class RemoteDeliteArrayLong(var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[Long] with DeliteArrayLong {
+  type L = LocalDeliteArrayLong
+  def specializedClass = classOf[DeliteArrayLong]
+  def createLocal(len: Int) = new LocalDeliteArrayLong(len)
+}
+
+class RemoteDeliteArrayFloat(var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[Float] with DeliteArrayFloat {
+  type L = LocalDeliteArrayFloat
+  def specializedClass = classOf[DeliteArrayFloat]
+  def createLocal(len: Int) = new LocalDeliteArrayFloat(len)
+}
+
+class RemoteDeliteArrayShort(var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[Short] with DeliteArrayShort {
+  type L = LocalDeliteArrayShort
+  def specializedClass = classOf[DeliteArrayShort]
+  def createLocal(len: Int) = new LocalDeliteArrayShort(len)
+}
+
+class RemoteDeliteArrayByte(var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[Byte] with DeliteArrayByte {
+  type L = LocalDeliteArrayByte
+  def specializedClass = classOf[DeliteArrayByte]
+  def createLocal(len: Int) = new LocalDeliteArrayByte(len)
+}
+
+class RemoteDeliteArrayObject[T:Manifest](var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[T] with DeliteArrayObject[T] {
+  type L = LocalDeliteArrayObject[T]
+  def specializedClass = classOf[DeliteArrayObject[T]]
+  def createLocal(len: Int) = new LocalDeliteArrayObject[T](len)
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Local Delite Array
+///////////////////////////////////////////////////////////////////////////////
+
 abstract class LocalDeliteArray[T:Manifest] extends DeliteArray[T] {
   type L <: LocalDeliteArray[T]
 
   val data: Array[T]
   var offset: Int
+
+  // Offsets and id are intentionally null initially; the first time this array is deserialized from a RemoteArray, these will be set.
+  // Before then, no remote reads should be requested on this array (its offset has never been broadcast to anyone but the master).
   var offsets: Array[Int] = _
   var id: String = _
 
   val length = data.length
 
-  def apply(i: Int): T = data(i-offset) /* try { data(i-offset) } catch { case a: ArrayIndexOutOfBoundsException => 
-    remoteRead(i)
-  }*/
-  def readAt(i: Int) = data(i-offset)
+  def apply(i: Int): T = readAt(i)
 
-  def update(i: Int, x: T) = data(i-offset) = x /*try { data(i-offset) = x } catch { case a: ArrayIndexOutOfBoundsException => 
-    throw new UnsupportedOperationException("DeliteArray update: index " + (i-offset) + " is not local")
-  }*/
+  def readAt(i: Int) =
+    try {
+      data(i-offset)
+    }
+    catch {
+      case a: ArrayIndexOutOfBoundsException => remoteRead(i)
+    }
+
+  def update(i: Int, x: T) =
+    try {
+      data(i-offset) = x
+    }
+    catch {
+      case a: ArrayIndexOutOfBoundsException => throw new UnsupportedOperationException("DeliteArray update: index " + (i-offset) + " is not local")
+    }
 
   private def remoteRead(i: Int): T = {
-    var location = offsets.indexWhere(_ >= i) - 1
-    if (location < 0) location = offsets.length - 1
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
     val result = ppl.delite.runtime.DeliteMesosExecutor.requestData(id, location, i)
     Serialization.deserialize(manifest[T].erasure.asInstanceOf[Class[T]], result.getOutput(0))
   }
@@ -350,96 +575,6 @@ abstract class LocalDeliteArray[T:Manifest] extends DeliteArray[T] {
 
 }
 
-
-trait DeliteArrayLong extends DeliteArray[Long] {
-  def apply(i: Int): Long
-  def take(n: Int): DeliteArrayLong
-}
-trait DeliteArrayFloat extends DeliteArray[Float] {
-  def apply(i: Int): Float
-  def take(n: Int): DeliteArrayFloat
-}
-trait DeliteArrayShort extends DeliteArray[Short] {
-  def apply(i: Int): Short
-  def take(n: Int): DeliteArrayShort
-}
-trait DeliteArrayByte extends DeliteArray[Byte] {
-  def apply(i: Int): Byte
-  def take(n: Int): DeliteArrayByte
-}
-trait DeliteArrayObject[T] extends DeliteArray[T] {
-  def data: Array[T]
-  def apply(i: Int): T
-  def update(i: Int, x: T)
-  def take(i: Int): DeliteArrayObject[T]
-  def copy(srcPos: Int, dest: DeliteArray[T], destPos: Int, len: Int)
-}
-
-object DeliteArrayDouble {
-  def combine(lhs: DeliteArrayDouble, rhs: DeliteArrayDouble) = (lhs, rhs) match {
-    case (l: RemoteDeliteArrayDouble, r: RemoteDeliteArrayDouble) => new RemoteDeliteArrayDouble(l.id, l.chunkLengths ++ r.chunkLengths)
-  }
-}
-
-object DeliteArrayInt {
-  def combine(lhs: DeliteArrayInt, rhs: DeliteArrayInt) = (lhs, rhs) match {
-    case (l: RemoteDeliteArrayInt, r: RemoteDeliteArrayInt) => new RemoteDeliteArrayInt(l.id, l.chunkLengths ++ r.chunkLengths)
-  }
-}
-
-object DeliteArrayChar {
-  def combine(lhs: DeliteArrayChar, rhs: DeliteArrayChar) = (lhs, rhs) match {
-    case (l: RemoteDeliteArrayChar, r: RemoteDeliteArrayChar) => new RemoteDeliteArrayChar(l.id, l.chunkLengths ++ r.chunkLengths)
-  }
-}
-
-object DeliteArrayObject {
-  def combine[T:Manifest](lhs: DeliteArrayObject[_], rhs: DeliteArrayObject[_]) = (lhs, rhs) match {
-    case (l: RemoteDeliteArrayObject[_], r: RemoteDeliteArrayObject[_]) => new RemoteDeliteArrayObject[T](l.id, l.chunkLengths ++ r.chunkLengths)
-  }
-}
-
-class RemoteDeliteArrayLong(var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[Long] with DeliteArrayLong {
-  type L = LocalDeliteArrayLong
-  def specializedClass = classOf[DeliteArrayLong]
-  def createLocal(len: Int) = new LocalDeliteArrayLong(len)
-}
-class RemoteDeliteArrayFloat(var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[Float] with DeliteArrayFloat {
-  type L = LocalDeliteArrayFloat
-  def specializedClass = classOf[DeliteArrayFloat]
-  def createLocal(len: Int) = new LocalDeliteArrayFloat(len)
-}
-class RemoteDeliteArrayShort(var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[Short] with DeliteArrayShort {
-  type L = LocalDeliteArrayShort
-  def specializedClass = classOf[DeliteArrayShort]
-  def createLocal(len: Int) = new LocalDeliteArrayShort(len)
-}
-class RemoteDeliteArrayByte(var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[Byte] with DeliteArrayByte {
-  type L = LocalDeliteArrayByte
-  def specializedClass = classOf[DeliteArrayByte]
-  def createLocal(len: Int) = new LocalDeliteArrayByte(len)
-}
-class RemoteDeliteArrayObject[T:Manifest](var id: String, var chunkLengths: Array[Int]) extends RemoteDeliteArrayImpl[T] with DeliteArrayObject[T] {
-  type L = LocalDeliteArrayObject[T]
-  def specializedClass = classOf[DeliteArrayObject[T]]
-  def createLocal(len: Int) = new LocalDeliteArrayObject[T](len)
-}
-
-class LocalDeliteArrayLong(val data: Array[Long], var offset: Int) extends LocalDeliteArray[Long] with DeliteArrayLong {  
-  type L = LocalDeliteArrayLong
-  def this(data: Array[Long]) = this(data, 0)
-  def this(len: Int) = this(new Array[Long](len), 0)
-  def this(len: Int, start: Int) = this(new Array[Long](len), start)
-  def createLocal(len: Int, start: Int) = new LocalDeliteArrayLong(len, start)
-}
-class LocalDeliteArrayFloat(val data: Array[Float], var offset: Int) extends LocalDeliteArray[Float] with DeliteArrayFloat {
-  type L = LocalDeliteArrayFloat
-  def this(data: Array[Float]) = this(data, 0)
-  def this(len: Int) = this(new Array[Float](len), 0)
-  def this(len: Int, start: Int) = this(new Array[Float](len), start)
-  def createLocal(len: Int, start: Int) = new LocalDeliteArrayFloat(len, start)
-}
-
 final class LocalDeliteArrayDouble(val data: Array[Double], var offset: Int) extends DeliteArrayDouble {
   def this(data: Array[Double]) = this(data, 0)
   def this(len: Int) = this(new Array[Double](len), 0)
@@ -449,10 +584,31 @@ final class LocalDeliteArrayDouble(val data: Array[Double], var offset: Int) ext
   var offsets: Array[Int] = _
 
   val length = data.length
-  def apply(i: Int): Double = data(i-offset)
-  def readAt(i: Int) = data(i-offset)
-  def update(i: Int, x: Double) = data(i-offset) = x
-  
+  def apply(i: Int): Double = readAt(i)
+  def readAt(i: Int) =
+    try {
+      data(i-offset)
+    }
+    catch {
+      case a: ArrayIndexOutOfBoundsException => remoteRead(i)
+    }
+
+
+  def update(i: Int, x: Double) =
+    try {
+      data(i-offset) = x
+    }
+    catch {
+      case a: ArrayIndexOutOfBoundsException => throw new UnsupportedOperationException("DeliteArray update: index " + (i-offset) + " is not local")
+    }
+
+  private def remoteRead(i: Int): Double = {
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
+    val result = ppl.delite.runtime.DeliteMesosExecutor.requestData(id, location, i)
+    Serialization.deserialize(classOf[Double], result.getOutput(0))
+  }
+
   def copy(srcPos: Int, dest: DeliteArrayDouble, destPos: Int, len: Int) = {
     System.arraycopy(this.data, srcPos, dest.data, destPos, len)
   }
@@ -464,13 +620,6 @@ final class LocalDeliteArrayDouble(val data: Array[Double], var offset: Int) ext
   }
 
 }
-abstract class DeliteArrayDouble extends DeliteArray[Double] {
-  def data: Array[Double]
-  def apply(i: Int): Double
-  def update(i: Int, x: Double)
-  def take(i: Int): DeliteArrayDouble
-  def copy(srcPos: Int, dest: DeliteArrayDouble, destPos: Int, len: Int)
-}
 
 final class LocalDeliteArrayInt(val data: Array[Int], var offset: Int) extends DeliteArrayInt {
   def this(data: Array[Int]) = this(data, 0)
@@ -481,9 +630,30 @@ final class LocalDeliteArrayInt(val data: Array[Int], var offset: Int) extends D
   var offsets: Array[Int] = _
 
   val length = data.length
-  def apply(i: Int): Int = data(i-offset)
-  def readAt(i: Int) = data(i-offset)
-  def update(i: Int, x: Int) = data(i-offset) = x
+  def apply(i: Int): Int = readAt(i)
+  def readAt(i: Int) =
+    try {
+      data(i-offset)
+    }
+    catch {
+      case a: ArrayIndexOutOfBoundsException => remoteRead(i)
+    }
+
+
+  def update(i: Int, x: Int) =
+    try {
+      data(i-offset) = x
+    }
+    catch {
+      case a: ArrayIndexOutOfBoundsException => throw new UnsupportedOperationException("DeliteArray update: index " + (i-offset) + " is not local")
+    }
+
+  private def remoteRead(i: Int): Int = {
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
+    val result = ppl.delite.runtime.DeliteMesosExecutor.requestData(id, location, i)
+    Serialization.deserialize(classOf[Int], result.getOutput(0))
+  }
 
   def copy(srcPos: Int, dest: DeliteArrayInt, destPos: Int, len: Int) = {
     System.arraycopy(this.data, srcPos, dest.data, destPos, len)
@@ -496,13 +666,6 @@ final class LocalDeliteArrayInt(val data: Array[Int], var offset: Int) extends D
   }
 
 }
-abstract class DeliteArrayInt extends DeliteArray[Int] {
-  def data: Array[Int]
-  def apply(i: Int): Int
-  def update(i: Int, x: Int)
-  def take(i: Int): DeliteArrayInt
-  def copy(srcPos: Int, dest: DeliteArrayInt, destPos: Int, len: Int)
-}
 
 final class LocalDeliteArrayChar(val data: Array[Char], var offset: Int) extends DeliteArrayChar {
   def this(data: Array[Char]) = this(data, 0)
@@ -513,9 +676,30 @@ final class LocalDeliteArrayChar(val data: Array[Char], var offset: Int) extends
   var offsets: Array[Int] = _
 
   val length = data.length
-  def apply(i: Int): Char = data(i-offset)
-  def readAt(i: Int) = data(i-offset)
-  def update(i: Int, x: Char) = data(i-offset) = x
+  def apply(i: Int): Char = readAt(i)
+  def readAt(i: Int) =
+    try {
+      data(i-offset)
+    }
+    catch {
+      case a: ArrayIndexOutOfBoundsException => remoteRead(i)
+    }
+
+
+  def update(i: Int, x: Char) =
+    try {
+      data(i-offset) = x
+    }
+    catch {
+      case a: ArrayIndexOutOfBoundsException => throw new UnsupportedOperationException("DeliteArray update: index " + (i-offset) + " is not local")
+    }
+
+  private def remoteRead(i: Int): Char = {
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
+    val result = ppl.delite.runtime.DeliteMesosExecutor.requestData(id, location, i)
+    Serialization.deserialize(classOf[Char], result.getOutput(0))
+  }
 
   def copy(srcPos: Int, dest: DeliteArrayChar, destPos: Int, len: Int) = {
     System.arraycopy(this.data, srcPos, dest.data, destPos, len)
@@ -528,13 +712,6 @@ final class LocalDeliteArrayChar(val data: Array[Char], var offset: Int) extends
   }
 
 }
-abstract class DeliteArrayChar extends DeliteArray[Char] {
-  def data: Array[Char]
-  def apply(i: Int): Char
-  def update(i: Int, x: Char)
-  def take(i: Int): DeliteArrayChar
-  def copy(srcPos: Int, dest: DeliteArrayChar, destPos: Int, len: Int)
-}
 
 final class LocalDeliteArrayBoolean(val data: Array[Boolean], var offset: Int) extends DeliteArrayBoolean {
   def this(data: Array[Boolean]) = this(data, 0)
@@ -545,9 +722,30 @@ final class LocalDeliteArrayBoolean(val data: Array[Boolean], var offset: Int) e
   var offsets: Array[Int] = _
 
   val length = data.length
-  def apply(i: Int): Boolean = data(i-offset)
-  def readAt(i: Int) = data(i-offset)
-  def update(i: Int, x: Boolean) = data(i-offset) = x
+  def apply(i: Int): Boolean = readAt(i)
+  def readAt(i: Int) =
+    try {
+      data(i-offset)
+    }
+    catch {
+      case a: ArrayIndexOutOfBoundsException => remoteRead(i)
+    }
+
+
+  def update(i: Int, x: Boolean) =
+    try {
+      data(i-offset) = x
+    }
+    catch {
+      case a: ArrayIndexOutOfBoundsException => throw new UnsupportedOperationException("DeliteArray update: index " + (i-offset) + " is not local")
+    }
+
+  private def remoteRead(i: Int): Boolean = {
+    var location = offsets.indexWhere(_ > i) - 1
+    if (location < 0) location = 0
+    val result = ppl.delite.runtime.DeliteMesosExecutor.requestData(id, location, i)
+    Serialization.deserialize(classOf[Boolean], result.getOutput(0))
+  }
 
   def copy(srcPos: Int, dest: DeliteArrayBoolean, destPos: Int, len: Int) = {
     System.arraycopy(this.data, srcPos, dest.data, destPos, len)
@@ -560,14 +758,22 @@ final class LocalDeliteArrayBoolean(val data: Array[Boolean], var offset: Int) e
   }
 
 }
-abstract class DeliteArrayBoolean extends DeliteArray[Boolean] {
-  def data: Array[Boolean]
-  def apply(i: Int): Boolean
-  def update(i: Int, x: Boolean)
-  def take(i: Int): DeliteArrayBoolean
-  def copy(srcPos: Int, dest: DeliteArrayBoolean, destPos: Int, len: Int)
+
+class LocalDeliteArrayLong(val data: Array[Long], var offset: Int) extends LocalDeliteArray[Long] with DeliteArrayLong {
+  type L = LocalDeliteArrayLong
+  def this(data: Array[Long]) = this(data, 0)
+  def this(len: Int) = this(new Array[Long](len), 0)
+  def this(len: Int, start: Int) = this(new Array[Long](len), start)
+  def createLocal(len: Int, start: Int) = new LocalDeliteArrayLong(len, start)
 }
 
+class LocalDeliteArrayFloat(val data: Array[Float], var offset: Int) extends LocalDeliteArray[Float] with DeliteArrayFloat {
+  type L = LocalDeliteArrayFloat
+  def this(data: Array[Float]) = this(data, 0)
+  def this(len: Int) = this(new Array[Float](len), 0)
+  def this(len: Int, start: Int) = this(new Array[Float](len), start)
+  def createLocal(len: Int, start: Int) = new LocalDeliteArrayFloat(len, start)
+}
 
 class LocalDeliteArrayShort(val data: Array[Short], var offset: Int) extends LocalDeliteArray[Short] with DeliteArrayShort {
   type L = LocalDeliteArrayShort
@@ -575,7 +781,8 @@ class LocalDeliteArrayShort(val data: Array[Short], var offset: Int) extends Loc
   def this(len: Int) = this(new Array[Short](len), 0)
   def this(len: Int, start: Int) = this(new Array[Short](len), start)
   def createLocal(len: Int, start: Int) = new LocalDeliteArrayShort(len, start)
-} 
+}
+
 class LocalDeliteArrayByte(val data: Array[Byte], var offset: Int) extends LocalDeliteArray[Byte] with DeliteArrayByte {
   type L = LocalDeliteArrayByte
   def this(data: Array[Byte]) = this(data, 0)
@@ -583,6 +790,7 @@ class LocalDeliteArrayByte(val data: Array[Byte], var offset: Int) extends Local
   def this(len: Int, start: Int) = this(new Array[Byte](len), start)
   def createLocal(len: Int, start: Int) = new LocalDeliteArrayByte(len, start)
 }
+
 class LocalDeliteArrayObject[T:Manifest](val data: Array[T], var offset: Int) extends LocalDeliteArray[T] with DeliteArrayObject[T] {
   type L = LocalDeliteArrayObject[T]
   def this(data: Array[T]) = this(data, 0)

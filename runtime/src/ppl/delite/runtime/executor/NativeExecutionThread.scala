@@ -14,14 +14,14 @@ import java.io.File
  * Stanford University
  */
 
-class NativeExecutionThread(threadId: Int, numThreads: Int) extends ExecutionThread {
+abstract class NativeExecutionThread(threadId: Int, numThreads: Int) extends ExecutionThread {
 
   override def run {
     initializeThread(threadId, numThreads)
     super.run
   }
 
-  @native def initializeThread(threadId: Int, numThreads:Int): Unit
+  def initializeThread(threadId: Int, numThreads:Int): Unit
 
   protected def loadNative(fileName: String, compiler: CCompile) = {
     val sep = File.separator
@@ -29,19 +29,24 @@ class NativeExecutionThread(threadId: Int, numThreads: Int) extends ExecutionThr
     val path = root + "." + OS.libExt
     val lib = new File(path)
     if (!lib.exists) compiler.compileInit(root)
-    System.load(path)
+    System.load(path) //TODO: doesn't work properly with sbt test suite
   }
 
 }
 
-class CppExecutionThread(threadId: Int, numThreads: Int) extends NativeExecutionThread(threadId, numThreads) {
-  loadNative("Config", CppCompile)
+class CppExecutionThread(threadId: Int, numThreads: Int) extends ExecutionThread
+
+class PinnedExecutionThread(threadId: Int, numThreads: Int) extends NativeExecutionThread(threadId, numThreads) {
+  @native def initializeThread(threadId: Int, numThreads: Int): Unit
+  loadNative("cppInit", CppCompile)
 }
 
 class CudaExecutionThread(threadId: Int, numThreads: Int) extends NativeExecutionThread(threadId, numThreads) {
+  @native def initializeThread(threadId: Int, numThreads:Int): Unit
   loadNative("cudaInit", CudaCompile)
 }
 
 class OpenCLExecutionThread(threadId: Int, numThreads: Int) extends NativeExecutionThread(threadId, numThreads) {
+  @native def initializeThread(threadId: Int, numThreads:Int): Unit
   loadNative("openclInit", OpenCLCompile)
 }

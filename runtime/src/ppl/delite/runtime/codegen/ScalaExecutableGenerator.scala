@@ -8,12 +8,13 @@ import ppl.delite.runtime.graph.targets.{OS, Targets}
 import collection.mutable.ArrayBuffer
 import sync._
 
-trait ScalaResourceInfo {
-  protected def resourceInfoType = "generated.scala.ResourceInfo"
-  protected def resourceInfoSym = "resourceInfo"
+object ScalaResourceInfo {
+  def resourceInfoType = "generated.scala.ResourceInfo"
+  def resourceInfoSym = "resourceInfo"
 }
 
-trait ScalaExecutableGenerator extends ExecutableGenerator with ScalaResourceInfo {
+trait ScalaExecutableGenerator extends ExecutableGenerator {
+  import ScalaResourceInfo._
 
   protected def addSource(source: String) {
     ScalaCompile.addSource(source, executableName)
@@ -44,7 +45,7 @@ trait ScalaExecutableGenerator extends ExecutableGenerator with ScalaResourceInf
   protected def writeMethodHeader() {
     out.append("def run() {\n")
     if (Config.profile) out.append("val threadName = Thread.currentThread.getName()\n")
-    out.append("val "+resourceInfoSym+" = new "+resourceInfoType+"("+Targets.getRelativeLocation(location)+",Config.numThreads)\n")
+    out.append("val "+resourceInfoSym+" = new "+resourceInfoType+"(0,Config.numSlaves,"+Targets.getRelativeLocation(location)+",Config.numThreads)\n")
   }
 
   protected def writeMethodFooter() {
@@ -58,7 +59,7 @@ trait ScalaExecutableGenerator extends ExecutableGenerator with ScalaResourceInf
   //TODO: can/should this be factored out? need some kind of factory for each target
   protected def makeNestedFunction(op: DeliteOP) = op match {
     case c: OP_Condition => new ScalaConditionGenerator(c, location, graph).makeExecutable()
-    case w: OP_While => new ScalaWhileGenerator(w, location, graph).makeExecutable()    
+    case w: OP_While => new ScalaWhileGenerator(w, location, graph).makeExecutable()
     case err => sys.error("Unrecognized OP type: " + err.getClass.getSimpleName)
   }
 

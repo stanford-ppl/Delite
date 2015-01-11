@@ -37,7 +37,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
   }
 
   def transformLoop(stm: Stm): Option[Exp[Any]] = stm match {
-      case TP(sym, Loop(size, v, body: DeliteCollectElem[a,i,ca])) => 
+      case TP(sym, Loop(size, v, body: DeliteCollectElem[a,i,ca])) =>
         val pos: SourceContext = if (sym.pos.length > 0) sym.pos(0) else null
         soaCollect[a,i,ca](size,v,body)(body.mA,body.mI,body.mCA,pos) match {
       case s@Some(newSym) => stm match {
@@ -54,7 +54,9 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
     case _ => None
   }
 
-  appendTransformer(t) //AoS to SoA should go last, right before fusion
+  if (Config.soaEnabled) {
+    appendTransformer(t) // AoS to SoA should go last, right before fusion
+  }
 
   private object StructBlock {
     def unapply[A](d: Block[A]) = d match {
@@ -69,10 +71,11 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
   def soaCollect[A:Manifest, I<:DeliteCollection[A]:Manifest, CA<:DeliteCollection[A]:Manifest](size: Exp[Int], v: Sym[Int], body: DeliteCollectElem[A,I,CA])(implicit pos: SourceContext): Option[Exp[CA]] = {
     val alloc = t(body.buf.alloc)
     alloc match {
+
     case StructBlock(tag,elems) =>
       val condT = body.cond.map(t(_))
       def copyLoop[B:Manifest](f: Block[B]): Exp[DeliteArray[B]] = f match {
-        case Block(Def(DeliteArrayApply(x,iv))) if (iv.equals(v) && body.par == ParFlat) => 
+        case Block(Def(DeliteArrayApply(x,iv))) if (iv.equals(v) && body.par == ParFlat) =>
           x.asInstanceOf[Exp[DeliteArray[B]]] //eliminate identity function loop
         case _ =>
           val allocV = reflectMutableSym(fresh[DeliteArray[B]])
@@ -114,7 +117,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         }
         val sz = body.par match {
           case ParFlat => t(size)
-          case ParBuffer | ParSimpleBuffer => 
+          case ParBuffer | ParSimpleBuffer =>
 
           newElems(0)._2.length //TODO: we want to know the output size without having to pick one of the returned arrays arbitrarily (prevents potential DCE)... can we just grab the size out of the activation record somehow?
           /* //determine output size by counting:
@@ -134,8 +137,8 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         struct[DeliteArray[B]](SoaTag(tag,sz), newElems)
       }
 
-      val dataField = dc_data_field(t.getBlockResult(alloc))
-      val sizeField = dc_size_field(t.getBlockResult(alloc))
+      val dataField = dc_data_field(t.getBlockResult(alloc).tp)
+      val sizeField = dc_size_field(t.getBlockResult(alloc).tp)
 
       if (dataField == "" && !isSubtype(manifest[I].erasure,classOf[DeliteArray[_]])) {
         printlog("unable to transform collect elem: no data field defined for " + manifest[I].toString)
@@ -148,10 +151,10 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
       }
 
       val newLoop = t(body.func) match {
-        case u@Block(Def(a@Struct(ta,es))) if Config.soaEnabled => 
+        case u@Block(Def(a@Struct(ta,es))) =>
           printlog("*** SOA " + u + " / " + a)
           soaTransform(ta,es)
-        case f2@Block(Def(a)) => 
+        case f2@Block(Def(a)) =>
           printlog("*** Unable to SOA " + f2 + " / " + a)
           copyLoop(f2)
         case f2 => copyLoop(f2)
@@ -165,8 +168,19 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
           case (df, _) if df == dataField => (df, newLoop)
           case (sf, _) if (sf == sizeField && body.par == ParFlat) => (sf, t(size))
           case (sf, _) if (sf == sizeField && (body.par == ParBuffer || body.par == ParSimpleBuffer)) => (sf, newLoop.length)
-          case (f, Def(Reflect(NewVar(init),_,_))) => (f, t(init))
-          case (f,v) => (f, t(v))
+          case (f, Def(Reflect(NewVar(init),_,_))) => t(init) match {
+            case Def(x) if !(boundSyms(body) intersect syms(x)).isEmpty =>
+              // This can happen if the field value was computed as a function of a bound symbol in the original loop (e.g. size)
+              printlog("unable to unwrap struct: elem " + t(init) + " depends on a bound symbol in " + body)
+              return None
+            case _ => (f, t(init))
+          }
+          case (f,v) => t(v) match {
+            case Def(x) if !(boundSyms(body) intersect syms(x)).isEmpty =>
+              printlog("unable to unwrap struct: elem " + t(v) + " depends on a bound symbol in " + body)
+              return None
+            case _ => (f, t(v))
+          }
         }
         struct[I](tag, newElems)
       }
@@ -174,7 +188,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
       t.replace(body.buf.allocVal, res) // TODO: use withSubstScope
       printlog("successfully transformed collect elem with type " + manifest[I].toString + " to " + res.toString)
       Some(t.getBlockResult(t(body.buf.finalizer)))
-      
+
     case Block(Def(Reify(s@Def(a),_,_))) => printlog("unable to transform collect elem: found " + s.toString + ": " + a + " with type " + manifest[I].toString); None
     case a => printlog("unable to transform collect elem: found " + a + " with type " + manifest[I].toString); None
   }}
@@ -182,11 +196,11 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
 
   //hash collect elems: similar to collect elems; we only transform the values, not the keys
   //TODO
-  
-  
+
+
   //reduce elems: unwrap result if elem is a Struct
   def soaReduce[A:Manifest](size: Exp[Int], v: Sym[Int], body: DeliteReduceElem[A]): Option[Exp[A]] = t(body.func) match {
-    case StructBlock(tag,elems) =>       
+    case StructBlock(tag,elems) =>
       def copyLoop[B:Manifest](f: Block[B], r: Block[B], z: Block[B], rv1: Exp[B], rv2: Exp[B]): Exp[B] = {
         simpleLoop(t(size), t(v).asInstanceOf[Sym[Int]], DeliteReduceElem[B](
           func = f,
@@ -211,15 +225,15 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
                 case (i, e) => (i, copyLoop(Block(field(f,i)(e.tp,ctx)), Block(field(r,i)(e.tp,ctx)), Block(field(z,i)(e.tp,ctx)), field(rv1,i)(e.tp,ctx), field(rv2,i)(e.tp,ctx))(e.tp))
               }
               struct[B](tag, newElems)
-            case Block(Def(a)) => 
+            case Block(Def(a)) =>
               Console.println(a)
               sys.error("transforming reduce elem but zero is not a struct and func is")
           }
           case Block(Def(a)) =>
-            Console.println(a) 
+            Console.println(a)
             sys.error("transforming reduce elem but rFunc is not a struct and func is")
         }
-        case Block(Def(a)) => 
+        case Block(Def(a)) =>
           Console.println(a)
           sys.error("transforming reduce elem but func is not a struct and rFunc is")
       }
@@ -228,7 +242,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
       val res = soaTransform(t(body.func), t(body.rFunc), t(body.zero), rv1, rv2)
       printlog("successfully transformed reduce elem with type " + manifest[A])
       Some(res)
-      
+
     case a => printlog("unable to transform reduce elem: found " + a + " with type " + manifest[A]); None
   }
 
@@ -251,7 +265,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
 
   //hash reduce elems: similar to reduce elems; we only transform the values, not the keys
   def soaHashReduce[K:Manifest,V:Manifest,I:Manifest,CV:Manifest](size: Exp[Int], v: Sym[Int], body: DeliteHashReduceElem[K,V,I,CV]): Option[Exp[CV]] = {
-    val alloc = t(body.buf.alloc) 
+    val alloc = t(body.buf.alloc)
     alloc match {
     case StructBlock(tag,elems) =>
       val condT = body.cond.map(t(_))
@@ -303,22 +317,22 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
                 case (i, e) => (i, copyLoop(Block(field(f,i)(e.tp,ctx)), Block(field(r,i)(e.tp,ctx)), Block(field(z,i)(e.tp,ctx)), field(rv1,i)(e.tp,ctx), field(rv2,i)(e.tp,ctx))(e.tp))
               }
               struct[DeliteArray[B]](SoaTag(tag, newElems(0)._2.length), newElems) //TODO: output size
-            case Block(s@Def(a)) => 
+            case Block(s@Def(a)) =>
               Console.println(f.toString + ": " + vf.toString + " with type " + f.tp.toString)
               Console.println(s.toString + ": " + a.toString + " with type " + s.tp.toString)
               sys.error("transforming hashReduce elem but zero is not a struct and valFunc is")
           }
           case Block(Def(a)) =>
-            Console.println(a) 
-            sys.error("transforming hashReduce elem but rFunc is not a struct and valFunc is")        
+            Console.println(a)
+            sys.error("transforming hashReduce elem but rFunc is not a struct and valFunc is")
         }
-        case Block(Def(a)) => 
+        case Block(Def(a)) =>
           Console.println(a)
-          sys.error("transforming hashReduce elem but valFunc is not a struct and rFunc is")      
+          sys.error("transforming hashReduce elem but valFunc is not a struct and rFunc is")
       }
 
-      val dataField = dc_data_field(t.getBlockResult(alloc).asInstanceOf[Exp[DeliteCollection[V]]]) //FIXME
-      val sizeField = dc_size_field(t.getBlockResult(alloc).asInstanceOf[Exp[DeliteCollection[V]]])
+      val dataField = dc_data_field(t.getBlockResult(alloc).tp) //FIXME
+      val sizeField = dc_size_field(t.getBlockResult(alloc).tp)
 
       if (dataField == "" && !isSubtype(manifest[I].erasure,classOf[DeliteArray[_]])) {
         printlog("unable to transform hashReduce elem: no data field defined for " + manifest[I].toString)
@@ -326,7 +340,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
       }
 
       val newLoop = valT match {
-        case Block(Def(Struct(ta,es))) if Config.soaEnabled => 
+        case Block(Def(Struct(ta,es))) =>
           val (rv1, rv2) = unwrapRV(ta,es,body.rV)
           soaTransform(valT, t(body.rFunc), t(body.zero), rv1, rv2)
         case _ => copyLoop(valT, t(body.rFunc), t(body.zero), t(body.rV._1), t(body.rV._2))
@@ -339,8 +353,18 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         val newElems = elems.map {
           case (df, _) if df == dataField => (df, newLoop)
           case (sf, _) if sf == sizeField => (sf, newLoop.length)
-          case (f, Def(Reflect(NewVar(init),_,_))) => (f, t(init))
-          case (f,v) => (f, t(v))
+          case (f, Def(Reflect(NewVar(init),_,_))) => t(init) match {
+            case Def(x) if !(boundSyms(body) intersect syms(x)).isEmpty =>
+              printlog("unable to unwrap struct: elem " + t(init) + " depends on a bound symbol in " + body)
+              return None
+            case _ => (f, t(init))
+          }
+          case (f,v) => t(v) match {
+            case Def(x) if !(boundSyms(body) intersect syms(x)).isEmpty =>
+              printlog("unable to unwrap struct: elem " + t(v) + " depends on a bound symbol in " + body)
+              return None
+            case _ => (f, t(v))
+          }
         }
         struct[I](tag, newElems)
       }
@@ -348,7 +372,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
       t.replace(body.buf.allocVal, res) // TODO: use withSubstScope
       printlog("successfully transformed hashReduce elem with type " + manifest[I].toString + " to " + res.toString)
       Some(t.getBlockResult(t(body.buf.finalizer)))
-      
+
     case Block(Def(Reify(Def(a),_,_))) => printlog("unable to transform hashReduce elem: found " + a + " with type " + manifest[CV].toString); None
     case _ => None
   } }
@@ -372,25 +396,27 @@ trait LoopSoAOpt extends BaseGenLoopsFat with LoopFusionOpt {
   //pre-fuse any loops that have been split by SoA transform
   //such loops have the same 'size' sym, the same 'v' sym, and are in the same scope
   override def focusExactScopeFat[A](resultB: List[Block[Any]])(body: List[Stm] => A): A = {
-    val result = resultB.map(getBlockResultFull) flatMap { case Combine(xs) => xs case x => List(x) }
-    val currentScope = innerScope
-    val levelScope = getExactScope(currentScope)(result) //top-level scope
-    
-    val loops = levelScope collect { case t@TTP(_, _, SimpleFatLoop(_,_,_)) => t }
-    val splitLoops = loops groupBy { case TTP(_, _, SimpleFatLoop(size,v,bodies)) => v }
+    if (Config.soaEnabled) {
+      val result = resultB.map(getBlockResultFull) flatMap { case Combine(xs) => xs case x => List(x) }
+      val currentScope = innerScope
+      val levelScope = getExactScope(currentScope)(result) //top-level scope
 
-    val fusedLoops = splitLoops map {
-      case (v, l) if l.length == 1 => l.head
-      case (v, l) => 
-        val size = l.map(_.rhs.asInstanceOf[AbstractFatLoop].size) reduceLeft { (s1,s2) => assert(s1 == s2); s1 }
-        val t = TTP(l.flatMap(_.lhs), l.flatMap(_.mhs), SimpleFatLoop(size, v, l.flatMap(_.rhs.asInstanceOf[AbstractFatLoop].body)))
-        printlog("fusing split SoA loop: " + t.toString)
-        t
+      val loops = levelScope collect { case t@TTP(_, _, SimpleFatLoop(_,_,_)) => t }
+      val splitLoops = loops groupBy { case TTP(_, _, SimpleFatLoop(size,v,bodies)) => v }
+
+      val fusedLoops = splitLoops map {
+        case (v, l) if l.length == 1 => l.head
+        case (v, l) =>
+          val size = l.map(_.rhs.asInstanceOf[AbstractFatLoop].size) reduceLeft { (s1,s2) => assert(s1 == s2); s1 }
+          val t = TTP(l.flatMap(_.lhs), l.flatMap(_.mhs), SimpleFatLoop(size, v, l.flatMap(_.rhs.asInstanceOf[AbstractFatLoop].body)))
+          printlog("fusing split SoA loop: " + t.toString)
+          t
+      }
+
+      val remainder = currentScope diff loops
+      val newScope = remainder ++ fusedLoops
+      innerScope = getSchedule(newScope)(result) //get the order right
     }
-
-    val remainder = currentScope diff loops
-    val newScope = remainder ++ fusedLoops
-    innerScope = getSchedule(newScope)(result) //get the order right
     super.focusExactScopeFat(resultB)(body) //call LoopFusionOpt
   }
 

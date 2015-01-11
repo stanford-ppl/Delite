@@ -41,15 +41,16 @@ def main():
     parser.add_option("--dump_exception", dest="dump_exception", action="store_true", default=False, help="Dump generation failed exceptions")
     parser.add_option("--jar", dest="jar_app", action="store_true", default=False, help="save generated output in a jar for distribution")
     parser.add_option("--int64", dest ="long_int", action="store_true", default=False, help="generate code with 64-bit integers")
+    parser.add_option("--strict_control", dest ="strict_control", action="store_true", default=False, help="enable LMS control dependencies (may suppress some optimizations)")
 
     (opts, args) = parser.parse_args()
     if len(args) < 1:
         parser.error("an application file must be passed to delitec as an argument")
-    
+
     delitecommon.initialize()
     checkLMSEnv()
     stage(args[0], args[1:len(args)], opts)
- 
+
 def checkLMSEnv():
     global LMS_HOME
 
@@ -69,7 +70,7 @@ def checkLMSEnv():
 def stage(runner, params, opts):
     java_opts = os.getenv("JAVA_OPTS", "")
 
-    build_dir = opts.build_dir + os.sep + "generated" + os.sep
+    build_dir = opts.build_dir + os.sep + "generated" + os.sep + runner + os.sep
     java_opts = java_opts + " -server" + " -Ddelite.home.dir=" + delitecommon.DELITE_HOME + " -Ddelite.build.dir=" + build_dir + " -Ddelite.deg.filename=" + runner + ".deg"
     if opts.no_blas == False:
         java_opts = java_opts + " -Ddelite.extern.blas"
@@ -103,10 +104,12 @@ def stage(runner, params, opts):
         java_opts = java_opts + " -Ddelite.enable.gpu.multidim=false"
     if opts.long_int == True:
         java_opts = java_opts + " -Ddelite.integer.size=long"
+    if opts.strict_control == True:
+        java_opts = java_opts + " -Dlms.controldeps=true"
     java_opts = java_opts + " -Dnested.variants.level=0"
-    
+
     DELITE_HOME = delitecommon.DELITE_HOME
-    
+
     #add classpaths for Delite
     scala_major_id = delitecommon.scala_major_id
     old_cp = os.getenv("CLASSPATH", "")
@@ -115,7 +118,7 @@ def stage(runner, params, opts):
     if LMS_HOME:
         cp = cp + LMS_HOME + "/target/" + scala_major_id + "/classes" + os.pathsep
     cp = cp + DELITE_HOME + "/framework/target/" + scala_major_id + "/classes" + os.pathsep
-    
+
     #DSL cps
     for dsl in DSLs:
       cp = cp + DELITE_HOME + "/dsls/" + dsl + "/target/" + scala_major_id + "/classes" + os.pathsep
@@ -131,7 +134,7 @@ def stage(runner, params, opts):
     cp = cp + DELITE_HOME + "/tests/target/" + scala_major_id + "/classes" + os.pathsep
     cp = cp + DELITE_HOME + "/target/" + scala_major_id + "/test-classes" + os.pathsep
 
-    # add all managed libs 
+    # add all managed libs
     # caveat: scalatest pulls in some non-virtualized scala dependencies but they conflict with the scala-virtualized versions
     jars = [os.path.join(d,f) for (d, n, fs) in os.walk(delitecommon.HYPER_HOME + "/lib_managed/") if not (d.count("org.scala-lang") > 0 and d.count("virtualized") == 0) for f in fs]
     for j in jars:
@@ -146,10 +149,10 @@ def stage(runner, params, opts):
 
     #MKL ENV
     os.putenv("LD_PRELOAD", delitecommon.JAVA_HOME + "/jre/lib/amd64/libjsig.so")
-    
+
     if opts.verbose:
       delitecommon.printEnv()
-      if LMS_HOME: 
+      if LMS_HOME:
         print("LMS_HOME = " + LMS_HOME)
       else:
         print("LMS_HOME is UNDEFINED")
@@ -164,7 +167,7 @@ def stage(runner, params, opts):
 
     #jar generated code
     if opts.jar_app == True:
-        jar_cmd = delitecommon.JAVA_HOME + "/bin/jar cfM " + runner + ".jar " + runner + ".deg -C " + opts.build_dir + " generated"
+        jar_cmd = delitecommon.JAVA_HOME + "/bin/jar cfM " + runner + ".jar " + runner + ".deg -C " + build_dir
         #print jar_cmd
         ecode = os.system(jar_cmd)
         if ecode != 0:

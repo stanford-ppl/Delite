@@ -1,19 +1,17 @@
 package ppl.delite.runtime.profiler
 
-import collection.mutable
+import collection.mutable.{ArrayBuffer, Map}
 import java.io.{BufferedWriter, File, PrintWriter, FileWriter}
 import java.util.concurrent.ConcurrentHashMap
-import scala.collection.mutable.ArrayBuffer
 import ppl.delite.runtime.Config
 
-object PerformanceTimer
-{
+object PerformanceTimer {
   var threadCount = 0
   var statsNewFormat = new ArrayBuffer[Map[String, List[Timing]]]()
   var threadToId: Map[String, Int] = Map()
   // HACK: This is a temporary solution
   // This is a list of timing data for the component that is tracked using Config.dumpStatsComponent
-  var statsForTrackedComponent = new mutable.ArrayBuffer[Double]()
+  var statsForTrackedComponent = new ArrayBuffer[Double]()
 
   def initializeStats(numThreads: Int) = synchronized {
     threadCount = numThreads
@@ -39,7 +37,6 @@ object PerformanceTimer
     val previous = stats(component)
     val current = (new Timing(threadName, startTime, component)) :: previous
     stats += component -> current
-    statsNewFormat(threadId) = stats
   }
 
   def start(component: String, printMessage: Boolean = true): Unit = {
@@ -57,7 +54,7 @@ object PerformanceTimer
       case timing :: previousTimings =>
         timing.endTime = endTime
         if (component == Config.dumpStatsComponent) {
-          statsForTrackedComponent += (timing.endTime - timing.startTime) / 1000D
+          statsForTrackedComponent += (timing.endTime - timing.startTime) / 1e3
         }
     }
   }
@@ -67,19 +64,24 @@ object PerformanceTimer
   }
 
   // Currently only used by C++ to dump the profile results, need to refactor the code
-  def addTiming(component: String, threadId: Int, startTime: Long, endTime: Long): Unit = {
-    val threadName = threadToId.find(_._2 == threadId) match { 
+  def addTiming(component: String, threadId: Int, startTime: Long, endTime: Long, isKernel: Boolean): Unit = {
+    // for non-kernel timings (e.g., app) add to the last entry
+    val location = if (isKernel) threadId else threadCount
+    val threadName = threadToId.find(_._2 == location) match {
       case Some((name,id)) => name
-      case None => throw new RuntimeException("cannot find thread name for id " + threadId)
+      case None => throw new RuntimeException("cannot find thread name for id " + location)
     }
-    var stats = statsNewFormat(threadId)
+    var stats = statsNewFormat(location)
     val t = new Timing(threadName, startTime, component)
     t.endTime = endTime
     if (!stats.contains(component)) {
       stats += component -> List[Timing]()
     }
     stats += component -> (t :: stats(component))
-    statsNewFormat(threadId) = stats
+    
+    if (component == Config.dumpStatsComponent) {
+      statsForTrackedComponent += (endTime - startTime) / 1e3
+    }
   }
 
   def clearAll() {

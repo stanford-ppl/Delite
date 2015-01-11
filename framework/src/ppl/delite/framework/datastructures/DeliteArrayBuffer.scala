@@ -256,8 +256,9 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
 
   /////////////////////
   // delite collection
-    
-  def isDeliteArrayBuffer[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.tp.erasure,classOf[DeliteArrayBuffer[A]])  
+  
+  def isDeliteArrayBufferTpe(x: Manifest[_])(implicit ctx: SourceContext) = isSubtype(x.erasure,classOf[DeliteArrayBuffer[_]])    
+  def isDeliteArrayBuffer[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isDeliteArrayBufferTpe(x.tp)
   def asDeliteArrayBuffer[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[DeliteArrayBuffer[A]]]
     
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
@@ -312,13 +313,13 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     else super.dc_copy(src,srcPos,dst,dstPos,size)
   }
 
-  override def dc_data_field[A:Manifest](x: Exp[DeliteCollection[A]]) = {
-    if (isDeliteArrayBuffer(x)) "data"
+  override def dc_data_field(x: Manifest[_]) = {
+    if (isDeliteArrayBufferTpe(x)) "data"
     else super.dc_data_field(x)
   }
 
-  override def dc_size_field[A:Manifest](x: Exp[DeliteCollection[A]]) = {
-    if (isDeliteArrayBuffer(x)) "length"
+  override def dc_size_field(x: Manifest[_]) = {
+    if (isDeliteArrayBufferTpe(x)) "length"
     else super.dc_size_field(x)
   }
 

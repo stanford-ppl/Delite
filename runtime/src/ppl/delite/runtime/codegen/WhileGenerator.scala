@@ -6,6 +6,7 @@ import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.scheduler.OpList
 import ppl.delite.runtime.graph.ops._
 import sync._
+import ScalaResourceInfo._
 
 /**
  * Author: Kevin J. Brown

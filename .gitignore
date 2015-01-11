@@ -12,6 +12,7 @@ Makefile
 delite.properties
 target/
 config/delite/*.xml
+core-site.xml
 *lib_managed
 *src_managed
 project/boot

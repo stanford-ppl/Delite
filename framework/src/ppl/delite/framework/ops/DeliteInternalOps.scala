@@ -104,6 +104,7 @@ trait DeliteInternalOpsExpBase extends DeliteAnalysesOps
   def delite_unsafe_immutable[A:Manifest](lhs: Exp[A])(implicit pos: SourceContext) = lhs match {
     // INVESTIGATE: there was an issue where Const(0).unsafeImmutable == Const(0.0). How is this possible? CSE with primitive widening?
     case c@Const(x) => c
+    case s: Sym[_] if !isWritableSym(s) => lhs
     case _ => DUnsafeImmutable(lhs)
   }
 

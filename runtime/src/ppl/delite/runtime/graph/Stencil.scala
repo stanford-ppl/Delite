@@ -9,20 +9,12 @@ abstract class Stencil {
 
 case object Empty extends Stencil {
   def combine(other: Stencil) = other
-  
-  def withArray(array: RemoteDeliteArray[_]) = {
-    println("WARNING: Unknown stencil on RemoteArray: will be satisfied with remote reads")
-    None
-  }
+  def withArray(array: RemoteDeliteArray[_]) = None
 }
 
 case object All extends Stencil {
   def combine(other: Stencil) = All
-  
-  def withArray(array: RemoteDeliteArray[_]) = {
-    println("WARNING: 'All' stencil on RemoteArray: will be satisfied with remote reads")
-    None
-  }
+  def withArray(array: RemoteDeliteArray[_]) = None
 }
 
 case class Const(const: Int) extends Stencil {
@@ -32,10 +24,7 @@ case class Const(const: Int) extends Stencil {
     other
   }
 
-  def withArray(array: RemoteDeliteArray[_]) = {
-    println("WARNING: 'Const' stencil on RemoteArray: will be satisfied with remote reads")
-    None
-  }
+  def withArray(array: RemoteDeliteArray[_]) = None
 }
 
 case object One extends Stencil {
@@ -53,7 +42,7 @@ case class Interval(start: String, stride: String, length: String) extends Stenc
     case All => other.combine(this)
     case Const(c) => other.combine(this)
     case One => this
-    case Interval(s,t,l) if (s == start && t == stride && l == length) => this 
+    case Interval(s,t,l) if (s == start && t == stride && l == length) => this
     case _ => sys.error("don't know how to combine stencils " + this + " and " + other)
   }
 
@@ -79,12 +68,13 @@ case class KnownInterval(start: Int, stride: Int, length: Int) extends Stencil {
 object Stencil {
   def apply(stencil: String): Stencil = stencil match {
     case "none" => Empty
+    case "unknown" => Empty
     case "all" => All
     case "one" => One
     case c if c.startsWith("const") =>
       val const = c.substring(6,c.length-1).toInt
       Const(const)
-    case r if r.startsWith("range") => 
+    case r if r.startsWith("range") =>
       val syms = r.substring(6,r.length-1).split(",")
       Interval(syms(0), syms(1), syms(2))
     case _ => sys.error("unrecognized stencil type: " + stencil)

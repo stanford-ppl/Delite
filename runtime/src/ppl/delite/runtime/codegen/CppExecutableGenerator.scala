@@ -10,12 +10,13 @@ import sync._
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.scheduler.{OpHelper, OpList, PartialSchedule}
 
-trait CppResourceInfo {
-  protected def resourceInfoType = "resourceInfo_t"
-  protected def resourceInfoSym = "resourceInfo"
+object CppResourceInfo {
+  def resourceInfoType = "resourceInfo_t"
+  def resourceInfoSym = "resourceInfo"
 }
 
-trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
+trait CppExecutableGenerator extends ExecutableGenerator {
+  import CppResourceInfo._
 
   // To get a non-conflicting index for a variable name used to temporarily store jobject
   private var index = 0
@@ -50,17 +51,11 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
     out.append(function)
     out.append(" {\n")
     out.append("env" + location + " = jnienv;\n")
-    out.append(resourceInfoType + " " + resourceInfoSym + ";\n")
-    out.append(resourceInfoSym + ".threadId = " + Targets.getRelativeLocation(location) + ";\n")
-    out.append(resourceInfoSym + ".numThreads = config->numThreads;\n")
-    out.append(resourceInfoSym + ".socketId = config->threadToSocket(" + Targets.getRelativeLocation(location) + ");\n")
-    out.append(resourceInfoSym + ".numSockets = config->numSockets;\n")
-    if (Config.profile) out.append("InitDeliteCppTimer(" + Targets.getRelativeLocation(location) + ");\n")
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
-    val cppLocations = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp)
-    val numActiveCpps = cppLocations.size
-    val initializerIdx = Targets.getRelativeLocation(cppLocations.min)
-    out.append("DeliteHeapInit(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + "," + numActiveCpps + "," + initializerIdx + "," + Config.cppHeapSize + "ULL);\n")
+    val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
+    out.append("initializeAll(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + "," + numActiveCpps + "," + Config.cppHeapSize + "ULL);\n")
+    out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
+    out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
     writeJNIInitializer(locations)
   }
 
@@ -81,11 +76,8 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
 
   protected def writeMethodFooter() {
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
-    val cppLocations = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp)
-    val numActiveCpps = cppLocations.size
-    val finalizerIdx = Targets.getRelativeLocation(cppLocations.min)
-    if (Config.profile) out.append("DeliteCppTimerDump(" + Targets.getRelativeLocation(location) + "," + location + ",env" + location + ");\n")
-    out.append("DeliteHeapClear(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + "," + numActiveCpps + "," + finalizerIdx + ");\n")
+    val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
+    out.append("clearAll(" + Config.numCpp + "," + numActiveCpps + "," + Config.numThreads + ",env" + location + ");\n")
     out.append("}\n")
   }
 
@@ -102,7 +94,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
       val codegen = new CppWhileGenerator(w, location, graph)
       codegen.makeExecutable()
       CppCompile.addHeader(codegen.generateMethodSignature + ";\n", codegen.executableName(location))
-    }    
+    }
     case err => println("Cannot generate op" + op.id) //sys.error("Unrecognized OP type: " + err.getClass.getSimpleName)
   }
 
@@ -128,16 +120,16 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
 
     out.append(op.task) //kernel name
     op match {
-      case _:Arguments => 
+      case _:Arguments =>
         assert(Arguments.args.length == 1 && Arguments.args(0).isInstanceOf[Array[String]], "ERROR: Custom input arguments are not currently suppored with Cpp target")
         val args = Arguments.args(0).asInstanceOf[Array[String]]
         if(args.length > 0)
           out.append("(" + args.length + args.map("\""+_+"\"").mkString(",",",",");\n"))
         else
-          out.append("(" + args.length + ");\n") 
+          out.append("(" + args.length + ");\n")
       case _ => out.append((resourceInfoSym+:op.getInputs.map(i=>getSymHost(i._1,i._2))).mkString("(",",",");\n"))
     }
-   
+
     if (Config.profile) {
       if (!op.isInstanceOf[OP_MultiLoop]) {
         out.append("DeliteCppTimerStop(" + Targets.getRelativeLocation(location) + ",\""+op.id+"\");\n")
@@ -221,8 +213,8 @@ object CppExecutableGenerator {
     CppMultiLoopHeaderGenerator.createHeaderFile()
   }
 
-  def clear() { 
-    syncObjects.clear 
+  def clear() {
+    syncObjects.clear
   }
 
 }

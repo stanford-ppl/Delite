@@ -47,7 +47,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append(signature + " {\n")
         out.append("\tif(sym == %s) return NULL;\n".format(nullValue(tp)))
         var args = ""
-        for(elem <- encounteredStructs(structName(tp))) {
+        for(elem <- encounteredStructs(structName(tp))._2) {
           val elemtp = baseType(elem._2)
           if(isPrimitiveType(elemtp)) {
             args = args + JNITypeDescriptor(elemtp)
@@ -81,8 +81,8 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         else
           out.append("\tjclass cls = env->FindClass(\"generated/scala/%s\");\n".format(remapHost(tp).replaceAll(hostTarget,"")))
         out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(%s)V\");\n".format(args))
-        out.append("\tjobject obj = env->NewObject(cls,mid,%s);\n".format(encounteredStructs(structName(tp)).map(_._1).mkString(",")))
-        for(elem <- encounteredStructs(structName(tp)) if !isPrimitiveType(baseType(elem._2))) 
+        out.append("\tjobject obj = env->NewObject(cls,mid,%s);\n".format(encounteredStructs(structName(tp))._2.map(_._1).mkString(",")))
+        for(elem <- encounteredStructs(structName(tp))._2 if !isPrimitiveType(baseType(elem._2))) 
           out.append("\tenv->DeleteLocalRef(" + elem._1 + ");\n")
         out.append("\treturn obj;\n")
         out.append("}\n")
@@ -220,7 +220,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         else
           out.append("\t%s %ssym = new %s();\n".format(remapHost(tp),addRef(tp),remapHost(tp)))
         out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-        for(elem <- encounteredStructs(structName(tp))) {
+        for(elem <- encounteredStructs(structName(tp))._2) {
           val elemtp = baseType(elem._2)
           if(isPrimitiveType(elemtp)) {
             if(Config.generateSerializable) {
@@ -253,7 +253,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
           }
           out.append("\tsym->%s = %s;\n".format(elem._1,elem._1))
         }
-        for(elem <- encounteredStructs(structName(tp)) if !isPurePrimitiveType(baseType(elem._2))) 
+        for(elem <- encounteredStructs(structName(tp))._2 if !isPurePrimitiveType(baseType(elem._2))) 
           out.append("\tenv->DeleteLocalRef(j_" + elem._1 + ");\n")
         out.append("\treturn sym;\n")
         out.append("}\n")
@@ -456,7 +456,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append(signature + " {\n")
         out.append("\tjclass cls = env->GetObjectClass(obj);\n")
         var args = ""
-        for(elem <- encounteredStructs(structName(tp))) {
+        for(elem <- encounteredStructs(structName(tp))._2) {
           val elemtp = baseType(elem._2)
           if(isPrimitiveType(elemtp)) {
             out.append("\tjmethodID mid_%s = env->GetMethodID(cls,\"%s_$eq\",\"(%s)V\");\n".format(elem._1,elem._1,JNITypeDescriptor(elemtp)))
@@ -478,7 +478,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\tenv->CallVoidMethod(obj,mid_%s_setter,obj_%s);\n".format(elem._1,elem._1))
           }
         }
-        for(elem <- encounteredStructs(structName(tp)) if !isPurePrimitiveType(baseType(elem._2))) 
+        for(elem <- encounteredStructs(structName(tp))._2 if !isPurePrimitiveType(baseType(elem._2))) 
           out.append("\tenv->DeleteLocalRef(obj_" + elem._1 + ");\n")
         out.append("}\n")
         (signature+";\n", out.toString)
@@ -545,7 +545,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append(signature + " {\n")
         out.append("\tjclass cls = env->GetObjectClass(obj);\n")
         var args = ""
-        for(elem <- encounteredStructs(structName(tp))) {
+        for(elem <- encounteredStructs(structName(tp))._2) {
           val elemtp = baseType(elem._2)
           if(isPrimitiveType(elemtp)) {
             out.append("\tjmethodID mid_%s = env->GetMethodID(cls,\"%s\",\"()%s\");\n".format(elem._1,elem._1,JNITypeDescriptor(elemtp)))
@@ -563,7 +563,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\trecvUpdateCPPfromJVM_%s(env,obj_%s,sym->%s);\n".format(mangledName(remapHost(elemtp)),elem._1,elem._1))
           }
         }
-        for(elem <- encounteredStructs(structName(tp)) if !isPurePrimitiveType(baseType(elem._2))) 
+        for(elem <- encounteredStructs(structName(tp))._2 if !isPurePrimitiveType(baseType(elem._2))) 
           out.append("\tenv->DeleteLocalRef(obj_" + elem._1 + ");\n")
         out.append("}\n")
         (signature+";\n", out.toString)

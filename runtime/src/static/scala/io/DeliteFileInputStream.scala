@@ -1,7 +1,7 @@
 package generated.scala.io
 
 import com.google.protobuf.ByteString
-import java.io.{InputStream, IOException}
+import java.io.{InputStream, IOException, DataInput, DataOutput}
 import java.nio.charset.Charset
 
 import org.apache.hadoop.conf._
@@ -29,11 +29,18 @@ object DeliteFileInputStream {
   private def getFiles(conf: Configuration, paths:Seq[String]) = paths.toArray flatMap { p =>
     val hPath = new Path(p)
     val fs = hPath.getFileSystem(conf)
-    val status = fs.getFileStatus(hPath)
+
+    // recurse into sub-directories
+    def listStatus(p: Path): Array[FileStatus] = {
+      fs.listStatus(p) flatMap { s =>
+        if (s.isDirectory) listStatus(s.getPath)
+        else Array(s)
+      }
+    }
 
     if (fs.isDirectory(hPath)) {
       // return sorted list of file statuses (numbered file chunks should be parsed in order)
-      fs.listStatus(hPath).sortBy(f => f.getPath.getName)
+      listStatus(hPath).sortBy(f => f.getPath.getName)
     }
     else if (fs.isFile(hPath)) Array(fs.getFileStatus(hPath))
     else throw new IllegalArgumentException("Path " + p + " does not appear to be a valid file or directory")
@@ -48,6 +55,32 @@ object DeliteFileInputStream {
     charset
   }
 
+  /* Deserialization for a DeliteFileInputStream, using Hadoop serialization for Hadoop objects */
+  def deserialize(bytes: ByteString): DeliteFileInputStream = {
+    val in = new java.io.DataInputStream(bytes.newInput)
+    val conf = new Configuration()
+    conf.readFields(in)
+    val filesLen = in.readInt()
+    val files = Array.fill(filesLen) {
+      val fs = new FileStatus()
+      fs.readFields(in)
+      fs
+    }
+    val charset = Charset.defaultCharset
+    val delimiterExists = in.readBoolean()
+    val delimiter =
+      if (delimiterExists) {
+        val delimiterLen = in.readInt()
+        Some(Array.fill(delimiterLen) { in.readByte() })
+      }
+      else None
+
+    val dfis = new DeliteFileInputStream(conf, files, charset, delimiter)
+    val pos = in.readLong()
+    dfis.openAtNewLine(pos)
+    dfis
+  }
+
 }
 
 class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], charset: Charset, delimiter: Option[Array[Byte]]) {
@@ -60,9 +93,12 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
 
   /* Initialize. This is only required / used when opening a stream directly (i.e. not via multiloop) */
   if (size > 0) {
-    openAtNewLine(0)
+    open()
   }
-  
+  else {
+    throw new IOException("DeliteFileInputStream opened with size == 0. Paths were: " + files.map(_.getPath.getName).mkString("[",",","]"))
+  }
+
   /* Determine the file that this logical index corresponds to, as well as the byte offset within the file. */
   private def findFileOffset(start: Long) = {
     var offset = start
@@ -78,7 +114,7 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
    * Return an input stream and offset corresponding to the logical byte index 'start'.
    * Offset refers to the number of bytes inside the physical resource that this stream starts at.
    */
-  def getInputStream(start: Long) = {
+  private def getInputStream(start: Long) = {
     if (start >= size) throw new IndexOutOfBoundsException("Cannot load stream at pos " + start + ", stream size is: " + size)
 
     val (fileIdx, offset) = findFileOffset(start)
@@ -109,20 +145,25 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
     copy
   }
 
+  final def open() {
+    openAtNewLine(0)
+  }
+
   /* Read the next line */
   private def readLineInternal() {
     var length = reader.readLine(text)
     if (length == 0) {
-      reader.close()        
-      if (pos+1 > size) {
+      reader.close()
+      if (pos >= size) {
         text = null
         return
       }
       else {
-        val (nextByteStream, offset) = getInputStream(pos+1)
+        val (nextByteStream, offset) = getInputStream(pos)
+        assert(offset == 0, "Incorrectly skipped to offset " + offset + " in the stream")
         reader = new LineReader(nextByteStream, delimiter.getOrElse(null))
         length = reader.readLine(text)
-        assert(length != 0, "Filesystem returned an invalid input stream for position " + (pos+1))
+        assert(length != 0, "Filesystem returned an invalid input stream for position " + pos)
       }
     }
     pos += length
@@ -153,5 +194,37 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
       reader = null
     }
     text = null
+    pos = 0
   }
+
+
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Serialization
+  /////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Serialize the DeliteFileInputStream using Hadoop serialization for Hadoop objects.
+   */
+  def serialize: ByteString = {
+    val outBytes = ByteString.newOutput
+    val out = new java.io.DataOutputStream(outBytes)
+    conf.write(out)
+    out.writeInt(files.length)
+    files.foreach(f => f.write(out))
+    if (charset != Charset.defaultCharset) throw new UnsupportedOperationException("Don't know how to serialize custom charset " + charset)
+    if (delimiter.isDefined) {
+      out.writeBoolean(true)
+      out.writeInt(delimiter.get.length)
+      delimiter.get.foreach { b => out.writeByte(b) }
+    }
+    else {
+      out.writeBoolean(false)
+    }
+    out.writeLong(pos)
+    outBytes.toByteString
+  }
+
+  /* Deserialization is static (see DeliteFileInputStream.deserialize) */
+
 }

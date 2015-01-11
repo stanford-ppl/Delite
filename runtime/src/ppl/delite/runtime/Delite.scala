@@ -79,7 +79,6 @@ object Delite {
     Arguments.staticDataMap = staticData
     var appResult: Any = null
 
-    //TODO: combine into a single scheduler and executor
     _executor = Config.executor match {
       case "default" => new MultiAccExecutor
       case "acc" => new MultiAccExecutor
@@ -89,14 +88,14 @@ object Delite {
     def abnormalShutdown() {
       if (executor != null) executor.shutdown()
       if (!Config.alwaysKeepCache)
-        FileUtils.deleteDirectory(new File(Config.codeCacheHome)) //clear the code cache (could be corrupted)        
+        FileUtils.deleteDirectory(new File(Config.codeCacheHome)) //clear the code cache (could be corrupted)
     }
 
     def walkTime() = {
       //load task graph
       val graph = loadDeliteDEG(appName)
       //val graph = new TestGraph
-    
+
       //Print warning if there is no op that supports the target
       if(Config.numCpp>0 && !graph.targets(Targets.Cpp)) { Config.numCpp = 0; println("[WARNING] No Cpp target op is generated!") }
       if(Config.numCuda>0 && !graph.targets(Targets.Cuda)) { Config.numCuda = 0; println("[WARNING] No Cuda target op is generated!") }
@@ -115,7 +114,7 @@ object Delite {
 
       //initialize profiler
       Profiling.init(graph)
-      
+
       //schedule
       scheduler.schedule(graph)
 
@@ -133,21 +132,21 @@ object Delite {
           if (Config.performWalk) println("Beginning Execution Run " + i)
           Profiling.startRun()
           executor.run(executable)
-          appResult = EOP_Global.take() //await the end of the application program   
-          Profiling.endRun()           
+          appResult = EOP_Global.take() //await the end of the application program
+          Profiling.endRun()
           System.gc()
         }
-      }      
+      }
     }
 
     try {
       executor.init() //call this first because could take a while and can be done in parallel
       val executable = if (Config.performWalk) walkTime() else findExecutables(appName)
-      if (Config.performRun) runTime(executable)  
+      if (Config.performRun) runTime(executable)
       executor.shutdown()
     }
     catch {
-      case i: InterruptedException => abnormalShutdown(); throw outstandingException //a worker thread threw the original exception        
+      case i: InterruptedException => abnormalShutdown(); throw outstandingException //a worker thread threw the original exception
       case e: Throwable => abnormalShutdown(); throw e
     }
     finally {
@@ -168,8 +167,11 @@ object Delite {
   def loadSources(graph: DeliteTaskGraph) {
     CodeCache.verifyCache()
     for (target <- Targets.values) {
-      if (graph.targets contains target)
-        Compilers(target).cacheDegSources((new File(graph.kernelPath + File.separator + Compilers(target).target + File.separator)).getAbsoluteFile)
+      if (graph.targets contains target) {
+        val dir = new File(graph.kernelPath + File.separator + Compilers(target).target + File.separator).getAbsoluteFile
+        if (!dir.exists) throw new java.io.FileNotFoundException("generated " + target + " directory does not exist")
+        Compilers(target).cacheDegSources(dir)
+      }
     }
   }
 

@@ -132,7 +132,10 @@ trait CodeCache {
     modules = orderedList.toList
   }
 
-  protected class Module(val name: String, val deps: List[Module]) { var needsCompile = false }
+  protected class Module(val name: String, val deps: List[Module]) { 
+    var needsCompile = false 
+    override def toString = name
+  }
 
   protected def cacheRuntimeSources(sources: Array[(String,String)]) {
     if (Config.noRegenerate) {

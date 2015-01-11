@@ -38,7 +38,7 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
 
   case class DeliteFileInputStreamNew(paths: Seq[Exp[String]], charset: Rep[String], delimiter: Rep[DeliteArray[Byte]]) extends Def[DeliteFileInputStream]
   def dfis_new(paths: Seq[Exp[String]], charset: Rep[String] = unit(null), delimiter: Rep[DeliteArray[Byte]] = unit(null))(implicit pos: SourceContext) = reflectPure(DeliteFileInputStreamNew(paths, charset, delimiter))
-  def dfis_new_effectful(paths: Seq[Exp[String]], charset: Rep[String] = unit(null), delimiter: Rep[DeliteArray[Byte]] = unit(null))(implicit pos: SourceContext) = reflectEffect(DeliteFileInputStreamNew(paths, charset, delimiter))
+  def dfis_new_effectful(paths: Seq[Exp[String]], charset: Rep[String] = unit(null), delimiter: Rep[DeliteArray[Byte]] = unit(null))(implicit pos: SourceContext) = reflectMutable(DeliteFileInputStreamNew(paths, charset, delimiter))
 
   // This version of ReadLine can only be used inside multi-loops. It relies on the unexposed openAtNewLine() function,
   // which is called inside DeliteOps codegen to initialize the stream for each thread.
@@ -47,7 +47,7 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
 
   // This version of ReadLine can only be used outside of multi-loops (sequentially)
   case class DeliteFileInputStreamReadLineEffectful(stream: Exp[DeliteFileInputStream]) extends Def[String]
-  def dfis_readLine_effectful(stream: Exp[DeliteFileInputStream])(implicit pos: SourceContext): Exp[String] = reflectEffect(DeliteFileInputStreamReadLineEffectful(stream))
+  def dfis_readLine_effectful(stream: Exp[DeliteFileInputStream])(implicit pos: SourceContext): Exp[String] = reflectWrite(stream)(DeliteFileInputStreamReadLineEffectful(stream))
 
   case class DeliteFileInputStreamReadBytes(stream: Exp[DeliteFileInputStream], idx: Exp[Int]) extends Def[DeliteArray[Byte]]
   def dfs_readBytes(stream: Exp[DeliteFileInputStream], idx: Exp[Int])(implicit pos: SourceContext): Exp[DeliteArray[Byte]] = reflectPure(DeliteFileInputStreamReadBytes(stream, idx))
@@ -138,8 +138,8 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
 
   case class DeliteFileInputStreamClose(stream: Exp[DeliteFileInputStream]) extends Def[Unit]
 
-  // not explicitly called from DeliteFileReader.readLines/readBytes, since the effect can prevent fusion of the parallel loops
-  def dfis_close(stream: Rep[DeliteFileInputStream])(implicit pos: SourceContext): Rep[Unit] = reflectEffect(DeliteFileInputStreamClose(stream))
+  // not explicitly called from DeliteFileReader.readLines/readBytes (stream.close() is directly called per thread in DeliteOpsBaseGenericGen)
+  def dfis_close(stream: Rep[DeliteFileInputStream])(implicit pos: SourceContext): Rep[Unit] = reflectWrite(stream)(DeliteFileInputStreamClose(stream))
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@DeliteOpFileReaderLines(paths,ch,func) => reflectPure(new { override val original = Some(f,e) } with DeliteOpFileReaderLines(f(paths),f(ch),f(func))(e.dmA,ctx))(mtype(manifest[A]),implicitly[SourceContext])
@@ -163,6 +163,26 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
 
+
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteFileInputStreamReadLineEffectful(s) => Nil
+    case _ => super.aliasSyms(e)
+  }
+
+  override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteFileInputStreamReadLineEffectful(s) => Nil
+    case _ => super.containSyms(e)
+  }
+
+  override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteFileInputStreamReadLineEffectful(s) => Nil
+    case _ => super.extractSyms(e)
+  }
+
+  override def copySyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteFileInputStreamReadLineEffectful(s) => Nil
+    case _ => super.copySyms(e)
+  }
 }
 
 trait ScalaGenDeliteFileReaderOps extends ScalaGenFat {

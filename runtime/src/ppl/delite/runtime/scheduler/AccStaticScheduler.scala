@@ -1,13 +1,13 @@
 package ppl.delite.runtime.scheduler
 
 import ppl.delite.runtime.Config
-import ppl.delite.runtime.graph.DeliteTaskGraph
+import ppl.delite.runtime.DeliteMesosScheduler
+import ppl.delite.runtime.graph._
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.cost._
 import ppl.delite.runtime.codegen.kernels.cuda.SingleTask_GPU_Generator
 import ppl.delite.runtime.codegen.{Compilers,CCompile}
-
 
 class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: Int) extends StaticScheduler with ParallelUtilizationCostModel {
 
@@ -44,7 +44,7 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
   //TODO: the redundancy between addSequential() and scheduleOne() with a singleton resource list is confusing
   protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
     def selectTarget(op: DeliteOP, sequential: Boolean) = scheduleOnTarget(op) match {
-      case Targets.Scala => 
+      case Targets.Scala =>
         val resources = if (sequential) Seq(0) else Range(0, numScala)
         scheduleMultiCore(op, graph, schedule, resources)
       case Targets.Cpp =>
@@ -54,11 +54,64 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
       case Targets.OpenCL => scheduleGPU(op, graph, schedule)
     }
 
+    def scheduleMultiLoop(l: OP_MultiLoop) {
+      if (shouldParallelize(l, Map[String,Int]())) selectTarget(op, false)
+      else selectTarget(op, true)
+    }
+
+    def checkPartition(partition: Partition) = {
+      if (partition == Local) {
+        val distributedInputs = op.getInputs map { i => i._1.outputPartition } collect { case d@Distributed(x) => d }
+        if (!distributedInputs.isEmpty) {
+          DeliteMesosScheduler.warn("op " + op.id + " is partitioned locally but consumes distributed partitions " + distributedInputs.map(_.id.mkString("[",",","]")).mkString(","))
+        }
+      }
+    }
+
+    // stencil is also checked later (in DeliteMesosScheduler), when dispatching the job. But let's do a sanity check here.
+    // inputDistributedPartitions foreach { p =>
+    //   val ids = p.id
+    //   ids foreach { i =>
+    //     stencilOrElse(i)(Empty) match {
+    //       case All => DeliteMesosScheduler.warn("stencil of op " + id + " for distributed input " + i + " is ALL")
+    //       case _ => // really we should check for matching stencils with ops in 'ids'
+    //     }
+    //   }
+    // }
+
     op match {
       case c: OP_Nested => addNested(c, graph, schedule, Range(0, numResources))
-      case l: OP_MultiLoop => 
-        if (shouldParallelize(l, Map[String,Int]())) selectTarget(op, false)
-        else selectTarget(op, true)
+
+      case l: OP_MultiLoop if Config.clusterMode == 1 =>
+        val partition = {
+          if (l.getOutputs.exists(o => l.outputType(o) == "Unit") && !l.getInputs.exists(t => t._1.outputType(t._2) == "generated.scala.io.DeliteFileOutputStream")) {
+            // The issue with foreaches right now is that effects are not visible outside of the node they run on.
+            // i.e., if a slave performs a bunch of writes locally, there is no coherence protocol for the master
+            // to see those updates.
+            DeliteMesosScheduler.warn("op " + op.id + " is a multiloop with Unit return type: forcing local (distributed not supported)")
+            Local
+          }
+          else {
+            op.partition
+          }
+        }
+
+        checkPartition(partition)
+        println("scheduling loop op " + op.id + " as " + partition)
+        if (partition.isInstanceOf[Distributed]) {
+          OpHelper.remote(op, graph)
+          cluster(op, schedule, Range(0, numScala))
+        }
+        else {
+          scheduleMultiLoop(l)
+        }
+
+      case l: OP_MultiLoop => scheduleMultiLoop(l)
+
+      case _ if Config.clusterMode == 1 =>
+        checkPartition(op.partition)
+        selectTarget(op, false)
+
       case _ => selectTarget(op, false)
     }
   }
@@ -126,7 +179,7 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
   }
 
   protected def scheduleOnTarget(op: DeliteOP) = {
-    if (scheduleOnGPU(op)) {   
+    if (scheduleOnGPU(op)) {
       if (op.supportsTarget(Targets.Cuda)) Targets.Cuda else Targets.OpenCL
     }
     else if (op.supportsTarget(Targets.Cpp) && numCpp > 0) Targets.Cpp

@@ -12,7 +12,7 @@ message DeliteMasterMessage {
 }
 
 message DeliteSlaveMessage {
-  enum Type { RESULT = 1; DATA = 2; DEBUG = 3; }
+  enum Type { RESULT = 1; DATA = 2; DEBUG = 3; WARNING = 4; }
 
   required Type type = 1;
 
@@ -95,6 +95,7 @@ message ArrayMessage {
   optional Id id = 1;
   optional uint32 length = 2;
   optional bytes array = 3;
-  repeated uint32 offset = 4; 
+  repeated uint32 offset = 4;
   repeated bytes object = 5;
+  optional string type = 6;
 }

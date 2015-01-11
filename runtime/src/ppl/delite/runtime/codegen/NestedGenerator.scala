@@ -39,7 +39,8 @@ trait NestedGenerator extends ExecutableGenerator {
 
 }
 
-trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator with ScalaResourceInfo {
+trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator {
+  import ScalaResourceInfo._
 
   override protected def writeHeader() {
     ScalaExecutableGenerator.writePackage(graph, out)
@@ -94,7 +95,8 @@ trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator
 
 }
 
-trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator with CppResourceInfo {
+trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
+  import CppResourceInfo._
 
   private val target = Targets.Cpp
 
@@ -128,7 +130,7 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator wit
   protected def generateInputs(inputs: Seq[(DeliteOP,String)] = nested.getInputs): String = {
     val str = new StringBuilder
     str.append(resourceInfoType)
-    str.append(" &")
+    str.append(" *")
     str.append(resourceInfoSym)
     for ((op,sym) <- inputs) {
       str.append(", ")
@@ -175,8 +177,8 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
         case _ => false
       }
     }
-    else 
-      false 
+    else
+      false
   }
 
   def generateMethodSignature(): String = {
@@ -224,7 +226,7 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
         str.append(',')
         str.append(getJNIType(op.outputType(Targets.Scala, sym))) //FIXME: Use remote target
         str.append(' ')
-        str.append(getSymRemote(op, sym)) 
+        str.append(getSymRemote(op, sym))
       }
     }
     str.toString
@@ -243,9 +245,9 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
     val devType = op.outputType(Targets.Cuda, name)
     //TODO: put this into cuda sync generator
     //TODO: make sure symbol is not freed before recvCuda is called
-    if (isReferentialPrimitive(op,name)) 
+    if (isReferentialPrimitive(op,name))
       out.append("recvCuda_%s(%s)".format(mangledName(devType),getSymDevice(op,name)))
-    else 
+    else
       out.append(getSymDevice(op, name))
     if (newLine) out.append(";\n")
   }
