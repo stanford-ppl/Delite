@@ -3,7 +3,7 @@
  * Stanford University
  *
  */
- 
+
 package ppl.delite.runtime.codegen
 
 import collection.mutable.{ArrayBuffer, ListBuffer}
@@ -11,6 +11,7 @@ import collection.mutable.{ArrayBuffer, ListBuffer}
 import java.io.{File, FileWriter}
 import java.security.MessageDigest
 import org.apache.commons.io._
+import scala.collection.JavaConverters._
 
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.targets.Targets
@@ -26,7 +27,7 @@ object CodeCache {
   def verifyCache() {
     if (!Config.alwaysKeepCache && (!checksum.exists || !checksumEqual)) {
       if (Config.verbose) println("[delite]: Clearing corrupt code cache")
-      FileUtils.deleteDirectory(dir)      
+      FileUtils.deleteDirectory(dir)
     }
   }
 
@@ -42,7 +43,7 @@ object CodeCache {
 
   private def computeChecksum() = {
     val hash = MessageDigest.getInstance("md5")
-    for (file <- dir.listFiles if file.getName != "cache.checksum") { //we only check file names rather than entire contents for simplicity and speed
+    for (file <- FileUtils.listFiles(dir, null, true).asScala if file.getName != "cache.checksum") { //we only check file names rather than entire contents for simplicity and speed
       hash.update(file.getName.getBytes)
     }
     hash.digest
@@ -56,14 +57,14 @@ object CodeCache {
     FileUtils.writeByteArrayToFile(checksum, computeChecksum)
   }
 }
- 
+
 trait CodeCache {
 
   val cacheHome = Config.codeCacheHome + sep + target + sep
   val sourceCacheHome = cacheHome + "src" + sep
   val binCacheHome = cacheHome + "bin" + sep + "runtime" + sep
   protected var modules = List.empty[Module]
-  
+
   def target: Targets.Value
   def hostCompiler = Compilers(Targets.getHostTarget(target))
   def ext: String = target.toString //source file extension
@@ -75,6 +76,7 @@ trait CodeCache {
       val sourceDir = new File(directory.getPath + sep + m.name)
       val cacheDir = new File(sourceCacheHome + m.name)
       if (!directoriesMatch(sourceDir, cacheDir)) {
+        FileUtils.deleteDirectory(cacheDir)
         FileUtils.copyDirectory(sourceDir, cacheDir)
         m.needsCompile = true
       }
@@ -132,8 +134,8 @@ trait CodeCache {
     modules = orderedList.toList
   }
 
-  protected class Module(val name: String, val deps: List[Module]) { 
-    var needsCompile = false 
+  protected class Module(val name: String, val deps: List[Module]) {
+    var needsCompile = false
     override def toString = name
   }
 
@@ -155,25 +157,26 @@ trait CodeCache {
     }
 
     if (!directoriesMatch(tempDir, dir)) {
+      FileUtils.deleteDirectory(dir)
       FileUtils.copyDirectory(tempDir, dir)
       modules.last.needsCompile = true
     }
     FileUtils.deleteDirectory(tempDir)
   }
-  
+
   protected def sep = File.separator
-  
+
   protected def directoriesMatch(source: File, cache: File): Boolean = {
     // quick check: see if directory structure & file names match
     assert(source.exists, "source directory does not exist: " + source.getPath)
     if (!cache.exists)
       return false
 
-    if (!(source.listFiles map(_.getName) filterNot { cache.listFiles map(_.getName) contains }).isEmpty)
+    if (!(FileUtils.listFiles(source, null, true).asScala map(_.getName) filterNot { FileUtils.listFiles(cache, null, true).asScala.toList map(_.getName) contains }).isEmpty)
       return false
 
     // full check: compare all the files
-    (source.listFiles zip cache.listFiles) forall { fs => FileUtils.contentEquals(fs._1, fs._2) }    
+    (FileUtils.listFiles(source, null, true).asScala zip FileUtils.listFiles(cache, null, true).asScala) forall { fs => FileUtils.contentEquals(fs._1, fs._2) }
   }
 
   def printSources() {
