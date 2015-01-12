@@ -341,7 +341,9 @@ trait DeliteOpsExp extends DeliteOpsExpIR with DeliteInternalOpsExp with DeliteC
     type OpType <: DeliteOpReduceLike[A]
     final lazy val rV: (Sym[A],Sym[A]) = copyOrElse(_.rV)((if (mutable) reflectMutableSym(fresh[A]) else fresh[A], fresh[A])) // TODO: transform vars??
     val mutable: Boolean = false
-    def stripFirst = !isPrimitiveType(manifest[A]) && !this.mutable
+
+    // we should always stripFirst when possible (even for primitive types) to avoid ambiguous zero elements
+    def stripFirst = /*!isPrimitiveType(manifest[A]) &&*/ !this.mutable
 
     def accInit: Exp[A] = fatal(unit("DeliteOpReduce accInit called without any implementation on " + manifest[A].toString))
   }
