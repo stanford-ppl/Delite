@@ -27,7 +27,7 @@ object CodeCache {
   def verifyCache() {
     if (!Config.alwaysKeepCache && (!checksum.exists || !checksumEqual)) {
       if (Config.verbose) println("[delite]: Clearing corrupt code cache")
-      FileUtils.deleteDirectory(dir)
+      FileUtils.deleteQuietly(dir)
     }
   }
 
@@ -76,7 +76,7 @@ trait CodeCache {
       val sourceDir = new File(directory.getPath + sep + m.name)
       val cacheDir = new File(sourceCacheHome + m.name)
       if (!directoriesMatch(sourceDir, cacheDir)) {
-        FileUtils.deleteDirectory(cacheDir)
+        FileUtils.deleteQuietly(cacheDir)
         FileUtils.copyDirectory(sourceDir, cacheDir)
         m.needsCompile = true
       }
@@ -157,11 +157,11 @@ trait CodeCache {
     }
 
     if (!directoriesMatch(tempDir, dir)) {
-      FileUtils.deleteDirectory(dir)
+      FileUtils.deleteQuietly(dir)
       FileUtils.copyDirectory(tempDir, dir)
       modules.last.needsCompile = true
     }
-    FileUtils.deleteDirectory(tempDir)
+    FileUtils.deleteQuietly(tempDir)
   }
 
   protected def sep = File.separator
