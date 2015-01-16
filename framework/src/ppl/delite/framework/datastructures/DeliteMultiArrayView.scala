@@ -46,8 +46,7 @@ trait DeliteMultiArrayViewOps extends Base {
 
   // --- View creation
   def dmaview_new[A:Manifest](ma: Rep[DeliteMultiArray[A]], start: Seq[Rep[Int]], stride: Seq[Rep[Int]], dims: Seq[Rep[Int]])(implicit ctx: SourceContext): Rep[DeliteMultiArrayView[A]]
-  def dmaview_new_immutable[A:Manifest](ma: Rep[DeliteMultiArray[A]], start: Seq[Rep[Int]], stride: Seq[Rep[Int]], dims: Seq[Rep[Int]])(implicit ctx: SourceContext): Rep[DeliteMultiArrayView[A]]
-
+  
   // --- Array properties
   def dmaview_rank[A:Manifest](v: Rep[DeliteMultiArrayView[A]])(implicit ctx: SourceContext): Rep[Int]
   def dmaview_shape[A:Manifest](v: Rep[DeliteMultiArrayView[A]])(implicit ctx: SourceContext): Rep[Seq[Rep[Int]]]
@@ -58,7 +57,6 @@ trait DeliteMultiArrayViewOps extends Base {
   def dmaview_update[A:Manifest](v: Rep[DeliteMultiArrayView[A]], i: Seq[Rep[Int]], x: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
 
   // --- Array copies / reshaping
-  def dmaview_mutable[A:Manifest](v: Rep[DeliteMultiArrayView[A]])(implicit ctx: SourceContext): Rep[DeliteMultiArrayView[A]]
   def dmaview_todense[A:Manifest](v: Rep[DeliteMultiArrayView[A]])(implicit ctx: SourceContext): Rep[DeliteMultiArray[A]]
 
   // --- Parallel ops 
@@ -68,21 +66,19 @@ trait DeliteMultiArrayViewOps extends Base {
   def dmaview_zipwith[A:Manifest,B:Manifest,R:Manifest](v1: Rep[DeliteMultiArrayView[A]], v2: Rep[DeliteMultiArray[B]], f: (Rep[A],Rep[B]) => Rep[R])(implicit ctx: SourceContext): Rep[DeliteMultiArray[R]]
   def dmaview_reduce[A:Manifest](v: Rep[DeliteMultiArrayView[A]], f: (Rep[A],Rep[A]) => Rep[A], zero: Rep[A])(implicit ctx: SourceContext): Rep[A]
   def dmaview_foreach[A:Manifest](v: Rep[DeliteMultiArrayView[A]], f: Rep[A] => Rep[Unit])(implicit ctx: SourceContext): Rep[Unit]
-
-  def dmaview_mmap[A:Manifest](v: Rep[DeliteMultiArrayView[A]], f: Rep[T] => Rep[R])(implicit ctx: SourceContext): Rep[Unit]
-  def dmaview_mzipwith[A:Manifest](v: Rep[DeliteMultiArrayView[A]], rhs: Rep[DeliteMultiArray[A]], f: (Rep[A],Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[Unit] 
-
   def dmaview_flatmap[A:Manifest,B:Manifest](v: Rep[DeliteMultiArrayView[A]], f: Rep[A] => Rep[DeliteMultiArray[B]])(implicit ctx: SourceContext): Rep[DeliteMultiArray[B]]
 
   // These operations are defined only on 1D arrays (will need a check to ensure this)
   def dmaview_filter[A:Manifest](v: Rep[DeliteMultiArrayView[A]], f: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext): Rep[DeliteMultiArray[A]]
   def dmaview_groupByReduce[A:Manifest,K:Manifest,V:Manifest](v: Rep[DeliteMultiArrayView[A]], key: Rep[A] => Rep[K], value: Rep[A] => Rep[V], reduce: (Rep[V],Rep[V]) => Rep[V])(implicit ctx: SourceContext): Rep[DeliteMap[K,V]]
 
-  //def dmaview_scatter[A:Manifest](v: Rep[DeliteMultiArrayView[A]], rhs: Rep[DeliteMultiArray[A]])
+  // Potentially useful for specialization? May need to refine these a bit
+  //def dmultia_scatter[A:Manifest](dest: Rep[DeliteMultiArrayView[A]], src: Rep[DeliteMultiArrayView[A]])(implicit ctx: SourceContext): Rep[Unit]
+  //def dmultia_broadcast[A:Manifest](dest: Rep[DeliteMultiArrayView[A]], x: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
 }
 
-trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
-  this: DeliteOpsExp =>
+trait DeliteMultiArrayViewOpsExp extends BaseExp with DeliteMultiArrayViewOps {
+  this: DeliteOpsExp with DeliteMultiArrayOpsExp =>
 
   /////////////////////
   // Abstract IR Nodes
@@ -157,9 +153,11 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
   case class DeliteMultiArrayViewMutableMap[A:Manifest](in: Exp[DeliteMultiArrayView[A]], func: Exp[A] => Exp[A])(implicit ctx: SourceContext) extends DefWithManifest[A,Unit] {
     val body = reifyEffects(func(dmaview_element(ma)))
   }
-  case class DeliteMultiArrayViewMutableZipWith[A:Manifest](inA: Exp[DeliteMultiArrayView[A]], inB: Exp[DeliteMultiArray[A]], func: (Exp[A],Exp[A]) => Exp[A])(implicit ctx: SourceContext) extends DefWithManifest[A,Unit] {
+  case class DeliteMultiArrayViewMutableZipWith[A:Manifest](inA: Exp[DeliteMultiArrayView[A]], inB: Exp[DeliteMultiArrayView[A]], func: (Exp[A],Exp[A]) => Exp[A])(implicit ctx: SourceContext) extends DefWithManifest[A,Unit] {
     val body = reifyEffects(func(dmaview_element(inA), dmaview_element(inB)))
   }
+  // Special case copy for special code gen cases
+  case class DeliteMultiArrayViewCopy[A:Manifest](dest: Exp[DeliteMultiArrayView[A]], src: Exp[DeliteMultiArrayView[A]])(implicit ctx: SourceContext) extends DefWithManifest[A,Unit]
 
   //////////////////////
   // Array IR Functions
@@ -204,6 +202,7 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
 
   def dmaview_mmap[A:Manifest](v: Exp[DeliteMultiArrayView[A]], f: Exp[T] => Exp[R])(implicit ctx: SourceContext) = reflectWrite(v)(DeliteMultiArrayViewMutableMap(v,f))
   def dmaview_mzipwith[A:Manifest](v: Exp[DeliteMultiArrayView[A]], rhs: Exp[DeliteMultiArray[A]], f: (Exp[A],Exp[A]) => Exp[A])(implicit ctx: SourceContext) = reflectWrite(v)(DeliteMultiArrayViewMutableZipWith(v,rhs,f))
+  def dmaview_copy[A:Manifest](dest: Exp[DeliteMultiArrayView[A]], src: Exp[DeliteMultiArrayView[A]])(implicit ctx: SourceContext) = reflectWrite(dest)(DeliteMultiArrayViewCopy(dest,src))
 
   def dmaview_flatmap[A:Manifest,B:Manifest](v: Exp[DeliteMultiArrayView[A]], f: Exp[A] => Exp[DeliteMultiArray[B]])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayViewFlatMap(v,f))
 
@@ -211,4 +210,41 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
   def dmaview_groupByReduce[A:Manifest,K:Manifest,V:Manifest](v: Exp[DeliteMultiArrayView[A]], key: Exp[A] => Exp[K], value: Exp[A] => Exp[V], reduce: (Exp[V],Exp[V]) => Exp[V])(implicit ctx: SourceContext)
     = reflectPure(DeliteMultiArrayViewGroupByReduce(v,key,value,reduce))
 
+  // Not really needed for now
+  //def dmultia_scatter[A:Manifest](dest: Exp[DeliteMultiArrayView[A]], src: Exp[DeliteMultiArrayView[A]])(implicit ctx: SourceContext) = reflectWrite(dest)(DeliteMultiArrayViewMutableZipWith(dest,src,(a:Exp[A],b:Exp[A])=>b))
+  //def dmultia_broadcast[A:Manifest](dest: Exp[DeliteMultiArrayView[A]], x: Exp[A])(implicit ctx: SourceContext) = reflectWrite(dest)(DeliteMultiArrayViewMutableMap(dest,(e:Exp[A])=>x))
+
+  // regular data and effect dependencies
+  override def syms(e: Any): List[Sym[Any]] = e match {
+    case _ => super.syms(e)
+  }
+
+  ///////////////////////
+  // aliases and sharing
+
+  // return x if e may be equal to x
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteMultiArrayViewNew(ma,o,s,d) => List(ma)
+    case _ => super.aliasSyms(e)
+  }
+
+  // return x if later apply to e may return x
+  override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case _ => super.containSyms(e)
+  }
+
+  // return x if dereferencing x may return e?
+  override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case _ => super.extractSyms(e)
+  }
+
+  // return x if (part?) of x (may?) have been copied into e?
+  override def copySyms(e: Any): List[Sym[Any]] = e match {
+    case _ => super.copySyms(e)
+  }    
+
+  // symbols which are bound in a definition
+  override def boundSyms(e: Any): List[Sym[Any]] = e match {
+    case _ => super.boundSyms(e)
+  }
 }
