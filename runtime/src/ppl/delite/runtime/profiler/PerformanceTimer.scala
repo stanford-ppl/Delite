@@ -21,7 +21,7 @@ object PerformanceTimer {
   def initializeStats(numThreads: Int) = synchronized {
     threadCount = numThreads
     for (i <- List.range(0, numThreads)) {
-      val threadName = "ExecutionThread-" + i
+      val threadName = "ExecutionThread" + i
       threadToId += threadName -> i
       statsNewFormat += Map[String, List[Timing]]()
     }
@@ -64,11 +64,7 @@ object PerformanceTimer {
       case timing :: previousTimings =>
         timing.endTime = endTime
         if (component == Config.dumpStatsComponent) {
-<<<<<<< HEAD
-          statsForTrackedComponent += (timing.endTime - timing.startTime)
-=======
           statsForTrackedComponent += (timing.endTime - timing.startTime) / 1e3
->>>>>>> develop
         }
     }
   }
@@ -78,28 +74,20 @@ object PerformanceTimer {
   }
 
   // Currently only used by C++ to dump the profile results, need to refactor the code
-<<<<<<< HEAD
-  def addTiming(component: String, threadId: Int, startTime: Long, endTime: Long): Unit = {
-    Predef.println((startTime < endTime) + " startTime: " + startTime + "  endTime: " + endTime)
-    val threadName = threadToId.find(_._2 == threadId) match { 
-=======
   def addTiming(component: String, threadId: Int, startTime: Long, endTime: Long, isKernel: Boolean): Unit = {
     // for non-kernel timings (e.g., app) add to the last entry
     val location = if (isKernel) threadId else threadCount
     val threadName = threadToId.find(_._2 == location) match {
->>>>>>> develop
       case Some((name,id)) => name
       case None => throw new RuntimeException("cannot find thread name for id " + location)
     }
-<<<<<<< HEAD
-    var stats = statsNewFormat(threadId)
-    val t = new Timing(threadName, startTime/1000L, component)
-    t.endTime = endTime/1000L
-=======
+    
     var stats = statsNewFormat(location)
+    //val t = new Timing(threadName, startTime/1000L, component)
+    //t.endTime = endTime/1000L
     val t = new Timing(threadName, startTime, component)
     t.endTime = endTime
->>>>>>> develop
+
     if (!stats.contains(component)) {
       stats += component -> List[Timing]()
     }

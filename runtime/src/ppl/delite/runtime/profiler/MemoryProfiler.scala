@@ -17,7 +17,8 @@ object MemoryProfiler
 	def initializeStats(numThreads: Int) = synchronized {
 		threadCount = numThreads
 		for (i <- List.range(0, numThreads)) {
-		  val threadName = "ExecutionThread-" + i
+		  //val threadName = "ExecutionThread-" + i
+		  val threadName = "ExecutionThread" + i
 		  threadToId += threadName -> i
 		  stats += Map[String, List[Long]]()
 		  threadToCurrKernel += new Stack[String]()
@@ -35,12 +36,32 @@ object MemoryProfiler
 		initializeStats(threadCount)
 	}
 
+	/*
 	def logArrayAllocation(component: String, arrayLength: Int, elemType: String) = {
 		var threadName = Thread.currentThread.getName()
 		var threadId = threadToId(threadName)
 		var stack = threadToCurrKernel(threadId)
 		var kernelCurrentlyExecutedByThread = component
 		if (stack.length > 0) kernelCurrentlyExecutedByThread = getNameOfCurrKernel(threadName)
+	
+		if (!stats(threadId).contains(kernelCurrentlyExecutedByThread)) {
+        	stats(threadId) += kernelCurrentlyExecutedByThread -> List[Long]()
+	    }
+
+	    val arrayMemSize = arrayLength.toLong * sizeOf(elemType).toLong
+	    var kernelToAlloc = stats(threadId)
+	    val current = arrayMemSize :: kernelToAlloc(kernelCurrentlyExecutedByThread)
+	    stats(threadId) += kernelCurrentlyExecutedByThread -> current
+  	}
+  	*/
+
+  	def logArrayAllocation(component: String, threadId: Int, arrayLength: Int, elemType: String) = {
+		//var threadName = Thread.currentThread.getName()
+		//var threadId = threadToId(threadName)
+		var stack = threadToCurrKernel(threadId)
+		var kernelCurrentlyExecutedByThread = component
+		//if (stack.length > 0) kernelCurrentlyExecutedByThread = getNameOfCurrKernel(threadName)
+		if (stack.length > 0) kernelCurrentlyExecutedByThread = getNameOfCurrKernel(threadId)
 	
 		if (!stats(threadId).contains(kernelCurrentlyExecutedByThread)) {
         	stats(threadId) += kernelCurrentlyExecutedByThread -> List[Long]()
@@ -66,9 +87,25 @@ object MemoryProfiler
     	}
   	}
 
+  	/*
   	def getNameOfCurrKernel(thread: String): String = {
   		var threadId = threadToId(thread)
 		var stack = threadToCurrKernel(threadId)
+		if (stack.length > 0) {
+			return stack(0) // 0 indexes the top-of-stack
+  		}
+
+  		return "null"
+  	}
+  	*/
+
+  	def getNameOfCurrKernel(thread: String): String = {
+  		var threadId = threadToId(thread)
+		return getNameOfCurrKernel(threadId)
+  	}
+
+  	def getNameOfCurrKernel(threadId: Int): String = {
+  		var stack = threadToCurrKernel(threadId)
 		if (stack.length > 0) {
 			return stack(0) // 0 indexes the top-of-stack
   		}

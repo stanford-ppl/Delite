@@ -31,7 +31,7 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
     ScalaExecutableGenerator.writePath(graph, out)
     out.append("object " + kernelName + " {\n")
-    if (Config.profile) out.append("val threadName = Thread.currentThread.getName()\n")
+    //if (Config.profile) out.append("val threadName = Thread.currentThread.getName()\n")
   }
 
   protected def writeFooter(){
@@ -131,6 +131,7 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
   }
 
   protected def beginProfile() {
+/*
 <<<<<<< HEAD
     //out.append("PerformanceTimer.startChunked(\""+master.id+"\", Thread.currentThread.getName(), "+numChunks+", "+chunkIdx+")\n")
     val chunkName = master.id + "_" + chunkIdx
@@ -142,13 +143,24 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     val chunkName = master.id + "_" + chunkIdx
     out.append("PerformanceTimer.stop(\""+chunkName+"\", threadName, false)\n")
 =======
+*/
+    //out.append("PerformanceTimer.start(\""+master.id+"_"+"\"+tid, threadName, false)\n")
+    out.append("val threadName = \"ExecutionThread\" + tid\n")
+    out.append("val kernelName = \"" + master.id + "_" + "\" + tid\n")
+    out.append("MemoryProfiler.pushNameOfCurrKernel(threadName, kernelName)\n")
     out.append("PerformanceTimer.start(\""+master.id+"_"+"\"+tid, threadName, false)\n")
   }
 
   protected def endProfile(isMaster: Boolean) {
     val timeStr = "PerformanceTimer.stop(\""+master.id+"_"+"\"+tid, threadName, false)\n"
-    if (isMaster) out.append("if (tid == 0) "+timeStr) else out.append("if (tid != 0) "+timeStr)
->>>>>>> develop
+    var memStr = "MemoryProfiler.popNameOfCurrKernel(threadName)\n"
+    //if (isMaster) out.append("if (tid == 0) "+timeStr+memStr) else out.append("if (tid != 0) "+timeStr+memStr)
+    if (isMaster) {
+      out.append("if (tid == 0) {\n" + timeStr + memStr + "}\n")
+    } else {
+      out.append("if (tid != 0) {\n" + timeStr + memStr + "}\n")
+    }
+//>>>>>>> develop
   }
 
   protected def kernelName = "MultiLoop_" + master.id
