@@ -32,7 +32,7 @@ object ScalaCompile extends CodeCache {
       if (Config.verbose) println("[delite]: compiled " + module.name + " in " + time + "s")
     }
     unifyClasses()
-    
+
     val time = (System.currentTimeMillis - start)/1e3
     if (Config.verbose) println("[delite]: finished scala compile in " + time + "s")
     ScalaClassLoader.fromURLs(modules.map(m => Path(classCacheHome + m.name).toURL), this.getClass.getClassLoader)
@@ -88,7 +88,7 @@ object ScalaCompile extends CodeCache {
   private def unifyClasses() {
     import java.io.File
     val dir = new File(classCacheHome + "jar")
-    FileUtils.deleteDirectory(dir) //clear out any old classes
+    FileUtils.deleteQuietly(dir) //clear out any old classes
 
     for (m <- modules) {
       FileUtils.copyDirectory(new File(classCacheHome + m.name), dir, true)

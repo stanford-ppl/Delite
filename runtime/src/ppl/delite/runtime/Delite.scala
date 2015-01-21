@@ -88,7 +88,7 @@ object Delite {
     def abnormalShutdown() {
       if (executor != null) executor.shutdown()
       if (!Config.alwaysKeepCache)
-        FileUtils.deleteDirectory(new File(Config.codeCacheHome)) //clear the code cache (could be corrupted)
+        FileUtils.deleteQuietly(new File(Config.codeCacheHome)) //clear the code cache (could be corrupted)
     }
 
     def walkTime() = {
