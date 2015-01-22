@@ -23,7 +23,7 @@ object Config {
   var generateSerializable = getProperty("delite.generate.serializable", "false") != "false"
   var homeDir = getProperty("delite.home.dir", sys.env.getOrElse("DELITE_HOME",System.getProperty("user.dir")))
   var buildDir = getProperty("delite.build.dir", "generated")
-  var useBlas = getProperty("delite.extern.blas", "false") != "false"  
+  var useBlas = getProperty("delite.extern.blas", "false") != "false"
   var debug = getProperty("delite.debug","false") != "false"
   var cacheSyms = getProperty("delite.cache.syms","false") != "false"
   var collectStencil = System.getProperty("deliszt.stencil.enabled", "false") == "true"
@@ -32,6 +32,7 @@ object Config {
   val enableGPUTransform = getProperty("delite.enable.gputransform","false") != "false"
   val enableGPUObjReduce = getProperty("delite.enable.gpu.objreduce","true") != "false"
   val enableGPUMultiDim = getProperty("delite.enable.gpu.multidim","false") != "false"
+  val listTransformers = getProperty("delite.enable.list.transformers","false") != "false"
 
   //Print generationFailedException info
   val dumpException: Boolean = getProperty("delite.dump.exception", "false") != "false"

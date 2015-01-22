@@ -15,9 +15,9 @@ import codegen.scala.TargetScala
 import codegen.restage.TargetRestage
 import codegen.Target
 import ops.DeliteOpsExp
-import transform.DeliteTransform
+import transform.{DeliteTransform, ExportGraphVisualizationTransformExp}
 
-trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransform with DeliteAllOverridesExp {  
+trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransform with DeliteAllOverridesExp with ExportGraphVisualizationTransformExp {
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
 
   /*
@@ -45,7 +45,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
 
 
   // TODO: refactor, this is from ScalaCompile trait
-  lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } = 
+  lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } =
     getCodeGenPkg(scalaTarget).asInstanceOf[ScalaCodegen { val IR: DeliteApplication.this.type }]
 
   // generators created by getCodeGenPkg will use the 'current' scope of the deliteGenerator as global scope
@@ -56,12 +56,12 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   private def setHostTargetCodegen(devicegen: GenericFatCodegen{ val IR: DeliteApplication.this.type }) = {
     generators find { _.deviceTarget == devicegen.hostTarget } match {
       case Some(hostgen) => devicegen.hostTargetCodegen = hostgen
-      case _ => throw new Exception("Cannot find the host target codegen of " + devicegen.toString) 
+      case _ => throw new Exception("Cannot find the host target codegen of " + devicegen.toString)
     }
   }
   */
 
-   
+
   /*
    * misc state
    */
@@ -69,9 +69,21 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
 
   var staticDataMap: Map[String,_] = _
 
-  
+
   final def main(args: Array[String]) {
     println("Delite Application Being Staged:[" + this.getClass.getName + "]")
+
+    val graphFilename = Config.degFilename.stripSuffix(".deg") + "-ir-graph.json"
+    val graphStream = new PrintWriter(new FileWriter(graphFilename))
+    appendTransformer(new ExportGraphVisualizationTransformer(graphStream))
+
+    if (Config.listTransformers) {
+      println("******Printing out tranformers and exiting******")
+      for (i <- 0 until transformers.length) {
+        println((i) + ".\t" + transformers(i))
+      }
+      System.exit(0)
+    }
 
     println("******Generating the program******")
 
@@ -92,13 +104,13 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       writer.write("datastructures:\n")
       writer.write("kernels:datastructures\n")
       writer.close()
-    }  
-    
+    }
+
     // set transformers to be applied before codegen
     deliteGenerator.transformers = transformers
-    
+
     //System.out.println("Staging application")
-    
+
     deliteGenerator.emitDataStructures(Config.buildDir + File.separator)
 
     for (g <- generators) {
@@ -146,14 +158,14 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
         println(globalDef)
       }
     }
-    
+
     generators foreach { _.emitTransferFunctions()}
     /*
     generators foreach { g =>
-      try { g.emitTransferFunctions() } 
-      catch { 
-        case e: GenerationFailedException => 
-        case e: Exception => throw(e) 
+      try { g.emitTransferFunctions() }
+      catch {
+        case e: GenerationFailedException =>
+        case e: Exception => throw(e)
       }
     }
     */
@@ -189,15 +201,15 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
    * user code
    */
   def main(): Unit
-  
+
   /**
    * For multi-scope staging, to extract the return value of a scope
    */
   def mainWithResult(): Unit = main()
   var _mainResult: Unit = () //null // passes along whatever was returned by the block (could be staged or not staged, i.e. Rep[T] or T)
-  
+
   def liftedMain(x: Rep[Array[String]]): Rep[Unit] = { this.args = x; val y = mainWithResult(); this._mainResult = y; this.args = null; unit(y) }
-  
+
   /**
    * Used when staging a function (to be called by external code) rather than an entire app
   */
