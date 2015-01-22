@@ -595,13 +595,6 @@ trait DeliteArrayExtractors extends LoopFusionCore {
     case DeliteArrayLength(a @ Def(Loop(_,_,_:DeliteCollectElem[_,_,_]))) => Some(a) // exclude hash elems
     case _ => super.unapplySimpleDomain(e)
   }
-  override def unapplyFixedDomain(e: Def[Any]): Option[Exp[Int]] = e match {
-    case EatReflect(loop: AbstractLoop[_]) => loop.body match {
-      case elem: DeliteCollectElem[_,_,_] if (elem.unknownOutputSize) => None
-      case _ => super.unapplyFixedDomain(e)
-    }
-    case _ => super.unapplyFixedDomain(e)
-  }
 
   override def unapplyEmptyColl(a: Def[Any]): Boolean = a match {
     case DeliteArrayEmptyInLoop(_, _) => true
@@ -623,13 +616,6 @@ trait DeliteArrayExtractors extends LoopFusionCore {
     case DeliteArraySingletonInLoop(_, `index`) => true
     case DeliteArrayEmptyInLoop(`index`,_) => true
     case _ => super.ignoreIndex(e, index)
-  }
-
-  override def unapplyMultiCollect[T](e: Def[T]) = e match {
-    case c: DeliteCollectElem[_,_,_] => c.iFunc match {
-      case Block(inner) => Some(inner.asInstanceOf[Exp[T]])
-    }
-    case _ => super.unapplyMultiCollect(e)
   }
 }
 

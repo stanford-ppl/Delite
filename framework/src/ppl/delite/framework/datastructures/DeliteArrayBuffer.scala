@@ -349,6 +349,23 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
   }
 }
 
+// TODO vsalvis: how to define extractor for 
+// def darray_buffer_length[A:Manifest](d: Exp[DeliteArrayBuffer[A]])(implicit ctx: SourceContext) = field[Int](d, "length")
+
+// trait DeliteArrayBufferExtractors extends LoopFusionCore {
+//   this: DeliteOpsExp with DeliteArrayBufferOpsExp =>
+  
+//   override def unapplySimpleIndex(e: Def[Any]): Option[(Exp[Any], Exp[Int])] = e match {
+//     case DeliteArrayApply(da, idx) => Some((da,idx))
+//     case _ => super.unapplySimpleIndex(e)
+//   }
+//   override def unapplySimpleDomain(e: Def[Any]): Option[Exp[Any]] = e match {
+//     //case DeliteArrayLength(da) => Some(da)
+//     case DeliteArrayLength(a @ Def(Loop(_,_,_:DeliteCollectElem[_,_,_]))) => Some(a) // exclude hash elems
+//     case _ => super.unapplySimpleDomain(e)
+//   }
+// }
+
 trait ScalaGenDeliteArrayBufferOps extends ScalaGenEffect {
   val IR: DeliteArrayBufferOpsExp
 }
