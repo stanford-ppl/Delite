@@ -710,7 +710,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       assert(inputStreamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
       val streamSym = inputStreamVars(0)
       emitValDef(quote(streamSym)+"_stream", remap(streamSym.tp), fieldAccess(quote(streamSym),"openCopyAtNewLine(0)"))
-      stream.println("while (" + fieldAccess(quote(streamSym)+"_stream", "position") + " < " + quote(op.size) + ") {")
+      emitValDef(quote(streamSym)+"_offset", remap(manifest[Long]), fieldAccess(quote(streamSym), "streamOffset"))
+      stream.println("while (" + fieldAccess(quote(streamSym)+"_stream", "position") + " < " + quote(streamSym) + "_offset + " + quote(op.size) + " ) {")
     }
     else {
       this match {
@@ -844,9 +845,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         assert(inputStreamVars.length == 1, "ERROR: don't know how to handle multiple input streams at once")
         val streamSym = quote(inputStreamVars(0))+"_stream"
         emitValDef(streamSym, remap(inputStreamVars(0).tp), fieldAccess(quote(inputStreamVars(0)),"openCopyAtNewLine(start)"))
+        emitValDef(streamSym+"_offset", remap(manifest[Long]), fieldAccess(streamSym, "streamOffset"))
         emitValDef("isEmpty",remap(Manifest.Boolean), "end <= " + fieldAccess(streamSym,"position"))
         emitValDef("__act2",actType,methodCall("init",List("__act","-1","isEmpty",streamSym)))
-        stream.println("while (" + fieldAccess(streamSym,"position") + " < end) {")
+        stream.println("while (" + fieldAccess(streamSym,"position") + " < " + streamSym + "_offset + end) {")
         emitMethodCall("process",List("__act2","-1",streamSym))
         stream.println("}")
         stream.println(fieldAccess(streamSym, "close();"))

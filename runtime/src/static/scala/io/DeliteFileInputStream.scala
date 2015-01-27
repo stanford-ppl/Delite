@@ -17,12 +17,12 @@ import org.apache.hadoop.util.LineReader
 object DeliteFileInputStream {
 
   /* Construct a new DeliteFileInputStream */
-  def apply(paths: Seq[String], charsetName: Option[String] = None, delimiter: Option[Array[Byte]] = None): DeliteFileInputStream = {
+  def apply(paths: Seq[String], charsetName: Option[String] = None, delimiter: Option[Array[Byte]] = None, offset: Long = 0L): DeliteFileInputStream = {
     val charset = charsetName map { checkCharset } getOrElse Charset.defaultCharset
     val conf = new Configuration()
     // We pre-load the file handles so that we can easily copy the stream wrapper instance at run-time
     val fileHandles = getFiles(conf, paths)
-    new DeliteFileInputStream(conf, fileHandles, charset, delimiter)
+    new DeliteFileInputStream(conf, fileHandles, charset, delimiter, offset)
   }
 
   /* Each path must refer to a valid filesystem, based on the Hadoop configuration object. */
@@ -75,7 +75,8 @@ object DeliteFileInputStream {
       }
       else None
 
-    val dfis = new DeliteFileInputStream(conf, files, charset, delimiter)
+    val streamOffset = in.readLong()
+    val dfis = new DeliteFileInputStream(conf, files, charset, delimiter, streamOffset)
     val pos = in.readLong()
     dfis.openAtNewLine(pos)
     dfis
@@ -83,7 +84,7 @@ object DeliteFileInputStream {
 
 }
 
-class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], charset: Charset, delimiter: Option[Array[Byte]]) {
+class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], charset: Charset, delimiter: Option[Array[Byte]], val streamOffset: Long) {
   private[this] var reader: LineReader = _
   private[this] var text: Text = _
   private[this] var pos: Long = _
@@ -127,8 +128,9 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
   }
 
   /* Set the line reader to a newline-aligned input stream corresponding to logical byte index 'start' */
-  final def openAtNewLine(start: Long) {
+  final def openAtNewLine(startIndex: Long) {
     close()
+    val start = streamOffset + startIndex
     val (byteStream, offset) = getInputStream(start)
     reader = new LineReader(byteStream, delimiter.getOrElse(null))
     text = new Text
@@ -140,7 +142,7 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
 
   /* Construct a copy of this DeliteFileInputStream, starting at logical byte index 'start' */
   final def openCopyAtNewLine(start: Long): DeliteFileInputStream = {
-    val copy = new DeliteFileInputStream(conf, files, charset, delimiter)
+    val copy = new DeliteFileInputStream(conf, files, charset, delimiter, streamOffset)
     copy.openAtNewLine(start)
     copy
   }
@@ -221,6 +223,7 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
     else {
       out.writeBoolean(false)
     }
+    out.writeLong(streamOffset)
     out.writeLong(pos)
     outBytes.toByteString
   }

@@ -14,14 +14,20 @@ import org.apache.hadoop.fs._
 object DeliteFileOutputStream {
 
   /* Construct a new DeliteFileOutputStream */
-  def apply(path: String, sequential: Boolean, resourceInfo: ResourceInfo): DeliteFileOutputStream = {
+  def apply(path: String, sequential: Boolean, append: Boolean, resourceInfo: ResourceInfo): DeliteFileOutputStream = {
     val conf = new Configuration()
+    // Append doesn't work with LocalFileSystem, so we have to use RawLocalFileSystem.
+    // However, setting this configuration property doesn't (always?) work, for unknown reasons.
+    // We use a workaround below in writeLine() to explicitly switch to a RawLocalFileSystem.
+    conf.set("fs.file.impl", classOf[org.apache.hadoop.fs.RawLocalFileSystem].getName)
+
     val numFiles =
       if (sequential) 1
       else {
         if (resourceInfo.numSlaves == 0) resourceInfo.numThreads else resourceInfo.numSlaves*resourceInfo.numThreads
       }
-    new DeliteFileOutputStream(conf, path, numFiles)
+
+    new DeliteFileOutputStream(conf, path, numFiles, append)
   }
 
   /* Deserialization for a DeliteFileOutputStream, using Hadoop serialization for Hadoop objects */
@@ -32,11 +38,12 @@ object DeliteFileOutputStream {
     val pathLen = in.readInt()
     val path = (Array.fill(pathLen) { in.readChar }).mkString
     val numFiles = in.readInt()
-    new DeliteFileOutputStream(conf, path, numFiles)
+    val append = in.readBoolean()
+    new DeliteFileOutputStream(conf, path, numFiles, append)
   }
 }
 
-class DeliteFileOutputStream(conf: Configuration, path: String, numFiles: Int) {
+class DeliteFileOutputStream(conf: Configuration, path: String, numFiles: Int, append: Boolean) {
   /* File writers are opened on demand so that distributed chunks do not interfere with one another. */
   private val paths: Array[Path] = getFilePaths(conf, path, numFiles)
   private val writers: Array[PrintWriter] = Array.fill[PrintWriter](numFiles) { null }
@@ -46,10 +53,10 @@ class DeliteFileOutputStream(conf: Configuration, path: String, numFiles: Int) {
    * The input path must refer to a valid filesystem, based on the Hadoop configuration object.
    */
   private def getFilePaths(conf: Configuration, path:String, numFiles: Int) = {
-    // delete destination if it exists
+    // delete destination if it exists and not appending
     val basePath = new Path(path)
     val baseFs = basePath.getFileSystem(conf)
-    if (baseFs.exists(basePath)) {
+    if (baseFs.exists(basePath) && !append) {
       baseFs.delete(basePath, true)
     }
 
@@ -80,9 +87,21 @@ class DeliteFileOutputStream(conf: Configuration, path: String, numFiles: Int) {
     if (fileIdx < 0 || fileIdx >= writers.length) throw new IOException("chunk file index out of bounds")
     if (writers(fileIdx) == null) {
       val chunkPath = paths(fileIdx)
-      val stream = chunkPath.getFileSystem(conf).create(chunkPath)
+
+      // This is a workaround for RawLocalFileSystem not being instantiated when we want:
+      val _fs = chunkPath.getFileSystem(conf)
+      val fs =
+        if (append && _fs.isInstanceOf[LocalFileSystem]) {
+          val rlfs = new RawLocalFileSystem()
+          rlfs.setConf(conf)
+          rlfs
+        }
+        else _fs
+
+      val stream = if (fs.exists(chunkPath) && append) fs.append(chunkPath) else fs.create(chunkPath)
       writers(fileIdx) = new PrintWriter(new BufferedWriter(new OutputStreamWriter(stream)))
     }
+
     writers(fileIdx).println(line)
   }
 
@@ -120,6 +139,7 @@ class DeliteFileOutputStream(conf: Configuration, path: String, numFiles: Int) {
     out.writeInt(path.length)
     out.writeChars(path)
     out.writeInt(numFiles)
+    out.writeBoolean(append)
     outBytes.toByteString
   }
 
