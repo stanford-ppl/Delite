@@ -124,36 +124,38 @@ trait DeliteOpsExp extends DeliteOpsExpIR with DeliteInternalOpsExp with DeliteC
     final lazy val aV2: Sym[I] = copyTransformedOrElse(_.aV2)(fresh[I]).asInstanceOf[Sym[I]]
 
     // buffer elem
-    lazy val buf = DeliteBufferElem(
-      eV = this.eV,
-      sV = this.sV,
-      iV = this.iV,
-      iV2 = this.iV2,
-      allocVal = this.allocVal,
-      aV2 = this.aV2,
-      alloc = reifyEffects(this.alloc(sV)),
-      apply = unusedBlock, //reifyEffects(dc_apply(allocVal,v)),
-      // update used if strategy == OutputFlat
-      update = reifyEffects(dc_update(allocVal,v,eV)),
-      // append etc. used if strategy == OutputBuffer (linear buffer)
-      append = reifyEffects(dc_append(allocVal,v,eV)),
-      appendable = reifyEffects(dc_appendable(allocVal,v,eV)),
-      setSize = reifyEffects(dc_set_logical_size(allocVal,sV)),
-      allocRaw = reifyEffects(dc_alloc[O,I](allocVal,sV)),
-      copyRaw = reifyEffects(dc_copy(aV2,iV,allocVal,iV2,sV)),
-      // finalizer used to transform from DC[I] to DC[CO]
-      finalizer = reifyEffects(this.finalizer(allocVal))
-    )
+    lazy val buf = getOutputStrategy(unknownOutputSize, dc_linear_buffer(this.allocVal)) match {
+      case OutputBuffer => DeliteCollectBufferOutput[O, I, CO](
+        eV = this.eV,
+        sV = this.sV,
+        iV = this.iV,
+        iV2 = this.iV2,
+        allocVal = this.allocVal,
+        aV2 = this.aV2,
+        alloc = reifyEffects(this.alloc(sV)),
+        update = reifyEffects(dc_update(allocVal,v,eV)),
+        append = reifyEffects(dc_append(allocVal,v,eV)),
+        appendable = reifyEffects(dc_appendable(allocVal,v,eV)),
+        setSize = reifyEffects(dc_set_logical_size(allocVal,sV)),
+        allocRaw = reifyEffects(dc_alloc[O,I](allocVal,sV)),
+        copyRaw = reifyEffects(dc_copy(aV2,iV,allocVal,iV2,sV)),
+        finalizer = reifyEffects(this.finalizer(allocVal))
+      )
+
+      case OutputFlat => DeliteCollectFlatOutput[O, I, CO](
+        eV = this.eV,
+        sV = this.sV,
+        allocVal = this.allocVal,
+        alloc = reifyEffects(this.alloc(sV)),
+        update = reifyEffects(dc_update(allocVal,v,eV)),
+        finalizer = reifyEffects(this.finalizer(allocVal))
+      )
+    }
 
     // loop elem
     lazy val body: Def[CO] = copyBodyOrElse(DeliteCollectElem[O,I,CO](
       iFunc = reifyEffects(this.iFunc),
       unknownOutputSize = this.unknownOutputSize,
-      // true if the output collection allocated by alloc is linear and supports
-      // append etc. for OutputBuffer strategy
-      linearOutputCollection = dc_linear_buffer(this.allocVal),
-      // strategy is defined as:
-      // if (unknownOutputSize && linearOutputCollection) OutputBuffer else OutputFlat
       buf = this.buf,
       numDynamicChunks = this.numDynamicChunks,
       eF = this.eF,

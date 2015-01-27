@@ -105,37 +105,11 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     val mA = manifest[A]
   }
 
-  // Represents an output collection of a DeliteOp
-  case class DeliteBufferElem[A:Manifest, I:Manifest, CA:Manifest](
-    // -- bound vars
-    eV: Sym[A], //element to be added
-    sV: Sym[Int], //size
-    allocVal: Sym[I], //primary allocated collection
-    aV2: Sym[I], //secondary allocated collection
-    iV: Sym[Int], //start index
-    iV2: Sym[Int], //end index
-
-    //collection functions
-    alloc: Block[I],
-    apply: Block[A],
-    update: Block[Unit],
-    appendable: Block[Boolean],
-    append: Block[Unit],
-    setSize: Block[Unit],
-    allocRaw: Block[I],
-    copyRaw: Block[Unit],
-    finalizer: Block[CA]
-  ) {
-    val mA = manifest[A]
-    val mI = manifest[I]
-    val mCA = manifest[CA]
-  }
-
-  /** 
-   * This LoopElem is used for all flatMap-type operations (loops that produce
-   * an output collection of type CA). The special cases of maps and filters
-   * are treated at the codegen level, see DeliteCollectElemType.
-   */
+  /** This LoopElem is used for all flatMap-type operations (loops that produce
+    * an output collection of type CA). The special cases of map and filter
+    * operations are treated at the codegen level, see DeliteCollectElemType.
+    * There are also two different output strategies, see
+    * DeliteCollectOutputStrategy. */
   case class DeliteCollectElem[A:Manifest, I <: DeliteCollection[A]:Manifest, CA <: DeliteCollection[A]:Manifest](
     // flatmap function, produces an intermediate collection for each
     // iteration,  which is appended one by one to the output collection
@@ -143,10 +117,8 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     iFunc: Block[DeliteCollection[A]],
     // true in the general flatMap case, false for a fixed-size map
     unknownOutputSize: Boolean,
-    // true if the output collection is linear and supports append for OutputBuffer strategy
-    linearOutputCollection: Boolean,
     // The output collection/buffer to be used
-    buf: DeliteBufferElem[A,I,CA],
+    buf: DeliteCollectOutput[A,I,CA],
     // The number of dynamic chunks
     numDynamicChunks: Int,
     // bound symbol to hold the intermediate collection computed by iFunc
@@ -158,27 +130,11 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     // element of the intermediate collection at the current inner loop index
     aF: Block[A]
   ) extends Def[CA] with DeliteLoopElem {
-    // Defines how computed elements are added to the output collection
-    def strategy: DeliteOutputStrategy = 
-      if (unknownOutputSize && linearOutputCollection) OutputBuffer else OutputFlat
     val mA = manifest[A]
     val mI = manifest[I]
     val mCA = manifest[CA]
     val mDCA = manifest[DeliteCollection[A]]
   }
-
-  /** Markers to tell CollectElem code generation what kind of strategy to use
-   * to add computed elements to the output collection. */
-  trait DeliteOutputStrategy
-  /** Used for collect operations when the result DeliteCollection is a linear
-   * buffer to which elements are appended (implements the buffer methods from
-   * DeliteCollectionOpsExp). */
-  object OutputBuffer extends DeliteOutputStrategy { override def toString = "OutputBuffer" }
-  /** Used for collect operations when the result DeliteCollection can either
-   * be allocated to the correct size from the start (e.g. map with known
-   * output size) or does not conform to a linear append model (e.g. matrices).
-   * Need to implement the flat methods from DeliteCollectionOpsExp. */
-  object OutputFlat extends DeliteOutputStrategy { override def toString = "OutputFlat" }
 
   /** Depending on the function, a DeliteCollectElem can represent a map,
    * filter or a general flatMap. Code generation can be specialized to avoid
@@ -205,6 +161,109 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
   /** Determines whether the function represents a special case. */
   def getCollectElemType(collect: DeliteCollectElem[_,_,_]): DeliteCollectElemType
 
+  /** CollectElem nodes can have two different types of output collections,
+    * flat or buffer, which defines what class of DeliteCollectOutput is used
+    * in the CollectElem. */
+  trait DeliteCollectOutputStrategy
+  /** Used for collect operations when the result DeliteCollection is a linear
+    * buffer to which elements are appended (implements the buffer methods from
+    * DeliteCollectionOpsExp). */
+  object OutputBuffer extends DeliteCollectOutputStrategy
+  /** Used for collect operations when the result DeliteCollection can either
+    * be allocated to the correct size from the start (e.g. map with known
+    * output size) or does not conform to a linear append model (eg. matrices).
+    * Need to implement the flat methods from DeliteCollectionOpsExp. */
+  object OutputFlat extends DeliteCollectOutputStrategy
+  /** Computes the strategy for a new DeliteCollectElem. */
+  def getOutputStrategy(unknownOutputSize: Boolean, linearOutputCollection: Boolean) = 
+    if (unknownOutputSize && linearOutputCollection) OutputBuffer else OutputFlat
+  /** Convenience function to get the type of output strategy used. */
+  def getOutputStrategy(elem: DeliteCollectElem[_,_,_]) = elem.buf match {
+    case _: DeliteCollectBufferOutput[_,_,_] => OutputBuffer
+    case _: DeliteCollectFlatOutput[_,_,_] => OutputFlat
+  }
+
+  /** Represents the output collection of a CollectElem loop body. */
+  abstract class DeliteCollectOutput[A:Manifest, I:Manifest, CA:Manifest](
+    // bound vars
+    /** Element to be added to the output. Element computation finishes with
+      * eV = result. */
+    val eV: Sym[A],  
+    /** Size of the output collection. */
+    val sV: Sym[Int],
+    /** Allocated output collection. */
+    val allocVal: Sym[I],
+
+    // collection functions
+    /** Allocates the output collection, usually using sV as argument. */
+    val alloc: Block[I],
+    /** Updates allocVal with the newest output element eV, possibly using the
+      * loop index v (e.g. update at index of linear output collection). */
+    val update: Block[Unit],
+    /** Transforms from DC[I] to DC[CA], identity if no intermediate collection
+      * type is used, or e.g. creating the result collection from a builder. */
+    val finalizer: Block[CA]
+  ) {
+    val mA = manifest[A]
+    val mI = manifest[I]
+    val mCA = manifest[CA]
+  }
+
+  /** Used in DeliteCollectElems when the output strategy is OutputFlat. */
+  case class DeliteCollectFlatOutput[A:Manifest, I:Manifest, CA:Manifest](
+    override val eV: Sym[A], override val sV: Sym[Int], override val allocVal: Sym[I],
+    override val alloc: Block[I], override val update: Block[Unit],
+    override val finalizer: Block[CA]
+  ) extends DeliteCollectOutput[A,I,CA](eV, sV, allocVal, alloc, update, finalizer)
+
+  /** Used in DeliteCollectElems when the output strategy is OutputBuffer. */
+  case class DeliteCollectBufferOutput[A:Manifest, I:Manifest, CA:Manifest](
+    override val eV: Sym[A], override val sV: Sym[Int], override val allocVal: Sym[I],
+    // additional bound vars
+    aV2: Sym[I],      // secondary allocated collection
+    iV: Sym[Int],     // start index
+    iV2: Sym[Int],    // end index
+
+    // additional collection functions, typically use any of allocVal (output),
+    // the loop index v, the output element to be added eV, the size sV.
+    override val alloc: Block[I],
+    override val update: Block[Unit],
+    appendable: Block[Boolean],
+    append: Block[Unit],
+    setSize: Block[Unit],
+    allocRaw: Block[I],
+    copyRaw: Block[Unit],
+    override val finalizer: Block[CA]
+  ) extends DeliteCollectOutput[A,I,CA](eV, sV, allocVal, alloc, update, finalizer)
+
+
+  // -- end of DeliteCollectElem-related classes
+
+  // Represents a general output collection of a DeliteOp
+  case class DeliteBufferElem[A:Manifest, I:Manifest, CA:Manifest](
+    // -- bound vars
+    eV: Sym[A], //element to be added
+    sV: Sym[Int], //size
+    allocVal: Sym[I], //primary allocated collection
+    aV2: Sym[I], //secondary allocated collection
+    iV: Sym[Int], //start index
+    iV2: Sym[Int], //end index
+
+    //collection functions
+    alloc: Block[I],
+    apply: Block[A],
+    update: Block[Unit],
+    appendable: Block[Boolean],
+    append: Block[Unit],
+    setSize: Block[Unit],
+    allocRaw: Block[I],
+    copyRaw: Block[Unit],
+    finalizer: Block[CA]
+  ) {
+    val mA = manifest[A]
+    val mI = manifest[I]
+    val mCA = manifest[CA]
+  }
 
   case class DeliteReduceElem[A:Manifest](
     func: Block[A],
@@ -314,7 +373,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
   }
 
   def loopBodyNeedsPostProcess[A](e: Def[A]) = e match {
-    case e:DeliteCollectElem[_,_,_] => e.strategy == OutputBuffer //e.cond.nonEmpty
+    case e:DeliteCollectElem[_,_,_] => getOutputStrategy(e) == OutputBuffer
     case e:DeliteHashCollectElem[_,_,_,_,_,_] => true
     case _ => false
   }
@@ -449,6 +508,35 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
         finalizer = fb(e.finalizer)(e.mCA)
       )(e.mA,e.mI,e.mCA)
 
+    def mirrorCollectOutput[A,I,CA](e: DeliteCollectOutput[A,I,CA]) = e match {
+      case e: DeliteCollectFlatOutput[_,_,_] =>
+        DeliteCollectFlatOutput[A,I,CA](
+          eV = f(e.eV).asInstanceOf[Sym[A]],
+          sV = f(e.sV).asInstanceOf[Sym[Int]],
+          allocVal = f(e.allocVal).asInstanceOf[Sym[I]],
+          alloc = fb(e.alloc)(e.mI),
+          update = fb(e.update)(manifest[Unit]),
+          finalizer = fb(e.finalizer)(e.mCA)
+        )(e.mA,e.mI,e.mCA)
+      case e: DeliteCollectBufferOutput[_,_,_] => 
+        DeliteCollectBufferOutput[A,I,CA](
+          eV = f(e.eV).asInstanceOf[Sym[A]],
+          sV = f(e.sV).asInstanceOf[Sym[Int]],
+          allocVal = f(e.allocVal).asInstanceOf[Sym[I]],
+          aV2 = f(e.aV2).asInstanceOf[Sym[I]],
+          iV = f(e.iV).asInstanceOf[Sym[Int]],
+          iV2 = f(e.iV2).asInstanceOf[Sym[Int]],
+          alloc = fb(e.alloc)(e.mI),
+          update = fb(e.update)(manifest[Unit]),
+          appendable = fb(e.appendable)(manifest[Boolean]),
+          append = fb(e.append)(manifest[Unit]),
+          setSize = fb(e.setSize)(manifest[Unit]),
+          allocRaw = fb(e.allocRaw)(e.mI),
+          copyRaw = fb(e.copyRaw)(manifest[Unit]),
+          finalizer = fb(e.finalizer)(e.mCA)
+        )(e.mA,e.mI,e.mCA)
+    }
+
     d match {
       case e: DeliteHashCollectElem[k,v,i,cv,ci,ccv] =>
         (DeliteHashCollectElem[k,v,i,cv,ci,ccv](
@@ -481,8 +569,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
         (DeliteCollectElem[a,i,ca]( // need to be a case class for equality (do we rely on equality?)
           iFunc = fb(e.iFunc)(e.mDCA),
           unknownOutputSize = e.unknownOutputSize,
-          linearOutputCollection = e.linearOutputCollection,
-          buf = mirrorBuffer(e.buf),
+          buf = mirrorCollectOutput(e.buf),
           numDynamicChunks = e.numDynamicChunks,
           eF = f(e.eF).asInstanceOf[Sym[DeliteCollection[a]]],
           iF = f(e.iF).asInstanceOf[Sym[Int]],
@@ -533,6 +620,8 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteHashReduceElem[_,_,_,_] => blocks(op.keyFunc) ::: blocks(op.valFunc) ::: blocks(op.cond) ::: blocks(op.zero) ::: blocks(op.rFunc) ::: blocks(op.buf)
     case op: DeliteHashIndexElem[_,_] => blocks(op.keyFunc) ::: blocks(op.cond)
     case op: DeliteCollectElem[_,_,_] => blocks(op.aF) ::: blocks(op.buf) ::: blocks(op.iFunc) ::: blocks(op.sF)
+    case op: DeliteCollectBufferOutput[_,_,_] => blocks(op.alloc) ::: blocks(op.update) ::: blocks(op.appendable) ::: blocks(op.append) ::: blocks(op.setSize) ::: blocks(op.allocRaw) ::: blocks(op.copyRaw) ::: blocks(op.finalizer)
+    case op: DeliteCollectFlatOutput[_,_,_] => blocks(op.alloc) ::: blocks(op.update) ::: blocks(op.finalizer)
     case op: DeliteBufferElem[_,_,_] => blocks(op.alloc) ::: blocks(op.apply) ::: blocks(op.update) ::: blocks(op.appendable) ::: blocks(op.append) ::: blocks(op.setSize) ::: blocks(op.allocRaw) ::: blocks(op.copyRaw) ::: blocks(op.finalizer)
 //    case op: DeliteForeachElem[_] => blocks(op.func) ::: blocks(op.cond) ::: blocks(op.sync)
     case op: DeliteForeachElem[_] => blocks(op.func) //::: blocks(op.sync)
@@ -552,6 +641,8 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case e: DeliteOpAbstractExternal[_] =>  super.syms(e) ::: syms(e.allocVal)
     case fr: DeliteOpAbstractForeachReduce[_] => syms(fr.funcBody)
     case op: DeliteCollectElem[_,_,_] => syms(op.aF) ::: syms(op.buf) ::: syms(op.iFunc) ::: syms(op.sF)
+    case op: DeliteCollectBufferOutput[_,_,_] => syms(op.alloc) ::: syms(op.update) ::: syms(op.appendable) ::: syms(op.append) ::: syms(op.setSize) ::: syms(op.allocRaw) ::: syms(op.copyRaw) ::: syms(op.finalizer)
+    case op: DeliteCollectFlatOutput[_,_,_] => syms(op.alloc) ::: syms(op.update) ::: syms(op.finalizer)
     case op: DeliteBufferElem[_,_,_] => syms(op.alloc) ::: syms(op.apply) ::: syms(op.update) ::: syms(op.appendable) ::: syms(op.append) ::: syms(op.setSize) ::: syms(op.allocRaw) ::: syms(op.copyRaw) ::: syms(op.finalizer)
 //    case op: DeliteForeachElem[_] => syms(op.func) ::: syms(op.cond) ::: syms(op.sync)
     case op: DeliteForeachElem[_] => syms(op.func) //::: syms(op.sync)
@@ -569,6 +660,8 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case e: DeliteOpAbstractExternal[_] => super.readSyms(e) ::: readSyms(e.allocVal)
     case fr: DeliteOpAbstractForeachReduce[_] => readSyms(fr.funcBody)
     case op: DeliteCollectElem[_,_,_] => readSyms(op.aF) ::: readSyms(op.buf) ::: readSyms(op.iFunc) ::: readSyms(op.sF)
+    case op: DeliteCollectBufferOutput[_,_,_] => readSyms(op.alloc) ::: readSyms(op.update) ::: readSyms(op.appendable) ::: readSyms(op.append) ::: readSyms(op.setSize) ::: readSyms(op.allocRaw) ::: readSyms(op.copyRaw) ::: readSyms(op.finalizer)
+    case op: DeliteCollectFlatOutput[_,_,_] => readSyms(op.alloc) ::: readSyms(op.update) ::: readSyms(op.finalizer)
     case op: DeliteBufferElem[_,_,_] => readSyms(op.alloc) ::: readSyms(op.apply) ::: readSyms(op.update) ::: readSyms(op.appendable) ::: readSyms(op.append) ::: readSyms(op.setSize) ::: readSyms(op.allocRaw) ::: readSyms(op.copyRaw) ::: readSyms(op.finalizer)
 //    case op: DeliteForeachElem[_] => readSyms(op.func) ::: readSyms(op.cond) ::: readSyms(op.sync)
     case op: DeliteForeachElem[_] => readSyms(op.func) //::: readSyms(op.sync)
@@ -585,6 +678,8 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case e: DeliteOpAbstractExternal[_] => effectSyms(e.allocVal) /*::: super.effectSyms(e) */
     case fr: DeliteOpAbstractForeachReduce[_] => List(fr.v) ::: effectSyms(fr.funcBody)
     case op: DeliteCollectElem[_,_,_] => op.iF :: op.eF :: effectSyms(op.aF)  ::: boundSyms(op.buf) ::: effectSyms(op.iFunc) ::: effectSyms(op.sF)
+    case op: DeliteCollectBufferOutput[_,_,_] => List(op.eV, op.sV, op.allocVal, op.aV2, op.iV, op.iV2) ::: effectSyms(op.alloc) ::: effectSyms(op.update) ::: effectSyms(op.appendable) ::: effectSyms(op.append) ::: effectSyms(op.setSize) ::: effectSyms(op.allocRaw) ::: effectSyms(op.copyRaw) ::: effectSyms(op.finalizer)
+    case op: DeliteCollectFlatOutput[_,_,_] => List(op.eV, op.sV, op.allocVal) ::: effectSyms(op.alloc) ::: effectSyms(op.update) ::: effectSyms(op.finalizer)
     case op: DeliteBufferElem[_,_,_] => List(op.eV, op.sV, op.allocVal, op.aV2, op.iV, op.iV2) ::: effectSyms(op.alloc) ::: effectSyms(op.apply) ::: effectSyms(op.update) ::: effectSyms(op.appendable) ::: effectSyms(op.append) ::: effectSyms(op.setSize) ::: effectSyms(op.allocRaw) ::: effectSyms(op.copyRaw) ::: effectSyms(op.finalizer)
 //    case op: DeliteForeachElem[_] => effectSyms(op.func) ::: effectSyms(op.cond) ::: effectSyms(op.sync)
     case op: DeliteForeachElem[_] => effectSyms(op.func) //::: effectSyms(op.sync)
@@ -603,6 +698,8 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case e: DeliteOpAbstractExternal[_] => super.symsFreq(e) ::: freqNormal(e.allocVal)
     case fr: DeliteOpAbstractForeachReduce[_] => freqHot(fr.funcBody)
     case op: DeliteCollectElem[_,_,_] => freqHot(op.aF) ::: symsFreq(op.buf) ::: freqHot(op.iFunc) ::: freqHot(op.sF)
+    case op: DeliteCollectBufferOutput[_,_,_] => freqNormal(op.alloc) ::: freqHot(op.update) ::: freqHot(op.appendable) ::: freqHot(op.append) ::: freqNormal(op.setSize) ::: freqNormal(op.allocRaw) ::: freqNormal(op.copyRaw) ::: freqNormal(op.finalizer)
+    case op: DeliteCollectFlatOutput[_,_,_] => freqNormal(op.alloc) ::: freqHot(op.update) ::: freqNormal(op.finalizer)
     case op: DeliteBufferElem[_,_,_] => freqNormal(op.alloc) ::: freqHot(op.apply) ::: freqHot(op.update) ::: freqHot(op.appendable) ::: freqHot(op.append) ::: freqNormal(op.setSize) ::: freqNormal(op.allocRaw) ::: freqNormal(op.copyRaw) ::: freqNormal(op.finalizer)
 //    case op: DeliteForeachElem[_] => freqNormal(op.sync) ::: freqHot(op.cond) ::: freqHot(op.func)
     case op: DeliteForeachElem[_] => /*freqNormal(op.sync) :::*/ freqHot(op.func)

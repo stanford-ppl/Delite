@@ -11,8 +11,6 @@ trait DeliteCollection[A]
 
 trait DeliteCollectionOpsExp extends ExceptionOpsExp with BaseFatExp { this: DeliteOpsExp =>
 
-  // -- OutputFlat methods
-
   def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x match {
     case Def(e: DeliteOpMap[_,_,_]) => e.size
     case Def(e: DeliteOpZipWith[_,_,_,_]) => e.size
@@ -22,6 +20,8 @@ trait DeliteCollectionOpsExp extends ExceptionOpsExp with BaseFatExp { this: Del
   def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext): Exp[A] = {
     undefined("dc_apply", x)
   }
+
+  // -- Used by OutputFlat, and OutputBuffer (but only on GPU)
   
   def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext): Exp[Unit] = {
     undefined("dc_update", x)
@@ -31,7 +31,7 @@ trait DeliteCollectionOpsExp extends ExceptionOpsExp with BaseFatExp { this: Del
 
   /* Returns true if the collection can be used as a linear buffer for collect
    * elems (strategy OutputBuffer, need to implement the methods below).
-   * Otherwise strategy OutputFlat has to be used, implement the methods above.
+   * Otherwise strategy OutputFlat has to be used, implement the method above.
    */
   def dc_linear_buffer[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext): Boolean = {
     true

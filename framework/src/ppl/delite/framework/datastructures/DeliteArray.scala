@@ -450,7 +450,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
 
   //choosing the length of the first array creates an unnecessary dependency (all arrays must have same length), so we store length in the tag
   override def darray_length[T:Manifest](da: Exp[DeliteArray[T]])(implicit ctx: SourceContext) = da match {
-    case Def(Loop(size,_,b:DeliteCollectElem[_,_,_])) if b.strategy == OutputFlat => size
+    case Def(Loop(size,_,b:DeliteCollectElem[_,_,_])) if getOutputStrategy(b) == OutputFlat => size
     case StructIR(tag, len, elems) => 
       printlog("**** extracted array length: " + len.toString)
       len

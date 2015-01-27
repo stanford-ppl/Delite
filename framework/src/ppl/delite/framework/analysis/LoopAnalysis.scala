@@ -96,7 +96,7 @@ trait NestedLoopMappingAnalysis extends FatBlockTraversal with CombineTTPSchedul
 
   private def distinctAccess(body: Def[Any]): Boolean = {
     body match {
-      case elem: DeliteCollectElem[_,_,_] if (elem.strategy == OutputFlat) => true
+      case elem: DeliteCollectElem[_,_,_] if (getOutputStrategy(elem) == OutputFlat) => true
       case elem: DeliteForeachElem[_] => true
       case _ => false
     }

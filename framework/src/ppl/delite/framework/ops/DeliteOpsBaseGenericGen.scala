@@ -451,42 +451,35 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   // --- end hash reduce
 
   def emitCollectElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteCollectElem[_,_,_], prefixSym: String = "") = {
-    def emitFlatUpdate(singleElem: Block[Any]) = {
-      emitValDef(elem.buf.eV, quote(getBlockResult(singleElem)))
-      emitValDef(elem.buf.allocVal, fieldAccess(prefixSym,quote(sym)+"_data"))
-      emitBlock(elem.buf.update)      
-    }
+    def emitOutput(singleElem: Block[Any], buf: DeliteCollectOutput[_,_,_]) = buf match {
+      case out: DeliteCollectFlatOutput[_,_,_] =>
+        emitValDef(out.eV, quote(getBlockResult(singleElem)))
+        emitValDef(out.allocVal, fieldAccess(prefixSym,quote(sym)+"_data"))
+        emitBlock(out.update)      
 
-    def emitBufferAppend(singleElem: Block[Any]) = {
-      emitValDef(elem.buf.eV, quote(getBlockResult(singleElem)))
-      emitValDef(elem.buf.allocVal, fieldAccess(prefixSym,quote(sym)+"_buf"))
-      getActBuffer = List(fieldAccess(prefixSym, quote(sym) + "_buf"))
-      getActSize = fieldAccess(prefixSym, quote(sym) + "_size")
-      emitBlock(elem.buf.appendable)
-      stream.println("if (" + quote(getBlockResult(elem.buf.appendable)) + ") {")
-      emitBlock(elem.buf.append)
-      emitAssignment(fieldAccess(prefixSym,quote(sym)+"_size"), fieldAccess(prefixSym,quote(sym)+"_size") + " + 1")
-      stream.println("}")
-      emitAssignment(fieldAccess(prefixSym,quote(sym)+"_conditionals"), fieldAccess(prefixSym,quote(sym)+"_conditionals") + " + 1")
+      case out: DeliteCollectBufferOutput[_,_,_] =>
+        emitValDef(out.eV, quote(getBlockResult(singleElem)))
+        emitValDef(out.allocVal, fieldAccess(prefixSym,quote(sym)+"_buf"))
+        getActBuffer = List(fieldAccess(prefixSym, quote(sym) + "_buf"))
+        getActSize = fieldAccess(prefixSym, quote(sym) + "_size")
+        emitBlock(out.appendable)
+        stream.println("if (" + quote(getBlockResult(out.appendable)) + ") {")
+        emitBlock(out.append)
+        emitAssignment(fieldAccess(prefixSym,quote(sym)+"_size"), fieldAccess(prefixSym,quote(sym)+"_size") + " + 1")
+        stream.println("}")
+        emitAssignment(fieldAccess(prefixSym,quote(sym)+"_conditionals"), fieldAccess(prefixSym,quote(sym)+"_conditionals") + " + 1")
     }
 
     getCollectElemType(elem) match {
-      case CollectMap(singleElem) => elem.strategy match {
-        case OutputFlat => emitFlatUpdate(singleElem)
-        case OutputBuffer => sys.error("ERROR: GenericGenDeliteOps.emitCollectElem of type CollectMap is not allowed with OutputBuffer strategy.")
-      }
+      case CollectMap(singleElem) =>
+        emitOutput(singleElem, elem.buf)
 
-      case CollectDynamicMap(singleElem) => elem.strategy match {
-        case OutputFlat => emitFlatUpdate(singleElem)
-        case OutputBuffer => emitBufferAppend(singleElem)
-      }
+      case CollectDynamicMap(singleElem) =>
+        emitOutput(singleElem, elem.buf)
 
       case CollectFilter(cond, thenElem) => 
         stream.println("if (" + quote(cond) + ") {")
-        elem.strategy match {
-          case OutputFlat => emitFlatUpdate(thenElem)
-          case OutputBuffer => emitBufferAppend(thenElem)
-        }
+        emitOutput(thenElem, elem.buf)
         stream.println("}")
 
       case CollectFlatMap() => 
@@ -495,12 +488,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitVarDef(quote(elem.iF), remap(elem.iF.tp), "0")      // create inner loop index
         stream.println("while (" + quote(elem.iF) + " < " + quote(getBlockResult(elem.sF)) + ") { // inner flatMap loop")
         emitBlock(elem.aF)                                      // access intermediate at index
-        elem.strategy match {                                        // write intermediate at index to output buffer
-          case OutputBuffer => emitBufferAppend(elem.aF)
-          case OutputFlat => emitFlatUpdate(elem.aF)
-        }
+        emitOutput(elem.aF, elem.buf)                           // write intermediate at index to output buffer
         emitAssignment(quote(elem.iF), quote(elem.iF) + " + 1") // increment inner loop index
-        stream.println("}")                                     //close flatmap loop
+        stream.println("}")                                     // close flatmap loop
 
       case _ => sys.error("ERROR: GenericGenDeliteOps.emitCollectElem with unknown DeliteCollectElemType: " + elem)
     }
@@ -617,18 +607,18 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     emitInlineMultiHashInit(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) })
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_,_]) =>
-        elem.strategy match {
-          case OutputBuffer =>
-            emitVarDef(quote(elem.buf.sV), remap(elem.buf.sV.tp), "0")
-          case OutputFlat =>
-            emitVarDef(quote(elem.buf.sV), remap(elem.buf.sV.tp), quote(op.size))
-        }
-        emitBlock(elem.buf.alloc)
-        elem.strategy match {
-          case OutputBuffer =>
-            emitVarDef(quote(sym) + "_buf", remap(getBlockResult(elem.buf.alloc).tp), quote(getBlockResult(elem.buf.alloc)))
-          case OutputFlat =>
-            emitValDef(quote(sym) + "_data", remap(getBlockResult(elem.buf.alloc).tp), quote(getBlockResult(elem.buf.alloc)))
+        elem.buf match {
+          case out: DeliteCollectFlatOutput[_,_,_] =>
+            println("trying to emit loop, out.sV = " + out.sV)
+            emitVarDef(quote(out.sV), remap(out.sV.tp), quote(op.size))
+            println("out.alloc Block needs sV :(")
+            emitBlock(out.alloc)
+            println("we don't get here")
+            emitValDef(quote(sym) + "_data", remap(getBlockResult(out.alloc).tp), quote(getBlockResult(out.alloc)))
+          case out: DeliteCollectBufferOutput[_,_,_] =>
+            emitVarDef(quote(out.sV), remap(out.sV.tp), "0")
+            emitBlock(out.alloc)
+            emitVarDef(quote(sym) + "_buf", remap(getBlockResult(out.alloc).tp), quote(getBlockResult(out.alloc)))
         }
         emitVarDef(quote(sym) + "_size", remap(Manifest.Int), "0")
         emitVarDef(quote(sym) + "_conditionals", remap(Manifest.Int), "0")
@@ -728,16 +718,16 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     emitMultiHashFinalize(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) })
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_,_]) =>
-        // if we are using parallel buffers, set the logical size of the output since it
-        // might be different than the physically appended size for some representations
-        if (elem.strategy == OutputBuffer) {
-          emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), quote(sym) + "_buf")
-          getActBuffer = List(quote(elem.buf.allocVal))
-          emitAssignment(quote(elem.buf.sV), quote(sym) + "_conditionals")
-          emitBlock(elem.buf.setSize)
-        }
-        else {
-          emitValDef(elem.buf.allocVal, quote(sym) + "_data")
+        elem.buf match {
+          case out: DeliteCollectFlatOutput[_,_,_] =>
+            emitValDef(out.allocVal, quote(sym) + "_data")
+          case out: DeliteCollectBufferOutput[_,_,_] =>
+            // if we are using parallel buffers, set the logical size of the output since it
+            // might be different than the physically appended size for some representations
+            emitVarDef(quote(out.allocVal), remap(out.allocVal.tp), quote(sym) + "_buf")
+            getActBuffer = List(quote(out.allocVal))
+            emitAssignment(quote(out.sV), quote(sym) + "_conditionals")
+            emitBlock(out.setSize)
         }
         emitBlock(elem.buf.finalizer)
         emitValDef(sym, quote(getBlockResult(elem.buf.finalizer)))
@@ -764,18 +754,19 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     emitMethod("alloc", actType, Nil) {
       emitValDef("__act", actType, createInstance(actType))
       (symList zip op.body) foreach {
-        case (sym, elem: DeliteCollectElem[_,_,_]) => elem.strategy match {
-          case OutputBuffer =>
-            stream.println("// " + fieldAccess("__act",quote(sym)) + " stays null for now")
-          case OutputFlat =>
-            emitValDef(elem.buf.sV, typeCast("loopSize",remap(Manifest.Int)))
-            allocGlobal(emitBlock(elem.buf.alloc))
-            if (Config.generateSerializable) {
-              val arraySym = if (!remap(elem.buf.alloc.tp).contains("DeliteArray")) fieldAccess(quote(getBlockResult(elem.buf.alloc)), dc_data_field(getBlockResult(elem.buf.alloc).tp)) else quote(getBlockResult(elem.buf.alloc))
-              emitAssignment(fieldAccess(arraySym,"offset"), typeCast("loopStart",remap(Manifest.Int))) //FIXME: extremely hacky
-            }
-            emitAssignment(fieldAccess("__act",quote(sym)+"_data"),quote(getBlockResult(elem.buf.alloc)))
-        }
+        case (sym, elem: DeliteCollectElem[_,_,_]) =>
+          elem.buf match {
+            case out: DeliteCollectFlatOutput[_,_,_] =>
+              emitValDef(out.sV, typeCast("loopSize",remap(Manifest.Int)))
+              allocGlobal(emitBlock(out.alloc))
+              if (Config.generateSerializable) {
+                val arraySym = if (!remap(out.alloc.tp).contains("DeliteArray")) fieldAccess(quote(getBlockResult(out.alloc)), dc_data_field(getBlockResult(out.alloc).tp)) else quote(getBlockResult(out.alloc))
+                emitAssignment(fieldAccess(arraySym,"offset"), typeCast("loopStart",remap(Manifest.Int))) //FIXME: extremely hacky
+              }
+              emitAssignment(fieldAccess("__act",quote(sym)+"_data"),quote(getBlockResult(out.alloc)))
+            case out: DeliteCollectBufferOutput[_,_,_] =>
+              stream.println("// " + fieldAccess("__act",quote(sym)) + " stays null for now")
+          }
         case (sym, elem: DeliteHashElem[_,_]) => //
         case (sym, elem: DeliteForeachElem[_]) =>
           emitAssignment(fieldAccess("__act",quote(sym)), remap(sym.tp), "()")  // must be type Unit, initialized in init below
@@ -834,13 +825,14 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitValDef("__act2", actType, createInstance(actType))
         emitKernelMultiHashInit(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act2")
         (symList zip op.body) foreach {
-          case (sym, elem: DeliteCollectElem[_,_,_]) => elem.strategy match {
-            case OutputBuffer =>
-              emitValDef(elem.buf.sV, "0")
-              emitBlock(elem.buf.alloc)
-              emitAssignment(fieldAccess("__act2",quote(sym)+"_buf"),quote(getBlockResult(elem.buf.alloc)))
-            case OutputFlat =>
-              emitAssignment(fieldAccess("__act2",quote(sym)+"_data"),fieldAccess("__act",quote(sym)+"_data"))
+          case (sym, elem: DeliteCollectElem[_,_,_]) =>
+            elem.buf match {
+              case out: DeliteCollectFlatOutput[_,_,_] =>
+                emitAssignment(fieldAccess("__act2",quote(sym)+"_data"),fieldAccess("__act",quote(sym)+"_data"))
+              case out: DeliteCollectBufferOutput[_,_,_] =>
+                emitValDef(out.sV, "0")
+                emitBlock(out.alloc)
+                emitAssignment(fieldAccess("__act2",quote(sym)+"_buf"),quote(getBlockResult(out.alloc)))
             }
           case (sym, elem: DeliteHashElem[_,_]) =>
           case (sym, elem: DeliteForeachElem[_]) => // nothing needed - this case only happens if a ForeachElem is fused with something else that needs combine
@@ -953,7 +945,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       emitMultiHashPostCombine(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act")
       (symList zip op.body) foreach {
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
-          if (elem.strategy == OutputBuffer) {
+          if (getOutputStrategy(elem) == OutputBuffer) {
             emitAssignment(fieldAccess("__act", quote(sym) + "_offset"),fieldAccess("lhs", quote(sym) + "_offset") + "+" + fieldAccess("lhs", quote(sym) + "_size"))
             emitAssignment(fieldAccess("__act", quote(sym) + "_conditionals"),fieldAccess("__act", quote(sym) + "_conditionals") + "+" + fieldAccess("lhs", quote(sym) + "_conditionals"))
           }
@@ -970,15 +962,17 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       emitMultiHashPostProcInit(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, actType, "__act")
       (symList zip op.body) foreach {
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
-          if (elem.strategy == OutputBuffer) {
-            stream.println("if (" + fieldAccess("__act", quote(sym) + "_offset") + " > 0) {")
-            emitValDef(elem.buf.sV, fieldAccess("__act", quote(sym) + "_offset") + " + " + fieldAccess("__act",quote(sym) + "_size"))
-            emitValDef(elem.buf.allocVal, fieldAccess("__act", quote(sym) + "_buf"))
-            allocGlobal(emitBlock(elem.buf.allocRaw))
-            emitMethodCall(fieldAccess("__act",quote(sym) + "_data_set"),List(quote(getBlockResult(elem.buf.allocRaw)),fieldAccess("__act", quote(sym) + "_conditionals")))
-            stream.println("} else {")
-            emitMethodCall(fieldAccess("__act",quote(sym) + "_data_set"),List(fieldAccess("__act", quote(sym) + "_buf"),fieldAccess("__act", quote(sym) + "_conditionals")))
-            stream.println("}")
+          elem.buf match {
+            case out: DeliteCollectBufferOutput[_,_,_] =>
+              stream.println("if (" + fieldAccess("__act", quote(sym) + "_offset") + " > 0) {")
+              emitValDef(out.sV, fieldAccess("__act", quote(sym) + "_offset") + " + " + fieldAccess("__act",quote(sym) + "_size"))
+              emitValDef(out.allocVal, fieldAccess("__act", quote(sym) + "_buf"))
+              allocGlobal(emitBlock(out.allocRaw))
+              emitMethodCall(fieldAccess("__act",quote(sym) + "_data_set"),List(quote(getBlockResult(out.allocRaw)),fieldAccess("__act", quote(sym) + "_conditionals")))
+              stream.println("} else {")
+              emitMethodCall(fieldAccess("__act",quote(sym) + "_data_set"),List(fieldAccess("__act", quote(sym) + "_buf"),fieldAccess("__act", quote(sym) + "_conditionals")))
+              stream.println("}")
+            case out: DeliteCollectFlatOutput[_,_,_] =>
           }
         case (sym, elem: DeliteHashElem[_,_]) =>
         case (sym, elem: DeliteForeachElem[_]) =>
@@ -991,17 +985,19 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       emitMultiHashPostProcess(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, actType, "__act")
       (symList zip op.body) foreach {
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
-          if (elem.strategy == OutputBuffer) {
-            // write size results from buf into data at offset
-            stream.println("if (" + fieldAccess("__act",quote(sym)+"_data") + " " + refNotEq + " " + fieldAccess("__act",quote(sym)+"_buf") + ") {")
-            emitValDef(elem.buf.sV, fieldAccess("__act",quote(sym)+"_size"))
-            emitValDef(elem.buf.aV2, fieldAccess("__act",quote(sym)+"_buf"))
-            emitValDef(elem.buf.allocVal, fieldAccess("__act",quote(sym)+"_data"))
-            emitValDef(elem.buf.iV, "0")
-            emitValDef(elem.buf.iV2, fieldAccess("__act",quote(sym)+"_offset"))
-            emitBlock(elem.buf.copyRaw)
-            stream.println("}")
-            releaseRef(fieldAccess("__act",quote(sym)+"_buf"))
+          elem.buf match {
+            case out: DeliteCollectBufferOutput[_,_,_] =>
+              // write size results from buf into data at offset
+              stream.println("if (" + fieldAccess("__act",quote(sym)+"_data") + " " + refNotEq + " " + fieldAccess("__act",quote(sym)+"_buf") + ") {")
+              emitValDef(out.sV, fieldAccess("__act",quote(sym)+"_size"))
+              emitValDef(out.aV2, fieldAccess("__act",quote(sym)+"_buf"))
+              emitValDef(out.allocVal, fieldAccess("__act",quote(sym)+"_data"))
+              emitValDef(out.iV, "0")
+              emitValDef(out.iV2, fieldAccess("__act",quote(sym)+"_offset"))
+              emitBlock(out.copyRaw)
+              stream.println("}")
+              releaseRef(fieldAccess("__act",quote(sym)+"_buf"))
+            case out: DeliteCollectFlatOutput[_,_,_] =>
           }
         case (sym, elem: DeliteHashElem[_,_]) =>
         case (sym, elem: DeliteForeachElem[_]) =>
@@ -1017,9 +1013,11 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), fieldAccess("__act",quote(sym) + "_data"))
           releaseRef(fieldAccess("__act",quote(sym)+"_data"))
           getActBuffer = List(quote(elem.buf.allocVal))
-          if (elem.strategy == OutputBuffer) {
-            emitValDef(elem.buf.sV, fieldAccess("__act", quote(sym) + "_conditionals"))
-            allocGlobal(emitBlock(elem.buf.setSize))
+          elem.buf match {
+            case out: DeliteCollectBufferOutput[_,_,_] =>
+              emitValDef(out.sV, fieldAccess("__act", quote(sym) + "_conditionals"))
+              allocGlobal(emitBlock(out.setSize))
+            case out: DeliteCollectFlatOutput[_,_,_] =>
           }
           emitBlock(elem.buf.finalizer)
           emitAssignment(fieldAccess("__act",quote(sym)), quote(getBlockResult(elem.buf.finalizer)))
@@ -1070,7 +1068,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         case (sym, elem: DeliteCollectElem[_,_,_]) =>
           emitFieldDecl(quote(sym), remap(sym.tp))
           emitFieldDecl(quote(sym) + "_data", remap(elem.buf.allocVal.tp))
-          if (elem.strategy == OutputBuffer) {
+          if (getOutputStrategy(elem) == OutputBuffer) {
             emitFieldDecl(quote(sym) + "_buf", remap(elem.buf.allocVal.tp))
             emitFieldDecl(quote(sym) + "_size", remap(Manifest.Int))
             emitFieldDecl(quote(sym) + "_offset", remap(Manifest.Int))

@@ -33,8 +33,10 @@ trait DistributedArrayTransformer extends ForwardPassTransformer {
 
   def markPartitioned[T](sym: Sym[T], v: Sym[Int], d: Def[T]) {
     def symIsPartitioned(e: Exp[Any]): Boolean = e match {
-      case Def(Loop(_,_,body:DeliteCollectElem[_,_,_])) if body.strategy == OutputFlat => symIsPartitioned(getBlockResult(body.buf.alloc))
-      case Def(Loop(_,_,body:DeliteCollectElem[_,_,_])) => symIsPartitioned(getBlockResult(body.buf.allocRaw))
+      case Def(Loop(_,_,body:DeliteCollectElem[_,_,_])) => body.buf match {
+        case out: DeliteCollectFlatOutput[_,_,_]   => symIsPartitioned(getBlockResult(out.alloc))
+        case out: DeliteCollectBufferOutput[_,_,_] => symIsPartitioned(getBlockResult(out.allocRaw))
+      }
       case Partitionable(t) => t.partition
       case e if e.tp == manifest[DeliteFileInputStream] => true //TODO: should be configurable
       //case Def(a) => Console.println("no partition for: " + a.toString); false
@@ -62,8 +64,14 @@ trait DistributedArrayTransformer extends ForwardPassTransformer {
     if (inputIsPartitioned) {
       checkAccessStencil(sym,d)
       d match {
-        case Loop(_,_,body:DeliteCollectElem[_,_,_]) if body.strategy == OutputFlat => Console.println("partitioning " + d.toString); setPartitioned(getBlockResult(body.buf.alloc))
-        case Loop(_,_,body:DeliteCollectElem[_,_,_]) => Console.println("partitioning " + d.toString); setPartitioned(getBlockResult(body.buf.allocRaw))
+        case Loop(_,_,body:DeliteCollectElem[_,_,_]) => body.buf match {
+          case out: DeliteCollectFlatOutput[_,_,_]   =>
+            Console.println("partitioning " + d.toString);
+            setPartitioned(getBlockResult(out.alloc))
+          case out: DeliteCollectBufferOutput[_,_,_] =>
+            Console.println("partitioning " + d.toString);
+            setPartitioned(getBlockResult(out.allocRaw))
+        }
         case _ => //other loop types (Reduce) will produce result on master
       }
     } else {
