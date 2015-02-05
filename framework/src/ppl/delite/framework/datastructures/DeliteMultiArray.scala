@@ -8,6 +8,8 @@ import ppl.delite.framework.ops._
 import ppl.delite.framework.Util._
 import ppl.delite.framework.Config
 
+import ppl.delite.framework.analysis.{TriOption,DeliteMetadata} // change later...
+
 // Abstract, n-dimensional, multi-purpose array
 // Intended for use at frontend w/ transformer to concrete data layouts
 trait DeliteMultiArray[T]
@@ -20,14 +22,7 @@ trait DeliteArray5D[T] extends DeliteMultiArray[T]
 // TODO: Really not sure about this abstraction yet, except for type signature [T,R]
 // Seq[Seq[Int]] intended to represent various dimension layering and order... potentially could work
 
-trait DeliteMultiArrayLayouts {
-  case class MultiArrayMetadata(
-    rank: Int,
-    view: Boolean,
-    mutable: Boolean,
-    layout: Layout[_,_] = null,
-    child: Option[MultiArrayMetadata] = None
-  )
+trait DeliteMultiArrayLayouts extends DeliteMetadata {
 
   abstract class Layout[T:Manifest,R:Manifest] {
     val dims: Seq[Seq[Int]]
@@ -42,6 +37,20 @@ trait DeliteMultiArrayLayouts {
   case class SinglyNested[T:Manifest](rank: Int, inner: Int) extends Layout[T,DeliteArray[T]] { 
     override val dims = Seq(Seq.tabulate(inner-1){i=>i+1},Seq.tabulate(rank-inner+1){i=>i+inner}) 
   }
+
+  case class MultiArrayMetadata (
+    rank: Int,
+    var child: Slot[Metadata] = Nix,           // 
+    target: Option[MultiArrayMetadata] = None, // true option - may or may not have target
+    var layout: Slot[Layout[_,_]] = Unknown,   // multiarray's data layout, Unknown to start
+    var buffer: Slot[Boolean] = Unknown        // multiarray's buffer impl, Unknown to start
+  ) extends Metadata {
+    
+    override def copy = MultiArrayMetadata(rank,slotCopy(child),target,layout,buffer)
+
+    def isView: Boolean = !target.isEmpty
+  }
+
 }
 
 trait DeliteMultiArrayOps extends Base with DeliteMultiArrayLayouts {
@@ -198,13 +207,13 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
   case class DeliteMultiArrayShape[T:Manifest](ma: Exp[DeliteMultiArray[T]]) extends DefWithManifest[T,Seq[Exp[Int]]]
   case class DeliteMultiArraySize[T:Manifest](ma: Exp[DeliteMultiArray[T]]) extends DefWithManifest[T,Int]
 
-  case class DeliteMultiArrayViewTarget[T:Manifest](v: Exp[DeliteMultiArray[T]]) extends DefWithManifest[T,DeliteMultiArray[T]]
+  //case class DeliteMultiArrayViewTarget[T:Manifest](v: Exp[DeliteMultiArray[T]]) extends DefWithManifest[T,DeliteMultiArray[T]]
   case class DeliteMultiArrayViewStart[T:Manifest](v: Exp[DeliteMultiArray[T]]) extends DefWithManifest[T,Seq[Exp[Int]]]
   case class DeliteMultiArrayViewStride[T:Manifest](v: Exp[DeliteMultiArray[T]]) extends DefWithManifest[T,Seq[Exp[Int]]]
 
   // --- Array single element ops
   case class DeliteMultiArrayApply[T:Manifest](ma: Exp[DeliteMultiArray[T]], i: Seq[Exp[Int]]) extends DefWithManifest[T,T]
-  case class DeliteMultiArrayUpdate[T:Manifest](ma: Exp[DeliteMultiArray[T]], i: Seq[Exp[Int]], x: Exp[T]) extends DefWithManifest[T,Unit]
+  case class DeliteMultiArrayUpdate[T:Manifest](ma: Exp[DeliteMultiArray[T]], i: Seq[Exp[Int]], x: Exp[T])(implicit ctx: SourceContext) extends DefWithManifest[T,Unit]
 
   // --- Array permute / reshaping
   case class DeliteMultiArrayPermute[T:Manifest](ma: Exp[DeliteMultiArray[T]], config: Seq[Int])(implicit ctx: SourceContext) extends DefWithManifest[T,DeliteMultiArray[T]]
@@ -604,7 +613,7 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
     case Reflect(e@DeliteMultiArrayViewStride(m), u, es) => reflectMirrored(Reflect(DeliteMultiArrayViewStride(f(m))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
 
     case Reflect(e@DeliteMultiArrayApply(m,i), u, es) => reflectMirrored(Reflect(DeliteMultiArrayApply(f(m),f(i))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
-    case Reflect(e@DeliteMultiArrayUpdate(m,i,x), u, es) => reflectMirrored(Reflect(DeliteMultiArrayUpdate(f(m),f(i),f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DeliteMultiArrayUpdate(m,i,x), u, es) => reflectMirrored(Reflect(DeliteMultiArrayUpdate(f(m),f(i),f(x))(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
 
     case Reflect(e@DeliteMultiArrayPermute(m,c), u, es) => reflectMirrored(Reflect(DeliteMultiArrayPermute(f(m),c)(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayReshape(m,d), u, es) => reflectMirrored(Reflect(DeliteMultiArrayReshape(f(m),f(d))(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
