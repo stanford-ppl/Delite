@@ -17,7 +17,7 @@ import scala.virtualization.lms.common._
 
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.ops.DeliteOpsExp
-import ppl.delite.framework.analysis.{StencilAnalysis, RankAnalysis}
+import ppl.delite.framework.analysis.{StencilAnalysis, RankAnalysis, RankChecking}
 import generators.{DeliteGenTaskGraph}
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
 

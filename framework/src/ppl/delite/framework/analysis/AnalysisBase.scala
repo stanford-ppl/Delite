@@ -30,6 +30,15 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
 
   var metadata = new HashMap[Exp[Any],SymbolProperties]()
 
+  /**
+   * Main body for analysis. By default called after structural propagation
+   * has been completed (processStructure). 
+   */
+  def processOp[A](e: Exp[A], d: Def[_]): Unit
+
+  /**
+   * Run traversal/analysis on a given block
+   */
   def run[A](b: Block[A]): Unit = {
     result("Beginning...")
 
@@ -43,20 +52,25 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
     result("Completed.")
   }    
 
-  override def traverseStm(stm: Stm): Unit = {
-    stm match {
-      case TP(s, Reflect(d,_,_)) => processStructure(s,d)
-      case TP(s, d) => processStructure(s,d)
-      case _ => ()
-    }
-    origTraversal(stm)
+  /** 
+   * Analyze the current statement - can be overriden to circumvent
+   * structural metadata propagation in processStructure or match on
+   * more cases
+   */ 
+  def analyzeStm(stm: Stm): Unit = stm match {
+    case TP(s, Reflect(d,_,_)) => processStructure(s,d)
+    case TP(s, d) => processStructure(s,d)
+    case _ => // Nothing
   }
-  final def origTraversal(stm: Stm): Unit = super.traverseStm(stm)
 
-  // will be called after processStructure completes
-  def processOp[A](e: Exp[A], d: Def[_]): Unit
+  /**
+   * Operate on the current statement. Overriden from FatBlockTraversal
+   */
+  final override def traverseStm(stm: Stm): Unit = {
+    analyzeStm(stm)
+    super.traverseStm(stm)
+  }
 
-  
   ////////////////////////////////
   // Metadata completeness checks
 
@@ -65,7 +79,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
    * Likely will want different cases for different symbol types,
    * but can override SymbolProperties version instead to test all three
    * without code duplication
-  */ 
+   */ 
   def dataComplete(e: Exp[Any]): Boolean = metadata.get(e) match {
     case Some(a: ScalarProperties) => infoComplete(a)
     case Some(a: StructProperties) => infoComplete(a)
@@ -78,7 +92,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
 
   /** 
    * Traverse IR checking all encountered symbols for metadata completeness
-  */
+   */
   final def checkCompleteness[A](b: Block[A]) = {
     val checker = new FatBlockTraversal {
         val incompleteSet = new HashSet[Exp[Any]]()
@@ -96,7 +110,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
   
   /**
    * Testing completeness on metadata containers
-  */
+   */
   final def isComplete(a: Option[SymbolProperties]): Boolean = a match {
     case Some(am) => isComplete(am)
     case None => false
@@ -111,43 +125,30 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
 
   /** 
    * Testing completeness / presence of symbol metadata mapping
-   * Specifically ignore 
-  */ 
-  final def isComplete(e: Exp[Any]) = {
-    if (e.tp == manifest[Unit] || e.tp == manifest[Nothing]) 
-      true
-    else
-      isComplete(metadata.get(e))
-  }
-  
-  final def isUnknown(e: Exp[Any]) = {
-    if (e.tp == manifest[Unit] || e.tp == manifest[Nothing])
-      false
-    else
-      !metadata.contains(e)
-  }
+   */ 
+  final def isComplete(e: Exp[Any]) = isComplete(metadata.get(e))
+  final def isUnknown(e: Exp[Any]) = !metadata.contains(e)
 
   /////////////////////////////////
   // Helper functions for analysis
 
+  // TODO: use cases instead of findDefinition
   final def strDef(e: Exp[Any]) = e match {
     case Const(z) => z.toString
     case _ => 
-      // TODO: use cases instead of findDefinition
       val z = findDefinition(e.asInstanceOf[Sym[Any]])
       if (!z.isDefined) "(bound " + e.toString + ")" else e.toString + " = " + z.get.toString
   }
 
+
   final def typeTip[A](e: Exp[Any], tp: Manifest[A]) {
-    //val newData = initExp(e)
     val newData = initSym(tp)
     updateProperties(e, newData)
   }
 
   /**
-   * Directly add symbol property metadata for symbol
-   * (Such as from apply nodes)
-  */ 
+   * Directly add symbol property metadata for symbol (Such as from apply nodes)
+   */ 
   final def setProps(e: Exp[Any], p: Option[SymbolProperties]) {
     if (!p.isEmpty) {
       updateProperties(e, p.get)
@@ -159,7 +160,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
   /**
    * Add metadata information for this symbol (possibly using meet)
    * Uses notifyUpdate() to note if symbol-metadata mapping has changed
-  */
+   */
   final def setMetadata(e: Exp[Any], m: Option[Metadata]): Unit = {
     if (m.isDefined) setMetadata(e, m.get)
     else {
@@ -176,7 +177,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
   /**
    * Add child information for this symbol (possibly using meet)
    * Uses notifyUpdate() to note if symbol-metadata mapping has changed
-  */
+   */
   final def setChild(e: Exp[Any], p: Option[SymbolProperties]): Unit = {
     val newData = initExp(e, Nil, p)
     updateProperties(e, newData)
@@ -187,7 +188,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
   }
   /**
    * Set child based on child type
-  */
+   */
   final def childTypeTip[A](e: Exp[Any], childType: Manifest[A], name: String = "") {
     val newData = initExp(e, Nil, initSym(childType), name)
     updateProperties(e, newData)

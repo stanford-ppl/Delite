@@ -12,7 +12,8 @@ import ppl.delite.framework.transform.LoopSoAOpt
 import ppl.delite.framework.analysis.{StencilExp,NestedLoopMappingExp}
 import scala.collection.mutable.{HashSet,HashMap}
 
-trait DeliteOpsExp extends DeliteOpsExpIR with DeliteInternalOpsExp with DeliteCollectionOpsExp with DeliteArrayFatExp with DeliteMapOpsExp {
+trait DeliteOpsExp extends DeliteOpsExpIR with DeliteInternalOpsExp 
+  with DeliteCollectionOpsExp with DeliteArrayFatExp with DeliteMapOpsExp with DeliteMultiArrayOpsExp {
 
   /**
    * A sequential task - will execute block in a single thread and respect any free variable dependencies inside it.

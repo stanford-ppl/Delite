@@ -39,16 +39,16 @@ import ppl.delite.framework.analysis.Slot // change later..
 // (This should probably result in an error)
 
 trait DeliteMultiArrayMetadata extends DeliteMetadata {
-  case class Rank(rank: Int) {
+  case class Rank(rank: Int) extends Metadata {
     override def makeString(prefix: String = "") = prefix + rank
     override def multiLine = false
   }
-  case class Buffer(buff: Boolean) {
+  case class Buffer(buff: Boolean) extends Metadata {
     override def makeString(prefix: String = "") = prefix + buff
     override def multiLine = false
     def isBuffer: Boolean = buff
   }
-  case class TargetRank(rank: Option[Int]) {
+  case class TargetRank(rank: Option[Int]) extends Metadata {
     override def makeString(prefix: String = "") = prefix + rank.map{_.toString}.getOrElse("[Not a View]")
     override def multiLine = false
     def isView: Boolean = rank.isDefined
@@ -131,9 +131,7 @@ trait RankAnalysis extends MultiArrayAnalysisStageOne {
 
   override def dataComplete(a: MultiArrayProperties): Boolean = rank(a).isDefined
 
-  /**
-   * Propagate rank info through IR
-  */
+  // Propagate rank info through IR
   override def processOp[A](e: Exp[A], d: Def[_]): Unit = d match {
     case DeliteMultiArraySortIndices(_,_) => setMetadata(e, Rank(1))
     case DeliteStringSplit(_,_,_) => setMetadata(e, Rank(1))
@@ -150,12 +148,10 @@ trait RankAnalysis extends MultiArrayAnalysisStageOne {
       if (isView(t)) setMetadata(e, targetRank(t))
       else           setMetadata(e, rank(t).map{meta => TargetRank(meta.rank)})
 
-    // will check rank(ma) == c.length later
     case DeliteMultiArrayPermute(ma,_) => setMetadata(e, rank(ma))   
     case DeliteMultiArrayReshape(ma,dims) => setMetadata(e, Rank(dims.length))
     case DeliteMultiArrayFromFunction(dims,_) => setMetadata(e, Rank(dims.length))
     case DeliteMultiArrayMap(ma,f) => setMetadata(e, rank(ma))
-     // will check rank(ma) == rank(mb) later
     case DeliteMultiArrayZipWith(ma,mb,f) => setMetadata(e, rank(ma))  
 
     case op @ DeliteMultiArrayNDMap(in,mdims,_) => 
@@ -192,8 +188,6 @@ trait RankAnalysis extends MultiArrayAnalysisStageOne {
         log("", tagged = false)
       }
     }
-    // TODO: Remove this later
-    fatalerr("Done")
   }
 }
 
@@ -202,7 +196,10 @@ trait RankChecking extends MultiArrayAnalysisStageOne {
   val name = "MASC-1"
 
   def processOp[A](s: Exp[A], d: Def[_]): Unit = d match {
-    // Mutations --- may not need these if this is already being checked in staging
+    case op @ DeliteMultiArrayPermute(ma,config) =>
+      check(rank(ma) == config.length, "Number of dimensions given in permute conifguration must match input MultiArray rank", op.ctx)
+
+    // Mutations --- TODO: are these checks necessary?
     case op @ DeliteMultiArrayUpdate(ma,_,_) => 
       check(isMutable(ma), "Cannot update immutable data structure", op.ctx)
     case op @ DeliteMultiArrayMutableMap(ma,_) =>
@@ -286,13 +283,10 @@ trait RankChecking extends MultiArrayAnalysisStageOne {
       //Nothing
   }
 
-  override def traverseStm(stm: Stm): Unit = {
-    stm match {
-      case TP(s, Reflect(d,_,_)) => processOp(s,d)
-      case TP(s, d) => processOp(s,d)
-      case _ => // Nothing
-    }
-    origTraversal(stm)
+  override def analyzeStm(stm: Stm): Unit = stm match {
+    case TP(s, Reflect(d,_,_)) => processOp(s,d)
+    case TP(s, d) => processOp(s,d)
+    case _ => // Nothing
   }
 
 }

@@ -10,12 +10,17 @@ trait DeliteMetadata {
   class MetadataKeyException extends Exception("No key was found for a metadata instance when adding")
 
   /**
-   * New Metadata types should extend this
-  */ 
+   * New Metadata types should extend this abstract class
+   * and add cases to matches, canMeet, meet, isComplete, and metakey
+   *
+   * TODO: Should there be 3 child classes of Metadata for each symbol type?
+   * Assuming here that there is metadata across symbol types, is this true?
+   *
+   * TODO: Do we also need a Properties type for DeliteArray? Should this be a 
+   * common type with MultiArray (both only have one child)
+   */ 
   abstract class Metadata { 
-    /**
-     * Pretty printing metadata (mostly for debugging)
-    */
+    // Pretty printing metadata (mostly for debugging)
     def makeString(prefix: String = ""): String = prefix + this.toString()
     def multiLine = false
   }
@@ -23,28 +28,28 @@ trait DeliteMetadata {
   /**
    * Tests if this and that are identical (have no differences)
    * returns true if they are identical, false otherwise
-  */
+   */
   def matches(a: Metadata, b: Metadata): Boolean = (a,b) match {
     case _ => false
   }
   /**
    * Test if this and that can be met to produce valid metadata
    * returns true if the two definitely can be met successfully
-  */
+   */
   def canMeet(a: Metadata, b: Metadata): Boolean = (a,b) match {
     case _ => false
   }
   /**
    * Meet this and that. If canMeet returns false for this and that,
    * meet should throw an exception, since the meet is invalid
-  */
+   */
   def meet(a: Metadata, b: Metadata): Metadata  = (a,b) match {
     case _ => throw new IllegalMeetException
   } 
 
   /**
    * Test if this metadata instance has been sufficiently filled in
-  */
+   */
   def isComplete(a: Metadata): Metadata = a match {
     case _ => false
   }
@@ -52,7 +57,7 @@ trait DeliteMetadata {
   /**
    * Get key name based on type of metadata
    * Might make more sense as a mutable hashmap implementation?
-  */ 
+   */ 
   def metakey(a: Metadata): String = a match {
     case _ => throw new MetadataKeyException
   }
@@ -60,8 +65,9 @@ trait DeliteMetadata {
   /**
    * Parent class for metadata containers. Holds a hash map of 
    * string keys to single properties (Metadata instances)
+   *
    * TODO: change "SymbolProperties" to something more concise?
-  */ 
+   */ 
   sealed abstract class SymbolProperties (
     __info: Iterable[(String, Option[Metadata])] = Nil
   ) {
@@ -113,7 +119,7 @@ trait DeliteMetadata {
 
   /** 
    * Metadata for (native?) scalar symbols (single element)
-  */
+   */
   case class ScalarProperties (
     __info: Iterable[(String, Option[Metadata])] = Nil
   ) extends SymbolProperties(__info) {
@@ -148,14 +154,14 @@ trait DeliteMetadata {
 
   /**  
    * Metadata for collections (holding multiple elements)
-  */
+   */
   abstract class CollectionProperties (
     __info: Iterable[(String, Option[Metadata])]
   ) extends SymbolProperties(__info) 
 
   /**
    * Metadata for DeliteStructs
-  */ 
+   */ 
   case class StructProperties (
     fieldMetadata: Iterable[(String, Option[SymbolProperties])] = Nil,
     __info: Iterable[(String, Option[Metadata])] = Nil
@@ -203,7 +209,7 @@ trait DeliteMetadata {
 
   /**
    * Metadata for DeliteMultiArray
-  */
+   */
   case class MultiArrayProperties (
     child: Option[SymbolProperties] = None,
     __info: Iterable[(String, Option[Metadata])] = Nil
@@ -245,7 +251,7 @@ trait DeliteMetadata {
    * matches, canMeet, and meet operations, but Metadata is an abstract
    * class. meet() function returns type T (covariant) but getting an implementation of the
    * type class requires contravariance..
-  */
+   */
   final def matches(a: Option[Metadata], b: Option[Metadata]): Boolean = (a,b) match {
     case (Some(am), Some(bm)) => matches(am,bm)
     case (None, None) => true

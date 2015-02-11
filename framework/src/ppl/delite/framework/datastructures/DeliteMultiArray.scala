@@ -253,12 +253,12 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
   }
 
   // TODO
-  case class DeliteMultiArrayGroupBy[A:Manifest,K:Manifest](in: Exp[DeliteMultiArray[A]], key: Exp[A] => Exp[K])(implicit ctx: SourceContext) extends MultiArrayOp2[A,K,DeliteMultiMap[K,DeliteArray1D[A]]] {
+  case class DeliteMultiArrayGroupBy[A:Manifest,K:Manifest](in: Exp[DeliteMultiArray[A]], key: Exp[A] => Exp[K])(implicit ctx: SourceContext) extends MultiArrayOp2[A,K,DeliteHashMap[K,DeliteArray1D[A]]] {
     type OpType <: DeliteMultiArrayGroupBy
     lazy val a: Sym[A] = copyTransformedOrElse(_.a)(fresh[A]).asInstanceOf[Sym[A]]
     lazy val keyFunc: Block[K] = copyTransformedBlockOrElse(_.keyFunc)(reifyEffects(key(a)))
   }
-  case class DeliteMultiArrayGroupByReduce[A:Manifest,K:Manifest,V:Manifest](in: Exp[DeliteMultiArray[A]], key: Exp[A] => Exp[K], value: Exp[A] => Exp[V], reduce: (Exp[V],Exp[V]) => Exp[V])(implicit ctx: SourceContext) extends MultiArrayOp3[A,K,V,DeliteMultiMap[K,V]] {
+  case class DeliteMultiArrayGroupByReduce[A:Manifest,K:Manifest,V:Manifest](in: Exp[DeliteMultiArray[A]], key: Exp[A] => Exp[K], value: Exp[A] => Exp[V], reduce: (Exp[V],Exp[V]) => Exp[V])(implicit ctx: SourceContext) extends MultiArrayOp3[A,K,V,DeliteHashMap[K,V]] {
     type OpType <: DeliteMultiArrayGroupByReduce
     lazy val a: Sym[A] = copyTransformedOrElse(_.a)(fresh[A]).asInstanceOf[Sym[A]]
     lazy val v1: Sym[V] = copyTransformedOrElse(_.v1)(fresh[V]).asInstanceOf[Sym[V]]
