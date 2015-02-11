@@ -70,7 +70,6 @@ trait DeliteArrayOps extends Base {
   def darray_fromseq[A:Manifest](elems: Seq[Rep[A]])(implicit ctx: SourceContext): Rep[DeliteArray[A]]
   def darray_toseq[A:Manifest](a: Rep[DeliteArray[A]])(implicit ctx: SourceContext): Rep[Seq[A]]
   def darray_fromfunction[T:Manifest](length: Rep[Int], func: Rep[Int] => Rep[T])(implicit ctx: SourceContext): Rep[DeliteArray[T]]
-
   def darray_set_act_buf[A:Manifest](da: Rep[DeliteArray[A]]): Rep[Unit]
 }
 
@@ -99,7 +98,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   case class DeliteArraySort[T:Manifest](da: Exp[DeliteArray[T]]) extends DefWithManifest[T,DeliteArray[T]]
   case class DeliteArrayToSeq[A:Manifest](x: Exp[DeliteArray[A]]) extends Def[Seq[A]]
   trait DeliteArraySeq[A] extends DeliteArray[A] // workaround for SoA problems, see commented out override darray_fromseq
-  case class DeliteArrayFromSeq[A:Manifest](elems: Seq[Exp[A]]) extends DefWithManifest[A,DeliteArraySeq[A]]
+  case class DeliteArrayFromSeq[A:Manifest](elems: Seq[Exp[A]], mA: Manifest[A]) extends Def[DeliteArraySeq[A]]
 
   //this is a hack to make writes to DeliteArray within a Struct an atomic operation in order to avoid creating mutable aliases
   //fortunately due to our limited data structure design this trick isn't required all over the place
@@ -300,7 +299,14 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   def darray_range(st: Exp[Int], en: Exp[Int])(implicit ctx: SourceContext) = darray_fromfunction(delite_int_minus(en,st), i => delite_int_plus(i,st))
   def darray_mapfilter[A:Manifest,B:Manifest](lhs: Exp[DeliteArray[A]], map: Exp[A] => Exp[B], cond: Exp[A] => Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(DeliteArrayMapFilter(lhs,map,cond))
   def darray_toseq[A:Manifest](a: Exp[DeliteArray[A]])(implicit ctx: SourceContext) = DeliteArrayToSeq(a)
-  def darray_fromseq[A:Manifest](elems: Seq[Exp[A]])(implicit ctx: SourceContext): Exp[DeliteArray[A]] = DeliteArrayFromSeq(elems)
+  def darray_fromseq[A:Manifest](elems: Seq[Exp[A]])(implicit ctx: SourceContext): Exp[DeliteArray[A]] = {
+    // This weirdness is needed to encapsulate the use of DeliteArrayFromSeq locally, as it is
+    // generated specially due to issues with SoA. We always want to return a "real" DeliteArray,
+    // or we'll run into issues with generated types, e.g. in struct fields. The effect prevents
+    // the subsequent map from being optimized away.
+    val da = reflectPure(DeliteArrayFromSeq(elems, manifest[A])) // need to pass Manifest explicitly to avoid broken CSE with empty sequences
+    reflectEffect(DeliteArrayFromFunction(darray_length(da),i => darray_apply(da, i)))
+  }
   def darray_fromfunction[T:Manifest](length: Rep[Int], func: Rep[Int] => Rep[T])(implicit ctx: SourceContext) = reflectPure(DeliteArrayFromFunction(length,func))
   def darray_clone[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext) = da match {
     case s: Sym[_] if !isWritableSym(s) => da
@@ -337,7 +343,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
       case e@DeliteArrayTake(a,x) => darray_take(f(a),f(x))(e.mA,pos)
       case e@DeliteArrayMkString(a,s) => darray_mkstring(f(a),f(s))(e.mA,pos)
       case e@DeliteArraySort(x) => darray_sort(f(x))(e.mA,pos)
-      case e@DeliteArrayFromSeq(x) => darray_fromseq(f(x))(e.mA,pos)
+      case e@DeliteArrayFromSeq(x,m) => reflectPure(DeliteArrayFromSeq(f(x),m))(mtype(manifest[A]),pos)
       case e@DeliteArrayMap(in,g) => reflectPure(new { override val original = Some(f,e) } with DeliteArrayMap(f(in),f(g))(e.dmA,e.dmB,pos))(mtype(manifest[A]),pos)
       case e@DeliteArrayFlatMap(in,g) => reflectPure(new { override val original = Some(f,e) } with DeliteArrayFlatMap(f(in),f(g))(e.dmA,e.dmB))(mtype(manifest[A]),pos)
       case e@DeliteArrayZipWith(inA,inB,g) => reflectPure(new { override val original = Some(f,e) } with DeliteArrayZipWith(f(inA),f(inB),f(g))(e.dmA,e.dmB,e.dmR))(mtype(manifest[A]),pos)
@@ -362,7 +368,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
       case Reflect(e@DeliteArrayTake(a,x), u, es) => reflectMirrored(Reflect(DeliteArrayTake(f(a),f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
       case Reflect(e@DeliteArrayMkString(a,s), u, es) => reflectMirrored(Reflect(DeliteArrayMkString(f(a),f(s))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
       case Reflect(e@DeliteArraySort(x), u, es) => reflectMirrored(Reflect(DeliteArraySort(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
-      case Reflect(e@DeliteArrayFromSeq(x), u, es) => reflectMirrored(Reflect(DeliteArrayFromSeq(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+      case Reflect(e@DeliteArrayFromSeq(x,m), u, es) => reflectMirrored(Reflect(DeliteArrayFromSeq(f(x),m), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
       case Reflect(e@DeliteArrayMap(in,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteArrayMap(f(in),f(g))(e.dmA,e.dmB,pos), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
       case Reflect(e@DeliteArrayFlatMap(in,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteArrayFlatMap(f(in),f(g))(e.dmA,e.dmB), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
       case Reflect(e@DeliteArrayZipWith(inA,inB,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteArrayZipWith(f(inA),f(inB),f(g))(e.dmA,e.dmB,e.dmR), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
@@ -596,7 +602,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
   }
 
   override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
-    case d if d.erasure == classOf[DeliteArray[_]] && Config.soaEnabled =>
+    case d if d.erasure.getSimpleName == "DeliteArray" && Config.soaEnabled =>
       val elems = unapplyStructType(d.typeArguments(0))
       elems.map { case (tag: StructTag[T],fields) => (tag, fields.map(e => (e._1, darrayManifest(e._2)))) }
     case _ => super.unapplyStructType
@@ -653,7 +659,7 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
         emitValDef(sym, "new ppl.delite.runtime.data.RaggedNativeArrayObject["+remap(m)+"]("+quote(n)+")")
       if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
 
-    case a@DeliteArrayFromSeq(elems) if Config.intSize == "long" =>
+    case a@DeliteArrayFromSeq(elems,m) if Config.intSize == "long" =>
       if (isPrimitiveType(a.mA))
         emitValDef(sym, "new ppl.delite.runtime.data.RaggedNativeArray"+remap(a.mA)+"("+elems.length+")")
       else
@@ -690,7 +696,7 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
       emitValDef(sym, "new Array[" + remap(m) + "](" + quote(n) + ".toInt)")
       if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
 
-    case a@DeliteArrayFromSeq(elems) if !Config.generateSerializable =>
+    case a@DeliteArrayFromSeq(elems,m) if !Config.generateSerializable =>
       emitValDef(sym, "new Array[" + remap(a.mA) + "](" + elems.length + ")")
       for (i <- 0 until elems.length) {
         stream.println(quote(sym) + "(" + i + ") = " + quote(elems(i)))
