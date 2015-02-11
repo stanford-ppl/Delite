@@ -37,20 +37,6 @@ trait DeliteMultiArrayLayouts extends DeliteMetadata {
   case class SinglyNested[T:Manifest](rank: Int, inner: Int) extends Layout[T,DeliteArray[T]] { 
     override val dims = Seq(Seq.tabulate(inner-1){i=>i+1},Seq.tabulate(rank-inner+1){i=>i+inner}) 
   }
-
-  case class MultiArrayMetadata (
-    rank: Int,
-    var child: Slot[Metadata] = Nix,           // 
-    target: Option[MultiArrayMetadata] = None, // true option - may or may not have target
-    var layout: Slot[Layout[_,_]] = Unknown,   // multiarray's data layout, Unknown to start
-    var buffer: Slot[Boolean] = Unknown        // multiarray's buffer impl, Unknown to start
-  ) extends Metadata {
-    
-    override def copy = MultiArrayMetadata(rank,slotCopy(child),target,layout,buffer)
-
-    def isView: Boolean = !target.isEmpty
-  }
-
 }
 
 trait DeliteMultiArrayOps extends Base with DeliteMultiArrayLayouts {
@@ -186,7 +172,7 @@ trait DeliteMultiArrayOps extends Base with DeliteMultiArrayLayouts {
 trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
   this: DeliteOpsExp with DeliteMultiMapOpsExp with DeliteArrayOpsExp =>
 
-  trait MultiArrayOp[A:Manifest,R:Manifest] extends DeliteOp[R] { val mA = manifest[A] }
+  trait MultiArrayOp[A:Manifest,R:Manifest] extends DeliteOp[R] { val mA = manifest[A]; val mR = manifest[R] }
   trait MultiArrayOp2[A:Manifest,B:Manifest,R:Manifest] extends MultiaOp[A,R] { val mB = manifest[B] }
   trait MultiArrayOp3[A:Manifest,B:Manifest,T:Manifest,R:Manifest] extends MultiaOp2[A,B,R] { val mT = manifest[T] }
 
@@ -288,6 +274,8 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
 
   case class DeliteMultiArrayInsertAll[T:Manifest](ma: Exp[DeliteMultiArray[T]], rhs: Exp[DeliteMultiArray[T]], axis: Int, index: Exp[Int])(implicit ctx: SourceContext) extends DefWithManifest[T,Unit]
   case class DeliteMultiArrayAppendAll[T:Manifest](ma: Exp[DeliteMultiArray[T]], rhs: Exp[DeliteMultiArray[T]], axis: Int)(implicit ctx: SourceContext) extends DefWithManifest[T,Unit]
+
+  case class DeliteMultiArrayRemove[T:Manifest](ma: Exp[DeliteMultiArray[T]], axis: Int, start: Exp[Int], end: Exp[Int])(implicit ctx: SourceContext) extends DefWithManifest[T,Unit]
 
   // --- Misc. Operations
   case class DeliteMultiArrayMkString[T:Manifest](ma: Exp[DeliteMultiArray[T]], dels: Seq[Exp[String]]) extends DefWithManifest[T,String]

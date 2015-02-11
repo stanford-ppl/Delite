@@ -17,7 +17,7 @@ import scala.virtualization.lms.common._
 
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.ops.DeliteOpsExp
-import ppl.delite.framework.analysis.StencilAnalysis
+import ppl.delite.framework.analysis.{StencilAnalysis, RankAnalysis}
 import generators.{DeliteGenTaskGraph}
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
 
@@ -134,10 +134,25 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     curBlock
   }
 
+  // Change this later (ultimately want scheduling of analyses mixed with transforms)
+  def runAnalysis[A:Manifest](b: Block[A]): Unit = {
+    // MultiArray analysis
+    val rankAnalyzer = new RankAnalysis{val IR = DeliteCodegen.this.IR}
+    rankAnalyzer.run(b)
+
+    val rankChecker = new RankChecking{val IR = DeliteCodegen.this.IR; var metadata = rankAnalyzer.metadata}
+    rankChecker.run(b)
+
+    // Remove later
+    System.exit(0)
+  }
+
   def emitBlockHeader(syms: List[Sym[Any]], appName: String) { }
   def emitBlockFooter(result: Exp[Any]) { }
 
   def emitSource[A:Manifest](args: List[Sym[_]], body: Block[A], className: String, stream: PrintWriter): List[(Sym[Any],Any)] = {
+    runAnalysis(body)
+
     val y = runTransformations(body)
     val staticData = getFreeDataBlock(y)
 
