@@ -11,8 +11,6 @@ import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollection}
 import ppl.delite.framework.datastructures.{DeliteMultiArray,DeliteArrayOpsExp}
 import ppl.delite.framework.Config
 
-import ppl.delite.framework.analysis.Slot // change later..
-
 // TODO: Assuming for now that we can have aliased views with different
 // target ranks.
 // for example: 
@@ -40,21 +38,21 @@ import ppl.delite.framework.analysis.Slot // change later..
 
 trait DeliteMultiArrayMetadata extends DeliteMetadata {
   case class Rank(rank: Int) extends Metadata {
+    val name = "rank"
     override def makeString(prefix: String = "") = prefix + rank
-    override def multiLine = false
   }
   case class Buffer(buff: Boolean) extends Metadata {
+    val name = "isBuffer"
     override def makeString(prefix: String = "") = prefix + buff
-    override def multiLine = false
     def isBuffer: Boolean = buff
   }
   case class TargetRank(rank: Option[Int]) extends Metadata {
+    val name = "targetRank"
     override def makeString(prefix: String = "") = prefix + rank.map{_.toString}.getOrElse("[Not a View]")
-    override def multiLine = false
     def isView: Boolean = rank.isDefined
   }
 
-  override def matches(a: Metadata, b: Metadata): Boolean = (a,b) match {
+  override def metadataMatches(a: Metadata, b: Metadata): Boolean = (a,b) match {
     case (a: Rank, b: Rank) => (a.rank == b.rank)
     case (a: Buffer, b: Buffer) => (a.buff == b.buff)
     case (a: TargetRank, b: TargetRank) => 
@@ -65,13 +63,13 @@ trait DeliteMultiArrayMetadata extends DeliteMetadata {
       }
     case _ => super.matches(a,b)
   }
-  override def canMeet(a: Metadata, b: Metadata): Boolean = (a,b) match {
+  override def canMeetMetadata(a: Metadata, b: Metadata): Boolean = (a,b) match {
     case (a: Rank, b: Rank) => (a.rank == b.rank)
     case (a: Buffer, b: Buffer) => true
     case (a: TargetRank, b: TargetRank) => true
     case _ => super.canMeet(a,b)
   }
-  override def meet(a: Metadata, b: Metadata): Boolean = (a,b) match {
+  override def meetMetadata(a: Metadata, b: Metadata): Boolean = (a,b) match {
     case (a: Rank, b: Rank) if canMeet(a,b) => Rank(a.rank)
     case (a: Buffer, b: Buffer) => Buffer(a.buff && b.buff)
     case (a: TargetRank, b: TargetRank) => 
@@ -83,31 +81,19 @@ trait DeliteMultiArrayMetadata extends DeliteMetadata {
       }
     case _ => super.canMeet(a,b)
   }
-  override def isComplete(a: Metadata): Boolean = a match {
-    case Rank(_) => true
-    case Buffer(_) => true
-    case TargetRank(_) => true
-    case _ => super.canMeet(a,b)
-  }
-  override def metaKey(a: Metadata): String = a match {
-    case Rank(_) => "rank"
-    case Buffer(_) => "isBuffer"
-    case TargetRank(_) => "targetRank"
-    case _ => super.metakey(a)
-  }
 
   def rank(p: SymbolProperties): Option[Rank] = {
-    if (!p.isInstanceOf[MultiArrayProperties]) 
+    if (!p.isInstanceOf[ArrayProperties]) 
       warn("Attempted to get rank of non-MultiArray symbol")
     p("rank").map{_.asInstanceOf[Rank]}
   }
   def targetRank(p: SymbolProperties): Option[TargetRank] = {
-    if (!p.isInstanceOf[MultiArrayProperties])
+    if (!p.isInstanceOf[ArrayProperties])
       warn("Attempted to get target rank of non-MultiArray symbol")
     p("targetRank").map{_asInstanceOf[TargetRank]}
   }
   def bufferable(p: SymbolProperties): Option[Buffer] = {
-    if (!p.isInstanceOf[MultiArrayProperties])
+    if (!p.isInstanceOf[ArrayProperties])
       warn("Attempted to get buffer property of non-MultiArray symbol")
     p("isBuffer").map{_.asInstanceOf[Buffer]}
   }
@@ -129,7 +115,7 @@ trait MultiArrayAnalysisStageOne extends AnalysisBase with DeliteMultiArrayMetad
 trait RankAnalysis extends MultiArrayAnalysisStageOne {
   val name = "Rank Analysis"
 
-  override def dataComplete(a: MultiArrayProperties): Boolean = rank(a).isDefined
+  override def dataComplete(a: ArrayProperties): Boolean = rank(a).isDefined
 
   // Propagate rank info through IR
   override def processOp[A](e: Exp[A], d: Def[_]): Unit = d match {
@@ -154,7 +140,7 @@ trait RankAnalysis extends MultiArrayAnalysisStageOne {
     case DeliteMultiArrayMap(ma,f) => setMetadata(e, rank(ma))
     case DeliteMultiArrayZipWith(ma,mb,f) => setMetadata(e, rank(ma))  
 
-    case op @ DeliteMultiArrayNDMap(in,mdims,_) => 
+    case op@DeliteMultiArrayNDMap(in,mdims,_) => 
       setMetadata(op.ma, Rank(mdims.length))
       setMetadata(e, rank(in))
 

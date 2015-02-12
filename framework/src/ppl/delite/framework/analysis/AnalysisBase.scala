@@ -16,6 +16,7 @@ import ppl.delite.framework.Config
 trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
   val IR: DeliteOpsExp
   import IR._
+  import ppl.delite.framework.Util._    // for isSubType(...)
 
   //////////////////////////////////////////////////////////////
   // Functions and fields which probably will never need to be 
@@ -76,24 +77,16 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
 
   /** 
    * Test if all metadata for a symbol has been filled in 
-   * Likely will want different cases for different symbol types,
-   * but can override SymbolProperties version instead to test all three
-   * without code duplication
+   * Likely will want different cases for different symbol types
    */ 
-  def dataComplete(e: Exp[Any]): Boolean = metadata.get(e) match {
-    case Some(a: ScalarProperties) => infoComplete(a)
-    case Some(a: StructProperties) => infoComplete(a)
-    case Some(a: MultiArrayProperties) => infoComplete(a)
-    case None => false
-  }
-  def dataComplete(a: ScalarProperties): Boolean = true
-  def dataComplete(a: StructProperties): Boolean = true
-  def dataComplete(a: MultiArrayProperties): Boolean = true
+  override def dataComplete(a: ScalarProperties): Boolean = true
+  override def dataComplete(a: StructProperties): Boolean = true
+  override def dataComplete(a: ArrayProperties): Boolean = true
 
   /** 
    * Traverse IR checking all encountered symbols for metadata completeness
    */
-  final def checkCompleteness[A](b: Block[A]) = {
+  final def checkCompleteness[A](b: Block[A]): HashSet[Exp[Any]] = {
     val checker = new FatBlockTraversal {
         val incompleteSet = new HashSet[Exp[Any]]()
         override def traverseStm(stm: Stm): Unit = {
@@ -107,27 +100,12 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
     checker.traverseBlock(b)
     checker.incompleteSet
   }
-  
-  /**
-   * Testing completeness on metadata containers
-   */
-  final def isComplete(a: Option[SymbolProperties]): Boolean = a match {
-    case Some(am) => isComplete(am)
-    case None => false
-  }
-  final def isComplete(a: SymbolProperties): Boolean = a match {
-    case a: ScalarProperties => dataComplete(a)
-    case a: StructProperties => 
-      a.fields.map{f => isComplete(a.child(f))}.reduce{_&&_} && dataComplete(a)
-    case a: MultiArrayProperties => 
-      isComplete(a.child) && dataComplete(a)
-  }
 
   /** 
    * Testing completeness / presence of symbol metadata mapping
    */ 
-  final def isComplete(e: Exp[Any]) = isComplete(metadata.get(e))
-  final def isUnknown(e: Exp[Any]) = !metadata.contains(e)
+  final def isComplete(e: Exp[Any]): Boolean = isComplete(metadata.get(e))
+  final def isUnknown(e: Exp[Any]): Boolean = !metadata.contains(e)
 
   /////////////////////////////////
   // Helper functions for analysis
@@ -170,8 +148,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
     }
   }
   final def setMetadata(e: Exp[Any], m: Metadata): Unit = {
-    val info = Seq(metakey(m) -> Some(m))
-    val newData = initExp(e, info)
+    val newData = initExp(e, PropertyMap(m.name -> m))
     updateProperties(e, newData)
   }
   /**
@@ -179,25 +156,25 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
    * Uses notifyUpdate() to note if symbol-metadata mapping has changed
    */
   final def setChild(e: Exp[Any], p: Option[SymbolProperties]): Unit = {
-    val newData = initExp(e, Nil, p)
+    val newData = initExp(e, NoData, p)
     updateProperties(e, newData)
   } 
   final def setField(e: Exp[Any], p: Option[SymbolProperties], name: String): Unit = {
-    val newData = initExp(e, Nil, p, name)
+    val newData = initExp(e, NoData, p, name)
     updateProperties(e, newData)
   }
   /**
    * Set child based on child type
    */
   final def childTypeTip[A](e: Exp[Any], childType: Manifest[A], name: String = "") {
-    val newData = initExp(e, Nil, initSym(childType), name)
+    val newData = initExp(e, NoData, initSym(childType), name)
     updateProperties(e, newData)
   }
 
-  final def getChild(e: Exp[Any], name: String = ""): Option[SymbolProperties] = metadata.get(e) match {
-    case Some(p: MultiArrayProperties) => p.child
+  final def getChild(e: Exp[Any]): Option[SymbolProperties] = metadata.get(e) match {
+    case Some(p: ArrayProperties) => p.child
     case Some(_) =>
-      warn("Attempted to get child of non-MultiArray symbol")
+      warn("Attempted to get child of non-Array symbol")
       None
     case None => None
   }
@@ -244,8 +221,8 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
     }
     else {
       val prevData = metadata(e)
-      if (prevData canBeUpdatedWith newData)
-        metadata(e) = (prevData updateWith newData)
+      if (canMergeLeft(prevData, newData))
+        metadata(e) = mergeLeft(prevData, newData)
       else {
         fatalerr("Attempted to merge incompatible metadata in info update for symbol:\n" + 
                   strDef(e) + "\nat: " + quotePos(e) + "\n" + 
@@ -254,33 +231,37 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
                 )
       }
 
-      if (!(prevData matches newData)) notifyUpdate()
+      if (!matches(prevData, newData)) notifyUpdate()
     }
   }
 
   private def initSym[A](
     mA: Manifest[A], 
-    info: Iterable[(String, Option[Metadata])] = Nil, 
+    data: PropertyMap[Metadata] = NoData,
     child: Option[SymbolProperties] = None,
     field: String = ""
   ): SymbolProperties = mA match {
     case StructType(_,elems) =>
-      val fieldData = elems.map{
-        elem => 
+      val fieldData = elems.map{ elem => 
           val metadata = if (field == elem._1) child else Some(initSym(elem._2))
           elem._1 -> metadata
       } 
-      StructProperties(fieldData, info)
+      StructProperties(PropertyMap(fieldData), data)
     case _ =>
-      if isSubType(mA.erasure,classOf[DeliteMultiArray[_]]) 
-        MultiArrayProperties(child, info)
+      if (isSubType(mA.erasure,classOf[DeliteMultiArray[_]]))
+        ArrayProperties(child, data)
       else
-        ScalarProperties(info)
+        ScalarProperties(data)
   }
 
-  private def initExp(e: Exp[Any], info: Iterable[(String, Option[Metadata])] = Nil): SymbolProperties = e match {
-    case Const(_) => ScalarProperties(info)
-    case _ => initSym(e.tp, info)
+  private def initExp(
+    e: Exp[Any], 
+    data: PropertyMap[Metadata] = NoData,
+    child: Option[SymbolProperties] = None,
+    field: String = ""
+  ): SymbolProperties = e match { 
+    case Const(_) => ScalarProperties(data)
+    case _ => initSym(e.tp, data, child, field)
   }
 
   final def notifyUpdate() { changed = true }
@@ -291,52 +272,52 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
    * no metadata instances
   */
 
-  final def processStructure(e: Exp[A], d: Def[_]): Unit = {
+  final def processStructure[A](e: Exp[A], d: Def[_]): Unit = {
     d match {
-      case op @ DeliteMultiArraySortIndices(_,_) => 
+      case op@DeliteMultiArraySortIndices(_,_) => 
         typeTip(e, op.mR)
         childTypeTip(e, manifest[Int])
   
-      case op @ DeliteStringSplit(_,_,_) => 
+      case op@DeliteStringSplit(_,_,_) => 
         typeTip(e, op.mR)
         childTypeTip(e, manifest[String])
 
-      case op @ DeliteMultiArrayNew(_) =>
+      case op@DeliteMultiArrayNew(_) =>
         typeTip(e, op.mR)
         childTypeTip(e, op.mA)
 
-      case op @ DeliteMultiArrayView(t,_,_,_) => 
+      case op@DeliteMultiArrayView(t,_,_,_) => 
         typeTip(e, op.mR)
         childTypeTip(e, op.mA)         // set child type from IR node
         setChild(e, getChild(t))       // set child type from target
 
-      case op @ DeliteMultiArrayPermute(ma,_) =>
+      case op@DeliteMultiArrayPermute(ma,_) =>
         typeTip(e, op.mR)
         childTypeTip(e, op.mA)
         setChild(e, getChild(ma))
 
-      case op @ DeliteMultiArrayReshape(ma,_) =>       
+      case op@DeliteMultiArrayReshape(ma,_) =>       
         typeTip(e, op.mR)
         childTypeTip(e, op.mA)
         setChild(e, getChild(ma))
 
-      case op @ DeliteMultiArrayApply(ma,_) =>
+      case op@DeliteMultiArrayApply(ma,_) =>
         typeTip(e, op.mR)
         setProps(e, getChild(ma))
 
-      case op @ DeliteMultiArrayFromFunction(dims,_) =>
+      case op@DeliteMultiArrayFromFunction(dims,_) =>
         typeTip(e, op.mR)
         childTypeTip(e, op.mA)
         setChild(e, getProps(op.body.res))
 
-      case op @ DeliteMultiArrayMap(ma,_) =>
+      case op@DeliteMultiArrayMap(ma,_) =>
         typeTip(op.a, op.mA)
         setProps(op.a, getChild(ma))
         typeTip(e, op.mR)
         childTypeTip(e, op.mT)
         setChild(e, getProps(op.body.res))
 
-      case op @ DeliteMultiArrayZipWith(ma,mb,_) =>
+      case op@DeliteMultiArrayZipWith(ma,mb,_) =>
         typeTip(op.a, op.mA)
         typeTip(op.b, op.mB)
         setProps(op.a, getChild(ma))
@@ -346,7 +327,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
         childTypeTip(e, op.mT)
         setChild(e, getProps(op.body.res))
 
-      case op @ DeliteMultiArrayReduce(ma,_,_) =>
+      case op@DeliteMultiArrayReduce(ma,_,_) =>
         typeTip(op.a1, op.mA)
         typeTip(op.a2, op.mA)
         setProps(op.a1, getChild(ma))
@@ -355,11 +336,11 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
         typeTip(e, op.mR)
         setProps(e, getProps(op.body.res))
 
-      case op @ DeliteMultiArrayForeach(ma,_) =>
+      case op@DeliteMultiArrayForeach(ma,_) =>
         typeTip(op.a, op.mA)
         updateProps(op.a, getChild(ma))
 
-      case op @ DeliteMultiArrayNDMap(in,_,_) =>
+      case op@DeliteMultiArrayNDMap(in,_,_) =>
         childTypeTip(op.ma, op.mA)
         setChild(op.ma, getChild(in))
 
@@ -367,7 +348,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
         childTypeTip(e, op.mB)
         setChild(e, getChild(op.body.res))
 
-      case op @ DeliteMultiArrayMapFilter(ma,_,_) =>
+      case op@DeliteMultiArrayMapFilter(ma,_,_) =>
         typeTip(op.a, op.mA)
         setProps(op.a, getChild(ma))
 
@@ -375,7 +356,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
         childTypeTip(e, op.mB)
         setChild(e, getProps(op.body.res))
 
-      case op @ DeliteMultiArrayFlatMap(ma,_) =>
+      case op@DeliteMultiArrayFlatMap(ma,_) =>
         typeTip(op.a, op.mA)
         setProps(op.a, getChild(ma))
 
@@ -383,18 +364,18 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
         childTypeTip(e, op.mB)
         setChild(e, getChild(op.body.res))
 
-      case op @ DeliteMultiArrayUpdate(ma,_,x) => 
+      case op@DeliteMultiArrayUpdate(ma,_,x) => 
         val updatedChild = meet(getChild(ma), getProps(x))
         setChild(ma, updatedChild)
 
-      case op @ DeliteMultiArrayMutableMap(ma,_) =>
+      case op@DeliteMultiArrayMutableMap(ma,_) =>
         typeTip(op.a, op.mA)
         setProps(op.a, getChild(ma))
 
         val updatedChild = meet(getChild(ma), getProps(op.body.res))
         setChild(ma, updatedChild)
 
-      case op @ DeliteMultiArrayMutableZipWith(ma,mb,_) =>
+      case op@DeliteMultiArrayMutableZipWith(ma,mb,_) =>
         typeTip(op.a, op.mA)
         typeTip(op.b, op.mB)
         setProps(op.a, getChild(ma))
@@ -405,19 +386,19 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
 
       // Struct ops
 
-      case op @ Struct(_,elems) => 
+      case op@Struct(_,elems) => 
         // TODO: Assuming here that struct-ness of e is caught in initSym
         // Is this always the case?
         elems foreach {elem => setField(e, getProps(e._2), elem._1) }
 
-      case op @ FieldApply(struct, field) => 
+      case op@FieldApply(struct, field) => 
         setProps(e, getField(struct, field))
 
-      case op @ FieldUpdate(struct, field, rhs) => 
+      case op@FieldUpdate(struct, field, rhs) => 
         val updatedField = meet(getField(struct, field), getProps(rhs))
         setField(struct, updatedField, field)
 
-      case op @ NestedFieldUpdate(struct, fields, rhs) => 
+      case op@NestedFieldUpdate(struct, fields, rhs) => 
         var newChild = StructProperties(Seq(fields.last -> getProps(rhs)))
         var i = fields.length - 1
         while (i > 0) {
