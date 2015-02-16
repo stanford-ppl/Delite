@@ -146,6 +146,7 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
     block
     stream.println("}")
   }
+  def throwException(msg: String): String = "throw new std::runtime_error(\"" + msg + "\");"
 
   private def emitFieldsAndConstructor() {
     val fields = if (cppMemMgr == "refcnt") kernelInputVals.map(i => remapWithRef(i.tp) + quote(i)) ++ kernelInputVars.map(i => wrapSharedPtr(deviceTarget.toString + "Ref" + unwrapSharedPtr(remap(i.tp))) + " " + quote(i))

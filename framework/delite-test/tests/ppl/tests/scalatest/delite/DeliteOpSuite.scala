@@ -123,6 +123,10 @@ trait DeliteReduce extends DeliteTestBase {
     val ve = DeliteArrayBuffer.fromFunction(0){ i => 0 }
     collect(ve.reduce( _ + _ )(0) == 0)
 
+    // This throws an exception, how to test? Try-catch not lifted...
+    // val v3 = DeliteArray.fromFunction(0){ i => 0 }.reduceException(_+_)
+    // collect(v3 == -1)
+
     mkReport
   }
 }

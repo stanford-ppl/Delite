@@ -488,47 +488,25 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
         stream.println(quote(getBlockResult(elem.func)))
         stream.println("})")
         
-        
       case (sym, elem: DeliteReduceElem[_]) =>   
         stream.println("// " + sym.toString + "=" + elem + " / " + Def.unapply(sym))
         stream.println("val " + quote(sym) + " = reduce(")
         // loop size
         stream.println(quote(op.size) + ",")
-        // func
+        // iFunc
         stream.println("{")
         stream.println(makeBoundVarArgs(op.v))
-        emitBlock(elem.func)
-        stream.println(quote(getBlockResult(elem.func)))
+        emitBlock(elem.iFunc)
+        stream.println(quote(getBlockResult(elem.iFunc)))
         stream.println("},")
-        // conditions
-        stream.print("scala.List(")
-        for (i <- 0 until elem.cond.length) {
-          stream.println("{")
-          stream.println(makeBoundVarArgs(op.v))
-          emitBlock(elem.cond(i))
-          stream.println(quote(getBlockResult(elem.cond(i))))
-          stream.print("}")
-          if (i < elem.cond.length - 1) stream.println(",")
-        }
-        stream.println("),") 
-        // zero
-        stream.println("{")
-        emitBlock(elem.zero)
-        stream.println(quote(getBlockResult(elem.zero)))
-        stream.println("},") 
-        // accInit
-        stream.println("{")
-        emitBlock(elem.accInit)
-        stream.println(quote(getBlockResult(elem.accInit)))
-        stream.println("},") 
+        // unknownOutputSize
+        stream.println(elem.unknownOutputSize + ",")
         // rFunc
         stream.println("{")
         stream.println(makeBoundVarArgs(elem.rV._1,elem.rV._2))
         emitBlock(elem.rFunc)
         stream.println(quote(getBlockResult(elem.rFunc)))
-        stream.println("},")
-        // stripFirst
-        stream.println(elem.stripFirst)
+        stream.println("}")
         stream.println(")")
     }
   }

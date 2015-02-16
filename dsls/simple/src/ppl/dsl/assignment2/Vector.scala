@@ -75,10 +75,10 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with DeliteStru
     def func = e => e * s
   }
   
-  case class VectorSum[A:Manifest:Numeric](in: Exp[Vector[A]]) extends DeliteOpReduce[A] {
+  case class VectorSum[A:Manifest:Numeric](in: Exp[Vector[A]]) extends DeliteOpReduceZero[A] {
     val size = copyTransformedOrElse(_.size)(in.length)
-    val zero = unit(0).AsInstanceOf[A]
-    def func = (a,b) => a + b
+    val accInit = reifyEffects(unit(0).AsInstanceOf[A])
+    def reduce = (a,b) => a + b
   }
   
   case class VectorFilter[A:Manifest](in: Exp[Vector[A]], cond: Exp[A] => Exp[Boolean]) extends DeliteOpFilter[A,A,Vector[A]] {

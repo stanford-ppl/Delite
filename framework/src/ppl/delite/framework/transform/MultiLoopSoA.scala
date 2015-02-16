@@ -12,8 +12,8 @@ trait MultiloopSoATransformWithReduceExp extends MultiloopSoATransformExp {
 
   //TODO: merge this into standard SoA transform and check safety
   override def transformLoop(stm: Stm): Option[Exp[Any]] = stm match {
-    case TP(sym, r:DeliteOpReduceLike[_]) if r.mutable => None // mutable reduces don't work yet
-    case TP(sym, Loop(size, v, body: DeliteReduceElem[a])) => soaReduce[a](size,v,body)(body.mA)
+// case TP(sym, r:DeliteOpReduceLike[_]) if r.mutable => None // mutable reduces don't work yet
+// case TP(sym, Loop(size, v, body: DeliteReduceElem[a])) => soaReduce[a](size,v,body)(body.mA)
     case TP(sym, Loop(size, v, body: DeliteHashReduceElem[k,v,i,cv])) => soaHashReduce[k,v,i,cv](size,v,body)(body.mK,body.mV,body.mI,body.mCV)
     case _ => super.transformLoop(stm)
   }
@@ -193,53 +193,53 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
   
   
   //reduce elems: unwrap result if elem is a Struct
-  def soaReduce[A:Manifest](size: Exp[Int], v: Sym[Int], body: DeliteReduceElem[A]): Option[Exp[A]] = t(body.func) match {
-    case StructBlock(tag,elems) =>       
-      def copyLoop[B:Manifest](f: Block[B], r: Block[B], z: Block[B], rv1: Exp[B], rv2: Exp[B]): Exp[B] = {
-        simpleLoop(t(size), t(v).asInstanceOf[Sym[Int]], DeliteReduceElem[B](
-          func = f,
-          cond = body.cond.map(t(_)),
-          zero = z,
-          accInit = reifyEffects(fatal(unit("accInit not transformed")))(manifest[B]), //unwrap this as well to support mutable reduce
-          rV = (rv1.asInstanceOf[Sym[B]], rv2.asInstanceOf[Sym[B]]),
-          rFunc = r,
-          stripFirst = !isPrimitiveType(manifest[B]),
-          numDynamicChunks = body.numDynamicChunks
-        ))
-      }
+// def soaReduce[A:Manifest](size: Exp[Int], v: Sym[Int], body: DeliteReduceElem[A]): Option[Exp[A]] = t(body.func) match {
+//   case StructBlock(tag,elems) =>       
+//     def copyLoop[B:Manifest](f: Block[B], r: Block[B], z: Block[B], rv1: Exp[B], rv2: Exp[B]): Exp[B] = {
+//       simpleLoop(t(size), t(v).asInstanceOf[Sym[Int]], DeliteReduceElem[B](
+//         func = f,
+//         cond = body.cond.map(t(_)),
+//         zero = z,
+//         accInit = reifyEffects(fatal(unit("accInit not transformed")))(manifest[B]), //unwrap this as well to support mutable reduce
+//         rV = (rv1.asInstanceOf[Sym[B]], rv2.asInstanceOf[Sym[B]]),
+//         rFunc = r,
+//         stripFirst = !isPrimitiveType(manifest[B]),
+//         numDynamicChunks = body.numDynamicChunks
+//       ))
+//     }
 
-      def soaTransform[B:Manifest](func: Block[B], rFunc: Block[B], zero: Block[B], rv1: Exp[B], rv2: Exp[B]): Exp[B] = func match {
-        case Block(f @ Def(Struct(_,_))) => rFunc match {
-          case Block(r @ Def(Struct(tag,elems))) => zero match { //TODO: mutable reduce? reflectMutableSym on rV causes issues...
-            case Block(z @ Def(Struct(_,_))) =>
-              val ctx = implicitly[SourceContext]
-              val newElems = elems map {
-                case (i, e @ Def(Struct(_,_))) => (i, soaTransform(Block(field(f,i)(e.tp,ctx)), Block(field(r,i)(e.tp,ctx)), Block(field(z,i)(e.tp,ctx)), field(rv1,i)(e.tp,ctx), field(rv2,i)(e.tp,ctx))(e.tp))
-                case (i, c@Const(_)) => (i, c)
-                case (i, e) => (i, copyLoop(Block(field(f,i)(e.tp,ctx)), Block(field(r,i)(e.tp,ctx)), Block(field(z,i)(e.tp,ctx)), field(rv1,i)(e.tp,ctx), field(rv2,i)(e.tp,ctx))(e.tp))
-              }
-              registerFused(newElems)
-              struct[B](tag, newElems)
-            case Block(Def(a)) => 
-              Console.println(a)
-              sys.error("transforming reduce elem but zero is not a struct and func is")
-          }
-          case Block(Def(a)) =>
-            Console.println(a) 
-            sys.error("transforming reduce elem but rFunc is not a struct and func is")
-        }
-        case Block(Def(a)) => 
-          Console.println(a)
-          sys.error("transforming reduce elem but func is not a struct and rFunc is")
-      }
+//     def soaTransform[B:Manifest](func: Block[B], rFunc: Block[B], zero: Block[B], rv1: Exp[B], rv2: Exp[B]): Exp[B] = func match {
+//       case Block(f @ Def(Struct(_,_))) => rFunc match {
+//         case Block(r @ Def(Struct(tag,elems))) => zero match { //TODO: mutable reduce? reflectMutableSym on rV causes issues...
+//           case Block(z @ Def(Struct(_,_))) =>
+//             val ctx = implicitly[SourceContext]
+//             val newElems = elems map {
+//               case (i, e @ Def(Struct(_,_))) => (i, soaTransform(Block(field(f,i)(e.tp,ctx)), Block(field(r,i)(e.tp,ctx)), Block(field(z,i)(e.tp,ctx)), field(rv1,i)(e.tp,ctx), field(rv2,i)(e.tp,ctx))(e.tp))
+//               case (i, c@Const(_)) => (i, c)
+//               case (i, e) => (i, copyLoop(Block(field(f,i)(e.tp,ctx)), Block(field(r,i)(e.tp,ctx)), Block(field(z,i)(e.tp,ctx)), field(rv1,i)(e.tp,ctx), field(rv2,i)(e.tp,ctx))(e.tp))
+//             }
+//             registerFused(newElems)
+//             struct[B](tag, newElems)
+//           case Block(Def(a)) => 
+//             Console.println(a)
+//             sys.error("transforming reduce elem but zero is not a struct and func is")
+//         }
+//         case Block(Def(a)) =>
+//           Console.println(a) 
+//           sys.error("transforming reduce elem but rFunc is not a struct and func is")
+//       }
+//       case Block(Def(a)) => 
+//         Console.println(a)
+//         sys.error("transforming reduce elem but func is not a struct and rFunc is")
+//     }
 
-      val (rv1, rv2) = unwrapRV(tag, elems, body.rV)
-      val res = soaTransform(t(body.func), t(body.rFunc), t(body.zero), rv1, rv2)
-      printlog("successfully transformed reduce elem with type " + manifest[A])
-      Some(res)
-      
-    case a => printlog("unable to transform reduce elem: found " + a + " with type " + manifest[A]); None
-  }
+//     val (rv1, rv2) = unwrapRV(tag, elems, body.rV)
+//     val res = soaTransform(t(body.func), t(body.rFunc), t(body.zero), rv1, rv2)
+//     printlog("successfully transformed reduce elem with type " + manifest[A])
+//     Some(res)
+    
+//   case a => printlog("unable to transform reduce elem: found " + a + " with type " + manifest[A]); None
+// }
 
   private def unwrapRV[B:Manifest](tag: StructTag[B], elems: Seq[(String,Exp[Any])], rv: (Exp[B], Exp[B])): (Exp[B], Exp[B]) = {
     def makeRV[B:Manifest](tag: StructTag[B], elems: Seq[(String,Exp[Any])]): Exp[B] = {

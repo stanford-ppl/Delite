@@ -26,10 +26,10 @@ trait ProfileArrayOpsExp extends ProfileArrayOps with NumericOpsExp with Primiti
 
   // a Delite parallel operation! was it really that easy?
   case class ReportSum(in: Exp[ProfileArray]) 
-    extends DeliteOpReduce[Double] {
-      val zero = unit(0.0)
+    extends DeliteOpReduceZero[Double] {
+      val accInit = reifyEffects(unit(0.0))
       val size = copyTransformedOrElse(_.size)(in.length)
-      def func = (a,b) => a + b
+      def reduce = (a,b) => a + b
   }
 
   // median is a little trickier, let's just be sequential

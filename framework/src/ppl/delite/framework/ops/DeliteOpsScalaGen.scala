@@ -125,6 +125,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     block
     stream.println("}")
   }
+  def throwException(msg: String): String = "throw new UnsupportedOperationException(\"" + msg + "\")"
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case s:DeliteOpSingleTask[_] => {

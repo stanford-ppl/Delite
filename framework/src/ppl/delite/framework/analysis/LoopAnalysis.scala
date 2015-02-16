@@ -323,8 +323,8 @@ trait NestedLoopMappingAnalysis extends FatBlockTraversal with CombineTTPSchedul
       case elem: DeliteHashIndexElem[_,_] => elem.keyFunc :: elem.cond
       case elem: DeliteCollectElem[_,_,_] => List(elem.iFunc)
       case elem: DeliteForeachElem[_] => List(elem.func)
-      case elem: DeliteReduceElem[_] => elem.func :: elem.cond
-      case elem: DeliteReduceTupleElem[_,_] => elem.func._1 :: elem.func._2 :: elem.cond
+// case elem: DeliteReduceElem[_] => elem.func :: elem.cond
+// case elem: DeliteReduceTupleElem[_,_] => elem.func._1 :: elem.func._2 :: elem.cond
     }
   }
 
