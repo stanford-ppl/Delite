@@ -2,21 +2,23 @@ package ppl.delite.framework.analysis
 
 import scala.language.reflectiveCalls
 
-import java.io._
 import scala.collection.mutable.{HashMap,HashSet}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.FatBlockTraversal
 import scala.reflect.SourceContext
 
-import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollection}
-import ppl.delite.framework.datastructures.{DeliteMultiArray,DeliteArrayOpsExp}
+import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.delite.framework.datastructures._
+
+import ppl.delite.framework.Util._
 import ppl.delite.framework.Config
 
-trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
+trait AnalysisBase extends FatBlockTraversal {
   val IR: DeliteOpsExp
   import IR._
-  import ppl.delite.framework.Util._    // for isSubType(...)
+
+  val IRMetadata: DeliteMetadata
+  import IRMetadata._
 
   //////////////////////////////////////////////////////////////
   // Functions and fields which probably will never need to be 
@@ -76,22 +78,17 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
   // Metadata completeness checks
 
   /** 
-   * Test if all metadata for a symbol has been filled in 
-   * Likely will want different cases for different symbol types
-   */ 
-  override def dataComplete(a: ScalarProperties): Boolean = true
-  override def dataComplete(a: StructProperties): Boolean = true
-  override def dataComplete(a: ArrayProperties): Boolean = true
-
-  /** 
    * Traverse IR checking all encountered symbols for metadata completeness
    */
   final def checkCompleteness[A](b: Block[A]): HashSet[Exp[Any]] = {
-    val checker = new FatBlockTraversal {
+    val checker = 
+      new FatBlockTraversal {
+        val IR: AnalysisBase.this.IR.type = AnalysisBase.this.IR
         val incompleteSet = new HashSet[Exp[Any]]()
+        
         override def traverseStm(stm: Stm): Unit = {
           stm match {
-            case TP(s,_) if !isComplete(s) => incompleteSet += s
+            case TP(s,_) if !completed(s) => incompleteSet += s
             case _ => // Nothing
           }
           super.traverseStm(stm)
@@ -104,8 +101,8 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
   /** 
    * Testing completeness / presence of symbol metadata mapping
    */ 
-  final def isComplete(e: Exp[Any]): Boolean = isComplete(metadata.get(e))
-  final def isUnknown(e: Exp[Any]): Boolean = !metadata.contains(e)
+  final def completed(e: Exp[Any]): Boolean = isComplete(metadata.get(e))
+  final def unknown(e: Exp[Any]): Boolean = !metadata.contains(e)
 
   /////////////////////////////////
   // Helper functions for analysis
@@ -148,7 +145,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
     }
   }
   final def setMetadata(e: Exp[Any], m: Metadata): Unit = {
-    val newData = initExp(e, PropertyMap(m.name -> m))
+    val newData = initExp(e, new PropertyMap(m.name -> Some(m)))
     updateProperties(e, newData)
   }
   /**
@@ -167,7 +164,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
    * Set child based on child type
    */
   final def childTypeTip[A](e: Exp[Any], childType: Manifest[A], name: String = "") {
-    val newData = initExp(e, NoData, initSym(childType), name)
+    val newData = initExp(e, NoData, Some(initSym(childType)), name)
     updateProperties(e, newData)
   }
 
@@ -193,7 +190,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
 
   def isDataStructure[A](mA: Manifest[A]): Boolean = mA match {
     case StructType(_,_) => true
-    case _ => isSubType(mA.erasure,classOf[DeliteMultiArray[_]])
+    case _ => isSubtype(mA.erasure,classOf[DeliteMultiArray[_]])
   }
 
   final def verbose = Config.debug
@@ -207,9 +204,9 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
   final def error(x: =>Any) { System.err.println("[\u001B[31merror\u001B[0m] " + name + ": " + x); hadErrors = true }
   final def fatalerr(x: =>Any) { System.err.println("[\u001B[31merror\u001B[0m] " + name + ": " + x); System.exit(0) }
 
-  final def check(cond: Boolean, x: => Any, c: SourceContext = null) {
+  final def check(cond: Boolean, x: => Any, lhs: Exp[Any] = null) {
     if (!cond)  {
-      val ctx = if (c == null) "" else c.fileName.split("/").last + ":" + c.line + ": "
+      val ctx = if (lhs == null) "" else quotePos(lhs) + ": "
       error(ctx + x)
     }
   }
@@ -226,8 +223,8 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
       else {
         fatalerr("Attempted to merge incompatible metadata in info update for symbol:\n" + 
                   strDef(e) + "\nat: " + quotePos(e) + "\n" + 
-                  "Prev metadata: " + prevData.makeString() + "\n" +
-                  "New  metadata: " + newData.makeString() + "\n"
+                  "Prev metadata: " + makeString(prevData) + "\n" +
+                  "New  metadata: " + makeString(newData) + "\n"
                 )
       }
 
@@ -248,7 +245,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
       } 
       StructProperties(PropertyMap(fieldData), data)
     case _ =>
-      if (isSubType(mA.erasure,classOf[DeliteMultiArray[_]]))
+      if (isSubtype(mA.erasure,classOf[DeliteMultiArray[_]]))
         ArrayProperties(child, data)
       else
         ScalarProperties(data)
@@ -314,7 +311,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
         typeTip(op.a, op.mA)
         setProps(op.a, getChild(ma))
         typeTip(e, op.mR)
-        childTypeTip(e, op.mT)
+        childTypeTip(e, op.mB)
         setChild(e, getProps(op.body.res))
 
       case op@DeliteMultiArrayZipWith(ma,mb,_) =>
@@ -338,7 +335,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
 
       case op@DeliteMultiArrayForeach(ma,_) =>
         typeTip(op.a, op.mA)
-        updateProps(op.a, getChild(ma))
+        setProps(op.a, getChild(ma))
 
       case op@DeliteMultiArrayNDMap(in,_,_) =>
         childTypeTip(op.ma, op.mA)
@@ -354,7 +351,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
 
         typeTip(e, op.mR)
         childTypeTip(e, op.mB)
-        setChild(e, getProps(op.body.res))
+        setChild(e, getProps(op.mapFunc.res))
 
       case op@DeliteMultiArrayFlatMap(ma,_) =>
         typeTip(op.a, op.mA)
@@ -389,7 +386,7 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
       case op@Struct(_,elems) => 
         // TODO: Assuming here that struct-ness of e is caught in initSym
         // Is this always the case?
-        elems foreach {elem => setField(e, getProps(e._2), elem._1) }
+        elems foreach {elem => setField(e, getProps(elem._2), elem._1) }
 
       case op@FieldApply(struct, field) => 
         setProps(e, getField(struct, field))
@@ -399,21 +396,23 @@ trait AnalysisBase extends FatBlockTraversal with DeliteMetadata {
         setField(struct, updatedField, field)
 
       case op@NestedFieldUpdate(struct, fields, rhs) => 
-        var newChild = StructProperties(Seq(fields.last -> getProps(rhs)))
+        var newChild: SymbolProperties = StructProperties(new PropertyMap(fields.last -> getProps(rhs)), NoData)
         var i = fields.length - 1
         while (i > 0) {
-          newData = StructProperties(Seq(fields(i) -> newData))
+          val children = new PropertyMap(fields(i) -> Some(newChild))
+          newChild = StructProperties(children, NoData)
           i -= 1
         }
-        val updatedChild = meet(getField(struct, fields.first), newChild)
-        setField(struct, updatedChild, fields.first)
+        
+        val updatedChild = meet(getField(struct, fields.head), Some(newChild))
+        setField(struct, updatedChild, fields.head)
 
       // Misc. Delite ops
-      case DeliteIfThenElse(cond, thenp, elsep, _) => 
-        setProps(e, meet(getProps(thenp), getProps(elsep)))
+      case op:DeliteOpCondition[_] => 
+        setProps(e, meet(getProps(op.thenp.res), getProps(op.elsep.res)))
 
-      case DeliteWhile(cond, body) =>
-        setProps(e, getProps(body))
+      case op:DeliteOpWhileLoop =>
+        setProps(e, getProps(op.body.res))
 
       // TODO: Vars have to be dealt with separately?
 

@@ -22,7 +22,7 @@ trait DeliteArray5D[T] extends DeliteMultiArray[T]
 // TODO: Really not sure about this abstraction yet, except for type signature [T,R]
 // Seq[Seq[Int]] intended to represent various dimension layering and order... potentially could work
 
-trait DeliteMultiArrayLayouts extends DeliteMetadata {
+/*trait DeliteMultiArrayLayouts extends DeliteMetadata {
 
   abstract class Layout[T:Manifest,R:Manifest] extends Metadata {
     val dims: Seq[Seq[Int]]
@@ -37,9 +37,9 @@ trait DeliteMultiArrayLayouts extends DeliteMetadata {
   case class SinglyNested[T:Manifest](rank: Int, inner: Int) extends Layout[T,DeliteArray[T]] { 
     override val dims = Seq(Seq.tabulate(inner-1){i=>i+1},Seq.tabulate(rank-inner+1){i=>i+inner}) 
   }
-}
+}*/
 
-trait DeliteMultiArrayOps extends Base with DeliteMultiArrayLayouts {
+trait DeliteMultiArrayOps extends Base {
   
   object DeliteMultiArray {
     def apply[T:Manifest](dims: Rep[Int]*)(implicit ctx: SourceContext) = dmultia_new(dims)
@@ -50,8 +50,6 @@ trait DeliteMultiArrayOps extends Base with DeliteMultiArrayLayouts {
   }
 
   implicit def repMultiAtoMultiAOps[T:Manifest](ma: Rep[DeliteMultiArray[T]])(implicit ctx: SourceContext) = new DeliteMultiArrayOpsCls(ma)
-  implicit def repArray1DtoArray1DOps[T:Manifest](ma: Rep[DeliteArray1D[T]])(implicit ctx: SourceContext) = new DeliteArray1DOpsCls(ma)
-
   class DeliteMultiArrayOpsCls[T:Manifest](ma: Rep[DeliteMultiArray[T]])(implicit ctx: SourceContext) {
     // --- rank casts
     def as1D: Rep[DeliteArray1D[T]] = dmultia_as_1D(ma)
@@ -69,30 +67,71 @@ trait DeliteMultiArrayOps extends Base with DeliteMultiArrayLayouts {
     def apply(i: Rep[Int]*): Rep[T] = dmultia_apply(ma,i)
     def update(i: Seq[Rep[Int]], x: Rep[T]): Rep[Unit] = dmultia_update(ma,i,x)
     
-    // --- copies/reshaping
-    def mutable = dmultia_mutable(ma)
-    
     // --- parallel ops
     def map[B:Manifest](f: Rep[T] => Rep[B]): Rep[DeliteMultiArray[B]] = dmultia_map(ma,f)
     def zip[B:Manifest,R:Manifest](y: Rep[DeliteMultiArray[B]])(f: (Rep[T],Rep[B]) => Rep[R]): Rep[DeliteMultiArray[R]] = dmultia_zipwith(ma,y,f)
     def reduce(f: (Rep[T],Rep[T]) => Rep[T], zero: Rep[T]): Rep[T] = dmultia_reduce(ma,f,zero)
     def foreach(f: Rep[T] => Rep[Unit]): Rep[Unit] = dmultia_foreach(ma,f)
-    def filter(f: Rep[T] => Rep[Boolean]): Rep[DeliteMultiArray[B]] = dmultia_filter(ma,f)
-    def flatMap[B:Manifest](f: Rep[T] => Rep[DeliteMultiArray[B]])(implicit ctx: SourceContext) = dmultia_flatmap(ma,f)
+    def forIndices(f: Rep[Int] => Rep[Unit]): Rep[Unit] = dmultia_forindices(ma,f)
+    def groupBy[K:Manifest](key: Rep[T] => Rep[K]) = dmultia_groupBy(ma,key)
     def groupByReduce[K:Manifest, V:Manifest](key: Rep[T] => Rep[K], value: Rep[T] => Rep[V], reduce: (Rep[V],Rep[V]) => Rep[V]) = dmultia_groupByReduce(ma,key,value,reduce)
     
     def mmap(f: Rep[T] => Rep[T]): Rep[Unit] = dmultia_mmap(ma,f)
-    def mzip(y: Rep[DeliteMultiArray[T]])(f: (Rep[T],Rep[T]) => Rep[T]): Rep[Unit] = dmultia_mzipwith(ma,y,f)
+    def mzip[B:Manifest](y: Rep[DeliteMultiArray[B]])(f: (Rep[T],Rep[B]) => Rep[T]): Rep[Unit] = dmultia_mzipwith(ma,y,f)
+  
+    def mkString(dels: Rep[String]*) = dmultia_mkstring(ma,dels)
   }
 
+  implicit def repArray1DtoArray1DOps[T:Manifest](ma: Rep[DeliteArray1D[T]])(implicit ctx: SourceContext) = new DeliteArray1DOpsCls(ma)
   class DeliteArray1DOpsCls[T:Manifest](ma: Rep[DeliteArray1D[T]])(implicit ctx: SourceContext) {
     // --- properties
     def length: Rep[Int] = dmultia_size(ma)
 
-    // --- single element
-    def apply(i: Rep[Int]): Rep[T] = dmultia_apply(ma,Seq(i))
+    // --- mutability / buffering
     def update(i: Rep[Int], x: Rep[T]): Rep[Unit] = dmultia_update(ma,Seq(i),x)
+    def insert(i: Rep[Int], x: Rep[T]): Rep[Unit] = dmultia_insert(ma,x,i)
+    def append(x: Rep[T]): Rep[Unit] = dmultia_append(ma,x)
+    def remove(start: Rep[Int], len: Rep[Int]) = dmultia_remove(ma, 1, start, len)
+    def remove(i: Rep[Int]) = this.remove(i, unit(1))
+  
+    def insertAll(i: Rep[Int], rhs: Rep[DeliteArray1D[T]]): Rep[Unit] = dmultia_insertAll(ma, rhs, 1, i)
+    def appendAll(rhs: Rep[DeliteArray1D[T]]): Rep[Unit] = dmultia_appendAll(ma, rhs, 1)
+    def ++=(rhs: Rep[DeliteArray1D[T]]): Rep[Unit] = dmultia_appendAll(ma, rhs, 1)
+
+    // --- 1D parallel ops
+    def filter(f: Rep[T] => Rep[Boolean]): Rep[DeliteArray1D[T]] = dmultia_filter(ma,f)
+    def flatMap[B:Manifest](f: Rep[T] => Rep[DeliteArray1D[B]])(implicit ctx: SourceContext) = dmultia_flatmap(ma,f)  
   }
+
+  implicit def repArray2DToArray2DOps[T:Manifest](ma: Rep[DeliteArray2D[T]])(implicit ctx: SourceContext) = new DeliteArray2DOpsCls(ma)
+  class DeliteArray2DOpsCls[T:Manifest](ma: Rep[DeliteArray2D[T]])(implicit ctx: SourceContext) {
+    // --- mutability/buffering
+    def update(i: Rep[Int], j: Rep[Int], x: Rep[T]): Rep[Unit] = dmultia_update(ma,Seq(i,j),x)
+
+    def insertRow(i: Rep[Int], rhs: Rep[DeliteArray1D[T]]): Rep[Unit] = dmultia_NDinsert(ma, rhs, 1, i)
+    def insertCol(j: Rep[Int], rhs: Rep[DeliteArray1D[T]]): Rep[Unit] = dmultia_NDinsert(ma, rhs, 2, j)
+    def appendRow(rhs: Rep[DeliteArray1D[T]]): Rep[Unit] = dmultia_NDappend(ma, rhs, 1)
+    def appendCol(rhs: Rep[DeliteArray1D[T]]): Rep[Unit] = dmultia_NDappend(ma, rhs, 2)
+    def <<=(rhs: Rep[DeliteArray1D[T]]): Rep[Unit] = this.appendRow(rhs)
+    def <<|(rhs: Rep[DeliteArray1D[T]]): Rep[Unit] = this.appendCol(rhs)
+   
+    def insertRows(i: Rep[Int], rhs: Rep[DeliteArray2D[T]]): Rep[Unit] = dmultia_insertAll(ma, rhs, 1, i)
+    def insertCols(j: Rep[Int], rhs: Rep[DeliteArray2D[T]]): Rep[Unit] = dmultia_insertAll(ma, rhs, 2, i)
+    def appendRows(rhs: Rep[DeliteArray2D[T]]): Rep[Unit] = dmultia_appendAll(ma, rhs, 1)
+    def appendCols(rhs: Rep[DeliteArray2D[T]]): Rep[Unit] = dmultia_appendAll(ma, rhs, 2)
+    def <<=(rhs: Rep[DeliteArray2D[T]]): Rep[Unit] = this.appendRows(rhs)
+    def <<|(rhs: Rep[DeliteArray2D[T]]): Rep[Unit] = this.appendCols(rhs)
+
+    def removeRows(start: Rep[Int], len: Rep[Int]) = dmultia_remove(ma, 1, start, len)
+    def removeCols(start: Rep[Int], len: Rep[Int]) = dmultia_remove(ma, 2, start, len)
+    def removeRow(i: Rep[Int]) = this.removeRows(i, unit(1))
+    def removeCol(i: Rep[Int]) = this.removeCols(i, unit(1))
+
+    // --- 2D parallel ops
+    def mapRows[R:Manifest](f: Rep[DeliteArray1D[T]] => Rep[DeliteArray1D[R]]) = dmultia_NDmap(ma,Seq(1),f)
+    def mapCols[R:Manifest](f: Rep[DeliteArray1D[T]] => Rep[DeliteArray1D[R]]) = dmultia_NDmap(ma,Seq(2),f)
+  }
+
 
   // --- Rank type casts
   def dmultia_as_1D[T:Manifest](ma: Rep[DeliteMultiArray[T]]): Rep[DeliteArray1D[T]]
@@ -138,6 +177,9 @@ trait DeliteMultiArrayOps extends Base with DeliteMultiArrayLayouts {
 
   def dmultia_NDmap[A:Manifest,B:Manifest](ma: Rep[DeliteMultiArray[A]], mdims: Seq[Int], func: Rep[DeliteMultiArray[A]] => Rep[DeliteMultiArray[B]])(implicit ctx: SourceContext): Rep[DeliteMultiArray[B]]
 
+  def dmultia_groupBy[A:Manifest,K:Manifest](ma: Rep[DeliteMultiArray[A]], key: Rep[A] => Rep[K])(implicit ctx: SourceContext): Rep[DeliteHashMap[K,DeliteArray1D[A]]]
+  def dmultia_groupByReduce[A:Manifest,K:Manifest,V:Manifest](ma: Rep[DeliteMultiArray[A]], key: Rep[A] => Rep[K], value: Rep[A] => Rep[V], reduce: (Rep[V],Rep[V]) => Rep[V])(implicit ctx: SourceContext): Rep[DeliteHashMap[K,V]]
+
   // --- Buffer ops
   def dmultia_insert[A:Manifest](ma: Rep[DeliteArray1D[A]], x: Rep[A], index: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
   def dmultia_append[A:Manifest](ma: Rep[DeliteArray1D[A]], x: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
@@ -148,31 +190,29 @@ trait DeliteMultiArrayOps extends Base with DeliteMultiArrayLayouts {
   def dmultia_insertAll[A:Manifest](ma: Rep[DeliteMultiArray[A]], rhs: Rep[DeliteMultiArray[A]], axis: Int, index: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
   def dmultia_appendAll[A:Manifest](ma: Rep[DeliteMultiArray[A]], rhs: Rep[DeliteMultiArray[A]], axis: Int)(implicit ctx: SourceContext): Rep[Unit]
 
-  def dmultia_remove[A:Manifest](ma: Rep[DeliteMultiArray[A]], axis: Int, start: Rep[Int], end: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]  
+  def dmultia_remove[A:Manifest](ma: Rep[DeliteMultiArray[A]], axis: Int, start: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]  
 
   // --- Misc.
   def dmultia_mkstring[A:Manifest](ma: Rep[DeliteMultiArray[A]], dels: Seq[Rep[String]])(implicit ctx: SourceContext): Rep[String]
   def dmultia_string_split(str: Rep[String],pat: Rep[String],ofs: Rep[Int] = unit(0))(implicit __imp0: SourceContext): Rep[DeliteArray1D[String]]
 
   // --- Misc. 1D Operations
-  def dmultia_sortIndices(len: Rep[Int], comp: (Rep[Int],Rep[Int]) => Rep[Int])(implicit ctx: SourceContext): Rep[DeliteArray1D[A]]
+  def dmultia_sortIndices(len: Rep[Int], comp: (Rep[Int],Rep[Int]) => Rep[Int])(implicit ctx: SourceContext): Rep[DeliteArray1D[Int]]
  
-  def dmultia_flatmap[A:Manifest,B:Manifest](ma: Rep[DeliteArray1D[A]], f: Rep[A] => Rep[DeliteMultiArray[B]])(implicit ctx: SourceContext): Rep[DeliteArray1D[B]]
+  def dmultia_flatmap[A:Manifest,B:Manifest](ma: Rep[DeliteArray1D[A]], f: Rep[A] => Rep[DeliteArray1D[B]])(implicit ctx: SourceContext): Rep[DeliteArray1D[B]]
   def dmultia_filter[A:Manifest](ma: Rep[DeliteArray1D[A]], f: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext): Rep[DeliteArray1D[A]]
-  def dmultia_groupBy[A:Manifest,K:Manifest](ma: Rep[DeliteArray1D[A]], key: Rep[A] => Rep[K])(implicit ctx: SourceContext): Rep[DeliteMultiMap[A,DeliteArray1D[K]]]
-  def dmultia_groupByReduce[A:Manifest,K:Manifest,V:Manifest](ma: Rep[DeliteArray1D[A]], key: Rep[A] => Rep[K], value: Rep[A] => Rep[V], reduce: (Rep[V],Rep[V]) => Rep[V])(implicit ctx: SourceContext): Rep[DeliteMultiMap[K,V]]
-
+  
   // --- 2D Operations
-  def dmultia_matmult[A:Manifest:Numeric](lhs: Rep[DeliteArray2D[A]], rhs: DeliteArray2D[A])(implicit ctx: SourceContext): Rep[DeliteArray2D[A]]
-  def dmultia_matvecmult[A:Manifest:Numeric](mat: Rep[DeliteArray2D[A]], vec: DeliteArray1D[A])(implicit ctx: SourceContext): Rep[DeliteArray1D[A]]
+  def dmultia_matmult[A:Manifest:Numeric](lhs: Rep[DeliteArray2D[A]], rhs: Rep[DeliteArray2D[A]])(implicit ctx: SourceContext): Rep[DeliteArray2D[A]]
+  def dmultia_matvecmult[A:Manifest:Numeric](mat: Rep[DeliteArray2D[A]], vec: Rep[DeliteArray1D[A]])(implicit ctx: SourceContext): Rep[DeliteArray1D[A]]
 
   // --- Pinning
   //def dmultia_pin[T:Manifest,R:Manifest](ma: Rep[DeliteMultiArray[T]], layout: Layout[T,R])(implicit ctx: SourceContext): Rep[DeliteArray[R]]
   //def dmultia_unpin[T:Manifest,R:Manifest](in: Rep[DeliteArray[R]], layout: Layout[T,R], shape: Seq[Rep[Int]])(implicit ctx: SourceContext): Rep[DeliteMultiArray[T]]
 }
 
-trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
-  this: DeliteOpsExp with DeliteArrayOpsExp =>
+trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with EffectExp {
+  this: DeliteOpsExp with DeliteArrayOpsExp /*with DeliteHashMapOpsExp*/ =>
 
   // TODO: Change names for these (not specific to MultiArray ops)
   abstract class MultiArrayOp[A:Manifest,R:Manifest] extends DeliteOp[R] { val mA = manifest[A]; val mR = manifest[R] }
@@ -183,9 +223,9 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
   // Abstract IR Nodes
 
   // --- Array constructors
-  case class DeliteMultiArrayNew[T](dims: Seq[Exp[Int]]) extends DefWithManifest[T,DeliteMultiArray[T]]
-  case class DeliteMultiArrayFromFunction[T](dims: Seq[Exp[Int]], func: Exp[Seq[Exp[Int]]] => Exp[T]) extends MultiArrayOp[T,DeliteMultiArray[T]] {
-    type OpType <: DeliteMultiArrayFromFunction  
+  case class DeliteMultiArrayNew[T:Manifest](dims: Seq[Exp[Int]]) extends DefWithManifest[T,DeliteMultiArray[T]]
+  case class DeliteMultiArrayFromFunction[T:Manifest](dims: Seq[Exp[Int]], func: Exp[Seq[Exp[Int]]] => Exp[T]) extends MultiArrayOp[T,DeliteMultiArray[T]] {
+    type OpType <: DeliteMultiArrayFromFunction[T]
     lazy val i: Sym[Seq[Exp[Int]]] = copyTransformedOrElse(_.i)(fresh[Seq[Exp[Int]]]).asInstanceOf[Sym[Seq[Exp[Int]]]]
     lazy val body: Block[T] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(i)))
   }
@@ -210,75 +250,78 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
 
   // --- Array parallel ops
   case class DeliteMultiArrayMap[A:Manifest,R:Manifest](in: Exp[DeliteMultiArray[A]], func: Exp[A] => Exp[R])(implicit ctx: SourceContext) extends MultiArrayOp2[A,R,DeliteMultiArray[R]] {
-    type OpType <: DeliteMultiArrayMap
+    type OpType <: DeliteMultiArrayMap[A,R]
     lazy val a: Sym[A] = copyTransformedOrElse(_.a)(fresh[A]).asInstanceOf[Sym[A]]
-    lazy val body: Block[B] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(a)))
+    lazy val body: Block[R] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(a)))
   }
-  case class DeliteMultiArrayZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[DeliteMultiArray[A]], inB: Exp[DeliteMultiArray[B]], func: (Exp[A],Exp[B]) => Exp[R]) extends MultiArrayOp3[A,B,R,DeliteMultiArray[R]] {
-    type OpType <: DeliteMultiArrayZipWith
+  case class DeliteMultiArrayZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[DeliteMultiArray[A]], inB: Exp[DeliteMultiArray[B]], func: (Exp[A],Exp[B]) => Exp[R])(implicit ctx: SourceContext) extends MultiArrayOp3[A,B,R,DeliteMultiArray[R]] {
+    type OpType <: DeliteMultiArrayZipWith[A,B,R]
     lazy val a: Sym[A] = copyTransformedOrElse(_.a)(fresh[A]).asInstanceOf[Sym[A]]
     lazy val b: Sym[B] = copyTransformedOrElse(_.b)(fresh[B]).asInstanceOf[Sym[B]]
     lazy val body: Block[R] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(a,b)))
   }
   case class DeliteMultiArrayReduce[A:Manifest](in: Exp[DeliteMultiArray[A]], func: (Exp[A],Exp[A]) => Exp[A], zero: Exp[A])(implicit ctx: SourceContext) extends MultiArrayOp[A,A] {
-    type OpType <: DeliteMultiArrayReduce
+    type OpType <: DeliteMultiArrayReduce[A]
     lazy val a1: Sym[A] = copyTransformedOrElse(_.a1)(fresh[A]).asInstanceOf[Sym[A]]
     lazy val a2: Sym[A] = copyTransformedOrElse(_.a2)(fresh[A]).asInstanceOf[Sym[A]]
-    lazy val body: Block[A] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(v._1,v._2)))
+    lazy val body: Block[A] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(a1,a2)))
   }
   
   case class DeliteMultiArrayForeach[A:Manifest](in: Exp[DeliteMultiArray[A]], func: Exp[A] => Exp[Unit])(implicit ctx: SourceContext) extends MultiArrayOp[A,Unit] {
-    type OpType <: DeliteMultiArrayForeach
+    type OpType <: DeliteMultiArrayForeach[A]
     lazy val a: Sym[A] = copyTransformedOrElse(_.a)(fresh[A]).asInstanceOf[Sym[A]]
     lazy val body: Block[Unit] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(a)))
   }
   case class DeliteMultiArrayForIndices[A:Manifest](in: Exp[DeliteMultiArray[A]], func: Exp[Seq[Exp[Int]]] => Exp[Unit])(implicit ctx: SourceContext) extends MultiArrayOp[A,Unit] {
-    type OpType <: DeliteMultiArrayForIndices
+    type OpType <: DeliteMultiArrayForIndices[A]
     lazy val i: Sym[Seq[Exp[Int]]] = copyTransformedOrElse(_.i)(fresh[Seq[Exp[Int]]]).asInstanceOf[Sym[Seq[Exp[Int]]]]
     lazy val body: Block[Unit] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(i)))
   }
   case class DeliteMultiArrayMutableMap[A:Manifest](in: Exp[DeliteMultiArray[A]], func: Exp[A] => Exp[A])(implicit ctx: SourceContext) extends MultiArrayOp[A,Unit] {
-    type OpType <: DeliteMultiArrayMutableMap
+    type OpType <: DeliteMultiArrayMutableMap[A]
     lazy val a: Sym[A] = copyTransformedOrElse(_.a)(fresh[A]).asInstanceOf[Sym[A]]
-    lazy val body: Block[Unit] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(a)))
+    lazy val body: Block[A] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(a)))
   }
-  case class DeliteMultiArrayMutableZipWith[A:Manifest,B:Manifest](inA: Exp[DeliteMultiArray[A]], inB: Exp[DeliteMultiArray[B]], func: (Exp[A],Exp[A]) => Exp[A])(implicit ctx: SourceContext) extends MultiArrayOp2[A,B,Unit] {
-    type OpType <: DeliteMultiArrayMutableZipWith
+  case class DeliteMultiArrayMutableZipWith[A:Manifest,B:Manifest](inA: Exp[DeliteMultiArray[A]], inB: Exp[DeliteMultiArray[B]], func: (Exp[A],Exp[B]) => Exp[A])(implicit ctx: SourceContext) extends MultiArrayOp2[A,B,Unit] {
+    type OpType <: DeliteMultiArrayMutableZipWith[A,B]
     lazy val a: Sym[A] = copyTransformedOrElse(_.a)(fresh[A]).asInstanceOf[Sym[A]]
     lazy val b: Sym[B] = copyTransformedOrElse(_.b)(fresh[B]).asInstanceOf[Sym[B]]
-    lazy val body: Block[Unit] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(a,b)))
+    lazy val body: Block[A] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(a,b)))
   }
 
   case class DeliteMultiArrayNDMap[A:Manifest,B:Manifest](in: Exp[DeliteMultiArray[A]], mdims: Seq[Int], func: Exp[DeliteMultiArray[A]] => Exp[DeliteMultiArray[B]])(implicit ctx: SourceContext) extends MultiArrayOp2[A,B,DeliteMultiArray[B]] {
-    type OpType <: DeliteMultiArrayNDMap
+    type OpType <: DeliteMultiArrayNDMap[A,B]
     lazy val ma: Sym[DeliteMultiArray[A]] = copyTransformedOrElse(_.ma)(fresh[DeliteMultiArray[A]]).asInstanceOf[Sym[DeliteMultiArray[A]]]
     lazy val body: Block[DeliteMultiArray[B]] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(ma)))
   }
 
   // TODO
   case class DeliteMultiArrayGroupBy[A:Manifest,K:Manifest](in: Exp[DeliteMultiArray[A]], key: Exp[A] => Exp[K])(implicit ctx: SourceContext) extends MultiArrayOp2[A,K,DeliteHashMap[K,DeliteArray1D[A]]] {
-    type OpType <: DeliteMultiArrayGroupBy
+    type OpType <: DeliteMultiArrayGroupBy[A,K]
     lazy val a: Sym[A] = copyTransformedOrElse(_.a)(fresh[A]).asInstanceOf[Sym[A]]
     lazy val keyFunc: Block[K] = copyTransformedBlockOrElse(_.keyFunc)(reifyEffects(key(a)))
   }
   case class DeliteMultiArrayGroupByReduce[A:Manifest,K:Manifest,V:Manifest](in: Exp[DeliteMultiArray[A]], key: Exp[A] => Exp[K], value: Exp[A] => Exp[V], reduce: (Exp[V],Exp[V]) => Exp[V])(implicit ctx: SourceContext) extends MultiArrayOp3[A,K,V,DeliteHashMap[K,V]] {
-    type OpType <: DeliteMultiArrayGroupByReduce
+    type OpType <: DeliteMultiArrayGroupByReduce[A,K,V]
     lazy val a: Sym[A] = copyTransformedOrElse(_.a)(fresh[A]).asInstanceOf[Sym[A]]
     lazy val v1: Sym[V] = copyTransformedOrElse(_.v1)(fresh[V]).asInstanceOf[Sym[V]]
     lazy val v2: Sym[V] = copyTransformedOrElse(_.v2)(fresh[V]).asInstanceOf[Sym[V]]
-    lazy val keyFunc: Block[K] = copyTransformedBlockOrElse(_.keyBody)(reifyEffects(key(a)))
-    lazy val valFunc: Block[V] = copyTransformedBlockOrElse(_.valBody)(reifyEffects(value(a)))
-    lazy val redFunc: Block[V] = copyTransformedBlockOrElse(_.redBody)(reifyEffects(reduce(v1,v2)))
+    lazy val keyFunc: Block[K] = copyTransformedBlockOrElse(_.keyFunc)(reifyEffects(key(a)))
+    lazy val valFunc: Block[V] = copyTransformedBlockOrElse(_.valFunc)(reifyEffects(value(a)))
+    lazy val redFunc: Block[V] = copyTransformedBlockOrElse(_.redFunc)(reifyEffects(reduce(v1,v2)))
   }
 
   // --- Buffer operations
+  case class DeliteMultiArrayInsert[A:Manifest](ma: Exp[DeliteArray1D[A]], x: Exp[A], index: Exp[Int])(implicit ctx: SourceContext) extends DefWithManifest[A,Unit]
+  case class DeliteMultiArrayAppend[A:Manifest](ma: Exp[DeliteArray1D[A]], x: Exp[A])(implicit ctx: SourceContext) extends DefWithManifest[A,Unit]
+
   case class DeliteMultiArrayNDInsert[T:Manifest](ma: Exp[DeliteMultiArray[T]], rhs: Exp[DeliteMultiArray[T]], axis: Int, index: Exp[Int])(implicit ctx: SourceContext) extends DefWithManifest[T,Unit]
   case class DeliteMultiArrayNDAppend[T:Manifest](ma: Exp[DeliteMultiArray[T]], rhs: Exp[DeliteMultiArray[T]], axis: Int)(implicit ctx: SourceContext) extends DefWithManifest[T,Unit]
 
   case class DeliteMultiArrayInsertAll[T:Manifest](ma: Exp[DeliteMultiArray[T]], rhs: Exp[DeliteMultiArray[T]], axis: Int, index: Exp[Int])(implicit ctx: SourceContext) extends DefWithManifest[T,Unit]
   case class DeliteMultiArrayAppendAll[T:Manifest](ma: Exp[DeliteMultiArray[T]], rhs: Exp[DeliteMultiArray[T]], axis: Int)(implicit ctx: SourceContext) extends DefWithManifest[T,Unit]
 
-  case class DeliteMultiArrayRemove[T:Manifest](ma: Exp[DeliteMultiArray[T]], axis: Int, start: Exp[Int], end: Exp[Int])(implicit ctx: SourceContext) extends DefWithManifest[T,Unit]
+  case class DeliteMultiArrayRemove[T:Manifest](ma: Exp[DeliteMultiArray[T]], axis: Int, start: Exp[Int], len: Exp[Int])(implicit ctx: SourceContext) extends DefWithManifest[T,Unit]
 
   // --- Misc. Operations
   case class DeliteMultiArrayMkString[T:Manifest](ma: Exp[DeliteMultiArray[T]], dels: Seq[Exp[String]]) extends DefWithManifest[T,String]
@@ -314,23 +357,24 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
     lazy val body: Block[Int] = copyTransformedBlockOrElse(_.body)(reifyEffects(comparator(i1,i2)))
   }
   case class DeliteMultiArrayMapFilter[A:Manifest,B:Manifest](in: Exp[DeliteArray1D[A]], func: Exp[A] => Exp[B], cond: Exp[A] => Exp[Boolean])(implicit ctx: SourceContext) extends MultiArrayOp2[A,B,DeliteArray1D[B]] {
-    type OpType <: DeliteMultiArrayMapFilter
+    type OpType <: DeliteMultiArrayMapFilter[A,B]
     lazy val a: Sym[A] = copyTransformedOrElse(_.a)(fresh[A]).asInstanceOf[Sym[A]]
-    lazy val mapFunc: Block[B] = copyTransformedBlockOrElse(_.map)(reifyEffects(func(a)))
-    lazy val filtFunc: Block[Boolean] = copyTransformedBlockOrElse(_.filt)(reifyEffects(cond(a)))
+    lazy val mapFunc: Block[B] = copyTransformedBlockOrElse(_.mapFunc)(reifyEffects(func(a)))
+    lazy val filtFunc: Block[Boolean] = copyTransformedBlockOrElse(_.filtFunc)(reifyEffects(cond(a)))
   }
   case class DeliteMultiArrayFlatMap[A:Manifest,B:Manifest](in: Exp[DeliteArray1D[A]], func: Exp[A] => Exp[DeliteArray1D[B]])(implicit ctx: SourceContext) extends MultiArrayOp2[A,B,DeliteArray1D[B]] {
-    type OpType <: DeliteMultiArrayFlatMap
+    type OpType <: DeliteMultiArrayFlatMap[A,B]
     lazy val a: Sym[A] = copyTransformedOrElse(_.a)(fresh[A]).asInstanceOf[Sym[A]]
     lazy val body: Block[DeliteArray1D[B]] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(a)))
   }
 
-  case class DeliteMultiArrayInsert[T:Manifest](ma: Exp[DeliteArray1D[A]], x: Exp[T], index: Exp[Int]) extends DefWithManifest[T,Unit]
-  case class DeliteMultiArrayAppend[T:Manifest](ma: Exp[DeliteArray1D[A]], x: Exp[T]) extends DefWithManifest[T,Unit]
-
   // --- 2D Operations
-  case class DeliteMatrixMultiply[T:Manifest:Numeric](lhs: Exp[DeliteArray2D[T]], rhs: Exp[DeliteArray2D[T]]) extends DefWithManifest[T,DeliteArray2D[T]]
-  case class DeliteMatrixVectorMultiply[T:Manifest:Numeric](mat: Exp[DeliteArray2D[T]], vec: Exp[DeliteArray1D[T]]) extends DefWithManifest[T,DeliteArray1D[T]]
+  case class DeliteMatrixMultiply[A:Manifest:Numeric](lhs: Exp[DeliteArray2D[A]], rhs: Exp[DeliteArray2D[A]])(implicit ctx: SourceContext) extends DefWithManifest[A,DeliteArray2D[A]] {
+    val nA = implicitly[Numeric[A]]
+  }
+  case class DeliteMatrixVectorMultiply[A:Manifest:Numeric](mat: Exp[DeliteArray2D[A]], vec: Exp[DeliteArray1D[A]])(implicit ctx: SourceContext) extends DefWithManifest[A,DeliteArray1D[A]] {
+    val nA = implicitly[Numeric[A]]
+  }
 
   // --- Data type pinning
   // Still TBD - are these IR nodes or just metadata functions?
@@ -351,8 +395,8 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
   //def dmultia_element[A:Manifest](ma: Exp[DeliteMultiArray[A]]): Exp[A] = reflectPure(DeliteMultiArrayElement(ma))
 
   // --- Array constructors
-  def dmultia_new[A:Manifest](dims: Seq[Exp[Int]])(implicit ctx: SourceContext) = reflectMutable(DeliteMultiArrayNew(dims,manifest[A]))
-  def dmultia_new_immutable[A:Manifest](dims: Seq[Exp[Int]])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayNew(dims,manifest[A]))
+  def dmultia_new[A:Manifest](dims: Seq[Exp[Int]])(implicit ctx: SourceContext) = reflectMutable(DeliteMultiArrayNew[A](dims))
+  def dmultia_new_immutable[A:Manifest](dims: Seq[Exp[Int]])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayNew[A](dims))
   def dmultia_fromfunction[A:Manifest](dims: Seq[Exp[Int]], f: Exp[Seq[Exp[Int]]] => Exp[A])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayFromFunction(dims,f))
 
   def dmultia_view[A:Manifest](ma: Exp[DeliteMultiArray[A]], start: Seq[Exp[Int]], stride: Seq[Exp[Int]], dims: Seq[Exp[Int]])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayView(ma,start,stride,dims))
@@ -362,7 +406,7 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
   def dmultia_shape[A:Manifest](ma: Exp[DeliteMultiArray[A]])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayShape(ma))
   def dmultia_size[A:Manifest](ma: Exp[DeliteMultiArray[A]])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArraySize(ma))
 
-  def dmultia_view_target[A:Manifest](ma: Exp[DeliteMultiArray[A]]) = reflectPure(DeliteMultiArrayViewTarget(ma))
+  //def dmultia_view_target[A:Manifest](ma: Exp[DeliteMultiArray[A]]) = reflectPure(DeliteMultiArrayViewTarget(ma))
   def dmultia_view_start[A:Manifest](ma: Exp[DeliteMultiArray[A]]) = reflectPure(DeliteMultiArrayViewStart(ma))
   def dmultia_view_stride[A:Manifest](ma: Exp[DeliteMultiArray[A]]) = reflectPure(DeliteMultiArrayViewStride(ma))
 
@@ -384,7 +428,7 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
   // --- Array parallel ops
   def dmultia_map[A:Manifest,B:Manifest](ma: Exp[DeliteMultiArray[A]], f: Exp[A] => Exp[B])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayMap(ma,f))
   def dmultia_zipwith[A:Manifest,B:Manifest,R:Manifest](ma: Exp[DeliteMultiArray[A]], mb: Exp[DeliteMultiArray[B]], f: (Exp[A],Exp[B]) => Exp[R])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayZipWith(ma,mb,f))
-  def dmultia_reduce[A:Manifest](ma: Exp[DeliteMultiArray[A]], f: (Exp[A],Exp[A]) => Exp[A], zero: Exp[A])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayReduce(ma,f))
+  def dmultia_reduce[A:Manifest](ma: Exp[DeliteMultiArray[A]], f: (Exp[A],Exp[A]) => Exp[A], zero: Exp[A])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayReduce(ma,f,zero))
   def dmultia_forindices[A:Manifest](ma: Exp[DeliteMultiArray[A]], f: Exp[Seq[Exp[Int]]] => Exp[Unit])(implicit ctx: SourceContext) = {
     val df = DeliteMultiArrayForIndices(ma,f)
     val v = fresh[Seq[Exp[Int]]]
@@ -396,9 +440,13 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
     reflectEffect(df, summarizeEffects(reifyEffects(f(v))).star andAlso Simple())
   }
   def dmultia_mmap[A:Manifest](ma: Exp[DeliteMultiArray[A]], f: Exp[A] => Exp[A])(implicit ctx: SourceContext) = reflectWrite(ma)(DeliteMultiArrayMutableMap(ma,f))
-  def dmultia_mzipwith[A:Manifest](ma: Exp[DeliteMultiArray[A]], mb: Exp[DeliteMultiArray[A]], f: (Exp[A],Exp[A]) => Exp[A])(implicit ctx: SourceContext) = reflectWrite(ma)(DeliteMultiArrayMutableZipWith(ma,mb,f))
+  def dmultia_mzipwith[A:Manifest,B:Manifest](ma: Exp[DeliteMultiArray[A]], mb: Exp[DeliteMultiArray[B]], f: (Exp[A],Exp[B]) => Exp[A])(implicit ctx: SourceContext) = reflectWrite(ma)(DeliteMultiArrayMutableZipWith(ma,mb,f))
 
   def dmultia_NDmap[A:Manifest,B:Manifest](ma: Exp[DeliteMultiArray[A]], mdims: Seq[Int], func: Exp[DeliteMultiArray[A]] => Exp[DeliteMultiArray[B]])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayNDMap(ma,mdims,func))
+  
+  def dmultia_groupBy[A:Manifest,K:Manifest](ma: Exp[DeliteMultiArray[A]], key: Exp[A] => Exp[K])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayGroupBy(ma,key))
+  def dmultia_groupByReduce[A:Manifest,K:Manifest,V:Manifest](ma: Exp[DeliteMultiArray[A]], key: Exp[A] => Exp[K], value: Exp[A] => Exp[V], reduce: (Exp[V],Exp[V]) => Exp[V])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayGroupByReduce(ma,key,value,reduce))
+  
 
   // --- Buffer ops
   def dmultia_insert[A:Manifest](ma: Exp[DeliteArray1D[A]], x: Exp[A], index: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(ma)(DeliteMultiArrayInsert(ma,x,index))
@@ -410,7 +458,7 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
   def dmultia_insertAll[A:Manifest](ma: Exp[DeliteMultiArray[A]], rhs: Exp[DeliteMultiArray[A]], axis: Int, index: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(ma)(DeliteMultiArrayInsertAll(ma,rhs,axis,index))
   def dmultia_appendAll[A:Manifest](ma: Exp[DeliteMultiArray[A]], rhs: Exp[DeliteMultiArray[A]], axis: Int)(implicit ctx: SourceContext) = reflectWrite(ma)(DeliteMultiArrayAppendAll(ma,rhs,axis))
 
-  def dmultia_remove[A:Manifest](ma: Exp[DeliteMultiArray[A]], axis: Int, start: Exp[Int], end: Exp[Int])(implicit ctx: SourceContext): Rep[Unit] = reflectWrite(ma)(DeliteMultiArrayRemove(ma,axis,start,end))
+  def dmultia_remove[A:Manifest](ma: Exp[DeliteMultiArray[A]], axis: Int, start: Exp[Int], len: Exp[Int])(implicit ctx: SourceContext): Rep[Unit] = reflectWrite(ma)(DeliteMultiArrayRemove(ma,axis,start,len))
 
   // --- Misc.
   def dmultia_mkstring[A:Manifest](ma: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayMkString(ma,dels))
@@ -420,14 +468,12 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
   def dmultia_sortIndices(len: Exp[Int], comp: (Exp[Int],Exp[Int]) => Exp[Int])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArraySortIndices(len, comp))
   
   def dmultia_flatmap[A:Manifest,B:Manifest](ma: Exp[DeliteArray1D[A]], f: Exp[A] => Exp[DeliteArray1D[B]])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayFlatMap(ma,f))
-  def dmultia_filter[A:Manifest](ma: Exp[DeliteArray1D[A]], f: Exp[A] => Exp[Boolean])(implicit ctx: SourceContext) = dmultia_mapfilter(x, {(e:Exp[A]) => e}, f)
-  def dmultia_groupBy[A:Manifest,K:Manifest](ma: Exp[DeliteArray1D[A]], key: Exp[A] => Exp[K])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayGroupBy(ma,key))
-  def dmultia_groupByReduce[A:Manifest,K:Manifest,V:Manifest](ma: Exp[DeliteArray1D[A]], key: Exp[A] => Exp[K], value: Exp[A] => Exp[V], reduce: (Exp[V],Exp[V]) => Exp[V])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayGroupByReduce(ma,key,value,reduce))
+  def dmultia_filter[A:Manifest](ma: Exp[DeliteArray1D[A]], f: Exp[A] => Exp[Boolean])(implicit ctx: SourceContext) = dmultia_mapfilter(ma, {(e:Exp[A]) => e}, f)
   def dmultia_mapfilter[A:Manifest,B:Manifest](ma: Exp[DeliteArray1D[A]], map: Exp[A] => Exp[B], cond: Exp[A] => Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayMapFilter(ma,map,cond))
   
   // --- 2D Operations
   def dmultia_matmult[A:Manifest:Numeric](lhs: Exp[DeliteArray2D[A]], rhs: Exp[DeliteArray2D[A]])(implicit ctx: SourceContext) = reflectPure(DeliteMatrixMultiply(lhs,rhs))
-  def dmultia_macvecmult[A:Manifest:Numeric](mat: Exp[DeliteArray2D[A]], vec: Exp[DeliteArray1D[A]])(implicit ctx: SourceContext) = reflectPure(DeliteMatrixVectorMultiply(lhs,rhs))
+  def dmultia_matvecmult[A:Manifest:Numeric](mat: Exp[DeliteArray2D[A]], vec: Exp[DeliteArray1D[A]])(implicit ctx: SourceContext) = reflectPure(DeliteMatrixVectorMultiply(mat,vec))
 
   // --- Pinning
   // TBD
@@ -534,8 +580,8 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
     case op: DeliteMultiArrayGroupBy[_,_] => List(op.a) ::: effectSyms(op.keyFunc)
     case op: DeliteMultiArrayGroupByReduce[_,_,_] => List(op.a,op.v1,op.v2) ::: effectSyms(op.keyFunc) ::: effectSyms(op.valFunc) ::: effectSyms(op.redFunc)
     case op: DeliteMultiArraySortIndices => List(op.i1,op.i2) ::: effectSyms(op.body)
-    case op: DeliteMultiArrayMapFilter[_,_] => List(op.a) ::: effectSyms(f.mapFunc) ::: effectSyms(f.filtFunc)
-    case op: DeliteMultiArrayFlatMap[_,_] => List(op.a) ::: effectSyms(f.body)
+    case op: DeliteMultiArrayMapFilter[_,_] => List(op.a) ::: effectSyms(op.mapFunc) ::: effectSyms(op.filtFunc)
+    case op: DeliteMultiArrayFlatMap[_,_] => List(op.a) ::: effectSyms(op.body)
     case _ => super.boundSyms(e)
   }
 
@@ -549,9 +595,9 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
     case e@DeliteMultiArrayRank(m) => dmultia_rank(f(m))(e.mA,ctx)
     case e@DeliteMultiArrayShape(m) => dmultia_shape(f(m))(e.mA,ctx)
     case e@DeliteMultiArraySize(m) => dmultia_size(f(m))(e.mA,ctx)
-    case e@DeliteMultiArrayViewTarget(m) => dmultia_view_target(f(m))(e.mA,ctx)
-    case e@DeliteMultiArrayViewStart(m) => dmultia_view_start(f(m))(e.mA,ctx)
-    case e@DeliteMultiArrayViewStride(m) => dmultia_view_stride(f(m))(e.mA,ctx)
+    //case e@DeliteMultiArrayViewTarget(m) => dmultia_view_target(f(m))(e.mA,ctx)
+    case e@DeliteMultiArrayViewStart(m) => dmultia_view_start(f(m))(e.mA)
+    case e@DeliteMultiArrayViewStride(m) => dmultia_view_stride(f(m))(e.mA)
     case e@DeliteMultiArrayApply(m,i) => dmultia_apply(f(m),f(i))(e.mA,ctx)
     
     case e@DeliteMultiArrayPermute(m,c) => dmultia_permute(f(m),c)(e.mA,ctx)
@@ -559,7 +605,12 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
 
     case e@DeliteMultiArrayMap(m,g) => reflectPure(new { override val original = Some(f,e) } with DeliteMultiArrayMap(f(m),g)(e.mA,e.mB,ctx))(mtype(manifest[A]),ctx)
     case e@DeliteMultiArrayZipWith(ma,mb,g) => reflectPure(new { override val original = Some(f,e) } with DeliteMultiArrayZipWith(f(ma),f(mb),g)(e.mA,e.mB,e.mT,ctx))(mtype(manifest[A]),ctx)
-    case e@DeliteMultiArrayReduce(m,g,z) => reflectPure(new {override val original = Some(f,e) } with DeliteMultiArrayReduce(f(m),g,f(z))(e.mA,ctx))(mtype(manifest[A]),ctx)
+    case e@DeliteMultiArrayReduce(m,g,z) => 
+      e.asInstanceOf[DeliteMultiArrayReduce[A]] match {   // scalac typer bug (same as in DeliteArray)
+        case e@DeliteMultiArrayReduce(m,g,z) =>
+          reflectPure(new {override val original = Some(f,e) } with DeliteMultiArrayReduce(f(m),g,f(z))(e.mA,ctx))(mtype(manifest[A]),ctx)
+      }
+
     case e@DeliteMultiArrayForeach(m,g) => reflectPure(new {override val original = Some(f,e) } with DeliteMultiArrayForeach(f(m),g)(e.mA,ctx))(mtype(manifest[A]),ctx)
     case e@DeliteMultiArrayForIndices(m,g) => reflectPure(new {override val original = Some(f,e) } with DeliteMultiArrayForIndices(f(m),g)(e.mA,ctx))(mtype(manifest[A]),ctx)
     case e@DeliteMultiArrayNDMap(m,d,g) => reflectPure(new {override val original = Some(f,e) } with DeliteMultiArrayNDMap(f(m),d,g)(e.mA,e.mB,ctx))(mtype(manifest[A]),ctx)
@@ -575,7 +626,7 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
     case e@DeliteMultiArrayNDAppend(m,r,a) => toAtom(DeliteMultiArrayNDAppend(f(m),f(r),a)(e.mA,ctx))(mtype(manifest[A]), ctx)
     case e@DeliteMultiArrayInsertAll(m,r,a,i) => toAtom(DeliteMultiArrayInsertAll(f(m),f(r),a,f(i))(e.mA,ctx))(mtype(manifest[A]), ctx)
     case e@DeliteMultiArrayAppendAll(m,r,a) => toAtom(DeliteMultiArrayAppendAll(f(m),f(r),a)(e.mA,ctx))(mtype(manifest[A]), ctx)
-    case e@DeliteMultiArrayRemove(m,a,s,e) => toAtom(DeliteMultiArrayRemove(f(m),a,f(s),f(e))(e.mA,ctx))(mtype(manifest[A]), ctx)
+    case e@DeliteMultiArrayRemove(m,a,s,l) => toAtom(DeliteMultiArrayRemove(f(m),a,f(s),f(l))(e.mA,ctx))(mtype(manifest[A]), ctx)
     // ----
 
     case e@DeliteMultiArrayMkString(m,d) => dmultia_mkstring(f(m),f(d))(e.mA,ctx)
@@ -587,21 +638,21 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
     case e@DeliteMultiArrayGroupBy(m,k) => reflectPure(new { override val original = Some(f,e) } with DeliteMultiArrayGroupBy(f(m),k)(e.mA,e.mB,ctx))(mtype(manifest[A]), ctx)
     case e@DeliteMultiArrayGroupByReduce(m,k,v,r) => reflectPure(new { override val original = Some(f,e) } with DeliteMultiArrayGroupByReduce(f(m),k,v,r)(e.mA,e.mB,e.mT,ctx))(mtype(manifest[A]), ctx)
 
-    case e@DeliteMatrixMultiply(l,r) => dmultia_matmult(f(l),f(r))(e.mA)
-    case e@DeliteMatrixVectorMultiply(m,v) => dmultia_matmult(f(m),f(v))(e.mA)
+    case e@DeliteMatrixMultiply(l,r) => dmultia_matmult(f(l),f(r))(e.mA,e.nA,ctx)
+    case e@DeliteMatrixVectorMultiply(m,v) => dmultia_matvecmult(f(m),f(v))(e.mA,e.nA,ctx)
 
     //case e@DeliteMultiArrayPin(m,l) => reflectPure(DeliteMultiArrayPin(f(m),l)(e.mA,e.mB))(mtype(manifest[A]), ctx)
     //case e@DeliteMultiArrayUnpin(in,l,s) => reflectPure(DeliteMultiArrayUnpin(f(in),l,f(s))(e.mA,e.mB))(mtype(manifest[A]),ctx)
    
     case Reflect(e@DeliteMultiArrayNew(d), u, es) => reflectMirrored(Reflect(DeliteMultiArrayNew(f(d))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayFromFunction(d,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArrayFromFunction(f(d),g)(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
-    // Probably shouldn't happen?
+    // Shouldn't happen
     case Reflect(e@DeliteMultiArrayView(m,o,s,d), u, es) => reflectMirrored(Reflect(DeliteMultiArrayView(f(m),f(o),f(s),f(d))(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
 
     case Reflect(e@DeliteMultiArrayRank(m), u, es) => reflectMirrored(Reflect(DeliteMultiArrayRank(f(m))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayShape(m), u, es) => reflectMirrored(Reflect(DeliteMultiArrayShape(f(m))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArraySize(m), u, es) => reflectMirrored(Reflect(DeliteMultiArraySize(f(m))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
-    case Reflect(e@DeliteMultiArrayViewTarget(m), u, es) => reflectMirrored(Reflect(DeliteMultiArrayViewTarget(f(m))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    //case Reflect(e@DeliteMultiArrayViewTarget(m), u, es) => reflectMirrored(Reflect(DeliteMultiArrayViewTarget(f(m))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayViewStart(m), u, es) => reflectMirrored(Reflect(DeliteMultiArrayViewStart(f(m))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayViewStride(m), u, es) => reflectMirrored(Reflect(DeliteMultiArrayViewStride(f(m))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
 
@@ -613,32 +664,36 @@ trait DeliteMultiArrayOpsExp extends BaseExp with DeliteMultiArrayOps {
 
     case Reflect(e@DeliteMultiArrayMap(m,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArrayMap(f(m),g)(e.mA,e.mB,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayZipWith(ma,mb,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArrayZipWith(f(ma),f(mb),g)(e.mA,e.mB,e.mT,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
-    case Reflect(e@DeliteMultiArrayReduce(m,g,z), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArrayReduce(f(m),g,f(z))(e.mA,ctx)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DeliteMultiArrayReduce(m,g,z), u, es) => 
+      e.asInstanceOf[DeliteMultiArrayReduce[A]] match {  // scalac typer bug (same as in DeliteArray)
+        case e@DeliteMultiArrayReduce(m,g,z) =>
+          reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArrayReduce(f(m),g,f(z))(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+      }
     case Reflect(e@DeliteMultiArrayForeach(m,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArrayForeach(f(m),g)(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayForIndices(m,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArrayForIndices(f(m),g)(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayMutableMap(m,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArrayMutableMap(f(m),g)(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayMutableZipWith(ma,mb,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArrayMutableZipWith(f(ma),f(mb),g)(e.mA,e.mB,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]),ctx)
     case Reflect(e@DeliteMultiArrayNDMap(m,d,g), u, es) => reflectMirrored(Reflect(DeliteMultiArrayNDMap(f(m),d,g)(e.mA,e.mB,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
 
-    case Reflect(e@DeliteMultiArrayInsert(m,x,i), u, es) => reflectMirrored(Reflect(DeliteMultiArrayInsert(f(m),f(x),f(i))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
-    case Reflect(e@DeliteMultiArrayAppend(m,x), u, es) => reflectMirrored(Reflect(DeliteMultiArrayAppend(f(m),f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DeliteMultiArrayInsert(m,x,i), u, es) => reflectMirrored(Reflect(DeliteMultiArrayInsert(f(m),f(x),f(i))(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DeliteMultiArrayAppend(m,x), u, es) => reflectMirrored(Reflect(DeliteMultiArrayAppend(f(m),f(x))(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayNDInsert(m,r,a,i), u, es) => reflectMirrored(Reflect(DeliteMultiArrayNDInsert(f(m),f(r),a,f(i))(e.mA, ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayNDAppend(m,r,a), u, es) => reflectMirrored(Reflect(DeliteMultiArrayNDAppend(f(m),f(r),a)(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayInsertAll(m,r,a,i), u, es) => reflectMirrored(Reflect(DeliteMultiArrayInsertAll(f(m),f(r),a,f(i))(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayAppendAll(m,r,a), u, es) => reflectMirrored(Reflect(DeliteMultiArrayAppendAll(f(m),f(r),a)(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
-    case Reflect(e@DeliteMultiArrayRemove(m,a,s,e), u, es) => reflectMirrored(Reflect(DeliteMultiArrayRemove(f(m),a,f(s),f(e))(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DeliteMultiArrayRemove(m,a,s,l), u, es) => reflectMirrored(Reflect(DeliteMultiArrayRemove(f(m),a,f(s),f(l))(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
 
     case Reflect(e@DeliteMultiArrayMkString(m,d), u, es) => reflectMirrored(Reflect(DeliteMultiArrayMkString(f(m),f(d))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
-    case Reflect(DeliteStringSplit(s,p,l), u, es) => reflectMirrored(Reflect(DeliteStringSplit(s,p,l), mapOver(f,u), f(es)))(mtype(manifest[A], ctx))
+    case Reflect(DeliteStringSplit(s,p,l), u, es) => reflectMirrored(Reflect(DeliteStringSplit(f(s),f(p),f(l)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
 
     case Reflect(e@DeliteMultiArraySortIndices(l,c), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArraySortIndices(f(l),c), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayMapFilter(m,g,c), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArrayMapFilter(f(m),g,c)(e.mA,e.mB,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayFlatMap(m,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArrayFlatMap(f(m),g)(e.mA,e.mB,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayGroupBy(m,k), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArrayGroupBy(f(m),k)(e.mA,e.mB,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)        
-    case Reflect(e@DeliteMultiArrayGroupByReduce(m,k,v,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArray(f(m),k,v,r)(e.mA,e.mB,e.mT,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DeliteMultiArrayGroupByReduce(m,k,v,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArrayGroupByReduce(f(m),k,v,r)(e.mA,e.mB,e.mT,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
 
-    case Reflect(e@DeliteMatrixMultiply(l,r), u, es) => reflectMirrored(Reflect(DeliteMatrixMultiply(f(l),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
-    case Reflect(e@DeliteMatrixVectorMultiply(m,v), u, es) => reflectMirrored(Reflect(DeliteMatrixVectorMultiply(f(m),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DeliteMatrixMultiply(l,r), u, es) => reflectMirrored(Reflect(DeliteMatrixMultiply(f(l),f(r))(e.mA,e.nA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DeliteMatrixVectorMultiply(m,v), u, es) => reflectMirrored(Reflect(DeliteMatrixVectorMultiply(f(m),f(v))(e.mA,e.nA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
 
     //case Reflect(e@DeliteMultiArrayPin(m,l), u, es) => reflectMirrored(Reflect(DeliteMultiArrayPin(f(m),l)(e.mA,e.mB), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     //case Reflect(e@DeliteMultiArrayUnpin(a,l,s), u, es) => reflectMirrored(Reflect(DeliteMultiArrayPin(f(a),l,f(s))(e.mA,e.mB), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)

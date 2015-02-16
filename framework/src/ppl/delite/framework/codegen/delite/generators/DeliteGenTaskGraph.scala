@@ -21,7 +21,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
   import IR.{ __newVar => _, __assign => _, __ifThenElse => _ , _ }
 
   private def vals(sym: Sym[Any]) : List[Sym[Any]] = sym match {
-    case Def(Reify(s, u, effects)) => if (s.isInstanceOf[Sym[Any]]) List(s.asInstanceOf[Sym[Any]]) else Nil
+    case Def(Reify(s, u, effects)) => if (s.isInstanceOf[Sym[_/*Any*/]]) List(s.asInstanceOf[Sym[Any]]) else Nil
     case Def(Reflect(NewVar(v), u, effects)) => Nil
     case _ => List(sym)
   }
@@ -199,7 +199,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
 
         def genEmitNode(gen: Generator)(sym: List[Sym[Any]], rhs: Any)(genStream: PrintWriter) = rhs match {
           case fd: FatDef => gen.withStream(genStream)(gen.emitFatNode(sym, fd))
-          case d: Def[Any] => {
+          case d: Def[_/*Any*/] => {
             assert(sym.length == 1)
             gen.withStream(genStream)(gen.emitNode(sym(0), d))
           }
@@ -266,7 +266,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
         if (hasOutputSlotTypes) {
           // activation record class declaration
           rhs match {
-            case d:Def[Any] =>  gen.withStream(kstream)(gen.emitNodeKernelExtra(sym, d))
+            case d:Def[_/*Any*/] =>  gen.withStream(kstream)(gen.emitNodeKernelExtra(sym, d.asInstanceOf[Def[Any]]))
             case f:FatDef => gen.withStream(kstream)(gen.emitFatNodeKernelExtra(sym, f))
           }
         }
@@ -322,7 +322,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     val defs = rhs match {
       case op:AbstractFatLoop => op.body
       case op:AbstractFatIfThenElse => (op.thenp zip op.elsep) map (p => IfThenElse(op.cond,p._1,p._2))
-      case d: Def[Any] => List(d)
+      case d: Def[_/*Any*/] => List(d.asInstanceOf[Def[Any]])
     }
     val internalKernelEffects = getEffectsBlock(defs)
 
@@ -568,10 +568,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
   }
 
   def emitConstOrSym(x: Exp[Any], prefix: String) = x match {
-    case c:Const[Any] => stream.println("  \"" + prefix + "Type\": \"const\",")
-                         stream.println("  \"" + prefix + "Value\": \"" + quote(x) + "\"")
-    case s:Sym[Any] =>   stream.println("  \"" + prefix + "Type\": \"symbol\",")
-                         stream.println("  \"" + prefix + "Value\": \"" + quote(getBlockResult(Block(x))) + "\"") // x might be a Reify
+    case c:Const[_] => stream.println("  \"" + prefix + "Type\": \"const\",")
+                       stream.println("  \"" + prefix + "Value\": \"" + quote(x) + "\"")
+    case s:Sym[_] =>   stream.println("  \"" + prefix + "Type\": \"symbol\",")
+                       stream.println("  \"" + prefix + "Value\": \"" + quote(getBlockResult(Block(x))) + "\"") // x might be a Reify
   }
 
   def emitOutput(x: Exp[Any]) = emitConstOrSym(x, "output")
@@ -581,25 +581,25 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
   }
 
   def emitSubGraph(prefix: String, e: Block[Any]) = e match {
-    case Block(c:Const[Any]) => stream.println("  \"" + prefix + "Type\": \"const\",")
-                                stream.println("  \"" + prefix + "Value\": \"" + quote(c) + "\",")
-    case Block(s:Sym[Any]) =>   getBlockResult(e) match {
-                                  // if we have a non-unit constant return value, we need to be able to parse it directly
-                                  case c: Const[Any] if c.tp != manifest[Unit] =>
-                                    stream.println("  \"" + prefix + "Type\": \"const\",")
-                                    stream.println("  \"" + prefix + "Value\": \"" + quote(c) + "\",")
-                                  case _ =>
-                                    stream.println("  \"" + prefix + "Type\": \"symbol\",")
-                                }
-                                stream.println("  \"" + prefix + "Ops\": [")
-                                val saveMutatingDeps = kernelMutatingDeps
-                                val saveEffectKernelReads = effectKernelReads
-                                kernelMutatingDeps = Map()
-                                effectKernelReads = Map()
-                                emitBlock(e)
-                                emitEOG()
-                                effectKernelReads = saveEffectKernelReads
-                                kernelMutatingDeps = saveMutatingDeps
+    case Block(c:Const[_]) => stream.println("  \"" + prefix + "Type\": \"const\",")
+                              stream.println("  \"" + prefix + "Value\": \"" + quote(c) + "\",")
+    case Block(s:Sym[_]) =>   getBlockResult(e) match {
+                                // if we have a non-unit constant return value, we need to be able to parse it directly
+                                case c: Const[_] if c.tp != manifest[Unit] =>
+                                  stream.println("  \"" + prefix + "Type\": \"const\",")
+                                  stream.println("  \"" + prefix + "Value\": \"" + quote(c) + "\",")
+                                case _ =>
+                                  stream.println("  \"" + prefix + "Type\": \"symbol\",")
+                              }
+                              stream.println("  \"" + prefix + "Ops\": [")
+                              val saveMutatingDeps = kernelMutatingDeps
+                              val saveEffectKernelReads = effectKernelReads
+                              kernelMutatingDeps = Map()
+                              effectKernelReads = Map()
+                              emitBlock(e)
+                              emitEOG()
+                              effectKernelReads = saveEffectKernelReads
+                              kernelMutatingDeps = saveMutatingDeps
   }
 
   private def makeString(list: List[Exp[Any]]) = {

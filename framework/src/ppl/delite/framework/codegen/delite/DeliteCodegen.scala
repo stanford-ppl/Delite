@@ -137,11 +137,14 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   // Change this later (ultimately want scheduling of analyses mixed with transforms)
   def runAnalysis[A:Manifest](b: Block[A]): Unit = {
     // MultiArray analysis
-    val rankAnalyzer = new RankAnalysis{val IR = DeliteCodegen.this.IR}
+    val rankAnalyzer = new RankAnalysis{val IR: DeliteCodegen.this.IR.type = DeliteCodegen.this.IR}
     rankAnalyzer.run(b)
+    if (rankAnalyzer.hadErrors) { System.exit(0) }
 
-    val rankChecker = new RankChecking{val IR = DeliteCodegen.this.IR; var metadata = rankAnalyzer.metadata}
+    val rankChecker = new RankChecking{val IR: DeliteCodegen.this.IR.type = DeliteCodegen.this.IR}
+    rankChecker.metadata = rankAnalyzer.metadata
     rankChecker.run(b)
+    if (rankChecker.hadErrors) { System.exit(0) }
 
     // Remove later
     System.exit(0)

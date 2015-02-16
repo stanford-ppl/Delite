@@ -323,7 +323,7 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
        
       val isVar = elems(0)._2 match {
         case Def(Reflect(NewVar(x),u,es)) => true
-        case x: Exp[Var[Any]] if x.tp.toString.contains("Variable") => true
+        case x: Exp[Var[_]] if x.tp.toString.contains("Variable") => true
         case _ => false
       }
       val structMethod = if (isVar) "mstruct" else "struct"      
