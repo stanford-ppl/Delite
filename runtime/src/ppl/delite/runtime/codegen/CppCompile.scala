@@ -18,7 +18,4 @@ object CppCompile extends CCompile {
       case "numa" => "__DELITE_CPP_NUMA__"
     }
   }
-  
-  private val dsFiles = Directory(Path(sourceCacheHome + "datastructures")).files.toList
-  override protected def auxSourceList = dsFiles.filter(_.extension == ext).map(_.toAbsolute.toString) ++ Array(sourceCacheHome + "kernels" + sep + target + "helperFuncs." + ext) ++ Array("DeliteCpp", "DeliteCppProfiler", "DeliteMemory", "DeliteThreadPool", "Config", "cppInit").map(staticResources+_+"."+ext)
 }

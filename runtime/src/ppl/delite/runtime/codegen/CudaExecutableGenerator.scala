@@ -112,7 +112,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
     out.append("cudaStream_t h2dStream;\n")
     out.append("cudaStream_t d2hStream;\n")
     out.append("JNIEnv* env" + location + ";\n")
-    val function = "JNIEXPORT void JNICALL Java_" + executableName + "_00024_host" + executableName + "(JNIEnv* jnienv, jobject object)"
+    val function = "JNIEXPORT void JNICALL Java_" + executableName + "_00024_host" + executableName + "(JNIEnv* jnienv, jobject object, jint numThreads)"
     out.append("extern \"C\" ") //necessary because of JNI
     out.append(function)
     out.append(";\n")

@@ -43,7 +43,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
 
   protected def writeMethodHeader() {
     out.append("JNIEnv* env" + location + ";\n")
-    val function = "JNIEXPORT void JNICALL Java_" + executableName + "_00024_host" + executableName + "(JNIEnv* jnienv, jobject object)"
+    val function = "JNIEXPORT void JNICALL Java_" + executableName + "_00024_host" + executableName + "(JNIEnv* jnienv, jobject object, jint numThreads)"
     out.append("extern \"C\" ") //necessary because of JNI
     out.append(function)
     out.append(";\n")
@@ -52,7 +52,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
     out.append("env" + location + " = jnienv;\n")
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
-    out.append("initializeAll(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + "," + numActiveCpps + "," + Config.cppHeapSize + "ULL);\n")
+    out.append("initializeAll(" + Targets.getRelativeLocation(location) + ", numThreads," + numActiveCpps + "," + Config.cppHeapSize + "ULL);\n")
     out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
     out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
     writeJNIInitializer(locations)
@@ -76,7 +76,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
   protected def writeMethodFooter() {
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
-    out.append("clearAll(" + Config.numCpp + "," + numActiveCpps + "," + Config.numThreads + ",env" + location + ");\n")
+    out.append("clearAll(numThreads," + numActiveCpps + "," + Config.numThreads + ",env" + location + ");\n")
     out.append("}\n")
   }
 
@@ -236,15 +236,23 @@ class ScalaNativeExecutableGenerator(override val location: Int, override val gr
     val appName = degName(degName.length-2)
     val configString = Config.numThreads.toString + Config.numCpp + Config.numCuda + Config.numOpenCL
     val tgt = OpHelper.scheduledTarget(location)
-    out.append("@native def host" + executableName(location) + ": Unit\n")
+    //NOTE: Pass the number of threads as an argument to the JNI call,
+    //      in order to avoid changing the generated code across different number of threads (avoid compilation).
+    out.append("//numThreads: number of threads for this target\n")
+    out.append("@native def host" + executableName(location) + "(numThreads: Int): Unit\n")
     out.append("System.load(\"\"\"")
     out.append(Compilers(tgt).binCacheHome + tgt + "Host" + appName + "_" + configString + "." + OS.libExt)
     out.append("\"\"\")\n")
   }
 
   private def writeNativeCall() {
-    out.append("host")
-    out.append(executableName(location))
-    out.append('\n')
+    val target = Targets.getByLocation(location)
+    val numThreads = target match {
+      case Targets.Cpp => "Config.numCpp"
+      case Targets.Cuda => "Config.numCuda"
+      case Targets.OpenCL => "Config.numOpenCL"
+      case _ => throw new RuntimeException("Unsupported native target: " + target)
+    }
+    out.append(s"host${executableName(location)}(${numThreads});\n")
   }
 }

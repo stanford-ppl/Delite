@@ -155,7 +155,7 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
     out.append("#define MAX_GROUP 4\n")  //TODO: This will get removed by generelizing the GPU HashReduce
     if(tempAllocs(op).size==0) out.append("#define TEMP_" + op.id + "\n")
     else out.append("#define TEMP_" + op.id + " " + tempAllocs(op).map(t => t.tp + " *" + t.sym).mkString(",") + ",\n")
-    out.append("#include \"" + op.id + ".cu\"\n")
+    out.append("#include \"device/" + op.id + ".cu\"\n")
     out.append("extern cudaStream_t kernelStream;\n")
   }
 

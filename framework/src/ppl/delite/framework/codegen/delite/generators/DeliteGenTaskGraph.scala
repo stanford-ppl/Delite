@@ -3,7 +3,7 @@ package ppl.delite.framework.codegen.delite.generators
 import collection.mutable.{ArrayBuffer, ListBuffer, HashMap}
 import java.io.{StringWriter, FileWriter, File, PrintWriter}
 import scala.virtualization.lms.common.LoopFusionOpt
-import scala.virtualization.lms.internal.{GenericCodegen, CLikeCodegen, ScalaCodegen, GenerationFailedException}
+import scala.virtualization.lms.internal.{GenericCodegen, CLikeCodegen, GPUCodegen, ScalaCodegen, GenerationFailedException}
 import scala.virtualization.lms.internal.Targets._
 import ppl.delite.framework.ops.DeliteCollection
 import scala.reflect.SourceContext
@@ -180,7 +180,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
 
     if (!skipEmission) for (gen <- generators) {
       val sep = java.io.File.separator
-      val buildPath = Config.buildDir + sep + gen + sep + "kernels" + sep
+      //NOTE: GPU targets generate only device functions of multiloops at compile-time,
+      //      and we put those functions in 'device' directory to make compilation a bit easier at walk-time
+      val buildPath = gen match {
+        case g: GPUCodegen if (hasOutputSlotTypes) => Config.buildDir + sep + gen + sep + "kernels" + sep + "device" + sep
+        case _ => Config.buildDir + sep + gen + sep + "kernels" + sep
+      }
       val outDir = new File(buildPath); outDir.mkdirs()
       val outFile = new File(buildPath + kernelName + "." + gen.kernelFileExt)
       val kstream = new PrintWriter(outFile)
