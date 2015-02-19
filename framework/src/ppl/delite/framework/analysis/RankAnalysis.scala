@@ -1,15 +1,15 @@
 package ppl.delite.framework.analysis
 
-import java.io._
-import scala.collection.mutable.{HashMap,HashSet}
+import scala.collection.mutable.HashMap
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.FatBlockTraversal
 import scala.reflect.SourceContext
 
-import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.delite.framework.datastructures._
 import ppl.delite.framework.datastructures.DeliteMultiArrayOpsExp
-import ppl.delite.framework.Config
+
+import ppl.delite.framework.Util._
 
 // TODO: Assuming for now that we can have aliased views with different
 // target ranks.
@@ -38,17 +38,17 @@ import ppl.delite.framework.Config
 
 trait DeliteMultiArrayMetadata extends DeliteMetadata {
   case class Rank(rank: Int) extends Metadata {
-    val name = "rank"
-    override def makeString(prefix: String = "") = prefix + rank
+    def name = "rank"
+    override def makeString(prefix: String) = rank.toString
   }
   case class Buffer(buff: Boolean) extends Metadata {
-    val name = "isBuffer"
-    override def makeString(prefix: String = "") = prefix + buff
+    def name = "isBuffer"
+    override def makeString(prefix: String) = buff.toString
     def isBuffer: Boolean = buff
   }
   case class TargetRank(rank: Option[Int]) extends Metadata {
-    val name = "targetRank"
-    override def makeString(prefix: String = "") = prefix + rank.map{_.toString}.getOrElse("[Not a View]")
+    def name = "targetRank"
+    override def makeString(prefix: String) = rank.map{_.toString}.getOrElse("[Not a View]")
     def isView: Boolean = rank.isDefined
   }
 
@@ -87,7 +87,7 @@ trait MultiArrayAnalysisStageOne extends AnalysisBase {
   val IR: DeliteOpsExp
   import IR._
 
-  val IRMetadata: DeliteMultiArrayMetadata 
+  override val IRMetadata: DeliteMultiArrayMetadata 
   import IRMetadata._
 
   // TODO: This would make more sense in MultiArrayMetadata, but
@@ -97,10 +97,9 @@ trait MultiArrayAnalysisStageOne extends AnalysisBase {
   def getTargetRank(p: SymbolProperties): Option[TargetRank] = p("targetRank").map{_.asInstanceOf[TargetRank]}
   def getBufferable(p: SymbolProperties): Option[Buffer] = p("isBuffer").map{_.asInstanceOf[Buffer]}
 
-  
-  def getRank(e: Exp[Any]): Option[Rank] = metadata.get(e) match {case Some(p) => getRank(p); case None => None}
-  def getTargetRank(e: Exp[Any]): Option[TargetRank] = metadata.get(e) match {case Some(p) => getTargetRank(p); case None => None}
-  def getBufferable(e: Exp[Any]): Option[Buffer] = metadata.get(e) match {case Some(p) => getBufferable(p); case None => None}
+  def getRank(e: Exp[Any]): Option[Rank] = getMetadata(e, "rank").map{_.asInstanceOf[Rank]}
+  def getTargetRank(e: Exp[Any]): Option[TargetRank] = getMetadata(e, "targetRank").map{_.asInstanceOf[TargetRank]}
+  def getBufferable(e: Exp[Any]): Option[Buffer] = getMetadata(e, "isBuffer").map{_.asInstanceOf[Buffer]}
 
   // Defaults for view and bufferable are both false
   def isView(e: Exp[Any]): Boolean = getTargetRank(e).getOrElse{TargetRank(None)}.isView
@@ -108,19 +107,31 @@ trait MultiArrayAnalysisStageOne extends AnalysisBase {
 }
 
 trait RankAnalysis extends MultiArrayAnalysisStageOne {
-  val IR: DeliteOpsExp with DeliteMultiArrayOpsExp
+  val IR: DeliteOpsExp
   import IR._
 
-  val IRMetadata: DeliteMultiArrayMetadata = 
+  override val IRMetadata: DeliteMultiArrayMetadata = 
     new DeliteMultiArrayMetadata {
-      override def dataComplete(a: ArrayProperties): Boolean = a("rank").isDefined
+      def dataComplete(a: SymbolProperties): Boolean = a match {
+        case a: ArrayProperties => a("rank").isDefined
+        case _ => true
+      }
     }
   import IRMetadata._
 
   val name = "Rank Analysis"
 
+  override def createMetadataFromType[A](tp: Manifest[A]): List[Metadata] = {
+    if (isSubtype(tp.erasure, classOf[DeliteArray1D[_]])) List(Rank(1))
+    else if (isSubtype(tp.erasure, classOf[DeliteArray2D[_]])) List(Rank(2))
+    else if (isSubtype(tp.erasure, classOf[DeliteArray3D[_]])) List(Rank(3))
+    else if (isSubtype(tp.erasure, classOf[DeliteArray4D[_]])) List(Rank(4))
+    else if (isSubtype(tp.erasure, classOf[DeliteArray5D[_]])) List(Rank(5))
+    else Nil
+  }
+
   // Propagate rank info through IR
-  override def processOp[A](e: Exp[A], d: Def[_]): Unit = d match {
+  override def processOp[A](e: Exp[A], d: Def[_])(implicit ctx: AnalysisContext): Unit = d match {
     case DeliteMultiArraySortIndices(_,_) => setMetadata(e, Rank(1))
     case DeliteStringSplit(_,_,_) => setMetadata(e, Rank(1))
     case DeliteMultiArrayMapFilter(_,_,_) => setMetadata(e, Rank(1)) 
@@ -129,8 +140,7 @@ trait RankAnalysis extends MultiArrayAnalysisStageOne {
     case DeliteMultiArrayNew(dims) => setMetadata(e, Rank(dims.length))
 
     case DeliteMultiArrayView(t,_,_,dims) => 
-      setMetadata(e, Rank(dims.length))  // set rank
-      // Check that view's rank can never be larger than its target
+      setMetadata(e, Rank(dims.length))
       // Switch target's Rank metadata to TargetRank metadata if it exists
       // and the target is not itself a view
       if (isView(t)) setMetadata(e, getTargetRank(t))
@@ -149,6 +159,37 @@ trait RankAnalysis extends MultiArrayAnalysisStageOne {
     case _ => // Nothing
   }
 
+  def listComplete(incomplete: List[Exp[Any]]) {
+    log("--------------------", tagged = false)
+    log("Completed: ", tagged = false)
+    for ((k,v) <- metadata) {
+      if (!incomplete.contains(k)) {
+        log("sym: " + strDef(k), tagged = false)
+        log(k + makeString(v), tagged = false)
+        log("", tagged = false)
+      }
+    }
+  }
+  def listIncomplete(incomplete: List[Exp[Any]]) {
+    log("-------------------", tagged = false)
+    log("Incomplete: ", tagged = false)
+    for (s <- incomplete) {
+      result(strDef(s), tagged = false)
+      result(s + makeString(metadata.get(s)), tagged = false)
+      result("", tagged = false)
+    }
+  }
+
+  /*override def iteration[A](b: Block[A]): Unit = {
+    super.iteration(b)
+
+    // Debugging
+    listComplete(Nil)
+    log("Iteration completed")
+    log("Changed symbols: " + changedSyms)
+    log("",tagged = false)
+  }*/
+ 
   override def run[A](b: Block[A]): Unit = {
     super.run(b)
 
@@ -156,25 +197,24 @@ trait RankAnalysis extends MultiArrayAnalysisStageOne {
 
     if (iter > MAX_ITERS && !incomplete.isEmpty) {
       result("Maximum iterations exceeded before all ranks were fully known")
-      result("Try increasing the maximum number of iterations", tagged = false)
-      sys.exit(0)
+      result("Try increasing the maximum number of iterations")
+      listComplete(incomplete)
+      listIncomplete(incomplete)
+      
+      throw new Exception("MultiArray metadata incomplete")
+      //sys.exit(0)
     }
     else if (!incomplete.isEmpty) {
-      result("Unable to statically determine the ranks of some arrays: ")
-      // print symbols
-      for (s <- incomplete) {
-        result(strDef(s), tagged = false)
-        result(makeString(metadata(s)), tagged = false)
-      }
-      sys.exit(0)
+      result("Unable to statically determine the ranks of some arrays!")
+      listComplete(incomplete)
+      listIncomplete(incomplete)
+      
+      throw new Exception("MultiArray metadata incomplete")
+      //sys.exit(0)
     }
     else {
       log("Completed. Found ranks: ")
-      for ((k,v) <- metadata) {
-        log("sym: " + strDef(k), tagged = false)
-        log(makeString(v), tagged = false)
-        log("", tagged = false)
-      }
+      listComplete(incomplete)
     }
   }
 }
@@ -184,10 +224,10 @@ trait RankChecking extends MultiArrayAnalysisStageOne {
   val IR: DeliteOpsExp with DeliteMultiArrayOpsExp
   import IR._
 
-  val IRMetadata: DeliteMultiArrayMetadata = new DeliteMultiArrayMetadata{}
+  override val IRMetadata = new DeliteMultiArrayMetadata{ def dataComplete(a: SymbolProperties): Boolean = true }
   import IRMetadata._
 
-  val name = "Rank Analysis"
+  val name = "Rank Sanity Check"
 
   // This will throw an exception if getRank returns None, but completeness
   // check should guarantee that all expressions have a rank
@@ -200,12 +240,7 @@ trait RankChecking extends MultiArrayAnalysisStageOne {
       check(rank(ma) == config.length, "Number of dimensions given in permute conifguration must match input MultiArray rank", e)
 
     // Mutations --- TODO: are these checks necessary?
-    case DeliteMultiArrayUpdate(ma,_,_) => 
-      check(isMutable(ma), "Cannot update immutable data structure", e)
-    case DeliteMultiArrayMutableMap(ma,_) =>
-      check(isMutable(ma), "Cannot mutable-map immutable data structure", e)
     case DeliteMultiArrayMutableZipWith(ma,mb,_) => 
-      check(isMutable(ma), "Cannot mutable-zipwith immutable data structure", e)
       check(rank(ma) == rank(mb), "Ranks in inputs to mutable-zipwith must match", e)
       // TODO: is this needed?
       if (!matches(getChild(ma), getChild(mb))) {
@@ -232,35 +267,28 @@ trait RankChecking extends MultiArrayAnalysisStageOne {
     case op@DeliteMultiArrayNDMap(in,mdims,f) =>
       check(rank(op.ma) == rank(op.body.res), "Input and output rank must match in ND-Map", e)
     case DeliteMultiArrayNDInsert(ma,rhs,axis,i) =>
-      check(isMutable(ma), "Cannot insert into immutable data structure", e)
       check(isBuffer(ma), "MultiArray must be bufferable for insert operation", e)
       check(rank(ma) == rank(rhs) + 1, "Right hand side must have rank one less than left hand side in ND-Insert", e)
       check(axis > 0 && axis <= rank(ma), "Insert axis must be greater than zero and less than or equal to MultiArray's rank", e)
     case DeliteMultiArrayNDAppend(ma,rhs,axis) =>
-      check(isMutable(ma), "Cannot append to immutable data structure", e)
       check(isBuffer(ma), "MultiArray must be bufferable for append operation", e)
       check(rank(ma) == rank(rhs) + 1, "Right hand side must have rank one less than left hand side in ND-Append", e)
       check(axis > 0 && axis <= rank(ma), "Insert axis must be greater than zero and less than or equal to MultiArray's rank", e)
     case DeliteMultiArrayInsertAll(ma,rhs,axis,i) =>
-      check(isMutable(ma), "Cannot insert into immutable data structure", e)
       check(isBuffer(ma), "MultiArray must be bufferable for insert operation", e)
       check(rank(ma) == rank(rhs), "Ranks of left and right hand side must match in Insert All", e)
       check(axis > 0 && axis <= rank(ma), "Insert axis must be greater than zero and less than or equal to MultiArray's rank", e)
     case DeliteMultiArrayAppendAll(ma,rhs,axis) =>
-      check(isMutable(ma), "Cannot append to immutable data structure", e)
       check(isBuffer(ma), "MultiArray must be bufferable for append operation", e)
       check(rank(ma) == rank(rhs), "Ranks of left and right hand side must match in Append All", e)
       check(axis > 0 && axis <= rank(ma), "Append axis must be greater than zero and less than or equal to MultiArray's rank", e)
     case DeliteMultiArrayInsert(ma,x,i) => 
-      check(isMutable(ma), "Cannot insert into immutable data structure", e)
       check(isBuffer(ma), "MultiArray must be bufferable for insert operation", e)
       check(rank(ma) == 1, "Element Insert is only defined on 1D arrays", e)
     case DeliteMultiArrayAppend(ma,x) =>
-      check(isMutable(ma), "Cannot append to immutable data structure", e)
       check(isBuffer(ma), "MultiArray must be bufferable for insert operation", e)
       check(rank(ma) == 1, "Element Append is only defined on 1D arrays", e)
     case DeliteMultiArrayRemove(ma,axis,start,end) =>
-      check(isMutable(ma), "Cannot remove elements from an immutable data structure", e)
       check(isBuffer(ma), "MultiArray must be bufferable for remove operation", e)
       check(axis > 0 && axis <= rank(ma), "Removal axis must be greater than zero and less than or equal to MultiArray's rank", e)
 

@@ -21,6 +21,8 @@ import ppl.delite.framework.analysis.{StencilAnalysis, RankAnalysis, RankCheckin
 import generators.{DeliteGenTaskGraph}
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
 
+class MultiArrayGenException extends Exception("Cannot currently codegen MultiArray defs")
+
 // FIXME: now that syms and friends is in the IR, all this ifGenAgree(..) crap is not necessary.
 
 /**
@@ -147,7 +149,8 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     if (rankChecker.hadErrors) { System.exit(0) }
 
     // Remove later
-    System.exit(0)
+    if (rankAnalyzer.metadata.values.exists{p => p.isInstanceOf[rankAnalyzer.IRMetadata.ArrayProperties]})
+      throw new MultiArrayGenException
   }
 
   def emitBlockHeader(syms: List[Sym[Any]], appName: String) { }

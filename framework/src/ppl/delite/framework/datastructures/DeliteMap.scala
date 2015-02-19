@@ -50,7 +50,7 @@ trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp { this: DeliteO
   case class DeliteIndexGet[K:Manifest](index: Rep[DeliteIndex[K]], key: Rep[K]) extends DefWithManifest[K,Int]
 
   case class DeliteMapNewImm[K:Manifest,V:Manifest](keys: Rep[DeliteArray[K]], values: Rep[DeliteArray[V]], index: Rep[DeliteIndex[K]], size: Rep[Int]) extends DeliteStruct[DeliteMap[K,V]] {
-    val elems = copyTransformedElems(Seq("keys" -> keys, "values" -> values, "index" -> index, "size" -> size))
+    val elems = copyTransformedElems(List("keys" -> keys, "values" -> values, "index" -> index, "size" -> size))
     val mK = manifest[K]
     val mV = manifest[V]
   }

@@ -36,7 +36,6 @@ trait DeliteMetadata {
   def makeString[T: Meetable](a: T, prefix: String = "") = implicitly[Meetable[T]]._makeString(a,prefix)
   def multiLine[T: Meetable](a: T) = implicitly[Meetable[T]]._multiLine(a)
 
-  // TODO: calls "new" on every invocation :(
   implicit def OptionCanBeMeetable[T: Meetable]: Meetable[Option[T]] = new Meetable[Option[T]] {
     def _matches(a: Option[T], b: Option[T]) = (a,b) match {
       case (Some(a),Some(b)) => matches(a,b)
@@ -73,7 +72,7 @@ trait DeliteMetadata {
     }
     def _makeString(a: Option[T], prefix: String): String = a match {
       case Some(am) => makeString(am, prefix)
-      case None => prefix + "??"
+      case None => " is unknown!"
     }
     def _multiLine(a: Option[T]): Boolean = a match {
       case Some(am) => multiLine(am)
@@ -87,17 +86,14 @@ trait DeliteMetadata {
    *
    * TODO: Should there be 3 child classes of Metadata for each symbol type?
    * Assuming here that there is metadata across symbol types, is this true?
-   *
-   * TODO: Do we also need a Properties type for DeliteArray? Should this be a 
-   * common type with MultiArray (both only have one child)
    */ 
   abstract class Metadata { 
-    val name: String
+    def name: String
     //Test if this metadata instance has been sufficiently filled in
     def isComplete: Boolean = true
 
     // Pretty printing metadata (mostly for debugging)
-    def makeString(prefix: String = ""): String = prefix + this.toString()
+    def makeString(prefix: String): String = this.toString()
     def multiLine = false
   }
 
@@ -130,11 +126,10 @@ trait DeliteMetadata {
     def _isComplete(a: Metadata) = a.isComplete
     def _canMergeLeft(a: Metadata, b: Metadata) = true
     def _mergeLeft(a: Metadata, b: Metadata) = a
-    def _makeString(a: Metadata, prefix: String) = a.makeString(prefix)
+    def _makeString(a: Metadata, prefix: String) = " = " + a.makeString(prefix)
     def _multiLine(a: Metadata) = a.multiLine
   }
 
-  // TODO: Can this extend HashMap and have a non-empty constructor?
   case class PropertyMap[T:Meetable](__info: Iterable[(String, Option[T])]) {
     def this(datum: (String, Option[T])) { this(Seq(datum)) }
     def this(info: PropertyMap[T]) { this(info.toList) }
@@ -148,51 +143,61 @@ trait DeliteMetadata {
     def toList: List[(String, Option[T])] = data.toList
     private def keys: Iterable[String] = data.keys
 
-    def andAll(f: Option[T] => Boolean): Boolean = this.keys.map{k => f(this(k))}.reduce{_&&_}
-
     def zip(that: PropertyMap[T])(f: (Option[T], Option[T]) => Option[T]): PropertyMap[T] = {
       val allKeys = this.keys ++ that.keys
       PropertyMap[T](allKeys zip allKeys.map{k => f(this(k), that(k))} )
     }
-    def zipAndAll(that: PropertyMap[T])(f: (Option[T], Option[T]) => Boolean): Boolean = {
+
+    /**
+     * Reduce operation. Check that all properties in this map match the given condition
+     * Trivially true if this contains no keys
+     */
+    def requireAll(f: Option[T] => Boolean): Boolean = {
+      if (this.keys.isEmpty)
+        true
+      else
+        this.keys.map{k => f(this(k))}.reduce{_&&_}
+    }
+
+    /**
+     * Zip-Reduce operation. Get all keys from both maps, apply the zip function f which 
+     * produces a boolean for every pair. Then reduce the booleans using the AND operation
+     * Trivially true if neither this nor that contains any keys
+     */
+    def zipRequireAll(that: PropertyMap[T])(f: (Option[T], Option[T]) => Boolean): Boolean = {
       val allKeys = this.keys ++ that.keys
-      allKeys.map{k => f(this(k), that(k)) }.reduce{_&&_}
+      if (allKeys.isEmpty) 
+        true
+      else
+        allKeys.map{k => f(this(k), that(k)) }.reduce{_&&_}
     }
   }
-  object NoData extends PropertyMap[Metadata](Nil)
-  object NoChildren extends PropertyMap[SymbolProperties](Nil)
 
-
-  // TODO: Calls "new" on every invocation :(
   implicit def PropertyMapIsMeetable[T:Meetable]: Meetable[PropertyMap[T]] = new Meetable[PropertyMap[T]] {
-    def _matches(a: PropertyMap[T], b: PropertyMap[T]): Boolean = a.zipAndAll(b){(am,bm) => matches(am,bm)}
-    def _canMeet(a: PropertyMap[T], b: PropertyMap[T]): Boolean = a.zipAndAll(b){(am,bm) => canMeet(am,bm)}
-    def _canMergeLeft(a: PropertyMap[T], b: PropertyMap[T]): Boolean = a.zipAndAll(b){(am,bm) => canMergeLeft(am,bm)}
-    def _isComplete(a: PropertyMap[T]): Boolean = a.andAll{am => isComplete(am)}
+    def _matches(a: PropertyMap[T], b: PropertyMap[T]): Boolean = a.zipRequireAll(b){(am,bm) => matches(am,bm)}
+    def _canMeet(a: PropertyMap[T], b: PropertyMap[T]): Boolean = a.zipRequireAll(b){(am,bm) => canMeet(am,bm)}
+    def _canMergeLeft(a: PropertyMap[T], b: PropertyMap[T]): Boolean = a.zipRequireAll(b){(am,bm) => canMergeLeft(am,bm)}
+    def _isComplete(a: PropertyMap[T]): Boolean = a.requireAll{am => isComplete(am)}
     def _meet(a: PropertyMap[T], b: PropertyMap[T]): PropertyMap[T] = a.zip(b){(am,bm) => meet(am,bm)}
     def _mergeLeft(a: PropertyMap[T], b: PropertyMap[T]): PropertyMap[T] = a.zip(b){(am, bm) => mergeLeft(am,bm)}
   
     def _makeString(a: PropertyMap[T], prefix: String): String = {
       if (a.data.isEmpty) ""
       else 
-        a.data.toList.sortBy{x => x._1}.map{dat => 
-          prefix + dat._1 + ":" + (if (multiLine(dat._2)) "\n" else "") + makeString(dat._2, prefix + "  ")
-        }.mkString("\n")
+        a.data.toList.sortBy{x => x._1}.map{dat => prefix + "." + dat._1 + makeString(dat._2, prefix)}.mkString("\n")
     }
-    def _multiLine(a: PropertyMap[T]): Boolean = a.size > 1
+    def _multiLine(a: PropertyMap[T]): Boolean = a.size > 0
   }
 
   /**
    * Parent class for metadata containers. Holds a hash map of 
    * string keys to single properties (Metadata instances)
-   *
-   * TODO: change "SymbolProperties" to something more concise?
    */ 
   sealed abstract class SymbolProperties (val data: PropertyMap[Metadata]) {
     def apply(x: String) = data(x)
   }
 
-  // Metadata for (native?) scalar symbols (single element)
+  // Metadata for scalar symbols (single element)
   case class ScalarProperties(override val data: PropertyMap[Metadata]) extends SymbolProperties(data)
 
   // Metadata for DeliteStructs 
@@ -206,10 +211,9 @@ trait DeliteMetadata {
   case class ArrayProperties(child: Option[SymbolProperties] = None, override val data: PropertyMap[Metadata])
     extends SymbolProperties(data)
 
-  // These will need to be overridden by metadata implementations
-  def dataComplete(a: ScalarProperties): Boolean = true
-  def dataComplete(a: StructProperties): Boolean = true
-  def dataComplete(a: ArrayProperties): Boolean = true
+  // Test if properties for symbol type is complete
+  // This needs to be overridden by metadata implementations / instances
+  def dataComplete(a: SymbolProperties): Boolean
 
   implicit object SymbolPropertiesIsMeetable extends Meetable[SymbolProperties] {
     def _matches(a: SymbolProperties, b: SymbolProperties): Boolean = (a,b) match {
@@ -262,15 +266,20 @@ trait DeliteMetadata {
 
     def _makeString(a: SymbolProperties, prefix: String): String = a match { 
       case a: ScalarProperties => 
-        prefix + "Scalar {" + (if (multiLine(a.data)) "\n" else "") + makeString(a.data, prefix + "  ") + (if (multiLine(a.data)) "\n" + prefix else "") + "}"
+        ": Scalar {" + (if (multiLine(a.data)) "\n" else "") + makeString(a.data, prefix + "  ") + (if (multiLine(a.data)) "\n" + prefix else "") + "}"
       case a: StructProperties =>
-        prefix + "Struct {" + prefix + " Metadata\n" + makeString(a.data, prefix + "  ") + "\n" + prefix + " Fields\n" + makeString(a.children, prefix + "  ") + "\n" + prefix + "}" 
+        ": Struct {\n" + prefix + " Metadata:" + (if (multiLine(a.data)) "\n" + prefix else "")  + makeString(a.data, prefix + "  ") + "\n" +
+                       prefix + " Fields:\n" + makeString(a.children, prefix + "  ") + "\n" + prefix + "}" 
       case a: ArrayProperties =>
-        prefix + "Array {" + prefix + " Metadata\n" + makeString(a.data, prefix + "  ") + "\n" + prefix + " Child\n" + makeString(a.child, prefix + "  ") + "\n" + prefix + "}" 
+        ": Array {\n" + prefix + " Metadata:" + (if (multiLine(a.data)) "\n" + prefix else "") + makeString(a.data, prefix + "  ") + "\n" +
+                      prefix + " Child" + makeString(a.child, prefix + "  ") + "\n" + prefix + "}" 
     }
     def _multiLine(a: SymbolProperties): Boolean = a match {
       case a: ScalarProperties => multiLine(a.data)
       case _ => true
     }
   }
+
+  object NoData extends PropertyMap[Metadata](Nil)
+  object NoChildren extends PropertyMap[SymbolProperties](Nil)
 }
