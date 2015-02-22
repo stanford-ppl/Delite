@@ -5,7 +5,7 @@ extern "C" JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_CudaExecution
 
 JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_CudaExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads) {
   //chose device num
-  if(cudaSuccess != cudaSetDevice(0)) {
+  if(cudaSuccess != cudaSetDevice(threadId)) {
     printf("FATAL : GPU device could not be initialized. \n");	
     exit(1);
   }

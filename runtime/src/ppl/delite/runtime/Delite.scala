@@ -2,7 +2,7 @@ package ppl.delite.runtime
 
 import codegen._
 import executor._
-import graph.ops.{EOP_Global, Arguments}
+import graph.ops.{EOP_Global, Arguments, Sync}
 import graph.targets.Targets
 import graph.{TestGraph, DeliteTaskGraph}
 import profiler.Profiling
@@ -115,6 +115,11 @@ object Delite {
       
       //schedule
       scheduler.schedule(graph)
+      Sync.addSync(graph)
+
+      //merge C++ schedule into CUDA schedule
+      if (Config.numCuda > 0)
+        scheduler.scheduleNativeGPU(graph)
 
       //compile
       Compilers.compileSchedule(graph)
