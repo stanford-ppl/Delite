@@ -25,7 +25,19 @@ class EOP(val id: String, var outputTypesMap: Map[Targets.Value,Map[String,Strin
 
   def isDataParallel = false
 
-  def task = "ppl.delite.runtime.graph.ops.EOP_Kernel"
+  def task = {
+    if (scheduledOn(Targets.Scala)) {
+      "ppl.delite.runtime.graph.ops.EOP_Kernel"
+    }
+    else if (scheduledOn(Targets.Cpp)) {
+      "jclass cls_eop = env->FindClass(\"ppl/delite/runtime/graph/ops/EOP_Kernel\");\n" +
+      "jmethodID mid_eop = env->GetStaticMethodID(cls_eop,\"apply\",\"()Ljava/lang/Object;\");\n" +
+      "env->CallStaticVoidMethod(cls_eop,mid_eop);\n"
+    }
+    else {
+      sys.error("EOP cannot be scheduled other than Scala and C++ targets")
+    }
+  }
 
   def cost = 0
   def size = 0

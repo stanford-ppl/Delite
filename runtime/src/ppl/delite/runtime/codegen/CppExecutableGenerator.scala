@@ -30,7 +30,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
     CppCompile.addSource(externs+source, executableName)
   }
 
-  protected def writeHeader() {
+  protected[codegen] def writeHeader() {
     out.append("#include <stdio.h>\n")
     out.append("#include <stdlib.h>\n")
     out.append("#include <jni.h>\n")
@@ -50,6 +50,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
     out.append(function)
     out.append(" {\n")
     out.append("env" + location + " = jnienv;\n")
+    out.append("JNIEnv *env = jnienv;\n")
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
     out.append("initializeAll(" + Targets.getRelativeLocation(location) + ", numThreads," + numActiveCpps + "," + Config.cppHeapSize + "ULL);\n")
@@ -97,7 +98,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
     case err => println("Cannot generate op" + op.id) //sys.error("Unrecognized OP type: " + err.getClass.getSimpleName)
   }
 
-  protected def writeFunctionCall(op: DeliteOP) {
+  protected[codegen] def writeFunctionCall(op: DeliteOP) {
     def returnsResult = op.outputType(op.getOutputs.head) == op.outputType
     def resultName = if (returnsResult) getSymHost(op, op.getOutputs.head) else getOpSym(op)
 
@@ -119,13 +120,14 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
 
     out.append(op.task) //kernel name
     op match {
-      case _:Arguments => 
+      case _: Arguments =>
         assert(Arguments.args.length == 1 && Arguments.args(0).isInstanceOf[Array[String]], "ERROR: Custom input arguments are not currently suppored with Cpp target")
         val args = Arguments.args(0).asInstanceOf[Array[String]]
         if(args.length > 0)
           out.append("(" + args.length + args.map("\""+_+"\"").mkString(",",",",");\n"))
         else
           out.append("(" + args.length + ");\n") 
+      case _: EOP => //
       case _ => out.append((resourceInfoSym+:op.getInputs.map(i=>getSymHost(i._1,i._2))).mkString("(",",",");\n"))
     }
    
@@ -232,16 +234,15 @@ class ScalaNativeExecutableGenerator(override val location: Int, override val gr
   }
 
   private def writeNativeLoad() {
-    val degName = ppl.delite.runtime.Delite.inputArgs(0).split('.')
-    val appName = degName(degName.length-2)
-    val configString = Config.numThreads.toString + Config.numCpp + Config.numCuda + Config.numOpenCL
-    val tgt = OpHelper.scheduledTarget(location)
     //NOTE: Pass the number of threads as an argument to the JNI call,
     //      in order to avoid changing the generated code across different number of threads (avoid compilation).
     out.append("//numThreads: number of threads for this target\n")
     out.append("@native def host" + executableName(location) + "(numThreads: Int): Unit\n")
     out.append("System.load(\"\"\"")
-    out.append(Compilers(tgt).binCacheHome + tgt + "Host" + appName + "_" + configString + "." + OS.libExt)
+    Compilers(OpHelper.scheduledTarget(location)) match {
+      case c: CCompile => out.append(c.executableName)
+      case _ => sys.error("NativeExecutable must be compiled by a CCompiler: " + location)
+    }
     out.append("\"\"\")\n")
   }
 

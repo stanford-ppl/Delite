@@ -10,7 +10,7 @@ import collection.mutable.ArrayBuffer
 import sync._
 import ppl.delite.runtime.graph.DeliteTaskGraph
 
-trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
+trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs with CppResourceInfo {
 
   def deviceTarget = Targets.Cuda
   def hostTarget = Targets.getHostTarget(deviceTarget)
@@ -18,6 +18,8 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
   protected val getterList: ArrayBuffer[String] = ArrayBuffer()
   protected val available: ArrayBuffer[(DeliteOP,String)] = ArrayBuffer()
   //protected val aliasTable: AliasTable[(DeliteOP,String)] = new AliasTable[(DeliteOP, String)]
+
+  protected val hostGenerator: CppExecutableGenerator
 
   protected def writeDataFrees(op: DeliteOP)/*(implicit aliases: AliasTable[(DeliteOP,String)])*/ {
     var count = 0
@@ -90,7 +92,8 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
     CudaCompile.addSource(externs+source, executableName)
   }
 
-  protected def writeHeader() {
+  protected[codegen] def writeHeader() {
+    hostGenerator.writeHeader()
     out.append("#include <stdio.h>\n")
     out.append("#include <stdlib.h>\n")
     out.append("#include <string.h>\n")
@@ -120,6 +123,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
     out.append(" {\n")
 
     out.append("env" + location + " = jnienv;\n")
+    out.append("JNIEnv *env = jnienv;\n")
     out.append("cudaStreamCreate(&kernelStream);\n")
     out.append("cudaStreamCreate(&h2dStream);\n")
     out.append("cudaStreamCreate(&d2hStream);\n")
@@ -127,25 +131,13 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
     out.append("hostInit();\n") // try to remove the overhead of the first call to hostInit (internally calls cudaHostAlloc)
     out.append("tempCudaMemInit(" + Config.tempCudaMemRate + ");\n")  // Allocate temporary device memory used for multiloops
     out.append("cudaDeviceSetLimit(cudaLimitMallocHeapSize, cudaHeapSize);\n") // Allocate heap device memory
-    out.append("cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);\n") // 48KB L1 and 16KB Shared mem
+    //Preference of L1 cache slows down cuBLAS performance
+    //out.append("cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);\n") // 48KB L1 and 16KB Shared mem
     out.append("std::map<char*,void*>* outputMap = new std::map<char*,void*>();\n")
-    val locations = Range(0,Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL).toSet
-    writeJNIInitializer(locations)
-  }
 
-  protected def writeJNIInitializer(locations: Set[Int]) {
-    for (i <- locations) {
-      out.append("jclass cls")
-      out.append(i)
-      out.append(" = env")
-      out.append(location)
-      out.append("->FindClass(\"")
-      out.append("Sync_" + executableName(i))
-      out.append("\");\n")
-    }
-    //add a reference to the singleton of scala.runtime.BoxedUnit for use everywhere required
-    out.append("jclass clsBU = env" + location + "->FindClass(\"scala/runtime/BoxedUnit\");\n")
-    out.append("jobject boxedUnit = env" + location + "->GetStaticObjectField(clsBU, env" + location + "->GetStaticFieldID(clsBU, \"UNIT\", \"Lscala/runtime/BoxedUnit;\"));\n")
+    out.append("initializeAll(0," + Config.numCpp + ",1," + Config.cppHeapSize + "ULL);\n")
+    out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos[0];\n")
+    out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
   }
 
   protected def writeMethodFooter() {
@@ -178,62 +170,64 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
     else ""
   }
 
-  protected def writeFunctionCall(op: DeliteOP) {
-    if (op.task == null) return //dummy op
+  protected[codegen] def writeFunctionCall(op: DeliteOP) {
+    if (op.scheduledOn(Targets.Cpp) && !op.isInstanceOf[OP_Nested]) hostGenerator.writeFunctionCall(op)
+    else {
+      if (op.task == null) return //dummy op
 
-    out.append("addEvent(h2dStream, kernelStream);\n")
+      out.append("addEvent(h2dStream, kernelStream);\n")
 
-    for (i <- op.getInputs)
-      available += i
-    for (o <- op.getOutputs if op.outputType(o)!="Unit")
-      available += Pair(op,o)
+      for (i <- op.getInputs)
+        available += i
+      for (o <- op.getOutputs if op.outputType(o)!="Unit")
+        available += Pair(op,o)
 
-    if (Config.profile)
-      out.append("DeliteCudaTic(\"" + op.id + "\");\n")
+      if (Config.profile)
+        out.append("DeliteCudaTic(\"" + op.id + "\");\n")
 
-    op match {
-      case _:OP_Single =>
-        //TODO: enable singletask GPU kernels that has an output
-        assert(op.getOutputs.filter(o=>op.outputType(o)!="Unit").isEmpty)
-        out.append(op.task)
-        out.append("<<<dim3(1,1,1),dim3(1,1,1),0,kernelStream>>>")
-        val args = op.getInputs.map(i => deref(i._1,i._2) + getSymDevice(i._1,i._2))
-        out.append(args.mkString("(",",",");\n"))
-      case op:OP_MultiLoop =>
-        for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
-          out.append(op.outputType(Targets.Cuda, name))
-          out.append(" *" + getSymDevice(op,name) + ";\n")
-        }
-        out.append(op.task) //kernel name
-        
-        val size = if(op.sizeIsConst) op.size else getSymDevice(op,op.size)
-        val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").map(o => "&"+getSymDevice(op,o._2)).toList ++ op.getInputs.map(i=>getSymDevice(i._1,i._2)) :+ size
-        
-        out.append(args.mkString("(",",",");\n"))
-      case _:OP_Nested =>
-        for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
-          out.append(op.outputType(Targets.Cuda, name))
-          if (!isPrimitiveType(op.outputType(name))) out.append('*')
-          out.append(" " + getSymDevice(op,name) + " = ")
-        }
-        out.append(op.task) //kernel name
-        //val args = op.getInputs.map(i=>getSymDevice(i._1,i._2))
-        out.append("(" + inputArgs(op) + ");\n")
-      case _:OP_External =>
-        assert(op.getOutputs.size == 1) //TODO: what does libCall support?
-        writeOutputAlloc(op)
-        out.append(op.task) //kernel name
-        out.append('(')
-        out.append((op.getOutputs.toList++op.getInputs.map(i => i._2)).map(getSymDevice(op,_)).mkString(","))
-        //out.append(",kernelStream") //TODO: what other libraries besides cuBlas do we use? how do we use the stream only with supported libraries?
-        out.append(");\n")
+      op match {
+        case _:OP_Single =>
+          //TODO: enable singletask GPU kernels that has an output
+          assert(op.getOutputs.filter(o=>op.outputType(o)!="Unit").isEmpty)
+          out.append(op.task)
+          out.append("<<<dim3(1,1,1),dim3(1,1,1),0,kernelStream>>>")
+          val args = op.getInputs.map(i => deref(i._1,i._2) + getSymDevice(i._1,i._2))
+          out.append(args.mkString("(",",",");\n"))
+        case op:OP_MultiLoop =>
+          for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
+            out.append(op.outputType(Targets.Cuda, name))
+            out.append(" *" + getSymDevice(op,name) + ";\n")
+          }
+          out.append(op.task) //kernel name
+
+          val size = if(op.sizeIsConst) op.size else getSymDevice(op,op.size)
+          val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").map(o => "&"+getSymDevice(op,o._2)).toList ++ op.getInputs.map(i=>getSymDevice(i._1,i._2)) :+ size
+
+          out.append(args.mkString("(",",",");\n"))
+        case nested:OP_Nested =>
+          for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
+            out.append(op.outputType(Targets.getByLocation(op.scheduledResource), name))
+            if (!isPrimitiveType(op.outputType(name))) out.append('*')
+            out.append(" " + getSymHost(op,name) + " = ")
+          }
+          out.append(op.task) //kernel name
+          out.append("(" + generateInputArgs(op) + ");\n")
+        case _:OP_External =>
+          assert(op.getOutputs.size == 1) //TODO: what does libCall support?
+          writeOutputAlloc(op)
+          out.append(op.task) //kernel name
+          out.append('(')
+          out.append((op.getOutputs.toList++op.getInputs.map(i => i._2)).map(getSymDevice(op,_)).mkString(","))
+          //out.append(",kernelStream") //TODO: what other libraries besides cuBlas do we use? how do we use the stream only with supported libraries?
+          out.append(");\n")
+      }
+
+      if (Config.profile)
+        out.append("DeliteCudaToc(\"" + op.id + "\");\n")
+
+      out.append("addEvent(kernelStream, d2hStream);\n")
+      //writeDataFrees(op)
     }
-
-    if (Config.profile)
-      out.append("DeliteCudaToc(\"" + op.id + "\");\n")
-    
-    out.append("addEvent(kernelStream, d2hStream);\n")
-    //writeDataFrees(op)
   }
 
   protected def writeOutputAlloc(op: DeliteOP) {
@@ -288,22 +282,44 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
     op.getInputs.map(_._2).filter(updates.contains(_))
   }
 
-  protected def inputArgs(op: DeliteOP): String = {
+  protected def generateInputArgs(op: DeliteOP): String = {
     op match {
+      case nested: OP_Nested =>
+        val args = List(resourceInfoSym) ++ getHostInputs(nested).map(i => getSymHost(i._1,i._2)) ++ getDeviceInputs(nested).map(i => getSymDevice(i._1,i._2))
+        args.mkString(",")
+      /*
+      // Below should not be needed anymore, since updateOps doesn't need to update jobjects
       case op: OP_Nested => 
         op.getInputs.map(i => 
           if (updateOps(op).contains(i._2)) getSymDevice(i._1,i._2) + "," + getSymHost(i._1,i._2) + "," + getSymRemote(i._1,i._2) 
           else getSymDevice(i._1,i._2)
         ).mkString(",")
+      */
       case _ => 
         op.getInputs.map(i => getSymDevice(i._1,i._2)).mkString(",")
     }
   }
 
+  protected def getHostInputs(nested: OP_Nested): Seq[(DeliteOP,String)] = {
+    val internalOps = nested.nestedGraphs.flatMap(_.schedule(location).toArray).filter(_.scheduledOn(Targets.Cpp))
+    var validInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (DeliteTaskGraph.getOp(sym)(graph), sym)
+    validInputs ++= (for ((op,sym) <- nested.nestedGraphs.map(_.result); if (op.isInstanceOf[OP_Input] && op.scheduledOn(Targets.Cpp))) yield (DeliteTaskGraph.getOp(sym)(graph), sym))
+    validInputs.distinct
+  }
+
+  protected def getDeviceInputs(nested: OP_Nested): Seq[(DeliteOP,String)] = {
+    val internalOps = nested.nestedGraphs.flatMap(_.schedule(location).toArray).filter(_.scheduledOn(Targets.Cuda))
+    var validInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (DeliteTaskGraph.getOp(sym)(graph), sym)
+    validInputs ++= (for ((op,sym) <- nested.nestedGraphs.map(_.result); if (op.isInstanceOf[OP_Input] && op.scheduledOn(Targets.Cuda))) yield (DeliteTaskGraph.getOp(sym)(graph), sym))
+    validInputs.distinct
+  }
 }
 
 class CudaMainExecutableGenerator(val location: Int, val graph: DeliteTaskGraph)
   extends CudaExecutableGenerator with CudaSyncGenerator {
+
+  protected val hostGenerator: CppExecutableGenerator = new CppMainExecutableGenerator(location, graph)
+  hostGenerator.out = out
 
   def executableName(location: Int) = "Executable" + location
 
@@ -325,6 +341,8 @@ class CudaMainExecutableGenerator(val location: Int, val graph: DeliteTaskGraph)
 //TODO: Some location symbols are hard-coded. Change them.
 class CudaDynamicExecutableGenerator(val location: Int, val graph: DeliteTaskGraph) extends CudaExecutableGenerator with CudaSyncGenerator {
   def executableName(location: Int) = "Executable" + location
+
+  protected val hostGenerator: CppExecutableGenerator = new CppMainExecutableGenerator(location, graph)
 
   var syncLocation: Int = location
 
@@ -372,7 +390,7 @@ class CudaDynamicExecutableGenerator(val location: Int, val graph: DeliteTaskGra
     syncObjectGenerator(remoteSyncObjects, Targets.Scala).makeSyncObjects
   }
 
-  override protected def writeFunctionCall(op: DeliteOP) {
+  override protected[codegen] def writeFunctionCall(op: DeliteOP) {
     if (op.task == null) return //dummy op
 
     op match {
@@ -635,7 +653,7 @@ object CudaExecutableGenerator {
 
   def makeExecutables(schedule: PartialSchedule, graph: DeliteTaskGraph) {
     for (sch <- schedule if sch.size > 0) {
-      val location = sch.peek.scheduledResource
+      val location = sch.resourceID
       if(Config.clusterMode == 2) 
         new CudaDynamicExecutableGenerator(location, graph).makeExecutable(sch) // native execution plan
       else 

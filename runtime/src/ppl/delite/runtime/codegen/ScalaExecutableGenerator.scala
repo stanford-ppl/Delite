@@ -28,14 +28,18 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
     }
   }
 
-  protected def writeHeader() {
+  protected[codegen] def writeHeader() {
     ScalaExecutableGenerator.writePackage(graph, out)
     out.append("import ppl.delite.runtime.executor.DeliteExecutable\n") //base trait
     out.append("import ppl.delite.runtime.Config\n") //base trait
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
     out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
     ScalaExecutableGenerator.writePath(graph, out) //package of scala kernels
-    val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
+    // only emit locations that will have send objects from scala target or to scala target
+    val locations = opList.siblings.filter(oplist => !oplist.isEmpty && !oplist.toArray.collect{
+      case op: Send if op.from.scheduledOn(Targets.Scala) => op
+      case op: Send if op.receivers.exists(_.to.scheduledOn(Targets.Scala)) => op
+    }.isEmpty).map(_.resourceID).toSet
     if (!this.isInstanceOf[SyncObjectGenerator]) writeJNIInitializer(locations)
     out.append("object ")
     out.append(executableName)
@@ -63,7 +67,7 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
     case err => sys.error("Unrecognized OP type: " + err.getClass.getSimpleName)
   }
 
-  protected def writeFunctionCall(op: DeliteOP) {
+  protected[codegen] def writeFunctionCall(op: DeliteOP) {
     def dummyOutput = op.isInstanceOf[OP_MultiLoop] && Targets.getRelativeLocation(location) > 0
     def returnsResult = op.outputType(op.getOutputs.head) == op.outputType || dummyOutput
     def resultName = if (returnsResult && !dummyOutput) getSym(op, op.getOutputs.head) else getOpSym(op)

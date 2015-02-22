@@ -129,7 +129,7 @@ class CppWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: D
     out.append("bool predicate_")
     out.append(executableName(location))
     out.append("(")
-    writeInputs(inputs)
+    out.append(generateInputs(inputs))
     out.append(") {\n")
     val locationsRecv = nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Receive])).map(_.asInstanceOf[Receive].sender.from.scheduledResource).toSet
     val locations = if (nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Send])).nonEmpty) Set(location) union locationsRecv
@@ -156,6 +156,9 @@ class CppWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: D
 class CudaWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: DeliteTaskGraph)
   extends WhileGenerator with CudaNestedGenerator with CudaSyncGenerator {
 
+  protected val hostGenerator: CppWhileGenerator = new CppWhileGenerator(whileLoop, location, graph)
+  hostGenerator.out = out
+
   protected def beginWhile(predicate: String) {
     out.append("while (")
     out.append(predicate)
@@ -170,12 +173,8 @@ class CudaWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: 
     out.append("bool predicate_")
     out.append(executableName(location))
     out.append("(")
-    writeInputs(inputs)
+    out.append(generateHostDeviceInputs)
     out.append(") {\n")
-    val locationsRecv = nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Receive])).map(_.asInstanceOf[Receive].sender.from.scheduledResource).toSet
-    val locations = if (nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Send])).nonEmpty) Set(location) union locationsRecv
-                    else locationsRecv
-    writeJNIInitializer(locations)
   }
 
   protected def endFunction() {
@@ -183,7 +182,7 @@ class CudaWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: 
   }
 
   protected def callFunction(inputs: Seq[(DeliteOP,String)]) = {
-    "predicate_" + executableName(location) + "(" + inputArgs(whileLoop) + ")"
+    "predicate_" + executableName(location) + "(" + generateInputArgs(whileLoop) + ")"
   }
 
   override protected def getSym(op: DeliteOP, name: String) = WhileCommon.getSym(whileLoop, baseId, op, name)

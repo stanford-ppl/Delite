@@ -502,7 +502,7 @@ object DeliteTaskGraph {
       EOP.addDependency(result)
       result.addConsumer(EOP)
     }
-
+    EOP.supportedTargets ++= resultTypes.keySet - Targets.Cuda - Targets.OpenCL
     graph.registerOp(EOP)
     graph._result = (EOP, EOP.id)
   }

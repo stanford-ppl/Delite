@@ -58,6 +58,7 @@ object PartialSchedule {
 class OpList(val siblings: Array[OpList] = null, val resourceID: Int = -1) {
   private val list = new LinkedList[DeliteOP]
 
+  def apply(idx: Int) = list.get(idx)
   def +=(elem: DeliteOP) = add(elem)
   def add(elem: DeliteOP) = list.add(elem)
   def insert(idx: Int, elem: DeliteOP) = list.add(idx, elem)
@@ -67,6 +68,7 @@ class OpList(val siblings: Array[OpList] = null, val resourceID: Int = -1) {
   def isEmpty = list.isEmpty
   def indexOf(elem: DeliteOP) = list.indexOf(elem)
   def size = list.size
+  def contains(elem: DeliteOP) = list.contains(elem)
 
   def toArray(size: Int): Array[DeliteOP] = list.toArray(new Array[DeliteOP](size))
   def toArray(): Array[DeliteOP] = this.toArray(0)

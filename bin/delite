@@ -113,6 +113,9 @@ def run(deg, params, opts):
     if opts.codecache == "":
         opts.codecache = delitecommon.DELITE_HOME + os.sep + "generatedCache"
 
+    if (opts.num_cuda != "0" and opts.num_cpp == "0"):
+        opts.num_cpp = "1"
+
     java_opts = java_opts + " -Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) +" -Ddelite.cpp=" + opts.num_cpp + " -Ddelite.cuda=" + opts.num_cuda + " -Ddelite.opencl=" + opts.num_opencl + " -Ddelite.runs=" + opts.num_runs + " -Ddelite.executor=" + opts.executor + " -Ddelite.scheduler=" + opts.scheduler + " -Ddelite.master=" + opts.master + " -Ddelite.slaves=" + str(opts.num_nodes) + " -Ddelite.code.cache.home=" + opts.codecache
 
     if opts.verbose == True:
