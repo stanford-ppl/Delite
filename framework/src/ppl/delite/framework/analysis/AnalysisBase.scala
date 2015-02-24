@@ -37,7 +37,7 @@ trait AnalysisBase extends FatBlockTraversal {
   final def notifyUpdate(e: Exp[Any]) { changedSyms += e; changed = true }
 
   
-  case class AnalysisContext(symPos: List[SourceContext], defPos: SourceContext, defDesc: String) {
+  case class AnalysisContext(symPos: List[SourceContext], defPos: List[SourceContext], defDesc: String) {
     def withSymPos(ctx: SourceContext) = new AnalysisContext(ctx, defPos, defDesc)
   }
 
@@ -69,7 +69,7 @@ trait AnalysisBase extends FatBlockTraversal {
    * structural metadata propagation in processStructure or match on
    * more cases
    */ 
-  def analyzeStm(stm: Stm): Unit = stm match {
+  def analyzeStm(stm: Stm)(implicit ctx: AnalysisContext): Unit = stm match {
     case TP(s, Reflect(d,_,_)) => processStructure(s,d); processOp(s,d);
     case TP(s, d) => processStructure(s,d); processOp(s,d);
     case _ => // Nothing
@@ -79,8 +79,14 @@ trait AnalysisBase extends FatBlockTraversal {
    * Operate on the current statement. Overriden from FatBlockTraversal
    */
   final override def traverseStm(stm: Stm): Unit = {
-    analyzeStm(stm)
+    analyzeStm(stm)(createAnalysisCtx(stm))
     super.traverseStm(stm)
+  }
+
+  final def createAnalysisCtx(stm: Stm): AnalysisContext = stm match {
+    case TP(s, Reflect(d,_,_)) => AnalysisContext(s.pos, s.pos, nameDef(d))
+    case TP(s,d) => AnalysisContext(s.pos, s.pos, nameDef(d))
+    case _ => AnalysisContext(Nil,Nil,nameDef(d))
   }
 
   ////////////////////////////////
@@ -191,6 +197,7 @@ trait AnalysisBase extends FatBlockTraversal {
    */
   final def getChild(e: Exp[Any]): Option[SymbolProperties] = metadata.get(e) match {
     case Some(p: ArrayProperties) => p.child
+    case Some(p: VarProperties) => p.child
     case Some(_) =>
       warn("Attempted to get child of non-Array symbol")
       None
@@ -316,6 +323,16 @@ trait AnalysisBase extends FatBlockTraversal {
     case _ => initSym(e.tp, data, child, field)
   }
 
+  // TODO: Var metadata initialization
+  /* private def initVar(
+    e: Var[Any], 
+    data: PropertyMap[Metadata] = NoData,
+    child: Option[SymbolProperties] = None
+  )(implicit ctx: AnalysisContext): VarProperties = e match {
+    case _ => 
+  }
+  */
+
   /**
    * Includes a whole bunch of metadata structure propagation information but 
    * no metadata instances
@@ -346,6 +363,7 @@ trait AnalysisBase extends FatBlockTraversal {
       setChild(e, getChild(ma))
 
     case DeliteMultiArrayApply(ma,_) =>
+      typeTip(e, op.mA)
       setProps(e, getChild(ma))
 
     case op@DeliteMultiArrayFromFunction(dims,_) =>
@@ -353,29 +371,15 @@ trait AnalysisBase extends FatBlockTraversal {
       setChild(e, getProps(op.body.res))
 
     case op@DeliteMultiArrayMap(ma,_) =>
-      typeTip(op.a, op.mA)
-      setProps(op.a, getChild(ma))
       childTypeTip(e, op.mB)
       setChild(e, getProps(op.body.res))
 
     case op@DeliteMultiArrayZipWith(ma,mb,_) =>
-      typeTip(op.a, op.mA)
-      typeTip(op.b, op.mB)
-      setProps(op.a, getChild(ma))
-      setProps(op.b, getChild(mb))
       childTypeTip(e, op.mT)
       setChild(e, getProps(op.body.res))
 
     case op@DeliteMultiArrayReduce(ma,_,_) =>
-      typeTip(op.a1, op.mA)
-      typeTip(op.a2, op.mA)
-      setProps(op.a1, getChild(ma))
-      setProps(op.a2, getChild(ma))
       setProps(e, getProps(op.body.res))
-
-    case op@DeliteMultiArrayForeach(ma,_) =>
-      typeTip(op.a, op.mA)
-      setProps(op.a, getChild(ma))
 
     case op@DeliteMultiArrayNDMap(in,_,_) =>
       childTypeTip(op.ma, op.mA)
@@ -384,14 +388,10 @@ trait AnalysisBase extends FatBlockTraversal {
       setChild(e, getChild(op.body.res))
 
     case op@DeliteMultiArrayMapFilter(ma,_,_) =>
-      typeTip(op.a, op.mA)
-      setProps(op.a, getChild(ma))
       childTypeTip(e, op.mB)
       setChild(e, getProps(op.mapFunc.res))
 
     case op@DeliteMultiArrayFlatMap(ma,_) =>
-      typeTip(op.a, op.mA)
-      setProps(op.a, getChild(ma))
       childTypeTip(e, op.mB)
       setChild(e, getChild(op.body.res))
 
@@ -399,24 +399,7 @@ trait AnalysisBase extends FatBlockTraversal {
       val updatedChild = attemptMeet(getChild(ma), getProps(x))(ctx.withSymPos(ma.pos))
       setChild(ma, updatedChild)
 
-    case op@DeliteMultiArrayMutableMap(ma,_) =>
-      typeTip(op.a, op.mA)
-      setProps(op.a, getChild(ma))
-
-      val updatedChild = attemptMeet(getChild(ma), getProps(op.body.res))(ctx.withSymPos(ma.pos))
-      setChild(ma, updatedChild)
-
-    case op@DeliteMultiArrayMutableZipWith(ma,mb,_) =>
-      typeTip(op.a, op.mA)
-      typeTip(op.b, op.mB)
-      setProps(op.a, getChild(ma))
-      setProps(op.b, getChild(mb))
-
-      val updatedChild = attemptMeet(getChild(ma), getProps(op.body.res))(ctx.withSymPos(ma.pos))
-      setChild(ma, updatedChild)
-
     // Struct ops
-
     case op@Struct(_,elems) => 
       // TODO: Assuming here that struct-ness of e is caught in initSym
       // Is this always the case?
@@ -448,10 +431,38 @@ trait AnalysisBase extends FatBlockTraversal {
     case op:DeliteOpWhileLoop =>
       setProps(e, getProps(op.body.res))
 
-    // TODO: Vars have to be dealt with separately?
+    // TODO: How to deal with vars?
+
+
+    // Atomic Writes
+    case op@StructAtomicWrite(struct,field,d) => 
+      val updatedProps = attemptMeet(propagateAtomic(op), getProps(struct))(ctx.withSymPos(struct.pos))
+      setProps(struct, updatedProps)
+
+    case op@VarAtomicWrite(v,d) => 
+      val updatedProps = attemptMeet(propagateAtomic(op), getProps(v))(ctx.withSymPos(v.e.pos))  // TODO: context?
+      //setVarProps(v, updatedProps)
+
+    case op@ArrayAtomicWrite(a,_,d) => 
+      val updatedProps = attemptMeet(propagateAtomic(op), getProps(a))(ctx.withSymPos(a.pos))
+      setProps(a, updatedProps)
 
     case _ => 
       // Nothing
+  }
+
+  private def propagateAtomic(d: AtomicWrite): Option[SymbolProperties] = d match {
+    case StructAtomicWrite(_,field,d) => StructProperties(new PropertyMap(field -> propagateAtomic(d)), NoData)
+    case VarAtomicWrite(_,d) => VarProperties(propagateAtomic(d), NoData)
+    case ArrayAtomicWrite(_,d) => ArrayProperties(propagateAtomic(d), NoData)
+
+    case FieldUpdate(_,_,rhs) => getProps(rhs)
+    case DeliteMultiArrayUpdate(_,_,x) => getProps(x)
+    case DeliteMultiArrayInsert(_,_,x) => getProps(x)
+    case DeliteMultiArrayInsertAll(_,_,_,x) => getChild(x)
+    case _ => 
+      warn("No propagation rule given for atomic write op " + d)
+      None
   }
 
   def nameDef(d: Def[_]): String = d match {

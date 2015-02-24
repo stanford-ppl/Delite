@@ -113,7 +113,7 @@ trait RankAnalysis extends MultiArrayAnalysisStageOne {
   override val IRMetadata: DeliteMultiArrayMetadata = 
     new DeliteMultiArrayMetadata {
       def dataComplete(a: SymbolProperties): Boolean = a match {
-        case a: ArrayProperties => a("rank").isDefined
+        case a: ArrayProperties => a("rank").isDefined && isComplete(a.children)
         case _ => true
       }
     }

@@ -211,6 +211,9 @@ trait DeliteMetadata {
   case class ArrayProperties(child: Option[SymbolProperties] = None, override val data: PropertyMap[Metadata])
     extends SymbolProperties(data)
 
+  case class VarProperties(child: Option[SymbolProperties] = None, override val data: PropertyMap[Metadata])
+    extends SymbolProperties(data)
+
   // Test if properties for symbol type is complete
   // This needs to be overridden by metadata implementations / instances
   def dataComplete(a: SymbolProperties): Boolean
@@ -223,6 +226,8 @@ trait DeliteMetadata {
         matches(a.data,b.data) && matches(a.children, b.children)
       case (a: ArrayProperties, b: ArrayProperties) => 
         matches(a.data, b.data) && matches(a.child, b.child)
+      case (a: VarProperties, b: VarProperties) =>
+        matches(a.data, b.data) && matches(a.child, b.child)
       case _ => false
     }
     def _canMeet(a: SymbolProperties, b: SymbolProperties): Boolean = (a,b) match {
@@ -231,6 +236,8 @@ trait DeliteMetadata {
       case (a: StructProperties, b: StructProperties) => 
         canMeet(a.data, b.data) && canMeet(a.children, b.children)
       case (a: ArrayProperties, b: ArrayProperties) =>
+        canMeet(a.data, b.data) && canMeet(a.child, b.child)
+      case (a: VarProperties, b: VarProperties) => 
         canMeet(a.data, b.data) && canMeet(a.child, b.child)
       case _ => false
     }
@@ -241,17 +248,17 @@ trait DeliteMetadata {
         StructProperties(meet(a.children, b.children), meet(a.data, b.data))
       case (a: ArrayProperties, b: ArrayProperties) if _canMeet(a,b) =>
         ArrayProperties(meet(a.child, b.child), meet(a.data, b.data))
+      case (a: VarProperties, b: VarProperties) if _canMeet(a,b) =>
+        VarProperties(meet(a.child, b.child), meet(a.data, b.data))
       case _ => throw new IllegalMeetException
     }
-    def _isComplete(a: SymbolProperties): Boolean = a match {
-      case a: ScalarProperties => isComplete(a.data) && dataComplete(a)
-      case a: StructProperties => isComplete(a.data) && isComplete(a.children) && dataComplete(a)
-      case a: ArrayProperties => isComplete(a.data) && isComplete(a.child) && dataComplete(a)
-    }
+    def _isComplete(a: SymbolProperties): Boolean = dataComplete(a)
+
     def _canMergeLeft(a: SymbolProperties, b: SymbolProperties): Boolean = (a,b) match {
       case (a: ScalarProperties, b: ScalarProperties) => true
       case (a: StructProperties, b: StructProperties) => true
       case (a: ArrayProperties, b: ArrayProperties) => true
+      case (a: VarProperties, b: VarProperties) => true
       case _ => false
     }
     def _mergeLeft(a: SymbolProperties, b: SymbolProperties): SymbolProperties = (a,b) match {
@@ -261,6 +268,8 @@ trait DeliteMetadata {
         StructProperties(mergeLeft(a.children, b.children), mergeLeft(a.data, b.data))
       case (a: ArrayProperties, b: ArrayProperties) if _canMergeLeft(a,b) =>
         ArrayProperties(mergeLeft(a.child, b.child), mergeLeft(a.data, b.data))
+      case (a: VarProperties, b: VarProperties) if _canMergeLeft(a,b) =>
+        VarProperties(mergeLeft(a.child, b.child), mergeLeft(a.data, b.data))
       case _ => throw new IllegalMergeException
     }
 
@@ -272,6 +281,9 @@ trait DeliteMetadata {
                        prefix + " Fields:\n" + makeString(a.children, prefix + "  ") + "\n" + prefix + "}" 
       case a: ArrayProperties =>
         ": Array {\n" + prefix + " Metadata:" + (if (multiLine(a.data)) "\n" + prefix else "") + makeString(a.data, prefix + "  ") + "\n" +
+                      prefix + " Child" + makeString(a.child, prefix + "  ") + "\n" + prefix + "}" 
+      case a: VarProperties =>
+        ": Var {\n" + prefix + " Metadata:" + (if (multiLine(a.data)) "\n" + prefix else "") + makeString(a.data, prefix + "  ") + "\n" +
                       prefix + " Child" + makeString(a.child, prefix + "  ") + "\n" + prefix + "}" 
     }
     def _multiLine(a: SymbolProperties): Boolean = a match {
