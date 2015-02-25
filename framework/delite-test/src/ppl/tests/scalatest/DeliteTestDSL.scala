@@ -83,7 +83,7 @@ trait DeliteTestDSLCompiler extends DeliteTestDSL
 }
 
 trait DeliteTestDSLExp extends DeliteTestDSLCompiler with DeliteTestDSLScalaOpsPkgExp with FunctionBlocksExp with DeliteStructsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteMapOpsExp with DeliteFileReaderOpsExp
-  with ExpressionsOpt with DeliteTransform with MultiloopSoATransformWithReduceExp with LoopFusionExp with DeliteTestOpsExp with DeliteLMSForwarderExp with DeliteAllOverridesExp {
+  with ExpressionsOpt with DeliteTransform with MultiloopSoATransformWithReduceExp with LoopFusionExp with DeliteTestOpsExp with DeliteLMSForwarderExp with DeliteAllOverridesExp with DeliteArrayBufferExtractors {
 
   this: DeliteApplication with DeliteTestDSLApplication with DeliteTestDSLExp =>
 

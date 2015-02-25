@@ -17,6 +17,9 @@ trait DeliteTestBase extends DeliteTestModule with DeliteTestDSLApplication {
 
   def collectArray[A:Manifest](arr: Rep[DeliteArray[A]], expectedLength: Rep[Int], expectedValues: Rep[Int] => Rep[A]) {
     collect(arr.length == expectedLength)
+    // Note: for-loops are represented by the sequential RangeForeach, to fuse:
+    // val expectedArray = DeliteArray.fromFunction(expectedLength){ i => i }
+    // arr.zip(expectedArray)({ (x: Rep[A], i: Rep[Int]) => collect(x == expectedValues(i)) })
     for (i <- 0 until arr.length) {
       collect(arr(i) == expectedValues(i))
     }
@@ -123,10 +126,6 @@ trait DeliteReduce extends DeliteTestBase {
     val ve = DeliteArrayBuffer.fromFunction(0){ i => 0 }
     collect(ve.reduce( _ + _ )(0) == 0)
 
-    // This throws an exception, how to test? Try-catch not lifted...
-    // val v3 = DeliteArray.fromFunction(0){ i => 0 }.reduceException(_+_)
-    // collect(v3 == -1)
-
     mkReport
   }
 }
@@ -141,6 +140,31 @@ trait DeliteReduce2 extends DeliteTestBase {
     val v = DeliteArrayBuffer.fromFunction(10){ i => i+5 }
     val s = v.reduce{ (a,b) => b }(0)
     collect(s == 14)
+
+    mkReport
+  }
+}
+
+object DeliteReduceExceptionRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteReduceException
+object DeliteReduceExceptionSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteReduceException
+trait DeliteReduceException extends DeliteTestBase {
+  def main() = {
+
+    collect(DeliteArray.fromFunction(1000){ i => 0 }.reduceException(_ + _) == 0)
+
+    val v = DeliteArray.fromFunction(10){ i => i }
+    collect(v.reduceException(_ + _) == 45)
+
+    // TODO How to automatically test that this throws an exception?
+    //      Try-catch not lifted...
+    // val v3 = DeliteArray.fromFunction(0){ i => 0 }.reduceException(_ + _)
+    // collect(v3 == -1)
+
+    // Check codegen for loops fused with reduceException (uses stripFirst)
+    DeliteArray.fromFunction(10){ i => i }.map(_ + 1)
+    collect(DeliteArray.fromFunction(20){ i => i + 5 }
+        .flatMap({ i => DeliteArray.fromFunction(2){ j => i + j } })
+        .reduceException(_ + _) == 600)
 
     mkReport
   }
@@ -197,6 +221,12 @@ trait DeliteForeach extends DeliteTestBase {
         collect(v(e+1) - v(e-1) == 2)
       }
     }
+
+    // Testing foreach in kernel mode when fused with loop that needs combine
+    val va = DeliteArray.fromFunction(10){ i => i }
+    va.foreach({ x: Rep[Int] => collect(x >= 0) })
+    val va2 = DeliteArray.fromFunction(10){ i => 0 }
+    collect(va2.reduce( _ + _, 0) == 0)
 
     val ve = DeliteArrayBuffer.fromFunction(0){ i => 0 }
     for (e <- ve) {
@@ -361,6 +391,61 @@ trait DeliteNestedReduce extends DeliteTestBase {
   }
 }
 
+object DeliteNestedReduceExceptionRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteNestedReduceException
+object DeliteNestedReduceExceptionSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteNestedReduceException
+trait DeliteNestedReduceException extends DeliteTestBase {
+  // TODO fails with scary "violated ordering of effects" error
+  // def main() = {
+  //   val a = DeliteArray.fromFunction(1){ i => 10 } map { e => 
+  //     DeliteArray.fromFunction(e){ i => 2*i }.reduceException(_ + _)
+  //   }
+  //   collect(a(0) == 90)
+
+  //   val b = DeliteArray.fromFunction(1){ e => 
+  //     DeliteArray.fromFunction(10){ i => i + 3*e }.foreach({ x: Rep[Int] => collect(x+e < 20) })
+  //     DeliteArray.fromFunction(10){ i => i + e }.reduceException(_ + _)
+  //   }
+  //   collect(b(0) == 45)
+
+  //   mkReport
+  // }
+
+  def main() = {
+    // TODO How to automatically test that this throws an exception?
+    //      Try-catch not lifted...
+    // val z = DeliteArray.fromFunction(1){ i => i } map { e => 
+    //   DeliteArray.fromFunction(e){ i => 0 }.reduceException(_ + _)
+    // }
+    // collect(z(0) == 45)
+
+    val a = DeliteArray.fromFunction(2){ i => 10 } map { e => 
+      DeliteArray.fromFunction(e){ i => i }.reduceException(_ + _)
+    }
+    collect(a(0) == 45)
+
+    // Check codegen for loops fused with reduceException (uses stripFirst)
+    val b = DeliteArray.fromFunction(1){ e => 
+      collect(DeliteArray.fromFunction(10){ i => i + 2*e }.map(_ + e).length == 10)
+      collect(DeliteArray.fromFunction(10){ i => i + 4*e }.reduce(_ + _, 0) == 45)
+      collect(DeliteArray.fromFunction(10){ i => i + 5*e }
+        .flatMap({ i => DeliteArray.fromFunction(2){ j => i + j + 6*e } })
+        .reduceException(_ + _) == 100)
+      val r = DeliteArray.fromFunction(10){ i => i + e }.reduceException(_ + _)
+      r + e
+    }
+    collect(b(0) == 45)
+
+    val c = DeliteArray.fromFunction(3){ e => 
+      DeliteArray.fromFunction(10){ i => i + 3*e }.foreach({ x: Rep[Int] => collect(x+e < 30) })
+      DeliteArray.fromFunction(10){ i => i + e }.reduceException(_ + _)
+    }
+    collect(c(0) == 45)
+
+    mkReport
+  }
+}
+
+
 object DeliteNestedMapReduceRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteNestedMapReduce
 object DeliteNestedMapReduceSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteNestedMapReduce
 trait DeliteNestedMapReduce extends DeliteTestBase {
@@ -503,13 +588,14 @@ trait DeliteFileReader extends DeliteTestBase {
 }
 
 class DeliteOpSuite extends DeliteSuite {
-  // TODO vsalvis re-enable CHECK_MULTILOOP
+  // TODO re-enable CHECK_MULTILOOP
   override val CHECK_MULTILOOP = false
   def testDeliteMap() { compileAndTest(DeliteMapSuiteRunner, CHECK_MULTILOOP) }
   def testDeliteFlatMap() { compileAndTest(DeliteFlatMapSuiteRunner) }
   def testDeliteZip() { compileAndTest(DeliteZipSuiteRunner, CHECK_MULTILOOP) }
   def testDeliteReduce() { compileAndTest(DeliteReduceSuiteRunner, CHECK_MULTILOOP) }
-  //def testDeliteReduce2() { compileAndTest(DeliteReduce2SuiteRunner, CHECK_MULTILOOP) }
+  // def testDeliteReduce2() { compileAndTest(DeliteReduce2SuiteRunner, CHECK_MULTILOOP) }
+  def testDeliteReduceException() { compileAndTest(DeliteReduceExceptionSuiteRunner, CHECK_MULTILOOP) }
   def testDeliteMapReduce() { compileAndTest(DeliteMapReduceSuiteRunner, CHECK_MULTILOOP) }
   def testDeliteFilter() { compileAndTest(DeliteFilterSuiteRunner, CHECK_MULTILOOP) }
   def testDeliteForeach() { compileAndTest(DeliteForeachSuiteRunner) }
@@ -518,6 +604,7 @@ class DeliteOpSuite extends DeliteSuite {
   def testDeliteHorizontalElems() { compileAndTest(DeliteHorizontalElemsSuiteRunner, CHECK_MULTILOOP) }
   def testDeliteNestedZip() { compileAndTest(DeliteNestedZipSuiteRunner) }
   def testDeliteNestedReduce() { compileAndTest(DeliteNestedReduceSuiteRunner, CHECK_MULTILOOP) }
+  def testDeliteNestedReduceException() { compileAndTest(DeliteNestedReduceExceptionSuiteRunner, CHECK_MULTILOOP) }
   def testDeliteNestedMapReduce() { compileAndTest(DeliteNestedMapReduceSuiteRunner, CHECK_MULTILOOP) }
   def testDeliteNestedForeach() { compileAndTest(DeliteNestedForeachSuiteRunner) }
   def testDeliteIfThenElse() { compileAndTest(DeliteIfThenElseSuiteRunner) }

@@ -71,7 +71,7 @@ trait OptiQLCompiler extends OptiQL with IOOps with SeqOps with Variables with W
  */
 trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with TableOpsExp with DateOpsExp with DateImplOpsStandard with QueryableOpsExpOpt with OptiQLMiscOpsExp
   with InputReaderOpsExp with InputReaderImplOpsStandard with DeliteCollectionOpsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteMapOpsExp with DeliteFileReaderOpsExp with DSArrayOpsExp 
-  with DeliteRestageOpsExp with DeliteTestOpsExp with DeliteLMSForwarderExp with DeliteAllOverridesExp with MultiloopSoATransformWithReduceExp {
+  with DeliteRestageOpsExp with DeliteTestOpsExp with DeliteLMSForwarderExp with DeliteAllOverridesExp with MultiloopSoATransformWithReduceExp with LoopFusionExp {
 
   this: DeliteApplication with OptiQLApplication =>
 
@@ -111,7 +111,7 @@ trait OptiQLCCodeGenPkg extends CGenMiscOps with CGenIOOps with CGenSeqOps with 
   val IR: OptiQLScalaOpsPkgExp
 }
 
-trait OptiQLCodeGenBase extends GenericFatCodegen {
+trait OptiQLCodeGenBase extends GenericFatCodegen with CombineTTPScheduling {
   val IR: DeliteApplication with OptiQLExp
   override def initialDefs = IR.deliteGenerator.availableDefs
 

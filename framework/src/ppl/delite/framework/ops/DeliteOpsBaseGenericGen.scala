@@ -498,9 +498,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   var getActSize = ""
   var getActBuffer: List[String] = Nil
 
-  def emitForeachElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteForeachElem[_]) {
-    emitAssignment(quote(sym), remap(sym.tp), quote(getBlockResult(elem.func)))
-    //stream.println(quote(getBlockResult(elem.func)))
+  def emitForeachElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteForeachElem[_], prefixSym: String = "") {
+    emitAssignment(fieldAccess(prefixSym, quote(sym)), remap(sym.tp), quote(getBlockResult(elem.func)))
   }
 
   // -- begin emit reduce
@@ -524,15 +523,18 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         stream.println("if (" + quote(cond) + ") {")
         emitBlock(thenElem)
         
-        // initialize if not done yet
-        stream.println("if (" + fieldAccess(prefixSym, quote(sym) + "_empty") + ") {")
-        emitAssignment(fieldAccess(prefixSym, quote(sym)), quote(getBlockResult(thenElem)))
-        emitAssignment(fieldAccess(prefixSym, quote(sym) + "_empty"), "false")
-        stream.println("} else {")
-        
-        // else can reduce
-        emitReduction(thenElem, op, sym, elem, prefixSym)
-        stream.println("}")
+        elem match {
+          case _: DeliteReduceElem[_] => 
+            // initialize if not done yet
+            stream.println("if (" + fieldAccess(prefixSym, quote(sym) + "_empty") + ") {")
+            emitAssignment(fieldAccess(prefixSym, quote(sym)), quote(getBlockResult(thenElem)))
+            emitAssignment(fieldAccess(prefixSym, quote(sym) + "_empty"), "false")
+            stream.println("} else {") // else can reduce
+            emitReduction(thenElem, op, sym, elem, prefixSym)
+            stream.println("}")
+          case _ => emitReduction(thenElem, op, sym, elem, prefixSym)
+        }
+
         stream.println("}")
 
       case CollectFlatMap() => 
@@ -540,16 +542,19 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitBlock(elem.sF)                                      // compute intermediate size
         emitVarDef(quote(elem.iF), remap(elem.iF.tp), "0")      // create inner loop index
 
-        // initialize with first element if not done yet
-        stream.println("if (" + fieldAccess(prefixSym, quote(sym) + "_empty") +
-            " && " + quote(getBlockResult(elem.sF)) + " > 0) {")
-        emitBlock(elem.aF)                                      // access intermediate at index 0
-        emitAssignment(fieldAccess(prefixSym, quote(sym)), quote(getBlockResult(elem.aF)))
-        emitAssignment(fieldAccess(prefixSym, quote(sym) + "_empty"), "false")
-        emitAssignment(quote(elem.iF), quote(elem.iF) + " + 1") // increment inner loop index
-        stream.println("}")
+        elem match {
+          case _: DeliteReduceElem[_] => 
+            // initialize with first element if not done yet
+            stream.println("if (" + fieldAccess(prefixSym, quote(sym) + "_empty") +
+                " && " + quote(getBlockResult(elem.sF)) + " > 0) {")
+            emitBlock(elem.aF)                                      // access intermediate at index 0
+            emitAssignment(fieldAccess(prefixSym, quote(sym)), quote(getBlockResult(elem.aF)))
+            emitAssignment(fieldAccess(prefixSym, quote(sym) + "_empty"), "false")
+            emitAssignment(quote(elem.iF), quote(elem.iF) + " + 1") // increment inner loop index
+            stream.println("}")
+          case _ =>
+        }
 
-        // no need to check initialization in loop
         stream.println("while (" + quote(elem.iF) + " < " + quote(getBlockResult(elem.sF)) + ") { // inner flatMap loop")
         emitBlock(elem.aF)                                      // access intermediate at index
         emitReduction(elem.aF, op, sym, elem, prefixSym)        // reduce
@@ -582,7 +587,6 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       case CollectFilter(condExp, thenElem) => List(reifyEffects(condExp))
       case CollectFlatMap() => List(elem.iFunc)
     }
-    //case elem: DeliteForeachElem[_] => elem.cond // only emit func inside condition! TODO: how to avoid emitting deps twice? // elem.func :: elem.cond
     case elem: DeliteForeachElem[_] => List(elem.func)
   }
 
@@ -611,6 +615,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       case (sym, elem: DeliteForeachElem[_]) =>
         emitVarDef(quote(sym), remap(sym.tp), "()")  //TODO: Need this for other targets? (Currently, other targets just don't generate unit types)
       case (sym, elem: DeliteReduceElem[_]) =>
+        // the zero value is never read, but Scala doesn't allow declaring vars
+        // without defining them
         val zero = if (isPrimitiveType(sym.tp)) "0" else nullRef
         emitVarDef(quote(sym), remap(sym.tp), typeCast(zero, remap(sym.tp)))
         emitVarDef(quote(sym) + "_empty", remap(Manifest.Boolean), "true")
@@ -838,10 +844,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
             emitCollectElem(op, sym, elem, "__act2")
           case (sym, elem: DeliteHashElem[_,_]) =>
           case (sym, elem: DeliteForeachElem[_]) =>
-            emitForeachElem(op, sym, elem)
-            emitAssignment(fieldAccess("__act2",quote(sym)),quote(sym))
+            emitForeachElem(op, sym, elem, "__act2")
           case (sym, elem: DeliteReduceElem[_]) =>
-            if (loopBodyNeedsStripFirst(elem)) 
+            if (loopBodyNeedsStripFirst(elem))
               emitFirstReduceElemAssign(op, sym, elem, "__act2")
             else 
               emitReduceFoldElem(op, sym, elem, "__act2")
@@ -866,8 +871,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           emitCollectElem(op, sym, elem, "__act")
         case (sym, elem: DeliteHashElem[_,_]) => // done above
         case (sym, elem: DeliteForeachElem[_]) =>
-          emitVarDef(quote(sym), remap(sym.tp), "()")
-          emitForeachElem(op, sym, elem)
+          emitForeachElem(op, sym, elem, "__act")
         case (sym, elem: DeliteReduceElem[_]) =>
           emitReduceFoldElem(op, sym, elem, "__act")
         case (sym, elem: DeliteFoldElem[_,_]) =>
