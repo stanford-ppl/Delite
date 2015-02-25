@@ -179,16 +179,6 @@ trait RankAnalysis extends MultiArrayAnalysisStageOne {
       result("", tagged = false)
     }
   }
-
-  /*override def iteration[A](b: Block[A]): Unit = {
-    super.iteration(b)
-
-    // Debugging
-    listComplete(Nil)
-    log("Iteration completed")
-    log("Changed symbols: " + changedSyms)
-    log("",tagged = false)
-  }*/
  
   override def run[A](b: Block[A]): Unit = {
     super.run(b)
@@ -235,86 +225,91 @@ trait RankChecking extends MultiArrayAnalysisStageOne {
 
   // TODO: probably shouldn't be passing LHS just to get SourceContext list here
   // Find a better way to pass the source context in these statements
-  def processOp[A](e: Exp[A], d: Def[_]): Unit = d match {
+  def processOp[A](e: Exp[A], d: Def[_])(implicit ctx: AnalysisContext): Unit = d match {
     case op@DeliteMultiArrayPermute(ma,config) =>
       check(rank(ma) == config.length, "Number of dimensions given in permute conifguration must match input MultiArray rank", e)
 
     // Mutations --- TODO: are these checks necessary?
     case DeliteMultiArrayMutableZipWith(ma,mb,_) => 
-      check(rank(ma) == rank(mb), "Ranks in inputs to mutable-zipwith must match", e)
+      check(rank(ma) == rank(mb), "Ranks in inputs to mutable-zipwith must match")
       // TODO: is this needed?
       if (!matches(getChild(ma), getChild(mb))) {
-        check(false, "Metadata for MultiArray elements in mutable-zipwith do not match: ", e)
+        check(false, "Metadata for MultiArray elements in mutable-zipwith do not match: ")
         result(makeString(getChild(ma)), tagged = false)
         result(makeString(getChild(mb)), tagged = false)
       }
 
     case DeliteMultiArrayZipWith(ma,mb,_) =>
-      check(rank(ma) == rank(mb), "Ranks in inputs to zipwith must match", e)
+      check(rank(ma) == rank(mb), "Ranks in inputs to zipwith must match")
       // TODO: is this needed?
       if (!matches(getChild(ma), getChild(mb))) {
-        check(false, "Metadata for MultiArray elements in zipwith do not match: ", e)
+        check(false, "Metadata for MultiArray elements in zipwith do not match: ")
         result(makeString(getChild(ma)), tagged = false)
         result(makeString(getChild(mb)), tagged = false)
       }
 
     case op@DeliteMultiArrayReduce(ma,_,z) if isDataStructure(op.mA) =>
       if (!matches(getChild(ma), getProps(z))) {
-        check(false, "Metadata for MultiArray elements and zero in reduce do not match: ", e)
+        check(false, "Metadata for MultiArray elements and zero in reduce do not match: ")
         result(makeString(getChild(ma)), tagged = false)
         result(makeString(getProps(z)), tagged = false)
       }
     case op@DeliteMultiArrayNDMap(in,mdims,f) =>
-      check(rank(op.ma) == rank(op.body.res), "Input and output rank must match in ND-Map", e)
+      check(rank(op.ma) == rank(op.body.res), "Input and output rank must match in ND-Map")
     case DeliteMultiArrayNDInsert(ma,rhs,axis,i) =>
-      check(isBuffer(ma), "MultiArray must be bufferable for insert operation", e)
-      check(rank(ma) == rank(rhs) + 1, "Right hand side must have rank one less than left hand side in ND-Insert", e)
-      check(axis > 0 && axis <= rank(ma), "Insert axis must be greater than zero and less than or equal to MultiArray's rank", e)
+      check(isBuffer(ma), "MultiArray must be bufferable for insert operation")
+      check(rank(ma) == rank(rhs) + 1, "Right hand side must have rank one less than left hand side in ND-Insert")
+      check(axis > 0 && axis <= rank(ma), "Insert axis must be greater than zero and less than or equal to MultiArray's rank")
     case DeliteMultiArrayNDAppend(ma,rhs,axis) =>
-      check(isBuffer(ma), "MultiArray must be bufferable for append operation", e)
-      check(rank(ma) == rank(rhs) + 1, "Right hand side must have rank one less than left hand side in ND-Append", e)
-      check(axis > 0 && axis <= rank(ma), "Insert axis must be greater than zero and less than or equal to MultiArray's rank", e)
+      check(isBuffer(ma), "MultiArray must be bufferable for append operation")
+      check(rank(ma) == rank(rhs) + 1, "Right hand side must have rank one less than left hand side in ND-Append")
+      check(axis > 0 && axis <= rank(ma), "Insert axis must be greater than zero and less than or equal to MultiArray's rank")
     case DeliteMultiArrayInsertAll(ma,rhs,axis,i) =>
-      check(isBuffer(ma), "MultiArray must be bufferable for insert operation", e)
-      check(rank(ma) == rank(rhs), "Ranks of left and right hand side must match in Insert All", e)
-      check(axis > 0 && axis <= rank(ma), "Insert axis must be greater than zero and less than or equal to MultiArray's rank", e)
+      check(isBuffer(ma), "MultiArray must be bufferable for insert operation")
+      check(rank(ma) == rank(rhs), "Ranks of left and right hand side must match in Insert All")
+      check(axis > 0 && axis <= rank(ma), "Insert axis must be greater than zero and less than or equal to MultiArray's rank")
     case DeliteMultiArrayAppendAll(ma,rhs,axis) =>
-      check(isBuffer(ma), "MultiArray must be bufferable for append operation", e)
-      check(rank(ma) == rank(rhs), "Ranks of left and right hand side must match in Append All", e)
-      check(axis > 0 && axis <= rank(ma), "Append axis must be greater than zero and less than or equal to MultiArray's rank", e)
+      check(isBuffer(ma), "MultiArray must be bufferable for append operation")
+      check(rank(ma) == rank(rhs), "Ranks of left and right hand side must match in Append All")
+      check(axis > 0 && axis <= rank(ma), "Append axis must be greater than zero and less than or equal to MultiArray's rank")
     case DeliteMultiArrayInsert(ma,x,i) => 
-      check(isBuffer(ma), "MultiArray must be bufferable for insert operation", e)
-      check(rank(ma) == 1, "Element Insert is only defined on 1D arrays", e)
+      check(isBuffer(ma), "MultiArray must be bufferable for insert operation")
+      check(rank(ma) == 1, "Element Insert is only defined on 1D arrays")
     case DeliteMultiArrayAppend(ma,x) =>
-      check(isBuffer(ma), "MultiArray must be bufferable for insert operation", e)
-      check(rank(ma) == 1, "Element Append is only defined on 1D arrays", e)
+      check(isBuffer(ma), "MultiArray must be bufferable for insert operation")
+      check(rank(ma) == 1, "Element Append is only defined on 1D arrays")
     case DeliteMultiArrayRemove(ma,axis,start,end) =>
-      check(isBuffer(ma), "MultiArray must be bufferable for remove operation", e)
-      check(axis > 0 && axis <= rank(ma), "Removal axis must be greater than zero and less than or equal to MultiArray's rank", e)
+      check(isBuffer(ma), "MultiArray must be bufferable for remove operation")
+      check(axis > 0 && axis <= rank(ma), "Removal axis must be greater than zero and less than or equal to MultiArray's rank")
 
     case DeliteMultiArrayMkString(ma,dels) =>
-      check(rank(ma) == dels.length, "Number of delimeters given in MkString must match input MultiArray's rank", e)
+      check(rank(ma) == dels.length, "Number of delimeters given in MkString must match input MultiArray's rank")
 
     case DeliteMultiArrayMapFilter(ma,_,_) => 
-      check(rank(ma) == 1, "MapFilter is undefined for " + rank(ma) + "D arrays", e)
+      check(rank(ma) == 1, "MapFilter is undefined for " + rank(ma) + "D arrays")
     case DeliteMultiArrayFlatMap(ma,f) => 
-      check(rank(ma) == 1, "FlatMap is undefined for " + rank(ma) + "D arrays", e)     
+      check(rank(ma) == 1, "FlatMap is undefined for " + rank(ma) + "D arrays")     
 
     case DeliteMatrixMultiply(lhs,rhs) =>
-      check(rank(lhs) == 2, "Left hand side of matrix multiply must be a 2D array", e)
-      check(rank(rhs) == 2, "Right hand side of matrix multiply must be a 2D array", e)
+      check(rank(lhs) == 2, "Left hand side of matrix multiply must be a 2D array")
+      check(rank(rhs) == 2, "Right hand side of matrix multiply must be a 2D array")
     case DeliteMatrixVectorMultiply(mat,vec) =>
-      check(rank(mat) == 2, "Matrix argument to matrix-vector multiply must be a 2D array", e)
-      check(rank(vec) == 2, "Vector argument to matrix-vector multiply must be a 1D array", e)
+      check(rank(mat) == 2, "Matrix argument to matrix-vector multiply must be a 2D array")
+      check(rank(vec) == 2, "Vector argument to matrix-vector multiply must be a 1D array")
   
     case _ => 
       //Nothing
   }
 
-  override def analyzeStm(stm: Stm): Unit = stm match {
+  override def analyzeStm(stm: Stm)(implicit ctx: AnalysisContext): Unit = stm match {
     case TP(s, Reflect(d,_,_)) => processOp(s,d)
     case TP(s, d) => processOp(s,d)
     case _ => // Nothing
+  }
+
+  override def run[A](b: Block[A]): Unit = {
+    super.run(b)
+    if (hadErrors) {fatalerr("Rank sanity check completed with errors")}
   }
 
 }

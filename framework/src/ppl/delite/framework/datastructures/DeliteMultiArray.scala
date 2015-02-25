@@ -459,14 +459,18 @@ trait DeliteMultiArrayOpsExp extends DeliteFloatingLoops with AtomicWriteOpsExp 
   }
 
   // --- Atomic Write (MultiArray)
-  case class MultiArrayAtomicWrite(ma: Exp[DeliteMultiArray[Any]], i: Exp[Indices], override val d: AtomicWrite) extends NestedAtomicWrite(d) {
-    def externalFields = List(i, d)
+  case class MultiArrayTracer(ma: Exp[DeliteMultiArray[Any]], i: Exp[Indices]) extends AtomicTracer {
+    def deps(top: Boolean) = if (top) List(ma,i) else List(i)
+    def ptr = ma
   }
-
-  override def recurseLookup[T:Manifest](target: Exp[Any], d: AtomicWrite): (Exp[Any], AtomicWrite) = target match {
-    case Def(DeliteMultiArrayApply(ma,i)) => recurseLookup(ma, MultiArrayAtomicWrite(ma, i, d.asNested))
-    case Def(Reflect(DeliteMultiArrayApply(ma,i))) => recurseLookup(ma, MultiArrayAtomicWrite(ma, i, d.asNested))
-    case _ => super.recurseWrite(target, d)
+  override def mirrorTrace(t: AtomicTracer, f: Transformer, top: Boolean)(implicit pos: SourceContext): AtomicTracer = t match {
+    case MultiArrayTracer(ma,i) => if (top) MultiArrayTracer(f(ma),f(i)) else MultiArrayTracer(ma,f(i))
+    case _ => super.mirrorTrace(t,f,top)
+  }
+  override def recurseLookup[T:Manifest](target: Exp[Any], trace: List[AtomicTracer]): (Exp[Any], List[AtomicTracer]) = target match {
+    case Def(DeliteMultiArrayApply(ma,i)) => recurseLookup(ma, MultiArrayTracer(ma,i) +: trace)
+    case Def(Reflect(DeliteMultiArrayApply(ma,i))) => recurseLookup(ma, MultiArrayTracer(ma,i) +: trace)
+    case _ => super.recurseLookup(target, trace)
   }
 
   // --- Data type pinning
@@ -674,14 +678,13 @@ trait DeliteMultiArrayOpsExp extends DeliteFloatingLoops with AtomicWriteOpsExp 
   // mirroring
 
   // Needed for AtomicWrite mirroring
-  // TODO: LHS of update may not be real here.. should we use fresh[..] in that case instead?
-  override def mirrorDef[A:Manifest](e: Def[A], t: Transformer)(implicit ctx: SourceContext): Def[A] = e match {
-    case DeliteMultiArrayUpdate(m,i,x) => DeliteMultiArrayUpdate(t(m),t(i),t(x))
-    case DeliteMultiArrayInsert(m,x,i) => DeliteMultiArrayInsert(t(m),t(i),t(x))
-    case DeliteMultiArrayInsertAll(m,x,a,i) => DeliteMultiArrayInsertAll(t(m),t(x),a,t(i))
-    case DeliteMultiArrayRemove(m,a,s,l) => DeliteMultiArrayRemove(t(m),a,t(s),t(l))
-    case MultiArrayAtomicWrite(m,i) => MultiArrayAtomicWrite(t(m),)
-    case _ => super.mirrorDef(e,t)
+  // LHS is not real here - ignored in mirroring
+  override def mirrorNestedAtomic[A:Manifest](d: AtomicWrite, f: Transformer)(implicit ctx: SourceContext): AtomicWrite = e match {
+    case DeliteMultiArrayUpdate(m,i,x) => DeliteMultiArrayUpdate(m,f(i),f(x))
+    case DeliteMultiArrayInsert(m,x,i) => DeliteMultiArrayInsert(m,f(i),f(x))
+    case DeliteMultiArrayInsertAll(m,x,a,i) => DeliteMultiArrayInsertAll(m,f(x),a,f(i))
+    case DeliteMultiArrayRemove(m,a,s,l) => DeliteMultiArrayRemove(m,a,f(s),f(l))
+    case _ => super.mirrorNestedAtomic(d,f)
   }
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {

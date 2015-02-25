@@ -19,10 +19,59 @@ trait AtomicWriteOps extends Base { /* Nothing? */ }
  * TODO: Does this belong in datastructures? Seems very LMS-y
  */
 trait AtomicWriteOpsExp extends AtomicWriteOps with DeliteStructsExp with Effects {
+  
+  //////////////
+  // "Tracers"
+  
+  /**
+   * Nested Mutation tracer
+   * Used to track a single field/apply lookup in a nested update
+   * Instances should include a reference to the symbol being accessed
+   * and any information normally included in the extract method for that symbol
+   */ 
+  abstract class AtomicTracer {
+    // Dependencies - include the data structure symbol only if 'top' is true
+    def deps(top: Boolean): List[Any]
+    // Pointer to data structure being accessed
+    def ptr: Any
+  }
+  case class StructTracer(struct: Exp[Any], field: String) extends AtomicTracer {
+    def deps(top: Boolean) = if (top) List(struct) else Nil
+    def ptr = struct
+  }
+  case class VarTracer(v: Variable[Any]) extends AtomicTracer {
+    def deps(top: Boolean) = if (top) List(v) else Nil
+    def ptr = v
+  }
+  case class ArrayTracer(array: Exp[Any], i: Exp[Int]) extends AtomicTracer {
+    def deps(top: Boolean) = if (top) List(a,i) else Nil
+    def ptr = a
+  }
+
+  // Tracer mirroring
+  // Data structure symbol should only be mirrored if this tracer is at the top
+  def mirrorTrace(t: AtomicTracer, f: Transformer, top: Boolean)(implicit pos: SourceContext): AtomicTracer = t match {
+    case StructTracer(struct,field) => if (top) StructTracer(f(struct),field) else StructTracer(struct,field)
+    case VarTracer(v) => if (top) StructTracer(f(v)) else VarTracer(v)
+    case ArrayTracer(a,i) => if (top) StructTracer(f(a),f(i)) else ArrayTracer(a,f(i))
+    case _ => sys.error("Don't know how to mirror atomic tracer " + t)
+  }
+
+  def recurseLookup[T:Manifest](target: Exp[Any], trace: List[AtomicTracer]): (Exp[Any],List[AtomicTracer]) = target match {
+    case Def(Field(struct,field)) => recurseLookup(struct, StructTracer(struct,field) +: trace)
+    case Def(Reflect(Field(struct,field),_,_)) => recurseLookup(struct, StructTracer(struct,field) +: trace)
+    case Def(ReadVar(v)) => recurseLookup(v.e, VarTracer(v) +: trace)
+    case Def(Reflect(ReadVar(v),_,_)) => recurseLookup(v.e, VarTracer(v) +: trace)
+    case Def(DeliteArrayApply(array, i)) => recurseLookup(array, ArrayTracer(array,i) +: trace)
+    case Def(Reflect(DeliteArrayApply(array, i),_,_)) => recurseLookup(array, ArrayTracer(array,i) +: trace)
+    case _ => (target,trace)
+  }
+
+  ///////////////// 
+  // Atomic Writes
 
   /** 
-   * Abstract atomic write def. Used in the effects system as a coditional extenstion to
-   * the general 'Product' dependencies rule
+   * Abstract atomic write node.
    */
   abstract class AtomicWrite extends Def[Unit] { 
     var isNested: Boolean = false 
@@ -32,64 +81,51 @@ trait AtomicWriteOpsExp extends AtomicWriteOps with DeliteStructsExp with Effect
      * Symbols which should always be externally visible, even with nesting
      * e.g.:
      * DeliteArrayApply(array, i) => need to see dependencies (i, array)
-     * StructAtomicWrite(struct, field, DeliteArrayApply(array, i)) => need (struct, i)
+     * NestedAtomicWrite(struct, field, DeliteArrayApply(array, i)) => need (struct, i)
      * TODO: Better name for this?
      */
     def externalFields: List[Any]
   }
 
-  // TODO: should the constructors for these be private to this trait?
-  // Shouldn't create these outside of recurseWrite..
-  // Considered overriding Product methods instead, but then the descendants can't
-  // be case classes...
-
-  abstract class NestedAtomicWrite(d: AtomicWrite) extends AtomicWrite
-
-  case class StructAtomicWrite(struct: Exp[Any], field: String, override val d: AtomicWrite) extends NestedAtomicWrite(d) {
-    def externalFields = List(field, d)
-  }
-  case class VarAtomicWrite(v: Var[Any], override val d: AtomicWrite) extends NestedAtomicWrite(d) {
-    def externalFields = List(d)
-  }
-  case class ArrayAtomicWrite(array: Exp[DeliteArray[Any]], i: Exp[Int], override val d: AtomicWrite) extends NestedAtomicWrite(d) {
-    def externalFields = List(i, d)
+  // mirroring
+  override def mirrorNestedAtomic[A:Manifest](d: AtomicWrite, f: Transformer)(implicit pos: SourceContext): AtomicWrite = d match {
+    case _ => sys.error("No mirror atomic rule found for " + d)
   }
 
+  // Version of reflectEffect used for Atomic Writes
   def reflectAtomicWrite(target: Exp[Any])(d: AtomicWrite)(implicit pos: SourceContext): Exp[Unit] = {
-    val (outerTarget, outerDef) = recurseLookup(target, d)
+    val (outerTarget, trace) = recurseLookup(target, Nil)
+    val outerDef = if (trace.isEmpty) { d } else { NestedAtomicWrite(trace, d.asNested) } 
     reflectWrite(outerTarget)(outerDef)
   }
 
-  def recurseLookup[T:Manifest](target: Exp[Any], d: AtomicWrite): (Exp[Any],AtomicWrite) = target match {
-    case Def(Field(struct,field)) => recurseLookup(struct, StructAtomicWrite(struct, field, d.asNested))
-    case Def(Reflect(Field(struct,field),_,_)) => recurseLookup(struct, StructAtomicWrite(struct, field, d.asNested))
-    case Def(ReadVar(v)) => recurseLookup(v.e, VarAtomicWrite(v, d.asNested))
-    case Def(Reflect(ReadVar(v),_,_)) => recurseLookup(v.e, VarAtomicWrite(v, d.asNested))
-    case Def(DeliteArrayApply(array, i)) => recurseLookup(array, ArrayAtomicWrite(array, i, d.asNested))
-    case Def(Reflect(DeliteArrayApply(array, i),_,_)) => recurseLookup(array, ArrayAtomicWrite(array, i, d.asNested))
-    case _ => (target,d)
+  ////////////////////
+  // Nested Mutations
+
+  /**
+   * Nested Mutation IR node
+   * Includes a list of tracers giving the series of extractions done to get to the 
+   * structure being updated. The first element in the tracer list should contain the
+   * outer data structure being written to
+   */
+  case class NestedAtomicWrite(t: List[AtomicTracer], d: AtomicWrite) extends Def[Unit] {
+    private val deps = t.zipWithIndex.flatMap{i => i._1.deps(i._2 == 0)} ::: List(d)
+    def getTop: Any = t(0).ptr // Either a Var or an Exp...
+    override def productIterator = deps.iterator
+    override def productElement(n: Int) = deps(n) 
+    override def productArity = deps.length
   }
 
-  // mirroring
-  // Base.scala takes care of Reflect() and Reify() cases
-  // TODO: do we need non-Reflect cases for mirror?
-  override def mirrorDef[A:Manifest](e: Def[A], t: Transformer)(implicit pos: SourceContext): Def[A] = e match {
-    case StructAtomicWrite(s,f,d) => StructAtomicWrite(t(s),f,mirrorDef(d,t))
-    case VarAtomicWrite(v,d) => VarAtomicWrite(t(v),mirrorDef(d,t))
-    case ArrayAtomicWrite(a,i,d) => ArrayAtomicWrite(t(a),t(i),mirrorDef(d))
-    case _ => super.mirrorDef(e,t)
-  }
-  override def mirror[A:Manifest](e: Def[A], t: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case op: AtomicWrite if op.isNested => sys.error("Shouldn't be mirroring a nested write!")
-    case Reflect(StructAtomicWrite(s,f,d), u, es) => reflectMirrored(Reflect(StructAtomicWrite(t(s),f,mirrorDef(d,t)), mapOver(t,u), t(es)))(mtype(manifest[Unit]), ctx)
-    case Reflect(VarAtomicWrite(v,d), u, es) => reflectMirrored(Reflect(VarAtomicWrite(t(v),mirrorDef(d,t)), mapOver(t,u), t(es)))(mtype(manifest[Unit]), ctx)
-    case Reflect(ArrayAtomicWrite(a,i,d), u, es) => reflectMirrored(Reflect(ArrayAtomicWrite(t(a),t(i),mirrorDef(d,t)), mapOver(t,u), t(es)))(mtype(manifest[Unit]), ctx)
+    case Reflect(NestedAtomicWrite(e,t,d), u, es) => 
+      reflectMirrored(Reflect(NestedAtomicWrite(f(e), t.zipWithIndex.map{r => mirrorTrace(r._1,f,r._2 == 0)}),mirrorNestedAtomic(d,f)), mapOver(f,u), f(es)))(mtype(manifest[Unit]), ctx)
     case _ => super.mirror(e,t)
   }).asInstanceOf[Exp[A]]
 
+
   // These are A LOT like overriding the product iterator for case classes, but 
   // we only want to use the "overriden" version in dependencies/effects checking
-
   override def blocks(e: Any): List[Block[Any]] = e match {
     case op: AtomicWrite if op.isNested => op.externalFields.flatMap(blocks(_))
     case _ => super.blocks(e)
@@ -149,28 +185,36 @@ trait AtomicWriteOpsExp extends AtomicWriteOps with DeliteStructsExp with Effect
 
 }
 
-trait ScalaGenAtomicOps extends ScalaGenDeliteArrayOps with ScalaGenDeliteStruct {
-  val IR: DeliteArrayFatExp with DeliteOpsExp 
+// Codegen for AtomicWrite operations
+// Not target specific! All other codegens for AtomicWrites should extend this
+trait BaseGenAtomicOps extends GenericFatCodegen {
+  val IR: DeliteOpsExp with AtomicWriteOpsExp
   import IR._
 
-  def genNestedAtomicWriteString(sym: Sym[Any], rhs: AtomicWrite) = rhs match {
-    case StructAtomicWrite(_,field,d) => "." + field + genNestedAtomicWriteString(d)
-    case VarAtomicWrite(_,d) => genNestedAtomicWriteString(d)
-    case ArrayAtomicWrite(_,i,d) => "(" + quote(i) + ".toInt)" + genNestedAtomicWriteString(d)
-    case _ => sys.error("No stringify method defined for atomic write def " + rhs)
+  def quote(t: AtomicTracer) = t match {
+    case StructTrace(field) => "." + field
+    case VarTrace(_) => ""
+    case ArrayTrace(i) => "(" + quote(i) + ".toInt)" 
+    case _ => sys.error("No stringify method defined for atomic trace " + rhs)
+  }
+  def quote(t: List[AtomicTracer]): String = t.map{quote(_)}.mkString("")
+
+  /**
+   * Emit rules for nested AtomicWrite nodes
+   * Must be filled in by codegen-able atomic write nodes!
+   * e.g. struct.field(0) = 1
+   * @param sym   - output symbol for the result of this write operation (Unit)
+   * @param outer - parent symbol that the write effect is on (e.g. 'struct' in above example)
+   * @param trace - list of atomic write tracers (see above) 
+   * @param d     - the atomic write IR node (has no corresponding Unit symbol)
+   */
+  def emitNestedAtomic(sym: Sym[Any], outer: Exp[Any], trace: List[AtomicTracer], d: AtomicWrite) = d match {
+    case _ => sys.error("No emit rule defined for atomic write op " + d)
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case op@StructAtomicWrite(struct,field,d) => 
-      emitValDef(sym, quote(struct) + "." + field + genNestedAtomicWriteString(d))
-    case op@VarAtomicWrite(Variable(a),d) =>
-      emitValDef(sym, quote(a) + genNestedAtomicWriteString(d))
-    case op@ArrayAtomicWrite(a,i,d) =>
-      emitValDef(sym, quote(a) + "(" + quote(i) + ".toInt)" + genNestedAtomicWriteString(d))
-
+    case op@NestedAtomicWrite(target, trace, d) => 
+      emitAtomicWrite(sym, target, trace, d)
     case _ => super.emitNode(sym, rhs)
   }
 }
-
-// TODO: CUDA, C, etc. 
-*/

@@ -20,6 +20,10 @@ trait AnalysisBase extends FatBlockTraversal {
   val IRMetadata: DeliteMetadata
   import IRMetadata._
 
+  type Token = Any  // Var and Exp have no common superclass...
+
+  class AnalysisError(msg: String) extends Exception(msg)
+
   //////////////////////////////////////////////////////////////
   // Functions and fields which probably will never need to be 
   // overridden have the 'final' qualifier. Most others need to
@@ -29,16 +33,21 @@ trait AnalysisBase extends FatBlockTraversal {
   val MAX_ITERS: Int = 10               // maximum number of iterations to run
   final var iter = 0                    // Current analysis iteration
   final var hadErrors: Boolean = false  // Flag for if metadata has encountered (non-fatal) errors
+  def verbose = Config.debug            // analysis verbosity
 
-  var metadata = new HashMap[Exp[Any],SymbolProperties]()
+  var metadata = new HashMap[Token,SymbolProperties]()
 
   final var changed: Boolean = false    // Flag for if any metadata has changed
-  final var changedSyms = new HashSet[Exp[Any]]()
-  final def notifyUpdate(e: Exp[Any]) { changedSyms += e; changed = true }
+  final var changedSyms = new HashSet[Token]()
+  final def notifyUpdate(e: Token) { changedSyms += e; changed = true }
 
   
   case class AnalysisContext(symPos: List[SourceContext], defPos: List[SourceContext], defDesc: String) {
-    def withSymPos(ctx: SourceContext) = new AnalysisContext(ctx, defPos, defDesc)
+    def withPosOf(e: Token) = e match {
+      case e: Exp[_] => new AnalysisContext(e.pos, defPos, defDesc)
+      case v: Var[_] => new AnalysisContext(v.e.pos, defPos, defDesc)
+      case _ => new AnalysisContext(symPos, defPos, defDesc)
+    }
   }
 
   /**
@@ -94,6 +103,7 @@ trait AnalysisBase extends FatBlockTraversal {
 
   /** 
    * Traverse IR checking all encountered symbols for metadata completeness
+   * FIXME: How to check vars as well?
    */
   final def checkCompleteness[A](b: Block[A]): List[Exp[Any]] = {
     val checker = 
@@ -116,19 +126,20 @@ trait AnalysisBase extends FatBlockTraversal {
   /** 
    * Testing completeness / presence of symbol metadata mapping
    */ 
-  final def completed(e: Exp[Any]): Boolean = metadata.get(e) match {
+  final def completed(e: Token): Boolean = metadata.get(e) match {
     case Some(p) => isComplete(p)
-    case None => isComplete(initExp(e))
+    case None => isComplete(initProps(e))
   }
-  final def unknown(e: Exp[Any]): Boolean = !metadata.contains(e)
+  final def unknown(e: Token): Boolean = !metadata.contains(e)
 
   /////////////////////////////////
   // Helper functions for analysis
 
-  final def strDef(e: Exp[Any]) = e match {
+  final def strDef(e: Token) = e match {
+    case Variable(e) => "Var(" + e.toString + ")"
     case Const(z) => z.toString
     case Def(d) => e.toString + " = " + d.toString
-    case _ => "(bound " + e.toString + ")"
+    case e: Exp[_] => "(bound " + e.toString + ")"
   }
 
   final def hasReflectMutable(e: Exp[Any]): Boolean = e match {
@@ -141,7 +152,17 @@ trait AnalysisBase extends FatBlockTraversal {
     case _ => isSubtype(mA.erasure,classOf[DeliteMultiArray[_]])
   }
 
-  final def verbose = Config.debug
+  // TODO: This is directly copied from quotePos in expressions... could move this to Expressions?
+  private def quotePos(ctx: List[SourceContext]): String = ctx match {
+    case Nil => "<unknown>"
+    case cs => 
+      def all(cs: SourceContext): List[SourceContext] = cs.parent match {
+        case None => List(cs)
+        case Some(p) => cs::all(p)
+      }
+    cs.map(c => all(c).reverse.map(c => c.fileName.split("/").last + ":" + c.line).mkString("//")).mkString(";")
+  }
+
   final def log(x: String, tagged: Boolean = true) = {
     val str = (if (tagged) "[" + name + "]" else "") + x
     /* if (verbose) */  Predef.println(str) /* else () */
@@ -150,19 +171,19 @@ trait AnalysisBase extends FatBlockTraversal {
 
   final def warn(x: =>Any) { System.err.println("[\u001B[33mwarn\u001B[0m] " + name + ": " + x) }
   final def error(x: =>Any) { System.err.println("[\u001B[31merror\u001B[0m] " + name + ": " + x); hadErrors = true }
-  final def fatalerr(x: =>Any) { System.err.println("[\u001B[31merror\u001B[0m] " + name + ": " + x); System.exit(0) }
+  final def fatalerr(x: =>Any) { throw new AnalysisError(x.toString) }
 
   final def check(cond: Boolean, x: => Any)(implicit ctx: AnalysisContext) {
-    if (!cond)  {
-      val ctx = if (lhs == null) "" else quotePos(lhs) + ": "
-      error(ctx + x)
+    if (!cond) {
+      val op = if (ctx.opDesc == "") "" else "In " + ctx.opDesc + ", "
+      error(quotePos(ctx.opPos) + op + x)
     }
   }
 
   /**
    * Directly add symbol property metadata for symbol
    */ 
-  final def setProps(e: Exp[Any], p: Option[SymbolProperties]) {
+  final def setProps(e: Token, p: Option[SymbolProperties]) {
     if (p.isDefined) { updateProperties(e, p.get) }
   }
 
@@ -170,40 +191,40 @@ trait AnalysisBase extends FatBlockTraversal {
    * Add metadata information for this symbol (possibly using meet)
    * Uses notifyUpdate() to note if symbol-metadata mapping has changed
    */
-  final def setMetadata(e: Exp[Any], m: Option[Metadata])(implicit ctx: AnalysisContext): Unit = {
-    val newData = initExp(e, new PropertyMap(m.map{m.name -> Some(m)}.toList))
+  final def setMetadata(e: Token, m: Option[Metadata])(implicit ctx: AnalysisContext): Unit = {
+    val newData = initProps(e, new PropertyMap(m.map{m.name -> Some(m)}.toList))
     updateProperties(e, newData)
   }
-  final def setMetadata(e: Exp[Any], m: Metadata)(implicit ctx: AnalysisContext): Unit = setMetadata(e, Some(m))
+  final def setMetadata(e: Token, m: Metadata)(implicit ctx: AnalysisContext): Unit = setMetadata(e, Some(m))
 
   /**
    * Add child information for this symbol (possibly using meet)
    * Uses notifyUpdate() to note if symbol-metadata mapping has changed
    */
-  final def setChild(e: Exp[Any], p: Option[SymbolProperties])(implicit ctx: AnalysisContext): Unit = {
-    val newData = initExp(e, NoData, p)
+  final def setChild(e: Token, p: Option[SymbolProperties])(implicit ctx: AnalysisContext): Unit = {
+    val newData = initProps(e, NoData, p)
     updateProperties(e, newData)
   } 
-  final def setField(e: Exp[Any], p: Option[SymbolProperties], name: String)(implicit ctx: AnalysisContext): Unit = {
-    val newData = initExp(e, NoData, p, name)
-    updateProperties(e, newData)
+  final def setField(struct: Exp[Any], p: Option[SymbolProperties], name: String)(implicit ctx: AnalysisContext): Unit = {
+    val newData = initExp(struct, NoData, p, name)
+    updateProperties(struct, newData)
   }
 
-  final def getProps(e: Exp[Any]): Option[SymbolProperties] = metadata.get(e)
-  final def getMetadata(e: Exp[Any], k: String): Option[Metadata] = metadata.get(e) match { case Some(p) => p(k) case None => None}
+  final def getProps(e: Token): Option[SymbolProperties] = metadata.get(e)
+  final def getMetadata(e: Token, k: String): Option[Metadata] = metadata.get(e).flatMap{p => p(k)}
 
   /**
    * Get child information for given symbol
    */
-  final def getChild(e: Exp[Any]): Option[SymbolProperties] = metadata.get(e) match {
+  final def getChild(e: Token): Option[SymbolProperties] = metadata.get(e) match {
     case Some(p: ArrayProperties) => p.child
     case Some(p: VarProperties) => p.child
     case Some(_) =>
-      warn("Attempted to get child of non-Array symbol")
+      warn("Attempted to get child of non-array/non-var token")
       None
     case None => None
   }
-  final def getField(e: Exp[Any], name: String): Option[SymbolProperties] = metadata.get(e) match {
+  final def getField(struct: Exp[Any], name: String): Option[SymbolProperties] = metadata.get(struct) match {
     case Some(p: StructProperties) => p.child(name)
     case Some(_) =>
       warn("Attempted to get field " + name + " of non-Struct symbol")
@@ -217,6 +238,9 @@ trait AnalysisBase extends FatBlockTraversal {
     new PropertyMap(createMetadataFromType(tp).map{m => m.name -> Some(m)})  
   }
 
+  /**
+   * Set metadata based on symbol type
+   */ 
   final def typeTip[A](e: Exp[Any], tp: Manifest[A])(implicit ctx: AnalysisContext) {
     val newProps = initSym(e, tp)
     val newData = initExp(e, newProps)
@@ -233,22 +257,11 @@ trait AnalysisBase extends FatBlockTraversal {
     val newData = initExp(e, NoData, Some(newChild))
     updateProperties(e, newData)
   }
-  final def fieldTypeTip[A](e: Exp[Any], fieldtype: Manifest[A], field: String)(implicit ctx: AnalysisContext) {
+  final def fieldTypeTip[A](struct: Exp[Any], fieldtype: Manifest[A], field: String)(implicit ctx: AnalysisContext) {
     val childTpProps = createPropertiesFromType(childType)
     val newChild = initSym(childType, childTpProps)
-    val newData = initExp(e, NoData, Some(newChild), field)
-    updateProperties(e, newData)
-  }
-
-  // TODO: This is directly copied from quotePos in expressions... could move this to Expressions?
-  private def quotePos(ctx: List[SourceContext]): String = ctx match {
-    case Nil => "<unknown>"
-    case cs => 
-      def all(cs: SourceContext): List[SourceContext] = cs.parent match {
-        case None => List(cs)
-        case Some(p) => cs::all(p)
-      }
-    cs.map(c => all(c).reverse.map(c => c.fileName.split("/").last + ":" + c.line).mkString("//")).mkString(";")
+    val newData = initExp(struct, NoData, Some(newChild), field)
+    updateProperties(struct, newData)
   }
 
   // TODO: Error reporting for these can definitely be better
@@ -257,7 +270,7 @@ trait AnalysisBase extends FatBlockTraversal {
     if (canMeet(a,b)) { meet(a,b) }
     else {
       val op = if (ctx.opDesc == "") "A" else "In " + ctx.opDesc + ", a"
-      fatalerr(ctx.opPos + ": " + op + "ttempted to meet incompatible metadata for symbol defined at " + quotePos(ctx.symPos) + "\n" +
+      fatalerr(quotePos(ctx.opPos) + ": " + op + "ttempted to meet incompatible metadata for symbol defined at " + quotePos(ctx.symPos) + "\n" +
                 "Prev metadata: " + makeString(a) + "\n" + 
                 "New  metadata: " + makeString(b)
               )
@@ -268,7 +281,7 @@ trait AnalysisBase extends FatBlockTraversal {
     if (canMergeLeft(orig,upd)) { mergeLeft(orig,upd) }
     else {
       val op = if (opDesc == "") "A" else "In " + ctx.opDesc + ", a"
-      fatalerr(ctx.opPos + ": " + op + "ttempted to merge incompatible metadata for symbol defined at " + quotePos(ctx.symPos) + "\n" + 
+      fatalerr(quotePos(ctx.opPos) + ": " + op + "ttempted to merge incompatible metadata for symbol defined at " + quotePos(ctx.symPos) + "\n" + 
                 "Prev metadata: " + makeString(orig) + "\n" +
                 "New  metadata: " + makeString(upd) + "\n"
               )
@@ -276,17 +289,54 @@ trait AnalysisBase extends FatBlockTraversal {
     }
   }
 
-  private def updateProperties(e: Exp[Any], newProps: SymbolProperties)(implicit ctx: AnalysisContext) {
-    if (!metadata.contains(e)) {
-      metadata += e -> newProps
-      notifyUpdate(e)
+  /**
+   * Merge previous metadata for token and new data, notifying update if changes occurred
+   * During merge, new metadata overrides pre-existing data when possible
+   */ 
+  private def updateProperties(t: Token, newProps: SymbolProperties)(implicit ctx: AnalysisContext) {
+    if (!metadata.contains(t)) {
+      metadata += t -> newProps
+      notifyUpdate(t)
     }
     else {
-      val prevData = metadata(e)
+      val prevData = metadata(t)
       val newData = attemptMergeLeft(prevData, newProps)
-      metadata(e) = newData
-      if (!matches(prevData, newData)) notifyUpdate(e)
+      metadata(t) = newData
+      if (!matches(prevData, newData)) notifyUpdate(t)
     }
+  }
+
+  /** 
+   * Initialize metadata for various token types
+   */
+  private def initProps(
+    t: Token,
+    data: PropertyMap[Metadata] = NoData,
+    child: Option[SymbolProperties] = None,
+    field: String = ""
+  )(implicit ctx: AnalysisContext): SymbolProperties = t match {
+    case e: Exp[_] => initExp(e,data,child,field)
+    case v: Var[_] => initVar(v,data,child)
+  }
+
+  private def initVar(
+    v: Var[Any],
+    data: PropertyMap[Metadata] = NoData,
+    child: Option[SymbolProperties] = None
+  )(implicit ctx: AnalysisContext): SymbolProperties = {  
+    val childData = getProps(v.e)
+    val varChild = attemptMeet(childData, child)
+    VarProperties(varChild, data)
+  }
+
+  private def initExp(
+    e: Exp[Any], 
+    data: PropertyMap[Metadata] = NoData,
+    child: Option[SymbolProperties] = None,
+    field: String = ""
+  )(implicit ctx: AnalysisContext): SymbolProperties = e match { 
+    case Const(_) => ScalarProperties(data)
+    case _ => initSym(e.tp, data, child, field)
   }
 
   private def initSym[A](
@@ -312,26 +362,6 @@ trait AnalysisBase extends FatBlockTraversal {
           ScalarProperties(data)
     }
   }
-
-  private def initExp(
-    e: Exp[Any], 
-    data: PropertyMap[Metadata] = NoData,
-    child: Option[SymbolProperties] = None,
-    field: String = ""
-  )(implicit ctx: AnalysisContext): SymbolProperties = e match { 
-    case Const(_) => ScalarProperties(data)
-    case _ => initSym(e.tp, data, child, field)
-  }
-
-  // TODO: Var metadata initialization
-  /* private def initVar(
-    e: Var[Any], 
-    data: PropertyMap[Metadata] = NoData,
-    child: Option[SymbolProperties] = None
-  )(implicit ctx: AnalysisContext): VarProperties = e match {
-    case _ => 
-  }
-  */
 
   /**
    * Includes a whole bunch of metadata structure propagation information but 
@@ -396,7 +426,7 @@ trait AnalysisBase extends FatBlockTraversal {
       setChild(e, getChild(op.body.res))
 
     case op@DeliteMultiArrayUpdate(ma,_,x) => 
-      val updatedChild = attemptMeet(getChild(ma), getProps(x))(ctx.withSymPos(ma.pos))
+      val updatedChild = attemptMeet(getChild(ma), getProps(x))(ctx.withPosOf(ma))
       setChild(ma, updatedChild)
 
     // Struct ops
@@ -409,7 +439,7 @@ trait AnalysisBase extends FatBlockTraversal {
       setProps(e, getField(struct, field))
 
     case op@FieldUpdate(struct, field, rhs) => 
-      val updatedField = attemptMeet(getField(struct, field), getProps(rhs))(ctx.withSymPos(struct.pos))
+      val updatedField = attemptMeet(getField(struct, field), getProps(rhs))(ctx.withPosOf(struct))
       setField(struct, updatedField, field)
 
     case op@NestedFieldUpdate(struct, fields, rhs) => 
@@ -421,7 +451,7 @@ trait AnalysisBase extends FatBlockTraversal {
         i -= 1
       }
       
-      val updatedChild = attemptMeet(getField(struct, fields.head), Some(newChild))(ctx.withSymPos(struct.pos))
+      val updatedChild = attemptMeet(getField(struct, fields.head), Some(newChild))(ctx.withPosOf(struct))
       setField(struct, updatedChild, fields.head)
 
     // Misc. Delite ops
@@ -431,37 +461,37 @@ trait AnalysisBase extends FatBlockTraversal {
     case op:DeliteOpWhileLoop =>
       setProps(e, getProps(op.body.res))
 
-    // TODO: How to deal with vars?
-
+    case ReadVar(v) => 
+      setProps(e, getChild(v))
+    //case NewVar(init) =>  TODO: what to do here?
+    //case Assign(lhs,rhs) =>  
 
     // Atomic Writes
-    case op@StructAtomicWrite(struct,field,d) => 
-      val updatedProps = attemptMeet(propagateAtomic(op), getProps(struct))(ctx.withSymPos(struct.pos))
-      setProps(struct, updatedProps)
+    case op@NestedAtomicWrite(trace,d) => 
+      var newChild: Option[SymbolProperties] = getAtomicWriteRhs(d)
 
-    case op@VarAtomicWrite(v,d) => 
-      val updatedProps = attemptMeet(propagateAtomic(op), getProps(v))(ctx.withSymPos(v.e.pos))  // TODO: context?
-      //setVarProps(v, updatedProps)
+      for (t <- trace.reverse) { t match {
+        case StructTracer(_,field) => newChild = StructProperties(new PropertyMap(field -> newChild), NoData)
+        case VarTracer(_) =>        newChild = VarProperties(newChild, NoData)
+        case ArrayTracer(_,_) =>      newChild = ArrayProperties(newChild, NoData)
+        case MultiArrayTracer(_,_) => newChild = ArrayProperties(newChild, NoData)
+      }}
 
-    case op@ArrayAtomicWrite(a,_,d) => 
-      val updatedProps = attemptMeet(propagateAtomic(op), getProps(a))(ctx.withSymPos(a.pos))
-      setProps(a, updatedProps)
+      val s = op.getTop
+      val updatedProps = attemptMeet(newProps, getProps(s))(ctx.withPosOf(s))
+      setProps(s, updatedProps)
 
     case _ => 
       // Nothing
   }
 
-  private def propagateAtomic(d: AtomicWrite): Option[SymbolProperties] = d match {
-    case StructAtomicWrite(_,field,d) => StructProperties(new PropertyMap(field -> propagateAtomic(d)), NoData)
-    case VarAtomicWrite(_,d) => VarProperties(propagateAtomic(d), NoData)
-    case ArrayAtomicWrite(_,d) => ArrayProperties(propagateAtomic(d), NoData)
-
+  private def getAtomicWriteRhs(d: AtomicWrite): Option[SymbolProperties] = d match {
     case FieldUpdate(_,_,rhs) => getProps(rhs)
     case DeliteMultiArrayUpdate(_,_,x) => getProps(x)
     case DeliteMultiArrayInsert(_,_,x) => getProps(x)
     case DeliteMultiArrayInsertAll(_,_,_,x) => getChild(x)
     case _ => 
-      warn("No propagation rule given for atomic write op " + d)
+      warn("No RHS rule given for atomic write op " + d)
       None
   }
 
