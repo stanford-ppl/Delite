@@ -113,7 +113,7 @@ trait RankAnalysis extends MultiArrayAnalysisStageOne {
   override val IRMetadata: DeliteMultiArrayMetadata = 
     new DeliteMultiArrayMetadata {
       def dataComplete(a: SymbolProperties): Boolean = a match {
-        case a: ArrayProperties => a("rank").isDefined && isComplete(a.children)
+        case a: ArrayProperties => a("rank").isDefined && isComplete(a.child)
         case _ => true
       }
     }
@@ -122,7 +122,7 @@ trait RankAnalysis extends MultiArrayAnalysisStageOne {
   val name = "Rank Analysis"
 
   override def createMetadataFromType[A](tp: Manifest[A]): List[Metadata] = {
-    if (isSubtype(tp.erasure, classOf[DeliteArray1D[_]])) List(Rank(1))
+    if      (isSubtype(tp.erasure, classOf[DeliteArray1D[_]])) List(Rank(1))
     else if (isSubtype(tp.erasure, classOf[DeliteArray2D[_]])) List(Rank(2))
     else if (isSubtype(tp.erasure, classOf[DeliteArray3D[_]])) List(Rank(3))
     else if (isSubtype(tp.erasure, classOf[DeliteArray4D[_]])) List(Rank(4))
@@ -132,7 +132,7 @@ trait RankAnalysis extends MultiArrayAnalysisStageOne {
 
   // Propagate rank info through IR
   override def processOp[A](e: Exp[A], d: Def[_])(implicit ctx: AnalysisContext): Unit = d match {
-    case DeliteMultiArraySortIndices(_,_) => setMetadata(e, Rank(1))
+    case DeliteMultiArraySortIndices(_,_,_) => setMetadata(e, Rank(1))
     case DeliteStringSplit(_,_,_) => setMetadata(e, Rank(1))
     case DeliteMultiArrayMapFilter(_,_,_) => setMetadata(e, Rank(1)) 
     case DeliteMultiArrayFlatMap(_,_) => setMetadata(e, Rank(1))
@@ -153,7 +153,7 @@ trait RankAnalysis extends MultiArrayAnalysisStageOne {
     case DeliteMultiArrayZipWith(ma,mb,f) => setMetadata(e, getRank(ma))  
 
     case op@DeliteMultiArrayNDMap(in,mdims,_) => 
-      setMetadata(op.ma, Rank(mdims.length))
+      setMetadata(op.fin, Rank(mdims.length))
       setMetadata(e, getRank(in))
 
     case _ => // Nothing
@@ -227,17 +227,7 @@ trait RankChecking extends MultiArrayAnalysisStageOne {
   // Find a better way to pass the source context in these statements
   def processOp[A](e: Exp[A], d: Def[_])(implicit ctx: AnalysisContext): Unit = d match {
     case op@DeliteMultiArrayPermute(ma,config) =>
-      check(rank(ma) == config.length, "Number of dimensions given in permute conifguration must match input MultiArray rank", e)
-
-    // Mutations --- TODO: are these checks necessary?
-    case DeliteMultiArrayMutableZipWith(ma,mb,_) => 
-      check(rank(ma) == rank(mb), "Ranks in inputs to mutable-zipwith must match")
-      // TODO: is this needed?
-      if (!matches(getChild(ma), getChild(mb))) {
-        check(false, "Metadata for MultiArray elements in mutable-zipwith do not match: ")
-        result(makeString(getChild(ma)), tagged = false)
-        result(makeString(getChild(mb)), tagged = false)
-      }
+      check(rank(ma) == config.length, "Number of dimensions given in permute conifguration must match input MultiArray rank")
 
     case DeliteMultiArrayZipWith(ma,mb,_) =>
       check(rank(ma) == rank(mb), "Ranks in inputs to zipwith must match")
@@ -255,29 +245,14 @@ trait RankChecking extends MultiArrayAnalysisStageOne {
         result(makeString(getProps(z)), tagged = false)
       }
     case op@DeliteMultiArrayNDMap(in,mdims,f) =>
-      check(rank(op.ma) == rank(op.body.res), "Input and output rank must match in ND-Map")
-    case DeliteMultiArrayNDInsert(ma,rhs,axis,i) =>
-      check(isBuffer(ma), "MultiArray must be bufferable for insert operation")
-      check(rank(ma) == rank(rhs) + 1, "Right hand side must have rank one less than left hand side in ND-Insert")
-      check(axis > 0 && axis <= rank(ma), "Insert axis must be greater than zero and less than or equal to MultiArray's rank")
-    case DeliteMultiArrayNDAppend(ma,rhs,axis) =>
-      check(isBuffer(ma), "MultiArray must be bufferable for append operation")
-      check(rank(ma) == rank(rhs) + 1, "Right hand side must have rank one less than left hand side in ND-Append")
-      check(axis > 0 && axis <= rank(ma), "Insert axis must be greater than zero and less than or equal to MultiArray's rank")
+      check(rank(op.fin) == rank(op.body.res), "Input and output rank must match in ND-Map")
     case DeliteMultiArrayInsertAll(ma,rhs,axis,i) =>
       check(isBuffer(ma), "MultiArray must be bufferable for insert operation")
       check(rank(ma) == rank(rhs), "Ranks of left and right hand side must match in Insert All")
       check(axis > 0 && axis <= rank(ma), "Insert axis must be greater than zero and less than or equal to MultiArray's rank")
-    case DeliteMultiArrayAppendAll(ma,rhs,axis) =>
-      check(isBuffer(ma), "MultiArray must be bufferable for append operation")
-      check(rank(ma) == rank(rhs), "Ranks of left and right hand side must match in Append All")
-      check(axis > 0 && axis <= rank(ma), "Append axis must be greater than zero and less than or equal to MultiArray's rank")
     case DeliteMultiArrayInsert(ma,x,i) => 
       check(isBuffer(ma), "MultiArray must be bufferable for insert operation")
       check(rank(ma) == 1, "Element Insert is only defined on 1D arrays")
-    case DeliteMultiArrayAppend(ma,x) =>
-      check(isBuffer(ma), "MultiArray must be bufferable for insert operation")
-      check(rank(ma) == 1, "Element Append is only defined on 1D arrays")
     case DeliteMultiArrayRemove(ma,axis,start,end) =>
       check(isBuffer(ma), "MultiArray must be bufferable for remove operation")
       check(axis > 0 && axis <= rank(ma), "Removal axis must be greater than zero and less than or equal to MultiArray's rank")

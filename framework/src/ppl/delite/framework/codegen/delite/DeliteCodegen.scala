@@ -151,6 +151,8 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     // Remove later
     if (rankAnalyzer.metadata.values.exists{p => p.isInstanceOf[rankAnalyzer.IRMetadata.ArrayProperties]})
       throw new MultiArrayGenException
+
+    throw new Exception("Temporary post-staging exception for MultiArray testing (Remove Later)")
   }
 
   def emitBlockHeader(syms: List[Sym[Any]], appName: String) { }

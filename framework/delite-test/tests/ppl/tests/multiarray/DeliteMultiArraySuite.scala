@@ -23,8 +23,7 @@ trait SinglyNestedMultiArray extends DeliteMultiArrayTestbench {
 object NullMultiArrayRunner extends DeliteMultiArrayTestbenchRunner with NullMultiArray 
 trait NullMultiArray extends DeliteMultiArrayTestbench {
   def main() = {
-    // Can infer DeliteArray1D[DeliteArray1D[??]] 
-    // type erasure hides nested types
+    // Should still be able to infer DeliteArray1D[DeliteArray1D[Int]] with rank info 
     val vec = DeliteArray1D[DeliteArray1D[Int]](3)
     val str = vec.mkString(",")
 
