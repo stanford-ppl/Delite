@@ -87,6 +87,108 @@ trait DeliteFlatMap extends DeliteTestBase {
   }
 }
 
+// NEG tests (should fail)
+object DeliteFlatMapNeg1Runner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteFlatMapNeg1
+object DeliteFlatMapNeg1SuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFlatMapNeg1
+trait DeliteFlatMapNeg1 extends DeliteTestBase {
+  def main() = {
+    val vz = DeliteArray.fromFunction(10){ i => i }.flatMap[Int]({ i => 
+      collect(false); DeliteArray.singletonInLoop({ i }, i)
+    })
+    collectArray(vz, 10, i => i)
+    mkReport
+  }
+}
+
+// NEG tests (should fail)
+object DeliteFlatMapNeg2Runner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteFlatMapNeg2
+object DeliteFlatMapNeg2SuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFlatMapNeg2
+trait DeliteFlatMapNeg2 extends DeliteTestBase {
+  def main() = {
+    val vz = DeliteArray.fromFunction(10){ i => i }.flatMap[Int]({ i => 
+      DeliteArray.singletonInLoop({ collect(false); i }, i) 
+    })
+    collectArray(vz, 10, i => i)
+    mkReport
+  }
+}
+
+// NEG tests (should fail)
+object DeliteFlatMapNeg3Runner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteFlatMapNeg3
+object DeliteFlatMapNeg3SuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFlatMapNeg3
+trait DeliteFlatMapNeg3 extends DeliteTestBase {
+  def main() = {
+    val vx = DeliteArray.fromFunction(10){ i => i }
+    val vx2 = vx.flatMap[Int]({ i =>
+      collect(false)
+      if (i < 5) DeliteArray.singletonInLoop({ i }, i)
+      else DeliteArray.emptyInLoop[Int](i)
+    })
+    collectArray(vx2, 5, i => i)
+    mkReport
+  }
+}
+
+// NEG tests (should fail)
+object DeliteFlatMapNeg4Runner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteFlatMapNeg4
+object DeliteFlatMapNeg4SuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFlatMapNeg4
+trait DeliteFlatMapNeg4 extends DeliteTestBase {
+  def main() = {
+    val vx = DeliteArray.fromFunction(10){ i => i }
+    val vx2 = vx.flatMap[Int]({ i =>
+      if (i < 5) { collect(false); DeliteArray.singletonInLoop({ i }, i) }
+      else DeliteArray.emptyInLoop[Int](i)
+    })
+    collectArray(vx2, 5, i => i)
+    mkReport
+  }
+}
+
+// NEG tests (should fail)
+object DeliteFlatMapNeg5Runner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteFlatMapNeg5
+object DeliteFlatMapNeg5SuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFlatMapNeg5
+trait DeliteFlatMapNeg5 extends DeliteTestBase {
+  def main() = {
+    val vz = DeliteArray.fromFunction(10){ i => i }
+    val vz2 = vz.flatMap[Int]({ i =>
+      if (i < 5) DeliteArray.singletonInLoop({ i }, i)
+      else { collect(false); DeliteArray.emptyInLoop[Int](i) }
+    })
+    collectArray(vz2, 5, i => i)
+    mkReport
+  }
+}
+
+// NEG tests (should fail)
+object DeliteFlatMapNeg6Runner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteFlatMapNeg6
+object DeliteFlatMapNeg6SuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFlatMapNeg6
+trait DeliteFlatMapNeg6 extends DeliteTestBase {
+  def main() = {
+    val vz = DeliteArray.fromFunction(10){ i => i }
+    val vz2 = vz.flatMap[Int]({ i =>
+      if (i < 5) DeliteArray.singletonInLoop({ collect(false); i }, i)
+      else DeliteArray.emptyInLoop[Int]({ i })
+    })
+    collectArray(vz2, 5, i => i)
+    mkReport
+  }
+}
+
+// NEG tests (should fail)
+object DeliteFlatMapNeg7Runner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteFlatMapNeg7
+object DeliteFlatMapNeg7SuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFlatMapNeg7
+trait DeliteFlatMapNeg7 extends DeliteTestBase {
+  def main() = {
+    val vz = DeliteArray.fromFunction(10){ i => i }
+    val vz2 = vz.flatMap[Int]({ i =>
+      if (i < 5) DeliteArray.singletonInLoop({ i }, i)
+      else DeliteArray.emptyInLoop[Int]({ collect(false); i })
+    })
+    collectArray(vz2, 5, i => i)
+    mkReport
+  }
+}
+
 object DeliteZipRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteZip
 object DeliteZipSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteZip
 trait DeliteZip extends DeliteTestBase {
@@ -611,4 +713,13 @@ class DeliteOpSuite extends DeliteSuite {
   def testDeliteGroupBy() { compileAndTest(DeliteGroupBySuiteRunner) }
   def testDeliteGroupByReduce() { compileAndTest(DeliteGroupByReduceSuiteRunner) }
   def testDeliteFileReader() { compileAndTest(DeliteFileReaderSuiteRunner) }
+
+  // NEG tests (should fail)
+  // def testDeliteFlatMapNeg1() { compileAndTest(DeliteFlatMapNeg1SuiteRunner) }
+  // def testDeliteFlatMapNeg2() { compileAndTest(DeliteFlatMapNeg2SuiteRunner) }
+  // def testDeliteFlatMapNeg3() { compileAndTest(DeliteFlatMapNeg3SuiteRunner) }
+  // def testDeliteFlatMapNeg4() { compileAndTest(DeliteFlatMapNeg3SuiteRunner) }
+  // def testDeliteFlatMapNeg5() { compileAndTest(DeliteFlatMapNeg3SuiteRunner) }
+  // def testDeliteFlatMapNeg6() { compileAndTest(DeliteFlatMapNeg3SuiteRunner) }
+  // def testDeliteFlatMapNeg7() { compileAndTest(DeliteFlatMapNeg3SuiteRunner) }
 }

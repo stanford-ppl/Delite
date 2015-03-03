@@ -472,15 +472,19 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     }
 
     getCollectElemType(elem) match {
-      case CollectAnyMap(singleElem) =>
+      case CollectAnyMap((singleElem, _)) =>
         emitOutput(singleElem, elem.buf)
 
-      case CollectFilter(cond, thenElem) => 
+      case CollectFilter(_, cond, thenElem, thenEffects, elseEffects) => 
         stream.println("if (" + quote(cond) + ") {")
-        emitBlock(thenElem)
+        emitFatBlock(thenElem :: (thenEffects.map(Block(_))))
         emitOutput(thenElem, elem.buf)
+        if (!elseEffects.isEmpty) {
+          stream.println("} else {")
+          emitFatBlock(elseEffects.map(Block(_)))
+        }
         stream.println("}")
-
+        
       case CollectFlatMap() => 
         emitValDef(elem.eF, quote(getBlockResult(elem.iFunc)))  // compute intermediate collection
         emitBlock(elem.sF)                                      // compute intermediate size
@@ -507,7 +511,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   // Assigns the first reduce element to the result symbol
   def emitFirstReduceElemAssign(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_], prefixSym: String = "") {
     getCollectElemType(elem) match {
-      case CollectAnyMap(singleElem) =>
+      case CollectAnyMap((singleElem,_)) =>
         emitAssignment(fieldAccess(prefixSym, quote(sym)), quote(getBlockResult(singleElem)))
         emitAssignment(fieldAccess(prefixSym, quote(sym) + "_empty"), "false")
       case _ => sys.error("ERROR: GenericGenDeliteOps.emitFirstReduceElemAssign called with Reduce that isn't CollectAnyMap: " + sym + "=" + elem)
@@ -516,12 +520,12 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   def emitReduceFoldElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteCollectBaseElem[_,_], prefixSym: String = "") {
     getCollectElemType(elem) match {
-      case CollectAnyMap(singleElem) =>
+      case CollectAnyMap((singleElem,_)) =>
         emitReduction(singleElem, op, sym, elem, prefixSym)
 
-      case CollectFilter(cond, thenElem) => 
+      case CollectFilter(_, cond, thenElem, thenEffects, elseEffects) => 
         stream.println("if (" + quote(cond) + ") {")
-        emitBlock(thenElem)
+        emitFatBlock(thenElem :: (thenEffects.map(Block(_))))
         
         elem match {
           case _: DeliteReduceElem[_] => 
@@ -535,6 +539,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           case _ => emitReduction(thenElem, op, sym, elem, prefixSym)
         }
 
+        if (!elseEffects.isEmpty) {
+          stream.println("} else {")
+          emitFatBlock(elseEffects.map(Block(_)))
+        }
         stream.println("}")
 
       case CollectFlatMap() => 
@@ -583,8 +591,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     case elem: DeliteHashReduceElem[_,_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
     case elem: DeliteHashIndexElem[_,_] => elem.keyFunc :: elem.cond
     case elem: DeliteCollectBaseElem[_,_] => getCollectElemType(elem) match {
-      case CollectAnyMap(singleElem) => List(singleElem)
-      case CollectFilter(condExp, thenElem) => List(reifyEffects(condExp))
+      case CollectAnyMap((singleElem, effects)) => singleElem :: (effects.map(Block(_)))
+      case CollectFilter(effects, condExp, thenElem, _, _) => reifyEffects(condExp) :: (effects.map(Block(_)))
       case CollectFlatMap() => List(elem.iFunc)
     }
     case elem: DeliteForeachElem[_] => List(elem.func)

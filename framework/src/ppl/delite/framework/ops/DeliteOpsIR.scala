@@ -140,25 +140,30 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
   }
 
   /** Depending on the function, a DeliteCollectBaseElem can represent a map,
-   * filter or a general flatMap. Code generation can be specialized to avoid
-   * the unnecessary allocation of an inner collection in the map and filter
-   * cases. */
+    * filter or a general flatMap. Code generation can be specialized to avoid
+    * the unnecessary allocation of an inner collection in the map and filter
+    * cases. */
   abstract class DeliteCollectType
-  /** Extracts the inner map elem. */
-  case class CollectMap(elem: Block[Any]) extends DeliteCollectType
-  /** Extracts the inner map elem. This is the special case of a map where the
-   * size will only be known at runtime (for example FileReader). */
-  case class CollectDynamicMap(elem: Block[Any]) extends DeliteCollectType
+  /** Extracts the inner map elem and the effect dependencies that are not
+    * captured by the elem. */
+  case class CollectMap(elem: Block[Any], otherEffects: List[Exp[Any]]) extends DeliteCollectType
+  /** Like CollectMap, but this is the special case of a map where the
+    * size will only be known at runtime (for example FileReader). */
+  case class CollectDynamicMap(elem: Block[Any], otherEffects: List[Exp[Any]]) extends DeliteCollectType
   /** Matches CollectMap as well as CollectDynamicMap. */
   object CollectAnyMap {
-    def unapply(collect: DeliteCollectType): Option[Block[Any]] = collect match {
-      case CollectMap(elem) => Some(elem)
-      case CollectDynamicMap(elem) => Some(elem)
+    def unapply(collect: DeliteCollectType): Option[(Block[Any], List[Exp[Any]])] = collect match {
+      case CollectMap(elem, list) => Some((elem, list))
+      case CollectDynamicMap(elem, list) => Some((elem, list))
       case _ => None
     } 
   }
-  /** Extracts the condition and the elem for when the condition is true. */
-  case class CollectFilter(cond: Exp[Boolean], elem: Block[Any]) extends DeliteCollectType
+  /** Extracts the condition and the elem for when the condition is true, as
+    * well as effect dependencies that aren't captured by the elem. The
+    * otherEffects should be emitted before the ifthenelse, thenEffects only
+    * in the then-scope, and elseEffects only in the else-scope. */
+  case class CollectFilter(otherEffects: List[Exp[Any]], cond: Exp[Boolean], thenElem: Block[Any],
+    thenEffects: List[Exp[Any]], elseEffects: List[Exp[Any]]) extends DeliteCollectType
   /** The general flatMap case. */
   case class CollectFlatMap extends DeliteCollectType
   /** Determines whether the collect represents a special case. */
@@ -402,7 +407,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
 
   def loopBodyNeedsStripFirst[A](e: Def[A]) = e match {
     case e:DeliteReduceElem[_] => getCollectElemType(e) match {
-      case CollectAnyMap(_) => true
+      case CollectAnyMap(_,_) => true
       case _ => false
     }
     case _ => false

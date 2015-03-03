@@ -367,6 +367,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
       case Reflect(SimpleStruct(SoaTag(tag, length), elems), u, es) => reflectMirrored(Reflect(SimpleStruct(SoaTag(tag, f(length)), elems map { case (k,v) => (k, f(v)) }), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
       case Reflect(e@DeliteArrayNew(l,m,t), u, es) => reflectMirrored(Reflect(DeliteArrayNew(f(l),m,t), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
       case Reflect(e@DeliteArraySingletonInLoop(block, index), u, es) => reflectMirrored(Reflect(DeliteArraySingletonInLoop(reifyEffectsHere(f.reflectBlock(block))(mtype(manifest[A].typeArguments(0))), f(index))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+      case Reflect(e@DeliteArrayEmptyInLoop(index, m), u, es) => reflectMirrored(Reflect(DeliteArrayEmptyInLoop(f(index), m)(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
       case Reflect(e@DeliteArrayLength(a), u, es) => reflectMirrored(Reflect(DeliteArrayLength(f(a))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
       case Reflect(e@DeliteArrayApply(l,r), u, es) => reflectMirrored(Reflect(DeliteArrayApply(f(l),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
       case Reflect(e@DeliteArrayUpdate(l,i,r), u, es) => reflectMirrored(Reflect(DeliteArrayUpdate(f(l),f(i),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)   
@@ -662,8 +663,8 @@ trait ScalaGenDeliteArrayOps extends GenericFatCodegen with ScalaGenDeliteStruct
       emitBlock(elem)
       emitValDef(sym, "Array(" + quote(getBlockResult(elem)) + ")")
       if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, Const(1), a.mA.erasure.getSimpleName)
-    case a@DeliteArrayEmptyInLoop(_, _) =>
-      emitValDef(sym, "Array()")
+    case a@DeliteArrayEmptyInLoop(_, m) =>
+      emitValDef(sym, "Array[" + remap(m) + "]()")
       if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, Const(0), a.mA.erasure.getSimpleName)
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + ".length")

@@ -35,9 +35,9 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       //case elem: DeliteHashReduceElem[_,_,_] => elem.keyFunc :: elem.valFunc :: elem.cond
       //case elem: DeliteHashIndexElem[_,_] => elem.keyFunc :: elem.cond
       case elem: DeliteCollectElem[_,_,_] => getCollectElemType(elem) match {
-        case CollectMap(mapElem) => List(mapElem)
-        case CollectDynamicMap(mapElem) => List(mapElem)
-        case CollectFilter(_,_) | CollectFlatMap() => sys.error("GPUGen not implemented for flatmap and filter")
+        case CollectMap(mapElem, _) => List(mapElem)
+        case CollectDynamicMap(mapElem, _) => List(mapElem)
+        case CollectFilter(_,_,_,_,_) | CollectFlatMap() => sys.error("GPUGen not implemented for flatmap and filter")
       }
       case elem: DeliteForeachElem[_] => List(elem.func)
 //      case elem: DeliteReduceElem[_] => elem.func :: elem.cond
@@ -130,7 +130,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     emitMultiLoopFuncs(op, symList)
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_,_]) => getCollectElemType(elem) match {
-        case CollectAnyMap(mapElem) => 
+        case CollectAnyMap((mapElem,_)) => 
           emitValDef(elem.buf.eV, quote(getBlockResult(mapElem)))
           emitValDef(elem.buf.allocVal, quote(sym)+"_data")
           emitBlock(elem.buf.update)
@@ -213,7 +213,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     emitHashReduceElemProcess(op, symList)
     (symList zip op.body) foreach {
       case (sym, elem:DeliteCollectElem[_,_,_]) => getCollectElemType(elem) match {
-        case CollectAnyMap(mapElem) =>
+        case CollectAnyMap((mapElem,_)) =>
           val bufFuncs = elem.buf.update :: (elem.buf match {
             case out: DeliteCollectFlatOutput[_,_,_]   => Nil
             case out: DeliteCollectBufferOutput[_,_,_] => List(out.appendable)
@@ -345,9 +345,9 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       s match {
         case (sym, elem:DeliteCollectElem[_,_,_]) => (getCollectElemType(elem), getOutputStrategy(elem)) match {
           case (_, _) if !isPrimitiveType(elem.mA) => throw new GenerationFailedException("GPUGen DeliteOps: output of collect elem is non-primitive type.")
-          case (CollectAnyMap(_), OutputFlat) => metaData.outputs.put(sym, new LoopElem("COLLECT",Map("mA"->remap(elem.mA),"mI"->remap(elem.mI),"mCA"->remap(elem.mCA))))
-          case (CollectDynamicMap(_), OutputBuffer) => metaData.outputs.put(sym, new LoopElem("COLLECT_BUF",Map("mA"->remap(elem.mA),"mI"->remap(elem.mI),"mCA"->remap(elem.mCA))))
-          case (CollectMap(_), OutputBuffer) => throw new GenerationFailedException("GPUGen DeliteOps: CollectMap is not allowed with OutputBuffer strategy.")
+          case (CollectAnyMap((_,_)), OutputFlat) => metaData.outputs.put(sym, new LoopElem("COLLECT",Map("mA"->remap(elem.mA),"mI"->remap(elem.mI),"mCA"->remap(elem.mCA))))
+          case (CollectDynamicMap(_,_), OutputBuffer) => metaData.outputs.put(sym, new LoopElem("COLLECT_BUF",Map("mA"->remap(elem.mA),"mI"->remap(elem.mI),"mCA"->remap(elem.mCA))))
+          case (CollectMap(_,_), OutputBuffer) => throw new GenerationFailedException("GPUGen DeliteOps: CollectMap is not allowed with OutputBuffer strategy.")
           case _ => throw new GenerationFailedException("GPUGen DeliteOps: Flatmap is not allowed for GPU")
         }          
         case (sym, elem:DeliteForeachElem[_]) =>
@@ -453,7 +453,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     // emit post-process functions
     (symList zip op.body) foreach {
       case (sym, elem:DeliteCollectElem[_,_,_]) => getCollectElemType(elem) match {
-          case CollectAnyMap(mapElem) =>
+          case CollectAnyMap((mapElem,_)) =>
             val freeVars = (getFreeVarBlock(Block(Combine((List(mapElem,elem.buf.update)).map(getBlockResultFull))),List(elem.buf.eV,elem.buf.allocVal,op.v,sym))++List(sym)).filter(_ != op.size).distinct
             val inputs = remapInputs(freeVars)
             val e = metaData.outputs.get(sym).get
@@ -493,7 +493,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
 //   val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
 //   val prevInnerScope = innerScope
 //   val result = getCollectElemType(z.body.asInstanceOf[DeliteCollectElem[_,_,_]]) match {
-//     case CollectAnyMap(mapElem) => mapElem
+//     case CollectAnyMap((mapElem,_)) => mapElem
 //     case _ => sys.error("ERROR: GPUGenDeliteOps.emitKernelAbstractFatLoop saw zipWith that isn't map")
 //   }
 //   result.res match {
@@ -556,7 +556,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         // FIXIT: Hacky way of generating zip function
         val z = encounteredZipWith.get(getBlockResult(elem.rFunc)).get
         val result = getCollectElemType(z.body.asInstanceOf[DeliteCollectElem[_,_,_]]) match {
-          case CollectAnyMap(mapElem) => mapElem
+          case CollectAnyMap((mapElem,_)) => mapElem
           case _ => sys.error("ERROR: GPUGenDeliteOps.emitKernelAbstractFatLoop saw zipWith that isn't map.")
         }
         val prevInnerScope = innerScope
@@ -945,7 +945,7 @@ trait GPUGenDeliteOpsOpt extends GPUGenDeliteOps {
       emitMultiLoopFuncs(op, symList)
       (symList zip op.body) foreach {
         case (sym, elem: DeliteCollectElem[_,_,_]) => getCollectElemType(elem) match {
-          case CollectAnyMap(mapElem) => 
+          case CollectAnyMap((mapElem,_)) => 
             emitValDef(elem.buf.eV, quote(getBlockResult(mapElem)))
             emitValDef(elem.buf.allocVal, quote(sym)+"_data")
             emitBlock(elem.buf.update)
@@ -1020,7 +1020,7 @@ trait GPUGenDeliteOpsOpt extends GPUGenDeliteOps {
       emitHashReduceElemProcess(op, symList)
       (symList zip op.body) foreach {
         case (sym, elem:DeliteCollectElem[_,_,_]) => getCollectElemType(elem) match {
-          case CollectAnyMap(mapElem) => 
+          case CollectAnyMap((mapElem,_)) => 
             val bufFuncs = elem.buf.update :: (elem.buf match {
               case out: DeliteCollectFlatOutput[_,_,_]   => Nil
               case out: DeliteCollectBufferOutput[_,_,_] => List(out.appendable)
