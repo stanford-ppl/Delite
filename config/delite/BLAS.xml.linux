@@ -6,15 +6,15 @@
   <path> ${JAVA_HOME}/include </path>
   <path> ${JAVA_HOME}/include/linux </path>
   <!-- insert path to BLAS include directory -->
-  <path> </path>
+  <path> /usr/include </path>
   <!-- insert name of header file that includes CBLAS functions -->
   <include> cblas.h </include>
 </headers>
 <libs>
   <prefix> -L </prefix>
   <!-- insert path to BLAS libraries -->
-  <path> </path>
+  <path> /usr/lib/libblas </path>
   <!-- insert BLAS libraries -->
-  <library> -lcblas </library>
+  <library> -lblas </library>
 </libs>
 </DeliteExternalLib>
