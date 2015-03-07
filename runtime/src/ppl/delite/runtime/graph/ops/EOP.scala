@@ -2,6 +2,7 @@ package ppl.delite.runtime.graph.ops
 
 import java.util.concurrent.locks.ReentrantLock
 import ppl.delite.runtime.graph.targets.Targets
+import java.util.concurrent.CyclicBarrier
 
 /**
  * Author: Kevin J. Brown
@@ -53,12 +54,26 @@ object EOP_Global {
   private val end = lock.newCondition
   private var notDone: Boolean = true
   private var result: Any = null
+  private var bar: CyclicBarrier = null
 
-  def put(res: Any) {
-    lock.lock
+  def put(res: Any) { result = res }
+
+  def take(): Any = {
+    val res = result
+    result = null
+    res
+  }
+
+  def setbarrier(cnt: Int) {
+    bar = new CyclicBarrier(cnt, new Runnable() { def run() { signal() }})
+  }
+
+  def barrier() { bar.await() }
+
+  def signal() {
+   lock.lock
     try {
       notDone = false
-      result = res
       end.signal
     }
     finally {
@@ -66,20 +81,16 @@ object EOP_Global {
     }
   }
 
-  def take(): Any = {
-    var res: Any = null
+  def await() {
     lock.lock
     try {
       while (notDone) end.await
       notDone = true //reset for re-use
-      res = result
-      result = null
     }
     finally {
       lock.unlock
     }
-    res
-  }  
+  }
 }
 
 object EOP_Kernel {
