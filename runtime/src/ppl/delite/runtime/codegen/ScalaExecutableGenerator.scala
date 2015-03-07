@@ -133,6 +133,11 @@ class ScalaMainExecutableGenerator(val location: Int, val graph: DeliteTaskGraph
       case _ => throw new RuntimeException("Unknown Host type " + target.toString)
     }
   }
+
+  override protected def writeMethodFooter() {
+    out.append("ppl.delite.runtime.graph.ops.EOP_Global.barrier();\n")
+    out.append("}\n")
+  }
 }
 
 object ScalaExecutableGenerator {
