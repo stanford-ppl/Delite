@@ -7,7 +7,6 @@
 *.~
 *.o
 *.so
-Makefile
 /local.properties
 delite.properties
 target/
@@ -29,3 +28,4 @@ test-out/*/*-skel
 test-out/*/*-src
 dsls/deliszt/lisztlib
 profiler/less
+.tags
