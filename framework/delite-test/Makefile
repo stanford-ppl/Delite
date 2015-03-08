@@ -1,6 +1,5 @@
 TEST_PKG=ppl.tests.scalatest
 OBJ_SUFFIX=_O
-ARG=--cpp
 
 all:
 	cd ${DELITE_HOME} && sbt publish-local
