@@ -93,7 +93,7 @@ trait DeliteTestDSLExp extends DeliteTestDSLCompiler with DeliteTestDSLScalaOpsP
       case _:TargetCuda => new DeliteTestDSLCodeGenCuda{val IR: DeliteTestDSLExp.this.type = DeliteTestDSLExp.this}
       case _:TargetOpenCL => new DeliteTestDSLCodeGenOpenCL{val IR: DeliteTestDSLExp.this.type = DeliteTestDSLExp.this}
       case _:TargetCpp => new DeliteTestDSLCodeGenC{val IR: DeliteTestDSLExp.this.type = DeliteTestDSLExp.this}
-      case _ => sys.error("DeliteTestDSL does not support this target")
+      case _ => throw new Exception("DeliteTestDSL does not support this target")
     }
   }  
 }
