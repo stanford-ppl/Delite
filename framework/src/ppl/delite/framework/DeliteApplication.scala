@@ -7,6 +7,7 @@ import scala.virtualization.lms.common.{BaseExp, Base}
 import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen, Transforming, GenerationFailedException, CCodegen, CudaCodegen}
 
 import codegen.cpp.TargetCpp
+import codegen.hw.TargetHw
 import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
 import codegen.delite.overrides.DeliteAllOverridesExp
@@ -30,6 +31,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   lazy val cppTarget = new TargetCpp{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val openclTarget = new TargetOpenCL{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val restageTarget = new TargetRestage{val IR: DeliteApplication.this.type = DeliteApplication.this}
+  lazy val hwTarget = new TargetHw{val IR: DeliteApplication.this.type = DeliteApplication.this}
 
   def targets = {
     var target = List[DeliteApplicationTarget](scalaTarget)
@@ -39,6 +41,8 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       target = cppTarget :: target
     if(Config.generateOpenCL)
       target = openclTarget :: target
+    if(Config.generateHw)
+      target = hwTarget :: target
     target
   }
   lazy val generators: List[GenericFatCodegen{ val IR: DeliteApplication.this.type }] = targets.reverse.map(getCodeGenPkg(_))

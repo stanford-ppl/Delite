@@ -19,6 +19,7 @@ object Config {
   var soaEnabled = getProperty("delite.enable.soa", "true") != "false"
   var generateCUDA = getProperty("delite.generate.cuda", "false") != "false"
   var generateCpp = getProperty("delite.generate.cpp", "false") != "false"
+  var generateHw = getProperty("delite.generate.hw", "false") != "false"
   var generateOpenCL = getProperty("delite.generate.opencl", "false") != "false"
   var generateSerializable = getProperty("delite.generate.serializable", "false") != "false"
   var homeDir = getProperty("delite.home.dir", sys.env.getOrElse("DELITE_HOME",System.getProperty("user.dir")))
