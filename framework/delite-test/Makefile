@@ -11,5 +11,5 @@ distclean:
 clean:
 	rm -rf generated *.deg
 
-%_O:
+%${OBJ_SUFFIX}:
 	${DELITE_HOME}/bin/delitec ${ARG} ${TEST_PKG}.$@
