@@ -15,12 +15,12 @@ import java.io.PrintWriter
  * code generator are defined here. Changes to the hardware codegen must be done here
  *
  *               +--------------------+
- *               |   Generic Codegen  |
+ *               |   GenericCodegen   |
  *               +---------+----------+
  *                         |
  *                         |
  *                   +-----v------+        +------------------------+
- *                   |Hw Codegen  |        |GenericGenDeliteOps     |
+ *                   | HwCodegen  |        |  GenericGenDeliteOps   |
  *                   +-+---------++        +-+----------------------+
  *                     |         |           |
  *                     |         |           |
@@ -61,7 +61,6 @@ trait HwCodegen extends GenericCodegen
       stream.println("}")
   }
 
-
   // Every type is remapped to a 'Module' for the hardware backend now
   override def remap[A](m: Manifest[A]) : String = {
     "Module"
@@ -71,9 +70,7 @@ trait HwCodegen extends GenericCodegen
     super.isPrimitiveType(m)
   }
 
-  // TERRIBLE name
-  // This function returns the String representation of an Exp
-  // in this backend
+  // TERRIBLE name - returns the String representation of an Exp
   override def quote(x: Exp[Any]) = {
     super.quote(x)
   }
@@ -104,17 +101,6 @@ trait HwCodegen extends GenericCodegen
   }
 
   def emitSource[A:Manifest](args: List[Sym[_]], body: Block[A], functionName: String, out: PrintWriter) = {
-
-    val sA = remap(manifest[A])
-
-    withStream(out) {
-      stream.println("// Hw Preamble")
-      stream.println(sA+" "+functionName+"("+args.map(a => remap(a.tp)+" "+quote(a)).mkString(", ")+") {")
-      emitBlock(body)
-      val y = getBlockResult(body)
-
-      stream.println("// Hw end source")
-    }
     Nil
   }
 }
