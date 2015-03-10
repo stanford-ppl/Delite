@@ -1,3 +1,5 @@
+DELITE_TEST=${DELITE_HOME}/framework/delite-test
+CLASSPATH=${DELITE_TEST}/target/scala-2.10/classes/ppl/tests/scalatest
 TEST_PKG=ppl.tests.scalatest
 OBJ_SUFFIX=_O
 
