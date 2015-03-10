@@ -5,6 +5,7 @@ import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
 import ppl.delite.framework.{Config, ExpressionsOpt, SchedulingOpt, DeliteApplication, DeliteInteractive, DeliteInteractiveRunner}
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.codegen.Target
+import ppl.delite.framework.codegen.hw._
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
 import ppl.delite.framework.codegen.cpp.TargetCpp
@@ -72,8 +73,39 @@ trait DeliteTestDSLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGen
   with CGenSynchronizedArrayBufferOps with CGenHashMapOps with CGenIterableOps with CGenArrayBufferOps with CGenExceptionOps
   { val IR: DeliteTestDSLScalaOpsPkgExp  }
 
+/*
+ * Every trait here is described in LMS for other backends
+ */
+trait DeliteTestDSLHwCodeGenPkg
+  extends HwGenOrderingOps
+//    with HwGenEqual
+//    with HwGenIfTheElse
+    with HwGenVariables
+    with HwGenWhile
+//    with HwGenTupleOps
+//    with HwGenTupledFunctions
+//    with HwGenStringOps
+    with HwGenRangeOps
+//    with HwGenIOOps
+    with HwGenArrayOps
+    with HwGenBooleanOps
+    with HwGenPrimitiveOps
+//    with HwGenMiscOps
+//    with HwGenListOps
+//    with HwGenSeqOps
+//    with HwGenMathOps
+//    with HwGenCastingOps
+//    with HwGenSetOps
+    with HwGenObjectOps
+//    with HwGenSynchronizedArrayBufferOps
+//    with HwGenHashMapOps
+//    with HwGenIterableOps
+//    with HwGenArrayBufferOps
+//    with HwGenExceptionOps
+  { val IR: DeliteTestDSLScalaOpsPkgExp  }
 
-trait DeliteTestDSL extends DeliteTestDSLScalaOpsPkg with StructOps with DeliteArrayOps with DeliteArrayBufferOps with DeliteMapOps with DeliteFileReaderOps {
+
+trait DeliteTestDSL extends DeliteTestDSLScalaOpsPkg with StructOps with DeliteArrayOps with DeliteArrayBufferOps with DeliteMapOps with DeliteFileReaderOps  with DeliteAnalysesOps {
   this: DeliteTestDSLApplication =>
 }
 
@@ -93,6 +125,7 @@ trait DeliteTestDSLExp extends DeliteTestDSLCompiler with DeliteTestDSLScalaOpsP
       case _:TargetCuda => new DeliteTestDSLCodeGenCuda{val IR: DeliteTestDSLExp.this.type = DeliteTestDSLExp.this}
       case _:TargetOpenCL => new DeliteTestDSLCodeGenOpenCL{val IR: DeliteTestDSLExp.this.type = DeliteTestDSLExp.this}
       case _:TargetCpp => new DeliteTestDSLCodeGenC{val IR: DeliteTestDSLExp.this.type = DeliteTestDSLExp.this}
+      case _:TargetHw => new DeliteTestDSLCodeGenHw{val IR: DeliteTestDSLExp.this.type = DeliteTestDSLExp.this}
       case _ => throw new Exception("DeliteTestDSL does not support this target")
     }
   }  
@@ -134,3 +167,13 @@ trait DeliteTestDSLCodeGenC extends DeliteTestDSLCodeGenBase with DeliteTestDSLC
   
   val IR: DeliteApplication with DeliteTestDSLExp
 }
+
+trait DeliteTestDSLCodeGenHw
+  extends DeliteTestDSLCodeGenBase  /* Common to all generators */
+  with DeliteTestDSLHwCodeGenPkg    /* Lump of traits usually implemented in LMS */
+//  with HwGenDeliteOps               /* Codegen for all Delite Ops */
+  with HwGenDeliteArrayOps          /* Codegen for all Delite Array Ops */
+{
+  val IR: DeliteApplication with DeliteTestDSLExp
+}
+
