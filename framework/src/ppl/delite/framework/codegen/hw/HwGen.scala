@@ -1,7 +1,9 @@
 package ppl.delite.framework.codegen.hw
 
 import scala.virtualization.lms.internal._
-import ppl.delite.framework.ops.GenericGenDeliteOps
+
+// All IR nodes, GenericGenDeliteOps
+import ppl.delite.framework.ops._
 
 import java.io.File
 import java.io.PrintWriter
@@ -40,14 +42,29 @@ trait HwCodegen extends GenericCodegen
   override def deviceTarget: Targets.Value = Targets.Hw
   override def toString = "hw"
 
-  override def resourceInfoType = "resourceInfo_t"
-  override def resourceInfoSym = "resourceInfo"
+  override def kernelFileExt = "thor"
 
-  def kernelName = "kernel_" + kernelOutputs.map(quote).mkString("")
+  def kernelName = "module_" + kernelOutputs.map(quote).mkString("")
+
+  override def emitKernelHeader(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultType: String, resultIsVar: Boolean, external: Boolean): Unit = {
+
+    def kernelSignature: String = {
+      val out = new StringBuilder
+      out.append(kernelName + "(")
+      out.append(")")
+      out.toString
+    }
+    stream.println(kernelSignature + " {")
+  }
+
+  override def emitKernelFooter(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultType: String, resultIsVar: Boolean, external: Boolean): Unit = {
+      stream.println("}")
+  }
 
 
+  // Every type is remapped to a 'Module' for the hardware backend now
   override def remap[A](m: Manifest[A]) : String = {
-    super.remap(m)
+    "Module"
   }
 
   override def isPrimitiveType[A](m: Manifest[A]) : Boolean = {
@@ -62,13 +79,10 @@ trait HwCodegen extends GenericCodegen
   }
 
   override def emitValDef(sym: Sym[Any], rhs: String): Unit = {
-    if (!isVoidType(sym.tp))
-//      stream.println(remapWithRef(sym.tp) + quote(sym) + " = " + rhs + ";")
-      stream.println(remap(sym.tp) + quote(sym) + " = " + rhs + ";")
+    stream.println(remap(sym.tp) + " " + quote(sym) + " = " + rhs + ";")
   }
 
   override def emitVarDecl(sym: Sym[Any]): Unit = {
-//    stream.println(remapWithRef(sym.tp) + " " + quote(sym) + ";")
     stream.println(remap(sym.tp) + " " + quote(sym) + ";")
   }
 
@@ -95,24 +109,13 @@ trait HwCodegen extends GenericCodegen
 
     withStream(out) {
       stream.println("// Hw Preamble")
-
-//      stream.println(sA+" "+functionName+"("+args.map(a => remapWithRef(a.tp)+" "+quote(a)).mkString(", ")+") {")
       stream.println(sA+" "+functionName+"("+args.map(a => remap(a.tp)+" "+quote(a)).mkString(", ")+") {")
-
       emitBlock(body)
       val y = getBlockResult(body)
 
       stream.println("// Hw end source")
     }
     Nil
-  }
-
-  override def emitKernelHeader(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultType: String, resultIsVar: Boolean, external: Boolean): Unit = {
-    super.emitKernelHeader(syms, vals, vars, resultType, resultIsVar, external)
-  }
-
-  override def emitKernelFooter(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultType: String, resultIsVar: Boolean, external: Boolean): Unit = {
-    super.emitKernelFooter(syms, vals, vars, resultType, resultIsVar, external)
   }
 }
 
@@ -122,6 +125,32 @@ trait HwGenDeliteOps extends HwCodegen with GenericGenDeliteOps
 
 trait HwGenDeliteInternalOps extends HwCodegen
 {
+  val IR: DeliteOpsExp with DeliteInternalOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case DBooleanNegate(b) => emitValDef(sym, "!" + quote(b))
+    case DEqual(a,b) =>  emitValDef(sym, quote(a) + " == " + quote(b))
+    case DNotEqual(a,b) =>  emitValDef(sym, quote(a) + " != " + quote(b))
+//    case DIntPlus(lhs,rhs) => emitValDef(sym, quote(lhs) + " + " + quote(rhs))
+//    case DIntMinus(lhs,rhs) => emitValDef(sym, quote(lhs) + " - " + quote(rhs))
+//    case DIntTimes(lhs,rhs) => emitValDef(sym, quote(lhs) + " * " + quote(rhs))
+//    case DIntDivide(lhs,rhs) => emitValDef(sym, quote(lhs) + " / " + quote(rhs))
+//    case DIntMod(lhs,rhs) => emitValDef(sym, quote(lhs) + " % " + quote(rhs))
+//    case DLessThan(a,b) => emitValDef(sym, quote(a) + " < " + quote(b))
+//    case DGreaterThan(a,b) => emitValDef(sym, quote(a) + " > " + quote(b))
+//    case DUnsafeImmutable(x) => emitValDef(sym, quote(x) + "// unsafe immutable")
+
+    case DIntPlus(lhs,rhs) => emitValDef(sym, "clb_add(32)")
+    case DIntMinus(lhs,rhs) => emitValDef(sym, "clb_sub(32)")
+    case DIntTimes(lhs,rhs) => emitValDef(sym, "clb_mul(32)")
+    case DIntDivide(lhs,rhs) => emitValDef(sym, "clb_div(32)")
+//    case DLessThan(a,b) => emitValDef(sym, quote(a) + " < " + quote(b))
+//    case DGreaterThan(a,b) => emitValDef(sym, quote(a) + " > " + quote(b))
+//    case DUnsafeImmutable(x) => emitValDef(sym, quote(x) + "// unsafe immutable")
+//    case DIntMod(lhs,rhs) => emitValDef(sym, quote(lhs) + " % " + quote(rhs))
+    case _ => super.emitNode(sym,rhs)
+  }
 }
 
 trait HwGenDeliteArrayOps extends HwCodegen
@@ -160,6 +189,16 @@ trait HwGenBooleanOps extends HwCodegen
 
 trait HwGenPrimitiveOps extends HwCodegen
 {
+//  val IR: PrimitiveOpsExp
+//  import IR._
+//
+//  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
+//    rhs match {
+//      case ObjDoublePositiveInfinity() => emitValDef(sym, "INFINITY")
+//      case ObjDoubleNegativeInfinity() => emitValDef(sym, "-INFINITY")
+//      case _ => super.emitNode(sym, rhs)
+//    }
+//  }
 }
 
 trait HwGenObjectOps extends HwCodegen

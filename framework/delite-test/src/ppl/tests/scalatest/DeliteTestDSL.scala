@@ -171,8 +171,9 @@ trait DeliteTestDSLCodeGenC extends DeliteTestDSLCodeGenBase with DeliteTestDSLC
 trait DeliteTestDSLCodeGenHw
   extends DeliteTestDSLCodeGenBase  /* Common to all generators */
   with DeliteTestDSLHwCodeGenPkg    /* Lump of traits usually implemented in LMS */
+  with HwGenDeliteInternalOps
 //  with HwGenDeliteOps               /* Codegen for all Delite Ops */
-  with HwGenDeliteArrayOps          /* Codegen for all Delite Array Ops */
+//  with HwGenDeliteArrayOps          /* Codegen for all Delite Array Ops */
 {
   val IR: DeliteApplication with DeliteTestDSLExp
 }
