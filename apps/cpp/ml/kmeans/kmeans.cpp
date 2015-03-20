@@ -25,6 +25,20 @@ namespace OptiML {
     useconds = end.tv_usec - start.tv_usec;
 
     double mtime = ((seconds) + useconds/1000000.0);
+
+    // add facility to dump timings to file
+    const char* timer_path = getenv("TIMER_PATH");
+    if(timer_path != NULL) {
+      FILE* timer_file = fopen(timer_path, "a");
+      if(timer_file != NULL) {
+        fprintf(timer_file, "%f\n", mtime);
+        fclose(timer_file);
+      }
+      else {
+        fprintf(stderr, "warning: unable to open timing file \"%s\"\n", timer_path);
+      }
+    }
+    
     printf("Elapsed time: %.3lf seconds\n", mtime);
   }
 }
