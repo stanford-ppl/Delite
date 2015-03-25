@@ -3,6 +3,7 @@
 
 #include "DeliteCuda.h"
 
+
 std::map<void*,int32_t> *refCntMap = new std::map<void*,int32_t>();
 std::list<void*>* lastAlloc = new std::list<void*>();
 std::queue<FreeItem>* freeList = new std::queue<FreeItem>();
@@ -40,7 +41,8 @@ void addEvent(cudaStream_t fromStream, cudaStream_t toStream) {
 
 cudaEvent_t addHostEvent(cudaStream_t stream) {
   cudaEvent_t event;
-  cudaEventCreateWithFlags(&event, cudaEventDisableTiming | cudaEventBlockingSync);
+  //cudaEventCreateWithFlags(&event, cudaEventDisableTiming | cudaEventBlockingSync);
+  cudaEventCreateWithFlags(&event, cudaEventDisableTiming);
   cudaEventRecord(event, stream);
   return event;
 }
@@ -279,6 +281,19 @@ void DeliteCudaToc(char *name) {
   ticIdx -= 1;
   std::cout << "DeliteCudaTimer " << ticName[ticIdx] << " " << (end-ticStart[ticIdx])/1000.0 << " ms" << std::endl;
 }
+
+DeliteCudaTimer t;
+void nanotic(void) {
+  cudaDeviceSynchronize();
+  t.restart();
+}
+
+void nanotoc(void) {
+  cudaDeviceSynchronize();
+  double elapsed_calc = t.elapsed();
+  std::cout << "DeliteCudaTimer(nano timer): " << elapsed_calc*1000 << " ms" << std::endl;
+}
+
 
 // TODO: Remove this kernel from here by generate it 
 __global__ void kernel_offset(int *key, int *idx, int *offset, int size) {

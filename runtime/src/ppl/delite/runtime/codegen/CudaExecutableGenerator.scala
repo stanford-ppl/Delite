@@ -131,7 +131,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
     out.append("hostInit();\n") // try to remove the overhead of the first call to hostInit (internally calls cudaHostAlloc)
     out.append("tempCudaMemInit(" + Config.tempCudaMemRate + ");\n")  // Allocate temporary device memory used for multiloops
     out.append("cudaDeviceSetLimit(cudaLimitMallocHeapSize, cudaHeapSize);\n") // Allocate heap device memory
-    out.append("cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);\n") // 48KB L1 and 16KB Shared mem
+    //out.append("cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);\n") // 48KB L1 and 16KB Shared mem
     out.append("std::map<char*,void*>* outputMap = new std::map<char*,void*>();\n")
     val locations = Range(0,Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL).toSet
     writeJNIInitializer(locations)

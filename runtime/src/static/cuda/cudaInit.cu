@@ -14,11 +14,13 @@ JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_AccExecutionThread_initi
     printf("FATAL : cudaDeviceReset() failed \n");	
     exit(1);
   }
+/*
   //set device options
   if(cudaSuccess != cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync)) {
     printf("FATAL : GPU device has crashed (cudaSetDviceFlags). \n");	
     exit(1);
   }
+*/
   //called to initialize the device (can take a while)
   if(cudaSuccess != cudaThreadSynchronize()) {
     printf("FATAL : GPU device has crashed (cudaThreadSynchronize). \n");	

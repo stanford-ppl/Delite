@@ -803,7 +803,12 @@ trait CudaGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CudaGenFat with 
         emitValDef(sym, "*" + quote(sym) + "_ptr;")
       }
     case DeliteArrayLength(da) =>
-      emitValDef(sym, quote(da) + ".length")
+      if(deliteResult.get.contains(sym)) {
+        emitValDef(sym, quote(da) + "->length")
+        isGPUable = true
+      }
+      else
+        emitValDef(sym, quote(da) + ".length")
     case DeliteArrayApply(da, idx) =>
       emitValDef(sym, quote(da) + ".data[" + quote(idx) + "]")
     case DeliteArrayUpdate(da, idx, x) =>

@@ -13,6 +13,7 @@
 #include <sys/time.h>
 #include <assert.h>
 #include "DeliteCudaMemory.h"
+#include "DeliteCudaTimer.h"
 
 extern size_t cudaHeapSize;
 
