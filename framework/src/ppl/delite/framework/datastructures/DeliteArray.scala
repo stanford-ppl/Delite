@@ -51,6 +51,7 @@ trait DeliteArrayOps extends Base {
   def darray_apply[T:Manifest](da: Rep[DeliteArray[T]], i: Rep[Int])(implicit ctx: SourceContext): Rep[T]
   def darray_update[T:Manifest](da: Rep[DeliteArray[T]], i: Rep[Int], x: Rep[T])(implicit ctx: SourceContext): Rep[Unit]
   def darray_clone[T:Manifest](d: Rep[DeliteArray[T]])(implicit ctx: SourceContext): Rep[DeliteArray[T]]
+  def darray_soft_clone[T:Manifest](d: Rep[DeliteArray[T]])(implicit ctx: SourceContext): Rep[DeliteArray[T]]
   def darray_mutable[T:Manifest](d: Rep[DeliteArray[T]])(implicit ctx: SourceContext): Rep[DeliteArray[T]]
   def darray_copy[T:Manifest](src: Rep[DeliteArray[T]], srcPos: Rep[Int], dest: Rep[DeliteArray[T]], destPos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
   def darray_map[A:Manifest,B:Manifest](a: Rep[DeliteArray[A]], f: Rep[A] => Rep[B])(implicit ctx: SourceContext): Rep[DeliteArray[B]]
@@ -308,12 +309,23 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
     reflectEffect(DeliteArrayFromFunction(darray_length(da),i => darray_apply(da, i)))
   }
   def darray_fromfunction[T:Manifest](length: Rep[Int], func: Rep[Int] => Rep[T])(implicit ctx: SourceContext) = reflectPure(DeliteArrayFromFunction(length,func))
-  def darray_clone[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext) = da match {
-    // This is not safe! A new mutable struct can create a new mutable symbol that wraps a (clone of) a previously non-writeable DeliteArray.
-    // If the clone is short-circuited, the new mutable symbol is an alias for the previous immutable symbol.
-    // case s: Sym[_] if !isWritableSym(s) => da
-    case _ => reflectPure(DeliteArrayClone(da))
+  def darray_clone[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext) = reflectPure(DeliteArrayClone(da))
+
+  // Soft clone tries to optimize away a clone when it is called on an immutable object. Not all clones should be soft, since the result of a
+  // clone can be wrapped in a mutable struct, thereby creating a mutable alias to a previously immutable object.
+  def darray_soft_clone[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext) = {
+    // Without setting this flag, an array inside a mutable struct will look immutable
+    val saveDeliteStructAliases = _deliteStructAliases
+    _deliteStructAliases = true
+    val mutableAliases = mutableTransitiveAliases(da)
+    _deliteStructAliases = saveDeliteStructAliases
+
+    da match {
+      case s: Sym[_] if !isWritableSym(s) && mutableAliases == Nil => da
+      case _ => darray_clone(da)
+    }
   }
+
   def darray_mutable[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext) = reflectMutable(DeliteArrayClone(da))
   def darray_sortIndices(length: Exp[Int], comparator: (Exp[Int], Exp[Int]) => Exp[Int])(implicit ctx: SourceContext) = {
     val sV = (fresh[Int],fresh[Int])
