@@ -297,9 +297,9 @@ trait NestedLoopMappingAnalysis extends FatBlockTraversal with LoopFusionOpt wit
         processArrayAccess(i)
       case Reflect(DeliteArrayUpdate(_,i,_), u, es) =>
         processArrayAccess(i)
-      case Reflect(StructUpdate(_,_,i,_), u, es) =>
+      case Reflect(NestedAtomicWrite(_,_,DeliteArrayUpdate(_,i,_)), u, es) =>
         //TODO: handle nested array update in struct
-        processArrayAccess(i.head)
+        processArrayAccess(i)
       case _ =>
         traverseFatBlock(blocks(rhs))
     }

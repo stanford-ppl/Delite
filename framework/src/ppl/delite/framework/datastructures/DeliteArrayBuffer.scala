@@ -103,6 +103,12 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
 
   def darray_buffer_update[A:Manifest](d: Exp[DeliteArrayBuffer[A]], idx: Exp[Int], x: Exp[A])(implicit ctx: SourceContext) = darray_buffer_raw_data(d).update(idx,x)
 
+  def darray_buffer_remove[A:Manifest](d: Exp[DeliteArrayBuffer[A]], idx: Exp[Int], len: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
+    val data = darray_buffer_raw_data(d)
+    darray_copy(data, delite_int_plus(idx, len), data, idx, delite_int_minus(d.length, delite_int_plus(idx, len)))
+    darray_buffer_set_length(d, delite_int_minus(d.length, len))
+  }
+
   def darray_buffer_append[A:Manifest](d: Exp[DeliteArrayBuffer[A]], elem: Exp[A])(implicit ctx: SourceContext): Exp[Unit] = {
     //darray_buffer_insert(d, d.length, elem)
     darray_buffer_ensureextra(d,unit(1))
@@ -136,9 +142,16 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     darray_buffer_update(d,pos,x)
   }
 
-  protected def darray_buffer_insertAll[A:Manifest](d: Exp[DeliteArrayBuffer[A]], pos: Exp[Int], xs: Exp[DeliteArray[A]])(implicit ctx: SourceContext): Exp[Unit] = {
+  def darray_buffer_insertAll[A:Manifest](d: Exp[DeliteArrayBuffer[A]], pos: Exp[Int], xs: Exp[DeliteArray[A]])(implicit ctx: SourceContext): Exp[Unit] = {
     darray_buffer_insertspace(d,pos,xs.length)
     darray_buffer_copyfrom(d, pos, xs)
+  }
+
+  def darray_buffer_insertBuffer[A:Manifest](d: Exp[DeliteArrayBuffer[A]], pos: Exp[Int], xs: Exp[DeliteArrayBuffer[A]])(implicit ctx: SourceContext): Exp[Unit] = {
+    darray_buffer_insertspace(d,pos,xs.length)
+    val dest = darray_buffer_raw_data(d)
+    val src = darray_buffer_raw_data(xs)
+    darray_copy(src, unit(0), dest, pos, xs.length)
   }
 
   protected def darray_buffer_copyfrom[A:Manifest](d: Exp[DeliteArrayBuffer[A]], pos: Exp[Int], xs: Exp[DeliteArray[A]]): Exp[Unit] = {
@@ -146,7 +159,7 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     darray_copy(xs, unit(0), data, pos, xs.length)
   }
 
-  protected def darray_buffer_insertspace[A:Manifest](d: Exp[DeliteArrayBuffer[A]], pos: Exp[Int], len: Exp[Int]): Exp[Unit] = {
+  def darray_buffer_insertspace[A:Manifest](d: Exp[DeliteArrayBuffer[A]], pos: Exp[Int], len: Exp[Int]): Exp[Unit] = {
     darray_buffer_ensureextra(d,len)
     val data = darray_buffer_raw_data(d)
     darray_copy(data, pos, data, delite_int_plus(pos, len), delite_int_minus(d.length, pos))

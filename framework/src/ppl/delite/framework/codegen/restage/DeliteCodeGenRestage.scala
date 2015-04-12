@@ -23,7 +23,7 @@ trait RestageCodegen extends ScalaCodegen with Config {
   import IR._
 
   // should be set by DeliteRestage if there are any transformations to be run before codegen
-  var transformers: List[WorklistTransformer{val IR: RestageCodegen.this.IR.type}] = Nil
+  var visitors: List[WorklistTransformer{val IR: RestageCodegen.this.IR.type}] = Nil
   
   override def kernelFileExt = "scala"
 
@@ -64,7 +64,7 @@ trait RestageFatCodegen extends GenericFatCodegen with RestageCodegen {
     println("--RestageCodegen emitSource")
     
     var b = body
-    for (t <- transformers) {
+    for (t <- visitors) {
       b = t.run(b)
     }
 
@@ -125,7 +125,7 @@ trait LMSCodeGenRestage extends RestageFatCodegen {
 }
 
 // restage generators for Delite common ops
-trait DeliteCodeGenRestage extends RestageFatCodegen 
+trait DeliteCodeGenRestage extends RestageFatCodegen with BaseGenAtomicOps
   with ScalaGenDeliteArrayOps with ScalaGenDeliteStruct with DeliteScalaGenAllOverrides {
     
   val IR: Expressions with Effects with FatExpressions with DeliteRestageOpsExp 
@@ -195,23 +195,6 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     case SoaTag(base, length) => "SoaTag(" + quoteTag(base,tp) + ", " + quote(length) + ")"
     case MapTag() => "MapTag()"
   } 
-       
-  def recordFieldLookup[T:Manifest](struct: Exp[T], nextStructTp: Manifest[_], currentStr: String, fieldNames: List[String]): String = {        
-    if (fieldNames == Nil) return currentStr
-
-    val structFieldTpes = nextStructTp match {
-      case StructType(tag,fields) => fields
-    }
-    val fieldTp = mtype(structFieldTpes.find(_._1 == fieldNames.head).get._2)
-  
-    val newStr = if (currentStr == "") {
-      "field["+remap(fieldTp)+"](" + quote(struct) + ", \"" + fieldNames.head + "\")"
-      }
-      else {
-        "field["+remap(fieldTp)+"](" + currentStr + ", \"" + fieldNames.head + "\")"
-      }
-    recordFieldLookup(struct, fieldTp, newStr, fieldNames.tail)
-  }    
   
   // variable manifests wrap our refined manifests..
   def unvar[T](m: Manifest[T]) = {
@@ -257,13 +240,62 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     }
     dsName
   }
-  
+
+  override def emitAtomicWrite(sym: Sym[Any], d: AtomicWrite[_], trace: Option[String]) = d match {
+    case DeliteArrayUpdate(arr,i,x) =>
+      emitValDef(sym, "darray_update(" + trace.getOrElse(quote(arr)) + "," + quote(i) + "," + quote(x) + ")")
+    case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
+      emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + "," + trace.getOrElse(quote(dest)) + "," + quote(destPos) + "," + quote(len) + ")")
+
+    case FieldUpdate(struct, index, rhs) => 
+      emitValDef(sym, "field_update[" + remap(sym.tp) + "](" + trace.getOrElse(quote(struct)) + ",\"" + index + "\"," + quote(rhs) + ")")
+    
+    case _ => 
+      super.emitAtomicWrite(sym,d,trace)
+  }
+
+  // new in multiarray branch: Generalized recurseFieldLookup
+  // TODO: May want to change how this function recurses (in particular a bit strange to have sym here)
+  def recordNestedLookup(sym: Exp[Any], tp: Manifest[_], currentStr: String, trace: List[AtomicTracer]): String = {
+    if (trace == Nil) return currentStr
+
+    val (nextTp, newStr) = trace.head match {
+      case StructTracer(field) => 
+        val structFieldTpes = tp match { case StructType(_,fields) => fields }
+        val fieldTp = mtype(structFieldTpes.find(_._1 == field).get._2)
+
+        val fieldApply  = if (currentStr == "")
+                            "field[" + remap(fieldTp) + "](" + quote(sym) + ", \"" + field + "\")"
+                          else
+                            "field[" + remap(fieldTp) + "](" + currentStr + ", \"" + field + "\")"
+        (fieldTp, fieldApply)
+
+      case ArrayTracer(i) => 
+        val childTp = tp.typeArguments(0)
+        val arrayApply  = if (currentStr == "") 
+                            "darray_apply(" + quote(sym) + ", " + quote(i) + ")"
+                          else
+                            "darray_apply(" + currentStr + ", " + quote(i) + ")"
+        (childTp, arrayApply)
+
+      case VarTracer =>
+        val varGet  = if (currentStr == "")
+                        quote(sym) + (if (deliteInputs contains sym) ".get" else "")
+                      else
+                        currentStr /* No sym to match here...*/
+        (tp, varGet)
+    } 
+    recordNestedLookup(sym, nextTp, newStr, trace.tail)
+  }
 
   /**
    * Actual restaging code gen definitions
    */
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {   
+    // Nested atomic writes --- overrides super's case!
+    case op@NestedAtomicWrite(s, trace, d) => 
+      emitAtomicWrite(sym, d, Some(recordNestedLookup(s, s.tp, "", trace)))
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {    
     // data exchange
     case ReturnScopeResult(n) => emitValDef(sym, "setScopeResult(" + quote(n) + ")")
     case LastScopeResult() => emitValDef(sym, "getScopeResult") 
@@ -303,15 +335,6 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     // HACK: GIterable should be a Record
     case a@DeliteArrayNew(n,m,t) if sym.tp.typeArguments(0).erasure.getSimpleName == "GIterable" => emitValDef(sym, "DeliteArray[" + restageStructName(m) + "](" + quote(n) + ")")
     case a@DeliteArrayNew(n,m,t) => emitValDef(sym, "DeliteArray[" + remap(m) + "](" + quote(n) + ")")
-    case DeliteArrayCopy(src,srcPos,dest,destPos,len) => emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
-    // new in wip-develop
-    case StructCopy(src,srcPos,struct,fields,destPos,len) => 
-      assert(fields.length == 1) // nested fields not supported yet
-      assert(destPos.length == 1)
-      emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + ", field["+remap(src.tp)+"](" + quote(struct) + ",\"" + fields(0) + "\")," + quote(destPos.head) + "," + quote(len) + ")")
-    case VarCopy(src,srcPos,Variable(a),destPos,len) =>
-      val dest = quote(a) + (if (deliteInputs contains a) ".get" else "")
-      emitValDef(sym, "darray_copy(" + quote(src) + "," + quote(srcPos) + "," + dest + "," + quote(destPos) + "," + quote(len) + ")")
     
     case DeliteArrayGetActSize() => emitValDef(sym, "darray_unsafe_get_act_size()")
     case DeliteArraySetActBuffer(da) => emitValDef(sym, "darray_set_act_buf(" + quote(da) + ")")
@@ -331,28 +354,6 @@ trait DeliteCodeGenRestage extends RestageFatCodegen
     
     case FieldApply(struct, index) => 
        emitValDef(sym, "field["+remap(sym.tp)+"](" + quote(struct) + ",\"" + index + "\")")
-      
-    case FieldUpdate(struct, index, rhs) => emitValDef(sym, "field_update[" + remap(sym.tp) + "](" + quote(struct) + ",\"" + index + "\"," + quote(rhs) + ")")
-    case NestedFieldUpdate(struct, fields, rhs) => 
-      assert(fields.length > 0)      
-      // x34.data.id(x66)
-      // field[T](field[Record](x34, "data"), "id")
-      if (fields.length == 1) { // not nested
-        emitValDef(sym, "field_update[" + remap(rhs.tp) + "](" + quote(struct) + ",\"" + fields(0) + "\"," + quote(rhs) + ")")
-      }
-      else {
-        emitValDef(sym, "field_update(" + recordFieldLookup(struct, struct.tp, "", fields) + ", " + quote(rhs) + ")")        
-      }
-   
-    case StructUpdate(struct, fields, idx, x) =>
-      assert(fields.length > 0)
-      assert(idx.length == 1)
-      if (fields.length == 1) { // not nested
-        emitValDef(sym, "darray_update(field[DeliteArray["+remap(x.tp)+"]](" + quote(struct) + ", \"" + fields.head + "\"), " + quote(idx.head) + ", " + quote(x) + ")")
-      }
-      else {
-        emitValDef(sym, "darray_update(" + recordFieldLookup(struct, struct.tp, "", fields) + ", " + quote(idx.head) + ", " + quote(x) + ")")
-      }
     
     // delite ops
     case s:DeliteOpSingleTask[_] => 

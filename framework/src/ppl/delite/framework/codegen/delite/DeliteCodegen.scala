@@ -9,19 +9,21 @@ import scala.virtualization.lms.common._
 import generators.{DeliteGenTaskGraph}
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
 import ppl.delite.framework.{Config, DeliteApplication}
-import ppl.delite.framework.transform.ForwardPassTransformer
 import ppl.delite.framework.ops.DeliteOpsExp
 
-import scala.virtualization.lms.internal._
-import scala.virtualization.lms.common._
+import ppl.delite.framework.visit.MetadataTransformer
 
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.ops.DeliteOpsExp
-import ppl.delite.framework.analysis.{StencilAnalysis, RankAnalysis, RankChecking}
+import ppl.delite.framework.analysis.StencilAnalysis
+import ppl.delite.framework.transform.TransformerBase
+
 import generators.{DeliteGenTaskGraph}
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
 
-class MultiArrayGenException extends Exception("Cannot currently codegen MultiArray defs")
+import java.io.{StringWriter, PrintWriter}
+
+class MultiArrayGenException extends Exception("Cannot codegen MultiArray defs")
 
 // FIXME: now that syms and friends is in the IR, all this ifGenAgree(..) crap is not necessary.
 
@@ -37,7 +39,7 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   val generators: List[Generator]
 
   // should be set by DeliteApplication if there are any transformations to be run before codegen
-  var transformers: List[WorklistTransformer{val IR: DeliteCodegen.this.IR.type}] = Nil
+  var visitors: List[IRVisitor{val IR: DeliteCodegen.this.IR.type}] = Nil
 
   // per kernel, used by DeliteGenTaskGraph
   var controlDeps: List[Sym[Any]] = _
@@ -115,53 +117,52 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     stream.println("] }")
   }
 
-  def runTransformations[A:Manifest](b: Block[A]): Block[A] = {
-    printlog("DeliteCodegen: applying transformations")
-    var curBlock = b
-    printlog("  Transformers: " + transformers)
-    val maxTransformIter = 3 // TODO: make configurable
-    for (t <- transformers) {
-      printlog("  Block before transformation: " + curBlock)
-      printlog("  map: " + t.nextSubst)
-      var i = 0
-      while (!t.isDone && i < maxTransformIter) {
-        printlog("iter: " + i)
-        curBlock = t.runOnce(curBlock)
-        i += 1
+  def runVisitors[A:Manifest](b: Block[A]): Block[A] = {
+    //try {
+      val printer = new IRPrinter{val IR: DeliteCodegen.this.IR.type = DeliteCodegen.this.IR}
+
+      printlog("DeliteCodegen: applying transformations")
+      var curBlock = b
+      var prevMetaTransformer: Option[MetadataTransformer] = None
+      printlog("Visitors: " + visitors.map(_.name).mkString("\n"))
+      for (t <- visitors) {
+        if (hadErrors)
+          sys.error("Encountered error(s) while compiling - unable to continue")
+        
+        // If we're still running, ignore errors from previous stages
+        //resetErrors()
+
+        printlog("  Block before transformation: " + curBlock)
+        
+        //if (t.isInstanceOf[WorklistTransformer])
+        //  printlog("  map: " + t.asInstanceOf[WorklistTransformer].nextSubst)
+        
+        if (t.isInstanceOf[MetadataTransformer] && !prevMetaTransformer.isEmpty)
+          t.asInstanceOf[MetadataTransformer].chain(prevMetaTransformer.get)
+
+        curBlock = t.run(curBlock)
+        
+        printlog("  Block after transformation: " + curBlock)
+        if (t.isInstanceOf[MetadataTransformer])
+          prevMetaTransformer = Some(t.asInstanceOf[MetadataTransformer])
       }
-      if (i == maxTransformIter) printlog("  warning: transformer " + t + " did not converge in " + maxTransformIter + " iterations")
-      printlog("  Block after transformation: " + curBlock)
-    }
-    printlog("DeliteCodegen: done transforming")
-    curBlock
-  }
-
-  // Change this later (ultimately want scheduling of analyses mixed with transforms)
-  def runAnalysis[A:Manifest](b: Block[A]): Unit = {
-    // MultiArray analysis
-    val rankAnalyzer = new RankAnalysis{val IR: DeliteCodegen.this.IR.type = DeliteCodegen.this.IR}
-    rankAnalyzer.run(b)
-    if (rankAnalyzer.hadErrors) { System.exit(0) }
-
-    val rankChecker = new RankChecking{val IR: DeliteCodegen.this.IR.type = DeliteCodegen.this.IR}
-    rankChecker.metadata = rankAnalyzer.metadata
-    rankChecker.run(b)
-    if (rankChecker.hadErrors) { System.exit(0) }
-
-    // Remove later
-    if (rankAnalyzer.metadata.values.exists{p => p.isInstanceOf[rankAnalyzer.IRMetadata.ArrayProperties]})
-      throw new MultiArrayGenException
-
-    throw new Exception("Temporary post-staging exception for MultiArray testing (Remove Later)")
+      printlog("DeliteCodegen: done transforming")
+      (curBlock)
+    /*}
+    catch {case e: Throwable => 
+      printmsg(e.getMessage)
+      val sw = new StringWriter()
+      printmsg(sw.toString())
+      sys.error("Encountered error(s) while compiling - unable to continue")
+      (b)
+    }*/
   }
 
   def emitBlockHeader(syms: List[Sym[Any]], appName: String) { }
   def emitBlockFooter(result: Exp[Any]) { }
 
   def emitSource[A:Manifest](args: List[Sym[_]], body: Block[A], className: String, stream: PrintWriter): List[(Sym[Any],Any)] = {
-    runAnalysis(body)
-
-    val y = runTransformations(body)
+    val y = runVisitors(body)
     val staticData = getFreeDataBlock(y)
 
     printlog("-- emitSource")

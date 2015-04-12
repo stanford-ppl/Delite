@@ -12,6 +12,7 @@ import ppl.delite.framework.codegen.opencl.TargetOpenCL
 import ppl.delite.framework.codegen.delite.overrides._
 import ppl.delite.framework.transform._
 import ppl.delite.framework.ops._
+import ppl.delite.framework.visit._
 import ppl.delite.framework.{Interfaces,InterfacesExp}
 
 trait DeliteTestDSLApplicationRunner extends DeliteTestDSLApplication with DeliteApplication with DeliteTestDSLExp
@@ -82,8 +83,9 @@ trait DeliteTestDSLCompiler extends DeliteTestDSL
   this: DeliteTestDSLApplication with DeliteTestDSLExp =>
 }
 
-trait DeliteTestDSLExp extends DeliteTestDSLCompiler with DeliteTestDSLScalaOpsPkgExp with FunctionBlocksExp with DeliteStructsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteMapOpsExp with DeliteFileReaderOpsExp
-  with ExpressionsOpt with DeliteTransform with MultiloopSoATransformWithReduceExp with DeliteTestOpsExp with DeliteLMSForwarderExp with DeliteAllOverridesExp {
+trait DeliteTestDSLExp extends DeliteTestDSLCompiler with DeliteTestDSLScalaOpsPkgExp 
+  with FunctionBlocksExp with DeliteStructsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteMapOpsExp with DeliteFileReaderOpsExp
+  with ExpressionsOpt with DeliteVisit with MultiloopSoATransformWithReduceExp with DeliteTestOpsExp with DeliteLMSForwarderExp with DeliteAllOverridesExp {
 
   this: DeliteApplication with DeliteTestDSLApplication with DeliteTestDSLExp =>
 

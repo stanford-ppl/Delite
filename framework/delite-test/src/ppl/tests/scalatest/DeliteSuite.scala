@@ -280,6 +280,8 @@ trait DeliteTestOpsExp extends DeliteTestOps with EffectExp {
   case class DeliteTestBwClose(b: Exp[BufferedWriter]) extends Def[Unit]
   case class DeliteTestPrintLn(s: Exp[Any]) extends Def[Unit]
  
+  override val testsuite = true
+
   def delite_test_mkstring[A:Manifest](l: Exp[ArrayBuffer[A]], sep: Exp[String])(implicit pos: SourceContext) = DeliteTestMkString(l, sep)
   def delite_test_append[A:Manifest](l: Exp[ArrayBuffer[A]], e: Exp[A])(implicit pos: SourceContext) = reflectWrite(l)(DeliteTestAppend(l, e))
   def delite_test_strconcat(s: Exp[String], o: Exp[String])(implicit pos: SourceContext): Exp[String] = DeliteTestStrConcat(s,o)

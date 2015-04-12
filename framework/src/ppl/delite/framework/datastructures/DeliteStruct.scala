@@ -42,10 +42,6 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
     case _ => super.reflectEffect(d,u)
   }
 
-  case class NestedFieldUpdate[T:Manifest](struct: Exp[Any], fields: List[String], rhs: Exp[T]) extends Def[Unit]
-
-  override def field_update[T:Manifest](struct: Exp[Any], index: String, rhs: Exp[T]) = recurseFields(struct, List(index), rhs)
-
   //no shortcutting on mutable structs ...
 
   // TODO: clean up and check everything's safe
@@ -61,7 +57,7 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
 
       // find last assignment ... FIXME: should look at *all* mutations of orig
       val writes = es collect {
-        case Def(Reflect(NestedFieldUpdate(`orig`,List(`index`),rhs), _, _)) => rhs
+        case Def(Reflect(NestedAtomicWrite(`orig`,List(StructTracer(`index`)),FieldUpdate(_,_,rhs)), _, _)) => rhs
       }
       writes.reverse match {
         case rhs::_ =>
@@ -85,12 +81,12 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
 
       // find last assignment ... FIXME: should look at *all* mutations of struct
       /*context foreach {
-        case Def(Reflect(NestedFieldUpdate(`struct`,List(`index`),rhs), _, _)) =>  //ok
+        case Def(Reflect(NestedAtomicWrite(`struct`,List(StructTracer(`index`)),FieldUpdate(_,_,rhs)), _, _)) =>  //ok
         case Def(e) =>
           println("      ignoring " + e)
       }*/
       val writes = context collect {
-        case Def(Reflect(NestedFieldUpdate(`struct`,List(`index`),rhs), _, _)) => rhs
+        case Def(Reflect(NestedAtomicWrite(`struct`,List(StructTracer(`index`)),FieldUpdate(_,_,rhs)), _, _)) => rhs
       }
       writes.reverse match {
         case rhs::_ =>
@@ -103,12 +99,6 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
       }
       */
     case _ => super.field(struct, index)
-  }
-
-
-  private def recurseFields[T:Manifest](struct: Exp[Any], fields: List[String], rhs: Exp[T]): Exp[Unit] = struct match {
-    case Def(Reflect(Field(s,name),_,_)) => recurseFields(s, name :: fields, rhs)
-    case _ => reflectWrite(struct)(NestedFieldUpdate(struct, fields, rhs))
   }
 
   // TODO: get rid of entirely or just use mirrorDef
@@ -140,7 +130,6 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
 
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
     case s: DeliteStruct[_] => Nil
-    case NestedFieldUpdate(_,_,_) => Nil
     case _ => super.aliasSyms(e)
   }
 
@@ -154,7 +143,6 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
   override def containSyms(e: Any): List[Sym[Any]] = e match {
     case s: DeliteStruct[_] if _deliteStructContainsAliases => s.elems.collect { case (k,v:Sym[Any]) => v }.toList
     case s: DeliteStruct[_] => Nil // ignore nested mutability for Structs: this is only safe because we rewrite mutations to atomic operations
-    case NestedFieldUpdate(_,_,_) => Nil
     case _ => super.containSyms(e)
   }
 
@@ -169,7 +157,6 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
   }
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case Reflect(NestedFieldUpdate(struct, fields, rhs), u, es) => reflectMirrored(Reflect(NestedFieldUpdate(f(struct), fields, f(rhs)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(x@DIntTimes(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
     case Reflect(x@DIntPlus(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
     case Reflect(x@DIntMinus(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
@@ -207,7 +194,7 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
 }
 
 
-trait ScalaGenDeliteStruct extends BaseGenStruct {
+trait ScalaGenDeliteStruct extends BaseGenStruct with ScalaGenAtomicOps {
   val IR: DeliteStructsExp with DeliteOpsExp
   import IR._
 
@@ -254,6 +241,12 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     "generated." + this.toString + appQualifier
   }
 
+  override def emitAtomicWrite(sym: Sym[Any], d: AtomicWrite[_], trace: Option[String]) = d match {
+    case FieldUpdate(struct, index, rhs) =>
+      emitValDef(sym, trace.getOrElse(quote(struct)) + "." + index + " = " + quote(rhs))
+    case _ => super.emitAtomicWrite(sym,d,trace)
+  }
+
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case Struct(tag, elems) if structSize(sym.tp) <= 32 => //bit packing
       emitValDef(sym, shiftOnString(elems, "Int"))
@@ -271,10 +264,6 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     //   emitValDef(sym, shiftOffString(struct, index, 64))
     case FieldApply(struct, index) =>
       emitValDef(sym, quote(struct) + "." + index)
-    case FieldUpdate(struct, index, rhs) =>
-      emitValDef(sym, quote(struct) + "." + index + " = " + quote(rhs))
-    case NestedFieldUpdate(struct, fields, rhs) =>
-      emitValDef(sym, quote(struct) + "." + fields.reduceLeft(_ + "." + _) + " = " + quote(rhs))
     case _ => super.emitNode(sym, rhs)
   }
 
@@ -536,9 +525,15 @@ trait CLikeGenDeliteStruct extends BaseGenStruct with CLikeCodegen {
   }
 }
 
-trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps {
+trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps with CudaGenAtomicOps {
   val IR: DeliteStructsExp with DeliteOpsExp
   import IR._
+
+  override def emitAtomicWrite(sym: Sym[Any], d: AtomicWrite[_], trace: Option[String]) = d match {
+    case FieldUpdate(struct, index, rhs) =>
+      emitValDef(sym, trace.getOrElse(quote(struct)) + "." + index + " = " + quote(rhs))
+      printlog("WARNING: emitting field update: " + trace.getOrElse(quote(struct)) + "." + index)
+  }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case Struct(tag, elems) =>
@@ -561,11 +556,6 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps {
     case FieldApply(struct, index) =>
       emitValDef(sym, quote(struct) + "." + index)
       printlog("WARNING: emitting field access: " + quote(struct) + "." + index)
-    case FieldUpdate(struct, index, rhs) =>
-      emitValDef(sym, quote(struct) + "." + index + " = " + quote(rhs))
-      printlog("WARNING: emitting field update: " + quote(struct) + "." + index)
-    case NestedFieldUpdate(struct, fields, rhs) =>
-      emitValDef(sym, quote(struct) + "." + fields.reduceLeft(_ + "." + _) + " = " + quote(rhs))
     case _ => super.emitNode(sym, rhs)
   }
 
@@ -670,14 +660,14 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps {
   }
 }
 
-trait OpenCLGenDeliteStruct extends CLikeGenDeliteStruct with OpenCLCodegen {
+trait OpenCLGenDeliteStruct extends CLikeGenDeliteStruct with OpenCLCodegen with OpenCLGenAtomicOps {
   val IR: DeliteStructsExp with DeliteOpsExp
   import IR._
 
   def emitStructDeclaration(path: String, name: String, elems: Seq[(String,Manifest[_])]) { }
 }
 
-trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
+trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen with CGenAtomicOps {
   val IR: DeliteStructsExp with DeliteOpsExp
   import IR._
 
@@ -687,6 +677,13 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
     case s if s <:< manifest[Record] && s != manifest[Nothing] && cppMemMgr =="refcnt" => wrapSharedPtr(deviceTarget.toString + structName(m))
     case s if s <:< manifest[Record] && s != manifest[Nothing] => deviceTarget.toString + structName(m)
     case _ => super.remap(m)
+  }
+
+  override def emitAtomicWrite(sym: Sym[Any], d: AtomicWrite[_], trace: Option[String]) = d match {
+    case FieldUpdate(struct, index, rhs) =>
+      stream.println(trace.getOrElse(quote(struct)) + "->" + index + " = " + quote(rhs) + ";")
+      printlog("WARNING: emitting field update: " + trace.getOrElse(quote(struct)) + "." + index)
+    case _ => super.emitAtomicWrite(sym,d,trace)
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
@@ -708,11 +705,6 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
     case FieldApply(struct, index) =>
       emitValDef(sym, quote(struct) + "->" + index)
       printlog("WARNING: emitting field access: " + quote(struct) + "." + index)
-    case FieldUpdate(struct, index, rhs) =>
-      stream.println(quote(struct) + "->" + index + " = " + quote(rhs) + ";")
-      printlog("WARNING: emitting field update: " + quote(struct) + "." + index)
-    case NestedFieldUpdate(struct, fields, rhs) =>
-      stream.println(quote(struct) + "->" + fields.reduceLeft(_ + "->" + _) + " = " + quote(rhs) + ";")
     case _ => super.emitNode(sym, rhs)
   }
 

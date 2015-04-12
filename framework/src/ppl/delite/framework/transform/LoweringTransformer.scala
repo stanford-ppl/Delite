@@ -2,6 +2,7 @@ package ppl.delite.framework.transform
 
 import ppl.delite.framework.ops.{BaseDeliteOpsTraversalFat, DeliteOpsExp}
 
+import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 
 /*
@@ -14,7 +15,7 @@ import scala.virtualization.lms.common._
   example usage (1): custom lowering phase
     val myLoweringPhase = new LoweringTransformer
     
-    appendTransformer(myLoweringPhase) // register with Delite
+    appendVisitor(myLoweringPhase) // register with Delite
       
     override def onCreate[A:Manifest](s: Sym[A], d: Def[A]) = (d match {
       case VectorZeros(n)   => s.atPhase(myLoweringPhase) { vfromarray(array(myLoweringPhase(n)) { i => 0 }) }
@@ -32,7 +33,7 @@ import scala.virtualization.lms.common._
  /* adapted from LMS TestWorklistTransform2.scala */
 trait LoweringTransform extends BaseFatExp with EffectExp with IfThenElseFatExp with LoopsFatExp with DeliteOpsExp { self =>  
   /* class to extend for a custom LoweringTransformer, most likely to ensure a particular phase ordering */
-  class LoweringTransformer extends WorklistTransformer /*with BaseDeliteOpsTraversalFat*/ { val IR: self.type = self }
+  abstract class LoweringTransformer extends WorklistTransformer /*with BaseDeliteOpsTraversalFat*/ { val IR: self.type = self }
   
   // ---------- Exp api
   
@@ -57,4 +58,13 @@ trait LoweringTransform extends BaseFatExp with EffectExp with IfThenElseFatExp 
     onCreate(s,d)(s.tp)
     super.createDefinition(s,d)
   }
+
+  /*
+   * utilities
+   */
+   
+   // investigate: is this necessary?
+   def reflectTransformed[A:Manifest](t: Transformer, x: Exp[A], u: Summary, es: List[Exp[Any]])(implicit ctx: SourceContext): Exp[A] = {
+     reflectMirrored(Reflect(DUnsafeImmutable(x), mapOver(t,u), t(es)))(mtype(manifest[A]), ctx)        
+   }    
 }

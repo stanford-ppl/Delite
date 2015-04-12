@@ -15,9 +15,10 @@ import codegen.scala.TargetScala
 import codegen.restage.TargetRestage
 import codegen.Target
 import ops.DeliteOpsExp
-import transform.{DeliteTransform, DistributedArrayTransformer}
+import transform.DistributedArrayTransformer
+import visit.DeliteVisit
 
-trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransform with DeliteAllOverridesExp {  
+trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteVisit with DeliteAllOverridesExp {  
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
 
   /*
@@ -94,10 +95,10 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       writer.close()
     }  
     
-    // set transformers to be applied before codegen
-    deliteGenerator.transformers = transformers
+    // set visitors to be applied before codegen
+    deliteGenerator.visitors = visitors
     //val distributedTransformer = new DistributedArrayTransformer{ val IR: DeliteApplication.this.type = DeliteApplication.this }
-    //deliteGenerator.transformers :+= distributedTransformer
+    //deliteGenerator.visitors :+= distributedTransformer
     
     //System.out.println("Staging application")
     
