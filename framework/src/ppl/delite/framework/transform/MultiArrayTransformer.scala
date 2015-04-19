@@ -35,7 +35,7 @@ trait MultiArrayTransformer extends TransformerBase with MultiArrayHelperStageTh
 
   val IR: MultiArrayTransform
   import IR._
-  val name = "MultiArray Transformer"
+  override val name = "MultiArray Transformer"
   override val debugMode = true
    
   // Get inner element type for given data structure type
@@ -79,6 +79,10 @@ trait MultiArrayTransformer extends TransformerBase with MultiArrayHelperStageTh
     case Reflect(f: AbstractNode[_],_,_) if f.family == "multiarray" => Some(transformAbstract(s, d))
     case Struct(tag, elems) if hasMultiArrayChild(s.tp) => Some(transformAbstract(s, d))
     case Reflect(Struct(tag, elems),_,_) if hasMultiArrayChild(s.tp) => Some(transformAbstract(s, d))
+    case Reify(x,u,es) => 
+      val x2 = f(x)
+      Some(reflectPure(Reify(x2,mapOver(f,u),f(es)))(x2.tp,mpos(ctx.defPos)))
+
     case _ => None
   }
 
@@ -99,16 +103,13 @@ trait MultiArrayTransformer extends TransformerBase with MultiArrayHelperStageTh
     context = context filterNot {s => s == sym}
   }
 
-  //private def f[A:Manifest](x: Exp[A]) = apply(x)
-  //private def f[A:Manifest](xs: Seq[Exp[A]]) = apply(xs)
-  //private def f[A:Manifest](b: Block[A]) = apply(b)
-  private def f = self.asInstanceOf[Transformer]
+  def transformAbstract[A](s: Exp[A], d: Def[A])(implicit ctx: AnalysisContext): Exp[Any] = transformMultiArrayDef(s, d)
 
   /**
    * Transforms abstract MultiArray IR nodes to concrete implementations using types like
    * DeliteArray, DeliteArrayBuffer, and anonymous Structs
    */
-  def transformAbstract(s: Exp[Any], d: Def[Any])(implicit ctx: AnalysisContext): Exp[Any] = d match {
+  def transformMultiArrayDef(s: Exp[Any], d: Def[Any])(implicit ctx: AnalysisContext): Exp[Any] = d match {
     // --- Nested Writes
     case op@NestedAtomicWrite(sym, trace, d) => transformNestedAtomicWrite(f(sym), trace.map{r => mirrorTrace(r,f)}, d)(dataTp(f(sym)), mpos(ctx.defPos))
 
@@ -165,7 +166,10 @@ trait MultiArrayTransformer extends TransformerBase with MultiArrayHelperStageTh
       val out = implementReduce(f(ma),f(op.lookup),f(op.body),f(op.zero),op.v,op.i,op.rV,props(s))(dataTp(f(ma)),mpos(ctx.defPos))
       copyMetadata(out, props(s))
       (out)
-    case op@DeliteMultiArrayForeach(ma,_) => implementForeach(f(ma),f(op.body),op.v,op.i)(dataTp(f(ma)),mpos(ctx.defPos))
+    case op@DeliteMultiArrayForeach(ma,_) => 
+      val body = f(op.body)
+      implementForeach(f(ma),body,op.v,op.i)(dataTp(f(ma)),mpos(ctx.defPos))
+
     case op@DeliteMultiArrayForIndices(ma,_) => implementForIndices(f(ma),f(op.body),op.v,op.i)(dataTp(f(ma)),mpos(ctx.defPos))
     
     // TODO
@@ -179,7 +183,8 @@ trait MultiArrayTransformer extends TransformerBase with MultiArrayHelperStageTh
     // --- 1D Parallel ops
     case op@DeliteMultiArrayMapFilter(ma,_,_) => 
       val body = f(op.mapFunc)
-      val out = implementMapFilter(f(ma),body,f(op.filtFunc),op.v,op.i,props(s))(dataTp(f(ma)),mtype(body.tp),mpos(ctx.defPos))
+      val filt = f(op.filtFunc)
+      val out = implementMapFilter(f(ma),body,filt,op.v,op.i,props(s))(dataTp(f(ma)),mtype(body.tp),mpos(ctx.defPos))
       copyMetadata(out, props(s))
       (out)
     case op@DeliteMultiArrayFlatMap(ma,_) => 

@@ -26,7 +26,7 @@ trait DeliteMultiArrayOps extends DeliteAbstractOps {
   object MultiArray {
     def apply[T:Manifest](dims: Rep[Int]*)(implicit ctx: SourceContext) = dmultia_new[T](dims)
     def imm[T:Manifest](dims: Rep[Int]*)(implicit ctx: SourceContext) = dmultia_new_immutable[T](dims)
-    def fromFunction[T:Manifest](dims: Rep[Int]*)(func: Rep[AbstractIndices] => Rep[T])(implicit ctx: SourceContext) = dmultia_fromfunction(dims, func)
+    def fromFunction[T:Manifest](dims: Rep[Int]*)(func: Rep[LoopIndices] => Rep[T])(implicit ctx: SourceContext) = dmultia_fromfunction(dims, func)
   }
 
   implicit def repMultiAtoMultiAOps[T:Manifest](ma: Rep[DeliteMultiArray[T]])(implicit ctx: SourceContext) = new DeliteMultiArrayOpsCls(ma)
@@ -261,8 +261,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
    */
   case class DeliteMultiArrayFromFunction[A:Manifest](dims: Seq[Exp[Int]], func: Exp[LoopIndices] => Exp[A]) extends DeliteAbstractLoop[A,DeliteMultiArray[A]] {
     type OpType <: DeliteMultiArrayFromFunction[A]
-    lazy val body: Block[A] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(i)))
-    override def toString = "DeliteMultiArrayFromFunction(" + dims + ", " + body + ")"
+    val body: Block[A] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(i)))
   }
 
   /** 
@@ -272,9 +271,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
    */
   case class DeliteMultiArrayMap[A:Manifest,R:Manifest](in: Exp[DeliteMultiArray[A]], func: Exp[A] => Exp[R])(implicit ctx: SourceContext) extends DeliteAbstractLoop2[A,R,DeliteMultiArray[R]] {
     type OpType <: DeliteMultiArrayMap[A,R]
-    lazy val fin: Exp[A] = copyTransformedOrElse(_.fin)(dmultia_apply(in,i))
-    lazy val body: Block[R] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(fin)))
-    override def toString = "DeliteMultiArrayMap(" + in + ", " + body + ")"
+    val body: Block[R] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(dmultia_apply(in,i))))
   }
 
   /**
@@ -286,9 +283,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
    */
   case class DeliteMultiArrayZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[DeliteMultiArray[A]], inB: Exp[DeliteMultiArray[B]], func: (Exp[A],Exp[B]) => Exp[R])(implicit ctx: SourceContext) extends DeliteAbstractLoop3[A,B,R,DeliteMultiArray[R]] {
     type OpType <: DeliteMultiArrayZipWith[A,B,R]
-    lazy val fin: (Exp[A],Exp[B]) = (copyTransformedOrElse(_.fin._1)(dmultia_apply(inA,i)), copyTransformedOrElse(_.fin._2)(dmultia_apply(inB,i)))
-    lazy val body: Block[R] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(fin._1, fin._2)))
-    override def toString = "DeliteMultiArrayZipWith(" + inA + ", " + inB + ", " + body + ")"
+    val body: Block[R] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(dmultia_apply(inA,i), dmultia_apply(inB,i))))
   }
 
   /**
@@ -300,9 +295,8 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
   case class DeliteMultiArrayReduce[A:Manifest](in: Exp[DeliteMultiArray[A]], func: (Exp[A],Exp[A]) => Exp[A], zero: Exp[A])(implicit ctx: SourceContext) extends DeliteAbstractLoop[A,A] {
     type OpType <: DeliteMultiArrayReduce[A]
     lazy val rV: (Sym[A],Sym[A]) = copyOrElse(_.rV)((fresh[A], fresh[A]))
-    lazy val lookup: Block[A] = copyTransformedBlockOrElse(_.lookup)(reifyEffects(dmultia_apply(in, i)))
-    lazy val body: Block[A] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(rV._1, rV._2)))
-    override def toString = "DeliteMultiArrayReduce(" + in + ", " + lookup + ", " + body + ")"
+    val lookup: Block[A] = copyTransformedBlockOrElse(_.lookup)(reifyEffects(dmultia_apply(in, i)))
+    val body: Block[A] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(rV._1, rV._2)))
   }
   
   /** 
@@ -312,9 +306,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
    */ 
   case class DeliteMultiArrayForeach[A:Manifest](in: Exp[DeliteMultiArray[A]], func: Exp[A] => Exp[Unit])(implicit ctx: SourceContext) extends DeliteAbstractLoop[A,Unit] {
     type OpType <: DeliteMultiArrayForeach[A]
-    lazy val fin: Exp[A] = copyTransformedOrElse(_.fin)(dmultia_apply(in,i))
-    lazy val body: Block[Unit] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(fin)))
-    override def toString = "DeliteMultiArrayForeach(" + in + ", " + body + ")"
+    val body: Block[Unit] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(dmultia_apply(in,i))))
   }
 
   /** 
@@ -324,8 +316,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
    */ 
   case class DeliteMultiArrayForIndices[A:Manifest](in: Exp[DeliteMultiArray[A]], func: Exp[LoopIndices] => Exp[Unit])(implicit ctx: SourceContext) extends DeliteAbstractLoop[A,Unit] {
     type OpType <: DeliteMultiArrayForIndices[A]
-    lazy val body: Block[Unit] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(i)))
-    override def toString = "DeliteMultiArrayForIndices(" + in + ", " + body + ")"
+    val body: Block[Unit] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(i)))
   }
 
   /**
@@ -337,7 +328,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
   case class DeliteMultiArrayNDMap[A:Manifest,B:Manifest](in: Exp[DeliteMultiArray[A]], mdims: Seq[Int], func: Exp[DeliteMultiArray[A]] => Exp[DeliteMultiArray[B]])(implicit ctx: SourceContext) extends DeliteAbstractLoop2[A,B,DeliteMultiArray[B]] {
     type OpType <: DeliteMultiArrayNDMap[A,B]
     lazy val rV: Sym[DeliteMultiArray[A]] = copyTransformedOrElse(_.rV)(fresh[DeliteMultiArray[A]]).asInstanceOf[Sym[DeliteMultiArray[A]]]
-    lazy val body: Block[DeliteMultiArray[B]] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(rV)))
+    val body: Block[DeliteMultiArray[B]] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(rV)))
   }
 
   /**
@@ -347,8 +338,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
    */
   case class DeliteMultiArrayGroupBy[A:Manifest,K:Manifest](in: Exp[DeliteMultiArray[A]], key: Exp[A] => Exp[K])(implicit ctx: SourceContext) extends DeliteAbstractLoop2[A,K,DeliteHashMap[K,DeliteArray1D[A]]] {
     type OpType <: DeliteMultiArrayGroupBy[A,K]
-    lazy val fin: Exp[A] = copyTransformedOrElse(_.fin)(dmultia_apply(in,i))
-    lazy val keyFunc: Block[K] = copyTransformedBlockOrElse(_.keyFunc)(reifyEffects(key(fin)))
+    val keyFunc: Block[K] = copyTransformedBlockOrElse(_.keyFunc)(reifyEffects(key(dmultia_apply(in,i))))
   }
 
   /**
@@ -361,10 +351,9 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
   case class DeliteMultiArrayGroupByReduce[A:Manifest,K:Manifest,V:Manifest](in: Exp[DeliteMultiArray[A]], key: Exp[A] => Exp[K], value: Exp[A] => Exp[V], reduce: (Exp[V],Exp[V]) => Exp[V])(implicit ctx: SourceContext) extends DeliteAbstractLoop3[A,K,V,DeliteHashMap[K,V]] {
     type OpType <: DeliteMultiArrayGroupByReduce[A,K,V]
     lazy val rV: (Sym[V],Sym[V]) = copyOrElse(_.rV)((fresh[V],fresh[V]))
-    lazy val fin: Exp[A] = copyTransformedOrElse(_.fin)(dmultia_apply(in,i))
-    lazy val keyFunc: Block[K] = copyTransformedBlockOrElse(_.keyFunc)(reifyEffects(key(fin)))
-    lazy val valFunc: Block[V] = copyTransformedBlockOrElse(_.valFunc)(reifyEffects(value(fin)))
-    lazy val redFunc: Block[V] = copyTransformedBlockOrElse(_.redFunc)(reifyEffects(reduce(rV._1,rV._2)))
+    val keyFunc: Block[K] = copyTransformedBlockOrElse(_.keyFunc)(reifyEffects(key(dmultia_apply(in,i))))
+    val valFunc: Block[V] = copyTransformedBlockOrElse(_.valFunc)(reifyEffects(value(dmultia_apply(in,i))))
+    val redFunc: Block[V] = copyTransformedBlockOrElse(_.redFunc)(reifyEffects(reduce(rV._1,rV._2)))
   }
 
   // --- 1D Parallel Ops
@@ -377,9 +366,8 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
    */
   case class DeliteMultiArrayMapFilter[A:Manifest,B:Manifest](in: Exp[DeliteArray1D[A]], func: Exp[A] => Exp[B], cond: Exp[A] => Exp[Boolean])(implicit ctx: SourceContext) extends DeliteAbstractLoop2[A,B,DeliteArray1D[B]] {
     type OpType <: DeliteMultiArrayMapFilter[A,B]
-    lazy val fin: Exp[A] = copyTransformedOrElse(_.fin)(dmultia_apply(in,i))
-    lazy val mapFunc: Block[B] = copyTransformedBlockOrElse(_.mapFunc)(reifyEffects(func(fin)))
-    lazy val filtFunc: Block[Boolean] = copyTransformedBlockOrElse(_.filtFunc)(reifyEffects(cond(fin)))
+    val mapFunc: Block[B] = copyTransformedBlockOrElse(_.mapFunc)(reifyEffects(func(dmultia_apply(in,i))))
+    val filtFunc: Block[Boolean] = copyTransformedBlockOrElse(_.filtFunc)(reifyEffects(cond(dmultia_apply(in,i))))
   }
 
   /**
@@ -389,8 +377,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
    */
   case class DeliteMultiArrayFlatMap[A:Manifest,B:Manifest](in: Exp[DeliteArray1D[A]], func: Exp[A] => Exp[DeliteArray1D[B]])(implicit ctx: SourceContext) extends DeliteAbstractLoop2[A,B,DeliteArray1D[B]] {
     type OpType <: DeliteMultiArrayFlatMap[A,B]
-    lazy val fin: Exp[A] = copyTransformedOrElse(_.fin)(dmultia_apply(in,i))
-    lazy val body: Block[DeliteArray1D[B]] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(fin)))
+    val body: Block[DeliteArray1D[B]] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(dmultia_apply(in,i))))
   }
 
   // --- Buffer operations

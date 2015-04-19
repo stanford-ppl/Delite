@@ -71,7 +71,7 @@ trait LayoutMetadata extends RankMetadata {
 trait LayoutAnalyzer extends IRVisitor with MetadataTransformer with MultiArrayHelperStageTwo {
   val IR: DeliteOpsExp with DeliteMultiArrayOpsExp with LayoutMetadata
   import IR._
-  val name = "Layout Analyzer"
+  override val name = "Layout Analyzer"
 
   override def notifyUpdate(e: Exp[Any]): Unit = ()
 

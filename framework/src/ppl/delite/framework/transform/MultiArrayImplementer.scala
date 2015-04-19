@@ -16,7 +16,7 @@ trait MultiArrayViewImpl[T] extends MultiArrayImpl[T]
 trait MultiArrayBuffImpl[T] extends MultiArrayImpl[T]
 trait MultiArrayBuffViewImpl[T] extends MultiArrayImpl[T]
 
-trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with DeliteThinOpsExp
+trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with DeliteSimpleOpsExp
 
 trait MultiArrayImplementer extends TransformerBase with MultiArrayHelperStageThree {
   val IR: MultiArrayImplExp with LayoutMetadata
@@ -235,51 +235,42 @@ trait MultiArrayImplementer extends TransformerBase with MultiArrayHelperStageTh
   }
 
   // --- Parallel ops
-  def implementFromFunction[A:Manifest](dims: Seq[Exp[Int]], body: Block[A], v: Exp[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
+  def implementFromFunction[A:Manifest](dims: Seq[Exp[Int]], body: Block[A], v: Sym[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
     sys.error("Don't know how to implement map indices for output layout " + layout(out))
   }
-  def implementMap[A:Manifest,R:Manifest](in: Exp[DeliteMultiArray[A]], body: Block[R], v: Exp[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
+  def implementMap[A:Manifest,R:Manifest](in: Exp[DeliteMultiArray[A]], body: Block[R], v: Sym[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
     sys.error("Don't know how to implement map for input layout " + layout(in) + " with output layout " + layout(out))
   }
-  def implementZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[DeliteMultiArray[A]], inB: Exp[DeliteMultiArray[B]], body: Block[R], v: Exp[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
+  def implementZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[DeliteMultiArray[A]], inB: Exp[DeliteMultiArray[B]], body: Block[R], v: Sym[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
     sys.error("Don't know how to implement map for layouts " + layout(inA) + " and " + layout(inB) + " for output layout " + layout(out))
   }
-  def implementReduce[A:Manifest](in: Exp[DeliteMultiArray[A]], lookup: Block[A], body: Block[A], zero: Exp[A], v: Exp[Int], i: Exp[LoopIndices], rV: (Exp[A], Exp[A]), out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
+  def implementReduce[A:Manifest](in: Exp[DeliteMultiArray[A]], lookup: Block[A], body: Block[A], zero: Exp[A], v: Sym[Int], i: Exp[LoopIndices], rV: (Sym[A], Sym[A]), out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
     val dims = createDims(in)
     val size = implementSize(in)
-    val rf = ReduceFactory(size, lookup, body, zero)
-    val inds = calcIndices(rf.v, dims)
+    val inds = calcIndices(v, dims)
+    val i2 = loopindices_new(v, inds, dims)
 
-    register(v)(rf.v)
-    register(i)(loopindices_new(rf.v, inds, dims))
-    register(rV._1)(rf.rV._1)
-    register(rV._2)(rf.rV._2)
-
-    reflectPure(rf)
+    // Probably don't need subst. for i for lookup and zero..
+    val (mirroredLookup, mirroredBody, mirroredZero) = withSubstScope(i -> i2) { (f(lookup), f(body), f(zero)) }
+    reflectPure(ReduceFactory(v, rV, size, mirroredLookup, mirroredBody, mirroredZero))
   }
-  def implementForeach[A:Manifest](in: Exp[DeliteMultiArray[A]], body: Block[Unit], v: Exp[Int], i: Exp[LoopIndices])(implicit ctx: SourceContext): Exp[Unit] = {
+  def implementForeach[A:Manifest](in: Exp[DeliteMultiArray[A]], body: Block[Unit], v: Sym[Int], i: Exp[LoopIndices])(implicit ctx: SourceContext): Exp[Unit] = {
     val dims = createDims(in)
     val size = implementSize(in)
-    val df = ForeachFactory(size, body)
-    val inds = calcIndices(df.v, dims)
+    val inds = calcIndices(v, dims)
+    val i2 = loopindices_new(v, inds, dims)
 
-    register(v)(df.v)
-    register(i)(loopindices_new(df.v, inds, dims))
-
-    reflectEffect(df, summarizeEffects(body).star andAlso Simple())
+    val mirroredBody = withSubstScope(i -> i2) { f(body) }
+    reflectEffect(ForeachFactory(v, size, mirroredBody), summarizeEffects(mirroredBody).star andAlso Simple())
   }
-  def implementForIndices[A:Manifest](in: Exp[DeliteMultiArray[A]], body: Block[Unit], v: Exp[Int], i: Exp[LoopIndices])(implicit ctx: SourceContext): Exp[Unit] = {
+  def implementForIndices[A:Manifest](in: Exp[DeliteMultiArray[A]], body: Block[Unit], v: Sym[Int], i: Exp[LoopIndices])(implicit ctx: SourceContext): Exp[Unit] = {
     val dims = createDims(in)
     val size = implementSize(in)
-    val df = ForeachFactory(size, body)
-    val inds = calcIndices(df.v, dims)
+    val inds = calcIndices(v, dims)
+    val i2 = loopindices_new(v, inds, dims)
 
-    // Register transformer replacements for loop indices
-    // Next pass of transformer should mirror body and loop and propagate these changes in full
-    register(v)(df.v)
-    register(i)(loopindices_new(df.v, inds, dims))
-
-    reflectEffect(df, summarizeEffects(body).star andAlso Simple())
+    val mirroredBody = withSubstScope(i -> i2) { f(body) }
+    reflectEffect(ForeachFactory(v, size, mirroredBody), summarizeEffects(body).star andAlso Simple())
   }
   def implementNDMap[A:Manifest,B:Manifest](op: DeliteMultiArrayNDMap[_,_], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
     sys.error("Don't know how to implement ND map for input " + layout(op.in) + " and output " + layout(out))
@@ -292,10 +283,10 @@ trait MultiArrayImplementer extends TransformerBase with MultiArrayHelperStageTh
   }
 
   // --- 1D Parallel Ops
-  def implementMapFilter[A:Manifest,B:Manifest](in: Exp[DeliteArray1D[A]], mapFunc: Block[B], filtFunc: Block[Boolean], v: Exp[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
+  def implementMapFilter[A:Manifest,B:Manifest](in: Exp[DeliteArray1D[A]], mapFunc: Block[B], filtFunc: Block[Boolean], v: Sym[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
     sys.error("Don't know how to implement map-filter for input " + layout(in) + " and output " + layout(out))
   }
-  def implementFlatMap[A:Manifest,B:Manifest](in: Exp[DeliteArray1D[A]], body: Block[DeliteArray1D[B]], v: Exp[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
+  def implementFlatMap[A:Manifest,B:Manifest](in: Exp[DeliteArray1D[A]], body: Block[DeliteArray1D[B]], v: Sym[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
     sys.error("Don't know how to implement flatmap for input " + layout(in) + " and output " + layout(out))
   }
 

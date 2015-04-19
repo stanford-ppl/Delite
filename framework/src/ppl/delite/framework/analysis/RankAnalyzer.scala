@@ -171,7 +171,7 @@ trait MultiArrayAnalyzerBase extends AnalyzerBase {
 
 trait RankAnalyzer extends MultiArrayAnalyzerBase with MultiArrayHelperStageOne {
   import IR._
-  val name = "Rank Analyzer"
+  override val name = "Rank Analyzer"
   
   def setRank(e: Exp[Any], rank: Int)(implicit ctx: AnalysisContext) { setMetadata(e, MRank(rank)) }
   def setRank(e: Exp[Any], rank: Option[MRank])(implicit ctx: AnalysisContext) { setMetadata(e, rank) }
@@ -280,7 +280,7 @@ trait MultiArrayHelperStageTwo extends MultiArrayHelperStageOne {
 // MultiArray Sanity Checking
 trait RankChecker extends MultiArrayAnalyzerBase with MultiArrayHelperStageTwo {
   import IR._
-  val name = "Rank Sanity Check"
+  override val name = "Rank Sanity Check"
 
   override val autopropagate = false
 

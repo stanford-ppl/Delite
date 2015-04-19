@@ -24,7 +24,7 @@ trait MultiloopSoATransformExp extends DeliteApplication { self =>
 
   private val t = new WorklistTransformer {
     val IR: self.type = self
-    val name = "SOA Transform"
+    override val name = "SOA Transform"
 
     override def transformStm(stm: Stm): Exp[Any] = transformLoop(stm) match {
       case Some(newSym) => newSym

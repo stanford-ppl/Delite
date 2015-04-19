@@ -9,16 +9,13 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import scala.collection.immutable
 
 // Quick and dirty method for dumping stack trace to stdout
-/*
-  import java.io.{StringWriter, PrintWriter}
-
+/*import java.io.{StringWriter, PrintWriter}
   try { throw new Exception("wrap subTP") }
-  catch { case e: Throwable => 
-    val sw = new StringWriter()
-    e.printStackTrace(new PrintWriter(sw))
-    printmsg(sw.toString())
-  }
-*/
+    catch { case e: Throwable => 
+      val sw = new StringWriter()
+      e.printStackTrace(new PrintWriter(sw))
+      printmsg(sw.toString())
+    }*/
 
 /** 
  * Made separate from WorklistTransformer for now since my concept of curSubst
@@ -30,13 +27,30 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor w
   // substitutions which should carry over to the next iteration
   var nextSubst = immutable.Map.empty[Exp[Any], Exp[Any]]
 
+  // TODO: Probably want to refactor this
+  protected def f = self.asInstanceOf[Transformer]
+
   override def hasConverged = runs > 0 && nextSubst.isEmpty
   override def hasContext = true
   override def notifyUpdate(e: Exp[Any]): Unit = { notifyChange() }
 
-  // Removed withSubstScope to preserve subst across iterations
-  override def reflectBlock[A](block: Block[A]): Exp[A] = {
+  // Transform a list of statements (e.g. innerScope) to reflect additions made to current scope 
+  // via transforming. Need to append new stms to list - not generally safe to remove original versions yet
+  def updateStmList(xs: List[Stm]) = if (xs ne null) xs.map {
+    case stm@TP(s,d) => f(s) match {
+      case s2: Sym[_] if s2 != s => findDefinition(s2).toList :+ stm
+      case _ => List(stm)
+    }
+    case stm => List(stm)
+  }.flatten else null
+
+  override def reflectBlock[A](block: Block[A]): Exp[A] = withSubstScope {
     traverseBlock(block)
+    
+    // Update innerScope to reflect changes to this block
+    // This allows multiple transformations of the same block in a single pass
+    innerScope = updateStmList(innerScope)
+    
     apply(getBlockResult(block))
   }
   def transformBlock[A:Manifest](block: Block[A]): Block[A] = {
@@ -65,12 +79,7 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor w
 
   def transformStm(stm: Stm): Exp[Any] = stm match {
     case TP(s, d) if (apply(s) == s) => 
-      
-      //printmsg("Context prior to block traversal: " + context)
-      //super.traverseStm(stm)
-      //printmsg("Context after block traversal: " + context)
 
-      //printmsg(blocks(d).map{b => "\t" + strDef(b.res)}.mkString("\n"))
       val sub = transformSym(s,d)(AnalysisContext(stm)) match {
         case Some(s2) => 
           transferMetadata(s, s2, d)(AnalysisContext(stm))
@@ -78,16 +87,12 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor w
         case None => 
           self_mirror(s,d)
       }
+      if (subst.contains(s) && subst(s) != sub)
+        printmsg("error: already have substitution for " + strDef(s) + ":\n\t" + strDef(subst(s)))
+        
       assert(!subst.contains(s) || subst(s) == sub)
       if (s != sub) { subst += s -> sub }
 
-      //printmsg("\n" + name + " at statement: " + s + " -> " + sub)
-      //printmsg("Context after transform: " + context)
-
-    case TP(s,d) => 
-      //printmsg("\n" + strDef(s)) 
-      //printmsg("<>" + strDef(apply(s)))
-      // Ignore statements that already have mappings
     case _ => //Nothing
   }
 

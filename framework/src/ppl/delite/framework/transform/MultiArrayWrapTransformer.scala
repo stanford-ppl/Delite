@@ -24,7 +24,7 @@ trait MultiArrayWrapExp extends DeliteApplication with DeliteMultiArrayOpsExp {
 trait MultiArrayWrapTransformer extends TransformerBase with MultiArrayHelperStageTwo {
   val IR: MultiArrayWrapExp with RankMetadata
   import IR._
-  val name = "MultiArray Wrapper"
+  override val name = "MultiArray Wrapper"
   override val debugMode = true
 
   def buffify[T:Manifest](x: Exp[DeliteMultiArray[T]])(implicit ctx: AnalysisContext): Exp[DeliteMultiArray[T]] = {

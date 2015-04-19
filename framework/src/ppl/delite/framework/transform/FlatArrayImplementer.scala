@@ -404,15 +404,13 @@ trait FlatArrayImplementer extends MultiArrayImplementer {
   }
 
   // --- Parallel ops
-  private def implementCollect[A:Manifest](origV: Exp[Int], origI: Exp[LoopIndices], out: Layout[_,_], dat: SymbolProperties, body: Block[A], dims: Seq[Exp[Int]], size: Exp[Int], cond: Option[Block[Boolean]] = None)(implicit ctx: SourceContext): Exp[Any] = out match {
+  private def implementCollect[A:Manifest](v: Sym[Int], i: Exp[LoopIndices], out: Layout[_,_], dat: SymbolProperties, body: Block[A], dims: Seq[Exp[Int]], size: Exp[Int], cond: Option[Block[Boolean]] = None)(implicit ctx: SourceContext): Exp[Any] = out match {
     case FlatLayout(_,_) => 
-      val cf = CollectFactory.array[A](size, body, cond)
-      val inds = calcIndices(cf.v, dims)
+      val inds = calcIndices(v, dims)
+      val i2 = loopindices_new(v, inds, dims)
 
-      register(origV)(cf.v)
-      register(origI)(loopindices_new(cf.v, inds, dims))
-
-      val data = reflectPure(cf)
+      val (mirroredBody, mirroredCond) = withSubstScope(i -> i2){ (f(body), cond.map{f(_)}) }
+      val data = reflectPure(CollectFactory.array[A](v, size, mirroredBody, mirroredCond))
       setMetadata(data, FlatLayout(1, Plain))(ctx)
       setChild(data, Some(dat))(ctx) 
 
@@ -435,15 +433,15 @@ trait FlatArrayImplementer extends MultiArrayImplementer {
     implementCollect(v, i, out, dat, body, dims, size)
   }
 
-  override def implementFromFunction[A:Manifest](dims: Seq[Exp[Int]], body: Block[A], v: Exp[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = layout(out) match {
+  override def implementFromFunction[A:Manifest](dims: Seq[Exp[Int]], body: Block[A], v: Sym[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = layout(out) match {
     case FlatLayout(_,_) => implementCollect[A](v, i, layout(out), mdat(out), body, dims, productTree(dims))
     case _ => super.implementFromFunction(dims,body,v,i,out)
   }
-  override def implementMap[A:Manifest,R:Manifest](in: Exp[DeliteMultiArray[A]], body: Block[R], v: Exp[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = layout(out) match {
+  override def implementMap[A:Manifest,R:Manifest](in: Exp[DeliteMultiArray[A]], body: Block[R], v: Sym[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = layout(out) match {
     case FlatLayout(_,_) => implementCollect[R](v, i, layout(out), mdat(out), body, createDims(in), implementSize(in))
     case _ => super.implementMap(in,body,v,i,out)
   }
-  override def implementZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[DeliteMultiArray[A]], inB: Exp[DeliteMultiArray[B]], body: Block[R], v: Exp[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = layout(out) match {
+  override def implementZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[DeliteMultiArray[A]], inB: Exp[DeliteMultiArray[B]], body: Block[R], v: Sym[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = layout(out) match {
     case FlatLayout(_,_) => implementCollect[R](v, i, layout(out), mdat(out), body, createDims(inA), implementSize(inA))
     case _ => super.implementZipWith(inA,inB,body,v,i,out)
   }
@@ -458,19 +456,17 @@ trait FlatArrayImplementer extends MultiArrayImplementer {
   }
 
   // --- 1D Parallel Ops
-  override def implementMapFilter[A:Manifest,B:Manifest](in: Exp[DeliteArray1D[A]], mapFunc: Block[B], filtFunc: Block[Boolean], v: Exp[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = layout(out) match {
+  override def implementMapFilter[A:Manifest,B:Manifest](in: Exp[DeliteArray1D[A]], mapFunc: Block[B], filtFunc: Block[Boolean], v: Sym[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = layout(out) match {
     case FlatLayout(_,_) => implementCollect[B](v, i, layout(out), mdat(out), mapFunc, createDims(in), implementSize(in), Some(filtFunc))
     case _ => super.implementMapFilter(in,mapFunc,filtFunc,v,i,out)  
   }
-  override def implementFlatMap[A:Manifest,B:Manifest](in: Exp[DeliteArray1D[A]], body: Block[DeliteArray1D[B]], v: Exp[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = layout(out) match {
+  override def implementFlatMap[A:Manifest,B:Manifest](in: Exp[DeliteArray1D[A]], body: Block[DeliteArray1D[B]], v: Sym[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = layout(out) match {
     case FlatLayout(_,_) => 
       val size = implementSize(in)
-      val cf = FlatMapFactory.array[B](size, body.asInstanceOf[Block[DeliteCollection[B]]])
+      val i2 = loopindices_new(v, Seq(v), Seq(size))
 
-      register(v)(cf.v)
-      register(i)(loopindices_new(cf.v, Seq(cf.v), Seq(size)))
-
-      val data = reflectPure(cf)
+      val mirroredBody = withSubstScope(i -> i2){ f(body) }.asInstanceOf[Block[DeliteArray[B]]]
+      val data = inDebugMode { reflectPure(FlatMapFactory.array[B](v, size, mirroredBody)) }
       setMetadata(data, FlatLayout(1, Plain))(ctx)
       setChild(data, Some(mdat(out)))(ctx)
 
@@ -515,9 +511,7 @@ trait FlatArrayImplementer extends MultiArrayImplementer {
       val li = loopindices_new(v, Seq(v), Seq(length))
       val elem = implementApply(x, li).asInstanceOf[Exp[A]]
       val body: Block[Unit] = reifyEffects(darray_buffer_update(impl, delite_int_plus(v, i), elem))
-      val fe = ForeachFactory(length, body)
-      reflectEffect(fe, summarizeEffects(body).star)
-      register(v)(fe.v)
+      reflectEffect(ForeachFactory(v, length, body), summarizeEffects(body).star)
 
     case _ => super.implementInsertAll(ma,axis,i,x)
   }

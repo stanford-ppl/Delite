@@ -118,44 +118,24 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   }
 
   def runVisitors[A:Manifest](b: Block[A]): Block[A] = {
-    //try {
-      val printer = new IRPrinter{val IR: DeliteCodegen.this.IR.type = DeliteCodegen.this.IR}
+    printlog("DeliteCodegen: applying transformations")
+    var curBlock = b
+    var prevMetaTransformer: Option[MetadataTransformer] = None
+    printlog("Visitors: " + visitors.map(_.name).mkString("\n"))
+    for (t <- visitors) {
+      printlog("  Block before transformation: " + curBlock)
+      
+      if (t.isInstanceOf[MetadataTransformer] && !prevMetaTransformer.isEmpty)
+        t.asInstanceOf[MetadataTransformer].chain(prevMetaTransformer.get)
 
-      printlog("DeliteCodegen: applying transformations")
-      var curBlock = b
-      var prevMetaTransformer: Option[MetadataTransformer] = None
-      printlog("Visitors: " + visitors.map(_.name).mkString("\n"))
-      for (t <- visitors) {
-        if (hadErrors)
-          sys.error("Encountered error(s) while compiling - unable to continue")
-        
-        // If we're still running, ignore errors from previous stages
-        //resetErrors()
-
-        printlog("  Block before transformation: " + curBlock)
-        
-        //if (t.isInstanceOf[WorklistTransformer])
-        //  printlog("  map: " + t.asInstanceOf[WorklistTransformer].nextSubst)
-        
-        if (t.isInstanceOf[MetadataTransformer] && !prevMetaTransformer.isEmpty)
-          t.asInstanceOf[MetadataTransformer].chain(prevMetaTransformer.get)
-
-        curBlock = t.run(curBlock)
-        
-        printlog("  Block after transformation: " + curBlock)
-        if (t.isInstanceOf[MetadataTransformer])
-          prevMetaTransformer = Some(t.asInstanceOf[MetadataTransformer])
-      }
-      printlog("DeliteCodegen: done transforming")
-      (curBlock)
-    /*}
-    catch {case e: Throwable => 
-      printmsg(e.getMessage)
-      val sw = new StringWriter()
-      printmsg(sw.toString())
-      sys.error("Encountered error(s) while compiling - unable to continue")
-      (b)
-    }*/
+      curBlock = t.run(curBlock)
+      
+      printlog("  Block after transformation: " + curBlock)
+      if (t.isInstanceOf[MetadataTransformer])
+        prevMetaTransformer = Some(t.asInstanceOf[MetadataTransformer])
+    }
+    printlog("DeliteCodegen: done transforming")
+    (curBlock)
   }
 
   def emitBlockHeader(syms: List[Sym[Any]], appName: String) { }

@@ -109,7 +109,7 @@ trait ForeachReduceTransformer extends WorklistTransformer {
   val IR: ForeachReduceTransformExp
   import IR._
         
-  val name = "Foreach-Reduce Transformer"
+  override val name = "Foreach-Reduce Transformer"
 
   def addToScope(x: Stm) = innerScope ::= x
     
