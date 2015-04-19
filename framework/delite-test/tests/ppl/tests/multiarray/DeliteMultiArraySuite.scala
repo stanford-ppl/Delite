@@ -165,11 +165,8 @@ object Foreach1DRunner extends DeliteMultiArrayTestbenchRunner with Foreach1DTes
 trait Foreach1DTest extends DeliteMultiArrayTestbench {
   def main() = {
     val vec = Array1D.fromFunction(10){i => i}
-    val vec2 = Array1D[Int](10)
-    vec.foreach{k => vec2(k) = k }
-    println(vec.mkString(","))
-    println(vec2.mkString(","))
-    vec2.foreach{k => collect(vec2(k) == k)}
+    val vec2 = vec.map{i => i * 20}
+    vec2.foreach{k => println(vec2(k/20) + ", " + k); collect(vec2(k/20) == k) }
     mkReport
   }
 }
@@ -177,10 +174,10 @@ trait Foreach1DTest extends DeliteMultiArrayTestbench {
 object ForeachNoEffect1DRunner extends DeliteMultiArrayTestbenchRunner with ForeachNoEffect1DTest
 trait ForeachNoEffect1DTest extends DeliteMultiArrayTestbench {
   def main() = {
-    val vec = Array1D.fromFunction(10){i => i}
-    vec.foreach{x => val v = Array1D[Int](x); v(0); () }
+    val vec = Array1D.fromFunction(10){i => 10 - i}
+    vec.foreach{x => val v = Array1D[Int](x); v(0); println(x) }
     println(vec.mkString())
-    collect(vec(4) == 4)
+    collect(vec.reduce(unit(0)){(a,b) => a + b} == 55)
     mkReport
   }
 }
@@ -199,7 +196,7 @@ object ForIndicesNoEffect1DRunner extends DeliteMultiArrayTestbenchRunner with F
 trait ForIndicesNoEffect1DTest extends DeliteMultiArrayTestbench {
   def main() = {
     val vec = Array1D.fromFunction(10){i => 10 - i}
-    vec.forIndices{i => val v = Array1D[Int](i); v(0); () }
+    vec.forIndices{i => val v = Array1D[Int](i+1); v(0); println(i) }
     collect(vec.reduce(unit(0)){(a,b) => a + b} == 55)
     mkReport
   }
@@ -306,22 +303,35 @@ trait Remove1DTest extends DeliteMultiArrayTestbench {
   }
 }
 
+object FlatMapDARunner extends DeliteMultiArrayTestbenchRunner with FlatMapDATest
+trait FlatMapDATest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val vec = DeliteArray.fromFunction(10){i => i}
+    val v2 = vec.flatMap{x => DeliteArray.fromFunction(x+1){i => i} }
+    collect(v2.reduce({(a,b) => a + b}, unit(0)) == 165)
+    mkReport
+  }
+}
+
 class DeliteMultiArraySuite extends DeliteSuite {
   // Passed tests
-  //def testNew1D() { compileAndTest(New1DRunner) }{
+  //def testNew1D() { compileAndTest(New1DRunner) }
   //def testNew1DNull() { compileAndTest(New1DNullRunner) }
   //def testFromFunction1D() { compileAndTest(FromFunction1DRunner) }
   //def testUpdate1D() { compileAndTest(Update1DRunner) }
   //def testMap1D() { compileAndTest(Map1DRunner) }
   //def testZip1D() { compileAndTest(Zip1DRunner) }
   //def testReduce1D() { compileAndTest(Reduce1DRunner) }
-  
-  def testForeach1D() { compileAndTest(Foreach1DRunner) }
+  //def testForeach1D() { compileAndTest(Foreach1DRunner) }
   //def testForeachNoEffect1D() { compileAndTest(ForeachNoEffect1DRunner) }
   //def testForIndices1D() { compileAndTest(ForIndices1DRunner) }
   //def testForIndicesNoEffect1D() { compileAndTest(ForIndicesNoEffect1DRunner) }
   //def testPermute1D() { compileAndTest(Permute1DRunner) }
   //def testFilter() { compileAndTest(FilterRunner) }
+  // Tests to be run:
+  
+  def testFlatMapDA() { compileAndTest(FlatMapDARunner) }
+
   //def testFlatMap() { compileAndTest(FlatMapRunner) }
   //def testSort() { compileAndTest(SortRunner) }
   //def testStringSplit() { compileAndTest(StringSplitRunner) }
