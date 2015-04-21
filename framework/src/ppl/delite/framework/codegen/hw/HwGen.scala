@@ -1,9 +1,12 @@
 package ppl.delite.framework.codegen.hw
 
 import scala.virtualization.lms.internal._
+import scala.virtualization.lms.common._
 
 // All IR nodes, GenericGenDeliteOps
 import ppl.delite.framework.ops._
+import ppl.delite.framework.Config
+import ppl.delite.framework.datastructures._
 
 import java.io.File
 import java.io.PrintWriter
@@ -30,31 +33,103 @@ import java.io.PrintWriter
  *
  */
 
-trait HwCodegen extends GenericCodegen
+trait HwCodegen extends GenericCodegen with ThorIR
 {
   val IR: Expressions
   import IR._
 
+  // Ugly implicit methods to handle conversion from different
+  // types of Sym and Module. Pretty sure I'm doing something stupid, this should be
+  // temporary
+  implicit def foo00(s: this.IR.Sym[Any]) = {
+    s.asInstanceOf[this.IR.Sym[Any]]
+  }
+
+  implicit def foo01(s: this.IR.Sym[Any]) = {
+    s.asInstanceOf[this.IR.Sym[Any]]
+  }
+
+  implicit def foo10(m: this.Module) = {
+    m.asInstanceOf[this.hwgraph.HW_IR.Module]
+  }
+
+  implicit def foo11(m: this.hwgraph.HW_IR.Module) = {
+    m.asInstanceOf[this.Module]
+  }
+
+  // Hardware intermediate representation graph
+  val hwgraph: HwGraph = new HwGraph
+
   var kernelInputVals: List[Sym[Any]] = Nil
   var kernelInputVars: List[Sym[Any]] = Nil
+  var kernelInputs: List[Sym[Any]]= kernelInputVars ++ kernelInputVals
   var kernelOutputs: List[Sym[Any]] = Nil
 
+  def kernelDeps: List[Module] = hwgraph.getModules(kernelInputVals.asInstanceOf[List[hwgraph.IR.Sym[Any]]]).asInstanceOf[List[HwCodegen.this.Module]]
+
+  def kernelName = kernelOutputs.map(i => quote(i)).mkString("")
+
+  // --- Methods from GenericCodegen that are overridden/defined ---
   override def deviceTarget: Targets.Value = Targets.Hw
   override def toString = "hw"
 
   override def kernelFileExt = "thor"
 
-  def kernelName = "module_" + kernelOutputs.map(quote).mkString("")
+  override def initializeGenerator(buildDir:String, args: Array[String]): Unit = {
+    val outDir = new File(buildDir)
+    outDir.mkdirs
 
+    super.initializeGenerator(buildDir, args)
+  }
+
+  override def kernelInit(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultIsVar: Boolean): Unit = {
+    kernelInputVals = vals
+    kernelInputVars = vars
+    kernelOutputs = syms
+  }
+
+  def emitSource[A:Manifest](args: List[Sym[_]], body: Block[A], functionName: String, out: PrintWriter) = {
+    Nil
+  }
+
+  // emitKernelHeader: This function is called for every kernel, and contains code that should
+  // be generated in all the kernel files. Basing this off of ScalaCodegen's implementation
+  // for now
   override def emitKernelHeader(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultType: String, resultIsVar: Boolean, external: Boolean): Unit = {
 
-    def kernelSignature: String = {
-      val out = new StringBuilder
-      out.append(kernelName + "(")
-      out.append(")")
-      out.toString
+//    def kernelSignature: String = {
+//      val out = new StringBuilder
+//      out.append(kernelName + "(")
+//      out.append(")")
+//      out.toString
+//    }
+//    stream.println("object " + kernelSignature + " {")
+
+    val kernelName = syms.map(quote).mkString("")
+    stream.println("object kernel_" + kernelName + " {")
+    stream.print("def apply(")
+    if (resourceInfoType != "") {
+      stream.print(resourceInfoSym + ":" + resourceInfoType)
+      if ((vals ++ vars).length > 0) stream.print(",")
     }
-    stream.println(kernelSignature + " {")
+    stream.print(vals.map(p => quote(p) + ":" + remap(p.tp)).mkString(","))
+
+    // variable name mangling
+    if (vals.length > 0 && vars.length > 0){
+      stream.print(",")
+    }
+    // TODO: remap Ref instead of explicitly adding generated.scala
+    if (vars.length > 0) {
+      stream.print(vars.map(v => quote(v) + ":" + "generated.scala.Ref[" + remap(v.tp) +"]").mkString(","))
+    }
+    if (resultIsVar){
+      stream.print("): " + "generated.scala.Ref[" + resultType + "] = {")
+    }
+    else {
+      stream.print("): " + resultType + " = {")
+    }
+
+    stream.println("")
   }
 
   override def emitKernelFooter(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultType: String, resultIsVar: Boolean, external: Boolean): Unit = {
@@ -86,61 +161,214 @@ trait HwCodegen extends GenericCodegen
   override def emitAssignment(sym: Sym[Any], rhs: String): Unit = {
     stream.println(quote(sym) + " = " + rhs + ";")
   }
+  // --- End Methods from GenericCodegen that are overridden/defined ---
 
-  override def kernelInit(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultIsVar: Boolean): Unit = {
-    kernelInputVals = vals
-    kernelInputVars = vars
-    kernelOutputs = syms
+  // --- Begin methods specific to HwCodegen ---
+
+
+  // getBitWidth: Returns an integer value representing
+  // the maximum number of bits required to store this symbol
+  // Currently just returning '32', but should be hooked up
+  // to the bitwidth analysis results
+  def getBitWidth(sym: Exp[Any]): Int = {
+    32
   }
 
-  override def initializeGenerator(buildDir:String, args: Array[String]): Unit = {
-    val outDir = new File(buildDir)
-    outDir.mkdirs
-
-    super.initializeGenerator(buildDir, args)
-  }
-
-  def emitSource[A:Manifest](args: List[Sym[_]], body: Block[A], functionName: String, out: PrintWriter) = {
-    Nil
+  // buildClbCall: Construct a String that represents a combinational
+  // logic block instantiation. This is a helper function that makes
+  // other sub-traits of HwCodegen easier to read
+  def buildClbCall(clbop: String, inputs: List[Exp[Any]]): String = {
+    val bitWidths = inputs.map (i => getBitWidth(i))
+    val maxBitWidth = bitWidths.max
+    val inputNames = inputs.map (i => quote(i)).mkString(",")
+    val params : String = List(maxBitWidth, "List(" + inputNames + ")").mkString(",")
+    clbop + "(" + params + ")"
   }
 }
 
 trait HwGenDeliteOps extends HwCodegen with GenericGenDeliteOps
 {
+//  val IR: DeliteOpsExp
+  import IR._
+
+  override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef) = rhs match {
+    case op: AbstractFatLoop =>
+      if (Config.debugCodegen) {
+        println(s"[codegen] HwGenDeliteOps::emitFatNode::AbstractFatLoop, op = $op, symList = $symList")
+      }
+
+      val symBodyTuple = symList.zip(op.body)
+
+      symBodyTuple.foreach {
+        case (sym, elem: DeliteCollectElem[_,_,_]) =>
+          stream.println(s"// Pseudocode for $elem")
+          emitBlock(elem.func)
+          emitValDef(elem.buf.eV, quote(getBlockResult(elem.func)))
+          emitValDef(elem.buf.allocVal, quote(sym)+"_data")
+          stream.println(quote(elem.buf.allocVal) + "(" + quote(op.v) + ") = " + quote(elem.buf.eV))
+
+        case (sym, elem: DeliteReduceElem[_]) =>
+          stream.println(s"// Pseudocode for $elem")
+        case _ =>
+          throw new Exception("Not handled yet")
+      }
+    case _ => super.emitFatNode(symList, rhs)
+  }
+
+  // Abstract methods in GenericGenDeliteOps defined here
+  def quotearg(x: Sym[Any]) = {
+  }
+
+  def quotetp(x: Sym[Any]) = {
+  }
+
+  def methodCall(name:String, inputs: List[String] = Nil): String = {
+    "methodCall"
+  }
+
+  def emitMethodCall(name:String, inputs: List[String]): Unit = {
+  }
+
+  def emitMethod(name:String, outputType: String, inputs:List[(String,String)])(body: => Unit): Unit = {
+    if (Config.debugCodegen) {
+      println(s"[codegen] [HwGenDeliteOps] emitMethod ($name, $outputType, $inputs)")
+    }
+  }
+
+  def createInstance(typeName:String, args: List[String] = Nil): String = {
+    "createInstance"
+  }
+
+  def fieldAccess(className: String, varName: String): String = {
+    "fieldAccess"
+  }
+
+  def releaseRef(varName: String): Unit = {
+  }
+
+  def emitReturn(rhs: String) = {
+  }
+
+  def emitFieldDecl(name: String, tpe: String) = {
+  }
+
+  def emitClass(name: String)(body: => Unit) = {
+  }
+
+  def emitObject(name: String)(body: => Unit) = {
+  }
+
+  def emitValDef(name: String, tpe: String, init: String): Unit = {
+  }
+
+  def emitVarDef(name: String, tpe: String, init: String): Unit = {
+  }
+
+  def emitAssignment(name: String, tpe: String, rhs: String): Unit = {
+  }
+
+  def emitAssignment(lhs: String, rhs: String): Unit = {
+  }
+
+  def emitAbstractFatLoopHeader(className: String, actType: String): Unit = {
+    if (Config.debugCodegen) {
+      println(s"[codegen] Calling emitAbstractFatLoopHeader on classname: $className, actType: $actType")
+    }
+  }
+
+  def emitAbstractFatLoopFooter(): Unit = {
+    if (Config.debugCodegen) {
+      println(s"[codegen] Calling emitAbstractFatLoopFooter")
+    }
+  }
+
+  def castInt32(name: String): String = {
+    "castInt32"
+  }
+
+  def refNotEq: String = {
+    "refNotEq"
+  }
+
+  def nullRef: String = {
+    "nullRef"
+  }
+
+  def arrayType(argType: String): String = {
+    "arrayType"
+  }
+
+  def arrayApply(arr: String, idx: String): String = {
+    "arrayApply"
+  }
+
+  def newArray(argType: String, size: String): String = {
+    "newArray"
+  }
+
+  def hashmapType(argType: String): String = {
+    "hashmapType"
+  }
+
+  def typeCast(sym: String, to: String): String = {
+    "typeCast"
+  }
+
+  def withBlock(name: String)(block: => Unit): Unit = {
+  }
 }
 
 trait HwGenDeliteInternalOps extends HwCodegen
 {
   val IR: DeliteOpsExp with DeliteInternalOpsExp
   import IR._
+//  import HW_IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case DBooleanNegate(b) => emitValDef(sym, "!" + quote(b))
-    case DEqual(a,b) =>  emitValDef(sym, quote(a) + " == " + quote(b))
-    case DNotEqual(a,b) =>  emitValDef(sym, quote(a) + " != " + quote(b))
-//    case DIntPlus(lhs,rhs) => emitValDef(sym, quote(lhs) + " + " + quote(rhs))
-//    case DIntMinus(lhs,rhs) => emitValDef(sym, quote(lhs) + " - " + quote(rhs))
-//    case DIntTimes(lhs,rhs) => emitValDef(sym, quote(lhs) + " * " + quote(rhs))
-//    case DIntDivide(lhs,rhs) => emitValDef(sym, quote(lhs) + " / " + quote(rhs))
-//    case DIntMod(lhs,rhs) => emitValDef(sym, quote(lhs) + " % " + quote(rhs))
-//    case DLessThan(a,b) => emitValDef(sym, quote(a) + " < " + quote(b))
-//    case DGreaterThan(a,b) => emitValDef(sym, quote(a) + " > " + quote(b))
-//    case DUnsafeImmutable(x) => emitValDef(sym, quote(x) + "// unsafe immutable")
-
-    case DIntPlus(lhs,rhs) => emitValDef(sym, "clb_add(32)")
-    case DIntMinus(lhs,rhs) => emitValDef(sym, "clb_sub(32)")
-    case DIntTimes(lhs,rhs) => emitValDef(sym, "clb_mul(32)")
-    case DIntDivide(lhs,rhs) => emitValDef(sym, "clb_div(32)")
-//    case DLessThan(a,b) => emitValDef(sym, quote(a) + " < " + quote(b))
-//    case DGreaterThan(a,b) => emitValDef(sym, quote(a) + " > " + quote(b))
-//    case DUnsafeImmutable(x) => emitValDef(sym, quote(x) + "// unsafe immutable")
-//    case DIntMod(lhs,rhs) => emitValDef(sym, quote(lhs) + " % " + quote(rhs))
+    case DIntPlus(lhs,rhs) =>
+      stream.println(s"DIntPlus($lhs, $rhs)")
+      hwgraph.add(CAdd()(sym, kernelDeps))
+      stream.println(s"Added Cadd()($sym, $kernelDeps) to hwgraph")
+    case DIntMinus(lhs,rhs) =>
+      hwgraph.add(CSub()(sym, kernelDeps))
+      stream.println(s"Added CSub()($sym, $kernelDeps) to hwgraph")
+//      emitValDef(sym, buildClbCall("clb_sub", List(lhs, rhs)));
+    case DIntTimes(lhs,rhs) =>
+      hwgraph.add(CMul()(sym, kernelDeps))
+      stream.println(s"Added CMul()($sym, $kernelDeps) to hwgraph")
+//      emitValDef(sym, buildClbCall("clb_mul", List(lhs, rhs)));
+    case DIntDivide(lhs,rhs) =>
+      hwgraph.add(CDiv()(sym, kernelDeps))
+      stream.println(s"Added CDiv()($sym, $kernelDeps) to hwgraph")
+//      emitValDef(sym, buildClbCall("clb_div", List(lhs, rhs)));
+    case DLessThan(lhs,rhs) =>
+      hwgraph.add(Dummy()(sym, kernelDeps))
+      stream.println(s"Added Dummy()($sym, $kernelDeps) to hwgraph")
+//      emitValDef(sym, buildClbCall("clb_lt", List(lhs, rhs)));
+    case DGreaterThan(lhs,rhs) =>
+      hwgraph.add(Dummy()(sym, kernelDeps))
+      stream.println(s"Added Dummy()($sym, $kernelDeps) to hwgraph")
+//      emitValDef(sym, buildClbCall("clb_gt", List(lhs, rhs)));
     case _ => super.emitNode(sym,rhs)
+//    case DBooleanNegate(b) => emitValDef(sym, "!" + quote(b))
+//    case DEqual(a,b) =>  emitValDef(sym, quote(a) + " == " + quote(b))
+//    case DNotEqual(a,b) =>  emitValDef(sym, quote(a) + " != " + quote(b))
+//    case DIntMod(lhs,rhs) => emitValDef(sym, quote(lhs) + " % " + quote(rhs))
+//    case DUnsafeImmutable(x) => emitValDef(sym, quote(x) + "// unsafe immutable")
   }
 }
 
 trait HwGenDeliteArrayOps extends HwCodegen
 {
+  val IR: DeliteArrayFatExp with DeliteOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case DeliteArrayNew(n,m,t) =>
+      emitValDef(sym, s"bram($n, $m, $t)")
+    case _=>
+      super.emitNode(sym, rhs)
+  }
 }
 
 
@@ -167,6 +395,33 @@ trait HwGenRangeOps extends HwCodegen
 
 trait HwGenArrayOps extends HwCodegen
 {
+  val IR: ArrayOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case ArrayApply(a, n) =>
+      hwgraph.add(Dummy()(sym, kernelDeps))
+    case ArrayNew(n) =>
+    case ArrayUpdate(a, n, v) =>
+    case ArrayLength(a) =>
+    case _ =>
+      super.emitNode(sym, rhs)
+  }
+}
+
+trait HwGenStringOps extends HwCodegen
+{
+  val IR: StringOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case StringToInt(s) =>
+      stream.println(s"StringToInt($s)")
+      stream.println(s"Added Dummy()($sym, $kernelDeps) to hwgraph")
+      hwgraph.add(Dummy()(sym, kernelDeps))
+    case _ =>
+      super.emitNode(sym, rhs)
+  }
 }
 
 trait HwGenBooleanOps extends HwCodegen
