@@ -17,29 +17,37 @@ class HwGraph {
   var rootNode: Module = null
 
   def add(m: Module) = {
-    println(s"[HwGraph::add] Map before: $symNodeMap")
-    println(s"[HwGraph::add] Nodes before: $nodes")
-    println(s"[HwGraph::add] Adding module $m")
+    if (Config.debugCodegen) {
+      println(s"[HwGraph::add] Map before: $symNodeMap")
+      println(s"[HwGraph::add] Nodes before: $nodes")
+      println(s"[HwGraph::add] Adding module $m")
+    }
     if (!nodes.exists(x => x.sym == m.sym)) {
       nodes.append(m)
       symNodeMap(m.sym.asInstanceOf[IR.Sym[Any]]) = m
       if (rootNode == null) {
         rootNode = m
       }
-      println(s"[HwGraph::add] Map before: $symNodeMap")
-      println(s"[HwGraph::add] Nodes before: $nodes")
-      println(s"[HwGraph::add] Adding module $m")
+      if (Config.debugCodegen) {
+        println(s"[HwGraph::add] Map before: $symNodeMap")
+        println(s"[HwGraph::add] Nodes before: $nodes")
+        println(s"[HwGraph::add] Adding module $m")
+      }
 
     }
     else {
-      println(s"Node $m exists, nodes and symNodeMap unchanged")
+      if (Config.debugCodegen) {
+        println(s"Node $m exists, nodes and symNodeMap unchanged")
+      }
     }
 
   }
 
   def getModules(sl: List[Sym[Any]]): List[Module] = {
-    println(s"[HwGraph::getModules] sl  = $sl")
-    println(s"[HwGraph::getModules] map = $symNodeMap")
+    if (Config.debugCodegen) {
+      println(s"[HwGraph::getModules] sl  = $sl")
+      println(s"[HwGraph::getModules] map = $symNodeMap")
+    }
     val lb: ListBuffer[Module] = new ListBuffer[Module]()
     for (s <- sl) {
       if (symNodeMap.contains(s)) {
