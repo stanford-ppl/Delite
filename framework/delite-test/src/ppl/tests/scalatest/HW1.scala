@@ -8,10 +8,9 @@ trait HW1 extends DeliteTestDSLApplication {
   def main() = {
     val a = args(0).toInt
     val b = args(1).toInt
-    val c = delite_int_plus(a, b);
+    val c = a + b;
 
-//    val a = DeliteArray.fromFunction(100){ i => i.toDouble }
-//    val res = testFunction(a, 1, 2.0)
+
     println(c)
   }
 
