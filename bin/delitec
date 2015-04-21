@@ -42,6 +42,7 @@ def main():
     parser.add_option("--dump_exception", dest="dump_exception", action="store_true", default=False, help="Dump generation failed exceptions")
     parser.add_option("--jar", dest="jar_app", action="store_true", default=False, help="save generated output in a jar for distribution")
     parser.add_option("--int64", dest ="long_int", action="store_true", default=False, help="generate code with 64-bit integers")
+    parser.add_option("--dc", dest="dc", action="store_true", default=False, help="Enable printing code generation debug messages")
 
     (opts, args) = parser.parse_args()
     if len(args) < 1:
@@ -106,6 +107,8 @@ def stage(runner, params, opts):
         java_opts = java_opts + " -Ddelite.enable.gpu.multidim=false"
     if opts.long_int == True:
         java_opts = java_opts + " -Ddelite.integer.size=long"
+    if opts.dc == True:
+        java_opts = java_opts + " -Ddelite.debug.codegen"
     java_opts = java_opts + " -Dnested.variants.level=0"
     
     DELITE_HOME = delitecommon.DELITE_HOME

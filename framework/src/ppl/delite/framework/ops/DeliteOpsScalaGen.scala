@@ -1,5 +1,6 @@
 package ppl.delite.framework.ops
 
+import ppl.delite.framework.Config
 import scala.virtualization.lms.common._
 
 
@@ -30,9 +31,11 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
   }
 
   def emitMethod(name:String, outputType: String, inputs:List[(String,String)])(body: => Unit) {
+    stream.println("// begin emitMethod")
     stream.println(unalteredMethodHeader(name, outputType, ((resourceInfoSym,resourceInfoType))::inputs) + " = {")
     body
     stream.println("}\n")
+    stream.println("// end emitMethod")
   }
 
   def unalteredMethodHeader(name:String, outputType: String, inputs:List[(String,String)]): String = {
@@ -103,10 +106,16 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
   }
 
   def emitAbstractFatLoopHeader(className: String, actType: String) {
+    if (Config.debugCodegen) {
+      println("[codegen] emitAbstractFatLoopHeader")
+    }
     stream.println("val " + className + " = new generated.scala.DeliteOpMultiLoop[" + actType + "] {"/*}*/)
   }
 
   def emitAbstractFatLoopFooter() {
+    if (Config.debugCodegen) {
+      println("[codegen] emitAbstractFatLoopFooter")
+    }
     stream.println("}")
   }
 
@@ -128,6 +137,9 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case s:DeliteOpSingleTask[_] => {
+      if (Config.debugCodegen) {
+        println("[codegen] emitNode::DeliteOpSingleTask");
+      }
       //printlog("EMIT single "+s)
       // always wrap single tasks in methods to reduce JIT compilation unit size
       val b = s.block
@@ -138,6 +150,9 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
       stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
     }
     case op: AbstractLoop[_] =>
+      if (Config.debugCodegen) {
+        println("[codegen] emitNode::AbstractLoop");
+      }
       // TODO: we'd like to always have fat loops but currently they are not allowed to have effects
       // if inline, wrap thin loops in methods to reduce JIT compilation unit size
       if (!deliteKernel) {

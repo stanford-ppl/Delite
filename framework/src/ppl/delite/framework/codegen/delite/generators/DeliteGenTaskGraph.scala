@@ -52,6 +52,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     printlog("DeliteGenTaskGraph.emitNode "+sym+"="+rhs)
 
     val kernelName = sym.map(quote).mkString("")
+    if (Config.debugCodegen) {
+      println(s"[codegen] Kernel: $kernelName, Def: $rhs")
+    }
 
     var resultIsVar = false
     var skipEmission = false
@@ -186,7 +189,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
       val kstream = new PrintWriter(outFile)
       val bodyString = new StringWriter()
       val bodyStream = new PrintWriter(bodyString)
-
+      if (Config.debugCodegen) {
+        println(s"[codegen] [$gen]")
+      }
       try {
         // DISCUSS: use a predicate instead of inheriting from DeliteOp?
         deliteKernel = rhs match {

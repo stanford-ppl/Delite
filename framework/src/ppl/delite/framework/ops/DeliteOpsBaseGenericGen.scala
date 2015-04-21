@@ -495,6 +495,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   // --- end hash reduce
 
   def emitCollectElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteCollectElem[_,_,_], prefixSym: String = "") {
+    if (Config.debugCodegen) {
+      println("[codegen] emitCollectElem")
+    }
     elem.par match {
       case ParBuffer | ParSimpleBuffer =>
         if (elem.cond.nonEmpty) stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
@@ -559,6 +562,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   }
 
   def emitReduceElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_], prefixSym: String = "") {
+    stream.println("//begin emitReduceElem")
     if (elem.cond.nonEmpty){
       stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {"/*}*/)
       if (elem.stripFirst)
@@ -570,6 +574,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     else {
       emitReduction(op, sym, elem, prefixSym)
     }
+    stream.println("//end emitReduceElem")
   }
 
   def emitReduceTupleElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceTupleElem[_,_], prefixSym: String = "") {
@@ -598,10 +603,12 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   }
 
   def emitReduction(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_], prefixSym: String = "") {
+    stream.println("//begin emitReduction")
     emitValDef(elem.rV._1, fieldAccess(prefixSym,quote(sym)))
     emitValDef(elem.rV._2, quote(getBlockResult(elem.func)))
     emitBlock(elem.rFunc)
     emitAssignment(fieldAccess(prefixSym,quote(sym)), quote(getBlockResult(elem.rFunc)))
+    stream.println("//end emitReduction")
   }
 
   def emitReductionTuple(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceTupleElem[_,_], prefixSym: String) {
@@ -631,11 +638,17 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   }
 
   def emitMultiLoopFuncs(op: AbstractFatLoop, symList: List[Sym[Any]]) {
+    if (Config.debugCodegen) {
+      println("[codegen] emitMultiLoopFuncs")
+    }
     // FIXME: without .distinct TPCHQ2 has duplicate definitions. this should be fixed in emitFatBlock.
     emitFatBlock(getMultiLoopFuncs(op, symList).distinct)
   }
 
   def emitInlineAbstractFatLoop(op: AbstractFatLoop, symList: List[Sym[Any]]) {
+    if (Config.debugCodegen) {
+      println("[codegen] emitInlineAbstractFatLoop")
+    }
     emitInlineMultiHashInit(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) })
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_,_]) =>
@@ -771,6 +784,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   }
 
   def emitKernelAbstractFatLoop(op: AbstractFatLoop, symList: List[Sym[Any]]) {
+    if (Config.debugCodegen) {
+      println("[codegen] emitKernelAbstractFatLoop")
+    }
     // kernel mode
     val kernelName = symList.map(quote).mkString("")
     val actType = "activation_"+kernelName
@@ -1083,6 +1099,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   }
 
   def emitAbstractFatLoopKernelExtra(op: AbstractFatLoop, symList: List[Sym[Any]]): Unit = {
+    if (Config.debugCodegen) {
+      println("[codegen] GenericGenDeliteOps::emitAbstractFatLoopKernelExtra")
+    }
     val kernelName = symList.map(quote).mkString("")
     val actType = "activation_" + kernelName
     emitClass(actType) {
@@ -1213,7 +1232,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   override def emitFatNodeKernelExtra(sym: List[Sym[Any]], rhs: FatDef): Unit = rhs match {
     case op: AbstractFatLoop =>
-      stream.println("//activation record for fat loop")
+      if (Config.debugCodegen) {
+        println("[codegen] GenericGenDeliteOps::emitFatNodeKernelExtra::AbstractFatLoop")
+      }
+      stream.println("// [emitFatNodeKernelExtra] activation record for fat loop")
       emitAbstractFatLoopKernelExtra(op, sym)
     case _ =>
       super.emitFatNodeKernelExtra(sym, rhs)
@@ -1221,7 +1243,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   override def emitNodeKernelExtra(sym: List[Sym[Any]], rhs: Def[Any]): Unit = rhs match {
     case op: AbstractLoop[_] =>
-      stream.println("//activation record for thin loop")
+      if (Config.debugCodegen) {
+        println("[codegen] GenericGenDeliteOps::emitNodeKernelExtra::AbstractFatLoop")
+      }
+      stream.println("// [emitNodeKernelExtra] activation record for thin loop")
       emitAbstractFatLoopKernelExtra(SimpleFatLoop(op.size, op.v, List(op.body)), sym)
     case _ =>
       super.emitNodeKernelExtra(sym, rhs)
@@ -1229,6 +1254,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef) = rhs match {
     case op: AbstractFatLoop =>
+      if (Config.debugCodegen) {
+        println(s"[codegen] GenericGenDeliteOps::emitFatNode::AbstractFatLoop, op = $op, symList = $symList")
+      }
       if (!deliteKernel) { loopLevel += 1; emitInlineAbstractFatLoop(op, symList); loopLevel -= 1; }
       else emitKernelAbstractFatLoop(op, symList)
     case _ => super.emitFatNode(symList, rhs)

@@ -36,6 +36,7 @@ object Config {
   val intSize = getProperty("delite.integer.size", "default")
 
   //Print generationFailedException info
+  var debugCodegen = getProperty("delite.debug.codegen", "false") != "false"
   val dumpException: Boolean = getProperty("delite.dump.exception", "false") != "false"
   var enableProfiler = System.getProperty("delite.enable.profiler", "false") != "false"
 }
