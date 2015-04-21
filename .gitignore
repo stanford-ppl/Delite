@@ -1,4 +1,5 @@
 *.class
+*.swp
 *.iml
 *.ipr
 *.iws
