@@ -3,6 +3,7 @@ package ppl.delite.framework.codegen.hw
 import scala.virtualization.lms.internal._
 import scala.collection.mutable.ListBuffer
 import scala.collection.mutable.HashMap
+import scala.collection.mutable.Queue
 import ppl.delite.framework.Config
 
 /*
@@ -187,9 +188,15 @@ trait ThorIR {
       lb.toList
     }
 
-  //  def bfsWalker() = {
-  //
-  //  }
+    def bfsWalker() = {
+      val q = new Queue[Module]()
+      q.enqueue(rootNode)
+      while (q.size > 0) {
+        val m: Module = q.dequeue()
+        println(m)
+        m.deps.map(d => q.enqueue(d))
+      }
+    }
   //
   //  def dfsWalker() = {
   //  }
