@@ -21,7 +21,7 @@ trait ThorIR {
 
   abstract class Module {
     // Things that every module must provide an implementation of
-    val sym: Sym[Any]
+    val sym: Exp[Any]
     val deps: List[Module]  // List of data dependencies
     def area() = 0  // Area occupied by module in some units
   }
@@ -33,7 +33,7 @@ trait ThorIR {
   /*
    * Dummy IR module for debugging purposes
    */
-  case class Dummy()(s: Sym[Any], depList: List[Module]) extends CombModule {
+  case class Dummy()(s: Exp[Any], depList: List[Module]) extends CombModule {
     override val sym = s
     override val deps = depList
     override def area = 1
@@ -42,34 +42,34 @@ trait ThorIR {
   /*
    * Combinational logic block modules
    */
-  case class CAdd()(s: Sym[Any], depList: List[Module]) extends CombModule {
+  case class CAdd()(s: Exp[Any], depList: List[Module]) extends CombModule {
     override val sym = s
     override val deps = depList
     override def area = 1
   }
-  case class CSub()(s: Sym[Any], depList: List[Module]) extends CombModule {
+  case class CSub()(s: Exp[Any], depList: List[Module]) extends CombModule {
     override val sym = s
     override val deps = depList
     override def area = 1
   }
-  case class CMul()(s: Sym[Any], depList: List[Module]) extends CombModule {
+  case class CMul()(s: Exp[Any], depList: List[Module]) extends CombModule {
     override val sym = s
     override val deps = depList
     override def area = 5
   }
-  case class CDiv()(s: Sym[Any], depList: List[Module]) extends CombModule {
+  case class CDiv()(s: Exp[Any], depList: List[Module]) extends CombModule {
     override val sym = s
     override val deps = depList
     override def area = 12
   }
-  case class CMux()(s: Sym[Any], depList: List[Module]) extends CombModule {
+  case class CMux()(s: Exp[Any], depList: List[Module]) extends CombModule {
     override val sym = s
     override val deps = depList
     override def area = 1
   }
   // Combination of combinational logic block modules is also a
   // combinational logic block module - using the composite design pattern
-  case class CComposite(modules: List[CombModule])(s: Sym[Any], depList: List[Module]) extends CombModule {
+  case class CComposite(modules: List[CombModule])(s: Exp[Any], depList: List[Module]) extends CombModule {
     override val sym = s
     override val deps = depList
     override def area = {
@@ -80,7 +80,7 @@ trait ThorIR {
   /*
    * Template modules
    */
-  case class Pipeline(stages: List[Module])(s: Sym[Any], depList: List[Module]) extends TemplateModule {
+  case class Pipeline(stages: List[Module])(s: Exp[Any], depList: List[Module]) extends TemplateModule {
     override val sym = s
     override val deps = depList
     override def area = {
@@ -88,7 +88,7 @@ trait ThorIR {
     }
 
   }
-  case class Parallel(m: Module, n: Int)(s: Sym[Any], depList: List[Module]) extends TemplateModule {
+  case class Parallel(m: Module, n: Int)(s: Exp[Any], depList: List[Module]) extends TemplateModule {
     override val sym = s
     override val deps = depList
     override def area = {
@@ -96,11 +96,11 @@ trait ThorIR {
     }
 
   }
-  case class TreeRed()(s: Sym[Any], depList: List[Module])  extends TemplateModule {
+  case class TreeRed()(s: Exp[Any], depList: List[Module])  extends TemplateModule {
     override val sym = s
     override val deps = depList
   }
-  case class FSM()(s: Sym[Any], depList: List[Module])      extends TemplateModule {
+  case class FSM()(s: Exp[Any], depList: List[Module])      extends TemplateModule {
     override val sym = s
     override val deps = depList
   }
@@ -110,7 +110,7 @@ trait ThorIR {
    * and other necessary control signals to interface with memory based upon the data structure's
    * access pattern
    */
-  case class AGU()(s: Sym[Any], depList: List[Module]) extends MemoryInterfaceModule {
+  case class AGU()(s: Exp[Any], depList: List[Module]) extends MemoryInterfaceModule {
     override val sym = s
     override val deps = depList
   }
@@ -119,7 +119,7 @@ trait ThorIR {
    * Read Unit (RU): Provides a read-only interface to memory. Input wire is used as an address
    * directly into memory
    */
-  case class RU()(s: Sym[Any], depList: List[Module]) extends MemoryInterfaceModule {
+  case class RU()(s: Exp[Any], depList: List[Module]) extends MemoryInterfaceModule {
     override val sym = s
     override val deps = depList
   }
@@ -128,29 +128,22 @@ trait ThorIR {
 //  /*
 //   * Memory modules
 //   */
-//  case class BRAM()(s: Sym[Any], depList: List[Module]) extends MemoryModule {
+//  case class BRAM()(s: Exp[Any], depList: List[Module]) extends MemoryModule {
 //    override val sym = s
 //    override val deps = depList
 //  }
-//  case class FIFO()(s: Sym[Any], depList: List[Module]) extends MemoryModule {
+//  case class FIFO()(s: Exp[Any], depList: List[Module]) extends MemoryModule {
 //    override val sym = s
 //    override val deps = depList
 //  }
-//  case class FF()(s: Sym[Any], depList: List[Module]) extends MemoryModule {
+//  case class FF()(s: Exp[Any], depList: List[Module]) extends MemoryModule {
 //    override val sym = s
 //    override val deps = depList
 //  }
 
   class HwGraph {
-    /* Isn't there a better way to use Syms directly */
-//    val IR: Expressions = null
-//    val HW_IR: ThorIR = null
-//
-//    import IR.Sym
-//    import HW_IR.Module
-
     val nodes: ListBuffer[Module] = new ListBuffer[Module]()
-    val symNodeMap: HashMap[Sym[Any], Module] = new HashMap[Sym[Any], Module]()
+    val symNodeMap: HashMap[Exp[Any], Module] = new HashMap[Exp[Any], Module]()
     var rootNode: Module = null
 
     def add(m: Module) = {
@@ -161,7 +154,7 @@ trait ThorIR {
       }
       if (!nodes.exists(x => x.sym == m.sym)) {
         nodes.append(m)
-        symNodeMap(m.sym.asInstanceOf[Sym[Any]]) = m
+        symNodeMap(m.sym) = m
         if (rootNode == null) {
           rootNode = m
         }
@@ -180,7 +173,7 @@ trait ThorIR {
 
     }
 
-    def getModules(sl: List[Sym[Any]]): List[Module] = {
+    def getModules(sl: List[Exp[Any]]): List[Module] = {
       if (Config.debugCodegen) {
         println(s"[HwGraph::getModules] sl  = $sl")
         println(s"[HwGraph::getModules] map = $symNodeMap")

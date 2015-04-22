@@ -309,7 +309,7 @@ trait HwGenDeliteInternalOps extends HwCodegen
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case DIntPlus(lhs,rhs) =>
       stream.println(s"DIntPlus($lhs, $rhs)")
-      val depSyms = kernelInputs ++ List(lhs, rhs).asInstanceOf[List[Sym[Any]]]
+      val depSyms = kernelInputs ++ List(lhs, rhs)
       println(s"depSyms = $depSyms")
       val allDeps = hwgraph.getModules(depSyms)
       println(s"allDeps = $allDeps")
