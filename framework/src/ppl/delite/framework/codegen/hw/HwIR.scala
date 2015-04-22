@@ -197,6 +197,12 @@ trait ThorIR {
         m.deps.map(d => q.enqueue(d))
       }
     }
+
+    def linearWalker() = {
+      for (m <- nodes) {
+        println(m)
+      }
+    }
   //
   //  def dfsWalker() = {
   //  }
