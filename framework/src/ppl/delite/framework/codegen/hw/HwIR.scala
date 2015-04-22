@@ -21,7 +21,7 @@ trait ThorIR {
 
   abstract class Module {
     // Things that every module must provide an implementation of
-    val sym: IR.Sym[Any]
+    val sym: Sym[Any]
     val deps: List[Module]  // List of data dependencies
     def area() = 0  // Area occupied by module in some units
   }
@@ -33,7 +33,7 @@ trait ThorIR {
   /*
    * Dummy IR module for debugging purposes
    */
-  case class Dummy()(s: IR.Sym[Any], depList: List[Module]) extends CombModule {
+  case class Dummy()(s: Sym[Any], depList: List[Module]) extends CombModule {
     override val sym = s
     override val deps = depList
     override def area = 1
@@ -42,34 +42,34 @@ trait ThorIR {
   /*
    * Combinational logic block modules
    */
-  case class CAdd()(s: IR.Sym[Any], depList: List[Module]) extends CombModule {
+  case class CAdd()(s: Sym[Any], depList: List[Module]) extends CombModule {
     override val sym = s
     override val deps = depList
     override def area = 1
   }
-  case class CSub()(s: IR.Sym[Any], depList: List[Module]) extends CombModule {
+  case class CSub()(s: Sym[Any], depList: List[Module]) extends CombModule {
     override val sym = s
     override val deps = depList
     override def area = 1
   }
-  case class CMul()(s: IR.Sym[Any], depList: List[Module]) extends CombModule {
+  case class CMul()(s: Sym[Any], depList: List[Module]) extends CombModule {
     override val sym = s
     override val deps = depList
     override def area = 5
   }
-  case class CDiv()(s: IR.Sym[Any], depList: List[Module]) extends CombModule {
+  case class CDiv()(s: Sym[Any], depList: List[Module]) extends CombModule {
     override val sym = s
     override val deps = depList
     override def area = 12
   }
-  case class CMux()(s: IR.Sym[Any], depList: List[Module]) extends CombModule {
+  case class CMux()(s: Sym[Any], depList: List[Module]) extends CombModule {
     override val sym = s
     override val deps = depList
     override def area = 1
   }
   // Combination of combinational logic block modules is also a
   // combinational logic block module - using the composite design pattern
-  case class CComposite(modules: List[CombModule])(s: IR.Sym[Any], depList: List[Module]) extends CombModule {
+  case class CComposite(modules: List[CombModule])(s: Sym[Any], depList: List[Module]) extends CombModule {
     override val sym = s
     override val deps = depList
     override def area = {
@@ -80,7 +80,7 @@ trait ThorIR {
   /*
    * Template modules
    */
-  case class Pipeline(stages: List[Module])(s: IR.Sym[Any], depList: List[Module]) extends TemplateModule {
+  case class Pipeline(stages: List[Module])(s: Sym[Any], depList: List[Module]) extends TemplateModule {
     override val sym = s
     override val deps = depList
     override def area = {
@@ -88,7 +88,7 @@ trait ThorIR {
     }
 
   }
-  case class Parallel(m: Module, n: Int)(s: IR.Sym[Any], depList: List[Module]) extends TemplateModule {
+  case class Parallel(m: Module, n: Int)(s: Sym[Any], depList: List[Module]) extends TemplateModule {
     override val sym = s
     override val deps = depList
     override def area = {
@@ -96,11 +96,11 @@ trait ThorIR {
     }
 
   }
-  case class TreeRed()(s: IR.Sym[Any], depList: List[Module])  extends TemplateModule {
+  case class TreeRed()(s: Sym[Any], depList: List[Module])  extends TemplateModule {
     override val sym = s
     override val deps = depList
   }
-  case class FSM()(s: IR.Sym[Any], depList: List[Module])      extends TemplateModule {
+  case class FSM()(s: Sym[Any], depList: List[Module])      extends TemplateModule {
     override val sym = s
     override val deps = depList
   }
@@ -110,7 +110,7 @@ trait ThorIR {
    * and other necessary control signals to interface with memory based upon the data structure's
    * access pattern
    */
-  case class AGU()(s: IR.Sym[Any], depList: List[Module]) extends MemoryInterfaceModule {
+  case class AGU()(s: Sym[Any], depList: List[Module]) extends MemoryInterfaceModule {
     override val sym = s
     override val deps = depList
   }
@@ -119,7 +119,7 @@ trait ThorIR {
    * Read Unit (RU): Provides a read-only interface to memory. Input wire is used as an address
    * directly into memory
    */
-  case class RU()(s: IR.Sym[Any], depList: List[Module]) extends MemoryInterfaceModule {
+  case class RU()(s: Sym[Any], depList: List[Module]) extends MemoryInterfaceModule {
     override val sym = s
     override val deps = depList
   }
@@ -161,7 +161,7 @@ trait ThorIR {
       }
       if (!nodes.exists(x => x.sym == m.sym)) {
         nodes.append(m)
-        symNodeMap(m.sym.asInstanceOf[IR.Sym[Any]]) = m
+        symNodeMap(m.sym.asInstanceOf[Sym[Any]]) = m
         if (rootNode == null) {
           rootNode = m
         }
