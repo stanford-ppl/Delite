@@ -35,37 +35,41 @@ import java.io.PrintWriter
 
 trait HwCodegen extends GenericCodegen with ThorIR
 {
+  /*
+   * This HAS to be there with the current codegen design architecture - overloaded emitNode*
+   * methods expect their arguments to have types "IR.<blah>".
+   */
   val IR: Expressions
   import IR._
 
   // Ugly implicit methods to handle conversion from different
   // types of Sym and Module. Pretty sure I'm doing something stupid, this should be
   // temporary
-  implicit def foo00(s: this.IR.Sym[Any]) = {
-    s.asInstanceOf[this.IR.Sym[Any]]
-  }
+//  implicit def foo00(s: this.IR.Sym[Any]) = {
+//    s.asInstanceOf[this.IR.Sym[Any]]
+//  }
+//
+//  implicit def foo01(s: this.IR.Sym[Any]) = {
+//    s.asInstanceOf[this.IR.Sym[Any]]
+//  }
 
-  implicit def foo01(s: this.IR.Sym[Any]) = {
-    s.asInstanceOf[this.IR.Sym[Any]]
-  }
-
-  implicit def foo10(m: this.Module) = {
-    m.asInstanceOf[this.hwgraph.HW_IR.Module]
-  }
-
-  implicit def foo11(m: this.hwgraph.HW_IR.Module) = {
-    m.asInstanceOf[this.Module]
-  }
+//  implicit def foo10(m: this.Module) = {
+//    m.asInstanceOf[this.hwgraph.HW_IR.Module]
+//  }
+//
+//  implicit def foo11(m: this.hwgraph.HW_IR.Module) = {
+//    m.asInstanceOf[this.Module]
+//  }
 
   // Hardware intermediate representation graph
   val hwgraph: HwGraph = new HwGraph
 
   var kernelInputVals: List[Sym[Any]] = Nil
   var kernelInputVars: List[Sym[Any]] = Nil
-  var kernelInputs: List[Sym[Any]]= kernelInputVars ++ kernelInputVals
+  def kernelInputs: List[Sym[Any]]= kernelInputVars ++ kernelInputVals
   var kernelOutputs: List[Sym[Any]] = Nil
 
-  def kernelDeps: List[Module] = hwgraph.getModules(kernelInputVals.asInstanceOf[List[hwgraph.IR.Sym[Any]]]).asInstanceOf[List[HwCodegen.this.Module]]
+  def kernelDeps: List[Module] = hwgraph.getModules(kernelInputs)
 
   def kernelName = kernelOutputs.map(i => quote(i)).mkString("")
 
@@ -327,8 +331,13 @@ trait HwGenDeliteInternalOps extends HwCodegen
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case DIntPlus(lhs,rhs) =>
       stream.println(s"DIntPlus($lhs, $rhs)")
-      hwgraph.add(CAdd()(sym, kernelDeps))
-      stream.println(s"Added Cadd()($sym, $kernelDeps) to hwgraph")
+      val depSyms = kernelInputs ++ List(lhs, rhs).asInstanceOf[List[Sym[Any]]]
+      println(s"depSyms = $depSyms")
+      val allDeps = hwgraph.getModules(depSyms)
+      println(s"allDeps = $allDeps")
+      hwgraph.add(CAdd()(sym, allDeps))
+      stream.println(s"Added Cadd()($sym, $allDeps) to hwgraph")
+      println(s"Added Cadd()($sym, $allDeps) to hwgraph")
     case DIntMinus(lhs,rhs) =>
       hwgraph.add(CSub()(sym, kernelDeps))
       stream.println(s"Added CSub()($sym, $kernelDeps) to hwgraph")
