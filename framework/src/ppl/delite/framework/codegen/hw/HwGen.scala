@@ -42,25 +42,6 @@ trait HwCodegen extends GenericCodegen with ThorIR
   val IR: Expressions
   import IR._
 
-  // Ugly implicit methods to handle conversion from different
-  // types of Sym and Module. Pretty sure I'm doing something stupid, this should be
-  // temporary
-//  implicit def foo00(s: this.IR.Sym[Any]) = {
-//    s.asInstanceOf[this.IR.Sym[Any]]
-//  }
-//
-//  implicit def foo01(s: this.IR.Sym[Any]) = {
-//    s.asInstanceOf[this.IR.Sym[Any]]
-//  }
-
-//  implicit def foo10(m: this.Module) = {
-//    m.asInstanceOf[this.hwgraph.HW_IR.Module]
-//  }
-//
-//  implicit def foo11(m: this.hwgraph.HW_IR.Module) = {
-//    m.asInstanceOf[this.Module]
-//  }
-
   // Hardware intermediate representation graph
   val hwgraph: HwGraph = new HwGraph
 
@@ -168,8 +149,6 @@ trait HwCodegen extends GenericCodegen with ThorIR
   // --- End Methods from GenericCodegen that are overridden/defined ---
 
   // --- Begin methods specific to HwCodegen ---
-
-
   // getBitWidth: Returns an integer value representing
   // the maximum number of bits required to store this symbol
   // Currently just returning '32', but should be hooked up
@@ -326,7 +305,6 @@ trait HwGenDeliteInternalOps extends HwCodegen
 {
   val IR: DeliteOpsExp with DeliteInternalOpsExp
   import IR._
-//  import HW_IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case DIntPlus(lhs,rhs) =>
