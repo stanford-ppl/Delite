@@ -70,6 +70,9 @@ object Config {
 
   var degFilename = System.getProperty("delite.deg.filename", "out.deg")
 
+  /* For containers, used in distributed mode */
+  val slaveImage: String = getProperty("delite.slave.image", "")
+
   /**
    * DEG specific, set after its parsed
    * TODO: handle this more rigorously

@@ -1,5 +1,6 @@
 package ppl.delite.runtime.codegen
 
+import org.apache.commons.io._
 import scala.tools.nsc._
 import scala.tools.nsc.io._
 import scala.tools.nsc.util._
@@ -31,7 +32,7 @@ object ScalaCompile extends CodeCache {
       if (Config.verbose) println("[delite]: compiled " + module.name + " in " + time + "s")
     }
     unifyClasses()
-    
+
     val time = (System.currentTimeMillis - start)/1e3
     if (Config.verbose) println("[delite]: finished scala compile in " + time + "s")
     ScalaClassLoader.fromURLs(modules.map(m => Path(classCacheHome + m.name).toURL), this.getClass.getClassLoader)
@@ -85,11 +86,12 @@ object ScalaCompile extends CodeCache {
 
   //copy all classes to a single location with matching directory structure and classpaths
   private def unifyClasses() {
-    val dir = Directory(Path(classCacheHome + "jar"))
-    dir.deleteRecursively() //clear out any old classes
+    import java.io.File
+    val dir = new File(classCacheHome + "jar")
+    FileUtils.deleteQuietly(dir) //clear out any old classes
 
     for (m <- modules) {
-      copyDirectory(Directory(Path(classCacheHome + m.name)), dir, true)
+      FileUtils.copyDirectory(new File(classCacheHome + m.name), dir, true)
     }
   }
 

@@ -47,14 +47,8 @@ class EOP(val id: String, var outputTypesMap: Map[Targets.Value,Map[String,Strin
 
 object EOP_Global {
 
-  /**
-   * EOP implementation
-   */
-  private val lock = new ReentrantLock
-  private val end = lock.newCondition
-  private var notDone: Boolean = true
   private var result: Any = null
-  private var bar: CyclicBarrier = null
+  private var barrier: CyclicBarrier = null
 
   def put(res: Any) { result = res }
 
@@ -64,33 +58,12 @@ object EOP_Global {
     res
   }
 
-  def setbarrier(cnt: Int) {
-    bar = new CyclicBarrier(cnt, new Runnable() { def run() { signal() }})
+  def initializeBarrier(count: Int) {
+    barrier = new CyclicBarrier(count)
   }
 
-  def barrier() { bar.await() }
+  def awaitBarrier() { barrier.await() }
 
-  def signal() {
-   lock.lock
-    try {
-      notDone = false
-      end.signal
-    }
-    finally {
-      lock.unlock
-    }
-  }
-
-  def await() {
-    lock.lock
-    try {
-      while (notDone) end.await
-      notDone = true //reset for re-use
-    }
-    finally {
-      lock.unlock
-    }
-  }
 }
 
 object EOP_Kernel {

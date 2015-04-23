@@ -81,21 +81,20 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
     op match {
       case c: OP_Nested => addNested(c, graph, schedule, Range(0, numResources))
 
-      // Is OP_FileReader (or DeliteOpInput) still being used?
-      case i: OP_FileReader if Config.clusterMode == 1 =>
-        val partition = op.partition
-        checkPartition(partition)
-        println("scheduling input op " + op.id + " as " +partition)
-        if (partition.isInstanceOf[Distributed]) {
-          OpHelper.remote(op, graph)
-          cluster(op, schedule, Range(0, numScala))
-        }
-        else {
-          selectTarget(op, false)
+      case l: OP_MultiLoop if Config.clusterMode == 1 =>
+        val partition = {
+          if (l.getOutputs.exists(o => l.outputType(o) == "Unit") && !l.getInputs.exists(t => t._1.outputType(t._2) == "generated.scala.io.DeliteFileOutputStream")) {
+            // The issue with foreaches right now is that effects are not visible outside of the node they run on.
+            // i.e., if a slave performs a bunch of writes locally, there is no coherence protocol for the master
+            // to see those updates.
+            DeliteMesosScheduler.warn("op " + op.id + " is a multiloop with Unit return type: forcing local (distributed not supported)")
+            Local
+          }
+          else {
+            op.partition
+          }
         }
 
-      case l: OP_MultiLoop if Config.clusterMode == 1 =>
-        val partition = op.partition
         checkPartition(partition)
         println("scheduling loop op " + op.id + " as " + partition)
         if (partition.isInstanceOf[Distributed]) {

@@ -87,7 +87,6 @@ object DeliteTaskGraph {
       opType match {
         case "SingleTask" => processCommon(op, "OP_Single")
         case "External" => processCommon(op, "OP_External")
-        case "Input" => processCommon(op, "OP_FileReader")
         case "MultiLoop" => processCommon(op, "OP_MultiLoop")
         case "Foreach" => processCommon(op, "OP_Foreach")
         case "Conditional" => processIfThenElseTask(op)
@@ -191,7 +190,6 @@ object DeliteTaskGraph {
     val newop = opType match {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
       case "OP_External" => new OP_External(id, "kernel_"+id, resultMap)
-      case "OP_FileReader" => new OP_FileReader(id, "kernel_"+id, resultMap)
       case "OP_MultiLoop" =>
         val size = getFieldString(op, "sizeValue")
         val sizeIsConst = getFieldString(op, "sizeType") == "const"
@@ -204,10 +202,7 @@ object DeliteTaskGraph {
 
     // handle stencil
     if (newop.isInstanceOf[OP_MultiLoop]) {
-      if (resultMap(Targets.Scala).values.contains("Unit")) { //FIXME: handle foreaches
-        if (Config.clusterMode == 1) DeliteMesosScheduler.warn("WARNING: ignoring stencil of op with Foreach: " + id)
-      }
-      else processStencil(newop, op)
+      processStencil(newop, op)
     }
 
     // handle aliases
@@ -309,7 +304,7 @@ object DeliteTaskGraph {
     val stencilMap = getFieldMap(degOp, "stencil")
     for (in <- getFieldList(degOp, "inputs")) {
       val localStencil = Stencil(getFieldString(stencilMap, in))
-      if (localStencil != Empty && (op.isInstanceOf[OP_FileReader] || op.isInstanceOf[OP_MultiLoop])) {
+      if (localStencil != Empty && op.isInstanceOf[OP_MultiLoop]) {
         if (Config.clusterMode == 1) DeliteMesosScheduler.log("adding stencil " + localStencil + " for input " + in + " of op " + op.id)
         op.stencilMap(in) = localStencil
       }
@@ -502,7 +497,17 @@ object DeliteTaskGraph {
       EOP.addDependency(result)
       result.addConsumer(EOP)
     }
+
+    // We can have a situation where the graph ends with multiple effectful nodes that
+    // do not depend on each other (e.g. independent writes), so we must be careful
+    // to also depend on any of these leftover leaves, as well.
+    for ((id,op) <- graph._ops if op.getConsumers.size == 0) {
+      EOP.addDependency(op)
+      op.addConsumer(EOP)
+    }
+
     EOP.supportedTargets ++= resultTypes.keySet - Targets.Cuda - Targets.OpenCL
+
     graph.registerOp(EOP)
     graph._result = (EOP, EOP.id)
   }

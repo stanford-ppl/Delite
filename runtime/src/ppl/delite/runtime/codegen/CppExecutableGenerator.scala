@@ -10,12 +10,13 @@ import sync._
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.scheduler.{OpHelper, OpList, PartialSchedule}
 
-trait CppResourceInfo {
-  protected def resourceInfoType = "resourceInfo_t"
-  protected def resourceInfoSym = "resourceInfo"
+object CppResourceInfo {
+  def resourceInfoType = "resourceInfo_t"
+  def resourceInfoSym = "resourceInfo"
 }
 
-trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
+trait CppExecutableGenerator extends ExecutableGenerator {
+  import CppResourceInfo._
 
   // To get a non-conflicting index for a variable name used to temporarily store jobject
   private var index = 0
@@ -94,7 +95,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
       val codegen = new CppWhileGenerator(w, location, graph)
       codegen.makeExecutable()
       CppCompile.addHeader(codegen.generateMethodSignature + ";\n", codegen.executableName(location))
-    }    
+    }
     case err => println("Cannot generate op" + op.id) //sys.error("Unrecognized OP type: " + err.getClass.getSimpleName)
   }
 
@@ -130,7 +131,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
       case _: EOP => //
       case _ => out.append((resourceInfoSym+:op.getInputs.map(i=>getSymHost(i._1,i._2))).mkString("(",",",");\n"))
     }
-   
+
     if (Config.profile) {
       if (!op.isInstanceOf[OP_MultiLoop]) {
         out.append("DeliteCppTimerStop(" + Targets.getRelativeLocation(location) + ",\""+op.id+"\");\n")
@@ -214,8 +215,8 @@ object CppExecutableGenerator {
     CppMultiLoopHeaderGenerator.createHeaderFile()
   }
 
-  def clear() { 
-    syncObjects.clear 
+  def clear() {
+    syncObjects.clear()
   }
 
 }

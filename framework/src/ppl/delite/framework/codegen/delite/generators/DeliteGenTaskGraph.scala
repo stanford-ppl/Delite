@@ -74,6 +74,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
         return
       case NewVar(x) => resultIsVar = true // if sym is a NewVar, we must mangle the result type
       case e: DeliteOpExternal[_] => external = true
+      case w: DeliteOpWhileLoop => skipEmission = true
+      case c: DeliteOpCondition[_] => skipEmission = true
       case _ => // continue and attempt to generate kernel
     }
 
@@ -393,11 +395,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
 
     // We need to use a special flag to propagate DeliteStruct "containsSyms" aliases, which are generally turned off to suppress nested mutable errors.
     // See DeliteStructs.scala containsSyms for more info.
-    val saveDeliteStructContainsAliases = _deliteStructContainsAliases
-    _deliteStructContainsAliases = true
+    val saveDeliteStructAliases = _deliteStructAliases
+    _deliteStructAliases = true
     val aliases = allAliases(rhs,deliteStructAliasMode)
     // println("aliases for " + sym + "(" + rhs.toString + "): " + aliases)
-    _deliteStructContainsAliases = saveDeliteStructContainsAliases
+    _deliteStructAliases = saveDeliteStructAliases
 
     // emit task graph node
     rhs match {
@@ -475,14 +477,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
   def emitSingleTask(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], aliases: List[Exp[Any]], sourceContext: Option[SourceContext])
         (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"SingleTask\",")
-    emitSourceContext(sourceContext, stream, id)
-    emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps, aliases)
-    stream.println("},")
-  }
-
-  def emitInput(id: String, outputs: List[Exp[Any]], resultIsVar: Boolean, inputs: List[Exp[Any]], inVars: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], aliases: List[Exp[Any]], sourceContext: Option[SourceContext])
-        (implicit supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
-    stream.print("{\"type\":\"Input\",")
     emitSourceContext(sourceContext, stream, id)
     emitExecutionOpCommon(id, outputs, resultIsVar, inputs, inVars, mutableInputs, controlDeps, antiDeps, aliases)
     stream.println("},")

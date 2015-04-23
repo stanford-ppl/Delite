@@ -49,7 +49,7 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
   protected def writeMethodHeader() {
     out.append("def run() {\n")
     if (Config.profile) out.append("val threadName = Thread.currentThread.getName()\n")
-    out.append("val "+resourceInfoSym+" = new "+resourceInfoType+"("+Targets.getRelativeLocation(location)+",Config.numThreads)\n")
+    out.append("val "+resourceInfoSym+" = new "+resourceInfoType+"(0,Config.numSlaves,"+Targets.getRelativeLocation(location)+",Config.numThreads)\n")
   }
 
   protected def writeMethodFooter() {
@@ -139,7 +139,7 @@ class ScalaMainExecutableGenerator(val location: Int, val graph: DeliteTaskGraph
   }
 
   override protected def writeMethodFooter() {
-    out.append("ppl.delite.runtime.graph.ops.EOP_Global.barrier();\n")
+    out.append("ppl.delite.runtime.graph.ops.EOP_Global.awaitBarrier();\n")
     out.append("}\n")
   }
 }

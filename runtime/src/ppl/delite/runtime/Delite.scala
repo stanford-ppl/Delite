@@ -1,5 +1,8 @@
 package ppl.delite.runtime
 
+import java.io.File
+import org.apache.commons.io._
+
 import codegen._
 import executor._
 import graph.ops.{EOP_Global, Arguments, Sync}
@@ -7,7 +10,6 @@ import graph.targets.Targets
 import graph.{TestGraph, DeliteTaskGraph}
 import profiler.Profiling
 import scheduler._
-import tools.nsc.io._
 
 /**
  * Author: Kevin J. Brown
@@ -34,7 +36,7 @@ object Delite {
   private def printArgs(args: Array[String]) {
     if(args.length == 0) {
       println("Not enough arguments.\nUsage: [Launch Runtime Command] filename.deg arguments*")
-      exit(-1)
+      sys.exit(-1)
     }
     println("Delite Runtime executing with the following arguments:")
     println(args.mkString(","))
@@ -86,14 +88,14 @@ object Delite {
     def abnormalShutdown() {
       if (executor != null) executor.shutdown()
       if (!Config.alwaysKeepCache)
-        Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
+        FileUtils.deleteQuietly(new File(Config.codeCacheHome)) //clear the code cache (could be corrupted)
     }
 
     def walkTime() = {
       //load task graph
       val graph = loadDeliteDEG(appName)
       //val graph = new TestGraph
-    
+
       //Print warning if there is no op that supports the target
       if(Config.numCpp>0 && !graph.targets(Targets.Cpp)) { Config.numCpp = 0; println("[WARNING] No Cpp target op is generated!") }
       if(Config.numCuda>0 && !graph.targets(Targets.Cuda)) { Config.numCuda = 0; println("[WARNING] No Cuda target op is generated!") }
@@ -112,7 +114,7 @@ object Delite {
 
       //initialize profiler
       Profiling.init(graph)
-      
+
       //schedule
       scheduler.schedule(graph)
       Sync.addSync(graph)
@@ -131,27 +133,27 @@ object Delite {
         DeliteMesosExecutor.awaitWork()
       }
       else { //master executor (including single-node execution)
+        EOP_Global.initializeBarrier(executable.resources.count(!_.isEmpty)+1) //wait on all resources with work
         for (i <- 1 to Config.numRuns) {
           if (Config.performWalk) println("Beginning Execution Run " + i)
           Profiling.startRun()
-          EOP_Global.setbarrier(executable.resources.count(r => !r.isEmpty)) // set the barrier count
           executor.run(executable)
-          EOP_Global.await() //await the end of the application program
+          EOP_Global.awaitBarrier() //await the end of the application program
           appResult = EOP_Global.take() //get the result of the application
-          Profiling.endRun()           
+          Profiling.endRun()
           System.gc()
         }
-      }      
+      }
     }
 
     try {
       executor.init() //call this first because could take a while and can be done in parallel
       val executable = if (Config.performWalk) walkTime() else findExecutables(appName)
-      if (Config.performRun) runTime(executable)  
+      if (Config.performRun) runTime(executable)
       executor.shutdown()
     }
     catch {
-      case i: InterruptedException => abnormalShutdown(); throw outstandingException //a worker thread threw the original exception        
+      case i: InterruptedException => abnormalShutdown(); throw outstandingException //a worker thread threw the original exception
       case e: Throwable => abnormalShutdown(); throw e
     }
     finally {
@@ -163,17 +165,17 @@ object Delite {
   }
 
   def loadDeliteDEG(filename: String) = {
-    val deg = Path(filename)
+    val deg = new File(filename)
     if (!deg.isFile)
       error(filename + " does not exist")
-    DeliteTaskGraph(deg.jfile)
+    DeliteTaskGraph(deg)
   }
 
   def loadSources(graph: DeliteTaskGraph) {
     CodeCache.verifyCache()
     for (target <- Targets.values) {
       if (graph.targets contains target) {
-        val dir = Directory(Path(graph.kernelPath + File.separator + Compilers(target).target + File.separator).toAbsolute)
+        val dir = new File(graph.kernelPath + File.separator + Compilers(target).target + File.separator).getAbsoluteFile
         if (!dir.exists) throw new java.io.FileNotFoundException("generated " + target + " directory does not exist")
         Compilers(target).cacheDegSources(dir)
       }

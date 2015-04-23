@@ -70,6 +70,13 @@ trait BaseGenDeliteOps extends BaseDeliteOpsTraversalFat with BaseGenLoopsFat wi
     deliteKernel = saveKernel
     ret
   }
+
+  // We don't override quote because we should not convert all Int sites,
+  // but only particular ones (e.g. variable instantation).
+  def quoteWithPrecision(x: Exp[Any]) = x match {
+    case Const(i: Int) if Config.intSize == "long" => i.toString + "L"
+    case _ => quote(x)
+  }
 }
 
 /* CPU-like target code generation for DeliteOps */
@@ -106,7 +113,6 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   // Because emitMethod and emitMethodCall are being overridden to pass additional runtime arguments now,
   // we need these "clean" versions for certain cases (e.g. serialization). This is ugly, and should be unified.
-
   def unalteredMethodCall(name:String, inputs: List[String] = Nil): String = methodCall(name, inputs)
   def emitUnalteredMethodCall(name:String, inputs: List[String]) = emitMethodCall(name, inputs)
   def emitUnalteredMethod(name:String, outputType: String, inputs:List[(String,String)])(body: => Unit) = emitMethod(name, outputType, inputs)(body)
@@ -394,8 +400,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
                 emitVarDef(quote(sym)+"_act_idx", remap(Manifest.Int), "0")
                 emitVarDef(quote(sym)+"_values_size", remap(Manifest.Int), "0")
                 stream.println("while (" + quote(sym)+"_act_idx < " + numThreads + ") {")
-                  emitValDef("currentAct", actType, arrayApply("all_acts",quote(sym)+"_act_idx"))
-                  emitValDef("pos", remap(Manifest.Int), fieldAccess(fieldAccess("currentAct", quotedGroup+"_hash_pos"), "get("+arrayApply(quotedGroup+"_globalKeys",quotedGroup+"_idx")+")"))
+                  emitValDef("currentAct", actType, arrayApply("all_acts",quote(sym)+castInt32("_act_idx")))
+                  emitValDef("pos", remap(Manifest.Int), fieldAccess(fieldAccess("currentAct", quotedGroup+"_hash_pos"), "get("+arrayApply(quotedGroup+"_globalKeys",castInt32(quotedGroup+"_idx"))+")"))
                   stream.println("if (pos != -1 && pos < " + fieldAccess("currentAct",quotedGroup+"_size") + ") {")
                     emitValDef(elem.buf.iV2, "pos")
                     emitValDef(elem.buf.aV2, fieldAccess("currentAct",quote(sym)+"_hash_data"))
@@ -419,8 +425,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
                 emitVarDef(quote(sym)+"_offset", remap(Manifest.Int), "0")
                 emitAssignment(quote(sym)+"_act_idx", "0")
                 stream.println("while (" + quote(sym)+"_act_idx < " + numThreads + ") {")
-                  emitValDef("currentAct", actType, arrayApply("all_acts",quote(sym)+"_act_idx"))
-                  emitValDef("pos", remap(Manifest.Int), fieldAccess(fieldAccess("currentAct", quotedGroup+"_hash_pos"), "get("+arrayApply(quotedGroup+"_globalKeys",quotedGroup+"_idx")+")"))
+                  emitValDef("currentAct", actType, arrayApply("all_acts",castInt32(quote(sym)+"_act_idx")))
+                  emitValDef("pos", remap(Manifest.Int), fieldAccess(fieldAccess("currentAct", quotedGroup+"_hash_pos"), "get("+arrayApply(quotedGroup+"_globalKeys",castInt32(quotedGroup+"_idx"))+")"))
                   stream.println("if (pos != -1 && pos < " + fieldAccess("currentAct",quotedGroup+"_size") + ") {")
                     emitValDef(elem.buf.iV2, "pos")
                     emitValDef(elem.buf.aV2, fieldAccess("currentAct",quote(sym)+"_hash_data"))
@@ -697,12 +703,15 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     }
 
     val freeVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
-    val streamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
-    if (streamVars.length > 0) {
-      assert(streamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
-      val streamSym = streamVars(0)
+    val inputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
+    val outputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileOutputStream])
+
+    if (inputStreamVars.length > 0) {
+      assert(inputStreamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
+      val streamSym = inputStreamVars(0)
       emitValDef(quote(streamSym)+"_stream", remap(streamSym.tp), fieldAccess(quote(streamSym),"openCopyAtNewLine(0)"))
-      stream.println("while (" + fieldAccess(quote(streamSym)+"_stream", "position") + " < " + quote(op.size) + ") {")
+      emitValDef(quote(streamSym)+"_offset", remap(manifest[Long]), fieldAccess(quote(streamSym), "streamOffset"))
+      stream.println("while (" + fieldAccess(quote(streamSym)+"_stream", "position") + " < " + quote(streamSym) + "_offset + " + quote(op.size) + " ) {")
     }
     else {
       this match {
@@ -742,8 +751,13 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     }
     stream.println(/*{*/"} // end fat loop " + symList.map(quote).mkString(","))
 
-    if (streamVars.length > 0) {
-      stream.println(fieldAccess(quote(streamVars(0))+"_stream","close();"))
+    if (inputStreamVars.length > 0) {
+      stream.println(fieldAccess(quote(inputStreamVars(0))+"_stream","close();"))
+    }
+
+    if (outputStreamVars.length > 0) {
+      val streamSyms = outputStreamVars.map(s => quote(s))
+      streamSyms foreach { s => emitUnalteredMethodCall(s + ".close", Nil) }
     }
 
     // finalizer
@@ -822,17 +836,19 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
     // processRange
     emitMethod("processRange", actType, List(("__act",actType),("start",remap(Manifest.Long)),("end",remap(Manifest.Long)))) {
-      //GROSS HACK ALERT!
+      //GROSS HACK ALERT: custom codegen for DeliteFileInputStream and DeliteFileOutputStream!
       val freeVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
+      val inputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
+      val outputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileOutputStream])
 
-      val streamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
-      if (streamVars.length > 0) {
-        assert(streamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
-        val streamSym = quote(streamVars(0))+"_stream"
-        emitValDef(streamSym, remap(streamVars(0).tp), fieldAccess(quote(streamVars(0)),"openCopyAtNewLine(start)"))
+      if (inputStreamVars.length > 0) {
+        assert(inputStreamVars.length == 1, "ERROR: don't know how to handle multiple input streams at once")
+        val streamSym = quote(inputStreamVars(0))+"_stream"
+        emitValDef(streamSym, remap(inputStreamVars(0).tp), fieldAccess(quote(inputStreamVars(0)),"openCopyAtNewLine(start)"))
+        emitValDef(streamSym+"_offset", remap(manifest[Long]), fieldAccess(streamSym, "streamOffset"))
         emitValDef("isEmpty",remap(Manifest.Boolean), "end <= " + fieldAccess(streamSym,"position"))
         emitValDef("__act2",actType,methodCall("init",List("__act","-1","isEmpty",streamSym)))
-        stream.println("while (" + fieldAccess(streamSym,"position") + " < end) {")
+        stream.println("while (" + fieldAccess(streamSym,"position") + " < " + streamSym + "_offset + end) {")
         emitMethodCall("process",List("__act2","-1",streamSym))
         stream.println("}")
         stream.println(fieldAccess(streamSym, "close();"))
@@ -847,6 +863,12 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitAssignment("idx","idx + 1")
         stream.println("}")
       }
+
+      if (outputStreamVars.length > 0) {
+        val streamSyms = outputStreamVars.map(s => quote(s))
+        streamSyms foreach { s => emitUnalteredMethodCall(s + ".close", List(resourceInfoSym)) }
+      }
+
       emitReturn("__act2")
     }
 
@@ -865,7 +887,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
               emitAssignment(fieldAccess("__act2",quote(sym)+"_data"),fieldAccess("__act",quote(sym)+"_data"))
             }
           case (sym, elem: DeliteHashElem[_,_]) =>
-          case (sym, elem: DeliteForeachElem[_]) => // nothing needed - this case only happens if a ForeachElem is fused with something else that needs combine
+          case (sym, elem: DeliteForeachElem[_]) =>
+            // this case only happens if a ForeachElem is fused with something else that needs combine
+            emitVarDef(quote(sym), remap(sym.tp), "()")  //TODO: Need this for other targets? (Currently, other targets just don't generate unit types)
           case (sym, elem: DeliteReduceElem[_]) =>
             emitAssignment(fieldAccess("__act2",quote(sym)+"_zero"),fieldAccess("__act",quote(sym)+"_zero"))
             // should we throw an exception instead on an empty reduce?
@@ -1176,10 +1200,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           var idx = -1
           def deserialize(tp: String) = {
             idx += 1
-            if (tp.contains("DeliteArrayObject")) //FIXME: need to handle this generically
-              "ppl.delite.runtime.messages.Serialization.deserializeDeliteArrayObject["+tp.substring(tp.indexOf("[")+1,tp.lastIndexOf("]"))+"](ppl.delite.runtime.messages.Messages.ArrayMessage.parseFrom(bytes.get("+idx+")))"
-            else
-              "ppl.delite.runtime.messages.Serialization.deserialize(classOf["+tp+"], bytes.get(" + idx + "))"
+            "ppl.delite.runtime.messages.Serialization.deserialize(classOf["+tp+"], bytes.get(" + idx + "))"
           }
           emitValDef("act", "activation_"+kernelName, "new activation_"+kernelName)
           val prefix = "act."

@@ -26,8 +26,11 @@ trait DeliteIfThenElseExp extends IfThenElseFatExp with DeliteOpsExp {
     case Def(DBooleanNegate(a)) => delite_ifThenElse(a, elsep, thenp, flat, controlFlag)
     case Def(DNotEqual(a,b)) => delite_ifThenElse(delite_equals(a,b), elsep, thenp, flat, controlFlag)
     case _ =>
-      val a = reifyEffectsHere[T](thenp, controlFlag)
-      val b = reifyEffectsHere[T](elsep, controlFlag)
+      val saveConditionalScope = conditionalScope
+      conditionalScope = controlFlag
+      val a = reifyEffectsHere[T](thenp)
+      val b = reifyEffectsHere[T](elsep)
+      conditionalScope = saveConditionalScope
       val ae = summarizeEffects(a).withoutControl
       val be = summarizeEffects(b).withoutControl
       reflectEffectInternal(DeliteIfThenElse(cond,a,b,flat), ae orElse be)
