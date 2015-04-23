@@ -69,7 +69,7 @@ trait HwCodegen extends GenericCodegen with ThorIR
     outDir.mkdirs
 
     // Initialize all passes here
-    passes.append(new PrintPass)
+    passes.append(new HwPrintPass)
 
     super.initializeGenerator(buildDir, args)
   }

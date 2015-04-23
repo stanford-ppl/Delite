@@ -1,4 +1,5 @@
 package ppl.delite.framework.codegen.hw
+import scala.collection.mutable.Queue
 
 trait HwPass {
 
@@ -40,10 +41,20 @@ trait HwPass {
   }
 
   def doItBfs(m: Module) = {
-    throw new Exception("doItBfs not implemented yet!")
+    val q = new Queue[Module]()
+    q.enqueue(m)
+    while (q.size > 0) {
+      val qm: Module = q.dequeue()
+      qm.deps.map(d => q.enqueue(d))
+      matchAndVisit(qm)
+    }
   }
 
   def doIt(m: Module) = {
+    doItBfs(m)
+  }
+
+  def doItSingle(m: Module) = {
     matchAndVisit(m)
   }
 
@@ -52,53 +63,4 @@ trait HwPass {
   }
 }
 
-class PrintPass extends HwPass {
-  import IR._
 
-  override def visit(m: CAdd) = {
-    println("CAdd")
-  }
-
-  override def visit(m: CSub) = {
-    println("CSub")
-  }
-
-  override def visit(m: CMul) = {
-    println("CMul")
-  }
-
-  override def visit(m: CDiv) = {
-    println("CDiv")
-  }
-
-  override def visit(m: CMux) = {
-    println("CMux")
-  }
-
-  override def visit(m: Dummy) = {
-    println("Dummy")
-  }
-  override def visit(m: CComposite) = {
-    println("CComposite")
-  }
-
-  override def visit(m: Pipeline) = {
-    println("Pipeline")
-  }
-
-  override def visit(m: Parallel) = {
-    println("Parallel")
-  }
-
-  override def visit(m: TreeRed) = {
-    println("TreeRed")
-  }
-
-  override def visit(m: AGU) = {
-    println("AGU")
-  }
-
-  override def visit(m: RU) = {
-    println("RU")
-  }
-}
