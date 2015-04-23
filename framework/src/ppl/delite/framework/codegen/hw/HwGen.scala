@@ -10,6 +10,7 @@ import ppl.delite.framework.datastructures._
 
 import java.io.File
 import java.io.PrintWriter
+import scala.collection.mutable.ListBuffer
 
 /*
  * Delite Hardware code generator - This file contains all the traits that implement
@@ -45,6 +46,9 @@ trait HwCodegen extends GenericCodegen with ThorIR
   // Hardware intermediate representation graph
   val hwgraph: HwGraph = new HwGraph
 
+  // List of passes to be performed on the graph
+  val passes: ListBuffer[HwPass] = new ListBuffer[HwPass]
+
   var kernelInputVals: List[Sym[Any]] = Nil
   var kernelInputVars: List[Sym[Any]] = Nil
   def kernelInputs: List[Sym[Any]]= kernelInputVars ++ kernelInputVals
@@ -64,7 +68,19 @@ trait HwCodegen extends GenericCodegen with ThorIR
     val outDir = new File(buildDir)
     outDir.mkdirs
 
+    // Initialize all passes here
+    passes.append(new PrintPass)
+
     super.initializeGenerator(buildDir, args)
+  }
+
+  override def finalizeGenerator() = {
+    println("[HwCodegen] Inside finalizeGenerator")
+
+    for (pass <- passes) {
+      pass.doIt(hwgraph.rootNode.asInstanceOf[pass.IR.Module])
+    }
+
   }
 
   override def kernelInit(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultIsVar: Boolean): Unit = {
