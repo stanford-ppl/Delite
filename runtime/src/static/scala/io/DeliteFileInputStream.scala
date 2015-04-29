@@ -88,6 +88,7 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
   private[this] var reader: LineReader = _
   private[this] var text: Text = _
   private[this] var pos: Long = _
+  private[this] var filePos: Int = _
 
   final val size: Long = files.map(_.getLen).sum
   final def position = pos
@@ -117,14 +118,19 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
    */
   private def getInputStream(start: Long) = {
     if (start >= size) throw new IndexOutOfBoundsException("Cannot load stream at pos " + start + ", stream size is: " + size)
-
     val (fileIdx, offset) = findFileOffset(start)
-    val path = files(fileIdx).getPath
-    val byteStream = path.getFileSystem(conf).open(path)
+    filePos = fileIdx
+    val byteStream = openInputStream(fileIdx)
     if (offset != 0) { // jump to next available new line (and valid char)
       if (byteStream.skip(offset-1) != (offset-1)) throw new IOException("Unable to skip desired bytes in file")
     }
     (byteStream, offset)
+  }
+
+  private def openInputStream(fileIdx: Int) = {
+    if (fileIdx >= files.length) throw new IndexOutOfBoundsException("Cannot open file at index: " + fileIdx + ", num files is: " + files.length)
+    val path = files(fileIdx).getPath
+    path.getFileSystem(conf).open(path)
   }
 
   /* Set the line reader to a newline-aligned input stream corresponding to logical byte index 'start' */
@@ -161,8 +167,8 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
         return
       }
       else {
-        val (nextByteStream, offset) = getInputStream(pos)
-        assert(offset == 0, "Incorrectly skipped to offset " + offset + " in the stream")
+        filePos += 1
+        val nextByteStream = openInputStream(filePos)
         reader = new LineReader(nextByteStream, delimiter.getOrElse(null))
         length = reader.readLine(text)
         assert(length != 0, "Filesystem returned an invalid input stream for position " + pos)
