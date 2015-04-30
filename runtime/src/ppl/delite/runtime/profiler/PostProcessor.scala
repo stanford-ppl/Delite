@@ -4,12 +4,15 @@ package profiler
 import java.io.{File, PrintWriter}
 import scala.collection.mutable.{HashSet, HashMap}
 import _root_.scala.util.parsing.json.JSON
+import tools.nsc.io.Path
 
 object PostProcessor {
 	
-	val TARGET_SCALA = 0
-	val TARGET_CPP = 1
-	val TARGET_CUDA = 2
+	val TARGET_SCALA = 1
+	val TARGET_CPP = 2
+	val TARGET_CUDA = 4
+	val tabs = "   "
+	val twoTabs = tabs + tabs
 
 	def processDegFile(degFile: String): DependencyGraph = {
     	DependencyGraph.dependencyGraphNew(degFile)
@@ -22,51 +25,30 @@ object PostProcessor {
 		executionProfile
 	}
 
-	def writeProcessedDataToFile(depGraph: DependencyGraph, executionProfile: ExecutionProfile) {
-		for ((k,v) <- executionProfile.summaries) {
-			Predef.println("Name: " + k + "   Total time: " + v.totalTime)
-		}
-
-		for ((level, m) <- executionProfile.timelineData.levelToTNodes) {
-			Predef.println("Level " + level + " =>")
-			for ((n, lst) <- m) {
-				Predef.println("   " + n + " => ")
-				for (i <- lst) {
-					val parentName = if (i.parentTNode == null) "null" else i.parentTNode.name
-					Predef.println("      Parent: " + parentName + " Start: " + i.start + " Duration: " + i.duration + " End: " + i.end + " ThreadId: " + i.threadId)
-				}
-			}
-		}
-	}
-
 	def postProcessProfileData(globalStartNanos: Long, degFile: String, rawProfileDataFile: String) {
 		val depGraph = processDegFile(degFile)
 		depGraph.string()
 		val executionProfile = processRawProfileDataFile(rawProfileDataFile, depGraph)
 
-		writeProcessedDataToFile(depGraph, executionProfile)
+		executionProfile.writeDNodesToDB()
+		executionProfile.writeExecutionSummariesToDB()
+		executionProfile.close()
+
+		dumpProcessedData(globalStartNanos, depGraph, executionProfile)	
 	}
 
-	private def dumpProcessedData(globalStartNanos, depGraph, executionProfile) {
+	private def dumpProcessedData(globalStartNanos: Long, depGraph: DependencyGraph, executionProfile: ExecutionProfile) {
 		val directory = Path(Config.profileOutputDirectory).createDirectory()
-		val file = directory / "profileData.js"
-		val writer = new PrintWriter(file)
+		val file = directory / "profileData_test.js"
+		val writer = new PrintWriter(file.jfile)
 
-		val tabs = "   "
-		val twoTabs = tabs + tabs
 	    writer.println("{\"Profile\":{")
-	    writer.println(tabs + "\"ExecutionProfile\": {")
-	    writer.println(twoTabs + "\"systemNanoTimeAtAppStart\": " + globalStartNanos + ",")
-	    writer.println(twoTabs + "\"jvmUpTimeAtAppStart\": " + executionProfile.jvmUpTimeAtAppStart + ",")
-	    writer.println(twoTabs + "\"appStartTime\": " + executionProfile.appStartTime)
-	    writer.println(twoTabs + "\"appTotalTime\": " + executionProfile.appTotalTime)
-	    writer.println(twoTabs + "\"appEndTime\": " + executionProfile.appEndTime)
-	    writer.println(twoTabs + "\"threadCount\": " + executionProfile.threadCount)
-	    writer.println(twoTabs + "\"threadScalaCount\": " + executionProfile.threadScalaCount)
-	    writer.println(twoTabs + "\"threadCppCount\": " + executionProfile.threadCppCount)
-	    writer.println(twoTabs + "\"threadCudaCount\": " + executionProfile.threadCudaCount)
-	    writer.println(twoTabs + "\"targetsEnabled\": " + "[scala]") // TODO: Fix this
-	    
-	    writer.println(tabs + "},")
+
+	    executionProfile.dumpAppDataInJSON( writer, twoTabs )
+	    depGraph.dumpDepGraphInJSON( writer, twoTabs )
+	    executionProfile.dumpTimelineDataInJSON( writer, twoTabs )
+
+	    writer.println("}")
+	    writer.close()
 	}
 }
