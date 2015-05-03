@@ -290,7 +290,7 @@ class TNode(_name: Types.TNodeName, _threadId: Int, _start: Long, _duration: Lon
 	val duration: Long = _duration
 	val end: Long = start + duration
 	val id = TNode.nextId()
-	var execTime: Long = 0
+	var execTime: Long = duration
 	var syncTime: Long = 0
 	val _type = ExecutionProfile.tNodeType(_name)
 	val (dNode, dNodeName) = _type match {
@@ -303,15 +303,24 @@ class TNode(_name: Types.TNodeName, _threadId: Int, _start: Long, _duration: Lon
 
 	private var parentTNode: TNode = null
 	var parentId: Types.TNodeId = -1;
-	val level = if (dNode != null) dNode.level else -1
+	val level = if (dNode != null) dNode.level else 0
 	var childKernelTNodes = new ArrayBuffer[TNode]
 	var childSyncTNodes = new ArrayBuffer[TNode]
 	val displayText = "" // TODO: This needs to be fixed
 
 	def childNodeNew(cn: TNode) {
 		cn._type match {
-			case TNodeType.Sync => { childSyncTNodes.append(cn) }
-			case _ => { childKernelTNodes.append(cn) }
+			case TNodeType.Sync => { 
+				childSyncTNodes.append(cn)
+				execTime -= cn.duration
+				syncTime += cn.duration
+			}
+
+			case _ => { 
+				childKernelTNodes.append(cn)
+				execTime -= cn.syncTime
+				syncTime += cn.syncTime
+			}
 		}
 		
 		cn.parentTNodeIs(this)
@@ -337,9 +346,11 @@ object ExecutionProfile {
 	def tNodeType(tNodeName: String): TNodeType.Value = {
 		if (tNodeName(0) == '_') {
 			return TNodeType.Sync
+		} else if (tNodeName(0) != 'x') {	// TODO: This logic would fail if a tic-toc node's name starts with 'x'
+			return TNodeType.TicTocRegion
 		} else if (tNodeName.contains("_")) {
 			return TNodeType.KernelPartition
-		}
+		} 
 
 		return TNodeType.Kernel
 	}
@@ -352,25 +363,33 @@ object ExecutionProfile {
 
 		return None
 	}
+
+	def computeTargetsEnabled(): Int = {
+		val scalaEnabled = if (Config.numThreads > 0) PostProcessor.TARGET_SCALA else 0
+		val cppEnabled = if (Config.numCpp > 0) PostProcessor.TARGET_CPP else 0
+		val cudaEnabled = if (Config.numCuda > 0) PostProcessor.TARGET_CUDA else 0
+
+		return (scalaEnabled | cppEnabled | cudaEnabled)
+	}
 }
 
 class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) {
 	val rawProfileDataFile: String = _rawProfileDataFile
 	val depGraph: DependencyGraph = _depGraph
 
-	var threadCount: Int = 1
-	var threadScalaCount: Int = 0
-	var threadCppCount: Int = 0
-	var threadCudaCount: Int = 0
-	var jvmUpTimeAtAppStart: Long = 0
-	var appStartTime: Long = 0
+	val threadScalaCount: Int = Config.numThreads
+	val threadCppCount: Int = Config.numCpp
+	val threadCudaCount: Int = Config.numCuda
+	val threadCount: Int = threadScalaCount + threadCppCount + threadCudaCount
+	val jvmUpTimeAtAppStart: Long = PerformanceTimer.jvmUpTimeAtAppStart
+	val appStartTime: Long = PerformanceTimer.appStartTimeInMillis
 	var appTotalTime: Long = 0
 	var appEndTime: Long = 0
-	var targetsEnabled = 1 // order of bits -> 0: scala, 1:cpp, 2:cuda
-	var summaries = new HashMap[Types.TNodeName, ExecutionSummary] // TrieMap is the thread-safe version of HashMap
-	var timelineData = new TimelineData(_depGraph.levelMax)
-	var ticTocTNodes = new ArrayBuffer[TicTocTNode]
-	var threadTNodes = new ArrayBuffer[ThreadTNode]
+	val targetsEnabled = ExecutionProfile.computeTargetsEnabled() // order of bits -> 0: scala, 1:cpp, 2:cuda
+	val summaries = new HashMap[Types.TNodeName, ExecutionSummary] // TrieMap is the thread-safe version of HashMap
+	val timelineData = new TimelineData(_depGraph.levelMax)
+	val ticTocTNodes = new ArrayBuffer[TicTocTNode]
+	val threadTNodes = new ArrayBuffer[ThreadTNode]
 
 	private val dbPath = Config.profileOutputDirectory + "/profile.db"
 	Path(dbPath).deleteIfExists()
@@ -381,7 +400,10 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 	def init() {
 		ExecutionProfile.depGraph = _depGraph
 		initDB()
-		parseThreadSpecificProfileDataFiles( Config.profileOutputDirectory + "/profile_t_" )
+
+		val fileNamePrefix = Config.profileOutputDirectory + "/profile_t_"
+		parseThreadSpecificProfileDataFiles( fileNamePrefix )
+		parseTicTocRegionsDataFile( fileNamePrefix )
 		updateTimeTakenByPartitionedKernels()
 	}
 
@@ -410,27 +432,53 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 		val pre1 = prefixSpace + PostProcessor.tabs
 		val pre2 = pre1 + PostProcessor.tabs
 		val pre3 = pre2 + PostProcessor.tabs
-		writer.println(prefixSpace + "\"TimelineData\": {")
-		writer.println(pre1 + "\"nodes\": [")
+		writer.println(prefixSpace + "\"TimelineData\": [")
 
 		val nodesAtLevelZero = timelineData.tNodesAtLevel(0)
 		for ((name, tNodes) <- nodesAtLevelZero) {
 			for (n <- tNodes) {
-				writer.println(pre2 + "{")
-				writer.println(pre3 + "\"id\": " + n.id + ",")
-				writer.println(pre3 + "\"lane\": " + n.threadId + ",")
-				writer.println(pre3 + "\"start\": " + n.start + ",")
-				writer.println(pre3 + "\"duration\": " + n.duration + ",")
-				writer.println(pre3 + "\"end\": " + n.end + ",")
-				writer.println(pre3 + "\"dNodeName\": \"" + n.dNodeName + "\",")
-				writer.println(pre3 + "\"displayText\": \"" + n.displayText + "\"")
+				writer.println(pre1 + "{")
+				writer.println(pre2 + "\"id\": " + n.id + ",")
+				writer.println(pre2 + "\"lane\": " + n.threadId + ",")
+				writer.println(pre2 + "\"start\": " + n.start + ",")
+				writer.println(pre2 + "\"duration\": " + n.duration + ",")
+				writer.println(pre2 + "\"end\": " + n.end + ",")
+				writer.println(pre2 + "\"dNodeName\": \"" + n.dNodeName + "\",")
+				writer.println(pre2 + "\"displayText\": \"" + n.displayText + "\"")
 				writer.println(pre2 + "},")
 			}
 		}
 		
-		writer.println(pre2 + "{\"id\": -1}")
-		writer.println(pre1 + "]")
-		writer.println(prefixSpace + "},")
+		writer.println(pre1 + "{\"id\": -1}")
+		writer.println(prefixSpace + "],")
+	}
+
+	def dumpTicTocRegionsDataInJSON( writer: PrintWriter, prefixSpace: String ) {
+		val pre1 = prefixSpace + PostProcessor.tabs
+		val pre2 = pre1 + PostProcessor.tabs
+
+		def helper(n: TicTocTNode) {
+			writer.println(pre1 + "{")
+			writer.println(pre2 + "\"id\": " + n.id + ",")
+			writer.println(pre2 + "\"name\": \"" + n.name + "\",")
+			writer.println(pre2 + "\"start\": " + n.start + ",")
+			writer.println(pre2 + "\"duration\": " + n.duration + ",")
+			writer.println(pre2 + "\"end\": " + n.end + ",")
+		}
+
+		val len = ticTocTNodes.length
+		if (len > 0) {
+			writer.println(prefixSpace + "\"TicTocRegions\": [")
+
+			for (i <- 0 to (ticTocTNodes.length - 2)) {
+				helper( ticTocTNodes(i) )
+				writer.println(pre1 + "},")
+			}
+
+			helper( ticTocTNodes(len - 1) )
+			writer.println(pre1 + "}")
+			writer.println(prefixSpace + "],")
+		}
 	}
 
 	private def targetsEnabledStr(): String = {
@@ -509,7 +557,7 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 		return 0
 	}
 
-	def parseThreadSpecificProfileDataFiles(fileNamePrefix: String) {
+	def parseThreadSpecificProfileDataFiles( fileNamePrefix: String ) {
 		val levelToTNodesYetToBeAssignedParent = new HashMap[Int, ArrayBuffer[TNode]]
 		for (level <- 0 to depGraph.levelMax) {
 			levelToTNodesYetToBeAssignedParent += level -> new ArrayBuffer[TNode]
@@ -519,9 +567,11 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 			val fn = fileNamePrefix + tid + ".csv"
 			for (line <- Source.fromFile(fn).getLines()) {
 				val arr = line.split(",")
+				val name = arr(0)
+				val start = arr(1).toLong
 				val duration = arr(2).toLong
 				if (duration > 0) { // Optimization: filter out all nodes with duration == 0
-					val tNode = new TNode(arr(0), tid, arr(1).toLong, duration)
+					val tNode = new TNode(name, tid, start, duration)
 					val lev = tNode.level
 					if (lev >= 0) {
 						if (lev < depGraph.levelMax) {
@@ -541,10 +591,27 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 
 					updateSummary(tNode)
 					timelineData.tNodeNew(tNode)
+					if (tNode.syncTime > 0) { syncTimeInc(tNode.name, tNode.syncTime) }
 
 					writeTNodeToDB(tNode)
 				}
 			}
+		}
+	}
+
+	def parseTicTocRegionsDataFile( fileNamePrefix: String ) {
+		val fn = fileNamePrefix + threadCount + ".csv"
+		var id = 0
+		for (line <- Source.fromFile(fn).getLines()) {
+			val arr = line.split(",")
+			val name = arr(0)
+			val start = arr(1).toLong
+			val duration = arr(2).toLong
+			ticTocTNodes.append( new TicTocTNode(id, name, start, duration, start + duration) )
+			id += 1
+
+			val tNode = new TNode( name, threadCount, start, duration )
+			timelineData.tNodeNew(tNode)
 		}
 	}
 
@@ -592,7 +659,8 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 	private def updateSummary(tNode: TNode) {
 		val n = tNode.name
 		if (!summaries.contains(n)) {
-			summaries += n -> new ExecutionSummary()
+			//summaries += n -> new ExecutionSummary()
+			summaries(n) = new ExecutionSummary()
 		}
 
 		tNode._type match {
@@ -608,11 +676,13 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 				val headerNodeTotalTime = tNodeTotalTime(dNode.name + "_h")
 				val partitionNodesMaxTime = threadIdsRange.map(tid => tNodeTotalTime(dNode.name + "_" + tid)).max
 				val estimatedTotalTime = headerNodeTotalTime + partitionNodesMaxTime
-				summaries += dNode.name -> new ExecutionSummary(headerNodeTotalTime + estimatedTotalTime)
+				//summaries += dNode.name -> new ExecutionSummary(headerNodeTotalTime + estimatedTotalTime)
+				summaries(dNode.name) = new ExecutionSummary(headerNodeTotalTime + estimatedTotalTime)
 			}
 		}
 	}
 
+	/*
 	private def updateSyncAndExecTimesOfKernels() {
 		def computeSyncAndExecTimes(tNodes: ArrayBuffer[TNode]) {
 			var totalSyncTime: Long = 0
@@ -635,6 +705,7 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 			}
 		}
 	}
+	*/
 
 	private def updateMemUsageDataOfDNodes() {
 		val aggrMemUsageStats = MemoryProfiler.aggregateStatsFromAllThreads()
@@ -651,9 +722,16 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
   		}
 	}
 
+	/*
 	private def syncTimeIs(tNodeName: String, st: Long) {
 		val s = executionSummary(tNodeName)
 		s.syncTime = st
+	}
+	*/
+
+	private def syncTimeInc(tNodeName: String, inc: Long) {
+		val s = executionSummary(tNodeName)
+		s.syncTime += inc
 	}
 
 	private def memUsageIs(tNodeName: String, mu: Long) {
@@ -674,7 +752,8 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 	private def executionSummary(tNodeName: String): ExecutionSummary = {
 		if (!summaries.contains(tNodeName)) {
 			val es = new ExecutionSummary
-			summaries += tNodeName -> es
+			//summaries += tNodeName -> es
+			summaries(tNodeName) = es
 			return es
 		}
 
@@ -715,9 +794,7 @@ class TimelineData(_levelMax: Int) {
 	}
 }
 
-class TicTocTNode(_name: String) {
-	val name = _name
-}
+class TicTocTNode( val id: Int, val name: String, val start: Long, val duration: Long, val end: Long) { }
 
 class ThreadTNode(_tid: Int) {
 	val tid = _tid

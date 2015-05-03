@@ -47,6 +47,8 @@ object PostProcessor {
 	    executionProfile.dumpAppDataInJSON( writer, twoTabs )
 	    depGraph.dumpDepGraphInJSON( writer, twoTabs )
 	    executionProfile.dumpTimelineDataInJSON( writer, twoTabs )
+	    executionProfile.dumpTicTocRegionsDataInJSON( writer, twoTabs )
+	    SamplerThread.dumpMemUsageSamplesInJSON( writer, twoTabs )
 
 	    writer.println("}")
 	    writer.close()
