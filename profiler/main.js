@@ -35,14 +35,17 @@ addDegFileHandler("degFileInput");
 addProfileDataFileHandler("profDataInput");
 addGCStatsFileHandler("gcStatsInput");
 
-var editor = {}
-var profData = {}
-var graphController = {}
-var timelineController = {}
-var topNodesBasedOnTime = []
-var topNodesBasedOnMemUsage = []
-var threadLevelSyncStats = []
+var editor = {};
+var profData = {};
+var graphController = {};
+var timelineController = {};
 
+// Input data sets for bar charts
+var topNodesBasedOnL2CacheMissPct = [];
+var topNodesBasedOnL3CacheMissPct = [];
+var topNodesBasedOnMemUsage = [];
+var topNodesBasedOnTime = [];
+var threadLevelSyncStats = [];
 
 $("#globalStatsMetric").change(function() {
 	$("#generalInfo").hide();
@@ -56,6 +59,12 @@ $("#globalStatsMetric").change(function() {
 	} else if (metric == "memUsage") {
 		clearDivForBarChartDisplay();
 		createBarChart("#dfg", topNodesBasedOnMemUsage, "memUsage", getDisplayTextForMemUsage, config);
+	} else if (metric == "l2CacheMissRatio") {
+		clearDivForBarChartDisplay();
+		createBarChart("#dfg", topNodesBasedOnL2CacheMissPct, "missPct", getDisplayTextForCacheMissRatio, config);
+	} else if (metric == "l3CacheMissRatio") {
+		clearDivForBarChartDisplay();
+		createBarChart("#dfg", topNodesBasedOnL3CacheMissPct, "missPct", getDisplayTextForCacheMissRatio, config);
 	} else if (metric == "threadLevelSyncStats") {
 		clearDivForBarChartDisplay();
 		createBarChart("#dfg", threadLevelSyncStats, "syncTimePct", getDisplayTextForThreadLevelSync, config);
@@ -103,6 +112,10 @@ function getDisplayTextForTime(d) {
 
 function getDisplayTextForMemUsage(d) {
 	return d.name + " (" + memUsageValueToStr(d.memUsage) + ")";
+}
+
+function getDisplayTextForCacheMissRatio(d) {
+	return d.name + " (" + d.missPct + "%)";
 }
 
 function getDisplayTextForThreadLevelSync(d) {
@@ -355,9 +368,44 @@ function getTopNodesBasedOnMemUsage(nodeNameToSummary, dependencyData, count) {
 		}
 	}
 
-	nodeNameAttrPairs.sort(function(p1,p2) { return p2.memUsage - p1.memUsage; });
+	nodeNameAttrPairs.sort(function(p1, p2) { return p2.memUsage - p1.memUsage; });
 
 	return nodeNameAttrPairs.slice(0, count);
+}
+
+function getNodesWithHighestL2AndL3MissRatios(nodeNameToMemAccessStats, count) {
+	var nodeL2MissPctPairs = [];
+	var nodeL3MissPctPairs = [];
+	for (var name in nodeNameToMemAccessStats) {
+		var sumOfL2HitPcts = 0;
+		var sumOfL3HitPcts = 0;
+		var count = 0;
+		var instanceToStats = nodeNameToMemAccessStats[name];
+		for (var i in instanceToStats) {
+			var tidToStats = instanceToStats[i];
+			for (var tid in tidToStats) {
+				var stats = tidToStats[tid];
+				sumOfL2HitPcts += 100 - stats.l2CacheHitPct;
+				sumOfL3HitPcts += 100 - stats.l3CacheHitPct;
+				count += 1;
+			}
+		}
+
+		nodeL2MissPctPairs.push({
+			"name": name,
+			"missPct": 100 - Math.round(sumOfL2HitPcts / count)
+		});
+
+		nodeL3MissPctPairs.push({
+			"name": name,
+			"missPct": 100 - Math.round(sumOfL3HitPcts / count)
+		});
+	}
+
+	nodeL2MissPctPairs.sort(function(p1, p2) { return p2.missPct - p1.missPct });
+	nodeL3MissPctPairs.sort(function(p1, p2) { return p2.missPct - p1.missPct });
+
+	return [nodeL2MissPctPairs.slice(0, count), nodeL3MissPctPairs.slice(0, count)];
 }
 
 function populateGCEventInfoTable(data) {
@@ -384,6 +432,10 @@ function startDebugSession() {
   		// This is the data to be visualized using bar charts
   		topNodesBasedOnTime = getTopNodesBasedOnTotalTime(profData.executionProfile.nodeNameToSummary, profData.dependencyData, 20);
   		topNodesBasedOnMemUsage = getTopNodesBasedOnMemUsage(profData.executionProfile.nodeNameToSummary, profData.dependencyData, 20);
+
+  		var tmp = getNodesWithHighestL2AndL3MissRatios(profData.executionProfile.nodeNameToMemAccessStats, 20);
+  		topNodesBasedOnL2CacheMissPct = tmp[0];
+  		topNodesBasedOnL3CacheMissPct = tmp[1];
 
   		maxTimeTakenByAKernel = topNodesBasedOnTime[0].totalTimePct;
   		maxMemUsageByAKernel = topNodesBasedOnMemUsage[0].memUsage;

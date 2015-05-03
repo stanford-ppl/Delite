@@ -65,6 +65,26 @@ function updateMemUsageOfDNodes(memProfile, dependencyData, executionProfile, co
     }
 }
 
+function updateMemAccessStatsOfDNodes(memAccessStatsProfile, executionProfile) {
+    for (var nodeName in memAccessStatsProfile) {
+        var instanceToStats = memAccessStatsProfile[nodeName];
+        var lst = [];
+        for (var i in instanceToStats) {
+            var tidToMemAccessStats = {};
+            var stats = instanceToStats[i];
+            for (var i in stats) {
+                var record = stats[i];
+                var tid = record[0];
+                tidToMemAccessStats[tid] = new MemAccessStats(record[1], record[2], record[3], record[4], record[5]);
+            }
+
+            lst.push(tidToMemAccessStats);
+        }
+
+        executionProfile.nodeNameToMemAccessStats[nodeName] = lst;
+    }
+}
+
 function getNumberOfThreads(perfProfile) {
     return perfProfile.res.length - 1;
 }
@@ -190,12 +210,15 @@ function getExecutionProfile(rawProfileData, dependencyData, config) {
         }
     }
 
+    console.log(dependencyData)
+
     assignSyncNodesToParents(dataForTimelineView, dependencyData, syncNodes, config);
     updateChildNodesOfTNodes(dataForTimelineView, dependencyData.maxNodeLevel, dependencyData);
 
     updateTimeTakenByPartitionedKernels(dependencyData, executionProfile);
     updateSyncAndExecTimesOfKernels(dataForTimelineView, dependencyData.maxNodeLevel, executionProfile);
     updateMemUsageOfDNodes(rawProfileData.MemProfile, dependencyData, executionProfile, config);
+    updateMemAccessStatsOfDNodes(rawProfileData.MemAccessStats, executionProfile);
 
     // Extract the performance data for tic-toc regions
     var topLevelTNodes = getTopLevelTNodes(dataForTimelineView);
@@ -551,33 +574,36 @@ function getDisplayTextForTimelineNode(tNode, syncNodeRegex) {
 
 function assignSyncNodesToParents(dataForTimelineView, dependencyData, syncNodes, config) {
     syncNodes.forEach(function(n) {
-        var m = n.name.match(config.syncNodeRegex)
-        var parentName = m[2]
-        n.dep_kernel = m[3]
-        n.dep_thread = "T" + m[4]
+        var m = n.name.match(config.syncNodeRegex);
+        var parentName = m[2];
+        n.dep_kernel = m[3];
+        n.dep_thread = "T" + m[4];
 
+        console.log(n.name);
 
         if (parentName == "null") { // top-level sync barrier
-            n.level = 0
+            n.level = 0;
         } else {
             var parentDNodeName = parentName;
             if (isPartitionNode(parentName, config)) {
                 parentDNodeName = getNameOfParentLoop(parentName, config);
             }
 
-            var parentId = dependencyData.nodeNameToId[parentDNodeName]
-            var parentLevel = dependencyData.nodes[parentId].level
+            console.log(parentDNodeName);
+
+            var parentId = dependencyData.nodeNameToId[parentDNodeName];
+            var parentLevel = dependencyData.nodes[parentId].level;
             var parent = dataForTimelineView[parentLevel][parentName].filter(function(p) {
                 return (p.start <= n.start) && (n.end <= p.end)
-            })[0]   // There should be just one element in the filtered list anyways
+            })[0];   // There should be just one element in the filtered list anyways
 
-            parent.syncNodes.push(n)
-            n.level = parent.level + 1
-            n.parentId = parentId
+            parent.syncNodes.push(n);
+            n.level = parent.level + 1;
+            n.parentId = parentId;
         }
 
-        addToMap(dataForTimelineView[n.level], n.name, n)
-    })
+        addToMap(dataForTimelineView[n.level], n.name, n);
+    });
 }
 
 function updateSourceContext(node, sc) {
