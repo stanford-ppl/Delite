@@ -162,6 +162,8 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   case class DeliteArrayFromFunction[A:Manifest](length: Rep[Int], func: Exp[Int] => Exp[A]) extends DeliteOpMapIndices[A,DeliteArray[A]] {
     val size = copyTransformedOrElse(_.size)(length)
     override def alloc(len: Exp[Int]) = DeliteArray[A](len)
+
+    override def toString = "DeliteArrayFromFunction(" + length + ", " + body + ")" 
   }
 
   case class DeliteArrayFlatMap[A:Manifest,B:Manifest](in: Exp[DeliteArray[A]], func: Exp[A] => Exp[DeliteArray[B]])
@@ -169,6 +171,8 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
 
     override def alloc(len: Exp[Int]) = DeliteArray[B](len)
     val size = copyTransformedOrElse(_.size)(in.length)
+
+    override def toString = "DeliteArrayFlatMap(" + in + ", " + body + ")" 
   }
 
   case class DeliteArraySortIndices[A:Manifest](length: Rep[Int], sV: (Sym[Int],Sym[Int]), comparator: Block[Int]) extends DefWithManifest[A,DeliteArray[Int]]
@@ -176,7 +180,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
    
   /////////////////////
   // delite collection
-    
+  def isDeliteArrayTpe(x: Manifest[_])(implicit ctx: SourceContext) = isSubtype(x.erasure, classOf[DeliteArray[_]])
   def isDeliteArray[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.tp.erasure,classOf[DeliteArray[A]])  
   def asDeliteArray[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[DeliteArray[A]]]
     
@@ -313,7 +317,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
 
   override def mirrorNestedAtomic[A:Manifest](d: AtomicWrite[A], f: Transformer)(implicit pos: SourceContext): AtomicWrite[A] = d match {
     case DeliteArrayUpdate(l,i,r) => DeliteArrayUpdate(l,f(i),f(r))(mtype(manifest[A]))
-    case DeliteArrayCopy(a,ap,d,dp,l) => DeliteArrayCopy(f(a),f(ap),f(d),f(dp),l)(mtype(manifest[A]))
+    case DeliteArrayCopy(a,ap,d,dp,l) => DeliteArrayCopy(f(a),f(ap),d,f(dp),f(l))(mtype(manifest[A]))
     case _ => super.mirrorNestedAtomic(d,f)
   }
 

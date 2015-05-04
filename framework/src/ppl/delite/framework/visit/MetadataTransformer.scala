@@ -1,6 +1,5 @@
 package ppl.delite.framework.visit
 
-
 import scala.reflect.SourceContext
 import scala.collection.mutable.{HashMap,Stack}
 import scala.virtualization.lms.common._
@@ -12,43 +11,27 @@ import ppl.delite.framework.datastructures._
 import ppl.delite.framework.Util._
 import Meetable._
 
-// TODO: Where do these belong? In MetadataOps?
+// TODO: Find a better home for these
 trait MiscMetadata {
   val IR: DeliteOpsExp
   import IR._
 
-  case class AnalysisContext(var symPos: List[SourceContext], var defPos: List[SourceContext], var defDesc: String) {
-    def setSymPos(e: Exp[Any]) { symPos = e.pos }
-  }
+  def isMultiArrayTpe(x: Manifest[_]) = isSubtype(x.erasure, classOf[DeliteMultiArray[_]])
 
-  object AnalysisContext {
-    def apply(stm: Stm): AnalysisContext = stm match {
-      case TP(s, Reflect(d,_,_)) => AnalysisContext(s.pos, s.pos, d.toString)
-      case TP(s,d) => AnalysisContext(s.pos, s.pos, d.toString)
-      case _ => AnalysisContext(Nil,Nil,"")
-    }
-  }
-
-  implicit def srcCtxToAnalysisCtx(ctx: SourceContext) = AnalysisContext(List(ctx),List(ctx),"")
-
-  final def isDeliteArrayType[T](tp: Manifest[T]) = isSubtype(tp.erasure, classOf[DeliteArray[_]])
-  final def isDeliteArrayBufferType[T](tp: Manifest[T]) = isSubtype(tp.erasure, classOf[DeliteArrayBuffer[T]])
-  final def isMultiArrayType[T](tp: Manifest[T]) = isSubtype(tp.erasure, classOf[DeliteMultiArray[_]])
-
-  final def hasMultiArrayChild[T](tp: Manifest[T]): Boolean = tp match {
-    case tp if isMultiArrayType(tp) => true 
+  def hasMultiArrayChild[T](tp: Manifest[T]): Boolean = tp match {
+    case tp if isMultiArrayTpe(tp) => true 
     case StructType(_,elems) => elems.map{f => hasMultiArrayChild(f._2)}.fold(false){_||_}
     case tp => tp.typeArguments.map{f => hasMultiArrayChild(f)}.fold(false){_||_}
   }
 
-  final def isDataStructureType[T](tp: Manifest[T]): Boolean = tp match {
+  def isDataStructureType[T](tp: Manifest[T]): Boolean = tp match {
     case StructType(_,_) => true
-    case tp if isDeliteArrayType(tp) => true
-    case tp if isMultiArrayType(tp) => true
+    case tp if isDeliteArrayTpe(tp) => true
+    case tp if isMultiArrayTpe(tp) => true
     case _ => false
   }
 
-  final def isMutable(e: Exp[Any]): Boolean = e match {
+  def isMutable(e: Exp[Any]): Boolean = e match {
     case s: Sym[_] => isWritableSym(s)
     case _ => false
   }
@@ -65,7 +48,7 @@ trait MetadataTransformer extends MiscMetadata {
 
   protected object data {
     def contains(e: Exp[Any]) = (regionMetadata.indexWhere(_.contains(e)) >= 0)
-    def update(e: Exp[Any], p: SymbolProperties) { metadata(e) = p }
+    def update(e: Exp[Any], p: SymbolProperties) { if (regionMetadata.nonEmpty) metadata(e) = p }
     def get(e: Exp[Any]): Option[SymbolProperties] = {
       val i = regionMetadata.indexWhere(_.contains(e))
       if (i >= 0) regionMetadata(i).get(e) else None
@@ -87,7 +70,7 @@ trait MetadataTransformer extends MiscMetadata {
     regionMetadata.top ++= exitedRegion.filter{m => !regionMetadata.top.contains(m._1) } 
   }
   // TODO: should result of meet be written to location where mapping is, or top of stack?
-  protected def exitRegionWithMeet(func: MeetFunc)(implicit ctx: AnalysisContext) {
+  protected def exitRegionWithMeet(func: MeetFunc)(implicit ctx: SourceContext) {
     val exitedRegion = regionMetadata.pop()
     for ((e,p) <- exitedRegion) {
       val i = regionMetadata.indexWhere(_.contains(e))
@@ -95,7 +78,7 @@ trait MetadataTransformer extends MiscMetadata {
       else         { regionMetadata.top(e) = attemptMeet(p, regionMetadata(i)(e), func) }
     }
   }
-  protected def exitRegionWithOverwrite()(implicit ctx: AnalysisContext) { exitRegionWithMeet(func = MetaOverwrite) }
+  protected def exitRegionWithOverwrite()(implicit ctx: SourceContext) { exitRegionWithMeet(func = MetaOverwrite) }
 
   // TODO: multiple inputs? formalize this
   final def chain(a: MetadataTransformer) { regionMetadata = a.regionMetadata }
@@ -103,21 +86,21 @@ trait MetadataTransformer extends MiscMetadata {
   /////////////////////////////
   // Meet with error reporting
 
-  final def attemptMeet[T: Meetable](a: T, b: T, func: MeetFunc)(implicit ctx: AnalysisContext): T = {
+  final def attemptMeet[T: Meetable](a: T, b: T, func: MeetFunc)(implicit ctx: SourceContext): T = {
     if (canMeet(a,b,func)) { meet(a,b,func) }
     else {
       val inc = incompatibilities(a,b,func)
-      val op = if (ctx.defDesc == "") "" else " in " + ctx.defDesc
       if (!inc.isEmpty) {
-        fatalerr(quotePos(ctx.defPos) + ": " + inc.head + op + quoteCode(ctx.defPos).map{"\n\t" + _}.getOrElse(""))
+        fatalerr(quotePos(ctx) + ": " + inc.head + "\n\t" + quoteCode(ctx).map{"\n\t" + _}.getOrElse("") + 
+                  "LHS metadata: " + makeString(a) + "\n" +
+                  "RHS metadata: " + makeString(b) + "\n")
       }
       else {
         // Old version of error reporting - remove later
-        val sym = quoteSymPos(ctx.symPos,ctx.defPos)
-        fatalerr(quotePos(ctx.defPos) + ": " + op + "attempted to meet incompatible metadata for symbol originally defined " + sym + "\n" + 
+        fatalerr(quotePos(ctx) + ": Attempted to meet incompatible metadata for symbol used here:\n" + 
                   "LHS metadata: " + makeString(a) + "\n" +
                   "RHS metadata: " + makeString(b) + "\n" + 
-                  quoteCode(ctx.defPos).map{"\t" + _}.getOrElse("")
+                  quoteCode(ctx).map{"\t" + _}.getOrElse("")
                 )
       }
       (a) // unreachable
@@ -140,10 +123,10 @@ trait MetadataTransformer extends MiscMetadata {
   /**
    * Directly add symbol property metadata for symbol
    */ 
-  final def setProps(e: Exp[Any], p: Option[SymbolProperties])(implicit ctx: AnalysisContext) {
+  final def setProps(e: Exp[Any], p: Option[SymbolProperties])(implicit ctx: SourceContext) {
     if (p.isDefined) { updateProperties(e, p.get) }
   }
-  final def setProps(e: Exp[Any], p: SymbolProperties)(implicit ctx: AnalysisContext) {
+  final def setProps(e: Exp[Any], p: SymbolProperties)(implicit ctx: SourceContext) {
     updateProperties(e, p)
   }
 
@@ -151,13 +134,13 @@ trait MetadataTransformer extends MiscMetadata {
    * Add metadata information for this symbol (possibly using meet)
    * Uses notifyUpdate() to note if symbol-metadata mapping has changed
    */
-  final def setMetadata(e: Exp[Any], m: Option[Metadata])(implicit ctx: AnalysisContext): Unit = {
+  final def setMetadata(e: Exp[Any], m: Option[Metadata])(implicit ctx: SourceContext): Unit = {
     val newData = initExp(e, m)
     updateProperties(e, newData)
   }
-  final def setMetadata(e: Exp[Any], m: Metadata)(implicit ctx: AnalysisContext): Unit = setMetadata(e, Some(m))
+  final def setMetadata(e: Exp[Any], m: Metadata)(implicit ctx: SourceContext): Unit = setMetadata(e, Some(m))
 
-  final def copyMetadata(e: Exp[Any], p: SymbolProperties)(implicit ctx: AnalysisContext): Unit = {
+  final def copyMetadata(e: Exp[Any], p: SymbolProperties)(implicit ctx: SourceContext): Unit = {
     p.data.keys foreach {k => setMetadata(e, p(k))}
   }
 
@@ -165,22 +148,46 @@ trait MetadataTransformer extends MiscMetadata {
    * Add child information for this symbol (possibly using meet)
    * Uses notifyUpdate() to note if symbol-metadata mapping has changed
    */
-  final def setChild(e: Exp[Any], p: Option[SymbolProperties])(implicit ctx: AnalysisContext): Unit = {
+  final def setChild(e: Exp[Any], p: Option[SymbolProperties])(implicit ctx: SourceContext): Unit = {
     val newData = initExp(e, None, p)
     updateProperties(e, newData)
   } 
-  final def setField(struct: Exp[Any], p: Option[SymbolProperties], field: String)(implicit ctx: AnalysisContext): Unit = {
+  final def setField(struct: Exp[Any], p: Option[SymbolProperties], field: String)(implicit ctx: SourceContext): Unit = {
     val newData = initExp(struct, None, p, Some(field))
     updateProperties(struct, newData)
   }
 
-  final def props(e: Exp[Any]): SymbolProperties = getProps(e).get
-  final def child(e: Exp[Any]): SymbolProperties = getChild(e).get
-  final def child(e: Exp[Any], index: String) = getField(e, index).get
+  final def getProps(e: Exp[Any]): Option[SymbolProperties] = Some( data.getOrElse(e)(initExp(e)(mpos(e.pos))) ) 
+
+  final def getMetadata(e: Exp[Any], k: String): Option[Metadata] = getProps(e).flatMap{_.apply(k)}
+
+  /**
+   * Get child information for given symbol
+   */
+  final def getChild(p: SymbolProperties): Option[SymbolProperties] = p match {
+    case p: ArrayProperties => p.child
+    case _ =>
+      warn("This is likely a compiler bug! Attempted to get child of non-array symbol: \n" + makeString(p))
+      None
+  }
+  final def getField(p: SymbolProperties, name: String): Option[SymbolProperties] = p match {
+    case p: StructProperties => p.child(name)
+    case _ => 
+      warn("This is likely a compiler bug! Attempted to get field " + name + " of non-Struct symbol \n" + makeString(p))
+      None
+  }
+
+  final def getChild(e: Exp[Any]): Option[SymbolProperties] = getProps(e) match {
+    case Some(p) => getChild(p)
+    case None => None
+  }
+  final def getField(struct: Exp[Any], name: String): Option[SymbolProperties] = getProps(struct) match {
+    case Some(p) => getField(p, name)
+    case None => None
+  }
 
   // --- Shortcuts for properties, manifests
   // Get symbol properties for data field 
-  // TODO: Change function name?
   final def mdat(x: Exp[Any]): SymbolProperties = mdat(props(x))
   final def mdat(x: SymbolProperties): SymbolProperties = x match {
     case (s: StructProperties) => s.child("data").get
@@ -188,45 +195,32 @@ trait MetadataTransformer extends MiscMetadata {
     case _ => sys.error("Symbol properties " + x + " has no data field")
   }
 
-
-  final def getProps(e: Exp[Any]): Option[SymbolProperties] = Some(data.getOrElse(e)(initExp(e)(AnalysisContext(e.pos,e.pos,""))))
-
-  final def getMetadata(e: Exp[Any], k: String): Option[Metadata] = getProps(e).flatMap{_.apply(k)}
-
-  /**
-   * Get child information for given symbol
-   */
-  final def getChild(e: Exp[Any]): Option[SymbolProperties] = getProps(e) match {
-    case Some(p: ArrayProperties) => p.child
-    case Some(p) =>
-      warn("This is likely a compiler bug! Attempted to get child of non-array symbol " + strDef(e) + " at " + quotePos(e.pos))
-      warn(makeString(p))
-      None
-    case None => None
-  }
-  final def getField(struct: Exp[Any], name: String): Option[SymbolProperties] = getProps(struct) match {
-    case Some(p: StructProperties) => p.child(name)
-    case Some(p) =>
-      warn("This is likely a compiler bug! Attempted to get field " + name + " of non-Struct symbol " + strDef(struct) + " at " + quotePos(struct.pos))
-      warn(makeString(p))
-      None
-    case None => None
-  }
+  // These should only be used when child is guaranteed to be defined
+  final def child(p: SymbolProperties): SymbolProperties = getChild(p).get
+  final def child(p: SymbolProperties, index: String) = getField(p, index).get
+  final def props(e: Exp[Any]): SymbolProperties = getProps(e).get
+  final def child(e: Exp[Any]): SymbolProperties = getChild(e).get
+  final def child(e: Exp[Any], index: String) = getField(e, index).get
 
   /**
    * Merge previous metadata for token and new data, notifying update if changes occurred
    * During merge, new metadata overrides pre-existing data when possible
    */ 
-  private def updateProperties(e: Exp[Any], p: SymbolProperties)(implicit ctx: AnalysisContext) {
+  private def updateProperties(e: Exp[Any], p: SymbolProperties)(implicit ctx: SourceContext) {
     if (!data.contains(e)) {
       data(e) = p
       notifyUpdate(e)
     }
     else {
       val prevProps = data(e)
-      val newProps = attemptMeet(prevProps, p, func = MetaOverwrite)
-      data(e) = newProps
-      if (!matches(prevProps, newProps)) notifyUpdate(e)
+      try {
+        val newProps = attemptMeet(prevProps, p, func = MetaOverwrite)
+        data(e) = newProps
+        if (!matches(prevProps, newProps)) notifyUpdate(e)
+      } catch { case e: Throwable =>
+        printmsg("Unable to meet existing symbol property: \n" + makeString(prevProps) + "\n and new property: \n" + makeString(p))
+        sys.error("Metadata compiler error!")
+      }
     }
   }
 
@@ -240,14 +234,14 @@ trait MetadataTransformer extends MiscMetadata {
     data: Option[Metadata] = None,
     child: Option[SymbolProperties] = None,
     field: Option[String] = None
-  )(implicit ctx: AnalysisContext): SymbolProperties = initSym(e.tp, data, child, field)
+  )(implicit ctx: SourceContext): SymbolProperties = initSym(e.tp, data, child, field)
 
   private def initSym[A](
     mA: Manifest[A], 
     data: Option[Metadata] = None,
     child: Option[SymbolProperties] = None,
     field: Option[String] = None
-  )(implicit ctx: AnalysisContext): SymbolProperties = {
+  )(implicit ctx: SourceContext): SymbolProperties = {
     val givenData = PropertyMap(data.map{m => m.name -> Some(m)}.toList)
     val typeData = PropertyMap(defaultTypeMetadata(mA).map{m => m.name -> Some(m)}) 
     val symData = attemptMeet(givenData, typeData, func = MetaTypeInit)
@@ -261,9 +255,10 @@ trait MetadataTransformer extends MiscMetadata {
                           val givenField = PropertyMap(List(field.get -> child))
                           attemptMeet(givenField, typeFields, func = MetaTypeInit)
                         }
+
         StructProperties(symFields, symData)
 
-      case tp if isDeliteArrayType(tp) || isMultiArrayType(tp) =>
+      case tp if isDeliteArrayTpe(tp) || isMultiArrayTpe(tp) =>
         val typeChild = mA.typeArguments match {
           case Nil => None
           case tps => 

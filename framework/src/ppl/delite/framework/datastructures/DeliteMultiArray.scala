@@ -47,6 +47,17 @@ trait DeliteMultiArrayOps extends DeliteAbstractOps {
     def mutable: Rep[DeliteMultiArray[T]] = dmultia_mutable(ma)
     def immutable: Rep[DeliteMultiArray[T]] = dmultia_immutable(ma)
     
+    // --- Reshaping
+    def reshape(d0: Rep[Int]): Rep[DeliteArray1D[T]] = dmultia_reshape(ma, Seq(d0)).as1D
+    def reshape(d0: Rep[Int], d1: Rep[Int]): Rep[DeliteArray2D[T]] = dmultia_reshape(ma, Seq(d0, d1)).as2D
+    def reshape(d0: Rep[Int], d1: Rep[Int], d2: Rep[Int]): Rep[DeliteArray3D[T]] = dmultia_reshape(ma, Seq(d0, d1, d2)).as3D
+    def reshape(d0: Rep[Int], d1: Rep[Int], d2: Rep[Int], d3: Rep[Int]): Rep[DeliteArray4D[T]] = dmultia_reshape(ma, Seq(d0, d1, d2, d3)).as4D
+    def reshape(d0: Rep[Int], d1: Rep[Int], d2: Rep[Int], d3: Rep[Int], d4: Rep[Int]): Rep[DeliteArray5D[T]] = dmultia_reshape(ma, Seq(d0, d1, d2, d3, d4)).as5D
+    def reshape(d0: Rep[Int], d1: Rep[Int], d2: Rep[Int], d3: Rep[Int], d4: Rep[Int], d5: Rep[Int]*): Rep[DeliteMultiArray[T]] = dmultia_reshape(ma, Seq(d0, d1, d2, d3, d4) ++ d5.toSeq)
+
+    // --- Permuting
+    def permute(i: Int*) = dmultia_permute(ma, i.toSeq)
+
     // --- single element
     def apply(i: Rep[Int]*): Rep[T] = dmultia_apply(ma,indices_new(i.toList))
     def update(i: Seq[Rep[Int]], x: Rep[T]): Rep[Unit] = dmultia_update(ma,indices_new(i),x)
@@ -86,6 +97,11 @@ trait DeliteMultiArrayOps extends DeliteAbstractOps {
     // --- copies
     def mutable: Rep[DeliteArray1D[T]] = dmultia_mutable(ma).as1D
     def immutable: Rep[DeliteArray1D[T]] = dmultia_immutable(ma).as1D
+
+    // --- slicing
+    // NOTE: len here is the length of the array view (including stride). should be calculated as floor((prev_len - start)/stride)
+    def slice(start: Rep[Int], stride: Rep[Int], len: Rep[Int]) = dmultia_view(ma, Seq(start), Seq(stride), Seq(len)).as1D
+    def slice(start: Rep[Int], len: Rep[Int]) = dmultia_view(ma, Seq(start), Seq(unit(1)), Seq(len)).as1D
 
     // --- mutability / buffering
     def update(i: Rep[Int], x: Rep[T]): Rep[Unit] = dmultia_update(ma,Indices(i),x)
@@ -135,6 +151,9 @@ trait DeliteMultiArrayOps extends DeliteAbstractOps {
     def mutable: Rep[DeliteArray2D[T]] = dmultia_mutable(ma).as2D
     def immutable: Rep[DeliteArray2D[T]] = dmultia_immutable(ma).as2D
 
+    // --- Permuting
+    def t: Rep[DeliteArray2D[T]] = dmultia_permute(ma, Seq(1,0)).as2D
+
     // --- mutability/buffering
     def update(i: Rep[Int], j: Rep[Int], x: Rep[T]): Rep[Unit] = dmultia_update(ma,Indices(i,j),x)
 
@@ -157,11 +176,11 @@ trait DeliteMultiArrayOps extends DeliteAbstractOps {
     def map[B:Manifest](f: Rep[T] => Rep[B]): Rep[DeliteArray2D[B]] = dmultia_map(ma,f).as2D
     def zip[B:Manifest,R:Manifest](y: Rep[DeliteArray2D[B]])(f: (Rep[T],Rep[B]) => Rep[R]): Rep[DeliteArray2D[R]] = dmultia_zipwith(ma,y,f).as2D
 
-    def for2DIndices(f: (Rep[Int], Rep[Int]) => Rep[Unit]): Rep[Unit] = dmultia_forindices(ma, {i: Rep[LoopIndices] => f(i(0), i(1)) })
+    def forIndices(f: (Rep[Int], Rep[Int]) => Rep[Unit]): Rep[Unit] = dmultia_forindices(ma, {i: Rep[LoopIndices] => f(i(0), i(1)) })
     def mapRows[R:Manifest](f: Rep[DeliteArray1D[T]] => Rep[DeliteArray1D[R]]) = dmultia_NDmap(ma,List(0),{r: Rep[DeliteMultiArray[T]] => f(r.as1D) }).as2D
     def mapCols[R:Manifest](f: Rep[DeliteArray1D[T]] => Rep[DeliteArray1D[R]]) = dmultia_NDmap(ma,List(1),{c: Rep[DeliteMultiArray[T]] => f(c.as1D) }).as2D
   
-    def mkString(colDel: Rep[String] = unit(","), rowDel: Rep[String] = unit("\n")) = dmultia_mkstring(ma,Seq(colDel,rowDel))
+    def mkString(rowDel: Rep[String] = unit("\n"), colDel: Rep[String] = unit(",")) = dmultia_mkstring(ma,Seq(rowDel,colDel))
   }
 
   // --- Array constructors
@@ -613,7 +632,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
     case op: DeliteMultiArrayFromFunction[_] => List(op.v) ::: effectSyms(op.body)
     case op: DeliteMultiArrayMap[_,_] => List(op.v) ::: effectSyms(op.body)
     case op: DeliteMultiArrayZipWith[_,_,_] => List(op.v) ::: effectSyms(op.body)
-    case op: DeliteMultiArrayReduce[_] => List(op.rV._1, op.rV._2) ::: effectSyms(op.body)
+    case op: DeliteMultiArrayReduce[_] => List(op.rV._1, op.rV._2) ::: effectSyms(op.body) ::: effectSyms(op.lookup)
     case op: DeliteMultiArrayForeach[_] => List(op.v) ::: effectSyms(op.body)
     case op: DeliteMultiArrayForIndices[_] => List(op.v) ::: effectSyms(op.body) 
     case op: DeliteMultiArrayNDMap[_,_] => List(op.rV) ::: effectSyms(op.body)
@@ -621,6 +640,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
     case op: DeliteMultiArrayGroupByReduce[_,_,_] => List(op.v,op.rV._1,op.rV._2) ::: effectSyms(op.keyFunc) ::: effectSyms(op.valFunc) ::: effectSyms(op.redFunc)
     case op: DeliteMultiArrayMapFilter[_,_] => List(op.v) ::: effectSyms(op.mapFunc) ::: effectSyms(op.filtFunc)
     case op: DeliteMultiArrayFlatMap[_,_] => List(op.v) ::: effectSyms(op.body)
+    case DeliteMultiArraySortIndices(_,i,body) => syms(i) ::: effectSyms(body)
     case _ => super.boundSyms(e)
   }
 

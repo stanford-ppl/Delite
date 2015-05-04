@@ -77,7 +77,7 @@ trait LayoutAnalyzer extends IRVisitor with MetadataTransformer with MultiArrayH
 
   // Recursively sets layouts of all arrays to be flat
   // TODO: Currently all layouts are of type "Nothing"
-  def setLayout(p: Option[SymbolProperties])(implicit ctx: AnalysisContext): Option[SymbolProperties] = p match {
+  def setLayout(p: Option[SymbolProperties])(implicit ctx: SourceContext): Option[SymbolProperties] = p match {
     case Some(a: ArrayProperties) => 
       val datType = MADataType(isPhysView(a), isPhysBuffer(a))
       Some(ArrayProperties(setLayout(a.child), PropertyMap("layout" -> FlatLayout(rank(a),datType) )))
@@ -89,8 +89,8 @@ trait LayoutAnalyzer extends IRVisitor with MetadataTransformer with MultiArrayH
   // Super simple analysis - make everything flat, row-major 
   override def runOnce[A:Manifest](s: Block[A]): Block[A] = {
     for (e <- regionMetadata.top.keySet) {
-      implicit val ctx = AnalysisContext(e.pos, e.pos, "")
-
+      implicit val ctx: SourceContext = mpos(e.pos)
+ 
       if (hasMultiArrayChild(e.tp)) {
         val origProps = getProps(e)
         val newProps = setLayout(origProps)

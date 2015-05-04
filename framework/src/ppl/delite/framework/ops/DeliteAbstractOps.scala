@@ -15,16 +15,15 @@ trait Indices extends AbstractIndices
 trait LoopIndices extends AbstractIndices
 
 trait IndicesOps extends Base {
-  object Indices { def apply(xs: Rep[Int]*) = indices_new(xs.toList) }
-
   implicit def repIndicesToIndicesOpsCls(x: Rep[AbstractIndices]) = new IndicesOpsCls(x)
   class IndicesOpsCls(x: Rep[AbstractIndices]) { def apply(i: Int) = indices_apply(x, i) }
+  def indices_apply(s: Rep[AbstractIndices], i: Int): Rep[Int]
+
+  object Indices { def apply(xs: Rep[Int]*) = indices_new(xs.toList) }
+  def indices_new(xs: Seq[Rep[Int]]): Rep[Indices]
 
   implicit def loopindicesToOps(x: Rep[LoopIndices]) = new LoopIndicesOpsCls(x) 
   class LoopIndicesOpsCls(x: Rep[LoopIndices]) { def flat = loopindices_flat(x) }
-
-  def indices_new(xs: Seq[Rep[Int]]): Rep[Indices]
-  def indices_apply(s: Rep[AbstractIndices], i: Int): Rep[Int]
   def loopindices_flat(x: Rep[LoopIndices]): Rep[Int]
 }
 
@@ -34,13 +33,13 @@ trait IndicesOpsExp extends IndicesOps with DeliteStructsExp {
   case class IndicesNew(xs: List[Exp[Int]]) extends DeliteStruct[Indices] {
     val elems = copyTransformedElems(xs.zipWithIndex.map{i => ("i" + i._2) -> i._1})
   }
-  case class LoopIndicesNew(flat: Exp[Int], is: Seq[Exp[Int]], ds: Seq[Exp[Int]]) extends DeliteStruct[LoopIndices] {
-    val elems = copyTransformedElems( (("flat" -> flat) +: is.zipWithIndex.map{i => ("i" + i._2) -> i._1}) ++ ds.zipWithIndex.map{i => ("d" + i._2) -> i._1})
+  case class LoopIndicesNew(flat: Exp[Int], is: Seq[Exp[Int]]) extends DeliteStruct[LoopIndices] {
+    val elems = copyTransformedElems( ("flat" -> flat) +: is.zipWithIndex.map{i => ("i" + i._2) -> i._1} )
   }
 
   // Should NOT have Reflect of abstract indices - this can pollute the context, causing these nodes to be preserved even when they shouldn't be
-  def loopIndices(i: Exp[Int]): Exp[LoopIndices] = reflectPure(LoopIndicesNew(i, Nil, Nil))
-  def loopindices_new(flat: Exp[Int], inds: Seq[Exp[Int]], dims: Seq[Exp[Int]]): Exp[LoopIndices] = reflectPure(LoopIndicesNew(flat,inds,dims))
+  def loopIndices(flat: Exp[Int]): Exp[LoopIndices] = reflectPure(LoopIndicesNew(flat, Nil))
+  def loopindices_new(flat: Exp[Int], inds: Seq[Exp[Int]]): Exp[LoopIndices] = reflectPure(LoopIndicesNew(flat,inds))
 
   def indices_new(x: Seq[Exp[Int]]): Exp[Indices] = reflectPure(IndicesNew(x.toList))
   def indices_apply(x: Exp[AbstractIndices], i: Int): Exp[Int] = field[Int](x, "i" + i)
@@ -48,7 +47,7 @@ trait IndicesOpsExp extends IndicesOps with DeliteStructsExp {
 
   // HACK: Allow index apply of LoopIndices before it's available
   override def field[T:Manifest](struct: Exp[Any], index: String)(implicit pos: SourceContext): Exp[T] = struct match {
-    case Def(LoopIndicesNew(f,i,d)) if index != "flat" && i.isEmpty => reflectPure(FieldApply[T](struct,index))
+    case Def(LoopIndicesNew(f,i)) if index != "flat" && i.isEmpty => reflectPure(FieldApply[T](struct,index))
     case _ => super.field[T](struct,index)
   }
 
@@ -60,10 +59,10 @@ trait IndicesOpsExp extends IndicesOps with DeliteStructsExp {
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@IndicesNew(x) => reflectPure(new {override val original = Some(f,e) } with IndicesNew(f(x)))(mtype(manifest[A]),ctx)
-    case e@LoopIndicesNew(l,i,d) => reflectPure(new {override val original = Some(f,e) } with LoopIndicesNew(f(l),f(i),f(d)))(mtype(manifest[A]),ctx)
+    case e@LoopIndicesNew(l,i) => reflectPure(new {override val original = Some(f,e) } with LoopIndicesNew(f(l),f(i)))(mtype(manifest[A]),ctx)
     
     case Reflect(e@IndicesNew(x),u,es) => reflectMirrored(Reflect(new {override val original = Some(f,e) } with IndicesNew(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]),ctx)
-    case Reflect(e@LoopIndicesNew(l,i,d),u,es) => reflectMirrored(Reflect(new {override val original = Some(f,e) } with LoopIndicesNew(f(l),f(i),f(d)), mapOver(f,u), f(es)))(mtype(manifest[A]),ctx)
+    case Reflect(e@LoopIndicesNew(l,i),u,es) => reflectMirrored(Reflect(new {override val original = Some(f,e) } with LoopIndicesNew(f(l),f(i)), mapOver(f,u), f(es)))(mtype(manifest[A]),ctx)
 
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]

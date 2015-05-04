@@ -148,10 +148,11 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
   }
 
   def darray_buffer_insertBuffer[A:Manifest](d: Exp[DeliteArrayBuffer[A]], pos: Exp[Int], xs: Exp[DeliteArrayBuffer[A]])(implicit ctx: SourceContext): Exp[Unit] = {
-    darray_buffer_insertspace(d,pos,xs.length)
+    val len = xs.length   // accounts for the corner case where d and xs are the same symbol
+    darray_buffer_insertspace(d,pos,len)
     val dest = darray_buffer_raw_data(d)
     val src = darray_buffer_raw_data(xs)
-    darray_copy(src, unit(0), dest, pos, xs.length)
+    darray_copy(src, unit(0), dest, pos, len)
   }
 
   protected def darray_buffer_copyfrom[A:Manifest](d: Exp[DeliteArrayBuffer[A]], pos: Exp[Int], xs: Exp[DeliteArray[A]]): Exp[Unit] = {

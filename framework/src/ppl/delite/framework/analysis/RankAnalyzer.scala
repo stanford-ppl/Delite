@@ -116,7 +116,7 @@ trait MultiArrayAnalyzerBase extends AnalyzerBase {
   val IR: DeliteOpsExp with DeliteMultiArrayOpsExp with DeliteMetadata
   import IR._
 
-  override def forwardPropagate[A](e: Exp[A], d: Def[_])(implicit ctx: AnalysisContext): Unit = d match {
+  override def forwardPropagate[A](e: Exp[A], d: Def[_])(implicit ctx: SourceContext): Unit = d match {
     case op@DeliteMultiArrayView(t,_,_,_) => setChild(e, getChild(t))
     case op@DeliteMultiArrayPermute(ma,_) => setChild(e, getChild(ma))
     case op@DeliteMultiArrayReshape(ma,_) => setChild(e, getChild(ma))
@@ -139,31 +139,27 @@ trait MultiArrayAnalyzerBase extends AnalyzerBase {
     
     // Aliasing from updates/inserts/etc
     case op@DeliteMultiArrayUpdate(ma,_,x) => 
-      ctx.setSymPos(ma)
       setChild(ma, attemptMeet(getChild(ma), getProps(x), func = MetaUpdate))
     case op@DeliteMultiArrayInsert(ma,x,_) =>
-      ctx.setSymPos(ma)
       setChild(ma, attemptMeet(getChild(ma), getProps(x), func = MetaUpdate))
     case op@DeliteMultiArrayAppend(ma,x) =>
-      ctx.setSymPos(ma)
       setChild(ma, attemptMeet(getChild(ma), getProps(x), func = MetaUpdate))
     case op@DeliteMultiArrayInsertAll(ma,x,_,_) =>
-      ctx.setSymPos(ma)
       setChild(ma, attemptMeet(getChild(ma), getChild(x), func = MetaUpdate))
 
     case _ => super.forwardPropagate(e,d)
   }
   
-  override def tracerToProperties(t: AtomicTracer, child: Option[SymbolProperties]) = t match {
-    case MultiArrayTracer(_) => ArrayProperties(child, NoData)
+  override def tracerToProperties(t: AtomicTracer, child: Option[SymbolProperties]): Option[SymbolProperties] = t match {
+    case MultiArrayTracer(_) => Some(ArrayProperties(child, NoData))
     case _ => super.tracerToProperties(t, child)
   }
 
-  override def getAtomicWriteRhs(d: AtomicWrite[Any])(implicit ctx: AnalysisContext): Option[Exp[Any]] = d match {
-    case DeliteMultiArrayUpdate(_,_,x) => Some(x)
-    case DeliteMultiArrayInsert(_,x,_) => Some(x)
-    case DeliteMultiArrayAppend(_,x) => Some(x)
-    case DeliteMultiArrayInsertAll(_,x,_,_) => Some(x)
+  override def getAtomicWriteRhs(d: AtomicWrite[Any])(implicit ctx: SourceContext): Option[SymbolProperties] = d match {
+    case DeliteMultiArrayUpdate(_,_,x) => Some(ArrayProperties(getProps(x), NoData))
+    case DeliteMultiArrayInsert(_,x,_) => Some(ArrayProperties(getProps(x), NoData))
+    case DeliteMultiArrayAppend(_,x) => Some(ArrayProperties(getProps(x), NoData))
+    case DeliteMultiArrayInsertAll(_,x,_,_) => Some(ArrayProperties(getChild(x), NoData))
     case DeliteMultiArrayRemove(_,_,_,_) => None
     case _ => super.getAtomicWriteRhs(d)
   }
@@ -173,9 +169,9 @@ trait RankAnalyzer extends MultiArrayAnalyzerBase with MultiArrayHelperStageOne 
   import IR._
   override val name = "Rank Analyzer"
   
-  def setRank(e: Exp[Any], rank: Int)(implicit ctx: AnalysisContext) { setMetadata(e, MRank(rank)) }
-  def setRank(e: Exp[Any], rank: Option[MRank])(implicit ctx: AnalysisContext) { setMetadata(e, rank) }
-  def enableBuffer(e: Exp[Any])(implicit ctx: AnalysisContext) { setMetadata(e, MBuffer(TrueType)) }
+  def setRank(e: Exp[Any], rank: Int)(implicit ctx: SourceContext) { setMetadata(e, MRank(rank)) }
+  def setRank(e: Exp[Any], rank: Option[MRank])(implicit ctx: SourceContext) { setMetadata(e, rank) }
+  def enableBuffer(e: Exp[Any])(implicit ctx: SourceContext) { setMetadata(e, MBuffer(TrueType)) }
 
   // Rank Analysis is run before MultiArray transformations - all preexisting arrays are rank 1
   override def defaultTypeMetadata[A](tp: Manifest[A]): List[Metadata] = {
@@ -188,7 +184,7 @@ trait RankAnalyzer extends MultiArrayAnalyzerBase with MultiArrayHelperStageOne 
     else Nil
   }
 
-  override def processOp[A](e: Exp[A], d: Def[_])(implicit ctx: AnalysisContext): Unit = d match {
+  override def processOp[A](e: Exp[A], d: Def[_])(implicit ctx: SourceContext): Unit = d match {
     // --- Rank rules for specific IR nodes
     case DeliteMultiArrayNew(dims)            => setRank(e, dims.length)
     case DeliteMultiArrayPermute(ma,_)        => setRank(e, getRank(ma))   
@@ -224,42 +220,44 @@ trait RankAnalyzer extends MultiArrayAnalyzerBase with MultiArrayHelperStageOne 
   var incomplete: List[Exp[Any]] = Nil
 
   override def postprocess[A:Manifest](b: Block[A]) = { 
-    printmsg("-------------------")
-    printmsg("End of retry # " + (retries + 1).toString)
+    //printmsg("-------------------")
+    //printmsg("End of retry # " + (retries + 1).toString)
     incomplete = checkCompleteness(b) 
-    //for (s <- incomplete) {
-      //warn(quotePos(s.pos) + ": Unable to statically determine the rank of " + s.tp + "\n\t" + quoteCode(s.pos).getOrElse(strDef(s)))
-      //setMetadata(s, MRank(1))(AnalysisContext(s.pos,s.pos,""))
-    //}
-    warn(incomplete.isEmpty, "Unable to statically determine the ranks of some arrays! This can occur if the type 'MultiArray' is used " + 
-                              "as an inner data structure type without element initialization. Proceeding assuming unknown ranks are 1D.")
-
-    printmsg("Incomplete: ")
-    for (s <- incomplete) {
-      printmsg(quotePos(s.pos))
-      printmsg("sym: " + strDef(s))
-      if (data.contains(s))
-        printmsg(s + makeString(data(s)))
-      else 
-        printmsg(s + ": [None]")
-      printmsg("")
-    } 
-    printmsg("\nComplete: ")
-    // List metadata
-    for ((k,v) <- metadata) {
-      if (isMultiArrayType(k.tp)) {
-        printmsg(quotePos(k.pos))     // change to printdbg later
-        printmsg("sym: " + strDef(k))
-        printmsg(k + makeString(v))
+    
+    if (incomplete.nonEmpty) {
+      printmsg("Incomplete: ")
+      for (s <- incomplete) {
+        warn(quotePos(s.pos) + ": Unable to statically determine the rank of " + s.tp + "\n\t" + quoteCode(s.pos).getOrElse(strDef(s)))
+        printmsg(quotePos(s.pos))
+        printmsg("sym: " + strDef(s))
+        if (data.contains(s))
+          printmsg(s + makeString(data(s)))
+        else 
+          printmsg(s + ": [None]")
         printmsg("")
-      }
-    }
-    printmsg("\n")
 
-    if (!incomplete.isEmpty) resume()
-    else {
-      // Nothing - move printing here later
+        setMetadata(s, MRank(1))(mpos(s.pos))
+      } 
+
+      warn("Unable to statically determine the ranks of some arrays! This can occur if the type 'MultiArray' is used " + 
+           "as an inner data structure type without element initialization. Proceeding assuming unknown ranks are 1D.")
+      // Try analysis again with assumption that unknowns are of rank 1
+      resume()
     }
+    if (debugMode) {
+      printmsg("\nComplete: ")
+      // List metadata
+      for ((k,v) <- metadata) {
+        if (isMultiArrayTpe(k.tp)) {
+          printmsg(quotePos(k.pos))     // change to printdbg later
+          printmsg("sym: " + strDef(k))
+          printmsg(k + makeString(v))
+          printmsg("")
+        }
+      }
+      printmsg("\n")
+    }
+
     super.postprocess(b)
   }
   override def hasCompleted = incomplete.isEmpty
@@ -284,7 +282,7 @@ trait RankChecker extends MultiArrayAnalyzerBase with MultiArrayHelperStageTwo {
 
   override val autopropagate = false
 
-  def processOp[A](e: Exp[A], d: Def[_])(implicit ctx: AnalysisContext): Unit = d match {
+  def processOp[A](e: Exp[A], d: Def[_])(implicit ctx: SourceContext): Unit = d match {
     case op@DeliteMultiArrayPermute(ma,config) =>
       check(rank(ma) == config.length, "Number of dimensions given in permute conifguration must match input MultiArray rank")
 

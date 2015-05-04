@@ -7,6 +7,7 @@ import ppl.delite.framework.visit.Meetable._
 import ppl.delite.framework.ops.DeliteOpsExp
 
 import scala.collection.immutable
+import scala.reflect.SourceContext
 
 // Quick and dirty method for dumping stack trace to stdout
 /*import java.io.{StringWriter, PrintWriter}
@@ -34,27 +35,31 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor w
   override def hasContext = true
   override def notifyUpdate(e: Exp[Any]): Unit = { notifyChange() }
 
-  // Transform a list of statements (e.g. innerScope) to reflect additions made to current scope 
-  // via transforming. Need to append new stms to list - not generally safe to remove original versions yet
-  def updateStmList(xs: List[Stm]) = if (xs ne null) xs.map {
-    case stm@TP(s,d) => f(s) match {
-      case s2: Sym[_] if s2 != s => findDefinition(s2).toList :+ stm
-      case _ => List(stm)
-    }
-    case stm => List(stm)
-  }.flatten else null
+  // Update innerScope to reflect changes/additions to this block
+  // This allows multiple transformations of the same block in a single pass
+  // Important because a pattern like:
+  // val block2 = transformBlock(block)
+  // val block3 = transformBlock(block2)
+  // will silently eat the Reify of block2 without these additions to innerScope
+  // Also needed(?) to create new blocks in the IR during transform?
+  // TODO: This should not be here! This should be in LMS scheduling!
+  def withInnerScopeAdditions[A](block: => Block[A]): Block[A] = {
+    val prevDefs = globalDefs
+    val tblock = block
+    val newDefs = globalDefs filterNot { prevDefs contains _ }
+    if (innerScope ne null)
+      innerScope = innerScope ::: newDefs
+    //else
+    //  innerScope = newDefs  // Is this correct/needed? innerScope is null at top?
+    (tblock)
+  }
 
   override def reflectBlock[A](block: Block[A]): Exp[A] = withSubstScope {
     traverseBlock(block)
-    
-    // Update innerScope to reflect changes to this block
-    // This allows multiple transformations of the same block in a single pass
-    innerScope = updateStmList(innerScope)
-    
     apply(getBlockResult(block))
   }
   def transformBlock[A:Manifest](block: Block[A]): Block[A] = {
-    reifyEffects{ reflectBlock(block) }
+    withInnerScopeAdditions{ reifyEffects{ reflectBlock(block) } }
   }
 
   override def apply[A:Manifest](xs: Block[A]): Block[A] = transformBlock(xs)
@@ -74,15 +79,33 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor w
     }
   }
 
-  // Transform blocks prior to transforming current 
-  override def traverseStm(stm: Stm): Unit = { transformStm(stm) }
+  /**
+   * Remove an intermediate (dead) sym from local def table, global def table,
+   * and context symbol list. Needed to keep intermediate steps from causing 
+   * code duplication by getting into reflect/reify node symbol lists
+   * TODO: Does NOT remove from symbol table - should it?
+   * TODO: This is rather hacky - is there API for this kind of thing?
+   */
+  def scrubSym(sym: Sym[Any]) = {
+    def scrubIntermediateSym(stms: List[Stm]) = stms filterNot {
+      case TP(lhs,rhs) => (lhs == sym)
+      case _ => false
+    }
+    localDefs = scrubIntermediateSym(localDefs)
+    globalDefs = scrubIntermediateSym(globalDefs)
+    context = context filterNot {s => s == sym}
+  }
+
+  override def traverseStm(stm: Stm): Unit = transformStm(stm)
 
   def transformStm(stm: Stm): Exp[Any] = stm match {
     case TP(s, d) if (apply(s) == s) => 
+      implicit val ctx: SourceContext = mpos(s.pos)
 
-      val sub = transformSym(s,d)(AnalysisContext(stm)) match {
+      printDebug("Transforming: " + strDef(s))
+      val sub = transformSym(s,d) match {
         case Some(s2) => 
-          transferMetadata(s, s2, d)(AnalysisContext(stm))
+          transferMetadata(s2, s, d)
           (s2)
         case None => 
           self_mirror(s,d)
@@ -90,6 +113,8 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor w
       if (subst.contains(s) && subst(s) != sub)
         printmsg("error: already have substitution for " + strDef(s) + ":\n\t" + strDef(subst(s)))
         
+      printDebug("Created: " + strDef(sub))
+
       assert(!subst.contains(s) || subst(s) == sub)
       if (s != sub) { subst += s -> sub }
 
@@ -98,26 +123,25 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor w
 
   override def runOnce[A:Manifest](b: Block[A]): Block[A] = {
     if (debugMode) {
-      printmsg("")
-      printmsg("------------------------------------------")
+      printmsg("--------------------------------------------------------")
       printmsg(name + ": Starting iteration " + runs)
-      printmsg("------------------------------------------")
+      printmsg("--------------------------------------------------------")
     }
-    subst = subst ++ nextSubst // TODO: is this needed?
+    subst = subst ++ nextSubst
     nextSubst = Map.empty
     transformBlock(b)
   }
 
   // Create Some replacement for given definition node if required, None if not
-  def transformSym[A](s: Sym[A], d: Def[A])(implicit ctx: AnalysisContext): Option[Exp[Any]]
+  def transformSym[A](s: Sym[A], d: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]]
   // Transfer metadata from original symbol to transformed symbol (can also be done during trasnformation)
-  def transferMetadata(orig: Exp[Any], e2: Exp[Any], d: Def[Any])(implicit ctx: AnalysisContext): Unit
+  def transferMetadata(sub: Exp[Any], orig: Exp[Any], d: Def[Any])(implicit ctx: SourceContext): Unit
 
   // TODO: Will have to move this change to generic transformer framework eventually
-  def self_mirror[A](sym: Sym[A], rhs : Def[A]): Exp[A] = {
+  def self_mirror[A](sym: Sym[A], rhs : Def[A])(implicit ctx: SourceContext): Exp[A] = {
     try {
-      val s2 = mirror(rhs, self.asInstanceOf[Transformer])(mtype(sym.tp),mpos(sym.pos)) // cast needed why?
-      setProps(s2, getProps(sym))(AnalysisContext(sym.pos, sym.pos, ""))
+      val s2 = mirror(rhs, self.asInstanceOf[Transformer])(mtype(sym.tp),ctx) // cast needed why?
+      setProps(s2, getProps(sym))
       (s2)
     } catch { //hack -- should not catch errors
       case e if e.toString contains "don't know how to mirror" => 

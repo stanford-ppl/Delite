@@ -27,7 +27,7 @@ trait MultiArrayWrapTransformer extends TransformerBase with MultiArrayHelperSta
   override val name = "MultiArray Wrapper"
   override val debugMode = true
 
-  def buffify[T:Manifest](x: Exp[DeliteMultiArray[T]])(implicit ctx: AnalysisContext): Exp[DeliteMultiArray[T]] = {
+  def buffify[T:Manifest](x: Exp[DeliteMultiArray[T]])(implicit ctx: SourceContext): Exp[DeliteMultiArray[T]] = {
     if (!isPhysBuffer(x)) {
       val x2 = reflectPure(MultiArrayBuffify(x))
       setProps(x2, getProps(x))
@@ -37,7 +37,7 @@ trait MultiArrayWrapTransformer extends TransformerBase with MultiArrayHelperSta
     else x
   }
 
-  def viewify[T:Manifest](x: Exp[DeliteMultiArray[T]])(implicit ctx: AnalysisContext): Exp[DeliteMultiArray[T]] = {
+  def viewify[T:Manifest](x: Exp[DeliteMultiArray[T]])(implicit ctx: SourceContext): Exp[DeliteMultiArray[T]] = {
     if (!isPhysView(x)) {
       val x2 = reflectPure(MultiArrayViewify(x))
       setProps(x2, getProps(x))
@@ -50,8 +50,8 @@ trait MultiArrayWrapTransformer extends TransformerBase with MultiArrayHelperSta
   // TODO: Check alignment further down (e.g. Array of Buffers vs. Array of Arrays)
   // Top level mismatch is easy, just wrap with View or Buffer
   // But what about levels further down? Implicitly generate a map??
-  def wrap(e: Exp[Any], out: SymbolProperties)(implicit ctx: AnalysisContext): Option[Exp[DeliteMultiArray[Any]]] = {
-    if (isMultiArrayType(e.tp)) {
+  def wrap(e: Exp[Any], out: SymbolProperties)(implicit ctx: SourceContext): Option[Exp[DeliteMultiArray[Any]]] = {
+    if (isMultiArrayTpe(e.tp)) {
       if (isPhysBuffer(out) && !isPhysBuffer(e) && isPhysView(out) && !isPhysView(e)) {
         Some(viewify(buffify(e.asInstanceOf[Exp[DeliteMultiArray[Any]]])))
       }
@@ -62,7 +62,7 @@ trait MultiArrayWrapTransformer extends TransformerBase with MultiArrayHelperSta
     else None
   }
 
-  override def transformSym[A](s: Sym[A], d: Def[A])(implicit ctx: AnalysisContext): Option[Exp[Any]] = d match {
+  override def transformSym[A](s: Sym[A], d: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]] = d match {
     // --- var aliasing
     case Reflect(Assign(Variable(v),rhs),_,_) =>
       wrap(rhs, props(v)).map{r2 => var_assign(Variable(v), r2) }
@@ -94,11 +94,11 @@ trait MultiArrayWrapTransformer extends TransformerBase with MultiArrayHelperSta
     case _ => None
   }
 
-  def substituteAtomicWrite(s: Exp[Any], d: Def[Any], trace: List[AtomicTracer])(implicit ctx: AnalysisContext): Option[Exp[Any]] = d match {
+  def substituteAtomicWrite(s: Exp[Any], d: Def[Any], trace: List[AtomicTracer])(implicit ctx: SourceContext): Option[Exp[Any]] = d match {
     // --- Updates
     case e@DeliteMultiArrayUpdate(ma,i,x) => 
       val lhs = if (trace.isEmpty) child(ma) else followTrace(props(s), trace).asInstanceOf[ArrayProperties].child.get
-      wrap(x, lhs).map{x2 => dmultia_update(ma, i, x2)(e.mA, mpos(ctx.defPos)) }
+      wrap(x, lhs).map{x2 => dmultia_update(ma, i, x2)(e.mA, ctx) }
       
     case FieldUpdate(struct,index,x) => 
       val lhs = if (trace.isEmpty) child(struct,index) else followTrace(props(s), trace).asInstanceOf[StructProperties].child(index).get
@@ -107,7 +107,7 @@ trait MultiArrayWrapTransformer extends TransformerBase with MultiArrayHelperSta
     // --- Buffers
     case e@DeliteMultiArrayInsert(ma,x,i) => 
       val lhs = if (trace.isEmpty) child(ma) else followTrace(props(s), trace).asInstanceOf[ArrayProperties].child.get
-      wrap(x, lhs).map{x2 => dmultia_insert(ma, x2.as1D, i)(e.mA, mpos(ctx.defPos)) }
+      wrap(x, lhs).map{x2 => dmultia_insert(ma, x2.as1D, i)(e.mA, ctx) }
       
     // TODO: How to wrap here?
     case DeliteMultiArrayInsertAll(ma,x,a,i) => None
@@ -115,7 +115,7 @@ trait MultiArrayWrapTransformer extends TransformerBase with MultiArrayHelperSta
     case _ => None
   }
  
-  override def transferMetadata(orig: Exp[Any], e2: Exp[Any], d: Def[Any])(implicit ctx: AnalysisContext): Unit = {
-    copyMetadata(e2, props(orig))
+  override def transferMetadata(sub: Exp[Any], orig: Exp[Any], d: Def[Any])(implicit ctx: SourceContext): Unit = {
+    copyMetadata(sub, props(orig))
   }
 }

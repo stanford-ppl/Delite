@@ -1,6 +1,7 @@
 package ppl.delite.framework.visit
 
 import scala.collection.immutable.HashMap
+import scala.reflect.SourceContext
 
 import Meetable._
 
@@ -101,14 +102,14 @@ trait DeliteMetadata {
     def apply(x: String): Option[T] = data.getOrElse(x, None)
     def contains(x: String): Boolean = data.contains(x)
     def toList: List[(String, Option[T])] = data.toList
-    def keys: Iterable[String] = data.keys
+    def keys: Set[String] = data.keySet
 
     def map(f: (String, Option[T]) => (String, Option[T])): PropertyMap[T]
       = PropertyMap(data.map{e => f(e._1,e._2)}.toList)
 
     def zip(that: PropertyMap[T])(f: (Option[T], Option[T]) => Option[T]): PropertyMap[T] = {
       val allKeys = this.keys ++ that.keys
-      PropertyMap[T](allKeys zip allKeys.map{k => f(this(k), that(k))} )
+      PropertyMap[T](allKeys.map{k => k -> f(this(k), that(k))} )
     }
 
     def zipToList[R](that: PropertyMap[T])(f: (Option[T], Option[T]) => R): List[R] = {
@@ -121,10 +122,7 @@ trait DeliteMetadata {
      * Trivially true if this contains no keys
      */
     def requireAll(f: Option[T] => Boolean): Boolean = {
-      if (this.keys.isEmpty)
-        true
-      else
-        this.keys.map{k => f(this(k))}.reduce{_&&_}
+      this.keys.isEmpty || this.keys.map{k => f(this(k))}.reduce{_&&_}
     }
 
     /**
@@ -134,10 +132,7 @@ trait DeliteMetadata {
      */
     def zipRequireAll(that: PropertyMap[T])(f: (Option[T], Option[T]) => Boolean): Boolean = {
       val allKeys = this.keys ++ that.keys
-      if (allKeys.isEmpty) 
-        true
-      else
-        allKeys.map{k => f(this(k), that(k)) }.reduce{_&&_}
+      allKeys.isEmpty || allKeys.map{k => f(this(k), that(k)) }.reduce{_&&_}
     }
   }
   object PropertyMap {
@@ -244,7 +239,7 @@ trait DeliteMetadata {
       case _ => true
     }
   }
-
+  
   object NoData extends PropertyMap[Metadata](Nil)
   object NoChildren extends PropertyMap[SymbolProperties](Nil)
 }

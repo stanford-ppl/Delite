@@ -20,7 +20,7 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
     override lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(oV).asInstanceOf[Sym[Int]]
     val size: Exp[Int] = copyTransformedOrElse(_.size)(loopSize)
 
-    val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
+    lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
       func = this.func,
       numDynamicChunks = this.numDynamicChunks
     ))
@@ -31,7 +31,7 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
     def apply(oV: Sym[Int], size: Exp[Int], func: Block[Unit])(implicit pos: SourceContext) = new ForeachImpl(oV, size, func)
     
     def mirror(op: ForeachImpl, f: Transformer)(implicit pos: SourceContext) = op match {
-      case ForeachImpl(v,s,b) => new { override val original = Some(f,op) } with ForeachImpl(v,s,b)(pos)
+      case ForeachImpl(v,s,b) => new { override val original = Some(f,op) } with ForeachImpl(v,f(s),b)(pos)
     }
   }
 
@@ -55,7 +55,7 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
 
     val size: Exp[Int] = copyTransformedOrElse(_.size)(loopSize)
 
-    val body: Def[A] = copyBodyOrElse(DeliteReduceElem[A](
+    lazy val body: Def[A] = copyBodyOrElse(DeliteReduceElem[A](
       func = this.lookup,
       cond = Nil,
       zero = this.zero,
@@ -83,30 +83,41 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
   object BufferFactory {
     def apply[R:Manifest,I<:DeliteCollection[R]:Manifest,C<:DeliteCollection[R]:Manifest](v: Sym[Int], ballocVal: Sym[I], allocI: Exp[Int] => Exp[I], finalizeI: Exp[I] => Exp[C]) = {
       // bound vars
-      val beV: Sym[R] = fresh[R] //copyTransformedOrElse(_.eV)(fresh[R]).asInstanceOf[Sym[R]]
-      val bsV: Sym[Int] = fresh[Int] //copyTransformedOrElse(_.sV)(fresh[Int]).asInstanceOf[Sym[Int]]
-      val biV: Sym[Int] = fresh[Int] //copyTransformedOrElse(_.iV)(fresh[Int]).asInstanceOf[Sym[Int]]
-      val biV2: Sym[Int] = fresh[Int] //copyTransformedOrElse(_.iV2)(fresh[Int]).asInstanceOf[Sym[Int]]
-      val baV2: Sym[I] = fresh[I] //copyTransformedOrElse(_.aV2)(fresh[I]).asInstanceOf[Sym[I]]
 
-      DeliteBufferElem(
-        eV = beV,
-        sV = bsV,
-        iV = biV,
-        iV2 = biV2,
-        allocVal = ballocVal,
-        aV2 = baV2,
-        alloc = reifyEffects(allocI(bsV)),
-        apply = unusedBlock,
-        update = reifyEffects(dc_update(ballocVal,v,beV)),
-        append = reifyEffects(dc_append(ballocVal,v,beV)),
-        appendable = reifyEffects(dc_appendable(ballocVal,v,beV)),
-        setSize = reifyEffects(dc_set_logical_size(ballocVal,bsV)),
-        allocRaw = reifyEffects(dc_alloc[R,I](ballocVal,bsV)),
-        copyRaw = reifyEffects(dc_copy(baV2,biV,ballocVal,biV2,bsV)),
-        finalizer = reifyEffects(finalizeI(ballocVal))
-      )
+      
     }
+  }
+
+  abstract class MapLikeImpl[R:Manifest,I<:DeliteCollection[R]:Manifest,C<:DeliteCollection[R]:Manifest] extends DeliteOpLoop[C] {
+    type OpType <: MapLikeImpl[R,I,C]
+
+    lazy val eV: Sym[R] = copyTransformedOrElse(_.eV)(fresh[R]).asInstanceOf[Sym[R]]
+    lazy val sV: Sym[Int] = copyTransformedOrElse(_.sV)(fresh[Int]).asInstanceOf[Sym[Int]]
+    lazy val iV: Sym[Int] = copyTransformedOrElse(_.iV)(fresh[Int]).asInstanceOf[Sym[Int]]
+    lazy val iV2: Sym[Int] = copyTransformedOrElse(_.iV2)(fresh[Int]).asInstanceOf[Sym[Int]]
+    lazy val aV2: Sym[I] = copyTransformedOrElse(_.aV2)(fresh[I]).asInstanceOf[Sym[I]]
+    lazy val allocVal: Sym[I] = copyTransformedOrElse(_.allocVal)(reflectMutableSym(fresh[I])).asInstanceOf[Sym[I]]
+
+    def allocI(i: Exp[Int]): Exp[I]
+    def finalizeI(av: Exp[I]): Exp[C]
+
+    lazy val buf = DeliteBufferElem(
+      eV = this.eV,     // current update position?
+      sV = this.sV,     // intermediate size?
+      iV = this.iV,     // copy destination start?
+      iV2 = this.iV2,   // copy source start?
+      allocVal = this.allocVal,
+      aV2 = this.aV2,
+      alloc = reifyEffects(this.allocI(this.sV)),
+      apply = unusedBlock,
+      update = reifyEffects(dc_update(this.allocVal,v,this.eV)),
+      append = reifyEffects(dc_append(this.allocVal,v,this.eV)),
+      appendable = reifyEffects(dc_appendable(this.allocVal,v,this.eV)),
+      setSize = reifyEffects(dc_set_logical_size(this.allocVal,this.sV)),
+      allocRaw = reifyEffects(dc_alloc[R,I](this.allocVal,this.sV)),
+      copyRaw = reifyEffects(dc_copy(this.aV2,this.iV,this.allocVal,this.iV2,this.sV)),
+      finalizer = reifyEffects(this.finalizeI(this.allocVal))
+    )
   }
 
   /**
@@ -114,32 +125,31 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
    * @param oV        - symbol for loop iterator
    * @param loopSize  - size of loop (usually size of input collection)
    * @param func      - map/collect function  (anything that productes Exp[R])
-   * @param alc       - allocation rule for intermediate type (Exp[Int] => Exp[I])
+   * @param alloc     - allocation rule for intermediate type (Exp[Int] => Exp[I])
    * @param finalizer - finalizer method to create collection from intermediate
    * @param cond      - optional filter condition
    */
-  case class CollectImpl[R:Manifest,I <: DeliteCollection[R]:Manifest,C<:DeliteCollection[R]:Manifest](oV: Sym[Int], loopSize: Exp[Int], func: Block[R], alloc: Exp[Int] => Exp[I], finalizer: Exp[I] => Exp[C], cond: Option[Block[Boolean]])(implicit ctx: SourceContext) extends DeliteOpLoop[C] {
+  case class CollectImpl[R:Manifest,I<:DeliteCollection[R]:Manifest,C<:DeliteCollection[R]:Manifest](oV: Sym[Int], loopSize: Exp[Int], func: Block[R], alloc: Exp[Int] => Exp[I], finalizer: Exp[I] => Exp[C], cond: Option[Block[Boolean]])(implicit ctx: SourceContext) extends MapLikeImpl[R,I,C] {
     type OpType <: CollectImpl[R,I,C]
  
     override lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(oV).asInstanceOf[Sym[Int]]
     val size: Exp[Int] = copyTransformedOrElse(_.size)(loopSize)
-    def allocI(i: Exp[Int]) = if (cond.isEmpty) alloc(i) else alloc(size)
- 
-    val body: Def[C] = copyBodyOrElse {
-      val allocVal: Sym[I] = reflectMutableSym(fresh[I]) //copyTransformedOrElse(_.allocVal)(reflectMutableSym(fresh[I])).asInstanceOf[Sym[I]]
 
-      DeliteCollectElem[R,I,C](
-        func = this.func,
-        cond = this.cond.toList,
-        par = dc_parallelization(allocVal, cond.isEmpty),
-        buf = BufferFactory[R,I,C](v, allocVal, allocI, finalizer),
-        numDynamicChunks = this.numDynamicChunks
-    )}
+    def allocI(i: Exp[Int]) = alloc(i)
+    def finalizeI(av: Exp[I]) = finalizer(av)
+
+    lazy val body: Def[C] = copyBodyOrElse(DeliteCollectElem[R,I,C](
+      func = this.func,
+      cond = this.cond.toList,
+      par = dc_parallelization(allocVal, !cond.isEmpty),
+      buf = this.buf,
+      numDynamicChunks = this.numDynamicChunks
+    ))
 
     override def toString = {
       val condLs = body.asInstanceOf[DeliteCollectElem[R,I,C]].cond
       val condStr = if (condLs.isEmpty) "" else  ", cond: " + condLs.mkString(",")
-      "CollectImpl(" + size + ", iter: " + v + ", " + body.asInstanceOf[DeliteCollectElem[R,I,C]].func + condStr + ")"
+      "CollectImpl(" + size + ", iter: " + v + ", " + body /*.asInstanceOf[DeliteCollectElem[R,I,C]].func + condStr*/ + ")"
     }
     val mR = manifest[R]
     val mI = manifest[I]
@@ -181,30 +191,30 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
    * @param alloc     - allocation rule for intermediate type (Exp[Int] => Exp[I])
    * @param finalizer - finalizer method to create collection from intermediate
    */
-  case class FlatMapImpl[R:Manifest,I<:DeliteCollection[R]:Manifest,C<:DeliteCollection[R]:Manifest](oV: Sym[Int], loopSize: Exp[Int], func: Block[DeliteCollection[R]], alloc: Exp[Int] => Exp[I], finalizer: Exp[I] => Exp[C])(implicit ctx: SourceContext) extends DeliteOpLoop[C] {
+  case class FlatMapImpl[R:Manifest,I<:DeliteCollection[R]:Manifest,C<:DeliteCollection[R]:Manifest](oV: Sym[Int], loopSize: Exp[Int], func: Block[DeliteCollection[R]], alloc: Exp[Int] => Exp[I], finalizer: Exp[I] => Exp[C])(implicit ctx: SourceContext) extends MapLikeImpl[R,I,C] {
     type OpType <: FlatMapImpl[R,I,C]
 
     override lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(oV).asInstanceOf[Sym[Int]]
     val size: Exp[Int] = copyTransformedOrElse(_.size)(loopSize)
+    
     def allocI(i: Exp[Int]) = alloc(i)
+    def finalizeI(av: Exp[I]) = finalizer(av)
 
-    val body: Def[C] = copyBodyOrElse {
-      // bound vars
-      val biF: Sym[Int] = fresh[Int] // copyTransformedOrElse(_.iF)(fresh[Int]).asInstanceOf[Sym[Int]]
-      val beF: Sym[DeliteCollection[R]] = fresh[DeliteCollection[R]](func.tp) //copyTransformedOrElse(_.eF)().asInstanceOf[Sym[DeliteCollection[R]]]
-      val allocVal: Sym[I] = reflectMutableSym(fresh[I]) //copyTransformedOrElse(_.allocVal)(reflectMutableSym(fresh[I])).asInstanceOf[Sym[I]]
+    lazy val iF: Sym[Int] = copyTransformedOrElse(_.iF)(fresh[Int]).asInstanceOf[Sym[Int]]
+    lazy val eF: Sym[DeliteCollection[R]] = copyTransformedOrElse(_.eF)(fresh[DeliteCollection[R]](func.tp)).asInstanceOf[Sym[DeliteCollection[R]]]
 
-      DeliteCollectElem[R,I,C](
-        iFunc = Some(this.func),
-        iF = Some(biF),
-        sF = Some(reifyEffects(dc_size(beF))), //note: applying dc_size directly to iFunc can lead to iFunc being duplicated during mirroring
-        eF = Some(beF),
-        func = reifyEffects(dc_apply(beF,biF)),
-        par = dc_parallelization(allocVal, true),
-        buf = BufferFactory[R,I,C](v, allocVal, allocI, finalizer),
-        numDynamicChunks = this.numDynamicChunks
-    )}
+    lazy val body: Def[C] = copyBodyOrElse(DeliteCollectElem[R,I,C](
+      iFunc = Some(this.func),
+      iF = Some(this.iF),
+      sF = Some(reifyEffects(dc_size(this.eF))), //note: applying dc_size directly to iFunc can lead to iFunc being duplicated during mirroring
+      eF = Some(this.eF),
+      func = reifyEffects(dc_apply(this.eF,this.iF)),
+      par = dc_parallelization(this.allocVal, true),
+      buf = this.buf,
+      numDynamicChunks = this.numDynamicChunks
+    ))
 
+    override def toString = "FlatMapImpl(" + size + ", iter: " + v + ", " + body + ")"
     val mR = manifest[R]
     val mI = manifest[I]
     val mC = manifest[C]    
@@ -215,7 +225,7 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
      * @param size - size of loop (input collection)
      * @param func - flatmap function
      */
-    def array[R:Manifest](oV: Sym[Int], size: Exp[Int], func: Block[DeliteArray[R]])(implicit ctx: SourceContext) = {
+    def array[R:Manifest](oV: Sym[Int], size: Exp[Int], func: Block[DeliteCollection[R]])(implicit ctx: SourceContext) = {
       val alloc = (z: Exp[Int]) => DeliteArray[R](z)
       selfBacked[R,DeliteArray[R]](oV,size,func,alloc)
     }
@@ -260,11 +270,14 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
 
-  // This isn't in Loops.scala in LMS, should it be?
-  // Causes IR dump to include ALL blocks in Elems, including buffer append details
-  // Probably not necessary..
-  /*override def blocks(e: Any): List[Block[Any]] = e match {
-    case e: AbstractLoop[_] => blocks(e.body)
+  // Override to block view of blocks in Product iterator
+  override def blocks(e: Any): List[Block[Any]] = e match {
+    case op: FlatMapImpl[_,_,_] => blocks(op.body.asInstanceOf[DeliteCollectElem[_,_,_]].func) // blocks(op.body)
+    case op: CollectImpl[_,_,_] => blocks(op.body.asInstanceOf[DeliteCollectElem[_,_,_]].func) // blocks(op.body)
+    case op: ReduceImpl[_] => blocks(op.body.asInstanceOf[DeliteReduceElem[_]].rFunc) // blocks(op.body)
+    case op: ForeachImpl => blocks(op.body.asInstanceOf[DeliteForeachElem[_]].func) // blocks(op.body)
+    //case op: DeliteOpLoop[_] => blocks(op.body)
+    //case op: DeliteCollectElem[_,_,_] => blocks(op.func) ::: blocks(op.cond) ::: blocks(op.buf) ::: op.iFunc.toList 
     case _ => super.blocks(e)
-  }*/
+  }
 }

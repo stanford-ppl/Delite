@@ -23,8 +23,6 @@ import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOver
 
 import java.io.{StringWriter, PrintWriter}
 
-class MultiArrayGenException extends Exception("Cannot codegen MultiArray defs")
-
 // FIXME: now that syms and friends is in the IR, all this ifGenAgree(..) crap is not necessary.
 
 /**

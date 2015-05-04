@@ -7,7 +7,7 @@ trait Meetable[T] {
   def _matches(a: T, b: T): Boolean
   // Output list of why a and b cannot meet (for error reporting)
   def _incompatibilities(a: T, b: T, t: MeetFunc): List[String]
-  // Tests whether a and b can be met successfully
+  // Tests whether a and b can be met successfully (equiv. to _incompatibilities.isEmpty)
   def _canMeet(a: T, b: T, t: MeetFunc): Boolean
   // Meet a and b
   def _meet(a: T, b: T, t: MeetFunc): T

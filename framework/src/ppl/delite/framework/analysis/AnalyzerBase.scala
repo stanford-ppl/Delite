@@ -27,10 +27,11 @@ trait AnalyzerBase extends IterativeIRVisitor with MetadataTransformer {
    * Main body for analysis. By default called after metadata propagation
    * has been completed (processStructure). 
    */
-  def processOp[A](e: Exp[A], d: Def[_])(implicit ctx: AnalysisContext): Unit
+  def processOp[A](e: Exp[A], d: Def[_])(implicit ctx: SourceContext): Unit
 
   override def runOnce[A:Manifest](s: Block[A]): Block[A] = { 
-    printlog("Beginning " + name + " pass " + (runs + 1).toString)
+    //printmsg("Beginning " + name + " pass " + (runs + 1).toString)
+    //printmsg("with " + regionMetadata)
     traverseBlock(s)
     (s) 
   }
@@ -45,7 +46,7 @@ trait AnalyzerBase extends IterativeIRVisitor with MetadataTransformer {
    * Operate on the current statement. Overriden from FatBlockTraversal
    */
   override def traverseStm(stm: Stm): Unit = {
-    analyzeStm(stm)(AnalysisContext(stm))
+    analyzeStm(stm)
     super.traverseStm(stm)
   }
 
@@ -53,13 +54,13 @@ trait AnalyzerBase extends IterativeIRVisitor with MetadataTransformer {
    * Analyze the current statement
    * TODO: May also want to add fat statements (TTP)?
    */ 
-  def analyzeStm(stm: Stm)(implicit ctx: AnalysisContext): Unit = stm match {
+  def analyzeStm(stm: Stm): Unit = stm match {
     case TP(s, Reflect(d,_,_)) => 
-      if (autopropagate) forwardPropagate(s,d)
-      processOp(s,d)
+      if (autopropagate) forwardPropagate(s,d)(mpos(s.pos))
+      processOp(s,d)(mpos(s.pos))
     case TP(s, d) => 
-      if (autopropagate) forwardPropagate(s,d)
-      processOp(s,d)
+      if (autopropagate) forwardPropagate(s,d)(mpos(s.pos))
+      processOp(s,d)(mpos(s.pos))
     case _ => // Nothing
   }
 
@@ -82,8 +83,6 @@ trait AnalyzerBase extends IterativeIRVisitor with MetadataTransformer {
       val incompleteSet = new HashSet[Exp[Any]]()
 
       override def traverseStm(stm: Stm): Unit = {
-        implicit val ctx = AnalysisContext(stm)
-
         stm match {
           case TP(s,_) if !completed(s) => incompleteSet += s
           case _ => // Nothing
@@ -101,34 +100,26 @@ trait AnalyzerBase extends IterativeIRVisitor with MetadataTransformer {
   /////////////////////////////////
   // Helper functions for analysis
 
-  def check(cond: Boolean, x: => Any)(implicit ctx: AnalysisContext) {
-    if (!cond) {
-      val op = if (ctx.defDesc == "") "" else "In " + ctx.defDesc + ", "
-      printerr(quotePos(ctx.defPos) + ": " + op + x + quoteCode(ctx.defPos).map{"\n\t" + _}.getOrElse(""))
-    }
+  def check(cond: Boolean, x: => Any)(implicit ctx: SourceContext) {
+    if (!cond)
+      printerr(quotePos(ctx) + ": " + x + quoteCode(ctx).map{"\n\t" + _}.getOrElse(""))
   }
 
   /**
    * Includes a whole bunch of metadata structure propagation information but 
    * no metadata instances
   */
-  def forwardPropagate[A](e: Exp[A], d: Def[_])(implicit ctx: AnalysisContext): Unit = d match {
+  def forwardPropagate[A](e: Exp[A], d: Def[_])(implicit ctx: SourceContext): Unit = d match {
     case Reify(s,_,_) => setProps(e, getProps(s))
 
     // --- Array
     case DeliteArrayTake(lhs,n) => setChild(e, getChild(lhs))
     case DeliteArraySort(da)    => setChild(e, getChild(da))
     case DeliteArrayApply(a,_)  => setProps(e, getChild(a))
-    case DeliteArrayUpdate(a,_,x) =>
-      ctx.setSymPos(a)
-      setChild(a, attemptMeet(getChild(a), getProps(x), func = MetaUpdate))
-    case DeliteArrayCopy(src,_,dest,_,_) =>
-      ctx.setSymPos(dest)
-      setChild(dest, attemptMeet(getChild(src), getChild(dest), func = MetaUpdate))
-    case DeliteArrayUnion(lhs,rhs) =>
-      setChild(e, attemptMeet(getChild(lhs), getChild(rhs), func = MetaUnion))
-    case DeliteArrayIntersect(lhs,rhs) =>
-      setChild(e, attemptMeet(getChild(lhs), getChild(rhs), func = MetaIntersect))
+    case DeliteArrayUpdate(a,_,x) => setChild(a, attemptMeet(getChild(a), getProps(x), func = MetaUpdate))
+    case DeliteArrayCopy(src,_,dest,_,_) => setChild(dest, attemptMeet(getChild(src), getChild(dest), func = MetaUpdate))
+    case DeliteArrayUnion(lhs,rhs) => setChild(e, attemptMeet(getChild(lhs), getChild(rhs), func = MetaUnion))
+    case DeliteArrayIntersect(lhs,rhs) => setChild(e, attemptMeet(getChild(lhs), getChild(rhs), func = MetaIntersect))
 
 
     // --- Struct ops
@@ -138,7 +129,6 @@ trait AnalyzerBase extends IterativeIRVisitor with MetadataTransformer {
     case op@FieldApply(struct, field) => 
       setProps(e, getField(struct, field))
     case op@FieldUpdate(struct, field, rhs) => 
-      ctx.setSymPos(struct)
       val updatedField = attemptMeet(getField(struct, field), getProps(rhs), func = MetaUpdate)
       setField(struct, updatedField, field)
 
@@ -148,27 +138,22 @@ trait AnalyzerBase extends IterativeIRVisitor with MetadataTransformer {
     case NewVar(init) => 
       setProps(e, getProps(init))
     case Assign(Variable(v),rhs) =>  
-      ctx.setSymPos(v)
       setProps(v, attemptMeet(getProps(v), getProps(rhs), func = MetaUpdate))
     case VarPlusEquals(Variable(v),rhs) => 
-      ctx.setSymPos(v)
       setProps(v, attemptMeet(getProps(v), getProps(rhs), func = MetaAdd))
     case VarMinusEquals(Variable(v),rhs) => 
-      ctx.setSymPos(v)
       setProps(v, attemptMeet(getProps(v), getProps(rhs), func = MetaSub))
     case VarTimesEquals(Variable(v),rhs) => 
-      ctx.setSymPos(v)
       setProps(v, attemptMeet(getProps(v), getProps(rhs), func = MetaMul))
     case VarDivideEquals(Variable(v),rhs) =>
-      ctx.setSymPos(v)
       setProps(v, attemptMeet(getProps(v), getProps(rhs), func = MetaDiv))
 
     // --- Atomic Writes
     case op@NestedAtomicWrite(s,trace,d) => 
-      var newProps: Option[SymbolProperties] = getAtomicWriteRhs(d).flatMap{getProps(_)}
 
+      var newProps: Option[SymbolProperties] = getAtomicWriteRhs(d)
       for (t <- trace.reverse) { newProps = tracerToProperties(t, newProps) }
-      ctx.setSymPos(s)
+
       val updatedProps = attemptMeet(newProps, getProps(s), func = MetaUpdate)
       setProps(s, updatedProps)
  
@@ -209,19 +194,19 @@ trait AnalyzerBase extends IterativeIRVisitor with MetadataTransformer {
       setProps(e, getProps(op.body.res))
 
     case _ => 
-      //warn(quotePos(ctx.defPos) + ": Unrecognized def " + d)
+      //warn(quotePos(ctx) + ": Unrecognized def " + d)
       // Nothing
   }
 
-  def tracerToProperties(t: AtomicTracer, child: Option[SymbolProperties]) = t match {
-    case StructTracer(field) => StructProperties(new PropertyMap(List(field -> child)), NoData)
-    case ArrayTracer(_)      => ArrayProperties(child, NoData)
+  def tracerToProperties(t: AtomicTracer, child: Option[SymbolProperties]): Option[SymbolProperties] = t match {
+    case StructTracer(field) => Some(StructProperties(new PropertyMap(List(field -> child)), NoData))
+    case ArrayTracer(_)      => Some(ArrayProperties(child, NoData))
   }
 
-  def getAtomicWriteRhs(d: AtomicWrite[Any])(implicit ctx: AnalysisContext): Option[Exp[Any]] = d match {
-    case FieldUpdate(_,_,rhs) => Some(rhs)
-    case DeliteArrayUpdate(_,_,x) => Some(x)
-    case DeliteArrayCopy(src,_,_,_,_) => Some(src)
+  def getAtomicWriteRhs(d: AtomicWrite[Any])(implicit ctx: SourceContext): Option[SymbolProperties] = d match {
+    case FieldUpdate(_,_,rhs) => getProps(rhs)
+    case DeliteArrayUpdate(_,_,x) => Some(ArrayProperties(getProps(x), NoData))
+    case DeliteArrayCopy(src,_,_,_,_) => getProps(src)
     case _ => 
       warn("No RHS rule given for atomic write op " + d)
       None
