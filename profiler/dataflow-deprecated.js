@@ -4,11 +4,13 @@ var maxMemUsageByAKernel = 0;
 var colorNodeBasedOnTimeTaken = {};
 var colorNodeBasedOnMemUsage = {};
 
-function createDataFlowGraph(cola, destinationDivElem, dataModel, viewState, config) {
+//function createDataFlowGraph(cola, destinationDivElem, dataModel, viewState, config) {
+function createDataFlowGraph(cola, destinationDivElem, nodesToDisplay, edges, viewState, config) {
 	//console.time("1")
 
 	hljs.initHighlightingOnLoad();
 	var cola = cola.d3adaptor();
+	/*
 	var nodes = dataModel["nodes"]
 	var nodeNameToId = dataModel["nodeNameToId"]
 	var res = filterNodes(nodes)
@@ -16,6 +18,7 @@ function createDataFlowGraph(cola, destinationDivElem, dataModel, viewState, con
 	var nodeIdToDisplayIndex = res.nodeIdToDisplayIndex
 
 	var edges = computeEdges(nodesToDisplay, nodeIdToDisplayIndex)
+	*/
 
 	var graph = d3.select(destinationDivElem).append("svg")
 		.attr('class', 'dataflowSvg')
@@ -156,7 +159,8 @@ function createDataFlowGraph(cola, destinationDivElem, dataModel, viewState, con
 	}
 
 	function toDisplayIndex(nodeId) {
-		return nodeIdToDisplayIndex[nodeId]
+		//return nodeIdToDisplayIndex[nodeId]
+		return nodeId;
 	}
 
 	function computeEdges(nodes, nodeIdToDisplayIndex) {

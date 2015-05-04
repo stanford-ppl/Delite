@@ -87,14 +87,27 @@ object DependencyGraph {
 	    }
 	}
 
-	private def getSourceContext(op: Map[Any, Any]): String = {
+	private def getSourceContext(op: Map[Any, Any]): SourceContext = {
 		op.get("sourceContext") match {
 			case Some(sc) => sc match {
-				case map: Map[Any, Any] => map("fileName").asInstanceOf[String] + ":" + map("line").asInstanceOf[String]
-				case _ => "_"
+				//case map: Map[Any, Any] => map("fileName").asInstanceOf[String] + ":" + map("line").asInstanceOf[String]
+				case map: Map[Any, Any] => new SourceContext( map("fileName").asInstanceOf[String], map("line").asInstanceOf[String], map("opName").asInstanceOf[String] )
+				case _ => new SourceContext( "", "", "" )
 			}
-			case _ => "_"
+			case _ => new SourceContext( "", "", "" )
 		}
+	}
+
+	private def getTargetsSupported(op: Map[Any, Any]): Int = {
+		var target = 0
+		if (op.contains("supportedTargets")) {
+			val targetNames = getFieldList(op, "supportedTargets")
+			if (targetNames.contains("scala")) { target |= PostProcessor.TARGET_SCALA }
+			if (targetNames.contains("cpp")) { target |= PostProcessor.TARGET_CPP }
+			if (targetNames.contains("cuda")) { target |= PostProcessor.TARGET_CUDA }
+		}
+
+		return target
 	}
 
 	private def fieldNotFound(field: String, obj: Any) = throw new RuntimeException("Expecting field [" + field + "], found: " + obj )
@@ -107,6 +120,8 @@ class DependencyGraph() {
 	var nodeNameToId = new HashMap[Types.DNodeName, Types.DNodeId]
 	var idToDNode = new HashMap[Types.DNodeId, DNode]
 	var _loopNodes = new ArrayBuffer[DNode]
+
+	private var dNodeCount = 0
 
 	def dNode(name: String): DNode = {
 		idToDNode(nodeNameToId(name))
@@ -124,28 +139,31 @@ class DependencyGraph() {
   	def dumpDepGraphInJSON(writer: PrintWriter, prefixSpace: String) {
   		val pre1 = prefixSpace + PostProcessor.tabs
 		val pre2 = pre1 + PostProcessor.tabs
-		val pre3 = pre2 + PostProcessor.tabs
+		val maxDNodeId = idToDNode.size - 1
+
 		writer.println(prefixSpace + "\"DependencyGraph\": {")
 		writer.println(pre1 + "\"nodes\": [")
 
-  		for ((_, n) <- idToDNode) {
-			writer.println(pre2 + "{ \"id\": " + n.id + "," + "\"name\": \"" + n.name + "\" },")
+		var n: DNode = null
+		for (i <- 0 to maxDNodeId) {
+			n = idToDNode(i)
+			writer.println(pre2 + "{ \"id\": " + n.id + "," + "\"name\": \"" + n.name + "\", \"numInputs\": " + n.inputNodes.length + ", \"numOutputs\": " + n.numOutputs + " },")
 		}
 		
 		writer.println(pre2 + "{ \"id\": -1 }")
-		writer.println(pre1 + "]")
-
+		writer.println(pre1 + "],")
 		writer.println(pre1 + "\"edges\": [")
-		for ((_, dNode) <- idToDNode) {
-			val target = dNode.id
-			dNode.inputNodes.map(n => nodeNameToId(n)).foreach(source => {
+
+		for (i <- 0 to maxDNodeId) {
+			n = idToDNode(i)
+			val target = n.id
+			n.inputNodes.map(i => nodeNameToId(i)).foreach(source => {
 				writer.println(pre2 + "{ \"source\": " + source + "," + "\"target\": " + target + " },")		
 			})
 		}
 
 		writer.println(pre2 + "{ \"source\": -1, \"target\": \"-1\" }")
 		writer.println(pre1 + "]")
-
 		writer.println(prefixSpace + "},")
   	}
 
@@ -181,39 +199,43 @@ class DependencyGraph() {
 	private def opToDNode(op: Map[Any, Any], parent: DNode): DNode = {
 		val opType = DependencyGraph.getFieldString(op, "type")
 		val sc = DependencyGraph.getSourceContext(op)
+		val targetsSupported = DependencyGraph.getTargetsSupported(op)
 		opType match {
-				case "Arguments" => dNodeArgsNew( op, DNodeType.SingleTask, sc )
-				case "SingleTask" | "External" | "Input" => dNodeGenericNew( op, parent, DNodeType.SingleTask, sc ) 
+				case "Arguments" => dNodeArgsNew( op, DNodeType.SingleTask, sc, targetsSupported )
+				case "SingleTask" | "External" | "Input" => dNodeGenericNew( op, parent, DNodeType.SingleTask, sc, targetsSupported ) 
 				case "MultiLoop" => {
-					val dNode = dNodeGenericNew( op, parent, DNodeType.MultiLoop, sc ) 
+					val dNode = dNodeGenericNew( op, parent, DNodeType.MultiLoop, sc, targetsSupported ) 
 					DependencyGraph.getFieldList(op, "outputs").map(s => s.asInstanceOf[String])
 								   .foreach(s => nodeNameToId += s -> dNode.id)
 					dNode
 				}
-				case "Foreach" => dNodeGenericNew( op, parent, DNodeType.Foreach, sc ) 
-				case "Conditional" => dNodeConditionalNew( op, parent, sc )
-				case "WhileLoop" => dNodeWhileLoopNew( op, parent, sc )
-				case "EOP" => new DNode( "eop", parent, DNodeType.EOP, sc )
-				case "EOG" => new DNode( "eog", parent, DNodeType.EOG, sc )
+				case "Foreach" => dNodeGenericNew( op, parent, DNodeType.Foreach, sc, targetsSupported ) 
+				case "Conditional" => dNodeConditionalNew( op, parent, sc, targetsSupported )
+				case "WhileLoop" => dNodeWhileLoopNew( op, parent, sc, targetsSupported )
+				case "EOP" => new DNode( "eop", parent, DNodeType.EOP, sc, targetsSupported )
+				case "EOG" => new DNode( "eog", parent, DNodeType.EOG, sc, targetsSupported )
 			}
 	}
 
-	private def dNodeArgsNew(op: Map[Any, Any], _type: DNodeType.Value, sc: String): DNode = {
+	private def dNodeArgsNew(op: Map[Any, Any], _type: DNodeType.Value, sc: SourceContext, targetsSupported: Int): DNode = {
 		val name = DependencyGraph.getFieldString(op, "kernelId")
-		new DNode(name, null, _type, sc)
+		new DNode( name, null, _type, sc, targetsSupported )
 	}
 
-	private def dNodeGenericNew(op: Map[Any, Any], parent: DNode, _type: DNodeType.Value, sc: String): DNode = {	
+	private def dNodeGenericNew(op: Map[Any, Any], parent: DNode, _type: DNodeType.Value, sc: SourceContext, targetsSupported: Int): DNode = {	
 		val name = DependencyGraph.getFieldString(op, "kernelId")
-		val node = new DNode(name, parent, _type, sc)
+		val node = new DNode( name, parent, _type, sc, targetsSupported )
 
-		DependencyGraph.getFieldList(op, "inputs").map( str => str.asInstanceOf[String] ).foreach( n => node.inputNodeAdd(n) )
+		DependencyGraph.getFieldList(op, "inputs").map( str => str.asInstanceOf[String] ).foreach({ 
+			n => node.inputNodeAdd(n) 
+			dNode(n).numOutputs += 1
+		})
 		node
 	}	
 
-	private def dNodeConditionalNew(op: Map[Any, Any], parent: DNode, sc: String): DNode = {
+	private def dNodeConditionalNew(op: Map[Any, Any], parent: DNode, sc: SourceContext, targetsSupported: Int): DNode = {
 		val name = DependencyGraph.getFieldString(op, "outputId")
-		val node = new DNode(name, parent, DNodeType.WhileLoop, sc)
+		val node = new DNode( name, parent, DNodeType.WhileLoop, sc, targetsSupported )
 
 		DependencyGraph.dNodeConditionalSubOpTypes.foreach(st => {
 			val subOps = DependencyGraph.getFieldList(op, st)
@@ -223,9 +245,9 @@ class DependencyGraph() {
 		node
 	}
 
-	private def dNodeWhileLoopNew(op: Map[Any, Any], parent: DNode, sc: String): DNode = {
+	private def dNodeWhileLoopNew(op: Map[Any, Any], parent: DNode, sc: SourceContext, targetsSupported: Int): DNode = {
 		val name = DependencyGraph.getFieldString(op, "outputId")
-		val node = new DNode(name, parent, DNodeType.WhileLoop, sc)
+		val node = new DNode( name, parent, DNodeType.WhileLoop, sc, targetsSupported )
 
 		DependencyGraph.dNodeWhileloopSubOpTypes.foreach(st => {
 			val subOps = DependencyGraph.getFieldList(op, st)
@@ -234,6 +256,10 @@ class DependencyGraph() {
 
 		node
 	}
+}
+
+class SourceContext (val fileName: String, val line: String, val opName: String) {
+	def string = fileName + ":" + line
 }
 
 object DNode {
@@ -245,26 +271,22 @@ object DNode {
 	}
 }
 
-class DNode(_name: Types.DNodeName, _parent: DNode, t: DNodeType.Value, _sourceContext: String) {
-	val name = _name
-	val parent = _parent
-	val _type = t
-	val sourceContext = _sourceContext
+class DNode(val name: Types.DNodeName, val parent: DNode, val _type: DNodeType.Value, val sourceContext: SourceContext, val targetsSupported: Int) {
 	val id = DNode.nextId()
-	val parentId = if (parent != null) parent.id else -1
-	val level: Int = if (_parent == null) 0 else _parent.level + 1
-	var targetsSupported = 0 // order of indices -> scala, cpp, cuda
+	val (parentId, level: Int) = if (parent == null) (-1, 0) else (parent.id, parent.level + 1)
+	//var targetsSupported = 0 // TODO: Fix this. [order of indices -> scala, cpp, cuda]
 	val inputNodes = new ArrayBuffer[String]
 	val childNodes = new ArrayBuffer[DNode]
+	var numOutputs = 0
 
-	if (_parent != null) {
-		_parent.childNodeAdd(this)
+	if (parent != null) {
+		parent.childNodeAdd(this)
 	}
 
 	def inputNodeAdd(cn: String) { inputNodes.append(cn) }
+
 	def childNodeAdd(cn: DNode) { childNodes.append(cn) }
 
-	//def cudaSupported(): Boolean = { targetsSupported(PostProcessor.TARGET_CUDA) }
 	def cudaSupported(): Boolean = { (targetsSupported & PostProcessor.TARGET_CUDA) > 0 }
 
 	def string() {
@@ -293,11 +315,11 @@ class TNode(_name: Types.TNodeName, _threadId: Int, _start: Long, _duration: Lon
 	var execTime: Long = duration
 	var syncTime: Long = 0
 	val _type = ExecutionProfile.tNodeType(_name)
-	val (dNode, dNodeName) = _type match {
-		case TNodeType.Sync | TNodeType.TicTocRegion => (null, "")
+	val (dNode, dNodeName, displayText) = _type match { // displayText is for the timeline view in the UI
+		case TNodeType.Sync | TNodeType.TicTocRegion => (null, "", _name)
 		case _    => { 
 			val n = ExecutionProfile.dNode(_name)
-			(n, n.name)
+			(n, n.name, n.sourceContext.opName)
 		}
 	}
 
@@ -306,7 +328,7 @@ class TNode(_name: Types.TNodeName, _threadId: Int, _start: Long, _duration: Lon
 	val level = if (dNode != null) dNode.level else 0
 	var childKernelTNodes = new ArrayBuffer[TNode]
 	var childSyncTNodes = new ArrayBuffer[TNode]
-	val displayText = "" // TODO: This needs to be fixed
+	//val displayText = "" // TODO: This needs to be fixed
 
 	def childNodeNew(cn: TNode) {
 		cn._type match {
@@ -424,7 +446,11 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 	    writer.println(sp + "\"threadScalaCount\": " + threadScalaCount + ",")
 	    writer.println(sp + "\"threadCppCount\": " + threadCppCount + ",")
 	    writer.println(sp + "\"threadCudaCount\": " + threadCudaCount + ",")
-	    writer.println(sp + "\"targetsEnabled\": " + targetsEnabledStr())
+	    //writer.println(sp + "\"targetsEnabled\": " + targetsEnabledStr())
+	    //writer.println(sp + "\"targetsEnabled\": " + targetsEnabled)
+	    writer.println(sp + "\"isScalaEnabled\": " + (targetsEnabled & PostProcessor.TARGET_SCALA) + ",")
+	    writer.println(sp + "\"isCppEnabled\": " + (targetsEnabled & PostProcessor.TARGET_CPP) + ",")
+	    writer.println(sp + "\"isCudaEnabled\": " + (targetsEnabled & PostProcessor.TARGET_CUDA))
 	    writer.println(prefixSpace + "},")
 	}
 
@@ -432,28 +458,32 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 		val pre1 = prefixSpace + PostProcessor.tabs
 		val pre2 = pre1 + PostProcessor.tabs
 		val pre3 = pre2 + PostProcessor.tabs
-		writer.println(prefixSpace + "\"TimelineData\": [")
+		writer.println(prefixSpace + "\"TimelineData\": {")
+		writer.println(pre1 + "\"Timing\": [")
 
 		val nodesAtLevelZero = timelineData.tNodesAtLevel(0)
 		for ((name, tNodes) <- nodesAtLevelZero) {
 			for (n <- tNodes) {
-				writer.println(pre1 + "{")
-				writer.println(pre2 + "\"id\": " + n.id + ",")
-				writer.println(pre2 + "\"lane\": " + n.threadId + ",")
-				writer.println(pre2 + "\"start\": " + n.start + ",")
-				writer.println(pre2 + "\"duration\": " + n.duration + ",")
-				writer.println(pre2 + "\"end\": " + n.end + ",")
-				writer.println(pre2 + "\"dNodeName\": \"" + n.dNodeName + "\",")
-				writer.println(pre2 + "\"displayText\": \"" + n.displayText + "\"")
+				writer.println(pre2 + "{")
+				writer.println(pre3 + "\"id\": " + n.id + ",")
+				writer.println(pre3 + "\"name\": \"" + name + "\",")
+				writer.println(pre3 + "\"lane\": " + n.threadId + ",")
+				writer.println(pre3 + "\"start\": " + n.start + ",")
+				writer.println(pre3 + "\"duration\": " + n.duration + ",")
+				writer.println(pre3 + "\"end\": " + n.end + ",")
+				writer.println(pre3 + "\"dNodeName\": \"" + n.dNodeName + "\",")
+				writer.println(pre3 + "\"displayText\": \"" + n.displayText + "\"")
 				writer.println(pre2 + "},")
 			}
 		}
 		
-		writer.println(pre1 + "{\"id\": -1}")
-		writer.println(prefixSpace + "],")
+		writer.println(pre2 + "{\"id\": -1}")
+		writer.println(pre1 + "],")
+		dumpTicTocRegionsDataInJSON( writer, pre1 )
+		writer.println(prefixSpace + "},")
 	}
 
-	def dumpTicTocRegionsDataInJSON( writer: PrintWriter, prefixSpace: String ) {
+	private def dumpTicTocRegionsDataInJSON( writer: PrintWriter, prefixSpace: String ) {
 		val pre1 = prefixSpace + PostProcessor.tabs
 		val pre2 = pre1 + PostProcessor.tabs
 
@@ -463,7 +493,7 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 			writer.println(pre2 + "\"name\": \"" + n.name + "\",")
 			writer.println(pre2 + "\"start\": " + n.start + ",")
 			writer.println(pre2 + "\"duration\": " + n.duration + ",")
-			writer.println(pre2 + "\"end\": " + n.end + ",")
+			writer.println(pre2 + "\"end\": " + n.end)
 		}
 
 		val len = ticTocTNodes.length
@@ -477,10 +507,11 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 
 			helper( ticTocTNodes(len - 1) )
 			writer.println(pre1 + "}")
-			writer.println(prefixSpace + "],")
+			writer.println(prefixSpace + "]")
 		}
 	}
 
+	/*
 	private def targetsEnabledStr(): String = {
 		val a = new ArrayBuffer[String]
 		if ((targetsEnabled & PostProcessor.TARGET_SCALA) > 0) { a.append("\"scala\"") }
@@ -489,6 +520,7 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 
 		"[" + a.mkString(",") + "]"
 	}
+	*/
 
 	private def initDB() {
 		//dbConn.setAutoCommit(false)
@@ -511,7 +543,7 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 				  " CREATE TABLE DNodes " +
 				  		"(ID INT PRIMARY KEY  NOT NULL," +
 				  		" NAME 			 TEXT NOT NULL," +
-				  		" TYPE 			 TEXT NOT NULL," +
+				  		" TYPE 			 INT  NOT NULL," +
 				  		" PARENT_ID		 INT  NOT NULL," +
 				  		" INPUT_NODE_IDS TEXT NOT NULL," +
 				  		" CHILD_NODE_IDS TEXT NOT NULL," +
@@ -610,8 +642,13 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 			ticTocTNodes.append( new TicTocTNode(id, name, start, duration, start + duration) )
 			id += 1
 
-			val tNode = new TNode( name, threadCount, start, duration )
-			timelineData.tNodeNew(tNode)
+			//val tNode = new TNode( name, threadCount, start, duration )
+			//timelineData.tNodeNew(tNode)
+
+			if (name == "all") {
+				appTotalTime = duration
+				appEndTime = appStartTime + appTotalTime
+			}
 		}
 	}
 
@@ -622,7 +659,7 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 			val childNodeIds = if (n.childNodes.length > 0) n.childNodes.map(c => c.id).mkString(":") else "-1"
 			sql += "INSERT INTO DNodes (ID,NAME,TYPE,PARENT_ID,INPUT_NODE_IDS,CHILD_NODE_IDS,LEVEL,TARGETS_SUPP, SOURCE_CONTEXT) VALUES (" + 
 				   "%d,'%s',%d,%d,'%s','%s',%d,%d,'%s');\n".format(
-				n.id, n.name, n._type.id, n.parentId, inputNodesIds, childNodeIds, n.level, n.targetsSupported, n.sourceContext)
+				n.id, n.name, n._type.id, n.parentId, inputNodesIds, childNodeIds, n.level, n.targetsSupported, n.sourceContext.string)
 		}
 
 		sql += "COMMIT;"

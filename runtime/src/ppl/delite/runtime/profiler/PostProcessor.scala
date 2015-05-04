@@ -44,13 +44,13 @@ object PostProcessor {
 
 	    writer.println("{\"Profile\":{")
 
-	    executionProfile.dumpAppDataInJSON( writer, twoTabs )
-	    depGraph.dumpDepGraphInJSON( writer, twoTabs )
-	    executionProfile.dumpTimelineDataInJSON( writer, twoTabs )
-	    executionProfile.dumpTicTocRegionsDataInJSON( writer, twoTabs )
-	    SamplerThread.dumpMemUsageSamplesInJSON( writer, twoTabs )
+	    executionProfile.dumpAppDataInJSON( writer, tabs )
+	    depGraph.dumpDepGraphInJSON( writer, tabs )
+	    executionProfile.dumpTimelineDataInJSON( writer, tabs )
+	    //executionProfile.dumpTicTocRegionsDataInJSON( writer, tabs )
+	    SamplerThread.dumpMemUsageSamplesInJSON( writer, tabs )
 
-	    writer.println("}")
+	    writer.println("}}")
 	    writer.close()
 	}
 }

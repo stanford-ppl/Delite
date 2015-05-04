@@ -29,6 +29,7 @@ function readFile(sourceFile) {
   sourceFileReader.readAsText(fileNameToFile[sourceFile])
 }
 
+/*
 // ===========================
 //  Read DEG file
 // ===========================
@@ -58,7 +59,9 @@ function readDegFile(evt) {
 function addDegFileHandler(inputButtonId) {
   document.getElementById(inputButtonId).addEventListener('change', readDegFile, false);
 }
+*/
 
+/*
 // =====================================================
 // Read profileData.js (the performance profile data)
 // =====================================================
@@ -86,6 +89,7 @@ function readProfileDataFile(evt) {
 function addProfileDataFileHandler(inputButtonId) {
   document.getElementById(inputButtonId).addEventListener('change', readProfileDataFile, false);
 }
+*/
 
 // ====================
 //  Read GC Stats file
@@ -93,11 +97,12 @@ function addProfileDataFileHandler(inputButtonId) {
 
 var gcEvents = []
 function readGCStatsFile(evt) {
-  var reader = new FileReader()
+  var reader = new FileReader();
   reader.onload = (function() {
     return function(e) {
-      var t = parseInt(profileData.Profile.Init.JVMUpTimeAtAppStart)
-      gcEvents = parseGCStatsDump(e.target.result, t)
+      //var t = parseInt(profileData.Profile.Init.JVMUpTimeAtAppStart)
+      var t = parseInt(postProcessedProfile.AppData.jvmUpTimeAtAppStart);
+      gcEvents = parseGCStatsDump(e.target.result, t);
     };
   })();
 
@@ -115,4 +120,62 @@ function readGCStatsFile(evt) {
 
 function addGCStatsFileHandler(inputButtonId) {
   $("#" + inputButtonId).on("change", readGCStatsFile)
+}
+
+// ===================================
+//  Read post-processed profile data
+// ===================================
+
+var postProcessedProfile = {}
+
+function readPostProcessedProfile(evt) {
+  var reader = new FileReader()
+  reader.onload = (function() {
+    return function(e) {
+      postProcessedProfile = JSON.parse(e.target.result).Profile;
+    };
+  })();
+
+  if (evt.target.files.length > 0) {
+    var f = evt.target.files[0];
+    reader.readAsText(f);
+    viewState.degFile = f.name;
+
+    $("#degFileName").text(viewState.degFile)
+    if ((viewState.profileDataFile != "") && (viewState.gcStatsFile != "")) {
+      $("#startButton").css("border", "2px solid green");
+    }
+  }
+}
+
+function addDegFileHandler(inputButtonId) {
+  document.getElementById(inputButtonId).addEventListener('change', readPostProcessedProfile, false);
+}
+
+// =====================================================
+// Read profile.db (the performance profile data)
+// =====================================================
+
+var profileDB = undefined
+function readProfileDB(evt) {
+  var reader = new FileReader();
+  reader.onload = function() {
+    var Uints = new Uint8Array(reader.result);
+    profileDB = new SQL.Database(Uints);
+  }
+
+  if (evt.target.files.length > 0) {
+    var dbFile = evt.target.files[0];
+    reader.readAsArrayBuffer(dbFile);
+    viewState.profileDataFile = dbFile.name
+
+    $("#profDataFileName").text(viewState.profileDataFile)
+    if ((viewState.degFile != "") && (viewState.gcStatsFile != "")) {
+      $("#startButton").css("border", "2px solid green")
+    }
+  }   
+}
+
+function addProfileDataFileHandler(inputButtonId) {
+  document.getElementById(inputButtonId).addEventListener('change', readProfileDB, false);
 }

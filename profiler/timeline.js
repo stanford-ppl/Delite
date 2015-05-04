@@ -23,13 +23,23 @@ LANE_COLORS = ["orange", "green", "lightskyblue", "red", "brown"];
 
 // TODO: The passing of 'timelineLevelSelectorId' as an input parameter is a hack. Instead, the TimelineGraph element
 // should trigger an event when a node is double-clicked and external elements should be able to listen to it.
-function TimelineGraph(classStr, nameSuffix, parentDivId, profileData, timelineLevelSelectorId, config) {
+
+//function TimelineGraph(classStr, nameSuffix, parentDivId, profileData, timelineLevelSelectorId, config) {
+function TimelineGraph(classStr, nameSuffix, parentDivId, appData, timelineData, timelineLevelSelectorId, config) {
 	this.classStr = classStr;
 	this.nameSuffix = nameSuffix;
 	this.parentDivId = parentDivId;
+	/*
 	this.executionProfile = profileData.executionProfile;
 	this.timelineData = profileData.executionProfile.timelineData;
 	this.dependencyData = profileData.dependencyData;
+	*/
+
+	this.timelineData = timelineData;
+	this.timelineData.Timing.pop();
+	this.appData = appData;
+	this.threadCount = appData.threadCount;
+
 	this.timelineLevelSelectorId = timelineLevelSelectorId;
 	this.config = config;
 	this.laneColors = null;
@@ -37,7 +47,8 @@ function TimelineGraph(classStr, nameSuffix, parentDivId, profileData, timelineL
 	this.chartWidth = 0;
 	this.parentDivWidth = -1; // HACK: This field is used as a hack
 	this.parentDivHeight = -1; // HACK: This field is used as a hack
-	this.jvmUpTimeAtAppStart = 0; // HACK: This field is used as a hack
+	//this.jvmUpTimeAtAppStart = 0; // HACK: This field is used as a hack
+	this.jvmUpTimeAtAppStart = appData.jvmUpTimeAtAppStart; // HACK: This field is used as a hack
 	this.xScale = null;
 	this.yScale = null;
 	this.initialXRange = null;
@@ -60,13 +71,27 @@ TimelineGraph.prototype.re_partition = /^(.*)_(\d+)$/;
 TimelineGraph.prototype.re_header = /^(.*)_h$/;
 
 TimelineGraph.prototype.draw = function() {
-	var items = this.convertDataToTimelineFormat(this.timelineData.timing); 
-	var lanes = this.timelineData.lanes;
-	this.laneColors = lanes.map(function(l, i) {return LANE_COLORS[i % LANE_COLORS.length]});
+	//var items = this.convertDataToTimelineFormat(this.timelineData.timing); 
+	//var lanes = this.timelineData.lanes;
 
+	var appData = this.appData;
+	var items = this.timelineData.Timing;
+	var lanes = new Array(this.threadCount + 1);
+
+	//this.laneColors = lanes.map(function(l, i) {return LANE_COLORS[i % LANE_COLORS.length]});
+	this.laneColors = [];
+	for (var i = 0; i <= this.threadCount; i++) {
+		this.laneColors.push(LANE_COLORS[i % LANE_COLORS.length]);
+	}
+
+	/*
 	var tmp = this.getAppBeginAndEndTimes();
 	var	timeBegin = tmp.begin - tmp.duration * 0.01;
 	var	timeEnd = tmp.end + tmp.duration * 0.01;
+	*/
+	
+	var	timeBegin = appData.appStartTime - appData.appTotalTime * 0.01;
+	var	timeEnd = appData.appEndTime + appData.appTotalTime * 0.01;
 
 	var parentDiv = $(this.parentDivId);
 	if (this.parentDivWidth == -1) {
@@ -96,9 +121,10 @@ TimelineGraph.prototype.draw = function() {
 		this.xScale.domain([currXDomain[0] + this.jvmUpTimeAtAppStart, currXDomain[1] + this.jvmUpTimeAtAppStart]);	
 	}
 
-	var	numLanes = lanes.length;
+	var numLanes = lanes.length;
 	var y = d3.scale.linear()
 		.domain([0, numLanes])
+		//.domain([0, this.threadCount])
 		.range([0, chartHeight]);
 	this.yScale = y;
 	
@@ -144,13 +170,17 @@ TimelineGraph.prototype.draw = function() {
 		.attr("class", this.laneTextClass);
 
 	this.createTimelineNodes(items, this.timelineNodeClass);
-	this.createTicTocRegionNodes(this.executionProfile.ticTocRegions, this.timelineNodeClass);
+	//this.createTicTocRegionNodes(this.executionProfile.ticTocRegions, this.timelineNodeClass);
+	this.createTicTocRegionNodes(this.timelineData.TicTocRegions, this.timelineNodeClass);
 
 	//timeline labels
-	var minDurationReqForDisplayingLabel = 0.05 * this.executionProfile.totalAppTime;
-	var eventsWithLabel = items.filter(function(d) {return (d.end - d.start) >= minDurationReqForDisplayingLabel});
+	//var minDurationReqForDisplayingLabel = 0.05 * this.executionProfile.totalAppTime;
+	//var eventsWithLabel = items.filter(function(d) {return (d.end - d.start) >= minDurationReqForDisplayingLabel});
+	var minDurationReqForDisplayingLabel = 0.05 * this.appData.appTotalTime;
+	var eventsWithLabel = items.filter(function(d) {return d.duration >= minDurationReqForDisplayingLabel});
 	this.createTimelineLabels(eventsWithLabel, this.timelineNodeLabelClass);
-	this.createTicTocRegionLabels(this.executionProfile.ticTocRegions, this.timelineNodeLabelClass);
+	//this.createTicTocRegionLabels(this.executionProfile.ticTocRegions, this.timelineNodeLabelClass);
+	this.createTicTocRegionLabels(this.timelineData.TicTocRegions, this.timelineNodeLabelClass);
 };
 
 TimelineGraph.prototype.convertDataToTimelineFormat = function(data) {
@@ -163,11 +193,13 @@ TimelineGraph.prototype.convertDataToTimelineFormat = function(data) {
 	return res;
 };
 
+/*
 TimelineGraph.prototype.getAppBeginAndEndTimes = function() {
 	return {"begin": this.executionProfile.appStartTime, 
 			"end": this.executionProfile.appEndTime, 
 			"duration": this.executionProfile.totalAppTime};
 };
+*/
 
 TimelineGraph.prototype.createTimelineNodes = function(data, className) {
 	var graph = this;
@@ -194,7 +226,8 @@ TimelineGraph.prototype.createTicTocRegionNodes = function(ticTocRegions, classN
 	var graph = this;
 	var x = graph.xScale;
 	var y = graph.yScale;
-	var numThreads = this.executionProfile.numThreads;
+	//var numThreads = this.executionProfile.numThreads;
+	var numThreads = this.threadCount;
 
 	this.timelineGraph.append("g").selectAll("." + className)
 		.data(ticTocRegions)
@@ -233,7 +266,7 @@ TimelineGraph.prototype.createTicTocRegionLabels = function(ticTocRegions, class
 		.enter().append("text")
 		.text(function(d) {if (d.name != "all") {return d.name} else {return ""}})
 		.attr("x", function(d) {return (graph.xScale(d.start) + graph.xScale(d.end))/2;})
-		.attr("y", function(d) {return graph.yScale(graph.executionProfile.numThreads + .5);})
+		.attr("y", function(d) {return graph.yScale(graph.threadCount + .5);})
 		.attr("dy", ".5ex")
 		.attr("id", function(d) {return "" + d.id + graph.nameSuffix + "-label"})
 		.attr("class", className)

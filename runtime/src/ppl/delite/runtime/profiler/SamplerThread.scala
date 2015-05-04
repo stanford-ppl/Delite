@@ -78,6 +78,28 @@ object SamplerThread extends Thread {
   		writer.println("")
   		writer.print(tabs + "}")
   	}
+
+  	def dumpMemUsageSamplesInJSON(writer: PrintWriter, prefixSpace: String) {
+  		val pre1 = prefixSpace + PostProcessor.tabs
+  		
+		writer.println(prefixSpace + "\"MemUsageSamples\": [")
+
+  		var s: ProfileData = null
+  		val tmp = samples.length - 2
+  		for (i <- 0 to tmp) {
+  			s = samples(i)
+  			writer.println(pre1 + "{ \"key\":\"M\",\"value\":" + s.maxMemory + ",\"time\":" + s.timeStamp + " },")
+  			writer.println(pre1 + "{ \"key\":\"T\",\"value\":" + s.totalMemory + ",\"time\":" + s.timeStamp + " },")
+  			writer.println(pre1 + "{ \"key\":\"U\",\"value\":" + s.usedMemory + ",\"time\":" + s.timeStamp + " },")
+  		}
+
+  		s = samples(samples.length - 1)
+  		writer.println(pre1 + "{ \"key\":\"M\",\"value\":" + s.maxMemory + ",\"time\":" + s.timeStamp + " },")
+		writer.println(pre1 + "{ \"key\":\"T\",\"value\":" + s.totalMemory + ",\"time\":" + s.timeStamp + " },")
+		writer.println(pre1 + "{ \"key\":\"U\",\"value\":" + s.usedMemory + ",\"time\":" + s.timeStamp + " }")
+
+  		writer.println(prefixSpace + "]")
+  	}
 }
 
 class ProfileData(val timeStamp: Long, val maxMemory: Long, val totalMemory: Long, val freeMemory: Long, val usedMemory: Long, val gcCount: Long, val gcTime: Long) {}

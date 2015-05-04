@@ -30,6 +30,17 @@ config.syncNodeRegex = /__sync-ExecutionThread-(\d+)-(.*)-(.*)-(\d+)$/;
 config.re_partition = /^(.*)_(\d+)$/;
 config.re_header = /^(.*)_h$/;
 
+// NOTE: This must be kept in sync with the order in which the DNodeType enums are defined in the PostProcessor scalacode
+config.dNodeTypeIdToType = {
+	0 : 'WhileLoop',
+	1 : 'Conditional',
+	2 : 'MultiLoop',
+	3 : 'SingleTask',
+	4 : 'Foreach',
+	5 : 'EOG',
+	6 : 'EOP'
+};
+
 addAppSourceFileHandler("srcDirInput", editor);
 addDegFileHandler("degFileInput");
 addProfileDataFileHandler("profDataInput");
@@ -39,6 +50,7 @@ var editor = {};
 var profData = {};
 var graphController = {};
 var timelineController = {};
+var dbStmt = undefined;
 
 // Input data sets for bar charts
 var topNodesBasedOnL2CacheMissPct = [];
@@ -331,6 +343,37 @@ function populateKernelInfoTableById(nodeId) {
 	populateKernelInfoTable(node)
 }
 
+function fetchSingletonFromDB(query) {
+	dbStmt = profileDB.prepare(query);
+	dbStmt.step();
+	return dbStmt.getAsObject();
+}
+
+function destTargetOfKernel(targetsSupportedByKernel) {
+	var appData = postProcessedProfile.AppData;
+	if ((appData.isScalaEnabled & targetsSupportedByKernel) > 0) { return 'Scala'; }
+	if ((appData.isCppEnabled & targetsSupportedByKernel) > 0) { return 'Cpp'; }
+	if ((appData.isCudaEnabled & targetsSupportedByKernel) > 0) { return 'CUDA'; }
+	return 'N/A';
+}
+
+function idToDNode(dNodeId) {
+	var dNode = fetchSingletonFromDB("SELECT * FROM DNodes WHERE ID=" + dNodeId);
+	var name = dNode.NAME;
+	// TODO: There may not be an entry for this dNode in ExecutionSummaries. We filter out all timing nodes with zero duration
+	var summary = fetchSingletonFromDB("SELECT * FROM ExecutionSummaries WHERE NAME='" + name + "'");
+	
+	console.log({
+		"name" : name,
+		"type" : config.dNodeTypeIdToType[dNode.TYPE],
+		"target" : destTargetOfKernel( dNode.TARGETS_SUPP ),
+		"time" : summary.TOTAL_TIME,
+		"execTime" : summary.EXEC_TIME,
+		"syncTime" : summary.SYNC_TIME,
+		"memUsage" : summary.MEM_USAGE
+	});
+}
+
 function getTopNodesBasedOnTotalTime(nodeNameToSummary, dependencyData, count) {
 	var nodeNameAttrPairs = [];
 	for (var name in nodeNameToSummary) {
@@ -425,10 +468,15 @@ function startDebugSession() {
 		setUpSelectTagForDEGView()
 
 		editor = createEditor("code")
-  		profData = getProfileData(degOps, profileData.Profile, config)
-  		graphController = createDataFlowGraph(cola, "#dfg", profData.dependencyData, viewState, config)
+  		//profData = getProfileData(degOps, profileData.Profile, config)
+  		//graphController = createDataFlowGraph(cola, "#dfg", profData.dependencyData, viewState, config)
+  		var dependencyData = postProcessedProfile.DependencyGraph;
+  		dependencyData.nodes.pop();
+  		dependencyData.edges.pop();
+  		graphController = createDataFlowGraph(cola, "#dfg", dependencyData.nodes, dependencyData.edges, viewState, config);
   		//graphController = {}
 
+  		/*
   		// This is the data to be visualized using bar charts
   		topNodesBasedOnTime = getTopNodesBasedOnTotalTime(profData.executionProfile.nodeNameToSummary, profData.dependencyData, 20);
   		topNodesBasedOnMemUsage = getTopNodesBasedOnMemUsage(profData.executionProfile.nodeNameToSummary, profData.dependencyData, 20);
@@ -445,17 +493,28 @@ function startDebugSession() {
   			name: "T" + i,
   			syncTimePct: o.syncTime.pct
   		}})
+		*/
 
-      	timelineController = new TimelineGraph("mainTimeline", "-main", "#timeline", profData, "#timelineHiddenNodeList", config)
+      	//timelineController = new TimelineGraph("mainTimeline", "-main", "#timeline", profData, "#timelineHiddenNodeList", config)
+      	timelineController = new TimelineGraph("mainTimeline", "-main", "#timeline", postProcessedProfile.AppData, postProcessedProfile.TimelineData, "#timelineHiddenNodeList", config)
+
       	timelineController.draw();
-  			
+
+      	
+
+  		/*
   		$("#timelineHiddenNodeList").change({
   			graph: timelineController
   		}, timelineController.timelineScopeSelHandler) 
+		*/
 
-      	createStackGraph("#memory", profData.executionProfile.memUsageData, timelineController.xScale)
-      	createGCStatsGraph("#gcStats", gcEvents, timelineController.xScale, config)
 
+      	//createStackGraph("#memory", profData.executionProfile.memUsageData, timelineController.xScale)
+      	//createGCStatsGraph("#gcStats", gcEvents, timelineController.xScale, config)
+      	createStackGraph("#memory", postProcessedProfile.MemUsageSamples, timelineController.xScale);
+      	createGCStatsGraph("#gcStats", gcEvents, timelineController.xScale, config);
+
+      	
 		setUpSynchronizedScrolling();
 		//lockScrollingOfComparisonRuns();
     } else {
