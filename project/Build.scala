@@ -9,14 +9,14 @@ object DeliteBuild extends Build {
   val virtScala = Option(System.getenv("SCALA_VIRTUALIZED_VERSION")).getOrElse("2.11.2")
   val virtBuildSettingsBase = Defaults.defaultSettings ++ Seq(
     organization := "stanford-ppl",
-    scalaOrganization := "org.scala-lang",
+    scalaOrganization := "org.scala-lang.virtualized",
     scalaVersion := virtScala,
-    scalaHome := Some(file(sys.env("SCALA_VIRTUALIZED_HOME"))),
+    scalaHome := sys.env.get("SCALA_VIRTUALIZED_HOME").map(file),
 
     publishArtifact in (Compile, packageDoc) := false,
     libraryDependencies += virtualization_lms_core,
-    libraryDependencies += "org.scala-lang" % "scala-library" % virtScala,
-    libraryDependencies += "org.scala-lang" % "scala-compiler" % virtScala,
+    libraryDependencies += "org.scala-lang.virtualized" % "scala-library" % virtScala,
+    libraryDependencies += "org.scala-lang.virtualized" % "scala-compiler" % virtScala,
     libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.2",
 
     libraryDependencies += "org.apache.commons" % "commons-math" % "2.2",
