@@ -90,7 +90,8 @@ function createDataFlowGraph(cola, destinationDivElem, nodesToDisplay, edges, vi
 	    .attr("fill", colorNodeBasedOnDataDeps)
 	    .attr("rx", 5).attr("ry", 5)
 	    .attr("id", function(d) {return "dfg-" + d.id})
-	    .on("click", nodeClickHandler)
+	    //.on("click", nodeClickHandler)
+	    .on("click", function(d) { highlightDNodeById(d.id); })
 	    .attr("class", "dataflow-kernel")
 	    .call(cola.drag);
 
@@ -99,7 +100,8 @@ function createDataFlowGraph(cola, destinationDivElem, nodesToDisplay, edges, vi
 	    .enter().append("text")
 	    .attr("class", "label")
 	    .text(function (d) { return d.name; })
-	    .on("click", nodeClickHandler)
+	    //.on("click", nodeClickHandler)
+	    .on("click", function(d) { highlightDNodeById(d.id); })
 	    .call(cola.drag)
 	    .each(function (d) {
 	        var b = this.getBBox();
@@ -110,7 +112,7 @@ function createDataFlowGraph(cola, destinationDivElem, nodesToDisplay, edges, vi
 
 	//console.timeEnd("3")
 
-	var kernel_nodes = $(".dataflow-kernel") // to optimize dom_selection.
+	var kernelNodes = $(".dataflow-kernel") // to optimize dom_selection.
 
 	//console.time("4")
 
@@ -245,6 +247,28 @@ function createDataFlowGraph(cola, destinationDivElem, nodesToDisplay, edges, vi
 		return [p.width(), p.height()];
 	}
 
+	function highlightDNodeById(dNodeId) {
+		function helper(str) {
+			if (str != "") {
+				str.split(":").forEach( function(s) { neighborNodeIds.push( parseInt(s) ); } )
+			}
+		}
+
+		var dNode = config.populateKernelInfoTableById( dNodeId );
+		var sc = dNode.SOURCE_CONTEXT;
+		var arr = sc.split(":")
+		config.highlightLineInEditor(arr[0], parseInt(arr[1]));
+		
+		var neighborNodeIds = [];
+		helper( dNode.INPUT_NODE_IDS );
+		helper( dNode.OUTPUT_NODE_IDS );
+		helper( dNode.CHILD_NODE_IDS );
+		neighborNodeIds.push( dNodeId );
+
+		highlightNodes( neighborNodeIds );
+	}
+
+	/*
 	function nodeClickHandler(node) {
 		var sc = node.sourceContext
 		config.highlightLineInEditor(sc.file, sc.line)
@@ -270,9 +294,10 @@ function createDataFlowGraph(cola, destinationDivElem, nodesToDisplay, edges, vi
 
 		return neighbors
 	}
+	*/
 
 	function highlightNodes(nodeIds) {
-		kernel_nodes.fadeTo(0, 0.1)
+		kernelNodes.fadeTo(0, 0.1)
 		nodeIds.forEach(function(i) {
 			$("#dfg-" + i).fadeTo(0, 1)
 		})
@@ -284,6 +309,7 @@ function createDataFlowGraph(cola, destinationDivElem, nodesToDisplay, edges, vi
 		this.unhighlightNode = unhighlightNode;
 		this.changeColoringScheme = changeColoringScheme;
 		this.markNeighbors = markNeighbors
+		this.highlightDNodeById = highlightDNodeById;
 
 		function highlightNode(nodeId) {
 			var n = $(".dataflow-kernel")[toDisplayIndex(nodeId)]

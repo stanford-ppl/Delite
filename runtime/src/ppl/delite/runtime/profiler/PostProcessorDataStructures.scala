@@ -90,7 +90,6 @@ object DependencyGraph {
 	private def getSourceContext(op: Map[Any, Any]): SourceContext = {
 		op.get("sourceContext") match {
 			case Some(sc) => sc match {
-				//case map: Map[Any, Any] => map("fileName").asInstanceOf[String] + ":" + map("line").asInstanceOf[String]
 				case map: Map[Any, Any] => new SourceContext( map("fileName").asInstanceOf[String], map("line").asInstanceOf[String], map("opName").asInstanceOf[String] )
 				case _ => new SourceContext( "", "", "" )
 			}
@@ -147,7 +146,7 @@ class DependencyGraph() {
 		var n: DNode = null
 		for (i <- 0 to maxDNodeId) {
 			n = idToDNode(i)
-			writer.println(pre2 + "{ \"id\": " + n.id + "," + "\"name\": \"" + n.name + "\", \"numInputs\": " + n.inputNodes.length + ", \"numOutputs\": " + n.numOutputs + " },")
+			writer.println(pre2 + "{ \"id\": " + n.id + "," + "\"name\": \"" + n.name + "\", \"numInputs\": " + n.inputNodes.length + ", \"numOutputs\": " + n.outputNodes.length + " },")
 		}
 		
 		writer.println(pre2 + "{ \"id\": -1 }")
@@ -157,7 +156,7 @@ class DependencyGraph() {
 		for (i <- 0 to maxDNodeId) {
 			n = idToDNode(i)
 			val target = n.id
-			n.inputNodes.map(i => nodeNameToId(i)).foreach(source => {
+			n.inputNodes.foreach(source => {
 				writer.println(pre2 + "{ \"source\": " + source + "," + "\"target\": " + target + " },")		
 			})
 		}
@@ -226,9 +225,10 @@ class DependencyGraph() {
 		val name = DependencyGraph.getFieldString(op, "kernelId")
 		val node = new DNode( name, parent, _type, sc, targetsSupported )
 
-		DependencyGraph.getFieldList(op, "inputs").map( str => str.asInstanceOf[String] ).foreach({ 
-			n => node.inputNodeAdd(n) 
-			dNode(n).numOutputs += 1
+		DependencyGraph.getFieldList(op, "inputs").map( str => str.asInstanceOf[String] ).foreach(n => { 
+			val id = nodeNameToId(n)
+			node.inputNodeAdd(id)
+			dNode(n).outputNodeAdd(node.id)
 		})
 		node
 	}	
@@ -274,18 +274,20 @@ object DNode {
 class DNode(val name: Types.DNodeName, val parent: DNode, val _type: DNodeType.Value, val sourceContext: SourceContext, val targetsSupported: Int) {
 	val id = DNode.nextId()
 	val (parentId, level: Int) = if (parent == null) (-1, 0) else (parent.id, parent.level + 1)
-	//var targetsSupported = 0 // TODO: Fix this. [order of indices -> scala, cpp, cuda]
-	val inputNodes = new ArrayBuffer[String]
-	val childNodes = new ArrayBuffer[DNode]
-	var numOutputs = 0
 
-	if (parent != null) {
-		parent.childNodeAdd(this)
-	}
+	private val _inputNodes = new ArrayBuffer[Types.DNodeId]
+	private val _outputNodes = new ArrayBuffer[Types.DNodeId]
+	private val _childNodes = new ArrayBuffer[DNode]
 
-	def inputNodeAdd(cn: String) { inputNodes.append(cn) }
+	if (parent != null) { parent.childNodeAdd(this) }
 
-	def childNodeAdd(cn: DNode) { childNodes.append(cn) }
+	def inputNodes() = { _inputNodes }
+	def outputNodes() = { _outputNodes }
+	def childNodes() = { _childNodes }
+
+	def inputNodeAdd(n: Types.DNodeId) { _inputNodes.append(n) }
+	def outputNodeAdd(n: Types.DNodeId) { _outputNodes.append(n) }
+	def childNodeAdd(cn: DNode) { _childNodes.append(cn) }
 
 	def cudaSupported(): Boolean = { (targetsSupported & PostProcessor.TARGET_CUDA) > 0 }
 
@@ -305,30 +307,25 @@ object TNode {
 	}
 }
 
-class TNode(_name: Types.TNodeName, _threadId: Int, _start: Long, _duration: Long) {
-	val name = _name
-	val threadId: Int = _threadId
-	val start: Long = _start
-	val duration: Long = _duration
+class TNode(val name: Types.TNodeName, val threadId: Int, val start: Long, val duration: Long) {
 	val end: Long = start + duration
 	val id = TNode.nextId()
 	var execTime: Long = duration
 	var syncTime: Long = 0
-	val _type = ExecutionProfile.tNodeType(_name)
-	val (dNode, dNodeName, displayText) = _type match { // displayText is for the timeline view in the UI
-		case TNodeType.Sync | TNodeType.TicTocRegion => (null, "", _name)
+	val _type = ExecutionProfile.tNodeType(name)
+	val (dNode, dNodeName, displayText, dNodeId) = _type match { // displayText is for the timeline view in the UI
+		case TNodeType.Sync | TNodeType.TicTocRegion => (null, "", name, -1)
 		case _    => { 
-			val n = ExecutionProfile.dNode(_name)
-			(n, n.name, n.sourceContext.opName)
+			val n = ExecutionProfile.dNode(name)
+			(n, n.name, n.sourceContext.opName, n.id)
 		}
 	}
 
-	private var parentTNode: TNode = null
-	var parentId: Types.TNodeId = -1;
+	private var _parentTNode: TNode = null
+	private var _parentId: Types.TNodeId = -1;
 	val level = if (dNode != null) dNode.level else 0
 	var childKernelTNodes = new ArrayBuffer[TNode]
 	var childSyncTNodes = new ArrayBuffer[TNode]
-	//val displayText = "" // TODO: This needs to be fixed
 
 	def childNodeNew(cn: TNode) {
 		cn._type match {
@@ -349,11 +346,13 @@ class TNode(_name: Types.TNodeName, _threadId: Int, _start: Long, _duration: Lon
 	}
 
 	def parentTNodeIs(p: TNode) {
-		parentTNode = p 
-		if (p != null) { parentId = p.id }
+		_parentTNode = p 
+		_parentId = p.id
 	}
 
-	def dNodeId(): Types.DNodeId = { if (dNode != null) dNode.id else -1 }
+	def parentId(): Types.TNodeId = { return _parentId }
+
+	//def dNodeId(): Types.DNodeId = { if (dNode != null) dNode.id else -1 }
 }
 
 object ExecutionProfile {
@@ -368,6 +367,8 @@ object ExecutionProfile {
 	def tNodeType(tNodeName: String): TNodeType.Value = {
 		if (tNodeName(0) == '_') {
 			return TNodeType.Sync
+		} else if ((tNodeName == "eop") || (tNodeName == "eog")) {
+			return TNodeType.Kernel
 		} else if (tNodeName(0) != 'x') {	// TODO: This logic would fail if a tic-toc node's name starts with 'x'
 			return TNodeType.TicTocRegion
 		} else if (tNodeName.contains("_")) {
@@ -467,7 +468,7 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 				writer.println(pre2 + "{")
 				writer.println(pre3 + "\"id\": " + n.id + ",")
 				writer.println(pre3 + "\"name\": \"" + name + "\",")
-				writer.println(pre3 + "\"lane\": " + n.threadId + ",")
+				writer.println(pre3 + "\"threadId\": " + n.threadId + ",")
 				writer.println(pre3 + "\"start\": " + n.start + ",")
 				writer.println(pre3 + "\"duration\": " + n.duration + ",")
 				writer.println(pre3 + "\"end\": " + n.end + ",")
@@ -511,45 +512,35 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 		}
 	}
 
-	/*
-	private def targetsEnabledStr(): String = {
-		val a = new ArrayBuffer[String]
-		if ((targetsEnabled & PostProcessor.TARGET_SCALA) > 0) { a.append("\"scala\"") }
-		if ((targetsEnabled & PostProcessor.TARGET_CPP) > 0) { a.append("\"cpp\"") }
-		if ((targetsEnabled & PostProcessor.TARGET_CUDA) > 0) { a.append("\"cuda\"") }
-
-		"[" + a.mkString(",") + "]"
-	}
-	*/
-
 	private def initDB() {
 		//dbConn.setAutoCommit(false)
 		val sql = " BEGIN TRANSACTION;" + 
 		 		  " CREATE TABLE TNodes " +
-						"(ID INT PRIMARY KEY  	 NOT NULL," +
-						" NAME 			 	TEXT NOT NULL," +
-						" START 		 	INT  NOT NULL," +
-						" DURATION 		 	INT  NOT NULL," +
-						" END 			 	INT  NOT NULL," +
-						" THREAD_ID      	INT  NOT NULL," + 
-						" EXEC_TIME		 	INT  NOT NULL," +
-						" SYNC_TIME		 	INT  NOT NULL," +
-						" TYPE		 	 	INT  NOT NULL," +
-						" DNODE_ID		 	INT  NOT NULL," +
-						" PARENT_ID		 	INT  NOT NULL," +
-						" LEVEL		 	 	INT  NOT NULL," +
-						" CHILD_KERNEL_IDS	TEXT NOT NULL," +
-						" CHILD_SYNC_IDS	TEXT NOT NULL);\n" +
+						"(id INT PRIMARY KEY  	 NOT NULL," +
+						" name 			 	TEXT NOT NULL," +
+						" start 		 	INT  NOT NULL," +
+						" duration 		 	INT  NOT NULL," +
+						" end 			 	INT  NOT NULL," +
+						" threadId      	INT  NOT NULL," + 
+						" execTime		 	INT  NOT NULL," +
+						" syncTime		 	INT  NOT NULL," +
+						" type		 	 	INT  NOT NULL," +
+						" dNodeId		 	INT  NOT NULL," +
+						" parentId		 	INT  NOT NULL," +
+						" level		 	 	INT  NOT NULL," +
+						" childKernelIds	TEXT NOT NULL," +
+						" childSyncIds		TEXT NOT NULL);\n" +
 				  " CREATE TABLE DNodes " +
-				  		"(ID INT PRIMARY KEY  NOT NULL," +
-				  		" NAME 			 TEXT NOT NULL," +
-				  		" TYPE 			 INT  NOT NULL," +
-				  		" PARENT_ID		 INT  NOT NULL," +
-				  		" INPUT_NODE_IDS TEXT NOT NULL," +
-				  		" CHILD_NODE_IDS TEXT NOT NULL," +
-				  		" LEVEL          INT  NOT NULL," +
-				  		" TARGETS_SUPP   INT  NOT NULL," +
-				  		" SOURCE_CONTEXT TEXT NOT NULL);\n" +
+				  		"(ID INT PRIMARY KEY   NOT NULL," +
+				  		" NAME 			  TEXT NOT NULL," +
+				  		" TYPE 			  INT  NOT NULL," +
+				  		" PARENT_ID		  INT  NOT NULL," +
+				  		" INPUT_NODE_IDS  TEXT NOT NULL," +
+				  		" OUTPUT_NODE_IDS TEXT NOT NULL," +
+				  		" CHILD_NODE_IDS  TEXT NOT NULL," +
+				  		" LEVEL           INT  NOT NULL," +
+				  		" TARGETS_SUPP    INT  NOT NULL," +
+				  		" SOURCE_CONTEXT  TEXT NOT NULL);\n" +
 				  " CREATE TABLE ExecutionSummaries " +
 				  		"(NAME TEXT PRIMARY KEY NOT NULL," +
 				  		" TOTAL_TIME 	INT  NOT NULL," +
@@ -595,6 +586,7 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 			levelToTNodesYetToBeAssignedParent += level -> new ArrayBuffer[TNode]
 		}
 
+		val tNodesPendingWritesToDB = new ArrayBuffer[TNode]
 		for (tid <- 0 to (threadCount - 1)) {			
 			val fn = fileNamePrefix + tid + ".csv"
 			for (line <- Source.fromFile(fn).getLines()) {
@@ -604,28 +596,29 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 				val duration = arr(2).toLong
 				if (duration > 0) { // Optimization: filter out all nodes with duration == 0
 					val tNode = new TNode(name, tid, start, duration)
+					tNodesPendingWritesToDB.append( tNode )
+
 					val lev = tNode.level
 					if (lev >= 0) {
 						if (lev < depGraph.levelMax) {
 							val a = levelToTNodesYetToBeAssignedParent(lev + 1)
-							a.foreach(n => { 
-								//n.parentTNode = tNode // This update is NOT required since its being done within the childNodeNew() method
-								tNode.childNodeNew(n) 
-							})
-
+							a.foreach(n => { tNode.childNodeNew(n) })
 							a.clear()
 						}
 
 						if (lev > 0) {
 							levelToTNodesYetToBeAssignedParent(lev).append(tNode)
+						} else {
+							writeTNodesToDB( tNodesPendingWritesToDB )
+							tNodesPendingWritesToDB.clear()
 						}
 					}
 
 					updateSummary(tNode)
 					timelineData.tNodeNew(tNode)
-					if (tNode.syncTime > 0) { syncTimeInc(tNode.name, tNode.syncTime) }
+					//if (tNode.syncTime > 0) { syncTimeInc(tNode.name, tNode.syncTime) }
 
-					writeTNodeToDB(tNode)
+					//writeTNodeToDB(tNode)
 				}
 			}
 		}
@@ -655,11 +648,12 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 	def writeDNodesToDB() {
 		var sql = "BEGIN TRANSACTION;"
 		for ((id, n) <- depGraph.idToDNode) {
-			val inputNodesIds = if (n.inputNodes.length > 0) n.inputNodes.mkString(":") else "-1"
-			val childNodeIds = if (n.childNodes.length > 0) n.childNodes.map(c => c.id).mkString(":") else "-1"
-			sql += "INSERT INTO DNodes (ID,NAME,TYPE,PARENT_ID,INPUT_NODE_IDS,CHILD_NODE_IDS,LEVEL,TARGETS_SUPP, SOURCE_CONTEXT) VALUES (" + 
-				   "%d,'%s',%d,%d,'%s','%s',%d,%d,'%s');\n".format(
-				n.id, n.name, n._type.id, n.parentId, inputNodesIds, childNodeIds, n.level, n.targetsSupported, n.sourceContext.string)
+			val inputNodesIds = n.inputNodes.mkString(":")
+			val outputNodeIds = n.outputNodes.mkString(":")
+			val childNodeIds = n.childNodes.map(c => c.id).mkString(":")
+		sql += "INSERT INTO DNodes (ID,NAME,TYPE,PARENT_ID,INPUT_NODE_IDS,OUTPUT_NODE_IDS,CHILD_NODE_IDS,LEVEL,TARGETS_SUPP, SOURCE_CONTEXT) VALUES (" + 
+				   "%d,'%s',%d,%d,'%s','%s','%s',%d,%d,'%s');\n".format(
+				n.id, n.name, n._type.id, n.parentId, inputNodesIds, outputNodeIds, childNodeIds, n.level, n.targetsSupported, n.sourceContext.string)
 		}
 
 		sql += "COMMIT;"
@@ -680,28 +674,52 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 		dbStmt.executeUpdate(sql)
 	}
 
+	def summary(n: Types.TNodeName): ExecutionSummary = {
+		if (!summaries.contains(n)) {
+			summaries(n) = new ExecutionSummary()
+		}
+
+		summaries(n)
+	}
+
+	/*
 	private def writeTNodeToDB(n: TNode) {
 		val childKernelIds = n.childKernelTNodes.map(c => c.id).mkString(":")
 		val childSyncIds = n.childSyncTNodes.map(c => c.id).mkString(":")
 		var sql = "INSERT INTO TNodes " + 
 				   "(ID,NAME,START,DURATION,END,THREAD_ID, EXEC_TIME, SYNC_TIME, TYPE, DNODE_ID, PARENT_ID, LEVEL, CHILD_KERNEL_IDS, CHILD_SYNC_IDS) "+ 
 				   "VALUES (%d,'%s',%s,%s,%s,%d,%d,%d,%d,%d,%d,%d,'%s','%s');".format(
-				   n.id, n.name, n.start.toString, n.duration.toString, n.end.toString, n.threadId, n.execTime, n.syncTime, n._type.id, n.dNodeId(),
+				   n.id, n.name, n.start.toString, n.duration.toString, n.end.toString, n.threadId, n.execTime, n.syncTime, n._type.id, n.dNodeId,
 				   n.parentId, n.level, childKernelIds, childSyncIds)
 		Predef.println(sql)
 		dbStmt.executeUpdate(sql)
 	}
+	*/
 
-	// Update the summary of corresponding dNode, eg: totalExecTime, etc.
-	private def updateSummary(tNode: TNode) {
-		val n = tNode.name
-		if (!summaries.contains(n)) {
-			//summaries += n -> new ExecutionSummary()
-			summaries(n) = new ExecutionSummary()
+	private def writeTNodesToDB( tNodes: ArrayBuffer[TNode] ) {
+		var sql = " BEGIN TRANSACTION;\n"
+		for (n <- tNodes) {
+			val childKernelIds = n.childKernelTNodes.map(c => c.id).mkString(":")
+			val childSyncIds = n.childSyncTNodes.map(c => c.id).mkString(":")
+			sql += "INSERT INTO TNodes " + 
+				   "(id,name,start,duration,end,threadId, execTime, syncTime, type, dNodeId, parentId, level, childKernelIds, childSyncIds) "+ 
+				   "VALUES (%d,'%s',%s,%s,%s,%d,%d,%d,%d,%d,%d,%d,'%s','%s');\n".format(
+				   n.id, n.name, n.start.toString, n.duration.toString, n.end.toString, n.threadId, n.execTime, n.syncTime, n._type.id, n.dNodeId,
+				   n.parentId, n.level, childKernelIds, childSyncIds)
 		}
 
+		sql += " COMMIT;"
+		Predef.println( sql )
+		dbStmt.executeUpdate( sql )
+	}
+
+	private def updateSummary(tNode: TNode) {
 		tNode._type match {
-			case TNodeType.Kernel | TNodeType.KernelPartition => summaries(n).totalTimeInc(tNode.duration)
+			case TNodeType.Kernel | TNodeType.KernelPartition => {
+				val summ = summary(tNode.name)
+				summ.totalTimeInc(tNode.duration)
+				summ.syncTimeInc(tNode.syncTime)
+			}
 			case _ => ()
 		}
 	}
@@ -711,38 +729,15 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 		for (dNode <- depGraph.loopNodes) {
 			if (!isTargetCuda(dNode)) {
 				val headerNodeTotalTime = tNodeTotalTime(dNode.name + "_h")
-				val partitionNodesMaxTime = threadIdsRange.map(tid => tNodeTotalTime(dNode.name + "_" + tid)).max
-				val estimatedTotalTime = headerNodeTotalTime + partitionNodesMaxTime
-				//summaries += dNode.name -> new ExecutionSummary(headerNodeTotalTime + estimatedTotalTime)
-				summaries(dNode.name) = new ExecutionSummary(headerNodeTotalTime + estimatedTotalTime)
+				val partitionSummaries = threadIdsRange.map(tid => summary(dNode.name + "_" + tid))
+				val avgPartitionTotalTime: Long = partitionSummaries.map(s => s.totalTime).sum / threadCount 
+				val avgPartitionSyncTime: Long = partitionSummaries.map(s => s.syncTime).sum / threadCount 
+				val summ = new ExecutionSummary(headerNodeTotalTime + avgPartitionTotalTime)
+				summ.syncTimeInc(avgPartitionSyncTime)
+				summaries(dNode.name) = summ
 			}
 		}
 	}
-
-	/*
-	private def updateSyncAndExecTimesOfKernels() {
-		def computeSyncAndExecTimes(tNodes: ArrayBuffer[TNode]) {
-			var totalSyncTime: Long = 0
-			tNodes.foreach(tn => {
-				val selfSyncTime = tn.childSyncTNodes.map(n => n.duration).sum
-				val childrenSyncTime = tn.childKernelTNodes.map(n => n.syncTime).sum
-				tn.syncTime = selfSyncTime + childrenSyncTime
-				tn.execTime = tn.duration - tn.syncTime
-
-				totalSyncTime += tn.syncTime
-			})
-
-			syncTimeIs(tNodes(0).name, totalSyncTime)
-		}
-
-		for (l <- depGraph.levelMax to 0 by -1) {
-			val m = timelineData.tNodesAtLevel(l)
-			for ((tNodeName,tNodes) <- m) {
-				computeSyncAndExecTimes(tNodes)
-			}
-		}
-	}
-	*/
 
 	private def updateMemUsageDataOfDNodes() {
 		val aggrMemUsageStats = MemoryProfiler.aggregateStatsFromAllThreads()
@@ -759,18 +754,6 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
   		}
 	}
 
-	/*
-	private def syncTimeIs(tNodeName: String, st: Long) {
-		val s = executionSummary(tNodeName)
-		s.syncTime = st
-	}
-	*/
-
-	private def syncTimeInc(tNodeName: String, inc: Long) {
-		val s = executionSummary(tNodeName)
-		s.syncTime += inc
-	}
-
 	private def memUsageIs(tNodeName: String, mu: Long) {
 		val s = executionSummary(tNodeName)
 		s.memUsage = mu
@@ -782,14 +765,12 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 	}
 
 	private def isTargetCuda(dNode: DNode): Boolean = {
-		//return (dNode.cudaSupported() && targetsEnabled(PostProcessor.TARGET_CUDA))
 		return (dNode.targetsSupported & targetsEnabled & PostProcessor.TARGET_CUDA) > 0
 	}
 
 	private def executionSummary(tNodeName: String): ExecutionSummary = {
 		if (!summaries.contains(tNodeName)) {
 			val es = new ExecutionSummary
-			//summaries += tNodeName -> es
 			summaries(tNodeName) = es
 			return es
 		}
@@ -799,14 +780,27 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 }
 
 class ExecutionSummary(_tt: Long = 0) {
-	var totalTime: Long = _tt
-	var execTime: Long = 0
-	var syncTime: Long = 0
 	var memUsage: Long = 0
 	var l2CacheHitPct: Double = 0.0
 	var l3CacheHitPct: Double = 0.0
 
-	def totalTimeInc(inc: Long) { totalTime += inc }
+	private var _totalTime: Long = _tt
+	private var _execTime: Long = _tt
+	private var _syncTime: Long = 0
+
+	def totalTime: Long = { _totalTime }
+	def execTime: Long = { _execTime }
+	def syncTime: Long = { _syncTime }
+
+	def totalTimeInc(inc: Long) { 
+		_totalTime += inc 
+		_execTime += inc
+	}
+
+	def syncTimeInc(inc: Long) {
+		_execTime -= inc
+		_syncTime += inc
+	}
 }
 
 class TimelineData(_levelMax: Int) {
