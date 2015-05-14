@@ -128,15 +128,12 @@ object Delite {
       else { //master executor (including single-node execution)
         for (i <- 1 to Config.numRuns) {
           if (Config.performWalk) println("Beginning Execution Run " + i)
-
-          val isLastRun = (i == Config.numRuns)
-          if (isLastRun) { Profiling.startRun() }
-
+          Profiling.startRun()
+          EOP_Global.setbarrier(executable.resources.count(r => !r.isEmpty)) // set the barrier count
           executor.run(executable)
-          appResult = EOP_Global.take() //await the end of the application program  
-
-          if (isLastRun) { Profiling.endRun() }
-
+          EOP_Global.await() //await the end of the application program
+          appResult = EOP_Global.take() //get the result of the application
+          Profiling.endRun()           
           System.gc()
         }
       }      
