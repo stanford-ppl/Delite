@@ -123,40 +123,39 @@ object MemoryProfiler
   		return "null"
   	}
 
-  	def dumpProfile(writer: PrintWriter) {
-  		emitMemProfileDataArrays( writer )
-		emitMemAccessStats( writer )
+  	def dumpProfile(writer: PrintWriter, prefixSpace: String) {
+  		emitMemProfileDataArrays( writer, prefixSpace )
+		emitMemAccessStats( writer, prefixSpace )
   	}
 
-	def emitMemProfileDataArrays(writer: PrintWriter) {
+	def emitMemProfileDataArrays(writer: PrintWriter, prefixSpace: String) {
 		var aggrStats = aggregateStatsFromAllThreads()
 		
-		var tabs = "  "
-		var twoTabs = tabs + tabs
-  		writer.println(tabs + "\"MemProfile\": {")
+		val pre1 = prefixSpace + PostProcessor.tabs
+  		writer.println(prefixSpace + "\"MemProfile\": {")
   		for (kv <- aggrStats) {
   			val totalMemAllocation = sum(kv._2)
-  			writer.println(twoTabs + "\"" + kv._1 + "\" : " + totalMemAllocation + ",")
+  			writer.println(pre1 + "\"" + kv._1 + "\" : " + totalMemAllocation + ",")
   		}
 
-  		writer.println(twoTabs + "\"dummy\": 0")
-  		writer.println(tabs + "},\n")
+  		writer.println(pre1 + "\"dummy\": 0")
+  		writer.println(prefixSpace + "},\n")
   	}
 
-	def emitMemAccessStats( writer: PrintWriter ) {
+	def emitMemAccessStats( writer: PrintWriter, prefixSpace: String ) {
 		if (numCppThreads > 0) {
-			val tabs = "  "
-			val twoTabs = tabs + tabs
+			val pre1 = prefixSpace + PostProcessor.tabs
+			val pre2 = pre1 + PostProcessor.tabs
 			val cppTids = List.range(cppTidStart, cppTidStart + numCppThreads)
 			val kernelToStats = memoryAccessStatsMaps(cppTidStart)
 
-			writer.println( tabs + "\"MemAccessStats\": {" )
+			writer.println( prefixSpace + "\"MemAccessStats\": {" )
 			var firstKernel = true
 			for (kv <- kernelToStats) {
 				val kernel = kv._1
 				val statsLst = kv._2
 
-				writer.println(twoTabs + "\"" + kernel  + "\": {")	
+				writer.println(pre1 + "\"" + kernel  + "\": {")	
 
 				for (i <- List.range(0, statsLst.length)) {
 					val s = cppTids.map(tid => {
@@ -171,15 +170,15 @@ object MemoryProfiler
 						writer.println(",")
 					} 
 
-					writer.print(twoTabs + tabs + "\"" + i + "\"" + ": [" + s + "]")
+					writer.print(pre2 + "\"" + i + "\"" + ": [" + s + "]")
 				}	
 
-				writer.println("\n" + twoTabs + "},")		
+				writer.println("\n" + pre1 + "},")		
 			}
 
-			writer.println(twoTabs + "\"dummy\": {}")
+			writer.println(pre1 + "\"dummy\": {}")
 			
-			writer.println( tabs + "}" )
+			writer.println( prefixSpace + "}" )
 		}
 	}
 

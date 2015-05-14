@@ -244,7 +244,7 @@ object Profiler {
     writer.println("  },")
     
     writer.println("")
-    MemoryProfiler.dumpProfile(writer)
+    MemoryProfiler.dumpProfile(writer, "   ")
     writer.println(",")
 
     SamplerThread.dumpProfile(writer, globalStartNanos)
