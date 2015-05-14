@@ -38,6 +38,8 @@ object PostProcessor {
 		executionProfile.writeDNodesToDB()
 		executionProfile.writeExecutionSummariesToDB()
 		executionProfile.writeTicTocNodeSummariesToDB()
+		executionProfile.writeKernelMemAccessStatsToDB()
+		executionProfile.writeKernelMemAllocationStatsToDB()
 		executionProfile.writeAppDataToDB()
 		executionProfile.close()
 
