@@ -627,7 +627,7 @@ trait Slice1DSliceTest extends DeliteMultiArrayTestbench {
   def main() = {
     val arr = Array1D.fromFunction(20){i => i}
     val view = arr.slice(1, 2, 10)     // 1 3 5 7 9 11 13 15 17 19 (index = 2i + 1)
-    val view2 = arr.slice(1, 3, 3)     // 3 9 15                   (index = 6i + 3)
+    val view2 = view.slice(1, 3, 3)    // 3 9 15                   (index = 6i + 3)
 
     collect(view2.length == 3)
     collect(view2(0) == 3)
@@ -640,6 +640,402 @@ trait Slice1DSliceTest extends DeliteMultiArrayTestbench {
   }
 }
 
+object View1DPermuteRunner extends DeliteMultiArrayTestbenchRunner with View1DPermuteTest
+trait View1DPermuteTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val arr = Array1D.fromFunction(20){i => i}
+    val view = arr.slice(1, 2, 8)  // odds 1 to 15
+
+    val arr2 = view.permute(0)
+
+    println(view.mkString())
+    println(arr2.mkString())
+    arr2.forIndices{i => collect(view(i) == arr2(i)) }
+    mkReport
+  }
+}
+
+object View1DReshapeRunner extends DeliteMultiArrayTestbenchRunner with View1DReshapeTest
+trait View1DReshapeTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val arr = Array1D.fromFunction(20){i => i}
+    val view = arr.slice(1, 2, 8)   // odds 1 to 15
+
+    val mat = view.reshape(2, 4)
+    println(mat.mkString())
+
+    mat.forIndices{(i,j) => collect(mat(i,j) == 8*i + 2*j + 1) }
+    mkReport
+  }
+}
+
+object View1DMapRunner extends DeliteMultiArrayTestbenchRunner with View1DMapTest
+trait View1DMapTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val arr = Array1D.fromFunction(20){i => i}
+    val view = arr.slice(1, 2, 10)
+
+    val arr2 = view.map{x => x - 1}
+
+    println(view.mkString())
+    println(arr2.mkString())
+
+    arr2.forIndices{i => collect(arr2(i) == 2*i)}
+    mkReport
+  }
+}
+
+object View1DZipRunner extends DeliteMultiArrayTestbenchRunner with View1DZipTest
+trait View1DZipTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val arr = Array1D.fromFunction(20){i => i}
+    val view = arr.slice(1, 2, 10)
+    val view2 = arr.slice(0, 2, 10)
+
+    val arr2 = view.zip(view2){_+_}
+
+    arr2.forIndices{i => collect(arr2(i) == 4*i + 1)}
+    mkReport
+  }
+}
+
+object View1DReduceRunner extends DeliteMultiArrayTestbenchRunner with View1DReduceTest
+trait View1DReduceTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val arr = Array1D.fromFunction(20){i => i}
+    val view = arr.slice(1, 2, 10)
+
+    val x = view.reduce(0){_+_}
+    collect(x == 100)
+    mkReport
+  }
+}
+
+object View1DForeachRunner extends DeliteMultiArrayTestbenchRunner with View1DForeachTest
+trait View1DForeachTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val arr = Array1D.fromFunction(20){i => i}
+    val arr2 = Array1D[Int](10)
+
+    val view = arr.slice(1, 2, 10)
+    view.foreach{x => if (x < arr2.length) arr2(x) = x } 
+
+    println(arr2.mkString())
+
+    arr2.forIndices{i => if (i % 2 == 0) collect(arr2(i) == 0) else collect(arr2(i) == i)}
+    mkReport
+  }
+}
+
+object View1DForIndicesRunner extends DeliteMultiArrayTestbenchRunner with View1DForIndicesTest
+trait View1DForIndicesTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val arr = Array1D.fromFunction(20){i => i}
+    val arr2 = Array1D[Int](10)
+    val view = arr.slice(1,2,10)
+
+    view.forIndices{i => arr2(i) = view(i) }
+
+    println(arr2.mkString())
+    arr2.forIndices{i => collect(arr2(i) == 2*i + 1)}
+    mkReport
+  }
+}
+
+object View1DFilterRunner extends DeliteMultiArrayTestbenchRunner with View1DFilterTest 
+trait View1DFilterTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val arr = Array1D.fromFunction(20){i => i}
+    val view = arr.slice(1, 2, 10)
+
+    val arr2 = view.filter{x => x < 5 || x > 8}
+
+    println(arr2.mkString())
+    collect(arr2(0) == 1)
+    collect(arr2(1) == 3)
+    collect(arr2(2) == 9)
+    mkReport
+  }
+}
+
+object View1DFlatMapRunner extends DeliteMultiArrayTestbenchRunner with View1DFlatMapTest 
+trait View1DFlatMapTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val arr = Array1D.fromFunction(10){i => i}
+    val view = arr.slice(1, 2, 5)
+
+    val arr2 = view.flatMap{x => Array1D.fromFunction(x){i => i}}
+    println(arr2.mkString())
+
+    collect(arr2.length == 25)
+    collect(arr2(3) == 2)
+    //collect(arr2.reduce(0){_+_} == 95)
+    mkReport
+  }
+}
+
+object View1DFlatMapViewRunner extends DeliteMultiArrayTestbenchRunner with View1DFlatMapViewTest
+trait View1DFlatMapViewTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val arr = Array1D.fromFunction(10){i => i}
+    val view = arr.slice(1, 2, 5)
+
+    val arr2 = view.flatMap{x => val v = Array1D.fromFunction(x+1){i => i}; v.slice(1,2,v.length/2) }
+    println(arr2.mkString())
+
+    collect(arr2.length == 15)
+    collect(arr2(5) == 5)
+    //collect(arr2.reduce(0){_+_} == 55)
+    mkReport
+  }
+}
+
+object View1DSortRunner extends DeliteMultiArrayTestbenchRunner with View1DSortTest 
+trait View1DSortTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val arr = Array1D.fromFunction(10){i => i}
+    val view = arr.slice(1,2,5)
+
+    val vec2 = view.sort
+    val vec3 = view.sortWith{(a,b) => if (a < b) 1 else -1 }
+    println(view.mkString())
+    println(vec2.mkString())
+    println(vec3.mkString())
+    collect(vec3.length == 5 && vec2.length == 5)
+    collect(vec3(0) == 9 && vec2(0) == 1)
+    mkReport
+  }
+}
+
+// --- 1D BufferView
+
+object SliceBuffer1DRunner extends DeliteMultiArrayTestbenchRunner with SliceBuffer1DTest
+trait SliceBuffer1DTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val buff = Array1D[Int](0)
+    for (i <- unit(0) until unit(20)) { buff := i }
+    
+    val view = buff.slice(1, 2, 5)
+
+    println(view.mkString())
+    collect(view.length == 5)
+    collect(view(0) == 1)
+    collect(view(1) == 3)
+    collect(view(2) == 5)
+    collect(view(3) == 7)
+    collect(view(4) == 9)
+    mkReport
+  }
+}
+
+object BufferView1DSliceRunner extends DeliteMultiArrayTestbenchRunner with BufferView1DSliceTest
+trait BufferView1DSliceTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val buff = Array1D[Int](0)
+    for (i <- unit(0) until unit(20)) { buff := i }
+
+    val view = buff.slice(1, 2, 10)    // 2i + 1
+    val view2 = view.slice(1, 2, 5)   // 4i + 3
+
+    println(view2.mkString())
+    collect(view2.length == 5)
+    collect(view2(0) == 3)
+    collect(view2(1) == 7)
+    collect(view2(2) == 11)
+    collect(view2(3) == 15)
+    collect(view2(4) == 19)
+    mkReport
+  }
+}
+
+object BufferView1DPermuteRunner extends DeliteMultiArrayTestbenchRunner with BufferView1DPermuteTest
+trait BufferView1DPermuteTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val buff = Array1D[Int](0)
+    for (i <- unit(0) until unit(20)) { buff := i }
+
+    val view = buff.slice(1, 2, 8)  // odds 1 to 15
+
+    val arr2 = view.permute(0)
+
+    println(view.mkString())
+    println(arr2.mkString())
+    arr2.forIndices{i => collect(view(i) == arr2(i)) }
+    mkReport
+  }
+}
+
+object BufferView1DReshapeRunner extends DeliteMultiArrayTestbenchRunner with BufferView1DReshapeTest
+trait BufferView1DReshapeTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val buff = Array1D[Int](0)
+    for (i <- unit(0) until unit(20)) { buff := i }
+
+    val view = buff.slice(1, 2, 8)   // odds 1 to 15
+
+    val mat = view.reshape(2, 4)
+    println(mat.mkString())
+
+    mat.forIndices{(i,j) => collect(mat(i,j) == 8*i + 2*j + 1) }
+    mkReport
+  }
+}
+
+object BufferView1DMapRunner extends DeliteMultiArrayTestbenchRunner with BufferView1DMapTest
+trait BufferView1DMapTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val buff = Array1D[Int](0)
+    for (i <- unit(0) until unit(20)) { buff := i }
+
+    val view = buff.slice(1, 2, 10)
+
+    val arr2 = view.map{x => x - 1}
+
+    println(view.mkString())
+    println(arr2.mkString())
+
+    arr2.forIndices{i => collect(arr2(i) == 2*i)}
+    mkReport
+  }
+}
+
+object BufferView1DZipRunner extends DeliteMultiArrayTestbenchRunner with BufferView1DZipTest
+trait BufferView1DZipTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val buff = Array1D[Int](0)
+    for (i <- unit(0) until unit(20)) { buff := i }
+
+    val view = buff.slice(1, 2, 10)
+    val view2 = buff.slice(0, 2, 10)
+
+    val arr2 = view.zip(view2){_+_}
+
+    arr2.forIndices{i => collect(arr2(i) == 4*i + 1)}
+    mkReport
+  }
+}
+
+object BufferView1DReduceRunner extends DeliteMultiArrayTestbenchRunner with BufferView1DReduceTest
+trait BufferView1DReduceTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val buff = Array1D[Int](0)
+    for (i <- unit(0) until unit(20)) { buff := i }
+
+    val view = buff.slice(1, 2, 10)
+
+    val x = view.reduce(0){_+_}
+    collect(x == 100)
+    mkReport
+  }
+}
+
+object BufferView1DForeachRunner extends DeliteMultiArrayTestbenchRunner with BufferView1DForeachTest
+trait BufferView1DForeachTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val buff = Array1D[Int](0)
+    for (i <- unit(0) until unit(20)) { buff := i }
+
+    val view = buff.slice(1, 2, 10)
+
+    val arr2 = Array1D[Int](10)
+    view.foreach{x => if (x < arr2.length) arr2(x) = x } 
+
+    println(arr2.mkString())
+
+    arr2.forIndices{i => if (i % 2 == 0) collect(arr2(i) == 0) else collect(arr2(i) == i)}
+    mkReport
+  }
+}
+
+object BufferView1DForIndicesRunner extends DeliteMultiArrayTestbenchRunner with BufferView1DForIndicesTest
+trait BufferView1DForIndicesTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val buff = Array1D[Int](0)
+    for (i <- unit(0) until unit(20)) { buff := i }
+
+    val view = buff.slice(1,2,10)
+
+    val arr2 = Array1D[Int](10)
+    view.forIndices{i => arr2(i) = view(i) }
+
+    println(arr2.mkString())
+    arr2.forIndices{i => collect(arr2(i) == 2*i + 1)}
+    mkReport
+  }
+}
+
+object BufferView1DFilterRunner extends DeliteMultiArrayTestbenchRunner with BufferView1DFilterTest 
+trait BufferView1DFilterTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val buff = Array1D[Int](0)
+    for (i <- unit(0) until unit(20)) { buff := i }
+
+    val view = buff.slice(1, 2, 10)
+
+    val arr2 = view.filter{x => x < 5 || x > 8}
+
+    println(arr2.mkString())
+    collect(arr2(0) == 1)
+    collect(arr2(1) == 3)
+    collect(arr2(2) == 9)
+    mkReport
+  }
+}
+
+object BufferView1DFlatMapRunner extends DeliteMultiArrayTestbenchRunner with BufferView1DFlatMapTest 
+trait BufferView1DFlatMapTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val buff = Array1D[Int](0)
+    for (i <- unit(0) until unit(20)) { buff := i }
+
+    val view = buff.slice(1, 2, 5)
+
+    val arr2 = view.flatMap{x => Array1D.fromFunction(x){i => i}}
+    println(arr2.mkString())
+
+    collect(arr2.length == 25)
+    collect(arr2(3) == 2)
+    //collect(arr2.reduce(0){_+_} == 95)
+    mkReport
+  }
+}
+
+object BufferView1DFlatMapBufferViewRunner extends DeliteMultiArrayTestbenchRunner with BufferView1DFlatMapBufferViewTest
+trait BufferView1DFlatMapBufferViewTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val buff = Array1D[Int](0)
+    for (i <- unit(0) until unit(20)) { buff := i }
+
+    val view = buff.slice(1, 2, 5)
+
+    val arr2 = view.flatMap{x => val v = Array1D.fromFunction(x+1){i => i}; v.slice(1,2,v.length/2) }
+    println(arr2.mkString())
+
+    collect(arr2.length == 15)
+    collect(arr2(5) == 5)
+    //collect(arr2.reduce(0){_+_} == 55)
+    mkReport
+  }
+}
+
+object BufferView1DSortRunner extends DeliteMultiArrayTestbenchRunner with BufferView1DSortTest 
+trait BufferView1DSortTest extends DeliteMultiArrayTestbench {
+  def main() = {
+    val buff = Array1D[Int](0)
+    for (i <- unit(0) until unit(20)) { buff := i }
+
+    val view = buff.slice(1,2,5)
+
+    val vec2 = view.sort
+    val vec3 = view.sortWith{(a,b) => if (a < b) 1 else -1 }
+    println(view.mkString())
+    println(vec2.mkString())
+    println(vec3.mkString())
+    collect(vec3.length == 5 && vec2.length == 5)
+    collect(vec3(0) == 9 && vec2(0) == 1)
+    mkReport
+  }
+}
 
 class DeliteMultiArraySuite extends DeliteSuite {
   // Passed tests
@@ -680,15 +1076,46 @@ class DeliteMultiArraySuite extends DeliteSuite {
 
   def testSlice1D() { compileAndTest(Slice1DRunner) }
   def testSlice1DOffset() { compileAndTest(Slice1DOffsetRunner) }
+  def testSlice1DSlice() { compileAndTest(Slice1DSliceRunner) }
+
+  def testView1DPermute() { compileAndTest(View1DPermuteRunner) }
+  def testView1DReshape() { compileAndTest(View1DReshapeRunner) }
+  def testView1DMap() { compileAndTest(View1DMapRunner) }
+  def testView1DZip() { compileAndTest(View1DZipRunner) }
+  def testView1DReduce() { compileAndTest(View1DReduceRunner) }  
+
+  def testView1DForeach() { compileAndTest(View1DForeachRunner) }
+  def testView1DForIndices() { compileAndTest(View1DForIndicesRunner) }
+
+  def testView1DFilter() { compileAndTest(View1DFilterRunner) }
+  def testView1DFlatMap() { compileAndTest(View1DFlatMapRunner) }
+  def testView1DFlatMapView() { compileAndTest(View1DFlatMapViewRunner) }
+  
+  def testView1DSort() { compileAndTest(View1DSortRunner) }
+
+  def testSliceBuffer1D() { compileAndTest(SliceBuffer1DRunner) }
+  def testBufferView1DSlice() { compileAndTest(BufferView1DSliceRunner) }
+  def testBufferView1DPermute() { compileAndTest(BufferView1DPermuteRunner) }
+  def testBufferView1DReshape() { compileAndTest(BufferView1DReshapeRunner) }
+  def testBufferView1DMap() { compileAndTest(BufferView1DMapRunner) }
+  def testBufferView1DZip() { compileAndTest(BufferView1DZipRunner) }
+  def testBufferView1DReduce() { compileAndTest(BufferView1DReduceRunner) }  
+
+  def testBufferView1DForeach() { compileAndTest(BufferView1DForeachRunner) }
+  def testBufferView1DForIndices() { compileAndTest(BufferView1DForIndicesRunner) }
+
+  def testBufferView1DFilter() { compileAndTest(BufferView1DFilterRunner) }
+  def testBufferView1DFlatMap() { compileAndTest(BufferView1DFlatMapRunner) }
+  def testBufferView1DFlatMapBufferView() { compileAndTest(BufferView1DFlatMapBufferViewRunner) }
+  
+  def testBufferView1DSort() { compileAndTest(BufferView1DSortRunner) }
   */
 
   // Tests passing, still need to figure out supposed aliasing error
-  //def testBuffer1DMapToBuffer() { compileAndTest(Buffer1DMapToBufferRunner) }       // illegal sharing btwn insertAll, .mutable (map)
+  def testBuffer1DMapToBuffer() { compileAndTest(Buffer1DMapToBufferRunner) }       // illegal sharing btwn insertAll, .mutable (map)
   //def testBuffer1DZipToBuffer() { compileAndTest(Buffer1DZipToBufferRunner) }       // illegal sharing btwn insertAll, .mutable (map)
   //def testBufferFilterToBuffer() { compileAndTest(BufferFilterToBufferRunner) }     // illegal sharing btwn remove, .mutable (map)
   //def testBufferFlatMapToBuffer() { compileAndTest(BufferFlatMapToBufferRunner) }   // illegal sharing btwn remove, .mutable (map)
-
-  def testSlice1DSlice() { compileAndTest(Slice1DSliceRunner) }
 
   //def testDeliteBufferMapToBuffer() { compileAndTest(DeliteBufferMapToBufferRunner) }
   //def testSinglyNestedMultiArray() { compileAndTest(SinglyNestedMultiArrayRunner) }

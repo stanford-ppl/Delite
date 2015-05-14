@@ -117,11 +117,12 @@ trait MultiArrayAnalyzerBase extends AnalyzerBase {
   import IR._
 
   override def forwardPropagate[A](e: Exp[A], d: Def[_])(implicit ctx: SourceContext): Unit = d match {
-    case op@DeliteMultiArrayView(t,_,_,_) => setChild(e, getChild(t))
-    case op@DeliteMultiArrayPermute(ma,_) => setChild(e, getChild(ma))
-    case op@DeliteMultiArrayReshape(ma,_) => setChild(e, getChild(ma))
-    case op@DeliteMultiArrayApply(ma,_)   => setProps(e, getChild(ma))
+    case op@DeliteMultiArrayView(t,_,_,_,_) => setChild(e, getChild(t))
+    case op@DeliteMultiArrayPermute(ma,_)   => setChild(e, getChild(ma))
+    case op@DeliteMultiArrayReshape(ma,_)   => setChild(e, getChild(ma))
+    case op@DeliteMultiArrayApply(ma,_)     => setProps(e, getChild(ma))
     
+    case op@DeliteMultiArrayReadFile(_,_,_)      => setChild(e, getProps(op.body.res))
     case op@DeliteMultiArrayFromFunction(dims,_) => setChild(e, getProps(op.body.res))
     case op@DeliteMultiArrayMap(ma,_)            => setChild(e, getProps(op.body.res))
     case op@DeliteMultiArrayZipWith(ma,mb,_)     => setChild(e, getProps(op.body.res))
@@ -189,11 +190,12 @@ trait RankAnalyzer extends MultiArrayAnalyzerBase with MultiArrayHelperStageOne 
     case DeliteMultiArrayNew(dims)            => setRank(e, dims.length)
     case DeliteMultiArrayPermute(ma,_)        => setRank(e, getRank(ma))   
     case DeliteMultiArrayReshape(_,dims)      => setRank(e, dims.length)
+    case DeliteMultiArrayReadFile(_,dels,_)   => setRank(e, dels.length)
     case DeliteMultiArrayFromFunction(dims,_) => setRank(e, dims.length)
     case DeliteMultiArrayMap(ma,_)            => setRank(e, getRank(ma))
     case DeliteMultiArrayZipWith(ma,_,_)      => setRank(e, getRank(ma))  
 
-    case DeliteMultiArrayView(t,_,_,dims) => 
+    case DeliteMultiArrayView(t,_,_,dims,_) => 
       setRank(e, dims.length)
       if (isPhysBuffer(t)) setMetadata(e, MBuffer(PhysType))
       setMetadata(e, MView(TrueType))
@@ -310,7 +312,9 @@ trait RankChecker extends MultiArrayAnalyzerBase with MultiArrayHelperStageTwo {
       check(axis >= 0 && axis < rank(ma), "Removal axis must be non-negative and less than MultiArray's rank")
 
     case DeliteMultiArrayMkString(ma,dels) =>
-      check(rank(ma) == dels.length, "Number of delimeters given in MkString must match input MultiArray's rank")
+      check(rank(ma) == dels.length, "Number of delimeters given to MkString (" + dels.length + ") must match input MultiArray's rank (" + rank(ma) + ")")
+    case DeliteMultiArrayWriteFile(ma,dels,_,_) => 
+      check(rank(ma) == dels.length, "Number of delimeters given to WriteFile (" + dels.length + ") must match input MultiArray's rank (" + rank(ma) + ")")
 
     case DeliteMultiArrayMapFilter(ma,_,_) => 
       check(rank(ma) == 1, "MapFilter is undefined for " + rank(ma) + "D arrays")

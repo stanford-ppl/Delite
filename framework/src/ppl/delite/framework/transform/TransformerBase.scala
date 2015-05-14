@@ -18,10 +18,6 @@ import scala.reflect.SourceContext
       printmsg(sw.toString())
     }*/
 
-/** 
- * Made separate from WorklistTransformer for now since my concept of curSubst
- * and nextSubst are a little different from what WorklistTransformer does
- */  
 trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor with MetadataTransformer { self =>
   val IR: DeliteOpsExp with DeliteMetadata
   import IR._

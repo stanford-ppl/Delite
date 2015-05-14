@@ -79,12 +79,10 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
   }
   implicit def multiarrayviewimplToOpsCls(ma: Exp[MultiArrayViewImpl[_]]) = new MultiArrayViewImplOpsCls(ma)
   class MultiArrayViewImplOpsCls(x: Exp[MultiArrayViewImpl[_]]) {
-    def start = Seq.tabulate(implementer.rank(x)){d => field[Int](x, "ofs" + d)}
     def stride = Seq.tabulate(implementer.rank(x)){d => field[Int](x, "stride" + d)}
   }
   implicit def multiarraybuffviewimplToOpsCls(ma: Exp[MultiArrayBuffViewImpl[_]]) = new MultiArrayBuffViewImplOpsCls(ma)
   class MultiArrayBuffViewImplOpsCls(x: Exp[MultiArrayBuffViewImpl[_]]) {
-    def start = Seq.tabulate(implementer.rank(x)){d => field[Int](x, "ofs" + d)}
     def stride = Seq.tabulate(implementer.rank(x)){d => field[Int](x, "stride" + d)}
   }
 
@@ -186,7 +184,7 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
 
       // --- Array Constructors
       case op@DeliteMultiArrayNew(dims) => implementNew(f(dims), props(s))(ttype(op.mA, mdat(s)), ctx)
-      case DeliteMultiArrayView(ma,o,t,d) => implementView(f(ma),f(o),f(t),f(d),props(s))(dataTp(f(ma)), ctx)
+      case DeliteMultiArrayView(ma,o,t,d,ud) => implementView(f(ma),f(o),f(t),f(d),ud,props(s))(dataTp(f(ma)), ctx)
 
       // --- Single element ops
       case DeliteMultiArrayApply(ma,i) => implementApply(f(ma),f(i))(dataTp(f(ma)), ctx)
@@ -197,6 +195,10 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
       case DeliteMultiArrayReshape(ma,dims) => implementReshape(f(ma),f(dims),props(s))(dataTp(f(ma)), ctx)
 
       // --- Parallel ops
+      case op@DeliteMultiArrayReadFile(path,dels,_) => 
+        val body = f(op.body)
+        implementReadFile(f(path), f(dels), body, op.v, op.i, op.rV, props(s))(mtype(body.tp), ctx)
+
       case op@DeliteMultiArrayFromFunction(dims,_) => 
         val body = f(op.body)
         implementFromFunction(f(dims),body,op.v,op.i,props(s))(mtype(body.tp), ctx)
@@ -237,6 +239,10 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
       // --- Misc
       case op@DeliteMultiArrayMkString(ma, dels) => implementMkString(f(ma),f(dels))(dataTp(f(ma)))
       
+      case op@DeliteMultiArrayWriteFile(ma, dels, path, _) => 
+        val body = f(op.body)
+        implementWriteFile(f(ma), f(dels), f(path), body, op.v, op.i)(dataTp(ma.tp), ctx)
+
       // --- 1D Ops
       case DeliteMultiArraySortIndices(len,i,body) => implementSortIndices(f(len),(f(i._1).asInstanceOf[Sym[Int]],f(i._2).asInstanceOf[Sym[Int]]),f(body),props(s))(ctx)
       case DeliteMultiArrayStringSplit(str,split,lim) => implementStringSplit(f(str),f(split),f(lim),props(s))(ctx)
@@ -289,7 +295,7 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
 
     override def transferMetadata(sub: Exp[Any], orig: Exp[Any], d: Def[Any])(implicit ctx: SourceContext) = d match {
       case DeliteMultiArrayNew(_) => copyMetadata(sub,props(orig))
-      case DeliteMultiArrayView(_,_,_,_) => copyMetadata(sub,props(orig))
+      case DeliteMultiArrayView(_,_,_,_,_) => copyMetadata(sub,props(orig))
       case DeliteMultiArrayApply(_,_) if getProps(orig).nonEmpty => copyMetadata(sub,props(orig))
       case DeliteMultiArrayPermute(_,_) => copyMetadata(sub,props(orig))
       case DeliteMultiArrayReshape(_,_) => copyMetadata(sub,props(orig))
@@ -418,7 +424,7 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
     def implementNew[A:Manifest](dims: Seq[Exp[Int]], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
       sys.error("Don't know how to implement new multiarray for target layout " + layout(out))
     }
-    def implementView[A:Manifest](ma: Exp[DeliteMultiArray[A]], start: Seq[Exp[Int]], stride: Seq[Exp[Int]], dims: Seq[Rep[Int]], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
+    def implementView[A:Manifest](ma: Exp[DeliteMultiArray[A]], start: Seq[Exp[Int]], stride: Seq[Exp[Int]], dims: Seq[Rep[Int]], unitDims: Seq[Int], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
       sys.error("Don't know how to implement view creation for layout " + layout(ma) + " and output layout " + layout(out))
     }
 
@@ -439,6 +445,9 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
     }
 
     // --- Parallel ops
+    def implementFileRead[A:Manifest](path: Exp[String], dels: Seq[Exp[String]], body: Block[A], v: Sym[Int], i: Exp[LoopIndices], rV: Exp[String], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
+      sys.error("Don't know how to implement file read for output layout " + layout(out))
+    }
     def implementFromFunction[A:Manifest](dims: Seq[Exp[Int]], body: Block[A], v: Sym[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
       sys.error("Don't know how to implement map indices for output layout " + layout(out))
     }
@@ -454,7 +463,7 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
       val inds = calcIndices(v, dims)
       val i2 = loopindices_new(v, inds)
 
-      // Probably don't need subst. for i for lookup and zero..
+      // Probably don't need subst. for i for body or zero..
       val (mirroredLookup, mirroredBody, mirroredZero) = withSubstScope(i -> i2) { (f(lookup), f(body), f(zero)) }
       reflectPure(ReduceFactory(v, rV, size, mirroredLookup, mirroredBody, mirroredZero))
     }
@@ -511,6 +520,9 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
     // --- Misc.
     def implementMkString[A:Manifest](ma: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]]): Exp[String] = {
       sys.error("Don't know how to implement mkString for layout " + layout(ma))
+    }
+    def implementFileWrite[A:Manifest](ma: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]], body: Block[String], v: Sym[Int], i: Exp[LoopIndices]): Exp[Unit] = {
+      sys.error("Don't know how to implement file write for layout " + layout(ma))
     }
 
     // --- 1D Ops

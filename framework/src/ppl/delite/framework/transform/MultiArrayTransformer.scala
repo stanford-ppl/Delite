@@ -15,7 +15,7 @@ trait MultiArrayTransform extends DeliteApplication with MultiArrayImplExp
   /**** Mix in MultiArray transformer traits here ****/
   trait MultiArrayTransformer extends MultiArrayImplementer with FlatArrayImplementer { 
     override val name = "MultiArray Transformer"
-    override val debugMode = false 
+    override val debugMode = true 
   }
 
   override val implementer = new MultiArrayTransformer{val IR: self.type = self}

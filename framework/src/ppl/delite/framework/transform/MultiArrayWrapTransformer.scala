@@ -25,7 +25,7 @@ trait MultiArrayWrapTransformer extends TransformerBase with MultiArrayHelperSta
   val IR: MultiArrayWrapExp with RankMetadata
   import IR._
   override val name = "MultiArray Wrapper"
-  override val debugMode = true
+  override val debugMode = false
 
   def buffify[T:Manifest](x: Exp[DeliteMultiArray[T]])(implicit ctx: SourceContext): Exp[DeliteMultiArray[T]] = {
     if (!isPhysBuffer(x)) {

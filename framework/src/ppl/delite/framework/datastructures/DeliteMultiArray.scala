@@ -56,7 +56,12 @@ trait DeliteMultiArrayOps extends DeliteAbstractOps {
     def reshape(d0: Rep[Int], d1: Rep[Int], d2: Rep[Int], d3: Rep[Int], d4: Rep[Int], d5: Rep[Int]*): Rep[DeliteMultiArray[T]] = dmultia_reshape(ma, Seq(d0, d1, d2, d3, d4) ++ d5.toSeq)
 
     // --- Permuting
-    def permute(i: Int*) = dmultia_permute(ma, i.toSeq)
+    def permute(d0: Int) = dmultia_permute(ma, Seq(d0)).as1D  // not really needed - does nothing
+    def permute(d0: Int, d1: Int) = dmultia_permute(ma, Seq(d0, d1)).as2D // not really needed - special cases are matrix transpose, matrix copy
+    def permute(d0: Int, d1: Int, d2: Int) = dmultia_permute(ma, Seq(d0, d1, d2)).as3D
+    def permute(d0: Int, d1: Int, d2: Int, d3: Int) = dmultia_permute(ma, Seq(d0, d1, d2, d3)).as4D
+    def permute(d0: Int, d1: Int, d2: Int, d3: Int, d4: Int) = dmultia_permute(ma, Seq(d0, d1, d2, d3, d4)).as5D
+    def permute(d0: Int, d1: Int, d2: Int, d3: Int, d4: Int, d5: Int*) = dmultia_permute(ma, Seq(d0, d1, d2, d3, d4) ++ d5.toSeq)
 
     // --- single element
     def apply(i: Rep[Int]*): Rep[T] = dmultia_apply(ma,indices_new(i.toList))
@@ -87,6 +92,8 @@ trait DeliteMultiArrayOps extends DeliteAbstractOps {
   
     def sortIndices(length: Rep[Int])(comparator: (Rep[Int], Rep[Int]) => Rep[Int])(implicit ctx: SourceContext) = dmultia_sortIndices(length, comparator)
     def splitString(str: Rep[String],pat: Rep[String],ofs: Rep[Int] = unit(0))(implicit ctx: SourceContext) = dmultia_string_split(str,pat,ofs)
+
+    def fromFile[T:Manifest](path: Rep[String])(func: Rep[String] => Rep[T])(implicit ctx: SourceContext) = dmultia_readfile(path, Seq(unit("\n")), func)
   }
 
   implicit def repArray1DtoArray1DOps[T:Manifest](ma: Rep[DeliteArray1D[T]])(implicit ctx: SourceContext) = new DeliteArray1DOpsCls(ma)
@@ -127,18 +134,19 @@ trait DeliteMultiArrayOps extends DeliteAbstractOps {
     def flatMap[B:Manifest](f: Rep[T] => Rep[DeliteArray1D[B]])(implicit ctx: SourceContext) = dmultia_flatmap(ma,f)  
   
     def mkString(del: Rep[String] = unit(",")) = dmultia_mkstring(ma,Seq(del))
+    def writeFile(path: Rep[String])(func: Rep[T] => Rep[String])(implicit ctx: SourceContext) = dmultia_writefile(ma, Seq(unit("\n")), path, func)
   }
 
   implicit def repArray1DToOrderedArray1DOpsCls[T:Manifest:Ordering](ma: Rep[DeliteArray1D[T]])(implicit ctx: SourceContext) = new DeliteArray1DOrderedOpsCls(ma)
   class DeliteArray1DOrderedOpsCls[T:Manifest:Ordering](ma: Rep[DeliteArray1D[T]])(implicit ctx: SourceContext) {
     def sort = dmultia_sort(ma)
-    
   }
 
   object Array2D {
     def apply[T:Manifest](rows: Rep[Int], cols: Rep[Int])(implicit ctx: SourceContext) = dmultia_new[T](List(rows,cols)).as2D
     def imm[T:Manifest](rows: Rep[Int], cols: Rep[Int])(implicit ctx: SourceContext) = dmultia_new_immutable[T](List(rows,cols)).as2D
     def fromFunction[T:Manifest](rows: Rep[Int], cols: Rep[Int])(func: (Rep[Int], Rep[Int]) => Rep[T])(implicit ctx: SourceContext) = dmultia_fromfunction(List(rows,cols), {x: Rep[LoopIndices] => func(x(0),x(1))}).as2D
+    def fromFile[T:Manifest](path: Rep[String], cdel: Rep[String] = unit("\\s+"))(func: Rep[String] => Rep[T])(implicit ctx: SourceContext) = dmultia_readfile(path, Seq(unit("\n"), cdel), func)
   }
 
   implicit def repArray2DToArray2DOps[T:Manifest](ma: Rep[DeliteArray2D[T]])(implicit ctx: SourceContext) = new DeliteArray2DOpsCls(ma)
@@ -153,6 +161,14 @@ trait DeliteMultiArrayOps extends DeliteAbstractOps {
 
     // --- Permuting
     def t: Rep[DeliteArray2D[T]] = dmultia_permute(ma, Seq(1,0)).as2D
+
+    // --- Slicing
+    def slice(startRow: Rep[Int], rowStride: Rep[Int], rows: Rep[Int], startCol: Rep[Int], colStride: Rep[Int], cols: Rep[Int]) = dmultia_view(ma, Seq(startRow, startCol), Seq(rowStride, colStride), Seq(rows, cols)).as2D
+    def sliceRow(start: Rep[Int]) = dmultia_view(ma, Seq(start, unit(0)), Seq(unit(1)), Seq(cols), Seq(0)).as1D
+    def sliceCol(start: Rep[Int]) = dmultia_view(ma, Seq(unit(0), start), Seq(cols), Seq(rows), Seq(1)).as1D
+
+    def sliceRows(start: Rep[Int], num: Rep[Int]) = this.slice(start, unit(1), num, unit(0), unit(1), cols).as2D
+    def sliceCols(start: Rep[Int], num: Rep[Int]) = this.slice(unit(0), unit(1), rows, start, unit(1), num).as2D
 
     // --- mutability/buffering
     def update(i: Rep[Int], j: Rep[Int], x: Rep[T]): Rep[Unit] = dmultia_update(ma,Indices(i,j),x)
@@ -181,12 +197,17 @@ trait DeliteMultiArrayOps extends DeliteAbstractOps {
     def mapCols[R:Manifest](f: Rep[DeliteArray1D[T]] => Rep[DeliteArray1D[R]]) = dmultia_NDmap(ma,List(1),{c: Rep[DeliteMultiArray[T]] => f(c.as1D) }).as2D
   
     def mkString(rowDel: Rep[String] = unit("\n"), colDel: Rep[String] = unit(",")) = dmultia_mkstring(ma,Seq(rowDel,colDel))
+    def writeFile(path: Rep[String], cdel: Rep[String] = unit("    "))(func: Rep[T] => Rep[String])(implicit ctx: SourceContext) = dmultia_writefile(ma, Seq(unit("\n"),cdel) path, func)
   }
+
+  // --- File reading/writing
+  def dmultia_readfile[A:Manifest](path: Rep[String], dels: Seq[Rep[String]], func: Rep[String] => Rep[A])(implicit ctx: SourceContext): Rep[DeliteMultiArray[A]]
+  def dmultia_writefile[A:Manifest](ma: Rep[DeliteMultiArray[A]], dels: Seq[Rep[String]], path: Rep[String], func: Rep[A] => Rep[String])(implicit ctx: SourceContext): Rep[Unit]
 
   // --- Array constructors
   def dmultia_new[A:Manifest](dims: Seq[Rep[Int]])(implicit ctx: SourceContext): Rep[DeliteMultiArray[A]]
   def dmultia_new_immutable[A:Manifest](dims: Seq[Rep[Int]])(implicit ctx: SourceContext): Rep[DeliteMultiArray[A]]
-  def dmultia_view[A:Manifest](ma: Rep[DeliteMultiArray[A]], start: Seq[Rep[Int]], stride: Seq[Rep[Int]], dims: Seq[Rep[Int]])(implicit ctx: SourceContext): Rep[DeliteMultiArray[A]]
+  def dmultia_view[A:Manifest](ma: Rep[DeliteMultiArray[A]], start: Seq[Rep[Int]], stride: Seq[Rep[Int]], dims: Seq[Rep[Int]], unitDims: Seq[Int] = Nil)(implicit ctx: SourceContext): Rep[DeliteMultiArray[A]]
 
   // --- Array properties
   def dmultia_rank[A:Manifest](ma: Rep[DeliteMultiArray[A]])(implicit ctx: SourceContext): Rep[Int]
@@ -255,7 +276,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
 
   // --- Array constructors
   case class DeliteMultiArrayNew[A:Manifest](dims: Seq[Exp[Int]]) extends AbstractDefWithManifest[A,DeliteMultiArray[A]]
-  case class DeliteMultiArrayView[A:Manifest](ma: Exp[DeliteMultiArray[A]], start: Seq[Exp[Int]], stride: Seq[Exp[Int]], dims: Seq[Exp[Int]])(implicit ctx: SourceContext) extends AbstractDefWithManifest[A,DeliteMultiArray[A]]
+  case class DeliteMultiArrayView[A:Manifest](ma: Exp[DeliteMultiArray[A]], start: Seq[Exp[Int]], stride: Seq[Exp[Int]], dims: Seq[Exp[Int]], unitDims: Seq[Int])(implicit ctx: SourceContext) extends AbstractDefWithManifest[A,DeliteMultiArray[A]]
 
   // --- Array properties
   case class DeliteMultiArrayRank[A:Manifest](ma: Exp[DeliteMultiArray[A]]) extends AbstractDefWithManifest[A,Int]
@@ -273,6 +294,19 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
   case class DeliteMultiArrayReshape[A:Manifest](ma: Exp[DeliteMultiArray[A]], dims: Seq[Exp[Int]])(implicit ctx: SourceContext) extends AbstractDefWithManifest[A,DeliteMultiArray[A]]
 
   // --- Parallel Ops
+  /** 
+   * Read multidimensional array from file
+   * Output MultiArray's rank is equivalent to the number of delimeters given
+   * @param path - relative (?) path to file
+   * @param dels - file delimeters corresponding to dimensions. first is expected to be newline. 
+   * @param func - mapping function from input element string to element
+   */
+  case class DeliteMultiArrayReadFile[A:Manifest](path: Exp[String], dels: Seq[Exp[String]], func: Exp[String] => Exp[A]) extends DeliteAbstractLoop[A,DeliteMultiArray[A]] {
+    type OpType <: DeliteMultiArrayReadFile[A]
+    lazy val rV: Sym[String] = copyOrElse(_.rV)(fresh[String])
+    val body: Block[A] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(rV)))
+  }
+
   /** 
    * Parallel creation of a multidimensional array
    * @param dims - a list of dimensions for the array (length is equal to array rank)
@@ -376,7 +410,6 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
   }
 
   // --- 1D Parallel Ops
-  // TODO: The MultiArray ops here may be able to be changed to DeliteArray ops using pins later?
   /** 
    * Parallel Map-Filter on a 1D array
    * @param in   - input array
@@ -414,7 +447,24 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
   }
 
   // --- Misc Ops.
-  case class DeliteMultiArrayMkString[T:Manifest](ma: Exp[DeliteMultiArray[T]], dels: Seq[Exp[String]]) extends AbstractDefWithManifest[T,String]
+  /**
+   * Creation of a string representation of a MultiArray
+   * @param ma   - input MultiArray
+   * @param dels - delimeters across dimensions. Number of delimeters should equal rank of input MultiArray 
+   */ 
+  case class DeliteMultiArrayMkString[A:Manifest](ma: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]]) extends AbstractDefWithManifest[A,String]
+    
+  /** 
+   * Abstract node for writing a MultiArray to a file
+   * @param in   - input MultiArray
+   * @param dels - delimeters across dimensions. Number of delimeters should equal rank of input MultiArray
+   * @param path - relative path (?) to output file
+   * @param func - mapping from element of MultiArray to string
+   */
+  case class DeliteMultiArrayWriteFile[A:Manifest](in: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]], path: Exp[String], func: Exp[A] => Exp[String]) extends DeliteAbstractLoop[A,Unit] {
+    type OpType <: DeliteMultiArrayWriteFile[A]
+    val body: Block[A] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(dmultia_apply(ma,i))))
+  }
 
   // --- 1D Ops
   /**
@@ -467,7 +517,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
   // --- Array constructors
   def dmultia_new[A:Manifest](dims: Seq[Exp[Int]])(implicit ctx: SourceContext) = reflectMutable(DeliteMultiArrayNew[A](dims))
   def dmultia_new_immutable[A:Manifest](dims: Seq[Exp[Int]])(implicit ctx: SourceContext) = DeliteMultiArrayNew[A](dims)
-  def dmultia_view[A:Manifest](ma: Exp[DeliteMultiArray[A]], start: Seq[Exp[Int]], stride: Seq[Exp[Int]], dims: Seq[Exp[Int]])(implicit ctx: SourceContext) = DeliteMultiArrayView(ma,start,stride,dims)
+  def dmultia_view[A:Manifest](ma: Exp[DeliteMultiArray[A]], start: Seq[Exp[Int]], stride: Seq[Exp[Int]], dims: Seq[Exp[Int]], unitDims: Seq[Int] = Nil)(implicit ctx: SourceContext) = DeliteMultiArrayView(ma,start,stride,dims,unitDims)
 
   // --- Array properties
   def dmultia_rank[A:Manifest](ma: Exp[DeliteMultiArray[A]])(implicit ctx: SourceContext) = DeliteMultiArrayRank(ma)
@@ -521,6 +571,8 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
 
   // --- Misc.
   def dmultia_mkstring[A:Manifest](ma: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]])(implicit ctx: SourceContext) = DeliteMultiArrayMkString(ma,dels)
+  def dmultia_readfile[A:Manifest](path: Exp[String], dels: Seq[Exp[String]], func: Exp[String] => Exp[A])(implicit ctx: SourceContext): Exp[DeliteMultiArray[A]] = DeliteMultiArrayReadFile(path, dels, func)
+  def dmultia_writefile[A:Manifest](ma: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]], path: Exp[String], func: Exp[A] => Exp[String])(implicit ctx: SourceContext): Exp[Unit] = reflectEffect(DeliteMultiArrayWriteFile(ma, dels, path, func))
 
   // --- 1D Operations
   def dmultia_sortIndices(len: Exp[Int], comp: (Exp[Int],Exp[Int]) => Exp[Int])(implicit ctx: SourceContext) = {
@@ -551,7 +603,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
   }).map{x => ma(x)}
 
   def dmultia_string_split(str: Exp[String], pat: Exp[String], ofs: Exp[Int] = unit(0))(implicit ctx: SourceContext) = DeliteMultiArrayStringSplit(str,pat,ofs)
-  
+
   // --- 2D Operations
   def dmultia_matmult[A:Manifest:Numeric](lhs: Exp[DeliteArray2D[A]], rhs: Exp[DeliteArray2D[A]])(implicit ctx: SourceContext) = DeliteMatrixMultiply(lhs,rhs)
   def dmultia_matvecmult[A:Manifest:Numeric](mat: Exp[DeliteArray2D[A]], vec: Exp[DeliteArray1D[A]])(implicit ctx: SourceContext) = DeliteMatrixVectorMultiply(mat,vec)
@@ -564,7 +616,6 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
   ////////////////
   // dependencies
 
-  // TODO: Some duplication with DeliteOps... can we reduce this somehow?
   override def blocks(e: Any): List[Block[Any]] = e match {
     case op: DeliteMultiArrayFromFunction[_] => blocks(op.body)
     case op: DeliteMultiArrayMap[_,_] => blocks(op.body)
@@ -577,6 +628,8 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
     case op: DeliteMultiArrayGroupByReduce[_,_,_] => blocks(op.keyFunc) ::: blocks(op.valFunc) ::: blocks(op.redFunc)
     case op: DeliteMultiArrayMapFilter[_,_] => blocks(op.mapFunc) ::: blocks(op.filtFunc)
     case op: DeliteMultiArrayFlatMap[_,_] => blocks(op.body)
+    case op: DeliteMultiArrayReadFile[_] => blocks(op.body)
+    case op: DeliteMultiArrayWriteFile[_] => blocks(op.body)
     case _ => super.blocks(e)
   }
 
@@ -593,10 +646,11 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
     case op: DeliteMultiArrayGroupByReduce[_,_,_] => syms(op.keyFunc) ::: syms(op.valFunc) ::: syms(op.redFunc) ::: syms(op.in)
     case op: DeliteMultiArrayMapFilter[_,_] => syms(op.mapFunc) ::: syms(op.filtFunc) ::: syms(op.in)
     case op: DeliteMultiArrayFlatMap[_,_] => syms(op.body) ::: syms(op.in)
+    case op: DeliteMultiArrayReadFile[_] => syms(op.body) ::: syms(op.path) ::: syms(op.dels)
+    case op: DeliteMultiArrayWriteFile[_] => syms(op.body) ::: syms(op.path) ::: syms(op.dels) ::: syms(op.in)
     case _ => super.syms(e)
   }
 
-  // TODO: should readSyms include readSyms(blocks)?
   override def readSyms(e: Any): List[Sym[Any]] = e match {
     case op: DeliteMultiArrayFromFunction[_] => readSyms(op.body) ::: readSyms(op.dims)
     case op: DeliteMultiArrayMap[_,_] => readSyms(op.body) ::: readSyms(op.in)
@@ -609,6 +663,8 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
     case op: DeliteMultiArrayGroupByReduce[_,_,_] => readSyms(op.keyFunc) ::: readSyms(op.valFunc) ::: readSyms(op.redFunc) ::: readSyms(op.in)
     case op: DeliteMultiArrayMapFilter[_,_] => readSyms(op.mapFunc) ::: readSyms(op.filtFunc) ::: readSyms(op.in)
     case op: DeliteMultiArrayFlatMap[_,_] => readSyms(op.body) ::: readSyms(op.in)
+    case op: DeliteMultiArrayReadFile[_] => readSyms(op.body) ::: readSyms(op.path) ::: readSyms(op.dels)
+    case op: DeliteMultiArrayWriteFile[_] => readSyms(op.body) ::: readSyms(op.path) ::: readSyms(op.dels) ::: readSyms(op.in)
     case _ => super.readSyms(e)
   }
 
@@ -624,6 +680,8 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
     case op: DeliteMultiArrayGroupByReduce[_,_,_] => freqHot(List(op.keyFunc, op.valFunc, op.redFunc)) ::: freqNormal(op.in)
     case op: DeliteMultiArrayMapFilter[_,_] => freqHot(List(op.mapFunc, op.filtFunc)) ::: freqNormal(op.in)
     case op: DeliteMultiArrayFlatMap[_,_] => freqHot(op.body) ::: freqNormal(op.in)
+    case op: DeliteMultiArrayReadFile[_] => freqHot(op.body) ::: freqNormal(op.path) ::: freqNormal(op.dels)
+    case op: DeliteMultiArrayWriteFile[_] => freqHot(op.body) ::: freqNormal(op.path) ::: freqNormal(op.dels) ::: freqNormal(op.in)
     case _ => super.symsFreq(e)
   }
 
@@ -632,15 +690,17 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
     case op: DeliteMultiArrayFromFunction[_] => List(op.v) ::: effectSyms(op.body)
     case op: DeliteMultiArrayMap[_,_] => List(op.v) ::: effectSyms(op.body)
     case op: DeliteMultiArrayZipWith[_,_,_] => List(op.v) ::: effectSyms(op.body)
-    case op: DeliteMultiArrayReduce[_] => List(op.rV._1, op.rV._2) ::: effectSyms(op.body) ::: effectSyms(op.lookup)
+    case op: DeliteMultiArrayReduce[_] => List(op.v) ::: List(op.rV._1, op.rV._2) ::: effectSyms(op.body) ::: effectSyms(op.lookup)
     case op: DeliteMultiArrayForeach[_] => List(op.v) ::: effectSyms(op.body)
     case op: DeliteMultiArrayForIndices[_] => List(op.v) ::: effectSyms(op.body) 
-    case op: DeliteMultiArrayNDMap[_,_] => List(op.rV) ::: effectSyms(op.body)
+    case op: DeliteMultiArrayNDMap[_,_] => List(op.v) ::: List(op.rV) ::: effectSyms(op.body)
     case op: DeliteMultiArrayGroupBy[_,_] => List(op.v) ::: effectSyms(op.keyFunc)
     case op: DeliteMultiArrayGroupByReduce[_,_,_] => List(op.v,op.rV._1,op.rV._2) ::: effectSyms(op.keyFunc) ::: effectSyms(op.valFunc) ::: effectSyms(op.redFunc)
     case op: DeliteMultiArrayMapFilter[_,_] => List(op.v) ::: effectSyms(op.mapFunc) ::: effectSyms(op.filtFunc)
     case op: DeliteMultiArrayFlatMap[_,_] => List(op.v) ::: effectSyms(op.body)
     case DeliteMultiArraySortIndices(_,i,body) => syms(i) ::: effectSyms(body)
+    case op: DeliteMultiArrayReadFile[_] => List(op.v) ::: List(op.rV) ::: effectSyms(op.body)
+    case op: DeliteMultiArrayWriteFile[_] => List(op.v) ::: effectSyms(op.body)
     case _ => super.boundSyms(e)
   }
 
@@ -689,7 +749,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
 
     // --- creation
     case e@DeliteMultiArrayNew(d) => dmultia_new_immutable(f(d))(e.mA,ctx)
-    case e@DeliteMultiArrayView(m,o,s,d) => dmultia_view(f(m),f(o),f(s),f(d))(e.mA,ctx)
+    case e@DeliteMultiArrayView(m,o,s,d,ud) => dmultia_view(f(m),f(o),f(s),f(d),ud)(e.mA,ctx)
     
     case e@DeliteMultiArrayApply(m,i) => dmultia_apply(f(m),f(i))(e.mA,ctx)
     case e@DeliteMultiArrayUpdate(m,i,x) => toAtom(DeliteMultiArrayUpdate(f(m),f(i),f(x))(e.mA,ctx))(mtype(manifest[A]), ctx)
@@ -720,14 +780,17 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
 
     // --- Misc
     case e@DeliteMultiArrayMkString(m,d) => dmultia_mkstring(f(m),f(d))(e.mA,ctx)
-    case DeliteMultiArrayStringSplit(s,p,l) => dmultia_string_split(f(s),f(p),f(l))(ctx)
+    case e@DeliteMultiArrayReadFile(p,d,k) => reflectPure(new {override val original = Some(f,e) } with DeliteMultiArrayReadFile(f(p),f(d),k)(e.mA,ctx))(mtype(manifest[A]), ctx)
 
     // --- 1D Ops
+    case DeliteMultiArrayStringSplit(s,p,l) => dmultia_string_split(f(s),f(p),f(l))(ctx)
     case e@DeliteMultiArraySortIndices(l,v,c) => reflectPure(DeliteMultiArraySortIndices(f(l),(f(v._1).asInstanceOf[Sym[Int]],f(v._2).asInstanceOf[Sym[Int]]),f(c)))
+
+    // --- 1D Parallel
     case e@DeliteMultiArrayMapFilter(m,g,c) => reflectPure(new { override val original = Some(f,e) } with DeliteMultiArrayMapFilter(f(m),g,c)(e.mA,e.mB,ctx))(mtype(manifest[A]), ctx)
     case e@DeliteMultiArrayFlatMap(m,g) => reflectPure(new { override val original = Some(f,e) } with DeliteMultiArrayFlatMap(f(m),g)(e.mA,e.mB,ctx))(mtype(manifest[A]), ctx)
 
-    // --- 2D Ops
+    // --- 2D Parallel 
     case e@DeliteMatrixMultiply(l,r) => dmultia_matmult(f(l),f(r))(e.mA,e.nA,ctx)
     case e@DeliteMatrixVectorMultiply(m,v) => dmultia_matvecmult(f(m),f(v))(e.mA,e.nA,ctx)
 
@@ -741,7 +804,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
 
     // --- creation
     case Reflect(e@DeliteMultiArrayNew(d), u, es) => reflectMirrored(Reflect(DeliteMultiArrayNew(f(d))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
-    case Reflect(e@DeliteMultiArrayView(m,o,s,d), u, es) => reflectMirrored(Reflect(DeliteMultiArrayView(f(m),f(o),f(s),f(d))(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DeliteMultiArrayView(m,o,s,d,ud), u, es) => reflectMirrored(Reflect(DeliteMultiArrayView(f(m),f(o),f(s),f(d),ud)(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
 
     case Reflect(e@DeliteMultiArrayApply(m,i), u, es) => reflectMirrored(Reflect(DeliteMultiArrayApply(f(m),f(i))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayUpdate(m,i,x), u, es) => reflectMirrored(Reflect(DeliteMultiArrayUpdate(f(m),f(i),f(x))(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
@@ -769,9 +832,12 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
     case Reflect(e@DeliteMultiArrayRemove(m,a,s,l), u, es) => reflectMirrored(Reflect(DeliteMultiArrayRemove(f(m),a,f(s),f(l))(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
 
     case Reflect(e@DeliteMultiArrayMkString(m,d), u, es) => reflectMirrored(Reflect(DeliteMultiArrayMkString(f(m),f(d))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DeliteMultiArrayReadFile(p,d,k), u, es) => reflectMirrored(Reflect(new {override val original = Some(f,e)} with DeliteMultiArrayReadFile(f(p),f(d),k)(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case Reflect(e@DeliteMultiArrayWriteFile(i,d,p,k), u, es) => reflectMirrored(Reflect(new {override val original = Some(f,e)} with DeliteMultiArrayWriteFile(f(i),f(d),f(p),k)(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+ 
     case Reflect(DeliteMultiArrayStringSplit(s,p,l), u, es) => reflectMirrored(Reflect(DeliteMultiArrayStringSplit(f(s),f(p),f(l)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
-
     case Reflect(e@DeliteMultiArraySortIndices(l,v,c), u, es) => reflectMirrored(Reflect(DeliteMultiArraySortIndices(f(l),(f(v._1).asInstanceOf[Sym[Int]],f(v._2).asInstanceOf[Sym[Int]]),f(c)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    
     case Reflect(e@DeliteMultiArrayMapFilter(m,g,c), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArrayMapFilter(f(m),g,c)(e.mA,e.mB,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(e@DeliteMultiArrayFlatMap(m,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteMultiArrayFlatMap(f(m),g)(e.mA,e.mB,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
  
