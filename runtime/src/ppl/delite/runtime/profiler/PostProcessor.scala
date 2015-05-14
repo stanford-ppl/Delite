@@ -55,7 +55,6 @@ object PostProcessor {
 	    executionProfile.dumpAppDataInJSON( writer, tabs )
 	    depGraph.dumpDepGraphInJSON( writer, tabs )
 	    executionProfile.dumpTimelineDataInJSON( writer, tabs )
-		MemoryProfiler.dumpProfile( writer, tabs )
 	    SamplerThread.dumpMemUsageSamplesInJSON( writer, tabs )
 
 	    writer.println( "}}" )
