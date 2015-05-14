@@ -1,6 +1,6 @@
 package ppl.delite.runtime.profiler
 
-import collection.mutable.{ArrayBuffer, Map}
+import collection.mutable.{ArrayBuffer, Map, Stack}
 import java.io.{BufferedWriter, File, PrintWriter, FileWriter}
 import java.util.concurrent.ConcurrentHashMap
 import ppl.delite.runtime.Config
@@ -9,7 +9,11 @@ import java.lang.management.ManagementFactory
 object PerformanceTimer {
   var threadCount = 0
   var statsNewFormat = new ArrayBuffer[Map[String, List[Timing]]]()
+  val threadIdToWriter = new ArrayBuffer[PrintWriter] // thread id -> thread-specific profile data file
+  val threadIdToKernelCallStack = new ArrayBuffer[Stack[Timing]]
   var threadToId: Map[String, Int] = Map()
+
+  val profileFilePrefix = Config.profileOutputDirectory + "/profile_t_"
   
   var jvmUpTimeAtAppStart = 0L
   var appStartTimeInMillis = 0L
@@ -20,14 +24,18 @@ object PerformanceTimer {
 
   def initializeStats(numThreads: Int) = synchronized {
     threadCount = numThreads
-    for (i <- List.range(0, numThreads)) {
+
+    for (i <- 0 to numThreads) {
       val threadName = "ExecutionThread" + i
       threadToId += threadName -> i
       statsNewFormat += Map[String, List[Timing]]()
+
+      val profileFile: File = new File( profileFilePrefix + i + ".csv" )
+      threadIdToWriter.append( new PrintWriter(profileFile) )
+      threadIdToKernelCallStack.append( new Stack[Timing] )
     }
 
     threadToId += "main" -> numThreads
-    statsNewFormat += Map[String, List[Timing]]()
   }
 
   def recordAppStartTimeStats() = synchronized {
@@ -36,17 +44,10 @@ object PerformanceTimer {
   }
 
   def start(component: String, threadName: String, printMessage: Boolean) = {
-    val threadId = threadToId(threadName)
-    var stats = statsNewFormat(threadId)
-
-    if (!stats.contains(component)) {
-      stats += component -> List[Timing]()
-    }
-
     val startTime = System.currentTimeMillis
-    val previous = stats(component)
-    val current = (new Timing(threadName, startTime, component)) :: previous
-    stats += component -> current
+    val threadId = threadToId(threadName)
+    val stack = threadIdToKernelCallStack(threadId)
+    stack.push(new Timing(threadName, startTime, component))
   }
 
   def start(component: String, printMessage: Boolean = true): Unit = {
@@ -54,23 +55,26 @@ object PerformanceTimer {
   }
 
   def stop(component: String, threadName: String, printMessage: Boolean) = {
+    val endTime = System.currentTimeMillis
     val threadId = threadToId(threadName)
-    var stats = statsNewFormat(threadId)
-    val endTime = System.currentTimeMillis 
-    stats(component) match {
-      case List() =>
-        error("cannot stop timing that doesn't exist")
-      
-      case timing :: previousTimings =>
-        timing.endTime = endTime
-        if (component == Config.dumpStatsComponent) {
-          statsForTrackedComponent += (timing.endTime - timing.startTime) / 1e3
-        }
+    val currKernel = threadIdToKernelCallStack(threadId).pop()
+    if (currKernel.component != component) {
+      error( "cannot stop timing that doesn't exist. [TID: " + threadId + ",  Component: " + component + ",  Stack top: " + currKernel.component + "]" )
     }
+
+    currKernel.endTime = endTime
+    val writer = threadIdToWriter(threadId)
+    writer.println(component + "," + currKernel.startTime + "," + currKernel.elapsedMillis)
   }
 
   def stop(component: String, printMessage: Boolean = true): Unit = {
     stop(component, "main", printMessage)
+  }
+
+  def stop() {
+    for (w <- threadIdToWriter) {
+      w.close()
+    }
   }
 
   // Currently only used by C++ to dump the profile results, need to refactor the code
@@ -83,8 +87,6 @@ object PerformanceTimer {
     }
     
     var stats = statsNewFormat(location)
-    //val t = new Timing(threadName, startTime/1000L, component)
-    //t.endTime = endTime/1000L
     val t = new Timing(threadName, startTime, component)
     t.endTime = endTime
 
@@ -116,7 +118,6 @@ object PerformanceTimer {
                     // to an actual execution thread. Rather, it just stores data for 'all' and tic-toc regions
     nonKernelCompsToTimings.foreach(kv => {
       kv._2.foreach(timing => {
-        //val str = "[METRICS]: Time for component " + kv._1 + ": " +  (timing.elapsedMicros.toFloat / 1000000).formatted("%.6f") + "s"
         val str = "[METRICS]: Time for component " + kv._1 + ": " +  (timing.elapsedMillis.toFloat / 1000).formatted("%.3f") + "s"
         println(str)
       })
@@ -142,16 +143,9 @@ object PerformanceTimer {
     fileStream.close
   }
 
-/*
-  def dumpStats(stream: PrintWriter)  {
-    val s = statsForTrackedComponent.map(t => t.formatted("%.2f")).mkString("\n")
-    stream.print(s)
-*/
-
   def dumpStats(component: String, stream: PrintWriter)  {
     statsNewFormat.foreach(m => {
       if (m.contains(component)) {
-        //val str = m(component).map(t => t.elapsedMicros).mkString("\n")
         val str = m(component).map(t => t.elapsedMillis).mkString("\n")
         stream.println(str)
       }

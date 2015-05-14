@@ -26,6 +26,7 @@ object Types {
 	type LevelId = Int
 	type DNodeName = String
 	type TNodeName = String
+	type TicTocNodeName = String
 }
 
 object DependencyGraph {
@@ -90,7 +91,10 @@ object DependencyGraph {
 	private def getSourceContext(op: Map[Any, Any]): SourceContext = {
 		op.get("sourceContext") match {
 			case Some(sc) => sc match {
-				case map: Map[Any, Any] => new SourceContext( map("fileName").asInstanceOf[String], map("line").asInstanceOf[String], map("opName").asInstanceOf[String] )
+				case map: Map[Any, Any] => {
+					val fileName = map("fileName").asInstanceOf[String].split("/").last
+					new SourceContext( fileName, map("line").asInstanceOf[String], map("opName").asInstanceOf[String] )
+				}
 				case _ => new SourceContext( "", "", "" )
 			}
 			case _ => new SourceContext( "", "", "" )
@@ -410,11 +414,13 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 	var appEndTime: Long = 0
 	val targetsEnabled = ExecutionProfile.computeTargetsEnabled() // order of bits -> 0: scala, 1:cpp, 2:cuda
 	val summaries = new HashMap[Types.TNodeName, ExecutionSummary] // TrieMap is the thread-safe version of HashMap
+	val ticTocNodeSummaries = new HashMap[Types.TicTocNodeName, TicTocNodeSummary]
 	val timelineData = new TimelineData(_depGraph.levelMax)
 	val ticTocTNodes = new ArrayBuffer[TicTocTNode]
 	val threadTNodes = new ArrayBuffer[ThreadTNode]
 
-	private val dbPath = Config.profileOutputDirectory + "/profile.db"
+	//private val dbPath = Config.profileOutputDirectory + "/profile.db"
+	private val dbPath = Config.profileOutputDirectory + "/" + PostProcessor.profileDBFileName
 	Path(dbPath).deleteIfExists()
 
 	private val dbConn: Connection = DriverManager.getConnection("jdbc:sqlite:" + dbPath)
@@ -515,6 +521,18 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 	private def initDB() {
 		//dbConn.setAutoCommit(false)
 		val sql = " BEGIN TRANSACTION;" + 
+				  " CREATE TABLE AppData " +
+				  		"(JVM_UP_TIME_AT_APP_START INT PRIMARY KEY NOT NULL," +
+				  		" APP_START_TIME 	 INT NOT NULL," +
+				  		" APP_END_TIME 		 INT NOT NULL," +
+				  		" APP_TOTAL_TIME 	 INT NOT NULL," +
+				  		" THREAD_COUNT 		 INT NOT NULL," +
+				  		" THREAD_SCALA_COUNT INT NOT NULL," +
+				  		" THREAD_CPP_COUNT 	 INT NOT NULL," +
+				  		" THREAD_CUDA_COUNT  INT NOT NULL," +
+				  		" IS_SCALA_ENABLED 	 INT NOT NULL," +
+				  		" IS_CPP_ENABLED 	 INT NOT NULL," +
+				  		" IS_CUDA_ENABLED 	 INT NOT NULL);\n" +
 		 		  " CREATE TABLE TNodes " +
 						"(id INT PRIMARY KEY  	 NOT NULL," +
 						" name 			 	TEXT NOT NULL," +
@@ -543,12 +561,16 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 				  		" SOURCE_CONTEXT  TEXT NOT NULL);\n" +
 				  " CREATE TABLE ExecutionSummaries " +
 				  		"(NAME TEXT PRIMARY KEY NOT NULL," +
-				  		" TOTAL_TIME 	INT  NOT NULL," +
-				  		" EXEC_TIME  	INT  NOT NULL," +
-				  		" SYNC_TIME  	INT  NOT NULL," +
-				  		" MEM_USAGE  	INT  NOT NULL," +
-				  		" L2_HIT_RATIO  REAL NOT NULL," +
-				  		" L3_HIT_RATIO  REAL NOT NULL);\n" +
+				  		" TOTAL_TIME 	 INT  NOT NULL," +
+				  		" TOTAL_TIME_PCT REAL NOT NULL," +
+				  		" EXEC_TIME  	 INT  NOT NULL," +
+				  		" SYNC_TIME  	 INT  NOT NULL," +
+				  		" MEM_USAGE  	 INT  NOT NULL," +
+				  		" L2_HIT_RATIO   REAL NOT NULL," +
+				  		" L3_HIT_RATIO   REAL NOT NULL);\n" +
+				  " CREATE TABLE TicTocNodeSummaries " +
+				  		"(NAME TEXT PRIMARY KEY NOT NULL," +
+				  		" TOTAL_TIME INT  NOT NULL);\n" +
 				  " CREATE TABLE DNodeTypes " +
 				  		"(ID INT PRIMARY KEY NOT NULL,"+
 				  		" NAME TEXT NOT NULL);\n" +
@@ -635,14 +657,23 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 			ticTocTNodes.append( new TicTocTNode(id, name, start, duration, start + duration) )
 			id += 1
 
-			//val tNode = new TNode( name, threadCount, start, duration )
-			//timelineData.tNodeNew(tNode)
+			val s = ticTocNodeSummary( name )
+			s.totalTimeInc( duration )
 
 			if (name == "all") {
 				appTotalTime = duration
 				appEndTime = appStartTime + appTotalTime
 			}
 		}
+	}
+
+	def writeAppDataToDB() {
+		val isScalaEnabled = (targetsEnabled & PostProcessor.TARGET_SCALA)
+		val isCppEnabled = (targetsEnabled & PostProcessor.TARGET_CPP)
+		val isCudaEnabled = (targetsEnabled & PostProcessor.TARGET_CUDA)
+		var sql = "INSERT INTO AppData VALUES (%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)".format(jvmUpTimeAtAppStart, appStartTime, appEndTime, appTotalTime, threadCount, threadScalaCount, threadCppCount, threadCudaCount, isScalaEnabled, isCppEnabled, isCudaEnabled)
+		Predef.println(sql)
+		dbStmt.executeUpdate(sql)
 	}
 
 	def writeDNodesToDB() {
@@ -664,9 +695,10 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 	def writeExecutionSummariesToDB() {
 		var sql = "BEGIN TRANSACTION;"
 		for ((tNodeName, s) <- summaries) {
-			sql += "INSERT INTO ExecutionSummaries (NAME,TOTAL_TIME,EXEC_TIME,SYNC_TIME,MEM_USAGE,L2_HIT_RATIO,L3_HIT_RATIO) VALUES (" +
-				   "'%s',%d,%d,%d,%d,%f,%f);\n".format(
-				   tNodeName, s.totalTime, s.execTime, s.syncTime, s.memUsage, s.l2CacheHitPct, s.l3CacheHitPct)
+			val totalTimePct: Double = (s.totalTime * 100) / appTotalTime
+			sql += "INSERT INTO ExecutionSummaries (NAME,TOTAL_TIME,TOTAL_TIME_PCT,EXEC_TIME,SYNC_TIME,MEM_USAGE,L2_HIT_RATIO,L3_HIT_RATIO) VALUES (" +
+				   "'%s',%d,%f,%d,%d,%d,%d,%d);\n".format(
+				   tNodeName, s.totalTime, totalTimePct, s.execTime, s.syncTime, s.memUsage, s.l2CacheHitPct, s.l3CacheHitPct)
 		}
 
 		sql += "COMMIT;"
@@ -674,7 +706,19 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 		dbStmt.executeUpdate(sql)
 	}
 
-	def summary(n: Types.TNodeName): ExecutionSummary = {
+	def writeTicTocNodeSummariesToDB() {
+		var sql = "BEGIN TRANSACTION;\n"
+
+		for ((name, s) <- ticTocNodeSummaries) {
+			sql += "INSERT INTO TicTocNodeSummaries (NAME, TOTAL_TIME) VALUES ('%s',%d);\n".format(name, s.totalTime)
+		}
+
+		sql += "COMMIT;\n"
+		Predef.println(sql)
+		dbStmt.executeUpdate(sql)
+	}
+
+	private def summary(n: Types.TNodeName): ExecutionSummary = {
 		if (!summaries.contains(n)) {
 			summaries(n) = new ExecutionSummary()
 		}
@@ -682,19 +726,13 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 		summaries(n)
 	}
 
-	/*
-	private def writeTNodeToDB(n: TNode) {
-		val childKernelIds = n.childKernelTNodes.map(c => c.id).mkString(":")
-		val childSyncIds = n.childSyncTNodes.map(c => c.id).mkString(":")
-		var sql = "INSERT INTO TNodes " + 
-				   "(ID,NAME,START,DURATION,END,THREAD_ID, EXEC_TIME, SYNC_TIME, TYPE, DNODE_ID, PARENT_ID, LEVEL, CHILD_KERNEL_IDS, CHILD_SYNC_IDS) "+ 
-				   "VALUES (%d,'%s',%s,%s,%s,%d,%d,%d,%d,%d,%d,%d,'%s','%s');".format(
-				   n.id, n.name, n.start.toString, n.duration.toString, n.end.toString, n.threadId, n.execTime, n.syncTime, n._type.id, n.dNodeId,
-				   n.parentId, n.level, childKernelIds, childSyncIds)
-		Predef.println(sql)
-		dbStmt.executeUpdate(sql)
+	private def ticTocNodeSummary(n: Types.TicTocNodeName): TicTocNodeSummary = {
+		if (!ticTocNodeSummaries.contains(n)) {
+			ticTocNodeSummaries(n) = new TicTocNodeSummary()
+		}
+
+		ticTocNodeSummaries(n)
 	}
-	*/
 
 	private def writeTNodesToDB( tNodes: ArrayBuffer[TNode] ) {
 		var sql = " BEGIN TRANSACTION;\n"
@@ -755,34 +793,25 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 	}
 
 	private def memUsageIs(tNodeName: String, mu: Long) {
-		val s = executionSummary(tNodeName)
+		//val s = executionSummary(tNodeName)
+		val s = summary(tNodeName)
 		s.memUsage = mu
 	}
 
 	private def memUsageInc(tNodeName: String, inc: Long) {
-		val s = executionSummary(tNodeName)
+		val s = summary(tNodeName)
 		s.memUsage += inc
 	}
 
 	private def isTargetCuda(dNode: DNode): Boolean = {
 		return (dNode.targetsSupported & targetsEnabled & PostProcessor.TARGET_CUDA) > 0
 	}
-
-	private def executionSummary(tNodeName: String): ExecutionSummary = {
-		if (!summaries.contains(tNodeName)) {
-			val es = new ExecutionSummary
-			summaries(tNodeName) = es
-			return es
-		}
-
-		summaries(tNodeName)
-	}
 }
 
 class ExecutionSummary(_tt: Long = 0) {
 	var memUsage: Long = 0
-	var l2CacheHitPct: Double = 0.0
-	var l3CacheHitPct: Double = 0.0
+	var l2CacheHitPct: Int = 0
+	var l3CacheHitPct: Int = 0
 
 	private var _totalTime: Long = _tt
 	private var _execTime: Long = _tt
@@ -801,6 +830,14 @@ class ExecutionSummary(_tt: Long = 0) {
 		_execTime -= inc
 		_syncTime += inc
 	}
+}
+
+class TicTocNodeSummary() {
+	private var _totalTime: Long = 0
+
+	def totalTime: Long = { _totalTime }
+
+	def totalTimeInc(inc: Long) { _totalTime += inc }
 }
 
 class TimelineData(_levelMax: Int) {

@@ -253,9 +253,15 @@ object Profiler {
     writer.close()
   }
 
+  /*
   def dumpProfile(globalStartNanos: Long, jvmUpTimeAtAppStart: Long) {
     val timingStats = PerformanceTimer.getTimingStats()
     writeProfileDataToFile(globalStartNanos, jvmUpTimeAtAppStart, timingStats)
+  }
+  */
+
+  def dumpProfile(globalStartNanos: Long, jvmUpTimeAtAppStart: Long) {
+    PerformanceTimer.stop()
   }
   
   /** Writes profile to JavaScript file (profileData.js).

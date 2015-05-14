@@ -29,68 +29,6 @@ function readFile(sourceFile) {
   sourceFileReader.readAsText(fileNameToFile[sourceFile])
 }
 
-/*
-// ===========================
-//  Read DEG file
-// ===========================
-
-var degOps = {}
-
-function readDegFile(evt) {
-  var reader = new FileReader()
-  reader.onload = (function() {
-    return function(e) {
-      degOps = JSON.parse(e.target.result).DEG.ops
-    };
-  })();
-
-  if (evt.target.files.length > 0) {
-    var degFile = evt.target.files[0]
-    reader.readAsText(degFile)
-    viewState.degFile = degFile.name
-
-    $("#degFileName").text(viewState.degFile)
-    if ((viewState.profileDataFile != "") && (viewState.gcStatsFile != "")) {
-      $("#startButton").css("border", "2px solid green")
-    }
-  }
-}
-
-function addDegFileHandler(inputButtonId) {
-  document.getElementById(inputButtonId).addEventListener('change', readDegFile, false);
-}
-*/
-
-/*
-// =====================================================
-// Read profileData.js (the performance profile data)
-// =====================================================
-
-var profileData = {}
-function readProfileDataFile(evt) {
-  var reader = new FileReader()
-  reader.onload = (function() {
-    return function(e) {
-      profileData = JSON.parse(e.target.result)
-    };
-  })();
-
-  if (evt.target.files.length > 0) {
-    reader.readAsText(evt.target.files[0])
-    viewState.profileDataFile = evt.target.files[0].name
-
-    $("#profDataFileName").text(viewState.profileDataFile)
-    if ((viewState.degFile != "") && (viewState.gcStatsFile != "")) {
-      $("#startButton").css("border", "2px solid green")
-    }
-  }
-}
-
-function addProfileDataFileHandler(inputButtonId) {
-  document.getElementById(inputButtonId).addEventListener('change', readProfileDataFile, false);
-}
-*/
-
 // ====================
 //  Read GC Stats file
 // ====================
@@ -156,12 +94,11 @@ function addDegFileHandler(inputButtonId) {
 // Read profile.db (the performance profile data)
 // =====================================================
 
-var profileDB = undefined
 function readProfileDB(evt) {
   var reader = new FileReader();
   reader.onload = function() {
     var Uints = new Uint8Array(reader.result);
-    profileDB = new SQL.Database(Uints);
+    config.profileDB = new ProfileDB( new SQL.Database(Uints) );
   }
 
   if (evt.target.files.length > 0) {
@@ -179,3 +116,70 @@ function readProfileDB(evt) {
 function addProfileDataFileHandler(inputButtonId) {
   document.getElementById(inputButtonId).addEventListener('change', readProfileDB, false);
 }
+
+/*
+// =====================================================
+//  Read the info file
+// =====================================================
+
+var postProcessedProfile = undefined;
+var profileDB = undefined;
+
+function readAttributesFile(evt) {
+  var attributeFileObj = undefined;
+  var reader = new FileReader();
+
+  reader.onload = ( function() {
+    return function(e) {
+      parseAttributesFile( attributeFileObj, e.target.result );
+    };
+  } )();
+
+  var files = evt.target.files;
+  if ( files.length > 0 ) {
+    var attributeFileObj = files[0];
+    attributeFileObj.name = "profile.db";
+    attributeFileObj.size = 41984;
+    readProfileDBFile( attributeFileObj );
+  }
+}
+
+function readUIDataFile( file ) {
+  var reader = new FileReader()
+  reader.onload = ( function() {
+    return function(e) {
+      postProcessedProfile = JSON.parse(e.target.result).Profile;
+    };
+  } )();
+
+  reader.readAsText( file );
+};
+
+function readProfileDBFile( file ) {
+  var reader = new FileReader();
+  reader.onload = function() {
+    var Uints = new Uint8Array( reader.result );
+    profileDB = new SQL.Database( Uints );
+  }
+
+  reader.readAsArrayBuffer( file ); 
+}
+
+function parseAttributesFile( attributesFileObj, contents ) {
+  var arr = contents.split("\n");
+
+  var uiDataFileAttrs = arr[0].split(",")
+  attributesFileObj.name = uiDataFileAttrs[0];
+  attributesFileObj.size = parseInt( uiDataFileAttrs[1] );
+  readUIDataFile( attributesFileObj );
+
+  var profileDBFileAttrs = arr[1].split(",")
+  attributesFileObj.name = profileDBFileAttrs[0];
+  attributesFileObj.size = parseInt( profileDBFileAttrs[1] );
+  readUIDataFile( attributesFileObj );
+};
+
+function addDegFileHandler(inputButtonId) {
+  document.getElementById(inputButtonId).addEventListener('change', readAttributesFile, false);
+}
+*/

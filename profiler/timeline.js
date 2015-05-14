@@ -26,21 +26,18 @@ tNodeInfoTable = $("#tNodeInfoTable")[0];
 // TODO: The passing of 'timelineLevelSelectorId' as an input parameter is a hack. Instead, the TimelineGraph element
 // should trigger an event when a node is double-clicked and external elements should be able to listen to it.
 
-//function TimelineGraph(classStr, nameSuffix, parentDivId, profileData, timelineLevelSelectorId, config) {
 function TimelineGraph(classStr, nameSuffix, parentDivId, appData, timelineData, timelineLevelSelectorId, config) {
+	console.log("Creating timeline graph");
+	
 	this.classStr = classStr;
 	this.nameSuffix = nameSuffix;
 	this.parentDivId = parentDivId;
-	/*
-	this.executionProfile = profileData.executionProfile;
-	this.timelineData = profileData.executionProfile.timelineData;
-	this.dependencyData = profileData.dependencyData;
-	*/
 
 	this.timelineData = timelineData;
 	this.timelineData.Timing.pop();
 	this.appData = appData;
 	this.threadCount = appData.threadCount;
+	this.jvmUpTimeAtAppStart = appData.jvmUpTimeAtAppStart; // HACK: This field is used as a hack
 	this.minDurationReqForDisplayingLabel = 0.05 * this.appData.appTotalTime;
 
 	this.timelineLevelSelectorId = timelineLevelSelectorId;
@@ -50,8 +47,6 @@ function TimelineGraph(classStr, nameSuffix, parentDivId, appData, timelineData,
 	this.chartWidth = 0;
 	this.parentDivWidth = -1; // HACK: This field is used as a hack
 	this.parentDivHeight = -1; // HACK: This field is used as a hack
-	//this.jvmUpTimeAtAppStart = 0; // HACK: This field is used as a hack
-	this.jvmUpTimeAtAppStart = appData.jvmUpTimeAtAppStart; // HACK: This field is used as a hack
 	this.xScale = null;
 	this.yScale = null;
 	this.initialXRange = null;
@@ -74,24 +69,14 @@ TimelineGraph.prototype.re_partition = /^(.*)_(\d+)$/;
 TimelineGraph.prototype.re_header = /^(.*)_h$/;
 
 TimelineGraph.prototype.draw = function() {
-	//var items = this.convertDataToTimelineFormat(this.timelineData.timing); 
-	//var lanes = this.timelineData.lanes;
-
 	var appData = this.appData;
 	var items = this.timelineData.Timing;
 	var lanes = new Array(this.threadCount + 1);
 
-	//this.laneColors = lanes.map(function(l, i) {return LANE_COLORS[i % LANE_COLORS.length]});
 	this.laneColors = [];
 	for (var i = 0; i <= this.threadCount; i++) {
 		this.laneColors.push(LANE_COLORS[i % LANE_COLORS.length]);
 	}
-
-	/*
-	var tmp = this.getAppBeginAndEndTimes();
-	var	timeBegin = tmp.begin - tmp.duration * 0.01;
-	var	timeEnd = tmp.end + tmp.duration * 0.01;
-	*/
 	
 	var	timeBegin = appData.appStartTime - appData.appTotalTime * 0.01;
 	var	timeEnd = appData.appEndTime + appData.appTotalTime * 0.01;
@@ -127,7 +112,6 @@ TimelineGraph.prototype.draw = function() {
 	var numLanes = lanes.length;
 	var y = d3.scale.linear()
 		.domain([0, numLanes])
-		//.domain([0, this.threadCount])
 		.range([0, chartHeight]);
 	this.yScale = y;
 	
@@ -173,39 +157,13 @@ TimelineGraph.prototype.draw = function() {
 		.attr("class", this.laneTextClass);
 
 	this.createTimelineNodes(items, this.timelineNodeClass);
-	//this.createTicTocRegionNodes(this.executionProfile.ticTocRegions, this.timelineNodeClass);
 	this.createTicTocRegionNodes(this.timelineData.TicTocRegions, this.timelineNodeClass);
 
 	//timeline labels
-	//var minDurationReqForDisplayingLabel = 0.05 * this.executionProfile.totalAppTime;
-	//var eventsWithLabel = items.filter(function(d) {return (d.end - d.start) >= minDurationReqForDisplayingLabel});
-	//var minDurationReqForDisplayingLabel = 0.05 * this.appData.appTotalTime;
-	//var eventsWithLabel = items.filter(function(d) {return d.duration >= minDurationReqForDisplayingLabel});
 	var eventsWithLabel = this.filterNodesEligibleForLabels( items );
 	this.createTimelineLabels(eventsWithLabel, this.timelineNodeLabelClass);
-	//this.createTicTocRegionLabels(this.executionProfile.ticTocRegions, this.timelineNodeLabelClass);
 	this.createTicTocRegionLabels(this.timelineData.TicTocRegions, this.timelineNodeLabelClass);
 };
-
-/*
-TimelineGraph.prototype.convertDataToTimelineFormat = function(data) {
-	var res = [];
-	var runs = data[0];
-	for (node in runs) {
-		res = res.concat(runs[node]);
-	}
-
-	return res;
-};
-*/
-
-/*
-TimelineGraph.prototype.getAppBeginAndEndTimes = function() {
-	return {"begin": this.executionProfile.appStartTime, 
-			"end": this.executionProfile.appEndTime, 
-			"duration": this.executionProfile.totalAppTime};
-};
-*/
 
 TimelineGraph.prototype.createTimelineNodes = function(data, className) {
 	var graph = this;
@@ -225,7 +183,6 @@ TimelineGraph.prototype.createTimelineNodes = function(data, className) {
 		.attr("vector-effect", "non-scaling-stroke") // from http://stackoverflow.com/questions/10357292/how-to-make-stroke-width-immune-to-the-current-transformation-matrix
 		.style("fill", function(d) {return graph.getRectFill(d)})
 		.on("click", function(d) {return graph.timelineNodeClickHandler(d)})
-		//.on("dblclick", function(d) {return graph.dblClickHandler(d)});
 		.on("dblclick", function(d) {return graph.dblClickHandler(d.id)});
 };
 
@@ -233,7 +190,6 @@ TimelineGraph.prototype.createTicTocRegionNodes = function(ticTocRegions, classN
 	var graph = this;
 	var x = graph.xScale;
 	var y = graph.yScale;
-	//var numThreads = this.executionProfile.numThreads;
 	var numThreads = this.threadCount;
 
 	this.timelineGraph.append("g").selectAll("." + className)
@@ -312,7 +268,8 @@ TimelineGraph.prototype.getRectFill = function(d) {
 
 TimelineGraph.prototype.timelineNodeClickHandler = function(tNode) {
 	var config = this.config;
-	var tNode = config.dbTNodeById(tNode.id);
+	//var tNode = config.dbTNodeById(tNode.id);
+	var tNode = config.profileDB.dbTNodeById(tNode.id);
 	if (tNode.type == config.TNODE_TYPE_SYNC) {
 		config.populateSyncNodeInfoTable( tNode );
 	} else {
@@ -351,56 +308,9 @@ TimelineGraph.prototype.populateTNodeInfoTable = function(tNode) {
 	});
 }
 
-/*
-TimelineGraph.prototype.timelineNodeClickHandler = function(tNode) {
-	var nodeType = tNode.type;
-	if (nodeType == "sync") {
-		this.config.populateSyncNodeInfoTable(tNode);
-	} else if (nodeType == "execution") {
-		this.config.populateKernelInfoTable(tNode);
-		this.config.markGraphNode(tNode.node.id);
-		this.config.markNeighborsOnGraph(tNode.node.id);
-		//this.config.markGraphNode(tNode.id);
-		//this.config.markNeighborsOnGraph(tNode.id);
-
-		//var dNode = this.dependencyData.nodes[tNode.id];
-		var sc = tNode.node.sourceContext;
-		this.config.highlightLineInEditor(sc.file, sc.line);
-	}
-};
-*/
-
-/*
-TimelineGraph.prototype.dblClickHandler = function(tNode) {
-	if (tNode.childNodes.length > 0) {
-		var isStackChanged = false;
-		if ((tNode.parentId == -1) && (this.stackOfHiddenNodes.length > 0)) {
-			var selector = this.stackOfHiddenNodes[0][0];
-			$(selector).show();
-			$(selector + "-label").show();
-			this.stackOfHiddenNodes.length = 0; // clear the array
-			isStackChanged = true;
-		}
-
-		var childNodes = tNode.childNodes.concat(tNode.syncNodes);
-		var rectSelector = "#" + d3.event.target.id;
-		this.stackOfHiddenNodes.push([rectSelector, tNode]);
-		$(rectSelector).hide();
-		$(rectSelector + "-label").hide();
-
-		this.removeChildNodesAndLabels();
-		this.createTimelineNodes(childNodes, this.timelineChildNodeClass);
-		this.createTimelineLabels(this.filterNodesEligibleForLabels(childNodes), this.timelineChildNodeLabelClass);
-
-		isStackChanged = true;
-	}
-
-	if (isStackChanged) this.updateHiddenNodeList();
-};
-*/
-
 TimelineGraph.prototype.dblClickHandler = function(tNodeId) {
-	var tNode = config.dbTNodeById( tNodeId );
+	//var tNode = config.dbTNodeById( tNodeId );
+	var tNode = config.profileDB.dbTNodeById( tNodeId );
 	if ( (tNode.childKernelIds != "") || (tNode.childSyncIds != "") ) {
 		var isStackChanged = false;
 		if ( (tNode.parentId == -1) && (this.stackOfHiddenNodes.length > 0) ) {
@@ -417,7 +327,8 @@ TimelineGraph.prototype.dblClickHandler = function(tNodeId) {
 		$(rectSelector + "-label").hide();
 
 		this.removeChildNodesAndLabels();
-		var childNodes = config.dbChildTNodes( tNodeId );
+		//var childNodes = config.dbChildTNodes( tNodeId );
+		var childNodes = config.profileDB.dbChildTNodes( tNodeId );
 		this.createTimelineNodes(childNodes, this.timelineChildNodeClass);
 		this.createTimelineLabels(this.filterNodesEligibleForLabels(childNodes), this.timelineChildNodeLabelClass);
 
@@ -456,13 +367,6 @@ TimelineGraph.prototype.filterNodesEligibleForLabels = function(tNodes) {
 	var graph = this;
 	return tNodes.filter( function(d) { return d.duration >= graph.minDurationReqForDisplayingLabel; } );
 };
-
-/*
-TimelineGraph.prototype.filterNodesEligibleForLabels = function(tNodes) {
-	var minDurationReqForDisplayingLabel = 0.05 * this.timelineData.totalAppTime;
-	return tNodes.filter(function(d) {return (d.end - d.start) >= minDurationReqForDisplayingLabel});
-};
-*/
 
 TimelineGraph.prototype.timelineScopeSelHandler = function(event) {
 	graph = event.data.graph;

@@ -71,30 +71,6 @@ object MemoryProfiler
 	  memoryAccessStatsMaps(threadId)(sourceContext) += stats
     }
 
-	/*
-	def printMemoryAccessStats(): Unit = {
-        Predef.println("Printing memory access stats")
-        Predef.println("=====================================")
-		Predef.println("Length of list: " + memoryAccessStatsMaps.length)
-        var tid = 0
-        for (m <- memoryAccessStatsMaps) {
-            Predef.println("Thread id: " + tid)
-            for (kv <- m) {
-                val s = kv._2
-                val l2HitRatio = Math.round(s.l2CacheHitRatio * 100)
-                val l3HitRatio = Math.round(s.l3CacheHitRatio * 100)
-                Predef.println("sourceContext: " + kv._1 + " => ( " + l2HitRatio + "%, " + s.l2CacheMisses + ", " + l3HitRatio + "%, " + s.l3CacheMisses + ", " + s.bytesReadFromMC + " bytes)")
-            }
-
-            tid = tid + 1
-        }
-    }
-	*/
-
-	def printMemoryAccessStats(): Unit = {
-		Predef.println("printMemoryAccessStats() has been disabled")
-	}
-
 	def clearAll() {
 		stats.clear()
 		threadToCurrKernel.clear()
@@ -103,31 +79,10 @@ object MemoryProfiler
 		initializeStats(numScalaThreads, numCppThreads, numCudaThreads, numOpenCLThreads)
 	}
 
-	/*
-	def logArrayAllocation(component: String, arrayLength: Int, elemType: String) = {
-		var threadName = Thread.currentThread.getName()
-		var threadId = threadToId(threadName)
-		var stack = threadToCurrKernel(threadId)
-		var kernelCurrentlyExecutedByThread = component
-		if (stack.length > 0) kernelCurrentlyExecutedByThread = getNameOfCurrKernel(threadName)
-	
-		if (!stats(threadId).contains(kernelCurrentlyExecutedByThread)) {
-        	stats(threadId) += kernelCurrentlyExecutedByThread -> List[Long]()
-	    }
-
-	    val arrayMemSize = arrayLength.toLong * sizeOf(elemType).toLong
-	    var kernelToAlloc = stats(threadId)
-	    val current = arrayMemSize :: kernelToAlloc(kernelCurrentlyExecutedByThread)
-	    stats(threadId) += kernelCurrentlyExecutedByThread -> current
-  	}
-  	*/
-
   	def logArrayAllocation(component: String, threadId: Int, arrayLength: Int, elemType: String) = {
-		//var threadName = Thread.currentThread.getName()
-		//var threadId = threadToId(threadName)
 		var stack = threadToCurrKernel(threadId)
 		var kernelCurrentlyExecutedByThread = component
-		//if (stack.length > 0) kernelCurrentlyExecutedByThread = getNameOfCurrKernel(threadName)
+
 		if (stack.length > 0) kernelCurrentlyExecutedByThread = getNameOfCurrKernel(threadId)
 	
 		if (!stats(threadId).contains(kernelCurrentlyExecutedByThread)) {
@@ -153,18 +108,6 @@ object MemoryProfiler
     		stack.pop()
     	}
   	}
-
-  	/*
-  	def getNameOfCurrKernel(thread: String): String = {
-  		var threadId = threadToId(thread)
-		var stack = threadToCurrKernel(threadId)
-		if (stack.length > 0) {
-			return stack(0) // 0 indexes the top-of-stack
-  		}
-
-  		return "null"
-  	}
-  	*/
 
   	def getNameOfCurrKernel(thread: String): String = {
   		var threadId = threadToId(thread)
@@ -199,37 +142,6 @@ object MemoryProfiler
   		writer.println(twoTabs + "\"dummy\": 0")
   		writer.println(tabs + "},\n")
   	}
-
-	/*
-	def emitMemAccessStats( writer: PrintWriter) {
-		var tabs = "  "
-		var twoTabs = tabs + tabs
-		writer.println( tabs + "\"MemAccessStats\": {" )
-		var tid = 0
-
-		for (memAccessStats <- memoryAccessStatsMaps) {
-			if (tid != 0) {
-				writer.print(",\n")
-			}
-
-			writer.print( twoTabs + tid + " : {\n" )	
-			val str = memAccessStats.map(kv =>  {
-				val stats = kv._2
-				"\"" + kv._1 + "\": {" +
-					(stats.l2CacheHitRatio * 100).toInt + "%, " + stats.l2CacheMisses + ", " + 
-					(stats.l3CacheHitRatio * 100).toInt + "%, " + stats.l3CacheMisses + ", " +
-					stats.bytesReadFromMC + "}"
-			}).mkString(",\n")
-
-			writer.println(twoTabs + tabs + str)
-			writer.print( twoTabs + "}" )
-		
-			tid = tid + 1
-		}		
-
-		writer.println( tabs + "}" )
-	}
-	*/
 
 	def emitMemAccessStats( writer: PrintWriter ) {
 		if (numCppThreads > 0) {

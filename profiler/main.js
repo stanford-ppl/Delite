@@ -18,24 +18,23 @@ viewState.selectedLevel = -1;
 
 var config = {};
 config.highlightDNodeById = highlightDNodeById;
-//config.markGraphNode = markGraphNode;
-//config.markNeighborsOnGraph = markNeighborsOnGraph;
-config.fetchSingletonFromDB = fetchSingletonFromDB;
 config.highlightLineInEditor = highlightLineInEditor;
-config.highlightLineInEditorByKernelId = highlightLineInEditorByKernelId;
+config.highlightLineInEditorForDNode = highlightLineInEditorForDNode;
+
 config.populateGCEventInfoTable = populateGCEventInfoTable;
-//config.populateKernelInfoTable = populateKernelInfoTable;
+config.populateKernelInfoTable = populateKernelInfoTable;
 config.populateKernelInfoTableById = populateKernelInfoTableById;
 config.populateSyncNodeInfoTable = populateSyncNodeInfoTable;
-config.dbDNodeById = dbDNodeById;
-config.dbTNodeById = dbTNodeById;
-config.dbChildTNodes = dbChildTNodes;
-config.dbExecutionSummaryByName = dbExecutionSummaryByName;
+
+config.profileDB = undefined;
+
+config.dNodeInfoTable = $("#kernelInfoTable")[0];
 config.enableNodeClickHandler = true; // for bar-charts.
+config.TNODE_TYPE_SYNC = 2;
+
 config.syncNodeRegex = /__sync-ExecutionThread-(\d+)-(.*)-(.*)-(\d+)$/;
 config.re_partition = /^(.*)_(\d+)$/;
 config.re_header = /^(.*)_h$/;
-config.dNodeInfoTable = $("#kernelInfoTable")[0];
 
 // NOTE: This must be kept in sync with the order in which the DNodeType enums are defined in the PostProcessor scalacode
 config.dNodeTypeIdToType = {
@@ -48,8 +47,6 @@ config.dNodeTypeIdToType = {
 	6 : 'EOP'
 };
 
-config.TNODE_TYPE_SYNC = 2;
-
 addAppSourceFileHandler("srcDirInput", editor);
 addDegFileHandler("degFileInput");
 addProfileDataFileHandler("profDataInput");
@@ -61,12 +58,23 @@ var graphController = {};
 var timelineController = {};
 var dbStmt = undefined;
 
+config.MAX_NUM_TOP_NODES = 20;
+
 // Input data sets for bar charts
-var topNodesBasedOnL2CacheMissPct = [];
-var topNodesBasedOnL3CacheMissPct = [];
-var topNodesBasedOnMemUsage = [];
-var topNodesBasedOnTime = [];
+var topNodesBasedOnL2CacheMissPct = undefined;
+var topNodesBasedOnL3CacheMissPct = undefined;
+var topNodesBasedOnMemUsage = undefined;
+var topNodesBasedOnTime = undefined;
 var threadLevelSyncStats = [];
+
+function getTopDNodesBasedOnGivenMetric( outputArr, metric ) {
+	if ( outputArr == undefined ) {
+		var res = fetchMultipleElemsFromDB( "SELECT * FROM DNodes INNER JOIN ExecutionSummaries ON DNodes.NAME == ExecutionSummaries.NAME ORDER BY " + metric + " DESC" );
+		outputArr = res.slice( 0, config.MAX_NUM_TOP_NODES );
+	}
+
+	return outputArr;
+}
 
 $("#globalStatsMetric").change(function() {
 	$("#generalInfo").hide();
@@ -76,16 +84,18 @@ $("#globalStatsMetric").change(function() {
 	var metric = $(this).val();
 	if (metric == "performance") {
 		clearDivForBarChartDisplay();
-		createBarChart("#dfg", topNodesBasedOnTime, "totalTimePct", getDisplayTextForTime, config);
+		createBarChart("#dfg", getTopDNodesBasedOnGivenMetric( topNodesBasedOnTime, "TOTAL_TIME" ), "TOTAL_TIME", getDisplayTextForTime, config);
 	} else if (metric == "memUsage") {
 		clearDivForBarChartDisplay();
-		createBarChart("#dfg", topNodesBasedOnMemUsage, "memUsage", getDisplayTextForMemUsage, config);
+		createBarChart("#dfg", getTopDNodesBasedOnGivenMetric( topNodesBasedOnMemUsage, "MEM_USAGE" ), "MEM_USAGE", getDisplayTextForMemUsage, config);
 	} else if (metric == "l2CacheMissRatio") {
 		clearDivForBarChartDisplay();
-		createBarChart("#dfg", topNodesBasedOnL2CacheMissPct, "missPct", getDisplayTextForCacheMissRatio, config);
+		createBarChart("#dfg", getTopDNodesBasedOnGivenMetric( topNodesBasedOnL2CacheMissPct, "L2_HIT_RATIO" ), 
+			"L2_HIT_RATIO", getDisplayTextForCacheMissRatio, config);
 	} else if (metric == "l3CacheMissRatio") {
 		clearDivForBarChartDisplay();
-		createBarChart("#dfg", topNodesBasedOnL3CacheMissPct, "missPct", getDisplayTextForCacheMissRatio, config);
+		createBarChart("#dfg", getTopDNodesBasedOnGivenMetric( topNodesBasedOnL2CacheMissPct, "L3_HIT_RATIO" ), 
+			"L3_HIT_RATIO", getDisplayTextForCacheMissRatio, config);
 	} else if (metric == "threadLevelSyncStats") {
 		clearDivForBarChartDisplay();
 		createBarChart("#dfg", threadLevelSyncStats, "syncTimePct", getDisplayTextForThreadLevelSync, config);
@@ -110,7 +120,7 @@ $('#timelineZoom').keyup(function(event){
 
 $('#searchKernel').keyup(function(event){
     if(event.keyCode == 13){
-        searchNode($(this).val())
+        searchDNode( $(this).val() );
     }
 });
 
@@ -128,11 +138,11 @@ $(document).ready(function() {
 });
 
 function getDisplayTextForTime(d) {
-	return d.name + " (" + getDisplayTextForTimeAbsPctPair(d.totalTimeAbs, d.totalTimePct) + ")";
+	return d.NAME + " (" + getDisplayTextForTimeAbsPctPair( d.TOTAL_TIME, d.TOTAL_TIME_PCT ) + ")";
 }
 
 function getDisplayTextForMemUsage(d) {
-	return d.name + " (" + memUsageValueToStr(d.memUsage) + ")";
+	return d.NAME + " (" + memUsageValueToStr( d.MEM_USAGE ) + ")";
 }
 
 function getDisplayTextForCacheMissRatio(d) {
@@ -267,18 +277,6 @@ function filterNodesOnTimeline() {
 	viewState.selectedLevel = selectedLevel
 }
 
-/*
-function markGraphNode(kernelId) {
-	var n = viewState.highlightedGraphNode
-	if (n != -1) {
-		graphController.unhighlightNode(n)
-	}
-
-	graphController.highlightNode(kernelId)
-	viewState.highlightedGraphNode = kernelId
-}
-*/
-
 function highlightDNodeById(dNodeId) {
 	var n = viewState.highlightedGraphNode;
 	if (n != -1) { graphController.unhighlightNode(n); }
@@ -287,12 +285,6 @@ function highlightDNodeById(dNodeId) {
 	graphController.highlightDNodeById( dNodeId );
 	viewState.highlightedGraphNode = dNodeId;
 }
-
-/*
-function markNeighborsOnGraph(nodeId) {
-	graphController.markNeighbors(nodeId)
-}
-*/
 
 function highlightLineInEditor(file, line) {
 	unhighlightLine(viewState.highlightedLine)
@@ -306,58 +298,24 @@ function highlightLineInEditor(file, line) {
 	}
 }
 
+function highlightLineInEditorForDNode( dNode ) {
+	var sc = dNode.SOURCE_CONTEXT;
+	var arr = sc.split(":");
+	highlightLineInEditor( arr[0], parseInt(arr[1]) );
+}
+
+/*
 function highlightLineInEditorByKernelId(nodeId) {
 	var node = profData.dependencyData.nodes[nodeId]
 	var sc = node.sourceContext
 	highlightLineInEditor(sc.file, sc.line)
 }
-
-/*
-function computeTarget(supportedTargets, enabledTargets) {
-	if ( supportedTargets[TARGET_CUDA] && enabledTargets[TARGET_CUDA] ) {
-		return "cuda";
-	} else if ( supportedTargets[TARGET_CPP] && enabledTargets[TARGET_CPP] ) {
-		return "cpp";
-	}
-
-	return "scala";
-}
 */
 
-/*
-function populateKernelInfoTable(node) {
-	function helper(num) {
-		if (num != undefined) return num.toFixed(0)
-		return "NA"
-	};
-
-	var dNode = (node.node) ? node.node : node;
-	var nodeType = dNode.type;
-	var target = computeTarget(dNode.supportedTargets, profData.executionProfile.enabledTargets);
-	var values = [];
-	var summary = profData.executionProfile.nodeNameToSummary[node.name];
-	if (summary) {
-		var timeStr = getDisplayTextForTimeAbsPctPair(summary.totalTime.abs, summary.totalTime.pct);
-		var execTimePct = helper(summary.execTime.pct);
-		var syncTimePct = helper(summary.syncTime.pct);
-		var memUsage = memUsageValueToStr(summary.memUsage);
-		values = [node.name, nodeType, target, timeStr , execTimePct + "/" + syncTimePct + " %", memUsage];
-	} else {
-		values = [node.name, nodeType, target, "-" , "-", "-"];
-	}
-	
-	var table = $("#kernelInfoTable")[0];
-	values.forEach(function(v, i) {
-		var row = table.rows[i + 1];
-		row.cells[1].innerHTML = values[i];
-	})
-}
-*/
-
-function populateKernelInfoTableById(dNodeId) {
-	var dNode = dbDNodeById(dNodeId);
+function populateKernelInfoTable( dNode ) {
 	var name = dNode.NAME;
-	var summary = dbExecutionSummaryByName(name);
+	//var summary = dbExecutionSummaryByName(name);
+	var summary = config.profileDB.dbExecutionSummaryByName(name);
 	var isSummaryPresent = (summary.TOTAL_TIME != undefined);
 	
 	var type = config.dNodeTypeIdToType[dNode.TYPE];
@@ -373,14 +331,19 @@ function populateKernelInfoTableById(dNodeId) {
 	var execSyncTimeStr = execTimePct + "/" + syncTimePct + " %";
 
 	var memUsage = isSummaryPresent ? summary.MEM_USAGE : 0;
-	
+
 	var values = [name, type, timeStr, execSyncTimeStr, memUsage];
 
 	values.forEach(function(v, i) {
 		var row = config.dNodeInfoTable.rows[i + 1];
 		row.cells[1].innerHTML = values[i];
 	});
+}
 
+function populateKernelInfoTableById(dNodeId) {
+	//var dNode = dbDNodeById( dNodeId );
+	var dNode = config.profileDB.dbDNodeById( dNodeId );
+	populateKernelInfoTable( dNode );
 	return dNode;
 }
 
@@ -393,44 +356,6 @@ function populateSyncNodeInfoTable(node) {
 		row.cells[1].innerHTML = values[i]
 	})
 }
-
-//=======================================
-// DB Functions
-//=======================================
-
-function fetchSingletonFromDB( query ) {
-	dbStmt = profileDB.prepare( query );
-	dbStmt.step();
-	return dbStmt.getAsObject();
-};
-
-function fetchMultipleElemsFromDB( query ) {
-	var results = [];
-	dbStmt = profileDB.prepare( query );
-	while (dbStmt.step()) {
-		results.push(dbStmt.getAsObject());
-	}
-
-	return results;
-};
-
-function dbDNodeById(dNodeId) {
-	return fetchSingletonFromDB( "SELECT * FROM DNodes WHERE ID=" + dNodeId );
-};
-
-function dbTNodeById(tNodeId) {
-	return fetchSingletonFromDB( "SELECT * FROM TNodes WHERE id=" + tNodeId );
-};
-
-function dbExecutionSummaryByName(name) {
-	return fetchSingletonFromDB( "SELECT * FROM ExecutionSummaries WHERE NAME='" + name + "'" );
-};
-
-function dbChildTNodes( parentTNodeId ) {
-	return fetchMultipleElemsFromDB( "SELECT * FROM TNodes WHERE parentId=" + parentTNodeId );
-};
-
-//=======================================
 
 function getTopNodesBasedOnTotalTime(nodeNameToSummary, dependencyData, count) {
 	var nodeNameAttrPairs = [];
@@ -533,14 +458,6 @@ function startDebugSession() {
   		graphController = createDataFlowGraph(cola, "#dfg", dependencyData.nodes, dependencyData.edges, viewState, config);
 
   		/*
-  		// This is the data to be visualized using bar charts
-  		topNodesBasedOnTime = getTopNodesBasedOnTotalTime(profData.executionProfile.nodeNameToSummary, profData.dependencyData, 20);
-  		topNodesBasedOnMemUsage = getTopNodesBasedOnMemUsage(profData.executionProfile.nodeNameToSummary, profData.dependencyData, 20);
-
-  		var tmp = getNodesWithHighestL2AndL3MissRatios(profData.executionProfile.nodeNameToMemAccessStats, 20);
-  		topNodesBasedOnL2CacheMissPct = tmp[0];
-  		topNodesBasedOnL3CacheMissPct = tmp[1];
-
   		maxTimeTakenByAKernel = topNodesBasedOnTime[0].totalTimePct;
   		maxMemUsageByAKernel = topNodesBasedOnMemUsage[0].memUsage;
   		setTimeAndMemColorScales();
@@ -586,13 +503,7 @@ function lockScrollingOfComparisonRuns() {
 	});
 }
 
-function searchNode(nodeName) {
-	var nodeId = profData.dependencyData.nodeNameToId[nodeName]
-	var node = profData.dependencyData.nodes[nodeId]
-	config.populateKernelInfoTable(node)
-
-	var sc = node.sourceContext
-	config.highlightLineInEditor(sc.file, sc.line)
-
-	graphController.markNeighbors(nodeId)
+function searchDNode( dNodeName ) {
+	var dNode = dbDNodeByName( dNodeName );
+	graphController.highlightDNodeById( dNode.ID ); // TODO: This is inefficient. The higlightDNodeById() function again fetches the dNode from the database.
 }

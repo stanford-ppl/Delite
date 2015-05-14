@@ -45,6 +45,56 @@ function TicTocRegion(name, start, duration, numThreads) {
 	this.syncTimeStats = createThreadLevelTimeStats(numThreads);
 }
 
+function ProfileDB(dbRef) {
+	this.db = dbRef;
+	this.stmt = undefined;
+}
+
+ProfileDB.prototype.fetchSingletonFromDB = function( query ) {
+	this.stmt = this.db.prepare( query );
+	this.stmt.step();
+	return this.stmt.getAsObject();
+};
+
+ProfileDB.prototype.fetchMultipleElemsFromDB = function( query ) {
+	var results = [];
+	this.stmt = this.db.prepare( query );
+	while ( this.stmt.step() ) {
+		results.push( this.stmt.getAsObject() );
+	}
+
+	return results;
+};
+
+ProfileDB.prototype.dbDNodeById = function ( dNodeId ) {
+	return this.fetchSingletonFromDB( "SELECT * FROM DNodes WHERE ID=" + dNodeId );
+};
+
+ProfileDB.prototype.dbDNodeByName = function( dNodeName ) {
+	return this.fetchSingletonFromDB( "SELECT * FROM DNodes WHERE NAME='" + dNodeName + "'");
+};
+
+ProfileDB.prototype.dbTNodeById = function( tNodeId ) {
+	return this.fetchSingletonFromDB( "SELECT * FROM TNodes WHERE id=" + tNodeId );
+};
+
+ProfileDB.prototype.dbExecutionSummaryByName = function( name ) {
+	return this.fetchSingletonFromDB( "SELECT * FROM ExecutionSummaries WHERE NAME='" + name + "'" );
+};
+
+ProfileDB.prototype.dbChildTNodes = function( parentTNodeId ) {
+	return this.fetchMultipleElemsFromDB( "SELECT * FROM TNodes WHERE parentId=" + parentTNodeId );
+};
+
+ProfileDB.prototype.threadCount = function() {
+	var res = this.fetchSingletonFromDB( "SELECT * FROM AppData ");
+	return res.THREAD_COUNT;
+};
+
+ProfileDB.prototype.ticTocRegionSummaries = function() {
+	return this.fetchMultipleElemsFromDB("SELECT * FROM TicTocNodeSummaries");
+};
+
 //====================================================
 // Helper functions (used only within this file)
 //====================================================

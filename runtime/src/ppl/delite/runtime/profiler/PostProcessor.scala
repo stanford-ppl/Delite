@@ -14,6 +14,11 @@ object PostProcessor {
 	val tabs = "   "
 	val twoTabs = tabs + tabs
 
+	val profileDBFileName = "profile.db"
+	val uiDataFileName = "profileDataUI.js"
+	val gcStatsFileName = "gcStats.txt"
+	val attributesFileName = "profile.js"
+
 	def processDegFile(degFile: String): DependencyGraph = {
     	DependencyGraph.dependencyGraphNew(degFile)
 	}
@@ -32,25 +37,46 @@ object PostProcessor {
 
 		executionProfile.writeDNodesToDB()
 		executionProfile.writeExecutionSummariesToDB()
+		executionProfile.writeTicTocNodeSummariesToDB()
+		executionProfile.writeAppDataToDB()
 		executionProfile.close()
 
 		dumpProcessedData(globalStartNanos, depGraph, executionProfile)	
 	}
 
 	private def dumpProcessedData(globalStartNanos: Long, depGraph: DependencyGraph, executionProfile: ExecutionProfile) {
-		val directory = Path(Config.profileOutputDirectory).createDirectory()
-		val file = directory / "profileData_test.js"
-		val writer = new PrintWriter(file.jfile)
+		val directory = Path( Config.profileOutputDirectory ).createDirectory()
+		//val file = directory / "profileData_test.js"
+		val file = directory / uiDataFileName
+		var writer = new PrintWriter( file.jfile )
 
-	    writer.println("{\"Profile\":{")
+	    writer.println( "{\"Profile\":{" )
 
 	    executionProfile.dumpAppDataInJSON( writer, tabs )
 	    depGraph.dumpDepGraphInJSON( writer, tabs )
 	    executionProfile.dumpTimelineDataInJSON( writer, tabs )
-	    //executionProfile.dumpTicTocRegionsDataInJSON( writer, tabs )
 	    SamplerThread.dumpMemUsageSamplesInJSON( writer, tabs )
 
-	    writer.println("}}")
+	    writer.println( "}}" )
 	    writer.close()
+
+	    //dumpAttributesOfOutputFiles()
 	}
+
+	/*
+	private def dumpAttributesOfOutputFiles() {
+		val directory = Config.profileOutputDirectory
+		val attributesFile = Path( directory ) / attributesFileName
+		//val attributesFile = Path( directory + "/" + attributesFileName ).createFile()
+		val writer = new PrintWriter( attributesFile.jfile )
+		
+		val uiDataFile = new File( directory + "/" + uiDataFileName )
+		writer.println( "%s,%d".format( uiDataFileName, uiDataFile.length ) )
+
+		val profileDBFile = new File( directory + "/" + profileDBFileName )
+		writer.println( "%s,%d".format( profileDBFileName, profileDBFile.length ) )
+
+		writer.close()
+	}
+	*/
 }

@@ -20,7 +20,8 @@ $("#compareKernelSummariesMetricOptions").change(function() {
 	displaySummariesOfKernel($(this).val());
 });
 
-var threadCountToExecutionProfile = {};
+//var threadCountToExecutionProfile = {};
+var threadCountToProfileDB = {};
 var fileToProcessingDone = {};
 var kernelSummariesDisplayed = {};
 
@@ -35,6 +36,7 @@ function enableViewDataBtnIfAllProcDone() {
 	$("#initializeViewsBtn")[0].disabled = false;
 }
 
+/*
 function readExecutionProfiles(evt) {
 	threadCountToExecutionProfile = {};
 	var files = evt.target.files;
@@ -99,6 +101,62 @@ function initializeViews(evt) {
 	createLineChart(runSummariesChart, xSeries, dataSeries, "Number of Threads", "Time (ms)");
 	displaySummariesOfKernel("");
 }
+*/
+
+function readExecutionProfiles(evt) {
+	var files = evt.target.files;
+	if (files.length > 0) {
+		for (var i = 0; i < files.length; i++) {
+			var reader = new FileReader();
+			var file = files[i];
+
+			reader.onload = (function(currFile) {
+				var fileName = file.name;
+
+				return function(e) {
+					//var Uints = new Uint8Array(reader.result);
+					var Uints = new Uint8Array(e.target.result);
+					var db = new ProfileDB( new SQL.Database(Uints) );
+					var tc = db.threadCount();
+					threadCountToProfileDB[tc] = db;
+					fileToProcessingDone[fileName] = true;
+					enableViewDataBtnIfAllProcDone();
+			}})(file);
+
+			fileToProcessingDone[file.name] = false;
+			$("#initializeViewsBtn")[0].disabled = true;
+			reader.readAsArrayBuffer( file );
+		}
+	}
+}
+
+function initializeViews( evt ) {
+	var metric = $("#compareRunSummariesMetricOptions").val();
+	var xSeries = [];
+	var dataSeries = {};
+	//var xScale = getCommmonXScaleForTimelineComp( threadCountToProfileDB );
+	var numExecProfiles = 0;
+
+	for ( var n in threadCountToProfileDB ) {
+		numExecProfiles++;
+		xSeries.push(n);
+		var db = threadCountToProfileDB[n];
+		var summaries = db.ticTocRegionSummaries();
+		for (var i in summaries) {
+			var s = summaries[i];
+			addToMap( dataSeries, s.NAME, s.TOTAL_TIME );
+		}
+
+		//displayTimelineView(executionProfile, cloneXScale(xScale));
+	}
+
+	//var idSelectorForLastTimeline = toIdSelector(TIMELINE_CONTAINER_ID_PREFIX + "-" + numExecProfiles);
+	//$(idSelectorForLastTimeline).css("overflow-x", "auto");
+	//setUpSyncScrollingForTimelines(numExecProfiles);
+
+	createLineChart( runSummariesChart, xSeries, dataSeries, "Number of Threads", "Time (ms)" );
+	//displaySummariesOfKernel("");
+}
 
 function setUpSyncScrollingForTimelines(numTimelines) {
 	var idSelectorForLastTimeline = toIdSelector(TIMELINE_CONTAINER_ID_PREFIX + "-" + numTimelines);
@@ -143,6 +201,29 @@ function createLineChart(parentDivIdSelector, xSeries, dataSeries, xAxisLabel, y
 	});
 }
 
+function displaySummariesOfKernel( kernel ) {
+	var metric = $("#compareKernelSummariesMetricOptions").val();
+	var xSeries = [];
+	var dataSeries = {};
+
+	if ( !(kernel in kernelSummariesDisplayed) ) {
+		kernelSummariesDisplayed[kernel] = [];
+	}
+
+	for ( var n in threadCountToProfileDB ) {
+		xSeries.push(n);
+		var db = threadCountToProfileDB[n];
+		for ( var k in kernelSummariesDisplayed ) {
+			var s = db.dbExecutionSummaryByName(k);
+			var absTime = ( s.TOTAL_TIME != undefined ) ? s.TOTAL_TIME : 0;
+			addToMap( dataSeries, k, absTime );
+		}
+	}
+
+	createLineChart( kernelSummariesChart, xSeries, dataSeries, "Number of Threads", "Time (ms)" );
+}
+
+/*
 function displaySummariesOfKernel(kernel) {
 	var metric = $("#compareKernelSummariesMetricOptions").val();
 	var xSeries = [];
@@ -174,6 +255,7 @@ function displaySummariesOfKernel(kernel) {
 
 	createLineChart(kernelSummariesChart, xSeries, dataSeries, "Number of Threads", "Time (ms)");
 }
+*/
 
 function displayTimelineView(executionProfile, xScale) {
 	createHeaderDiv(divId, containerDivId);
