@@ -123,11 +123,12 @@ object MemoryProfiler
   		return "null"
   	}
 
-  	def dumpProfile(writer: PrintWriter, prefixSpace: String) {
-  		emitMemProfileDataArrays( writer, prefixSpace )
-		emitMemAccessStats( writer, prefixSpace )
-  	}
+  	//def dumpProfile(writer: PrintWriter, prefixSpace: String) {
+  		//emitMemProfileDataArrays( writer, prefixSpace )
+		//emitMemAccessStats( writer, prefixSpace )
+  	//}
 
+  	/*
 	def emitMemProfileDataArrays(writer: PrintWriter, prefixSpace: String) {
 		var aggrStats = aggregateStatsFromAllThreads()
 		
@@ -194,6 +195,20 @@ object MemoryProfiler
 				var memAllocation = kv._2
 				val current = aggrStats(kernel) ::: memAllocation
 				aggrStats += kernel -> current
+			}
+		}
+
+		return aggrStats
+	}
+	*/
+
+	def aggregateMemAllocStatsFromAllThreads(): Map[String, Long] = {
+		var aggrStats = Map[String, Long]()
+		for (m <- stats) {
+			for (kv <- m) {
+				var kernel = kv._1
+				if (!aggrStats.contains(kernel)) { aggrStats += kernel -> 0 }
+				aggrStats += aggrStats(kernel) + kv._2
 			}
 		}
 

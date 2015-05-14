@@ -38,6 +38,8 @@ object PostProcessor {
 		executionProfile.writeDNodesToDB()
 		executionProfile.writeExecutionSummariesToDB()
 		executionProfile.writeTicTocNodeSummariesToDB()
+		executionProfile.writeKernelMemAccessStatsToDB()
+		executionProfile.writeKernelMemAllocationStatsToDB()
 		executionProfile.writeAppDataToDB()
 		executionProfile.close()
 
@@ -55,7 +57,7 @@ object PostProcessor {
 	    executionProfile.dumpAppDataInJSON( writer, tabs )
 	    depGraph.dumpDepGraphInJSON( writer, tabs )
 	    executionProfile.dumpTimelineDataInJSON( writer, tabs )
-		MemoryProfiler.dumpProfile( writer, tabs )
+		//MemoryProfiler.dumpProfile( writer, tabs )
 	    SamplerThread.dumpMemUsageSamplesInJSON( writer, tabs )
 
 	    writer.println( "}}" )

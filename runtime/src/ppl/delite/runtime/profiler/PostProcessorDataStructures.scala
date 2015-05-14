@@ -566,14 +566,25 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 				  		" EXEC_TIME  	 INT  NOT NULL," +
 				  		" SYNC_TIME  	 INT  NOT NULL," +
 				  		" MEM_USAGE  	 INT  NOT NULL," +
-				  		" L2_HIT_RATIO   REAL NOT NULL," +
-				  		" L3_HIT_RATIO   REAL NOT NULL);\n" +
+				  		" L2_CACHE_HIT_RATIO   REAL NOT NULL," +
+				  		" L3_CACHE_HIT_RATIO   REAL NOT NULL);\n" +
 				  " CREATE TABLE TicTocNodeSummaries " +
 				  		"(NAME TEXT PRIMARY KEY NOT NULL," +
 				  		" TOTAL_TIME INT  NOT NULL);\n" +
 				  " CREATE TABLE DNodeTypes " +
 				  		"(ID INT PRIMARY KEY NOT NULL,"+
 				  		" NAME TEXT NOT NULL);\n" +
+				  " CREATE TABLE KernelMemAccessStats " +
+				  		"(NAME TEXT PRIMARY KEY NOT NULL," +
+				  		" THREAD_ID 	 	 INT  NOT NULL," +
+				  		" BYTES_READ_FROM_MC INT  NOT NULL," +
+				  		" L2_CACHE_HIT_RATIO 	 	 INT  NOT NULL," +
+				  		" L2_CACHE_MISSES 	 	 INT NOT NULL," +
+				  		" L3_CACHE_HIT_RATIO 	 	 INT  NOT NULL," +
+				  		" L3_CACHE_MISSES 	 	 INT NOT NULL);\n" +
+				  " CREATE TABLE KernelMemAllocStats " +
+				  		"(NAME TEXT PRIMARY KEY NOT NULL," +
+				  		" BYTES_ALLOCATED INT  NOT NULL);\n" +
 				  " INSERT INTO DNodeTypes (ID, NAME) VALUES(%d, 'WhileLoop');\n".format(DNodeType.WhileLoop.id) +
 				  " INSERT INTO DNodeTypes (ID, NAME) VALUES(%d, 'Conditional');\n".format(DNodeType.Conditional.id) +
 				  " INSERT INTO DNodeTypes (ID, NAME) VALUES(%d, 'MultiLoop');\n".format(DNodeType.MultiLoop.id) +
@@ -638,9 +649,6 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 
 					updateSummary(tNode)
 					timelineData.tNodeNew(tNode)
-					//if (tNode.syncTime > 0) { syncTimeInc(tNode.name, tNode.syncTime) }
-
-					//writeTNodeToDB(tNode)
 				}
 			}
 		}
@@ -696,7 +704,7 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 		var sql = "BEGIN TRANSACTION;"
 		for ((tNodeName, s) <- summaries) {
 			val totalTimePct: Double = (s.totalTime * 100) / appTotalTime
-			sql += "INSERT INTO ExecutionSummaries (NAME,TOTAL_TIME,TOTAL_TIME_PCT,EXEC_TIME,SYNC_TIME,MEM_USAGE,L2_HIT_RATIO,L3_HIT_RATIO) VALUES (" +
+			sql += "INSERT INTO ExecutionSummaries (NAME,TOTAL_TIME,TOTAL_TIME_PCT,EXEC_TIME,SYNC_TIME,MEM_USAGE,L2_CACHE_HIT_RATIO,L3_CACHE_HIT_RATIO) VALUES (" +
 				   "'%s',%d,%f,%d,%d,%d,%d,%d);\n".format(
 				   tNodeName, s.totalTime, totalTimePct, s.execTime, s.syncTime, s.memUsage, s.l2CacheHitPct, s.l3CacheHitPct)
 		}
@@ -714,6 +722,43 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 		}
 
 		sql += "COMMIT;\n"
+		Predef.println(sql)
+		dbStmt.executeUpdate(sql)
+	}
+
+	def writeKernelMemAccessStatsToDB() {
+		if (threadCppCount > 0) {
+			var sql = "BEGIN TRANSACTION;"
+			val memAccessStats = MemoryProfiler.memoryAccessStatsMaps;
+
+			for (tid <- threadScalaCount to (threadScalaCount + threadCppCount - 1)) {
+				val kernelToStatsLst = memAccessStats(tid)
+				for (kv <- kernelToStatsLst) {
+					val kernel = kv._1
+					for (stats <- kv._2) {
+						sql += "INSERT INTO KernelMemAccessStats " +
+						"(NAME,THREAD_ID,BYTES_READ_FROM_MC,L2_CACHE_HIT_RATIO,L2_CACHE_MISSES,L3_CACHE_HIT_RATIO,L3_CACHE_MISSES) VALUES ('%s',%d,%d,%d,%d,%d,%d);\n".format(
+							kernel, tid, stats.bytesReadFromMC,
+							stats.l2CacheHitRatio * 100, stats.l2CacheMisses, 
+						  	stats.l3CacheHitRatio * 100, stats.l3CacheMisses)
+					}
+				}
+			}
+
+			sql += "COMMIT;"
+			Predef.println(sql)
+			dbStmt.executeUpdate(sql)
+		}
+	}
+
+	def writeKernelMemAllocationStatsToDB() {
+		var sql = "BEGIN TRANSACTION;"
+		val stats = MemoryProfiler.aggregateMemAllocStatsFromAllThreads()
+		for (kv <- stats) {
+			sql += "INSERT INTO KernelMemAllocStats (NAME,BYTES_ALLOCATED) VALUES('%s',%d);\n".format(kv._1, kv._2)
+		}
+
+		sql += "COMMIT;"
 		Predef.println(sql)
 		dbStmt.executeUpdate(sql)
 	}
