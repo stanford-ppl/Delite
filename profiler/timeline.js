@@ -15,6 +15,8 @@ TIMELINE_CHILDNODE_LABEL_CLASS_PREFIX = "childNodeLabel";
 
 LANE_COLORS = ["orange", "green", "lightskyblue", "red", "brown"];
 
+tNodeInfoTable = $("#tNodeInfoTable")[0];
+
 // 'classStr'   => This can be used to group select a subset of all the timeline views being displayed
 // 'nameSuffix'  => The name/id suffix to be used for all internally defined HTML classes/IDs
 // 'parentDivId' => The HTML id of the div that would hold the timeline graph
@@ -23,13 +25,24 @@ LANE_COLORS = ["orange", "green", "lightskyblue", "red", "brown"];
 
 // TODO: The passing of 'timelineLevelSelectorId' as an input parameter is a hack. Instead, the TimelineGraph element
 // should trigger an event when a node is double-clicked and external elements should be able to listen to it.
-function TimelineGraph(classStr, nameSuffix, parentDivId, profileData, timelineLevelSelectorId, config) {
+
+//function TimelineGraph(classStr, nameSuffix, parentDivId, profileData, timelineLevelSelectorId, config) {
+function TimelineGraph(classStr, nameSuffix, parentDivId, appData, timelineData, timelineLevelSelectorId, config) {
 	this.classStr = classStr;
 	this.nameSuffix = nameSuffix;
 	this.parentDivId = parentDivId;
+	/*
 	this.executionProfile = profileData.executionProfile;
 	this.timelineData = profileData.executionProfile.timelineData;
 	this.dependencyData = profileData.dependencyData;
+	*/
+
+	this.timelineData = timelineData;
+	this.timelineData.Timing.pop();
+	this.appData = appData;
+	this.threadCount = appData.threadCount;
+	this.minDurationReqForDisplayingLabel = 0.05 * this.appData.appTotalTime;
+
 	this.timelineLevelSelectorId = timelineLevelSelectorId;
 	this.config = config;
 	this.laneColors = null;
@@ -37,7 +50,8 @@ function TimelineGraph(classStr, nameSuffix, parentDivId, profileData, timelineL
 	this.chartWidth = 0;
 	this.parentDivWidth = -1; // HACK: This field is used as a hack
 	this.parentDivHeight = -1; // HACK: This field is used as a hack
-	this.jvmUpTimeAtAppStart = 0; // HACK: This field is used as a hack
+	//this.jvmUpTimeAtAppStart = 0; // HACK: This field is used as a hack
+	this.jvmUpTimeAtAppStart = appData.jvmUpTimeAtAppStart; // HACK: This field is used as a hack
 	this.xScale = null;
 	this.yScale = null;
 	this.initialXRange = null;
@@ -60,13 +74,27 @@ TimelineGraph.prototype.re_partition = /^(.*)_(\d+)$/;
 TimelineGraph.prototype.re_header = /^(.*)_h$/;
 
 TimelineGraph.prototype.draw = function() {
-	var items = this.convertDataToTimelineFormat(this.timelineData.timing); 
-	var lanes = this.timelineData.lanes;
-	this.laneColors = lanes.map(function(l, i) {return LANE_COLORS[i % LANE_COLORS.length]});
+	//var items = this.convertDataToTimelineFormat(this.timelineData.timing); 
+	//var lanes = this.timelineData.lanes;
 
+	var appData = this.appData;
+	var items = this.timelineData.Timing;
+	var lanes = new Array(this.threadCount + 1);
+
+	//this.laneColors = lanes.map(function(l, i) {return LANE_COLORS[i % LANE_COLORS.length]});
+	this.laneColors = [];
+	for (var i = 0; i <= this.threadCount; i++) {
+		this.laneColors.push(LANE_COLORS[i % LANE_COLORS.length]);
+	}
+
+	/*
 	var tmp = this.getAppBeginAndEndTimes();
 	var	timeBegin = tmp.begin - tmp.duration * 0.01;
 	var	timeEnd = tmp.end + tmp.duration * 0.01;
+	*/
+	
+	var	timeBegin = appData.appStartTime - appData.appTotalTime * 0.01;
+	var	timeEnd = appData.appEndTime + appData.appTotalTime * 0.01;
 
 	var parentDiv = $(this.parentDivId);
 	if (this.parentDivWidth == -1) {
@@ -96,9 +124,10 @@ TimelineGraph.prototype.draw = function() {
 		this.xScale.domain([currXDomain[0] + this.jvmUpTimeAtAppStart, currXDomain[1] + this.jvmUpTimeAtAppStart]);	
 	}
 
-	var	numLanes = lanes.length;
+	var numLanes = lanes.length;
 	var y = d3.scale.linear()
 		.domain([0, numLanes])
+		//.domain([0, this.threadCount])
 		.range([0, chartHeight]);
 	this.yScale = y;
 	
@@ -144,15 +173,21 @@ TimelineGraph.prototype.draw = function() {
 		.attr("class", this.laneTextClass);
 
 	this.createTimelineNodes(items, this.timelineNodeClass);
-	this.createTicTocRegionNodes(this.executionProfile.ticTocRegions, this.timelineNodeClass);
+	//this.createTicTocRegionNodes(this.executionProfile.ticTocRegions, this.timelineNodeClass);
+	this.createTicTocRegionNodes(this.timelineData.TicTocRegions, this.timelineNodeClass);
 
 	//timeline labels
-	var minDurationReqForDisplayingLabel = 0.05 * this.executionProfile.totalAppTime;
-	var eventsWithLabel = items.filter(function(d) {return (d.end - d.start) >= minDurationReqForDisplayingLabel});
+	//var minDurationReqForDisplayingLabel = 0.05 * this.executionProfile.totalAppTime;
+	//var eventsWithLabel = items.filter(function(d) {return (d.end - d.start) >= minDurationReqForDisplayingLabel});
+	//var minDurationReqForDisplayingLabel = 0.05 * this.appData.appTotalTime;
+	//var eventsWithLabel = items.filter(function(d) {return d.duration >= minDurationReqForDisplayingLabel});
+	var eventsWithLabel = this.filterNodesEligibleForLabels( items );
 	this.createTimelineLabels(eventsWithLabel, this.timelineNodeLabelClass);
-	this.createTicTocRegionLabels(this.executionProfile.ticTocRegions, this.timelineNodeLabelClass);
+	//this.createTicTocRegionLabels(this.executionProfile.ticTocRegions, this.timelineNodeLabelClass);
+	this.createTicTocRegionLabels(this.timelineData.TicTocRegions, this.timelineNodeLabelClass);
 };
 
+/*
 TimelineGraph.prototype.convertDataToTimelineFormat = function(data) {
 	var res = [];
 	var runs = data[0];
@@ -162,12 +197,15 @@ TimelineGraph.prototype.convertDataToTimelineFormat = function(data) {
 
 	return res;
 };
+*/
 
+/*
 TimelineGraph.prototype.getAppBeginAndEndTimes = function() {
 	return {"begin": this.executionProfile.appStartTime, 
 			"end": this.executionProfile.appEndTime, 
 			"duration": this.executionProfile.totalAppTime};
 };
+*/
 
 TimelineGraph.prototype.createTimelineNodes = function(data, className) {
 	var graph = this;
@@ -179,7 +217,7 @@ TimelineGraph.prototype.createTimelineNodes = function(data, className) {
 		.enter().append("rect")
 		.attr("class", function(d) {return className + " " + graph.getClassNameForRect(d)})
 		.attr("x", function(d) {return x(d.start);})
-		.attr("y", function(d) {return y(d.lane + .5) - graph.rectHeight/2;})
+		.attr("y", function(d) {return y(d.threadId + .5) - graph.rectHeight/2;})
 		.attr("width", function(d) {return x(d.end) - x(d.start);})
 		.attr("height", graph.rectHeight)
 		.attr("id", function(d) {return "" + d.id + graph.nameSuffix})
@@ -187,14 +225,16 @@ TimelineGraph.prototype.createTimelineNodes = function(data, className) {
 		.attr("vector-effect", "non-scaling-stroke") // from http://stackoverflow.com/questions/10357292/how-to-make-stroke-width-immune-to-the-current-transformation-matrix
 		.style("fill", function(d) {return graph.getRectFill(d)})
 		.on("click", function(d) {return graph.timelineNodeClickHandler(d)})
-		.on("dblclick", function(d) {return graph.dblClickHandler(d)});
+		//.on("dblclick", function(d) {return graph.dblClickHandler(d)});
+		.on("dblclick", function(d) {return graph.dblClickHandler(d.id)});
 };
 
 TimelineGraph.prototype.createTicTocRegionNodes = function(ticTocRegions, className) {
 	var graph = this;
 	var x = graph.xScale;
 	var y = graph.yScale;
-	var numThreads = this.executionProfile.numThreads;
+	//var numThreads = this.executionProfile.numThreads;
+	var numThreads = this.threadCount;
 
 	this.timelineGraph.append("g").selectAll("." + className)
 		.data(ticTocRegions)
@@ -218,7 +258,7 @@ TimelineGraph.prototype.createTimelineLabels = function(data, className) {
 		.enter().append("text")
 		.text(graph.getText)
 		.attr("x", function(d) {return (graph.xScale(d.start) + graph.xScale(d.end))/2;})
-		.attr("y", function(d) {return graph.yScale(d.lane + .5);})
+		.attr("y", function(d) {return graph.yScale(d.threadId + .5);})
 		.attr("dy", ".5ex")
 		.attr("id", function(d) {return "" + d.id + graph.nameSuffix + "-label"})
 		.attr("class", className)
@@ -233,7 +273,7 @@ TimelineGraph.prototype.createTicTocRegionLabels = function(ticTocRegions, class
 		.enter().append("text")
 		.text(function(d) {if (d.name != "all") {return d.name} else {return ""}})
 		.attr("x", function(d) {return (graph.xScale(d.start) + graph.xScale(d.end))/2;})
-		.attr("y", function(d) {return graph.yScale(graph.executionProfile.numThreads + .5);})
+		.attr("y", function(d) {return graph.yScale(graph.threadCount + .5);})
 		.attr("dy", ".5ex")
 		.attr("id", function(d) {return "" + d.id + graph.nameSuffix + "-label"})
 		.attr("class", className)
@@ -267,9 +307,51 @@ TimelineGraph.prototype.getRectFill = function(d) {
 		return "grey";
 	}
 
-	return this.laneColors[d.lane];
+	return this.laneColors[d.threadId];
 };
 
+TimelineGraph.prototype.timelineNodeClickHandler = function(tNode) {
+	var config = this.config;
+	var tNode = config.dbTNodeById(tNode.id);
+	if (tNode.type == config.TNODE_TYPE_SYNC) {
+		config.populateSyncNodeInfoTable( tNode );
+	} else {
+		this.populateTNodeInfoTable( tNode );
+		config.highlightDNodeById( tNode.dNodeId );
+	}
+};
+
+TimelineGraph.prototype.populateTNodeInfoTable = function(tNode) {
+	function target(tNodeTid) {
+		
+		if (tNodeTid < appData.threadScalaCount) { return 'Scala'; }
+		if (tNodeTid < (appData.threadScalaCount + appData.threadCppCount)) { return 'Cpp'; }
+		
+		return 'CUDA';
+	}
+
+	var appData = postProcessedProfile.AppData;
+	var name = tNode.name;
+	var target = target( tNode.threadId );
+
+	var appTotalTime = appData.appTotalTime;
+	var timeAbs = tNode.duration;
+	var timePct = (timeAbs * 100) / appTotalTime;
+	var timeStr = getDisplayTextForTimeAbsPctPair( timeAbs, timePct );
+
+	var execTimePct = ((tNode.execTime * 100) / timeAbs).toFixed(0);
+	var syncTimePct = 100 - execTimePct;
+	var execSyncTimeStr = execTimePct + "/" + syncTimePct + " %";
+
+	var values = [name, target, timeStr, execSyncTimeStr];
+
+	values.forEach(function(v, i) {
+		var row = tNodeInfoTable.rows[i + 1];
+		row.cells[1].innerHTML = values[i];
+	});
+}
+
+/*
 TimelineGraph.prototype.timelineNodeClickHandler = function(tNode) {
 	var nodeType = tNode.type;
 	if (nodeType == "sync") {
@@ -286,7 +368,9 @@ TimelineGraph.prototype.timelineNodeClickHandler = function(tNode) {
 		this.config.highlightLineInEditor(sc.file, sc.line);
 	}
 };
+*/
 
+/*
 TimelineGraph.prototype.dblClickHandler = function(tNode) {
 	if (tNode.childNodes.length > 0) {
 		var isStackChanged = false;
@@ -305,6 +389,35 @@ TimelineGraph.prototype.dblClickHandler = function(tNode) {
 		$(rectSelector + "-label").hide();
 
 		this.removeChildNodesAndLabels();
+		this.createTimelineNodes(childNodes, this.timelineChildNodeClass);
+		this.createTimelineLabels(this.filterNodesEligibleForLabels(childNodes), this.timelineChildNodeLabelClass);
+
+		isStackChanged = true;
+	}
+
+	if (isStackChanged) this.updateHiddenNodeList();
+};
+*/
+
+TimelineGraph.prototype.dblClickHandler = function(tNodeId) {
+	var tNode = config.dbTNodeById( tNodeId );
+	if ( (tNode.childKernelIds != "") || (tNode.childSyncIds != "") ) {
+		var isStackChanged = false;
+		if ( (tNode.parentId == -1) && (this.stackOfHiddenNodes.length > 0) ) {
+			var selector = this.stackOfHiddenNodes[0][0];
+			$(selector).show();
+			$(selector + "-label").show();
+			this.stackOfHiddenNodes.length = 0; // clear the array
+			isStackChanged = true;
+		}
+
+		var rectSelector = "#" + d3.event.target.id;
+		this.stackOfHiddenNodes.push([rectSelector, tNode]);
+		$(rectSelector).hide();
+		$(rectSelector + "-label").hide();
+
+		this.removeChildNodesAndLabels();
+		var childNodes = config.dbChildTNodes( tNodeId );
 		this.createTimelineNodes(childNodes, this.timelineChildNodeClass);
 		this.createTimelineLabels(this.filterNodesEligibleForLabels(childNodes), this.timelineChildNodeLabelClass);
 
@@ -340,9 +453,16 @@ TimelineGraph.prototype.displayNode = function(tNode) {
 };
 
 TimelineGraph.prototype.filterNodesEligibleForLabels = function(tNodes) {
+	var graph = this;
+	return tNodes.filter( function(d) { return d.duration >= graph.minDurationReqForDisplayingLabel; } );
+};
+
+/*
+TimelineGraph.prototype.filterNodesEligibleForLabels = function(tNodes) {
 	var minDurationReqForDisplayingLabel = 0.05 * this.timelineData.totalAppTime;
 	return tNodes.filter(function(d) {return (d.end - d.start) >= minDurationReqForDisplayingLabel});
 };
+*/
 
 TimelineGraph.prototype.timelineScopeSelHandler = function(event) {
 	graph = event.data.graph;

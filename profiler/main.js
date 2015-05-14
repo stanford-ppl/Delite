@@ -17,32 +17,56 @@ viewState.globalStatsMetric = "";
 viewState.selectedLevel = -1;
 
 var config = {};
-config.markGraphNode = markGraphNode;
-config.markNeighborsOnGraph = markNeighborsOnGraph;
+config.highlightDNodeById = highlightDNodeById;
+//config.markGraphNode = markGraphNode;
+//config.markNeighborsOnGraph = markNeighborsOnGraph;
+config.fetchSingletonFromDB = fetchSingletonFromDB;
 config.highlightLineInEditor = highlightLineInEditor;
 config.highlightLineInEditorByKernelId = highlightLineInEditorByKernelId;
 config.populateGCEventInfoTable = populateGCEventInfoTable;
-config.populateKernelInfoTable = populateKernelInfoTable;
+//config.populateKernelInfoTable = populateKernelInfoTable;
 config.populateKernelInfoTableById = populateKernelInfoTableById;
 config.populateSyncNodeInfoTable = populateSyncNodeInfoTable;
+config.dbDNodeById = dbDNodeById;
+config.dbTNodeById = dbTNodeById;
+config.dbChildTNodes = dbChildTNodes;
+config.dbExecutionSummaryByName = dbExecutionSummaryByName;
 config.enableNodeClickHandler = true; // for bar-charts.
 config.syncNodeRegex = /__sync-ExecutionThread-(\d+)-(.*)-(.*)-(\d+)$/;
 config.re_partition = /^(.*)_(\d+)$/;
 config.re_header = /^(.*)_h$/;
+config.dNodeInfoTable = $("#kernelInfoTable")[0];
+
+// NOTE: This must be kept in sync with the order in which the DNodeType enums are defined in the PostProcessor scalacode
+config.dNodeTypeIdToType = {
+	0 : 'WhileLoop',
+	1 : 'Conditional',
+	2 : 'MultiLoop',
+	3 : 'SingleTask',
+	4 : 'Foreach',
+	5 : 'EOG',
+	6 : 'EOP'
+};
+
+config.TNODE_TYPE_SYNC = 2;
 
 addAppSourceFileHandler("srcDirInput", editor);
 addDegFileHandler("degFileInput");
 addProfileDataFileHandler("profDataInput");
 addGCStatsFileHandler("gcStatsInput");
 
-var editor = {}
-var profData = {}
-var graphController = {}
-var timelineController = {}
-var topNodesBasedOnTime = []
-var topNodesBasedOnMemUsage = []
-var threadLevelSyncStats = []
+var editor = {};
+//var profData = {};
+var graphController = {};
+var timelineController = {};
+var dbStmt = undefined;
 
+// Input data sets for bar charts
+var topNodesBasedOnL2CacheMissPct = [];
+var topNodesBasedOnL3CacheMissPct = [];
+var topNodesBasedOnMemUsage = [];
+var topNodesBasedOnTime = [];
+var threadLevelSyncStats = [];
 
 $("#globalStatsMetric").change(function() {
 	$("#generalInfo").hide();
@@ -56,6 +80,12 @@ $("#globalStatsMetric").change(function() {
 	} else if (metric == "memUsage") {
 		clearDivForBarChartDisplay();
 		createBarChart("#dfg", topNodesBasedOnMemUsage, "memUsage", getDisplayTextForMemUsage, config);
+	} else if (metric == "l2CacheMissRatio") {
+		clearDivForBarChartDisplay();
+		createBarChart("#dfg", topNodesBasedOnL2CacheMissPct, "missPct", getDisplayTextForCacheMissRatio, config);
+	} else if (metric == "l3CacheMissRatio") {
+		clearDivForBarChartDisplay();
+		createBarChart("#dfg", topNodesBasedOnL3CacheMissPct, "missPct", getDisplayTextForCacheMissRatio, config);
 	} else if (metric == "threadLevelSyncStats") {
 		clearDivForBarChartDisplay();
 		createBarChart("#dfg", threadLevelSyncStats, "syncTimePct", getDisplayTextForThreadLevelSync, config);
@@ -103,6 +133,10 @@ function getDisplayTextForTime(d) {
 
 function getDisplayTextForMemUsage(d) {
 	return d.name + " (" + memUsageValueToStr(d.memUsage) + ")";
+}
+
+function getDisplayTextForCacheMissRatio(d) {
+	return d.name + " (" + d.missPct + "%)";
 }
 
 function getDisplayTextForThreadLevelSync(d) {
@@ -233,6 +267,7 @@ function filterNodesOnTimeline() {
 	viewState.selectedLevel = selectedLevel
 }
 
+/*
 function markGraphNode(kernelId) {
 	var n = viewState.highlightedGraphNode
 	if (n != -1) {
@@ -242,10 +277,22 @@ function markGraphNode(kernelId) {
 	graphController.highlightNode(kernelId)
 	viewState.highlightedGraphNode = kernelId
 }
+*/
 
+function highlightDNodeById(dNodeId) {
+	var n = viewState.highlightedGraphNode;
+	if (n != -1) { graphController.unhighlightNode(n); }
+
+	graphController.highlightNode( dNodeId );
+	graphController.highlightDNodeById( dNodeId );
+	viewState.highlightedGraphNode = dNodeId;
+}
+
+/*
 function markNeighborsOnGraph(nodeId) {
 	graphController.markNeighbors(nodeId)
 }
+*/
 
 function highlightLineInEditor(file, line) {
 	unhighlightLine(viewState.highlightedLine)
@@ -265,6 +312,7 @@ function highlightLineInEditorByKernelId(nodeId) {
 	highlightLineInEditor(sc.file, sc.line)
 }
 
+/*
 function computeTarget(supportedTargets, enabledTargets) {
 	if ( supportedTargets[TARGET_CUDA] && enabledTargets[TARGET_CUDA] ) {
 		return "cuda";
@@ -274,7 +322,9 @@ function computeTarget(supportedTargets, enabledTargets) {
 
 	return "scala";
 }
+*/
 
+/*
 function populateKernelInfoTable(node) {
 	function helper(num) {
 		if (num != undefined) return num.toFixed(0)
@@ -302,6 +352,37 @@ function populateKernelInfoTable(node) {
 		row.cells[1].innerHTML = values[i];
 	})
 }
+*/
+
+function populateKernelInfoTableById(dNodeId) {
+	var dNode = dbDNodeById(dNodeId);
+	var name = dNode.NAME;
+	var summary = dbExecutionSummaryByName(name);
+	var isSummaryPresent = (summary.TOTAL_TIME != undefined);
+	
+	var type = config.dNodeTypeIdToType[dNode.TYPE];
+
+	var appTotalTime = postProcessedProfile.AppData.appTotalTime;
+	var totalTimeAbs = isSummaryPresent ? summary.TOTAL_TIME : 0;
+	var totalTimePct = ((totalTimeAbs * 100) / appTotalTime);
+	var timeStr = getDisplayTextForTimeAbsPctPair( totalTimeAbs, totalTimePct );
+
+	var execTime = isSummaryPresent ? summary.EXEC_TIME : 0;
+	var execTimePct = ((execTime * 100) / totalTimeAbs);
+	var syncTimePct = 100 - execTimePct;
+	var execSyncTimeStr = execTimePct + "/" + syncTimePct + " %";
+
+	var memUsage = isSummaryPresent ? summary.MEM_USAGE : 0;
+	
+	var values = [name, type, timeStr, execSyncTimeStr, memUsage];
+
+	values.forEach(function(v, i) {
+		var row = config.dNodeInfoTable.rows[i + 1];
+		row.cells[1].innerHTML = values[i];
+	});
+
+	return dNode;
+}
 
 function populateSyncNodeInfoTable(node) {
 	var properties = ["Dep. Thread", "Dep. Kernel", "Time (%)"]
@@ -313,10 +394,43 @@ function populateSyncNodeInfoTable(node) {
 	})
 }
 
-function populateKernelInfoTableById(nodeId) {
-	var node = profData.dependencyData.nodes[nodeId]
-	populateKernelInfoTable(node)
-}
+//=======================================
+// DB Functions
+//=======================================
+
+function fetchSingletonFromDB( query ) {
+	dbStmt = profileDB.prepare( query );
+	dbStmt.step();
+	return dbStmt.getAsObject();
+};
+
+function fetchMultipleElemsFromDB( query ) {
+	var results = [];
+	dbStmt = profileDB.prepare( query );
+	while (dbStmt.step()) {
+		results.push(dbStmt.getAsObject());
+	}
+
+	return results;
+};
+
+function dbDNodeById(dNodeId) {
+	return fetchSingletonFromDB( "SELECT * FROM DNodes WHERE ID=" + dNodeId );
+};
+
+function dbTNodeById(tNodeId) {
+	return fetchSingletonFromDB( "SELECT * FROM TNodes WHERE id=" + tNodeId );
+};
+
+function dbExecutionSummaryByName(name) {
+	return fetchSingletonFromDB( "SELECT * FROM ExecutionSummaries WHERE NAME='" + name + "'" );
+};
+
+function dbChildTNodes( parentTNodeId ) {
+	return fetchMultipleElemsFromDB( "SELECT * FROM TNodes WHERE parentId=" + parentTNodeId );
+};
+
+//=======================================
 
 function getTopNodesBasedOnTotalTime(nodeNameToSummary, dependencyData, count) {
 	var nodeNameAttrPairs = [];
@@ -355,9 +469,44 @@ function getTopNodesBasedOnMemUsage(nodeNameToSummary, dependencyData, count) {
 		}
 	}
 
-	nodeNameAttrPairs.sort(function(p1,p2) { return p2.memUsage - p1.memUsage; });
+	nodeNameAttrPairs.sort(function(p1, p2) { return p2.memUsage - p1.memUsage; });
 
 	return nodeNameAttrPairs.slice(0, count);
+}
+
+function getNodesWithHighestL2AndL3MissRatios(nodeNameToMemAccessStats, count) {
+	var nodeL2MissPctPairs = [];
+	var nodeL3MissPctPairs = [];
+	for (var name in nodeNameToMemAccessStats) {
+		var sumOfL2HitPcts = 0;
+		var sumOfL3HitPcts = 0;
+		var count = 0;
+		var instanceToStats = nodeNameToMemAccessStats[name];
+		for (var i in instanceToStats) {
+			var tidToStats = instanceToStats[i];
+			for (var tid in tidToStats) {
+				var stats = tidToStats[tid];
+				sumOfL2HitPcts += 100 - stats.l2CacheHitPct;
+				sumOfL3HitPcts += 100 - stats.l3CacheHitPct;
+				count += 1;
+			}
+		}
+
+		nodeL2MissPctPairs.push({
+			"name": name,
+			"missPct": 100 - Math.round(sumOfL2HitPcts / count)
+		});
+
+		nodeL3MissPctPairs.push({
+			"name": name,
+			"missPct": 100 - Math.round(sumOfL3HitPcts / count)
+		});
+	}
+
+	nodeL2MissPctPairs.sort(function(p1, p2) { return p2.missPct - p1.missPct });
+	nodeL3MissPctPairs.sort(function(p1, p2) { return p2.missPct - p1.missPct });
+
+	return [nodeL2MissPctPairs.slice(0, count), nodeL3MissPctPairs.slice(0, count)];
 }
 
 function populateGCEventInfoTable(data) {
@@ -377,13 +526,20 @@ function startDebugSession() {
 		setUpSelectTagForDEGView()
 
 		editor = createEditor("code")
-  		profData = getProfileData(degOps, profileData.Profile, config)
-  		graphController = createDataFlowGraph(cola, "#dfg", profData.dependencyData, viewState, config)
-  		//graphController = {}
 
+  		var dependencyData = postProcessedProfile.DependencyGraph;
+  		dependencyData.nodes.pop();
+  		dependencyData.edges.pop();
+  		graphController = createDataFlowGraph(cola, "#dfg", dependencyData.nodes, dependencyData.edges, viewState, config);
+
+  		/*
   		// This is the data to be visualized using bar charts
   		topNodesBasedOnTime = getTopNodesBasedOnTotalTime(profData.executionProfile.nodeNameToSummary, profData.dependencyData, 20);
   		topNodesBasedOnMemUsage = getTopNodesBasedOnMemUsage(profData.executionProfile.nodeNameToSummary, profData.dependencyData, 20);
+
+  		var tmp = getNodesWithHighestL2AndL3MissRatios(profData.executionProfile.nodeNameToMemAccessStats, 20);
+  		topNodesBasedOnL2CacheMissPct = tmp[0];
+  		topNodesBasedOnL3CacheMissPct = tmp[1];
 
   		maxTimeTakenByAKernel = topNodesBasedOnTime[0].totalTimePct;
   		maxMemUsageByAKernel = topNodesBasedOnMemUsage[0].memUsage;
@@ -393,17 +549,21 @@ function startDebugSession() {
   			name: "T" + i,
   			syncTimePct: o.syncTime.pct
   		}})
+		*/
 
-      	timelineController = new TimelineGraph("mainTimeline", "-main", "#timeline", profData, "#timelineHiddenNodeList", config)
+      	timelineController = new TimelineGraph("mainTimeline", "-main", "#timeline", postProcessedProfile.AppData, postProcessedProfile.TimelineData, "#timelineHiddenNodeList", config)
+
       	timelineController.draw();
-  			
+
+  		
   		$("#timelineHiddenNodeList").change({
   			graph: timelineController
   		}, timelineController.timelineScopeSelHandler) 
+		
+      	createStackGraph("#memory", postProcessedProfile.MemUsageSamples, timelineController.xScale);
+      	createGCStatsGraph("#gcStats", gcEvents, timelineController.xScale, config);
 
-      	createStackGraph("#memory", profData.executionProfile.memUsageData, timelineController.xScale)
-      	createGCStatsGraph("#gcStats", gcEvents, timelineController.xScale, config)
-
+      	
 		setUpSynchronizedScrolling();
 		//lockScrollingOfComparisonRuns();
     } else {

@@ -16,7 +16,8 @@ function ExecutionProfile() {
 	this.fileName = "";
 	this.jvmUpTimeAtAppStart = 0;
 	this.memUsageData = [];
-	this.nodeNameToSummary = {}; // node name to a summary of its timing stats
+	this.nodeNameToSummary = {}; // maps nodeName to a summary of its timing stats
+	this.nodeNameToMemAccessStats = {}; // maps nodeName to thread id to list of MemAccessStats objects (one corresponding to each invocation of the node)
 	this.numThreads = 0;
 	this.threadLevelPerfStats = [];
 	this.ticTocRegions = [];
@@ -26,6 +27,28 @@ function ExecutionProfile() {
 	this.appEndTime = 0;
 	this.enabledTargets = [false, false, false]; // The different targets enabled for the run
 }
+
+function NodeSummary(nodeName) {
+	this.nodeName = nodeName;
+	this.totalTime = new Time(0, 0); // Summary of time taken by all instances of the node
+	this.execTime = new Time(0, 0); // Summary of execution (non-synchronization) time of all instances of the node
+	this.syncTime = new Time(0, 0); // Summary of the time spent in synchronization by all instances of the node
+	this.memUsage = 0; // Total memory allocated by all instances of the node
+}
+
+function Time(abs, pct) {
+	this.abs = abs; // Absolute time
+	this.pct = pct; // The absolute time as % of some other time value (eg: totalAppTime, etc.)
+}
+
+function MemAccessStats(l2CacheHitPct, l2CacheMisses, l3CacheHitPct, l3CacheMisses, bytesReadFromMC) {
+	this.l2CacheHitPct = l2CacheHitPct;
+	this.l3CacheHitPct = l3CacheHitPct;
+}
+
+//====================================================
+// ExecutionProfile methods
+//====================================================
 
 ExecutionProfile.prototype.tryAddNode = function(nodeName) {
 	if (!(nodeName in this.nodeNameToSummary)) {
@@ -111,17 +134,4 @@ ExecutionProfile.prototype.syncTime = function(nodeName) {
 
 ExecutionProfile.prototype.memUsage = function(nodeName) {
 	return this.nodeNameToSummary[nodeName].memUsage;
-}
-
-function NodeSummary(nodeName) {
-	this.nodeName = nodeName;
-	this.totalTime = new Time(0, 0); // Summary of time taken by all instances of the node
-	this.execTime = new Time(0, 0); // Summary of execution (non-synchronization) time of all instances of the node
-	this.syncTime = new Time(0, 0); // Summary of the time spent in synchronization by all instances of the node
-	this.memUsage = 0; // Total memory allocated by all instances of the node
-}
-
-function Time(abs, pct) {
-	this.abs = abs; // Absolute time
-	this.pct = pct; // The absolute time as % of some other time value (eg: totalAppTime, etc.)
 }

@@ -76,8 +76,10 @@
 											<span>Metric</span>	
 											<select id="globalStatsMetric">
 												<option value="degView">DEG View</option>
-												<option value="performance">Performance</option>
+												<option value="l2CacheMissRatio">L2 Cache Miss Ratio</option>
+												<option value="l3CacheMissRatio">L3 Cache Miss Ratio</option>
 												<option value="memUsage">Mem Usage</option>
+												<option value="performance">Performance</option>
 												<option value="threadLevelSyncStats">Thread Sync</option>
 												<option value="ticTocRegionStats">Tic-Toc Regions</option>
 											</select>
@@ -125,10 +127,6 @@
 												<td></td> 
 											</tr>
 											<tr>
-												<td>Target</td>
-												<td></td> 
-											</tr>
-											<tr>
 												<td>Time (%)</td>
 												<td></td> 
 											</tr>
@@ -138,6 +136,33 @@
 											</tr>
 											<tr>
 												<td>Mem Usage (B)</td>
+												<td></td> 
+											</tr>
+										</table>
+									</li>
+								</ul>
+							</li>
+							<li class="active">
+								<h3>Timeline Node Info</h3>
+								<ul>
+									<li>
+										<table id="tNodeInfoTable" class="sidebarTable">
+											<th>Property</th>
+											<th>Value</th> 
+											<tr>
+												<td>Name</td>
+												<td></td> 
+											</tr>
+											<tr>
+												<td>Target</td>
+												<td></td> 
+											</tr>
+											<tr>
+												<td>Time (%)</td>
+												<td></td> 
+											</tr>
+											<tr>
+												<td>Exec/Sync Time (%)</td>
 												<td></td> 
 											</tr>
 										</table>
@@ -292,6 +317,7 @@
 	    <script type="text/javascript" src="lib/highlight.pack.js"></script>
         <script type="text/javascript" src="lib/cola.v1.min.js"></script>
         <script type="text/javascript" src="lib/graphlib-dot.min.js"></script>
+        <script type="text/javascript" src="lib/sql.js"></script>
 
         <!-- internal libraries -->
         <script type="text/javascript" src="common.js"></script>
