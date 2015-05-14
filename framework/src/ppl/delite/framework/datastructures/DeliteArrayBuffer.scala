@@ -141,26 +141,26 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     darray_buffer_copyfrom(d, pos, xs)
   }
 
-  protected def darray_buffer_copyfrom[A:Manifest](d: Exp[DeliteArrayBuffer[A]], pos: Exp[Int], xs: Exp[DeliteArray[A]]): Exp[Unit] = {
+  protected def darray_buffer_copyfrom[A:Manifest](d: Exp[DeliteArrayBuffer[A]], pos: Exp[Int], xs: Exp[DeliteArray[A]])(implicit ctx: SourceContext): Exp[Unit] = {
     val data = darray_buffer_raw_data(d)
     darray_copy(xs, unit(0), data, pos, xs.length)
   }
 
-  protected def darray_buffer_insertspace[A:Manifest](d: Exp[DeliteArrayBuffer[A]], pos: Exp[Int], len: Exp[Int]): Exp[Unit] = {
+  protected def darray_buffer_insertspace[A:Manifest](d: Exp[DeliteArrayBuffer[A]], pos: Exp[Int], len: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
     darray_buffer_ensureextra(d,len)
     val data = darray_buffer_raw_data(d)
     darray_copy(data, pos, data, delite_int_plus(pos, len), delite_int_minus(d.length, pos))
     darray_buffer_set_length(d, delite_int_plus(d.length, len))
   }
 
-  protected def darray_buffer_ensureextra[A:Manifest](d: Exp[DeliteArrayBuffer[A]], extra: Exp[Int]): Exp[Unit] = {
+  protected def darray_buffer_ensureextra[A:Manifest](d: Exp[DeliteArrayBuffer[A]], extra: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
     val data = darray_buffer_raw_data(d)
     if (delite_less_than(delite_int_minus(data.length, d.length), extra)) {    
       darray_buffer_realloc(d, delite_int_plus(d.length, extra))
     }
   }
 
-  protected def darray_buffer_realloc[A:Manifest](d: Exp[DeliteArrayBuffer[A]], minLen: Exp[Int]): Exp[Unit] = {  
+  protected def darray_buffer_realloc[A:Manifest](d: Exp[DeliteArrayBuffer[A]], minLen: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {  
     val oldData = darray_buffer_raw_data(d)
     val doubleLength = delite_int_times(oldData.length, unit(2))
     val n = var_new(if (delite_greater_than(unit(4), doubleLength)) unit(4) else doubleLength)

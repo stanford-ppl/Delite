@@ -585,8 +585,7 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
   import IR._
 
   def emitLogOfArrayAllocation(symId: Int, arrayLength: Exp[Int], elemType: String): Unit = {
-    //stream.println("ppl.delite.runtime.profiler.MemoryProfiler.logArrayAllocation(\"x" + symId + "\", " + quote(arrayLength) + ", \"" + elemType + "\")")    
-    stream.println("ppl.delite.runtime.profiler.MemoryProfiler.logArrayAllocation(\"x" + symId + "\", resourceInfo.threadId, " + quote(arrayLength) + ", \"" + elemType + "\")")    
+    stream.println("ppl.delite.runtime.profiler.MemoryProfiler.logArrayAllocation(\"x" + symId + "\", resourceInfo.threadId, " + quote(arrayLength) + ", \"" + elemType + "\")")
   }
   
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
@@ -931,6 +930,10 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
   val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
 
+  def emitLogOfArrayAllocation(sym: Sym[Any], arrayLength: Exp[Int], elemType: String): Unit = {
+	stream.println("DeliteLogArrayAllocation(resourceInfo->threadId, x" + sym.id + ", " + quote(arrayLength) + ", \"" + elemType + "\", \"" + getSourceContext(sym.pos) + "\");")
+  }
+
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case a@DeliteArrayNew(n,m,t) => 
       // NOTE: DSL operations should not rely on the fact that JVM initializes arrays with 0
@@ -947,6 +950,8 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
         if (kernelAlloc) emitValDef(sym, "new (" + resourceInfoSym + ") " + remap(sym.tp) + "(" + quote(n)+ ")") //internal array on global heap 
         else emitValDef(sym, "new (" + resourceInfoSym + ") " + remap(sym.tp) + "(" + quote(n) + ", " + resourceInfoSym + ")") //internal array on local heap
       }
+
+	  emitLogOfArrayAllocation(sym, n, m.erasure.getSimpleName)
       if (t.partition) stream.println("#endif")
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + "->length")

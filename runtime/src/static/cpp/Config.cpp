@@ -8,12 +8,13 @@
 #include "DeliteDatastructures.h"
 #include "DeliteCpp.h"
 #include "cppInit.h"
-
+#include "pcmHelper.h"
 
 Config* config = NULL;
 resourceInfo_t* resourceInfos = NULL;
 pthread_mutex_t init_mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t init_cond = PTHREAD_COND_INITIALIZER;
+PCM* pcm = NULL;
 
 // heavy-handed, but doesn't appear there is another good way
 int getCpuInfo(FILE* pipe) {
@@ -88,18 +89,23 @@ void initializeGlobal(int numThreads, size_t heapSize) {
     initializeThreadPool(numThreads);
     InitDeliteCppTimer(numThreads);
   }
+
+  pcm = pcmInit();
   pthread_mutex_unlock(&init_mtx);
 }
 
 void freeGlobal(int numThreads, int offset, JNIEnv *env) {
   pthread_mutex_lock(&init_mtx);
   if (config) {
-    DeliteCppTimerDump(offset, env);
+	DeliteCppTimerClose();
+	DeliteSendMemoryAccessStatsToJVM(offset, env);
     DeliteHeapClear(numThreads);
     delete[] resourceInfos;
     delete config;
     config = NULL;
   }
+
+  pcmCleanup();
   pthread_mutex_unlock(&init_mtx);
 }
 

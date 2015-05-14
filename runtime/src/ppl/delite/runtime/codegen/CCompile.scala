@@ -160,11 +160,14 @@ CC = ${config.compiler}
 DELITE_HOME = ${Config.deliteHome}
 SOURCECACHE_HOME = ${sourceCacheHome}
 BINCACHE_HOME = ${binCacheHome}
-INCLUDES = ${includes.mkString(" ")}
+//INCLUDES = ${includes.mkString(" ")}
+INCLUDES = ${includes.mkString(" ") + " -I/home/jithinpt/memory_profiling/IntelPerformanceCounterMonitorV2.8"}
 
 CFLAGS = ${(compileFlags ++ Array(config.compileFlags)).mkString(" ")}
 LDFLAGS = ${(linkFlags ++ Array(config.linkFlags) ++ libs).mkString(" ")}
-SOURCES = ${sources.mkString(" ")}
+// TODO: Remove the hardcoded paths
+//SOURCES = ${sources.mkString(" ")}
+SOURCES = ${sources.mkString(" ")  + " /home/jithinpt/memory_profiling/IntelPerformanceCounterMonitorV2.8/cpucounters.cpp /home/jithinpt/memory_profiling/IntelPerformanceCounterMonitorV2.8/msr.cpp /home/jithinpt/memory_profiling/IntelPerformanceCounterMonitorV2.8/pci.cpp /home/jithinpt/memory_profiling/IntelPerformanceCounterMonitorV2.8/client_bw.cpp"}
 OBJECTS = $$(SOURCES:.${ext}=.o)
 OUTPUT = ${destination}
 

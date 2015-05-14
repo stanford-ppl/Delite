@@ -120,6 +120,7 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
   def emitAbstractFatLoopHeader(className: String, actType: String) {
     stream.println("#ifndef __" + kernelName + "__")
     stream.println("#define __" + kernelName + "__")
+    stream.println("#include \"pcmHelper.h\"")
     stream.println("class " + kernelName + "{")
     stream.println("public:")
     emitFieldsAndConstructor()

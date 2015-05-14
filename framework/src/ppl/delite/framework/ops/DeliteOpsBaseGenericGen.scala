@@ -4,7 +4,7 @@ import ppl.delite.framework.Config
 import scala.collection.mutable.HashMap
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.CCodegen
-
+import scala.reflect.SourceContext
 
 trait BaseDeliteOpsTraversalFat extends BaseLoopsTraversalFat {
   val IR: DeliteOpsExp
@@ -776,6 +776,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     val actType = "activation_"+kernelName
     //deliteKernel = false
 
+	val instrumentMemAccesses = (Config.enableProfiler) && (kernelFileExt == "cpp")
+
     emitAbstractFatLoopHeader(kernelName, actType)
 
     emitMethod("size", remap(Manifest.Long), Nil) { emitReturn(quote(op.size)) }
@@ -831,22 +833,44 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         val streamSym = quote(streamVars(0))+"_stream"
         emitValDef(streamSym, remap(streamVars(0).tp), fieldAccess(quote(streamVars(0)),"openCopyAtNewLine(start)"))
         emitValDef("isEmpty",remap(Manifest.Boolean), "end <= " + fieldAccess(streamSym,"position"))
+
+		if (instrumentMemAccesses) {
+			stream.println("SystemCounterState before = getSystemCounterState();")
+		}
+
         emitValDef("__act2",actType,methodCall("init",List("__act","-1","isEmpty",streamSym)))
         stream.println("while (" + fieldAccess(streamSym,"position") + " < end) {")
         emitMethodCall("process",List("__act2","-1",streamSym))
         stream.println("}")
+
+		if (instrumentMemAccesses) {
+			stream.println("SystemCounterState after = getSystemCounterState();")
+			stream.println("DeliteUpdateMemoryAccessStats( resourceInfo->threadId, " + "\"" + getSourceContext(symList(0).pos) + "\" , getPCMStats( before, after ));")
+		}
+
         stream.println(fieldAccess(streamSym, "close();"))
       }
       else {
         emitValDef("isEmpty",remap(Manifest.Boolean),"end-start <= 0")
         emitVarDef("idx", remap(Manifest.Int), typeCast("start",remap(Manifest.Int)))
+
+		if (instrumentMemAccesses) {
+			stream.println("SystemCounterState before = getSystemCounterState();")
+		}
+
         emitValDef("__act2",actType,methodCall("init",List("__act","idx","isEmpty")))
         emitAssignment("idx","idx + 1")
         stream.println("while (idx < end) {")
         emitMethodCall("process",List("__act2","idx"))
         emitAssignment("idx","idx + 1")
         stream.println("}")
+
+		if (instrumentMemAccesses) {
+			stream.println("SystemCounterState after = getSystemCounterState();")
+			stream.println("DeliteUpdateMemoryAccessStats( resourceInfo->threadId, " + "\"" + getSourceContext(symList(0).pos) + "\" , getPCMStats( before, after ));")
+		}
       }
+
       emitReturn("__act2")
     }
 
@@ -1234,4 +1258,16 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     case _ => super.emitFatNode(symList, rhs)
   }
 
+  def getSourceContext(sourceContexts: List[SourceContext]) : String = {
+    if (sourceContexts.size == 0) { 
+      return "NoSourceContext"
+    }    
+
+    var sc = sourceContexts(0)
+    while(!sc.parent.isEmpty) {
+      sc = sc.parent.get
+    }    
+
+    return sc.fileName + ":" + sc.line
+  } 
 }
