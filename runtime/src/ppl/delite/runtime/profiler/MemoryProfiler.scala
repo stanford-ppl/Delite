@@ -178,7 +178,7 @@ object MemoryProfiler
 
 			writer.println(pre1 + "\"dummy\": {}")
 			
-			writer.println( prefixSpace + "}" )
+			writer.println( prefixSpace + "}," )
 		}
 	}
 
