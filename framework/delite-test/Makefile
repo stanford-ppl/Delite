@@ -14,3 +14,5 @@ clean:
 
 %${OBJ_SUFFIX}:
 	${DELITE_HOME}/bin/delitec ${ARG} ${TEST_PKG}.$@
+	dot -Tpdf deliteIR.dot > foo.pdf
+	scp foo.pdf raghu@xenon.stanford.edu:

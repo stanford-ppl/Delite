@@ -13,5 +13,7 @@ trait HW5 extends DeliteTestDSLApplication {
     val b = a.map(x => x*x)
     val c = a.map(x => x+2)
     println(b(0)+c(0))
+    val d = b.zip(c)((a,b) => a+b)
+    println(d(0))
   }
 }

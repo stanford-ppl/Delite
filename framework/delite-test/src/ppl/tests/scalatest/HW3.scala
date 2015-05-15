@@ -13,7 +13,14 @@ trait HW3 extends DeliteTestDSLApplication {
 
   def testFunction(a: Rep[DeliteArray[Double]], b: Rep[Int], c: Rep[Double]) = {
     val res = a.map(_ + b).reduce(_+_, 0.0)
-    res / c
+
+    /*
+     * for (i <- 0 to a.size) {
+     *   tmp[i] = a[i] + b
+     * }
+     */
+
+    res
   }
 
 }
