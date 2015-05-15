@@ -1255,7 +1255,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef) = rhs match {
     case op: AbstractFatLoop =>
       if (Config.debugCodegen) {
-        println(s"[codegen] GenericGenDeliteOps::emitFatNode::AbstractFatLoop, op = $op, symList = $symList")
+        println(s"[codegen] GenericGenDeliteOps::emitFatNode::AbstractFatLoop, symList = $symList, op = $op")
       }
       if (!deliteKernel) { loopLevel += 1; emitInlineAbstractFatLoop(op, symList); loopLevel -= 1; }
       else emitKernelAbstractFatLoop(op, symList)
