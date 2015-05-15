@@ -8,6 +8,11 @@
 *.~
 *.o
 *.so
+*.swo
+*.bak
+*.log
+*.dot
+*.pdf
 /local.properties
 delite.properties
 target/
@@ -30,8 +35,4 @@ test-out/*/*-src
 dsls/deliszt/lisztlib
 profiler/less
 .tags
-.swo
-.bak
-.log
-.dot
-.pdf
+
