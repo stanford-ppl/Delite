@@ -118,6 +118,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
 
     val size = copyTransformedOrElse(_.size)(in.length)
     override def alloc(len: Exp[Int]) = DeliteArray[B](len)
+    override def toString=super.toString
   }
   
   case class DeliteArrayZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[DeliteArray[A]], inB: Exp[DeliteArray[B]],
@@ -126,12 +127,14 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
 
     override def alloc(len: Exp[Int]) = DeliteArray[R](len)
     val size = copyTransformedOrElse(_.size)(inA.length)
+    override def toString=super.toString
   }
   
   case class DeliteArrayReduce[A:Manifest](in: Exp[DeliteArray[A]], func: (Exp[A], Exp[A]) => Exp[A], zero: Exp[A])(implicit ctx: SourceContext)
     extends DeliteOpReduce[A] {
     
     val size = copyTransformedOrElse(_.size)(in.length)    
+    override def toString=super.toString
   }  
   
   case class DeliteArrayForeach[A:Manifest](in: Exp[DeliteArray[A]], func: Rep[A] => Rep[Unit]) extends DeliteOpForeach[A] {
@@ -149,6 +152,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   case class DeliteArrayFromFunction[A:Manifest](length: Rep[Int], func: Exp[Int] => Exp[A]) extends DeliteOpMapIndices[A,DeliteArray[A]] {
     val size = copyTransformedOrElse(_.size)(length)
     override def alloc(len: Exp[Int]) = DeliteArray[A](len)
+    override def toString=super.toString
   }
 
   case class DeliteArrayFlatMap[A:Manifest,B:Manifest](in: Exp[DeliteArray[A]], func: Exp[A] => Exp[DeliteArray[B]])
@@ -234,10 +238,30 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
 
   //////////////////
   // public methods
-    
+  private def getdef(sym: Sym[Any]) = {
+    sym match {
+      case Def(d) => d
+      case _ => null
+    }
+  }
+
+  private def noReflect(d: Def[Any]) = {
+    d match {
+      case Reflect(node, _, _) => node.asInstanceOf[Def[Any]]
+      case _ => d
+    }
+  }
+
   def darray_new[T:Manifest](length: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(DeliteArrayNew(length,manifest[T],PartitionTag("DeliteArray",partitionArray)))
   def darray_new_immutable[T:Manifest](length: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DeliteArrayNew(length,manifest[T],PartitionTag("DeliteArray",partitionArray)))
-  def darray_length[T:Manifest](da: Exp[DeliteArray[T]])(implicit ctx: SourceContext) = reflectPure(DeliteArrayLength[T](da))
+  def darray_length[T:Manifest](da: Exp[DeliteArray[T]])(implicit ctx: SourceContext) = {
+    val arraynode = noReflect(getdef(da.asInstanceOf[Sym[Any]]))
+    arraynode match {
+      case DeliteArrayNew(length, _, _) if length.isInstanceOf[Const[Int]] =>
+        length.asInstanceOf[Const[Int]]
+      case _ =>  reflectPure(DeliteArrayLength[T](da))
+    }
+  }
   def darray_apply[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DeliteArrayApply[T](da,i))
   
   /* 
