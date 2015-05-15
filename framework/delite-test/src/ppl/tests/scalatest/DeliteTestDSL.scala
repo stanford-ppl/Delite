@@ -114,8 +114,15 @@ trait DeliteTestDSLCompiler extends DeliteTestDSL
   this: DeliteTestDSLApplication with DeliteTestDSLExp =>
 }
 
+trait TransformExp extends DeliteTransform
+    with MultiloopSoATransformWithReduceExp
+    with HwLoweringTransformExp
+//    with HwBlockStitchTransformExp
+    with DotPrintTransformExp
+//    with LoopScheduleTransformExp
+
 trait DeliteTestDSLExp extends DeliteTestDSLCompiler with DeliteTestDSLScalaOpsPkgExp with FunctionBlocksExp with DeliteStructsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteMapOpsExp with DeliteFileReaderOpsExp
-  with ExpressionsOpt with DeliteTransform with MultiloopSoATransformWithReduceExp with DeliteTestOpsExp with DeliteLMSForwarderExp with DeliteAllOverridesExp {
+  with ExpressionsOpt with TransformExp /* DeliteTransform  with MultiloopSoATransformWithReduceExp with DotPrintTransformExp with LoopScheduleTransformExp */ with DeliteTestOpsExp with DeliteLMSForwarderExp with DeliteAllOverridesExp {
 
   this: DeliteApplication with DeliteTestDSLApplication with DeliteTestDSLExp =>
 
