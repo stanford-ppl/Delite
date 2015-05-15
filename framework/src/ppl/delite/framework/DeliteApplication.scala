@@ -15,10 +15,11 @@ import codegen.opencl.TargetOpenCL
 import codegen.scala.TargetScala
 import codegen.restage.TargetRestage
 import codegen.Target
-import ops.DeliteOpsExp
+//import ops.DeliteOpsExp
+import ops.HwOpsExp
 import transform.{DeliteTransform, DistributedArrayTransformer}
 
-trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransform with DeliteAllOverridesExp {  
+trait DeliteApplication extends HwOpsExp with ScalaCompile with DeliteTransform with DeliteAllOverridesExp {  
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
 
   /*
@@ -100,6 +101,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
     
     // set transformers to be applied before codegen
     deliteGenerator.transformers = transformers
+    deliteGenerator.transformerMetadata = transformerMetadata
     //val distributedTransformer = new DistributedArrayTransformer{ val IR: DeliteApplication.this.type = DeliteApplication.this }
     //deliteGenerator.transformers :+= distributedTransformer
     

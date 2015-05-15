@@ -36,6 +36,7 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
 
   // should be set by DeliteApplication if there are any transformations to be run before codegen
   var transformers: List[WorklistTransformer{val IR: DeliteCodegen.this.IR.type}] = Nil
+  var transformerMetadata = HashMap[String, Any]()
 
   // per kernel, used by DeliteGenTaskGraph
   var controlDeps: List[Sym[Any]] = _

@@ -12,6 +12,145 @@ import ppl.delite.framework.transform.LoopSoAOpt
 import ppl.delite.framework.analysis.{StencilExp,NestedLoopMappingExp}
 import scala.collection.mutable.{HashSet,HashMap}
 
+trait HwOpsExp extends DeliteOpsExp {
+
+  abstract class HwDef[T] extends Def[T]
+
+//  abstract class MemHw(sym: Sym[Any]) extends HwDef {
+  abstract class MemHw extends HwDef {
+    val word = 0
+    def maxReadBW = 0
+    def maxWriteBW = 0
+    // How about another function that returns bandwidth utilization for a given access pattern?
+  }
+
+  abstract class ComputeHw extends HwDef
+  abstract class InterconnectHw extends HwDef
+
+  case class HwLoop(
+    size: Const[Int],
+    iter: Sym[Any],
+    body: Block[Any]
+    ) extends HwDef
+
+//  case class BRAM(sym: Sym[Any])(
+//    size: Int,
+//    wordLen: Int,
+//    banks: Int,
+//    // What about a more general mapping function: index => bankID ?
+//    bankMapping: Int, // 0: Modulo, 1: Sequential
+//    rports: Int,
+//    wports: Int
+//  ) extends MemHw(sym) {
+//    override val word = wordLen
+//    override def toString = s"""BRAM($sym)(size: $size, wordLen: $wordLen, banks: $banks, bankMapping: $bankMapping, rports: $rports, wports: $wports)"""
+//  }
+
+  case class BRAM(
+    size: Int,
+    wordLen: Int,
+    banks: Int,
+    bankMapping: Int, // 0: Modulo, 1: Sequential
+    rports: Int,
+    wports: Int
+  ) extends MemHw {
+    override val word = wordLen
+    override def toString = s"""BRAM(size: $size, wordLen: $wordLen, banks: $banks, bankMapping: $bankMapping, rports: $rports, wports: $wports)"""
+  }
+
+
+  case class FIFO(sym: Sym[Any])(
+    size: Int,
+    wordLen: Int,
+    banks: Int,
+    bankMapping: Int, // 0: Modulo, 1: Sequential
+    rports: Int,
+    wports: Int
+  ) extends MemHw {
+    override val word = wordLen
+  }
+
+  case class CAM(sym: Sym[Any])(
+    size: Int,
+    wordLen: Int,
+    banks: Int,
+    bankMapping: Int, // 0: Modulo, 1: Sequential
+    rports: Int,
+    wports: Int
+  ) extends MemHw {
+    override val word = wordLen
+  }
+
+  case class FF(sym: Sym[Any])(
+    bitwidth: Int
+  ) extends MemHw {
+    override val word = bitwidth
+    override def toString = s"""FF($sym)(bitwidth: $bitwidth)"""
+  }
+
+  case class FFArray(sym: Sym[Any])(
+    size: Int,
+    bitwidth: Int,
+    banks: Int,
+    bankMapping: Int, // 0: Modulo, 1: Sequential
+    rports: Int,
+    wports: Int
+  ) extends MemHw {
+    override val word = bitwidth
+  }
+
+  case class ShiftReg(sym: Sym[Any])(
+    size: Int,
+    wordLen: Int,
+    banks: Int,
+    bankMapping: Int, // 0: Modulo, 1: Sequential
+    rports: Int,
+    wports: Int
+  ) extends MemHw {
+    override val word = wordLen
+  }
+
+  case class HwDummy(deps: Exp[Any]*) extends ComputeHw
+//  case class HwDummy(deps: Exp[Any]*)(label: String) extends ComputeHw {
+//    override def toString = s"""HwDummy($deps)($label)"""
+//  }
+
+  case class HwSync(deps: Exp[Any]*) extends ComputeHw
+  case class HwPlus(a: Exp[Int], b: Exp[Int]) extends ComputeHw
+  case class HwMinus(a: Exp[Int], b: Exp[Int]) extends ComputeHw
+  case class HwMul(a: Exp[Int], b: Exp[Int]) extends ComputeHw
+  case class HwDiv(a: Exp[Int], b: Exp[Int]) extends ComputeHw
+  case class HwFpPlus(a: Exp[Float], b: Exp[Float]) extends ComputeHw
+  case class HwFpMinus(a: Exp[Float], b: Exp[Float]) extends ComputeHw
+  case class HwFpMul(a: Exp[Float], b: Exp[Float]) extends ComputeHw
+  case class HwFpDiv(a: Exp[Float], b: Exp[Float]) extends ComputeHw
+  case class HwLd(mem: Exp[Any], addr: Exp[Any]) extends ComputeHw
+  case class HwSt(mem: Exp[Any], addr: Exp[Any], din: Exp[Any]) extends ComputeHw
+
+//  def gen_bram(deps: List[Sym[Any]])(s: Sym[Any], size: Int, bitwidth: Int, banks: Int, bankmapping: Int, rports: Int, wports: Int) = reflectEffect(BRAM(s)(size, bitwidth, banks, bankmapping, rports, wports), Read(deps))
+  def gen_bram(size: Int, bitwidth: Int = 32, banks: Int = 1, bankmapping: Int = 0, rports: Int = 1, wports: Int= 1) = BRAM(size, bitwidth, banks, bankmapping, rports, wports)
+//  def gen_fifo
+//  def gen_cam
+//  def gen_ff
+//  def gen_ffarray
+//  def gen_shiftreg
+  def gen_hwplus(lhs: Exp[Int], rhs: Exp[Int]) = reflectPure(HwPlus(lhs, rhs))
+  def gen_hwminus(lhs: Exp[Int], rhs: Exp[Int]) = reflectPure(HwMinus(lhs, rhs))
+  def gen_hwmul(lhs: Exp[Int], rhs: Exp[Int]) = reflectPure(HwMul(lhs, rhs))
+  def gen_hwdiv(lhs: Exp[Int], rhs: Exp[Int]) = reflectPure(HwDiv(lhs, rhs))
+  def gen_hwld(mem: Exp[Any], addr: Exp[Int]) = HwLd(mem, addr)
+  def gen_hwst(mem: Exp[Any], addr: Exp[Int], value: Exp[Any]) = HwSt(mem, addr, value)
+  def gen_hwsync(deps: List[Exp[Any]]) = {
+    if (deps.size == 0) {
+      reflectEffect(HwSync(deps:_*), Write(deps.filter(x => x.isInstanceOf[Sym[Any]]).asInstanceOf[List[Sym[Any]]]))
+    } else {
+      reflectEffect(HwSync())
+    }
+  }
+  def gen_hwdummy(deps: Exp[Any]*) = reflectPure(HwDummy(deps:_*))
+}
+
+
 trait DeliteOpsExp extends DeliteOpsExpIR with DeliteInternalOpsExp with DeliteCollectionOpsExp with DeliteArrayFatExp with DeliteMapOpsExp {
 
   /**
