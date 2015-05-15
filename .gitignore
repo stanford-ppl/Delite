@@ -30,3 +30,8 @@ test-out/*/*-src
 dsls/deliszt/lisztlib
 profiler/less
 .tags
+.swo
+.bak
+.log
+.dot
+.pdf
