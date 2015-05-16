@@ -6,7 +6,9 @@ object HW2_O extends DeliteTestDSLApplicationRunner with HW2
 
 trait HW2 extends DeliteTestDSLApplication {
   def main() = {
-    val a = DeliteArray.fromFunction(100){ i => i + 1 }
-    println(a(0))
+//    val a = DeliteArray.fromFunction(100){ i => i + 1 }
+    val a = DeliteArray[Int](100)
+    a.map(x => x)
+//    println(a(0))
   }
 }
