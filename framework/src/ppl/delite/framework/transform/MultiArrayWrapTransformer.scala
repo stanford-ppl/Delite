@@ -9,7 +9,7 @@ import scala.reflect.SourceContext
 import ppl.delite.framework.analysis._
 import ppl.delite.framework.DeliteApplication
 
-trait MultiArrayWrapExp extends DeliteApplication with DeliteMultiArrayOpsExp { 
+trait MultiArrayWrapExp extends DeliteApplication with DeliteMultiArrayOpsExp with RankMetadataOps { 
 
   case class MultiArrayBuffify[T:Manifest](ma: Exp[DeliteMultiArray[T]]) extends DefWithManifest[T,DeliteMultiArray[T]]
   case class MultiArrayViewify[T:Manifest](ma: Exp[DeliteMultiArray[T]]) extends DefWithManifest[T,DeliteMultiArray[T]]
@@ -21,8 +21,8 @@ trait MultiArrayWrapExp extends DeliteApplication with DeliteMultiArrayOpsExp {
   }).asInstanceOf[Exp[A]]
 }
 
-trait MultiArrayWrapTransformer extends TransformerBase with MultiArrayHelperStageTwo {
-  val IR: MultiArrayWrapExp with RankMetadata
+trait MultiArrayWrapTransformer extends TransformerBase {
+  val IR: MultiArrayWrapExp
   import IR._
   override val name = "MultiArray Wrapper"
   override val debugMode = false
@@ -92,6 +92,16 @@ trait MultiArrayWrapTransformer extends TransformerBase with MultiArrayHelperSta
 
     case Reflect(d, _, _) => substituteAtomicWrite(s, d, Nil)
     case _ => None
+  }
+
+  // TODO: Move this elsewhere?
+  def followTrace(p: SymbolProperties, trace: List[AtomicTracer]): SymbolProperties = {
+    if (trace.isEmpty) { p }
+    else (p, trace.head) match {
+      case (p: StructProperties, StructTracer(field)) => followTrace(p.child(field).get, trace.tail)
+      case (p: ArrayProperties, ArrayTracer(_)) => followTrace(p.child.get, trace.tail)
+      case _ => sys.error("Error while following nested write trace in metadata")
+    }    
   }
 
   def substituteAtomicWrite(s: Exp[Any], d: Def[Any], trace: List[AtomicTracer])(implicit ctx: SourceContext): Option[Exp[Any]] = d match {

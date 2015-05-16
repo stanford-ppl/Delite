@@ -1,9 +1,12 @@
 package ppl.delite.framework.datastructures
 
 import java.io.PrintWriter
+
 import scala.virtualization.lms.common._
+import scala.virtualization.lms.internal._
+import scala.virtualization.lms.internal.Meetable._
 import scala.reflect.{SourceContext, RefinedManifest}
-import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
+
 import ppl.delite.framework.ops._
 import ppl.delite.framework.Util._
 import ppl.delite.framework.Config
@@ -371,6 +374,20 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
       case _ => super.mirror(e,f)
     }).asInstanceOf[Exp[A]]
   }
+
+  override def isDataStructureTpe[T](tp: Manifest[T]): Boolean = tp match {
+    case tp if isDeliteArrayTpe(tp) => true
+    case _ => super.isDataStructureTpe(tp)
+  }
+
+  override def initProps[A](tp: Manifest[A], symData: PropertyMap[Metadata], child: Option[SymbolProperties], index: Option[String])(implicit ctx: SourceContext) = tp match {
+    case t if isDeliteArrayTpe(t) => 
+      val typeChild = initTpe(t.typeArguments.head)
+      val symChild = attemptMeet(child, Some(typeChild), func = MetaTypeInit)
+      ArrayProperties(symChild, symData)
+    case _ => super.initProps(tp, symData, child, index)
+  }
+
   
   override def syms(e: Any): List[Sym[Any]] = e match {
     case Def(SimpleStruct(SoaTag(tag, length), elems)) => syms(length) ++ super.syms(e)
@@ -437,6 +454,9 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
     }
   }
   
+  object StructChild {
+    def unapply[T:Manifest](e: Exp[DeliteArray[T]]) = unapplyStructType[T]
+  }
 
   //choosing the length of the first array creates an unnecessary dependency (all arrays must have same length), so we store length in the tag
   override def darray_length[T:Manifest](da: Exp[DeliteArray[T]])(implicit ctx: SourceContext) = da match {
@@ -444,7 +464,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
     case StructIR(tag, len, elems) => 
       printlog("**** extracted array length: " + len.toString)
       len
-    case StructType(tag, fields) if Config.soaEnabled =>
+    case StructChild(tag, fields) if Config.soaEnabled =>
       val z = dlength(field(da,fields(0)._1)(mtype(darrayManifest(fields(0)._2)),ctx))(mtype(fields(0)._2),ctx)
       printlog("**** fallback array length: " + z.toString + " of " + da.toString)
       z
@@ -454,7 +474,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
   override def darray_apply[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int])(implicit ctx: SourceContext) = da match {
     case StructIR(tag, len, elems) =>
       struct[T](tag, elems.map(p=>(p._1, darray_apply(p._2,i)(argManifest(p._2.tp),ctx))))
-    case StructType(tag, fields) if Config.soaEnabled =>
+    case StructChild(tag, fields) if Config.soaEnabled =>
       struct[T](tag, fields.map(p=>(p._1, darray_apply(field(da,p._1)(mtype(darrayManifest(p._2)),ctx),i)(mtype(p._2),ctx))))
     case _ => super.darray_apply(da, i)
   }
@@ -463,7 +483,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
   override def darray_update[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int], x: Exp[T])(implicit ctx: SourceContext) = da match {
     case StructIR(tag, len, elems) =>
       elems.foreach(p=>darray_update(p._2,i,field(x,p._1)(argManifest(p._2.tp),ctx))(argManifest(p._2.tp),ctx))
-    case StructType(tag, fields) if Config.soaEnabled =>
+    case StructChild(tag, fields) if Config.soaEnabled =>
       fields.foreach(p=>darray_update(field(da,p._1)(mtype(darrayManifest(p._2)),ctx), i, field(x,p._1)(mtype(p._2),ctx))(mtype(p._2),ctx))
     case _ => super.darray_update(da, i, x)
   }
@@ -471,7 +491,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
   override def darray_unsafe_update[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int], x: Exp[T])(implicit ctx: SourceContext) = da match {
     case StructIR(tag, len, elems) =>
       elems.foreach(p=>darray_unsafe_update(p._2,i,field(x,p._1)(argManifest(p._2.tp),ctx))(argManifest(p._2.tp),ctx))
-    case StructType(tag, fields) if Config.soaEnabled =>
+    case StructChild(tag, fields) if Config.soaEnabled =>
       fields.foreach(p=>darray_unsafe_update(field(da,p._1)(mtype(darrayManifest(p._2)),ctx), i, field(x,p._1)(mtype(p._2),ctx))(mtype(p._2),ctx))
     case _ => super.darray_unsafe_update(da, i, x)
   }
@@ -479,7 +499,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
   override def darray_copy[T:Manifest](src: Exp[DeliteArray[T]], srcPos: Exp[Int], dest: Exp[DeliteArray[T]], destPos: Exp[Int], length: Exp[Int])(implicit ctx: SourceContext) = dest match {
     case StructIR(tag, _, elems) =>
       elems.foreach{ case (k,v) => darray_copy(field(src,k)(v.tp,ctx), srcPos, v, destPos, length)(argManifest(v.tp),ctx) }
-    case StructType(tag, fields) if Config.soaEnabled =>
+    case StructChild(tag, fields) if Config.soaEnabled =>
       fields.foreach{ case (k,tp) => darray_copy(field(src,k)(mtype(darrayManifest(tp)),ctx), srcPos, field(dest,k)(mtype(darrayManifest(tp)),ctx), destPos, length)(mtype(tp),ctx) }
     case _ => super.darray_copy(src, srcPos, dest, destPos, length)
   }
@@ -487,7 +507,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
   override def darray_unsafe_copy[T:Manifest](src: Exp[DeliteArray[T]], srcPos: Exp[Int], dest: Exp[DeliteArray[T]], destPos: Exp[Int], length: Exp[Int])(implicit ctx: SourceContext) = dest match {
     case StructIR(tag, _, elems) =>
       elems.foreach{ case (k,v) => darray_unsafe_copy(field(src,k)(v.tp,ctx), srcPos, v, destPos, length)(argManifest(v.tp),ctx) }
-    case StructType(tag, fields) if Config.soaEnabled =>
+    case StructChild(tag, fields) if Config.soaEnabled =>
       fields.foreach{ case (k,tp) => darray_unsafe_copy(field(src,k)(mtype(darrayManifest(tp)),ctx), srcPos, field(dest,k)(mtype(darrayManifest(tp)),ctx), destPos, length)(mtype(tp),ctx) }
     case _ => super.darray_unsafe_copy(src, srcPos, dest, destPos, length)
   }
@@ -496,7 +516,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
   override def darray_take[T:Manifest](da: Exp[DeliteArray[T]], n: Rep[Int])(implicit ctx: SourceContext) = da match {
     case StructIR(tag, _, elems) =>
       struct[DeliteArray[T]](SoaTag(tag, n), elems.map(p=>(p._1, darray_take(p._2,n)(argManifest(p._2.tp),ctx))))
-    case StructType(tag, fields) if Config.soaEnabled =>
+    case StructChild(tag, fields) if Config.soaEnabled =>
       struct[DeliteArray[T]](SoaTag(tag, n), fields.map(p=>(p._1, darray_take(field(da,p._1)(mtype(darrayManifest(p._2)),ctx),n)(mtype(p._2),ctx))))
     case _ => super.darray_take(da, n)
   }

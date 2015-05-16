@@ -5,7 +5,7 @@ import scala.reflect.SourceContext
 
 import ppl.delite.framework.datastructures._
 
-trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
+trait DeliteSimpleOpsExp extends DeliteOpsExp {
   /**
    * Parallel, effectful foreach
    * @param size - the size of the collection/dimensions to loop over
@@ -106,8 +106,6 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
       copyRaw = reifyEffects(dc_copy(this.aV2,this.iV,this.allocVal,this.iV2,this.sV)),
       finalizer = reifyEffects(this.finalizeI(this.allocVal))
     )
-    val mR = manifest[R]
-    val mC = manifest[C]
   }
 
   /**
@@ -139,6 +137,8 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
       //val condStr = if (condLs.isEmpty) "" else  ", cond: " + condLs.mkString(",")
       "SimpleCollect(" + size + ", iter: " + v + ", " + body + ")"
     }
+    val mR = manifest[R]
+    val mC = manifest[C]
   }
   object CollectFactory {
     /**
@@ -148,14 +148,14 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
      */
     def array[R:Manifest](oV: Sym[Int], size: Exp[Int], func: Block[R], cond: Option[Block[Boolean]] = None)(implicit ctx: SourceContext) = {
       val alloc = (z: Exp[Int]) => DeliteArray[R](z)
-      new SimpleCollect[R,C](oV, size, func, alloc, cond)
+      new SimpleCollect[R,DeliteArray[R]](oV, size, func, alloc, cond)
     }
 
     def mirror[R:Manifest,C<:DeliteCollection[R]:Manifest](op: SimpleCollect[R,C], f: Transformer)(implicit pos: SourceContext): SimpleCollect[R,C] = op match {
-      case SimpleCollect(v,s,b,a,t,c) => new { override val original = Some(f,op) } with SimpleCollect(v,s,b,a,t,c)(op.mR,op.mC,pos)
+      case SimpleCollect(v,s,b,a,c) => new { override val original = Some(f,op) } with SimpleCollect(v,s,b,a,c)(op.mR,op.mC,pos)
     }
 
-    def unerase[R:Manifest,C<:DeliteCollection[R]:Manifest](op: SimpleCollect[_,_]): SimpleCollect[R,C] = op.asInstanceOf[CollectImpl[R,C]]
+    def unerase[R:Manifest,C<:DeliteCollection[R]:Manifest](op: SimpleCollect[_,_]): SimpleCollect[R,C] = op.asInstanceOf[SimpleCollect[R,C]]
   }
 
   /**
@@ -165,7 +165,7 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
    * @param func      - flatmap function - produces Exp[DeliteCollection[R]]
    * @param alloc     - allocation rule for output type (Exp[Int] => Exp[C])
   */
-  case class SimpleFlatMap[R:Manifest,C<:DeliteCollection[R]:Manifest](oV: Sym[Int], loopSize: Exp[Int], func: Block[DeliteCollection[R]], alloc: Exp[Int] => Exp[C])(implicit ctx: SourceContext) extends MapLikeImpl[R,C] {
+  case class SimpleFlatMap[R:Manifest,C<:DeliteCollection[R]:Manifest](oV: Sym[Int], loopSize: Exp[Int], func: Block[DeliteCollection[R]], alloc: Exp[Int] => Exp[C])(implicit ctx: SourceContext) extends SimpleMapLike[R,C] {
     type OpType <: SimpleFlatMap[R,C]
 
     override lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(oV).asInstanceOf[Sym[Int]]
@@ -188,6 +188,8 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
     ))
 
     override def toString = "SimpleFlatMap(" + size + ", iter: " + v + ", " + body + ")" 
+    val mR = manifest[R]
+    val mC = manifest[C]
   }
   object FlatMapFactory {
     /**
@@ -197,12 +199,12 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
      */
     def array[R:Manifest](oV: Sym[Int], size: Exp[Int], func: Block[DeliteCollection[R]])(implicit ctx: SourceContext) = {
       val alloc = (z: Exp[Int]) => DeliteArray[R](z)
-      new SimpleFlatMap[R,C,C](oV,size,func,alloc)
+      new SimpleFlatMap[R,DeliteArray[R]](oV,size,func,alloc)
     }
-    def mirror[R:Manifest,C<:DeliteCollection[R]:Manifest](op: SimpleFlatMap[R,C], f: Transformer)(implicit pos: SourceContext): FlatMapImpl[R,C] = op match {
-      case SimpleFlatMap(v,s,b,a,t) => new {override val original = Some(f,op)} with SimpleFlatMap(v,s,b,a,t)(op.mR,op.mC,pos)
+    def mirror[R:Manifest,C<:DeliteCollection[R]:Manifest](op: SimpleFlatMap[R,C], f: Transformer)(implicit pos: SourceContext): SimpleFlatMap[R,C] = op match {
+      case SimpleFlatMap(v,s,b,a) => new {override val original = Some(f,op)} with SimpleFlatMap(v,s,b,a)(op.mR,op.mC,pos)
     }
-    def unerase[R:Manifest,C<:DeliteCollection[R]:Manifest](op: SimpleFlatMap[_,_]): SimpleFlatMap[R,C] = op.asInstanceOf[FlatMapImpl[R,C]]
+    def unerase[R:Manifest,C<:DeliteCollection[R]:Manifest](op: SimpleFlatMap[_,_]): SimpleFlatMap[R,C] = op.asInstanceOf[SimpleFlatMap[R,C]]
   }
 
   /**
@@ -211,8 +213,8 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
    * @param paths - list of file paths
    * @param alloc - allocation rule for output type (Exp[Int] => Exp[C])
   */
-  case class SimpleRead[C:DeliteCollection[String]:Manifest](oV: Sym[Int], paths: Seq[Exp[String]], alloc: Exp[Int] => Exp[C]) extends SimpleMapLike[String,C] {
-    type OpType <: SimpleRead[String,C]
+  /*case class SimpleRead[C:DeliteCollection[String]:Manifest](oV: Sym[Int], paths: Seq[Exp[String]], alloc: Exp[Int] => Exp[C])(implicit ctx: SourceContext) extends SimpleMapLike[String,C] {
+    type OpType <: SimpleRead[C]
 
     override lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(oV).asInstanceOf[Sym[Int]]
     
@@ -227,18 +229,19 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
       buf = this.buf,
       numDynamicChunks = this.numDynamicChunks
     ))
+    val mC = manifest[C]
   }
 
   object SimpleReadFactory {
     def array(oV: Sym[Int], paths: Seq[Exp[String]])(implicit ctx: SourceContext) = {
-      val alloc = (z: Exp[Int]) => DeliteArray[R](z)
-      new SimpleRead(oV, paths, alloc)
+      val alloc = (z: Exp[Int]) => DeliteArray[String](z)
+      new SimpleRead[DeliteArray[String]](oV, paths, alloc)
     }
     def mirror[C<:DeliteCollection[String]:Manifest](op: SimpleRead[C], f: Transformer)(implicit ctx: SourceContext): SimpleRead[C] = op match {
       case SimpleRead(v,p,a) => new {override val original = Some(f,op)} with SimpleRead(v,p,a)(op.mC,ctx)
     }
     def unerase[C<:DeliteCollection[String]:Manifest](op: SimpleRead[_]): SimpleRead[C] = op.asInstanceOf[SimpleRead[C]]
-  }
+  }*/
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case e: SimpleForeach => 
@@ -267,12 +270,12 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
       val op = FlatMapFactory.unerase(e)(e.mR,e.mC)
       reflectMirrored(Reflect(FlatMapFactory.mirror(op,f)(e.mR,e.mC,pos), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
 
-    case e: SimpleRead[_] =>
+    /*case e: SimpleRead[_] =>
       val op = SimpleReadFactory.unerase(e)(e.mC)
       reflectPure(SimpleReadFactory.mirror(op,f)(e.mC,pos))(mtype(manifest[A]), pos)
     case Reflect(e: SimpleRead[_], u, es) =>
       val op = SimpleReadFactory.unerase(e)(e.mC)
-      reflectMirrored(Reflect(SimpleReadFactory.mirror(op,f)(e.mC,pos), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+      reflectMirrored(Reflect(SimpleReadFactory.mirror(op,f)(e.mC,pos), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)*/
 
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
@@ -283,6 +286,7 @@ trait DeliteSimpleOpsExp extends DeliteOpsExp with DeliteArrayBufferOpsExp {
     case op: SimpleCollect[_,_] => blocks(op.body.asInstanceOf[DeliteCollectElem[_,_,_]].func) // blocks(op.body)
     case op: SimpleReduce[_] => blocks(op.body.asInstanceOf[DeliteReduceElem[_]].rFunc) // blocks(op.body)
     case op: SimpleForeach => blocks(op.body.asInstanceOf[DeliteForeachElem[_]].func) // blocks(op.body)
+    //case op: SimpleRead => Nil
     //case op: DeliteOpLoop[_] => blocks(op.body)
     //case op: DeliteCollectElem[_,_,_] => blocks(op.func) ::: blocks(op.cond) ::: blocks(op.buf) ::: op.iFunc.toList 
     case _ => super.blocks(e)

@@ -1,9 +1,9 @@
 package ppl.delite.framework.transform
 
-import scala.virtualization.lms.internal._
 import scala.virtualization.lms.common._
-import ppl.delite.framework.visit._
-import ppl.delite.framework.visit.Meetable._
+import scala.virtualization.lms.internal._
+import scala.virtualization.lms.internal.Meetable._
+
 import ppl.delite.framework.ops.DeliteOpsExp
 
 import scala.collection.immutable
@@ -18,8 +18,8 @@ import scala.reflect.SourceContext
       printmsg(sw.toString())
     }*/
 
-trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor with MetadataTransformer { self =>
-  val IR: DeliteOpsExp with DeliteMetadata
+trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor { self =>
+  val IR: DeliteOpsExp with MetadataOps
   import IR._
   // substitutions which should carry over to the next iteration
   var nextSubst = immutable.Map.empty[Exp[Any], Exp[Any]]
@@ -29,7 +29,6 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor w
 
   override def hasConverged = runs > 0 && nextSubst.isEmpty
   override def hasContext = true
-  override def notifyUpdate(e: Exp[Any]): Unit = { notifyChange() }
 
   // Update innerScope to reflect changes/additions to this block
   // This allows multiple transformations of the same block in a single pass

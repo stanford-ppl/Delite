@@ -1,16 +1,12 @@
 package ppl.delite.framework.analysis
 
-import scala.collection.mutable.HashMap
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.IRVisitor
+import scala.virtualization.lms.internal._
+import scala.virtualization.lms.internal.Meetable._
 import scala.reflect.SourceContext
 
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.datastructures._
-import ppl.delite.framework.datastructures.DeliteMultiArrayOpsExp
-
-import ppl.delite.framework.visit._
-import ppl.delite.framework.visit.Meetable._
 
 import ppl.delite.framework.Util._
 
@@ -67,20 +63,34 @@ trait LayoutMetadata extends RankMetadata {
   }
 }
 
+trait LayoutMetadataOps extends RankMetadataOps with LayoutMetadata {
+  def getLayout(p: SymbolProperties) = p("layout").map{_.asInstanceOf[Layout[_,_]]}
+  def getLayout(e: Exp[Any]) = getMetadata(e, "layout").map{_.asInstanceOf[Layout[_,_]]}
+  def layout(e: Exp[Any]) = getLayout(e).get
+  def layout(p: SymbolProperties) = getLayout(p).get
+
+  override def rank(e: Exp[Any]): Int = getLayout(e) match {
+    case Some(FlatLayout(n,_)) => n
+    case _ => super.rank(e)
+  }
+  override def rank(p: SymbolProperties): Int = getLayout(p) match {
+    case Some(FlatLayout(n,_)) => n
+    case _ => super.rank(p)
+  }
+}
+
 // TODO: Not a full analysis stage right now - just fills in layouts as flat
-trait LayoutAnalyzer extends IRVisitor with MetadataTransformer with MultiArrayHelperStageTwo {
-  val IR: DeliteOpsExp with DeliteMultiArrayOpsExp with LayoutMetadata
+trait LayoutAnalyzer extends IRVisitor {
+  val IR: DeliteOpsExp with DeliteMultiArrayOpsExp with LayoutMetadataOps
   import IR._
   override val name = "Layout Analyzer"
-
-  override def notifyUpdate(e: Exp[Any]): Unit = ()
 
   // Recursively sets layouts of all arrays to be flat
   // TODO: Currently all layouts are of type "Nothing"
   def setLayout(p: Option[SymbolProperties])(implicit ctx: SourceContext): Option[SymbolProperties] = p match {
     case Some(a: ArrayProperties) => 
       val datType = MADataType(isPhysView(a), isPhysBuffer(a))
-      Some(ArrayProperties(setLayout(a.child), PropertyMap("layout" -> FlatLayout(rank(a),datType) )))
+      Some(ArrayProperties(setLayout(a.child), PropertyMap("layout", FlatLayout(rank(a),datType) )))
     case Some(s: StructProperties) => 
       Some(StructProperties(s.children.map{(f,v) => f -> setLayout(v)}, s.data))
     case _ => p
@@ -88,37 +98,17 @@ trait LayoutAnalyzer extends IRVisitor with MetadataTransformer with MultiArrayH
 
   // Super simple analysis - make everything flat, row-major 
   override def runOnce[A:Manifest](s: Block[A]): Block[A] = {
-    for (e <- regionMetadata.top.keySet) {
+    for ((e,m) <- symbolData) {
       implicit val ctx: SourceContext = mpos(e.pos)
  
-      if (hasMultiArrayChild(e.tp)) {
+      if (hasMultiArrayTpe(e.tp)) {
         val origProps = getProps(e)
         val newProps = setLayout(origProps)
         setProps(e, attemptMeet(origProps, newProps, func = MetaOverwrite))
-
-        //printmsg(quotePos(e.pos))
-        //printmsg(strDef(e))
-        //printmsg(e + makeString(metadata.get(e)))
-        //printmsg("")
       }
     }
     (s)
   }
 }
 
-trait MultiArrayHelperStageThree extends MultiArrayHelperStageTwo {
-  val IR: DeliteOpsExp with DeliteMultiArrayOpsExp with LayoutMetadata
-  import IR._
 
-  def getLayout(p: SymbolProperties) = p("layout").map{_.asInstanceOf[Layout[_,_]]}
-  def getLayout(e: Exp[Any]) = getMetadata(e, "layout").map{_.asInstanceOf[Layout[_,_]]}
-  def layout(e: Exp[Any]) = getLayout(e).get
-  def layout(p: SymbolProperties) = getLayout(p).get
-
-  override def rank(e: Exp[Any]): Int = layout(e) match {
-    case FlatLayout(n,_) => n
-  }
-  override def rank(p: SymbolProperties): Int = layout(p) match {
-    case FlatLayout(n,_) => n
-  }
-}

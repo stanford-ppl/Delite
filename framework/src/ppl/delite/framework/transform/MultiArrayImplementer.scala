@@ -1,22 +1,23 @@
 package ppl.delite.framework.transform
 
 import scala.virtualization.lms.common._
+import scala.virtualization.lms.internal._
+import scala.virtualization.lms.internal.Meetable._
 import scala.reflect.{SourceContext,RefinedManifest}
 
 import ppl.delite.framework.ops._
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.analysis._
-import ppl.delite.framework.visit._
 import ppl.delite.framework.Util._
 
 trait MultiArrayImpl[T] extends DeliteCollection[T]
-// TBD: Bit annoying to have four of these for each layout type - some way to avoid this?
+
 trait MultiArrayPlainImpl[T] extends MultiArrayImpl[T]
 trait MultiArrayViewImpl[T] extends MultiArrayImpl[T]
 trait MultiArrayBuffImpl[T] extends MultiArrayImpl[T]
 trait MultiArrayBuffViewImpl[T] extends MultiArrayImpl[T]
 
-trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with DeliteSimpleOpsExp with LayoutMetadata { self => 
+trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with DeliteSimpleOpsExp with DeliteArrayBufferOpsExp with LayoutMetadataOps { self => 
 
   val implementer: MultiArrayImplementer  
 
@@ -44,14 +45,6 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
   // --- Convenience infix operations for DeliteMultiArray
   implicit def multiarrayToCastOps[T:Manifest](x: Exp[DeliteMultiArray[T]]) = new MultiArrayCastOpsCls[T](x)
   class MultiArrayCastOpsCls[T:Manifest](x: Exp[DeliteMultiArray[T]]) { 
-    def asDeliteArray = {
-      assert(isDeliteArrayTpe(x.tp), "Cannot cast " + x.tp + " to DeliteArray!")
-      x.asInstanceOf[Exp[DeliteArray[T]]]
-    }
-    def asDeliteArrayBuffer = {
-      assert(isDeliteArrayBufferTpe(x.tp), "Cannot cast " + x.tp + " to DeliteArrayBuffer")
-      x.asInstanceOf[Exp[DeliteArrayBuffer[T]]]
-    }
     def asMultiArrayImpl = {
       assert(isMultiArrayImpl(x), "Cannot cast " + x.tp + " to MultiArrayImpl")
       x.asInstanceOf[Exp[MultiArrayImpl[T]]]
@@ -73,17 +66,17 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
   // ---- Convenience infix operations for MultiArrayImpl and descendants
   implicit def multiarrayimplToOpsCls(ma: Exp[MultiArrayImpl[_]]) = new MultiArrayImplOpsCls(ma)
   class MultiArrayImplOpsCls(x: Exp[MultiArrayImpl[_]]) {
-    def dims = Seq.tabulate(implementer.rank(x)){d => field[Int](x, "dim" + d)}
+    def dims = Seq.tabulate(rank(x)){d => field[Int](x, "dim" + d)}
     def dim(d: Int) = field[Int](x, "dim" + d)
     def size = productTree(this.dims)
   }
   implicit def multiarrayviewimplToOpsCls(ma: Exp[MultiArrayViewImpl[_]]) = new MultiArrayViewImplOpsCls(ma)
   class MultiArrayViewImplOpsCls(x: Exp[MultiArrayViewImpl[_]]) {
-    def stride = Seq.tabulate(implementer.rank(x)){d => field[Int](x, "stride" + d)}
+    def stride = Seq.tabulate(rank(x)){d => field[Int](x, "stride" + d)}
   }
   implicit def multiarraybuffviewimplToOpsCls(ma: Exp[MultiArrayBuffViewImpl[_]]) = new MultiArrayBuffViewImplOpsCls(ma)
   class MultiArrayBuffViewImplOpsCls(x: Exp[MultiArrayBuffViewImpl[_]]) {
-    def stride = Seq.tabulate(implementer.rank(x)){d => field[Int](x, "stride" + d)}
+    def stride = Seq.tabulate(rank(x)){d => field[Int](x, "stride" + d)}
   }
 
   // --- Convenience infix operations for AbstractIndices
@@ -111,7 +104,7 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
   override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
     if (isMultiArrayImpl(x)) implementer.implementApply(x.asInstanceOf[Exp[DeliteMultiArray[A]]], loopindices_new(n, calcIndices(n, asMultiArrayImpl(x).dims)))
     else if (isDeliteArray(x) || isDeliteArrayBuffer(x)) {
-      if (implementer.getLayout(x).nonEmpty)
+      if (getLayout(x).nonEmpty)
         implementer.implementApply(x.asInstanceOf[Exp[DeliteMultiArray[A]]], loopindices_new(n, Seq(n)))
       else
         super.dc_apply(x,n)   // bit kludgey - this may be called before implementer is run, in which case use super
@@ -119,7 +112,16 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
     else super.dc_apply(x,n)
   }
 
-  trait MultiArrayImplementer extends TransformerBase with MultiArrayHelperStageThree {
+  // Get symbol properties for MultiArray data field 
+  def mdat(b: Block[Any]): SymbolProperties = mdat(b.res)
+  def mdat(e: Exp[Any]): SymbolProperties = mdat(props(e))
+  def mdat(p: SymbolProperties): SymbolProperties = p match {
+    case (s: StructProperties) => s.child("data").get
+    case (a: ArrayProperties) => a.child.get
+    case _ => sys.error("Symbol properties " + makeString(p) + " has no data field")
+  }
+
+  trait MultiArrayImplementer extends TransformerBase {
     val IR: self.type
 
     // Get inner element type for given data structure type
@@ -161,8 +163,8 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
         else 
           None  
       case Reflect(f: AbstractNode[_],_,_) if f.family == "multiarray" => Some(transformAbstract(s, d))
-      case Struct(tag, elems) if hasMultiArrayChild(s.tp) => Some(transformAbstract(s, d))
-      case Reflect(Struct(tag, elems),_,_) if hasMultiArrayChild(s.tp) => Some(transformAbstract(s, d))
+      case Struct(tag, elems) if hasMultiArrayTpe(s.tp) => Some(transformAbstract(s, d))
+      case Reflect(Struct(tag, elems),_,_) if hasMultiArrayTpe(s.tp) => Some(transformAbstract(s, d))
       case Reify(x,u,es) => Some(reflectPure(Reify(f(x),mapOver(f,u),f(es)))(f(x).tp,ctx))
       case _ => None
     }
@@ -195,7 +197,7 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
       case DeliteMultiArrayReshape(ma,dims) => implementReshape(f(ma),f(dims),props(s))(dataTp(f(ma)), ctx)
 
       // --- Parallel ops
-      case op@DeliteMultiArrayReadFile(path,dels,_) => 
+      case op@DeliteMultiArrayReadFile(path,dels,_) =>
         val body = f(op.body)
         implementReadFile(f(path), f(dels), body, op.v, op.i, op.rV, props(s))(mtype(body.tp), ctx)
 
@@ -296,7 +298,7 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
     override def transferMetadata(sub: Exp[Any], orig: Exp[Any], d: Def[Any])(implicit ctx: SourceContext) = d match {
       case DeliteMultiArrayNew(_) => copyMetadata(sub,props(orig))
       case DeliteMultiArrayView(_,_,_,_,_) => copyMetadata(sub,props(orig))
-      case DeliteMultiArrayApply(_,_) if getProps(orig).nonEmpty => copyMetadata(sub,props(orig))
+      case DeliteMultiArrayApply(_,_) => copyMetadata(sub,props(orig))
       case DeliteMultiArrayPermute(_,_) => copyMetadata(sub,props(orig))
       case DeliteMultiArrayReshape(_,_) => copyMetadata(sub,props(orig))
       case DeliteMultiArrayFromFunction(_,_) => copyMetadata(sub,props(orig))
@@ -340,12 +342,12 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
         case (StructType(_,elems), StructTracer(index), symProps: StructProperties) =>
           val fType = elems.find(_._1 == index).getOrElse{throw new RuntimeException(index + " is not a field of type " + sym.tp)}._2
           val childSym = field(sym,index)(mtype(fType), ctx)
-          setProps(childSym, symProps.child(index))(ctx)
+          setProps(childSym, symProps.child(index))
           reconstructTrace(childSym, trace.tail, symProps.child(index).get)
 
         case (tp, ArrayTracer(i), symProps: ArrayProperties) if isDeliteArrayTpe(tp) => 
           val childSym = darray_apply(sym.asInstanceOf[Exp[DeliteArray[Any]]], i)
-          setProps(childSym, symProps.child)(ctx)
+          setProps(childSym, symProps.child)
           reconstructTrace(childSym, trace.tail, symProps.child.get) 
 
         case _ => sys.error("Error while reconstructing nested apply trace")
@@ -445,7 +447,7 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
     }
 
     // --- Parallel ops
-    def implementFileRead[A:Manifest](path: Exp[String], dels: Seq[Exp[String]], body: Block[A], v: Sym[Int], i: Exp[LoopIndices], rV: Exp[String], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
+    def implementReadFile[A:Manifest](path: Exp[String], dels: Seq[Exp[String]], body: Block[A], v: Sym[Int], i: Exp[LoopIndices], rV: Sym[String], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
       sys.error("Don't know how to implement file read for output layout " + layout(out))
     }
     def implementFromFunction[A:Manifest](dims: Seq[Exp[Int]], body: Block[A], v: Sym[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
@@ -521,7 +523,7 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
     def implementMkString[A:Manifest](ma: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]]): Exp[String] = {
       sys.error("Don't know how to implement mkString for layout " + layout(ma))
     }
-    def implementFileWrite[A:Manifest](ma: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]], body: Block[String], v: Sym[Int], i: Exp[LoopIndices]): Exp[Unit] = {
+    def implementWriteFile[A:Manifest](ma: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]], path: Exp[String], body: Block[String], v: Sym[Int], i: Exp[LoopIndices])(implicit ctx: SourceContext): Exp[Unit] = {
       sys.error("Don't know how to implement file write for layout " + layout(ma))
     }
 

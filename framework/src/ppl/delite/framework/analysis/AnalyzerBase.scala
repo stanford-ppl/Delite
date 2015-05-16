@@ -1,27 +1,22 @@
 package ppl.delite.framework.analysis
 
-import ppl.delite.framework.visit._
-import ppl.delite.framework.visit.Meetable._
-
-import scala.virtualization.lms.internal.IterativeIRVisitor
-
-import scala.collection.mutable.{HashMap,HashSet,Stack}
+import scala.collection.mutable.HashSet
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.FatBlockTraversal
+import scala.virtualization.lms.internal._
+import scala.virtualization.lms.internal.Meetable._
+
 import scala.reflect.SourceContext
 
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.datastructures._
 
-trait AnalyzerBase extends IterativeIRVisitor with MetadataTransformer {
-  val IR: DeliteOpsExp with DeliteMetadata
+trait AnalyzerBase extends IterativeIRVisitor {
+  val IR: DeliteOpsExp with MetadataOps
   import IR._
 
   val autopropagate: Boolean = true     // use default metadata propagation rules (see below) 
-  
-  // TODO: Remove these after debugging is done
-  var changedSyms = new HashSet[Exp[Any]]()
-  override def notifyUpdate(e: Exp[Any]): Unit = { changedSyms += e; notifyChange() }
+
+  override def hasConverged = !changed && !getMetadataUpdateFlag()
 
   /**
    * Main body for analysis. By default called after metadata propagation
@@ -30,17 +25,10 @@ trait AnalyzerBase extends IterativeIRVisitor with MetadataTransformer {
   def processOp[A](e: Exp[A], d: Def[_])(implicit ctx: SourceContext): Unit
 
   override def runOnce[A:Manifest](s: Block[A]): Block[A] = { 
-    //printmsg("Beginning " + name + " pass " + (runs + 1).toString)
-    //printmsg("with " + regionMetadata)
+    clearMetadataUpdateFlag()
     traverseBlock(s)
     (s) 
   }
-
-  override def preprocess[A:Manifest](b: Block[A]): Block[A] = {
-    if (regionMetadata.isEmpty) { enterRegion() }
-    b
-  }
-  override def postprocess[A:Manifest](b: Block[A]): Block[A] = { b }
 
   /**
    * Operate on the current statement. Overriden from FatBlockTraversal
@@ -71,7 +59,6 @@ trait AnalyzerBase extends IterativeIRVisitor with MetadataTransformer {
    * Testing completeness / presence of symbol metadata mapping
    */ 
   def completed(e: Exp[Any]): Boolean = true
-  def unknown(e: Exp[Any]): Boolean = !metadata.contains(e)
 
   /** 
    * Traverse IR checking all encountered symbols for metadata completeness
@@ -100,11 +87,6 @@ trait AnalyzerBase extends IterativeIRVisitor with MetadataTransformer {
   /////////////////////////////////
   // Helper functions for analysis
 
-  def check(cond: Boolean, x: => Any)(implicit ctx: SourceContext) {
-    if (!cond)
-      printerr(quotePos(ctx) + ": " + x + quoteCode(ctx).map{"\n\t" + _}.getOrElse(""))
-  }
-
   /**
    * Includes a whole bunch of metadata structure propagation information but 
    * no metadata instances
@@ -123,8 +105,7 @@ trait AnalyzerBase extends IterativeIRVisitor with MetadataTransformer {
 
 
     // --- Struct ops
-    case op@Struct(_,elems) => 
-      //elems foreach {elem => fieldTypeTip(e, elem._2.tp, elem._1) }
+    case op@Struct(_,elems) =>
       elems foreach {elem => setField(e, getProps(elem._2), elem._1) }
     case op@FieldApply(struct, field) => 
       setProps(e, getField(struct, field))
@@ -150,56 +131,23 @@ trait AnalyzerBase extends IterativeIRVisitor with MetadataTransformer {
 
     // --- Atomic Writes
     case op@NestedAtomicWrite(s,trace,d) => 
-
       var newProps: Option[SymbolProperties] = getAtomicWriteRhs(d)
       for (t <- trace.reverse) { newProps = tracerToProperties(t, newProps) }
 
       val updatedProps = attemptMeet(newProps, getProps(s), func = MetaUpdate)
       setProps(s, updatedProps)
- 
-    // --- Delite parallel ops
-    // body is a Def, not a DeliteElem...
-    // TODO: Add conditional (filter) functions to metadata (like region analysis with Ranges)
-    /*case op: DeliteOpMap[_,_,_] => setChild(e, getProps(op.body.func.res))
-    case op: DeliteOpFlatMap[_,_,_] => setChild(e, getChild(op.body.func.res))
-    case op: DeliteOpMapIndices[_,_] => setChild(e, getProps(op.body.func.res))
-    case op: DeliteOpFilter[_,_,_] => setChild(e, getProps(op.body.func.res))   // actually a MapFilter
-    case op: DeliteOpZipWith[_,_,_,_] => setChild(e, getProps(op.body.func.res))
-    case op: DeliteOpReduce[_] => 
-      setProps(op.body.rV._1, getProps(op.body.func.res))
-      setProps(op.body.rV._2, getProps(op.body.func.res))
-      setProps(e, getProps(op.body.rFunc.res))
-    case op: DeliteOpMapReduce[_,_] => 
-      setProps(op.body.rV._1, getProps(op.body.func.res))
-      setProps(op.body.rV._2, getProps(op.body.func.res))
-      setProps(e, getProps(op.body.rFunc.res))
-    case op: DeliteOpFilterReduce[_,_] =>    // actually map-filter-reduce
-      setProps(op.body.rV._1, getProps(op.body.func.res))
-      setProps(op.body.rV._2, getProps(op.body.func.res))
-      setProps(e, getProps(op.body.rFunc.res))
-    //case op@DeliteOpFilterReduceFold ???
-    //case op@DeliteOpZipWithReduceTuple ???
-    //case op@DeliteOpForeachReduce ??? 
-    case op: DeliteOpZipWithReduce[_,_,_] =>
-      setProps(op.body.rV._1, getProps(op.body.func.res))
-      setProps(op.body.rV._2, getProps(op.body.func.res))
-      setProps(e, getProps(op.body.rFunc.res))*/
-
-    // groupBy and groupByReduce...
 
     // --- Misc. Delite ops
     case op: DeliteOpCondition[_] => 
-      setProps(e, attemptMeet(getProps(op.thenp.res), getProps(op.elsep.res), func = MetaBranch))
+      setProps(e, attemptMeet(getProps(op.thenp), getProps(op.elsep), func = MetaBranch))
     case op: DeliteOpWhileLoop =>
-      setProps(e, getProps(op.body.res))
+      setProps(e, getProps(op.body))
 
-    case _ => 
-      //warn(quotePos(ctx) + ": Unrecognized def " + d)
-      // Nothing
+    case _ => // Nothing
   }
 
   def tracerToProperties(t: AtomicTracer, child: Option[SymbolProperties]): Option[SymbolProperties] = t match {
-    case StructTracer(field) => Some(StructProperties(new PropertyMap(List(field -> child)), NoData))
+    case StructTracer(index) => Some(StructProperties(PropertyMap(index, child), NoData))
     case ArrayTracer(_)      => Some(ArrayProperties(child, NoData))
   }
 

@@ -11,8 +11,6 @@ import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOver
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.ops.DeliteOpsExp
 
-import ppl.delite.framework.visit.MetadataTransformer
-
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.analysis.StencilAnalysis
@@ -118,19 +116,14 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   def runVisitors[A:Manifest](b: Block[A]): Block[A] = {
     printlog("DeliteCodegen: applying transformations")
     var curBlock = b
-    var prevMetaTransformer: Option[MetadataTransformer] = None
     printlog("Visitors: " + visitors.map(_.name).mkString("\n"))
+    
     for (t <- visitors) {
       printlog("  Block before transformation: " + curBlock)
       
-      if (t.isInstanceOf[MetadataTransformer] && !prevMetaTransformer.isEmpty)
-        t.asInstanceOf[MetadataTransformer].chain(prevMetaTransformer.get)
-
       curBlock = t.run(curBlock)
       
       printlog("  Block after transformation: " + curBlock)
-      if (t.isInstanceOf[MetadataTransformer])
-        prevMetaTransformer = Some(t.asInstanceOf[MetadataTransformer])
     }
     printlog("DeliteCodegen: done transforming")
     (curBlock)

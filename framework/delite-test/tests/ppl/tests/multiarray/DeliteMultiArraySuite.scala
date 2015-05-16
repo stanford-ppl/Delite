@@ -1040,7 +1040,7 @@ trait BufferView1DSortTest extends DeliteMultiArrayTestbench {
 class DeliteMultiArraySuite extends DeliteSuite {
   // Passed tests
 
-  /*def testNew1D() { compileAndTest(New1DRunner) }
+  def testNew1D() { compileAndTest(New1DRunner) }
   def testNew1DNull() { compileAndTest(New1DNullRunner) }
   def testFromFunction1D() { compileAndTest(FromFunction1DRunner) }
   def testUpdate1D() { compileAndTest(Update1DRunner) }
@@ -1109,10 +1109,10 @@ class DeliteMultiArraySuite extends DeliteSuite {
   def testBufferView1DFlatMapBufferView() { compileAndTest(BufferView1DFlatMapBufferViewRunner) }
   
   def testBufferView1DSort() { compileAndTest(BufferView1DSortRunner) }
-  */
+  
 
   // Tests passing, still need to figure out supposed aliasing error
-  def testBuffer1DMapToBuffer() { compileAndTest(Buffer1DMapToBufferRunner) }       // illegal sharing btwn insertAll, .mutable (map)
+  //def testBuffer1DMapToBuffer() { compileAndTest(Buffer1DMapToBufferRunner) }       // illegal sharing btwn insertAll, .mutable (map)
   //def testBuffer1DZipToBuffer() { compileAndTest(Buffer1DZipToBufferRunner) }       // illegal sharing btwn insertAll, .mutable (map)
   //def testBufferFilterToBuffer() { compileAndTest(BufferFilterToBufferRunner) }     // illegal sharing btwn remove, .mutable (map)
   //def testBufferFlatMapToBuffer() { compileAndTest(BufferFlatMapToBufferRunner) }   // illegal sharing btwn remove, .mutable (map)

@@ -1,14 +1,15 @@
 package ppl.delite.framework.transform
 
 import scala.virtualization.lms.common._
+import scala.virtualization.lms.internal._
+import scala.virtualization.lms.internal.Meetable._
 import scala.reflect.{SourceContext, RefinedManifest}
+
 import ppl.delite.framework.ops._ 
 import ppl.delite.framework.datastructures._
-
 import ppl.delite.framework.analysis.LayoutMetadata
 import ppl.delite.framework.visit._
 import ppl.delite.framework.Util._
-import ppl.delite.framework.visit.Meetable._
 
 /////////////////
 // Flat Layout //
@@ -67,6 +68,14 @@ trait FlatArrayImplExp extends MultiArrayImplExp with DeliteOpsExp with DeliteAr
   // went wrong with the transformer ordering!
   implicit def multiarrayToFlatCastOps[T:Manifest](x: Exp[DeliteMultiArray[T]]) = new FlatArrayCastOpsCls[T](x)
   class FlatArrayCastOpsCls[T:Manifest](x: Exp[DeliteMultiArray[T]]) { 
+    def asDeliteArray = {
+      assert(isDeliteArrayTpe(x.tp), "Cannot cast " + x.tp + " to DeliteArray!")
+      x.asInstanceOf[Exp[DeliteArray[T]]]
+    }
+    def asDeliteArrayBuffer = {
+      assert(isDeliteArrayBufferTpe(x.tp), "Cannot cast " + x.tp + " to DeliteArrayBuffer")
+      x.asInstanceOf[Exp[DeliteArrayBuffer[T]]]
+    }
     def asFlatArrayPlain = {
       assert(isFlatArrayPlain(x), "Cannot cast " + x.tp + " to FlatArrayPlain")
       x.asInstanceOf[Exp[FlatArrayPlain[T]]]
@@ -88,24 +97,24 @@ trait FlatArrayImplExp extends MultiArrayImplExp with DeliteOpsExp with DeliteAr
   // --- Convenience methods for data field of FlatArray types
   implicit def flatArrayPlainToOpsCls[T:Manifest](x: Exp[FlatArrayPlain[T]])(implicit ctx: SourceContext) = new FlatArrayPlainOpsCls(x)(manifest[T],ctx)
   class FlatArrayPlainOpsCls[T:Manifest](x: Exp[FlatArrayPlain[T]])(implicit ctx: SourceContext) {
-    def data = {val res = field[DeliteArray[T]](x, "data"); implementer.setProps(res, implementer.mdat(x)); (res) }
+    def data = field[DeliteArray[T]](x, "data").withProps(mdat(x))
   }
   implicit def flatArrayViewToOpsCls[T:Manifest](x: Exp[FlatArrayView[T]])(implicit ctx: SourceContext) = new FlatArrayViewOpsCls(x)(manifest[T],ctx)
   class FlatArrayViewOpsCls[T:Manifest](x: Exp[FlatArrayView[T]])(implicit ctx: SourceContext) {
-    def data = {val res = field[DeliteArray[T]](x, "data"); implementer.setProps(res, implementer.mdat(x)); (res) }
+    def data = field[DeliteArray[T]](x, "data").withProps(mdat(x))
     def start = field[Int](x, "ofs")
   }
   implicit def flatArrayBuffToOpsCls[T:Manifest](x: Exp[FlatArrayBuff[T]])(implicit ctx: SourceContext) = new FlatArrayBuffOpsCls(x)(manifest[T],ctx)
   class FlatArrayBuffOpsCls[T:Manifest](x: Exp[FlatArrayBuff[T]])(implicit ctx: SourceContext) {
-    def data = {val res = field[DeliteArrayBuffer[T]](x, "data"); implementer.setProps(res, implementer.mdat(x)); (res) }
+    def data = field[DeliteArrayBuffer[T]](x, "data").withProps(mdat(x))
   }
   implicit def flatArrayBuffViewToOpsCls[T:Manifest](x: Exp[FlatArrayBuffView[T]])(implicit ctx: SourceContext) = new FlatArrayBuffViewOpsCls(x)(manifest[T],ctx)
   class FlatArrayBuffViewOpsCls[T:Manifest](x: Exp[FlatArrayBuffView[T]])(implicit ctx: SourceContext) {
-    def data = {val res = field[DeliteArrayBuffer[T]](x, "data"); implementer.setProps(res, implementer.mdat(x)); (res) }
+    def data = field[DeliteArrayBuffer[T]](x, "data").withProps(mdat(x))
     def start = field[Int](x, "ofs")
   }
 
-  def darrayBufferManifest(typeArg: Manifest[_]): Manifest[DeliteArrayBuffer[_]] = makeManifest(classOf[DeliteArrayBuffer[_]], List(typeArg))
+  // --- Manifest creation for flat MultiArrays
   private def dataField[T](tp: Manifest[T]): List[(String, Manifest[_])] = List("data" -> darrayManifest(tp))
   private def buffField[T](tp: Manifest[T]): List[(String, Manifest[_])] = List("data" -> darrayBufferManifest(tp))
   private def dimFields(n: Int): List[(String, Manifest[_])] = List.tabulate(n){i => ("dim" + i) -> manifest[Int]}
@@ -115,44 +124,34 @@ trait FlatArrayImplExp extends MultiArrayImplExp with DeliteOpsExp with DeliteAr
     = new RefinedManifest[FlatArrayPlain[T]] { 
         def runtimeClass = classOf[FlatArrayPlain[T]]
         val fields = dataField(tp) ++ dimFields(rank)
-        //override val typeArguments = List(tp)
+        override val typeArguments = List(tp)
     }
   def flatviewManifest[T](tp: Manifest[T], rank: Int): Manifest[FlatArrayView[T]] 
     = new RefinedManifest[FlatArrayView[T]] {
         def runtimeClass = classOf[FlatArrayView[T]]
         val fields = dataField(tp) ++ viewFields(rank) 
-        //override val typeArguments = List(tp)
+        override val typeArguments = List(tp)
     }
   def flatbuffManifest[T](tp: Manifest[T], rank: Int): Manifest[FlatArrayBuff[T]]
     = new RefinedManifest[FlatArrayBuff[T]] {
         def runtimeClass = classOf[FlatArrayBuff[T]]
         val fields = buffField(tp) ++ dimFields(rank)
-        //override val typeArguments = List(tp)
+        override val typeArguments = List(tp)
     }
   def flatbuffviewManifest[T](tp: Manifest[T], rank: Int): Manifest[FlatArrayBuffView[T]]
     = new RefinedManifest[FlatArrayBuffView[T]] {
         def runtimeClass = classOf[FlatArrayBuffView[T]]
         val fields = buffField(tp) ++ viewFields(rank)
-        //override val typeArguments = List(tp)
+        override val typeArguments = List(tp)
     }
-
-  def flatbuffer_wrap[A:Manifest](data: Exp[DeliteArray[A]], length: Exp[Int])(implicit ctx: SourceContext) = {
-    val out = reflectPure(DeliteArrayBufferWrap(data,length))
-
-    implementer.setMetadata(out, FlatLayout(1, Buffer))
-    implementer.setField(out, implementer.getProps(data), "data")
-    (out)
-  }
 
   // --- New flat ND array
   def flatarray_plain_new[T:Manifest](data: Exp[DeliteArray[T]], dims: Seq[Exp[Int]])(implicit ctx: SourceContext): Exp[FlatArrayPlain[T]] = {    
     def slf(x: Rep[_]) = (y: Rep[FlatArrayPlain[T]]) => x
     val tp = flatplainManifest(manifest[T], dims.length)
-    val out = record_new(("data",false,slf(data)) +: dims.zipWithIndex.map{i => ("dim" + i._2, false, slf(i._1))})(tp)
+    val struct = record_new(("data",false,slf(data)) +: dims.zipWithIndex.map{i => ("dim" + i._2, false, slf(i._1))})(tp)
     
-    implementer.setMetadata(out, FlatLayout(dims.length, Plain))
-    implementer.setField(out, implementer.getProps(data), "data")
-    (out)
+    struct.withData(FlatLayout(dims.length, Plain)).withField(getProps(data), "data")
   }
 
   // --- New flat view
@@ -161,11 +160,9 @@ trait FlatArrayImplExp extends MultiArrayImplExp with DeliteOpsExp with DeliteAr
   def flatarray_view_new[T:Manifest](data: Exp[DeliteArray[T]], dims: Seq[Exp[Int]], ofs: Exp[Int], stride: Seq[Exp[Int]])(implicit ctx: SourceContext): Exp[FlatArrayView[T]] = {    
     def slf(x: Rep[_]) = (y: Rep[FlatArrayView[T]]) => x
     val tp = flatviewManifest(manifest[T], dims.length)
-    val out = record_new( (("data", false, slf(data)) +: dims.zipWithIndex.map{i => ("dim" + i._2, false, slf(i._1))}) ++ 
-                          (("ofs", false, slf(ofs)) +: stride.zipWithIndex.map{d => ("stride" + d._2, false, slf(d._1))}))(tp)
-    implementer.setMetadata(out, FlatLayout(dims.length, View))
-    implementer.setField(out, implementer.getProps(data), "data")
-    (out)
+    val struct = record_new( (("data", false, slf(data)) +: dims.zipWithIndex.map{i => ("dim" + i._2, false, slf(i._1))}) ++ 
+                             (("ofs", false, slf(ofs)) +: stride.zipWithIndex.map{d => ("stride" + d._2, false, slf(d._1))}))(tp)
+    struct.withData(FlatLayout(dims.length, View)).withField(getProps(data), "data")
   }
   def flatarray_view_new[A:Manifest](data: Exp[DeliteArray[A]], dims: Seq[Exp[Int]])(implicit ctx: SourceContext): Exp[FlatArrayView[A]] = {
     flatarray_view_new(data, dims, unit(0), dimsToStride(dims))  
@@ -175,22 +172,19 @@ trait FlatArrayImplExp extends MultiArrayImplExp with DeliteOpsExp with DeliteAr
   def flatarray_buff_new[T:Manifest](data: Exp[DeliteArrayBuffer[T]], dims: Seq[Exp[Int]])(implicit ctx: SourceContext): Exp[FlatArrayBuff[T]] = {
     def slf(x: Rep[_]) = (y: Rep[FlatArrayBuff[T]]) => x
     val tp = flatbuffManifest(manifest[T], dims.length)
-    val out = record_new(("data", false, slf(data)) +: dims.zipWithIndex.map{i => ("dim" + i._2, true, slf(i._1))})(tp)
- 
-    implementer.setMetadata(out, FlatLayout(dims.length, Buffer))
-    implementer.setField(out, implementer.getProps(data), "data")
-    (out)
+    val struct = record_new(("data", false, slf(data)) +: dims.zipWithIndex.map{i => ("dim" + i._2, true, slf(i._1))})(tp)
+
+    struct.withData(FlatLayout(dims.length, Buffer)).withField(getProps(data), "data")
   }
     
   // --- New flat buffer view
   def flatarray_buffview_new[T:Manifest](data: Exp[DeliteArrayBuffer[T]], dims: Seq[Exp[Int]], ofs: Exp[Int], stride: Seq[Exp[Int]])(implicit ctx: SourceContext): Exp[FlatArrayBuffView[T]] = {
     def slf(x: Rep[_]) = (y: Rep[FlatArrayBuffView[T]]) => x
     val tp = flatbuffviewManifest(manifest[T], dims.length)
-    val out = record_new( (("data", false, slf(data)) +: dims.zipWithIndex.map{i => ("dim" + i._2, false, slf(i._1))}) ++ 
-                          (("ofs", false, slf(ofs)) +: stride.zipWithIndex.map{d => ("stride" + d._2, false, slf(d._1))}))(tp)
-    implementer.setMetadata(out, FlatLayout(dims.length, BufferView))
-    implementer.setField(out, implementer.getProps(data), "data")
-    (out)                        
+    val struct = record_new( (("data", false, slf(data)) +: dims.zipWithIndex.map{i => ("dim" + i._2, false, slf(i._1))}) ++ 
+                             (("ofs", false, slf(ofs)) +: stride.zipWithIndex.map{d => ("stride" + d._2, false, slf(d._1))}))(tp)
+    
+    struct.withData(FlatLayout(dims.length, BufferView)).withField(getProps(data), "data")                       
   }
   def flatarray_buffview_new[A:Manifest](data: Exp[DeliteArrayBuffer[A]], dims: Seq[Exp[Int]])(implicit ctx: SourceContext): Exp[FlatArrayBuffView[A]] = {
     flatarray_buffview_new(data, dims, unit(0), dimsToStride(dims))
@@ -198,11 +192,13 @@ trait FlatArrayImplExp extends MultiArrayImplExp with DeliteOpsExp with DeliteAr
 
   // --- Alternatives on DeliteArray, DeliteArrayBuffer for inserting metadata
   // TODO: Need to determine partition tags?
+  def flatbuffer_wrap[A:Manifest](data: Exp[DeliteArray[A]], length: Exp[Int])(implicit ctx: SourceContext) = {
+    val buffer = reflectPure(DeliteArrayBufferWrap(data,length))
+    buffer.withData(FlatLayout(1, Buffer)).withField(getProps(data), "data")
+  }
   def flatarray_new[A:Manifest](size: Exp[Int], child: SymbolProperties)(implicit ctx: SourceContext): Exp[DeliteArray[A]] = {
-    val out = DeliteArray.imm[A](size)
-    implementer.setMetadata(out, FlatLayout(1, Plain))
-    implementer.setChild(out, Some(child))
-    (out)
+    val array = DeliteArray.imm[A](size)
+    array.withData(FlatLayout(1, Plain)).withChild(child)
   }
   def flatbuffer_new[A:Manifest](size: Exp[Int], child: SymbolProperties)(implicit ctx: SourceContext): Exp[DeliteArrayBuffer[A]] = {
     val data = flatarray_new(size, child)
@@ -210,14 +206,12 @@ trait FlatArrayImplExp extends MultiArrayImplExp with DeliteOpsExp with DeliteAr
   }
 
   def flatarray_apply[A:Manifest](a: Exp[DeliteArray[A]], i: Exp[Int])(implicit ctx: SourceContext): Exp[A] = {
-    val out = darray_apply(a, i)
-    implementer.setProps(out, implementer.getChild(a))
-    (out)
+    val elem = darray_apply(a, i)
+    elem.withProps(getChild(a))
   }
   def flatbuffer_apply[A:Manifest](a: Exp[DeliteArrayBuffer[A]], i: Exp[Int])(implicit ctx: SourceContext): Exp[A] = {
-    val out = darray_buffer_apply(a, i)
-    implementer.setProps(out, implementer.getField(a, "data").flatMap{_.asInstanceOf[ArrayProperties].child})
-    (out)
+    val elem = darray_buffer_apply(a, i)
+    elem.withProps(getField(a, "data").map{p => mdat(p)}) // getting child of data field of ArrayBuffer (single element of inner Array)
   }
 
   // --- Flat Array Nodes
@@ -533,9 +527,7 @@ trait FlatArrayImplExp extends MultiArrayImplExp with DeliteOpsExp with DeliteAr
         val i2 = loopindices_new(v, inds)
 
         val (mirroredBody, mirroredCond) = withSubstScope(i -> i2){ (f(body), cond.map{f(_)}) }
-        val data = reflectPure(CollectFactory.array[A](v, size, mirroredBody, mirroredCond))
-        setMetadata(data, FlatLayout(1, Plain))
-        setChild(data, Some(dat))
+        val data = reflectPure(CollectFactory.array[A](v, size, mirroredBody, mirroredCond)).withData(FlatLayout(1,Plain)).withChild(dat)
 
         out match {
           case FlatLayout(1, Plain) => data
@@ -562,35 +554,62 @@ trait FlatArrayImplExp extends MultiArrayImplExp with DeliteOpsExp with DeliteAr
       implementCollect(v, i, out, dat, body, dims, size)
     }
 
-    override def implementFileRead[A:Manifest](path: Exp[String], dels: Seq[Exp[String]], body: Block[A], rV: Sym[String], v: Sym[Int], i: Exp[LoopIndices], rV: Exp[String], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = layout(out) match {
-      case FlatLayout(_,_) =>
+    /**
+     * Create a flat MultiArray from the contents of a file and a mapping function
+     * TODO: Binary file reading (file format with tag giving number of dimensions and size of each?)
+     * @param path - relative path to input file
+     * @param dels - file delimeters separating elements, dimensions
+     * @param body - reified mapping function from string to element type
+     * @param v    - original bound symbol for iterator
+     * @param i    - original multidimensional index
+     * @param rV   - original bound symbol used to reify map body
+     * @param out  - symbol properties of output MultiArray
+     */
+    override def implementReadFile[A:Manifest](path: Exp[String], dels: Seq[Exp[String]], body: Block[A], v: Sym[Int], i: Exp[LoopIndices], rV: Sym[String], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = layout(out) match {
+      /*case FlatLayout(_,_) =>
         var partialResults: Seq[Exp[DeliteArray[String]]] = Nil
+        var dims: Seq[Exp[Int]] = Nil
+        var sizes: Seq[Exp[Int]] = Nil
         
-        partialResults = partialResults :+ reflectPure(SimpleReadFactory.array(v, Seq(path)))
-        setMetadata(curr, FlatLayout(1, Plain))
+        // Read in lines - number of lines is equivalent to the first dimension size
+        val orig = reflectPure(SimpleReadFactory.array(v, Seq(path))).withData(FlatLayout(1, Plain))
 
-        var curr = orig
-        var dims: Seq[Exp[Int]] = Seq(orig.length)
+        partialResults = partialResults :+ orig
+        dims = dims :+ orig.length
+        sizes = sizes :+ orig.length
         
+        // Splitting is currently implemented as a series of flatMaps on the array of Strings. 
+        // Dimensions are derived as the size of the current flatmap output divided by product of previously found dimensions 
+        // TODO: This may be a really bad implementation, but it seems to be one of the easier ways to implement it in the MultiArray framework
+        // right now. Do these flatmaps fuse? Do we create multiple copies of the data to get the dimension sizes? What's a better way?
         for (d <- 1 until dels.length) {
           val oV = fresh[Int].asInstanceOf[Sym[Int]]
           val oI = loopindices_new(oV, Seq(oV))
-          val body = implementStringSplit(implementApply(curr.asInstanceOf[Exp[DeliteMultiArray[String]], oI), dels(d), unit(-1), FlatLayout(1, Plain))
+          val body = withInnerScopeAdditions{ reifyEffects{ 
+            val elem = implementApply(curr.asInstanceOf[Exp[DeliteMultiArray[String]]], oI)
+            darray_split_string(elem.asInstanceOf[Exp[String]], dels(d), unit(-1)).withData(FlatLayout(1, Plain))
+          }}
 
-          val op = FlatMapFactory.array[String](oV, dims(d - 1), body)
-          setProps(op.eF, props(getBlockResult(body)))
+          val op = FlatMapFactory.array[String](oV, sizes(d - 1), body)
+          setProps(op.eF, props(body))
 
-          val curr = reflectPure(op)
-          setMetadata(curr, FlatLayout(1, Plain))
+          val curr = reflectPure(op).withData(FlatLayout(1, Plain))
+          val currDim = delite_int_divide(curr.length, productTree(dims))
 
+          partialResults = partialResults :+ curr
+          dims = dims :+ currDim
+          sizes = sizes :+ curr.length
         }
 
-        layout(out) match {
+        val stringArray = partialResults.last
 
-        }
+        val i2 = loopindices_new(v, Seq(v))
+        val elem = implementApply(stringArray.asInstanceOf[Exp[DeliteMultiArray[String]]], i2)
+        val mirroredBody = withInnerScopeAdditions{ withSubstScope(i -> i2, rV -> elem){ f(body) } }
 
+        implementCollect(v, i2, layout(out), getProps(mirroredBody), mirroredBody, dims, sizes.last)*/
 
-      case _ => super.implementFileRead(path,dels,body,v,i,out)
+      case _ => super.implementReadFile(path,dels,body,v,i,rV,out)
     }
     override def implementFromFunction[A:Manifest](dims: Seq[Exp[Int]], body: Block[A], v: Sym[Int], i: Exp[LoopIndices], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = layout(out) match {
       case FlatLayout(_,_) => implementCollect[A](v, i, layout(out), mdat(out), body, dims, productTree(dims))
@@ -631,9 +650,7 @@ trait FlatArrayImplExp extends MultiArrayImplExp with DeliteOpsExp with DeliteAr
         // Relies on lazy body evaluation!
         setProps(op.eF, props(getBlockResult(mirroredBody)))
 
-        val data = reflectPure(op)
-        setMetadata(data, FlatLayout(1, Plain))
-        setChild(data, Some(mdat(out)))
+        val data = reflectPure(op).withData(FlatLayout(1, Plain)).withChild(mdat(out))
 
         layout(out) match {
           case FlatLayout(_, Plain) => data
@@ -702,28 +719,21 @@ trait FlatArrayImplExp extends MultiArrayImplExp with DeliteOpsExp with DeliteAr
       case _ => super.implementMkString(ma,dels)
     }
 
-    override def implementFileWrite[A:Manifest](ma: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]], body: Block[String], v: Sym[Int], i: Exp[LoopIndices]): Exp[Unit] = layout(ma) match {
-      case FlatLayout(_,_) =>
+    override def implementWriteFile[A:Manifest](ma: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]], path: Exp[String], body: Block[String], v: Sym[Int], i: Exp[LoopIndices])(implicit ctx: SourceContext): Exp[Unit] = layout(ma) match {
+      //case FlatLayout(_,_) =>
 
-      case _ => super.implementFileWrite(ma,dels,body,v,i)
+      case _ => super.implementWriteFile(ma,dels,path,body,v,i)
     }
 
     // --- 1D ops
     override def implementSortIndices(len: Exp[Int], i: (Sym[Int], Sym[Int]), body: Block[Int], out: SymbolProperties)(implicit ctx: SourceContext) = layout(out) match {
       case FlatLayout(1, _) => 
-        val arr = reflectPure(DeliteArraySortIndices(len, i, body))
-        setMetadata(arr, FlatLayout(1, Plain))
-        setChild(arr, getChild(out))
-        (arr)
+        reflectPure(DeliteArraySortIndices(len, i, body)).withData(FlatLayout(1, Plain)).withChild(getChild(out))
       case _ => super.implementSortIndices(len,i,body,out)
     }
     override def implementStringSplit(str: Exp[String], split: Exp[String], lim: Exp[Int], out: SymbolProperties)(implicit ctx: SourceContext) = layout(out) match { 
       case FlatLayout(1, Plain) => 
-        val arr = darray_split_string(str, split, lim)
-        setMetadata(arr, FlatLayout(1, Plain))
-        setChild(arr, getChild(out))
-        (arr)
-
+        darray_split_string(str, split, lim).withData(FlatLayout(1, Plain)).withChild(getChild(out))
       case _ => super.implementStringSplit(str,split,lim,out)
     }
 

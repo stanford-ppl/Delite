@@ -1,10 +1,12 @@
 package ppl.delite.framework.datastructures
 
 import scala.virtualization.lms.common._
+import scala.virtualization.lms.internal._
+import scala.virtualization.lms.internal.Meetable._
 import scala.reflect.{SourceContext, RefinedManifest}
 
-//import ppl.delite.framework.visit.DeliteMetadata
 import ppl.delite.framework.ops._
+import ppl.delite.framework.Util._
 
 // Abstract, n-dimensional, multi-purpose array
 // Intended for use at frontend w/ transformer to concrete data layouts
@@ -197,7 +199,7 @@ trait DeliteMultiArrayOps extends DeliteAbstractOps {
     def mapCols[R:Manifest](f: Rep[DeliteArray1D[T]] => Rep[DeliteArray1D[R]]) = dmultia_NDmap(ma,List(1),{c: Rep[DeliteMultiArray[T]] => f(c.as1D) }).as2D
   
     def mkString(rowDel: Rep[String] = unit("\n"), colDel: Rep[String] = unit(",")) = dmultia_mkstring(ma,Seq(rowDel,colDel))
-    def writeFile(path: Rep[String], cdel: Rep[String] = unit("    "))(func: Rep[T] => Rep[String])(implicit ctx: SourceContext) = dmultia_writefile(ma, Seq(unit("\n"),cdel) path, func)
+    def writeFile(path: Rep[String], cdel: Rep[String] = unit("    "))(func: Rep[T] => Rep[String])(implicit ctx: SourceContext) = dmultia_writefile(ma, Seq(unit("\n"),cdel), path, func)
   }
 
   // --- File reading/writing
@@ -301,7 +303,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
    * @param dels - file delimeters corresponding to dimensions. first is expected to be newline. 
    * @param func - mapping function from input element string to element
    */
-  case class DeliteMultiArrayReadFile[A:Manifest](path: Exp[String], dels: Seq[Exp[String]], func: Exp[String] => Exp[A]) extends DeliteAbstractLoop[A,DeliteMultiArray[A]] {
+  case class DeliteMultiArrayReadFile[A:Manifest](path: Exp[String], dels: Seq[Exp[String]], func: Exp[String] => Exp[A])(implicit ctx: SourceContext) extends DeliteAbstractLoop[A,DeliteMultiArray[A]] {
     type OpType <: DeliteMultiArrayReadFile[A]
     lazy val rV: Sym[String] = copyOrElse(_.rV)(fresh[String])
     val body: Block[A] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(rV)))
@@ -461,9 +463,9 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
    * @param path - relative path (?) to output file
    * @param func - mapping from element of MultiArray to string
    */
-  case class DeliteMultiArrayWriteFile[A:Manifest](in: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]], path: Exp[String], func: Exp[A] => Exp[String]) extends DeliteAbstractLoop[A,Unit] {
+  case class DeliteMultiArrayWriteFile[A:Manifest](in: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]], path: Exp[String], func: Exp[A] => Exp[String])(implicit ctx: SourceContext) extends DeliteAbstractLoop[A,Unit] {
     type OpType <: DeliteMultiArrayWriteFile[A]
-    val body: Block[A] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(dmultia_apply(ma,i))))
+    val body: Block[String] = copyTransformedBlockOrElse(_.body)(reifyEffects(func(dmultia_apply(in,i))))
   }
 
   // --- 1D Ops
@@ -612,6 +614,27 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
   // TBD
   //def dmultia_pin[T:Manifest,R:Manifest](ma: Exp[DeliteMultiArray[T]], layout: Layout[T,R])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayPin[T,R](ma,layout))
   //def dmultia_unpin[T:Manifest,R:Manifest](in: Exp[DeliteArray[R]], layout: Layout[T,R], shape: Seq[Exp[Int]])(implicit ctx: SourceContext) = reflectPure(DeliteMultiArrayUnpin[T,R](ma,layout,shape))
+
+  def isMultiArrayTpe(x: Manifest[_]) = isSubtype(x.erasure, classOf[DeliteMultiArray[_]])
+
+  def hasMultiArrayTpe[T](tp: Manifest[T]): Boolean = tp match {
+    case tp if isMultiArrayTpe(tp) => true 
+    case StructType(_,elems) => elems.map{f => hasMultiArrayTpe(f._2)}.fold(false){_||_}
+    case tp => tp.typeArguments.map{f => hasMultiArrayTpe(f)}.fold(false){_||_}
+  }
+
+  override def isDataStructureTpe[T](tp: Manifest[T]): Boolean = tp match {
+    case tp if isMultiArrayTpe(tp) => true
+    case _ => super.isDataStructureTpe(tp)
+  }
+
+  override def initProps[A](tp: Manifest[A], symData: PropertyMap[Metadata], child: Option[SymbolProperties], index: Option[String])(implicit ctx: SourceContext) = tp match {
+    case t if isMultiArrayTpe(t) => 
+      val typeChild = initTpe(t.typeArguments.head)
+      val symChild = attemptMeet(child, Some(typeChild), func = MetaTypeInit)
+      ArrayProperties(symChild, symData)
+    case _ => super.initProps(tp, symData, child, index)
+  }
 
   ////////////////
   // dependencies

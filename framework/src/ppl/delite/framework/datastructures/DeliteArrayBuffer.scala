@@ -276,7 +276,7 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
 
   /////////////////////
   // delite collection
-  
+
   def isDeliteArrayBufferTpe(x: Manifest[_])(implicit ctx: SourceContext) = isSubtype(x.erasure,classOf[DeliteArrayBuffer[_]])    
   def isDeliteArrayBuffer[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isDeliteArrayBufferTpe(x.tp)
   def asDeliteArrayBuffer[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[DeliteArrayBuffer[A]]]
@@ -376,6 +376,12 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
   override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
     case t if t.erasure == classOf[DeliteArrayBuffer[_]] => Some((classTag(t), List("data","length") zip List(darrayManifest(t.typeArguments(0)), manifest[Int]))) 
     case _ => super.unapplyStructType
+  }
+
+  def darrayBufferManifest[_](typeArg: Manifest[_]): Manifest[DeliteArrayBuffer[_]] = new RefinedManifest[DeliteArrayBuffer[_]] {
+    def runtimeClass = classOf[DeliteArrayBuffer[_]]
+    val fields = List("data" -> darrayManifest(typeArg), "length" -> manifest[Int])
+    override val typeArguments = List(typeArg)
   }
 }
 

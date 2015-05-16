@@ -1,28 +1,70 @@
 package ppl.delite.framework.analysis
 
-import ppl.delite.framework.visit._
-import ppl.delite.framework.visit.Meetable._
-
 import scala.virtualization.lms.common._
+import scala.virtualization.lms.internal._
+import scala.virtualization.lms.internal.Meetable._
+
 import scala.reflect.SourceContext
 
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.Util._
 
-// TODO: Assuming for now that we can always have aliased views with different
-// target ranks.
-// for example: 
-//    val x = MultiArray[Int](1, 2, 3)
-//    val y = MultiArray[Int](3, 3)          // 2D -> 3D view should be inserted here
-//    val z = MultiArray[MultiArray[Int]](2)
-//    z(0) = y
-//    z(1) = x.slice2D(1,0::3,0::3) 
+trait MultiArrayAnalyzerBase extends AnalyzerBase { 
+  val IR: DeliteOpsExp with DeliteMultiArrayOpsExp with MetadataOps
+  import IR._
 
-// Note that views adopt child of target
-// e.g. val x = MultiArray[MultiArray[Int]](...)   // child is MultiArray
-//      val y = x.slice(...)                       // child is MultiArray
-trait RankMetadata extends DeliteMetadata {
+  override def forwardPropagate[A](e: Exp[A], d: Def[_])(implicit ctx: SourceContext): Unit = d match {
+    case op@DeliteMultiArrayView(t,_,_,_,_) => setChild(e, getChild(t))
+    case op@DeliteMultiArrayPermute(ma,_)   => setChild(e, getChild(ma))
+    case op@DeliteMultiArrayReshape(ma,_)   => setChild(e, getChild(ma))
+    case op@DeliteMultiArrayApply(ma,_)     => setProps(e, getChild(ma))
+    
+    case op@DeliteMultiArrayReadFile(_,_,_)      => setChild(e, getProps(op.body))
+    case op@DeliteMultiArrayFromFunction(dims,_) => setChild(e, getProps(op.body))
+    case op@DeliteMultiArrayMap(ma,_)            => setChild(e, getProps(op.body))
+    case op@DeliteMultiArrayZipWith(ma,mb,_)     => setChild(e, getProps(op.body))
+    case op@DeliteMultiArrayMapFilter(ma,_,_)    => setChild(e, getProps(op.mapFunc))
+    case op@DeliteMultiArrayFlatMap(ma,_)        => setChild(e, getChild(op.body))
+
+    // TODO: Is there a way to avoid having to manually propagate to rVs here?
+    case op@DeliteMultiArrayReduce(ma,_,_) =>
+      setProps(op.rV._1, getChild(ma))
+      setProps(op.rV._2, getChild(ma)) 
+      setProps(e, getProps(op.body))
+    case op@DeliteMultiArrayNDMap(in,_,_) =>
+      setChild(op.rV, getChild(in))
+      setChild(e, getChild(op.body))
+    
+    // Aliasing from updates/inserts/etc
+    case op@DeliteMultiArrayUpdate(ma,_,x) => 
+      setChild(ma, attemptMeet(getChild(ma), getProps(x), func = MetaUpdate))
+    case op@DeliteMultiArrayInsert(ma,x,_) =>
+      setChild(ma, attemptMeet(getChild(ma), getProps(x), func = MetaUpdate))
+    case op@DeliteMultiArrayAppend(ma,x) =>
+      setChild(ma, attemptMeet(getChild(ma), getProps(x), func = MetaUpdate))
+    case op@DeliteMultiArrayInsertAll(ma,x,_,_) =>
+      setChild(ma, attemptMeet(getChild(ma), getChild(x), func = MetaUpdate))
+
+    case _ => super.forwardPropagate(e,d)
+  }
+  
+  override def tracerToProperties(t: AtomicTracer, child: Option[SymbolProperties]): Option[SymbolProperties] = t match {
+    case MultiArrayTracer(_) => Some(ArrayProperties(child, NoData))
+    case _ => super.tracerToProperties(t, child)
+  }
+
+  override def getAtomicWriteRhs(d: AtomicWrite[Any])(implicit ctx: SourceContext): Option[SymbolProperties] = d match {
+    case DeliteMultiArrayUpdate(_,_,x) => Some(ArrayProperties(getProps(x), NoData))
+    case DeliteMultiArrayInsert(_,x,_) => Some(ArrayProperties(getProps(x), NoData))
+    case DeliteMultiArrayAppend(_,x) => Some(ArrayProperties(getProps(x), NoData))
+    case DeliteMultiArrayInsertAll(_,x,_,_) => Some(ArrayProperties(getChild(x), NoData))
+    case DeliteMultiArrayRemove(_,_,_,_) => None
+    case _ => super.getAtomicWriteRhs(d)
+  }
+}
+
+trait RankMetadata extends SymbolMetadata {
   // Tristate implementation type for Buffers and Views
   sealed abstract class ImplType { def toString: String }
   object NotType extends ImplType { override def toString = "false"}
@@ -88,9 +130,17 @@ trait RankMetadata extends DeliteMetadata {
   }
 }
 
-trait MultiArrayHelperStageOne extends MetadataTransformer {
-  val IR: DeliteOpsExp with DeliteMultiArrayOpsExp with RankMetadata
-  import IR._
+trait RankMetadataOps extends MetadataOps with RankMetadata {
+  // Rank Analysis is run before MultiArray transformations - all preexisting arrays are rank 1
+  override def defaultTypeMetadata[A](tp: Manifest[A]): List[Metadata] = {
+    if      (isSubtype(tp.erasure, classOf[DeliteArray[_]]))   List(MRank(1))
+    else if (isSubtype(tp.erasure, classOf[DeliteArray1D[_]])) List(MRank(1))
+    else if (isSubtype(tp.erasure, classOf[DeliteArray2D[_]])) List(MRank(2))
+    else if (isSubtype(tp.erasure, classOf[DeliteArray3D[_]])) List(MRank(3))
+    else if (isSubtype(tp.erasure, classOf[DeliteArray4D[_]])) List(MRank(4))
+    else if (isSubtype(tp.erasure, classOf[DeliteArray5D[_]])) List(MRank(5))
+    else Nil
+  } ++ super.defaultTypeMetadata(tp)
 
   def getRank(p: SymbolProperties) = p("rank").map{_.asInstanceOf[MRank]}
   def getView(p: SymbolProperties) = p("isView").map{_.asInstanceOf[MView]}
@@ -110,80 +160,36 @@ trait MultiArrayHelperStageOne extends MetadataTransformer {
   def isTrueView(e: Exp[Any]) = getView(e).map{_.isTrueView}.getOrElse(false)
   def isTrueBuffer(p: SymbolProperties) = getBuffer(p).map{_.isTrueBuffer}.getOrElse(false)
   def isTrueBuffer(e: Exp[Any]) = getBuffer(e).map{_.isTrueBuffer}.getOrElse(false)
+
+  // This will throw an exception if get returns None, but completeness check after 
+  // rank analysis is run should guarantee that all MultiArray expressions have a rank
+  def rank(e: Exp[Any]) = getRank(e).get.rank
+  def rank(p: SymbolProperties) = getRank(p).get.rank
 }
 
-trait MultiArrayAnalyzerBase extends AnalyzerBase { 
-  val IR: DeliteOpsExp with DeliteMultiArrayOpsExp with DeliteMetadata
-  import IR._
-
-  override def forwardPropagate[A](e: Exp[A], d: Def[_])(implicit ctx: SourceContext): Unit = d match {
-    case op@DeliteMultiArrayView(t,_,_,_,_) => setChild(e, getChild(t))
-    case op@DeliteMultiArrayPermute(ma,_)   => setChild(e, getChild(ma))
-    case op@DeliteMultiArrayReshape(ma,_)   => setChild(e, getChild(ma))
-    case op@DeliteMultiArrayApply(ma,_)     => setProps(e, getChild(ma))
-    
-    case op@DeliteMultiArrayReadFile(_,_,_)      => setChild(e, getProps(op.body.res))
-    case op@DeliteMultiArrayFromFunction(dims,_) => setChild(e, getProps(op.body.res))
-    case op@DeliteMultiArrayMap(ma,_)            => setChild(e, getProps(op.body.res))
-    case op@DeliteMultiArrayZipWith(ma,mb,_)     => setChild(e, getProps(op.body.res))
-    case op@DeliteMultiArrayMapFilter(ma,_,_)    => setChild(e, getProps(op.mapFunc.res))
-    case op@DeliteMultiArrayFlatMap(ma,_)        => setChild(e, getChild(op.body.res))
-
-    // TODO: Is there a way to avoid having to manually propagate to rVs here?
-    case op@DeliteMultiArrayReduce(ma,_,_) =>
-      setProps(op.rV._1, getChild(ma))
-      setProps(op.rV._2, getChild(ma)) 
-      setProps(e, getProps(op.body.res))
-    case op@DeliteMultiArrayNDMap(in,_,_) =>
-      setChild(op.rV, getChild(in))
-      setChild(e, getChild(op.body.res))
-    
-    // Aliasing from updates/inserts/etc
-    case op@DeliteMultiArrayUpdate(ma,_,x) => 
-      setChild(ma, attemptMeet(getChild(ma), getProps(x), func = MetaUpdate))
-    case op@DeliteMultiArrayInsert(ma,x,_) =>
-      setChild(ma, attemptMeet(getChild(ma), getProps(x), func = MetaUpdate))
-    case op@DeliteMultiArrayAppend(ma,x) =>
-      setChild(ma, attemptMeet(getChild(ma), getProps(x), func = MetaUpdate))
-    case op@DeliteMultiArrayInsertAll(ma,x,_,_) =>
-      setChild(ma, attemptMeet(getChild(ma), getChild(x), func = MetaUpdate))
-
-    case _ => super.forwardPropagate(e,d)
-  }
-  
-  override def tracerToProperties(t: AtomicTracer, child: Option[SymbolProperties]): Option[SymbolProperties] = t match {
-    case MultiArrayTracer(_) => Some(ArrayProperties(child, NoData))
-    case _ => super.tracerToProperties(t, child)
-  }
-
-  override def getAtomicWriteRhs(d: AtomicWrite[Any])(implicit ctx: SourceContext): Option[SymbolProperties] = d match {
-    case DeliteMultiArrayUpdate(_,_,x) => Some(ArrayProperties(getProps(x), NoData))
-    case DeliteMultiArrayInsert(_,x,_) => Some(ArrayProperties(getProps(x), NoData))
-    case DeliteMultiArrayAppend(_,x) => Some(ArrayProperties(getProps(x), NoData))
-    case DeliteMultiArrayInsertAll(_,x,_,_) => Some(ArrayProperties(getChild(x), NoData))
-    case DeliteMultiArrayRemove(_,_,_,_) => None
-    case _ => super.getAtomicWriteRhs(d)
-  }
-}
-
-trait RankAnalyzer extends MultiArrayAnalyzerBase with MultiArrayHelperStageOne {
+trait RankAnalyzer extends MultiArrayAnalyzerBase {
+  val IR: DeliteOpsExp with DeliteMultiArrayOpsExp with RankMetadataOps
   import IR._
   override val name = "Rank Analyzer"
   
+  var incomplete: List[Exp[Any]] = Nil
+
+  override def hasCompleted = incomplete.isEmpty
+  override def failedToConverge() { 
+    warn("Maximum iterations exceeded before all ranks were fully known")
+    warn("Try increasing the maximum number of iterations")
+  }
+
+  override def completed(e: Exp[Any]) = { 
+    !hasMultiArrayTpe(e.tp) || (getProps(e) match {
+      case Some(a) => isComplete(a) && getRank(a).isDefined
+      case _ => false 
+    })
+  }
+
   def setRank(e: Exp[Any], rank: Int)(implicit ctx: SourceContext) { setMetadata(e, MRank(rank)) }
   def setRank(e: Exp[Any], rank: Option[MRank])(implicit ctx: SourceContext) { setMetadata(e, rank) }
   def enableBuffer(e: Exp[Any])(implicit ctx: SourceContext) { setMetadata(e, MBuffer(TrueType)) }
-
-  // Rank Analysis is run before MultiArray transformations - all preexisting arrays are rank 1
-  override def defaultTypeMetadata[A](tp: Manifest[A]): List[Metadata] = {
-    if      (isSubtype(tp.erasure, classOf[DeliteArray[_]]))   List(MRank(1))
-    else if (isSubtype(tp.erasure, classOf[DeliteArray1D[_]])) List(MRank(1))
-    else if (isSubtype(tp.erasure, classOf[DeliteArray2D[_]])) List(MRank(2))
-    else if (isSubtype(tp.erasure, classOf[DeliteArray3D[_]])) List(MRank(3))
-    else if (isSubtype(tp.erasure, classOf[DeliteArray4D[_]])) List(MRank(4))
-    else if (isSubtype(tp.erasure, classOf[DeliteArray5D[_]])) List(MRank(5))
-    else Nil
-  }
 
   override def processOp[A](e: Exp[A], d: Def[_])(implicit ctx: SourceContext): Unit = d match {
     // --- Rank rules for specific IR nodes
@@ -212,18 +218,22 @@ trait RankAnalyzer extends MultiArrayAnalyzerBase with MultiArrayHelperStageOne 
  
     case _ => // Nothing
   } 
-  override def completed(e: Exp[Any]) = { 
-    !hasMultiArrayChild(e.tp) || (getProps(e) match {
-      case Some(a) => isComplete(a) && a("rank").isDefined
-      case _ => false 
-    })
+
+  private def listMultiArrays() {
+    printmsg("\nComplete: ")
+    // List metadata
+    for ((k,v) <- symbolData) {
+      if (isMultiArrayTpe(k.tp)) {
+        printmsg(quotePos(k.pos))     // change to printdbg later
+        printmsg("sym: " + strDef(k))
+        printmsg(k + makeString(v))
+        printmsg("")
+      }
+    }
+    printmsg("\n")
   }
 
-  var incomplete: List[Exp[Any]] = Nil
-
   override def postprocess[A:Manifest](b: Block[A]) = { 
-    //printmsg("-------------------")
-    //printmsg("End of retry # " + (retries + 1).toString)
     incomplete = checkCompleteness(b) 
     
     if (incomplete.nonEmpty) {
@@ -232,12 +242,11 @@ trait RankAnalyzer extends MultiArrayAnalyzerBase with MultiArrayHelperStageOne 
         warn(quotePos(s.pos) + ": Unable to statically determine the rank of " + s.tp + "\n\t" + quoteCode(s.pos).getOrElse(strDef(s)))
         printmsg(quotePos(s.pos))
         printmsg("sym: " + strDef(s))
-        if (data.contains(s))
-          printmsg(s + makeString(data(s)))
-        else 
-          printmsg(s + ": [None]")
+        getProps(s) match {
+          case Some(p) => printmsg(s + makeString(p))
+          case None => printmsg(s + ": [None]")
+        }
         printmsg("")
-
         setMetadata(s, MRank(1))(mpos(s.pos))
       } 
 
@@ -246,39 +255,14 @@ trait RankAnalyzer extends MultiArrayAnalyzerBase with MultiArrayHelperStageOne 
       // Try analysis again with assumption that unknowns are of rank 1
       resume()
     }
-    if (debugMode) {
-      printmsg("\nComplete: ")
-      // List metadata
-      for ((k,v) <- metadata) {
-        if (isMultiArrayTpe(k.tp)) {
-          printmsg(quotePos(k.pos))     // change to printdbg later
-          printmsg("sym: " + strDef(k))
-          printmsg(k + makeString(v))
-          printmsg("")
-        }
-      }
-      printmsg("\n")
-    }
-
+    if (debugMode) listMultiArrays()
     super.postprocess(b)
   }
-  override def hasCompleted = incomplete.isEmpty
-  override def failedToConverge() { 
-    warn("Maximum iterations exceeded before all ranks were fully known")
-    warn("Try increasing the maximum number of iterations")
-  }
-}
-
-trait MultiArrayHelperStageTwo extends MultiArrayHelperStageOne {
-  import IR._
-  // This will throw an exception if get* returns None, but completeness
-  // check should guarantee that all MultiArray expressions have a rank
-  def rank(e: Exp[Any]) = getRank(e).get.rank
-  def rank(p: SymbolProperties) = getRank(p).get.rank
 }
 
 // MultiArray Sanity Checking
-trait RankChecker extends MultiArrayAnalyzerBase with MultiArrayHelperStageTwo {
+trait RankChecker extends MultiArrayAnalyzerBase {
+  val IR: DeliteOpsExp with DeliteMultiArrayOpsExp with RankMetadataOps
   import IR._
   override val name = "Rank Sanity Check"
 
@@ -291,7 +275,7 @@ trait RankChecker extends MultiArrayAnalyzerBase with MultiArrayHelperStageTwo {
     case DeliteMultiArrayZipWith(ma,mb,_) =>
       check(rank(ma) == rank(mb), "Ranks in inputs to zip-with must match")
 
-    case op@DeliteMultiArrayReduce(ma,_,z) if isDataStructureType(op.mA) =>
+    case op@DeliteMultiArrayReduce(ma,_,z) if isDataStructureTpe(op.mA) =>
       if (!matches(getChild(ma), getProps(z))) {
         check(false, "Metadata for MultiArray elements and zero in reduce do not match: \n" + 
                      makeString(getChild(ma)) + "\n" + makeString(getProps(z))
