@@ -2,9 +2,9 @@ package ppl.tests.scalatest
 
 import ppl.delite.framework.datastructures._
 
-object HW1_O extends DeliteTestDSLApplicationRunner with HW1
+object HW1_O extends DeliteHWDSLApplicationRunner with HW1
 
-trait HW1 extends DeliteTestDSLApplication {
+trait HW1 extends DeliteHWDSLApplication {
   def main() = {
     val a = args(0).toInt
     val b = args(1).toInt

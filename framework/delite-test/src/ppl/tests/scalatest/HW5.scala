@@ -2,12 +2,12 @@ package ppl.tests.scalatest
 
 import ppl.delite.framework.datastructures._
 
-object HW5_O extends DeliteTestDSLApplicationRunner with HW5
+object HW5_O extends DeliteHWDSLApplicationRunner with HW5
 
 /*
  * Example containing fusable loops without a producer-consumer relationship
  */
-trait HW5 extends DeliteTestDSLApplication {
+trait HW5 extends DeliteHWDSLApplication {
   def main() = {
     val a = DeliteArray.fromFunction(100){ i => i + 1 }
     val b = a.map(x => x*x)

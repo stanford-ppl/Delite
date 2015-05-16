@@ -2,9 +2,9 @@ package ppl.tests.scalatest
 
 import ppl.delite.framework.datastructures._
 
-object HW3_O extends DeliteTestDSLApplicationRunner with HW3
+object HW3_O extends DeliteHWDSLApplicationRunner with HW3
 
-trait HW3 extends DeliteTestDSLApplication {
+trait HW3 extends DeliteHWDSLApplication {
   def main() = {
     val a = DeliteArray.fromFunction(100){ i => i.toDouble }
     val res = testFunction(a, 1, 2.0)
