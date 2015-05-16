@@ -16,6 +16,8 @@ trait HwOpsExp extends DeliteOpsExp {
 
   abstract class HwDef[T] extends Def[T]
 
+  var hwNodeId: Int = -1
+
 //  abstract class MemHw(sym: Sym[Any]) extends HwDef {
   abstract class MemHw extends HwDef {
     val word = 0
@@ -47,6 +49,7 @@ trait HwOpsExp extends DeliteOpsExp {
 //  }
 
   case class BRAM(
+    id: Int,
     size: Int,
     wordLen: Int,
     banks: Int,
@@ -128,7 +131,10 @@ trait HwOpsExp extends DeliteOpsExp {
   case class HwSt(mem: Exp[Any], addr: Exp[Any], din: Exp[Any]) extends ComputeHw
 
 //  def gen_bram(deps: List[Sym[Any]])(s: Sym[Any], size: Int, bitwidth: Int, banks: Int, bankmapping: Int, rports: Int, wports: Int) = reflectEffect(BRAM(s)(size, bitwidth, banks, bankmapping, rports, wports), Read(deps))
-  def gen_bram(size: Int, bitwidth: Int = 32, banks: Int = 1, bankmapping: Int = 0, rports: Int = 1, wports: Int= 1) = BRAM(size, bitwidth, banks, bankmapping, rports, wports)
+  def gen_bram(size: Int, bitwidth: Int = 32, banks: Int = 1, bankmapping: Int = 0, rports: Int = 1, wports: Int= 1) = {
+    hwNodeId += 1
+    BRAM(hwNodeId, size, bitwidth, banks, bankmapping, rports, wports)
+  }
 //  def gen_fifo
 //  def gen_cam
 //  def gen_ff
