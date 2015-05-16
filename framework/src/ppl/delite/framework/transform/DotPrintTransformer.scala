@@ -6,7 +6,7 @@ import java.io.{FileWriter, PrintWriter}
 import scala.util.Random
 import scala.collection.mutable.Set
 
-trait DotPrintTransformer extends ForwardPassTransformer {
+trait DotPrintTransformer extends WorklistTransformer {
   val IR: HwOpsExp
   import IR._
 
@@ -269,10 +269,10 @@ trait DotPrintTransformer extends ForwardPassTransformer {
   }
 }
 
-trait DotPrintTransformExp extends DeliteTransform with DeliteApplication {
+trait DotPrintTransformExp extends DeliteApplication {
   self =>
     private val t = new DotPrintTransformer {
       val IR: self.type = self
     }
-    appendTransformer(t)
+    appendVisitor(t)
 }

@@ -11,7 +11,7 @@ import scala.collection.mutable.Map
 import scala.collection.mutable.ListBuffer
 import scala.reflect.SourceContext
 
-trait HwLoweringTransformer extends ForwardPassTransformer {
+trait HwLoweringTransformer extends WorklistTransformer {
   val IR: HwOpsExp
   import IR._
 
@@ -261,10 +261,10 @@ trait HwLoweringTransformer extends ForwardPassTransformer {
 
       case TP(s,d) if isMemOp(s,d) =>
         // Transform and apply existing substitution rules
-        println(s"Memory op ($s, $d)")
         val newExp = super.transformStm(stm)
+
+        // Use the def for mirrored node to get the equivalent hardware node
         val newDef = getdef(newExp.asInstanceOf[Sym[Any]])
-        println(s"Transformed memory op ($newExp, $newDef)")
         reflectPure(getMemOp(newDef))
       case TP(s,d) =>
         super.transformStm(stm)
@@ -278,10 +278,10 @@ trait HwLoweringTransformer extends ForwardPassTransformer {
   }
 }
 
-trait HwLoweringTransformExp extends DeliteTransform with DeliteApplication {
+trait HwLoweringTransformExp extends DeliteApplication {
   self =>
     private val t = new HwLoweringTransformer { val IR: self.type = self }
-    appendTransformer(t)
+    appendVisitor(t)
 
     private def getdef(sym: Sym[Any]) = {
       sym match {
@@ -299,8 +299,8 @@ trait HwLoweringTransformExp extends DeliteTransform with DeliteApplication {
         case HwLoop(size, iter, body) =>
           reflectPure(HwLoop(size, iter, f(body)))
 
-        case BRAM(size, wordlen, banks, bankMapping, rports, wports) =>
-         reflectPure(BRAM(size, wordlen, banks, bankMapping, rports, wports))
+        case BRAM(id, size, wordlen, banks, bankMapping, rports, wports) =>
+         reflectPure(gen_bram(size, wordlen, banks, bankMapping, rports, wports))
 
        case Reflect(node, summary, d) if node.isInstanceOf[HwDummy] =>
            val hwdummyNode = node.asInstanceOf[HwDummy]
