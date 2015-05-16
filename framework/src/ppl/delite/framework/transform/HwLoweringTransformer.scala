@@ -136,7 +136,7 @@ trait HwLoweringTransformer extends ForwardPassTransformer {
       loop.size,
       loop.v,
       DeliteCollectElem[A,I,CA](
-        func = newbod,// .asInstanceOf[Block[A]],
+        func = newbod,
         cond = oldbod.cond,
         par = oldbod.par,
         buf = DeliteBufferElem[A,I,CA](
@@ -243,7 +243,7 @@ trait HwLoweringTransformer extends ForwardPassTransformer {
       case DeliteArrayUpdate(arr, i, x) =>
         gen_hwst(this(arr), this(i), this(x))
       case _ =>
-        throw new Exception(s"Unknown memory operation $d")
+        throw new Exception(s"[Block $curBlock] Unknown memory operation $d")
         d
     }
   }
@@ -260,9 +260,12 @@ trait HwLoweringTransformer extends ForwardPassTransformer {
         reflectPure(res)
 
       case TP(s,d) if isMemOp(s,d) =>
-        val res = getMemOp(d)
-        reflectPure(d)
-
+        // Transform and apply existing substitution rules
+        println(s"Memory op ($s, $d)")
+        val newExp = super.transformStm(stm)
+        val newDef = getdef(newExp.asInstanceOf[Sym[Any]])
+        println(s"Transformed memory op ($newExp, $newDef)")
+        reflectPure(getMemOp(newDef))
       case TP(s,d) =>
         super.transformStm(stm)
       case TTP(s, d, fd) => throw new Exception("TTP not handled yet")
@@ -295,6 +298,10 @@ trait HwLoweringTransformExp extends DeliteTransform with DeliteApplication {
            reflectMirrored(Reflect(HwLoop(hwloopNode.size, hwloopNode.iter, f(hwloopNode.body)), mapOver(f,summary), f(d)))(mtype(manifest[A]), ctx)
         case HwLoop(size, iter, body) =>
           reflectPure(HwLoop(size, iter, f(body)))
+
+        case BRAM(size, wordlen, banks, bankMapping, rports, wports) =>
+         reflectPure(BRAM(size, wordlen, banks, bankMapping, rports, wports))
+
        case Reflect(node, summary, d) if node.isInstanceOf[HwDummy] =>
            val hwdummyNode = node.asInstanceOf[HwDummy]
            val deps = hwdummyNode.deps.map(x => f(x))
@@ -308,7 +315,10 @@ trait HwLoweringTransformExp extends DeliteTransform with DeliteApplication {
        case HwMinus(lhs, rhs) =>
           toAtom(HwMinus(f(lhs), f(rhs)))
        case HwLd(mem, addr) =>
-         gen_hwld(f(mem), f(addr).asInstanceOf[Exp[Int]])
+         reflectPure(gen_hwld(f(mem), f(addr).asInstanceOf[Exp[Int]]))
+       case HwSt(mem, addr, value) =>
+         reflectPure(gen_hwst(f(mem), f(addr).asInstanceOf[Exp[Int]], f(value)))
+
         case _ =>
           super.mirror(e,f)
       }
