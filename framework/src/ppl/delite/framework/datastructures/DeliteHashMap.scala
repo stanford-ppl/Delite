@@ -5,79 +5,78 @@ import ppl.delite.framework.ops.{DeliteCollection, DeliteOpsExp}
 import reflect.{SourceContext, RefinedManifest}
 
 
-trait DeliteMap[K,V]
+trait DeliteHashMap[K,V]
 
-trait DeliteMapOps extends Base {
+// TODO: Complete this
+// Main difficulty here is that we want MultiArray to be able to be used to form DeliteMap
+// but want to take argument of type DeliteCollection
 
-  object DeliteMap {
+// TODO: Add a superclass DeliteAbstractCollection, extended by MultiArray and DeliteCollection?
+
+/*trait DeliteHashMapOps extends Base {
+
+  object DeliteHashMap {
     def apply[A:Manifest,K:Manifest,V:Manifest](
       coll: Rep[DeliteCollection[A]],
       keyFunc: Rep[A] => Rep[K],
       valFunc: Rep[A] => Rep[V] = (e:Rep[A]) => e,
       conflictRes: (Rep[V],Rep[V]) => Rep[V] = (a:Rep[V],b:Rep[V]) => a
-    ) = dmap_fromCollection(coll,keyFunc,valFunc,conflictRes)
+    ) = dhmap_fromCollection(coll,keyFunc,valFunc,conflictRes)
 
-    def apply[A:Manifest,K:Manifest,V:Manifest](coll: Rep[DeliteCollection[A]], keyFunc: Rep[A] => Rep[K], values: Rep[DeliteArray[V]]) = dmap_fromCollection(coll,keyFunc,values)
+    def apply[A:Manifest,K:Manifest,V:Manifest](coll: Rep[DeliteCollection[A]], keyFunc: Rep[A] => Rep[K], values: Rep[DeliteArray1D[V]]) = dmap_fromCollection(coll,keyFunc,values)
   }
 
-  implicit def repDMapToDMapOps[K:Manifest,V:Manifest](dm: Rep[DeliteMap[K,V]]) = new DeliteMapOpsCls(dm)
+  implicit def repDMapToDMapOps[K:Manifest,V:Manifest](dm: Rep[DeliteHashMap[K,V]]) = new DeliteMapOpsCls(dm)
 
-  class DeliteMapOpsCls[K:Manifest,V:Manifest](dm: Rep[DeliteMap[K,V]]) {
+  class DeliteMapOpsCls[K:Manifest,V:Manifest](dm: Rep[DeliteHashMap[K,V]]) {
     def size: Rep[Int] = dmap_size(dm)
     def get(key: Rep[K]): Rep[V] = dmap_get(dm, key)
     def apply(key: Rep[K]): Rep[V] = dmap_get(dm, key)
     def contains(key: Rep[K]): Rep[Boolean] = dmap_contains(dm, key)
-    def keys: Rep[DeliteArray[K]] = dmap_keys(dm)
-    def values: Rep[DeliteArray[V]] = dmap_values(dm)
+    def keys: Rep[DeliteArray1D[K]] = dmap_keys(dm)
+    def values: Rep[DeliteArray1D[V]] = dmap_values(dm)
     //def toArray: Rep[DeliteArray[(K,V)]] = dmap_toArray(dm)
   }
 
-  def dmap_fromCollection[A:Manifest,K:Manifest,V:Manifest](in: Rep[DeliteCollection[A]], keyFunc: Rep[A] => Rep[K], valFunc: Rep[A] => Rep[V], conflictRes: (Rep[V],Rep[V]) => Rep[V]): Rep[DeliteMap[K,V]]
-  def dmap_fromCollection[A:Manifest,K:Manifest,V:Manifest](in: Rep[DeliteCollection[A]], keyFunc: Rep[A] => Rep[K], values: Rep[DeliteArray[V]]): Rep[DeliteMap[K,V]]
-  def dmap_size[K:Manifest,V:Manifest](dm: Rep[DeliteMap[K,V]])(implicit ctx: SourceContext): Rep[Int]
-  def dmap_get[K:Manifest,V:Manifest](dm: Rep[DeliteMap[K,V]], key: Rep[K])(implicit ctx: SourceContext): Rep[V]
-  def dmap_contains[K:Manifest,V:Manifest](dm: Rep[DeliteMap[K,V]], key: Rep[K])(implicit ctx: SourceContext): Rep[Boolean]
-  def dmap_keys[K:Manifest,V:Manifest](dm: Rep[DeliteMap[K,V]])(implicit ctx: SourceContext): Rep[DeliteArray[K]]
-  def dmap_values[K:Manifest,V:Manifest](dm: Rep[DeliteMap[K,V]])(implicit ctx: SourceContext): Rep[DeliteArray[V]]
+  def dhmap_fromCollection[A:Manifest,K:Manifest,V:Manifest](in: Rep[DeliteCollection[A]], keyFunc: Rep[A] => Rep[K], valFunc: Rep[A] => Rep[V], conflictRes: (Rep[V],Rep[V]) => Rep[V]): Rep[DeliteHashMap[K,V]]
+  def dhmap_fromCollection[A:Manifest,K:Manifest,V:Manifest](in: Rep[DeliteCollection[A]], keyFunc: Rep[A] => Rep[K], values: Rep[DeliteArray1D[V]]): Rep[DeliteHashMap[K,V]]
+  def dhmap_size[K:Manifest,V:Manifest](dm: Rep[DeliteHashMap[K,V]])(implicit ctx: SourceContext): Rep[Int]
+  def dhmap_get[K:Manifest,V:Manifest](dm: Rep[DeliteHashMap[K,V]], key: Rep[K])(implicit ctx: SourceContext): Rep[V]
+  def dhmap_contains[K:Manifest,V:Manifest](dm: Rep[DeliteHashMap[K,V]], key: Rep[K])(implicit ctx: SourceContext): Rep[Boolean]
+  def dhmap_keys[K:Manifest,V:Manifest](dm: Rep[DeliteHashMap[K,V]])(implicit ctx: SourceContext): Rep[DeliteArray1D[K]]
+  def dhmap_values[K:Manifest,V:Manifest](dm: Rep[DeliteHashMap[K,V]])(implicit ctx: SourceContext): Rep[DeliteArray1D[V]]
   //def dmap_toArray[K:Manifest,V:Manifest](dm: Rep[DeliteMap[K,V]])(implicit ctx: SourceContext): Rep[DeliteArray[(K,V)]]
 
 }
 
-trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp { this: DeliteOpsExp =>
-
-  trait DeliteIndex[K]
+trait DeliteHashMapOpsExp extends DeliteHashMapOps with DeliteStructsExp with DeliteMapOpsExp with DeliteMultiArrayOpsExp { 
+  this: DeliteOpsExp =>
 
   case class DeliteIndexGet[K:Manifest](index: Rep[DeliteIndex[K]], key: Rep[K]) extends DefWithManifest[K,Int]
 
-  case class DeliteMapNewImm[K:Manifest,V:Manifest](keys: Rep[DeliteArray[K]], values: Rep[DeliteArray[V]], index: Rep[DeliteIndex[K]], size: Rep[Int]) extends DeliteStruct[DeliteMap[K,V]] {
-    val elems = copyTransformedElems(List("keys" -> keys, "values" -> values, "index" -> index, "size" -> size))
+  case class DeliteHashMapNewImm[K:Manifest,V:Manifest](keys: Rep[DeliteArray1D[K]], values: Rep[DeliteArray1D[V]], index: Rep[DeliteIndex[K]], size: Rep[Int]) extends DeliteStruct[DeliteHashMap[K,V]] {
+    val elems = copyTransformedElems(Seq("keys" -> keys, "values" -> values, "index" -> index, "size" -> size))
     val mK = manifest[K]
     val mV = manifest[V]
   }
 
-  case class DeliteMapValues[A:Manifest,K:Manifest,V:Manifest](in: Exp[DeliteCollection[A]], keyFunc: Exp[A] => Exp[K], valFunc: Exp[A] => Exp[V], reduceFunc: (Exp[V],Exp[V]) => Exp[V])
-    extends DeliteOpMappedGroupByReduce[A,K,V,DeliteArray[V]] {
+  case class DeliteHashMapValues[A:Manifest,K:Manifest,V:Manifest](in: Exp[DeliteCollection[A]], keyFunc: Exp[A] => Exp[K], valFunc: Exp[A] => Exp[V], reduceFunc: (Exp[V],Exp[V]) => Exp[V])
+    extends MultiArrayOp3[A,K,V,DeliteArray1D[V]] {
 
-    def alloc(len: Exp[Int]) = DeliteArray[V](len)
-    val size = copyTransformedOrElse(_.size)(dc_size(in))
-    def zero = unit(null).asInstanceOf[Exp[V]]
+
   }
+
 
   // FIXME: it looks like in some cases, this can cause an identical loop to be emitted twice, 
   //        since valFunc and keyFunc are the same and used in different fields of the resulting elem. 
   //        in particular, if the keyFunc has an effect somewhere, then it will not be removed by .distinct in getMultiLoopFuncs.
-  case class DeliteMapKeys[A:Manifest,K:Manifest](in: Exp[DeliteCollection[A]], keyFunc: Exp[A] => Exp[K])
-    extends DeliteOpMappedGroupByReduce[A,K,K,DeliteArray[K]] {
+  case class DeliteHashMapKeys[A:Manifest,K:Manifest](in: Exp[DeliteCollection[A]], keyFunc: Exp[A] => Exp[K])
+    extends MultiArrayOp3[A,K,K,DeliteArray[K]] {
 
-    def alloc(len: Exp[Int]) = DeliteArray[K](len)
-    val size = copyTransformedOrElse(_.size)(dc_size(in))
-    def zero = unit(null).asInstanceOf[Exp[K]]
-    def valFunc = keyFunc
-    def reduceFunc = (a,b) => a
-  }
+  } 
 
-  case class DeliteMapBuildIndex[A:Manifest,K:Manifest](in: Exp[DeliteCollection[A]], keyFunc: Exp[A] => Exp[K])
-    extends DeliteOpBuildIndex[A,K,DeliteIndex[K]] {
+  case class DeliteHashMapBuildIndex[A:Manifest,K:Manifest](in: Exp[DeliteCollection[A]], keyFunc: Exp[A] => Exp[K])
+    extends MultiArrayOp2[A,K,DeliteIndex[K]] {
 
     def cond = null
     val size = copyTransformedOrElse(_.size)(dc_size(in))
@@ -132,41 +131,4 @@ trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp { this: DeliteO
     case _ => super.unapplyStructType
   }
 
-}
-
-trait ScalaGenDeliteMapOps extends ScalaGenEffect {
-  val IR: DeliteMapOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case DeliteIndexGet(index, key) => emitValDef(sym, quote(index) + ".get(" + quote(key) + ")")
-    case _ => super.emitNode(sym, rhs)
-  }
-
-  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
-    case "DeliteIndex" => "generated.scala.container.HashMapImpl[" + remap(m.typeArguments(0)) + "]"
-    case _ => super.remap(m)
-  }
-}
-
-trait CGenDeliteMapOps extends CGenEffect {
-  val IR: DeliteMapOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case DeliteIndexGet(index, key) => emitValDef(sym, quote(index) + "->get(" + quote(key) + ")")
-    case _ => super.emitNode(sym, rhs)
-  }
-
-  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
-    case "DeliteIndex" if (cppMemMgr == "refcnt") => wrapSharedPtr("cppHashMap<" + unwrapSharedPtr(remapWithRef(m.typeArguments(0))) + ">")
-    case "DeliteIndex" => "cppHashMap<" + remapWithRef(m.typeArguments(0)) + ">"
-    case _ => super.remap(m)
-  }
-
-  override def getDataStructureHeaders(): String = {
-    val out = new StringBuilder
-    out.append("#include \"cppHashMap.h\"\n")
-    super.getDataStructureHeaders() + out.toString
-  }
-}
+}*/

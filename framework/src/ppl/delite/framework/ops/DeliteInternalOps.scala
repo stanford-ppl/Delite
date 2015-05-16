@@ -82,6 +82,9 @@ trait DeliteInternalOpsExpBase extends DeliteAnalysesOps
   case class DIntDivide(lhs: Exp[Int], rhs: Exp[Int]) extends Def[Int]
   case class DIntMod(lhs: Exp[Int], rhs: Exp[Int]) extends Def[Int]
 
+  case class DStringConcat(lhs: Exp[String], rhs: Exp[String]) extends Def[String]
+  case class DStringify[T](x: Exp[T]) extends Def[String]
+
   abstract class DefMN[T:Ordering:Manifest,A] extends Def[A] {
     def mev = manifest[T]
     def aev = implicitly[Ordering[T]]
@@ -106,6 +109,8 @@ trait DeliteInternalOpsExpBase extends DeliteAnalysesOps
     case c@Const(x) => c
     case _ => DUnsafeImmutable(lhs)
   }
+  def delite_string_concat(lhs: Exp[String], rhs: Exp[String]): Exp[String] = DStringConcat(lhs,rhs)
+  def delite_stringify[T](x: Exp[T]): Exp[String] = DStringify(x)
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case DBooleanNegate(x) => delite_boolean_negate(f(x))
@@ -116,6 +121,9 @@ trait DeliteInternalOpsExpBase extends DeliteAnalysesOps
     case DIntTimes(x,y) => delite_int_times(f(x),f(y))
     case DIntDivide(x,y) => delite_int_divide(f(x),f(y))
     case DIntMod(x,y) => delite_int_mod(f(x),f(y))
+    case DStringConcat(x,y) => delite_string_concat(f(x),f(y))
+    case DStringify(x) => delite_stringify(f(x))
+
     case e@DLessThan(a,b) => delite_less_than(f(a),f(b))(e.aev,e.mev,pos)
     case e@DGreaterThan(a,b) => delite_greater_than(f(a),f(b))(e.aev,e.mev,pos)
     case e@DUnsafeImmutable(a) => delite_unsafe_immutable(f(a))(mtype(e.m),pos)
@@ -126,6 +134,9 @@ trait DeliteInternalOpsExpBase extends DeliteAnalysesOps
     case Reflect(DIntTimes(x,y), u, es) => reflectMirrored(Reflect(DIntTimes(f(x),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case Reflect(DIntDivide(x,y), u, es) => reflectMirrored(Reflect(DIntDivide(f(x),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case Reflect(DIntMod(x,y), u, es) => reflectMirrored(Reflect(DIntMod(f(x),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+    case Reflect(DStringConcat(x,y), u, es) => reflectMirrored(Reflect(DStringConcat(f(x),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+    case Reflect(DStringify(x), u, es) => reflectMirrored(Reflect(DStringify(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+
     case Reflect(e@DLessThan(a,b), u, es) => reflectMirrored(Reflect(DLessThan(f(a),f(b))(e.aev,e.mev), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case Reflect(e@DGreaterThan(a,b), u, es) => reflectMirrored(Reflect(DGreaterThan(f(a),f(b))(e.aev,e.mev), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case Reflect(e@DUnsafeImmutable(a), u, es) => reflectMirrored(Reflect(DUnsafeImmutable(f(a))(mtype(e.m)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
@@ -205,6 +216,12 @@ trait DeliteInternalOpsExp extends DeliteInternalOpsExpBase {
     case _ => DIntTimes(lhs, rhs)
   }
 
+  override def delite_string_concat(lhs: Exp[String], rhs: Exp[String]): Exp[String] = (lhs,rhs) match {
+    case (l@Const(""),r) => r
+    case (l, r@Const("")) => l
+    case _ => DStringConcat(lhs,rhs)
+  }
+
   // -- Struct delite_unsafe_immutable can't be in DeliteStructs.scala because of illegal cyclic inheritance
 
   def delite_imm_field(struct: Exp[Any], name: String, f: Exp[Any])(implicit pos: SourceContext): Exp[Any] = {
@@ -231,6 +248,9 @@ trait ScalaGenDeliteInternalOps extends ScalaGenBase {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case DStringConcat(lhs,rhs) => emitValDef(sym, quote(lhs) + " + " + quote(rhs))
+    case DStringify(x) => emitValDef(sym, "\"\" + " + quote(x))
+
     case DBooleanNegate(b) => emitValDef(sym, "!" + quote(b))
     case DEqual(a,b) =>  emitValDef(sym, quote(a) + " == " + quote(b))
     case DNotEqual(a,b) =>  emitValDef(sym, quote(a) + " != " + quote(b))
@@ -251,6 +271,9 @@ trait CLikeGenDeliteInternalOps extends CLikeGenBase {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case DStringConcat(lhs,rhs) => emitValDef(sym, "string_plus(" + quote(lhs) + ", " + quote(rhs) + ")")
+    case DStringify(x) => emitValDef(sym, "convert_to_string<" + remapWithRef(x.tp) + " >(" + quote(x) + ")")
+
     case DBooleanNegate(b) => emitValDef(sym, "!" + quote(b))
     case DEqual(a,b) => emitValDef(sym, quote(a) + " == " + quote(b))
     case DNotEqual(a,b) => emitValDef(sym, quote(a) + " != " + quote(b))

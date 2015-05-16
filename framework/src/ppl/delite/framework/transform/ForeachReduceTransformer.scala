@@ -8,12 +8,13 @@ import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, BaseDeliteOpsTraversalFat}
 import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.Config
+import ppl.delite.framework.visit.DeliteVisit
 
 /**
  * Transform DeliteOpForeachReduce instances into a composition of ops that implements it.
  */
 
-trait ForeachReduceTransformExp extends DeliteTransform 
+trait ForeachReduceTransformExp extends DeliteVisit
   with DeliteApplication with DeliteOpsExp 
   with BooleanOpsExp with MiscOpsExp with StringOpsExp with ObjectOpsExp with PrimitiveOpsExp with RangeOpsExp
   with LiftString with LiftBoolean with LiftPrimitives { // may want to use self-types instead of mix-in to decrease risk of accidental inclusion
@@ -21,7 +22,7 @@ trait ForeachReduceTransformExp extends DeliteTransform
   self =>
   
   private val t = new ForeachReduceTransformer { val IR: self.type = self }
-  appendTransformer(t)    
+  appendVisitor(t)    
   
   /**
    * These IR nodes represent the spliced out components of the DeliteOpForeachReduce after transformation.
@@ -104,10 +105,12 @@ trait ForeachReduceTransformExp extends DeliteTransform
   }).asInstanceOf[Exp[A]]   
 }
 
-trait ForeachReduceTransformer extends ForwardPassTransformer {  
+trait ForeachReduceTransformer extends WorklistTransformer {  
   val IR: ForeachReduceTransformExp
   import IR._
         
+  override val name = "Foreach-Reduce Transformer"
+
   def addToScope(x: Stm) = innerScope ::= x
     
   /* 
@@ -148,7 +151,7 @@ trait ForeachReduceTransformer extends ForwardPassTransformer {
     })
   }  
   
-  override def isDone = {
+  override def hasConverged = {
     if (!globalDefs.exists(e => e.rhs match { case Reflect(x:DeliteOpForeachReduce[_],_,_) => true; case _ => false })) true
     else (nextSubst.isEmpty && runs > 0) // super.isDone
   }

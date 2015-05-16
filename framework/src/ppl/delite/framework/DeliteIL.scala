@@ -13,6 +13,7 @@ import ppl.delite.framework.codegen.opencl.TargetOpenCL
 import ppl.delite.framework.codegen.delite.overrides._
 import ppl.delite.framework.codegen.restage.DeliteILScalaGenExternal
 import ppl.delite.framework.transform._
+import ppl.delite.framework.visit.DeliteVisit
 import ppl.delite.framework.ops._
 
 trait DeliteILApplicationRunner extends DeliteILApplication with DeliteApplication with DeliteILExp
@@ -55,8 +56,8 @@ trait DeliteIL extends DeliteILScalaOpsPkg with DeliteILOps with DeliteArrayOps 
 
 
 trait DeliteILExp extends DeliteIL with DeliteILScalaOpsPkgExp with DeliteILOpsExp with DeliteOpsExp with DeliteArrayFatExp with DeliteArrayBufferOpsExp with DeliteMapOpsExp with StructExp
-  with FunctionBlocksExp with ExpressionsOpt 
-  with DeliteTransform with MultiloopSoATransformExp with DeliteAllOverridesExp {
+  with FunctionBlocksExp with ExpressionsOpt
+  with DeliteVisit with MultiloopSoATransformExp with DeliteAllOverridesExp {
 
   this: DeliteApplication with DeliteILApplication  => 
 

@@ -9,17 +9,17 @@ import scala.virtualization.lms.common._
 import generators.{DeliteGenTaskGraph}
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
 import ppl.delite.framework.{Config, DeliteApplication}
-import ppl.delite.framework.transform.ForwardPassTransformer
 import ppl.delite.framework.ops.DeliteOpsExp
-
-import scala.virtualization.lms.internal._
-import scala.virtualization.lms.common._
 
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.analysis.StencilAnalysis
+import ppl.delite.framework.transform.TransformerBase
+
 import generators.{DeliteGenTaskGraph}
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
+
+import java.io.{StringWriter, PrintWriter}
 
 // FIXME: now that syms and friends is in the IR, all this ifGenAgree(..) crap is not necessary.
 
@@ -35,8 +35,8 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   val generators: List[Generator]
 
   // should be set by DeliteApplication if there are any transformations to be run before codegen
-  var transformers: List[WorklistTransformer{val IR: DeliteCodegen.this.IR.type}] = Nil
-  var transformerMetadata = HashMap[String, Any]()
+//  var transformerMetadata = HashMap[String, Any]()
+  var visitors: List[IRVisitor{val IR: DeliteCodegen.this.IR.type}] = Nil
 
   // per kernel, used by DeliteGenTaskGraph
   var controlDeps: List[Sym[Any]] = _
@@ -114,32 +114,27 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     stream.println("] }")
   }
 
-  def runTransformations[A:Manifest](b: Block[A]): Block[A] = {
+  def runVisitors[A:Manifest](b: Block[A]): Block[A] = {
     printlog("DeliteCodegen: applying transformations")
     var curBlock = b
-    printlog("  Transformers: " + transformers)
-    val maxTransformIter = 3 // TODO: make configurable
-    for (t <- transformers) {
+    printlog("Visitors: " + visitors.map(_.name).mkString("\n"))
+    
+    for (t <- visitors) {
       printlog("  Block before transformation: " + curBlock)
-      printlog("  map: " + t.nextSubst)
-      var i = 0
-      while (!t.isDone && i < maxTransformIter) {
-        printlog("iter: " + i)
-        curBlock = t.runOnce(curBlock)
-        i += 1
-      }
-      if (i == maxTransformIter) printlog("  warning: transformer " + t + " did not converge in " + maxTransformIter + " iterations")
+      
+      curBlock = t.run(curBlock)
+      
       printlog("  Block after transformation: " + curBlock)
     }
     printlog("DeliteCodegen: done transforming")
-    curBlock
+    (curBlock)
   }
 
   def emitBlockHeader(syms: List[Sym[Any]], appName: String) { }
   def emitBlockFooter(result: Exp[Any]) { }
 
   def emitSource[A:Manifest](args: List[Sym[_]], body: Block[A], className: String, stream: PrintWriter): List[(Sym[Any],Any)] = {
-    val y = runTransformations(body)
+    val y = runVisitors(body)
     val staticData = getFreeDataBlock(y)
 
     printlog("-- emitSource")

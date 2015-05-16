@@ -1,11 +1,11 @@
 package ppl.delite.framework.transform
 
-import scala.virtualization.lms.internal.FatBlockTraversal
+import scala.virtualization.lms.common.WorklistTransformer
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteFileReaderOpsExp, DeliteCollection, DeliteFileInputStream}
 import ppl.delite.framework.datastructures.{DeliteArrayOpsExp, DeliteStructsExp, DeliteArray}
 
 
-trait DistributedArrayTransformer extends ForwardPassTransformer { 
+trait DistributedArrayTransformer extends WorklistTransformer { 
   val IR: DeliteOpsExp with DeliteArrayOpsExp with DeliteStructsExp
   import IR._
 
@@ -13,6 +13,8 @@ trait DistributedArrayTransformer extends ForwardPassTransformer {
   object Distributed extends Mode
   object Numa extends Mode
   object Local extends Mode
+
+  override val name = "Distributed Array Transformer"
 
   val distributedMode: Mode = Local //TODO: Config flag
 

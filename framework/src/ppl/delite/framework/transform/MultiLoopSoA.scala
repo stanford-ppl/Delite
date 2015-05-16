@@ -20,11 +20,12 @@ trait MultiloopSoATransformWithReduceExp extends MultiloopSoATransformExp {
 
 }
 
-trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform with DeliteApplication
-  with DeliteOpsExp with DeliteArrayFatExp { self =>
+trait MultiloopSoATransformExp extends DeliteApplication { self =>
 
-  private val t = new ForwardPassTransformer {
+  private val t = new WorklistTransformer {
     val IR: self.type = self
+    override val name = "SOA Transform"
+
     override def transformStm(stm: Stm): Exp[Any] = transformLoop(stm) match {
       case Some(newSym) => newSym
       case None => super.transformStm(stm)
@@ -54,7 +55,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
     case _ => None
   }
 
-  appendTransformer(t) //AoS to SoA should go last, right before fusion
+  appendVisitor(t) //AoS to SoA should go last, right before fusion
 
   private object StructBlock {
     def unapply[A](d: Block[A]) = d match {
