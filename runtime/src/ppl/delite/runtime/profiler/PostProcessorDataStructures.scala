@@ -318,7 +318,8 @@ class TNode(val name: Types.TNodeName, val threadId: Int, val start: Long, val d
 	var syncTime: Long = 0
 	val _type = ExecutionProfile.tNodeType(name)
 	val (dNode, dNodeName, displayText, dNodeId) = _type match { // displayText is for the timeline view in the UI
-		case TNodeType.Sync | TNodeType.TicTocRegion => (null, "", name, -1)
+		case TNodeType.Sync => (null, "", "", -1)
+		case TNodeType.TicTocRegion => (null, "", name, -1)
 		case _    => { 
 			val n = ExecutionProfile.dNode(name)
 			(n, n.name, n.sourceContext.opName, n.id)
@@ -585,6 +586,13 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 				  " CREATE TABLE KernelMemAllocStats " +
 				  		"(NAME TEXT PRIMARY KEY NOT NULL," +
 				  		" BYTES_ALLOCATED INT  NOT NULL);\n" +
+				  " CREATE TABLE ArrayCacheAccessStats" +
+				  		"(SOURCE_CONTEXT TEXT PRIMARY KEY NOT NULL," +
+				  		" L1_CACHE_HIT_PCT 	 	 INT  NOT NULL," +
+				  		" L2_CACHE_HIT_PCT 	 	 INT  NOT NULL," +
+				  		" L3_CACHE_HIT_PCT 	 	 INT  NOT NULL," +
+				  		" LOCAL_DRAM_HIT_PCT 	 INT  NOT NULL," +
+				  		" REMOTE_DRAM_HIT_PCT 	 INT  NOT NULL);\n" +
 				  " INSERT INTO DNodeTypes (ID, NAME) VALUES(%d, 'WhileLoop');\n".format(DNodeType.WhileLoop.id) +
 				  " INSERT INTO DNodeTypes (ID, NAME) VALUES(%d, 'Conditional');\n".format(DNodeType.Conditional.id) +
 				  " INSERT INTO DNodeTypes (ID, NAME) VALUES(%d, 'MultiLoop');\n".format(DNodeType.MultiLoop.id) +

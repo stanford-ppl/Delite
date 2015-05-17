@@ -29,7 +29,7 @@ typedef struct {
   std::string sourceContext;
 } cpparray_layout_info;
 
-void InitDeliteCppTimer(int32_t numThreads);
+void InitDeliteCppTimer(int32_t lowestCppTid, int32_t numCppThreads);
 void DeliteCppTimerStart(int32_t tid, string name, bool isKernel = true);
 void DeliteCppTimerStop(int32_t tid, string name);
 void DeliteCppTimerClose();

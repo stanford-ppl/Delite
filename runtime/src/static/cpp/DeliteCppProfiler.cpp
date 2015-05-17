@@ -6,17 +6,17 @@ std::vector< FILE* > outputFiles;
 std::vector< std::map<std::string, std::vector<PCMStats*>*>* > *memoryAccessMaps;
 std::vector< std::vector<cpparray_layout_info>* > *arrayStartAddresses;
 
-std::string profileFilePrefix("/home/jithinpt/cache_instrumentation/hyperdsl/published/SimpleVector/profile/profile_cpp_t_");
+std::string profileFilePrefix("/home/jithinpt/cache_instrumentation/hyperdsl/published/SimpleVector/profile/profile_t_");
 
 int64_t milliseconds(struct timeval t) {
   return (t.tv_sec * 1000000L + t.tv_usec) / 1000;
 }
 
-void InitDeliteCppTimer(int32_t numThreads) {
+void InitDeliteCppTimer(int32_t lowestCppTid, int32_t numCppThreads) {
   memoryAccessMaps = new std::vector< std::map< std::string, std::vector<PCMStats*>* >* >;
   arrayStartAddresses = new std::vector< std::vector<cpparray_layout_info>* >;
 
-  for (int32_t i = 0; i < numThreads; i++) {
+  for (int32_t i = lowestCppTid; i < (lowestCppTid + numCppThreads); i++) {
     memoryAccessMaps->push_back(new std::map< std::string, std::vector<PCMStats*>* >());
 	arrayStartAddresses->push_back(new std::vector<cpparray_layout_info>());	
 

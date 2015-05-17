@@ -18,7 +18,7 @@ trait CudaSyncProfiler extends CudaExecutableGenerator {
 
     val syncOpName = sync match {
       case s:Send => throw new RuntimeException("Only receiver is profiling the sync")
-      case r:Receive => "__sync-ExecutionThread-" + r.to.scheduledResource + "-" + getKernelName + "-" + r.sender.from.id + "-" + r.sender.from.scheduledResource
+      case r:Receive => "__sync-ExecutionThread" + r.to.scheduledResource + "-" + getKernelName + "-" + r.sender.from.id + "-" + r.sender.from.scheduledResource
     }
     if (Config.profile) out.append("DeliteCudaTimerStart(" + Targets.getRelativeLocation(location) + ",\"" + syncOpName + "\");\n")
     emitSync

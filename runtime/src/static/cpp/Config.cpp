@@ -73,21 +73,22 @@ void initializeConfig(int numThreads) {
   }
 }
 
-void initializeGlobal(int numThreads, size_t heapSize) {
+//void initializeGlobal(int numThreads, size_t heapSize) {
+void initializeGlobal(int lowestCppTid, int numCppThreads, size_t heapSize) {
   pthread_mutex_lock(&init_mtx); 
   if (!config) {
-    initializeConfig(numThreads);
-    resourceInfos = new resourceInfo_t[numThreads];
-    for (int i=0; i<numThreads; i++) {
+    initializeConfig(numCppThreads);
+    resourceInfos = new resourceInfo_t[numCppThreads];
+    for (int i=0; i<numCppThreads; i++) {
       resourceInfos[i].threadId = i;
-      resourceInfos[i].numThreads = numThreads;
+      resourceInfos[i].numThreads = numCppThreads;
       resourceInfos[i].socketId = config->threadToSocket(i);
       resourceInfos[i].numSockets = config->numSockets;
       resourceInfos[i].rand = new DeliteCppRandom(i);
     }
-    DeliteHeapInit(numThreads, heapSize);
-    initializeThreadPool(numThreads);
-    InitDeliteCppTimer(numThreads);
+    DeliteHeapInit(numCppThreads, heapSize);
+    initializeThreadPool(numCppThreads);
+    InitDeliteCppTimer(lowestCppTid, numCppThreads);
   }
 
   pcm = pcmInit();
@@ -109,8 +110,9 @@ void freeGlobal(int numThreads, int offset, JNIEnv *env) {
   pthread_mutex_unlock(&init_mtx);
 }
 
-void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize) {
-  initializeGlobal(numThreads, heapSize);
+//void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize) {
+void initializeAll(int threadId, int lowestCppTid, int numCppThreads, int numLiveThreads, size_t heapSize) {
+  initializeGlobal(lowestCppTid, numCppThreads, heapSize);
   initializeThread(threadId);
   delite_barrier(numLiveThreads); //ensure fully initialized before any continue
 }

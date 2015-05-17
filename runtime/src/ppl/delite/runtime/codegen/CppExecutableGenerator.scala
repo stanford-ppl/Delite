@@ -52,7 +52,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
     out.append("env" + location + " = jnienv;\n")
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
-    out.append("initializeAll(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + "," + numActiveCpps + "," + Config.cppHeapSize + "ULL);\n")
+    out.append("initializeAll(" + Targets.getRelativeLocation(location) + "," + Config.numThreads + "," + Config.numCpp + "," + numActiveCpps + "," + Config.cppHeapSize + "ULL);\n")
     out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
     out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
     writeJNIInitializer(locations)

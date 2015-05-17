@@ -13,6 +13,8 @@ import shutil
 import delitecommon
 from delitecommon import *
 
+import parse_perf_report
+
 def main():
     usage = "usage: %prog <application runner> [args] [options]"
     parser = OptionParser(usage)
@@ -163,10 +165,14 @@ def run(deg, params, opts):
         print "== with options: " + java_opts + "\n" 
 
     java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " ppl.delite.runtime.Delite " + deg + " " + ' '.join(params)
-    #print java_cmd
+    if opts.profile:
+		java_cmd = "perf record -W -d -e cpu/mem-loads/ppu -c 1000 " + java_cmd
+
     ecode = os.system(java_cmd)
     if ecode != 0:
         err("Delite execution failed")
+
+    os.system(DELITE_HOME + "/bin/parse_perf_report.py")
 
     if opts.jar_cache == True:
         scala_class_root = opts.codecache + os.sep + "scala" + os.sep + "classes" + os.sep + "jar"

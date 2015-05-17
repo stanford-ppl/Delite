@@ -9,22 +9,6 @@ import ppl.delite.runtime.graph.targets.Targets._
 import ppl.delite.runtime.Config
 
 trait CppSyncProfiler extends CppExecutableGenerator {
-  /*
-  protected def withProfile(s: Receive)(emitSync: => Unit) {
-    var syncOpName = ""
-    if (Config.profile) {
-      syncOpName = "__sync-ExecutionThread-" + s.to.scheduledResource + "-" + s.to.id + "-" + s.sender.from.id + "-" + s.sender.from.scheduledResource
-      out.append("DeliteCppTimerStart(" + Targets.getRelativeLocation(location) + ",\"" + syncOpName + "\");\n")
-      //out.append("DeliteCppTimerStart(" + Targets.getRelativeLocation(location) + ",\""+s.sender.from.id + "-" + s.to.id +"\");\n")
-    }
-    emitSync
-    if (Config.profile) {
-      //out.append("DeliteCppTimerStop(" + Targets.getRelativeLocation(location) + ",\""+s.sender.from.id + "-" + s.to.id +"\");\n")
-      out.append("DeliteCppTimerStop(" + Targets.getRelativeLocation(location) + ",\"" + syncOpName + "\");\n")
-    }
-  }
-  */
-
   protected def withProfile(r: Receive)(emitSync: => Unit) {
     def getKernelName: String = this match {
       case n:NestedGenerator => n.nested.id
@@ -33,7 +17,7 @@ trait CppSyncProfiler extends CppExecutableGenerator {
 
  	var syncOpName = ""
 	if (Config.profile) {
-	  syncOpName = "__sync-ExecutionThread-" + r.to.scheduledResource + "-" + getKernelName + "-" + r.sender.from.id + "-" + r.sender.from.scheduledResource
+	  syncOpName = "__sync-ExecutionThread" + r.to.scheduledResource + "-" + getKernelName + "-" + r.sender.from.id + "-" + r.sender.from.scheduledResource
 	  out.append("DeliteCppTimerStart(" + Targets.getRelativeLocation(location) + ",\"" + syncOpName + "\");\n")
     }
     emitSync
