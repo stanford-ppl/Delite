@@ -77,6 +77,15 @@ function getTopDNodesBasedOnGivenMetric( outputArr, metric ) {
 	return outputArr;
 }
 
+function getTopDNodesBasedOnMemMetric( outputArr, metric ) {
+	if ( outputArr == undefined ) {
+		var res = fetchMultipleElemsFromDB( "SELECT NAME, AVG(L2_CACHE_MISS_PCT) FROM KernelMemAccessStats ORDER BY L2_CACHE_MISS_PCT" );
+		outputArr = res.slice( 0, config.MAX_NUM_TOP_NODES );
+	}
+
+	return outputArr;
+}
+
 $("#globalStatsMetric").change(function() {
 	$("#generalInfo").hide();
 	$("#dfgHeader").show();
@@ -85,23 +94,25 @@ $("#globalStatsMetric").change(function() {
 	var metric = $(this).val();
 	if (metric == "performance") {
 		clearDivForBarChartDisplay();
-		createBarChart("#dfg", getTopDNodesBasedOnGivenMetric( topNodesBasedOnTime, "TOTAL_TIME" ), "TOTAL_TIME", getDisplayTextForTime, config);
+		var res = getTopDNodesBasedOnGivenMetric( topNodesBasedOnTime, "TOTAL_TIME" );
+		createBarChart("#dfg", res , "TOTAL_TIME", getDisplayTextForTime, config);
 	} else if (metric == "memUsage") {
 		clearDivForBarChartDisplay();
-		createBarChart("#dfg", getTopDNodesBasedOnGivenMetric( topNodesBasedOnMemUsage, "MEM_USAGE" ), "MEM_USAGE", getDisplayTextForMemUsage, config);
+		var res = getTopDNodesBasedOnGivenMetric( topNodesBasedOnMemUsage, "MEM_USAGE" );
+		createBarChart("#dfg", res, "MEM_USAGE", getDisplayTextForMemUsage, config);
 	} else if (metric == "l2CacheMissRatio") {
 		clearDivForBarChartDisplay();
-		createBarChart("#dfg", getTopDNodesBasedOnGivenMetric( topNodesBasedOnL2CacheMissPct, "L2_HIT_RATIO" ), 
-			"L2_HIT_RATIO", getDisplayTextForCacheMissRatio, config);
+		var res = getTopDNodesBasedOnGivenMetric( topNodesBasedOnL2CacheMissPct, "L2_CACHE_MISS_PCT" );
+		createBarChart("#dfg", res, "L2_CACHE_MISS_PCT", getDisplayTextForCacheMissRatio, config);
 	} else if (metric == "l3CacheMissRatio") {
 		clearDivForBarChartDisplay();
-		createBarChart("#dfg", getTopDNodesBasedOnGivenMetric( topNodesBasedOnL2CacheMissPct, "L3_HIT_RATIO" ), 
-			"L3_HIT_RATIO", getDisplayTextForCacheMissRatio, config);
+		var res = getTopDNodesBasedOnGivenMetric( topNodesBasedOnL3CacheMissPct, "L3_CACHE_MISS_PCT" );
+		createBarChart("#dfg", res, "L3_CACHE_MISS_PCT", getDisplayTextForCacheMissRatio, config);
 	} else if (metric == "threadLevelSyncStats") {
 		clearDivForBarChartDisplay();
 		createBarChart("#dfg", threadLevelSyncStats, "syncTimePct", getDisplayTextForThreadLevelSync, config);
-	} else if (metric == "ticTocRegionStats") {
-		displayOverallRegionsData();
+	//} else if (metric == "ticTocRegionStats") {
+	//	displayOverallRegionsData();
 	} else if (metric == "degView") {
 		$(".barChart").hide();
 		$("#dfg").css("overflow-y", "hidden");

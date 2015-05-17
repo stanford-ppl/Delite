@@ -563,9 +563,9 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 				  		" TOTAL_TIME_PCT REAL NOT NULL," +
 				  		" EXEC_TIME  	 INT  NOT NULL," +
 				  		" SYNC_TIME  	 INT  NOT NULL," +
-				  		" MEM_USAGE  	 INT  NOT NULL," +
-				  		" L2_CACHE_HIT_RATIO   REAL NOT NULL," +
-				  		" L3_CACHE_HIT_RATIO   REAL NOT NULL);\n" +
+				  		" MEM_USAGE  	 INT  NOT NULL);" +
+				  		//" L2_CACHE_HIT_RATIO   REAL NOT NULL," +
+				  		//" L3_CACHE_HIT_RATIO   REAL NOT NULL);\n" +
 				  " CREATE TABLE TicTocNodeSummaries " +
 				  		"(NAME TEXT PRIMARY KEY NOT NULL," +
 				  		" TOTAL_TIME INT  NOT NULL);\n" +
@@ -574,15 +574,15 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 				  		" NAME TEXT NOT NULL);\n" +
 				  " CREATE TABLE KernelMemAccessStats " +
 				  		"(NAME TEXT PRIMARY KEY NOT NULL," +
-				  		" THREAD_ID 	 	 INT  NOT NULL," +
+				  		//" THREAD_ID 	 	 INT  NOT NULL," +
 				  		" BYTES_READ_FROM_MC INT  NOT NULL," +
-				  		" L2_CACHE_HIT_RATIO 	 	 INT  NOT NULL," +
-				  		" L2_CACHE_MISSES 	 	 INT NOT NULL," +
-				  		" L3_CACHE_HIT_RATIO 	 	 INT  NOT NULL," +
-				  		" L3_CACHE_MISSES 	 	 INT NOT NULL);\n" +
-				  " CREATE TABLE KernelMemAllocStats " +
-				  		"(NAME TEXT PRIMARY KEY NOT NULL," +
-				  		" BYTES_ALLOCATED INT  NOT NULL);\n" +
+				  		" L2_CACHE_MISS_PCT  INT  NOT NULL," +
+				  		" L2_CACHE_MISSES 	 INT NOT NULL," +
+				  		" L3_CACHE_MISS_PCT  INT  NOT NULL," +
+				  		" L3_CACHE_MISSES 	 INT NOT NULL);\n" +
+				  //" CREATE TABLE KernelMemAllocStats " +
+				  //		"(NAME TEXT PRIMARY KEY NOT NULL," +
+				  //		" BYTES_ALLOCATED INT  NOT NULL);\n" +
 				  " CREATE TABLE ArrayCacheAccessStats" +
 				  		"(SOURCE_CONTEXT TEXT PRIMARY KEY NOT NULL," +
 				  		" L1_CACHE_HIT_PCT 	 	 INT  NOT NULL," +
@@ -734,6 +734,27 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 	def writeKernelMemAccessStatsToDB() {
 		if (threadCppCount > 0) {
 			var sql = "BEGIN TRANSACTION;"
+			val kernelToMemAccessStats = MemoryProfiler.aggregateMemAccessStats();
+
+			for (kv <- kernelToMemAccessStats) {
+				val kernel = kv._1
+				val stats = kv._2
+				sql += "INSERT INTO KernelMemAccessStats " +
+				"(NAME, BYTES_READ_FROM_MC, L2_CACHE_MISS_PCT, L2_CACHE_MISSES, L3_CACHE_MISS_PCT, L3_CACHE_MISSES) VALUES ('%s',%d,%d,%d,%d,%d,%d);\n".format( kernel, stats.bytesReadFromMC.toInt,
+							100 - Math.floor(stats.l2CacheHitRatio * 100).toInt, stats.l2CacheMisses, 
+				  			100 - Math.floor(stats.l3CacheHitRatio * 100).toInt, stats.l3CacheMisses)
+			}
+
+			sql += "COMMIT;"
+			Predef.println(sql)
+			dbStmt.executeUpdate(sql)
+		}
+	}
+
+	/*
+	def writeKernelMemAccessStatsToDB() {
+		if (threadCppCount > 0) {
+			var sql = "BEGIN TRANSACTION;"
 			val memAccessStats = MemoryProfiler.memoryAccessStatsMaps;
 
 			for (tid <- threadScalaCount to (threadScalaCount + threadCppCount - 1)) {
@@ -742,10 +763,10 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 					val kernel = kv._1
 					for (stats <- kv._2) {
 						sql += "INSERT INTO KernelMemAccessStats " +
-						"(NAME,THREAD_ID,BYTES_READ_FROM_MC,L2_CACHE_HIT_RATIO,L2_CACHE_MISSES,L3_CACHE_HIT_RATIO,L3_CACHE_MISSES) VALUES ('%s',%d,%d,%d,%d,%d,%d);\n".format(
+						"(NAME, THREAD_ID, BYTES_READ_FROM_MC, L2_CACHE_MISS_PCT, L2_CACHE_MISSES, L3_CACHE_MISS_PCT, L3_CACHE_MISSES) VALUES ('%s',%d,%d,%d,%d,%d,%d);\n".format(
 							kernel, tid, stats.bytesReadFromMC.toInt,
-							Math.floor(stats.l2CacheHitRatio * 100).toInt, stats.l2CacheMisses, 
-						  	Math.floor(stats.l3CacheHitRatio * 100).toInt, stats.l3CacheMisses)
+							100 - Math.floor(stats.l2CacheHitRatio * 100).toInt, stats.l2CacheMisses, 
+						  	100 - Math.floor(stats.l3CacheHitRatio * 100).toInt, stats.l3CacheMisses)
 					}
 				}
 			}
@@ -755,7 +776,9 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 			dbStmt.executeUpdate(sql)
 		}
 	}
+	*/
 
+	/*
 	def writeKernelMemAllocationStatsToDB() {
 		var sql = "BEGIN TRANSACTION;"
 		val stats = MemoryProfiler.aggregateMemAllocStatsFromAllThreads()
@@ -767,6 +790,7 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 		Predef.println(sql)
 		dbStmt.executeUpdate(sql)
 	}
+	*/
 
 	private def summary(n: Types.TNodeName): ExecutionSummary = {
 		if (!summaries.contains(n)) {

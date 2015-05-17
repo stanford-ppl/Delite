@@ -21,7 +21,8 @@ object MemoryProfiler
   	var stats = new ArrayBuffer[Map[String, List[Long]]]()
   	var threadToCurrKernel = new ArrayBuffer[Stack[String]]()
   	var threadToId: Map[String, Int] = Map()
-	var memoryAccessStatsMaps = new ArrayBuffer[Map[String, ArrayBuffer[MemoryAccessStats]]]()
+	//var memoryAccessStatsMaps = new ArrayBuffer[Map[String, ArrayBuffer[MemoryAccessStats]]]()
+	var kernelToMemAccessStats = Map[String, ArrayBuffer[MemoryAccessStats]]()
 
 	var cppTidStart = -1
 	var numCppThreads = 0
@@ -48,7 +49,7 @@ object MemoryProfiler
 		  threadToId += threadName -> i
 		  stats += Map[String, List[Long]]()
 		  threadToCurrKernel += new Stack[String]()
-		  memoryAccessStatsMaps += Map[String, ArrayBuffer[MemoryAccessStats]]() 
+		  //memoryAccessStatsMaps += Map[String, ArrayBuffer[MemoryAccessStats]]() 
 		}
 
 		threadToId += "main" -> numThreads
@@ -56,6 +57,21 @@ object MemoryProfiler
 		threadToCurrKernel += new Stack[String]()
 	}
 
+	def addMemoryAccessStats(
+        sourceContext: String, threadId: Int,
+        l2CacheHitRatio: Double, l2CacheMisses: Int,
+        l3CacheHitRatio: Double, l3CacheMisses: Int,
+        bytesReadFromMC: Double): Unit = {
+      val stats = new MemoryAccessStats( l2CacheHitRatio, l2CacheMisses, l3CacheHitRatio, l3CacheMisses, bytesReadFromMC )
+      if ( !kernelToMemAccessStats.contains( sourceContext ) ) {
+		kernelToMemAccessStats += sourceContext -> new ArrayBuffer[MemoryAccessStats]()
+	  }
+
+	  //kernelToMemAccessStats(sourceContext) += stats
+	  kernelToMemAccessStats( sourceContext ).append( stats )
+    }
+
+	/*
 	def addMemoryAccessStats(
         sourceContext: String, threadId: Int,
         l2CacheHitRatio: Double, l2CacheMisses: Int,
@@ -70,12 +86,14 @@ object MemoryProfiler
 
 	  memoryAccessStatsMaps(threadId)(sourceContext) += stats
     }
+    */
 
 	def clearAll() {
 		stats.clear()
 		threadToCurrKernel.clear()
 		threadToId = Map()
-		memoryAccessStatsMaps = new ArrayBuffer[Map[String, ArrayBuffer[MemoryAccessStats]]]()
+		//memoryAccessStatsMaps = new ArrayBuffer[Map[String, ArrayBuffer[MemoryAccessStats]]]()
+		kernelToMemAccessStats = Map[String, ArrayBuffer[MemoryAccessStats]]()
 		initializeStats(numScalaThreads, numCppThreads, numCudaThreads, numOpenCLThreads)
 	}
 
@@ -123,86 +141,6 @@ object MemoryProfiler
   		return "null"
   	}
 
-  	//def dumpProfile(writer: PrintWriter, prefixSpace: String) {
-  		//emitMemProfileDataArrays( writer, prefixSpace )
-		//emitMemAccessStats( writer, prefixSpace )
-  	//}
-
-  	/*
-	def emitMemProfileDataArrays(writer: PrintWriter, prefixSpace: String) {
-		var aggrStats = aggregateStatsFromAllThreads()
-		
-		val pre1 = prefixSpace + PostProcessor.tabs
-  		writer.println(prefixSpace + "\"MemProfile\": {")
-  		for (kv <- aggrStats) {
-  			val totalMemAllocation = sum(kv._2)
-  			writer.println(pre1 + "\"" + kv._1 + "\" : " + totalMemAllocation + ",")
-  		}
-
-  		writer.println(pre1 + "\"dummy\": 0")
-  		writer.println(prefixSpace + "},\n")
-  	}
-
-	def emitMemAccessStats( writer: PrintWriter, prefixSpace: String ) {
-		if (numCppThreads > 0) {
-			val pre1 = prefixSpace + PostProcessor.tabs
-			val pre2 = pre1 + PostProcessor.tabs
-			val cppTids = List.range(cppTidStart, cppTidStart + numCppThreads)
-			val kernelToStats = memoryAccessStatsMaps(cppTidStart)
-
-			writer.println( prefixSpace + "\"MemAccessStats\": {" )
-			var firstKernel = true
-			for (kv <- kernelToStats) {
-				val kernel = kv._1
-				val statsLst = kv._2
-
-				writer.println(pre1 + "\"" + kernel  + "\": {")	
-
-				for (i <- List.range(0, statsLst.length)) {
-					val s = cppTids.map(tid => {
-						val stats = memoryAccessStatsMaps(tid)(kernel)(i)
-						"[" + tid + ", " +
-							(stats.l2CacheHitRatio * 100).toInt + ", " + stats.l2CacheMisses + ", " + 
-							(stats.l3CacheHitRatio * 100).toInt + ", " + stats.l3CacheMisses + ", " +
-							stats.bytesReadFromMC + "]"
-					}).mkString(",")
-
-					if (i > 0) {
-						writer.println(",")
-					} 
-
-					writer.print(pre2 + "\"" + i + "\"" + ": [" + s + "]")
-				}	
-
-				writer.println("\n" + pre1 + "},")		
-			}
-
-			writer.println(pre1 + "\"dummy\": {}")
-			
-			writer.println( prefixSpace + "}," )
-		}
-	}
-	
-
-	def aggregateStatsFromAllThreads(): Map[String, List[Long]] = {
-		var aggrStats = Map[String, List[Long]]()
-		for (m <- stats) {
-			for (kv <- m) {
-				var kernel = kv._1
-				if (!aggrStats.contains(kernel)) {
-					aggrStats += kernel -> List[Long]()
-				}
-
-				var memAllocation = kv._2
-				val current = aggrStats(kernel) ::: memAllocation
-				aggrStats += kernel -> current
-			}
-		}
-
-		return aggrStats
-	}
-	*/
-
 	def aggregateMemAllocStatsFromAllThreads(): Map[String, Long] = {
 		var aggrStats = Map[String, Long]()
 		for (m <- stats) {
@@ -215,6 +153,29 @@ object MemoryProfiler
 
 		return aggrStats
 	}
+
+	def aggregateMemAccessStats() : Map[String, MemoryAccessStats] = {
+		var res = Map[String, MemoryAccessStats]()
+		kernelToMemAccessStats.foreach( kv => {
+			val aggrStats = new MemoryAccessStats(0,0,0,0,0)
+			for (s <- kv._2) {
+				aggrStats.l2CacheHitRatio += s.l2CacheHitRatio
+				aggrStats.l2CacheMisses += s.l2CacheMisses
+				aggrStats.l3CacheHitRatio += s.l3CacheHitRatio
+				aggrStats.l3CacheMisses += s.l3CacheMisses
+			}
+
+			val len = kv._2.length
+			aggrStats.l2CacheHitRatio /= len
+			aggrStats.l2CacheMisses /= len
+			aggrStats.l3CacheHitRatio /= len
+			aggrStats.l3CacheMisses /= len
+			
+			res += kv._1 -> aggrStats
+		} )
+
+		res
+	} 
 
   	def sizeOf(elemType: String) = elemType match {
   		case "boolean" | "byte" => 8
