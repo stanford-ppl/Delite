@@ -435,6 +435,7 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 		parseThreadSpecificProfileDataFiles( fileNamePrefix )
 		parseTicTocRegionsDataFile( fileNamePrefix )
 		updateTimeTakenByPartitionedKernels()
+		updateMemUsageDataOfDNodes()
 	}
 
 	//TODO: Rename this method
@@ -831,10 +832,10 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 	}
 
 	private def updateMemUsageDataOfDNodes() {
-		val aggrMemUsageStats = MemoryProfiler.aggregateStatsFromAllThreads()
+		val aggrMemUsageStats = MemoryProfiler.aggregateMemAllocStatsFromAllThreads()
 		for (kv <- aggrMemUsageStats) {
 			val tNodeName = kv._1
-  			val totalMemUsage = kv._2.sum
+  			val totalMemUsage = kv._2
   			memUsageIs(tNodeName, totalMemUsage)
 
   			val pn = ExecutionProfile.parentLoopKernelName(tNodeName)
@@ -846,7 +847,6 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 	}
 
 	private def memUsageIs(tNodeName: String, mu: Long) {
-		//val s = executionSummary(tNodeName)
 		val s = summary(tNodeName)
 		s.memUsage = mu
 	}

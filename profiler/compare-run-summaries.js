@@ -3,6 +3,18 @@ var runSummariesChart = "#compareRunSummariesDiv";
 var uploadRunSummariesBtnId = "#_uploadRunSummariesBtn";
 var initializeViewsBtnId = "#initializeViewsBtn";
 
+var xSeries = [];
+
+var dataSeriesColls = {
+	"TOTAL_TIME" : {},
+	"MEM_USAGE"  : {}
+};
+
+var yAxisLabels = {
+	"TOTAL_TIME" : "Time (ms)",
+	"MEM_USAGE"	 : "Memory Allocated (B)"
+};
+
 $(uploadRunSummariesBtnId).on("change", readExecutionProfiles);
 $(initializeViewsBtnId).on("click", initializeViews);
 $("#compareRunSummariesMetricOptions").change(function() {
@@ -17,10 +29,9 @@ $('#compareSummariesOfKernelTxtBx').keyup(function(event){
 });
 
 $("#compareKernelSummariesMetricOptions").change(function() {
-	displaySummariesOfKernel($(this).val());
+	displaySummariesOfKernel("");
 });
 
-//var threadCountToExecutionProfile = {};
 var threadCountToProfileDB = {};
 var fileToProcessingDone = {};
 var kernelSummariesDisplayed = {};
@@ -36,73 +47,6 @@ function enableViewDataBtnIfAllProcDone() {
 	$("#initializeViewsBtn")[0].disabled = false;
 }
 
-/*
-function readExecutionProfiles(evt) {
-	threadCountToExecutionProfile = {};
-	var files = evt.target.files;
-	if (files.length > 0) {
-		for (var i = 0; i < files.length; i++) {
-			var reader = new FileReader();
-			var file = files[i];
-			reader.onload = (function(currFile) {
-				var fileName = file.name;
-
-				return function(e) {
-					var data = JSON.parse(e.target.result);
-					var executionProfile = getExecutionProfile(data.Profile, profData.dependencyData, config);
-					executionProfile.fileName = e.name;
-					var numThreads = executionProfile.numThreads;
-					if (!(numThreads in threadCountToExecutionProfile)) {
-						threadCountToExecutionProfile[numThreads] = executionProfile;
-						fileToProcessingDone[fileName] = true;
-						enableViewDataBtnIfAllProcDone();
-				}
-			}})(file);
-
-			fileToProcessingDone[file.name] = false;
-			$("#initializeViewsBtn")[0].disabled = true;
-			reader.readAsText(file);
-		}
-	}
-}
-
-function initializeViews(evt) {
-	var metric = $("#compareRunSummariesMetricOptions").val();
-	var xSeries = [];
-	var dataSeries = {};
-	var xScale = getCommmonXScaleForTimelineComp(threadCountToExecutionProfile);
-	var numExecProfiles = 0;
-
-	for (var n in threadCountToExecutionProfile) {
-		numExecProfiles++;
-		xSeries.push(n);
-		executionProfile = threadCountToExecutionProfile[n];
-		for (var i in executionProfile.ticTocRegions) {
-			var region = executionProfile.ticTocRegions[i];
-			var absTime = 0;
-			if (metric == "totalTime") {
-				absTime = region.totalTime.abs;
-			} else if (metric == "execTime") {
-				absTime = region.execTimeStats[0].abs; //TODO: Instead of always displaying stats for thread 0, we need to have a thread-selection option
-			} else if (metric == "syncTime") {
-				absTime = region.syncTimeStats[0].abs;
-			}
-
-			addToMap(dataSeries, region.name, absTime);
-		}
-
-		displayTimelineView(executionProfile, cloneXScale(xScale));
-	}
-
-	var idSelectorForLastTimeline = toIdSelector(TIMELINE_CONTAINER_ID_PREFIX + "-" + numExecProfiles);
-	$(idSelectorForLastTimeline).css("overflow-x", "auto");
-	setUpSyncScrollingForTimelines(numExecProfiles);
-
-	createLineChart(runSummariesChart, xSeries, dataSeries, "Number of Threads", "Time (ms)");
-	displaySummariesOfKernel("");
-}
-*/
-
 function readExecutionProfiles(evt) {
 	var files = evt.target.files;
 	if (files.length > 0) {
@@ -114,7 +58,6 @@ function readExecutionProfiles(evt) {
 				var fileName = file.name;
 
 				return function(e) {
-					//var Uints = new Uint8Array(reader.result);
 					var Uints = new Uint8Array(e.target.result);
 					var db = new ProfileDB( new SQL.Database(Uints) );
 					var tc = db.threadCount();
@@ -132,9 +75,7 @@ function readExecutionProfiles(evt) {
 
 function initializeViews( evt ) {
 	var metric = $("#compareRunSummariesMetricOptions").val();
-	var xSeries = [];
 	var dataSeries = {};
-	//var xScale = getCommmonXScaleForTimelineComp( threadCountToProfileDB );
 	var numExecProfiles = 0;
 
 	for ( var n in threadCountToProfileDB ) {
@@ -146,16 +87,9 @@ function initializeViews( evt ) {
 			var s = summaries[i];
 			addToMap( dataSeries, s.NAME, s.TOTAL_TIME );
 		}
-
-		//displayTimelineView(executionProfile, cloneXScale(xScale));
 	}
 
-	//var idSelectorForLastTimeline = toIdSelector(TIMELINE_CONTAINER_ID_PREFIX + "-" + numExecProfiles);
-	//$(idSelectorForLastTimeline).css("overflow-x", "auto");
-	//setUpSyncScrollingForTimelines(numExecProfiles);
-
 	createLineChart( runSummariesChart, xSeries, dataSeries, "Number of Threads", "Time (ms)" );
-	//displaySummariesOfKernel("");
 }
 
 function setUpSyncScrollingForTimelines(numTimelines) {
@@ -202,60 +136,29 @@ function createLineChart(parentDivIdSelector, xSeries, dataSeries, xAxisLabel, y
 }
 
 function displaySummariesOfKernel( kernel ) {
+	function getOrElse(s, m) {
+		var tmp = s[m];
+		return (tmp != undefined) ? tmp : 0;
+	}
+
 	var metric = $("#compareKernelSummariesMetricOptions").val();
-	var xSeries = [];
-	var dataSeries = {};
+	var dataSeries = dataSeriesColls[metric];
 
-	if ( !(kernel in kernelSummariesDisplayed) ) {
-		kernelSummariesDisplayed[kernel] = [];
-	}
-
-	for ( var n in threadCountToProfileDB ) {
-		xSeries.push(n);
-		var db = threadCountToProfileDB[n];
-		for ( var k in kernelSummariesDisplayed ) {
-			var s = db.dbExecutionSummaryByName(k);
-			var absTime = ( s.TOTAL_TIME != undefined ) ? s.TOTAL_TIME : 0;
-			addToMap( dataSeries, k, absTime );
-		}
-	}
-
-	createLineChart( kernelSummariesChart, xSeries, dataSeries, "Number of Threads", "Time (ms)" );
-}
-
-/*
-function displaySummariesOfKernel(kernel) {
-	var metric = $("#compareKernelSummariesMetricOptions").val();
-	var xSeries = [];
-	var dataSeries = {};
-
-	if (!(kernel in kernelSummariesDisplayed)) {
-		kernelSummariesDisplayed[kernel] = [];
-	}
-
-	for (var n in threadCountToExecutionProfile) {
-		xSeries.push(n);
-		executionProfile = threadCountToExecutionProfile[n];
-		for (var k in kernelSummariesDisplayed) {
-			var summary = executionProfile.nodeNameToSummary[k];
-			if (summary) {
-				var absTime = 0;
-				if (metric == "totalTime") {
-					absTime = summary.totalTime.abs;
-				} else if (metric == "execTime") {
-					absTime = summary.execTime.abs;
-				} else if (metric == "syncTime") {
-					absTime = summary.syncTime.abs;
-				}
-
-				addToMap(dataSeries, k, absTime);
+	if (kernel != "") {
+		if ( !(kernel in kernelSummariesDisplayed) ) {
+			kernelSummariesDisplayed[kernel] = [];
+		
+			for ( var n in threadCountToProfileDB ) {
+				var db = threadCountToProfileDB[n];
+				var s = db.dbExecutionSummaryByName( kernel );
+				addToMap( dataSeriesColls["TOTAL_TIME"], kernel, getOrElse( s, "TOTAL_TIME") );
+				addToMap( dataSeriesColls["MEM_USAGE"], kernel, getOrElse( s, "MEM_USAGE") );
 			}
 		}
 	}
 
-	createLineChart(kernelSummariesChart, xSeries, dataSeries, "Number of Threads", "Time (ms)");
+	createLineChart( kernelSummariesChart, xSeries, dataSeries, "Number of Threads", yAxisLabels[metric] );
 }
-*/
 
 function displayTimelineView(executionProfile, xScale) {
 	createHeaderDiv(divId, containerDivId);

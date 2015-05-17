@@ -182,7 +182,7 @@ object MemoryProfiler
 			writer.println( prefixSpace + "}," )
 		}
 	}
-	*/
+	
 
 	def aggregateStatsFromAllThreads(): Map[String, List[Long]] = {
 		var aggrStats = Map[String, List[Long]]()
@@ -201,6 +201,7 @@ object MemoryProfiler
 
 		return aggrStats
 	}
+	*/
 
 	def aggregateMemAllocStatsFromAllThreads(): Map[String, Long] = {
 		var aggrStats = Map[String, Long]()

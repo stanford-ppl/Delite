@@ -4,7 +4,7 @@ package profiler
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import java.lang.management.ManagementFactory
-
+import tools.nsc.io.Path
 
 //front-facing interface to activate all profiling tools
 object Profiling {
@@ -15,6 +15,7 @@ object Profiling {
   def init(graph: DeliteTaskGraph) {
     Profiler.init(graph)
     val totalResources = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL
+    Path(Config.profileOutputDirectory).createDirectory()
     PerformanceTimer.initializeStats(totalResources)
     MemoryProfiler.initializeStats(Config.numThreads, Config.numCpp, Config.numCuda, Config.numOpenCL)
   }

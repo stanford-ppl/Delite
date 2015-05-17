@@ -32,7 +32,8 @@ config.dNodeInfoTable = $("#kernelInfoTable")[0];
 config.enableNodeClickHandler = true; // for bar-charts.
 config.TNODE_TYPE_SYNC = 2;
 
-config.syncNodeRegex = /__sync-ExecutionThread-(\d+)-(.*)-(.*)-(\d+)$/;
+//config.syncNodeRegex = /__sync-ExecutionThread-(\d+)-(.*)-(.*)-(\d+)$/;
+config.syncNodeRegex = /__sync-ExecutionThread(\d+)-(.*)-(.*)-(\d+)$/;
 config.re_partition = /^(.*)_(\d+)$/;
 config.re_header = /^(.*)_h$/;
 
