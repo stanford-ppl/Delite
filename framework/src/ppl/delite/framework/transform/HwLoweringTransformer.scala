@@ -65,23 +65,38 @@ trait HwLoweringTransformer extends WorklistTransformer {
   override def runOnce[A:Manifest](s: Block[A]): Block[A] = {
     var res = s
 
-    val analyzer = new HwLoweringAnalysis { val IR: HwLoweringTransformer.this.IR.type = HwLoweringTransformer.this.IR}
-    analyzer.run(s)
-//    sys.exit(0) 
+//    val analyzer = new HwLoweringAnalysis { val IR: HwLoweringTransformer.this.IR.type = HwLoweringTransformer.this.IR}
+//    analyzer.run(s)
     res = super.runOnce(s)
     res
+  }
+
+  private def handleZeroBlock[A:Manifest](zeroBlock: Block[A]) = {
+    // For scalar accumulators, result of the block is just a constant
+    // If this is the case, reflect a FF, create a block and
+    // return that
+    val blkres = getBlockResult(zeroBlock)
+    blkres match {
+      case Const(x) =>
+        // Create flip-flop, create a block with that
+        val ffdef = gen_ff()
+        val ffNode = reflectPure(ffdef)
+        Block(ffNode)
+      case _ =>
+        super.transformBlock(zeroBlock)
+    }
   }
 
   override def transformBlock[A:Manifest](b: Block[A]) = {
     curBlock = b
     var res = b
-    if (funcBlocks.contains(b)) {
-      val sched = buildScheduleForResult(getBlockResult(b))
-      println(s"Printing schedule for func block $b")
-      sched.map(s => println(s))
-    }
+//    res = super.transformBlock(b)
     if (!noshowBlocks.contains(b)) {
-      res = super.transformBlock(b)
+      if (zeroBlocks.contains(b)) {
+        res = handleZeroBlock(b)
+      } else {
+        res = super.transformBlock(b)
+      }
     }
     res
   }
@@ -174,7 +189,7 @@ trait HwLoweringTransformer extends WorklistTransformer {
     println(s"$b.res = ${b.res}")
   }
 
-  def processBodyElem(s: Sym[Any], loop: AbstractLoop[Any]): HwLoop = {
+  def processBodyElem(s: Sym[Any], loop: AbstractLoop[Any]): Def[Any] = {
     val body = loop.body
     body match {
       case oldbod@DeliteCollectElem(func,cond,par,buf,iFunc,iF,sF,eF,numDynamicChunks) =>
@@ -208,8 +223,29 @@ trait HwLoweringTransformer extends WorklistTransformer {
         newloopnode
 
       case DeliteReduceElem(func,cond,zero,accInit,rV,rFunc,stripFirst,numDynamicChunks) =>
-        // To be done
-        HwLoop(Const(0), fresh[Int], Block(fresh[Int]))
+        // Substitution rules for bounds symbols:
+        // 0. val accumulator = getBlockResult(transformBlock(zero))
+        // 1. rV._1 => getBlockResult(func)
+        // 2. rv._2 => accumulator
+        zeroBlocks += zero
+        val accumBlk = transformBlock(zero)
+        val accumulator = getBlockResult(accumBlk)
+
+        // Transform the func block
+        val newfuncBlk = transformBlock(func)
+
+        subst += (rV._1) -> getBlockResult(newfuncBlk)
+        subst += (rV._2) -> this(accumulator)
+
+        val newrFuncBlk = this(rFunc)
+        val resFF = reflectPure(gen_ff_alias(orig = accumulator.asInstanceOf[Sym[Any]], din = getBlockResult(newrFuncBlk)))
+
+        if (!loop.size.isInstanceOf[Const[Int]]) {
+          throw new Exception("Loop size not const")
+        }
+
+        val newloopnode = HwLoop(loop.size.asInstanceOf[Const[Int]], loop.v, Block(resFF))
+        newloopnode
 
       case DeliteForeachElem(func, _) =>
         // To be done
@@ -294,13 +330,21 @@ trait HwLoweringTransformExp extends DeliteApplication {
       val mirrorVal = e match {
        case Reflect(node, summary, d) if node.isInstanceOf[HwLoop] =>
            val hwloopNode = node.asInstanceOf[HwLoop]
-//           reflectMirrored(Reflect(HwLoop(hwloopNode.size, hwloopNode.iter, f(hwloopNode.body)), mapOver(f,summary), f(d)))(mtype(manifest[A]), ctx)
            reflectMirrored(Reflect(HwLoop(hwloopNode.size, hwloopNode.iter, f(hwloopNode.body)), mapOver(f,summary), f(d)))(mtype(manifest[A]), ctx)
         case HwLoop(size, iter, body) =>
           reflectPure(HwLoop(size, iter, f(body)))
 
         case BRAM(id, size, wordlen, banks, bankMapping, rports, wports) =>
          reflectPure(gen_bram(size, wordlen, banks, bankMapping, rports, wports))
+
+       case FF(bitwidth, in) =>
+          println(s"Trying to mirror $e")
+          val newe = gen_ff(f(in), bitwidth)
+          println(s"Mirrored: $newe")
+         reflectPure(newe)
+
+       case FFAlias(orig, din) =>
+         reflectPure(gen_ff_alias(f(orig).asInstanceOf[Sym[Any]], f(din)))
 
        case Reflect(node, summary, d) if node.isInstanceOf[HwDummy] =>
            val hwdummyNode = node.asInstanceOf[HwDummy]

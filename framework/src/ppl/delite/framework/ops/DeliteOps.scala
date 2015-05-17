@@ -84,12 +84,22 @@ trait HwOpsExp extends DeliteOpsExp {
     override val word = wordLen
   }
 
-  case class FF(sym: Sym[Any])(
-    bitwidth: Int
+  case class FF(
+    bitwidth: Int,
+    din: Exp[Any]
   ) extends MemHw {
     override val word = bitwidth
-    override def toString = s"""FF($sym)(bitwidth: $bitwidth)"""
+    override def toString = s"""FF(din: $din, bitwidth: $bitwidth)"""
   }
+
+  case class FFAlias(
+    orig: Sym[Any],
+    din: Exp[Any]
+  ) extends MemHw {
+    override val word = 0
+    override def toString = s"""FFAlias(orig: $orig, din: $din)"""
+  }
+
 
   case class FFArray(sym: Sym[Any])(
     size: Int,
@@ -135,6 +145,14 @@ trait HwOpsExp extends DeliteOpsExp {
     hwNodeId += 1
     BRAM(hwNodeId, size, bitwidth, banks, bankmapping, rports, wports)
   }
+
+  def gen_ff(in: Exp[Any] = fresh[Any], bitwidth: Int = 32) = {
+    FF(bitwidth, in)
+  }
+
+  def gen_ff_alias(orig: Sym[Any], din: Exp[Any]) = {
+    FFAlias(orig, din)
+  }
 //  def gen_fifo
 //  def gen_cam
 //  def gen_ff
@@ -154,6 +172,12 @@ trait HwOpsExp extends DeliteOpsExp {
     }
   }
   def gen_hwdummy(deps: Exp[Any]*) = reflectPure(HwDummy(deps:_*))
+
+  override def boundSyms(e: Any): List[Sym[Any]] = e match {
+    case HwLoop(size, iter, body) => syms(iter) ++ boundSyms(body)
+    case _ => super.boundSyms(e)
+  }
+
 }
 
 
