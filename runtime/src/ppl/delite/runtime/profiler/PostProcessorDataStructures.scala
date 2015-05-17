@@ -401,10 +401,7 @@ object ExecutionProfile {
 	}
 }
 
-class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) {
-	val rawProfileDataFile: String = _rawProfileDataFile
-	val depGraph: DependencyGraph = _depGraph
-
+class ExecutionProfile(val depGraph: DependencyGraph) {
 	val threadScalaCount: Int = Config.numThreads
 	val threadCppCount: Int = Config.numCpp
 	val threadCudaCount: Int = Config.numCuda
@@ -416,11 +413,10 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 	val targetsEnabled = ExecutionProfile.computeTargetsEnabled() // order of bits -> 0: scala, 1:cpp, 2:cuda
 	val summaries = new HashMap[Types.TNodeName, ExecutionSummary] // TrieMap is the thread-safe version of HashMap
 	val ticTocNodeSummaries = new HashMap[Types.TicTocNodeName, TicTocNodeSummary]
-	val timelineData = new TimelineData(_depGraph.levelMax)
+	val timelineData = new TimelineData(depGraph.levelMax)
 	val ticTocTNodes = new ArrayBuffer[TicTocTNode]
 	val threadTNodes = new ArrayBuffer[ThreadTNode]
 
-	//private val dbPath = Config.profileOutputDirectory + "/profile.db"
 	private val dbPath = Config.profileOutputDirectory + "/" + PostProcessor.profileDBFileName
 	Path(dbPath).deleteIfExists()
 
@@ -428,7 +424,7 @@ class ExecutionProfile(_rawProfileDataFile: String, _depGraph: DependencyGraph) 
 	private val dbStmt: Statement = dbConn.createStatement()
 
 	def init() {
-		ExecutionProfile.depGraph = _depGraph
+		ExecutionProfile.depGraph = depGraph
 		initDB()
 
 		val fileNamePrefix = Config.profileOutputDirectory + "/profile_t_"

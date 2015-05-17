@@ -23,17 +23,17 @@ object PostProcessor {
     	DependencyGraph.dependencyGraphNew(degFile)
 	}
 
-	def processRawProfileDataFile(profileDataFile: String, depGraph: DependencyGraph): ExecutionProfile = {
-		val executionProfile: ExecutionProfile = new ExecutionProfile(profileDataFile, depGraph)
+	def processRawProfileDataFile(depGraph: DependencyGraph): ExecutionProfile = {
+		val executionProfile: ExecutionProfile = new ExecutionProfile(depGraph)
 		executionProfile.init()
 
 		executionProfile
 	}
 
-	def postProcessProfileData(globalStartNanos: Long, degFile: String, rawProfileDataFile: String) {
+	def postProcessProfileData(globalStartNanos: Long, degFile: String) {
 		val depGraph = processDegFile(degFile)
 		depGraph.string()
-		val executionProfile = processRawProfileDataFile(rawProfileDataFile, depGraph)
+		val executionProfile = processRawProfileDataFile(depGraph)
 
 		executionProfile.writeDNodesToDB()
 		executionProfile.writeExecutionSummariesToDB()

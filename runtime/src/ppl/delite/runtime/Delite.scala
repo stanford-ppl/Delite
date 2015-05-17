@@ -58,6 +58,7 @@ object Delite {
     printArgs(args)
     printConfig()
 
+    Config.degFilePath = args(0)
     walkAndRun(args(0), List(args.drop(1)), staticData)
   }
 

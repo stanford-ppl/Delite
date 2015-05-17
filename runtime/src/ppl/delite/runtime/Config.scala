@@ -73,6 +73,7 @@ object Config {
 
 
   var degFilename = System.getProperty("delite.deg.filename", "out.deg")
+  var degFilePath = ""
 
   /**
    * DEG specific, set after its parsed

@@ -37,11 +37,10 @@ object Profiling {
     if (Config.dumpProfile) SamplerThread.stop()
     PerformanceTimer.stop("all", false)
     PerformanceTimer.printStatsForNonKernelComps()
-    //if (Config.dumpProfile) Profiler.dumpProfile(globalStartNanos, jvmUpTime)  
     if (Config.dumpProfile) PerformanceTimer.stop()  
     if (Config.dumpStats) PerformanceTimer.dumpStats()   
 
-    PostProcessor.postProcessProfileData(globalStartNanos, "/Users/jithinpt/Documents/Acads/Rotation_with_Kunle/check-in/hyperdsl/published/SimpleVector/HelloSimpleCompiler.deg", "dummy")
+    PostProcessor.postProcessProfileData(globalStartNanos, Config.degFilePath)
   }
 
 }
