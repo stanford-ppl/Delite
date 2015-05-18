@@ -737,7 +737,7 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 			val kernelToMemAccessStats = MemoryProfiler.aggregateMemAccessStats();
 
 			for (kv <- kernelToMemAccessStats) {
-				val kernel = kv._1
+				val kernel = kv._1.split("/").last
 				val stats = kv._2
 				sql += "INSERT INTO KernelMemAccessStats " +
 				"(NAME, BYTES_READ_FROM_MC, L2_CACHE_MISS_PCT, L2_CACHE_MISSES, L3_CACHE_MISS_PCT, L3_CACHE_MISSES) VALUES ('%s',%d,%d,%d,%d,%d);\n".format( kernel, stats.bytesReadFromMC.toInt,
