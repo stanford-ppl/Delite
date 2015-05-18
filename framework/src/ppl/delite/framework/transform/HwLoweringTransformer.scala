@@ -55,6 +55,8 @@ trait HwLoweringTransformer extends WorklistTransformer {
   var syncInfoPhase = false
   var stitchPhase = false
 
+  val loopToMem = Map[Exp[Any], Exp[Any]]()
+
   private def getdef(sym: Sym[Any]) = {
     sym match {
       case Def(d) => d
@@ -189,7 +191,7 @@ trait HwLoweringTransformer extends WorklistTransformer {
     println(s"$b.res = ${b.res}")
   }
 
-  def processBodyElem(s: Sym[Any], loop: AbstractLoop[Any]): Def[Any] = {
+  def processBodyElem(s: Sym[Any], loop: AbstractLoop[Any]): (Def[Any], Exp[Any]) = {
     val body = loop.body
     body match {
       case oldbod@DeliteCollectElem(func,cond,par,buf,iFunc,iF,sF,eF,numDynamicChunks) =>
@@ -207,8 +209,9 @@ trait HwLoweringTransformer extends WorklistTransformer {
         // Created the mirrored loop body,
         // then use that to join to the update block
         val mirroredFunc = transformBlock(func)
+        val allocExp = this(getBlockResult(newallocBlk))
         subst += (buf.eV) -> this(getBlockResult(mirroredFunc))   // Connecting update -> func block
-        subst += (buf.allocVal) -> this(getBlockResult(newallocBlk))  // Connecting update -> alloc block
+        subst += (buf.allocVal) -> allocExp  // Connecting update -> alloc block
 
         // Finally, the new loop body is the update block
         // Everything has been joined into this one
@@ -220,7 +223,7 @@ trait HwLoweringTransformer extends WorklistTransformer {
 
         // Create a new "hardware loop" - for lack of a better name
         val newloopnode = HwLoop(loop.size.asInstanceOf[Const[Int]], loop.v, Block(getBlockResult(newfuncBlk)))
-        newloopnode
+        (newloopnode, allocExp)
 
       case DeliteReduceElem(func,cond,zero,accInit,rV,rFunc,stripFirst,numDynamicChunks) =>
         // Substitution rules for bounds symbols:
@@ -235,7 +238,7 @@ trait HwLoweringTransformer extends WorklistTransformer {
         val newfuncBlk = transformBlock(func)
 
         subst += (rV._1) -> getBlockResult(newfuncBlk)
-        subst += (rV._2) -> this(accumulator)
+        subst += (rV._2) -> (accumulator)
 
         val newrFuncBlk = this(rFunc)
         val resFF = reflectPure(gen_ff_alias(orig = accumulator.asInstanceOf[Sym[Any]], din = getBlockResult(newrFuncBlk)))
@@ -245,15 +248,15 @@ trait HwLoweringTransformer extends WorklistTransformer {
         }
 
         val newloopnode = HwLoop(loop.size.asInstanceOf[Const[Int]], loop.v, Block(resFF))
-        newloopnode
+        (newloopnode, accumulator)
 
       case DeliteForeachElem(func, _) =>
         // To be done
-        HwLoop(Const(0), fresh[Int], Block(fresh[Int]))
+        (HwLoop(Const(0), fresh[Int], Block(fresh[Int])), fresh[Any])
 
       case _ =>
         // To be done
-        HwLoop(Const(0), fresh[Int], Block(fresh[Int]))
+        (HwLoop(Const(0), fresh[Int], Block(fresh[Int])), fresh[Any])
     }
   }
 
@@ -275,9 +278,22 @@ trait HwLoweringTransformer extends WorklistTransformer {
       case DeliteArrayNew(length:Const[Int],_,_) =>
         gen_bram(length.x)
       case DeliteArrayApply(arr, i) =>
-        gen_hwld(this(arr), this(i))
+        println(s"Trying to getMemOp DeliteArrayApply($arr, $i)")
+        println(s"loopToMem: $loopToMem")
+        if (loopToMem.contains(arr)) {
+          val ld = gen_hwld(loopToMem(arr), this(i))
+          println(s"Replaced ld = $ld")
+          ld
+        } else {
+          gen_hwld(this(arr), this(i))
+        }
       case DeliteArrayUpdate(arr, i, x) =>
-        gen_hwst(this(arr), this(i), this(x))
+        println(s"Trying to getMemOp DeliteArrayUpdate($arr, $i, $x)")
+        if (loopToMem.contains(arr)) {
+          gen_hwst(loopToMem(arr), this(i), this(x))
+        } else {
+          gen_hwst(this(arr), this(i), this(x))
+        }
       case _ =>
         throw new Exception(s"[Block $curBlock] Unknown memory operation $d")
         d
@@ -288,12 +304,16 @@ trait HwLoweringTransformer extends WorklistTransformer {
     curStm = stm
     stm match {
       case TP(s, Reflect(node,summary,deps)) if node.isInstanceOf[AbstractLoop[_]] =>
-        val res = processBodyElem(s, node.asInstanceOf[AbstractLoop[Any]])
-        reflectEffect(res, mapOver(this.asInstanceOf[Transformer], summary))
+        val (res, allocVal) = processBodyElem(s, node.asInstanceOf[AbstractLoop[Any]])
+        val e = reflectEffect(res, mapOver(this.asInstanceOf[Transformer], summary))
+        loopToMem += e -> allocVal
+        e
 
       case TP(s,l:AbstractLoop[Any]) =>
-        val res = processBodyElem(s, l)
-        reflectPure(res)
+        val (res, allocVal) = processBodyElem(s, l)
+        val e = reflectEffect(res)
+        loopToMem += e -> allocVal
+        e
 
       case TP(s,d) if isMemOp(s,d) =>
         // Transform and apply existing substitution rules
