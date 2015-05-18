@@ -325,17 +325,8 @@ function highlightLineInEditorForDNode( dNode ) {
 	highlightLineInEditor( arr[0], parseInt(arr[1]) );
 }
 
-/*
-function highlightLineInEditorByKernelId(nodeId) {
-	var node = profData.dependencyData.nodes[nodeId]
-	var sc = node.sourceContext
-	highlightLineInEditor(sc.file, sc.line)
-}
-*/
-
 function populateKernelInfoTable( dNode ) {
 	var name = dNode.NAME;
-	//var summary = dbExecutionSummaryByName(name);
 	var summary = config.profileDB.dbExecutionSummaryByName(name);
 	var isSummaryPresent = (summary.TOTAL_TIME != undefined);
 	
@@ -362,20 +353,20 @@ function populateKernelInfoTable( dNode ) {
 }
 
 function populateKernelInfoTableById(dNodeId) {
-	//var dNode = dbDNodeById( dNodeId );
 	var dNode = config.profileDB.dbDNodeById( dNodeId );
 	populateKernelInfoTable( dNode );
 	return dNode;
 }
 
 function populateSyncNodeInfoTable(node) {
-	var properties = ["Dep. Thread", "Dep. Kernel", "Time (%)"]
-	var values = [node.dep_thread, node.dep_kernel, "NA"]
-	var table = $("#syncNodeInfoTable")[0]
+	var properties = ["Dep. Thread", "Dep. Kernel", "Time (%)"];
+	var m = node.name.match(config.syncNodeRegex);
+	var values = ["T" + m[4], m[3], "NA"];
+	var table = $("#syncNodeInfoTable")[0];
 	properties.forEach(function(p, i) {
-		var row = table.rows[i + 1]
-		row.cells[1].innerHTML = values[i]
-	})
+		var row = table.rows[i + 1];
+		row.cells[1].innerHTML = values[i];
+	});
 }
 
 function getTopNodesBasedOnTotalTime(nodeNameToSummary, dependencyData, count) {
