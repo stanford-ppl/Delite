@@ -709,9 +709,9 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 		var sql = "BEGIN TRANSACTION;"
 		for ((tNodeName, s) <- summaries) {
 			val totalTimePct: Double = (s.totalTime * 100) / appTotalTime
-			sql += "INSERT INTO ExecutionSummaries (NAME,TOTAL_TIME,TOTAL_TIME_PCT,EXEC_TIME,SYNC_TIME,MEM_USAGE,L2_CACHE_HIT_RATIO,L3_CACHE_HIT_RATIO) VALUES (" +
-				   "'%s',%d,%f,%d,%d,%d,%d,%d);\n".format(
-				   tNodeName, s.totalTime, totalTimePct, s.execTime, s.syncTime, s.memUsage, s.l2CacheHitPct, s.l3CacheHitPct)
+			sql += "INSERT INTO ExecutionSummaries (NAME,TOTAL_TIME,TOTAL_TIME_PCT,EXEC_TIME,SYNC_TIME,MEM_USAGE) VALUES (" +
+				   "'%s',%d,%f,%d,%d,%d);\n".format(
+				   tNodeName, s.totalTime, totalTimePct, s.execTime, s.syncTime, s.memUsage)
 		}
 
 		sql += "COMMIT;"
@@ -740,7 +740,7 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 				val kernel = kv._1
 				val stats = kv._2
 				sql += "INSERT INTO KernelMemAccessStats " +
-				"(NAME, BYTES_READ_FROM_MC, L2_CACHE_MISS_PCT, L2_CACHE_MISSES, L3_CACHE_MISS_PCT, L3_CACHE_MISSES) VALUES ('%s',%d,%d,%d,%d,%d,%d);\n".format( kernel, stats.bytesReadFromMC.toInt,
+				"(NAME, BYTES_READ_FROM_MC, L2_CACHE_MISS_PCT, L2_CACHE_MISSES, L3_CACHE_MISS_PCT, L3_CACHE_MISSES) VALUES ('%s',%d,%d,%d,%d,%d);\n".format( kernel, stats.bytesReadFromMC.toInt,
 							100 - Math.floor(stats.l2CacheHitRatio * 100).toInt, stats.l2CacheMisses, 
 				  			100 - Math.floor(stats.l3CacheHitRatio * 100).toInt, stats.l3CacheMisses)
 			}
