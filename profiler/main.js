@@ -32,7 +32,6 @@ config.dNodeInfoTable = $("#kernelInfoTable")[0];
 config.enableNodeClickHandler = true; // for bar-charts.
 config.TNODE_TYPE_SYNC = 2;
 
-//config.syncNodeRegex = /__sync-ExecutionThread-(\d+)-(.*)-(.*)-(\d+)$/;
 config.syncNodeRegex = /__sync-ExecutionThread(\d+)-(.*)-(.*)-(\d+)$/;
 config.re_partition = /^(.*)_(\d+)$/;
 config.re_header = /^(.*)_h$/;
@@ -54,18 +53,24 @@ addProfileDataFileHandler("profDataInput");
 addGCStatsFileHandler("gcStatsInput");
 
 var editor = {};
-//var profData = {};
 var graphController = {};
 var timelineController = {};
 var dbStmt = undefined;
 
-config.MAX_NUM_TOP_NODES = 20;
+config.MAX_NUM_TOP_NODES = 10;
 
 // Input data sets for bar charts
 var topNodesBasedOnL2CacheMissPct = undefined;
 var topNodesBasedOnL3CacheMissPct = undefined;
 var topNodesBasedOnMemUsage = undefined;
 var topNodesBasedOnTime = undefined;
+
+var topArraysBasedOnL1CacheMissPct = undefined;
+var topArraysBasedOnL2CacheMissPct = undefined;
+var topArraysBasedOnL3CacheMissPct = undefined;
+var topArraysBasedOnLocDRAMMissPct = undefined;
+var topArraysBasedOnRemDRAMMissPct = undefined;
+
 var threadLevelSyncStats = [];
 
 function getTopDNodesBasedOnGivenMetric( outputArr, metric ) {
@@ -86,6 +91,76 @@ function getTopDNodesBasedOnMemMetric( outputArr, metric ) {
 	return outputArr;
 }
 
+function getTopArraysBasedOnMemMetric( outputArr, metric ) {
+	if ( outputArr == undefined ) {
+		var res = config.profileDB.fetchMultipleElemsFromDB( "SELECT * FROM ArrayCacheAccessStats ORDER BY " + metric + " DESC" );
+		outputArr = res.slice( 0, config.MAX_NUM_TOP_NODES );
+	}
+
+	return outputArr;
+}
+
+// TODO: Refactor this function!
+
+$("#globalStatsMetric").change(function() {
+	function helper( d ) {
+		var arr = d.NAME.split(":");
+		config.highlightLineInEditor( arr[0], parseInt(arr[1]) );
+	}
+
+	$("#generalInfo").hide();
+	$("#dfgHeader").show();
+	$("#dfg").show();
+
+	var metric = $(this).val();
+	if (metric == "degView") {
+		$(".barChart").hide();
+		$("#dfg").css("overflow-y", "hidden");
+		$('.dataflowSvg').show();
+		setUpSelectTagForDEGView();
+		graphController.changeColoringScheme("dataDeps");
+	} else {
+		clearDivForBarChartDisplay();
+		if (metric == "performance") {
+			var res = getTopDNodesBasedOnGivenMetric( topNodesBasedOnTime, "TOTAL_TIME" );
+			createBarChart("#dfg", res , "TOTAL_TIME", getDisplayTextForTime, config);
+		} else if (metric == "memUsage") {
+			var res = getTopDNodesBasedOnGivenMetric( topNodesBasedOnMemUsage, "MEM_USAGE" );
+			createBarChart("#dfg", res, "MEM_USAGE", getDisplayTextForMemUsage, config);
+		} else if (metric == "l2CacheMissRatio") {
+			var res = getTopDNodesBasedOnMemMetric( topNodesBasedOnL2CacheMissPct, "L2_CACHE_MISS_PCT" );
+			createBarChart("#dfg", res, "L2_CACHE_MISS_PCT", getDisplayTextForL2CacheMissRatio, config, helper);
+		} else if (metric == "l3CacheMissRatio") {
+			var res = getTopDNodesBasedOnMemMetric( topNodesBasedOnL3CacheMissPct, "L3_CACHE_MISS_PCT" );
+			createBarChart("#dfg", res, "L3_CACHE_MISS_PCT", getDisplayTextForL3CacheMissRatio, config, helper);
+		} else if (metric == "arrayL1CacheMissRatio") {
+			var res = getTopArraysBasedOnMemMetric( topArraysBasedOnL1CacheMissPct, "L1_CACHE_MISS_PCT" );
+			createBarChart("#dfg", res, "L1_CACHE_MISS_PCT", getDisplayTextForL1CacheMissRatio, config, helper);
+		} else if (metric == "arrayL2CacheMissRatio") {
+			var res = getTopArraysBasedOnMemMetric( topArraysBasedOnL2CacheMissPct, "L2_CACHE_MISS_PCT" );
+			createBarChart("#dfg", res, "L2_CACHE_MISS_PCT", getDisplayTextForL2CacheMissRatio, config, helper);
+		} else if (metric == "arrayL3CacheMissRatio") {
+			var res = getTopArraysBasedOnMemMetric( topArraysBasedOnL3CacheMissPct, "L3_CACHE_MISS_PCT" );
+			createBarChart("#dfg", res, "L3_CACHE_MISS_PCT", getDisplayTextForL3CacheMissRatio, config, helper);
+		} else if (metric == "arrayLocRAMMissRatio") {
+			var res = getTopArraysBasedOnMemMetric( topArraysBasedOnLocDRAMMissPct, "LOCAL_DRAM_MISS_PCT" );
+			createBarChart("#dfg", res, "LOCAL_DRAM_MISS_PCT", getDisplayTextForLocRAMMissRatio, config, helper);
+		} else if (metric == "arrayRemRAMMissRatio") {
+			var res = getTopArraysBasedOnMemMetric( topArraysBasedOnRemDRAMMissPct, "REMOTE_DRAM_MISS_PCT" );
+			createBarChart("#dfg", res, "REMOTE_DRAM_MISS_PCT", getDisplayTextForRemRAMMissRatio, config, helper);
+		}
+		//} else if (metric == "threadLevelSyncStats") {
+		//	clearDivForBarChartDisplay();
+		//	createBarChart("#dfg", threadLevelSyncStats, "syncTimePct", getDisplayTextForThreadLevelSync, config);
+		//} else if (metric == "ticTocRegionStats") {
+		//	displayOverallRegionsData();
+		}
+	}
+
+	setGlobalStatsMetric(metric);
+});
+
+/*
 $("#globalStatsMetric").change(function() {
 	function helper( d ) {
 		var arr = d.NAME.split(":");
@@ -113,9 +188,9 @@ $("#globalStatsMetric").change(function() {
 		clearDivForBarChartDisplay();
 		var res = getTopDNodesBasedOnMemMetric( topNodesBasedOnL3CacheMissPct, "L3_CACHE_MISS_PCT" );
 		createBarChart("#dfg", res, "L3_CACHE_MISS_PCT", getDisplayTextForL3CacheMissRatio, config, helper);
-	} else if (metric == "threadLevelSyncStats") {
-		clearDivForBarChartDisplay();
-		createBarChart("#dfg", threadLevelSyncStats, "syncTimePct", getDisplayTextForThreadLevelSync, config);
+	//} else if (metric == "threadLevelSyncStats") {
+	//	clearDivForBarChartDisplay();
+	//	createBarChart("#dfg", threadLevelSyncStats, "syncTimePct", getDisplayTextForThreadLevelSync, config);
 	//} else if (metric == "ticTocRegionStats") {
 	//	displayOverallRegionsData();
 	} else if (metric == "degView") {
@@ -128,6 +203,7 @@ $("#globalStatsMetric").change(function() {
 
 	setGlobalStatsMetric(metric);
 });
+*/
 
 $('#timelineZoom').keyup(function(event){
     if(event.keyCode == 13){
@@ -158,21 +234,15 @@ function getDisplayTextForTime(d) {
 	return d.NAME + " (" + getDisplayTextForTimeAbsPctPair( d.TOTAL_TIME, d.TOTAL_TIME_PCT ) + ")";
 }
 
-function getDisplayTextForMemUsage(d) {
-	return d.NAME + " (" + memUsageValueToStr( d.MEM_USAGE ) + ")";
-}
+function getDisplayTextForMemUsage(d) { return d.NAME + " (" + memUsageValueToStr( d.MEM_USAGE ) + ")"; }
 
-function getDisplayTextForL2CacheMissRatio(d) {
-	return d.NAME + " (" + d.L2_CACHE_MISS_PCT + "%)";
-}
+function getDisplayTextForL1CacheMissRatio(d) { return d.NAME + " (" + d.L1_CACHE_MISS_PCT + "%)";    }
+function getDisplayTextForL2CacheMissRatio(d) { return d.NAME + " (" + d.L2_CACHE_MISS_PCT + "%)";    }
+function getDisplayTextForL3CacheMissRatio(d) { return d.NAME + " (" + d.L3_CACHE_MISS_PCT + "%)";    }
+function getDisplayTextForLocRAMMissRatio(d)  { return d.NAME + " (" + d.LOCAL_DRAM_MISS_PCT + "%)";  }
+function getDisplayTextForRemRAMMissRatio(d)  { return d.NAME + " (" + d.REMOTE_DRAM_MISS_PCT + "%)"; }
 
-function getDisplayTextForL3CacheMissRatio(d) {
-	return d.NAME + " (" + d.L3_CACHE_MISS_PCT + "%)";
-}
-
-function getDisplayTextForThreadLevelSync(d) {
-	return d.name + " (" + d.syncTimePct + "%)"
-}
+function getDisplayTextForThreadLevelSync(d) { return d.name + " (" + d.syncTimePct + "%)" }
 
 function setUpTimelineLevelFilter(maxNodeLevel) {
 	var sel = $("#timelineLevelFilter")
@@ -516,6 +586,6 @@ function lockScrollingOfComparisonRuns() {
 }
 
 function searchDNode( dNodeName ) {
-	var dNode = dbDNodeByName( dNodeName );
+	var dNode = config.profileDB.dbDNodeByName( dNodeName );
 	graphController.highlightDNodeById( dNode.ID ); // TODO: This is inefficient. The higlightDNodeById() function again fetches the dNode from the database.
 }

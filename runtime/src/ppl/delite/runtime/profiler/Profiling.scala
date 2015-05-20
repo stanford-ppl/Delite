@@ -40,7 +40,9 @@ object Profiling {
     if (Config.dumpProfile) PerformanceTimer.stop()  
     if (Config.dumpStats) PerformanceTimer.dumpStats()   
 
+    val t0 = System.nanoTime()
     PostProcessor.postProcessProfileData(globalStartNanos, Config.degFilePath)
+    val t1 = System.nanoTime()
+    Predef.println("[TIME] postProcessProfileData: " + ((t1 - t0)/1000000) + " ms")
   }
-
 }

@@ -411,11 +411,10 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 	var appTotalTime: Long = 0
 	var appEndTime: Long = 0
 	val targetsEnabled = ExecutionProfile.computeTargetsEnabled() // order of bits -> 0: scala, 1:cpp, 2:cuda
-	val summaries = new HashMap[Types.TNodeName, ExecutionSummary] // TrieMap is the thread-safe version of HashMap
+	val summaries = new HashMap[Types.TNodeName, ExecutionSummary]
 	val ticTocNodeSummaries = new HashMap[Types.TicTocNodeName, TicTocNodeSummary]
 	val timelineData = new TimelineData(depGraph.levelMax)
 	val ticTocTNodes = new ArrayBuffer[TicTocTNode]
-	val threadTNodes = new ArrayBuffer[ThreadTNode]
 
 	private val dbPath = Config.profileOutputDirectory + "/" + PostProcessor.profileDBFileName
 	Path(dbPath).deleteIfExists()
@@ -428,10 +427,10 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 		initDB()
 
 		val fileNamePrefix = Config.profileOutputDirectory + "/profile_t_"
-		parseThreadSpecificProfileDataFiles( fileNamePrefix )
-		parseTicTocRegionsDataFile( fileNamePrefix )
-		updateTimeTakenByPartitionedKernels()
-		updateMemUsageDataOfDNodes()
+		PostProcessor.time[Unit]( parseThreadSpecificProfileDataFiles( fileNamePrefix ), "parseThreadSpecificProfileDataFiles" )
+		PostProcessor.time[Unit]( parseTicTocRegionsDataFile( fileNamePrefix ), "parseTicTocRegionsDataFile" )
+		PostProcessor.time[Unit]( updateTimeTakenByPartitionedKernels(), "updateTimeTakenByPartitionedKernels" )
+		PostProcessor.time[Unit]( updateMemUsageDataOfDNodes(), "updateMemUsageDataOfDNodes" )
 	}
 
 	//TODO: Rename this method
@@ -564,8 +563,6 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 				  		" EXEC_TIME  	 INT  NOT NULL," +
 				  		" SYNC_TIME  	 INT  NOT NULL," +
 				  		" MEM_USAGE  	 INT  NOT NULL);" +
-				  		//" L2_CACHE_HIT_RATIO   REAL NOT NULL," +
-				  		//" L3_CACHE_HIT_RATIO   REAL NOT NULL);\n" +
 				  " CREATE TABLE TicTocNodeSummaries " +
 				  		"(NAME TEXT PRIMARY KEY NOT NULL," +
 				  		" TOTAL_TIME INT  NOT NULL);\n" +
@@ -574,22 +571,18 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 				  		" NAME TEXT NOT NULL);\n" +
 				  " CREATE TABLE KernelMemAccessStats " +
 				  		"(NAME TEXT PRIMARY KEY NOT NULL," +
-				  		//" THREAD_ID 	 	 INT  NOT NULL," +
 				  		" BYTES_READ_FROM_MC INT  NOT NULL," +
 				  		" L2_CACHE_MISS_PCT  INT  NOT NULL," +
 				  		" L2_CACHE_MISSES 	 INT NOT NULL," +
 				  		" L3_CACHE_MISS_PCT  INT  NOT NULL," +
 				  		" L3_CACHE_MISSES 	 INT NOT NULL);\n" +
-				  //" CREATE TABLE KernelMemAllocStats " +
-				  //		"(NAME TEXT PRIMARY KEY NOT NULL," +
-				  //		" BYTES_ALLOCATED INT  NOT NULL);\n" +
 				  " CREATE TABLE ArrayCacheAccessStats" +
-				  		"(SOURCE_CONTEXT TEXT PRIMARY KEY NOT NULL," +
-				  		" L1_CACHE_HIT_PCT 	 	 INT  NOT NULL," +
-				  		" L2_CACHE_HIT_PCT 	 	 INT  NOT NULL," +
-				  		" L3_CACHE_HIT_PCT 	 	 INT  NOT NULL," +
-				  		" LOCAL_DRAM_HIT_PCT 	 INT  NOT NULL," +
-				  		" REMOTE_DRAM_HIT_PCT 	 INT  NOT NULL);\n" +
+				  		"(NAME TEXT PRIMARY KEY NOT NULL," +
+				  		" L1_CACHE_MISS_PCT    INT  NOT NULL," +
+				  		" L2_CACHE_MISS_PCT    INT  NOT NULL," +
+				  		" L3_CACHE_MISS_PCT    INT  NOT NULL," +
+				  		" LOCAL_DRAM_MISS_PCT  INT  NOT NULL," +
+				  		" REMOTE_DRAM_MISS_PCT INT  NOT NULL);\n" +
 				  " INSERT INTO DNodeTypes (ID, NAME) VALUES(%d, 'WhileLoop');\n".format(DNodeType.WhileLoop.id) +
 				  " INSERT INTO DNodeTypes (ID, NAME) VALUES(%d, 'Conditional');\n".format(DNodeType.Conditional.id) +
 				  " INSERT INTO DNodeTypes (ID, NAME) VALUES(%d, 'MultiLoop');\n".format(DNodeType.MultiLoop.id) +
@@ -751,47 +744,6 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 		}
 	}
 
-	/*
-	def writeKernelMemAccessStatsToDB() {
-		if (threadCppCount > 0) {
-			var sql = "BEGIN TRANSACTION;"
-			val memAccessStats = MemoryProfiler.memoryAccessStatsMaps;
-
-			for (tid <- threadScalaCount to (threadScalaCount + threadCppCount - 1)) {
-				val kernelToStatsLst = memAccessStats(tid)
-				for (kv <- kernelToStatsLst) {
-					val kernel = kv._1
-					for (stats <- kv._2) {
-						sql += "INSERT INTO KernelMemAccessStats " +
-						"(NAME, THREAD_ID, BYTES_READ_FROM_MC, L2_CACHE_MISS_PCT, L2_CACHE_MISSES, L3_CACHE_MISS_PCT, L3_CACHE_MISSES) VALUES ('%s',%d,%d,%d,%d,%d,%d);\n".format(
-							kernel, tid, stats.bytesReadFromMC.toInt,
-							100 - Math.floor(stats.l2CacheHitRatio * 100).toInt, stats.l2CacheMisses, 
-						  	100 - Math.floor(stats.l3CacheHitRatio * 100).toInt, stats.l3CacheMisses)
-					}
-				}
-			}
-
-			sql += "COMMIT;"
-			Predef.println(sql)
-			dbStmt.executeUpdate(sql)
-		}
-	}
-	*/
-
-	/*
-	def writeKernelMemAllocationStatsToDB() {
-		var sql = "BEGIN TRANSACTION;"
-		val stats = MemoryProfiler.aggregateMemAllocStatsFromAllThreads()
-		for (kv <- stats) {
-			sql += "INSERT INTO KernelMemAllocStats (NAME,BYTES_ALLOCATED) VALUES('%s',%d);\n".format(kv._1, kv._2)
-		}
-
-		sql += "COMMIT;"
-		Predef.println(sql)
-		dbStmt.executeUpdate(sql)
-	}
-	*/
-
 	private def summary(n: Types.TNodeName): ExecutionSummary = {
 		if (!summaries.contains(n)) {
 			summaries(n) = new ExecutionSummary()
@@ -936,8 +888,4 @@ class TimelineData(_levelMax: Int) {
 }
 
 class TicTocTNode( val id: Int, val name: String, val start: Long, val duration: Long, val end: Long) { }
-
-class ThreadTNode(_tid: Int) {
-	val tid = _tid
-}
 

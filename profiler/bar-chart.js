@@ -27,7 +27,6 @@ function createBarChart(parentDivId, data, comparisonAttr, getDisplayText, confi
 	    .attr("class", "bar")
 	    .attr("width", function(d) {return x(d[comparisonAttr])})
 	    .attr("height", barHeight - 1)
-	    //.on("click", nodeClickHandler)
 	    .on("click", handler);
 	
 	bar.append("text")
@@ -36,7 +35,6 @@ function createBarChart(parentDivId, data, comparisonAttr, getDisplayText, confi
 	    .attr("y", barHeight / 2)
 	    .attr("dy", ".35em")
 	    .text(getDisplayText)
-	    //.on("click", nodeClickHandler)
 	    .on("click", handler);
 
 }
