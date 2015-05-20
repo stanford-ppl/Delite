@@ -4,7 +4,7 @@ package generated.scala.container
 // specialization bug on multiple ctors: (_indices: Array[Int], _keys: Array[K], _values: Array[V], _sz: Int)
 final class HashMapImpl[@specialized K: Manifest](indsz: Int, datasz: Int) {
   private val loadfactor_d2 = 0.4f / 2
-  private var indices = Array.fill[Int](HashMapImpl.nextPow2(indsz))(-1)
+  private var indices = fill(HashMapImpl.nextPow2(indsz))(-1)
   private var keys = new Array[K](datasz)
   private var blocksizes: Array[Int] = _
   private var sz = 0
@@ -16,11 +16,6 @@ final class HashMapImpl[@specialized K: Manifest](indsz: Int, datasz: Int) {
 
   import HashMapImpl.nextPow2
 
-  // def this(indsz: Int, datasz: Int) = this(
-  //   Array.fill[Int](HashMapImpl.nextPow2(indsz))(-1),
-  //   new Array[K](datasz),
-  //   new Array[V](datasz),
-  //   0)
   def this() = this(128, 52)
 
   @inline private def absolute(hc: Int) = {
@@ -92,6 +87,12 @@ growth threshold: %d
 """.format(sz, indices.length, keys.length, (loadfactor_d2 * indices.length).toInt)
   }
 
+  private def fill(length: Int)(value: Int) = {
+    val a = new Array[Int](length)
+    java.util.Arrays.fill(a, value) //scala fill is much more expensive
+    a
+  }
+
   private def growKeys() = {
     val nkeys = new Array[K](Math.min(keys.length * 2L, MAX_ARRAY_SIZE).toInt)
     // copy raw data
@@ -101,7 +102,7 @@ growth threshold: %d
 
   private def growIndices() = {
     if (sz > (loadfactor_d2 * indices.length) && (indices.length < MAX_ARRAY_SIZE)) {
-      val nindices = Array.fill[Int](Math.min(indices.length * 2L, MAX_ARRAY_SIZE).toInt)(-1)
+      val nindices = fill(Math.min(indices.length * 2L, MAX_ARRAY_SIZE).toInt)(-1)
       relbits = Integer.numberOfTrailingZeros(nindices.length / 2)
       val mask = nindices.length - 1
 
