@@ -73,7 +73,8 @@ object DependencyGraph {
 	        	case err@_ => listNotFound(err)
 		    }
 
-		    case None => fieldNotFound(field, map)
+		    //case None => fieldNotFound(field, map)
+			case None => List[Any]()
 	    }
   	}
 

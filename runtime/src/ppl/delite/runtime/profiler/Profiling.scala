@@ -40,7 +40,7 @@ object Profiling {
     if (Config.dumpProfile) PerformanceTimer.stop()  
     if (Config.dumpStats) PerformanceTimer.dumpStats()   
 
-    PostProcessor.postProcessProfileData(globalStartNanos, Config.degFilePath)
+    if (Config.dumpProfile) PostProcessor.postProcessProfileData(globalStartNanos, Config.degFilePath)
   }
 
 }
