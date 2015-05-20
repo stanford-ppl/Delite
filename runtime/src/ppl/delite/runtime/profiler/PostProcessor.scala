@@ -19,6 +19,14 @@ object PostProcessor {
 	val gcStatsFileName = "gcStats.txt"
 	val attributesFileName = "profile.js"
 
+	def time[R](block: => R, msg: String): R = {
+	    val t0 = System.nanoTime()
+	    val result = block    // call-by-name
+	    val t1 = System.nanoTime()
+	    println("[TIME] " + msg + ": " + ((t1 - t0)/1000000) + "ms")
+	    result
+	}
+
 	def processDegFile(degFile: String): DependencyGraph = {
     	DependencyGraph.dependencyGraphNew(degFile)
 	}
@@ -31,6 +39,25 @@ object PostProcessor {
 	}
 
 	def postProcessProfileData(globalStartNanos: Long, degFile: String) {
+		val depGraph = time[DependencyGraph](processDegFile(degFile), "processDegFile")
+		depGraph.string()
+		val executionProfile = time[ExecutionProfile](processRawProfileDataFile(depGraph), "processRawProfileDataFile")
+
+		val t0 = System.nanoTime()
+		executionProfile.writeDNodesToDB()
+		executionProfile.writeExecutionSummariesToDB()
+		executionProfile.writeTicTocNodeSummariesToDB()
+		executionProfile.writeKernelMemAccessStatsToDB()
+		executionProfile.writeAppDataToDB()
+		executionProfile.close()
+		val t1 = System.nanoTime()
+		println("[TIME] Writes to DB: " + ((t1 - t0)/1000000) + "ms")
+
+		dumpProcessedData(globalStartNanos, depGraph, executionProfile)	
+	}
+
+	/*
+	def postProcessProfileData(globalStartNanos: Long, degFile: String) {
 		val depGraph = processDegFile(degFile)
 		depGraph.string()
 		val executionProfile = processRawProfileDataFile(depGraph)
@@ -39,16 +66,15 @@ object PostProcessor {
 		executionProfile.writeExecutionSummariesToDB()
 		executionProfile.writeTicTocNodeSummariesToDB()
 		executionProfile.writeKernelMemAccessStatsToDB()
-		//executionProfile.writeKernelMemAllocationStatsToDB()
 		executionProfile.writeAppDataToDB()
 		executionProfile.close()
 
 		dumpProcessedData(globalStartNanos, depGraph, executionProfile)	
 	}
+	*/
 
 	private def dumpProcessedData(globalStartNanos: Long, depGraph: DependencyGraph, executionProfile: ExecutionProfile) {
 		val directory = Path( Config.profileOutputDirectory ).createDirectory()
-		//val file = directory / "profileData_test.js"
 		val file = directory / uiDataFileName
 		var writer = new PrintWriter( file.jfile )
 
@@ -61,24 +87,5 @@ object PostProcessor {
 
 	    writer.println( "}}" )
 	    writer.close()
-
-	    //dumpAttributesOfOutputFiles()
 	}
-
-	/*
-	private def dumpAttributesOfOutputFiles() {
-		val directory = Config.profileOutputDirectory
-		val attributesFile = Path( directory ) / attributesFileName
-		//val attributesFile = Path( directory + "/" + attributesFileName ).createFile()
-		val writer = new PrintWriter( attributesFile.jfile )
-		
-		val uiDataFile = new File( directory + "/" + uiDataFileName )
-		writer.println( "%s,%d".format( uiDataFileName, uiDataFile.length ) )
-
-		val profileDBFile = new File( directory + "/" + profileDBFileName )
-		writer.println( "%s,%d".format( profileDBFileName, profileDBFile.length ) )
-
-		writer.close()
-	}
-	*/
 }
