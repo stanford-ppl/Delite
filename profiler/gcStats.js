@@ -22,7 +22,7 @@ function GCEvent(gcEntry, start) {
 	switch(gcEntry[1]) {
 		case "Full": this.type = MAJOR_GC; break
 		case "GC"  : this.type = MINOR_GC; break
-		default    : console.error("Unexpected type of GC entry found: " + line); return
+		default    : console.error("Unexpected type of GC entry found"); console.error(gcEntry); return
 	}
 
 	this.start = start // in milliseconds
@@ -36,7 +36,7 @@ function GCEvent(gcEntry, start) {
 //   Sample lines from gcStats dump:
 //     1.101: [GC [PSYoungGen: 33792K->4424K(38912K)] 33792K->4432K(125952K), 0.0083380 secs] [Times: user=0.01 sys=0.01, real=0.00 secs]
 //     28.416: [Full GC [PSYoungGen: 2039K->0K(192512K)] [ParOldGen: 73593K->60274K(141312K)] 75633K->60274K(333824K) [PSPermGen: 30245K->30203K(60928K)], 0.5467010 secs] [Times: user=    1.22 sys=0.01, real=0.55 secs]
-function parseGCStatsDump(dump, jvmpUpTimeAtAppStart) {
+function parseGCStatsDump(dump, jvmUpTimeAtAppStart) {
 	var gcEvents = []
 	var delimiters = /[\s\[\]:,]+/
 	var regexForGCEntry = /^\d.*/
@@ -44,8 +44,13 @@ function parseGCStatsDump(dump, jvmpUpTimeAtAppStart) {
 	dump.split("\n").forEach(function (line) {
 		if (regexForGCEntry.test(line)) {
 			var gcEntry = line.split(delimiters)
-			var start = getStartTimeInMillis(gcEntry)
-			if (start > 0) gcEvents.push(new GCEvent(gcEntry, start))
+			var start = getStartTimeInMillis(gcEntry) - jvmUpTimeAtAppStart
+			if (start > 0) {
+				var e = new GCEvent(gcEntry, start);
+				if (e.type != UNDEFINED) {
+					gcEvents.push(e);	
+				}
+			}
 		}
 	})
 

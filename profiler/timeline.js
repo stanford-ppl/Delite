@@ -78,8 +78,8 @@ TimelineGraph.prototype.draw = function() {
 		this.laneColors.push(LANE_COLORS[i % LANE_COLORS.length]);
 	}
 	
-	var	timeBegin = appData.appStartTime - appData.appTotalTime * 0.01;
-	var	timeEnd = appData.appEndTime + appData.appTotalTime * 0.01;
+	var	timeBegin = -0.01;
+	var	timeEnd = appData.appTotalTime * 1.01;
 
 	var parentDiv = $(this.parentDivId);
 	if (this.parentDivWidth == -1) {
@@ -356,7 +356,7 @@ TimelineGraph.prototype.displayNode = function(tNode) {
 	if (tNode.parentId == -1) {
 		nodesToDisplay = [tNode];
 	} else {
-		nodesToDisplay = tNode.parent.childNodes;
+		nodesToDisplay = config.profileDB.dbChildTNodes( tNode.parentId );
 	}
 
 	this.createTimelineNodes(nodesToDisplay, this.timelineChildNodeClass);

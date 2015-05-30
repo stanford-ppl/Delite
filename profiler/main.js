@@ -154,7 +154,7 @@ $("#globalStatsMetric").change(function() {
 		//	createBarChart("#dfg", threadLevelSyncStats, "syncTimePct", getDisplayTextForThreadLevelSync, config);
 		//} else if (metric == "ticTocRegionStats") {
 		//	displayOverallRegionsData();
-		}
+		//}
 	}
 
 	setGlobalStatsMetric(metric);
@@ -413,8 +413,9 @@ function populateKernelInfoTable( dNode ) {
 	var execSyncTimeStr = execTimePct + "/" + syncTimePct + " %";
 
 	var memUsage = isSummaryPresent ? summary.MEM_USAGE : 0;
+	var memUsageStr = memUsageValueToStr( memUsage );
 
-	var values = [name, type, timeStr, execSyncTimeStr, memUsage];
+	var values = [name, type, timeStr, execSyncTimeStr, memUsageStr];
 
 	values.forEach(function(v, i) {
 		var row = config.dNodeInfoTable.rows[i + 1];

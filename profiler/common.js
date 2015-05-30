@@ -21,11 +21,11 @@ function memUsageValueToStr(memUsage) {
 		var labels = ["B", "KB", "MB", "GB"];
 		var i = 0;
 		while ((i < labels.length) && (memUsage > 1)) {
-			memUsage = memUsage / 1000;
+			memUsage = memUsage / 1024;
 			i++;
 		}
 
-		return ((memUsage * 1000).toFixed(0)) + labels[i - 1];
+		return ((memUsage * 1024).toFixed(0)) + labels[i - 1];
 	}
 
 	return "0B";
