@@ -5,6 +5,9 @@
 #include <sys/time.h>
 #include <jni.h>
 #include <stdint.h>
+#include <fstream>
+#include <stack>
+#include <sstream>
 #include <cuda.h>
 
 #ifndef DELITE_NUM_CUDA
@@ -13,10 +16,20 @@
 
 typedef struct {
   struct timeval start;
-  struct timeval end;
 } cudatimer_t;
 
-void InitDeliteCudaTimer(int32_t tid);
+class BufferedFileWriter {
+
+  public:
+    BufferedFileWriter(const char* fileName);
+    void writeTimer(std::string kernel, long start, double duration, int32_t level, int32_t tid, bool isMultiLoop);
+    void close();
+
+  private:
+    std::ofstream fs; 
+};
+
+void InitDeliteCudaTimer(int32_t tid, int32_t lowestCudaTid);
 void DeliteCudaTimerStart(int32_t tid, std::string name);
-void DeliteCudaTimerStop(int32_t tid, std::string name);
-void DeliteCudaTimerDump(int32_t tid, int32_t rid, JNIEnv* env);
+void DeliteCudaTimerStop(int32_t tid, std::string name, bool isMultiLoop = false);
+void DeliteCudaTimerClose(int32_t tid, int32_t rid, JNIEnv* env);

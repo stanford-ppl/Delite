@@ -1,6 +1,14 @@
 #include "DeliteCudaProfiler.h"
 
-std::map<std::string,std::vector<cudatimer_t>*> **timermaps = new std::map<std::string,std::vector<cudatimer_t>*>*[DELITE_NUM_CUDA];
+BufferedFileWriter** profileWriters = new BufferedFileWriter*[DELITE_NUM_CUDA];
+std::stack< cudatimer_t >** timermaps = new std::stack< cudatimer_t >*[DELITE_NUM_CUDA];
+double appStartTime = 0;
+
+std::string profileFilePrefix("/home/jithinpt/cache_instrumentation/hyperdsl/published/OptiML/profile/profile_t_");
+
+double milliseconds(struct timeval t) {
+  return double(t.tv_sec * 1000) + (double(t.tv_usec) / 1000);
+}
 
 int64_t microseconds(struct timeval t) {
   return t.tv_sec * 1000000L + t.tv_usec;
@@ -10,55 +18,62 @@ int64_t nanoseconds(struct timeval t) {
   return microseconds(t) * 1000;
 }
 
-void InitDeliteCudaTimer(int32_t tid) {
-  timermaps[tid] = new std::map<std::string,std::vector<cudatimer_t>*>();
+void InitDeliteCudaTimer(int32_t tid, int32_t lowestCudaTid) {
+  if (tid == 0) {
+	struct timeval a;
+    gettimeofday(&a,NULL);
+    appStartTime = milliseconds(a);
+  }
+
+  timermaps[tid] = new std::stack< cudatimer_t >();
+  std::stringstream ss; 
+  ss << profileFilePrefix << ( lowestCudaTid + tid ) << ".csv";
+  profileWriters[tid] = new BufferedFileWriter(ss.str().c_str());
 }
 
 void DeliteCudaTimerStart(int32_t tid, std::string name) {
-  struct timeval start;
-
-  std::map<std::string,std::vector<cudatimer_t>*> *timermap = timermaps[tid];
-  std::map<std::string,std::vector<cudatimer_t>*>::iterator it = timermap->find(name);
-
   cudaDeviceSynchronize();
-  gettimeofday(&start,NULL);
-  cudatimer_t tpair = {start,-1};
 
-  if (it == timermap->end()) {
-    std::vector<cudatimer_t> *v = new std::vector<cudatimer_t>();
-    v->push_back(tpair);
-    timermap->insert(std::pair<std::string,std::vector<cudatimer_t>*>(name,v));
-  }
-  else {
-    it->second->push_back(tpair);
-  }
+  struct timeval start;
+  gettimeofday(&start,NULL);
+  cudatimer_t timer = {start};
+
+  timermaps[tid]->push(timer);
 }
 
-void DeliteCudaTimerStop(int32_t tid, std::string name) {
-  struct timeval stop;
+void DeliteCudaTimerStop(int32_t tid, std::string name, bool isMultiLoop) {
   cudaDeviceSynchronize();
+
+  struct timeval stop;
   gettimeofday(&stop,NULL);
 
-  std::map<std::string,std::vector<cudatimer_t>*> *timermap = timermaps[tid];
-  timermap->find(name)->second->back().end = stop;
+  double start = milliseconds( timermaps[tid]->top().start ); 
+  double end = milliseconds( stop );
+  double elapsedMillis = end - start;
+
+  timermaps[tid]->pop();
+  profileWriters[tid]->writeTimer( name, long(start - appStartTime), elapsedMillis, timermaps[tid]->size(), tid, isMultiLoop );
 }
 
-void DeliteCudaTimerDump(int32_t tid, int32_t rid, JNIEnv* env) {
-  std::map<std::string,std::vector<cudatimer_t>*> *timermap = timermaps[tid];
-  std::map<std::string,std::vector<cudatimer_t>*>::iterator it;
+BufferedFileWriter::BufferedFileWriter(const char* fileName)
+{
+    fs.open(fileName);
+}
 
-  jclass cls = env->FindClass("ppl/delite/runtime/profiler/PerformanceTimer");
-  jmethodID mid = env->GetStaticMethodID(cls,"addTiming","(Ljava/lang/String;IJJ)V");
+void BufferedFileWriter::writeTimer(std::string kernel, long start, double duration, int32_t level, int32_t tid, bool isMultiLoop) {
+  if (isMultiLoop) {
+    fs << kernel << "_" << tid << "," << start << "," << duration << "," << level << std::endl;
+  } else {
+    fs << kernel << "," << start << "," << duration << "," << level << std::endl;
+  }
+}
 
-  for (it = timermap->begin(); it != timermap->end(); ++it) {
-    std::vector<cudatimer_t> *v = it->second;
-    std::vector<cudatimer_t>::iterator vit;
-    for(vit = v->begin(); vit != v->end(); vit++) {
-      jstring component = env->NewStringUTF(it->first.c_str());
-      jlong startTime = microseconds(vit->start);
-      jlong endTime = microseconds(vit->end);
-      env->CallStaticVoidMethod(cls,mid,component,rid,startTime,endTime); 
-      env->DeleteLocalRef(component);
-    }
+void BufferedFileWriter::close() {
+  fs.close();
+}
+
+void DeliteCudaTimerClose(int32_t tid, int32_t rid, JNIEnv* env) {
+  for (int32_t i = 0; i < DELITE_NUM_CUDA; i++) {
+    profileWriters[i]->close();
   }
 }

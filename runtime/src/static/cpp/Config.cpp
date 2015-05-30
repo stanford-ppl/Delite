@@ -77,6 +77,7 @@ void initializeConfig(int numThreads) {
 void initializeGlobal(int lowestCppTid, int numCppThreads, size_t heapSize) {
   pthread_mutex_lock(&init_mtx); 
   if (!config) {
+    InitDeliteCppTimer(lowestCppTid, numCppThreads);
     initializeConfig(numCppThreads);
     resourceInfos = new resourceInfo_t[numCppThreads];
     for (int i=0; i<numCppThreads; i++) {
@@ -88,18 +89,20 @@ void initializeGlobal(int lowestCppTid, int numCppThreads, size_t heapSize) {
     }
     DeliteHeapInit(numCppThreads, heapSize);
     initializeThreadPool(numCppThreads);
-    InitDeliteCppTimer(lowestCppTid, numCppThreads);
   }
 
   pcm = pcmInit();
+
   pthread_mutex_unlock(&init_mtx);
 }
 
 void freeGlobal(int numThreads, int offset, JNIEnv *env) {
   pthread_mutex_lock(&init_mtx);
   if (config) {
-	DeliteCppTimerClose();
-	DeliteSendMemoryAccessStatsToJVM(offset, env);
+    DeliteCppTimerClose();
+    DeliteSendMemoryAccessStatsToJVM(offset, env);
+    SendKernelMemUsageStatsToJVM(env);
+    DeliteSendStartTimeToJVM(env);
     DeliteHeapClear(numThreads);
     delete[] resourceInfos;
     delete config;

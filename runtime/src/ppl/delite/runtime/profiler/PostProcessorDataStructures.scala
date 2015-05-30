@@ -312,7 +312,7 @@ object TNode {
 	}
 }
 
-class TNode(val name: Types.TNodeName, val threadId: Int, val start: Long, val duration: Long) {
+class TNode(val name: Types.TNodeName, val threadId: Int, val start: Long, val duration: Long, val level: Int) {
 	val end: Long = start + duration
 	val id = TNode.nextId()
 	var execTime: Long = duration
@@ -329,7 +329,6 @@ class TNode(val name: Types.TNodeName, val threadId: Int, val start: Long, val d
 
 	private var _parentTNode: TNode = null
 	private var _parentId: Types.TNodeId = -1;
-	val level = if (dNode != null) dNode.level else 0
 	var childKernelTNodes = new ArrayBuffer[TNode]
 	var childSyncTNodes = new ArrayBuffer[TNode]
 
@@ -429,7 +428,9 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 
 		val fileNamePrefix = Config.profileOutputDirectory + "/profile_t_"
 		PostProcessor.time[Unit]( parseThreadSpecificProfileDataFiles( fileNamePrefix ), "parseThreadSpecificProfileDataFiles" )
-		PostProcessor.time[Unit]( parseTicTocRegionsDataFile( fileNamePrefix ), "parseTicTocRegionsDataFile" )
+
+		val tmp = Config.profileOutputDirectory + "/profile_tic_toc_"
+		PostProcessor.time[Unit]( parseTicTocRegionsDataFile( tmp ), "parseTicTocRegionsDataFile" )
 		PostProcessor.time[Unit]( updateTimeTakenByPartitionedKernels(), "updateTimeTakenByPartitionedKernels" )
 		PostProcessor.time[Unit]( updateMemUsageDataOfDNodes(), "updateMemUsageDataOfDNodes" )
 	}
@@ -546,6 +547,12 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 						" level		 	 	INT  NOT NULL," +
 						" childKernelIds	TEXT NOT NULL," +
 						" childSyncIds		TEXT NOT NULL);\n" +
+		 		  " CREATE TABLE TicTocTNodes " +
+						"(ID INT PRIMARY KEY  	 NOT NULL," +
+						" NAME 		TEXT NOT NULL," +
+						" START 	INT  NOT NULL," +
+						" DURATION 	INT  NOT NULL," +
+						" END 		INT  NOT NULL);\n" +
 				  " CREATE TABLE DNodes " +
 				  		"(ID INT PRIMARY KEY   NOT NULL," +
 				  		" NAME 			  TEXT NOT NULL," +
@@ -577,8 +584,9 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 				  		" L2_CACHE_MISSES 	 INT NOT NULL," +
 				  		" L3_CACHE_MISS_PCT  INT  NOT NULL," +
 				  		" L3_CACHE_MISSES 	 INT NOT NULL);\n" +
-				  " CREATE TABLE ArrayCacheAccessStats" +
-				  		"(NAME TEXT PRIMARY KEY NOT NULL," +
+				  " CREATE TABLE ArrayCacheAccessStats " +
+				  		"(ID INT PRIMARY KEY NOT NULL,"+
+				  		" NAME TEXT NOT NULL," +
 				  		" L1_CACHE_MISS_PCT    INT  NOT NULL," +
 				  		" L2_CACHE_MISS_PCT    INT  NOT NULL," +
 				  		" L3_CACHE_MISS_PCT    INT  NOT NULL," +
@@ -612,64 +620,111 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 		return 0
 	}
 
-	def parseThreadSpecificProfileDataFiles( fileNamePrefix: String ) {
+    def parseThreadSpecificProfileDataFiles( fileNamePrefix: String ) {
+		val MIN_DURATION_MILLIS: Double = 1
 		val levelToTNodesYetToBeAssignedParent = new HashMap[Int, ArrayBuffer[TNode]]
-		for (level <- 0 to depGraph.levelMax) {
-			levelToTNodesYetToBeAssignedParent += level -> new ArrayBuffer[TNode]
+		val tNodesPendingWritesToDB = new ArrayBuffer[TNode]
+		
+		def createTNode(name: String, threadId: Int, start: Long, duration: Double, level: Int) {
+			val tNode = new TNode(name, threadId, start, duration.toLong, level)
+			tNodesPendingWritesToDB.append( tNode )
+
+			if (level >= 0) {
+				if (level < depGraph.levelMax) {
+					val a = levelToTNodesYetToBeAssignedParent( level + 1 )
+					a.foreach(n => { tNode.childNodeNew(n) })
+					a.clear()
+				}
+
+				if (level > 0) {
+					levelToTNodesYetToBeAssignedParent( level ).append( tNode )
+				} else {
+					writeTNodesToDB( tNodesPendingWritesToDB )
+					tNodesPendingWritesToDB.clear()
+				}
+			}
+
+			updateSummary(tNode)
+			timelineData.tNodeNew(tNode)
 		}
 
-		val tNodesPendingWritesToDB = new ArrayBuffer[TNode]
-		for (tid <- 0 to (threadCount - 1)) {			
+		for (tid <- 0 to (threadCount - 1)) {
+			val isScala  = (tid < threadScalaCount)
+			val levelToAggrTNodeStart = new HashMap[Int, Long] 
+			val levelToAggrTNodeDuration = new HashMap[Int, Double]
+
+			for (level <- 0 to (depGraph.levelMax + 1)) {
+				levelToTNodesYetToBeAssignedParent += level -> new ArrayBuffer[TNode]
+				levelToAggrTNodeStart += level -> -1
+				levelToAggrTNodeDuration += level -> 0
+			}	
+		
 			val fn = fileNamePrefix + tid + ".csv"
 			for (line <- Source.fromFile(fn).getLines()) {
 				val arr = line.split(",")
 				val name = arr(0)
-				val start = arr(1).toLong
-				val duration = arr(2).toLong
-				if (duration > 0) { // Optimization: filter out all nodes with duration == 0
-					val tNode = new TNode(name, tid, start, duration)
-					tNodesPendingWritesToDB.append( tNode )
 
-					val lev = tNode.level
-					if (lev >= 0) {
-						if (lev < depGraph.levelMax) {
-							val a = levelToTNodesYetToBeAssignedParent(lev + 1)
-							a.foreach(n => { tNode.childNodeNew(n) })
-							a.clear()
+				val tmp = arr(1).toLong
+				val start = if (isScala) (tmp - PerformanceTimer.appStartTimeInMillis) else tmp
+				val duration = arr(2).toDouble
+				val level = arr(3).toInt
+				val aggrTNodeStart = levelToAggrTNodeStart(level)
+
+				levelToAggrTNodeStart(level + 1) = -1
+				levelToAggrTNodeDuration(level + 1) = 0
+
+				if (duration < MIN_DURATION_MILLIS) {
+					if (aggrTNodeStart < 0) { levelToAggrTNodeStart(level) = start }
+					levelToAggrTNodeDuration += level -> (levelToAggrTNodeDuration(level) + duration)
+				} else {
+					if (aggrTNodeStart >= 0) {
+						val d = levelToAggrTNodeDuration(level)
+						if (d >= MIN_DURATION_MILLIS) { 
+							createTNode(":aggregate", tid, aggrTNodeStart, d, level)
 						}
 
-						if (lev > 0) {
-							levelToTNodesYetToBeAssignedParent(lev).append(tNode)
-						} else {
-							writeTNodesToDB( tNodesPendingWritesToDB )
-							tNodesPendingWritesToDB.clear()
-						}
+						levelToAggrTNodeStart(level) = -1
+						levelToAggrTNodeDuration(level) = 0
 					}
+					
+					createTNode(name, tid, start, duration, level)
+				}
+			}
 
-					updateSummary(tNode)
-					timelineData.tNodeNew(tNode)
+			val aggrTNodeStart = levelToAggrTNodeStart(0)
+			if (aggrTNodeStart >= 0) {
+				val d = levelToAggrTNodeDuration(0)
+				if (d >= MIN_DURATION_MILLIS) { 
+					createTNode(":aggregate", tid, aggrTNodeStart, d, 0)
 				}
 			}
 		}
 	}
 
 	def parseTicTocRegionsDataFile( fileNamePrefix: String ) {
-		val fn = fileNamePrefix + threadCount + ".csv"
+		val targets = List("scala", "cpp", "cuda")
 		var id = 0
-		for (line <- Source.fromFile(fn).getLines()) {
-			val arr = line.split(",")
-			val name = arr(0)
-			val start = arr(1).toLong
-			val duration = arr(2).toLong
-			ticTocTNodes.append( new TicTocTNode(id, name, start, duration, start + duration) )
-			id += 1
+		for (tg <- targets) {
+			val fn = fileNamePrefix + tg + ".csv"
+			if (new File(fn).exists)
+			{
+				for (line <- Source.fromFile(fn).getLines()) {
+					val arr = line.split(",")
+					val name = arr(0)
+					val tmp = arr(1).toLong
+					val start = if (tg == "cpp") tmp else tmp - PerformanceTimer.appStartTimeInMillis 
+					val duration = arr(2).toDouble.toLong
+					ticTocTNodes.append( new TicTocTNode(id, name, start, duration, start + duration) )
+					id += 1
 
-			val s = ticTocNodeSummary( name )
-			s.totalTimeInc( duration )
+					val s = ticTocNodeSummary( name )
+					s.totalTimeInc( duration )
 
-			if (name == "all") {
-				appTotalTime = duration
-				appEndTime = appStartTime + appTotalTime
+					if (name == "all") {
+						appTotalTime = duration
+						appEndTime = appStartTime + appTotalTime
+					}
+				}
 			}
 		}
 	}
@@ -709,6 +764,18 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 		}
 
 		sql += "COMMIT;"
+		Predef.println(sql)
+		dbStmt.executeUpdate(sql)
+	}
+
+    def writeTicTocTNodesToDB() {
+		var sql = "BEGIN TRANSACTION;\n"
+
+		for (n <- ticTocTNodes) {
+			sql += "INSERT INTO TicTocTNodes(ID,NAME,START,DURATION,END) VALUES (%d,'%s',%d,%d,%d);\n".format(n.id, n.name, n.start, n.duration, n.end)
+		}
+
+		sql += "COMMIT;\n"
 		Predef.println(sql)
 		dbStmt.executeUpdate(sql)
 	}
@@ -790,13 +857,19 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 	}
 
 	private def updateTimeTakenByPartitionedKernels() {
+		def tryGetSummary(tNodeName: String): Option[ExecutionSummary] = {
+			if (summaries.contains(tNodeName)) { Some(summaries(tNodeName)) }
+			else { None }
+		}
+
 		val threadIdsRange = Range(0, threadCount)
 		for (dNode <- depGraph.loopNodes) {
 			if (!isTargetCuda(dNode)) {
 				val headerNodeTotalTime = tNodeTotalTime(dNode.name + "_h")
-				val partitionSummaries = threadIdsRange.map(tid => summary(dNode.name + "_" + tid))
-				val avgPartitionTotalTime: Long = partitionSummaries.map(s => s.totalTime).sum / threadCount 
-				val avgPartitionSyncTime: Long = partitionSummaries.map(s => s.syncTime).sum / threadCount 
+				val partitionSummaries = threadIdsRange.map(tid => tryGetSummary(dNode.name + "_" + tid)).flatten
+				val n = partitionSummaries.length
+				val avgPartitionTotalTime: Long = if (n > 0) partitionSummaries.map(s => s.totalTime).sum / n else 0
+				val avgPartitionSyncTime: Long = if (n > 0) partitionSummaries.map(s => s.syncTime).sum / n else 0
 				val summ = new ExecutionSummary(headerNodeTotalTime + avgPartitionTotalTime)
 				summ.syncTimeInc(avgPartitionSyncTime)
 				summaries(dNode.name) = summ

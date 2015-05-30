@@ -2,101 +2,197 @@
 
 std::vector< std::map<std::string,std::vector<cpptimer_t>*>* > *timermaps;
 std::vector< std::stack< cpptimer_t > > kernelCallStacks;
-std::vector< FILE* > outputFiles;
+std::vector< BufferedFileWriter* > profileWriters;
 std::vector< std::map<std::string, std::vector<PCMStats*>*>* > *memoryAccessMaps;
-std::vector< std::vector<cpparray_layout_info>* > *arrayStartAddresses;
+std::vector< std::map< std::string, std::vector<cpparray_layout_info>* >* >* scToMemAllocationMaps;
+std::map< std::string, cpptimer_t >* ticTocRegionToTimers;
+std::vector< std::map< std::string, uint64_t >* >* kernelToMemUsageMaps;
 
-std::string profileFilePrefix("/home/jithinpt/cache_instrumentation/hyperdsl/published/SimpleVector/profile/profile_t_");
+std::string profileFilePrefix("/home/jithinpt/cache_instrumentation/hyperdsl/published/OptiML/profile/profile_t_");
+std::string ticTocProfileFile("/home/jithinpt/cache_instrumentation/hyperdsl/published/OptiML/profile/profile_tic_toc_cpp.csv");
 
-int64_t milliseconds(struct timeval t) {
-  return (t.tv_sec * 1000000L + t.tv_usec) / 1000;
+int32_t numCpp = 0;
+double appStartTime;
+
+const int MAX_NUM_KERNELS_TO_STORE = 100000;
+
+double milliseconds(struct timeval t) {
+  return double(t.tv_sec * 1000) + (double(t.tv_usec) / 1000);
 }
 
 void InitDeliteCppTimer(int32_t lowestCppTid, int32_t numCppThreads) {
-  memoryAccessMaps = new std::vector< std::map< std::string, std::vector<PCMStats*>* >* >;
-  arrayStartAddresses = new std::vector< std::vector<cpparray_layout_info>* >;
+  struct timeval a;
+  gettimeofday(&a,NULL);
+  appStartTime = milliseconds(a);
 
-  for (int32_t i = lowestCppTid; i < (lowestCppTid + numCppThreads); i++) {
+  numCpp = numCppThreads;
+  memoryAccessMaps = new std::vector< std::map< std::string, std::vector<PCMStats*>* >* >;
+  ticTocRegionToTimers = new  std::map< std::string, cpptimer_t >;
+  scToMemAllocationMaps = new std::vector< std::map< std::string, std::vector<cpparray_layout_info>* >* >;
+  kernelToMemUsageMaps = new std::vector< std::map< std::string, uint64_t >* >;
+
+  for (int32_t i = 0; i < numCppThreads; i++) {
     memoryAccessMaps->push_back(new std::map< std::string, std::vector<PCMStats*>* >());
-	arrayStartAddresses->push_back(new std::vector<cpparray_layout_info>());	
+    scToMemAllocationMaps->push_back(new std::map< std::string, std::vector<cpparray_layout_info>* >());
+    kernelToMemUsageMaps->push_back(new std::map< std::string, uint64_t >());
 
     std::stack< cpptimer_t > s;
     kernelCallStacks.push_back(s);
 
     std::stringstream ss;
-    ss << profileFilePrefix << i << ".csv";
-	FILE* f = fopen(ss.str().c_str(), "w");
-	outputFiles.push_back(f);
+    ss << profileFilePrefix << (lowestCppTid + i) << ".csv";
+	profileWriters.push_back( new BufferedFileWriter(ss.str().c_str()) );
   }
+
+  profileWriters.push_back( new BufferedFileWriter(ticTocProfileFile.c_str()) );
 }
 
-void DeliteCppTimerStart(int32_t tid, string name, bool isKernel) {
+void DeliteCppTimerTic(string name) {
   struct timeval start;
   gettimeofday(&start,NULL);
-
-  cpptimer_t timer = {name.c_str(), start, -1, isKernel};
-  kernelCallStacks[tid].push(timer);
+  std::string n = std::string(name.c_str());
+  cpptimer_t timer = {n, milliseconds(start)};
+  
+  ticTocRegionToTimers->insert( std::pair< std::string, cpptimer_t >( n, timer ));
 }
 
-void DeliteCppTimerStop(int32_t tid, string _name) {
+void DeliteCppTimerToc(string name) {
+  struct timeval t;
+  gettimeofday(&t,NULL);
+
+  std::string n = std::string(name.c_str());
+  std::map< std::string, cpptimer_t >::iterator it = ticTocRegionToTimers->find(n);
+
+  cpptimer_t timer = it->second;
+  double end = milliseconds(t);
+  double elapsedMillis = end - timer.start;
+  profileWriters[numCpp]->writeTimer(timer.name, long(timer.start - appStartTime), elapsedMillis, 0, numCpp, false);
+  ticTocRegionToTimers->erase(it);
+}
+
+void deliteCppTimerStopHelper(int32_t tid, string _name, bool isMultiLoop = false) {
   struct timeval t;
   gettimeofday(&t,NULL);
 
   cpptimer_t timer = kernelCallStacks[tid].top();
 
-  int64_t start = milliseconds(timer.start);
-  int64_t stop = milliseconds(t);
-  int64_t duration = stop - start;
-  fprintf(outputFiles[tid], "%s,%ld,%ld\n", timer.name, start, duration);
+  std::string name = std::string(_name.c_str());
+  if (timer.name != name) {
+   	  throw std::runtime_error("The kernelCallStack is in an invalid state. The top of stack does not match the kernel to be stopped.\n");
+  }
 
+  double end = milliseconds(t);
+  double elapsedMillis = end - timer.start;
   kernelCallStacks[tid].pop();
+  profileWriters[tid]->writeTimer(timer.name, long(timer.start - appStartTime), elapsedMillis, kernelCallStacks[tid].size(), tid, isMultiLoop);
+}
+
+void DeliteCppTimerStopMultiLoop(int32_t tid, string name) {
+    deliteCppTimerStopHelper(tid, name, true);
+}
+
+void DeliteCppTimerStart(int32_t tid, string name) {
+  struct timeval start;
+  gettimeofday(&start,NULL);
+  cpptimer_t timer = { std::string(name.c_str()), milliseconds(start) };
+  kernelCallStacks[tid].push(timer);
+}
+
+void DeliteCppTimerStop(int32_t tid, string name) {
+  deliteCppTimerStopHelper(tid, name);
 }
 
 void DeliteCppTimerClose() {
-  std::vector< FILE* >::iterator it;
-  for (it = outputFiles.begin(); it != outputFiles.end(); it++) {
-	fclose(*it);
+  for (int32_t i = 0; i <= numCpp; i++) {
+    profileWriters[i]->close();
   }
 }
 
 uint64_t estimateSizeOfArray(unsigned long length, std::string elemType) {
   unsigned int elemSize = 0;
   if ( (elemType == "boolean") || (elemType == "byte") ) {
-  	elemSize = 8;
+  	elemSize = 1;
   } else if ( (elemType == "char") || (elemType == "short") ) {
-	elemSize = 16;
+	elemSize = 2;
   } else if ( (elemType == "int") || (elemType == "float") ) {
-	elemSize = 32;
+	elemSize = 4;
   } else {
-	elemSize = 64;
+	elemSize = 8;
   }
 
   return length * elemSize;
 }
 
-void DeliteLogArrayAllocation(int32_t tid, void* startAddr, int32_t length, std::string elemType, std::string sourceContext) {
-  cpparray_layout_info l = { startAddr, estimateSizeOfArray(length, elemType), sourceContext };
-  arrayStartAddresses->at(tid)->push_back(l);
+void incMemUsageOfKernel( int32_t tid, std::string kernel, uint64_t inc ) {
+  std::map< std::string, uint64_t >* m = kernelToMemUsageMaps->at(tid);
+  std::map< std::string, uint64_t >::iterator it = m->find( kernel );
+  if (it == m->end()) {
+    std::pair< std::string, uint64_t > kv( kernel, inc );
+    m->insert(kv);
+  } else {
+    it->second += inc; 
+  }
 }
 
-void printArrayAddressRanges() {
+void DeliteLogArrayAllocation(int32_t tid, void* startAddr, int32_t length, std::string elemType, std::string sourceContext) {
+  std::map< std::string, std::vector<cpparray_layout_info>* >* m = scToMemAllocationMaps->at(tid);
+  std::map< std::string, std::vector<cpparray_layout_info>* >::iterator it = m->find( sourceContext );
+  if ( it == m->end() ) {
+	std::pair< std::string, std::vector<cpparray_layout_info>* > p (sourceContext, new std::vector<cpparray_layout_info>);
+	m->insert(p);
+  } 
+
+  std::string currKernel = kernelCallStacks[tid].top().name;
+  uint64_t size = estimateSizeOfArray(length, elemType);
+  incMemUsageOfKernel( tid, currKernel, size );
+  
+  cpparray_layout_info l = { startAddr, size };
+  m->find(sourceContext)->second->push_back(l);
+}
+
+void dumpSourceContextToId( std::map< std::string, int32_t >* scToId ) {
   std::ofstream outFile;
-  outFile.open("dataStructures.csv", std::ofstream::out);
+  outFile.open("scToId.csv", std::ofstream::out);
 
-  std::vector< std::vector<cpparray_layout_info>* >::iterator it;
-  int numThreads = arrayStartAddresses->size();
-  for (int32_t tid = 0; tid < numThreads; tid++) {
-	std::vector<cpparray_layout_info>* v = arrayStartAddresses->at(tid);
-    std::vector<cpparray_layout_info>::iterator it;
-    for (it = v->begin(); it != v->end(); it++) {
-	  uint64_t s = (uint64_t) it->startAddr;
-      outFile << "0x" << std::hex << s << "," << std::dec << it->size << "," << it->sourceContext << std::endl;
-    }
-
-	std::cout << std::endl;
+  std::map< std::string, int32_t >::iterator it;
+  for (it = scToId->begin(); it != scToId->end(); it++) {
+    outFile << it->second << "," << it->first << std::endl; 
   }
 
   outFile.close();
+}
+
+void dumpArrayAddrRanges() {
+  std::map< std::string, int32_t >* scToId = new std::map< std::string, int32_t >();
+  std::ofstream outFile;
+  outFile.open("dataStructures.csv", std::ofstream::out);
+
+  std::vector< std::map< std::string, std::vector<cpparray_layout_info>* >* >::iterator it;
+  int numThreads = scToMemAllocationMaps->size();
+  for (int32_t tid = 0; tid < numThreads; tid++) {
+    std::map< std::string, std::vector<cpparray_layout_info>* >* m = scToMemAllocationMaps->at(tid);
+  	std::map< std::string, std::vector<cpparray_layout_info>* >::iterator it1;
+	for (it1 = m->begin(); it1 != m->end(); it1++) {
+	  std::string sc = std::string(it1->first.c_str());
+      std::map< std::string, int32_t >::iterator tmp = scToId->find(sc);
+	  int scId = scToId->size();
+	  if (tmp == scToId->end()) {
+	    scToId->insert(std::pair< std::string, int32_t >(sc, scId));
+	  } else {
+	    scId = tmp->second;
+	  } 
+
+	  std::vector<cpparray_layout_info>* v = it1->second; 
+      std::vector<cpparray_layout_info>::iterator it2;
+      for (it2 = v->begin(); it2 != v->end(); it2++) {
+	    uint64_t s = (uint64_t) it2->startAddr;
+        outFile << "0x" << std::hex << s << "," << std::dec << it2->size << "," << scId << std::endl;
+      }
+	}
+  }
+
+  outFile.close();
+  dumpSourceContextToId( scToId );
 }
 
 void DeliteUpdateMemoryAccessStats( int32_t tid, std::string sourceContext, PCMStats* stats ) {
@@ -109,6 +205,23 @@ void DeliteUpdateMemoryAccessStats( int32_t tid, std::string sourceContext, PCMS
     } else {
         it->second->push_back( stats );
     }
+}
+
+void DeliteSendStartTimeToJVM( JNIEnv* env ) {
+    #ifndef __DELITE_CPP_STANDALONE__
+
+    jclass cls = env->FindClass("ppl/delite/runtime/profiler/PerformanceTimer");
+    jmethodID mid = env->GetStaticMethodID(cls, "setCppStartTime", "(J)V");
+
+    if (mid == NULL) {
+        std::cout << "Could not find method" << std::endl;
+        return;
+    }
+
+	jdouble start = appStartTime;
+	env->CallStaticVoidMethod(cls, mid, start);
+
+	#endif
 }
 
 void DeliteSendMemoryAccessStatsToJVM( int32_t offset, JNIEnv* env ) {
@@ -148,5 +261,26 @@ void DeliteSendMemoryAccessStatsToJVM( int32_t offset, JNIEnv* env ) {
         }
     }
 
-	printArrayAddressRanges();
+	dumpArrayAddrRanges();
+}
+
+void SendKernelMemUsageStatsToJVM( JNIEnv* env ) {
+    jclass cls = env->FindClass("ppl/delite/runtime/profiler/MemoryProfiler");
+    jmethodID mid = env->GetStaticMethodID(cls, "addCppKernelMemUsageStats", "(Ljava/lang/String;J)V");
+
+    if (mid == NULL) {
+        std::cout << "Could not find method 'addCppKernelMemUsageStats'" << std::endl;
+        return;
+    }
+
+    for (int32_t tid=0; tid < numCpp; tid++) {
+		std::map< std::string, uint64_t >* m = kernelToMemUsageMaps->at(tid);
+		std::map< std::string, uint64_t >::iterator it;
+		for (it = m->begin(); it != m->end(); it++) {
+            jstring kernel = env->NewStringUTF(it->first.c_str());
+			jlong memUsage = it->second;
+            env->CallStaticVoidMethod(cls, mid, kernel, memUsage);
+            env->DeleteLocalRef(kernel);
+		}
+    }
 }

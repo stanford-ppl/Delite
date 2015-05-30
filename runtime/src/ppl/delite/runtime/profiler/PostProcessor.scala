@@ -40,12 +40,12 @@ object PostProcessor {
 
 	def postProcessProfileData(globalStartNanos: Long, degFile: String) {
 		val depGraph = time[DependencyGraph](processDegFile(degFile), "processDegFile")
-		depGraph.string()
 		val executionProfile = time[ExecutionProfile](processRawProfileDataFile(depGraph), "processRawProfileDataFile")
 
 		val t0 = System.nanoTime()
 		executionProfile.writeDNodesToDB()
 		executionProfile.writeExecutionSummariesToDB()
+		executionProfile.writeTicTocTNodesToDB()
 		executionProfile.writeTicTocNodeSummariesToDB()
 		executionProfile.writeKernelMemAccessStatsToDB()
 		executionProfile.writeAppDataToDB()

@@ -135,13 +135,11 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
   }
 
   protected def beginProfile() {
-    val chunkName = master.id + "_" + chunkIdx
-    out.append("DeliteCppTimerStart(tid,\""+master.id+"\");\n")
+    out.append("DeliteCppTimerStart(tid,\""+master.id + "\");\n")
   }
 
   protected def endProfile(isMaster: Boolean) {
-    val chunkName = master.id + "_" + chunkIdx
-    val timeStr = "DeliteCppTimerStop(tid,\""+master.id+"\");\n"
+    val timeStr = "DeliteCppTimerStopMultiLoop(tid,\""+master.id+"\");\n"
     if (isMaster) out.append("if (tid == 0) "+timeStr) else out.append("if (tid != 0) "+timeStr)
   }
 

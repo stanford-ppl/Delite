@@ -88,15 +88,17 @@ object SamplerThread extends Thread {
   		val tmp = samples.length - 2
   		for (i <- 0 to tmp) {
   			s = samples(i)
-  			writer.println(pre1 + "{ \"key\":\"M\",\"value\":" + s.maxMemory + ",\"time\":" + s.timeStamp + " },")
-  			writer.println(pre1 + "{ \"key\":\"T\",\"value\":" + s.totalMemory + ",\"time\":" + s.timeStamp + " },")
-  			writer.println(pre1 + "{ \"key\":\"U\",\"value\":" + s.usedMemory + ",\"time\":" + s.timeStamp + " },")
+			val t = s.timeStamp - PerformanceTimer.appStartTimeInMillis
+  			writer.println(pre1 + "{ \"key\":\"M\",\"value\":" + s.maxMemory + ",\"time\":" + t + " },")
+  			writer.println(pre1 + "{ \"key\":\"T\",\"value\":" + s.totalMemory + ",\"time\":" + t + " },")
+  			writer.println(pre1 + "{ \"key\":\"U\",\"value\":" + s.usedMemory + ",\"time\":" + t + " },")
   		}
 
   		s = samples(samples.length - 1)
-  		writer.println(pre1 + "{ \"key\":\"M\",\"value\":" + s.maxMemory + ",\"time\":" + s.timeStamp + " },")
-		writer.println(pre1 + "{ \"key\":\"T\",\"value\":" + s.totalMemory + ",\"time\":" + s.timeStamp + " },")
-		writer.println(pre1 + "{ \"key\":\"U\",\"value\":" + s.usedMemory + ",\"time\":" + s.timeStamp + " }")
+		val t = s.timeStamp - PerformanceTimer.appStartTimeInMillis
+  		writer.println(pre1 + "{ \"key\":\"M\",\"value\":" + s.maxMemory + ",\"time\":" + t + " },")
+		writer.println(pre1 + "{ \"key\":\"T\",\"value\":" + s.totalMemory + ",\"time\":" + t + " },")
+		writer.println(pre1 + "{ \"key\":\"U\",\"value\":" + s.usedMemory + ",\"time\":" + t + " }")
 
   		writer.println(prefixSpace + "]")
   	}

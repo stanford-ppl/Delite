@@ -131,20 +131,6 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
   }
 
   protected def beginProfile() {
-/*
-<<<<<<< HEAD
-    //out.append("PerformanceTimer.startChunked(\""+master.id+"\", Thread.currentThread.getName(), "+numChunks+", "+chunkIdx+")\n")
-    val chunkName = master.id + "_" + chunkIdx
-    out.append("PerformanceTimer.start(\""+chunkName+"\", threadName, false)\n")
-  }
-
-  protected def endProfile() {
-    //out.append("PerformanceTimer.stopChunked(\""+master.id+"\", "+chunkIdx+")\n")
-    val chunkName = master.id + "_" + chunkIdx
-    out.append("PerformanceTimer.stop(\""+chunkName+"\", threadName, false)\n")
-=======
-*/
-    //out.append("PerformanceTimer.start(\""+master.id+"_"+"\"+tid, threadName, false)\n")
     out.append("val threadName = \"ExecutionThread\" + tid\n")
     out.append("val kernelName = \"" + master.id + "_" + "\" + tid\n")
     out.append("MemoryProfiler.pushNameOfCurrKernel(threadName, kernelName)\n")
@@ -160,7 +146,6 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     } else {
       out.append("if (tid != 0) {\n" + timeStr + memStr + "}\n")
     }
-//>>>>>>> develop
   }
 
   protected def kernelName = "MultiLoop_" + master.id
