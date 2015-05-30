@@ -44,6 +44,7 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
 
   protected def writeMethodHeader() {
     out.append("def run() {\n")
+    if (location == 0) out.append("PerformanceTimer.start(\"all\", false)\n")
     if (Config.profile) out.append("val threadName = Thread.currentThread.getName()\n")
     out.append("val "+resourceInfoSym+" = new "+resourceInfoType+"("+Targets.getRelativeLocation(location)+",Config.numThreads)\n")
   }
@@ -175,6 +176,7 @@ class ScalaMainExecutableGenerator(val location: Int, val graph: DeliteTaskGraph
   }
 
   override protected def writeMethodFooter() {
+    if (location == 0) out.append("PerformanceTimer.stop(\"all\", false)\n")
     out.append("ppl.delite.runtime.graph.ops.EOP_Global.barrier();\n")
     out.append("}\n")
   }

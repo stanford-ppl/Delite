@@ -28,21 +28,22 @@ object Profiling {
 
     globalStartNanos = System.nanoTime()
     jvmUpTime = ManagementFactory.getRuntimeMXBean().getUptime()
-    PerformanceTimer.start("all", false)
     
     if (Config.dumpProfile) SamplerThread.start()
   }
 
   def endRun() {
     if (Config.dumpProfile) SamplerThread.stop()
-    PerformanceTimer.stop("all", false)
+	PerformanceTimer.stop()
     PerformanceTimer.printStatsForNonKernelComps()
     if (Config.dumpProfile) PerformanceTimer.stop()  
     if (Config.dumpStats) PerformanceTimer.dumpStats()   
 
-    val t0 = System.nanoTime()
-    PostProcessor.postProcessProfileData(globalStartNanos, Config.degFilePath)
-    val t1 = System.nanoTime()
-    Predef.println("[TIME] postProcessProfileData: " + ((t1 - t0)/1000000) + " ms")
+	if (Config.dumpProfile) {
+		val t0 = System.nanoTime()
+		PostProcessor.postProcessProfileData(globalStartNanos, Config.degFilePath)
+		val t1 = System.nanoTime()
+		Predef.println("[TIME] postProcessProfileData: " + ((t1 - t0)/1000000) + " ms")
+	}
   }
 }

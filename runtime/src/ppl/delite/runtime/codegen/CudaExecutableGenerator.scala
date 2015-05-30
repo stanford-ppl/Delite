@@ -120,8 +120,10 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
     out.append(" {\n")
 
     out.append("env" + location + " = jnienv;\n")
-    if (Config.profile)
-      out.append("InitDeliteCudaTimer(" + Targets.getRelativeLocation(location) + ");\n")
+    if (Config.profile) {
+      val tmp = Config.numThreads + Config.numCpp
+      out.append("InitDeliteCudaTimer(" + Targets.getRelativeLocation(location) + "," + tmp + ");\n")
+    }
     out.append("cudaStreamCreate(&kernelStream);\n")
     out.append("cudaStreamCreate(&h2dStream);\n")
     out.append("cudaStreamCreate(&d2hStream);\n")
@@ -152,7 +154,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
 
   protected def writeMethodFooter() {
     if (Config.profile)
-      out.append("DeliteCudaTimerDump(" + Targets.getRelativeLocation(location) + "," + location + ",env" + location + ");\n")
+      out.append("DeliteCudaTimerClose(" + Targets.getRelativeLocation(location) + "," + location + ",env" + location + ");\n")
     out.append("tempCudaMemFree();\n")
     out.append("cudaHostMemFree();\n")
     out.append("DeliteCudaCheckGC();\n")
@@ -233,8 +235,14 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs{
         out.append(");\n")
     }
 
-    if (Config.profile)
-      out.append("DeliteCudaTimerStop(" + Targets.getRelativeLocation(location) + ",\""+op.id+"\");\n")
+    if (Config.profile) {
+      op match {
+        case op:OP_MultiLoop =>
+      	  out.append("DeliteCudaTimerStop(" + Targets.getRelativeLocation(location) + ",\""+op.id+"\", true);\n")
+        case _ =>
+      	  out.append("DeliteCudaTimerStop(" + Targets.getRelativeLocation(location) + ",\""+op.id+"\", false);\n")
+      }
+    }
 
     out.append("addEvent(kernelStream, d2hStream);\n")
     //writeDataFrees(op)

@@ -2,10 +2,8 @@ package ppl.delite.runtime.profiler
 
 import collection.mutable
 import java.io.{BufferedWriter, File, PrintWriter, FileWriter}
-import java.util.concurrent.ConcurrentHashMap
 import ppl.delite.runtime.Config
-import scala.collection.mutable.ArrayBuffer
-import scala.collection.mutable.Stack
+import scala.collection.mutable.{ArrayBuffer, HashMap, Stack}
 
 class MemoryAccessStats(l2HitRatio: Double, l2Misses: Int, l3HitRatio: Double, l3Misses: Int, bytesReadFromMem: Double) {
     var l2CacheHitRatio: Double = l2HitRatio
@@ -18,10 +16,11 @@ class MemoryAccessStats(l2HitRatio: Double, l2Misses: Int, l3HitRatio: Double, l
 object MemoryProfiler
 {
 	var threadCount = 0
-  	var stats = new ArrayBuffer[Map[String, List[Long]]]()
+  	//var stats = new ArrayBuffer[Map[String, List[Long]]]()
+  	var kernelToMemUsageMaps = new ArrayBuffer[Map[String, Long]]()
+  	var kernelToTotMemUsage = Map[String, Long]()
   	var threadToCurrKernel = new ArrayBuffer[Stack[String]]()
   	var threadToId: Map[String, Int] = Map()
-	//var memoryAccessStatsMaps = new ArrayBuffer[Map[String, ArrayBuffer[MemoryAccessStats]]]()
 	var kernelToMemAccessStats = Map[String, ArrayBuffer[MemoryAccessStats]]()
 
 	var cppTidStart = -1
@@ -44,16 +43,15 @@ object MemoryProfiler
 		numOpenCLThreads = numOpenCL
 
 		for (i <- List.range(0, numThreads)) {
-		  //val threadName = "ExecutionThread-" + i
 		  val threadName = "ExecutionThread" + i
 		  threadToId += threadName -> i
-		  stats += Map[String, List[Long]]()
+		  //stats += Map[String, List[Long]]()
+		  kernelToMemUsageMaps += Map[String, Long]()
 		  threadToCurrKernel += new Stack[String]()
-		  //memoryAccessStatsMaps += Map[String, ArrayBuffer[MemoryAccessStats]]() 
 		}
 
 		threadToId += "main" -> numThreads
-		stats += Map[String, List[Long]]()
+		//stats += Map[String, List[Long]]()
 		threadToCurrKernel += new Stack[String]()
 	}
 
@@ -67,50 +65,37 @@ object MemoryProfiler
 		kernelToMemAccessStats += sourceContext -> new ArrayBuffer[MemoryAccessStats]()
 	  }
 
-	  //kernelToMemAccessStats(sourceContext) += stats
 	  kernelToMemAccessStats( sourceContext ).append( stats )
     }
 
-	/*
-	def addMemoryAccessStats(
-        sourceContext: String, threadId: Int,
-        l2CacheHitRatio: Double, l2CacheMisses: Int,
-        l3CacheHitRatio: Double, l3CacheMisses: Int,
-        bytesReadFromMC: Double): Unit = {
-  	  Predef.println("sourceContext: " + sourceContext)
-      val stats = new MemoryAccessStats( l2CacheHitRatio, l2CacheMisses, l3CacheHitRatio, l3CacheMisses, bytesReadFromMC );
-      //memoryAccessStatsMaps(threadId) += sourceContext -> stats
-      if (!memoryAccessStatsMaps(threadId).contains(sourceContext)) {
-		memoryAccessStatsMaps(threadId) += sourceContext -> new ArrayBuffer[MemoryAccessStats]()
-	  }
+    def addCppKernelMemUsageStats( kernel:String, memUsage: Long ) {
+    	if (!kernelToTotMemUsage.contains( kernel )) { 
+			kernelToTotMemUsage += kernel -> 0
+		}
 
-	  memoryAccessStatsMaps(threadId)(sourceContext) += stats
-    }
-    */
+		kernelToTotMemUsage += kernel -> ( memUsage + kernelToTotMemUsage( kernel ) )
+	}
 
 	def clearAll() {
-		stats.clear()
+		kernelToMemUsageMaps.clear()
 		threadToCurrKernel.clear()
 		threadToId = Map()
-		//memoryAccessStatsMaps = new ArrayBuffer[Map[String, ArrayBuffer[MemoryAccessStats]]]()
 		kernelToMemAccessStats = Map[String, ArrayBuffer[MemoryAccessStats]]()
 		initializeStats(numScalaThreads, numCppThreads, numCudaThreads, numOpenCLThreads)
 	}
 
   	def logArrayAllocation(component: String, threadId: Int, arrayLength: Int, elemType: String) = {
-		var stack = threadToCurrKernel(threadId)
-		var kernelCurrentlyExecutedByThread = component
-
-		if (stack.length > 0) kernelCurrentlyExecutedByThread = getNameOfCurrKernel(threadId)
+		var stack = threadToCurrKernel( threadId )
+		var currKernel = component
+		if (stack.length > 0) currKernel = getNameOfCurrKernel( threadId )
 	
-		if (!stats(threadId).contains(kernelCurrentlyExecutedByThread)) {
-        	stats(threadId) += kernelCurrentlyExecutedByThread -> List[Long]()
+		if (!kernelToMemUsageMaps( threadId ).contains( currKernel )) {
+        	kernelToMemUsageMaps( threadId ) += currKernel -> 0
 	    }
 
-	    val arrayMemSize = arrayLength.toLong * sizeOf(elemType).toLong
-	    var kernelToAlloc = stats(threadId)
-	    val current = arrayMemSize :: kernelToAlloc(kernelCurrentlyExecutedByThread)
-	    stats(threadId) += kernelCurrentlyExecutedByThread -> current
+	    val arrayMemSize = arrayLength.toLong * sizeOf( elemType ).toLong
+	    val tmp = kernelToMemUsageMaps( threadId )( currKernel )
+	    kernelToMemUsageMaps( threadId ) += currKernel -> ( tmp + arrayMemSize )
   	}
 
 	def pushNameOfCurrKernel(thread: String, kernelId: String) = {
@@ -141,18 +126,20 @@ object MemoryProfiler
   		return "null"
   	}
 
-	def aggregateMemAllocStatsFromAllThreads(): Map[String, Long] = {
-		var aggrStats = Map[String, Long]()
-		for (m <- stats) {
-			for (kv <- m) {
+  	def aggregateMemAllocStatsFromAllThreads(): Map[String, Long] = {
+  		for (m <- kernelToMemUsageMaps) {
+  			for (kv <- m) {
 				var kernel = kv._1
-				if (!aggrStats.contains(kernel)) { aggrStats += kernel -> 0 }
-				aggrStats += kernel -> (kv._2.sum + aggrStats(kernel))
-			}
-		}
+				if (!kernelToTotMemUsage.contains( kernel )) { 
+					kernelToTotMemUsage += kernel -> 0
+				}
 
-		return aggrStats
-	}
+				kernelToTotMemUsage += kernel -> ( kv._2 + kernelToTotMemUsage( kernel ) )
+			}
+  		}
+
+		return kernelToTotMemUsage
+  	}
 
 	def aggregateMemAccessStats() : Map[String, MemoryAccessStats] = {
 		var res = Map[String, MemoryAccessStats]()
@@ -178,19 +165,10 @@ object MemoryProfiler
 	} 
 
   	def sizeOf(elemType: String) = elemType match {
-  		case "boolean" | "byte" => 8
-	    case "char" | "short" => 16
-	    case "int" | "float" => 32
-	    case "double" | "long" => 64
-	    case _ => 64
-  	}
-
-  	def sum(l:List[Long]) = {
-  		var res = 0L
-  		for (n <- l) {
-  			res += n
-  		}
-
-  		res
+        case "boolean" | "byte" => 1
+        case "char" | "short" => 2
+        case "int" | "float" => 4
+        case "double" | "long" => 8
+        case _ => 64
   	}
 }

@@ -12,11 +12,16 @@ object PerformanceTimer {
   val threadIdToWriter = new ArrayBuffer[PrintWriter] // thread id -> thread-specific profile data file
   val threadIdToKernelCallStack = new ArrayBuffer[Stack[Timing]]
   var threadToId: Map[String, Int] = Map()
+  var ticTocRegionToTiming: Map[String, Timing] = Map()
 
   val profileFilePrefix = Config.profileOutputDirectory + "/profile_t_"
+  val n = Config.profileOutputDirectory + "/profile_tic_toc_scala.csv"
+  val ticTocRegionsWriter = new PrintWriter( new File(n) )
   
   var jvmUpTimeAtAppStart = 0L
   var appStartTimeInMillis = 0L
+  var cppStartTime: Long = 0
+  var clocksPerSec: Double = 0
 
   // HACK: This is a temporary solution
   // This is a list of timing data for the component that is tracked using Config.dumpStatsComponent
@@ -25,7 +30,7 @@ object PerformanceTimer {
   def initializeStats(numThreads: Int) = synchronized {
     threadCount = numThreads
 
-    for (i <- 0 to numThreads) {
+    for (i <- 0 to (numThreads - 1)) {
       val threadName = "ExecutionThread" + i
       threadToId += threadName -> i
       statsNewFormat += Map[String, List[Timing]]()
@@ -35,7 +40,7 @@ object PerformanceTimer {
       threadIdToKernelCallStack.append( new Stack[Timing] )
     }
 
-    threadToId += "main" -> numThreads
+    statsNewFormat += Map[String, List[Timing]]()
   }
 
   def recordAppStartTimeStats() = synchronized {
@@ -51,30 +56,38 @@ object PerformanceTimer {
   }
 
   def start(component: String, printMessage: Boolean = true): Unit = {
-    start(component, "main", printMessage)
+    val startTime = System.currentTimeMillis
+	ticTocRegionToTiming += component -> new Timing("main", startTime, component)
   }
 
   def stop(component: String, threadName: String, printMessage: Boolean) = {
     val endTime = System.currentTimeMillis
     val threadId = threadToId(threadName)
-    val currKernel = threadIdToKernelCallStack(threadId).pop()
+	val stack = threadIdToKernelCallStack(threadId)
+	val currKernel = stack.pop()
     if (currKernel.component != component) {
       error( "cannot stop timing that doesn't exist. [TID: " + threadId + ",  Component: " + component + ",  Stack top: " + currKernel.component + "]" )
     }
 
     currKernel.endTime = endTime
     val writer = threadIdToWriter(threadId)
-    writer.println(component + "," + currKernel.startTime + "," + currKernel.elapsedMillis)
+    writer.println(component + "," + currKernel.startTime + "," + currKernel.elapsedMillis + "," + stack.length)
   }
 
   def stop(component: String, printMessage: Boolean = true): Unit = {
-    stop(component, "main", printMessage)
+    val endTime = System.currentTimeMillis
+    val t = ticTocRegionToTiming(component)
+	t.endTime = endTime
+    ticTocRegionsWriter.println(component + "," + t.startTime + "," + t.elapsedMillis + ",0")
+	ticTocRegionToTiming -= component
   }
 
   def stop() {
     for (w <- threadIdToWriter) {
       w.close()
     }
+
+	ticTocRegionsWriter.close()
   }
 
   // Currently only used by C++ to dump the profile results, need to refactor the code
@@ -150,5 +163,10 @@ object PerformanceTimer {
         stream.println(str)
       }
     })
+  }
+
+  def setCppStartTime(start: Long) {
+	cppStartTime = start
+    Predef.println("cppStartTime == " + cppStartTime)
   }
 }
