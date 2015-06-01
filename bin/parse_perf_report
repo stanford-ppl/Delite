@@ -10,10 +10,11 @@ IDX_MEM_ACCESS = 2
 IDX_DATA_TARGET_ADDR = 3
 
 class DataStructure:
-	def __init__( self, startAddr, size, sourceContext = "SCNotProvided" ):
+	def __init__( self, startAddr, size, scId ):
 		self.startAddr = int(startAddr, 16)
 		self.endAddr = self.startAddr + size
-		self.sourceContext = sourceContext
+		#self.sourceContext = sourceContext
+		self.scId = scId 
 
 class MemAccessStats:
 	def __init__( self ):
@@ -44,11 +45,12 @@ def findDataStructureAccessed( dataStructures, targetDataAddr ):
 
 	return None
 
-def updateMemAccessStats( dataStructureToStats, dataStructureAccessed, memAccessStr, samplesCount ):
-	if not dataStructureAccessed in dataStructureToStats:
-		dataStructureToStats[dataStructureAccessed] = MemAccessStats()
+def updateMemAccessStats( scIdToStats, dataStructureAccessed, memAccessStr, samplesCount ):
+	scId = dataStructureAccessed.scId
+	if not scId in scIdToStats:
+		scIdToStats[scId] = MemAccessStats()
 
-	stats = dataStructureToStats[dataStructureAccessed]
+	stats = scIdToStats[scId]
 	
 	if memAccessStr == "L1 hit":
 		stats.l1Hits = stats.l1Hits + samplesCount
@@ -61,41 +63,45 @@ def updateMemAccessStats( dataStructureToStats, dataStructureAccessed, memAccess
 	elif memAccessStr.startswith("Remote RAM"):
 		stats.remoteRAMHits = stats.remoteRAMHits + samplesCount
 
-def dumpStats( dataStructureToStats ):
-	dbFile = '/home/jithinpt/cache_instrumentation/hyperdsl/published/SimpleVector/profile/profile.db'
+def dumpStats( dbFile, scIdToStats, idToSourceContext ):
 	conn = sqlite3.connect( dbFile )
 	c = conn.cursor()
 
-	#for ds in dataStructureToStats:
-	#	stats = dataStructureToStats[ds]
-	#	tot = stats.l1Hits + stats.l2Hits + stats.l3Hits + stats.localRAMHits + stats.remoteRAMHits
-	#	l1HitPct = int( (stats.l1Hits * 100) / tot )
-	#	l2HitPct = int( (stats.l2Hits * 100) / tot )
-	#	l3HitPct = int( (stats.l3Hits * 100) / tot )
-	#	localRAMHitPct = int( (stats.localRAMHits * 100) / tot )
-	#	remoteRAMHitPct = int( (stats.remoteRAMHits * 100) / tot )
-	#
-	#	sql = 'INSERT INTO ArrayCacheAccessStats VALUES ({0},{1},{2},{3},{4},{5});\n'.format(ds.sourceContext, l1HitPct, l2HitPct, l3HitPct, localRAMHitPct, remoteRAMHitPct)
-	#	c.execute(sql)
-	#	conn.commit()
-
-	for ds in dataStructureToStats:
-		stats = dataStructureToStats[ds]
+	i = 0
+	for scId in scIdToStats:
+		stats = scIdToStats[scId]
 		tot = stats.l1Hits + stats.l2Hits + stats.l3Hits + stats.localRAMHits + stats.remoteRAMHits
-		l1MissPct = 100 - int( (stats.l1Hits * 100) / tot )
-		l2MissPct = 100 - int( (stats.l2Hits * 100) / tot )
-		l3MissPct = 100 - int( (stats.l3Hits * 100) / tot )
-		localRAMMissPct = 100 - int( (stats.localRAMHits * 100) / tot )
-		remoteRAMMissPct = 100 - int( (stats.remoteRAMHits * 100) / tot )
+		l1Misses = tot - stats.l1Hits
+		l2Misses = l1Misses - stats.l2Hits
+		l3Misses = l2Misses - stats.l3Hits
+		localRAMMisses = l3Misses - stats.localRAMHits
+		tmp = tot > 0
+		l1MissPct = 100 - int( (stats.l1Hits * 100) / tot ) if tmp  else 0
+		l2MissPct = 100 - int( (stats.l2Hits * 100) / tot ) if (tmp and (l1Misses > 0)) else 0
+		l3MissPct = 100 - int( (stats.l3Hits * 100) / tot ) if (tmp and (l2Misses > 0)) else 0
+		localRAMMissPct = 100 - int( (stats.localRAMHits * 100) / tot ) if (tmp and (l3Misses > 0)) else 0
+		remoteRAMMissPct = 100 - int( (stats.remoteRAMHits * 100) / tot ) if (tmp and (localRAMMisses > 0)) else 0
 	
-		sql = 'INSERT INTO ArrayCacheAccessStats VALUES ({0},{1},{2},{3},{4},{5});\n'.format(ds.sourceContext, l1MissPct, l2MissPct, l3MissPct, localRAMMissPct, remoteRAMMissPct)
+		sql = "INSERT INTO ArrayCacheAccessStats VALUES ({0},'{1}',{2},{3},{4},{5},{6});\n".format(i, idToSourceContext[scId], l1MissPct, l2MissPct, l3MissPct, localRAMMissPct, remoteRAMMissPct)
+		print sql
 		c.execute(sql)
 		conn.commit()
+		i = i + 1
 
 	conn.close()
 
-def parsePerfReport( report, dataStructures ):
-	dataStructureToStats = {}
+def parseIdToSourceContextFile( fn ):
+	idToSourceContext = {}
+	f = open(fn, 'r')
+	for line in f:
+		arr = line.strip("\n").split(",")
+		idToSourceContext[int(arr[0])] = arr[1]
+
+	f.close()
+	return idToSourceContext
+
+def parsePerfReport( report, dataStructures, idToSourceContext, dbFile ):
+	scIdToStats = {}
 	isCommentsSection = True
 
 	perfReportCmd = 'perf report --mem-mode -n --sort=mem,symbol_daddr -t , -i ' + report
@@ -120,8 +126,8 @@ def parsePerfReport( report, dataStructures ):
 			
 			dataStructureAccessed = findDataStructureAccessed( dataStructures, targetDataAddr )	
 			if dataStructureAccessed != None:
-				updateMemAccessStats( dataStructureToStats, dataStructureAccessed, memAccessStr, samplesCount )
-	dumpStats( dataStructureToStats )
+				updateMemAccessStats( scIdToStats, dataStructureAccessed, memAccessStr, samplesCount )
+	dumpStats( dbFile, scIdToStats, idToSourceContext )
 
 def parseDataStructureInfo( dsFile ):
 	dataStructures = []
@@ -130,7 +136,7 @@ def parseDataStructureInfo( dsFile ):
 		arr = line.strip('\n').split(",")
 		startAddr = arr[0]
 		size = int(arr[1])
-		sourceContext = arr[2]
+		sourceContext = int(arr[2])
 		dataStructures.append( DataStructure(startAddr, size, sourceContext) )
 	
 	f.close()
@@ -144,7 +150,9 @@ def main():
         perfDataFile = dslRootDir + '/perf.data' 
         dataStructureMemRangesFile = dslRootDir + '/dataStructures.csv'
         dataStructures = parseDataStructureInfo( dataStructureMemRangesFile )
-        parsePerfReport( perfDataFile, dataStructures )
+        idToSourceContext = parseIdToSourceContextFile( dslRootDir + '/scToId.csv' )
+        dbFile = dslRootDir + '/profile/profile.db'
+        parsePerfReport( perfDataFile, dataStructures, idToSourceContext, dbFile )
     else:
         print("'perf' is not available")
 
