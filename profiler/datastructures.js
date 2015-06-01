@@ -45,18 +45,99 @@ function TicTocRegion(name, start, duration, numThreads) {
 	this.syncTimeStats = createThreadLevelTimeStats(numThreads);
 }
 
-function ProfileDB(dbRef) {
+//====================================================
+// Connector
+//====================================================
+
+function Server( serverURL ) {
+	this.url = serverURL + "?query=" ;
+}
+
+Server.prototype.xmlHttpRequest = function( query, parseResponse ) {
+  var req = new XMLHttpRequest();
+  var reqUrl = this.url + encodeURIComponent( query );
+  req.open( 'GET', reqUrl, false );
+  req.onreadystatechange = function() { parseResponse( req.responseText ) };
+  req.send();
+};
+
+//====================================================
+// RemoteProfileDB
+//====================================================
+
+function RemoteProfileDB( server ) {
+	this.server = server;
+}
+
+RemoteProfileDB.prototype.processQuery = function ( query, handler, isSingleton ) {
+	var f = function(res) {
+		var j = JSON.parse( res );
+		if ( isSingleton ) { handler(j[0]); }
+		else { handler(j); }
+	};
+
+	this.server.xmlHttpRequest( query, f );
+}
+
+RemoteProfileDB.prototype.fetchSingletonFromDB = function( query, handler ) {
+	var f = function(res) {
+		var j = JSON.parse( res );
+		handler(j[0]);
+	};
+
+	this.server.xmlHttpRequest( query, f );
+};
+
+RemoteProfileDB.prototype.fetchMultipleElemsFromDB = function( query, handler ) {
+	var f = function(res) {
+		var j = JSON.parse( res );
+		handler(j);
+	};
+
+	this.server.xmlHttpRequest( query, f );
+};
+
+RemoteProfileDB.prototype.dbDNodeById = function ( dNodeId, handler ) {
+	var query = "SELECT * FROM DNodes WHERE ID=" + dNodeId;
+	this.fetchSingletonFromDB( query, handler );
+};
+
+RemoteProfileDB.prototype.dbDNodeByName = function( dNodeName, handler ) {
+	var query = "SELECT * FROM DNodes WHERE NAME='" + dNodeName + "'";
+	this.fetchSingletonFromDB( query, handler );
+};
+
+RemoteProfileDB.prototype.dbTNodeById = function( tNodeId, handler ) {
+	var query = "SELECT * FROM TNodes WHERE id=" + tNodeId;
+	this.fetchSingletonFromDB( query, handler );
+};
+
+RemoteProfileDB.prototype.dbExecutionSummaryByName = function( name, handler ) {
+	var query = "SELECT * FROM ExecutionSummaries WHERE NAME='" + name + "'";
+	this.fetchSingletonFromDB( query, handler );
+};
+
+RemoteProfileDB.prototype.dbChildTNodes = function( parentTNodeId, handler ) {
+	var query = "SELECT * FROM TNodes WHERE parentId=" + parentTNodeId;
+	this.fetchMultipleElemsFromDB( query, handler );
+};
+
+//====================================================
+// RemoteProfileDB
+//====================================================
+
+function InMemoryProfileDB(dbRef) {
 	this.db = dbRef;
 	this.stmt = undefined;
 }
 
-ProfileDB.prototype.fetchSingletonFromDB = function( query ) {
+InMemoryProfileDB.prototype.fetchSingletonFromDB = function( query ) {
 	this.stmt = this.db.prepare( query );
 	this.stmt.step();
 	return this.stmt.getAsObject();
 };
 
-ProfileDB.prototype.fetchMultipleElemsFromDB = function( query ) {
+InMemoryProfileDB.prototype.fetchMultipleElemsFromDB = function( query ) {
 	var results = [];
 	this.stmt = this.db.prepare( query );
 	while ( this.stmt.step() ) {
@@ -66,32 +147,16 @@ ProfileDB.prototype.fetchMultipleElemsFromDB = function( query ) {
 	return results;
 };
 
-ProfileDB.prototype.dbDNodeById = function ( dNodeId ) {
-	return this.fetchSingletonFromDB( "SELECT * FROM DNodes WHERE ID=" + dNodeId );
-};
-
-ProfileDB.prototype.dbDNodeByName = function( dNodeName ) {
-	return this.fetchSingletonFromDB( "SELECT * FROM DNodes WHERE NAME='" + dNodeName + "'");
-};
-
-ProfileDB.prototype.dbTNodeById = function( tNodeId ) {
-	return this.fetchSingletonFromDB( "SELECT * FROM TNodes WHERE id=" + tNodeId );
-};
-
-ProfileDB.prototype.dbExecutionSummaryByName = function( name ) {
+InMemoryProfileDB.prototype.dbExecutionSummaryByName = function( name ) {
 	return this.fetchSingletonFromDB( "SELECT * FROM ExecutionSummaries WHERE NAME='" + name + "'" );
 };
 
-ProfileDB.prototype.dbChildTNodes = function( parentTNodeId ) {
-	return this.fetchMultipleElemsFromDB( "SELECT * FROM TNodes WHERE parentId=" + parentTNodeId );
-};
-
-ProfileDB.prototype.threadCount = function() {
+InMemoryProfileDB.prototype.threadCount = function() {
 	var res = this.fetchSingletonFromDB( "SELECT * FROM AppData ");
 	return res.THREAD_COUNT;
 };
 
-ProfileDB.prototype.ticTocRegionSummaries = function() {
+InMemoryProfileDB.prototype.ticTocRegionSummaries = function() {
 	return this.fetchMultipleElemsFromDB("SELECT * FROM TicTocNodeSummaries");
 };
 

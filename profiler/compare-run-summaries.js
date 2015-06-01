@@ -59,7 +59,7 @@ function readExecutionProfiles(evt) {
 
 				return function(e) {
 					var Uints = new Uint8Array(e.target.result);
-					var db = new ProfileDB( new SQL.Database(Uints) );
+					var db = new InMemoryProfileDB( new SQL.Database(Uints) );
 					var tc = db.threadCount();
 					threadCountToProfileDB[tc] = db;
 					fileToProcessingDone[fileName] = true;

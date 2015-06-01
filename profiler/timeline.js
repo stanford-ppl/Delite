@@ -26,9 +26,7 @@ tNodeInfoTable = $("#tNodeInfoTable")[0];
 // TODO: The passing of 'timelineLevelSelectorId' as an input parameter is a hack. Instead, the TimelineGraph element
 // should trigger an event when a node is double-clicked and external elements should be able to listen to it.
 
-function TimelineGraph(classStr, nameSuffix, parentDivId, appData, timelineData, timelineLevelSelectorId, config) {
-	console.log("Creating timeline graph");
-	
+function TimelineGraph(classStr, nameSuffix, parentDivId, appData, timelineData, timelineLevelSelectorId, config) {	
 	this.classStr = classStr;
 	this.nameSuffix = nameSuffix;
 	this.parentDivId = parentDivId;
@@ -268,14 +266,17 @@ TimelineGraph.prototype.getRectFill = function(d) {
 
 TimelineGraph.prototype.timelineNodeClickHandler = function(tNode) {
 	var config = this.config;
-	//var tNode = config.dbTNodeById(tNode.id);
-	var tNode = config.profileDB.dbTNodeById(tNode.id);
-	if (tNode.type == config.TNODE_TYPE_SYNC) {
-		config.populateSyncNodeInfoTable( tNode );
-	} else {
-		this.populateTNodeInfoTable( tNode );
-		config.highlightDNodeById( tNode.dNodeId );
+	var timeline = this;
+	function f( tNode ) {
+		if (tNode.type == config.TNODE_TYPE_SYNC) {
+			config.populateSyncNodeInfoTable( tNode );
+		} else {
+			timeline.populateTNodeInfoTable( tNode );
+			config.highlightDNodeById( tNode.dNodeId );
+		}
 	}
+
+	config.profileDB.dbTNodeById(tNode.id, f);
 };
 
 TimelineGraph.prototype.populateTNodeInfoTable = function(tNode) {
@@ -309,33 +310,40 @@ TimelineGraph.prototype.populateTNodeInfoTable = function(tNode) {
 }
 
 TimelineGraph.prototype.dblClickHandler = function(tNodeId) {
-	//var tNode = config.dbTNodeById( tNodeId );
-	var tNode = config.profileDB.dbTNodeById( tNodeId );
-	if ( (tNode.childKernelIds != "") || (tNode.childSyncIds != "") ) {
-		var isStackChanged = false;
-		if ( (tNode.parentId == -1) && (this.stackOfHiddenNodes.length > 0) ) {
-			var selector = this.stackOfHiddenNodes[0][0];
-			$(selector).show();
-			$(selector + "-label").show();
-			this.stackOfHiddenNodes.length = 0; // clear the array
+	var timeline = this;
+	function g( childNodes ) {
+		timeline.createTimelineNodes( childNodes, timeline.timelineChildNodeClass );
+		timeline.createTimelineLabels( 
+			timeline.filterNodesEligibleForLabels( childNodes ), 
+			timeline.timelineChildNodeLabelClass );
+	}
+
+	function f( tNode ) {
+		if ( (tNode.childKernelIds != "") || (tNode.childSyncIds != "") ) {
+			var isStackChanged = false;
+			if ( (tNode.parentId == -1) && (timeline.stackOfHiddenNodes.length > 0) ) {
+				var selector = timeline.stackOfHiddenNodes[0][0];
+				$(selector).show();
+				$(selector + "-label").show();
+				timeline.stackOfHiddenNodes.length = 0; // clear the array
+				isStackChanged = true;
+			}
+
+			var rectSelector = "#" + d3.event.target.id;
+			timeline.stackOfHiddenNodes.push([rectSelector, tNode]);
+			$(rectSelector).hide();
+			$(rectSelector + "-label").hide();
+
+			timeline.removeChildNodesAndLabels();
+			config.profileDB.dbChildTNodes( tNodeId, g );
+
 			isStackChanged = true;
 		}
 
-		var rectSelector = "#" + d3.event.target.id;
-		this.stackOfHiddenNodes.push([rectSelector, tNode]);
-		$(rectSelector).hide();
-		$(rectSelector + "-label").hide();
-
-		this.removeChildNodesAndLabels();
-		//var childNodes = config.dbChildTNodes( tNodeId );
-		var childNodes = config.profileDB.dbChildTNodes( tNodeId );
-		this.createTimelineNodes(childNodes, this.timelineChildNodeClass);
-		this.createTimelineLabels(this.filterNodesEligibleForLabels(childNodes), this.timelineChildNodeLabelClass);
-
-		isStackChanged = true;
+		if (isStackChanged) timeline.updateHiddenNodeList();
 	}
 
-	if (isStackChanged) this.updateHiddenNodeList();
+	config.profileDB.dbTNodeById( tNodeId, f );
 };
 
 TimelineGraph.prototype.updateHiddenNodeList = function() {
@@ -352,15 +360,19 @@ TimelineGraph.prototype.updateHiddenNodeList = function() {
 };
 
 TimelineGraph.prototype.displayNode = function(tNode) {
-	var nodesToDisplay = [];
-	if (tNode.parentId == -1) {
-		nodesToDisplay = [tNode];
-	} else {
-		nodesToDisplay = config.profileDB.dbChildTNodes( tNode.parentId );
+	var timeline = this;
+	function f( nodesToDisplay ) {
+		timeline.createTimelineNodes( nodesToDisplay, timeline.timelineChildNodeClass );
+		timeline.createTimelineLabels(
+			timeline.filterNodesEligibleForLabels( nodesToDisplay ),
+			timeline.timelineChildNodeLabelClass );
 	}
 
-	this.createTimelineNodes(nodesToDisplay, this.timelineChildNodeClass);
-	this.createTimelineLabels(this.filterNodesEligibleForLabels(nodesToDisplay), this.timelineChildNodeLabelClass);
+	if ( tNode.parentId == -1 ) {
+		f( [tNode] );
+	} else {
+		config.profileDB.dbChildTNodes( tNode.parentId, f );
+	}
 };
 
 TimelineGraph.prototype.filterNodesEligibleForLabels = function(tNodes) {

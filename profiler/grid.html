@@ -29,46 +29,6 @@
 					<div id="accordian">
 						<ul>
 							<li class="active">
-								<h3>Inputs</h3>
-								<ul>
-									<li>
-										<a href="#">
-											<input type="button" value="Upload DEG file     " onclick="document.getElementById('degFileInput').click();" />
-											<span id="degFileName">(DEG_file)</span>
-											<input type="file" id="degFileInput" name="files[]" style="display: none;" />
-										</a>
-									</li>
-									<li>
-										<a href="#">
-											<input type="button" value="Upload profile data" onclick="document.getElementById('profDataInput').click();" />
-											<span id="profDataFileName">(Profile_data)</span>
-											<input type="file" id="profDataInput" name="files[]" style="display: none;" />
-											<!--input type="file" id="profDataInput" name="files[]" multiple webkitdirectory="" directory="" style="display: none;" /-->
-										</a>
-									</li>
-									<li>
-										<a href="#">
-											<input type="button" value="Upload GC Stats    " onclick="document.getElementById('gcStatsInput').click();" />
-											<span id="gcStatsFileName">(GC_Stats_File)</span>
-											<input type="file" id="gcStatsInput" name="files[]" style="display: none;" />
-											<!--input type="file" id="profDataInput" name="files[]" multiple webkitdirectory="" directory="" style="display: none;" /-->
-										</a>
-									</li>
-									<li>
-										<a href="#">
-											<input type="button" value="Upload src dir        " onclick="document.getElementById('srcDirInput').click();" />
-											<span id="srcFileName">(Src_file_name)</span>
-											<input type="file" id="srcDirInput" name="files[]"  multiple webkitdirectory="" directory="" style="display: none;" />
-										</a>
-									</li>
-									<li>
-										<a href="#">
-											<button type="button" id="startButton"/>View</button>
-										</a>
-									</li>
-								</ul>
-							</li>
-							<li class="active">
 								<h3>Global Stats</h3>
 								<ul>
 									<li>
@@ -332,9 +292,9 @@
         <script type="text/javascript" src="datamodel.js"></script>
         <script type="text/javascript" src="execution-profile.js"></script>
         <script type="text/javascript" src="editor.js" charset="utf-8"></script>
-        <script type="text/javascript" src="read-input-files.js"></script>
         <script type="text/javascript" src="timeline.js"></script>
         <script type="text/javascript" src="bar-chart.js"></script>
+        <script type="text/javascript" src="bar-chart-controller.js"></script>
         <script type="text/javascript" src="stack-graph.js"></script>
         <script type="text/javascript" src="gcStats.js"></script>
         <script type="text/javascript" src="gcStats-graph.js"></script>
