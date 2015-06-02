@@ -55,6 +55,8 @@ void DeliteCudaTimerStop(int32_t tid, std::string name, bool isMultiLoop) {
   profileWriters[tid]->writeTimer( name, long(start - appStartTime), elapsedMillis, timermaps[tid]->size(), tid, isMultiLoop );
 }
 
+#ifndef __DELITE_CPP_PROFILER_H__ 
+
 BufferedFileWriter::BufferedFileWriter(const char* fileName)
 {
     fs.open(fileName);
@@ -71,6 +73,8 @@ void BufferedFileWriter::writeTimer(std::string kernel, long start, double durat
 void BufferedFileWriter::close() {
   fs.close();
 }
+
+#endif
 
 void DeliteCudaTimerClose(int32_t tid, int32_t rid, JNIEnv* env) {
   for (int32_t i = 0; i < DELITE_NUM_CUDA; i++) {

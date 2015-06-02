@@ -835,7 +835,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitValDef("isEmpty",remap(Manifest.Boolean), "end <= " + fieldAccess(streamSym,"position"))
 
 		if (instrumentMemAccesses) {
-			stream.println("SystemCounterState before = getSystemCounterState();")
+			stream.println("CoreCounterState before = getCoreCounterState(resourceInfo->threadId);")
 		}
 
         emitValDef("__act2",actType,methodCall("init",List("__act","-1","isEmpty",streamSym)))
@@ -844,7 +844,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         stream.println("}")
 
 		if (instrumentMemAccesses) {
-			stream.println("SystemCounterState after = getSystemCounterState();")
+			stream.println("CoreCounterState after = getCoreCounterState(resourceInfo->threadId);")
 			stream.println("DeliteUpdateMemoryAccessStats( resourceInfo->threadId, " + "\"" + getSourceContext(symList(0).pos) + "\" , getPCMStats( before, after ));")
 		}
 
@@ -855,7 +855,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitVarDef("idx", remap(Manifest.Int), typeCast("start",remap(Manifest.Int)))
 
 		if (instrumentMemAccesses) {
-			stream.println("SystemCounterState before = getSystemCounterState();")
+			stream.println("CoreCounterState before = getCoreCounterState(resourceInfo->threadId);")
 		}
 
         emitValDef("__act2",actType,methodCall("init",List("__act","idx","isEmpty")))
@@ -866,7 +866,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         stream.println("}")
 
 		if (instrumentMemAccesses) {
-			stream.println("SystemCounterState after = getSystemCounterState();")
+			stream.println("CoreCounterState after = getCoreCounterState(resourceInfo->threadId);")
 			stream.println("DeliteUpdateMemoryAccessStats( resourceInfo->threadId, " + "\"" + getSourceContext(symList(0).pos) + "\" , getPCMStats( before, after ));")
 		}
       }

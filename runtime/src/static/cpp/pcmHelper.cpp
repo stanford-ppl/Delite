@@ -25,13 +25,12 @@ PCM* pcmInit() {
 	return m;
 }
 
-PCMStats* getPCMStats(SystemCounterState& before, SystemCounterState& after) {
+PCMStats* getPCMStats(CoreCounterState& before, CoreCounterState& after) {
 	struct PCMStats* stats = new PCMStats();
 	stats->l2CacheHitRatio = getL2CacheHitRatio( before, after );
 	stats->l3CacheHitRatio = getL3CacheHitRatio( before, after );
 	stats->l2Misses = getL2CacheMisses( before, after );
 	stats->l3Misses = getL3CacheMisses( before, after );
-	stats->bytesReadFromMC = getBytesReadFromMC( before, after );
 
 	return stats;
 }
@@ -41,8 +40,7 @@ void printPCMStats(PCMStats* stats) {
 		 << "L2 Hit Ratio: " << stats->l2CacheHitRatio << std::endl
 		 << "L2 Misses	 : " << stats->l2Misses << std::endl
 		 << "L3 Hit Ratio: " << stats->l3CacheHitRatio << std::endl
-		 << "L3 Misses	 : " << stats->l3Misses << std::endl
-		 << "Bytes Read from MC: " << stats->bytesReadFromMC << std::endl;
+		 << "L3 Misses	 : " << stats->l3Misses << std::endl;
 }
 
 void pcmCleanup() {

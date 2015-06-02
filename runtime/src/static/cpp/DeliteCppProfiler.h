@@ -29,6 +29,21 @@ typedef struct {
   uint64_t size;
 } cpparray_layout_info;
 
+#ifndef DELITE_NUM_CUDA
+
+class BufferedFileWriter {
+
+  public:
+    BufferedFileWriter(const char* fileName);
+    void writeTimer(std::string kernel, long start, double duration, int32_t level, int32_t tid, bool isMultiLoop);
+    void close();
+
+  private:
+    std::ofstream fs; 
+};
+
+#endif
+
 void InitDeliteCppTimer(int32_t lowestCppTid, int32_t numCppThreads);
 void DeliteCppTimerTic(string name);
 void DeliteCppTimerToc(string name);
@@ -42,5 +57,6 @@ void DeliteSendMemoryAccessStatsToJVM( int32_t offset, JNIEnv* env );
 void DeliteSendStartTimeToJVM( JNIEnv* env );
 void SendKernelMemUsageStatsToJVM( JNIEnv* env );
 void DeliteLogArrayAllocation(int32_t tid, void* startAddr, int32_t length, std::string elemType, std::string sourceContext);
+CoreCounterState getCoreCounterState(int32_t tid);
 
 #endif
