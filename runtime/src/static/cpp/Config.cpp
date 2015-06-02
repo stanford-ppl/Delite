@@ -82,6 +82,7 @@ void initializeGlobal(int numThreads, size_t heapSize) {
       resourceInfos[i].numThreads = numThreads;
       resourceInfos[i].socketId = config->threadToSocket(i);
       resourceInfos[i].numSockets = config->numSockets;
+      resourceInfos[i].availableThreads = numThreads;
       resourceInfos[i].rand = new DeliteCppRandom(i);
     }
     DeliteHeapInit(numThreads, heapSize);
@@ -91,10 +92,18 @@ void initializeGlobal(int numThreads, size_t heapSize) {
   pthread_mutex_unlock(&init_mtx);
 }
 
+#ifndef __DELITE_CPP_STANDALONE__
 void freeGlobal(int numThreads, int offset, JNIEnv *env) {
+#else
+void freeGlobal(int numThreads) {
+#endif
   pthread_mutex_lock(&init_mtx);
   if (config) {
+    #ifndef __DELITE_CPP_STANDALONE__
     DeliteCppTimerDump(offset, env);
+    #else
+    DeliteCppTimerDump();
+    #endif
     DeliteHeapClear(numThreads);
     delete[] resourceInfos;
     delete config;
@@ -109,9 +118,17 @@ void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heap
   delite_barrier(numLiveThreads); //ensure fully initialized before any continue
 }
 
+#ifndef __DELITE_CPP_STANDALONE__
 void clearAll(int numThreads, int numLiveThreads, int offset, JNIEnv *env) {
+#else
+void clearAll(int numThreads, int numLiveThreads) {
+#endif
   delite_barrier(numLiveThreads); //first wait for all threads to arrive
+  #ifndef __DELITE_CPP_STANDALONE__
   freeGlobal(numThreads, offset, env);
+  #else
+  freeGlobal(numThreads);
+  #endif
 }
 
 #endif

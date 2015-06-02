@@ -8,7 +8,7 @@ import executor._
 import graph.ops.{EOP_Global, Arguments, Sync}
 import graph.targets.Targets
 import graph.{TestGraph, DeliteTaskGraph}
-import profiler.Profiling
+import profiler.{Exceptions, Profiling}
 import scheduler._
 
 /**
@@ -153,8 +153,8 @@ object Delite {
       executor.shutdown()
     }
     catch {
-      case i: InterruptedException => abnormalShutdown(); throw outstandingException //a worker thread threw the original exception
-      case e: Throwable => abnormalShutdown(); throw e
+      case i: InterruptedException => abnormalShutdown(); throw Exceptions.translate(outstandingException) //a worker thread threw the original exception
+      case e: Throwable => abnormalShutdown(); throw Exceptions.translate(e)
     }
     finally {
       Arguments.args = Nil

@@ -9,6 +9,9 @@ typedef struct {
   int numThreads;
   int socketId;
   int numSockets;
+  //int slaveId;
+  //int numSlaves;
+  int availableThreads;
   //TODO: move thread-local rand to somewhere
   DeliteCppRandom *rand;
 } resourceInfo_t;

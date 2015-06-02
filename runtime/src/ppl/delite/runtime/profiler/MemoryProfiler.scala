@@ -17,7 +17,7 @@ object MemoryProfiler
 	def initializeStats(numThreads: Int) = synchronized {
 		threadCount = numThreads
 		for (i <- List.range(0, numThreads)) {
-		  val threadName = "ExecutionThread-" + i
+		  val threadName = "ExecutionThread" + i
 		  threadToId += threadName -> i
 		  stats += Map[String, List[Int]]()
 		  threadToCurrKernel += new Stack[String]()

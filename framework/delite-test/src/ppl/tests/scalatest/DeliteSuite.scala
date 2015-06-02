@@ -43,7 +43,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
   val scalaCompiler = new File(scalaHome, "lib/scala-compiler.jar")
   val scalaLibrary = new File(scalaHome, "lib/scala-library.jar")
 
-  val CHECK_MULTILOOP = true
+  val CHECK_MULTILOOP = false
 
   def validateParameters() {
     if (runtimeExternalProc && !javaBin.exists) throw new TestFailedException("Could not find valid java installation in " + javaHome, 3)

@@ -470,7 +470,8 @@ object DeliteTaskGraph {
     val argIdx = getFieldString(op, "index").toInt
     val argTypes = processReturnTypes(op, id)
     val args = new Arguments(id, argIdx, argTypes)
-    args.supportedTargets ++= argTypes.keySet
+    if (Config.noJVM) args.supportedTargets ++= argTypes.keySet
+    else args.supportedTargets += Targets.Scala //args always come from JVM by default
     graph.registerOp(args)
     graph._result = (args, id)
   }
@@ -486,6 +487,8 @@ object DeliteTaskGraph {
     val tpe = getFieldString(op, "Type")
 
     val EOP = new EOP(id, resultTypes, (tpe,value))
+    if (Config.noJVM) EOP.supportedTargets ++= resultTypes.keySet
+    else EOP.supportedTargets += Targets.Scala //result always returned inside JVM by default
     if (tpe == "symbol") {
       val result = getOp(value)
       EOP.addInput(result, value)
@@ -505,8 +508,6 @@ object DeliteTaskGraph {
       EOP.addDependency(op)
       op.addConsumer(EOP)
     }
-
-    EOP.supportedTargets ++= resultTypes.keySet - Targets.Cuda - Targets.OpenCL
 
     graph.registerOp(EOP)
     graph._result = (EOP, EOP.id)

@@ -42,6 +42,11 @@ object Config {
   val taskQueueSize: Int = getProperty("delite.task.queue.size", "1024").toInt
   var performWalk: Boolean = getProperty("delite.walk", "true") != "false"
   var performRun: Boolean = getProperty("delite.run", "true") != "false"
+  val noJVM: Boolean = getProperty("delite.nojvm", "false") != "false"
+  if (noJVM) {
+    numThreads = 0
+    performRun = false
+  }
 
   // memory management for C++ (refcnt or gc)
   val cppMemMgr = System.getProperty("delite.cpp.memmgr","malloc")

@@ -23,9 +23,9 @@ abstract class DeliteOpMultiLoop[A] {
  * Ref
  */
 
-class Ref[@specialized T](v: T) {
+final class Ref[@specialized T](v: T) {
   private[this] var _v = v
 
-  def get = _v
-  def set(v: T) = _v = v
+  final def get = _v
+  final def set(v: T) = _v = v
 }

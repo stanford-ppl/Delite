@@ -462,18 +462,19 @@ object DeliteMesosExecutor {
 
     val s = System.currentTimeMillis()
     val serResults = try {
+      val resourceInfoBase = new generated.scala.ResourceInfo(0, Config.numThreads, slaveIdx, Config.numSlaves, Config.numThreads)
       val result = op.getType match {
         case RemoteOp.Type.INPUT =>
           method.invoke(null, args:_*)
         case RemoteOp.Type.MULTILOOP =>
-          val headerArgsWithResourceInfo = (new generated.scala.ResourceInfo(slaveIdx, Config.numSlaves, 0, Config.numThreads)) :: args.toList // multiloop header ignores threadId in resourceInfo
+          val headerArgsWithResourceInfo = resourceInfoBase :: args.toList // multiloop header ignores threadId in resourceInfo
           val header = method.invoke(null, headerArgsWithResourceInfo:_*) //TODO: for map-like ops we can return this immediately rather than waiting for work to complete
           val result = new Future[Any]
 
           for (i <- 0 until Config.numThreads) {
             val loopCls = classLoader.loadClass("MultiLoop_"+id)
             val loopM = loopCls.getDeclaredMethods.find(_.getName == "apply").get
-            val resourceInfo = new generated.scala.ResourceInfo(slaveIdx, Config.numSlaves, i, Config.numThreads)
+            val resourceInfo = resourceInfoBase.copy(threadId = i)
             val exec = new DeliteExecutable {
               def run() { try {
                 val res = loopM.invoke(null, resourceInfo, header)

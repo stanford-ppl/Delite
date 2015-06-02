@@ -10,7 +10,8 @@ import collection.mutable.ArrayBuffer
 import sync._
 import ppl.delite.runtime.graph.DeliteTaskGraph
 
-trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs with CppResourceInfo {
+trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs {
+  import CppResourceInfo._
 
   def deviceTarget = Targets.Cuda
   def hostTarget = Targets.getHostTarget(deviceTarget)

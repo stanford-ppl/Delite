@@ -852,7 +852,8 @@ trait CLikeGenDeliteArrayOps extends BaseGenDeliteArrayOps with CLikeGenDeliteSt
     val stream = new PrintWriter(path + deviceTarget + "DeliteArrays.h")
     stream.println("#include \"" + deviceTarget + "DeliteStructs.h\"")
     stream.println("#include \"" + deviceTarget + "HashMap.h\"")
-    for((tp,name) <- dsTypesList if(isArrayType(tp))) {
+    val allTypes = dsTypesList + Pair(manifest[DeliteArray[String]], remap(manifest[DeliteArray[String]])) //FIXME: some static C++ code currently depends on DeliteArray[String]
+    for((tp,name) <- allTypes if(isArrayType(tp))) {
       emitDeliteArray(tp, path, stream)
     }
     stream.close()

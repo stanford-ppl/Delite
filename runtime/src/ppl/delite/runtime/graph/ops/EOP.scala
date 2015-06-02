@@ -26,19 +26,9 @@ class EOP(val id: String, var outputTypesMap: Map[Targets.Value,Map[String,Strin
 
   def isDataParallel = false
 
-  def task = {
-    if (scheduledOn(Targets.Scala)) {
-      "ppl.delite.runtime.graph.ops.EOP_Kernel"
-    }
-    else if (scheduledOn(Targets.Cpp)) {
-      "jclass cls_eop = env->FindClass(\"ppl/delite/runtime/graph/ops/EOP_Kernel\");\n" +
-      "jmethodID mid_eop = env->GetStaticMethodID(cls_eop,\"apply\",\"()Ljava/lang/Object;\");\n" +
-      "env->CallStaticVoidMethod(cls_eop,mid_eop);\n"
-    }
-    else {
-      sys.error("EOP cannot be scheduled other than Scala and C++ targets")
-    }
-  }
+  def task = if (scheduledOn(Targets.Scala)) "ppl.delite.runtime.graph.ops.EOP_Kernel"
+             else if (scheduledOn(Targets.Cpp)) "cppDeepCopy"
+             else throw new RuntimeException("Unsupported target for EOP")
 
   def cost = 0
   def size = 0
@@ -68,9 +58,11 @@ object EOP_Global {
 
 object EOP_Kernel {
 
-  def apply[T](): T = apply(null.asInstanceOf[T])
+  def apply[T](): T = apply(null)
 
-  def apply[T](result: T): T = {
+  def apply[T](resourceInfo: generated.scala.ResourceInfo): T = apply(resourceInfo, null.asInstanceOf[T])
+
+  def apply[T](resourceInfo: generated.scala.ResourceInfo, result: T): T = {
     EOP_Global.put(result)
     result
   }

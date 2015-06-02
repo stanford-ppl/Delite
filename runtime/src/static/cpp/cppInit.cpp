@@ -25,7 +25,9 @@ void initializeThread(int threadId) {
   #endif
 }
 
+#ifndef __DELITE_CPP_STANDALONE__
 extern "C" JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_PinnedExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads);
 JNIEXPORT void JNICALL Java_ppl_delite_runtime_executor_PinnedExecutionThread_initializeThread(JNIEnv* env, jobject obj, jint threadId, jint numThreads) {
   initializeThread(threadId);  
 }
+#endif

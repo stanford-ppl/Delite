@@ -99,12 +99,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       //TODO: Remove c generator specialization
       val baseDir = Config.buildDir + File.separator + g.toString + File.separator
       writeModules(baseDir)
-      g.initializeGenerator(baseDir + "kernels" + File.separator, args)
-      g match {
-        case gen:CCodegen => gen.headerStream.println("#include \"DeliteCpp.h\"")
-        case gen:CudaCodegen => gen.headerStream.println("#include \"DeliteCuda.h\"")
-        case _ =>
-      }
+      g.initializeGenerator(baseDir + "kernels" + File.separator)
     }
 
     // Generate a single source output for each generator when in debug mode
@@ -113,7 +108,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
         for (g <- generators) {
           val streamDebug = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg","." + g.toString)))
           val baseDir = Config.buildDir + File.separator + g.toString + File.separator
-          g.initializeGenerator(baseDir + "kernels" + File.separator, args)
+          g.initializeGenerator(baseDir + "kernels" + File.separator)
           g match {
             case gen: CCodegen => streamDebug.println("#include \"DeliteStandaloneMain.h\"\n")
             case _ => //
@@ -124,7 +119,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
         }
       }
     }
-    deliteGenerator.initializeGenerator(Config.buildDir, args)
+    deliteGenerator.initializeGenerator(Config.buildDir)
     val sd = emitRegisteredSource(deliteGenerator, stream)
     deliteGenerator.finalizeGenerator()
 

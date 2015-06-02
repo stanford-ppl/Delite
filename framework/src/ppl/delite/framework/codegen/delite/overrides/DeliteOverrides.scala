@@ -37,12 +37,27 @@ trait CLikeTypeOverrides extends CLikeCodegen {
 
 trait DeliteCudaGenAllOverrides extends DeliteCudaGenVariables with DeliteCudaGenIfThenElse /*with DeliteCudaGenRange*/ with DeliteCudaGenWhile {
   val IR: DeliteAllOverridesExp
+
+  override def initializeGenerator(buildDir:String): Unit = {
+    super.initializeGenerator(buildDir)
+    headerStream.println("#include \"DeliteCuda.h\"")
+  }
 }
 
 trait DeliteOpenCLGenAllOverrides extends DeliteOpenCLGenVariables with DeliteOpenCLGenIfThenElse /*with DeliteCudaGenRange*/ with DeliteOpenCLGenWhile {
   val IR: DeliteAllOverridesExp
+
+  override def initializeGenerator(buildDir:String): Unit = {
+    super.initializeGenerator(buildDir)
+    headerStream.println("#include \"DeliteOpenCL.h\"")
+  }
 }
 
 trait DeliteCGenAllOverrides extends DeliteCGenVariables with DeliteCGenIfThenElse /*with DeliteCGenRange*/ with DeliteCGenWhile  {
   val IR: DeliteAllOverridesExp
+
+  override def initializeGenerator(buildDir:String): Unit = {
+    super.initializeGenerator(buildDir)
+    headerStream.println("#include \"DeliteCpp.h\"")
+  }
 }

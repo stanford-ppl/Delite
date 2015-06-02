@@ -16,7 +16,7 @@ object PerformanceTimer {
   def initializeStats(numThreads: Int) = synchronized {
     threadCount = numThreads
     for (i <- List.range(0, numThreads)) {
-      val threadName = "ExecutionThread-" + i
+      val threadName = "ExecutionThread" + i
       threadToId += threadName -> i
       statsNewFormat += Map[String, List[Timing]]()
     }

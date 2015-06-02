@@ -640,7 +640,6 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     }
 
     tabWidth -= 1
-    isGPUable = true
   }
 
   // Emit Activation Record

@@ -4,6 +4,7 @@ import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.scheduler.OpList
+import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.ops._
 import sync._
 import ScalaResourceInfo._
@@ -134,7 +135,7 @@ class CppWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: D
     val locationsRecv = nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Receive])).map(_.asInstanceOf[Receive].sender.from.scheduledResource).toSet
     val locations = if (nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Send])).nonEmpty) Set(location) union locationsRecv
                     else locationsRecv
-    writeJNIInitializer(locations)
+    if (!Config.noJVM) writeJNIInitializer(locations)
   }
 
   protected def endFunction() {

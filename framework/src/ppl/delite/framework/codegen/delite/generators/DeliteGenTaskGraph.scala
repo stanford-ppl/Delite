@@ -8,7 +8,7 @@ import scala.virtualization.lms.internal.Targets._
 import ppl.delite.framework.ops.DeliteCollection
 import scala.reflect.SourceContext
 
-import ppl.delite.framework.codegen.delite.DeliteCodegen
+import ppl.delite.framework.codegen.delite.{DeliteCodegen, DeliteKernelCodegen}
 import ppl.delite.framework.ops._
 import ppl.delite.framework.Config
 import ppl.delite.framework.transform.LoopSoAOpt
@@ -16,20 +16,9 @@ import ppl.delite.framework.datastructures.DeliteArray
 import ppl.delite.framework.analysis.{NestedLoopMappingAnalysis,StencilAnalysis}
 import ppl.delite.framework.datastructures.DeliteArrayFatExp
 
-trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOpt {
+trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with LoopFusionOpt with LoopSoAOpt {
   val IR: DeliteOpsExp
   import IR.{ __newVar => _, __assign => _, __ifThenElse => _ , _ }
-
-  private def vals(sym: Sym[Any]) : List[Sym[Any]] = sym match {
-    case Def(Reify(s, u, effects)) => if (s.isInstanceOf[Sym[Any]]) List(s.asInstanceOf[Sym[Any]]) else Nil
-    case Def(Reflect(NewVar(v), u, effects)) => Nil
-    case _ => List(sym)
-  }
-
-  private def vars(sym: Sym[Any]) : List[Sym[Any]] = sym match {
-    case Def(Reflect(NewVar(v), u, effects)) => List(sym)
-    case _ => Nil
-  }
 
   private def mutating(kernelContext: State, sym: Sym[Any]) : List[Sym[Any]] = kernelContext flatMap {
     case Def(Reflect(x,u,effects)) => if (u.mayWrite contains sym) List(sym) else Nil
@@ -53,10 +42,14 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
 
     val kernelName = sym.map(quote).mkString("")
 
-    var resultIsVar = false
-    var skipEmission = false
-    var nestedNode: TP[Any] = null
-    var external = false
+    val skipEmission = rhs match {
+      case c:DeliteOpCondition[_] => true //we want to unroll these in the DEG rather than generate a single kernel
+      case w:DeliteOpWhileLoop => true
+      case _ => false
+    }
+      
+    val resultIsVar = rhs match { case NewVar(_) => true case _ => false }
+    val external = rhs.isInstanceOf[DeliteOpExternal[_]]
 
     // we will try to generate any node that is not purely an effect node
     rhs match {
@@ -72,32 +65,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
           super.emitNode(sym(0), rhs.asInstanceOf[Def[Any]])
         }
         return
-      case NewVar(x) => resultIsVar = true // if sym is a NewVar, we must mangle the result type
-      case e: DeliteOpExternal[_] => external = true
-      case w: DeliteOpWhileLoop => skipEmission = true
-      case c: DeliteOpCondition[_] => skipEmission = true
       case _ => // continue and attempt to generate kernel
     }
 
-    // validate that generators agree on inputs (similar to schedule validation in DeliteCodegen)
-    //val dataDeps = ifGenAgree(g => (g.syms(rhs) ++ g.getFreeVarNode(rhs)).distinct, true)
-
-    val dataDeps = { // don't use getFreeVarNode...
-      val bound = boundSyms(rhs)
-      val used = syms(rhs)
-      // println( "=== used for " + sym)
-      // used foreach { s => s match {
-        // case Def(x) => println(s + " = " + x)
-        // case _ => println(s)
-      // }}
-      //println(used)
-      //focusFatBlock(used) { freeInScope(bound, used) } filter { case Def(r@Reflect(x,u,es)) => used contains r; case _ => true } // distinct
-      focusFatBlock(used.map(Block(_))) { freeInScope(bound, used) } // distinct
-      //syms(rhs).flatMap(s => focusBlock(s) { freeInScope(boundSyms(rhs), s) } ).distinct
-    }
-
-    val inVals = dataDeps flatMap { vals(_) }
-    val inVars = dataDeps flatMap { vars(_) }
 
     implicit val supportedTargets = new ListBuffer[String]
     implicit val returnTypes = new ListBuffer[Pair[String, String]]
@@ -105,7 +75,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     implicit val metadata = new ArrayBuffer[Pair[String, String]]
 
     // parameters for delite overrides
-    deliteInputs = (inVals ++ inVars)
+    val inVars = inputVars(rhs)
+    deliteInputs = (inputVals(rhs) ++ inVars)
     deliteResult = Some(sym) //findDefinition(rhs) map { _.sym }
 
     /**
@@ -144,12 +115,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
       }
     }
 
-    val hasOutputSlotTypes = rhs match {
-      case op: AbstractLoop[_] => true
-      case op: AbstractFatLoop => true
-      case _ => false
-    }
-
     class JsonPair(_1: String, _2: String) extends Pair(_1,_2) {
       override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
     }
@@ -175,7 +140,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
       }
 
       if (genReturnType != null) {
-        val retStr = if (hasOutputSlotTypes) "activation_" + kernelName else genReturnType
+        val retStr = if (hasOutputSlotTypes(rhs)) "activation_" + kernelName else genReturnType
         returnTypes += new JsonPair(gen.toString, retStr)
       }
     }
@@ -185,102 +150,15 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
       //NOTE: GPU targets generate only device functions of multiloops at compile-time,
       //      and we put those functions in 'device' directory to make compilation a bit easier at walk-time
       val buildPath = gen match {
-        case g: GPUCodegen if (hasOutputSlotTypes) => Config.buildDir + sep + gen + sep + "kernels" + sep + "device" + sep
+        case g: GPUCodegen if (hasOutputSlotTypes(rhs)) => Config.buildDir + sep + gen + sep + "kernels" + sep + "device" + sep
         case _ => Config.buildDir + sep + gen + sep + "kernels" + sep
       }
       val outDir = new File(buildPath); outDir.mkdirs()
-      val outFile = new File(buildPath + kernelName + "." + gen.kernelFileExt)
-      val kstream = new PrintWriter(outFile)
-      val bodyString = new StringWriter()
-      val bodyStream = new PrintWriter(bodyString)
-
-      try {
-        // DISCUSS: use a predicate instead of inheriting from DeliteOp?
-        deliteKernel = rhs match {
-//          case op:DeliteFatOp => true
-          case op:AbstractFatLoop => true
-          case op:AbstractFatIfThenElse => true
-          case op:DeliteOp[_] => true
-          case _ => false
-        }
-
-        def genEmitNode(gen: Generator)(sym: List[Sym[Any]], rhs: Any)(genStream: PrintWriter) = rhs match {
-          case fd: FatDef => gen.withStream(genStream)(gen.emitFatNode(sym, fd))
-          case d: Def[Any] => {
-            assert(sym.length == 1)
-            gen.withStream(genStream)(gen.emitNode(sym(0), d))
-          }
-        }
-
-        //initialize
-        gen.kernelInit(sym, inVals, inVars, resultIsVar)
-
-        // emit kernel to bodyStream //TODO: must kernel body be emitted before kernel header?
-        genEmitNode(gen)(sym, rhs)(bodyStream)
-        bodyStream.flush
-
-        // TODO: we only want to mangle the result type if it is a delite op AND it will be generated AS a delite
-        // op (e.g. not generated by a more specific (DSL) generator).
-        // this is an issue, for example, with BLAS and MatrixSigmoid which is only a DeliteOp if BLAS is off.
-        // perhaps this should be a (DeliteOp, SingleTask) variant.
-        // TR: if we introduce a predicate (e.g. isDeliteOp) instead of always matching on the types this would
-        // be taken care of as well (plus we'd no longer need DeliteIfThenElse, DeliteWhile, ...)
-        val resultType: String = (gen.toString, rhs) match {
-          case ("scala", op: AbstractFatLoop) =>
-            "generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
-          case ("scala", op: AbstractFatIfThenElse) =>
-            //"generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
-            //TODO: support fat if
-            assert(sym.length == 1, "TODO: support fat if")
-            gen.remap(sym.head.tp)
-          case ("scala", z) => z match {
-            case op: AbstractLoop[_] => "generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
-            case _ => gen.remap(sym.head.tp)
-          }
-          case ("cpp", op: AbstractFatLoop) =>
-            "DeliteOpMultiLoop_" + kernelName
-          case ("cpp", z) => z match {
-            case op: AbstractLoop[_] => "DeliteOpMultiLoop_" + kernelName
-            case _ => gen.remap(sym.head.tp)
-          }
-          case ("cuda", op: AbstractFatLoop) =>
-            "void"
-          case ("cuda", op: AbstractFatIfThenElse) =>
-            assert(sym.length == 1, "TODO: support fat if")
-            "void"
-          case ("cuda", z) => z match {
-            case op: AbstractLoop[_] => "void"
-            case _ => gen.remap(sym.head.tp)
-          }
-          case ("opencl", op: AbstractFatLoop) =>
-            "void"
-          case ("opencl", op: AbstractFatIfThenElse) =>
-            assert(sym.length == 1, "TODO: support fat if")
-            "void"
-          case ("opencl", z) => z match {
-            case op: AbstractLoop[_] => "void"
-            case _ => gen.remap(sym.head.tp)
-          }
-          case _ =>
-            assert(sym.length == 1) // if not set hasOutputSlotTypes and use activation record
-            gen.remap(sym.head.tp)
-        }
-
-        assert(hasOutputSlotTypes || sym.length == 1)
-
-        // emit kernel
-        gen.withStream(kstream)(gen.emitFileHeader())
-        if (hasOutputSlotTypes) {
-          // activation record class declaration
-          rhs match {
-            case d:Def[Any] =>  gen.withStream(kstream)(gen.emitNodeKernelExtra(sym, d))
-            case f:FatDef => gen.withStream(kstream)(gen.emitFatNodeKernelExtra(sym, f))
-          }
-        }
-
-        gen.withStream(kstream)(gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar, external, hasOutputSlotTypes))
-        kstream.println(bodyString.toString)
-        gen.withStream(kstream)(gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar, external, hasOutputSlotTypes))
+      val outFile = new File(buildPath + kernelName + "." + gen.fileExtension)
+      val kStream = new PrintWriter(outFile)
+      try { 
+        gen.withStream(kStream){ gen.emitKernel(sym, rhs) } 
+        kStream.close()
 
         // record that this kernel was successfully generated
         supportedTargets += gen.toString
@@ -292,25 +170,20 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
           }
         }
 
-        kstream.close()
-
       } catch {
         case e:GenerationFailedException => // no generator found
-          gen.exceptionHandler(e, outFile, kstream)
+          kStream.close()
+          outFile.delete()
           if(Config.dumpException) {
-            println(gen.toString + ":" + (sym map(quote)))
+            println(this.toString + ":" + (sym.map(quote)))
             e.printStackTrace
           }
-          //if(gen.nested > 1) {
-          //  nestedNode = gen.lastNodeAttempted
-          //}
         case e:Exception => throw(e)
       }
     }
 
-    if (skipEmission == false && supportedTargets.isEmpty) {
+    if (!skipEmission && supportedTargets.isEmpty) {
       var msg = "Node " + kernelName + "[" + rhs + "] could not be generated by any code generator"
-      //if(nested > 1) msg = "Failure is in nested node " + quote(nestedNode.sym) + "[" + nestedNode.rhs + "]. " + msg
       sys.error(msg)
     }
 
@@ -386,10 +259,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
 
     // result is a single stencil representing all the info we have for this op's inputs
     val opStencil = if (sym == Nil) new Stencil() else sym.map(i => allStencils.getOrElse(i, new Stencil())).reduce((a,b) => a ++ b)
-
-    def loopBodyAverageDynamicChunks[A](e: List[Def[A]]) = {
-      e.map(i => loopBodyNumDynamicChunks(i)).reduce((a,b) => a + b)/e.length
-    }
 
     // compute aliases
 
@@ -505,6 +374,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt with LoopSoAOp
     stream.println("  \"antiDeps\":[" + makeString(antiDeps) + "],")
     if (remap(thenp.tp) != remap(elsep.tp))
       throw new RuntimeException("Delite conditional with different then and else return types: " + thenp + ", " + remap(thenp.tp) + " and " + elsep + ", " + remap(elsep.tp))
+    if (thenp.tp == manifest[Any]) System.err.println("[delite] WARNING: returning type Any from IfThenElse is only supported in Scala")
 
     stream.println("  \"return-types\":{" + returnTypes.mkString(",") + "}")
     stream.println("},")

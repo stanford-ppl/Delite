@@ -173,7 +173,8 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
       if (op.supportsTarget(Targets.Cuda)) Targets.Cuda else Targets.OpenCL
     }
     else if (op.supportsTarget(Targets.Cpp) && numCpp > 0) Targets.Cpp
-    else Targets.Scala
+    else if (op.supportsTarget(Targets.Scala) && numScala > 0) Targets.Scala
+    else sys.error(op + " cannot be run on any available hardware target")
   }
 
   //TODO: Separate hardware and programming model

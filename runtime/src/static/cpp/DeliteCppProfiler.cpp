@@ -47,11 +47,13 @@ void DeliteCppTimerStop(int32_t tid, string _name) {
   }
 }
 
+#ifndef __DELITE_CPP_STANDALONE__
 void DeliteCppTimerDump(int32_t offset, JNIEnv* env) {
-  #ifndef __DELITE_CPP_STANDALONE__
   jclass cls = env->FindClass("ppl/delite/runtime/profiler/PerformanceTimer");
   jmethodID mid = env->GetStaticMethodID(cls,"addTiming","(Ljava/lang/String;IJJZ)V");
-  #endif
+#else
+void DeliteCppTimerDump() {
+#endif
 
   for (int32_t tid=0; tid<timermaps->size(); tid++) {
     std::map<std::string,std::vector<cpptimer_t>*> *timermap = timermaps->at(tid);
@@ -68,7 +70,7 @@ void DeliteCppTimerDump(int32_t offset, JNIEnv* env) {
         env->CallStaticVoidMethod(cls,mid,component,offset+tid,startTime,endTime,isKernel);
         env->DeleteLocalRef(component);
         #else
-        std::cout << it->first << " " << nanoseconds(vit->start) << " -> " << nanoseconds(vit->end) << endl;
+        std::cout << it->first << " " << nanoseconds(vit->start) << " -> " << nanoseconds(vit->end) << std::endl;
         #endif
       }
     }

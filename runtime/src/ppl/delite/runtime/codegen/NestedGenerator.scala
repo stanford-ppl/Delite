@@ -119,7 +119,7 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
     val locationsRecv = nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Receive])).map(_.asInstanceOf[Receive].sender.from.scheduledResource).toSet
     val locations = if (nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Send])).nonEmpty) Set(location) union locationsRecv
                     else locationsRecv
-    writeJNIInitializer(locations)
+    if (!Config.noJVM) writeJNIInitializer(locations)
   }
 
   override protected def writeMethodFooter() {

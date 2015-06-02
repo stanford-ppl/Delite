@@ -60,13 +60,13 @@ trait GenericGenExternal extends GenericNestedCodegen {
   def hdrName(lib: ExternalLibrary) = lib.name  // default header file name is library name
   val hdrExt: String // generator specific interface file / header file extension
   
-  override def initializeGenerator(buildDir:String, args: Array[String]): Unit = {
+  override def initializeGenerator(buildDir:String): Unit = {
     headerDir.mkdirs()
     nativeDir.mkdirs() 
     
     libDir.mkdirs()
 
-    super.initializeGenerator(buildDir, args)
+    super.initializeGenerator(buildDir)
   }
   
   override def finalizeGenerator() {

@@ -29,13 +29,14 @@ trait StaticScheduler {
   }
 
   protected def split(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resourceList: Seq[Int]) {
-    val header = OpHelper.expand(op, resourceList.length, graph, OpHelper.scheduledTarget(resourceList(0)))
-    scheduleOn(header, schedule, resourceList(0)) //pick a resource out of the list to do the header
+    // val header = OpHelper.expand(op, resourceList.length, graph, OpHelper.scheduledTarget(resourceList(0)))
+    // scheduleOn(header, schedule, resourceList(0)) //pick a resource out of the list to do the header
 
-    val chunks = OpHelper.split(op, resourceList.length, graph, OpHelper.scheduledTarget(resourceList(0)))
-    for ((resource, idx) <- resourceList zip (0 until resourceList.length)) {
-      scheduleOn(chunks(idx), schedule, resource)
-    }
+    // val chunks = OpHelper.split(op, resourceList.length, graph, OpHelper.scheduledTarget(resourceList(0)))
+    // for ((resource, idx) <- resourceList zip (0 until resourceList.length)) {
+    //   scheduleOn(chunks(idx), schedule, resource)
+    // }
+    scheduleOn(op, schedule, resourceList(0))
   }
 
 	protected def addSequential(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resource: Int) {
