@@ -146,7 +146,7 @@ def main():
     is_perf_available = ( which( 'perf' ) != None )
     if is_perf_available:
         print("[INFO]: Parsing perf data")
-        dslRootDir = os.path.abspath( os.path.dirname( sys.argv[0] ) ) +  "/.."
+        dslRootDir = os.path.abspath( os.path.dirname( sys.argv[1][:-1] ) ) # The '-1' is there because the input has a / at the end
         perfDataFile = dslRootDir + '/perf.data' 
         dataStructureMemRangesFile = dslRootDir + '/dataStructures.csv'
         dataStructures = parseDataStructureInfo( dataStructureMemRangesFile )
@@ -154,7 +154,7 @@ def main():
         dbFile = dslRootDir + '/profile/profile.db'
         parsePerfReport( perfDataFile, dataStructures, idToSourceContext, dbFile )
     else:
-        print("'perf' is not available")
+        print("Skipping running 'perf report' since perf is unavailable on the machine")
 
 if __name__ == "__main__":
     main()

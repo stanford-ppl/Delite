@@ -18,7 +18,7 @@ struct PCMStats {
 	{ }
 };
 
-PCM* pcmInit();
+void pcmInit(bool enablePCM);
 
 PCMStats* getPCMStats(CoreCounterState& before, CoreCounterState& after);
 

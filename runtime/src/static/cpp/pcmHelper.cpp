@@ -3,26 +3,29 @@
 #include "pcmHelper.h"
 #include <iostream>
 
-PCM* pcmInit() {
-	std::cout << "Calling pcmInit()" << std::endl;
-	PCM* m = PCM::getInstance();
-  	m->disableJKTWorkaround();
-  
-  	switch( m->program() ) { 
-      	case PCM::Success:
-			std::cout << "PCM Initialized" << std::endl;
-			break;
-  
-      	case PCM::PMUBusy:
-         	std::cout << "PCM::PMU Busy!" << std::endl;
-         	m->resetPMU();
-         	return NULL;
-  
-      	default:
-			return NULL;
-  	}
+bool enablePCM = false;
 
-	return m;
+void pcmInit(bool _enablePCM) {
+	enablePCM = _enablePCM;
+    if (enablePCM) {
+		std::cout << "Initializing PCM" << std::endl;
+		PCM* m = PCM::getInstance();
+		m->disableJKTWorkaround();
+	  
+		switch( m->program() ) { 
+			case PCM::Success:
+				std::cout << "PCM Initialized" << std::endl;
+				return;
+	  
+			case PCM::PMUBusy:
+				std::cout << "PCM::PMU Busy!" << std::endl;
+				m->resetPMU();
+				return;
+	  
+			default:
+				return;
+		}
+	}
 }
 
 PCMStats* getPCMStats(CoreCounterState& before, CoreCounterState& after) {
@@ -44,5 +47,7 @@ void printPCMStats(PCMStats* stats) {
 }
 
 void pcmCleanup() {
-	PCM::getInstance()->cleanup();
+	if (enablePCM) {
+		PCM::getInstance()->cleanup();
+	}
 }
