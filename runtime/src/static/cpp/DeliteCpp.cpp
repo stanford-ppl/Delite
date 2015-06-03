@@ -336,7 +336,7 @@ template<> bool delite_equals<double>(double key1, double key2) { return key1 ==
 template<> bool delite_equals<string>(string key1, string key2) { return key1.compare(key2) == 0; }
 
 template<class T> T cppDeepCopy(const resourceInfo_t *resourceInfo, T in) {
-  throw std::runtime_error("TODO: result deep copy must currently be implemented manually\n");
+  assert(false);
 }
 void cppDeepCopy(const resourceInfo_t *resourceInfo) { }
 
