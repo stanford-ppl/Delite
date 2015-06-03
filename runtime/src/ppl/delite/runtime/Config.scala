@@ -107,4 +107,8 @@ object Config {
    if(dumpProfile && profileOutputDirectory == "") error("profile.dump option enabled but did not provide a profileOutputDirectory")
 
    val enablePCM = dumpProfile  && (getProperty("delite.enable.pcm", "false") != "false")
+   val pcmHome: String = sys.env.getOrElse("PCM_HOME", "")
+   if (enablePCM && (pcmHome == "")) {
+     error("$PCM_HOME has not been set. Please set it when --pcm flag is specified.")
+   }
 }

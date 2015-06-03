@@ -66,6 +66,7 @@ trait CodeCache {
   def hostCompiler = Compilers(Targets.getHostTarget(target))
   def ext: String = target.toString //source file extension
   def staticResources: String =  Config.deliteHome + sep + "runtime" + sep + "src" + sep + "static" + sep + target + sep
+  def pcmResources: String = Config.pcmHome + sep
 
   def cacheDegSources(directory: Directory) {
     parseModules(directory)

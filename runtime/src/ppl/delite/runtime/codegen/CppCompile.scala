@@ -18,7 +18,9 @@ object CppCompile extends CCompile {
       case "numa" => "__DELITE_CPP_NUMA__"
     }
   }
+
+  def pcmSourcesList: Array[String] = if (Config.enablePCM) Array("cpucounters", "msr", "pci", "client_bw") else Array()
   
   private val dsFiles = Directory(Path(sourceCacheHome + "datastructures")).files.toList
-  override protected def auxSourceList = dsFiles.filter(_.extension == ext).map(_.toAbsolute.toString) ++ Array(sourceCacheHome + "kernels" + sep + target + "helperFuncs." + ext) ++ Array("DeliteCpp", "DeliteCppProfiler", "DeliteMemory", "DeliteThreadPool", "Config", "cppInit", "pcmHelper").map(staticResources+_+"."+ext)
+  override protected def auxSourceList = dsFiles.filter(_.extension == ext).map(_.toAbsolute.toString) ++ Array(sourceCacheHome + "kernels" + sep + target + "helperFuncs." + ext) ++ Array("DeliteCpp", "DeliteCppProfiler", "DeliteMemory", "DeliteThreadPool", "Config", "cppInit", "pcmHelper").map(staticResources+_+"."+ext) ++ pcmSourcesList.map(pcmResources + _ + "." + ext)
 }

@@ -165,9 +165,7 @@ INCLUDES = ${includes.mkString(" ") + " -I/home/jithinpt/memory_profiling/IntelP
 
 CFLAGS = ${(compileFlags ++ Array(config.compileFlags)).mkString(" ")}
 LDFLAGS = ${(linkFlags ++ Array(config.linkFlags) ++ libs).mkString(" ")}
-// TODO: Remove the hardcoded paths
-//SOURCES = ${sources.mkString(" ")}
-SOURCES = ${sources.mkString(" ")  + " /home/jithinpt/memory_profiling/IntelPerformanceCounterMonitorV2.8/cpucounters.cpp /home/jithinpt/memory_profiling/IntelPerformanceCounterMonitorV2.8/msr.cpp /home/jithinpt/memory_profiling/IntelPerformanceCounterMonitorV2.8/pci.cpp /home/jithinpt/memory_profiling/IntelPerformanceCounterMonitorV2.8/client_bw.cpp"}
+SOURCES = ${sources.mkString(" ")}
 OBJECTS = $$(SOURCES:.${ext}=.o)
 OUTPUT = ${destination}
 
