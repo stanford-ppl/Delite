@@ -15,6 +15,7 @@
 #include <ctime>
 #include <cstring>
 #include <stdexcept>
+#include <unistd.h>
 #include "DeliteNamespaces.h"
 
 #include "pcmHelper.h"

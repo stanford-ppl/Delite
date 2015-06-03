@@ -8,23 +8,35 @@ std::vector< std::map< std::string, std::vector<cpparray_layout_info>* >* >* scT
 std::map< std::string, cpptimer_t >* ticTocRegionToTimers;
 std::vector< std::map< std::string, uint64_t >* >* kernelToMemUsageMaps;
 
-std::string profileFilePrefix("/home/jithinpt/cache_instrumentation/hyperdsl/published/OptiML/profile/profile_t_");
-std::string ticTocProfileFile("/home/jithinpt/cache_instrumentation/hyperdsl/published/OptiML/profile/profile_tic_toc_cpp.csv");
+std::string profileFilePrefix;
+std::string ticTocProfileFile;
 
 int32_t numCpp = 0;
 int32_t lowestCppTid = 0;
 double appStartTime;
 
-const int MAX_NUM_KERNELS_TO_STORE = 100000;
-
 double milliseconds(struct timeval t) {
   return double(t.tv_sec * 1000) + (double(t.tv_usec) / 1000);
+}
+
+void setFilePaths() {
+  char* cwd = get_current_dir_name();
+  
+  std::stringstream ss;
+  ss << cwd << "/profile/profile_t_";
+  profileFilePrefix = ss.str();
+  
+  ss.str("");
+  ss << cwd << "/profile/profile_tic_toc_cpp.csv";
+  ticTocProfileFile = ss.str();
 }
 
 void InitDeliteCppTimer(int32_t _lowestCppTid, int32_t numCppThreads) {
   struct timeval a;
   gettimeofday(&a,NULL);
   appStartTime = milliseconds(a);
+
+  setFilePaths();
 
   numCpp = numCppThreads;
   lowestCppTid = _lowestCppTid;

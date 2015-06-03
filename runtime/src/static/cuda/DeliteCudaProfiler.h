@@ -8,6 +8,7 @@
 #include <fstream>
 #include <stack>
 #include <sstream>
+#include <unistd.h>
 #include <cuda.h>
 
 #ifndef DELITE_NUM_CUDA

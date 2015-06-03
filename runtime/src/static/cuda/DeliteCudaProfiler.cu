@@ -4,18 +4,10 @@ BufferedFileWriter** profileWriters = new BufferedFileWriter*[DELITE_NUM_CUDA];
 std::stack< cudatimer_t >** timermaps = new std::stack< cudatimer_t >*[DELITE_NUM_CUDA];
 double appStartTime = 0;
 
-std::string profileFilePrefix("/home/jithinpt/cache_instrumentation/hyperdsl/published/OptiML/profile/profile_t_");
+std::string profileFilePrefix;
 
 double milliseconds(struct timeval t) {
   return double(t.tv_sec * 1000) + (double(t.tv_usec) / 1000);
-}
-
-int64_t microseconds(struct timeval t) {
-  return t.tv_sec * 1000000L + t.tv_usec;
-}
-
-int64_t nanoseconds(struct timeval t) {
-  return microseconds(t) * 1000;
 }
 
 void InitDeliteCudaTimer(int32_t tid, int32_t lowestCudaTid) {
@@ -23,6 +15,11 @@ void InitDeliteCudaTimer(int32_t tid, int32_t lowestCudaTid) {
 	struct timeval a;
     gettimeofday(&a,NULL);
     appStartTime = milliseconds(a);
+
+    char* cwd = get_current_dir_name();
+    std::stringstream ss;
+    ss << cwd << "/profile/profile_t_";
+    profileFilePrefix = ss.str();
   }
 
   timermaps[tid] = new std::stack< cudatimer_t >();
