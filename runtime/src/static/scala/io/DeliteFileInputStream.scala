@@ -151,8 +151,8 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
     
     val (fileIdx, offset) = findFileOffset(start)
     filePos = fileIdx
-    reader = openInputStream(fileIdx, offset)
     text = new Text
+    reader = openInputStream(fileIdx, offset)
   }
 
   /* Construct a copy of this DeliteFileInputStream, starting at logical byte index 'start' */

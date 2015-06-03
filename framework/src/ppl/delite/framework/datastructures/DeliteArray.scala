@@ -852,8 +852,7 @@ trait CLikeGenDeliteArrayOps extends BaseGenDeliteArrayOps with CLikeGenDeliteSt
     val stream = new PrintWriter(path + deviceTarget + "DeliteArrays.h")
     stream.println("#include \"" + deviceTarget + "DeliteStructs.h\"")
     stream.println("#include \"" + deviceTarget + "HashMap.h\"")
-    val allTypes = dsTypesList + Pair(manifest[DeliteArray[String]], remap(manifest[DeliteArray[String]])) //FIXME: some static C++ code currently depends on DeliteArray[String]
-    for((tp,name) <- allTypes if(isArrayType(tp))) {
+    for((tp,name) <- dsTypesList if(isArrayType(tp))) {
       emitDeliteArray(tp, path, stream)
     }
     stream.close()
@@ -1066,6 +1065,12 @@ trait OpenCLGenDeliteArrayOps extends CLikeGenDeliteArrayOps with OpenCLGenFat w
 trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct with CGenDeliteOps with CGenRuntimeServiceOps {
   val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
+
+  override def emitDataStructures(path: String) = {
+    //FIXME: some static C++ code currently depends on DeliteArray[String]
+    dsTypesList += Pair(manifest[DeliteArray[String]], remap(manifest[DeliteArray[String]])) 
+    super.emitDataStructures(path)
+  }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case a@DeliteArrayNew(n,m,t) =>

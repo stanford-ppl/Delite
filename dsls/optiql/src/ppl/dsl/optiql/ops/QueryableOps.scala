@@ -126,6 +126,14 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
   }
 
   //TODO: should be DeliteOpComposite rather than DeliteOpSingleTask
+  case class QueryableAverage[T:Manifest, N:Numeric:Manifest](in: Exp[Table[T]], map: Exp[T] => Exp[N])
+    extends DeliteOpSingleTask[N](reifyEffectsHere(queryable_average_impl(in,map))) {
+    val mT = manifest[T]
+    val mN = manifest[N]
+    val N = implicitly[Numeric[N]]
+  }
+
+  //TODO: should be DeliteOpComposite rather than DeliteOpSingleTask
   case class QueryableSort[T:Manifest](in: Exp[Table[T]], compare: (Exp[T],Exp[T]) => Exp[Int]) 
     extends DeliteOpSingleTask[Table[T]](reifyEffectsHere(queryable_sort_impl(in,compare))) {
     val mT = manifest[T]
@@ -258,14 +266,10 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
 
   def queryable_min[T:Manifest, N:Ordering:Manifest](s: Exp[Table[T]], minSelector: Exp[T] => Exp[N]) = QueryableMin(s, minSelector)
 
-  def queryable_average[T:Manifest, N:Numeric:Manifest](s: Exp[Table[T]], avgSelector: Exp[T] => Exp[N]) = //QueryableAverage(s, avgSelector) //TODO: DeliteOpComposite
+  def queryable_average[T:Manifest, N:Numeric:Manifest](s: Exp[Table[T]], avgSelector: Exp[T] => Exp[N]) = QueryableAverage(s, avgSelector)
+    
+  def queryable_average_impl[T:Manifest, N:Numeric:Manifest](s: Exp[Table[T]], avgSelector: Exp[T] => Exp[N]): Exp[N] = {
     s.Sum(avgSelector)/s.Count.asInstanceOf[Exp[N]] //TODO: this only works for primitive types
-
-  object QueryableAverage {
-    def unapply[T](d: Def[T]) = d match {
-      case NumericDivide(Def(sum@QueryableSum(a,sel)),Def(QueryableCount(b))) if (a == b) => Some((a, sel, sum))
-      case _ => None
-    }
   }
     
   def queryable_count[T:Manifest](s: Exp[Table[T]]) = reflectPure(QueryableCount(s))
@@ -336,6 +340,7 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
     case e@QueryableSelectMany(in,g) => reflectPure(new { override val original = Some(f,e) } with QueryableSelectMany(f(in),f(g))(mtype(e.mT),mtype(e.mR)))(mtype(manifest[A]),implicitly[SourceContext])
     case e@QueryableWhere(in,c) => reflectPure(new { override val original = Some(f,e) } with QueryableWhere(f(in),f(c))(mtype(e.mT)))(mtype(manifest[A]),implicitly[SourceContext])      
     case e@QueryableSum(in,g) => reflectPure(new { override val original = Some(f,e) } with QueryableSum(f(in),f(g))(mtype(e.mT),ntype(e.N),mtype(e.mN)))(mtype(manifest[A]),implicitly[SourceContext])      
+    case e@QueryableAverage(in,g) => reflectPure(new { override val original = Some(f,e) } with QueryableAverage(f(in),f(g))(mtype(e.mT),ntype(e.N),mtype(e.mN)))(mtype(manifest[A]),implicitly[SourceContext])      
     case e@QueryableMax(in,g) => reflectPure(new { override val original = Some(f,e) } with QueryableMax(f(in),f(g))(mtype(e.mT),otype(e.oN),mtype(e.mN)))(mtype(manifest[A]),implicitly[SourceContext])      
     case e@QueryableMin(in,g) => reflectPure(new { override val original = Some(f,e) } with QueryableMin(f(in),f(g))(mtype(e.mT),otype(e.oN),mtype(e.mN)))(mtype(manifest[A]),implicitly[SourceContext])      
     case e@QueryableGroupBy(in,g) => reflectPure(new { override val original = Some(f,e) } with QueryableGroupBy(f(in),f(g))(mtype(e.mT),mtype(e.mK)))(mtype(manifest[A]),implicitly[SourceContext])      
@@ -396,7 +401,7 @@ trait QueryableOpsExpOpt extends QueryableOpsExp { this: OptiQLExp =>
       case Def(Field(s,"key")) => keySelector
       case Def(Field(Def(Field(s,"key")),index)) => (a:Exp[A]) => field(keySelector(a),index)(value.tp,ctx)
       case Def(QueryableSum(s, sumSelector)) => sumSelector
-      case Def(QueryableAverage(s, avgSelector, sum)) => avgSelector
+      case Def(QueryableAverage(s, avgSelector)) => avgSelector
       case Def(QueryableCount(s)) => (a:Exp[A]) => unit(1)
       case Def(QueryableMin(s, minSelector)) => minSelector
       case Def(QueryableMax(s, maxSelector)) => maxSelector
@@ -409,16 +414,16 @@ trait QueryableOpsExpOpt extends QueryableOpsExp { this: OptiQLExp =>
     def rewriteReduce[N](value: Exp[Any]) = (value match {
       case Def(Field(s,"key")) => (a:Exp[N],b:Exp[N]) => a
       case Def(Field(Def(Field(s,"key")),index)) => (a:Exp[N],b:Exp[N]) => a
-      case Def(sum@QueryableSum(s, sumSelector)) => (a:Exp[N],b:Exp[N]) => numeric_plus(a,b)(ntype(sum.N),mtype(sum.mN),ctx)
-      case Def(QueryableAverage(s, avgSelector, sum)) => (a:Exp[N],b:Exp[N]) => numeric_plus(a,b)(ntype(sum.N),mtype(sum.mN),ctx)
+      case Def(sum@QueryableSum(_,_)) => (a:Exp[N],b:Exp[N]) => numeric_plus(a,b)(ntype(sum.N),mtype(sum.mN),ctx)
+      case Def(s@QueryableAverage(_,_)) => (a:Exp[N],b:Exp[N]) => numeric_plus(a,b)(ntype(s.N),mtype(s.mN),ctx)
       case Def(QueryableCount(s)) => (a:Exp[N],b:Exp[N]) => numeric_plus(a,b)(ntype(implicitly[Numeric[Int]]),mtype(manifest[Int]),ctx)
-      case Def(min@QueryableMin(s, minSelector)) => (a:Exp[N],b:Exp[N]) => ordering_min(a,b)(otype(min.oN),mtype(min.mN),ctx)
-      case Def(max@QueryableMax(s, maxSelector)) => (a:Exp[N],b:Exp[N]) => ordering_max(a,b)(otype(max.oN),mtype(max.mN),ctx)
+      case Def(min@QueryableMin(_,_)) => (a:Exp[N],b:Exp[N]) => ordering_min(a,b)(otype(min.oN),mtype(min.mN),ctx)
+      case Def(max@QueryableMax(_,_)) => (a:Exp[N],b:Exp[N]) => ordering_max(a,b)(otype(max.oN),mtype(max.mN),ctx)
       case _ => failed = true; null
     }).asInstanceOf[(Exp[N],Exp[N])=>Exp[N]]
 
     def rewriteAverage[N](value: Exp[Any]) = (value match {
-      case Def(QueryableAverage(_,_,sum)) => (a:Exp[N],count:Exp[Int]) => numeric_divide(a, count)(ntype(sum.N),mtype(sum.mN),ctx)
+      case Def(s@QueryableAverage(_,_)) => (a:Exp[N],count:Exp[Int]) => numeric_divide(a, count)(ntype(s.N),mtype(s.mN),ctx)
       case _ => (a:Exp[N],count:Exp[Int]) => a
     }).asInstanceOf[(Exp[N],Exp[Int])=>Exp[N]]
 

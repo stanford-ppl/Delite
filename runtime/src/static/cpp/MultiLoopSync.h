@@ -41,11 +41,11 @@ private:
   	int32_t newAvailable = availableThreads / _numThreads;
   	threads = new resourceInfo_t[_numThreads];
   	
-    fprintf(stderr, "loopSize: %d, start: %d, available: %d\n", _loopSize, start, newAvailable);
+    //fprintf(stderr, "loopSize: %d, start: %d, available: %d\n", _loopSize, start, newAvailable);
 
   	int idx = 0;
   	for (int id = start; id < end; id += step) {
-  	  threads[idx] = resourceInfos[id];
+  	  threads[idx] = resourceInfos[id]; //copy constructor
   	  threads[idx].availableThreads = newAvailable;
   	  idx++;
   	}

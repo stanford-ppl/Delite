@@ -190,13 +190,11 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
   }
 
   override def emitAbstractFatLoopKernelExtra(op: AbstractFatLoop, symList: List[Sym[Any]]): Unit = {
-    withStream(actRecordStream){ super.emitAbstractFatLoopKernelExtra(op, symList) } //redirect
+    withStream(actRecordStream){ super.emitAbstractFatLoopKernelExtra(op, symList) }
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case s:DeliteOpSingleTask[_] =>
-      //printlog("EMIT single "+s)
-      // always wrap single tasks in methods to reduce JIT compilation unit size
       val b = s.block
       emitBlock(b)
       if (!isVoidType(sym.tp))
@@ -209,17 +207,5 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
 
     case _ => super.emitNode(sym,rhs)
   }
-
-  /*
-  // Prevent C++ kernel generation for HashElems. Not supported yet.
-  override def emitKernelMultiHashInit(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = ""){
-    if (ps.length > 0)
-      throw new GenerationFailedException("CGen: DeliteHashElems are not yet supported for C++ target.")
-  }
-  override def emitInlineMultiHashInit(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = "") {
-    if (ps.length > 0)
-      throw new GenerationFailedException("CGen: DeliteHashElems are not yet supported for C++ target.")
-  }
-  */
 
 }

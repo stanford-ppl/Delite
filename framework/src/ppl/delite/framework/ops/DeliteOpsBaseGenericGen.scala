@@ -141,13 +141,14 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   case object Unknown extends GCStrategy //free nothing (don't know what escapes)
 
   def gcStrategy[A](body: Def[A]): GCStrategy = body match {
-    case b:DeliteCollectElem[_,_,_] => if (isPrimitiveType(b.mA)) Iteration else Unknown
-    case b:DeliteReduceElem[_] => if (isPrimitiveType(b.mA)) Iteration else Global
-    case b:DeliteReduceTupleElem[_,_] => if (isPrimitiveType(b.mA) && isPrimitiveType(b.mB)) Iteration else Global
-    case b:DeliteForeachElem[_] => Unknown
-    case b:DeliteHashCollectElem[_,_,_,_,_,_] => Unknown //TODO: handle inner collection allocations specially
-    case b:DeliteHashReduceElem[_,_,_,_] => if (isPrimitiveType(b.mV)) Iteration else Unknown
-    case b:DeliteHashIndexElem[_,_] => Unknown //TODO: allocate the hashmap specially iff it's returned and ignore this?
+    // case b:DeliteCollectElem[_,_,_] => if (isPrimitiveType(b.mA)) Iteration else Unknown
+    // case b:DeliteReduceElem[_] => if (isPrimitiveType(b.mA)) Iteration else Global
+    // case b:DeliteReduceTupleElem[_,_] => if (isPrimitiveType(b.mA) && isPrimitiveType(b.mB)) Iteration else Global
+    // case b:DeliteForeachElem[_] => Unknown
+    // case b:DeliteHashCollectElem[_,_,_,_,_,_] => Unknown //TODO: handle inner collection allocations specially
+    // case b:DeliteHashReduceElem[_,_,_,_] => if (isPrimitiveType(b.mV)) Iteration else Unknown
+    // case b:DeliteHashIndexElem[_,_] => Unknown //TODO: allocate the hashmap specially iff it's returned and ignore this?
+    case _ => Unknown
   }
 
   //allocations of horizontally fused loops likely to be interleaved in the heap, so we need to take the most conservative strategy

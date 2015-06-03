@@ -135,7 +135,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
         }
         catch {
           case e:GenerationFailedException => //
-          case e:Exception => throw(e)
         }
       }
 
@@ -171,14 +170,14 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
         }
 
       } catch {
-        case e:GenerationFailedException => // no generator found
+        case e: GenerationFailedException => // no generator found
           kStream.close()
           outFile.delete()
-          if(Config.dumpException) {
-            println(this.toString + ":" + (sym.map(quote)))
+          if (Config.dumpException) {
+            System.err.println(gen.toString + ":" + (sym.map(quote)))
             e.printStackTrace
           }
-        case e:Exception => throw(e)
+          if (Config.strictGeneration(gen.toString, e)) throw e
       }
     }
 

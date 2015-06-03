@@ -36,6 +36,10 @@ trait DeliteTestConfig {
   val runtimeExternalProc = false // javaHome, scalaHome and runtimeClasses only required if runtimeExternalProc is true. should this be configurable? or should we just remove execTestExternal?
   val deliteTestTargets = props.getProperty("tests.targets", "scala").split(",")
   val useBlas = props.getProperty("tests.extern.blas", "false").toBoolean
+
+  var cppWhiteList = Seq("StaticData", "DeliteTestMkString", "DeliteTestAppend", "DeliteTestStrConcat", "DeliteTestFwNew", 
+                         "DeliteTestBwNew", "DeliteTestBwWrite", "DeliteTestBwClose", "DeliteTestPrintLn", "scala.collection.mutable.ArrayBuffer")
+
 }
 
 trait DeliteSuite extends Suite with DeliteTestConfig {
@@ -43,7 +47,8 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
   val scalaCompiler = new File(scalaHome, "lib/scala-compiler.jar")
   val scalaLibrary = new File(scalaHome, "lib/scala-library.jar")
 
-  val CHECK_MULTILOOP = false
+  def checkMultiLoop = false
+  def enforceFullCoverage = true
 
   def validateParameters() {
     if (runtimeExternalProc && !javaBin.exists) throw new TestFailedException("Could not find valid java installation in " + javaHome, 3)
@@ -60,7 +65,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     uniqueTestName(app) + "-test.deg"
   }
 
-  def compileAndTest(app: DeliteTestRunner, checkMultiLoop: Boolean = false) {
+  def compileAndTest(app: DeliteTestRunner, checkMultiLoop: Boolean = checkMultiLoop, enforceFullCoverage: Boolean = enforceFullCoverage) {
     println("=================================================================================================")
     println("TEST: " + app.toString)
     println("=================================================================================================")
@@ -80,6 +85,12 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
       }
     }
 
+    //enable strict checking that scala and cpp kernels are actually generated
+    if (enforceFullCoverage) {
+      Config.generationFailedWhitelist += "scala" -> Seq() //no exceptions
+      Config.generationFailedWhitelist += "cpp" -> cppWhiteList //exclude ops provided by test suite
+    }
+
     if(useBlas) Config.useBlas = true
 
     // check if all multiloops in the test app are generated for specified targets
@@ -97,7 +108,6 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     else { // Just stage test
       stageTest(app)
     }
-
 
     // Set runtime parameters for targets and execute runtime
     for(target <- deliteTestTargets) {

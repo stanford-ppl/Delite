@@ -38,4 +38,14 @@ object Config {
   //Print generationFailedException info
   val dumpException: Boolean = getProperty("delite.dump.exception", "false") != "false"
   var enableProfiler = System.getProperty("delite.enable.profiler", "false") != "false"
+
+  //enforce generationFailed restrictions
+  var generationFailedWhitelist: Map[String, Seq[String]] = Map()
+  def strictGeneration(target: String, e: Exception): Boolean = {
+    if (generationFailedWhitelist contains target) {
+      for (w <- generationFailedWhitelist(target) if (e.getMessage contains w)) return false
+      true
+    }
+    else false
+  }
 }

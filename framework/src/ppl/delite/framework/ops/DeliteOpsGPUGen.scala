@@ -1,11 +1,12 @@
 package ppl.delite.framework.ops
 
+import ppl.delite.framework.codegen.delite.DeliteKernelCodegen
 import java.io.{PrintWriter, StringWriter}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.GenerationFailedException
 
 
-trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
+trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps with DeliteKernelCodegen {
   import IR._
 
   var kernelName: String = _
