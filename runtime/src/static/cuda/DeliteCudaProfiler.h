@@ -18,6 +18,8 @@ typedef struct {
   struct timeval start;
 } cudatimer_t;
 
+#ifndef __DELITE_CPP_PROFILER_H__
+
 class BufferedFileWriter {
 
   public:
@@ -28,6 +30,8 @@ class BufferedFileWriter {
   private:
     std::ofstream fs; 
 };
+
+#endif
 
 void InitDeliteCudaTimer(int32_t tid, int32_t lowestCudaTid);
 void DeliteCudaTimerStart(int32_t tid, std::string name);

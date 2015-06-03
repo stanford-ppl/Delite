@@ -12,6 +12,7 @@ std::string profileFilePrefix("/home/jithinpt/cache_instrumentation/hyperdsl/pub
 std::string ticTocProfileFile("/home/jithinpt/cache_instrumentation/hyperdsl/published/OptiML/profile/profile_tic_toc_cpp.csv");
 
 int32_t numCpp = 0;
+int32_t lowestCppTid = 0;
 double appStartTime;
 
 const int MAX_NUM_KERNELS_TO_STORE = 100000;
@@ -20,12 +21,13 @@ double milliseconds(struct timeval t) {
   return double(t.tv_sec * 1000) + (double(t.tv_usec) / 1000);
 }
 
-void InitDeliteCppTimer(int32_t lowestCppTid, int32_t numCppThreads) {
+void InitDeliteCppTimer(int32_t _lowestCppTid, int32_t numCppThreads) {
   struct timeval a;
   gettimeofday(&a,NULL);
   appStartTime = milliseconds(a);
 
   numCpp = numCppThreads;
+  lowestCppTid = _lowestCppTid;
   memoryAccessMaps = new std::vector< std::map< std::string, std::vector<PCMStats*>* >* >;
   ticTocRegionToTimers = new  std::map< std::string, cpptimer_t >;
   scToMemAllocationMaps = new std::vector< std::map< std::string, std::vector<cpparray_layout_info>* >* >;
@@ -228,7 +230,7 @@ void DeliteSendMemoryAccessStatsToJVM( int32_t offset, JNIEnv* env ) {
     #ifndef __DELITE_CPP_STANDALONE__
 
     jclass cls = env->FindClass("ppl/delite/runtime/profiler/MemoryProfiler");
-    jmethodID mid = env->GetStaticMethodID(cls, "addMemoryAccessStats", "(Ljava/lang/String;IDIDID)V");
+    jmethodID mid = env->GetStaticMethodID(cls, "addMemoryAccessStats", "(Ljava/lang/String;IDIDI)V");
 
     if (mid == NULL) {
         std::cout << "Could not find method" << std::endl;
@@ -253,8 +255,7 @@ void DeliteSendMemoryAccessStatsToJVM( int32_t offset, JNIEnv* env ) {
             jint l3Misses = stats->l3Misses;
             jdouble l2CacheHitRatio = stats->l2CacheHitRatio;
             jdouble l3CacheHitRatio = stats->l3CacheHitRatio;
-            jdouble bytesReadFromMC = stats->bytesReadFromMC;
-            env->CallStaticVoidMethod(cls, mid, sourceContext, offset+tid, l2CacheHitRatio, l2Misses, l3CacheHitRatio, l3Misses, bytesReadFromMC);
+            env->CallStaticVoidMethod(cls, mid, sourceContext, offset+tid, l2CacheHitRatio, l2Misses, l3CacheHitRatio, l3Misses);
             env->DeleteLocalRef(sourceContext);
 
             #endif
@@ -283,4 +284,32 @@ void SendKernelMemUsageStatsToJVM( JNIEnv* env ) {
             env->DeleteLocalRef(kernel);
 		}
     }
+}
+
+#ifndef DELITE_NUM_CUDA
+
+BufferedFileWriter::BufferedFileWriter(const char* fileName)
+{
+    fs.open(fileName);
+}
+
+void BufferedFileWriter::writeTimer(std::string kernel, long start, double duration, int32_t level, int32_t tid, bool isMultiLoop) {
+  if (isMultiLoop) {
+    fs << kernel << "_" << tid << "," << start << "," << duration << "," << level << std::endl;
+  } else {
+    fs << kernel << "," << start << "," << duration << "," << level << std::endl;
+  }
+}
+
+void BufferedFileWriter::close() {
+  fs.close();
+}
+
+#endif
+
+CoreCounterState getCoreCounterState(int32_t tid) {
+	PCM * inst = PCM::getInstance();
+    CoreCounterState result;
+    if (inst) result = inst->getCoreCounterState(lowestCppTid + tid);
+    return result;
 }

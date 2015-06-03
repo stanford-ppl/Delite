@@ -579,7 +579,6 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 				  		" NAME TEXT NOT NULL);\n" +
 				  " CREATE TABLE KernelMemAccessStats " +
 				  		"(NAME TEXT PRIMARY KEY NOT NULL," +
-				  		" BYTES_READ_FROM_MC INT  NOT NULL," +
 				  		" L2_CACHE_MISS_PCT  INT  NOT NULL," +
 				  		" L2_CACHE_MISSES 	 INT NOT NULL," +
 				  		" L3_CACHE_MISS_PCT  INT  NOT NULL," +
@@ -801,7 +800,7 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 				val kernel = kv._1.split("/").last
 				val stats = kv._2
 				sql += "INSERT INTO KernelMemAccessStats " +
-				"(NAME, BYTES_READ_FROM_MC, L2_CACHE_MISS_PCT, L2_CACHE_MISSES, L3_CACHE_MISS_PCT, L3_CACHE_MISSES) VALUES ('%s',%d,%d,%d,%d,%d);\n".format( kernel, stats.bytesReadFromMC.toInt,
+				"(NAME, L2_CACHE_MISS_PCT, L2_CACHE_MISSES, L3_CACHE_MISS_PCT, L3_CACHE_MISSES) VALUES ('%s',%d,%d,%d,%d);\n".format( kernel,
 							100 - Math.floor(stats.l2CacheHitRatio * 100).toInt, stats.l2CacheMisses, 
 				  			100 - Math.floor(stats.l3CacheHitRatio * 100).toInt, stats.l3CacheMisses)
 			}

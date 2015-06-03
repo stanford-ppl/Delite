@@ -5,12 +5,12 @@ import java.io.{BufferedWriter, File, PrintWriter, FileWriter}
 import ppl.delite.runtime.Config
 import scala.collection.mutable.{ArrayBuffer, HashMap, Stack}
 
-class MemoryAccessStats(l2HitRatio: Double, l2Misses: Int, l3HitRatio: Double, l3Misses: Int, bytesReadFromMem: Double) {
+class MemoryAccessStats(l2HitRatio: Double, l2Misses: Int, l3HitRatio: Double, l3Misses: Int) {
     var l2CacheHitRatio: Double = l2HitRatio
     var l2CacheMisses: Int = l2Misses
     var l3CacheHitRatio: Double = l3HitRatio
     var l3CacheMisses: Int = l3Misses
-    var bytesReadFromMC: Double = bytesReadFromMem
+    //var bytesReadFromMC: Double = bytesReadFromMem
 }
 
 object MemoryProfiler
@@ -58,9 +58,8 @@ object MemoryProfiler
 	def addMemoryAccessStats(
         sourceContext: String, threadId: Int,
         l2CacheHitRatio: Double, l2CacheMisses: Int,
-        l3CacheHitRatio: Double, l3CacheMisses: Int,
-        bytesReadFromMC: Double): Unit = {
-      val stats = new MemoryAccessStats( l2CacheHitRatio, l2CacheMisses, l3CacheHitRatio, l3CacheMisses, bytesReadFromMC )
+        l3CacheHitRatio: Double, l3CacheMisses: Int): Unit = {
+      val stats = new MemoryAccessStats( l2CacheHitRatio, l2CacheMisses, l3CacheHitRatio, l3CacheMisses )
       if ( !kernelToMemAccessStats.contains( sourceContext ) ) {
 		kernelToMemAccessStats += sourceContext -> new ArrayBuffer[MemoryAccessStats]()
 	  }
@@ -144,7 +143,7 @@ object MemoryProfiler
 	def aggregateMemAccessStats() : Map[String, MemoryAccessStats] = {
 		var res = Map[String, MemoryAccessStats]()
 		kernelToMemAccessStats.foreach( kv => {
-			val aggrStats = new MemoryAccessStats(0,0,0,0,0)
+			val aggrStats = new MemoryAccessStats(0,0,0,0)
 			for (s <- kv._2) {
 				aggrStats.l2CacheHitRatio += s.l2CacheHitRatio
 				aggrStats.l2CacheMisses += s.l2CacheMisses

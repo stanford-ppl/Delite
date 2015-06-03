@@ -30,6 +30,8 @@ def main():
     parser.add_option("--opencl", dest="num_opencl", default="0", help="number of opencl execution threads")
     parser.add_option("-r", "--runs", dest="num_runs", default="1", type="string", help="the number of times the runtime will execute the applications")
     parser.add_option("-p", "--profile", dest="profile", action="store_true", default=False, help="enables application profiling")
+    parser.add_option("--pcm", dest="pcm", action="store_true", default=False, help="enable PCM-based memory-access instrumentation")
+    parser.add_option("--perf", dest="perf", action="store_true", default=False, help="use perf-based instrumentation to get mem-access stats for each datastructure")
     parser.add_option("--executor", dest="executor", default="default", type="string", help="the type of executor")
     parser.add_option("--scheduler", dest="scheduler", default="dynamic", type="string", help="the type of scheduler")
     parser.add_option("--noregen", dest="no_regen", action="store_true", default=False, help="Disables regeneration of runtime execution plans")
@@ -128,6 +130,8 @@ def run(deg, params, opts):
         java_opts = java_opts + " -Ddelite.debug.noregenerate"
     if opts.profile == True:
                java_opts = java_opts + " -Dprofile.output.dir=profile -Dprofile.dump=true -Ddelite.debug.profile=true -Xloggc:profile/gcStats.txt -XX:+PrintGCDetails -Ddelite.debug.memSamplingInterval=14"
+    if opts.pcm == True:
+        java_opts = java_opts + " -Ddelite.enable.pcm=true"
     if opts.isSlave == True:
         java_opts = java_opts + " -Ddelite.cluster.isSlave"
     if opts.walk_only == True:
@@ -171,12 +175,16 @@ def run(deg, params, opts):
 
     java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " ppl.delite.runtime.Delite " + deg + " " + ' '.join(params)
     is_perf_avaiable = (which('perf') != None)
-    if opts.profile and is_perf_avaiable:
+    use_perf = opts.perf and opts.profile and is_perf_avaiable
+    if use_perf:
 		java_cmd = "perf record -W -d -e cpu/mem-loads/ppu -c 1000 " + java_cmd
 
     ecode = os.system(java_cmd)
     if ecode != 0:
         err("Delite execution failed")
+    elif use_perf:
+        parse_perf_report_script = delitecommon.DELITE_HOME + "/bin/parse_perf_report " + build_dir
+        os.system(parse_perf_report_script)
 
     if opts.jar_cache == True:
         scala_class_root = opts.codecache + os.sep + "scala" + os.sep + "classes" + os.sep + "jar"

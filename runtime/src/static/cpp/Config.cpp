@@ -14,7 +14,6 @@ Config* config = NULL;
 resourceInfo_t* resourceInfos = NULL;
 pthread_mutex_t init_mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t init_cond = PTHREAD_COND_INITIALIZER;
-PCM* pcm = NULL;
 
 // heavy-handed, but doesn't appear there is another good way
 int getCpuInfo(FILE* pipe) {
@@ -73,8 +72,7 @@ void initializeConfig(int numThreads) {
   }
 }
 
-//void initializeGlobal(int numThreads, size_t heapSize) {
-void initializeGlobal(int lowestCppTid, int numCppThreads, size_t heapSize) {
+void initializeGlobal(int lowestCppTid, int numCppThreads, size_t heapSize, bool enablePCM) {
   pthread_mutex_lock(&init_mtx); 
   if (!config) {
     InitDeliteCppTimer(lowestCppTid, numCppThreads);
@@ -91,7 +89,7 @@ void initializeGlobal(int lowestCppTid, int numCppThreads, size_t heapSize) {
     initializeThreadPool(numCppThreads);
   }
 
-  pcm = pcmInit();
+  pcmInit(enablePCM);
 
   pthread_mutex_unlock(&init_mtx);
 }
@@ -113,9 +111,8 @@ void freeGlobal(int numThreads, int offset, JNIEnv *env) {
   pthread_mutex_unlock(&init_mtx);
 }
 
-//void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize) {
-void initializeAll(int threadId, int lowestCppTid, int numCppThreads, int numLiveThreads, size_t heapSize) {
-  initializeGlobal(lowestCppTid, numCppThreads, heapSize);
+void initializeAll(int threadId, int lowestCppTid, int numCppThreads, int numLiveThreads, size_t heapSize, bool enablePCM) {
+  initializeGlobal(lowestCppTid, numCppThreads, heapSize, enablePCM);
   initializeThread(threadId);
   delite_barrier(numLiveThreads); //ensure fully initialized before any continue
 }

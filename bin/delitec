@@ -33,6 +33,7 @@ def main():
     parser.add_option("--cpp", dest="cpp", action="store_true", default=False, help="enables cpp generation")
     parser.add_option("-c", "--serializable", dest="cluster", action="store_true", default=False, help="enables serialization and cluster support")
     parser.add_option("-p", "--profile", dest="profile", action="store_true", default=False, help="enables application profiling")
+    parser.add_option("--pcm", dest="pcm", action="store_true", default=False, help="enable PCM-based memory-access instrumentation")
     parser.add_option("-O", dest="optimize", action="store", default=0, help="sets advanced optimization level")
     parser.add_option("--debug", dest="debug", action="store_true", default=False, help="enables verbose compiler output")
     parser.add_option("--Xdebug", dest="xdebug", action="store_true", default=False, help="enables LMS debug output; for compiler writers only")
@@ -89,6 +90,8 @@ def stage(runner, params, opts):
         java_opts = java_opts + " -Ddelite.enable.soa=false"
     if opts.profile == True:
         java_opts = java_opts + " -Ddelite.enable.profiler=true"
+    if opts.pcm == True:
+        java_opts = java_opts + " -Ddelite.enable.pcm=true"
     if opts.optimize > 0:
         java_opts = java_opts + " -Ddelite.optimize="+str(opts.optimize)
     if opts.debug == True:

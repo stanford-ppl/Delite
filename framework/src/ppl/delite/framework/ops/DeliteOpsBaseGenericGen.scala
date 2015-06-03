@@ -776,7 +776,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     val actType = "activation_"+kernelName
     //deliteKernel = false
 
-	val instrumentMemAccesses = (Config.enableProfiler) && (kernelFileExt == "cpp")
+	val enablePCM = (Config.enablePCM) && (kernelFileExt == "cpp")
 
     emitAbstractFatLoopHeader(kernelName, actType)
 
@@ -834,8 +834,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitValDef(streamSym, remap(streamVars(0).tp), fieldAccess(quote(streamVars(0)),"openCopyAtNewLine(start)"))
         emitValDef("isEmpty",remap(Manifest.Boolean), "end <= " + fieldAccess(streamSym,"position"))
 
-		if (instrumentMemAccesses) {
-			stream.println("SystemCounterState before = getSystemCounterState();")
+		if (enablePCM) {
+			stream.println("CoreCounterState before = getCoreCounterState(resourceInfo->threadId);")
 		}
 
         emitValDef("__act2",actType,methodCall("init",List("__act","-1","isEmpty",streamSym)))
@@ -843,8 +843,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitMethodCall("process",List("__act2","-1",streamSym))
         stream.println("}")
 
-		if (instrumentMemAccesses) {
-			stream.println("SystemCounterState after = getSystemCounterState();")
+		if (enablePCM) {
+			stream.println("CoreCounterState after = getCoreCounterState(resourceInfo->threadId);")
 			stream.println("DeliteUpdateMemoryAccessStats( resourceInfo->threadId, " + "\"" + getSourceContext(symList(0).pos) + "\" , getPCMStats( before, after ));")
 		}
 
@@ -854,8 +854,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitValDef("isEmpty",remap(Manifest.Boolean),"end-start <= 0")
         emitVarDef("idx", remap(Manifest.Int), typeCast("start",remap(Manifest.Int)))
 
-		if (instrumentMemAccesses) {
-			stream.println("SystemCounterState before = getSystemCounterState();")
+		if (enablePCM) {
+			stream.println("CoreCounterState before = getCoreCounterState(resourceInfo->threadId);")
 		}
 
         emitValDef("__act2",actType,methodCall("init",List("__act","idx","isEmpty")))
@@ -865,8 +865,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitAssignment("idx","idx + 1")
         stream.println("}")
 
-		if (instrumentMemAccesses) {
-			stream.println("SystemCounterState after = getSystemCounterState();")
+		if (enablePCM) {
+			stream.println("CoreCounterState after = getCoreCounterState(resourceInfo->threadId);")
 			stream.println("DeliteUpdateMemoryAccessStats( resourceInfo->threadId, " + "\"" + getSourceContext(symList(0).pos) + "\" , getPCMStats( before, after ));")
 		}
       }
