@@ -2,7 +2,7 @@
 
 from optparse import OptionParser
 import multiprocessing
-import os, sys
+import os, sys, datetime
 import math
 from socket import gethostname
 from string import *
@@ -154,7 +154,7 @@ def stage(runner, params, opts):
         print("LMS_HOME is UNDEFINED")
       print(java_opts)
 
-    print "==  Generating DEG file with options: " + str(opts)
+    print "[" + datetime.datetime.now().isoformat(' ') + "]: Generating DEG file with options: " + str(opts)
     java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " " + runner + " " + ' '.join(params)
     #print java_cmd
     ecode = os.system(java_cmd)

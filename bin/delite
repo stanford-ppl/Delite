@@ -2,7 +2,7 @@
 
 from optparse import OptionParser
 import multiprocessing
-import os, sys
+import os, sys, datetime
 import math
 from socket import gethostname
 from string import *
@@ -148,8 +148,7 @@ def run(deg, params, opts):
     cp = cp + delitecommon.DELITE_HOME + "/runtime/target/" + delitecommon.scala_major_id + "/classes" + os.pathsep
 
     # add all managed libs
-    # caveat: scalatest pulls in some non-virtualized scala dependencies but they conflict with the scala-virtualized versions
-    jars = [os.path.join(d,f) for (d, n, fs) in os.walk(delitecommon.HYPER_HOME + "/lib_managed/") if not (d.count("org.scala-lang") > 0 and d.count("virtualized") == 0) for f in fs]
+    jars = [os.path.join(d,f) for (d, n, fs) in os.walk(delitecommon.HYPER_HOME + "/lib_managed/") for f in fs]
     for j in jars:
         cp = cp + j + os.pathsep
 
@@ -167,7 +166,7 @@ def run(deg, params, opts):
     if opts.verbose:
         delitecommon.printEnv()
 
-    print "== executing application: " + deg + " " + ' '.join(params)
+    print "[" + datetime.datetime.now().isoformat(' ') + "]: executing application: " + deg + " " + ' '.join(params)
     if opts.verbose:
         print "== with options: " + java_opts + "\n"
 
