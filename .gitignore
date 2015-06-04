@@ -24,6 +24,7 @@ generatedCache
 *.debug
 *.pgm
 *.pyc
+*.checksum
 benchmark/times
 test-out/*/*-log
 test-out/*/*-skel

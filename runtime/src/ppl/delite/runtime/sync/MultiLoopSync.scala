@@ -23,7 +23,7 @@ final class MultiLoopSync[T <: AnyRef](loopSize: Long, numChunksHint: Int, resou
     //TODO: this wastes threads when availableThreads/loopSize does not divide evenly the rather than assigning an uneven number of threads in the future nested level(s)
   
     val newAvailable = availableThreads / r.length
-    println("loopSize: " + loopSize + " start: " + startId + " available: " + newAvailable + " assigned: " + r.mkString("(",", ",")"))
+    //println("loopSize: " + loopSize + " start: " + startId + " available: " + newAvailable + " assigned: " + r.mkString("(",", ",")"))
     r.map(i => resourceInfo.copySync(i, newAvailable))
   }
 
