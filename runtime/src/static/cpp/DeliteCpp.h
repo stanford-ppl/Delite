@@ -33,9 +33,9 @@
 
 extern Config* config;
 extern resourceInfo_t* resourceInfos;
-void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize);
+void initializeAll(int threadId, int numThreads, size_t heapSize);
 void initializeThread(int threadId);
-void clearAll(int numThreads, int numLiveThreads, int offset, JNIEnv *env);
+void clearAll(int numThreads, int offset, JNIEnv *env);
 void initializeThreadPool(int numThreads);
 void submitWork(int threadId, void *(*work) (void *), void *arg);
 

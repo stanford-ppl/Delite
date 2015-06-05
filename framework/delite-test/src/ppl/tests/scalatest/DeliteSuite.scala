@@ -112,7 +112,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
         target match {
           case "scala" => runtimeConfig(numScala = num)
           case "cpp" => runtimeConfig(numCpp = num)
-          case "cuda" => runtimeConfig(numScala = num, numCuda = 1) //scala or cpp (or both) for host?
+          case "cuda" => runtimeConfig(numScala = num, numCpp = 1, numCuda = 1) // C++ kernels launched on GPU host
           case "opencl" => runtimeConfig(numScala = num, numOpenCL = 1)
           case _ => assert(false)
         }

@@ -93,7 +93,7 @@ abstract class DeliteOP {
     assert(consumers contains old, old.toString + " is not a consumer of " + this.toString + ", cannot be replaced")
     consumers -= old
     consumers += c
-    if (antiDeps.contains(c)) {
+    if (antiDeps.contains(old)) {
       antiDeps -= old
       antiDeps += c
     }

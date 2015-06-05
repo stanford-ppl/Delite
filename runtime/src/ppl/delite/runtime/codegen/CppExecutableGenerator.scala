@@ -41,21 +41,28 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
     out.append("extern JNIEnv* env" + location + ";\n")
   }
 
-  protected def writeMethodHeader() {
+  protected[codegen] def declareGlobals() {
     out.append("JNIEnv* env" + location + ";\n")
+  }
+
+  protected[codegen] def initializeGlobals() {
+    out.append("env" + location + " = jnienv;\n")
+    out.append("JNIEnv *env = jnienv;\n")
+    out.append("initializeAll(" + Targets.getRelativeLocation(location) + ", " + Config.numCpp + ", " + Config.cppHeapSize + "ULL);\n")
+    out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
+    out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
+  }
+
+  protected def writeMethodHeader() {
+    declareGlobals()
     val function = "JNIEXPORT void JNICALL Java_" + executableName + "_00024_host" + executableName + "(JNIEnv* jnienv, jobject object, jint numThreads)"
     out.append("extern \"C\" ") //necessary because of JNI
     out.append(function)
     out.append(";\n")
     out.append(function)
     out.append(" {\n")
-    out.append("env" + location + " = jnienv;\n")
-    out.append("JNIEnv *env = jnienv;\n")
+    initializeGlobals()
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
-    val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
-    out.append("initializeAll(" + Targets.getRelativeLocation(location) + ", numThreads," + numActiveCpps + "," + Config.cppHeapSize + "ULL);\n")
-    out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
-    out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
     writeJNIInitializer(locations)
   }
 
@@ -160,7 +167,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
     "xH"+name
   }
 
-  protected def writeSyncObject() {  }
+  override protected[codegen] def writeSyncObject() {  }
 
   protected def isPrimitiveType(scalaType: String) = scalaType match {
     case "java.lang.String" => true

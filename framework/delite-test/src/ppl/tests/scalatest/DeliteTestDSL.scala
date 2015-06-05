@@ -115,7 +115,7 @@ trait DeliteTestDSLCodeGenScala extends DeliteTestDSLCodeGenBase with DeliteTest
 }
 
 trait DeliteTestDSLCodeGenCuda extends DeliteTestDSLCudaCodeGenPkg with DeliteTestDSLCodeGenBase
-  with CudaGenDeliteOps with CudaGenDeliteStruct with CudaGenDeliteArrayOps with CudaGenDeliteArrayBufferOps 
+  with CudaGenDeliteOps with CudaGenDeliteStruct with CudaGenDeliteArrayOps with CudaGenDeliteArrayBufferOps
   with DeliteCudaGenAllOverrides with DeliteCppHostTransfer with DeliteCudaDeviceTransfer {
   
   val IR: DeliteApplication with DeliteTestDSLExp
@@ -129,7 +129,7 @@ trait DeliteTestDSLCodeGenOpenCL extends DeliteTestDSLCodeGenBase with DeliteTes
 }
 
 trait DeliteTestDSLCodeGenC extends DeliteTestDSLCodeGenBase with DeliteTestDSLCCodeGenPkg
-  with CGenDeliteOps with CGenDeliteStruct with CGenDeliteArrayOps /*with CGenDeliteArrayBufferOps*/
+  with CGenDeliteOps with CGenDeliteStruct with CGenDeliteArrayOps with CGenDeliteMapOps with CGenDeliteFileReaderOps
   with DeliteCGenAllOverrides with DeliteCppHostTransfer {
   
   val IR: DeliteApplication with DeliteTestDSLExp

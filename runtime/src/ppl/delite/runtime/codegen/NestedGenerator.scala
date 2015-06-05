@@ -208,6 +208,7 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
   override protected def writeMethodHeader() {
     out.append(generateMethodSignature)
     out.append(" {\n")
+    writeJNIInitializer(nested.nestedGraphs:_*)
   }
 
   override protected def writeMethodFooter() {
@@ -224,6 +225,7 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
       if (!isPrimitiveType(op.outputType(sym)) || isReferentialPrimitive(op,sym)) str.append(" *")
       str.append(' ')
       str.append(getSymDevice(op, sym))
+      /*
       if (updateOps(nested).contains(sym)) {
         str.append(',')
         str.append(op.outputType(hostTarget,sym))
@@ -235,6 +237,7 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
         str.append(' ')
         str.append(getSymRemote(op, sym))
       }
+      */
     }
     str.toString
   }

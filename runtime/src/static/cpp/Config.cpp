@@ -103,14 +103,14 @@ void freeGlobal(int numThreads, int offset, JNIEnv *env) {
   pthread_mutex_unlock(&init_mtx);
 }
 
-void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize) {
+void initializeAll(int threadId, int numThreads, size_t heapSize) {
   initializeGlobal(numThreads, heapSize);
   initializeThread(threadId);
-  delite_barrier(numLiveThreads); //ensure fully initialized before any continue
+  delite_barrier(numThreads); //ensure fully initialized before any continue
 }
 
-void clearAll(int numThreads, int numLiveThreads, int offset, JNIEnv *env) {
-  delite_barrier(numLiveThreads); //first wait for all threads to arrive
+void clearAll(int numThreads, int offset, JNIEnv *env) {
+  delite_barrier(numThreads); //first wait for all threads to arrive
   freeGlobal(numThreads, offset, env);
 }
 

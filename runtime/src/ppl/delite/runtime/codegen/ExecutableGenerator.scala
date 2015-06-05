@@ -74,7 +74,7 @@ trait ExecutableGenerator {
   protected def writeFooter()
   protected def writeMethodFooter()
 
-  protected def writeSyncObject()
+  protected[codegen] def writeSyncObject()
 
   protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value): SyncObjectGenerator
   protected def getOpSym(op: DeliteOP) = getSym(op, "op_"+op.id)
