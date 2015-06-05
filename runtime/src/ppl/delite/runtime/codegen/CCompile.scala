@@ -64,8 +64,11 @@ trait CCompile extends CodeCache {
   }
 
   def sourceDirs = modules.map(m => sourceCacheHome + sep + m.name).toArray ++ Array(staticResources)
+  
   def executableName = {
-    val configString = Config.numThreads.toString + Config.numCpp + Config.numCuda + Config.numOpenCL
+    val configString = if (Config.scheduler == "dynamic" && !Config.testMode) 
+      (if (Config.numThreads > 0) 1 else 0).toString + (if (Config.numCpp > 0) 1 else 0) + Config.numCuda + Config.numOpenCL
+      else Config.numThreads.toString + Config.numCpp + Config.numCuda + Config.numOpenCL
     val degName = ppl.delite.runtime.Delite.inputArgs(0).split('.')
     binCacheHome + target + "Host" + degName(degName.length-2) + "_" + configString + "." + OS.libExt
   }

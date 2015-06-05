@@ -27,7 +27,8 @@ object SavedEnvironmentGenerator {
 
     out.append("def initEnv() {\n")
     if (Config.scheduler != "dynamic") out.append("Config.numThreads = " + Config.numThreads + "\n")
-    out.append("Config.numCpp = " + Config.numCpp + "\n")
+    val numCpp = if (Config.scheduler != "dynamic") Config.numCpp else (if (Config.numCpp > 0) 1 else 0)
+    out.append("Config.numCpp = " + numCpp + "\n")
     out.append("Config.numCuda = " + Config.numCuda + "\n")
     out.append("Config.numOpenCL = " + Config.numOpenCL + "\n")
     out.append("Config.executor = \"" + Config.executor + "\"\n")

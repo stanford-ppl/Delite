@@ -26,8 +26,8 @@ trait DeliteTestConfig {
   if (propFile.exists) props.load(new FileReader(propFile))
 
   // test parameters
-  val verbose = props.getProperty("tests.verbose", "false").toBoolean
-  val verboseDefs = props.getProperty("tests.verboseDefs", "false").toBoolean
+  val verbose = props.getProperty("tests.verbose", "false") != "false"
+  val verboseDefs = props.getProperty("tests.verboseDefs", "false") != "false"
   val threads = props.getProperty("tests.threads", "1").split(",").map(_.toInt)
   val cacheSyms = props.getProperty("tests.cacheSyms", "true").toBoolean
   val javaHome = new File(props.getProperty("java.home", ""))
@@ -37,8 +37,9 @@ trait DeliteTestConfig {
   val deliteTestTargets = props.getProperty("tests.targets", "scala").split(",")
   val useBlas = props.getProperty("tests.extern.blas", "false").toBoolean
 
-  var cppWhiteList = Seq("StaticData", "DeliteTestMkString", "DeliteTestAppend", "DeliteTestStrConcat", "DeliteTestFwNew", 
-                         "DeliteTestBwNew", "DeliteTestBwWrite", "DeliteTestBwClose", "DeliteTestPrintLn", "scala.collection.mutable.ArrayBuffer")
+  var cppWhiteList = Seq("StaticData", "DeliteTestMkString", "DeliteTestAppend", "DeliteTestStrConcat", "DeliteTestFwNew", //test operations are Scala-only by design
+                         "DeliteTestBwNew", "DeliteTestBwWrite", "DeliteTestBwClose", "DeliteTestPrintLn", "scala.collection.mutable.ArrayBuffer",
+                         "DeliteArraySeq[scala.virtualization.lms.common.Record{", "Array[scala.virtualization.lms.common.Record{") //C++ doesn't currently support non-Soa'd Array[Record]
 
 }
 
@@ -117,6 +118,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
           ppl.delite.runtime.Config.numCpp = numCpp
           ppl.delite.runtime.Config.numCuda = numCuda
           ppl.delite.runtime.Config.numOpenCL = numOpenCL
+          ppl.delite.runtime.Config.testMode = true
         }
 
         target match {
@@ -256,7 +258,7 @@ trait DeliteTestRunner extends DeliteTestModule with DeliteTestConfig with Delit
     delite_test_bw_write(out, s2)
     delite_test_bw_close(out)
   }
-
+  
 }
 
 trait DeliteTestModule extends Base {

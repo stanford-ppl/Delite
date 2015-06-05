@@ -520,7 +520,6 @@ trait CLikeGenDeliteStruct extends BaseGenStruct with CLikeCodegen {
       }
       catch {
         case e: GenerationFailedException => generationFailedStructs += name
-        case e: Exception => throw(e)
       }
     }
     structStream.println("#endif")
@@ -666,7 +665,6 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps {
     }
     catch {
       case e: GenerationFailedException => generationFailedStructs += name; (new File(path + deviceTarget + name + ".h")).delete; throw(e)
-      case e: Exception => throw(e)
     }
   }
 }
@@ -834,7 +832,6 @@ struct __T__D {
     }
     catch {
       case e: GenerationFailedException => generationFailedStructs += name; (new File(path + deviceTarget + name + ".h")).delete; throw(e)
-      case e: Exception => throw(e)
     }
   }
 

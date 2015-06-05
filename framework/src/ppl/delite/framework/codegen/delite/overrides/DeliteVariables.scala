@@ -79,7 +79,6 @@ trait DeliteCLikeGenVariables extends CLikeGenEffect with CLikeGenDeliteStruct {
     }
     catch {
       case e: GenerationFailedException => //
-      case e: Exception => throw(e)
     }
   }
 

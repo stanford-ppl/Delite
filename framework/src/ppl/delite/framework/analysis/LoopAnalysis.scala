@@ -262,8 +262,6 @@ trait NestedLoopMappingAnalysis extends FatBlockTraversal with LoopFusionOpt wit
       case e: MultiDimMappingFailedException =>
         printInfo("[WARNING] MultiDimMapping Analysis Failed: " + e.msg)
         resetLoopAnalysis
-      case e: Exception =>
-        throw (e)
     }
     printInfo("Loop Analysis Success")
   }

@@ -7,33 +7,43 @@ import generated.scala.ResourceInfo
 
 class MultiLoopSuite extends Suite {
 
-  val numThreads = 16
-  val resourceInfo = ResourceInfo(0, numThreads, 0, 0, numThreads)
-  val bigLoopSize = 1000 // > numThreads
-  val smallLoopSize = 4 // < numThreads
+  //TODO: this functionality is duplicated in both in Scala and C++: how can we test the C++ implementation as well?
 
-  def testThreadScheduling {
-    val sync1 = new MultiLoopSync(bigLoopSize, 0, resourceInfo) //loopSize > numThreads
-    assert(sync1.threads.length == numThreads)
-    for ((i,r) <- (0 until numThreads) zip sync1.threads) {
-      assert(r.threadId == i)
-      assert(r.availableThreads == 1)
-    }
+  val verbose = System.getProperty("tests.verbose", "false") != "false"
 
-    val sync2 = new MultiLoopSync(smallLoopSize, 0, resourceInfo)
-    assert (sync2.threads.length == smallLoopSize)
-    val newAvailable = numThreads / smallLoopSize
-    var idx = 0
-    for (r <- sync2.threads) {
-      assert(r.availableThreads == newAvailable)
+  def clue(implicit numThreads: Int, loopSize: Long) = s"for numThreads: $numThreads, loopSize: $loopSize"
 
-      val syncI = new MultiLoopSync(bigLoopSize, 0, r)
-      assert(syncI.threads.length == newAvailable)
-      for (r2 <- syncI.threads) {
-        assert(r2.threadId == idx)
-        assert(r2.availableThreads == 1)
-        idx += 1
+  def checkThreadScheduling(resourceInfo: ResourceInfo)(implicit numThreads: Int, loopSize: Long): Unit = {
+    val sync = new MultiLoopSync(loopSize, 0, resourceInfo)
+    if (loopSize >= resourceInfo.availableThreads) { //big loop: should use all threads 
+      assertResult(resourceInfo.availableThreads, clue)(sync.threads.length)
+      for ((r,i) <- sync.threads.zipWithIndex) {
+        assertResult(resourceInfo.threadId + i, clue)(r.threadId) //assigned threads should be contiguous
+        assertResult(1, clue)(r.availableThreads)
+        assertResult(i, clue)(r.groupId)
+        assertResult(resourceInfo.availableThreads, clue)(r.groupSize)
+      }
+    } else { //small loop: should use (roughly) loopSize threads and then use extra threads for nested loops
+      assert(sync.threads.length >= loopSize && sync.threads.length <= resourceInfo.availableThreads, clue)
+      val newAvailable = resourceInfo.availableThreads / sync.threads.length
+      for (r <- sync.threads) {
+        assertResult(newAvailable, clue)(r.availableThreads)
+        assertResult(sync.threads.length, clue)(r.groupSize)
+        if (loopSize > 0) { //can fork nested loops
+          if (loopSize == 1) checkThreadScheduling(r)(numThreads, 2)
+          else checkThreadScheduling(r)
+        }
       }
     }
   }
+
+  def testThreadScheduling {
+    for (numThreads <- Seq(1, 3, 4, 16, 19, 1024)) {
+      for (loopSize <- Seq(0, 1, 7, 29, 187, 256, 1024, 10000)) {
+        if (verbose) System.err.println(s"numThreads: $numThreads, loopSize: $loopSize")
+        checkThreadScheduling(ResourceInfo(0, numThreads, 0, 0))(numThreads, loopSize)
+      }
+    }
+  }
+
 }

@@ -46,6 +46,8 @@ private:
   	int idx = 0;
   	for (int id = start; id < end; id += step) {
   	  threads[idx] = resourceInfos[id]; //copy constructor
+      threads[idx].groupId = idx;
+      threads[idx].groupSize = _numThreads;
   	  threads[idx].availableThreads = newAvailable;
   	  idx++;
   	}
@@ -101,13 +103,6 @@ public:
   int32_t numChunks() { return _numChunks; }
 
   int32_t numThreads() { return _numThreads; }
-
-  int32_t localThreadId(resourceInfo_t *info) {
-  	for (int i=0; i<_numThreads; i++) {
-  	  if (threads[i].threadId == info->threadId) return i;
-  	}
-  	return -1;
-  }
  
   resourceInfo_t *getThreadResource(int32_t idx) { return &threads[idx]; }
 

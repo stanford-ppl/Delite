@@ -71,7 +71,7 @@ object Config {
   val profile: Boolean = getProperty("delite.debug.profile", "false") != "false"
   val printSources: Boolean = getProperty("delite.debug.print.sources", "false") != "false"
   val printConnection: Boolean = getProperty("delite.debug.print.connection", "false") != "false"
-
+  var testMode: Boolean = getProperty("delite.debug.test", "false") != "false" //hack to make native libs work differently under sbt, should be removed
 
   var degFilename = System.getProperty("delite.deg.filename", "out.deg")
 

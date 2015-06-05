@@ -24,7 +24,7 @@ final class MultiLoopSync[T <: AnyRef](loopSize: Long, numChunksHint: Int, resou
   
     val newAvailable = availableThreads / r.length
     //println("loopSize: " + loopSize + " start: " + startId + " available: " + newAvailable + " assigned: " + r.mkString("(",", ",")"))
-    r.map(i => resourceInfo.copySync(i, newAvailable))
+    for (i <- 0 until r.length) yield resourceInfo.copySync(r(i), i, r.length, newAvailable)
   }
 
   val numChunks = {
@@ -33,10 +33,6 @@ final class MultiLoopSync[T <: AnyRef](loopSize: Long, numChunksHint: Int, resou
   }
 
   def numThreads = threads.length
-
-  def localThreadId(info: ResourceInfo) = {
-    threads.indexOf(info)
-  }
 
   def getThreadResource(idx: Int) = threads(idx)
 

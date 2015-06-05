@@ -17,7 +17,7 @@ object ScalaCompile extends CodeCache {
   def target = Targets.Scala
   def javaExt = "java"
 
-  def compile: ClassLoader = {
+  def compile(): ClassLoader = {
     if (Config.verbose) println("[delite]: starting scala compile")
     val start = System.currentTimeMillis
     cacheRuntimeSources(sourceBuffer.toArray)
@@ -35,7 +35,16 @@ object ScalaCompile extends CodeCache {
 
     val time = (System.currentTimeMillis - start)/1e3
     if (Config.verbose) println("[delite]: finished scala compile in " + time + "s")
-    ScalaClassLoader.fromURLs(modules.map(m => Path(classCacheHome + m.name).toURL), this.getClass.getClassLoader)
+    
+    val newUrls = modules.map(m => Path(classCacheHome + m.name).toURL)
+    this.getClass.getClassLoader match {
+      // case cl: java.net.URLClassLoader => //this is ugly, but it avoids loading native libs in different classLoaders across runs
+      //   val method = classOf[java.net.URLClassLoader].getDeclaredMethod("addURL", classOf[java.net.URL])
+      //   method.setAccessible(true)
+      //   for (url <- newUrls) method.invoke(cl, url)
+      //   cl
+      case cl => ScalaClassLoader.fromURLs(newUrls, cl)
+    }
   }
 
   def compile(destination: String, sources: Array[String], classPaths: Array[String]) {

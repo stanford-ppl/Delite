@@ -78,11 +78,7 @@ void initializeGlobal(int numThreads, size_t heapSize) {
     initializeConfig(numThreads);
     resourceInfos = new resourceInfo_t[numThreads];
     for (int i=0; i<numThreads; i++) {
-      resourceInfos[i].threadId = i;
-      resourceInfos[i].numThreads = numThreads;
-      resourceInfos[i].socketId = config->threadToSocket(i);
-      resourceInfos[i].numSockets = config->numSockets;
-      resourceInfos[i].availableThreads = numThreads;
+      resourceInfos[i] = resourceInfo_t(i, numThreads, config->threadToSocket(i), config->numSockets);
       resourceInfos[i].rand = new DeliteCppRandom(i);
     }
     DeliteHeapInit(numThreads, heapSize);

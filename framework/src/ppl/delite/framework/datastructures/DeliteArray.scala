@@ -472,8 +472,9 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
   }
 
   // We use this to disable rewrites on subtypes of DeliteArray[T] that are not SoA'd. For now this is only DeliteArraySeq.
-  def isSoa[T:Manifest](da: Exp[DeliteArray[T]]) = {
-    Config.soaEnabled && da.tp.erasure.getSimpleName != "DeliteArraySeq"
+  def isSoa[T:Manifest](da: Exp[DeliteArray[T]]): Boolean = isSoa(da.tp)
+  def isSoa[T](m: Manifest[T]): Boolean = {
+    Config.soaEnabled && m.erasure.getSimpleName != "DeliteArraySeq"
   }
 
   //choosing the length of the first array creates an unnecessary dependency (all arrays must have same length), so we store length in the tag
@@ -821,7 +822,7 @@ trait CLikeGenDeliteArrayOps extends BaseGenDeliteArrayOps with CLikeGenDeliteSt
   val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
 
-  override def remap[A](m: Manifest[A]): String = {
+  override def remap[A](m: Manifest[A]): String = {    
     if (isArrayType(m)) {
       m.typeArguments.head match {
         case StructType(_,_) if Config.soaEnabled => super.remap(m)
@@ -868,8 +869,8 @@ trait CLikeGenDeliteArrayOps extends BaseGenDeliteArrayOps with CLikeGenDeliteSt
       val mString = if (cppMemMgr == "refcnt") unwrapSharedPtr(remap(m)) else remap(m)
       val mArgString = if (cppMemMgr == "refcnt") unwrapSharedPtr(remap(mArg)) else remap(mArg)
       val shouldGenerate = mArg match {
-        case StructType(_,_) if Config.soaEnabled => false
-        case s if s <:< manifest[Record] && Config.soaEnabled => false
+        case StructType(_,_) if isSoa(m) => false
+        case s if s <:< manifest[Record] && isSoa(m) => false
         case _ => true
       }
       if(!generatedDeliteArray.contains(mString) && shouldGenerate) {
@@ -886,7 +887,6 @@ trait CLikeGenDeliteArrayOps extends BaseGenDeliteArrayOps with CLikeGenDeliteSt
     }
     catch {
       case e: GenerationFailedException => //
-      case e: Exception => throw(e)
     }
   }
 
@@ -1089,6 +1089,11 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
         else emitValDef(sym, "new (" + resourceInfoSym + ") " + remap(sym.tp) + "(" + quote(n) + ", " + resourceInfoSym + ")") //internal array on local heap
       }
       if (t.partition) stream.println("#endif")
+    case a@DeliteArrayFromSeq(elems,m) =>
+      emitValDef(sym, "new (" + resourceInfoSym + ") " + remap(sym.tp) + "(" + elems.length + ", " + resourceInfoSym + ")")
+      for (i <- 0 until elems.length) {
+        stream.println(quote(sym) + "->update(" + i + ", " + quote(elems(i)) + ");")
+      }
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + "->length")
     case DeliteArrayApply(da, idx) =>

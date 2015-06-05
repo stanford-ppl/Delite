@@ -1,7 +1,7 @@
 package ppl.delite.runtime.executor
 
 import java.util.concurrent.{BrokenBarrierException, LinkedBlockingQueue}
-import ppl.delite.runtime.{Config, Delite}
+import ppl.delite.runtime.{Config, Delite, Exceptions}
 
 /**
  * Author: Kevin J. Brown
@@ -37,10 +37,9 @@ class ExecutionThread extends Runnable {
       catch {
         case i: InterruptedException => continue = false //another thread threw an exception -> exit silently
         case b: BrokenBarrierException => continue = false  //another thread threw an exception -> exit silently
-        case e: Throwable => {
-          Delite.shutdown(e)
+        case e: Throwable =>
+          Delite.shutdown(Exceptions.translate(e))
           continue = false
-        }
       }
     }
   }

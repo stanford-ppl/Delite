@@ -462,7 +462,7 @@ object DeliteMesosExecutor {
 
     val s = System.currentTimeMillis()
     val serResults = try {
-      val resourceInfoBase = new generated.scala.ResourceInfo(0, Config.numThreads, slaveIdx, Config.numSlaves, Config.numThreads)
+      val resourceInfoBase = generated.scala.ResourceInfo(0, Config.numThreads, slaveIdx, Config.numSlaves)
       val result = op.getType match {
         case RemoteOp.Type.INPUT =>
           method.invoke(null, args:_*)

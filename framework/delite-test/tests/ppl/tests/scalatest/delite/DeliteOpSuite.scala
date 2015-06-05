@@ -502,7 +502,7 @@ trait DeliteFileReader extends DeliteTestBase {
 class DeliteOpSuite extends DeliteSuite {
   override def checkMultiLoop = true
   override def enforceFullCoverage = true
-  cppWhiteList ++= Seq("ArrayNew", "Array[scala.virtualization.lms.common.Record{") //used in Foreach
+  cppWhiteList ++= Seq("ArrayNew") //used in Foreach
 
   def testDeliteMap() { compileAndTest(DeliteMapSuiteRunner) }
   def testDeliteZip() { compileAndTest(DeliteZipSuiteRunner) }

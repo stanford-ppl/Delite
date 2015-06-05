@@ -142,7 +142,6 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       try { g.emitTransferFunctions() }
       catch {
         case e: GenerationFailedException =>
-        case e: Exception => throw(e)
       }
     }
     */

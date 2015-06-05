@@ -480,7 +480,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
         Some("\"" + gen.toString + "\" : \"" + gen.remap(sym.tp)  + "\"")
       } catch {
         case e:GenerationFailedException => None
-        case e:Exception => throw(e)
       }
     }).filter(_.isDefined).map(_.get)
   }
@@ -508,7 +507,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
             }
             catch {
               case e: GenerationFailedException => None
-              case e: Exception => throw(e)
             }
           }
           case _ => //

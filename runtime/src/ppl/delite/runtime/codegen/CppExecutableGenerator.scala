@@ -50,8 +50,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
-    val numCpps = if (Config.noJVM) "numThreads" else Config.numCpp.toString
-    out.append("initializeAll(" + Targets.getRelativeLocation(location) + "," + numCpps + "," + numActiveCpps + "," + Config.cppHeapSize + "ULL);\n")
+    out.append("initializeAll(" + Targets.getRelativeLocation(location) + ",numThreads," + numActiveCpps + "," + Config.cppHeapSize + "ULL);\n")
     out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
     out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
   }
@@ -102,8 +101,8 @@ trait CppExecutableGenerator extends ExecutableGenerator {
   protected def writeMethodFooter() {
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
-    if (!Config.noJVM) out.append("clearAll(" + Config.numCpp + "," + numActiveCpps + "," + Config.numThreads + ",env" + location + ");\n")
-    else out.append("clearAll(numThreads, " + numActiveCpps + ");\n")
+    if (!Config.noJVM) out.append("clearAll(numThreads," + numActiveCpps + "," + Config.numThreads + ",env" + location + ");\n")
+    else out.append("clearAll(numThreads," + numActiveCpps + ");\n")
     out.append("}\n")
 
     //add entry method to primary executable
@@ -274,16 +273,13 @@ class ScalaNativeExecutableGenerator(override val location: Int, override val gr
   }
 
   private def writeNativeLoad() {
-    //NOTE: Pass the number of threads as an argument to the JNI call,
-    //      in order to avoid changing the generated code across different number of threads (avoid compilation).
-    out.append("//numThreads: number of threads for this target\n")
     out.append("@native def host" + executableName(location) + "(numThreads: Int): Unit\n")
-    out.append("System.load(\"\"\"")
+    out.append("System.load(\"")
     Compilers(OpHelper.scheduledTarget(location)) match {
       case c: CCompile => out.append(c.executableName)
       case _ => sys.error("NativeExecutable must be compiled by a CCompiler: " + location)
     }
-    out.append("\"\"\")\n")
+    out.append("\")\n")
   }
 
   private def writeNativeCall() {
