@@ -26,8 +26,8 @@ trait DeliteTestConfig {
   if (propFile.exists) props.load(new FileReader(propFile))
 
   // test parameters
-  val verbose = props.getProperty("tests.verbose", "false").toBoolean
-  val verboseDefs = props.getProperty("tests.verboseDefs", "false").toBoolean
+  val verbose = props.getProperty("tests.verbose", "false") != "false"
+  val verboseDefs = props.getProperty("tests.verboseDefs", "false") != "false"
   val threads = props.getProperty("tests.threads", "1").split(",").map(_.toInt)
   val cacheSyms = props.getProperty("tests.cacheSyms", "true").toBoolean
   val javaHome = new File(props.getProperty("java.home", ""))
@@ -36,6 +36,11 @@ trait DeliteTestConfig {
   val runtimeExternalProc = false // javaHome, scalaHome and runtimeClasses only required if runtimeExternalProc is true. should this be configurable? or should we just remove execTestExternal?
   val deliteTestTargets = props.getProperty("tests.targets", "scala").split(",")
   val useBlas = props.getProperty("tests.extern.blas", "false").toBoolean
+
+  var cppWhiteList = Seq("StaticData", "DeliteTestMkString", "DeliteTestAppend", "DeliteTestStrConcat", "DeliteTestFwNew", //test operations are Scala-only by design
+                         "DeliteTestBwNew", "DeliteTestBwWrite", "DeliteTestBwClose", "DeliteTestPrintLn", "scala.collection.mutable.ArrayBuffer",
+                         "DeliteArraySeq[scala.virtualization.lms.common.Record{", "Array[scala.virtualization.lms.common.Record{") //C++ doesn't currently support non-Soa'd Array[Record]
+
 }
 
 trait DeliteSuite extends Suite with DeliteTestConfig {
@@ -43,7 +48,8 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
   val scalaCompiler = new File(scalaHome, "lib/scala-compiler.jar")
   val scalaLibrary = new File(scalaHome, "lib/scala-library.jar")
 
-  val CHECK_MULTILOOP = true
+  def checkMultiLoop = false
+  def enforceFullCoverage = true
 
   def validateParameters() {
     if (runtimeExternalProc && !javaBin.exists) throw new TestFailedException("Could not find valid java installation in " + javaHome, 3)
@@ -60,7 +66,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     uniqueTestName(app) + "-test.deg"
   }
 
-  def compileAndTest(app: DeliteTestRunner, checkMultiLoop: Boolean = false) {
+  def compileAndTest(app: DeliteTestRunner, checkMultiLoop: Boolean = checkMultiLoop, enforceFullCoverage: Boolean = enforceFullCoverage) {
     println("=================================================================================================")
     println("TEST: " + app.toString)
     println("=================================================================================================")
@@ -78,6 +84,12 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
         case "opencl" => Config.generateOpenCL = true; Config.generateCpp = true
         case _ => println("Unknown test target: " + t)
       }
+    }
+
+    //enable strict checking that scala and cpp kernels are actually generated
+    if (enforceFullCoverage) {
+      Config.generationFailedWhitelist += "scala" -> Seq() //no exceptions
+      Config.generationFailedWhitelist += "cpp" -> cppWhiteList //exclude ops provided by test suite
     }
 
     if(useBlas) Config.useBlas = true
@@ -98,7 +110,6 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
       stageTest(app)
     }
 
-
     // Set runtime parameters for targets and execute runtime
     for(target <- deliteTestTargets) {
       for (num <- threads) {
@@ -107,6 +118,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
           ppl.delite.runtime.Config.numCpp = numCpp
           ppl.delite.runtime.Config.numCuda = numCuda
           ppl.delite.runtime.Config.numOpenCL = numOpenCL
+          ppl.delite.runtime.Config.testMode = true
         }
 
         target match {
@@ -233,7 +245,7 @@ trait DeliteTestStandaloneRunner extends DeliteTestModule with DeliteTestOpsExp 
   def mkReport() = { }
 }
 
-trait DeliteTestRunner extends DeliteTestModule with DeliteTestConfig with DeliteTestOpsExp with DeliteApplication {  
+trait DeliteTestRunner extends DeliteTestModule with DeliteTestConfig with DeliteTestOpsExp with DeliteApplication {
   var resultBuffer: ArrayBuffer[Boolean] = _
 
   def collector: Rep[ArrayBuffer[Boolean]] = staticData(resultBuffer)
@@ -246,7 +258,7 @@ trait DeliteTestRunner extends DeliteTestModule with DeliteTestConfig with Delit
     delite_test_bw_write(out, s2)
     delite_test_bw_close(out)
   }
-
+  
 }
 
 trait DeliteTestModule extends Base {
@@ -279,10 +291,10 @@ trait DeliteTestOpsExp extends DeliteTestOps with EffectExp {
   case class DeliteTestBwWrite(b: Exp[BufferedWriter], s: Exp[String]) extends Def[Unit]
   case class DeliteTestBwClose(b: Exp[BufferedWriter]) extends Def[Unit]
   case class DeliteTestPrintLn(s: Exp[Any]) extends Def[Unit]
- 
-  def delite_test_mkstring[A:Manifest](l: Exp[ArrayBuffer[A]], sep: Exp[String])(implicit pos: SourceContext) = DeliteTestMkString(l, sep)
-  def delite_test_append[A:Manifest](l: Exp[ArrayBuffer[A]], e: Exp[A])(implicit pos: SourceContext) = reflectWrite(l)(DeliteTestAppend(l, e))
-  def delite_test_strconcat(s: Exp[String], o: Exp[String])(implicit pos: SourceContext): Exp[String] = DeliteTestStrConcat(s,o)
+
+  def delite_test_mkstring[A:Manifest](l: Exp[ArrayBuffer[A]], sep: Exp[String])(implicit pos: SourceContext) = reflectEffect(DeliteTestMkString(l, sep), Simple() andAlso Read(List(l.asInstanceOf[Sym[_]])))
+  def delite_test_append[A:Manifest](l: Exp[ArrayBuffer[A]], e: Exp[A])(implicit pos: SourceContext) = reflectEffect(DeliteTestAppend(l, e), Simple() andAlso Write(List(l.asInstanceOf[Sym[_]])))
+  def delite_test_strconcat(s: Exp[String], o: Exp[String])(implicit pos: SourceContext) = reflectEffect(DeliteTestStrConcat(s,o))
   def delite_test_fw_new(s: Exp[String])(implicit pos: SourceContext) = reflectEffect(DeliteTestFwNew(s))
   def delite_test_bw_new(f: Exp[FileWriter])(implicit pos: SourceContext) = reflectEffect(DeliteTestBwNew(f))
   def delite_test_bw_write(b: Exp[BufferedWriter], s: Exp[String])(implicit pos: SourceContext) = reflectEffect(DeliteTestBwWrite(b,s))
@@ -296,7 +308,7 @@ trait DeliteTestOpsExp extends DeliteTestOps with EffectExp {
   }).asInstanceOf[Def[A]]
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
-    case DeliteTestStrConcat(a,b) => delite_test_strconcat(f(a),f(b))
+    case Reflect(DeliteTestStrConcat(a,b), u, es) => reflectMirrored(Reflect(DeliteTestStrConcat(f(a),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case Reflect(DeliteTestFwNew(s), u, es) => reflectMirrored(Reflect(DeliteTestFwNew(f(s)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case Reflect(DeliteTestBwNew(x), u, es) => reflectMirrored(Reflect(DeliteTestBwNew(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case Reflect(DeliteTestBwWrite(b,s), u, es) => reflectMirrored(Reflect(DeliteTestBwWrite(f(b),f(s)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)

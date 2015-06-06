@@ -17,7 +17,8 @@ void addEvent(cudaStream_t fromStream, cudaStream_t toStream) {
 
 cudaEvent_t addHostEvent(cudaStream_t stream) {
   cudaEvent_t event;
-  cudaEventCreateWithFlags(&event, cudaEventDisableTiming | cudaEventBlockingSync);
+  //cudaEventCreateWithFlags(&event, cudaEventDisableTiming | cudaEventBlockingSync);
+  cudaEventCreateWithFlags(&event, cudaEventDisableTiming);
   cudaEventRecord(event, stream);
   return event;
 }

@@ -282,13 +282,143 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
   }
 }
 
-trait CudaSyncGenerator extends CudaToScalaSync {
+trait CudaToCppSync extends SyncGenerator with CudaExecutableGenerator with JNIFuncs {
+
+  private val syncList = new ArrayBuffer[Send]
+
+  override protected def receiveData(s: ReceiveData) {
+    scheduledTarget(s.sender.from) match {
+      case Targets.Cpp => writeGetter(s.sender.from, s.sender.sym, s.to, false)
+      case _ => // super.receiveData(s)
+    }
+  }
+
+  override protected def receiveView(s: ReceiveView) {
+    //super.receiveView(s)
+  }
+
+  override protected def awaitSignal(s: Await) {
+    scheduledTarget(s.sender.from) match {
+      case Targets.Cpp => writeAwaiter(s.sender.from)
+      case _ => //super.awaitSignal(s)
+    }
+  }
+
+  override protected def receiveUpdate(s: ReceiveUpdate) {
+    scheduledTarget(s.sender.from) match {
+      case Targets.Cpp =>
+        s.sender.from.mutableInputsCondition.get(s.sender.sym) match {
+          case Some(lst) =>
+            out.append("if(")
+            out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
+            out.append(") {\n")
+            writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym);
+            out.append("}\n")
+          case _ =>
+            writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym);
+        }
+      case _ => //super.receiveUpdate(s)
+    }
+  }
+
+  override protected def sendData(s: SendData) {
+    if (s.receivers.map(_.to).filter(r => scheduledTarget(r) == Targets.Cpp).nonEmpty) {
+      writeSetter(s.from, s.sym, false)
+    }
+  }
+
+  override protected def sendView(s: SendView) {
+    super.sendView(s)
+  }
+
+  override protected def sendSignal(s: Notify) {
+    if (s.receivers.map(_.to).filter(r => scheduledTarget(r) == Targets.Cpp).nonEmpty) {
+      writeNotifier(s.from)
+    }
+  }
+
+  override protected def sendUpdate(s: SendUpdate) {
+    if (s.receivers.map(_.to).filter(r => scheduledTarget(r) == Targets.Cpp).nonEmpty) {
+      s.from.mutableInputsCondition.get(s.sym) match {
+        case Some(lst) =>
+          out.append("if(")
+          out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
+          out.append(") {\n")
+          writeSendUpdater(s.from, s.sym)
+          writeNotifier(s.from, s.sym)
+          out.append("}\n")
+        case _ =>
+          writeSendUpdater(s.from, s.sym)
+          writeNotifier(s.from, s.sym)
+      }
+    }
+  }
+
+  private def writeGetter(dep: DeliteOP, sym: String, to: DeliteOP, view: Boolean) {
+    assert(view == false)
+    val ref = if (isPrimitiveType(dep.outputType(sym))) "" else "*"
+    val devType = dep.outputType(Targets.Cuda, sym)
+    val hostType = dep.outputType(Targets.Cpp, sym)
+    if(isPrimitiveType(dep.outputType(sym))) {
+      out.append("%s %s = (%s)%s;\n".format(devType,getSymDevice(dep,sym),devType,getSymHost(dep,sym)))
+    }
+    else {
+      out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
+      out.append("cudaMemoryMap->insert(std::pair<void*,std::list<void*>*>(")
+      out.append(getSymDevice(dep,sym))
+      out.append(",lastAlloc));\n")
+      out.append("lastAlloc = new std::list<void*>();\n")
+    }
+  }
+
+  private def writeAwaiter(dep: DeliteOP, sym: String = "") {
+
+  }
+
+  private def writeRecvUpdater(dep: DeliteOP, sym:String) {
+    val hostType = dep.inputType(Targets.Cpp, sym)
+    val devType = dep.inputType(Targets.Cuda, sym)
+    assert(!isPrimitiveType(dep.inputType(sym)))
+    out.append("sendUpdateCuda_%s(%s, %s);\n".format(mangledName(devType),getSymDevice(dep,sym),getSymHost(dep,sym)))
+  }
+
+  private def writeSetter(op: DeliteOP, sym: String, view: Boolean) {
+    assert(view == false)
+    val hostType = op.outputType(Targets.Cpp, sym)
+    val devType = op.outputType(Targets.Cuda, sym)
+    if(isPrimitiveType(op.outputType(sym)) && op.isInstanceOf[OP_Nested]) {
+      out.append("%s %s = (%s)%s;\n".format(hostType,getSymHost(op,sym),hostType,getSymDevice(op,sym)))
+    }
+    else if(isPrimitiveType(op.outputType(sym))) {
+      out.append("%s %s = recvCuda_%s(%s);\n".format(hostType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+    }
+    else {
+      out.append("%s *%s = recvCuda_%s(%s);\n".format(hostType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
+    }
+  }
+
+  private def writeNotifier(op: DeliteOP, sym: String = "") {
+    // No need to have explicit notifier (on the same host code)
+  }
+
+  private def writeSendUpdater(op: DeliteOP, sym: String) {
+    val devType = op.inputType(Targets.Cuda, sym)
+    val hostType = op.inputType(Targets.Cpp, sym)
+    assert(!isPrimitiveType(op.inputType(sym)))
+    out.append("recvUpdateCuda_%s(%s, %s);\n".format(mangledName(devType),getSymDevice(op,sym),getSymHost(op,sym)))
+  }
+
+  override protected def writeSyncObject() { }
+}
+
+trait CudaSyncGenerator extends CudaToCppSync /*CudaToScalaSync*/ {
 
   override protected def makeNestedFunction(op: DeliteOP) = op match {
     //case r: Receive if (getHostTarget(scheduledTarget(r.sender.from)) == Targets.Scala) => addSync(r)
     //case s: Send if (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty) => addSync(s)
     case s: Sync => addSync(s) //TODO: if sync companion also Scala
-    case m: Free => addFree(m)
+    case m: Free if m.op.scheduledOn(Targets.Cuda) => addFree(m)
+    case m: Free => //TODO: enable memory management in general
     case _ => super.makeNestedFunction(op)
   }
 
@@ -334,15 +464,17 @@ trait CudaSyncGenerator extends CudaToScalaSync {
 
     //TODO: Separate JVM/Host/Device frees
     writeCudaFreeInit()
-    for (f <- m.items) {
+    for (f <- m.items if f._1.scheduledOn(Targets.Cuda)) {
       writeCudaFree(f._2, isPrimitiveType(f._1.outputType(f._2)))
-      
+      //TODO: enable memory management for host data structures
+      /*
       if ( (f._1.scheduledResource != location) || (f._1.getConsumers.filter(c => c.scheduledResource!=location && c.getInputs.map(_._2).contains(f._2)).nonEmpty) ) {
         if (!isPrimitiveType(f._1.outputType(f._2)) && f._1.outputType(f._2)!="Unit") {
           writeJVMRelease(f._2)
           writeHostRelease(f._1,f._2)
         }
       }
+      */
     }
 
     //sync on kernel stream (if copied back guaranteed to have completed, so don't need sync on d2h stream)

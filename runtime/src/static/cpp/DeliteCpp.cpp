@@ -253,23 +253,6 @@ int32_t string_length(const string &str) {
   return str.length();
 }
 
-#ifdef MEMMGR_REFCNT
-std::shared_ptr<cppDeliteArraystring> cppArgsGet(int num, ...) {
-  std::shared_ptr<cppDeliteArraystring> cppArgs(new cppDeliteArraystring(num), cppDeliteArraystringD());
-#else
-cppDeliteArraystring *cppArgsGet(int num, ...) {
-  cppDeliteArraystring *cppArgs = new cppDeliteArraystring(num);
-#endif
-  va_list arguments;
-  va_start(arguments, num);
-  for(int i=0; i<num; i++) {
-    char *pathname = va_arg(arguments, char *);
-    cppArgs->data[i] = string(pathname);
-  }
-  va_end(arguments);
-  return cppArgs;
-}
-
 template<class T> string convert_to_string(T in) {
   std::ostringstream convert;
   convert << in;
@@ -351,6 +334,11 @@ template<> bool delite_equals<int64_t>(int64_t key1, int64_t key2) { return key1
 template<> bool delite_equals<float>(float key1, float key2) { return key1 == key2; }
 template<> bool delite_equals<double>(double key1, double key2) { return key1 == key2; }
 template<> bool delite_equals<string>(string key1, string key2) { return key1.compare(key2) == 0; }
+
+template<class T> T cppDeepCopy(const resourceInfo_t *resourceInfo, T in) {
+  assert(false);
+}
+void cppDeepCopy(const resourceInfo_t *resourceInfo) { }
 
 /* helper methods and data structures only required for execution with Delite */
 #ifndef __DELITE_CPP_STANDALONE__

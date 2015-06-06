@@ -204,6 +204,9 @@ class CppConditionGenerator(val condition: OP_Condition, val location: Int, val 
 class CudaConditionGenerator(val condition: OP_Condition, val location: Int, val graph: DeliteTaskGraph)
   extends ConditionGenerator with CudaNestedGenerator with CudaSyncGenerator {
 
+  protected val hostGenerator: CppConditionGenerator = new CppConditionGenerator(condition, location, graph)
+  hostGenerator.out = out
+
   override protected def writeMethodHeader() {
     if (declCondVar)
       out.append("bool " + condition.id.split('_').head + "_cond;\n")

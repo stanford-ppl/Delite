@@ -1,10 +1,12 @@
 package ppl.delite.framework.ops
 
+import ppl.delite.framework.codegen.delite.DeliteKernelCodegen
 import ppl.delite.framework.Config
 import scala.collection.mutable.HashMap
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.CCodegen
 import scala.reflect.SourceContext
+import java.io.{StringWriter, PrintWriter}
 
 trait BaseDeliteOpsTraversalFat extends BaseLoopsTraversalFat {
   val IR: DeliteOpsExp
@@ -70,10 +72,17 @@ trait BaseGenDeliteOps extends BaseDeliteOpsTraversalFat with BaseGenLoopsFat wi
     deliteKernel = saveKernel
     ret
   }
+
+  // We don't override quote because we should not convert all Int sites,
+  // but only particular ones (e.g. variable instantation).
+  def quoteWithPrecision(x: Exp[Any]) = x match {
+    case Const(i: Int) if Config.intSize == "long" => i.toString + "L"
+    case _ => quote(x)
+  }
 }
 
 /* CPU-like target code generation for DeliteOps */
-trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with BaseGenDeliteOps {
+trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with BaseGenDeliteOps with DeliteKernelCodegen {
   import IR._
 
   def quotearg(x: Sym[Any])
@@ -92,8 +101,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   def emitVarDef(name: String, tpe: String, init: String): Unit
   def emitAssignment(name: String, tpe: String, rhs: String): Unit
   def emitAssignment(lhs: String, rhs: String): Unit
-  def emitAbstractFatLoopHeader(className: String, actType: String): Unit
-  def emitAbstractFatLoopFooter(): Unit
+  def emitAbstractFatLoopHeader(syms: List[Sym[Any]], rhs: AbstractFatLoop): Unit
+  def emitAbstractFatLoopFooter(syms: List[Sym[Any]], rhs: AbstractFatLoop): Unit
+  def emitHeapMark(): Unit
+  def emitHeapReset(result: List[String]): Unit
   def castInt32(name: String): String
   def refNotEq: String
   def nullRef: String
@@ -106,13 +117,15 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   // Because emitMethod and emitMethodCall are being overridden to pass additional runtime arguments now,
   // we need these "clean" versions for certain cases (e.g. serialization). This is ugly, and should be unified.
-
   def unalteredMethodCall(name:String, inputs: List[String] = Nil): String = methodCall(name, inputs)
   def emitUnalteredMethodCall(name:String, inputs: List[String]) = emitMethodCall(name, inputs)
   def emitUnalteredMethod(name:String, outputType: String, inputs:List[(String,String)])(body: => Unit) = emitMethod(name, outputType, inputs)(body)
 
+  def syncType(actType: String): String
+  def emitWorkLaunch(kernelName: String, rSym: String, allocSym: String, syncSym: String): Unit
+
   // variable for loop nest level (used for adding openmp pragma)
-  var loopLevel: Int = 0
+  var loopLevel: Int = -1
 
   //marks alloc calls that create the outputs of the kernel
   var kernelAlloc = false
@@ -120,6 +133,36 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     kernelAlloc = true
     block
     kernelAlloc = false
+  }
+
+  abstract class GCStrategy
+  case object Iteration extends GCStrategy //free every iteration (know nothing escapes but the alloc)
+  case object Global extends GCStrategy //free at the end of the loop (cross-iteration dependencies, can track how the output escapes and copy)
+  case object Unknown extends GCStrategy //free nothing (don't know what escapes)
+
+  def gcStrategy[A](body: Def[A]): GCStrategy = body match {
+    // case b:DeliteCollectElem[_,_,_] => if (isPrimitiveType(b.mA)) Iteration else Unknown
+    // case b:DeliteReduceElem[_] => if (isPrimitiveType(b.mA)) Iteration else Global
+    // case b:DeliteReduceTupleElem[_,_] => if (isPrimitiveType(b.mA) && isPrimitiveType(b.mB)) Iteration else Global
+    // case b:DeliteForeachElem[_] => Unknown
+    // case b:DeliteHashCollectElem[_,_,_,_,_,_] => Unknown //TODO: handle inner collection allocations specially
+    // case b:DeliteHashReduceElem[_,_,_,_] => if (isPrimitiveType(b.mV)) Iteration else Unknown
+    // case b:DeliteHashIndexElem[_,_] => Unknown //TODO: allocate the hashmap specially iff it's returned and ignore this?
+    case _ => Unknown
+  }
+
+  //allocations of horizontally fused loops likely to be interleaved in the heap, so we need to take the most conservative strategy
+  def gcStrategy(op: AbstractFatLoop): GCStrategy = {
+    def join(lhs: GCStrategy, rhs: GCStrategy) = {
+      if (lhs == Unknown || rhs == Unknown) Unknown
+      else if (lhs == Global || rhs == Global) Global
+      else Iteration
+    }
+    op.body.map(b => gcStrategy(b)).reduce(join)
+  }
+
+  def gcSyms(symList: List[Sym[Any]], op: AbstractFatLoop) = {
+    for ((sym, body) <- (symList zip op.body) if (gcStrategy(body) == Global)) yield sym
   }
 
   /**
@@ -179,7 +222,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     for ((cond,cps) <- ps.groupBy(_._2.cond)) {
       for ((key,kps) <- cps.groupBy(_._2.keyFunc)) {
         val quotedGroup = kps.map(p=>quote(p._1)).mkString("")
-        emitAssignment(fieldAccess(prefixSym, quotedGroup + "_hash_pos"), createInstance(hashmapType(remap(getBlockResult(key).tp)),List("512","128")))
+        emitAssignment(fieldAccess(prefixSym, quotedGroup + "_hash_pos"), createInstance(hashmapType(remap(getBlockResult(key).tp)), List("512","128")))
         emitAssignment(fieldAccess(prefixSym, quotedGroup + "_size"), "-1")
         kps foreach {
           case (sym, elem: DeliteHashCollectElem[_,_,_,_,_,_]) =>
@@ -332,11 +375,11 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   def emitMultiHashPostProcInit(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], actType: String, prefixSym: String){
     if (ps.length > 0) {
-      val tid = fieldAccess(resourceInfoSym,"threadId")
-      stream.println("if ("+tid+" > 0) {")
-      emitValDef("all_acts", arrayType(actType), newArray(actType, tid+"+1"))
+      emitValDef("tid", remap(Manifest.Int), fieldAccess(resourceInfoSym,"groupId"))
+      stream.println("if (tid > 0) {")
+      emitValDef("all_acts", arrayType(actType), newArray(actType, fieldAccess(resourceInfoSym, "groupSize")))
       emitVarDef("currentAct", actType, prefixSym)
-      emitVarDef("i", remap(manifest[Int]), tid)
+      emitVarDef("i", remap(manifest[Int]), "tid")
       stream.println("while(i >= 0) {")
       emitAssignment(arrayApply("all_acts",castInt32("i")), "currentAct")
       emitAssignment(fieldAccess("currentAct","all_acts"), "all_acts")
@@ -376,16 +419,16 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   def emitMultiHashPostProcess(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], actType: String, prefixSym: String){
     if (ps.length > 0) {
-      val tid = fieldAccess(resourceInfoSym,"threadId")
-      val numThreads = fieldAccess(resourceInfoSym,"numThreads")
+      emitValDef("tid", remap(Manifest.Int), fieldAccess(resourceInfoSym, "groupId"))
+      emitValDef("numThreads", remap(Manifest.Int), fieldAccess(resourceInfoSym, "groupSize"))
       stream.println("if (" + fieldAccess(prefixSym,"all_acts") + " " + refNotEq + " " + nullRef + ") {")
       emitValDef("all_acts", arrayType(actType), fieldAccess(prefixSym,"all_acts"))
       for ((cond,cps) <- ps.groupBy(_._2.cond)) {
         for ((key,kps) <- cps.groupBy(_._2.keyFunc)) {
           val quotedGroup = kps.map(p=>quote(p._1)).mkString("")
           emitValDef(quotedGroup+"_globalKeys", arrayType(remap(key.tp)), fieldAccess(fieldAccess(fieldAccess(prefixSym, arrayApply("all_acts","0")), quotedGroup+"_hash_pos"), unalteredMethodCall("unsafeKeys")))
-          emitVarDef(quotedGroup+"_idx", remap(Manifest.Int), typeCast(typeCast(fieldAccess(fieldAccess(fieldAccess(prefixSym, arrayApply("all_acts","0")), quotedGroup+"_hash_pos"), unalteredMethodCall("size")), remap(Manifest.Long)) + " * "+tid+" / " + numThreads,remap(Manifest.Int)))
-          emitValDef(quotedGroup+"_end", remap(Manifest.Int), typeCast(typeCast(fieldAccess(fieldAccess(fieldAccess(prefixSym, arrayApply("all_acts","0")), quotedGroup+"_hash_pos"), unalteredMethodCall("size")), remap(Manifest.Long)) + " * ("+tid+"+1) / " + numThreads,remap(Manifest.Int)))
+          emitVarDef(quotedGroup+"_idx", remap(Manifest.Int), typeCast(typeCast(fieldAccess(fieldAccess(fieldAccess(prefixSym, arrayApply("all_acts","0")), quotedGroup+"_hash_pos"), unalteredMethodCall("size")), remap(Manifest.Long)) + " * tid / numThreads",remap(Manifest.Int)))
+          emitValDef(quotedGroup+"_end", remap(Manifest.Int), typeCast(typeCast(fieldAccess(fieldAccess(fieldAccess(prefixSym, arrayApply("all_acts","0")), quotedGroup+"_hash_pos"), unalteredMethodCall("size")), remap(Manifest.Long)) + " * (tid+1) / numThreads",remap(Manifest.Int)))
           stream.println("while (" + quotedGroup+"_idx < " + quotedGroup + "_end) {")
           kps foreach {
             case (sym, elem: DeliteHashCollectElem[_,_,_,_,_,_]) =>
@@ -393,9 +436,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
                 emitValDef(elem.buf.allocVal, fieldAccess(prefixSym,quote(sym)+"_data"))
                 emitVarDef(quote(sym)+"_act_idx", remap(Manifest.Int), "0")
                 emitVarDef(quote(sym)+"_values_size", remap(Manifest.Int), "0")
-                stream.println("while (" + quote(sym)+"_act_idx < " + numThreads + ") {")
-                  emitValDef("currentAct", actType, arrayApply("all_acts",quote(sym)+"_act_idx"))
-                  emitValDef("pos", remap(Manifest.Int), fieldAccess(fieldAccess("currentAct", quotedGroup+"_hash_pos"), "get("+arrayApply(quotedGroup+"_globalKeys",quotedGroup+"_idx")+")"))
+                stream.println("while (" + quote(sym)+"_act_idx < numThreads) {")
+                  emitValDef("currentAct", actType, arrayApply("all_acts",quote(sym)+castInt32("_act_idx")))
+                  emitValDef("pos", remap(Manifest.Int), fieldAccess(fieldAccess("currentAct", quotedGroup+"_hash_pos"), "get("+arrayApply(quotedGroup+"_globalKeys",castInt32(quotedGroup+"_idx"))+")"))
                   stream.println("if (pos != -1 && pos < " + fieldAccess("currentAct",quotedGroup+"_size") + ") {")
                     emitValDef(elem.buf.iV2, "pos")
                     emitValDef(elem.buf.aV2, fieldAccess("currentAct",quote(sym)+"_hash_data"))
@@ -418,9 +461,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
                 emitVarDef(quote(sym)+"_offset", remap(Manifest.Int), "0")
                 emitAssignment(quote(sym)+"_act_idx", "0")
-                stream.println("while (" + quote(sym)+"_act_idx < " + numThreads + ") {")
-                  emitValDef("currentAct", actType, arrayApply("all_acts",quote(sym)+"_act_idx"))
-                  emitValDef("pos", remap(Manifest.Int), fieldAccess(fieldAccess("currentAct", quotedGroup+"_hash_pos"), "get("+arrayApply(quotedGroup+"_globalKeys",quotedGroup+"_idx")+")"))
+                stream.println("while (" + quote(sym)+"_act_idx < numThreads) {")
+                  emitValDef("currentAct", actType, arrayApply("all_acts",castInt32(quote(sym)+"_act_idx")))
+                  emitValDef("pos", remap(Manifest.Int), fieldAccess(fieldAccess("currentAct", quotedGroup+"_hash_pos"), "get("+arrayApply(quotedGroup+"_globalKeys",castInt32(quotedGroup+"_idx"))+")"))
                   stream.println("if (pos != -1 && pos < " + fieldAccess("currentAct",quotedGroup+"_size") + ") {")
                     emitValDef(elem.buf.iV2, "pos")
                     emitValDef(elem.buf.aV2, fieldAccess("currentAct",quote(sym)+"_hash_data"))
@@ -671,6 +714,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitVarDef(quote(sym), remap(elem.zero._1.tp), quote(sym) + "_zero")
         emitVarDef(quote(sym) + "_2", remap(elem.zero._2.tp), quote(sym) + "_zero_2")
     }
+    //if (gcStrategy(op) == Global) emitHeapMark()
     emitVarDef(quote(op.v), remap(op.v.tp), "0")
     //if (true) { //op.body exists (loopBodyNeedsStripFirst _)) { preserve line count as indicator for succesful fusing
     if (op.body exists (loopBodyNeedsStripFirst _)) {
@@ -697,12 +741,15 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     }
 
     val freeVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
-    val streamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
-    if (streamVars.length > 0) {
-      assert(streamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
-      val streamSym = streamVars(0)
+    val inputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
+    val outputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileOutputStream])
+
+    if (inputStreamVars.length > 0) {
+      assert(inputStreamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
+      val streamSym = inputStreamVars(0)
       emitValDef(quote(streamSym)+"_stream", remap(streamSym.tp), fieldAccess(quote(streamSym),"openCopyAtNewLine(0)"))
-      stream.println("while (" + fieldAccess(quote(streamSym)+"_stream", "position") + " < " + quote(op.size) + ") {")
+      emitValDef(quote(streamSym)+"_offset", remap(manifest[Long]), fieldAccess(quote(streamSym), "streamOffset"))
+      stream.println("while (" + fieldAccess(quote(streamSym)+"_stream", "position") + " < " + quote(streamSym) + "_offset + " + quote(op.size) + " ) {")
     }
     else {
       this match {
@@ -720,6 +767,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         case _ => stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(",")/*}*/)
       }
     }
+    //if (gcStrategy(op) == Iteration) emitHeapMark()
 
     // body
     emitMultiLoopFuncs(op, symList)
@@ -736,14 +784,20 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitReduceTupleElem(op, sym, elem)
     }
 
+    //if (gcStrategy(op) == Iteration) emitHeapReset(List())
     this match {
       case g: CCodegen if(loopLevel==1 && Config.debug && op.body.size==1) => //
       case _ => emitAssignment(quote(op.v), quote(op.v) + " + 1")
     }
     stream.println(/*{*/"} // end fat loop " + symList.map(quote).mkString(","))
 
-    if (streamVars.length > 0) {
-      stream.println(fieldAccess(quote(streamVars(0))+"_stream","close();"))
+    if (inputStreamVars.length > 0) {
+      stream.println(fieldAccess(quote(inputStreamVars(0))+"_stream","close();"))
+    }
+
+    if (outputStreamVars.length > 0) {
+      val streamSyms = outputStreamVars.map(s => quote(s))
+      streamSyms foreach { s => emitUnalteredMethodCall(s + ".close", Nil) }
     }
 
     // finalizer
@@ -768,17 +822,95 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       case (sym, elem: DeliteReduceElem[_]) =>
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
     }
+    //if (gcStrategy(op) == Global) emitHeapReset(gcSyms(symList, op).map(quote))
+  }
+
+  def getKernelName(syms: List[Sym[Any]]) = syms.map(quote).mkString("")
+  def getActType(kernelName: String) = "activation_"+kernelName
+
+  def emitProcessLocal(actType: String) = {
+    stream.println("//process local")
+    emitValDef("tid", remap(Manifest.Int), fieldAccess(resourceInfoSym,"groupId"))
+    emitValDef("numThreads", remap(Manifest.Int), fieldAccess(resourceInfoSym, "groupSize"))
+    emitValDef("numChunks", remap(Manifest.Int), unalteredMethodCall(fieldAccess("sync", "numChunks"), List()))
+    emitVarDef("dIdx", remap(Manifest.Int), "tid")
+    stream.println("while (dIdx < numChunks) {")
+      emitValDef("start", remap(Manifest.Long), "loopStart + loopSize*dIdx/numChunks")
+      emitValDef("end", remap(Manifest.Long), "loopStart + loopSize*(dIdx+1)/numChunks")
+      emitValDef("act", actType, methodCall("processRange", List("__act","start","end")))
+      emitUnalteredMethodCall(fieldAccess("sync","set"), List("dIdx","act"))
+      emitAssignment("dIdx", unalteredMethodCall(fieldAccess("sync","getNextChunkIdx"), List()))
+    stream.println("}")
+    emitValDef("localStart", remap(Manifest.Int), "tid*numChunks/numThreads")
+    emitValDef("localEnd", remap(Manifest.Int), "(tid+1)*numChunks/numThreads")
+    emitValDef("act", actType, unalteredMethodCall(fieldAccess("sync","get"), List("localStart")))
+  }
+
+  def emitCombineLocal() = {
+    stream.println("//combine local")
+    emitVarDef("i", remap(Manifest.Int), "localStart+1")
+    stream.println("while (i < localEnd) {")
+      emitMethodCall("combine", List("act", unalteredMethodCall(fieldAccess("sync","get"),List("i"))))
+      emitAssignment("i", "i+1")
+    stream.println("}")
+  }
+
+  def emitCombineRemote() = {
+    stream.println("//combine remote")
+    emitVarDef("half", remap(Manifest.Int), "tid")
+    emitVarDef("step", remap(Manifest.Int), "1")
+    stream.println("while ((half % 2 == 0) && (tid + step < numThreads)) {")
+      emitMethodCall("combine", List("act", unalteredMethodCall(fieldAccess("sync","getC"), List("tid+step"))))
+      emitAssignment("half", "half / 2")
+      emitAssignment("step", "step * 2")
+    stream.println("}")
+    emitUnalteredMethodCall(fieldAccess("sync","setC"), List("tid","act"))
+  }
+
+  def emitPostCombine(actType: String) {
+    stream.println("//post combine")
+    stream.print("if (tid != 0) ")
+    emitMethodCall("postCombine", List("act", unalteredMethodCall(fieldAccess("sync","getP"),List("tid-1"))))
+    emitVarDef("j", remap(Manifest.Int), "localStart+1")
+    emitVarDef("currentAct", actType, "act")
+    stream.println("while (j < localEnd) {")
+      emitValDef("rhsAct", actType, unalteredMethodCall(fieldAccess("sync","get"), List("j")))
+      emitMethodCall("postCombine", List("rhsAct", "currentAct"))
+      emitAssignment("currentAct", "rhsAct")
+      emitAssignment("j", "j+1")
+    stream.println("}")
+    stream.print("if (tid == numThreads-1) ")
+    emitMethodCall("postProcInit", List("currentAct"))
+    emitUnalteredMethodCall(fieldAccess("sync","setP"), List("tid, currentAct"))
+  }
+
+  def emitPostProcess() {
+    stream.println("//post process")
+    emitVarDef("k", remap(Manifest.Int), "localStart")
+    stream.println("while (k < localEnd) {")
+      emitMethodCall("postProcess", List(unalteredMethodCall(fieldAccess("sync","get"),List("k"))))
+      emitAssignment("k", "k+1")
+    stream.println("}")
+  }
+
+  def emitFinalizer() {
+    stream.print("if (tid == 0) ")
+    emitMethodCall("finalize", List("act"))
+  }
+
+  def emitBarrier() {
+    emitUnalteredMethodCall(fieldAccess("sync", "awaitBarrier"), List())
   }
 
   def emitKernelAbstractFatLoop(op: AbstractFatLoop, symList: List[Sym[Any]]) {
     // kernel mode
-    val kernelName = symList.map(quote).mkString("")
-    val actType = "activation_"+kernelName
+    val kernelName: String = getKernelName(symList)
+    val actType = getActType(kernelName)
     //deliteKernel = false
 
 	val enablePCM = (Config.enablePCM) && (kernelFileExt == "cpp")
 
-    emitAbstractFatLoopHeader(kernelName, actType)
+    emitAbstractFatLoopHeader(symList, op)
 
     emitMethod("size", remap(Manifest.Long), Nil) { emitReturn(quote(op.size)) }
 
@@ -815,6 +947,35 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       emitReturn("__act")
     }
 
+
+    emitMethod("main_par", actType, List(("__act", actType),("sync", syncType(actType)))) {
+      emitProcessLocal(actType)
+      if (!op.body.exists(b => loopBodyNeedsCombine(b) || loopBodyNeedsPostProcess(b))) emitBarrier()
+      if (op.body.exists(loopBodyNeedsCombine)) {
+        emitCombineLocal()
+        emitCombineRemote()
+        emitBarrier()
+      }
+      if (op.body.exists(loopBodyNeedsPostProcess)) {
+        emitPostCombine(actType)
+        emitBarrier()
+        emitPostProcess()
+        emitBarrier()
+      }
+      emitFinalizer()
+      emitReturn("act")
+    }
+
+    emitMethod("main_seq", actType, List(("__act", actType))) {
+      emitValDef("act", actType, methodCall("processRange", List("__act", "loopStart", "loopStart+loopSize")))
+      if (op.body.exists(loopBodyNeedsPostProcess)) {
+        emitMethodCall("postProcInit", List("act"))
+        emitMethodCall("postProcess", List("act"))
+      }
+      emitMethodCall("finalize", List("act"))
+      emitReturn("act")
+    }
+
     //emit specialized input syms we want to manually loop hoist and be available in all methods
     //should be initialized manually in processRange()
     val inVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
@@ -824,14 +985,17 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
     // processRange
     emitMethod("processRange", actType, List(("__act",actType),("start",remap(Manifest.Long)),("end",remap(Manifest.Long)))) {
-      //GROSS HACK ALERT!
+      if (gcStrategy(op) == Global) emitHeapMark()
+      //GROSS HACK ALERT: custom codegen for DeliteFileInputStream and DeliteFileOutputStream!
       val freeVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
+      val inputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
+      val outputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileOutputStream])
 
-      val streamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
-      if (streamVars.length > 0) {
-        assert(streamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
-        val streamSym = quote(streamVars(0))+"_stream"
-        emitValDef(streamSym, remap(streamVars(0).tp), fieldAccess(quote(streamVars(0)),"openCopyAtNewLine(start)"))
+      if (inputStreamVars.length > 0) {
+        assert(inputStreamVars.length == 1, "ERROR: don't know how to handle multiple input streams at once")
+        val streamSym = quote(inputStreamVars(0))+"_stream"
+        emitValDef(streamSym, remap(inputStreamVars(0).tp), fieldAccess(quote(inputStreamVars(0)),"openCopyAtNewLine(start)"))
+        emitValDef(streamSym+"_offset", remap(manifest[Long]), fieldAccess(streamSym, "streamOffset"))
         emitValDef("isEmpty",remap(Manifest.Boolean), "end <= " + fieldAccess(streamSym,"position"))
 
 		if (enablePCM) {
@@ -839,8 +1003,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 		}
 
         emitValDef("__act2",actType,methodCall("init",List("__act","-1","isEmpty",streamSym)))
-        stream.println("while (" + fieldAccess(streamSym,"position") + " < end) {")
+        stream.println("while (" + fieldAccess(streamSym,"position") + " < " + streamSym + "_offset + end) {")
+        if (gcStrategy(op) == Iteration) emitHeapMark()
         emitMethodCall("process",List("__act2","-1",streamSym))
+        if (gcStrategy(op) == Iteration) emitHeapReset(List())
         stream.println("}")
 
 		if (enablePCM) {
@@ -861,7 +1027,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitValDef("__act2",actType,methodCall("init",List("__act","idx","isEmpty")))
         emitAssignment("idx","idx + 1")
         stream.println("while (idx < end) {")
+        if (gcStrategy(op) == Iteration) emitHeapMark()
         emitMethodCall("process",List("__act2","idx"))
+        if (gcStrategy(op) == Iteration) emitHeapReset(List())
         emitAssignment("idx","idx + 1")
         stream.println("}")
 
@@ -869,6 +1037,11 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 			stream.println("CoreCounterState after = getCoreCounterState(resourceInfo->threadId);")
 			stream.println("DeliteUpdateMemoryAccessStats( resourceInfo->threadId, " + "\"" + getSourceContext(symList(0).pos) + "\" , getPCMStats( before, after ));")
 		}
+      }
+
+      if (outputStreamVars.length > 0) {
+        val streamSyms = outputStreamVars.map(s => quote(s))
+        streamSyms foreach { s => emitUnalteredMethodCall(s + ".close", List(resourceInfoSym)) }
       }
 
       emitReturn("__act2")
@@ -889,7 +1062,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
               emitAssignment(fieldAccess("__act2",quote(sym)+"_data"),fieldAccess("__act",quote(sym)+"_data"))
             }
           case (sym, elem: DeliteHashElem[_,_]) =>
-          case (sym, elem: DeliteForeachElem[_]) => // nothing needed - this case only happens if a ForeachElem is fused with something else that needs combine
+          case (sym, elem: DeliteForeachElem[_]) =>
+            // this case only happens if a ForeachElem is fused with something else that needs combine
+            emitVarDef(quote(sym), remap(sym.tp), "()")  //TODO: Need this for other targets? (Currently, other targets just don't generate unit types)
           case (sym, elem: DeliteReduceElem[_]) =>
             emitAssignment(fieldAccess("__act2",quote(sym)+"_zero"),fieldAccess("__act",quote(sym)+"_zero"))
             // should we throw an exception instead on an empty reduce?
@@ -1074,6 +1249,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         case (sym, elem: DeliteReduceElem[_]) =>
         case (sym, elem: DeliteReduceTupleElem[_,_]) =>
       }
+      if (gcStrategy(op) == Global) emitHeapReset(gcSyms(symList, op).map(quote))
     }
 
     //TODO: This would not be needed if other targets (CUDA, C, etc) properly creates activation records
@@ -1103,7 +1279,24 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       emitReturn("act")
     }
 
-    emitAbstractFatLoopFooter()
+    emitAbstractFatLoopFooter(symList, op) //end closure definition
+
+    emitAssignment(fieldAccess(kernelName+"_closure", "loopStart"), "0")
+    emitAssignment(fieldAccess(kernelName+"_closure", "loopSize"), quote(op.size))
+    emitValDef("alloc", actType, methodCall(fieldAccess(kernelName+"_closure", "alloc"), List()))
+    emitVarDef(kernelName, actType, nullRef)
+    stream.println("if ("+fieldAccess(resourceInfoSym,"availableThreads")+" <= 1) {")
+    emitAssignment(kernelName, methodCall(fieldAccess(kernelName+"_closure", "main_seq"), List("alloc")))
+    stream.println("} else {")
+    emitValDef("sync", syncType(actType), createInstance(syncType(actType), List(fieldAccess(kernelName+"_closure", "loopSize"), loopBodyAverageDynamicChunks(op.body).toString, resourceInfoSym)))
+    emitVarDef("i", remap(Manifest.Int), "1")
+    stream.println("while (i < "+unalteredMethodCall(fieldAccess("sync","numThreads"),List())+") {")
+      emitValDef("r", resourceInfoType, unalteredMethodCall(fieldAccess("sync","getThreadResource"),List("i")))
+      emitWorkLaunch(kernelName, "r", "alloc", "sync")
+      emitAssignment("i", "i+1")
+    stream.println("}")
+    emitAssignment(kernelName, unalteredMethodCall(fieldAccess(kernelName+"_closure", "main_par"), List(unalteredMethodCall(fieldAccess("sync","getThreadResource"),List("0")),"alloc","sync")))
+    stream.println("}")
   }
 
   def emitAbstractFatLoopKernelExtra(op: AbstractFatLoop, symList: List[Sym[Any]]): Unit = {
@@ -1200,10 +1393,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
           var idx = -1
           def deserialize(tp: String) = {
             idx += 1
-            if (tp.contains("DeliteArrayObject")) //FIXME: need to handle this generically
-              "ppl.delite.runtime.messages.Serialization.deserializeDeliteArrayObject["+tp.substring(tp.indexOf("[")+1,tp.lastIndexOf("]"))+"](ppl.delite.runtime.messages.Messages.ArrayMessage.parseFrom(bytes.get("+idx+")))"
-            else
-              "ppl.delite.runtime.messages.Serialization.deserialize(classOf["+tp+"], bytes.get(" + idx + "))"
+            "ppl.delite.runtime.messages.Serialization.deserialize(classOf["+tp+"], bytes.get(" + idx + "))"
           }
           emitValDef("act", "activation_"+kernelName, "new activation_"+kernelName)
           val prefix = "act."
@@ -1251,10 +1441,38 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       super.emitNodeKernelExtra(sym, rhs)
   }
 
+  override def traverseStm(stm: Stm) = {
+    def kernelCall(lhs: List[Sym[Any]], rhs: Any) = {
+      val kernelName = getKernelName(lhs)
+      emitValDef("act_"+kernelName, getActType(kernelName), methodCall("kernel_"+kernelName, (inputVals(rhs)++inputVars(rhs)).map(quote)))
+      for (s <- lhs) {
+        emitValDef(s, fieldAccess("act_"+kernelName, quote(s)))
+      }
+    }
+
+    if (Config.nestedParallelism) {
+      stm match {
+        case TP(lhs, rhs:AbstractLoop[_]) => 
+          kernelCall(List(lhs), rhs)
+          emitKernel(List(lhs), rhs)
+        case TP(lhs, Reflect(rhs:AbstractLoop[_],_,_)) =>
+          kernelCall(List(lhs), rhs)
+          emitKernel(List(lhs), rhs)
+        case TTP(lhs, mhs, rhs:AbstractFatLoop) => 
+          kernelCall(lhs, rhs)
+          emitKernel(lhs, rhs)
+        case _ => super.traverseStm(stm)
+      }
+    } 
+    else super.traverseStm(stm)  
+  }
+
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef) = rhs match {
-    case op: AbstractFatLoop =>
-      if (!deliteKernel) { loopLevel += 1; emitInlineAbstractFatLoop(op, symList); loopLevel -= 1; }
+    case op: AbstractFatLoop => 
+      loopLevel += 1
+      if (!deliteKernel && !Config.nestedParallelism) emitInlineAbstractFatLoop(op, symList)
       else emitKernelAbstractFatLoop(op, symList)
+      loopLevel -= 1
     case _ => super.emitFatNode(symList, rhs)
   }
 

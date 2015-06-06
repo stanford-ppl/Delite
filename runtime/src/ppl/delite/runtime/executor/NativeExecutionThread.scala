@@ -28,7 +28,7 @@ abstract class NativeExecutionThread(threadId: Int, numThreads: Int) extends Exe
     val root = compiler.staticResources + fileName
     val path = root + "." + OS.libExt
     val lib = new File(path)
-    if (!lib.exists) compiler.compileInit(root)
+    if (!lib.exists) compiler.compile(path,Array(root+"."+compiler.ext), false)
     System.load(path) //TODO: doesn't work properly with sbt test suite
   }
 

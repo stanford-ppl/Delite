@@ -172,7 +172,6 @@ object Profiler {
       })
     }).distinct
 
-    //val ThreadName = "^ExecutionThread-(\\d+)$".r
     val ThreadName = "^ExecutionThread(\\d+)$".r
     var threadId: Map[String, Int] = Map()
     for (th <- threads) {

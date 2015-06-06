@@ -79,7 +79,10 @@ trait MultiLoop_SMP_Array_Generator {
     if (Config.profile) beginProfile()
 
     processLocal()
-    if (Config.profile && !op.needsCombine && !op.needsPostProcess) endProfile(false)
+    if (!op.needsPostProcess && !op.needsCombine) {
+      if (Config.profile) endProfile(false) //stop time before the barrier to register load imbalance
+      barrier()
+    }
 
     if (op.needsCombine) {
       combineLocal()
@@ -95,8 +98,6 @@ trait MultiLoop_SMP_Array_Generator {
       if (Config.profile) endProfile(false)
       barrier()
     }
-
-    if (!op.needsPostProcess && !op.needsCombine) barrier()
 
     finalizer()
     if (Config.profile) endProfile(true)

@@ -42,6 +42,11 @@ object Config {
   val taskQueueSize: Int = getProperty("delite.task.queue.size", "1024").toInt
   var performWalk: Boolean = getProperty("delite.walk", "true") != "false"
   var performRun: Boolean = getProperty("delite.run", "true") != "false"
+  val noJVM: Boolean = getProperty("delite.nojvm", "false") != "false"
+  if (noJVM) {
+    numThreads = 0
+    performRun = false
+  }
 
   // memory management for C++ (refcnt or gc)
   val cppMemMgr = System.getProperty("delite.cpp.memmgr","malloc")
@@ -65,15 +70,16 @@ object Config {
   val gpuPerformance: Boolean = getProperty("delite.debug.gpu.perf", "false") != "false"
   val profile: Boolean = getProperty("delite.debug.profile", "false") != "false"
   val printSources: Boolean = getProperty("delite.debug.print.sources", "false") != "false"
-//<<<<<<< HEAD
   val memSamplingInterval: Long = getProperty("delite.debug.memSamplingInterval", "10").toLong
-//=======
   val printConnection: Boolean = getProperty("delite.debug.print.connection", "false") != "false"
-//>>>>>>> develop
 
+  var testMode: Boolean = getProperty("delite.debug.test", "false") != "false" //hack to make native libs work differently under sbt, should be removed
 
   var degFilename = System.getProperty("delite.deg.filename", "out.deg")
   var degFilePath = ""
+
+  /* For containers, used in distributed mode */
+  val slaveImage: String = getProperty("delite.slave.image", "")
 
   /**
    * DEG specific, set after its parsed

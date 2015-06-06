@@ -65,7 +65,7 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
   }
 
   def emitReturn(rhs: String) = {
-    stream.print("return " + rhs + ";")
+    stream.println("return " + rhs + ";")
   }
 
   def emitFieldDecl(name: String, tpe: String) {
@@ -79,8 +79,8 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
   def emitClass(name: String)(body: => Unit) {
     stream.println("#ifndef __" + name + "__")
     stream.println("#define __" + name + "__")
-    stream.println("#include \"" + deviceTarget + "helperFuncs.h\"")
-    stream.println("#include \"Config.h\"")
+    //stream.println("#include \"" + deviceTarget + "helperFuncs.h\"")
+    //stream.println("#include \"Config.h\"")
     stream.println("class " + name + " {")
     stream.println("public:")
     body
@@ -117,18 +117,36 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
     stream.println(lhs + " = " + rhs + ";")
   }
 
-  def emitAbstractFatLoopHeader(className: String, actType: String) {
-    stream.println("#ifndef __" + kernelName + "__")
-    stream.println("#define __" + kernelName + "__")
+  def emitAbstractFatLoopHeader(syms: List[Sym[Any]], rhs: AbstractFatLoop) {
+    val kernelName = getKernelName(syms)
     stream.println("#include \"pcmHelper.h\"")
-    stream.println("class " + kernelName + "{")
+    stream.println("class " + kernelName+"_class" + "{")
     stream.println("public:")
-    emitFieldsAndConstructor()
+    emitFieldsAndConstructor(kernelName)
   }
 
-  def emitAbstractFatLoopFooter() {
+  def emitAbstractFatLoopFooter(syms: List[Sym[Any]], rhs: AbstractFatLoop) {
+    val kernelName = getKernelName(syms)
+    val actType = getActType(kernelName)
+    emitFieldDecl("allocVal", actType)
+    emitFieldDecl("syncVal", syncType(actType))
+    stream.println("static void* launchFunc(void* arg) {")
+      val tpe = s"""std::pair<$resourceInfoType*,void*>*"""
+      stream.println(tpe+" in = ("+tpe+")arg;")
+      stream.println(s"""${kernelName}_class *closure = (${kernelName}_class *)in->second;""")
+      stream.println("closure->main_par(in->first, closure->allocVal, closure->syncVal);")
+    stream.println("}")
     stream.println("};")
-    stream.println("#endif")
+    val inputs = (inputVals(rhs)++inputVars(rhs)).map(quote).mkString(",")
+    stream.println(kernelName+"_class *"+kernelName+"_closure = new "+kernelName+"_class("+inputs+");")
+  }
+
+  def emitHeapMark() = {
+    stream.println("DeliteHeapMark("+resourceInfoSym+"->threadId);")
+  }
+
+  def emitHeapReset(result: List[String]) = {
+    stream.println("DeliteHeapReset("+resourceInfoSym+"->threadId);")
   }
 
   def castInt32(name: String) = name
@@ -148,7 +166,15 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
     stream.println("}")
   }
 
-  private def emitFieldsAndConstructor() {
+  def syncType(actType: String) = "MultiLoopSync<"+actType+"*>"
+
+  def emitWorkLaunch(kernelName: String, rSym: String, allocSym: String, syncSym: String): Unit = {
+    emitAssignment(fieldAccess(kernelName+"_closure","allocVal"), "alloc")
+    emitAssignment(fieldAccess(kernelName+"_closure","syncVal"), "sync")
+    stream.println(s"""submitWork($rSym->threadId, ${kernelName}_closure->launchFunc, (void*)(new std::pair<$resourceInfoType*,void*>($rSym,${kernelName}_closure)));""")
+  }
+
+  private def emitFieldsAndConstructor(kernelName: String) {
     val fields = if (cppMemMgr == "refcnt") kernelInputVals.map(i => remapWithRef(i.tp) + quote(i)) ++ kernelInputVars.map(i => wrapSharedPtr(deviceTarget.toString + "Ref" + unwrapSharedPtr(remap(i.tp))) + " " + quote(i))
                  else kernelInputVals.map(i => remapWithRef(i.tp) + quote(i)) ++ kernelInputVars.map(i => remapWithRef(deviceTarget.toString + "Ref" + remap(i.tp)) + quote(i))
     val constructorInputs = if (cppMemMgr == "refcnt") kernelInputVals.map(i => remapWithRef(i.tp) + " _" + quote(i)) ++ kernelInputVars.map(i => wrapSharedPtr(deviceTarget.toString + "Ref" + unwrapSharedPtr(remap(i.tp))) + " _" + quote(i))
@@ -158,16 +184,18 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
     stream.println(fields.map(_ + ";\n").mkString(""))
 
     //print constructor
-    stream.println(kernelName + "(" + constructorInputs.mkString(",") + ") {")
+    stream.println(kernelName + "_class(" + constructorInputs.mkString(",") + ") {")
     stream.print((kernelInputVals++kernelInputVars).map(i => quote(i) + " = _" + quote(i) + ";\n").mkString(""))
     stream.println("}")
     stream.println
   }
 
+  override def emitAbstractFatLoopKernelExtra(op: AbstractFatLoop, symList: List[Sym[Any]]): Unit = {
+    withStream(actRecordStream){ super.emitAbstractFatLoopKernelExtra(op, symList) }
+  }
+
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case s:DeliteOpSingleTask[_] =>
-      //printlog("EMIT single "+s)
-      // always wrap single tasks in methods to reduce JIT compilation unit size
       val b = s.block
       emitBlock(b)
       if (!isVoidType(sym.tp))
@@ -180,17 +208,5 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
 
     case _ => super.emitNode(sym,rhs)
   }
-
-  /*
-  // Prevent C++ kernel generation for HashElems. Not supported yet.
-  override def emitKernelMultiHashInit(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = ""){
-    if (ps.length > 0)
-      throw new GenerationFailedException("CGen: DeliteHashElems are not yet supported for C++ target.")
-  }
-  override def emitInlineMultiHashInit(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashElem[_,_])], prefixSym: String = "") {
-    if (ps.length > 0)
-      throw new GenerationFailedException("CGen: DeliteHashElems are not yet supported for C++ target.")
-  }
-  */
 
 }

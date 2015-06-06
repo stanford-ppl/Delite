@@ -17,7 +17,10 @@
 // Delite Custom Memory APIs
 void DeliteHeapInit(int numThreads, size_t heapSize);
 void DeliteHeapClear(int numThreads);
-char *DeliteHeapAlloc(size_t sz, int idx);
+char *DeliteHeapAlloc(size_t sz, int idx, bool initialize);
+void DeliteHeapMark(int idx);
+void DeliteHeapReset(int idx);
+void DeliteHeapReset2(int idx);
 void delite_barrier(unsigned int count);
 
 // globally overloaded new operators
@@ -33,7 +36,7 @@ public:
   
   void* operator new(size_t sz, const resourceInfo_t *resourceInfo) {
     DHEAP_DEBUG("Allocation from thread %d with size %d\n", resourceInfo->threadId, sz);
-    return DeliteHeapAlloc(sz, resourceInfo->threadId);
+    return DeliteHeapAlloc(sz, resourceInfo->threadId, true);
   }
 
   /*

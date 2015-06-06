@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-c -O3 -Wall -I../../ -fopenmp 
+CFLAGS=-c -std=gnu++11 -O3 -Wall -I../../ -fopenmp 
 LDFLAGS= -O3 -fopenmp
 SOURCES=gene_wrangler.cpp 
 OBJECTS=$(SOURCES:.cpp=.o)

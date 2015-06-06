@@ -5,7 +5,7 @@ import ppl.delite.framework.datastructures._
 
 
 object DeliteGPUSyncRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPUSync
-trait DeliteGPUSync extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPUSync extends DeliteTestBase {
   def main() = {
 
     val x = DeliteArrayBuffer.fromFunction(10){ i => 0.0 }.mutable
@@ -27,7 +27,7 @@ trait DeliteGPUSync extends DeliteTestModule with DeliteTestDSLApplication {
 
 // mutation on CPU inside loop
 object DeliteGPULoopSync1Runner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPULoopSync1
-trait DeliteGPULoopSync1 extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPULoopSync1 extends DeliteTestBase {
   def main() = { 
 
     val v = DeliteArrayBuffer.fromFunction(10){ i => 0.0 }.mutable
@@ -45,7 +45,7 @@ trait DeliteGPULoopSync1 extends DeliteTestModule with DeliteTestDSLApplication 
 
 // mutation on GPU inside loop, CPU use is in the same scope
 object DeliteGPULoopSync2Runner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPULoopSync2
-trait DeliteGPULoopSync2 extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPULoopSync2 extends DeliteTestBase {
   def main() = { 
 
     val v = DeliteArrayBuffer.fromFunction(5){ i => 2.5*i }.mutable
@@ -64,7 +64,7 @@ trait DeliteGPULoopSync2 extends DeliteTestModule with DeliteTestDSLApplication 
 
 // mutation on GPU inside loop, CPU use is in the outer scope
 object DeliteGPULoopSync3Runner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPULoopSync3
-trait DeliteGPULoopSync3 extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPULoopSync3 extends DeliteTestBase {
   def main() = {
 
     val v = DeliteArrayBuffer.fromFunction(5){ i => 2.5*i }.mutable
@@ -83,7 +83,7 @@ trait DeliteGPULoopSync3 extends DeliteTestModule with DeliteTestDSLApplication 
 
 // mutation on GPU inside nested-loop, CPU use is in the inner scope
 object DeliteGPULoopSync4Runner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPULoopSync4
-trait DeliteGPULoopSync4 extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPULoopSync4 extends DeliteTestBase {
   def main() = { 
 
     val v = DeliteArrayBuffer.fromFunction(5){ i => 2.5*i }.mutable
@@ -106,7 +106,7 @@ trait DeliteGPULoopSync4 extends DeliteTestModule with DeliteTestDSLApplication 
 
 // mutation on GPU inside nested-loop, CPU use is in the outer scope
 object DeliteGPULoopSync5Runner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPULoopSync5
-trait DeliteGPULoopSync5 extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPULoopSync5 extends DeliteTestBase {
   def main() = { 
     val v = DeliteArrayBuffer.fromFunction(5){ i => 2.5*i }.mutable
     var i = 0
@@ -128,7 +128,7 @@ trait DeliteGPULoopSync5 extends DeliteTestModule with DeliteTestDSLApplication 
 
 // anti-dependency: mutation on GPU inside nested-loop, CPU use is in the inner scope
 object DeliteGPULoopSync6Runner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPULoopSync6
-trait DeliteGPULoopSync6 extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPULoopSync6 extends DeliteTestBase {
   def main() = { 
     val v = DeliteArrayBuffer.fromFunction(5){ i => 2.5*i }.mutable 
     var i = 0
@@ -150,7 +150,7 @@ trait DeliteGPULoopSync6 extends DeliteTestModule with DeliteTestDSLApplication 
 
 // anti-dependency: mutation on GPU inside nested-loop, CPU use is in the outer scope
 object DeliteGPULoopSync7Runner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPULoopSync7
-trait DeliteGPULoopSync7 extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPULoopSync7 extends DeliteTestBase {
   def main() = { 
     val v = DeliteArrayBuffer.fromFunction(5){ i => 2.5*i }.mutable 
     var i = 0
@@ -172,7 +172,7 @@ trait DeliteGPULoopSync7 extends DeliteTestModule with DeliteTestDSLApplication 
 
 // test anti-dependency
 object DeliteGPULoopSync8Runner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPULoopSync8
-trait DeliteGPULoopSync8 extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPULoopSync8 extends DeliteTestBase {
   def main() = { 
     val v = DeliteArrayBuffer.fromFunction(5){ i => 2.5*i }.mutable
     var i = 0
@@ -190,7 +190,7 @@ trait DeliteGPULoopSync8 extends DeliteTestModule with DeliteTestDSLApplication 
 
 // test multiple mutators
 object DeliteGPULoopSync9Runner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPULoopSync9
-trait DeliteGPULoopSync9 extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPULoopSync9 extends DeliteTestBase {
   def main() = { 
     val v = DeliteArrayBuffer.fromFunction(5){ i => 2.5*i }.mutable
     var i = 0
@@ -210,7 +210,7 @@ trait DeliteGPULoopSync9 extends DeliteTestModule with DeliteTestDSLApplication 
 
 // test conditional mutators
 object DeliteGPULoopSync10Runner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPULoopSync10
-trait DeliteGPULoopSync10 extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPULoopSync10 extends DeliteTestBase {
   def main() = { 
     val v = DeliteArrayBuffer.fromFunction(5){ i => 2.5*i }.mutable
     
@@ -240,15 +240,18 @@ trait DeliteGPULoopSync10 extends DeliteTestModule with DeliteTestDSLApplication
 }
 
 class DeliteGPUSyncSuite extends DeliteSuite {
-  def testDeliteGPUSync() { compileAndTest(DeliteGPUSyncRunner, CHECK_MULTILOOP); }
-  def testDeliteGPULoopSync1() { compileAndTest(DeliteGPULoopSync1Runner, CHECK_MULTILOOP); }
-  def testDeliteGPULoopSync2() { compileAndTest(DeliteGPULoopSync2Runner, CHECK_MULTILOOP); }
-  def testDeliteGPULoopSync3() { compileAndTest(DeliteGPULoopSync3Runner, CHECK_MULTILOOP); }
-  def testDeliteGPULoopSync4() { compileAndTest(DeliteGPULoopSync4Runner, CHECK_MULTILOOP); }
-  def testDeliteGPULoopSync5() { compileAndTest(DeliteGPULoopSync5Runner, CHECK_MULTILOOP); }
-  def testDeliteGPULoopSync6() { compileAndTest(DeliteGPULoopSync6Runner, CHECK_MULTILOOP); }
-  def testDeliteGPULoopSync7() { compileAndTest(DeliteGPULoopSync7Runner, CHECK_MULTILOOP); }
-  def testDeliteGPULoopSync8() { compileAndTest(DeliteGPULoopSync8Runner, CHECK_MULTILOOP); }
-  def testDeliteGPULoopSync9() { compileAndTest(DeliteGPULoopSync9Runner, CHECK_MULTILOOP); }
-  def testDeliteGPULoopSync10() { compileAndTest(DeliteGPULoopSync10Runner, CHECK_MULTILOOP); }
+  override def checkMultiLoop = true
+  override def enforceFullCoverage = true
+
+  def testDeliteGPUSync() { compileAndTest(DeliteGPUSyncRunner) }
+  def testDeliteGPULoopSync1() { compileAndTest(DeliteGPULoopSync1Runner) }
+  def testDeliteGPULoopSync2() { compileAndTest(DeliteGPULoopSync2Runner) }
+  def testDeliteGPULoopSync3() { compileAndTest(DeliteGPULoopSync3Runner) }
+  def testDeliteGPULoopSync4() { compileAndTest(DeliteGPULoopSync4Runner) }
+  def testDeliteGPULoopSync5() { compileAndTest(DeliteGPULoopSync5Runner) }
+  def testDeliteGPULoopSync6() { compileAndTest(DeliteGPULoopSync6Runner) }
+  def testDeliteGPULoopSync7() { compileAndTest(DeliteGPULoopSync7Runner) }
+  def testDeliteGPULoopSync8() { compileAndTest(DeliteGPULoopSync8Runner) }
+  def testDeliteGPULoopSync9() { compileAndTest(DeliteGPULoopSync9Runner) }
+  def testDeliteGPULoopSync10() { compileAndTest(DeliteGPULoopSync10Runner) }
 }

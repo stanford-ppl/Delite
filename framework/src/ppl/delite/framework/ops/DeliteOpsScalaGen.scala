@@ -1,7 +1,7 @@
 package ppl.delite.framework.ops
 
 import scala.virtualization.lms.common._
-
+import ppl.delite.framework.Config
 
 trait ScalaGenStaticDataDelite extends ScalaGenStaticData {
   val IR: StaticDataExp
@@ -70,7 +70,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     stream.println(varName + " = null")
   }
 
-  def emitReturn(rhs: String) = stream.print(rhs)
+  def emitReturn(rhs: String) = stream.println(rhs)
 
   def emitFieldDecl(name: String, tpe: String) {
     emitVarDef(name, tpe, "_")
@@ -102,13 +102,19 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     stream.println(lhs + " = " + rhs)
   }
 
-  def emitAbstractFatLoopHeader(className: String, actType: String) {
+  def emitAbstractFatLoopHeader(syms: List[Sym[Any]], rhs: AbstractFatLoop) {
+    val kernelName = getKernelName(syms)
+    val actType = getActType(kernelName)
+    val className = kernelName+"_closure"
     stream.println("val " + className + " = new generated.scala.DeliteOpMultiLoop[" + actType + "] {"/*}*/)
   }
 
-  def emitAbstractFatLoopFooter() {
+  def emitAbstractFatLoopFooter(syms: List[Sym[Any]], rhs: AbstractFatLoop) {
     stream.println("}")
   }
+
+  def emitHeapMark() = { }
+  def emitHeapReset(result: List[String]) = { }
 
   def castInt32(name: String) = name + ".toInt"
 
@@ -126,6 +132,16 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     stream.println("}")
   }
 
+  def emitWorkLaunch(kernelName: String, rSym: String, allocSym: String, syncSym: String): Unit = {
+    stream.println(s"""val executable = new ppl.delite.runtime.executor.DeliteExecutable {
+      def run() = ${kernelName}_closure.main_par($rSym,$allocSym,$syncSym)
+    }
+    ppl.delite.runtime.Delite.executor.runOne($rSym.threadId, executable)""")
+  }
+
+  def syncType(actType: String) = "ppl.delite.runtime.sync.MultiLoopSync["+actType+"]"
+
+
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case s:DeliteOpSingleTask[_] => {
       //printlog("EMIT single "+s)
@@ -140,12 +156,12 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     case op: AbstractLoop[_] =>
       // TODO: we'd like to always have fat loops but currently they are not allowed to have effects
       // if inline, wrap thin loops in methods to reduce JIT compilation unit size
-      if (!deliteKernel) {
+      if (!deliteKernel && !Config.nestedParallelism) {
         stream.println("def " + quote(sym) + "_thin = {")
       }
       stream.println("// a *thin* loop follows: " + quote(sym))
       emitFatNode(List(sym), SimpleFatLoop(op.size, op.v, List(op.body)))
-      if (!deliteKernel) {
+      if (!deliteKernel && !Config.nestedParallelism) {
         stream.println(quote(sym))
         stream.println("}")
         stream.println("val " + quote(sym) + " = " + quote(sym) + "_thin")

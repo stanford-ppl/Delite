@@ -32,7 +32,6 @@ trait NestedGenerator extends ExecutableGenerator {
   protected def writeMethodHeader()
 
   protected def writeInputs(inputs: Seq[(DeliteOP,String)] = nested.getInputs)
-
   protected def writeReturn(newLine: Boolean = true)
   protected def writeOutput(op: DeliteOP, name: String, newLine: Boolean = true)
   protected def writeValue(value: String, newLine: Boolean = true)
@@ -42,7 +41,7 @@ trait NestedGenerator extends ExecutableGenerator {
 trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator {
   import ScalaResourceInfo._
 
-  override protected def writeHeader() {
+  override protected[codegen] def writeHeader() {
     ScalaExecutableGenerator.writePackage(graph, out)
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
     out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
@@ -95,7 +94,8 @@ trait ScalaNestedGenerator extends NestedGenerator with ScalaExecutableGenerator
 
 }
 
-trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator with CppResourceInfo {
+trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
+  import CppResourceInfo._
 
   private val target = Targets.Cpp
 
@@ -119,14 +119,14 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator wit
     val locationsRecv = nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Receive])).map(_.asInstanceOf[Receive].sender.from.scheduledResource).toSet
     val locations = if (nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Send])).nonEmpty) Set(location) union locationsRecv
                     else locationsRecv
-    writeJNIInitializer(locations)
+    if (!Config.noJVM) writeJNIInitializer(locations)
   }
 
   override protected def writeMethodFooter() {
     out.append("}\n")
   }
 
-  protected def generateInputs(inputs: Seq[(DeliteOP,String)] = nested.getInputs): String = {
+  def generateInputs(inputs: Seq[(DeliteOP,String)] = nested.getInputs): String = {
     val str = new StringBuilder
     str.append(resourceInfoType)
     str.append(" *")
@@ -165,6 +165,8 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator wit
 
 trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator with SyncGenerator {
 
+  protected val hostGenerator: CppNestedGenerator
+
   // referential primitive is a primitive type result of a CUDA kernel stored on the device (e.g. reduction)
   def isReferentialPrimitive(op: DeliteOP, sym: String): Boolean = {
     if(isPrimitiveType(op.outputType(sym))) {
@@ -182,24 +184,31 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
 
   def generateMethodSignature(): String = {
     val str = new StringBuilder
-    str.append(nested.outputType(deviceTarget))
+    str.append("#include \"cpphelperFuncs.h\"\n")
+    str.append("#include \"cudahelperFuncs.h\"\n")
+    if (nested.scheduledOn(Targets.Cpp))
+      str.append(nested.outputType(hostTarget))
+    else
+      str.append(nested.outputType(deviceTarget))
     str.append(' ')
     if (!isPrimitiveType(nested.outputType) && nested.outputType!="Unit") str.append(" *")
     str.append(executableName)
     str.append('(')
-    str.append(generateInputs())
-    str.append(")")
+    str.append(generateHostDeviceInputs)
+    str.append(')')
     str.toString
+  }
+
+  protected def generateHostDeviceInputs: String = {
+    val hostInputs = getHostInputs(nested)
+    val deviceInputs = getDeviceInputs(nested)
+    if (deviceInputs.size == 0) hostGenerator.generateInputs(hostInputs)
+    else hostGenerator.generateInputs(hostInputs) + "," + generateInputs(deviceInputs)
   }
 
   override protected def writeMethodHeader() {
     out.append(generateMethodSignature)
     out.append(" {\n")
-    // Add references to other executables for sync objects
-    val locationsRecv = nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Receive])).map(_.asInstanceOf[Receive].sender.from.scheduledResource).toSet
-    val locations = if (nested.nestedGraphs.flatMap(_.schedule(location).toArray.filter(_.isInstanceOf[Send])).nonEmpty) Set(location) union locationsRecv
-                    else locationsRecv
-    writeJNIInitializer(locations)
   }
 
   override protected def writeMethodFooter() {
@@ -232,7 +241,7 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
   }
 
   protected def writeInputs(inputs: Seq[(DeliteOP,String)] = nested.getInputs) {
-    out.append(generateInputs(inputs))
+    out.append(generateHostDeviceInputs)
   }
 
   protected def writeReturn(newLine: Boolean = true) {
@@ -241,13 +250,18 @@ trait CudaNestedGenerator extends NestedGenerator with CudaExecutableGenerator w
   }
 
   protected def writeOutput(op: DeliteOP, name: String, newLine: Boolean = true) {
-    val devType = op.outputType(Targets.Cuda, name)
-    //TODO: put this into cuda sync generator
-    //TODO: make sure symbol is not freed before recvCuda is called
-    if (isReferentialPrimitive(op,name))
-      out.append("recvCuda_%s(%s)".format(mangledName(devType),getSymDevice(op,name)))
-    else
-      out.append(getSymDevice(op, name))
+    if (nested.scheduledOn(Targets.Cpp)) {
+      out.append(getSymHost(op, name))
+    }
+    else {
+      val devType = op.outputType(Targets.Cuda, name)
+      //TODO: put this into cuda sync generator
+      //TODO: make sure symbol is not freed before recvCuda is called
+      if (isReferentialPrimitive(op,name))
+        out.append("recvCuda_%s(%s)".format(mangledName(devType),getSymDevice(op,name)))
+      else
+        out.append(getSymDevice(op, name))
+    }
     if (newLine) out.append(";\n")
   }
 

@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS= -O3 -Wall -fopenmp -shared -fPIC -std=c++0x -I/home/kjbrown/java/jdk1.7.0_b147_x86_64/include -I/home/kjbrown/java/jdk1.7.0_b147_x86_64/include/linux  
+CFLAGS= -O3 -Wall -fopenmp -shared -fPIC -std=c++0x -I/usr/lib/jvm/default-java/include -I/usr/lib/jvm/default-java/include/linux  
 CPP_SOURCES=q1.cpp 
 SCALA_SOURCES=q1.scala Table.scala
 

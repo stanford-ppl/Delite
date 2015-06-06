@@ -4,7 +4,7 @@ import ppl.tests.scalatest._
 import ppl.delite.framework.datastructures._
 
 object DeliteGPUCondRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPUCond
-trait DeliteGPUCond extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPUCond extends DeliteTestBase {
   def main() = {
 
     val v1 = DeliteArrayBuffer.fromFunction(10)(i => 1.0f)
@@ -22,7 +22,7 @@ trait DeliteGPUCond extends DeliteTestModule with DeliteTestDSLApplication {
 }
 
 object DeliteGPUCondReturnRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPUCondReturn
-trait DeliteGPUCondReturn extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPUCondReturn extends DeliteTestBase {
   def main() = {
 
     val v1 = DeliteArrayBuffer.fromFunction(10)(i => 1.0f).mutable
@@ -42,7 +42,7 @@ trait DeliteGPUCondReturn extends DeliteTestModule with DeliteTestDSLApplication
 }
 
 object DeliteGPUMemLeakRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPUMemLeak
-trait DeliteGPUMemLeak extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPUMemLeak extends DeliteTestBase {
   def main() = {
 
     var i = 0
@@ -58,7 +58,7 @@ trait DeliteGPUMemLeak extends DeliteTestModule with DeliteTestDSLApplication {
 }
 
 object DeliteGPUMutationRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPUMutation
-trait DeliteGPUMutation extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPUMutation extends DeliteTestBase {
   def main() = {
 
     val v1 = DeliteArrayBuffer.fromFunction(10)(i => 0.0f).mutable
@@ -73,7 +73,7 @@ trait DeliteGPUMutation extends DeliteTestModule with DeliteTestDSLApplication {
 }
 
 object DeliteGPUNestedMutationRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPUNestedMutation
-trait DeliteGPUNestedMutation extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPUNestedMutation extends DeliteTestBase {
   def main() = {
 
     var i = 0
@@ -90,7 +90,7 @@ trait DeliteGPUNestedMutation extends DeliteTestModule with DeliteTestDSLApplica
 }
 
 object DeliteGPUObjectReductionRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPUObjectReduction
-trait DeliteGPUObjectReduction extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPUObjectReduction extends DeliteTestBase {
   def main() = {
     val rows = 4
     val cols = 4096
@@ -110,7 +110,7 @@ trait DeliteGPUObjectReduction extends DeliteTestModule with DeliteTestDSLApplic
 }
 
 object DeliteGPUReferencePrimitive1Runner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPUReferencePrimitive1
-trait DeliteGPUReferencePrimitive1 extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPUReferencePrimitive1 extends DeliteTestBase {
   def main() = {
 
     val v = DeliteArrayBuffer.fromFunction(10)(i => 1).mutable
@@ -130,7 +130,7 @@ trait DeliteGPUReferencePrimitive1 extends DeliteTestModule with DeliteTestDSLAp
 }
 
 object DeliteGPUReferencePrimitive2Runner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPUReferencePrimitive2
-trait DeliteGPUReferencePrimitive2 extends DeliteTestModule with DeliteTestDSLApplication {
+trait DeliteGPUReferencePrimitive2 extends DeliteTestBase {
   def main() = {
 
     val v = DeliteArrayBuffer.fromFunction(10)(i => 1).mutable
@@ -152,12 +152,15 @@ trait DeliteGPUReferencePrimitive2 extends DeliteTestModule with DeliteTestDSLAp
 }
 
 class DeliteGPUSuite extends DeliteSuite {
-  def testDeliteGPUCond() { compileAndTest(DeliteGPUCondRunner, CHECK_MULTILOOP); }
-  def testDeliteGPUCondReturn() { compileAndTest(DeliteGPUCondReturnRunner, CHECK_MULTILOOP); }
-  def testDeliteGPUMemLeak() { compileAndTest(DeliteGPUMemLeakRunner, CHECK_MULTILOOP); }
-  def testDeliteGPUMutation() { compileAndTest(DeliteGPUMutationRunner, CHECK_MULTILOOP); }
-  def testDeliteGPUNestedMutation() { compileAndTest(DeliteGPUNestedMutationRunner, CHECK_MULTILOOP); }
-  def testDeliteGPUObjectReduction() { compileAndTest(DeliteGPUObjectReductionRunner, CHECK_MULTILOOP); }
-  def testDeliteGPUReferencePrimitive1() { compileAndTest(DeliteGPUReferencePrimitive1Runner, CHECK_MULTILOOP); }
-  def testDeliteGPUReferencePrimitive2() { compileAndTest(DeliteGPUReferencePrimitive2Runner, CHECK_MULTILOOP); }
+  override def checkMultiLoop = true
+  override def enforceFullCoverage = true
+  
+  def testDeliteGPUCond() { compileAndTest(DeliteGPUCondRunner) }
+  def testDeliteGPUCondReturn() { compileAndTest(DeliteGPUCondReturnRunner) }
+  def testDeliteGPUMemLeak() { compileAndTest(DeliteGPUMemLeakRunner) }
+  def testDeliteGPUMutation() { compileAndTest(DeliteGPUMutationRunner) }
+  def testDeliteGPUNestedMutation() { compileAndTest(DeliteGPUNestedMutationRunner) }
+  def testDeliteGPUObjectReduction() { compileAndTest(DeliteGPUObjectReductionRunner) }
+  def testDeliteGPUReferencePrimitive1() { compileAndTest(DeliteGPUReferencePrimitive1Runner) }
+  def testDeliteGPUReferencePrimitive2() { compileAndTest(DeliteGPUReferencePrimitive2Runner) }
 }

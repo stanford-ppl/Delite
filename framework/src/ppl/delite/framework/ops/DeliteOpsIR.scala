@@ -267,6 +267,14 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case _ => 0
   }
 
+  def loopBodyAverageDynamicChunks[A](e: List[Def[A]]) = {
+    val chunks = e.map(loopBodyNumDynamicChunks)
+    val specified = chunks.filter(i => i != 0 && i != -1)
+    if (specified.length > 0) specified.sum / specified.length //use average of hints for the loops
+    else if (chunks.contains(-1)) -1 //dynamic chunking
+    else 0 //static chunking
+  }
+
   def loopBodyNeedsPostProcess[A](e: Def[A]) = e match {
     case e:DeliteCollectElem[_,_,_] => e.par == ParBuffer || e.par == ParSimpleBuffer //e.cond.nonEmpty
     case e:DeliteHashCollectElem[_,_,_,_,_,_] => true

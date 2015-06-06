@@ -17,7 +17,7 @@ class OP_MultiLoop(val id: String, val size: String, val sizeIsConst: Boolean, v
 
   def task = kernelName
 
-  private var kernelName: String = ""
+  private var kernelName: String = func
 
   def setKernelName(name: String) {
     kernelName = name

@@ -3,14 +3,17 @@
  * Stanford University
  *
  */
- 
+
 package ppl.delite.runtime.codegen
 
-import ppl.delite.runtime.Config
-import tools.nsc.io._
-import java.io.FileWriter
-import java.security.MessageDigest
 import collection.mutable.{ArrayBuffer, ListBuffer}
+
+import java.io.{File, FileWriter}
+import java.security.MessageDigest
+import org.apache.commons.io._
+import scala.collection.JavaConverters._
+
+import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.targets.Targets
 
 /**
@@ -18,18 +21,18 @@ import ppl.delite.runtime.graph.targets.Targets
  */
 
 object CodeCache {
-  private val checksum = File(Config.codeCacheHome + File.separator + "cache.checksum")
-  private val dir = Directory(Config.codeCacheHome)
+  private val checksum = new File(Config.codeCacheHome + File.separator + "cache.checksum")
+  private val dir = new File(Config.codeCacheHome)
 
   def verifyCache() {
     if (!Config.alwaysKeepCache && (!checksum.exists || !checksumEqual)) {
       if (Config.verbose) println("[delite]: Clearing corrupt code cache")
-      dir.deleteRecursively()
+      FileUtils.deleteQuietly(dir)
     }
   }
 
   private def checksumEqual(): Boolean = {
-    val saved = checksum.bytes().toArray
+    val saved = FileUtils.readFileToByteArray(checksum)
     val current = computeChecksum
     if (saved.length != current.length) return false
     for (i <- 0 until saved.length) {
@@ -40,8 +43,8 @@ object CodeCache {
 
   private def computeChecksum() = {
     val hash = MessageDigest.getInstance("md5")
-    for (file <- dir.deepFiles if file.name != "cache.checksum") { //we only check file names rather than entire contents for simplicity and speed
-      hash.update(file.name.getBytes)
+    for (file <- FileUtils.listFiles(dir, null, true).asScala if file.getName != "cache.checksum") { //we only check file names rather than entire contents for simplicity and speed
+      hash.update(file.getName.getBytes)
     }
     hash.digest
   }
@@ -51,30 +54,31 @@ object CodeCache {
   }
 
   def addChecksum() {
-    checksum.writeBytes(computeChecksum)
+    FileUtils.writeByteArrayToFile(checksum, computeChecksum)
   }
 }
- 
+
 trait CodeCache {
 
   val cacheHome = Config.codeCacheHome + sep + target + sep
   val sourceCacheHome = cacheHome + "src" + sep
   val binCacheHome = cacheHome + "bin" + sep + "runtime" + sep
   protected var modules = List.empty[Module]
-  
+
   def target: Targets.Value
   def hostCompiler = Compilers(Targets.getHostTarget(target))
   def ext: String = target.toString //source file extension
   def staticResources: String =  Config.deliteHome + sep + "runtime" + sep + "src" + sep + "static" + sep + target + sep
   def pcmResources: String = Config.pcmHome + sep
 
-  def cacheDegSources(directory: Directory) {
+  def cacheDegSources(directory: File) {
     parseModules(directory)
     for (m <- modules if (m.name != "runtime")) {
-      val sourceDir = Directory(Path(directory.path + sep + m.name))
-      val cacheDir = Directory(Path(sourceCacheHome + m.name))
+      val sourceDir = new File(directory.getPath + sep + m.name)
+      val cacheDir = new File(sourceCacheHome + m.name)
       if (!directoriesMatch(sourceDir, cacheDir)) {
-        copyDirectory(sourceDir, cacheDir)
+        FileUtils.deleteQuietly(cacheDir)
+        FileUtils.copyDirectory(sourceDir, cacheDir)
         m.needsCompile = true
       }
       if (m.deps.exists(_.needsCompile))
@@ -89,16 +93,16 @@ trait CodeCache {
       sourceBuffer += Pair(source, name+"."+ext)
   }
 
-  private def parseModules(directory: Directory) {
+  private def parseModules(directory: File) {
     def parseError() = error("Invalid module dependency file")
 
-    val file = Path(directory.path + File.separator + "modules.dm")
+    val file = new File(directory.getPath + File.separator + "modules.dm")
     if (!file.exists)
       error("Could not find module dependency file for generated code")
 
     val moduleList = new ListBuffer[String]
     val moduleDepsList = new ListBuffer[List[String]]
-    for (line <- scala.io.Source.fromFile(file.jfile).getLines()) {
+    for (line <- scala.io.Source.fromFile(file).getLines()) {
       val split = line.split(":")
       val deps = if (split.length == 1 && line == split(0) + ":")
         Nil
@@ -131,8 +135,8 @@ trait CodeCache {
     modules = orderedList.toList
   }
 
-  protected class Module(val name: String, val deps: List[Module]) { 
-    var needsCompile = false 
+  protected class Module(val name: String, val deps: List[Module]) {
+    var needsCompile = false
     override def toString = name
   }
 
@@ -142,59 +146,38 @@ trait CodeCache {
       return
     }
 
-    val dir = Directory(Path(sourceCacheHome + "runtime"))
-    val tempDir = Directory(Path(sourceCacheHome + "runtimeTemp"))
-    tempDir.createDirectory()
+    val dir = new File(sourceCacheHome + "runtime")
+    val tempDir = new File(sourceCacheHome + "runtimeTemp")
+    tempDir.mkdir()
 
     for (i <- 0 until sources.length) {
-      val sourcePath = tempDir.path + File.separator + sources(i)._2 // + "." + ext
+      val sourcePath = tempDir.getPath + File.separator + sources(i)._2 // + "." + ext
       val writer = new FileWriter(sourcePath)
       writer.write(sources(i)._1)
       writer.close()
     }
 
     if (!directoriesMatch(tempDir, dir)) {
-      copyDirectory(tempDir, dir)
+      FileUtils.deleteQuietly(dir)
+      FileUtils.copyDirectory(tempDir, dir)
       modules.last.needsCompile = true
     }
-    tempDir.deleteRecursively()
+    FileUtils.deleteQuietly(tempDir)
   }
-  
+
   protected def sep = File.separator
-  
-  protected def directoriesMatch(source: Directory, cache: Directory): Boolean = {
-    //quick check: see if directory structure & file names match
-    assert(source.exists, "source directory does not exist: " + source.path)
+
+  protected def directoriesMatch(source: File, cache: File): Boolean = {
+    // quick check: see if directory structure & file names match
+    assert(source.exists, "source directory does not exist: " + source.getPath)
     if (!cache.exists)
       return false
 
-    if (!(source.deepList() map(_.name) filterNot { cache.deepList() map(_.name) contains }).isEmpty)
+    if (!(FileUtils.listFiles(source, null, true).asScala map(_.getName) filterNot { FileUtils.listFiles(cache, null, true).asScala.toList map(_.getName) contains }).isEmpty)
       return false
 
-    //full check: compare all the files
-    var allMatch = true
-    for ((sourceFile, cacheFile) <- source.deepFiles zip cache.deepFiles; if (allMatch)) {
-      val sourceChars = sourceFile.bytes()
-      val cacheChars = cacheFile.bytes()
-      while (sourceChars.hasNext && cacheChars.hasNext && allMatch) {
-        if (sourceChars.next != cacheChars.next)
-          allMatch = false
-      }
-      if (sourceChars.hasNext || cacheChars.hasNext)
-        allMatch = false
-    }
-    allMatch
-  }
-
-  protected def copyDirectory(source: Directory, destination: Directory, mergeDestination: Boolean = false) {
-    if (!mergeDestination) destination.deleteRecursively()
-    destination.createDirectory()
-
-    for (dir <- source.dirs)
-      copyDirectory(dir, destination / Directory(dir.name), mergeDestination)
-
-    for (file <- source.files)
-      file.copyTo(destination / file.name)
+    // full check: compare all the files
+    (FileUtils.listFiles(source, null, true).asScala zip FileUtils.listFiles(cache, null, true).asScala) forall { fs => FileUtils.contentEquals(fs._1, fs._2) }
   }
 
   def printSources() {

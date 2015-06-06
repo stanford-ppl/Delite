@@ -8,7 +8,6 @@
 #include <ios>
 #include <fstream>
 #include <sys/time.h>
-#include <jni.h>
 #include <stdint.h>
 #include <stack>
 #include <stdio.h>
@@ -19,6 +18,9 @@
 #include "DeliteNamespaces.h"
 
 #include "pcmHelper.h"
+#ifndef __DELITE_CPP_STANDALONE__
+#include <jni.h>
+#endif
 
 typedef struct {
   std::string name;

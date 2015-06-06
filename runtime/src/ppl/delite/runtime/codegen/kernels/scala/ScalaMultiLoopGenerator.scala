@@ -237,7 +237,7 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   def launchThreads($resourceInfoSym: $resourceInfoType, head: $className) = {
     var i = 1
     while (i < $resourceInfoSym.numThreads) {
-      val r = new $resourceInfoType(i, $resourceInfoSym.numThreads)
+      val r = new $resourceInfoType($resourceInfoSym.slaveId, $resourceInfoSym.numSlaves, i, $resourceInfoSym.numThreads)
       val executable = new DeliteExecutable {
         def run() = MultiLoop_${op.id}(r, head)
       }

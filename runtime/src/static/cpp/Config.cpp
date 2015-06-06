@@ -75,14 +75,21 @@ void initializeConfig(int numThreads) {
 void initializeGlobal(int lowestCppTid, int numCppThreads, size_t heapSize, bool enablePCM) {
   pthread_mutex_lock(&init_mtx); 
   if (!config) {
+//<<<<<<< HEAD
     InitDeliteCppTimer(lowestCppTid, numCppThreads);
     initializeConfig(numCppThreads);
     resourceInfos = new resourceInfo_t[numCppThreads];
     for (int i=0; i<numCppThreads; i++) {
-      resourceInfos[i].threadId = i;
-      resourceInfos[i].numThreads = numCppThreads;
-      resourceInfos[i].socketId = config->threadToSocket(i);
-      resourceInfos[i].numSockets = config->numSockets;
+//      resourceInfos[i].threadId = i;
+//      resourceInfos[i].numThreads = numCppThreads;
+//      resourceInfos[i].socketId = config->threadToSocket(i);
+//      resourceInfos[i].numSockets = config->numSockets;
+//=======
+//    initializeConfig(numThreads);
+//    resourceInfos = new resourceInfo_t[numThreads];
+//    for (int i=0; i<numThreads; i++) {
+      resourceInfos[i] = resourceInfo_t(i, numThreads, config->threadToSocket(i), config->numSockets);
+//>>>>>>> wip-master
       resourceInfos[i].rand = new DeliteCppRandom(i);
     }
     DeliteHeapInit(numCppThreads, heapSize);
@@ -94,13 +101,25 @@ void initializeGlobal(int lowestCppTid, int numCppThreads, size_t heapSize, bool
   pthread_mutex_unlock(&init_mtx);
 }
 
+#ifndef __DELITE_CPP_STANDALONE__
 void freeGlobal(int numThreads, int offset, JNIEnv *env) {
+#else
+void freeGlobal(int numThreads) {
+#endif
   pthread_mutex_lock(&init_mtx);
   if (config) {
+//<<<<<<< HEAD
     DeliteCppTimerClose();
     DeliteSendMemoryAccessStatsToJVM(offset, env);
     SendKernelMemUsageStatsToJVM(env);
     DeliteSendStartTimeToJVM(env);
+//=======
+//    #ifndef __DELITE_CPP_STANDALONE__
+//    DeliteCppTimerDump(offset, env);
+//    #else
+//    DeliteCppTimerDump();
+//    #endif
+//>>>>>>> wip-master
     DeliteHeapClear(numThreads);
     delete[] resourceInfos;
     delete config;
@@ -117,9 +136,17 @@ void initializeAll(int threadId, int lowestCppTid, int numCppThreads, int numLiv
   delite_barrier(numLiveThreads); //ensure fully initialized before any continue
 }
 
+#ifndef __DELITE_CPP_STANDALONE__
 void clearAll(int numThreads, int numLiveThreads, int offset, JNIEnv *env) {
+#else
+void clearAll(int numThreads, int numLiveThreads) {
+#endif
   delite_barrier(numLiveThreads); //first wait for all threads to arrive
+  #ifndef __DELITE_CPP_STANDALONE__
   freeGlobal(numThreads, offset, env);
+  #else
+  freeGlobal(numThreads);
+  #endif
 }
 
 #endif

@@ -28,8 +28,4 @@ object CudaCompile extends CCompile {
   protected def configFile = "CUDA.xml"
   protected def compileFlags = Array("-m64", "-w", "-O3", "-shared", "-Xcompiler", "\'-fPIC\'") ++ arch.flatMap(a => Array("-gencode", "arch=compute_"+a+",code=sm_"+a))
   protected def linkFlags = Array("-lcublas", "-shared", "-Xcompiler", "\'-fPIC\'")
-
-  lazy val deviceDSFiles = Directory(Path(sourceCacheHome + "datastructures")).files.toList.filter(f => f.extension==ext)
-  lazy val hostDSFiles = Directory(Path(hostCompiler.sourceCacheHome + "datastructures")).files.toList.filter(f => f.extension==hostCompiler.ext)
-  override protected def auxSourceList = (deviceDSFiles++hostDSFiles).map(_.toAbsolute.toString).distinct ++ List(sourceCacheHome + "kernels" + sep + target + "helperFuncs." + ext, staticResources + "DeliteCuda." + ext, staticResources + "DeliteCudaProfiler." + ext) 
 }

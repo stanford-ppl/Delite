@@ -60,6 +60,7 @@ class cppFileStream {
   public:
     uint64_t size;
     uint64_t position;
+    uint64_t streamOffset;
 
     cppFileStream* openCopyAtNewLine(uint64_t start) {
       cppFileStream* copy = new cppFileStream(size, &files, &fileLengths);
@@ -119,6 +120,7 @@ class cppFileStream {
 
     cppFileStream(uint64_t _size, std::vector<char*> *_files, std::vector<uint64_t> *_fileLengths) {
       size = _size;
+      streamOffset = 0;
       //could share the files but then the free logic becomes confusing
       for (size_t i = 0; i < _files->size(); i++) {
         char *pathname = _files->at(i);
@@ -131,6 +133,7 @@ class cppFileStream {
 
     cppFileStream(size_t num, ...) {
       size = 0;
+      streamOffset = 0;
       va_list arguments;
       DFS_DEBUG("number of paths is %d\n", num);
       va_start(arguments, num);
