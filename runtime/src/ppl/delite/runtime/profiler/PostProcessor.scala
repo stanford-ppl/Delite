@@ -17,8 +17,8 @@ object PostProcessor {
 	val profileDBFileName = "profile.db"
 	val uiDataFileName = "profileDataUI.js"
 	val gcStatsFileName = "gcStats.txt"
-	val attributesFileName = "profile.js"
 
+	// For debugging
 	def time[R](block: => R, msg: String): R = {
 	    val t0 = System.nanoTime()
 	    val result = block    // call-by-name
@@ -39,10 +39,9 @@ object PostProcessor {
 	}
 
 	def postProcessProfileData(globalStartNanos: Long, degFile: String) {
-		val depGraph = time[DependencyGraph](processDegFile(degFile), "processDegFile")
-		val executionProfile = time[ExecutionProfile](processRawProfileDataFile(depGraph), "processRawProfileDataFile")
+		val depGraph = processDegFile(degFile)
+		val executionProfile = processRawProfileDataFile(depGraph)
 
-		val t0 = System.nanoTime()
 		executionProfile.writeDNodesToDB()
 		executionProfile.writeExecutionSummariesToDB()
 		executionProfile.writeTicTocTNodesToDB()
@@ -50,28 +49,9 @@ object PostProcessor {
 		executionProfile.writeKernelMemAccessStatsToDB()
 		executionProfile.writeAppDataToDB()
 		executionProfile.close()
-		val t1 = System.nanoTime()
-		println("[TIME] Writes to DB: " + ((t1 - t0)/1000000) + "ms")
 
 		dumpProcessedData(globalStartNanos, depGraph, executionProfile)	
 	}
-
-	/*
-	def postProcessProfileData(globalStartNanos: Long, degFile: String) {
-		val depGraph = processDegFile(degFile)
-		depGraph.string()
-		val executionProfile = processRawProfileDataFile(depGraph)
-
-		executionProfile.writeDNodesToDB()
-		executionProfile.writeExecutionSummariesToDB()
-		executionProfile.writeTicTocNodeSummariesToDB()
-		executionProfile.writeKernelMemAccessStatsToDB()
-		executionProfile.writeAppDataToDB()
-		executionProfile.close()
-
-		dumpProcessedData(globalStartNanos, depGraph, executionProfile)	
-	}
-	*/
 
 	private def dumpProcessedData(globalStartNanos: Long, depGraph: DependencyGraph, executionProfile: ExecutionProfile) {
 		val directory = Path( Config.profileOutputDirectory ).createDirectory()
