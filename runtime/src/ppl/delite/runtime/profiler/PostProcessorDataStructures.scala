@@ -171,14 +171,6 @@ class DependencyGraph() {
 		writer.println(prefixSpace + "},")
   	}
 
-  	def string() {
-  		for ((k,v) <- nodeNameToId) {
-  			Predef.println("========================================================")
-  			Predef.println("Node: " + k + "  Id: " + v)
-  			Predef.println(idToDNode(v).string())
-  		}
-  	}
-
 	private def dNodeAdd(n: DNode) {
 		if (n != null) {
 			nodeNameToId += n.name -> n.id
@@ -295,12 +287,6 @@ class DNode(val name: Types.DNodeName, val parent: DNode, val _type: DNodeType.V
 	def childNodeAdd(cn: DNode) { _childNodes.append(cn) }
 
 	def cudaSupported(): Boolean = { (targetsSupported & PostProcessor.TARGET_CUDA) > 0 }
-
-	def string() {
-		Predef.println("    Name: " + name + " Id: " + id + " Type: " + _type.toString)
-		Predef.println("    Inputs: " + inputNodes)
-		Predef.println("    Child Nodes: " + childNodes.map(cn => cn.name))
-	}
 }
 
 object TNode {
@@ -356,8 +342,6 @@ class TNode(val name: Types.TNodeName, val threadId: Int, val start: Long, val d
 	}
 
 	def parentId(): Types.TNodeId = { return _parentId }
-
-	//def dNodeId(): Types.DNodeId = { if (dNode != null) dNode.id else -1 }
 }
 
 object ExecutionProfile {
@@ -427,12 +411,12 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 		initDB()
 
 		val fileNamePrefix = Config.profileOutputDirectory + "/profile_t_"
-		PostProcessor.time[Unit]( parseThreadSpecificProfileDataFiles( fileNamePrefix ), "parseThreadSpecificProfileDataFiles" )
+		parseThreadSpecificProfileDataFiles( fileNamePrefix )
 
 		val tmp = Config.profileOutputDirectory + "/profile_tic_toc_"
-		PostProcessor.time[Unit]( parseTicTocRegionsDataFile( tmp ), "parseTicTocRegionsDataFile" )
-		PostProcessor.time[Unit]( updateTimeTakenByPartitionedKernels(), "updateTimeTakenByPartitionedKernels" )
-		PostProcessor.time[Unit]( updateMemUsageDataOfDNodes(), "updateMemUsageDataOfDNodes" )
+		parseTicTocRegionsDataFile( tmp )
+		updateTimeTakenByPartitionedKernels()
+		updateMemUsageDataOfDNodes()
 	}
 
 	//TODO: Rename this method
@@ -452,8 +436,6 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 	    writer.println(sp + "\"threadScalaCount\": " + threadScalaCount + ",")
 	    writer.println(sp + "\"threadCppCount\": " + threadCppCount + ",")
 	    writer.println(sp + "\"threadCudaCount\": " + threadCudaCount + ",")
-	    //writer.println(sp + "\"targetsEnabled\": " + targetsEnabledStr())
-	    //writer.println(sp + "\"targetsEnabled\": " + targetsEnabled)
 	    writer.println(sp + "\"isScalaEnabled\": " + (targetsEnabled & PostProcessor.TARGET_SCALA) + ",")
 	    writer.println(sp + "\"isCppEnabled\": " + (targetsEnabled & PostProcessor.TARGET_CPP) + ",")
 	    writer.println(sp + "\"isCudaEnabled\": " + (targetsEnabled & PostProcessor.TARGET_CUDA))
@@ -518,7 +500,6 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 	}
 
 	private def initDB() {
-		//dbConn.setAutoCommit(false)
 		val sql = " BEGIN TRANSACTION;" + 
 				  " CREATE TABLE AppData " +
 				  		"(JVM_UP_TIME_AT_APP_START INT PRIMARY KEY NOT NULL," +
@@ -607,7 +588,6 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 				  " INSERT INTO TNodeTypes (ID, NAME) VALUES(%d, 'TicTocRegion');\n".format(TNodeType.TicTocRegion.id) +
 				  " COMMIT;"
 
-	    Predef.println(sql)
 		dbStmt.executeUpdate(sql)
 	}
 
@@ -733,7 +713,6 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 		val isCppEnabled = (targetsEnabled & PostProcessor.TARGET_CPP)
 		val isCudaEnabled = (targetsEnabled & PostProcessor.TARGET_CUDA)
 		var sql = "INSERT INTO AppData VALUES (%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)".format(jvmUpTimeAtAppStart, appStartTime, appEndTime, appTotalTime, threadCount, threadScalaCount, threadCppCount, threadCudaCount, isScalaEnabled, isCppEnabled, isCudaEnabled)
-		Predef.println(sql)
 		dbStmt.executeUpdate(sql)
 	}
 
@@ -749,7 +728,6 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 		}
 
 		sql += "COMMIT;"
-		Predef.println(sql)
 		dbStmt.executeUpdate(sql)
 	}
 
@@ -763,7 +741,6 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 		}
 
 		sql += "COMMIT;"
-		Predef.println(sql)
 		dbStmt.executeUpdate(sql)
 	}
 
@@ -775,7 +752,6 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 		}
 
 		sql += "COMMIT;\n"
-		Predef.println(sql)
 		dbStmt.executeUpdate(sql)
 	}
 
@@ -787,7 +763,6 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 		}
 
 		sql += "COMMIT;\n"
-		Predef.println(sql)
 		dbStmt.executeUpdate(sql)
 	}
 
@@ -806,7 +781,6 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 			}
 
 			sql += "COMMIT;"
-			Predef.println(sql)
 			dbStmt.executeUpdate(sql)
 		}
 	}
@@ -840,7 +814,6 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 		}
 
 		sql += " COMMIT;"
-		Predef.println( sql )
 		dbStmt.executeUpdate( sql )
 	}
 

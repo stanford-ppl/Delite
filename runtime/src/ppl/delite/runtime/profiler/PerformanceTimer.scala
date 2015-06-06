@@ -15,13 +15,12 @@ object PerformanceTimer {
   var ticTocRegionToTiming: Map[String, Timing] = Map()
 
   val profileFilePrefix = Config.profileOutputDirectory + "/profile_t_"
-  val n = Config.profileOutputDirectory + "/profile_tic_toc_scala.csv"
-  val ticTocRegionsWriter = new PrintWriter( new File(n) )
+  val tmp = Config.profileOutputDirectory + "/profile_tic_toc_scala.csv"
+  val ticTocRegionsWriter = new PrintWriter( new File(tmp) )
   
   var jvmUpTimeAtAppStart = 0L
   var appStartTimeInMillis = 0L
   var cppStartTime: Long = 0
-  var clocksPerSec: Double = 0
 
   // HACK: This is a temporary solution
   // This is a list of timing data for the component that is tracked using Config.dumpStatsComponent
@@ -57,14 +56,14 @@ object PerformanceTimer {
 
   def start(component: String, printMessage: Boolean = true): Unit = {
     val startTime = System.currentTimeMillis
-	ticTocRegionToTiming += component -> new Timing("main", startTime, component)
+	  ticTocRegionToTiming += component -> new Timing("main", startTime, component)
   }
 
   def stop(component: String, threadName: String, printMessage: Boolean) = {
     val endTime = System.currentTimeMillis
     val threadId = threadToId(threadName)
-	val stack = threadIdToKernelCallStack(threadId)
-	val currKernel = stack.pop()
+	  val stack = threadIdToKernelCallStack(threadId)
+	  val currKernel = stack.pop()
     if (currKernel.component != component) {
       error( "cannot stop timing that doesn't exist. [TID: " + threadId + ",  Component: " + component + ",  Stack top: " + currKernel.component + "]" )
     }
@@ -90,34 +89,12 @@ object PerformanceTimer {
 	ticTocRegionsWriter.close()
   }
 
-  // Currently only used by C++ to dump the profile results, need to refactor the code
-  def addTiming(component: String, threadId: Int, startTime: Long, endTime: Long, isKernel: Boolean): Unit = {
-    // for non-kernel timings (e.g., app) add to the last entry
-    val location = if (isKernel) threadId else threadCount
-    val threadName = threadToId.find(_._2 == location) match {
-      case Some((name,id)) => name
-      case None => throw new RuntimeException("cannot find thread name for id " + location)
-    }
-    
-    var stats = statsNewFormat(location)
-    val t = new Timing(threadName, startTime, component)
-    t.endTime = endTime
-
-    if (!stats.contains(component)) {
-      stats += component -> List[Timing]()
-    }
-    stats += component -> (t :: stats(component))
-    
-    if (component == Config.dumpStatsComponent) {
-      statsForTrackedComponent += (endTime - startTime) / 1e3
-    }
-  }
-
   def clearAll() {
     statsNewFormat.clear()
     initializeStats(threadCount)
   }
 
+  /*
   def getTimingStats(): List[Timing] = {
     toList(statsNewFormat)
   }
@@ -125,6 +102,7 @@ object PerformanceTimer {
   def toList(arr: ArrayBuffer[Map[String, List[Timing]]]): List[Timing] = {
     arr.flatMap(m => m.flatMap(kv => kv._2)).toList
   }
+  */
 
   def printStatsForNonKernelComps() {
     val nonKernelCompsToTimings = statsNewFormat(threadCount) // the last entry in the stats array does not correspond 
@@ -143,6 +121,8 @@ object PerformanceTimer {
   }
 
   def dumpStats(component: String) {
+    Predef.println("component: " + component)
+    
     val directory = new File(Config.statsOutputDirectory)
     if (directory.exists == false) directory.mkdirs
     else if (directory.isDirectory == false)
@@ -166,7 +146,6 @@ object PerformanceTimer {
   }
 
   def setCppStartTime(start: Long) {
-	cppStartTime = start
-    Predef.println("cppStartTime == " + cppStartTime)
+	  cppStartTime = start
   }
 }
