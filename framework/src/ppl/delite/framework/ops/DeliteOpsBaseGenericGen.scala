@@ -985,7 +985,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
     emitMethod("main_par", actType, List(("__act", actType),("sync", syncType(actType)))) {
       emitValDef("tid", remap(Manifest.Int), fieldAccess(resourceInfoSym,"groupId"))
-      emitTimerStart(kernelName)
+      if (Config.enableProfiler) emitTimerStart(kernelName)
       emitProcessLocal(actType)
       if (!op.body.exists(b => loopBodyNeedsCombine(b) || loopBodyNeedsPostProcess(b))) {
         emitBarrier()
@@ -1002,9 +1002,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitBarrier()
       }
 
-      emitTimerStopForNonZeroTids(kernelName)
+      if (Config.enableProfiler) emitTimerStopForNonZeroTids(kernelName)
       emitFinalizer()
-      emitTimerStopForZeroTid(kernelName)
+      if (Config.enableProfiler) emitTimerStopForZeroTid(kernelName)
       emitReturn("act")
     }
 
@@ -1483,6 +1483,12 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   override def emitNodeKernelExtra(sym: List[Sym[Any]], rhs: Def[Any]): Unit = rhs match {
     case op: AbstractLoop[_] =>
+      if (fileExtension == "scala") {
+        stream.println("import ppl.delite.runtime.profiler.{MemoryProfiler, PerformanceTimer}")
+      } else if (fileExtension == "cpp") {
+        stream.println("#include \"DeliteCppProfiler.h\"\n")
+      }
+
       stream.println("//activation record for thin loop")
       emitAbstractFatLoopKernelExtra(SimpleFatLoop(op.size, op.v, List(op.body)), sym)
     case _ =>

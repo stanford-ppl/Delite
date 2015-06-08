@@ -16,6 +16,7 @@
 #include <stdexcept>
 #include <unistd.h>
 #include <sstream>
+#include <cstdlib>
 #include "DeliteNamespaces.h"
 
 #include "pcmHelper.h"

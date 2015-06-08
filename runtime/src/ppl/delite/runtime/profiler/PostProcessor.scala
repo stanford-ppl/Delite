@@ -32,7 +32,6 @@ object PostProcessor {
 	}
 
 	def processRawProfileDataFile(depGraph: DependencyGraph, profileOutputDirectory: String): ExecutionProfile = {
-		Predef.println("profileOutputDirectory[0]: " + profileOutputDirectory)
 		val executionProfile: ExecutionProfile = new ExecutionProfile(depGraph, profileOutputDirectory)
 		executionProfile.init()
 

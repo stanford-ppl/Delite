@@ -98,10 +98,10 @@ void freeGlobal(int numThreads) {
 #endif
   pthread_mutex_lock(&init_mtx);
   if (config) {
-    DeliteCppTimerClose();
     DeliteSendMemoryAccessStatsToJVM(offset, env);
     SendKernelMemUsageStatsToJVM(env);
     DeliteSendStartTimeToJVM(env);
+    DeliteCppTimerClose();
     DeliteHeapClear(numThreads);
     delete[] resourceInfos;
     delete config;

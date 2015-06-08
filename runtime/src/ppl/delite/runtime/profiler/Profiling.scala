@@ -14,12 +14,12 @@ object Profiling {
 
   def init(graph: DeliteTaskGraph) {
     val totalResources = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL
-    Path(Config.profileOutputDirectory).createDirectory()
     PerformanceTimer.initializeStats(totalResources)
     MemoryProfiler.initializeStats(Config.numThreads, Config.numCpp, Config.numCuda, Config.numOpenCL)
   }
 
   def startRun() {
+    PerformanceTimer.isFinalRun = true
     PerformanceTimer.recordAppStartTimeStats()
 
     PerformanceTimer.clearAll()
@@ -33,13 +33,13 @@ object Profiling {
 
   def endRun() {
     if (Config.dumpProfile) SamplerThread.stop()
-	  PerformanceTimer.stop()
-    PerformanceTimer.printStatsForNonKernelComps()
+	PerformanceTimer.stop()
+    //PerformanceTimer.printStatsForNonKernelComps()
     if (Config.dumpProfile) PerformanceTimer.stop()  
     if (Config.dumpStats) PerformanceTimer.dumpStats()   
 
-	  if (Config.dumpProfile) {
-		  PostProcessor.postProcessProfileData(globalStartNanos, Config.degFilePath)
-	  }
+	if (Config.dumpProfile) {
+	  PostProcessor.postProcessProfileData(globalStartNanos, Config.degFilePath)
+	}
   }
 } 
