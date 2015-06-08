@@ -9,6 +9,68 @@ import ppl.delite.runtime.graph.targets.Targets._
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph._
 
+trait HostToScalaSync extends SyncGenerator with CudaExecutableGenerator {
+
+  def hostSyncGen = hostGenerator.asInstanceOf[CppSyncGenerator]
+
+  override protected def receiveData(s: ReceiveData) {
+    (scheduledTarget(s.sender.from), scheduledTarget(s.to)) match {
+      case (Targets.Scala, Targets.Cpp) => hostSyncGen.addSync(s)
+      case _ => super.receiveData(s)
+    }
+  }
+
+  override protected def receiveView(s: ReceiveView) {
+    (scheduledTarget(s.sender.from), scheduledTarget(s.to)) match {
+      case (Targets.Scala, Targets.Cpp) => hostSyncGen.addSync(s)
+      case _ => super.receiveView(s)
+    }
+  }
+
+  override protected def awaitSignal(s: Await) {
+    (scheduledTarget(s.sender.from), scheduledTarget(s.to)) match {
+      case (Targets.Scala, Targets.Cpp) => hostSyncGen.addSync(s)
+      case _ => super.awaitSignal(s)
+    }
+  }
+
+  override protected def receiveUpdate(s: ReceiveUpdate) {
+    (scheduledTarget(s.sender.from), scheduledTarget(s.to)) match {
+      case (Targets.Scala, Targets.Cpp) => hostSyncGen.addSync(s)
+      case _ => super.receiveUpdate(s)
+    }
+  }
+
+  override protected def sendData(s: SendData) {
+    if ((scheduledTarget(s.from) == Targets.Cpp) && (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty))
+      hostSyncGen.addSync(s)
+    super.sendData(s)
+  }
+
+  override protected def sendView(s: SendView) {
+    if ((scheduledTarget(s.from) == Targets.Cpp) && (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty))
+      hostSyncGen.addSync(s)
+    super.sendView(s)
+  }
+
+  override protected def sendSignal(s: Notify) {
+    if ((scheduledTarget(s.from) == Targets.Cpp) && (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty))
+      hostSyncGen.addSync(s)
+    super.sendSignal(s)
+  }
+
+  override protected def sendUpdate(s: SendUpdate) {
+    if ((scheduledTarget(s.from) == Targets.Cpp) && (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty))
+      hostSyncGen.addSync(s)
+    super.sendUpdate(s)
+  }
+
+  override protected[codegen] def writeSyncObject() {
+    hostSyncGen.writeSyncObject()
+    super.writeSyncObject()
+  }
+}
+
 trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JNIFuncs {
 
   private val syncList = new ArrayBuffer[Send]
@@ -16,6 +78,7 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
   override protected def receiveData(s: ReceiveData) {
     getHostTarget(scheduledTarget(s.sender.from)) match {
       case Targets.Scala => writeGetter(s.sender.from, s.sender.sym, s.to, false)
+      case _ => super.receiveData(s)
     }
   }
 
@@ -51,37 +114,31 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
   }
 
   override protected def sendData(s: SendData) {
-    if (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty) {
+    if ((scheduledTarget(s.from) == Targets.Cuda) && (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty)) {
       writeSetter(s.from, s.sym, false)
       syncList += s
     }
-    //else {
-    super.sendData(s)  // TODO: always call super? (when multiple receivers have different host types)
-    //}
+    super.sendData(s)
   }
 
   override protected def sendView(s: SendView) {
-    if (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty) {
+    if ((scheduledTarget(s.from) == Targets.Cuda) && (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty)) {
       writeSetter(s.from, s.sym, true)
       syncList += s
     }
-    //else {
-      super.sendView(s)  // TODO: always call super? (when multiple receivers have different host types)
-    //}
+    super.sendView(s)
   }
 
   override protected def sendSignal(s: Notify) {
-    if (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty) {
+    if ((scheduledTarget(s.from) == Targets.Cuda) && (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty)) {
       writeNotifier(s.from)
       syncList += s
     }
-    //else {
-      super.sendSignal(s)  // TODO: always call super? (when multiple receivers have different host types)
-    //}
+    super.sendSignal(s)
   }
 
   override protected def sendUpdate(s: SendUpdate) {
-    if (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty) {
+    if ((scheduledTarget(s.from) == Targets.Cuda) && (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Scala).nonEmpty)) {
       s.from.mutableInputsCondition.get(s.sym) match {
         case Some(lst) => 
           out.append("if(")
@@ -96,12 +153,15 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
       }
       syncList += s
     }
-    //else {
-      super.sendUpdate(s)  // TODO: always call super? (when multiple receivers have different host types)
-    //}
+    super.sendUpdate(s)
   }
 
   private def writeGetter(dep: DeliteOP, sym: String, to: DeliteOP, view: Boolean) {
+    val ref = if (isPrimitiveType(dep.outputType(sym))) "" else "*"
+    val devType = dep.outputType(Targets.Cuda, sym)
+    val hostType = dep.outputType(Targets.Cpp, sym)
+    out.append("%s %s%s;\n".format(devType,ref,getSymDevice(dep,sym)))
+    out.append("{\n")
     out.append(getJNIType(dep.outputType(sym)))
     out.append(' ')
     out.append(getSymCPU(sym))
@@ -123,16 +183,13 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
     out.append("\",\"()")
     out.append(getJNIOutputType(dep.outputType(Targets.Scala,sym)))
     out.append("\"));\n")
-    val ref = if (isPrimitiveType(dep.outputType(sym))) "" else "*"
-    val devType = dep.outputType(Targets.Cuda, sym)
-    val hostType = dep.outputType(Targets.Cpp, sym)
     if (view) {
       out.append("%s %s%s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(hostType,ref,getSymHost(dep,sym),mangledName(hostType),location,getSymCPU(sym)))
-      out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
+      out.append("%s = sendCuda_%s(%s);\n".format(getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
     }
     else if(isPrimitiveType(dep.outputType(sym))) {
       out.append("%s %s = (%s)%s;\n".format(devType,getSymHost(dep,sym),devType,getSymCPU(sym)))
-      out.append("%s %s = (%s)%s;\n".format(devType,getSymDevice(dep,sym),devType,getSymHost(dep,sym)))
+      out.append("%s = (%s)%s;\n".format(getSymDevice(dep,sym),devType,getSymHost(dep,sym)))
     }
     else {
       out.append("%s %s%s = recvCPPfromJVM_%s(env%s,%s);\n".format(hostType,ref,getSymHost(dep,sym),mangledName(hostType),location,getSymCPU(sym)))
@@ -140,16 +197,17 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
       if(Config.gpuOptTrans) {
         // Use transpose copy
         dep.stencilOrElse(sym)(Empty) match {
-          case Interval(start,stride,length) => out.append("%s %s%s = sendCudaTrans_%s(%s,%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym),getSymDevice(dep,length.trim)))
-          case _ => out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
+          case Interval(start,stride,length) => out.append("%s = sendCudaTrans_%s(%s,%s);\n".format(getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym),getSymDevice(dep,length.trim)))
+          case _ => out.append("%s = sendCuda_%s(%s);\n".format(getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
         }
       }
       else
-        out.append("%s %s%s = sendCuda_%s(%s);\n".format(devType,ref,getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
+        out.append("%s = sendCuda_%s(%s);\n".format(getSymDevice(dep,sym),mangledName(devType),getSymHost(dep,sym)))
       out.append("cudaMemoryMap->insert(std::pair<void*,std::list<void*>*>(")
       out.append(getSymDevice(dep,sym))
       out.append(",lastAlloc));\n")
       out.append("lastAlloc = new std::list<void*>();\n")
+      out.append("}\n")
     }
   }
 
@@ -183,6 +241,7 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
   private def writeSetter(op: DeliteOP, sym: String, view: Boolean) {
     val hostType = op.outputType(Targets.Cpp, sym) 
     val devType = op.outputType(Targets.Cuda, sym)
+    out.append("{\n")
     if (view) {
       out.append("%s *%s = recvCuda_%s(%s);\n".format(hostType,getSymHost(op,sym),mangledName(devType),getSymDevice(op,sym)))
       out.append("%s %s = sendViewCPPtoJVM_%s(env%s,%s);\n".format(getJNIType(op.outputType(sym)),getSymCPU(sym),mangledName(hostType),location,getSymHost(op,sym)))
@@ -224,6 +283,7 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
     out.append(")V\"),")
     out.append(getSymCPU(sym))
     out.append(");\n")
+    out.append("}\n")
   }
 
   private def writeNotifier(op: DeliteOP, sym: String = "") {
@@ -254,10 +314,8 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
   }
 
 
-  override protected def writeSyncObject() {
-    //if (syncList.nonEmpty) {
-      syncObjectGenerator(syncList, Targets.Scala).makeSyncObjects
-    //}
+  override protected[codegen] def writeSyncObject() {
+    syncObjectGenerator(syncList, Targets.Scala).makeSyncObjects
     super.writeSyncObject()
   }
 }
@@ -267,44 +325,52 @@ trait CudaToCppSync extends SyncGenerator with CudaExecutableGenerator with JNIF
   private val syncList = new ArrayBuffer[Send]
 
   override protected def receiveData(s: ReceiveData) {
-    scheduledTarget(s.sender.from) match {
-      case Targets.Cpp => writeGetter(s.sender.from, s.sender.sym, s.to, false)
-      case _ => // super.receiveData(s)
+    (scheduledTarget(s.sender.from), scheduledTarget(s.to)) match {
+      case (Targets.Cpp, Targets.Cuda) => writeGetter(s.sender.from, s.sender.sym, s.to, false)
+      case (Targets.Cuda, Targets.Cpp) => //
+      case _ => super.receiveData(s)
     }
   }
 
   override protected def receiveView(s: ReceiveView) {
-    //super.receiveView(s)
+    (scheduledTarget(s.sender.from), scheduledTarget(s.to)) match {
+      case (Targets.Cpp, Targets.Cuda) => //
+      case (Targets.Cuda, Targets.Cpp) => //
+      case _ => super.receiveView(s)
+    }
   }
 
   override protected def awaitSignal(s: Await) {
-    scheduledTarget(s.sender.from) match {
-      case Targets.Cpp => writeAwaiter(s.sender.from)
-      case _ => //super.awaitSignal(s)
+    (scheduledTarget(s.sender.from), scheduledTarget(s.to)) match {
+      case (Targets.Cpp, Targets.Cuda) => //
+      case (Targets.Cuda, Targets.Cpp) => //
+      case _ => super.awaitSignal(s)
     }
   }
 
   override protected def receiveUpdate(s: ReceiveUpdate) {
-    scheduledTarget(s.sender.from) match {
-      case Targets.Cpp =>
+    (scheduledTarget(s.sender.from), scheduledTarget(s.to)) match {
+      case (Targets.Cpp, Targets.Cuda) => //
         s.sender.from.mutableInputsCondition.get(s.sender.sym) match {
           case Some(lst) =>
             out.append("if(")
             out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
             out.append(") {\n")
-            writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym);
+            writeRecvUpdater(s.sender.from, s.sender.sym);
             out.append("}\n")
           case _ =>
-            writeAwaiter(s.sender.from, s.sender.sym); writeRecvUpdater(s.sender.from, s.sender.sym);
+            writeRecvUpdater(s.sender.from, s.sender.sym);
         }
-      case _ => //super.receiveUpdate(s)
+      case (Targets.Cuda, Targets.Cpp) => //
+      case _ => super.receiveUpdate(s)
     }
   }
 
   override protected def sendData(s: SendData) {
-    if (s.receivers.map(_.to).filter(r => scheduledTarget(r) == Targets.Cpp).nonEmpty) {
+    if ((scheduledTarget(s.from) == Targets.Cuda) && (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Cpp).nonEmpty)) {
       writeSetter(s.from, s.sym, false)
     }
+    super.sendData(s)
   }
 
   override protected def sendView(s: SendView) {
@@ -312,26 +378,23 @@ trait CudaToCppSync extends SyncGenerator with CudaExecutableGenerator with JNIF
   }
 
   override protected def sendSignal(s: Notify) {
-    if (s.receivers.map(_.to).filter(r => scheduledTarget(r) == Targets.Cpp).nonEmpty) {
-      writeNotifier(s.from)
-    }
+    super.sendSignal(s)
   }
 
   override protected def sendUpdate(s: SendUpdate) {
-    if (s.receivers.map(_.to).filter(r => scheduledTarget(r) == Targets.Cpp).nonEmpty) {
+    if ((scheduledTarget(s.from) == Targets.Cuda) && (s.receivers.map(_.to).filter(r => getHostTarget(scheduledTarget(r)) == Targets.Cpp).nonEmpty)) {
       s.from.mutableInputsCondition.get(s.sym) match {
         case Some(lst) =>
           out.append("if(")
           out.append(lst.map(c => c._1.id.split('_').head + "_cond=="+c._2).mkString("&&"))
           out.append(") {\n")
           writeSendUpdater(s.from, s.sym)
-          writeNotifier(s.from, s.sym)
           out.append("}\n")
         case _ =>
           writeSendUpdater(s.from, s.sym)
-          writeNotifier(s.from, s.sym)
       }
     }
+    super.sendUpdate(s)
   }
 
   private def writeGetter(dep: DeliteOP, sym: String, to: DeliteOP, view: Boolean) {
@@ -349,10 +412,6 @@ trait CudaToCppSync extends SyncGenerator with CudaExecutableGenerator with JNIF
       out.append(",lastAlloc));\n")
       out.append("lastAlloc = new std::list<void*>();\n")
     }
-  }
-
-  private def writeAwaiter(dep: DeliteOP, sym: String = "") {
-
   }
 
   private def writeRecvUpdater(dep: DeliteOP, sym:String) {
@@ -377,10 +436,6 @@ trait CudaToCppSync extends SyncGenerator with CudaExecutableGenerator with JNIF
     }
   }
 
-  private def writeNotifier(op: DeliteOP, sym: String = "") {
-    // No need to have explicit notifier (on the same host code)
-  }
-
   private def writeSendUpdater(op: DeliteOP, sym: String) {
     val devType = op.inputType(Targets.Cuda, sym)
     val hostType = op.inputType(Targets.Cpp, sym)
@@ -388,10 +443,12 @@ trait CudaToCppSync extends SyncGenerator with CudaExecutableGenerator with JNIF
     out.append("recvUpdateCuda_%s(%s, %s);\n".format(mangledName(devType),getSymDevice(op,sym),getSymHost(op,sym)))
   }
 
-  override protected def writeSyncObject() { }
+  override protected[codegen] def writeSyncObject() {
+    super.writeSyncObject()
+  }
 }
 
-trait CudaSyncGenerator extends CudaToCppSync /*CudaToScalaSync*/ {
+trait CudaSyncGenerator extends CudaToCppSync with CudaToScalaSync with HostToScalaSync {
 
   override protected def makeNestedFunction(op: DeliteOP) = op match {
     //case r: Receive if (getHostTarget(scheduledTarget(r.sender.from)) == Targets.Scala) => addSync(r)

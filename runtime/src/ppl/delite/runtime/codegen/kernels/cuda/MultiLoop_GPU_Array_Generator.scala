@@ -197,8 +197,8 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
     out.append("{\n")
 
     // declare & initialize activation record
-    out.append("activation_" + op.id + " act;\n")
-    out.append("memset((void*)&act, 0, sizeof(activation_"+op.id+"));\n")
+    out.append("activation_cuda" + op.id + " act;\n")
+    out.append("memset((void*)&act, 0, sizeof(activation_cuda"+op.id+"));\n")
     out.append("act.size = " + opSize + ";\n")
     
     // Initialize temporary memory for this kernel
@@ -464,7 +464,7 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
     if (params.nonEmpty && op.getInputs.nonEmpty) out.append(',')
     out.append(getInputParams(op,false).mkString(","))
     if (params.nonEmpty || op.getInputs.nonEmpty) out.append(',')
-    out.append(List("TEMP_"+op.id+" int size, size_t tempMemSize","char *tempMemPtr","int *tempMemUsage, int loopIdx, activation_"+op.id+" act").mkString(","))
+    out.append(List("TEMP_"+op.id+" int size, size_t tempMemSize","char *tempMemPtr","int *tempMemUsage, int loopIdx, activation_cuda"+op.id+" act").mkString(","))
     out.append(") {\n")
     if(op.needsCombine && id != "PostProcess") {
       out.append("int idxX = blockIdx.x * 2 * blockDim.x + threadIdx.x;\n")
@@ -486,7 +486,7 @@ object MultiLoop_GPU_Array_Generator extends JNIFuncs {
     val dimVariables = getMapping(op).map(m => "int %1$s = blockIdx.%1$s * blockDim.%1$s + threadIdx.%1$s;".format(m.dim))
     val params = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).map(o => op.outputType(Targets.Cuda, o._2) + " " + o._2) ++ reductionList(op).map(o => o._1.getType("mA") + " *temp_" + o._2 + "," + o._1.getType("mA") + " *temp_" + o._2 + "_2") ++ (reductionSpecList(op).map(o => o._1.getType("dmR") + " *temp_" + o._2 + "," + o._1.getType("dmR") + " *temp_" + o._2 + "_2," + o._1.getType("mA") + " *tempIn_" + o._2)) ++ reductionTupleList(op).map(o => o._1.getType("mA") + " *temp1_" + o._2 + "," + o._1.getType("mA") + " *temp1_" + o._2 + "_2," + o._1.getType("mB") + " *temp2_" + o._2 + "," + o._1.getType("mB") + " *temp2_" + o._2 + "_2") ++ hashReductionList(op).map(o => o._1.getType("mK") + " *key_" + o._2 + "," + o._1.getType("mV") + " *val_" + o._2 + ", " + o._1.getType("mV") + " *" + o._2 + "_hash_data, int *offset_" + o._2 + ", int *idx_" + o._2) ++
                  getInputParams(op,false) ++
-                 List("TEMP_"+op.id+" int size, size_t tempMemSize","char *tempMemPtr","int *tempMemUsage, int loopIdx, activation_"+op.id+" act")
+                 List("TEMP_"+op.id+" int size, size_t tempMemSize","char *tempMemPtr","int *tempMemUsage, int loopIdx, activation_cuda"+op.id+" act")
 
     out.append("__global__ void " + funcName)
     out.append(params.mkString("(",",",") {\n"))

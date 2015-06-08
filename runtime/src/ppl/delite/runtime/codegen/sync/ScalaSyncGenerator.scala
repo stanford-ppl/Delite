@@ -153,10 +153,8 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
     case _ => super.makeNestedFunction(op)
   }
 
-  protected def writeSyncObject() {
-    //if (syncList.nonEmpty) {
-      syncObjectGenerator(syncList, Targets.Scala).makeSyncObjects
-    //}
+  protected[codegen] def writeSyncObject() {
+    syncObjectGenerator(syncList, Targets.Scala).makeSyncObjects
   }
 
 }

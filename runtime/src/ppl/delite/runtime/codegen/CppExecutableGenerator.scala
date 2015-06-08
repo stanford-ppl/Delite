@@ -42,17 +42,23 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     if (!Config.noJVM) out.append("extern JNIEnv* env" + location + ";\n")
   }
 
+  private def scheduledLocations() = {
+    graph.schedule.resources.filterNot(_.isEmpty).map(_.resourceID).toSet
+  }
 
+  private def activeCppLocations() = {
+    scheduledLocations.filter(l => Targets.getHostTarget(Targets.getByLocation(l)) == Targets.Cpp).size
+  }
 
   protected def writeMethodHeader() {
-    if (Config.noJVM) writeStandaloneMethodHeader()
-    else writeJNIMethodHeader()
+    declareGlobals()
+
+    if (!Config.noJVM) writeJNIMethodHeader()
+    else writeStandaloneMethodHeader()
     
-    val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
-    val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
-    out.append("initializeAll(" + Targets.getRelativeLocation(location) + ",numThreads," + numActiveCpps + "," + Config.cppHeapSize + "ULL);\n")
-    out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
-    out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
+    initializeGlobals()
+
+    if (!Config.noJVM) writeJNIInitializer(scheduledLocations)    
   }
 
   protected def writeStandaloneMethodHeader() {
@@ -69,18 +75,27 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     out.append(argNames.zip(argTypes).map(a => a._2+" "+a._1).mkString(", ")+"){\n")
   }
 
+  protected[codegen] def declareGlobals() {
+    if (!Config.noJVM) out.append("JNIEnv* env" + location + ";\n")
+  }
+
+  protected[codegen] def initializeGlobals() {
+    if (!Config.noJVM) {
+      out.append("env" + location + " = jnienv;\n")
+      out.append("JNIEnv *env = jnienv;\n")
+    }
+    out.append("initializeAll(" + Targets.getRelativeLocation(location) + ", numThreads, " + activeCppLocations + "," + Config.cppHeapSize + "ULL);\n")
+    out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
+    out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
+  }
+
   protected def writeJNIMethodHeader() {
-    out.append("JNIEnv* env" + location + ";\n")
     val function = "JNIEXPORT void JNICALL Java_" + executableName + "_00024_host" + executableName + "(JNIEnv* jnienv, jobject object, jint numThreads)"
     out.append("extern \"C\" ") //necessary because of JNI
     out.append(function)
     out.append(";\n")
     out.append(function)
     out.append(" {\n")
-    out.append("env" + location + " = jnienv;\n")
-    out.append("JNIEnv *env = jnienv;\n")
-    val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
-    writeJNIInitializer(locations)
   }
 
   protected def writeJNIInitializer(locations: Set[Int]) {
@@ -99,10 +114,8 @@ trait CppExecutableGenerator extends ExecutableGenerator {
   }
 
   protected def writeMethodFooter() {
-    val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
-    val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
-    if (!Config.noJVM) out.append("clearAll(numThreads," + numActiveCpps + "," + Config.numThreads + ",env" + location + ");\n")
-    else out.append("clearAll(numThreads," + numActiveCpps + ");\n")
+    if (!Config.noJVM) out.append("clearAll(numThreads," + activeCppLocations + "," + Config.numThreads + ",env" + location + ");\n")
+    else out.append("clearAll(numThreads," + activeCppLocations + ");\n")
     out.append("}\n")
 
     //add entry method to primary executable
@@ -199,7 +212,7 @@ int main(int argc, char *argv[]) {
     "xH"+name
   }
 
-  protected def writeSyncObject() {  }
+  override protected[codegen] def writeSyncObject() {  }
 
   protected def isPrimitiveType(scalaType: String) = scalaType match {
     case "java.lang.String" => true
