@@ -2,7 +2,9 @@
 #ifndef PCM_HELPER_H
 #define PCM_HELPER_H
 
+#ifdef DELITE_ENABLE_PCM
 #include "cpucounters.h"
+#endif
 
 struct PCMStats {
 	double l2CacheHitRatio;
@@ -18,9 +20,12 @@ struct PCMStats {
 	{ }
 };
 
-void pcmInit(bool enablePCM);
+void pcmInit(int lowestCppTid);
 
+#ifdef DELITE_ENABLE_PCM
 PCMStats* getPCMStats(CoreCounterState& before, CoreCounterState& after);
+CoreCounterState getCoreCounterState(int32_t tid);
+#endif
 
 void printPCMStats(PCMStats* stats);
 

@@ -31,8 +31,9 @@ object PostProcessor {
     	DependencyGraph.dependencyGraphNew(degFile)
 	}
 
-	def processRawProfileDataFile(depGraph: DependencyGraph): ExecutionProfile = {
-		val executionProfile: ExecutionProfile = new ExecutionProfile(depGraph)
+	def processRawProfileDataFile(depGraph: DependencyGraph, profileOutputDirectory: String): ExecutionProfile = {
+		Predef.println("profileOutputDirectory[0]: " + profileOutputDirectory)
+		val executionProfile: ExecutionProfile = new ExecutionProfile(depGraph, profileOutputDirectory)
 		executionProfile.init()
 
 		executionProfile
@@ -40,7 +41,7 @@ object PostProcessor {
 
 	def postProcessProfileData(globalStartNanos: Long, degFile: String) {
 		val depGraph = processDegFile(degFile)
-		val executionProfile = processRawProfileDataFile(depGraph)
+		val executionProfile = processRawProfileDataFile(depGraph, Config.profileOutputDirectory)
 
 		executionProfile.writeDNodesToDB()
 		executionProfile.writeExecutionSummariesToDB()

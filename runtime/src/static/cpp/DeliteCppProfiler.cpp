@@ -318,10 +318,3 @@ void BufferedFileWriter::close() {
 }
 
 #endif
-
-CoreCounterState getCoreCounterState(int32_t tid) {
-	PCM * inst = PCM::getInstance();
-    CoreCounterState result;
-    if (inst) result = inst->getCoreCounterState(lowestCppTid + tid);
-    return result;
-}

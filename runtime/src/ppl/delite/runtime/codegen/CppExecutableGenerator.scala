@@ -50,7 +50,8 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
     val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
-    out.append("initializeAll(" + Targets.getRelativeLocation(location) + ",numThreads," + numActiveCpps + "," + Config.cppHeapSize + "ULL);\n")
+    val enablePCM = if (Config.enablePCM) "true" else "false"
+    out.append("initializeAll(" + Targets.getRelativeLocation(location) + "," + Config.numThreads + "," + Config.numCpp + "," + numActiveCpps + "," + Config.cppHeapSize + "ULL," + enablePCM + ");\n")
     out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
     out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
   }
@@ -80,8 +81,6 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     out.append("env" + location + " = jnienv;\n")
     out.append("JNIEnv *env = jnienv;\n")
     val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
-    //val enablePCM = if (Config.enablePCM) "true" else "false"
-    //out.append("initializeAll(" + Targets.getRelativeLocation(location) + "," + Config.numThreads + "," + Config.numCpp + "," + numActiveCpps + "," + Config.cppHeapSize + "ULL," + enablePCM + ");\n")
     writeJNIInitializer(locations)
   }
 

@@ -109,7 +109,7 @@ object Config {
    if(dumpStats && statsOutputFilename == "") error("stats.dump option enabled but did not provide a statsOutputFilename")
 
    val dumpProfile: Boolean = getProperty("profile.dump", "false") != "false"
-   val profileOutputDirectory: String = getProperty("profile.output.dir", "")
+   var profileOutputDirectory: String = getProperty("profile.output.dir", "")
    if(dumpProfile && profileOutputDirectory == "") error("profile.dump option enabled but did not provide a profileOutputDirectory")
 
    val enablePCM = dumpProfile  && (getProperty("delite.enable.pcm", "false") != "false")

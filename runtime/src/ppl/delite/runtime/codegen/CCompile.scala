@@ -147,7 +147,8 @@ trait CCompile extends CodeCache {
 
   protected def allCompileFlags = {
     val almostAll = compileFlags ++ Array(config.compileFlags) ++ optionalFeatures.map("-D"+_)
-    val all = if (Config.verbose) almostAll ++ Array("-DDELITE_VERBOSE") else almostAll
+    var all = if (Config.verbose) almostAll ++ Array("-DDELITE_VERBOSE") else almostAll
+    if (Config.enablePCM) all = all ++ Array("-DDELITE_ENABLE_PCM")
     all.mkString(" ")
   }
 

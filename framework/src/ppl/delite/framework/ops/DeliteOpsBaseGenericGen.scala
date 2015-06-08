@@ -830,7 +830,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   def emitProcessLocal(actType: String) = {
     stream.println("//process local")
-    emitValDef("tid", remap(Manifest.Int), fieldAccess(resourceInfoSym,"groupId"))
+
     emitValDef("numThreads", remap(Manifest.Int), fieldAccess(resourceInfoSym, "groupSize"))
     emitValDef("numChunks", remap(Manifest.Int), unalteredMethodCall(fieldAccess("sync", "numChunks"), List()))
     emitVarDef("dIdx", remap(Manifest.Int), "tid")
@@ -894,8 +894,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   }
 
   def emitFinalizer() {
-    stream.print("if (tid == 0) ")
+    stream.println("if (tid == 0) {")
     emitMethodCall("finalize", List("act"))
+    stream.println("}")
   }
 
   def emitBarrier() {
@@ -908,7 +909,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     val actType = getActType(kernelName)
     //deliteKernel = false
 
-	val enablePCM = (Config.enablePCM) && (kernelFileExt == "cpp")
+	val enablePCM = (Config.enablePCM) && (fileExtension == "cpp")
 
     emitAbstractFatLoopHeader(symList, op)
 
@@ -947,10 +948,48 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       emitReturn("__act")
     }
 
+    val isTargetScala = (fileExtension == "scala")
+    val isTargetCpp = (fileExtension == "cpp")
+
+    def emitTimerStart(name: String) = {
+      if (isTargetScala) {
+        stream.println("val threadName = \"ExecutionThread\" + tid")
+        stream.println("val kernelName = \"" + name + "_" + "\" + tid")
+        stream.println("MemoryProfiler.pushNameOfCurrKernel(threadName, kernelName)")
+        stream.println("PerformanceTimer.start(kernelName, threadName, false)")
+      } else if (isTargetCpp) {
+        stream.println("DeliteCppTimerStart(tid,\"" + name + "\");")
+      }
+    }
+
+    def emitTimerStop(name: String) = {
+      if (isTargetScala) {
+        stream.println("PerformanceTimer.stop(kernelName, threadName, false)")
+        stream.println("MemoryProfiler.popNameOfCurrKernel(threadName)")
+      } else if (isTargetCpp) {
+        stream.println("DeliteCppTimerStopMultiLoop(tid,\"" + name + "\");")
+      }
+    } 
+  
+    def emitTimerStopForNonZeroTids(name: String) = {
+      stream.println("if (tid != 0) {")
+      emitTimerStop(name)
+      stream.println("}")
+    }
+ 
+    def emitTimerStopForZeroTid(name: String) = {
+      stream.println("if (tid == 0) {")
+      emitTimerStop(name)
+      stream.println("}")
+    } 
 
     emitMethod("main_par", actType, List(("__act", actType),("sync", syncType(actType)))) {
+      emitValDef("tid", remap(Manifest.Int), fieldAccess(resourceInfoSym,"groupId"))
+      emitTimerStart(kernelName)
       emitProcessLocal(actType)
-      if (!op.body.exists(b => loopBodyNeedsCombine(b) || loopBodyNeedsPostProcess(b))) emitBarrier()
+      if (!op.body.exists(b => loopBodyNeedsCombine(b) || loopBodyNeedsPostProcess(b))) {
+        emitBarrier()
+      }
       if (op.body.exists(loopBodyNeedsCombine)) {
         emitCombineLocal()
         emitCombineRemote()
@@ -962,7 +1001,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitPostProcess()
         emitBarrier()
       }
+
+      emitTimerStopForNonZeroTids(kernelName)
       emitFinalizer()
+      emitTimerStopForZeroTid(kernelName)
       emitReturn("act")
     }
 
@@ -1427,6 +1469,12 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   override def emitFatNodeKernelExtra(sym: List[Sym[Any]], rhs: FatDef): Unit = rhs match {
     case op: AbstractFatLoop =>
+      if (fileExtension == "scala") {
+        stream.println("import ppl.delite.runtime.profiler.{MemoryProfiler, PerformanceTimer}")
+      } else if (fileExtension == "cpp") {
+        stream.println("#include \"DeliteCppProfiler.h\"\n")
+      }
+
       stream.println("//activation record for fat loop")
       emitAbstractFatLoopKernelExtra(op, sym)
     case _ =>

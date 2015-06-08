@@ -103,7 +103,7 @@ object DependencyGraph {
 	}
 
 	private def getTargetsSupported(op: Map[Any, Any]): Int = {
-		var target = 0
+		var target = 1
 		if (op.contains("supportedTargets")) {
 			val targetNames = getFieldList(op, "supportedTargets")
 			if (targetNames.contains("scala")) { target |= PostProcessor.TARGET_SCALA }
@@ -193,6 +193,14 @@ class DependencyGraph() {
 	}
 
 	private def opToDNode(op: Map[Any, Any], parent: DNode): DNode = {
+		def helper( dNodeName: String, parent: DNode, _type: DNodeType.Value, sc: SourceContext, targetsSupported: Int ): DNode = {
+			if ( nodeNameToId.contains( dNodeName ) ) {
+				return dNode( dNodeName )
+			}
+
+			return new DNode( dNodeName, parent, _type, sc, targetsSupported )
+		}
+
 		val opType = DependencyGraph.getFieldString(op, "type")
 		val sc = DependencyGraph.getSourceContext(op)
 		val targetsSupported = DependencyGraph.getTargetsSupported(op)
@@ -208,8 +216,10 @@ class DependencyGraph() {
 				case "Foreach" => dNodeGenericNew( op, parent, DNodeType.Foreach, sc, targetsSupported ) 
 				case "Conditional" => dNodeConditionalNew( op, parent, sc, targetsSupported )
 				case "WhileLoop" => dNodeWhileLoopNew( op, parent, sc, targetsSupported )
-				case "EOP" => new DNode( "eop", parent, DNodeType.EOP, sc, targetsSupported )
-				case "EOG" => new DNode( "eog", parent, DNodeType.EOG, sc, targetsSupported )
+				//case "EOP" => new DNode( "eop", parent, DNodeType.EOP, sc, targetsSupported )
+				//case "EOG" => new DNode( "eog", parent, DNodeType.EOG, sc, targetsSupported )
+				case "EOP" => helper( "eop", parent, DNodeType.EOP, sc, targetsSupported )
+				case "EOG" => helper( "eog", parent, DNodeType.EOG, sc, targetsSupported )
 			}
 	}
 
@@ -385,11 +395,11 @@ object ExecutionProfile {
 	}
 }
 
-class ExecutionProfile(val depGraph: DependencyGraph) {
+class ExecutionProfile(val depGraph: DependencyGraph, val profileOutputDirectory: String) {
 	val threadScalaCount: Int = Config.numThreads
 	val threadCppCount: Int = Config.numCpp
 	val threadCudaCount: Int = Config.numCuda
-	val threadCount: Int = threadScalaCount + threadCppCount + threadCudaCount
+	var threadCount: Int = threadScalaCount + threadCppCount + threadCudaCount
 	val jvmUpTimeAtAppStart: Long = PerformanceTimer.jvmUpTimeAtAppStart
 	val appStartTime: Long = PerformanceTimer.appStartTimeInMillis
 	var appTotalTime: Long = 0
@@ -399,9 +409,8 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 	val ticTocNodeSummaries = new HashMap[Types.TicTocNodeName, TicTocNodeSummary]
 	val timelineData = new TimelineData(depGraph.levelMax)
 	val ticTocTNodes = new ArrayBuffer[TicTocTNode]
-
-	private val dbPath = Config.profileOutputDirectory + "/" + PostProcessor.profileDBFileName
-	Path(dbPath).deleteIfExists()
+	private val dbPath = profileOutputDirectory + "/" + PostProcessor.profileDBFileName
+	new File(dbPath).delete()
 
 	private val dbConn: Connection = DriverManager.getConnection("jdbc:sqlite:" + dbPath)
 	private val dbStmt: Statement = dbConn.createStatement()
@@ -410,10 +419,10 @@ class ExecutionProfile(val depGraph: DependencyGraph) {
 		ExecutionProfile.depGraph = depGraph
 		initDB()
 
-		val fileNamePrefix = Config.profileOutputDirectory + "/profile_t_"
+		val fileNamePrefix = profileOutputDirectory + "/profile_t_"
 		parseThreadSpecificProfileDataFiles( fileNamePrefix )
 
-		val tmp = Config.profileOutputDirectory + "/profile_tic_toc_"
+		val tmp = profileOutputDirectory + "/profile_tic_toc_"
 		parseTicTocRegionsDataFile( tmp )
 		updateTimeTakenByPartitionedKernels()
 		updateMemUsageDataOfDNodes()

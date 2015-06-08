@@ -1,32 +1,34 @@
 
-#include "cpucounters.h"
 #include "pcmHelper.h"
 #include <iostream>
 
-bool enablePCM = false;
+int lowestCppThreadId = 0;
 
-void pcmInit(bool _enablePCM) {
-	enablePCM = _enablePCM;
-    if (enablePCM) {
-		std::cout << "Initializing PCM" << std::endl;
-		PCM* m = PCM::getInstance();
-		m->disableJKTWorkaround();
-	  
-		switch( m->program() ) { 
-			case PCM::Success:
-				std::cout << "PCM Initialized" << std::endl;
-				return;
-	  
-			case PCM::PMUBusy:
-				std::cout << "PCM::PMU Busy!" << std::endl;
-				m->resetPMU();
-				return;
-	  
-			default:
-				return;
-		}
+void pcmInit(int _lowestCppTid) {
+    lowestCppThreadId = _lowestCppTid;
+
+    #ifdef DELITE_ENABLE_PCM
+	std::cout << "Initializing PCM" << std::endl;
+	PCM* m = PCM::getInstance();
+	m->disableJKTWorkaround();
+  
+	switch( m->program() ) { 
+		case PCM::Success:
+			std::cout << "PCM Initialized" << std::endl;
+			return;
+  
+		case PCM::PMUBusy:
+			std::cout << "PCM::PMU Busy!" << std::endl;
+			m->resetPMU();
+			return;
+  
+		default:
+			return;
 	}
+    #endif
 }
+
+#ifdef DELITE_ENABLE_PCM
 
 PCMStats* getPCMStats(CoreCounterState& before, CoreCounterState& after) {
 	struct PCMStats* stats = new PCMStats();
@@ -38,6 +40,15 @@ PCMStats* getPCMStats(CoreCounterState& before, CoreCounterState& after) {
 	return stats;
 }
 
+CoreCounterState getCoreCounterState(int32_t tid) {                                       
+    PCM * inst = PCM::getInstance();
+    CoreCounterState result;
+    if (inst) result = inst->getCoreCounterState(lowestCppThreadId + tid); // HACK
+    return result;
+}
+
+#endif
+
 void printPCMStats(PCMStats* stats) {
 	std::cout
 		 << "L2 Hit Ratio: " << stats->l2CacheHitRatio << std::endl
@@ -47,7 +58,7 @@ void printPCMStats(PCMStats* stats) {
 }
 
 void pcmCleanup() {
-	if (enablePCM) {
-		PCM::getInstance()->cleanup();
-	}
+    #ifdef DELITE_ENABLE_PCM
+	PCM::getInstance()->cleanup();
+    #endif
 }

@@ -15,6 +15,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <unistd.h>
+#include <sstream>
 #include "DeliteNamespaces.h"
 
 #include "pcmHelper.h"
@@ -60,6 +61,5 @@ void DeliteSendMemoryAccessStatsToJVM( int32_t offset, JNIEnv* env );
 void DeliteSendStartTimeToJVM( JNIEnv* env );
 void SendKernelMemUsageStatsToJVM( JNIEnv* env );
 void DeliteLogArrayAllocation(int32_t tid, void* startAddr, int32_t length, std::string elemType, std::string sourceContext);
-CoreCounterState getCoreCounterState(int32_t tid);
 
 #endif
