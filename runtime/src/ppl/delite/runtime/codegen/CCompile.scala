@@ -74,7 +74,6 @@ trait CCompile extends CodeCache {
   }
 
   def compile() {
-    if (sourceBuffer.length == 0) return
     if (Config.verbose) println("[delite]: starting C compile")
     val start = System.currentTimeMillis
     cacheRuntimeSources((sourceBuffer ++ headerBuffer).toArray)
