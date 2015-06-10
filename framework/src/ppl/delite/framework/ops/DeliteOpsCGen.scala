@@ -119,7 +119,6 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
 
   def emitAbstractFatLoopHeader(syms: List[Sym[Any]], rhs: AbstractFatLoop) {
     val kernelName = getKernelName(syms)
-    stream.println("#include \"pcmHelper.h\"")
     stream.println("class " + kernelName+"_class" + "{")
     stream.println("public:")
     emitFieldsAndConstructor(kernelName)
