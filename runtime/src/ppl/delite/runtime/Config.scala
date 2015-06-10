@@ -75,7 +75,6 @@ object Config {
 
   var testMode: Boolean = getProperty("delite.debug.test", "false") != "false" //hack to make native libs work differently under sbt, should be removed
 
-  var degFilename = System.getProperty("delite.deg.filename", "out.deg")
   var degFilePath = ""
 
   /* For containers, used in distributed mode */

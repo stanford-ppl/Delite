@@ -142,8 +142,6 @@ trait CCompile extends CodeCache {
     }
   }
 
-  protected def verbosity = if (Config.verbose) "-DDELITE_VERBOSE" else ""
-
   protected def allCompileFlags = {
     val almostAll = compileFlags ++ Array(config.compileFlags) ++ optionalFeatures.map("-D"+_)
     var all = if (Config.verbose) almostAll ++ Array("-DDELITE_VERBOSE") else almostAll
