@@ -6,7 +6,7 @@ package ppl.delite.runtime.profiler
  * @author Philipp Haller
  */
 
-class Timing(val threadName: String, val startTime: Long, val component: String) {
+class Timing(val startTime: Long, val component: String) {
   private var _endTime: Long = 0L
   private var done = false
   

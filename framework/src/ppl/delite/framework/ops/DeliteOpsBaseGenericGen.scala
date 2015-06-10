@@ -114,10 +114,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   def hashmapType(argType: String): String
   def typeCast(sym: String, to: String): String
   def withBlock(name: String)(block: => Unit): Unit
-  def emitTimerStart(name: String): Unit = {}
-  def emitTimerStop(name: String): Unit = {}
-  def emitTimerStopForNonZeroTids(name: String): Unit = {}
-  def emitTimerStopForZeroTid(name: String): Unit = {}
+  def emitStartMultiLoopTimerForSlave(name: String): Unit = {}
+  def emitStopMultiLoopTimerForSlave(name: String): Unit = {}
   def emitStartPCM(): Unit = {}
   def emitStopPCM(sourceContext: String): Unit = {}
 
@@ -954,7 +952,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
     emitMethod("main_par", actType, List(("__act", actType),("sync", syncType(actType)))) {
       emitValDef("tid", remap(Manifest.Int), fieldAccess(resourceInfoSym,"groupId"))
-      if (Config.enableProfiler) emitTimerStart(kernelName)
+      if (Config.enableProfiler) emitStartMultiLoopTimerForSlave(kernelName)
       emitProcessLocal(actType)
       if (!op.body.exists(b => loopBodyNeedsCombine(b) || loopBodyNeedsPostProcess(b))) {
         emitBarrier()
@@ -971,9 +969,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitBarrier()
       }
 
-      if (Config.enableProfiler) emitTimerStopForNonZeroTids(kernelName)
+      if (Config.enableProfiler) emitStopMultiLoopTimerForSlave(kernelName)
       emitFinalizer()
-      if (Config.enableProfiler) emitTimerStopForZeroTid(kernelName)
       emitReturn("act")
     }
 

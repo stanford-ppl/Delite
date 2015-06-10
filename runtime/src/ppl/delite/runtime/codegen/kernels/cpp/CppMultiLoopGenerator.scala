@@ -136,12 +136,12 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
   }
 
   protected def beginProfile() {
-    if (Config.profile) out.append("DeliteCppTimerStart(tid,\""+master.id + "\");\n")
+    if (Config.profile) out.append("DeliteCppTimerStart(resourceInfo->threadId,\""+master.id + "\");\n")
   }
 
   protected def endProfile(isMaster: Boolean) {
     if (Config.profile) {
-      val timeStr = "DeliteCppTimerStopMultiLoop(tid,\""+master.id+"\");\n"
+      val timeStr = "DeliteCppTimerStopMultiLoop(resourceInfo->threadId,\""+master.id+"\");\n"
       if (isMaster) out.append("if (tid == 0) "+timeStr) else out.append("if (tid != 0) "+timeStr)
     }
   }

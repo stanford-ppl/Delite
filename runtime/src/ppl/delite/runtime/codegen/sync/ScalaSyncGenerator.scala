@@ -77,12 +77,12 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
   }
 
   private def instrumentSyncStart(syncKernelName: String) {
-    var dbgStmt = "PerformanceTimer.start(" + syncKernelName + ", threadName, false)\n"
+    var dbgStmt = "PerformanceTimer.start(" + syncKernelName + ", resourceInfo.threadId, false)\n"
     out.append(dbgStmt)
   }
 
   private def instrumentSyncStop(syncKernelName: String) {
-    var dbgStmt = "PerformanceTimer.stop(" + syncKernelName + ", threadName, false)\n"
+    var dbgStmt = "PerformanceTimer.stop(" + syncKernelName + ", resourceInfo.threadId, false)\n"
     out.append(dbgStmt)
   }
 

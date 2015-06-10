@@ -208,25 +208,17 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
     case _ => super.emitNode(sym,rhs)
   }
 
-  override def emitTimerStart(name: String) = {
-    stream.println("DeliteCppTimerStart(tid,\"" + name + "\");")
-  }
-
-  override def emitTimerStop(name: String) = {
-    stream.println("DeliteCppTimerStopMultiLoop(tid,\"" + name + "\");")
-  } 
-
-  override def emitTimerStopForNonZeroTids(name: String) = {
+  override def emitStartMultiLoopTimerForSlave(name: String) = {
     stream.println("if (tid != 0) {")
-    emitTimerStop(name)
+    stream.println("DeliteCppTimerStart(resourceInfo->threadId,\"" + name + "\");")
     stream.println("}")
   }
 
-  override def emitTimerStopForZeroTid(name: String) = {
-    stream.println("if (tid == 0) {")
-    emitTimerStop(name)
+  override def emitStopMultiLoopTimerForSlave(name: String) = {
+    stream.println("if (tid != 0) {")
+    stream.println("DeliteCppTimerStopMultiLoop(resourceInfo->threadId,\"" + name + "\");")
     stream.println("}")
-  } 
+  }
 
   override def emitStartPCM() = {
     stream.println("CoreCounterState before = getCoreCounterState(resourceInfo->threadId);")

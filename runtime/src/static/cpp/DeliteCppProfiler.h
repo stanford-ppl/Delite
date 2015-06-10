@@ -54,7 +54,6 @@ void DeliteCppTimerTic(string name);
 void DeliteCppTimerToc(string name);
 void DeliteCppTimerStart(int32_t tid, string name);
 void DeliteCppTimerStop(int32_t tid, string name);
-void DeliteCppTimerStartMultiLoop(int32_t tid, string name);
 void DeliteCppTimerStopMultiLoop(int32_t tid, string name);
 void DeliteCppTimerClose();
 void DeliteUpdateMemoryAccessStats( int32_t tid, std::string sourceContext, PCMStats* stats );

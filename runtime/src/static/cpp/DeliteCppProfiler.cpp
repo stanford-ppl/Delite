@@ -103,7 +103,7 @@ void deliteCppTimerStopHelper(int32_t tid, string _name, bool isMultiLoop = fals
 }
 
 void DeliteCppTimerStopMultiLoop(int32_t tid, string name) {
-    deliteCppTimerStopHelper(tid, name, true);
+  deliteCppTimerStopHelper(tid, name, true);
 }
 
 void DeliteCppTimerStart(int32_t tid, string name) {

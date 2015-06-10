@@ -18,11 +18,11 @@ trait CppSyncProfiler extends CppExecutableGenerator {
  	var syncOpName = ""
 	if (Config.profile) {
 	  syncOpName = "__sync-ExecutionThread" + r.to.scheduledResource + "-" + getKernelName + "-" + r.sender.from.id + "-" + r.sender.from.scheduledResource
-	  out.append("DeliteCppTimerStart(" + Targets.getRelativeLocation(location) + ",\"" + syncOpName + "\");\n")
+	  out.append("DeliteCppTimerStart(resourceInfo->threadId, \"" + syncOpName + "\");\n")
     }
     emitSync
     if (Config.profile) {
-	  out.append("DeliteCppTimerStop(" + Targets.getRelativeLocation(location) + ",\"" + syncOpName + "\");\n")
+	  out.append("DeliteCppTimerStop(resourceInfo->threadId, \"" + syncOpName + "\");\n")
 	}
   }
 }

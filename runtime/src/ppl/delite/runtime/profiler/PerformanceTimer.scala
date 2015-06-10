@@ -11,7 +11,6 @@ object PerformanceTimer {
   var threadCount = 0
   val threadIdToWriter = new ArrayBuffer[PrintWriter] // thread id -> thread-specific profile data file
   val threadIdToKernelCallStack = new ArrayBuffer[Stack[Timing]]
-  var threadToId: Map[String, Int] = Map()
   var ticTocRegionToTiming: Map[String, Timing] = Map()
 
   var jvmUpTimeAtAppStart = 0L
@@ -28,9 +27,6 @@ object PerformanceTimer {
       Path(Config.profileOutputDirectory).createDirectory()
 
       for (i <- 0 to (numThreads - 1)) {
-        val threadName = "ExecutionThread" + i
-        threadToId += threadName -> i
-
         val profileFile: File = new File( profileFilePrefix + i + ".csv" )
         threadIdToWriter.append( new PrintWriter(profileFile) )
         threadIdToKernelCallStack.append( new Stack[Timing] )
@@ -46,24 +42,30 @@ object PerformanceTimer {
     appStartTimeInMillis = System.currentTimeMillis
   }
 
-  def start(component: String, threadName: String, printMessage: Boolean) = {
+  def start(component: String, threadId: Int, printMessage: Boolean) = {
     if (isFinalRun) {
       val startTime = System.currentTimeMillis
-      val threadId = threadToId(threadName)
       val stack = threadIdToKernelCallStack(threadId)
-      stack.push(new Timing(threadName, startTime, component))
+      stack.push(new Timing(startTime, component))
     }
   }
 
   def start(component: String, printMessage: Boolean = true): Unit = {
     val startTime = System.currentTimeMillis
-    ticTocRegionToTiming += component -> new Timing("main", startTime, component)
+    ticTocRegionToTiming += component -> new Timing(startTime, component)
   }
 
-  def stop(component: String, threadName: String, printMessage: Boolean) = {
+  def startMultiLoop(component: String, threadId: Int): Unit = {
+    start(component + "_" + threadId, threadId, false)
+  }
+
+  def stopMultiLoop(component: String, threadId: Int): Unit = {
+    stop(component + "_" + threadId, threadId, false)
+  }
+
+  def stop(component: String, threadId: Int, printMessage: Boolean) = {
     if (isFinalRun) {
       val endTime = System.currentTimeMillis
-      val threadId = threadToId(threadName)
       val stack = threadIdToKernelCallStack(threadId)
       val currKernel = stack.pop()
       if (currKernel.component != component) {

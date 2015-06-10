@@ -169,27 +169,20 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     case _ => super.emitNode(sym,rhs)
   }
 
-  override def emitTimerStart(name: String) = {
+  override def emitStartMultiLoopTimerForSlave(name: String) = {
     stream.println("val threadName = \"ExecutionThread\" + tid")
     stream.println("val kernelName = \"" + name + "_" + "\" + tid")
     stream.println("MemoryProfiler.pushNameOfCurrKernel(threadName, kernelName)")
-    stream.println("PerformanceTimer.start(kernelName, threadName, false)")
+
+    stream.println("if (tid != 0) {")
+    stream.println("PerformanceTimer.startMultiLoop(\"" + name + "\", resourceInfo.threadId)")
+    stream.println("}")
   }
 
-  override def emitTimerStop(name: String) = {
-    stream.println("PerformanceTimer.stop(kernelName, threadName, false)")
-    stream.println("MemoryProfiler.popNameOfCurrKernel(threadName)")
-  }
-  
-  override def emitTimerStopForNonZeroTids(name: String) = {
+  override def emitStopMultiLoopTimerForSlave(name: String) = {
     stream.println("if (tid != 0) {")
-    emitTimerStop(name)
+    stream.println("PerformanceTimer.stopMultiLoop(\"" + name + "\", resourceInfo.threadId)")
+    stream.println("MemoryProfiler.popNameOfCurrKernel(threadName)")
     stream.println("}")
   }
- 
-  override def emitTimerStopForZeroTid(name: String) = {
-    stream.println("if (tid == 0) {")
-    emitTimerStop(name)
-    stream.println("}")
-  } 
 }
