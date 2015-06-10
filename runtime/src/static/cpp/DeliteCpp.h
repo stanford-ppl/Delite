@@ -34,7 +34,7 @@
 
 extern Config* config;
 extern resourceInfo_t* resourceInfos;
-void initializeAll(int threadId, int lowestCppTid, int numCppThreads, int numLiveThreads, size_t heapSize, bool enablePCM);
+void initializeAll(int threadId, int lowestCppTid, int numCppThreads, int numLiveThreads, size_t heapSize);
 void initializeThread(int threadId);
 #ifndef __DELITE_CPP_STANDALONE__
 void clearAll(int numThreads, int numLiveThreads, int offset, JNIEnv *env);

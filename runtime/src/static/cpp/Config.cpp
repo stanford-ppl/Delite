@@ -72,7 +72,7 @@ void initializeConfig(int numThreads) {
   }
 }
 
-void initializeGlobal(int lowestCppTid, int numCppThreads, size_t heapSize, bool enablePCM) {
+void initializeGlobal(int lowestCppTid, int numCppThreads, size_t heapSize) {
   pthread_mutex_lock(&init_mtx); 
   if (!config) {
     InitDeliteCppTimer(lowestCppTid, numCppThreads);
@@ -112,8 +112,8 @@ void freeGlobal(int numThreads) {
   pthread_mutex_unlock(&init_mtx);
 }
 
-void initializeAll(int threadId, int lowestCppTid, int numCppThreads, int numLiveThreads, size_t heapSize, bool enablePCM) {
-  initializeGlobal(lowestCppTid, numCppThreads, heapSize, enablePCM);
+void initializeAll(int threadId, int lowestCppTid, int numCppThreads, int numLiveThreads, size_t heapSize) {
+  initializeGlobal(lowestCppTid, numCppThreads, heapSize);
   initializeThread(threadId);
   delite_barrier(numLiveThreads); //ensure fully initialized before any continue
 }

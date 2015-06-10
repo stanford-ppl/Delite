@@ -23,7 +23,7 @@ object PerformanceTimer {
 
   def initializeStats(numThreads: Int) = synchronized {
     threadCount = numThreads
-	if (Config.profile) {
+    if (Config.profile) {
       val profileFilePrefix = Config.profileOutputDirectory + "/profile_t_"
       Path(Config.profileOutputDirectory).createDirectory()
 
@@ -57,15 +57,15 @@ object PerformanceTimer {
 
   def start(component: String, printMessage: Boolean = true): Unit = {
     val startTime = System.currentTimeMillis
-	ticTocRegionToTiming += component -> new Timing("main", startTime, component)
+    ticTocRegionToTiming += component -> new Timing("main", startTime, component)
   }
 
   def stop(component: String, threadName: String, printMessage: Boolean) = {
     if (isFinalRun) {
       val endTime = System.currentTimeMillis
       val threadId = threadToId(threadName)
-	  val stack = threadIdToKernelCallStack(threadId)
-	  val currKernel = stack.pop()
+      val stack = threadIdToKernelCallStack(threadId)
+      val currKernel = stack.pop()
       if (currKernel.component != component) {
         error( "cannot stop timing that doesn't exist. [TID: " + threadId + ",  Component: " + component + ",  Stack top: " + currKernel.component + "]" )
       }
@@ -79,9 +79,9 @@ object PerformanceTimer {
   def stop(component: String, printMessage: Boolean = true): Unit = {
     val endTime = System.currentTimeMillis
     val t = ticTocRegionToTiming(component)
-	t.endTime = endTime
+    t.endTime = endTime
     if (Config.profile && isFinalRun) threadIdToWriter(threadCount).println(component + "," + t.startTime + "," + t.elapsedMillis + ",0")
-	ticTocRegionToTiming -= component
+    ticTocRegionToTiming -= component
     
     if (component == Config.dumpStatsComponent) statsForTrackedComponent.append(t.elapsedMillis)
   }
@@ -108,6 +108,6 @@ object PerformanceTimer {
   }
 
   def setCppStartTime(start: Long) {
-	  cppStartTime = start
+    cppStartTime = start
   }
 }

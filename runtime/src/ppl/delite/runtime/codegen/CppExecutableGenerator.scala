@@ -85,10 +85,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
       out.append("JNIEnv *env = jnienv;\n")
     }
 
-    val enablePCM = if (Config.enablePCM) "true" else "false"
-    //out.append("initializeAll(" + Targets.getRelativeLocation(location) + "," + Config.numThreads + "," + Config.numCpp + "," + Config.cppHeapSize + "ULL," + enablePCM + ");\n")
-    //out.append("initializeAll(" + Targets.getRelativeLocation(location) + ", numThreads, " + activeCppLocations + "," + Config.cppHeapSize + "ULL);\n")
-    out.append("initializeAll(" + Targets.getRelativeLocation(location) + "," + Config.numThreads + ", numThreads, " + activeCppLocations + "," + Config.cppHeapSize + "ULL," + enablePCM + ");\n")
+    out.append("initializeAll(" + Targets.getRelativeLocation(location) + "," + Config.numThreads + ", numThreads, " + activeCppLocations + "," + Config.cppHeapSize + "ULL);\n")
     out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
     out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
   }
