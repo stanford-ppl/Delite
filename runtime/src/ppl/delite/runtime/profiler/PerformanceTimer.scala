@@ -115,6 +115,12 @@ object PerformanceTimer {
   
   def getNameOfCurrKernel(threadId: Int): String = {
     val stack = PerformanceTimer.threadIdToKernelCallStack(threadId)
-    if (stack.length > 0) stack(0).component else "null"
+    if (stack.length > 0) {
+      for (t <- stack) {
+        if (!t.component.startsWith("_")) return t.component
+      }
+    }
+
+    return "null"
   }
 }
