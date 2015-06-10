@@ -71,7 +71,7 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
 
   private def createSyncKernelName(depSym: String, depThread: Int) = {
     var tmp = "-" + depSym + "-" + depThread
-    var syncKernelName = "\"__sync-\" + threadName + \"-\" + MemoryProfiler.getNameOfCurrKernel(threadName) + \"" + tmp + "\""
+    var syncKernelName = "\"__sync-\" + threadName + \"-\" + PerformanceTimer.getNameOfCurrKernel(resourceInfo.threadId) + \"" + tmp + "\""
     
     syncKernelName
   }

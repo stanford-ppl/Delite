@@ -76,7 +76,6 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
     if (op.task == null) return //dummy op
 
     if (Config.profile) {
-      out.append("MemoryProfiler.pushNameOfCurrKernel(\"ExecutionThread0\",\"" + op.id + "\")\n")
       if (op.isInstanceOf[OP_MultiLoop]) { out.append("PerformanceTimer.startMultiLoop(\""+op.id+"\", resourceInfo.threadId)\n") }
       else { out.append("PerformanceTimer.start(\""+op.id+"\", resourceInfo.threadId, false)\n") }
     }
@@ -98,7 +97,6 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
     if (Config.profile) {
       if (op.isInstanceOf[OP_MultiLoop]) { out.append("PerformanceTimer.stopMultiLoop(\""+op.id+"\", resourceInfo.threadId)\n") }
       else { out.append("PerformanceTimer.stop(\""+op.id+"\", resourceInfo.threadId, false)\n") }
-      out.append("MemoryProfiler.popNameOfCurrKernel(\"ExecutionThread0\")\n")
     }
 
     if (!returnsResult) {

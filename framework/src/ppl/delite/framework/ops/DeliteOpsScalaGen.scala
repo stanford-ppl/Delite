@@ -170,10 +170,6 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
   }
 
   override def emitStartMultiLoopTimerForSlave(name: String) = {
-    stream.println("val threadName = \"ExecutionThread\" + tid")
-    stream.println("val kernelName = \"" + name + "_" + "\" + tid")
-    stream.println("MemoryProfiler.pushNameOfCurrKernel(threadName, kernelName)")
-
     stream.println("if (tid != 0) {")
     stream.println("PerformanceTimer.startMultiLoop(\"" + name + "\", resourceInfo.threadId)")
     stream.println("}")
@@ -182,7 +178,6 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
   override def emitStopMultiLoopTimerForSlave(name: String) = {
     stream.println("if (tid != 0) {")
     stream.println("PerformanceTimer.stopMultiLoop(\"" + name + "\", resourceInfo.threadId)")
-    stream.println("MemoryProfiler.popNameOfCurrKernel(threadName)")
     stream.println("}")
   }
 }

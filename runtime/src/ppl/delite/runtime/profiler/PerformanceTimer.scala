@@ -112,4 +112,9 @@ object PerformanceTimer {
   def setCppStartTime(start: Long) {
     cppStartTime = start
   }
+  
+  def getNameOfCurrKernel(threadId: Int): String = {
+    val stack = PerformanceTimer.threadIdToKernelCallStack(threadId)
+    if (stack.length > 0) stack(0).component else "null"
+  }
 }

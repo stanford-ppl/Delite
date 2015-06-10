@@ -16,10 +16,8 @@ class MemoryAccessStats(l2HitRatio: Double, l2Misses: Int, l3HitRatio: Double, l
 object MemoryProfiler
 {
   var threadCount = 0
-  //var stats = new ArrayBuffer[Map[String, List[Long]]]()
   var kernelToMemUsageMaps = new ArrayBuffer[Map[String, Long]]()
   var kernelToTotMemUsage = Map[String, Long]()
-  var threadToCurrKernel = new ArrayBuffer[Stack[String]]()
   var threadToId: Map[String, Int] = Map()
   var kernelToMemAccessStats = Map[String, ArrayBuffer[MemoryAccessStats]]()
 
@@ -45,14 +43,10 @@ object MemoryProfiler
     for (i <- List.range(0, numThreads)) {
       val threadName = "ExecutionThread" + i
       threadToId += threadName -> i
-      //stats += Map[String, List[Long]]()
       kernelToMemUsageMaps += Map[String, Long]()
-      threadToCurrKernel += new Stack[String]()
     }
 
     threadToId += "main" -> numThreads
-    //stats += Map[String, List[Long]]()
-    threadToCurrKernel += new Stack[String]()
   }
 
   def addMemoryAccessStats(
@@ -77,52 +71,21 @@ object MemoryProfiler
 
   def clearAll() {
     kernelToMemUsageMaps.clear()
-    threadToCurrKernel.clear()
     threadToId = Map()
     kernelToMemAccessStats = Map[String, ArrayBuffer[MemoryAccessStats]]()
     initializeStats(numScalaThreads, numCppThreads, numCudaThreads, numOpenCLThreads)
   }
 
   def logArrayAllocation(component: String, threadId: Int, arrayLength: Int, elemType: String) = {
-    var stack = threadToCurrKernel( threadId )
-    var currKernel = component
-    if (stack.length > 0) currKernel = getNameOfCurrKernel( threadId )
+    val currKernel = PerformanceTimer.getNameOfCurrKernel(threadId) 
   
     if (!kernelToMemUsageMaps( threadId ).contains( currKernel )) {
-          kernelToMemUsageMaps( threadId ) += currKernel -> 0
+      kernelToMemUsageMaps( threadId ) += currKernel -> 0
     }
 
     val arrayMemSize = arrayLength.toLong * sizeOf( elemType ).toLong
     val tmp = kernelToMemUsageMaps( threadId )( currKernel )
     kernelToMemUsageMaps( threadId ) += currKernel -> ( tmp + arrayMemSize )
-  }
-
-  def pushNameOfCurrKernel(thread: String, kernelId: String) = {
-    var threadId = threadToId(thread)
-    var stack = threadToCurrKernel(threadId)
-    stack.push(kernelId)
-  }
-
-  def popNameOfCurrKernel(thread: String) = {
-    var threadId = threadToId(thread)
-    var stack = threadToCurrKernel(threadId)
-    if (stack.length > 0) {
-      stack.pop()
-    }
-  }
-
-  def getNameOfCurrKernel(thread: String): String = {
-    var threadId = threadToId(thread)
-    return getNameOfCurrKernel(threadId)
-  }
-
-  def getNameOfCurrKernel(threadId: Int): String = {
-    var stack = threadToCurrKernel(threadId)
-    if (stack.length > 0) {
-      return stack(0) // 0 indexes the top-of-stack
-    }
-
-    return "null"
   }
 
   def aggregateMemAllocStatsFromAllThreads(): Map[String, Long] = {
