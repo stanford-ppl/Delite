@@ -31,7 +31,7 @@ object DeliteTaskGraph {
   def buildFromParsedJSON(json: Any) = {
     implicit val graph = new DeliteTaskGraph
     json match {
-      case degm: Map[Any,Any] => try { parseDEGMap(degm) } catch { case e: Exception => e.printStackTrace; throw e; }
+      case degm: Map[Any,Any] => parseDEGMap(degm)
       case err@_ => mapNotFound(err)
     }
     enforceRestrictions(graph)
@@ -60,8 +60,9 @@ object DeliteTaskGraph {
     var streams: List[DeliteOP] = Nil
     graph.visitAll { op => if (op.outputType contains inputStream) streams = op :: streams }
     for (op <- streams) {
-      val supported = op.getConsumers.filter(_.isInstanceOf[OP_Executable]).map(_.supportedTargets).reduce(_ intersect _) intersect op.supportedTargets
-      for (o <- (op.getConsumers + op)) {
+      val matchOps = op.getConsumers.filter(c => c.isInstanceOf[OP_Executable] && c.getInputs.exists(_._1 == op)) + op
+      val supported = matchOps.map(_.supportedTargets).reduce(_ intersect _).toSet
+      for (o <- matchOps) {
         o.supportedTargets.clear()
         o.supportedTargets ++= supported
       }

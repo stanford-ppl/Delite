@@ -73,8 +73,6 @@ object Config {
   val printConnection: Boolean = getProperty("delite.debug.print.connection", "false") != "false"
   var testMode: Boolean = getProperty("delite.debug.test", "false") != "false" //hack to make native libs work differently under sbt, should be removed
 
-  var degFilename = System.getProperty("delite.deg.filename", "out.deg")
-
   /* For containers, used in distributed mode */
   val slaveImage: String = getProperty("delite.slave.image", "")
 
