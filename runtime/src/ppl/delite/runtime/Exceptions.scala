@@ -8,6 +8,15 @@ object Exceptions {
   def translate(original: Throwable): Throwable = {
     def stripKernel(name: String) = name.stripPrefix("generated.scala.kernel_").takeWhile(_ != '$')
     var translated = worker(original)
+    //for (elem <- original.getStackTrace) {
+    //  Profiler.sourceInfo.get(stripKernel(elem.getClassName)) match {
+    //    case Some((fileName, line, opName)) => 
+    //      val message = s"Error within $opName: $fileName:$line"
+    //      if (translated.getMessage != message) translated = new DeliteException(message, translated)
+    //    case _ => //keep looking
+    //  }
+    //}
+    
     translated
   }
 

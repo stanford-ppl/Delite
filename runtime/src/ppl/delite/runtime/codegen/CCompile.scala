@@ -144,8 +144,8 @@ trait CCompile extends CodeCache {
 
   protected def allCompileFlags = {
     var all = compileFlags ++ Array(config.compileFlags) ++ optionalFeatures.map("-D"+_)
-    if (Config.verbose) all = all ++ Array("-DDELITE_VERBOSE") 
-    if (Config.enablePCM) all = all ++ Array("-DDELITE_ENABLE_PCM")
+    if (Config.verbose) all ++= Array("-DDELITE_VERBOSE") 
+    if (Config.enablePCM) all ++= Array("-DDELITE_ENABLE_PCM")
     all.mkString(" ")
   }
 
