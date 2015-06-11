@@ -1,0 +1,40 @@
+#tabs { 
+    padding: 0px; 
+    background: none; 
+    border-width: 0px; 
+} 
+
+#tabs .ui-widget-header {
+	border: 1px solid black
+}
+
+#tabs .ui-tabs-panel {
+	padding: 0;
+}
+
+#tabs .ui-tabs-nav { 
+    padding-left: 0px; 
+    background: transparent; 
+    border-width: 0px 0px 1px 0px; 
+    -moz-border-radius: 0px; 
+    -webkit-border-radius: 0px; 
+    border-radius: 0px; 
+    
+} 
+
+#tabs .ui-tabs-nav li {
+    font-family: Nunito, arial, verdana;
+    font-size: 12px;
+} 
+
+#tabs .ui-tabs-nav li.ui-state-active a,
+#tabs .ui-tabs-nav li.ui-state-default a {
+	color: black;
+}
+
+.ui-widget button, .ui-button-text {
+    width: 100;
+    height: 15;
+    font-family: Nunito, arial, verdana;
+    font-size: 10px;
+}

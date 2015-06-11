@@ -8,7 +8,7 @@
 #include "DeliteDatastructures.h"
 #include "DeliteCpp.h"
 #include "cppInit.h"
-
+#include "pcmHelper.h"
 
 Config* config = NULL;
 resourceInfo_t* resourceInfos = NULL;
@@ -72,19 +72,22 @@ void initializeConfig(int numThreads) {
   }
 }
 
-void initializeGlobal(int numThreads, size_t heapSize) {
+void initializeGlobal(int lowestCppTid, int numCppThreads, size_t heapSize) {
   pthread_mutex_lock(&init_mtx); 
   if (!config) {
-    initializeConfig(numThreads);
-    resourceInfos = new resourceInfo_t[numThreads];
-    for (int i=0; i<numThreads; i++) {
-      resourceInfos[i] = resourceInfo_t(i, numThreads, config->threadToSocket(i), config->numSockets);
+    InitDeliteCppTimer(lowestCppTid, numCppThreads);
+    initializeConfig(numCppThreads);
+    resourceInfos = new resourceInfo_t[numCppThreads];
+    for (int i=0; i<numCppThreads; i++) {
+      resourceInfos[i] = resourceInfo_t(i, numCppThreads, config->threadToSocket(i), config->numSockets);
       resourceInfos[i].rand = new DeliteCppRandom(i);
     }
-    DeliteHeapInit(numThreads, heapSize);
-    initializeThreadPool(numThreads);
-    InitDeliteCppTimer(numThreads);
+    DeliteHeapInit(numCppThreads, heapSize);
+    initializeThreadPool(numCppThreads);
   }
+
+  pcmInit(lowestCppTid);
+
   pthread_mutex_unlock(&init_mtx);
 }
 
@@ -95,21 +98,22 @@ void freeGlobal(int numThreads) {
 #endif
   pthread_mutex_lock(&init_mtx);
   if (config) {
-    #ifndef __DELITE_CPP_STANDALONE__
-    DeliteCppTimerDump(offset, env);
-    #else
-    DeliteCppTimerDump();
-    #endif
+    DeliteSendMemoryAccessStatsToJVM(offset, env);
+    SendKernelMemUsageStatsToJVM(env);
+    DeliteSendStartTimeToJVM(env);
+    DeliteCppTimerClose();
     DeliteHeapClear(numThreads);
     delete[] resourceInfos;
     delete config;
     config = NULL;
   }
+
+  pcmCleanup();
   pthread_mutex_unlock(&init_mtx);
 }
 
-void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize) {
-  initializeGlobal(numThreads, heapSize);
+void initializeAll(int threadId, int lowestCppTid, int numCppThreads, int numLiveThreads, size_t heapSize) {
+  initializeGlobal(lowestCppTid, numCppThreads, heapSize);
   initializeThread(threadId);
   delite_barrier(numLiveThreads); //ensure fully initialized before any continue
 }

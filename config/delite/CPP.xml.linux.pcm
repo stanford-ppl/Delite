@@ -1,0 +1,19 @@
+<DeliteExternalLib>
+<compiler> /usr/bin/g++ </compiler>
+<make> /usr/bin/make -s -j </make>
+<compileFlags> -w -O3 -fPIC -pthread -ffast-math </compileFlags>
+<headers>
+  <prefix> -I </prefix>
+  <path> ${JAVA_HOME}/include </path> <!-- required for JNI -->
+  <path> ${JAVA_HOME}/include/linux </path>
+  <path> ${PCM_HOME} </path>
+</headers>
+<linkFlags> -shared -fPIC -pthread </linkFlags>
+<libs>
+  <prefix> -L </prefix>
+  <library> ${PCM_HOME}/cpucounters.o </library>
+  <library> ${PCM_HOME}/msr.o </library>
+  <library> ${PCM_HOME}/pci.o </library>
+  <library> ${PCM_HOME}/client_bw.o </library>
+</libs>
+</DeliteExternalLib>

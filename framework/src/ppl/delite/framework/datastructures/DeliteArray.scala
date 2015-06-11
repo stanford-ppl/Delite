@@ -652,7 +652,7 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
   import IR._
 
   def emitLogOfArrayAllocation(symId: Int, arrayLength: Exp[Int], elemType: String): Unit = {
-    stream.println("ppl.delite.runtime.profiler.MemoryProfiler.logArrayAllocation(\"x" + symId + "\", " + quote(arrayLength) + ", \"" + elemType + "\")")
+    stream.println("ppl.delite.runtime.profiler.MemoryProfiler.logArrayAllocation(\"x" + symId + "\", resourceInfo.threadId, " + quote(arrayLength) + ", \"" + elemType + "\")")
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
@@ -1066,6 +1066,12 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
   val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
 
+  def emitLogOfArrayAllocation(sym: Sym[Any], arrayLength: Exp[Int], elemType: String): Unit = {
+	if (Config.enableProfiler) {
+      stream.println("DeliteLogArrayAllocation(resourceInfo->threadId, x" + sym.id + ", " + quote(arrayLength) + ", \"" + elemType + "\", \"" + getSourceContext(sym.pos) + "\");")
+    }
+  }
+
   override def emitDataStructures(path: String) = {
     //FIXME: some static C++ code currently depends on DeliteArray[String]
     dsTypesList += Pair(manifest[DeliteArray[String]], remap(manifest[DeliteArray[String]])) 
@@ -1088,6 +1094,8 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
         if (kernelAlloc) emitValDef(sym, "new (" + resourceInfoSym + ") " + remap(sym.tp) + "(" + quote(n)+ ")") //internal array on global heap
         else emitValDef(sym, "new (" + resourceInfoSym + ") " + remap(sym.tp) + "(" + quote(n) + ", " + resourceInfoSym + ")") //internal array on local heap
       }
+
+	  emitLogOfArrayAllocation(sym, n, m.erasure.getSimpleName)
       if (t.partition) stream.println("#endif")
     case a@DeliteArrayFromSeq(elems,m) =>
       emitValDef(sym, "new (" + resourceInfoSym + ") " + remap(sym.tp) + "(" + elems.length + ", " + resourceInfoSym + ")")

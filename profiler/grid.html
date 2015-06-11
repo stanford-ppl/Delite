@@ -1,513 +1,313 @@
+<!--!DOCTYPE html-->
 <html>
 	<head>
-		<title>Layout test</title>
+		<title>Delite Performance Debugger</title>
 	</head>
 	<body>
+		<link rel="stylesheet" type="text/css" href="lib/jquery-ui-1.11.0/jquery-ui.min.css">
 		<link rel="stylesheet" type="text/css" href="styles/grid.css" />
     	<link rel="stylesheet" type="text/css" href="styles/sidebar.css" />
 	  	<link rel="stylesheet" type="text/css" href="styles/editor.css">
 	  	<link rel="stylesheet" type="text/css" href="styles/dataflow.css">
 	  	<link rel="stylesheet" type="text/css" href="styles/timeline.css">
 	  	<link rel="stylesheet" type="text/css" href="styles/bar-chart.css">
+	  	<link rel="stylesheet" type="text/css" href="styles/stack-graph.css">
+	  	<link rel="stylesheet" type="text/css" href="styles/table.css">
+		<link rel="stylesheet" type="text/css" href="styles/tab-view.css">
+	  	<link rel="stylesheet" type="text/css" href="styles/compare-runs.css">
+	  	<link rel="stylesheet" type="text/css" href="styles/compare-run-summaries.css">
+	  	<link rel="stylesheet" type="text/css" href="styles/c3.css">
 
-	  	<div id="container">
-			<div id="accordian">
-				<ul>
-					<li class="active">
-						<h3>Inputs</h3>
+	  	<div id="tabs">
+			<ul>
+				<li><a href="#panel-1">Overview</a></li>
+				<li><a href="#panel-2">Compare run summaries</a></li>
+				<!--li><a href="#panel-3">Compare timelines</a></li-->
+			</ul>
+			<div id="panel-1" class="ui-tabs">
+			  	<div id="container" class="ui-tabs-panel">
+					<div id="accordian">
 						<ul>
-							<li>
-								<a href="#">
-									<input type="button" value="Choose DEG file      " onclick="document.getElementById('degFileInput').click();" />
-									<span id="degFileName">(DEG_file_name)</span>
-									<input type="file" id="degFileInput" name="files[]" style="display: none;" />
-								</a>
+							<li class="active">
+								<h3>Global Stats</h3>
+								<ul>
+									<li>
+										<a href="#">
+											<span>Metric</span>	
+											<select id="globalStatsMetric">
+												<option value="degView">DEG View</option>
+												<option value="l2CacheMissRatio">L2 Cache Miss Ratio</option>
+												<option value="l3CacheMissRatio">L3 Cache Miss Ratio</option>
+												<option value="memUsage">Mem Usage</option>
+												<option value="performance">Performance</option>
+												<option value="arrayL1CacheMissRatio">Arracy L1 Miss Ratio</option>
+												<option value="arrayL2CacheMissRatio">Arracy L2 Miss Ratio</option>
+												<option value="arrayL3CacheMissRatio">Arracy L3 Miss Ratio</option>
+												<option value="arrayLocRAMMissRatio">Arracy Local RAM Miss Ratio</option>
+												<option value="arrayRemRAMMissRatio">Arracy Remote RAM Miss Ratio</option>
+												<!--option value="threadLevelSyncStats">Thread Sync</option-->
+												<!--option value="ticTocRegionStats">Tic-Toc Regions</option-->
+											</select>
+										</a>
+									</li>
+								</ul>
 							</li>
-							<li>
-								<a href="#">
-									<input type="button" value="Choose profile data" onclick="document.getElementById('profDataInput').click();" />
-									<span id="profDataFileName">(Profile_data_file)</span>
-									<input type="file" id="profDataInput" name="files[]" style="display: none;" />
-								</a>
+							<li class="active">
+								<h3>Timeline</h3>
+								<ul>
+									<li>
+										<a href="#">
+											<span>Zoom </span>
+											<input type="text" id="timelineZoom" size="5" value="100" style="text-align: right; margin: 0 0 0 5"> %
+										</a>
+									</li>
+									<li>
+										<a href="#">
+											<span>Hidden Nodes</span>
+											<select id="timelineHiddenNodeList"></select>
+										</a>
+									</li>
+								</ul>
+
 							</li>
-							<li>
-								<a href="#">
-									<input type="button" value="Choose src dir        " onclick="document.getElementById('srcDirInput').click();" />
-									<span id="srcFileName">(Src_file_name)</span>
-									<input type="file" id="srcDirInput" name="files[]"  multiple webkitdirectory="" directory="" style="display: none;" />
-								</a>
+							<li class="active">
+								<h3>Kernel Info</h3>
+								<ul>
+									<li>
+										<a href="#">
+											<span>Search</span>
+											<input type="text" id="searchKernel" size="5" value="" style="text-align: left; margin: 0 0 0 5; width: 120">
+										</a>
+									</li>
+									<li>
+										<table id="kernelInfoTable" class="sidebarTable">
+											<th>Property</th>
+											<th>Value</th> 
+											<tr>
+												<td>Name</td>
+												<td></td> 
+											</tr>
+											<tr>
+												<td>Type</td>
+												<td></td> 
+											</tr>
+											<tr>
+												<td>Time (%)</td>
+												<td></td> 
+											</tr>
+											<tr>
+												<td>Exec/Sync Time (%)</td>
+												<td></td> 
+											</tr>
+											<tr>
+												<td>Mem Usage</td>
+												<td></td> 
+											</tr>
+										</table>
+									</li>
+								</ul>
 							</li>
-							<li>
-								<a href="#">
-									<button type="button" id="startButton"/>View</button>
-								</a>
+							<li class="active">
+								<h3>Timeline Node Info</h3>
+								<ul>
+									<li>
+										<table id="tNodeInfoTable" class="sidebarTable">
+											<th>Property</th>
+											<th>Value</th> 
+											<tr>
+												<td>Name</td>
+												<td></td> 
+											</tr>
+											<tr>
+												<td>Target</td>
+												<td></td> 
+											</tr>
+											<tr>
+												<td>Time (%)</td>
+												<td></td> 
+											</tr>
+											<tr>
+												<td>Exec/Sync Time (%)</td>
+												<td></td> 
+											</tr>
+										</table>
+									</li>
+								</ul>
+							</li>
+							<li class="active">
+								<h3>Sync Node Info</h3>
+								<ul>
+									<li>
+										<table id="syncNodeInfoTable" class="sidebarTable">
+											<th>Property</th>
+											<th>Value</th> 
+											<tr>
+												<td>Dep. Thread</td>
+												<td></td> 
+											</tr>
+											<tr>
+												<td>Dep. Kernel</td>
+												<td></td> 
+											</tr>
+											<tr>
+												<td>Time (%)</td>
+												<td></td> 
+											</tr>
+										</table>
+									</li>
+								</ul>
+							</li>
+							<!--li class="active" style="min-height: 150px"-->
+							<li class="active">
+								<h3>GC Event Info</h3>
+								<ul>
+									<li>
+										<table id="gcEventInfoTable" class="sidebarTable">
+											<th>Mem</th>
+											<th>Before</th> 
+											<th>After</th>
+											<th>Comm</th>
+											<tr>
+												<td>Young Gen.</td>
+												<td></td>
+												<td></td>
+												<td></td>
+											</tr>
+											<tr>
+												<td>Old Gen.</td>
+												<td></td>
+												<td></td>
+												<td></td>
+											</tr>
+											<tr>
+												<td>Heap</td>
+												<td></td>
+												<td></td>
+												<td></td>
+											</tr>
+										</table>
+									</li>
+								</ul>
+							</li>
+							<li class="active" style="min-height: 200px">
+								<h3>Memory Usage Info</h3>
+								<ul>
+									<li>
+										<table id="memUsageInfoTable" class="sidebarTable">
+											<th>Memory</th>
+											<th>Size</th> 
+											<tr>
+												<td>Max Memory</td>
+												<td></td>
+											</tr>
+											<tr>
+												<td>Total Memory</td>
+												<td></td>
+											</tr>
+											<tr>
+												<td>Used Memory</td>
+												<td></td>
+											</tr>
+										</table>
+									</li>
+								</ul>
 							</li>
 						</ul>
-					</li>
-					<li class="active">
-						<h3>Global Stats</h3>
-						<ul>
-							<li>
-								<a href="#">
-									<span>Metric</span>	
-									<select id="globalStatsMetric">
-										<option value="degView">DEG View</option>
-										<option value="performance">Performance</option>
-										<option value="memUsage">Mem Usage</option>
-										<option value="threadLevelSyncStats">Thread Sync</option>
-										<option value="ticTocRegionStats">Tic-Toc Regions</option>
-									</select>
-								</a>
-							</li>
-						</ul>
-					</li>
-					<li class="active">
-						<h3>Timeline</h3>
-						<ul>
-							<li>
-								<a href="#">
-									<span>Level Filter</span>	
-									<select id="timelineLevelFilter">
-										<option value="0">Level 0</option>
-										<option value="1">Level 1</option>
-										<option value="2">Level 2</option>
-									</select>
-								</a>
-							</li>
-							<li>
-								<a href="#">
-									<span>Zoom </span>
-									<input type="text" id="timelineZoom" size="5" value="100" style="text-align: right; margin: 0 0 0 5"> %
-								</a>
-							</li>
-						</ul>
-					</li>
-					<li class="active">
-						<h3>Kernel Info</h3>
-						<ul>
-							<li>
-								<a href="#">
-									<span>Search</span>
-									<input type="text" id="searchKernel" size="5" value="" style="text-align: right; margin: 0 0 0 5; width: 120">
-								</a>
-							</li>
-							<li>
-								<table id="kernelInfoTable" class="sidebarTable">
-									<th>Property</th>
-									<th>Value</th> 
-									<tr>
-										<td>Name</td>
-										<td></td> 
-									</tr>
-									<tr>
-										<td>Type</td>
-										<td></td> 
-									</tr>
-									<tr>
-										<td>Target</td>
-										<td></td> 
-									</tr>
-									<tr>
-										<td>Time (%)</td>
-										<td></td> 
-									</tr>
-									<tr>
-										<td>Exec/Sync Time (%)</td>
-										<td></td> 
-									</tr>
-									<tr>
-										<td>Mem Usage (B)</td>
-										<td></td> 
-									</tr>
-								</table>
-							</li>
-						</ul>	
-					<li class="active">
-						<h3>Sync Node Info</h3>
-						<ul>
-							<li>
-								<table id="syncNodeInfoTable" class="sidebarTable">
-									<th>Property</th>
-									<th>Value</th> 
-									<tr>
-										<td>Dep. Thread</td>
-										<td></td> 
-									</tr>
-									<tr>
-										<td>Dep. Kernel</td>
-										<td></td> 
-									</tr>
-									<tr>
-										<td>Time (%)</td>
-										<td></td> 
-									</tr>
-								</table>
-							</li>
-						</ul>
-					</li>
-				</ul>
-			</div>
-			<div id="right">
-				<div id="code"></div>
-				<div id="dfgHeader">
-					<label for="globalViewOptions" id="globalViewOptionsLabel">Global View</label>
-					<select id="globalViewOptions">
-					</select>
+					</div>
+					<div id="right">
+						<div id="code"></div>
+						<div id="dfgHeader">
+							<label for="globalViewOptions" id="globalViewOptionsLabel">Global View</label>
+							<select id="globalViewOptions"></select>
+						</div>
+						<div id="dfg"></div>
+						<div id="generalInfo"></div>
+						<div id="gcStats"></div>
+						<div id="memory"></div>
+						<div id="timeline"></div>
+						<!--div id="statusBar"></div-->
+					</div>
 				</div>
-				<div id="dfg"></div>
-				<div id="timeline"></div>
+			</div>
+			<!--div id="panel-3" class="ui-tabs">
+				<div id="containerCompareRuns" class="ui-tabs-panel">
+					<div id="compareRunsHeader">
+						<input type="button" id="addProfileDataBtn" value="Upload profile data" onclick="document.getElementById('_addProfileDataBtn').click();" style="display: none;" />
+						<input type="file" id="_addProfileDataBtn" name="files[]" style="display: none;" multiple/>
+						<select id="compareRunsMetricOptions">
+							<option>Timeline</option>
+						</select>
+						<label for="compareRunsMetricOptions" id="compareRunsMetricOptionsLabel">Metric</label>
+					</div>
+					<div id="viewRunsDiv"></div>
+				</div>
+			</div-->
+			<div id="panel-2" class="ui-tabs">
+				<div id="containerRunSummaries" class="ui-tabs-panel">
+					<div id="compareRunSummariesHeader">
+						<input type="button" id="uploadRunSummariesBtn" value="Upload run summaries" onclick="document.getElementById('_uploadRunSummariesBtn').click();" />
+						<input type="file" id="_uploadRunSummariesBtn" name="files[]" style="display: none;" multiple/>
+						<button id="initializeViewsBtn" disabled>View data</button>
+						<select id="compareRunSummariesMetricOptions">
+							<option value="totalTime">Total time</option>
+							<option value="execTime">Exec time</option>
+							<option value="syncTime">Sync time</option>
+						</select>
+						<label for="compareRunSummariesMetricOptions" id="compareRunSummariesMetricOptionsLabel">Metric</label>
+					</div>
+					<div id="compareRunSummariesDiv">
+					</div>
+					<div id="compareKernelSummariesHeader">
+						<input type="text" id="compareSummariesOfKernelTxtBx" size="5" value="">
+						<label for="compareSummariesOfKernelTxtBx" id="compareSummariesOfKernelLabel">Search Kernel</label>
+						<select id="compareKernelSummariesMetricOptions">
+							<option value="TOTAL_TIME">Total Time</option>
+							<option value="MEM_USAGE">Memory Allocated</option>
+							<!--option value="syncTime">Sync time</option-->
+						</select>
+						<label for="compareKernelSummariesMetricOptions" id="compareKernelSummariesMetricOptionsLabel">Metric</label>
+					</div>
+					<div id="compareKernelSummariesDiv">
+					</div>
+				</div>
 			</div>
 		</div>
 
 		<!-- external libraries -->
-        <script type="text/javascript" src="lib/jquery.min.js"></script>
+		<script type="text/javascript" src="lib/jquery.min.js"></script>
+		<script type="text/javascript" src="lib/jquery-ui-1.11.0/jquery-ui.min.js"></script>
 	    <script type="text/javascript" src="lib/ace.js" charset="utf-8"></script>
 	    <script type="text/javascript" src="lib/d3.min.js"></script>
+	    <script type="text/javascript" src="lib/c3.min.js"></script>
 	    <script type="text/javascript" src="lib/highlight.pack.js"></script>
         <script type="text/javascript" src="lib/cola.v1.min.js"></script>
         <script type="text/javascript" src="lib/graphlib-dot.min.js"></script>
+        <script type="text/javascript" src="lib/sql.js"></script>
 
         <!-- internal libraries -->
+        <script type="text/javascript" src="common.js"></script>
+        <script type="text/javascript" src="datastructures.js"></script>
         <script type="text/javascript" src="dataflow.js"></script>
+        <script type="text/javascript" src="dataflow-deprecated.js"></script>
         <script type="text/javascript" src="datamodel.js"></script>
+        <script type="text/javascript" src="execution-profile.js"></script>
         <script type="text/javascript" src="editor.js" charset="utf-8"></script>
-        <script type="text/javascript" src="read-input-files.js"></script>
         <script type="text/javascript" src="timeline.js"></script>
         <script type="text/javascript" src="bar-chart.js"></script>
+        <script type="text/javascript" src="bar-chart-controller.js"></script>
+        <script type="text/javascript" src="stack-graph.js"></script>
+        <script type="text/javascript" src="gcStats.js"></script>
+        <script type="text/javascript" src="gcStats-graph.js"></script>
+        <script type="text/javascript" src="table.js"></script>
+        <script type="text/javascript" src="compare-runs.js"></script>
+        <script type="text/javascript" src="compare-run-summaries.js"></script>
+        <script type="text/javascript" src="main.js"></script>
 
-	    <script type="text/javascript">
-	    	var viewState = {}
-	    	viewState.highlightedGraphNode = -1
-	    	viewState.appSourceFileName = ""
-	    	viewState.degFile = ""
-	    	viewState.profileDataFile = ""
-	    	viewState.highlightedLine = new aceRange(0,0,0,0)
-	    	viewState.globalStatsMetric = ""
-	    	viewState.selectedLevel = -1
-
-	    	var config = {}
-	    	config.markGraphNode = markGraphNode
-	    	config.markNeighborsOnGraph = markNeighborsOnGraph
-	    	config.highlightLineInEditor = highlightLineInEditor
-	    	config.highlightLineInEditorByKernelId = highlightLineInEditorByKernelId
-	    	config.populateKernelInfoTable = populateKernelInfoTable
-	    	config.populateKernelInfoTableById = populateKernelInfoTableById
-	    	config.populateSyncNodeInfoTable = populateSyncNodeInfoTable
-	    	config.enableNodeClickHandler = true // for bar-charts.
-	    	config.syncNodeRegex = /__sync-ExecutionThread-(\d+)-(.*)-(.*)-(\d+)$/
-	    	config.re_partition = /^(.*)_(\d+)$/
-			config.re_header = /^(.*)_h$/
-
-	      	addAppSourceFileHandler("srcDirInput", editor)
-	      	addDegFileHandler("degFileInput")
-	      	addProfileDataFileHandler("profDataInput")
-
-	      	var editor = {}
-	      	var profData = {}
-	      	var graphController = {}
-	      	var timelineController = {}
-	      	var topNodesBasedOnTime = []
-	      	var topNodesBasedOnMemUsage = []
-	      	var threadLevelSyncStats = []
-
-	      	var getDisplayTextForTime = function(d) {
-	      		var timeInMs = (d.time/1000).toFixed(0)
-	    		var timeStr = " (" + timeInMs + "ms:" + d.percentage_time.toFixed(0) + "%)"
-	      		return d.name + timeStr
-	      	}
-
-	      	var getDisplayTextForMemUsage = function(d) {
-	      		return d.name + " (" + d.memUsage + "B)"
-	      	}
-
-	      	var getDisplayTextForThreadLevelSync = function(d) {
-	      		return d.name + " (" + d.syncTimePct + "%)"
-	      	}
-
-	      	var getDisplayTextForRegionsData = function(d) {
-	      		return d.name + " (" + d.percentage_time + "%)"
-	      	}
-
-	      	function onChangeRegionOption() {
-	      		if (viewState.globalStatsMetric == "ticTocRegionStats") {
-	      			var selectedRegionName = $(this).val()
-	      			if (selectedRegionName == "__global") {
-	      				displayOverallRegionsData()	
-	      			} else { // display overall percentage data for regions
-	      				var regions = profData.timelineData.ticTocRegions
-	      				var selectedRegion = regions.filter(function(r) {return r.name == selectedRegionName})[0]
-	      				displayKernelInfoForRegion(selectedRegion)
-	      			}
-	      		}
-	      	}
-
-	      	function onChangeDEGViewOption() {
-	      		var view = $(this).val()
-	      		graphController.changeColoringScheme(view)
-	      	}
-
-	      	$("#globalStatsMetric").change(function() {
-	      		var metric = $(this).val()
-	      		if (metric == "performance") {
-	      			clearDivForBarChartDisplay()
-	      			createBarChart("#dfg", topNodesBasedOnTime, "percentage_time", getDisplayTextForTime, config)
-	      		} else if (metric == "memUsage") {
-	      			clearDivForBarChartDisplay()
-	      			createBarChart("#dfg", topNodesBasedOnMemUsage, "memUsage", getDisplayTextForMemUsage, config)
-	      		} else if (metric == "threadLevelSyncStats") {
-	      			clearDivForBarChartDisplay()
-	      			createBarChart("#dfg", threadLevelSyncStats, "syncTimePct", getDisplayTextForThreadLevelSync, config)
-	      		} else if (metric == "ticTocRegionStats") {
-	      			displayOverallRegionsData()
-	      		} else if (metric == "degView") {
-	      			$(".barChart").hide()
-	      			$("#dfg").css("overflow-y", "hidden")
-	      			$('.dataflowSvg').show()
-		      		setUpSelectTagForDEGView()
-		      		graphController.changeColoringScheme("dataDeps")
-		      	}
-
-		      	setGlobalStatsMetric(metric)
-	      	})
-
-	      	$('#timelineZoom').keyup(function(event){
-			    if(event.keyCode == 13){
-			        timelineController.zoom($(this).val() / 100)
-			    }
-			})
-
-			$('#searchKernel').keyup(function(event){
-			    if(event.keyCode == 13){
-			        searchNode($(this).val())
-			    }
-			})
-
-	      	$("#timelineLevelFilter").change(filterNodesOnTimeline)
-	      	$('#startButton').click(startDebugSession)
-
-	      	function setUpSelectTagForDEGView() {
-	      		var sel = $("#globalViewOptions").empty()
-	      		var views = ["dataDeps", "memUsage", "performance"]
-	      		var viewLabels = ["Data Dependencies", "Memory Allocation", "Performance"]
-	      		$.each(views, function(i, v) {
-	      			sel.append($("<option/>", {
-	      				value: v,
-	      				text: viewLabels[i]
-	      			}))
-	      		})
-
-	      		$("#globalViewOptions").change(onChangeDEGViewOption)
-	      	}
-
-	      	function setUpSelectTagForRegions(regions) {
-	      		var sel = $("#globalViewOptions").empty()
-	      		sel.append('<option value="__global">All</option>')
-	      		$.each(regions, function(i, r) {
-	      			sel.append($("<option/>", {
-				        value: r.name,
-				        text: r.name
-				    }))
-	      		})
-
-      			$("#globalViewOptions").change(onChangeRegionOption)
-	      	}
-
-	      	function displayOverallRegionsData() {
-	      		clearDivForBarChartDisplay()
-      			var regions = profData.timelineData.ticTocRegions
-      			createBarChart("#dfg", regions, "percentage_time", getDisplayTextForRegionsData, config)
-      			setUpSelectTagForRegions(regions)
-	      	}
-
-	      	function displayKernelInfoForRegion(region) {
-	      		function getDisplayText(d) {
-	      			var timeInMs = (d.abs / 1000).toFixed(0)
-		      		return d.name + " (" + d.abs + "ms : " + d.pct + "%)"
-		      	}
-
-	      		var childNodes = []
-  				var childToPerf = region.childToPerf
-  				for (k in region.childToPerf) {
-  					var o = {}
-  					o.name = k
-  					o.id = childToPerf[k].id
-  					o.abs = childToPerf[k].abs
-  					o.pct = childToPerf[k].pct
-  					childNodes.push(o)
-  				}
-
-  				childNodes.sort(function(a,b) {return b.pct - a.pct})
-  				clearDivForBarChartDisplay()
-  				createBarChart("#dfg", childNodes, "pct", getDisplayText, config)
-	      	}
-
-	      	function clearDivForBarChartDisplay() {
-				$('.dataflowSvg').hide()
-      			$("#dfg").css("overflow-y", "auto")
-      			$(".barChart").remove()
-	      	}
-
-	      	function setGlobalStatsMetric(metric) {
-	      		viewState.globalStatsMetric = metric
-	      		$("#globalViewOptionsLabel").text($("#globalStatsMetric option:selected").text())
-
-	      		if ((metric == "ticTocRegionStats") || (metric == "degView")) {
-	      			$("#globalViewOptions").css("opacity", 1)
-	      		} else {
-	      			$("#globalViewOptions").css("opacity", 0)
-	      		}
-	      	}
-
-			function filterNodesOnTimeline() {
-				var selectedLevel = parseInt($("#timelineLevelFilter").val())
-	      		for (var i = 0; i < 4; i++) {
-	      			var filter = "level=level-" + i
-	      			if (i != selectedLevel) {
-			      		timelineController.hideNodes("text[" + filter + "]")
-			      		timelineController.hideNodes("rect[" + filter + "]")
-	      			} else {
-	      				timelineController.showNodes("text[" + filter + "]")
-			      		timelineController.showNodes("rect[" + filter + "]")
-	      			}
-	      		}
-
-	      		viewState.selectedLevel = selectedLevel
-			}
-
-	    	function markGraphNode(kernelId) {
-	    		var n = viewState.highlightedGraphNode
-	    		if (n != -1) {
-	    			graphController.unhighlightNode(n)
-	    		}
-
-	    		graphController.highlightNode(kernelId)
-	    		viewState.highlightedGraphNode = kernelId
-	    	}
-
-	    	function markNeighborsOnGraph(nodeId) {
-	    		graphController.markNeighbors(nodeId)
-	    	}
-
-	    	function highlightLineInEditor(file, line) {
-	    		unhighlightLine(viewState.highlightedLine)
-	    		if (file in fileNameToFile) {
-	    			if (file != viewState.appSourceFileName) readFile(file)
-					viewState.highlightedLine = highlightLine(line)
-					viewState.appSourceFileName = file
-					$("#srcFileName").text(file)
-	    		} else {
-	    			console.log("WARNING: Selected kernel's sourceContext does not match the source file being viewed")
-	    		}
-	    	}
-
-	    	function highlightLineInEditorByKernelId(nodeId) {
-	    		var node = profData.dependencyData.nodes[nodeId]
-	    		var sc = node.sourceContext
-	    		highlightLineInEditor(sc.file, sc.line)
-	    	}
-
-	    	function populateKernelInfoTable(node) {
-	    		var timeInMs = (node.time/1000).toFixed(0)
-	    		var timeStr = timeInMs + "ms (" + node.percentage_time.toFixed(0) + "%)"
-	    		var values = [node.name, node.type, node.target, timeStr , node.execTime.pct.toFixed(0) + "/" + node.syncTime.pct.toFixed(0) + " %", node.memUsage + " B"]
-	    		var table = $("#kernelInfoTable")[0]
-	    		values.forEach(function(v, i) {
-	    			var row = table.rows[i + 1]
-	    			row.cells[1].innerHTML = values[i]
-	    		})
-	    	}
-
-	    	function populateSyncNodeInfoTable(node) {
-	    		var properties = ["Dep. Thread", "Dep. Kernel", "Time (%)"]
-	    		var values = [node.dep_thread, node.dep_kernel, "NA"]
-	    		var table = $("#syncNodeInfoTable")[0]
-	    		properties.forEach(function(p, i) {
-	    			var row = table.rows[i + 1]
-	    			row.cells[1].innerHTML = values[i]
-	    		})
-	    	}
-
-	    	function populateKernelInfoTableById(nodeId) {
-	    		var node = profData.dependencyData.nodes[nodeId]
-	    		populateKernelInfoTable(node)
-	    	}
-
-	    	function cloneNode(node, attrs) {
-	    		var o = {}
-	    		attrs.forEach(function(a) {o[a] = node[a]})
-
-	    		return o
-	    	}
-
-			function getTopNodes(nodes, comparisonField, count) {
-			    var topNodes = []
-			    var relevantAttrs = ["id", "name", "time", comparisonField] // HACK: 'time' field need not be included when computing top nodes based on mem usage
-			    var clonedNodes = nodes.filter(function(n) {return n.type != "InternalNode"})
-			    			   		   .map(function(n) {return cloneNode(n, relevantAttrs)})
-			    clonedNodes.sort(function(n1,n2) {return n2[comparisonField] - n1[comparisonField]})
-
-			    if (count > clonedNodes.length) count = clonedNodes.length
-			    for (var i = 0; i < count; i++) {
-			        topNodes.push(clonedNodes[i])
-			    }
-
-			    return topNodes
-			}
-
-			function startDebugSession() {
-				if ((viewState.degFile != "") && (viewState.profileDataFile != "")) {
-					setGlobalStatsMetric($("#globalStatsMetric").val())
-					setUpSelectTagForDEGView()
-
-					editor = createEditor("code")
-		      		profData = getProfileData(degOps, profileData.Profile, config)
-		      		graphController = createDataFlowGraph(cola, "#dfg", profData.dependencyData, viewState, config)
-
-		      		topNodesBasedOnTime = getTopNodes(profData.dependencyData.nodes, "percentage_time", 20)
-		      		topNodesBasedOnMemUsage = getTopNodes(profData.dependencyData.nodes, "memUsage", 20)
-		      		threadLevelSyncStats = profData.threadLevelPerfStats.map(function(o, i) {return {
-		      			name: "T" + i,
-		      			syncTimePct: o.syncTime.pct
-		      		}})
-
-			      	timelineController = createTimeline("#timeline", profData, config)
-			      	filterNodesOnTimeline()
-			    } else {
-			    	alert("Please upload the DEG file and the profile data (profData.js) and retry")
-			    }
-			}
-
-			function searchNode(nodeName) {
-				var nodeId = profData.dependencyData.nodeNameToId[nodeName]
-				var node = profData.dependencyData.nodes[nodeId]
-				config.populateKernelInfoTable(node)
-
-				var sc = node.sourceContext
-				config.highlightLineInEditor(sc.file, sc.line)
-
-				graphController.markNeighbors(nodeId)
-			}
-
-			$(document).ready(function () {
-				$("#right").css("width", $("#container").width() - $("#accordian").width())
-				$("#dfg").css("height", $("#dfg").height() - $("#dfgHeader").height())
-				/*
-				$('#accordian > ul > li').click(function() {
-					$("#accordian ul li").removeClass("active")
-				    $(this).addClass("active")
-
-				    var checkElement = $(this).next()
-				    if ((checkElement.is("ul")) && (checkElement.is(":visible"))) {
-				        return false
-				    }
-				    if ((checkElement.is('ul')) && (!checkElement.is(':visible'))) {
-				        $("#accordian ul:visible").slideUp("normal")
-				        checkElement.slideDown("normal")
-				        return false
-				    }
-			  	})
-				*/
-			})
+		<script type="text/javascript">
+			$("#tabs").tabs({
+				active: 0,
+				heightStyle: "fill",
+			});
 		</script>
 	</body>	
 </html>

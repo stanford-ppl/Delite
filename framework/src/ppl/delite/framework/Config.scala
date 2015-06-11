@@ -38,6 +38,7 @@ object Config {
   //Print generationFailedException info
   val dumpException: Boolean = getProperty("delite.dump.exception", "false") != "false"
   var enableProfiler = System.getProperty("delite.enable.profiler", "false") != "false"
+  val enablePCM = (enableProfiler) && (getProperty("delite.enable.pcm", "false") != "false")
 
   //enforce generationFailed restrictions
   var generationFailedWhitelist: Map[String, Seq[String]] = Map()

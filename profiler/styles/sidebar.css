@@ -31,7 +31,7 @@ body {
 	padding: 0 10px;
 	cursor: pointer;
 	/*fallback for browsers not supporting gradients*/
-background: #003040; 
+	background: #003040; 
 	background: linear-gradient(#003040, #002535);
 }
 /*heading hover effect*/
@@ -112,3 +112,14 @@ background: #003040;
 	background: white
 }
 
+#showParentOfTNode {
+	width: 120;
+	height: 18;
+	margin: 0 0 0 22;
+}
+
+#showChildrenOfTNode {
+	width: 120;
+	height: 18;
+	margin: 5 0 0 22;
+}

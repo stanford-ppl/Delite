@@ -7,7 +7,6 @@ import _root_.scala.util.parsing.json.JSON
 
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.DeliteMesosScheduler
-import ppl.delite.runtime.profiler.Profiler
 import ppl.delite.runtime.scheduler.PartialSchedule
 import ops._
 import targets._
@@ -184,9 +183,6 @@ object DeliteTaskGraph {
       case Some(sourceContext) =>
         (getFieldString(sourceContext, "fileName"), getFieldString(sourceContext, "line").toInt, getFieldString(sourceContext, "opName"))
     }
-
-    // TODO: maybe it would be better to add source info to DeliteOP?
-    Profiler.sourceInfo += (id -> (fileName, line, opName))
 
     val newop = opType match {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)

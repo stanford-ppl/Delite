@@ -84,7 +84,8 @@ trait CppExecutableGenerator extends ExecutableGenerator {
       out.append("env" + location + " = jnienv;\n")
       out.append("JNIEnv *env = jnienv;\n")
     }
-    out.append("initializeAll(" + Targets.getRelativeLocation(location) + ", numThreads, " + activeCppLocations + "," + Config.cppHeapSize + "ULL);\n")
+
+    out.append("initializeAll(" + Targets.getRelativeLocation(location) + "," + Config.numThreads + ", numThreads, " + activeCppLocations + "," + Config.cppHeapSize + "ULL);\n")
     out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
     out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
   }
@@ -165,9 +166,7 @@ int main(int argc, char *argv[]) {
     if (op.task == null) return //dummy op
 
     if (Config.profile) {
-      if (!op.isInstanceOf[OP_MultiLoop]) {
-        out.append("DeliteCppTimerStart(" + Targets.getRelativeLocation(location) + ",\""+op.id+"\");\n")
-      }
+      out.append("DeliteCppTimerStart(resourceInfo->threadId, \""+op.id+"\");\n")
     }
 
     if (op.outputType(Targets.Cpp) != "void") {
@@ -185,8 +184,10 @@ int main(int argc, char *argv[]) {
     }
 
     if (Config.profile) {
-      if (!op.isInstanceOf[OP_MultiLoop]) {
-        out.append("DeliteCppTimerStop(" + Targets.getRelativeLocation(location) + ",\""+op.id+"\");\n")
+      if (op.isInstanceOf[OP_MultiLoop]) {
+        out.append("DeliteCppTimerStopMultiLoop(resourceInfo->threadId, \""+op.id+"\");\n")
+      } else {
+        out.append("DeliteCppTimerStop(resourceInfo->threadId, \""+op.id+"\");\n")
       }
     }
 

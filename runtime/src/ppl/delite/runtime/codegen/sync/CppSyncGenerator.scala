@@ -9,14 +9,21 @@ import ppl.delite.runtime.graph.targets.Targets._
 import ppl.delite.runtime.Config
 
 trait CppSyncProfiler extends CppExecutableGenerator {
-  protected def withProfile(s: Receive)(emitSync: => Unit) {
-    if (Config.profile) {
-      out.append("DeliteCppTimerStart(" + Targets.getRelativeLocation(location) + ",\""+s.sender.from.id + "-" + s.to.id +"\");\n")
+  protected def withProfile(r: Receive)(emitSync: => Unit) {
+    def getKernelName: String = this match {
+      case n:NestedGenerator => n.nested.id
+      case _ => "null"
+    }   
+
+ 	var syncOpName = ""
+	if (Config.profile) {
+	  syncOpName = "__sync-ExecutionThread" + r.to.scheduledResource + "-" + getKernelName + "-" + r.sender.from.id + "-" + r.sender.from.scheduledResource
+	  out.append("DeliteCppTimerStart(resourceInfo->threadId, \"" + syncOpName + "\");\n")
     }
     emitSync
     if (Config.profile) {
-      out.append("DeliteCppTimerStop(" + Targets.getRelativeLocation(location) + ",\""+s.sender.from.id + "-" + s.to.id +"\");\n")
-    }
+	  out.append("DeliteCppTimerStop(resourceInfo->threadId, \"" + syncOpName + "\");\n")
+	}
   }
 }
 

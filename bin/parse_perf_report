@@ -1,0 +1,160 @@
+#!/usr/bin/python
+
+import os
+import sqlite3
+import subprocess
+import sys
+
+IDX_SAMPLES = 1
+IDX_MEM_ACCESS = 2
+IDX_DATA_TARGET_ADDR = 3
+
+class DataStructure:
+	def __init__( self, startAddr, size, scId ):
+		self.startAddr = int(startAddr, 16)
+		self.endAddr = self.startAddr + size
+		#self.sourceContext = sourceContext
+		self.scId = scId 
+
+class MemAccessStats:
+	def __init__( self ):
+		self.l1Hits = 0
+		self.l2Hits = 0
+		self.l3Hits = 0
+		self.localRAMHits = 0
+		self.remoteRAMHits = 0
+
+def which(name):
+    path=os.getenv('PATH')
+    for p in path.split(os.path.pathsep):
+        p = os.path.join(p, name)
+        if os.path.exists(p) and os.access(p,os.X_OK):
+            return p
+
+def hexToInt( hexStr ):
+	try:
+		return int( hexStr, 16 )
+	except ValueError:
+		return None
+
+def findDataStructureAccessed( dataStructures, targetDataAddr ):
+	if targetDataAddr != None:
+		for ds in dataStructures:
+			if ( ds.startAddr <= targetDataAddr ) and ( targetDataAddr <= ds.endAddr ):
+				return ds
+
+	return None
+
+def updateMemAccessStats( scIdToStats, dataStructureAccessed, memAccessStr, samplesCount ):
+	scId = dataStructureAccessed.scId
+	if not scId in scIdToStats:
+		scIdToStats[scId] = MemAccessStats()
+
+	stats = scIdToStats[scId]
+	
+	if memAccessStr == "L1 hit":
+		stats.l1Hits = stats.l1Hits + samplesCount
+	elif memAccessStr == "L2 hit":
+		stats.l2Hits = stats.l2Hits + samplesCount
+	elif memAccessStr == "L3 hit":
+		stats.l3Hits = stats.l3Hits + samplesCount
+	elif memAccessStr == "Local RAM hit":
+		stats.localRAMHits = stats.localRAMHits + samplesCount
+	elif memAccessStr.startswith("Remote RAM"):
+		stats.remoteRAMHits = stats.remoteRAMHits + samplesCount
+
+def dumpStats( dbFile, scIdToStats, idToSourceContext ):
+	conn = sqlite3.connect( dbFile )
+	c = conn.cursor()
+
+	i = 0
+	for scId in scIdToStats:
+		stats = scIdToStats[scId]
+		tot = stats.l1Hits + stats.l2Hits + stats.l3Hits + stats.localRAMHits + stats.remoteRAMHits
+		l1Misses = tot - stats.l1Hits
+		l2Misses = l1Misses - stats.l2Hits
+		l3Misses = l2Misses - stats.l3Hits
+		localRAMMisses = l3Misses - stats.localRAMHits
+		tmp = tot > 0
+		l1MissPct = 100 - int( (stats.l1Hits * 100) / tot ) if tmp  else 0
+		l2MissPct = 100 - int( (stats.l2Hits * 100) / tot ) if (tmp and (l1Misses > 0)) else 0
+		l3MissPct = 100 - int( (stats.l3Hits * 100) / tot ) if (tmp and (l2Misses > 0)) else 0
+		localRAMMissPct = 100 - int( (stats.localRAMHits * 100) / tot ) if (tmp and (l3Misses > 0)) else 0
+		remoteRAMMissPct = 100 - int( (stats.remoteRAMHits * 100) / tot ) if (tmp and (localRAMMisses > 0)) else 0
+	
+		sql = "INSERT INTO ArrayCacheAccessStats VALUES ({0},'{1}',{2},{3},{4},{5},{6});\n".format(i, idToSourceContext[scId], l1MissPct, l2MissPct, l3MissPct, localRAMMissPct, remoteRAMMissPct)
+		print sql
+		c.execute(sql)
+		conn.commit()
+		i = i + 1
+
+	conn.close()
+
+def parseIdToSourceContextFile( fn ):
+	idToSourceContext = {}
+	f = open(fn, 'r')
+	for line in f:
+		arr = line.strip("\n").split(",")
+		idToSourceContext[int(arr[0])] = arr[1]
+
+	f.close()
+	return idToSourceContext
+
+def parsePerfReport( report, dataStructures, idToSourceContext, dbFile ):
+	scIdToStats = {}
+	isCommentsSection = True
+
+	perfReportCmd = 'perf report --mem-mode -n --sort=mem,symbol_daddr -t , -i ' + report
+	proc = subprocess.Popen( perfReportCmd.split(' '), stdout = subprocess.PIPE )
+
+	while True:
+		line = proc.stdout.readline()
+		if not line: break
+
+		line = line.rstrip().strip('\n')
+
+		if line == "": continue
+
+		if line[0] != "#":
+			isCommentsSection = False
+
+		if not isCommentsSection:
+			arr = line.split(",")
+			samplesCount = int( arr[IDX_SAMPLES].strip() )
+			memAccessStr = arr[IDX_MEM_ACCESS].strip()
+			targetDataAddr = hexToInt( arr[IDX_DATA_TARGET_ADDR].strip().split()[1] )
+			
+			dataStructureAccessed = findDataStructureAccessed( dataStructures, targetDataAddr )	
+			if dataStructureAccessed != None:
+				updateMemAccessStats( scIdToStats, dataStructureAccessed, memAccessStr, samplesCount )
+	dumpStats( dbFile, scIdToStats, idToSourceContext )
+
+def parseDataStructureInfo( dsFile ):
+	dataStructures = []
+	f = open( dsFile, 'r' )
+	for line in f:
+		arr = line.strip('\n').split(",")
+		startAddr = arr[0]
+		size = int(arr[1])
+		sourceContext = int(arr[2])
+		dataStructures.append( DataStructure(startAddr, size, sourceContext) )
+	
+	f.close()
+	return dataStructures
+ 
+def main():
+    is_perf_available = ( which( 'perf' ) != None )
+    if is_perf_available:
+        print("[INFO]: Parsing perf data")
+        dslRootDir = os.path.abspath( os.path.dirname( sys.argv[1][:-1] ) ) # The '-1' is there because the input has a / at the end
+        perfDataFile = dslRootDir + '/perf.data' 
+        dataStructureMemRangesFile = dslRootDir + '/dataStructures.csv'
+        dataStructures = parseDataStructureInfo( dataStructureMemRangesFile )
+        idToSourceContext = parseIdToSourceContextFile( dslRootDir + '/scToId.csv' )
+        dbFile = dslRootDir + '/profile/profile.db'
+        parsePerfReport( perfDataFile, dataStructures, idToSourceContext, dbFile )
+    else:
+        print("Skipping running 'perf report' since perf is unavailable on the machine")
+
+if __name__ == "__main__":
+    main()
