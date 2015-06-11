@@ -86,6 +86,8 @@ object PerformanceTimer {
     ticTocRegionToTiming -= component
     
     if (component == Config.dumpStatsComponent) statsForTrackedComponent.append(t.elapsedMillis)
+
+    Predef.println("[METRICS]: Time for component " + t.component + ": " + (t.elapsedMillis.toFloat / 1000).formatted("%.3f") + "s")
   }
 
   def stop() {

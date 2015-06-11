@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <sstream>
 #include <cstdlib>
+#include <iomanip>
 #include "DeliteNamespaces.h"
 
 #include "pcmHelper.h"

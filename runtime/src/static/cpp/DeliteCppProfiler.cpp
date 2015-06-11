@@ -83,6 +83,8 @@ void DeliteCppTimerToc(string name) {
   double elapsedMillis = end - timer.start;
   profileWriters->at(numCpp)->writeTimer(timer.name, long(timer.start - appStartTime), elapsedMillis, 0, numCpp, false);
   ticTocRegionToTimers->erase(it);
+
+  std::cout << "[METRICS]: Time for component " << timer.name << ": " << std::fixed << std::setprecision(3) << (elapsedMillis/1000.0) << "s" << std::endl;
 }
 
 void deliteCppTimerStopHelper(int32_t tid, string _name, bool isMultiLoop = false) {

@@ -34,7 +34,6 @@ object Profiling {
   def endRun() {
     if (Config.dumpProfile) SamplerThread.stop()
 	PerformanceTimer.stop()
-    //PerformanceTimer.printStatsForNonKernelComps()
     if (Config.dumpStats) PerformanceTimer.dumpStats()   
 
 	if (Config.dumpProfile) {
