@@ -139,7 +139,7 @@ class ScalaMainExecutableGenerator(val location: Int, val graph: DeliteTaskGraph
   }
 
   override protected def writeMethodFooter() {
-    out.append("ppl.delite.runtime.graph.ops.EOP_Global.awaitBarrier();\n")
+    out.append("ppl.delite.runtime.graph.ops.EOP_Global.awaitBarrier()\n")
     out.append("}\n")
   }
 }

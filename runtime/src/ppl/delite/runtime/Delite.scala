@@ -35,15 +35,16 @@ object Delite {
 
   private def printArgs(args: Array[String]) {
     if(args.length == 0) {
-      println("Not enough arguments.\nUsage: [Launch Runtime Command] filename.deg arguments*")
+      println("Usage: delite degfile [args...]")
       sys.exit(-1)
     }
-    println("Delite Runtime executing with the following arguments:")
-    println(args.mkString(","))
+    if (Config.verbose) {
+      println("Delite Runtime executing with the following arguments: " + args.mkString(","))
+      println("Delite Runtime executing with " + Config.numThreads + " Scala thread(s), " + Config.numCpp + " C++ thread(s), " + Config.numCuda + " Cuda GPU(s), " + Config.numOpenCL + " OpenCL GPU(s)")
+    }
   }
 
   private def printConfig() {
-    println("Delite Runtime executing with: " + Config.numThreads + " Scala thread(s), " + Config.numCpp + " Cpp thread(s), " + Config.numCuda + " Cuda(s), " + Config.numOpenCL + " OpenCL(s)")
   }
 
   def main(args: Array[String]) {
@@ -58,7 +59,6 @@ object Delite {
   def embeddedMain(args: Array[String], staticData: Map[String,_]) {
     inputArgs = args
     printArgs(args)
-    printConfig()
 
     walkAndRun(args(0), List(args.drop(1)), staticData)
   }

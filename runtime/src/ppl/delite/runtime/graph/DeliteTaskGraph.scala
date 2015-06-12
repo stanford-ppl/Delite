@@ -5,9 +5,7 @@ import scala.collection.immutable.SortedSet
 import scala.collection.mutable.{HashSet, HashMap}
 import _root_.scala.util.parsing.json.JSON
 
-import ppl.delite.runtime.Config
-import ppl.delite.runtime.DeliteMesosScheduler
-import ppl.delite.runtime.profiler.Profiler
+import ppl.delite.runtime.{Config, DeliteMesosScheduler, Exceptions}
 import ppl.delite.runtime.scheduler.PartialSchedule
 import ops._
 import targets._
@@ -186,7 +184,7 @@ object DeliteTaskGraph {
     }
 
     // TODO: maybe it would be better to add source info to DeliteOP?
-    Profiler.sourceInfo += (id -> (fileName, line, opName))
+    Exceptions.sourceInfo += (id -> (fileName, line, opName))
 
     val newop = opType match {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
