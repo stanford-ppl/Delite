@@ -1,7 +1,7 @@
 package ppl.delite.runtime
 
-import ppl.delite.runtime.profiler.Profiler
 import scala.collection.mutable.HashMap
+
 
 class DeliteException(message: String, cause: Throwable) extends RuntimeException(message, cause, true, false)
 

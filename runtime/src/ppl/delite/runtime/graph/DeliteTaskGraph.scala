@@ -183,7 +183,6 @@ object DeliteTaskGraph {
         (getFieldString(sourceContext, "fileName"), getFieldString(sourceContext, "line").toInt, getFieldString(sourceContext, "opName"))
     }
 
-    // TODO: maybe it would be better to add source info to DeliteOP?
     Exceptions.sourceInfo += (id -> (fileName, line, opName))
 
     val newop = opType match {

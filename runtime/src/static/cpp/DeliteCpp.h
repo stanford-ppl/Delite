@@ -20,10 +20,11 @@
 #include "DeliteDatastructures.h"
 #include "DeliteCppProfiler.h"
 #include "MultiLoopSync.h"
-
-/* helper methods and data structures only required for execution with Delite */
+#include "pcmHelper.h"
 #ifndef __DELITE_CPP_STANDALONE__
 #include <jni.h>
+#else
+typedef struct { } JNIEnv;
 #endif
 
 #ifdef DELITE_VERBOSE
@@ -34,13 +35,9 @@
 
 extern Config* config;
 extern resourceInfo_t* resourceInfos;
-void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize);
+void initializeAll(int threadId, int numThreads, int numLiveThreads, int threadIdOffset, size_t heapSize);
 void initializeThread(int threadId);
-#ifndef __DELITE_CPP_STANDALONE__
-void clearAll(int numThreads, int numLiveThreads, int offset, JNIEnv *env);
-#else
-void clearAll(int numThreads, int numLiveThreads);
-#endif
+void clearAll(int numThreads, int numLiveThreads, int threadIdOffset, JNIEnv *env);
 void initializeThreadPool(int numThreads);
 void submitWork(int threadId, void *(*work) (void *), void *arg);
 

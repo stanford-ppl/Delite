@@ -9,6 +9,7 @@ from string import *
 from time import localtime, strftime
 import fileinput
 import shutil
+from distutils.spawn import find_executable
 
 import delitecommon
 from delitecommon import *
@@ -22,7 +23,7 @@ def main():
     parser.add_option("--cuda", dest="num_cuda", default="0", help="number of cuda execution threads")
     parser.add_option("--opencl", dest="num_opencl", default="0", help="number of opencl execution threads")
     parser.add_option("-r", "--runs", dest="num_runs", default="1", type="string", help="the number of times the runtime will execute the applications")
-    parser.add_option("-p", "--profile", dest="profile", action="store_true", default=False, help="enables application profiling")
+    parser.add_option("-p", "--profile", dest="profile", default="", help="enables application profiling with argument 'on'; optional memory access instrumentation with argument(s) [pcm,perf]")
     parser.add_option("--executor", dest="executor", default="default", type="string", help="the type of executor")
     parser.add_option("--scheduler", dest="scheduler", default="dynamic", type="string", help="the type of scheduler")
     parser.add_option("--noregen", dest="no_regen", action="store_true", default=False, help="Disables regeneration of runtime execution plans")
@@ -124,8 +125,10 @@ def run(deg, params, opts):
         java_opts = java_opts + " -Ddelite.verbose"
     if opts.no_regen == True:
         java_opts = java_opts + " -Ddelite.debug.noregenerate"
-    if opts.profile == True:
-        java_opts = java_opts + " -Dprofile.output.dir=profile -Dprofile.dump=true -Ddelite.debug.profile=true"
+    if opts.profile != "":
+        java_opts = java_opts + " -Dprofile.output.dir=profile -Dprofile.dump=true -Ddelite.debug.profile=true -Xloggc:profile/gcStats.txt -XX:+PrintGCDetails -Ddelite.debug.memSamplingInterval=14"
+    if "pcm" in opts.profile:
+        java_opts = java_opts + " -Ddelite.enable.pcm=true"
     if opts.isSlave == True:
         java_opts = java_opts + " -Ddelite.cluster.isSlave"
     if opts.slaveImage != "":
@@ -171,10 +174,16 @@ def run(deg, params, opts):
         print "== with options: " + java_opts + "\n"
 
     java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " ppl.delite.runtime.Delite " + deg + " " + ' '.join(params)
-    #print java_cmd
+    use_perf = "perf" in opts.profile and find_executable("perf") != None
+    if use_perf:
+		java_cmd = "perf record -W -d -e cpu/mem-loads/ppu -c 1000 " + java_cmd
+
     ecode = os.system(java_cmd)
     if ecode != 0:
         err("Delite execution failed")
+    elif use_perf:
+        parse_perf_report_script = delitecommon.DELITE_HOME + "/bin/parse_perf_report " + build_dir
+        os.system(parse_perf_report_script)
 
     if opts.jar_cache == True:
         scala_class_root = opts.codecache + os.sep + "scala" + os.sep + "classes" + os.sep + "jar"

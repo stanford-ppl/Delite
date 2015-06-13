@@ -35,11 +35,10 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     out.append("#include <stdio.h>\n")
     out.append("#include <stdlib.h>\n")
     if (!Config.noJVM) out.append("#include <jni.h>\n")
-    out.append("#include \"DeliteCppProfiler.h\"\n")
     out.append("#include \"cppSyncObjects.h\"\n")
     out.append("#include \"" + Targets.Cpp + "helperFuncs.h\"\n")
     out.append("#include \""+CppMultiLoopHeaderGenerator.headerFile+".h\"\n")
-    if (!Config.noJVM) out.append("extern JNIEnv* env" + location + ";\n")
+    out.append("extern JNIEnv* env" + location + ";\n")
   }
 
   private def scheduledLocations() = {
@@ -76,7 +75,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
   }
 
   protected[codegen] def declareGlobals() {
-    if (!Config.noJVM) out.append("JNIEnv* env" + location + ";\n")
+    out.append("JNIEnv* env" + location + ";\n")
   }
 
   protected[codegen] def initializeGlobals() {
@@ -84,7 +83,8 @@ trait CppExecutableGenerator extends ExecutableGenerator {
       out.append("env" + location + " = jnienv;\n")
       out.append("JNIEnv *env = jnienv;\n")
     }
-    out.append("initializeAll(" + Targets.getRelativeLocation(location) + ", numThreads, " + activeCppLocations + "," + Config.cppHeapSize + "ULL);\n")
+
+    out.append(s"initializeAll(${Targets.getRelativeLocation(location)}, numThreads, ${activeCppLocations}, ${Config.numThreads}, ${Config.cppHeapSize}ULL);\n")
     out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
     out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
   }
@@ -114,8 +114,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
   }
 
   protected def writeMethodFooter() {
-    if (!Config.noJVM) out.append("clearAll(numThreads," + activeCppLocations + "," + Config.numThreads + ",env" + location + ");\n")
-    else out.append("clearAll(numThreads," + activeCppLocations + ");\n")
+    out.append(s"clearAll(numThreads, ${activeCppLocations}, ${Config.numThreads}, env$location);\n")
     out.append("}\n")
 
     //add entry method to primary executable
@@ -165,9 +164,7 @@ int main(int argc, char *argv[]) {
     if (op.task == null) return //dummy op
 
     if (Config.profile) {
-      if (!op.isInstanceOf[OP_MultiLoop]) {
-        out.append("DeliteCppTimerStart(" + Targets.getRelativeLocation(location) + ",\""+op.id+"\");\n")
-      }
+      out.append("DeliteCppTimerStart(resourceInfo->threadId, \""+op.id+"\");\n")
     }
 
     if (op.outputType(Targets.Cpp) != "void") {
@@ -185,8 +182,10 @@ int main(int argc, char *argv[]) {
     }
 
     if (Config.profile) {
-      if (!op.isInstanceOf[OP_MultiLoop]) {
-        out.append("DeliteCppTimerStop(" + Targets.getRelativeLocation(location) + ",\""+op.id+"\");\n")
+      if (op.isInstanceOf[OP_MultiLoop]) {
+        out.append("DeliteCppTimerStopMultiLoop(resourceInfo->threadId, \""+op.id+"\");\n")
+      } else {
+        out.append("DeliteCppTimerStop(resourceInfo->threadId, \""+op.id+"\");\n")
       }
     }
 

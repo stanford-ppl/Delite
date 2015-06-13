@@ -652,18 +652,18 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
   import IR._
 
   def emitLogOfArrayAllocation(symId: Int, arrayLength: Exp[Int], elemType: String): Unit = {
-    stream.println("ppl.delite.runtime.profiler.MemoryProfiler.logArrayAllocation(\"x" + symId + "\", " + quote(arrayLength) + ", \"" + elemType + "\")")
+    if (Config.enableProfiler) stream.println("ppl.delite.runtime.profiler.MemoryProfiler.logArrayAllocation(\"x" + symId + "\", resourceInfo.threadId, " + quote(arrayLength) + ", \"" + elemType + "\")")
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     // serializable (cluster)
     case a@DeliteArrayNew(n,m,t) if Config.generateSerializable && isPrimitiveType(m) =>
       emitValDef(sym, "new ppl.delite.runtime.data.LocalDeliteArray" + remap(m) + "(" + quote(n) + ")")
-      if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
+      emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
 
     case a@DeliteArrayNew(n,m,t) if Config.generateSerializable =>
       emitValDef(sym, "new ppl.delite.runtime.data.LocalDeliteArrayObject[" + remap(m) + "](" + quote(n) + ")")
-      if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
+      emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
 
 
     // ragged (big)
@@ -674,7 +674,7 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
         emitValDef(sym, "new ppl.delite.runtime.data.RaggedNativeArray"+remap(m)+"("+quote(n)+")")
       else
         emitValDef(sym, "new ppl.delite.runtime.data.RaggedNativeArrayObject["+remap(m)+"]("+quote(n)+")")
-      if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
+      emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
 
     case a@DeliteArrayFromSeq(elems,m) if Config.intSize == "long" =>
       if (isPrimitiveType(a.mA))
@@ -711,7 +711,7 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenDeliteSt
       if (t.partition) stream.println("//partitioned array follows")
       stream.println("if (" + quote(n) + " > Int.MaxValue) throw new RuntimeException(\"Allocation size too large for 32-bit runtime\")")
       emitValDef(sym, "new Array[" + remap(m) + "](" + quote(n) + ".toInt)")
-      if (Config.enableProfiler) emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
+      emitLogOfArrayAllocation(sym.id, n, m.erasure.getSimpleName)
 
     case a@DeliteArrayFromSeq(elems,m) if !Config.generateSerializable =>
       emitValDef(sym, "new Array[" + remap(a.mA) + "](" + elems.length + ")")
@@ -1066,6 +1066,10 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
   val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
 
+  def emitLogOfArrayAllocation(sym: Sym[Any], arrayLength: Exp[Int], elemType: String): Unit = {
+	  if (Config.enableProfiler) stream.println("DeliteLogArrayAllocation(resourceInfo->threadId, x" + sym.id + ", " + quote(arrayLength) + ", \"" + elemType + "\", \"" + getSourceContext(sym.pos) + "\");")
+  }
+
   override def emitDataStructures(path: String) = {
     //FIXME: some static C++ code currently depends on DeliteArray[String]
     dsTypesList += Pair(manifest[DeliteArray[String]], remap(manifest[DeliteArray[String]])) 
@@ -1088,6 +1092,8 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
         if (kernelAlloc) emitValDef(sym, "new (" + resourceInfoSym + ") " + remap(sym.tp) + "(" + quote(n)+ ")") //internal array on global heap
         else emitValDef(sym, "new (" + resourceInfoSym + ") " + remap(sym.tp) + "(" + quote(n) + ", " + resourceInfoSym + ")") //internal array on local heap
       }
+
+	    emitLogOfArrayAllocation(sym, n, m.erasure.getSimpleName)
       if (t.partition) stream.println("#endif")
     case a@DeliteArrayFromSeq(elems,m) =>
       emitValDef(sym, "new (" + resourceInfoSym + ") " + remap(sym.tp) + "(" + elems.length + ", " + resourceInfoSym + ")")

@@ -2,124 +2,134 @@ package ppl.delite.runtime.profiler
 
 import collection.mutable
 import java.io.{BufferedWriter, File, PrintWriter, FileWriter}
-import java.util.concurrent.ConcurrentHashMap
 import ppl.delite.runtime.Config
-import scala.collection.mutable.ArrayBuffer
-import scala.collection.mutable.Stack
+import scala.collection.mutable.{ArrayBuffer, HashMap, Stack}
 
-object MemoryProfiler
-{
-	var threadCount = 0
-  	var stats = new ArrayBuffer[Map[String, List[Int]]]()
-  	var threadToCurrKernel = new ArrayBuffer[Stack[String]]()
-  	var threadToId: Map[String, Int] = Map()
+class MemoryAccessStats(l2HitRatio: Double, l2Misses: Int, l3HitRatio: Double, l3Misses: Int) {
+  var l2CacheHitRatio: Double = l2HitRatio
+  var l2CacheMisses: Int = l2Misses
+  var l3CacheHitRatio: Double = l3HitRatio
+  var l3CacheMisses: Int = l3Misses
+  //var bytesReadFromMC: Double = bytesReadFromMem
+}
 
-	def initializeStats(numThreads: Int) = synchronized {
-		threadCount = numThreads
-		for (i <- List.range(0, numThreads)) {
-		  val threadName = "ExecutionThread" + i
-		  threadToId += threadName -> i
-		  stats += Map[String, List[Int]]()
-		  threadToCurrKernel += new Stack[String]()
-		}
+object MemoryProfiler {
+  var threadCount = 0
+  var kernelToMemUsageMaps = new ArrayBuffer[Map[String, Long]]()
+  var kernelToTotMemUsage = Map[String, Long]()
+  var threadToId: Map[String, Int] = Map()
+  var kernelToMemAccessStats = Map[String, ArrayBuffer[MemoryAccessStats]]()
 
-		threadToId += "main" -> numThreads
-		stats += Map[String, List[Int]]()
-		threadToCurrKernel += new Stack[String]()
-	}
+  var cppTidStart = -1
+  var numCppThreads = 0
+  var numScalaThreads = 0
+  var numCudaThreads = 0
+  var numOpenCLThreads = 0
 
-	def logArrayAllocation(component: String, arrayLength: Int, elemType: String) = {
-		var threadName = Thread.currentThread.getName()
-		var threadId = threadToId(threadName)
-		var stack = threadToCurrKernel(threadId)
-		var kernelCurrentlyExecutedByThread = component
-		if (stack.length > 0) kernelCurrentlyExecutedByThread = getNameOfCurrKernel(threadName)
-	
-		if (!stats(threadId).contains(kernelCurrentlyExecutedByThread)) {
-        	stats(threadId) += kernelCurrentlyExecutedByThread -> List[Int]()
-	    }
+  def initializeStats(numScala: Int, numCpp:Int, numCuda: Int, numOpenCL: Int) = synchronized {
+    val numThreads = numScala + numCpp + numCuda + numOpenCL
+    threadCount = numThreads
 
-	    val arrayMemSize = arrayLength * sizeOf(elemType)
-	    var kernelToAlloc = stats(threadId)
-	    val current = arrayMemSize :: kernelToAlloc(kernelCurrentlyExecutedByThread)
-	    stats(threadId) += kernelCurrentlyExecutedByThread -> current
-  	}
+    if (numCpp > 0) {
+      cppTidStart = numScala
+    }
 
-	def pushNameOfCurrKernel(thread: String, kernelId: String) = {
-		var threadId = threadToId(thread)
-		var stack = threadToCurrKernel(threadId)
-    	stack.push(kernelId)
-  	}
+    numCppThreads = numCpp
+    numScalaThreads = numScala
+    numCudaThreads = numCuda
+    numOpenCLThreads = numOpenCL
 
-  	def popNameOfCurrKernel(thread: String) = {
-  		var threadId = threadToId(thread)
-		var stack = threadToCurrKernel(threadId)
-    	if (stack.length > 0) {
-    		stack.pop()
-    	}
-  	}
+    for (i <- List.range(0, numThreads)) {
+      val threadName = "ExecutionThread" + i
+      threadToId += threadName -> i
+      kernelToMemUsageMaps += Map[String, Long]()
+    }
 
-  	def getNameOfCurrKernel(thread: String): String = {
-  		var threadId = threadToId(thread)
-		var stack = threadToCurrKernel(threadId)
-		if (stack.length > 0) {
-			return stack(0) // 0 indexes the top-of-stack
-  		}
+    threadToId += "main" -> numThreads
+  }
 
-  		return "null"
-  	}
+  def addMemoryAccessStats(
+        sourceContext: String, threadId: Int,
+        l2CacheHitRatio: Double, l2CacheMisses: Int,
+        l3CacheHitRatio: Double, l3CacheMisses: Int): Unit = {
+    val stats = new MemoryAccessStats( l2CacheHitRatio, l2CacheMisses, l3CacheHitRatio, l3CacheMisses )
+    if ( !kernelToMemAccessStats.contains( sourceContext ) ) {
+      kernelToMemAccessStats += sourceContext -> new ArrayBuffer[MemoryAccessStats]()
+    }
 
-  	def dumpProfile(writer: PrintWriter) {
-  		emitMemProfileDataArrays(writer, stats)
-  	}
+    kernelToMemAccessStats( sourceContext ).append( stats )
+  }
 
-	def emitMemProfileDataArrays(writer: PrintWriter, stats: ArrayBuffer[Map[String, List[Int]]]) {
-		var aggrStats = aggregateStatsFromAllThreads(stats)
-		
-		var tabs = "  "
-		var twoTabs = tabs + tabs
-  		writer.println(tabs + "\"MemProfile\": {")
-  		for (kv <- aggrStats) {
-  			val totalMemAllocation = sum(kv._2)
-  			writer.println(twoTabs + "\"" + kv._1 + "\" : " + totalMemAllocation + ",")
-  		}
+  def addCppKernelMemUsageStats( kernel:String, memUsage: Long ) {
+    if (!kernelToTotMemUsage.contains( kernel )) { 
+      kernelToTotMemUsage += kernel -> 0
+    }
 
-  		writer.println(twoTabs + "\"dummy\": 0")
-  		writer.print(tabs + "}")
-  	}
+    kernelToTotMemUsage += kernel -> ( memUsage + kernelToTotMemUsage( kernel ) )
+  }
 
-	def aggregateStatsFromAllThreads(stats: ArrayBuffer[Map[String, List[Int]]]): Map[String, List[Int]] = {
-		var aggrStats = Map[String, List[Int]]()
-		for (m <- stats) {
-			for (kv <- m) {
-				var kernel = kv._1
-				if (!aggrStats.contains(kernel)) {
-					aggrStats += kernel -> List[Int]()
-				}
+  def clearAll() {
+    kernelToMemUsageMaps.clear()
+    threadToId = Map()
+    kernelToMemAccessStats = Map[String, ArrayBuffer[MemoryAccessStats]]()
+    initializeStats(numScalaThreads, numCppThreads, numCudaThreads, numOpenCLThreads)
+  }
 
-				var memAllocation = kv._2
-				val current = aggrStats(kernel) ::: memAllocation
-				aggrStats += kernel -> current
-			}
-		}
+  def logArrayAllocation(component: String, threadId: Int, arrayLength: Int, elemType: String) = {
+    val currKernel = PerformanceTimer.getNameOfCurrKernel(threadId) 
+  
+    if (!kernelToMemUsageMaps( threadId ).contains( currKernel )) {
+      kernelToMemUsageMaps( threadId ) += currKernel -> 0
+    }
 
-		return aggrStats
-	}
+    val arrayMemSize = arrayLength.toLong * sizeOf( elemType ).toLong
+    val tmp = kernelToMemUsageMaps( threadId )( currKernel )
+    kernelToMemUsageMaps( threadId ) += currKernel -> ( tmp + arrayMemSize )
+  }
 
-  	def sizeOf(elemType: String) = elemType match {
-  		case "boolean" | "byte" => 8
-	    case "char" | "short" => 16
-	    case "int" | "float" => 32
-	    case "double" | "long" => 64
-	    case _ => 64
-  	}
+  def aggregateMemAllocStatsFromAllThreads(): Map[String, Long] = {
+    for (m <- kernelToMemUsageMaps) {
+      for (kv <- m) {
+        var kernel = kv._1
+        if (!kernelToTotMemUsage.contains( kernel )) { 
+          kernelToTotMemUsage += kernel -> 0
+        }
 
-  	def sum(l:List[Int]) = {
-  		var res = 0
-  		for (n <- l) {
-  			res += n
-  		}
+        kernelToTotMemUsage += kernel -> ( kv._2 + kernelToTotMemUsage( kernel ) )
+      }
+    }
 
-  		res
-  	}
+    kernelToTotMemUsage
+  }
+
+  def aggregateMemAccessStats() : Map[String, MemoryAccessStats] = {
+    var res = Map[String, MemoryAccessStats]()
+    kernelToMemAccessStats.foreach( kv => {
+      val aggrStats = new MemoryAccessStats(0,0,0,0)
+      for (s <- kv._2) {
+        aggrStats.l2CacheHitRatio += s.l2CacheHitRatio
+        aggrStats.l2CacheMisses += s.l2CacheMisses
+        aggrStats.l3CacheHitRatio += s.l3CacheHitRatio
+        aggrStats.l3CacheMisses += s.l3CacheMisses
+      }
+
+      val len = kv._2.length
+      aggrStats.l2CacheHitRatio /= len
+      aggrStats.l2CacheMisses /= len
+      aggrStats.l3CacheHitRatio /= len
+      aggrStats.l3CacheMisses /= len
+      
+      res += kv._1 -> aggrStats
+    } )
+
+    res
+  } 
+
+  def sizeOf(elemType: String) = elemType match {
+    case "boolean" | "byte" => 1
+    case "char" | "short" => 2
+    case "int" | "float" => 4
+    case "double" | "long" => 8
+    case _ => 64
+  }
 }

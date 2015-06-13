@@ -1,10 +1,10 @@
 
-function createBarChart(parentDivId, data, comparisonAttr, getDisplayText, config) {
+function createBarChart(parentDivId, data, comparisonAttr, getDisplayText, config, nodeClickHandler) {
 	var svg = d3.select(parentDivId)
 				.append("svg")
-			 	.attr("class", "barChart")
+			 	.attr("class", "barChart");
 
-	var parentDiv = $(parentDivId)
+	var parentDiv = $(parentDivId);
 
 	var width = parentDiv.width() - 5,
 	    barHeight = 20;
@@ -22,23 +22,27 @@ function createBarChart(parentDivId, data, comparisonAttr, getDisplayText, confi
 	    .enter().append("g")
 	    .attr("transform", function(d, i) { return "translate(0," + i * barHeight + ")"; });
 
+    var handler = nodeClickHandler || genericNodeClickHandler;
 	bar.append("rect")
 	    .attr("class", "bar")
 	    .attr("width", function(d) {return x(d[comparisonAttr])})
 	    .attr("height", barHeight - 1)
-	    .on("click", nodeClickHandler)
-
+	    .on("click", handler);
+	
 	bar.append("text")
 		.attr("class", "barLabel")
 	    .attr("x", function(d) { return x(d[comparisonAttr]) - 3; })
 	    .attr("y", barHeight / 2)
 	    .attr("dy", ".35em")
 	    .text(getDisplayText)
-	    .on("click", nodeClickHandler)
+	    .on("click", handler);
 
 }
 
-function nodeClickHandler(d) {
-	config.populateKernelInfoTableById(d.id)
-	config.highlightLineInEditorByKernelId(d.id)
+function genericNodeClickHandler(d) {
+	//config.populateKernelInfoTable(d.node);
+	//config.highlightLineInEditorByKernelId(d.node.id);
+
+	config.populateKernelInfoTable( d );
+	config.highlightLineInEditorForDNode( d );
 }

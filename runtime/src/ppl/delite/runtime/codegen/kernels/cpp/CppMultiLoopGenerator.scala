@@ -29,7 +29,6 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
 
   protected def writeHeader() {
     out.append("#include \""+CppMultiLoopHeaderGenerator.className(master) + ".h\"\n")
-    out.append("#include \"DeliteCppProfiler.h\"\n")
     CppMultiLoopHeaderGenerator.headerList += kernelSignature + ";\n"
   }
 
@@ -136,14 +135,14 @@ class CppMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, val 
   }
 
   protected def beginProfile() {
-    val chunkName = master.id + "_" + chunkIdx
-    out.append("DeliteCppTimerStart(tid,\""+master.id+"\");\n")
+    if (Config.profile) out.append("DeliteCppTimerStart(resourceInfo->threadId,\""+master.id + "\");\n")
   }
 
   protected def endProfile(isMaster: Boolean) {
-    val chunkName = master.id + "_" + chunkIdx
-    val timeStr = "DeliteCppTimerStop(tid,\""+master.id+"\");\n"
-    if (isMaster) out.append("if (tid == 0) "+timeStr) else out.append("if (tid != 0) "+timeStr)
+    if (Config.profile) {
+      val timeStr = "DeliteCppTimerStopMultiLoop(resourceInfo->threadId,\""+master.id+"\");\n"
+      if (isMaster) out.append("if (tid == 0) "+timeStr) else out.append("if (tid != 0) "+timeStr)
+    }
   }
 
   protected def kernelName = "MultiLoop_" + master.id

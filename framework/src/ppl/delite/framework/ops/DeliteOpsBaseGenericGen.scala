@@ -5,6 +5,7 @@ import ppl.delite.framework.Config
 import scala.collection.mutable.HashMap
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.CCodegen
+import scala.reflect.SourceContext
 import java.io.{StringWriter, PrintWriter}
 
 
@@ -114,6 +115,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   def hashmapType(argType: String): String
   def typeCast(sym: String, to: String): String
   def withBlock(name: String)(block: => Unit): Unit
+  def emitStartMultiLoopTimerForSlave(name: String): Unit = {}
+  def emitStopMultiLoopTimerForSlave(name: String): Unit = {}
+  def emitStartPCM(): Unit = {}
+  def emitStopPCM(sourceContext: String): Unit = {}
 
   // Because emitMethod and emitMethodCall are being overridden to pass additional runtime arguments now,
   // we need these "clean" versions for certain cases (e.g. serialization). This is ugly, and should be unified.
@@ -830,8 +835,6 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   def emitProcessLocal(actType: String) = {
     stream.println("//process local")
-    emitValDef("tid", remap(Manifest.Int), fieldAccess(resourceInfoSym,"groupId"))
-    emitValDef("numThreads", remap(Manifest.Int), fieldAccess(resourceInfoSym, "groupSize"))
     emitValDef("numChunks", remap(Manifest.Int), unalteredMethodCall(fieldAccess("sync", "numChunks"), List()))
     emitVarDef("dIdx", remap(Manifest.Int), "tid")
     stream.println("while (dIdx < numChunks) {")
@@ -894,8 +897,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   }
 
   def emitFinalizer() {
-    stream.print("if (tid == 0) ")
+    stream.println("if (tid == 0) {")
     emitMethodCall("finalize", List("act"))
+    stream.println("}")
   }
 
   def emitBarrier() {
@@ -945,10 +949,14 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       emitReturn("__act")
     }
 
-
     emitMethod("main_par", actType, List(("__act", actType),("sync", syncType(actType)))) {
+      emitValDef("tid", remap(Manifest.Int), fieldAccess(resourceInfoSym,"groupId"))
+      emitValDef("numThreads", remap(Manifest.Int), fieldAccess(resourceInfoSym, "groupSize"))
+      if (Config.enableProfiler) emitStartMultiLoopTimerForSlave(kernelName)
       emitProcessLocal(actType)
-      if (!op.body.exists(b => loopBodyNeedsCombine(b) || loopBodyNeedsPostProcess(b))) emitBarrier()
+      if (!op.body.exists(b => loopBodyNeedsCombine(b) || loopBodyNeedsPostProcess(b))) {
+        emitBarrier()
+      }
       if (op.body.exists(loopBodyNeedsCombine)) {
         emitCombineLocal()
         emitCombineRemote()
@@ -960,6 +968,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitPostProcess()
         emitBarrier()
       }
+
+      if (Config.enableProfiler) emitStopMultiLoopTimerForSlave(kernelName)
       emitFinalizer()
       emitReturn("act")
     }
@@ -995,17 +1005,26 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitValDef(streamSym, remap(inputStreamVars(0).tp), fieldAccess(quote(inputStreamVars(0)),"openCopyAtNewLine(start)"))
         emitValDef(streamSym+"_offset", remap(manifest[Long]), fieldAccess(streamSym, "streamOffset"))
         emitValDef("isEmpty",remap(Manifest.Boolean), "end <= " + fieldAccess(streamSym,"position"))
+
+        if (Config.enableProfiler) emitStartPCM()
+
         emitValDef("__act2",actType,methodCall("init",List("__act","-1","isEmpty",streamSym)))
         stream.println("while (" + fieldAccess(streamSym,"position") + " < " + streamSym + "_offset + end) {")
         if (gcStrategy(op) == Iteration) emitHeapMark()
         emitMethodCall("process",List("__act2","-1",streamSym))
         if (gcStrategy(op) == Iteration) emitHeapReset(List())
         stream.println("}")
+
+        if (Config.enableProfiler) emitStopPCM(getSourceContext(symList(0).pos))
+
         stream.println(fieldAccess(streamSym, "close();"))
       }
       else {
         emitValDef("isEmpty",remap(Manifest.Boolean),"end-start <= 0")
         emitVarDef("idx", remap(Manifest.Int), typeCast("start",remap(Manifest.Int)))
+
+        if (Config.enableProfiler) emitStartPCM()
+
         emitValDef("__act2",actType,methodCall("init",List("__act","idx","isEmpty")))
         emitAssignment("idx","idx + 1")
         stream.println("while (idx < end) {")
@@ -1014,6 +1033,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         if (gcStrategy(op) == Iteration) emitHeapReset(List())
         emitAssignment("idx","idx + 1")
         stream.println("}")
+
+        if (Config.enableProfiler) emitStopPCM(getSourceContext(symList(0).pos))
       }
 
       if (outputStreamVars.length > 0) {
@@ -1453,4 +1474,15 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     case _ => super.emitFatNode(symList, rhs)
   }
 
+  def getSourceContext(sourceContexts: List[SourceContext]) : String = {
+    if (sourceContexts.size == 0) "NoSourceContext"
+    else {
+      var sc = sourceContexts(0)
+      while(!sc.parent.isEmpty) {
+        sc = sc.parent.get
+      }
+      sc.fileName + ":" + sc.line
+    }
+  }
+  
 }

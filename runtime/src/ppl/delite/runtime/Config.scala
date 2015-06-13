@@ -70,8 +70,11 @@ object Config {
   val gpuPerformance: Boolean = getProperty("delite.debug.gpu.perf", "false") != "false"
   val profile: Boolean = getProperty("delite.debug.profile", "false") != "false"
   val printSources: Boolean = getProperty("delite.debug.print.sources", "false") != "false"
+  val memSamplingInterval: Long = getProperty("delite.debug.memSamplingInterval", "10").toLong
   val printConnection: Boolean = getProperty("delite.debug.print.connection", "false") != "false"
   var testMode: Boolean = getProperty("delite.debug.test", "false") != "false" //hack to make native libs work differently under sbt, should be removed
+
+  var degFilePath = ""
 
   /* For containers, used in distributed mode */
   val slaveImage: String = getProperty("delite.slave.image", "")
@@ -104,6 +107,12 @@ object Config {
    if(dumpStats && statsOutputFilename == "") error("stats.dump option enabled but did not provide a statsOutputFilename")
 
    val dumpProfile: Boolean = getProperty("profile.dump", "false") != "false"
-   val profileOutputDirectory: String = getProperty("profile.output.dir", "")
+   var profileOutputDirectory: String = getProperty("profile.output.dir", "")
    if(dumpProfile && profileOutputDirectory == "") error("profile.dump option enabled but did not provide a profileOutputDirectory")
+
+   val enablePCM = dumpProfile && (getProperty("delite.enable.pcm", "false") != "false")
+   val pcmHome: String = sys.env.getOrElse("PCM_HOME", "")
+   if (enablePCM && (pcmHome == "")) {
+     sys.error("$PCM_HOME has not been set. Please set it when pcm flag is specified.")
+   }
 }

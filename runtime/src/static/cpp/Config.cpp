@@ -8,7 +8,7 @@
 #include "DeliteDatastructures.h"
 #include "DeliteCpp.h"
 #include "cppInit.h"
-
+#include "pcmHelper.h"
 
 Config* config = NULL;
 resourceInfo_t* resourceInfos = NULL;
@@ -72,9 +72,10 @@ void initializeConfig(int numThreads) {
   }
 }
 
-void initializeGlobal(int numThreads, size_t heapSize) {
+void initializeGlobal(int numThreads, int threadIdOffset, size_t heapSize) {
   pthread_mutex_lock(&init_mtx); 
   if (!config) {
+    InitDeliteCppTimer(threadIdOffset, numThreads);
     initializeConfig(numThreads);
     resourceInfos = new resourceInfo_t[numThreads];
     for (int i=0; i<numThreads; i++) {
@@ -83,48 +84,40 @@ void initializeGlobal(int numThreads, size_t heapSize) {
     }
     DeliteHeapInit(numThreads, heapSize);
     initializeThreadPool(numThreads);
-    InitDeliteCppTimer(numThreads);
+    pcmInit();
   }
+
   pthread_mutex_unlock(&init_mtx);
 }
 
-#ifndef __DELITE_CPP_STANDALONE__
-void freeGlobal(int numThreads, int offset, JNIEnv *env) {
-#else
-void freeGlobal(int numThreads) {
-#endif
+void freeGlobal(int numThreads, int threadIdOffset, JNIEnv *env) {
   pthread_mutex_lock(&init_mtx);
   if (config) {
     #ifndef __DELITE_CPP_STANDALONE__
-    DeliteCppTimerDump(offset, env);
-    #else
-    DeliteCppTimerDump();
+    DeliteSendMemoryAccessStatsToJVM(threadIdOffset, env);
+    SendKernelMemUsageStatsToJVM(env);
+    DeliteSendStartTimeToJVM(env);
     #endif
+    DeliteCppTimerClose();
     DeliteHeapClear(numThreads);
+    pcmCleanup();
     delete[] resourceInfos;
     delete config;
     config = NULL;
   }
+
   pthread_mutex_unlock(&init_mtx);
 }
 
-void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize) {
-  initializeGlobal(numThreads, heapSize);
+void initializeAll(int threadId, int numThreads, int numLiveThreads, int threadIdOffset, size_t heapSize) {
+  initializeGlobal(numThreads, threadIdOffset, heapSize);
   initializeThread(threadId);
   delite_barrier(numLiveThreads); //ensure fully initialized before any continue
 }
 
-#ifndef __DELITE_CPP_STANDALONE__
-void clearAll(int numThreads, int numLiveThreads, int offset, JNIEnv *env) {
-#else
-void clearAll(int numThreads, int numLiveThreads) {
-#endif
+void clearAll(int numThreads, int numLiveThreads, int threadIdOffset, JNIEnv *env) {
   delite_barrier(numLiveThreads); //first wait for all threads to arrive
-  #ifndef __DELITE_CPP_STANDALONE__
-  freeGlobal(numThreads, offset, env);
-  #else
-  freeGlobal(numThreads);
-  #endif
+  freeGlobal(numThreads, threadIdOffset, env);
 }
 
 #endif

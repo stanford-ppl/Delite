@@ -1,0 +1,68 @@
+#containerRunSummaries {
+	width: 100%;
+	height: 100%;
+	font-family: Nunito, arial, verdana;
+	font-size: 15;
+}
+
+#compareRunSummariesHeader {
+	width: 100%;
+	height: 50;
+}
+
+#compareRunSummariesDiv {
+	width: 100%;
+	height: 320;
+	border: solid 1px black;
+}
+
+#uploadRunSummariesBtn {
+	width: 150;
+	height: 20;
+	margin: 12 0 0 0;
+}
+
+#initializeViewsBtn {
+	width: 120;
+	height: 19;
+	margin: 10 0 0 0;
+}
+
+#compareRunSummariesMetricOptions, #compareKernelSummariesMetricOptions {
+	float: right;
+	margin: 4 4 0 0;
+	font-size: 11;
+}
+
+#compareRunSummariesMetricOptionsLabel, #compareKernelSummariesMetricOptionsLabel {
+	float: right;
+	margin: 4 25 0 0;
+	font-family: arial;
+	font-size: 11;
+}
+
+#compareSummariesOfKernelTxtBx {
+	width: 150px;
+	text-align: left;
+	float: left;
+	margin: 15 5 0 5;
+	font-size: 11;
+}
+
+#compareSummariesOfKernelLabel {
+	float: left;
+	margin: 15 25 0 0;
+	font-family: arial;
+	font-size: 11;
+}
+
+#compareKernelSummariesHeader {
+	width: 100%;
+	height: 50;
+}
+
+#compareKernelSummariesDiv {
+	width: 100%;
+	height: 320;
+	border: solid 1px black;
+}
