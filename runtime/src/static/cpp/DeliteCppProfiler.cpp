@@ -20,8 +20,8 @@ double milliseconds(struct timeval t) {
 }
 
 void setFilePaths() {
-  char cwd[PATH_MAX];
-  getcwd(cwd, PATH_MAX);
+  char cwd[1024];
+  getcwd(cwd, 1024);
 
   std::stringstream ss;
   ss << cwd << "/profile/profile_t_";
@@ -176,20 +176,19 @@ void DeliteLogArrayAllocation(int32_t tid, void* startAddr, int32_t length, std:
 
 void dumpSourceContextToId( std::map< std::string, int32_t >* scToId ) {
   std::ofstream outFile;
-  outFile.open("scToId.csv", std::ofstream::out);
+  if (!scToId->empty()) outFile.open("scToId.csv", std::ofstream::out);
 
   std::map< std::string, int32_t >::iterator it;
   for (it = scToId->begin(); it != scToId->end(); it++) {
     outFile << it->second << "," << it->first << std::endl; 
   }
 
-  outFile.close();
+  if (outFile.is_open()) outFile.close();
 }
 
 void dumpArrayAddrRanges() {
   std::map< std::string, int32_t >* scToId = new std::map< std::string, int32_t >();
   std::ofstream outFile;
-  outFile.open("dataStructures.csv", std::ofstream::out);
 
   std::vector< std::map< std::string, std::vector<cpparray_layout_info>* >* >::iterator it;
   int numThreads = scToMemAllocationMaps->size();
@@ -210,12 +209,13 @@ void dumpArrayAddrRanges() {
       std::vector<cpparray_layout_info>::iterator it2;
       for (it2 = v->begin(); it2 != v->end(); it2++) {
 	    uint64_t s = (uint64_t) it2->startAddr;
+        if (!outFile.is_open()) outFile.open("dataStructures.csv", std::ofstream::out);
         outFile << "0x" << std::hex << s << "," << std::dec << it2->size << "," << scId << std::endl;
       }
 	}
   }
 
-  outFile.close();
+  if (outFile.is_open()) outFile.close();
   dumpSourceContextToId( scToId );
 }
 
