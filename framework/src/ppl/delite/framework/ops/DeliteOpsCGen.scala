@@ -144,8 +144,15 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
     stream.println("DeliteHeapMark("+resourceInfoSym+"->threadId);")
   }
 
-  def emitHeapReset(result: List[String]) = {
-    stream.println("DeliteHeapReset("+resourceInfoSym+"->threadId);")
+  def emitHeapReset(results: List[String]) = {
+    val copyResults = results.map(_ + "->deepCopy();").mkString("\n")
+    stream.println(s"""#ifdef DELITE_GC
+if (shouldGC) {
+$copyResults
+DeliteHeapReset($resourceInfoSym->threadId);
+}
+#endif
+""")
   }
 
   def castInt32(name: String) = name

@@ -22,18 +22,21 @@ object PerformanceTimer {
 
   def initializeStats(numThreads: Int) = synchronized {
     threadCount = numThreads
+    for (i <- 0 until numThreads) {
+      threadIdToKernelCallStack += new Stack[Timing]
+    }
+
     if (Config.profile) {
       val profileFilePrefix = Config.profileOutputDirectory + "/profile_t_"
       Path(Config.profileOutputDirectory).createDirectory()
 
-      for (i <- 0 to (numThreads - 1)) {
+      for (i <- 0 until numThreads) {
         val profileFile: File = new File( profileFilePrefix + i + ".csv" )
-        threadIdToWriter.append( new PrintWriter(profileFile) )
-        threadIdToKernelCallStack.append( new Stack[Timing] )
+        threadIdToWriter += new PrintWriter(profileFile)
       }
 
       val tmp = Config.profileOutputDirectory + "/profile_tic_toc_scala.csv"
-      threadIdToWriter.append( new PrintWriter( new File(tmp) ) )
+      threadIdToWriter += new PrintWriter( new File(tmp) )
     }
   }
 
@@ -116,7 +119,7 @@ object PerformanceTimer {
   }
   
   def getNameOfCurrKernel(threadId: Int): String = {
-    val stack = PerformanceTimer.threadIdToKernelCallStack(threadId)
+    val stack = threadIdToKernelCallStack(threadId)
     if (stack.length > 0) {
       for (t <- stack) {
         if (!t.component.startsWith("_")) return t.component

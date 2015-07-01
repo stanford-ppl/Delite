@@ -525,7 +525,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
     stream.println("{\"type\":\"EOP\",")
     stream.println("  \"return-types\":{" + getOutputTypes(result).mkString(",") + "},")
     emitConstOrSym(result, "")
-    stream.println("}\n]}}")
+    stream.println("}\n]}")
+    // stream.println(",")
+    // emitSymbolSourceContext() //dump source contexts for all symbols
+    stream.println("}")
   }
 
 }

@@ -49,7 +49,7 @@ object Config {
   }
 
   // memory management for C++ (refcnt or gc)
-  val cppMemMgr = System.getProperty("delite.cpp.memmgr","malloc")
+  val cppMemMgr = getProperty("delite.cpp.memmgr","malloc")
   val cppHeapSize: Long = getProperty("delite.cpp.heap.size","0") match {
     case s if s.toLowerCase.endsWith("k") => s.dropRight(1).toLong * 1024
     case s if s.toLowerCase.endsWith("m") => s.dropRight(1).toLong * 1024 * 1024

@@ -167,7 +167,13 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   }
 
   def gcSyms(symList: List[Sym[Any]], op: AbstractFatLoop) = {
-    for ((sym, body) <- (symList zip op.body) if (gcStrategy(body) == Global)) yield sym
+    //for ((sym, body) <- (symList zip op.body) if (gcStrategy(body) == Global)) yield sym
+    (symList zip op.body) collect {
+      case (sym, b:DeliteCollectElem[_,_,_]) if (!isPrimitiveType(b.mA) && b.par == ParFlat) => "__act2->"+quote(sym)+"_data"
+      case (sym, b:DeliteCollectElem[_,_,_]) if (!isPrimitiveType(b.mA) && b.par == ParBuffer) => "__act2->"+quote(sym)+"_buf"
+      case (sym, b:DeliteReduceElem[_]) if (!isPrimitiveType(b.mA)) => "__act2->"+quote(sym)
+    }
+    
   }
 
   /**
@@ -993,7 +999,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
     // processRange
     emitMethod("processRange", actType, List(("__act",actType),("start",remap(Manifest.Long)),("end",remap(Manifest.Long)))) {
-      if (gcStrategy(op) == Global) emitHeapMark()
+      //if (gcStrategy(op) == Global) emitHeapMark()
       //GROSS HACK ALERT: custom codegen for DeliteFileInputStream and DeliteFileOutputStream!
       val freeVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
       val inputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
@@ -1010,9 +1016,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
         emitValDef("__act2",actType,methodCall("init",List("__act","-1","isEmpty",streamSym)))
         stream.println("while (" + fieldAccess(streamSym,"position") + " < " + streamSym + "_offset + end) {")
-        if (gcStrategy(op) == Iteration) emitHeapMark()
+        //if (gcStrategy(op) == Iteration) emitHeapMark()
         emitMethodCall("process",List("__act2","-1",streamSym))
-        if (gcStrategy(op) == Iteration) emitHeapReset(List())
+        emitHeapReset(gcSyms(symList, op))
         stream.println("}")
 
         if (Config.enableProfiler) emitStopPCM(getSourceContext(symList(0).pos))
@@ -1028,9 +1034,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitValDef("__act2",actType,methodCall("init",List("__act","idx","isEmpty")))
         emitAssignment("idx","idx + 1")
         stream.println("while (idx < end) {")
-        if (gcStrategy(op) == Iteration) emitHeapMark()
+        //if (gcStrategy(op) == Iteration) emitHeapMark()
         emitMethodCall("process",List("__act2","idx"))
-        if (gcStrategy(op) == Iteration) emitHeapReset(List())
+        emitHeapReset(gcSyms(symList, op))
         emitAssignment("idx","idx + 1")
         stream.println("}")
 
@@ -1247,7 +1253,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         case (sym, elem: DeliteReduceElem[_]) =>
         case (sym, elem: DeliteReduceTupleElem[_,_]) =>
       }
-      if (gcStrategy(op) == Global) emitHeapReset(gcSyms(symList, op).map(quote))
+      //if (gcStrategy(op) == Global) emitHeapReset(gcSyms(symList, op).map(quote))
     }
 
     //TODO: This would not be needed if other targets (CUDA, C, etc) properly creates activation records

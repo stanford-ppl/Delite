@@ -1211,6 +1211,12 @@ public:
   uint32_t hashcode(void) {
     return (uintptr_t)this;
   }
+
+#ifdef DELITE_GC
+  void deepCopy(void) {
+  }
+#endif
+
 };
 
 struct __T__D {

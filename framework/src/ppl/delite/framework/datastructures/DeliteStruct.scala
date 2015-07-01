@@ -811,6 +811,11 @@ struct __T__D {
       stream.println("\t\treturn ret;")
       stream.println("\t}")
 
+      stream.println("#ifdef DELITE_GC")
+      stream.println("\tvoid deepCopy(void) {")
+      stream.println("\t}")
+      stream.println("#endif")
+
       // free
       //stream.println("\tvoid release(void) {")
       //stream.print(elems.filter(e => !isPrimitiveType(baseType(e._2)) && remap(baseType(e._2))!="string").map(e => e._1 + "->release();\n").mkString(""))

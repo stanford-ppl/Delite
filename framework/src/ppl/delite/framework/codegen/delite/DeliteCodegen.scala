@@ -98,19 +98,18 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     stream.print("\"line\": \"" + line + "\" }")
   }
 
-  def emitSymbolSourceContext(stream: PrintWriter): Unit = {
+  def emitSymbolSourceContext(): Unit = {
     // output header
-    stream.println("{\"SymbolMap\": [")
+    stream.println("\"Symbols\": [")
     // output map from symbols to SourceContexts
     var first = true
     for (TP(sym, _) <- globalDefs) {
-      if (first) { first = false }
-      else stream.print(", ")
+      if (first) first = false else stream.print(", ")
       stream.print("{\"symbol\": \"x" + sym.id + "\",")
       emitSourceContext(if (sym.sourceContexts.isEmpty) None else Some(sym.sourceContexts.head), stream, "x"+sym.id)
       stream.println("}")
     }
-    stream.println("] }")
+    stream.println("]")
   }
 
   def runTransformations[A:Manifest](b: Block[A]): Block[A] = {
@@ -148,16 +147,6 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
       emitBlockHeader(args, className)
       emitBlock(y)
       emitBlockFooter(getBlockResult(y))
-    }
-
-    if (Config.enableProfiler) {
-      val symbolsFilename =
-        Config.degFilename.substring(0, Config.degFilename.length() - 4) + "-symbols.json"
-      val writer = new FileWriter(symbolsFilename)
-      val printer = new PrintWriter(writer)
-      emitSymbolSourceContext(printer)
-      printer.flush
-      writer.flush
     }
 
     stream.flush
