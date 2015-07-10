@@ -122,7 +122,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     }
   }
 
-  private def stageTest(app: DeliteTestRunner) = {
+  protected def stageTest(app: DeliteTestRunner) = {
     println("STAGING...")
     val saveDeg = Config.degFilename
     val saveBuildDir = Config.buildDir

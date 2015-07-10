@@ -44,6 +44,9 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     def copyTransformedOrElse[B](f: OpType => Exp[B])(e: => Exp[B]): Exp[B] = original.map(p=>p._1(f(p._2.asInstanceOf[OpType]))).getOrElse(e)
     def copyTransformedBlockOrElse[B:Manifest](f: OpType => Block[B])(e: => Block[B]): Block[B] = original.map(p=>p._1(f(p._2.asInstanceOf[OpType]))).getOrElse(e)
 
+    def copyTransformedListOrElse[B](f: OpType => List[B])(e: => List[B]): List[B] = original.map(p => f(p._2.asInstanceOf[OpType]).map(p._1(_))).getOrElse(e)
+    def copyTransformedOptionOrElse[B](f: OpType => Option[B])(e := Option[B]): Option[B] = original.map(p => f(p._2.asInstanceOf[OpType]).map(p._1(_))).getOrElse(e)
+
     /*
     consider z1 = VectorPlus(a,b), which could be something like z1 = Block(z2); z2 = loop(a.size) { i => a(i) + b(i) }
     we might want to mirror z1 because we have changed z2.
@@ -273,7 +276,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
   }
 
   case class DeliteTileElem[A:Manifest,TA:Manifest,CA:Manifest](
-    keys: List[Block[Int]],
+    keys: List[Block[RangeVector]],
     cond: List[Block[Boolean]] = Nil,
     tile: Block[TA],
     rV: (Sym[TA],Sym[TA]),

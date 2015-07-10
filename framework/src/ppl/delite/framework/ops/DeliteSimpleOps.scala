@@ -5,12 +5,12 @@ import scala.reflect.SourceContext
 
 import ppl.delite.framework.datastructures._
 
-trait DeliteSimpleOps extends Base {
+trait DeliteSimpleOps extends RangeVectorOps with Base {
   def reduce[A:Manifest](size: Rep[Int], zero: Rep[A])(mFunc: Rep[Int] => Rep[A])(rFunc: (Rep[A], Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A] 
   def filterReduce[A:Manifest](size: Rep[Int], zero: Rep[A])(fFunc: Rep[Int] => Rep[Boolean])(mFunc: Rep[Int] => Rep[A])(rFunc: (Rep[A], Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A]
 }
 
-trait DeliteSimpleOpsExp extends DeliteSimpleOps with DeliteOpsExpIR with DeliteCollectionOpsExp with DeliteArrayOpsExp { 
+trait DeliteSimpleOpsExp extends DeliteSimpleOps with RangeVectorOpsExp with DeliteOpsExpIR with DeliteCollectionOpsExp with DeliteArrayOpsExp { 
   this: DeliteOpsExp with DeliteFileReaderOpsExp => 
   
   /**
@@ -452,7 +452,7 @@ trait DeliteSimpleOpsExp extends DeliteSimpleOps with DeliteOpsExpIR with Delite
    * @param func      - main body function (produces a single tile)
    * @param rFunc     - optional reduction function for partial updates
    */
-  case class SimpleTileAssemble[A:Manifest,C<:DeliteCollection[A]:Manifest](oVs: List[Sym[Int]], orV: (Sym[C],Sym[C]), lSizes: List[Exp[Int]], oSizes: List[Exp[Int]], lStrides: List[Exp[Int]], kFunc: List[Block[Int]], fFunc: List[Block[Boolean]], func: Block[C], rFunc: Option[Block[C]])(implicit ctx: SourceContext) extends DeliteOpLoopNest[C] {
+  case class SimpleTileAssemble[A:Manifest,C<:DeliteCollection[A]:Manifest](oVs: List[Sym[Int]], orV: (Sym[C],Sym[C]), lSizes: List[Exp[Int]], oSizes: List[Exp[Int]], lStrides: List[Exp[Int]], kFunc: List[Block[RangeVector]], fFunc: List[Block[Boolean]], func: Block[C], rFunc: Option[Block[C]])(implicit ctx: SourceContext) extends DeliteOpLoopNest[C] {
     type OpType <: SimpleTileAssemble[A,C]
 
     val vs: List[Sym[Int]] = copyOrElse(_.vs)(oVs)
@@ -615,7 +615,7 @@ trait SimpleProfileOpsExp extends SimpleProfileOps with EffectExp {
 trait ScalaGenSimpleProfileOps extends ScalaGenEffect {
   val IR: SimpleProfileOpsExp
   import IR._
-  
+
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case ProfileStart(c,deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(" + quote(c) + ", false)")
     case ProfileStop(c,deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(" + quote(c) + ", false)")

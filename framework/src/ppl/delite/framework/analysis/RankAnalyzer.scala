@@ -40,6 +40,12 @@ trait MultiArrayAnalyzerBase extends AnalyzerBase {
       setProps(op.rV._1, getProps(op.valFunc))
       setProps(op.rV._2, getProps(op.valFunc))
 
+    case op@BlockAssemble(idims,bfs,odims, _,_,_,_) =>
+
+
+      setProps(op.rV._1, getProps(op.tile))
+      setProps(op.rV._2, getProps(op.tile))
+
     case op@DeliteMultiArrayFilterReduce(ma,_,_,_,_) => 
       setChild(op.rV._1, getChild(ma))
       setChild(op.rV._2, getChild(ma))

@@ -117,53 +117,57 @@ trait FlatArrayImplExp extends MultiArrayImplExp { self: DeliteOpsExp with Delit
   // --- Manifest creation for flat MultiArrays
   private def dataField[T](tp: Manifest[T]): List[(String, Manifest[_])] = List("data" -> darrayManifest(tp))
   private def buffField[T](tp: Manifest[T]): List[(String, Manifest[_])] = List("data" -> darrayBufferManifest(tp))
-  private def dimFields: List[(String, Manifest[_])] = List("dims" -> darrayManifest(manifest[Int]))
-  private def viewFields: List[(String, Manifest[_])] = dimFields ++ List("ofs" -> manifest[Int]) ++ List("strides" -> darrayManifest(manifest[Int]))
+  //private def dimFields: List[(String, Manifest[_])] = List("dims" -> darrayManifest(manifest[Int]))
+  //private def viewFields: List[(String, Manifest[_])] = dimFields ++ List("ofs" -> manifest[Int]) ++ List("strides" -> darrayManifest(manifest[Int]))
 
-  def flatplainManifest(typeArg: Manifest[_]): Manifest[FlatArrayPlain[_]] = makeManifest(classOf[FlatArrayPlain[_]], List(typeArg))
-  /*  = new RefinedManifest[FlatArrayPlain[T]] { 
+  private def dimFields(n: Int): List[(String, Manifest[_])] = List.tabulate(n){d => s"dim$d" -> manifest[Int]}
+  private def viewFields(n: Int): List[(String, Manifest[_])] = dimFields(n) ++ List("ofs" -> manifest[Int]) ++ 
+                                                                List.tabulate(n){d => s"stride$d" -> manifest[Int]}
+
+  def flatplainManifest[T](typeArg: Manifest[T], n: Int): Manifest[FlatArrayPlain[T]] //= makeManifest(classOf[FlatArrayPlain[_]], List(typeArg))
+    = new RefinedManifest[FlatArrayPlain[T]] { 
         def runtimeClass = classOf[FlatArrayPlain[T]]
-        val fields = dataField(tp) ++ dimFields
-        override val typeArguments = List(tp)
-    }*/
-  def flatviewManifest(typeArg: Manifest[_]): Manifest[FlatArrayView[_]] = makeManifest(classOf[FlatArrayView[_]], List(typeArg))
-    /*= new RefinedManifest[FlatArrayView[T]] {
+        val fields = dataField(typeArg) ++ dimFields(n)
+        override val typeArguments = List(typeArg)
+    }
+  def flatviewManifest[T](typeArg: Manifest[T], n: Int): Manifest[FlatArrayView[T]] // = makeManifest(classOf[FlatArrayView[_]], List(typeArg))
+    = new RefinedManifest[FlatArrayView[T]] {
         def runtimeClass = classOf[FlatArrayView[T]]
-        val fields = dataField(tp) ++ viewFields 
-        override val typeArguments = List(tp)
-    }*/
-  def flatbuffManifest(typeArg: Manifest[_]): Manifest[FlatArrayBuff[_]] = makeManifest(classOf[FlatArrayBuff[_]], List(typeArg))
-  /*  = new RefinedManifest[FlatArrayBuff[T]] {
+        val fields = dataField(typeArg) ++ viewFields(n)
+        override val typeArguments = List(typeArg)
+    }
+  def flatbuffManifest[T](typeArg: Manifest[T], n: Int): Manifest[FlatArrayBuff[T]] //= makeManifest(classOf[FlatArrayBuff[_]], List(typeArg))
+    = new RefinedManifest[FlatArrayBuff[T]] {
         def runtimeClass = classOf[FlatArrayBuff[T]]
-        val fields = buffField(tp) ++ dimFields
-        override val typeArguments = List(tp)
-    }*/
-  def flatbuffviewManifest(typeArg: Manifest[_]): Manifest[FlatArrayBuffView[_]] = makeManifest(classOf[FlatArrayBuffView[_]], List(typeArg))
-  /*  = new RefinedManifest[FlatArrayBuffView[T]] {
+        val fields = buffField(typeArg) ++ dimFields(n)
+        override val typeArguments = List(typeArg)
+    }
+  def flatbuffviewManifest[T](typeArg: Manifest[T], n: Int): Manifest[FlatArrayBuffView[T]] //= makeManifest(classOf[FlatArrayBuffView[_]], List(typeArg))
+    = new RefinedManifest[FlatArrayBuffView[T]] {
         def runtimeClass = classOf[FlatArrayBuffView[T]]
-        val fields = buffField(tp) ++ viewFields
-        override val typeArguments = List(tp)
-    }*/
+        val fields = buffField(typeArg) ++ viewFields(n)
+        override val typeArguments = List(typeArg)
+    }
 
-  override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
+  /*override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
     case t if t.erasure == classOf[FlatArrayPlain[_]] => Some((classTag(t), dataField(t.typeArguments(0)) ++ dimFields))
     case t if t.erasure == classOf[FlatArrayView[_]] => Some((classTag(t), dataField(t.typeArguments(0)) ++ viewFields))
     case t if t.erasure == classOf[FlatArrayBuff[_]] => Some((classTag(t), buffField(t.typeArguments(0)) ++ dimFields))
     case t if t.erasure == classOf[FlatArrayBuffView[_]] => Some((classTag(t), buffField(t.typeArguments(0)) ++ viewFields))
     case _ => super.unapplyStructType
-  }
+  }*/
 
-  private def seqToArray(seq: Seq[Exp[Int]], mutable: Boolean = false): Exp[DeliteArray[Int]] = {
+  /*private def seqToArray(seq: Seq[Exp[Int]], mutable: Boolean = false): Exp[DeliteArray[Int]] = {
     val arr = DeliteArray[Int](unit(seq.length))
     for (i <- 0 until seq.length) { arr(unit(i)) = seq(i) }
     if (!mutable) 
       delite_unsafe_immutable(arr)
     else
       arr
-  }
+  }*/
 
   // TODO: Rearrange to allow shortcutting on dimension, stride lookups
-  case class FlatArrayPlainNew[A:Manifest](data: Exp[DeliteArray[A]], dims: Seq[Exp[Int]])(implicit ctx: SourceContext) extends DeliteStruct[FlatArrayPlain[A]] {
+  /*case class FlatArrayPlainNew[A:Manifest](data: Exp[DeliteArray[A]], dims: Seq[Exp[Int]])(implicit ctx: SourceContext) extends DeliteStruct[FlatArrayPlain[A]] {
     val elems = copyTransformedElems(List("data" -> data, "dims" -> seqToArray(dims)))
     val mA = manifest[A]
   }
@@ -178,7 +182,7 @@ trait FlatArrayImplExp extends MultiArrayImplExp { self: DeliteOpsExp with Delit
   case class FlatArrayBuffViewNew[A:Manifest](data: Exp[DeliteArrayBuffer[A]], dims: Seq[Exp[Int]], ofs: Exp[Int], strides: Seq[Exp[Int]])(implicit ctx: SourceContext) extends DeliteStruct[FlatArrayBuffView[A]] {
     val elems = copyTransformedElems(List("data" -> data, "dims" -> seqToArray(dims), "ofs" -> ofs, "strides" -> seqToArray(strides)))
     val mA = manifest[A]
-  }
+  }*/
 
   /*override def multiViewUnapply[T](ma: Exp[DeliteMultiArray[T]]): Option[(Seq[Exp[Int]], Seq[Exp[Int]])] = ma match {
     case Def(d) => d match {
@@ -203,7 +207,7 @@ trait FlatArrayImplExp extends MultiArrayImplExp { self: DeliteOpsExp with Delit
     case _ => super.multiUnapply(ma)
   }*/
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+  /*override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@FlatArrayPlainNew(a,d) => reflectPure(new {override val original = Some(f,e) } with FlatArrayPlainNew(f(a),f(d))(e.mA,ctx))(mtype(manifest[A]),ctx)
     case e@FlatArrayViewNew(a,d,o,s) => reflectPure(new {override val original = Some(f,e) } with FlatArrayViewNew(f(a),f(d),f(o),f(s))(e.mA,ctx))(mtype(manifest[A]),ctx)
     case e@FlatArrayBuffNew(a,d) => reflectPure(new {override val original = Some(f,e) } with FlatArrayBuffNew(f(a),f(d))(e.mA,ctx))(mtype(manifest[A]),ctx)
@@ -213,19 +217,26 @@ trait FlatArrayImplExp extends MultiArrayImplExp { self: DeliteOpsExp with Delit
     case Reflect(e@FlatArrayBuffNew(a,d), u, es) => reflectMirrored(Reflect(new {override val original = Some(f,e) } with FlatArrayBuffNew(f(a),f(d))(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]),ctx)
     case Reflect(e@FlatArrayBuffViewNew(a,d,o,s), u, es) => reflectMirrored(Reflect(new {override val original = Some(f,e)} with FlatArrayBuffViewNew(f(a),f(d),f(o),f(s))(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]),ctx)
     case _ => super.mirror(e,f)
-  }).asInstanceOf[Exp[A]]
+  }).asInstanceOf[Exp[A]]*/
 
   // --- New flat ND array
   def flatarray_plain_new[T:Manifest](data: Exp[DeliteArray[T]], dims: Seq[Exp[Int]])(implicit ctx: SourceContext): Exp[FlatArrayPlain[T]] = {    
-    val struct = reflectPure( FlatArrayPlainNew(data, dims) )
+    //val struct = reflectPure( FlatArrayPlainNew(data, dims) )
+    def slf(x: Rep[_]) = (y: Rep[FlatArrayPlain[T]]) => x
+    val tp = flatplainManifest(manifest[T], dims.length)
+    val struct = record_new(("data",false,slf(data)) +: dims.zipWithIndex.map{i => ("dim" + i._2, false, slf(i._1))})(tp)
     struct.withData(FlatLayout(dims.length, Plain)).withField(getProps(data), "data")
   }
 
   // --- New flat view
   // If this is a view of a view, will already have accounted for dimensions
-  // If this is a wrapped plain array, will calculate the stride in the overloaded version of method
+  // If this is a wrapped plain array, will calculate the strides in the overloaded version of method
   def flatarray_view_new[T:Manifest](data: Exp[DeliteArray[T]], dims: Seq[Exp[Int]], ofs: Exp[Int], strides: Seq[Exp[Int]])(implicit ctx: SourceContext): Exp[FlatArrayView[T]] = {    
-    val struct = reflectPure( FlatArrayViewNew(data, dims, ofs, strides) )
+    //val struct = reflectPure( FlatArrayViewNew(data, dims, ofs, strides) )
+    def slf(x: Rep[_]) = (y: Rep[FlatArrayView[T]]) => x
+    val tp = flatviewManifest(manifest[T], dims.length)
+    val struct = record_new( (("data", false, slf(data)) +: dims.zipWithIndex.map{i => ("dim" + i._2, false, slf(i._1))}) ++ 
+                             (("ofs", false, slf(ofs)) +: strides.zipWithIndex.map{d => ("stride" + d._2, false, slf(d._1))}))(tp)
     struct.withData(FlatLayout(dims.length, View)).withField(getProps(data), "data")
   }
   def flatarray_view_new[A:Manifest](data: Exp[DeliteArray[A]], dims: Seq[Exp[Int]])(implicit ctx: SourceContext): Exp[FlatArrayView[A]] = {
@@ -234,13 +245,20 @@ trait FlatArrayImplExp extends MultiArrayImplExp { self: DeliteOpsExp with Delit
 
   // --- New flat buffer
   def flatarray_buff_new[T:Manifest](data: Exp[DeliteArrayBuffer[T]], dims: Seq[Exp[Int]])(implicit ctx: SourceContext): Exp[FlatArrayBuff[T]] = {
-    val struct = reflectPure( FlatArrayBuffNew(data, dims) )
+    //val struct = reflectPure( FlatArrayBuffNew(data, dims) )
+    def slf(x: Rep[_]) = (y: Rep[FlatArrayBuff[T]]) => x
+    val tp = flatbuffManifest(manifest[T], dims.length)
+    val struct = record_new(("data", false, slf(data)) +: dims.zipWithIndex.map{i => ("dim" + i._2, true, slf(i._1))})(tp)
     struct.withData(FlatLayout(dims.length, Buffer)).withField(getProps(data), "data")
   }
     
   // --- New flat buffer view
   def flatarray_buffview_new[T:Manifest](data: Exp[DeliteArrayBuffer[T]], dims: Seq[Exp[Int]], ofs: Exp[Int], strides: Seq[Exp[Int]])(implicit ctx: SourceContext): Exp[FlatArrayBuffView[T]] = {
-    val struct = reflectPure( FlatArrayBuffViewNew(data, dims, ofs, strides) )
+    //val struct = reflectPure( FlatArrayBuffViewNew(data, dims, ofs, strides) )
+    def slf(x: Rep[_]) = (y: Rep[FlatArrayBuffView[T]]) => x
+    val tp = flatbuffviewManifest(manifest[T], dims.length)
+    val struct = record_new( (("data", false, slf(data)) +: dims.zipWithIndex.map{i => ("dim" + i._2, false, slf(i._1))}) ++ 
+                             (("ofs", false, slf(ofs)) +: strides.zipWithIndex.map{d => ("stride" + d._2, false, slf(d._1))}))(tp)
     struct.withData(FlatLayout(dims.length, BufferView)).withField(getProps(data), "data")                       
   }
   def flatarray_buffview_new[A:Manifest](data: Exp[DeliteArrayBuffer[A]], dims: Seq[Exp[Int]])(implicit ctx: SourceContext): Exp[FlatArrayBuffView[A]] = {
@@ -286,11 +304,11 @@ trait FlatArrayImplExp extends MultiArrayImplExp { self: DeliteOpsExp with Delit
     // --- Manifests
     override def transformManifest[T](t: Manifest[T], a: ArrayProperties, typeArg: Manifest[_]): Manifest[_] = layout(a) match {
       case FlatLayout(1, Plain) => darrayManifest(typeArg)
-      case FlatLayout(n, Plain) => flatplainManifest(typeArg)
+      case FlatLayout(n, Plain) => flatplainManifest(typeArg, n)
       case FlatLayout(1, Buffer) => darrayBufferManifest(typeArg)
-      case FlatLayout(n, Buffer) => flatbuffManifest(typeArg)
-      case FlatLayout(n, View) => flatviewManifest(typeArg)
-      case FlatLayout(n, BufferView) => flatbuffviewManifest(typeArg)
+      case FlatLayout(n, Buffer) => flatbuffManifest(typeArg, n)
+      case FlatLayout(n, View) => flatviewManifest(typeArg, n)
+      case FlatLayout(n, BufferView) => flatbuffviewManifest(typeArg, n)
       case _ => super.transformManifest(t, a, typeArg)
     }
     
@@ -332,9 +350,9 @@ trait FlatArrayImplExp extends MultiArrayImplExp { self: DeliteOpsExp with Delit
     override def implementStride[T:Manifest](ma: Exp[DeliteMultiArray[T]], d: Int)(implicit ctx: SourceContext): Exp[Int] = layout(ma) match {
       case FlatLayout(_, Plain) => cwarn("Getting stride of flat array"); Const(1)
       case FlatLayout(_, Buffer) => cwarn("Getting stride of flat buffer"); Const(1)
-      case FlatLayout(_, View) => field[DeliteArray[Int]](ma, "strides").apply(unit(d))
+      case FlatLayout(_, View) => field[Int](ma,"stride"+d) //field[DeliteArray[Int]](ma, "strides").apply(unit(d))
 
-      case FlatLayout(_, BufferView) => field[DeliteArray[Int]](ma, "strides").apply(unit(d))
+      case FlatLayout(_, BufferView) => field[Int](ma,"stride"+d) //field[DeliteArray[Int]](ma, "strides").apply(unit(d))
       case _ => super.implementStride(ma, d)
     }
 
@@ -349,7 +367,7 @@ trait FlatArrayImplExp extends MultiArrayImplExp { self: DeliteOpsExp with Delit
       case FlatLayout(1, Plain) => if (i == 0) darray_length(ma.asDeliteArray) else { cwarn("Geting dim " + i + " of 1D array"); Const(1) }
       case FlatLayout(1, Buffer) => if (i == 0) darray_buffer_length(ma.asDeliteArrayBuffer) else { cwarn("Getting dim " + i + " of 1D array"); Const(1) } 
       case FlatLayout(m, _) => 
-        if (i < m) field[DeliteArray[Int]](ma, "dims").apply(unit(i))
+        if (i < m) field[Int](ma,"dim"+i) //field[DeliteArray[Int]](ma, "dims").apply(unit(i))
         else { cwarn("Getting dim " + i + " of MultiArray of rank " + m); Const(1) }
       case _ => super.implementDim(ma,i)
     }

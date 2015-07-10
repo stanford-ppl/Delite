@@ -117,5 +117,20 @@ trait DeliteAbstractOpsExp extends DeliteAbstractOps with AtomicWriteExp with In
   }
   abstract class DeliteAbstractLoop2[A:Manifest,B:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteAbstractLoop[A,R] { val mB = manifest[B] }
   abstract class DeliteAbstractLoop3[A:Manifest,B:Manifest,T:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteAbstractLoop2[A,B,R] { val mT = manifest[T] }
+
+
+  abstract class DeliteAbstractLoopNest[A:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteOp[R] with AbstractNode[R] {
+    type OpType <: DeliteAbstractLoopNest[A,R]
+
+    val nestLevels: Int
+    lazy val vs: List[Sym[Int]] = copyTransformedListOrElse(_.vs)(List.fill(nestLevels)(fresh[Int])).asInstanceOf[List[Sym[Int]]]
+    lazy val is: Sym[Indices] = copyTransformedOrElse(_.i)(indices_new(vs)).asInstanceOf[Sym[Indices]]
+
+    val mA = manifest[A]
+    val mR = manifest[R]
+    val fm = fc
+  }
+
+  abstract class DeliteAbstractLoopNest2[A:Manifest,B:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteAbstractLoopNest[A,R] { val mB = manifest[B] }
 }
 

@@ -20,7 +20,7 @@ trait DeliteArray5D[T] extends DeliteMultiArray[T]
 // Abstract map intended for use with MultiArrays
 trait DeliteMultiMap[K,V]
 
-trait DeliteMultiArrayOps extends DeliteAbstractOps {  
+trait DeliteMultiArrayOps extends DeliteAbstractOps with RangeVectorOps {  
   object MultiArray {
     def apply[T:Manifest](dims: Rep[Int]*)(implicit ctx: SourceContext): Rep[DeliteMultiArray[T]] = dmultia_new[T](dims)
     def imm[T:Manifest](dims: Rep[Int]*)(implicit ctx: SourceContext): Rep[DeliteMultiArray[T]] = dmultia_new_immutable[T](dims)
@@ -324,7 +324,7 @@ trait DeliteMultiArrayOps extends DeliteAbstractOps {
   //def dmultia_unpin[T:Manifest,R:Manifest](in: Rep[DeliteArray[R]], layout: Layout[T,R], shape: Seq[Rep[Int]])(implicit ctx: SourceContext): Rep[DeliteMultiArray[T]]
 }
 
-trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsExp { this: DeliteOpsExp =>
+trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsExp with RangeVectorOpsExp { this: DeliteOpsExp =>
   // Abstract def family identifier
   private implicit val fc = AbstractFamily("multiarray")
 
@@ -514,6 +514,7 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
 
   /** 
    * Parallel Filter-Reduce on MD array
+   * TODO: This is no longer needed (general reduce transforms can take care of this now)
    * @param in     - input multi-array
    * @param filter - filter function on indices
    * @param reduce - reduction function (must be associative)
@@ -524,6 +525,19 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
     lazy val rV: (Sym[DeliteMultiArray[A]], Sym[DeliteMultiArray[A]]) = copyOrElse(_.rV)(fresh[DeliteMultiArray[A]], fresh[DeliteMultiArray[A]])
     val filtFunc: Block[Boolean] = copyTransformedBlockOrElse(_.filtFunc)(reifyEffects(filter(v)))
     val redFunc: Block[DeliteMultiArray[A]] = copyTransformedBlockOrElse(_.redFunc)(reifyEffects(reduce(rV._1, rV._2)))
+  }
+
+  // TODO: Will types work out here?
+  case class BlockAssemble[A:Manifest,T:Manifest](idims: Seq[Exp[Int]], bfs: Seq[Exp[Int]], odims: Seq[Exp[Int]], keys: Exp[Indices] => Exp[RangeVector], filter: Option[Exp[Indices] => Exp[Boolean]], tile: Exp[Indices] => Exp[T], reduce: Option[ (Exp[T],Exp[T]) => Exp[T]])(implicit ctx: SourceContext) extends DeliteAbstractLoopNest2[A,T,DeliteMultiArray[A]] {
+    type OpType <: BlockAssemble[A,T]
+    val nestLayers = idims.length
+
+    val kFunc: List[Block[RangeVector]] = copyTransformedListOrElse(_.kFunc)(keys.map{key => reifyEffects(key(is))})
+    val fFunc: Option[Block[Boolean]] = copyTransformedOptionOrElse(_.fFunc)(filter.map{filt => reifyEffects(filt(is))})
+    val tile: Block[T] = copyTransformedBlockOrElse(_.tile)(reifyEffects(tile(is)))
+
+    lazy val rV: (Sym[T], Sym[T]) = copyOrElse(_.rV)(fresh[T], fresh[T])
+    val rFunc: Option[Block[T]] = copyTransformedOptionOrElse(_.rFunc)(reduce.map(red => reifyEffects(red(rV._1,rV._2))))
   }
 
   // --- 1D Parallel Ops

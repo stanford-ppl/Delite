@@ -8,6 +8,7 @@ import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
 import ppl.delite.framework.codegen.cpp.TargetCpp
 import ppl.delite.framework.codegen.opencl.TargetOpenCL
+import ppl.delite.framework.Config
 
 import ppl.tests.scalatest._
 import ppl.delite.framework.datastructures._
@@ -106,17 +107,71 @@ trait SmalApp extends DeliteTestModule with DeliteTestDSLApplication
 
   def sum(start: Rep[Int], end: Rep[Int])(nRows: Rep[Int], nCols: Rep[Int])(f: Rep[Int] => Rep[Array2D[Double]])(implicit ctx: SourceContext)
     = reduce[Array2D[Double]](end - start, zeros(nRows,nCols)){i => f(i)}{_+_}
-
-  def test(): Rep[Unit]
-
-  def main() = {
-    test()
-    collect(unit(true))
-    mkReport
-  }
 }
 
 class SmalSuite extends DeliteSuite {
+
+  def runBench(app: DeliteTestRunner, args: Array[String], target: String, threads: Int) {
+    println("RUNNING")
+    ppl.delite.runtime.Delite.embeddedMain(args, app.staticDataMap)
+  }
+
+  def stageBench(app: DeliteTestRunner) = {
+    println("STAGING")
+    val saveDeg = Config.degFilename
+    val saveBuildDir = Config.buildDir
+    val saveCacheSyms = Config.cacheSyms
+    val generatedDir = Config.buildDir + java.io.File.separator + uniqueTestName(app)
+    try {
+      Config.degFilename = degName(app)
+      Config.buildDir = generatedDir
+      Config.cacheSyms = cacheSyms
+      app.main(Array())
+    } finally {
+      // concurrent access check
+      assert(Config.buildDir == generatedDir)
+      Config.degFilename = saveDeg
+      Config.buildDir = saveBuildDir
+      Config.cacheSyms = saveCacheSyms
+    }
+  }
+
+  def compileAndRun(app: DeliteTestRunner) {
+    validateParameters()
+    val args = Array(degName(app))
+
+    for(t <- deliteTestTargets) {
+      t match {
+        case "scala" =>
+        case "cuda" => Config.generateCUDA = true; Config.generateCpp = true
+        case "cpp" => Config.generateCpp = true
+        case _ => println("Unknown test target: " + t)
+      }
+    }
+    if (useBlas) Config.useBlas = true
+
+    stageBench(app)
+
+    // Set runtime parameters for targets and execute runtime
+    for(target <- deliteTestTargets) {
+      for (num <- threads) {
+        def runtimeConfig(numScala: Int = 1, numCpp: Int = 0, numCuda: Int = 0, numOpenCL: Int = 0) {
+          ppl.delite.runtime.Config.numThreads = numScala
+          ppl.delite.runtime.Config.numCpp = numCpp
+          ppl.delite.runtime.Config.numCuda = numCuda
+        }
+
+        target match {
+          case "scala" => runtimeConfig(numScala = num)
+          case "cpp" => runtimeConfig(numCpp = num)
+          case "cuda" => runtimeConfig(numScala = num, numCuda = 1) //scala or cpp (or both) for host?
+          case _ => assert(false)
+        }
+        runBench(app, args, target, num)
+      }
+    }
+
+  }
 
   // Printing the result of a map-reduce doesn't work right now - gets a missing op error at runtime
   /*def testDeliteReduce = {
@@ -175,7 +230,7 @@ class SmalSuite extends DeliteSuite {
 
   def testGDA = {
     trait GDA extends SmalApp {
-      def test() = {
+      def main() {
         val x = read2D("/home/david/PPL/data/1024-1200x.dat")
         val y = read1D("/home/david/PPL/data/q1y.dat").map{d => d <= 0.0}
 
@@ -196,6 +251,8 @@ class SmalSuite extends DeliteSuite {
         val mu1 = mu1_num.map{ _ / y_ones }
 
         val sigma = sum(0, m)(n,n){i => 
+          //if (y(i)) (x.sliceRow(i) - mu1) ** (x.sliceRow(i) - mu1)
+          //else      (x.sliceRow(i) - mu0) ** (x.sliceRow(i) - mu0)
           val mu = if (y(i)) mu1 else mu0
           (x.sliceRow(i) - mu) ** (x.sliceRow(i) - mu)
         }
@@ -209,7 +266,7 @@ class SmalSuite extends DeliteSuite {
         println("  sigma = "); sigma.sliceRows(0,10).pprint*/
       }
     }
-    compileAndTest(new SmalRunner with GDA )
+    compileAndRun(new SmalRunner with GDA )
   }
 
   /*def testGDABlocked = {
