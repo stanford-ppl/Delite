@@ -589,7 +589,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
     case _ => super.darray_new_immutable(length)
   }
 
-  def darrayManifest(typeArg: Manifest[_]) = makeManifest(classOf[DeliteArray[_]], List(typeArg))
+  def darrayManifest(typeArg: Manifest[_]): Manifest[DeliteArray[_]] = makeManifest(classOf[DeliteArray[_]], List(typeArg))
 
   def deliteArrayPure[T:Manifest](da: Exp[DeliteArray[T]], elems: RefinedManifest[T])(implicit ctx: SourceContext): Exp[DeliteArray[T]] = {
     if (Config.soaEnabled)

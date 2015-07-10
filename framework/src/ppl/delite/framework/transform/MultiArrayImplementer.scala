@@ -17,7 +17,8 @@ trait MultiArrayViewImpl[T] extends MultiArrayImpl[T]
 trait MultiArrayBuffImpl[T] extends MultiArrayImpl[T]
 trait MultiArrayBuffViewImpl[T] extends MultiArrayImpl[T]
 
-trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with DeliteSimpleOpsExp with DeliteArrayBufferOpsExp with LayoutMetadataOps { self => 
+trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with DeliteSimpleOpsExp 
+  with DeliteArrayBufferOpsExp with DeliteMapOpsExp with LayoutMetadataOps { self: DeliteOpsExp with DeliteFileReaderOpsExp => 
 
   val implementer: MultiArrayImplementer  
 
@@ -46,37 +47,39 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
   implicit def multiarrayToCastOps[T:Manifest](x: Exp[DeliteMultiArray[T]]) = new MultiArrayCastOpsCls[T](x)
   class MultiArrayCastOpsCls[T:Manifest](x: Exp[DeliteMultiArray[T]]) { 
     def asMultiArrayImpl = {
-      assert(isMultiArrayImpl(x), "Cannot cast " + x.tp + " to MultiArrayImpl")
+      assert(isMultiArrayImpl(x), "Cannot cast " + x.tp + " to MultiArrayImpl\n " + strDef(x))
       x.asInstanceOf[Exp[MultiArrayImpl[T]]]
     }
     def asMultiArrayViewImpl = {
-      assert(isMultiArrayViewImpl(x), "Cannot cast " + x.tp + " to MultiArrayViewImpl")
+      assert(isMultiArrayViewImpl(x), "Cannot cast " + x.tp + " to MultiArrayViewImpl\n" + strDef(x))
       x.asInstanceOf[Exp[MultiArrayViewImpl[T]]]
     }
     def asMultiArrayBuffImpl = {
-      assert(isMultiArrayBuffImpl(x), "Cannot cast " + x.tp + " to MultiArrayBuffImpl")
+      assert(isMultiArrayBuffImpl(x), "Cannot cast " + x.tp + " to MultiArrayBuffImpl\n" + strDef(x))
       x.asInstanceOf[Exp[MultiArrayBuffImpl[T]]]
     }
     def asMultiArrayBuffViewImpl = {
-      assert(isMultiArrayBuffViewImpl(x), "Cannot cast " + x.tp + " to MultiArrayBuffViewImpl")
+      assert(isMultiArrayBuffViewImpl(x), "Cannot cast " + x.tp + " to MultiArrayBuffViewImpl\n" + strDef(x))
       x.asInstanceOf[Exp[MultiArrayBuffViewImpl[T]]]
     }
   }
 
+  implicit def multimapToCastOps[K:Manifest,V:Manifest](x: Exp[DeliteMultiMap[K,V]]) = new MultiMapCastOpsCls[K,V](x)
+  class MultiMapCastOpsCls[K:Manifest,V:Manifest](x: Exp[DeliteMultiMap[K,V]]) {
+    def asDeliteMap = {
+      assert(isDeliteMap(x), "Cannot cast " + x.tp + " to DeliteMap")
+      x.asInstanceOf[Exp[DeliteMap[K,V]]]
+    }
+  }
+
   // ---- Convenience infix operations for MultiArrayImpl and descendants
-  implicit def multiarrayimplToOpsCls(ma: Exp[MultiArrayImpl[_]]) = new MultiArrayImplOpsCls(ma)
-  class MultiArrayImplOpsCls(x: Exp[MultiArrayImpl[_]]) {
-    def dims = Seq.tabulate(rank(x)){d => field[Int](x, "dim" + d)}
-    def dim(d: Int) = field[Int](x, "dim" + d)
-    def size = productTree(this.dims)
-  }
-  implicit def multiarrayviewimplToOpsCls(ma: Exp[MultiArrayViewImpl[_]]) = new MultiArrayViewImplOpsCls(ma)
-  class MultiArrayViewImplOpsCls(x: Exp[MultiArrayViewImpl[_]]) {
-    def stride = Seq.tabulate(rank(x)){d => field[Int](x, "stride" + d)}
-  }
-  implicit def multiarraybuffviewimplToOpsCls(ma: Exp[MultiArrayBuffViewImpl[_]]) = new MultiArrayBuffViewImplOpsCls(ma)
-  class MultiArrayBuffViewImplOpsCls(x: Exp[MultiArrayBuffViewImpl[_]]) {
-    def stride = Seq.tabulate(rank(x)){d => field[Int](x, "stride" + d)}
+  implicit def multiarrayimplToOpsCls[T:Manifest](ma: Exp[MultiArrayImpl[T]]) = new MultiArrayImplOpsCls(ma)
+  class MultiArrayImplOpsCls[T:Manifest](x: Exp[MultiArrayImpl[T]]) {
+    def dims: Seq[Exp[Int]] = implementer.getDims(x.asInstanceOf[Exp[DeliteMultiArray[T]]])
+    def dim(d: Int): Exp[Int] = implementer.implementDim(x.asInstanceOf[Exp[DeliteMultiArray[T]]], d)
+    def size: Exp[Int] = implementer.implementSize(x.asInstanceOf[Exp[DeliteMultiArray[T]]])
+    def strides: Seq[Exp[Int]] = implementer.getStrides(x.asInstanceOf[Exp[DeliteMultiArray[T]]])
+    def stride(d: Int) = implementer.implementStride(x.asInstanceOf[Exp[DeliteMultiArray[T]]], d)
   }
 
   // --- Convenience infix operations for AbstractIndices
@@ -86,6 +89,87 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
     def size(n: Int): Exp[Int] = productTree(toSeq(n))
   }
 
+  object DMAStructView {
+    def unapply[T](ma: Exp[DeliteMultiArray[T]]) = multiViewUnapply(ma)
+  }
+
+  def multiViewUnapply[T](ma: Exp[DeliteMultiArray[T]]): Option[(Seq[Exp[Int]], Seq[Exp[Int]])] = ma match {
+    case _ => None
+  }
+
+  object DMAStruct {
+    def unapply[T](ma: Exp[DeliteMultiArray[T]]) = multiUnapply(ma)
+  }
+
+  def multiUnapply[T](ma: Exp[DeliteMultiArray[T]]): Option[Seq[Exp[Int]]] = ma match {
+    case _ => None
+  }
+
+  // --- MultiArray Implementation nodes
+
+  case class ArrayMkString[A:Manifest](arr: Exp[DeliteMultiArray[A]], del: Exp[String], len: () => Exp[Int], stringify: Exp[Int] => Exp[String])(implicit ctx: SourceContext) extends DeliteOpSingleWithManifest[A,String](reifyEffectsHere{
+    val size = len()
+    if (delite_less_than(size, unit(1))) unit("[ ]")
+    else {
+      val i = var_new(unit(0))
+      val s = var_new(unit(""))
+      while(delite_less_than(i,delite_int_minus(size,unit(1)))) {
+        s = delite_string_concat(readVar(s), stringify(readVar(i)) )
+        s = delite_string_concat(readVar(s), del)
+        i = delite_int_plus(readVar(i), unit(1))
+      }
+      delite_string_concat(readVar(s), stringify(readVar(i)))
+    }
+  }) { override def toString = "ArrayMkString(" + arr + ", " + del + ")" }
+
+  // TODO: Use slices with array_mkstring calls instead?
+  case class MatrixMkString[A:Manifest](mat: Exp[DeliteMultiArray[A]], rdel: Exp[String], cdel: Exp[String], dim: Int => Exp[Int], stringify: Seq[Exp[Int]] => Exp[String])(implicit ctx: SourceContext) extends DeliteOpSingleWithManifest[A,String](reifyEffectsHere{
+    val rows = dim(0)
+    val cols = dim(1)
+    if (delite_less_than(rows, unit(1))) unit("[ ]")
+    else if (delite_less_than(cols, unit(1))) unit("[ ]")
+    else {
+      val r = var_new(unit(0))
+      val c = var_new(unit(0))
+      val s = var_new(unit(""))
+
+      def row_mkstring() {
+        while (delite_less_than(c, delite_int_minus(cols, unit(1)))) {
+          s = delite_string_concat(readVar(s), stringify(Seq(readVar(r),readVar(c))))
+          s = delite_string_concat(readVar(s), cdel)
+          c = delite_int_plus(readVar(c), unit(1))
+        }
+        s = delite_string_concat(readVar(s), stringify(Seq(readVar(r),readVar(c))))
+      }
+ 
+      while (delite_less_than(r, delite_int_minus(rows, unit(1)))) {
+        row_mkstring()
+        s = delite_string_concat(readVar(s), rdel)
+        r = delite_int_plus(readVar(r), unit(1))
+        c = unit(0)
+      }
+      row_mkstring()
+      readVar(s)
+    }
+  }) { override def toString = "MatrixMkString(" + mat + ", " + rdel + ", " + cdel + ")" }
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case e@ArrayMkString(m,d,l,a) => reflectPure(new {override val original = Some(f,e)} with ArrayMkString(f(m),f(d),l,a)(e.mA,ctx))(mtype(manifest[A]),ctx)
+    case e@MatrixMkString(m,r,c,d,a) => reflectPure(new {override val original = Some(f,e)} with MatrixMkString(f(m),f(r),f(c),d,a)(e.mA,ctx))(mtype(manifest[A]),ctx)
+    case Reflect(e@ArrayMkString(m,d,l,a), u, es) => reflectMirrored(Reflect(new {override val original = Some(f,e)} with ArrayMkString(f(m),f(d),l,a)(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]),ctx)
+    case Reflect(e@MatrixMkString(m,r,c,d,a), u, es) => reflectMirrored(Reflect(new {override val original = Some(f,e)} with MatrixMkString(f(m),f(r),f(c),d,a)(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]),ctx)
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]]
+
+  // Override blocks for MkString to avoid cluttering IR printouts - can remove later if needed
+  // TODO: Blocks still seem to be in highest IR "scope" - figure out if can be moved later?
+  override def blocks(e: Any): List[Block[Any]] = e match {
+    case op: ArrayMkString[_] => Nil
+    case op: MatrixMkString[_] => Nil
+    case _ => super.blocks(e)
+  }
+
+  // --- Convenience methods for type checks
   def isLoopIndices[T](x: Exp[T]) = isSubtype(x.tp.erasure, classOf[LoopIndices])
   def isIndices[T](x: Exp[T]) = isSubtype(x.tp.erasure, classOf[Indices])
 
@@ -96,6 +180,7 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
 
   def asMultiArrayImpl[T](x: Exp[DeliteCollection[T]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[MultiArrayImpl[T]]]
 
+  // --- DeliteCollection ops for MultiArray implementations
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
     if (isMultiArrayImpl(x)) implementer.implementSize(x.asInstanceOf[Exp[DeliteMultiArray[A]]])
     else super.dc_size(x)
@@ -127,11 +212,28 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
     // Get inner element type for given data structure type
     def dataTp[A,B:Manifest](x: Exp[A]): Manifest[B] = dataTp(x.tp)
     def dataTp[A,B:Manifest](tp: Manifest[A]): Manifest[B] = tp match {
+      // Check if type is DeliteArray first to avoid issues with AOS - SOA in StructType unapplies
+      case t if isDeliteArrayTpe(t) => t.typeArguments(0).asInstanceOf[Manifest[B]]
       case StructType(_,elems) => elems.find(_._1 == "data").getOrElse(
         throw new RuntimeException("Can't find data field for " + tp)
       )._2.typeArguments(0).asInstanceOf[Manifest[B]]
       case t if !t.typeArguments.isEmpty => t.typeArguments(0).asInstanceOf[Manifest[B]]
       case _ => sys.error("Cannot get data type of " + tp + " - type has no type arguments")
+    }
+
+    def keyTp[A,B:Manifest](x: Exp[A]): Manifest[B] = keyTp(x.tp)
+    def keyTp[A,B:Manifest](tp: Manifest[A]): Manifest[B] = tp match {
+      case StructType(_,elems) => elems.find(_._1 == "keys").getOrElse{
+        throw new RuntimeException("Can't find keys field for " + tp)
+      }._2.typeArguments(0).asInstanceOf[Manifest[B]]
+      case _ => sys.error("Cannot get keys type of " + tp + " - not a struct type")
+    }
+    def valTp[A,B:Manifest](x: Exp[A]): Manifest[B] = valTp(x.tp)
+    def valTp[A,B:Manifest](tp: Manifest[A]): Manifest[B] = tp match {
+      case StructType(_,elems) => elems.find(_._1 == "values").getOrElse{
+        throw new RuntimeException("Can't find keys field for " + tp)
+      }._2.typeArguments(0).asInstanceOf[Manifest[B]]
+      case _ => sys.error("Cannot get values type of " + tp + " - not a struct type")
     }
 
     // --- Type transformation
@@ -165,8 +267,58 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
       case Reflect(f: AbstractNode[_],_,_) if f.family == "multiarray" => Some(transformAbstract(s, d))
       case Struct(tag, elems) if hasMultiArrayTpe(s.tp) => Some(transformAbstract(s, d))
       case Reflect(Struct(tag, elems),_,_) if hasMultiArrayTpe(s.tp) => Some(transformAbstract(s, d))
+      
+      case l: AbstractLoop[_] if hasMultiArrayTpe(s.tp) => transformLoop(s, l)(ttype(s.tp,props(s)), mtype(s.tp), ctx)
+      case Reflect(l: AbstractLoop[_], _, _) if hasMultiArrayTpe(s.tp) => transformLoop(s,l)(ttype(s.tp,props(s)), mtype(s.tp), ctx)
+
+      case c: DeliteOpCondition[_] if hasMultiArrayTpe(s.tp) => Some( transformCondition(s, c)(ttype(s.tp,props(s)), mtype(s.tp), ctx) )
+      case Reflect(c: DeliteOpCondition[_], _,_) if hasMultiArrayTpe(s.tp) => Some(transformCondition(s, c)(ttype(s.tp, props(s)), mtype(s.tp), ctx) )
+
       case Reify(x,u,es) => Some(reflectPure(Reify(f(x),mapOver(f,u),f(es)))(f(x).tp,ctx))
       case _ => None
+    }
+
+    // Force body transformations and type changes when mirroring loops
+    def transformLoop[A:Manifest,B:Manifest](s: Exp[B], d: AbstractLoop[_])(implicit ctx: SourceContext): Option[Exp[Any]] = d.body match {
+      case re: DeliteReduceElem[_] =>
+        println("Found reduce with output props " + makeString(props(s)))
+        println(strDef(s))
+        quoteCode(ctx).foreach{x => println(x)}
+
+        val r = re.asInstanceOf[DeliteReduceElem[A]] 
+        val mA = manifest[A]
+
+        val size = f(d.size)
+        val rV2 = (fresh[A],fresh[A])
+        val func = f(r.func)(mA).asInstanceOf[Block[A]]
+        val cond = r.cond.map{c => f(c).asInstanceOf[Block[Boolean]]}
+        val zero = f(r.zero)(mA).asInstanceOf[Block[A]]
+        val init = f(r.accInit)(mA).asInstanceOf[Block[A]]
+
+        setProps(rV2._1, getProps(func))
+        setProps(rV2._2, getProps(func))
+
+        println("Transforming reduce with type " + manifest[A].toString)
+        println(" and rV._1 " + rV2._1.tp + makeString(props(rV2._1)))
+
+        val rFunc = withSubstScope(r.rV._1 -> rV2._1, r.rV._2 -> rV2._2) { f(r.rFunc).asInstanceOf[Block[A]] }
+
+        val s2 = reflectPure(ReduceFactory.regen[A](d.v, rV2, size, func, rFunc, zero, cond))
+        setProps(s2, getProps(rFunc))
+
+        Some( s2 )
+      case _ => None
+    }
+
+    def transformCondition[A:Manifest,B:Manifest](s: Exp[B], d: DeliteOpCondition[_])(implicit ctx: SourceContext): Exp[Any] = {
+      val cond = f(d.cond)
+      val thenp = f(d.thenp).asInstanceOf[Block[A]]
+      val elsep = f(d.elsep).asInstanceOf[Block[A]]
+
+      // HACK -- no other way to directly create a DeliteIfThenElse node from here
+      val e = if (cond) thenp.res else elsep.res
+      setProps(e, meet(getProps(thenp), getProps(elsep), MetaBranch))
+      (e)
     }
 
     def transformAbstract[A](s: Exp[A], d: Def[A])(implicit ctx: SourceContext): Exp[Any] = transformMultiArrayDef(s, d)
@@ -176,6 +328,14 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
      * DeliteArray, DeliteArrayBuffer, and anonymous Structs
      */
     def transformMultiArrayDef(s: Exp[Any], d: Def[Any])(implicit ctx: SourceContext): Exp[Any] = d match {
+      // --- MultiMap stuff
+      case DeliteMultiMapSize(dm) => implementMapSize(f(dm))(keyTp(f(dm)), valTp(f(dm)), ctx)
+      case DeliteMultiMapGet(dm,k) => implementMapGet(f(dm),f(k))(keyTp(f(dm)), valTp(f(dm)), ctx)
+      case DeliteMultiMapContains(dm,k) => implementMapContains(f(dm),f(k))(keyTp(f(dm)), valTp(f(dm)), ctx)
+      case DeliteMultiMapKeys(dm) => implementMapKeys(f(dm))(keyTp(f(dm)), valTp(f(dm)), ctx)
+      case DeliteMultiMapVals(dm) => implementMapVals(f(dm))(keyTp(f(dm)), valTp(f(dm)), ctx)
+      case DeliteMultiMapFromArrays(k,v) => implementMapFromArrays(f(k),f(v))(dataTp(f(k)),dataTp(f(v)),ctx)
+
       // --- Nested Writes
       case op@NestedAtomicWrite(sym, trace, d) => transformNestedAtomicWrite(f(sym), trace.map{r => mirrorTrace(r,f)}, d)(dataTp(f(sym)), ctx)
 
@@ -195,6 +355,8 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
       // --- Array permute / reshape
       case DeliteMultiArrayPermute(ma,config) => implementPermute(f(ma),config,props(s))(dataTp(f(ma)), ctx)
       case DeliteMultiArrayReshape(ma,dims) => implementReshape(f(ma),f(dims),props(s))(dataTp(f(ma)), ctx)
+      case DeliteMultiArrayPermuteView(ma,config) => implementPermuteView(f(ma),config,props(s))(dataTp(f(ma)), ctx)
+      case DeliteMultiArrayReshapeView(ma,dims,_) => implementReshapeView(f(ma),f(dims),props(s))(dataTp(f(ma)), ctx)
 
       // --- Parallel ops
       case op@DeliteMultiArrayReadFile(path,dels,_) =>
@@ -213,15 +375,28 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
         val body = f(op.body)
         implementZipWith(f(ma),f(mb),body,op.v,op.i,props(s))(dataTp(f(ma)),dataTp(f(mb)),mtype(body.tp), ctx)
 
-      case op@DeliteMultiArrayReduce(ma,_,_) => implementReduce(f(ma),f(op.lookup),f(op.body),f(op.zero),op.v,op.i,op.rV,props(s))(dataTp(f(ma)), ctx)
+      case op@DeliteMultiArrayReduce(ma,_,z) => implementReduce(f(ma),op.lookup,op.body,f(z),op.v,op.i,op.rV,props(s))(dataTp(f(ma)), ctx)
+      case op@DeliteMultiArrayFold(ma,_,z) => implementFold(f(ma),op.lookup,op.body,f(z),op.v,op.i,op.rV,props(s))(dataTp(f(ma)), ctx)
 
       case op@DeliteMultiArrayForeach(ma,_) => implementForeach(f(ma),f(op.body),op.v,op.i)(dataTp(f(ma)), ctx)
       case op@DeliteMultiArrayForIndices(ma,_) => implementForIndices(f(ma),f(op.body),op.v,op.i)(dataTp(f(ma)), ctx)
-      
-      // TODO
-      case op@DeliteMultiArrayNDMap(ma,_,_) => implementNDMap(op,props(s))(dataTp(f(ma)),ttype(op.mB,mdat(s)), ctx)
-      case op@DeliteMultiArrayGroupBy(ma,_) => implementGroupBy(op)(dataTp(f(ma)),op.keyFunc.tp, ctx)
-      case op@DeliteMultiArrayGroupByReduce(ma,_,_,_) => implementGroupByReduce(op)(dataTp(ma.tp),op.keyFunc.tp,op.valFunc.tp, ctx)
+      case op@DeliteMultiArrayForShapeIndices(shape,_) => implementForShapeIndices(f(shape), f(op.body), op.v, op.i)(ctx)
+
+      case op@DeliteMultiArrayNDMap(ma,_,_) => 
+        val body = f(op.body)
+        implementNDMap(f(ma),body,op.rV,props(s))(dataTp(f(ma)),dataTp(body.tp),ctx)
+      case op@DeliteMultiArrayGroupBy(ma,_,_) => 
+        val keyFunc = f(op.keyFunc)
+        val valFunc = f(op.valFunc)
+        implementGroupBy(f(ma), keyFunc, valFunc)(dataTp(f(ma)),mtype(keyFunc.tp),mtype(valFunc.tp),ctx)
+      case op@DeliteMultiArrayGroupByReduce(ma,_,_,_) => 
+        val keyFunc = f(op.keyFunc)
+        val valFunc = f(op.valFunc)
+        val redFunc = f(op.redFunc)
+        implementGroupByReduce(f(ma),keyFunc,valFunc,redFunc,op.rV)(dataTp(f(ma)),mtype(keyFunc.tp),mtype(valFunc.tp),ctx)
+
+      case op@DeliteMultiArrayFilterReduce(ma,z,_,_,a) => 
+        implementFilterReduce(f(ma),f(z),op.filtFunc,op.redFunc,a,op.v,op.rV)(dataTp(f(ma)), ctx)
 
       // --- 1D Parallel ops
       case op@DeliteMultiArrayMapFilter(ma,_,_) => 
@@ -239,19 +414,21 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
       case DeliteMultiArrayRemove(ma,a,s,l) => implementRemove(f(ma),a,f(s),f(l))(dataTp(f(ma)),ctx)
 
       // --- Misc
-      case op@DeliteMultiArrayMkString(ma, dels) => implementMkString(f(ma),f(dels))(dataTp(f(ma)))
+      case op@DeliteMultiArrayMkString(ma, dels, _) => 
+        val body = op.body.map{f(_)}
+        implementMkString(f(ma),f(dels),body,op.rV)(dataTp(f(ma)), ctx)
       
       case op@DeliteMultiArrayWriteFile(ma, dels, path, _) => 
         val body = f(op.body)
-        implementWriteFile(f(ma), f(dels), f(path), body, op.v, op.i)(dataTp(ma.tp), ctx)
+        implementWriteFile(f(ma), f(dels), f(path), body, op.v, op.i)(dataTp(ma), ctx)
 
       // --- 1D Ops
       case DeliteMultiArraySortIndices(len,i,body) => implementSortIndices(f(len),(f(i._1).asInstanceOf[Sym[Int]],f(i._2).asInstanceOf[Sym[Int]]),f(body),props(s))(ctx)
       case DeliteMultiArrayStringSplit(str,split,lim) => implementStringSplit(f(str),f(split),f(lim),props(s))(ctx)
 
       // --- 2D Ops
-      case op@DeliteMatrixMultiply(lhs,rhs) => implementMatrixMultiply(f(lhs),f(rhs))(op.mA,op.nA,ctx)
-      case op@DeliteMatrixVectorMultiply(mat,vec) => implementMatrixVectorMultiply(f(mat),f(vec))(op.mA,op.nA,ctx)
+      case op@DeliteMatrixMultiply(lhs,rhs,_) => implementMatrixMultiply(f(lhs),f(rhs),f(op.defFunc), op.rM1, op.rM2)(op.mA,ctx)
+      case op@DeliteMatrixVectorMultiply(mat,vec,_) => implementMatrixVectorMultiply(f(mat),f(vec),f(op.defFunc), op.rM, op.rV)(op.mA,ctx)
 
       // --- Structs
       case Struct(tag, elems) =>
@@ -301,11 +478,19 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
       case DeliteMultiArrayApply(_,_) => copyMetadata(sub,props(orig))
       case DeliteMultiArrayPermute(_,_) => copyMetadata(sub,props(orig))
       case DeliteMultiArrayReshape(_,_) => copyMetadata(sub,props(orig))
+      case DeliteMultiArrayPermuteView(_,_) => copyMetadata(sub,props(orig))
+      case DeliteMultiArrayReshapeView(_,_,_) => copyMetadata(sub,props(orig))
       case DeliteMultiArrayFromFunction(_,_) => copyMetadata(sub,props(orig))
       case DeliteMultiArrayMap(_,_) => copyMetadata(sub,props(orig))
       case DeliteMultiArrayZipWith(_,_,_) => copyMetadata(sub,props(orig))
       case DeliteMultiArrayReduce(_,_,_) => copyMetadata(sub,props(orig))
+      case DeliteMultiArrayFold(_,_,_) => copyMetadata(sub,props(orig))
       case DeliteMultiArrayNDMap(_,_,_) => copyMetadata(sub,props(orig))
+      case DeliteMultiArrayFilterReduce(_,_,_,_,_) => 
+        println("Copying metadata from " + orig.tp + makeString(props(orig)))
+        println("to " + sub.tp + makeString(props(sub)))
+        println("init: " + makeString(initExp(sub)))
+        copyMetadata(sub, props(orig))
 
       case DeliteMultiArrayMapFilter(_,_,_) => copyMetadata(sub,props(orig))
       case DeliteMultiArrayFlatMap(_,_) => copyMetadata(sub,props(orig))
@@ -313,8 +498,8 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
       case DeliteMultiArraySortIndices(_,_,_) => copyMetadata(sub,props(orig))
       case DeliteMultiArrayStringSplit(_,_,_) => copyMetadata(sub,props(orig))
 
-      case DeliteMatrixMultiply(_,_) => copyMetadata(sub,props(orig))
-      case DeliteMatrixVectorMultiply(_,_) => copyMetadata(sub,props(orig))
+      case DeliteMatrixMultiply(_,_,_) => copyMetadata(sub,props(orig))
+      case DeliteMatrixVectorMultiply(_,_,_) => copyMetadata(sub,props(orig))
 
       case MultiArrayBuffify(_) => copyMetadata(sub,props(orig))
       case MultiArrayViewify(_) => copyMetadata(sub,props(orig))
@@ -408,18 +593,23 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
     }
 
     // --- Properties
-    def getDims[T:Manifest](ma: Exp[DeliteMultiArray[T]]): Seq[Exp[Int]] = {
-      if (isMultiArrayImpl(ma)) ma.asMultiArrayImpl.dims
-      else sys.error("Don't know how to implement dims for type " + ma.tp)
+    def getStrides[T:Manifest](ma: Exp[DeliteMultiArray[T]])(implicit ctx: SourceContext): Seq[Exp[Int]] = {
+      sys.error("Don't know how to implement strides for type " + ma.tp)
+    }
+
+    def implementStride[T:Manifest](ma: Exp[DeliteMultiArray[T]], d: Int)(implicit ctx: SourceContext): Exp[Int] = {
+      sys.error("Don't know how to implement stride for type " + ma.tp)
+    }
+
+    def getDims[T:Manifest](ma: Exp[DeliteMultiArray[T]])(implicit ctx: SourceContext): Seq[Exp[Int]] = {
+      sys.error("Don't know how to implement dims for type " + ma.tp)
     }
 
     def implementDim[T:Manifest](ma: Exp[DeliteMultiArray[T]], i: Int)(implicit ctx: SourceContext): Exp[Int] = {
-      if (isMultiArrayImpl(ma)) ma.asMultiArrayImpl.dim(i)
-      else sys.error("Don't know how to implement dim for type " + ma.tp)
+      sys.error("Don't know how to implement dim for type " + ma.tp)
     }
     def implementSize[T:Manifest](ma: Exp[DeliteMultiArray[T]])(implicit ctx: SourceContext): Exp[Int] = {
-      if (isMultiArrayImpl(ma)) ma.asMultiArrayImpl.size
-      else sys.error("Don't know how to implement size for type " + ma.tp)
+      sys.error("Don't know how to implement size for type " + ma.tp)
     }
 
     // --- Array constructors 
@@ -445,6 +635,12 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
     def implementReshape[A:Manifest](ma: Exp[DeliteMultiArray[A]], dims: Seq[Exp[Int]], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
       sys.error("Don't know how to implement reshape operation for input layout " + layout(ma) + " and output layout " + layout(out))
     }
+    def implementPermuteView[A:Manifest](ma: Exp[DeliteMultiArray[A]], config: Seq[Int], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
+      sys.error("Don't know how to implement permute-view operation for input layout " + layout(ma) + " and output layout " + layout(out))
+    }
+    def implementReshapeView[A:Manifest](ma: Exp[DeliteMultiArray[A]], dims: Seq[Exp[Int]], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
+      sys.error("Don't know how to implement reshape-view operation for input layout " + layout(ma) + " and output layout " + layout(out))
+    }
 
     // --- Parallel ops
     def implementReadFile[A:Manifest](path: Exp[String], dels: Seq[Exp[String]], body: Block[A], v: Sym[Int], i: Exp[LoopIndices], rV: Sym[String], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
@@ -464,10 +660,24 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
       val size = implementSize(in)
       val inds = calcIndices(v, dims)
       val i2 = loopindices_new(v, inds)
-
-      // Probably don't need subst. for i for body or zero..
-      val (mirroredLookup, mirroredBody, mirroredZero) = withSubstScope(i -> i2) { (f(lookup), f(body), f(zero)) }
-      reflectPure(ReduceFactory(v, rV, size, mirroredLookup, mirroredBody, mirroredZero))
+      val (mirroredLookup, mirroredZero) = withSubstScope(i -> i2) { (f(lookup), f(zero)) }
+      val rV2 = (fresh[A], fresh[A])
+      setProps(rV2._1, getChild(in))
+      setProps(rV2._2, getChild(in))
+      val mirroredBody = withSubstScope(i -> i2, rV._1 -> rV2._1, rV._2 -> rV2._2) { f(body) }
+      reflectPure(ReduceFactory(v, rV2, size, mirroredLookup, mirroredBody, mirroredZero)).withProps(props(mirroredBody))
+    }
+    def implementFold[A:Manifest](in: Exp[DeliteMultiArray[A]], lookup: Block[A], body: Block[A], zero: Exp[A], v: Sym[Int], i: Exp[LoopIndices], rV: (Sym[A], Sym[A]), out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
+      val dims = getDims(in)
+      val size = implementSize(in)
+      val inds = calcIndices(v, dims)
+      val i2 = loopindices_new(v, inds)
+      val (mirroredLookup, mirroredZero) = withSubstScope(i -> i2) { (f(lookup), f(zero)) }
+      val rV2 = (fresh[A], fresh[A])
+      setProps(rV2._1, getChild(in))
+      setProps(rV2._2, getChild(in))
+      val mirroredBody = withSubstScope(i -> i2, rV._1 -> rV2._1, rV._2 -> rV2._2) { f(body) }
+      reflectPure(FoldFactory(v, rV2, size, mirroredLookup, mirroredBody, mirroredZero)).withProps(props(mirroredBody))
     }
     def implementForeach[A:Manifest](in: Exp[DeliteMultiArray[A]], body: Block[Unit], v: Sym[Int], i: Exp[LoopIndices])(implicit ctx: SourceContext): Exp[Unit] = {
       val dims = getDims(in)
@@ -485,16 +695,29 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
       val i2 = loopindices_new(v, inds)
 
       val mirroredBody = withSubstScope(i -> i2) { f(body) }
-      reflectEffect(ForeachFactory(v, size, mirroredBody), summarizeEffects(body).star andAlso Simple())
+      reflectEffect(ForeachFactory(v, size, mirroredBody), summarizeEffects(mirroredBody).star andAlso Simple())
     }
-    def implementNDMap[A:Manifest,B:Manifest](op: DeliteMultiArrayNDMap[_,_], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
-      sys.error("Don't know how to implement ND map for input " + layout(op.in) + " and output " + layout(out))
+    def implementForShapeIndices(shape: Seq[Exp[Int]], body: Block[Unit], v: Sym[Int], i: Exp[LoopIndices])(implicit ctx: SourceContext): Exp[Unit] = {
+      val size = productTree(shape)
+      val inds = calcIndices(v, shape)
+      val i2 = loopindices_new(v, inds)
+
+      val mirroredBody = withSubstScope(i -> i2){ f(body) }
+      reflectEffect(ForeachFactory(v, size, mirroredBody), summarizeEffects(mirroredBody).star andAlso Simple())
     }
-    def implementGroupBy[A:Manifest,K:Manifest](op: DeliteMultiArrayGroupBy[_,_])(implicit ctx: SourceContext): Exp[Any] = {
-      sys.error("Don't know how to implement groupby for input " + layout(op.in))
+
+    def implementNDMap[A:Manifest,B:Manifest](in: Exp[DeliteMultiArray[A]], body: Block[DeliteMultiArray[B]], rV: Sym[DeliteMultiArray[A]], out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
+      sys.error("Don't know how to implement ND map for input " + layout(in) + " and output " + layout(out))
     }
-    def implementGroupByReduce[A:Manifest,K:Manifest,V:Manifest](op: DeliteMultiArrayGroupByReduce[_,_,_])(implicit ctx: SourceContext): Exp[Any] = {
-      sys.error("Don't know how to implement groupby-reduce for input " + layout(op.in))
+    def implementGroupBy[A:Manifest,K:Manifest,V:Manifest](in: Exp[DeliteMultiArray[A]], keyFunc: Block[K], valFunc: Block[V])(implicit ctx: SourceContext): Exp[Any] = {
+      sys.error("Don't know how to implement groupby for input " + layout(in))
+    }
+    def implementGroupByReduce[A:Manifest,K:Manifest,V:Manifest](in: Exp[DeliteMultiArray[A]], keyFunc: Block[K], valFunc: Block[V], redFunc: Block[V], rV: (Sym[V], Sym[V]))(implicit ctx: SourceContext): Exp[Any] = {
+      sys.error("Don't know how to implement groupby-reduce for input " + layout(in))
+    }
+
+    def implementFilterReduce[A:Manifest](in: Exp[DeliteMultiArray[A]], zero: Exp[DeliteMultiArray[A]], filter: Block[Boolean], reduce: Block[DeliteMultiArray[A]], axis: Int, v: Sym[Int], rV: (Sym[DeliteMultiArray[A]],Sym[DeliteMultiArray[A]]))(implicit ctx: SourceContext): Exp[Any] = {
+      sys.error("Don't know how to implement filter-reduce for input " + layout(in))
     }
 
     // --- 1D Parallel Ops
@@ -520,9 +743,38 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
     }
 
     // --- Misc.
-    def implementMkString[A:Manifest](ma: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]]): Exp[String] = {
-      sys.error("Don't know how to implement mkString for layout " + layout(ma))
+    private def stringify[A:Manifest](ma: Exp[DeliteMultiArray[A]], body: Option[Block[String]], rV: Sym[A], indices: Seq[Exp[Int]])(implicit ctx: SourceContext): Exp[String] = body match {
+      case Some(body) => 
+        val rV2 = implementApply(ma, indices_new(indices))
+        val mirroredBody = withSubstScope(rV -> rV2){ f(body) }
+        getBlockResult(mirroredBody)
+
+      case None =>
+        delite_stringify(implementApply(ma, indices_new(indices)))
     }
+
+    private def array_mkstring[A:Manifest](arr: Exp[DeliteMultiArray[A]], del: Exp[String], stringify: Seq[Exp[Int]] => Exp[String])(implicit ctx: SourceContext): Exp[String] 
+      = ArrayMkString(arr, del, () => implementSize(arr), {i: Exp[Int] => stringify(Seq(i))} )
+    private def matrix_mkstring[A:Manifest](mat: Exp[DeliteMultiArray[A]], rdel: Exp[String], cdel: Exp[String], stringify: Seq[Exp[Int]] => Exp[String])(implicit ctx: SourceContext): Exp[String]
+      = MatrixMkString(mat, rdel, cdel, {i: Int => implementDim(mat, i)}, {i: Seq[Exp[Int]] => stringify(i) })
+
+    /**
+     * Create a string representation of the input MultiArray
+     * If no body is supplied, delite_stringify is used to turn elements to strings
+     * @param ma   - input MultiArray
+     * @param dels - delimeters separating elements, dimensions
+     * @param body - optional reified mapping function from string to element type
+     * @param rV   - original bound symbol used to reify map body
+     */
+    def implementMkString[A:Manifest](ma: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]], body: Option[Block[String]], rV: Sym[A])(implicit ctx: SourceContext): Exp[String] = {
+      quoteCode(ctx).foreach{code => println(code)}
+      println("Implementing mkString for " + ma.tp + makeString(props(ma)))
+
+      if (rank(ma) == 1)      array_mkstring(ma, dels(0), {seq => stringify(ma, body, rV, seq)})
+      else if (rank(ma) == 2) matrix_mkstring(ma, dels(0), dels(1), {seq => stringify(ma, body, rV, seq)})
+      else sys.error("Don't know how to implement MkString for layout " + layout(ma))
+    }
+
     def implementWriteFile[A:Manifest](ma: Exp[DeliteMultiArray[A]], dels: Seq[Exp[String]], path: Exp[String], body: Block[String], v: Sym[Int], i: Exp[LoopIndices])(implicit ctx: SourceContext): Exp[Unit] = {
       sys.error("Don't know how to implement file write for layout " + layout(ma))
     }
@@ -536,10 +788,10 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
     }
 
     // --- 2D Ops
-    def implementMatrixMultiply[A:Manifest:Numeric](lhs: Exp[DeliteArray2D[A]], rhs: Exp[DeliteArray2D[A]])(implicit ctx: SourceContext): Exp[Any] = {
+    def implementMatrixMultiply[A:Manifest](lhs: Exp[DeliteArray2D[A]], rhs: Exp[DeliteArray2D[A]], default: Block[DeliteArray2D[A]], rM1: Sym[DeliteArray2D[A]], rM2: Sym[DeliteArray2D[A]])(implicit ctx: SourceContext): Exp[Any] = {
       sys.error("Don't know how to implement matrix multiply for layouts " + layout(lhs) + ", " + layout(rhs))
     }
-    def implementMatrixVectorMultiply[A:Manifest:Numeric](mat: Exp[DeliteArray2D[A]], vec: Exp[DeliteArray1D[A]])(implicit ctx: SourceContext): Exp[Any] = {
+    def implementMatrixVectorMultiply[A:Manifest](mat: Exp[DeliteArray2D[A]], vec: Exp[DeliteArray1D[A]], default: Block[DeliteArray1D[A]], rM: Sym[DeliteArray2D[A]], rV: Sym[DeliteArray1D[A]])(implicit ctx: SourceContext): Exp[Any] = {
       sys.error("Don't know how to implement matrix-vector multiply for layotus " + layout(mat) + ", " + layout(vec))
     }
 
@@ -549,6 +801,26 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
     }
     def implementViewify[A:Manifest](ma: Exp[DeliteMultiArray[A]], out: SymbolProperties): Exp[Any] = {
       sys.error("Don't know how to implement viewify for input layout " + layout(ma) + " and output layout " + layout(out))
+    }
+
+    // --- Map stuff
+    def implementMapSize[K:Manifest,V:Manifest](dm: Exp[DeliteMultiMap[K,V]])(implicit ctx: SourceContext): Exp[Int] = { 
+      dmap_size(dm.asDeliteMap) withProps getField(dm, "size")
+    }
+    def implementMapGet[K:Manifest,V:Manifest](dm: Exp[DeliteMultiMap[K,V]], key: Exp[K])(implicit ctx: SourceContext): Exp[V] = { 
+      dmap_get(dm.asDeliteMap, key) withProps getField(dm, "values").flatMap{getChild(_)}
+    }
+    def implementMapContains[K:Manifest,V:Manifest](dm: Exp[DeliteMultiMap[K,V]], key: Exp[K])(implicit ctx: SourceContext): Exp[Boolean] = { 
+      dmap_contains(dm.asDeliteMap, key)
+    }
+    def implementMapKeys[K:Manifest,V:Manifest](dm: Exp[DeliteMultiMap[K,V]])(implicit ctx: SourceContext): Exp[Any] = { 
+      dmap_keys(dm.asDeliteMap) withProps getField(dm, "keys")
+    }
+    def implementMapVals[K:Manifest,V:Manifest](dm: Exp[DeliteMultiMap[K,V]])(implicit ctx: SourceContext): Exp[Any] = {
+      dmap_values(dm.asDeliteMap) withProps getField(dm, "values")
+    }
+    def implementMapFromArrays[K:Manifest,V:Manifest](keys: Exp[DeliteArray1D[K]], vals: Exp[DeliteArray1D[V]])(implicit ctx: SourceContext): Exp[Any] = {
+      sys.error("Don't know how to implement map from array layouts " + layout(keys) + " and " + layout(vals))   
     }
   }
 }

@@ -73,6 +73,16 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     }
   }
 
+  /** 
+   * Future base class for nested data parallel Delite ops.
+   */
+  abstract class DeliteOpLoopNest[A:Manifest](implicit ctx: SourceContext) extends AbstractLoopNest[A] with DeliteOp[A] {
+    type OpType <: DeliteOpLoopNest[A]
+    def copyBodyOrElse(e: => Def[A]): Def[A] = original.map(p=>mirrorLoopBody(p._2.asInstanceOf[OpType].body,p._1)).getOrElse(e)
+    val nestLayers: Int
+    val numDynamicChunks:Int = 0
+  }
+
   /**
    * The base class for most data parallel Delite ops.
    */
@@ -237,6 +247,45 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     val mCV = manifest[CV]
   }
 
+  // --- Tiling Elems
+  case class DeliteTileBuffer[A:Manifest,TA:Manifest,CA:Manifest](
+    // -- bound vars
+    bV: List[Sym[Int]],   // buffer indices
+    tV: List[Sym[Int]],   // tile indices
+    tD: List[Sym[Int]],   // tile dimensions
+    buffVal: Sym[CA],     // primary buffer allocation
+    tileVal: Sym[TA],     // tile function result
+    partVal: Sym[TA],     // partial result
+    bE: Sym[A],           // Buffer element (during copying out)
+    tE: Sym[A],           // Tile element (during copying in)
+
+    // collection functions
+    bApply: Block[A],     // buffer apply
+    tApply: Block[A],     // tile apply function
+    bUpdate: Block[Unit], // buffer update function
+    tUpdate: Block[Unit], // tile update function
+    allocBuff: Block[CA], // buffer allocate function
+    allocTile: Block[TA]  // tile allocate function
+  ) {
+    val mA = manifest[A]
+    val mTA = manifest[TA]
+    val mCA = manifest[CA]
+  }
+
+  case class DeliteTileElem[A:Manifest,TA:Manifest,CA:Manifest](
+    keys: List[Block[Int]],
+    cond: List[Block[Boolean]] = Nil,
+    tile: Block[TA],
+    rV: (Sym[TA],Sym[TA]),
+    rFunc: Option[Block[TA]],
+    buf: DeliteTileBuffer[A,TA,CA],
+    numDynamicChunks: Int
+  ) extends Def[CA] with DeliteLoopElem {
+    val mA = manifest[A]
+    val mTA = manifest[TA]
+    val mCA = manifest[CA]
+  }
+
 
   ///////////////////////////
   // effects + other helpers
@@ -307,6 +356,14 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
       val ers2 = ers.copy(mayRead = cleanS(ers.mayRead), mstRead = cleanS(ers.mstRead),
                         mayWrite = cleanS(ers.mayWrite), mstWrite = cleanS(ers.mstWrite))
       (ef andAlso erp2 andAlso ers2).star
+
+    case e: DeliteTileElem[_,_,_] => 
+      // TODO: This probably isn't right
+      val kf = e.keys.map(summarizeEffects).reduce((s1,s2) => s1 andAlso s2)
+      val cf = if (e.cond.nonEmpty) e.cond.map(summarizeEffects).reduce((s1,s2) => s1 andThen s2) else Pure()
+      val tf = summarizeEffects(e.tile)
+      val rf = if (e.rFunc.isDefined) summarizeEffects(e.rFunc.get) else Pure()
+      (kf andAlso cf andAlso tf andAlso rf).star
   }
 
   // TODO: just to make refactoring easier in case we want to change to reflectSomething
@@ -315,6 +372,12 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
   // alternative: leave reflectPure as above and override toAtom...
 
   def reflectPure[A:Manifest](d: Def[A])(implicit ctx: SourceContext): Exp[A] = d match {
+    case x: DeliteOpLoopNest[_] => 
+      val mutableInputs = readMutableData(d) 
+      val re = Read(mutableInputs)
+      val be = summarizeBody(x.body)
+      reflectEffect(d, re andAlso be)
+
     case x: DeliteOpLoop[_] =>
       val mutableInputs = readMutableData(d) //TODO: necessary or not??
       //val mutableInputs = Nil // readMutableData(d) TODO: necessary or not??
@@ -338,6 +401,9 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case x: DeliteOpAbstractSingleTask[_] =>
       x.block
       super.reflectEffect(d,u)
+    case x: DeliteOpLoopNest[_] => 
+      val z = x.body
+      super.reflectEffect(d,u)
     case x: DeliteOpLoop[_] =>
       val z = x.body  //  <-- not lazy
       super.reflectEffect(d,u)
@@ -352,6 +418,9 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
   override def reflectMirrored[A:Manifest](zd: Reflect[A])(implicit pos: SourceContext): Exp[A] = zd match {
     case Reflect(x:DeliteOpAbstractSingleTask[_], u, es) =>
       x.block
+      super.reflectMirrored(zd)
+    case Reflect(x: DeliteOpLoopNest[_], u, es) => 
+      val z = x.body
       super.reflectMirrored(zd)
     case Reflect(x: DeliteOpLoop[_], u, es) =>
       val z = x.body  //  <-- somehow not always evaluated? lazy val extends a strict val, what are the semantics?
@@ -408,7 +477,35 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
         finalizer = fb(e.finalizer)(e.mCA)
       )(e.mA,e.mI,e.mCA)
 
+    def mirrorTileBuffer[A,TA,CA](e: DeliteTileBuffer[A,TA,CA]) = 
+      DeliteTileBuffer[A,TA,CA](
+        bV = f(e.bV).asInstanceOf[List[Sym[Int]]],
+        tV = f(e.tV).asInstanceOf[List[Sym[Int]]],
+        tD = f(e.tD).asInstanceOf[List[Sym[Int]]],
+        buffVal = f(e.buffVal).asInstanceOf[Sym[CA]],
+        tileVal = f(e.tileVal).asInstanceOf[Sym[TA]],
+        partVal = f(e.partVal).asInstanceOf[Sym[TA]],
+        bE = f(e.bE).asInstanceOf[Sym[A]],
+        tE = f(e.tE).asInstanceOf[Sym[A]],
+        bApply = fb(e.bApply)(e.mA),
+        tApply = fb(e.tApply)(e.mA),
+        bUpdate = fb(e.bUpdate)(manifest[Unit]),
+        tUpdate = fb(e.tUpdate)(manifest[Unit]),
+        allocBuff = fb(e.allocBuff)(e.mCA),
+        allocTile = fb(e.allocTile)(e.mTA)
+      )(e.mA,e.mTA,e.mCA)
+
     d match {
+      case e: DeliteTileElem[a,ta,ca] => 
+        (DeliteTileElem[a,ta,ca](
+          keys = e.keys.map(fb(_)(manifest[Int])),
+          cond = e.cond.map(fb(_)(manifest[Boolean])),
+          tile = fb(e.tile)(e.mTA),
+          rV = (f(e.rV._1).asInstanceOf[Sym[ta]], f(e.rV._2).asInstanceOf[Sym[ta]]), // need to transform bound vars? 
+          rFunc = e.rFunc.map(fb(_)(e.mTA)),
+          buf = mirrorTileBuffer(e.buf),
+          numDynamicChunks = e.numDynamicChunks
+        )(e.mA,e.mTA,e.mCA)).asInstanceOf[Def[A]]
       case e: DeliteHashCollectElem[k,v,i,cv,ci,ccv] =>
         (DeliteHashCollectElem[k,v,i,cv,ci,ccv](
           keyFunc = fb(e.keyFunc)(e.mK),
@@ -498,6 +595,10 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteForeachElem[_] => blocks(op.func) //::: blocks(op.sync)
     case op: DeliteReduceElem[_] => blocks(op.func) ::: blocks(op.cond) ::: blocks(op.zero) ::: blocks(op.rFunc) ::: blocks(op.accInit)
     case op: DeliteReduceTupleElem[_,_] => blocks(op.func) ::: blocks(op.cond) ::: blocks(op.zero) ::: blocks(op.rFuncSeq) ::: blocks(op.rFuncPar) // should be ok for tuples...
+    
+    case op: DeliteTileBuffer[_,_,_] => blocks(op.bApply) ::: blocks(op.tApply) ::: blocks(op.bUpdate) ::: blocks(op.tUpdate) ::: blocks(op.allocBuff) ::: blocks(op.allocTile)
+    case op: DeliteTileElem[_,_,_] => blocks(op.keys) ::: blocks(op.cond) ::: blocks(op.tile) ::: blocks(op.rFunc)
+
     case _ => super.blocks(e)
   }
 
@@ -517,6 +618,9 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteForeachElem[_] => syms(op.func) //::: syms(op.sync)
     case op: DeliteReduceElem[_] => syms(op.func) ::: syms(op.cond) ::: syms(op.zero) ::: syms(op.rFunc) ::: syms(op.accInit)
     case op: DeliteReduceTupleElem[_,_] => syms(op.func) ::: syms(op.cond) ::: syms(op.zero) ::: syms(op.rFuncSeq) ::: syms(op.rFuncPar) // should be ok for tuples...
+    
+    case op: DeliteTileBuffer[_,_,_] => syms(op.bApply) ::: syms(op.tApply) ::: syms(op.bUpdate) ::: syms(op.tUpdate) ::: syms(op.allocBuff) ::: syms(op.allocTile)
+    case op: DeliteTileElem[_,_,_] => syms(op.keys) ::: syms(op.cond) ::: syms(op.tile) ::: syms(op.rFunc) ::: syms(op.buf)
     case _ => super.syms(e)
   }
 
@@ -534,6 +638,9 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteForeachElem[_] => readSyms(op.func) //::: readSyms(op.sync)
     case op: DeliteReduceElem[_] => readSyms(op.func) ::: readSyms(op.cond) ::: readSyms(op.zero) ::: readSyms(op.rFunc) ::: readSyms(op.accInit)
     case op: DeliteReduceTupleElem[_,_] => readSyms(op.func) ::: readSyms(op.cond) ::: readSyms(op.zero) ::: readSyms(op.rFuncSeq) ::: readSyms(op.rFuncPar)
+    
+    case op: DeliteTileBuffer[_,_,_] => readSyms(op.bApply) ::: readSyms(op.tApply) ::: readSyms(op.bUpdate) ::: readSyms(op.tUpdate) ::: readSyms(op.allocBuff) ::: readSyms(op.allocTile)
+    case op: DeliteTileElem[_,_,_] => readSyms(op.keys) ::: readSyms(op.cond) ::: readSyms(op.tile) ::: readSyms(op.rFunc) ::: readSyms(op.buf)
     case _ => super.readSyms(e)
   }
 
@@ -550,6 +657,10 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteForeachElem[_] => effectSyms(op.func) //::: effectSyms(op.sync)
     case op: DeliteReduceElem[_] => List(op.rV._1, op.rV._2) ::: effectSyms(op.func) ::: effectSyms(op.cond) ::: effectSyms(op.zero) ::: effectSyms(op.rFunc) ::: effectSyms(op.accInit)
     case op: DeliteReduceTupleElem[_,_] => syms(op.rVPar) ::: syms(op.rVSeq) ::: effectSyms(op.func._1) ::: effectSyms(op.cond) ::: effectSyms(op.zero) ::: effectSyms(op.rFuncPar) ::: effectSyms(op.rFuncSeq)
+    
+    case op: DeliteTileBuffer[_,_,_] => op.bV ::: op.tV ::: op.tD ::: List(op.bE, op.tE, op.buffVal, op.tileVal, op.partVal) ::: effectSyms(op.bApply) ::: effectSyms(op.tApply) ::: effectSyms(op.bUpdate) ::: effectSyms(op.tUpdate) ::: effectSyms(op.allocBuff) ::: effectSyms(op.allocTile)
+    case op: DeliteTileElem[_,_,_] => List(op.rV._1, op.rV._2) ::: effectSyms(op.keys) ::: effectSyms(op.cond) ::: effectSyms(op.tile) ::: effectSyms(op.rFunc) ::: boundSyms(op.buf)
+
     case _ => super.boundSyms(e)
   }
 
@@ -568,6 +679,10 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteForeachElem[_] => /*freqNormal(op.sync) :::*/ freqHot(op.func)
     case op: DeliteReduceElem[_] => freqHot(op.cond) ::: freqHot(op.func) ::: freqNormal(op.zero) ::: freqHot(op.rFunc) ::: freqNormal(op.accInit)
     case op: DeliteReduceTupleElem[_,_] => freqHot(op.cond) ::: freqHot(op.func) ::: freqNormal(op.zero) ::: freqHot(op.rFuncSeq) ::: freqHot(op.rFuncPar)
+    
+    case op: DeliteTileBuffer[_,_,_] => freqNormal(op.allocBuff) ::: freqNormal(op.allocTile) ::: freqHot(op.bApply) ::: freqHot(op.tApply) ::: freqHot(op.bUpdate) ::: freqHot(op.tUpdate)
+    case op: DeliteTileElem[_,_,_] => freqHot(op.keys) ::: freqHot(op.cond) ::: freqHot(op.tile) ::: freqHot(op.rFunc) ::: symsFreq(op.buf)
+
     case _ => super.symsFreq(e)
   }
 
@@ -583,6 +698,10 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteReduceTupleElem[_,_] => Nil
     case op: DeliteHashCollectElem[_,_,_,_,_,_] => Nil
     case op: DeliteHashReduceElem[_,_,_,_] => Nil
+
+    case op: DeliteTileBuffer[_,_,_] => Nil
+    case op: DeliteTileElem[_,_,_] => Nil
+
     case _ => super.aliasSyms(e)
   }
 
@@ -593,6 +712,10 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteForeachElem[_] => Nil
     case op: DeliteReduceElem[_] => Nil
     case op: DeliteReduceTupleElem[_,_] => Nil
+
+    case op: DeliteTileBuffer[_,_,_] => Nil
+    case op: DeliteTileElem[_,_,_] => Nil
+
     case _ => super.containSyms(e)
   }
 
@@ -605,6 +728,10 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteReduceTupleElem[_,_] => Nil
     case op: DeliteHashCollectElem[_,_,_,_,_,_] => Nil
     case op: DeliteHashReduceElem[_,_,_,_] => Nil
+
+    case op: DeliteTileBuffer[_,_,_] => Nil
+    case op: DeliteTileElem[_,_,_] => Nil
+
     case _ => super.extractSyms(e)
   }
 
@@ -617,6 +744,10 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteForeachElem[_] => Nil
     case op: DeliteReduceElem[_] => Nil
     case op: DeliteReduceTupleElem[_,_] => Nil
+
+    case op: DeliteTileBuffer[_,_,_] => Nil
+    case op: DeliteTileElem[_,_,_] => Nil
+
     case _ => super.copySyms(e)
   }
 

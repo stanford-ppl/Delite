@@ -967,7 +967,6 @@ trait DeliteOpsExp extends DeliteOpsExpIR with DeliteInternalOpsExp with DeliteC
 
   ///////////////////////////
   // helpers
-
   def unusedBlock() = reifyEffectsHere(fatal(unit("emitted unused block in Multiloop")))
   def unusedSym() = Sym(-10)
   val encounteredZipWith = new scala.collection.mutable.HashMap[Exp[Any], DeliteOpZipWith[_,_,_,_]]()

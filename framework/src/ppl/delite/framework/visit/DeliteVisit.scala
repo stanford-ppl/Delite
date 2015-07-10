@@ -8,7 +8,6 @@ import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal._
 
 trait DeliteVisit extends LoweringTransform {
-  this: DeliteApplication =>
 
   // built-in phases   
   object deviceIndependentLowering extends LoweringTransformer {override val name = "Device-Independent Lowering"} 

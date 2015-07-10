@@ -40,7 +40,7 @@ trait LayoutMetadata extends RankMetadata {
   // Assume in order for now - can potentially make other special case classes later
   case class FlatLayout[T:Manifest](rank: Int, override val dtype: MADataType) extends Layout[T,T](dtype) { 
     val dims = Seq(Seq.tabulate(rank){i=>i+1})
-    override def makeString(prefix: String) = "flat (" + rank + "D)"
+    override def makeString(prefix: String) = rank + "D, Flat, " + dtype
   }
 
   /*case class SinglyNested[T:Manifest](rank: Int, inner: Int, override val data: MADataType) extends Layout[T,DeliteArray[T]](data) { 
@@ -66,8 +66,8 @@ trait LayoutMetadata extends RankMetadata {
 trait LayoutMetadataOps extends RankMetadataOps with LayoutMetadata {
   def getLayout(p: SymbolProperties) = p("layout").map{_.asInstanceOf[Layout[_,_]]}
   def getLayout(e: Exp[Any]) = getMetadata(e, "layout").map{_.asInstanceOf[Layout[_,_]]}
-  def layout(e: Exp[Any]) = getLayout(e).get
-  def layout(p: SymbolProperties) = getLayout(p).get
+  def layout(e: Exp[Any]) = extractMetadata(e, "layout").asInstanceOf[Layout[_,_]]
+  def layout(p: SymbolProperties) = extractMetadata(p, "layout").asInstanceOf[Layout[_,_]]
 
   override def rank(e: Exp[Any]): Int = getLayout(e) match {
     case Some(FlatLayout(n,_)) => n

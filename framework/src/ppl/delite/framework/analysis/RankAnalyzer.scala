@@ -18,6 +18,8 @@ trait MultiArrayAnalyzerBase extends AnalyzerBase {
     case op@DeliteMultiArrayView(t,_,_,_,_) => setChild(e, getChild(t))
     case op@DeliteMultiArrayPermute(ma,_)   => setChild(e, getChild(ma))
     case op@DeliteMultiArrayReshape(ma,_)   => setChild(e, getChild(ma))
+    case op@DeliteMultiArrayPermuteView(ma,_) => setChild(e, getChild(ma))
+    case op@DeliteMultiArrayReshapeView(ma,_,_) => setChild(e, getChild(ma))
     case op@DeliteMultiArrayApply(ma,_)     => setProps(e, getChild(ma))
     
     case op@DeliteMultiArrayReadFile(_,_,_)      => setChild(e, getProps(op.body))
@@ -27,10 +29,29 @@ trait MultiArrayAnalyzerBase extends AnalyzerBase {
     case op@DeliteMultiArrayMapFilter(ma,_,_)    => setChild(e, getProps(op.mapFunc))
     case op@DeliteMultiArrayFlatMap(ma,_)        => setChild(e, getChild(op.body))
 
+    case op@DeliteMultiArrayGroupBy(ma,_,_) => 
+      setField(e, ArrayProperties(getProps(op.keyFunc),NoData), "keys")
+      setField(e, ArrayProperties(Some(ArrayProperties(getProps(op.valFunc),NoData)),NoData), "vals")
+
     // TODO: Is there a way to avoid having to manually propagate to rVs here?
+    case op@DeliteMultiArrayGroupByReduce(ma,_,_,_) => 
+      setField(e, ArrayProperties(getProps(op.keyFunc),NoData), "keys")
+      setField(e, ArrayProperties(getProps(op.redFunc),NoData), "vals")
+      setProps(op.rV._1, getProps(op.valFunc))
+      setProps(op.rV._2, getProps(op.valFunc))
+
+    case op@DeliteMultiArrayFilterReduce(ma,_,_,_,_) => 
+      setChild(op.rV._1, getChild(ma))
+      setChild(op.rV._2, getChild(ma))
+      setProps(e, getProps(op.redFunc))
+
     case op@DeliteMultiArrayReduce(ma,_,_) =>
       setProps(op.rV._1, getChild(ma))
       setProps(op.rV._2, getChild(ma)) 
+      setProps(e, getProps(op.body))
+    case op@DeliteMultiArrayFold(ma,_,_) =>
+      setProps(op.rV._1, getChild(ma))
+      setProps(op.rV._2, getChild(ma))
       setProps(e, getProps(op.body))
     case op@DeliteMultiArrayNDMap(in,_,_) =>
       setChild(op.rV, getChild(in))
@@ -45,6 +66,18 @@ trait MultiArrayAnalyzerBase extends AnalyzerBase {
       setChild(ma, attemptMeet(getChild(ma), getProps(x), func = MetaUpdate))
     case op@DeliteMultiArrayInsertAll(ma,x,_,_) =>
       setChild(ma, attemptMeet(getChild(ma), getChild(x), func = MetaUpdate))
+
+    case op@DeliteMultiMapGet(dm,_) => 
+      setProps(e, getField(dm, "vals").flatMap{getChild(_)})
+    case op@DeliteMultiMapSize(dm) =>
+      setProps(e, getField(dm, "size"))
+    case op@DeliteMultiMapKeys(dm) =>
+      setProps(e, getField(dm, "keys"))
+    case op@DeliteMultiMapVals(dm) =>
+      setProps(e, getField(dm, "vals"))
+    case op@DeliteMultiMapFromArrays(k,v) =>
+      setField(e, getProps(k), "keys")
+      setField(e, getProps(v), "vals")
 
     case _ => super.forwardPropagate(e,d)
   }
@@ -84,6 +117,11 @@ trait RankMetadata extends SymbolMetadata {
     def _multiLine(a: ImplType) = false
   }
 
+  case class MayUpdate(mayUpdate: Boolean) extends Metadata {
+    def name = "mayUpdate"
+    override def makeString(prefix: String) = mayUpdate.toString
+  }
+
   case class MRank(rank: Int) extends Metadata {
     def name = "rank"
     override def makeString(prefix: String) = rank.toString
@@ -105,6 +143,7 @@ trait RankMetadata extends SymbolMetadata {
     case (MRank(r1), MRank(r2)) => (r1 == r2)
     case (MBuffer(i1), MBuffer(i2)) => matches(i1,i2)
     case (MView(i1), MView(i2)) => matches(i1,i2)
+    case (MayUpdate(b1), MayUpdate(b2)) => (b1 == b2)
     case _ => super.metadataMatches(a,b)
   }
   override def metadataIncompatibilities(a: Metadata, b: Metadata, t: MeetFunc): List[String] = (a,b,t) match {
@@ -117,6 +156,7 @@ trait RankMetadata extends SymbolMetadata {
     case (MRank(r1), MRank(r2), _) => (r1 == r2)
     case (MBuffer(_), MBuffer(_), _) => true
     case (MView(_), MView(_), _) => true
+    case (MayUpdate(_), MayUpdate(_), _) => true
     case _ => super.canMeetMetadata(a,b,t)
   }
   override def meetMetadata(a: Metadata, b: Metadata, t: MeetFunc): Metadata = (a,b,t) match {
@@ -126,11 +166,12 @@ trait RankMetadata extends SymbolMetadata {
     case (MBuffer(i1), MBuffer(i2), t) => MBuffer(meet(i1,i2,t))
     case (MView(_), MView(i2), MetaOverwrite) => MView(i2)
     case (MView(i1), MView(i2), t) => MView(meet(i1,i2,t))
+    case (MayUpdate(b1), MayUpdate(b2), _) => MayUpdate(b1 || b2)
     case _ => super.meetMetadata(a,b,t)
   }
 }
 
-trait RankMetadataOps extends MetadataOps with RankMetadata {
+trait RankMetadataOps extends EffectExp with MetadataOps with RankMetadata {
   // Rank Analysis is run before MultiArray transformations - all preexisting arrays are rank 1
   override def defaultTypeMetadata[A](tp: Manifest[A]): List[Metadata] = {
     if      (isSubtype(tp.erasure, classOf[DeliteArray[_]]))   List(MRank(1))
@@ -161,10 +202,15 @@ trait RankMetadataOps extends MetadataOps with RankMetadata {
   def isTrueBuffer(p: SymbolProperties) = getBuffer(p).map{_.isTrueBuffer}.getOrElse(false)
   def isTrueBuffer(e: Exp[Any]) = getBuffer(e).map{_.isTrueBuffer}.getOrElse(false)
 
+  def getMayUpdate(p: SymbolProperties) = p("mayUpdate").map{_.asInstanceOf[MayUpdate]}
+  def getMayUpdate(e: Exp[Any]) = getMetadata(e, "mayUpdate").map{_.asInstanceOf[MayUpdate]}
+  def mayUpdate(p: SymbolProperties) = getMayUpdate(p).map{_.mayUpdate}.getOrElse(false)
+  def mayUpdate(e: Exp[Any]) = getMayUpdate(e).map{_.mayUpdate}.getOrElse(false)
+
   // This will throw an exception if get returns None, but completeness check after 
   // rank analysis is run should guarantee that all MultiArray expressions have a rank
-  def rank(e: Exp[Any]) = getRank(e).get.rank
-  def rank(p: SymbolProperties) = getRank(p).get.rank
+  def rank(e: Exp[Any]) = extractMetadata(e, "rank").asInstanceOf[MRank].rank
+  def rank(p: SymbolProperties) = extractMetadata(p, "rank").asInstanceOf[MRank].rank
 }
 
 trait RankAnalyzer extends MultiArrayAnalyzerBase {
@@ -176,8 +222,8 @@ trait RankAnalyzer extends MultiArrayAnalyzerBase {
 
   override def hasCompleted = incomplete.isEmpty
   override def failedToConverge() { 
-    warn("Maximum iterations exceeded before all ranks were fully known")
-    warn("Try increasing the maximum number of iterations")
+    cwarn("Maximum iterations exceeded before all ranks were fully known")
+    cwarn("Try increasing the maximum number of iterations")
   }
 
   override def completed(e: Exp[Any]) = { 
@@ -189,13 +235,18 @@ trait RankAnalyzer extends MultiArrayAnalyzerBase {
 
   def setRank(e: Exp[Any], rank: Int)(implicit ctx: SourceContext) { setMetadata(e, MRank(rank)) }
   def setRank(e: Exp[Any], rank: Option[MRank])(implicit ctx: SourceContext) { setMetadata(e, rank) }
-  def enableBuffer(e: Exp[Any])(implicit ctx: SourceContext) { setMetadata(e, MBuffer(TrueType)) }
+  def setUpdated(e: Exp[Any])(implicit ctx: SourceContext) { setMetadata(e, MayUpdate(true)) }
+  def enableBuffer(e: Exp[Any])(implicit ctx: SourceContext) { 
+    setMetadata(e, MBuffer(TrueType)) 
+    setUpdated(e)
+  }
 
   override def processOp[A](e: Exp[A], d: Def[_])(implicit ctx: SourceContext): Unit = d match {
     // --- Rank rules for specific IR nodes
     case DeliteMultiArrayNew(dims)            => setRank(e, dims.length)
     case DeliteMultiArrayPermute(ma,_)        => setRank(e, getRank(ma))   
     case DeliteMultiArrayReshape(_,dims)      => setRank(e, dims.length)
+    
     case DeliteMultiArrayReadFile(_,dels,_)   => setRank(e, dels.length)
     case DeliteMultiArrayFromFunction(dims,_) => setRank(e, dims.length)
     case DeliteMultiArrayMap(ma,_)            => setRank(e, getRank(ma))
@@ -206,15 +257,34 @@ trait RankAnalyzer extends MultiArrayAnalyzerBase {
       if (isPhysBuffer(t)) setMetadata(e, MBuffer(PhysType))
       setMetadata(e, MView(TrueType))
 
+    // PermuteView and ReshapeView are "PhysType" views, since they create
+    // a view of all of the underlying data
+    case DeliteMultiArrayPermuteView(ma,_) => 
+      setRank(e, getRank(ma))
+      if (isPhysBuffer(ma)) setMetadata(e, MBuffer(PhysType))
+      setMetadata(e, MView(PhysType))
+    case DeliteMultiArrayReshapeView(ma,dims,_) => 
+      setRank(e, dims.length)
+      if (isPhysBuffer(ma)) setMetadata(e, MBuffer(PhysType))
+      setMetadata(e, MView(PhysType))
+
     case op@DeliteMultiArrayNDMap(in,mdims,_) => 
       setRank(op.rV, mdims.length)
       setRank(e, getRank(in))
+
+    case op@DeliteMultiArrayFilterReduce(ma,_,_,_,_) =>
+      setRank(op.rV._1, getRank(ma).map{r => MRank(r.rank - 1) })
+      setRank(op.rV._2, getRank(ma).map{r => MRank(r.rank - 1) })
+      setMetadata(op.rV._1, MView(TrueType))
+      setMetadata(op.rV._2, MView(TrueType))
+      setRank(e, getRank(ma).map{r => MRank(r.rank - 1) })
 
     // --- Buffer rules
     case DeliteMultiArrayInsertAll(ma,rhs,axis,i) if isMutable(ma) => enableBuffer(ma)
     case DeliteMultiArrayInsert(ma,x,i) if isMutable(ma) => enableBuffer(ma)
     case DeliteMultiArrayAppend(ma,x) if isMutable(ma) => enableBuffer(ma)
     case DeliteMultiArrayRemove(ma,axis,start,end) if isMutable(ma) => enableBuffer(ma)
+    case DeliteMultiArrayUpdate(ma,_,_) => setUpdated(ma)
  
     case _ => // Nothing
   } 
@@ -239,7 +309,7 @@ trait RankAnalyzer extends MultiArrayAnalyzerBase {
     if (incomplete.nonEmpty) {
       printmsg("Incomplete: ")
       for (s <- incomplete) {
-        warn(quotePos(s.pos) + ": Unable to statically determine the rank of " + s.tp + "\n\t" + quoteCode(s.pos).getOrElse(strDef(s)))
+        cwarn(quotePos(s.pos) + ": Unable to statically determine the rank of " + s.tp + "\n\t" + quoteCode(s.pos).getOrElse(strDef(s)))
         printmsg(quotePos(s.pos))
         printmsg("sym: " + strDef(s))
         getProps(s) match {
@@ -250,7 +320,7 @@ trait RankAnalyzer extends MultiArrayAnalyzerBase {
         setMetadata(s, MRank(1))(mpos(s.pos))
       } 
 
-      warn("Unable to statically determine the ranks of some arrays! This can occur if the type 'MultiArray' is used " + 
+      cwarn("Unable to statically determine the ranks of some arrays! This can occur if the type 'MultiArray' is used " + 
            "as an inner data structure type without element initialization. Proceeding assuming unknown ranks are 1D.")
       // Try analysis again with assumption that unknowns are of rank 1
       resume()
@@ -272,15 +342,24 @@ trait RankChecker extends MultiArrayAnalyzerBase {
     case op@DeliteMultiArrayPermute(ma,config) =>
       check(rank(ma) == config.length, "Number of dimensions given in permute conifguration must match input MultiArray rank")
 
-    case DeliteMultiArrayZipWith(ma,mb,_) =>
-      check(rank(ma) == rank(mb), "Ranks in inputs to zip-with must match")
+    case op@DeliteMultiArrayPermuteView(ma,config) => 
+      check(rank(ma) == config.length, "Number of dimensions given in permuteView configuration must match input MultiArray rank")
 
-    case op@DeliteMultiArrayReduce(ma,_,z) if isDataStructureTpe(op.mA) =>
-      if (!matches(getChild(ma), getProps(z))) {
-        check(false, "Metadata for MultiArray elements and zero in reduce do not match: \n" + 
-                     makeString(getChild(ma)) + "\n" + makeString(getProps(z))
-             )
-      }
+    case op@DeliteMultiArrayReshapeView(ma,shape,unsafe) =>
+      check(!isTrueView(ma) || unsafe, "Creation of a reshaped view of a view is generally not possible. If you know your use case is sound, use the option UNSAFE = true. This will create a reshape view of the underlying data.")
+
+    case DeliteMultiArrayZipWith(ma,mb,_) =>
+      check(rank(ma) == rank(mb), "Ranks in inputs to MultiArray ZipWith must match")
+
+    // TODO: Check that rank of zero matches rank of child if child is multiarray
+    case op@DeliteMultiArrayFold(ma,_,z) => 
+      //check(rank(ma) == rank(z), "Rank of input and zero must match in MultiArray Fold")
+    case op@DeliteMultiArrayReduce(ma,_,z) => 
+      // ...
+    case op@DeliteMultiArrayFilterReduce(ma,zero,_,_,axis) => 
+      //check(rank(ma) == rank(zero) + 1, "Rank of zero must be one less than rank of input to FilterReduce")
+      //check(rank(ma) == rank(op.redFunc.res) + 1, "Rank of result of reduction must be one less than rank of input to FilterReduce")
+      check(axis >= 0 && axis < rank(ma), "Reduction axis must be non-negative and less than MultiArray's rank")
     case op@DeliteMultiArrayNDMap(in,mdims,f) =>
       check(rank(in) > rank(op.rV), "Inner rank of ND map must be less than input rank")
       check(rank(op.rV) == rank(op.body.res), "Input and output rank must match in ND Map")
@@ -295,7 +374,7 @@ trait RankChecker extends MultiArrayAnalyzerBase {
       check(isTrueBuffer(ma), "MultiArray must be bufferable for remove operation")
       check(axis >= 0 && axis < rank(ma), "Removal axis must be non-negative and less than MultiArray's rank")
 
-    case DeliteMultiArrayMkString(ma,dels) =>
+    case DeliteMultiArrayMkString(ma,dels,_) =>
       check(rank(ma) == dels.length, "Number of delimeters given to MkString (" + dels.length + ") must match input MultiArray's rank (" + rank(ma) + ")")
     case DeliteMultiArrayWriteFile(ma,dels,_,_) => 
       check(rank(ma) == dels.length, "Number of delimeters given to WriteFile (" + dels.length + ") must match input MultiArray's rank (" + rank(ma) + ")")
@@ -305,12 +384,12 @@ trait RankChecker extends MultiArrayAnalyzerBase {
     case DeliteMultiArrayFlatMap(ma,f) => 
       check(rank(ma) == 1, "FlatMap is undefined for " + rank(ma) + "D arrays")     
 
-    case DeliteMatrixMultiply(lhs,rhs) =>
+    case DeliteMatrixMultiply(lhs,rhs,_) =>
       check(rank(lhs) == 2, "Left hand side of matrix multiply must be a 2D array")
       check(rank(rhs) == 2, "Right hand side of matrix multiply must be a 2D array")
-    case DeliteMatrixVectorMultiply(mat,vec) =>
+    case DeliteMatrixVectorMultiply(mat,vec,_) =>
       check(rank(mat) == 2, "Matrix argument to matrix-vector multiply must be a 2D array")
-      check(rank(vec) == 2, "Vector argument to matrix-vector multiply must be a 1D array")
+      check(rank(vec) == 1, "Vector argument to matrix-vector multiply must be a 1D array")
   
     case _ => //Nothing
   }

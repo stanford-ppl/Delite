@@ -4,6 +4,7 @@ import scala.virtualization.lms.common._
 import ppl.delite.framework.ops.{DeliteCollection, DeliteOpsExp}
 import reflect.{SourceContext, RefinedManifest}
 
+import ppl.delite.framework.Util._
 
 trait DeliteMap[K,V]
 
@@ -131,6 +132,9 @@ trait DeliteMapOpsExp extends DeliteMapOps with DeliteStructsExp { this: DeliteO
     case t if t.erasure == classOf[DeliteMap[_,_]] => Some((classTag(t), List("keys" -> darrayManifest(t.typeArguments(0)), "values" -> darrayManifest(t.typeArguments(1)), "index" -> makeManifest(classOf[DeliteIndex[_]], List(t.typeArguments(0))), "size" -> manifest[Int])))
     case _ => super.unapplyStructType
   }
+
+  def isDeliteMapTpe(x: Manifest[_])(implicit ctx: SourceContext) = isSubtype(x.erasure, classOf[DeliteMap[_,_]])
+  def isDeliteMap[A](x: Exp[A])(implicit ctx: SourceContext) = isSubtype(x.tp.erasure,classOf[DeliteMap[_,_]])  
 
 }
 

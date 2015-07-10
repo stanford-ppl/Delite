@@ -17,7 +17,7 @@ trait AnalyzerBase extends IterativeIRVisitor {
   val autopropagate: Boolean = true     // use default metadata propagation rules (see below) 
 
   override def hasConverged = !changed && !getMetadataUpdateFlag()
-
+  
   /**
    * Main body for analysis. By default called after metadata propagation
    * has been completed (processStructure). 
@@ -93,6 +93,7 @@ trait AnalyzerBase extends IterativeIRVisitor {
   */
   def forwardPropagate[A](e: Exp[A], d: Def[_])(implicit ctx: SourceContext): Unit = d match {
     case Reify(s,_,_) => setProps(e, getProps(s))
+    case Reflect(d2,_,_) => forwardPropagate(e, d2)
 
     // --- Array
     case DeliteArrayTake(lhs,n) => setChild(e, getChild(lhs))
@@ -137,6 +138,18 @@ trait AnalyzerBase extends IterativeIRVisitor {
       val updatedProps = attemptMeet(newProps, getProps(s), func = MetaUpdate)
       setProps(s, updatedProps)
 
+    // --- Loops
+    case op: AbstractLoop[_] => op.body match {
+      case r: DeliteReduceElem[_] => 
+        traverseBlock(r.func)
+        setProps(r.rV._1, getProps(r.func))
+        setProps(r.rV._2, getProps(r.func))
+        traverseBlock(r.rFunc)
+        setProps(e, getProps(r.rFunc))
+
+      case _ => // Nothing
+    }
+
     // --- Misc. Delite ops
     case op: DeliteOpCondition[_] => 
       setProps(e, attemptMeet(getProps(op.thenp), getProps(op.elsep), func = MetaBranch))
@@ -156,7 +169,7 @@ trait AnalyzerBase extends IterativeIRVisitor {
     case DeliteArrayUpdate(_,_,x) => Some(ArrayProperties(getProps(x), NoData))
     case DeliteArrayCopy(src,_,_,_,_) => getProps(src)
     case _ => 
-      warn("No RHS rule given for atomic write op " + d)
+      cwarn("No RHS rule given for atomic write op " + d)
       None
   }
 }

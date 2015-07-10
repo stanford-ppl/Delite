@@ -116,7 +116,8 @@ trait DeliteTestDSLCompiler extends DeliteTestDSL
 }
 
 trait DeliteTestDSLTransformExp extends DeliteVisit
-    with MultiloopSoATransformWithReduceExp
+      with MultiloopSoATransformExp
+//    with MultiloopSoATransformWithReduceExp -- Removing SOA transform on reduces for now (needs to be fixed)
 //    with HwLoweringTransformExp
 //    with DotPrintTransformExp
 

@@ -27,8 +27,7 @@ trait IndicesOps extends Base {
   def loopindices_flat(x: Rep[LoopIndices]): Rep[Int]
 }
 
-trait IndicesOpsExp extends IndicesOps with DeliteStructsExp {
-  this: DeliteOpsExp => // Needed for DeliteStructsExp
+trait IndicesOpsExp extends IndicesOps with DeliteStructsExp { this: DeliteOpsExp =>
 
   case class IndicesNew(xs: List[Exp[Int]]) extends DeliteStruct[Indices] {
     val elems = copyTransformedElems(xs.zipWithIndex.map{i => ("i" + i._2) -> i._1})
@@ -76,15 +75,13 @@ trait DeliteAbstractOps extends IndicesOps
  *
  * trait FooOpsExp extends DriftOpsExp {
  *   private implicit val fc = AbstractFamily("foo")
- *   case class Foo(...) extends DriftDef[...]   // can optionally use DriftDef[...](fc) here, but not needed
+ *   case class Foo(...) extends AbstractDef[...]   // can optionally use AbstractDef[...](fc) here, but not needed
  *   ...
  * }
  *
  */
-trait DeliteAbstractOpsExp extends DeliteAbstractOps with DeliteOpsExpIR with AtomicWriteExp with IndicesOpsExp {
-  this: DeliteOpsExp => // Needed for DeliteStructsExp
-
-  case class AbstractFamily(name: String) 
+trait DeliteAbstractOpsExp extends DeliteAbstractOps with AtomicWriteExp with IndicesOpsExp { this: DeliteOpsExp =>
+  case class AbstractFamily(name: String)
 
   /**
    * Base class for nodes which require transformation before codegen
@@ -98,6 +95,9 @@ trait DeliteAbstractOpsExp extends DeliteAbstractOps with DeliteOpsExpIR with At
   abstract class AbstractDefWithManifest[A:Manifest, R:Manifest](implicit fc: AbstractFamily) extends AbstractDef[R] {
     val mA = manifest[A]
     val mR = manifest[R]
+  }
+  abstract class AbstractDefWithManifest2[A:Manifest, B:Manifest, R:Manifest](implicit fc: AbstractFamily) extends AbstractDefWithManifest[A,R] {
+    val mB = manifest[B]
   }
 
   abstract class AbstractAtomicWriteDef[A:Manifest](implicit fc: AbstractFamily) extends AbstractNode[Unit] with AtomicWrite[A] { val fm = fc; val mA = manifest[A] } 

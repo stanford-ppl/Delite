@@ -116,7 +116,8 @@ trait DeliteHWDSLCompiler extends DeliteHWDSL
 }
 
 trait DeliteHWDSLTransformExp extends DeliteVisit
-    with MultiloopSoATransformWithReduceExp
+//    with MultiloopSoATransformWithReduceExp -- Removing SOA transform on reduces for now (needs to be fixed)
+    with MultiloopSoATransformExp
     with HwLoweringTransformExp
     with DotPrintTransformExp
 
