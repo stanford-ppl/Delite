@@ -55,6 +55,10 @@ trait HwLoweringTransformer extends WorklistTransformer {
   var syncInfoPhase = false
   var stitchPhase = false
 
+  val loopToMem = Map[Exp[Any], Exp[Any]]()
+  var vectorizeThis = false
+  var treeThis = false
+
   private def getdef(sym: Sym[Any]) = {
     sym match {
       case Def(d) => d
@@ -189,8 +193,10 @@ trait HwLoweringTransformer extends WorklistTransformer {
     println(s"$b.res = ${b.res}")
   }
 
-  def processBodyElem(s: Sym[Any], loop: AbstractLoop[Any]): Def[Any] = {
+  def processBodyElem(s: Sym[Any], loop: AbstractLoop[Any]): (Def[Any], Exp[Any]) = {
     val body = loop.body
+    val incbcastExp = reflectPure(IncBcast(loop.v))
+    subst += (loop.v -> incbcastExp)
     body match {
       case oldbod@DeliteCollectElem(func,cond,par,buf,iFunc,iF,sF,eF,numDynamicChunks) =>
         // Create new body block by doing the following substitution rules
@@ -198,21 +204,29 @@ trait HwLoweringTransformer extends WorklistTransformer {
         // 2. body.buf.eV -> body.func.output
         // 3. body.buf.allocVal -> body.allocBlk.output
 
+
         // First set up a substitution rule to propagate the
         // buffer size information, then mirror the block
         // so that the transformation takes place
+
         subst += (buf.sV) -> this(loop.size)
         val newallocBlk = transformBlock(buf.alloc)
 
         // Created the mirrored loop body,
         // then use that to join to the update block
+        vectorizeThis = true
         val mirroredFunc = transformBlock(func)
+        vectorizeThis = false
+
+        val allocExp = this(getBlockResult(newallocBlk))
         subst += (buf.eV) -> this(getBlockResult(mirroredFunc))   // Connecting update -> func block
-        subst += (buf.allocVal) -> this(getBlockResult(newallocBlk))  // Connecting update -> alloc block
+        subst += (buf.allocVal) -> allocExp  // Connecting update -> alloc block
 
         // Finally, the new loop body is the update block
         // Everything has been joined into this one
+        vectorizeThis = true
         val newfuncBlk = this(buf.update)
+        vectorizeThis = false
 
         if (!loop.size.isInstanceOf[Const[Int]]) {
           throw new Exception("Loop size not const")
@@ -220,7 +234,7 @@ trait HwLoweringTransformer extends WorklistTransformer {
 
         // Create a new "hardware loop" - for lack of a better name
         val newloopnode = HwLoop(loop.size.asInstanceOf[Const[Int]], loop.v, Block(getBlockResult(newfuncBlk)))
-        newloopnode
+        (newloopnode, allocExp)
 
       case DeliteReduceElem(func,cond,zero,accInit,rV,rFunc,stripFirst,numDynamicChunks) =>
         // Substitution rules for bounds symbols:
@@ -232,12 +246,16 @@ trait HwLoweringTransformer extends WorklistTransformer {
         val accumulator = getBlockResult(accumBlk)
 
         // Transform the func block
+        vectorizeThis = true
         val newfuncBlk = transformBlock(func)
+        vectorizeThis = false
 
         subst += (rV._1) -> getBlockResult(newfuncBlk)
-        subst += (rV._2) -> this(accumulator)
+        subst += (rV._2) -> (accumulator)
 
+        treeThis = true
         val newrFuncBlk = this(rFunc)
+        treeThis = false
         val resFF = reflectPure(gen_ff_alias(orig = accumulator.asInstanceOf[Sym[Any]], din = getBlockResult(newrFuncBlk)))
 
         if (!loop.size.isInstanceOf[Const[Int]]) {
@@ -245,17 +263,36 @@ trait HwLoweringTransformer extends WorklistTransformer {
         }
 
         val newloopnode = HwLoop(loop.size.asInstanceOf[Const[Int]], loop.v, Block(resFF))
-        newloopnode
+        (newloopnode, accumulator)
 
       case DeliteForeachElem(func, _) =>
         // To be done
-        HwLoop(Const(0), fresh[Int], Block(fresh[Int]))
+        (HwLoop(Const(0), fresh[Int], Block(fresh[Int])), fresh[Any])
 
       case _ =>
         // To be done
-        HwLoop(Const(0), fresh[Int], Block(fresh[Int]))
+        (HwLoop(Const(0), fresh[Int], Block(fresh[Int])), fresh[Any])
     }
   }
+
+  private def isALOp(s: Sym[Any], d: Def[Any]): Boolean = {
+    d match {
+      case Reflect(node, _,_ ) =>
+        isMemOp(s, node.asInstanceOf[Def[Any]])
+      case DIntPlus(_,_) => true
+      case DIntMinus(_,_) => true
+      case DIntTimes(_,_) => true
+      case DIntDivide(_,_) => true
+      case DIntMod(_,_) => true
+      case DBooleanNegate(_) => true
+      case DEqual(_,_) => true
+      case DNotEqual(_,_) => true
+      case DLessThan(_,_) => true
+      case DGreaterThan(_,_) => true
+      case _ => false
+    }
+  }
+
 
   private def isMemOp(s: Sym[Any], d: Def[Any]): Boolean = {
     d match {
@@ -272,12 +309,27 @@ trait HwLoweringTransformer extends WorklistTransformer {
    d match {
      case Reflect(node, _, _) =>
        getMemOp(node.asInstanceOf[Def[Any]])
+     case Vector(node,par) =>
+       val op = getMemOp(node.asInstanceOf[Def[Any]])
+       Vector(op, par)
       case DeliteArrayNew(length:Const[Int],_,_) =>
+        println(s"[getMemOp] DeliteArrayNew($length), creating bram")
         gen_bram(length.x)
       case DeliteArrayApply(arr, i) =>
-        gen_hwld(this(arr), this(i))
+        println(s"[getMemOp] DeliteArrayApply($arr, $i)")
+        if (loopToMem.contains(arr)) {
+          val ld = gen_hwld(loopToMem(arr), this(i))
+          ld
+        } else {
+          gen_hwld(this(arr), this(i))
+        }
       case DeliteArrayUpdate(arr, i, x) =>
-        gen_hwst(this(arr), this(i), this(x))
+        println(s"[getMemOp] DeliteArrayUpdate($arr, $i, $x)")
+        if (loopToMem.contains(arr)) {
+          gen_hwst(loopToMem(arr), this(i), this(x))
+        } else {
+          gen_hwst(this(arr), this(i), this(x))
+        }
       case _ =>
         throw new Exception(s"[Block $curBlock] Unknown memory operation $d")
         d
@@ -288,20 +340,63 @@ trait HwLoweringTransformer extends WorklistTransformer {
     curStm = stm
     stm match {
       case TP(s, Reflect(node,summary,deps)) if node.isInstanceOf[AbstractLoop[_]] =>
-        val res = processBodyElem(s, node.asInstanceOf[AbstractLoop[Any]])
-        reflectEffect(res, mapOver(this.asInstanceOf[Transformer], summary))
+        val (res, allocVal) = processBodyElem(s, node.asInstanceOf[AbstractLoop[Any]])
+        if (treeThis) {
+          val e = reflectEffect(Tree(res), mapOver(this.asInstanceOf[Transformer], summary))
+          loopToMem += e -> allocVal
+          e
+        } else if (vectorizeThis) {
+          val e = reflectEffect(Vector(res), mapOver(this.asInstanceOf[Transformer], summary))
+          loopToMem += e -> allocVal
+          e
+        } else {
+          val e = reflectEffect(res, mapOver(this.asInstanceOf[Transformer], summary))
+          loopToMem += e -> allocVal
+          e
+        }
 
       case TP(s,l:AbstractLoop[Any]) =>
-        val res = processBodyElem(s, l)
-        reflectPure(res)
+        val (res, allocVal) = processBodyElem(s, l)
+        if (treeThis) {
+          val e = reflectEffect(Tree(res))
+          loopToMem += e -> allocVal
+          e
+        } else if (vectorizeThis) {
+          val e = reflectEffect(Vector(res))
+          loopToMem += e -> allocVal
+          e
+        } else {
+          val e = reflectEffect(res)
+          loopToMem += e -> allocVal
+          e
+        }
 
       case TP(s,d) if isMemOp(s,d) =>
         // Transform and apply existing substitution rules
         val newExp = super.transformStm(stm)
 
+        val newDef =  if (treeThis)
+                        Tree(getdef(newExp.asInstanceOf[Sym[Any]]))
+                      else if (vectorizeThis)
+                        Vector(getdef(newExp.asInstanceOf[Sym[Any]]))
+                      else
+                        getdef(newExp.asInstanceOf[Sym[Any]])
+
         // Use the def for mirrored node to get the equivalent hardware node
-        val newDef = getdef(newExp.asInstanceOf[Sym[Any]])
         reflectPure(getMemOp(newDef))
+
+      case TP(s,d) if isALOp(s,d) =>
+        // Transform and apply existing substitution rules
+        val newExp = super.transformStm(stm)
+
+        val newDef =  if (treeThis)
+                        Tree(getdef(newExp.asInstanceOf[Sym[Any]]))
+                      else if (vectorizeThis)
+                        Vector(getdef(newExp.asInstanceOf[Sym[Any]]))
+                      else
+                        getdef(newExp.asInstanceOf[Sym[Any]])
+        reflectPure(newDef)
+
       case TP(s,d) =>
         super.transformStm(stm)
       case TTP(s, d, fd) => throw new Exception("TTP not handled yet")

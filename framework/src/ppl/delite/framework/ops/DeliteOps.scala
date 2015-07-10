@@ -18,6 +18,10 @@ trait HwOpsExp extends DeliteOpsExp {
 
   var hwNodeId: Int = -1
 
+  abstract class HwParDef extends HwDef {
+    val degree:Int
+  }
+
 //  abstract class MemHw(sym: Sym[Any]) extends HwDef {
   abstract class MemHw extends HwDef {
     val word = 0
@@ -28,6 +32,10 @@ trait HwOpsExp extends DeliteOpsExp {
 
   abstract class ComputeHw extends HwDef
   abstract class InterconnectHw extends HwDef
+
+  case class IncBcast(s: Sym[Any], degree:Int = 1) extends HwParDef
+  case class Vector(d: Def[Any], degree:Int = 1) extends HwParDef
+  case class Tree(d: Def[Any], degree: Int = 1) extends HwParDef
 
   case class HwLoop(
     size: Const[Int],
