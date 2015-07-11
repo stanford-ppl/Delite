@@ -16,7 +16,7 @@ import ppl.delite.runtime.graph.targets.Targets
  * Stanford University
  */
 
-trait ConditionGenerator extends NestedGenerator {
+trait ConditionGenerator extends NestedGenerator with SyncGenerator {
 
   val condition: OP_Condition
   val nested = condition
@@ -90,14 +90,14 @@ trait ConditionGenerator extends NestedGenerator {
 
   protected def setConditionVariable(cond: Boolean)
 
-  protected def beginConditionBlock()
-  protected def endConditionBlock()
+  protected def beginConditionBlock() = out.append("if (")
+  protected def endConditionBlock() = out.append(')')
 
-  protected def beginThenBlock()
-  protected def endThenBlock()
+  protected def beginThenBlock() = out.append(" {\n")
+  protected def endThenBlock() = out.append("}\n")
 
-  protected def beginElseBlock()
-  protected def endElseBlock()
+  protected def beginElseBlock() = out.append("else {\n")
+  protected def endElseBlock() = out.append("}\n")
 
   protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value) = {
     target match {
@@ -113,48 +113,24 @@ trait ConditionGenerator extends NestedGenerator {
     }
   }
 
+  override protected def getSym(op: DeliteOP, name: String) = ConditionCommon.getSym(condition, baseId, op, name)
+  override protected def getSync(op: DeliteOP, name: String) = ConditionCommon.getSync(condition, baseId, op, name)
+
+  def executableName(location: Int) = "Condition_" + baseId + "_" + location
+
 }
 
 class ScalaConditionGenerator(val condition: OP_Condition, val location: Int, val graph: DeliteTaskGraph)
   extends ConditionGenerator with ScalaNestedGenerator with ScalaSyncGenerator {
 
   override protected def writeMethodHeader() {
-    out.append("var " + condition.id.split('_').head + "_cond :Boolean = false\n")
+    out.append("var " + condition.id.split('_').head + "_cond: Boolean = false\n")
     super.writeMethodHeader()
   }
 
   protected def setConditionVariable(cond: Boolean) {
     out.append(condition.id.split('_').head + "_cond = " + cond + "\n")
   }
-  
-  protected def beginConditionBlock() {
-    out.append("if (")
-  }
-
-  protected def endConditionBlock() {
-    out.append(')')
-  }
-
-  protected def beginThenBlock() {
-    out.append(" {\n")
-  }
-
-  protected def endThenBlock() {
-    out.append("}\n")
-  }
-
-  protected def beginElseBlock() {
-    out.append("else {\n")
-  }
-
-  protected def endElseBlock() {
-    out.append("}\n")
-  }
-
-  override protected def getSym(op: DeliteOP, name: String) = ConditionCommon.getSym(condition, baseId, op, name)
-  override protected def getSync(op: DeliteOP, name: String) = ConditionCommon.getSync(condition, baseId, op, name)
-
-  def executableName(location: Int) = "Condition_" + baseId + "_" + location
 
 }
 
@@ -171,38 +147,13 @@ class CppConditionGenerator(val condition: OP_Condition, val location: Int, val 
     out.append(condition.id.split('_').head + "_cond = " + cond + ";\n")
   }
 
-  protected def beginConditionBlock() {
-    out.append("if (")
-  }
-
-  protected def endConditionBlock() {
-    out.append(')')
-  }
-
-  protected def beginThenBlock() {
-    out.append(" {\n")
-  }
-
-  protected def endThenBlock() {
-    out.append("}\n")
-  }
-
-  protected def beginElseBlock() {
-    out.append("else {\n")
-  }
-
-  protected def endElseBlock() {
-    out.append("}\n")
-  }
-
-  override protected def getSym(op: DeliteOP, name: String) = ConditionCommon.getSym(condition, baseId, op, name)
-  override protected def getSync(op: DeliteOP, name: String) = ConditionCommon.getSync(condition, baseId, op, name)
-
-  def executableName(location: Int) = "Condition_" + baseId + "_" + location
 }
 
 class CudaConditionGenerator(val condition: OP_Condition, val location: Int, val graph: DeliteTaskGraph)
   extends ConditionGenerator with CudaNestedGenerator with CudaSyncGenerator {
+
+  protected val hostGenerator: CppConditionGenerator = new CppConditionGenerator(condition, Targets.resourceIDs(Targets.Cpp).head, graph)
+  hostGenerator.out = out
 
   override protected def writeMethodHeader() {
     if (declCondVar)
@@ -213,35 +164,6 @@ class CudaConditionGenerator(val condition: OP_Condition, val location: Int, val
   protected def setConditionVariable(cond: Boolean) {
     out.append(condition.id.split('_').head + "_cond = " + cond + ";\n")
   }
-
-  protected def beginConditionBlock() {
-    out.append("if (")
-  }
-
-  protected def endConditionBlock() {
-    out.append(')')
-  }
-
-  protected def beginThenBlock() {
-    out.append(" {\n")
-  }
-
-  protected def endThenBlock() {
-    out.append("}\n")
-  }
-
-  protected def beginElseBlock() {
-    out.append("else {\n")
-  }
-
-  protected def endElseBlock() {
-    out.append("}\n")
-  }
-
-  override protected def getSym(op: DeliteOP, name: String) = ConditionCommon.getSym(condition, baseId, op, name)
-  override protected def getSync(op: DeliteOP, name: String) = ConditionCommon.getSync(condition, baseId, op, name)
-
-  def executableName(location: Int) = "Condition_" + baseId + "_" + location
 }
 
 private[codegen] object ConditionCommon {

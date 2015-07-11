@@ -37,8 +37,6 @@ object Compilers {
     //TODO: this is a poor method of separating CPU from GPU, should be encoded - essentially need to loop over all nodes
     val schedule = graph.schedule
 
-    Sync.addSync(graph)
-
     val scalaSchedule = schedule.slice(0, Config.numThreads)
     if (Config.numThreads > 0) checkRequestedResource(scalaSchedule, Targets.Scala)
 
@@ -73,7 +71,7 @@ object Compilers {
     if (Config.numCuda>0 && graph.targets(Targets.Cuda)) CudaCompile.compile()
     if (Config.numOpenCL>0 && graph.targets(Targets.OpenCL)) OpenCLCompile.compile()
 
-    val classLoader = ScalaCompile.compile
+    val classLoader = ScalaCompile.compile()
     DeliteMesosExecutor.classLoader = classLoader
 
     // clear for the next run (required to run tests correctly)
@@ -105,7 +103,7 @@ object Compilers {
 
   def checkRequestedResource(schedule: PartialSchedule, target: Targets.Value) {
     if (schedule.map(_.size).foldLeft(0)(_ + _) == 0)
-      println("WARNING: no kernels scheduled on " + target)
+      System.err.println("[WARNING]: no kernels scheduled on " + target)
   }
 
 }

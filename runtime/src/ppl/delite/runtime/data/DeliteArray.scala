@@ -3,9 +3,11 @@ package ppl.delite.runtime.data
 import ppl.delite.runtime.messages._
 import ppl.delite.runtime.DeliteMesosScheduler
 
+
 trait DeliteArray[T] {
   def length: Int
   def readAt(i: Int): T
+  def data: Array[T] // triggers a bulk fetch for RemoteArrays
 
   var id: String
   var offsets: Array[Int]
@@ -143,7 +145,8 @@ trait DeliteArrayObject[T] extends DeliteArray[T] {
 
 /**
  * Currently the assumption seems to be that RemoteArrays are only ever instantiated on the master,
- * and LocalArrays are only ever instantiated on slaves.
+ * and LocalArrays are (usuaully) instantiated on slaves. LocalArrays may also be instantiated on
+ * the master for a local multiloop, but should never miss a read, since it is fully populated.
  *
  * This is because saveLocally and lookupLocally in Serialization.scala will save and load local arrays.
  * The odd part here is that now both RemoteArrays and LocalArrays can have misses and require remote reads.
@@ -205,7 +208,7 @@ abstract class RemoteDeliteArrayImpl[T:Manifest] extends DeliteArray[T] with Rem
   private def retrieveArray = {
     if (!hasArray) {
       DeliteMesosScheduler.warn("transferring remote symbol " + id.split("_")(0))
-      val returnResults = DeliteMesosScheduler.getData(this)
+      val returnResults = DeliteMesosScheduler.requestBulkData(this)
       val chunks = for (result <- returnResults) yield {
         Serialization.deserialize(specializedClass, result.getOutput(0)).asInstanceOf[LocalDeliteArray[T]]
       }
@@ -274,7 +277,7 @@ final class RemoteDeliteArrayDouble(var id: String, var chunkLengths: Array[Int]
   private def retrieveArray = {
     if (!hasArray) {
       DeliteMesosScheduler.warn("transferring remote symbol " + id.split("_")(0))
-      val returnResults = DeliteMesosScheduler.getData(this.asInstanceOf[RemoteDeliteArray[_]])
+      val returnResults = DeliteMesosScheduler.requestBulkData(this.asInstanceOf[RemoteDeliteArray[_]])
       val chunks = for (result <- returnResults) yield {
         Serialization.deserialize(classOf[DeliteArrayDouble], result.getOutput(0)).asInstanceOf[LocalDeliteArrayDouble]
       }
@@ -339,7 +342,7 @@ final class RemoteDeliteArrayInt(var id: String, var chunkLengths: Array[Int]) e
   private def retrieveArray = {
     if (!hasArray) {
       DeliteMesosScheduler.warn("transferring remote symbol " + id.split("_")(0))
-      val returnResults = DeliteMesosScheduler.getData(this.asInstanceOf[RemoteDeliteArray[_]])
+      val returnResults = DeliteMesosScheduler.requestBulkData(this.asInstanceOf[RemoteDeliteArray[_]])
       val chunks = for (result <- returnResults) yield {
         Serialization.deserialize(classOf[DeliteArrayInt], result.getOutput(0)).asInstanceOf[LocalDeliteArrayInt]
       }
@@ -403,7 +406,7 @@ final class RemoteDeliteArrayChar(var id: String, var chunkLengths: Array[Int]) 
   private def retrieveArray = {
     if (!hasArray) {
       DeliteMesosScheduler.warn("transferring remote symbol " + id.split("_")(0))
-      val returnResults = DeliteMesosScheduler.getData(this.asInstanceOf[RemoteDeliteArray[_]])
+      val returnResults = DeliteMesosScheduler.requestBulkData(this.asInstanceOf[RemoteDeliteArray[_]])
       val chunks = for (result <- returnResults) yield {
         Serialization.deserialize(classOf[DeliteArrayChar], result.getOutput(0)).asInstanceOf[LocalDeliteArrayChar]
       }
@@ -467,7 +470,7 @@ final class RemoteDeliteArrayBoolean(var id: String, var chunkLengths: Array[Int
   private def retrieveArray = {
     if (!hasArray) {
       DeliteMesosScheduler.warn("transferring remote symbol " + id.split("_")(0))
-      val returnResults = DeliteMesosScheduler.getData(this.asInstanceOf[RemoteDeliteArray[_]])
+      val returnResults = DeliteMesosScheduler.requestBulkData(this.asInstanceOf[RemoteDeliteArray[_]])
       val chunks = for (result <- returnResults) yield {
         Serialization.deserialize(classOf[DeliteArrayBoolean], result.getOutput(0)).asInstanceOf[LocalDeliteArrayBoolean]
       }
@@ -526,7 +529,7 @@ abstract class LocalDeliteArray[T:Manifest] extends DeliteArray[T] {
   var offset: Int
 
   // Offsets and id are intentionally null initially; the first time this array is deserialized from a RemoteArray, these will be set.
-  // Before then, no remote reads should be requested on this array (its offset has never been broadcast to anyone but the master).  
+  // Before then, no remote reads should be requested on this array (its offset has never been broadcast to anyone but the master).
   var offsets: Array[Int] = _
   var id: String = _
 

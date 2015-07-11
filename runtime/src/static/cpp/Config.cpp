@@ -8,7 +8,7 @@
 #include "DeliteDatastructures.h"
 #include "DeliteCpp.h"
 #include "cppInit.h"
-
+#include "pcmHelper.h"
 
 Config* config = NULL;
 resourceInfo_t* resourceInfos = NULL;
@@ -72,46 +72,52 @@ void initializeConfig(int numThreads) {
   }
 }
 
-void initializeGlobal(int numThreads, size_t heapSize) {
+void initializeGlobal(int numThreads, int threadIdOffset, size_t heapSize) {
   pthread_mutex_lock(&init_mtx); 
   if (!config) {
+    InitDeliteCppTimer(threadIdOffset, numThreads);
     initializeConfig(numThreads);
     resourceInfos = new resourceInfo_t[numThreads];
     for (int i=0; i<numThreads; i++) {
-      resourceInfos[i].threadId = i;
-      resourceInfos[i].numThreads = numThreads;
-      resourceInfos[i].socketId = config->threadToSocket(i);
-      resourceInfos[i].numSockets = config->numSockets;
+      resourceInfos[i] = resourceInfo_t(i, numThreads, config->threadToSocket(i), config->numSockets);
       resourceInfos[i].rand = new DeliteCppRandom(i);
     }
     DeliteHeapInit(numThreads, heapSize);
     initializeThreadPool(numThreads);
-    InitDeliteCppTimer(numThreads);
+    pcmInit();
   }
+
   pthread_mutex_unlock(&init_mtx);
 }
 
-void freeGlobal(int numThreads, int offset, JNIEnv *env) {
+void freeGlobal(int numThreads, int threadIdOffset, JNIEnv *env) {
   pthread_mutex_lock(&init_mtx);
   if (config) {
-    DeliteCppTimerDump(offset, env);
+    #ifndef __DELITE_CPP_STANDALONE__
+    DeliteSendMemoryAccessStatsToJVM(threadIdOffset, env);
+    SendKernelMemUsageStatsToJVM(env);
+    DeliteSendStartTimeToJVM(env);
+    #endif
+    DeliteCppTimerClose();
     DeliteHeapClear(numThreads);
+    pcmCleanup();
     delete[] resourceInfos;
     delete config;
     config = NULL;
   }
+
   pthread_mutex_unlock(&init_mtx);
 }
 
-void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize) {
-  initializeGlobal(numThreads, heapSize);
+void initializeAll(int threadId, int numThreads, int numLiveThreads, int threadIdOffset, size_t heapSize) {
+  initializeGlobal(numThreads, threadIdOffset, heapSize);
   initializeThread(threadId);
   delite_barrier(numLiveThreads); //ensure fully initialized before any continue
 }
 
-void clearAll(int numThreads, int numLiveThreads, int offset, JNIEnv *env) {
+void clearAll(int numThreads, int numLiveThreads, int threadIdOffset, JNIEnv *env) {
   delite_barrier(numLiveThreads); //first wait for all threads to arrive
-  freeGlobal(numThreads, offset, env);
+  freeGlobal(numThreads, threadIdOffset, env);
 }
 
 #endif

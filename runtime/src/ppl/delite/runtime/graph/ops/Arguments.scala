@@ -30,8 +30,9 @@ final class Arguments(val id: String, val argIdx: Int, var outputTypesMap: Map[T
 
   def isDataParallel = false
 
-  def task = if (scheduledOn(Targets.Cpp)) "cppArgsGet" //TODO: multi-arg Cpp support
-             else "ppl.delite.runtime.graph.ops.ArgsKernel" + argIdx
+  def task = if (scheduledOn(Targets.Scala)) "ppl.delite.runtime.graph.ops.ArgsKernel" + argIdx
+             else if (scheduledOn(Targets.Cpp)) "in"+argIdx //function input
+             else throw new RuntimeException("Unsupported target for Arguments")
 
   def cost = 0
   def size = 0

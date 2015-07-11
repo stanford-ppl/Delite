@@ -30,7 +30,7 @@ trait StencilAnalysis extends FatBlockTraversal {
   // from a loop to its stencil
   var loopStencils = new HashMap[Exp[Any],Stencil]()
 
-  def verbose = Config.debug
+  def verbose = verbosity > 2 // set in LMS config
   def log(x: String) = if (verbose) Predef.println(x) else ()
   def result(x: String) = Predef.println(x)
   def strDef(x: Exp[Any]) = x match {

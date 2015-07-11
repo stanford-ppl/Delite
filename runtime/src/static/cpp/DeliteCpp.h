@@ -19,10 +19,12 @@
 #include "DeliteNamespaces.h"
 #include "DeliteDatastructures.h"
 #include "DeliteCppProfiler.h"
-
-/* helper methods and data structures only required for execution with Delite */
+#include "MultiLoopSync.h"
+#include "pcmHelper.h"
 #ifndef __DELITE_CPP_STANDALONE__
 #include <jni.h>
+#else
+typedef struct { } JNIEnv;
 #endif
 
 #ifdef DELITE_VERBOSE
@@ -33,18 +35,16 @@
 
 extern Config* config;
 extern resourceInfo_t* resourceInfos;
-void initializeAll(int threadId, int numThreads, int numLiveThreads, size_t heapSize);
+void initializeAll(int threadId, int numThreads, int numLiveThreads, int threadIdOffset, size_t heapSize);
 void initializeThread(int threadId);
-void clearAll(int numThreads, int numLiveThreads, int offset, JNIEnv *env);
+void clearAll(int numThreads, int numLiveThreads, int threadIdOffset, JNIEnv *env);
 void initializeThreadPool(int numThreads);
 void submitWork(int threadId, void *(*work) (void *), void *arg);
 
 #ifdef MEMMGR_REFCNT
 std::shared_ptr<cppDeliteArraystring> string_split(const resourceInfo_t *resourceInfo, const string &str, const string &pattern, int32_t lim);
-std::shared_ptr<cppDeliteArraystring> cppArgsGet(int num, ...);
 #else
 cppDeliteArraystring *string_split(const resourceInfo_t *resourceInfo, const string &str, const string &pattern, int32_t lim);
-cppDeliteArraystring *cppArgsGet(int num, ...);
 #endif
 int32_t string_toInt(const string &str);
 float string_toFloat(const string &str);
@@ -61,6 +61,8 @@ template<class T> string convert_to_string(T in);
 string readFirstLineFile(const string &filename);
 template<class K> uint32_t delite_hashcode(K key);
 template<class K> bool delite_equals(K key1, K key2);
+template<class T> T cppDeepCopy(const resourceInfo_t *resourceInfo, T in);
+void cppDeepCopy(const resourceInfo_t *resourceInfo);
 
 #ifndef __DELITE_CPP_STANDALONE__
 extern std::map<int,jobject> *JNIObjectMap;

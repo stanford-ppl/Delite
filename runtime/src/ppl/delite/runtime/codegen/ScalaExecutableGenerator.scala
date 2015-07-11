@@ -28,14 +28,18 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
     }
   }
 
-  protected def writeHeader() {
+  protected[codegen] def writeHeader() {
     ScalaExecutableGenerator.writePackage(graph, out)
     out.append("import ppl.delite.runtime.executor.DeliteExecutable\n") //base trait
     out.append("import ppl.delite.runtime.Config\n") //base trait
     out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
     out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
     ScalaExecutableGenerator.writePath(graph, out) //package of scala kernels
-    val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
+    // only emit locations that will have send objects from scala target or to scala target
+    val locations = opList.siblings.filter(oplist => !oplist.isEmpty && !oplist.toArray.collect{
+      case op: Send if op.from.scheduledOn(Targets.Scala) => op
+      case op: Send if op.receivers.exists(_.to.scheduledOn(Targets.Scala)) => op
+    }.isEmpty).map(_.resourceID).toSet
     if (!this.isInstanceOf[SyncObjectGenerator]) writeJNIInitializer(locations)
     out.append("object ")
     out.append(executableName)
@@ -44,8 +48,9 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
 
   protected def writeMethodHeader() {
     out.append("def run() {\n")
+    if (location == 0) out.append("PerformanceTimer.start(\"all\")\n")
     if (Config.profile) out.append("val threadName = Thread.currentThread.getName()\n")
-    out.append("val "+resourceInfoSym+" = new "+resourceInfoType+"("+Targets.getRelativeLocation(location)+",Config.numThreads)\n")
+    out.append("val "+resourceInfoSym+" = "+resourceInfoType+"("+Targets.getRelativeLocation(location)+",Config.numThreads,0,Config.numSlaves)\n")
   }
 
   protected def writeMethodFooter() {
@@ -63,17 +68,16 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
     case err => sys.error("Unrecognized OP type: " + err.getClass.getSimpleName)
   }
 
-  protected def writeFunctionCall(op: DeliteOP) {
+  protected[codegen] def writeFunctionCall(op: DeliteOP) {
     def dummyOutput = op.isInstanceOf[OP_MultiLoop] && Targets.getRelativeLocation(location) > 0
     def returnsResult = op.outputType(op.getOutputs.head) == op.outputType || dummyOutput
     def resultName = if (returnsResult && !dummyOutput) getSym(op, op.getOutputs.head) else getOpSym(op)
 
     if (op.task == null) return //dummy op
+
     if (Config.profile) {
-      out.append("MemoryProfiler.pushNameOfCurrKernel(threadName,\"" + op.id + "\")\n")
-      if (!op.isInstanceOf[OP_MultiLoop]) {
-        out.append("PerformanceTimer.start(\""+op.id+"\", threadName, false)\n")
-      }
+      if (op.isInstanceOf[OP_MultiLoop]) { out.append("PerformanceTimer.startMultiLoop(\""+op.id+"\", resourceInfo.threadId)\n") }
+      else { out.append("PerformanceTimer.start(\""+op.id+"\", resourceInfo.threadId)\n") }
     }
 
     out.append("val ")
@@ -91,11 +95,8 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
     out.append(")\n")
 
     if (Config.profile) {
-      if (!op.isInstanceOf[OP_MultiLoop]) {
-        out.append("PerformanceTimer.stop(\""+op.id+"\", threadName, false)\n")
-      }
-
-      out.append("MemoryProfiler.popNameOfCurrKernel(threadName)\n")
+      if (op.isInstanceOf[OP_MultiLoop]) { out.append("PerformanceTimer.stopMultiLoop(\""+op.id+"\", resourceInfo.threadId)\n") }
+      else { out.append("PerformanceTimer.stop(\""+op.id+"\", resourceInfo.threadId)\n") }
     }
 
     if (!returnsResult) {
@@ -112,7 +113,6 @@ trait ScalaExecutableGenerator extends ExecutableGenerator {
       }
     }
   }
-
 }
 
 class ScalaMainExecutableGenerator(val location: Int, val graph: DeliteTaskGraph)
@@ -135,7 +135,8 @@ class ScalaMainExecutableGenerator(val location: Int, val graph: DeliteTaskGraph
   }
 
   override protected def writeMethodFooter() {
-    out.append("ppl.delite.runtime.graph.ops.EOP_Global.barrier();\n")
+    out.append("ppl.delite.runtime.graph.ops.EOP_Global.awaitBarrier()\n")
+    if (location == 0) out.append("PerformanceTimer.stop(\"all\")\n")
     out.append("}\n")
   }
 }

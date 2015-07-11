@@ -30,7 +30,9 @@ import sync.SyncObjectGenerator
 
 trait ExecutableGenerator {
 
-  protected val out: StringBuilder = new StringBuilder
+  // CudaExecutableGenerator refers CppExecutableGenerator (for methods writeFunctionCall and writeHeader)
+  // that emits to the same StringBuilder (Better way? Using inheritance makes the generator hierarchy somewhat weird)
+  var out: StringBuilder = new StringBuilder
   val location: Int
   val graph: DeliteTaskGraph
   var opList: OpList = _
@@ -63,15 +65,16 @@ trait ExecutableGenerator {
   protected def addSource(source: String)
 
   protected def makeNestedFunction(op: DeliteOP)
-  protected def writeFunctionCall(op: DeliteOP)
 
-  protected def writeHeader()
+  protected[codegen] def writeFunctionCall(op: DeliteOP)
+  protected[codegen] def writeHeader()
+
   protected def writeMethodHeader()
 
   protected def writeFooter()
   protected def writeMethodFooter()
 
-  protected def writeSyncObject()
+  protected[codegen] def writeSyncObject()
 
   protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value): SyncObjectGenerator
   protected def getOpSym(op: DeliteOP) = getSym(op, "op_"+op.id)

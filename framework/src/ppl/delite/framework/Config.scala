@@ -33,10 +33,21 @@ object Config {
   val enableGPUTransform = getProperty("delite.enable.gputransform","false") != "false"
   val enableGPUObjReduce = getProperty("delite.enable.gpu.objreduce","true") != "false"
   val enableGPUMultiDim = getProperty("delite.enable.gpu.multidim","false") != "false"
+  val nestedParallelism = getProperty("delite.nested_parallelism","false") != "false"
   val intSize = getProperty("delite.integer.size", "default")
 
   //Print generationFailedException info
   var debugCodegen = getProperty("delite.debug.codegen", "false") != "false"
   val dumpException: Boolean = getProperty("delite.dump.exception", "false") != "false"
-  var enableProfiler = System.getProperty("delite.enable.profiler", "false") != "false"
+  val enableProfiler = System.getProperty("delite.enable.profiler", "false") != "false"
+
+  //enforce generationFailed restrictions
+  var generationFailedWhitelist: Map[String, Seq[String]] = Map()
+  def strictGeneration(target: String, e: Exception): Boolean = {
+    if (generationFailedWhitelist contains target) {
+      for (w <- generationFailedWhitelist(target) if (e.getMessage contains w)) return false
+      true
+    }
+    else false
+  }
 }

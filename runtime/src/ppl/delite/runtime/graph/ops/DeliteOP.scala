@@ -30,9 +30,12 @@ abstract class DeliteOP {
   private[graph] val supportedTargets = new collection.mutable.HashSet[Targets.Value]
 
   def getOutputTypesMap = outputTypesMap
-  def outputType(target: Targets.Value, symbol: String): String = outputTypesMap(target)(symbol)
-  def outputType(target: Targets.Value): String = outputTypesMap(target)("functionReturn")
-  def outputType(symbol: String) = outputTypesMap(Targets.Scala)(symbol)
+  def outputType(target: Targets.Value, symbol: String): String = {
+    val tmap = outputTypesMap.getOrElse(target, sys.error("op " + this.toString + " does not have outputs defined for target " + target))
+    tmap.getOrElse(symbol, sys.error("op " + this.toString + " does not have an output defined for symbol " + symbol))
+  }
+  def outputType(target: Targets.Value): String = outputType(target, "functionReturn")
+  def outputType(symbol: String): String = outputType(Targets.Scala, symbol)
   def outputType = outputTypesMap(Targets.Scala)("functionReturn")
   def inputType(target: Targets.Value, symbol: String): String = (getInputs ++ getMutableInputs).find(_._2 == symbol).get._1.outputType(target,symbol)
   def inputType(symbol: String): String = inputType(Targets.Scala, symbol)
@@ -93,7 +96,7 @@ abstract class DeliteOP {
     assert(consumers contains old, old.toString + " is not a consumer of " + this.toString + ", cannot be replaced")
     consumers -= old
     consumers += c
-    if (antiDeps.contains(c)) {
+    if (antiDeps.contains(old)) {
       antiDeps -= old
       antiDeps += c
     }

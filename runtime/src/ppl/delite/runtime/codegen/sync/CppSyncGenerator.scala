@@ -9,14 +9,21 @@ import ppl.delite.runtime.graph.targets.Targets._
 import ppl.delite.runtime.Config
 
 trait CppSyncProfiler extends CppExecutableGenerator {
-  protected def withProfile(s: Receive)(emitSync: => Unit) {
-    if (Config.profile) {
-      out.append("DeliteCppTimerStart(" + Targets.getRelativeLocation(location) + ",\""+s.sender.from.id + "-" + s.to.id +"\");\n")
+  protected def withProfile(r: Receive)(emitSync: => Unit) {
+    def getKernelName: String = this match {
+      case n:NestedGenerator => n.nested.id
+      case _ => "null"
+    }   
+
+ 	var syncOpName = ""
+	if (Config.profile) {
+	  syncOpName = "__sync-ExecutionThread" + r.to.scheduledResource + "-" + getKernelName + "-" + r.sender.from.id + "-" + r.sender.from.scheduledResource
+	  out.append("DeliteCppTimerStart(resourceInfo->threadId, \"" + syncOpName + "\");\n")
     }
     emitSync
     if (Config.profile) {
-      out.append("DeliteCppTimerStop(" + Targets.getRelativeLocation(location) + ",\""+s.sender.from.id + "-" + s.to.id +"\");\n")
-    }
+	  out.append("DeliteCppTimerStop(resourceInfo->threadId, \"" + syncOpName + "\");\n")
+	}
   }
 }
 
@@ -235,10 +242,8 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     out.append("JNIObjectMap_insert(%s,_find_%s);\n".format(sym.filter(_.isDigit),idx))
   }
 
-  override protected def writeSyncObject() {
-    //if (syncList.nonEmpty) {
-      syncObjectGenerator(syncList, Targets.Scala).makeSyncObjects
-    //}
+  override protected[codegen] def writeSyncObject() {
+    syncObjectGenerator(syncList, Targets.Scala).makeSyncObjects
     super.writeSyncObject()
   }
 }
@@ -336,10 +341,8 @@ trait CppToCppSync extends SyncGenerator with CppExecutableGenerator with JNIFun
     out.append("();\n")
   }
 
-  override protected def writeSyncObject() {
-    //if (syncList.nonEmpty) {
-      syncObjectGenerator(syncList, Targets.Cpp).makeSyncObjects
-    //}
+  override protected[codegen] def writeSyncObject() {
+    syncObjectGenerator(syncList, Targets.Cpp).makeSyncObjects
     super.writeSyncObject()
   }
 
@@ -364,7 +367,7 @@ trait CppSyncGenerator extends CppToScalaSync with CppToCppSync {
         }
       }
     */
-    case m: Free => //println("[warning] freeing " + m.items.map(_._2).mkString(",") + " is not inserted.")
+    case m: Free => out.append("//free " + m.op.id +"\n") //println("[warning] freeing " + m.items.map(_._2).mkString(",") + " is not inserted.")
     case _ => super.makeNestedFunction(op)
   }
 }

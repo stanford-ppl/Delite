@@ -10,12 +10,13 @@ import sync._
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.scheduler.{OpHelper, OpList, PartialSchedule}
 
-trait CppResourceInfo {
-  protected def resourceInfoType = "resourceInfo_t"
-  protected def resourceInfoSym = "resourceInfo"
+object CppResourceInfo {
+  def resourceInfoType = "resourceInfo_t"
+  def resourceInfoSym = "resourceInfo"
 }
 
-trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
+trait CppExecutableGenerator extends ExecutableGenerator {
+  import CppResourceInfo._
 
   // To get a non-conflicting index for a variable name used to temporarily store jobject
   private var index = 0
@@ -30,32 +31,71 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
     CppCompile.addSource(externs+source, executableName)
   }
 
-  protected def writeHeader() {
+  protected[codegen] def writeHeader() {
     out.append("#include <stdio.h>\n")
     out.append("#include <stdlib.h>\n")
-    out.append("#include <jni.h>\n")
-    out.append("#include \"DeliteCppProfiler.h\"\n")
+    if (!Config.noJVM) out.append("#include <jni.h>\n")
     out.append("#include \"cppSyncObjects.h\"\n")
     out.append("#include \"" + Targets.Cpp + "helperFuncs.h\"\n")
     out.append("#include \""+CppMultiLoopHeaderGenerator.headerFile+".h\"\n")
     out.append("extern JNIEnv* env" + location + ";\n")
   }
 
+  private def scheduledLocations() = {
+    graph.schedule.resources.filterNot(_.isEmpty).map(_.resourceID).toSet
+  }
+
+  private def activeCppLocations() = {
+    scheduledLocations.filter(l => Targets.getHostTarget(Targets.getByLocation(l)) == Targets.Cpp).size
+  }
+
   protected def writeMethodHeader() {
+    declareGlobals()
+
+    if (!Config.noJVM) writeJNIMethodHeader()
+    else writeStandaloneMethodHeader()
+    
+    initializeGlobals()
+
+    if (!Config.noJVM) writeJNIInitializer(scheduledLocations)    
+  }
+
+  protected def writeStandaloneMethodHeader() {
+    val appName = if (graph.appName == "") "DeliteApplication" else graph.appName
+    val args = graph.ops.filter(_.isInstanceOf[Arguments]).map(_.asInstanceOf[Arguments]).toSeq.sortBy(_.argIdx)
+    val argNames = args.map("in"+_.argIdx)
+    val argTypes = args.map { a =>
+      val tp = a.outputType(Targets.Cpp)
+      if (!isPrimitiveType(a.outputType)) tp + " *" else tp
+    }
+    val eop = graph.result._1.asInstanceOf[EOP]
+    val res = if (!isPrimitiveType(eop.outputType) && eop.outputType!="Unit") eop.outputType(Targets.Cpp)+" *" else eop.outputType(Targets.Cpp)
+    out.append(res+" "+appName+"(int numThreads, ")
+    out.append(argNames.zip(argTypes).map(a => a._2+" "+a._1).mkString(", ")+"){\n")
+  }
+
+  protected[codegen] def declareGlobals() {
     out.append("JNIEnv* env" + location + ";\n")
-    val function = "JNIEXPORT void JNICALL Java_" + executableName + "_00024_host" + executableName + "(JNIEnv* jnienv, jobject object)"
+  }
+
+  protected[codegen] def initializeGlobals() {
+    if (!Config.noJVM) {
+      out.append("env" + location + " = jnienv;\n")
+      out.append("JNIEnv *env = jnienv;\n")
+    }
+
+    out.append(s"initializeAll(${Targets.getRelativeLocation(location)}, numThreads, ${activeCppLocations}, ${Config.numThreads}, ${Config.cppHeapSize}ULL);\n")
+    out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
+    out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
+  }
+
+  protected def writeJNIMethodHeader() {
+    val function = "JNIEXPORT void JNICALL Java_" + executableName + "_00024_host" + executableName + "(JNIEnv* jnienv, jobject object, jint numThreads)"
     out.append("extern \"C\" ") //necessary because of JNI
     out.append(function)
     out.append(";\n")
     out.append(function)
     out.append(" {\n")
-    out.append("env" + location + " = jnienv;\n")
-    val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
-    val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
-    out.append("initializeAll(" + Targets.getRelativeLocation(location) + "," + Config.numCpp + "," + numActiveCpps + "," + Config.cppHeapSize + "ULL);\n")
-    out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos["+Targets.getRelativeLocation(location)+"];\n")
-    out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
-    writeJNIInitializer(locations)
   }
 
   protected def writeJNIInitializer(locations: Set[Int]) {
@@ -74,10 +114,30 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
   }
 
   protected def writeMethodFooter() {
-    val locations = opList.siblings.filterNot(_.isEmpty).map(_.resourceID).toSet
-    val numActiveCpps = locations.filter(l => Targets.getByLocation(l) == Targets.Cpp).size
-    out.append("clearAll(" + Config.numCpp + "," + numActiveCpps + "," + Config.numThreads + ",env" + location + ");\n")
+    out.append(s"clearAll(numThreads, ${activeCppLocations}, ${Config.numThreads}, env$location);\n")
     out.append("}\n")
+
+    //add entry method to primary executable
+    if (Config.noJVM && location == 0) {
+      out.append(s"""
+int main(int argc, char *argv[]) {
+  cppDeliteArraystring *args = new cppDeliteArraystring(argc-1);
+  for (int i=1; i<argc; i++) {
+    args->update(i-1, *(new string(argv[i])));
+  }
+  int numThreads = 1;
+  char *env_threads = getenv("DELITE_NUM_THREADS");
+  if (env_threads != NULL) {
+    numThreads = atoi(env_threads);
+  } else {
+    fprintf(stderr, "[WARNING]: DELITE_NUM_THREADS undefined, defaulting to 1\\n");
+  }
+  fprintf(stderr, "Executing with %d thread(s)\\n", numThreads);
+  DeliteApplication(numThreads, args);
+  return 0;
+}
+""")
+    }
   }
 
   protected def writeFooter() { }
@@ -93,20 +153,18 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
       val codegen = new CppWhileGenerator(w, location, graph)
       codegen.makeExecutable()
       CppCompile.addHeader(codegen.generateMethodSignature + ";\n", codegen.executableName(location))
-    }    
+    }
     case err => println("Cannot generate op" + op.id) //sys.error("Unrecognized OP type: " + err.getClass.getSimpleName)
   }
 
-  protected def writeFunctionCall(op: DeliteOP) {
+  protected[codegen] def writeFunctionCall(op: DeliteOP) {
     def returnsResult = op.outputType(op.getOutputs.head) == op.outputType
     def resultName = if (returnsResult) getSymHost(op, op.getOutputs.head) else getOpSym(op)
 
     if (op.task == null) return //dummy op
 
     if (Config.profile) {
-      if (!op.isInstanceOf[OP_MultiLoop]) {
-        out.append("DeliteCppTimerStart(" + Targets.getRelativeLocation(location) + ",\""+op.id+"\");\n")
-      }
+      out.append("DeliteCppTimerStart(resourceInfo->threadId, \""+op.id+"\");\n")
     }
 
     if (op.outputType(Targets.Cpp) != "void") {
@@ -119,19 +177,15 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
 
     out.append(op.task) //kernel name
     op match {
-      case _:Arguments => 
-        assert(Arguments.args.length == 1 && Arguments.args(0).isInstanceOf[Array[String]], "ERROR: Custom input arguments are not currently suppored with Cpp target")
-        val args = Arguments.args(0).asInstanceOf[Array[String]]
-        if(args.length > 0)
-          out.append("(" + args.length + args.map("\""+_+"\"").mkString(",",",",");\n"))
-        else
-          out.append("(" + args.length + ");\n") 
+      case _: Arguments => out.append(";\n") //no function to call
       case _ => out.append((resourceInfoSym+:op.getInputs.map(i=>getSymHost(i._1,i._2))).mkString("(",",",");\n"))
     }
-   
+
     if (Config.profile) {
-      if (!op.isInstanceOf[OP_MultiLoop]) {
-        out.append("DeliteCppTimerStop(" + Targets.getRelativeLocation(location) + ",\""+op.id+"\");\n")
+      if (op.isInstanceOf[OP_MultiLoop]) {
+        out.append("DeliteCppTimerStopMultiLoop(resourceInfo->threadId, \""+op.id+"\");\n")
+      } else {
+        out.append("DeliteCppTimerStop(resourceInfo->threadId, \""+op.id+"\");\n")
       }
     }
 
@@ -141,11 +195,10 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
         out.append(" " + getSymHost(op,name) + " = " + resultName + "->" + name + ";\n")
       }
       // Delete activation record and multiloop header
-      assert(op.isInstanceOf[OP_MultiLoop] && op.getInputs.size==1)
+      assert(op.isInstanceOf[OP_MultiLoop])
       if (Config.cppMemMgr == "refcnt") {
         val (multiloop_h_op,multiloop_h_sym) = op.getInputs.head
         out.append("delete " + resultName + ";\n")
-        out.append("delete " + getSymHost(multiloop_h_op,multiloop_h_sym) + ";\n")
       }
     }
   }
@@ -158,7 +211,7 @@ trait CppExecutableGenerator extends ExecutableGenerator with CppResourceInfo {
     "xH"+name
   }
 
-  protected def writeSyncObject() {  }
+  override protected[codegen] def writeSyncObject() {  }
 
   protected def isPrimitiveType(scalaType: String) = scalaType match {
     case "java.lang.String" => true
@@ -212,8 +265,8 @@ object CppExecutableGenerator {
     CppMultiLoopHeaderGenerator.createHeaderFile()
   }
 
-  def clear() { 
-    syncObjects.clear 
+  def clear() {
+    syncObjects.clear()
   }
 
 }
@@ -232,19 +285,23 @@ class ScalaNativeExecutableGenerator(override val location: Int, override val gr
   }
 
   private def writeNativeLoad() {
-    val degName = ppl.delite.runtime.Delite.inputArgs(0).split('.')
-    val appName = degName(degName.length-2)
-    val configString = Config.numThreads.toString + Config.numCpp + Config.numCuda + Config.numOpenCL
-    val tgt = OpHelper.scheduledTarget(location)
-    out.append("@native def host" + executableName(location) + ": Unit\n")
-    out.append("System.load(\"\"\"")
-    out.append(Compilers(tgt).binCacheHome + tgt + "Host" + appName + "_" + configString + "." + OS.libExt)
-    out.append("\"\"\")\n")
+    out.append("@native def host" + executableName(location) + "(numThreads: Int): Unit\n")
+    out.append("System.load(\"")
+    Compilers(OpHelper.scheduledTarget(location)) match {
+      case c: CCompile => out.append(c.executableName)
+      case _ => sys.error("NativeExecutable must be compiled by a CCompiler: " + location)
+    }
+    out.append("\")\n")
   }
 
   private def writeNativeCall() {
-    out.append("host")
-    out.append(executableName(location))
-    out.append('\n')
+    val target = Targets.getByLocation(location)
+    val numThreads = target match {
+      case Targets.Cpp => "Config.numCpp"
+      case Targets.Cuda => "Config.numCuda"
+      case Targets.OpenCL => "Config.numOpenCL"
+      case _ => throw new RuntimeException("Unsupported native target: " + target)
+    }
+    out.append(s"host${executableName(location)}(${numThreads});\n")
   }
 }

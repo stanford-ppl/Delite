@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+# Reference: http://stackoverflow.com/questions/59895/can-a-bash-script-tell-what-directory-its-stored-in
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+DSL_ROOT_DIR=$DIR/..
+DEBUGGER=$DELITE_HOME/profiler/grid.html
+
+open $DEBUGGER
+
+cd $DSL_ROOT_DIR
+./bin/server.py $DSL_ROOT_DIR

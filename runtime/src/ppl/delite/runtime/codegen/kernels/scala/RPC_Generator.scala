@@ -1,7 +1,7 @@
 package ppl.delite.runtime.codegen.kernels.scala
 
 import ppl.delite.runtime.graph.{Empty, Interval, Stencil}
-import ppl.delite.runtime.graph.ops.{DeliteOP, OP_MultiLoop, OP_FileReader}
+import ppl.delite.runtime.graph.ops.{DeliteOP, OP_MultiLoop}
 import ppl.delite.runtime.codegen.{ScalaExecutableGenerator, ScalaCompile}
 import ppl.delite.runtime.codegen.ScalaResourceInfo._
 import ppl.delite.runtime.graph.DeliteTaskGraph
@@ -24,7 +24,6 @@ object RPC_Generator {
   private def updateOP(op: DeliteOP) {
     op match {
       case m: OP_MultiLoop => m.setKernelName(kernelName(op))
-      case f: OP_FileReader => f.setKernelName(kernelName(op))
       case _ => sys.error("RPC call for unknown op type: " + op)
     }
   }
@@ -64,10 +63,6 @@ object RPC_Generator {
       case _:OP_MultiLoop =>
         out.append("kernel_" + op.id)
         out.append((resourceInfoSym+:(op.getInputs.map(_._2))).mkString("(",",",")\n"))
-
-      // TODO: remove
-      // case _:OP_FileReader =>
-      //   out.append("new activation_" + op.id + "\n")
     }
 
     // launch

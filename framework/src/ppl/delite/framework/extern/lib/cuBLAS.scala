@@ -7,8 +7,7 @@ object cuBLAS extends ExternalLibrary {
   val libName = "cudaBLAS"
   val configFile = "cuBLAS.xml"  
   val ext = "cu"
-  // TODO: go back to creating shared library (latest cuda compiler creates some issues linking shared object with other shared object)
-  val libExt = "o"
+  val libExt = "so"
   def compileFlags = List("-w", "-O3", "-arch", "compute_"+arch, "-code", "sm_"+arch, "-c", /*"-shared", */"-Xcompiler", "-fPIC")
   val outputSwitch = "-o"
 

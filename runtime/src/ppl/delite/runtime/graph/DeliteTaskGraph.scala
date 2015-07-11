@@ -5,9 +5,7 @@ import scala.collection.immutable.SortedSet
 import scala.collection.mutable.{HashSet, HashMap}
 import _root_.scala.util.parsing.json.JSON
 
-import ppl.delite.runtime.Config
-import ppl.delite.runtime.DeliteMesosScheduler
-import ppl.delite.runtime.profiler.Profiler
+import ppl.delite.runtime.{Config, DeliteMesosScheduler, Exceptions}
 import ppl.delite.runtime.scheduler.PartialSchedule
 import ops._
 import targets._
@@ -31,7 +29,7 @@ object DeliteTaskGraph {
   def buildFromParsedJSON(json: Any) = {
     implicit val graph = new DeliteTaskGraph
     json match {
-      case degm: Map[Any,Any] => try { parseDEGMap(degm) } catch { case e: Exception => e.printStackTrace; throw e; }
+      case degm: Map[Any,Any] => parseDEGMap(degm)
       case err@_ => mapNotFound(err)
     }
     enforceRestrictions(graph)
@@ -60,8 +58,9 @@ object DeliteTaskGraph {
     var streams: List[DeliteOP] = Nil
     graph.visitAll { op => if (op.outputType contains inputStream) streams = op :: streams }
     for (op <- streams) {
-      val supported = op.getConsumers.filter(_.isInstanceOf[OP_Executable]).map(_.supportedTargets).reduce(_ intersect _) intersect op.supportedTargets
-      for (o <- (op.getConsumers + op)) {
+      val matchOps = op.getConsumers.filter(c => c.isInstanceOf[OP_Executable] && c.getInputs.exists(_._1 == op)) + op
+      val supported = matchOps.map(_.supportedTargets).reduce(_ intersect _).toSet
+      for (o <- matchOps) {
         o.supportedTargets.clear()
         o.supportedTargets ++= supported
       }
@@ -87,7 +86,6 @@ object DeliteTaskGraph {
       opType match {
         case "SingleTask" => processCommon(op, "OP_Single")
         case "External" => processCommon(op, "OP_External")
-        case "Input" => processCommon(op, "OP_FileReader")
         case "MultiLoop" => processCommon(op, "OP_MultiLoop")
         case "Foreach" => processCommon(op, "OP_Foreach")
         case "Conditional" => processIfThenElseTask(op)
@@ -185,13 +183,11 @@ object DeliteTaskGraph {
         (getFieldString(sourceContext, "fileName"), getFieldString(sourceContext, "line").toInt, getFieldString(sourceContext, "opName"))
     }
 
-    // TODO: maybe it would be better to add source info to DeliteOP?
-    Profiler.sourceInfo += (id -> (fileName, line, opName))
+    Exceptions.sourceInfo += (id -> (fileName, line, opName))
 
     val newop = opType match {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
       case "OP_External" => new OP_External(id, "kernel_"+id, resultMap)
-      case "OP_FileReader" => new OP_FileReader(id, "kernel_"+id, resultMap)
       case "OP_MultiLoop" =>
         val size = getFieldString(op, "sizeValue")
         val sizeIsConst = getFieldString(op, "sizeType") == "const"
@@ -204,10 +200,7 @@ object DeliteTaskGraph {
 
     // handle stencil
     if (newop.isInstanceOf[OP_MultiLoop]) {
-      if (resultMap(Targets.Scala).values.contains("Unit")) { //FIXME: handle foreaches
-        if (Config.clusterMode == 1) DeliteMesosScheduler.warn("WARNING: ignoring stencil of op with Foreach: " + id)
-      }
-      else processStencil(newop, op)
+      processStencil(newop, op)
     }
 
     // handle aliases
@@ -309,7 +302,7 @@ object DeliteTaskGraph {
     val stencilMap = getFieldMap(degOp, "stencil")
     for (in <- getFieldList(degOp, "inputs")) {
       val localStencil = Stencil(getFieldString(stencilMap, in))
-      if (localStencil != Empty && (op.isInstanceOf[OP_FileReader] || op.isInstanceOf[OP_MultiLoop])) {
+      if (localStencil != Empty && op.isInstanceOf[OP_MultiLoop]) {
         if (Config.clusterMode == 1) DeliteMesosScheduler.log("adding stencil " + localStencil + " for input " + in + " of op " + op.id)
         op.stencilMap(in) = localStencil
       }
@@ -475,7 +468,8 @@ object DeliteTaskGraph {
     val argIdx = getFieldString(op, "index").toInt
     val argTypes = processReturnTypes(op, id)
     val args = new Arguments(id, argIdx, argTypes)
-    args.supportedTargets ++= argTypes.keySet
+    if (Config.noJVM) args.supportedTargets ++= argTypes.keySet
+    else args.supportedTargets += Targets.Scala //args always come from JVM by default
     graph.registerOp(args)
     graph._result = (args, id)
   }
@@ -491,6 +485,8 @@ object DeliteTaskGraph {
     val tpe = getFieldString(op, "Type")
 
     val EOP = new EOP(id, resultTypes, (tpe,value))
+    if (Config.noJVM) EOP.supportedTargets ++= resultTypes.keySet
+    else EOP.supportedTargets += Targets.Scala //result always returned inside JVM by default
     if (tpe == "symbol") {
       val result = getOp(value)
       EOP.addInput(result, value)
@@ -501,6 +497,14 @@ object DeliteTaskGraph {
       val result = graph._result._1
       EOP.addDependency(result)
       result.addConsumer(EOP)
+    }
+
+    // We can have a situation where the graph ends with multiple effectful nodes that
+    // do not depend on each other (e.g. independent writes), so we must be careful
+    // to also depend on any of these leftover leaves, as well.
+    for ((id,op) <- graph._ops if op.getConsumers.size == 0) {
+      EOP.addDependency(op)
+      op.addConsumer(EOP)
     }
 
     graph.registerOp(EOP)

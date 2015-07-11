@@ -31,7 +31,6 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
     out.append("import ppl.delite.runtime.profiler.MemoryProfiler\n")
     ScalaExecutableGenerator.writePath(graph, out)
     out.append("object " + kernelName + " {\n")
-    if (Config.profile) out.append("val threadName = Thread.currentThread.getName()\n")
   }
 
   protected def writeFooter(){
@@ -131,12 +130,18 @@ class ScalaMultiLoopGenerator(val op: OP_MultiLoop, val master: OP_MultiLoop, va
   }
 
   protected def beginProfile() {
-    out.append("PerformanceTimer.start(\""+master.id+"_"+"\"+tid, threadName, false)\n")
+    out.append("val threadName = \"ExecutionThread\" + tid\n")
+    out.append("val kernelName = \"" + master.id + "_" + "\" + tid\n")
+    out.append("PerformanceTimer.start(\""+master.id+"_"+"\"+tid, resourceInfo.threadId)\n")
   }
 
   protected def endProfile(isMaster: Boolean) {
-    val timeStr = "PerformanceTimer.stop(\""+master.id+"_"+"\"+tid, threadName, false)\n"
-    if (isMaster) out.append("if (tid == 0) "+timeStr) else out.append("if (tid != 0) "+timeStr)
+    val timeStr = "PerformanceTimer.stop(\""+master.id+"_"+"\"+tid, resourceInfo.threadId)\n"
+    if (isMaster) {
+      out.append("if (tid == 0) {\n" + timeStr + "}\n")
+    } else {
+      out.append("if (tid != 0) {\n" + timeStr + "}\n")
+    }
   }
 
   protected def kernelName = "MultiLoop_" + master.id
@@ -228,7 +233,7 @@ class ScalaMultiLoopHeaderGenerator(val op: OP_MultiLoop, val numChunks: Int, va
   def launchThreads($resourceInfoSym: $resourceInfoType, head: $className) = {
     var i = 1
     while (i < $resourceInfoSym.numThreads) {
-      val r = new $resourceInfoType(i, $resourceInfoSym.numThreads)
+      val r = new $resourceInfoType($resourceInfoSym.slaveId, $resourceInfoSym.numSlaves, i, $resourceInfoSym.numThreads)
       val executable = new DeliteExecutable {
         def run() = MultiLoop_${op.id}(r, head)
       }

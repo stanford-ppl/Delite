@@ -41,8 +41,8 @@ trait ScalaGenOptiQLMiscOps extends ScalaGenEffect {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case OptiQLProfileStart(deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)")
-    case OptiQLProfileStop(deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
+    case OptiQLProfileStart(deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\")")
+    case OptiQLProfileStop(deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\")")
     case TablePrintAsTable(t,max_rows) => emitValDef(sym, "generated.scala.container.Table.printAsTable("+ quote(t) + ", " + quote(max_rows) + ")")
     case _ => super.emitNode(sym,rhs)
   }

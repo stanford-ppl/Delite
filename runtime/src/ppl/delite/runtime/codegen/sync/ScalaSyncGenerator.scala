@@ -71,18 +71,18 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
 
   private def createSyncKernelName(depSym: String, depThread: Int) = {
     var tmp = "-" + depSym + "-" + depThread
-    var syncKernelName = "\"__sync-\" + threadName + \"-\" + MemoryProfiler.getNameOfCurrKernel(threadName) + \"" + tmp + "\""
+    var syncKernelName = "\"__sync-\" + threadName + \"-\" + PerformanceTimer.getNameOfCurrKernel(resourceInfo.threadId) + \"" + tmp + "\""
     
     syncKernelName
   }
 
   private def instrumentSyncStart(syncKernelName: String) {
-    var dbgStmt = "PerformanceTimer.start(" + syncKernelName + ", threadName, false)\n"
+    var dbgStmt = "PerformanceTimer.start(" + syncKernelName + ", resourceInfo.threadId)\n"
     out.append(dbgStmt)
   }
 
   private def instrumentSyncStop(syncKernelName: String) {
-    var dbgStmt = "PerformanceTimer.stop(" + syncKernelName + ", threadName, false)\n"
+    var dbgStmt = "PerformanceTimer.stop(" + syncKernelName + ", resourceInfo.threadId)\n"
     out.append(dbgStmt)
   }
 
@@ -153,10 +153,8 @@ trait ScalaToScalaSync extends SyncGenerator with ScalaExecutableGenerator {
     case _ => super.makeNestedFunction(op)
   }
 
-  protected def writeSyncObject() {
-    //if (syncList.nonEmpty) {
-      syncObjectGenerator(syncList, Targets.Scala).makeSyncObjects
-    //}
+  protected[codegen] def writeSyncObject() {
+    syncObjectGenerator(syncList, Targets.Scala).makeSyncObjects
   }
 
 }

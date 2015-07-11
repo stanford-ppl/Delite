@@ -10,6 +10,7 @@
 #include "omp.h"
 #include <time.h>
 #include <math.h>
+#include <cstdint>
 #include <sys/time.h>
 
 using namespace std;
@@ -75,8 +76,23 @@ int main(int argc, char *argv[]) {
     gettimeofday(&myprofiler_start,NULL);
     int new_length = gene_processing(&table, file_length, FILE_WIDTH);
     gettimeofday(&myprofiler_end,NULL);
-    
-    printf("Total Time : %ld [us]\n", ((myprofiler_end.tv_sec * 1000000 + myprofiler_end.tv_usec) - (myprofiler_start.tv_sec * 1000000 + myprofiler_start.tv_usec)));
+    uint64_t total_usec = ((myprofiler_end.tv_sec * 1000000 + myprofiler_end.tv_usec) - (myprofiler_start.tv_sec * 1000000 + myprofiler_start.tv_usec));
+    double total_sec = total_usec * 1e-6;
+
+    // add facility to dump timings to file
+    const char* timer_path = getenv("TIMER_PATH");
+    if(timer_path != NULL) {
+      FILE* timer_file = fopen(timer_path, "a");
+      if(timer_file != NULL) {
+        fprintf(timer_file, "%f\n", total_sec);
+        fclose(timer_file);
+      }
+      else {
+        fprintf(stderr, "warning: unable to open timing file \"%s\"\n", timer_path);
+      }
+    }
+
+    printf("Total Time : %f [s]\n", total_sec);
 
     cout << new_length << endl;
     // write to file

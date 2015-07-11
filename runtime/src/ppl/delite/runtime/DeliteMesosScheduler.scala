@@ -241,7 +241,9 @@ object DeliteMesosScheduler {
     println(appArgs.mkString(", "))
     val noregen = if (Config.noRegenerate) "--noregen" else ""
     val verbose = if (Config.verbose) "-v" else ""
-    val executorCmd = Config.deliteHome + sep + "bin" + sep + "delite " + verbose + " " + noregen + " --isSlave -d " + System.getProperty("user.dir") + " -t " + Config.numThreads + " --cuda " + Config.numCuda + " --codecache " + Config.deliteHome+"/generatedCacheSlave " + appArgs.mkString(" ")
+    // Config.slaveImage is passed to the bin/delite script as the first parameter, if it is set.
+    // This is intended to be consumed by the container script, which then launches the appropriate image.
+    val executorCmd = Config.deliteHome + sep + "bin" + sep + "delite " + Config.slaveImage + " " + verbose + " " + noregen + " --isSlave -d " + System.getProperty("user.dir") + " -t " + Config.numThreads + " --cuda " + Config.numCuda + " --codecache " + Config.deliteHome+"/generatedCacheSlave " + appArgs.mkString(" ")
     println(executorCmd)
 
     val executor = ExecutorInfo.newBuilder
@@ -299,7 +301,7 @@ object DeliteMesosScheduler {
         case (None, r) => r
         case (l, None) => l
         case (l@Some(a), Some(b)) if (java.util.Arrays.equals(a,b)) => l
-        case (l@Some(_), Some(_)) => warn("loop inputs are not aligned: will be satisfied with remote reads"); l
+        case (l@Some(_), Some(_)) => warn("op " + id + ": loop inputs are not aligned: will be satisfied with remote reads"); l
       }
 
       def badStencil(stencil: String, arrayId: String) = {
@@ -318,11 +320,14 @@ object DeliteMesosScheduler {
 
       val bounds = stencilsWithArrays.map(sa => sa._1.withArray(sa._2))
       bounds.foldLeft(None:Option[Array[Int]])(combineLoopBounds) match {
+        case Some(loopBounds) if (loopBounds.last >= size) =>
+          warn("op " + id + ": inferred loop bounds exceed multiloop size (most likely due to multiple array inputs). falling back to single node.")
+          Array.fill(1)(0)
         case Some(loopBounds) => loopBounds
         case None =>
           // If we don't know the bounds, distribute to everyone with uniform chunks, and let the dust settle where it may (wild west remote reads)
           // This should typically only occur for ops that construct an array out of the ether (like I/O)
-          if (size <= 0) Array.fill(0)(1) // run on 1 slave (could run on master)
+          if (size <= 0) Array.fill(1)(0) // run on 1 slave (could run on master)
           else Array.tabulate(slaves.length)(i => (i*size/slaves.length).toInt)
       }
   }
@@ -346,7 +351,7 @@ object DeliteMesosScheduler {
       driver.sendFrameworkMessage(executorId, slaves(slaveIdx), mssg.toByteArray)
     }
 
-    //await results
+    // await results
     var remoteResult: Array[ReturnResult] = null
     remoteLock.lock()
     try {
@@ -363,7 +368,7 @@ object DeliteMesosScheduler {
     remoteResult
   }
 
-  def getData(array: RemoteDeliteArray[_]): Array[ReturnResult] = {
+  def requestBulkData(array: RemoteDeliteArray[_]): Array[ReturnResult] = {
     val chunks = array.chunkLengths.length
     this.remoteResult = new Array(chunks)
     activeSlaves = chunks
@@ -376,7 +381,7 @@ object DeliteMesosScheduler {
       driver.sendFrameworkMessage(executorId, slaves(slaveIdx), mssg.toByteArray)
     }
 
-    //await results
+    // await results
     var remoteResult: Array[ReturnResult] = null
     remoteLock.lock()
     try {

@@ -2,6 +2,7 @@
 #define DELITE_CUDA_PROFILER_INCLUDED
 
 #include <sys/time.h>
+#include <stdio.h>
 
 struct timeval myprofiler_start, myprofiler_end;
 void printTime(void) {

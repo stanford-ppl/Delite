@@ -1,5 +1,6 @@
 package ppl.delite.runtime.codegen
 
+import org.apache.commons.io._
 import scala.tools.nsc._
 import scala.tools.nsc.io._
 import scala.tools.nsc.util._
@@ -16,7 +17,7 @@ object ScalaCompile extends CodeCache {
   def target = Targets.Scala
   def javaExt = "java"
 
-  def compile: ClassLoader = {
+  def compile(): ClassLoader = {
     if (Config.verbose) println("[delite]: starting scala compile")
     val start = System.currentTimeMillis
     cacheRuntimeSources(sourceBuffer.toArray)
@@ -31,10 +32,19 @@ object ScalaCompile extends CodeCache {
       if (Config.verbose) println("[delite]: compiled " + module.name + " in " + time + "s")
     }
     unifyClasses()
-    
+
     val time = (System.currentTimeMillis - start)/1e3
     if (Config.verbose) println("[delite]: finished scala compile in " + time + "s")
-    ScalaClassLoader.fromURLs(modules.map(m => Path(classCacheHome + m.name).toURL), this.getClass.getClassLoader)
+    
+    val newUrls = modules.map(m => Path(classCacheHome + m.name).toURL)
+    this.getClass.getClassLoader match {
+      // case cl: java.net.URLClassLoader => //this is ugly, but it avoids loading native libs in different classLoaders across runs
+      //   val method = classOf[java.net.URLClassLoader].getDeclaredMethod("addURL", classOf[java.net.URL])
+      //   method.setAccessible(true)
+      //   for (url <- newUrls) method.invoke(cl, url)
+      //   cl
+      case cl => ScalaClassLoader.fromURLs(newUrls, cl)
+    }
   }
 
   def compile(destination: String, sources: Array[String], classPaths: Array[String]) {
@@ -85,11 +95,12 @@ object ScalaCompile extends CodeCache {
 
   //copy all classes to a single location with matching directory structure and classpaths
   private def unifyClasses() {
-    val dir = Directory(Path(classCacheHome + "jar"))
-    dir.deleteRecursively() //clear out any old classes
+    import java.io.File
+    val dir = new File(classCacheHome + "jar")
+    FileUtils.deleteQuietly(dir) //clear out any old classes
 
     for (m <- modules) {
-      copyDirectory(Directory(Path(classCacheHome + m.name)), dir, true)
+      FileUtils.copyDirectory(new File(classCacheHome + m.name), dir, true)
     }
   }
 

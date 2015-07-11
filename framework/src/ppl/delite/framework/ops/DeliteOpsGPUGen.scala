@@ -1,11 +1,12 @@
 package ppl.delite.framework.ops
 
+import ppl.delite.framework.codegen.delite.DeliteKernelCodegen
 import java.io.{PrintWriter, StringWriter}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.GenerationFailedException
 
 
-trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
+trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps with DeliteKernelCodegen {
   import IR._
 
   var kernelName: String = _
@@ -160,7 +161,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       def lastInputs = (size match {
         case s@Sym(_) => List(v, size).map(i => remap(i.tp) + " " + quote(i))
         case _ => List(v).map(i => remap(i.tp) + " " + quote(i)) ++ List("int size")
-      }) ++ List("TEMP_"+kernelName+" size_t tempMemSize","char *tempMemPtr","int *tempMemUsage, activation_"+kernelName+" act")
+      }) ++ List("TEMP_"+kernelName+" size_t tempMemSize","char *tempMemPtr","int *tempMemUsage, activation_cuda"+kernelName+" act")
 
       inputs.filter(_ != size).map(s =>
         if(inVars contains s)
@@ -640,7 +641,6 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
     }
 
     tabWidth -= 1
-    isGPUable = true
   }
 
   // Emit Activation Record
@@ -670,7 +670,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
         stream.println("unsigned int " + quote(sym) + "_numKeys;")
       case _ => //
     }
-    stream.println("} activation_" + kernelName + ";")
+    stream.println("} activation_cuda" + kernelName + ";")
     stream.println("#endif")
   }
 
@@ -746,7 +746,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
       }
     }
 
-    val act = if(actType=="") remap(block.tp) + " **" + resultActField else "activation_" + actType + " &act"
+    val act = if(actType=="") remap(block.tp) + " **" + resultActField else "activation_cuda" + actType + " &act"
     val paramStr = (inputs.map(s =>
       if(isPrimitiveType(s.tp)) remap(s.tp) + " " + quote(s)
       else remap(s.tp) + " *" + quote(s) + "_ptr"
@@ -991,7 +991,7 @@ trait GPUGenDeliteOpsOpt extends GPUGenDeliteOps {
       def lastInputs = (size match {
         case s@Sym(_) => List(size).map(i => remap(i.tp) + " " + quote(i))
         case _ => List("int size")
-      }) ++ List("TEMP_"+kernelName+" size_t tempMemSize","char *tempMemPtr","int *tempMemUsage, activation_"+kernelName+" act")
+      }) ++ List("TEMP_"+kernelName+" size_t tempMemSize","char *tempMemPtr","int *tempMemUsage, activation_cuda"+kernelName+" act")
 
       inputs.filter(_ != size).map(s =>
         if(inVars contains s)

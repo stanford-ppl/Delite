@@ -10,8 +10,8 @@ HYPER_HOME = os.getenv("HYPER_HOME")
 MESOS_NATIVE_LIBRARY = os.getenv("MESOS_NATIVE_LIBRARY")
 DELITE_MEM = os.getenv("DELITE_MEM")
 
-scala_major_id = "scala-2.10"
-lms_version = "lms_2.10"
+scala_major_id = "scala-2.11"
+lms_version = "lms_2.11"
 
 props = {}
 

@@ -1,7 +1,10 @@
 #ifndef __CPP_INIT_H__
 #define __CPP_INIT_H__
 
+#ifndef __DELITE_CPP_STANDALONE__
 #include <jni.h>
+#endif
+
 #include <sched.h>
 
 #ifdef __DELITE_CPP_NUMA__

@@ -2,13 +2,14 @@
 
 from optparse import OptionParser
 import multiprocessing
-import os, sys
+import os, sys, datetime
 import math
 from socket import gethostname
 from string import *
 from time import localtime, strftime
 import fileinput
 import shutil
+from distutils.spawn import find_executable
 
 import delitecommon
 from delitecommon import *
@@ -22,18 +23,20 @@ def main():
     parser.add_option("--cuda", dest="num_cuda", default="0", help="number of cuda execution threads")
     parser.add_option("--opencl", dest="num_opencl", default="0", help="number of opencl execution threads")
     parser.add_option("-r", "--runs", dest="num_runs", default="1", type="string", help="the number of times the runtime will execute the applications")
-    parser.add_option("-p", "--profile", dest="profile", action="store_true", default=False, help="enables application profiling")
+    parser.add_option("-p", "--profile", dest="profile", default="", help="enables application profiling with argument 'on'; additionally enables memory access instrumentation with argument(s) [pcm,perf]")
     parser.add_option("--executor", dest="executor", default="default", type="string", help="the type of executor")
     parser.add_option("--scheduler", dest="scheduler", default="dynamic", type="string", help="the type of scheduler")
     parser.add_option("--noregen", dest="no_regen", action="store_true", default=False, help="Disables regeneration of runtime execution plans")
     parser.add_option("-n", "--nodes", dest="num_nodes", default=0, help="(maximum) number of cluster nodes")
     parser.add_option("--isSlave", dest="isSlave", action="store_true", default=False)
     parser.add_option("-m", "--master", dest="master", default="0.0.0.0:5050", help="master ip address and port for cluster runtime")
+    parser.add_option("--slaveImage", dest="slaveImage", action="store", default="", help="container image name to use when launching a slave process")
     parser.add_option("--ip", dest="ip_address", default="0.0.0.0", help="override the ip address Delite binds to")
     parser.add_option("--codecache", dest="codecache", default="", help="directory for runtime code cache")
     parser.add_option("-d", "--directory", dest="directory", default="", help="change directory to the specified one before running")
     parser.add_option("--jar", dest="jar_cache", action="store_true", default=False, help="save compiled executables in a jar for later execution")
     parser.add_option("--walk-only", dest="walk_only", action="store_true", default=False, help="Only generate executables, don't run them.  Typically used with --jar")
+    parser.add_option("--no-jvm", dest="no_jvm", action="store_true", default=False, help="Only generates native executables for use with external code")
     parser.add_option("--pin", dest="pin_threads", action="store_true", default=False, help="Pin JVM threads to CPUs (requires native code support)")
 
     (opts, args) = parser.parse_args()
@@ -42,16 +45,16 @@ def main():
 
     delitecommon.initialize()
     run(args[0], args[1:len(args)], opts)
- 
+
 def parseBuildDir(deg):
     if not os.path.isfile(deg):
         err("couldn't find DEG file " + deg)
 
     with open(deg) as f:
       head = [f.next() for x in xrange(4)]
-    
+
     fields = ''.join(head).split(",")
-    kernelpath = fields[len(fields)-2].split(":") 
+    kernelpath = fields[len(fields)-2].split(":")
     build_dir = kernelpath[len(kernelpath)-1].strip().strip("\"").strip("\n")
     if (build_dir == ""):
       err("DEG file " + deg + " appears to be invalid; could not parse kernelpath")
@@ -84,7 +87,7 @@ def run(deg, params, opts):
         build_dir = os.getenv("PWD")+os.sep+"generated"+os.sep #override default kernel path to extracted dir
         if os.path.isdir(build_dir):
             shutil.rmtree(build_dir)
-        jar_cmd = delitecommon.JAVA_HOME + "/bin/jar xf " + deg 
+        jar_cmd = delitecommon.JAVA_HOME + "/bin/jar xf " + deg
         ecode = os.system(jar_cmd)
         if ecode != 0:
             err("Unable to extract jar: " + deg)
@@ -98,9 +101,9 @@ def run(deg, params, opts):
         updateBuildDir(deg, build_dir)
 
     ld_library_path = filter(len, os.getenv("LD_LIBRARY_PATH", "").split(":"))
-    ld_library_path.append(build_dir+os.sep+"libraries") 
+    ld_library_path.append(build_dir+os.sep+"libraries")
     os.putenv("LD_LIBRARY_PATH", ":".join(ld_library_path))
-    
+
     if opts.num_nodes > 0 or opts.isSlave:
         #MESOS_LIB = delitecommon.MESOS_HOME + os.sep+"src"+os.sep+".libs"
         #ld_library_path.append(MESOS_LIB)
@@ -113,18 +116,30 @@ def run(deg, params, opts):
     if opts.codecache == "":
         opts.codecache = delitecommon.DELITE_HOME + os.sep + "generatedCache"
 
+    if (opts.num_cuda != "0" and opts.num_cpp == "0"):
+        opts.num_cpp = "1"
+
     java_opts = java_opts + " -Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) +" -Ddelite.cpp=" + opts.num_cpp + " -Ddelite.cuda=" + opts.num_cuda + " -Ddelite.opencl=" + opts.num_opencl + " -Ddelite.runs=" + opts.num_runs + " -Ddelite.executor=" + opts.executor + " -Ddelite.scheduler=" + opts.scheduler + " -Ddelite.master=" + opts.master + " -Ddelite.slaves=" + str(opts.num_nodes) + " -Ddelite.code.cache.home=" + opts.codecache
 
     if opts.verbose == True:
         java_opts = java_opts + " -Ddelite.verbose"
     if opts.no_regen == True:
         java_opts = java_opts + " -Ddelite.debug.noregenerate"
-    if opts.profile == True:
-        java_opts = java_opts + " -Dprofile.output.dir=profile -Dprofile.dump=true -Ddelite.debug.profile=true"
+    if opts.profile != "":
+        profile_dir = "profile"
+        if not os.path.exists(profile_dir):
+            os.mkdir(profile_dir)
+        java_opts = java_opts + " -Dprofile.output.dir="+profile_dir+" -Dprofile.dump=true -Ddelite.debug.profile=true -Xloggc:"+profile_dir+os.sep+"gcStats.txt -XX:+PrintGCDetails -Ddelite.debug.memSamplingInterval=14"
+    if "pcm" in opts.profile:
+        java_opts = java_opts + " -Ddelite.enable.pcm=true"
     if opts.isSlave == True:
         java_opts = java_opts + " -Ddelite.cluster.isSlave"
+    if opts.slaveImage != "":
+        java_opts = java_opts + " -Ddelite.slave.image="+opts.slaveImage
     if opts.walk_only == True:
         java_opts = java_opts + " -Ddelite.run=false"
+    if opts.no_jvm == True:
+        java_opts = java_opts + " -Ddelite.nojvm"
     if opts.pin_threads == True:
         java_opts = java_opts + " -Ddelite.pinThreads"
     if delitecommon.DELITE_MEM != None:
@@ -132,15 +147,14 @@ def run(deg, params, opts):
         java_opts = java_opts + " -Xms" + delitecommon.DELITE_MEM
 
 
-    # add classpaths    
+    # add classpaths
     old_cp = os.getenv("CLASSPATH", "")
     cp = " -cp "
     cp = cp + old_cp + os.pathsep
     cp = cp + delitecommon.DELITE_HOME + "/runtime/target/" + delitecommon.scala_major_id + "/classes" + os.pathsep
 
-    # add all managed libs 
-    # caveat: scalatest pulls in some non-virtualized scala dependencies but they conflict with the scala-virtualized versions
-    jars = [os.path.join(d,f) for (d, n, fs) in os.walk(delitecommon.HYPER_HOME + "/lib_managed/") if not (d.count("org.scala-lang") > 0 and d.count("virtualized") == 0) for f in fs]
+    # add all managed libs
+    jars = [os.path.join(d,f) for (d, n, fs) in os.walk(delitecommon.HYPER_HOME + "/lib_managed/") for f in fs]
     for j in jars:
         cp = cp + j + os.pathsep
 
@@ -154,19 +168,25 @@ def run(deg, params, opts):
     #MKL ENV
     os.putenv("LD_PRELOAD", delitecommon.JAVA_HOME + "/jre/lib/amd64/libjsig.so")
     os.putenv("OMP_NUM_THREADS", str(opts.num_threads))
-    
+
     if opts.verbose:
         delitecommon.printEnv()
 
-    print "== executing application: " + deg + " " + ' '.join(params)
+    print "[" + datetime.datetime.now().isoformat(' ') + "]: executing application: " + deg + " " + ' '.join(params)
     if opts.verbose:
-        print "== with options: " + java_opts + "\n" 
+        print "== with options: " + java_opts + "\n"
 
     java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " ppl.delite.runtime.Delite " + deg + " " + ' '.join(params)
-    #print java_cmd
+    use_perf = "perf" in opts.profile and find_executable("perf") != None
+    if use_perf:
+		java_cmd = "perf record -W -d -e cpu/mem-loads/ppu -c 1000 " + java_cmd
+
     ecode = os.system(java_cmd)
     if ecode != 0:
         err("Delite execution failed")
+    elif use_perf:
+        parse_perf_report_script = delitecommon.DELITE_HOME + "/bin/parse_perf_report " + build_dir
+        os.system(parse_perf_report_script)
 
     if opts.jar_cache == True:
         scala_class_root = opts.codecache + os.sep + "scala" + os.sep + "classes" + os.sep + "jar"
