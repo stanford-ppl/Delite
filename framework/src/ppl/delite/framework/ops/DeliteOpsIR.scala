@@ -43,10 +43,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     def copyOrElse[B](f: OpType => B)(e: => B): B = original.map(p=>f(p._2.asInstanceOf[OpType])).getOrElse(e)
     def copyTransformedOrElse[B](f: OpType => Exp[B])(e: => Exp[B]): Exp[B] = original.map(p=>p._1(f(p._2.asInstanceOf[OpType]))).getOrElse(e)
     def copyTransformedBlockOrElse[B:Manifest](f: OpType => Block[B])(e: => Block[B]): Block[B] = original.map(p=>p._1(f(p._2.asInstanceOf[OpType]))).getOrElse(e)
-
-    def copyTransformedListOrElse[B](f: OpType => List[B])(e: => List[B]): List[B] = original.map(p => f(p._2.asInstanceOf[OpType]).map(p._1(_))).getOrElse(e)
-    def copyTransformedOptionOrElse[B](f: OpType => Option[B])(e := Option[B]): Option[B] = original.map(p => f(p._2.asInstanceOf[OpType]).map(p._1(_))).getOrElse(e)
-
+    
     /*
     consider z1 = VectorPlus(a,b), which could be something like z1 = Block(z2); z2 = loop(a.size) { i => a(i) + b(i) }
     we might want to mirror z1 because we have changed z2.
@@ -501,7 +498,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     d match {
       case e: DeliteTileElem[a,ta,ca] => 
         (DeliteTileElem[a,ta,ca](
-          keys = e.keys.map(fb(_)(manifest[Int])),
+          keys = e.keys.map(fb(_)(manifest[RangeVector])),
           cond = e.cond.map(fb(_)(manifest[Boolean])),
           tile = fb(e.tile)(e.mTA),
           rV = (f(e.rV._1).asInstanceOf[Sym[ta]], f(e.rV._2).asInstanceOf[Sym[ta]]), // need to transform bound vars? 

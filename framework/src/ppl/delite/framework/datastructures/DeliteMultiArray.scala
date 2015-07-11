@@ -528,13 +528,13 @@ trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsE
   }
 
   // TODO: Will types work out here?
-  case class BlockAssemble[A:Manifest,T:Manifest](idims: Seq[Exp[Int]], bfs: Seq[Exp[Int]], odims: Seq[Exp[Int]], keys: Exp[Indices] => Exp[RangeVector], filter: Option[Exp[Indices] => Exp[Boolean]], tile: Exp[Indices] => Exp[T], reduce: Option[ (Exp[T],Exp[T]) => Exp[T]])(implicit ctx: SourceContext) extends DeliteAbstractLoopNest2[A,T,DeliteMultiArray[A]] {
+  case class BlockAssemble[A:Manifest,T:Manifest](idims: Seq[Exp[Int]], bfs: Seq[Exp[Int]], odims: Seq[Exp[Int]], keys: List[Exp[Indices] => Exp[RangeVector]], filter: Option[Exp[Indices] => Exp[Boolean]], tile: Exp[Indices] => Exp[T], reduce: Option[ (Exp[T],Exp[T]) => Exp[T]])(implicit ctx: SourceContext) extends DeliteAbstractLoopNest2[A,T,DeliteMultiArray[A]] {
     type OpType <: BlockAssemble[A,T]
-    val nestLayers = idims.length
+    val nestLevels = idims.length
 
-    val kFunc: List[Block[RangeVector]] = copyTransformedListOrElse(_.kFunc)(keys.map{key => reifyEffects(key(is))})
+    val kFunc: List[Block[RangeVector]] = copyTransformedBlockListOrElse(_.kFunc)(keys.map{key => reifyEffects(key(is))})
     val fFunc: Option[Block[Boolean]] = copyTransformedOptionOrElse(_.fFunc)(filter.map{filt => reifyEffects(filt(is))})
-    val tile: Block[T] = copyTransformedBlockOrElse(_.tile)(reifyEffects(tile(is)))
+    val func: Block[T] = copyTransformedBlockOrElse(_.func)(reifyEffects(tile(is)))
 
     lazy val rV: (Sym[T], Sym[T]) = copyOrElse(_.rV)(fresh[T], fresh[T])
     val rFunc: Option[Block[T]] = copyTransformedOptionOrElse(_.rFunc)(reduce.map(red => reifyEffects(red(rV._1,rV._2))))

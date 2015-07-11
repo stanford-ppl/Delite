@@ -11,7 +11,7 @@ trait RangeVector
 trait UnitRangeVector extends RangeVector  // TBD: Needed?
 
 trait RangeVectorOps extends StructOps {
-  implicit def intToUnitRange(x: Rep[Int]): Rep[UnitRangeVector] = delite_unit_range(i)
+  implicit def intToUnitRange(i: Rep[Int]): Rep[UnitRangeVector] = delite_unit_range(i)
 
   object RangeVector {
     def apply(start: Rep[Int], stride: Rep[Int], length: Rep[Int])(implicit ctx: SourceContext): Rep[RangeVector] = delite_range_vector(start, stride, length)
@@ -29,7 +29,7 @@ trait RangeVectorOps extends StructOps {
   def delite_unit_range(i: Rep[Int])(implicit ctx: SourceContext): Rep[UnitRangeVector]
 }
 
-trait RangeVectorOpsExp extends RangeVectorOps with EffectExp { this: DeliteOpsExp =>
+trait RangeVectorOpsExp extends RangeVectorOps with DeliteStructsExp { this: DeliteOpsExp =>
   case class RangeVectorNew(start: Exp[Int], stride: Rep[Int], length: Rep[Int])(implicit ctx: SourceContext) extends DeliteStruct[RangeVector] {
     val elems = copyTransformedElems(List("start" -> start, "stride" -> stride, "length" -> length))
   }

@@ -122,9 +122,13 @@ trait DeliteAbstractOpsExp extends DeliteAbstractOps with AtomicWriteExp with In
   abstract class DeliteAbstractLoopNest[A:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteOp[R] with AbstractNode[R] {
     type OpType <: DeliteAbstractLoopNest[A,R]
 
+    def copyTransformedSymListOrElse[B](f: OpType => List[Exp[B]])(e: => List[Exp[B]]): List[Exp[B]] = original.map(p => f(p._2.asInstanceOf[OpType]).map(p._1(_))).getOrElse(e)
+    def copyTransformedBlockListOrElse[B:Manifest](f: OpType => List[Block[B]])(e: => List[Block[B]]): List[Block[B]] = original.map(p => f(p._2.asInstanceOf[OpType]).map(p._1(_))).getOrElse(e)
+    def copyTransformedOptionOrElse[B:Manifest](f: OpType => Option[Block[B]])(e: => Option[Block[B]]): Option[Block[B]] = original.map(p => f(p._2.asInstanceOf[OpType]).map(p._1(_))).getOrElse(e)
+
     val nestLevels: Int
-    lazy val vs: List[Sym[Int]] = copyTransformedListOrElse(_.vs)(List.fill(nestLevels)(fresh[Int])).asInstanceOf[List[Sym[Int]]]
-    lazy val is: Sym[Indices] = copyTransformedOrElse(_.i)(indices_new(vs)).asInstanceOf[Sym[Indices]]
+    lazy val vs: List[Sym[Int]] = copyTransformedSymListOrElse(_.vs)(List.fill(nestLevels)(fresh[Int])).asInstanceOf[List[Sym[Int]]]
+    lazy val is: Sym[Indices] = copyTransformedOrElse(_.is)(indices_new(vs)).asInstanceOf[Sym[Indices]]
 
     val mA = manifest[A]
     val mR = manifest[R]
