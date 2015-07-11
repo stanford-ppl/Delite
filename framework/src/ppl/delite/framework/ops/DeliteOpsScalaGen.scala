@@ -106,6 +106,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
   }
 
   def emitAbstractFatLoopHeader(syms: List[Sym[Any]], rhs: AbstractFatLoop) {
+    val kernelName = getKernelName(syms)
     val actType = getActType(kernelName)
     val className = kernelName+"_closure"
     stream.println("val " + className + " = new generated.scala.DeliteOpMultiLoop[" + actType + "] {"/*}*/)

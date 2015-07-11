@@ -88,7 +88,6 @@ trait DeliteArrayOps extends Base {
   def darray_toseq[A:Manifest](a: Rep[DeliteArray[A]])(implicit ctx: SourceContext): Rep[Seq[A]]
 
   def darray_split_string(str: Rep[String], split: Rep[String], lim: Rep[Int]): Rep[DeliteArray[String]]
-  def darray_fromfunction[T:Manifest](length: Rep[Int], func: Rep[Int] => Rep[T])(implicit ctx: SourceContext): Rep[DeliteArray[T]]
 
   def darray_set_act_buf[A:Manifest](da: Rep[DeliteArray[A]]): Rep[Unit]
 }
@@ -763,15 +762,6 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenAtomicOp
     // serializable or ragged
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) if Config.generateSerializable || Config.intSize == "long" =>
       emitValDef(sym, quote(src) + ".copy(" + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
-
-    case StructCopy(src,srcPos,struct,fields,destPos,len) if Config.generateSerializable || Config.intSize == "long" =>
-      val dest = quote(struct) + "." + fields.mkString(".") + destPos.take(destPos.length-1).map(e=>"("+quote(e)+")").mkString("")
-      emitValDef(sym, quote(src) + ".copy(" + quote(srcPos) + "," + dest + "," + quote(destPos(destPos.length-1)) + "," + quote(len) + ")")
-
-    case VarCopy(src,srcPos,Variable(a),destPos,len) if Config.generateSerializable || Config.intSize == "long" =>
-      val dest = quote(a) + (if (deliteInputs contains a) ".get" else "")
-      emitValDef(sym, quote(src) + ".copy(" + quote(srcPos) + "," + dest + "," + quote(destPos) + "," + quote(len) + ")")
-
 
     // local and common
     case a@DeliteArrayNew(n,m,t) =>

@@ -35,12 +35,14 @@ trait DeliteTestDSLScalaOpsPkg extends Base
   with CastingOps with ObjectOps with IOOps
   with ArrayOps with ExceptionOps
 
+// FIXME
 trait DeliteTestDSLScalaOpsPkgExp extends DeliteTestDSLScalaOpsPkg with DSLOpsExp
   with EqualExp with IfThenElseExp with VariablesExp with WhileExp with TupleOpsExp with TupledFunctionsExp
   with ImplicitOpsExp with OrderingOpsExp with StringOpsExp with RangeOpsExp with IOOpsExp
   with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExpOpt with MiscOpsExp 
   with ListOpsExp with SeqOpsExp with MathOpsExp with CastingOpsExp with SetOpsExp with ObjectOpsExp
   with SynchronizedArrayBufferOpsExp with HashMapOpsExp with IterableOpsExp with ArrayBufferOpsExp with ExceptionOpsExp
+  with LoopsFatExp
 
 trait DeliteTestDSLScalaCodeGenPkg extends ScalaGenDSLOps
   with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenTupleOps with ScalaGenTupledFunctions

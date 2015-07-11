@@ -1,5 +1,6 @@
 package ppl.delite.framework.codegen.hw
 
+import ppl.delite.framework.codegen.delite.DeliteKernelCodegen
 import scala.virtualization.lms.internal._
 import scala.virtualization.lms.common._
 
@@ -40,8 +41,20 @@ trait HwCodegen extends GenericCodegen with ThorIR
    * This HAS to be there with the current codegen design architecture - overloaded emitNode*
    * methods expect their arguments to have types "IR.<blah>".
    */
-  val IR: Expressions
+  // FIXME: Getting a compiler error if extra LMS common stuff isn't mixed in here... Something isn't right.
+  // Is GenericCodegen the right thing to be extending here?
+  val IR: LoopsFatExp with ArrayOpsExp with StringOpsExp
   import IR._
+
+  // New stuff from merge with wip-master (some need to be filled in?)
+  def emitHeapMark(): Unit = {}
+  def emitHeapReset(result: List[String]): Unit = {}
+  def emitAbstractFatLoopFooter(syms: List[Sym[Any]], rhs: AbstractFatLoop): Unit = {}
+  def emitAbstractFatLoopHeader(syms: List[Sym[Any]], rhs: AbstractFatLoop): Unit = {}
+  def syncType(actType: String): String = "??????"
+  def emitWorkLaunch(kernelName: String, rSym: String, allocSym: String, syncSym: String): Unit = {}
+
+
 
   // Hardware intermediate representation graph
   val hwgraph: HwGraph = new HwGraph
@@ -62,16 +75,16 @@ trait HwCodegen extends GenericCodegen with ThorIR
   override def deviceTarget: Targets.Value = Targets.Hw
   override def toString = "hw"
 
-  override def kernelFileExt = "thor"
+  override def fileExtension = "thor"
 
-  override def initializeGenerator(buildDir:String, args: Array[String]): Unit = {
+  override def initializeGenerator(buildDir:String): Unit = {
     val outDir = new File(buildDir)
     outDir.mkdirs
 
     // Initialize all passes here
     passes.append(new HwPrintPass)
 
-    super.initializeGenerator(buildDir, args)
+    super.initializeGenerator(buildDir)
   }
 
   override def finalizeGenerator() = {
@@ -96,7 +109,7 @@ trait HwCodegen extends GenericCodegen with ThorIR
   // emitKernelHeader: This function is called for every kernel, and contains code that should
   // be generated in all the kernel files. Basing this off of ScalaCodegen's implementation
   // for now
-  override def emitKernelHeader(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultType: String, resultIsVar: Boolean, external: Boolean): Unit = {
+  override def emitKernelHeader(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultType: String, resultIsVar: Boolean, external: Boolean, isMultiLoop: Boolean): Unit = {
 
 //    def kernelSignature: String = {
 //      val out = new StringBuilder
@@ -133,7 +146,7 @@ trait HwCodegen extends GenericCodegen with ThorIR
     stream.println("")
   }
 
-  override def emitKernelFooter(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultType: String, resultIsVar: Boolean, external: Boolean): Unit = {
+  override def emitKernelFooter(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultType: String, resultIsVar: Boolean, external: Boolean, isMultiLoop: Boolean): Unit = {
       stream.println("}")
   }
 
@@ -187,7 +200,8 @@ trait HwCodegen extends GenericCodegen with ThorIR
 
 trait HwGenDeliteOps extends HwCodegen with GenericGenDeliteOps
 {
-//  val IR: DeliteOpsExp
+  // FIXME: This needs to be changed - temporarily put this here just to make things compile
+  val IR: DeliteOpsExp with LoopsFatExp with ArrayOpsExp with StringOpsExp
   import IR._
 
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef) = rhs match {
@@ -319,7 +333,8 @@ trait HwGenDeliteOps extends HwCodegen with GenericGenDeliteOps
 
 trait HwGenDeliteInternalOps extends HwCodegen
 {
-  val IR: DeliteOpsExp with DeliteInternalOpsExp
+  // FIXME: This needs to be changed
+  val IR: DeliteOpsExp with DeliteInternalOpsExp with LoopsFatExp with ArrayOpsExp with StringOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
@@ -363,7 +378,8 @@ trait HwGenDeliteInternalOps extends HwCodegen
 
 trait HwGenDeliteArrayOps extends HwCodegen
 {
-  val IR: DeliteArrayFatExp with DeliteOpsExp
+  // FIXME
+  val IR: DeliteArrayFatExp with DeliteOpsExp with LoopsFatExp with ArrayOpsExp with StringOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
@@ -396,9 +412,10 @@ trait HwGenRangeOps extends HwCodegen
 {
 }
 
+
+// FIXME: GenArray and GenString probably should not exist - these are LMS internals unused by Delite (I think)
 trait HwGenArrayOps extends HwCodegen
 {
-  val IR: ArrayOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
@@ -414,7 +431,6 @@ trait HwGenArrayOps extends HwCodegen
 
 trait HwGenStringOps extends HwCodegen
 {
-  val IR: StringOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {

@@ -136,7 +136,6 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
 
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
     case s: DeliteStruct[_] => Nil
-    case NestedFieldUpdate(_,_,_) => Nil
     case FieldApply(s:Sym[Any],x) if _deliteStructAliases && (dc_data_field(s.tp) == x) => List(s)
     case _ => super.aliasSyms(e)
   }

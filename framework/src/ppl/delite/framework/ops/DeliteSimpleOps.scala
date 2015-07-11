@@ -292,7 +292,7 @@ trait DeliteSimpleOpsExp extends DeliteSimpleOps with RangeVectorOpsExp with Del
     override lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(oV).asInstanceOf[Sym[Int]]
     
     val inputStream = dfis_new(paths, unit(null))
-    val size: Exp[Int] = copyTransformedOrElse(_.size)(dfs_size(inputStream))
+    val size: Exp[Int] = copyTransformedOrElse(_.size)(dfis_size(inputStream).asInstanceOf[Exp[Int]])
 
     def allocI(i: Exp[Int]) = alloc(i)
 
@@ -617,8 +617,8 @@ trait ScalaGenSimpleProfileOps extends ScalaGenEffect {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case ProfileStart(c,deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(" + quote(c) + ", false)")
-    case ProfileStop(c,deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(" + quote(c) + ", false)")
+    case ProfileStart(c,deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(" + quote(c) + ")")
+    case ProfileStop(c,deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(" + quote(c) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -628,7 +628,7 @@ trait CGenSimpleProfileOps extends CGenEffect {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case ProfileStart(c,deps) => stream.println("DeliteCppTimerStart(resourceInfo->threadId," + quote(c) + ", false);")
+    case ProfileStart(c,deps) => stream.println("DeliteCppTimerStart(resourceInfo->threadId," + quote(c) + ",);")
     case ProfileStop(c,deps) => stream.println("DeliteCppTimerStop(resourceInfo->threadId," + quote(c) + ");")
     case _ => super.emitNode(sym,rhs)
   }
