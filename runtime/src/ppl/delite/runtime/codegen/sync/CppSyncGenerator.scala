@@ -367,7 +367,7 @@ trait CppSyncGenerator extends CppToScalaSync with CppToCppSync {
         }
       }
     */
-    case m: Free => //println("[warning] freeing " + m.items.map(_._2).mkString(",") + " is not inserted.")
+    case m: Free => out.append("//free " + m.op.id +"\n") //println("[warning] freeing " + m.items.map(_._2).mkString(",") + " is not inserted.")
     case _ => super.makeNestedFunction(op)
   }
 }
