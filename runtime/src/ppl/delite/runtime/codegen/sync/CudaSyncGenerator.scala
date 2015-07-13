@@ -227,8 +227,8 @@ trait CudaToScalaSync extends SyncGenerator with CudaExecutableGenerator with JN
       out.append(getSymDevice(dep,sym))
       out.append(",lastAlloc));\n")
       out.append("lastAlloc = new std::list<void*>();\n")
-      out.append("}\n")
     }
+    out.append("}\n")
   }
 
   private def writeAwaiter(dep: DeliteOP, sym: String = "") {

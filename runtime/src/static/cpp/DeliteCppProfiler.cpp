@@ -1,19 +1,19 @@
 #include "DeliteCppProfiler.h"
 
-std::vector< std::map<std::string,std::vector<cpptimer_t>*>* > *timermaps;
-std::vector< std::stack< cpptimer_t > > kernelCallStacks;
-std::vector< BufferedFileWriter* >* profileWriters;
-std::vector< std::map<std::string, std::vector<PCMStats*>*>* > *memoryAccessMaps;
-std::vector< std::map< std::string, std::vector<cpparray_layout_info>* >* >* scToMemAllocationMaps;
-std::map< std::string, cpptimer_t >* ticTocRegionToTimers;
-std::vector< std::map< std::string, uint64_t >* >* kernelToMemUsageMaps;
+static std::vector< std::map<std::string,std::vector<cpptimer_t>*>* > *timermaps;
+static std::vector< std::stack< cpptimer_t > > kernelCallStacks;
+static std::vector< BufferedFileWriter* >* profileWriters;
+static std::vector< std::map<std::string, std::vector<PCMStats*>*>* > *memoryAccessMaps;
+static std::vector< std::map< std::string, std::vector<cpparray_layout_info>* >* >* scToMemAllocationMaps;
+static std::map< std::string, cpptimer_t >* ticTocRegionToTimers;
+static std::vector< std::map< std::string, uint64_t >* >* kernelToMemUsageMaps;
 
-std::string profileFilePrefix;
-std::string ticTocProfileFile;
+static std::string profileFilePrefix;
+static std::string ticTocProfileFile;
 
-int32_t numCpp = 0;
-int32_t lowestCppTid = 0;
-double appStartTime;
+static int32_t numCpp = 0;
+static int32_t lowestCppTid = 0;
+static double appStartTime;
 
 double milliseconds(struct timeval t) {
   return double(t.tv_sec * 1000) + (double(t.tv_usec) / 1000);

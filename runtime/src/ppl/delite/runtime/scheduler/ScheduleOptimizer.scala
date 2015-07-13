@@ -4,7 +4,7 @@ import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph._
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.graph.targets.Targets
-import scala.collection.mutable.{HashMap,HashSet}
+import scala.collection.mutable.{HashMap,HashSet,ListBuffer}
 
 trait ScheduleOptimizer {
 
@@ -18,17 +18,23 @@ trait ScheduleOptimizer {
     val schedule = PartialSchedule(graph.schedule.numResources)
     
     // map from from op to sender op
-    val senders = HashMap[DeliteOP,Send]()
+    val senders = HashMap[(DeliteOP,Class[_]),Send]()
+
+    val sortedNestedOps = ListBuffer[OP_Nested]()
 
     // for scala target, keep the original (ideally there should be no scala kernels scheduled)
     // merge two sends from an op that goes to both C++ and Cuda
+
     for (opList <- graph.schedule if OpHelper.scheduledTarget(opList.resourceID) == Targets.Scala) {
       for (op <- opList) {
         op match {
-          case s: Send if senders.contains(s.from) => // combine receivers to the same sender
-            senders(s.from).receivers ++= s.receivers
+          case s: Send if senders.contains((s.from,s.getClass)) => // combine receivers to the same sender
+            senders((s.from,s.getClass)).receivers ++= s.receivers
           case s: Send =>
-            senders += s.from -> s
+            senders += (s.from,s.getClass) -> s
+            schedule(opList.resourceID).add(op)
+          case n: OP_Nested =>
+            sortedNestedOps.append(n)
             schedule(opList.resourceID).add(op)
           case _ =>
             schedule(opList.resourceID).add(op)
@@ -69,6 +75,39 @@ trait ScheduleOptimizer {
       case _ => //
     } }
 
+    // check if two nested ops are siblings (FIXME: Bettwer way to check?)
+    def isSibling(op1: DeliteOP, op2: DeliteOP): Boolean = (op1,op2) match {
+      case (n1: OP_Nested, n2: OP_Nested) => n1.id.split("_").head == n2.id.split("_").head
+      case _ => false
+    }
+
+    // Add additional dependencies for nested ops.
+    // Two nested ops without dependencies between the two may be reordered by SCC,
+    // but they should keep the same order as in the Scala schedule to avoid deadlock from the inner schedule synchronizations.
+    // Force the original ordering by adding extra dependencies.
+    def serializeNestedOps(ns: List[OP_Nested]): Unit = ns match {
+      case n1::n2::t =>
+        val s1 = ops.filter(isSibling(_,n1))
+        val s2 = ops.filter(isSibling(_,n2))
+        for(from <- s1; to <- s2) addDependency(from, to)
+        serializeNestedOps(n2::t)
+      case _ =>
+    }
+    serializeNestedOps(sortedNestedOps.filter(n => ops.exists(o => isSibling(n,o))).toList)
+
+    // Add additional dependencies to follow the same order as in the original schedule.
+    // SCC reodering the original schedule could result in memory management issue (Free node scheduled too early)
+    // since Free nodes are added based on the original schedule.
+    // Example: x5 and x6 both with input x1 and no dependencies between the two. x1 is freed after x6 but x5/x6 could be reordered.
+    // Also could be more precise by following the consumers but this is simpler.
+    def serializeOps(ns: List[DeliteOP]): Unit = ns match {
+      case n1::n2::t =>
+        addDependency(n1,n2)
+        serializeOps(n2::t)
+      case _ =>
+    }
+    for (s <- graph.schedule.resources) serializeOps(s.toArray.toList)
+
     // topological sort on the original schedule
     val sortedSchedule = GraphUtil.stronglyConnectedComponents[DeliteOP](ops.toList,
                          op => op.getConsumers.toList ++ getDependency(op)).flatMap(l => l.filterNot(o => o.scheduledOn(Targets.Scala)))
@@ -83,7 +122,7 @@ trait ScheduleOptimizer {
         // recursively schedule nested graphs
         nested.nestedGraphs.foreach(scheduleNativeGPU)
 
-        // check if a sibling of this nested OP exists on CUDA schedule (FIXME: better way to check?)
+        // check if a sibling of this nested OP exists on CUDA schedule
         val siblings = sortedSchedule.filter(op => (op.id.split("_").head == nested.id.split("_").head) && (op != nested))
         assert(siblings.size <= 1)
         

@@ -1,10 +1,10 @@
 #include "DeliteCudaProfiler.h"
 
-BufferedFileWriter** profileWriters = new BufferedFileWriter*[DELITE_NUM_CUDA];
-std::stack< cudatimer_t >** timermaps = new std::stack< cudatimer_t >*[DELITE_NUM_CUDA];
-double appStartTime = 0;
+static BufferedFileWriter** profileWriters = new BufferedFileWriter*[DELITE_NUM_CUDA];
+static std::stack< cudatimer_t >** timermaps = new std::stack< cudatimer_t >*[DELITE_NUM_CUDA];
+static double appStartTime = 0;
 
-std::string profileFilePrefix;
+static std::string profileFilePrefix;
 
 double milliseconds(struct timeval t) {
   return double(t.tv_sec * 1000) + (double(t.tv_usec) / 1000);

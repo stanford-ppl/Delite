@@ -1,6 +1,6 @@
 package ppl.delite.framework.datastructures
 
-import java.io.PrintWriter
+import java.io.{PrintWriter,StringWriter}
 import scala.virtualization.lms.common._
 import scala.reflect.{SourceContext, RefinedManifest}
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
@@ -1152,8 +1152,11 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
       stream.println("struct comparator_" + quote(getBlockResult(comp)) + " comp_" + quote(getBlockResult(comp)) + " = " + freeVars.map(quote(_)).mkString("{",",","};"))
       stream.println("std::sort(" + quote(sym) + "->data, " + quote(sym) + "->data + " + quote(sym) + "->length, comp_" + quote(getBlockResult(comp)) + ");")
 
+      val compString = new StringWriter()
+      val compStream = new PrintWriter(compString)
+
       //Declare the comparator in helperfunc header. (TODO: Use C++11 closure and embed in the kernel)
-      withStream(headerStream) {
+      withStream(compStream) {
         stream.println("#ifndef __COMPARATOR_" + quote(getBlockResult(comp)) + "__")
         stream.println("#define __COMPARATOR_" + quote(getBlockResult(comp)) + "__")
         stream.println("struct comparator_" + quote(getBlockResult(comp)) + "{")
@@ -1167,6 +1170,8 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
         stream.println("};")
         stream.println("#endif")
       }
+      compStream.flush()
+      headerStream.println(compString.toString)
 
     case _ => super.emitNode(sym, rhs)
   }
