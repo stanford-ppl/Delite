@@ -18,7 +18,7 @@ import ScalaResourceInfo._
  * Stanford University
  */
 
-trait WhileGenerator extends NestedGenerator {
+trait WhileGenerator extends NestedGenerator with SyncGenerator {
 
   val whileLoop: OP_While
   val nested = whileLoop
@@ -57,11 +57,16 @@ trait WhileGenerator extends NestedGenerator {
     addSource(out.toString)
   }
 
-  protected def beginWhile(predicate: String)
-  protected def endWhile()
+  protected def beginWhile(predicate: String) = {
+    out.append("while (")
+    out.append(predicate)
+    out.append(") {\n")
+  }
+  
+  protected def endWhile() = out.append("}\n")
 
   protected def beginFunction(inputs: Seq[(DeliteOP,String)])
-  protected def endFunction()
+  protected def endFunction() = out.append("}\n")
   protected def callFunction(inputs: Seq[(DeliteOP,String)]): String
 
   protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value) = {
@@ -77,34 +82,6 @@ trait WhileGenerator extends NestedGenerator {
       case _ => throw new RuntimeException("Unknown Host type " + target.toString)
     }
   }
-}
-
-class ScalaWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: DeliteTaskGraph)
-  extends WhileGenerator with ScalaNestedGenerator with ScalaSyncGenerator {
-
-  protected def beginWhile(predicate: String) {
-    out.append("while (")
-    out.append(predicate)
-    out.append(") {\n")
-  }
-
-  protected def endWhile() {
-    out.append("}\n")
-  }
-
-  protected def beginFunction(inputs: Seq[(DeliteOP,String)]) {
-    out.append("def predicate(")
-    writeInputs(inputs)
-    out.append("): Boolean = {\n")
-  }
-
-  protected def endFunction() {
-    out.append("}\n")
-  }
-
-  protected def callFunction(inputs: Seq[(DeliteOP,String)]) = {
-    "predicate(" + (resourceInfoSym+:inputs.map(i=>getSym(i._1,i._2))).mkString(",") + ")"
-  }
 
   override protected def getSym(op: DeliteOP, name: String) = WhileCommon.getSym(whileLoop, baseId, op, name)
   override protected def getSync(op: DeliteOP, name: String) = WhileCommon.getSync(whileLoop, baseId, op, name)
@@ -113,18 +90,23 @@ class ScalaWhileGenerator(val whileLoop: OP_While, val location: Int, val graph:
 
 }
 
+class ScalaWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: DeliteTaskGraph)
+  extends WhileGenerator with ScalaNestedGenerator with ScalaSyncGenerator {
+
+  protected def beginFunction(inputs: Seq[(DeliteOP,String)]) {
+    out.append("def predicate(")
+    writeInputs(inputs)
+    out.append("): Boolean = {\n")
+  }
+
+  protected def callFunction(inputs: Seq[(DeliteOP,String)]) = {
+    "predicate(" + (resourceInfoSym+:inputs.map(i=>getSym(i._1,i._2))).mkString(",") + ")"
+  }
+
+}
+
 class CppWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: DeliteTaskGraph)
   extends WhileGenerator with CppNestedGenerator with CppSyncGenerator {
-
-  protected def beginWhile(predicate: String) {
-    out.append("while (")
-    out.append(predicate)
-    out.append(") {\n")
-  }
-
-  protected def endWhile() {
-    out.append("}\n")
-  }
 
   protected def beginFunction(inputs: Seq[(DeliteOP,String)]) {
     out.append("bool predicate_")
@@ -138,19 +120,9 @@ class CppWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: D
     if (!Config.noJVM) writeJNIInitializer(locations)
   }
 
-  protected def endFunction() {
-    out.append("}\n")
-  }
-
   protected def callFunction(inputs: Seq[(DeliteOP,String)]) = {
     "predicate_" + executableName(location) + "(" + (resourceInfoSym+:inputs.map(i=>getSymHost(i._1,i._2))).mkString(",") + ")"
   }
-
-  override protected def getSym(op: DeliteOP, name: String) = WhileCommon.getSym(whileLoop, baseId, op, name)
-  override protected def getSync(op: DeliteOP, name: String) = WhileCommon.getSync(whileLoop, baseId, op, name)
-
-  def executableName(location: Int) = "While_" + baseId + "_" + location
-
 
 }
 
@@ -159,16 +131,6 @@ class CudaWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: 
 
   protected val hostGenerator: CppWhileGenerator = new CppWhileGenerator(whileLoop, Targets.resourceIDs(Targets.Cpp).head, graph)
   hostGenerator.out = out
-
-  protected def beginWhile(predicate: String) {
-    out.append("while (")
-    out.append(predicate)
-    out.append(") {\n")
-  }
-
-  protected def endWhile() {
-    out.append("}\n")
-  }
 
   protected def beginFunction(inputs: Seq[(DeliteOP,String)]) {
     out.append("bool predicate_")
@@ -179,19 +141,9 @@ class CudaWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: 
     writeJNIInitializer(whileLoop.nestedGraphs:_*)
   }
 
-  protected def endFunction() {
-    out.append("}\n")
-  }
-
   protected def callFunction(inputs: Seq[(DeliteOP,String)]) = {
     "predicate_" + executableName(location) + "(" + generateInputArgs(whileLoop) + ")"
   }
-
-  override protected def getSym(op: DeliteOP, name: String) = WhileCommon.getSym(whileLoop, baseId, op, name)
-  override protected def getSync(op: DeliteOP, name: String) = WhileCommon.getSync(whileLoop, baseId, op, name)
-
-  def executableName(location: Int) = "While_" + baseId + "_" + location
-
 
 }
 
