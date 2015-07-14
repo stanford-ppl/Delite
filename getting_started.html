@@ -68,7 +68,7 @@
       </div>
       <div id='content'> 
         <h1 id='title_getting started'>Getting Started</h1>
-        <p style="font-size: 10pt"> The following instructions are for the Unix and OSX platforms. Windows support is coming soon.</p>
+        <p style="font-size: 10pt"> The following instructions are for the Unix and OSX platforms. Windows support is coming soon.  We recommend using <a href="http://www.sublimetext.com">Sublime</a> or similar for development. Full IDE support is still experimental.</p>
 
         <h2 id='title_from source'>From Source</h2>
         <p> Delite requires <a href="http://java.com">Java 1.7 or later</a>, <a href="http://python.org">Python 2.7</a>, <a href="http://git-scm.com">git</a> and <a href="http://www.scala-sbt.org/">SBT 0.13</a>. Instructions for installing
@@ -83,7 +83,7 @@
 cd hyperdsl 
 git submodule update --init</code></pre></div>  
         <p>Now we need the JAVA_HOME environment variable to be set. If it is not already, you will need to set it: </p>
-<div class="highlight"><pre><code class="bash">export JAVA_HOME=[absolute path of Java installation] </code></pre></div> 
+<div class="highlight"><pre><code class="bash">export JAVA_HOME=[absolute path of JDK installation] </code></pre></div> 
 
         <p>Next, we need to compile each project and make them available to our DSLs as a dependency.  Compiling requires a few environment variables to be set, the proper defaults for which can be found in <code>init-env.sh</code>.  From the hyperdsl directory type </p> 
         <div class="highlight"><pre><code class="bash">source init-env.sh
@@ -106,13 +106,14 @@ sbt compile</code></pre></div>
         Since Delite compilation can take a while (but produces high performance code), the recommended strategy is to use the interpreter while developing and
         prototyping, and then run the Delite version to scale out to larger datasets or heterogeneous hardware.
         </p>
-        <p> So without further ado, let's get to it. Starting from the published SimpleVector directory, first compile the example application and then run the interpreter version: </p>
-<p><div class="highlight" style="overflow: scroll"><pre><code class="bash">sbt compile
-bin/delitec HelloSimpleInterpreter</code></pre></div></p>
+        <p> So without further ado, let's get to it. Starting from the <code>published/SimpleVector</code> directory, first compile the example application (in <code>apps/src</code>) and then run the interpreter version: </p>
+        <div class="highlight"><pre><code class="bash">cd published/SimpleVector
+sbt compile
+bin/delitec HelloSimpleInterpreter</code></pre></div>
         <p> If all went well, you should see <code>hello world</code> (and a bunch of other stuff) printed to the console! </p>
         <p> Now we can run the compiler version simply by changing the argument to the Delite: </p>
         <p>
-        <div class="highlight" style="overflow: scroll"><pre><code class="bash">bin/delitec HelloSimpleCompiler
+        <div class="highlight"><pre><code class="bash">bin/delitec HelloSimpleCompiler
 bin/delite HelloSimpleCompiler</code></pre></div>
         </p><p>
         In this case <code>delitec</code> generates new code for the application rather than interpreting the application directly, and <code>delite</code> runs the generated code. 
