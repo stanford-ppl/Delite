@@ -1,0 +1,126 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>Delite &mdash; Welcome</title>
+    <style type='text/css'>
+      @import 'css/default.css';
+      @import 'css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import 'css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='http://stanford-ppl.github.com/Delite/' title="Delite">Delite</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Welcome</a></li>
+              <li><a href="myfirstdsl.html">My First DSL</a></li>
+              <li><a href="faq.html">FAQ</a></li>
+              <!--
+              <li><a href="performance.html">Performance</a></li>
+              <li><a href="tests.html">Tests</a></li>
+              <li><a href="troubleshooting.html">Troubleshooting</a></li>
+              -->              
+              <li><a href="publications.html">Publications</a></li>
+            </ol>
+          </li>
+          <li>Getting it
+            <ol>
+            <!--
+              <li><a href='releases.html'>Releases</a></li>
+              <li><a href='snapshots.html'>Snapshots</a></li>
+            -->
+              <li><a href='source.html'>Source</a></li>
+              <li><a href='license.html'>License</a></li>
+            </ol>
+          </li>
+          <li>DSLs
+            <ol>
+              <li><a href='optiml/index.html'>OptiML</a></li>
+              <li><a href='optiql/index.html'>OptiQL</a></li>
+              <li><a href='optigraph/index.html'>OptiGraph</a></li>
+            </ol>
+          </li>
+          <li>Applications
+            <ol>
+              <li><a href='optiml/neural_network.html' >Deep Learning</a></li>
+            </ol>
+          </li>
+          <!--
+          <li>Reference
+            <ol>
+              <li><a href='api/0.3/index.html'>ScalaDoc API</a></li>
+              <li>&nbsp;</li>
+              <li><a href='sponsors.html'>Sponsors</a></li>
+              <li class="logo"><a href="http://ppl.stanford.edu"><img width="110" alt="Stanford Pervasive Parallelism Lab" src='images/ppl_logo_small.png'></a></li>
+            </ol>
+          </li>
+          -->
+        </ol>
+      </div>
+      <div id='content'> 
+        <h1 id='title_getting started'>Getting Started</h1>
+        <p style="font-size: 10pt"> The following instructions are for the Unix and OSX platforms. Windows support is coming soon.</p>
+
+        <h2 id='title_from source'>From Source</h2>
+        <p> Delite requires <a href="http://java.com">Java 1.7 or later</a>, <a href="http://python.org">Python 2.7</a>, <a href="http://git-scm.com">git</a> and <a href="http://www.scala-sbt.org/">SBT 0.13</a>. Instructions for installing
+        these can be found at their respective websites. Be sure to increase the default heap size for sbt (we recommend at least 4GB).
+      <p>To get started, you first need to
+        download the source for <code>virtualization-lms-core</code>, <code>Delite</code> and <code>Forge</code>. These three libraries provide 1) staging support to embed DSLs in Scala, 2) a parallel and heterogeneous
+        compiler, and 3) the meta DSL that Delite DSLs are implemented in, respectively.
+      <p>
+        These three repositories have been packaged into a singe repository called <code>hyperdsl</code> using git submodules. First, make a copy of the <code>hyperdsl</code> repository and its submodules on your machine:
+        </p><p>
+        <div class="highlight"><pre><code class="bash">git clone https://github.com/stanford-ppl/hyperdsl.git
+cd hyperdsl 
+git submodule update --init</code></pre></div>  
+        <p>Now we need the JAVA_HOME environment variable to be set. If it is not already, you will need to set it: </p>
+<div class="highlight"><pre><code class="bash">export JAVA_HOME=[absolute path of Java installation] </code></pre></div> 
+
+        <p>Next, we need to compile each project and make them available to our DSLs as a dependency.  Compiling requires a few environment variables to be set, the proper defaults for which can be found in <code>init-env.sh</code>.  From the hyperdsl directory type </p> 
+        <div class="highlight"><pre><code class="bash">source init-env.sh
+sbt compile</code></pre></div>
+
+        <p> We're almost done. The remainder of these instructions are covered in detail in the tutorial.  However, if you want to get a jump start, keep going!</p>
+
+        <p>Now we need to run Forge to generate each DSL. Start with a simple example: </p>
+<div class="highlight"><pre><code class="bash">forge/bin/update ppl.dsl.forge.examples.SimpleVectorDSLRunner SimpleVector</code></pre></div>
+
+        <p>
+        The generated DSL is now located in the directory <code>published/SimpleVector</code>. We can run applications from there.    
+        Forge generates two versions of the DSL: an interpreter, which is a pure Scala library implementation, and the compiler, which is the Delite implementation.
+        All Delite applications have three phases: compiling (Scala), staging (DSL compilation), and executing (runtime). The first step, running the scala compiler,
+        checks your application for syntactic and type correctness. Staging is where the main compilation happens: the DSL builds an IR of the program, optimizes it,
+        and generates an execution graph along with code for multiple targets (e.g. Scala and CUDA). Finally, the Delite runtime reads in the execution graph and
+        generated kernels and executes the application.
+        </p>
+        <p>
+        Since Delite compilation can take a while (but produces high performance code), the recommended strategy is to use the interpreter while developing and
+        prototyping, and then run the Delite version to scale out to larger datasets or heterogeneous hardware.
+        </p>
+        <p> So without further ado, let's get to it. Starting from the published SimpleVector directory, first compile the example application and then run the interpreter version: </p>
+<p><div class="highlight" style="overflow: scroll"><pre><code class="bash">sbt compile
+bin/delitec HelloSimpleInterpreter</code></pre></div></p>
+        <p> If all went well, you should see <code>hello world</code> (and a bunch of other stuff) printed to the console! </p>
+        <p> Now we can run the compiler version simply by changing the argument to the Delite: </p>
+        <p>
+        <div class="highlight" style="overflow: scroll"><pre><code class="bash">bin/delitec HelloSimpleCompiler
+bin/delite HelloSimpleCompiler</code></pre></div>
+        </p><p>
+        In this case <code>delitec</code> generates new code for the application rather than interpreting the application directly, and <code>delite</code> runs the generated code. 
+      </p>
+      <p>
+      Congratulations! You just ran your first Delite application.  You can find the generated code within <code>published/SimpleVector/generated/</code></p>
+      </div>
+      <div id='footer'>Copyright &copy; 2011</div>
+    </div>
+  </body>
+</html>
