@@ -8,7 +8,7 @@ import executor._
 import graph.ops.{EOP_Global, Arguments, Sync}
 import graph.targets.Targets
 import graph.{TestGraph, DeliteTaskGraph}
-import profiler.Profiling
+import profiler.{Profiling, SamplerThread}
 import scheduler._
 
 /**
@@ -85,6 +85,7 @@ object Delite {
 
     def abnormalShutdown() {
       if (executor != null) executor.shutdown()
+      if (SamplerThread.isAlive) SamplerThread.stop()
       if (!Config.alwaysKeepCache)
         FileUtils.deleteQuietly(new File(Config.codeCacheHome)) //clear the code cache (could be corrupted)
     }
