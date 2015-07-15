@@ -44,6 +44,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     def copyTransformedOrElse[B](f: OpType => Exp[B])(e: => Exp[B]): Exp[B] = original.map(p=>p._1(f(p._2.asInstanceOf[OpType]))).getOrElse(e)
     def copyTransformedBlockOrElse[B:Manifest](f: OpType => Block[B])(e: => Block[B]): Block[B] = original.map(p=>p._1(f(p._2.asInstanceOf[OpType]))).getOrElse(e)
     
+    def copyTransformedSymListOrElse[B](f: OpType => List[Exp[B]])(e: => List[Exp[B]]): List[Exp[B]] = original.map(p => f(p._2.asInstanceOf[OpType]).map(p._1(_))).getOrElse(e)
     /*
     consider z1 = VectorPlus(a,b), which could be something like z1 = Block(z2); z2 = loop(a.size) { i => a(i) + b(i) }
     we might want to mirror z1 because we have changed z2.
@@ -79,7 +80,6 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
   abstract class DeliteOpLoopNest[A:Manifest](implicit ctx: SourceContext) extends AbstractLoopNest[A] with DeliteOp[A] {
     type OpType <: DeliteOpLoopNest[A]
     def copyBodyOrElse(e: => Def[A]): Def[A] = original.map(p=>mirrorLoopBody(p._2.asInstanceOf[OpType].body,p._1)).getOrElse(e)
-    val nestLayers: Int
     val numDynamicChunks:Int = 0
   }
 
@@ -250,6 +250,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
   // --- Tiling Elems
   case class DeliteTileBuffer[A:Manifest,TA:Manifest,CA:Manifest](
     // -- bound vars
+    bS: List[Sym[RangeVector]],   // buffer offsets
     bV: List[Sym[Int]],   // buffer indices
     tV: List[Sym[Int]],   // tile indices
     tD: List[Sym[Int]],   // tile dimensions
@@ -487,6 +488,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
 
     def mirrorTileBuffer[A,TA,CA](e: DeliteTileBuffer[A,TA,CA]) = 
       DeliteTileBuffer[A,TA,CA](
+        bS = f(e.bS).asInstanceOf[List[Sym[RangeVector]]],
         bV = f(e.bV).asInstanceOf[List[Sym[Int]]],
         tV = f(e.tV).asInstanceOf[List[Sym[Int]]],
         tD = f(e.tD).asInstanceOf[List[Sym[Int]]],
@@ -666,7 +668,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteReduceElem[_] => List(op.rV._1, op.rV._2) ::: effectSyms(op.func) ::: effectSyms(op.cond) ::: effectSyms(op.zero) ::: effectSyms(op.rFunc) ::: effectSyms(op.accInit)
     case op: DeliteReduceTupleElem[_,_] => syms(op.rVPar) ::: syms(op.rVSeq) ::: effectSyms(op.func._1) ::: effectSyms(op.cond) ::: effectSyms(op.zero) ::: effectSyms(op.rFuncPar) ::: effectSyms(op.rFuncSeq)
     
-    case op: DeliteTileBuffer[_,_,_] => op.bV ::: op.tV ::: op.tD ::: List(op.bE, op.tE, op.buffVal, op.tileVal, op.partVal) ::: effectSyms(op.bApply) ::: effectSyms(op.tApply) ::: effectSyms(op.bUpdate) ::: effectSyms(op.tUpdate) ::: effectSyms(op.allocBuff) ::: effectSyms(op.allocTile)
+    case op: DeliteTileBuffer[_,_,_] => op.bS ::: op.bV ::: op.tV ::: op.tD ::: List(op.bE, op.tE, op.buffVal, op.tileVal, op.partVal) ::: effectSyms(op.bApply) ::: effectSyms(op.tApply) ::: effectSyms(op.bUpdate) ::: effectSyms(op.tUpdate) ::: effectSyms(op.allocBuff) ::: effectSyms(op.allocTile)
     case op: DeliteTileElem[_,_,_] => List(op.rV._1, op.rV._2) ::: effectSyms(op.keys) ::: effectSyms(op.cond) ::: effectSyms(op.tile) ::: effectSyms(op.rFunc) ::: boundSyms(op.buf)
 
     case _ => super.boundSyms(e)

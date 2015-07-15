@@ -65,16 +65,13 @@ trait DeliteCollectionOpsExp extends ExceptionOpsExp with BaseFatExp { this: Del
   def dc_size_field(tp: Manifest[_]): String = ""
 
   // Multi-dimensional / Nested loop functions
-  def dc_dims[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext): List[Exp[Int]] = {
-    List(undefined("dc_dims", x))
-  }
-  def dc_alloc_block[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], ds: List[Exp[Int]])(implicit ctx: SourceContext): Exp[CA] = {
+  def dc_alloc_block[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], ds: List[Exp[Int]], unitDims: List[Int])(implicit ctx: SourceContext): Exp[CA] = {
     undefined("dc_alloc_block", x) 
   }
-  def dc_block_apply[A:Manifest](x: Exp[DeliteCollection[A]], is: List[Exp[Int]])(implicit ctx: SourceContext): Exp[A] = {
+  def dc_block_apply[A:Manifest](x: Exp[DeliteCollection[A]], is: List[Exp[Int]], unitDims: List[Int])(implicit ctx: SourceContext): Exp[A] = {
     undefined("dc_block_apply", x)
   }
-  def dc_block_update[A:Manifest](x: Exp[DeliteCollection[A]], is: List[Exp[Int]], y: Exp[A])(implicit ctx: SourceContext): Exp[Unit] = {
+  def dc_block_update[A:Manifest](x: Exp[DeliteCollection[A]], is: List[Exp[Int]], y: Exp[A], unitDims: List[Int])(implicit ctx: SourceContext): Exp[Unit] = {
     undefined("dc_block_update", x)
   }
   /*def dc_block_slice[A:Manifest](x: Exp[DeliteCollection[A]], is: List[Exp[Int]], ds: List[Exp[Int]], unitDims: List[Int])(implicit ctx: SourceContext): Exp[DeliteCollection[A]] = {

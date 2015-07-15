@@ -133,6 +133,10 @@ def stage(runner, params, opts):
 
     #Delite app cp
     cp = cp + DELITE_HOME + "/apps/delite/target/" + scala_major_id + "/classes" + os.pathsep
+    
+    #ASPLOS apps
+    cp = cp + DELITE_HOME + "/asplos/target/" + scala_major_id + "/classes" + os.pathsep
+    cp = cp + DELITE_HOME + "/asplos/apps/target/" + scala_major_id + "/classes" + os.pathsep
 
     #test cp
     cp = cp + DELITE_HOME + "/framework/delite-test/target/" + scala_major_id + "/classes" + os.pathsep

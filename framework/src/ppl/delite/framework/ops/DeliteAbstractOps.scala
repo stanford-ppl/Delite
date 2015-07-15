@@ -122,7 +122,8 @@ trait DeliteAbstractOpsExp extends DeliteAbstractOps with AtomicWriteExp with In
   abstract class DeliteAbstractLoopNest[A:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteOp[R] with AbstractNode[R] {
     type OpType <: DeliteAbstractLoopNest[A,R]
 
-    def copyTransformedSymListOrElse[B](f: OpType => List[Exp[B]])(e: => List[Exp[B]]): List[Exp[B]] = original.map(p => f(p._2.asInstanceOf[OpType]).map(p._1(_))).getOrElse(e)
+    // moved to DeliteOp for now
+    //def copyTransformedSymListOrElse[B](f: OpType => List[Exp[B]])(e: => List[Exp[B]]): List[Exp[B]] = original.map(p => f(p._2.asInstanceOf[OpType]).map(p._1(_))).getOrElse(e)
     def copyTransformedBlockListOrElse[B:Manifest](f: OpType => List[Block[B]])(e: => List[Block[B]]): List[Block[B]] = original.map(p => f(p._2.asInstanceOf[OpType]).map(p._1(_))).getOrElse(e)
     def copyTransformedOptionOrElse[B:Manifest](f: OpType => Option[Block[B]])(e: => Option[Block[B]]): Option[Block[B]] = original.map(p => f(p._2.asInstanceOf[OpType]).map(p._1(_))).getOrElse(e)
 

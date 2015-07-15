@@ -6,8 +6,17 @@ import scala.reflect.SourceContext
 import ppl.delite.framework.datastructures._
 
 trait DeliteSimpleOps extends RangeVectorOps with Base {
+  def forIndices(size: Rep[Int])(func: Rep[Int] => Rep[Unit])(implicit ctx: SourceContext): Rep[Unit]
+
   def reduce[A:Manifest](size: Rep[Int], zero: Rep[A])(mFunc: Rep[Int] => Rep[A])(rFunc: (Rep[A], Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A] 
-  def filterReduce[A:Manifest](size: Rep[Int], zero: Rep[A])(fFunc: Rep[Int] => Rep[Boolean])(mFunc: Rep[Int] => Rep[A])(rFunc: (Rep[A], Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A]
+
+  def mreduce[A:Manifest](size: Rep[Int], init: () => Rep[A])(mFunc: Rep[Int] => Rep[A])(rFunc: (Rep[A], Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A] 
+
+  def filterReduce[A:Manifest](size: Rep[Int], zero: Rep[A], mutable: Boolean = false)(fFunc: Rep[Int] => Rep[Boolean])(mFunc: Rep[Int] => Rep[A])(rFunc: (Rep[A], Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A]
+
+  def read(path: Rep[String])(implicit ctx: SourceContext): Rep[DeliteArray[String]]
+
+  def collect[A:Manifest](n: Rep[Int])(f: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[DeliteArray[A]]
 }
 
 trait DeliteSimpleOpsExp extends DeliteSimpleOps with RangeVectorOpsExp with DeliteOpsExpIR with DeliteCollectionOpsExp with DeliteArrayOpsExp { 
@@ -38,6 +47,12 @@ trait DeliteSimpleOpsExp extends DeliteSimpleOps with RangeVectorOpsExp with Del
       case SimpleForeach(v,s,b) => new { override val original = Some(f,op) } with SimpleForeach(v,f(s),b)(pos)
     }
   }
+
+  def forIndices(size: Exp[Int])(func: Exp[Int] => Exp[Unit])(implicit ctx: SourceContext): Exp[Unit] = {
+    val v = fresh[Int]
+    val body = reifyEffects(func(v))
+    reflectEffect(ForeachFactory(v, size, body), summarizeEffects(body).star andAlso Simple())
+  } 
 
   /**  
    * (Copied from DeliteOps.scala)
@@ -105,16 +120,18 @@ trait DeliteSimpleOpsExp extends DeliteSimpleOps with RangeVectorOpsExp with Del
    * TODO: This will need to be changed with Vera's fold/reduce distinction
    * @param oV       - symbol for loop iterator
    * @param orV      - pair of symbols representing two elements (Sym[A], Sym[A])
-   * @param loopSize - the size of the input collection
-   * @param lookup   - the apply method for the collection being reduced
-   * @param func     - the reduction function; (Block[A]) Must be associative.
+   * @param loopSize - number of elements to reduce (usually equal to size of input collection)
+   * @param mFunc    - map function to obtain elements to reduce
+   * @param rFunc    - the reduction function; (Block[A]) Must be associative.
+   * @param init     - accumulator initialization - used only if mutable is true
    * @param zero     - zero value (not actually used to compute output result)
    * @param filter   - optional filter function
+   * @param mutable  - mutable reduce (reduction is done by directly updating the accumulator)
    */
-  case class SimpleReduce[A:Manifest](oV: Sym[Int], orV: (Sym[A],Sym[A]), loopSize: Exp[Int], mFunc: Block[A], rFunc: Block[A], zero: Block[A], fFunc: List[Block[Boolean]])(implicit ctx: SourceContext) extends DeliteOpLoop[A] {
+  case class SimpleReduce[A:Manifest](oV: Sym[Int], orV: (Sym[A],Sym[A]), loopSize: Exp[Int], mFunc: Block[A], rFunc: Block[A], init: Block[A], zero: Block[A], fFunc: List[Block[Boolean]], mutable: Boolean = false)(implicit ctx: SourceContext) extends DeliteOpLoop[A] {
     type OpType <: SimpleReduce[A]
     override lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(oV).asInstanceOf[Sym[Int]]
-    lazy val rV: (Sym[A],Sym[A]) = copyOrElse(_.rV)(orV) // TODO: transform vars?? -- what does this mean?
+    lazy val rV: (Sym[A],Sym[A]) = copyOrElse(_.rV)(orV)
 
     val size: Exp[Int] = copyTransformedOrElse(_.size)(loopSize)
 
@@ -124,10 +141,10 @@ trait DeliteSimpleOpsExp extends DeliteSimpleOps with RangeVectorOpsExp with Del
       func = this.mFunc,
       cond = this.fFunc,
       zero = this.zero,
-      accInit = this.zero,
+      accInit = this.init,
       rV = this.rV,
       rFunc = this.rFunc,
-      stripFirst = true, 
+      stripFirst = !mutable, 
       numDynamicChunks = this.numDynamicChunks
     ))
 
@@ -135,27 +152,36 @@ trait DeliteSimpleOpsExp extends DeliteSimpleOps with RangeVectorOpsExp with Del
     val mA = manifest[A]
   }
   object ReduceFactory {
-    def regen[A:Manifest](oV: Sym[Int], orV: (Sym[A],Sym[A]), size: Exp[Int], mFunc: Block[A], rFunc: Block[A], zero: Block[A], fFunc: List[Block[Boolean]] = Nil)(implicit ctx: SourceContext) 
-      = new SimpleReduce[A](oV,orV,size,mFunc,rFunc,zero,fFunc)
+    def regen[A:Manifest](oV: Sym[Int], orV: (Sym[A],Sym[A]), size: Exp[Int], mFunc: Block[A], rFunc: Block[A], init: Block[A], zero: Block[A], fFunc: List[Block[Boolean]] = Nil, mutable: Boolean = false)(implicit ctx: SourceContext) 
+      = new SimpleReduce[A](oV,orV,size,mFunc,rFunc,init,zero,fFunc,mutable)
 
-    def apply[A:Manifest](oV: Sym[Int], orV: (Sym[A],Sym[A]), size: Exp[Int], mFunc: Block[A], rFunc: Block[A], zero: Exp[A], fFunc: Option[Block[Boolean]] = None)(implicit ctx: SourceContext) 
-      = new SimpleReduce[A](oV,orV,size,mFunc,rFunc,reifyEffects(zero),fFunc.toList)
+    def apply[A:Manifest](oV: Sym[Int], orV: (Sym[A],Sym[A]), size: Exp[Int], mFunc: Block[A], rFunc: Block[A], zero: Exp[A], fFunc: Option[Block[Boolean]] = None, mutable: Boolean = false)(implicit ctx: SourceContext) 
+      = new SimpleReduce[A](oV,orV,size,mFunc,rFunc,reifyEffects(zero),reifyEffects(zero),fFunc.toList,mutable)
 
     def mirror[A:Manifest](op: SimpleReduce[A], f: Transformer)(implicit pos: SourceContext): SimpleReduce[A] = op match {
-      case SimpleReduce(v,r,s,l,b,z,c) => new { override val original = Some(f,op) } with SimpleReduce(v,r,s,l,b,z,c)(op.mA, pos)
+      case SimpleReduce(v,r,s,l,b,i,z,c,m) => new { override val original = Some(f,op) } with SimpleReduce(v,r,s,l,b,i,z,c,m)(op.mA, pos)
     }
     def unerase[A:Manifest](op: SimpleReduce[_]): SimpleReduce[A] = op.asInstanceOf[SimpleReduce[A]]
   }
 
   def reduce[A:Manifest](size: Exp[Int], zero: Exp[A])(mFunc: Exp[Int] => Exp[A])(rFunc: (Exp[A], Exp[A]) => Exp[A])(implicit ctx: SourceContext): Exp[A] = {
     val v = fresh[Int]
-    val rV = (fresh[A], fresh[A])
-    reflectPure( ReduceFactory(v, rV, size, reifyEffects(mFunc(v)), reifyEffects(rFunc(rV._1,rV._2)), zero) )
+    val rVa = fresh[A]
+    val rVb = fresh[A]
+    reflectPure( ReduceFactory(v, (rVa, rVb), size, reifyEffects(mFunc(v)), reifyEffects(rFunc(rVa,rVb)), zero, None, false) )
   }
-  def filterReduce[A:Manifest](size: Exp[Int], zero: Exp[A])(fFunc: Exp[Int] => Exp[Boolean])(mFunc: Exp[Int] => Exp[A])(rFunc: (Exp[A], Exp[A]) => Exp[A])(implicit ctx: SourceContext): Exp[A] = {
+  def mreduce[A:Manifest](size: Exp[Int], init: () => Exp[A])(mFunc: Exp[Int] => Exp[A])(rFunc: (Exp[A], Exp[A]) => Exp[A])(implicit ctx: SourceContext): Exp[A] = {
     val v = fresh[Int]
-    val rV = (fresh[A], fresh[A])
-    reflectPure( ReduceFactory(v, rV, size, reifyEffects(mFunc(v)), reifyEffects(rFunc(rV._1,rV._2)), zero, Some(reifyEffects(fFunc(v)))) )
+    val rVa = reflectMutableSym(fresh[A])
+    val rVb = fresh[A]
+    reflectPure( ReduceFactory.regen(v, (rVa, rVb), size, reifyEffects(mFunc(v)), reifyEffects(rFunc(rVa,rVb)), reifyEffects( init() ), reifyEffects( init() ), Nil, true) )
+  }
+
+  def filterReduce[A:Manifest](size: Exp[Int], zero: Exp[A], mutable: Boolean = false)(fFunc: Exp[Int] => Exp[Boolean])(mFunc: Exp[Int] => Exp[A])(rFunc: (Exp[A], Exp[A]) => Exp[A])(implicit ctx: SourceContext): Exp[A] = {
+    val v = fresh[Int]
+    val rVa = if (mutable) reflectMutableSym(fresh[A]) else fresh[A]
+    val rVb = fresh[A]
+    reflectPure( ReduceFactory(v, (rVa,rVb), size, reifyEffects(mFunc(v)), reifyEffects(rFunc(rVa,rVb)), zero, Some(reifyEffects(fFunc(v))), mutable) )
   }
 
 
@@ -236,6 +262,12 @@ trait DeliteSimpleOpsExp extends DeliteSimpleOps with RangeVectorOpsExp with Del
     def unerase[R:Manifest,C<:DeliteCollection[R]:Manifest](op: SimpleCollect[_,_]): SimpleCollect[R,C] = op.asInstanceOf[SimpleCollect[R,C]]
   }
 
+  def collect[A:Manifest](n: Exp[Int])(f: Exp[Int] => Exp[A])(implicit ctx: SourceContext): Exp[DeliteArray[A]] = {
+    val v = fresh[Int]
+    reflectPure( CollectFactory.array(v, n, reifyEffects(f(v))) )
+  }
+
+
   /**
    * Parallel flat map (more general form of collect)
    * @param oV        - symbol for loop iterator
@@ -314,6 +346,11 @@ trait DeliteSimpleOpsExp extends DeliteSimpleOps with RangeVectorOpsExp with Del
       case SimpleRead(v,p,a) => new {override val original = Some(f,op)} with SimpleRead(v,p,a)(op.mC,ctx)
     }
     def unerase[C<:DeliteCollection[String]:Manifest](op: SimpleRead[_]): SimpleRead[C] = op.asInstanceOf[SimpleRead[C]]
+  }
+
+  def read(path: Exp[String])(implicit ctx: SourceContext): Exp[DeliteArray[String]] = {
+    val v = fresh[Int]
+    SimpleReadFactory.array(v, Seq(path))
   }
 
  /**
@@ -445,44 +482,44 @@ trait DeliteSimpleOpsExp extends DeliteSimpleOps with RangeVectorOpsExp with Del
    * @param oVs       - symbols for nested loop iterators
    * @param orV       - symbols used to reify reduction function (unused if reduction function is None)
    * @param lSizes    - sizes of nested loops
-   * @param oSizes    - dimensions of output 
+   * @param init      - buffer allocation function
    * @param lStrides  - list of input domain blocking factors
-   * @param kFunc     - list of key functions
+   * @param kFunc     - list of key functions - # of keys should equal rank of output
    * @param fFunc     - list of filter functions
    * @param func      - main body function (produces a single tile)
    * @param rFunc     - optional reduction function for partial updates
    */
-  case class SimpleTileAssemble[A:Manifest,C<:DeliteCollection[A]:Manifest](oVs: List[Sym[Int]], orV: (Sym[C],Sym[C]), lSizes: List[Exp[Int]], oSizes: List[Exp[Int]], lStrides: List[Exp[Int]], kFunc: List[Block[RangeVector]], fFunc: List[Block[Boolean]], func: Block[C], rFunc: Option[Block[C]])(implicit ctx: SourceContext) extends DeliteOpLoopNest[C] {
-    type OpType <: SimpleTileAssemble[A,C]
+  case class SimpleTileAssemble[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](oVs: List[Sym[Int]], orV: (Sym[T],Sym[T]), lSizes: List[Exp[Int]], init: Block[C], lStrides: List[Exp[Int]], kFunc: List[Block[RangeVector]], fFunc: List[Block[Boolean]], func: Block[T], rFunc: Option[Block[T]], unitDims: List[Int])(implicit ctx: SourceContext) extends DeliteOpLoopNest[C] {
+    type OpType <: SimpleTileAssemble[A,T,C]
 
     val vs: List[Sym[Int]] = copyOrElse(_.vs)(oVs)
-    lazy val rV: (Sym[C],Sym[C]) = copyOrElse(_.rV)(orV)
+    lazy val rV: (Sym[T],Sym[T]) = copyOrElse(_.rV)(orV)
 
-    val sizes: List[Exp[Int]] = copyOrElse(_.sizes)(lSizes)
-    val strides: List[Exp[Int]] = copyOrElse(_.strides)(lStrides)
+    val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(lSizes)
+    val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)(lStrides)
 
-    //val t = ???           // Tile rank
-    val n = oSizes.length   // Output rank
+    val n = kFunc.length            // Output rank
     val nestLayers = lSizes.length  // Input domain rank
 
     // --- bound vars
+    final lazy val bS: List[Sym[RangeVector]] = copyOrElse(_.bS)(List.fill(n){fresh[RangeVector].asInstanceOf[Sym[RangeVector]]})
     final lazy val bV: List[Sym[Int]] = copyOrElse(_.bV)(List.fill(n){fresh[Int].asInstanceOf[Sym[Int]]})
     final lazy val tV: List[Sym[Int]] = copyOrElse(_.tV)(List.fill(n){fresh[Int].asInstanceOf[Sym[Int]]})
-    final lazy val bD: List[Exp[Int]] = copyOrElse(_.bD)(oSizes)  // Dimensions of output buffer
     final lazy val tD: List[Sym[Int]] = copyOrElse(_.tD)(List.fill(n){fresh[Int].asInstanceOf[Sym[Int]]})
     final lazy val buffVal: Sym[C] = copyTransformedOrElse(_.buffVal)(reflectMutableSym(fresh[C])).asInstanceOf[Sym[C]]
-    final lazy val tileVal: Sym[C] = copyTransformedOrElse(_.tileVal)(fresh[C]).asInstanceOf[Sym[C]]
-    final lazy val partVal: Sym[C] = copyTransformedOrElse(_.partVal)(reflectMutableSym(fresh[C])).asInstanceOf[Sym[C]]
+    final lazy val tileVal: Sym[T] = copyTransformedOrElse(_.tileVal)(fresh[T]).asInstanceOf[Sym[T]]
+    final lazy val partVal: Sym[T] = copyTransformedOrElse(_.partVal)(reflectMutableSym(fresh[T])).asInstanceOf[Sym[T]]
     final lazy val bE: Sym[A] = copyTransformedOrElse(_.bE)(fresh[A]).asInstanceOf[Sym[A]]
     final lazy val tE: Sym[A] = copyTransformedOrElse(_.tE)(fresh[A]).asInstanceOf[Sym[A]]
 
-    lazy val body: Def[C] = copyBodyOrElse(DeliteTileElem[A,C,C](
+    lazy val body: Def[C] = copyBodyOrElse(DeliteTileElem[A,T,C](
       keys = this.kFunc,
       cond = this.fFunc,
       tile = this.func,
       rV = this.rV,
       rFunc = this.rFunc,
-      buf = DeliteTileBuffer[A,C,C](
+      buf = DeliteTileBuffer[A,T,C](
+        bS = this.bS,
         bV = this.bV,
         tV = this.tV,
         tD = this.tD,
@@ -492,25 +529,67 @@ trait DeliteSimpleOpsExp extends DeliteSimpleOps with RangeVectorOpsExp with Del
         bE = this.bE,
         tE = this.tE,
 
-        bApply = reifyEffects(dc_block_apply(buffVal, bV)),
-        tApply = reifyEffects(dc_block_apply(tileVal, tV)),
-        bUpdate = reifyEffects(dc_block_update(buffVal, bV, tE)),
-        tUpdate = reifyEffects(dc_block_update(partVal, tV, bE)),
-        allocBuff = reifyEffects(dc_alloc_block[A,C](buffVal, bD)),
-        allocTile = reifyEffects(dc_alloc_block[A,C](partVal, strides))
+        bApply = reifyEffects(dc_block_apply(buffVal, bV, Nil)),
+        tApply = reifyEffects(dc_block_apply(tileVal, tV, unitDims)),
+        bUpdate = reifyEffects(dc_block_update(buffVal, bV, tE, Nil)),
+        tUpdate = reifyEffects(dc_block_update(partVal, tV, bE, unitDims)),
+        allocBuff = init,
+        allocTile = reifyEffects(dc_alloc_block[A,T](partVal, this.strides, unitDims))
       ),
       numDynamicChunks = this.numDynamicChunks
     ))
     val mA = manifest[A]
+    val mT = manifest[T]
     val mC = manifest[C]
   }
 
   object SimpleTileFactory {
-    def mirror[A:Manifest,C<:DeliteCollection[A]:Manifest](op: SimpleTileAssemble[A,C], f: Transformer)(implicit ctx: SourceContext): SimpleTileAssemble[A,C] = op match {
-      case SimpleTileAssemble(v,rv,ls,os,st,kF,fF,g,rF) => 
-        new {override val original = Some(f,op)} with SimpleTileAssemble[A,C](v,rv,ls,os,st,kF,fF,g,rF)(op.mA,op.mC,ctx)
+    def mirror[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](op: SimpleTileAssemble[A,T,C], f: Transformer)(implicit ctx: SourceContext): SimpleTileAssemble[A,T,C] = op match {
+      case SimpleTileAssemble(v,rv,ls,in,st,kF,fF,g,rF,uD) => 
+        new {override val original = Some(f,op)} with SimpleTileAssemble[A,T,C](v,rv,ls,in,st,kF,fF,g,rF,uD)(op.mA,op.mT,op.mC,ctx)
     }
-    def unerase[A:Manifest,C<:DeliteCollection[A]:Manifest](op: SimpleTileAssemble[_,_]): SimpleTileAssemble[A,C] = op.asInstanceOf[SimpleTileAssemble[A,C]]
+    def unerase[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](op: SimpleTileAssemble[_,_,_]): SimpleTileAssemble[A,T,C] = op.asInstanceOf[SimpleTileAssemble[A,T,C]]
+  }
+
+  /**
+   * Block Slice
+   * Create an m-dimensional slice from an n-dimensional collection
+   * TODO: What should this be? An elem? A single task? A loop with a buffer body? Definitely can't fuse with anything right now
+   * TODO: Probably need to move this node elsewhere 
+   */
+  case class BlockSlice[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](src: Exp[C], srcOffsets: List[Exp[Int]], srcStrides: List[Exp[Int]], destDims: List[Exp[Int]], unitDims: List[Int])(implicit ctx: SourceContext) extends DeliteOp[T] {
+    type OpType <: BlockSlice[A,T,C]
+
+    val n = srcOffsets.length
+    val m = destDims.length
+    val deltaInds = List.tabulate(n){i=>i}.filterNot{i => unitDims.contains(i) }
+
+    val nestLayers = destDims.length
+    val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(destDims)     // dest dimensions
+    val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)(srcStrides) // src strides (for non-unit dims)
+
+    // Bound variables
+    val vs: List[Sym[Int]] = copyOrElse(_.vs)(List.fill(nestLayers)(fresh[Int].asInstanceOf[Sym[Int]]))    // dest indices
+    val bV: List[Sym[Int]] = copyOrElse(_.bV)( List.fill(n)(fresh[Int].asInstanceOf[Sym[Int]]))  // src indices
+    val tileVal: Sym[T] = copyTransformedOrElse(_.tileVal)(reflectMutableSym(fresh[T])).asInstanceOf[Sym[T]]      // dest buffer
+    val bE: Sym[A] = copyTransformedOrElse(_.bE)(fresh[A]).asInstanceOf[Sym[A]]          // Single element (during copying out)
+
+    // collection functions
+    val bApply: Block[A] = copyTransformedBlockOrElse(_.bApply)(reifyEffects(dc_block_apply(src, bV, Nil)))           // src apply
+    val tUpdate: Block[Unit] = copyTransformedBlockOrElse(_.tUpdate)(reifyEffects(dc_block_update(tileVal, vs, bE, Nil)))  // dest update
+    val allocTile: Block[T] = copyTransformedBlockOrElse(_.allocTile)(reifyEffects(dc_alloc_block[A,T](tileVal, destDims, Nil))) // dest alloc 
+
+    val mA = manifest[A]
+    val mT = manifest[T]
+    val mC = manifest[C]
+  }
+
+  object BlockSliceHelper {
+    def mirror[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](op: BlockSlice[A,T,C], f: Transformer)(implicit ctx: SourceContext): BlockSlice[A,T,C] = op match {
+      case BlockSlice(src,srcO,srcS,dD,uD) => 
+        new {override val original = Some(f,op)} with BlockSlice[A,T,C](f(src),f(srcO),f(srcS),f(dD),uD)(op.mA,op.mT,op.mC,ctx)
+    }
+    def unerase[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](op: BlockSlice[_,_,_]): BlockSlice[A,T,C] = op.asInstanceOf[BlockSlice[A,T,C]]
   }
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
@@ -554,12 +633,19 @@ trait DeliteSimpleOpsExp extends DeliteSimpleOps with RangeVectorOpsExp with Del
       val op = SimpleReadFactory.unerase(e)(e.mC)
       reflectMirrored(Reflect(SimpleReadFactory.mirror(op,f)(e.mC,pos), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
 
-    case e: SimpleTileAssemble[_,_] => 
-      val op = SimpleTileFactory.unerase(e)(e.mA,e.mC)
-      reflectPure(SimpleTileFactory.mirror(op,f)(e.mA,e.mC,pos))(mtype(manifest[A]), pos)
-    case Reflect(e: SimpleTileAssemble[_,_], u, es) =>
-      val op = SimpleTileFactory.unerase(e)(e.mA,e.mC)
-      reflectMirrored(Reflect(SimpleTileFactory.mirror(op,f)(e.mA,e.mC,pos),  mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+    case e: SimpleTileAssemble[_,_,_] => 
+      val op = SimpleTileFactory.unerase(e)(e.mA,e.mT,e.mC)
+      reflectPure(SimpleTileFactory.mirror(op,f)(e.mA,e.mT,e.mC,pos))(mtype(manifest[A]), pos)
+    case Reflect(e: SimpleTileAssemble[_,_,_], u, es) =>
+      val op = SimpleTileFactory.unerase(e)(e.mA,e.mT,e.mC)
+      reflectMirrored(Reflect(SimpleTileFactory.mirror(op,f)(e.mA,e.mT,e.mC,pos), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+
+    case e: BlockSlice[_,_,_] => 
+      val op = BlockSliceHelper.unerase(e)(e.mA,e.mT,e.mC)
+      reflectPure(BlockSliceHelper.mirror(op,f)(e.mA,e.mT,e.mC,pos))(mtype(manifest[A]), pos)
+    case Reflect(e: BlockSlice[_,_,_], u, es) =>
+      val op = BlockSliceHelper.unerase(e)(e.mA,e.mT,e.mC)
+      reflectMirrored(Reflect(BlockSliceHelper.mirror(op,f)(e.mA,e.mT,e.mC,pos), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
 
     /*case e: SimpleGroupBy[_,_,_,_] => 
       val op = GroupByFactory.unerase(e)(e.mK,e.mV,e.mC,e.mH)
@@ -573,6 +659,7 @@ trait DeliteSimpleOpsExp extends DeliteSimpleOps with RangeVectorOpsExp with Del
   }).asInstanceOf[Exp[A]]
 
   // Override to block view of blocks in Product iterator
+  // Doesn't seem to affect much except traversals
   override def blocks(e: Any): List[Block[Any]] = e match {
     case op: SimpleFlatMap[_,_] => blocks(op.body.asInstanceOf[DeliteCollectElem[_,_,_]].func) // blocks(op.body)
     case op: SimpleCollect[_,_] => blocks(op.body.asInstanceOf[DeliteCollectElem[_,_,_]].func) // blocks(op.body)
@@ -580,10 +667,51 @@ trait DeliteSimpleOpsExp extends DeliteSimpleOps with RangeVectorOpsExp with Del
     case op: SimpleForeach => blocks(op.body.asInstanceOf[DeliteForeachElem[_]].func) // blocks(op.body)
     case op: SimpleRead[_] => Nil
     case op: SimpleReduce[_] => blocks(op.body)
+    case op: SimpleTileAssemble[_,_,_] => Nil
+    case op: BlockSlice[_,_,_] => Nil
     //case op: SimpleGroupBy[_,_,_,_] => Nil
     //case op: DeliteOpLoop[_] => blocks(op.body)
     //case op: DeliteCollectElem[_,_,_] => blocks(op.func) ::: blocks(op.cond) ::: blocks(op.buf) ::: op.iFunc.toList 
     case _ => super.blocks(e)
+  }
+
+  // dependencies
+  override def syms(e: Any): List[Sym[Any]] = e match {
+    case op: BlockSlice[_,_,_] => syms(op.src) ::: syms(op.srcOffsets) ::: syms(op.strides) ::: syms(op.sizes) ::: syms(op.bApply) ::: syms(op.tUpdate) ::: syms(op.allocTile)
+    case _ => super.syms(e)
+  }
+
+  override def readSyms(e: Any): List[Sym[Any]] = e match {
+    case op: BlockSlice[_,_,_] => readSyms(op.src) ::: readSyms(op.srcOffsets) ::: readSyms(op.strides) ::: readSyms(op.sizes) ::: readSyms(op.bApply) ::: readSyms(op.tUpdate) ::: readSyms(op.allocTile)
+    case _ => super.readSyms(e)
+  }
+
+  override def boundSyms(e: Any): List[Sym[Any]] = e match {
+    case op: BlockSlice[_,_,_] => op.vs ::: op.bV ::: List(op.tileVal, op.bE) ::: effectSyms(op.bApply) ::: effectSyms(op.tUpdate) ::: effectSyms(op.allocTile) 
+    case _ => super.boundSyms(e)
+  }
+
+  override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
+    case op: BlockSlice[_,_,_] => freqNormal(op.src) ::: freqNormal(op.srcOffsets) ::: freqNormal(op.strides) ::: freqNormal(op.sizes) ::: freqHot(op.bApply) ::: freqHot(op.tUpdate) ::: freqNormal(op.allocTile) ::: freqHot(op.tileVal)
+    case _ => super.symsFreq(e)
+  }
+
+  // aliases and sharing
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case op: BlockSlice[_,_,_] => Nil
+    case _ => super.aliasSyms(e)
+  }
+  override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case op: BlockSlice[_,_,_] => Nil
+    case _ => super.containSyms(e)
+  }
+  override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case op: BlockSlice[_,_,_] => Nil
+    case _ => super.extractSyms(e)
+  }
+  override def copySyms(e: Any): List[Sym[Any]] = e match {
+    case op: BlockSlice[_,_,_] => Nil
+    case _ => super.copySyms(e)
   }
 }
 

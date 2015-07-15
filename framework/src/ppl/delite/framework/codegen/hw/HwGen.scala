@@ -35,26 +35,13 @@ import scala.collection.mutable.ListBuffer
  *
  */
 
-trait HwCodegen extends GenericCodegen with ThorIR
-{
+trait HwCodegen extends GenericCodegen with ThorIR {
   /*
    * This HAS to be there with the current codegen design architecture - overloaded emitNode*
    * methods expect their arguments to have types "IR.<blah>".
    */
-  // FIXME: Getting a compiler error if extra LMS common stuff isn't mixed in here... Something isn't right.
-  // Is GenericCodegen the right thing to be extending here?
-  val IR: LoopsFatExp with ArrayOpsExp with StringOpsExp
+  val IR: Expressions
   import IR._
-
-  // New stuff from merge with wip-master (some need to be filled in?)
-  def emitHeapMark(): Unit = {}
-  def emitHeapReset(result: List[String]): Unit = {}
-  def emitAbstractFatLoopFooter(syms: List[Sym[Any]], rhs: AbstractFatLoop): Unit = {}
-  def emitAbstractFatLoopHeader(syms: List[Sym[Any]], rhs: AbstractFatLoop): Unit = {}
-  def syncType(actType: String): String = "??????"
-  def emitWorkLaunch(kernelName: String, rSym: String, allocSym: String, syncSym: String): Unit = {}
-
-
 
   // Hardware intermediate representation graph
   val hwgraph: HwGraph = new HwGraph
@@ -198,11 +185,17 @@ trait HwCodegen extends GenericCodegen with ThorIR
   }
 }
 
-trait HwGenDeliteOps extends HwCodegen with GenericGenDeliteOps
-{
-  // FIXME: This needs to be changed - temporarily put this here just to make things compile
-  val IR: DeliteOpsExp with LoopsFatExp with ArrayOpsExp with StringOpsExp
+trait HwGenDeliteOps extends HwCodegen with GenericGenDeliteOps {
+  val IR: DeliteOpsExp
   import IR._
+
+  // New stuff from merge with wip-master (some need to be filled in?)
+  def emitHeapMark(): Unit = {}
+  def emitHeapReset(result: List[String]): Unit = {}
+  def emitAbstractFatLoopFooter(syms: List[Sym[Any]], rhs: AbstractFatLoop): Unit = {}
+  def emitAbstractFatLoopHeader(syms: List[Sym[Any]], rhs: AbstractFatLoop): Unit = {}
+  def syncType(actType: String): String = "??????"
+  def emitWorkLaunch(kernelName: String, rSym: String, allocSym: String, syncSym: String): Unit = {}
 
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef) = rhs match {
     case op: AbstractFatLoop =>
@@ -331,10 +324,8 @@ trait HwGenDeliteOps extends HwCodegen with GenericGenDeliteOps
   }
 }
 
-trait HwGenDeliteInternalOps extends HwCodegen
-{
-  // FIXME: This needs to be changed
-  val IR: DeliteOpsExp with DeliteInternalOpsExp with LoopsFatExp with ArrayOpsExp with StringOpsExp
+trait HwGenDeliteInternalOps extends HwCodegen {
+  val IR: DeliteOpsExp with DeliteInternalOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
@@ -376,10 +367,8 @@ trait HwGenDeliteInternalOps extends HwCodegen
   }
 }
 
-trait HwGenDeliteArrayOps extends HwCodegen
-{
-  // FIXME
-  val IR: DeliteArrayFatExp with DeliteOpsExp with LoopsFatExp with ArrayOpsExp with StringOpsExp
+trait HwGenDeliteArrayOps extends HwCodegen {
+  val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
@@ -397,25 +386,12 @@ trait HwGenDeliteArrayOps extends HwCodegen
  * generators. I've defined them all in Delite here
  */
 trait HwGenOrderingOps extends HwCodegen
-{
-}
-
 trait HwGenVariables extends HwCodegen
-{
-}
-
 trait HwGenWhile extends HwCodegen
-{
-}
-
 trait HwGenRangeOps extends HwCodegen
-{
-}
 
-
-// FIXME: GenArray and GenString probably should not exist - these are LMS internals unused by Delite (I think)
-trait HwGenArrayOps extends HwCodegen
-{
+trait HwGenArrayOps extends HwCodegen {
+  val IR: ArrayOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
@@ -429,8 +405,8 @@ trait HwGenArrayOps extends HwCodegen
   }
 }
 
-trait HwGenStringOps extends HwCodegen
-{
+trait HwGenStringOps extends HwCodegen {
+  val IR: StringOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
@@ -444,8 +420,6 @@ trait HwGenStringOps extends HwCodegen
 }
 
 trait HwGenBooleanOps extends HwCodegen
-{
-}
 
 trait HwGenPrimitiveOps extends HwCodegen
 {
@@ -462,5 +436,5 @@ trait HwGenPrimitiveOps extends HwCodegen
 }
 
 trait HwGenObjectOps extends HwCodegen
-{
-}
+
+trait HwGenDSLOps extends HwCodegen
