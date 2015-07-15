@@ -110,12 +110,12 @@ sbt compile</code></pre></div>
         <p> So without further ado, let's get to it. Starting from the <code>published/SimpleVector</code> directory, first compile the example application (in <code>apps/src</code>) and then run the interpreter version: </p>
         <div class="highlight"><pre><code class="bash">cd published/SimpleVector
 sbt compile
-bin/delitec HelloSimpleInterpreter</code></pre></div>
+bin/delitec HelloSimpleInterpreter 10</code></pre></div>
         <p> If all went well, you should see <code>hello world</code> (and a bunch of other stuff) printed to the console! </p>
         <p> Now we can run the compiler version simply by changing the argument to the Delite: </p>
         <p>
         <div class="highlight"><pre><code class="bash">bin/delitec HelloSimpleCompiler
-bin/delite HelloSimpleCompiler</code></pre></div>
+bin/delite HelloSimpleCompiler 10</code></pre></div>
         </p><p>
         In this case <code>delitec</code> generates new code for the application rather than interpreting the application directly, and <code>delite</code> runs the generated code. 
       </p>
