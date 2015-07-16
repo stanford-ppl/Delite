@@ -5,7 +5,7 @@
 #include <fstream>
 #include <vector>
 #include <sys/stat.h>
-#include "DeliteCpp.h"
+#include "DeliteFileSystem.h"
 
 class DeliteFileOutputStream {
   private:
@@ -15,8 +15,10 @@ class DeliteFileOutputStream {
     bool append;
 
     void setFilePaths(string path, uint32_t numFiles) {
-      //TODO: delete destination if it exists and not appending
       
+      if (DeliteFileSystem::exists(path) && !append)
+        DeliteFileSystem::deleteRecursive(path);
+
       if (numFiles == 1) {
         paths.push_back(path);
         writers.push_back(NULL);
