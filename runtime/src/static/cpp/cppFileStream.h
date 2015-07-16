@@ -47,9 +47,9 @@ class cppFileStream {
       }
     }
 
-    void addFile(char *pathname, uint64_t file_size) {
+    void addFile(const char *pathname, uint64_t file_size) {
       // NOTE: explicit copy is required since the pathname (char*) given to constructor may be freed outside.
-      VERBOSE("adding file %s of size %lu\n", pathname, file_size);
+      DFS_DEBUG("adding file %s of size %lu\n", pathname, file_size);
       char *p = (char *)malloc(strlen(pathname)+1);
       strcpy(p, pathname);
       files.push_back(p);
@@ -138,24 +138,22 @@ class cppFileStream {
       DFS_DEBUG("number of paths is %d\n", num);
       va_start(arguments, num);
       for(size_t i=0; i<num; i++) {
-        char *pathname = va_arg(arguments, char *);
+        const char *pathname = va_arg(arguments, char *);
         DFS_DEBUG("pathname is %s\n", pathname);
 
         // check if file or directory
         struct stat st;
         lstat(pathname, &st);
         if (S_ISDIR(st.st_mode)) {
-          fprintf(stderr, "Path %s is a directory, which is not currently supported\n", pathname);
-          exit(-1);
-          //FIXME: the below code doesn't function properly with Delite's scala file writer
-          // DIR *dir = opendir(pathname);
-          // struct dirent *dp;
-          // while ((dp = readdir(dir)) != NULL) {
-          //   struct stat st;
-          //   lstat(dp->d_name, &st);
-          //   if (dp->d_name[0] != '.') addFile(dp->d_name, st.st_size); //TODO: robustify
-          // }
-          // closedir(dir);
+          DIR *dir = opendir(pathname);
+          struct dirent *dp;
+          while ((dp = readdir(dir)) != NULL) {
+            struct stat st;
+            string filename = string(pathname) + string("/") + string(dp->d_name);
+            lstat(filename.c_str(), &st);
+            if (S_ISREG(st.st_mode)) addFile(filename.c_str(), st.st_size);
+          }
+          closedir(dir);
         }
         else if (S_ISREG(st.st_mode)) {
           addFile(pathname, st.st_size);
@@ -166,6 +164,16 @@ class cppFileStream {
         }
       }
       va_end(arguments);
+
+      if (size > 0) {
+        openAtNewLine(0);
+      }
+      else {
+        fprintf(stderr, "DeliteFileInputStream opened with size == 0. Paths were: [");
+        for(int i=0; i<files.size(); i++) fprintf(stderr, "%s,", files[i]);
+        fprintf(stderr, "]\n");
+        exit(-1);
+      }
 
       DFS_DEBUG("total size of file is %ld\n", size);
     }

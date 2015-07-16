@@ -808,7 +808,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
     if (outputStreamVars.length > 0) {
       val streamSyms = outputStreamVars.map(s => quote(s))
-      streamSyms foreach { s => emitUnalteredMethodCall(s + ".close", Nil) }
+      streamSyms foreach { s => emitUnalteredMethodCall(fieldAccess(s,"close"), Nil) }
     }
 
     // finalizer
@@ -1045,7 +1045,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
       if (outputStreamVars.length > 0) {
         val streamSyms = outputStreamVars.map(s => quote(s))
-        streamSyms foreach { s => emitUnalteredMethodCall(s + ".close", List(resourceInfoSym)) }
+        streamSyms foreach { s => emitUnalteredMethodCall(fieldAccess(s,"close"), List(resourceInfoSym)) }
       }
 
       emitReturn("__act2")

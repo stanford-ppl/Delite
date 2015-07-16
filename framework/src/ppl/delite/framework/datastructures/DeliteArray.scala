@@ -1124,6 +1124,27 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
       stream.println("std::copy_backward(" + quote(src) + "->data+" + quote(srcPos) + "," + quote(src) + "->data+" + quote(srcPos) + "+" + quote(len) + "," + dest + "data+" + quote(destPos(destPos.length-1)) + "+" + quote(len) + ");")
       stream.println("else")
       stream.println("std::copy(" + quote(src) + "->data+" + quote(srcPos) + "," + quote(src) + "->data+" + quote(srcPos) + "+" + quote(len) + "," + dest + "data+" + quote(destPos(destPos.length-1)) + ");")
+    case str@DeliteArrayMkString(da,x) =>
+      def isStringType[T](tp: Manifest[T]): Boolean = tp.toString == "java.lang.String"
+      def format[T](tp: Manifest[T]): String = tp match {
+        case Manifest.Char => "%c"
+        case Manifest.Boolean | Manifest.Byte | Manifest.Short | Manifest.Int => "%d"
+        case Manifest.Long => "%ld"
+        case Manifest.Float | Manifest.Double => "%f"
+        case _ if isStringType(tp) => "%s"
+        case _ => "%p"
+      }
+      stream.println(s"string ${quote(str)};")
+      stream.println(s"for(int i=0; i<${quote(da)}->length; i++) {")
+      if (isStringType(da.tp.typeArguments.head)) {
+        stream.println(s"${quote(str)} = ${quote(str)} + ${quote(da)}->data[i] + ${quote(x)};")
+      }
+      else {
+        stream.println(s"char ${quote(str)}_temp[256];")
+        stream.println(s"""sprintf(${quote(str)}_temp, "${format(da.tp.typeArguments.head)}${format(x.tp)}", ${quote(da)}->data[i], ${quote(x)}.c_str());""")
+        stream.println(s"${quote(str)} = ${quote(str)} + string(${quote(str)}_temp);")
+      }
+      stream.println("}")
     case DeliteArrayUnion(lhs,rhs) =>
       emitValDef(sym, quote(lhs) + "->arrayunion(" + quote(rhs) + ")")
     case DeliteArrayIntersect(lhs,rhs) =>

@@ -89,9 +89,24 @@ trait CGenDeliteFileWriterOps extends CGenFat {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case DeliteFileOutputStreamNew(path, numFiles, app) =>
-      throw new GenerationFailedException("FileWriter: not suppported by C codegen")
+    case DeliteFileOutputStreamNew(path, s, app) =>
+      emitValDef(sym, "new DeliteFileOutputStream("+quote(path)+","+quote(s)+","+quote(app)+","+resourceInfoSym+")")
+    case DeliteFileOutputStreamWriteLine(s, line) =>
+      stream.println(quote(s) + "->writeLine("+resourceInfoSym+","+quote(line)+");")
+    case DeliteFileOutputStreamClose(s) =>
+      stream.println(quote(s) + "->close();")
     case _ => super.emitNode(sym, rhs)
+  }
+
+  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "DeliteFileOutputStream" => "DeliteFileOutputStream"
+    case _ => super.remap(m)
+  }
+
+  override def getDataStructureHeaders(): String = {
+    val out = new StringBuilder
+    out.append("#include \"DeliteFileOutputStream.h\"\n")
+    super.getDataStructureHeaders() + out.toString
   }
 }
 

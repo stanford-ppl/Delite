@@ -244,8 +244,12 @@ trait CGenDeliteFileReaderOps extends CGenFat {
       throw new GenerationFailedException("FileReader: custom charset/delimiter/offset is not suppported by C codegen")
     case DeliteFileInputStreamReadLine(stream,idx) =>
       emitValDef(sym, quote(stream) + "_stream->readLine("+resourceInfoSym+")")
+    case DeliteFileInputStreamReadLineEffectful(stream) =>
+      emitValDef(sym, quote(stream) + "->readLine(" + resourceInfoSym + ")")
     case DeliteFileInputStreamSize(stream) =>
       emitValDef(sym, quote(stream) + "->size")
+    case DeliteFileInputStreamClose(str) =>
+      stream.println(quote(str) + "->close();")
     case _ => super.emitNode(sym, rhs)
   }
 
