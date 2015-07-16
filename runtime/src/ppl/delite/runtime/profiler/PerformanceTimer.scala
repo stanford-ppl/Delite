@@ -76,8 +76,10 @@ object PerformanceTimer {
       }
 
       currKernel.endTime = endTime
-      val writer = threadIdToWriter(threadId)
-      writer.println(component + "," + currKernel.startTime + "," + currKernel.elapsedMillis + "," + stack.length)
+      if (Config.profile) {
+        val writer = threadIdToWriter(threadId)
+        writer.println(component + "," + currKernel.startTime + "," + currKernel.elapsedMillis + "," + stack.length)
+      }
     }
   }
 
