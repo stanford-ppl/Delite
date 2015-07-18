@@ -9,11 +9,10 @@ object HW5_O extends DeliteHWDSLApplicationRunner with HW5
  */
 trait HW5 extends DeliteHWDSLApplication {
   def main() = {
-    val a = DeliteArray.fromFunction(100){ i => i + 1 }
-    val b = a.map(x => x*x)
-    val c = a.map(x => x+2)
-    println(b(0)+c(0))
-    val d = b.zip(c)((a,b) => a+b)
-    println(d(0))
+    val arr1 = DeliteArray.fromFunction(100){ i => i + 1 }
+    val rval = arr1.reduce((x,y) => x+y, 0)
+    val arr2 = arr1.map(x => x*rval)
+//    val arr3 = arr2.zip(arr2)((a,b) => a+b)
+    println(arr2(0))
   }
 }
