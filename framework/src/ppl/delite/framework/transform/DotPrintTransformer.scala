@@ -87,7 +87,7 @@ trait DotPrintTransformer extends WorklistTransformer {
     prefix + s""" $b"""
   }
   override def transformBlock[A:Manifest](b: Block[A]) = {
-    println(s"[DotPrintTransformer] Within transformBlock, block = $b")
+//    println(s"[DotPrintTransformer] Within transformBlock, block = $b")
     val bname = getBlockName(b)
     val bs = boundSyms(b)
 
