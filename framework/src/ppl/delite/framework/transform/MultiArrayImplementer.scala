@@ -17,11 +17,7 @@ trait MultiArrayViewImpl[T] extends MultiArrayImpl[T]
 trait MultiArrayBuffImpl[T] extends MultiArrayImpl[T]
 trait MultiArrayBuffViewImpl[T] extends MultiArrayImpl[T]
 
-trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with DeliteSimpleOpsExp 
-  with DeliteArrayBufferOpsExp with DeliteMapOpsExp with LayoutMetadataOps { self: DeliteOpsExp with DeliteFileReaderOpsExp => 
-
-  val implementer: MultiArrayImplementer  
-
+trait MultiArrayExp extends DeliteArrayBufferOpsExp with DeliteMapOpsExp with LayoutMetadataOps { self: DeliteOpsExp =>
   def reductionTree(x: Seq[Exp[Int]])(f: (Exp[Int],Exp[Int]) => Exp[Int]): Seq[Exp[Int]] = {
     if (x.length == 1)
       x
@@ -33,80 +29,7 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
   def sumTree(x: Seq[Exp[Int]]): Exp[Int] = reductionTree(x){(a,b) => delite_int_plus(a,b)}.apply(0)
   def productTree(x: Seq[Exp[Int]]): Exp[Int] = reductionTree(x){(a,b) => delite_int_times(a,b)}.apply(0)
 
-  def calcIndices(v: Exp[Int], dims: Seq[Exp[Int]]): Seq[Exp[Int]] = {
-    if (dims.length == 1) { Seq(v) }
-    else {
-      Seq.tabulate(dims.length) { d => 
-        if (d == dims.length - 1) { delite_int_mod(v, dims(d)) }
-        else { delite_int_mod( delite_int_divide(v, productTree(dims.drop(d + 1))), dims(d)) }
-      }
-    }
-  }
-
-  // --- Convenience infix operations for DeliteMultiArray
-  implicit def multiarrayToCastOps[T:Manifest](x: Exp[DeliteMultiArray[T]]) = new MultiArrayCastOpsCls[T](x)
-  class MultiArrayCastOpsCls[T:Manifest](x: Exp[DeliteMultiArray[T]]) { 
-    def asMultiArrayImpl = {
-      assert(isMultiArrayImpl(x), "Cannot cast " + x.tp + " to MultiArrayImpl\n " + strDef(x))
-      x.asInstanceOf[Exp[MultiArrayImpl[T]]]
-    }
-    def asMultiArrayViewImpl = {
-      assert(isMultiArrayViewImpl(x), "Cannot cast " + x.tp + " to MultiArrayViewImpl\n" + strDef(x))
-      x.asInstanceOf[Exp[MultiArrayViewImpl[T]]]
-    }
-    def asMultiArrayBuffImpl = {
-      assert(isMultiArrayBuffImpl(x), "Cannot cast " + x.tp + " to MultiArrayBuffImpl\n" + strDef(x))
-      x.asInstanceOf[Exp[MultiArrayBuffImpl[T]]]
-    }
-    def asMultiArrayBuffViewImpl = {
-      assert(isMultiArrayBuffViewImpl(x), "Cannot cast " + x.tp + " to MultiArrayBuffViewImpl\n" + strDef(x))
-      x.asInstanceOf[Exp[MultiArrayBuffViewImpl[T]]]
-    }
-  }
-
-  implicit def multimapToCastOps[K:Manifest,V:Manifest](x: Exp[DeliteMultiMap[K,V]]) = new MultiMapCastOpsCls[K,V](x)
-  class MultiMapCastOpsCls[K:Manifest,V:Manifest](x: Exp[DeliteMultiMap[K,V]]) {
-    def asDeliteMap = {
-      assert(isDeliteMap(x), "Cannot cast " + x.tp + " to DeliteMap")
-      x.asInstanceOf[Exp[DeliteMap[K,V]]]
-    }
-  }
-
-  // ---- Convenience infix operations for MultiArrayImpl and descendants
-  implicit def multiarrayimplToOpsCls[T:Manifest](ma: Exp[MultiArrayImpl[T]]) = new MultiArrayImplOpsCls(ma)
-  class MultiArrayImplOpsCls[T:Manifest](x: Exp[MultiArrayImpl[T]]) {
-    def dims: Seq[Exp[Int]] = implementer.getDims(x.asInstanceOf[Exp[DeliteMultiArray[T]]])
-    def dim(d: Int): Exp[Int] = implementer.implementDim(x.asInstanceOf[Exp[DeliteMultiArray[T]]], d)
-    def size: Exp[Int] = implementer.implementSize(x.asInstanceOf[Exp[DeliteMultiArray[T]]])
-    def strides: Seq[Exp[Int]] = implementer.getStrides(x.asInstanceOf[Exp[DeliteMultiArray[T]]])
-    def stride(d: Int) = implementer.implementStride(x.asInstanceOf[Exp[DeliteMultiArray[T]]], d)
-  }
-
-  // --- Convenience infix operations for AbstractIndices
-  implicit def indicesImplOps(x: Exp[AbstractIndices]) = new AbstractIndicesImplOpsCls(x)
-  class AbstractIndicesImplOpsCls(x: Exp[AbstractIndices]) {
-    def toSeq(n: Int): Seq[Exp[Int]] = Seq.tabulate(n){d => x(d)}
-    def size(n: Int): Exp[Int] = productTree(toSeq(n))
-  }
-
-  object DMAStructView {
-    def unapply[T](ma: Exp[DeliteMultiArray[T]]) = multiViewUnapply(ma)
-  }
-
-  def multiViewUnapply[T](ma: Exp[DeliteMultiArray[T]]): Option[(Seq[Exp[Int]], Seq[Exp[Int]])] = ma match {
-    case _ => None
-  }
-
-  object DMAStruct {
-    def unapply[T](ma: Exp[DeliteMultiArray[T]]) = multiUnapply(ma)
-  }
-
-  def multiUnapply[T](ma: Exp[DeliteMultiArray[T]]): Option[Seq[Exp[Int]]] = ma match {
-    case _ => None
-  }
-
-  // --- MultiArray Implementation nodes
-
+// --- MultiArray Implementation nodes
   case class ArrayMkString[A:Manifest](arr: Exp[DeliteMultiArray[A]], del: Exp[String], len: () => Exp[Int], stringify: Exp[Int] => Exp[String])(implicit ctx: SourceContext) extends DeliteOpSingleWithManifest[A,String](reifyEffectsHere{
     val size = len()
     if (delite_less_than(size, unit(1))) unit("[ ]")
@@ -180,6 +103,78 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
 
   def asMultiArrayImpl[T](x: Exp[DeliteCollection[T]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[MultiArrayImpl[T]]]
 
+  // Get symbol properties for MultiArray data field 
+  def mdat(b: Block[Any]): SymbolProperties = mdat(b.res)
+  def mdat(e: Exp[Any]): SymbolProperties = mdat(props(e))
+  def mdat(p: SymbolProperties): SymbolProperties = p match {
+    case (s: StructProperties) => s.child("data").get
+    case (a: ArrayProperties) => a.child.get
+    case _ => sys.error("Symbol properties " + makeString(p) + " has no data field")
+  }
+}
+
+trait MultiArrayImplExp extends MultiArrayExp
+  with MultiArrayWrapExp with DeliteInternalOpsExp with DeliteSimpleOpsExp { self: DeliteOpsExp with DeliteFileReaderOpsExp => 
+
+  val implementer: MultiArrayImplementer  
+
+
+  def calcIndices(v: Exp[Int], dims: Seq[Exp[Int]]): Seq[Exp[Int]] = {
+    if (dims.length == 1) { Seq(v) }
+    else {
+      Seq.tabulate(dims.length) { d => 
+        if (d == dims.length - 1) { delite_int_mod(v, dims(d)) }
+        else { delite_int_mod( delite_int_divide(v, productTree(dims.drop(d + 1))), dims(d)) }
+      }
+    }
+  }
+
+  // --- Convenience infix operations for DeliteMultiArray
+  implicit def multiarrayToCastOps[T:Manifest](x: Exp[DeliteMultiArray[T]]) = new MultiArrayCastOpsCls[T](x)
+  class MultiArrayCastOpsCls[T:Manifest](x: Exp[DeliteMultiArray[T]]) { 
+    def asMultiArrayImpl = {
+      assert(isMultiArrayImpl(x), "Cannot cast " + x.tp + " to MultiArrayImpl\n " + strDef(x))
+      x.asInstanceOf[Exp[MultiArrayImpl[T]]]
+    }
+    def asMultiArrayViewImpl = {
+      assert(isMultiArrayViewImpl(x), "Cannot cast " + x.tp + " to MultiArrayViewImpl\n" + strDef(x))
+      x.asInstanceOf[Exp[MultiArrayViewImpl[T]]]
+    }
+    def asMultiArrayBuffImpl = {
+      assert(isMultiArrayBuffImpl(x), "Cannot cast " + x.tp + " to MultiArrayBuffImpl\n" + strDef(x))
+      x.asInstanceOf[Exp[MultiArrayBuffImpl[T]]]
+    }
+    def asMultiArrayBuffViewImpl = {
+      assert(isMultiArrayBuffViewImpl(x), "Cannot cast " + x.tp + " to MultiArrayBuffViewImpl\n" + strDef(x))
+      x.asInstanceOf[Exp[MultiArrayBuffViewImpl[T]]]
+    }
+  }
+
+  implicit def multimapToCastOps[K:Manifest,V:Manifest](x: Exp[DeliteMultiMap[K,V]]) = new MultiMapCastOpsCls[K,V](x)
+  class MultiMapCastOpsCls[K:Manifest,V:Manifest](x: Exp[DeliteMultiMap[K,V]]) {
+    def asDeliteMap = {
+      assert(isDeliteMap(x), "Cannot cast " + x.tp + " to DeliteMap")
+      x.asInstanceOf[Exp[DeliteMap[K,V]]]
+    }
+  }
+
+  // ---- Convenience infix operations for MultiArrayImpl and descendants
+  implicit def multiarrayimplToOpsCls[T:Manifest](ma: Exp[MultiArrayImpl[T]]) = new MultiArrayImplOpsCls(ma)
+  class MultiArrayImplOpsCls[T:Manifest](x: Exp[MultiArrayImpl[T]]) {
+    def dims: Seq[Exp[Int]] = implementer.getDims(x.asInstanceOf[Exp[DeliteMultiArray[T]]])
+    def dim(d: Int): Exp[Int] = implementer.implementDim(x.asInstanceOf[Exp[DeliteMultiArray[T]]], d)
+    def size: Exp[Int] = implementer.implementSize(x.asInstanceOf[Exp[DeliteMultiArray[T]]])
+    def strides: Seq[Exp[Int]] = implementer.getStrides(x.asInstanceOf[Exp[DeliteMultiArray[T]]])
+    def stride(d: Int) = implementer.implementStride(x.asInstanceOf[Exp[DeliteMultiArray[T]]], d)
+  }
+
+  // --- Convenience infix operations for AbstractIndices
+  implicit def indicesImplOps(x: Exp[AbstractIndices]) = new AbstractIndicesImplOpsCls(x)
+  class AbstractIndicesImplOpsCls(x: Exp[AbstractIndices]) {
+    def toSeq(n: Int): Seq[Exp[Int]] = Seq.tabulate(n){d => x(d)}
+    def size(n: Int): Exp[Int] = productTree(toSeq(n))
+  }
+
   // --- DeliteCollection ops for MultiArray implementations
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
     if (isMultiArrayImpl(x)) implementer.implementSize(x.asInstanceOf[Exp[DeliteMultiArray[A]]])
@@ -195,15 +190,6 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
         super.dc_apply(x,n)   // bit kludgey - this may be called before implementer is run, in which case use super
     }
     else super.dc_apply(x,n)
-  }
-
-  // Get symbol properties for MultiArray data field 
-  def mdat(b: Block[Any]): SymbolProperties = mdat(b.res)
-  def mdat(e: Exp[Any]): SymbolProperties = mdat(props(e))
-  def mdat(p: SymbolProperties): SymbolProperties = p match {
-    case (s: StructProperties) => s.child("data").get
-    case (a: ArrayProperties) => a.child.get
-    case _ => sys.error("Symbol properties " + makeString(p) + " has no data field")
   }
 
   trait MultiArrayImplementer extends TransformerBase {
@@ -289,21 +275,24 @@ trait MultiArrayImplExp extends MultiArrayWrapExp with DeliteInternalOpsExp with
         val mA = manifest[A]
 
         val size = f(d.size)
-        val rV2 = (fresh[A],fresh[A])
+        val mutable = !r.stripFirst
+        val rVa = if (mutable) reflectMutableSym(fresh[A]) else fresh[A]
+        val rVb = fresh[A]
+
         val func = f(r.func)(mA).asInstanceOf[Block[A]]
         val cond = r.cond.map{c => f(c).asInstanceOf[Block[Boolean]]}
         val zero = f(r.zero)(mA).asInstanceOf[Block[A]]
         val init = f(r.accInit)(mA).asInstanceOf[Block[A]]
-
-        setProps(rV2._1, getProps(func))
-        setProps(rV2._2, getProps(func))
+        
+        setProps(rVa, getProps(func))
+        setProps(rVb, getProps(func))
 
         println("Transforming reduce with type " + manifest[A].toString)
-        println(" and rV._1 " + rV2._1.tp + makeString(props(rV2._1)))
+        println(" and rV._1 " + rVa.tp + makeString(props(rVa)))
 
-        val rFunc = withSubstScope(r.rV._1 -> rV2._1, r.rV._2 -> rV2._2) { f(r.rFunc).asInstanceOf[Block[A]] }
+        val rFunc = withSubstScope(r.rV._1 -> rVa, r.rV._2 -> rVb) { f(r.rFunc).asInstanceOf[Block[A]] }
 
-        val s2 = reflectPure(ReduceFactory.regen[A](d.v, rV2, size, func, rFunc, zero, cond))
+        val s2 = reflectPure(ReduceFactory.regen[A](d.v, (rVa,rVb), size, func, rFunc, init, zero, cond, mutable))
         setProps(s2, getProps(rFunc))
 
         Some( s2 )

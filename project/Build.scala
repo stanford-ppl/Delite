@@ -46,15 +46,19 @@ object DeliteBuild extends Build {
   lazy val framework = Project("framework", file("framework"), settings = virtBuildSettings) dependsOn(runtime) // dependency to runtime because of Scopes
   lazy val deliteTest = Project("delite-test", file("framework/delite-test"), settings = virtBuildSettings) dependsOn(framework, runtime)
 
-  lazy val dsls = Project("dsls", file("dsls"), settings = virtBuildSettings) aggregate(optiql)
-  lazy val optiql = Project("optiql", file("dsls/optiql"), settings = virtBuildSettings) dependsOn(framework, deliteTest)
+  lazy val dsls = Project("dsls", file("dsls"), settings = virtBuildSettings) //aggregate(optiql)
+  //lazy val optiql = Project("optiql", file("dsls/optiql"), settings = virtBuildSettings) dependsOn(framework, deliteTest)
+  lazy val smal = Project("smal", file("dsls/smal"), settings = virtBuildSettings) dependsOn(framework, dsls)
 
-  lazy val apps = Project("apps", file("apps"), settings = virtBuildSettings) aggregate(optiqlApps)
-  lazy val optiqlApps = Project("optiql-apps", file("apps/optiql"), settings = virtBuildSettings) dependsOn(optiql)
+  lazy val apps = Project("apps", file("apps"), settings = virtBuildSettings) aggregate(smalApps)
+  //lazy val optiqlApps = Project("optiql-apps", file("apps/optiql"), settings = virtBuildSettings) dependsOn(optiql)
+  lazy val smalApps = Project("smal-apps", file("apps/smal"), settings = virtBuildSettings) dependsOn(smal)
 
   lazy val runtime = Project("runtime", file("runtime"), settings = virtBuildSettings)
 
   //include all projects that should be built (dependsOn) and tested (aggregate)
   lazy val tests = (Project("tests", file("project/boot"), settings = virtBuildSettings)
-    dependsOn(optiqlApps) aggregate(framework, deliteTest, optiql))
+    /*dependsOn(optiqlApps)*/ aggregate(framework, deliteTest, /*optiql*/))
+
+  lazy val asplos = Project("asplos", file("asplos"), settings = virtBuildSettings) dependsOn(framework, lms)
 }

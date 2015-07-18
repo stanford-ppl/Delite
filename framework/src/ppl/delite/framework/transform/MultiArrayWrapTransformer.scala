@@ -147,15 +147,15 @@ trait MultiArrayWrapTransformer extends TransformerBase {
           setMetadata(r.rV._1, getBuffer(p)); setMetadata(r.rV._1, getView(p))
           setMetadata(r.rV._2, getBuffer(p)); setMetadata(r.rV._2, getView(p))
 
-          println("Created reduce with props " + makeString(props(e)))
-          e match { case Def(op: AbstractLoop[_]) => op.body match {
+          //println("Created reduce with props " + makeString(props(e)))
+          /*e match { case Def(op: AbstractLoop[_]) => op.body match {
             case r: DeliteReduceElem[_] => 
               println("Func: " + strDef(r.func.res))
               println("Reduce: " + strDef(r.rFunc.res))
               println("Zero: " + strDef(r.zero.res))
               println("Init: " + strDef(r.accInit.res))
             case _ => // Nothing
-          }}
+          }}*/
 
           Some(e)
         }

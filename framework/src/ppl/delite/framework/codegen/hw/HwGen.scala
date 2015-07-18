@@ -55,12 +55,12 @@ trait HwCodegen extends GenericCodegen // with ThorIR
   import IR._
 
   // New stuff from merge with wip-master (some need to be filled in?)
-  def emitHeapMark(): Unit = {}
-  def emitHeapReset(result: List[String]): Unit = {}
-  def emitAbstractFatLoopFooter(syms: List[Sym[Any]], rhs: AbstractFatLoop): Unit = {}
-  def emitAbstractFatLoopHeader(syms: List[Sym[Any]], rhs: AbstractFatLoop): Unit = {}
-  def syncType(actType: String): String = "??????"
-  def emitWorkLaunch(kernelName: String, rSym: String, allocSym: String, syncSym: String): Unit = {}
+//  def emitHeapMark(): Unit = {}
+//  def emitHeapReset(result: List[String]): Unit = {}
+//  def emitAbstractFatLoopFooter(syms: List[Sym[Any]], rhs: AbstractFatLoop): Unit = {}
+//  def emitAbstractFatLoopHeader(syms: List[Sym[Any]], rhs: AbstractFatLoop): Unit = {}
+//  def syncType(actType: String): String = "??????"
+//  def emitWorkLaunch(kernelName: String, rSym: String, allocSym: String, syncSym: String): Unit = {}
 
   // List of passes to be performed on the graph
 //  val passes: ListBuffer[HwPass] = new ListBuffer[HwPass]
@@ -472,6 +472,14 @@ trait HwGenDeliteOps extends HwCodegen with GenericGenDeliteOps
 //  val IR: DeliteOpsExp with LoopsFatExp with ArrayOpsExp with StringOpsExp
   import IR._
 
+  // New stuff from merge with wip-master (some need to be filled in?)
+  def emitHeapMark(): Unit = {}
+  def emitHeapReset(result: List[String]): Unit = {}
+  def emitAbstractFatLoopFooter(syms: List[Sym[Any]], rhs: AbstractFatLoop): Unit = {}
+  def emitAbstractFatLoopHeader(syms: List[Sym[Any]], rhs: AbstractFatLoop): Unit = {}
+  def syncType(actType: String): String = "??????"
+  def emitWorkLaunch(kernelName: String, rSym: String, allocSym: String, syncSym: String): Unit = {}
+
   def isPrimitiveReduce(elem: DeliteReduceElem[_]) = {
     val m = elem.mA.toString
     m match {
@@ -840,10 +848,8 @@ trait HwGenDeliteOps extends HwCodegen with GenericGenDeliteOps
   }
 }
 
-trait HwGenDeliteInternalOps extends HwCodegen
-{
-  // FIXME: This needs to be changed
-  val IR: DeliteOpsExp with DeliteInternalOpsExp with LoopsFatExp with ArrayOpsExp with StringOpsExp
+trait HwGenDeliteInternalOps extends HwCodegen {
+  val IR: DeliteOpsExp with DeliteInternalOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
