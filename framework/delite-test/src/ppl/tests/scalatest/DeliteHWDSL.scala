@@ -80,26 +80,26 @@ trait DeliteHWDSLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOr
  * Every trait here is described in LMS for other backends
  */
 trait DeliteHWDSLHwCodeGenPkg
-  extends HwGenOrderingOps
+//  extends HwGenOrderingOps
 //    with HwGenEqual
 //    with HwGenIfTheElse
-    with HwGenVariables
-    with HwGenWhile
+//    with HwGenVariables
+//    with HwGenWhile
 //    with HwGenTupleOps
 //    with HwGenTupledFunctions
-    with HwGenStringOps
-    with HwGenRangeOps
+//    with HwGenStringOps
+//    with HwGenRangeOps
 //    with HwGenIOOps
-    with HwGenArrayOps
-    with HwGenBooleanOps
-    with HwGenPrimitiveOps
+//    with HwGenArrayOps
+//    with HwGenBooleanOps
+//    with HwGenPrimitiveOps
 //    with HwGenMiscOps
 //    with HwGenListOps
 //    with HwGenSeqOps
 //    with HwGenMathOps
 //    with HwGenCastingOps
 //    with HwGenSetOps
-    with HwGenObjectOps
+//    with HwGenObjectOps
 //    with HwGenSynchronizedArrayBufferOps
 //    with HwGenHashMapOps
 //    with HwGenIterableOps
@@ -120,7 +120,7 @@ trait DeliteHWDSLCompiler extends DeliteHWDSL
 trait DeliteHWDSLTransformExp extends DeliteVisit
 //    with MultiloopSoATransformWithReduceExp -- Removing SOA transform on reduces for now (needs to be fixed)
     with MultiloopSoATransformExp
-    with HwLoweringTransformExp
+//    with HwLoweringTransformExp
     with DotPrintTransformExp
 
 trait DeliteHWDSLExp extends DeliteHWDSLCompiler with DeliteHWDSLScalaOpsPkgExp 

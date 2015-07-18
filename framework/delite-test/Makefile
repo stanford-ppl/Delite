@@ -4,7 +4,7 @@ TEST_PKG=ppl.tests.scalatest
 OBJ_SUFFIX=_O
 
 all:
-	cd ${DELITE_HOME} && sbt publish-local
+	cd ${HYPER_HOME} && sbt "; project framework; compile; project delite-test; compile"
 
 distclean:
 	sbt clean
@@ -15,4 +15,4 @@ clean:
 %${OBJ_SUFFIX}:
 	${DELITE_HOME}/bin/delitec ${ARG} ${TEST_PKG}.$@
 	dot -Tpdf deliteIR.dot > foo.pdf
-	scp foo.pdf raghu@xenon.stanford.edu:
+#	scp foo.pdf raghu@xenon.stanford.edu:

@@ -1,18 +1,20 @@
-package ppl.delite.framework.transform
-import scala.virtualization.lms.common.WorklistTransformer
+package ppl.delite.framework.analysis
+
+import scala.virtualization.lms.internal.{AbstractSubstTransformer,Transforming,FatBlockTraversal}
+import scala.reflect.SourceContext
 import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.ops.HwOpsExp
+import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.{FileWriter, PrintWriter}
 import scala.util.Random
 import scala.collection.mutable.Set
 
-trait DotPrintTransformer extends WorklistTransformer {
-  val IR: HwOpsExp
+trait DotPrintAnalysis extends FatBlockTraversal {
+  val IR: DeliteOpsExp
   import IR._
 
-  val fileName: String = "deliteIR.dot"
-  val fileWriter = new FileWriter(fileName)
-  val dotStream = new PrintWriter(fileWriter)
+  var fileName: String = "deliteIR.dot"
+//  var fileWriter = new FileWriter(fileName)
+  var dotStream: PrintWriter = null
 
   val funcBlocks = Set[Block[Any]]()
   val rfuncBlocks = Set[Block[Any]]()
@@ -42,15 +44,16 @@ trait DotPrintTransformer extends WorklistTransformer {
                       finalizerBlocks
 
 
-  override def runOnce[A:Manifest](s: Block[A]): Block[A] = {
+  def run[A](s: Block[A], fileName: String): Unit = {
+    dotStream = new PrintWriter(fileName)
+
     dotStream.println("digraph {")
 //    for (s <- globalDefs) {
 //      printStm(s)
 //    }
-    val res = super.runOnce(s)
+    val res = traverseBlock(s)
     dotStream.println("}")
     dotStream.flush
-    s
   }
 
   private def getBlockName(b: Block[Any]) = {
@@ -86,7 +89,7 @@ trait DotPrintTransformer extends WorklistTransformer {
     }
     prefix + s""" $b"""
   }
-  override def transformBlock[A:Manifest](b: Block[A]) = {
+  override def traverseBlock[A](b: Block[A]) = {
 //    println(s"[DotPrintTransformer] Within transformBlock, block = $b")
     val bname = getBlockName(b)
     val bs = boundSyms(b)
@@ -98,10 +101,9 @@ trait DotPrintTransformer extends WorklistTransformer {
     dotStream.println(s"""fillcolor=\"#$color\"""")
     dotStream.println(s"""label=\"$bname ($bs)\"""")
     if (!noshowBlocks.contains(b)) {
-      val res = super.transformBlock(b)
+      val res = super.traverseBlock(b)
     }
     dotStream.println("}")
-    b
   }
 
   private def printStm(stm: Stm): Unit = stm match {
@@ -112,10 +114,10 @@ trait DotPrintTransformer extends WorklistTransformer {
         var fillcolor = "white"
         var fontcolor = "black"
         d match {
-          case h: HwDef[_] =>
-            fill = true
-            fillcolor = "blue"
-            fontcolor = "white"
+//          case h: HwDef[_] =>
+//            fill = true
+//            fillcolor = "blue"
+//            fontcolor = "white"
           case a: AbstractLoop[_] =>
             fill = true
             fillcolor = "yellow"
@@ -140,9 +142,10 @@ trait DotPrintTransformer extends WorklistTransformer {
             }
 
           case Reflect(node, _, _) if node.isInstanceOf[AbstractLoop[_]] =>
-            transformStm(TP(s, node.asInstanceOf[AbstractLoop[_]]))
-          case Reflect(node, _, _) if node.isInstanceOf[HwDef[_]] =>
-            transformStm(TP(s, node.asInstanceOf[HwDef[_]]))
+            traverseStm(TP(s, node.asInstanceOf[AbstractLoop[_]]))
+//          case Reflect(node, _, _) if node.isInstanceOf[HwDef[_]] =>
+//            traverseStm(TP(s, node.asInstanceOf[HwDef[_]]))
+
 //            fill = true
 //            val a = node.asInstanceOf[AbstractLoop[_]]
 //            a.body match {
@@ -185,7 +188,7 @@ trait DotPrintTransformer extends WorklistTransformer {
     case _ => throw new Exception("Not TP or TTP")
   }
 
-  override def transformStm(stm: Stm): Exp[Any] = stm match {
+  override def traverseStm(stm: Stm): Unit = stm match {
     case TP(s, d) =>
         val nodeName = s"$s"
         val className = s"$d"
@@ -193,10 +196,10 @@ trait DotPrintTransformer extends WorklistTransformer {
         var fillcolor = "white"
         var fontcolor = "black"
         d match {
-          case h: HwDef[_] =>
-            fill = true
-            fillcolor = "blue"
-            fontcolor = "white"
+//          case h: HwDef[_] =>
+//            fill = true
+//            fillcolor = "blue"
+//            fontcolor = "white"
           case a: AbstractLoop[_] =>
             fill = true
             fillcolor = "yellow"
@@ -221,9 +224,10 @@ trait DotPrintTransformer extends WorklistTransformer {
             }
 
           case Reflect(node, _, _) if node.isInstanceOf[AbstractLoop[_]] =>
-            transformStm(TP(s, node.asInstanceOf[AbstractLoop[_]]))
-          case Reflect(node, _, _) if node.isInstanceOf[HwDef[_]] =>
-            transformStm(TP(s, node.asInstanceOf[HwDef[_]]))
+            traverseStm(TP(s, node.asInstanceOf[AbstractLoop[_]]))
+//          case Reflect(node, _, _) if node.isInstanceOf[HwDef[_]] =>
+//            traverseStm(TP(s, node.asInstanceOf[HwDef[_]]))
+
 //            fill = true
 //            val a = node.asInstanceOf[AbstractLoop[_]]
 //            a.body match {
@@ -254,7 +258,7 @@ trait DotPrintTransformer extends WorklistTransformer {
         for (depSym <- depSyms) {
           dotStream.println(s""" \"$depSym\" -> \"$nodeName\" """)
         }
-        super.transformStm(stm)
+        super.traverseStm(stm)
     case TTP(s, d, fd) =>
         val nodeName = s"$s"
         val className = fd.getClass().toString
@@ -264,15 +268,7 @@ trait DotPrintTransformer extends WorklistTransformer {
         for (depSym <- depSyms) {
           dotStream.println(s""" \"$depSym\" -> \"$nodeName\" """)
         }
-      super.transformStm(stm)
+      super.traverseStm(stm)
     case _ => throw new Exception("Not TP or TTP")
   }
-}
-
-trait DotPrintTransformExp extends DeliteApplication {
-  self =>
-    private val t = new DotPrintTransformer {
-      val IR: self.type = self
-    }
-    appendVisitor(t)
 }
