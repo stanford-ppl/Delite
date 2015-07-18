@@ -69,13 +69,13 @@ trait CGenLMSDSL extends CGenBase
   with CGenDSLOps
   { val IR: LMSDSLOpsExp }
 
-trait HwGenLMSDSL extends HwCodegen
-  /*with HwGenEqual*/       /*with HwGenIfThenElse*/  with HwGenVariables       with HwGenWhile
-  /*with HwGenMathOps*/     /*with HwGenImplicitOps*/ with HwGenOrderingOps     with HwGenStringOps
-  with HwGenBooleanOps      with HwGenPrimitiveOps    /*with HwGenMiscOps*/     /*with HwGenTupledFunctions*/
+//trait HwGenLMSDSL extends HwCodegen
+  /*with HwGenEqual*/       /*with HwGenIfThenElse*/  /*with HwGenVariables*/   /*with HwGenWhile*/
+  /*with HwGenMathOps*/     /*with HwGenImplicitOps*/ /*with HwGenOrderingOps*/ /*with HwGenStringOps*/
+  /*with HwGenBooleanOps*/  /*with HwGenPrimitiveOps*//*with HwGenMiscOps*/     /*with HwGenTupledFunctions*/
   /*with HwGenTupleOps*/    /*with HwGenCastingOps*/  /*with HwGenExceptionOps*//*with HwGenObjectOps*/
-  with HwGenDSLOps
-  { val IR: LMSDSLOpsExp }
+  /*with HwGenDSLOps*/
+//  { val IR: LMSDSLOpsExp }
 
 // --- Delite Transformers
 trait DeliteDSLTransformExp extends DeliteVisit
@@ -137,7 +137,7 @@ trait CGenDeliteDSL extends DeliteDSLCodeGenBase with CGenLMSDSL
   with DeliteCppHostTransfer 
   { val IR: DeliteApplication with DeliteDSLOpsExp }
 
-trait HwGenDeliteDSL extends DeliteDSLCodeGenBase with HwGenLMSDSL
+trait HwGenDeliteDSL extends DeliteDSLCodeGenBase with HwCodegen /*with HwGenLMSDSL*/
   /*with HwGenDeliteStruct*/ with HwGenDeliteArrayOps  /*with HwGenDeliteMapOps*/
   with HwGenDeliteOps       
   with HwGenDeliteInternalOps 
