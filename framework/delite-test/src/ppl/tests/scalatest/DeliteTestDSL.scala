@@ -80,26 +80,26 @@ trait DeliteTestDSLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGen
  * Every trait here is described in LMS for other backends
  */
 trait DeliteTestDSLHwCodeGenPkg
-  extends HwGenOrderingOps
+//  extends HwGenOrderingOps
 //    with HwGenEqual
 //    with HwGenIfTheElse
-    with HwGenVariables
-    with HwGenWhile
+//    with HwGenVariables
+//    with HwGenWhile
 //    with HwGenTupleOps
 //    with HwGenTupledFunctions
-    with HwGenStringOps
-    with HwGenRangeOps
+//    with HwGenStringOps
+//    with HwGenRangeOps
 //    with HwGenIOOps
-    with HwGenArrayOps
-    with HwGenBooleanOps
-    with HwGenPrimitiveOps
+//    with HwGenArrayOps
+//    with HwGenBooleanOps
+//    with HwGenPrimitiveOps
 //    with HwGenMiscOps
 //    with HwGenListOps
 //    with HwGenSeqOps
 //    with HwGenMathOps
 //    with HwGenCastingOps
 //    with HwGenSetOps
-    with HwGenObjectOps
+//    with HwGenObjectOps
 //    with HwGenSynchronizedArrayBufferOps
 //    with HwGenHashMapOps
 //    with HwGenIterableOps
