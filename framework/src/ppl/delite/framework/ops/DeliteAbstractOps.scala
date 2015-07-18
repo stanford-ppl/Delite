@@ -1,13 +1,18 @@
 package ppl.delite.framework.ops
 
-import ppl.delite.framework.datastructures._
-
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal._
+import scala.virtualization.lms.internal.Meetable._
+
+import ppl.delite.framework.datastructures._
+import ppl.delite.framework.transform._
+
+import ppl.delite.framework.visit._
 
 import ppl.delite.framework.Util._
 
+// TODO: Move this elsewhere
 // Abstract placeholder for indices
 // These should eventually all be optimized away
 trait AbstractIndices
@@ -80,8 +85,8 @@ trait DeliteAbstractOps extends IndicesOps
  * }
  *
  */
-trait DeliteAbstractOpsExp extends DeliteAbstractOps with AtomicWriteExp with IndicesOpsExp { this: DeliteOpsExp =>
-  case class AbstractFamily(name: String)
+trait DeliteAbstractOpsExp extends DeliteAbstractOps with IndicesOpsExp with AtomicWriteExp { this: DeliteOpsExp =>
+  case class AbstractFamily(name: String, var skip: Boolean = false)
 
   /**
    * Base class for nodes which require transformation before codegen
@@ -139,3 +144,75 @@ trait DeliteAbstractOpsExp extends DeliteAbstractOps with AtomicWriteExp with In
   abstract class DeliteAbstractLoopNest2[A:Manifest,B:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteAbstractLoopNest[A,R] { val mB = manifest[B] }
 }
 
+// TODO: This is approximately what LoweringTransformer was also trying to accomplish
+// Can we rectify these two? Not sure how LoweringTransformer should be used exactly
+trait DeliteLowerableOpsExp extends DeliteAbstractOpsExp with DeliteVisit { self: DeliteOpsExp => 
+
+  def lower[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = { 
+    sys.error("Don't know how to lower " + e)
+  }
+
+  abstract class AbstractImplementer(implicit val fc: AbstractFamily) extends TransformerBase {
+    val IR: self.type
+
+    // Prior to beginning implementation, set abstract family to "skip" abstract implementation
+    // when possible, instead directly generating the implementation. Nodes are not required to 
+    // honor this setting, but it can potentially reduce the number of transformation passes if they do.
+    override def preprocess[A:Manifest](b: Block[A]): Block[A] = { fc.skip = true; b } 
+
+    // TODO: Change family matching to pointer matching rather than string matching?
+    // Potentially requires transformer to be defined in the same trait as the nodes..
+    override def transformSym[A](s: Sym[A], d: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]] = {
+      printDebug("Transforming symbol in AbstractImplementer")
+      d match {
+        case d: AbstractNode[_] if d.family == fc.name => 
+          printDebug("Transforming abstract node in family " + d.family)
+          Some(lower(d, f)(mtype(s.tp),ctx))
+        case d: AbstractNode[_] =>
+          printDebug("Ignoring abstract node in family " + d.family + " (!= " + fc.name + ")")
+          None
+
+        // FIXME: Will this work? Relies on mirroring of lhs of defs right now... 
+        /*case NestedAtomicWrite(_,trace,f) =>
+          if ((f.isInstanceOf[AbstractNode[_]] && f.asInstanceOf[AbstractNode[_]].family == fc.name) ||
+              trace.map{case t: AbstractAtomicTracer => t.family == fc.name; case _ => false }.fold(false){_||_})
+            Some(implementNode(s, d)) // This should return a NestedAtomicWrite (assuming it still is one)
+          else 
+            None  */
+        case Reflect(d, u, es) => 
+          transformSym(s, d) match {
+            case None => None
+            case Some(e) => 
+              transferMetadata(e, s, d)
+
+              e match {
+                case Def(Reify(_,_,_)) => Some(e)
+                
+                case Def(Reflect(d2,u2,es2)) => 
+                  val out = reflectMirrored(Reflect(d2, mapOver(f,u) andAlso u2, (f(es) ++ es2).distinct))(mtype(e.tp), ctx)
+                  setProps(out, getProps(e))
+
+                  if (out != e) scrubSym(e.asInstanceOf[Sym[Any]])
+                  Some(out)
+
+                case Def(d2) => 
+                  val out = reflectMirrored(Reflect(d2, mapOver(f,u), f(es)))(mtype(e.tp), ctx)
+                  setProps(out, getProps(e))
+
+                  if (out != e) scrubSym(e.asInstanceOf[Sym[Any]])
+                  Some(out)
+
+                case e => Some(e)
+            }
+          }
+        
+        // TODO: This is probably not needed
+        //case Reify(x,u,es) => Some(reflectPure(Reify(f(x),mapOver(f,u),f(es)))(f(x).tp,ctx))
+        case _ => 
+          printDebug("Did not match any abstract node patterns")
+          None
+      }
+    }
+  }
+
+}

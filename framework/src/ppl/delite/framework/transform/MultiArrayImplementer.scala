@@ -657,7 +657,7 @@ trait MultiArrayImplExp extends MultiArrayExp
       reflectPure(ReduceFactory(v, rV2, size, mirroredLookup, mirroredBody, mirroredZero)).withProps(props(mirroredBody))
     }
     def implementFold[A:Manifest](in: Exp[DeliteMultiArray[A]], lookup: Block[A], body: Block[A], zero: Exp[A], v: Sym[Int], i: Exp[LoopIndices], rV: (Sym[A], Sym[A]), out: SymbolProperties)(implicit ctx: SourceContext): Exp[Any] = {
-      val dims = getDims(in)
+      /*val dims = getDims(in)
       val size = implementSize(in)
       val inds = calcIndices(v, dims)
       val i2 = loopindices_new(v, inds)
@@ -666,7 +666,7 @@ trait MultiArrayImplExp extends MultiArrayExp
       setProps(rV2._1, getChild(in))
       setProps(rV2._2, getChild(in))
       val mirroredBody = withSubstScope(i -> i2, rV._1 -> rV2._1, rV._2 -> rV2._2) { f(body) }
-      reflectPure(FoldFactory(v, rV2, size, mirroredLookup, mirroredBody, mirroredZero)).withProps(props(mirroredBody))
+      reflectPure(FoldFactory(v, rV2, size, mirroredLookup, mirroredBody, mirroredZero)).withProps(props(mirroredBody))*/
     }
     def implementForeach[A:Manifest](in: Exp[DeliteMultiArray[A]], body: Block[Unit], v: Sym[Int], i: Exp[LoopIndices])(implicit ctx: SourceContext): Exp[Unit] = {
       val dims = getDims(in)

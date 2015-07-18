@@ -20,7 +20,7 @@ trait DeliteArray5D[T] extends DeliteMultiArray[T]
 // Abstract map intended for use with MultiArrays
 trait DeliteMultiMap[K,V]
 
-trait DeliteMultiArrayOps extends DeliteAbstractOps with RangeVectorOps {  
+trait DeliteMultiArrayOps extends DeliteAbstractOps with IndicesOps with RangeVectorOps {  
   object MultiArray {
     def apply[T:Manifest](dims: Rep[Int]*)(implicit ctx: SourceContext): Rep[DeliteMultiArray[T]] = dmultia_new[T](dims)
     def imm[T:Manifest](dims: Rep[Int]*)(implicit ctx: SourceContext): Rep[DeliteMultiArray[T]] = dmultia_new_immutable[T](dims)
@@ -324,7 +324,7 @@ trait DeliteMultiArrayOps extends DeliteAbstractOps with RangeVectorOps {
   //def dmultia_unpin[T:Manifest,R:Manifest](in: Rep[DeliteArray[R]], layout: Layout[T,R], shape: Seq[Rep[Int]])(implicit ctx: SourceContext): Rep[DeliteMultiArray[T]]
 }
 
-trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsExp with RangeVectorOpsExp { this: DeliteOpsExp =>
+trait DeliteMultiArrayOpsExp extends DeliteMultiArrayOps with DeliteAbstractOpsExp with IndicesOpsExp with RangeVectorOpsExp { this: DeliteOpsExp =>
   // Abstract def family identifier
   private implicit val fc = AbstractFamily("multiarray")
 
