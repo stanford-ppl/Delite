@@ -116,7 +116,7 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   def runVisitors[A:Manifest](b: Block[A]): Block[A] = {
     printlog("DeliteCodegen: applying transformations")
     var curBlock = b
-    printlog("Visitors: " + visitors.map(_.name).mkString("\n"))
+    printlog("Visitors: \n\t" + visitors.map(_.name).mkString("\n\t"))
     
     for (t <- visitors) {
       printlog("  Block before transformation: " + curBlock)

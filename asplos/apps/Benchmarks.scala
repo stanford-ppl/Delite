@@ -1,14 +1,8 @@
 import asplos._
 
+// Sets of tests to run at the same time (fill these in as needed)
 object PPLBenchmarks extends DeliteDSLBenchmarks {
   def main(args: Array[String]) { 
-    //runBenchmark( GDALiteCompiler ) 
-    stageBenchmark( CollectTestLiteCompiler )
-  }
-}
-
-object SMALBenchmarks extends DeliteDSLBenchmarks {
-  def main(args: Array[String]) { 
-    runBenchmark( GDACompiler ) 
+    stageBenchmark( MatmultBlocked )
   }
 }

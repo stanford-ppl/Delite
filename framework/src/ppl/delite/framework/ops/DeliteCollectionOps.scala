@@ -74,6 +74,10 @@ trait DeliteCollectionOpsExp extends ExceptionOpsExp with BaseFatExp { this: Del
   def dc_block_update[A:Manifest](x: Exp[DeliteCollection[A]], is: List[Exp[Int]], y: Exp[A], unitDims: List[Int])(implicit ctx: SourceContext): Exp[Unit] = {
     undefined("dc_block_update", x)
   }
+  def dc_slice[A:Manifest,TA<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest](src: Exp[CA], srcOffsets: List[Exp[Int]], srcStrides: List[Exp[Int]], destDims: List[Exp[Int]], unitDims: List[Int])(implicit ctx: SourceContext): Exp[TA] = {
+    undefined("dc_slice", src)
+  }
+
   /*def dc_block_slice[A:Manifest](x: Exp[DeliteCollection[A]], is: List[Exp[Int]], ds: List[Exp[Int]], unitDims: List[Int])(implicit ctx: SourceContext): Exp[DeliteCollection[A]] = {
     undefined("dc_block_slice", x)
   }*/

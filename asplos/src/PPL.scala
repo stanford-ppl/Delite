@@ -17,12 +17,16 @@ import ppl.delite.framework.ops._
 
 // --- PPL Ops
 trait PPLOps extends DeliteDSLOps
-  with FlattenedArrayOps with SimpleProfileOps with PPLBlockingOps {
+  with FlattenedArrayOps with PPLBlockingOps {
   this: PPLApp =>
+
+  // Configuration file for test input dimensions
+  val CONFIG_FILE: Rep[String] = unit("/home/david/PPL/hyperdsl/delite/asplos/apps/config.txt")
 }
 
-trait PPLOpsExp extends DeliteDSLOpsExp with PPLOps
-  with FlattenedArrayOpsExp with DeliteSimpleOpsExp with PPLBlockingOpsExp with SimpleProfileOpsExp {
+// Note: LowerableOps includes transformer, so mix-in order matters here
+trait PPLOpsExp extends FlattenedArrayLowerableOpsExp with DeliteDSLOpsExp with PPLOps
+  with PPLBlockingOpsExp with SimpleProfileOpsExp {
   this: PPLCompiler => 
 
   override def getCodeGenPkg(t: Target{val IR: PPLOpsExp.this.type}) : GenericFatCodegen{val IR: PPLOpsExp.this.type} = t match {
@@ -36,7 +40,7 @@ trait PPLOpsExp extends DeliteDSLOpsExp with PPLOps
 
 // --- PPL Code Generators
 trait ScalaGenPPL extends ScalaGenDeliteDSL
-  with ScalaGenSimpleProfileOps with ScalaGenPPLBlocking
+  with ScalaGenSimpleProfileOps with ScalaGenNestedOps
   { val IR: PPLOpsExp }
 
 trait CudaGenPPL extends CudaGenDeliteDSL
