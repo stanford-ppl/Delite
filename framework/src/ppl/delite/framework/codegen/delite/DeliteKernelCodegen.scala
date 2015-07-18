@@ -143,7 +143,15 @@ trait DeliteKernelCodegen extends GenericFatCodegen {
         case op: AbstractLoop[_] => "void"
         case _ => remap(sym.head.tp)
       }
+      case ("maxj", z) => {
+        z match {
+          case op: AbstractLoop[_] => "void"
+          case op: AbstractFatLoop => "void"
+          case _ => remap(sym.head.tp)
+        }
+      }
       case _ =>
+        println(s"[resultType] ${(this.toString, rhs)}")
         assert(sym.length == 1) // if not set hasOutputSlotTypes and use activation record
         remap(sym.head.tp)
     }
