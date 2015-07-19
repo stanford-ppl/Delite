@@ -614,15 +614,16 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
       if (op.cond.nonEmpty) { stream.println("if (true) { //TODO: Filter functions");  }
 
       stream.println("// --- Block body")
-      emitBlock(op.tile)
+      emitBlockTrackDuplicates(op.tile)
       emitBoundVarDef(op.buf.tileVal, quote(getBlockResult(op.tile)))
 
       stream.println("// --- Keys ")
       for (k <- 0 until nK) {
-        emitBlock(op.keys(k))
+        emitBlockWithoutDuplicates(op.keys(k))
         emitValDef(op.buf.bS(k), quote(getBlockResult(op.keys(k))))
         emitValDef(op.buf.tD(k), quote(op.buf.bS(k)) + ".length")
       }
+      clearEmittedSyms()
 
       if (op.rFunc.isDefined) {
         stream.println("// --- Accumulator copy out")

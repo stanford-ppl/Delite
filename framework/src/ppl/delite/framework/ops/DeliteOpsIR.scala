@@ -250,7 +250,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
   // --- Tiling Elems
   case class DeliteTileBuffer[A:Manifest,TA:Manifest,CA:Manifest](
     // -- bound vars
-    bS: List[Sym[RangeVector]],   // buffer offsets
+    bS: List[Sym[RangeVector]],   // buffer slice rangevectors
     bV: List[Sym[Int]],   // buffer indices
     tV: List[Sym[Int]],   // tile indices
     tD: List[Sym[Int]],   // tile dimensions
@@ -274,12 +274,12 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
   }
 
   case class DeliteTileElem[A:Manifest,TA:Manifest,CA:Manifest](
-    keys: List[Block[RangeVector]],
-    cond: List[Block[Boolean]] = Nil,
-    tile: Block[TA],
-    rV: (Sym[TA],Sym[TA]),
-    rFunc: Option[Block[TA]],
-    buf: DeliteTileBuffer[A,TA,CA],
+    keys: List[Block[RangeVector]],       // key functions
+    cond: List[Block[Boolean]] = Nil,     // condition (filter) functions
+    tile: Block[TA],                      // tile function
+    rV: (Sym[TA],Sym[TA]),                // bound vars for reduction
+    rFunc: Option[Block[TA]],             // reduction function
+    buf: DeliteTileBuffer[A,TA,CA],       // buffer symbols
     numDynamicChunks: Int
   ) extends Def[CA] with DeliteLoopElem {
     val mA = manifest[A]

@@ -25,9 +25,9 @@ object MatmultBlocked extends PPLCompiler {
     val C = dims(2)
 
     // --- Manually Blocked Dimensions ---
-    tile(R, tileSize = 50, max = ?)
-    tile(M, tileSize = 50, max = ?)
-    tile(C, tileSize = 50, max = ?)
+    tile(R, tileSize = 35, max = ?)
+    tile(M, tileSize = 30, max = ?)
+    tile(C, tileSize = 35, max = ?)
     // -----------------------------------
 
     val a = collect(R,M){(i,j) => (i + j).toDouble }
