@@ -494,93 +494,87 @@ class ExecutionProfile(val depGraph: DependencyGraph, val profileOutputDirectory
   }
 
   private def initDB() {
-    val sql = " BEGIN TRANSACTION;" + 
-          " CREATE TABLE AppData " +
-              "(JVM_UP_TIME_AT_APP_START INT PRIMARY KEY NOT NULL," +
-              " APP_START_TIME    INT NOT NULL," +
-              " APP_END_TIME      INT NOT NULL," +
-              " APP_TOTAL_TIME    INT NOT NULL," +
-              " THREAD_COUNT      INT NOT NULL," +
-              " THREAD_SCALA_COUNT INT NOT NULL," +
-              " THREAD_CPP_COUNT    INT NOT NULL," +
-              " THREAD_CUDA_COUNT  INT NOT NULL," +
-              " IS_SCALA_ENABLED    INT NOT NULL," +
-              " IS_CPP_ENABLED    INT NOT NULL," +
-              " IS_CUDA_ENABLED    INT NOT NULL);\n" +
-           " CREATE TABLE TNodes " +
-            "(id INT PRIMARY KEY     NOT NULL," +
-            " name          TEXT NOT NULL," +
-            " start        INT  NOT NULL," +
-            " duration        INT  NOT NULL," +
-            " end          INT  NOT NULL," +
-            " threadId        INT  NOT NULL," + 
-            " execTime       INT  NOT NULL," +
-            " syncTime       INT  NOT NULL," +
-            " type          INT  NOT NULL," +
-            " dNodeId       INT  NOT NULL," +
-            " parentId       INT  NOT NULL," +
-            " level          INT  NOT NULL," +
-            " childKernelIds  TEXT NOT NULL," +
-            " childSyncIds    TEXT NOT NULL);\n" +
-           " CREATE TABLE TicTocTNodes " +
-            "(ID INT PRIMARY KEY     NOT NULL," +
-            " NAME     TEXT NOT NULL," +
-            " START   INT  NOT NULL," +
-            " DURATION   INT  NOT NULL," +
-            " END     INT  NOT NULL);\n" +
-          " CREATE TABLE DNodes " +
-              "(ID INT PRIMARY KEY   NOT NULL," +
-              " NAME         TEXT NOT NULL," +
-              " TYPE         INT  NOT NULL," +
-              " PARENT_ID      INT  NOT NULL," +
-              " INPUT_NODE_IDS  TEXT NOT NULL," +
-              " OUTPUT_NODE_IDS TEXT NOT NULL," +
-              " CHILD_NODE_IDS  TEXT NOT NULL," +
-              " LEVEL           INT  NOT NULL," +
-              " TARGETS_SUPP    INT  NOT NULL," +
-              " SOURCE_CONTEXT  TEXT NOT NULL);\n" +
-          " CREATE TABLE ExecutionSummaries " +
-              "(NAME TEXT PRIMARY KEY NOT NULL," +
-              " TOTAL_TIME    INT  NOT NULL," +
-              " TOTAL_TIME_PCT REAL NOT NULL," +
-              " EXEC_TIME     INT  NOT NULL," +
-              " SYNC_TIME     INT  NOT NULL," +
-              " MEM_USAGE     INT  NOT NULL);" +
-          " CREATE TABLE TicTocNodeSummaries " +
-              "(NAME TEXT PRIMARY KEY NOT NULL," +
-              " TOTAL_TIME INT  NOT NULL);\n" +
-          " CREATE TABLE DNodeTypes " +
-              "(ID INT PRIMARY KEY NOT NULL,"+
-              " NAME TEXT NOT NULL);\n" +
-          " CREATE TABLE KernelMemAccessStats " +
-              "(NAME TEXT PRIMARY KEY NOT NULL," +
-              " L2_CACHE_MISS_PCT  INT  NOT NULL," +
-              " L2_CACHE_MISSES    INT NOT NULL," +
-              " L3_CACHE_MISS_PCT  INT  NOT NULL," +
-              " L3_CACHE_MISSES    INT NOT NULL);\n" +
-          " CREATE TABLE ArrayCacheAccessStats " +
-              "(ID INT PRIMARY KEY NOT NULL,"+
-              " NAME TEXT NOT NULL," +
-              " L1_CACHE_MISS_PCT    INT  NOT NULL," +
-              " L2_CACHE_MISS_PCT    INT  NOT NULL," +
-              " L3_CACHE_MISS_PCT    INT  NOT NULL," +
-              " LOCAL_DRAM_MISS_PCT  INT  NOT NULL," +
-              " REMOTE_DRAM_MISS_PCT INT  NOT NULL);\n" +
-          " INSERT INTO DNodeTypes (ID, NAME) VALUES(%d, 'WhileLoop');\n".format(DNodeType.WhileLoop.id) +
-          " INSERT INTO DNodeTypes (ID, NAME) VALUES(%d, 'Conditional');\n".format(DNodeType.Conditional.id) +
-          " INSERT INTO DNodeTypes (ID, NAME) VALUES(%d, 'MultiLoop');\n".format(DNodeType.MultiLoop.id) +
-          " INSERT INTO DNodeTypes (ID, NAME) VALUES(%d, 'SingleTask');\n".format(DNodeType.SingleTask.id) +
-          " INSERT INTO DNodeTypes (ID, NAME) VALUES(%d, 'Foreach');\n".format(DNodeType.Foreach.id) +
-          " INSERT INTO DNodeTypes (ID, NAME) VALUES(%d, 'EOG');\n".format(DNodeType.EOG.id) +
-          " INSERT INTO DNodeTypes (ID, NAME) VALUES(%d, 'EOP');\n".format(DNodeType.EOP.id) +
-          " CREATE TABLE TNodeTypes " +
-              "(ID INT PRIMARY KEY NOT NULL,"+
-              " NAME TEXT NOT NULL);\n" +
-          " INSERT INTO TNodeTypes (ID, NAME) VALUES(%d, 'Kernel');\n".format(TNodeType.Kernel.id) +
-          " INSERT INTO TNodeTypes (ID, NAME) VALUES(%d, 'KernelPartition');\n".format(TNodeType.KernelPartition.id) +
-          " INSERT INTO TNodeTypes (ID, NAME) VALUES(%d, 'Sync');\n".format(TNodeType.Sync.id) +
-          " INSERT INTO TNodeTypes (ID, NAME) VALUES(%d, 'TicTocRegion');\n".format(TNodeType.TicTocRegion.id) +
-          " COMMIT;"
+    val sql = s"""
+      BEGIN TRANSACTION; 
+
+      CREATE TABLE AppData
+        (JVM_UP_TIME_AT_APP_START INT PRIMARY KEY NOT NULL,
+        APP_START_TIME            INT NOT NULL,
+        APP_END_TIME              INT NOT NULL,
+        APP_TOTAL_TIME            INT NOT NULL,
+        THREAD_COUNT              INT NOT NULL,
+        THREAD_SCALA_COUNT        INT NOT NULL,
+        THREAD_CPP_COUNT          INT NOT NULL,
+        THREAD_CUDA_COUNT         INT NOT NULL,
+        IS_SCALA_ENABLED          INT NOT NULL,
+        IS_CPP_ENABLED            INT NOT NULL,
+        IS_CUDA_ENABLED           INT NOT NULL);
+
+      CREATE TABLE TNodes
+        (id             INT PRIMARY KEY  NOT NULL,
+        name            TEXT NOT NULL,
+        start           INT  NOT NULL,
+        duration        INT  NOT NULL,
+        end             INT  NOT NULL,
+        threadId        INT  NOT NULL, 
+        execTime        INT  NOT NULL,
+        syncTime        INT  NOT NULL,
+        type            INT  NOT NULL,
+        dNodeId         INT  NOT NULL,
+        parentId        INT  NOT NULL,
+        level           INT  NOT NULL,
+        childKernelIds  TEXT NOT NULL,
+        childSyncIds    TEXT NOT NULL);
+
+      CREATE TABLE TicTocTNodes
+        (ID      INT PRIMARY KEY NOT NULL,
+        NAME     TEXT NOT NULL,
+        START    INT  NOT NULL,
+        DURATION INT  NOT NULL,
+        END      INT  NOT NULL);
+
+      CREATE TABLE DNodes
+        (ID             INT PRIMARY KEY NOT NULL,
+        NAME            TEXT NOT NULL,
+        TYPE            INT  NOT NULL,
+        PARENT_ID       INT  NOT NULL,
+        INPUT_NODE_IDS  TEXT NOT NULL,
+        OUTPUT_NODE_IDS TEXT NOT NULL,
+        CHILD_NODE_IDS  TEXT NOT NULL,
+        LEVEL           INT  NOT NULL,
+        TARGETS_SUPP    INT  NOT NULL,
+        SOURCE_CONTEXT  TEXT NOT NULL);
+
+      CREATE TABLE ExecutionSummaries
+        (NAME          TEXT PRIMARY KEY NOT NULL,
+        TOTAL_TIME     INT  NOT NULL,
+        TOTAL_TIME_PCT REAL NOT NULL,
+        EXEC_TIME      INT  NOT NULL,
+        SYNC_TIME      INT  NOT NULL,
+        MEM_USAGE      INT  NOT NULL);
+
+      CREATE TABLE TicTocNodeSummaries
+        (NAME      TEXT PRIMARY KEY NOT NULL,
+        TOTAL_TIME INT NOT NULL);
+
+      CREATE TABLE KernelMemAccessStats
+        (NAME             TEXT PRIMARY KEY NOT NULL,
+        L2_CACHE_MISS_PCT INT  NOT NULL,
+        L2_CACHE_MISSES   INT NOT NULL,
+        L3_CACHE_MISS_PCT INT  NOT NULL,
+        L3_CACHE_MISSES   INT NOT NULL);
+
+      CREATE TABLE ArrayCacheAccessStats
+        (ID                  INT PRIMARY KEY NOT NULL,
+        NAME                 TEXT NOT NULL,
+        L1_CACHE_MISS_PCT    INT  NOT NULL,
+        L2_CACHE_MISS_PCT    INT  NOT NULL,
+        L3_CACHE_MISS_PCT    INT  NOT NULL,
+        LOCAL_DRAM_MISS_PCT  INT  NOT NULL,
+        REMOTE_DRAM_MISS_PCT INT  NOT NULL);
+
+      COMMIT;
+      """
 
     dbStmt.executeUpdate(sql)
   }
