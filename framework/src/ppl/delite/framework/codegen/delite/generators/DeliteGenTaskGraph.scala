@@ -15,6 +15,8 @@ import ppl.delite.framework.transform.LoopSoAOpt
 import ppl.delite.framework.datastructures.DeliteArray
 import ppl.delite.framework.analysis.{NestedLoopMappingAnalysis,StencilAnalysis}
 import ppl.delite.framework.datastructures.DeliteArrayFatExp
+// [ASPLOS hack]
+import ppl.delite.framework.codegen.hw.HwCodegen
 
 trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with LoopFusionOpt with LoopSoAOpt {
   val IR: HwOpsExp
@@ -147,6 +149,14 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
       }
     }
 
+    // [ASPLOS hack]: Don't emit hardware code if rhs isn't a loop
+    val isLoop = rhs match {
+      case _: AbstractLoop[_] => true
+      case _: AbstractFatLoop => true
+      case _: AbstractLoopNest[_] => true
+      case _ => false
+    }
+
     if (!skipEmission) for (gen <- generators) {
       val sep = java.io.File.separator
       //NOTE: GPU targets generate only device functions of multiloops at compile-time,
@@ -155,32 +165,40 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
         case g: GPUCodegen if (hasOutputSlotTypes(rhs)) => Config.buildDir + sep + gen + sep + "kernels" + sep + "device" + sep
         case _ => Config.buildDir + sep + gen + sep + "kernels" + sep
       }
-      val outDir = new File(buildPath); outDir.mkdirs()
-      val outFile = new File(buildPath + kernelName + "." + gen.fileExtension)
-      val kStream = new PrintWriter(outFile)
-      try { 
-        gen.withStream(kStream){ gen.emitKernel(sym, rhs) } 
-        kStream.close()
+      // [ASPLOS hack] Skip hw gen for non-loop nodes
+      val skipHack = gen match {
+        case h: HwCodegen => !isLoop
+        case _ => false
+      }
+      if (!skipHack) {
+        val outDir = new File(buildPath); outDir.mkdirs()
+        val outFile = new File(buildPath + kernelName + "." + gen.fileExtension)
+        val kStream = new PrintWriter(outFile)
+        try { 
 
-        // record that this kernel was successfully generated
-        supportedTargets += gen.toString
-
-        //add MetaData
-        if (gen.hasMetaData) {
-          metadata += new Pair(gen.toString, gen.getMetaData) {
-            override def toString = "\"" + _1 + "\" : " + _2 //note slightly different than standard JsonPair
-          }
-        }
-
-      } catch {
-        case e: GenerationFailedException => // no generator found
+          gen.withStream(kStream){ gen.emitKernel(sym, rhs) } 
           kStream.close()
-          outFile.delete()
-          if (Config.dumpException) {
-            System.err.println(gen.toString + ":" + (sym.map(quote)))
-            e.printStackTrace
+
+          // record that this kernel was successfully generated
+          supportedTargets += gen.toString
+
+          //add MetaData
+          if (gen.hasMetaData) {
+            metadata += new Pair(gen.toString, gen.getMetaData) {
+              override def toString = "\"" + _1 + "\" : " + _2 //note slightly different than standard JsonPair
+            }
           }
-          if (Config.strictGeneration(gen.toString, e)) throw e
+
+        } catch {
+          case e: GenerationFailedException => // no generator found
+            kStream.close()
+            outFile.delete()
+            if (Config.dumpException) {
+              System.err.println(gen.toString + ":" + (sym.map(quote)))
+              e.printStackTrace
+            }
+            if (Config.strictGeneration(gen.toString, e)) throw e
+        }
       }
     }
 
