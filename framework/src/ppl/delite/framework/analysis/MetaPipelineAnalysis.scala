@@ -31,7 +31,7 @@ trait MetaPipelineAnalysis extends FatBlockTraversal {
     exclude = excludeList
     processBodyElem(s, body)
     println(s"[MetaPipelineAnalysis - End] Loop $s")
-    bodyMetadata
+    bodyMetadata.reverse
   }
 
   def processBodyElem(s: Sym[Any], body: Def[_]) = {
@@ -43,6 +43,10 @@ trait MetaPipelineAnalysis extends FatBlockTraversal {
         traverseBlock(rFunc)
       case DeliteForeachElem(func, _) =>
       case DeliteTileElem (keys, cond, tile, rV, rFunc, buf, numDynamicChunks) =>
+        traverseBlock(tile)
+        if (!rFunc.isEmpty) {
+          traverseBlock(rFunc.get)
+        }
       case _ =>
     }
   }
@@ -57,13 +61,19 @@ trait MetaPipelineAnalysis extends FatBlockTraversal {
       if (!exclude.contains(s)) {
         bodyMetadata = s :: bodyMetadata
       }
+    case TP(s,l:AbstractLoopNest[_]) =>
+      if (!exclude.contains(s)) {
+        bodyMetadata = s :: bodyMetadata
+      }
+
     case TTP(lhs,mhs,rhs@SimpleFatLoop(sz,v,body)) =>
       val seenBefore = lhs.map(x => exclude.contains(x)).reduce(_&_)
       if (!seenBefore) {
         bodyMetadata = lhs :: bodyMetadata
       }
     case _ =>
-      super.traverseStm(stm)
+      // Do nothing
+      //super.traverseStm(stm)
     }
   }
 }
