@@ -116,6 +116,41 @@ object Reduce2DTestBlocked extends PPLCompiler {
   }
 }
 
+object FilterTest extends PPLCompiler {
+  def main() {
+    val dims = read(CONFIG_FILE).map{_.toInt}
+    val d0 = dims(0)
+
+    val vec = collect(d0){i => i}
+    vec.pprint
+
+    val filt = filter(d0){i => vec(i) > 3}{i => vec(i)}
+    filt.pprint
+    println("Filtered length: " + filt.length)
+  }
+}
+
+object FilterTestBlocked extends PPLCompiler {
+  def main() {
+    val dims = read(CONFIG_FILE).map{_.toInt}
+    val d0 = dims(0)
+
+    // --- Manually Blocked Dimensions ---
+    tile(d0, tileSize = 5, max = ?)
+    // -----------------------------------
+
+    val vec = collect(d0){i => i}
+    vec.pprint
+
+    val filt = tiledFilter(d0){ii =>
+      val vecBlk = vec.bslice(ii)
+      filter(ii.len){i => vecBlk(i) > 3}{i => vecBlk(i)}
+    }
+    filt.pprint
+    println("Filtered length: " + filt.length)
+  }
+}
+
 
 // Note: Not a true blocked collectCols operation (true one would have an inner tileAssemble)
 object CollectColsBlocked extends PPLCompiler {

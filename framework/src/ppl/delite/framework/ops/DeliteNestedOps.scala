@@ -10,7 +10,11 @@ trait DeliteNestedOps extends RangeVectorOps with Base {
   def nested_reduce[A:Manifest](zero: Rep[A], lSizes: List[Rep[Int]], f: List[Rep[Int]] => Rep[A], rF: (Rep[A], Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A]
   def nested_mreduce[A:Manifest](init: => Rep[A], lSizes: List[Rep[Int]], f: List[Rep[Int]] => Rep[A], rF: (Rep[A], Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A] 
   def nested_collect[A:Manifest,C<:DeliteCollection[A]:Manifest](lSizes: List[Rep[Int]], f: List[Rep[Int]] => Rep[A])(implicit ctx: SourceContext): Rep[C]
-  def tile_assemble[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](dims: List[Rep[Int]], init: => Rep[C], keys: List[ List[Rep[RangeVector]] => Rep[RangeVector] ], tile: List[Rep[RangeVector]] => Rep[T], reduce: Option[(Rep[T],Rep[T]) => Rep[T] ], mutable: Boolean = false)(implicit ctx: SourceContext): Rep[C]
+  
+  def filter[A:Manifest](size: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(func: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[DeliteArray[A]]
+  def tiledFilter[A:Manifest](size: Rep[Int])(func: Rep[RangeVector] => Rep[DeliteArray[A]])(implicit ctx: SourceContext): Rep[DeliteArray[A]]
+
+  def filterReduce[A:Manifest](size: Rep[Int])(zero: Rep[A], mutable: Boolean = false)(fFunc: Rep[Int] => Rep[Boolean])(mFunc: Rep[Int] => Rep[A])(rFunc: (Rep[A], Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A]
 }
 
 trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with DeliteCollectionOpsExp with DeliteArrayOpsExp with RangeVectorOpsExp { 
@@ -21,13 +25,13 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
    * @param sizes - iteration dimensions
    * @param func  - the foreach function
    */
-  case class NestedForeach(oVs: List[Sym[Int]], lSizes: List[Exp[Int]], func: Block[Unit])(implicit ctx: SourceContext) extends DeliteOpLoopNest[Unit] {
+  case class NestedForeach(oVs: List[Sym[Int]], lSizes: List[Exp[Int]], func: Block[Unit], lStrides: Option[List[Exp[Int]]] = None)(implicit ctx: SourceContext) extends DeliteOpLoopNest[Unit] {
     type OpType <: NestedForeach
 
     val nestLayers = lSizes.length  // Input domain rank
     lazy val vs: List[Sym[Int]] = copyOrElse(_.vs)(oVs)
     val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(lSizes)
-    val strides: List[Exp[Int]] = List.fill(nestLayers)(unit(1))
+    val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)( lStrides.getOrElse( List.fill(nestLayers)(unit(1)) ) )
 
     lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
       func = this.func,
@@ -36,7 +40,7 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
   }
   object ForeachHelper {
     def mirror(op: NestedForeach, f: Transformer)(implicit ctx: SourceContext) = op match {
-      case NestedForeach(v,s,b) => new { override val original = Some(f,op) } with NestedForeach(v,s,b)(ctx)
+      case NestedForeach(v,s,b,bfs) => new { override val original = Some(f,op) } with NestedForeach(v,s,b,bfs)(ctx)
     }
   }
 
@@ -59,14 +63,14 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
    * @param filter   - optional filter function
    * @param mutable  - mutable reduce (reduction is done by directly updating the accumulator)
    */
-  case class NestedReduce[A:Manifest](oVs: List[Sym[Int]], orV: (Sym[A],Sym[A]), lSizes: List[Exp[Int]], func: Block[A], rFunc: Block[A], init: Block[A], zero: Block[A], fFunc: List[Block[Boolean]], mutable: Boolean)(implicit ctx: SourceContext) extends DeliteOpLoopNest[A] {
+  case class NestedReduce[A:Manifest](oVs: List[Sym[Int]], orV: (Sym[A],Sym[A]), lSizes: List[Exp[Int]], lStrides: Option[List[Exp[Int]]], func: Block[A], rFunc: Block[A], init: Block[A], zero: Block[A], fFunc: List[Block[Boolean]], mutable: Boolean)(implicit ctx: SourceContext) extends DeliteOpLoopNest[A] {
     type OpType <: NestedReduce[A]
     
     val nestLayers = lSizes.length  // Input domain rank
     lazy val vs: List[Sym[Int]] = copyOrElse(_.vs)(oVs)
     lazy val rV: (Sym[A],Sym[A]) = copyOrElse(_.rV)(orV)
     lazy val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(lSizes)
-    lazy val strides: List[Exp[Int]] = List.fill(nestLayers)(unit(1))
+    lazy val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)(lStrides.getOrElse( List.fill(nestLayers)(unit(1)) ))
 
     // If stripFirst is false, accInit is used to allocate the accumulator, and is used in the reduction
     // Zero is only used if the collection is empty or if the first iteration of the filter function is false
@@ -84,7 +88,7 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
   }
   object ReduceHelper {
     def mirror[A:Manifest](op: NestedReduce[A], f: Transformer)(implicit ctx: SourceContext): NestedReduce[A] = op match {
-      case NestedReduce(v,r,s,l,b,i,z,c,m) => new { override val original = Some(f,op) } with NestedReduce(v,r,s,l,b,i,z,c,m)(op.mA, ctx)
+      case NestedReduce(v,r,s,t,l,b,i,z,c,m) => new { override val original = Some(f,op) } with NestedReduce(v,r,s,t,l,b,i,z,c,m)(op.mA, ctx)
     }
     def unerase[A:Manifest](op: NestedReduce[_]): NestedReduce[A] = op.asInstanceOf[NestedReduce[A]]
   }
@@ -95,7 +99,7 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
     val rV = (fresh[A], fresh[A])
     val func = reifyEffects(f(vs))
     val rFunc = reifyEffects(rF(rV._1,rV._2))
-    reflectPure( NestedReduce(vs, rV, lSizes, func, rFunc, zeroB, zeroB, Nil, false))
+    reflectPure( NestedReduce(vs, rV, lSizes, None, func, rFunc, zeroB, zeroB, Nil, false))
   }
   def nested_mreduce[A:Manifest](init: => Rep[A], lSizes: List[Rep[Int]], f: List[Rep[Int]] => Rep[A], rF: (Rep[A], Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A] = {
     val vs: List[Sym[Int]] = List.fill(lSizes.length)(fresh[Int].asInstanceOf[Sym[Int]])
@@ -104,9 +108,18 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
     val rVb = fresh[A]
     val func = reifyEffects(f(vs))
     val rFunc = reifyEffects(rF(rVa,rVb))
-    reflectPure( NestedReduce(vs, (rVa,rVb), lSizes, func, rFunc, initB, initB, Nil, true) )
+    reflectPure( NestedReduce(vs, (rVa,rVb), lSizes, None, func, rFunc, initB, initB, Nil, true) )
   }
  
+  // TODO: Nested version
+  def filterReduce[A:Manifest](size: Exp[Int])(zero: Exp[A], mutable: Boolean = false)(cond: Exp[Int] => Exp[Boolean])(func: Exp[Int] => Exp[A])(rFunc: (Exp[A], Exp[A]) => Exp[A])(implicit ctx: SourceContext): Exp[A] = {
+    val v = fresh[Int]
+    val rVa = if (mutable) reflectMutableSym(fresh[A]) else fresh[A]
+    val rVb = fresh[A]
+    val zeroBlk = reifyEffects(zero)
+
+    reflectPure( NestedReduce(List(v), (rVa,rVb), List(size), None, reifyEffects(func(v)), reifyEffects(rFunc(rVa,rVb)), zeroBlk, zeroBlk, List(reifyEffects(cond(v))), mutable) )
+  }
 
   /**
    * Nested parallel collect (includes map, zipWith, mapIndices)
@@ -169,6 +182,93 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
     val vs: List[Sym[Int]] = List.fill(lSizes.length)(fresh[Int].asInstanceOf[Sym[Int]])
     val func = reifyEffects(f(vs))
     reflectPure( NestedCollect[A,C](vs, lSizes, func) )
+  }
+
+  /**
+   * "Nested" flatMap / filter
+   * Neither of these operations make sense to be nested for now, but adding versions of them here because it'll likely make logic
+   * for fusion a litle easier later on
+   * @param ov        - symbol for loop iterator
+   * @param lSize     - size of loop (usually size of input collection)
+   * @param lStride   - loop stride
+   * @param func      - map/collect function for filter
+   * @param cond      - filter function
+   * @param iFunc     - flatMap function
+   * *** cond should be filled in for a filter (and func for an element-wise filter)
+   * *** iFunc should be filled in for a flatMap
+   * TODO: Some way to require this without splitting filter and flatmap into two separate nodes?
+   */
+  case class NestedFlatMap[A:Manifest,C<:DeliteCollection[A]:Manifest](ov: Sym[Int], lSize: Exp[Int], lStride: Exp[Int], func: Option[Block[A]], cond: Option[Block[Boolean]], iFunc: Option[Block[C]])(implicit ctx: SourceContext) extends DeliteOpLoopNest[C] {
+    type OpType <: NestedFlatMap[A,C]
+
+    val nestLayers = 1   
+    lazy val vs: List[Sym[Int]] = copyOrElse(_.vs)(List(ov))
+    lazy val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(List(lSize))
+    lazy val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)(List(lStride))
+
+    lazy val eV: Sym[A] = copyTransformedOrElse(_.eV)(fresh[A]).asInstanceOf[Sym[A]]
+    lazy val sV: Sym[Int] = copyTransformedOrElse(_.sV)(fresh[Int]).asInstanceOf[Sym[Int]]
+    lazy val iV: Sym[Int] = copyTransformedOrElse(_.iV)(fresh[Int]).asInstanceOf[Sym[Int]]
+    lazy val iV2: Sym[Int] = copyTransformedOrElse(_.iV2)(fresh[Int]).asInstanceOf[Sym[Int]]
+    lazy val aV2: Sym[C] = copyTransformedOrElse(_.aV2)(fresh[C]).asInstanceOf[Sym[C]]
+    lazy val allocVal: Sym[C] = copyTransformedOrElse(_.allocVal)(reflectMutableSym(fresh[C])).asInstanceOf[Sym[C]]
+
+    // Flat map bound vars
+    final lazy val iF: Sym[Int] = copyTransformedOrElse(_.iF)(fresh[Int]).asInstanceOf[Sym[Int]]
+    final lazy val eF: Sym[C] = copyTransformedOrElse(_.eF)(fresh[C]).asInstanceOf[Sym[C]]
+
+    lazy val buf = DeliteBufferElem[A,C,C](
+      eV = this.eV,
+      sV = this.sV,
+      iV = this.iV,
+      iV2 = this.iV2,
+      allocVal = this.allocVal,
+      aV2 = this.aV2,
+      alloc = reifyEffects(dc_alloc[A,C](allocVal,sV)),
+      apply = unusedBlock,
+      update = reifyEffects(dc_update(allocVal,ov,eV)),
+      append = reifyEffects(dc_append(this.allocVal,ov,this.eV)),
+      appendable = reifyEffects(dc_appendable(this.allocVal,ov,this.eV)),
+      setSize = reifyEffects(dc_set_logical_size(this.allocVal,this.sV)),
+      allocRaw = reifyEffects(dc_alloc[A,C](this.allocVal,this.sV)),
+      copyRaw = reifyEffects(dc_copy(this.aV2,this.iV,this.allocVal,this.iV2,this.sV)),
+      finalizer = unusedBlock
+    )
+    lazy val body: Def[C] = copyBodyOrElse(DeliteCollectElem[A,C,C](
+      iFunc = this.iFunc,
+      iF = this.iFunc.map{_ => this.iF},
+      sF = this.iFunc.map{_ => reifyEffects(dc_size(eF))},
+      eF = this.iFunc.map{_ => this.eF},
+      func = func.getOrElse(reifyEffects(dc_apply(this.eF, this.iF))),
+      cond = cond.toList,
+      par = dc_parallelization(allocVal, hasConditions = true),
+      buf = this.buf,
+      numDynamicChunks = this.numDynamicChunks
+    ))
+
+    val mA = manifest[A]
+    val mC = manifest[C]
+  }
+  object FlatMapHelper {
+    def mirror[A:Manifest,C<:DeliteCollection[A]:Manifest](op: NestedFlatMap[A,C], f: Transformer)(implicit ctx: SourceContext): NestedFlatMap[A,C] = op match {
+      case NestedFlatMap(v,s,t,b,c,i) => new { override val original = Some(f,op) } with NestedFlatMap(v,s,t,b,c,i)(op.mA,op.mC,ctx)
+    }
+    def unerase[A:Manifest,C<:DeliteCollection[A]:Manifest](op: NestedFlatMap[_,_]): NestedFlatMap[A,C] = op.asInstanceOf[NestedFlatMap[A,C]]
+  }
+
+  def filter[A:Manifest](size: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(func: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[DeliteArray[A]] = {
+    val v = fresh[Int]
+    val condBlk = reifyEffects(cond(v))
+    val funcBlk = reifyEffects(func(v))
+    reflectPure( NestedFlatMap[A,DeliteArray[A]](v, size, unit(1), Some(funcBlk), Some(condBlk), None) )
+  }
+
+  def tiledFilter[A:Manifest](size: Rep[Int])(func: Rep[RangeVector] => Rep[DeliteArray[A]])(implicit ctx: SourceContext): Rep[DeliteArray[A]] = {
+    val v = fresh[Int]
+    val stride = freshTuna(size)
+    val rv = RangeVector(v, stride)
+    val iFuncBlk = reifyEffects(func(rv))
+    reflectPure( NestedFlatMap[A,DeliteArray[A]](v, size, stride, None, None, Some(iFuncBlk)) )
   }
 
 
@@ -253,7 +353,7 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
     def unerase[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](op: TileAssemble[_,_,_]): TileAssemble[A,T,C] = op.asInstanceOf[TileAssemble[A,T,C]]
   }
 
-  def tile_assemble[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](dims: List[Exp[Int]], init: => Rep[C], keys: List[ List[Exp[RangeVector]] => Exp[RangeVector] ], tile: List[Exp[RangeVector]] => Exp[T], reduce: Option[(Exp[T],Exp[T]) => Exp[T] ], mutable: Boolean = false)(implicit ctx: SourceContext): Exp[C] = {
+  /*def tile_assemble[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](dims: List[Exp[Int]], init: => Rep[C], keys: List[ List[Exp[RangeVector]] => Exp[RangeVector] ], tile: List[Exp[RangeVector]] => Exp[T], reduce: Option[(Exp[T],Exp[T]) => Exp[T] ], mutable: Boolean = false)(implicit ctx: SourceContext): Exp[C] = {
     val n = dims.length
 
     val strides: List[Tunable] = List.tabulate(n){i => freshTuna(dims(i)) }
@@ -285,51 +385,7 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
     val rFunc = reduce.map{rF => reifyEffects(rF(rV._1,rV._2))}
 
     reflectPure( TileAssemble[A,T,C](vs, rV, dims, buffAlloc, strides, kFunc, Nil, func, rFunc, tDims, unitDims) )
-  }
-
-  /**
-   * Block Slice
-   * Create an m-dimensional slice from an n-dimensional collection
-   * TODO: What should this be? An elem? A single task? A loop with a buffer body? Definitely can't fuse with anything right now
-   * TODO: Probably need to move this node elsewhere 
-   *
-   * destDims should have n elements, some of which may be Const(1).
-   * indices of elements of destDims which are Const(1) should be in unitDims
-   */
-  case class BlockSlice[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](src: Exp[C], srcOffsets: List[Exp[Int]], srcStrides: List[Exp[Int]], destDims: List[Exp[Int]], unitDims: List[Int])(implicit ctx: SourceContext) extends DeliteOp[T] {
-    type OpType <: BlockSlice[A,T,C]
-
-    val n = srcOffsets.length
-    val m = destDims.length - unitDims.length
-    val deltaInds = List.tabulate(n){i=>i}.filterNot{i => unitDims.contains(i) }
-
-    val nestLayers = m
-    val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(destDims)     // dest dimensions
-    val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)(srcStrides) // src strides (for non-unit dims)
-
-    // Bound variables
-    val vs: List[Sym[Int]] = copyOrElse(_.vs)(List.fill(m)(fresh[Int].asInstanceOf[Sym[Int]]))    // dest indices
-    val bV: List[Sym[Int]] = copyOrElse(_.bV)( List.fill(n)(fresh[Int].asInstanceOf[Sym[Int]]))  // src indices
-    val tileVal: Sym[T] = copyTransformedOrElse(_.tileVal)(reflectMutableSym(fresh[T])).asInstanceOf[Sym[T]]      // dest buffer
-    val bE: Sym[A] = copyTransformedOrElse(_.bE)(fresh[A]).asInstanceOf[Sym[A]]          // Single element (during copying out)
-
-    // collection functions
-    val bApply: Block[A] = copyTransformedBlockOrElse(_.bApply)(reifyEffects(dc_block_apply(src, bV, Nil)))           // src apply
-    val tUpdate: Block[Unit] = copyTransformedBlockOrElse(_.tUpdate)(reifyEffects(dc_block_update(tileVal, vs, bE, Nil)))  // dest update
-    val allocTile: Block[T] = copyTransformedBlockOrElse(_.allocTile)(reifyEffects(dc_alloc_block[A,T](tileVal, destDims, Nil))) // dest alloc 
-
-    val mA = manifest[A]
-    val mT = manifest[T]
-    val mC = manifest[C]
-  }
-
-  object BlockSliceHelper {
-    def mirror[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](op: BlockSlice[A,T,C], f: Transformer)(implicit ctx: SourceContext): BlockSlice[A,T,C] = op match {
-      case BlockSlice(src,srcO,srcS,dD,uD) => 
-        new {override val original = Some(f,op)} with BlockSlice[A,T,C](f(src),f(srcO),f(srcS),f(dD),uD)(op.mA,op.mT,op.mC,ctx)
-    }
-    def unerase[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](op: BlockSlice[_,_,_]): BlockSlice[A,T,C] = op.asInstanceOf[BlockSlice[A,T,C]]
-  }
+  }*/
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case e: NestedForeach => 
@@ -351,19 +407,19 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
       val op = CollectHelper.unerase(e)(e.mA,e.mC)
       reflectMirrored(Reflect(CollectHelper.mirror(op,f)(e.mA,e.mC,pos), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
 
+    case e: NestedFlatMap[_,_] => 
+      val op = FlatMapHelper.unerase(e)(e.mA,e.mC)
+      reflectPure(FlatMapHelper.mirror(op,f)(e.mA,e.mC,pos))(mtype(manifest[A]), pos)
+    case Reflect(e: NestedFlatMap[_,_], u, es) => 
+      val op = FlatMapHelper.unerase(e)(e.mA,e.mC)
+      reflectMirrored(Reflect(FlatMapHelper.mirror(op,f)(e.mA,e.mC,pos), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+
     case e: TileAssemble[_,_,_] => 
       val op = TileAssembleHelper.unerase(e)(e.mA,e.mT,e.mC)
       reflectPure(TileAssembleHelper.mirror(op,f)(e.mA,e.mT,e.mC,pos))(mtype(manifest[A]), pos)
     case Reflect(e: TileAssemble[_,_,_], u, es) =>
       val op = TileAssembleHelper.unerase(e)(e.mA,e.mT,e.mC)
       reflectMirrored(Reflect(TileAssembleHelper.mirror(op,f)(e.mA,e.mT,e.mC,pos), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
-
-    case e: BlockSlice[_,_,_] => 
-      val op = BlockSliceHelper.unerase(e)(e.mA,e.mT,e.mC)
-      reflectPure(BlockSliceHelper.mirror(op,f)(e.mA,e.mT,e.mC,pos))(mtype(manifest[A]), pos)
-    case Reflect(e: BlockSlice[_,_,_], u, es) =>
-      val op = BlockSliceHelper.unerase(e)(e.mA,e.mT,e.mC)
-      reflectMirrored(Reflect(BlockSliceHelper.mirror(op,f)(e.mA,e.mT,e.mC,pos), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
 
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
@@ -373,58 +429,82 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
     case op: NestedReduce[_] => Nil
     case op: NestedCollect[_,_] => Nil
     case op: TileAssemble[_,_,_] => Nil
-    case op: BlockSlice[_,_,_] => Nil
+    case _ => super.blocks(e)
+  }
+}
+
+trait DeliteNestedOpsExpOpt extends DeliteNestedOpsExp { this: DeliteOpsExp => 
+  /* Loop Unrolling */
+  // What's generally the largest size we want to unroll?
+  val MaxLoopSize = 100
+
+  // Adapted from MultiArray implementer
+  private def reductionTree[A:Manifest](x: List[Exp[A]])(f: (Exp[A],Exp[A]) => Exp[A]): List[Exp[A]] = {
+    if (x.length == 1)
+      x
+    else if (x.length % 2 == 0)
+      reductionTree(List.tabulate(x.length / 2){i => f(x(2*i), x(2*i + 1)) })(f)
+    else
+      reductionTree(List.tabulate(x.length / 2){i => f(x(2*i), x(2*i + 1)) } :+ x.last)(f)
   }
 
-  // dependencies
-  override def syms(e: Any): List[Sym[Any]] = e match {
-    case op: BlockSlice[_,_,_] => syms(op.src) ::: syms(op.srcOffsets) ::: syms(op.strides) ::: syms(op.sizes) ::: syms(op.bApply) ::: syms(op.tUpdate) ::: syms(op.allocTile)
-    case _ => super.syms(e)
+  def calcInds(i: Int, dims: List[Int]) = {
+    if (dims.length == 1) { List(i) }
+    else {
+      List.tabulate(dims.length) { d => 
+        if (d == dims.length - 1) { i % dims(d) }
+        else { ( i / (dims.drop(d+1).reduce(_*_)) ) % dims(d) }
+      }
+    }
   }
 
-  override def readSyms(e: Any): List[Sym[Any]] = e match {
-    case op: BlockSlice[_,_,_] => readSyms(op.src) ::: readSyms(op.srcOffsets) ::: readSyms(op.strides) ::: readSyms(op.sizes) ::: readSyms(op.bApply) ::: readSyms(op.tUpdate) ::: readSyms(op.allocTile)
-    case _ => super.readSyms(e)
+  def unrollReduce[A:Manifest](lSizes: List[Rep[Int]], f: List[Rep[Int]] => Rep[A], rF: (Rep[A],Rep[A]) => Rep[A], mutable: Boolean)(implicit ctx: SourceContext): Option[Rep[A]] = {
+    val sizes = lSizes.filter(_.isInstanceOf[Const[_]]).map(_.asInstanceOf[Const[Int]].x)
+    if (sizes.length == lSizes.length) {
+      val total = sizes.reduce(_*_)
+      if (!mutable && total < MaxLoopSize) {
+        val iters = List.tabulate(total){i => 
+          val inds = calcInds(i, sizes)
+          f(inds.map(unit(_)))
+        }
+        val result = reductionTree(iters)(rF).apply(0)
+        Some(result)
+      }
+      else None
+    }
+    else None
   }
 
-  override def boundSyms(e: Any): List[Sym[Any]] = e match {
-    case op: BlockSlice[_,_,_] => op.vs ::: op.bV ::: List(op.tileVal, op.bE) ::: effectSyms(op.bApply) ::: effectSyms(op.tUpdate) ::: effectSyms(op.allocTile) 
-    case _ => super.boundSyms(e)
+  override def nested_reduce[A:Manifest](zero: Rep[A], lSizes: List[Rep[Int]], f: List[Rep[Int]] => Rep[A], rF: (Rep[A], Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A] = {
+    unrollReduce(lSizes, f, rF, false) match {
+      case Some(e) => e
+      case _ => super.nested_reduce(zero, lSizes, f, rF)
+    }
   }
 
-  override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
-    case op: BlockSlice[_,_,_] => freqNormal(op.src) ::: freqNormal(op.srcOffsets) ::: freqNormal(op.strides) ::: freqNormal(op.sizes) ::: freqHot(op.bApply) ::: freqHot(op.tUpdate) ::: freqNormal(op.allocTile)
-    case _ => super.symsFreq(e)
-  }
-
-  // aliases and sharing
-  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
-    case op: BlockSlice[_,_,_] => Nil
-    case _ => super.aliasSyms(e)
-  }
-  override def containSyms(e: Any): List[Sym[Any]] = e match {
-    case op: BlockSlice[_,_,_] => Nil
-    case _ => super.containSyms(e)
-  }
-  override def extractSyms(e: Any): List[Sym[Any]] = e match {
-    case op: BlockSlice[_,_,_] => Nil
-    case _ => super.extractSyms(e)
-  }
-  override def copySyms(e: Any): List[Sym[Any]] = e match {
-    case op: BlockSlice[_,_,_] => Nil
-    case _ => super.copySyms(e)
-  }
+  // Do we ever want to unroll a mutable reduce?
+  /*def nested_mreduce[A:Manifest](init: => Rep[A], lSizes: List[Rep[Int]], f: List[Rep[Int]] => Rep[A], rF: (Rep[A], Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A] = {
+    unrollReduce(lSizes, f, rF, true) match {
+      case Some(e) => e
+      case _ => super.nested_reduce(zero, lSizes, f, rF)
+    }
+  }*/
 }
 
 // --- Generation of Nested ops
 // TODO: Only sequential right now
-// TODO: Probably want to move this elsewhere
+// TODO: Probably want to move this elsewhere?
 trait ScalaGenNestedOps extends ScalaGenDeliteOps {
   val IR: DeliteNestedOpsExp with DeliteOpsExp
   import IR._
 
+  // Test to see if any tunable mappings make it through fusion
+  override def quote(x: Exp[Any]) = {
+    super.quote(x) + (if (tunableParams.contains(x)) " /* " + tunableParams(x).toString + " */" else "")
+  }
+
   // HACK: Allows non-vars to be generated as vars...
-  private def emitBoundVarDef(sym: Sym[Any], rhs: String): Unit = {
+  protected def emitBoundVarDef(sym: Sym[Any], rhs: String): Unit = {
     stream.println("var " + quote(sym) + ": " + remap(sym.tp) + " = " + rhs)
   }
 
@@ -435,7 +515,6 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
 
   // --- Reduce
   private def emitReduceElemStripped(sym: Sym[Any], elem: DeliteReduceElem[_]) {
-
     if (elem.cond.nonEmpty) {
       elem.cond.foreach( emitBlock(_) )
       stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {"/*}*/)
@@ -455,7 +534,7 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
     stream.println("// ---- Begin Reduce Elem")
     if (elem.cond.nonEmpty) {
       elem.cond.foreach( emitBlock(_) )
-      stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {"/*}*/)
+      stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
       emitBlock(elem.func)
       if (elem.stripFirst) 
         emitInitOrReduction(sym, elem)
@@ -490,9 +569,45 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
 
   // --- Collect
   private def emitCollectElem(sym: Sym[Any], elem: DeliteCollectElem[_,_,_]) {
-    emitBlock(elem.func)
-    emitValDef(elem.buf.eV, quote(getBlockResult(elem.func)))
-    emitBlock(elem.buf.update)
+    if (elem.par == ParFlat) {
+      emitBlock(elem.func)
+      emitValDef(elem.buf.eV, quote(getBlockResult(elem.func)))
+      emitBlock(elem.buf.update)
+    }
+    else {
+      if (!elem.cond.isEmpty) {
+        elem.cond.foreach( emitBlock(_) )
+        stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
+      }
+
+      if (elem.iFunc.isDefined) {
+        emitBlock(elem.iFunc.get)
+        emitValDef(elem.eF.get, quote(getBlockResult(elem.iFunc.get)))
+        emitBlock(elem.sF.get)
+        emitVarDef(quote(elem.iF.get), remap(elem.iF.get.tp), "0")
+        stream.println("while (" + quote(elem.iF.get) + " < " + quote(getBlockResult(elem.sF.get)) + ") { //flatMap loop") 
+      }
+
+      emitBlock(elem.func)
+      emitValDef(elem.buf.allocVal, quote(sym)+"_buf")
+      emitValDef(elem.buf.eV, quote(getBlockResult(elem.func)))
+
+      // Set active buffer and active buffer size for other codegen functions
+      getActBuffer = List(quote(sym) + "_buf")
+      getActSize = quote(sym) + "_size"
+
+      // Assuming here data structure is appendable
+      // (Note that append function includes reallocating / copying to new buffer when necessary)
+      emitBlock(elem.buf.append)
+      emitAssignment(quote(sym) + "_size", quote(sym) + "_size" + " + 1")
+      emitAssignment(quote(sym)+"_conditionals", quote(sym)+"_conditionals" + " + 1")
+
+      if (elem.iFunc.nonEmpty) {
+        emitAssignment(quote(elem.iF.get), quote(elem.iF.get) + " + 1")
+        stream.println("}") //close flatmap loop
+      }
+      if (elem.cond.nonEmpty) stream.println("}") // close filter function
+    }
   }
 
   private def emitPrealloc(sym: Sym[Any], rhs: Def[Any]) = rhs match {
@@ -506,10 +621,19 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
         emitBlock(elem.buf.allocTile)
         emitValDef(elem.buf.partVal, quote(getBlockResult(elem.buf.allocTile)))
       }
-    case elem: DeliteCollectElem[_,_,_] =>
+    case elem: DeliteCollectElem[_,_,_] if elem.par == ParFlat => 
       stream.println("// --- Preallocate collect result")
       emitBlock(elem.buf.alloc)
       emitValDef(quote(elem.buf.allocVal), remap(getBlockResult(elem.buf.alloc).tp), quote(getBlockResult(elem.buf.alloc)))
+
+    case elem: DeliteCollectElem[_,_,_] if elem.par == ParBuffer || elem.par == ParSimpleBuffer => 
+      stream.println("// --- Preallocate flatMap buffer")
+      emitVarDef(quote(elem.buf.sV), remap(elem.buf.sV.tp), "0")
+      emitBlock(elem.buf.alloc)      
+      emitVarDef(quote(sym) + "_buf", remap(getBlockResult(elem.buf.alloc).tp), quote(getBlockResult(elem.buf.alloc)))
+      
+      emitVarDef(quote(sym) + "_size", remap(Manifest.Int), "0") 
+      emitVarDef(quote(sym) + "_conditionals", remap(Manifest.Int), "0")
 
     case elem: DeliteReduceElem[_] => 
       stream.println("// --- Create reduce zero")
@@ -544,39 +668,21 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
     case elem: DeliteForeachElem[_] => 
       emitValDef(quote(sym), remap(sym.tp), "()")  //TODO: Need this for other targets? (Currently, other targets just don't generate unit types)
 
-    case elem: DeliteCollectElem[_,_,_] => 
-      // Removed unused finalizer call
+    // Removed unused finalizer call for now
+    case elem: DeliteCollectElem[_,_,_] if elem.par == ParFlat => 
       emitValDef(sym, quote(elem.buf.allocVal))
+
+    case elem: DeliteCollectElem[_,_,_] if elem.par == ParBuffer || elem.par == ParSimpleBuffer =>
+      emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), quote(sym) + "_buf")
+      getActBuffer = List(quote(elem.buf.allocVal)) // Set active buffer for other codegen functions
+      emitAssignment(quote(elem.buf.sV), quote(sym) + "_conditionals")
+      emitBlock(elem.buf.setSize)
+      emitValDef(sym, getActBuffer(0)) // Result of flatMap is current active buffer
 
     case _ => // Nothing
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case op: BlockSlice[_,_,_] => 
-      stream.println("// --- Preallocate output")
-      emitBlock(op.allocTile)
-      emitValDef(op.tileVal, quote(getBlockResult(op.allocTile)))
-
-      for (i <- 0 until op.unitDims.length) {
-        emitValDef(op.bV( op.unitDims(i)), quote(op.srcOffsets(op.unitDims(i))) )
-      }
-
-      stream.println("// --- Block slice")
-      for (i <- 0 until op.m) {
-        emitBoundVarDef(op.bV( op.deltaInds(i)), quote(op.srcOffsets(op.deltaInds(i))) )
-        stream.println("for (" + quote(op.vs(i)) + " <- 0 until " + quote(op.destDims(op.deltaInds(i))) + ") {")
-      }
-      emitBlock(op.bApply)
-      emitValDef(op.bE, quote(getBlockResult(op.bApply)))
-      emitBlock(op.tUpdate)
-
-      for (i <- 0 until op.m) {
-        stream.println(quote(op.bV( op.deltaInds(op.m - i - 1))) + " += " + quote( op.strides( op.deltaInds(op.m - i - 1) ) ) )
-        stream.println("}")
-      }
-
-      emitValDef(sym, quote(op.tileVal))
-
     case op: AbstractLoopNest[_] => 
       val vs = op.vs
       val sizes = op.sizes
