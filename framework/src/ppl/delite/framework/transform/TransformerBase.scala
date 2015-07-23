@@ -18,6 +18,7 @@ import scala.reflect.SourceContext
       printmsg(sw.toString())
     }*/
 
+// TODO: Unify this with ForwardTransformer - there's a lot of duplication here
 trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor { self =>
   val IR: DeliteOpsExp with MetadataOps
   import IR._
@@ -60,7 +61,12 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor {
   override def apply[A:Manifest](xs: Block[A]): Block[A] = transformBlock(xs)
 
   override def apply[A](x: Exp[A]): Exp[A] = subst.get(x) match { 
-    case Some(y) => y.asInstanceOf[Exp[A]] 
+    case Some(y) => 
+      // HACK: Mirror tunable parameter mappings
+      if (tunableParams.contains(x) && !tunableParams.contains(y))
+        tunableParams += (y -> tunableParams(x))
+      
+      y.asInstanceOf[Exp[A]] 
     case _ => x
   }
 

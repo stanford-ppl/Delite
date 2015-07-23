@@ -17,16 +17,19 @@ import ppl.delite.framework.ops._
 
 // --- PPL Ops
 trait PPLOps extends DeliteDSLOps
-  with FlattenedArrayOps with PPLBlockingOps {
+  with FlattenedArrayOps with PPLNestedOps {
   this: PPLApp =>
 
-  // Configuration file for test input dimensions
+  // Configuration file for test input dimensions (matmult, outer product)
   val CONFIG_FILE: Rep[String] = unit("/home/david/PPL/hyperdsl/delite/asplos/apps/config.txt")
+  // Folder for benchmark datasets
+  val DATA_FOLDER: Rep[String] = unit("/home/david/PPL/data/")
 }
 
-// Note: LowerableOps includes transformer, so mix-in order matters here
-trait PPLOpsExp extends FlattenedArrayLowerableOpsExp with DeliteDSLOpsExp with PPLOps
-  with PPLBlockingOpsExp with SimpleProfileOpsExp {
+// Note: FlattenedArrayLowerableOpsExp includes transformer, so mix-in order matters here
+// In particular, it must come before DeliteDSLOpsExp (which includes SOA transformer)
+trait PPLOpsExp extends FlattenedArrayOpsExpOpt with DeliteDSLOpsExp with PPLOps
+  with PPLNestedOpsExp with SimpleProfileOpsExp {
   this: PPLCompiler => 
 
   override def getCodeGenPkg(t: Target{val IR: PPLOpsExp.this.type}) : GenericFatCodegen{val IR: PPLOpsExp.this.type} = t match {
@@ -40,7 +43,7 @@ trait PPLOpsExp extends FlattenedArrayLowerableOpsExp with DeliteDSLOpsExp with 
 
 // --- PPL Code Generators
 trait ScalaGenPPL extends ScalaGenDeliteDSL
-  with ScalaGenSimpleProfileOps with ScalaGenNestedOps
+  with ScalaGenSimpleProfileOps with ScalaGenNestedOps with ScalaGenFlattenedArrayOps
   { val IR: PPLOpsExp }
 
 trait CudaGenPPL extends CudaGenDeliteDSL
@@ -61,4 +64,3 @@ trait HwGenPPL extends HwCodegen with HwGenDeliteDSL
 // --- PPL Stubs
 trait PPLCompiler extends PPLOpsExp with DeliteDSLCompiler with PPLApp
 trait PPLApp extends DeliteDSLApplication with PPLOps
-

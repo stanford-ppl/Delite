@@ -11,7 +11,7 @@ trait DeliteSimpleOps extends Base {
 
   //def mreduce[A:Manifest](size: Rep[Int], init: () => Rep[A])(mFunc: Rep[Int] => Rep[A])(rFunc: (Rep[A], Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A] 
 
-  def filterReduce[A:Manifest](size: Rep[Int], zero: Rep[A], mutable: Boolean = false)(fFunc: Rep[Int] => Rep[Boolean])(mFunc: Rep[Int] => Rep[A])(rFunc: (Rep[A], Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A]
+  //def filter[A:Manifest](size: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(func: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[DeliteArray[A]]
 
   def read(path: Rep[String])(implicit ctx: SourceContext): Rep[DeliteArray[String]]
 
@@ -176,12 +176,12 @@ trait DeliteSimpleOpsExp extends DeliteSimpleOps with DeliteOpsExpIR with Delite
     reflectPure( ReduceFactory.regen(v, (rVa, rVb), size, reifyEffects(mFunc(v)), reifyEffects(rFunc(rVa,rVb)), reifyEffects( init() ), reifyEffects( init() ), Nil, true) )
   }*/
 
-  def filterReduce[A:Manifest](size: Exp[Int], zero: Exp[A], mutable: Boolean = false)(fFunc: Exp[Int] => Exp[Boolean])(mFunc: Exp[Int] => Exp[A])(rFunc: (Exp[A], Exp[A]) => Exp[A])(implicit ctx: SourceContext): Exp[A] = {
+  /*def filterReduce[A:Manifest](size: Exp[Int])(zero: Exp[A], mutable: Boolean = false)(fFunc: Exp[Int] => Exp[Boolean])(mFunc: Exp[Int] => Exp[A])(rFunc: (Exp[A], Exp[A]) => Exp[A])(implicit ctx: SourceContext): Exp[A] = {
     val v = fresh[Int]
     val rVa = if (mutable) reflectMutableSym(fresh[A]) else fresh[A]
     val rVb = fresh[A]
     reflectPure( ReduceFactory(v, (rVa,rVb), size, reifyEffects(mFunc(v)), reifyEffects(rFunc(rVa,rVb)), zero, Some(reifyEffects(fFunc(v))), mutable) )
-  }
+  }*/
 
 
   abstract class SimpleMapLike[R:Manifest,C<:DeliteCollection[R]:Manifest] extends DeliteOpLoop[C] {
@@ -240,11 +240,6 @@ trait DeliteSimpleOpsExp extends DeliteSimpleOps with DeliteOpsExpIR with Delite
       numDynamicChunks = this.numDynamicChunks
     ))
 
-    override def toString = {
-      //val condLs = body.asInstanceOf[DeliteCollectElem[R,C,C]].cond
-      //val condStr = if (condLs.isEmpty) "" else  ", cond: " + condLs.mkString(",")
-      "SimpleCollect(" + size + ", iter: " + v + ", " + body + ")"
-    }
     val mR = manifest[R]
     val mC = manifest[C]
   }
@@ -265,7 +260,6 @@ trait DeliteSimpleOpsExp extends DeliteSimpleOps with DeliteOpsExpIR with Delite
     val v = fresh[Int]
     reflectPure( CollectFactory.array(v, n, reifyEffects(f(v))) )
   }*/
-
 
   /**
    * Parallel flat map (more general form of collect)
