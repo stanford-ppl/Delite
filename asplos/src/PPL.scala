@@ -28,9 +28,17 @@ trait PPLOps extends DeliteDSLOps
 
 // Note: FlattenedArrayLowerableOpsExp includes transformer, so mix-in order matters here
 // In particular, it must come before DeliteDSLOpsExp (which includes SOA transformer)
-trait PPLOpsExp extends FlattenedArrayOpsExpOpt with DeliteDSLOpsExp with PPLOps
+trait PPLOpsExp extends PPLOps 
+  /*with StripMiningExp with PatternPromotingExp*/ with SlicePushingExp
+  with FlattenedArrayOpsExpOpt with DeliteDSLOpsExp
   with PPLNestedOpsExp with SimpleProfileOpsExp {
   this: PPLCompiler => 
+
+  // These should eventually move back to their respective traits
+  //appendVisitor(stripMiner)
+  //appendVisitor(patternPromotion)
+  //appendVisitor(slicePush)
+  appendVisitor(applyLowering)
 
   override def getCodeGenPkg(t: Target{val IR: PPLOpsExp.this.type}) : GenericFatCodegen{val IR: PPLOpsExp.this.type} = t match {
     case _:TargetScala => new ScalaGenPPL{val IR: PPLOpsExp.this.type = PPLOpsExp.this}

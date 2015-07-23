@@ -210,6 +210,7 @@ trait MultiArrayWrapTransformer extends TransformerBase {
       } else None
 
     // TODO: Clean this up
+    // TODO: Change to a tunneling transformer?
     case Reflect(d: AtomicWrite[_], _, _) => substituteAtomicWrite(s, d, Nil) // technically not right... "s" is in update sym position
     case Reflect(d, u, es) => transformSym(s, d).map{e => 
       transferMetadata(e, s, d)

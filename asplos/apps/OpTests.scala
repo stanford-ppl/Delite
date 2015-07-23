@@ -170,6 +170,92 @@ object CollectColsBlocked extends PPLCompiler {
   }
 }
 
+// Push slice operation into if-statement at same level - doesn't really help anything here
+object SlicePushTest1 extends PPLCompiler {
+  def main() {
+    val dims = read(CONFIG_FILE).map{d => d.toInt} // Set in PPL.scala
+    val d0 = dims(0)
+    val sz = Math.min(d0, 5)
+    val c  = dims(1)
+
+    val vec0 = collect(d0){i => i + 5}
+    val vec1 = collect(d0){i => 5 - i}
+
+    val vec = if (c > 10) vec1 else vec0
+
+    val vecSlice = vec.bslice(0 :@: sz)
+    vecSlice.pprint
+  }
+}
+
+// Push slice into if statement, resulting in slice getting pulled out of loop
+object SlicePushTest2 extends PPLCompiler {
+  def main() { 
+    val dims = read(CONFIG_FILE).map{d => d.toInt} // Set in PPL.scala
+    val N = dims(0)
+    val D = Math.min(N, 5)
+    val R = dims(1)
+
+    val y = collect(R){i => i}
+    val vec0 = collect(N){i => i}
+    val vec1 = collect(N){i => 5 - i}
+
+    vec0.pprint
+    vec1.pprint
+
+    val sm = blockAssem[Int,Array1D[Int],Array2D[Int]](R)(b0 = 1)(Array2D[Int](R,D))({ii => ii},{ii => 0 :@: D}){ii =>
+      val vec = if (y(ii.start) > 10) vec1 else vec0
+      vec.bslice(0 :@: D)
+    }
+    sm.pprint
+  }
+}
+
+// Same as 2, but if statement is outside of loop to begin with
+object SlicePushTest3 extends PPLCompiler {
+  def main() {
+    val dims = read(CONFIG_FILE).map{d => d.toInt} // Set in PPL.scala
+    val N = dims(0)
+    val D = Math.min(N, 5)
+    val R = dims(1)
+
+    val y = collect(R){i => i}
+    val vec0 = collect(N){i => i}
+    val vec1 = collect(N){i => 5 - i}
+
+    vec0.pprint
+    vec1.pprint
+
+    val vec = if (y(0) > 10) vec1 else vec0
+    val sm = blockAssem[Int,Array1D[Int],Array2D[Int]](R)(b0 = 1)(Array2D[Int](R,D))({ii => ii},{ii => 0 :@: D}){ii =>
+      vec.bslice(0 :@: D)
+    }
+    sm.pprint
+  }
+}
+
+object SlicePushTest4 extends PPLCompiler {
+  def main() {
+    val dims = read(CONFIG_FILE).map{d => d.toInt} // Set in PPL.scala
+    val N = dims(0)
+    val D = Math.min(N, 5)
+    val R = dims(1)
+
+    val y = collect(R){i => i}
+    val vec0 = collect(N){i => i}
+    val vec1 = collect(N){i => 5 - i}
+
+    vec0.pprint
+    vec1.pprint
+
+    val vec = if (y(0) > 10) vec1 else vec0
+    val sm = blockAssem[Int,Array1D[Int],Array2D[Int]](R,N)(b0 = 1, b1 = D)(Array2D[Int](R,N))({(ii,jj) => ii},{(ii,jj) => jj}){(ii,jj) =>
+      vec.bslice(jj)
+    }
+    sm.pprint
+  }
+}
+
 object BlockSliceTest extends PPLCompiler {
   def main() = {
     println("1D")

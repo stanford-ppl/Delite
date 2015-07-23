@@ -65,6 +65,9 @@ trait DeliteCollectionOpsExp extends ExceptionOpsExp with BaseFatExp { this: Del
   def dc_size_field(tp: Manifest[_]): String = ""
 
   // Multi-dimensional / Nested loop functions
+  def dc_dims[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext): List[Exp[Int]] = {
+    List(undefined("dc_dims", x))
+  }
   def dc_alloc_block[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], ds: List[Exp[Int]], unitDims: List[Int])(implicit ctx: SourceContext): Exp[CA] = {
     undefined("dc_alloc_block", x) 
   }

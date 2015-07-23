@@ -154,5 +154,42 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor {
         sym            
     }
   }
+}
 
+// Ignores all Reflects on defs in transformSym (effectively looks like it uses EatReflect everywhere)
+// Alternative name idea: HungryTransformer (since it eats a lot... haha)
+trait TunnelingTransformer extends TransformerBase {
+  import IR._
+
+  override def transformSym[A](s: Sym[A], d: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]] = d match {
+    case Reflect(d, u, es) => 
+      transformSym(s, d) match {
+        case None => None
+        case Some(e) => 
+          transferMetadata(e, s, d)
+
+          e match {
+            case Def(Reify(_,_,_)) => Some(e)
+            
+            case Def(Reflect(d2,u2,es2)) => 
+              val out = reflectMirrored(Reflect(d2, mapOver(f,u) andAlso u2, (f(es) ++ es2).distinct))(mtype(e.tp), ctx)
+              setProps(out, getProps(e))
+
+              if (out != e) scrubSym(e.asInstanceOf[Sym[Any]])
+              Some(out)
+
+            case Def(d2) => 
+              val out = reflectMirrored(Reflect(d2, mapOver(f,u), f(es)))(mtype(e.tp), ctx)
+              setProps(out, getProps(e))
+
+              if (out != e) scrubSym(e.asInstanceOf[Sym[Any]])
+              Some(out)
+
+            case e => Some(e)
+        }
+      }
+    // TODO: This is probably not needed
+    //case Reify(x,u,es) => Some(reflectPure(Reify(f(x),mapOver(f,u),f(es)))(f(x).tp,ctx))
+    case _ => None
+  }
 }

@@ -37,6 +37,9 @@ trait PPLNestedOps extends DeliteSimpleOps with DeliteNestedOps { this: PPLApp =
   def blockAssem[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](d0: Rep[Int])(b0: Rep[Int])(init: => Rep[C])(keys: Rep[RangeVector] => Rep[RangeVector]*)(tile: Rep[RangeVector] => Rep[T])(implicit ctx: SourceContext): Rep[C]
     = block_assemble[A,T,C](List(d0), init, List(b0), keys.toList.map{key => rvs: List[Rep[RangeVector]] => key(rvs(0)) }, {rvs: List[Rep[RangeVector]] => tile(rvs(0)) }, None)
 
+  def blockAssem[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](d0: Rep[Int],d1: Rep[Int])(b0: Rep[Int], b1: Rep[Int])(init: => Rep[C])(keys: (Rep[RangeVector],Rep[RangeVector]) => Rep[RangeVector]*)(tile: (Rep[RangeVector],Rep[RangeVector]) => Rep[T])(implicit ctx: SourceContext): Rep[C]
+    = block_assemble[A,T,C](List(d0,d1), init, List(b0,b1), keys.toList.map{key => rvs: List[Rep[RangeVector]] => key(rvs(0),rvs(1)) }, {rvs: List[Rep[RangeVector]] => tile(rvs(0),rvs(1)) }, None)
+
   def blockReduce[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](d0: Rep[Int])(b0: Rep[Int])(init: => Rep[C])(keys: Rep[RangeVector] => Rep[RangeVector]*)(tile: Rep[RangeVector] => Rep[T])(rFunc: (Rep[T],Rep[T]) => Rep[T])(implicit ctx: SourceContext): Rep[C]
     = block_assemble[A,T,C](List(d0), init, List(b0), keys.toList.map{key => rvs: List[Rep[RangeVector]] => key(rvs(0)) }, {rvs: List[Rep[RangeVector]] => tile(rvs(0)) }, Some(rFunc))
 
@@ -159,7 +162,16 @@ trait PPLTileAssembleExp extends DSLCompilerOps with DeliteNestedOpsExpOpt { thi
     val rV = if (!mutable) (fresh[T],fresh[T]) else (reflectMutableSym(fresh[T]), fresh[T])
 
     // Input domain RangeVectors
-    def iSize(i: Int): Exp[Int] = Math.min(dims(i) - vs(i), blockFactors(i))
+    // Somewhat hacky exception here if block factor is fixed as being 1 (otherwise things further down the pipeline get messed up)
+    def iSize(i: Int): Exp[Int] = blockFactors(i) match {
+      case Const(1) => Const(1)
+      case bf => Math.min(dims(i) - vs(i), bf)
+    }
+    def firstIterSize(i: Int): Exp[Int] = blockFactors(i) match {
+      case Const(1) => Const(1)
+      case bf => Math.min(dims(i), bf)
+    }
+
     val rvs: List[Exp[RangeVector]] = List.tabulate(n){i => RangeVector(vs(i), iSize(i)) }
 
     // Tile/Output RangeVector functions
@@ -168,7 +180,6 @@ trait PPLTileAssembleExp extends DSLCompilerOps with DeliteNestedOpsExpOpt { thi
 
     // HACK: Find tile dimensions by stripping off first iteration of the kFunc for use as tile sizes
     // Contract is that the either all tiles are equally sized or the first iteration has the largest tile size
-    def firstIterSize(i: Int): Exp[Int] = Math.min(dims(i), blockFactors(i))
     val rvsIter1 = List.tabulate(n){i => RangeVector(unit(0), firstIterSize(i)) }
 
     val tDims: List[Exp[Int]] = keys.map{key => key(rvsIter1).length }
@@ -178,6 +189,11 @@ trait PPLTileAssembleExp extends DSLCompilerOps with DeliteNestedOpsExpOpt { thi
 
     // HACK: Scalar reduction is done right now using a 1D array of size 1 - can't ignore all dims in this case
     val unitDims = if (constDims.length == tDims.length) constDims.drop(1) else constDims
+
+    /*printmsg("Creating tileAssemble with unitDims: " + unitDims.mkString("(", ",", ")"))
+    for (i <- 0 until tDims.length) {
+      printmsg(strDef(tDims(i)))
+    }*/
 
     val buffAlloc: Block[C] = reifyEffects(init)
     val rFunc = reduce.map{rF => reifyEffects(rF(rV._1,rV._2))}
