@@ -137,10 +137,11 @@ trait CGenDeliteDSL extends DeliteDSLCodeGenBase with CGenLMSDSL
   with DeliteCppHostTransfer 
   { val IR: DeliteApplication with DeliteDSLOpsExp }
 
-trait HwGenDeliteDSL extends DeliteDSLCodeGenBase with HwCodegen /*with HwGenLMSDSL*/
-  /*with HwGenDeliteStruct*/ with HwGenDeliteArrayOps  /*with HwGenDeliteMapOps*/
-  with HwGenDeliteOps       
-  with HwGenDeliteInternalOps 
+trait HwGenDeliteDSL extends DeliteDSLCodeGenBase /*with HwGenLMSDSL*/
+  with HwDummy
+  /*with HwGenDeliteStruct*/   /*with HwGenDeliteMapOps*/
+  // with HwGenDeliteOps       
+  // with HwGenDeliteInternalOps 
   { val IR: DeliteApplication with DeliteDSLOpsExp }
 
 // --- Stubs for DSLs to extend

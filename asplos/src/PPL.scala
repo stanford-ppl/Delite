@@ -51,7 +51,10 @@ trait CGenPPL extends CGenDeliteDSL
   with CGenSimpleProfileOps
   { val IR: PPLOpsExp }
 
-trait HwGenPPL extends HwGenDeliteDSL
+trait HwGenPPL extends HwCodegen with HwGenDeliteDSL
+  with HwGenAsplos with HwGenDeliteOps
+  with HwGenDeliteInternalOps
+  with HwGenDeliteArrayOps
   /*with HWGenMultiArray*/  /*with HWGenSimpleProfileOps*/
   { val IR: PPLOpsExp }
 
