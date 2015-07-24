@@ -21,14 +21,14 @@ import ppl.delite.framework.ops._
 
 import org.scalatest._
 import ppl.delite.framework.Config
-import java.io.{File,FileReader}
+import java.io.{File,FileReader}   
 
 // --- Basic LMS ops (mimics Scala syntax)
 trait LMSDSLOps extends Base 
-  with Equal                with IfThenElse           with Variables            with While 
-  with MathOps              with ImplicitOps          with OrderingOps          with StringOps 
-  with BooleanOps           with PrimitiveOps         with MiscOps              with TupledFunctions
-  with TupleOps             with CastingOps           with ExceptionOps         with ObjectOps
+  with IfThenElse           with While                with OrderingOps          with MiscOps              
+  with TupledFunctions      with TupleOps             with CastingOps           with ExceptionOps         
+  with Equal                with Variables            with StringOps            with ImplicitOps
+  with BooleanOps           with PrimitiveOps         with MathOps              with ObjectOps
 
 trait LMSDSLLift extends Base 
   with LiftEquals           with LiftVariables        with LiftString
@@ -147,7 +147,7 @@ trait HwGenDeliteDSL extends DeliteDSLCodeGenBase /*with HwGenLMSDSL*/
 // --- IR for adding some primitives for easier compiler stage writing
 // without overriding if-then-else, while, etc.
 trait DSLCompilerOps extends BaseExp
-  with MathOps with PrimitiveOps with ImplicitOps with DeliteLMSForwarderExp {
+  with MathOpsExp with PrimitiveOpsExpOpt with LiftPrimitives with DeliteLMSForwarderExp {
   this: DeliteOpsExp =>  
 }
 

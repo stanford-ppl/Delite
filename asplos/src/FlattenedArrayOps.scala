@@ -53,14 +53,10 @@ trait FlattenedArrayOps extends DeliteSimpleOps with DeliteNestedOps with Delite
   def array2dview_new_mutable[T:Manifest](data: Rep[DeliteArray[T]], ofs: Rep[Int], stride0: Rep[Int], stride1: Rep[Int], dim0: Rep[Int], dim1: Rep[Int])(implicit ctx: SourceContext): Rep[Array2DView[T]]
   def array1dview_new_mutable[T:Manifest](data: Rep[DeliteArray[T]], ofs: Rep[Int], stride0: Rep[Int], dim0: Rep[Int])(implicit ctx: SourceContext): Rep[Array1DView[T]]  
 
-  def array1d_mkstring[T:Manifest](ma: Rep[Array1D[T]], del: Rep[String])(implicit ctx: SourceContext): Rep[String]
-  def array1dview_mkstring[T:Manifest](ma: Rep[Array1DView[T]], del: Rep[String])(implicit ctx: SourceContext): Rep[String]
-  def array2d_mkstring[T:Manifest](ma: Rep[Array2D[T]], rdel: Rep[String], cdel: Rep[String])(implicit ctx: SourceContext): Rep[String]
-  def array2dview_mkstring[T:Manifest](ma: Rep[Array2DView[T]], rdel: Rep[String], cdel: Rep[String])(implicit ctx: SourceContext): Rep[String]
-  
   def block_slice[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](src: Rep[C], srcOffsets: List[Rep[Int]], srcStrides: List[Rep[Int]], destDims: List[Rep[Int]], unitDims: List[Int])(implicit ctx: SourceContext): Rep[T]
   def array_slice[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](src: Rep[C], srcOffsets: List[Rep[Int]], srcStrides: List[Rep[Int]], destDims: List[Rep[Int]], unitDims: List[Int])(implicit ctx: SourceContext): Rep[T]  
   def array_apply[A:Manifest,C<:DeliteCollection[A]:Manifest](x: Rep[C], inds: List[Rep[Int]])(implicit ctx: SourceContext): Rep[A]
+  def array_stringify[A:Manifest,C<:DeliteCollection[A]:Manifest](x: Rep[C], dels: List[Rep[String]])(implicit ctx: SourceContext): Rep[String]
 
   def kernel_array[A:Manifest](len: Rep[Int], ks: List[A])(implicit ctx: SourceContext): Rep[Array1D[A]]
 
@@ -69,7 +65,7 @@ trait FlattenedArrayOps extends DeliteSimpleOps with DeliteNestedOps with Delite
   def debox[A:Manifest](x: Rep[Array1D[A]])(implicit ctx: SourceContext): Rep[A]
 
   // --- Metadata
-  def annotateReuse[T:Manifest](x: Rep[T], reuse: Rep[Int]*): Rep[T]
+  def annotateReuse[T:Manifest](x: Rep[T], reuse: Int*): Rep[T]
   def annotateViewified[T:Manifest](x: Rep[T]): Rep[T]
   def isTrueView(e: Rep[Any]): Boolean
 
@@ -130,7 +126,7 @@ trait FlattenedArrayOps extends DeliteSimpleOps with DeliteNestedOps with Delite
     def notePhysViewOnly: Rep[Array1DView[T]] = annotateViewified(x)
 
     // --- Printing
-    def mkString(del: Rep[String]): Rep[String] = array1dview_mkstring(x, del)
+    def mkString(del: Rep[String]): Rep[String] = array_stringify[T,Array1DView[T]](x, List(del))
     def pprint: Rep[Unit] = println(x.mkString(" "))
     def vprint: Rep[Unit] = println(x.mkString("\n"))
   }
@@ -149,10 +145,10 @@ trait FlattenedArrayOps extends DeliteSimpleOps with DeliteNestedOps with Delite
 
     // --- Annotations
     // Specifically for arrays created from block slices
-    def noteReuse(reuse: Rep[Int])(implicit ctx: SourceContext) = annotateReuse(x,reuse)
+    def noteReuse(reuse: Int)(implicit ctx: SourceContext) = annotateReuse(x,reuse)
 
     // --- Printing
-    def mkString(del: Rep[String]): Rep[String] = array1d_mkstring(x, del)
+    def mkString(del: Rep[String]): Rep[String] = array_stringify[T,Array1D[T]](x, List(del))
     def pprint: Rep[Unit] = println(x.mkString(" "))
     def vprint: Rep[Unit] = println(x.mkString("\n"))
   }
@@ -193,7 +189,7 @@ trait FlattenedArrayOps extends DeliteSimpleOps with DeliteNestedOps with Delite
     def notePhysViewOnly: Rep[Array2DView[T]] = annotateViewified(x)
 
     // --- Printing
-    def mkString(rdel: Rep[String], cdel: Rep[String]): Rep[String] = array2dview_mkstring(x, rdel, cdel)
+    def mkString(rdel: Rep[String], cdel: Rep[String]): Rep[String] = array_stringify[T,Array2DView[T]](x, List(rdel, cdel))
     def pprint: Rep[Unit] = println(x.mkString("\n", " "))
   }
 
@@ -228,10 +224,10 @@ trait FlattenedArrayOps extends DeliteSimpleOps with DeliteNestedOps with Delite
 
     // --- Annotations
     // Specifically for matrices created from block slices
-    def noteReuse(reuseR: Rep[Int], reuseC: Rep[Int])(implicit ctx: SourceContext) = annotateReuse(x,reuseR,reuseC)
+    def noteReuse(reuseR: Int, reuseC: Int)(implicit ctx: SourceContext) = annotateReuse(x,reuseR,reuseC)
 
     // --- Printing
-    def mkString(rdel: Rep[String], cdel: Rep[String]): Rep[String] = array2d_mkstring(x, rdel, cdel)
+    def mkString(rdel: Rep[String], cdel: Rep[String]): Rep[String] = array_stringify[T,Array2D[T]](x, List(rdel, cdel))
     def pprint: Rep[Unit] = println(x.mkString("\n", " "))
   }
 
@@ -253,7 +249,7 @@ trait FlattenedArrayOpsExp extends FlattenedArrayOps with MultiArrayExp with Del
   def *(): Rep[RangeWildcard] = fresh[RangeWildcard]
   def annotateViewified[T:Manifest](x: Rep[T]): Rep[T] = x.withData(MView(PhysType))
 
-  def annotateReuse[T:Manifest](x: Rep[T], reuse: Rep[Int]*): Rep[T] = x match {
+  def annotateReuse[T:Manifest](x: Rep[T], reuse: Int*): Rep[T] = x match {
     case Def(e: BlockSlice[_,_,_]) => e.withReuse(reuse.toList); x
     case Def(Reflect(e: BlockSlice[_,_,_],_,_)) => e.withReuse(reuse.toList); x
     case _ => cwarn("Unable to find block slice node to annotate with reuse factors"); x
@@ -300,21 +296,23 @@ trait FlattenedArrayOpsExp extends FlattenedArrayOps with MultiArrayExp with Del
     val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(destDims)     // dest dimensions
     val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)(srcStrides) // src strides (for non-unit dims)
 
-    // Bound variables
+    // -- Bound variables
     val vs: List[Sym[Int]] = copyOrElse(_.vs)(List.fill(m)(fresh[Int].asInstanceOf[Sym[Int]]))    // dest indices
     val bV: List[Sym[Int]] = copyOrElse(_.bV)( List.fill(n)(fresh[Int].asInstanceOf[Sym[Int]]))  // src indices
     val tileVal: Sym[T] = copyTransformedOrElse(_.tileVal)(reflectMutableSym(fresh[T])).asInstanceOf[Sym[T]]      // dest buffer
     val bE: Sym[A] = copyTransformedOrElse(_.bE)(fresh[A]).asInstanceOf[Sym[A]]          // Single element (during copying out)
 
-    // collection functions
+    // -- Collection functions
     val bApply: Block[A] = copyTransformedBlockOrElse(_.bApply)(reifyEffects(dc_block_apply(src, bV, Nil)))           // src apply
     val tUpdate: Block[Unit] = copyTransformedBlockOrElse(_.tUpdate)(reifyEffects(dc_block_update(tileVal, vs, bE, Nil)))  // dest update
     val allocTile: Block[T] = copyTransformedBlockOrElse(_.allocTile)(reifyEffects(dc_alloc_block[A,T](tileVal, destDims, Nil))) // dest alloc 
 
+    // -- Hardware data
+    val srcDims: List[Exp[Int]] = copyTransformedSymListOrElse(_.srcDims)(dc_dims(src))
     // HACK: Not sure if this will work 100% of the time
-    // TBD: Should this just be a list of Ints instead?
-    def withReuse(rs: List[Exp[Int]]): BlockSlice[A,T,C] = { this.reuse = rs; this }
-    var reuse: List[Exp[Int]] = copyTransformedSymListOrElse(_.reuse)(List.fill(n)(unit(0)))
+    // TODO: What about reuse factors that aren't statically known? Are they helpful?
+    def withReuse(rs: List[Int]): BlockSlice[A,T,C] = { this.reuse = rs; this }
+    var reuse: List[Int] = copyOrElse(_.reuse)(List.fill(n)(0))
 
     val mA = manifest[A]
     val mT = manifest[T]
@@ -349,20 +347,6 @@ trait FlattenedArrayOpsExp extends FlattenedArrayOps with MultiArrayExp with Del
   // This blocks field shortcutting right now...
   def block_slice[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](src: Rep[C], srcOffsets: List[Rep[Int]], srcStrides: List[Rep[Int]], destDims: List[Rep[Int]], unitDims: List[Int])(implicit ctx: SourceContext): Rep[T]
     = reflectPure( BlockSlice[A,T,C](src,srcOffsets,srcStrides,destDims,unitDims) )
-
-  // Bit of a hack here - the type of the multiarray actually doesn't matter here since it's never accessed in the MkString body
-  def array1d_mkstring[T:Manifest](ma: Rep[Array1D[T]], del: Rep[String])(implicit ctx: SourceContext) = {
-    reflectPure(ArrayMkString(ma.asInstanceOf[Exp[DeliteMultiArray[T]]], del, () => ma.length, {i => ma(i).ToString}))
-  }
-  def array1dview_mkstring[T:Manifest](ma: Rep[Array1DView[T]], del: Rep[String])(implicit ctx: SourceContext) = {
-    reflectPure(ArrayMkString(ma.asInstanceOf[Exp[DeliteMultiArray[T]]], del, () => ma.length, {i => ma(i).ToString}))
-  }
-  def array2d_mkstring[T:Manifest](ma: Rep[Array2D[T]], rdel: Rep[String], cdel: Rep[String])(implicit ctx: SourceContext) = {
-    reflectPure(MatrixMkString(ma.asInstanceOf[Exp[DeliteMultiArray[T]]], rdel, cdel, {i => if (i == 0) ma.nRows else ma.nCols},{i => ma(i(0),i(1)).ToString}))
-  }
-  def array2dview_mkstring[T:Manifest](ma: Rep[Array2DView[T]], rdel: Rep[String], cdel: Rep[String])(implicit ctx: SourceContext) = {
-    reflectPure(MatrixMkString(ma.asInstanceOf[Exp[DeliteMultiArray[T]]], rdel, cdel, {i => if (i == 0) ma.nRows else ma.nCols},{i => ma(i(0),i(1)).ToString}))
-  }
 
   // --- Array manifests
   private def dataField[T](tp: Manifest[T]): List[(String, Manifest[_])] = List("data" -> darrayManifest(tp))
@@ -460,6 +444,13 @@ trait FlattenedArrayOpsExp extends FlattenedArrayOps with MultiArrayExp with Del
   private def filterUnitDims(ds: List[Exp[Int]], unitDims: List[Int]): List[Exp[Int]]
     = ds.zipWithIndex.filterNot{d => unitDims.contains(d._2)}.map(_._1)
 
+  override def dc_dims[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext): List[Exp[Int]] = {
+    if (isArray1D(x)) List( asArray1D(x).length )
+    else if (isArray1DView(x)) List( asArray1DView(x).length )
+    else if (isArray2D(x)) List( asArray2D(x).nRows, asArray2D(x).nCols )
+    else if (isArray2DView(x)) List( asArray2DView(x).nRows, asArray2DView(x).nCols )
+    else super.dc_dims(x)
+  }
   override def dc_alloc_block[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], ds: List[Exp[Int]], unitDims: List[Int])(implicit ctx: SourceContext): Exp[CA] = {
     val dims = filterUnitDims(ds, unitDims)
     if (isArray1D(x)) DeliteArray[A](productTree(ds)).asInstanceOf[Exp[CA]]
@@ -495,6 +486,10 @@ trait FlattenedArrayOpsExp extends FlattenedArrayOps with MultiArrayExp with Del
 trait FlattenedArrayLowerableOpsExp extends FlattenedArrayOpsExp with DeliteLowerableOpsExp { self: PPLCompiler => 
   private implicit val fc = AbstractFamily("FlatArray", skip = false)
 
+  def array_stringify[A:Manifest,C<:DeliteCollection[A]:Manifest](x: Rep[C], dels: List[Rep[String]])(implicit ctx: SourceContext): Rep[String] = {
+    if (fc.skip) ArrayStringify.lower[A,C](x, dels)
+    else reflectPure( ArrayStringify[A,C](x, dels) )
+  }
   def array_apply[A:Manifest,C<:DeliteCollection[A]:Manifest](x: Rep[C], inds: List[Rep[Int]])(implicit ctx: SourceContext): Rep[A] = {
     if (fc.skip) ArrayApply.lower[A,C](x, inds) 
     else reflectPure( ArrayApply[A,C](x, inds) )
@@ -511,6 +506,33 @@ trait FlattenedArrayLowerableOpsExp extends FlattenedArrayOpsExp with DeliteLowe
   def debox[A:Manifest](x: Rep[Array1D[A]])(implicit ctx: SourceContext): Rep[A] = {
     if (fc.skip) TileUnboxHack.lower[A,Array1D[A]](x)
     else reflectPure( TileUnboxHack[A,Array1D[A]](x) )
+  }
+
+  case class ArrayStringify[A:Manifest,C<:DeliteCollection[A]:Manifest](x: Exp[C], dels: List[Exp[String]])(implicit ctx: SourceContext) extends AbstractDefWithManifest2[A,C,String]
+  object ArrayStringify { 
+    def unerase[A:Manifest,C<:DeliteCollection[A]:Manifest](op: ArrayStringify[_,_]): ArrayStringify[A,C] = op.asInstanceOf[ArrayStringify[A,C]]
+    def mirror[A:Manifest,C<:DeliteCollection[A]:Manifest](op: ArrayStringify[A,C], f: Transformer)(implicit ctx: SourceContext): ArrayStringify[A,C]
+      = ArrayStringify[A,C](f(op.x),f(op.dels))
+    // TODO: The MkString body never actually uses x directly, so the cast to DeliteMultiArray shouldn't have to be here
+    def lower[A:Manifest,C<:DeliteCollection[A]:Manifest](ma: Exp[C], dels: List[Exp[String]])(implicit ctx: SourceContext): Exp[String] = {
+      if (isArray1D(ma)) {
+        val x = asArray1D(ma)
+        reflectPure( ArrayMkString(x.asInstanceOf[Exp[DeliteMultiArray[A]]], dels(0), () => x.length, {i => x(i).ToString}) )
+      }
+      else if (isArray1DView(ma)) {
+        val x = asArray1DView(ma)
+        reflectPure( ArrayMkString(x.asInstanceOf[Exp[DeliteMultiArray[A]]], dels(0), () => x.length, {i => x(i).ToString}) )
+      }
+      else if (isArray2D(ma)) {
+        val x = asArray2D(ma)
+        reflectPure(MatrixMkString(x.asInstanceOf[Exp[DeliteMultiArray[A]]], dels(0), dels(1), {i => if (i == 0) x.nRows else x.nCols},{i => x(i(0),i(1)).ToString}))
+      }
+      else if (isArray2DView(ma)) {
+        val x = asArray2DView(ma)
+        reflectPure(MatrixMkString(x.asInstanceOf[Exp[DeliteMultiArray[A]]], dels(0), dels(1), {i => if (i == 0) x.nRows else x.nCols},{i => x(i(0),i(1)).ToString}))
+      }
+      else sys.error("Don't know how to lower ArrayStringify with type " + manifest[C].toString)
+    }
   }
 
   case class ArrayApply[A:Manifest,C<:DeliteCollection[A]:Manifest](x: Exp[C], inds: List[Exp[Int]])(implicit ctx: SourceContext) extends AbstractDefWithManifest[C,A]
@@ -601,29 +623,35 @@ trait FlattenedArrayLowerableOpsExp extends FlattenedArrayOpsExp with DeliteLowe
 
   // --- Mirroring and lowering rules
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case e@ArrayApply(x,inds) => 
+    case e: ArrayStringify[_,_] => 
+      val op = ArrayStringify.unerase(e)(e.mA,e.mB)
+      reflectPure(ArrayStringify.mirror(op,f)(e.mA,e.mB,ctx))(mtype(manifest[A]),ctx)
+    case Reflect(e: ArrayStringify[_,_],u,es) => 
+      val op = ArrayStringify.unerase(e)(e.mA,e.mB)
+      reflectMirrored(Reflect(ArrayStringify.mirror(op,f)(e.mA,e.mB,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]),ctx)
+    case e: ArrayApply[_,_] => 
       val op = ArrayApply.unerase(e)(e.mR,e.mA)
       reflectPure(ArrayApply.mirror(op,f)(e.mR,e.mA,ctx))(mtype(manifest[A]),ctx)
-    case e@ArraySlice(x,ofs,str,dims,udims) => 
-      val op = ArraySlice.unerase(e)(e.mA,e.mR,e.mB)
-      reflectPure(ArraySlice.mirror(op,f)(e.mA,e.mR,e.mB,ctx))(mtype(manifest[A]),ctx)
-    case Reflect(e@ArrayApply(x,inds),u,es) => 
+    case Reflect(e: ArrayApply[_,_],u,es) => 
       val op = ArrayApply.unerase(e)(e.mR,e.mA)
       reflectMirrored(Reflect(ArrayApply.mirror(op,f)(e.mR,e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]),ctx)
-    case Reflect(e@ArraySlice(x,ofs,str,dims,udims),u,es) => 
+    case e: ArraySlice[_,_,_] => 
+      val op = ArraySlice.unerase(e)(e.mA,e.mR,e.mB)
+      reflectPure(ArraySlice.mirror(op,f)(e.mA,e.mR,e.mB,ctx))(mtype(manifest[A]),ctx)
+    case Reflect(e: ArraySlice[_,_,_],u,es) => 
       val op = ArraySlice.unerase(e)(e.mA,e.mR,e.mB)
       reflectMirrored(Reflect(ArraySlice.mirror(op,f)(e.mA,e.mR,e.mB,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]),ctx)
     
-    case e@TileUnboxHack(x) => 
+    case e: TileUnboxHack[_,_] => 
       val op = TileUnboxHack.unerase(e)(e.mR,e.mA)
       reflectPure(TileUnboxHack.mirror(op,f)(e.mR,e.mA,ctx))(mtype(manifest[A]),ctx)
-    case e@TileBoxHack(x) => 
-      val op = TileBoxHack.unerase(e)(e.mA,e.mR)
-      reflectPure(TileBoxHack.mirror(op,f)(e.mA,e.mR,ctx))(mtype(manifest[A]),ctx)
-    case Reflect(e@TileUnboxHack(x), u, es) => 
+    case Reflect(e: TileUnboxHack[_,_], u, es) => 
       val op = TileUnboxHack.unerase(e)(e.mR,e.mA)
       reflectMirrored(Reflect(TileUnboxHack.mirror(op,f)(e.mR,e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
-    case Reflect(e@TileBoxHack(x), u, es) => 
+    case e: TileBoxHack[_,_] => 
+      val op = TileBoxHack.unerase(e)(e.mA,e.mR)
+      reflectPure(TileBoxHack.mirror(op,f)(e.mA,e.mR,ctx))(mtype(manifest[A]),ctx)
+    case Reflect(e: TileBoxHack[_,_], u, es) => 
       val op = TileBoxHack.unerase(e)(e.mA,e.mR)
       reflectMirrored(Reflect(TileBoxHack.mirror(op,f)(e.mA,e.mR,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
 
@@ -631,6 +659,10 @@ trait FlattenedArrayLowerableOpsExp extends FlattenedArrayOpsExp with DeliteLowe
   }).asInstanceOf[Exp[A]]
 
   override def lower[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case e: ArrayStringify[a,c] => 
+      val op = ArrayStringify.unerase(e)(e.mA,e.mB)
+      ArrayStringify.lower[a,c](f(op.x),f(op.dels))(e.mA,e.mB,ctx)
+
     case e: ArrayApply[a,c] => 
       val op = ArrayApply.unerase(e)(e.mR,e.mA)
       ArrayApply.lower[a,c](f(op.x), f(op.inds))(e.mR,e.mA,ctx)
@@ -654,9 +686,8 @@ trait FlattenedArrayLowerableOpsExp extends FlattenedArrayOpsExp with DeliteLowe
   class ApplyLowering extends AbstractImplementer {
     val IR: self.type = self
     override val name = "Apply Lowering"
-    //override def runOnce[A:Manifest](b: Block[A]): Block[A] = inDebugMode { super.runOnce(b) }
-
     override def transferMetadata(sub: Exp[Any], orig: Exp[Any], d: Def[Any])(implicit ctx: SourceContext) = d match {
+      case e: ArrayStringify[_,_] => copyMetadata(sub, props(orig))
       case e: ArrayApply[_,_] => copyMetadata(sub, props(orig))
       case e: ArraySlice[_,_,_] => copyMetadata(sub, props(orig))
       case e: TileUnboxHack[_,_] => copyMetadata(sub, props(orig))
@@ -664,8 +695,8 @@ trait FlattenedArrayLowerableOpsExp extends FlattenedArrayOpsExp with DeliteLowe
       case _ => // Nothing
     }
   }
-  val implementer = new ApplyLowering()
-  if (!fc.skip) appendVisitor(implementer)
+  val applyLowering = new ApplyLowering()
+  //if (!fc.skip) appendVisitor(implementer)
 }
 
 trait FlattenedArrayOpsExpOpt extends FlattenedArrayLowerableOpsExp with DeliteArrayOpsExpOpt { this: PPLCompiler => 
