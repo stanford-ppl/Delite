@@ -11,7 +11,7 @@ import ppl.delite.framework.datastructures._
 
 // Analysis passes
 import ppl.delite.framework.analysis.PrimitiveReduceAnalysis
-import ppl.delite.framework.analysis.MetaPipelineAnalysis
+// import ppl.delite.framework.analysis.MetaPipelineAnalysis
 import ppl.delite.framework.analysis.DotPrintAnalysis
 
 import java.io.File
@@ -105,6 +105,7 @@ trait HwCodegen extends GenericCodegen // with ThorIR
     s.println("import com.maxeler.maxcompiler.v2.utils.MathUtils;")
     s.println("import com.maxeler.maxcompiler.v2.utils.Bits;")
     s.println("import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;")
+    s.println("import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.KernelMath;")
   }
 
   private def initBaseKernelLib(s: PrintWriter) = {
@@ -193,11 +194,9 @@ trait HwCodegen extends GenericCodegen // with ThorIR
 
     emitCommonImports(stream)
     stream.println(s"""class $kernelName  extends BaseKernelLib {""")
-    stream.println(s"""$kernelName (KernelLib owner) {""")
+    stream.println(s"""$kernelName (KernelLib owner, ${kernelSym}_en, DFEVar ${kernelSym}_done) {""")
     stream.println(s"""  super(owner);""")
-    stream.println(s"""}""")
 
-    stream.println(s"void doIt(DFEVar ${kernelSym}_en, DFEVar ${kernelSym}_done) {")
 //    if (resourceInfoType != "") {
 //      stream.print(resourceInfoSym + ":" + resourceInfoType)
 //      if ((vals ++ vars).length > 0) stream.print(",")
@@ -207,7 +206,7 @@ trait HwCodegen extends GenericCodegen // with ThorIR
   }
 
   override def emitKernelFooter(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultType: String, resultIsVar: Boolean, external: Boolean, isMultiLoop: Boolean): Unit = {
-      // Close the doIt function
+      // Close the constructor function
       stream.println("}")
 
       // Close the class
@@ -217,7 +216,7 @@ trait HwCodegen extends GenericCodegen // with ThorIR
 
   // Every type is remapped to a 'DFEVar' for the hardware backend now
   override def remap[A](m: Manifest[A]) : String = {
-    "DFEVar"
+    s"DFEVar"
   }
 
   override def isPrimitiveType[A](m: Manifest[A]) : Boolean = {
@@ -226,7 +225,7 @@ trait HwCodegen extends GenericCodegen // with ThorIR
 
   // TERRIBLE name - returns the String representation of an Exp
   override def quote(x: Exp[Any]) = {
-    arbitPrefixMap.getOrElse((curSym.top, x), "") + super.quote(x)
+    super.quote(x)
   }
 
   override def emitValDef(sym: Sym[Any], rhs: String): Unit = {
@@ -241,13 +240,18 @@ trait HwCodegen extends GenericCodegen // with ThorIR
     stream.println(quote(sym) + " = " + rhs + ";")
   }
   // --- End Methods from GenericCodegen that are overridden/defined ---
+  var curSym = Stack[Sym[Any]]()
+
+  protected def getdef(sym: Sym[Any]) = {
+    sym match {
+      case Def(d) => d
+      case _ => null
+    }
+  }
+
+
 
   // --- Begin methods specific to HwCodegen ---
-  var aliasMap = Map[Exp[Any], Exp[Any]]()
-  // When you find 'Exp' while codegenerating for 'Sym', prepend 'String' to 'Exp'
-  var arbitPrefixMap = Map[(Sym[Any], Exp[Any]), String]()
-  var dblBufMap = Set[Sym[Any]]()
-  var curSym = Stack[Sym[Any]]()
   def getBitWidth(sym: Exp[Any]): Int = {
     32
   }
@@ -280,14 +284,22 @@ trait HwCodegen extends GenericCodegen // with ThorIR
 
     stream.println(s"""IF($condStr) {
       resetBitVector();""")
-    if (state.size == 1 && state.max == max) {
+    if (state.size == 1 && state.max == max && !state.contains(0)) {
       stream.println("stateFF.next = States.DONE;")
     } else {
       if (state.contains(0)) {
         stream.println("counterFF.next <== counterFF + 1;")
         stream.println("IF (counterFF === numIter-1) {")
         stream.print("stateFF.next <== States.")
-        if (state.max == max) stream.print(stateStr(state.drop(1))) else stream.print(stateStr(state.drop(1) ++ List(state.max+1)))
+        if (state.max == max) {
+          if (state.size == 1) {  // Only state 0
+            stream.print("DONE")
+          } else {
+            stream.print(stateStr(state.drop(1)))
+          }
+        } else {
+          stream.print(stateStr(state.drop(1) ++ List(state.max+1)))
+        }
           stream.println(";")
           stream.println("} ELSE {")
         stream.print("stateFF.next <== States.")
@@ -295,6 +307,7 @@ trait HwCodegen extends GenericCodegen // with ThorIR
           stream.println(";")
           stream.println("}")
       } else {
+        stream.print("stateFF.next <== States.")
         if (state.max == max) stream.print(stateStr(state.drop(1))) else stream.print(stateStr(state.drop(1) ++ List(state.max+1)))
       }
     }
@@ -302,7 +315,146 @@ trait HwCodegen extends GenericCodegen // with ThorIR
   }
 
 
-  def emitSM(name: String, st: List[String]) = {
+  def emitParallelSM(name: String, numParallel: Int) = {
+stream.println(s"""
+package engine;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmInput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmOutput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateEnum;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
+import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
+import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
+
+class ${name}_ParallelStateMachine extends KernelStateMachine {
+
+  // States
+  enum States {
+    INIT,
+    RUN,
+    DONE
+  }
+
+  // State IO
+  private final DFEsmOutput sm_done;
+  private final DFEsmInput sm_en;""");
+
+  for(i <- 0 until numParallel) {
+stream.println(s"""
+private final DFEsmInput s${i}_done;
+private final DFEsmOutput s${i}_en;
+""")
+  }
+
+stream.println(s"""
+  // State storage
+  private final DFEsmStateEnum<States> stateFF;
+  private final DFEsmStateValue[] bitVector;
+
+  private final int numParallel = $numParallel;
+  // Initialize state machine in constructor
+  public ParallelStateMachine(KernelLib owner) {
+    super(owner);
+
+    // Declare all types required to wire the state machine together
+    DFEsmValueType counterType = dfeUInt(32);
+    DFEsmValueType wireType = dfeBool();
+    // Define state machine IO
+    sm_done = io.output("sm_done", wireType);
+    sm_en = io.input("sm_en", wireType);
+""")
+for(i <- 0 until numParallel) {
+    stream.println(s"""
+      s${i}_done = io.input("s${i}_done", wireType);
+      s${i}_en = io.output("s${i}_en", wireType);
+    """)
+  }
+
+stream.println(s"""
+    // Define state storage elements and initial state
+    stateFF = state.enumerated(States.class, States.INIT);
+
+    bitVector = new DFEsmStateValue[numParallel];
+    for (int i=0; i<numParallel; i++) {
+      bitVector[i] = state.value(wireType, 0);
+    }
+  }
+
+  private void resetBitVector() {
+    for (int i=0; i<numParallel; i++) {
+      bitVector[i].next <== 0;
+    }
+  }
+
+  @Override
+  protected void nextState() {
+    IF(sm_en) {
+""")
+
+  for(i <- 0 until numParallel) {
+    stream.println(s"""
+        IF (s${i}_done) {
+          bitVector[$i].next <== 1;
+        }""")
+  }
+
+  stream.println(s"""
+        SWITCH(stateFF) {
+          CASE (States.INIT) {
+            stateFF.next <== States.RUN;
+          }
+          """)
+
+  stream.println(s"""
+          CASE (States.RUN) {""")
+  val condStr = (0 until numParallel).map("bitVector[" + _ + "]").reduce(_ + " & " + _)
+  stream.println(s"""
+            IF($condStr) {
+              stateFF.next <== States.DONE;
+            }
+          }
+
+        CASE (States.DONE) {
+          resetBitVector();
+          stateFF.next <== States.INIT;
+        }
+        OTHERWISE {
+          stateFF.next <== stateFF;
+        }
+      }
+    }
+  }
+""")
+
+  stream.println("""
+  @Override
+  protected void outputFunction() {
+    sm_done <== 0;""")
+  for (i <- 0 until numParallel) {
+    stream.println(s"""
+      s${i}_en <== 0;""")
+  }
+
+  stream.println("""
+    IF (sm_en) {
+      SWITCH(stateFF) {
+        CASE(States.RUN) {""")
+  for (i <- 0 until numParallel) {
+    stream.println(s"""s${i}_en <== ~(bitVector[${i}] | s${i}_done);""")
+  }
+  stream.println(s"""
+        }
+        CASE(States.DONE) {
+          sm_done <== 1;
+        }
+      }
+    }
+  }
+}""")
+  }
+
+//  def emitSM(name: String, st: List[String]) = {
+  def emitSM(name: String, numStates: Int) = {
     stream.println("""
 package engine;
   import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
@@ -315,7 +467,7 @@ package engine;
 """)
 
   val smName = name
-  val states = getStates(st.size)
+  val states = getStates(numStates)
   stream.println(s"""class ${smName}_StateMachine extends KernelStateMachine {""")
 
 
@@ -324,6 +476,7 @@ package engine;
   stream.println(s"""
     // States
     enum States {
+      INIT,
       ${stateNames.reduce(_ + ",\n" + _) + ",\nDONE"}
     }
   """)
@@ -334,11 +487,11 @@ package engine;
 
     // State IO
     private final DFEsmOutput sm_done;
-    private final DFEsmOutput sm_count;
     private final DFEsmInput sm_en;
+    private final DFEsmInput sm_numIter;
   """)
 
-  for(i <- 0 until st.size) {
+  for(i <- 0 until numStates) {
     stream.println(s"""
     private final DFEsmInput s${i}_done;
     private final DFEsmOutput s${i}_en;
@@ -347,13 +500,14 @@ package engine;
 
   stream.println(s"""
     // State storage
+    private final DFEsmStateValue sizeFF;
     private final DFEsmStateEnum<States> stateFF;
     private final DFEsmStateValue counterFF;
     private final DFEsmStateValue[] bitVector;
 
-    private final int numStates = ${st.size};
+    private final int numStates = ${numStates};
     // Initialize state machine in constructor
-    public ${smName}_StateMachine(KernelLib owner, int numIter) {
+    public ${smName}_StateMachine(KernelLib owner) {
       super(owner);
 
       // Declare all types required to wire the state machine together
@@ -362,11 +516,11 @@ package engine;
 
       // Define state machine IO
       sm_done = io.output("sm_done", wireType);
-      sm_count = io.output("sm_count", counterType);
       sm_en = io.input("sm_en", wireType);
+      sm_numIter = io.input("sm_numIter", counterType);
   """)
 
-  for(i <- 0 until st.size) {
+  for(i <- 0 until numStates) {
     stream.println(s"""
       s${i}_done = io.input("s${i}_done", wireType);
       s${i}_en = io.output("s${i}_en", wireType);
@@ -375,8 +529,9 @@ package engine;
 
   stream.println("""
     // Define state storage elements and initial state
-      stateFF = state.enumerated(States.class, States.S0);
+      stateFF = state.enumerated(States.class, States.INIT);
       counterFF = state.value(counterType, 0);
+      sizeFF = state.value(counterType, 0);
 
       // Bitvector keeps track of which kernels have finished execution
       // This is a useful hardware synchronization structure to keep
@@ -387,7 +542,7 @@ package engine;
       }
 
       // Define constants
-      this.numIter = numIter;
+      // this.numIter = numIter;
     }
 
     private void resetBitVector() {
@@ -403,7 +558,7 @@ package engine;
       IF(sm_en) {
         // State-agnostic update logic for bitVector
     """)
-  for(i <- 0 until st.size) {
+  for(i <- 0 until numStates) {
     stream.println(s"""
         IF (s${i}_done) {
           bitVector[$i].next <== 1;
@@ -411,14 +566,19 @@ package engine;
   }
 
   stream.println(s"""
-        SWITCH(stateFF) {""")
+        SWITCH(stateFF) {
+          CASE (States.INIT) {
+            sizeFF.next <== sm_numIter;
+            stateFF.next <== States.S0;
+          }
+          """)
 
   for(i <- 0 until states.size) {
     val state = states(i)
     val name = stateNames(i)
     stream.println(s"""
           CASE (States.${name}) {""")
-      stateText(state, st.size)
+      stateText(state, numStates)
     stream.println(s"""
           }""")
   }
@@ -426,7 +586,7 @@ package engine;
   stream.println(s"""
          CASE (States.DONE) {
            resetBitVector();
-           stateFF.next <== States.DONE;
+           stateFF.next <== States.INIT;
          }
 
          OTHERWISE {
@@ -440,10 +600,9 @@ package engine;
   @Override
     protected void outputFunction() {
       sm_done <== 0;
-      sm_count <== counterFF;
       """)
 
-  for (i <- 0 until st.size) {
+  for (i <- 0 until numStates) {
     stream.println(s"""
       s${i}_en <== 0;""")
   }
@@ -451,7 +610,7 @@ package engine;
   stream.println(s"""
      IF (sm_en) {
        SWITCH(stateFF) {""")
-        for(i <- 0 until states.size-1) {
+        for(i <- 0 until states.size) {
           val state = states(i)
           val name = stateNames(i)
           stream.println(s"""
@@ -476,56 +635,6 @@ package engine;
   """)
   }
 }
-
-trait HwGenDeliteInternalOps extends HwCodegen {
-  val IR: DeliteOpsExp with DeliteInternalOpsExp
-  import IR._
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
-    curSym.push(sym)
-    rhs match {
-      case DIntPlus(lhs,rhs) =>
-          val lhsAlias = if (lhs.isInstanceOf[Sym[Any]]) aliasMap.getOrElse(lhs.asInstanceOf[Sym[Any]], lhs) else lhs
-          val rhsAlias = if (rhs.isInstanceOf[Sym[Any]]) aliasMap.getOrElse(rhs.asInstanceOf[Sym[Any]], rhs) else rhs
-          val symAlias = aliasMap.getOrElse(sym.asInstanceOf[Sym[Any]], sym).asInstanceOf[Sym[Any]]
-          emitValDef(symAlias, s"${quote(lhsAlias)} + ${quote(rhsAlias)}")
-
-      case DIntMinus(lhs,rhs) =>
-  //      hwgraph.add(CSub()(sym, kernelDeps))
-  //      stream.println(s"Added CSub()($sym, $kernelDeps) to hwgraph")
-  //      emitValDef(sym, buildClbCall("clb_sub", List(lhs, rhs)));
-      case DIntTimes(lhs,rhs) =>
-          val lhsAlias = if (lhs.isInstanceOf[Sym[Any]]) aliasMap.getOrElse(lhs.asInstanceOf[Sym[Any]], lhs) else lhs
-          val rhsAlias = if (rhs.isInstanceOf[Sym[Any]]) aliasMap.getOrElse(rhs.asInstanceOf[Sym[Any]], rhs) else rhs
-          val symAlias = aliasMap.getOrElse(sym.asInstanceOf[Sym[Any]], sym).asInstanceOf[Sym[Any]]
-          emitValDef(symAlias, s"${quote(lhsAlias)} * ${quote(rhsAlias)}")
-
-  //      hwgraph.add(CMul()(sym, kernelDeps))
-  //      stream.println(s"Added CMul()($sym, $kernelDeps) to hwgraph")
-  //      emitValDef(sym, buildClbCall("clb_mul", List(lhs, rhs)));
-      case DIntDivide(lhs,rhs) =>
-  //      hwgraph.add(CDiv()(sym, kernelDeps))
-  //      stream.println(s"Added CDiv()($sym, $kernelDeps) to hwgraph")
-  //      emitValDef(sym, buildClbCall("clb_div", List(lhs, rhs)));
-      case DLessThan(lhs,rhs) =>
-  //      hwgraph.add(Dummy()(sym, kernelDeps))
-  //      stream.println(s"Added Dummy()($sym, $kernelDeps) to hwgraph")
-  //      emitValDef(sym, buildClbCall("clb_lt", List(lhs, rhs)));
-      case DGreaterThan(lhs,rhs) =>
-  //      hwgraph.add(Dummy()(sym, kernelDeps))
-  //      stream.println(s"Added Dummy()($sym, $kernelDeps) to hwgraph")
-  //      emitValDef(sym, buildClbCall("clb_gt", List(lhs, rhs)));
-      case _ => super.emitNode(sym,rhs)
-  //    case DBooleanNegate(b) => emitValDef(sym, "!" + quote(b))
-  //    case DEqual(a,b) =>  emitValDef(sym, quote(a) + " == " + quote(b))
-  //    case DNotEqual(a,b) =>  emitValDef(sym, quote(a) + " != " + quote(b))
-  //    case DIntMod(lhs,rhs) => emitValDef(sym, quote(lhs) + " % " + quote(rhs))
-  //    case DUnsafeImmutable(x) => emitValDef(sym, quote(x) + "// unsafe immutable")
-    }
-    curSym.pop
-  }
-}
-
 
 /*
  * LMS traits

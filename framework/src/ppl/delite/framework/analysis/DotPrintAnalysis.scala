@@ -90,7 +90,7 @@ trait DotPrintAnalysis extends FatBlockTraversal {
     prefix + s""" $b"""
   }
   override def traverseBlock[A](b: Block[A]) = {
-//    println(s"[DotPrintTransformer] Within transformBlock, block = $b")
+    dotStream.println(s"[DotPrintAnalysis] Within transformBlock, block = $b")
     val bname = getBlockName(b)
     val bs = boundSyms(b)
 

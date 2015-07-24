@@ -154,6 +154,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
       case _: AbstractLoop[_] => true
       case _: AbstractFatLoop => true
       case _: AbstractLoopNest[_] => true
+      case _: DeliteOp[_] => true  // To handle BlockSlice
       case _ => false
     }
 
