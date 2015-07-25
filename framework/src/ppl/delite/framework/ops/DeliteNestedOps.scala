@@ -771,7 +771,7 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
       emitBoundVarDef(op.buf.tileVal, quote(getBlockResult(op.tile)))
 
       if (op.rFunc.isDefined) {
-        stream.println("// --- Accumulator copy out")
+        stream.println("// --- Accumulator copy in")
         for (k <- 0 until nK) {
           emitBoundVarDef(op.buf.bV(k), quote(op.buf.bS(k)) + ".start")
           stream.println("for (" + quote(op.buf.tV(k)) + " <- 0 until " + quote(op.buf.tD(k)) + ") {")
@@ -795,7 +795,7 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
         emitAssignment(op.buf.tileVal, quote(getBlockResult(op.rFunc.get)))
       }
 
-      stream.println("// --- Accumulator copy in")
+      stream.println("// --- Accumulator copy out")
       for (k <- 0 until nK) {
         if (op.rFunc.isDefined && k == 0) emitAssignment(op.buf.bV(k), quote(op.buf.bS(k)) + ".start")
         else emitBoundVarDef(op.buf.bV(k), quote(op.buf.bS(k)) + ".start")
