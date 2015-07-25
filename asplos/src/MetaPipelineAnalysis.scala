@@ -14,17 +14,19 @@ import ppl.delite.framework.ops.DeliteOpsExp
 //import ppl.delite.framework.datastructures.{DeliteArray,DeliteArrayOpsExp}
 import ppl.delite.framework.Config
 
+import scala.collection.mutable.ListBuffer
+
 /*
  * @MetaPipelineAnalysis: Analyze a loop body to collect
  * metapipeline metadata and return the collected metadata. This
  * medatada will be used to generate a metapipeline
  */
 trait MetaPipelineAnalysis extends FatBlockTraversal {
-//  val IR: DeliteOpsExp with DeliteFileReaderOpsExp
   val IR: PPLOpsExp
   import IR._
 
-  private var bodyMetadata = List[List[Any]]()
+//  private var bodyMetadata = List[List[Any]]()
+  private var bodyMetadata = ListBuffer[ListBuffer[Any]]()
   private var curBody: Sym[Any] = null
   private var exclude: Set[Sym[Any]] = null
 
@@ -36,9 +38,24 @@ trait MetaPipelineAnalysis extends FatBlockTraversal {
   }
 
   def combineBlockSlices() = {
-//    val flattenedStages = bodyMetadata.reverse.flatten.asInstanceOf[List[Sym[Any]]]
-//    val blockSliceIndices = flattenedStages.filter(x => getdef(x).isInstanceOf[BlockSlice[_,_,_]]).map( v => flattenedStages.findIndexOf(x => x == v))
-//    Console.println(s"Block slice indices: $blockSliceIndices")
+    // Starting from the first state, collect all independent block slices.
+    // Stop at the first node that isn't a block slice or if it is a block
+    // slice that depends on any of the previous ones
+
+    var contBlockSlice = true
+    var i = 1
+    while (bodyMetadata.size > 1 && contBlockSlice) {
+      val s = bodyMetadata(i)(0).asInstanceOf[Sym[Any]] // bodyMetadata(i) is a ListBuffer of size 1
+      val d = getdef(s)
+      d match {
+        case _ : BlockSlice[_,_,_] =>
+          bodyMetadata(0).appendAll(bodyMetadata(i))
+          bodyMetadata.remove(i)
+          i += 1
+        case _ =>
+          contBlockSlice = false
+      }
+    }
   }
 
   def run[A](s : Sym[Any], body: Def[Any], excludeList: Set[Sym[Any]]) = {
@@ -46,13 +63,10 @@ trait MetaPipelineAnalysis extends FatBlockTraversal {
     curBody = s
     exclude = excludeList
     processBodyElem(s, body)
+    combineBlockSlices()
     Console.println(s"[MetaPipelineAnalysis] Stages = $bodyMetadata")
     Console.println(s"[MetaPipelineAnalysis - End] Loop $s")
-    if (bodyMetadata.length == 3) {
-      sys.exit(0)
-    }
-    combineBlockSlices()
-    bodyMetadata.reverse
+    bodyMetadata.map(_.toList).toList
   }
 
   def shouldSkipStm(stm: Stm) : Boolean= {
@@ -87,6 +101,8 @@ trait MetaPipelineAnalysis extends FatBlockTraversal {
         if (!rFunc.isEmpty) {
           traverseBlock(rFunc.get)
         }
+        bodyMetadata.append(ListBuffer(getBlockResult(buf.bUpdate)))
+
       case _ =>
     }
   }
@@ -105,23 +121,23 @@ trait MetaPipelineAnalysis extends FatBlockTraversal {
       }
       Console.println(s"Loop $s: shouldSkipLoop = $shouldSkipLoop")
       if (!shouldSkipLoop && !exclude.contains(s)) {
-        bodyMetadata = List(s) :: bodyMetadata
+        bodyMetadata.append(ListBuffer(s))
       }
 
     case TP(s,l:BlockSlice[_,_,_]) =>
       if (!exclude.contains(s)) {
-        bodyMetadata = List(s) :: bodyMetadata
+        bodyMetadata.append(ListBuffer(s))
       }
 
     case TP(s,l:AbstractLoopNest[_]) =>
       if (!exclude.contains(s)) {
-        bodyMetadata = List(s) :: bodyMetadata
+        bodyMetadata.append(ListBuffer(s))
       }
 
     case TTP(lhs,mhs,rhs@SimpleFatLoop(sz,v,body)) =>
       val seenBefore = lhs.map(x => exclude.contains(x)).reduce(_&_)
       if (!seenBefore) {
-        bodyMetadata = List(lhs) :: bodyMetadata
+        bodyMetadata.append(ListBuffer(lhs))
       }
     case _ =>
       // Do nothing

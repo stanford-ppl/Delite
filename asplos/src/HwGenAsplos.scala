@@ -49,12 +49,12 @@ trait HwGenAsplos extends HwGenMaps with BaseGenDeliteArrayOps
                       owner,
                       ${quote(aliasSym)}_en,
                       ${quote(aliasSym)}_done,
-                      D2,  // Need to analyze op.bApply to get this value
+                      ${quote(op.srcDims(1))},
                       dfeUInt(32), // TODO: Change this to use remap
                       ${quote(op.srcOffsets(op.deltaInds(0)))},
                       ${quote(op.srcOffsets(op.deltaInds(1)))},
-                      0,  // sBurstOffset,
-                      \"${quote(getBlockResult(op.bApply))}\",
+                      io.scalarInput(\"${quote(aliasSym)}_boffset\"),  // sBurstOffset,
+                      \"${quote(aliasSym)}_cmd\",
                       ${quote(op.destDims(op.deltaInds(0)))},
                       ${quote(op.destDims(op.deltaInds(1)))});""")
 
@@ -66,7 +66,7 @@ trait HwGenAsplos extends HwGenMaps with BaseGenDeliteArrayOps
             Count.Counter ${quote(aliasSym)}_waddr = control.count.makeCounter(${quote(aliasSym)}_writeAddrParams);
 
             ${quote(aliasSym)}.waddr <== ${quote(aliasSym)}_waddr.getCount();
-            ${quote(aliasSym)}.wdata <== io.input(\"${quote(getBlockResult(op.bApply))}\", dfeUInt(32), ${quote(aliasSym)}_en);
+            ${quote(aliasSym)}.wdata <== io.input(\"${quote(aliasSym)}_data\", dfeUInt(32), ${quote(aliasSym)}_en);
             ${quote(aliasSym)}.wen <== ${quote(aliasSym)}_en;""")
         }
         case Array2DNew(arr, d1, d2) =>
@@ -74,8 +74,6 @@ trait HwGenAsplos extends HwGenMaps with BaseGenDeliteArrayOps
           stream.println(s"// TODO: Need to know max bounds of dimensions $d1 and $d2 in order to allocate array $arr!")
 
       case FieldApply(struct, field) =>
-        stream.println(s"// FieldApply")
-
         def startMemorySearch(s: Exp[Any]): Exp[Any] = {
           val d = getdef(s.asInstanceOf[Sym[Any]])
           d match {
@@ -93,7 +91,7 @@ trait HwGenAsplos extends HwGenMaps with BaseGenDeliteArrayOps
           }
         }
 
-        stream.println(s"// ${quote(sym)} = FieldApply(${quote(struct)}, $field")
+        stream.println(s"// ${quote(sym)} = FieldApply(${quote(struct)}, $field)")
         val aliasSym = aliasMap.getOrElse(struct,struct)
         if (field != "data") {
           Console.println(s"$sym (aliasSym = $sym), $rhs")

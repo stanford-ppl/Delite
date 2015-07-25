@@ -37,6 +37,11 @@ trait HwGenDeliteOps extends HwGenMaps with GenericGenDeliteOps
     x.map(quote(_)).reduce(_+_)
   }
 
+def quote(x: ListBuffer[Exp[Any]]) : String = {
+    x.map(quote(_)).reduce(_+_)
+  }
+
+
   // New stuff from merge with wip-master (some need to be filled in?)
   def emitHeapMark(): Unit = {}
   def emitHeapReset(result: List[String]): Unit = {}
@@ -156,16 +161,14 @@ trait HwGenDeliteOps extends HwGenMaps with GenericGenDeliteOps
         if (needsSM) {
           // Add all stages to the dblBufMap
             smStages.flatten.foreach(seenLoops.add(_))  // So that one inner loop isn't part of multiple Metapipelines
-            stream.println("// Metapipeline stages:")
-              smStages.foreach(s => stream.println(s"// $s - ${s.map(ss => (ss, getdef(ss)))}"))
+            stream.println(s"// Metapipeline stages: $smStages")
 
           if (smStages.length > 1) {
             smStages.flatten.foreach(dblBufMap.add(_))
           }
 
-          val smInputs = smStages.flatten.map(x => s"${quote(x)}_done")
-          val smOutputs = smStages.flatten.map(x => s"${quote(x)}_en")
-
+          val smInputs = smStages.map(x => s"${quote(x)}_done")
+          val smOutputs = smStages.map(x => s"${quote(x)}_en")
           stream.println(s"// Loop $loopName needs a SM with the following spec:")
           stream.println(s"""
             // inputs: $smInputs
@@ -179,7 +182,7 @@ trait HwGenDeliteOps extends HwGenMaps with GenericGenDeliteOps
             SMIO ${loopName}_sm = addStateMachine(\"${loopName}_sm\", new ${loopName}_StateMachine(this));
             ${loopName}_sm.connectInput(\"sm_en\", ${loopName}_en);
             ${loopName}_done <== stream.offset(${loopName}_sm.getOutput(\"sm_done\"),-1);
-            sm.connectInput(\"sm_numIter\", ${loopName}_numIter);
+            ${loopName}_sm.connectInput(\"sm_numIter\", ${loopName}_numIter);
             """)
 
           for (idx <- 0 until smInputs.size) {
@@ -188,12 +191,11 @@ trait HwGenDeliteOps extends HwGenMaps with GenericGenDeliteOps
             stream.println(s"""
               DFEVar ${i} = dfeBool().newInstance(this);
               ${loopName}_sm.connectInput(\"s${idx}_done\", ${i});
-              DFEVar $o = sm.getOutput(\"s${idx}_en\") & ${loopName}_en;""")
+              DFEVar $o = ${loopName}_sm.getOutput(\"s${idx}_en\") & ${loopName}_en;""")
           }
 
           val fsmWriter = new PrintWriter(s"${bDir}/${loopName}_StateMachine.${fileExtension}")
           withStream(fsmWriter) {
-//            emitSM(loopName, smStages.map(x =>quote(x)))
             emitSM(loopName, smStages.size)
           }
           fsmWriter.close()
@@ -235,6 +237,36 @@ trait HwGenDeliteOps extends HwGenMaps with GenericGenDeliteOps
                 stream.println(s"""${storageName}_ff = new FFLib(owner, \"$storageName\", ${s}_done, $prevName);""")
                 stream.println(s"""${storageName} = ${storageName}_ff.q;""")
               }
+            }
+          }
+        }
+
+        // Emit Parallel SMs and wire them up if needed
+        if (needsSM) {
+          val parallelSMStates = smStages.filter(_.size > 1)
+          for (pstate <- parallelSMStates) {
+            val name = quote(pstate)
+            val numParallel = pstate.size
+            val fsmWriter = new PrintWriter(s"${bDir}/${name}_ParallelStateMachine.${fileExtension}")
+            withStream(fsmWriter) {
+              emitParallelSM(name, numParallel);
+            }
+            fsmWriter.close()
+
+          stream.println(s"""
+            SMIO ${name}_psm = addStateMachine(\"${name}_psm\", new ${name}_ParallelStateMachine(this));
+            ${name}_psm.connectInput(\"sm_en\", ${name}_en);
+            ${name}_done <== stream.offset(${name}_psm.getOutput(\"sm_done\"),-1);""")
+
+            val psInputs = pstate.map(x => s"${quote(x)}_done")
+            val psOutputs = pstate.map(x => s"${quote(x)}_en")
+            for (idx <- 0 until pstate.size) {
+              val i: String = psInputs(idx)
+              val o: String = psOutputs(idx)
+              stream.println(s"""
+                DFEVar ${i} = dfeBool().newInstance(this);
+                ${name}_psm.connectInput(\"s${idx}_done\", ${i});
+                DFEVar $o = ${name}_psm.getOutput(\"s${idx}_en\") & ${name}_en;""")
             }
           }
         }
@@ -325,6 +357,10 @@ trait HwGenDeliteOps extends HwGenMaps with GenericGenDeliteOps
             emitBlock(elem.buf.allocBuff)
             // Output memory for the tile function is allocated by the tile function itself
 
+            // If reduce function, emit accumulator copy in as well
+            if (!elem.rFunc.isEmpty) {
+            }
+
             stream.println(s"// TileElem tile blk: $sym")
             stream.println("// Bounds variables:")
             stream.println(s"// bS: ${elem.buf.bS}")
@@ -343,6 +379,10 @@ trait HwGenDeliteOps extends HwGenMaps with GenericGenDeliteOps
             emitBlockTrackDuplicates(elem.tile)
             val numKeys = elem.keys.length
             stream.println(s"// TileElem keys blk ($numKeys): $sym")
+
+            printer.run(elem.keys(0), s"keys(0) blk for $sym")
+            val keysAnalysis = new KeysAnalysis {val IR: HwGenDeliteOps.this.IR.type = HwGenDeliteOps.this.IR}
+            keysAnalysis.run(elem.keys, sym, aliasMap)
             for (k <- 0 until elem.keys.length) {
               emitBlockWithoutDuplicates(elem.keys(k))
             }
@@ -352,11 +392,49 @@ trait HwGenDeliteOps extends HwGenMaps with GenericGenDeliteOps
               // aliasMap(elem.rV._1) = sym
               aliasMap(elem.rV._1) = aliasMap.getOrElse(getBlockResult(elem.rFunc.get), getBlockResult(elem.rFunc.get))
               aliasMap(elem.rV._2) = aliasMap.getOrElse(getBlockResult(elem.tile), getBlockResult(elem.tile))
-//              Console.println(s"getBlockResult(elem.tile) = ${getBlockResult(elem.tile)}")
-//              printer.run(elem.tile, "elem.tile")
-//              aliasMap(getBlockResult(elem.rFunc.get)) = sym
               emitBlock(elem.rFunc.get)
             }
+
+
+            stream.println(s"// Accumulator copy out: $sym")
+            stream.println("// The command stream")
+            if (elem.keys.length != 2) {
+              stream.println("// Handling only 2-D block slices now")
+            } else {
+              val aliasSym = aliasMap.getOrElse(getBlockResult(elem.buf.bUpdate), getBlockResult(elem.buf.bUpdate))
+              val dim1Sym = structInfoMap((reverseStructMap(sym),"dim1"))
+              stream.println(s"""
+                  BlkLdStLib ${quote(aliasSym)}_blkStore = new BlkLdStLib(
+                          owner,
+                          ${quote(aliasSym)}_en,
+                          ${quote(aliasSym)}_done,
+                          ${quote(dim1Sym)},
+                          dfeUInt(32), // TODO: Change this to use remap
+                          ${quote(keysAnalysis.starts(0))},
+                          ${quote(keysAnalysis.starts(1))},
+                          io.scalarInput(\"${quote(sym)}_boffset\", dfeUInt(32)),  // sBurstOffset,
+                          \"${quote(sym)}_cmd\",
+                          ${quote(keysAnalysis.lengths(0))},
+                          ${quote(keysAnalysis.lengths(1))}
+                          );""")
+
+              stream.println("// The data stream")
+              stream.println(s"""
+                Count.Params ${quote(aliasSym)}_readAddrParams = control.count.makeParams(MathUtils.bitsToAddress(${quote(keysAnalysis.lengths(0))}*${quote(keysAnalysis.lengths(1))}))
+                                          .withEnable(${quote(aliasSym)}_en)
+                                          .withMax(${quote(keysAnalysis.lengths(0))}*${quote(keysAnalysis.lengths(1))});""")
+              val readMem = if (elem.rFunc.isEmpty) {
+                aliasMap.getOrElse(getBlockResult(elem.tile), getBlockResult(elem.tile))
+              } else {
+                aliasMap.getOrElse(getBlockResult(elem.rFunc.get), getBlockResult(elem.rFunc.get))
+              }
+              stream.println(s"""
+                Count.Counter ${quote(aliasSym)}_raddr = control.count.makeCounter(${quote(aliasSym)}_readAddrParams);
+
+                ${quote(readMem)}.raddr <== ${quote(aliasSym)}_raddr.getCount();
+                io.output(\"${quote(sym)}_data\", ${quote(readMem)}.rdata, dfeUInt(32), ${quote(aliasSym)}_en);""")
+            }
+
             stream.println(s"// End TileElem: $sym")
           case _ => sys.error(s"Unknown loop body ${op.body}")
         }

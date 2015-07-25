@@ -410,6 +410,7 @@ stream.println(s"""
   val condStr = (0 until numParallel).map("bitVector[" + _ + "]").reduce(_ + " & " + _)
   stream.println(s"""
             IF($condStr) {
+              resetBitVector();
               stateFF.next <== States.DONE;
             }
           }
