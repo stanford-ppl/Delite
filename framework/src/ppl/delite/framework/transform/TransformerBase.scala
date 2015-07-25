@@ -119,7 +119,19 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor {
       assert(!subst.contains(s) || subst(s) == sub)
       if (s != sub) { subst += s -> sub }
 
-    case _ => //Nothing
+    case TTP(syms, m, d) if syms.forall{s => apply(s) == s} => 
+      implicit val ctx: SourceContext = mpos(syms(0).pos)
+
+      val syms2 = transformFatDef(syms, d) match {
+        case Some(syms2) => syms2
+        case None => self_fat_mirror(syms, d)
+      }
+      syms.zip(syms2).foreach{s => 
+        assert(!subst.contains(s._1) || subst(s._1) == s._2)
+        if (s._1 != s._2) subst += (s._1 -> s._2)
+      }
+      
+    case _ => cwarn("Already have substitution for symbols in statement " + stm)
   }
 
   override def runOnce[A:Manifest](b: Block[A]): Block[A] = {
@@ -133,10 +145,16 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor {
     transformBlock(b)
   }
 
+  def transformFatDef[A](syms: List[Exp[Any]], d: FatDef)(implicit ctx: SourceContext): Option[List[Exp[Any]]] = None
+
   // Create Some replacement for given definition node if required, None if not
   def transformSym[A](s: Sym[A], d: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]]
   // Transfer metadata from original symbol to transformed symbol (can also be done during trasnformation)
   def transferMetadata(sub: Exp[Any], orig: Exp[Any], d: Def[Any])(implicit ctx: SourceContext): Unit
+
+  def self_fat_mirror(syms: List[Sym[Any]], rhs: FatDef)(implicit ctx: SourceContext): List[Exp[Any]] = {
+    mirror(syms, rhs, self.asInstanceOf[Transformer])
+  }
 
   // TODO: Will have to move this change to generic transformer framework eventually
   def self_mirror[A](sym: Sym[A], rhs : Def[A])(implicit ctx: SourceContext): Exp[A] = {

@@ -15,7 +15,21 @@ trait Array1DView[T] extends DeliteCollection[T]
 trait Array2DView[T] extends DeliteCollection[T]
 trait Array2D[T] extends DeliteCollection[T]
 
-trait FlattenedArrayOps extends DeliteSimpleOps with DeliteNestedOps with DeliteArrayOps with RangeVectorOps with OverloadHack { this: PPLApp => 
+trait FlattenedArrayIO extends DeliteSimpleOps with PPLNestedOps { this: PPLOps =>
+  // --- File reading
+  // (File reading is pretty annoying to write out directly in PPL)
+  def read1D(path: Rep[String]): Rep[Array1D[Double]] = read(path).map{s => s.toDouble}
+  def read2D(path: Rep[String])(implicit ctx: SourceContext): Rep[Array2D[Double]] = {
+    val vec = read(path).map{s => darray_split_string(s.trim, unit("\\s+"), unit(-1)).map{s => s.toDouble} }
+    collect(vec.length, vec(unit(0)).length){(i,j) => vec(i).apply(j)}
+  }
+  def readImg(path: Rep[String])(implicit ctx: SourceContext): Rep[Array2D[Int]] = {
+    val vec = read(path).map{s => darray_split_string(s.trim, unit("\\s+"), unit(-1)).map{s => s.toInt} }
+    collect(vec.length, vec(unit(0)).length){(i,j) => vec(i).apply(j)}
+  }
+}
+
+trait FlattenedArrayOps extends DeliteNestedOps with DeliteArrayOps with RangeVectorOps with OverloadHack { this: PPLOps => 
   type Array1D[T] = DeliteArray[T]
 
   // --- MultiArray constructors
@@ -40,7 +54,7 @@ trait FlattenedArrayOps extends DeliteSimpleOps with DeliteNestedOps with Delite
       val w = ks(0).length
       val h = ks.length
       val data = kernel_array[A](unit(h*w), ks.flatten)
-      Array2D(data, h, w)
+      Array2D(data, unit(h), unit(w))
     }
   }
 
@@ -127,8 +141,8 @@ trait FlattenedArrayOps extends DeliteSimpleOps with DeliteNestedOps with Delite
 
     // --- Printing
     def mkString(del: Rep[String]): Rep[String] = array_stringify[T,Array1DView[T]](x, List(del))
-    def pprint: Rep[Unit] = println(x.mkString(" "))
-    def vprint: Rep[Unit] = println(x.mkString("\n"))
+    def pprint: Rep[Unit] = println(x.mkString(unit(" ")))
+    def vprint: Rep[Unit] = println(x.mkString(unit("\n")))
   }
   
   implicit def array1DtoArray1DOpsCls[T:Manifest](x: Rep[Array1D[T]])(implicit ctx: SourceContext) = new Array1DOpsCls(x)
@@ -149,8 +163,8 @@ trait FlattenedArrayOps extends DeliteSimpleOps with DeliteNestedOps with Delite
 
     // --- Printing
     def mkString(del: Rep[String]): Rep[String] = array_stringify[T,Array1D[T]](x, List(del))
-    def pprint: Rep[Unit] = println(x.mkString(" "))
-    def vprint: Rep[Unit] = println(x.mkString("\n"))
+    def pprint: Rep[Unit] = println(x.mkString(unit(" ")))
+    def vprint: Rep[Unit] = println(x.mkString(unit("\n")))
   }
 
   // --- 2D Ops
@@ -190,7 +204,7 @@ trait FlattenedArrayOps extends DeliteSimpleOps with DeliteNestedOps with Delite
 
     // --- Printing
     def mkString(rdel: Rep[String], cdel: Rep[String]): Rep[String] = array_stringify[T,Array2DView[T]](x, List(rdel, cdel))
-    def pprint: Rep[Unit] = println(x.mkString("\n", " "))
+    def pprint: Rep[Unit] = println(x.mkString(unit("\n"), unit(" ")))
   }
 
   implicit def array2DtoArray2DOpsCls[T:Manifest](x: Rep[Array2D[T]])(implicit ctx: SourceContext) = new Array2DOpsCls(x)
@@ -228,24 +242,12 @@ trait FlattenedArrayOps extends DeliteSimpleOps with DeliteNestedOps with Delite
 
     // --- Printing
     def mkString(rdel: Rep[String], cdel: Rep[String]): Rep[String] = array_stringify[T,Array2D[T]](x, List(rdel, cdel))
-    def pprint: Rep[Unit] = println(x.mkString("\n", " "))
-  }
-
-  // --- File reading
-  // (File reading is pretty annoying to write out directly in PPL)
-  def read1D(path: Rep[String]): Rep[Array1D[Double]] = read(path).map{s => s.toDouble}
-  def read2D(path: Rep[String])(implicit ctx: SourceContext): Rep[Array2D[Double]] = {
-    val vec = read(path).map{s => darray_split_string(s.trim, unit("\\s+"), unit(-1)).map{s => s.toDouble} }
-    collect(vec.length, vec(unit(0)).length){(i,j) => vec(i).apply(j)}
-  }
-  def readImg(path: Rep[String])(implicit ctx: SourceContext): Rep[Array2D[Int]] = {
-    val vec = read(path).map{s => darray_split_string(s.trim, unit("\\s+"), unit(-1)).map{s => s.toInt} }
-    collect(vec.length, vec(unit(0)).length){(i,j) => vec(i).apply(j)}
+    def pprint: Rep[Unit] = println(x.mkString(unit("\n"), unit(" ")))
   }
 }
 
 // --- Concrete Ops
-trait FlattenedArrayOpsExp extends FlattenedArrayOps with MultiArrayExp with DeliteStructsExp { this: PPLCompiler => 
+trait FlattenedArrayOpsExp extends FlattenedArrayOps with MultiArrayExp with DeliteStructsExp { this: PPLOpsExp => 
   def *(): Rep[RangeWildcard] = fresh[RangeWildcard]
   def annotateViewified[T:Manifest](x: Rep[T]): Rep[T] = x.withData(MView(PhysType))
 
@@ -483,7 +485,7 @@ trait FlattenedArrayOpsExp extends FlattenedArrayOps with MultiArrayExp with Del
 }
 
 // --- Abstract Ops
-trait FlattenedArrayLowerableOpsExp extends FlattenedArrayOpsExp with DeliteLowerableOpsExp { self: PPLCompiler => 
+trait FlattenedArrayLowerableOpsExp extends FlattenedArrayOpsExp with DeliteLowerableOpsExp { self: PPLOpsExp => 
   private implicit val fc = AbstractFamily("FlatArray", skip = false)
 
   def array_stringify[A:Manifest,C<:DeliteCollection[A]:Manifest](x: Rep[C], dels: List[Rep[String]])(implicit ctx: SourceContext): Rep[String] = {
@@ -699,7 +701,7 @@ trait FlattenedArrayLowerableOpsExp extends FlattenedArrayOpsExp with DeliteLowe
   //if (!fc.skip) appendVisitor(implementer)
 }
 
-trait FlattenedArrayOpsExpOpt extends FlattenedArrayLowerableOpsExp with DeliteArrayOpsExpOpt { this: PPLCompiler => 
+trait FlattenedArrayOpsExpOpt extends FlattenedArrayLowerableOpsExp with DeliteArrayOpsExpOpt { this: PPLOpsExp => 
   // Shortcutting for kernels
   // Always immediately unwrap kernel applies at constant indices
   override def array_apply[A:Manifest,C<:DeliteCollection[A]:Manifest](x: Rep[C], inds: List[Rep[Int]])(implicit ctx: SourceContext): Rep[A] = x match {
@@ -718,6 +720,41 @@ trait FlattenedArrayOpsExpOpt extends FlattenedArrayLowerableOpsExp with DeliteA
     case Def(KernelArray(len, ks)) => len
     case Def(Reflect(KernelArray(len, ks), _, _)) => len
     case _ => super.darray_length(da)
+  }
+
+  object LoopNest {
+    def unapply[A](d: Def[A]): Option[(List[Exp[Int]], Def[A])] = d match {
+      case Reflect(l: AbstractLoopNest[_], u, es) if u == Control() => Some((l.sizes, l.body))
+      case l: AbstractLoopNest[_] => Some((l.sizes, l.body))
+      case _ => None
+    }
+  }
+  def fieldToIndex(index: String) = index.replace("dim","").toInt
+
+  // Can we do shortcutting for data too?
+  // TODO: These need to be fleshed out a lot more
+  override def field[T:Manifest](struct: Rep[Any],index: String)(implicit pos: SourceContext): Rep[T] = {
+    if (isArray2DTpe(struct.tp) && (index == "dim0" || index == "dim1")) struct match {
+      case Def(LoopNest(sizes, b: DeliteCollectElem[_,_,_])) if b.cond == Nil && b.par == ParFlat => 
+        sizes(fieldToIndex(index)).asInstanceOf[Rep[T]]
+
+      case Def(BlockSlice(_,_,_,destDims,unitDims)) => 
+        val dims = destDims.zipWithIndex.filterNot(unitDims contains _).map{_._1}
+        dims(fieldToIndex(index)).asInstanceOf[Rep[T]]
+
+      case _ => super.field(struct,index)
+    }
+    else if (isArray1DTpe(struct.tp) && index == "length") struct match {
+      case Def(LoopNest(sizes, b: DeliteCollectElem[_,_,_])) if b.cond == Nil && b.par == ParFlat => 
+        sizes(0).asInstanceOf[Rep[T]]
+
+      case Def(BlockSlice(_,_,_,destDims,unitDims)) => 
+        val dims = destDims.zipWithIndex.filterNot(unitDims contains _).map{_._1}
+        dims(0).asInstanceOf[Rep[T]]
+
+      case _ => super.field(struct,index)
+    }
+    else super.field(struct,index)
   }
 }
 

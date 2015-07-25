@@ -1,7 +1,7 @@
 package asplos
 
 import scala.reflect.SourceContext
-import scala.virtualization.lms.internal.GenericFatCodegen
+import scala.virtualization.lms.internal.{GenericFatCodegen, IRPrinter}
 
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.hw._
@@ -17,7 +17,7 @@ import ppl.delite.framework.ops._
 
 // --- PPL Ops
 trait PPLOps extends DeliteDSLOps
-  with FlattenedArrayOps with PPLNestedOps {
+  with FlattenedArrayOps with FlattenedArrayIO with PPLNestedOps {
   this: PPLApp =>
 
   // Configuration file for test input dimensions (matmult, outer product)
@@ -29,15 +29,16 @@ trait PPLOps extends DeliteDSLOps
 // Note: FlattenedArrayLowerableOpsExp includes transformer, so mix-in order matters here
 // In particular, it must come before DeliteDSLOpsExp (which includes SOA transformer)
 trait PPLOpsExp extends PPLOps 
-  /*with StripMiningExp with PatternPromotingExp*/ with SlicePushingExp
+  with StripMiningExp with PatternPromotingExp with SliceInterchangingExp with SlicePushingExp 
   with FlattenedArrayOpsExpOpt with DeliteDSLOpsExp
-  with PPLNestedOpsExp with SimpleProfileOpsExp {
+  with PPLNestedOpsExp with DeliteSimpleOpsExp with SimpleProfileOpsExp {
   this: PPLCompiler => 
 
   // These should eventually move back to their respective traits
   //appendVisitor(stripMiner)
   //appendVisitor(patternPromotion)
   //appendVisitor(slicePush)
+  appendVisitor(sliceInterchange)
   appendVisitor(applyLowering)
 
   override def getCodeGenPkg(t: Target{val IR: PPLOpsExp.this.type}) : GenericFatCodegen{val IR: PPLOpsExp.this.type} = t match {

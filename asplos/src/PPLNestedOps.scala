@@ -8,7 +8,7 @@ import ppl.delite.framework.datastructures._
 import ppl.delite.framework.transform._
 import ppl.delite.framework.ops._
 
-trait PPLNestedOps extends DeliteSimpleOps with DeliteNestedOps { this: PPLApp => 
+trait PPLNestedOps extends DeliteNestedOps { this: PPLOps => 
 
   def tile(x: Rep[Int], tileSize: Int, max: Int): Unit
   def tile(x: Rep[Int], tileSize: Option[Int], max: Int): Unit
@@ -94,7 +94,7 @@ trait PPLNestedOps extends DeliteSimpleOps with DeliteNestedOps { this: PPLApp =
 
 // Don't want to have view of staged if-then-else here, but do want math ops
 // TODO: Probably want to refactor this somehow
-trait PPLTileAssembleExp extends DSLCompilerOps with DeliteNestedOpsExpOpt { this: DeliteOpsExp =>
+trait PPLTileAssembleExp extends DeliteNestedOpsExpOpt with MathOpsExp with PrimitiveOpsExp { this: PPLOpsExp =>
 
   def tiledReduce[A:Manifest](d0: Rep[Int])(zero: Rep[A])(tile: Rep[RangeVector] => Rep[A])(reduce: (Rep[A],Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A] = {
     val blockFactor = freshTuna(d0)
@@ -212,7 +212,7 @@ trait PPLTileAssembleExp extends DSLCompilerOps with DeliteNestedOpsExpOpt { thi
 
 }
 
-trait PPLNestedOpsExp extends PPLNestedOps with DeliteSimpleOpsExp with PPLTileAssembleExp { this: PPLCompiler =>
+trait PPLNestedOpsExp extends PPLNestedOps with PPLTileAssembleExp { this: PPLOpsExp =>
   def tile(x: Rep[Int], tileSize: Int, max: Int): Unit = { freshTuna(x, tileSize).withMax(max) }
   def tile(x: Rep[Int], tileSize: Option[Int], max: Int): Unit = { val t = freshTuna(x).withMax(max); tileSize.foreach(t.withValue(_)) }
   def tile(x: Rep[Int], tileSize: Int, max: Option[Int]): Unit = { val t = freshTuna(x, tileSize); max.foreach(t.withMax(_)) }

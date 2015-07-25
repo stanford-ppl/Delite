@@ -202,6 +202,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
     // ideally these would always be propagated up and internalKernelEffects should not be needed,
     // but i don't think that's always happening now... so this is effectively a safety net
     val defs = rhs match {
+      case op: AbstractFatLoopNest => op.body
       case op:AbstractFatLoop => op.body
       case op:AbstractFatIfThenElse => (op.thenp zip op.elsep) map (p => IfThenElse(op.cond,p._1,p._2))
       case d: Def[_/*Any*/] => List(d.asInstanceOf[Def[Any]])
@@ -274,6 +275,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
 
     // emit task graph node
     rhs match {
+      // TODO: Emitting as a single task right now
+      //case op: AbstractFatLoopNest => 
+      //  emitMultiLoop(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, aliases, op.size, loopBodyAverageDynamicChunks(op.body), op.body.exists (loopBodyNeedsCombine _), op.body.exists (loopBodyNeedsPostProcess _), optContext, opStencil)
+
       case op: AbstractFatLoop =>
         // Predef.println("emitting DeliteFatLoop (" + sym + "), inputs are: ")
         // Predef.println(inputs)
