@@ -2,7 +2,7 @@
 
 std::vector< std::map<std::string,std::vector<cpptimer_t>*>* > *timermaps;
 std::vector< std::stack< cpptimer_t > > kernelCallStacks;
-std::vector< BufferedFileWriter* > profileWriters;
+std::vector< BufferedFileWriter* >* profileWriters;
 std::vector< std::map<std::string, std::vector<PCMStats*>*>* > *memoryAccessMaps;
 std::vector< std::map< std::string, std::vector<cpparray_layout_info>* >* >* scToMemAllocationMaps;
 std::map< std::string, cpptimer_t >* ticTocRegionToTimers;
@@ -44,6 +44,7 @@ void InitDeliteCppTimer(int32_t _lowestCppTid, int32_t numCppThreads) {
   ticTocRegionToTimers = new  std::map< std::string, cpptimer_t >;
   scToMemAllocationMaps = new std::vector< std::map< std::string, std::vector<cpparray_layout_info>* >* >;
   kernelToMemUsageMaps = new std::vector< std::map< std::string, uint64_t >* >;
+  profileWriters = new std::vector< BufferedFileWriter* >; 
 
   for (int32_t i = 0; i < numCppThreads; i++) {
     memoryAccessMaps->push_back(new std::map< std::string, std::vector<PCMStats*>* >());
@@ -55,10 +56,10 @@ void InitDeliteCppTimer(int32_t _lowestCppTid, int32_t numCppThreads) {
 
     std::stringstream ss;
     ss << profileFilePrefix << (lowestCppTid + i) << ".csv";
-	profileWriters.push_back( new BufferedFileWriter(ss.str().c_str()) );
+	profileWriters->push_back( new BufferedFileWriter(ss.str().c_str()) );
   }
 
-  profileWriters.push_back( new BufferedFileWriter(ticTocProfileFile.c_str()) );
+  profileWriters->push_back( new BufferedFileWriter(ticTocProfileFile.c_str()) );
 }
 
 void DeliteCppTimerTic(string name) {
@@ -80,8 +81,10 @@ void DeliteCppTimerToc(string name) {
   cpptimer_t timer = it->second;
   double end = milliseconds(t);
   double elapsedMillis = end - timer.start;
-  profileWriters[numCpp]->writeTimer(timer.name, long(timer.start - appStartTime), elapsedMillis, 0, numCpp, false);
+  profileWriters->at(numCpp)->writeTimer(timer.name, long(timer.start - appStartTime), elapsedMillis, 0, numCpp, false);
   ticTocRegionToTimers->erase(it);
+
+  std::cout << "[METRICS]: Time for component " << timer.name << ": " << std::fixed << std::setprecision(3) << (elapsedMillis/1000.0) << "s" << std::endl;
 }
 
 void deliteCppTimerStopHelper(int32_t tid, string _name, bool isMultiLoop = false) {
@@ -98,11 +101,11 @@ void deliteCppTimerStopHelper(int32_t tid, string _name, bool isMultiLoop = fals
   double end = milliseconds(t);
   double elapsedMillis = end - timer.start;
   kernelCallStacks[tid].pop();
-  profileWriters[tid]->writeTimer(timer.name, long(timer.start - appStartTime), elapsedMillis, kernelCallStacks[tid].size(), tid, isMultiLoop);
+  profileWriters->at(tid)->writeTimer(timer.name, long(timer.start - appStartTime), elapsedMillis, kernelCallStacks[tid].size(), tid, isMultiLoop);
 }
 
 void DeliteCppTimerStopMultiLoop(int32_t tid, string name) {
-    deliteCppTimerStopHelper(tid, name, true);
+  deliteCppTimerStopHelper(tid, name, true);
 }
 
 void DeliteCppTimerStart(int32_t tid, string name) {
@@ -118,8 +121,14 @@ void DeliteCppTimerStop(int32_t tid, string name) {
 
 void DeliteCppTimerClose() {
   for (int32_t i = 0; i <= numCpp; i++) {
-    profileWriters[i]->close();
+    profileWriters->at(i)->close();
   }
+
+  free(memoryAccessMaps);
+  free(ticTocRegionToTimers);
+  free(scToMemAllocationMaps);
+  free(kernelToMemUsageMaps);
+  free(profileWriters);
 }
 
 uint64_t estimateSizeOfArray(unsigned long length, std::string elemType) {
@@ -249,8 +258,6 @@ void DeliteSendMemoryAccessStatsToJVM( int32_t offset, JNIEnv* env ) {
         return;
     }
 
-    #endif 
-
     for (int32_t tid=0; tid < memoryAccessMaps->size(); tid++) {
         std::map< std::string, std::vector<PCMStats*>*> * scToMemoryAccessStats = memoryAccessMaps->at(tid);
         std::map< std::string, std::vector<PCMStats*>*>::iterator it;
@@ -260,8 +267,6 @@ void DeliteSendMemoryAccessStatsToJVM( int32_t offset, JNIEnv* env ) {
             std::vector<PCMStats*>* statsVector = it->second;
             PCMStats* stats = statsVector->at(0); // HACK: First question is: Do we need a vector
 
-            #ifndef __DELITE_CPP_STANDALONE__
-
             jstring sourceContext = env->NewStringUTF(sc.c_str());
             jint l2Misses = stats->l2Misses;
             jint l3Misses = stats->l3Misses;
@@ -269,15 +274,17 @@ void DeliteSendMemoryAccessStatsToJVM( int32_t offset, JNIEnv* env ) {
             jdouble l3CacheHitRatio = stats->l3CacheHitRatio;
             env->CallStaticVoidMethod(cls, mid, sourceContext, offset+tid, l2CacheHitRatio, l2Misses, l3CacheHitRatio, l3Misses);
             env->DeleteLocalRef(sourceContext);
-
-            #endif
         }
     }
+
+    #endif
 
 	dumpArrayAddrRanges();
 }
 
 void SendKernelMemUsageStatsToJVM( JNIEnv* env ) {
+    #ifndef __DELITE_CPP_STANDALONE__
+
     jclass cls = env->FindClass("ppl/delite/runtime/profiler/MemoryProfiler");
     jmethodID mid = env->GetStaticMethodID(cls, "addCppKernelMemUsageStats", "(Ljava/lang/String;J)V");
 
@@ -296,6 +303,8 @@ void SendKernelMemUsageStatsToJVM( JNIEnv* env ) {
             env->DeleteLocalRef(kernel);
 		}
     }
+
+    #endif
 }
 
 #ifndef DELITE_NUM_CUDA

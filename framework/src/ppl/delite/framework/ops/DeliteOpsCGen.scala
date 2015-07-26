@@ -119,7 +119,6 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
 
   def emitAbstractFatLoopHeader(syms: List[Sym[Any]], rhs: AbstractFatLoop) {
     val kernelName = getKernelName(syms)
-    stream.println("#include \"pcmHelper.h\"")
     stream.println("class " + kernelName+"_class" + "{")
     stream.println("public:")
     emitFieldsAndConstructor(kernelName)
@@ -209,4 +208,24 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
     case _ => super.emitNode(sym,rhs)
   }
 
+  override def emitStartMultiLoopTimerForSlave(name: String) = {
+    stream.println("if (tid != 0) {")
+    stream.println("DeliteCppTimerStart(resourceInfo->threadId,\"" + name + "\");")
+    stream.println("}")
+  }
+
+  override def emitStopMultiLoopTimerForSlave(name: String) = {
+    stream.println("if (tid != 0) {")
+    stream.println("DeliteCppTimerStopMultiLoop(resourceInfo->threadId,\"" + name + "\");")
+    stream.println("}")
+  }
+
+  override def emitStartPCM() = {
+    stream.println("CoreCounterState before = getCoreCounterState(resourceInfo->threadId);")
+  }
+  
+  override def emitStopPCM(sourceContext: String) = {
+    stream.println("CoreCounterState after = getCoreCounterState(resourceInfo->threadId);")
+    stream.println("DeliteUpdateMemoryAccessStats( resourceInfo->threadId, " + "\"" + sourceContext + "\" , getPCMStats( before, after ));")
+  }
 }

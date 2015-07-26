@@ -74,7 +74,6 @@ trait CCompile extends CodeCache {
   }
 
   def compile() {
-    if (sourceBuffer.length == 0) return
     if (Config.verbose) println("[delite]: starting C compile")
     val start = System.currentTimeMillis
     cacheRuntimeSources((sourceBuffer ++ headerBuffer).toArray)
@@ -143,12 +142,10 @@ trait CCompile extends CodeCache {
     }
   }
 
-  protected def verbosity = if (Config.verbose) "-DDELITE_VERBOSE" else ""
-
   protected def allCompileFlags = {
-    val almostAll = compileFlags ++ Array(config.compileFlags) ++ optionalFeatures.map("-D"+_)
-    var all = if (Config.verbose) almostAll ++ Array("-DDELITE_VERBOSE") else almostAll
-    if (Config.enablePCM) all = all ++ Array("-DDELITE_ENABLE_PCM")
+    var all = compileFlags ++ Array(config.compileFlags) ++ optionalFeatures.map("-D"+_)
+    if (Config.verbose) all ++= Array("-DDELITE_VERBOSE") 
+    if (Config.enablePCM) all ++= Array("-DDELITE_ENABLE_PCM")
     all.mkString(" ")
   }
 

@@ -137,11 +137,11 @@ object Delite {
         EOP_Global.initializeBarrier(executable.resources.count(!_.isEmpty)+1) //wait on all resources with work
         for (i <- 1 to Config.numRuns) {
           if (Config.performWalk) println("Beginning Execution Run " + i)
-          Profiling.startRun()
+          if (i == Config.numRuns) Profiling.startRun()
           executor.run(executable)
           EOP_Global.awaitBarrier() //await the end of the application program
           appResult = EOP_Global.take() //get the result of the application
-          Profiling.endRun()
+          if (i == Config.numRuns) Profiling.endRun()
           System.gc()
         }
       }

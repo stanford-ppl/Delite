@@ -169,4 +169,15 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     case _ => super.emitNode(sym,rhs)
   }
 
+  override def emitStartMultiLoopTimerForSlave(name: String) = {
+    stream.println("if (tid != 0) {")
+    stream.println("PerformanceTimer.startMultiLoop(\"" + name + "\", resourceInfo.threadId)")
+    stream.println("}")
+  }
+
+  override def emitStopMultiLoopTimerForSlave(name: String) = {
+    stream.println("if (tid != 0) {")
+    stream.println("PerformanceTimer.stopMultiLoop(\"" + name + "\", resourceInfo.threadId)")
+    stream.println("}")
+  }
 }

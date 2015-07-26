@@ -1067,7 +1067,9 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
   import IR._
 
   def emitLogOfArrayAllocation(sym: Sym[Any], arrayLength: Exp[Int], elemType: String): Unit = {
-	stream.println("DeliteLogArrayAllocation(resourceInfo->threadId, x" + sym.id + ", " + quote(arrayLength) + ", \"" + elemType + "\", \"" + getSourceContext(sym.pos) + "\");")
+	if (Config.enableProfiler) {
+      stream.println("DeliteLogArrayAllocation(resourceInfo->threadId, x" + sym.id + ", " + quote(arrayLength) + ", \"" + elemType + "\", \"" + getSourceContext(sym.pos) + "\");")
+    }
   }
 
   override def emitDataStructures(path: String) = {

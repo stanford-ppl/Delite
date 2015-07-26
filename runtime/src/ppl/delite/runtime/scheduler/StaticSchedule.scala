@@ -88,7 +88,7 @@ class OpList(val siblings: Array[OpList] = null, val resourceID: Int = -1) {
 
 }
 
-class PartialSchedule(resources: Array[OpList]) {
+class PartialSchedule(val resources: Array[OpList]) {
 
   val numResources = resources.length
 

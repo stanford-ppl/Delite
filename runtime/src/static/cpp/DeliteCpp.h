@@ -20,6 +20,7 @@
 #include "DeliteDatastructures.h"
 #include "DeliteCppProfiler.h"
 #include "MultiLoopSync.h"
+#include "pcmHelper.h"
 
 /* helper methods and data structures only required for execution with Delite */
 #ifndef __DELITE_CPP_STANDALONE__
@@ -34,7 +35,7 @@
 
 extern Config* config;
 extern resourceInfo_t* resourceInfos;
-void initializeAll(int threadId, int lowestCppTid, int numCppThreads, int numLiveThreads, size_t heapSize, bool enablePCM);
+void initializeAll(int threadId, int lowestCppTid, int numCppThreads, int numLiveThreads, size_t heapSize);
 void initializeThread(int threadId);
 #ifndef __DELITE_CPP_STANDALONE__
 void clearAll(int numThreads, int numLiveThreads, int offset, JNIEnv *env);

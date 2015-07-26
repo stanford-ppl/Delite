@@ -6,7 +6,7 @@ import ppl.delite.runtime.graph._
 import ppl.delite.runtime.scheduler.{OpList, PartialSchedule}
 import ppl.delite.runtime.{Config,Delite}
 import ppl.delite.runtime.graph.targets.{OS, Targets}
-import collection.mutable.ArrayBuffer
+import collection.mutable.{ArrayBuffer, HashSet}
 import sync._
 import ppl.delite.runtime.graph.DeliteTaskGraph
 
@@ -111,24 +111,19 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs {
     out.append("extern cudaStream_t d2hStream;\n")
   }
 
-  protected def writeMethodHeader() {
+  protected[codegen] def declareGlobals() {
     out.append("cudaStream_t kernelStream;\n")
     out.append("cudaStream_t h2dStream;\n")
     out.append("cudaStream_t d2hStream;\n")
     out.append("JNIEnv* env" + location + ";\n")
-    val function = "JNIEXPORT void JNICALL Java_" + executableName + "_00024_host" + executableName + "(JNIEnv* jnienv, jobject object, jint numThreads)"
-    out.append("extern \"C\" ") //necessary because of JNI
-    out.append(function)
-    out.append(";\n")
-    out.append(function)
-    out.append(" {\n")
+  }
 
+  protected[codegen] def initializeGlobals() {
     out.append("env" + location + " = jnienv;\n")
     if (Config.profile) {
       val tmp = Config.numThreads + Config.numCpp
       out.append("InitDeliteCudaTimer(" + Targets.getRelativeLocation(location) + "," + tmp + ");\n")
     }
-    out.append("JNIEnv *env = jnienv;\n")
     out.append("cudaStreamCreate(&kernelStream);\n")
     out.append("cudaStreamCreate(&h2dStream);\n")
     out.append("cudaStreamCreate(&d2hStream);\n")
@@ -136,13 +131,48 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs {
     out.append("hostInit();\n") // try to remove the overhead of the first call to hostInit (internally calls cudaHostAlloc)
     out.append("tempCudaMemInit(" + Config.tempCudaMemRate + ");\n")  // Allocate temporary device memory used for multiloops
     out.append("cudaDeviceSetLimit(cudaLimitMallocHeapSize, cudaHeapSize);\n") // Allocate heap device memory
-    //Preference of L1 cache slows down cuBLAS performance
-    //out.append("cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);\n") // 48KB L1 and 16KB Shared mem
     out.append("std::map<char*,void*>* outputMap = new std::map<char*,void*>();\n")
+  }
 
-    out.append("initializeAll(0," + Config.numCpp + ",1," + Config.cppHeapSize + "ULL);\n")
-    out.append(resourceInfoType + " " + resourceInfoSym + "_stack = resourceInfos[0];\n")
-    out.append(resourceInfoType + "* " + resourceInfoSym + " = &" + resourceInfoSym + "_stack;\n")
+  protected def writeMethodHeader() {
+    declareGlobals()
+    hostGenerator.declareGlobals()
+
+    val function = "JNIEXPORT void JNICALL Java_" + executableName + "_00024_host" + executableName + "(JNIEnv* jnienv, jobject object, jint numThreads)"
+    out.append("extern \"C\" ") //necessary because of JNI
+    out.append(function)
+    out.append(";\n")
+    out.append(function)
+    out.append(" {\n")
+
+    initializeGlobals()
+    hostGenerator.initializeGlobals()
+    writeJNIInitializer(graph)
+  }
+
+  protected def writeJNIInitializer(graphs: DeliteTaskGraph*) {
+    val locations = HashSet[Int]()
+    for(g <- graphs; opList <- g.schedule; op <- opList) {
+      op match {
+        case s: Send if s.scheduledOn(Targets.Scala) => locations.add(s.scheduledResource)
+        case s: Send if s.receivers.exists(_.scheduledOn(Targets.Scala)) => locations.add(s.scheduledResource)
+        case _ =>
+      }
+    }
+
+    for (i <- locations) {
+      out.append("jclass cls")
+      out.append(i)
+      out.append(" = env")
+      out.append(location)
+      out.append("->FindClass(\"")
+      out.append("Sync_" + executableName(i))
+      out.append("\");\n")
+    }
+    //add a reference to the singleton of scala.runtime.BoxedUnit for use everywhere required
+    out.append("jclass clsBU = env" + location + "->FindClass(\"scala/runtime/BoxedUnit\");\n")
+    out.append("jobject boxedUnit = env" + location + "->GetStaticObjectField(clsBU, env" + location + "->GetStaticFieldID(clsBU, \"UNIT\", \"Lscala/runtime/BoxedUnit;\"));\n")
+    out.append("env"+location+"->ExceptionClear();\n")
   }
 
   protected def writeMethodFooter() {
@@ -215,7 +245,10 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs {
           for (name <- op.getOutputs if(op.outputType(name)!="Unit")) {
             out.append(op.outputType(Targets.getByLocation(op.scheduledResource), name))
             if (!isPrimitiveType(op.outputType(name))) out.append('*')
-            out.append(" " + getSymHost(op,name) + " = ")
+            if (op.scheduledOn(Targets.Cpp))
+              out.append(" " + getSymHost(op,name) + " = ")
+            else
+              out.append(" " + getSymDevice(op,name) + " = ")
           }
           out.append(op.task) //kernel name
           out.append("(" + generateInputArgs(op) + ");\n")
@@ -283,7 +316,7 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs {
     "xG"+name
   }
 
-  protected def writeSyncObject() {  }
+  override protected[codegen] def writeSyncObject() {  }
 
   protected def isPrimitiveType(scalaType: String) = Targets.isPrimitiveType(scalaType)
 
@@ -320,25 +353,27 @@ trait CudaExecutableGenerator extends ExecutableGenerator with JNIFuncs {
     }
   }
 
-  protected def getHostInputs(nested: OP_Nested): Seq[(DeliteOP,String)] = {
-    val internalOps = nested.nestedGraphs.flatMap(_.schedule(location).toArray).filter(_.scheduledOn(Targets.Cpp))
-    var validInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (DeliteTaskGraph.getOp(sym)(graph), sym)
-    validInputs ++= (for ((op,sym) <- nested.nestedGraphs.map(_.result); if (op.isInstanceOf[OP_Input] && op.scheduledOn(Targets.Cpp))) yield (DeliteTaskGraph.getOp(sym)(graph), sym))
+  private def getNestedInputs(nested: OP_Nested, target: Targets.Value): Seq[(DeliteOP,String)] = {
+    val graph = nested.nestedGraphs.head.superGraph // enclosing graph for this nested op
+    val ops = nested.nestedGraphs.flatMap(_.schedule(location).toArray)
+    var validInputs = for (in <- ops.filter(_.scheduledOn(target)); (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (DeliteTaskGraph.findOp(sym)(graph), sym)
+    validInputs ++= (for ((op,sym) <- nested.nestedGraphs.map(_.result); if (op.isInstanceOf[OP_Input] && op.scheduledOn(target))) yield (DeliteTaskGraph.findOp(sym)(graph), sym))
+    ops.foreach { _ match {
+      case n: OP_Nested => validInputs ++= getNestedInputs(n, target).filterNot(i => ops.contains(i._1))
+      case op =>
+    }}
     validInputs.distinct
   }
 
-  protected def getDeviceInputs(nested: OP_Nested): Seq[(DeliteOP,String)] = {
-    val internalOps = nested.nestedGraphs.flatMap(_.schedule(location).toArray).filter(_.scheduledOn(Targets.Cuda))
-    var validInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (DeliteTaskGraph.getOp(sym)(graph), sym)
-    validInputs ++= (for ((op,sym) <- nested.nestedGraphs.map(_.result); if (op.isInstanceOf[OP_Input] && op.scheduledOn(Targets.Cuda))) yield (DeliteTaskGraph.getOp(sym)(graph), sym))
-    validInputs.distinct
-  }
+  protected def getHostInputs(nested: OP_Nested) = getNestedInputs(nested, Targets.Cpp)
+
+  protected def getDeviceInputs(nested: OP_Nested) = getNestedInputs(nested, Targets.Cuda)
 }
 
 class CudaMainExecutableGenerator(val location: Int, val graph: DeliteTaskGraph)
   extends CudaExecutableGenerator with CudaSyncGenerator {
 
-  protected val hostGenerator: CppExecutableGenerator = new CppMainExecutableGenerator(location, graph)
+  protected val hostGenerator: CppExecutableGenerator = new CppMainExecutableGenerator(Targets.resourceIDs(Targets.Cpp).head, graph)
   hostGenerator.out = out
 
   def executableName(location: Int) = "Executable" + location
@@ -404,7 +439,7 @@ class CudaDynamicExecutableGenerator(val location: Int, val graph: DeliteTaskGra
     case _ => //
   }
 
-  override protected def writeSyncObject() {
+  override protected[codegen] def writeSyncObject() {
     syncObjectGenerator(localSyncObjects, Targets.Scala).makeSyncObjects
     syncLocation = 0
     syncObjectGenerator(remoteSyncObjects, Targets.Scala).makeSyncObjects

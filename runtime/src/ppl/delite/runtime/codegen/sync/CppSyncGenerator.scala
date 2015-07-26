@@ -18,11 +18,11 @@ trait CppSyncProfiler extends CppExecutableGenerator {
  	var syncOpName = ""
 	if (Config.profile) {
 	  syncOpName = "__sync-ExecutionThread" + r.to.scheduledResource + "-" + getKernelName + "-" + r.sender.from.id + "-" + r.sender.from.scheduledResource
-	  out.append("DeliteCppTimerStart(" + Targets.getRelativeLocation(location) + ",\"" + syncOpName + "\");\n")
+	  out.append("DeliteCppTimerStart(resourceInfo->threadId, \"" + syncOpName + "\");\n")
     }
     emitSync
     if (Config.profile) {
-	  out.append("DeliteCppTimerStop(" + Targets.getRelativeLocation(location) + ",\"" + syncOpName + "\");\n")
+	  out.append("DeliteCppTimerStop(resourceInfo->threadId, \"" + syncOpName + "\");\n")
 	}
   }
 }
@@ -242,10 +242,8 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
     out.append("JNIObjectMap_insert(%s,_find_%s);\n".format(sym.filter(_.isDigit),idx))
   }
 
-  override protected def writeSyncObject() {
-    //if (syncList.nonEmpty) {
-      syncObjectGenerator(syncList, Targets.Scala).makeSyncObjects
-    //}
+  override protected[codegen] def writeSyncObject() {
+    syncObjectGenerator(syncList, Targets.Scala).makeSyncObjects
     super.writeSyncObject()
   }
 }
@@ -343,10 +341,8 @@ trait CppToCppSync extends SyncGenerator with CppExecutableGenerator with JNIFun
     out.append("();\n")
   }
 
-  override protected def writeSyncObject() {
-    //if (syncList.nonEmpty) {
-      syncObjectGenerator(syncList, Targets.Cpp).makeSyncObjects
-    //}
+  override protected[codegen] def writeSyncObject() {
+    syncObjectGenerator(syncList, Targets.Cpp).makeSyncObjects
     super.writeSyncObject()
   }
 

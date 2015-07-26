@@ -6,7 +6,6 @@
   <prefix> -I </prefix>
   <path> ${JAVA_HOME}/include </path> <!-- required for JNI -->
   <path> ${JAVA_HOME}/include/linux </path>
-  <path> ${PCM_HOME} </path>
 </headers>
 <linkFlags> -shared -fPIC -pthread </linkFlags>
 </DeliteExternalLib>

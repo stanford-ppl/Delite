@@ -114,6 +114,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   def hashmapType(argType: String): String
   def typeCast(sym: String, to: String): String
   def withBlock(name: String)(block: => Unit): Unit
+  def emitStartMultiLoopTimerForSlave(name: String): Unit = {}
+  def emitStopMultiLoopTimerForSlave(name: String): Unit = {}
+  def emitStartPCM(): Unit = {}
+  def emitStopPCM(sourceContext: String): Unit = {}
 
   // Because emitMethod and emitMethodCall are being overridden to pass additional runtime arguments now,
   // we need these "clean" versions for certain cases (e.g. serialization). This is ugly, and should be unified.
@@ -909,8 +913,6 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     val actType = getActType(kernelName)
     //deliteKernel = false
 
-	val enablePCM = (Config.enablePCM) && (fileExtension == "cpp")
-
     emitAbstractFatLoopHeader(symList, op)
 
     emitMethod("size", remap(Manifest.Long), Nil) { emitReturn(quote(op.size)) }
@@ -948,44 +950,9 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       emitReturn("__act")
     }
 
-    val isTargetScala = (fileExtension == "scala")
-    val isTargetCpp = (fileExtension == "cpp")
-
-    def emitTimerStart(name: String) = {
-      if (isTargetScala) {
-        stream.println("val threadName = \"ExecutionThread\" + tid")
-        stream.println("val kernelName = \"" + name + "_" + "\" + tid")
-        stream.println("MemoryProfiler.pushNameOfCurrKernel(threadName, kernelName)")
-        stream.println("PerformanceTimer.start(kernelName, threadName, false)")
-      } else if (isTargetCpp) {
-        stream.println("DeliteCppTimerStart(tid,\"" + name + "\");")
-      }
-    }
-
-    def emitTimerStop(name: String) = {
-      if (isTargetScala) {
-        stream.println("PerformanceTimer.stop(kernelName, threadName, false)")
-        stream.println("MemoryProfiler.popNameOfCurrKernel(threadName)")
-      } else if (isTargetCpp) {
-        stream.println("DeliteCppTimerStopMultiLoop(tid,\"" + name + "\");")
-      }
-    } 
-  
-    def emitTimerStopForNonZeroTids(name: String) = {
-      stream.println("if (tid != 0) {")
-      emitTimerStop(name)
-      stream.println("}")
-    }
- 
-    def emitTimerStopForZeroTid(name: String) = {
-      stream.println("if (tid == 0) {")
-      emitTimerStop(name)
-      stream.println("}")
-    } 
-
     emitMethod("main_par", actType, List(("__act", actType),("sync", syncType(actType)))) {
       emitValDef("tid", remap(Manifest.Int), fieldAccess(resourceInfoSym,"groupId"))
-      emitTimerStart(kernelName)
+      if (Config.enableProfiler) emitStartMultiLoopTimerForSlave(kernelName)
       emitProcessLocal(actType)
       if (!op.body.exists(b => loopBodyNeedsCombine(b) || loopBodyNeedsPostProcess(b))) {
         emitBarrier()
@@ -1002,9 +969,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitBarrier()
       }
 
-      emitTimerStopForNonZeroTids(kernelName)
+      if (Config.enableProfiler) emitStopMultiLoopTimerForSlave(kernelName)
       emitFinalizer()
-      emitTimerStopForZeroTid(kernelName)
       emitReturn("act")
     }
 
@@ -1040,9 +1006,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitValDef(streamSym+"_offset", remap(manifest[Long]), fieldAccess(streamSym, "streamOffset"))
         emitValDef("isEmpty",remap(Manifest.Boolean), "end <= " + fieldAccess(streamSym,"position"))
 
-		if (enablePCM) {
-			stream.println("CoreCounterState before = getCoreCounterState(resourceInfo->threadId);")
-		}
+        if (Config.enablePCM) emitStartPCM()
 
         emitValDef("__act2",actType,methodCall("init",List("__act","-1","isEmpty",streamSym)))
         stream.println("while (" + fieldAccess(streamSym,"position") + " < " + streamSym + "_offset + end) {")
@@ -1051,10 +1015,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         if (gcStrategy(op) == Iteration) emitHeapReset(List())
         stream.println("}")
 
-		if (enablePCM) {
-			stream.println("CoreCounterState after = getCoreCounterState(resourceInfo->threadId);")
-			stream.println("DeliteUpdateMemoryAccessStats( resourceInfo->threadId, " + "\"" + getSourceContext(symList(0).pos) + "\" , getPCMStats( before, after ));")
-		}
+        if (Config.enablePCM) emitStopPCM(getSourceContext(symList(0).pos))
 
         stream.println(fieldAccess(streamSym, "close();"))
       }
@@ -1062,9 +1023,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitValDef("isEmpty",remap(Manifest.Boolean),"end-start <= 0")
         emitVarDef("idx", remap(Manifest.Int), typeCast("start",remap(Manifest.Int)))
 
-		if (enablePCM) {
-			stream.println("CoreCounterState before = getCoreCounterState(resourceInfo->threadId);")
-		}
+        if (Config.enablePCM) emitStartPCM()
 
         emitValDef("__act2",actType,methodCall("init",List("__act","idx","isEmpty")))
         emitAssignment("idx","idx + 1")
@@ -1075,10 +1034,7 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitAssignment("idx","idx + 1")
         stream.println("}")
 
-		if (enablePCM) {
-			stream.println("CoreCounterState after = getCoreCounterState(resourceInfo->threadId);")
-			stream.println("DeliteUpdateMemoryAccessStats( resourceInfo->threadId, " + "\"" + getSourceContext(symList(0).pos) + "\" , getPCMStats( before, after ));")
-		}
+        if (Config.enablePCM) emitStopPCM(getSourceContext(symList(0).pos))
       }
 
       if (outputStreamVars.length > 0) {
@@ -1483,6 +1439,12 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
   override def emitNodeKernelExtra(sym: List[Sym[Any]], rhs: Def[Any]): Unit = rhs match {
     case op: AbstractLoop[_] =>
+      if (fileExtension == "scala") {
+        stream.println("import ppl.delite.runtime.profiler.{MemoryProfiler, PerformanceTimer}")
+      } else if (fileExtension == "cpp") {
+        stream.println("#include \"DeliteCppProfiler.h\"\n")
+      }
+
       stream.println("//activation record for thin loop")
       emitAbstractFatLoopKernelExtra(SimpleFatLoop(op.size, op.v, List(op.body)), sym)
     case _ =>

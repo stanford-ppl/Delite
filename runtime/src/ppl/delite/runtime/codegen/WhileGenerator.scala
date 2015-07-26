@@ -157,7 +157,7 @@ class CppWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: D
 class CudaWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: DeliteTaskGraph)
   extends WhileGenerator with CudaNestedGenerator with CudaSyncGenerator {
 
-  protected val hostGenerator: CppWhileGenerator = new CppWhileGenerator(whileLoop, location, graph)
+  protected val hostGenerator: CppWhileGenerator = new CppWhileGenerator(whileLoop, Targets.resourceIDs(Targets.Cpp).head, graph)
   hostGenerator.out = out
 
   protected def beginWhile(predicate: String) {
@@ -176,6 +176,7 @@ class CudaWhileGenerator(val whileLoop: OP_While, val location: Int, val graph: 
     out.append("(")
     out.append(generateHostDeviceInputs)
     out.append(") {\n")
+    writeJNIInitializer(whileLoop.nestedGraphs:_*)
   }
 
   protected def endFunction() {
