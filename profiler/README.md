@@ -3,6 +3,8 @@ Delite Performance Debugger
 
 The tool provides a platform to visualize the profile data collected from a Delite application, thereby making it easier to debug performanc issues in a Delite app.
 
+!['Overview' section](https://github.com/stanford-ppl/Delite/blob/debugger/profiler/assets/kMeans_2.png "'Overview' section of the profiler")
+
 How do I profile my app?
 =========================
 
@@ -33,8 +35,6 @@ What does the tool visualize?
 The tool's UI is composed of 2 tabbed sections:
   * Overview
   * Compare run summaries
-
-!['Overview' section](https://github.com/stanford-ppl/Delite/blob/debugger/profiler/assets/kMeans_2.png)
 
 Overview section
 ===================
