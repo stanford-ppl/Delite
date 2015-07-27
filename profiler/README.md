@@ -8,20 +8,24 @@ The tool provides a platform to visualize the profile data collected from a Deli
 How do I profile my app?
 =========================
 
-* Use the --profile flag while invoking delitec/delite 
+* Use the --profile flag while invoking delitec/delite.
 *  Example:
   * bin/delitec HelloSimpleCompiler --profile
   * bin/delite HelloSimpleCompiler --profile -t 4
+* Additional memory access instrumentation can be enabled with argument(s) provided to the 'profile' flag.
+  * --profile=pcm: Enables instrumentation of cache access stats (eg: cache hit/miss ratios, etc.) for Multiloop kernels.
+    * NOTE: This option requires the Intel PCM library to be installed on the system.
+  * --profile=perf: Enables data-structure-specific instrumentation of cache access stats.
+    * NOTE: This option requires the 'perf' utility (installed by default on most Linux distributions)
 
+Visualizing the collected profile info
+=======================================
 
-Using the tool
-===============
-
-* Run bin/delited from the same directory as bin/delitec and bin/delite were launched
-* In order for the ‘delited’ script to work, the following directory structure needs to be maintained:
+* Run bin/delitep from the same directory as bin/delitec and bin/delite were launched
+* For the ‘delitep’ script to work, the following directory structure needs to be maintained:
   * apps/src/<app source files>
   * bin
-    * delited
+    * delitep
     * server.py
   * profile
     * profile.db
@@ -43,26 +47,17 @@ This section is composed of 5 major views
 
 1. **Code-viewer** 
   * This is the window on the top left. 
-  * When a kernel is selected (either in the data-dependency or the timeline views), the corresponding source file is displayed here. Also, the specific line of code that generated the kernel is highlighted and scrolled into view.
+  * When a kernel is selected (either in the dataflow or the timeline views), the corresponding source file is displayed here. Also, the specific line of code that generated the kernel is highlighted and scrolled into view.
 
 2. **Global data viewer** 
   * This is the window on the top right.
-  * Supports multiple views. Each view can be selected using the 'Metric' selection button provided on the sidebar under the section 'Global Stats'. Following are the available options:
-    1. **DEG View**
-      * Generates a graph visualization of the DEG file. The edges represent data dependencies among the different kernels generated from the app. An arrow from node A to node B implies that B is data dependent on A.
-      * Clicking on a node displays relevant information in the 'Kernel Info table' on the sidebar. Also, it highlights the input-output neighbors of the node on the graph. 
-      * By default, each node in the graph is marked with one of 4 different colors depending on its in-degree and out-degree. 
-        * *Blue* => (in-degree == 0) AND (out-degree == 0)
-        * *Green* => (in-degree == 0) AND (out-degree > 0)
-        * *Orange* => (in-degree > 0) AND (out-degree > 0)
-        * *Red* => (in-degree > 0) AND (out-degree == 0)
-    2. **Performance** 
-      * Generates a bar chart that lists the top 20 kernels in terms of percentage of app time they account for. 
-      * Each bar would display the name of the kernel along with the fraction of the total app runtime that it accounted for. 
-      * Example: x0(10%) implies that kernel 'x0' accounted for 10% of the total app time.
-    3. **Mem Usage** 
-      * A bar chart that lists the top 20 kernels in terms of memory allocated. The amount of memory allocated by the node is indicated along with the kernel's name.
-      * NOTE: Currently, memory allocation is tracked only for kernels run on the scala/cpp targets. Other targets such as CUDA are not yet supported.
+  * Generates a graph visualization of the DEG file. The edges represent data dependencies among the different kernels generated from the app. An arrow from node A to node B implies that B is data dependent on A.
+  * Clicking on a node displays relevant information in the 'Kernel Info table' on the sidebar. Also, it highlights the input-output neighbors of the node on the graph. 
+  * By default, each node in the graph is marked with one of 4 different colors depending on its in-degree and out-degree. 
+	* *Blue* => (in-degree == 0) AND (out-degree == 0)
+	* *Green* => (in-degree == 0) AND (out-degree > 0)
+	* *Orange* => (in-degree > 0) AND (out-degree > 0)
+	* *Red* => (in-degree > 0) AND (out-degree == 0)
 
 3. **GC (Garbage Collection) Event Viewer**
   * This is the horizontal strip just below Code Viewer and the Global Data Viewer.
@@ -102,6 +97,7 @@ Other features in the Overview section
 =========================================
 
 * *Zoom:* Use the zoom box on the sidebar to zoom in and out of the timeline view
+* For a zoom factor of F, enter (F*100) in the text box. For example, entering 300 zooms into the view by a factor of 3.
 
 'Compare run summaries' section
 =================================
@@ -116,7 +112,7 @@ Other features in the Overview section
   * The variation in Total/Execution/Synchronization time across different kernels in the app with change in number of threads.
 
 * Using this view:
-  * Use the 'Upload run summaries' button to upload multiple profileData.js files. 
+  * Use the 'Upload run summaries' button to upload multiple profile.db files. 
   * Once all the input files have been processed in the backend, the 'View data' button is enabled. Click this button to view the graphs that indicate the variation in different metrics for the tic-toc regions in the app.
   * Use the 'Metric' drop-down on the right to select the metric for which the variation needs to be visualized
   * The strip at the bottom can be used to view the same metrics for different kernels. 
