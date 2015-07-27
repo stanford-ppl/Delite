@@ -96,12 +96,12 @@ This section is composed of 5 major views
 6. **Sidebar**
   * Kernel Info table
 	* Displays information aggregated across all instances of a kernel.
-      * *Search box:* Use this to view kernel info for a specific kernel
-      * *Name:* Name of the kernel
-      * *Type:* Type of the kernel (eg: SingleTask, MultiLoop, etc.)
-      * *Time (%):* Total time taken by all instances of this kernel. Within parantheses, the percentage of total app time spent executing instances of this kernel is also provided.
+      * *Search box        :* Use this to view kernel info for a specific kernel
+      * *Name              :* Name of the kernel
+      * *Type              :* Type of the kernel (eg: SingleTask, MultiLoop, etc.)
+      * *Time (%)          :* Total time taken by all instances of this kernel. Within parantheses, the percentage of total app time spent executing instances of this kernel is also provided.
 	  * *Exec/Sync Time (%):* Percentage breakdown of the total time taken by the kernel in terms of time spent in computation and synchronization.
-	  * *Mem Usage:* Total amount of memory allocated by the kernel
+	  * *Mem Usage         :* Total amount of memory allocated by the kernel
   * Timeline Node Info
 	* Displays information corresponding to a specific instance of a kernel
 	  * Name: Name of the kernel
