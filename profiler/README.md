@@ -93,6 +93,37 @@ This section is composed of 5 major views
       * Note that the timeline nodes are arranged in a hierarchical manner. Double-click on a node to expand it and to view the nodes that were executed within it. For example, double-clicking on a Conditional/WhileLoop/MultiLoop node would display the component nodes that constitute that node.
       * Each time, a timeline node is expanded by double-clicking, the 'Hidden Nodes' drop-down in the sidebar is updated. This drop-down can be used to move up to the parent node.
 
+6. **Sidebar**
+  * Kernel Info table
+	* Displays information aggregated across all instances of a kernel.
+      * *Search box:* Use this to view kernel info for a specific kernel
+      * *Name:* Name of the kernel
+      * *Type:* Type of the kernel (eg: SingleTask, MultiLoop, etc.)
+      * *Time (%):* Total time taken by all instances of this kernel. Within parantheses, the percentage of total app time spent executing instances of this kernel is also provided.
+	  * *Exec/Sync Time (%):* Percentage breakdown of the total time taken by the kernel in terms of time spent in computation and synchronization.
+	  * *Mem Usage:* Total amount of memory allocated by the kernel
+  * Timeline Node Info
+	* Displays information corresponding to a specific instance of a kernel
+	  * Name: Name of the kernel
+	  * Target: Runtime target of the kernel instance (eg: Scala/Cpp/etc.)
+	  * Time (%): Time (and percentage of total app time) taken by that particular instance of the kernel
+	  * Exec/Sync Time (%): Percentage breakdown of the time spent by this instance of the kernel in terms of time spent in computation and synchronization
+  * Sync Node Info
+	* Displays information correspoding to a synchronization kernel
+      * Dep. Thread: Name of the thread the synchronization waited on
+	  * Dep. Kernel: Name of the kernel the synchronization waited on
+	  * Time (%): Time (and percentage of total app time) taken by the synchronization kernel
+  * GC Event Info
+	* Displays information corresponding to the selected GC Event
+	  * Young Gen.: Amount of memory that was used by Young Gen objects before and after the GC event. It also shows the amount of memory that was reclaimed from these objects.
+	  * Old Gen.: Corresponds to Old Gen objects
+	  * Heap
+  * Memory Usage Info
+	* Displays information corresponding to the selected point on the JVM Memory Usage Viewer.
+	  * M: Max amount of memory that can be allocated to the JVM by the system
+	  * T: Total amount of memory that has been allocated to the JVM
+	  * U: Amount of memory in use by the JVM.
+
 Other features in the Overview section
 =========================================
 
