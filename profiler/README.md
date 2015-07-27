@@ -3,31 +3,42 @@ Delite Performance Debugger
 
 The tool provides a platform to visualize the profile data collected from a Delite application, thereby making it easier to debug performanc issues in a Delite app.
 
+!['Overview' section](https://github.com/stanford-ppl/Delite/blob/debugger/profiler/assets/kMeans_2.png "'Overview' section of the profiler")
+
 How do I profile my app?
 =========================
 
-* Use the --profile flag while invoking delitec/delite 
+* Use the --profile flag while invoking delitec/delite.
+*  Example:
+  * bin/delitec HelloSimpleCompiler --profile
+  * bin/delite HelloSimpleCompiler --profile -t 4
+* Additional memory access instrumentation can be enabled with argument(s) provided to the 'profile' flag.
+  * --profile=pcm: Enables instrumentation of cache access stats (eg: cache hit/miss ratios, etc.) for Multiloop kernels.
+    * NOTE: This option requires the Intel PCM library to be installed on the system.
+  * --profile=perf: Enables data-structure-specific instrumentation of cache access stats.
+    * NOTE: This option requires the 'perf' utility (installed by default on most Linux distributions)
 
-Using the tool
-===============
+Visualizing the collected profile info
+=======================================
 
-Follow the steps below in order to generate the visualization
+* Run bin/delitep from the same directory as bin/delitec and bin/delite were launched
+* For the ‘delitep’ script to work, the following directory structure needs to be maintained:
+  * apps/src/<app source files>
+  * bin
+    * delitep
+    * server.py
+  * profile
+    * profile.db
+    * profileDataUI.js
+    * gcStats.txt
 
-1. Open grid.html in a Chrome browser (The tool has not been tested for other browsers. Also, it would be advisable to update the Chrome browser to the latest version).
-2. On the siderbar located at the left, there is a section named 'Inputs' at the top. Upload the following files/dirs as inputs:
-  * DEG file (eg: HelloWorld.deg)
-  * profileData.js - Located within the 'profile' directory in the app's working directory. This directory and file are created when the app is run with the --profile flag enabled. 
-  * gcStats.txt -  Located within the 'profile' directory in the app's working directory. It contains information about the garbage collection events that were triggered in the JVM during the execution of the app.
-  * Source directory - Directory that contains the source code of your app. This input is optional. If provided, it would enable the tool to locate and highlight the source line corresponding to each kernel. 
-3. Once the files have been uploaded correctly, the 'View' button would turn green, indicating that the input files have been uploaded. Click the 'View' button' to start generating the visualization. Since the tool is in a prototype stage, there are some performance issues that are yet to be resolved and hence, it may take up to a few minutes to generate the visualizations.
 
 What does the tool visualize?
 ==============================
 
-The tool's UI is composed of 3 tabbed sections:
+The tool's UI is composed of 2 tabbed sections:
   * Overview
   * Compare run summaries
-  * Compare timelines
 
 Overview section
 ===================
@@ -36,42 +47,17 @@ This section is composed of 5 major views
 
 1. **Code-viewer** 
   * This is the window on the top left. 
-  * When a kernel is selected (either in the data-dependency or the timeline views), the corresponding source file is displayed here. Also, the specific line of code that generated the kernel is highlighted and scrolled into view.
-  * NOTE: This feature would work only if the app's source directory has been uploaded [Refer to the section above on how to upload the source directory]
+  * When a kernel is selected (either in the dataflow or the timeline views), the corresponding source file is displayed here. Also, the specific line of code that generated the kernel is highlighted and scrolled into view.
 
 2. **Global data viewer** 
   * This is the window on the top right.
-  * Supports multiple views. Each view can be selected using the 'Metric' selection button provided on the sidebar under the section 'Global Stats'. Following are the available options:
-    1. **DEG View**
-      * Generates a graph visualization of the DEG file. The edges represent data dependencies among the different kernels generated from the app. An arrow from node A to node B implies that B is data dependent on A.
-      * Clicking on a node displays relevant information in the 'Kernel Info table' on the sidebar. Also, it highlights the input-output neighbors of the node on the graph. 
-      * By default, each node in the graph is marked with one of 4 different colors depending on its in-degree and out-degree. 
-        * *Blue* => (in-degree == 0) AND (out-degree == 0)
-        * *Green* => (in-degree == 0) AND (out-degree > 0)
-        * *Orange* => (in-degree > 0) AND (out-degree > 0)
-        * *Red* => (in-degree > 0) AND (out-degree == 0)
-      * The nodes can be colored based on other metrics as well [These can be chosen using the drop-down selection on top of the 'Global data viewer']. Available options are:
-        * Memory Allocation
-          * The nodes are colored on a scale ranging from white to red based on the memory allocated by each one. More the memory allocated by a node, the more red it is.
-        * Performance
-          * The nodes are colored on a scale ranging from white to red based on the percentage of app time the node accounted for. More the time taken by a node, the more red it is.
-        * Type of Kernel
-          * *Red* =>        MultiLoop node
-          * *Orange* =>     WhileLoop node
-          * *LightBlue* =>  SingleTask node
-          * *Green* =>      Conditional node
-    2. **Performance** 
-      * Generates a bar chart that lists the top 20 kernels in terms of percentage of app time they account for. 
-      * Each bar would display the name of the kernel along with the fraction of the total app runtime that it accounted for. 
-      * Example: x0(10%) implies that kernel 'x0' accounted for 10% of the total app time.
-    3. **Mem Usage** 
-      * A bar chart that lists the top 20 kernels in terms of memory allocated. The amount of memory allocated by the node is indicated along with the kernel's name.
-      * NOTE: Currently, memory allocation is tracked only for kernels run on the scala target. Other targets such as CUDA, C, etc. are not yet supported.
-    4. **Thread Sync** 
-      * A bar-chart that indicates the amount of time spent by each thread waiting on synchronization barriers. 
-      * Example: T0(30%) implies that thread T0 spent almost 30% of its time waiting on synchronization barriers
-    5. **Tic-toc Regions**
-      * A bar-chart that lists the various tic-toc regions in the app in descending order based on the percentage of total app time they accounted for. 
+  * Generates a graph visualization of the DEG file. The edges represent data dependencies among the different kernels generated from the app. An arrow from node A to node B implies that B is data dependent on A.
+  * Clicking on a node displays relevant information in the 'Kernel Info table' on the sidebar. Also, it highlights the input-output neighbors of the node on the graph. 
+  * By default, each node in the graph is marked with one of 4 different colors depending on its in-degree and out-degree. 
+	* *Blue* => (in-degree == 0) AND (out-degree == 0)
+	* *Green* => (in-degree == 0) AND (out-degree > 0)
+	* *Orange* => (in-degree > 0) AND (out-degree > 0)
+	* *Red* => (in-degree > 0) AND (out-degree == 0)
 
 3. **GC (Garbage Collection) Event Viewer**
   * This is the horizontal strip just below Code Viewer and the Global Data Viewer.
@@ -107,10 +93,42 @@ This section is composed of 5 major views
       * Note that the timeline nodes are arranged in a hierarchical manner. Double-click on a node to expand it and to view the nodes that were executed within it. For example, double-clicking on a Conditional/WhileLoop/MultiLoop node would display the component nodes that constitute that node.
       * Each time, a timeline node is expanded by double-clicking, the 'Hidden Nodes' drop-down in the sidebar is updated. This drop-down can be used to move up to the parent node.
 
+6. **Sidebar**
+  * **Kernel Info table**
+	* Displays information aggregated across all instances of a kernel.
+      * *Search box:* Use this to view kernel info for a specific kernel
+      * *Name:* Name of the kernel
+      * *Type:* Type of the kernel (eg: SingleTask, MultiLoop, etc.)
+      * *Time (%):* Total time taken by all instances of this kernel. Within parantheses, the percentage of total app time spent executing instances of this kernel is also provided.
+	  * *Exec/Sync Time (%):* Percentage breakdown of the total time taken by the kernel in terms of time spent in computation and synchronization.
+	  * *Mem Usage:* Total amount of memory allocated by the kernel
+  * **Timeline Node Info**
+	* Displays information corresponding to a specific instance of a kernel
+	  * *Name:* Name of the kernel
+	  * *Target:* Runtime target of the kernel instance (eg: Scala/Cpp/etc.)
+	  * *Time (%):* Time (and percentage of total app time) taken by that particular instance of the kernel
+	  * *Exec/Sync Time (%):* Percentage breakdown of the time spent by this instance of the kernel in terms of time spent in computation and synchronization
+  * **Sync Node Info**
+	* Displays information correspoding to a synchronization kernel
+      * *Dep. Thread:* Name of the thread the synchronization waited on
+	  * *Dep. Kernel:* Name of the kernel the synchronization waited on
+	  * *Time (%):* Time (and percentage of total app time) taken by the synchronization kernel
+  * **GC Event Info**
+	* Displays information corresponding to the selected GC Event
+	  * *Young Gen.:* Amount of memory that was used by Young Gen objects before and after the GC event. It also shows the amount of memory that was reclaimed from these objects.
+	  * *Old Gen.:* Corresponds to Old Gen objects
+	  * *Heap*
+  * **Memory Usage Info**
+	* Displays information corresponding to the selected point on the JVM Memory Usage Viewer.
+	  * *M:* Max amount of memory that can be allocated to the JVM by the system
+	  * *T:* Total amount of memory that has been allocated to the JVM
+	  * *U:* Amount of memory in use by the JVM.
+
 Other features in the Overview section
 =========================================
 
 * *Zoom:* Use the zoom box on the sidebar to zoom in and out of the timeline view
+* For a zoom factor of F, enter (F*100) in the text box. For example, entering 300 zooms into the view by a factor of 3.
 
 'Compare run summaries' section
 =================================
@@ -125,23 +143,8 @@ Other features in the Overview section
   * The variation in Total/Execution/Synchronization time across different kernels in the app with change in number of threads.
 
 * Using this view:
-  * Use the 'Upload run summaries' button to upload multiple profileData.js files. 
+  * Use the 'Upload run summaries' button to upload multiple profile.db files. 
   * Once all the input files have been processed in the backend, the 'View data' button is enabled. Click this button to view the graphs that indicate the variation in different metrics for the tic-toc regions in the app.
   * Use the 'Metric' drop-down on the right to select the metric for which the variation needs to be visualized
   * The strip at the bottom can be used to view the same metrics for different kernels. 
   * Type in the name of the kernel (eg: x0, x254, etc.) in the search box and press the Enter key to display the data.
-
-'Compare timelines' section
-=================================
-
-* This section is intended to help view timelines from multiple executions for comparison purposes.
-* Use the 'Upload profile data' button to upload one profile data file at a time.
-
-Known bugs and required features - Will be fixed/added soon
-=============================================================
-
-* In the 'Overview' section, when zooming into the timeline view, the GC Event timeline and the Memory Usage section do not zoom accordingly.
-
-* In the 'Compare timelines' section, the different timeline views use different x-axis scales. And hence the widths of the kernels cannot be compared one-to-one.
-
-* It's necessary to add a progress bar to indicate the status of backend processing to the user, especially after the input files have been uploaded. Else, its hard to tell if the tool has crashed or if its still processing data in the backend.
