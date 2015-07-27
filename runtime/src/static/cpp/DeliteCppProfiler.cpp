@@ -159,19 +159,21 @@ void incMemUsageOfKernel( int32_t tid, std::string kernel, uint64_t inc ) {
 }
 
 void DeliteLogArrayAllocation(int32_t tid, void* startAddr, int32_t length, std::string elemType, std::string sourceContext) {
-  std::map< std::string, std::vector<cpparray_layout_info>* >* m = scToMemAllocationMaps->at(tid);
-  std::map< std::string, std::vector<cpparray_layout_info>* >::iterator it = m->find( sourceContext );
-  if ( it == m->end() ) {
-	std::pair< std::string, std::vector<cpparray_layout_info>* > p (sourceContext, new std::vector<cpparray_layout_info>);
-	m->insert(p);
-  } 
+  if (!kernelCallStacks[tid].empty()) {
+    std::string currKernel = kernelCallStacks[tid].top().name;
+    std::map< std::string, std::vector<cpparray_layout_info>* >* m = scToMemAllocationMaps->at(tid);
+    std::map< std::string, std::vector<cpparray_layout_info>* >::iterator it = m->find( sourceContext );
+    if ( it == m->end() ) {
+  	  std::pair< std::string, std::vector<cpparray_layout_info>* > p (sourceContext, new std::vector<cpparray_layout_info>);
+  	  m->insert(p);
+    }
 
-  std::string currKernel = kernelCallStacks[tid].top().name;
-  uint64_t size = estimateSizeOfArray(length, elemType);
-  incMemUsageOfKernel( tid, currKernel, size );
-  
-  cpparray_layout_info l = { startAddr, size };
-  m->find(sourceContext)->second->push_back(l);
+    uint64_t size = estimateSizeOfArray(length, elemType);
+    incMemUsageOfKernel( tid, currKernel, size );
+    
+    cpparray_layout_info l = { startAddr, size };
+    m->find(sourceContext)->second->push_back(l);
+  }
 }
 
 void dumpSourceContextToId( std::map< std::string, int32_t >* scToId ) {
