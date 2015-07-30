@@ -41,6 +41,7 @@ trait DeliteKernelCodegen extends GenericFatCodegen {
   def hasOutputSlotTypes(rhs: Any) = rhs match {
     case op: AbstractLoop[_] => true
     case op: AbstractFatLoop => true
+    case op: AbstractFatLoopNest => true
     case _ => false
   }
 
@@ -108,6 +109,8 @@ trait DeliteKernelCodegen extends GenericFatCodegen {
     // TR: if we introduce a predicate (e.g. isDeliteOp) instead of always matching on the types this would
     // be taken care of as well (plus we'd no longer need DeliteIfThenElse, DeliteWhile, ...)
     val resultType: String = (this.toString, rhs) match {
+      case ("scala", op: AbstractFatLoopNest) => 
+        "activation_"+kernelName
       case ("scala", op: AbstractFatLoop) => 
         "activation_"+kernelName
       case ("scala", op: AbstractFatIfThenElse) =>

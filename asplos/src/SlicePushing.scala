@@ -13,22 +13,22 @@ import ppl.delite.framework.ops._
 // INTO loops and/or duplicating work. This is desired in some specific cases, but definitely not in others. We should eventually 
 // pair this transformer with a cost analysis pass, but for now only enable this transformer if you know you need it.
 // TODO: Multiple layers of branching?
-trait SlicePushingExp extends DSLCompilerOps with DeliteVisit with PPLTileAssembleExp with DeliteArrayOpsExp {self: PPLOpsExp =>
+trait SlicePushingExp extends DeliteVisit {self: PPLOpsExp =>
 
   val slicePush = new SlicePushTransformer{ val IR: self.type = self }
   //appendVisitor(slicePush)
 
   trait SlicePushTransformer extends TunnelingTransformer {
     val IR: self.type
-    override val name = "Slice Pushing Transformer"
+    override val name = "Slice Pushing"
  
     // Debugging
-    override val printBefore = true
-    override val printAfter = true
-    override val debugMode = true
+    //override val printBefore = true
+    //override val printAfter = true
+    //override val debugMode = true
 
     // FIXME: This is only this simple when the if statement only has the slice as a dependency. Otherwise we'll
-    // likely get node duplication
+    // likely get code duplication. What to do in more complicated cases? Change to FatIf?
     override def transformSym[A](s: Sym[A], d: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]] = d match {
       case op: BlockSlice[a,t,c] => f(op.src) match {
         case Def(brnch: DeliteOpCondition[_]) => 
@@ -44,6 +44,8 @@ trait SlicePushingExp extends DSLCompilerOps with DeliteVisit with PPLTileAssemb
       }
       case _ => super.transformSym(s, d)
     } 
+    
+    // TODO: Metadata transfer
     def transferMetadata(sub: Exp[Any], orig: Exp[Any], d: Def[Any])(implicit ctx: SourceContext): Unit = {}
   }
 

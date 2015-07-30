@@ -144,14 +144,6 @@ trait HwGenDeliteDSL extends DeliteDSLCodeGenBase /*with HwGenLMSDSL*/
   // with HwGenDeliteInternalOps 
   { val IR: DeliteApplication with DeliteDSLOpsExp }
 
-// --- IR for adding some primitives for easier compiler stage writing
-// without overriding if-then-else, while, etc.
-trait DSLCompilerOps extends BaseExp
-  with MathOpsExp with PrimitiveOpsExpOpt with LiftPrimitives with DeliteLMSForwarderExp {
-  this: DeliteOpsExp =>  
-}
-
-
 // --- Stubs for DSLs to extend
 trait DeliteDSLCompiler extends DeliteDSLOpsExp with DeliteApplication with DeliteDSLApplication
 trait DeliteDSLApplication extends DeliteDSLOps with LMSDSLLift {

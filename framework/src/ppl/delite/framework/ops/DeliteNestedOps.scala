@@ -661,25 +661,61 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
   } else (false)
 
 
-  private def emitPostLoop(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+  private def emitPostLoop(sym: Sym[Any], rhs: Def[Any], prefix: String = "") = rhs match {
     case elem: DeliteTileElem[_,_,_] => 
-      emitValDef(sym, quote(elem.buf.buffVal))
+      emitValDef(prefix + quote(sym), remap(sym.tp), quote(elem.buf.buffVal))
 
     case elem: DeliteForeachElem[_] => 
-      emitValDef(quote(sym), remap(sym.tp), "()")  //TODO: Need this for other targets? (Currently, other targets just don't generate unit types)
+      emitValDef(prefix + quote(sym), remap(sym.tp), "()")  //TODO: Need this for other targets? (Currently, other targets just don't generate unit types)
 
     // Removed unused finalizer call for now
     case elem: DeliteCollectElem[_,_,_] if elem.par == ParFlat => 
-      emitValDef(sym, quote(elem.buf.allocVal))
+      emitValDef(prefix + quote(sym), remap(sym.tp), quote(elem.buf.allocVal))
 
     case elem: DeliteCollectElem[_,_,_] if elem.par == ParBuffer || elem.par == ParSimpleBuffer =>
       emitVarDef(quote(elem.buf.allocVal), remap(elem.buf.allocVal.tp), quote(sym) + "_buf")
       getActBuffer = List(quote(elem.buf.allocVal)) // Set active buffer for other codegen functions
       emitAssignment(quote(elem.buf.sV), quote(sym) + "_conditionals")
       emitBlock(elem.buf.setSize)
-      emitValDef(sym, getActBuffer(0)) // Result of flatMap is current active buffer
+      emitValDef(prefix + quote(sym), remap(sym.tp), getActBuffer(0)) // Result of flatMap is current active buffer
 
     case _ => // Nothing
+  }
+
+  override def emitFatNode(sym: List[Sym[Any]], rhs: FatDef) = rhs match {
+    case op: AbstractFatLoopNest => 
+      val vs = op.vs
+      val sizes = op.sizes
+      val strides = op.strides 
+
+      val nBodies = sym.length
+      for (i <- 0 until nBodies) { emitPrealloc(sym(i), op.body(i)) }
+
+      // TODO: stripfirst
+
+      val n = op.nestLayers
+      stream.println("// Begin Fat LoopNest")
+      for (i <- 0 until n) { 
+        //val start = if (i < n - 1 || !stripFirst) "0" else quote(vs(n-1)) + "_start"
+        stream.println("for (" + quote(vs(i)) + " <- 0 until " + quote(sizes(i)) + " by " + quote(strides(i)) + ") {")
+      }
+      emitBlocksWithoutDuplicates{
+        emitNode(sym(0), op.body(0))
+      }{
+        for (i <- 1 until nBodies) { emitNode(sym(i), op.body(i)) }
+      }
+      // TODO: stripfirst
+      stream.println("}"*n + " // End Fat LoopNest")
+
+      for (i <- 0 until nBodies) { emitPostLoop(sym(i), op.body(i), "act_") }
+
+      val kernelName = sym.map(quote).mkString("")
+      stream.println("val " + kernelName + " = new activation_" +kernelName)
+      for (i <- 0 until nBodies) { 
+        emitAssignment(kernelName + "." + quote(sym(i)), "act_" + quote(sym(i)) )
+      }
+
+    case _ => super.emitFatNode(sym, rhs)
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
@@ -733,8 +769,6 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
       stream.println("// --- Block body")
       emitBlockWithoutDuplicates(op.tile)
       emitBoundVarDef(op.buf.tileVal, quote(getBlockResult(op.tile)))
-
-      clearEmittedSyms()
 
       if (op.rFunc.isDefined) {
         stream.println("// --- Accumulator copy in")

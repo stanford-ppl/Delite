@@ -256,6 +256,105 @@ object SlicePushTest4 extends PPLCompiler {
   }
 }
 
+object ManualFusionTest extends PPLCompiler with ManualFatLoopNestOpsExp {
+  def main() {
+    val D = 5
+    val K = 3
+    val M = 5
+    val inds = |(0, 1, 2, 1, 2)!
+    def fusedCollect(i: Exp[Int]): Exp[Int] = inds(i)
+
+    val x = |(1, 0, 0, 0, 0)|
+            |(0, 1, 0, 0, 0)|
+            |(0, 0, 1, 0, 0)|
+            |(0, 0, 0, 1, 0)|
+            |(0, 0, 0, 0, 1)|
+
+    val (wp, p) = fusedFatLoopNest2(M)(1){i => 
+      // Common
+      val c = fusedCollect(i)
+      val rv0 = c :@: 1
+
+      // Loop 1
+      val defA = rawBlockReduce[Int,Array1D[Int],Array2D[Int]](i)(List(unit(1),D), List(0))(Array2D[Int](K,D))(List(rv0, 0 :@: D)){
+        val row = x.slice(i, *)
+        collect(D){j => row(D - j - 1) }
+      }{(a,b) => collect(D){j => a(j) + b(j)} }
+
+      // Loop 2
+      val defB = rawBlockReduce[Int,Array1D[Int],Array1D[Int]](i)(List(unit(1)), Nil)(Array1D[Int](K))(List(rv0)){
+        box(unit(1))
+      }{(a,b) => box(debox(a) + debox(b)) }
+
+      (defA,defB)
+    }
+
+    wp.pprint
+    p.vprint
+  }
+}
+
+object kMeansTest extends PPLCompiler with ManualFatLoopNestOpsExp { def main() {
+  val x  = read2D(DATA_FOLDER + "/kmeans/mandrill-large.dat")
+  val mu = read2D(DATA_FOLDER + "/kmeans/initmu.dat")
+
+  val M = x.nRows   // Number of samples
+  val D = x.nCols   // Number of dimensions per sample
+  val K = mu.nRows  // Number of clusters
+
+  def minLabel(i: Exp[Int]): Exp[Int] = {
+    val row = x.slice(i, *) 
+    val minC = reduce(K)((unit(0.0),unit(0))){j =>     // MinIndex loop
+      val muRow = mu.slice(j, *)
+      val dist = reduce(D)(0.0){d => val diff = muRow(d) - row(d); diff*diff}{_+_} // SQUARE distance
+      (dist, j)
+    }{(d1,d2) => if (tuple2_get1(d1) < tuple2_get1(d2)) d1 else d2}
+    tuple2_get2(minC) // Get index of closest class
+  }
+
+  val (wp, p) = fusedFatLoopNest2(M)(1){i => 
+    // Common
+    val rv0 = minLabel(i) :@: 1
+
+    // Loop 1
+    val defA = rawBlockReduce[Double,Array1D[Double],Array2D[Double]](i)(List(unit(1),D), List(0))(Array2D[Double](K,D))(List(rv0, 0 :@: D)){
+      x.bslice(i, *)
+    }{(a,b) => collect(D){j => a(j) + b(j)} }
+
+    // Loop 2
+    val defB = rawBlockReduce[Int,Array1D[Int],Array1D[Int]](i)(List(unit(1)), Nil)(Array1D[Int](K))(List(rv0)){
+      box(unit(1))
+    }{(a,b) => box(debox(a) + debox(b)) }
+
+    (defA,defB)
+  }
+
+  // Divide by counts
+  val newMu = blockAssem[Double,Array1D[Double],Array2D[Double]](K)(b0 = 1)(Array2D[Double](K,D))({ii => ii},{ii => 0 :@: D}){ii =>
+    val weightedpoints = wp.slice(ii.start, *)
+    val points = p(ii.start) 
+    val d = if (points == 0) 1 else points
+    collect(D){i => weightedpoints(i) / d}
+  }
+
+  newMu.pprint
+}}
+
+object SliceInterchangeTest extends PPLCompiler { def main() = {
+  val dims = read(CONFIG_FILE).map{d => d.toInt} // Set in PPL.scala
+  val R = dims(0)
+  val D = dims(1)
+
+  // --- Manually Blocked Dimensions ---
+  tile(D, tileSize = 10, max = 10)
+  // -----------------------------------
+
+  val x = collect(R,D){(i,j) => i + j}
+  val row = x.slice(4, *)
+
+  row.pprint
+}}
+
 object BlockSliceTest extends PPLCompiler {
   def main() = {
     println("1D")
