@@ -30,6 +30,7 @@ trait HwGenDeliteInternalOps extends HwGenMaps {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
 //    curSym.push(sym)
+    stream.println(s"// sym = $sym, syms($rhs) = ${syms(rhs).map(x => aliasMap.getOrElse(x,x))}")
     rhs match {
       case DIntPlus(lhs,rhs) =>
           val lhsAlias = if (lhs.isInstanceOf[Sym[Any]]) aliasMap.getOrElse(lhs.asInstanceOf[Sym[Any]], lhs) else lhs

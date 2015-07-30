@@ -98,6 +98,9 @@ trait MetaPipelineAnalysis extends FatBlockTraversal {
       case DeliteForeachElem(func, _) =>
       case DeliteTileElem (keys, cond, tile, rV, rFunc, buf, numDynamicChunks) =>
         traverseBlock(tile)
+        // Run the tile block stage and key block stage at the same time
+        // If the tile block has multiple stages, the key block will run in parallel with the last stage
+        bodyMetadata(bodyMetadata.size-1).append(getBlockResult(buf.allocTile))
         if (!rFunc.isEmpty) {
           traverseBlock(rFunc.get)
         }

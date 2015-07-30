@@ -32,7 +32,7 @@ trait HwGenAsplos extends HwGenMaps with BaseGenDeliteArrayOps
     rhs match {
       case op: BlockSlice[_,_,_] =>
         stream.println("// BlockSlice allocation - always allocated to a double buffer")
-        dblBufMap += aliasSym
+        dblBufMap += aliasSym -> 1
         val array2DAnalysis = new Array2DHackAnalysis{val IR: HwGenAsplos.this.IR.type = HwGenAsplos.this.IR}
         array2DAnalysis.run(op.allocTile, sym)
         aliasMap ++= array2DAnalysis.allocAliasMap
@@ -44,6 +44,7 @@ trait HwGenAsplos extends HwGenMaps with BaseGenDeliteArrayOps
         if (op.m != 2) {
           stream.println("// Handling only 2-D block slices now")
         } else {
+          curSym.push(aliasSym.asInstanceOf[Sym[Any]])
           stream.println(s"""
               BlkLdStLib ${quote(aliasSym)}_blkLoader = new BlkLdStLib(
                       owner,
@@ -68,6 +69,7 @@ trait HwGenAsplos extends HwGenMaps with BaseGenDeliteArrayOps
             ${quote(aliasSym)}.waddr <== ${quote(aliasSym)}_waddr.getCount();
             ${quote(aliasSym)}.wdata <== io.input(\"${quote(aliasSym)}_data\", dfeUInt(32), ${quote(aliasSym)}_en);
             ${quote(aliasSym)}.wen <== ${quote(aliasSym)}_en;""")
+            curSym.pop
         }
         case Array2DNew(arr, d1, d2) =>
           stream.println(s"//  ${quote(sym)} = Array2DNew(${quote(arr)}, ${quote(d1)}, ${quote(d2)})")

@@ -35,11 +35,13 @@ trait HwGenDeliteArrayOps extends HwGenMaps with BaseGenDeliteArrayOps
       case DeliteArrayNew(n,m,t) =>
         val aliasN = if (n.isInstanceOf[Sym[Any]]) aliasMap.getOrElse(n.asInstanceOf[Sym[Any]], n) else n
         if (dblBufMap.contains(aliasSym)) {
-          baseKernelLibStream.println(s"protected static DblBufKernelLib ${quote(aliasSym)};")
-          stream.println(s"""${quote(aliasSym)} = new DblBufKernelLib (this, \"${quote(aliasSym)}\", ${quote(aliasN)});""")
+          val constN = findConst(aliasN)
+          val numPorts = dblBufMap(aliasSym)
+          baseKernelLibStream.println(s"protected static DblBufKernelLib_np ${quote(aliasSym)};")
+          stream.println(s"""${quote(aliasSym)} = new DblBufKernelLib_np (this, \"${quote(aliasSym)}\", ${quote(constN)}, ${numPorts}, ${quote(aliasSym)}_done);""")
         } else {
           baseKernelLibStream.println(s"protected static BramLib ${quote(aliasSym)};")
-          stream.println(s"""${quote(aliasSym)} = new BramLib(this, \"${quote(aliasSym)}\", ${quote(aliasN)});""")
+          stream.println(s"""${quote(aliasSym)} = new BramLib(this, \"${quote(aliasSym)}\", ${quote(aliasSym)});""")
         }
         validMemorySet += aliasSym
 
@@ -58,8 +60,28 @@ trait HwGenDeliteArrayOps extends HwGenMaps with BaseGenDeliteArrayOps
                 stream.println(s"// ERROR generating DeliteArrayApply($arr, $idx): Aliased array $aliasArr (defined by $d) is not present in valid memory set!\nValid memory set: $validMemorySet")
             }
         }
-          stream.println(s"${quote(aliasArr)}.raddr <== ${quote(aliasIdx)};")
-          emitValDef(aliasSym, s"${quote(aliasArr)}.rdata")
+        val rdStr = if (dblBufMap.contains(aliasArr.asInstanceOf[Sym[Any]])) {
+          if (aliasArr.asInstanceOf[Sym[Any]].id == curSym.top.id) {
+            // When a reduce loop is reading from its dest buffer, don't assign rdone signal
+            s"${quote(aliasArr)}.connectRport(${quote(aliasIdx)})"
+          } else {
+            s"${quote(aliasArr)}.connectRport(${quote(aliasIdx)}, ${quote(curSym.top)}_done)"
+          }
+        } else {
+          s"${quote(aliasArr)}.connectRport(${quote(aliasIdx)})"
+//          stream.println(s"${quote(aliasArr)}.raddr <== ${quote(aliasIdx)};")
+//          emitValDef(aliasSym, s"${quote(aliasArr)}.rdata")
+        }
+
+        if (memoryMuxMap.contains(aliasArr)) {
+          val muxMem = memoryMuxMap(aliasArr)._1
+          val muxStr = memoryMuxMap(aliasArr)._2
+          val muxMemRdStr = s"${quote(muxMem)}.connectRport(${quote(aliasIdx)}, ${quote(curSym.top)}_done)"
+          emitValDef(aliasSym, s"$muxStr : ${muxMemRdStr} : $rdStr")
+        } else {
+          emitValDef(aliasSym, s"$rdStr")
+        }
+        stream.println(s"// DeliteArrayApply")
 
       case DeliteArrayUpdate(arr,idx,v) =>
         val aliasArr = aliasMap.getOrElse(arr.asInstanceOf[Sym[Any]], arr)
@@ -76,10 +98,12 @@ trait HwGenDeliteArrayOps extends HwGenMaps with BaseGenDeliteArrayOps
                 stream.println(s"ERROR generating DeliteArrayUpdate($arr, $idx): Aliased array $aliasArr (defined by $d) is not present in valid memory set!\nValid memory set: $validMemorySet")
             }
         }
-        stream.println(s"${quote(aliasArr)}.waddr <== ${quote(aliasIdx)};")
-        stream.println(s"${quote(aliasArr)}.wdata <== ${quote(aliasV)};")
-        if (dblBufMap.contains(aliasSym)) {
-          stream.println(s"${quote(aliasArr)}.wen <== ${quote(curSym.top)}_en;")
+        if (dblBufMap.contains(aliasArr.asInstanceOf[Sym[Any]])) {
+          stream.println(s"${quote(aliasArr)}.connectWport(${quote(aliasIdx)}, ${quote(aliasV)}, ${quote(curSym.top)}_en);")
+//          stream.println(s"${quote(aliasArr)}.wen <== ${quote(curSym.top)}_en;")
+        } else {
+          stream.println(s"${quote(aliasArr)}.waddr <== ${quote(aliasIdx)};")
+          stream.println(s"${quote(aliasArr)}.wdata <== ${quote(aliasV)};")
         }
 
 

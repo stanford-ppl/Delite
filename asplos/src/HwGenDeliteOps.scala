@@ -139,6 +139,7 @@ def quote(x: ListBuffer[Exp[Any]]) : String = {
         stream.println(s"// Beginning loop $sym")
         curSym.push(sym)
         stream.println(s"// $sym is an AbstractLoopNest")
+        stream.println(s"// syms(op) = ${syms(op)}")
         // 1. Emit FSM if the body needs one
         // 2. Instantiate FSM
         // 3. Emit Counterchain
@@ -164,7 +165,7 @@ def quote(x: ListBuffer[Exp[Any]]) : String = {
             stream.println(s"// Metapipeline stages: $smStages")
 
           if (smStages.length > 1) {
-            smStages.flatten.foreach(dblBufMap.add(_))
+            smStages.flatten.foreach(s => dblBufMap += s -> 1)
           }
 
           val smInputs = smStages.map(x => s"${quote(x)}_done")
@@ -357,12 +358,8 @@ def quote(x: ListBuffer[Exp[Any]]) : String = {
             emitBlock(elem.buf.allocBuff)
             // Output memory for the tile function is allocated by the tile function itself
 
-            // If reduce function, emit accumulator copy in as well
-            if (!elem.rFunc.isEmpty) {
-            }
-
-            stream.println(s"// TileElem tile blk: $sym")
-            stream.println("// Bounds variables:")
+           stream.println(s"// TileElem tile blk: $sym")
+            stream.println("// Boundsvariables:")
             stream.println(s"// bS: ${elem.buf.bS}")
             stream.println(s"// bV: ${elem.buf.bV}")
             stream.println(s"// tV: ${elem.buf.tV}")
@@ -374,7 +371,7 @@ def quote(x: ListBuffer[Exp[Any]]) : String = {
             stream.println(s"// tE: ${elem.buf.tE}")
             stream.println(s"// rV: ${elem.rV}")
             val printer = new PrintAnalysis {val IR: HwGenDeliteOps.this.IR.type = HwGenDeliteOps.this.IR}
-            printer.run(elem.tile, s"tile blk for $sym")
+//            printer.run(elem.tile, s"tile blk for $sym")
 
             emitBlockTrackDuplicates(elem.tile)
             val numKeys = elem.keys.length
@@ -388,10 +385,67 @@ def quote(x: ListBuffer[Exp[Any]]) : String = {
             }
 
             if (!elem.rFunc.isEmpty) {
-               stream.println(s"// TileElem reduce blk: $sym")
-              // aliasMap(elem.rV._1) = sym
-              aliasMap(elem.rV._1) = aliasMap.getOrElse(getBlockResult(elem.rFunc.get), getBlockResult(elem.rFunc.get))
-              aliasMap(elem.rV._2) = aliasMap.getOrElse(getBlockResult(elem.tile), getBlockResult(elem.tile))
+              stream.println("// rFunc block accumulator copy in, enabled with the Tile function")
+
+              stream.println(s"""// Accumulator allocation""")
+              val array2DAnalysis = new Array2DHackAnalysis{val IR: HwGenDeliteOps.this.IR.type = HwGenDeliteOps.this.IR}
+              array2DAnalysis.run(elem.buf.allocTile, getBlockResult(elem.buf.allocTile).asInstanceOf[Sym[Any]])
+              aliasMap ++= array2DAnalysis.allocAliasMap
+              reverseStructMap ++= array2DAnalysis.reverseStructMap
+              structInfoMap ++= array2DAnalysis.structInfoMap
+
+              // Double buffer between allocTile -> rFunc
+              dblBufMap += (getBlockResult(elem.buf.allocTile).asInstanceOf[Sym[Any]]) -> 1
+              emitBlock(elem.buf.allocTile)
+
+              // Enable it with the state corresponding to elem.tile
+              val aliasSym = getBlockResult(elem.buf.allocTile)
+              val dim1Sym = structInfoMap((reverseStructMap(sym),"dim1"))
+              curSym.push(aliasSym.asInstanceOf[Sym[Any]])
+              stream.println(s"""DFEVar ${quote(aliasSym)}_isLoading = dfeBool().newInstance(this);""")
+              stream.println(s"""DFEVar ${quote(aliasSym)}_forceLoad = constant.var(false);""")
+              stream.println(s"""FFLib ${quote(aliasSym)}_isLoading_ff = new FFLib(owner, \"${quote(aliasSym)}_isLoading\", ${quote(aliasSym)}_done, ${quote(aliasSym)}_isLoading);""")
+              stream.println(s"""DFEVar ${quote(aliasSym)}_loaded = ${quote(aliasSym)}_isLoading_ff.q;""")
+              stream.println(s"""
+                BlkLdStLib ${quote(aliasSym)}_blkLoader = new BlkLdStLib(
+                      owner,
+                      ${quote(aliasSym)}_en,
+                      ${quote(aliasSym)}_done,
+                      ${quote(aliasSym)}_isLoading, ${quote(aliasSym)}_forceLoad,
+                      ${quote(dim1Sym)},
+                      dfeUInt(32), // TODO: Change this to use remap
+                      ${quote(keysAnalysis.starts(0))},
+                      ${quote(keysAnalysis.starts(1))},
+                      io.scalarInput(\"${quote(sym)}_boffset\", dfeUInt(32)),  // sBurstOffset,
+                      \"${quote(sym)}_cmd\",
+                      ${quote(keysAnalysis.lengths(0))},
+                      ${quote(keysAnalysis.lengths(1))});""")
+              stream.println("// The data stream")
+              stream.println(s"""
+              Count.Params ${quote(aliasSym)}_writeAddrParams = control.count.makeParams(MathUtils.bitsToAddress(${quote(keysAnalysis.lengths(0))}*${quote(keysAnalysis.lengths(1))})
+                                        .withEnable(${quote(aliasSym)}_en)
+                                        .withMax(${quote(keysAnalysis.lengths(0))}*${quote(keysAnalysis.lengths(1))})
+              Count.Counter ${quote(aliasSym)}_waddr = control.count.makeCounter(${quote(aliasSym)}_writeAddrParams);
+
+              ${quote(aliasSym)}.waddr <== ${quote(aliasSym)}_waddr.getCount();
+              ${quote(aliasSym)}.wdata <== io.input(\"${quote(aliasSym)}_data\", dfeUInt(32), ${quote(aliasSym)}_en);
+              ${quote(aliasSym)}.wen <== ${quote(aliasSym)}_en;""")
+              curSym.pop
+
+//              printer.run(elem.buf.bApply, "bapply")
+//              printer.run(elem.buf.allocTile, "allocTile")
+
+              stream.println(s"// TileElem reduce blk: $sym")
+              aliasMap(elem.rV._1) = getBlockResult(elem.rFunc.get)
+              aliasMap(elem.rV._2) = getBlockResult(elem.tile)
+
+              // Set up a memoryMuxMap - where a DeliteArrayApply on one memory location must be
+              // emitted as a mux with a memory read from another location as well
+              memoryMuxMap(getBlockResult(elem.rFunc.get)) = (getBlockResult(elem.buf.allocTile), s"${quote(aliasSym)}_loaded")
+
+              // Double buffer between rFunc -> bUpdate
+              // Rfunc requires a 2-port dblbuffer
+              dblBufMap += getBlockResult(elem.rFunc.get).asInstanceOf[Sym[Any]] -> 2
               emitBlock(elem.rFunc.get)
             }
 
@@ -402,12 +456,15 @@ def quote(x: ListBuffer[Exp[Any]]) : String = {
               stream.println("// Handling only 2-D block slices now")
             } else {
               val aliasSym = aliasMap.getOrElse(getBlockResult(elem.buf.bUpdate), getBlockResult(elem.buf.bUpdate))
+              curSym.push(aliasSym.asInstanceOf[Sym[Any]])
               val dim1Sym = structInfoMap((reverseStructMap(sym),"dim1"))
+              stream.println(s"DFEVar ${quote(aliasSym)}_isLoading = dfeBool().newInstance(this);")
               stream.println(s"""
                   BlkLdStLib ${quote(aliasSym)}_blkStore = new BlkLdStLib(
                           owner,
                           ${quote(aliasSym)}_en,
                           ${quote(aliasSym)}_done,
+                          ${quote(aliasSym)}_isLoading, ${quote(getBlockResult(elem.buf.allocTile))}_loaded,
                           ${quote(dim1Sym)},
                           dfeUInt(32), // TODO: Change this to use remap
                           ${quote(keysAnalysis.starts(0))},
@@ -433,6 +490,7 @@ def quote(x: ListBuffer[Exp[Any]]) : String = {
 
                 ${quote(readMem)}.raddr <== ${quote(aliasSym)}_raddr.getCount();
                 io.output(\"${quote(sym)}_data\", ${quote(readMem)}.rdata, dfeUInt(32), ${quote(aliasSym)}_en);""")
+              curSym.pop
             }
 
             stream.println(s"// End TileElem: $sym")
