@@ -10,6 +10,7 @@ import scala.reflect.SourceContext
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.Config
+import java.io.PrintWriter
 
 /*
  * @PrintAnalysis: Prints a block
@@ -18,17 +19,20 @@ trait PrintAnalysis extends FatBlockTraversal {
   val IR: DeliteOpsExp
   import IR._
 
-  private var bodyMetadata = List[Any]()
-  private var curBody: Sym[Any] = null
-  private var exclude: Set[Sym[Any]] = null
+  private var outFileStream: PrintWriter = null
 
-  def run[A](body: Block[Any], name: String = "") = {
+  def run[A](body: Block[Any], name: String = "", pw: PrintWriter = null) = {
+    outFileStream = pw
     println(s"[PrintAnalysis - Begin][$name]")
     traverseBlock(body)
     println(s"[PrintAnalysis - End][$name]")
   }
 
   override def traverseStm(stm: Stm): Unit = {
-    println(stm)
+    if (outFileStream != null) {
+      outFileStream.println(stm)
+    } else {
+      println(stm)
+    }
   }
 }

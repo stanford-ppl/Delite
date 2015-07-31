@@ -35,7 +35,7 @@ trait HwGenDeliteArrayOps extends HwGenMaps with BaseGenDeliteArrayOps
       case DeliteArrayNew(n,m,t) =>
         val aliasN = if (n.isInstanceOf[Sym[Any]]) aliasMap.getOrElse(n.asInstanceOf[Sym[Any]], n) else n
         if (dblBufMap.contains(aliasSym)) {
-          val constN = findConst(aliasN)
+          val constN = findConst(aliasN, aliasMap)
           val numPorts = dblBufMap(aliasSym)
           baseKernelLibStream.println(s"protected static DblBufKernelLib_np ${quote(aliasSym)};")
           stream.println(s"""${quote(aliasSym)} = new DblBufKernelLib_np (this, \"${quote(aliasSym)}\", ${quote(constN)}, ${numPorts}, ${quote(aliasSym)}_done);""")

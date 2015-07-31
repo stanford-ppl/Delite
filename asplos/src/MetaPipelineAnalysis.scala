@@ -21,7 +21,7 @@ import scala.collection.mutable.ListBuffer
  * metapipeline metadata and return the collected metadata. This
  * medatada will be used to generate a metapipeline
  */
-trait MetaPipelineAnalysis extends FatBlockTraversal {
+trait MetaPipelineAnalysis extends FatBlockTraversal with GenericHelper {
   val IR: PPLOpsExp
   import IR._
 
@@ -29,13 +29,6 @@ trait MetaPipelineAnalysis extends FatBlockTraversal {
   private var bodyMetadata = ListBuffer[ListBuffer[Any]]()
   private var curBody: Sym[Any] = null
   private var exclude: Set[Sym[Any]] = null
-
-  protected def getdef(sym: Sym[Any]) = {
-    sym match {
-      case Def(d) => d
-      case _ => null
-    }
-  }
 
   def combineBlockSlices() = {
     // Starting from the first state, collect all independent block slices.

@@ -242,15 +242,6 @@ trait HwCodegen extends GenericCodegen // with ThorIR
   // --- End Methods from GenericCodegen that are overridden/defined ---
   var curSym = Stack[Sym[Any]]()
 
-  protected def getdef(sym: Sym[Any]) = {
-    sym match {
-      case Def(d) => d
-      case _ => null
-    }
-  }
-
-
-
   // --- Begin methods specific to HwCodegen ---
   def getBitWidth(sym: Exp[Any]): Int = {
     32
