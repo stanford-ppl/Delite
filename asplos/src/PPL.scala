@@ -9,6 +9,7 @@ import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
 import ppl.delite.framework.codegen.cpp.TargetCpp
 
+import ppl.delite.framework.Config
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.transform._
 import ppl.delite.framework.ops._
@@ -17,7 +18,7 @@ import ppl.delite.framework.ops._
 
 // --- PPL Ops
 trait PPLOps extends DeliteDSLOps
-  with FlattenedArrayOps with FlattenedArrayIO with PPLNestedOps {
+  with FlattenedArrayOps with FlattenedArrayIO with PPLNestedOps with AbstractGroupByReduceOps {
   this: PPLApp =>
 
   // Configuration file for test input dimensions (matmult, outer product)
@@ -26,25 +27,76 @@ trait PPLOps extends DeliteDSLOps
   val DATA_FOLDER: Rep[String] = unit("/home/david/PPL/data/")
 }
 
-// Note: FlattenedArrayLowerableOpsExp includes transformer, so mix-in order matters here
-// In particular, it must come before DeliteDSLOpsExp (which includes SOA transformer)
+abstract class CompileStop extends IRPrinter {
+  override val name = "STOP"
+  override def postprocess[A:Manifest](b: Block[A]): Block[A] = { 
+    sys.exit
+    b 
+  }
+}
+
 trait PPLOpsExp extends PPLOps 
-  with StripMiningExp with PatternPromotingExp with SliceInterchangingExp with SlicePushingExp 
-  with FlattenedArrayOpsExpOpt with DeliteDSLOpsExp
+  with StripMiningExp with PatternPromotingExp with PatternFlatteningExp /*with ReductionPromotingExp*/
+  with SliceInterchangingExp with SlicePushingExp with AbstractGroupByReduceExp
+  with FlattenedArrayOpsExpOpt with ManualFatLoopNestOpsExp with DeliteDSLOpsExp 
   with PPLNestedOpsExp with DeliteSimpleOpsExp with SimpleProfileOpsExp {
   this: PPLCompiler => 
 
-  // These should eventually move back to their respective traits
-  //appendVisitor(stripMiner)
-  //appendVisitor(patternPromotion)
-  //appendVisitor(slicePush)
-  appendVisitor(sliceInterchange)
-  appendVisitor(applyLowering)
+  val stop = new CompileStop{val IR: PPLOpsExp.this.type = PPLOpsExp.this}
+  val printer = new IRPrinter{val IR: PPLOpsExp.this.type = PPLOpsExp.this}
+
+  if (Config.debugCodegen) {
+    appendVisitor(printer)
+  }
+
+  // TODO: These should eventually move back to their respective traits
+  if (Config.blockLoops > 0) appendVisitor(stripMiner)
+  if (Config.blockLoops > 0 && Config.debugCodegen) {
+    appendVisitor(printer)
+  }
+
+  if (Config.blockLoops > 1) appendVisitor(patternPromotion)
+  if (Config.blockLoops > 1 && Config.debugCodegen) {
+    appendVisitor(printer)
+  }
+
+  if (Config.blockLoops > 2) appendVisitor(patternFlatten)
+  if (Config.blockLoops > 2 && Config.debugCodegen) {
+    appendVisitor(printer)
+  }
+
+  // These aren't really blocking transformations...
+  if (Config.blockLoops > 0) appendVisitor(slicePush)  
+  if (Config.blockLoops > 0 && Config.debugCodegen) {
+    appendVisitor(printer)
+  }
+
+  if (Config.blockLoops > 0) appendVisitor(sliceInterchange)
+  if (Config.blockLoops > 0 && Config.debugCodegen) {
+    appendVisitor(printer)
+  }
+
+  appendVisitor(applyLowering)  // Always run apply lowering (can't codegen otherwise)
+  if (Config.debugCodegen) {
+    appendVisitor(printer)
+  }
+
+  //appendVisitor(stop)
+  if (Config.soaEnabled) appendVisitor(soaTransform)
+  if (Config.soaEnabled && Config.debugCodegen) {
+    appendVisitor(printer)
+  }
+
+  // TODO: Check Config to see if we're generating HW?
+  appendVisitor(lowerGroupByReduce) // Enable for CPU tests only (only used in kNN)
+  if (Config.debugCodegen) {
+    appendVisitor(printer)
+  }
 
   override def getCodeGenPkg(t: Target{val IR: PPLOpsExp.this.type}) : GenericFatCodegen{val IR: PPLOpsExp.this.type} = t match {
     case _:TargetScala => new ScalaGenPPL{val IR: PPLOpsExp.this.type = PPLOpsExp.this}
-    case _:TargetCuda => new CudaGenPPL{val IR: PPLOpsExp.this.type = PPLOpsExp.this}
-    case _:TargetCpp => new CGenPPL{val IR: PPLOpsExp.this.type = PPLOpsExp.this}
+    //case _:TargetCuda => new CudaGenPPL{val IR: PPLOpsExp.this.type = PPLOpsExp.this}
+    //case _:TargetCpp => new CGenPPL{val IR: PPLOpsExp.this.type = PPLOpsExp.this}
     case _:TargetHw => new HwGenPPL{val IR: PPLOpsExp.this.type = PPLOpsExp.this}
     case _ => throw new Exception("PPL does not support this target")
   }  

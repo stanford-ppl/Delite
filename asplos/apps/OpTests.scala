@@ -1,11 +1,25 @@
 import asplos._
 
+/*object Read2DTest extends PPLCompiler {
+  def main() {
+    val x = readImg(DATA_FOLDER + "knn/letter-data.dat")
+    tile(x.nRows, tileSize = 100, max = ?)
+    tile(x.nCols, tileSize = 5, max = 17)
+    x.bslice(1000 :@: 10, *).pprint
+  }
+}
+
 // Simple 1D collect
 object Collect1DTest extends PPLCompiler {
   def main() {
     val dims = read(CONFIG_FILE).map{d => d.toInt} // Set in PPL.scala
-    val d0 = dims(0)
-    collect(d0){i => i + 10}.pprint
+    val D = dims(0)
+
+    // ---------- Tiling Hints -----------
+    tile(D, tileSize = 5, max = ?)
+    // -----------------------------------
+
+    collect(D){i => i + 10}.pprint
   }
 }
 
@@ -58,8 +72,13 @@ object Reduce1DTest extends PPLCompiler {
   def main() {
     val dims = read(CONFIG_FILE).map{d => d.toInt} // Set in PPL.scala
     val d0 = dims(0)
+
+    // --- Manually Blocked Dimensions ---
+    tile(d0, tileSize = 5, max = ?)
+    // -----------------------------------
+
     val x = reduce(d0)(0){i => i}{_+_}
-    println("0 + 1 + ... + " + d0 + " = " + x)
+    println("0 + 1 + ... + " + (d0-1) + " = " + x)
   }
 }
 
@@ -113,6 +132,27 @@ object Reduce2DTestBlocked extends PPLCompiler {
     val x = debox(xBoxed)
     
     println("result = " + x)
+  }
+}
+
+object ReduceTest3 extends PPLCompiler {
+  def main() {
+    val dims = read(CONFIG_FILE).map{d => d.toInt} // Set in PPL.scala
+    val d0 = dims(0)
+    val d1 = dims(1)
+    val d2 = dims(2)
+
+    // --- Manually Blocked Dimensions ---
+    tile(d0, tileSize = 5, max = ?)
+    tile(d1, tileSize = 5, max = ?)
+    tile(d2, tileSize = 5, max = ?)
+    // -----------------------------------
+
+    val res = reduce(d0)(Array2D[Int](d1,d2)){i => 
+      collect(d1,d2){(j,k) => i + j + k}
+    }{(a,b) => collect(d1,d2){(j,k) => a(j,k) + b(j,k)} }
+
+    res.slice(0 :@: 5, 0 :@: 5).pprint
   }
 }
 
@@ -295,8 +335,8 @@ object ManualFusionTest extends PPLCompiler with ManualFatLoopNestOpsExp {
 }
 
 object kMeansTest extends PPLCompiler with ManualFatLoopNestOpsExp { def main() {
-  val x  = read2D(DATA_FOLDER + "/kmeans/mandrill-large.dat")
-  val mu = read2D(DATA_FOLDER + "/kmeans/initmu.dat")
+  val x  = read2D(DATA_FOLDER + "kmeans/mandrill-large.dat")
+  val mu = read2D(DATA_FOLDER + "kmeans/initmu.dat")
 
   val M = x.nRows   // Number of samples
   val D = x.nCols   // Number of dimensions per sample
@@ -355,7 +395,131 @@ object SliceInterchangeTest extends PPLCompiler { def main() = {
   row.pprint
 }}
 
-object BlockSliceTest extends PPLCompiler {
+object GroupByReduceTest extends PPLCompiler {
+  def main() {
+    val x = |(1, 2, 0, 3, 1, 2, 4, 1, 5, 1, 2)!
+    
+    val m = groupByReduce(x.length){i => x(i)}{i => 1}{_+_}
+    val keys = m.keys
+    val vals = m.values
+    keys.pprint
+    vals.pprint
+  }
+}
+
+object ModeTest extends PPLCompiler {
+  def main() {
+    val x = |(0, 1, 2, 0, 3, 1, 2, 4, 1, 5, 1, 2)!
+    val m = groupByReduce(x.length){i => x(i)}{i => 1}{_+_}
+    val pair = reduce(m.size)( (unit(0),unit(0)) ){i => 
+      (m.keys(i),m.values(i))
+    }{(a,b) => if (tuple2_get2(a) > tuple2_get2(b)) a else b }
+    val mode = tuple2_get1(pair)
+    
+    println("mode = " + mode)
+  }
+}
+
+object FoldTest extends PPLCompiler {
+  def main() {
+    val x = fold(10){z => 0}(10){i => i}{(a,b) => a(b) = b}{(a,b) => a}
+    x.pprint
+  }
+}
+
+object PriorityInsertTest extends PPLCompiler {
+  def main() {
+    val x = collect(10){i => i}.unsafeMutable
+
+    // Should result in 0 1 2 3 4 4 5 6 7 8
+    x.priorityInsert(4){(a,b) => a < b}
+    x.pprint
+  }
+}
+
+object PriorityInsertTest2 extends PPLCompiler {
+  def main() {
+    val x = collect(10){i => ((i*100).toDouble, i) }.unsafeMutable
+
+    // Should result in 0 10 1 2 3 4 5 6 7 8
+    x.priorityInsert((unit(10.0),unit(10))){(a,b) => tuple2_get1(a) < tuple2_get1(b) }
+    val y = x.map{z => tuple2_get2(z)}
+    y.pprint
+  }
+}
+
+object CollectSortTakeTest1 extends PPLCompiler {
+  def main() {
+    val x  = read2D(DATA_FOLDER + "kmeans/mandrill-large.dat")
+    val mu = read2D(DATA_FOLDER + "kmeans/initmu.dat")
+  
+    val N = x.nRows
+    val D = x.nCols
+
+    val pt = mu.bslice(0, *)
+
+    val K = 4
+    val dists = collect(N){i => 
+      val row = x.slice(i, *)
+      reduce(D)(0.0){j => val diff = pt(j) - row(j); diff*diff}{_+_}
+    }
+    val inds = sortIndices(N){(i,j) => if (dists(i) > dists(j)) 1 else -1 }
+    val kDists = collect(K){i => dists(inds(i)) }
+    kDists.vprint
+  }
+}*/
+
+object kNNTest extends PPLCompiler {
+  def main() {
+    val dataIn = readImg(DATA_FOLDER + "knn/letter-data.dat")
+    val DR = dataIn.nRows 
+    val DC = dataIn.nCols
+    tile(DR, tileSize = 100, max = ?)
+    tile(DC, tileSize = 101, max = 101)
+    //------------------------------------
+
+    val N = DR
+    val D = DC - 1
+
+    val data  = dataIn.bslice(0 :@: N, 0 :@: D); val labels = dataIn.bslice(0 :@: N, D)
+    // ---------- Tiling Hints -----------
+    tile(N, tileSize = 5, max = ?)
+    tile(D, tileSize = 100, max = 100)
+    // -----------------------------------
+
+    val n = 0
+    println("#" + n + " (" + labels(n) + ")")
+    val pt = data.slice(n, *)
+
+    val K = 3
+    val kPairs = fold(K){i => (unit(100000), unit(0)) }(N){i => 
+      val row = data.slice(i, *)
+      val dist = reduce(D)(0){j => val diff = pt(j) - row(j); diff*diff }{_+_} // Square dist
+      (dist, i)  
+    }{(a,b) => 
+      a.priorityInsert(b){(x,y) => tuple2_get1(x) < tuple2_get1(y) }
+    }{(a,b) => a}
+
+    var x = 0
+    while (x < K) {
+      println(tuple2_get2(kPairs(x)) + " ("  + labels(tuple2_get2(kPairs(x))) + ") -> " + tuple2_get1(kPairs(x)) )
+      x += 1
+    }
+
+    val m = groupByReduce(K){i => labels( tuple2_get2(kPairs(i)) ) }{i => 1}{_+_}
+    val L = m.size
+    tile(L, tileSize = 3, max = 3)
+
+    val pair = reduce(L)( (unit(0),unit(0)) ){i => 
+      (m.keys(i),m.values(i))
+    }{(a,b) => if (tuple2_get2(a) > tuple2_get2(b)) a else b }
+    val mode = tuple2_get1(pair)
+
+    println("mode = " + mode)
+  }
+}
+
+/*object BlockSliceTest extends PPLCompiler {
   def main() = {
     println("1D")
     val arr = collect(10){i => i + 3}
@@ -437,4 +601,4 @@ object SliceTest extends PPLCompiler {
     val matvBlk = matv.slice(3 :@: 4, 5 :@: 2)
     matvBlk.pprint
   }
-}
+}*/

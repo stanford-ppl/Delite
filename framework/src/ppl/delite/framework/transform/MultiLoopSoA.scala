@@ -22,7 +22,7 @@ trait MultiloopSoATransformWithReduceExp extends MultiloopSoATransformExp {
 
 trait MultiloopSoATransformExp extends DeliteApplication { self =>
 
-  private val t = new WorklistTransformer {
+  val soaTransform = new WorklistTransformer {
     val IR: self.type = self
     override val name = "SOA Transform"
 
@@ -36,6 +36,7 @@ trait MultiloopSoATransformExp extends DeliteApplication { self =>
       printlog("replacing " + oldExp.toString + " with " + newExp.toString)
     }
   }
+  val t = soaTransform
 
   def transformLoop(stm: Stm): Option[Exp[Any]] = stm match {
       case TP(sym, Loop(size, v, body: DeliteCollectElem[a,i,ca])) =>
@@ -55,9 +56,10 @@ trait MultiloopSoATransformExp extends DeliteApplication { self =>
     case _ => None
   }
 
-  if (Config.soaEnabled) {
+  // Moved to PPL for asplos
+  /*if (Config.soaEnabled) {
     appendVisitor(t) // AoS to SoA should go last, right before fusion
-  }
+  }*/
 
   private object StructBlock {
     def unapply[A](d: Block[A]) = d match {

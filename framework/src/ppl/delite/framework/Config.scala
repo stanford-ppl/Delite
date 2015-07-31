@@ -41,6 +41,13 @@ object Config {
   val dumpException: Boolean = getProperty("delite.dump.exception", "false") != "false"
   val enableProfiler = System.getProperty("delite.enable.profiler", "false") != "false"
 
+  //Blocking
+  // 3 - Strip mining, pattern promotion, pattern flattening (accumulator elimination)
+  // 2 - Strip mining, pattern promotion
+  // 1 - Strip mining
+  // 0 - None
+  var blockLoops = getProperty("delite.blocking", "0").toInt
+
   //enforce generationFailed restrictions
   var generationFailedWhitelist: Map[String, Seq[String]] = Map()
   def strictGeneration(target: String, e: Exception): Boolean = {

@@ -184,6 +184,27 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     val mA = manifest[A]
   }
 
+  // Single iteration produces element of type A, reduced into collection of type C. 
+  case class DeliteFoldElem[A:Manifest,C<:DeliteCollection[A]:Manifest](
+    aD: List[Exp[Int]], // HACK: Accumulator init is being pulled out with code motion
+    aV: List[Sym[Int]], // but mutable init is causing codegen problems
+    acc: Sym[C],
+    accInit: Block[A],  // Accumulator initialization is now basically a collect within fold
+    accAlloc: Block[C],
+    eV: Sym[A], 
+    accUpdate: Block[Unit],
+    func: Block[A],
+    cond: List[Block[Boolean]] = Nil,
+    rV: (Sym[C], Sym[A]),
+    rFunc: Block[Unit],   // accumulator update function
+    cV: (Sym[C], Sym[C]),
+    cFunc: Block[C],    // accumulator combine function
+    numDynamicChunks: Int 
+  ) extends Def[C] with DeliteLoopElem {
+    val mA = manifest[A]
+    val mC = manifest[C]
+  }
+
   @deprecated("DeliteReduceTupleElem will be removed as soon as there's a foldElem with rFuncPar and rFuncSeq. Tuples don't need special support anymore.", "")
   case class DeliteReduceTupleElem[A:Manifest,B:Manifest](
     func: (Block[A],Block[B]),
@@ -273,7 +294,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     val mCA = manifest[CA]
   }
 
-  case class DeliteTileElem[A:Manifest,TA:Manifest,CA:Manifest](
+  case class DeliteTileElem[A:Manifest,TA<:DeliteCollection[A]:Manifest,CA<:DeliteCollection[A]:Manifest](
     keys: List[Block[RangeVector]],       // key functions
     cond: List[Block[Boolean]] = Nil,     // condition (filter) functions
     tile: Block[TA],                      // tile function
@@ -373,6 +394,19 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
       val tf = summarizeEffects(e.tile)
       val rf = if (e.rFunc.isDefined) summarizeEffects(e.rFunc.get) else Pure()
       (kf andAlso cf andAlso tf andAlso rf).star
+
+    // TODO: This probably isn't right
+    case e: DeliteFoldElem[_,_] => 
+      def clean(xs: List[Sym[Any]]) = xs.filterNot(_ == e.rV._1)
+
+      val ef = summarizeEffects(e.func)
+      val er = summarizeEffects(e.rFunc)
+      val ec = if (e.cond.nonEmpty) e.cond.map(summarizeEffects).reduce((s1,s2) => s1 andThen s2) else Pure()
+      val ecc = summarizeEffects(e.cFunc)
+
+      val er2 = er.copy(mayRead = clean(er.mayRead), mstRead = clean(er.mstRead), 
+                        mayWrite = clean(er.mayWrite), mstWrite = clean(er.mstWrite))
+      ((ef andThen er2).star andThen ecc).star andAlso ec
   }
 
   // TODO: just to make refactoring easier in case we want to change to reflectSomething
@@ -573,6 +607,25 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
           stripFirst = e.stripFirst,
           numDynamicChunks = e.numDynamicChunks
         )(e.mA)).asInstanceOf[Def[A]]
+
+      case e: DeliteFoldElem[a,c] => 
+        (DeliteFoldElem[a,c](
+          aD = f(e.aD).asInstanceOf[List[Exp[Int]]],
+          aV = f(e.aV).asInstanceOf[List[Sym[Int]]],
+          acc = f(e.acc).asInstanceOf[Sym[c]],
+          accInit = fb(e.accInit)(e.mA),
+          accAlloc = fb(e.accAlloc)(e.mC),
+          eV = f(e.eV).asInstanceOf[Sym[a]],
+          accUpdate = fb(e.accUpdate)(manifest[Unit]),
+          func = fb(e.func)(e.mA),
+          cond = e.cond.map(fb(_)(manifest[Boolean])),
+          rV = (f(e.rV._1).asInstanceOf[Sym[c]], f(e.rV._2).asInstanceOf[Sym[a]]), // need to transform bound vars ??
+          rFunc = fb(e.rFunc)(manifest[Unit]),
+          cV = (f(e.cV._1).asInstanceOf[Sym[c]], f(e.cV._2).asInstanceOf[Sym[c]]), // need to transform bound vars ??
+          cFunc = fb(e.cFunc)(e.mC),
+          numDynamicChunks = e.numDynamicChunks
+        )(e.mA,e.mC)).asInstanceOf[Def[A]]
+
       case e: DeliteReduceTupleElem[a,b] =>
         (DeliteReduceTupleElem[a,b](
           func = (fb(e.func._1)(e.mA),fb(e.func._2)(e.mB)),
@@ -607,7 +660,9 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteReduceTupleElem[_,_] => blocks(op.func) ::: blocks(op.cond) ::: blocks(op.zero) ::: blocks(op.rFuncSeq) ::: blocks(op.rFuncPar) // should be ok for tuples...
     
     case op: DeliteTileBuffer[_,_,_] => blocks(op.bApply) ::: blocks(op.tApply) ::: blocks(op.bUpdate) ::: blocks(op.tUpdate) ::: blocks(op.allocBuff) ::: blocks(op.allocTile)
-    case op: DeliteTileElem[_,_,_] => blocks(op.keys) ::: blocks(op.cond) ::: blocks(op.tile) ::: blocks(op.rFunc)
+    case op: DeliteTileElem[_,_,_] => blocks(op.keys) ::: blocks(op.cond) ::: blocks(op.tile) ::: blocks(op.rFunc) // ::: blocks(op.buf)
+
+    case op: DeliteFoldElem[_,_] => blocks(op.func) ::: blocks(op.cond) ::: blocks(op.accInit) ::: blocks(op.accAlloc) ::: blocks(op.accUpdate) ::: blocks(op.rFunc) ::: blocks(op.cFunc)
 
     case _ => super.blocks(e)
   }
@@ -631,6 +686,9 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     
     case op: DeliteTileBuffer[_,_,_] => syms(op.bApply) ::: syms(op.tApply) ::: syms(op.bUpdate) ::: syms(op.tUpdate) ::: syms(op.allocBuff) ::: syms(op.allocTile)
     case op: DeliteTileElem[_,_,_] => syms(op.keys) ::: syms(op.cond) ::: syms(op.tile) ::: syms(op.rFunc) ::: syms(op.buf)
+    
+    case op: DeliteFoldElem[_,_] => syms(op.aD) ::: syms(op.func) ::: syms(op.cond) ::: syms(op.accInit) ::: syms(op.accAlloc) ::: syms(op.accUpdate) ::: syms(op.rFunc) ::: syms(op.cFunc)
+
     case _ => super.syms(e)
   }
 
@@ -651,6 +709,9 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     
     case op: DeliteTileBuffer[_,_,_] => readSyms(op.bApply) ::: readSyms(op.tApply) ::: readSyms(op.bUpdate) ::: readSyms(op.tUpdate) ::: readSyms(op.allocBuff) ::: readSyms(op.allocTile)
     case op: DeliteTileElem[_,_,_] => readSyms(op.keys) ::: readSyms(op.cond) ::: readSyms(op.tile) ::: readSyms(op.rFunc) ::: readSyms(op.buf)
+    
+    case op: DeliteFoldElem[_,_] => readSyms(op.aD) ::: readSyms(op.func) ::: readSyms(op.cond) ::: readSyms(op.accInit) ::: readSyms(op.accAlloc) ::: readSyms(op.accUpdate) ::: readSyms(op.rFunc) ::: readSyms(op.cFunc)
+
     case _ => super.readSyms(e)
   }
 
@@ -670,6 +731,8 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     
     case op: DeliteTileBuffer[_,_,_] => op.bS ::: op.bV ::: op.tV ::: op.tD ::: List(op.bE, op.tE, op.buffVal, op.tileVal, op.partVal) ::: effectSyms(op.bApply) ::: effectSyms(op.tApply) ::: effectSyms(op.bUpdate) ::: effectSyms(op.tUpdate) ::: effectSyms(op.allocBuff) ::: effectSyms(op.allocTile)
     case op: DeliteTileElem[_,_,_] => List(op.rV._1, op.rV._2) ::: effectSyms(op.keys) ::: effectSyms(op.cond) ::: effectSyms(op.tile) ::: effectSyms(op.rFunc) ::: boundSyms(op.buf)
+
+    case op: DeliteFoldElem[_,_] => op.aV ::: List(op.acc,op.eV,op.rV._1,op.rV._2,op.cV._1,op.cV._2) ::: effectSyms(op.func) ::: effectSyms(op.cond) ::: effectSyms(op.accInit) ::: effectSyms(op.accAlloc) ::: effectSyms(op.accUpdate) ::: effectSyms(op.rFunc) ::: effectSyms(op.cFunc)
 
     case _ => super.boundSyms(e)
   }
@@ -693,6 +756,8 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteTileBuffer[_,_,_] => freqNormal(op.allocBuff) ::: freqNormal(op.allocTile) ::: freqHot(op.bApply) ::: freqHot(op.tApply) ::: freqHot(op.bUpdate) ::: freqHot(op.tUpdate)
     case op: DeliteTileElem[_,_,_] => freqHot(op.keys) ::: freqHot(op.cond) ::: freqHot(op.tile) ::: freqHot(op.rFunc) ::: symsFreq(op.buf)
 
+    case op: DeliteFoldElem[_,_] => freqNormal(op.aD) ::: freqHot(op.cond) ::: freqHot(op.func) ::: freqNormal(op.accInit) ::: freqNormal(op.accAlloc) ::: freqNormal(op.accUpdate) ::: freqHot(op.rFunc) ::: freqHot(op.cFunc)
+
     case _ => super.symsFreq(e)
   }
 
@@ -712,6 +777,8 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteTileBuffer[_,_,_] => Nil
     case op: DeliteTileElem[_,_,_] => Nil
 
+    case op: DeliteFoldElem[_,_] => Nil
+
     case _ => super.aliasSyms(e)
   }
 
@@ -725,6 +792,8 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
 
     case op: DeliteTileBuffer[_,_,_] => Nil
     case op: DeliteTileElem[_,_,_] => Nil
+
+    case op: DeliteFoldElem[_,_] => Nil
 
     case _ => super.containSyms(e)
   }
@@ -742,6 +811,8 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     case op: DeliteTileBuffer[_,_,_] => Nil
     case op: DeliteTileElem[_,_,_] => Nil
 
+    case op: DeliteFoldElem[_,_] => Nil
+
     case _ => super.extractSyms(e)
   }
 
@@ -757,6 +828,8 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
 
     case op: DeliteTileBuffer[_,_,_] => Nil
     case op: DeliteTileElem[_,_,_] => Nil
+
+    case op: DeliteFoldElem[_,_] => Nil
 
     case _ => super.copySyms(e)
   }

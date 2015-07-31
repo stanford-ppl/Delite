@@ -20,19 +20,22 @@ trait SliceInterchangingExp extends DeliteVisit { self: PPLOpsExp =>
     val IR: self.type
     override val name = "Slice Interchange"
 
-    //override val debugMode = true 
-    //override val printBefore = true
-    //override val printAfter = true
+    override def runOnce[A:Manifest](s: Block[A]): Block[A] = { inDebugMode{ traverseBlock(s) }; (s) }
+
+    override val debugMode = true 
+    override val printBefore = true
+    override val printAfter = true
     /*override def preprocess[A:Manifest](b: Block[A]): Block[A] = { 
-      printmsg("Prior to starting slice interchange, tunable annotations are:")
+      dbgmsg("Prior to starting slice interchange, tunable annotations are:")
       for((e,t) <- tunableParams) printmsg(s"$e -> $t")
       b 
     }*/
 
     // TODO: Assumes the constant is small... What if it isn't? What's the cutoff?
-    def requiresBlocking(d: Exp[Int]) = d match {
-      case Const(i) if i < 10000 => false
+    def requiresBlocking(d: Exp[Int]): Boolean = d match {
+      case Const(i) if i < 1000 => false
       case _: Tunable => false
+      case Def(MathMin(x, y)) => requiresBlocking(x) && requiresBlocking(y)   // Hack for boundary conditions. Range analysis here instead?
       case d if tunableParams.contains(d) =>
         val tunable = tunableParams(d)
         (tunable.value, tunable.maxSize) match { case (v,s) => v != s; case _ => true }
@@ -47,20 +50,23 @@ trait SliceInterchangingExp extends DeliteVisit { self: PPLOpsExp =>
         val destDims = f(op.destDims)
         val tunables = destDims.map{dim => tunableParams.get(dim) }
         
-        printDebug("Found slice with output dimensions: ")
-        destDims.zip(tunables).foreach{case (dim,tunable) =>
-          printDebug(strDef(dim))
-          printDebug(s"$dim -> $tunable")
-        }
+        dbgmsg("Found slice with inputs: ")
+        dbgmsg("Source: " + strDef(src))
+        dbgmsg("Offsets: \n  " + srcOffsets.map(strDef(_)).mkString("\n  "))
+        dbgmsg("Strides: \n  " + srcStrides.map(strDef(_)).mkString("\n  ")) 
+        dbgmsg("Dimensions: \n  " + destDims.zip(tunables).map{case (d,t) => strDef(d) + s"-> $t"}.mkString("\n  "))
 
         if ( destDims.forall(!requiresBlocking(_)) ) {
+          // TODO: Reuse?
           val blk = block_slice[a,t,c](src, srcOffsets, srcStrides, destDims, op.unitDims)(op.mA,op.mR,op.mB,ctx)
-          //val view = blk.asView   // Types don't work out if this isn't a view 
-                                  // TODO: May want to do some fancier MultiArray-style transforms to avoid this
+
+          dbgmsg("Transformed to " + strDef(blk) + "\n")
           Some(blk)
         }
-        else None
-
+        else {
+          dbgmsg("Ignored.\n")
+          None
+        }
       case _ => None
     }
 

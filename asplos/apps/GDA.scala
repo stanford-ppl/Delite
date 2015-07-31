@@ -29,7 +29,7 @@ trait GDAFrame extends PPLApp {
     println("phi = " + phi)
     println("mu0 = "); mu0.slice(0 :@: 4).pprint
     println("mu1 = "); mu1.slice(0 :@: 4).pprint
-    sigma.slice(0 :@: 4, 0 :@: 4).pprint
+    sigma.pprint
   } 
 }
 

@@ -376,15 +376,18 @@ def quote(x: ListBuffer[Exp[Any]]) : String = {
             val printer = new PrintAnalysis {val IR: HwGenDeliteOps.this.IR.type = HwGenDeliteOps.this.IR}
             printer.run(elem.tile, s"tile blk for $sym")
 
-            emitBlockTrackDuplicates(elem.tile)
-            val numKeys = elem.keys.length
-            stream.println(s"// TileElem keys blk ($numKeys): $sym")
-
-            printer.run(elem.keys(0), s"keys(0) blk for $sym")
             val keysAnalysis = new KeysAnalysis {val IR: HwGenDeliteOps.this.IR.type = HwGenDeliteOps.this.IR}
-            keysAnalysis.run(elem.keys, sym, aliasMap)
-            for (k <- 0 until elem.keys.length) {
-              emitBlockWithoutDuplicates(elem.keys(k))
+
+            emitInCommonScope{
+              emitBlock(elem.tile)
+              val numKeys = elem.keys.length
+              stream.println(s"// TileElem keys blk ($numKeys): $sym")
+
+              printer.run(elem.keys(0), s"keys(0) blk for $sym")
+              keysAnalysis.run(elem.keys, sym, aliasMap)
+              for (k <- 0 until elem.keys.length) {
+                emitBlock(elem.keys(k))
+              }
             }
 
             if (!elem.rFunc.isEmpty) {

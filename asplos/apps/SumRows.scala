@@ -54,13 +54,11 @@ trait SumRowsBlockedApp extends SumRowsFrame {
     // (The accumulator is of some fixed, maximum size)
     tileReduce[Double,Array1D[Double],Array1D[Double]](R,C)(Array1D[Double](R)){(rr,cc) => rr}{(rr,cc) => 
       val matBlk = mat.bslice(rr, cc)
+      // Tile is blockFactor(R)
       collect(rr.len){r => 
         reduce(cc.len)(0.0){c => matBlk(r,c) }{_+_}
       }
-    }{(a,b) => 
-      tileAssemble[Double,Array1D[Double],Array1D[Double]](C)(Array1D[Double](C)){cc => cc}{cc =>
-        collect(cc.len){i => a(i) + b(i) }
-      }
-    }
+    // Tile is partial column result of size blockFactor(R)
+    }{(a,b) => collect(b.length){i => a(i) + b(i) } }
   }  
 }

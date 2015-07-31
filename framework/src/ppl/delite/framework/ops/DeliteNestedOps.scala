@@ -10,7 +10,8 @@ trait DeliteNestedOps extends RangeVectorOps with Base {
   def nested_reduce[A:Manifest](zero: Rep[A], lSizes: List[Rep[Int]], f: List[Rep[Int]] => Rep[A], rF: (Rep[A], Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A]
   def nested_mreduce[A:Manifest](init: => Rep[A], lSizes: List[Rep[Int]], f: List[Rep[Int]] => Rep[A], rF: (Rep[A], Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A] 
   def nested_collect[A:Manifest,C<:DeliteCollection[A]:Manifest](lSizes: List[Rep[Int]], f: List[Rep[Int]] => Rep[A])(implicit ctx: SourceContext): Rep[C]
-  
+  def nested_mutable_collect[A:Manifest,C<:DeliteCollection[A]:Manifest](lSizes: List[Rep[Int]], f: List[Rep[Int]] => Rep[A])(implicit ctx: SourceContext): Rep[C]
+
   def filter[A:Manifest](size: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(func: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[DeliteArray[A]]
   def tiledFilter[A:Manifest](size: Rep[Int])(func: Rep[RangeVector] => Rep[DeliteArray[A]])(implicit ctx: SourceContext): Rep[DeliteArray[A]]
 
@@ -121,6 +122,47 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
     reflectPure( NestedReduce(List(v), (rVa,rVb), List(size), None, reifyEffects(func(v)), reifyEffects(rFunc(rVa,rVb)), zeroBlk, zeroBlk, List(reifyEffects(cond(v))), mutable) )
   }
 
+  case class NestedFold[A:Manifest,C<:DeliteCollection[A]:Manifest](oVs: List[Sym[Int]], aVs: List[Sym[Int]], orV: (Sym[C],Sym[A]), ocV: (Sym[C],Sym[C]), aSizes: List[Exp[Int]], lSizes: List[Exp[Int]], init: Block[A], func: Block[A], rFunc: Block[Unit], cFunc: Block[C])(implicit ctx: SourceContext) extends DeliteOpLoopNest[C] {
+    type OpType <: NestedFold[A,C]
+
+    val nestLayers = lSizes.length
+    lazy val vs: List[Sym[Int]] = copyOrElse(_.vs)(oVs)
+    lazy val rV: (Sym[C],Sym[A]) = copyOrElse(_.rV)(orV)
+    lazy val cV: (Sym[C],Sym[C]) = copyOrElse(_.cV)(ocV)
+    lazy val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(lSizes)
+    lazy val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)(List.fill(nestLayers)(unit(1)))
+    lazy val buff = reflectMutableSym(fresh[C])
+    lazy val eV = fresh[A]
+
+    lazy val body: Def[C] = copyBodyOrElse(DeliteFoldElem[A,C](
+      aD = this.aSizes,
+      aV = this.aVs,
+      acc = this.buff,
+      accInit = this.init,
+      accAlloc = reifyEffects(dc_alloc_block[A,C](buff, aSizes, Nil)),
+      eV = this.eV,
+      accUpdate = reifyEffects(dc_block_update[A](buff, this.aVs, this.eV, Nil)),
+      func = this.func,
+      cond = Nil,
+      rV = this.rV,
+      rFunc = this.rFunc,
+      cV = this.cV,
+      cFunc = this.cFunc,
+      numDynamicChunks = this.numDynamicChunks
+    ))
+
+    val mA = manifest[A]
+    val mC = manifest[C]
+  }
+  object FoldHelper {
+    def mirror[A:Manifest,C<:DeliteCollection[A]:Manifest](op: NestedFold[A,C], f: Transformer)(implicit ctx: SourceContext): NestedFold[A,C] = op match {
+      case NestedFold(v,av,rv,cv,as,s,i,g,r,c) => new {override val original = Some(f,op) } with NestedFold(v,av,rv,cv,as,s,i,g,r,c)(op.mA,op.mC,ctx)
+    }
+    def unerase[A:Manifest,C<:DeliteCollection[A]:Manifest](op: NestedFold[_,_]): NestedFold[A,C] = op.asInstanceOf[NestedFold[A,C]]
+  }
+
+
+
   /**
    * Nested parallel collect (includes map, zipWith, mapIndices)
    * @param oVs       - symbols for loop iterators
@@ -182,6 +224,12 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
     val vs: List[Sym[Int]] = List.fill(lSizes.length)(fresh[Int].asInstanceOf[Sym[Int]])
     val func = reifyEffects(f(vs))
     reflectPure( NestedCollect[A,C](vs, lSizes, func) )
+  }
+
+  def nested_mutable_collect[A:Manifest,C<:DeliteCollection[A]:Manifest](lSizes: List[Rep[Int]], f: List[Rep[Int]] => Rep[A])(implicit ctx: SourceContext): Rep[C] = {
+    val vs: List[Sym[Int]] = List.fill(lSizes.length)(fresh[Int].asInstanceOf[Sym[Int]])
+    val func = reifyEffects(f(vs))
+    reflectMutable( NestedCollect[A,C](vs, lSizes, func) )
   }
 
   /**
@@ -271,6 +319,61 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
     reflectPure( NestedFlatMap[A,DeliteArray[A]](v, size, stride, None, None, Some(iFuncBlk)) )
   }
 
+  /**
+   * "Nested" GroupByReduce
+   *
+   */
+  case class NestedGroupByReduce[K:Manifest,V:Manifest,C<:DeliteCollection[V]:Manifest](ov: Sym[Int], orV: (Sym[V],Sym[V]), lSize: Exp[Int], keyFunc: Block[K], valFunc: Block[V], rFunc: Block[V], zero: Block[V], alloc: Exp[Int] => Exp[C], cond: List[Block[Boolean]])(implicit ctx: SourceContext) extends DeliteOpLoopNest[C] {
+    type OpType <: NestedGroupByReduce[K,V,C]
+
+    val nestLayers = 1
+    lazy val vs: List[Sym[Int]] = copyTransformedSymListOrElse(_.vs)(List(ov)).asInstanceOf[List[Sym[Int]]]
+    lazy val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(List(lSize))
+    lazy val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)(List(unit(1)))
+
+    final lazy val allocVal: Sym[C] = copyTransformedOrElse(_.allocVal)(reflectMutableSym(fresh[C])).asInstanceOf[Sym[C]]
+    final lazy val iV: Sym[Int] = copyTransformedOrElse(_.iV)(fresh[Int]).asInstanceOf[Sym[Int]]
+    final lazy val sV: Sym[Int] = copyTransformedOrElse(_.sV)(fresh[Int]).asInstanceOf[Sym[Int]]
+    final lazy val eV: Sym[V] = copyTransformedOrElse(_.eV)(fresh[V]).asInstanceOf[Sym[V]]
+
+    lazy val body: Def[C] = copyBodyOrElse(DeliteHashReduceElem[K,V,C,C](
+      keyFunc = this.keyFunc,
+      valFunc = this.valFunc,
+      cond = this.cond,
+      zero = this.zero,
+      rV = this.orV,
+      rFunc = this.rFunc,
+      buf = DeliteBufferElem(
+        eV = this.eV,
+        sV = this.sV,
+        iV = this.iV,
+        iV2 = unusedSym,
+        allocVal = this.allocVal,
+        aV2 = unusedSym,
+        alloc = reifyEffects(this.alloc(sV)),
+        apply = reifyEffects(dc_apply(allocVal,iV)),
+        update = reifyEffects(dc_update(allocVal,iV,eV)),
+        appendable = unusedBlock, //reifyEffects(dc_appendable(allocVal,v,eV)),
+        append = reifyEffects(dc_append(allocVal,ov,eV)),
+        setSize = reifyEffects(dc_set_logical_size(allocVal,sV)),
+        allocRaw = unusedBlock, //reifyEffects(dc_alloc[V,I](allocVal,sV)),
+        copyRaw = unusedBlock, //reifyEffects(dc_copy(aV2,iV,allocVal,iV2,sV)),
+        finalizer = unusedBlock
+      ),
+      numDynamicChunks = this.numDynamicChunks
+    ))
+
+    val mK = manifest[K]
+    val mV = manifest[V]
+    val mC = manifest[C]
+  }
+  object GroupByReduceHelper {
+    def mirror[K:Manifest,V:Manifest,C<:DeliteCollection[V]:Manifest](op: NestedGroupByReduce[K,V,C], f: Transformer)(implicit ctx: SourceContext): NestedGroupByReduce[K,V,C] = op match {
+      case NestedGroupByReduce(v,rv,s,k,b,r,z,a,c) => new { override val original = Some(f,op) } with NestedGroupByReduce(v,rv,s,k,b,r,z,a,c)(op.mK,op.mV,op.mC,ctx)
+    }
+    def unerase[K:Manifest,V:Manifest,C<:DeliteCollection[V]:Manifest](op: NestedGroupByReduce[_,_,_]): NestedGroupByReduce[K,V,C] = op.asInstanceOf[NestedGroupByReduce[K,V,C]]
+  }
+
 
   /**
    * Tile Assemble (tiling parallel ops)
@@ -303,6 +406,9 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
 
     val n = kFunc.length            // Output rank
     
+    val tileDims: List[Exp[Int]] = copyTransformedSymListOrElse(_.tileDims)(tDims)
+    val tileUnitDims: List[Int] = copyOrElse(_.tileUnitDims)(unitDims)
+
     // --- bound vars
     final lazy val bS: List[Sym[RangeVector]] = copyOrElse(_.bS)(List.fill(n){fresh[RangeVector].asInstanceOf[Sym[RangeVector]]})
     final lazy val bV: List[Sym[Int]] = copyOrElse(_.bV)(List.fill(n){fresh[Int].asInstanceOf[Sym[Int]]})
@@ -400,6 +506,13 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
       val op = ReduceHelper.unerase(e)(e.mA)
       reflectMirrored(Reflect(ReduceHelper.mirror(op,f)(e.mA,pos), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
 
+   case e: NestedFold[_,_] => 
+      val op = FoldHelper.unerase(e)(e.mA,e.mC)
+      reflectPure( FoldHelper.mirror(op,f)(e.mA,e.mC,pos))(mtype(manifest[A]), pos)
+    case Reflect(e: NestedFold[_,_], u, es) => 
+      val op = FoldHelper.unerase(e)(e.mA,e.mC)
+      reflectMirrored(Reflect(FoldHelper.mirror(op,f)(e.mA,e.mC,pos), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+
     case e: NestedCollect[_,_] => 
       val op = CollectHelper.unerase(e)(e.mA,e.mC)
       reflectPure(CollectHelper.mirror(op,f)(e.mA,e.mC,pos))(mtype(manifest[A]), pos)
@@ -414,6 +527,13 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
       val op = FlatMapHelper.unerase(e)(e.mA,e.mC)
       reflectMirrored(Reflect(FlatMapHelper.mirror(op,f)(e.mA,e.mC,pos), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
 
+    case e: NestedGroupByReduce[_,_,_] => 
+      val op = GroupByReduceHelper.unerase(e)(e.mK,e.mV,e.mC)
+      reflectPure(GroupByReduceHelper.mirror(op,f)(e.mK,e.mV,e.mC,pos))(mtype(manifest[A]), pos)
+    case Reflect(e: NestedGroupByReduce[_,_,_], u, es) => 
+      val op = GroupByReduceHelper.unerase(e)(e.mK,e.mV,e.mC)
+      reflectMirrored(Reflect(GroupByReduceHelper.mirror(op,f)(e.mK,e.mV,e.mC,pos), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
+
     case e: TileAssemble[_,_,_] => 
       val op = TileAssembleHelper.unerase(e)(e.mA,e.mT,e.mC)
       reflectPure(TileAssembleHelper.mirror(op,f)(e.mA,e.mT,e.mC,pos))(mtype(manifest[A]), pos)
@@ -425,10 +545,11 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
   }).asInstanceOf[Exp[A]]
 
   override def blocks(e: Any): List[Block[Any]] = e match {
-    case op: NestedForeach => Nil
-    case op: NestedReduce[_] => Nil
-    case op: NestedCollect[_,_] => Nil
-    case op: TileAssemble[_,_,_] => Nil
+    case op: NestedForeach => op.body match {case elem: DeliteForeachElem[_] => blocks(elem.func) }
+    case op: NestedReduce[_] => op.body match {case elem: DeliteReduceElem[_] => blocks(elem.cond) ::: blocks(elem.func) ::: blocks(elem.rFunc) }
+    case op: NestedFold[_,_] => op.body match {case elem: DeliteFoldElem[_,_] => blocks(elem.cond) ::: blocks(elem.func) ::: blocks(elem.rFunc) ::: blocks(elem.cFunc) ::: blocks(elem.accInit) }
+    case op: NestedCollect[_,_] => op.body match {case elem: DeliteCollectElem[_,_,_] => blocks(elem.func) }
+    case op: TileAssemble[_,_,_] => blocks(op.body)
     case _ => super.blocks(e)
   }
 }
@@ -441,7 +562,7 @@ trait DeliteNestedOpsExpOpt extends DeliteNestedOpsExp { this: DeliteOpsExp =>
   // Adapted from MultiArray implementer
   private def reductionTree[A:Manifest](x: List[Exp[A]])(f: (Exp[A],Exp[A]) => Exp[A]): List[Exp[A]] = {
     if (x.length == 1)
-      x
+      x 
     else if (x.length % 2 == 0)
       reductionTree(List.tabulate(x.length / 2){i => f(x(2*i), x(2*i + 1)) })(f)
     else
@@ -567,6 +688,20 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
     emitAssignment(sym, quote(getBlockResult(elem.rFunc)))
   }
 
+  private def emitFold(sym: Sym[Any], elem: DeliteFoldElem[_,_]) {
+    // TODO: Multithreaded combine (unused right now)
+    if (elem.cond.nonEmpty) {
+      elem.cond.foreach( emitBlock(_) )
+      stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
+    }
+    emitBlock(elem.func)
+    emitValDef(elem.rV._1, quote(sym))
+    emitValDef(elem.rV._2, quote(getBlockResult(elem.func)))
+    emitBlock(elem.rFunc) // Mutable reduce assumed
+
+    if (elem.cond.nonEmpty) stream.println("}")
+  }
+
   // --- Collect
   private def emitCollectElem(sym: Sym[Any], elem: DeliteCollectElem[_,_,_]) {
     if (elem.par == ParFlat) {
@@ -641,19 +776,56 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
       emitValDef(quote(sym) + "_zero", remap(sym.tp), quote(getBlockResult(elem.zero)))
       emitVarDef(quote(sym), remap(sym.tp), quote(sym) + "_zero")
 
+    case elem: DeliteFoldElem[_,_] => 
+      // HACK: This is basically a bound collect
+      stream.println("// --- Fold initializiation")
+      emitBlock(elem.accAlloc)
+      emitValDef(elem.acc, quote(getBlockResult(elem.accAlloc)))
+      for (i <- 0 until elem.aV.length) {
+        stream.println("for (" + quote(elem.aV(i)) + " <- 0 until " + quote(elem.aD(i)) + ") {")
+        emitInCommonScope{
+          emitBlock(elem.accInit)
+          emitValDef(elem.eV, quote(getBlockResult(elem.accInit)))
+          emitBlock(elem.accUpdate)
+        }
+        stream.println("}"*elem.aV.length)
+      }
+      emitVarDef(quote(sym), remap(sym.tp), quote(elem.acc))
+
     case _ => // Nothing
   }
+
+  /*private def emitHashInit(elems: List[(Sym[Any], DeliteHashElem[_,_])]) {
+    for ((cond,cps) <- elems.groupBy(_._2.cond)) {
+      for ((key,kps) <- cps.groupBy(_._2.keyFunc)) {
+        emitVarDef(kps.map(p=>quote(p._1)).mkString("") + "_hash_pos", hashmapType(remap(getBlockResult(key).tp)), createInstance(hashmapType(remap(getBlockResult(key).tp)), List("512","128")))
+        kps foreach {
+          case (sym, elem: DeliteHashCollectElem[_,_,_,_,_,_]) =>
+            emitVarDef(quote(elem.buf.sV), remap(elem.buf.sV.tp), "128")
+            emitBlock(elem.buf.alloc)
+            emitVarDef(quote(sym) + "_hash_data", remap(getBlockResult(elem.buf.alloc).tp), quote(getBlockResult(elem.buf.alloc)))
+          case (sym, elem: DeliteHashReduceElem[_,_,_,_]) =>
+            emitVarDef(quote(elem.buf.sV), remap(elem.buf.sV.tp), "128")
+            emitBlock(elem.buf.alloc)
+            emitVarDef(quote(sym) + "_hash_data", remap(getBlockResult(elem.buf.alloc).tp), quote(getBlockResult(elem.buf.alloc)))
+          case (sym, elem: DeliteHashIndexElem[_,_]) =>
+        }
+      }
+    }
+  }*/
 
   // TODO: This will need to be changed for fused nested loops
   private def emitStripFirst(sym: Sym[Any], op: AbstractLoopNest[_]): Boolean = if (loopBodyNeedsStripFirst(op.body)) {
     val dimsCheck = op.sizes.map{ quote(_) + " > 0"}.mkString(" && ")
     stream.println("if (" + dimsCheck + ") { // prerun loop " + quote(sym) )
-    // Strip off the first iteration indices
-    for(i <- 0 until op.nestLayers) {
-      emitValDef(op.vs(i), "0")
-    }
-    op.body match {
-      case elem: DeliteReduceElem[_] => emitReduceElemStripped(sym, elem)
+    emitInCommonScope{
+      // Strip off the first iteration indices
+      for(i <- 0 until op.nestLayers) {
+        emitValDef(op.vs(i), "0")
+      }
+      op.body match {
+        case elem: DeliteReduceElem[_] => emitReduceElemStripped(sym, elem)
+      }
     }
 
     stream.println("}")
@@ -699,11 +871,12 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
         //val start = if (i < n - 1 || !stripFirst) "0" else quote(vs(n-1)) + "_start"
         stream.println("for (" + quote(vs(i)) + " <- 0 until " + quote(sizes(i)) + " by " + quote(strides(i)) + ") {")
       }
-      emitBlocksWithoutDuplicates{
-        emitNode(sym(0), op.body(0))
-      }{
-        for (i <- 1 until nBodies) { emitNode(sym(i), op.body(i)) }
+
+      //emitNodesWithCommonSyms(sym, op.body)
+      emitInCommonScope{
+        sym.zip(op.body).foreach{stm => emitNode(stm._1, stm._2)}
       }
+
       // TODO: stripfirst
       stream.println("}"*n + " // End Fat LoopNest")
 
@@ -723,6 +896,7 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
       val vs = op.vs
       val sizes = op.sizes
       val strides = op.strides
+
       emitPrealloc(sym, op.body)
 
       val stripFirst = emitStripFirst(sym, op)
@@ -735,7 +909,9 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
         val start = if (i < n - 1 || !stripFirst) "0" else quote(vs(n-1)) + "_start"
         stream.println("for (" + quote(vs(i)) + " <- " + start + " until " + quote(sizes(i)) + " by " + quote(strides(i)) + ") {")
       }
-      emitNode(sym, op.body)
+      
+      emitInCommonScope{ emitNode(sym, op.body) }
+
       if (stripFirst) {
         stream.println("}")
         emitAssignment(quote(vs(n-1)) + "_start", "0")
@@ -749,39 +925,39 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
     case elem: DeliteForeachElem[_] => emitForeachElem(sym, elem)
     case elem: DeliteReduceElem[_] => emitReduceElem(sym, elem)
     case elem: DeliteCollectElem[_,_,_] => emitCollectElem(sym, elem)
+    case elem: DeliteFoldElem[_,_] => emitFold(sym, elem)
 
     case op: DeliteTileElem[_,_,_] => 
       val nK = op.keys.length
 
       if (op.cond.nonEmpty) { stream.println("if (true) { //TODO: Filter functions");  }
 
-      stream.println("// --- Keys ")
-      emitBlockTrackDuplicates(op.keys(0))
-      emitValDef(op.buf.bS(0), quote(getBlockResult(op.keys(0))))
-      emitValDef(op.buf.tD(0), quote(op.buf.bS(0)) + ".length")
+      emitWithoutDuplicates {
+        stream.println("// --- Keys ")
+        for (k <- 0 until nK) {
+          emitBlock(op.keys(k))
+          emitValDef(op.buf.bS(k), quote(getBlockResult(op.keys(k))))
+          emitValDef(op.buf.tD(k), quote(op.buf.bS(k)) + ".length")
+        }
 
-      for (k <- 1 until nK) {
-        emitBlockWithoutDuplicates(op.keys(k))
-        emitValDef(op.buf.bS(k), quote(getBlockResult(op.keys(k))))
-        emitValDef(op.buf.tD(k), quote(op.buf.bS(k)) + ".length")
+        stream.println("// --- Block body")
+        emitBlock(op.tile)
+        emitBoundVarDef(op.buf.tileVal, quote(getBlockResult(op.tile)))
       }
 
-      stream.println("// --- Block body")
-      emitBlockWithoutDuplicates(op.tile)
-      emitBoundVarDef(op.buf.tileVal, quote(getBlockResult(op.tile)))
-
       if (op.rFunc.isDefined) {
-        stream.println("// --- Accumulator copy in")
+        stream.println("// --- Accumulator copy out")
         for (k <- 0 until nK) {
           emitBoundVarDef(op.buf.bV(k), quote(op.buf.bS(k)) + ".start")
           stream.println("for (" + quote(op.buf.tV(k)) + " <- 0 until " + quote(op.buf.tD(k)) + ") {")
         }
-        emitBlock(op.buf.bApply)
-        emitValDef(op.buf.bE, quote(getBlockResult(op.buf.bApply)))
-        emitBlock(op.buf.tUpdate)
-
-        // TODO: Shouldn't have plus explicitly emitted here?
-        // TODO: Stride is assumed to be 1 here
+        emitInCommonScope{
+          emitBlock(op.buf.bApply)
+          emitValDef(op.buf.bE, quote(getBlockResult(op.buf.bApply)))
+          emitBlock(op.buf.tUpdate)
+        }
+          // TODO: Shouldn't have plus explicitly emitted here?
+          // TODO: Stride is assumed to be 1 here
         for (k <- 0 until nK) {
           stream.println(quote(op.buf.bV(nK - k - 1)) + " += 1")
           //emitAssignment(op.buf.bV(k), quote(op.buf.bV(k)) + " + 1")
@@ -795,16 +971,17 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
         emitAssignment(op.buf.tileVal, quote(getBlockResult(op.rFunc.get)))
       }
 
-      stream.println("// --- Accumulator copy out")
+      stream.println("// --- Accumulator copy in")
       for (k <- 0 until nK) {
         if (op.rFunc.isDefined && k == 0) emitAssignment(op.buf.bV(k), quote(op.buf.bS(k)) + ".start")
         else emitBoundVarDef(op.buf.bV(k), quote(op.buf.bS(k)) + ".start")
         stream.println("for (" + quote(op.buf.tV(k)) + " <- 0 until " + quote(op.buf.tD(k)) + ") {")
       }
-      emitBlock(op.buf.tApply)
-      emitValDef(op.buf.tE, quote(getBlockResult(op.buf.tApply)))
-      emitBlock(op.buf.bUpdate)
-
+      emitInCommonScope{
+        emitBlock(op.buf.tApply)
+        emitValDef(op.buf.tE, quote(getBlockResult(op.buf.tApply)))
+        emitBlock(op.buf.bUpdate)
+      }
       // TODO: Shouldn't have plus explicitly emitted here?
       // TODO: Stride is assumed to be 1 here
       for (k <- 0 until op.keys.length) {
