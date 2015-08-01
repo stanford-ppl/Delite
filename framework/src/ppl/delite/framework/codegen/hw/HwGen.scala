@@ -140,6 +140,7 @@ trait HwCodegen extends GenericCodegen // with ThorIR
     bDir = buildDir
     baseKernelLibStream = new PrintWriter(buildDir + java.io.File.separator + "BaseKernelLib." + fileExtension)
     topKernelStream = new PrintWriter(buildDir + java.io.File.separator + "TopKernel." + fileExtension)
+    Console.println(s"[InitializeGen] First symbol : ${fresh[Int]}")
 
     initBaseKernelLib(baseKernelLibStream)
     initTopKernel(topKernelStream)
