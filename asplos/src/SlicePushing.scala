@@ -32,8 +32,8 @@ trait SlicePushingExp extends DeliteVisit {self: PPLOpsExp =>
     override def transformSym[A](s: Sym[A], d: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]] = d match {
       case op: BlockSlice[a,t,c] => f(op.src) match {
         case Def(brnch: DeliteOpCondition[_]) => 
-          printmsg("Found slice of a branch: " + strDef(s))
-          printmsg("Branch: " + strDef(op.src))
+          dbgmsg("Found slice of a branch: " + strDef(s))
+          dbgmsg("Branch: " + strDef(op.src))
           val then1 = getBlockResult(brnch.thenp)
           val else1 = getBlockResult(brnch.elsep)
           val then2 = gen_block_slice[a,t,c](then1, f(op.srcOffsets), f(op.srcStrides), f(op.destDims), op.unitDims, op.reuse)(op.mA,op.mT,op.mC,ctx)
@@ -41,8 +41,9 @@ trait SlicePushingExp extends DeliteVisit {self: PPLOpsExp =>
           withSubstScope(then1 -> then2, else1 -> else2) {
             Some(self_mirror(op.src.asInstanceOf[Sym[c]], brnch))
           }
+        case _ => None
       }
-      case _ => super.transformSym(s, d)
+      case _ => None
     } 
     
     // TODO: Metadata transfer

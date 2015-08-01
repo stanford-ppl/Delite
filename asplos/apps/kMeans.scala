@@ -11,31 +11,93 @@ trait kMeansFrame extends PPLApp {
     val K = mu.nRows  // Number of clusters
     println("M: " + M + ", D: " + D + ", K: " + K)
 
-    val muOld = mu.unsafeMutable
+    // ---------- Tiling Hints -----------
+    tile(M, tileSize = 100, max = ?)
+    tile(D, tileSize = 5,  max = 5)
+    tile(K, tileSize = 16, max = 16)
+    tile(mu.nCols, tileSize = 16, max = 16) // HACK: Needed for "tiling" mu read
+    // -----------------------------------
 
-    val tol = unit(0.001)     // Convergence tolerance
-    var delta = scala.Double.MaxValue
-    var iter = unit(0)
-    val maxIter = 30
-    val minIter = 1
+    //val muOld = mu.unsafeMutable
 
-    while ( (Math.abs(delta) > tol && iter < maxIter) ||  iter < minIter) {
-      val muNewData = kMeans(x.data, muOld.unsafeImmutable.data, M, D, K)
-      val muNew = Array2D(muNewData, K, D)
+    //val tol = unit(0.001)     // Convergence tolerance
+    //var delta = scala.Double.MaxValue
+    //var iter = unit(0)
+    //val maxIter = 30
+    //val minIter = 1
 
-      delta = reduce(K,D)(0.0){(i,j) => val diff = muOld(i,j) - muNew(i,j); diff*diff}{_+_} // SQUARE distance
-      forIndices(K,D){(i,j) => muOld(i,j) = muNew(i,j) }
+    //while ( (Math.abs(delta) > tol && iter < maxIter) ||  iter < minIter) {
+    val muNewData = kMeans(x.data, mu.data, M, D, K)
+    val muNew = Array2D(muNewData, K, D)
 
-      iter += 1
-    }
+    //  delta = reduce(K,D)(0.0){(i,j) => val diff = muOld(i,j) - muNew(i,j); diff*diff}{_+_} // SQUARE distance
+    //  forIndices(K,D){(i,j) => muOld(i,j) = muNew(i,j) }
 
-    val muNew = muOld 
+    //  iter += 1
+    //}
+
+    //val muNew = muOld 
     println("mu: "); muNew.pprint
   }
 }
 
-/* k-Means */
 object kMeans extends PPLCompiler with kMeansApp
+object kMeansFunc extends PPLCompiler with kMeansApp {
+  registerFunction(kMeans _)
+  override def functionName = "kMeans"
+}
+trait kMeansApp extends PPLCompiler with kMeansFrame {
+  def kMeans(xData: Rep[Array1D[Double]], muData: Rep[Array1D[Double]], M: Rep[Int], D: Rep[Int], K: Rep[Int]): Rep[Array1D[Double]] = {
+    // ---------- Tiling Hints -----------
+    tile(M, tileSize = 40, max = ?)
+    tile(D, tileSize = 5,  max = 5)
+    tile(K, tileSize = 16, max = 16)
+    // -----------------------------------
+  
+    val x = Array2D(xData, M, D)
+    val muIn = Array2D(muData, K, D)
+    val mu = muIn.bslice(0 :@: K, 0 :@: D) // TODO: Infer this automatically
+
+    def minLabel(i: Exp[Int]): Exp[Int] = {
+      val row = x.slice(i, *) 
+      val minC = reduce(K)((unit(0.0),unit(0))){j =>     // MinIndex loop
+        val muRow = mu.slice(j, *)
+        val dist = reduce(D)(0.0){d => val diff = muRow(d) - row(d); diff*diff}{_+_} // SQUARE distance
+        (dist, j)
+      }{(d1,d2) => if (tuple2_get1(d1) < tuple2_get1(d2)) d1 else d2}
+      tuple2_get2(minC) // Get index of closest class
+    }
+
+    val (wp, p) = fusedFatLoopNest2(M)(1){i => 
+      // Common
+      val rv0 = minLabel(i) :@: 1
+
+      // Loop 1
+      val defA = rawBlockReduce[Double,Array1D[Double],Array2D[Double]](i)(List(unit(1),D), List(0))(Array2D[Double](K,D))(List(rv0, 0 :@: D)){
+        x.bslice(i, *)
+      }{(a,b) => collect(D){j => a(j) + b(j)} }
+
+      // Loop 2
+      val defB = rawBlockReduce[Int,Array1D[Int],Array1D[Int]](i)(List(unit(1)), Nil)(Array1D[Int](K))(List(rv0)){
+        box(unit(1))
+      }{(a,b) => box(debox(a) + debox(b)) }
+
+      (defA,defB)
+    }
+
+    // Divide by counts
+    val newMu = blockAssem[Double,Array1D[Double],Array2D[Double]](K)(b0 = 1)(Array2D[Double](K,D))({ii => ii},{ii => 0 :@: D}){ii =>
+      val weightedpoints = wp.slice(ii.start, *)
+      val points = p(ii.start) 
+      val d = if (points == 0) 1 else points
+      collect(D){i => weightedpoints(i) / d}
+    }
+    newMu.data
+  }
+}
+
+/* k-Means Unfused version */
+/*object kMeans extends PPLCompiler with kMeansApp
 object kMeansFunc extends PPLCompiler with kMeansApp {
   registerFunction(kMeans _)
   override def functionName = "kMeans"
@@ -44,7 +106,7 @@ trait kMeansApp extends kMeansFrame {
   def kMeans(xData: Rep[Array1D[Double]], muData: Rep[Array1D[Double]], M: Rep[Int], D: Rep[Int], K: Rep[Int]): Rep[Array1D[Double]] = {
     // ---------- Tiling Hints -----------
     tile(M, tileSize = 40, max = ?)
-    tile(D, tileSize = 40, max = ?)
+    tile(D, tileSize = 5,  max = 5)
     tile(K, tileSize = 16, max = 16)
     // -----------------------------------
   
@@ -79,7 +141,7 @@ trait kMeansApp extends kMeansFrame {
     }
     newMu.data
   }
-}
+}*/
 
 /* Manually fused k-Means */
 /*object kMeansFused extends PPLCompiler with kMeansFusedApp

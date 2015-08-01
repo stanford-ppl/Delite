@@ -79,7 +79,7 @@ trait DeliteTestDSLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGen
 /*
  * Every trait here is described in LMS for other backends
  */
-trait DeliteTestDSLHwCodeGenPkg
+//trait DeliteTestDSLHwCodeGenPkg
 //  extends HwGenOrderingOps
 //    with HwGenEqual
 //    with HwGenIfTheElse
@@ -105,7 +105,7 @@ trait DeliteTestDSLHwCodeGenPkg
 //    with HwGenIterableOps
 //    with HwGenArrayBufferOps
 //    with HwGenExceptionOps
-  { val IR: DeliteTestDSLScalaOpsPkgExp  }
+//  { val IR: DeliteTestDSLScalaOpsPkgExp  }
 
 
 trait DeliteTestDSL extends DeliteTestDSLScalaOpsPkg with StructOps with DeliteArrayOps with DeliteArrayBufferOps with DeliteMapOps with DeliteFileReaderOps  with DeliteAnalysesOps {
@@ -135,7 +135,7 @@ trait DeliteTestDSLExp extends DeliteTestDSLCompiler with DeliteTestDSLScalaOpsP
       case _:TargetCuda => new DeliteTestDSLCodeGenCuda{val IR: DeliteTestDSLExp.this.type = DeliteTestDSLExp.this}
       case _:TargetOpenCL => new DeliteTestDSLCodeGenOpenCL{val IR: DeliteTestDSLExp.this.type = DeliteTestDSLExp.this}
       case _:TargetCpp => new DeliteTestDSLCodeGenC{val IR: DeliteTestDSLExp.this.type = DeliteTestDSLExp.this}
-      case _:TargetHw => new DeliteTestDSLCodeGenHw{val IR: DeliteTestDSLExp.this.type = DeliteTestDSLExp.this}
+      //case _:TargetHw => new DeliteTestDSLCodeGenHw{val IR: DeliteTestDSLExp.this.type = DeliteTestDSLExp.this}
       case _ => throw new Exception("DeliteTestDSL does not support this target")
     }
   }  
@@ -177,7 +177,7 @@ trait DeliteTestDSLCodeGenC extends DeliteTestDSLCodeGenBase with DeliteTestDSLC
   val IR: DeliteApplication with DeliteTestDSLExp
 }
 
-trait DeliteTestDSLCodeGenHw
+/*trait DeliteTestDSLCodeGenHw
   extends DeliteTestDSLCodeGenBase  /* Common to all generators */
   with DeliteTestDSLHwCodeGenPkg    /* Lump of traits usually implemented in LMS */
   with HwGenDeliteInternalOps
@@ -185,5 +185,5 @@ trait DeliteTestDSLCodeGenHw
   with HwGenDeliteArrayOps          /* Codegen for all Delite Array Ops */
 {
   val IR: DeliteApplication with DeliteTestDSLExp
-}
+}*/
 

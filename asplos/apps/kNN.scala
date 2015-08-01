@@ -1,30 +1,59 @@
 import asplos._
 
 trait kNNFrame extends PPLApp {
-  val heldOutRatio = 0.2
   val K = 3
 
-  // N - number of reference points
-  // R - number of input points
+  // N - number of training points
+  // R - number of testing points
   // D - dimensionality of point (number of columns)
-  def evalKNN(refData: Rep[Array1D[Double]], refLabels: Rep[Array1D[Int]], 
-              inData: Rep[Array1D[Double]], inLabels: Rep[Array1D[Int]], 
-              D: Rep[Int]): Rep[Double]
+  def evalKNN(trainData: Rep[Array1D[Int]], trainLabels: Rep[Array1D[Int]], testData: Rep[Array1D[Int]], R: Rep[Int], D: Rep[Int]): Rep[Array1D[Int]]
   def main() {
-    val data = read2D(DATA_FOLDER + "knn/input.dat")
-    val labels = read1D(DATA_FOLDER + "knn/labels.dat").map{_.toInt}
+    val data = readImg(DATA_FOLDER + "knn/letter-data.dat")
+    val DR = data.nRows 
+    val DC = data.nCols
 
-    val nTestVecs = Math.floor(heldOutRatio * data.nRows).toInt
+    println("Read in data with " + DR + " rows and " + DC + " columns")
 
-    val testData = data.bslice(0 :@: nTestVecs, *)
-    val testLabels = labels.bslice(0 :@: nTestVecs)
-    val trainData = data.bslice(nTestVecs :@: (data.nRows - nTestVecs), *)
-    val trainLabels = labels.bslice(nTestVecs :@: (data.nRows - nTestVecs))
-    val D = trainData.nCols
+    // Tiling hints for 2D read (collect)
+    // TODO: Shouldn't actually need to block the 2D read
+    tile(DR, tileSize = 100, max = ?)
+    tile(DC, tileSize = 20, max = 20)
+    //------------------------------------
 
-    val errCount = evalKNN(trainData.data, trainLabels, testData.data, testLabels, D)
-    println("Total error count: " + errCount)
-    println("Total error rate: " + errCount / nTestVecs.toDouble)
+    val heldOutRatio = 0.2
+    val N = Math.floor(heldOutRatio * DR).toInt  // Number of training instances
+    val R = DR - N                               // Number of testing instances
+    val D = DC - 1                               // Feature dimension
+
+    println("Using " + R + " testing instances and " + N + " training instances")
+
+    // TODO: Should be R :@: N for training data
+    val testData  = data.bslice(0 :@: R, 0 :@: D); val testLabels  = data.bslice(0 :@: R, D)
+    val trainData = data.bslice(R :@: N, 0 :@: D); val trainLabels = data.bslice(R :@: N, D)
+   
+    // ---------- Tiling Hints -----------
+    tile(N, tileSize = 200, max = ?)
+    tile(R, tileSize = 100, max = ?)
+    tile(D, tileSize = 20, max = 20)
+    // -----------------------------------
+
+    val labelsOut = evalKNN(trainData.data, trainLabels, testData.data, R, D)
+
+    var i = 0
+    while (i < R) {
+      if (labelsOut(i) != testLabels(i)) {
+        println("#" + i + ": Incorrect (expected " + testLabels(i) + ", found " + labelsOut(i) + ")")
+      }
+      else {
+        println("#" + i + ": Correct (expected " + testLabels(i) + ", found " + labelsOut(i) + ")")
+      }
+      i += 1
+    }
+
+    val nErr = reduce(R)(0){i => if (labelsOut(i) != testLabels(i)) 1 else 0 }{_+_}
+    val percent = 100.0 * (nErr.toDouble / testLabels.length.toDouble)
+    println("Number incorrect: " + nErr + "/" + testLabels.length + "(" + percent + "%)")
+  
   }
 }
 
@@ -34,12 +63,60 @@ object kNNFunc extends PPLCompiler with kNNApp {
   override def functionName = "evalKNN"
 }
 trait kNNApp extends kNNFrame {
-  def evalKNN(refData: Rep[Array1D[Double]], refLabels: Rep[Array1D[Int]], 
-              inData: Rep[Array1D[Double]], inLabels: Rep[Array1D[Int]], 
-              D: Rep[Int]): Rep[Double] = {
+  def evalKNN(trainData: Rep[Array1D[Int]], trainLabels: Rep[Array1D[Int]], testData: Rep[Array1D[Int]], R: Rep[Int], D: Rep[Int]): Rep[Array1D[Int]] = {
 
-    val N = refLabels.length
-    val R = inLabels.length
+    val N = trainLabels.length
+
+    // ---------- Tiling Hints -----------
+    tile(N, tileSize = 200, max = ?)
+    tile(R, tileSize = 100, max = ?)
+    tile(D, tileSize = 20, max = 20)
+    // -----------------------------------
+
+    val refs = Array2D(trainData, N, D)
+    val inputs = Array2D(testData, R, D)
+
+    // Blocked correctly
+    collect(R){i => 
+      val pt = inputs.slice(i, *)
+
+      // TODO: How to block fold? Is it useful to block here?
+      val kPairs = fold(K){z => (unit(100000), unit(0)) }(N){j => 
+        val refPt = refs.slice(j, *)
+        val dist = reduce(D)(0){d => val diff = refPt(d) - pt(d); diff*diff}{_+_}
+        (dist, j)
+      }{(a,b) =>
+        a.priorityInsert(b){(x,y) => tuple2_get1(x) < tuple2_get1(y)}
+      }{(a,b) => a}
+
+      // Fits, no blocking necessary
+      val kLabels = groupByReduce(K){i => trainLabels( tuple2_get2(kPairs(i)) )}{i => 1}{_+_}
+
+      // Extra tiling hint - should be inferred automatically later by range analysis?
+      val L = kLabels.size
+      tile(L, tileSize = K, max = K)  // Maximum number of groups here is K
+
+      // Fits, no blocking necessary
+      val minPair = reduce(L)( (unit(0),unit(0)) ){i =>
+          (kLabels.keys(i), kLabels.values(i))
+      }{(a,b) => if (tuple2_get2(a) > tuple2_get2(b)) a else b }
+      tuple2_get1(minPair)
+    }
+  }
+}
+
+/*object kNNBlocked extends PPLCompiler with kNNBlockedApp
+object kNNBlockedFunc extends PPLCompiler with kNNBlockedApp {
+  registerFunction (evalKNN _)
+  override def functionName = "evalKNN"
+}
+trait kNNBlockedApp extends kNNFrame {
+  def evalKNN(trainData: Rep[Array1D[Double]], trainLabels: Rep[Array1D[Int]], 
+              testData: Rep[Array1D[Double]], testLabels: Rep[Array1D[Int]], 
+              D: Rep[Int]): Rep[Array1D[Int]] = {
+
+    val N = trainLabels.length
+    val R = testLabels.length
 
     // ---------- Tiling Hints -----------
     tile(N, tileSize = 100, max = ?)
@@ -47,25 +124,43 @@ trait kNNApp extends kNNFrame {
     tile(D, tileSize = 100, max = 1000)
     // -----------------------------------
 
-    val refs = Array2D(refData, N, D)
-    val inputs = Array2D(inData, R, D)
+    val refs = Array2D(trainData, N, D)
+    val inputs = Array2D(testData, R, D)
 
-    reduce(R)(0){i => 
-      val pt = inputs.slice(i, *)
-      val dists = collect(N){j => 
-        val refPt = refs.slice(j, *)
-        reduce(D)(0.0){d => val diff = refPt(d) - pt(d); diff*diff}{_+_}
+    tileAssemble[Int,Array1D[Int],Array1D[Int]]( Array1D[Int](R) ){ii => ii}{ii =>
+      val ptBlk = input.bslice(ii, *)
+      collect(ii.len){i => 
+        val pt = ptBlk.bslice(i, *)
+        
+        // TODO: map function produces something of size B, accumulator is of size K...
+        val kIndices = tiledReduce(N)( Array1D[(Double,Int)](K) ){jj => 
+          val refBlk = refs.bslice(jj, *)
+          collect(jj.len){j => 
+            val refPt = refBlk.bslice(j, *)
+            // D is small, shouldn't be blocked
+            val dist = reduce(D)(0.0){d => val diff = refPt(d) - pt(d); diff*diff}{_+_}
+            (dist, j)
+          }
+        }{(a,b) => 
+          // concatenate a and b
+          // sortIndices of concatenated array, using tuple2_get1 as comparison
+          // take K
+        }
+        //val inds = sortIndices(N){(i,j) => if (dists(i) < dists(j)) 1 else -1 }
+        //val kIndices = inds.bslice(0 :@: K)
+
+        val kLabels = groupByReduce(K){i => trainLabels(kIndices(i))}{i => 1}{_+_}
+
+        // Extra tiling hint
+        val L = kLabels.size
+        tile(L, tileSize = 3, max = 3)
+
+        val minLabel = reduce(L)( (unit(0),unit(0)) ){i =>
+            (kLabels.keys.apply(i), kLabels.values.apply(i))
+        }{(a,b) => if (tuple2_get2(a) > tuple2_get2(b)) a else b }
+        tuple2_get1(minLabel)
       }
-      val inds = sortIndices(N){(i,j) => if (dists(i) < dists(j)) 1 else -1 }
-      val kIndices = inds.slice(0 :@: K)
+    }
 
-      //val kLabels = groupByReduce(K){i => refLabels(kIndices(i))}{i => 1}{_+_}
-      //val minLabel = reduce(kLabels.size)( (unit(0),unit(0)) ){i =>
-      //  (kLabels.keys.apply(i), kLabels.values.apply(i))
-      //}{(a,b) => if (tuple2_get2(a) > tuple2_get2(b)) a else b }
-      //val cLabel = tuple2_get1(minLabel)
-      val cLabel = 0
-      if (cLabel == inLabels(i)) 0 else 1
-    }{_+_}
   }
-}
+}*/

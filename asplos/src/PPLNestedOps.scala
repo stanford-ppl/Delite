@@ -72,6 +72,9 @@ trait PPLNestedOps extends DeliteNestedOps { this: PPLOps =>
   def collect[T:Manifest](d0: Rep[Int], d1: Rep[Int])(func: (Rep[Int],Rep[Int]) => Rep[T])(implicit ctx: SourceContext): Rep[Array2D[T]]
     = nested_collect[T,Array2D[T]](List(d0,d1), {is => func(is(0),is(1))})
 
+  def mcollect[T:Manifest](d0: Rep[Int])(func: Rep[Int] => Rep[T])(implicit ctx: SourceContext): Rep[Array1D[T]]
+    = nested_mutable_collect(List(d0), {is => func(is(0))})
+
   // Reduce
   def reduce[T:Manifest](d0: Rep[Int])(zero: Rep[T])(func: Rep[Int] => Rep[T])(rFunc: (Rep[T],Rep[T]) => Rep[T])(implicit ctx: SourceContext): Rep[T]
     = nested_reduce[T](zero, List(d0), {is => func(is(0))}, rFunc)
@@ -90,6 +93,9 @@ trait PPLNestedOps extends DeliteNestedOps { this: PPLOps =>
 
   // Sort
   def sortIndices(length: Rep[Int])(comparator: (Rep[Int],Rep[Int]) => Rep[Int])(implicit ctx: SourceContext) = darray_sortIndices(length, comparator)
+
+  // Fold
+  def fold[A:Manifest](accumSize: Rep[Int])(init: Rep[Int] => Rep[A])(size: Rep[Int])(f: Rep[Int] => Rep[A])(reduce: (Rep[Array1D[A]],Rep[A]) => Rep[Unit])(combine: (Rep[Array1D[A]],Rep[Array1D[A]]) => Rep[Array1D[A]])(implicit ctx: SourceContext): Rep[Array1D[A]]
 }
 
 // Don't want to have view of staged if-then-else here, but do want math ops
@@ -208,6 +214,24 @@ trait PPLTileAssembleExp extends DeliteNestedOpsExpOpt with MathOpsExp with Prim
     val rv = RangeVector(v, Math.min(size - v, stride))
     val iFuncBlk = reifyEffects(func(rv))
     reflectPure( NestedFlatMap[A,DeliteArray[A]](v, size, stride, None, None, Some(iFuncBlk)) )
+  }
+
+  def fold[A:Manifest](accumSize: Rep[Int])(init: Rep[Int] => Rep[A])(size: Rep[Int])(f: Rep[Int] => Rep[A])(reduce: (Rep[Array1D[A]],Rep[A]) => Rep[Unit])(combine: (Rep[Array1D[A]],Rep[Array1D[A]]) => Rep[Array1D[A]])(implicit ctx: SourceContext): Rep[Array1D[A]] = {
+    val aV = fresh[Int]
+    val aVs = List(aV)
+
+    val v = fresh[Int]
+    val vs = List(v)
+
+    val rV = (reflectMutableSym(fresh[Array1D[A]]), fresh[A])
+    val cV = (fresh[Array1D[A]], fresh[Array1D[A]])
+
+    val initBlk: Block[A] = reifyEffects(init(aV))
+    val func: Block[A] = reifyEffects(f(v))
+    val rFunc: Block[Unit] = reifyEffects(reduce(rV._1, rV._2))
+    val cFunc: Block[Array1D[A]] = reifyEffects(combine(cV._1, cV._2))
+
+    reflectPure( NestedFold(vs, aVs, rV, cV, List(accumSize), List(size), initBlk, func, rFunc, cFunc) )
   }
 
 }

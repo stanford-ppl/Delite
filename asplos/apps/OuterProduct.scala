@@ -6,6 +6,10 @@ trait OuterProductFrame extends PPLApp {
     val dims = read(CONFIG_FILE).map{d => d.toInt}
     val R = dims(0)
     val C = dims(2)
+    // ---------- Tiling Hints -----------
+    tile(R, tileSize = 40, max = ?)
+    tile(C, tileSize = 40, max = ?)  
+    // ----------------------------------- 
 
     val a = collect(R){i => (i + 3).toDouble }
     val b = collect(C){j => (j * 5).toDouble }

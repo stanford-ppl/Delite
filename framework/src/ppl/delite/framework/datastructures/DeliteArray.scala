@@ -141,7 +141,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
 
     val size = copyTransformedOrElse(_.size)(in.length)
     override def alloc(len: Exp[Int]) = DeliteArray[B](len)
-    override def toString=super.toString
+    //override def toString=super.toString
   }
 
   case class DeliteArrayClone[A:Manifest](in: Exp[DeliteArray[A]])(implicit ctx: SourceContext)

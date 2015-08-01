@@ -67,6 +67,8 @@ trait FlattenedArrayOps extends DeliteNestedOps with DeliteArrayOps with RangeVe
   def array2dview_new_mutable[T:Manifest](data: Rep[DeliteArray[T]], ofs: Rep[Int], stride0: Rep[Int], stride1: Rep[Int], dim0: Rep[Int], dim1: Rep[Int])(implicit ctx: SourceContext): Rep[Array2DView[T]]
   def array1dview_new_mutable[T:Manifest](data: Rep[DeliteArray[T]], ofs: Rep[Int], stride0: Rep[Int], dim0: Rep[Int])(implicit ctx: SourceContext): Rep[Array1DView[T]]  
 
+  def array1d_priority_insert[A:Manifest](da: Rep[Array1D[A]], x: Rep[A], comp: (Rep[A],Rep[A]) => Rep[Boolean])(implicit ctx: SourceContext): Rep[Unit]
+
   def block_slice[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](src: Rep[C], srcOffsets: List[Rep[Int]], srcStrides: List[Rep[Int]], destDims: List[Rep[Int]], unitDims: List[Int])(implicit ctx: SourceContext): Rep[T]
   def array_slice[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](src: Rep[C], srcOffsets: List[Rep[Int]], srcStrides: List[Rep[Int]], destDims: List[Rep[Int]], unitDims: List[Int])(implicit ctx: SourceContext): Rep[T]  
   def array_apply[A:Manifest,C<:DeliteCollection[A]:Manifest](x: Rep[C], inds: List[Rep[Int]])(implicit ctx: SourceContext): Rep[A]
@@ -156,6 +158,10 @@ trait FlattenedArrayOps extends DeliteNestedOps with DeliteArrayOps with RangeVe
 
     def bslice(iv: Rep[RangeVector]): Rep[Array1D[T]] 
       = block_slice[T,Array1D[T],Array1D[T]](x,List(iv.start),List(iv.stride),List(iv.length(x.length)),Nil)
+
+    // --- Insert (for bubble sort)
+    def priorityInsert(e: Rep[T])(comp: (Rep[T],Rep[T]) => Rep[Boolean]): Rep[Unit]
+      = array1d_priority_insert(x, e, comp)
 
     // --- Annotations
     // Specifically for arrays created from block slices
@@ -328,6 +334,27 @@ trait FlattenedArrayOpsExp extends FlattenedArrayOps with MultiArrayExp with Del
     def unerase[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](op: BlockSlice[_,_,_]): BlockSlice[A,T,C] = op.asInstanceOf[BlockSlice[A,T,C]]
   }
 
+  // TODO: This should be represented with lower level primitives..
+  // TODO: Also, this should be an atomic write if it remains as a node
+  case class ArrayPriorityInsert[A:Manifest](da: Exp[Array1D[A]], x: Exp[A], compare: (Exp[A],Exp[A]) => Exp[Boolean])(implicit ctx: SourceContext) extends DeliteOp[Unit] {
+    type OpType <: ArrayPriorityInsert[A]
+
+    lazy val size: Exp[Int] = copyTransformedOrElse(_.size)(dc_size[A](da))
+    lazy val v: Sym[Int] = copyOrElse(_.v)(fresh[Int])
+    lazy val cmp: Sym[A] = copyOrElse(_.cmp)(fresh[A])    // Value to be inserted
+    lazy val prev: Sym[A] = copyOrElse(_.prev)(fresh[A])  // Previous value at current index
+    lazy val buff: Sym[Array1D[A]] = copyOrElse(_.buff)(reflectMutableSym(fresh[Array1D[A]]))
+
+    lazy val comp: Block[Boolean] = copyTransformedBlockOrElse(_.comp)(reifyEffects(compare(cmp, prev)))
+    lazy val bApply: Block[A] = copyTransformedBlockOrElse(_.bApply)(reifyEffects(dc_apply[A](buff, v)))
+    lazy val bUpdate: Block[Unit] = copyTransformedBlockOrElse(_.bUpdate)(reifyEffects(dc_update[A](buff, v, cmp)))
+
+    val mA = manifest[A]
+  }
+  def array1d_priority_insert[A:Manifest](da: Rep[Array1D[A]], x: Rep[A], comp: (Rep[A],Rep[A]) => Rep[Boolean])(implicit ctx: SourceContext): Rep[Unit] = {
+    reflectWrite(da)(ArrayPriorityInsert(da,x,comp))
+  }
+
   def kernel_array[A:Manifest](len: Rep[Int], ks: List[A])(implicit ctx: SourceContext): Rep[Array1D[A]]
     = reflectPure(KernelArray(len, ks))
 
@@ -380,50 +407,62 @@ trait FlattenedArrayOpsExp extends FlattenedArrayOps with MultiArrayExp with Del
       val op = BlockSlice.unerase(e)(e.mA,e.mT,e.mC)
       reflectMirrored(Reflect(BlockSlice.mirror(op,f)(e.mA,e.mT,e.mC,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
 
+    case e@ArrayPriorityInsert(a,x,c) => reflectPure(new {override val original = Some(f,e) } with ArrayPriorityInsert(f(a),f(x),c)(e.mA,ctx))(mtype(manifest[A]), ctx)
+    case Reflect(e@ArrayPriorityInsert(a,x,c), u, es) => reflectMirrored(Reflect(new {override val original = Some(f,e) } with ArrayPriorityInsert(f(a),f(x),c)(e.mA,ctx), mapOver(f,u), f(es)))(mtype(manifest[A]),ctx)
+
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
 
   override def blocks(e: Any): List[Block[Any]] = e match {
     case op: BlockSlice[_,_,_] => Nil
+    case op: ArrayPriorityInsert[_] => Nil
     case _ => super.blocks(e)
   }
 
   // dependencies
   override def syms(e: Any): List[Sym[Any]] = e match {
     case op: BlockSlice[_,_,_] => syms(op.src) ::: syms(op.srcOffsets) ::: syms(op.strides) ::: syms(op.sizes) ::: syms(op.bApply) ::: syms(op.tUpdate) ::: syms(op.allocTile)
+    case op: ArrayPriorityInsert[_] => syms(op.da) ::: syms(op.x) ::: syms(op.comp) ::: syms(op.bUpdate) ::: syms(op.bApply) ::: syms(op.size)
     case _ => super.syms(e)
   }
 
   override def readSyms(e: Any): List[Sym[Any]] = e match {
     case op: BlockSlice[_,_,_] => readSyms(op.src) ::: readSyms(op.srcOffsets) ::: readSyms(op.strides) ::: readSyms(op.sizes) ::: readSyms(op.bApply) ::: readSyms(op.tUpdate) ::: readSyms(op.allocTile)
+    case op: ArrayPriorityInsert[_] => readSyms(op.da) ::: readSyms(op.x) ::: readSyms(op.comp) ::: readSyms(op.bUpdate) ::: readSyms(op.bApply) ::: readSyms(op.size)
     case _ => super.readSyms(e)
   }
 
   override def boundSyms(e: Any): List[Sym[Any]] = e match {
     case op: BlockSlice[_,_,_] => op.vs ::: op.bV ::: List(op.tileVal, op.bE) ::: effectSyms(op.bApply) ::: effectSyms(op.tUpdate) ::: effectSyms(op.allocTile) 
+    case op: ArrayPriorityInsert[_] => List(op.prev, op.cmp, op.v, op.buff) ::: effectSyms(op.bApply) ::: effectSyms(op.bUpdate) ::: effectSyms(op.comp)
     case _ => super.boundSyms(e)
   }
 
   override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
     case op: BlockSlice[_,_,_] => freqNormal(op.src) ::: freqNormal(op.srcOffsets) ::: freqNormal(op.strides) ::: freqNormal(op.sizes) ::: freqHot(op.bApply) ::: freqHot(op.tUpdate) ::: freqNormal(op.allocTile)
+    case op: ArrayPriorityInsert[_] => freqNormal(op.da) ::: freqNormal(op.x) ::: freqHot(op.comp) ::: freqHot(op.bUpdate) ::: freqHot(op.bApply) ::: freqNormal(op.size)
     case _ => super.symsFreq(e)
   }
 
   // aliases and sharing
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
     case op: BlockSlice[_,_,_] => Nil
+    case op: ArrayPriorityInsert[_] => Nil
     case _ => super.aliasSyms(e)
   }
   override def containSyms(e: Any): List[Sym[Any]] = e match {
     case op: BlockSlice[_,_,_] => Nil
+    case op: ArrayPriorityInsert[_] => Nil
     case _ => super.containSyms(e)
   }
   override def extractSyms(e: Any): List[Sym[Any]] = e match {
     case op: BlockSlice[_,_,_] => Nil
+    case op: ArrayPriorityInsert[_] => Nil
     case _ => super.extractSyms(e)
   }
   override def copySyms(e: Any): List[Sym[Any]] = e match {
     case op: BlockSlice[_,_,_] => Nil
+    case op: ArrayPriorityInsert[_] => Nil
     case _ => super.copySyms(e)
   }
 
@@ -567,6 +606,11 @@ trait FlattenedArrayLowerableOpsExp extends FlattenedArrayOpsExp with DeliteLowe
     def mirror[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](op: ArraySlice[A,T,C], f: Transformer)(implicit ctx: SourceContext): ArraySlice[A,T,C]
       = ArraySlice[A,T,C](f(op.src),f(op.srcOffsets),f(op.srcStrides),f(op.destDims),op.unitDims)
     def lower[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](src: Exp[C], srcOffsets: List[Exp[Int]], srcStrides: List[Exp[Int]], destDims: List[Exp[Int]], unitDims: List[Int])(implicit ctx: SourceContext): Exp[T] = {
+      
+      def bail(): Nothing = {
+        sys.error("Don't know how to lower ArraySlice with output type " + manifest[T].toString + " and input type " + manifest[C].toString)
+      }
+
       if (isArray1D(src) && isArray1DViewTpe(manifest[T]) && unitDims.isEmpty) {
         array1dview_new(asArray1D(src), srcOffsets(0), srcStrides(0), destDims(0)).asInstanceOf[Exp[T]]
       }
@@ -582,7 +626,7 @@ trait FlattenedArrayLowerableOpsExp extends FlattenedArrayOpsExp with DeliteLowe
           array1dview_new(m.data, m.nCols*srcOffsets(0) + srcOffsets(1), srcStrides(0)*m.nCols, destDims(0)).asInstanceOf[Exp[T]]
         else if (isArray2DViewTpe(manifest[T]) && unitDims.isEmpty)      // 2D Slice
           array2dview_new(m.data, m.nCols*srcOffsets(0) + srcOffsets(1), srcStrides(0)*m.nCols, srcStrides(1), destDims(0), destDims(1)).asInstanceOf[Exp[T]]
-        else sys.error("Don't know how to lower ArraySlice with types " + manifest[T].toString + " and " + manifest[C].toString)
+        else bail()
       }
       else if (isArray2DView(src)) {
         val m = asArray2DView(src)
@@ -592,9 +636,9 @@ trait FlattenedArrayLowerableOpsExp extends FlattenedArrayOpsExp with DeliteLowe
           array1dview_new(m.data, m.start + (m.rowStride*srcOffsets(0)) + (m.colStride*srcOffsets(1)), m.rowStride*srcStrides(0), destDims(0)).asInstanceOf[Exp[T]]
         else if (isArray2DViewTpe(manifest[T]) && unitDims.isEmpty)      // 2D Slice
           array2dview_new(m.data, m.start + (m.rowStride*srcOffsets(0)) + (m.colStride*srcOffsets(1)), m.rowStride*srcStrides(0), m.colStride*srcStrides(1), destDims(0), destDims(1)).asInstanceOf[Exp[T]]
-        else sys.error("Don't know how to lower ArraySlice with types " + manifest[T].toString + " and " + manifest[C].toString)
+        else bail()
       }
-      else sys.error("Don't know how to lower ArraySlice with types " + manifest[T].toString + " and " + manifest[C].toString)
+      else bail()
     }
   }
 
@@ -688,6 +732,7 @@ trait FlattenedArrayLowerableOpsExp extends FlattenedArrayOpsExp with DeliteLowe
   class ApplyLowering extends AbstractImplementer {
     val IR: self.type = self
     override val name = "Apply Lowering"
+   // override val debugMode = true
     override def transferMetadata(sub: Exp[Any], orig: Exp[Any], d: Def[Any])(implicit ctx: SourceContext) = d match {
       case e: ArrayStringify[_,_] => copyMetadata(sub, props(orig))
       case e: ArrayApply[_,_] => copyMetadata(sub, props(orig))
@@ -792,6 +837,29 @@ trait ScalaGenFlattenedArrayOps extends ScalaGenDeliteDSL with ScalaGenNestedOps
 
     case op: KernelArray[_] => 
       emitValDef(sym, "List[" + remap(op.mA) + "]" + op.ks.mkString("(", ",", ")") + ".toArray")
+
+/*
+    lazy val size: Exp[Int] = copyTransformedOrElse(_.size)(dc_size[A](da))
+
+    lazy val cV: (Sym[A],Sym[A]) = copyOrElse(_.cV)((fresh[A],fresh[A]))
+    lazy val cmp: Sym[A] = copyOrElse(_.cmp)(fresh[A])
+    lazy val comp: Block[Boolean] = copyTransformedBlockOrElse(_.comp)(reifyEffects(compare(cV._1,cV._2)))
+    lazy val update: Block[Unit] = copyTransformedBlockOrElse(_.update)(reifyEffects(dc_update[A](da, cmp)))
+*/
+
+    case op: ArrayPriorityInsert[_] => 
+      stream.println("// --- Array priority insertion (compare and swap)")
+      emitValDef(op.buff, quote(op.da))
+      emitBoundVarDef(op.cmp, quote(op.x))
+      stream.println("for( " + quote(op.v) + " <- 0 until " + quote(op.size) + ") {")
+      emitBlock(op.bApply)
+      emitValDef(op.prev, quote(getBlockResult(op.bApply)))
+      emitBlock(op.comp)
+      stream.println("if (" + quote(getBlockResult(op.comp)) + ") {")
+      emitBlock(op.bUpdate)
+      emitAssignment(op.cmp, quote(op.prev))
+      stream.println("}}")
+      emitValDef(sym, "()")
 
     case _ => super.emitNode(sym, rhs)
   }

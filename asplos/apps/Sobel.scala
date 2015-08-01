@@ -21,7 +21,7 @@ trait SobelFrame extends PPLApp {
 
     val edgeData = sobelFilter(imgPadded.data, img.nRows, img.nCols)
     val edges = Array2D(edgeData, img.nRows, img.nCols)
-    edges.slice(0 :@: 10, 0 :@: 10).pprint
+    edges.pprint
   }
 }
 

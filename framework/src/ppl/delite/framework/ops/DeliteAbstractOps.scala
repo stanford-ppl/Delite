@@ -164,10 +164,10 @@ trait DeliteLowerableOpsExp extends DeliteAbstractOpsExp with DeliteVisit { self
     // Potentially requires transformer to be defined in the same trait as the nodes..
     override def transformSym[A](s: Sym[A], d: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]] = d match {
       case d: AbstractNode[_] if d.family == fc.name => 
-        printDebug("Transforming abstract node in family " + d.family)
+        dbgmsg("Transforming abstract node in family " + d.family)
         Some(lower(d, f)(mtype(s.tp),ctx))
       case d: AbstractNode[_] =>
-        printDebug("Ignoring abstract node in family " + d.family + " (!= " + fc.name + ")")
+        dbgmsg("Ignoring abstract node in family " + d.family + " (!= " + fc.name + ")")
         None
 
       // FIXME: Will this work? Relies on mirroring of lhs of defs right now... 

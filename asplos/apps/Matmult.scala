@@ -8,13 +8,19 @@ trait MatmultFrame extends PPLApp {
     val M = dims(1)
     val C = dims(2)
 
+    // ---------- Tiling Hints -----------
+    tile(R, tileSize = 35, max = ?)
+    tile(M, tileSize = 30, max = ?)
+    tile(C, tileSize = 35, max = ?)  
+    // ----------------------------------- 
+
     val a = collect(R,M){(i,j) => (i + j).toDouble }
     val b = collect(M,C){(i,j) => (i - j).toDouble }
 
     val cData = matmult(a.data, b.data, R, M, C)
     val c = Array2D(cData, R, C)
     
-    c.slice(0:@:5,0:@:5).pprint
+    c.pprint
   }
 }
 

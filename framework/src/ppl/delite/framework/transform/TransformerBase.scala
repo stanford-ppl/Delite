@@ -131,7 +131,9 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor {
         if (s._1 != s._2) subst += (s._1 -> s._2)
       }
       
-    case _ => cwarn("Already have substitution for symbols in statement " + stm)
+    case _ => 
+      printDebug(s"Statement $stm already had substition rule. Doing nothing.")
+      cwarn("Already have substitution for symbols in statement " + stm)
   }
 
   override def runOnce[A:Manifest](b: Block[A]): Block[A] = {
