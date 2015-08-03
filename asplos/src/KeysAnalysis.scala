@@ -21,7 +21,7 @@ import scala.collection.mutable.ListBuffer
  * and returns a conservative constant (e.g. if min(foo, 32),
  * returns 32)
  */
-trait KeysAnalysis extends FatBlockTraversal {
+trait KeysAnalysis extends FatBlockTraversal with GenericHelper {
   val IR: PPLOpsExp
   import IR._
 
@@ -31,12 +31,12 @@ trait KeysAnalysis extends FatBlockTraversal {
   val lengths = ListBuffer[Const[Int]]()
   val aliasMap = Map[Exp[Any], Exp[Any]]()
 
-  protected def getdef(sym: Sym[Any]) = {
-    sym match {
-      case Def(d) => d
-      case _ => null
-    }
-  }
+//  protected def getdef(sym: Sym[Any]) = {
+//    sym match {
+//      case Def(d) => d
+//      case _ => null
+//    }
+//  }
 
   def run[A](keyBlks: List[Block[Any]], loopSym: Sym[Any], amap: Map[Exp[Any], Exp[Any]]) = {
     Console.println(s"[KeysAnalysis - Begin]")
@@ -46,32 +46,32 @@ trait KeysAnalysis extends FatBlockTraversal {
     Console.println(s"[KeysAnalysis - End]")
   }
 
-  private def findConst(e: Exp[Any]) : Const[Int] = {
-    e match {
-      case c: Const[Int] => c
-      case s: Sym[Int] =>
-        val aliasS = aliasMap.getOrElse(s,s).asInstanceOf[Sym[Any]]
-        val d = getdef(aliasS)
-        d match {
-          case MathMin(v1, v2) =>
-            if (v1.isInstanceOf[Const[Int]]) {
-              v1.asInstanceOf[Const[Int]]
-            } else if (v2.isInstanceOf[Const[Int]]) {
-              v2.asInstanceOf[Const[Int]]
-            } else if (v1.isInstanceOf[Tunable]) {
-              Const(v1.asInstanceOf[Tunable].value.get)  // Assuming that tunables are set by now
-            } else if (v2.isInstanceOf[Tunable]) {
-              Const(v2.asInstanceOf[Tunable].value.get)  // Assuming that tunables are set by now
-            } else {
-              sys.error(s"No const found for expression $e")
-              Const(-1)
-            }
-        }
-      case _ =>
-        sys.error(s"$e is neither a sym nor a const. What is it?")
-        Const(-1)
-    }
-  }
+//  private def findConst(e: Exp[Any]) : Const[Int] = {
+//    e match {
+//      case c: Const[Int] => c
+//      case s: Sym[Int] =>
+//        val aliasS = aliasMap.getOrElse(s,s).asInstanceOf[Sym[Any]]
+//        val d = getdef(aliasS)
+//        d match {
+//          case MathMin(v1, v2) =>
+//            if (v1.isInstanceOf[Const[Int]]) {
+//              v1.asInstanceOf[Const[Int]]
+//            } else if (v2.isInstanceOf[Const[Int]]) {
+//              v2.asInstanceOf[Const[Int]]
+//            } else if (v1.isInstanceOf[Tunable]) {
+//              Const(v1.asInstanceOf[Tunable].value.get)  // Assuming that tunables are set by now
+//            } else if (v2.isInstanceOf[Tunable]) {
+//              Const(v2.asInstanceOf[Tunable].value.get)  // Assuming that tunables are set by now
+//            } else {
+//              sys.error(s"No const found for expression $e")
+//              Const(-1)
+//            }
+//        }
+//      case _ =>
+//        sys.error(s"$e is neither a sym nor a const. What is it?")
+//        Const(-1)
+//    }
+//  }
 
   override def traverseStm(stm: Stm): Unit = {
     stm match {
@@ -81,7 +81,7 @@ trait KeysAnalysis extends FatBlockTraversal {
         val aliasStart = aliasMap.getOrElse(start, start)
         val aliasStride = aliasMap.getOrElse(stride, stride)
         val aliasLength = aliasMap.getOrElse(length, length)
-        val constLength = findConst(aliasLength)
+        val constLength = findConst(aliasLength, aliasMap)
 
         starts.append(aliasStart)
         lengths.append(constLength)

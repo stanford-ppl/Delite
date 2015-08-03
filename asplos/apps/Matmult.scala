@@ -56,9 +56,9 @@ object MatmultBlockedFunc extends PPLCompiler with MatmultBlockedApp {
 trait MatmultBlockedApp extends MatmultFrame {
   def matmult(aData: Rep[Array1D[Float]], bData: Rep[Array1D[Float]], R: Rep[Int], M: Rep[Int], C: Rep[Int]): Rep[Array1D[Float]] = {
     // ---------- Tiling Hints -----------
-    tile(R, tileSize = 35, max = ?)
-    tile(M, tileSize = 30, max = ?)
-    tile(C, tileSize = 35, max = ?)
+    tile(R, tileSize = 96, max = ?)
+    tile(M, tileSize = 96, max = ?)
+    tile(C, tileSize = 96, max = ?)
     // -----------------------------------
 
     val a = Array2D(aData, R, M)
