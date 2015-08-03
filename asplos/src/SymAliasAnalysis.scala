@@ -162,11 +162,15 @@ trait SymAliasAnalysis extends FatBlockTraversal with GenericHelper {
       structInfoMap ++= array2DAnalysis.structInfoMap
 //      aliasMap(elem.rV._1) = getBlockResult(elem.rFunc.get)
 //      aliasMap(elem.rV._2) = getBlockResult(elem.tile)
+      transitiveInsert(elem.buf.tileVal, getBlockResult(elem.rFunc.get))
       transitiveInsert(elem.rV._1, getBlockResult(elem.rFunc.get))
       transitiveInsert(elem.rV._2, getBlockResult(elem.tile))
       traverseBlock(elem.buf.allocTile)
       traverseBlock(elem.rFunc.get)
+    } else {
+      transitiveInsert(elem.buf.tileVal,getBlockResult(elem.tile))
     }
+//    transitiveInsert(elem.buf.bE, sym)
   }
 
   private def handleLoopBody(sym: Sym[Any], rhs: Def[Any]): Unit = {
@@ -176,6 +180,18 @@ trait SymAliasAnalysis extends FatBlockTraversal with GenericHelper {
       case elem: DeliteReduceElem[_] =>
         handleReduceElem(sym, elem)
       case elem: DeliteTileElem[_,_,_] =>
+            Console.println("// Boundsvariables:")
+            Console.println(s"// bS: ${elem.buf.bS}")
+            Console.println(s"// bV: ${elem.buf.bV}")
+            Console.println(s"// tV: ${elem.buf.tV}")
+            Console.println(s"// tD: ${elem.buf.tD}")
+            Console.println(s"// buffVal: ${elem.buf.buffVal}")
+            Console.println(s"// tileVal: ${elem.buf.tileVal}")
+            Console.println(s"// partVal: ${elem.buf.partVal}")
+            Console.println(s"// bE : ${elem.buf.bE}")
+            Console.println(s"// tE: ${elem.buf.tE}")
+            Console.println(s"// rV: ${elem.rV}")
+
         handleTileElem(sym, elem)
       case _ =>
         throw new Exception(s"Unknown loop body $rhs")

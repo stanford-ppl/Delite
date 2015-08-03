@@ -71,6 +71,7 @@ isDblBuf: $isDblBuf
   protected def findConst(e: Exp[Any], aliasMap : Map[Exp[Any], Exp[Any]]) : Const[Int] = {
     e match {
       case c: Const[Int] => c
+      case t: Tunable => Const(t.value.get)
       case s: Sym[Int] =>
         val aliasS = aliasMap.getOrElse(s,s).asInstanceOf[Sym[Any]]
         val d = getdef(aliasS)

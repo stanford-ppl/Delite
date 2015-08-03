@@ -3,6 +3,7 @@ import asplos._
 
 import scala.collection.mutable.Map
 import scala.collection.mutable.Set
+import scala.collection.mutable.Stack
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{AbstractSubstTransformer,Transforming,FatBlockTraversal}
 import scala.reflect.SourceContext
@@ -30,7 +31,12 @@ trait MemoryAnalysis extends FatBlockTraversal with GenericHelper {
   import IR._
 
   val validMemoryMap = Map[Exp[Any], MemInfo]()
+  val phantomMemReadMap = Map[Exp[Any], (Exp[Any], String)]()
   var aliasMap = Map[Exp[Any], Exp[Any]]()
+  val loopStack = Stack[Exp[Any]]()
+  val idxLoopMap = Map[Exp[Any], Exp[Any]]()
+  val symIdxMap = Map[Exp[Any], Exp[Any]]()
+  val outerLoopMap = Map[Exp[Any], List[Exp[Any]]]()
 
   def run[A](b: Block[Any], amap: Map[Exp[Any], Exp[Any]]) = {
     Console.println(s"[MemoryAnalysis - Begin]")
@@ -51,24 +57,52 @@ trait MemoryAnalysis extends FatBlockTraversal with GenericHelper {
   }
 
   private def handleReduceElem(asym: Sym[Any], elem: DeliteReduceElem[_]) = {
+
+    def isPrimitiveReduce(elem: DeliteReduceElem[_]) = {
+      val m = elem.mA.toString
+      m match {
+        case "Int" => true
+        case "Float" => true
+        case "Double" => true
+        case _ => false
+      }
+    }
+
     traverseBlock(elem.zero)
     traverseBlock(elem.func)
     traverseBlock(elem.rFunc)
+
+    if (!isPrimitiveReduce(elem)) {
+      // There is a read to zero from elem.rFunc
+      val mi = validMemoryMap(asl(getBlockResult(elem.zero)))
+      mi.readers += asl(getBlockResult(elem.rFunc))
+      phantomMemReadMap += asl(getBlockResult(elem.rFunc)) -> (asl(getBlockResult(elem.zero)), "__TBD__")
+    }
   }
 
   private def handleTileElem(asym: Sym[Any], elem: DeliteTileElem[_,_,_]) = {
-//    Console.println(s"Handling tileElem allocBuff: $asym")
     traverseBlock(elem.buf.allocBuff)
-//    Console.println(s"End $asym allocBuff")
 
     traverseBlock(elem.tile)
     for (k <- 0 until elem.keys.length) {
       traverseBlock(elem.keys(k))
     }
     if (!elem.rFunc.isEmpty) {
-      traverseBlock(elem.buf.allocTile)  // Accumuator copy-in tile
+      traverseBlock(elem.buf.allocTile)  // Allocation filled by accumuator copy-in blkreader
       traverseBlock(elem.rFunc.get)
+
+      // There is a read to allocTile from elem.rFunc
+      val mi = validMemoryMap(asl(getBlockResult(elem.buf.allocTile)))
+      mi.readers += asl(getBlockResult(elem.rFunc.get))
+      phantomMemReadMap += asl(getBlockResult(elem.rFunc.get)) -> (asl(getBlockResult(elem.buf.allocTile)), "__TBD__")
     }
+
+    // bUpdate reads from the result - either elem.rFunc.get or elem.tile
+    // elem.buf.tileVal is appropriately aliased to the correct symbol
+    // Update the entry of asl(elem.buf.tileVal) to have a reader: elem.buf.Update
+    val m = validMemoryMap(asl(elem.buf.tileVal))
+    m.readers += asl(getBlockResult(elem.buf.bUpdate))
+    outerLoopMap(asl(getBlockResult(elem.buf.bUpdate))) = loopStack.toList
   }
 
   private def handleLoopBody(asym: Sym[Any], rhs: Def[Any]): Unit = {
@@ -84,15 +118,50 @@ trait MemoryAnalysis extends FatBlockTraversal with GenericHelper {
     }
   }
 
+  private def getAllSymsTillNull(e: Exp[Any]) : List[Exp[Any]] = {
+    e match {
+      case c: Const[_] => List(c)
+      case s: Sym[Any] =>
+        val d = getdef(s)
+          val ss = syms(d)
+          val ssl = ss.map(getAllSymsTillNull(_)).flatten
+          ss ++ ssl
+    }
+  }
+
   private def handleTP(asym: Sym[Any], rhs: Def[Any]) = {
+    val ss = syms(rhs)
+    val indxRhs = ss.filter(i => idxLoopMap.contains(i))
     rhs match {
       case op: AbstractLoop[_] =>
+        outerLoopMap(asym) = loopStack.toList
+        loopStack.push(asym)
+        idxLoopMap(asl(op.v)) = asym
         handleLoopBody(asym, op.body)
+        loopStack.pop
 
       case op: AbstractLoopNest[_] =>
+        outerLoopMap(asym) = loopStack.toList
+        loopStack.push(asym)
+        op.vs.map(v => idxLoopMap(asl(v)) = asym)
         handleLoopBody(asym, op.body)
+        loopStack.pop
 
       case op: BlockSlice[_,_,_] =>
+        // Reads from op.src
+        Console.println(s"$asym, $op")
+        // Current assumption
+        // op.src points to off-chip memory. It hasn't been allocated yet
+        // We do two things here:
+        // 1. Allocate op.src using dimension info in op.srcDims (add entry in validMemoryMap)
+        // 2. Add BlockSlice as a reader to that entry
+        // AND add a read entry to it
+        val asrc = asl(op.src)
+        val msrc = new MemInfo()
+        msrc.location = Location.OFF_CHIP;
+        msrc.readers += asym
+        validMemoryMap(asrc) = msrc
+        outerLoopMap(asym) = loopStack.toList
         traverseBlock(op.allocTile)
 
       case DeliteArrayNew(n, m, t) =>
@@ -120,9 +189,34 @@ trait MemoryAnalysis extends FatBlockTraversal with GenericHelper {
         validMemoryMap += asym -> mi
 
       case DeliteArrayApply(arr, idx) =>
+        // Readers == loop(s). Purpose is to determine when reading has been "finished".
+        // If two loops in a nest read an array, the topmost (outer) loop only is
+        // listed here
         val aarr = asl(arr)
         val m = validMemoryMap(aarr)
-        m.readers += asym
+        val aidx = asl(idx)
+
+        val bs = boundSyms(aidx)
+        Console.println(s"bs = $bs")
+
+//        val stms = buildScheduleForResult(Block(aidx))
+        val ss = getAllSymsTillNull(aidx)
+        Console.println(s"All syms involved in making ss: $ss")
+        val idxss = ss.filter(i => idxLoopMap.contains(i))
+        Console.println(s"All idx syms involved in making ss: $idxss")
+//        val outerLoop = idxss.map(i => idxLoopMap(i)).reduce((a,b) => if (loopStack.indexOf(a) > loopStack.indexOf(b))  a else b)
+        val readerLoops = idxss.map(i => idxLoopMap(i))
+        Console.println(s"Outermost loop: $readerLoops")
+
+//        val candidateLoopStack = Stack[Exp[Any]]()
+//        stms.foreach { stm => stm match {
+//            case TP(s,d) =>
+//              val ss = syms(d)
+//              Console.println(s"syms: $ss")
+//            case TTP(_,_,_) =>
+//          }
+//        }
+        readerLoops.map(l => m.readers += l.asInstanceOf[Sym[Any]])
 
       case NestedAtomicWrite(struct, tracer, atomicWrite) =>
         val astruct = asl(struct)
@@ -132,6 +226,7 @@ trait MemoryAnalysis extends FatBlockTraversal with GenericHelper {
         }
 
       case DeliteArrayUpdate(arr, idx, v) =>
+        Console.println(s"Uncut version: $asym = DeliteArrayUpdate($arr, $idx, $v)")
         val aarr = asl(arr)
         val aidx = asl(idx)
         val av = asl(v)

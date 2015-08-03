@@ -80,7 +80,7 @@ trait HwCodegen extends GenericCodegen // with ThorIR
   override def toString = "maxj"
 
   // TODO: Change to maxj later. Using java for now to get fancy syntax highlighting in vim
-  override def fileExtension = "java"
+  override def fileExtension = "maxj"
 
   // Private PrintWriters for BaseKernelLib and TopKernel
   protected var baseKernelLibStream : PrintWriter = null
@@ -106,6 +106,11 @@ trait HwCodegen extends GenericCodegen // with ThorIR
     s.println("import com.maxeler.maxcompiler.v2.utils.Bits;")
     s.println("import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;")
     s.println("import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.KernelMath;")
+    s.println("import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;")
+    s.println("import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Stream.OffsetExpr;")
+    s.println("import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.Reductions;")
+    s.println("import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;")
+    s.println("import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.Accumulator;")
   }
 
   private def initBaseKernelLib(s: PrintWriter) = {
@@ -195,7 +200,7 @@ trait HwCodegen extends GenericCodegen // with ThorIR
 
     emitCommonImports(stream)
     stream.println(s"""class $kernelName  extends BaseKernelLib {""")
-    stream.println(s"""$kernelName (KernelLib owner, ${kernelSym}_en, DFEVar ${kernelSym}_done) {""")
+    stream.println(s"""$kernelName (KernelLib owner, DFEVar ${kernelSym}_en, DFEVar ${kernelSym}_done) {""")
     stream.println(s"""  super(owner);""")
 
 //    if (resourceInfoType != "") {
@@ -277,11 +282,11 @@ trait HwCodegen extends GenericCodegen // with ThorIR
     stream.println(s"""IF($condStr) {
       resetBitVector();""")
     if (state.size == 1 && state.max == max && !state.contains(0)) {
-      stream.println("stateFF.next = States.DONE;")
+      stream.println("stateFF.next <== States.DONE;")
     } else {
       if (state.contains(0)) {
         stream.println("counterFF.next <== counterFF + 1;")
-        stream.println("IF (counterFF === numIter-1) {")
+        stream.println("IF (counterFF === sizeFF-1) {")
         stream.print("stateFF.next <== States.")
         if (state.max == max) {
           if (state.size == 1) {  // Only state 0
@@ -301,6 +306,7 @@ trait HwCodegen extends GenericCodegen // with ThorIR
       } else {
         stream.print("stateFF.next <== States.")
         if (state.max == max) stream.print(stateStr(state.drop(1))) else stream.print(stateStr(state.drop(1) ++ List(state.max+1)))
+        stream.println(";")
       }
     }
     stream.println("}")
@@ -345,7 +351,7 @@ stream.println(s"""
 
   private final int numParallel = $numParallel;
   // Initialize state machine in constructor
-  public ParallelStateMachine(KernelLib owner) {
+  public ${name}_ParallelStateMachine(KernelLib owner) {
     super(owner);
 
     // Declare all types required to wire the state machine together
@@ -475,11 +481,10 @@ package engine;
   """)
 
   stream.println("""
-    // Constants
-    private int numIter;
 
     // State IO
     private final DFEsmOutput sm_done;
+    private final DFEsmOutput sm_last;
     private final DFEsmInput sm_en;
     private final DFEsmInput sm_numIter;
   """)
@@ -494,6 +499,7 @@ package engine;
   stream.println(s"""
     // State storage
     private final DFEsmStateValue sizeFF;
+    private final DFEsmStateValue lastFF;
     private final DFEsmStateEnum<States> stateFF;
     private final DFEsmStateValue counterFF;
     private final DFEsmStateValue[] bitVector;
@@ -509,6 +515,7 @@ package engine;
 
       // Define state machine IO
       sm_done = io.output("sm_done", wireType);
+      sm_last = io.output("sm_last", wireType);
       sm_en = io.input("sm_en", wireType);
       sm_numIter = io.input("sm_numIter", counterType);
   """)
@@ -525,6 +532,7 @@ package engine;
       stateFF = state.enumerated(States.class, States.INIT);
       counterFF = state.value(counterType, 0);
       sizeFF = state.value(counterType, 0);
+      lastFF = state.value(wireType, 0);
 
       // Bitvector keeps track of which kernels have finished execution
       // This is a useful hardware synchronization structure to keep
@@ -533,9 +541,6 @@ package engine;
       for (int i=0; i<numStates; i++) {
         bitVector[i] = state.value(wireType, 0);
       }
-
-      // Define constants
-      // this.numIter = numIter;
     }
 
     private void resetBitVector() {
@@ -558,11 +563,18 @@ package engine;
         }""")
   }
 
+stream.println("""
+        IF (counterFF === sizeFF-2) {
+          lastFF.next <== 1;
+        }""")
+
   stream.println(s"""
         SWITCH(stateFF) {
           CASE (States.INIT) {
             sizeFF.next <== sm_numIter;
             stateFF.next <== States.S0;
+            counterFF.next <== 0;
+            lastFF.next <== 0;
           }
           """)
 
@@ -593,6 +605,7 @@ package engine;
   @Override
     protected void outputFunction() {
       sm_done <== 0;
+      sm_last <== 0;
       """)
 
   for (i <- 0 until numStates) {
@@ -602,6 +615,11 @@ package engine;
 
   stream.println(s"""
      IF (sm_en) {
+        IF (counterFF === sizeFF-1) {
+          sm_last <== 1;
+        } ELSE {
+          sm_last <== 0;
+        }
        SWITCH(stateFF) {""")
         for(i <- 0 until states.size) {
           val state = states(i)

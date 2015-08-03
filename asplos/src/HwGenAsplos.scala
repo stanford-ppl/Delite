@@ -32,48 +32,63 @@ trait HwGenAsplos extends HwGenMaps with BaseGenDeliteArrayOps
     rhs match {
       case op: BlockSlice[_,_,_] =>
         stream.println("// BlockSlice allocation - always allocated to a double buffer")
-        dblBufMap += aliasSym -> 1
-        val array2DAnalysis = new Array2DHackAnalysis{val IR: HwGenAsplos.this.IR.type = HwGenAsplos.this.IR}
-        array2DAnalysis.run(op.allocTile, sym)
-        aliasMap ++= array2DAnalysis.allocAliasMap
-        reverseStructMap ++= array2DAnalysis.reverseStructMap
-        structInfoMap ++= array2DAnalysis.structInfoMap
+//        dblBufMap += aliasSym -> 1
+// No need
+//        val array2DAnalysis = new Array2DHackAnalysis{val IR: HwGenAsplos.this.IR.type = HwGenAsplos.this.IR}
+//        array2DAnalysis.run(op.allocTile, sym)
+//        aliasMap ++= array2DAnalysis.allocAliasMap
+//        reverseStructMap ++= array2DAnalysis.reverseStructMap
+//        structInfoMap ++= array2DAnalysis.structInfoMap
         emitBlock(op.allocTile)
 
-        stream.println("// The command stream")
         if (op.m != 2) {
-          stream.println("// Handling only 2-D block slices now")
+          stream.println("// Handling only 2D block slices now")
         } else {
-          curSym.push(aliasSym.asInstanceOf[Sym[Any]])
-          stream.println(s"""
-              BlkLdStLib ${quote(aliasSym)}_blkLoader = new BlkLdStLib(
-                      owner,
-                      ${quote(aliasSym)}_en,
-                      ${quote(aliasSym)}_done,
-                      ${quote(op.srcDims(1))},
-                      dfeUInt(32), // TODO: Change this to use remap
-                      ${quote(op.srcOffsets(op.deltaInds(0)))},
-                      ${quote(op.srcOffsets(op.deltaInds(1)))},
-                      io.scalarInput(\"${quote(aliasSym)}_boffset\"),  // sBurstOffset,
-                      \"${quote(aliasSym)}_cmd\",
-                      ${quote(op.destDims(op.deltaInds(0)))},
-                      ${quote(op.destDims(op.deltaInds(1)))});""")
-
-          stream.println("// The data stream")
-          stream.println(s"""
-            Count.Params ${quote(aliasSym)}_writeAddrParams = control.count.makeParams(MathUtils.bitsToAddress(${quote(op.destDims(op.deltaInds(0)))}*${quote(op.destDims(op.deltaInds(1)))})
-                                      .withEnable(${quote(aliasSym)}_en)
-                                      .withMax(${quote(op.destDims(op.deltaInds(0)))}*${quote(op.destDims(op.deltaInds(1)))});
-            Count.Counter ${quote(aliasSym)}_waddr = control.count.makeCounter(${quote(aliasSym)}_writeAddrParams);
-
-            ${quote(aliasSym)}.waddr <== ${quote(aliasSym)}_waddr.getCount();
-            ${quote(aliasSym)}.wdata <== io.input(\"${quote(aliasSym)}_data\", dfeUInt(32), ${quote(aliasSym)}_en);
-            ${quote(aliasSym)}.wen <== ${quote(aliasSym)}_en;""")
-            curSym.pop
+          curSym.push(asSym(aliasSym))
+          emitBlockLoader(
+            aliasSym, s"${quote(op.srcDims(1))}",
+            s"${quote(op.srcOffsets(op.deltaInds(0)))}", s"${quote(op.srcOffsets(op.deltaInds(1)))}",
+            "dfeUInt(32)", s"${quote(op.src)}_boffset",
+            s"${quote(findConst(op.destDims(op.deltaInds(0)), aliasMap))}",
+            s"${quote(findConst(op.destDims(op.deltaInds(1)), aliasMap))}"
+            )
+          curSym.pop
         }
+
+//        stream.println("// The command stream")
+//        if (op.m != 2) {
+//          stream.println("// Handling only 2-D block slices now")
+//        } else {
+//          curSym.push(aliasSym.asInstanceOf[Sym[Any]])
+//          stream.println(s"""
+//              BlkLdStLib ${quote(aliasSym)}_blkLoader = new BlkLdStLib(
+//                      owner,
+//                      ${quote(aliasSym)}_en,
+//                      ${quote(aliasSym)}_done,
+//                      ${quote(op.srcDims(1))},
+//                      dfeUInt(32), // TODO: Change this to use remap
+//                      ${quote(op.srcOffsets(op.deltaInds(0)))},
+//                      ${quote(op.srcOffsets(op.deltaInds(1)))},
+//                      io.scalarInput(\"${quote(aliasSym)}_boffset\"),  // sBurstOffset,
+//                      \"${quote(aliasSym)}_cmd\",
+//                      ${quote(op.destDims(op.deltaInds(0)))},
+//                      ${quote(op.destDims(op.deltaInds(1)))});""")
+//
+//          stream.println("// The data stream")
+//          stream.println(s"""
+//            Count.Params ${quote(aliasSym)}_writeAddrParams = control.count.makeParams(MathUtils.bitsToAddress(${quote(op.destDims(op.deltaInds(0)))}*${quote(op.destDims(op.deltaInds(1)))})
+//                                      .withEnable(${quote(aliasSym)}_en)
+//                                      .withMax(${quote(op.destDims(op.deltaInds(0)))}*${quote(op.destDims(op.deltaInds(1)))});
+//            Count.Counter ${quote(aliasSym)}_waddr = control.count.makeCounter(${quote(aliasSym)}_writeAddrParams);
+//
+//            ${quote(aliasSym)}.waddr <== ${quote(aliasSym)}_waddr.getCount();
+//            ${quote(aliasSym)}.wdata <== io.input(\"${quote(aliasSym)}_data\", dfeUInt(32), ${quote(aliasSym)}_en);
+//            ${quote(aliasSym)}.wen <== ${quote(aliasSym)}_en;""")
+//            curSym.pop
+//        }
         case Array2DNew(arr, d1, d2) =>
-          stream.println(s"//  ${quote(sym)} = Array2DNew(${quote(arr)}, ${quote(d1)}, ${quote(d2)})")
-          stream.println(s"// TODO: Need to know max bounds of dimensions $d1 and $d2 in order to allocate array $arr!")
+//          stream.println(s"//  ${quote(sym)} = Array2DNew(${quote(arr)}, ${quote(d1)}, ${quote(d2)})")
+//          stream.println(s"// TODO: Need to know max bounds of dimensions $d1 and $d2 in order to allocate array $arr!")
 
       case FieldApply(struct, field) =>
         def startMemorySearch(s: Exp[Any]): Exp[Any] = {
@@ -93,7 +108,8 @@ trait HwGenAsplos extends HwGenMaps with BaseGenDeliteArrayOps
           }
         }
 
-        stream.println(s"// ${quote(sym)} = FieldApply(${quote(struct)}, $field)")
+//        stream.println(s"// ${quote(sym)} = FieldApply(${quote(struct)}, $field)")
+//        stream.println(s"// ${quote(sym)} = FieldApply(${quote(aliasMap.getOrElse(struct,struct))}, $field)")
         val aliasSym = aliasMap.getOrElse(struct,struct)
         if (field != "data") {
           Console.println(s"$sym (aliasSym = $sym), $rhs")
@@ -102,21 +118,25 @@ trait HwGenAsplos extends HwGenMaps with BaseGenDeliteArrayOps
           } else {
             val aliasStruct = reverseStructMap(aliasSym)
             val structInfo = structInfoMap((aliasStruct, field))
+// No need
+            stream.println(s"// Adding $sym -> $structInfo")
             aliasMap += sym -> structInfo
           }
         } else {
           // Trace the aliasSym to find the first memory node that is present in the valid memory set
           val origMemSym = startMemorySearch(aliasSym)
-          aliasMap += sym -> origMemSym
+// No need
+//          aliasMap += sym -> origMemSym
         }
 
       case NestedAtomicWrite(struct, tracer, atomicWrite) =>
         val aliasSym = aliasMap.getOrElse(struct,struct)
-        stream.println(s"// ${quote(sym)} NestedAtomicWrite(${quote(struct)}, $tracer, $atomicWrite")
-        stream.println(s"// Alias ${quote(sym)}: $aliasSym")
+//        stream.println(s"// ${quote(sym)} NestedAtomicWrite(${quote(struct)}, $tracer, $atomicWrite")
+//        stream.println(s"// Alias ${quote(sym)}: $aliasSym")
         atomicWrite match {
           case DeliteArrayUpdate(arr,_,_) =>
-            aliasMap += arr -> aliasSym
+// No need
+//            aliasMap += arr -> aliasSym
             emitNode(sym, atomicWrite)
           case _ => stream.println("// Something else")
         }
@@ -129,7 +149,10 @@ trait HwGenAsplos extends HwGenMaps with BaseGenDeliteArrayOps
       case LongToDouble(lhs) =>
         stream.println(s"DFEVar ${quote(sym)} = ${quote(lhs)}.cast(dfeFloat(11,53));")
       case MathMin(v1, v2) =>
-        stream.println(s"DFEVar ${quote(sym)} = KernelMath.min(${quote(v1)}, ${quote(v2)})")
+        val c = findConst(sym, aliasMap)
+//        stream.println(s"DFEVar ${quote(sym)} = KernelMath.min(${quote(v1)}, ${quote(v2)});")
+//        stream.println(s"DFEVar ${quote(sym)} = constant.var(dfeUInt(MathUtils.bitsToAddress(${quote(c)})), ${quote(c)});")
+        stream.println(s"DFEVar ${quote(sym)} = constant.var(dfeUInt(32), ${quote(c)});")
 
       case _=>
         super.emitNode(sym, rhs)
