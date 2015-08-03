@@ -85,7 +85,7 @@ trait AbstractGroupByReduceExp extends AbstractGroupByReduceOps with DeliteVisit
 
   trait GroupByReduceLoweringTransformer extends TunnelingTransformer {
     val IR: self.type
-    override val name = "GroupByReduce Lowering"
+    override lazy val name = "GroupByReduce Lowering"
     override def transformSym[A](s: Sym[A], d: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]] = d match {
       case op: AbstractGroupByReduce[k,v] => 
         Some(lower_groupbyreduce[k,v](op, this.asInstanceOf[Transformer])(op.mK,op.mV,ctx))

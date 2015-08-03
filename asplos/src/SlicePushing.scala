@@ -20,7 +20,7 @@ trait SlicePushingExp extends DeliteVisit {self: PPLOpsExp =>
 
   trait SlicePushTransformer extends TunnelingTransformer {
     val IR: self.type
-    override val name = "Slice Pushing"
+    override lazy val name = "Slice Pushing"
  
     // Debugging
     //override val printBefore = true
@@ -43,7 +43,7 @@ trait SlicePushingExp extends DeliteVisit {self: PPLOpsExp =>
           }
         case _ => None
       }
-      case _ => None
+      case _ => super.transformSym(s,d)
     } 
     
     // TODO: Metadata transfer

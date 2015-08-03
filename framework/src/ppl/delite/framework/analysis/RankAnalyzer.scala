@@ -220,7 +220,7 @@ trait RankMetadataOps extends EffectExp with MetadataOps with RankMetadata {
 trait RankAnalyzer extends MultiArrayAnalyzerBase {
   val IR: DeliteOpsExp with DeliteMultiArrayOpsExp with RankMetadataOps
   import IR._
-  override val name = "Rank Analyzer"
+  override lazy val name = "Rank Analyzer"
   
   var incomplete: List[Exp[Any]] = Nil
 
@@ -338,7 +338,7 @@ trait RankAnalyzer extends MultiArrayAnalyzerBase {
 trait RankChecker extends MultiArrayAnalyzerBase {
   val IR: DeliteOpsExp with DeliteMultiArrayOpsExp with RankMetadataOps
   import IR._
-  override val name = "Rank Sanity Check"
+  override lazy val name = "Rank Sanity Check"
 
   override val autopropagate = false
 

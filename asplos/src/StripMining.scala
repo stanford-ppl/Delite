@@ -34,10 +34,11 @@ trait StripMiningExp extends DeliteVisit { self: PPLOpsExp =>
 
   trait StripMiningTransformer extends TunnelingTransformer {
     val IR: self.type
-    override val name = "Strip Miner"
+    override lazy val name = "Strip Miner"
 
     // Debugging
-    override val debugMode = false
+    //override val debugMode = true
+    //override val baseDebug = true
     //override val printBefore = true
     //override val printAfter = true
 
@@ -99,10 +100,10 @@ trait StripMiningExp extends DeliteVisit { self: PPLOpsExp =>
         Some(newop)
 
       case op: DeliteOpLoopNest[_] if requiresBlocking(op) => 
-        if (loopIndices.isEmpty) {
+        /*if (loopIndices.isEmpty) {
           dbgmsg("Prior to entering loop, loop-invariant symbols are:")
           loopIndependentSyms.foreach{sym => dbgmsg("\t" + strDef(sym)) }
-        }
+        }*/
 
         val prevOuter = outerIndices
         outerIndices = loopIndices
@@ -230,9 +231,11 @@ trait StripMiningExp extends DeliteVisit { self: PPLOpsExp =>
         val rV = (fresh[A],fresh[A])
 
         val subs = List(elem.rV._1 -> rV._1, elem.rV._2 -> rV._2)
-        val rFunc = withSubstScopeList(subs){ f(elem.rFunc) }
-        val initBlk = f(elem.accInit)
-        val zeroBlk = f(elem.zero)
+        // Outer reduce has the same rFunc, zero, and accInit as the original reduce - but shouldn't be the same symbols!
+        // TODO: Zero and init blocks may still may not be copied if all symbols in the block are CSE'd
+        val rFunc = withSubstScopeList(subs){ copyBlock(elem.rFunc) }
+        val initBlk = copyBlock(elem.accInit)
+        val zeroBlk = copyBlock(elem.zero)
 
         // Smaller, nested reduce
         val innerInit: Block[A] = withSubstScopeList(subInds){ f(elem.accInit) }
@@ -346,6 +349,7 @@ trait StripMiningExp extends DeliteVisit { self: PPLOpsExp =>
     val patterns = inds map { getIndexPattern(_) }
 
     if (patterns contains RandomAccess) None 
+    else if (patterns forall {case FixedAccess(_) => true; case _ => false} ) None
     else {
       dbgmsg("Found affine access of " + strDef(x))
       dbgmsg("Array type: " + manifest[C].toString + ", element type: " + manifest[A].toString)
@@ -426,7 +430,7 @@ trait StripMiningExp extends DeliteVisit { self: PPLOpsExp =>
 
       val newOffsets = newRvs map { _.get.start }
       val newStrides = newRvs map { _.get.stride }
-      val newLengths = newRvs map { _.get.length }
+      val newLengths = newRvs.map{ _.get.length }.zip(reuse).map{x => delite_int_plus(x._1, unit(x._2)) }
 
       // TODO: This won't work if C is of type Array1D or Array2D and the slice is not changed to a block slice
       // (During implementation, cannot create a view of an array which isn't a view)

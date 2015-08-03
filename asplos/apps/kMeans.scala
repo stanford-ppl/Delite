@@ -1,10 +1,10 @@
 import asplos._
 
 trait kMeansFrame extends PPLApp {
-  def kMeans(xData: Rep[Array1D[Double]], muData: Rep[Array1D[Double]], M: Rep[Int], D: Rep[Int], K: Rep[Int]): Rep[Array1D[Double]]
+  def kMeans(xData: Rep[Array1D[Float]], muData: Rep[Array1D[Float]], M: Rep[Int], D: Rep[Int], K: Rep[Int]): Rep[Array1D[Float]]
   def main() {
-    val x  = read2D(DATA_FOLDER + "/kmeans/mandrill-large.dat")
-    val mu = read2D(DATA_FOLDER + "/kmeans/initmu.dat")
+    val x  = read2D(DATA_FOLDER + "kmeans/mandrill-large.dat")
+    val mu = read2D(DATA_FOLDER + "kmeans/initmu.dat")
 
     val M = x.nRows   // Number of samples
     val D = x.nCols   // Number of dimensions per sample
@@ -21,7 +21,7 @@ trait kMeansFrame extends PPLApp {
     //val muOld = mu.unsafeMutable
 
     //val tol = unit(0.001)     // Convergence tolerance
-    //var delta = scala.Double.MaxValue
+    //var delta = scala.Float.MaxValue
     //var iter = unit(0)
     //val maxIter = 30
     //val minIter = 1
@@ -47,7 +47,7 @@ object kMeansFunc extends PPLCompiler with kMeansApp {
   override def functionName = "kMeans"
 }
 trait kMeansApp extends PPLCompiler with kMeansFrame {
-  def kMeans(xData: Rep[Array1D[Double]], muData: Rep[Array1D[Double]], M: Rep[Int], D: Rep[Int], K: Rep[Int]): Rep[Array1D[Double]] = {
+  def kMeans(xData: Rep[Array1D[Float]], muData: Rep[Array1D[Float]], M: Rep[Int], D: Rep[Int], K: Rep[Int]): Rep[Array1D[Float]] = {
     // ---------- Tiling Hints -----------
     tile(M, tileSize = 40, max = ?)
     tile(D, tileSize = 5,  max = 5)
@@ -60,9 +60,9 @@ trait kMeansApp extends PPLCompiler with kMeansFrame {
 
     def minLabel(i: Exp[Int]): Exp[Int] = {
       val row = x.slice(i, *) 
-      val minC = reduce(K)((unit(0.0),unit(0))){j =>     // MinIndex loop
+      val minC = reduce(K)((unit(0.0f),unit(0))){j =>     // MinIndex loop
         val muRow = mu.slice(j, *)
-        val dist = reduce(D)(0.0){d => val diff = muRow(d) - row(d); diff*diff}{_+_} // SQUARE distance
+        val dist = reduce(D)(0.0f){d => val diff = muRow(d) - row(d); diff*diff}{_+_} // SQUARE distance
         (dist, j)
       }{(d1,d2) => if (tuple2_get1(d1) < tuple2_get1(d2)) d1 else d2}
       tuple2_get2(minC) // Get index of closest class
@@ -73,7 +73,7 @@ trait kMeansApp extends PPLCompiler with kMeansFrame {
       val rv0 = minLabel(i) :@: 1
 
       // Loop 1
-      val defA = rawBlockReduce[Double,Array1D[Double],Array2D[Double]](i)(List(unit(1),D), List(0))(Array2D[Double](K,D))(List(rv0, 0 :@: D)){
+      val defA = rawBlockReduce[Float,Array1D[Float],Array2D[Float]](i)(List(unit(1),D), List(0))(Array2D[Float](K,D))(List(rv0, 0 :@: D)){
         x.bslice(i, *)
       }{(a,b) => collect(D){j => a(j) + b(j)} }
 
@@ -86,7 +86,7 @@ trait kMeansApp extends PPLCompiler with kMeansFrame {
     }
 
     // Divide by counts
-    val newMu = blockAssem[Double,Array1D[Double],Array2D[Double]](K)(b0 = 1)(Array2D[Double](K,D))({ii => ii},{ii => 0 :@: D}){ii =>
+    val newMu = blockAssem[Float,Array1D[Float],Array2D[Float]](K)(b0 = 1)(Array2D[Float](K,D))({ii => ii},{ii => 0 :@: D}){ii =>
       val weightedpoints = wp.slice(ii.start, *)
       val points = p(ii.start) 
       val d = if (points == 0) 1 else points
@@ -103,7 +103,7 @@ object kMeansFunc extends PPLCompiler with kMeansApp {
   override def functionName = "kMeans"
 }
 trait kMeansApp extends kMeansFrame {
-  def kMeans(xData: Rep[Array1D[Double]], muData: Rep[Array1D[Double]], M: Rep[Int], D: Rep[Int], K: Rep[Int]): Rep[Array1D[Double]] = {
+  def kMeans(xData: Rep[Array1D[Float]], muData: Rep[Array1D[Float]], M: Rep[Int], D: Rep[Int], K: Rep[Int]): Rep[Array1D[Float]] = {
     // ---------- Tiling Hints -----------
     tile(M, tileSize = 40, max = ?)
     tile(D, tileSize = 5,  max = 5)
@@ -124,7 +124,7 @@ trait kMeansApp extends kMeansFrame {
       tuple2_get2(minC) // Get index of closest class
     }
 
-    val wp = blockReduce[Double,Array1D[Double],Array2D[Double]](M)(b0 = 1)(Array2D[Double](K,D))({ii => c(ii.start) :@: 1}, {ii => 0 :@: D}){ii => 
+    val wp = blockReduce[Float,Array1D[Float],Array2D[Float]](M)(b0 = 1)(Array2D[Float](K,D))({ii => c(ii.start) :@: 1}, {ii => 0 :@: D}){ii => 
       x.bslice(ii.start, *)
     }{(a,b) => collect(D){i => a(i) + b(i)} }
 
@@ -133,7 +133,7 @@ trait kMeansApp extends kMeansFrame {
     }{(a,b) => box(debox(a) + debox(b)) }
 
     // Divide by counts
-    val newMu = blockAssem[Double,Array1D[Double],Array2D[Double]](K)(b0 = 1)(Array2D[Double](K,D))({ii => ii},{ii => 0 :@: D}){ii =>
+    val newMu = blockAssem[Float,Array1D[Float],Array2D[Float]](K)(b0 = 1)(Array2D[Float](K,D))({ii => ii},{ii => 0 :@: D}){ii =>
       val weightedpoints = wp.slice(ii.start, *)
       val points = p(ii.start) 
       val d = if (points == 0) 1 else points
@@ -150,7 +150,7 @@ object kMeansFusedFunc extends PPLCompiler with kMeansFusedApp {
   override def functionName = "kMeans"
 }
 trait kMeansFusedApp extends kMeansFrame with PPLCompiler {
-  def kMeans(xData: Rep[Array1D[Double]], muData: Rep[Array1D[Double]], M: Rep[Int], D: Rep[Int], K: Rep[Int]): Rep[Array1D[Double]] = {
+  def kMeans(xData: Rep[Array1D[Float]], muData: Rep[Array1D[Float]], M: Rep[Int], D: Rep[Int], K: Rep[Int]): Rep[Array1D[Float]] = {
     // ---------- Tiling Hints -----------
     tile(M, tileSize = 40, max = ?)
     tile(D, tileSize = 40, max = ?)
@@ -172,7 +172,7 @@ trait kMeansFusedApp extends kMeansFrame with PPLCompiler {
     }
 
     // TODO: Change to immutable
-    val wp = blockReduce[Double,Array1D[Double],Array2D[Double]](M)(b0 = 1)(Array2D[Double](K,D))({ii => c(ii.start) :@: 1}, {ii => 0 :@: D}){ii => 
+    val wp = blockReduce[Float,Array1D[Float],Array2D[Float]](M)(b0 = 1)(Array2D[Float](K,D))({ii => c(ii.start) :@: 1}, {ii => 0 :@: D}){ii => 
       x.bslice(ii.start, *)
     }{(a,b) => collect(D){i => a(i) + b(i)} }
 
@@ -181,7 +181,7 @@ trait kMeansFusedApp extends kMeansFrame with PPLCompiler {
     }{(a,b) => box(debox(a) + debox(b)) }
 
     // Divide by counts
-    val newMu = blockAssem[Double,Array1D[Double],Array2D[Double]](K)(b0 = 1)(Array2D[Double](K,D))({ii => ii},{ii => 0 :@: D}){ii =>
+    val newMu = blockAssem[Float,Array1D[Float],Array2D[Float]](K)(b0 = 1)(Array2D[Float](K,D))({ii => ii},{ii => 0 :@: D}){ii =>
       val weightedpoints = wp.slice(ii.start, *)
       val points = p(ii.start) 
       val d = if (points == 0) 1 else points
@@ -198,7 +198,7 @@ object kMeansBlockedFunc extends PPLCompiler with kMeansBlockedApp {
   override def functionName = "kMeans"
 }
 trait kMeansBlockedApp extends kMeansFrame {
-  def kMeans(xData: Rep[Array1D[Double]], muData: Rep[Array1D[Double]], M: Rep[Int], D: Rep[Int], K: Rep[Int]): Rep[Array1D[Double]] = {
+  def kMeans(xData: Rep[Array1D[Float]], muData: Rep[Array1D[Float]], M: Rep[Int], D: Rep[Int], K: Rep[Int]): Rep[Array1D[Float]] = {
     // ---------- Tiling Hints -----------
     tile(M, tileSize = 40, max = ?)
     tile(D, tileSize = 40, max = ?)

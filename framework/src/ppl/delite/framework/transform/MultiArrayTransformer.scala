@@ -16,7 +16,7 @@ trait MultiArrayTransform extends DeliteVisit with MultiArrayImplExp
 
   /**** Mix in MultiArray transformer traits here ****/
   trait MultiArrayTransformer extends MultiArrayImplementer with FlatArrayImplementer with BLASImplementer { 
-    override val name = "MultiArray Transformer"
+    override lazy val name = "MultiArray Transformer"
     override val printAfter = true 
   }
 

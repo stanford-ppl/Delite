@@ -47,6 +47,7 @@ object Config {
   // 1 - Strip mining
   // 0 - None
   var blockLoops = getProperty("delite.blocking", "0").toInt
+  var showIR = getProperty("delite.debug.showIR", "false") != "false"
 
   //enforce generationFailed restrictions
   var generationFailedWhitelist: Map[String, Seq[String]] = Map()

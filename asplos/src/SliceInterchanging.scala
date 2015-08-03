@@ -11,20 +11,20 @@ import ppl.delite.framework.visit._
 import ppl.delite.framework.ops._
 
 // Changes slices to block slices for hardware generation
-// TODO: The reverse should be done for CPU generation
+// TODO: The reverse should typically be done for CPU generation
 trait SliceInterchangingExp extends DeliteVisit { self: PPLOpsExp => 
 
   val sliceInterchange = new SliceInterchangeTransformer{ val IR: self.type = self }
 
   trait SliceInterchangeTransformer extends TunnelingTransformer {
     val IR: self.type
-    override val name = "Slice Interchange"
+    override lazy val name = "Slice Interchange"
 
-    override def runOnce[A:Manifest](s: Block[A]): Block[A] = { inDebugMode{ traverseBlock(s) }; (s) }
+    //override def runOnce[A:Manifest](s: Block[A]): Block[A] = { inDebugMode{ traverseBlock(s) }; (s) }
 
-    override val debugMode = true 
-    override val printBefore = true
-    override val printAfter = true
+    //override val debugMode = true 
+    //override val printBefore = true
+    //override val printAfter = true
     /*override def preprocess[A:Manifest](b: Block[A]): Block[A] = { 
       dbgmsg("Prior to starting slice interchange, tunable annotations are:")
       for((e,t) <- tunableParams) printmsg(s"$e -> $t")
@@ -58,8 +58,8 @@ trait SliceInterchangingExp extends DeliteVisit { self: PPLOpsExp =>
 
         if ( destDims.forall(!requiresBlocking(_)) ) {
           // TODO: Reuse?
-          val blk = block_slice[a,t,c](src, srcOffsets, srcStrides, destDims, op.unitDims)(op.mA,op.mR,op.mB,ctx)
-
+          val blk = transformSlice[a,t,c](src,srcOffsets,srcStrides,destDims,op.unitDims)(op.mA,op.mR,op.mB,ctx)
+              
           dbgmsg("Transformed to " + strDef(blk) + "\n")
           Some(blk)
         }
@@ -67,7 +67,21 @@ trait SliceInterchangingExp extends DeliteVisit { self: PPLOpsExp =>
           dbgmsg("Ignored.\n")
           None
         }
-      case _ => None
+      case _ => super.transformSym(s,d)
+    }
+
+    def transformSlice[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](src: Exp[C], srcOffsets: List[Exp[Int]], srcStrides: List[Exp[Int]], destDims: List[Exp[Int]], unitDims: List[Int])(implicit ctx: SourceContext): Exp[Any] = {
+      // Create view wrappers around flat arrays rather than directly creating a view with block slice
+      // (Should eliminate some extra indexing arithmetic in most cases)
+      if (isArray2DViewTpe(manifest[T])) {
+        block_slice[A,Array2D[A],C](src, srcOffsets, srcStrides, destDims, unitDims).asView
+      }
+      else if (isArray1DViewTpe(manifest[T])) {
+        block_slice[A,Array1D[A],C](src, srcOffsets, srcStrides, destDims, unitDims).asView
+      }
+      else {
+        block_slice[A,T,C](src, srcOffsets, srcStrides, destDims, unitDims)
+      }
     }
 
     // TODO: Metadata transfer

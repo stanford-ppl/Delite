@@ -28,7 +28,7 @@ trait PPLOps extends DeliteDSLOps
 }
 
 abstract class CompileStop extends IRPrinter {
-  override val name = "STOP"
+  override lazy val name = "STOP"
   override def postprocess[A:Manifest](b: Block[A]): Block[A] = { 
     sys.exit
     b 
@@ -43,55 +43,43 @@ trait PPLOpsExp extends PPLOps
   this: PPLCompiler => 
 
   val stop = new CompileStop{val IR: PPLOpsExp.this.type = PPLOpsExp.this}
-  val printer = new IRPrinter{val IR: PPLOpsExp.this.type = PPLOpsExp.this}
 
-  if (Config.debugCodegen) {
-    appendVisitor(printer)
+  abstract class StepPrinter extends IRPrinter {
+    val IR: PPLOpsExp.this.type = PPLOpsExp.this
+    def step: String
+    override lazy val name = step
   }
+  def appendPrinter(stepName: String) { appendVisitor(new StepPrinter{def step = stepName}) }
+
+  if (Config.debugCodegen) appendPrinter("Inital IR")
 
   // TODO: These should eventually move back to their respective traits
   if (Config.blockLoops > 0) appendVisitor(stripMiner)
-  if (Config.blockLoops > 0 && Config.debugCodegen) {
-    appendVisitor(printer)
-  }
+  if (Config.blockLoops > 0 && Config.debugCodegen) appendPrinter("Strip Miner IR")
 
   if (Config.blockLoops > 1) appendVisitor(patternPromotion)
-  if (Config.blockLoops > 1 && Config.debugCodegen) {
-    appendVisitor(printer)
-  }
+  if (Config.blockLoops > 1 && Config.debugCodegen) appendPrinter("Pattern Promotion IR")
 
   if (Config.blockLoops > 2) appendVisitor(patternFlatten)
-  if (Config.blockLoops > 2 && Config.debugCodegen) {
-    appendVisitor(printer)
-  }
+  if (Config.blockLoops > 2 && Config.debugCodegen) appendPrinter("Pattern Flattened IR")
 
   // These aren't really blocking transformations...
   if (Config.blockLoops > 0) appendVisitor(slicePush)  
-  if (Config.blockLoops > 0 && Config.debugCodegen) {
-    appendVisitor(printer)
-  }
+  if (Config.blockLoops > 0 && Config.debugCodegen) appendPrinter("Slice Pushed IR")
 
   if (Config.blockLoops > 0) appendVisitor(sliceInterchange)
-  if (Config.blockLoops > 0 && Config.debugCodegen) {
-    appendVisitor(printer)
-  }
+  if (Config.blockLoops > 0 && Config.debugCodegen) appendPrinter("Slice Interchanged IR")
 
   appendVisitor(applyLowering)  // Always run apply lowering (can't codegen otherwise)
-  if (Config.debugCodegen) {
-    appendVisitor(printer)
-  }
+  if (Config.debugCodegen) appendPrinter("Abstract Apply Lowered IR")
 
   //appendVisitor(stop)
   if (Config.soaEnabled) appendVisitor(soaTransform)
-  if (Config.soaEnabled && Config.debugCodegen) {
-    appendVisitor(printer)
-  }
+  if (Config.soaEnabled && Config.debugCodegen) appendPrinter("SOA Transformed IR")
 
   // TODO: Check Config to see if we're generating HW?
   appendVisitor(lowerGroupByReduce) // Enable for CPU tests only (only used in kNN)
-  if (Config.debugCodegen) {
-    appendVisitor(printer)
-  }
+  if (Config.debugCodegen || Config.showIR) appendPrinter("Final IR (before codegen)")
 
   override def getCodeGenPkg(t: Target{val IR: PPLOpsExp.this.type}) : GenericFatCodegen{val IR: PPLOpsExp.this.type} = t match {
     case _:TargetScala => new ScalaGenPPL{val IR: PPLOpsExp.this.type = PPLOpsExp.this}

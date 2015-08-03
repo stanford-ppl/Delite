@@ -10,8 +10,8 @@ import scala.virtualization.lms.internal._
 trait DeliteVisit extends LoweringTransform {
 
   // built-in phases   
-  object deviceIndependentLowering extends LoweringTransformer {override val name = "Device-Independent Lowering"} 
-  object deviceDependentLowering extends LoweringTransformer {override val name = "Device-Dependent Lowering"}
+  object deviceIndependentLowering extends LoweringTransformer {override lazy val name = "Device-Independent Lowering"} 
+  object deviceDependentLowering extends LoweringTransformer {override lazy val name = "Device-Dependent Lowering"}
   
   // list of all visitors to be applied to IR
   private var _visitors: List[IRVisitor] = List(deviceIndependentLowering,deviceDependentLowering) 

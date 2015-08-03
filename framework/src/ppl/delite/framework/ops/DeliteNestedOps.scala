@@ -3,6 +3,7 @@ package ppl.delite.framework.ops
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 
+import ppl.delite.framework.Config
 import ppl.delite.framework.datastructures._
 
 trait DeliteNestedOps extends RangeVectorOps with Base {
@@ -70,8 +71,8 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
     val nestLayers = lSizes.length  // Input domain rank
     lazy val vs: List[Sym[Int]] = copyOrElse(_.vs)(oVs)
     lazy val rV: (Sym[A],Sym[A]) = copyOrElse(_.rV)(orV)
-    lazy val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(lSizes)
-    lazy val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)(lStrides.getOrElse( List.fill(nestLayers)(unit(1)) ))
+    val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(lSizes)
+    val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)(lStrides.getOrElse( List.fill(nestLayers)(unit(1)) ))
 
     // If stripFirst is false, accInit is used to allocate the accumulator, and is used in the reduction
     // Zero is only used if the collection is empty or if the first iteration of the filter function is false
@@ -86,6 +87,8 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
       numDynamicChunks = this.numDynamicChunks
     ))
     val mA = manifest[A]
+
+    override def toString = s"NestedReduce(vs = $vs, sizes = $sizes, strides = $strides, $body)"
   }
   object ReduceHelper {
     def mirror[A:Manifest](op: NestedReduce[A], f: Transformer)(implicit ctx: SourceContext): NestedReduce[A] = op match {
@@ -129,8 +132,8 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
     lazy val vs: List[Sym[Int]] = copyOrElse(_.vs)(oVs)
     lazy val rV: (Sym[C],Sym[A]) = copyOrElse(_.rV)(orV)
     lazy val cV: (Sym[C],Sym[C]) = copyOrElse(_.cV)(ocV)
-    lazy val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(lSizes)
-    lazy val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)(List.fill(nestLayers)(unit(1)))
+    val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(lSizes)
+    val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)(List.fill(nestLayers)(unit(1)))
     lazy val buff = reflectMutableSym(fresh[C])
     lazy val eV = fresh[A]
 
@@ -150,6 +153,8 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
       cFunc = this.cFunc,
       numDynamicChunks = this.numDynamicChunks
     ))
+
+    override def toString = s"NestedFold(vs = $vs, sizes = $sizes, strides = $strides, $body)"
 
     val mA = manifest[A]
     val mC = manifest[C]
@@ -174,8 +179,8 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
 
     val nestLayers = lSizes.length  // Input domain rank
     lazy val vs: List[Sym[Int]] = copyOrElse(_.vs)(oVs)
-    lazy val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(lSizes)
-    lazy val strides: List[Exp[Int]] = List.fill(nestLayers)(unit(1))
+    val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(lSizes)
+    val strides: List[Exp[Int]] = List.fill(nestLayers)(unit(1))
 
     lazy val eV: Sym[A] = copyTransformedOrElse(_.eV)(fresh[A]).asInstanceOf[Sym[A]]
     lazy val sV: Sym[Int] = copyTransformedOrElse(_.sV)(fresh[Int]).asInstanceOf[Sym[Int]]
@@ -208,6 +213,8 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
       buf = this.buf,
       numDynamicChunks = this.numDynamicChunks
     ))
+
+    override def toString = s"NestedCollect(vs = $vs, sizes = $sizes, strides = $strides, $body)"
 
     val mA = manifest[A]
     val mC = manifest[C]
@@ -251,8 +258,8 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
 
     val nestLayers = 1   
     lazy val vs: List[Sym[Int]] = copyOrElse(_.vs)(List(ov))
-    lazy val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(List(lSize))
-    lazy val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)(List(lStride))
+    val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(List(lSize))
+    val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)(List(lStride))
 
     lazy val eV: Sym[A] = copyTransformedOrElse(_.eV)(fresh[A]).asInstanceOf[Sym[A]]
     lazy val sV: Sym[Int] = copyTransformedOrElse(_.sV)(fresh[Int]).asInstanceOf[Sym[Int]]
@@ -328,8 +335,8 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
 
     val nestLayers = 1
     lazy val vs: List[Sym[Int]] = copyTransformedSymListOrElse(_.vs)(List(ov)).asInstanceOf[List[Sym[Int]]]
-    lazy val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(List(lSize))
-    lazy val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)(List(unit(1)))
+    val sizes: List[Exp[Int]] = copyTransformedSymListOrElse(_.sizes)(List(lSize))
+    val strides: List[Exp[Int]] = copyTransformedSymListOrElse(_.strides)(List(unit(1)))
 
     final lazy val allocVal: Sym[C] = copyTransformedOrElse(_.allocVal)(reflectMutableSym(fresh[C])).asInstanceOf[Sym[C]]
     final lazy val iV: Sym[Int] = copyTransformedOrElse(_.iV)(fresh[Int]).asInstanceOf[Sym[Int]]
@@ -446,6 +453,9 @@ trait DeliteNestedOpsExp extends DeliteNestedOps with DeliteOpsExpIR with Delite
       ),
       numDynamicChunks = this.numDynamicChunks
     ))
+
+    override def toString = s"TileAssemble(vs = $vs, sizes = $sizes, strides = $strides, $body)"
+
     val mA = manifest[A]
     val mT = manifest[T]
     val mC = manifest[C]
@@ -872,9 +882,16 @@ trait ScalaGenNestedOps extends ScalaGenDeliteOps {
         stream.println("for (" + quote(vs(i)) + " <- 0 until " + quote(sizes(i)) + " by " + quote(strides(i)) + ") {")
       }
 
+      if (Config.debugCodegen) Console.println("[codegen] Emitting FatLoopNest")
       //emitNodesWithCommonSyms(sym, op.body)
       emitInCommonScope{
-        sym.zip(op.body).foreach{stm => emitNode(stm._1, stm._2)}
+        sym.zip(op.body).foreach{stm => 
+          if (Config.debugCodegen) Console.println("[codegen] Emitting " + stm)
+          if (Config.debugCodegen) {
+            Console.println("[codegen] Emitted syms: \n" + emittedSyms.map(strDef(_)).mkString("\n"))
+          }
+          emitNode(stm._1, stm._2)
+        }
       }
 
       // TODO: stripfirst

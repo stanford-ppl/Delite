@@ -51,7 +51,7 @@ trait kNNFrame extends PPLApp {
     }
 
     val nErr = reduce(R)(0){i => if (labelsOut(i) != testLabels(i)) 1 else 0 }{_+_}
-    val percent = 100.0 * (nErr.toDouble / testLabels.length.toDouble)
+    val percent = 100.0 * (nErr.toFloat / testLabels.length.toFloat)
     println("Number incorrect: " + nErr + "/" + testLabels.length + "(" + percent + "%)")
   
   }
@@ -111,8 +111,8 @@ object kNNBlockedFunc extends PPLCompiler with kNNBlockedApp {
   override def functionName = "evalKNN"
 }
 trait kNNBlockedApp extends kNNFrame {
-  def evalKNN(trainData: Rep[Array1D[Double]], trainLabels: Rep[Array1D[Int]], 
-              testData: Rep[Array1D[Double]], testLabels: Rep[Array1D[Int]], 
+  def evalKNN(trainData: Rep[Array1D[Float]], trainLabels: Rep[Array1D[Int]], 
+              testData: Rep[Array1D[Float]], testLabels: Rep[Array1D[Int]], 
               D: Rep[Int]): Rep[Array1D[Int]] = {
 
     val N = trainLabels.length
@@ -133,7 +133,7 @@ trait kNNBlockedApp extends kNNFrame {
         val pt = ptBlk.bslice(i, *)
         
         // TODO: map function produces something of size B, accumulator is of size K...
-        val kIndices = tiledReduce(N)( Array1D[(Double,Int)](K) ){jj => 
+        val kIndices = tiledReduce(N)( Array1D[(Float,Int)](K) ){jj => 
           val refBlk = refs.bslice(jj, *)
           collect(jj.len){j => 
             val refPt = refBlk.bslice(j, *)

@@ -1,37 +1,44 @@
 import asplos._
 
 trait LogRegFrame extends PPLApp {
-  def sigmoid(x: Rep[Double]): Rep[Double] = 1.0 / (1.0 + Math.exp(-1.0 * x))
+  def sigmoid(x: Rep[Float]): Rep[Float] = 1.0f / (1.0f + Math.exp(-1.0f * x).toFloat)
 
-  def refineTheta(xData: Rep[Array1D[Double]], y: Rep[Array1D[Double]], theta: Rep[Array1D[Double]], alpha: Rep[Double]): Rep[Array1D[Double]]
+  def refineTheta(xData: Rep[Array1D[Float]], y: Rep[Array1D[Float]], theta: Rep[Array1D[Float]], alpha: Rep[Float]): Rep[Array1D[Float]]
   def main() {
-    val x = read2D(DATA_FOLDER + "/logreg/x1m10.dat") 
-    val y = read1D(DATA_FOLDER + "/logreg/y1m.dat")
+    val x = read2D(DATA_FOLDER + "logreg/x1m10.dat") 
+    val y = read1D(DATA_FOLDER + "logreg/y1m.dat")
 
     val R = x.nRows
     val C = x.nCols
-    val alpha = 1.0
-    val tol = 0.001
-    val MaxIter = 30
-    val MinIter = 1
 
-    val thetaOld = collect(C){i => 0.0}.unsafeMutable
+    // ---------- Tiling Hints -----------
+    tile(R, tileSize = 250, max = 10000000)
+    tile(C, tileSize = 20, max = 20)  
+    // -----------------------------------
 
-    var delta = scala.Double.MaxValue
-    var iter = 0
+    val alpha = 1.0f
+    //val tol = 0.001
+    //val MaxIter = 30
+    //val MinIter = 1
 
-    while ( (Math.abs(delta) > tol && iter < MaxIter) ||  iter < MinIter) {
-      val thetaNew = refineTheta(x.data, y, thetaOld.unsafeImmutable, alpha)
+    //val thetaOld = collect(C){i => 0.0}.unsafeMutable
+    val theta = collect(C){i => 0.0f}
 
-      delta = reduce(C)(0.0){i => Math.abs(thetaOld(i) - thetaNew(i)) }{_+_}
-      forIndices(C){i => thetaOld(i) = thetaNew(i) }
+    //var delta = scala.Float.MaxValue
+    //var iter = 0
 
-      iter += 1
-    }
-    if (iter == MaxIter) { println("Maximum iterations exceeded") }
+    //while ( (Math.abs(delta) > tol && iter < MaxIter) ||  iter < MinIter) {
+    val thetaNew = refineTheta(x.data, y, theta, alpha)
 
-    val w = thetaOld
-    println("w: "); w.pprint
+    //  delta = reduce(C)(0.0){i => Math.abs(thetaOld(i) - thetaNew(i)) }{_+_}
+    //  forIndices(C){i => thetaOld(i) = thetaNew(i) }
+
+    //  iter += 1
+    //}
+    //if (iter == MaxIter) { println("Maximum iterations exceeded") }
+
+    //val w = thetaOld
+    println("w: "); thetaNew.pprint
   }
 }
 
@@ -42,21 +49,21 @@ object LogRegFunc extends PPLCompiler with LogRegApp {
   override def functionName = "refineTheta" 
 }
 trait LogRegApp extends LogRegFrame {
-  def refineTheta(xData: Rep[Array1D[Double]], y: Rep[Array1D[Double]], theta: Rep[Array1D[Double]], alpha: Rep[Double]): Rep[Array1D[Double]] = {
+  def refineTheta(xData: Rep[Array1D[Float]], y: Rep[Array1D[Float]], theta: Rep[Array1D[Float]], alpha: Rep[Float]): Rep[Array1D[Float]] = {
     val R = y.length
     val C = theta.length
     // ---------- Tiling Hints -----------
     tile(R, tileSize = 250, max = 10000000)
-    tile(C, tileSize = 10, max = 50)  
+    tile(C, tileSize = 20, max = 20)  
     // -----------------------------------
 
     val x = Array2D(xData, R, C)
 
-    val gradient = reduce(R)(Array1D[Double](C)){i => 
+    val gradient = reduce(R)(Array1D[Float](C)){i => 
       val row = x.slice(i, *)
-      val m = reduce(C)(0.0){j => theta(j) * row(j)}{_+_}
+      val m = reduce(C)(0.0f){j => theta(j) * row(j)}{_+_}
       val mult = y(i) - sigmoid(m)
-      collect(C){j => row(j) * mult}        // Row calculationg
+      collect(C){j => row(j) * mult}        // Row calculating
     }{(a,b) => collect(C){j => a(j) + b(j)} } // Row summation
 
     // Calculate new theta
@@ -71,7 +78,7 @@ object LogRegBlockedFunc extends PPLCompiler with LogRegBlockedApp {
   override def functionName = "refineTheta"
 }
 trait LogRegBlockedApp extends LogRegFrame {
-  def refineTheta(xData: Rep[Array1D[Double]], y: Rep[Array1D[Double]], theta: Rep[Array1D[Double]], alpha: Rep[Double]): Rep[Array1D[Double]] = {
+  def refineTheta(xData: Rep[Array1D[Float]], y: Rep[Array1D[Float]], theta: Rep[Array1D[Float]], alpha: Rep[Float]): Rep[Array1D[Float]] = {
     val R = y.length
     val C = theta.length
     // ---------- Tiling Hints -----------
@@ -84,12 +91,12 @@ trait LogRegBlockedApp extends LogRegFrame {
     // TBD: Is tiling the outer reduce useful? Seems not..
     // Case 1: C fits - no use in tiling reduce, just makes 2 copies of accumulator
     // Case 2: Duplicated accumulators, always loading chunks of one or the other to reduce
-    val gradient = reduce(R)(Array1D[Double](C)){i => 
+    val gradient = reduce(R)(Array1D[Float](C)){i => 
       val row = x.slice(i, *)
-      val mBox = tileReduce[Double,Array1D[Double],Array1D[Double]](C)(box(0.0)){jj => 0 :@: 1}{jj => 
+      val mBox = tileReduce[Float,Array1D[Float],Array1D[Float]](C)(box(0.0f)){jj => 0 :@: 1}{jj => 
         val thetaChunk = theta.bslice(jj)
         val rowChunk = row.bslice(jj)
-        val red = reduce(jj.len)(0.0){j => thetaChunk(j) * rowChunk(j)}{_+_}
+        val red = reduce(jj.len)(0.0f){j => thetaChunk(j) * rowChunk(j)}{_+_}
         box(red)
       }{(a,b) => box(debox(a) + debox(b)) }
 
@@ -97,12 +104,12 @@ trait LogRegBlockedApp extends LogRegFrame {
       val mult = y(i) - sigmoid(m)
 
       // Row calculation
-      tileAssemble[Double,Array1D[Double],Array1D[Double]](C)( Array1D[Double](C) ){jj => jj}{jj => 
+      tileAssemble[Float,Array1D[Float],Array1D[Float]](C)( Array1D[Float](C) ){jj => jj}{jj => 
         val rowChunk = row.bslice(jj)
         collect(jj.len){j => rowChunk(j) * mult}
       }
     }{(a,b) =>
-      tileAssemble[Double,Array1D[Double],Array1D[Double]](C)( Array1D[Double](C) ){jj => jj}{jj =>
+      tileAssemble[Float,Array1D[Float],Array1D[Float]](C)( Array1D[Float](C) ){jj => jj}{jj =>
         val aBlk = a.bslice(jj)
         val bBlk = b.bslice(jj)
         collect(jj.len){j => aBlk(j) + bBlk(j)}
@@ -110,7 +117,7 @@ trait LogRegBlockedApp extends LogRegFrame {
     }
 
     // Calculate new theta
-    tileAssemble[Double,Array1D[Double],Array1D[Double]](C)( Array1D[Double](C) ){jj => jj}{jj => 
+    tileAssemble[Float,Array1D[Float],Array1D[Float]](C)( Array1D[Float](C) ){jj => jj}{jj => 
       val gradientBlk = gradient.slice(jj)
       val thetaBlk = theta.slice(jj)
       collect(jj.len){j => gradientBlk(j)*alpha + thetaBlk(j) }

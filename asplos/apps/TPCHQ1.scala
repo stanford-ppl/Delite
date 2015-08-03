@@ -1,6 +1,6 @@
-import asplos._ 
+/*import asplos._ 
 
-trait TPCHQ6Frame extends PPLApp {
+trait TPCHQ1Frame extends PPLApp {
   val minDate = (1994 << 9) + (1 << 5) + 1 // 1020961
   val maxDate = (1995 << 9) + (1 << 5) + 1 // 1021473
 
@@ -17,46 +17,44 @@ trait TPCHQ6Frame extends PPLApp {
   }
 }
 
-object TPCHQ6 extends PPLCompiler with TPCHQ6App
-object TPCHQ6Func extends PPLCompiler with TPCHQ6App {
+object TPCHQ1 extends PPLCompiler with TPCHQ1App
+object TPCHQ1Func extends PPLCompiler with TPCHQ1App {
   registerFunction(query _)
   override def functionName = "query"
 }
-trait TPCHQ6App extends TPCHQ6Frame {
+trait TPCHQ1App extends TPCHQ1Frame {
   def query(dates: Rep[Array1D[Int]], quants: Rep[Array1D[Int]], discounts: Rep[Array1D[Float]], prices: Rep[Array1D[Float]], N: Rep[Int]): Rep[Float] = {
     // ---------- Tiling Hints -----------
     tile(N, tileSize = 200, max = ?)
     // -----------------------------------
 
-    filterReduce(N)(0.0f){i => 
-      dates(i) > minDate && dates(i) < maxDate && 
-      discounts(i) >= 0.05f && discounts(i) <= 0.07f && quants(i) < 24
-    }{i => prices(i) * discounts(i) }{_+_}
+
+
   }
 }
 
-object TPCHQ6Blocked extends PPLCompiler with TPCHQ6BlockedApp
-object TPCHQ6BlockedFunc extends PPLCompiler with TPCHQ6BlockedApp {
+object TPCHQ1Blocked extends PPLCompiler with TPCHQ1BlockedApp
+object TPCHQ1BlockedFunc extends PPLCompiler with TPCHQ1BlockedApp {
   registerFunction(query _)
   override def functionName = "query"
 }
-trait TPCHQ6BlockedApp extends TPCHQ6Frame {
+trait TPCHQ1BlockedApp extends TPCHQ1Frame {
   def query(dates: Rep[Array1D[Int]], quants: Rep[Array1D[Int]], discounts: Rep[Array1D[Float]], prices: Rep[Array1D[Float]], N: Rep[Int]): Rep[Float] = {
     // ---------- Tiling Hints -----------
     tile(N, tileSize = 200, max = ?)
     // -----------------------------------
 
-    tiledReduce(N)(0.0f){ii =>
+    tiledReduce(N)(0.0){ii =>
       val datesBlk = dates.bslice(ii)
       val quantsBlk = quants.bslice(ii)
       val discountsBlk = discounts.bslice(ii)
       val pricesBlk = prices.bslice(ii)
-      filterReduce(ii.len)(0.0f){i => 
+      filterReduce(ii.len)(0.0){i => 
         datesBlk(i) > minDate && datesBlk(i) < maxDate && 
-        discountsBlk(i) >= 0.05f && discountsBlk(i) <= 0.07f && quantsBlk(i) < 24
+        discountsBlk(i) >= 0.05 && discountsBlk(i) <= 0.07 && quantsBlk(i) < 24
       }{i => pricesBlk(i) * discountsBlk(i) }{_+_}
     }{_+_}
     
   }
-}
+}*/
 

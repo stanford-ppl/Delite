@@ -83,7 +83,7 @@ trait LayoutMetadataOps extends RankMetadataOps with LayoutMetadata {
 trait LayoutAnalyzer extends IRVisitor {
   val IR: DeliteOpsExp with DeliteMultiArrayOpsExp with LayoutMetadataOps
   import IR._
-  override val name = "Layout Analyzer"
+  override lazy val name = "Layout Analyzer"
 
   // Recursively sets layouts of all arrays to be flat
   // TODO: Currently all layouts are of type "Nothing"

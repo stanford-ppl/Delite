@@ -31,7 +31,7 @@ trait MultiArrayWrapExp extends DeliteMultiArrayOpsExp with RankMetadataOps { th
 trait MultiArrayWrapTransformer extends TransformerBase {
   val IR: MultiArrayWrapExp with DeliteOpsExp
   import IR._
-  override val name = "MultiArray Wrapper"
+  override lazy val name = "MultiArray Wrapper"
   override val printAfter = true
 
   // TODO: This can be removed later

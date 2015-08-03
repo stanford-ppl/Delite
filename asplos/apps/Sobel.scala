@@ -12,15 +12,27 @@ trait SobelFrame extends PPLApp {
   def main() {
     val img = readImg(DATA_FOLDER + "conv/test_img.dat")
 
-    val imgPadded = collect(img.nRows + 2, img.nCols + 2){(i,j) => 
-      if (i > 0 && j > 0 && i <= img.nRows && j <= img.nCols)  
+    val H = img.nRows
+    val W = img.nCols
+    val PH = H + 2
+    val PW = W + 2
+
+    // ---------- Tiling Hints -----------
+    tile(H, tileSize = 40, max = 2000)
+    tile(W, tileSize = 40, max = 1500)
+    tile(PH, tileSize = 40, max = 2000) // TODO: These should be unnecessary
+    tile(PW, tileSize = 40, max = 1500)
+    // -----------------------------------
+
+    val imgPadded = collect(PH, PW){(i,j) => 
+      if (i > 0 && j > 0 && i <= H && j <= W)  
         img(i - 1, j - 1)
       else
         unit(0)
     }
 
-    val edgeData = sobelFilter(imgPadded.data, img.nRows, img.nCols)
-    val edges = Array2D(edgeData, img.nRows, img.nCols)
+    val edgeData = sobelFilter(imgPadded.data, H, W)
+    val edges = Array2D(edgeData, H, W)
     edges.pprint
   }
 }

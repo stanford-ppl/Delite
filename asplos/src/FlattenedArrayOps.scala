@@ -18,9 +18,9 @@ trait Array2D[T] extends DeliteCollection[T]
 trait FlattenedArrayIO extends DeliteSimpleOps with PPLNestedOps { this: PPLOps =>
   // --- File reading
   // (File reading is pretty annoying to write out directly in PPL)
-  def read1D(path: Rep[String]): Rep[Array1D[Double]] = read(path).map{s => s.toDouble}
-  def read2D(path: Rep[String])(implicit ctx: SourceContext): Rep[Array2D[Double]] = {
-    val vec = read(path).map{s => darray_split_string(s.trim, unit("\\s+"), unit(-1)).map{s => s.toDouble} }
+  def read1D(path: Rep[String]): Rep[Array1D[Float]] = read(path).map{s => s.toFloat}
+  def read2D(path: Rep[String])(implicit ctx: SourceContext): Rep[Array2D[Float]] = {
+    val vec = read(path).map{s => darray_split_string(s.trim, unit("\\s+"), unit(-1)).map{s => s.toFloat} }
     collect(vec.length, vec(unit(0)).length){(i,j) => vec(i).apply(j)}
   }
   def readImg(path: Rep[String])(implicit ctx: SourceContext): Rep[Array2D[Int]] = {
@@ -143,8 +143,15 @@ trait FlattenedArrayOps extends DeliteNestedOps with DeliteArrayOps with RangeVe
 
     // --- Printing
     def mkString(del: Rep[String]): Rep[String] = array_stringify[T,Array1DView[T]](x, List(del))
-    def pprint: Rep[Unit] = println(x.mkString(unit(" ")))
-    def vprint: Rep[Unit] = println(x.mkString(unit("\n")))
+    def pprint: Rep[Unit] = {  //println(x.mkString(unit(" ")))
+      val i = var_new(unit(0))
+      while (i < x.length) { print(x(readVar(i)) + unit(" ")); i += unit(1) }
+      print(unit("\n"))
+    }
+    def vprint: Rep[Unit] = {
+      val i = var_new(unit(0))
+      while (i < x.length) { println(x(readVar(i))); i += unit(1) }
+    }
   }
   
   implicit def array1DtoArray1DOpsCls[T:Manifest](x: Rep[Array1D[T]])(implicit ctx: SourceContext) = new Array1DOpsCls(x)
@@ -169,8 +176,15 @@ trait FlattenedArrayOps extends DeliteNestedOps with DeliteArrayOps with RangeVe
 
     // --- Printing
     def mkString(del: Rep[String]): Rep[String] = array_stringify[T,Array1D[T]](x, List(del))
-    def pprint: Rep[Unit] = println(x.mkString(unit(" ")))
-    def vprint: Rep[Unit] = println(x.mkString(unit("\n")))
+    def pprint: Rep[Unit] = {  //println(x.mkString(unit(" ")))
+      val i = var_new(unit(0))
+      while (i < x.length) { print(x(readVar(i)) + unit(" ")); i += unit(1) }
+      print(unit("\n"))
+    }
+    def vprint: Rep[Unit] = {
+      val i = var_new(unit(0))
+      while (i < x.length) { print(x(readVar(i)) + unit("\n")); i += unit(1) }
+    }
   }
 
   // --- 2D Ops
@@ -210,7 +224,14 @@ trait FlattenedArrayOps extends DeliteNestedOps with DeliteArrayOps with RangeVe
 
     // --- Printing
     def mkString(rdel: Rep[String], cdel: Rep[String]): Rep[String] = array_stringify[T,Array2DView[T]](x, List(rdel, cdel))
-    def pprint: Rep[Unit] = println(x.mkString(unit("\n"), unit(" ")))
+    def pprint: Rep[Unit] = { //println(x.mkString(unit("\n"), unit(" ")))
+      val i = var_new(unit(0)); val j = var_new(unit(0));
+      while (i < x.nRows) {
+        j = unit(0);
+        while (j < x.nCols) { print(x(readVar(i),readVar(j)) + unit(" ")); j += unit(1) }
+        print(unit("\n")); i += unit(1)
+      }
+    } 
   }
 
   implicit def array2DtoArray2DOpsCls[T:Manifest](x: Rep[Array2D[T]])(implicit ctx: SourceContext) = new Array2DOpsCls(x)
@@ -248,7 +269,14 @@ trait FlattenedArrayOps extends DeliteNestedOps with DeliteArrayOps with RangeVe
 
     // --- Printing
     def mkString(rdel: Rep[String], cdel: Rep[String]): Rep[String] = array_stringify[T,Array2D[T]](x, List(rdel, cdel))
-    def pprint: Rep[Unit] = println(x.mkString(unit("\n"), unit(" ")))
+    def pprint: Rep[Unit] = { //println(x.mkString(unit("\n"), unit(" ")))
+      val i = var_new(unit(0)); val j = var_new(unit(0));
+      while (i < x.nRows) {
+        j = unit(0);
+        while (j < x.nCols) { print(x(readVar(i),readVar(j)) + unit(" ")); j += unit(1) }
+        print(unit("\n")); i += unit(1)
+      }
+    } 
   }
 }
 
@@ -467,6 +495,11 @@ trait FlattenedArrayOpsExp extends FlattenedArrayOps with MultiArrayExp with Del
   }
 
   // --- Delite collection ops
+  def array1DManifest(typeArg: Manifest[_]): Manifest[Array1D[_]] = makeManifest(classOf[Array1D[_]], List(typeArg))
+  def array2DManifest(typeArg: Manifest[_]): Manifest[Array2D[_]] = makeManifest(classOf[Array2D[_]], List(typeArg))
+  def array1DViewManifest(typeArg: Manifest[_]): Manifest[Array1DView[_]] = makeManifest(classOf[Array1DView[_]], List(typeArg))
+  def array2DViewManifest(typeArg: Manifest[_]): Manifest[Array2DView[_]] = makeManifest(classOf[Array2DView[_]], List(typeArg))
+
   def asArray1D[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = asDeliteArray(x)
   def asArray2D[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[Array2D[A]]]
   def asArray2DView[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[Array2DView[A]]]
@@ -731,7 +764,7 @@ trait FlattenedArrayLowerableOpsExp extends FlattenedArrayOpsExp with DeliteLowe
   // --- Lowering Transformer
   class ApplyLowering extends AbstractImplementer {
     val IR: self.type = self
-    override val name = "Apply Lowering"
+    override lazy val name = "Apply Lowering"
    // override val debugMode = true
     override def transferMetadata(sub: Exp[Any], orig: Exp[Any], d: Def[Any])(implicit ctx: SourceContext) = d match {
       case e: ArrayStringify[_,_] => copyMetadata(sub, props(orig))
@@ -813,6 +846,8 @@ trait ScalaGenFlattenedArrayOps extends ScalaGenDeliteDSL with ScalaGenNestedOps
     // TODO: This should actually be a view in software
     case op: BlockSlice[_,_,_] => 
       stream.println("// --- Block Slice")
+      stream.println("// Reuse factors: " + op.reuse.mkString(",") )
+
       emitBlock(op.allocTile)
       emitValDef(op.tileVal, quote(getBlockResult(op.allocTile)))
 

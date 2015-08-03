@@ -16,7 +16,7 @@ trait PatternPromotingExp extends DeliteVisit { self: PPLOpsExp =>
 
   trait PromotionTransformer extends TunnelingTransformer {
     val IR: self.type
-    override val name = "Pattern Promotion"
+    override lazy val name = "Pattern Promotion"
   
     //override val debugMode = true
     /*override def postprocess[A:Manifest](b: Block[A]): Block[A] = { 
@@ -33,7 +33,8 @@ trait PatternPromotingExp extends DeliteVisit { self: PPLOpsExp =>
           focusBlock(cElem.func){ bodyStms ++= innerScope }
 
           var innerStms: List[Stm] = Nil
-          bodyStms.last match {
+
+          if (bodyStms.isEmpty) None else bodyStms.last match {
             case stm@TP(sr, opI: DeliteOpLoopNest[_]) if opI.strides.exists{case Const(1) => false; case _ => true} => opI.body match {
               case rElem: DeliteReduceElem[`a`] if rElem.cond.isEmpty => 
                 // Check that redcue is perfectly nested within the collect by checking that the collect's innerScope
@@ -69,7 +70,7 @@ trait PatternPromotingExp extends DeliteVisit { self: PPLOpsExp =>
         case _ => None
       }
 
-      case _ => None
+      case _ => super.transformSym(s,d)
     }
 
     def swapCollectReduce[A:Manifest,C<:DeliteCollection[A]:Manifest](op: DeliteOpLoopNest[_], cElem: DeliteCollectElem[A,_,C], opI: DeliteOpLoopNest[_], rElem: DeliteReduceElem[A])(implicit ctx: SourceContext): Exp[C] = {

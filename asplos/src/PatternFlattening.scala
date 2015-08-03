@@ -16,7 +16,7 @@ trait PatternFlatteningExp extends DeliteVisit { self: PPLOpsExp =>
 
   trait PatternFlatteningTransformer extends TunnelingTransformer {
     val IR: self.type
-    override val name = "Pattern Flattening"
+    override lazy val name = "Pattern Flattening"
     //override val debugMode = true
     //override val printBefore = true
     /*override def postprocess[A:Manifest](b: Block[A]): Block[A] = { 
@@ -77,7 +77,7 @@ trait PatternFlatteningExp extends DeliteVisit { self: PPLOpsExp =>
           }
         case _ => None
       }
-      case _ => None
+      case _ => super.transformSym(s,d)
     }
 
     def flattenTileReduce[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](opA: DeliteOpLoopNest[_], tElem: DeliteTileElem[A,T,C], opB: DeliteOpLoopNest[_], rElem: DeliteReduceElem[T])(implicit ctx: SourceContext): Exp[C] = {

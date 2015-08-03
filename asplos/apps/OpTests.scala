@@ -469,6 +469,17 @@ object CollectSortTakeTest1 extends PPLCompiler {
   }
 }*/
 
+object ReadTest extends PPLCompiler {
+  def main() {
+    val arr = read1D(DATA_FOLDER + "logreg/y1m.dat")
+    val R = arr.length
+
+    val x = reduce(R)(0.0f){i => arr(i)}{_+_}
+
+    println("sum = " + x)
+  }
+}
+  
 object kNNTest extends PPLCompiler {
   def main() {
     val dataIn = readImg(DATA_FOLDER + "knn/letter-data.dat")

@@ -14,7 +14,7 @@ trait DistributedArrayTransformer extends WorklistTransformer {
   object Numa extends Mode
   object Local extends Mode
 
-  override val name = "Distributed Array Transformer"
+  override lazy val name = "Distributed Array Transformer"
 
   val distributedMode: Mode = Local //TODO: Config flag
 

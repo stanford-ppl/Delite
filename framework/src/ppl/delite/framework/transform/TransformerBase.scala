@@ -22,8 +22,16 @@ import scala.reflect.SourceContext
 trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor { self =>
   val IR: DeliteOpsExp with MetadataOps
   import IR._
+
+  var blockSubst = immutable.Map.empty[Block[Any], Block[Any]]
+  var copyingBlock = false
+
   // substitutions which should carry over to the next iteration
   var nextSubst = immutable.Map.empty[Exp[Any], Exp[Any]]
+
+  // TODO: Unify different levels of debugging messages...
+  val baseDebug: Boolean = false
+  def dbgbase(x: => Any) { if (baseDebug) printmsg(x) }
 
   // TODO: Probably want to refactor this
   protected def f = self.asInstanceOf[Transformer]
@@ -55,10 +63,27 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor {
     apply(getBlockResult(block))
   }
   def transformBlock[A:Manifest](block: Block[A]): Block[A] = {
-    withInnerScopeAdditions{ reifyEffects{ reflectBlock(block) } }
+    val block2 = withInnerScopeAdditions{ reifyEffects{ reflectBlock(block) } }
+    if (!copyingBlock) blockSubst += (block -> block2)
+    block2
+  }
+  // Performs tranform without registering this block - if we see the same block again we'll produce a copy
+  // Note that copyBlock must be recursive. All blocks we see within this block must also be copied
+  def copyBlock[A:Manifest](block: Block[A]): Block[A] = {
+    val prevCopying = copyingBlock
+    copyingBlock = true
+    val block2  = withInnerScopeAdditions{ reifyEffects{ reflectBlock(block) } }
+    copyingBlock = prevCopying
+    block2
   }
 
-  override def apply[A:Manifest](xs: Block[A]): Block[A] = transformBlock(xs)
+  // TODO: This may not be correct in all cases - check later!
+  override def apply[A:Manifest](xs: Block[A]): Block[A] = blockSubst.get(xs) match {
+    case Some(ys) if !copyingBlock => 
+      dbgmsg(s"WARNING: Duplicate block. Using existing substitution for block $xs: $ys")
+      ys.asInstanceOf[Block[A]]
+    case _ => transformBlock(xs)
+  }
 
   override def apply[A](x: Exp[A]): Exp[A] = subst.get(x) match { 
     case Some(y) => 
@@ -103,7 +128,8 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor {
     case TP(s, d) if (apply(s) == s) => 
       implicit val ctx: SourceContext = mpos(s.pos)
 
-      printDebug("Transforming: " + strDef(s))
+      dbgbase("Transforming: " + strDef(s))
+      dbgbase(s"  (subst($s) = " + subst.get(s).getOrElse("[NO ENTRY]") + ")")
       val sub = transformSym(s,d) match {
         case Some(s2) => 
           transferMetadata(s2, s, d)
@@ -114,13 +140,15 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor {
       if (subst.contains(s) && subst(s) != sub)
         printmsg("error: already have substitution for " + strDef(s) + ":\n\t" + strDef(subst(s)))
         
-      printDebug("Created: " + strDef(sub))
+      dbgbase("Created: " + strDef(sub))
 
       assert(!subst.contains(s) || subst(s) == sub)
       if (s != sub) { subst += s -> sub }
 
     case TTP(syms, m, d) if syms.forall{s => apply(s) == s} => 
       implicit val ctx: SourceContext = mpos(syms(0).pos)
+
+      dbgbase("Transforming: " + stm)
 
       val syms2 = transformFatDef(syms, d) match {
         case Some(syms2) => syms2
@@ -130,18 +158,18 @@ trait TransformerBase extends AbstractSubstTransformer with IterativeIRVisitor {
         assert(!subst.contains(s._1) || subst(s._1) == s._2)
         if (s._1 != s._2) subst += (s._1 -> s._2)
       }
+
+      dbgbase("Created:\n  " + syms2.mkString("\n  "))
       
     case _ => 
-      printDebug(s"Statement $stm already had substition rule. Doing nothing.")
+      dbgbase(s"Statement $stm already had substition rule. Doing nothing.")
       cwarn("Already have substitution for symbols in statement " + stm)
   }
 
   override def runOnce[A:Manifest](b: Block[A]): Block[A] = {
-    if (debugMode) {
-      printmsg("--------------------------------------------------------")
-      printmsg(name + ": Starting iteration " + runs)
-      printmsg("--------------------------------------------------------")
-    }
+    dbgbase("--------------------------------------------------------")
+    dbgbase(name + ": Starting iteration " + runs)
+    dbgbase("--------------------------------------------------------")
     subst = subst ++ nextSubst
     nextSubst = Map.empty
     transformBlock(b)
