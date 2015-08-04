@@ -21,13 +21,13 @@ trait GDAFrame extends PPLApp {
     tile(DC, tileSize = 20, max = 20) // TODO: Shouldn't need this
     // ----------------------------------- 
 
-    val y_zeros = filterReduce(M)(0){  y(_) }{r => 1 }{_+_}
-    val y_ones  = filterReduce(M)(0){ !y(_) }{r => 1 }{_+_}
+    val y_zeros = filterReduce(M)(0){ !y(_) }{r => 1 }{_+_}
+    val y_ones  = filterReduce(M)(0){  y(_) }{r => 1 }{_+_}
 
     val zeroVec0 = Array1D[Float](N).asView
     val zeroVec1 = Array1D[Float](N).asView
-    val mu0_num = filterReduce(M)(zeroVec0){  y(_) }{r => x.slice(r, *) }{(a,b) => collect(N){v => a(v) + b(v) }.asView }.notePhysViewOnly
-    val mu1_num = filterReduce(M)(zeroVec1){ !y(_) }{r => x.slice(r, *) }{(a,b) => collect(N){v => a(v) + b(v) }.asView }.notePhysViewOnly
+    val mu0_num = filterReduce(M)(zeroVec0){ !y(_) }{r => x.slice(r, *) }{(a,b) => collect(N){v => a(v) + b(v) }.asView }.notePhysViewOnly
+    val mu1_num = filterReduce(M)(zeroVec1){  y(_) }{r => x.slice(r, *) }{(a,b) => collect(N){v => a(v) + b(v) }.asView }.notePhysViewOnly
 
     val phi = 1.0f / M * y_ones
     val mu0 = collect(N){v => mu0_num(v) / y_zeros }
