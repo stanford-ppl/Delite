@@ -36,6 +36,7 @@ trait SlicePushingExp extends DeliteVisit {self: PPLOpsExp =>
           dbgmsg("Branch: " + strDef(op.src))
           val then1 = getBlockResult(brnch.thenp)
           val else1 = getBlockResult(brnch.elsep)
+          // FIXME: This won't work if then1 and else1 have been transformed... but that shouldn't normally be the case here?
           val then2 = gen_block_slice[a,t,c](then1, f(op.srcOffsets), f(op.srcStrides), f(op.destDims), op.unitDims, op.reuse)(op.mA,op.mT,op.mC,ctx)
           val else2 = gen_block_slice[a,t,c](else1, f(op.srcOffsets), f(op.srcStrides), f(op.destDims), op.unitDims, op.reuse)(op.mA,op.mT,op.mC,ctx)
           withSubstScope(then1 -> then2, else1 -> else2) {
@@ -43,6 +44,38 @@ trait SlicePushingExp extends DeliteVisit {self: PPLOpsExp =>
           }
         case _ => None
       }
+      // TODO: These may cause big problems.. need a lot more testing and formalization!
+      case op: ArrayApply[a,c] => f(op.x) match {
+        case Def(brnch: DeliteOpCondition[_]) =>
+          dbgmsg("Found apply on branch: " + strDef(s))
+          dbgmsg("Branch: " + strDef(op.x))
+          val then1 = getBlockResult(brnch.thenp)
+          val else1 = getBlockResult(brnch.elsep)
+          val then2 = gen_apply[a,c](then1, f(op.inds))(op.mR,op.mA,ctx)
+          val else2 = gen_apply[a,c](else1, f(op.inds))(op.mR,op.mA,ctx)
+          val brnch2 = withSubstScope(then1 -> then2, else1 -> else2) {
+            self_mirror(op.x.asInstanceOf[Sym[a]], brnch.asInstanceOf[Def[a]])
+          }
+          dbgmsg("Created " + strDef(brnch2))
+          Some(brnch2)
+        case _ => None
+      }
+      case op: DeliteArrayApply[a] => f(op.da) match {
+        case Def(brnch: DeliteOpCondition[_]) =>
+          dbgmsg("Found apply on branch: " + strDef(s))
+          dbgmsg("Branch: " + strDef(op.da))
+          val then1 = getBlockResult(brnch.thenp)
+          val else1 = getBlockResult(brnch.elsep)
+          val then2 = gen_apply[a,DeliteArray[a]](then1, List(f(op.i)))(op.mA,mtype(darrayManifest(op.mA)),ctx)
+          val else2 = gen_apply[a,DeliteArray[a]](else1, List(f(op.i)))(op.mA,mtype(darrayManifest(op.mA)),ctx)
+          val brnch2 = withSubstScope(then1 -> then2, else1 -> else2) {
+            self_mirror(op.da.asInstanceOf[Sym[a]], brnch.asInstanceOf[Def[a]])
+          }
+          dbgmsg("Created " + strDef(brnch2))
+          Some(brnch2)
+        case _ => None
+      }
+
       case _ => super.transformSym(s,d)
     } 
     
@@ -52,4 +85,7 @@ trait SlicePushingExp extends DeliteVisit {self: PPLOpsExp =>
 
   private def gen_block_slice[A:Manifest,T<:DeliteCollection[A]:Manifest,C<:DeliteCollection[A]:Manifest](src: Rep[C], srcOffsets: List[Rep[Int]], srcStrides: List[Rep[Int]], destDims: List[Rep[Int]], unitDims: List[Int], reuse: List[Int])(implicit ctx: SourceContext): Rep[T]
     = reflectPure( BlockSlice[A,T,C](src,srcOffsets,srcStrides,destDims,unitDims).withReuse(reuse) )
+
+  private def gen_apply[A:Manifest,C<:DeliteCollection[A]:Manifest](x: Rep[C], inds: List[Exp[Int]])(implicit ctx: SourceContext): Exp[A]
+    = reflectPure( ArrayApply[A,C](x, inds) )
 }

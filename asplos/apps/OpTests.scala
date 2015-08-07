@@ -469,7 +469,31 @@ object CollectSortTakeTest1 extends PPLCompiler {
   }
 }*/
 
-object ReadTest extends PPLCompiler {
+object GDATest extends PPLCompiler {
+  def main() {
+    val dims = read(CONFIG_FILE).map{d => d.toInt} // Set in PPL.scala
+    val D = dims(0)
+    val N = dims(1)
+    tile(D, tileSize = 10, max = 10) // no tile
+    tile(N, tileSize = 10, max = ?)
+
+    val ones = collect(D){i => 1.0f}
+    val twos = collect(D){i => 2.0f}
+    val y    = collect(D){i => i > 15}
+    val x    = collect(N,D){(i,j) => (i + j).toFloat}
+
+    x.pprint
+
+    val out = collect(N){i => 
+      val row = x.slice(i, *)
+      val mu  = if (y(i)) ones else twos
+      reduce(D)(0.0){j => row(j) - mu(j) }{_+_}
+    }
+    out.pprint
+  }
+}
+
+/*object ReadTest extends PPLCompiler {
   def main() {
     val arr = read1D(DATA_FOLDER + "logreg/y1m.dat")
     val R = arr.length
@@ -528,7 +552,7 @@ object kNNTest extends PPLCompiler {
 
     println("mode = " + mode)
   }
-}
+}*/
 
 /*object BlockSliceTest extends PPLCompiler {
   def main() = {

@@ -50,15 +50,17 @@ object GDAFunc extends PPLCompiler with GDAApp {
   override def functionName = "gdaSigma"
 }
 trait GDAApp extends GDAFrame {
-  def gdaSigma(xData: Rep[Array1D[Float]], y: Rep[Array1D[Boolean]], mu0: Rep[Array1D[Float]], mu1: Rep[Array1D[Float]]): Rep[Array1D[Float]] = {
+  def gdaSigma(xData: Rep[Array1D[Float]], y: Rep[Array1D[Boolean]], mu0In: Rep[Array1D[Float]], mu1In: Rep[Array1D[Float]]): Rep[Array1D[Float]] = {
     val M = y.length
-    val N = mu0.length
+    val N = mu0In.length
     // ---------- Tiling Hints -----------
     tile(M, tileSize = 100, max = 15000)
     tile(N, tileSize = 20, max = 20)  
     // ----------------------------------- 
 
     val x = Array2D(xData, M, N)
+    val mu0 = mu0In.bslice(*)
+    val mu1 = mu1In.bslice(*)
 
     val sigma = reduce(M)( Array2D[Float](N,N) ){r => 
       val mu = if (y(r)) mu1 else mu0
