@@ -16,6 +16,12 @@ import org.apache.hadoop.util.LineReader
  */
 object DeliteFileInputStream {
 
+  // We sometimes have an issue with checksums when appending to DeliteFileOutputStreams using a
+  // RawLocalFileSystem (see comment in DeliteFileOutputStream). Using RawLocalFileSystem should
+  // bypass checksums, but the checksum file still seems to get created and checked when read again.
+  // For now, simply disabling checksums by default as a workaround.
+  val CHECKSUM_ENABLED = System.getProperty("dfis.checksum.enabled", "false").toBoolean
+
   /* Construct a new DeliteFileInputStream */
   def apply(paths: Seq[String], charsetName: Option[String] = None, delimiter: Option[Array[Byte]] = None, offset: Long = 0L): DeliteFileInputStream = {
     val charset = charsetName map { checkCharset } getOrElse Charset.defaultCharset
@@ -130,7 +136,9 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
   private def openInputStream(fileIdx: Int) = {
     if (fileIdx >= files.length) throw new IndexOutOfBoundsException("Cannot open file at index: " + fileIdx + ", num files is: " + files.length)
     val path = files(fileIdx).getPath
-    path.getFileSystem(conf).open(path)
+    val fs = path.getFileSystem(conf)
+    fs.setVerifyChecksum(DeliteFileInputStream.CHECKSUM_ENABLED)
+    fs.open(path)
   }
 
   /* Set the line reader to a newline-aligned input stream corresponding to logical byte index 'start' */
