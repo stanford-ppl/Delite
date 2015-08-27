@@ -14,6 +14,7 @@
 //#define DHEAP_DEBUG(...) fprintf(stderr, "[DEBUG-DeliteHeap] "); fprintf(stderr, __VA_ARGS__)
 #define DHEAP_DEBUG(...)
 
+
 // Delite Custom Memory APIs
 void DeliteHeapInit(int numThreads, size_t heapSize);
 void DeliteHeapClear(int numThreads);
@@ -22,6 +23,10 @@ void DeliteHeapMark(int idx);
 void DeliteHeapReset(int idx);
 void DeliteHeapReset2(int idx);
 void delite_barrier(unsigned int count);
+
+void StartTempHeap(int threadId);
+void StopTempHeap(int threadId);
+void CompactPermHeap(int idx /*Also need root set*/);
 
 // globally overloaded new operators
 void *operator new(size_t sz, const resourceInfo_t *resourceInfo);

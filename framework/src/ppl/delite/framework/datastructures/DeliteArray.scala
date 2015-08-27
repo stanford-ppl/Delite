@@ -1171,6 +1171,7 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
     case _ => super.emitNode(sym, rhs)
   }
 
+  //protected val deliteArrayString = s"""
   protected val deliteArrayString = """
 #include "DeliteNamespaces.h"
 #include "DeliteMemory.h"
@@ -1213,7 +1214,10 @@ public:
   }
 
 #ifdef DELITE_GC
-  void deepCopy(void) {
+  void deepCopy(const resourceInfo_t *resourceInfo, int idx) {
+
+
+
   }
 #endif
 

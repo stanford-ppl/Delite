@@ -115,6 +115,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
 
   def emitHeapMark() = { }
   def emitHeapReset(result: List[String]) = { }
+  def emitStartTempHeap() = { }
+  def emitStopTempHeap() = { }
 
   def castInt32(name: String) = name + ".toInt"
 

@@ -145,12 +145,26 @@ trait CGenDeliteOps extends CGenLoopsFat with GenericGenDeliteOps with CGenDelit
   }
 
   def emitHeapReset(results: List[String]) = {
-    val copyResults = results.map(_ + "->deepCopy();").mkString("\n")
+    val copyResults = results.map(_ + "->deepCopy(resourceInfo,idx);").mkString("\n")
     stream.println(s"""#ifdef DELITE_GC
-if (shouldGC) {
+if (true) {
 $copyResults
 DeliteHeapReset($resourceInfoSym->threadId);
 }
+#endif
+""")
+  }
+
+  def emitStartTempHeap() = {
+    stream.println(s"""#ifdef DELITE_GC
+StartTempHeap($resourceInfoSym->threadId);
+#endif
+""")
+  }
+
+  def emitStopTempHeap() = {
+    stream.println(s"""#ifdef DELITE_GC
+StopTempHeap($resourceInfoSym->threadId);
 #endif
 """)
   }

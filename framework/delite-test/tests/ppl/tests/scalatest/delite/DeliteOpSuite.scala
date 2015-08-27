@@ -4,6 +4,9 @@ import ppl.tests.scalatest._
 import ppl.delite.framework.datastructures._
 import scala.virtualization.lms.common.Record
 
+
+
+
 /* Tests the generated code functionality for Delite ops, using core Delite data structures.
 */
 
@@ -34,28 +37,39 @@ trait DeliteTestBase extends DeliteTestModule with DeliteTestOps with DeliteTest
 object DeliteMapRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteMap
 object DeliteMapSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteMap
 trait DeliteMap extends DeliteTestBase {
+  def newArray() = {
+    val vs = DeliteArrayBuffer.fromFunction(500){ i => Complex(0.0, 0.0); };
+    //val vs2 = vs map { e => Complex(e.real + 5.0, e.imag - 5.0) }
+    //vs
+  }
   def main() = {
 
-    val a = DeliteArray.fromFunction(1000){ i => 0.0 }
-    val a2 = a map { e => 10 }
-    collectArray(a2, 1000, i => 10)
-
-    val v = DeliteArrayBuffer.fromFunction(1000){ i => 0.0 }
-    val v2 = v map { e => 10 }
-    collectBuf(v2, 1000, i => 10)
-
-    val vs = DeliteArrayBuffer.fromFunction(500){ i => Complex(0.0, 0.0) }
+    val vs = DeliteArrayBuffer.fromFunction(500){ i => Complex(0.0, 0.0); }
     val vs2 = vs map { e => Complex(e.real + 5.0, e.imag - 5.0) }
     collectBuf(vs2, 500, i => Complex(5, -5))
 
-    val va = DeliteArrayBuffer.fromFunction(500){ i => Single(i) }
-    delite_test_println(va) //force creation of va
-    collectBuf(va.map(_.a), 500, i => i)
 
-    val ve = DeliteArrayBuffer.fromFunction(0){ i => 0 }
+
+    val ve = DeliteArrayBuffer.fromFunction(500){  i => 0 }
     val ve2 = ve map { e => 1 }
-    collectBuf(ve2, 0, i => 1)
-    
+    collectBuf(ve2, 500, i => 1)
+
+    // val vs = DeliteArrayBuffer.fromFunction(500){ i => Complex(0.0, 0.0); }
+
+
+    val vvs = DeliteArrayBuffer.fromFunction(500){ i => ve; }
+    val vvs2 = vvs map{ e=> vs } 
+    //val temp = DeliteArrayBuffer.fromFunction(500){ i => Complex(0.0, 0.0); }; e => vs} //DeliteArrayBuffer.fromFunction(50){ i => 0; } }
+    collectBuf(vvs2, 500, i => vs2)
+
+    // for(i <- 0 to 49){
+    //   println("New i:")
+    //   collectBuf(vvs2(i), 50, i => Complex(0, 0))
+    // }
+
+    val test = DeliteArray.fromFunction(100){ i=> val x = DeliteArray[Double](10); 5 }
+
+
     mkReport
   }
 }
@@ -290,21 +304,61 @@ object DeliteNestedMapSuiteRunner extends DeliteTestRunner with DeliteTestDSLApp
 trait DeliteNestedMap extends DeliteTestBase {
   def main() = {
     
+
+    // val a = DeliteArray.fromFunction(1){ i => i } map { e => 
+    //   DeliteArray.fromFunction(1000){ j => 0 } map { f => 10 + e }
+    // }
+    // collectArray(a(0), 1000, i => 10)
+
+    // val res = DeliteArrayBuffer.fromFunction(1){ i => i } map { e => 
+    //   DeliteArrayBuffer.fromFunction(1000){ j => 0 } map { f => 10 + e }
+    // }
+    // collectBuf(res(0), 1000, i => 10)
+
+    // val res2 = DeliteArrayBuffer.fromFunction(10){ i => i } map { e => 
+    //   DeliteArrayBuffer.fromFunction(1000){ j => 0 } map { f => 10 + e }
+    // }
+
+    ///////////////// ^ Original ^
+
     val a = DeliteArray.fromFunction(1){ i => i } map { e => 
-      DeliteArray.fromFunction(1000){ j => 0 } map { f => 10 + e }
+      DeliteArray.fromFunction(1000){ j => 0 } map { f => 31 + e }
     }
-    collectArray(a(0), 1000, i => 10)
+    println("Collect a(0)");
+    collectArray(a(0), 1000, i => 31)
 
-    val res = DeliteArrayBuffer.fromFunction(1){ i => i } map { e => 
-      DeliteArrayBuffer.fromFunction(1000){ j => 0 } map { f => 10 + e }
+    for (e <- a(0)) {
+      println(e)  
     }
-    collectBuf(res(0), 1000, i => 10)
-
-    val res2 = DeliteArrayBuffer.fromFunction(1){ i => i } map { e => 
-      DeliteArrayBuffer.fromFunction(0){ j => 0 } map { f => 10 + e }
-    }
-    collectBuf(res2(0), 0, i => 10)
     
+    // val b = DeliteArray.fromFunction(1){ i => i } map { e => 
+    //   DeliteArray.fromFunction(1000){ j => 0 } map { f => 11 + e }
+    // }
+
+    // println("Collect b(0)")
+    // collectArray(b(0), 1000, i => 11)
+
+    // val res = DeliteArrayBuffer.fromFunction(1){ i => i } map { e => 
+    //   DeliteArrayBuffer.fromFunction(1000){ j => 0 } map { f => 10 + e }
+    // }
+
+    // collectBuf(res(0), 1000, i => 10)
+
+    val res2 = DeliteArrayBuffer.fromFunction(10){ i => i } map { e => 
+      DeliteArrayBuffer.fromFunction(1000){ j => 0 } map { f => 11 + e}
+    }
+    println("Collect res2(0)")
+    collectBuf(res2(0), 1000, i => 11)
+    println("Collect res2(9)")
+    collectBuf(res2(9), 1000, i => 20)
+
+    println("Collect a(0)");
+    collectArray(a(0), 1000, i => 31)
+
+    for (e <- a(0)) {
+      println(e)  
+    }
+
     mkReport
   }
 }

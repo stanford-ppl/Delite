@@ -105,6 +105,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
   def emitAbstractFatLoopHeader(syms: List[Sym[Any]], rhs: AbstractFatLoop): Unit
   def emitAbstractFatLoopFooter(syms: List[Sym[Any]], rhs: AbstractFatLoop): Unit
   def emitHeapMark(): Unit
+  def emitStartTempHeap(): Unit
+  def emitStopTempHeap(): Unit
   def emitHeapReset(result: List[String]): Unit
   def castInt32(name: String): String
   def refNotEq: String
@@ -1005,6 +1007,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       val inputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
       val outputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileOutputStream])
 
+      emitStartTempHeap() // ADDED
+
       if (inputStreamVars.length > 0) {
         assert(inputStreamVars.length == 1, "ERROR: don't know how to handle multiple input streams at once")
         val streamSym = quote(inputStreamVars(0))+"_stream"
@@ -1048,11 +1052,13 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         streamSyms foreach { s => emitUnalteredMethodCall(s + ".close", List(resourceInfoSym)) }
       }
 
+      emitStopTempHeap() // ADDED
+      
       emitReturn("__act2")
     }
 
     // init and compute first element
-    emitMethod("init", actType, List(("__act",actType),(quote(op.v),remap(op.v.tp)),("isEmpty",remap(Manifest.Boolean)))++extraArgs) {
+    emitMethod("init", actType, List(("__act2",actType),(quote(op.v),remap(op.v.tp)),("isEmpty",remap(Manifest.Boolean)))++extraArgs) { // ADDED changed to 2
       if (op.body exists (b => loopBodyNeedsCombine(b) || loopBodyNeedsPostProcess(b))) {
         emitValDef("__act2", actType, createInstance(actType))
         emitKernelMultiHashInit(op, (symList zip op.body) collect { case (sym, elem: DeliteHashElem[_,_]) => (sym,elem) }, "__act2")
@@ -1114,9 +1120,12 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitReturn("__act2")
       } else {
         stream.println("if (!isEmpty) {")
-        emitMethodCall("process", List("__act",quote(op.v)))
+        emitMethodCall("process", List("__act2",quote(op.v))) // ADDED changed to 2
+
+        emitHeapReset(gcSyms(symList, op)) // ADDED
+
         stream.println("}")
-        emitReturn("__act")
+        emitReturn("__act2") // ADDED changed to 2
       }
     }
 
