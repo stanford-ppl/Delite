@@ -55,7 +55,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
   }
 
   if (Config.soaEnabled) {
-    appendTransformer(t) // AoS to SoA should go last, right before fusion
+    appendTraversal(t) // AoS to SoA should go last, right before fusion
   }
 
   private object StructBlock {

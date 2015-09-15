@@ -22,8 +22,8 @@ trait DeliteTransform extends LoweringTransform {
   /*
    * api for registering new transformers with Delite
    */
-  def prependTransformer(t: Traversal) { _transformers ::= t }
-  def appendTransformer(t: Traversal) { _transformers :+= t }
+  def prependTraversal(t: Traversal) { _traversals ::= t }
+  def appendTraversal(t: Traversal) { _traversals :+= t }
 
   /*
    * utilities

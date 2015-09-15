@@ -21,7 +21,7 @@ trait ForeachReduceTransformExp extends DeliteTransform
   self =>
 
   private val t = new ForeachReduceTransformer { val IR: self.type = self }
-  appendTransformer(t)
+  appendTraversal(t)
 
   /**
    * These IR nodes represent the spliced out components of the DeliteOpForeachReduce after transformation.
