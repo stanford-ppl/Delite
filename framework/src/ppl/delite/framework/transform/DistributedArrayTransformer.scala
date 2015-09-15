@@ -1,11 +1,10 @@
 package ppl.delite.framework.transform
 
-import scala.virtualization.lms.internal.FatBlockTraversal
+import scala.virtualization.lms.common.WorklistTransformer
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteFileReaderOpsExp, DeliteCollection, DeliteFileInputStream}
 import ppl.delite.framework.datastructures.{DeliteArrayOpsExp, DeliteStructsExp, DeliteArray}
 
-
-trait DistributedArrayTransformer extends ForwardPassTransformer { 
+trait DistributedArrayTransformer extends WorklistTransformer {
   val IR: DeliteOpsExp with DeliteArrayOpsExp with DeliteStructsExp
   import IR._
 
@@ -19,7 +18,7 @@ trait DistributedArrayTransformer extends ForwardPassTransformer {
   //checks for allowed IR nodes on distributed collections and tags them as distributed (forwards tags through IR)
   //any other IR node that consumes a distributed collection is considered illegal; throws error to user
   //also forwards tags for numa partitioning, but in this case nothing is considered illegal
-  override def transformStm(stm: Stm) = stm match {   
+  override def transformStm(stm: Stm) = stm match {
     //only multiloops can consume and produce distributed collections
     case TP(sym, d@Loop(s,v,b)) => markPartitioned(sym,v,d); super.transformStm(stm)
     //whitelist: the following ops are always allowed because necessary metadata is available on master

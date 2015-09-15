@@ -9,7 +9,6 @@ import scala.virtualization.lms.common._
 import generators.{DeliteGenTaskGraph}
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
 import ppl.delite.framework.{Config, DeliteApplication}
-import ppl.delite.framework.transform.ForwardPassTransformer
 import ppl.delite.framework.ops.DeliteOpsExp
 
 import scala.virtualization.lms.internal._
@@ -35,7 +34,7 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   val generators: List[Generator]
 
   // should be set by DeliteApplication if there are any transformations to be run before codegen
-  var transformers: List[WorklistTransformer{val IR: DeliteCodegen.this.IR.type}] = Nil
+  var traversals: List[Traversal{val IR: DeliteCodegen.this.IR.type}] = Nil
 
   // per kernel, used by DeliteGenTaskGraph
   var controlDeps: List[Sym[Any]] = _
@@ -112,32 +111,25 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     stream.println("]")
   }
 
-  def runTransformations[A:Manifest](b: Block[A]): Block[A] = {
+  def runTraversals[A:Manifest](b: Block[A]): Block[A] = {
     printlog("DeliteCodegen: applying transformations")
     var curBlock = b
-    printlog("  Transformers: " + transformers)
-    val maxTransformIter = 3 // TODO: make configurable
-    for (t <- transformers) {
+    printlog("  Transformers:\n\t" + traversals.map(_.name).mkString("\n\t"))
+
+    for (t <- traversals) {
       printlog("  Block before transformation: " + curBlock)
-      printlog("  map: " + t.nextSubst)
-      var i = 0
-      while (!t.isDone && i < maxTransformIter) {
-        printlog("iter: " + i)
-        curBlock = t.runOnce(curBlock)
-        i += 1
-      }
-      if (i == maxTransformIter) printlog("  warning: transformer " + t + " did not converge in " + maxTransformIter + " iterations")
+      curBlock = t.run(curBlock)
       printlog("  Block after transformation: " + curBlock)
     }
     printlog("DeliteCodegen: done transforming")
-    curBlock
+    (curBlock)
   }
 
   def emitBlockHeader(syms: List[Sym[Any]], appName: String) { }
   def emitBlockFooter(result: Exp[Any]) { }
 
   def emitSource[A:Manifest](args: List[Sym[_]], body: Block[A], className: String, stream: PrintWriter): List[(Sym[Any],Any)] = {
-    val y = runTransformations(body)
+    val y = runTraversals(body)
     val staticData = getFreeDataBlock(y)
 
     printlog("-- emitSource")

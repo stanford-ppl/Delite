@@ -23,7 +23,7 @@ trait RestageCodegen extends ScalaCodegen with Config {
   import IR._
 
   // should be set by DeliteRestage if there are any transformations to be run before codegen
-  var transformers: List[WorklistTransformer{val IR: RestageCodegen.this.IR.type}] = Nil
+  var traversals: List[Traversal{val IR: RestageCodegen.this.IR.type}] = Nil
 
   override def fileExtension = "scala"
 
@@ -64,9 +64,7 @@ trait RestageFatCodegen extends GenericFatCodegen with RestageCodegen {
     println("--RestageCodegen emitSource")
 
     var b = body
-    for (t <- transformers) {
-      b = t.run(b)
-    }
+    for (t <- traversals) { b = t.run(b) }
 
     val implStreamBody = new StringWriter()
     val implStream = new PrintWriter(implStreamBody)

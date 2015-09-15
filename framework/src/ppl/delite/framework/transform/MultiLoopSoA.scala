@@ -23,7 +23,7 @@ trait MultiloopSoATransformWithReduceExp extends MultiloopSoATransformExp {
 trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform with DeliteApplication
   with DeliteOpsExp with DeliteArrayFatExp { self =>
 
-  private val t = new ForwardPassTransformer {
+  private val t = new WorklistTransformer {
     val IR: self.type = self
     override def transformStm(stm: Stm): Exp[Any] = transformLoop(stm) match {
       case Some(newSym) => newSym
