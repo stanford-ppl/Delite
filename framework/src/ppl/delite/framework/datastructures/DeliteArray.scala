@@ -456,6 +456,11 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
     }
   }
 
+  //TODO: we should have a unified way of handling this, e.g., TypeTag[T] instead of Manifest[T]
+  object StructChild {
+    def unapply[T:Manifest](e: Exp[DeliteArray[T]]) = unapplyStructType[T]
+  }
+
   // We use this to disable rewrites on subtypes of DeliteArray[T] that are not SoA'd. For now this is only DeliteArraySeq.
   def isSoa[T:Manifest](da: Exp[DeliteArray[T]]): Boolean = isSoa(da.tp)
   def isSoa[T](m: Manifest[T]): Boolean = {
@@ -607,7 +612,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
     case d if d.erasure.getSimpleName == "DeliteArray" && Config.soaEnabled =>
       val elems = unapplyStructType(d.typeArguments(0))
       elems.map { case (tag: StructTag[T],fields) => (tag, fields.map(e => (e._1, darrayManifest(e._2)))) }
-    case _ => super.unapplyStructType
+    case _ => super.unapplyStructType[T]
   }
 }
 
@@ -643,8 +648,12 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenAtomicOp
   }
 
   override def emitAtomicWrite(sym: Sym[Any], d: AtomicWrite[_], trace: Option[String]) = d match {
+    case DeliteArrayUpdate(da, idx, x) if Config.intSize == "long" =>
+      emitValDef(sym, quote(da) + "(" + quote(idx) + ") = " + quote(x))
     case DeliteArrayUpdate(da, idx, x) =>
       emitValDef(sym, trace.getOrElse(quote(da)) + "(" + quote(idx) + ".toInt) = " + quote(x))
+
+     // serializable or ragged
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) if Config.generateSerializable || Config.intSize == "long" =>
       emitValDef(sym, quote(src) + ".copy(" + quote(srcPos) + "," +  trace.getOrElse(quote(dest)) + "," + quote(destPos) + "," + quote(len) + ")")
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
@@ -686,14 +695,6 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenAtomicOp
     case DeliteArrayApply(da, idx) if Config.intSize == "long" =>
       emitValDef(sym, quote(da) + "(" + quote(idx) + ")")
 
-    case DeliteArrayUpdate(da, idx, x) if Config.intSize == "long" =>
-      emitValDef(sym, quote(da) + "(" + quote(idx) + ") = " + quote(x))
-
-
-    // serializable or ragged
-    case DeliteArrayCopy(src,srcPos,dest,destPos,len) if Config.generateSerializable || Config.intSize == "long" =>
-      emitValDef(sym, quote(src) + ".copy(" + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
-
     // local and common
     case a@DeliteArrayNew(n,m,t) =>
       if (t.partition) stream.println("//partitioned array follows")
@@ -713,12 +714,6 @@ trait ScalaGenDeliteArrayOps extends BaseGenDeliteArrayOps with ScalaGenAtomicOp
 
     case DeliteArrayApply(da, idx) =>
       emitValDef(sym, quote(da) + "(" + quote(idx) + ".toInt)")
-
-    case DeliteArrayUpdate(da, idx, x) =>
-      emitValDef(sym, quote(da) + "(" + quote(idx) + ".toInt) = " + quote(x))
-
-    case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
-      emitValDef(sym, "System.arraycopy(" + quote(src) + "," + quote(srcPos) + ".toInt," + quote(dest) + "," + quote(destPos) + ".toInt," + quote(len) + ".toInt)")
 
     case DeliteArrayTake(lhs,n) =>
       emitValDef(sym, quote(lhs) + ".take(" + quote(n) + ")")
