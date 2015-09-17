@@ -177,7 +177,7 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
     case t if t.erasure == classOf[Tuple3[_,_,_]] => Some((classTag(t), List("_1","_2","_3") zip t.typeArguments))
     case t if t.erasure == classOf[Tuple4[_,_,_,_]] => Some((classTag(t), List("_1","_2","_3","_4") zip t.typeArguments))
     case t if t.erasure == classOf[Tuple5[_,_,_,_,_]] => Some((classTag(t), List("_1","_2","_3","_4","_5") zip t.typeArguments))
-    case _ => None
+    case _ => super.unapplyStructType[T]
   }
 
   def makeManifest[T](clazz: Class[T], typeArgs: List[Manifest[_]]) = new Manifest[T] {
