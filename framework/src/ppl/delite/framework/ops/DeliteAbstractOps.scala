@@ -1,7 +1,11 @@
 package ppl.delite.framework.ops
 
 import scala.reflect.SourceContext
+import scala.virtualization.lms.common.{Base, AtomicWrites}
+import scala.virtualization.lms.internal.FatExpressions
+
 import ppl.delite.framework.transform.TunnelingTransformer
+import ppl.delite.framework.datastructures.DeliteStructsExp
 
 trait AbstractIndices
 trait Indices extends AbstractIndices
@@ -65,11 +69,11 @@ trait AbstractIndicesOpsExp extends AbstractIndicesOps with DeliteStructsExp { t
   }).asInstanceOf[Exp[A]]
 }
 
-trait DeliteAbstractDefsExp extends BaseExp with AtomicWrites { self =>
+trait DeliteAbstractDefsExp extends AtomicWrites with FatExpressions { self =>
   case class AbstractFamily(name: String, var skip: Boolean = false)
 
   trait AbstractNode[A] extends Def[A] {
-    private val fm: AbstractFamily
+    val fm: AbstractFamily
     def family = fm.name
   }
 
@@ -82,7 +86,7 @@ trait DeliteAbstractDefsExp extends BaseExp with AtomicWrites { self =>
     val mB = manifest[B]
   }
 
-  abstract class AbstractAtomicWrite[A:Manifest](implicit fc: AbstractFamily) extends AbstractNode[A] with AtomicWrite[A] {
+  abstract class AbstractAtomicWrite[A:Manifest](implicit fc: AbstractFamily) extends AbstractNode[Unit] with AtomicWrite[A] {
     val fm = fc
     val mA = manifest[A]
   }
@@ -110,7 +114,7 @@ trait DeliteAbstractDefsExp extends BaseExp with AtomicWrites { self =>
     override def transformTP[A](lhs: Sym[A], rhs: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]] = rhs match {
       case d: AbstractNode[_] if d.family == fc.name =>
         printdbg("Transforming abstract node in family " + d.family)
-        Some(lower(d, f)(mtype(s.tp), ctx))
+        Some(lower(rhs, self.asInstanceOf[Transformer])(mtype(lhs.tp), ctx))
 
       case d: AbstractNode[_] =>
         printdbg("Ignoring abstract node in family " + d.family + " ( != " + fc.name + ")")
@@ -127,7 +131,7 @@ trait DeliteAbstractOpsExp extends DeliteAbstractDefsExp with AbstractIndicesOps
     type OpType <: DeliteAbstractOp[R]
 
     val v: Sym[Int] = copyOrElse(_.v)(fresh[Int]).asInstanceOf[Sym[Int]]
-    val i: Sym[LoopIndices] = copyOrElse(_.i)(loopIndicesEmpty(v)).asInstanceOf[Sym[LoopIndices]]
+    val i: Sym[LoopIndices] = copyOrElse(_.i)(loopIndicesEmpty(v).asInstanceOf[Sym[LoopIndices]])
 
     val mR = manifest[R]
     val fm = fc
