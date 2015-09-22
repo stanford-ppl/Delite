@@ -173,6 +173,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   /////////////////////
   // delite collection
 
+  def isDeliteArrayType(x: Manifest[_])(implicit ctx: SourceContext) = isSubtype(x.erasure, classOf[DeliteArray[_]])
   def isDeliteArray[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.tp.erasure,classOf[DeliteArray[A]])
   def asDeliteArray[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[DeliteArray[A]]]
 
@@ -385,6 +386,19 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
     case Reflect(e@DeliteArraySetActBuffer(da), u, es) => reflectMirrored(Reflect(DeliteArraySetActBuffer(f(da))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case Reflect(e@DeliteArrayForeach(in,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeliteArrayForeach(f(in),f(g))(mtype(e.mA)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case _ => super.mirror(e,f)
+  }
+
+  override def initProps[A](tp: Manifest[A], symData: PropertyMap[Datakey,Metadata], child: Option[SymbolProperties], index: Option[String])(implicit ctx: SourceContext): SymbolProperties = tp match {
+    case t if isDeliteArrayType(t) =>
+      val typeChild = initType(t.typeArguments.head)
+      val symChild = tryMeet(child, Some(typeChild), func = MetaTypeInit)
+      ArrayProperties(symChild, symData)
+    case _ => super.initProps(tp, symData, child, index)
+  }
+
+  override def isDataStructureType[T](tp: Manifest[T]): Boolean = tp match {
+    case t if isDeliteArrayType(t) => true
+    case _ => super.isDataStructureType(tp)
   }
 
   override def syms(e: Any): List[Sym[Any]] = e match {
