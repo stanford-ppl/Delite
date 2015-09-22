@@ -48,7 +48,7 @@ trait AbstractIndicesOpsExp extends AbstractIndicesOps with DeliteStructsExp { t
 
   // HACK: Allow index apply of LoopIndices before it's available
   override def field[T:Manifest](struct: Exp[Any], index: String)(implicit pos: SourceContext): Exp[T] = struct match {
-    case Def(LoopIndicesNew(f,i)) if index != "flat" && i.isEmpty => reflectPure(FieldApply[T](struct,index))
+    case Def(LoopIndicesNew(f,i)) if i.isEmpty => reflectPure(FieldApply[T](struct,index))
     case _ => super.field[T](struct, index)
   }
 
@@ -98,12 +98,15 @@ trait DeliteAbstractDefsExp extends AtomicWrites with FatExpressions { self =>
     sys.error(s"Don't know how to lower $e")
   }
 
+  // TODO: How to quickly check for convergence here?
   abstract class Implementer(implicit val fc: AbstractFamily) extends TunnelingTransformer {
     val IR: self.type
 
     // Prior to beginning implementation, set abstract family to "skip" abstract implementation
     // when possible, instead directly generating the implementation. Nodes are not required to
     // honor this setting, but it can potentially reduce the number of transformation passes
+    // Note that convergence is not generally guaranteed if an implementer can potentially generate
+    // nodes in its own abstract family
     override def preprocess[A:Manifest](b: Block[A]): Block[A] = {
       fc.skip = true
       super.preprocess(b)
@@ -127,23 +130,43 @@ trait DeliteAbstractDefsExp extends AtomicWrites with FatExpressions { self =>
 
 trait DeliteAbstractOpsExp extends DeliteAbstractDefsExp with AbstractIndicesOpsExp { this: DeliteOpsExp =>
 
+  // TODO: Should one inherit from the other? Should they have a common parent besides DeliteOp and AbstractNode?
   abstract class DeliteAbstractOp[R:Manifest](implicit fc: AbstractFamily) extends DeliteOp[R] with AbstractNode[R] {
     type OpType <: DeliteAbstractOp[R]
-
-    val v: Sym[Int] = copyOrElse(_.v)(fresh[Int]).asInstanceOf[Sym[Int]]
-    val i: Sym[LoopIndices] = copyOrElse(_.i)(loopIndicesEmpty(v).asInstanceOf[Sym[LoopIndices]])
-
+    val v: Sym[Int] = copyOrElse(_.v)(fresh[Int])
     val mR = manifest[R]
     val fm = fc
   }
   abstract class DeliteAbstractOp2[A:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteAbstractOp[R] {
+    type OpType <: DeliteAbstractOp2[A,R]
     val mA = manifest[A]
   }
   abstract class DeliteAbstractOp3[A:Manifest,B:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteAbstractOp2[A,R] {
+    type OpType <: DeliteAbstractOp3[A,B,R]
     val mB = manifest[B]
   }
   abstract class DeliteAbstractOp4[A:Manifest,B:Manifest,C:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteAbstractOp3[A,B,R] {
+    type OpType <: DeliteAbstractOp4[A,B,C,R]
     val mC = manifest[C]
   }
 
+  abstract class DeliteAbstractNestedOp[R:Manifest](implicit fc: AbstractFamily) extends DeliteOp[R] with AbstractNode[R] {
+    type OpType <: DeliteAbstractNestedOp[R]
+    val v: Sym[Int] = copyOrElse(_.v)(fresh[Int])
+    val vs: Sym[LoopIndices] = copyOrElse(_.vs)(loopIndicesEmpty(v).asInstanceOf[Sym[LoopIndices]])
+    val mR = manifest[R]
+    val fm = fc
+  }
+  abstract class DeliteAbstractNestedOp2[A:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteAbstractNestedOp[R] {
+    type OpType <: DeliteAbstractNestedOp2[A,R]
+    val mA = manifest[A]
+  }
+  abstract class DeliteAbstractNestedOp3[A:Manifest,B:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteAbstractNestedOp2[A,R] {
+    type OpType <: DeliteAbstractNestedOp3[A,B,R]
+    val mB = manifest[B]
+  }
+  abstract class DeliteAbstractNestedOp4[A:Manifest,B:Manifest,C:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteAbstractOp3[A,B,R] {
+    type OpType <: DeliteAbstractNestedOp4[A,B,C,R]
+    val mC = manifest[C]
+  }
 }

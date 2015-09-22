@@ -14,7 +14,7 @@ import scala.virtualization.lms.common._
 trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLoopMappingExp {
 
 
-  /* 
+  /*
    * Markers to tell Delite op code generation what kind of strategy to use.
    */
   trait DeliteParallelStrategy
@@ -50,7 +50,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
     but since a and b are the same, if we use case class equality:
     1) we end up with the same object z1
     2) we created a third object that creates a new loop but is immediately discarded
-    */ 
+    */
     // GROSS HACK ALERT
     // This is a hack to (among other things) enable objects with non-structural equality
     // (e.g. functions) as case class parameters. Otherwise cse won't work and we mirror either not
@@ -79,7 +79,7 @@ trait DeliteOpsExpIR extends DeliteReductionOpsExp with StencilExp with NestedLo
   abstract class DeliteOpLoop[A:Manifest](implicit ctx: SourceContext) extends AbstractLoop[A] with DeliteOp[A] {
     type OpType <: DeliteOpLoop[A]
     def copyBodyOrElse(e: => Def[A]): Def[A] = original.map(p=>mirrorLoopBody(p._2.asInstanceOf[OpType].body,p._1)).getOrElse(e)
-    final lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(fresh[Int]).asInstanceOf[Sym[Int]]
+    lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(fresh[Int]).asInstanceOf[Sym[Int]]
     val numDynamicChunks:Int = 0
   }
 
