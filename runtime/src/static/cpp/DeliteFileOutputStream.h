@@ -46,8 +46,8 @@ class DeliteFileOutputStream {
   public: 
     DeliteFileOutputStream(string path, bool sequential, bool append, const resourceInfo_t *resourceInfo) {
       numFiles = sequential ? 1 : resourceInfo->numThreads;
-      setFilePaths(path, numFiles);
       this->append = append;
+      setFilePaths(path, numFiles);
     }
 
     void writeLine(const resourceInfo_t *resourceInfo, string line) {

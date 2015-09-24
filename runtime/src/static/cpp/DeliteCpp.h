@@ -70,4 +70,8 @@ jobject JNIObjectMap_find(int key);
 void JNIObjectMap_insert(int key, jobject value);
 #endif
 
+// Macro for ordering ops (should go into lms/clikecodegen?
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
 #endif

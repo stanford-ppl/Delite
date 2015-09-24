@@ -878,6 +878,7 @@ trait CLikeGenDeliteArrayOps extends BaseGenDeliteArrayOps with CLikeGenDeliteSt
         stream.println("#ifndef __" + mString + "__")
         stream.println("#define __" + mString + "__")
         if(!isPrimitiveType(mArg)) stream.println("#include \"" + mArgString + ".h\"")
+        if (isArrayType(mArg)) emitDeliteArray(mArg, path, header)
         stream.println(deliteArrayString.replaceAll("__T__",mString).replaceAll("__TARG__",remapWithRef(mArg)))
         stream.println("#endif")
         stream.close()
@@ -1073,6 +1074,7 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenDeliteStruct wi
   override def emitDataStructures(path: String) = {
     //FIXME: some static C++ code currently depends on DeliteArray[String]
     dsTypesList += Pair(manifest[DeliteArray[String]], remap(manifest[DeliteArray[String]])) 
+    dsTypesList += Pair(manifest[DeliteArray[Double]], remap(manifest[DeliteArray[Double]]))
     super.emitDataStructures(path)
   }
 
