@@ -111,8 +111,10 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
   private def findFileOffset(start: Long) = {
     var offset = start
     var fileIdx = 0
+    fileOffset = 0
     while (offset >= files(fileIdx).getLen) {
-      offset -= files(fileIdx).getLen
+      fileOffset += files(fileIdx).getLen
+      offset -= fileOffset
       fileIdx += 1
     }
     (fileIdx, offset)
@@ -137,6 +139,7 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
     if (fileIdx >= files.length) throw new IndexOutOfBoundsException("Cannot open file at index: " + fileIdx + ", num files is: " + files.length)
     val path = files(fileIdx).getPath
     val fs = path.getFileSystem(conf)
+    fileName = path.getName
     fs.setVerifyChecksum(DeliteFileInputStream.CHECKSUM_ENABLED)
     fs.open(path)
   }
@@ -176,6 +179,7 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
       }
       else {
         filePos += 1
+        fileOffset = pos
         val nextByteStream = openInputStream(filePos)
         reader = new LineReader(nextByteStream, delimiter.getOrElse(null))
         length = reader.readLine(text)
@@ -213,6 +217,12 @@ class DeliteFileInputStream(conf: Configuration, files: Array[FileStatus], chars
     pos = 0
   }
 
+  private[this] var fileName: String = _
+  private[this] var fileOffset: Long = _
+
+  final def getFileLocation(): String = {
+    fileName + ":" + (pos - fileOffset)
+  }
 
 
   /////////////////////////////////////////////////////////////////////////////

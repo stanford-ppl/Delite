@@ -20,10 +20,10 @@ trait DeliteFileReaderOps extends Base with DeliteArrayBufferOps {
     def readBytesFlattened[A:Manifest](delimiter: Rep[DeliteArray[Byte]], paths: Rep[String]*)(f: Rep[DeliteArray[Byte]] => Rep[DeliteCollection[A]])(implicit pos: SourceContext) = dfr_readBytesFlattened(paths, delimiter, f)
 
     // This version allows reading from a stream in parallel starting at a particular offset and proceeding for a fixed number of bytes (used with streaming).
-    def readLinesChunk[A:Manifest](paths: Rep[String]*)(offset: Rep[Long], numBytes: Rep[Long])(f: Rep[String] => Rep[A])(implicit pos: SourceContext) = dfr_readLinesChunk(paths, unit(null), offset, numBytes, f)
+    def readLinesChunk[A:Manifest](paths: Rep[String]*)(offset: Rep[Long], numBytes: Rep[Long])(f: (Rep[String], Rep[String]) => Rep[A])(implicit pos: SourceContext) = dfr_readLinesChunk(paths, unit(null), offset, numBytes, f)
   }
   def dfr_readLines[A:Manifest](paths: Seq[Rep[String]], charset: Rep[String], f: Rep[String] => Rep[A])(implicit pos: SourceContext): Rep[DeliteArray[A]]
-  def dfr_readLinesChunk[A:Manifest](paths: Seq[Rep[String]], charset: Rep[String], offset: Rep[Long], numBytes: Rep[Long], f: Rep[String] => Rep[A])(implicit pos: SourceContext): Rep[DeliteArray[A]]
+  def dfr_readLinesChunk[A:Manifest](paths: Seq[Rep[String]], charset: Rep[String], offset: Rep[Long], numBytes: Rep[Long], f: (Rep[String], Rep[String]) => Rep[A])(implicit pos: SourceContext): Rep[DeliteArray[A]]
   def dfr_readLinesFlattened[A:Manifest](paths: Seq[Rep[String]], charset: Rep[String], f: Rep[String] => Rep[DeliteCollection[A]])(implicit pos: SourceContext): Rep[DeliteArray[A]]
   def dfr_readBytes[A:Manifest](paths: Seq[Rep[String]], delimiter: Rep[DeliteArray[Byte]], f: Rep[DeliteArray[Byte]] => Rep[A])(implicit pos: SourceContext): Rep[DeliteArray[A]]
   def dfr_readBytesFlattened[A:Manifest](paths: Seq[Rep[String]], delimiter: Rep[DeliteArray[Byte]], f: Rep[DeliteArray[Byte]] => Rep[DeliteCollection[A]])(implicit pos: SourceContext): Rep[DeliteArray[A]]
@@ -60,20 +60,23 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
   case class DeliteFileInputStreamSize(stream: Exp[DeliteFileInputStream]) extends Def[Long]
   def dfis_size(stream: Exp[DeliteFileInputStream])(implicit pos: SourceContext): Exp[Long] = reflectPure(DeliteFileInputStreamSize(stream))
 
-  case class DeliteOpFileReaderLines[A:Manifest](inputStream: Exp[DeliteFileInputStream], numBytes: Rep[Long], f: Exp[String] => Exp[A])(implicit pos: SourceContext) extends DeliteOpFileReaderI[A,DeliteArray[A],DeliteArray[A]] {
+  case class DeliteFileInputStreamGetFileLocation(stream: Exp[DeliteFileInputStream], idx: Exp[Int]) extends Def[String]
+  def dfis_getFileLocation(stream: Exp[DeliteFileInputStream], idx: Exp[Int])(implicit pos: SourceContext): Exp[String] = reflectPure(DeliteFileInputStreamGetFileLocation(stream, idx))
+
+  case class DeliteOpFileReaderLines[A:Manifest](inputStream: Exp[DeliteFileInputStream], numBytes: Rep[Long], f: (Exp[String], Exp[String]) => Exp[A])(implicit pos: SourceContext) extends DeliteOpFileReaderI[A,DeliteArray[A],DeliteArray[A]] {
     val size = copyTransformedOrElse(_.size)(numBytes.asInstanceOf[Exp[Int]]) //sketchy...
-    def func = idx => f(dfis_readLine(inputStream,idx))
+    def func = idx => f(dfis_readLine(inputStream,idx), dfis_getFileLocation(inputStream,idx))
     def finalizer(x: Exp[DeliteArray[A]]) = x
     override def alloc(len: Exp[Int]) = DeliteArray[A](len)
   }
   def dfr_readLines[A:Manifest](paths: Seq[Exp[String]], charset: Exp[String], f: Exp[String] => Exp[A])(implicit pos: SourceContext) = {
     val inputStream = dfis_new(paths, charset = charset)
-    reflectPure(DeliteOpFileReaderLines(inputStream, dfis_size(inputStream), f))
+    reflectPure(DeliteOpFileReaderLines(inputStream, dfis_size(inputStream), (a:Exp[String], b:Exp[String]) => f(a)))
   }
   def dfr_readLinesFlattened[A:Manifest](paths: Seq[Exp[String]], charset: Exp[String], f: Exp[String] => Exp[DeliteCollection[A]])(implicit pos: SourceContext) = {
     reflectPure(DeliteOpFileReaderFlatLines(paths, charset, f))
   }
-  def dfr_readLinesChunk[A:Manifest](paths: Seq[Rep[String]], charset: Rep[String], offset: Rep[Long], numBytes: Rep[Long], f: Rep[String] => Rep[A])(implicit pos: SourceContext) = {
+  def dfr_readLinesChunk[A:Manifest](paths: Seq[Rep[String]], charset: Rep[String], offset: Rep[Long], numBytes: Rep[Long], f: (Rep[String], Rep[String]) => Rep[A])(implicit pos: SourceContext) = {
     val inputStream = dfis_new(paths, charset = charset, offset = offset)
     reflectPure(DeliteOpFileReaderLines(inputStream, numBytes, f))
   }
@@ -173,6 +176,8 @@ trait DeliteFileReaderOpsExp extends DeliteFileReaderOps with DeliteArrayOpsExpO
     case DeliteFileInputStreamSize(stream) => dfis_size(f(stream))
     case Reflect(DeliteFileInputStreamSize(stream), u, es) => reflectMirrored(Reflect(DeliteFileInputStreamSize(f(stream)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(DeliteFileInputStreamClose(stream), u, es) => reflectMirrored(Reflect(DeliteFileInputStreamClose(f(stream)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
+    case DeliteFileInputStreamGetFileLocation(stream,idx) => dfis_getFileLocation(f(stream),f(idx))
+    case Reflect(DeliteFileInputStreamGetFileLocation(stream,idx), u, es) => reflectMirrored(Reflect(DeliteFileInputStreamGetFileLocation(f(stream), f(idx)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
 
@@ -219,6 +224,8 @@ trait ScalaGenDeliteFileReaderOps extends ScalaGenFat {
       emitValDef(sym, quote(stream) + ".size")
     case DeliteFileInputStreamClose(stream) =>
       emitValDef(sym, quote(stream) + ".close()")
+    case DeliteFileInputStreamGetFileLocation(stream,idx) =>
+      emitValDef(sym, quote(stream) + "_stream.getFileLocation")
     case _ => super.emitNode(sym, rhs)
   }
 
