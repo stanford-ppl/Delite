@@ -50,10 +50,10 @@ trait DeliteSimpleOpsExp extends DeliteFileReaderOpsExp {
    * @param rFunc    - the reduction function; (Block[A]) Must be associative.
    * @param init     - accumulator initialization - used only if mutable is true
    * @param zero     - zero value (not actually used to compute output result)
-   * @param filter   - optional filter function
+   * @param cFunc    - optional filter function
    * @param mutable  - mutable reduce (reduction is done by directly updating the accumulator)
    */
-  case class SimpleReduce[A:Manifest](ov: Sym[Int], orV: (Sym[A],Sym[A]), loopSize: Exp[Int], mFunc: Block[A], rFunc: Block[A], init: Block[A], zero: Block[A], fFunc: List[Block[Boolean]] = Nil, mutable: Boolean = false)(implicit ctx: SourceContext) extends DeliteOpLoop[A] {
+  case class SimpleReduce[A:Manifest](ov: Sym[Int], orV: (Sym[A],Sym[A]), loopSize: Exp[Int], mFunc: Block[A], rFunc: Block[A], init: Block[A], zero: Block[A], cFunc: List[Block[Boolean]] = Nil, mutable: Boolean = false)(implicit ctx: SourceContext) extends DeliteOpLoop[A] {
     type OpType <: SimpleReduce[A]
     override lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(ov).asInstanceOf[Sym[Int]]
     lazy val rV: (Sym[A],Sym[A]) = copyOrElse(_.rV)(orV)
@@ -64,7 +64,7 @@ trait DeliteSimpleOpsExp extends DeliteFileReaderOpsExp {
     // Zero is only used if the collection is empty or if the first iteration of the filter function is false
     lazy val body: Def[A] = copyBodyOrElse(DeliteReduceElem[A](
       func = this.mFunc,
-      cond = this.fFunc,
+      cond = this.cFunc,
       zero = this.zero,
       accInit = this.init,
       rV = this.rV,
@@ -86,6 +86,10 @@ trait DeliteSimpleOpsExp extends DeliteFileReaderOpsExp {
     def unerase[A:Manifest](op: SimpleReduce[_]): SimpleReduce[A] = op.asInstanceOf[SimpleReduce[A]]
   }
 
+
+  /**
+   * Abstract collect
+   */
   abstract class SimpleCollect[R:Manifest,C<:DeliteCollection[R]:Manifest] extends DeliteOpLoop[C] {
     type OpType <: SimpleCollect[R,C]
 
@@ -123,16 +127,16 @@ trait DeliteSimpleOpsExp extends DeliteFileReaderOpsExp {
    * Parallel map (includes map, zipWith, mapIndices)
    * @param ov        - symbol for loop iterator
    * @param loopSize  - size of loop (usually size of input collection)
-   * @param func      - map function  (anything that productes Exp[R])
+   * @param mFunc     - map function  (anything that productes Exp[R])
    */
-  case class SimpleMap[R:Manifest,C<:DeliteCollection[R]:Manifest](ov: Sym[Int], loopSize: Exp[Int], func: Block[R])(implicit ctx: SourceContext) extends SimpleCollect[R,C] {
+  case class SimpleMap[R:Manifest,C<:DeliteCollection[R]:Manifest](ov: Sym[Int], loopSize: Exp[Int], mFunc: Block[R])(implicit ctx: SourceContext) extends SimpleCollect[R,C] {
     type OpType <: SimpleMap[R,C]
 
     override lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(ov).asInstanceOf[Sym[Int]]
     val size: Exp[Int] = copyTransformedOrElse(_.size)(loopSize)
 
     lazy val body: Def[C] = copyBodyOrElse(DeliteCollectElem[R,C,C](
-      func = this.func,
+      func = this.mFunc,
       cond = Nil,
       par = dc_parallelization(allocVal, false),
       buf = this.buf,
@@ -144,8 +148,8 @@ trait DeliteSimpleOpsExp extends DeliteFileReaderOpsExp {
     val mC = manifest[C]
   }
   object SimpleMap {
-    def array[R:Manifest](ov: Sym[Int], size: Exp[Int], func: Block[R])(implicit ctx: SourceContext) = {
-      new SimpleMap[R,DeliteArray[R]](ov, size, func)
+    def array[R:Manifest](ov: Sym[Int], size: Exp[Int], mFunc: Block[R])(implicit ctx: SourceContext) = {
+      new SimpleMap[R,DeliteArray[R]](ov, size, mFunc)
     }
 
     def mirror[R:Manifest,C<:DeliteCollection[R]:Manifest](op: SimpleMap[R,C], f: Transformer)(implicit pos: SourceContext): SimpleMap[R,C] = op match {
@@ -161,18 +165,18 @@ trait DeliteSimpleOpsExp extends DeliteFileReaderOpsExp {
    * Parallel filter
    * @param ov       - symbol for loop iterator
    * @param loopSize - size of loop (usually size of input collection)
-   * @param cond     - filter condition
-   * @param func     - map function
+   * @param cFunc    - filter condition
+   * @param mFunc    - map function
    */
-  case class SimpleFilter[R:Manifest,C<:DeliteCollection[R]:Manifest](ov: Sym[Int], loopSize: Exp[Int], cond: Block[Boolean], func: Block[R])(implicit ctx: SourceContext) extends SimpleCollect[R,C] {
+  case class SimpleFilter[R:Manifest,C<:DeliteCollection[R]:Manifest](ov: Sym[Int], loopSize: Exp[Int], cFunc: Block[Boolean], mFunc: Block[R])(implicit ctx: SourceContext) extends SimpleCollect[R,C] {
     type OpType <: SimpleFilter[R,C]
 
     override lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(ov).asInstanceOf[Sym[Int]]
     val size: Exp[Int] = copyTransformedOrElse(_.size)(loopSize)
 
     lazy val body: Def[C] = copyBodyOrElse(DeliteCollectElem[R,C,C](
-      func = this.func,
-      cond = List(this.cond),
+      func = this.mFunc,
+      cond = List(this.cFunc),
       par = dc_parallelization(allocVal, true),
       buf = this.buf,
       numDynamicChunks = this.numDynamicChunks
@@ -183,8 +187,8 @@ trait DeliteSimpleOpsExp extends DeliteFileReaderOpsExp {
     val mC = manifest[C]
   }
   object SimpleFilter {
-    def array[R:Manifest](ov: Sym[Int], size: Exp[Int], cond: Block[Boolean], func: Block[R])(implicit ctx: SourceContext) = {
-      new SimpleFilter[R,DeliteArray[R]](ov, size, cond, func)
+    def array[R:Manifest](ov: Sym[Int], size: Exp[Int], cFunc: Block[Boolean], mFunc: Block[R])(implicit ctx: SourceContext) = {
+      new SimpleFilter[R,DeliteArray[R]](ov, size, cFunc, mFunc)
     }
 
     def mirror[R:Manifest,C<:DeliteCollection[R]:Manifest](op: SimpleFilter[R,C], f: Transformer)(implicit pos: SourceContext): SimpleFilter[R,C] = op match {
@@ -199,19 +203,19 @@ trait DeliteSimpleOpsExp extends DeliteFileReaderOpsExp {
    * Parallel flat map
    * @param ov       - symbol for loop iterator
    * @param loopSize - size of loop (usually size of input collection)
-   * @param func     - flatmap function - produces Exp[DeliteCollection[R]]
+   * @param fFunc    - flatmap function - produces Exp[DeliteCollection[R]]
   */
-  case class SimpleFlatMap[R:Manifest,C<:DeliteCollection[R]:Manifest](ov: Sym[Int], loopSize: Exp[Int], func: Block[DeliteCollection[R]])(implicit ctx: SourceContext) extends SimpleCollect[R,C] {
+  case class SimpleFlatMap[R:Manifest,C<:DeliteCollection[R]:Manifest](ov: Sym[Int], loopSize: Exp[Int], fFunc: Block[DeliteCollection[R]])(implicit ctx: SourceContext) extends SimpleCollect[R,C] {
     type OpType <: SimpleFlatMap[R,C]
 
     override lazy val v: Sym[Int] = copyTransformedOrElse(_.v)(ov).asInstanceOf[Sym[Int]]
     val size: Exp[Int] = copyTransformedOrElse(_.size)(loopSize)
 
     lazy val iF: Sym[Int] = copyTransformedOrElse(_.iF)(fresh[Int]).asInstanceOf[Sym[Int]]
-    lazy val eF: Sym[DeliteCollection[R]] = copyTransformedOrElse(_.eF)(fresh[DeliteCollection[R]](func.tp)).asInstanceOf[Sym[DeliteCollection[R]]]
+    lazy val eF: Sym[DeliteCollection[R]] = copyTransformedOrElse(_.eF)(fresh[DeliteCollection[R]](fFunc.tp)).asInstanceOf[Sym[DeliteCollection[R]]]
 
     lazy val body: Def[C] = copyBodyOrElse(DeliteCollectElem[R,C,C](
-      iFunc = Some(this.func),
+      iFunc = Some(this.fFunc),
       iF = Some(this.iF),
       sF = Some(reifyEffects(dc_size(this.eF))), //note: applying dc_size directly to iFunc can lead to iFunc being duplicated during mirroring
       eF = Some(this.eF),
@@ -226,8 +230,8 @@ trait DeliteSimpleOpsExp extends DeliteFileReaderOpsExp {
     val mC = manifest[C]
   }
   object SimpleFlatMap {
-    def array[R:Manifest](ov: Sym[Int], size: Exp[Int], func: Block[DeliteCollection[R]])(implicit ctx: SourceContext) = {
-      new SimpleFlatMap[R,DeliteArray[R]](ov,size,func)
+    def array[R:Manifest](ov: Sym[Int], size: Exp[Int], fFunc: Block[DeliteCollection[R]])(implicit ctx: SourceContext) = {
+      new SimpleFlatMap[R,DeliteArray[R]](ov,size,fFunc)
     }
     def mirror[R:Manifest,C<:DeliteCollection[R]:Manifest](op: SimpleFlatMap[R,C], f: Transformer)(implicit pos: SourceContext): SimpleFlatMap[R,C] = op match {
       case SimpleFlatMap(v,s,b) => new {override val original = Some(f,op)} with SimpleFlatMap(v,s,b)(op.mR,op.mC,pos)
