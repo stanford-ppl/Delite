@@ -181,8 +181,20 @@ cppDeliteArraystring *string_split(const resourceInfo_t *resourceInfo, const str
 }
 #endif // of __USE_STD_STRING__
 
+int64_t string_toLong(const string &str) {
+  return atol(str.c_str());
+}
+
 int32_t string_toInt(const string &str) {
   return atoi(str.c_str());
+}
+
+int16_t string_toShort(const string &str) {
+  return (int16_t)atoi(str.c_str());
+}
+
+int8_t string_toByte(const string &str) {
+  return (int8_t)atoi(str.c_str());
 }
 
 float string_toFloat(const string &str) {
