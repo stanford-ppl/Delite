@@ -46,7 +46,10 @@ std::shared_ptr<cppDeliteArraystring> string_split(const resourceInfo_t *resourc
 #else
 cppDeliteArraystring *string_split(const resourceInfo_t *resourceInfo, const string &str, const string &pattern, int32_t lim);
 #endif
+int64_t string_toLong(const string &str);
 int32_t string_toInt(const string &str);
+int16_t string_toShort(const string &str);
+int8_t string_toByte(const string &str);
 float string_toFloat(const string &str);
 double string_toDouble(const string &str);
 bool string_toBoolean(const string &str);
