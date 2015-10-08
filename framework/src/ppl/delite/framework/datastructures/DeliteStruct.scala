@@ -42,10 +42,6 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
     case _ => super.reflectEffect(d,u)
   }
 
-  case class NestedFieldUpdate[T:Manifest](struct: Exp[Any], fields: List[String], rhs: Exp[T]) extends Def[Unit]
-
-  override def field_update[T:Manifest](struct: Exp[Any], index: String, rhs: Exp[T]) = recurseFields(struct, List(index), rhs)
-
   //no shortcutting on mutable structs ...
 
   // TODO: clean up and check everything's safe
@@ -105,12 +101,6 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
     case _ => super.field(struct, index)
   }
 
-
-  private def recurseFields[T:Manifest](struct: Exp[Any], fields: List[String], rhs: Exp[T]): Exp[Unit] = struct match {
-    case Def(Reflect(Field(s,name),_,_)) => recurseFields(s, name :: fields, rhs)
-    case _ => reflectWrite(struct)(NestedFieldUpdate(struct, fields, rhs))
-  }
-
   // TODO: get rid of entirely or just use mirrorDef
   def mirrorDD[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Def[A] = (e match {
     case DIntTimes(a,b) =>
@@ -147,7 +137,6 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
 
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
     case s: DeliteStruct[_] => Nil
-    case NestedFieldUpdate(_,_,_) => Nil
     case FieldApply(s:Sym[Any],x) if _deliteStructAliases && (dc_data_field(s.tp) == x) => List(s)
     case _ => super.aliasSyms(e)
   }
@@ -155,7 +144,6 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
   override def containSyms(e: Any): List[Sym[Any]] = e match {
     case s: DeliteStruct[_] if _deliteStructAliases => s.elems.collect { case (k,v:Sym[Any]) => v }.toList
     case s: DeliteStruct[_] => Nil // ignore nested mutability for Structs: this is only safe because we rewrite mutations to atomic operations
-    case NestedFieldUpdate(_,_,_) => Nil
     case _ => super.containSyms(e)
   }
 
@@ -170,7 +158,6 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
   }
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case Reflect(NestedFieldUpdate(struct, fields, rhs), u, es) => reflectMirrored(Reflect(NestedFieldUpdate(f(struct), fields, f(rhs)), mapOver(f,u), f(es)))(mtype(manifest[A]), ctx)
     case Reflect(x@DIntTimes(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
     case Reflect(x@DIntPlus(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
     case Reflect(x@DIntMinus(a,b), u, es) => reflectMirrored(mirrorDD(e,f).asInstanceOf[Reflect[A]])
@@ -180,19 +167,17 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
 
-
-  object StructType { //TODO: we should have a unified way of handling this, e.g., TypeTag[T] instead of Manifest[T]
+  //TODO: we should have a unified way of handling this, e.g., TypeTag[T] instead of Manifest[T]
+  object StructChild {
     def unapply[T:Manifest](e: Exp[DeliteArray[T]]) = unapplyStructType[T]
-    def unapply[T:Manifest] = unapplyStructType[T]
   }
 
-  def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
-    case r: RefinedManifest[T] => Some(AnonTag(r), r.fields)
+  override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
     case t if t.erasure == classOf[Tuple2[_,_]] => Some((classTag(t), List("_1","_2") zip t.typeArguments))
     case t if t.erasure == classOf[Tuple3[_,_,_]] => Some((classTag(t), List("_1","_2","_3") zip t.typeArguments))
     case t if t.erasure == classOf[Tuple4[_,_,_,_]] => Some((classTag(t), List("_1","_2","_3","_4") zip t.typeArguments))
     case t if t.erasure == classOf[Tuple5[_,_,_,_,_]] => Some((classTag(t), List("_1","_2","_3","_4","_5") zip t.typeArguments))
-    case _ => None
+    case _ => super.unapplyStructType[T]
   }
 
   def makeManifest[T](clazz: Class[T], typeArgs: List[Manifest[_]]) = new Manifest[T] {
@@ -208,7 +193,7 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
 }
 
 
-trait ScalaGenDeliteStruct extends BaseGenStruct {
+trait ScalaGenDeliteStruct extends BaseGenStruct with ScalaGenAtomicOps {
   val IR: DeliteStructsExp with DeliteOpsExp
   import IR._
 
@@ -255,6 +240,12 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     "generated." + this.toString + appQualifier
   }
 
+  override def emitAtomicWrite(sym: Sym[Any], d: AtomicWrite[_], trace: Option[String]) = d match {
+    case FieldUpdate(struct, index, rhs) =>
+      emitValDef(sym, trace.getOrElse(quote(struct)) + "." + index + " = " + quote(rhs))
+    case _ => super.emitAtomicWrite(sym,d,trace)
+  }
+
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case Struct(tag, elems) if structSize(sym.tp) <= 32 => //bit packing
       emitValDef(sym, shiftOnString(elems, "Int"))
@@ -272,10 +263,6 @@ trait ScalaGenDeliteStruct extends BaseGenStruct {
     //   emitValDef(sym, shiftOffString(struct, index, 64))
     case FieldApply(struct, index) =>
       emitValDef(sym, quote(struct) + "." + index)
-    case FieldUpdate(struct, index, rhs) =>
-      emitValDef(sym, quote(struct) + "." + index + " = " + quote(rhs))
-    case NestedFieldUpdate(struct, fields, rhs) =>
-      emitValDef(sym, quote(struct) + "." + fields.reduceLeft(_ + "." + _) + " = " + quote(rhs))
     case _ => super.emitNode(sym, rhs)
   }
 
@@ -536,9 +523,15 @@ trait CLikeGenDeliteStruct extends BaseGenStruct with CLikeCodegen {
   }
 }
 
-trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps {
+trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps with CudaGenAtomicOps {
   val IR: DeliteStructsExp with DeliteOpsExp
   import IR._
+
+  override def emitAtomicWrite(sym: Sym[Any], d: AtomicWrite[_], trace: Option[String]) = d match {
+    case FieldUpdate(struct, index, rhs) =>
+      emitValDef(sym, trace.getOrElse(quote(struct)) + "." + index + " = " + quote(rhs))
+      printlog("WARNING: emitting field update: " + trace.getOrElse(quote(struct)) + "." + index)
+  }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case Struct(tag, elems) =>
@@ -561,11 +554,6 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps {
     case FieldApply(struct, index) =>
       emitValDef(sym, quote(struct) + "." + index)
       printlog("WARNING: emitting field access: " + quote(struct) + "." + index)
-    case FieldUpdate(struct, index, rhs) =>
-      emitValDef(sym, quote(struct) + "." + index + " = " + quote(rhs))
-      printlog("WARNING: emitting field update: " + quote(struct) + "." + index)
-    case NestedFieldUpdate(struct, fields, rhs) =>
-      emitValDef(sym, quote(struct) + "." + fields.reduceLeft(_ + "." + _) + " = " + quote(rhs))
     case _ => super.emitNode(sym, rhs)
   }
 
@@ -676,7 +664,7 @@ trait OpenCLGenDeliteStruct extends CLikeGenDeliteStruct with OpenCLCodegen {
   def emitStructDeclaration(path: String, name: String, elems: Seq[(String,Manifest[_])]) { }
 }
 
-trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
+trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen with CGenAtomicOps {
   val IR: DeliteStructsExp with DeliteOpsExp
   import IR._
 
@@ -686,6 +674,13 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
     case s if s <:< manifest[Record] && s != manifest[Nothing] && cppMemMgr =="refcnt" => wrapSharedPtr(deviceTarget.toString + structName(m))
     case s if s <:< manifest[Record] && s != manifest[Nothing] => deviceTarget.toString + structName(m)
     case _ => super.remap(m)
+  }
+
+  override def emitAtomicWrite(sym: Sym[Any], d: AtomicWrite[_], trace: Option[String]) = d match {
+    case FieldUpdate(struct, index, rhs) =>
+      stream.println(trace.getOrElse(quote(struct)) + "->" + index + " = " + quote(rhs) + ";")
+      printlog("WARNING: emitting field update: " + trace.getOrElse(quote(struct)) + "." + index)
+    case _ => super.emitAtomicWrite(sym,d,trace)
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
@@ -707,11 +702,6 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen {
     case FieldApply(struct, index) =>
       emitValDef(sym, quote(struct) + "->" + index)
       printlog("WARNING: emitting field access: " + quote(struct) + "." + index)
-    case FieldUpdate(struct, index, rhs) =>
-      stream.println(quote(struct) + "->" + index + " = " + quote(rhs) + ";")
-      printlog("WARNING: emitting field update: " + quote(struct) + "." + index)
-    case NestedFieldUpdate(struct, fields, rhs) =>
-      stream.println(quote(struct) + "->" + fields.reduceLeft(_ + "->" + _) + " = " + quote(rhs) + ";")
     case _ => super.emitNode(sym, rhs)
   }
 
