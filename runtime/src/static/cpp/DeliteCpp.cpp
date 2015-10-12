@@ -354,7 +354,7 @@ void cppDeepCopy(const resourceInfo_t *resourceInfo) { }
 
 float lpblas_dot8(const int8_t* x, const int8_t* y, long n) {
   const float MAX = 128;
-  const float DIVIDEDBY = 1.0 / MAX / MAX;
+  const float DIVIDEDBY = 1.0; /// MAX / MAX;
   const int n_remainder = n % 16;
   
   float rs[4];
@@ -384,7 +384,7 @@ float lpblas_dot8(const int8_t* x, const int8_t* y, long n) {
   _mm_storeu_ps(rs, ymm_aggregated_sum);
   float toreturn = DIVIDEDBY*(rs[0]+rs[1]+rs[2]+rs[3]);
   for(int i = 0; i < n_remainder; i++){
-    toreturn += x[i] * y[i] * DIVIDEDBY;
+    toreturn += (float)x[i] * (float)y[i] * DIVIDEDBY;
   }
   
   return toreturn;
