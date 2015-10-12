@@ -11,7 +11,7 @@ object CppCompile extends CCompile {
   override def ext = "cpp"
 
   protected def configFile = "CPP.xml"
-  protected def compileFlags = Array("-mavx")
+  protected def compileFlags = Array("-march=native -mtune=native")
   protected def linkFlags = Array()
   override protected def optionalFeatures = {
     config.features.collect {
