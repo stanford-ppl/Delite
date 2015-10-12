@@ -68,6 +68,8 @@ template<class K> bool delite_equals(K key1, K key2);
 template<class T> T cppDeepCopy(const resourceInfo_t *resourceInfo, T in);
 void cppDeepCopy(const resourceInfo_t *resourceInfo);
 
+float lpblas_dot8(const int8_t* x, const int8_t* y, long n);
+
 #ifndef __DELITE_CPP_STANDALONE__
 extern std::map<int,jobject> *JNIObjectMap;
 jobject JNIObjectMap_find(int key);

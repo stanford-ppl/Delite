@@ -352,7 +352,7 @@ template<class T> T cppDeepCopy(const resourceInfo_t *resourceInfo, T in) {
 }
 void cppDeepCopy(const resourceInfo_t *resourceInfo) { }
 
-inline float lpblas_dot8(const int8_t* x, const int8_t* y, long n) {
+float lpblas_dot8(const int8_t* x, const int8_t* y, long n) {
   const float MAX = 128;
   const float DIVIDEDBY = 1.0 / MAX / MAX;
   const int n_remainder = N % 16;
