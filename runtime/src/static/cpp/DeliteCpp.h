@@ -14,6 +14,7 @@
 #include <vector>
 #include <map>
 #include <sstream>
+#include "immintrin.h"
 #include "cppDeliteArraystring.h"
 #include "Config.h"
 #include "DeliteNamespaces.h"
