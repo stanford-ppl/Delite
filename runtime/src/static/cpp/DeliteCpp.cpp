@@ -277,7 +277,11 @@ template<class T> string convert_to_string(T in) {
 
 // Explicit instantiation of template functions to enable separate compilation
 template string convert_to_string<bool>(bool);
-template string convert_to_string<int8_t>(int8_t);
+template string convert_to_string<int8_t>(int8_t in) {
+  // this specialization is needed so C++ doesn't output a character rather
+  // than a number
+  return convert_to_string<int16_t>((int16_t) in);
+}
 template string convert_to_string<uint16_t>(uint16_t);
 template string convert_to_string<int16_t>(int16_t);
 template string convert_to_string<int32_t>(int32_t);
