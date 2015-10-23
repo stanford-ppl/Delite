@@ -4,7 +4,8 @@ import scala.virtualization.lms.common.{Base, BaseFatExp, LiftVariables, Record}
 import ppl.dsl.optiql._
 import ppl.delite.framework.datastructures.{DeliteArray, DeliteArrayBuffer}
 import java.io.PrintWriter
-import reflect.{RefinedManifest, SourceContext}
+import org.scala_lang.virtualized.RefinedManifest
+import org.scala_lang.virtualized.SourceContext
 
 trait InputReaderOps extends Base { this: OptiQL =>
 

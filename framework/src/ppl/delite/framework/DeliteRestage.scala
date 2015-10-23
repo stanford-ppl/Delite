@@ -2,7 +2,7 @@ package ppl.delite.framework
 
 import java.io.{FileWriter, File, PrintWriter}
 import scala.tools.nsc.io._
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 import scala.collection.mutable.ArrayBuffer
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}

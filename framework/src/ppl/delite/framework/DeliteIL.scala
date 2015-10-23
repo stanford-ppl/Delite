@@ -1,7 +1,7 @@
 package ppl.delite.framework
 
 import java.io._
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
 import ppl.delite.framework.datastructures._

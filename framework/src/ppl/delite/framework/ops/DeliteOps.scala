@@ -2,7 +2,7 @@ package ppl.delite.framework.ops
 
 import java.io.{FileWriter, File, PrintWriter, StringWriter}
 
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericCodegen, GenericFatCodegen, GenerationFailedException, CCodegen}
 import ppl.delite.framework.{Config, Util, DeliteApplication}

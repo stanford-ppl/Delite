@@ -2,7 +2,7 @@ package ppl.delite.framework.codegen.delite
 
 import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
 import collection.mutable.{ListBuffer,HashMap}
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 import scala.virtualization.lms.internal._
 import scala.virtualization.lms.common._
 

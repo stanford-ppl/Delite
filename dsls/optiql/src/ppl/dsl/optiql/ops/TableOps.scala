@@ -6,7 +6,7 @@ import ppl.delite.framework.ops.{DeliteCollection, DeliteCollectionOpsExp}
 import ppl.delite.framework.datastructures.{DeliteArray, DeliteArrayBuffer, DeliteStructsExp}
 import ppl.delite.framework.Util._
 import java.io.PrintWriter
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 
 trait TableOps extends Base { this: OptiQL =>
 

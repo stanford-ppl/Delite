@@ -2,7 +2,8 @@ package ppl.delite.framework.datastructures
 
 import java.io.{PrintWriter,StringWriter}
 import scala.virtualization.lms.common._
-import scala.reflect.{SourceContext, RefinedManifest}
+import org.scala_lang.virtualized.SourceContext
+import org.scala_lang.virtualized.RefinedManifest
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 import ppl.delite.framework.ops._
 import ppl.delite.framework.Util._

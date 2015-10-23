@@ -9,7 +9,7 @@
 
 import ppl.dsl.optiml._
 import scala.virtualization.lms.common.Record
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 
 // DenseVector, DenseMatrix
 object Example1Runner extends OptiMLApplicationRunner with Example1

@@ -14,7 +14,7 @@
 
 package ppl.delite.framework.ops
 
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericCodegen, GenericFatCodegen, GenerationFailedException, CCodegen}
 import scala.virtualization.lms.util.OverloadHack

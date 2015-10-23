@@ -5,7 +5,7 @@ import ppl.delite.framework.Config
 import scala.collection.mutable.HashMap
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.CCodegen
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 import java.io.{StringWriter, PrintWriter}
 
 

@@ -1,7 +1,7 @@
 package ppl.dsl.assignment2
 
 import virtualization.lms.common.{Variables, VariablesExp, BaseFatExp}
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 import ppl.delite.framework.ops._
 import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.datastructures._

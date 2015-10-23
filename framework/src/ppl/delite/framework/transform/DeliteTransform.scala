@@ -1,6 +1,6 @@
 package ppl.delite.framework.transform
 
-import reflect.{SourceContext}
+import org.scala_lang.virtualized.{SourceContext}
 import scala.virtualization.lms.common.{ObjectOpsExp,WorklistTransformer}
 import ppl.delite.framework.DeliteApplication
 

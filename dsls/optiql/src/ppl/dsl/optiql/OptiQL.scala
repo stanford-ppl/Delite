@@ -1,6 +1,6 @@
 package ppl.dsl.optiql
 
-import scala.reflect.RefinedManifest
+import org.scala_lang.virtualized.RefinedManifest
 
 import ops._
 import scala.virtualization.lms.common._

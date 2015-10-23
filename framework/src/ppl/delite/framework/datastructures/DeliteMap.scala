@@ -2,7 +2,8 @@ package ppl.delite.framework.datastructures
 
 import scala.virtualization.lms.common._
 import ppl.delite.framework.ops.{DeliteCollection, DeliteOpsExp}
-import reflect.{SourceContext, RefinedManifest}
+import org.scala_lang.virtualized.SourceContext
+import org.scala_lang.virtualized.RefinedManifest
 
 
 trait DeliteMap[K,V]

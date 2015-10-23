@@ -1,6 +1,7 @@
 package ppl.tests.scalatest.firstdsl
 
-import reflect.{Manifest, SourceContext}
+import reflect.Manifest
+import org.scala_lang.virtualized.SourceContext
 import scala.virtualization.lms.common.{Base, NumericOpsExp, FractionalOpsExp, PrimitiveOpsExp}
 import scala.virtualization.lms.common.ScalaGenBase
 import ppl.delite.framework.ops.{DeliteCollectionOpsExp,DeliteOpsExp}

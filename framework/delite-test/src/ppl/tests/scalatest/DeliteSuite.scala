@@ -14,7 +14,7 @@ import ppl.delite.runtime.graph.targets.Targets
 import java.io.{FileWriter, BufferedWriter}
 import java.io.{ File, Console => _, _ }
 import java.io.FileSystem
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 import scala.collection.mutable.{ ArrayBuffer, SynchronizedBuffer }
 
 trait DeliteTestConfig {

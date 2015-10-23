@@ -2,7 +2,8 @@ package ppl.delite.framework.datastructures
 
 import scala.virtualization.lms.common._
 import java.io.PrintWriter
-import reflect.{SourceContext, RefinedManifest}
+import org.scala_lang.virtualized.SourceContext
+import org.scala_lang.virtualized.RefinedManifest
 import ppl.delite.framework.Config
 import ppl.delite.framework.ops._
 import ppl.delite.framework.Util._

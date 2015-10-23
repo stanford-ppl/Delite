@@ -5,7 +5,8 @@ import ppl.dsl.optiql.{OptiQL, OptiQLExp}
 import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.datastructures.{DeliteArray, DeliteArrayBuffer, DeliteMap, DeliteStructsExp}
 import scala.virtualization.lms.common.{Base, EffectExp, ScalaGenFat, BaseFatExp}
-import scala.reflect.{RefinedManifest, SourceContext}
+import org.scala_lang.virtualized.SourceContext
+import org.scala_lang.virtualized.RefinedManifest
 
 trait QueryableOps extends Base { this: OptiQL =>
   

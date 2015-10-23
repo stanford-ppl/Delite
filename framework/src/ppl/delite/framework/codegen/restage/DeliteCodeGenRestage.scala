@@ -1,7 +1,8 @@
 package ppl.delite.framework.codegen.restage
 
 import java.io.{StringWriter,PrintWriter}
-import reflect.{SourceContext, RefinedManifest}
+import org.scala_lang.virtualized.SourceContext
+import org.scala_lang.virtualized.RefinedManifest
 import scala.virtualization.lms.internal._
 import scala.virtualization.lms.common._
 
