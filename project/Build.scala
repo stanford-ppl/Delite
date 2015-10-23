@@ -26,8 +26,8 @@ object DeliteBuild extends Build {
     libraryDependencies += "org.apache.hadoop" % "hadoop-hdfs" % "2.5.1",
 
     retrieveManaged := true,
-    scalacOptions += "-Yno-generic-signatures",
-    scalacOptions += "-Yvirtualize"
+    scalacOptions += "-Yno-generic-signatures"//,
+    //scalacOptions += "-Yvirtualize"
   )
 
   val virtBuildSettings = virtBuildSettingsBase ++ Seq(
