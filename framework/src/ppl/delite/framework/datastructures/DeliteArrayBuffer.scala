@@ -2,6 +2,7 @@ package ppl.delite.framework.datastructures
 
 import scala.virtualization.lms.common._
 import java.io.PrintWriter
+import org.scala_lang.virtualized.virtualize
 import org.scala_lang.virtualized.SourceContext
 import org.scala_lang.virtualized.RefinedManifest
 import ppl.delite.framework.Config
@@ -154,6 +155,7 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     darray_buffer_set_length(d, delite_int_plus(d.length, len))
   }
 
+  @virtualize
   protected def darray_buffer_ensureextra[A:Manifest](d: Exp[DeliteArrayBuffer[A]], extra: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
     val data = darray_buffer_raw_data(d)
     if (delite_less_than(delite_int_minus(data.length, d.length), extra)) {    
@@ -161,6 +163,7 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     }
   }
 
+  @virtualize
   protected def darray_buffer_realloc[A:Manifest](d: Exp[DeliteArrayBuffer[A]], minLen: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {  
     val oldData = darray_buffer_raw_data(d)
     val doubleLength = delite_int_times(oldData.length, unit(2))

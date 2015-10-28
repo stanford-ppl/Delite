@@ -3,6 +3,8 @@ package ppl.tests.scalatest.delite
 import ppl.tests.scalatest._
 import ppl.delite.framework.datastructures._
 
+import org.scala_lang.virtualized.virtualize
+
 object DeliteGPUCondRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteGPUCond
 object DeliteGPUCondSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPUCond
 trait DeliteGPUCond extends DeliteTestBase {
@@ -117,6 +119,7 @@ trait DeliteGPUObjectReduction extends DeliteTestBase {
 
 object DeliteGPUReferencePrimitive1Runner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteGPUReferencePrimitive1
 object DeliteGPUReferencePrimitive1SuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPUReferencePrimitive1
+@virtualize
 trait DeliteGPUReferencePrimitive1 extends DeliteTestBase {
   def main() = {
 
@@ -138,6 +141,7 @@ trait DeliteGPUReferencePrimitive1 extends DeliteTestBase {
 
 object DeliteGPUReferencePrimitive2Runner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteGPUReferencePrimitive2
 object DeliteGPUReferencePrimitive2SuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPUReferencePrimitive2
+@virtualize
 trait DeliteGPUReferencePrimitive2 extends DeliteTestBase {
   def main() = {
 

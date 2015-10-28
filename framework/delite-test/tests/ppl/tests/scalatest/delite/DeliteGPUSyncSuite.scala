@@ -3,6 +3,7 @@ package ppl.tests.scalatest.delite
 import ppl.tests.scalatest._
 import ppl.delite.framework.datastructures._
 
+import org.scala_lang.virtualized.virtualize
 
 object DeliteGPUSyncRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteGPUSync
 object DeliteGPUSyncSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPUSync
@@ -221,6 +222,7 @@ trait DeliteGPULoopSync9 extends DeliteTestBase {
 // test conditional mutators
 object DeliteGPULoopSync10Runner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteGPULoopSync10
 object DeliteGPULoopSync10SuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteGPULoopSync10
+@virtualize
 trait DeliteGPULoopSync10 extends DeliteTestBase {
   def main() = { 
     val v = DeliteArrayBuffer.fromFunction(5){ i => 2.5*i }.mutable

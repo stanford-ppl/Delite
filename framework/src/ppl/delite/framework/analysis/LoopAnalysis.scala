@@ -19,7 +19,11 @@ import ppl.delite.framework.ops.BaseDeliteOpsTraversalFat
 
 trait NestedLoopMappingExp extends Expressions {
 
-  case class LoopConstraint(d: Dimension => Boolean, b: Int => Boolean, s: Span => Boolean, w: Double = 1.0)
+  case class LoopConstraint(d: Dimension => Boolean, b: Int => Boolean, s: Span => Boolean, w: Double = 1.0) {
+    def and(c2: LoopConstraint) = infix_and(this, c2)
+    def or(c2: LoopConstraint) = infix_or(this, c2)
+    def withWeight(w: Double) = infix_withWeight(this, w)
+  }
 
   def infix_and(c1: LoopConstraint, c2: LoopConstraint) = LoopConstraint(c => c1.d(c) && c2.d(c),
                                                                          c => c1.b(c) && c2.b(c),
@@ -29,6 +33,8 @@ trait NestedLoopMappingExp extends Expressions {
                                                                         c => c1.s(c) || c2.s(c))
 
   def infix_withWeight(c: LoopConstraint, w: Double) = LoopConstraint(c.d, c.b, c.s, w)
+
+
 
   // Dimension Constraints
   abstract class Dimension
@@ -143,11 +149,16 @@ trait NestedLoopMappingAnalysis extends FatBlockTraversal with LoopFusionOpt wit
     }
   }
 
-  case class LoopInfo(sym: List[Sym[Any]], loop: Any, level: Int, nest: ArrayBuffer[LoopInfo])
+  case class LoopInfo(sym: List[Sym[Any]], loop: Any, level: Int, nest: ArrayBuffer[LoopInfo]) {
+    def size = infix_size(this)
+    def index = infix_index(this)
+    def elems = infix_elems(this)
+    def bodies = infix_bodies(this)
+  }
 
   var currentLevel: Int = 0
   var currentLoop: LoopInfo = null
-  val loopInfoRoot: LoopInfo = null
+  var loopInfoRoot: LoopInfo = null
 
   private def allLoops(st: LoopInfo): List[LoopInfo] = {
     List(st) ++ st.nest.flatMap(allLoops(_)).toList

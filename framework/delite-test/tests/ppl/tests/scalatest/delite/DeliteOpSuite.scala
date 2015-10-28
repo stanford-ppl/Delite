@@ -3,29 +3,33 @@ package ppl.tests.scalatest.delite
 import ppl.tests.scalatest._
 import ppl.delite.framework.datastructures._
 import scala.virtualization.lms.common.Record
+import scala.virtualization.lms.common.RecordOps
+import org.scala_lang.virtualized.virtualize
 
 /* Tests the generated code functionality for Delite ops, using core Delite data structures.
 */
 
-trait DeliteTestBase extends DeliteTestModule with DeliteTestOps with DeliteTestDSLApplication {
+@virtualize
+trait DeliteTestBase extends DeliteTestModule with DeliteTestOps with DeliteTestDSLApplication with RecordOps {
   
-  def Complex(re: Rep[Double], im: Rep[Double]) = new Record { val real = re; val imag = im }
+  def Complex(re: Rep[Double], im: Rep[Double]) = Record(real = re, imag = im )
 
   type Chars = Record { val a: Char; val b: Char; val c: Char }
-  def Chars(a0: Rep[Char], b0: Rep[Char], c0: Rep[Char]): Rep[Chars] = new Record { val a = a0; val b = b0; val c = c0 }
+  def Chars(a0: Rep[Char], b0: Rep[Char], c0: Rep[Char]): Rep[Chars] = Record ( a = a0, b = b0, c = c0 )
+    // new Record { val a = a0; val b = b0; val c = c0 }
 
-  def Single(a0: Rep[Int]) = new Record { val a = a0 }
+  def Single(a0: Rep[Int]) = Record ( a = a0 )
 
-  def collectArray[A:Manifest](arr: Rep[DeliteArray[A]], expectedLength: Rep[Int], expectedValues: Rep[Int] => Rep[A]) {
+  def collectArray[A:Manifest](arr: Rep[DeliteArray[A]], expectedLength: Rep[Int], expectedValues: Rep[Int] => Rep[A]) = { //TODO(trans) DeliteArray[Object]
     collect(arr.length == expectedLength)
-    for (i <- 0 until arr.length) {
+    for (i <- 0 until arr.length : Rep[Range]) {
       collect(arr(i) == expectedValues(i))
     }
   }
 
   def collectBuf[A:Manifest](buf: Rep[DeliteArrayBuffer[A]], expectedLength: Rep[Int], expectedValues: Rep[Int] => Rep[A]) {
     collect(buf.length == expectedLength)
-    for (i <- 0 until buf.length) {
+    for (i <- 0 until buf.length : Rep[Range]) {
       collect(buf(i) == expectedValues(i))
     }
   }
@@ -185,6 +189,7 @@ trait DeliteFilter extends DeliteTestBase {
 
 object DeliteForeachRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteForeach
 object DeliteForeachSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteForeach
+@virtualize
 trait DeliteForeach extends DeliteTestBase {
   def main() = {
 
@@ -249,7 +254,7 @@ trait DeliteGroupBy extends DeliteTestBase {
     val res3 = DeliteArrayBuffer.fromFunction(0){ i => i } groupBy { i => i }
     collect(res3.size == 0)
 
-    val res4 = DeliteArrayBuffer.fromFunction(1000*1000){ i => new Record{ val a = infix_/(i,1000); val b = i }} groupBy { _.a }
+    val res4 = DeliteArrayBuffer.fromFunction(1000*1000){ i => Record ( a = i / 1000, b = i )} groupBy { _.a }
     collect(res4.size == 1000)
     for (i <- 0 until res4.size) {
       collectBuf(res4(i).map(_.a), 1000, j => i)
@@ -277,7 +282,7 @@ trait DeliteGroupByReduce extends DeliteTestBase {
     val res2 = DeliteArrayBuffer.fromFunction(0){ i => i } groupByReduce(i => i, i => i, (a:Rep[Int],b:Rep[Int]) => a + b)
     collect(res2.size == 0)
 
-    val res3 = DeliteArrayBuffer.fromFunction(1000){ i => new Record{ val a = infix_/(i,10); val b = i }} groupByReduce(_.a, _.b, (a:Rep[Int],b:Rep[Int]) => a)
+    val res3 = DeliteArrayBuffer.fromFunction(1000){ i => Record( a = i / 10, b = i ) } groupByReduce(_.a, _.b, (a:Rep[Int],b:Rep[Int]) => a)
     collect(res3.size == 100)
     collectArray(res3.values, 100, i => i*10)
 
@@ -379,6 +384,7 @@ trait DeliteNestedMapReduce extends DeliteTestBase {
 
 object DeliteNestedForeachRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteNestedForeach
 object DeliteNestedForeachSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteNestedForeach
+@virtualize
 trait DeliteNestedForeach extends DeliteTestBase {
   def main() = {
 
@@ -404,6 +410,7 @@ trait DeliteNestedForeach extends DeliteTestBase {
 
 object DeliteIfThenElseRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteIfThenElse
 object DeliteIfThenElseSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteIfThenElse
+@virtualize
 trait DeliteIfThenElse extends DeliteTestBase {
   def main() = {
 
@@ -479,7 +486,7 @@ trait DeliteFileReader extends DeliteTestBase {
       DeliteArray.fromFunction(fields.length)(i => fields(i))
     }
     collect(a3.length == numLines)
-    for (i <- 0 until a3.length) {
+    for (i <- 0 until a3.length : Rep[Range]) {
       collectArray(a3(i), i+1, i => elem)
     }
 

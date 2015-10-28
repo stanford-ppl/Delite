@@ -14,6 +14,8 @@ import codegen.scala.TargetScala
 import codegen.Target
 import ops.DeliteOpsExp
 
+import org.scala_lang.virtualized.virtualize
+
 trait DeliteInteractive extends Base {
   implicit def staticArrayBuffer[A:Manifest](x: ArrayBuffer[A]): Rep[ArrayBuffer[A]]
 }
@@ -34,9 +36,11 @@ trait DeliteInteractiveRunner[R] extends DeliteApplication with DeliteInteractiv
   run
 }
 
-object DeliteSnippet {
-  def apply[A,B](b: => Unit) = new Scope[A,B,Unit](b)
-}
+//TODO(trans): 1. is this needed? -> the expansion only works if the type parameters of scopes are concrete types
+//@virtualize
+//object DeliteSnippet {
+//  def apply[A,B](b: => Unit) = new Scope[A,B,Unit](b)
+//}
 
 
 

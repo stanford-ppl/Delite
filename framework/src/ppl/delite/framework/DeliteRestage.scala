@@ -145,7 +145,7 @@ trait DeliteRestageRunner[R] extends DeliteApplication with DeliteRestageOpsExp 
     
     // curScopeId += 1    
     generator.emitHeader(stream, append)
-    generator.transformers = transformers        
+    generator.transformers = transformers.asInstanceOf[List[Nothing]]
     generator.emitSource(liftedMain, "Application", stream)     
     stream.println("}")
     stream.close()

@@ -104,7 +104,7 @@ trait LMSCodeGenRestage extends RestageFatCodegen {
     case ObjBrApply(f) => emitValDef(sym, "BufferedReader(" + quote(f) + ")")
     case ObjFrApply(s) => emitValDef(sym, "FileReader(" + quote(s) + ")")
     case ObjIntegerParseInt(s) => emitValDef(sym, "Integer.parseInt(" + quote(s) + ")")
-    case IntFloatValue(lhs) => emitValDef(sym, quote(lhs) + ".floatValueL()")
+    //case IntFloatValue(lhs) => emitValDef(sym, quote(lhs) + ".floatValueL()") //TODO(trans)
     case MathMax(x,y) => emitValDef(sym, "Math.max(" + quote(x) + ", " + quote(y) + ")")
     case MathLog(x) => emitValDef(sym, "Math.log(" + quote(x) + ")")
     case MathSqrt(x) => emitValDef(sym, "Math.sqrt(" + quote(x) + ")")
