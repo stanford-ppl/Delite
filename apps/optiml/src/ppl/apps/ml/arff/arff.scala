@@ -21,13 +21,13 @@ trait ARFF extends OptiMLApplication {
   }
   
   def mySchema(v: Rep[DenseVector[String]]) = 
-    new Record { 
-      val sepalLength = v(0).toDouble
-      val sepalWidth = v(1).toDouble
-      val petalLength = v(2).toDouble
-      val petalWidth = v(3).toDouble
-      val cls = v(4)
-    }
+    Record (
+      sepalLength = v(0).toDouble,
+      sepalWidth = v(1).toDouble,
+      petalLength = v(2).toDouble,
+      petalWidth = v(3).toDouble,
+      cls = v(4)
+    )
   
   def main() = {
     if (args.length < 1) printUsage

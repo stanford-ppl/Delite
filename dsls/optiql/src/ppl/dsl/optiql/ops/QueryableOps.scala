@@ -7,6 +7,7 @@ import ppl.delite.framework.datastructures.{DeliteArray, DeliteArrayBuffer, Deli
 import scala.virtualization.lms.common.{Base, EffectExp, ScalaGenFat, BaseFatExp}
 import org.scala_lang.virtualized.SourceContext
 import org.scala_lang.virtualized.RefinedManifest
+import org.scala_lang.virtualized.virtualize
 
 trait QueryableOps extends Base { this: OptiQL =>
   
@@ -45,6 +46,10 @@ trait QueryableOps extends Base { this: OptiQL =>
   }
   
   //Grouping
+  implicit class GroupingCls[K:Manifest, T:Manifest](g: Rep[Grouping[K, T]]) {
+    def key() = infix_key(g)
+  }
+
   def infix_key[K:Manifest, T:Manifest](g: Rep[Grouping[K, T]]) = queryable_grouping_key(g) 
 
   def queryable_where[T:Manifest](s: Rep[Table[T]], predicate: Rep[T] => Rep[Boolean]): Rep[Table[T]]
@@ -242,6 +247,7 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
     Table(darray_buffer_unsafe_result(buf), buf.length)
   }
 
+  @virtualize
   def queryable_join2[T1:Manifest, T2:Manifest, K:Manifest, R:Manifest](first: Exp[Table[T1]], firstKeySelector: Exp[T1] => Exp[K], 
     second: Exp[Table[T2]], secondKeySelector: Exp[T2] => Exp[K], resultSelector: (Exp[T1], Exp[T2]) => Exp[R]): Exp[Table[R]] = {
 

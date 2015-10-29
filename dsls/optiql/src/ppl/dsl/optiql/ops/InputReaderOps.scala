@@ -1,11 +1,12 @@
 package ppl.dsl.optiql.ops
 
-import scala.virtualization.lms.common.{Base, BaseFatExp, LiftVariables, Record}
+import scala.virtualization.lms.common._
 import ppl.dsl.optiql._
 import ppl.delite.framework.datastructures.{DeliteArray, DeliteArrayBuffer}
 import java.io.PrintWriter
 import org.scala_lang.virtualized.RefinedManifest
 import org.scala_lang.virtualized.SourceContext
+import org.scala_lang.virtualized.virtualize
 
 trait InputReaderOps extends Base { this: OptiQL =>
 
@@ -59,6 +60,7 @@ trait InputReaderImplOps { this: OptiQL =>
   def optiql_table_from_seq[T:Manifest](elems: Seq[Rep[T]]): Rep[Table[T]]
 }
 
+@virtualize
 trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift with OptiQLExp =>
 
   def optiql_table_record_parser_impl[T<:Record:Manifest](record: Rep[String], separator: Rep[String]) = {
@@ -73,7 +75,7 @@ trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift w
     }
     val elems = rm.fields
 
-    val fields = Range(0,elems.length) map { i =>
+    val fields:Seq[(String, Rep[Any])] = Range(0,elems.length) map { i =>
       val (field, tp) = elems(i)
       tp.toString match {
         case s if s.contains("String") => (field, record(i))

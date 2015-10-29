@@ -2,7 +2,8 @@ package ppl.dsl.optiql.ops
 
 import java.io.PrintWriter
 import scala.virtualization.lms.common.{ScalaGenBase, ScalaGenEffect, BaseExp, Base}
-import reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
+import org.scala_lang.virtualized.virtualize
 import ppl.dsl.optiql.{OptiQLCompiler, OptiQLLift, OptiQLExp, OptiQL}
 import ppl.delite.framework.datastructures.DeliteStructsExp
 
@@ -79,6 +80,7 @@ trait DateImplOps { this: OptiQL =>
   def optiql_date_ne(ld: Rep[Date], rd: Rep[Date]): Rep[Boolean]
 }
 
+@virtualize
 trait DateImplOpsStandard extends DateImplOps with DeliteStructsExp { this: OptiQLExp with OptiQLLift =>
 
   private def makeDate(year: Rep[Int], month: Rep[Int], day: Rep[Int]) = (year << 9) + (month << 5) + day
@@ -103,7 +105,13 @@ trait DateImplOpsStandard extends DateImplOps with DeliteStructsExp { this: Opti
   def optiql_date_ne(ld: Rep[Date], rd: Rep[Date]) = ld.toInt != rd.toInt
 
   //trick to eliminate structs of a single field without relying on struct unwrapping optimizations
+  implicit class InfixIntOpsCls(r:Rep[Int]) {
+    def toDate = infix_toDate(r)
+  }
   private def infix_toDate(d: Rep[Int]): Rep[Date] = d.asInstanceOf[Rep[Date]] //struct(classTag[Date], "value" -> d)
+  implicit class InfixDateOpsCls(r:Rep[Date]) {
+    def toInt = infix_toInt(r)
+  }
   private def infix_toInt(d: Rep[Date]): Rep[Int] = d.asInstanceOf[Rep[Int]] //field[Int](d, "value")
 
   /*override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {

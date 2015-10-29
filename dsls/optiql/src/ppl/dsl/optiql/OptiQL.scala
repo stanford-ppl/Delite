@@ -19,7 +19,7 @@ import ppl.delite.framework.transform.MultiloopSoATransformWithReduceExp
 import ppl.delite.framework.{DeliteInteractive, DeliteInteractiveRunner, DeliteRestageOps, DeliteRestageOpsExp, DeliteRestageRunner}
 import ppl.delite.framework.codegen.restage.{DeliteCodeGenRestage,LMSCodeGenRestage,TargetRestage}
 import ppl.tests.scalatest._
-
+import org.scala_lang.virtualized.virtualize
 
 /**
  * These are the lifted scala constructs that only operate on the Rep world. These are usually safe to mix in
@@ -40,6 +40,7 @@ trait OptiQLInteractiveRunner[R] extends OptiQLApplicationRunner with DeliteInte
 trait OptiQLLower extends OptiQLApplication with DeliteRestageOps
 trait OptiQLLowerRunner[R] extends OptiQLApplicationRunner with DeliteRestageRunner[R]
 
+@virtualize
 object OptiQL_ {
   def apply[R](b: => R) = new Scope[OptiQLLower, OptiQLLowerRunner[R], R](b)
 }
@@ -133,10 +134,13 @@ trait OptiQLCodeGenBase extends GenericFatCodegen {
 
     for (f <- dsDir.listFiles) {
       val outFile = new File(path + f.getName)
+      //val decoder:java.nio.charset.CharsetDecoder = io.Codec.UTF8.decoder.onMalformedInput(java.nio.charset.CodingErrorAction.REPLACE)
+      //val noutFile = scala.io.Source.fromFile(path)(decoder)
       if(f.isDirectory) {
         emitDSHelper(path + f.getName + s, dsRoot + s + f.getName)
       } else {
         val out = new BufferedWriter(new FileWriter(outFile))
+//        val out = new java.io.PrintWriter(outFile, "UTF-8")
         for (line <- scala.io.Source.fromFile(f).getLines) {
           out.write(dsmap(line) + "\n")
         }

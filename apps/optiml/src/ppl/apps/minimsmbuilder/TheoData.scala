@@ -75,12 +75,12 @@ trait TheoData extends OptiMLApplication {
     val t2 = x.G
     val t3 = x.numAtoms
     val t4 = x.numAtomsWithPadding
-    new Record {
-      val XYZData = t1(n)
-      val G = t2(n)
-      val numAtoms = t3
-      val numAtomsWithPadding = t4
-    }
+    Record (
+      XYZData = t1(n),
+      G = t2(n),
+      numAtoms = t3,
+      numAtomsWithPadding = t4
+    )
   }
   /*
   def set(x: Rep[Theo], index: Rep[IndexVector], value: Rep[Theo]): Rep[Theo] = new Record {

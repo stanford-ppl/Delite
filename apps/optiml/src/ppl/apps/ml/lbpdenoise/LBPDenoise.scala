@@ -16,19 +16,19 @@ object LBPDenoiseRunner extends OptiMLApplicationRunner with LBPDenoise
 
 trait LBPData extends OptiMLApplication {
   object DenoiseVertexData {
-    def apply(_id: Rep[Int], _b: Rep[DenseVector[Double]], _p: Rep[DenseVector[Double]]) = new Record {
-      val id = _id
-      val belief = _b
-      val potential = _p
-    }
+    def apply(_id: Rep[Int], _b: Rep[DenseVector[Double]], _p: Rep[DenseVector[Double]]) = Record (
+      id = _id,
+      belief = _b,
+      potential = _p
+    )
   }
   type DenoiseVertexData = Record{val id: Int; val belief: DenseVector[Double]; val potential: DenseVector[Double]}
   
   object DenoiseEdgeData {
-    def apply(_m: Rep[DenseVector[Double]], _oM: Rep[DenseVector[Double]]) = new Record {
-      val message = _m
-      val oldMessage = _oM
-    }  
+    def apply(_m: Rep[DenseVector[Double]], _oM: Rep[DenseVector[Double]]) = Record (
+      message = _m,
+      oldMessage = _oM
+    )
   }
   type DenoiseEdgeData = Record{val message: DenseVector[Double]; val oldMessage: DenseVector[Double]}  
 }

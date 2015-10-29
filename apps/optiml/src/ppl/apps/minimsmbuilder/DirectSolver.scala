@@ -59,26 +59,26 @@ trait DirectSolver extends OptiMLApplication {
 
   type QuarticResult = Record{val r1: Double; val r2: Double; val r3: Double; val r4: Double; val nr12: Int; val nr34: Int}
   def NewQuarticResult(_r1: Rep[Double], _r2: Rep[Double], _r3: Rep[Double], _r4: Rep[Double], _nr12: Rep[Int], _nr34: Rep[Int], _ans: Rep[Int]) = {
-    new Record {
-      val r1 = _r1
-      val r2 = _r2
-      val r3 = _r3
-      val r4 = _r4
-      val nr12 = _nr12
-      val nr34 = _nr34
-      val ans = _ans
-    }
+    Record (
+      r1 = _r1,
+      r2 = _r2,
+      r3 = _r3,
+      r4 = _r4,
+      nr12 = _nr12,
+      nr34 = _nr34,
+      ans = _ans
+    )
   }
   
   type CubicResult = Record{val x1: Double; val x2: Double; val x3: Double; val nr: Int}
   def NewCubicResult(_x1: Rep[Double], _x2: Rep[Double], _x3: Rep[Double], _nr: Rep[Int]) = {
-    new Record {
-      val x1 = _x1
-      val x2 = _x2
-      val x3 = _x3
-      val nr = _nr
-    }
-  }                             
+    Record (
+      x1 = _x1,
+      x2 = _x2,
+      x3 = _x3,
+      nr = _nr
+    )
+  }
 
   def quarticEquationSolveExact(d0: Rep[Double], d1: Rep[Double], d2: Rep[Double], d3: Rep[Double], d4: Rep[Double]): Rep[QuarticResult] = {                                                          
     val a3 = d3/d4

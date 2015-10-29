@@ -6,15 +6,15 @@ import ppl.dsl.optiml._
 object GraphExampleRunner extends OptiMLApplicationRunner with GraphExample
 trait GraphExample extends OptiMLApplication { 
   
-  def vertexData(x: Rep[String], n: Rep[Int]) = new Record {
-    val count = n
-    val name = x
-  }
+  def vertexData(x: Rep[String], n: Rep[Int]) = Record (
+    count = n,
+    name = x
+  )
   type VD = Record{val count: Int; val name: String}
   
-  def edgeData(x: Rep[String]) = new Record {
-    val name = x
-  }  
+  def edgeData(x: Rep[String]) = Record (
+    name = x
+  )
   type ED = Record{val name: String}
   
   def main() = {
