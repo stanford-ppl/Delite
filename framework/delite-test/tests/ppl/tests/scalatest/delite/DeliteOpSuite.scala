@@ -446,6 +446,7 @@ trait DeliteHorizontalElems extends DeliteTestBase {
     var i = 0
     while (i < 10) { //small collection sizes, test with multiple threads!
       val size = i
+      println("NINJA")
       //each line should fuse vertically (along with v), and all the lines should fuse horizontally
       val v = DeliteArrayBuffer.fromFunction(size){ j => 1 }
       collect(v.reduce( _ + _ )(0) == size)

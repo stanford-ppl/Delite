@@ -168,7 +168,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val name = "test.tmp"
     // Changed mkReport to directly write to a file instead of trying to capture the output stream here.
     // This is to make the C target testing work, because native C stdout is not captured by this.
-    val screenOrVoid = if (verbose) System.out else new PrintStream(new ByteArrayOutputStream())
+    val screenOrVoid = System.out //if (verbose) System.out else new PrintStream(new ByteArrayOutputStream())
     Console.withOut(screenOrVoid) {
       println("test output for: " + app.toString)
       ppl.delite.runtime.Delite.embeddedMain(args, app.staticDataMap)
@@ -235,6 +235,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
       val passed = results(i).toLowerCase() == "true"
       if (verbose)
         if (passed) println("PASSED") else println("FAILED")
+      if (!passed) println("PASSED") else println("FAILED") //always show failned conditions
       assert(passed)
     }
   }
