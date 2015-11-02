@@ -56,9 +56,13 @@ trait OptiCollections extends OptiMLApplication {
   def map_filter[K:Manifest,V:Manifest](x: Rep[CMap[K,V]], f: Rep[(K,V)] => Rep[Boolean]): Rep[CMap[K,V]]
   def map_find[K:Manifest,V:Manifest](x: Rep[CMap[K,V]], f: Rep[(K,V)] => Rep[Boolean]): Rep[(K,V)]
 
+  implicit class TupleKVCls[K:Manifest,V:Manifest](x: Rep[(K,V)]) {
+    def key = infix_key(x)
+    def value = infix_value(x)
+  }
+
   def infix_key[K:Manifest,V:Manifest](x: Rep[(K,V)]): Rep[K]
   def infix_value[K:Manifest,V:Manifest](x: Rep[(K,V)]): Rep[V]
-
 }
 
 trait OptiCollectionsExp extends OptiCollections with OptiMLApplicationRunner {

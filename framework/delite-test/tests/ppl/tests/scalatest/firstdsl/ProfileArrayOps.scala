@@ -7,6 +7,7 @@ import scala.virtualization.lms.common.{Base, NumericOpsExp, FractionalOpsExp, P
 import scala.virtualization.lms.common.ScalaGenBase
 import ppl.delite.framework.ops.{DeliteCollectionOpsExp,DeliteOpsExp}
 import ppl.delite.framework.ops.DeliteCollection
+import ppl.tests.scalatest.firstdsl.datastruct.scala.ProfileArray
 
 trait ProfileArrayOps extends Base {
   // a simple way of enumerating choices in our syntax
@@ -28,7 +29,7 @@ trait ProfileArrayOps extends Base {
   def profile_length(x: Rep[ProfileArray]): Rep[Int]
 }
 
-@virtualize
+//@virtualize
 trait ProfileArrayOpsExp extends ProfileArrayOps with NumericOpsExp with PrimitiveOpsExp
   with FractionalOpsExp with DeliteCollectionOpsExp with DeliteOpsExp {
 

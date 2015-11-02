@@ -12,6 +12,6 @@ trait Types { this: OptiQL =>
 
   trait Date
 
-  type Result = Record
+  type Result = Record //TODO(trans): this does not work with macros: Result(...) does not forward to Record(...)
 
 }

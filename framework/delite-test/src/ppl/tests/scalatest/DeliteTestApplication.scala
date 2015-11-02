@@ -7,7 +7,7 @@ import scala.virtualization.lms.common.Record
 object DeliteTestMainRunner extends DeliteTestDSLApplicationRunner with DeliteTestFunction
 object DeliteTestFunctionRunner extends DeliteTestDSLApplicationRunner with DeliteTestFunction {
   override def functionName = "DeliteTestFunction"
-  registerFunction(testFunction _) 
+  registerFunction(testFunction _)
 }
 
 trait DeliteTestFunction extends DeliteTestDSLApplication {

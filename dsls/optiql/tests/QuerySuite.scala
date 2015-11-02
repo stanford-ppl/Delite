@@ -2,9 +2,11 @@ package ppl.tests.scalatest.dsl.optiql
 
 import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
 import ppl.tests.scalatest._
-import scala.virtualization.lms.common.Record
+import scala.virtualization.lms.common.{Record, RecordOps}
+import org.scala_lang.virtualized.virtualize
 
-trait TestRecord extends OptiQLApplication {
+@virtualize
+trait TestRecord extends OptiQLApplication with RecordOps {
 
   type Item = Record {
     val id: Int
@@ -33,9 +35,14 @@ trait TestRecord extends OptiQLApplication {
     abs(lhs - rhs) < .001
   }
 
+  implicit class Approx(lhs: Rep[Double]) {
+    def approx(rhs: Rep[Double]) = infix_approx(lhs, rhs)
+  }
+
 }
 
 object QueryableSelectRunner extends DeliteTestRunner with OptiQLApplicationRunner with QueryableSelectTest
+@virtualize
 trait QueryableSelectTest extends DeliteTestModule with OptiQLApplication with TestRecord {
   def main() = {
     val scalarResult = items Select (item => item.id)
@@ -64,6 +71,7 @@ trait QueryableSelectTest extends DeliteTestModule with OptiQLApplication with T
 }
 
 object QueryableWhereRunner extends DeliteTestRunner with OptiQLApplicationRunner with QueryableWhereTest
+@virtualize
 trait QueryableWhereTest extends DeliteTestModule with OptiQLApplication with TestRecord {
   def main() = {
     val result = items Where(_.status == 'N') Select(item => Record (
@@ -86,6 +94,7 @@ trait QueryableWhereTest extends DeliteTestModule with OptiQLApplication with Te
 }
 
 object QueryableReduceRunner extends DeliteTestRunner with OptiQLApplicationRunner with QueryableReduceTest
+@virtualize
 trait QueryableReduceTest extends DeliteTestModule with OptiQLApplication with TestRecord {
   def main() = {
     val sumQuantity = items Sum(_.quantity)
@@ -104,6 +113,7 @@ trait QueryableReduceTest extends DeliteTestModule with OptiQLApplication with T
 }
 
 object QueryableGroupByReduceRunner extends DeliteTestRunner with OptiQLApplicationRunner with QueryableGroupByReduceTest
+@virtualize
 trait QueryableGroupByReduceTest extends DeliteTestModule with OptiQLApplication with TestRecord {
   def main() = {
     val res1 = items GroupBy(_.status) Select(g => Record (
@@ -138,6 +148,7 @@ trait QueryableGroupByReduceTest extends DeliteTestModule with OptiQLApplication
 }
 
 object QueryableGroupByRunner extends DeliteTestRunner with OptiQLApplicationRunner with QueryableGroupByTest
+@virtualize
 trait QueryableGroupByTest extends DeliteTestModule with OptiQLApplication with TestRecord {
   def main() = {
     val res = items GroupBy(_.status) SelectMany(g => g Select(_.quantity))
@@ -151,6 +162,7 @@ trait QueryableGroupByTest extends DeliteTestModule with OptiQLApplication with 
 }
 
 object QueryableSortRunner extends DeliteTestRunner with OptiQLApplicationRunner with QueryableSortTest
+@virtualize
 trait QueryableSortTest extends DeliteTestModule with OptiQLApplication with TestRecord {
   def main() = {
     val sort1 = items OrderBy(_.id)
@@ -174,6 +186,7 @@ trait QueryableSortTest extends DeliteTestModule with OptiQLApplication with Tes
 }
 
 object QueryableJoinRunner extends DeliteTestRunner with OptiQLApplicationRunner with QueryableJoinTest
+@virtualize
 trait QueryableJoinTest extends DeliteTestModule with OptiQLApplication with TestRecord {
   def main() = {
     val res = items Join(items2) WhereEq(_.id, _.id) Select((a,b) => Record (
@@ -189,7 +202,6 @@ trait QueryableJoinTest extends DeliteTestModule with OptiQLApplication with Tes
     mkReport
   }
 }
-
 
 class QuerySuite extends DeliteSuite {
   def testSelect() { compileAndTest(QueryableSelectRunner) }

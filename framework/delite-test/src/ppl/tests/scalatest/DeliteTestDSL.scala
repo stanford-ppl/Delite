@@ -36,14 +36,14 @@ trait DeliteTestDSLScalaOpsPkg extends Base
 trait DeliteTestDSLScalaOpsPkgExp extends DeliteTestDSLScalaOpsPkg with DSLOpsExp
   with EqualExp with IfThenElseExp with VariablesExp with WhileExp with TupleOpsExp with TupledFunctionsExp
   with ImplicitOpsExp with OrderingOpsExp with StringOpsExp with RangeOpsExp with IOOpsExp
-  with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExpOpt with MiscOpsExp 
+  with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExpOpt with MiscOpsExp
   with ListOpsExp with SeqOpsExp with MathOpsExp with CastingOpsExp with SetOpsExp with ObjectOpsExp
   with SynchronizedArrayBufferOpsExp with HashMapOpsExp with IterableOpsExp with ArrayBufferOpsExp with ExceptionOpsExp
 
 trait DeliteTestDSLScalaCodeGenPkg extends ScalaGenDSLOps
   with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenTupleOps with ScalaGenTupledFunctions
   with ScalaGenImplicitOps with ScalaGenOrderingOps with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps
-  with ScalaGenArrayOps with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps 
+  with ScalaGenArrayOps with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps
   with ScalaGenListOps with ScalaGenSeqOps with ScalaGenMathOps with ScalaGenCastingOps with ScalaGenSetOps with ScalaGenObjectOps
   with ScalaGenSynchronizedArrayBufferOps with ScalaGenHashMapOps with ScalaGenIterableOps with ScalaGenArrayBufferOps with ScalaGenExceptionOps
   { val IR: DeliteTestDSLScalaOpsPkgExp  }
@@ -77,7 +77,7 @@ trait DeliteTestDSL extends DeliteTestDSLScalaOpsPkg with StructOps with DeliteA
   this: DeliteTestDSLApplication =>
 }
 
-trait DeliteTestDSLCompiler extends DeliteTestDSL 
+trait DeliteTestDSLCompiler extends DeliteTestDSL
   with DeliteArrayCompilerOps with DeliteArrayBufferCompilerOps {
   this: DeliteTestDSLApplication with DeliteTestDSLExp =>
 }
@@ -95,7 +95,7 @@ trait DeliteTestDSLExp extends DeliteTestDSLCompiler with DeliteTestDSLScalaOpsP
       case _:TargetCpp => new DeliteTestDSLCodeGenC{val IR: DeliteTestDSLExp.this.type = DeliteTestDSLExp.this}
       case _ => sys.error("DeliteTestDSL does not support this target")
     }
-  }  
+  }
 }
 
 
@@ -110,26 +110,25 @@ trait DeliteTestDSLCodeGenBase extends GenericFatCodegen with SchedulingOpt {
 trait DeliteTestDSLCodeGenScala extends DeliteTestDSLCodeGenBase with DeliteTestDSLScalaCodeGenPkg
   with ScalaGenDeliteOps with ScalaGenDeliteStruct with ScalaGenDeliteArrayOps with ScalaGenDeliteMapOps with ScalaGenDeliteFileReaderOps
   with ScalaGenDeliteTest with DeliteScalaGenAllOverrides {
-  
+
   val IR: DeliteApplication with DeliteTestDSLExp
 }
 
 trait DeliteTestDSLCodeGenCuda extends DeliteTestDSLCudaCodeGenPkg with DeliteTestDSLCodeGenBase
   with CudaGenDeliteOps with CudaGenDeliteStruct with CudaGenDeliteArrayOps with CudaGenDeliteArrayBufferOps
   with DeliteCudaGenAllOverrides with DeliteCppHostTransfer with DeliteCudaDeviceTransfer {
-  
+
   val IR: DeliteApplication with DeliteTestDSLExp
 }
 
 trait DeliteTestDSLCodeGenOpenCL extends DeliteTestDSLCodeGenBase with DeliteTestDSLOpenCLCodeGenPkg with OpenCLGenDeliteOps
   with OpenCLGenDeliteArrayOps with DeliteOpenCLGenAllOverrides {
-  
+
   val IR: DeliteApplication with DeliteTestDSLExp
 }
 
 trait DeliteTestDSLCodeGenC extends DeliteTestDSLCodeGenBase with DeliteTestDSLCCodeGenPkg
   with CGenDeliteOps with CGenDeliteStruct with CGenDeliteArrayOps with CGenDeliteMapOps with CGenDeliteFileReaderOps
   with DeliteCGenAllOverrides with DeliteCppHostTransfer {
-  
   val IR: DeliteApplication with DeliteTestDSLExp
 }

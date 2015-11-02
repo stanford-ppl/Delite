@@ -104,7 +104,7 @@ trait DeliteGPUObjectReduction extends DeliteTestBase {
     val cols = 4096
 
     val in = DeliteArrayBuffer.fromFunction(rows*cols)(i => 1.0f)
-    val out = DeliteArrayBuffer.fromFunction(rows) { i => 
+    val out = DeliteArrayBuffer.fromFunction(rows) { i =>
       DeliteArrayBuffer.fromFunction(cols)(j => in(i*cols+j)).reduce(_ + _)(0.0f)
     }
 
@@ -112,7 +112,7 @@ trait DeliteGPUObjectReduction extends DeliteTestBase {
     collect(out(1) == 4096.0f)
     collect(out(2) == 4096.0f)
     collect(out(3) == 4096.0f)
-    
+
     mkReport
   }
 }
@@ -166,7 +166,7 @@ trait DeliteGPUReferencePrimitive2 extends DeliteTestBase {
 class DeliteGPUSuite extends DeliteSuite {
   override def checkMultiLoop = true
   override def enforceFullCoverage = true
-  
+
   def testDeliteGPUCond() { compileAndTest(DeliteGPUCondSuiteRunner) }
   def testDeliteGPUCondReturn() { compileAndTest(DeliteGPUCondReturnSuiteRunner) }
   def testDeliteGPUMemLeak() { compileAndTest(DeliteGPUMemLeakSuiteRunner) }

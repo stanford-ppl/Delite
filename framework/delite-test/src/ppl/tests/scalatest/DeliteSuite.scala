@@ -78,7 +78,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     // Enable specified target code generators
     for(t <- deliteTestTargets) {
       t match {
-        case "scala" =>
+        case "scala" => //by default?
         case "cuda" => Config.generateCUDA = true; Config.generateCpp = true
         case "cpp" => Config.generateCpp = true
         case "opencl" => Config.generateOpenCL = true; Config.generateCpp = true

@@ -134,13 +134,10 @@ trait OptiQLCodeGenBase extends GenericFatCodegen {
 
     for (f <- dsDir.listFiles) {
       val outFile = new File(path + f.getName)
-      //val decoder:java.nio.charset.CharsetDecoder = io.Codec.UTF8.decoder.onMalformedInput(java.nio.charset.CodingErrorAction.REPLACE)
-      //val noutFile = scala.io.Source.fromFile(path)(decoder)
       if(f.isDirectory) {
         emitDSHelper(path + f.getName + s, dsRoot + s + f.getName)
       } else {
         val out = new BufferedWriter(new FileWriter(outFile))
-//        val out = new java.io.PrintWriter(outFile, "UTF-8")
         for (line <- scala.io.Source.fromFile(f).getLines) {
           out.write(dsmap(line) + "\n")
         }

@@ -417,7 +417,7 @@ trait DeliteIfThenElse extends DeliteTestBase {
     val p = unit(1.0).AsInstanceOf[Int] //trickery to prevent constant propagation
     if (p == 1) {
       var x1 = 99
-      collect(x1 == 99)    
+      collect(x1 == 99)
     }
     else {
       collect(false)
@@ -505,6 +505,13 @@ trait DeliteFileReader extends DeliteTestBase {
     mkReport
   }
 }
+
+//class SingleTest extends DeliteSuite {
+//  override def checkMultiLoop = true
+//  override def enforceFullCoverage = true
+//  cppWhiteList ++= Seq("ArrayNew") //used in Foreach
+//  def testDeliteHorizontalElems() { compileAndTest(DeliteHorizontalElemsSuiteRunner) }
+//}
 
 class DeliteOpSuite extends DeliteSuite {
   override def checkMultiLoop = true
