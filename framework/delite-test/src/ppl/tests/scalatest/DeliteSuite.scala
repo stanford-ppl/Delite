@@ -235,7 +235,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
       val passed = results(i).toLowerCase() == "true"
       if (verbose)
         if (passed) println("PASSED") else println("FAILED")
-      if (!passed) println("PASSED") else println("FAILED") //always show failned conditions
+      if (!passed) println("FAILED") //always show failed conditions
       assert(passed)
     }
   }
