@@ -26,7 +26,7 @@ trait DeliteTestConfig {
   if (propFile.exists) props.load(new FileReader(propFile))
 
   // test parameters
-  val verbose = props.getProperty("tests.verbose", "false") != "false"
+  val verbose = true //props.getProperty("tests.verbose", "false") != "false"
   val verboseDefs = props.getProperty("tests.verboseDefs", "false") != "false"
   val threads = props.getProperty("tests.threads", "1").split(",").map(_.toInt)
   val cacheSyms = props.getProperty("tests.cacheSyms", "true").toBoolean
@@ -79,9 +79,9 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     for(t <- deliteTestTargets) {
       t match {
         case "scala" => //by default?
-        case "cuda" => Config.generateCUDA = true; Config.generateCpp = true
-        case "cpp" => Config.generateCpp = true
-        case "opencl" => Config.generateOpenCL = true; Config.generateCpp = true
+        //case "cuda" => Config.generateCUDA = true; Config.generateCpp = true
+        //case "cpp" => Config.generateCpp = true
+        //case "opencl" => Config.generateOpenCL = true; Config.generateCpp = true
         case _ => println("Unknown test target: " + t)
       }
     }
@@ -100,7 +100,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
       Config.generateCUDA = true
       stageTest(app)
       val graph = ppl.delite.runtime.Delite.loadDeliteDEG(degName(app))
-      val targets = List("scala","cuda") // Add other targets
+      val targets = List("scala") // ,"cuda" Add other targets
       for(op <- graph.totalOps if op.isInstanceOf[OP_MultiLoop]) {
         targets foreach { t =>  if(!op.supportsTarget(Targets(t))) sys.error(t + " was unable to generate op " + op) }
       }
@@ -123,9 +123,9 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
 
         target match {
           case "scala" => runtimeConfig(numScala = num)
-          case "cpp" => runtimeConfig(numCpp = num)
-          case "cuda" => runtimeConfig(numScala = num, numCpp = 1, numCuda = 1) // C++ kernels launched on GPU host
-          case "opencl" => runtimeConfig(numScala = num, numOpenCL = 1)
+          //case "cpp" => runtimeConfig(numCpp = num)
+          //case "cuda" => runtimeConfig(numScala = num, numCpp = 1, numCuda = 1) // C++ kernels launched on GPU host
+          //case "opencl" => runtimeConfig(numScala = num, numOpenCL = 1)
           case _ => assert(false)
         }
         val outStr = execTest(app, args, target, num)
@@ -235,7 +235,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
       val passed = results(i).toLowerCase() == "true"
       if (verbose)
         if (passed) println("PASSED") else println("FAILED")
-      if (!passed) println("FAILED") //always show failed conditions
+      //if (!passed) println("FAILED") //always show failed conditions
       assert(passed)
     }
   }
