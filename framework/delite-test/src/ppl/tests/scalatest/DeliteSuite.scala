@@ -26,7 +26,7 @@ trait DeliteTestConfig {
   if (propFile.exists) props.load(new FileReader(propFile))
 
   // test parameters
-  val verbose = true //props.getProperty("tests.verbose", "false") != "false"
+  val verbose = props.getProperty("tests.verbose", "false") != "false"
   val verboseDefs = props.getProperty("tests.verboseDefs", "false") != "false"
   val threads = props.getProperty("tests.threads", "1").split(",").map(_.toInt)
   val cacheSyms = props.getProperty("tests.cacheSyms", "true").toBoolean
@@ -235,7 +235,6 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
       val passed = results(i).toLowerCase() == "true"
       if (verbose)
         if (passed) println("PASSED") else println("FAILED")
-      //if (!passed) println("FAILED") //always show failed conditions
       assert(passed)
     }
   }
