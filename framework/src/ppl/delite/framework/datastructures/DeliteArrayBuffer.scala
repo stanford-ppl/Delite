@@ -43,7 +43,7 @@ trait DeliteArrayBufferOps extends Base {
     def map[B:Manifest](func: Rep[A] => Rep[B])(implicit ctx: SourceContext) = darray_buffer_map(d,func)
     def filter(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = darray_buffer_filter(d,pred)
     def zip[B:Manifest,R:Manifest](that: Rep[DeliteArrayBuffer[B]])(func: (Rep[A],Rep[B]) => Rep[R])(implicit ctx: SourceContext) = darray_buffer_zip(d,that,func)
-    def reduce(func: (Rep[A],Rep[A]) => Rep[A])(zero: Rep[A])(implicit ctx: SourceContext) = darray_buffer_reduce(d,func,zero)
+    def reduce(func: (Rep[A],Rep[A]) => Rep[A])(zero: Rep[A])(implicit ctx: SourceContext):Rep[A] = darray_buffer_reduce(d,func,zero)
     def foreach(func: Rep[A] => Rep[Unit])(implicit ctx: SourceContext) = darray_buffer_foreach(d,func)
     def forIndices(func: Rep[Int] => Rep[Unit])(implicit ctx: SourceContext) = darray_buffer_forIndices(d,func)
     def groupBy[K:Manifest](key: Rep[A] => Rep[K])(implicit ctx: SourceContext) = darray_buffer_groupBy(d,key)

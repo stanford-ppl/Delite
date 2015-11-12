@@ -3,6 +3,7 @@ package ppl.tests.scalatest.firstdsl
 import ppl.tests.scalatest.{DeliteTestRunner,DeliteTestModule,DeliteSuite}
 
 import org.scala_lang.virtualized.virtualize
+import org.scala_lang.virtualized.SourceContext
 
 object ProfileTestRunner extends DeliteTestRunner with ProfileApplicationRunner with ProfileTest
 @virtualize

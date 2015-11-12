@@ -5,19 +5,21 @@ import ppl.delite.framework.datastructures._
 import scala.virtualization.lms.common.Record
 import scala.virtualization.lms.common.RecordOps
 import org.scala_lang.virtualized.virtualize
+import org.scala_lang.virtualized.SourceContext
 
 /* Tests the generated code functionality for Delite ops, using core Delite data structures.
 */
 
 @virtualize
 trait DeliteTestBase extends DeliteTestModule with DeliteTestOps with DeliteTestDSLApplication with RecordOps {
-  
-  def Complex(re: Rep[Double], im: Rep[Double]) = Record(real = re, imag = im )
+
+  type Complex = Record { val real: Double; val imag: Double }
+  def Complex(re: Rep[Double], im: Rep[Double]):Rep[Complex] = Record(real = re, imag = im )
 
   type Chars = Record { val a: Char; val b: Char; val c: Char }
   def Chars(a0: Rep[Char], b0: Rep[Char], c0: Rep[Char]): Rep[Chars] = Record ( a = a0, b = b0, c = c0 )
-    // new Record { val a = a0; val b = b0; val c = c0 }
 
+  type Single = Record {val a:Int}
   def Single(a0: Rep[Int]) = Record ( a = a0 )
 
   def collectArray[A:Manifest](arr: Rep[DeliteArray[A]], expectedLength: Rep[Int], expectedValues: Rep[Int] => Rep[A]) = { //TODO(trans) DeliteArray[Object]
@@ -49,7 +51,11 @@ trait DeliteMap extends DeliteTestBase {
     collectBuf(v2, 1000, i => 10)
 
     val vs = DeliteArrayBuffer.fromFunction(500){ i => Complex(0.0, 0.0) }
-    val vs2 = vs map { e => Complex(e.real + 5.0, e.imag - 5.0) }
+    val vs2 = vs map { e =>
+      val c = Complex(e.real + 5.0, e.imag - 5.0)
+      delite_test_println(c) //force creation
+      c
+    }
     collectBuf(vs2, 500, i => Complex(5, -5))
 
     val va = DeliteArrayBuffer.fromFunction(500){ i => Single(i) }
@@ -96,6 +102,8 @@ trait DeliteZip extends DeliteTestBase {
 
     val a1 = DeliteArray.fromFunction(1000){ i => 1.0 }
     val a2 = DeliteArray.fromFunction(1000){ i => 0.0 } map { e => 2.0 }
+    println("HELLOWORLD")
+    println(a1)
     val a3 = a1.zip(a2){ _ + _ }
     collectArray(a3, 1000, i => 3.0)
 
@@ -120,13 +128,13 @@ object DeliteReduceSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplic
 trait DeliteReduce extends DeliteTestBase {
   def main() = {
 
-    collect(DeliteArray.fromFunction(1000){ i => 0 }.reduce( _ + _, 0) == 0)
+    collect(infix_==(DeliteArray.fromFunction(1000){ i => 0 }.reduce( _ + _, 0), 0))
 
     val v = DeliteArrayBuffer(DeliteArray.fromFunction(1000){ i => 0 } , 1000)
-    collect(v.reduce( _ + _ )(0) == 0)
+    collect(infix_==(v.reduce( _ + _ )(0), 0))
 
     val ve = DeliteArrayBuffer.fromFunction(0){ i => 0 }
-    collect(ve.reduce( _ + _ )(0) == 0)
+    collect(infix_==(ve.reduce( _ + _ )(0), 0))
 
     mkReport
   }
@@ -153,14 +161,16 @@ trait DeliteMapReduce extends DeliteTestBase {
   def main() = {
 
     val a = DeliteArray.fromFunction(1000){ i => i}
-    collect(a.reduce( _ + _, 0) == 499500)
+    collect(infix_==(a.reduce( _ + _, 0), 499500))
 
-    val v = DeliteArrayBuffer.fromFunction(1000){ i => i } 
-    collect(v.reduce( _ + _ )(0) == 499500)
+
+    val v = DeliteArrayBuffer.fromFunction(1000){ i => i }
+    collect(infix_==(v.reduce( _ + _ )(0), 499500))
+
 
     val v2 = DeliteArrayBuffer.fromFunction(500){ i => Complex(i, 0-i) }    
     val x2 = v2.reduce{ (a,b) => Complex(a.real + b.real, a.imag + b.imag) }(Complex(0,0))
-    collect(x2 == Complex(124750, -124750))
+    collect(infix_==(x2, Complex(124750, -124750)))
 
     mkReport
   }
@@ -172,15 +182,15 @@ trait DeliteFilter extends DeliteTestBase {
   def main() = {
 
     val a1 = DeliteArray.fromFunction(50){ i => i }
-    val a2 = a1.filter(_ % 2 == 1)
+    val a2 = a1.filter(x => infix_==(repIntToIntOps(x) % 2, 1))
     collectArray(a2, 25, i => a1(1+i*2))
 
     val v1 = DeliteArrayBuffer.fromFunction(100){ i => i }
-    val v2 = v1.filter(_ % 2 == 1)
+    val v2 = v1.filter(x => infix_==(repIntToIntOps(x) % 2, 1))
     collectBuf(v2, 50, i => v1(1+i*2))
 
     val ve = DeliteArrayBuffer.fromFunction(0){ i => 0 }
-    val ve2 = ve.filter(_ % 2 == 1)
+    val ve2 = ve.filter(x => infix_==(repIntToIntOps(x) % 2, 1))
     collectBuf(ve2, 0, i => 0)
     
     mkReport
@@ -226,8 +236,8 @@ trait DeliteZipWithReduceTuple extends DeliteTestBase {
     val i = DeliteArrayBuffer.fromFunction(10){ i => i+1 }
 
     val s = v.zip(i){ (a,b) => (a,b) }.reduce{ (a,b) => (a._1+b._1, a._2+b._2) }(make_tuple2((0,0)))
-    collect(s._1 == 95)
-    collect(s._2 == 55)
+    collect(infix_==(s._1, 95))
+    collect(infix_==(s._2, 55))
 
     //val maxWithIndex = v.zip(i){ (a,b) => (a,b) }.reduce{ (a,b) => if (a._1 < b._1) a else b }(unit(null)) //rFunc isn't separable
 
@@ -240,22 +250,22 @@ object DeliteGroupBySuiteRunner extends DeliteTestRunner with DeliteTestDSLAppli
 trait DeliteGroupBy extends DeliteTestBase {
   def main() = {
     
-    val res = DeliteArrayBuffer.fromFunction(1000){ i => i } groupBy { i => i % 2 == 0 }
-    collect(res.size == 2)
+    val res = DeliteArrayBuffer.fromFunction(1000){ i => i } groupBy { i => repIntToIntOps(i) % 2 == 0 }
+    collect(infix_==(res.size, 2))
     collectBuf(res(true), 500, i => 2*i)
     collectBuf(res(false), 500, i => 2*i+1)
 
-    val res2 = DeliteArrayBuffer.fromFunction(1000*1000){ i => i/1000 } groupBy { i => i }
-    collect(res2.size == 1000)
+    val res2 = DeliteArrayBuffer.fromFunction(1000*1000){ i => repIntToIntOps(i) / 1000 } groupBy { i => i }
+    collect(infix_==(res2.size, 1000))
     for (i <- 0 until res2.size) {
       collectBuf(res2(i), 1000, j => i)
     }
 
     val res3 = DeliteArrayBuffer.fromFunction(0){ i => i } groupBy { i => i }
-    collect(res3.size == 0)
+    collect(infix_==(res3.size, 0))
 
-    val res4 = DeliteArrayBuffer.fromFunction(1000*1000){ i => Record ( a = i / 1000, b = i )} groupBy { _.a }
-    collect(res4.size == 1000)
+    val res4 = DeliteArrayBuffer.fromFunction(1000*1000){ i => Record ( a = repIntToIntOps(i) / 1000, b = i )} groupBy { _.a }
+    collect(infix_==(res4.size, 1000))
     for (i <- 0 until res4.size) {
       collectBuf(res4(i).map(_.a), 1000, j => i)
     }
@@ -269,21 +279,21 @@ object DeliteGroupByReduceSuiteRunner extends DeliteTestRunner with DeliteTestDS
 trait DeliteGroupByReduce extends DeliteTestBase {
   def main() = {
     
-    val a = DeliteArray.fromFunction(1000){ i => i } groupByReduce(i => i % 2 == 0, i => i, (a:Rep[Int],b:Rep[Int]) => a + b)
-    collect(a.size == 2)
-    collect(a(true) == 249500)
-    collect(a(false) == 250000)
+    val a = DeliteArray.fromFunction(1000){ i => i } groupByReduce(i => infix_==(repIntToIntOps(i) % 2, 0), i => i, (a:Rep[Int],b:Rep[Int]) => a + b)
+    collect(infix_==(a.size, 2))
+    collect(infix_==(a(true), 249500))
+    collect(infix_==(a(false), 250000))
 
-    val res = DeliteArrayBuffer.fromFunction(1000){ i => i } groupByReduce(i => i % 2 == 0, i => i, (a:Rep[Int],b:Rep[Int]) => a + b)
-    collect(res.size == 2)
-    collect(res(true) == 249500)
-    collect(res(false) == 250000)
+    val res = DeliteArrayBuffer.fromFunction(1000){ i => i } groupByReduce(i => repIntToIntOps(i) % 2 == 0, i => i, (a:Rep[Int],b:Rep[Int]) => a + b)
+    collect(infix_==(res.size, 2))
+    collect(infix_==(res(true), 249500))
+    collect(infix_==(res(false), 250000))
 
     val res2 = DeliteArrayBuffer.fromFunction(0){ i => i } groupByReduce(i => i, i => i, (a:Rep[Int],b:Rep[Int]) => a + b)
-    collect(res2.size == 0)
+    collect(infix_==(res2.size, 0))
 
     val res3 = DeliteArrayBuffer.fromFunction(1000){ i => Record( a = i / 10, b = i ) } groupByReduce(_.a, _.b, (a:Rep[Int],b:Rep[Int]) => a)
-    collect(res3.size == 100)
+    collect(infix_==(res3.size, 100))
     collectArray(res3.values, 100, i => i*10)
 
     mkReport
@@ -352,12 +362,12 @@ trait DeliteNestedReduce extends DeliteTestBase {
     val a = DeliteArray.fromFunction(1){ i => i } map { e => 
       DeliteArray.fromFunction(e){ i => 0 }.reduce( _ + _, 0)
     }
-    collect(a(0) == 0)
+    collect(infix_==(a(0), 0))
 
     val res = DeliteArrayBuffer.fromFunction(1){ i => i } map { e => 
       DeliteArrayBuffer.fromFunction(e){ i => 0 } .reduce( _ + _ )(0)
     }
-    collect(res(0) == 0)
+    collect(infix_==(res(0), 0))
     
     mkReport
   }
@@ -371,12 +381,12 @@ trait DeliteNestedMapReduce extends DeliteTestBase {
     val a = DeliteArray.fromFunction(1){ i => i } map { e => 
       DeliteArray.fromFunction(1000){ i => i + e }.reduce( _ + _, 0)
     }
-    collect(a(0) == 499500)
+    collect(infix_==(a(0), 499500))
 
     val res = DeliteArrayBuffer.fromFunction(1){ i => i } map { e => 
       DeliteArrayBuffer.fromFunction(1000){ i => i + e }.reduce( _ + _ )(0)
     }
-    collect(res(0) == 499500)
+    collect(infix_==(res(0), 499500))
 
     mkReport
   }
@@ -440,20 +450,19 @@ trait DeliteIfThenElse extends DeliteTestBase {
 
 object DeliteHorizontalElemsRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteHorizontalElems
 object DeliteHorizontalElemsSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteHorizontalElems
-trait DeliteHorizontalElems extends DeliteTestBase {
+trait DeliteHorizontalElems extends DeliteTestBase with scala.virtualization.lms.common.Equal with scala.virtualization.lms.common.PrimitiveOps {
   def main() = {
     
     var i = 0
     while (i < 10) { //small collection sizes, test with multiple threads!
       val size = i
-      println("NINJA")
       //each line should fuse vertically (along with v), and all the lines should fuse horizontally
       val v = DeliteArrayBuffer.fromFunction(size){ j => 1 }
-      collect(v.reduce( _ + _ )(0) == size)
-      collect(v.filter(_ > 1).map(e => 1).reduce(_ + _)(0) == 0)
-      collect(DeliteArrayBuffer.fromFunction(size)(j => j).filter(_ % 2 == 0).length == (size+1)/2)
-      collect(v.filter(_ > 1).length == 0)
-      collect(v.map(e => e + 1).length == size)
+      collect(infix_==(v.reduce( _ + _ )(0), size))
+      collect(infix_==(v.filter(_ > 1).map(e => 1).reduce(_ + _)(0), 0))
+      collect(infix_==(DeliteArrayBuffer.fromFunction(size)(j => j).filter(x => infix_==(repIntToIntOps(x) % 2, 0)).length, (size+1)/2))
+      collect(infix_==(v.filter(_ > 1).length, 0))
+      collect(infix_==(v.map(e => e + 1).length, size))
       i += 1
     }
     
@@ -486,7 +495,7 @@ trait DeliteFileReader extends DeliteTestBase {
       val fields = line.split(" ")
       DeliteArray.fromFunction(fields.length)(i => fields(i))
     }
-    collect(a3.length == numLines)
+    collect(infix_==(a3.length, numLines))
     for (i <- 0 until a3.length : Rep[Range]) {
       collectArray(a3(i), i+1, i => elem)
     }
