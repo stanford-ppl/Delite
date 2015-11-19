@@ -4,6 +4,7 @@ import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
 import scala.virtualization.lms.common.Record
 import scala.virtualization.lms.common.RecordOps
 import org.scala_lang.virtualized.virtualize
+import org.scala_lang.virtualized.SourceContext
 
 object TraceRouteGraphRunner extends OptiQLApplicationRunner with TraceRouteGraph
 @virtualize

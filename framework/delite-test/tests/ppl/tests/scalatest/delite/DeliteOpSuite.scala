@@ -59,7 +59,7 @@ trait DeliteMap extends DeliteTestBase {
     collectBuf(vs2, 500, i => Complex(5, -5))
 
     val va = DeliteArrayBuffer.fromFunction(500){ i => Single(i) }
-    delite_test_println(va) //force creation of va
+    delite_test_println(va) //force creation
     collectBuf(va.map(_.a), 500, i => i)
 
     val ve = DeliteArrayBuffer.fromFunction(0){ i => 0 }

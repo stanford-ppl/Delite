@@ -4,6 +4,7 @@ import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
 import scala.virtualization.lms.common.Record
 import scala.virtualization.lms.common.RecordOps
 import org.scala_lang.virtualized.virtualize
+import org.scala_lang.virtualized.SourceContext
 
 object TPCHQ1 extends OptiQLApplicationRunner with TPCHQ1Trait
 object TPCHQ2 extends OptiQLApplicationRunner with TPCHQ2Trait

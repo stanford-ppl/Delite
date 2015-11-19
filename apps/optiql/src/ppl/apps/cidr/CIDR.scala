@@ -4,6 +4,7 @@ import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
 import scala.virtualization.lms.common.RecordOps
 import scala.virtualization.lms.common._
 import org.scala_lang.virtualized.virtualize
+import org.scala_lang.virtualized.SourceContext
 
 object ExampleRunner extends OptiQLApplicationRunner with Example
 trait Example extends OptiQLApplication with RecordOps {

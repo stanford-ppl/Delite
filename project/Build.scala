@@ -14,8 +14,8 @@ object DeliteBuild extends Build {
     //scalaOrganization := scalaOrg, //should not make a difference
     scalaVersion := virtScala,
     publishArtifact in (Compile, packageDoc) := false,
-//    libraryDependencies += scalaOrg %% "scala-virtualized" % "1.0.0-macrovirt",
-//    libraryDependencies += virtualization_lms_core,
+    libraryDependencies += scalaOrg %% "scala-virtualized" % "1.0.0-macrovirt",
+    libraryDependencies += virtualization_lms_core,
     libraryDependencies += scalaOrg % "scala-library" % virtScala,
     libraryDependencies += scalaOrg % "scala-compiler" % virtScala,
     libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.2",

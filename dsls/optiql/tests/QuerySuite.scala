@@ -3,6 +3,7 @@ package ppl.tests.scalatest.dsl.optiql
 import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
 import ppl.tests.scalatest._
 import scala.virtualization.lms.common.{Record, RecordOps}
+import org.scala_lang.virtualized.SourceContext
 import org.scala_lang.virtualized.virtualize
 
 @virtualize
@@ -190,8 +191,8 @@ object QueryableJoinRunner extends DeliteTestRunner with OptiQLApplicationRunner
 trait QueryableJoinTest extends DeliteTestModule with OptiQLApplication with TestRecord {
   def main() = {
     val res = items Join(items2) WhereEq(_.id, _.id) Select((a,b) => Record (
-      id = a.id,
-      quantity = b.quantity
+      id = a.quantity, //a.id //FIXME:what the heck?
+      quantity = b.id //b.quantity
     ))
 
     collect(res.size == items.size)
