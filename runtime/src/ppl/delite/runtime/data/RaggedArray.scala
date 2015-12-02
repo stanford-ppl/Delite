@@ -48,7 +48,10 @@ trait RaggedNativeArray[T] extends RaggedArray[T] {
       val srcIndex = (srcPos % elemsPerArray).toInt
       val destArray = (destPos / elemsPerArray).toInt
       val destIndex = (destPos % elemsPerArray).toInt
-      val space = Math.min(Math.min(elemsPerArray - srcIndex, elemsPerArray - destIndex), elemsToCopy.toInt)
+      val space = Math.min(
+                    Math.min(elemsPerArray - srcIndex, elemsPerArray - destIndex),
+                    Math.min(elemsToCopy, elemsPerArray.toLong).toInt
+                  )
       System.arraycopy(this.data(srcArray), srcIndex, dest.data(destArray), destIndex, space)
       srcPos += space
       destPos += space

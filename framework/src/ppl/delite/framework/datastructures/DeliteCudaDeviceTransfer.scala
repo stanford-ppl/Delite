@@ -11,7 +11,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
   import IR._
 
   override def emitSendSlave(tp: Manifest[_]): (String,String) = {
-    if (tp.erasure == classOf[Variable[AnyVal]]) {
+    if (tp.erasure == classOf[Variable[_]]) {
       val out = new StringBuilder
       val typeArg = tp.typeArguments.head
       if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
@@ -92,7 +92,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
   }
 
   override def emitRecvSlave(tp: Manifest[_]): (String,String) = {
-    if (tp.erasure == classOf[Variable[AnyVal]]) {
+    if (tp.erasure == classOf[Variable[_]]) {
       val out = new StringBuilder
       val typeArg = tp.typeArguments.head
       if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
@@ -158,7 +158,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
   */
 
   override def emitSendUpdateSlave(tp: Manifest[_]): (String,String) = {
-    if (tp.erasure == classOf[Variable[AnyVal]]) {
+    if (tp.erasure == classOf[Variable[_]]) {
       val out = new StringBuilder
       val typeArg = tp.typeArguments.head
       if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
@@ -202,7 +202,7 @@ trait DeliteCudaDeviceTransfer extends CudaDeviceTransfer {
   }
 
   override def emitRecvUpdateSlave(tp: Manifest[_]): (String,String) = {
-    if (tp.erasure == classOf[Variable[AnyVal]]) {
+    if (tp.erasure == classOf[Variable[_]]) {
       val out = new StringBuilder
       val typeArg = tp.typeArguments.head
       if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
