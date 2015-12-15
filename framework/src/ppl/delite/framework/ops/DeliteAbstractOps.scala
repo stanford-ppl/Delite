@@ -15,10 +15,12 @@ trait DeliteAbstractDefsExp extends AtomicWrites with FatExpressions { self =>
     def family = fm.name
   }
 
-  abstract class AbstractDef[A](implicit fc: AbstractFamily) extends AbstractNode[A] { val fm = fc }
+  abstract class AbstractDef[R:Manifest](implicit fc: AbstractFamily) extends AbstractNode[R] {
+    val fm = fc
+    val mR = manifest[R]
+  }
   abstract class AbstractDef2[A:Manifest, R:Manifest](implicit fc: AbstractFamily) extends AbstractDef[R] {
     val mA = manifest[A]
-    val mR = manifest[R]
   }
   abstract class AbstractDef3[A:Manifest, B:Manifest, R:Manifest](implicit fc: AbstractFamily) extends AbstractDef2[A,R] {
     val mB = manifest[B]
@@ -68,43 +70,39 @@ trait DeliteAbstractDefsExp extends AtomicWrites with FatExpressions { self =>
 
 trait DeliteAbstractOpsExp extends DeliteAbstractDefsExp with AbstractIndicesOpsExp { this: DeliteOpsExp =>
 
-  // TODO: Should one inherit from the other? Should they have a common parent besides DeliteOp and AbstractNode?
-  abstract class DeliteAbstractOp[R:Manifest](implicit fc: AbstractFamily) extends DeliteOp[R] with AbstractNode[R] {
-    type OpType <: DeliteAbstractOp[R]
-    val v: Sym[Int] = copyOrElse(_.v)(fresh[Int])
+  abstract class AbstractOp[R:Manifest](implicit fc: AbstractFamily) extends DeliteOp[R] with AbstractNode[R] {
+    type OpType <: AbstractOp[R]
     val mR = manifest[R]
     val fm = fc
   }
-  abstract class DeliteAbstractOp2[A:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteAbstractOp[R] {
-    type OpType <: DeliteAbstractOp2[A,R]
+
+  // TODO: Should one inherit from the other? Both are types of loops...
+  abstract class AbstractOpLoop[R:Manifest](implicit fc: AbstractFamily) extends AbstractOp[R] {
+    type OpType <: AbstractOpLoop[R]
+    val v: Sym[Int] = copyOrElse(_.v)(fresh[Int])
+  }
+  abstract class AbstractOpLoop2[A:Manifest,R:Manifest](implicit fc: AbstractFamily) extends AbstractOpLoop[R] {
     val mA = manifest[A]
   }
-  abstract class DeliteAbstractOp3[A:Manifest,B:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteAbstractOp2[A,R] {
-    type OpType <: DeliteAbstractOp3[A,B,R]
+  abstract class AbstractOpLoop3[A:Manifest,B:Manifest,R:Manifest](implicit fc: AbstractFamily) extends AbstractOpLoop2[A,R] {
     val mB = manifest[B]
   }
-  abstract class DeliteAbstractOp4[A:Manifest,B:Manifest,C:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteAbstractOp3[A,B,R] {
-    type OpType <: DeliteAbstractOp4[A,B,C,R]
+  abstract class AbstractOpLoop4[A:Manifest,B:Manifest,C:Manifest,R:Manifest](implicit fc: AbstractFamily) extends AbstractOpLoop3[A,B,R] {
     val mC = manifest[C]
   }
 
-  abstract class DeliteAbstractNestedOp[R:Manifest](implicit fc: AbstractFamily) extends DeliteOp[R] with AbstractNode[R] {
-    type OpType <: DeliteAbstractNestedOp[R]
+  abstract class AbstractNestedLoop[R:Manifest](implicit fc: AbstractFamily) extends AbstractOp[R] {
+    type OpType <: AbstractNestedLoop[R]
     val v: Sym[Int] = copyOrElse(_.v)(fresh[Int])
-    val vs: Sym[LoopIndices] = copyOrElse(_.vs)(loopIndicesEmpty(v).asInstanceOf[Sym[LoopIndices]])
-    val mR = manifest[R]
-    val fm = fc
+    val i: Sym[LoopIndices] = copyOrElse(_.i)(loopIndicesEmpty(v).asInstanceOf[Sym[LoopIndices]])
   }
-  abstract class DeliteAbstractNestedOp2[A:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteAbstractNestedOp[R] {
-    type OpType <: DeliteAbstractNestedOp2[A,R]
+  abstract class AbstractNestedLoop2[A:Manifest,R:Manifest](implicit fc: AbstractFamily) extends AbstractNestedLoop[R] {
     val mA = manifest[A]
   }
-  abstract class DeliteAbstractNestedOp3[A:Manifest,B:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteAbstractNestedOp2[A,R] {
-    type OpType <: DeliteAbstractNestedOp3[A,B,R]
+  abstract class AbstractNestedLoop3[A:Manifest,B:Manifest,R:Manifest](implicit fc: AbstractFamily) extends AbstractNestedLoop2[A,R] {
     val mB = manifest[B]
   }
-  abstract class DeliteAbstractNestedOp4[A:Manifest,B:Manifest,C:Manifest,R:Manifest](implicit fc: AbstractFamily) extends DeliteAbstractOp3[A,B,R] {
-    type OpType <: DeliteAbstractNestedOp4[A,B,C,R]
+  abstract class AbstractNestedLoop4[A:Manifest,B:Manifest,C:Manifest,R:Manifest](implicit fc: AbstractFamily) extends AbstractNestedLoop3[A,B,R] {
     val mC = manifest[C]
   }
 }

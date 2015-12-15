@@ -33,16 +33,6 @@ trait StencilAnalysis extends FatBlockTraversal {
   def verbose = verbosity > 2 // set in LMS config
   def log(x: String) = if (verbose) Predef.println(x) else ()
   def result(x: String) = Predef.println(x)
-  def strDef(x: Exp[Any]) = x match {
-    case Const(z) => z.toString
-    case _ =>
-      val z = findDefinition(x.asInstanceOf[Sym[Any]])
-      if (!z.isDefined) {
-        "(bound " + x.toString + ")"
-      }
-      else
-       z.get
-  }
 
   def addStencil(s: Exp[Any], stencil: Stencil) {
     if (loopStencils.contains(s)) {

@@ -206,7 +206,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
           func = f,
           cond = body.cond.map(t(_)),
           zero = z,
-          accInit = reifyEffects(fatal(unit("accInit not transformed")))(manifest[B]), //unwrap this as well to support mutable reduce
+          accInit = reifyEffects(fatal(unit("accInit not transformed")))(manifest[B],implicitly[SourceContext]), //unwrap this as well to support mutable reduce
           rV = (rv1.asInstanceOf[Sym[B]], rv2.asInstanceOf[Sym[B]]),
           rFunc = r,
           stripFirst = !isPrimitiveType(manifest[B]),

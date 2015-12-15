@@ -8,9 +8,10 @@ import ppl.delite.framework.datastructures._
 
 trait DeliteNestedOpsExp extends DeliteAbstractOpsExp with DeliteOpsExpIR { this: DeliteOpsExp =>
 
-  implicit val fc = AbstractFamily("NestedLoops")
+  implicit val fc = AbstractFamily("NestedLoop")
 
-  abstract class AbstractNestedLoop[A] extends AbstractDef[A] {
+  // TODO: Should body be a Def? How much info do we need for lowering here?
+  abstract class NestedLoop[A:Manifest] extends AbstractDef[A] {
     val vs: List[Sym[Int]]
     val sizes: List[Exp[Int]]
     val strides: List[Exp[Int]]
@@ -18,7 +19,7 @@ trait DeliteNestedOpsExp extends DeliteAbstractOpsExp with DeliteOpsExpIR { this
     def nestLayers = vs.length
   }
 
-  abstract class DeliteOpNestedLoop[A:Manifest](implicit ctx: SourceContext) extends AbstractNestedLoop[A] with DeliteOp[A] {
+  abstract class DeliteOpNestedLoop[A:Manifest](implicit ctx: SourceContext) extends NestedLoop[A] with DeliteOp[A] {
     type OpType <: DeliteOpNestedLoop[A]
     def copyBodyOrElse(e: => Def[A]): Def[A] = original.map(p=>mirrorLoopBody(p._2.asInstanceOf[OpType].body,p._1)).getOrElse(e)
     def copyTransformedListOrElse[B](f: OpType => List[Exp[B]])(e: => List[Exp[B]]): List[Exp[B]] = original.map(p => f(p._2.asInstanceOf[OpType]).map(p._1(_))).getOrElse(e)
@@ -188,7 +189,7 @@ trait DeliteNestedOpsExp extends DeliteAbstractOpsExp with DeliteOpsExpIR { this
   // blocks
 
   override def blocks(e: Any): List[Block[Any]] = e match {
-    case e: AbstractNestedLoop[_] => blocks(e.body)
+    case e: NestedLoop[_] => blocks(e.body)
     case _ => super.blocks(e)
   }
 
@@ -196,22 +197,22 @@ trait DeliteNestedOpsExp extends DeliteAbstractOpsExp with DeliteOpsExpIR { this
   // dependencies
 
   override def syms(e: Any): List[Sym[Any]] = e match {
-    case e: AbstractNestedLoop[_] => syms(e.sizes) ::: syms(e.strides) ::: syms(e.body)
+    case e: NestedLoop[_] => syms(e.sizes) ::: syms(e.strides) ::: syms(e.body)
     case _ => super.syms(e)
   }
 
   override def readSyms(e: Any): List[Sym[Any]] = e match {
-    case e: AbstractNestedLoop[_] => readSyms(e.sizes) ::: readSyms(e.strides) ::: readSyms(e.body)
+    case e: NestedLoop[_] => readSyms(e.sizes) ::: readSyms(e.strides) ::: readSyms(e.body)
     case _ => super.readSyms(e)
   }
 
   override def boundSyms(e: Any): List[Sym[Any]] = e match {
-    case e: AbstractNestedLoop[_] => e.vs ::: boundSyms(e.body)
+    case e: NestedLoop[_] => e.vs ::: boundSyms(e.body)
     case _ => super.boundSyms(e)
   }
 
   override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
-    case e: AbstractNestedLoop[_] => freqNormal(e.sizes) ::: freqNormal(e.strides) ::: freqHot(e.body)
+    case e: NestedLoop[_] => freqNormal(e.sizes) ::: freqNormal(e.strides) ::: freqHot(e.body)
     case _ => super.symsFreq(e)
   }
 
@@ -219,22 +220,22 @@ trait DeliteNestedOpsExp extends DeliteAbstractOpsExp with DeliteOpsExpIR { this
   // aliases and sharing
 
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
-    case e: AbstractNestedLoop[_] => aliasSyms(e.body)
+    case e: NestedLoop[_] => aliasSyms(e.body)
     case _ => super.aliasSyms(e)
   }
 
   override def containSyms(e: Any): List[Sym[Any]] = e match {
-    case e: AbstractNestedLoop[_] => containSyms(e.body)
+    case e: NestedLoop[_] => containSyms(e.body)
     case _ => super.containSyms(e)
   }
 
   override def extractSyms(e: Any): List[Sym[Any]] = e match {
-    case e: AbstractNestedLoop[_] => extractSyms(e.body)
+    case e: NestedLoop[_] => extractSyms(e.body)
     case _ => super.extractSyms(e)
   }
 
   override def copySyms(e: Any): List[Sym[Any]] = e match {
-    case e: AbstractNestedLoop[_] => copySyms(e.body)
+    case e: NestedLoop[_] => copySyms(e.body)
     case _ => super.copySyms(e)
   }
 
