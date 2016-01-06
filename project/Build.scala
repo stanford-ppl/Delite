@@ -6,7 +6,7 @@ object DeliteBuild extends Build {
 
   System.setProperty("showSuppressedErrors", "false")
 
-  val scalaOrg = "org.scala-lang" //.virtualized"
+  val scalaOrg = "org.scala-lang.virtualized" //.virtualized"
   val virtScala = Option(System.getenv("SCALA_VIRTUALIZED_VERSION")).getOrElse("2.11.2")
   val paradiseVersion = "2.0.1"
   val virtBuildSettingsBase = Defaults.defaultSettings ++ Seq(
