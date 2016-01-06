@@ -138,7 +138,7 @@ trait OptiQLCodeGenBase extends GenericFatCodegen {
         emitDSHelper(path + f.getName + s, dsRoot + s + f.getName)
       } else {
         val out = new BufferedWriter(new FileWriter(outFile))
-        for (line <- scala.io.Source.fromFile(f).getLines) {
+        for (line <- scala.io.Source.fromFile(f, "ISO-8859-1").getLines) {
           out.write(dsmap(line) + "\n")
         }
         out.close()
