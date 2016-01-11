@@ -6,12 +6,10 @@ import scala.virtualization.lms.common._
 import ppl.delite.framework.Config
 import ppl.delite.framework.datastructures._
 
-trait DeliteNestedOpsExp extends DeliteAbstractOpsExp with DeliteOpsExpIR { this: DeliteOpsExp =>
-
-  implicit val fc = AbstractFamily("NestedLoop")
+trait DeliteNestedOpsExp extends DeliteFigmentOpsExp with DeliteOpsExpIR { this: DeliteOpsExp =>
 
   // TODO: Should body be a Def? How much info do we need for lowering here?
-  abstract class NestedLoop[A:Manifest] extends AbstractDef[A] {
+  abstract class NestedLoop[A:Manifest] extends Fig[A] {
     val vs: List[Sym[Int]]
     val sizes: List[Exp[Int]]
     val strides: List[Exp[Int]]
