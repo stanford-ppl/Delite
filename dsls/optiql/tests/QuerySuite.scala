@@ -191,8 +191,10 @@ object QueryableJoinRunner extends DeliteTestRunner with OptiQLApplicationRunner
 trait QueryableJoinTest extends DeliteTestModule with OptiQLApplication with TestRecord {
   def main() = {
     val res = items Join(items2) WhereEq(_.id, _.id) Select((a,b) => Record (
-      id = a.quantity, // a.id //FIXME:what the heck?
-      quantity = b.id // b.quantity
+      id = a.id, //FIXME:what the heck?
+      quantity = b.quantity,
+      random1 = b.quantity,
+      random2 = b.id
     ))
 
     collect(res.size == items.size)
