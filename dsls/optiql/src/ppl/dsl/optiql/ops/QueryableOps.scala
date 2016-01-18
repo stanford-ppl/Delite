@@ -78,7 +78,7 @@ trait QueryableOps extends Base { this: OptiQL =>
   
 }
 
-trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with DeliteStructsExp { this: OptiQLExp =>
+trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with DeliteStructsExp with OptiQLMiscOpsExp{ this: OptiQLExp =>
   
   case class QueryableWhere[T:Manifest](in: Exp[Table[T]], cond: Exp[T] => Exp[Boolean]) extends DeliteOpFilter[T, T, Table[T]] {
     override def alloc(len: Exp[Int]) = Table(len)
@@ -257,14 +257,16 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
       val firstGrouped = queryable_groupby_internal(first, firstKeySelector)
       val empty = DeliteArrayBuffer(DeliteArray.imm[R](unit(0)),unit(0)) //note: control effects on IfThenElse require some manual hoisting
       queryable_flatmap_internal(second, (x2:Exp[T2]) => {
-        if (firstGrouped.contains(secondKeySelector(x2))) firstGrouped.get(secondKeySelector(x2)).map(x1 => resultSelector(x1,x2))
-        else empty //no matches
+        if (firstGrouped.contains(secondKeySelector(x2))) {
+          println(unit("now calling get:"))
+          firstGrouped.get(secondKeySelector(x2)).map(x1 => resultSelector(x1, x2))
+        } else empty //no matches
       })
     /*} else {
       val secondGrouped = queryable_groupby_internal(second, secondKeySelector)
       queryable_flatmap_internal(first, (x1:Exp[T1]) => secondGrouped.get(firstKeySelector(x1)).map(x2 => resultSelector(x1,x2)))
     }*/
-  }
+      }
   
 
   def queryable_sum[T:Manifest, N:Numeric:Manifest](s: Exp[Table[T]], sumSelector: Exp[T] => Exp[N]) = QueryableSum(s, sumSelector)

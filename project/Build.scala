@@ -6,7 +6,6 @@ object DeliteBuild extends Build {
 
   System.setProperty("showSuppressedErrors", "false")
 
-  val scalaOrg = "org.scala-lang.virtualized" //.virtualized"
   val virtScala = Option(System.getenv("SCALA_VIRTUALIZED_VERSION")).getOrElse("2.11.2")
   val paradiseVersion = "2.0.1"
   val virtBuildSettingsBase = Defaults.defaultSettings ++ Seq(
@@ -14,10 +13,10 @@ object DeliteBuild extends Build {
     //scalaOrganization := scalaOrg, //should not make a difference
     scalaVersion := virtScala,
     publishArtifact in (Compile, packageDoc) := false,
-    libraryDependencies += scalaOrg %% "scala-virtualized" % "1.0.0-macrovirt",
+    libraryDependencies += "org.scala-lang.virtualized" %% "scala-virtualized" % "1.0.0-macrovirt",
     libraryDependencies += virtualization_lms_core,
-    libraryDependencies += scalaOrg % "scala-library" % virtScala,
-    libraryDependencies += scalaOrg % "scala-compiler" % virtScala,
+    libraryDependencies += "org.scala-lang" % "scala-library" % virtScala,
+    libraryDependencies += "org.scala-lang" % "scala-compiler" % virtScala,
     libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.2",
 
     libraryDependencies += "org.apache.commons" % "commons-math" % "2.2",
