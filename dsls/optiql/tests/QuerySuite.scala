@@ -3,8 +3,7 @@ package ppl.tests.scalatest.dsl.optiql
 import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
 import ppl.tests.scalatest._
 import scala.virtualization.lms.common.{Record, RecordOps}
-import org.scala_lang.virtualized.SourceContext
-import org.scala_lang.virtualized.virtualize
+import org.scala_lang.virtualized.{RefinedManifest, SourceContext, virtualize}
 
 @virtualize
 trait TestRecord extends OptiQLApplication with RecordOps {
@@ -75,6 +74,23 @@ object QueryableWhereRunner extends DeliteTestRunner with OptiQLApplicationRunne
 @virtualize
 trait QueryableWhereTest extends DeliteTestModule with OptiQLApplication with TestRecord {
   def main() = {
+    val test = Item(0, 10, 2.49, 'N')
+    println(unit("test"))
+    println(test)
+    println(test.id)
+    println(test.quantity)
+    println(test)
+    println(test.id)
+    println(test.quantity)
+//    def m[T<:Record:Manifest](x:Rep[T])(implicit rf:RefinedManifest[T]): Unit = {
+//      println(unit(rf))
+//      println(unit(rf.fields))
+//    }
+//    m(test)
+
+//        println(items(0))
+//        println(items(0).id)
+//        println(items(0).quantity)
     val result = items Where(_.status == 'N') Select(item => Record (
       id = item.id,
       maxRevenue = item.quantity * item.price
@@ -190,13 +206,31 @@ object QueryableJoinRunner extends DeliteTestRunner with OptiQLApplicationRunner
 @virtualize
 trait QueryableJoinTest extends DeliteTestModule with OptiQLApplication with TestRecord {
   def main() = {
-    val res = items Join(items2) WhereEq(_.id, _.id) Select((a,b) => Record (
-      id = a.id, //FIXME:what the heck?
-      quantity = b.quantity,
-      random1 = b.quantity,
-      random2 = b.id
-    ))
+    println(unit("old seq:"))
+    println(items)
+    println(items2)
+    val res/*:Rep[Table[Item]]*/ = items Join(items2) WhereEq(_.id, _.id) Select { (a, b) =>
+//        val rec = Item(a.id, a.quantity, a.price, a.status)
+        val rec = Record(
+          id = a.id, //FIXME:what the heck?
+          quantity = b.quantity,
+//          price = a.price,
+//          status = a.status
+                random1 = 5, //make test fail but typechecker pass!
+                random2 = 5
+        )
+        println(rec)
+        println(rec.id)
+        println(rec.quantity)
+        println(rec)
+        rec
+      }
+    println(unit("new seq:"))
+    println(res)
 
+    println(res(0))
+    println(res(0).id)
+    println(res(0).quantity)
     collect(res.size == items.size)
     collect(res(0).id == 0 && res(0).quantity == 10)
     collect(res(1).id == 1 && res(1).quantity == 0)
@@ -207,11 +241,11 @@ trait QueryableJoinTest extends DeliteTestModule with OptiQLApplication with Tes
 }
 
 class QuerySuite extends DeliteSuite {
-  def testSelect() { compileAndTest(QueryableSelectRunner) }
-  def testWhere() { compileAndTest(QueryableWhereRunner) }
-  def testReduce() { compileAndTest(QueryableReduceRunner) }
-  def testGroupBy() { compileAndTest(QueryableGroupByRunner) }
+//  def testSelect() { compileAndTest(QueryableSelectRunner) }
+//  def testWhere() { compileAndTest(QueryableWhereRunner) }
+//  def testReduce() { compileAndTest(QueryableReduceRunner) }
+//  def testGroupBy() { compileAndTest(QueryableGroupByRunner) }
   def testGroupByReduce() { compileAndTest(QueryableGroupByReduceRunner) }
-  def testSort() { compileAndTest(QueryableSortRunner) }
+//  def testSort() { compileAndTest(QueryableSortRunner) }
   def testJoin() { compileAndTest(QueryableJoinRunner) }
 }

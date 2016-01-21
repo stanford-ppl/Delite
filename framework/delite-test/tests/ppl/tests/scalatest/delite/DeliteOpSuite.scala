@@ -480,6 +480,7 @@ trait DeliteHorizontalElems extends DeliteTestBase {
   }
 }
 
+
 object DeliteFileReaderRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteFileReader
 object DeliteFileReaderSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteFileReader
 @virtualize

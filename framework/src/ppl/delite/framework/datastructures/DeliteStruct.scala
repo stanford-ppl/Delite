@@ -252,6 +252,15 @@ trait ScalaGenDeliteStruct extends BaseGenStruct with ScalaGenAtomicOps {
     // case Struct(tag, elems) if structSize(sym.tp) <= 64 => //FIXME: Longs actually perform worse than case classes in our HashMapImpl
     //   emitValDef(sym, shiftOnString(elems, "Long"))
     case Struct(tag, elems) =>
+      tag match {
+        case AnonTag(fields) => 
+        System.err.println("Refined Manifest: ")
+        fields.fields.foreach(System.err.println)
+        case _ => 
+      }
+      System.err.println("")
+      elems.foreach(System.err.println)
+      System.err.println("")
       registerStruct(structName(sym.tp), sym.tp, elems)
       emitValDef(sym, "new " + remap(sym.tp) + "(" + elems.map{ e =>
         if (isVarType(e._2) && deliteInputs.contains(e._2)) quote(e._2) + ".get"
