@@ -213,11 +213,8 @@ trait QueryableJoinTest extends DeliteTestModule with OptiQLApplication with Tes
 //        val rec = Item(a.id, a.quantity, a.price, a.status)
         val rec = Record(
           id = a.id, //FIXME:what the heck?
-          quantity = b.quantity,
-//          price = a.price,
-//          status = a.status
-                random1 = 5, //make test fail but typechecker pass!
-                random2 = 5
+          quantity = b.quantity
+          //The reverse fields were fixed by adding: "mem <- tpe.members.toSeq.reverse" in Records.scala in LMS
         )
         println(rec)
         println(rec.id)
@@ -241,11 +238,11 @@ trait QueryableJoinTest extends DeliteTestModule with OptiQLApplication with Tes
 }
 
 class QuerySuite extends DeliteSuite {
-//  def testSelect() { compileAndTest(QueryableSelectRunner) }
-//  def testWhere() { compileAndTest(QueryableWhereRunner) }
-//  def testReduce() { compileAndTest(QueryableReduceRunner) }
-//  def testGroupBy() { compileAndTest(QueryableGroupByRunner) }
+  def testSelect() { compileAndTest(QueryableSelectRunner) }
+  def testWhere() { compileAndTest(QueryableWhereRunner) }
+  def testReduce() { compileAndTest(QueryableReduceRunner) }
+  def testGroupBy() { compileAndTest(QueryableGroupByRunner) }
   def testGroupByReduce() { compileAndTest(QueryableGroupByReduceRunner) }
-//  def testSort() { compileAndTest(QueryableSortRunner) }
+  def testSort() { compileAndTest(QueryableSortRunner) }
   def testJoin() { compileAndTest(QueryableJoinRunner) }
 }
