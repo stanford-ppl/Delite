@@ -29,7 +29,7 @@ object DeliteFileInputStream {
   /* Each path must refer to a valid filesystem, based on the Hadoop configuration object. */
   private def getFiles(conf: Configuration, paths:Seq[String]) = paths.toArray flatMap { p =>
     val hPath = new Path(p)
-    val fs = quiet(hPath.getFileSystem(conf))
+    val fs = hPath.getFileSystem(conf)
 
     // recurse into sub-directories
     def listStatus(p: Path): Array[FileStatus] = {
@@ -45,15 +45,6 @@ object DeliteFileInputStream {
     }
     else if (fs.isFile(hPath)) Array(fs.getFileStatus(hPath))
     else throw new IOException("Path " + p + " does not appear to be a valid file or directory")
-  }
-
-  //TODO: this is hacky, should find a better way to suppress hdfs verbosity 
-  private def quiet[T](block: => T) = {
-    val err = System.err
-    System.setErr(new java.io.PrintStream(new org.apache.commons.io.output.NullOutputStream()))
-    val res = block
-    System.setErr(err)
-    res
   }
 
   /* Validate that the specified charset name is legal and supported */

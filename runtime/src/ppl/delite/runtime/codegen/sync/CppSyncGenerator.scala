@@ -154,8 +154,10 @@ trait CppToScalaSync extends SyncGenerator with CppExecutableGenerator with JNIF
       out.append("%s %s%s = recvViewCPPfromJVM_%s(env%s,%s);\n".format(devType,addRef(dep.outputType(sym)),getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
     else if(isPurePrimitiveType(dep.outputType(sym)))
       out.append("%s %s = (%s)%s;\n".format(devType,getSymHost(dep,sym),devType,getSymCPU(sym)))
-    else
+    else {
       out.append("%s %s%s = recvCPPfromJVM_%s(env%s,%s);\n".format(devType,addRef(dep.outputType(sym)),getSymHost(dep,sym),mangledName(devType),location,getSymCPU(sym)))
+      out.append("JNIObjectMap_insert(%s,%s);\n".format(sym.filter(_.isDigit),getSymCPU(sym)))
+    }
   }
 
   private def writeAwaiter(dep: DeliteOP, sym: String = "") {

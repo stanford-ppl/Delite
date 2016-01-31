@@ -591,9 +591,9 @@ trait CudaGenDeliteStruct extends CLikeGenDeliteStruct with CudaGenDeliteOps wit
       // constructor
       stream.println("\t__host__ __device__ " + deviceTarget + name + "(void) { }")
       stream.print("\t__host__ __device__ " + deviceTarget + name + "(")
-      stream.print(elems.map{ case (idx,tp) => remap(tp) + " _" + idx }.mkString(","))
+      stream.print(elems.map{ case (idx,tp) => remap(tp) + " arg_" + idx }.mkString(","))
       stream.println(") {")
-      stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = _" + idx + ";\n" }.mkString(""))
+      stream.print(elems.map{ case (idx,tp) => "\t\t" + idx + " = arg_" + idx + ";\n" }.mkString(""))
       stream.println("\t}")
 
       //TODO: Below should be changed to use IR nodes

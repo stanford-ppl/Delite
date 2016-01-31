@@ -1,5 +1,5 @@
-#ifndef __CPPFILESTREAM_H__
-#define __CPPFILESTREAM_H__
+#ifndef __DELITE_FILE_INPUT_STREAM__
+#define __DELITE_FILE_INPUT_STREAM__
 
 #include <cstdarg>
 #include <iostream>
@@ -29,7 +29,7 @@
 #define DFS_DEBUG(...)
 
 //TODO: check if need to compile with _FILE_OFFSET_BITS == 64?
-class cppFileStream {
+class DeliteFileInputStream {
   private:
     std::vector<char*> files;
     std::vector<uint64_t> fileLengths;
@@ -62,16 +62,16 @@ class cppFileStream {
     uint64_t position;
     uint64_t streamOffset;
 
-    cppFileStream* openCopyAtNewLine(uint64_t start) {
-      cppFileStream* copy = new cppFileStream(size, &files, &fileLengths);
+    DeliteFileInputStream* openCopyAtNewLine(uint64_t start) {
+      DeliteFileInputStream* copy = new DeliteFileInputStream(streamOffset, size, &files, &fileLengths);
       copy->openAtNewLine(start);
       return copy;
     }
 
     void openAtNewLine(uint64_t start) { 
-      position = start;
+      position = streamOffset + start;
       uint64_t offset;
-      findFileOffset(start, idx, offset);
+      findFileOffset(position, idx, offset);
       reader = fopen(files.at(idx), "r");
       text = (char *)malloc(MAX_BUFSIZE*sizeof(char));
 
@@ -118,9 +118,9 @@ class cppFileStream {
       return str;
     }
 
-    cppFileStream(uint64_t _size, std::vector<char*> *_files, std::vector<uint64_t> *_fileLengths) {
+    DeliteFileInputStream(uint64_t _offset, uint64_t _size, std::vector<char*> *_files, std::vector<uint64_t> *_fileLengths) {
       size = _size;
-      streamOffset = 0;
+      streamOffset = _offset;
       //could share the files but then the free logic becomes confusing
       for (size_t i = 0; i < _files->size(); i++) {
         char *pathname = _files->at(i);
@@ -131,9 +131,9 @@ class cppFileStream {
       }
     }
 
-    cppFileStream(size_t num, ...) {
+    DeliteFileInputStream(uint64_t _offset, size_t num, ...) {
       size = 0;
-      streamOffset = 0;
+      streamOffset = _offset;
       va_list arguments;
       DFS_DEBUG("number of paths is %d\n", num);
       va_start(arguments, num);
@@ -159,7 +159,7 @@ class cppFileStream {
           addFile(pathname, st.st_size);
         }
         else {
-          fprintf(stderr, "Path %s does not appear to be a valid file or directory\n", pathname);
+          fprintf(stderr, "[DeliteFileInputStream] Path %s does not appear to be a valid file or directory\n", pathname);
           exit(-1);
         }
       }
@@ -182,7 +182,7 @@ class cppFileStream {
       fclose(reader);
     }
 
-    ~cppFileStream() {
+    ~DeliteFileInputStream() {
       free(reader);
       free(text);
       for(std::vector<char*>::iterator it = files.begin(); it != files.end(); ++it) {
@@ -196,7 +196,7 @@ class cppFileStream {
 /* 
 // main function for test
 int main(void) {
-  cppFileStream file(1, "hello.txt");
+  DeliteFileInputStream file(1, "hello.txt");
   file.openAtNewLine(0);
   file.openAtNewLine(1);
 

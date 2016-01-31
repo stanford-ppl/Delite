@@ -36,25 +36,9 @@ object DeliteTaskGraph {
   }
 
   def enforceRestrictions(graph: DeliteTaskGraph)  = {
-    //FIXME: this is required because we can't currently have a C++ file reader interoperate with a Scala file writer,
-    //so we only allow C++ file reading when there are no file writers in the program
-    //this should be removed when that is fixed
-    val outputStream = "DeliteFileOutputStream"
-    val inputStream = "DeliteFileInputStream"
-    var hasOutput = false
-
-    graph.visitAll { op => if (op.outputType contains outputStream) hasOutput = true }
-    if (hasOutput) {
-      graph.visitAll { op =>
-        if ((op.outputType contains inputStream) || (op.getInputs.exists(i => i._1.outputType(i._2) contains inputStream))) {
-          op.supportedTargets.clear()
-          op.supportedTargets += Targets.Scala
-        }
-      }
-    }
-
     //if the multiloop reader fails to generate for a target the filestream should not be on that target either
     //this is required because we currently don't allow stream objects to be copied between targets
+    val inputStream = "DeliteFileInputStream"
     var streams: List[DeliteOP] = Nil
     graph.visitAll { op => if (op.outputType contains inputStream) streams = op :: streams }
     for (op <- streams) {

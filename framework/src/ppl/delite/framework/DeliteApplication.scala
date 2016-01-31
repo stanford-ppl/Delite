@@ -150,6 +150,8 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   }
 
   final def generateScalaSource(name: String, stream: PrintWriter) = {
+    /* NOTE: we're always emitting liftedMain here and disregarding
+             any use of registerFunction */
     reset
     stream.println("object "+name+"Main {"/*}*/)
     stream.println("def main(args: Array[String]) {"/*}*/)
@@ -163,6 +165,8 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
 
 
   final def execute(args: Array[String]) {
+    /* NOTE: we're always running liftedMain here and disregarding
+             any use of registerFunction */
     println("Delite Application Being Executed:[" + this.getClass.getName + "]")
 
     println("******Executing the program*********")

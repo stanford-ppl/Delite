@@ -21,7 +21,7 @@ trait Utils {
         else {
           val outFile = to + File.separator + f.getName
           val out = new BufferedWriter(new FileWriter(outFile))
-          for (line <- io.Source.fromFile(f).getLines) {
+          for (line <- _root_.scala.io.Source.fromFile(f).getLines) {
             var remappedLine = dsmap(line)
             remappedLine = remappedLine.replaceAll("ppl.delite.framework.datastruct", "generated")
             out.write(remappedLine + System.getProperty("line.separator"))

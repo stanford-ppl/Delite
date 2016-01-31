@@ -1,6 +1,7 @@
 #ifndef __DELITE_FILE_SYSTEM__
 #define __DELITE_FILE_SYSTEM__
 
+#include <cerrno>
 #include <stdio.h>
 #include <stdlib.h>
 #include <dirent.h>
@@ -13,6 +14,7 @@ class DeliteFileSystem {
 
     // deletes the given path recursively
     static void deleteRecursive(string pathname) {
+      if (!exists(pathname)) return;
       struct stat st;
       const char *path = pathname.c_str();
       lstat(path, &st);
@@ -34,7 +36,7 @@ class DeliteFileSystem {
         remove(path);
       }
       else {
-        fprintf(stderr, "Path %s does not appear to be a valid file or directory\n", path);
+        fprintf(stderr, "[DeliteFileSystem] Path %s does not appear to be a valid file or directory\n", path);
         exit(-1);
       }
     }

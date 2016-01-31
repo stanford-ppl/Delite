@@ -12,7 +12,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
   import IR._
   
   def nullValue[A](tp: Manifest[A]): String = {
-    assert(!isPurePrimitiveType(tp))
+    assert(!isNativePrimitiveType(tp))
     if (remap(tp) == "string") "string(\"\")"
     else if (cppMemMgr == "refcnt") remap(tp) + "(nullptr)"
     else "NULL"
@@ -20,23 +20,31 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
 
   // Hack: Some cases in the transfer functions, we want to check if the type is a primitive type and not string.
   //       This is a consequence of making string a primitive type to avoid memory management.
-  def isPurePrimitiveType[A](tp: Manifest[A]): Boolean = {
+  def isNativePrimitiveType[A](tp: Manifest[A]): Boolean = {
     isPrimitiveType(tp) && remap(tp) != "string"
   }
 
   override def emitSend(tp: Manifest[_], peer: Targets.Value): (String,String) = peer match {
     case Targets.JVM =>
-      if (tp.erasure == classOf[Variable[AnyVal]]) {
+      if (tp.erasure == classOf[Variable[_]]) {
         val out = new StringBuilder
         val typeArg = tp.typeArguments.head
-        if (!isPurePrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
+        if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitSend failed on Var of " + remap(typeArg)) //TODO: Enable non-primitive type Refs
         val typename = if (cppMemMgr == "refcnt") wrapSharedPtr(hostTarget+"Ref"+unwrapSharedPtr(remapHost(typeArg)))
                        else hostTarget+"Ref"+remapHost(typeArg)
         val signature = "jobject sendCPPtoJVM_%s(JNIEnv *env, %s %ssym)".format(mangledName(typename),typename,addRef())
+        
         out.append(signature + " {\n")
-        out.append("\tjclass cls = env->FindClass(\"generated/scala/Ref$mc%s$sp\");\n".format(JNITypeDescriptor(typeArg)))
-        out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(%s)V\");\n".format(JNITypeDescriptor(typeArg)))
-        out.append("\tjobject obj = env->NewObject(cls,mid,sym->get());\n")
+        if (isNativePrimitiveType(typeArg)) {
+          out.append("\tjclass cls = env->FindClass(\"generated/scala/Ref$mc%s$sp\");\n".format(JNITypeDescriptor(typeArg)))
+          out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(%s)V\");\n".format(JNITypeDescriptor(typeArg)))
+          out.append("\tjobject obj = env->NewObject(cls,mid,sym->get());\n")
+        }
+        else { //string
+          out.append("\tjclass cls = env->FindClass(\"generated/scala/Ref\");\n")
+          out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(Ljava/lang/Object;)V\");\n")
+          out.append("\tjobject obj = env->NewObject(cls,mid,sendCPPtoJVM_%s(env, sym->get()));\n".format(mangledName(remapHost(typeArg))))
+        }
         out.append("\treturn obj;\n")
         out.append("}\n")
         (signature+";\n", out.toString)
@@ -93,7 +101,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         val typeArg = tp.typeArguments.head
         val signature = "jobject sendCPPtoJVM_%s(JNIEnv *env, %s %ssym)".format(mangledName(remapHost(tp)),remapHost(tp),addRef(tp))
         out.append(signature + " {\n")  
-        if(isPurePrimitiveType(typeArg)) {
+        if(isNativePrimitiveType(typeArg)) {
           if(Config.generateSerializable) {
             out.append("\t%sArray arr = env->New%sArray(sym->length);\n".format(JNIType(typeArg),remapToJNI(typeArg)))
             out.append("\t%s *dataPtr = (%s *)env->GetPrimitiveArrayCritical((%sArray)arr,0);\n".format(JNIType(typeArg),JNIType(typeArg),JNIType(typeArg)))
@@ -169,7 +177,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         val tp_key = tp.typeArguments(0)
         out.append("\t%s *keys = sym->unsafeKeys();\n".format(remapWithRef(tp_key)))
         out.append("\tjobject m = makeManifest_%s(env);\n".format(mangledName(remapHost(tp_key))))
-        if (isPurePrimitiveType(tp_key))
+        if (isNativePrimitiveType(tp_key))
           out.append("\tjclass cls = env->FindClass(\"generated/scala/container/HashMapImpl$mc%s$sp\");\n".format(JNITypeDescriptor(tp_key)))
         else
           out.append("\tjclass cls = env->FindClass(\"generated/scala/container/HashMapImpl\");\n")
@@ -179,7 +187,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("\t\t%s jkey = sendCPPtoJVM_%s(env,keys[i]);\n".format(JNIType(tp_key),mangledName(remapHost(tp_key))))
         out.append("\t\tjmethodID mid_put = env->GetMethodID(cls,\"put\",\"(%s)I\");\n".format(JNITypeDescriptor(tp_key)))
         out.append("\t\tenv->CallIntMethod(obj,mid_put,jkey);\n")
-        if (!isPurePrimitiveType(tp_key)) out.append("\t\tenv->DeleteLocalRef(jkey);\n")
+        if (!isNativePrimitiveType(tp_key)) out.append("\t\tenv->DeleteLocalRef(jkey);\n")
         out.append("\t}\n")
         out.append("\treturn obj;\n")
         out.append("\t}\n")
@@ -192,20 +200,25 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
 
   override def emitRecv(tp: Manifest[_], peer: Targets.Value): (String,String) = {
     if (peer == Targets.JVM) {
-      if (tp.erasure == classOf[Variable[AnyVal]]) {
+      if (tp.erasure == classOf[Variable[_]]) {
         val out = new StringBuilder
         val typeArg = tp.typeArguments.head
-        if (!isPurePrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
+        if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitRecv failed on Var of " + remap(typeArg))
         val typename = if (cppMemMgr == "refcnt") wrapSharedPtr(hostTarget+"Ref"+unwrapSharedPtr(remapHost(typeArg)))
                        else hostTarget+"Ref"+remapHost(typeArg)
         val signature = "%s %srecvCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(typename,addRef(),mangledName(typename))
         out.append(signature + " {\n")
         out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-        out.append("\tjmethodID mid_get = env->GetMethodID(cls,\"get$mc%s$sp\",\"()%s\");\n".format(JNITypeDescriptor(typeArg),JNITypeDescriptor(typeArg)))
+        if (isNativePrimitiveType(typeArg))
+          out.append("\tjmethodID mid_get = env->GetMethodID(cls,\"get$mc%s$sp\",\"()%s\");\n".format(JNITypeDescriptor(typeArg),JNITypeDescriptor(typeArg)))
+        else
+          out.append("\tjmethodID mid_get = env->GetMethodID(cls,\"get\",\"()%s\");\n".format(JNITypeDescriptor(typeArg)))
         if (cppMemMgr == "refcnt")
           out.append("\t%s sym(new %s(env->Call%sMethod(obj,mid_get)));\n".format(typename,unwrapSharedPtr(typename),remapToJNI(typeArg)))
-        else
+        else if (isNativePrimitiveType(typeArg))
           out.append("\t%s %ssym = new %s(env->Call%sMethod(obj,mid_get));\n".format(typename,addRef(),typename,remapToJNI(typeArg)))
+        else
+          out.append("\t%s %ssym = new %s(recvCPPfromJVM_%s(env, env->CallObjectMethod(obj,mid_get)));\n".format(typename,addRef(),typename,mangledName(remapHost(typeArg))))
         out.append("\treturn sym;\n")
         out.append("}\n")
         (signature+";\n", out.toString)
@@ -253,7 +266,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
           }
           out.append("\tsym->%s = %s;\n".format(elem._1,elem._1))
         }
-        for(elem <- encounteredStructs(structName(tp))._2 if !isPurePrimitiveType(baseType(elem._2))) 
+        for(elem <- encounteredStructs(structName(tp))._2 if !isNativePrimitiveType(baseType(elem._2))) 
           out.append("\tenv->DeleteLocalRef(j_" + elem._1 + ");\n")
         out.append("\treturn sym;\n")
         out.append("}\n")
@@ -264,7 +277,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         val typeArg = tp.typeArguments.head
         val signature = "%s %srecvCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remapHost(tp),addRef(tp),mangledName(remapHost(tp)))  
         out.append(signature + " {\n")
-        if(isPurePrimitiveType(typeArg)) {
+        if(isNativePrimitiveType(typeArg)) {
           if(Config.generateSerializable) {
             out.append("\tjclass cls = env->FindClass(\"ppl/delite/runtime/data/LocalDeliteArray%s\");\n".format(remapToJNI(typeArg)))
             out.append("\tjmethodID mid = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
@@ -324,10 +337,10 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
   //TODO: How to implement sendView to JVM?
   override def emitSendView(tp: Manifest[_], peer: Targets.Value): (String,String) = {
     if (peer == Targets.JVM) {
-      if (tp.erasure == classOf[Variable[AnyVal]]) {
+      if (tp.erasure == classOf[Variable[_]]) {
         val out = new StringBuilder
         val typeArg = tp.typeArguments.head
-        if (!isPurePrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
+        if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitSendView failed on Var of " + remap(typeArg))
         val typename = if (cppMemMgr == "refcnt") wrapSharedPtr(hostTarget+"Ref"+unwrapSharedPtr(remapHost(typeArg)))
                        else hostTarget+"Ref"+remapHost(typeArg)
         val signature = "jobject sendViewCPPtoJVM_%s(JNIEnv *env, %s %ssym)".format(mangledName(typename),typename,addRef())
@@ -371,10 +384,10 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
 
   override def emitRecvView(tp: Manifest[_], peer: Targets.Value): (String,String) = {
     if (peer == Targets.JVM) {
-      if (tp.erasure == classOf[Variable[AnyVal]]) {
+      if (tp.erasure == classOf[Variable[_]]) {
         val out = new StringBuilder
         val typeArg = tp.typeArguments.head
-        if (!isPurePrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
+        if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitRecvView failed on Var of " + remap(typeArg))
         val typename = if (cppMemMgr == "refcnt") wrapSharedPtr(hostTarget+"Ref"+unwrapSharedPtr(remapHost(typeArg)))
                        else hostTarget+"Ref"+remapHost(typeArg)
         val signature = "%s %srecvViewCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(typename,addRef(),mangledName(typename))
@@ -383,8 +396,10 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         out.append("\tjmethodID mid_get = env->GetMethodID(cls,\"get$mc%s$sp\",\"()%s\");\n".format(JNITypeDescriptor(typeArg),JNITypeDescriptor(typeArg)))
         if (cppMemMgr == "refcnt")
           out.append("\t%s sym(new %s(env->Call%sMethod(obj,mid_get)));\n".format(typename,unwrapSharedPtr(typename),remapToJNI(typeArg)))
-        else
+        else if (isNativePrimitiveType(typeArg))
           out.append("\t%s %ssym = new %s(env->Call%sMethod(obj,mid_get));\n".format(typename,addRef(),typename,remapToJNI(typeArg)))
+        else
+          out.append("\t%s %ssym = new %s(recvCPPfromJVM_%s(env,env->CallObjectMethod(obj,mid_get)));\n".format(typename,addRef(),typename,mangledName(remapHost(typeArg))))
         out.append("\treturn sym;\n")
         out.append("}\n")
         (signature+";\n", out.toString)
@@ -403,7 +418,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         val typeArg = tp.typeArguments.head
         val signature = "%s %srecvViewCPPfromJVM_%s(JNIEnv *env, jobject obj)".format(remapHost(tp),addRef(tp),mangledName(remapHost(tp)))
         out.append(signature + " {\n")
-        if (isPurePrimitiveType(typeArg)) {
+        if (isNativePrimitiveType(typeArg)) {
           out.append("\tint length = env->GetArrayLength((%sArray)obj);\n".format(JNIType(typeArg)))
           out.append("\t%s *dataPtr = (%s *)env->GetPrimitiveArrayCritical((%sArray)obj,0);\n".format(JNIType(typeArg),JNIType(typeArg),JNIType(typeArg)))
           if (cppMemMgr == "refcnt")
@@ -436,17 +451,22 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
 
   override def emitSendUpdate(tp: Manifest[_], peer: Targets.Value): (String,String) = {
     if (peer == Targets.JVM) {
-      if (tp.erasure == classOf[Variable[AnyVal]]) {
+      if (tp.erasure == classOf[Variable[_]]) {
         val out = new StringBuilder
         val typeArg = tp.typeArguments.head
-        if (!isPurePrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
+        if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitSendUpdate failed on Var of " + remap(typeArg))
         val typename = if (cppMemMgr == "refcnt") wrapSharedPtr(hostTarget+"Ref"+unwrapSharedPtr(remapHost(typeArg)))
                        else hostTarget+"Ref"+remapHost(typeArg)
         val signature = "void sendUpdateCPPtoJVM_%s(JNIEnv *env, jobject obj, %s %ssym)".format(mangledName(typename),typename,addRef())
         out.append(signature + " {\n")
         out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-        out.append("\tjmethodID mid_set = env->GetMethodID(cls,\"set$mc%s$sp\",\"(%s)V\");\n".format(JNITypeDescriptor(typeArg),JNITypeDescriptor(typeArg)))
-        out.append("\tenv->CallVoidMethod(obj,mid_set,sym->get());\n")
+        if (isNativePrimitiveType(typeArg)) {
+          out.append("\tjmethodID mid_set = env->GetMethodID(cls,\"set$mc%s$sp\",\"(%s)V\");\n".format(JNITypeDescriptor(typeArg),JNITypeDescriptor(typeArg)))
+          out.append("\tenv->CallVoidMethod(obj,mid_set,sym->get());\n")
+        }
+        else {
+          out.append("\tassert(false);\n");
+        }
         out.append("}\n")
         (signature+";\n", out.toString)
       }
@@ -478,7 +498,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\tenv->CallVoidMethod(obj,mid_%s_setter,obj_%s);\n".format(elem._1,elem._1))
           }
         }
-        for(elem <- encounteredStructs(structName(tp))._2 if !isPurePrimitiveType(baseType(elem._2))) 
+        for(elem <- encounteredStructs(structName(tp))._2 if !isNativePrimitiveType(baseType(elem._2))) 
           out.append("\tenv->DeleteLocalRef(obj_" + elem._1 + ");\n")
         out.append("}\n")
         (signature+";\n", out.toString)
@@ -488,7 +508,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         val typeArg = tp.typeArguments.head
         val signature = "void sendUpdateCPPtoJVM_%s(JNIEnv *env, jobject &obj, %s %ssym)".format(mangledName(remapHost(tp)),remapHost(tp),addRef(tp))
         out.append(signature + " {\n")
-        if (isPurePrimitiveType(typeArg)) {
+        if (isNativePrimitiveType(typeArg)) {
           out.append("\tint length = env->GetArrayLength((%sArray)obj);\n".format(JNIType(typeArg)))
           //this check is needed to create a new array if the size has been changed (same for the emitRecvUpdate implementation below)
           //(e.g., this was nested array of a struct and mutation changed the array object)
@@ -524,17 +544,22 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
 
   override def emitRecvUpdate(tp: Manifest[_], peer: Targets.Value): (String,String) = {
     if (peer == Targets.JVM) {
-      if (tp.erasure == classOf[Variable[AnyVal]]) {
+      if (tp.erasure == classOf[Variable[_]]) {
         val out = new StringBuilder
         val typeArg = tp.typeArguments.head
-        if (!isPurePrimitiveType(typeArg)) throw new GenerationFailedException("emitSend Failed") //TODO: Enable non-primitie type refs
+        if (!isPrimitiveType(typeArg)) throw new GenerationFailedException("emitRecvUpdate failed on Var of " + remap(typeArg))
         val typename = if (cppMemMgr == "refcnt") wrapSharedPtr(hostTarget+"Ref"+unwrapSharedPtr(remapHost(typeArg)))
                        else hostTarget+"Ref"+remapHost(typeArg)
         val signature = "void recvUpdateCPPfromJVM_%s(JNIEnv *env, jobject obj, %s %ssym)".format(mangledName(typename),typename,addRef())
         out.append(signature + " {\n")
-        out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-        out.append("\tjmethodID mid_get = env->GetMethodID(cls,\"get$mc%s$sp\",\"()%s\");\n".format(JNITypeDescriptor(typeArg),JNITypeDescriptor(typeArg)))
-        out.append("\tsym->set(env->Call%sMethod(obj,mid_get));\n".format(remapToJNI(typeArg)))
+        if (isNativePrimitiveType(typeArg)) {
+          out.append("\tjclass cls = env->GetObjectClass(obj);\n")
+          out.append("\tjmethodID mid_get = env->GetMethodID(cls,\"get$mc%s$sp\",\"()%s\");\n".format(JNITypeDescriptor(typeArg),JNITypeDescriptor(typeArg)))
+          out.append("\tsym->set(env->Call%sMethod(obj,mid_get));\n".format(remapToJNI(typeArg)))
+        }
+        else {
+          out.append("\tassert(false);\n");
+        }
         out.append("}\n")
         (signature+";\n", out.toString)
       }
@@ -563,7 +588,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
             out.append("\trecvUpdateCPPfromJVM_%s(env,obj_%s,sym->%s);\n".format(mangledName(remapHost(elemtp)),elem._1,elem._1))
           }
         }
-        for(elem <- encounteredStructs(structName(tp))._2 if !isPurePrimitiveType(baseType(elem._2))) 
+        for(elem <- encounteredStructs(structName(tp))._2 if !isNativePrimitiveType(baseType(elem._2))) 
           out.append("\tenv->DeleteLocalRef(obj_" + elem._1 + ");\n")
         out.append("}\n")
         (signature+";\n", out.toString)
@@ -573,7 +598,7 @@ trait DeliteCppHostTransfer extends CppHostTransfer {
         val typeArg = tp.typeArguments.head
         val signature = "void recvUpdateCPPfromJVM_%s(JNIEnv *env, jobject obj, %s %ssym)".format(mangledName(remapHost(tp)),remapHost(tp),addRef(tp))
         out.append(signature + " {\n")
-        if (isPurePrimitiveType(typeArg)) {
+        if (isNativePrimitiveType(typeArg)) {
           out.append("\tint length = env->GetArrayLength((%sArray)obj);\n".format(JNIType(typeArg)))
           out.append("\tif(length != sym->length)\n")
           out.append("\t\tsym->data = (%s*)realloc((void*)(sym->data),sizeof(%s)*length);\n".format(remapHost(typeArg),remapHost(typeArg)))

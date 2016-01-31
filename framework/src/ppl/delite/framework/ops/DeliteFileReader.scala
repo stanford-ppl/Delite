@@ -234,12 +234,12 @@ trait CGenDeliteFileReaderOps extends CGenFat {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case DeliteFileInputStreamNew(paths, Const(null), Const(null), Const(0)) =>
+    case DeliteFileInputStreamNew(paths, Const(null), Const(null), offset) =>
       // C++ variable length args does not allow string types, so use underlying char *
       if (cppMemMgr == "refcnt")
-        stream.println(remap(sym.tp) + " " + quote(sym) + "(new cppFileStream(" + paths.length + "," + paths.map(quote(_) + ".c_str()").mkString(",") + "));")
+        stream.println(remap(sym.tp) + " " + quote(sym) + "(new DeliteFileInputStream(" + paths.length + "," + paths.map(quote(_) + ".c_str()").mkString(",") + "));")
       else
-        emitValDef(sym, "new cppFileStream(" + paths.length + "," + paths.map(quote(_) + ".c_str()").mkString(",") + ")")
+        emitValDef(sym, "new DeliteFileInputStream(" + quote(offset) + "," + paths.length + "," + paths.map(quote(_) + ".c_str()").mkString(",") + ")")
     case DeliteFileInputStreamNew(paths, charset, delimiter, offset) =>
       throw new GenerationFailedException("FileReader: custom charset/delimiter/offset is not suppported by C codegen")
     case DeliteFileInputStreamReadLine(stream,idx) =>
@@ -254,14 +254,14 @@ trait CGenDeliteFileReaderOps extends CGenFat {
   }
 
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
-    case "DeliteFileInputStream" if (cppMemMgr == "refcnt") => wrapSharedPtr("cppFileStream")
-    case "DeliteFileInputStream" => "cppFileStream"
+    case "DeliteFileInputStream" if (cppMemMgr == "refcnt") => wrapSharedPtr("DeliteFileInputStream")
+    case "DeliteFileInputStream" => "DeliteFileInputStream"
     case _ => super.remap(m)
   }
 
   override def getDataStructureHeaders(): String = {
     val out = new StringBuilder
-    out.append("#include \"cppFileStream.h\"\n")
+    out.append("#include \"DeliteFileInputStream.h\"\n")
     super.getDataStructureHeaders() + out.toString
   }
 
