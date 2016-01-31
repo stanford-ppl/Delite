@@ -25,6 +25,9 @@ trait DeliteTransform extends LoweringTransform {
   def prependTraversal(t: Traversal) { _traversals ::= t }
   def appendTraversal(t: Traversal) { _traversals :+= t }
 
+  // Clear traversals - for experimental use in Forge DSLs
+  def clearTraversals() { _traversals = Nil }
+
   /*
    * utilities
    */

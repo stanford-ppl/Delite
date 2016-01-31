@@ -77,16 +77,16 @@ trait AnalyzerBase extends IterativeAnalyzer {
     case DeliteArrayTake(da, n) => setChild(lhs, getChild(da))
     case DeliteArraySort(da) => setChild(lhs, getChild(da))
     case DeliteArrayApply(da, _) => setProps(lhs, getChild(da))
-    case DeliteArrayUpdate(da, _, x) => setChild(da, meet(UpdateAlias)(getChild(da), getProps(x)) )
-    case DeliteArrayCopy(src, _, dest, _, _) => setChild(dest, meet(UpdateAlias)(getChild(src), getChild(dest)) )
-    case DeliteArrayUnion(da, db) => setChild(lhs, meet(UnionAlias)(getChild(da), getChild(db)) )
-    case DeliteArrayIntersect(da, db) => setChild(lhs, meet(IntersectAlias)(getChild(da), getChild(db)) )
+    case DeliteArrayUpdate(da, _, x) => setChild(da, meet(UpdateAlias, getChild(da), getProps(x)) )
+    case DeliteArrayCopy(src, _, dest, _, _) => setChild(dest, meet(UpdateAlias, getChild(src), getChild(dest)) )
+    case DeliteArrayUnion(da, db) => setChild(lhs, meet(UnionAlias, getChild(da), getChild(db)) )
+    case DeliteArrayIntersect(da, db) => setChild(lhs, meet(IntersectAlias, getChild(da), getChild(db)) )
 
     // --- Struct Ops
     case Struct(_, elems) => elems foreach {case (index,sym) => setField(lhs, getProps(sym), index) }
     case FieldApply(struct, index) => setProps(lhs, getField(struct, index))
     case FieldUpdate(struct, index, x) =>
-      val updatedField = meet(UpdateAlias)(getField(struct, index), getProps(x))
+      val updatedField = meet(UpdateAlias, getField(struct, index), getProps(x))
       setField(struct, updatedField, index)
 
     // --- Variables
@@ -94,14 +94,14 @@ trait AnalyzerBase extends IterativeAnalyzer {
     // TODO: Weird to have different meet types for add/mul/sub/div...
     case ReadVar(Variable(v)) => setProps(lhs, getProps(v))
     case NewVar(init) => setProps(lhs, getProps(init))
-    case Assign(Variable(v), x) => setProps(v, meet(UpdateAlias)(getProps(v), getProps(x)) )
-    case VarPlusEquals(Variable(v), x) => setProps(v, meet(AddAlias)(getProps(v), getProps(x)) )
-    case VarMinusEquals(Variable(v), x) => setProps(v, meet(SubAlias)(getProps(v), getProps(x)) )
-    case VarTimesEquals(Variable(v), x) => setProps(v, meet(MulAlias)(getProps(v), getProps(x)) )
-    case VarDivideEquals(Variable(v), x) => setProps(v, meet(DivAlias)(getProps(v), getProps(x)) )
+    case Assign(Variable(v), x) => setProps(v, meet(UpdateAlias, getProps(v), getProps(x)) )
+    case VarPlusEquals(Variable(v), x) => setProps(v, meet(AddAlias, getProps(v), getProps(x)) )
+    case VarMinusEquals(Variable(v), x) => setProps(v, meet(SubAlias, getProps(v), getProps(x)) )
+    case VarTimesEquals(Variable(v), x) => setProps(v, meet(MulAlias, getProps(v), getProps(x)) )
+    case VarDivideEquals(Variable(v), x) => setProps(v, meet(DivAlias, getProps(v), getProps(x)) )
 
     // --- Branches
-    case op: DeliteOpCondition[_] => setProps(lhs, meet(BranchAlias)(getProps(op.thenp), getProps(op.elsep)) )
+    case op: DeliteOpCondition[_] => setProps(lhs, meet(BranchAlias, getProps(op.thenp), getProps(op.elsep)) )
 
     // --- Delite Ops
     // TODO: Fill in the remainder of these ops
@@ -121,7 +121,7 @@ trait AnalyzerBase extends IterativeAnalyzer {
       var newProps: Option[SymbolProperties] = getAtomicWriteRHS(d)
       for (t <- trace.reverse) { newProps = tracerToProperties(t, newProps) }
 
-      val updatedProps = meet(UpdateAlias)(newProps, getProps(s))
+      val updatedProps = meet(UpdateAlias, newProps, getProps(s))
       setProps(s, updatedProps)
 
     case _ => // Do nothing

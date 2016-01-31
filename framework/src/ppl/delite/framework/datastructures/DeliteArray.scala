@@ -391,7 +391,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   override def initProps[A](tp: Manifest[A], symData: PropMap[Datakey[_],Metadata], child: Option[SymbolProperties], index: Option[String])(implicit ctx: SourceContext): SymbolProperties = tp match {
     case t if isDeliteArrayType(t) =>
       val typeChild = initType(t.typeArguments.head)
-      val symChild = meet(MetaTypeInit)(child, Some(typeChild))
+      val symChild = meet(MetaTypeInit, child, Some(typeChild))
       ArrayProperties(symChild, symData)
     case _ => super.initProps(tp, symData, child, index)
   }

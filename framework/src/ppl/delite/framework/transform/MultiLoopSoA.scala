@@ -20,21 +20,26 @@ trait MultiloopSoATransformWithReduceExp extends MultiloopSoATransformExp {
 
 }
 
+trait MultiloopSoATransformer extends WorklistTransformer {
+  val IR: MultiloopSoATransformExp
+  import IR._
+  override val name = "Multiloop SOA"
+
+  override def transformStm(stm: Stm): Exp[Any] = transformLoop(stm) match {
+    case Some(newSym) => newSym
+    case None => super.transformStm(stm)
+  }
+
+  def replace[A](oldExp: Exp[A], newExp: Exp[A]) {
+    subst += this(oldExp) -> newExp
+    printlog("replacing " + oldExp.toString + " with " + newExp.toString)
+  }
+}
+
 trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform with DeliteApplication
   with DeliteOpsExp with DeliteArrayFatExp { self =>
 
-  private val t = new WorklistTransformer {
-    val IR: self.type = self
-    override def transformStm(stm: Stm): Exp[Any] = transformLoop(stm) match {
-      case Some(newSym) => newSym
-      case None => super.transformStm(stm)
-    }
-
-    def replace[A](oldExp: Exp[A], newExp: Exp[A]) {
-      subst += this(oldExp) -> newExp
-      printlog("replacing " + oldExp.toString + " with " + newExp.toString)
-    }
-  }
+  private val t = new MultiloopSoATransformer { val IR: self.type = self }
 
   def transformLoop(stm: Stm): Option[Exp[Any]] = stm match {
       case TP(sym, Loop(size, v, body: DeliteCollectElem[a,i,ca])) =>

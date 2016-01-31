@@ -67,7 +67,7 @@ trait TransformerBase extends ForwardTransformer with IterativeTraversal { self 
   def transformTTP(lhs: List[Sym[Any]], mhs: List[Def[Any]], rhs: FatDef)(implicit ctx: SourceContext): Option[List[Exp[Any]]] = None
 
   def transferMetadata(dest: Exp[Any], src: Exp[Any])(node: Def[Any]) {
-    setProps(dest, meet(MetaOverwrite)(props(dest), props(src)) )
+    setProps(dest, meet(MetaOverwrite, props(dest), props(src)) )
   }
 }
 
