@@ -238,8 +238,6 @@ trait RankAnalyzer extends MultiArrayAnalyzerBase {
   override val name = "Rank Analyzer"
   val debugMode = true
 
-  var incomplete: List[Exp[Any]] = Nil
-
   override def hasCompleted = incomplete.isEmpty
   override def failedToConverge() {
     printerr("Maximum iterations exceeded before all ranks were fully known")

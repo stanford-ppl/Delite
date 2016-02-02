@@ -12,7 +12,12 @@ trait AnalyzerBase extends IterativeAnalyzer {
   val IR: DeliteOpsExp
   import IR._
 
+  // --- Settings
   val autopropagate: Boolean = true
+
+  // --- State
+  var incomplete: List[Exp[Any]] = Nil
+  var reflectedNode: Boolean = false
 
   /**
    * Main function for analysis.
@@ -20,7 +25,10 @@ trait AnalyzerBase extends IterativeAnalyzer {
    * By default ignores reflect - override this behavior by not calling super.processTP
    */
   def processTP(lhs: Exp[Any], rhs: Def[Any])(implicit ctx: SourceContext): Unit = rhs match {
-    case Reflect(d, _, _) => processTP(lhs, d)
+    case Reflect(d, _, _) =>
+      reflectedNode = true
+      processTP(lhs, d)
+      reflectedNode = false
     case _ => // No action
   }
   def processTTP(lhs: List[Exp[Any]], mhs: List[Def[Any]], rhs: FatDef): Unit = {}

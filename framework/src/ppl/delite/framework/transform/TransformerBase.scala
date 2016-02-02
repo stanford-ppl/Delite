@@ -63,6 +63,9 @@ trait TransformerBase extends ForwardTransformer with IterativeTraversal { self 
   // Note: Shouldn't be calling transformStm from TransformerBase (slightly modified transformer design)
   override def transformStm(stm: Stm): Exp[Any] = throw new Exception("New transformer design - should not be calling transformStm here")
 
+  // For user-friendliness? Is this safe?
+  implicit def getSome(x: Exp[Any]): Option[Exp[Any]] = Some(x)
+
   def transformTP[A](lhs: Sym[A], rhs: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]]
   def transformTTP(lhs: List[Sym[Any]], mhs: List[Def[Any]], rhs: FatDef)(implicit ctx: SourceContext): Option[List[Exp[Any]]] = None
 

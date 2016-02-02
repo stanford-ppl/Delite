@@ -5,6 +5,7 @@ import scala.collection.mutable.{Map => MMap}
 import scala.tools.nsc.io._
 import scala.virtualization.lms.common.{BaseExp, Base}
 import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen, Transforming, GenerationFailedException, CCodegen, CudaCodegen}
+import scala.virtualization.lms.internal.IRPrinter
 
 import codegen.cpp.TargetCpp
 import codegen.cuda.TargetCuda
@@ -89,7 +90,11 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
     }
 
     // set traversals to be applied before codegen
-    deliteGenerator.traversals = traversals
+
+    val printer = new IRPrinter{val IR: DeliteApplication.this.type = DeliteApplication.this}
+    //traversals = printer +: traversals
+
+    deliteGenerator.traversals = printer +: traversals
     //val distributedTransformer = new DistributedArrayTransformer{ val IR: DeliteApplication.this.type = DeliteApplication.this }
     //deliteGenerator.transformers :+= distributedTransformer
 
