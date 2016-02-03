@@ -90,11 +90,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
     }
 
     // set traversals to be applied before codegen
-
-    val printer = new IRPrinter{val IR: DeliteApplication.this.type = DeliteApplication.this}
-    //traversals = printer +: traversals
-
-    deliteGenerator.traversals = printer +: traversals
+    deliteGenerator.traversals = traversals
     //val distributedTransformer = new DistributedArrayTransformer{ val IR: DeliteApplication.this.type = DeliteApplication.this }
     //deliteGenerator.transformers :+= distributedTransformer
 

@@ -236,7 +236,7 @@ trait RankAnalyzer extends MultiArrayAnalyzerBase {
   val IR: DeliteOpsExp with DeliteMultiArrayOpsExp with RankMetadataOps
   import IR._
   override val name = "Rank Analyzer"
-  val debugMode = true
+  override val debugMode = true
 
   override def hasCompleted = incomplete.isEmpty
   override def failedToConverge() {
