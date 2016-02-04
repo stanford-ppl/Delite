@@ -107,5 +107,6 @@ class ProfilerSuite extends Suite {
     checkExecutionSummary(executionProfile, "x11_0", 31, 31, 0)
     checkExecutionSummary(executionProfile, "x11_1", 28, 28, 0)
     checkExecutionSummary(executionProfile, "x11_2", 29, 29, 0)
+    (new java.io.File(Config.profileOutputDirectory + sep + "profile.db")).delete() //clean up
   }
 }
