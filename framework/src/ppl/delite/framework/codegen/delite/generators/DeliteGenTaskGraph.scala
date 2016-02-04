@@ -307,7 +307,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
    */
   override def quote(x: Exp[Any]) = x match {
     case Const(s: String) => super.quote(x).replaceAllLiterally("\"","\\\"") //escape constant quoted strings
-    case Const(l: Long) => super.quote(x).dropRight(1) //drop the "L" suffix
     case _ => super.quote(x)
   }
 

@@ -39,7 +39,8 @@ trait DeliteTestConfig {
 
   var cppWhiteList = Seq("StaticData", "DeliteTestMkString", "DeliteTestAppend", "DeliteTestStrConcat", "DeliteTestFwNew", //test operations are Scala-only by design
                          "DeliteTestBwNew", "DeliteTestBwWrite", "DeliteTestBwClose", "DeliteTestPrintLn", "scala.collection.mutable.ArrayBuffer",
-                         "DeliteArraySeq[scala.virtualization.lms.common.Record{", "Array[scala.virtualization.lms.common.Record{") //C++ doesn't currently support non-Soa'd Array[Record]
+                         "DeliteArraySeq[", "Array[scala.virtualization.lms.common.Record{", //C++ doesn't currently support non-Soa'd Array[Record]
+                         "scala.Function") //C++ doesn't currently support Function objects
 
 }
 
@@ -66,15 +67,14 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     uniqueTestName(app) + "-test.deg"
   }
 
-  def compileAndTest(app: DeliteTestRunner, checkMultiLoop: Boolean = checkMultiLoop, enforceFullCoverage: Boolean = enforceFullCoverage) {
+  def compileAndTest(app: DeliteTestRunner, checkMultiLoop: Boolean = checkMultiLoop, enforceFullCoverage: Boolean = enforceFullCoverage) { compileAndTestAll(Seq(app), checkMultiLoop, enforceFullCoverage) }
+
+  def compileAndTestAll(apps: Seq[DeliteTestRunner], checkMultiLoop: Boolean = checkMultiLoop, enforceFullCoverage: Boolean = enforceFullCoverage) {
     println("=================================================================================================")
-    println("TEST: " + app.toString)
+    println("TEST: " + apps.mkString(","))
     println("=================================================================================================")
 
     validateParameters()
-    val args = Array(degName(app))
-    app.resultBuffer = new ArrayBuffer[Boolean] with SynchronizedBuffer[Boolean]
-
     // Enable specified target code generators
     for(t <- deliteTestTargets) {
       t match {
@@ -95,19 +95,22 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     if(useBlas) Config.useBlas = true
 
     // check if all multiloops in the test app are generated for specified targets
-    if(checkMultiLoop) {
-      val generateCUDA = Config.generateCUDA
-      Config.generateCUDA = true
-      stageTest(app)
-      val graph = ppl.delite.runtime.Delite.loadDeliteDEG(degName(app))
-      val targets = List("scala","cuda") // Add other targets
-      for(op <- graph.totalOps if op.isInstanceOf[OP_MultiLoop]) {
-        targets foreach { t =>  if(!op.supportsTarget(Targets(t))) sys.error(t + " was unable to generate op " + op) }
+    for (app <- apps) {
+      app.resultBuffer = new ArrayBuffer[Boolean] with SynchronizedBuffer[Boolean]
+      if(checkMultiLoop) {
+        val generateCUDA = Config.generateCUDA
+        Config.generateCUDA = true
+        stageTest(app)
+        val graph = ppl.delite.runtime.Delite.loadDeliteDEG(degName(app))
+        val targets = List("scala","cuda") // Add other targets
+        for(op <- graph.totalOps if op.isInstanceOf[OP_MultiLoop]) {
+          targets foreach { t =>  if(!op.supportsTarget(Targets(t))) sys.error(t + " was unable to generate op " + op) }
+        }
+        Config.generateCUDA = generateCUDA
       }
-      Config.generateCUDA = generateCUDA
-    }
-    else { // Just stage test
-      stageTest(app)
+      else { // Just stage test
+        stageTest(app)
+      }
     }
 
     // Set runtime parameters for targets and execute runtime
@@ -128,8 +131,12 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
           case "opencl" => runtimeConfig(numScala = num, numOpenCL = 1)
           case _ => assert(false)
         }
-        val outStr = execTest(app, args, target, num)
-        checkTest(app, outStr)
+
+        for (app <- apps) {
+          val args = Array(degName(app))
+          val outStr = execTest(app, args, target, num)
+          checkTest(app, outStr)
+        }
       }
     }
   }
