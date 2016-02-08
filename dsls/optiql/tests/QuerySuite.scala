@@ -192,6 +192,7 @@ trait QueryableJoinTest extends DeliteTestModule with OptiQLApplication with Tes
 
 
 class QuerySuite extends DeliteSuite {
+  override def enforceFullCoverage = false
   def testSelect() { compileAndTest(QueryableSelectRunner) }
   def testWhere() { compileAndTest(QueryableWhereRunner) }
   def testReduce() { compileAndTest(QueryableReduceRunner) }

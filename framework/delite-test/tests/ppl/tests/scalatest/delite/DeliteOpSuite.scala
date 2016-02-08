@@ -432,6 +432,26 @@ trait DeliteIfThenElse extends DeliteTestBase {
       }
     collect(z == 3)
 
+    def checkConstants(i: Rep[Int]) = {
+      collect { (if (i > 100) 1 else 2) == 2 } //int
+      collect { (if (i > 101) 1l else 2l) == 2l } //long
+      collect { (if (i > 102) 1f else 2f) == 2f } //float
+      collect { (if (i > 103) 1.0 else 2.0) == 2.0 } //double
+      collect { (if (i > 104) "hello" else "world") == "world" } //string
+      collect { (if (i > 105) 'a' else 'b') == 'b' } //char as int TODO: why does the char widen to an int without the type?
+
+      val c: Rep[Char] = if (i > 106) 'x' else 'y' //char
+      collect(c == 'y')
+    }
+
+    //check quoting different constant types in kernels
+    for (i <- 0 until 10) {
+      checkConstants(i)
+    }
+
+    //check quoting different constant types in DEG
+    checkConstants(p)
+
     mkReport
   }
 }
