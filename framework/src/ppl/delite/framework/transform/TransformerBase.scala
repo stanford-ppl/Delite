@@ -1,9 +1,57 @@
 package ppl.delite.framework.transform
 
-import scala.reflect.SourceContext
+import scala.reflect.{RefinedManifest,SourceContext}
 import scala.collection.immutable
-import scala.virtualization.lms.common.{ForwardTransformer, EffectExp}
-import scala.virtualization.lms.internal.{FatExpressions, IterativeTraversal}
+import scala.virtualization.lms.common.{ForwardTransformer, EffectExp, Record}
+import scala.virtualization.lms.internal.{FatExpressions, IterativeTraversal, Transforming}
+
+import ppl.delite.framework.datastructures._
+
+// Useful operations for transforming
+trait DeliteTransforming extends Transforming {
+  this: DeliteStructsExp with DeliteArrayOpsExp =>
+
+  // Get inner element type for given data structure type
+  def dataTp[A,B:Manifest](x: Exp[A]): Manifest[B] = dataTp(x.tp)
+  def dataTp[A,B:Manifest](tp: Manifest[A]): Manifest[B] = tp match {
+    // Check if type is DeliteArray first to avoid issues with AOS - SOA in StructType unapplies
+    case t if isDeliteArrayType(t) => t.typeArguments(0).asInstanceOf[Manifest[B]]
+    case StructType(_,elems) => elems.find(_._1 == "data").getOrElse(
+      throw new RuntimeException("Can't find data field for " + tp)
+    )._2.typeArguments(0).asInstanceOf[Manifest[B]]
+    case t if !t.typeArguments.isEmpty => t.typeArguments(0).asInstanceOf[Manifest[B]]
+    case _ => sys.error("Cannot get data type of " + tp + " - type has no type arguments")
+  }
+
+  def fieldTp[A,B:Manifest](x: Exp[A], index: String): Manifest[B] = fieldTp(x.tp, index)
+  def fieldTp[A,B:Manifest](tp: Manifest[A], index: String): Manifest[B] = tp match {
+    case StructType(_,elems) => elems.find(_._1 == index).getOrElse{
+      throw new RuntimeException("Can't find field " + index +" for " + tp)
+    }._2.typeArguments(0).asInstanceOf[Manifest[B]]
+    case _ => sys.error("Cannot get field type of " + tp + " - not a struct type")
+  }
+
+  // --- Type transformation
+  /**
+   * Transform saved manifests to match transformed IR
+   * @param tp - element type manifest, to be transformed
+   * @param p  - symbol properties matching type
+   */
+  def ttype[A,B:Manifest](tp: Manifest[A], p: SymbolProperties): Manifest[B] = (tp,p) match {
+    case (StructType(_,elems), s: StructProperties) =>
+      new RefinedManifest[Record] {
+        def runtimeClass = classOf[Record]
+        val fields = elems.map{f => f._1 -> ttype(f._2, s.child(f._1).get) }
+      }.asInstanceOf[Manifest[B]]
+    case (tp, a: ArrayProperties) if isDeliteArrayType(tp) =>
+      val inner = ttype(tp.typeArguments(0), a.child.get)
+      darrayManifest(inner).asInstanceOf[Manifest[B]]
+    case (tp, a: ScalarProperties) => tp.asInstanceOf[Manifest[B]]
+    case _ => sys.error("Don't know how to transform type " + tp + " with associated properties " + p)
+  }
+}
+
+
 
 // Modified version of WorklistTransformer
 trait TransformerBase extends ForwardTransformer with IterativeTraversal { self =>

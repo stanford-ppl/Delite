@@ -10,7 +10,7 @@ import ppl.delite.framework.datastructures._
 import ppl.delite.framework.Util._
 
 trait MultiArrayAnalyzerBase extends AnalyzerBase {
-  val IR: DeliteOpsExp with DeliteMultiArrayOpsExp with MetadataOps
+  val IR: DeliteOpsExp with DeliteMultiArrayOpsExp
   import IR._
 
   override def forwardPropagateTP[A](e: Exp[A], d: Def[_])(implicit ctx: SourceContext): Unit = d match {
