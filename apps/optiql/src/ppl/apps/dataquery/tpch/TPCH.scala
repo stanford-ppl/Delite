@@ -53,7 +53,7 @@ trait TPCHBaseTrait extends OptiQLApplication with Types with RecordOps {
 
 }
 
-
+@virtualize
 trait TPCHQ1Trait extends TPCHBaseTrait {
 
   val queryName = "Q1"  
@@ -166,7 +166,9 @@ trait TPCHQ3Trait extends TPCHBaseTrait {
   val queryName = "Q3"
 
   def query() = {
-    val lineItems = loadLineItems(); val customers = loadCustomers(); val orders = loadOrders()
+    val lineItems = loadLineItems()
+    val customers = loadCustomers()
+    val orders = loadOrders()
     tic(lineItems.size, customers.size, orders.size)
 
     val shippingOrders = customers.Where(_.c_mktsegment == "BUILDING")

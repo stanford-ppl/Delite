@@ -25,7 +25,7 @@ trait DateOps extends Base { this: OptiQL =>
     def !=(rd: Rep[Date]): Rep[Boolean] = dateNotEqual(d,rd)
   }
 
-  def __equal(ld: Rep[Date], rd: Rep[Date]) = dateEqual(ld,rd)
+  def infix_==(ld: Rep[Date], rd: Rep[Date]) = dateEqual(ld,rd)
 
   def dateObjectApply(str: Rep[String]): Rep[Date]
   def dateLessThan(ld: Rep[Date], rd: Rep[Date]): Rep[Boolean]

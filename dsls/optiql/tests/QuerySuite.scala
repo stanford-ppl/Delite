@@ -212,7 +212,7 @@ trait QueryableJoinTest extends DeliteTestModule with OptiQLApplication with Tes
     val res/*:Rep[Table[Item]]*/ = items Join(items2) WhereEq(_.id, _.id) Select { (a, b) =>
 //        val rec = Item(a.id, a.quantity, a.price, a.status)
         val rec = Record(
-          id = a.id, //FIXME:what the heck?
+          id = a.id,
           quantity = b.quantity
           //The reverse fields were fixed by adding: "mem <- tpe.members.toSeq.reverse" in Records.scala in LMS
         )

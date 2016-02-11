@@ -69,7 +69,9 @@ def checkLMSEnv():
 
 def stage(runner, params, opts):
     java_opts = os.getenv("JAVA_OPTS", "")
-
+    print(runner)
+    print(params)
+    print(opts)
     build_dir = opts.build_dir + os.sep + "generated" + os.sep + runner + os.sep
     java_opts = java_opts + " -server" + " -Ddelite.home.dir=" + delitecommon.DELITE_HOME + " -Ddelite.build.dir=" + build_dir + " -Ddelite.deg.filename=" + runner + ".deg"
     if opts.no_blas == False:
