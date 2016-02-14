@@ -5,7 +5,6 @@ import scala.collection.mutable.{Map => MMap}
 import scala.tools.nsc.io._
 import scala.virtualization.lms.common.{BaseExp, Base}
 import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen, Transforming, GenerationFailedException, CCodegen, CudaCodegen}
-import scala.virtualization.lms.internal.IRPrinter
 
 import codegen.cpp.TargetCpp
 import codegen.cuda.TargetCuda

@@ -1,6 +1,7 @@
 package ppl.delite.framework.analysis
 
-import scala.virtualization.lms.internal.{Traversal,IterativeAnalyzer}
+import scala.virtualization.lms.internal.Traversal
+import scala.virtualization.lms.common.AbstractAnalyzer
 
 import scala.reflect.SourceContext
 import scala.collection.mutable.HashSet
@@ -8,7 +9,7 @@ import scala.collection.mutable.HashSet
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.datastructures._
 
-trait AnalyzerBase extends IterativeAnalyzer {
+trait AnalyzerBase extends AbstractAnalyzer {
   val IR: DeliteOpsExp
   import IR._
 

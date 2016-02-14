@@ -49,6 +49,15 @@ trait DeliteTransforming extends Transforming {
     case (tp, a: ScalarProperties) => tp.asInstanceOf[Manifest[B]]
     case _ => sys.error("Don't know how to transform type " + tp + " with associated properties " + p)
   }
+
+  // Get symbol properties for data field
+  def mdat(b: Block[Any]): SymbolProperties = mdat(b.res)
+  def mdat(e: Exp[Any]): SymbolProperties = mdat(props(e))
+  def mdat(p: SymbolProperties): SymbolProperties = p match {
+    case (s: StructProperties) => s.child("data").get
+    case (a: ArrayProperties) => a.child.get
+    case _ => sys.error("Symbol properties " + makeString(p) + " has no data field")
+  }
 }
 
 
