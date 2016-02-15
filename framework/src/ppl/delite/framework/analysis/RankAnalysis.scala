@@ -1,4 +1,4 @@
-package ppl.delite.framework.analysis
+/*package ppl.delite.framework.analysis
 
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal._
@@ -399,4 +399,4 @@ trait RankChecker extends MultiArrayAnalyzerBase {
 
     case _ => //Nothing
   }
-}
+}*/

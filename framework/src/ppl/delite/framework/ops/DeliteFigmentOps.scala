@@ -24,7 +24,7 @@ trait DeliteFigmentsExp extends AtomicWrites with FatExpressions { self =>
   abstract class Implementer extends TunnelingTransformer
 }
 
-trait DeliteFigmentOpsExp extends DeliteFigmentsExp with AbstractIndicesOpsExp { this: DeliteOpsExp =>
+trait DeliteFigmentOpsExp extends DeliteFigmentsExp /*with AbstractIndicesOpsExp*/ { this: DeliteOpsExp =>
 
   abstract class OpFig[R:Manifest] extends DeliteOp[R] with FigNode[R] {
     type OpType <: OpFig[R]
@@ -40,12 +40,12 @@ trait DeliteFigmentOpsExp extends DeliteFigmentsExp with AbstractIndicesOpsExp {
   abstract class OpLoopFig3[A:Manifest,B:Manifest,R:Manifest] extends OpLoopFig2[A,R] { val mB = manifest[B] }
   abstract class OpLoopFig4[A:Manifest,B:Manifest,C:Manifest,R:Manifest] extends OpLoopFig3[A,B,R] { val mC = manifest[C] }
 
-  abstract class NestedLoopFig[R:Manifest] extends OpFig[R] {
+  /*abstract class NestedLoopFig[R:Manifest] extends OpFig[R] {
     type OpType <: NestedLoopFig[R]
     val v: Sym[Int] = copyOrElse(_.v)(fresh[Int])
     val i: Sym[LoopIndices] = copyOrElse(_.i)(loopIndicesEmpty(v).asInstanceOf[Sym[LoopIndices]])
   }
   abstract class NestedLoopFig2[A:Manifest,R:Manifest] extends NestedLoopFig[R] { val mA = manifest[A] }
   abstract class NestedLoopFig3[A:Manifest,B:Manifest,R:Manifest] extends NestedLoopFig2[A,R] { val mB = manifest[B] }
-  abstract class NestedLoopFig4[A:Manifest,B:Manifest,C:Manifest,R:Manifest] extends NestedLoopFig3[A,B,R] { val mC = manifest[C] }
+  abstract class NestedLoopFig4[A:Manifest,B:Manifest,C:Manifest,R:Manifest] extends NestedLoopFig3[A,B,R] { val mC = manifest[C] }*/
 }

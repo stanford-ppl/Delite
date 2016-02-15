@@ -1,4 +1,4 @@
-package ppl.delite.framework.datastructures
+/*package ppl.delite.framework.datastructures
 
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal._
@@ -50,5 +50,4 @@ trait DeliteIndicesOpsExp extends DeliteIndicesOps with DeliteStructsExp { this:
     case t if isSubtype(t.erasure,classOf[DeliteIndexRange]) => Some((classTag(t), List("start" -> manifest[Int], "stride" -> manifest[Int], "length" -> manifest[Int])))
     case _ => super.unapplyStructType
   }
-
-}
+}*/
