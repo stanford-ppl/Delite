@@ -82,6 +82,7 @@ trait AnalyzerBase extends AbstractAnalyzer {
 
   /*def propagateViaSyms(lhs: Exp[A], rhs: Def[_])(implicit ctx: SourceContext): Unit = rhs match {
     case Reflect(d, u, es) =>
+      // Really assumes containSyms returns exactly one thing
       val newChild = meet(containSyms(d).map(getProps):_*)
       u.mstWrite.foreach{ e => setChild(e, meet(newChild, getChild(e))) }
 

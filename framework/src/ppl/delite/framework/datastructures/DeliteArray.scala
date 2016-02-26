@@ -389,13 +389,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
     case _ => super.mirror(e,f)
   }
 
-  override def initProps[A](tp: Manifest[A], symData: PropMap[Datakey[_],Metadata], child: Option[SymbolProperties], index: Option[String])(implicit ctx: SourceContext): SymbolProperties = tp match {
-    case t if isDeliteArrayType(t) =>
-      val typeChild = initType(t.typeArguments.head)
-      val symChild = meet(MetaTypeInit, child, Some(typeChild))
-      ArrayProperties(symChild, symData)
-    case _ => super.initProps(tp, symData, child, index)
-  }
+  override def unapplyArrayLike[A](tp: Manifest[A]) = if (isDeliteArrayType(tp)) Some(tp.typeArguments.head) else super.unapplyArrayLike(tp)
 
   override def syms(e: Any): List[Sym[Any]] = e match {
     case Def(SimpleStruct(SoaTag(tag, length), elems)) => syms(length) ++ super.syms(e)
