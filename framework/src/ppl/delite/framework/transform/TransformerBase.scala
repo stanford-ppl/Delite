@@ -90,7 +90,7 @@ trait TransformerBase extends ForwardTransformer with IterativeTraversal { self 
 
   override def traverseStm(stm: Stm) = stm match {
     case TP(lhs, rhs) if apply(lhs) == lhs =>
-      val replace = transformTP(lhs, rhs)(mpos(lhs.pos)) match {
+      val replace = transformTP(lhs, rhs) match {
         case Some(replace) =>
           transferMetadata(replace, lhs)(rhs)
           replace
@@ -102,7 +102,7 @@ trait TransformerBase extends ForwardTransformer with IterativeTraversal { self 
       printwarn(s"Transformer $name already has a substitution $lhs -> ${apply(lhs)} when encountering statement $stm")
 
     case TTP(syms, mhs, rhs) if syms.forall{s => apply(s) == s} =>
-      transformTTP(syms, mhs, rhs)(mpos(syms.head.pos)) match {
+      transformTTP(syms, mhs, rhs) match {
         case Some(replace) =>
           syms.zip(replace).foreach{case(s,s2) =>
             assert(!subst.contains(s) || subst(s) == s2)
@@ -120,9 +120,6 @@ trait TransformerBase extends ForwardTransformer with IterativeTraversal { self 
   // Note: Shouldn't be calling transformStm from TransformerBase (slightly modified transformer design)
   override def transformStm(stm: Stm): Exp[Any] = throw new Exception("New transformer design - should not be calling transformStm here")
 
-  // For user-friendliness? Is this safe?
-  implicit def getSome(x: Exp[Any]): Option[Exp[Any]] = Some(x)
-
   def transformTP[A](lhs: Sym[A], rhs: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]]
   def transformTTP(lhs: List[Sym[Any]], mhs: List[Def[Any]], rhs: FatDef)(implicit ctx: SourceContext): Option[List[Exp[Any]]] = None
 
@@ -139,6 +136,8 @@ trait TunnelingTransformer extends TransformerBase {
   // Does that ever happen in practice? Can always special case...
   override def transformTP[A](lhs: Sym[A], rhs: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]] = rhs match {
     case Reflect(d, u, es) =>
+      implicit val ctx: SourceContext = mpos(lhs.pos)
+
       transformTP(lhs, d) match {
         case None => None
         case Some(e: Sym[_]) =>

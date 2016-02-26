@@ -397,11 +397,6 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
     case _ => super.initProps(tp, symData, child, index)
   }
 
-  override def isDataStructureType[T](tp: Manifest[T]): Boolean = tp match {
-    case t if isDeliteArrayType(t) => true
-    case _ => super.isDataStructureType(tp)
-  }
-
   override def syms(e: Any): List[Sym[Any]] = e match {
     case Def(SimpleStruct(SoaTag(tag, length), elems)) => syms(length) ++ super.syms(e)
     case _ => super.syms(e)
@@ -423,12 +418,14 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
 
   override def containSyms(e: Any): List[Sym[Any]] = e match {
     case NewVar(Def(Reflect(DeliteArrayNew(_,_,_),_,_))) => Nil  //ignore nested mutability for Var(Array): this is only safe because we rewrite mutations on Var(Array) to atomic operations
+    case DeliteArrayUpdate(da,i,x) => syms(x)
     case DeliteArrayCopy(s,sp,d,dp,l) => Nil
     case DeliteArrayClone(self) => Nil
     case _ => super.containSyms(e)
   }
 
   override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteArrayApply(da,i) => syms(da)
     case DeliteArrayCopy(s,sp,d,dp,l) => Nil
     case DeliteArrayClone(self) => Nil
     case _ => super.extractSyms(e)

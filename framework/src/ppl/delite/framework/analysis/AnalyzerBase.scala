@@ -23,16 +23,16 @@ trait AnalyzerBase extends AbstractAnalyzer {
   /**
    * Main function for analysis.
    * By default called after metadata propagation has been completed
-   * By default ignores reflect - override this behavior by not calling super.processTP
+   * By default ignores reflect - override this behavior by not calling super.analyzeTP
    */
-  def processTP(lhs: Exp[Any], rhs: Def[Any])(implicit ctx: SourceContext): Unit = rhs match {
+  def analyzeTP(lhs: Exp[Any], rhs: Def[Any])(implicit ctx: SourceContext): Unit = rhs match {
     case Reflect(d, _, _) =>
       reflectedNode = true
-      processTP(lhs, d)
+      analyzeTP(lhs, d)
       reflectedNode = false
     case _ => // No action
   }
-  def processTTP(lhs: List[Exp[Any]], mhs: List[Def[Any]], rhs: FatDef): Unit = {}
+  def analyzeTTP(lhs: List[Exp[Any]], mhs: List[Def[Any]], rhs: FatDef): Unit = {}
 
   override def processBlock[A:Manifest](block: Block[A]): Block[A] = {
     traverseBlock(block)
@@ -44,14 +44,17 @@ trait AnalyzerBase extends AbstractAnalyzer {
     analyzeStm(stm)
   }
 
-  def analyzeStm(stm: Stm) = stm match {
+  final def analyzeStm(stm: Stm) = stm match {
     case TP(lhs, rhs) =>
-      if (autopropagate) forwardPropagateTP(lhs, rhs)(mpos(lhs.pos))
-      processTP(lhs, rhs)(mpos(lhs.pos))
+      if (autopropagate) {
+        propagateTP(lhs, rhs)(mpos(lhs.pos))
+      }
+
+      analyzeTP(lhs, rhs)(mpos(lhs.pos))
 
     case TTP(lhs, mhs, rhs) =>
       // TODO: What to do for TTPs?
-      processTTP(lhs, mhs, rhs)
+      analyzeTTP(lhs, mhs, rhs)
   }
 
   def completed(e: Exp[Any]): Boolean = true
@@ -76,26 +79,39 @@ trait AnalyzerBase extends AbstractAnalyzer {
     (checker.incompleteSet.toList)
   }
 
+
+  /*def propagateViaSyms(lhs: Exp[A], rhs: Def[_])(implicit ctx: SourceContext): Unit = rhs match {
+    case Reflect(d, u, es) =>
+      val newChild = meet(containSyms(d).map(getProps):_*)
+      u.mstWrite.foreach{ e => setChild(e, meet(newChild, getChild(e))) }
+
+      propagateViaSyms(lhs, d)
+
+    case _ =>
+      val propProps = meet()
+
+  }*/
+
   // TODO: Where does this belong? Where should each of these be defined? In respective traits?
-  def forwardPropagateTP[A](lhs: Exp[A], rhs: Def[_])(implicit ctx: SourceContext): Unit = rhs match {
+  def propagateTP[A](lhs: Exp[A], rhs: Def[_])(implicit ctx: SourceContext): Unit = rhs match {
     // --- Effects
     case Reify(sym, _, _) => setProps(lhs, getProps(sym))
-    case Reflect(d, _, _) => forwardPropagateTP(lhs, d)
+    case Reflect(d, _, _) => propagateTP(lhs, d)
 
     // --- DeliteArray
     case DeliteArrayTake(da, n) => setChild(lhs, getChild(da))
     case DeliteArraySort(da) => setChild(lhs, getChild(da))
     case DeliteArrayApply(da, _) => setProps(lhs, getChild(da))
-    case DeliteArrayUpdate(da, _, x) => setChild(da, meet(UpdateAlias, getChild(da), getProps(x)) )
-    case DeliteArrayCopy(src, _, dest, _, _) => setChild(dest, meet(UpdateAlias, getChild(src), getChild(dest)) )
-    case DeliteArrayUnion(da, db) => setChild(lhs, meet(UnionAlias, getChild(da), getChild(db)) )
-    case DeliteArrayIntersect(da, db) => setChild(lhs, meet(IntersectAlias, getChild(da), getChild(db)) )
+    case DeliteArrayUpdate(da, _, x) => setChild(da, meet(getChild(da), getProps(x)) )
+    case DeliteArrayCopy(src, _, dest, _, _) => setChild(dest, meet(getChild(src), getChild(dest)) )
+    case DeliteArrayUnion(da, db) => setChild(lhs, meet(getChild(da), getChild(db)) )
+    case DeliteArrayIntersect(da, db) => setChild(lhs, meet(getChild(da), getChild(db)) )
 
     // --- Struct Ops
     case Struct(_, elems) => elems foreach {case (index,sym) => setField(lhs, getProps(sym), index) }
     case FieldApply(struct, index) => setProps(lhs, getField(struct, index))
     case FieldUpdate(struct, index, x) =>
-      val updatedField = meet(UpdateAlias, getField(struct, index), getProps(x))
+      val updatedField = meet(getField(struct, index), getProps(x))
       setField(struct, updatedField, index)
 
     // --- Variables
@@ -103,14 +119,14 @@ trait AnalyzerBase extends AbstractAnalyzer {
     // TODO: Weird to have different meet types for add/mul/sub/div...
     case ReadVar(Variable(v)) => setProps(lhs, getProps(v))
     case NewVar(init) => setProps(lhs, getProps(init))
-    case Assign(Variable(v), x) => setProps(v, meet(UpdateAlias, getProps(v), getProps(x)) )
-    case VarPlusEquals(Variable(v), x) => setProps(v, meet(AddAlias, getProps(v), getProps(x)) )
+    case Assign(Variable(v), x) => setProps(v, meet(getProps(v), getProps(x)) )
+    /*case VarPlusEquals(Variable(v), x) => setProps(v, meet(AddAlias, getProps(v), getProps(x)) )
     case VarMinusEquals(Variable(v), x) => setProps(v, meet(SubAlias, getProps(v), getProps(x)) )
     case VarTimesEquals(Variable(v), x) => setProps(v, meet(MulAlias, getProps(v), getProps(x)) )
-    case VarDivideEquals(Variable(v), x) => setProps(v, meet(DivAlias, getProps(v), getProps(x)) )
+    case VarDivideEquals(Variable(v), x) => setProps(v, meet(DivAlias, getProps(v), getProps(x)) )*/
 
     // --- Branches
-    case op: DeliteOpCondition[_] => setProps(lhs, meet(BranchAlias, getProps(op.thenp), getProps(op.elsep)) )
+    case op: DeliteOpCondition[_] => setProps(lhs, meet(getProps(op.thenp), getProps(op.elsep)) )
 
     // --- Delite Ops
     // TODO: Fill in the remainder of these ops
@@ -130,7 +146,7 @@ trait AnalyzerBase extends AbstractAnalyzer {
       var newProps: Option[SymbolProperties] = getAtomicWriteRHS(d)
       for (t <- trace.reverse) { newProps = tracerToProperties(t, newProps) }
 
-      val updatedProps = meet(UpdateAlias, newProps, getProps(s))
+      val updatedProps = meet(newProps, getProps(s))
       setProps(s, updatedProps)
 
     case _ => // Do nothing
