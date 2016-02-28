@@ -99,7 +99,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with DeliteStru
 
 
   def vectorNew[A:Manifest](length: Exp[Int]) = reflectMutable(VectorNew(length))
-  private def infix_data[A:Manifest](x: Exp[Vector[A]]) = field[DeliteArrayBuffer[A]](x, "data")
+  private def vector_data[A:Manifest](x: Exp[Vector[A]]) = field[DeliteArrayBuffer[A]](x, "data")
   def vectorLength[A:Manifest](x: Exp[Vector[A]]) = x.data.length
   def vectorApply[A:Manifest](x: Exp[Vector[A]], idx: Exp[Int]) = x.data.apply(idx) 
   def vectorPlus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectPure(VectorPlus(x,y))

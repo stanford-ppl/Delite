@@ -30,68 +30,8 @@ trait DeliteInteractiveRunner[R] extends DeliteApplication with DeliteInteractiv
   def run = { 
     val name = "scope-temp"
     Config.degFilename = name
-    main(scala.Array())    
+    main(scala.Array())
     ppl.delite.runtime.Delite.embeddedMain(scala.Array(name), staticDataMap)
-  }  
+  }
   run
 }
-
-//TODO(trans): 1. is this needed? -> the expansion only works if the type parameters of scopes are concrete types
-//@virtualize
-//object DeliteSnippet {
-//  def apply[A,B](b: => Unit) = new Scope[A,B,Unit](b)
-//}
-
-
-
-/*
-
-import ppl.delite.framework._
-
-import ppl.dsl.optiml._
-import ppl.dsl.optiml.datastruct.scala._
-
-import scala.virtualization.lms.common.SynchronizedArrayBufferOps
-
-import scala.collection.mutable.ArrayBuffer
-
-trait OptiMLInteractive extends OptiMLApplication with SynchronizedArrayBufferOps {
-  implicit def staticArrayBuffer[A:Manifest](x: ArrayBuffer[A]): Rep[ArrayBuffer[A]]
-}
-
-trait OptiMLInteractiveRunner extends OptiMLApplicationRunner with DeliteInteractiveRunner { 
-  def staticArrayBuffer[A:Manifest](x: ArrayBuffer[A]): Rep[ArrayBuffer[A]] = staticData(x)
-}
-
-def OptiML[R](b: => R) = new Scope[OptiMLInteractive, OptiMLInteractiveRunner, R](b)
-
-
-
-
-OptiML { val v = Vector.ones(5); v.pprint }
-
-val ab = new ArrayBuffer[Vector[Double]]
-
-OptiML { ab += Vector.ones(5) }
-
-println(ab)
-
-OptiML { println(ab) }
-
-*/
-
-
-
-/*
-scala> trait DSL { def foo: Int }
-defined trait DSL
-
-scala> trait Impl { def foo = 7; def apply: Any }
-defined trait Impl
-
-scala> def OptiML[R](b: => R) = new Scope[DSL, Impl, R](b)
-OptiML: [R](b: => R)Scope[DSL,Impl,R]
-
-scala> val a = OptiML { println("bar") }
-a: DSL with Impl with () => Unit = <function0>
-*/

@@ -89,18 +89,14 @@ trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift w
       }
     }
     
-    struct[T](AnonTag(rm), fields) //.reverse
+    struct[T](AnonTag(rm), fields)
   }
 
   //TODO: this is a map
   def optiql_table_from_seq_impl[T:Manifest](elems: Seq[Rep[T]]) = {
     val array = DeliteArray[T](elems.length)
     for (i <- (0 until elems.length): Range) {
-      val temp = elems(i)
-      array(i) = temp //array.update(i, elems(i)) //does the same thing
-      println(array(i)) //this kills testWhere
-      println(elems(i)) //this kills testGroupBy
-      //together the effect of those 2 groupBy's the typer of all the quesry tests fail!!
+      array(i) = elems(i)
     }
     Table(array.unsafeImmutable, array.length) //what is unsafeImmutable good for? If this is left out it also breaks
   }

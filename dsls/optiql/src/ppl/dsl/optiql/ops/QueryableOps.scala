@@ -47,10 +47,8 @@ trait QueryableOps extends Base { this: OptiQL =>
   
   //Grouping
   implicit class GroupingCls[K:Manifest, T:Manifest](g: Rep[Grouping[K, T]]) {
-    def key() = infix_key(g)
+    def key() = queryable_grouping_key(g)
   }
-
-  def infix_key[K:Manifest, T:Manifest](g: Rep[Grouping[K, T]]) = queryable_grouping_key(g) 
 
   def queryable_where[T:Manifest](s: Rep[Table[T]], predicate: Rep[T] => Rep[Boolean]): Rep[Table[T]]
   def queryable_groupby[T:Manifest, K:Manifest](s: Rep[Table[T]], keySelector: Rep[T] => Rep[K]): Rep[Table[Grouping[K, T]]]
@@ -258,7 +256,6 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
       val empty = DeliteArrayBuffer(DeliteArray.imm[R](unit(0)),unit(0)) //note: control effects on IfThenElse require some manual hoisting
       queryable_flatmap_internal(second, (x2:Exp[T2]) => {
         if (firstGrouped.contains(secondKeySelector(x2))) {
-          println(unit("now calling get:"))
           firstGrouped.get(secondKeySelector(x2)).map(x1 => resultSelector(x1, x2))
         } else empty //no matches
       })

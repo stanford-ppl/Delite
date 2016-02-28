@@ -11,10 +11,8 @@ trait OptiQLMiscOps extends Base {  this : OptiQL =>
   def toc(deps: Rep[Any]*) = optiql_profile_stop(deps)
 
   implicit class TableCls[T:Manifest](t: Rep[Table[T]]) {
-    def printAsTable(max_rows: Rep[Int] = unit(100)) = infix_printAsTable(t, max_rows)
+    def printAsTable(max_rows: Rep[Int] = unit(100)): Rep[Unit] = tablePrintAsTable(t, max_rows)
   }
-
-  def infix_printAsTable[T:Manifest](t: Rep[Table[T]], max_rows: Rep[Int] = unit(100)): Rep[Unit] = tablePrintAsTable(t, max_rows)
 
   def optiql_profile_start(deps: Seq[Rep[Any]]): Rep[Unit]
   def optiql_profile_stop(deps: Seq[Rep[Any]]): Rep[Unit]

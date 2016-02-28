@@ -17,20 +17,19 @@ trait DeliteTestBase extends DeliteTestModule with DeliteTestOps with DeliteTest
 
   type Chars = Record { val a: Char; val b: Char; val c: Char }
   def Chars(a0: Rep[Char], b0: Rep[Char], c0: Rep[Char]): Rep[Chars] = Record ( a = a0, b = b0, c = c0 )
-  // new Record { val a = a0; val b = b0; val c = c0 }
 
   def Single(a0: Rep[Int]) = Record ( a = a0 )
 
-  def collectArray[A:Manifest](arr: Rep[DeliteArray[A]], expectedLength: Rep[Int], expectedValues: Rep[Int] => Rep[A]) = { //TODO(trans) DeliteArray[Object]
+  def collectArray[A:Manifest](arr: Rep[DeliteArray[A]], expectedLength: Rep[Int], expectedValues: Rep[Int] => Rep[A]) = {
     collect(arr.length == expectedLength)
-    for (i <- 0 until arr.length : Rep[Range]) {
+    for (i <- 0 until arr.length) {
       collect(arr(i) == expectedValues(i))
     }
   }
 
   def collectBuf[A:Manifest](buf: Rep[DeliteArrayBuffer[A]], expectedLength: Rep[Int], expectedValues: Rep[Int] => Rep[A]) {
     collect(buf.length == expectedLength)
-    for (i <- 0 until buf.length : Rep[Range]) {
+    for (i <- 0 until buf.length) {
       collect(buf(i) == expectedValues(i))
     }
   }
@@ -53,13 +52,11 @@ trait DeliteMap extends DeliteTestBase {
     val vs = DeliteArrayBuffer.fromFunction(500){ i => Complex(0.0, 0.0) }
     val vs2 = vs map { e =>
       val c = Complex(e.real + 5.0, e.imag - 5.0)
-      delite_test_println(c) //force creation
       c
     }
     collectBuf(vs2, 500, i => Complex(5, -5))
 
     val va = DeliteArrayBuffer.fromFunction(500){ i => Single(i) }
-    delite_test_println(va) //force creation
     collectBuf(va.map(_.a), 500, i => i)
 
     val ve = DeliteArrayBuffer.fromFunction(0){ i => 0 }

@@ -40,8 +40,6 @@ def main():
     parser.add_option("--pin", dest="pin_threads", action="store_true", default=False, help="Pin JVM threads to CPUs (requires native code support)")
 
     (opts, args) = parser.parse_args()
-    print(opts)
-    print(args) #contains file directory
     if len(args) < 1:
         parser.error("a DEG file is required as an argument")
 

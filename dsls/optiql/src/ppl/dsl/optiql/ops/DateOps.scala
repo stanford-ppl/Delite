@@ -106,13 +106,13 @@ trait DateImplOpsStandard extends DateImplOps with DeliteStructsExp { this: Opti
 
   //trick to eliminate structs of a single field without relying on struct unwrapping optimizations
   implicit class InfixIntOpsCls(r:Rep[Int]) {
-    def toDate = infix_toDate(r)
+    def toDate = int_toDate(r)
   }
-  private def infix_toDate(d: Rep[Int]): Rep[Date] = d.asInstanceOf[Rep[Date]] //struct(classTag[Date], "value" -> d)
+  private def int_toDate(d: Rep[Int]): Rep[Date] = d.asInstanceOf[Rep[Date]] //struct(classTag[Date], "value" -> d)
   implicit class InfixDateOpsCls(r:Rep[Date]) {
-    def toInt = infix_toInt(r)
+    def toInt = date_toInt(r)
   }
-  private def infix_toInt(d: Rep[Date]): Rep[Int] = d.asInstanceOf[Rep[Int]] //field[Int](d, "value")
+  private def date_toInt(d: Rep[Date]): Rep[Int] = d.asInstanceOf[Rep[Int]] //field[Int](d, "value")
 
   /*override def unapplyStructType[T:Manifest]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
     case t if t.erasure == classOf[Date] => Some(classTag(t), List("value" -> manifest[Int]))

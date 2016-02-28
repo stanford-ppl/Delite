@@ -20,10 +20,6 @@ trait ProfileArrayOps extends Base {
     def length = profile_length(x)
   }
 
-  // add report and length methods to Rep[ProfileArray]
-  def infix_report(x: Rep[ProfileArray], y: Reporter) = profile_report(x, y)
-  def infix_length(x: Rep[ProfileArray]) = profile_length(x)
-
   // implementation
   def profile_report(x: Rep[ProfileArray], y: Reporter): Rep[Double]
   def profile_length(x: Rep[ProfileArray]): Rep[Int]
@@ -78,7 +74,7 @@ trait ProfileArrayOpsExp extends ProfileArrayOps with NumericOpsExp with Primiti
   }
 
   def profile_report(x: Exp[ProfileArray], y: Reporter) = y match {
-    case this.average => ReportSum(x) // / x.length   // inline // TODO(trans) FIXME: it was ReportSum(x) / x.length before
+    case this.average => ReportSum(x) // TODO(how did this work?) / x.length // inline
     case this.median => ReportMedian(x)
     case _ => throw new IllegalArgumentException("unknown report type")
   }

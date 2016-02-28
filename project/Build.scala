@@ -10,7 +10,6 @@ object DeliteBuild extends Build {
   val paradiseVersion = "2.0.1"
   val virtBuildSettingsBase = Defaults.defaultSettings ++ Seq(
     organization := "stanford-ppl",
-    //scalaOrganization := scalaOrg, //should not make a difference
     scalaVersion := virtScala,
     publishArtifact in (Compile, packageDoc) := false,
     libraryDependencies += "org.scala-lang.virtualized" %% "scala-virtualized" % "1.0.0-macrovirt",
@@ -28,7 +27,6 @@ object DeliteBuild extends Build {
 
     retrieveManaged := true,
     scalacOptions += "-Yno-generic-signatures",
-    //scalacOptions += "-Yvirtualize"
 
 
     libraryDependencies ++= (

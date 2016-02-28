@@ -252,15 +252,6 @@ trait ScalaGenDeliteStruct extends BaseGenStruct with ScalaGenAtomicOps {
     // case Struct(tag, elems) if structSize(sym.tp) <= 64 => //FIXME: Longs actually perform worse than case classes in our HashMapImpl
     //   emitValDef(sym, shiftOnString(elems, "Long"))
     case Struct(tag, elems) =>
-      tag match {
-        case AnonTag(fields) => 
-        System.err.println("Refined Manifest: ")
-        fields.fields.foreach(System.err.println)
-        case _ => 
-      }
-      System.err.println("")
-      elems.foreach(System.err.println)
-      System.err.println("")
       registerStruct(structName(sym.tp), sym.tp, elems)
       emitValDef(sym, "new " + remap(sym.tp) + "(" + elems.map{ e =>
         if (isVarType(e._2) && deliteInputs.contains(e._2)) quote(e._2) + ".get"
@@ -375,7 +366,7 @@ trait ScalaGenDeliteStruct extends BaseGenStruct with ScalaGenAtomicOps {
       val name = structName(tp)
       val fullField = prefix + field
       if (encounteredStructs.contains(name)) emitStructSerialization(name, encounteredStructs(name)._2, fullField+".")(stream)
-      else if (deVar(tp).erasure.getSimpleName == "DeliteArray") stream.print("ppl.delite.runtime.messages.Serialization.serializeDeliteArray(" + fullField + ", implicitly[org.scala_lang.virtualized.runtime.universe.TypeTag["+remap(tp)+"]])")
+      else if (deVar(tp).erasure.getSimpleName == "DeliteArray") stream.print("ppl.delite.runtime.messages.Serialization.serializeDeliteArray(" + fullField + ", implicitly[scala.reflect.runtime.universe.TypeTag["+remap(tp)+"]])")
       else stream.print(fullField)
     }
 

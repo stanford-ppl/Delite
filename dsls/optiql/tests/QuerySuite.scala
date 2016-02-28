@@ -15,7 +15,7 @@ trait TestRecord extends OptiQLApplication with RecordOps {
     val status: Char
   }
 
-  def Item(_id: Rep[Int], _quantity: Rep[Int], _price: Rep[Double], _status: Rep[Char]) = Record (
+  def Item(_id: Rep[Int], _quantity: Rep[Int], _price: Rep[Double], _status: Rep[Char]):Rep[Item] = Record (
     id = _id,
     quantity = _quantity,
     price = _price,
@@ -30,13 +30,13 @@ trait TestRecord extends OptiQLApplication with RecordOps {
   lazy val emptyTable = Table[Item]()
 
   //allow some floating point error
-  def infix_approx(lhs: Rep[Double], rhs: Rep[Double]) = {
+  def double_approx(lhs: Rep[Double], rhs: Rep[Double]) = {
     def abs(value: Rep[Double]) = if (value < 0) 0-value else value
     abs(lhs - rhs) < .001
   }
 
   implicit class Approx(lhs: Rep[Double]) {
-    def approx(rhs: Rep[Double]) = infix_approx(lhs, rhs)
+    def approx(rhs: Rep[Double]) = double_approx(lhs, rhs)
   }
 
 }
@@ -75,22 +75,6 @@ object QueryableWhereRunner extends DeliteTestRunner with OptiQLApplicationRunne
 trait QueryableWhereTest extends DeliteTestModule with OptiQLApplication with TestRecord {
   def main() = {
     val test = Item(0, 10, 2.49, 'N')
-    println(unit("test"))
-    println(test)
-    println(test.id)
-    println(test.quantity)
-    println(test)
-    println(test.id)
-    println(test.quantity)
-//    def m[T<:Record:Manifest](x:Rep[T])(implicit rf:RefinedManifest[T]): Unit = {
-//      println(unit(rf))
-//      println(unit(rf.fields))
-//    }
-//    m(test)
-
-//        println(items(0))
-//        println(items(0).id)
-//        println(items(0).quantity)
     val result = items Where(_.status == 'N') Select(item => Record (
       id = item.id,
       maxRevenue = item.quantity * item.price
@@ -209,25 +193,13 @@ trait QueryableJoinTest extends DeliteTestModule with OptiQLApplication with Tes
     println(unit("old seq:"))
     println(items)
     println(items2)
-    val res/*:Rep[Table[Item]]*/ = items Join(items2) WhereEq(_.id, _.id) Select { (a, b) =>
-//        val rec = Item(a.id, a.quantity, a.price, a.status)
-        val rec = Record(
+    val res = items Join(items2) WhereEq(_.id, _.id) Select { (a, b) =>
+        val rec = Record( //reversed fields were fixed in LMS: 
           id = a.id,
           quantity = b.quantity
-          //The reverse fields were fixed by adding: "mem <- tpe.members.toSeq.reverse" in Records.scala in LMS
         )
-        println(rec)
-        println(rec.id)
-        println(rec.quantity)
-        println(rec)
         rec
       }
-    println(unit("new seq:"))
-    println(res)
-
-    println(res(0))
-    println(res(0).id)
-    println(res(0).quantity)
     collect(res.size == items.size)
     collect(res(0).id == 0 && res(0).quantity == 10)
     collect(res(1).id == 1 && res(1).quantity == 0)
