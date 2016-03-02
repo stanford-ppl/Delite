@@ -59,7 +59,6 @@ trait DeliteDotGenAllOverrides extends DotCodegen {
 
   override def initializeGenerator(buildDir:String): Unit = {
     super.initializeGenerator(buildDir)
-    stream.println("// Printed from DeliteDotGenAllOverrides::initializeGenerator")
   }
 }
 
