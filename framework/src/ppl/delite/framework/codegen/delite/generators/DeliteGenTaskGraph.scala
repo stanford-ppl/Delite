@@ -153,11 +153,15 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
         case _ => Config.buildDir + sep + gen + sep + "kernels" + sep
       }
       val outDir = new File(buildPath); outDir.mkdirs()
-      val outFile = new File(buildPath + kernelName + "." + gen.fileExtension)
-      val kStream = new PrintWriter(outFile)
+//      val outFile = new File(buildPath + kernelName + "." + gen.fileExtension)
+//      val kStream = new PrintWriter(outFile)
+      val outFile = gen.getFile(buildPath, kernelName)
+      val kStream = gen.getPrintWriter(outFile)
       try { 
         gen.withStream(kStream){ gen.emitKernel(sym, rhs) } 
-        kStream.close()
+        if (!gen.emitSingleFile) {
+          kStream.close()
+        }
 
         // record that this kernel was successfully generated
         supportedTargets += gen.toString
@@ -171,8 +175,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
 
       } catch {
         case e: GenerationFailedException => // no generator found
-          kStream.close()
-          outFile.delete()
+          if (!gen.emitSingleFile) {
+            kStream.close()
+            outFile.delete()
+          }
           if (Config.dumpException) {
             System.err.println(gen.toString + ":" + (sym.map(quote)))
             e.printStackTrace
