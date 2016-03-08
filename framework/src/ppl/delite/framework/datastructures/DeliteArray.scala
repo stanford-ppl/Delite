@@ -426,7 +426,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
   }
 
   override def copySyms(e: Any): List[Sym[Any]] = e match {
-    case DeliteArrayCopy(s,sp,d,dp,l) => Nil // ??
+    case DeliteArrayCopy(s,sp,d,dp,l) => Nil // ?? - DK: probably because partial copy of children, not full copy of array
     case DeliteArrayClone(self) => syms(self)
     case _ => super.copySyms(e)
   }

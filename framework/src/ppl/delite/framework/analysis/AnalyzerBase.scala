@@ -47,6 +47,7 @@ trait AnalyzerBase extends AbstractAnalyzer {
   final def analyzeStm(stm: Stm) = stm match {
     case TP(lhs, rhs) =>
       if (autopropagate) {
+        propagateViaSyms(lhs,rhs)(mpos(lhs.pos))
         propagateTP(lhs, rhs)(mpos(lhs.pos))
       }
 
@@ -80,18 +81,76 @@ trait AnalyzerBase extends AbstractAnalyzer {
   }
 
 
-  /*def propagateViaSyms(lhs: Exp[A], rhs: Def[_])(implicit ctx: SourceContext): Unit = rhs match {
-    case Reflect(d, u, es) =>
-      // Really assumes containSyms returns exactly one thing
-      val newChild = meet(containSyms(d).map(getProps):_*)
-      u.mstWrite.foreach{ e => setChild(e, meet(newChild, getChild(e))) }
+  def tracerToProperties(t: AtomicTracer, child: Option[SymbolProperties]): Option[SymbolProperties] = t match {
+    case StructTracer(index) => Some(StructProperties(PropMap(index,child), NoData))
+    case ArrayTracer(_) => Some(ArrayProperties(child, NoData))
+  }
 
+  def getAtomicWriteRHS(d: AtomicWrite[Any])(implicit ctx: SourceContext): Option[SymbolProperties] = d match {
+    case FieldUpdate(_,_,x) => getProps(x)
+    case DeliteArrayUpdate(_,_,x) => Some(ArrayProperties(getProps(x), NoData))
+    case DeliteArrayCopy(src,_,_,_,_) => getProps(src)
+    case _ =>
+      printwarn(s"No RHS rule extraction rule given for atomic write op $d")
+      None
+  }
+
+  def propagateViaSyms[A](lhs: Exp[A], rhs: Def[_])(implicit ctx: SourceContext): Unit = rhs match {
+    case Reflect(d, u, es) =>
+      // Aliasing via updates
+      // Assumption - exactly one written value and one mutated data structure
+      if (containSyms(d).length > 1 || u.mstWrite.length > 1)
+        println(s"$rhs \n   RHS values: ${containSyms(d).mkString(",")}, LHS values: ${u.mstWrite.mkString(",")}")
+      else if (u.mstWrite.length == 1 && containSyms(d).isEmpty)
+        println(s"$rhs \n   RHS values: ${containSyms(d).mkString(",")}, LHS values: ${u.mstWrite.mkString(",")}")
+      else if (containSyms(d).length == 1 && u.mstWrite.length == 1) {
+        val updateChild = meet(containSyms(d).map(getProps):_*)
+        val coll = u.mstWrite.head
+
+        d match {
+          case NestedAtomicWrite(_,trace,aw) =>
+            var newProps: Option[SymbolProperties] = getAtomicWriteRHS(aw)
+            for (t <- trace.reverse) { newProps = tracerToProperties(t, newProps) }
+
+            val updatedProps = meet(newProps, getProps(coll))
+            setProps(coll, updatedProps)
+
+          case _ => coll.tp match {
+            case StructLike(_) => // Assume this is FieldUpdate
+            case ArrayLike(_) => setChild(coll, meet(updateChild, getChild(coll)))
+            case _ => println(s"$rhs \n   Appears to be writing to a scalar?")
+          }
+        }
+      }
       propagateViaSyms(lhs, d)
 
     case _ =>
-      val propProps = meet()
+      // NOTE: This will not work! The default implementation of aliasSyms right now is that
+      // ALL inputs to a node alias with the output!
+      // Aliasing (e.g. branches, etc.)
+      //val aliasProps = meet( aliasSyms(rhs).map(getProps):_* )
+      //setProps(lhs, meet(aliasProps, getProps()))
 
-  }*/
+      // Propagation via extract (i.e. apply)
+      if (extractSyms(rhs).length > 1)
+        println(s"$rhs \n Extract syms: ${extractSyms(rhs)}")
+      else if (extractSyms(rhs).length == 1) {
+        val coll = extractSyms(rhs).head
+
+        coll.tp match {
+          case StructLike(_) => // Assume this is FieldApply
+          case ArrayLike(_) => setProps(lhs, getChild(coll))
+          case _ => println(s"$rhs\n   Appears to be applying on a scalar?")
+        }
+      }
+
+      if (copySyms(rhs).length > 1)
+        println(s"$rhs \n Copies multiple things: ${copySyms(rhs)}")
+      else if (copySyms(rhs).length == 1) {
+        val coll = copySyms(rhs).head
+        setProps(lhs, getProps(coll))
+      }
+  }
 
   // TODO: Where does this belong? Where should each of these be defined? In respective traits?
   def propagateTP[A](lhs: Exp[A], rhs: Def[_])(implicit ctx: SourceContext): Unit = rhs match {
@@ -100,15 +159,15 @@ trait AnalyzerBase extends AbstractAnalyzer {
     case Reflect(d, _, _) => propagateTP(lhs, d)
 
     // --- DeliteArray
+    // Includes a couple of misc. operators not captured by general rules
     case DeliteArrayTake(da, n) => setChild(lhs, getChild(da))
     case DeliteArraySort(da) => setChild(lhs, getChild(da))
-    case DeliteArrayApply(da, _) => setProps(lhs, getChild(da))
-    case DeliteArrayUpdate(da, _, x) => setChild(da, meet(getChild(da), getProps(x)) )
     case DeliteArrayCopy(src, _, dest, _, _) => setChild(dest, meet(getChild(src), getChild(dest)) )
     case DeliteArrayUnion(da, db) => setChild(lhs, meet(getChild(da), getChild(db)) )
     case DeliteArrayIntersect(da, db) => setChild(lhs, meet(getChild(da), getChild(db)) )
 
     // --- Struct Ops
+    // Basic operations for all structs
     case Struct(_, elems) => elems foreach {case (index,sym) => setField(lhs, getProps(sym), index) }
     case FieldApply(struct, index) => setProps(lhs, getField(struct, index))
     case FieldUpdate(struct, index, x) =>
@@ -117,17 +176,21 @@ trait AnalyzerBase extends AbstractAnalyzer {
 
     // --- Variables
     // TODO: Assignments in loops?
-    // TODO: Weird to have different meet types for add/mul/sub/div...
     case ReadVar(Variable(v)) => setProps(lhs, getProps(v))
     case NewVar(init) => setProps(lhs, getProps(init))
     case Assign(Variable(v), x) => setProps(v, meet(getProps(v), getProps(x)) )
+
+    // TODO: Anything general to be done for these? Weird to have different meet types for add/mul/sub/div...
     /*case VarPlusEquals(Variable(v), x) => setProps(v, meet(AddAlias, getProps(v), getProps(x)) )
     case VarMinusEquals(Variable(v), x) => setProps(v, meet(SubAlias, getProps(v), getProps(x)) )
     case VarTimesEquals(Variable(v), x) => setProps(v, meet(MulAlias, getProps(v), getProps(x)) )
     case VarDivideEquals(Variable(v), x) => setProps(v, meet(DivAlias, getProps(v), getProps(x)) )*/
 
-    // --- Branches
-    case op: DeliteOpCondition[_] => setProps(lhs, meet(getProps(op.thenp), getProps(op.elsep)) )
+    // --- Misc.
+    // Ideally would use aliasSyms to automatically derive this rule, but general form of
+    // aliasSyms is far too broad about what can alias with what right now.
+    case op: DeliteOpCondition[_] =>
+      setProps(lhs, meet(getProps(op.thenp), getProps(op.elsep)))
 
     // --- Delite Ops
     // TODO: Fill in the remainder of these ops
@@ -144,27 +207,8 @@ trait AnalyzerBase extends AbstractAnalyzer {
 
     // --- Nested atomic writes
     case NestedAtomicWrite(s, trace, d) =>
-      var newProps: Option[SymbolProperties] = getAtomicWriteRHS(d)
-      for (t <- trace.reverse) { newProps = tracerToProperties(t, newProps) }
-
-      val updatedProps = meet(newProps, getProps(s))
-      setProps(s, updatedProps)
 
     case _ => // Do nothing
-  }
-
-  def tracerToProperties(t: AtomicTracer, child: Option[SymbolProperties]): Option[SymbolProperties] = t match {
-    case StructTracer(index) => Some(StructProperties(PropMap(index,child), NoData))
-    case ArrayTracer(_) => Some(ArrayProperties(child, NoData))
-  }
-
-  def getAtomicWriteRHS(d: AtomicWrite[Any])(implicit ctx: SourceContext): Option[SymbolProperties] = d match {
-    case FieldUpdate(_,_,x) => getProps(x)
-    case DeliteArrayUpdate(_,_,x) => Some(ArrayProperties(getProps(x), NoData))
-    case DeliteArrayCopy(src,_,_,_,_) => getProps(src)
-    case _ =>
-      printwarn(s"No RHS rule extraction rule given for atomic write op $d")
-      None
   }
 
 }
