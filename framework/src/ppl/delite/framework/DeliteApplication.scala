@@ -12,6 +12,7 @@ import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
 import codegen.delite.overrides.DeliteAllOverridesExp
 import codegen.opencl.TargetOpenCL
 import codegen.dot.TargetDot
+import codegen.maxj.TargetMaxJ
 import codegen.scala.TargetScala
 import codegen.restage.TargetRestage
 import codegen.Target
@@ -31,6 +32,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   lazy val cppTarget = new TargetCpp{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val openclTarget = new TargetOpenCL{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val dotTarget = new TargetDot{val IR: DeliteApplication.this.type = DeliteApplication.this}
+  lazy val maxjTarget = new TargetMaxJ{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val restageTarget = new TargetRestage{val IR: DeliteApplication.this.type = DeliteApplication.this}
 
   def targets = {
@@ -41,9 +43,10 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       target = cppTarget :: target
     if(Config.generateOpenCL)
       target = openclTarget :: target
-    if(Config.generateDot) {
+    if(Config.generateDot)
       target = dotTarget :: target
-    }
+    if(Config.generateMaxJ)
+      target = maxjTarget :: target
     target
   }
   lazy val generators: List[GenericFatCodegen{ val IR: DeliteApplication.this.type }] = targets.reverse.map(getCodeGenPkg(_))
@@ -120,6 +123,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
           }
           emitRegisteredSource(g, streamDebug)
           // TODO: dot output
+          // TODO: maxj output
           reset
         }
       }

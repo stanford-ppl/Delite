@@ -21,6 +21,7 @@ object Config {
   var generateCpp = getProperty("delite.generate.cpp", "false") != "false"
   var generateOpenCL = getProperty("delite.generate.opencl", "false") != "false"
   var generateDot = getProperty("delite.generate.dot", "false") != "false"
+  var generateMaxJ = getProperty("delite.generate.maxj", "false") != "false"
   var generateSerializable = getProperty("delite.generate.serializable", "false") != "false"
   var homeDir = getProperty("delite.home.dir", sys.env.getOrElse("DELITE_HOME",System.getProperty("user.dir")))
   var buildDir = getProperty("delite.build.dir", "generated")
