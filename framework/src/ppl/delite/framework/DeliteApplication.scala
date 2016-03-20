@@ -107,23 +107,35 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       g.initializeGenerator(baseDir + "kernels" + File.separator)
     }
 
+    // Call all generators that emit a single file here
     // Generate a single source output for each generator when in debug mode
-    if (Config.debug) {
-      if (Config.degFilename.endsWith(".deg")) {
-        for (g <- generators) {
-          val streamDebug = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg","." + g.toString)))
-          val baseDir = Config.buildDir + File.separator + g.toString + File.separator
-          g.initializeGenerator(baseDir + "kernels" + File.separator)
-          g match {
-            case gen: CCodegen => streamDebug.println("#include \"DeliteStandaloneMain.h\"\n")
-            case _ => //
-          }
-          emitRegisteredSource(g, streamDebug)
-          // TODO: dot output
-          reset
+    for (g <- generators) {
+      if (g.emitSingleFile || (Config.debug && Config.degFilename.endsWith(".deg"))) {
+        val baseDir = Config.buildDir + File.separator + g.toString + File.separator
+        val buildPath = baseDir + "kernels" + File.separator
+        val singleStream = new PrintWriter(new FileWriter(buildPath + Config.degFilename.replace(".deg","." + g.toString)))
+        g.initializeGenerator(buildPath)
+        g match {
+          case gen: CCodegen => singleStream.println("#include \"DeliteStandaloneMain.h\"\n")
+          case _ => //
         }
+        try {
+          emitRegisteredSource(g, singleStream)
+        } catch {
+          case e: GenerationFailedException => // no generator found
+            if (Config.dumpException) {
+              e.printStackTrace
+            }
+
+            if (Config.strictGeneration(g.toString, e)) throw e
+        }
+
+        // TODO: dot output
+        // [raghu] Not sure what the comment above means
+        reset
       }
     }
+
     deliteGenerator.initializeGenerator(Config.buildDir)
     val sd = emitRegisteredSource(deliteGenerator, stream)
     deliteGenerator.finalizeGenerator()
