@@ -7,10 +7,16 @@ trait IRPrinter extends Traversal {
   import IR._
   override val name = "Printer"
 
+  var level = 0
+
   override def traverseStm(stm: Stm): Unit = {
-    super.traverseStm(stm)
     stm match {
-      case TP(s,d) => println(s"$s = $d")
+      case TP(s,d) =>
+        println(".."*level + s"$s = $d")
+        level += 1
+        super.traverseStm(stm)
+        level -= 1
+
       case TTP(syms, mhs, d) =>
         println(syms.mkString("(", ",", ")") + " = " + d.toString)
         println("   " + mhs.mkString("\n   "))
@@ -28,13 +34,17 @@ trait IRPrinterPlus extends Traversal {
   val IR: BaseFatExp with Effects
   import IR._
   override val name = "PrinterPlus"
+  var level = 0
 
   override def traverseStm(stm: Stm): Unit = {
-    super.traverseStm(stm) // Traverses blocks
     stm match {
       case TP(s,d) =>
-        println(s"$s = $d")
-        getProps(s).foreach{m => println(s"$s" + makeString(m)) }
+        println(".."*level + s"$s = $d")
+        getProps(s).foreach{m => println(".."*level+s"$s" + makeString(m)) }
+
+        level += 1
+        super.traverseStm(stm)
+        level -= 1
 
       case TTP(syms, mhs, d) =>
         println(syms.mkString("(", ",", ")") + " = " + d.toString)
