@@ -132,6 +132,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
 
             if (Config.strictGeneration(g.toString, e)) throw e
         }
+        singleStream.close()
 
         // TODO: dot output
         // [raghu] Not sure what the comment above means
