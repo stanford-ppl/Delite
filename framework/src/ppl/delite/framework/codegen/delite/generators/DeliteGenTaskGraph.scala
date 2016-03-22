@@ -36,7 +36,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
   }
 
   private def emitAnyNode(sym: List[Sym[Any]], rhs: Any): Unit = {
-    assert(generators.length >= 1)
+    val multiFileGenerators = generators.filterNot { _.emitSingleFile }
+    assert(multiFileGenerators.length >= 1)
 
     printlog("DeliteGenTaskGraph.emitNode "+sym+"="+rhs)
 
@@ -120,7 +121,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
     }
 
     //compute result types for all syms for all targets independently of whether or not the kernel itself could be generated
-    for (gen <- generators) {
+    for (gen <- multiFileGenerators) {
       var genReturnType: String = null
       val tpes = for (s <- sym) {
         try {
@@ -144,7 +145,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
       }
     }
 
-    if (!skipEmission) for (gen <- generators) {
+    if (!skipEmission) for (gen <- multiFileGenerators) {
       val sep = java.io.File.separator
       //NOTE: GPU targets generate only device functions of multiloops at compile-time,
       //      and we put those functions in 'device' directory to make compilation a bit easier at walk-time
@@ -153,15 +154,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
         case _ => Config.buildDir + sep + gen + sep + "kernels" + sep
       }
       val outDir = new File(buildPath); outDir.mkdirs()
-//      val outFile = new File(buildPath + kernelName + "." + gen.fileExtension)
-//      val kStream = new PrintWriter(outFile)
-      val outFile = gen.getFile(buildPath, kernelName)
-      val kStream = gen.getPrintWriter(outFile)
-      try { 
-        gen.withStream(kStream){ gen.emitKernel(sym, rhs) } 
-        if (!gen.emitSingleFile) {
-          kStream.close()
-        }
+      val outFile = new File(buildPath + kernelName + "." + gen.fileExtension)
+      val kStream = new PrintWriter(outFile)
+      try {
+        gen.withStream(kStream){ gen.emitKernel(sym, rhs) }
+        kStream.close()
 
         // record that this kernel was successfully generated
         supportedTargets += gen.toString
@@ -175,10 +172,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
 
       } catch {
         case e: GenerationFailedException => // no generator found
-          if (!gen.emitSingleFile) {
-            kStream.close()
-            outFile.delete()
-          }
+          kStream.close()
+          outFile.delete()
           if (Config.dumpException) {
             System.err.println(gen.toString + ":" + (sym.map(quote)))
             e.printStackTrace

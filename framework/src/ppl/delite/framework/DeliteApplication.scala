@@ -12,6 +12,7 @@ import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
 import codegen.delite.overrides.DeliteAllOverridesExp
 import codegen.opencl.TargetOpenCL
 import codegen.dot.TargetDot
+import codegen.maxj.TargetMaxJ
 import codegen.scala.TargetScala
 import codegen.restage.TargetRestage
 import codegen.Target
@@ -31,6 +32,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   lazy val cppTarget = new TargetCpp{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val openclTarget = new TargetOpenCL{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val dotTarget = new TargetDot{val IR: DeliteApplication.this.type = DeliteApplication.this}
+  lazy val maxjTarget = new TargetMaxJ{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val restageTarget = new TargetRestage{val IR: DeliteApplication.this.type = DeliteApplication.this}
 
   def targets = {
@@ -41,9 +43,10 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       target = cppTarget :: target
     if(Config.generateOpenCL)
       target = openclTarget :: target
-    if(Config.generateDot) {
+    if(Config.generateDot)
       target = dotTarget :: target
-    }
+    if(Config.generateMaxJ)
+      target = maxjTarget :: target
     target
   }
   lazy val generators: List[GenericFatCodegen{ val IR: DeliteApplication.this.type }] = targets.reverse.map(getCodeGenPkg(_))
@@ -107,23 +110,35 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       g.initializeGenerator(baseDir + "kernels" + File.separator)
     }
 
+    // Call all generators that emit a single file here
     // Generate a single source output for each generator when in debug mode
-    if (Config.debug) {
-      if (Config.degFilename.endsWith(".deg")) {
-        for (g <- generators) {
-          val streamDebug = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg","." + g.toString)))
-          val baseDir = Config.buildDir + File.separator + g.toString + File.separator
-          g.initializeGenerator(baseDir + "kernels" + File.separator)
-          g match {
-            case gen: CCodegen => streamDebug.println("#include \"DeliteStandaloneMain.h\"\n")
-            case _ => //
-          }
-          emitRegisteredSource(g, streamDebug)
-          // TODO: dot output
-          reset
+    for (g <- generators) {
+      if (g.emitSingleFile || (Config.debug && Config.degFilename.endsWith(".deg"))) {
+        val baseDir = Config.buildDir + File.separator + g.toString + File.separator
+        val buildPath = baseDir + "kernels" + File.separator
+        val singleStream = new PrintWriter(new FileWriter(buildPath + Config.degFilename.replace(".deg","." + g.toString)))
+        g.initializeGenerator(buildPath)
+        g match {
+          case gen: CCodegen => singleStream.println("#include \"DeliteStandaloneMain.h\"\n")
+          case _ => //
         }
+        try {
+          emitRegisteredSource(g, singleStream)
+        } catch {
+          case e: GenerationFailedException => // no generator found
+            if (Config.dumpException) {
+              e.printStackTrace
+            }
+
+            if (Config.strictGeneration(g.toString, e)) throw e
+        }
+
+        // TODO: dot output
+        // [raghu] Not sure what the comment above means
+        reset
       }
     }
+
     deliteGenerator.initializeGenerator(Config.buildDir)
     val sd = emitRegisteredSource(deliteGenerator, stream)
     deliteGenerator.finalizeGenerator()
