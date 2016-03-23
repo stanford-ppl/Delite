@@ -136,7 +136,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
 
         // TODO: dot output
         // [raghu] Not sure what the comment above means
-        reset
+        //reset
       }
     }
 
