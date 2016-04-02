@@ -395,4 +395,5 @@ case class ReceiveUpdate(sender: SendUpdate, atResource: Int) extends Receive
 //Free nodes (TODO: Better to have a Free node for each symbol?)
 case class Free(op: DeliteOP, items: List[(DeliteOP,String)]) extends PCM_M {
   scheduledResource = op.scheduledResource
+  override def toString = s"""Free_${op}_${items.map{t =>t._1+"_"+t._2}.mkString(":")}"""
 }

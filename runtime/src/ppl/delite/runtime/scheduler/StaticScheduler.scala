@@ -7,7 +7,6 @@ import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.codegen.{Compilers,CCompile}
 
-
 trait StaticScheduler {
   this: AbstractCostModel =>
 	
@@ -80,6 +79,13 @@ trait StaticScheduler {
     }
   }
 
+  /**
+   * Schedule a given DeliteOP on the given resource ID (thread ID) and update the contents
+   * of 'schedule'.
+   * @param op: [[DeliteOP]] being scheduled
+   * @param schedule: [[PartialSchedule]] object with mutable state being updated with state information
+   * @param resource: Integer ID of resource (thread) on which DeliteOP is to be scheduled
+   */
   protected def scheduleOn(op: DeliteOP, schedule: PartialSchedule, resource: Int) {
     schedule(resource).add(op)
     op.scheduledResource = resource

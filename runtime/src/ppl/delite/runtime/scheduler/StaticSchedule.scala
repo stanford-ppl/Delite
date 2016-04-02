@@ -4,6 +4,7 @@ import ppl.delite.runtime.executor.DeliteExecutable
 import ppl.delite.runtime.graph.ops.DeliteOP
 import java.util.LinkedList
 import collection.mutable.ArrayBuffer
+import java.io.{File, PrintWriter}
 
 /**
  * Author: Kevin J. Brown
@@ -117,6 +118,24 @@ class PartialSchedule(val resources: Array[OpList]) {
 
   def insertAfter(op: DeliteOP, after: DeliteOP) = insertRelative(op, after, 1)
 
+  def toDot(fileName: String) {
+    val f = new File(s"${fileName}.dot")
+    val pw = new PrintWriter(f)
+    pw.println("digraph G {")
+    resources.foreach { oplist =>
+      var prevOp: Option[DeliteOP] = None
+      for (op <- oplist) {
+        pw.println(s"""$op [label="$op"]""")
+        if (prevOp.isDefined) {
+          pw.println(s"""${prevOp.get} -> $op""")
+        }
+        prevOp = Some(op)
+      }
+    }
+    pw.println("}")
+    pw.flush
+    pw.close
+  }
   /**
    * Currently this class only holds a single scheduling object
    * The outer array represents the resources scheduled across

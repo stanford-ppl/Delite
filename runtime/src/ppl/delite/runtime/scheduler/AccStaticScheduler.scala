@@ -115,6 +115,16 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
     }
   }
 
+  /**
+   * Schedule a DeliteOp on a multi-core CPU, on the given list of resource IDs (thread IDs).
+   * If the DeliteOP is data parallel, the op is split across all the given IDs in the
+   * resource list. If not, it is scheduled as a single unit on the first ID in the
+   * resource list.
+   * @param op: DeliteOp being scheduled on CPU
+   * @param graph: Application DEG
+   * @param schedule: [[PartialSchedule]] object into which scheduling information is being added
+   * @param resourceList: List of resource IDs (integers) on which the DeliteOp is to be scheduled
+   */
   protected def scheduleMultiCore(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resourceList: Seq[Int]) {
     if (op.isDataParallel)
       split(op, graph, schedule, resourceList)
@@ -168,6 +178,17 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
     scheduleOn(chunk, schedule, gpu)
   }
 
+  /**
+   * Returns the most suitable target for a given DeliteOP. Currently, there
+   * is a fixed, strict order of target preference for every DeliteOP (GPU > Cpp > Scala)
+   * if (DeliteOP can run on GPU) <prefer Cuda over OpenCL>
+   * This order is defined in the implementation implicitly. No cost model exists
+   * to choose running CPU over GPU or vice versa.
+   * else if (DeliteOP can run on CPU) <Cpp>
+   * else if (DeliteOP can run on Scala) <Scala>
+   * else <ERROR: cannot run on any target>
+   * @param op: [[DeliteOp]] node being scheduled
+   */
   protected def scheduleOnTarget(op: DeliteOP) = {
     if (scheduleOnGPU(op)) {
       if (op.supportsTarget(Targets.Cuda)) Targets.Cuda else Targets.OpenCL

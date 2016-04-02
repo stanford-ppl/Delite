@@ -116,7 +116,11 @@ object Delite {
 
       //schedule
       scheduler.schedule(graph)
+      graph.schedule.toDot("beforeSync")
       Sync.addSync(graph)
+
+      // Print schedule
+      graph.schedule.toDot("afterSync")
 
       //merge C++ schedule into CUDA schedule
       if (Config.numCuda > 0)
