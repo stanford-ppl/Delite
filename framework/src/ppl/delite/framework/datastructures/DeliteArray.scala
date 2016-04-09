@@ -389,6 +389,15 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
     case _ => super.mirror(e,f)
   }
 
+  override def propagate(lhs: Exp[Any], rhs: Def[Any]) = rhs match {
+    case DeliteArrayTake(da, n) => setChild(lhs, getChild(da))
+    case DeliteArraySort(da) => setChild(lhs, getChild(da))
+    case DeliteArrayCopy(src, _, dest, _, _) => setChild(dest, meet(getChild(src), getChild(dest)) )
+    case DeliteArrayUnion(da, db) => setChild(lhs, meet(getChild(da), getChild(db)) )
+    case DeliteArrayIntersect(da, db) => setChild(lhs, meet(getChild(da), getChild(db)) )
+    case _ => super.propagate(lhs, rhs)
+  }
+
   override def unapplyArrayLike[A](tp: Manifest[A]) = if (isDeliteArrayType(tp)) Some(tp.typeArguments.head) else super.unapplyArrayLike(tp)
 
   override def syms(e: Any): List[Sym[Any]] = e match {
