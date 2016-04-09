@@ -1,0 +1,9 @@
+1. Create BRAM interface out of registers
+2. Create BRAMs out of DFEVector<DFEVar> for better chaining and utilization
+3. Use DFEStruct interface of LMemCommandStream.makeKernelOutput() instead of
+the DFEVar interface
+
+Functionality improvements
+1. Add parallelization to TileMemSt (benchmark output bandwidth)
+2. Change base address input to TileMemLd and TileMemSt to be a DFEVar (the API
+   supports it, this restriction is unnecessary)
