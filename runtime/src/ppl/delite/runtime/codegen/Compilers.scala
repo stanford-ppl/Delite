@@ -26,6 +26,7 @@ object Compilers {
       case Targets.Cuda => CudaCompile
       case Targets.OpenCL => OpenCLCompile
       case Targets.Cpp => CppCompile
+      case Targets.MaxJ => MaxJCompile
       case _ => throw new RuntimeException("Undefined target for runtime compilers")
     }
   }

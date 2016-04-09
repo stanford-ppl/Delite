@@ -22,6 +22,7 @@ def main():
     parser.add_option("--cpp", dest="num_cpp", default="0", help="number of cpp execution threads")
     parser.add_option("--cuda", dest="num_cuda", default="0", help="number of cuda execution threads")
     parser.add_option("--opencl", dest="num_opencl", default="0", help="number of opencl execution threads")
+    parser.add_option("--maxj", dest="num_maxj", default="0", help="number of maxj execution threads")
     parser.add_option("-r", "--runs", dest="num_runs", default="1", type="string", help="the number of times the runtime will execute the applications")
     parser.add_option("-p", "--profile", dest="profile", default="", help="enables application profiling with argument 'on'; additionally enables memory access instrumentation with argument(s) [pcm,perf]")
     parser.add_option("--executor", dest="executor", default="default", type="string", help="the type of executor")
@@ -119,7 +120,7 @@ def run(deg, params, opts):
     if (opts.num_cuda != "0" and opts.num_cpp == "0"):
         opts.num_cpp = "1"
 
-    java_opts = java_opts + " -Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) +" -Ddelite.cpp=" + opts.num_cpp + " -Ddelite.cuda=" + opts.num_cuda + " -Ddelite.opencl=" + opts.num_opencl + " -Ddelite.runs=" + opts.num_runs + " -Ddelite.executor=" + opts.executor + " -Ddelite.scheduler=" + opts.scheduler + " -Ddelite.master=" + opts.master + " -Ddelite.slaves=" + str(opts.num_nodes) + " -Ddelite.code.cache.home=" + opts.codecache
+    java_opts = java_opts + " -Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) +" -Ddelite.cpp=" + opts.num_cpp + " -Ddelite.cuda=" + opts.num_cuda + " -Ddelite.opencl=" + opts.num_opencl + " -Ddelite.maxj=" + opts.num_maxj + " -Ddelite.runs=" + opts.num_runs + " -Ddelite.executor=" + opts.executor + " -Ddelite.scheduler=" + opts.scheduler + " -Ddelite.master=" + opts.master + " -Ddelite.slaves=" + str(opts.num_nodes) + " -Ddelite.code.cache.home=" + opts.codecache
 
     if opts.verbose == True:
         java_opts = java_opts + " -Ddelite.verbose"

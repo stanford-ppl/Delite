@@ -9,11 +9,11 @@ import ppl.delite.runtime.cost._
 import ppl.delite.runtime.codegen.kernels.cuda.SingleTask_GPU_Generator
 import ppl.delite.runtime.codegen.{Compilers,CCompile}
 
-class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: Int) extends StaticScheduler with ParallelUtilizationCostModel with ScheduleOptimizer {
+class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: Int, numMaxJ: Int) extends StaticScheduler with ParallelUtilizationCostModel with ScheduleOptimizer {
   private val totalScala = Config.numThreads
   private val totalCpp = Config.numCpp
   private val gpu = totalScala + totalCpp
-  private val numResources = totalScala + totalCpp + Config.numCuda + Config.numOpenCL
+  private val numResources = totalScala + totalCpp + Config.numCuda + Config.numOpenCL + Config.numMaxJ
 
   def schedule(graph: DeliteTaskGraph) {
     //traverse nesting & schedule sub-graphs, starting with outermost graph
@@ -180,17 +180,18 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
 
   /**
    * Returns the most suitable target for a given DeliteOP. Currently, there
-   * is a fixed, strict order of target preference for every DeliteOP (GPU > Cpp > Scala)
+   * is a fixed, strict order of target preference for every DeliteOP (FPGA > GPU > Cpp > Scala)
    * if (DeliteOP can run on GPU) <prefer Cuda over OpenCL>
-   * This order is defined in the implementation implicitly. No cost model exists
-   * to choose running CPU over GPU or vice versa.
-   * else if (DeliteOP can run on CPU) <Cpp>
-   * else if (DeliteOP can run on Scala) <Scala>
-   * else <ERROR: cannot run on any target>
+   * This order is defined in the implementation implicitly.
+   * No cost model exists to choose target for DeliteOPs.
    * @param op: [[DeliteOp]] node being scheduled
    */
   protected def scheduleOnTarget(op: DeliteOP) = {
-    if (scheduleOnGPU(op)) {
+    if (scheduleOnFPGA(op)) {
+      if (op.supportsTarget(Targets.MaxJ)) Targets.MaxJ
+      else sys.error(s"""$op cannot be scheduled on FPGA as it is not supported by MaxJ!""")
+    }
+    else if (scheduleOnGPU(op)) {
       if (op.supportsTarget(Targets.Cuda)) Targets.Cuda else Targets.OpenCL
     }
     else if (op.supportsTarget(Targets.Cpp) && numCpp > 0) Targets.Cpp
@@ -210,6 +211,12 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
       else if (!op.supportsTarget(Targets.Cuda) && !op.supportsTarget(Targets.OpenCL)) false
       else true
     }
+  }
+
+  protected def scheduleOnFPGA(op:DeliteOP) = {
+    if (numMaxJ == 0) false
+    else if (!op.supportsTarget(Targets.MaxJ)) false
+    else true
   }
 
 }

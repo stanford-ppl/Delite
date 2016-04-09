@@ -40,7 +40,7 @@ object Delite {
     }
     if (Config.verbose) {
       println("Delite Runtime executing with the following arguments: " + args.mkString(","))
-      println("Delite Runtime executing with " + Config.numThreads + " Scala thread(s), " + Config.numCpp + " C++ thread(s), " + Config.numCuda + " Cuda GPU(s), " + Config.numOpenCL + " OpenCL GPU(s)")
+      println("Delite Runtime executing with " + Config.numThreads + " Scala thread(s), " + Config.numCpp + " C++ thread(s), " + Config.numCuda + " Cuda GPU(s), " + Config.numOpenCL + " OpenCL GPU(s), " + Config.numMaxJ + " MaxJ FPGA(s)")
     }
   }
 
@@ -99,10 +99,11 @@ object Delite {
       if(Config.numCpp>0 && !graph.targets(Targets.Cpp)) { Config.numCpp = 0; println("[WARNING] No Cpp target op is generated!") }
       if(Config.numCuda>0 && !graph.targets(Targets.Cuda)) { Config.numCuda = 0; println("[WARNING] No Cuda target op is generated!") }
       if(Config.numOpenCL>0 && !graph.targets(Targets.OpenCL)) { Config.numOpenCL = 0; println("[WARNING] No OpenCL target op is generated!") }
+      if(Config.numMaxJ>0 && !graph.targets(Targets.MaxJ)) { Config.numMaxJ= 0; println("[WARNING] No MaxJ target op is generated!") }
 
       val scheduler = Config.scheduler match {
-        case "static" => new AccStaticScheduler(Config.numThreads, Config.numCpp, Config.numCuda, Config.numOpenCL)
-        case "dynamic" => new AccStaticScheduler(if (Config.numThreads > 0) 1 else 0, if (Config.numCpp > 0) 1 else 0, Config.numCuda, Config.numOpenCL)
+        case "static" => new AccStaticScheduler(Config.numThreads, Config.numCpp, Config.numCuda, Config.numOpenCL, Config.numMaxJ)
+        case "dynamic" => new AccStaticScheduler(if (Config.numThreads > 0) 1 else 0, if (Config.numCpp > 0) 1 else 0, Config.numCuda, Config.numOpenCL, Config.numMaxJ)
         case e => throw new IllegalArgumentException("Requested scheduler is not recognized ("+e+")")
       }
 
@@ -186,7 +187,7 @@ object Delite {
   }
 
   def findExecutables(appName: String): StaticSchedule = {
-    val numResources = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL
+    val numResources = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL + Config.numMaxJ
     Compilers.createSchedule(this.getClass.getClassLoader, appName, numResources, expectedResources)
   }
 

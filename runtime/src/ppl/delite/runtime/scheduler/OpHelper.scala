@@ -17,8 +17,18 @@ import ppl.delite.runtime.Config
  * Stanford University
  */
 
+/**
+ * [COMMENT TODO] What does this object do?
+ */
 object OpHelper {
 
+  /**
+   * [COMMENT TODO] What does this method do?
+   * @param op:
+   * @param numChunks:
+   * @param graph:
+   * @param target:
+   */
   def expand(op: DeliteOP, numChunks: Int, graph: DeliteTaskGraph, target: Targets.Value) = op match {
     case multi: OP_MultiLoop => target match {
       case Targets.Scala => (new ScalaMultiLoopHeaderGenerator(multi,numChunks,graph)).makeHeader()
@@ -30,6 +40,13 @@ object OpHelper {
     case other => sys.error("OP type not recognized: " + other.getClass.getSimpleName)
   }
 
+  /**
+   * [COMMENT TODO] What does this method do?
+   * @param op:
+   * @param numChunks:
+   * @param graph:
+   * @param target:
+   */
   def split(op: DeliteOP, numChunks: Int, graph: DeliteTaskGraph, target: Targets.Value): Seq[DeliteOP] = op match {
     case multi: OP_MultiLoop => target match {
       case Targets.Scala => ScalaMultiLoopGenerator.makeChunks(multi, numChunks, graph)
@@ -48,14 +65,24 @@ object OpHelper {
 
   def scheduledTarget(op: DeliteOP):Targets.Value = scheduledTarget(op.scheduledResource)
 
+  /**
+   * Returns the Target corresponding to an integer resource ID (loation).
+   * @param location: Integer resource ID
+   */
   def scheduledTarget(location: Int):Targets.Value = {
     if(location < Config.numThreads) Targets.Scala
     else if (location < Config.numThreads+Config.numCpp) Targets.Cpp
     else if (location < Config.numThreads+Config.numCpp+Config.numCuda) Targets.Cuda
     else if (location < Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL) Targets.OpenCL
+    else if (location < Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL+Config.numMaxJ) Targets.MaxJ
     else throw new RuntimeException("Cannot find a target for resource ID " + location)
   }
 
+  /**
+   * [COMMENT TODO] What does this method do?
+   * @param op:
+   * @param graph:
+   */
   def remote(op: DeliteOP, graph: DeliteTaskGraph) = op match {
     case multi: OP_MultiLoop => RPC_Generator.makeKernel(multi, graph)
     case single: OP_Single => sys.error("OP Single cannot be executed remotely")
