@@ -36,8 +36,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
   }
 
   private def emitAnyNode(sym: List[Sym[Any]], rhs: Any): Unit = {
-    val multiFileGenerators = generators.filterNot { _.emitSingleFile }
-    assert(multiFileGenerators.length >= 1)
+//    val multiFileGenerators = generators.filterNot { _.emitSingleFile }
+    assert(generators.length >= 1)
 
     printlog("DeliteGenTaskGraph.emitNode "+sym+"="+rhs)
 
@@ -121,7 +121,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
     }
 
     //compute result types for all syms for all targets independently of whether or not the kernel itself could be generated
-    for (gen <- multiFileGenerators) {
+    for (gen <- generators) {
       var genReturnType: String = null
       val tpes = for (s <- sym) {
         try {
@@ -145,7 +145,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
       }
     }
 
-    if (!skipEmission) for (gen <- multiFileGenerators) {
+    if (!skipEmission) for (gen <- generators) {
       val sep = java.io.File.separator
       //NOTE: GPU targets generate only device functions of multiloops at compile-time,
       //      and we put those functions in 'device' directory to make compilation a bit easier at walk-time
@@ -159,6 +159,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
       try {
         gen.withStream(kStream){ gen.emitKernel(sym, rhs) }
         kStream.close()
+
+        if (gen.emitSingleFile) {
+          outFile.delete()
+        }
 
         // record that this kernel was successfully generated
         supportedTargets += gen.toString
