@@ -1,0 +1,3 @@
+[Q] What is a .d file?
+[Q] What is a .cc file?
+[Q] What is the syntax to declare a function pointer?

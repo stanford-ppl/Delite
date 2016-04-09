@@ -1,0 +1,87 @@
+Delite Accelerator Abstraction Layer (DAAL)
+
+Motivation:
+Programming hardware accelerators requires APIs to do a set of operations.
+These operations are largely common across most accelerators. This means that
+once the core set of operations are defined clearly, an abstraction layer
+can be defined. This abstraction layer can be used in Delite code generation.
+The runtime can instantiate a target-specific object that implements these APIs.
+This enables generating generic host drivers that can interface with many
+accelerators in a seamless way.
+
+Operations:
+1. Initialization: Perform hardware initialization and create a hardware context
+object from host.
+  GPU:
+    - CUDA: cudaFree(0), cuInit() etc
+    - OpenCL: Something similar
+  FPGA:
+    - MaxJ: max_init, max_file_load
+    - SDAccel:
+    - MyHDL:
+    - Chisel:
+2. Tear down
+  GPU:
+    - CUDA: cudaDestroy() // I think
+    - OpenCL:
+  FPGA:
+    - MaxJ: max_unload
+3. Memory Allocation
+4. Memory Free
+5. Memory copy (src -> dst)
+6. Scalar copy (src -> dst)
+7. Kernel Launch (blocking)
+8. Poll for status, error, etc
+9. Synchronization
+10. Query device capabilities
+11. Get String equivalent for error
+11. Backdoor
+
+Example usage:
+
+
+#define N 1024
+int main() {
+  DaalAccObject *d = new DaalGPUCuda(/*params*/);  // Inserted by runtime
+
+  int *in1 = (int*) malloc(N * sizeof(int));
+  int *in2 = (int*) malloc(N * sizeof(int));
+  int *arraySum = (int*) malloc(N * sizeof(int));
+  int dotProd = 0;
+
+  // Initialize accelerator
+  d.init();
+
+  // Allocate scalar on accelerator
+  DaalScalar d_N = d.allocScalar(<init_val>);
+  DaalScalar d_dotprod = d.allocScalar(<init_val>);
+
+  // Allocate memory on accelerator
+  DaalArray d_in1 = d.alloc(N*sizeof(int));
+  DaalArray d_in2 = d.alloc(N*sizeof(int));
+  DaalArray d_arraySum  = d.alloc(N*sizeof(int));
+
+  // Copy input from host -> accelerator
+  d.copy(d_in1, in1, N*sizeof(int))
+  d.copy(d_in2, in2, N*sizeof(int))
+  d.copy(d_N, N);
+
+  // Launch kernel on accelerator in blocking fashion
+  d.run(KERNEL_ID, args);
+
+  // Copy results back
+  d.copy(dotProd, d_dotprod);
+  d.copy(arraySum, d_arraySum, N*sizeof(int));
+
+  // Print results from host
+  for (int i=0; i<N; i++) {
+    printf("arraySum[%d] = %d\n", i, arraySum[i]);
+  }
+  printf("dotProd = %d\n", dotProd);
+
+  // Shutdown accelerator
+  d.shutdown();
+  free(d);
+
+  return 0;
+}
