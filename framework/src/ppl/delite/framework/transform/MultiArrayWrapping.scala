@@ -87,7 +87,7 @@ trait MultiArrayWrapTransformer extends TunnelingTransformer {
     else withSubstScope(subs:_*) { Some(self_mirror(s, d)) }
   }
 
-  override def transformTP[A](s: Sym[A], d: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]] = d match {
+  override def transform(s: Sym[Any], d: Def[Any])(implicit ctx: SourceContext): Option[Exp[Any]] = d match {
     // --- Var aliasing
     case Assign(Variable(v),rhs) => mirrorWith(props(v) -> rhs)(s, d)
     case VarPlusEquals(Variable(v), rhs) => mirrorWith(props(v) -> rhs)(s, d)

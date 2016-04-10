@@ -90,7 +90,7 @@ trait TransformerBase extends ForwardTransformer with IterativeTraversal { self 
 
   override def traverseStm(stm: Stm) = stm match {
     case TP(lhs, rhs) if apply(lhs) == lhs =>
-      val replace = transformTP(lhs, rhs) match {
+      val replace = transform(lhs, rhs) match {
         case Some(replace) =>
           transferMetadata(replace, lhs)(rhs)
           replace
@@ -120,7 +120,7 @@ trait TransformerBase extends ForwardTransformer with IterativeTraversal { self 
   // Note: Shouldn't be calling transformStm from TransformerBase (slightly modified transformer design)
   override def transformStm(stm: Stm): Exp[Any] = throw new Exception("New transformer design - should not be calling transformStm here")
 
-  def transformTP[A](lhs: Sym[A], rhs: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]]
+  def transform(lhs: Sym[Any], rhs: Def[Any])(implicit ctx: SourceContext): Option[Exp[Any]]
   def transformTTP(lhs: List[Sym[Any]], mhs: List[Def[Any]], rhs: FatDef)(implicit ctx: SourceContext): Option[List[Exp[Any]]] = None
 
   def transferMetadata(dest: Exp[Any], src: Exp[Any])(node: Def[Any]) {
@@ -134,11 +134,11 @@ trait TunnelingTransformer extends TransformerBase {
 
   // TODO: Is this always correct? What happens when we transform something with an effect to something without one?
   // Does that ever happen in practice? Can always special case...
-  override def transformTP[A](lhs: Sym[A], rhs: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]] = rhs match {
+  override def transform(lhs: Sym[Any], rhs: Def[Any])(implicit ctx: SourceContext): Option[Exp[Any]] = rhs match {
     case Reflect(d, u, es) =>
       implicit val ctx: SourceContext = mpos(lhs.pos)
 
-      transformTP(lhs, d) match {
+      transform(lhs, d) match {
         case None => None
         case Some(e: Sym[_]) =>
           transferMetadata(e, lhs)(d)
