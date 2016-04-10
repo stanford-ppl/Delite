@@ -142,8 +142,8 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
         struct[DeliteArray[B]](SoaTag(tag,sz), newElems)
       }
 
-      val dataField = dc_data_field(t.getBlockResult(alloc).tp)
-      val sizeField = dc_size_field(t.getBlockResult(alloc).tp)
+      val dataField = dc_data_field(getBlockResult(alloc).tp)
+      val sizeField = dc_size_field(getBlockResult(alloc).tp)
 
       if (dataField == "" && !isSubtype(manifest[I].erasure,classOf[DeliteArray[_]])) {
         printlog("unable to transform collect elem: no data field defined for " + manifest[I].toString)
@@ -192,7 +192,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
 
       t.replace(body.buf.allocVal, res) // TODO: use withSubstScope
       printlog("successfully transformed collect elem with type " + manifest[I].toString + " to " + res.toString)
-      Some(t.getBlockResult(t(body.buf.finalizer)))
+      Some(getBlockResult(t(body.buf.finalizer)))
 
     case Block(Def(Reify(s@Def(a),_,_))) => printlog("unable to transform collect elem: found " + s.toString + ": " + a + " with type " + manifest[I].toString); None
     case a => printlog("unable to transform collect elem: found " + a + " with type " + manifest[I].toString); None
@@ -336,8 +336,8 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
           sys.error("transforming hashReduce elem but valFunc is not a struct and rFunc is")
       }
 
-      val dataField = dc_data_field(t.getBlockResult(alloc).tp) //FIXME
-      val sizeField = dc_size_field(t.getBlockResult(alloc).tp)
+      val dataField = dc_data_field(getBlockResult(alloc).tp) //FIXME
+      val sizeField = dc_size_field(getBlockResult(alloc).tp)
 
       if (dataField == "" && !isSubtype(manifest[I].erasure,classOf[DeliteArray[_]])) {
         printlog("unable to transform hashReduce elem: no data field defined for " + manifest[I].toString)
@@ -376,7 +376,7 @@ trait MultiloopSoATransformExp extends DeliteTransform with LoweringTransform wi
 
       t.replace(body.buf.allocVal, res) // TODO: use withSubstScope
       printlog("successfully transformed hashReduce elem with type " + manifest[I].toString + " to " + res.toString)
-      Some(t.getBlockResult(t(body.buf.finalizer)))
+      Some(getBlockResult(t(body.buf.finalizer)))
 
     case Block(Def(Reify(Def(a),_,_))) => printlog("unable to transform hashReduce elem: found " + a + " with type " + manifest[CV].toString); None
     case _ => None

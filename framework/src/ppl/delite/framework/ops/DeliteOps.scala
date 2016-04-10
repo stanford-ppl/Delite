@@ -805,4 +805,11 @@ trait DeliteOpsExp extends DeliteOpsExpIR with DeliteInternalOpsExp with DeliteC
   def unusedSym() = Sym(-10)
   val encounteredZipWith = new scala.collection.mutable.HashMap[Exp[Any], DeliteOpZipWith[_,_,_,_]]()
 
+
+  override def propagate(lhs: Exp[Any], rhs: Def[Any]) = rhs match {
+    // Ideally would use aliasSyms to automatically derive this rule, but general form of
+    // aliasSyms is far too broad about what can alias with what right now.
+    case op: DeliteOpCondition[_] => setProps(lhs, meet(getProps(op.thenp), getProps(op.elsep)))
+    case _ => super.propagate(lhs, rhs)
+  }
 }

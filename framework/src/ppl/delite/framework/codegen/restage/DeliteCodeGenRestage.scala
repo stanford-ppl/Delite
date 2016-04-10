@@ -19,7 +19,7 @@ trait TargetRestage extends Target {
 }
 
 trait RestageCodegen extends ScalaCodegen with Config {
-  val IR: Expressions
+  val IR: Blocks
   import IR._
 
   // should be set by DeliteRestage if there are any transformations to be run before codegen
