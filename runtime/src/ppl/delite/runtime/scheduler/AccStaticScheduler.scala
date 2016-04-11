@@ -10,9 +10,18 @@ import ppl.delite.runtime.codegen.kernels.cuda.SingleTask_GPU_Generator
 import ppl.delite.runtime.codegen.{Compilers,CCompile}
 
 class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: Int, numMaxJ: Int) extends StaticScheduler with ParallelUtilizationCostModel with ScheduleOptimizer {
+  // [COMMENT TODO] What are these variables?
+  // Current understanding:
+  // totalScala: Number of scala threads
+  // totalCpp: Number of cpp threads
+  // gpu: Starting resource ID of gpu
+  // fpga (by the same logic as gpu): Starting resource ID of fpga
+  // numResources: Total number of threads put together
+  // numResources: Total number of threads put together
   private val totalScala = Config.numThreads
   private val totalCpp = Config.numCpp
   private val gpu = totalScala + totalCpp
+  private val fpga = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL
   private val numResources = totalScala + totalCpp + Config.numCuda + Config.numOpenCL + Config.numMaxJ
 
   def schedule(graph: DeliteTaskGraph) {
@@ -51,6 +60,7 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
         scheduleMultiCore(op, graph, schedule, resources)
       case Targets.Cuda => scheduleGPU(op, graph, schedule)
       case Targets.OpenCL => scheduleGPU(op, graph, schedule)
+      case Targets.MaxJ => scheduleFPGA(op, graph, schedule)
     }
 
     def scheduleMultiLoop(l: OP_MultiLoop) {
@@ -134,11 +144,31 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
     }
   }
 
+  /**
+   * [COMMENT TODO} What does this method do?
+   * Schedule a DeliteOP on the GPU
+   * @param op: [[DeliteOp]] being scheduled
+   * @param graph
+   * @param schedule: [[PartialSchedule]] object with mutable state that is updated in this method
+   */
   protected def scheduleGPU(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
+    // 'gpu' is the resource ID of the GPU Target
     if (op.isDataParallel)
       split(op, graph, schedule, Seq(gpu))
     else
       scheduleOn(op, schedule, gpu)
+  }
+
+  /**
+   * [COMMENT TODO] What does this method do?
+   * Schedule a DeliteOP on the FPGA
+   * @param op: [[DeliteOp]] being scheduled
+   * @param graph
+   * @param schedule: [[PartialSchedule]] object with mutable state that is updated in this method
+   */
+  protected def scheduleFPGA(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
+    // 'fpga' is the resource ID of the FPGA Target
+    scheduleOn(op, schedule, fpga)
   }
 
   private var nextThread = 0
