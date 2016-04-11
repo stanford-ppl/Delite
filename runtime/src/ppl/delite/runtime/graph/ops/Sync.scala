@@ -201,11 +201,23 @@ object Sync {
 
   def sharedMemory(from: Int, to: Int) = node(from) == node(to)
 
+  /**
+   * [COMMENT TODO] What does this method do?
+   * Return a "communication ID" for a given resource ID. The idea is to uniquely
+   * identify resources that can communicate with each other, so that communication/copy
+   * calls can be added as necessary. As a result, resources with shared memory are assigned
+   * one number in this method as communication happens using shared memory, and hence
+   * there is no need to insert communication/copy calls in between them. Currently, all 'scala'
+   * threads are assigned '0', all C++ threads are assigned '1', and every accelerator (GPU, FPGA)
+   * is assigned its own resource ID
+   * @param resource: Resource ID whose communication node ID is required.
+   */
   def node(resource: Int) = OpHelper.scheduledTarget(resource) match {
     case Targets.Scala => 0 //only 1 Scala node
     case Targets.Cpp => 1 //only 1 C++ node
     case Targets.Cuda => resource //every GPU is it's own node
     case Targets.OpenCL => resource
+    case Targets.MaxJ => resource  // Every FPGA is its own node
   }
 
   def dataDeps(op: DeliteOP) = op.getInputSet -- _graph.inputs
