@@ -389,20 +389,36 @@ abstract class Receive extends Sync {
 }
 
 //default for data transfers: copy semantics
-case class SendData(sym: String, from: DeliteOP, toNode: Int) extends Send
-case class ReceiveData(sender: SendData, atResource: Int) extends Receive
+case class SendData(sym: String, from: DeliteOP, toNode: Int) extends Send {
+  override def toString = s"""SendData_${sym}_${from}_$toNode"""
+}
+case class ReceiveData(sender: SendData, atResource: Int) extends Receive {
+  override def toString = s"""ReceiveData_${sender}_$atResource"""
+}
 
 //optimization of Send/Receive data, only copy pointer, share data
-case class SendView(sym: String, from: DeliteOP) extends Send
-case class ReceiveView(sender: SendView, atResource: Int) extends Receive
+case class SendView(sym: String, from: DeliteOP) extends Send {
+  override def toString = s"""SendView_${sym}_$from"""
+}
+case class ReceiveView(sender: SendView, atResource: Int) extends Receive {
+  override def toString = s"""ReceiveView_${sender}_$atResource"""
+}
 
 //control signals
-case class Notify(from: DeliteOP, toNode: Int) extends Send
-case class Await(sender: Notify, atResource: Int) extends Receive
+case class Notify(from: DeliteOP, toNode: Int) extends Send {
+  override def toString = s"""Notify_${from}_$toNode"""
+}
+case class Await(sender: Notify, atResource: Int) extends Receive {
+  override def toString = s"""Await_${sender}_$atResource"""
+}
 
 //update existing data, separated from Send/Receive data for analysis purposes
-case class SendUpdate(sym: String, from: DeliteOP, toNode: Int) extends Send
-case class ReceiveUpdate(sender: SendUpdate, atResource: Int) extends Receive
+case class SendUpdate(sym: String, from: DeliteOP, toNode: Int) extends Send {
+  override def toString = s"""SendUpdate_${sym}_${from}_$toNode"""
+}
+case class ReceiveUpdate(sender: SendUpdate, atResource: Int) extends Receive {
+  override def toString = s"""ReceiveUpdate_${sender}_$atResource"""
+}
 
 //Free nodes (TODO: Better to have a Free node for each symbol?)
 case class Free(op: DeliteOP, items: List[(DeliteOP,String)]) extends PCM_M {
