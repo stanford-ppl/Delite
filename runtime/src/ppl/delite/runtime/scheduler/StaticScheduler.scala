@@ -38,6 +38,13 @@ trait StaticScheduler {
     scheduleOn(op, schedule, resourceList(0))
   }
 
+  /**
+   * [COMMENT TODO] What does this method do? It seems to be used like the 'scheduleOn' method. Why do we need this?
+   * @param op:
+   * @param graph:
+   * @param schedule:
+   * @param resource:
+   */
 	protected def addSequential(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resource: Int) {
 		op match {
 			case c: OP_Condition => {
