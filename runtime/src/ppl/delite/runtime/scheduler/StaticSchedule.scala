@@ -125,7 +125,7 @@ class PartialSchedule(val resources: Array[OpList]) {
     resources.foreach { oplist =>
       var prevOp: Option[DeliteOP] = None
       for (op <- oplist) {
-        pw.println(s"""$op [label="$op"]""")
+        pw.println(s"""$op [label="$op, ${op.opName}"]""")
         if (prevOp.isDefined) {
           pw.println(s"""${prevOp.get} -> $op""")
         }

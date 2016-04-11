@@ -25,6 +25,13 @@ abstract class DeliteOP {
    */
   def task : String
 
+  // Name of the op, along with getter and setter methods
+  private var __opName: String = ""
+  def opName: String = __opName
+  def opName_=(name: String) {
+    __opName = name
+  }
+
   private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]]
   private[graph] val stencilMap = new collection.mutable.HashMap[String,Stencil]()
   private[graph] val supportedTargets = new collection.mutable.HashSet[Targets.Value]

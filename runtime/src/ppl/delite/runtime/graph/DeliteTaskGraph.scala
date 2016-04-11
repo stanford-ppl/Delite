@@ -182,6 +182,8 @@ object DeliteTaskGraph {
       case other => error("OP Type not recognized: " + other)
     }
 
+    newop.opName = opName
+
     // handle stencil
     if (newop.isInstanceOf[OP_MultiLoop]) {
       processStencil(newop, op)
