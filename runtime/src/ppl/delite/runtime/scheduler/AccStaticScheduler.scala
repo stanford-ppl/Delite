@@ -211,7 +211,6 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
   /**
    * Returns the most suitable target for a given DeliteOP. Currently, there
    * is a fixed, strict order of target preference for every DeliteOP (FPGA > GPU > Cpp > Scala)
-   * if (DeliteOP can run on GPU) <prefer Cuda over OpenCL>
    * This order is defined in the implementation implicitly.
    * No cost model exists to choose target for DeliteOPs.
    * @param op: [[DeliteOp]] node being scheduled
@@ -243,9 +242,16 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
     }
   }
 
+  /**
+   * Returns true if 'op' must be scheduled on the FPGA, false otherwise
+   * Currently, only DeliteOps whose opName is "Accel" (from DHDL)
+   * is scheduled on the FPGA
+   * @param op: Delite op being scheduled
+   */
   protected def scheduleOnFPGA(op:DeliteOP) = {
     if (numMaxJ == 0) false
     else if (!op.supportsTarget(Targets.MaxJ)) false
+    else if (op.opName != "Accel") false
     else true
   }
 
