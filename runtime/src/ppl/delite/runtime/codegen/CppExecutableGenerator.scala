@@ -75,7 +75,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
   }
 
   protected[codegen] def declareGlobals() {
-    out.append("JNIEnv* env" + location + ";\n")
+    if (!Config.noJVM) out.append("JNIEnv* env" + location + ";\n")
   }
 
   protected[codegen] def initializeGlobals() {
