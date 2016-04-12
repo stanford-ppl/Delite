@@ -8,7 +8,7 @@ import tools.nsc.io._
 object MaxJCompile extends CCompile {
 
   def target = Targets.MaxJ
-  override def ext = ".cpp"
+  override def ext = "cpp"
 
   protected def configFile = "MaxJ.xml"
   protected def compileFlags = Array("")
