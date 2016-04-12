@@ -38,7 +38,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     out.append("#include \"cppSyncObjects.h\"\n")
     out.append("#include \"" + Targets.Cpp + "helperFuncs.h\"\n")
     out.append("#include \""+CppMultiLoopHeaderGenerator.headerFile+".h\"\n")
-    out.append("extern JNIEnv* env" + location + ";\n")
+    if (!Config.noJVM) out.append("extern JNIEnv* env" + location + ";\n")
   }
 
   private def scheduledLocations() = {
