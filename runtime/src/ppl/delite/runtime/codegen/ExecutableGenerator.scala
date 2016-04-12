@@ -37,6 +37,25 @@ trait ExecutableGenerator {
   val graph: DeliteTaskGraph
   var opList: OpList = _
 
+  /**
+   * [COMMENT TODO] What does this method do?
+   * Entry point for all code generators. Generates a wrapper function whose body
+   * is a list of function calls for a list of ops. Code generation in the runtime
+   * mostly involves generating method calls from a schedule for each
+   * resource. This is split into the following steps:
+   * 1. writeHeader: Generate header that goes before the wrapper function
+   * 2. writeMethodHeader: Generate the wrapper function signature
+   * 3. addKernelCalls: Generate list of function calls that make up the wrapper function's body.
+   *    Depending on the op, one of two methods are used to generate function call:
+   *    - makeNestedFunction: For [[OP_Nested]], [[Sync]], [[PCM_M]] nodes
+   *    - writeFunctionCall: For all other nodes
+   * 4. Generate wrapper function's footer
+   * 5. Generate footer that goes after the wrapper function
+   * 6. Generate all sync objects (<-- what are these?)
+   * Once generation is done, the generated code is added as a source file using the
+   * 'addSource' method
+   * @param ops: List of ops ([[OpList]]) scheduled on one resource to be code-generated
+   */
   def makeExecutable(ops: OpList) {
     opList = ops
     writeHeader()
@@ -49,6 +68,15 @@ trait ExecutableGenerator {
     addSource(out.toString)
   }
 
+  /**
+   * [COMMENT TODO] What does this method do?
+   * Generate list of function calls that make up the wrapper function's body.
+   * Depending on the op, one of two methods are used to generate function call:
+   *  - makeNestedFunction: For [[OP_Nested]], [[Sync]], [[PCM_M]] nodes
+   *  - writeFunctionCall: For all other nodes
+   * Individual code generators must override the above two methods as required
+   * @param resource: List of ops [[OpList]] to be code-generated
+   */
   protected def addKernelCalls(resource: OpList) {
     initializeBlock()
     for (op <- resource) {
@@ -59,29 +87,80 @@ trait ExecutableGenerator {
     finalizeBlock()
   }
 
+  /** Name of the wrapper function */
   def executableName: String = executableName(location)
   def executableName(location: Int): String
 
+  /**
+   * Adds generated code  as a separate file
+   * for compilation. Typically overridden in individual code
+   * generators to add a new file to their companion 'Compile'
+   * object
+   * @param source: Generated code in String format
+   */
   protected def addSource(source: String)
 
+  /**
+   * Generate function call for certain kinds of [[DeliteOP]]s.
+   * At the time of this writing, this method is used for
+   * [[OP_Nested]], [[Sync]], and [[PCM_M]] nodes
+   * @param op: DeliteOP to be generated
+   */
   protected def makeNestedFunction(op: DeliteOP)
 
+  /**
+   * Generate function call for all [[DeliteOP]]s not generated
+   * using makeNestedFunction
+   * @param op: DeliteOP to be generated
+   */
   protected[codegen] def writeFunctionCall(op: DeliteOP)
+
+  /**
+   * Write header that goes before wrapper function
+   * Overridden by individual code generators to typically
+   * include/import files and libraries, declare globals, etc
+   */
   protected[codegen] def writeHeader()
 
+  /**
+   * Write wrapper function signature
+   */
   protected def writeMethodHeader()
 
+  /**
+   * Write footer that goes after wrapper function
+   */
   protected def writeFooter()
+
+  /**
+   * Write wrapper function footer. Typically involves
+   * generating frees, closing braces
+   */
   protected def writeMethodFooter()
 
+  /**
+   * [COMMENT TODO] What does this method do?
+   */
   protected[codegen] def writeSyncObject()
 
+  /**
+   * [COMMENT TODO] What do the following methods do?
+   */
   protected def syncObjectGenerator(syncs: ArrayBuffer[Send], target: Targets.Value): SyncObjectGenerator
   protected def getOpSym(op: DeliteOP) = getSym(op, "op_"+op.id)
   protected def getSym(op: DeliteOP, name: String): String = {
     "x"+name
   }
 
+  /**
+   * Generates code that goes before the list of function calls
+   * in the wrapper function's body
+   */
   protected def initializeBlock() { }
+
+  /**
+   * Generates code that goes after the list of function calls
+   * in the wrapper function's body
+   */
   protected def finalizeBlock() { }
 }

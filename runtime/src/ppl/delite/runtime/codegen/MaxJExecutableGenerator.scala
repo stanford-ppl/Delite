@@ -11,7 +11,7 @@ import sync._
 import ppl.delite.runtime.graph.DeliteTaskGraph
 
 /**
- * MaxJ code generator
+ * MaxJ code generator logic to generate function calls
  */
 trait MaxJExecutableGenerator extends ExecutableGenerator {
   import CppResourceInfo._
@@ -22,6 +22,12 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
   protected val getterList: ArrayBuffer[String] = ArrayBuffer()
   protected val available: ArrayBuffer[(DeliteOP,String)] = ArrayBuffer()
 
+  /**
+   * Code generator to generate non-MaxJ host code.
+   * MaxJ and host (Cpp) schedules are merged prior to code generation;
+   * see "Compilers::compileSchedule()".
+   * Nodes scheduled on the host (Cpp) will be generated using hostGenerator.
+   */
   protected val hostGenerator: CppExecutableGenerator
 
   /**
@@ -66,7 +72,10 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
   /**
    * [COMMENT TODO] What does this method do?
    * MaxJ can only schedule SingleTasks with opName "Accel"
-   * Doing nothing in this method for MaxJ
+   * Doing nothing in this method now. However, it looks like
+   * the 'makeNestedFunction' method in the sync generator is
+   * responsible for sync node codegen. Some clarity is required
+   *
    */
   protected def makeNestedFunction(op: DeliteOP) = op match {
     case _ =>
@@ -135,6 +144,13 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
   }
 }
 
+/**
+ * MaxJ code generator class that includes function call and sync node
+ * generation. This class is instantiated by callers that need to generate
+ * MaxJ.
+ * @param location: Resource ID assigned to the MaxJ target
+ * @param graph: Parsed DEG with mutable schedule information
+ */
 class MaxJMainExecutableGenerator(val location: Int, val graph: DeliteTaskGraph)
   extends MaxJExecutableGenerator with MaxJSyncGenerator {
 
