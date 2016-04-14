@@ -123,10 +123,15 @@ object Delite {
       // Print schedule
       graph.schedule.toDot("afterSync")
 
-      //merge C++ schedule into CUDA schedule
-      if (Config.numCuda > 0)
+      // Merge C++ schedule into MaxJ/CUDA schedule
+      // Note: MaxJ has precedence over CUDA for now.
+      // Multiple accelerators are not currently supported
+      if (Config.numMaxJ > 0)
+        scheduler.scheduleNativeFPGA(graph)
+      else if (Config.numCuda > 0)
         scheduler.scheduleNativeGPU(graph)
 
+      graph.schedule.toDot("afterMerge")
       //compile
       Compilers.compileSchedule(graph)
     }
