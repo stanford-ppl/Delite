@@ -52,17 +52,15 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
   }
 
   protected def writeMethodHeader() {
-    out.append("// writeMethodHeader();\n")
+    out.append("// MaxJ writeMethodHeader();\n")
+    hostGenerator.writeMethodHeader()
     declareGlobals()
-    hostGenerator.declareGlobals()
-
     initializeGlobals()
-    hostGenerator.initializeGlobals()
   }
 
   protected def writeMethodFooter() {
-    out.append("// writeMethodFooter();\n")
-    out.append("}\n")
+    out.append("// MaxJ writeMethodFooter();\n")
+    hostGenerator.writeMethodFooter()
   }
 
   protected def writeFooter() { }
@@ -93,6 +91,7 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
       if (op.task == null) return //dummy op
 
       out.append(s"""// MaxJ writeFunctionCall($op) {\n""")
+      out.append(s"""// Inputs($op) = ${op.getInputs.map {op => (op._1.id, op._1.opName)}}\n""")
       for (i <- op.getInputs)
         available += i
       for (o <- op.getOutputs if op.outputType(o)!="Unit")
@@ -100,7 +99,6 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
 
       op match {
         case _:OP_Single =>
-          //TODO: enable singletask GPU kernels that has an output
           assert(op.getOutputs.filter(o=>op.outputType(o)!="Unit").isEmpty)
           out.append(op.task)
           val args = op.getInputs.map(i => deref(i._1,i._2) + getSymDevice(i._1,i._2))
