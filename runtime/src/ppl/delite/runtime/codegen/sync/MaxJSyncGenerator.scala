@@ -14,8 +14,11 @@ trait MaxJSyncGenerator extends SyncGenerator with MaxJExecutableGenerator {
   override protected def receiveData(s: ReceiveData) {
     (scheduledTarget(s.sender.from), scheduledTarget(s.to)) match {
       case (Targets.Cpp, Targets.MaxJ) => writeGetter(s.sender.from, s.sender.sym, s.to, false)
+      case (Targets.Scala, Targets.MaxJ) => out.append(s"""// writeGetter(${s.sender.from} (${s.sender.from.opName}), ${s.sender.sym}, ${s.to} (${s.to.opName}), false): scala -> maxj\n""")
       case (Targets.MaxJ, Targets.Cpp) => //
-      case _ => super.receiveData(s)
+      case (a,b) =>
+        println(s"""[MaxJSyncGenerator::receiveData] from: $a, to: $b""")
+        super.receiveData(s)
     }
   }
 
@@ -75,45 +78,44 @@ trait MaxJSyncGenerator extends SyncGenerator with MaxJExecutableGenerator {
 
   private def writeGetter(dep: DeliteOP, sym: String, to: DeliteOP, view: Boolean) {
     assert(view == false)
-    out.append(s"""// writeGetter(dep = $dep, sym = $sym, to = $to, view = $view);""")
     val ref = if (isPrimitiveType(dep.outputType(sym))) "" else "*"
-    val devType = dep.outputType(Targets.MaxJ, sym)
-    val hostType = dep.outputType(Targets.Cpp, sym)
+//    val devType = dep.outputType(Targets.MaxJ, sym)
+//    val hostType = dep.outputType(Targets.Cpp, sym)
     if(isPrimitiveType(dep.outputType(sym))) {
-      out.append("// primitive type getter")
+      out.append(s"""//writeGetter($dep, $sym, $to, $view) - primitive\n""")
     }
     else {
-      out.append("// non-primitive type getter - copy")
+      out.append(s"""//writeGetter($dep, $sym, $to, $view) - copy\n""")
     }
   }
 
   private def writeRecvUpdater(dep: DeliteOP, sym:String) {
-    val hostType = dep.inputType(Targets.Cpp, sym)
-    val devType = dep.inputType(Targets.MaxJ, sym)
+//    val hostType = dep.inputType(Targets.Cpp, sym)
+//    val devType = dep.inputType(Targets.MaxJ, sym)
     assert(!isPrimitiveType(dep.inputType(sym)))
-    out.append(s"""// writeRecvUpdater($dep, $sym)""")
+    out.append(s"""// writeRecvUpdater($dep, $sym)\n""")
   }
 
   private def writeSetter(op: DeliteOP, sym: String, view: Boolean) {
     assert(view == false)
-    val hostType = op.outputType(Targets.Cpp, sym)
-    val devType = op.outputType(Targets.MaxJ, sym)
+//    val hostType = op.outputType(Targets.Cpp, sym)
+//    val devType = op.outputType(Targets.MaxJ, sym)
     if(isPrimitiveType(op.outputType(sym)) && op.isInstanceOf[OP_Nested]) {
-      out.append(s"""// writeSetter($op, $sym, $view), primitive, OP_NESTED""")
+      out.append(s"""// writeSetter($op, $sym, $view), primitive, OP_NESTED\n""")
     }
     else if(isPrimitiveType(op.outputType(sym))) {
-      out.append(s"""// writeSetter($op, $sym, $view), primitive""")
+      out.append(s"""// writeSetter($op, $sym, $view), primitive\n""")
     }
     else {
-      out.append(s"""// writeSetter($op, $sym, $view)""")
+      out.append(s"""// writeSetter($op, $sym, $view)\n""")
     }
   }
 
   private def writeSendUpdater(op: DeliteOP, sym: String) {
-    val devType = op.inputType(Targets.MaxJ, sym)
-    val hostType = op.inputType(Targets.Cpp, sym)
+//    val devType = op.inputType(Targets.MaxJ, sym)
+//    val hostType = op.inputType(Targets.Cpp, sym)
     assert(!isPrimitiveType(op.inputType(sym)))
-    out.append(s"""// writeSendUpdater($op, $sym)""")
+    out.append(s"""// writeSendUpdater($op, $sym)\n""")
   }
 
   private def addFree(m: Free) {
