@@ -41,6 +41,7 @@ object Config {
   val useFsc: Boolean = getProperty("delite.usefsc", "false") != "false"
   val tempCudaMemRate: Double = getProperty("delite.tempcudamem", "0.3").toDouble         /* proportions of the cuda device memory used for temporary allocations */
   val taskQueueSize: Int = getProperty("delite.task.queue.size", "1024").toInt
+  var performCompile: Boolean = getProperty("delite.no_compile", "true") != "true"
   var performWalk: Boolean = getProperty("delite.walk", "true") != "false"
   var performRun: Boolean = getProperty("delite.run", "true") != "false"
   val noJVM: Boolean = getProperty("delite.nojvm", "false") != "false"

@@ -77,7 +77,7 @@ trait CCompile extends CodeCache {
     if (Config.verbose) println("[delite]: starting C compile")
     val start = System.currentTimeMillis
     cacheRuntimeSources((sourceBuffer ++ headerBuffer).toArray)
-    compile(executableName, sourceDirs ++ shared.sourceDirs)
+    if (Config.performCompile) compile(executableName, sourceDirs ++ shared.sourceDirs)
 
     val time = (System.currentTimeMillis - start)/1e3
     if (Config.verbose) println("[delite]: finished C compile in " + time + "s")

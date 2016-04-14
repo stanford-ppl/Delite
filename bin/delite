@@ -36,7 +36,8 @@ def main():
     parser.add_option("--codecache", dest="codecache", default="", help="directory for runtime code cache")
     parser.add_option("-d", "--directory", dest="directory", default="", help="change directory to the specified one before running")
     parser.add_option("--jar", dest="jar_cache", action="store_true", default=False, help="save compiled executables in a jar for later execution")
-    parser.add_option("--walk-only", dest="walk_only", action="store_true", default=False, help="Only generate executables, don't run them.  Typically used with --jar")
+    parser.add_option("--walk-only", dest="walk_only", action="store_true", default=False, help="Only generate executables and compile them, don't run them.  Typically used with --jar")
+    parser.add_option("--no-compile", dest="no_compile", action="store_true", default=False, help="Only generate code, don't compile or run them")
     parser.add_option("--no-jvm", dest="no_jvm", action="store_true", default=False, help="Only generates native executables for use with external code")
     parser.add_option("--pin", dest="pin_threads", action="store_true", default=False, help="Pin JVM threads to CPUs (requires native code support)")
 
@@ -139,6 +140,8 @@ def run(deg, params, opts):
         java_opts = java_opts + " -Ddelite.slave.image="+opts.slaveImage
     if opts.walk_only == True:
         java_opts = java_opts + " -Ddelite.run=false"
+    if opts.no_compile == True:
+        java_opts = java_opts + " -Ddelite.no_compile=true"
     if opts.no_jvm == True:
         java_opts = java_opts + " -Ddelite.nojvm"
     if opts.pin_threads == True:
