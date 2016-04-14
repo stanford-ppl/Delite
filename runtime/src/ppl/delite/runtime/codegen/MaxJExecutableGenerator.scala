@@ -39,8 +39,6 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
 
   protected[codegen] def writeHeader() {
     hostGenerator.writeHeader()
-    out.append("#include <stdio.h>\n")
-    out.append("#include <stdlib.h>\n")
     out.append("#include <stdint.h>\n")
     out.append("#include <sys/time.h>\n")
     out.append("#include <Maxfiles.h>\n")
@@ -79,8 +77,8 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
    */
   protected def makeNestedFunction(op: DeliteOP) = op match {
     case _ =>
-      out.append(s"""// MaxJExecutableGenerator::makeNestedFunction($op)""")
-      println("Cannot generate op" + op.id)
+      out.append(s"""// MaxJExecutableGenerator::makeNestedFunction($op): Cannot generate\n""")
+      println(s"""[MaxJExecutableGenerator::makeNestedFunction() Cannot generate '$op')""")
   }
 
   private def deref(o: DeliteOP, s: String):String = {
@@ -94,6 +92,7 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
     } else {
       if (op.task == null) return //dummy op
 
+      out.append(s"""// MaxJ writeFunctionCall($op) {\n""")
       for (i <- op.getInputs)
         available += i
       for (o <- op.getOutputs if op.outputType(o)!="Unit")
@@ -103,18 +102,18 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
         case _:OP_Single =>
           //TODO: enable singletask GPU kernels that has an output
           assert(op.getOutputs.filter(o=>op.outputType(o)!="Unit").isEmpty)
-          out.append(s"""// MaxJ writeFunctionCall($op)""")
           out.append(op.task)
           val args = op.getInputs.map(i => deref(i._1,i._2) + getSymDevice(i._1,i._2))
           out.append(args.mkString("(",",",");\n"))
         case _ =>
           sys.error(s"""ERROR: Unsupported op '$op' for MaxJ writeFunctionCall()""")
       }
+      out.append(s"""// MaxJ writeFunctionCall($op) }\n""")
     }
   }
 
   protected def writeOutputAlloc(op: DeliteOP) {
-    out.append(s"""// MaxJ writeOutputAlloc($op)""")
+    out.append(s"""// MaxJ writeOutputAlloc($op)\n""")
   }
 
   //TODO: Remove using getSymCPU
@@ -129,7 +128,7 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
   }
 
   protected def getSymDevice(op: DeliteOP, name: String): String = {
-    "xG"+name
+    "xF"+name
   }
 
   override protected[codegen] def writeSyncObject() {  }
