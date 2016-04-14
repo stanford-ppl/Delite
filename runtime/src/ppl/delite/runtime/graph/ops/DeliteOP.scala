@@ -25,11 +25,18 @@ abstract class DeliteOP {
    */
   def task : String
 
-  // Name of the op, along with getter and setter methods
+  // Name of op (as it appears in the source), along with getter and setter methods
   private var __opName: String = ""
   def opName: String = __opName
   def opName_=(name: String) {
     __opName = name
+  }
+
+  // Stringified Delite IR node of the op, along with getter and setter methods
+  private var __irnode: String = ""
+  def irnode: String = __irnode
+  def irnode_=(name: String) {
+    __irnode = name
   }
 
   private[graph] var outputTypesMap: Map[Targets.Value, Map[String,String]]

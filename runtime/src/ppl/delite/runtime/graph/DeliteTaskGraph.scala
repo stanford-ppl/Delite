@@ -182,7 +182,9 @@ object DeliteTaskGraph {
       case other => error("OP Type not recognized: " + other)
     }
 
+    val irnode = getFieldString(op, "irnode")
     newop.opName = opName
+    newop.irnode = irnode
 
     // handle stencil
     if (newop.isInstanceOf[OP_MultiLoop]) {
