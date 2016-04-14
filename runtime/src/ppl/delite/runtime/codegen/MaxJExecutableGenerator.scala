@@ -56,11 +56,18 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
     hostGenerator.writeMethodHeader()
     declareGlobals()
     initializeGlobals()
+    out.append(s"""// Load max file from disk -> DRAM\n""")
+    out.append(s"""max_file_t *maxfile = Top_init();\n""")
+    out.append(s"""// Configure the FPGA\n""")
+    out.append(s"""max_engine_t *engine = max_load(maxfile, "local:*");\n""")
+    out.append(s"""int burstSize = max_get_burst_size(maxfile, NULL);\n""")
+    out.append(s"""printf("Burst size for architecture: %d bytes\n", burstSize);\n""")
   }
 
   protected def writeMethodFooter() {
     out.append("// MaxJ writeMethodFooter();\n")
-    hostGenerator.writeMethodFooter()
+    out.append(s"""max_unload(engine);\n""")
+    hostGenerator.writeMethodFooter()  // <-- This generates the main method
   }
 
   protected def writeFooter() { }
@@ -79,9 +86,11 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
       println(s"""[MaxJExecutableGenerator::makeNestedFunction() Cannot generate '$op')""")
   }
 
-  private def deref(o: DeliteOP, s: String):String = {
-    if (!isPrimitiveType(o.outputType(s))) "*"
-    else ""
+  private def deref(o: DeliteOP, s: String): String = {
+    o.opName match {
+      case "ArgIn" => "*"
+      case _ => ""
+    }
   }
 
   protected[codegen] def writeFunctionCall(op: DeliteOP) {
@@ -91,7 +100,7 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
       if (op.task == null) return //dummy op
 
       out.append(s"""// MaxJ writeFunctionCall($op) {\n""")
-      out.append(s"""// Inputs($op) = ${op.getInputs.map {op => (op._1.id, op._1.opName)}}\n""")
+      out.append(s"""// Inputs($op) = ${op.getInputs.map {op => (op._1.id, op._1.irnode, op._1.opName)}}\n""")
       for (i <- op.getInputs)
         available += i
       for (o <- op.getOutputs if op.outputType(o)!="Unit")
@@ -99,10 +108,22 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
 
       op match {
         case _:OP_Single =>
+          assert(op.irnode == "Hwblock")
           assert(op.getOutputs.filter(o=>op.outputType(o)!="Unit").isEmpty)
-          out.append(op.task)
-          val args = op.getInputs.map(i => deref(i._1,i._2) + getSymDevice(i._1,i._2))
-          out.append(args.mkString("(",",",");\n"))
+          out.append(s"""Top_actions_t runAct;\n""")
+          op.getInputs.filter { t => t._1.irnode == "Reg_new" }.map { t =>
+            val inop = t._1
+            val prefix = inop.opName match {
+              case "ArgIn" => "param"
+              case "ArgOut" => "outscalar_TopKernel"
+            }
+            out.append(s"""runAct.${prefix}_${inop.id} = ${deref(t._1,t._2) + getSymDevice(t._1,t._2)};\n""")
+          }
+          out.append(s"""gettimeofday(&t1, 0);\n""")
+          out.append(s"""${op.task}(engine, &runAct);\n""")
+          out.append(s"""gettimeofday(&t2, 0);\n""")
+          out.append(s"""double elapsed = (t2.tv_sec-t1.tv_sec)*1000000 + t2.tv_usec-t1.tv_usec;\n""")
+          out.append(s"""fprintf(stderr, "Kernel done, elapsed time = %lf\n", elapsed/1000000);\n""")
         case _ =>
           sys.error(s"""ERROR: Unsupported op '$op' for MaxJ writeFunctionCall()""")
       }
