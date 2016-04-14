@@ -60,16 +60,27 @@ object Compilers {
       CudaExecutableGenerator.makeExecutables(cudaSchedule, graph)
     }
 
+    if (Config.numMaxJ > 0) {
+      val maxjSchedule = schedule.slice(Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL,
+        Config.numThreads+Config.numCpp+Config.numCuda+Config.numCuda+Config.numOpenCL+Config.numMaxJ)
+      if (maxjSchedule.map(_.size).foldLeft(0)(_ + _) == 0)
+        System.err.println("[WARNING]: no kernels scheduled on maxj")
+      MaxJExecutableGenerator.makeExecutables(maxjSchedule, graph)
+    }
+
     if (Config.printSources) { //DEBUG option
       ScalaCompile.printSources()
       CppCompile.printSources()
       CudaCompile.printSources()
       OpenCLCompile.printSources()
+      MaxJCompile.printSources()
     }
 
     if (Config.numCpp>0 && graph.targets(Targets.Cpp)) CppCompile.compile()
     if (Config.numCuda>0 && graph.targets(Targets.Cuda)) CudaCompile.compile()
     if (Config.numOpenCL>0 && graph.targets(Targets.OpenCL)) OpenCLCompile.compile()
+    if (Config.numMaxJ>0 && graph.targets(Targets.MaxJ)) MaxJCompile.compile()
+    sys.exit(0)
 
     val classLoader = ScalaCompile.compile()
     DeliteMesosExecutor.classLoader = classLoader
@@ -82,7 +93,11 @@ object Compilers {
     if (Config.numCuda > 0) {
       CudaExecutableGenerator.clear()
     }
-    
+
+    if (Config.numMaxJ > 0) {
+      MaxJExecutableGenerator.clear()
+    }
+
     val expectedResources = for (i <- 0 until schedule.numResources if !schedule(i).isEmpty) yield i
     val executables = createSchedule(classLoader, ScalaExecutableGenerator.getPackage(graph), schedule.numResources, expectedResources)
 
