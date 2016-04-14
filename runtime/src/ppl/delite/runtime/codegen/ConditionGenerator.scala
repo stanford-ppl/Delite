@@ -137,7 +137,7 @@ class ScalaConditionGenerator(val condition: OP_Condition, val location: Int, va
 class CppConditionGenerator(val condition: OP_Condition, val location: Int, val graph: DeliteTaskGraph)
   extends ConditionGenerator with CppNestedGenerator with CppSyncGenerator {
 
-  override protected def writeMethodHeader() {
+  override def writeMethodHeader() {
     if (declCondVar)
       out.append("bool " + condition.id.split('_').head + "_cond;\n")
     super.writeMethodHeader()

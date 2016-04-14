@@ -49,7 +49,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     scheduledLocations.filter(l => Targets.getHostTarget(Targets.getByLocation(l)) == Targets.Cpp).size
   }
 
-  protected def writeMethodHeader() {
+  def writeMethodHeader() {
     declareGlobals()
 
     if (!Config.noJVM) writeJNIMethodHeader()
@@ -113,7 +113,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     out.append("jobject boxedUnit = env" + location + "->GetStaticObjectField(clsBU, env" + location + "->GetStaticFieldID(clsBU, \"UNIT\", \"Lscala/runtime/BoxedUnit;\"));\n")
   }
 
-  protected def writeMethodFooter() {
+  def writeMethodFooter() {
     out.append(s"clearAll(numThreads, ${activeCppLocations}, ${Config.numThreads}, env$location);\n")
     out.append("}\n")
 
