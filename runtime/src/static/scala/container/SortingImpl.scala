@@ -10,9 +10,11 @@ object SortingImpl {
    */
   def sort(a: Array[Int], c: IntComparator) = IntTimSort.sort(a,0,a.length,c,null,0,0)
   def sort(a: Array[Int], lo: Int, hi: Int, c: IntComparator) = IntTimSort.sort(a,lo,hi,c,null,0,0)
+  def merge(a: Array[Int], lo: Int, mid: Int, hi: Int, c: IntComparator) = IntTimSort.merge(a,lo,mid,hi,c)
 
   def sort(a: Array[Long], c: LongComparator) = LongTimSort.sort(a,0,a.length,c,null,0,0)
   def sort(a: Array[Long], lo: Int, hi: Int, c: LongComparator) = LongTimSort.sort(a,lo,hi,c,null,0,0)
+  def merge(a: Array[Long], lo: Int, mid: Int, hi: Int, c: LongComparator) = LongTimSort.merge(a,lo,mid,hi,c)
 
   /**
    * Specialized ascending order sorts for primitive types
@@ -38,128 +40,98 @@ object SortingImpl {
   def sort(a: Array[Short]) = Arrays.sort(a)
   def sort(a: Array[Short], lo: Int, hi: Int) = Arrays.sort(a,lo,hi)
 
+}
 
-  /**
-   * Parallel sort testing cdoe
-  */
-
-  /*
-   * commented because not jdk 1.6 compatible
-
-  def main(args: Array[String]) {
-    val len = 30000000
-
-    def time[T](f: => T): Double = {
-      val start = System.currentTimeMillis
-      val res = f
-      val stop = System.currentTimeMillis
-      val elapsed = (stop-start)/1e3
-      elapsed
-    }
-
-    def avg(amt: Double*) = amt.sum / amt.length
-
-    def init(len: Int) = {
-      val a = new Array[Double](len)
-      val b = new Array[Long](len)
-      val c = new Array[Int](len)
-      val r = new java.util.Random
-      for (i <- 0 until len) { a(i) = r.nextDouble; b(i) = r.nextDouble.toLong; c(i) = i }
-      (a,b,c)
-    }
-
-    val (a,b,idx) = init(len)
-
-    val comp = new Comparator {
-      def compare(li: Int, ri: Int): Int = {
-        val first = java.lang.Double.compare(a(li), a(ri))
-        if (first != 0) return first
-
-        val second = java.lang.Long.compare(b(li), b(ri))
-        if (second != 0) return second
-
-        //val third = ...
-
-        second
-      }
-    }
-
-    //primitive
-    val t = a.clone
-    println("primitive time: " + time(sort(t)))
-
-
-    def merge(arr: Array[Int], startA: Int, startB: Int, endB: Int) = {
-      //println("merging: " + startA + " , " + startB + " , " + endB)
-      var posA = startA
-      var posB = startB
-      var posS = 0
-      val swap = new Array[Int](endB - startA)
-
-      while (posA < startB && posB < endB) {
-        val elemA = arr(posA)
-        val elemB = arr(posB)
-        if (comp.compare(elemA, elemB) > 0) {
-          swap(posS) = elemB
-          posB += 1
-        }
-        else {
-          swap(posS) = elemA
-          posA += 1
-        }
-        posS += 1
-      }
-
-      val remainder = startB - posA //check lhs remainder only (any rhs remainder is already correct)
-      System.arraycopy(arr, posA, arr, endB-remainder, remainder) //move lhs remainder (if any)
-      System.arraycopy(swap, 0, arr, startA, posS) //copy back merged result
-    }
-
-    def tree_reduce(arr: Array[Int], numThreads: Int) = {
-      println("tree level: " + numThreads)
-      val len: Long = arr.length
-      var level = numThreads
-      var totalTime = 0.0
-      while (level > 0) {
-        val localTimes = new Array[Double](level)
-        for (i <- 0 until level) {
-          if (level == numThreads) {
-            localTimes(i) = time(sort(arr, (len*i/level).toInt, (len*(i+1)/level).toInt, comp))
-          }
-          else {
-            localTimes(i) = time(merge(arr, (len*i/level).toInt, (len*(2*i+1)/(2*level)).toInt, (len*(i+1)/level).toInt))
-          }
-        }
-        val avgTime = localTimes.reduce(_ + _) / localTimes.length
-        val maxTime = localTimes.reduce((a:Double,b:Double) => java.lang.Math.max(a,b))
-        totalTime += maxTime
-        println("level " + level + " avg time: " + avgTime)
-        //println("level " + level + " max time: " + maxTime)
-        level = level / 2 //if (level > 1) 1 else 0 //without tree-reduce gets *slower* with more threads
-      }
-      println("total time: " + totalTime)
-      println("")
-      arr
-    }
-
-    def check(ind: Array[Int]) = {
-      for (i <- 0 until len) {
-        assert(t(i) == a(ind(i)))
-      }
-      ind
-    }
-
-    check(tree_reduce(idx.clone, 1))
-    check(tree_reduce(idx.clone, 2))
-    check(tree_reduce(idx.clone, 4))
-    check(tree_reduce(idx.clone, 8))
-    check(tree_reduce(idx.clone, 16))
-    check(tree_reduce(idx.clone, 32))
-    check(tree_reduce(idx.clone, 64))
-    val j = check(tree_reduce(idx.clone, 128))
-    println("sorted time: " + time(sort(j,comp)))
+/*object TestSort { self =>
+  import java.util._
+  
+  def time[T](name: String)(block: => T) = {
+    val start = System.currentTimeMillis
+    val res = block
+    val end = System.currentTimeMillis
+    println(name + ": " + (end-start)/1e3)
+    res
   }
 
-  */
+  def main(args: Array[String]) {
+    val size = if (args.length > 0) args(0).toInt else 10000000
+    val src = Array.fill[Double](size)(math.random)
+    val dst = Array.fill[Double](size)(math.random)
 
-}
+    val indices = Array.tabulate[Int](size)(i => i)
+    val indicesO = indices.map(i => Integer.valueOf(i))
+
+    def compareEdges(i: Int, j: Int) = {
+      if (src(i) == src(j)) {
+        if (dst(i) == dst(j)) 0
+        else if (dst(i) < dst(j)) 1
+        else -1
+      }
+      else if (src(i) > src(j)) 1
+      else -1
+    }
+
+    val comp = new IntComparator {
+      def compare(o1: Int, o2: Int) = compareEdges(o1, o2)
+    }
+
+    val edges = src.zip(dst)
+
+    val compO = new Comparator[Integer] {
+      def compare(o1: Integer, o2: Integer) = compareEdges(o1.intValue, o2.intValue)
+    }
+
+    val compJ = new Comparator[(Double,Double)] {
+      def compare(o1: (Double,Double), o2: (Double,Double)) = {
+        if (o1._1 == o2._1) {
+          if (o1._2 == o2._2) 0
+          else if (o1._2 > o2._2) 1
+          else -1
+        }
+        else if (o1._1 > o2._1) 1
+        else -1
+      }
+    }
+
+    def arrayEq(a: Array[Int], b: Array[Int]): Boolean = {
+      for (i <- 0 until a.length) {
+        if (a(i) != b(i)) return false
+      }
+      true
+    }
+
+    val indicesA = indices.clone
+    val indicesB = indices.clone
+    val indicesOA = indicesO.clone
+    val indicesOB = indicesO.clone
+    val edgesA = edges.clone
+    val edgesB = edges.clone
+
+    time("sequential delite")(SortingImpl.sort(indicesA,comp))
+    val chunks = 4
+    time("parallel delite ("+chunks+")") {
+      Array.tabulate[Int](chunks)(i => i).par.foreach{ i => 
+        val start = i*size/chunks
+        val end = (i+1)*size/chunks
+        SortingImpl.sort(indicesB, start, end, comp)
+      }
+      var half = chunks / 2
+      while (half > 0) {
+        Array.tabulate[Int](half)(i => i).par.foreach{ i =>
+          val start = i*size/half
+          val end = (i+1)*size/half
+          val mid = start + (end-start)/2
+          SortingImpl.merge(indicesB, start, mid, end, comp)
+        }
+        half /= 2
+      }
+    }
+    assert(arrayEq(indicesA, indicesB), "parallel sort incorrect!")
+
+    time("sequntial java tuples")(Arrays.sort(edgesA, compJ))
+    time("parallel java tuples (all)")(Arrays.parallelSort(edgesB, compJ))
+
+    time("sequential java integers")(Arrays.sort(indicesOA, compO))
+    time("parallel java integers (all)")(Arrays.parallelSort(indicesOB, compO))
+  }
+}*/

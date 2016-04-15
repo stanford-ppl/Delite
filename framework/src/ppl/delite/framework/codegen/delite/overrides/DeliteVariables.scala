@@ -47,7 +47,7 @@ trait DeliteCLikeGenVariables extends CLikeGenEffect with CLikeGenDeliteStruct {
   private def shouldGenerate(m: Manifest[_]): Boolean = m match {
     case _ if (isPrimitiveType(m)) => true
     case _ if (isArrayType(m)) => true
-    case _ if (encounteredStructs.contains(structName(baseType(m)))) => true
+    case _ if (generatedStructs.contains(structName(baseType(m)))) => true
     case _ => false
   }
 
