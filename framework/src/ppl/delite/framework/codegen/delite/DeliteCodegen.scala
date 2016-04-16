@@ -114,7 +114,7 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   def runTraversals[A:Manifest](b: Block[A]): Block[A] = {
     printlog("DeliteCodegen: applying transformations")
     var curBlock = b
-    println("Traversals:\n\t" + traversals.map(_.name).mkString("\n\t"))
+    //println("Traversals:\n\t" + traversals.map(_.name).mkString("\n\t"))
 
     for (t <- traversals) {
       printlog("  Block before transformation: " + curBlock)
