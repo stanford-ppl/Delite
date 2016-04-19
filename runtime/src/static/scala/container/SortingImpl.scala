@@ -45,6 +45,13 @@ object SortingImpl {
 /*object TestSort { self =>
   import java.util._
   
+  type Elem = Double //Int
+  val random = new Random
+  def rand = {
+    random.nextDouble
+    //random.nextInt
+  }
+
   def time[T](name: String)(block: => T) = {
     val start = System.currentTimeMillis
     val res = block
@@ -55,8 +62,8 @@ object SortingImpl {
 
   def main(args: Array[String]) {
     val size = if (args.length > 0) args(0).toInt else 10000000
-    val src = Array.fill[Double](size)(math.random)
-    val dst = Array.fill[Double](size)(math.random)
+    val src = Array.fill[Elem](size)(rand)
+    val dst = Array.fill[Elem](size)(rand)
 
     val indices = Array.tabulate[Int](size)(i => i)
     val indicesO = indices.map(i => Integer.valueOf(i))
@@ -81,8 +88,8 @@ object SortingImpl {
       def compare(o1: Integer, o2: Integer) = compareEdges(o1.intValue, o2.intValue)
     }
 
-    val compJ = new Comparator[(Double,Double)] {
-      def compare(o1: (Double,Double), o2: (Double,Double)) = {
+    val compJ = new Comparator[(Elem,Elem)] {
+      def compare(o1: (Elem,Elem), o2: (Elem,Elem)) = {
         if (o1._1 == o2._1) {
           if (o1._2 == o2._2) 0
           else if (o1._2 > o2._2) 1
@@ -128,10 +135,10 @@ object SortingImpl {
     }
     assert(arrayEq(indicesA, indicesB), "parallel sort incorrect!")
 
-    time("sequntial java tuples")(Arrays.sort(edgesA, compJ))
+    time("sequential java tuples")(Arrays.sort(edgesA, compJ))
     time("parallel java tuples (all)")(Arrays.parallelSort(edgesB, compJ))
 
-    time("sequential java integers")(Arrays.sort(indicesOA, compO))
-    time("parallel java integers (all)")(Arrays.parallelSort(indicesOB, compO))
+    time("sequential java boxed")(Arrays.sort(indicesOA, compO))
+    time("parallel java boxed (all)")(Arrays.parallelSort(indicesOB, compO))
   }
 }*/
