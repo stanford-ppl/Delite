@@ -1129,6 +1129,7 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenAtomicOps
         stream.println(s"${quote(str)} = ${quote(str)} + string(${quote(str)}_temp);")
       }
       stream.println("}")
+      stream.println(s"${quote(str)}.erase(${quote(str)}.end()-${quote(x)}.length(), ${quote(str)}.end());")
     case DeliteArrayUnion(lhs,rhs) =>
       emitValDef(sym, quote(lhs) + "->arrayunion(" + quote(rhs) + ")")
     case DeliteArrayIntersect(lhs,rhs) =>
