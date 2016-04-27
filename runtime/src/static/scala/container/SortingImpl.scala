@@ -40,6 +40,9 @@ object SortingImpl {
   def sort(a: Array[Short]) = Arrays.sort(a)
   def sort(a: Array[Short], lo: Int, hi: Int) = Arrays.sort(a,lo,hi)
 
+  def sort(a: Array[String]) = Arrays.sort(a.asInstanceOf[Array[Object]])
+  def sort(a: Array[String], lo: Int, hi: Int) = Arrays.sort(a.asInstanceOf[Array[Object]],lo,hi)
+
 }
 
 /*object TestSort { self =>
