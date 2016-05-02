@@ -87,6 +87,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     }
 
     //enable strict checking that scala and cpp kernels are actually generated
+    Config.generationFailedWhitelist = Map() //reset from previous tests
     if (enforceFullCoverage) {
       Config.generationFailedWhitelist += "scala" -> Seq() //no exceptions
       Config.generationFailedWhitelist += "cpp" -> cppWhiteList //exclude ops provided by test suite
