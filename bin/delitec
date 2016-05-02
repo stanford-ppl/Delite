@@ -136,7 +136,7 @@ def stage(runner, params, opts):
 
     # add all managed libs
     # caveat: scalatest pulls in some non-virtualized scala dependencies but they conflict with the scala-virtualized versions
-    jars = [os.path.join(d,f) for (d, n, fs) in os.walk(delitecommon.HYPER_HOME + "/lib_managed/") if not (d.count("org.scala-lang") > 0 and d.count("virtualized") == 0) for f in fs]
+    jars = [os.path.join(d,f) for (d, n, fs) in os.walk(delitecommon.HYPER_HOME + "/lib_managed/") if not (d.count("/org.scala-lang/") > 0) for f in fs]
     for j in jars:
       cp = cp + j + os.pathsep
 
