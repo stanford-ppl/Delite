@@ -112,7 +112,7 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
     str.toString
   }
 
-  override def writeMethodHeader() {
+  override protected def writeMethodHeader() {
     out.append(generateMethodSignature)
     out.append(" {\n")
     // Add references to other executables for sync objects
@@ -122,7 +122,7 @@ trait CppNestedGenerator extends NestedGenerator with CppExecutableGenerator {
     if (!Config.noJVM) writeJNIInitializer(locations)
   }
 
-  override def writeMethodFooter() {
+  override protected def writeMethodFooter() {
     out.append("}\n")
   }
 

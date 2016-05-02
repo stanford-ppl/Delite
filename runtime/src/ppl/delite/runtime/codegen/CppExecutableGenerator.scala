@@ -49,7 +49,7 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     scheduledLocations.filter(l => Targets.getHostTarget(Targets.getByLocation(l)) == Targets.Cpp).size
   }
 
-  def writeMethodHeader() {
+  protected[codegen] def writeMethodHeader() {
     declareGlobals()
 
     if (!Config.noJVM) writeJNIMethodHeader()
@@ -113,11 +113,10 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     out.append("jobject boxedUnit = env" + location + "->GetStaticObjectField(clsBU, env" + location + "->GetStaticFieldID(clsBU, \"UNIT\", \"Lscala/runtime/BoxedUnit;\"));\n")
   }
 
-  def writeMethodFooter() {
-    out.append(s"clearAll(numThreads, ${activeCppLocations}, ${Config.numThreads}, env$location);\n")
-    out.append("}\n")
-
-    //add entry method to primary executable
+  /**
+   * Add entry method to primary executable
+   */
+  def writeMain() {
     if (Config.noJVM && location == 0) {
       out.append(s"""
 int main(int argc, char *argv[]) {
@@ -140,7 +139,14 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  protected def writeFooter() { }
+  protected[codegen] def writeMethodFooter() {
+    out.append(s"clearAll(numThreads, ${activeCppLocations}, ${Config.numThreads}, env$location);\n")
+    out.append("}\n")
+  }
+
+  protected[codegen] def writeFooter() {
+    writeMain()
+  }
 
   //TODO: can/should this be factored out? need some kind of factory for each target
   protected def makeNestedFunction(op: DeliteOP) = op match {
