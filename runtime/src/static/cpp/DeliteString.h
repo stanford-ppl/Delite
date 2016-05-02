@@ -75,8 +75,24 @@ public:
     return string(buf,result_length,0);
   }
 
-  bool operator==(const string &str) {
+  bool operator==(const string &str) const {
     return (compare(str) == 0);
+  }
+
+  bool operator<(const string &str) const {
+    return (compare(str) < 0);
+  }
+
+  bool operator<=(const string &str) const {
+    return (compare(str) <= 0);
+  }
+  
+  bool operator>(const string &str) const {
+    return (compare(str) > 0);
+  }
+
+  bool operator>=(const string &str) const {
+    return (compare(str) >= 0);
   }
 
   string substr(int offset) const {
