@@ -172,6 +172,7 @@ trait CodeCache {
 
     val sourceFiles = FileUtils.listFiles(source, null, true).asScala.toSeq.sorted
     val cacheFiles = FileUtils.listFiles(cache, null, true).asScala.toSeq.sorted
+    if (sourceFiles.length != cacheFiles.length) return false
     (sourceFiles zip cacheFiles) forall { case (a,b) =>
       if (a.getName != b.getName) false
       else FileUtils.contentEquals(a,b) // compares lengths, then bytes
