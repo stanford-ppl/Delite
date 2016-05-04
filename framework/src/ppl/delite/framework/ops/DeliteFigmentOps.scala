@@ -4,7 +4,7 @@ import scala.reflect.SourceContext
 import scala.virtualization.lms.common.AtomicWrites
 import scala.virtualization.lms.internal.FatExpressions
 
-import ppl.delite.framework.transform.TunnelingTransformer
+//import ppl.delite.framework.transform.TunnelingTransformer
 import ppl.delite.framework.datastructures._
 
 trait DeliteFigmentsExp extends AtomicWrites with FatExpressions { self =>
@@ -21,7 +21,7 @@ trait DeliteFigmentsExp extends AtomicWrites with FatExpressions { self =>
   abstract class AtomicTracerFig extends AtomicTracer
 
   // TODO: How to quickly check for convergence here?
-  abstract class Implementer extends TunnelingTransformer
+  //abstract class Implementer extends TunnelingTransformer
 }
 
 trait DeliteFigmentOpsExp extends DeliteFigmentsExp /*with AbstractIndicesOpsExp*/ { this: DeliteOpsExp =>
