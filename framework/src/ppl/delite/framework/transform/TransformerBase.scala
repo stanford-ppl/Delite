@@ -91,7 +91,7 @@ trait MultiPassTransformer extends ForwardTransformer {
       if (sym != replace) subst += (sym -> replace) // Change substitution from sym -> sym2 to sym -> replace
   }
 
-  private def mirrorExp[A](e: Exp[A]) = e match {
+  protected def mirrorExp[A](e: Exp[A]) = e match {
     case Def(d) => self_mirror(e.asInstanceOf[Sym[A]], d.asInstanceOf[Def[A]])
     case _ => e
   }

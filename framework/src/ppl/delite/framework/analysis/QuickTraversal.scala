@@ -38,7 +38,7 @@ trait QuickTraversal extends Traversal {
       preprocess(savedBlock.get)
       load()
       resume()
-      postprocess(savedBlock.get)
+      postprocess(savedBlock.get).asInstanceOf[Block[A]]
     }
     else super.run(b)
   }
