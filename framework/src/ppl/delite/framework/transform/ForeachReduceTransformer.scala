@@ -108,7 +108,7 @@ trait ForeachReduceTransformer extends ForwardPassTransformer {
   val IR: ForeachReduceTransformExp
   import IR._
         
-  def addToScope(x: Stm) = innerScope ::= x
+  def addToScope(x: Stm) = innerScope +:= x
     
   /* 
    * The first thing we do is scrub all references to DeliteReductions from effect lists, now
@@ -127,7 +127,7 @@ trait ForeachReduceTransformer extends ForwardPassTransformer {
     case _ => true      
   })
       
-  def scrubDeliteReductions(x: List[Stm]): List[Stm] = {
+  def scrubDeliteReductions(x: Seq[Stm]): Seq[Stm] = {
     x.map(d => d match {
       case TP(s,Reflect(x,u,es)) =>
         val cleanEs = withoutReductions(es)

@@ -493,7 +493,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps with DeliteKe
         val result = zbody.func
         result.res match {
           case r:Sym[_] if(innerScope==null) => innerScope = List(findDefinition(r).get)
-          case r:Sym[_] => innerScope = findDefinition(r).get :: innerScope
+          case r:Sym[_] => innerScope = findDefinition(r).get +: innerScope
           case _ => //
         }
         val freeVars = getFreeVarBlock(Block(Combine(List(zbody.func).map(getBlockResultFull))),List(z.fin._1.asInstanceOf[Sym[_]],z.fin._2.asInstanceOf[Sym[_]])).filter(_ != op.size).distinct
@@ -555,7 +555,7 @@ trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps with DeliteKe
         val result = zbody.func
         result.res match {
           case r:Sym[_] if(innerScope==null) => innerScope = List(findDefinition(r).get)
-          case r:Sym[_] => innerScope = findDefinition(r).get :: innerScope
+          case r:Sym[_] => innerScope = findDefinition(r).get +: innerScope
           case _ => //
         }
         val freeVars = getFreeVarBlock(Block(Combine(List(zbody.func).map(getBlockResultFull))),List(z.fin._1.asInstanceOf[Sym[_]],z.fin._2.asInstanceOf[Sym[_]])).filter(_ != op.size).distinct

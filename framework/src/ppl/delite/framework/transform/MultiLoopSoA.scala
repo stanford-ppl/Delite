@@ -7,6 +7,7 @@ import ppl.delite.framework.Util._
 import scala.virtualization.lms.common._
 import scala.reflect.SourceContext
 
+
 //NOTE: unwrapping reduces isn't always safe (rFunc may not be separable); only for use in DSLs with appropriate restrictions
 trait MultiloopSoATransformWithReduceExp extends MultiloopSoATransformExp {
 
@@ -395,7 +396,7 @@ trait LoopSoAOpt extends BaseGenLoopsFat with LoopFusionOpt {
 
   //pre-fuse any loops that have been split by SoA transform
   //such loops have the same 'size' sym, the same 'v' sym, and are in the same scope
-  override def focusExactScopeFat[A](resultB: List[Block[Any]])(body: List[Stm] => A): A = {
+  override def focusExactScopeFat[A](resultB: List[Block[Any]])(body: Seq[Stm] => A): A = {
     if (Config.soaEnabled) {
       val result = resultB.map(getBlockResultFull) flatMap { case Combine(xs) => xs case x => List(x) }
       val currentScope = innerScope
@@ -406,7 +407,8 @@ trait LoopSoAOpt extends BaseGenLoopsFat with LoopFusionOpt {
 
       val fusedLoops = splitLoops map {
         case (v, l) if l.length == 1 => l.head
-        case (v, l) =>
+        case (v, s) =>
+          val l = s.toList
           val size = l.map(_.rhs.asInstanceOf[AbstractFatLoop].size) reduceLeft { (s1,s2) => assert(s1 == s2); s1 }
           val t = TTP(l.flatMap(_.lhs), l.flatMap(_.mhs), SimpleFatLoop(size, v, l.flatMap(_.rhs.asInstanceOf[AbstractFatLoop].body)))
           printlog("fusing split SoA loop: " + t.toString)

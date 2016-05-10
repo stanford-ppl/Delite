@@ -2,11 +2,12 @@ package ppl.delite.framework.ops
 
 import ppl.delite.framework.codegen.delite.DeliteKernelCodegen
 import ppl.delite.framework.Config
-import scala.collection.mutable.HashMap
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.CCodegen
-import scala.reflect.SourceContext
+
 import java.io.{StringWriter, PrintWriter}
+import scala.collection.mutable.HashMap
+import scala.reflect.SourceContext
 
 
 trait BaseDeliteOpsTraversalFat extends BaseLoopsTraversalFat {
@@ -50,7 +51,7 @@ trait BaseDeliteOpsTraversalFat extends BaseLoopsTraversalFat {
     case _ => super.canApplyAddCondition(e)
   }
 
-  override def shouldApplyFusion(currentScope: List[Stm])(result: List[Exp[Any]]) = Config.opfusionEnabled
+  override def shouldApplyFusion(currentScope: Seq[Stm])(result: List[Exp[Any]]) = Config.opfusionEnabled
 }
 
 trait BaseGenDeliteOps extends BaseDeliteOpsTraversalFat with BaseGenLoopsFat with LoopFusionOpt with BaseGenStaticData {
