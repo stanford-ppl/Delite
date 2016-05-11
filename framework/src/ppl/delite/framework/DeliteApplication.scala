@@ -170,7 +170,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
     println("Delite Application Being Executed:[" + this.getClass.getName + "]")
 
     println("******Executing the program*********")
-    globalDefs = List()
+    globalDefs = Vector.empty
     val g = compile(liftedMain)
     g(args)
   }

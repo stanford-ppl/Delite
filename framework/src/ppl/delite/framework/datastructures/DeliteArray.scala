@@ -827,6 +827,10 @@ trait CLikeGenDeliteArrayOps extends BaseGenDeliteArrayOps with CLikeGenDeliteSt
     val stream = new PrintWriter(path + deviceTarget + "DeliteArrays.h")
     stream.println("#include \"" + deviceTarget + "DeliteStructs.h\"")
     stream.println("#include \"" + deviceTarget + "HashMap.h\"")
+    for (tp <- dsTypesList.filter(e => isArrayType(e._1)).map(_._1.typeArguments(0)).filter(isArrayType(_))) {
+      try { dsTypesList += Pair(tp, remap(tp)) }
+      catch { case e: GenerationFailedException => }
+    }
     for((tp,name) <- dsTypesList if(isArrayType(tp))) {
       emitDeliteArray(tp, path, stream)
     }
@@ -852,7 +856,6 @@ trait CLikeGenDeliteArrayOps extends BaseGenDeliteArrayOps with CLikeGenDeliteSt
         stream.println("#ifndef __" + mString + "__")
         stream.println("#define __" + mString + "__")
         if(!isPrimitiveType(mArg)) stream.println("#include \"" + mArgString + ".h\"")
-        if (isArrayType(mArg)) emitDeliteArray(mArg, path, header)
         stream.println(deliteArrayString.replaceAll("__T__",mString).replaceAll("__TARG__",remapWithRef(mArg)))
         stream.println("#endif")
         stream.close()
