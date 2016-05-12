@@ -9,6 +9,7 @@ import ppl.delite.runtime.graph.targets.{OS, Targets}
 import collection.mutable.{ArrayBuffer, HashSet}
 import sync._
 import ppl.delite.runtime.graph.DeliteTaskGraph
+import java.io.{File, PrintWriter}
 
 /**
  * MaxJ code generator logic to generate function calls
@@ -41,8 +42,8 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
     hostGenerator.writeHeader()
     out.append("#include <stdint.h>\n")
     out.append("#include <sys/time.h>\n")
-    out.append("#include <Maxfiles.h>\n")
     out.append("#include <MaxSLiCInterface.h>\n")
+    out.append("#include <Top.h>\n")
   }
 
   protected[codegen] def declareGlobals() {
@@ -61,16 +62,18 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
     out.append(s"""// Configure the FPGA\n""")
     out.append(s"""max_engine_t *engine = max_load(maxfile, "local:*");\n""")
     out.append(s"""int burstSize = max_get_burst_size(maxfile, NULL);\n""")
-    out.append(s"""printf("Burst size for architecture: %d bytes\n", burstSize);\n""")
+    out.append(s"""printf("Burst size for architecture: %d bytes\\n", burstSize);\n""")
   }
 
   protected def writeMethodFooter() {
     out.append("// MaxJ writeMethodFooter();\n")
     out.append(s"""max_unload(engine);\n""")
-    hostGenerator.writeMethodFooter()  // <-- This generates the main method
+    hostGenerator.writeMethodFooter()
   }
 
-  protected def writeFooter() { }
+  protected def writeFooter() {
+    hostGenerator.writeFooter()
+  }
 
   /**
    * [COMMENT TODO] What does this method do?
@@ -110,20 +113,31 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
         case _:OP_Single =>
           assert(op.irnode == "Hwblock")
           assert(op.getOutputs.filter(o=>op.outputType(o)!="Unit").isEmpty)
+          out.append(s"""struct timeval t1, t2;\n""")
+          out.append(s"""uint64_t Top_cycles = 0;\n""")
           out.append(s"""Top_actions_t runAct;\n""")
-          op.getInputs.filter { t => t._1.irnode == "Reg_new" }.map { t =>
+          val runActValues = op.getInputs.filter { t => t._1.irnode == "Reg_new" }.map { t =>
             val inop = t._1
-            val prefix = inop.opName match {
-              case "ArgIn" => "param"
-              case "ArgOut" => "outscalar_TopKernel"
+
+            // MaxJ automatically promotes ArgOut types on the host to uint64_t, for any integer
+            // and promotes floats to doubles. Handle this ugly feature with the ugly hack below
+            val typecastStr = inop.opName match {
+              case "ArgOut" => inop.outputType(hostTarget) match {
+                case s if s.contains("int") => "(uint64_t*)"
+                case s if s.contains("float") => "(double)"
+                case _ => ""
+              }
+              case _ => ""
             }
-            out.append(s"""runAct.${prefix}_${inop.id} = ${deref(t._1,t._2) + getSymDevice(t._1,t._2)};\n""")
-          }
+            s"""$typecastStr ${deref(t._1,t._2) + getSymHost(t._1,t._2)}"""
+          }.mkString(",")
+          out.append(s"""runAct = {$runActValues, &Top_cycles};\n""")
           out.append(s"""gettimeofday(&t1, 0);\n""")
-          out.append(s"""${op.task}(engine, &runAct);\n""")
+          out.append(s"""Top_run(engine, &runAct); // ${op.task}(engine, &runAct);\n""")
           out.append(s"""gettimeofday(&t2, 0);\n""")
           out.append(s"""double elapsed = (t2.tv_sec-t1.tv_sec)*1000000 + t2.tv_usec-t1.tv_usec;\n""")
-          out.append(s"""fprintf(stderr, "Kernel done, elapsed time = %lf\n", elapsed/1000000);\n""")
+          out.append(s"""fprintf(stderr, "Kernel done, elapsed time = %lf\\n", elapsed/1000000);\n""")
+          out.append(s"""fprintf(stderr, "Kernel done, cycles = %lu\\n", Top_cycles);\n""")
         case _ =>
           sys.error(s"""ERROR: Unsupported op '$op' for MaxJ writeFunctionCall()""")
       }
