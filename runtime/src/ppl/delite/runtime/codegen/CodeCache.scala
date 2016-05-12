@@ -139,6 +139,10 @@ trait CodeCache {
     override def toString = name
   }
 
+  /** Generate files from strings. If the --noregen option is specified,
+   * do not generate files, just set a flag that indicates that a recompilation
+   * is required
+   */
   protected def cacheRuntimeSources(sources: Array[(String,String)]) {
     if (Config.noRegenerate) {
       modules.last.needsCompile = true
