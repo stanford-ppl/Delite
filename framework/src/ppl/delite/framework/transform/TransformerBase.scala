@@ -60,14 +60,28 @@ trait DeliteTransforming extends Transforming {
   }
 }
 
+trait SinglePassTransformer extends ForwardTransformer {
+  import IR._
+
+  def f = this.asInstanceOf[Transformer]
+
+  override def transformStm(stm: Stm): Exp[Any] = stm match {
+    case TP(lhs,rhs) => transform(lhs,rhs)(mtype(lhs.tp),mpos(lhs.pos)) match {
+      case Some(e) => e
+      case _ => self_mirror(lhs, rhs)
+    }
+  }
+
+  def transform[A:Manifest](lhs: Sym[A], rhs: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]] = None
+
+}
+
 // Adds a rule for what to do if a node already has a substitution rule when it is reached in traversal
 // Given that the IR is hierarchical, this case suggests an outer parent set up a transformation for a child block, then called
 // for a traversal over that block to put the transformation into effect. In this case, the expected behavior is to take the
 // current substitution as if it was the original node and perform mirroring/transformation as usual.
-trait MultiPassTransformer extends ForwardTransformer {
+trait MultiPassTransformer extends SinglePassTransformer {
   import IR._
-
-  def f = this.asInstanceOf[Transformer]
 
   override def traverseStm(stm: Stm): Unit = stm match {
     case TP(sym, rhs) if apply(sym) == sym =>
@@ -101,9 +115,8 @@ trait MultiPassTransformer extends ForwardTransformer {
     traverseBlock(blk)
     apply(getBlockResult(blk))
   }
-
-  def transform[A:Manifest](lhs: Sym[A], rhs: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]] = None
 }
+
 
 
 // Modified version of WorklistTransformer
