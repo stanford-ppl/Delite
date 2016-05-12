@@ -66,7 +66,9 @@ trait CppExecutableGenerator extends ExecutableGenerator {
     val argNames = args.map("in"+_.argIdx)
     val argTypes = args.map { a =>
       val tp = a.outputType(Targets.Cpp)
-      if (!isPrimitiveType(a.outputType)) tp + " *" else tp
+      // Adding of the '*' should be done in delitec, not delite
+//      if (!isPrimitiveType(a.outputType)) tp + " *" else tp
+      tp
     }
     val eop = graph.result._1.asInstanceOf[EOP]
     val res = if (!isPrimitiveType(eop.outputType) && eop.outputType!="Unit") eop.outputType(Targets.Cpp)+" *" else eop.outputType(Targets.Cpp)
@@ -176,7 +178,8 @@ int main(int argc, char *argv[]) {
     if (op.outputType(Targets.Cpp) != "void") {
       out.append(op.outputType(Targets.Cpp))
       out.append(' ')
-      if (!isPrimitiveType(op.outputType) && !op.outputType(Targets.Cpp).startsWith("std::shared_ptr")) out.append('*')
+      // Adding of the '*' should be done in delitec, not delite
+//      if (!isPrimitiveType(op.outputType) && !op.outputType(Targets.Cpp).startsWith("std::shared_ptr") && !op.outputType(Targets.Cpp).contains("*")) out.append('*')
       out.append(resultName)
       out.append(" = ")
     }

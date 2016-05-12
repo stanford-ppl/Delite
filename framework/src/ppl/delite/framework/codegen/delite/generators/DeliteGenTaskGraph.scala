@@ -129,9 +129,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
             case g:ScalaCodegen if resultIsVar => "generated.scala.Ref[" + g.remap(s.tp) + "]"
             case g:CLikeCodegen if resultIsVar && cppMemMgr == "recnt" => g.wrapSharedPtr(g.deviceTarget.toString + "Ref" + g.unwrapSharedPtr(g.remap(sym.head.tp)))
             case g:CLikeCodegen if resultIsVar => g.deviceTarget.toString + "Ref" + g.remap(sym.head.tp)
+            case g:CLikeCodegen => g.remap(s.tp) + g.addRef(s.tp)
             case g => g.remap(s.tp)
           }
           genReturnType = tpeStr
+
+          Console.println(s"""[emitAnyNode] s = ${quote(s)}, tpestr = $tpeStr""")
           outputSlotTypes.getOrElseUpdate(quote(s), new ListBuffer) += new JsonPair(gen.toString, tpeStr)
         }
         catch {
@@ -304,8 +307,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
           case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, aliases, optContext, irnode)
           case _ => emitSingleTask(kernelName, outputs, resultIsVar, inputs, inVars, inMutating, inControlDeps, antiDeps, aliases, if (outputs(0).sourceContexts.isEmpty) None else Some(outputs(0).sourceContexts.head), irnode) // things that are not specified as DeliteOPs, emit as SingleTask nodes
         }
-        Console.println(s"""[emitAnyNode] kernelName = $kernelName, node = $irnode""")
     }
+    Console.println(s"""[emitAnyNode] kernelName = $kernelName, node = $irnode, supportedTargets = $supportedTargets""")
 
     // whole program gen (for testing)
     //emitValDef(sym, "embedding.scala.gen.kernel_" + quote(sym) + "(" + inputs.map(quote(_)).mkString(",") + ")")
@@ -488,7 +491,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
   private def getOutputTypes(sym: Exp[Any]) = {
     (for (gen <- generators) yield {
       try {
-        Some("\"" + gen.toString + "\" : \"" + gen.remap(sym.tp)  + "\"")
+        // Add reference (*) here to C codegen type if required
+         val tpeStr = gen match {
+            case g:CLikeCodegen => g.remap(sym.tp) + g.addRef(sym.tp)
+            case g => g.remap(sym.tp)
+         }
+        Some("\"" + gen.toString + "\" : \"" + tpeStr  + "\"")
       } catch {
         case e:GenerationFailedException => None
       }
