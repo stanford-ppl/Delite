@@ -84,7 +84,7 @@ object DeliteTaskGraph {
 
   def getFieldString(map: Map[Any, Any], field:String): String = {
     map.get(field) match {
-      case Some(field) => field
+      case Some(field) => field.trim
       case None => fieldNotFound(field, map)
     }
   }
@@ -334,7 +334,7 @@ object DeliteTaskGraph {
     var resultMap = Map[Targets.Value, Map[String,String]]()
     for (target <- Targets.values) {
       if (outputTypes contains target.toString)
-        resultMap += target -> Map(id -> outputTypes(target.toString), "functionReturn" -> outputTypes(target.toString))
+        resultMap += target -> Map(id -> outputTypes(target.toString).trim, "functionReturn" -> outputTypes(target.toString).trim)
     }
     resultMap
   }
