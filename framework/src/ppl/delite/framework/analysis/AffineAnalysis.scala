@@ -21,12 +21,16 @@ trait AffineAnalysisExp extends EffectExp with FatExpressions {
   case class OffsetAccess(i: Exp[Index], b: Exp[Index]) extends IndexPattern
   // a*i, where a must be loop invariant
   case class StridedAccess(a: Exp[Index], i: Exp[Index]) extends IndexPattern
+  // linear access with some loop iterator
   case class LinearAccess(i: Exp[Index]) extends IndexPattern
-
   // loop invariant access (but may change with outer loops)
   case class InvariantAccess(b: Exp[Index]) extends IndexPattern
+  // Flexible access, not used by default
+  object FlexibleAccess extends IndexPattern
   // anything else
   object RandomAccess extends IndexPattern
+
+
 
   /* Abstract functions. To use, fill in w/ relevant node matching
    * These are defined on Exp rather than Def to allow accessing metadata
