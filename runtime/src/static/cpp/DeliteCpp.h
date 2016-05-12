@@ -21,11 +21,7 @@
 #include "DeliteCppProfiler.h"
 #include "MultiLoopSync.h"
 #include "pcmHelper.h"
-#ifndef __DELITE_CPP_STANDALONE__
 #include <jni.h>
-#else
-typedef struct { } JNIEnv;
-#endif
 
 #ifdef DELITE_VERBOSE
 #define VERBOSE(...) fprintf(stderr, "[delite]: "); fprintf(stderr, __VA_ARGS__)

@@ -20,9 +20,7 @@
 #include <iomanip>
 #include "DeliteNamespaces.h"
 #include "pcmHelper.h"
-#ifndef __DELITE_CPP_STANDALONE__
 #include <jni.h>
-#endif
 
 typedef struct {
   std::string name;
