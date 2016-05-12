@@ -1,0 +1,37 @@
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+
+/**
+ * BoxedMem: Wrapper around a 'Memory' primitive in MaxJ.
+ * Boxing is required in order to be able to create an array of Memories.
+ * Creating arrays isn't possible without boxing because Java doesn't allow
+ * creation of arrays of generics.
+ */
+class BoxedMem extends OnChipMem {
+
+  Memory<DFEVar> m;
+
+  BoxedMem(KernelLib owner, DFEType type, int size) {
+    super(owner, type, size);
+    m = mem.alloc(type, size);
+  }
+
+  DFEVar read(DFEVar srcAddr) {
+    return m.read(srcAddr.cast(dfeUInt(addrBits)));
+  }
+
+  void write(DFEVar dstAddr, DFEVar dstData, DFEVar en) {
+    m.write(dstAddr.cast(dfeUInt(addrBits)), dstData, en);
+  }
+
+  void write(DFEVar dstAddr, DFEVar dstData) {
+    write(dstAddr, dstData, constant.var(true));
+  }
+}

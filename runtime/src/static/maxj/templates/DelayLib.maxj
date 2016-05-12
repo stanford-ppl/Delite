@@ -1,0 +1,25 @@
+package engine;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.Reductions;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+
+class DelayLib extends KernelLib {
+
+  DFEVar q;
+  DFEVector<DFEVar> q_vector;
+  public DelayLib(KernelLib owner, DFEVar en, DFEVar d) {
+    super(owner);
+      q = stream.offset(Reductions.streamHold(d, en), -1);
+    // q = Reductions.streamHold(d, en);
+  }
+
+  public DelayLib(KernelLib owner, DFEVar en, DFEVector<DFEVar> d) {
+    super(owner);
+      q_vector = stream.offset(Reductions.streamHold(d, en), -1);
+    // q = Reductions.streamHold(d, en);
+  }
+
+}

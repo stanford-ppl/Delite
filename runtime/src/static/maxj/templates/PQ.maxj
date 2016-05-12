@@ -1,0 +1,79 @@
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.Reductions;
+
+/**
+ * PriorityQueue:
+ */
+class PQ extends KernelLib {
+
+  int addrBits;
+  int size;
+  DFEType dataType;
+  DFEType metadataType;
+
+  DFEVar waddr;
+  DFEVar wdata;
+  DFEVar wMetadata;
+  DFEVar wen;
+  DFEVar ren;
+  DFEVar rdata;
+  DFEVar rMetadata;
+  DFEVar raddr;
+
+  PQ(KernelLib owner, String name, int size, DFEType[] type) {
+    super(owner);
+
+    this.addrBits = (size == 1) ? 1 : MathUtils.bitsToAddress(size);
+    this.dataType = type[0];
+    this.metadataType = type[1];
+    this.size = size;
+
+    waddr = dfeUInt(addrBits).newInstance(this);
+    wdata = dataType.newInstance(this);
+    wMetadata = metadataType.newInstance(this);
+    wen = dfeBool().newInstance(this);
+    ren = dfeBool().newInstance(this);
+    raddr = dfeUInt(addrBits).newInstance(this);
+    rdata = dataType.newInstance(this);
+    rMetadata = metadataType.newInstance(this);
+
+    // TODO: Type is ignored for both data and metadata
+    // Both fields are typecast to 32-bit unsigned fixpt
+    // This is because MaxJ SMs do not provide support for
+    // floating point comparisons.
+    // Values read back are typecast correctly though, in
+    // order to play well with the rest of the design
+    SMIO sm = addStateMachine(name, new PQSM(this, size));
+    sm.connectInput("waddr", waddr);
+    sm.connectInput("wdata", wdata.cast(dfeUInt(32)));
+    sm.connectInput("wMetadata", wMetadata.cast(dfeUInt(32)));
+    sm.connectInput("wen", wen);
+    sm.connectInput("raddr", raddr);
+    sm.connectInput("readen", ren);
+    rdata = sm.getOutput("rdata").cast(dataType);
+    rMetadata = sm.getOutput("rMetadata").cast(metadataType);
+  }
+
+  DFEVar[] connectRport(DFEVar srcAddr, DFEVar en) {
+    raddr <== srcAddr.cast(dfeUInt(addrBits));
+    ren <== en;
+    DFEVar[] returnBundle = {rdata, rMetadata};
+    return returnBundle;
+  }
+
+//  void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en, int start, int stride) {
+  void connectWport(DFEVar dstAddr, DFEVar[] dstData, DFEVar en, int start, int stride) {
+    waddr <== dstAddr.cast(dfeUInt(addrBits));
+    wdata <== dstData[0];
+    wMetadata <== dstData[1];
+    wen <== en;
+  }
+}

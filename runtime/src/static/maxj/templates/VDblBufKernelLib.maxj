@@ -1,0 +1,87 @@
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+class VDblBufKernelLib extends KernelLib {
+
+  // All sourceless streams
+  DFEVar raddr;
+  DFEVector<DFEVar> rdata;
+  DFEVar rdone;
+
+  DFEVar waddr;
+  DFEVector<DFEVar> wdata;
+  DFEVar wdone;
+  DFEVar wen;
+  DFEVar realCurBuf;
+
+  int numRports;
+  int addrBits;
+  DFEVectorType<DFEVar> type;
+
+  VDblBufKernelLib(KernelLib owner, String smname, int size, int n, DFEVar wd, int par) {
+    super(owner);
+    DFEVectorType<DFEVar> vectorType = new DFEVectorType<DFEVar>(dfeFloat(8,24), par);
+
+    this.addrBits = MathUtils.bitsToAddress(size/par);
+    this.numRports = n;
+    this.type = vectorType;
+
+//     raddr = new DFEVar[numRports];
+//    rdata = new DFEVector<DFEVar>[numRports];
+
+    raddr = dfeUInt(addrBits).newInstance(this);
+    rdata = type.newInstance(this);
+
+    rdone = dfeBool().newInstance(this);
+//    wdone = dfeBool().newInstance(this);
+//    rdone = rd;
+    wdone = wd;
+
+    waddr = dfeUInt(addrBits).newInstance(this);
+    wdata = type.newInstance(this);
+    wen = dfeBool().newInstance(this);
+
+    SMIO sm = addStateMachine(smname, new DblBufStateMachine(this));
+    sm.connectInput("r_done", rdone);
+    sm.connectInput("w_done", wdone);
+    realCurBuf = sm.getOutput("curBuf");
+
+    Memory<DFEVector<DFEVar>> m0 = mem.alloc(type, size/par);
+    Memory<DFEVector<DFEVar>> m1 = mem.alloc(type, size/par);
+
+    rdata <== realCurBuf ? m0.read(raddr) : m1.read(raddr);
+    m0.write(waddr, wdata, ~realCurBuf & wen);
+    m1.write(waddr, wdata, realCurBuf & wen);
+
+    // For debugging
+    // m0.mapToCPU(smname+"_m0");
+//     m1.mapToCPU(smname+"_m1");
+  }
+
+  DFEVector<DFEVar> connectRport(DFEVar srcAddr, DFEVar rd) {
+    numRports -= 1;
+    raddr <== srcAddr.cast(dfeUInt(addrBits));
+    rdone <== rd;
+    return rdata;
+  }
+
+  DFEVector<DFEVar> connectRport(DFEVar srcAddr) {
+    numRports -= 1;
+    raddr <== srcAddr.cast(dfeUInt(addrBits));
+    return rdata;
+  }
+
+
+  void connectWport(DFEVar dstAddr, DFEVector<DFEVar> dstData, DFEVar en) {
+    waddr <== dstAddr.cast(dfeUInt(addrBits));
+    wdata <== dstData;
+    wen <== en;
+  }
+}

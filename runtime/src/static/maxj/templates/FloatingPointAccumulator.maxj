@@ -1,0 +1,513 @@
+package engine;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.Kernel;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.FloatingPoint;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.KernelMath;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.Reductions;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Stream.OffsetExpr;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.KernelObject;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.KernelObjectVectorizable;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEFix;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEFix.SignMode;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEFloat;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+
+public class FloatingPointAccumulator {
+
+  /*
+   * The following code is only valid for Maxeler DFEs up to and including MAX4 (Coria, Vectis, Isca and Galava).
+   * When MAX5 is released it will need to be revisited.
+   */
+  private static int getLatency(DFEVar summand) {
+    int latency;
+    DFEFloat type = (DFEFloat)summand.getType();
+    double pipeliningFactor = summand.getKernel().optimization.getPipeliningFactor();
+    if (summand.getKernel().getManager().getManagerConfiguration().getBoardModel().isAltera()) {
+      latency = 7 + (int)(7 * pipeliningFactor);
+    } else {
+      int maxLatency;
+      if (type.equals(Kernel.dfeFloat(8, 24)) || type.equals(Kernel.dfeFloat(11, 53))) maxLatency = 12;
+      else if(type.getMantissaBits() <= 13) maxLatency = 8;
+      else if(type.getMantissaBits() == 14) maxLatency = 9;
+      else if(type.getMantissaBits() == 15) maxLatency = 10;
+      else if(type.getMantissaBits() <= 17) maxLatency = 11;
+      else if(type.getMantissaBits() <= 61) maxLatency = 12;
+      else if(type.getMantissaBits() <= 64) maxLatency = 13;
+      else throw new RuntimeException("Unknown latency for type.");
+      latency = (int)(pipeliningFactor * maxLatency);
+    }
+    return latency;
+  }
+
+
+  /**
+   * Accumulate any number of things, but only getting the correct result on the final cycle of accumulation.
+   * The cost of this is roughly the same as two floating point additions.
+   * @author stephen
+   *
+   */
+  private static class VariableFPA extends KernelLib {
+    private static int count = 0;
+    private final DFEVar sum;
+    private static final int maxCLoop = 15;
+
+    private class FPAControl {
+      final OffsetExpr offset;
+      final DFEVar isInitSum;
+      final DFEVar isLastElement;
+      final DFEVar isStartOfLastBatch;
+      final DFEVar isAccEnable;
+      final DFEVar isClear;
+
+      FPAControl(DFEVar numVals, DFEVar enable, boolean hasReset) {
+        offset = stream.makeOffsetAutoLoop(FloatingPointAccumulator.class.getSimpleName() + "_cLoop_" + count, 8, maxCLoop);
+        if (hasReset) {
+          DFEVar reset = numVals;//renaming to make it clear what it is
+          DFEVar counter     = control.count.makeCounter(
+                           control.count.makeParams(48)
+                                        .withEnable(enable)
+                                        .withReset(reset))
+                                        .getCount();
+
+          DFEVar latency     = offset.getDFEVar(numVals.getKernel()).cast(dfeUInt(48));
+          isInitSum          = counter < latency;
+          isStartOfLastBatch = stream.offset(reset, offset);
+          isAccEnable        = Reductions.streamHold(isStartOfLastBatch, isStartOfLastBatch | reset);
+          isClear            = stream.offset(isStartOfLastBatch, 1);
+          isLastElement      = stream.offset(reset, 1);
+        } else {
+          DFEType controlType = dfeUInt(Math.max(numVals.getType().getTotalBits(), MathUtils.bitsToRepresent(maxCLoop)));
+          numVals = numVals.cast(controlType);
+
+          DFEVar latency     = offset.getDFEVar(numVals.getKernel()).cast(controlType);
+          DFEVar counter     = control.count.makeCounterChain(enable).addCounter(numVals, 1);
+          DFEVar numValsMinC = numVals - latency;
+
+          isInitSum          = counter < latency;
+          isAccEnable        = (counter >= numValsMinC);
+          isClear            = counter === numValsMinC - 1;
+          isLastElement      = counter === numVals - 1;
+          isStartOfLastBatch = counter === numValsMinC;
+        }
+      }
+    }
+
+
+    private DFEFix getTypeForFinalSummation(DFEVar summand) {
+      int intBits        = MathUtils.bitsToRepresent(maxCLoop) + 2;
+      int fraction_bits  = ((DFEFloat)summand.getType()).getMantissaBits();
+      return dfeFixOffset(intBits + fraction_bits, -fraction_bits, SignMode.TWOSCOMPLEMENT);
+    }
+
+
+    /**
+     * Create a floating point accumulator that gives the correct result only on the final cycle.
+     * @param owner The kernel or kernel lib this belongs to (this).
+     * @param summand The DFEFloat input we wish to sum.
+     * @param enable A DFEBool enable signal for the accumulator. When it is false we ignore the input.
+     * @param numValsOrReset If hasReset is false the this is a DFEUInt telling us the number of things we will
+     *                       sum, otherwise it is a DFEBool telling us when to reset the accumulator.
+     * @param hasReset Whether the numValsOrReset input is a number of values or a rest signal.
+     */
+    private VariableFPA(DFEVar summand, DFEVar enable, DFEVar numValsOrReset, boolean hasReset) {
+      super(summand.getKernel());
+      FPAControl ctrl = new FPAControl(numValsOrReset, enable, hasReset);
+
+      //Step 1: compute N partial sums using ordinary floating point add, where N is latency of the addition.
+      DFEVar partialSum  = summand.getType().newInstance(this);
+      DFEVar prevPtlSum  = ctrl.isInitSum ? 0 : stream.offset(partialSum, -ctrl.offset);
+      partialSum <== (enable ? summand : 0) + prevPtlSum;
+
+      //Step 2: find maximum exponent in the last N partial sums and scale partial sums to match.
+      DFEVar maxExponent = Reductions.streamHold(
+                           Reductions.streamMax(FloatingPoint.getExponent(partialSum), ctrl.isStartOfLastBatch),
+                           ctrl.isLastElement);
+      DFEVar scaledSums  = KernelMath.scalb(partialSum, stream.offset(-maxExponent, ctrl.offset));
+
+      //Step 3: sum together the scaled partial sums in fixed point
+      DFEFix fixType     = getTypeForFinalSummation(summand);
+      DFEVar finalFixSum = Reductions.accumulator.makeAccumulator(scaledSums.cast(fixType),
+                           Reductions.accumulator.makeAccumulatorConfig(fixType)
+                                                     .withEnable(ctrl.isAccEnable)
+                                                     .withClear(ctrl.isClear));
+
+      //Step 4: cast back to floating point and undo earlier scaling.
+      sum = KernelMath.scalb(finalFixSum.cast(summand.getType()), maxExponent);
+      count++;
+    }
+  }
+
+
+  /**
+   * Accumulates any number of things and get the correct result on every cycle.
+   * The cost of this depends on the pipelining factor, but will typically cost 5 additions.
+   * @author stephen
+   *
+   */
+  private static class DynamicFPA extends KernelLib {
+    public final DFEVar sum;
+
+    /**
+     * Create a floating point accumulator that gives the correct result on every cycle.
+     * @param owner The kernel or kernel lib this belongs to (this).
+     * @param summand The DFEFloat input we wish to sum.
+     * @param enable A DFEBool enable signal for the accumulator. When it is false we ignore the input.
+     * @param numValsOrReset If hasReset is false the this is a DFEUInt telling us the number of things we will
+     *                       sum, otherwise it is a DFEBool telling us when to reset the accumulator.
+     * @param hasReset Whether the numValsOrReset input is a number of values or a rest signal.
+     */
+    private DynamicFPA(DFEVar summand, DFEVar enable, DFEVar numValsOrReset, boolean hasReset) {
+      super(summand.getKernel());
+      DFEVar x = enable ? summand : 0.0;
+
+      int latency = getPow2Latency(summand, false);
+      DFEVar cycle;
+      if (hasReset) {
+        cycle = control.count.makeCounter(
+                  control.count.makeParams(48)
+                               .withReset(numValsOrReset))
+                               .getCount();
+      } else {
+        cycle = control.count.simpleCounter(numValsOrReset.getType().getTotalBits(), numValsOrReset);
+      }
+
+      //Step 1: create 16 partial sums just as in the variable FPA
+      optimization.pushPipeliningFactor(0.0);
+      DFEVar partialSum = summand.getType().newInstance(this);
+      DFEVar rhs = cycle < latency ? 0.0 : stream.offset(partialSum, -latency);
+      optimization.popPipeliningFactor();
+
+      optimization.pushDSPFactor(0.0); //The latencies calculated assume zero DSP usage, and using DSPs mostly doesn't help latency.
+      partialSum <== x + rhs;
+      optimization.popDSPFactor();
+
+      optimization.popPipeliningFactor();//popping the one pushed in getLatency.
+
+      //Step 2: Create an adder tree to sum together the 16 partial sums on every cycle.
+      sum = multiCyclePow2AdderTree(partialSum, latency, cycle, 1);
+    }
+
+
+    /*
+     * The idea here is to create one addition for each level of the adder tree. The first level will sum sequential partial sums
+     * together. The second level sums together pairs of output from the first level, which results in the sum of the first 4
+     * partial sums. The third level does the same thing but with outputs of the second level, so we get the sum of the first 8
+     * partial sums. Etc.
+     */
+    private DFEVar multiCyclePow2AdderTree(DFEVar input, int numSummands, DFEVar cycle, int spacing) {
+      if(!MathUtils.isPowerOf2(numSummands)) {
+        throw new RuntimeException("MultiCyclePow2AdderTree only supports summing a number of thigns that is a power of 2.");
+      }
+      if (spacing == numSummands) {
+        return input;
+      }
+      DFEVar prev = cycle < spacing ? 0.0 : stream.offset(input, -spacing);
+      DFEVar sum = input + prev;
+      return multiCyclePow2AdderTree(sum, numSummands, cycle, spacing * 2);
+    }
+
+
+    /*
+     * The following code is only valid for Maxeler DFEs up to and including MAX4 (Coria, Vectis, Isca and Galava).
+     * When MAX5 is released it will need to be revisited.
+     * Generally the following will return 16, but with a large enough squash factor we can get it down to 8.
+     * The option useSuperSquash will push the appropriate squash factor to get 8. This will save an addition
+     * in the adder tree, but may cause timing problems, so is off by default.
+     */
+    private int getPow2Latency(DFEVar summand, boolean useSuperSquash) {
+      double pipeliningFactor = optimization.getPipeliningFactor();
+      int maxLatency = getLatency(summand);
+      if (useSuperSquash) {
+        if (getManager().getManagerConfiguration().getBoardModel().isAltera()) {
+          pipeliningFactor = 0.28;
+        } else {
+          pipeliningFactor = 7.99 / maxLatency;
+        }
+      }
+      optimization.pushPipeliningFactor(pipeliningFactor);
+      return MathUtils.nextPowerOfTwo(getLatency(summand));
+    }
+  }
+
+
+
+  /**
+   * Accumulate a (small) fixed number of things and get the correct result on every cycle.
+   * The cost of this is a single addition plus buffering. For a small number of things, the buffer will
+   * be cheap, so this will be cheaper than the other 2 options.
+   * @author stephen
+   *
+   */
+  private static class ShortFPA extends KernelLib {
+    public final DFEVar sum;
+
+    /**
+     * Creates a floating point accumulator that gives the correct result on every cycle.
+     * @param summand The DFEFloat input we wish to sum.
+     * @param numVals The number of values we wish to accumulate.
+     */
+    private ShortFPA(DFEVar summand, int numVals) {
+      super(summand.getKernel());
+
+      int latency = getLatency(summand);
+
+      //Step 1: Interleave the inputs so that we can sum them together easily.
+      DFEVar reordered = transpose(summand, numVals, latency);
+
+      //Step 2: Sum the interleaved inputs (muxing in zero for the RHS at the start).
+      DFEVar cycle = control.count.makeCounterChain().addCounter(numVals * latency, 1);
+      optimization.pushPipeliningFactor(0.0);
+      DFEVar reorderedSum = reordered.getType().newInstance(this);
+      DFEVar rhs = cycle < latency ? 0.0 : stream.offset(reorderedSum, -latency);
+      optimization.popPipeliningFactor();
+
+      optimization.pushDSPFactor(0.0); //The latencies calculated assume zero DSP usage, and using DSPs mostly doesn't help latency.
+      reorderedSum <== reordered + rhs;
+      optimization.popDSPFactor();
+
+      //Step 3: Undo the interleaving to get everything back in the right order.
+      sum = transpose(reorderedSum, latency, numVals);
+      summand.simWatch("summand");
+      reordered.simWatch("reordered");
+      reorderedSum.simWatch("reorderedSum");
+      sum.simWatch("sum");
+    }
+
+
+    private DFEVar transpose(DFEVar input, int fastDim, int slowDim) {
+      int bufferDepth = fastDim * slowDim;
+
+      //TODO: use the following (more efficient) code once we have a way to easily disable the default RAM flushing behaviour
+//      DFEVar linear = control.count.makeCounterChain().addCounter(bufferDepth, 1);
+//      DFEType addressType = linear.getType();
+//
+//      CounterChain chain = control.count.makeCounterChain();
+//      DFEVar bMode = chain.addCounter(2,           1).cast(dfeBool());
+//      DFEVar index = chain.addCounter(fastDim,     1).cast(addressType);
+//      DFEVar batch = chain.addCounter(bufferDepth, fastDim).cast(addressType);
+
+//      DFEVar address = bMode ? index + batch : linear;
+//      Memory<DFEVar> inBuffer = mem.alloc(input.getType(), bufferDepth);
+//      return stream.offset(inBuffer.port(address, input, constant.var(true), RamWriteMode.READ_FIRST), bufferDepth);
+
+      DFEVar linear = control.count.makeCounterChain().addCounter(bufferDepth, 1);
+      DFEType addressType = dfeInt(linear.getType().getTotalBits() + 1);
+
+      CounterChain chain = control.count.makeCounterChain();
+      DFEVar index = chain.addCounter(fastDim,     1).cast(addressType);
+      DFEVar batch = chain.addCounter(bufferDepth, fastDim).cast(addressType);
+
+      DFEVar offset = index + batch - linear.cast(addressType);
+
+      return stream.offset(input, offset, -bufferDepth, bufferDepth);
+    }
+  }
+
+
+  /**
+   * Accumulate a fixed number of floating point values.
+   * If correctOnEveryCycle is true then the output will be correct on every cycle, and numVals can take any value, but
+   * it is significantly more expensive in hardware. If it is false then the correct value only comes out after numVals
+   * enabled cycles, and numVals needs to be at least ~15 (depending on pipelining factor).
+   *
+   * @param summand Values to accumulate
+   * @param enable  Ignore summand when this is false
+   * @param numVals The number of enabled cycles to run for before resetting. I.e. the number of elements in the sum.
+   * @param correctOnEveryCycle Does the output need to be correct on every cycle, or only after numVals cycles.
+   */
+  public static <T extends KernelObjectVectorizable<T,?>>
+  DFEVar accumulateFixedLength(T summand, DFEVar enable, DFEVar numVals, boolean correctOnEveryCycle) {
+    return accumulateFixedLength(getListOfDFEVars(summand), enable, numVals, correctOnEveryCycle);
+  }
+
+
+  /**
+   * Accumulate a fixed number of floating point values.
+   * If correctOnEveryCycle is true then the output will be correct on every cycle, and numVals can take any value, but
+   * it is significantly more expensive in hardware. If it is false then the correct value only comes out after numVals
+   * enabled cycles, and numVals needs to be at least ~15 (depending on pipelining factor).
+   *
+   * @param summand Values to accumulate
+   * @param enable  Ignore summand when this is false
+   * @param numVals The number of enabled cycles to run for before resetting. I.e. the number of elements in the sum.
+   * @param correctOnEveryCycle Does the output need to be correct on every cycle, or only after numVals cycles.
+   */
+  public static DFEVar accumulateFixedLength(List<DFEVar> summand, DFEVar enable, DFEVar numVals, boolean correctOnEveryCycle) {
+    DFEVar singleInput = adderTree(summand);
+    DFEVar sum;
+    if (correctOnEveryCycle) {
+      DynamicFPA fpa = new DynamicFPA(singleInput, enable, numVals, false);
+      sum = fpa.sum;
+    } else {
+      VariableFPA fpa = new VariableFPA(singleInput, enable, numVals, false);
+      sum = fpa.sum;
+    }
+    return sum;
+  }
+
+
+  /**
+   * Accumulate a fixed number of floating point values.
+   * If correctOnEveryCycle is true then the output will be correct on every cycle, and numVals can take any value, but
+   * it is significantly more expensive in hardware. If it is false then the correct value only comes out after numVals
+   * enabled cycles, and numVals needs to be at least ~15 (depending on pipelining factor).
+   *
+   * @param summand Values to accumulate
+   * @param enable  Ignore summand when this is false
+   * @param numVals The number of enabled cycles to run for before resetting. I.e. the number of elements in the sum.
+   * @param correctOnEveryCycle Does the output need to be correct on every cycle, or only after numVals cycles.
+   */
+  public static <T extends KernelObjectVectorizable<T,?>>
+  DFEVar accumulateFixedLength(T summand, DFEVar enable, int numVals, boolean correctOnEveryCycle) {
+    return accumulateFixedLength(getListOfDFEVars(summand), enable, numVals, correctOnEveryCycle);
+  }
+
+
+  /**
+   * Accumulate a fixed number of floating point values.
+   * If correctOnEveryCycle is true then the output will be correct on every cycle, and numVals can take any value, but
+   * it is significantly more expensive in hardware. If it is false then the correct value only comes out after numVals
+   * enabled cycles, and numVals needs to be at least ~15 (depending on pipelining factor).
+   *
+   * @param summand Values to accumulate
+   * @param enable  Ignore summand when this is false
+   * @param numVals The number of enabled cycles to run for before resetting. I.e. the number of elements in the sum.
+   * @param correctOnEveryCycle Does the output need to be correct on every cycle, or only after numVals cycles.
+   */
+  public static DFEVar accumulateFixedLength(List<DFEVar> summand, DFEVar enable, int numVals, boolean correctOnEveryCycle) {
+    Kernel k = summand[0].getKernel();
+    return accumulateFixedLength(summand, enable, k.constant.var(Kernel.dfeUInt(MathUtils.bitsToAddress(numVals)), numVals), correctOnEveryCycle);
+  }
+
+
+  /**
+   * Accumulate a fixed number of floating point values.
+   * If correctOnEveryCycle is true then the output will be correct on every cycle, and numVals can take any value, but
+   * it is significantly more expensive in hardware unless numVals is very small. If it is false then the correct value
+   * only comes out after numVals enabled cycles (unless numVals is very small).
+   *
+   * @param summand Values to accumulate
+   * @param numVals The number of enabled cycles to run for before resetting. I.e. the number of elements in the sum.
+   * @param correctOnEveryCycle Does the output need to be correct on every cycle, or only after numVals cycles.
+   */
+  public static <T extends KernelObjectVectorizable<T,?>>
+  DFEVar accumulateFixedLength(T summand, int numVals, boolean correctOnEveryCycle) {
+    return accumulateFixedLength(getListOfDFEVars(summand), numVals, correctOnEveryCycle);
+  }
+
+
+  /**
+   * Accumulate a fixed number of floating point values.
+   * If correctOnEveryCycle is true then the output will be correct on every cycle, and numVals can take any value, but
+   * it is significantly more expensive in hardware unless numVals is very small. If it is false then the correct value
+   * only comes out after numVals enabled cycles (unless numVals is very small).
+   *
+   * @param summand Values to accumulate
+   * @param numVals The number of enabled cycles to run for before resetting. I.e. the number of elements in the sum.
+   * @param correctOnEveryCycle Does the output need to be correct on every cycle, or only after numVals cycles.
+   */
+  public static DFEVar accumulateFixedLength(List<DFEVar> summand, int numVals, boolean correctOnEveryCycle) {
+    DFEVar sum;
+    int latency = getLatency(summand[0]);
+    //Computing the correct value on every cycle is very expensive in LUTs, so we prefer to use extra BRAM instead.
+    int cutOffPoint = correctOnEveryCycle ? 4096 : 512;
+    if (numVals * latency <= cutOffPoint) {
+      DFEVar singleInput = adderTree(summand);
+      ShortFPA fpa = new ShortFPA(singleInput, numVals);
+      sum = fpa.sum;
+    } else {
+      Kernel k = summand[0].getKernel();
+      sum = accumulateFixedLength(summand, k.constant.var(true), numVals, correctOnEveryCycle);
+    }
+    return sum;
+  }
+
+
+  /**
+   * Accumulate floating point values until asked to reset.
+   * If correctOnEveryCycle is true then the output will be correct on every cycle, and reset can happen at any time,
+   * but it is significantly more expensive in hardware. If it is false then the correct value only comes out on the
+   * cycle just before the reset, and resets must be at least ~15 cycles apart (depending on pipelining factor).
+   *
+   * @param summand Values to accumulate
+   * @param enable  Ignore summand when this is false
+   * @param reset     When to reset the accumulator to begin a new sum.
+   * @param correctOnEveryCycle Does the output need to be correct on every cycle, or only just before reset.
+   */
+  public static <T extends KernelObjectVectorizable<T,?>>
+  DFEVar accumulateWithReset(T summand, DFEVar enable, DFEVar reset, boolean correctOnEveryCycle) {
+    return accumulateWithReset(getListOfDFEVars(summand), enable, reset, correctOnEveryCycle);
+  }
+
+
+  /**
+   * Accumulate floating point values until asked to reset.
+   * If correctOnEveryCycle is true then the output will be correct on every cycle, and reset can happen at any time,
+   * but it is significantly more expensive in hardware. If it is false then the correct value only comes out on the
+   * cycle just before the reset, and resets must be at least ~15 cycles apart (depending on pipelining factor).
+   *
+   * @param summand Values to accumulate
+   * @param enable  Ignore summand when this is false
+   * @param reset     When to reset the accumulator to begin a new sum.
+   * @param correctOnEveryCycle Does the output need to be correct on every cycle, or only just before reset.
+   */
+  public static DFEVar accumulateWithReset(List<DFEVar> summand, DFEVar enable, DFEVar reset, boolean correctOnEveryCycle) {
+    DFEVar singleInput = adderTree(summand);
+    DFEVar sum;
+    if (correctOnEveryCycle) {
+      DynamicFPA fpa = new DynamicFPA(singleInput, enable, reset, true);
+      sum = fpa.sum;
+    } else {
+      VariableFPA fpa = new VariableFPA(singleInput, enable, reset, true);
+      sum = fpa.sum;
+    }
+    return sum;
+  }
+
+
+  private static DFEVar adderTree(List<DFEVar> input) {
+    if (input.size() < 1) {
+      throw new RuntimeException("Can't sum empty list.");
+    }
+    if (input.size() == 1) {
+      return input[0];
+    }
+    List<DFEVar> output = new ArrayList<DFEVar>();
+    for (int i = 0; i < input.size() / 2; i++) {
+      output.add(input[2 * i] + input[2 * i + 1]);
+    }
+    if (input.size() % 2 == 1) {
+      output.add(input[input.size() - 1]);
+    }
+    return adderTree(input);
+  }
+
+
+  private static <T extends KernelObject<?>>
+  List<DFEVar> getListOfDFEVars(T input) {
+    if (input instanceof DFEVar) {
+      List<DFEVar> output = new ArrayList<DFEVar>();
+      output.add((DFEVar)input);
+      return output;
+    }
+    if (input instanceof DFEVector) {
+      List<KernelObject<?>> temp = new ArrayList<KernelObject<?>>();
+      temp.addAll(((DFEVector<?>)input).getElementsAsList());
+      List<DFEVar> output = new ArrayList<DFEVar>();
+      for (KernelObject<?> t : temp) {
+        output.addAll(getListOfDFEVars(t));
+      }
+
+      return output;
+    }
+    throw new RuntimeException("Floating point accumulator only works for DFEVars and DFEVectors.");
+  }
+}

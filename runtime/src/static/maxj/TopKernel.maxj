@@ -1,0 +1,62 @@
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.Counter;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.Params;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.Kernel;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelParameters;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.utils.Bits;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+import java.util.Random;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.LMemCommandStream;
+
+class TopKernel extends Kernel {
+
+	TopKernel (KernelParameters parameters) {
+    super(parameters);
+
+    DFEVar en = io.scalarInput("en", dfeBool());
+
+    // Instantiate main state machine
+    DFEVar run_done = dfeBool().newInstance(this);
+    DFEVar intr_done = dfeBool().newInstance(this);
+    DFEVar sm_en = en;
+    SMIO mainSm = addStateMachine("mainSm", new MainStateMachine(this));
+
+    mainSm.connectInput("sm_en", sm_en);
+    mainSm.connectInput("run_done", run_done);
+    mainSm.connectInput("intr_done", intr_done);
+
+    DFEVar run_en = mainSm.getOutput("run_en");
+    DFEVar intr_en = mainSm.getOutput("intr_en");
+    DFEVar cycles = mainSm.getOutput("cycles");
+
+    new TopKernelLib(this, run_en, run_done);
+
+    Count.Params cp = control.count.makeParams(32)
+                             .withEnable(intr_en)
+                             .withMax(96);
+      Count.Counter wordCtr = control.count.makeCounter(cp);
+      intr_done <== stream.offset(wordCtr.getWrap(), -1);
+
+     LMemCommandStream.makeKernelOutput("intrCmd",
+        intr_en & (wordCtr.getCount() === 0),        // control
+        constant.var(dfeUInt(32),0),     // address
+        constant.var(dfeUInt(8), 1),       // size
+        constant.var(dfeUInt(1), 0),       // inc
+        constant.var(dfeUInt(1), 0),       // stream
+        intr_en // interrupt
+        );
+
+    io.scalarOutput("cycles", cycles, dfeUInt(64));
+    io.output("intrStream", constant.var(dfeUInt(32), 5), dfeUInt(32), intr_en);
+  }
+}

@@ -1,0 +1,204 @@
+package engine;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmInput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmOutput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateEnum;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
+import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
+import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmAssignableValue;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmValue;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmVariable;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmTypeFactory;
+import com.maxeler.maxcompiler.v2.statemachine.StateMachineLib;
+
+
+class PQSM extends KernelStateMachine {
+
+    private final boolean dbg = false;
+    // State IO
+    private final DFEsmInput waddr;
+    private final DFEsmInput wdata;
+    private final DFEsmInput wMetadata;
+    private final DFEsmInput wen;
+
+    private final DFEsmInput raddr;
+    private final DFEsmOutput rdata;
+    private final DFEsmOutput rMetadata;
+    private final DFEsmInput readen;
+    private final DFEsmValue ren;
+    private final DFEsmValue wren;
+
+    // State storage
+    private final DFEsmStateValue oldRaddr;
+    private final DFEsmStateValue oldWaddr;
+    private final DFEsmStateValue[] elemsFF;
+    private final DFEsmStateValue[] metadataFF;
+    private final DFEsmStateValue[] bypassFF;
+    private final DFEsmStateValue[] mdBypassFF;
+    private final DFEsmStateValue[] wenFF;
+
+    private int size = 0;
+    private int dataWidth = 32;
+    private int metadataWidth = 32;
+    private int maxval = 1024;
+    // Initialize state machine in constructor
+    public PQSM(KernelLib owner, int size) {
+      super(owner);
+      this.size = size;
+
+//      DFEsmValueType elemType = dfeUInt(dataWidth + metadataWidth);
+      DFEsmValueType dataType = dfeUInt(dataWidth);
+      DFEsmValueType metadataType = dfeUInt(metadataWidth);
+
+      // Declare all types required to wire the state machine together
+      int addrbits = size == 1 ? 1 : MathUtils.bitsToAddress(size);
+      DFEsmValueType addrType = dfeUInt(addrbits);
+      DFEsmValueType wireType = dfeBool();
+
+      // Define state storage elements and initial state
+      elemsFF = new DFEsmStateValue[size];
+      metadataFF = new DFEsmStateValue[size];
+      bypassFF = new DFEsmStateValue[size];
+      mdBypassFF = new DFEsmStateValue[size];
+      wenFF = new DFEsmStateValue[size];
+      for (int i=0; i<size; i++) {
+        elemsFF[i] = state.value(dataType, maxval);
+        metadataFF[i] = state.value(metadataType, 0);
+        bypassFF[i] = state.value(dataType, maxval);
+        mdBypassFF[i] = state.value(metadataType, 0);
+        wenFF[i] = state.value(wireType, 0);
+      }
+      oldRaddr = state.value(addrType, size-1);
+      oldWaddr = state.value(addrType, size-1);
+
+      // Define state machine IO
+      waddr = io.input("waddr", addrType);
+      raddr = io.input("raddr", addrType);
+      wen = io.input("wen", wireType);
+
+      wdata = io.input("wdata", dataType);
+      wMetadata = io.input("wMetadata", metadataType);
+      rdata = io.output("rdata", dataType);
+      rMetadata = io.output("rMetadata", metadataType);
+      readen = io.input("readen", wireType);
+      ren = readen & (oldRaddr !== raddr);
+      wren = wen & (oldWaddr !== waddr);
+    }
+
+    private void resetElemsFF() {
+      for (int i=0; i<size; i++) {
+        elemsFF[i].next <== maxval;
+        metadataFF[i].next <== 0;
+        bypassFF[i].next <== maxval;
+        mdBypassFF[i].next <== 0;
+      }
+    }
+
+    private void write() {
+      elemsFF[0].next <== wdata;
+      for (int i=1; i<size; i++) {
+        elemsFF[i].next <== elemsFF[i-1];
+        metadataFF[i].next <== metadataFF[i-1];
+      }
+    }
+
+    private void shift() {
+      elemsFF[0].next <== maxval;
+      metadataFF[0].next <== 420;
+      for (int i=1; i<size; i++) {
+        elemsFF[i].next <== elemsFF[i-1];
+        metadataFF[i].next <== metadataFF[i-1];
+      }
+    }
+
+    private void stall() {
+      for (int i=0; i<size; i++) {
+        elemsFF[i].next <== elemsFF[i];
+        metadataFF[i].next <== metadataFF[i];
+      }
+    }
+
+    private void print() {
+      for (int i=0; i<size; i++) {
+        debug.simPrintf("elemsFF[%d] = %d, metadataFF[%d] = %d, bypass[%d] = %d, mdBypassFF[%d] = %d, wen[%d] = %d\n", i, elemsFF[i], i, metadataFF[i], i, bypassFF[i], i, mdBypassFF[i], i, wenFF[i]);
+      }
+    }
+
+    @Override
+    protected void nextState() {
+
+      // Chain of write enables
+      wenFF[0].next <== wren;
+      for (int i=1; i<size; i++) {
+        wenFF[i].next <== wenFF[i-1];
+      }
+
+
+      IF (wen) {
+        oldWaddr.next <== waddr;
+      }
+
+      IF (wren) {
+        if (dbg) {
+          debug.simPrintf("Writing %d to %d\n", wdata, waddr);
+          print();
+        }
+        IF (wdata < elemsFF[0]) {
+          elemsFF[0].next <== wdata;
+          metadataFF[0].next <== wMetadata;
+          bypassFF[0].next <== elemsFF[0];
+          mdBypassFF[0].next <== metadataFF[0];
+        } ELSE {
+          elemsFF[0].next <== elemsFF[0];
+          metadataFF[0].next <== metadataFF[0];
+          bypassFF[0].next <== wdata;
+          mdBypassFF[0].next <== wMetadata;
+        }
+      } ELSE {
+        elemsFF[0].next <== elemsFF[0];
+        metadataFF[0].next <== metadataFF[0];
+        bypassFF[0].next <== bypassFF[0];
+        mdBypassFF[0].next <== mdBypassFF[0];
+      }
+
+      for (int i=1; i<size; i++) {
+        IF (wenFF[i-1]) {
+          IF (bypassFF[i-1] < elemsFF[i]) {
+            elemsFF[i].next <== bypassFF[i-1];
+            metadataFF[i].next <== mdBypassFF[i-1];
+            bypassFF[i].next <== elemsFF[i];
+            mdBypassFF[i].next <== metadataFF[i];
+          } ELSE {
+            elemsFF[i].next <== elemsFF[i];
+            metadataFF[i].next <== metadataFF[i];
+            bypassFF[i].next <== bypassFF[i-1];
+            mdBypassFF[i].next <== mdBypassFF[i-1];
+          }
+        } ELSE {
+          elemsFF[i].next <== elemsFF[i];
+          metadataFF[i].next <== metadataFF[i];
+          bypassFF[i].next <== bypassFF[i];
+          mdBypassFF[i].next <== mdBypassFF[i];
+        }
+      }
+
+      IF (readen) {
+        oldRaddr.next <== raddr;
+        IF (ren) {
+          if (dbg) {
+            debug.simPrintf("Reading from raddr = %d, rdata = %d\n", raddr, rdata);
+            print();
+          }
+          shift();
+        }
+      }
+  }
+
+  @Override
+  protected void outputFunction() {
+    rdata <== elemsFF[size-1];
+    rMetadata <== metadataFF[size-1];
+  }
+}

@@ -1,0 +1,91 @@
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Stream.OffsetExpr;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.Reductions;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.WrapMode;
+
+class CtrChainLib extends KernelLib {
+
+  private void common(
+    DFEVar en, DFEVar done,
+    DFEVar[] max,
+    int[] stride,
+    DFEVar[] out,
+    OffsetExpr offset
+  ) {
+    DFEVar[] ctrWrapArray = new DFEVar[max.length];
+    Count.Counter[] ctrArray = new Count.Counter[max.length];
+
+    for (int i=max.length-1; i>=0; i--) {
+      Count.Params ctrParams = null;
+      if (i == max.length-1) {  // Innermost loop
+        ctrParams = control.count.makeParams(32)
+                               .withEnable(en)
+                               .withMax(max[i])
+                               .withInc(stride[i])
+                               .withReset(~en);
+      } else if (i == 0) {  // Outermost loop
+        ctrParams = control.count.makeParams(32)
+                               .withEnable(en & ctrWrapArray[i+1])
+                               .withMax(max[i])
+                               .withInc(stride[i])
+                               .withReset(~en)
+                               .withWrapMode(WrapMode.STOP_AT_MAX);
+      } else { // Other loop
+        ctrParams = control.count.makeParams(32)
+                               .withEnable(en & ctrWrapArray[i+1])
+                               .withMax(max[i])
+                               .withInc(stride[i])
+                               .withReset(~en);
+      }
+      ctrArray[i] = control.count.makeCounter(ctrParams);
+      if (i == max.length-1) {
+        ctrWrapArray[i] = ctrArray[i].getCount() === max[i]-1;
+      } else {
+        ctrWrapArray[i] = ctrWrapArray[i+1] & ctrArray[i].getCount() === max[i]-1;
+      }
+    }
+
+    done <== stream.offset(ctrWrapArray[0], -offset-1);
+    DFEVar ctrdone = Reductions.streamHold(en, ~en | ctrWrapArray[0]);
+
+    for (int i = max.length-1; i>=0; i--) {
+      out[i] <== ctrdone ? max[i]-1 : ctrArray[i].getCount();
+    }
+
+  }
+
+
+  CtrChainLib (
+    KernelLib owner, DFEVar en, DFEVar done,
+    DFEVar[] max,
+    int[] stride,
+    DFEVar[] out,
+    OffsetExpr offset
+  ) {
+
+    super(owner);
+    common(en, done, max, stride, out, offset);
+  }
+
+  CtrChainLib (
+    KernelLib owner, DFEVar en, DFEVar done,
+    DFEVar[] max,
+    DFEVar[] out,
+    OffsetExpr offset
+  ) {
+    super(owner);
+
+    int[] strides = new int[max.length];
+    for (int i=0; i<max.length; i++) {
+      strides[i] = 1;
+    }
+    common(en, done, max, strides, out, offset);
+  }
+}

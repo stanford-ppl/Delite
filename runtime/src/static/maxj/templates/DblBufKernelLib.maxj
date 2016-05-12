@@ -1,0 +1,154 @@
+package engine;
+
+import java.util.List;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+
+class DblBufKernelLib extends KernelLib {
+
+  DFEVar[] rdone;
+  DFEVar wdone;
+  DFEVar realCurBuf;
+
+  int numRports;
+  int depth;
+  int addrBits;
+  int maxReaders;
+  int nextReader = 0;
+  DFEType type;
+
+  BramLib m0;
+  BramLib m1;
+  SMIO sm;
+
+  void common_withsm(SMIO sm, int size0, int size1, DFEType type, int banks, int stride, int maxReaders) {
+    this.depth = size0 * size1;
+    this.addrBits = MathUtils.bitsToAddress(this.depth);
+    this.numRports = -1;
+    this.type = type;
+    this.maxReaders = maxReaders;
+    this.sm = sm;
+
+    rdone = new DFEVar[maxReaders];
+    for (int i=0; i<maxReaders; i++) {
+      rdone[i] = dfeBool().newInstance(this);
+    }
+    wdone = dfeBool().newInstance(this);
+
+    for (int i=0; i<maxReaders; i++) {
+      sm.connectInput("r_done_"+i, rdone[i]);
+    }
+    sm.connectInput("w_done", wdone);
+    realCurBuf = sm.getOutput("curBuf");
+
+    m0 = new BramLib(this, size0, size1, type, banks, stride);
+    m1 = new BramLib(this, size0, size1, type, banks, stride);
+  }
+
+  void common(String smname, int size0, int size1, DFEType type, int banks, int stride, int maxReaders) {
+    try {
+      if (maxReaders > 2) {
+        throw new Exception("Unsupported number of maxReaders: " + maxReaders);
+      }
+    } catch (Exception e) {
+      System.out.println("Caught exception, exiting");
+    }
+    sm = (maxReaders == 1) ? addStateMachine(smname, new DblBufStateMachine(this)) : addStateMachine(smname, new DblBufStateMachine_2(this));
+
+    this.depth = size0 * size1;
+    this.addrBits = MathUtils.bitsToAddress(this.depth);
+    this.numRports = -1;
+    this.type = type;
+    this.maxReaders = maxReaders;
+
+    rdone = new DFEVar[maxReaders];
+    for (int i=0; i<maxReaders; i++) {
+      rdone[i] = dfeBool().newInstance(this);
+    }
+    wdone = dfeBool().newInstance(this);
+
+    if (maxReaders == 1) {
+      sm.connectInput("r_done", rdone[0]);
+    } else if (maxReaders == 2) {
+      for (int i=0; i<maxReaders; i++) {
+        sm.connectInput("r_done_"+i, rdone[i]);
+      }
+    }
+    sm.connectInput("w_done", wdone);
+    realCurBuf = sm.getOutput("curBuf");
+
+    m0 = new BramLib(this, size0, size1, type, banks, stride);
+    m1 = new BramLib(this, size0, size1, type, banks, stride);
+  }
+
+  DblBufKernelLib(KernelLib owner, String smname, int size0, int size1, DFEType type, int banks, int stride, int maxReaders) {
+    super(owner);
+    common(smname, size0, size1, type, banks, stride, maxReaders);
+  }
+
+  DblBufKernelLib(KernelLib owner, SMIO ctrl, int size0, int size1, DFEType type, int banks, int stride, int maxReaders) {
+    super(owner);
+    common_withsm(ctrl, size0, size1, type, banks, stride, maxReaders);
+  }
+
+  DblBufKernelLib(KernelLib owner, String smname, int size0, int size1, DFEType type, int banks, int maxReaders) {
+    super(owner);
+    common(smname, size0, size1, type, banks, 1, maxReaders);
+  }
+
+  DblBufKernelLib(KernelLib owner, SMIO ctrl, int size0, int size1, DFEType type, int banks, int maxReaders) {
+    super(owner);
+    common_withsm(ctrl, size0, size1, type, banks, 1, maxReaders);
+  }
+
+  void connectRdone(DFEVar done) {
+    rdone[nextReader++] <== done;
+  }
+
+  void connectWdone(DFEVar done) {
+    wdone <== done;
+  }
+
+  DFEVar connectRport(DFEVar srcAddr) {
+    numRports += 1;
+    DFEVar rdata = realCurBuf ? m0.connectRport(srcAddr) : m1.connectRport(srcAddr);
+    return rdata;
+  }
+
+  DFEVar connectRport(DFEVar srcAddr, DFEVar rd) {
+    DFEVar rdata = realCurBuf ? m0.connectRport(srcAddr) : m1.connectRport(srcAddr);
+    numRports += 1;
+    rdone[nextReader++] <== rd;
+    return rdata;
+  }
+
+  DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr) {
+    numRports += 1;
+    DFEVector<DFEVar> rdata = realCurBuf ? m0.connectRport(srcAddr) : m1.connectRport(srcAddr);
+    return rdata;
+  }
+
+  void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en, int start, int stride) {
+    m0.connectWport(dstAddr, dstData, ~realCurBuf & en, start, stride);
+    m1.connectWport(dstAddr, dstData, realCurBuf & en, start, stride);
+  }
+
+  void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en) {
+    connectWport(dstAddr, dstData, en, 0, 1);
+  }
+
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en, int start, int stride) {
+    connectWport(dstAddr, dstData, en);
+  }
+
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en) {
+    m0.connectWport(dstAddr, dstData, ~realCurBuf & en);
+    m1.connectWport(dstAddr, dstData, realCurBuf & en);
+  }
+}

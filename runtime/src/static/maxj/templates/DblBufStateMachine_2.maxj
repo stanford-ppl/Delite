@@ -1,0 +1,104 @@
+package engine;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmInput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmOutput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateEnum;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmValue;
+import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
+import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
+
+class DblBufStateMachine_2 extends KernelStateMachine {
+
+  // States
+  enum States {
+    W, R, RW, SWAP
+  }
+
+  // Constants
+  private int numIter;
+
+  // State IO
+  private final DFEsmInput w_done;
+  private final DFEsmInput r_done_0;
+  private final DFEsmInput r_done_1;
+  private final DFEsmOutput curBuf;
+
+  // State storage
+  private final DFEsmStateEnum<States> stateFF;
+  private final DFEsmStateValue curBufFF;
+  private final DFEsmStateValue numRdoneFF;
+
+  private final DFEsmValue allRdone;
+  private final DFEsmValue anyRdone;
+
+  // Initialize state machine in constructor
+  public DblBufStateMachine_2(KernelLib owner) {
+    super(owner);
+
+    // Declare all types required to wire the state machine together
+    DFEsmValueType wireType = dfeBool();
+    DFEsmValueType counterType = dfeUInt(2);
+
+    // Define state machine IO
+    w_done = io.input("w_done", wireType);
+    r_done_0 = io.input("r_done_0", wireType);
+    r_done_1 = io.input("r_done_1", wireType);
+
+    curBuf = io.output("curBuf", wireType);
+
+    // Define state storage elements and initial state
+    stateFF = state.enumerated(States.class, States.W);
+    curBufFF = state.value(wireType, 0);
+    numRdoneFF = state.value(wireType, 0);
+
+    anyRdone = (r_done_0 | r_done_1);
+    allRdone = numRdoneFF & anyRdone;
+
+    // Define constants
+    this.numIter = numIter;
+  }
+
+  @Override
+  protected void nextState() {
+    numRdoneFF.next <== anyRdone | numRdoneFF;
+    SWITCH(stateFF) {
+      CASE(States.W) {
+        IF (w_done) {
+          stateFF.next <== States.SWAP;
+        }
+      }
+      CASE(States.RW) {
+        IF (allRdone & w_done) {
+          stateFF.next <== States.SWAP;
+        } ELSE {
+          IF (allRdone) {
+          stateFF.next <== States.W;
+          } ELSE {
+            IF (w_done) {
+              stateFF.next <== States.R;
+            }
+          }
+        }
+      }
+      CASE(States.R) {
+        IF (allRdone) {
+          stateFF.next <== States.SWAP;
+        }
+      }
+      CASE(States.SWAP) {
+        curBufFF.next <== ~curBufFF;
+        stateFF.next <== States.RW;
+        numRdoneFF.next <== 0;
+      }
+      OTHERWISE {
+        stateFF.next <== stateFF;
+      }
+    }
+  }
+
+  @Override
+  protected void outputFunction() {
+    curBuf <== curBufFF;
+  }
+}

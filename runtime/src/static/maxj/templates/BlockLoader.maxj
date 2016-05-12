@@ -1,0 +1,569 @@
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.WrapMode;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.LMemCommandStream;
+import com.maxeler.maxcompiler.v2.kernelcompiler.Optimization;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.Reductions;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Stream.OffsetExpr;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEStruct;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEStructType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEStructType.StructFieldType;
+import java.util.ArrayList;
+class BlockLoaderLib extends KernelLib {
+
+  protected boolean dbg = true;
+  protected boolean dbgDetail = false;
+  protected static int getNumberOfBursts(int num, DFEType type) {
+    return MathUtils.ceilDivide(num, getValuesPerBurst(type));
+  }
+
+  protected static int getNumberOfBursts(int num, DFEType[] type) {
+    return MathUtils.ceilDivide(num, getValuesPerBurst(type));
+  }
+
+  protected DFEVar getNumberOfBursts(DFEVar num) {
+    DFEVar numburst = (num / getValuesPerBurst(num.getType()));
+    if (dbgDetail) {
+//      debug.simPrintf("Values per burst for %d: %d\n", num, numburst);
+    }
+    return numburst;
+  }
+
+  protected void printVector(DFEVar en, DFEVector<DFEVar> v) {
+    for (int i=0; i<v.getSize(); i++) {
+      debug.simPrintf(en, "%f ", v[i]);
+    }
+      debug.simPrintf(en, "\n");
+  }
+
+  protected static int getValuesPerBurst(DFEType type) {
+    return getBurstSizeInBits() / type.getTotalBits();
+  }
+
+  protected static int getValuesPerBurst(DFEType[] type) {
+    int totalBits = 0;
+    for (int i=0; i<type.length; i++) {
+      totalBits += type[i].getTotalBits();
+    }
+    return getBurstSizeInBits() / totalBits;
+  }
+
+  protected static int getBurstSizeInBits() {
+    // return 8 * getManager().getManagerConfiguration().dram.getAdjustedBurstSizeInBytes();
+    return 8 * 384;
+  }
+
+  /* en: Enable block ld/st
+   * done: Done block ld/st
+   * D2: Number of bursts that make up dimension2 (cols)
+   * type: Type of data struct
+   * i : Beginning row of block
+   * j: Beginning column BURST of block
+   * sBurstOffset: Static burst offset of the big data struct in LMem
+   * streamName: Data stream name
+   * B1: Block dimension1 (rows)
+   * B2: Block dimension2 (cols)
+   * waddr: Write address into on-chip memory
+   * wdata: Data fetched
+   * wen: Write-enable to on-chip memory
+   */
+/*
+  BlockLoaderLib (
+    KernelLib owner,
+    DFEVar en, DFEVar done,
+    DFEVar isLdSt, DFEVar forceLdSt,
+    DFEVar D2, DFEVectorType<DFEVar> type,
+    DFEVar i, DFEVar j,
+    int sBurstOffset, String streamName,
+    int B1, int B2,
+    DFEVar waddr, DFEVector<DFEVar> wdata, DFEVar wen,
+    int PAR
+    )
+  {
+    super(owner);
+
+    OffsetExpr doneOffset = stream.makeOffsetAutoLoop(streamName + "doneOffset");
+
+    SMIO sm = addStateMachine(streamName + "ldSM", new BlockSM(this));
+    sm.connectInput("sm_en", en);
+    done <== stream.offset(sm.getOutput("sm_done"), -1);
+
+    DFEVar memDone = dfeBool().newInstance(this);
+    sm.connectInput("forceLdSt", forceLdSt);
+    sm.connectInput("i", i);
+    sm.connectInput("jburst", j);
+    sm.connectInput("memDone", memDone);
+
+    DFEVar memStart = sm.getOutput("memStart");
+    if (dbg) {
+      DFEVar prevMemStart = stream.offset(memStart, -1);
+      debug.simPrintf(prevMemStart ^ memStart, "[BlockLoader " + streamName + "] memStart changed to %d\n", memStart);
+    }
+    DFEVar iOut = sm.getOutput("iOut");
+    DFEVar jOut= sm.getOutput("jburstOut");
+    isLdSt <== sm.getOutput("isLdStOut");
+
+    int maxAddrSize = MathUtils.bitsToAddress(B1*B2);
+    Count.Params jjParams = control.count.makeParams(maxAddrSize)
+                             .withEnable(memStart)
+                             .withMax(B2/PAR)
+                             .withReset(~memStart);
+    Count.Counter jjc = control.count.makeCounter(jjParams);
+    DFEVar jjwrap = jjc.getCount() === (B2/PAR)-1;
+
+    Count.Params iiParams = control.count.makeParams(maxAddrSize)
+                             .withEnable(memStart & jjwrap)
+                             .withMax(B1)
+                             .withReset(~memStart)
+                             .withWrapMode(WrapMode.STOP_AT_MAX);
+    Count.Counter iic = control.count.makeCounter(iiParams);
+    DFEVar iiwrap = jjwrap & (iic.getCount() === B1-1);
+    memDone <== stream.offset(iiwrap, -doneOffset);
+
+    DFEVar ctrdone = Reductions.streamHold(memStart, iiwrap | ~memStart);
+    DFEVar ii = ctrdone ? B1-1 : iic.getCount();
+    DFEVar jj = ctrdone ? (B2/PAR)-1 : jjc.getCount();
+    DFEVar laddr = ii.cast(dfeUInt(maxAddrSize)) * B2/PAR + jj.cast(dfeUInt(maxAddrSize));
+    DFEVar stopCond = stream.offset(laddr === (B1*B2/PAR)-1, -1);
+
+    // NOTE: May cause timing issues
+    // MaxJ doesn't like the multiply node in the address calculation below. Not adding
+    // the optimization pragma causes the simulation to hang.
+    // Ideally, MaxJ should allow using DFEVars as loop increment values so that this multiply
+    // can be avoided in the critical path. But, alas, MaxJ doesn't let us do that!
+    // We can either write a state machine to do that manually (laborious), or
+    // force MaxJ to not pipeline this part and run the risk of not meeting timing.
+    // Given the time constraints, we should atleast try this first as it's simpler
+//    optimization.pushPipeliningFactor(0);
+    DFEVar burstAddr = sBurstOffset + (iOut.cast(dfeUInt(32))+ii.cast(dfeUInt(32))) * getNumberOfBursts(D2).cast(dfeUInt(32)) + getNumberOfBursts(jOut.cast(dfeUInt(32)));
+//    optimization.popPipeliningFactor();
+
+    DFEVar ctrl = memStart & (jj === 0);
+    DFEVar size = constant.var(dfeUInt(8), getNumberOfBursts(B2, dfeUInt(32)));
+    DFEVar inc = constant.var(dfeUInt(8),1);
+    DFEVar stream = constant.var(dfeUInt(1),0);
+    DFEVar tag = constant.var(false);
+
+    String cmdStreamName = streamName + "_cmd";
+    LMemCommandStream.makeKernelOutput(cmdStreamName,
+        ctrl,
+        burstAddr,
+        size,
+        inc,
+        stream,
+        tag);
+
+
+    io.forceExactIOSeparation(streamName, cmdStreamName, -16);  // Arbitrarily picked to handle divides
+
+    waddr <== ii * B2/PAR + jj;
+    wdata <== io.input(streamName, type, (memStart & ~stopCond));
+    wen <== memStart;
+
+    if (dbgDetail) {
+      debug.simPrintf(memStart, streamName + "(%d, %d), [ctrdone = %d] ii=%d, jj=%d, Fetched ", iOut, jOut, ctrdone, ii, jj);
+      printVector(memStart, wdata);
+      debug.simPrintf(memStart, streamName + "writing to addr %d\n", waddr);
+    }
+  }
+
+  BlockLoaderLib (
+    KernelLib owner,
+    DFEVar en, DFEVar done,
+    DFEVar isLdSt, DFEVar forceLdSt,
+    DFEVar D2, DFEType type,
+    DFEVar i, DFEVar j,
+    int sBurstOffset, String streamName,
+    int B1, int B2,
+    DFEVar waddr, DFEVar wdata, DFEVar wen
+    )
+  {
+    super(owner);
+
+    OffsetExpr doneOffset = stream.makeOffsetAutoLoop(streamName + "doneOffset");
+
+    SMIO sm = addStateMachine(streamName + "ldSM", new BlockSM(this));
+    sm.connectInput("sm_en", en);
+    done <== stream.offset(sm.getOutput("sm_done"), -1);
+
+    DFEVar memDone = dfeBool().newInstance(this);
+    sm.connectInput("forceLdSt", forceLdSt);
+    sm.connectInput("i", i);
+    sm.connectInput("jburst", j);
+    sm.connectInput("memDone", memDone);
+
+    DFEVar memStart = sm.getOutput("memStart");
+    if (dbg) {
+      DFEVar prevMemStart = stream.offset(memStart, -1);
+      debug.simPrintf(prevMemStart ^ memStart, "[BlockLoader " + streamName + "] memStart changed to %d\n", memStart);
+    }
+    DFEVar iOut = sm.getOutput("iOut");
+    DFEVar jOut= sm.getOutput("jburstOut");
+    isLdSt <== sm.getOutput("isLdStOut");
+
+    int maxAddrSize = MathUtils.bitsToAddress(B1*B2);
+    Count.Params jjParams = control.count.makeParams(maxAddrSize)
+                             .withEnable(memStart)
+                             .withMax(B2)
+                             .withReset(~memStart);
+    Count.Counter jjc = control.count.makeCounter(jjParams);
+    DFEVar jjwrap = jjc.getCount() === B2-1;
+
+    Count.Params iiParams = control.count.makeParams(maxAddrSize)
+                             .withEnable(memStart & jjwrap)
+                             .withMax(B1)
+                             .withReset(~memStart)
+                             .withWrapMode(WrapMode.STOP_AT_MAX);
+    Count.Counter iic = control.count.makeCounter(iiParams);
+    DFEVar iiwrap = jjwrap & (iic.getCount() === B1-1);
+    memDone <== stream.offset(iiwrap, -doneOffset);
+
+    DFEVar ctrdone = Reductions.streamHold(memStart, iiwrap | ~memStart);
+    DFEVar ii = ctrdone ? B1-1 : iic.getCount();
+    DFEVar jj = ctrdone ? B2-1 : jjc.getCount();
+    DFEVar laddr = ii.cast(dfeUInt(maxAddrSize)) * B2 + jj.cast(dfeUInt(maxAddrSize));
+    DFEVar stopCond = stream.offset(laddr === B1*B2-1, -1);
+
+    // NOTE: May cause timing issues
+    // MaxJ doesn't like the multiply node in the address calculation below. Not adding
+    // the optimization pragma causes the simulation to hang.
+    // Ideally, MaxJ should allow using DFEVars as loop increment values so that this multiply
+    // can be avoided in the critical path. But, alas, MaxJ doesn't let us do that!
+    // We can either write a state machine to do that manually (laborious), or
+    // force MaxJ to not pipeline this part and run the risk of not meeting timing.
+    // Given the time constraints, we should atleast try this first as it's simpler
+//    optimization.pushPipeliningFactor(0);
+    DFEVar burstAddr = sBurstOffset + (iOut.cast(dfeUInt(32))+ii.cast(dfeUInt(32))) * getNumberOfBursts(D2).cast(dfeUInt(32)) + getNumberOfBursts(jOut.cast(dfeUInt(32)));
+//    optimization.popPipeliningFactor();
+
+    DFEVar ctrl = memStart & (jj === 0);
+    DFEVar size = constant.var(dfeUInt(8), getNumberOfBursts(B2, type));
+    DFEVar inc = constant.var(dfeUInt(8),1);
+    DFEVar stream = constant.var(dfeUInt(1),0);
+    DFEVar tag = constant.var(false);
+
+    String cmdStreamName = streamName + "_cmd";
+    LMemCommandStream.makeKernelOutput(cmdStreamName,
+        ctrl,
+        burstAddr,
+        size,
+        inc,
+        stream,
+        tag);
+
+
+    io.forceExactIOSeparation(streamName, cmdStreamName, -16);  // Arbitrarily picked to handle divides
+
+    waddr <== ii * B2 + jj;
+    wdata <== io.input(streamName, type, (memStart & ~stopCond));
+    wen <== memStart;
+
+    if (dbgDetail) {
+      debug.simPrintf(memStart, streamName + "(%d, %d), [ctrdone = %d] Fetched %d, writing to addr %d\n", iOut, jOut, ctrdone, wdata, waddr);
+    }
+  }
+*/
+
+  BlockLoaderLib (
+    KernelLib owner,
+    DFEVar en, DFEVar done,
+    DFEVar isLdSt, DFEVar forceLdSt,
+    DFEVar D2,
+    DFEVar i, DFEVar j,
+    int sBurstOffset, String streamName,
+    int B1, int B2,
+    DFEVar waddr, DFEVar[] wdata, DFEVar wen
+    )
+  {
+    super(owner);
+    int par = 1;
+    // Questions to be answered:
+    // 1. What is the external interface of wdata? Currently it is an array of DFEVars.
+    //    The writing interface to BRAM must have DFEVector<DFEVar> because that's how
+    //    parallel accesses work with banked BRAMS now.
+    // 2. Parallelism supported only while loading non-struct data types, because writing
+    //    a DFEVector<DFEStruct> type to BRAM has not been tested. And presumably a DFEStruct
+    //    would want multiple block RAMs to store its fields in, to get parallel access.
+          
+
+    DFEType[] type = new DFEType[wdata.length];
+    StructFieldType[] sft = new StructFieldType[wdata.length];
+    for (int tmp=0; tmp<wdata.length; tmp++) {
+      type[tmp] = wdata[tmp].getType();
+      sft[tmp] = new StructFieldType("_"+tmp, type[tmp]);
+    }
+    DFEStructType structType = new DFEStructType(sft);
+    DFEStruct dataIn = structType.newInstance(this);
+    DFEVectorType<DFEStruct> vecType = new DFEVectorType<DFEStruct>(structType, par);
+    DFEVector<DFEStruct> vecDataIn = vecType.newInstance(this);
+
+    OffsetExpr doneOffset = stream.makeOffsetAutoLoop(streamName + "doneOffset");
+    SMIO sm = addStateMachine(streamName + "ldSM", new BlockSM(this));
+    sm.connectInput("sm_en", en);
+    done <== stream.offset(sm.getOutput("sm_done"), -1);
+
+    DFEVar memDone = dfeBool().newInstance(this);
+    sm.connectInput("forceLdSt", forceLdSt);
+    sm.connectInput("i", i);
+    sm.connectInput("jburst", j);
+    sm.connectInput("memDone", memDone);
+
+    DFEVar memStart = sm.getOutput("memStart");
+    if (dbg) {
+      DFEVar prevMemStart = stream.offset(memStart, -1);
+      debug.simPrintf(prevMemStart ^ memStart, "[BlockLoader " + streamName + "] memStart changed to %d\n", memStart);
+    }
+    DFEVar iOut = sm.getOutput("iOut");
+    DFEVar jOut= sm.getOutput("jburstOut");
+    isLdSt <== sm.getOutput("isLdStOut");
+
+    int maxAddrSize = MathUtils.bitsToAddress(B1*B2);
+    Count.Params jjParams = control.count.makeParams(maxAddrSize)
+                             .withEnable(memStart)
+                             .withMax(B2)
+                             .withReset(~memStart);
+    Count.Counter jjc = control.count.makeCounter(jjParams);
+    DFEVar jjwrap = jjc.getCount() === B2-1;
+
+    Count.Params iiParams = control.count.makeParams(maxAddrSize)
+                             .withEnable(memStart & jjwrap)
+                             .withMax(B1)
+                             .withReset(~memStart)
+                             .withWrapMode(WrapMode.STOP_AT_MAX);
+    Count.Counter iic = control.count.makeCounter(iiParams);
+    DFEVar iiwrap = jjwrap & (iic.getCount() === B1-1);
+    memDone <== stream.offset(iiwrap, -doneOffset);
+
+    DFEVar ctrdone = Reductions.streamHold(memStart, iiwrap | ~memStart);
+    DFEVar ii = ctrdone ? B1-1 : iic.getCount();
+    DFEVar jj = ctrdone ? B2-1 : jjc.getCount();
+    DFEVar laddr = ii.cast(dfeUInt(maxAddrSize)) * B2 + jj.cast(dfeUInt(maxAddrSize));
+    DFEVar stopCond = stream.offset(laddr === B1*B2-1, -1);
+
+    // NOTE: May cause timing issues
+    // MaxJ doesn't like the multiply node in the address calculation below. Not adding
+    // the optimization pragma causes the simulation to hang.
+    // Ideally, MaxJ should allow using DFEVars as loop increment values so that this multiply
+    // can be avoided in the critical path. But, alas, MaxJ doesn't let us do that!
+    // We can either write a state machine to do that manually (laborious), or
+    // force MaxJ to not pipeline this part and run the risk of not meeting timing.
+    // Given the time constraints, we should atleast try this first as it's simpler
+//    optimization.pushPipeliningFactor(0);
+    DFEVar burstAddr = sBurstOffset + (iOut.cast(dfeUInt(32))+ii.cast(dfeUInt(32))) * getNumberOfBursts(D2).cast(dfeUInt(32)) + getNumberOfBursts(jOut.cast(dfeUInt(32)));
+//    optimization.popPipeliningFactor();
+
+    DFEVar ctrl = memStart & (jj === 0);
+    DFEVar size = constant.var(dfeUInt(8), getNumberOfBursts(B2, type));
+    DFEVar inc = constant.var(dfeUInt(8),1);
+    DFEVar stream = constant.var(dfeUInt(1),0);
+    DFEVar tag = constant.var(false);
+
+    String cmdStreamName = streamName + "_cmd";
+    LMemCommandStream.makeKernelOutput(cmdStreamName,
+        ctrl,
+        burstAddr,
+        size,
+        inc,
+        stream,
+        tag);
+
+
+    io.forceExactIOSeparation(streamName, cmdStreamName, -16);  // Arbitrarily picked to handle divides
+
+    waddr <== ii * B2 + jj;
+    dataIn <== io.input(streamName, structType, (memStart & ~stopCond));
+
+    ArrayList<DFEVar> dataInArray = new ArrayList<DFEVar>(dataIn.packToList());
+    for (int tmp=0; tmp<wdata.length; tmp++) {
+      wdata[tmp] <== dataInArray.get(tmp);
+    }
+    wen <== memStart;
+
+    if (dbgDetail) {
+      debug.simPrintf(memStart, streamName + "(%d, %d), [ctrdone = %d] Fetched %d, writing to addr %d\n", iOut, jOut, ctrdone, wdata, waddr);
+    }
+  }
+
+  /**
+   * Parallel version which auto-deducts type of wdata.
+   * This means that the caller must instantiate the wdata
+   * stream with the correct type.
+   * The 'par' value is inferred from the length of the DFEVector
+   * passed in.
+   * wdata: A vector of elements to be written out to BRAM
+   * waddr: A vector of addresses corresponding to elements in the wdata vector.
+   *        waddr produces per-element addresses
+   * B1, B2: Size of block in elements.
+   */
+   void common (
+    KernelLib owner,
+    DFEVar en, DFEVar done,
+    DFEVar isLdSt, DFEVar forceLdSt,
+    DFEVar D2,
+    DFEVar i, DFEVar j,
+    int sBurstOffset, String streamName,
+    int B1, int B2,
+    DFEVector<DFEVar> waddr, DFEVector<DFEVar> wdata, DFEVar wen)
+  {
+    int par = wdata.getSize();
+    DFEType type = wdata[0].getType();
+    OffsetExpr doneOffset = stream.makeOffsetAutoLoop(streamName + "doneOffset");
+    SMIO sm = addStateMachine(streamName + "ldSM", new BlockSM(this));
+    sm.connectInput("sm_en", en);
+    done <== stream.offset(sm.getOutput("sm_done"), -1);
+
+    DFEVar memDone = dfeBool().newInstance(this);
+    sm.connectInput("forceLdSt", forceLdSt);
+    sm.connectInput("i", i);
+    sm.connectInput("jburst", j);
+    sm.connectInput("memDone", memDone);
+
+    DFEVar memStart = sm.getOutput("memStart");
+    if (dbg) {
+      DFEVar prevMemStart = stream.offset(memStart, -1);
+      debug.simPrintf(prevMemStart ^ memStart, "[BlockLoader " + streamName + "] memStart changed to %d\n", memStart);
+    }
+    DFEVar iOut = sm.getOutput("iOut");
+    DFEVar jOut= sm.getOutput("jburstOut");
+    isLdSt <== sm.getOutput("isLdStOut");
+
+    int maxAddrSize = MathUtils.bitsToAddress(B1*B2);
+    Count.Params jjParams = control.count.makeParams(maxAddrSize)
+                             .withEnable(memStart)
+                             .withMax(B2)
+                             .withReset(~memStart);
+    Count.CounterVect jjc = control.count.makeCounterVect(par, jjParams);
+    DFEVar jjwrap = jjc.getWrap();
+    // Count.Counter jjc = control.count.makeCounter(jjParams);
+    // DFEVar jjwrap = jjc.getCount() === B2-1;
+
+    Count.Params iiParams = control.count.makeParams(maxAddrSize)
+                             .withEnable(memStart & jjwrap)
+                             .withMax(B1)
+                             .withReset(~memStart)
+                             .withWrapMode(WrapMode.STOP_AT_MAX);
+    Count.Counter iic = control.count.makeCounter(iiParams);
+    DFEVar iiwrap = jjwrap & (iic.getCount() === B1-1);
+    memDone <== stream.offset(iiwrap, -doneOffset);
+
+    DFEVar ctrdone = Reductions.streamHold(memStart, iiwrap | ~memStart);
+    DFEVar ii = ctrdone ? B1-1 : iic.getCount();
+    DFEVectorType<DFEVar> jjVecType = new DFEVectorType<DFEVar>(dfeUInt(maxAddrSize), par);
+    DFEVector<DFEVar> jj = jjVecType.newInstance(this);
+    DFEVector<DFEVar> jjCountVec = jjc.getCount();
+    for (int tmp=0; tmp<par; tmp++) {
+      jj[tmp] <== ctrdone ? B2-par+tmp : jjCountVec[tmp];
+    }
+    DFEVector<DFEVar> laddr = ii.cast(dfeUInt(maxAddrSize)) * B2 + jj;
+    DFEVar stopCond = stream.offset(laddr[laddr.getSize()-1] === B1*B2-1, -1);
+
+    // NOTE: May cause timing issues
+    // MaxJ doesn't like the multiply node in the address calculation below. Not adding
+    // the optimization pragma causes the simulation to hang.
+    // Ideally, MaxJ should allow using DFEVars as loop increment values so that this multiply
+    // can be avoided in the critical path. But, alas, MaxJ doesn't let us do that!
+    // We can either write a state machine to do that manually (laborious), or
+    // force MaxJ to not pipeline this part and run the risk of not meeting timing.
+    // Given the time constraints, we should atleast try this first as it's simpler
+//    optimization.pushPipeliningFactor(0);
+    DFEVar burstAddr = sBurstOffset + (iOut.cast(dfeUInt(32))+ii.cast(dfeUInt(32))) * getNumberOfBursts(D2).cast(dfeUInt(32)) + getNumberOfBursts(jOut.cast(dfeUInt(32)));
+//    optimization.popPipeliningFactor();
+
+    DFEVar ctrl = memStart & (jj[0] === 0);
+    DFEVar size = constant.var(dfeUInt(8), getNumberOfBursts(B2, type));
+    DFEVar inc = constant.var(dfeUInt(8),1);
+    DFEVar stream = constant.var(dfeUInt(1),0);
+    DFEVar tag = constant.var(false);
+
+    String cmdStreamName = streamName + "_cmd";
+    LMemCommandStream.makeKernelOutput(cmdStreamName,
+        ctrl,
+        burstAddr,
+        size,
+        inc,
+        stream,
+        tag);
+
+    io.forceExactIOSeparation(streamName, cmdStreamName, -16);  // Arbitrarily picked to handle divides
+
+    waddr <== ii * B2 + jj;
+    if (par == B1*B2) {
+      wdata <== io.input(streamName, wdata.getType(), memStart);
+    } else {
+      wdata <== io.input(streamName, wdata.getType(), (memStart & ~stopCond));
+    }
+
+    wen <== memStart;
+
+    if (dbgDetail) {
+      debug.simPrintf(memStart, streamName + "(%d, %d), [ctrdone = %d]:\n", iOut, jOut, ctrdone);
+      debug.simPrintf(memStart, "Fetched: ");
+      printVec(wdata, memStart);
+      debug.simPrintf(memStart, "Writing to addr: ");
+      printVec(waddr, memStart);
+    }
+  }
+
+  BlockLoaderLib (
+    KernelLib owner,
+    DFEVar en, DFEVar done,
+    DFEVar isLdSt, DFEVar forceLdSt,
+    DFEVar D2,
+    DFEVar i, DFEVar j,
+    int sBurstOffset, String streamName,
+    int B1, int B2,
+    DFEVector<DFEVar> waddr, DFEVector<DFEVar> wdata, DFEVar wen
+    )
+  {
+    super(owner);
+    common(owner, en, done, isLdSt, forceLdSt, D2, i, j, sBurstOffset, streamName, B1, B2, waddr, wdata, wen);
+  }
+
+BlockLoaderLib (
+    KernelLib owner,
+    DFEVar en, DFEVar done,
+    DFEVar isLdSt, DFEVar forceLdSt,
+    DFEVar D2,
+    DFEVar i, DFEVar j,
+    int sBurstOffset, String streamName,
+    int B1, int B2,
+    DFEVar waddr, DFEVar wdata, DFEVar wen
+    )
+  {
+    super(owner);
+    DFEVectorType<DFEVar> waddrType = new DFEVectorType<DFEVar>(waddr.getType(), 1);
+    DFEVectorType<DFEVar> wdataType = new DFEVectorType<DFEVar>(wdata.getType(), 1);
+    DFEVector<DFEVar> waddrVec = waddrType.newInstance(this);
+    DFEVector<DFEVar> wdataVec = wdataType.newInstance(this);
+    waddrVec[0] <== waddr;
+    wdataVec[0] <== wdata;
+    common(owner, en, done, isLdSt, forceLdSt, D2, i, j, sBurstOffset, streamName, B1, B2, waddrVec, wdataVec, wen);
+  }
+
+  void printVec(DFEVector<DFEVar> v, DFEVar en) {
+    for (int i=0; i<v.getSize(); i++) {
+      debug.simPrintf(en, "%d ", v[i]);
+    }
+    debug.simPrintf(en, "\n");
+  }
+
+  /* TODO: Optimized version where D2 is a known constant */
+  /* TODO: Optimized version where entire block is loaded using
+     just one memory command instead of many.
+     This is possible if we know that D2 isn't large
+  */
+  /* TODO: Optimized version where B2 = D2. This would result in
+     just one memory command instead of many.
+     Maybe this can be collapsed into the previous case?
+  */
+}

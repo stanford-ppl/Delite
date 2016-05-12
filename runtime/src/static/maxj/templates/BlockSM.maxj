@@ -1,0 +1,157 @@
+package engine;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmInput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmOutput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateEnum;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
+import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
+import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
+
+class BlockSM extends KernelStateMachine {
+
+  // States
+  enum States {
+    INIT,
+    RUN,
+    DELAY,
+    DONE,
+    W
+  }
+
+  // State IO
+  private final DFEsmOutput sm_done;
+  private final DFEsmInput sm_en;
+
+  private final DFEsmInput forceLdSt;
+  private final DFEsmInput i;
+  private final DFEsmInput jburst;
+  private final DFEsmInput memDone;
+  
+  private final DFEsmOutput memStart;
+  private final DFEsmOutput iOut;
+  private final DFEsmOutput jburstOut;
+  private final DFEsmOutput isLdStOut;
+
+  // State storage
+  private final DFEsmStateEnum<States> stateFF;
+  private final DFEsmStateValue iFF;
+  private final DFEsmStateValue jburstFF;
+  private final DFEsmStateValue forceLdStFF;
+  private final DFEsmStateValue isLdStFF;
+  private final DFEsmStateValue delayFF;
+
+  private boolean dbg = false;
+  private int delayInitVal = 64;  //TODO: Should be a sm input, and should wait only on stores
+  public BlockSM(KernelLib owner) {
+    super(owner);
+
+    // Declare all types required to wire the state machine together
+    DFEsmValueType counterType = dfeUInt(32);
+    DFEsmValueType wireType = dfeBool();
+    // Define state machine IO
+    sm_done = io.output("sm_done", wireType);
+    sm_en = io.input("sm_en", wireType);
+
+
+    forceLdSt = io.input("forceLdSt", wireType);
+    i = io.input("i", counterType);
+    jburst = io.input("jburst", counterType);
+    memDone = io.input("memDone", wireType);
+
+    memStart = io.output("memStart", wireType);
+    iOut = io.output("iOut", counterType);
+    jburstOut = io.output("jburstOut", counterType);
+    isLdStOut = io.output("isLdStOut", wireType);
+
+    // Define state storage elements and initial state
+    stateFF = state.enumerated(States.class, States.INIT);
+    iFF = state.value(counterType, 0);
+    jburstFF = state.value(counterType, 0);
+    forceLdStFF = state.value(wireType, 0);
+    isLdStFF = state.value(wireType, 0);
+    delayFF = state.value(counterType, delayInitVal);
+  }
+
+  @Override
+  protected void nextState() {
+    IF(sm_en) {
+      SWITCH(stateFF) {
+        CASE (States.INIT) {
+          if (dbg) {
+            debug.simPrintf("BlockSM INIT\n");
+          }
+          // Latch all input signals
+          iFF.next <== i;
+          jburstFF.next <== jburst;
+          forceLdStFF.next <== forceLdSt;
+          delayFF.next <== delayInitVal;
+
+          IF ((i !== iFF) | (jburst !== jburstFF) | (forceLdSt)) {
+            isLdStFF.next <== 1;
+            stateFF.next <== States.RUN;
+          } ELSE {
+            isLdStFF.next <== 0;
+            stateFF.next <== States.DONE;
+          }
+        }
+        CASE (States.RUN) {
+          if (dbg) {
+            debug.simPrintf("BlockSM RUN\n");
+          }
+          IF (memDone) {
+            stateFF.next <== States.DELAY;
+//            stateFF.next <== States.DONE;
+          }
+        }
+        CASE (States.DELAY) {
+          if (dbg) {
+            debug.simPrintf("BlockSM DELAY\n");
+          }
+          delayFF.next <== delayFF-1;
+          IF (delayFF === 0) {
+            stateFF.next <== States.DONE;
+          }
+        }
+
+        CASE (States.DONE) {
+          if (dbg) {
+            debug.simPrintf("BlockSM DONE\n");
+          }
+          stateFF.next <== States.W;
+        }
+        CASE (States.W) {
+          if (dbg) {
+            debug.simPrintf("BlockSM W\n");
+          }
+          stateFF.next <== States.W;
+        }
+      }
+    } ELSE {
+//      debug.simPrintf("BlockSM disabled\n");
+      isLdStFF.next <== 0;
+      stateFF.next <== States.INIT;
+    }
+  }
+
+
+  @Override
+  protected void outputFunction() {
+    sm_done <== 0;
+    memStart <== 0; // isLdStFF;
+    iOut <== iFF;
+    jburstOut <== jburstFF;
+    isLdStOut <== isLdStFF;
+
+    IF (sm_en) {
+      SWITCH(stateFF) {
+        CASE(States.RUN) {
+          memStart <== 1;
+        }
+        CASE(States.DONE) {
+          memStart <== 0;
+          sm_done <== 1;
+        }
+      }
+    }
+  }
+}

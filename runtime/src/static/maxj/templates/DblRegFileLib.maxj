@@ -1,0 +1,83 @@
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.Optimization;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+
+class DblRegFileLib extends KernelLib {
+
+  // All sourceless streams
+  DFEVector<DFEVar> rdata;
+  DFEVar rdone;
+
+  DFEVector<DFEVar> wdata;
+  DFEVar wdone;
+  DFEVar wen;
+  DFEVar realCurBuf;
+
+  private void common (DFEType type, String smname, int par) {
+    DFEVectorType<DFEVar> vectorType = new DFEVectorType<DFEVar>(type, par);
+    rdata = vectorType.newInstance(this);
+    wdata = vectorType.newInstance(this);
+
+    rdone = dfeBool().newInstance(this);
+    wdone = dfeBool().newInstance(this);
+    wen = dfeBool().newInstance(this);
+
+    SMIO sm = addStateMachine(smname, new DblBufStateMachine(this));
+    sm.connectInput("r_done", rdone);
+    sm.connectInput("w_done", wdone);
+    realCurBuf = sm.getOutput("curBuf");
+
+    DelayLib r0 = new DelayLib(this, ~realCurBuf & wen, wdata);
+    DelayLib r1 = new DelayLib(this, realCurBuf & wen, wdata);
+
+    // Kindly finish MUX-ing in one cycle
+    optimization.pushPipeliningFactor(0);
+    rdata <== realCurBuf ? r0.q_vector : r1.q_vector;
+    optimization.popPipeliningFactor();
+  }
+
+  DblRegFileLib(KernelLib owner, DFEType type, String smname, int par) {
+    super(owner);
+    common(type, smname, par);
+  }
+
+  // DblRegFileLib(KernelLib owner, String smname, int size, int n, DFEVar wd) {
+  DblRegFileLib(KernelLib owner, DFEType type, String smname) {
+    super(owner);
+    common(type, smname, 1);
+  }
+
+  DFEVector<DFEVar> readv() {
+    return rdata;
+  }
+
+  DFEVar read() {
+    return rdata[0];
+  }
+
+  void write(DFEVar data, DFEVar en) {
+    wdata[0] <== data;
+    wen <== en;
+  }
+
+  void write(DFEVector<DFEVar> data, DFEVar en) {
+    wdata <== data;
+    wen <== en;
+  }
+
+  void connectRdone(DFEVar done) {
+    rdone <== done;
+  }
+
+  void connectWdone(DFEVar done) {
+    wdone <== done;
+  }
+}

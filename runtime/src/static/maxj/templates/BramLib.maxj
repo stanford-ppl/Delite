@@ -1,0 +1,416 @@
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.KernelMath;
+
+/*
+ * @BramLib: Library that creates Block RAM with multiple banks
+ * TODO: Parameterize this library to support the following:
+ *  1. Simple dual port: One address stream with write enable
+ *  2. Read-only: ROM
+ *  3. Support strided interleaving. Currently only round-robin interleaving
+ *  is supported - successive words map to different banks.
+ */
+class BramLib extends KernelLib {
+
+  final int MAX_FFMEM_DEPTH=4;
+
+  int addrBits;
+  int banks;
+  int stride;
+  int size0;
+  int size1;
+  int depth;
+  DFEType type;
+  OnChipMem[] m;
+  BankMode bm;
+
+  boolean dbg = false;
+
+  void common(int size0, int size1, DFEType type, int banks, int stride) {
+    this.type = type;
+    this.size0 = size0;
+    this.size1 = size1;
+    this.depth = size0 * size1;
+    this.addrBits = MathUtils.bitsToAddress(this.depth);
+    this.banks = banks;
+    this.stride = stride;
+    // TODO: Not really sure about this logic
+    if (banks == 1) {this.bm = BankMode.NONE;}
+    else if (stride == 1) {this.bm = BankMode.INTERLEAVE;}
+    else if ((stride > 1) & (size1 > 1)) {this.bm = BankMode.DIAGONAL;}
+    else {this.bm = BankMode.STRIDE;}
+
+    if ((depth/banks) <= MAX_FFMEM_DEPTH) {
+      m = new FFMem[banks];
+      for (int i=0; i<banks; i++) {
+        m[i] = new FFMem(this, type, depth/banks);
+      }
+    } else {
+      m = new BoxedMem[banks];
+      for (int i=0; i<banks; i++) {
+        m[i] = new BoxedMem(this, type, depth/banks);
+      }
+    }
+  }
+
+  BramLib(KernelLib owner, int size0, int size1, DFEType type, int banks, int stride) {
+    super(owner);
+    common(size0, size1, type, banks, stride);
+  }
+
+  BramLib(KernelLib owner, int size0, int size1, DFEType type, int banks) {
+    super(owner);
+    common(size0, size1, type, banks, 1);
+  }
+
+  BramLib(KernelLib owner, int size0, int size1, DFEType type) {
+    super(owner);
+    common(size0, size1, type, 1, 1);
+  }
+
+  /**
+   *  Enum to distinguish between what kind of address is required
+   *  from bankAndLocalAddr.
+   */
+  public enum AddrMode {
+     BANK,
+     LOCAL,
+     ROWROTATION,
+     COLROTATION
+  }
+
+  /**
+   *  Enum to distinguish between what kind of banking scheme
+   *  to implement.
+   */
+  public enum BankMode {
+     NONE,
+     INTERLEAVE,
+     STRIDE,
+     DIAGONAL
+  }
+
+  /**
+   *  Calculating bank address and local address within a bank
+   *  using a single divider.
+   *  @param srcAddr: Source address to be split into bank/local address
+   *  @param mode: BANK for bank address, LOCAL for bank local address
+   *  The 'stride' parameter describes interleaving scheme among banks. In particular,
+   *  'stride' refers to the number of consecutive addresses that map to the same bank.
+   *  This is typically equal to the number of columns, if the bank is storing
+   *  a matrix that is accessed column-wise.
+   *  stride == 1 corresponds to round-robin interleaving
+   */
+  DFEVar bankAndLocalAddr(DFEVar srcAddr, AddrMode mode) {
+    switch (bm) {
+      case NONE:
+        switch (mode) {
+          case BANK:
+            return constant.var(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))), 0);
+          case LOCAL:
+            return srcAddr;
+          case ROWROTATION:
+            return constant.var(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))), 0);
+          case COLROTATION:
+            return constant.var(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))), 0);
+          default:
+            return srcAddr;
+          }
+      case INTERLEAVE:
+        // Get x,y dims
+        if (MathUtils.isPowerOf2(banks)) {
+          switch (mode) {
+            case BANK:
+              return srcAddr.slice(0, MathUtils.bitsToAddress((banks==1 ? 2 : banks))).cast(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))));
+            case LOCAL:
+              return srcAddr.slice(MathUtils.bitsToAddress((banks==1 ? 2 : banks)), MathUtils.bitsToAddress(depth/banks));
+            case ROWROTATION:
+              return constant.var(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))), 0);
+            case COLROTATION:
+              return constant.var(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))), 0);
+            default:
+              return srcAddr;
+          }
+        } else {
+          KernelMath.DivModResult d = KernelMath.divMod(srcAddr.cast(dfeUInt(MathUtils.bitsToAddress(depth))), constant.var(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))), banks));
+          switch (mode) {
+            case BANK:
+              return d.getRemainder();  // addr % banks
+            case LOCAL:  // addr / banks
+              // return d.getQuotient().cast(dfeUInt(MathUtils.bitsToAddress(banks)));
+              if (depth == banks) {
+                constant.var(0);
+              } else {
+                return d.getQuotient().cast(dfeUInt(MathUtils.bitsToAddress(depth/banks)));
+              }
+            case ROWROTATION:
+              return constant.var(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))), 0);
+            case COLROTATION:
+              return constant.var(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))), 0);
+            default:
+              return srcAddr;
+          }
+        }
+      case STRIDE:
+        if (MathUtils.isPowerOf2(stride) & (MathUtils.isPowerOf2(banks))) {
+          int stridebits = MathUtils.bitsToAddress(stride);
+          int bankbits = MathUtils.bitsToAddress((banks==1 ? 2 : banks));
+          switch (mode) {
+            case BANK:
+              return srcAddr.slice(stridebits, bankbits);
+            case LOCAL:
+              DFEVar lsb = srcAddr.slice(0, stridebits);
+              DFEVar msb = srcAddr.slice(stridebits + bankbits, MathUtils.bitsToAddress(depth) - stridebits - bankbits);
+              return msb.cat(lsb);
+              case ROWROTATION:
+                return constant.var(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))), 0);
+            case COLROTATION:
+              return constant.var(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))), 0);
+            default:
+              return srcAddr;
+          }
+        } else {  // Fall back to general case if either stride or banks is not a power-of-2
+          KernelMath.DivModResult addrByStride = KernelMath.divMod(srcAddr.cast(dfeUInt(MathUtils.bitsToAddress(depth))), constant.var(dfeUInt(MathUtils.bitsToAddress(stride)), stride));
+          switch(mode) {
+            case BANK:
+              DFEVar bankAddr = KernelMath.modulo(addrByStride.getQuotient(), banks);
+              return bankAddr;
+            case LOCAL:
+              KernelMath.DivModResult addrByStrideBanks = KernelMath.divMod(srcAddr.cast(dfeUInt(MathUtils.bitsToAddress(depth))), constant.var(dfeUInt(MathUtils.bitsToAddress(stride*banks)), stride*banks));
+              DFEVar bankLocalAddr = addrByStride.getRemainder().cast(dfeUInt(MathUtils.bitsToAddress(depth/banks))) + stride * (addrByStrideBanks.getQuotient().cast(dfeUInt(MathUtils.bitsToAddress(depth/banks))));
+              return bankLocalAddr;
+            case ROWROTATION:
+              return constant.var(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))), 0);
+            case COLROTATION:
+              return constant.var(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))), 0);
+            default:
+              return srcAddr;
+          }
+        }
+      case DIAGONAL:
+        // Get x,y dims
+        DFEVar dfeStride = constant.var(dfeUInt(addrBits), stride);
+        if (MathUtils.isPowerOf2(banks)) {
+          switch (mode) {
+            case BANK:
+              return srcAddr.slice(0, MathUtils.bitsToAddress((banks==1 ? 2 : banks))).cast(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))));
+            case LOCAL:
+              return srcAddr.slice(MathUtils.bitsToAddress((banks==1 ? 2 : banks)), MathUtils.bitsToAddress(depth/banks));
+            case ROWROTATION:
+              DFEVar row = KernelMath.divMod(srcAddr.cast(dfeUInt(MathUtils.bitsToAddress(depth))), dfeStride).getQuotient().cast(dfeUInt(addrBits));
+              return row.slice(0, MathUtils.bitsToAddress((banks==1 ? 2 : banks))).cast(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))));
+            case COLROTATION:
+              DFEVar col = KernelMath.divMod(srcAddr.cast(dfeUInt(MathUtils.bitsToAddress(depth))), dfeStride).getRemainder().cast(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))));
+              return col.slice(0, MathUtils.bitsToAddress((banks==1 ? 2 : banks))).cast(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))));
+            default:
+              return srcAddr;
+          }
+        } else {
+          KernelMath.DivModResult d = KernelMath.divMod(srcAddr.cast(dfeUInt(MathUtils.bitsToAddress(depth))), constant.var(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))), banks));
+          switch (mode) {
+            case BANK:
+              return d.getRemainder();
+            case LOCAL:  // addr / banks
+              // return d.getQuotient().cast(dfeUInt(MathUtils.bitsToAddress(banks)));
+              return d.getQuotient().cast(dfeUInt(MathUtils.bitsToAddress(depth/banks)));
+            case ROWROTATION:
+              DFEVar row = KernelMath.divMod(srcAddr.cast(dfeUInt(MathUtils.bitsToAddress(depth))), dfeStride).getQuotient().cast(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))));
+              return row.slice(0, MathUtils.bitsToAddress((banks==1 ? 2 : banks))).cast(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))));
+            case COLROTATION:
+              DFEVar col = KernelMath.divMod(srcAddr.cast(dfeUInt(MathUtils.bitsToAddress(depth))), dfeStride).getRemainder().cast(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))));
+              return col.slice(0, MathUtils.bitsToAddress((banks==1 ? 2 : banks))).cast(dfeUInt(MathUtils.bitsToAddress((banks==1 ? 2 : banks))));
+            default:
+              return srcAddr;
+          }
+        }
+        // // OLD DIAGONAL LOGIC
+        // DFEVar dfeBanks = constant.var(dfeUInt(addrBits), banks);
+        // DFEVar dfeStride = constant.var(dfeUInt(addrBits), stride);
+        // KernelMath.DivModResult d = KernelMath.divMod(srcAddr.cast(dfeUInt(MathUtils.bitsToAddress(depth))), dfeStride);
+        // DFEVar row = d.getQuotient().cast(dfeUInt(addrBits));
+        // DFEVar col = d.getRemainder().cast(dfeUInt(addrBits));
+        // DFEVar banksPerRow = constant.var(dfeUInt(addrBits), stride/banks);
+        // DFEVar radius = row + col; // Radius from origin (diagonal)
+        // switch (mode) {
+        //   case BANK:
+        //     DFEVar temp = KernelMath.divMod(radius, dfeBanks).getRemainder();
+        //     // debug.simPrintf("[bank addr: %d]\n", temp);
+        //     return temp;
+        //   case LOCAL:
+        //     // DFEVar a1 = col;
+        //     // DFEVar a2 = dfeBanks;
+        //     // DFEVar a3 = KernelMath.divMod(col, dfeBanks).getQuotient().cast(dfeUInt(addrBits));
+        //     DFEVar temp1 = row * banksPerRow + KernelMath.divMod(col, dfeBanks).getQuotient().cast(dfeUInt(addrBits));
+        //     // debug.simPrintf("[global addr: %d, local addr: %d (%d / %d floor = %d)]\n", srcAddr, temp1, a1, a2, a3);
+        //     return temp1;
+        //       return row.slice(0, bankbits);
+        //   default:
+        //     return srcAddr;
+        // }
+      default:
+        return srcAddr;
+      }
+  }
+
+
+  DFEVar connectRport(DFEVar srcAddr) {
+    DFEVar bank_local_addr = bankAndLocalAddr(srcAddr, AddrMode.LOCAL);
+    DFEVar bank_addr = bankAndLocalAddr(srcAddr, AddrMode.BANK);
+    DFEVar[] bank_local_rdata = new DFEVar[banks];
+    for (int i=0; i<banks; i++) {
+      bank_local_rdata[i] = m[i].read(bank_local_addr);
+    }
+    if (banks == 1) {
+      return bank_local_rdata[0];
+    } else {
+      DFEVar rdata = control.mux(bank_addr, bank_local_rdata);
+      if (dbg) {
+        debug.simPrintf((srcAddr ^ stream.offset(srcAddr, -1)) !== constant.var(0), "raddr = %d (bank = %d, bank_local_addr = %d), rdata = %d, numBanks = %d\n", srcAddr, bank_addr, bank_local_addr, rdata, banks);
+      }
+      return rdata;
+    }
+  }
+
+  void connectWport(DFEVar dstAddr, DFEVar data, DFEVar en) {
+    connectWport(dstAddr, data, en, 0, 1);
+  }
+
+  /**
+   *  Write a single value to this memory bank. The 'start' and 'stride' are used to restrict
+   *  the number of banks to which this value could be written. This is useful when the value
+   *  produced can only be written to a subset of the banks.
+   *  @param dstAddr: DFEVar representing address (must decipher bank and local addr from this)
+   *  @param data: Data to be written
+   *  @param en: Write enable bit
+   *  @param start: Starting bank to which this write port should be connected
+   *  @param stride: Skip over these many banks when wiring write ports
+   */
+  void connectWport(DFEVar dstAddr, DFEVar data, DFEVar en, int start, int stride) {
+    if (banks == 1) {
+      m[0].write(dstAddr, data, en);
+    } else {
+      DFEVar bank_local_addr = bankAndLocalAddr(dstAddr, AddrMode.LOCAL);
+      DFEVar bank_addr = bankAndLocalAddr(dstAddr, AddrMode.BANK);
+      if (dbg) {
+          debug.simPrintf(en, "waddr = %d (bank = %d, bank_local_addr = %d), wdata = %d, numBanks = %d, stride = %d\n", dstAddr, bank_addr, bank_local_addr, data, banks, this.stride);
+      }
+      for (int i=start; i<banks; i+=stride) {
+        DFEVar wen = en & (bank_addr === i);
+        m[i].write(bank_local_addr, data, wen);
+      }
+    }
+  }
+
+  DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr) {
+    DFEVar[] bank_local_rdata = new DFEVar[banks];
+    if (banks != srcAddr.getSize()) {
+      System.out.printf("ERROR: #banks = %d, Vector size = %d do not match!", banks, srcAddr.getSize());
+      System.exit(-1);
+    }
+
+    // Redirect outputs to appropriate stream slots if necessary
+    if (banks == 1){
+      for (int i=0; i<banks; i++) {
+        DFEVar bank_addr = bankAndLocalAddr(srcAddr[i], AddrMode.BANK);
+        DFEVar bank_local_addr = bankAndLocalAddr(srcAddr[i], AddrMode.LOCAL);
+        bank_local_rdata[i] = m[i].read(bank_local_addr);
+      }
+      DFEVectorType<DFEVar> vectorType = new DFEVectorType<DFEVar>(type, banks);
+      DFEVector<DFEVar> outstream = vectorType.newInstance(this);
+      for (int i=0; i<banks; i++) {
+        outstream[i] <== bank_local_rdata[i];
+      }
+      return outstream;
+    } else {
+      // If we are reading an element from each row, then srcAddrs MUST be 
+      //   multiplexed, as each bank has a different local address:(
+      DFEVar rd_delta = srcAddr[1] - srcAddr[0];
+      DFEVar dfeSize0 = constant.var(dfeUInt(addrBits), size0);
+      DFEVar rd_sel = (srcAddr[1] - srcAddr[0]).cast(dfeUInt(addrBits)).eq(dfeSize0);      
+      // Bundle address array into a structure we can mux from
+      DFEVar[] srcAddr_4mux = new DFEVar[banks];
+      for (int i=0; i<banks; i++) {
+        srcAddr_4mux[i] = srcAddr[i];
+      }
+      for (int i=0; i<banks; i++) {
+        DFEVar col_rotation = bankAndLocalAddr(srcAddr[i], AddrMode.COLROTATION);
+        DFEVar row_rotation = bankAndLocalAddr(srcAddr[i], AddrMode.ROWROTATION);
+        DFEVar vert_adjustment = row_rotation - col_rotation;
+        DFEVar shifted_amt = control.mux(rd_sel, constant.var(0), vert_adjustment);
+        DFEVar shifted_addr = control.mux(shifted_amt, srcAddr_4mux);
+        DFEVar bank_local_addr = bankAndLocalAddr(shifted_addr, AddrMode.LOCAL);
+        bank_local_rdata[i] = m[i].read(bank_local_addr);
+      }
+
+      DFEVectorType<DFEVar> vectorType = new DFEVectorType<DFEVar>(type, banks);
+      DFEVector<DFEVar> outstream = vectorType.newInstance(this);
+      // Rotation depends on column for reading rows in parallel,
+      //  depends on row for reading cols in parallel
+      for (int i=0; i<banks; i++) {
+        DFEVar bank_addr = bankAndLocalAddr(srcAddr[i], AddrMode.BANK);
+        DFEVar rotation = bankAndLocalAddr(srcAddr[i], AddrMode.ROWROTATION);
+        DFEVar effective_bank = bank_addr + rotation;
+        DFEVar select = effective_bank.slice(0, MathUtils.bitsToAddress(banks));
+        outstream[i] <== control.mux(select, bank_local_rdata);
+      }
+      return outstream;
+    }
+  }
+
+
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en, int start, int stride) {
+    if (dstAddr.getSize() == 1) {
+      connectWport(dstAddr[0], dstData[0], en);
+    } else {
+      connectWport(dstAddr, dstData, en);
+    }
+  }
+
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en) {
+    if (dstAddr.getSize() == 1) {
+      connectWport(dstAddr[0], dstData[0], en);
+    } else {
+      if (banks == 1) { // Not sure why there would ever be vectored input to 1-bank mem
+        for (int i=0; i<banks; i++) {
+          DFEVar bank_local_addr = bankAndLocalAddr(dstAddr[i], AddrMode.LOCAL);
+          m[i].write(bank_local_addr, dstData[i], en);
+        }
+      } else {
+        DFEVar[] dstAddr_array = new DFEVar[banks];
+        DFEVar[] dstData_array = new DFEVar[banks];
+        for (int i=0; i<banks; i++) {
+          dstAddr_array[i] = dstAddr[i];
+          dstData_array[i] = dstData[i];
+        }
+
+        for (int i=0; i<banks; i++) {
+          // All should have same rotation?  As long as we don't read over multiple rows
+          DFEVar bank_addr = bankAndLocalAddr(dstAddr[i], AddrMode.BANK);
+          DFEVar rotation = bankAndLocalAddr(dstAddr[i], AddrMode.ROWROTATION);
+          DFEVar effective_bank = bank_addr - rotation;
+          DFEVar select = effective_bank.slice(0, MathUtils.bitsToAddress(banks));
+          DFEVar waddr = control.mux(select, dstAddr_array);
+          DFEVar wdata = control.mux(select, dstData_array);
+          DFEVar bank_local_addr = bankAndLocalAddr(waddr, AddrMode.LOCAL);
+          m[i].write(bank_local_addr, wdata, en);
+        }
+      }
+    }
+  }
+
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData) {
+    if (dstAddr.getSize() == 1) {
+      connectWport(dstAddr[0], dstData[0], constant.var(true));
+    } else {
+      connectWport(dstAddr, dstData, constant.var(true));
+    }
+  }
+}

@@ -1,0 +1,152 @@
+
+package engine;
+  import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+  import com.maxeler.maxcompiler.v2.statemachine.DFEsmInput;
+  import com.maxeler.maxcompiler.v2.statemachine.DFEsmOutput;
+  import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateEnum;
+  import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
+  import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
+  import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
+
+class PipeSM extends KernelStateMachine {
+
+    // States
+    enum States {
+      INIT,
+      RSET,
+      RUN,
+      DONE,
+      SPIN_WAIT
+    }
+
+    // State IO
+    private final DFEsmOutput sm_done;
+    private final DFEsmInput sm_en;
+
+    private final DFEsmInput[] sm_maxIn;
+
+    private final DFEsmInput ctr_done;
+    private final DFEsmOutput ctr_en;
+    private final DFEsmInput rst_done;
+    private final DFEsmOutput rst_en;
+    private final DFEsmOutput[] ctr_maxOut;
+
+    // State storage
+    private final DFEsmStateValue[] maxFF;
+    private final DFEsmStateEnum<States> stateFF;
+    private final DFEsmStateValue counterFF;
+
+    private int iterDepth = 0;
+    // Initialize state machine in constructor
+    public PipeSM(KernelLib owner, int iterDepth) {
+      super(owner);
+      this.iterDepth = iterDepth;
+
+      // Declare all types required to wire the state machine together
+      DFEsmValueType counterType = dfeUInt(32);
+      DFEsmValueType wireType = dfeBool();
+
+      // Define state machine IO
+      sm_done = io.output("sm_done", wireType);
+      sm_en = io.input("sm_en", wireType);
+
+      sm_maxIn = new DFEsmInput[iterDepth];
+      maxFF = new DFEsmStateValue[iterDepth];
+      ctr_maxOut = new DFEsmOutput[iterDepth];
+      for (int i=0; i<iterDepth; i++) {
+        sm_maxIn[i] = io.input("sm_maxIn_"+i, counterType);
+        maxFF[i] = state.value(counterType, 0);
+        ctr_maxOut[i] = io.output("ctr_maxOut_"+i, counterType);
+      }
+
+      ctr_done = io.input("ctr_done", wireType);
+      ctr_en = io.output("ctr_en", wireType);
+
+      rst_done = io.input("rst_done", wireType);
+      rst_en = io.output("rst_en", wireType);
+
+      // Define state storage elements and initial state
+      stateFF = state.enumerated(States.class, States.INIT);
+      counterFF = state.value(counterType, 0);
+    }
+
+    private void resetMaxFF() {
+      for (int i=0; i<iterDepth; i++) {
+        maxFF[i].next <== 0;
+      }
+    }
+
+    @Override
+    protected void nextState() {
+      IF(sm_en) {
+        SWITCH(stateFF) {
+          CASE (States.INIT) {
+            counterFF.next <== 0;
+            for (int i=0; i<iterDepth; i++) {
+              maxFF[i].next <== sm_maxIn[i];
+            }
+            stateFF.next <== States.RSET;
+          }
+
+          CASE (States.RSET) {
+            IF (rst_done) {
+              stateFF.next <== States.RUN;
+            }
+          }
+
+          CASE (States.RUN) {
+            IF (ctr_done) {
+              resetMaxFF();
+              stateFF.next <== States.DONE;
+            } ELSE {
+              stateFF.next <== States.RUN;
+            }
+          }
+
+          CASE (States.DONE) {
+            stateFF.next <== States.SPIN_WAIT;
+          }
+
+         CASE (States.SPIN_WAIT) {
+           stateFF.next <== States.SPIN_WAIT;
+         }
+         OTHERWISE {
+           stateFF.next <== stateFF;
+         }
+      }
+    } ELSE {
+      stateFF.next <== States.INIT;
+    }
+  }
+
+  @Override
+    protected void outputFunction() {
+      sm_done <== 0;
+      ctr_en <== 0;
+      rst_en <== 0;
+
+      for (int i=0; i<iterDepth; i++) {
+        ctr_maxOut[i] <== 0;
+      }
+
+     IF (sm_en) {
+       SWITCH(stateFF) {
+
+          CASE (States.RSET) {
+            rst_en <== 1 & ~rst_done;
+          }
+
+          CASE (States.RUN) {
+            ctr_en <== 1 & ~ctr_done;
+            for (int i=0; i<iterDepth; i++) {
+              ctr_maxOut[i] <== maxFF[i];
+            }
+          }
+
+          CASE (States.DONE) {
+            sm_done <== 1;
+          }
+      }
+    }
+  }
+}

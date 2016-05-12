@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="MyProject" default="compile" basedir=".">
+	<description>
+	Build MaxJ -> class files
+	</description>
+
+	<!-- set global properties for this build -->
+	<property environment="env"/>
+	<property name="kernellibs" location="maxj/src/kernels"/>
+	<property name="templates" location="maxj/src/static/templates"/>
+	<property name="kernel" location="maxj/src/static/"/>
+	<property name="build" location="bin"/>
+	<property name="target" value="1.6"/>
+	<property name="source" value="1.6"/>
+	<property name="debuglevel" value="source,lines,vars"/>
+
+	<taskdef name="maxjcompiler" classname="org.eclipse.jdt.core.ant.taskdef.MaxjTask" 
+		classpath="${env.MAXCOMPILERDIR}/lib/MaxIDE/ecj.jar" />
+
+	<path id="maxcompiler_classpath">
+		<pathelement location="${env.MAXCOMPILERDIR}/lib/MaxCompiler.jar"/>
+		<pathelement location="${build}"/>
+	</path>
+	
+	<target name="init">
+		<!-- Create the time stamp -->
+		<tstamp/>
+		<!-- Create the build directory structure used by compile -->
+		<mkdir dir="${build}"/>
+	</target>
+	
+	<target name="compile" depends="init" description="compile the source" >
+		<!-- Compile the java code from ${kernels} and ${templates} into ${build} -->
+		<echo message="Using MaxCompiler from: ${env.MAXCOMPILERDIR}"/>
+		<echo message="Compiling templates"/>
+		<maxjcompiler listfiles="no" failonerror="true" debug="true" debuglevel="${debuglevel}" source="${source}" target="${target}" srcdir="${templates}" destdir="${build}">
+			<classpath refid="maxcompiler_classpath"/>
+		</maxjcompiler>
+		<echo message="Compiling kernel"/>
+		<maxjcompiler listfiles="no" failonerror="true" debug="true" debuglevel="${debuglevel}" source="${source}" target="${target}" srcdir="${kernel};${kernellibs}" destdir="${build}">
+			<classpath refid="maxcompiler_classpath"/>
+		</maxjcompiler>
+	</target>
+	
+	<target name="clean"
+		description="clean up" >
+		<!-- Delete the ${build} and ${dist} directory trees -->
+		<delete dir="${build}"/>
+		<mkdir dir="${build}"/>
+	</target>
+</project>

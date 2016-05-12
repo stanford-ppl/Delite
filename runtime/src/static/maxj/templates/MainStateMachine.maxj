@@ -1,0 +1,121 @@
+package engine;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmInput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmOutput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateEnum;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
+import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
+import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
+
+class MainStateMachine extends KernelStateMachine {
+
+  // States
+  enum States {
+    INIT,
+    RUN,
+    FLUSH,
+    INTR,
+    DONE
+  }
+
+  // State IO
+  private final DFEsmInput run_done;
+  private final DFEsmInput intr_done;
+  private final DFEsmOutput run_en;
+  private final DFEsmOutput intr_en;
+  private final DFEsmOutput sm_done;
+  private final DFEsmInput sm_en;
+  private final DFEsmOutput cycles;
+
+  // State storage
+  private final DFEsmStateEnum<States> stateFF;
+  private final DFEsmStateValue counterFF;
+  private final DFEsmStateValue flushDelayFF;
+
+  private int flushDelayVal = 512; // Arbitrarily picked
+
+  // Initialize state machine in constructor
+  public MainStateMachine(KernelLib owner) {
+    super(owner);
+
+    // Declare all types required to wire the state machine together
+    DFEsmValueType counterType = dfeUInt(64);
+    DFEsmValueType wireType = dfeBool();
+
+    // Define state machine IO
+    run_done = io.input("run_done", wireType);
+    intr_done = io.input("intr_done", wireType);
+    run_en = io.output("run_en", wireType);
+    intr_en = io.output("intr_en", wireType);
+    cycles = io.output("cycles", counterType);
+
+    sm_done = io.output("sm_done", wireType);
+    sm_en = io.input("sm_en", wireType);
+
+
+    // Define state storage elements and initial state
+    stateFF = state.enumerated(States.class, States.INIT);
+    counterFF = state.value(counterType, 0);
+    flushDelayFF = state.value(counterType, 0);
+  }
+
+  @Override
+  protected void nextState() {
+    IF(sm_en) {
+      SWITCH(stateFF) {
+        CASE (States.INIT) {
+//          debug.simPrintf("[main] In the INIT state\n");
+          counterFF.next <== 0;
+          flushDelayFF.next <== 0;
+          stateFF.next <== States.RUN;
+        }
+        CASE (States.RUN) {
+          counterFF.next <== counterFF + 1;
+//          debug.simPrintf("[main] In the RUN state\n");
+          IF (run_done) {
+            stateFF.next <== States.FLUSH;
+          }
+        }
+        CASE (States.FLUSH) {
+          flushDelayFF.next <== flushDelayFF + 1;
+          IF (flushDelayFF === flushDelayVal) {
+            stateFF.next <== States.INTR;
+          }
+        }
+        CASE (States.INTR) {
+          IF (intr_done) {
+            stateFF.next <== States.DONE;
+            debug.simPrintf("[main] Done, design ran for %d cycles\n", counterFF);
+          }
+        }
+        CASE (States.DONE) {
+          stateFF.next <== States.DONE;
+        }
+        OTHERWISE {
+          stateFF.next <== stateFF;
+        }
+      }
+    }
+  }
+
+  @Override
+  protected void outputFunction() {
+    run_en <== 0;
+    intr_en <== 0;
+    sm_done <== 0;
+    cycles <== counterFF;
+    IF (sm_en) {
+      SWITCH(stateFF) {
+        CASE (States.RUN) {
+          run_en <== 1;
+        }
+        CASE(States.INTR) {
+          intr_en <== 1;
+        }
+        CASE(States.DONE) {
+          sm_done <== 1;
+        }
+      }
+    }
+  }
+}

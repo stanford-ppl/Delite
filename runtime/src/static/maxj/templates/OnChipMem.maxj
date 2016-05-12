@@ -1,0 +1,34 @@
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+
+/**
+ * OnChipMem: Object representing on-chip memory.
+ */
+abstract class OnChipMem extends KernelLib {
+
+  protected int addrBits;
+  protected int size;
+  protected DFEType type;
+
+  OnChipMem(KernelLib owner, DFEType type, int size) {
+    super(owner);
+    this.addrBits = MathUtils.bitsToAddress(size);
+    this.type = type;
+    this.size = size;
+  }
+
+  abstract DFEVar read(DFEVar srcAddr);
+
+  abstract void write(DFEVar dstAddr, DFEVar dstData, DFEVar en);
+
+  void write(DFEVar dstAddr, DFEVar dstData) {
+    write(dstAddr, dstData, constant.var(true));
+  }
+}
