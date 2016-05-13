@@ -26,9 +26,9 @@ trait AffineAnalysisExp extends EffectExp with FatExpressions {
   // loop invariant access (but may change with outer loops)
   case class InvariantAccess(b: Exp[Index]) extends IndexPattern
   // Flexible access, not used by default
-  object FlexibleAccess extends IndexPattern
+  case object FlexibleAccess extends IndexPattern
   // anything else
-  object RandomAccess extends IndexPattern
+  case object RandomAccess extends IndexPattern
 
 
 
