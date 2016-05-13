@@ -49,11 +49,18 @@ trait ExecutableGenerator {
     addSource(out.toString)
   }
 
+  // decide if runtime should provide the implementation or use existing kernel
+  protected def shouldGenerateFunction(op: DeliteOP) = op match {
+    case o: OP_Nested => !o.isScheduledSequentially(location)
+    case _: Sync => true
+    case _: PCM_M => true
+    case _ => false
+  }
+
   protected def addKernelCalls(resource: OpList) {
     initializeBlock()
     for (op <- resource) {
-      if (op.isInstanceOf[OP_Nested] || op.isInstanceOf[Sync] || op.isInstanceOf[PCM_M]) //runtime responsible for implementation
-        makeNestedFunction(op)
+      if (shouldGenerateFunction(op)) makeNestedFunction(op)
       writeFunctionCall(op)
     }
     finalizeBlock()

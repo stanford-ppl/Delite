@@ -690,6 +690,17 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
         emitVarDef(quote(sym), remap(elem.zero._1.tp), quote(sym) + "_zero")
         emitVarDef(quote(sym) + "_2", remap(elem.zero._2.tp), quote(sym) + "_zero_2")
     }
+
+    val freeVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
+    val inputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
+    val outputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileOutputStream])
+
+    if (inputStreamVars.length > 0) {
+      assert(inputStreamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
+      val streamSym = inputStreamVars(0)
+      emitValDef(quote(streamSym)+"_stream", remap(streamSym.tp), fieldAccess(quote(streamSym),"openCopyAtNewLine(0," + quote(op.size) + ")"))
+    }
+
     emitVarDef(quote(op.v), remap(op.v.tp), "0")
     //if (true) { //op.body exists (loopBodyNeedsStripFirst _)) { preserve line count as indicator for succesful fusing
     if (op.body exists (loopBodyNeedsStripFirst _)) {
@@ -715,15 +726,8 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       emitAssignment(quote(op.v), "1")
     }
 
-    val freeVars = getFreeVarBlock(Block(Combine(getMultiLoopFuncs(op,symList).map(getBlockResultFull))),List(op.v)).filter(_ != op.size).distinct
-    val inputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileInputStream])
-    val outputStreamVars = freeVars.filter(_.tp == manifest[DeliteFileOutputStream])
-
     if (inputStreamVars.length > 0) {
-      assert(inputStreamVars.length == 1, "ERROR: don't know how to handle multiple stream inputs at once")
-      val streamSym = inputStreamVars(0)
-      emitValDef(quote(streamSym)+"_stream", remap(streamSym.tp), fieldAccess(quote(streamSym),"openCopyAtNewLine(0," + quote(op.size) + ")"))
-      stream.println("while (!" + fieldAccess(quote(streamSym)+"_stream", "isEmpty()") + " ) {")
+      stream.println("while (!" + fieldAccess(quote(inputStreamVars(0))+"_stream", "isEmpty()") + " ) {")
     }
     else {
       this match {

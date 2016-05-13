@@ -7,7 +7,7 @@ import ppl.delite.runtime.graph.targets.Targets
  *
  */
 
-class OP_While(val id: String,
+class OP_While(val id: String, kernel: String,
                val predicateGraph: DeliteTaskGraph, val predicateValue: String,
                val bodyGraph: DeliteTaskGraph, val bodyValue: String,
                outputSymbol: String = null)
@@ -17,6 +17,8 @@ class OP_While(val id: String,
 
   private[graph] var outputTypesMap = if (outputSymbol == null) Targets.unitTypes(id) else Targets.unitTypes(outputSymbol)
 
+  setExecutableName(kernel)
+
   /**
    * creates a While chunk for each requested resource and destroys the original
    */
@@ -25,7 +27,7 @@ class OP_While(val id: String,
     val chunks =
       for (idx <- indices) yield {
         val outputSym = if (idx == indices(0)) this.id else null
-        val r = new OP_While(id+"_"+idx, predicateGraph, predicateValue, bodyGraph, bodyValue, outputSym)
+        val r = new OP_While(id+"_"+idx, kernel, predicateGraph, predicateValue, bodyGraph, bodyValue, outputSym)
         r.dependencies = dependencies
         r.inputList = inputList
         r.mutableInputs = mutableInputs

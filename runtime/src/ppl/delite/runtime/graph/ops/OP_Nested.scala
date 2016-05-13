@@ -28,6 +28,15 @@ abstract class OP_Nested extends DeliteOP {
     functionName = name
   }
 
+  def isScheduledSequentially(resource: Int): Boolean = {
+    (scheduledResource == resource) && (nestedGraphs forall { g =>
+      g.ops forall { o => o match {
+        case n: OP_Nested => n.isScheduledSequentially(resource)
+        case _ => !o.isDataParallel && o.scheduledResource == resource
+      } }
+    })
+  }
+
   protected final class GetterOp(val id: String, resource: Int, dependencies: Seq[DeliteOP], inputs: Seq[(DeliteOP,String)]) extends DeliteOP {
 
     for (dep <- dependencies) {

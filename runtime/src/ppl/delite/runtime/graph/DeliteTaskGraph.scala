@@ -155,7 +155,7 @@ object DeliteTaskGraph {
     opNotFound(sym)
   }
 
-  def processCommon(op: Map[Any, Any], opType: String)(implicit graph: DeliteTaskGraph) {
+  def processCommon(op: Map[Any, Any], opType: String, nested: Seq[(DeliteTaskGraph,String)] = Seq())(implicit graph: DeliteTaskGraph) = {
     val id = getFieldString(op, "kernelId")
 
     val resultMap = processOutputTypes(op)
@@ -179,6 +179,8 @@ object DeliteTaskGraph {
         val numDynamicChunksIsConst = getFieldString(op, "numDynamicChunksType") == "const"
         new OP_MultiLoop(id, size, sizeIsConst, numDynamicChunks, numDynamicChunksIsConst, "kernel_"+id, resultMap, getFieldBoolean(op, "needsCombine"), getFieldBoolean(op, "needsPostProcess"))
       case "OP_Foreach" => new OP_Foreach(id, "kernel_"+id, resultMap)
+      case "OP_While" => new OP_While(id, "kernel_"+id, nested(0)._1, nested(0)._2, nested(1)._1, nested(1)._2)
+      case "OP_Condition" => new OP_Condition(id, "kernel_"+id, resultMap, nested(0)._1, nested(0)._2, nested(1)._1, nested(1)._2, nested(2)._1, nested(2)._2)
       case other => error("OP Type not recognized: " + other)
     }
 
@@ -249,6 +251,7 @@ object DeliteTaskGraph {
       if (newop.supportsTarget(tgt)) processGPUMetadata(op, newop, tgt)
     }
 
+    newop
   }
 
   def processOutputTypes(op: Map[Any,Any]) = {
@@ -336,94 +339,37 @@ object DeliteTaskGraph {
   }
 
   def processIfThenElseTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
-    // get id
-    val id = getFieldString(op,"outputId")
+    val predGraph = parseSubGraph(op, "cond")
+    val thenGraph = parseSubGraph(op, "then")
+    val elseGraph = parseSubGraph(op, "else")
+    val conditionOp = processCommon(op, "OP_Condition", Seq(predGraph, thenGraph, elseGraph)).asInstanceOf[OP_Condition]
 
-    val (predGraph, predValue) = parseSubGraph(op, "cond")
-    val (thenGraph, thenValue) = parseSubGraph(op, "then")
-    val (elseGraph, elseValue) = parseSubGraph(op, "else")
-
-    val resultMap = processReturnTypes(op, id)
-    val depIds = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
-    var ifDeps = SortedSet.empty[DeliteOP]
-    for (depId <- depIds) ifDeps += getOp(depId)
-    ifDeps ++= (predGraph._inputs.keySet ++ thenGraph._inputs.keySet ++ elseGraph._inputs.keySet) map { getOp(_) }
-    val ifAntiDeps = SortedSet(getFieldList(op, "antiDeps").map(getOp(_)):_*)
-
-    //find inputs at nesting level of the IfThenElse
-    val internalOps = SortedSet.empty[DeliteOP] ++ predGraph.ops ++ thenGraph.ops ++ elseGraph.ops
-    var ifInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
-    ifInputs ++= (for ((op,sym) <- Seq(predGraph.result, thenGraph.result, elseGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
-    val ifMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
-
-    val conditionOp = new OP_Condition(id, resultMap, predGraph, predValue, thenGraph, thenValue, elseGraph, elseValue)
-    conditionOp.dependencies = ifDeps
-    conditionOp.inputList = ifInputs.toList
-    conditionOp.mutableInputs = ifMutableInputs
-    conditionOp.antiDeps = ifAntiDeps
-
-    if (predValue == "") {
-      for (tgt <- Targets.GPU) extractGPUMetadata(conditionOp, predGraph, graph, tgt)
+    if (predGraph._2 == "") {
+      for (tgt <- Targets.GPU) extractGPUMetadata(conditionOp, predGraph._1, graph, tgt)
     }
-    if (thenValue == "") {
-      for (tgt <- Targets.GPU) extractGPUMetadata(conditionOp, thenGraph, graph, tgt)
-      val resultMetadata = conditionOp.getGPUMetadata(Targets.Cuda).outputs.filter(o=>o._2==thenGraph.result._2)
-      if (resultMetadata.length == 1) conditionOp.getGPUMetadata(Targets.Cuda).outputs ++= List((resultMetadata(0)._1,id))
+    if (thenGraph._2 == "") {
+      for (tgt <- Targets.GPU) extractGPUMetadata(conditionOp, thenGraph._1, graph, tgt)
+      val resultMetadata = conditionOp.getGPUMetadata(Targets.Cuda).outputs.filter(o=>o._2==thenGraph._1.result._2)
+      if (resultMetadata.length == 1) conditionOp.getGPUMetadata(Targets.Cuda).outputs ++= List((resultMetadata(0)._1,conditionOp.id))
     }
-    if (elseValue == "") {
-      for (tgt <- Targets.GPU) extractGPUMetadata(conditionOp, elseGraph, graph, tgt)
-      val resultMetadata = conditionOp.getGPUMetadata(Targets.Cuda).outputs.filter(o=>o._2==elseGraph.result._2)
-      if (resultMetadata.length == 1) conditionOp.getGPUMetadata(Targets.Cuda).outputs ++= List((resultMetadata(0)._1,id))
+    if (elseGraph._2 == "") {
+      for (tgt <- Targets.GPU) extractGPUMetadata(conditionOp, elseGraph._1, graph, tgt)
+      val resultMetadata = conditionOp.getGPUMetadata(Targets.Cuda).outputs.filter(o=>o._2==elseGraph._1.result._2)
+      if (resultMetadata.length == 1) conditionOp.getGPUMetadata(Targets.Cuda).outputs ++= List((resultMetadata(0)._1,conditionOp.id))
     }
-
-    //add consumer edges
-    for(dep <- ifDeps)
-      dep.addConsumer(conditionOp)
-
-    //add to graph
-    graph.registerOp(conditionOp)
-    graph._result = (conditionOp, conditionOp.getOutputs.head)
   }
 
   def processWhileTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
-    // get id
-    val id = getFieldString(op,"outputId")
+    val predGraph = parseSubGraph(op, "cond")
+    val bodyGraph = parseSubGraph(op, "body")
+    val whileOp = processCommon(op, "OP_While", Seq(predGraph, bodyGraph)).asInstanceOf[OP_While]
 
-    val (predGraph, predValue) = parseSubGraph(op, "cond")
-    val (bodyGraph, bodyValue) = parseSubGraph(op, "body")
-
-    val depIds = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
-    var whileDeps = SortedSet.empty[DeliteOP]
-    for (depId <- depIds) whileDeps += getOp(depId)
-    whileDeps ++= (predGraph._inputs.keySet ++ bodyGraph._inputs.keySet) map { getOp(_) }
-    val whileAntiDeps = SortedSet(getFieldList(op, "antiDeps").map(getOp(_)):_*)
-
-    //find inputs at nesting level of the While
-    val internalOps = SortedSet.empty[DeliteOP] ++ predGraph.ops ++ bodyGraph.ops
-    var whileInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
-    whileInputs ++= (for ((op,sym) <- Seq(predGraph.result, bodyGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
-    val whileMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
-
-    val whileOp = new OP_While(id, predGraph, predValue, bodyGraph, bodyValue)
-    whileOp.dependencies = whileDeps
-    whileOp.inputList = whileInputs.toList
-    whileOp.mutableInputs = whileMutableInputs
-    whileOp.antiDeps = whileAntiDeps
-
-    if (predValue == "") {
-      for (tgt <- Targets.GPU) extractGPUMetadata(whileOp, predGraph, graph, tgt)
+    if (predGraph._2 == "") {
+      for (tgt <- Targets.GPU) extractGPUMetadata(whileOp, predGraph._1, graph, tgt)
     }
-    if (bodyValue == "") {
-      for (tgt <- Targets.GPU) extractGPUMetadata(whileOp, bodyGraph, graph, tgt)
+    if (bodyGraph._2 == "") {
+      for (tgt <- Targets.GPU) extractGPUMetadata(whileOp, bodyGraph._1, graph, tgt)
     }
-
-    //add consumer edges
-    for (dep <- whileDeps)
-      dep.addConsumer(whileOp)
-
-    //add to graph
-    graph.registerOp(whileOp)
-    graph._result = (whileOp, whileOp.getOutputs.head)
   }
 
   // Change Metadata apply method from Target -> specific metadata in DeliteOP
