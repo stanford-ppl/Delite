@@ -91,7 +91,7 @@ trait AffineAnalyzer extends HungryTraversal {
   val IR: AffineAnalysisExp
   import IR._
 
-  debugMode = true
+  //debugMode = true
 
   var outerIndices = Set[Sym[Index]]()
   var loopIndices = Set[Sym[Index]]()
