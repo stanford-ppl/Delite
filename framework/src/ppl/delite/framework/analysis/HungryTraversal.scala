@@ -9,14 +9,14 @@ import scala.collection.mutable.HashMap
 trait HungryTraversal extends Traversal {
   import IR._
 
-  // Enable recursive traversal of blocks by default
-  val recurse: Boolean = true
+  val recurseAlways: Boolean = false  // Always follow default traversal scheme
+  val recurseElse: Boolean = true     // Follow default traversal scheme when node was not matched
 
   override def traverseStm(stm: Stm) = {
     stm match {
       case TP(lhs, rhs) =>
         traverse(lhs, rhs)
-        if (recurse) blocks(rhs).foreach{blk => traverseBlock(blk)}
+        if (recurseAlways) blocks(rhs).foreach{blk => traverseBlock(blk)}
 
       case TTP(s, m, d) =>
         traverse(s, m, d)
@@ -26,7 +26,7 @@ trait HungryTraversal extends Traversal {
   def traverse(lhs: Exp[Any], rhs: Def[Any]): Unit = rhs match {
     case Reflect(d, u, es) =>
       traverse(lhs, d)
-    case _ =>
+    case _ => if (recurseElse) blocks(rhs).foreach{blk => traverseBlock(blk)}
   }
 
   def traverse(lhs: List[Exp[Any]], mhs: List[Def[Any]], rhs: FatDef): Unit = {}

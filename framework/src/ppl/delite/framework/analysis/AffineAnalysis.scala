@@ -91,8 +91,10 @@ trait AffineAnalyzer extends HungryTraversal {
   val IR: AffineAnalysisExp
   import IR._
 
-  var outerIndices: List[Sym[Index]] = Nil
-  var loopIndices: List[Sym[Index]] = Nil
+  debugMode = true
+
+  var outerIndices = Set[Sym[Index]]()
+  var loopIndices = Set[Sym[Index]]()
   var outerScope: List[Stm] = Nil
 
   def inLoop[T](indices: List[Sym[Index]])(x: => T): T = {
@@ -109,8 +111,9 @@ trait AffineAnalyzer extends HungryTraversal {
   }
 
   object LoopIndex {
-    def unapply(x: Exp[Index]): Option[Sym[Index]] = {
-      if (loopIndices.contains(x)) Some(x.asInstanceOf[Sym[Index]]) else None
+    def unapply(x: Exp[Index]): Option[Sym[Index]] = x match {
+      case s: Sym[Index] if loopIndices.contains(s) => Some(s)
+      case _ => None
     }
   }
   object Invariant {
@@ -124,12 +127,22 @@ trait AffineAnalyzer extends HungryTraversal {
 
   override def traverse(lhs: Exp[Any], rhs: Def[Any]): Unit = lhs match {
     case LoopLevels(levels) =>
+      debug(s"Found loop $lhs with ${levels.length} levels")
+      debug(s"Current indices are $loopIndices")
       levels.foreach{ case (indices, blocks) =>
+        debug(s"  Traversing loop level with $indices")
         inLoop(indices){blocks.foreach{blk => traverseBlock(blk) }}
       }
 
-    case MemRead(mem, addresses) => accessPatternOf(lhs) = addresses.map(extractIndexPattern)
-    case MemWrite(mem, addresses) => accessPatternOf(lhs) = addresses.map(extractIndexPattern)
+    case MemRead(mem, addresses) =>
+      debug(s"Found read of memory $mem with addresses $addresses")
+      debug(s"Current indices are $loopIndices")
+      accessPatternOf(lhs) = addresses.map(extractIndexPattern)
+
+    case MemWrite(mem, addresses) =>
+      debug(s"Found write of memory $mem with addresses $addresses")
+      debug(s"Current indices are $loopIndices")
+      accessPatternOf(lhs) = addresses.map(extractIndexPattern)
 
     case _ => super.traverse(lhs, rhs)
   }

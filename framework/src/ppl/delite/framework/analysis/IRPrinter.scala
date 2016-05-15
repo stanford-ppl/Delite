@@ -60,3 +60,12 @@ trait IRPrinterPlus extends Traversal {
     super.run(b)
   }
 }
+
+trait HardStop extends Traversal {
+  import IR._
+
+  override def run[A:Manifest](b: Block[A]) = {
+    println("Hard stop reached during IR traversal")
+    sys.exit(-1)
+  }
+}
