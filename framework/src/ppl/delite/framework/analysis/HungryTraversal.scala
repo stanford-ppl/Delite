@@ -24,8 +24,7 @@ trait HungryTraversal extends Traversal {
     }
   }
   def traverse(lhs: Exp[Any], rhs: Def[Any]): Unit = rhs match {
-    case Reflect(d, u, es) =>
-      traverse(lhs, d)
+    case Reflect(d, u, es) => traverse(lhs, d)
     case _ => if (recurseElse) blocks(rhs).foreach{blk => traverseBlock(blk)}
   }
 
