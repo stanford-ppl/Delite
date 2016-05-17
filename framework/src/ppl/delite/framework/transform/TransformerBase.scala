@@ -74,6 +74,10 @@ trait SinglePassTransformer extends ForwardTransformer {
 
   def transform[A:Manifest](lhs: Sym[A], rhs: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]] = None
 
+  protected def mirrorExp[A](e: Exp[A]) = e match {
+    case Def(d) => self_mirror(e.asInstanceOf[Sym[A]], d.asInstanceOf[Def[A]])
+    case _ => e
+  }
 }
 
 // Adds a rule for what to do if a node already has a substitution rule when it is reached in traversal
@@ -85,9 +89,12 @@ trait MultiPassTransformer extends SinglePassTransformer {
 
   override def traverseStm(stm: Stm): Unit = stm match {
     case TP(sym, rhs) if apply(sym) == sym =>
+      debug(s"Encountered $sym = $rhs")
       val replace = transform(sym, rhs)(mtype(sym.tp),mpos(sym.pos)).getOrElse(self_mirror(sym,rhs))
       assert(!subst.contains(sym) || subst(sym) == replace)
       if (sym != replace) subst += (sym -> replace) // record substitution only if result is different
+
+      debug(s"  replacing with $replace")
 
     // Someone else has already mirrored/transformed us!
     // Assumed case: Some higher scope has a block which includes us, and they've already gone through and
@@ -95,19 +102,26 @@ trait MultiPassTransformer extends SinglePassTransformer {
     // The correct thing to do here is mirror the previously transformed node, then scrub the intermediate node from
     // the IR def and context lists so it doesn't appear in any effects lists.
     case TP(sym, rhs) =>
+      debug(s"$sym = $rhs")
+      debug(s"already had substitution ${apply(sym)}, mirroring")
       val sym2 = apply(sym)
-      val replace = sym2 match {
+      val replace = mirrorExp(sym2) /*sym2 match {
         case Def(rhs2) =>
           transform(sym2.asInstanceOf[Sym[Any]], rhs2)(mtype(sym2.tp),mpos(sym2.pos)).getOrElse(mirrorExp(sym2))
         case _ => sym2
-      }
+      }*/
       if (replace != sym2 && sym != sym2) scrubSym(sym2.asInstanceOf[Sym[Any]])
       if (sym != replace) subst += (sym -> replace) // Change substitution from sym -> sym2 to sym -> replace
   }
 
-  protected def mirrorExp[A](e: Exp[A]) = e match {
-    case Def(d) => self_mirror(e.asInstanceOf[Sym[A]], d.asInstanceOf[Def[A]])
-    case _ => e
+  def pretransformBlock[A,B](block: Block[A])(tx: => B): B = {
+    var out: Option[B] = None // HACK
+    focusBlock(block) {
+      focusExactScope(block){ levelScope =>
+        out = Some(tx)
+      }
+    }
+    out.get
   }
 
   // Should be used within some outer reifyBlock scope
