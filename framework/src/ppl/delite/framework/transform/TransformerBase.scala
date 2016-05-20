@@ -114,16 +114,6 @@ trait MultiPassTransformer extends SinglePassTransformer {
       if (sym != replace) subst += (sym -> replace) // Change substitution from sym -> sym2 to sym -> replace
   }
 
-  def pretransformBlock[A,B](block: Block[A])(tx: => B): B = {
-    var out: Option[B] = None // HACK
-    focusBlock(block) {
-      focusExactScope(block){ levelScope =>
-        out = Some(tx)
-      }
-    }
-    out.get
-  }
-
   // Should be used within some outer reifyBlock scope
   def inlineBlock[A:Manifest](blk: Block[A]): Exp[A] = {
     traverseBlock(blk)
