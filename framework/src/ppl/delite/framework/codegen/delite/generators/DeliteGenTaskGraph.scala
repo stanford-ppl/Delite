@@ -201,7 +201,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
     val defs = rhs match {
       case op:AbstractFatLoop => op.body
       case op:AbstractFatIfThenElse => (op.thenp zip op.elsep) map (p => IfThenElse(op.cond,p._1,p._2))
-      case d: Def[Any] => List(d)
+      case d: Def[_] => List(d)
     }
     val internalKernelEffects = getEffectsBlock(defs)
 
@@ -435,10 +435,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
   }
 
   def emitConstOrSym(x: Exp[Any], prefix: String) = x match {
-    case c:Const[Any] => stream.println("  \"" + prefix + "Type\": \"const\",")
-                         stream.println("  \"" + prefix + "Value\": \"" + quote(x) + "\"")
-    case s:Sym[Any] =>   stream.println("  \"" + prefix + "Type\": \"symbol\",")
-                         stream.println("  \"" + prefix + "Value\": \"" + quote(getBlockResult(Block(x))) + "\"") // x might be a Reify
+    case c:Const[_] => stream.println("  \"" + prefix + "Type\": \"const\",")
+                       stream.println("  \"" + prefix + "Value\": \"" + quote(x) + "\"")
+    case s:Sym[_] =>   stream.println("  \"" + prefix + "Type\": \"symbol\",")
+                       stream.println("  \"" + prefix + "Value\": \"" + quote(getBlockResult(Block(x))) + "\"") // x might be a Reify
   }
 
   def emitOutput(x: Exp[Any]) = emitConstOrSym(x, "output")
@@ -448,25 +448,25 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
   }
 
   def emitSubGraph(prefix: String, e: Block[Any]) = e match {
-    case Block(c:Const[Any]) => stream.println("  \"" + prefix + "Type\": \"const\",")
-                                stream.println("  \"" + prefix + "Value\": \"" + quote(c) + "\",")
-    case Block(s:Sym[Any]) =>   getBlockResult(e) match {
+    case Block(c:Const[_]) => stream.println("  \"" + prefix + "Type\": \"const\",")
+                              stream.println("  \"" + prefix + "Value\": \"" + quote(c) + "\",")
+    case Block(s:Sym[_]) =>   getBlockResult(e) match {
                                   // if we have a non-unit constant return value, we need to be able to parse it directly
-                                  case c: Const[Any] if c.tp != manifest[Unit] =>
-                                    stream.println("  \"" + prefix + "Type\": \"const\",")
-                                    stream.println("  \"" + prefix + "Value\": \"" + quote(c) + "\",")
-                                  case _ =>
-                                    stream.println("  \"" + prefix + "Type\": \"symbol\",")
-                                }
-                                stream.println("  \"" + prefix + "Ops\": [")
-                                val saveMutatingDeps = kernelMutatingDeps
-                                val saveEffectKernelReads = effectKernelReads
-                                kernelMutatingDeps = Map()
-                                effectKernelReads = Map()
-                                emitBlock(e)
-                                emitEOG()
-                                effectKernelReads = saveEffectKernelReads
-                                kernelMutatingDeps = saveMutatingDeps
+                                case c: Const[_] if c.tp != manifest[Unit] =>
+                                  stream.println("  \"" + prefix + "Type\": \"const\",")
+                                  stream.println("  \"" + prefix + "Value\": \"" + quote(c) + "\",")
+                                case _ =>
+                                  stream.println("  \"" + prefix + "Type\": \"symbol\",")
+                              }
+                              stream.println("  \"" + prefix + "Ops\": [")
+                              val saveMutatingDeps = kernelMutatingDeps
+                              val saveEffectKernelReads = effectKernelReads
+                              kernelMutatingDeps = Map()
+                              effectKernelReads = Map()
+                              emitBlock(e)
+                              emitEOG()
+                              effectKernelReads = saveEffectKernelReads
+                              kernelMutatingDeps = saveMutatingDeps
   }
 
   private def makeString(list: List[Exp[Any]]) = {

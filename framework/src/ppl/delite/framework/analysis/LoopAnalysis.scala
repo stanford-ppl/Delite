@@ -252,7 +252,7 @@ trait NestedLoopMappingAnalysis extends FatBlockTraversal with LoopFusionOpt wit
 
     try {
       rhs match {
-        case r: Def[Any] => traverseStm(TP(sym(0),r))
+        case r: Def[_] => traverseStm(TP(sym(0),r))
         case r: FatDef => traverseStm(TTP(sym,Nil,r))
       }
       // IR traversal is done. Generate an optimal mapping strategy.
@@ -417,7 +417,7 @@ trait NestedLoopMappingAnalysis extends FatBlockTraversal with LoopFusionOpt wit
             val sizes = sizeSymsAtLevel(l)
             assert(sizes.length > 0)
             if(sizes.length > 1) pass = false
-            if(!kernelInputs.contains(sizes.head) && !sizes.head.isInstanceOf[Const[Int]]) pass = false
+            if(!kernelInputs.contains(sizes.head) && !sizes.head.isInstanceOf[Const[_/*Int*/]]) pass = false
           case _ => //
         }
 

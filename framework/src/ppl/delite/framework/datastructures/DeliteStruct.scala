@@ -137,12 +137,12 @@ trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>
 
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
     case s: DeliteStruct[_] => Nil
-    case FieldApply(s:Sym[Any],x) if _deliteStructAliases && (dc_data_field(s.tp) == x) => List(s)
+    case FieldApply(s:Sym[_],x) if _deliteStructAliases && (dc_data_field(s.tp) == x) => List(s)
     case _ => super.aliasSyms(e)
   }
 
   override def containSyms(e: Any): List[Sym[Any]] = e match {
-    case s: DeliteStruct[_] if _deliteStructAliases => s.elems.collect { case (k,v:Sym[Any]) => v }.toList
+    case s: DeliteStruct[_] if _deliteStructAliases => s.elems.collect { case (k,v:Sym[_]) => v }.toList
     case s: DeliteStruct[_] => Nil // ignore nested mutability for Structs: this is only safe because we rewrite mutations to atomic operations
     case _ => super.containSyms(e)
   }

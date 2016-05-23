@@ -29,7 +29,7 @@ object DeliteTaskGraph {
   def buildFromParsedJSON(json: Any) = {
     implicit val graph = new DeliteTaskGraph
     json match {
-      case degm: Map[Any,Any] => parseDEGMap(degm)
+      case degm: Map[Any@unchecked,Any@unchecked] => parseDEGMap(degm)
       case err@_ => mapNotFound(err)
     }
     enforceRestrictions(graph)
@@ -116,7 +116,7 @@ object DeliteTaskGraph {
   def getFieldMapOption(map: Map[Any, Any], field: String): Option[Map[Any, Any]] = {
     map.get(field) match {
       case Some(field) => field match {
-        case map: Map[Any,Any] => Some(map)
+        case map: Map[Any@unchecked,Any@unchecked] => Some(map)
         case err@_ => None
       }
       case None => None
@@ -126,7 +126,7 @@ object DeliteTaskGraph {
   def getFieldMap(map: Map[Any, Any], field: String): Map[Any,Any] = {
     map.get(field) match {
       case Some(field) => field match {
-        case map: Map[Any,Any] => map
+        case map: Map[Any@unchecked,Any@unchecked] => map
         case err@_ => mapNotFound(err)
       }
       case None => fieldNotFound(field, map)

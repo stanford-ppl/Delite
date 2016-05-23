@@ -11,7 +11,8 @@ trait DeliteKernelCodegen extends GenericFatCodegen {
   import IR.{ __newVar => _, __assign => _, __ifThenElse => _ , _ }
 
   private def vals(sym: Sym[Any]) : List[Sym[Any]] = sym match {
-    case Def(Reify(s, u, effects)) => if (s.isInstanceOf[Sym[Any]]) List(s.asInstanceOf[Sym[Any]]) else Nil
+    case Def(Reify(s: Sym[_], _, _)) => List(s)
+    case Def(Reify(_, _, _)) => Nil
     case Def(Reflect(NewVar(v), u, effects)) => Nil
     case _ => List(sym)
   }
@@ -96,7 +97,7 @@ trait DeliteKernelCodegen extends GenericFatCodegen {
     val bodyString = new StringWriter()
     val bodyStream = new PrintWriter(bodyString)
     rhs match {
-      case d: Def[Any] => withStream(bodyStream){ emitNode(sym(0), d) }
+      case d: Def[_] => withStream(bodyStream){ emitNode(sym(0), d) }
       case f: FatDef => withStream(bodyStream){ emitFatNode(sym, f) }
     }
     bodyStream.flush()
@@ -154,7 +155,7 @@ trait DeliteKernelCodegen extends GenericFatCodegen {
     if (hasOutputSlotTypes(rhs)) {
       // activation record class declaration
       rhs match {
-        case d:Def[Any] =>  withStream(kstream){ emitNodeKernelExtra(sym, d) }
+        case d:Def[_] =>  withStream(kstream){ emitNodeKernelExtra(sym, d) }
         case f:FatDef => withStream(kstream){ emitFatNodeKernelExtra(sym, f) }
       }
     }

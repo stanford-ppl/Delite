@@ -8,7 +8,7 @@ object DeliteBuild extends Build {
 
   val scalaOrg = "org.scala-lang.virtualized"
   val virtScala = Option(System.getenv("SCALA_VIRTUALIZED_VERSION")).getOrElse("2.11.2")
-  val virtBuildSettingsBase = Defaults.defaultSettings ++ Seq(
+  val virtBuildSettingsBase = Defaults.coreDefaultSettings ++ Seq(
     organization := "stanford-ppl",
     scalaOrganization := scalaOrg,
     scalaVersion := virtScala,

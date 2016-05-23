@@ -48,7 +48,7 @@ object DependencyGraph {
 
   private def buildDepGraphFromParsedJSON(json: Any): DependencyGraph = {
     json match {
-      case degm: Map[Any,Any] =>
+      case degm: Map[Any@unchecked,Any@unchecked] =>
         val depGraph = new DependencyGraph
         val deg = getFieldMap(degm, "DEG")
         val ops = getFieldList(deg, "ops")
@@ -78,7 +78,7 @@ object DependencyGraph {
   private def getFieldMap(map: Map[Any, Any], field: String): Map[Any,Any] = {
     map.get(field) match {
       case Some(field) => field match {
-        case map: Map[Any,Any] => map
+        case map: Map[Any@unchecked,Any@unchecked] => map
         case err@_ => mapNotFound(err)
       }
       case None => fieldNotFound(field, map)
@@ -88,7 +88,7 @@ object DependencyGraph {
   private def getSourceContext(op: Map[Any, Any]): SourceContext = {
     op.get("sourceContext") match {
       case Some(sc) => sc match {
-        case map: Map[Any, Any] =>
+        case map: Map[Any@unchecked, Any@unchecked] =>
           val fileName = map("fileName").asInstanceOf[String].split("/").last
           new SourceContext( fileName, map("line").asInstanceOf[String], map("opName").asInstanceOf[String] )
         case _ => new SourceContext( "", "", "" )
