@@ -89,12 +89,12 @@ trait MultiPassTransformer extends SinglePassTransformer {
 
   override def traverseStm(stm: Stm): Unit = stm match {
     case TP(sym, rhs) if apply(sym) == sym =>
-      debug(s"Encountered $sym = $rhs")
+      //debug(s"Encountered $sym = $rhs")
       val replace = transform(sym, rhs)(mtype(sym.tp),mpos(sym.pos)).getOrElse(self_mirror(sym,rhs))
       assert(!subst.contains(sym) || subst(sym) == replace)
       if (sym != replace) subst += (sym -> replace) // record substitution only if result is different
 
-      debug(s"  replacing with $replace")
+      //debug(s"  replacing with $replace")
 
     // Someone else has already mirrored/transformed us!
     // Assumed case: Some higher scope has a block which includes us, and they've already gone through and
@@ -102,8 +102,8 @@ trait MultiPassTransformer extends SinglePassTransformer {
     // The correct thing to do here is mirror the previously transformed node, then scrub the intermediate node from
     // the IR def and context lists so it doesn't appear in any effects lists.
     case TP(sym, rhs) =>
-      debug(s"$sym = $rhs")
-      debug(s"already had substitution ${apply(sym)}, mirroring")
+      //debug(s"$sym = $rhs")
+      //debug(s"already had substitution ${apply(sym)}, mirroring")
       val sym2 = apply(sym)
       val replace = mirrorExp(sym2) /*sym2 match {
         case Def(rhs2) =>
