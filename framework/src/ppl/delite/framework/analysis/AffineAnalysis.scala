@@ -125,7 +125,7 @@ trait AffineAnalyzer extends HungryTraversal {
     }
   }
 
-  override def traverse(lhs: Exp[Any], rhs: Def[Any]): Unit = lhs match {
+  override def traverse(lhs: Sym[Any], rhs: Def[Any]): Unit = lhs match {
     case LoopLevels(levels) =>
       debug(s"Found loop $lhs with ${levels.length} levels")
       debug(s"Current indices are $loopIndices")

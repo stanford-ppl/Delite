@@ -23,11 +23,11 @@ trait HungryTraversal extends Traversal {
         // TODO: Recursive traversal for TTP?
     }
   }
-  def traverse(lhs: Exp[Any], rhs: Def[Any]): Unit = rhs match {
+  def traverse(lhs: Sym[Any], rhs: Def[Any]): Unit = rhs match {
     case Reflect(d, u, es) => traverse(lhs, d)
     case _ => if (recurseElse) blocks(rhs).foreach{blk => traverseBlock(blk)}
   }
 
-  def traverse(lhs: List[Exp[Any]], mhs: List[Def[Any]], rhs: FatDef): Unit = {}
+  def traverse(lhs: List[Sym[Any]], mhs: List[Def[Any]], rhs: FatDef): Unit = {}
 }
 
