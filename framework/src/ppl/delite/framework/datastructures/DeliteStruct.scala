@@ -485,6 +485,19 @@ trait CLikeGenDeliteStruct extends BaseGenStruct with CLikeCodegen {
   }
   protected def isNestedArrayType[T](m: Manifest[T]) = isArrayType(baseType(m)) && !isPrimitiveType(unwrapArrayType(m))
 
+
+  //can generate struct if we can succesfully remap all its fields (recursively)
+  //throws GenerationFailedException if any fields fail
+  //TODO: integrate with 'generationFailedStructs'
+  protected def checkCanGenerateStruct(elems: Seq[(String,Manifest[_])]): Unit = {
+    for ((name,tp) <- elems) yield baseType(tp) match {
+      case StructType(_, e) =>
+        checkCanGenerateStruct(e)
+      case _ if isArrayType(tp) => remap(tp); remap(tp.typeArguments(0))
+      case _ => remap(tp)
+    }
+  }
+
   override def emitDataStructures(path: String) {
     new File(path) mkdirs // doesn't necessarily exist
     val structStream = new PrintWriter(path + deviceTarget.toString + "DeliteStructs.h")
@@ -681,6 +694,7 @@ trait CGenDeliteStruct extends CLikeGenDeliteStruct with CCodegen with CGenAtomi
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case Struct(tag, elems) =>
       registerStruct(structName(sym.tp), sym.tp, elems)
+      checkCanGenerateStruct(elems.map(e => (e._1, e._2.tp)))
       if (cppMemMgr == "refcnt") {
         stream.println(remap(sym.tp) + " " + quote(sym) + "(new " + unwrapSharedPtr(remap(sym.tp)) + "(" + elems.map{ e =>
            if (isVarType(e._2) && deliteInputs.contains(e._2)) quote(e._2) + "->get()"

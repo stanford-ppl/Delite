@@ -1,13 +1,14 @@
 package ppl.delite.framework.datastructures
 
-import java.io.{PrintWriter,StringWriter}
-import scala.virtualization.lms.common._
-import scala.reflect.{SourceContext, RefinedManifest}
-import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
+import ppl.delite.framework.Config
 import ppl.delite.framework.ops._
 import ppl.delite.framework.Util._
-import ppl.delite.framework.Config
+import scala.virtualization.lms.common._
+import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
+
+import java.io.{PrintWriter,StringWriter}
 import scala.collection.mutable.HashSet
+import scala.reflect.{SourceContext, RefinedManifest}
 
 
 trait DeliteArray[T] extends DeliteCollection[T]
@@ -834,6 +835,10 @@ trait CLikeGenDeliteArrayOps extends BaseGenDeliteArrayOps with CLikeGenDeliteSt
     val stream = new PrintWriter(path + deviceTarget + "DeliteArrays.h")
     stream.println("#include \"" + deviceTarget + "DeliteStructs.h\"")
     stream.println("#include \"" + deviceTarget + "HashMap.h\"")
+    for (tp <- dsTypesList.filter(e => isArrayType(e._1)).map(_._1.typeArguments(0)).filter(isArrayType(_))) {
+      try { dsTypesList += Pair(tp, remap(tp)) }
+      catch { case e: GenerationFailedException => }
+    }
     for((tp,name) <- dsTypesList if(isArrayType(tp))) {
       emitDeliteArray(tp, path, stream)
     }
@@ -859,7 +864,6 @@ trait CLikeGenDeliteArrayOps extends BaseGenDeliteArrayOps with CLikeGenDeliteSt
         stream.println("#ifndef __" + mString + "__")
         stream.println("#define __" + mString + "__")
         if(!isPrimitiveType(mArg)) stream.println("#include \"" + mArgString + ".h\"")
-        if (isArrayType(mArg)) emitDeliteArray(mArg, path, header)
         stream.println(deliteArrayString.replaceAll("__T__",mString).replaceAll("__TARG__",remapWithRef(mArg)))
         stream.println("#endif")
         stream.close()
@@ -1137,6 +1141,7 @@ trait CGenDeliteArrayOps extends CLikeGenDeliteArrayOps with CGenAtomicOps
         stream.println(s"${quote(str)} = ${quote(str)} + string(${quote(str)}_temp);")
       }
       stream.println("}")
+      stream.println(s"${quote(str)}.erase(${quote(str)}.end()-${quote(x)}.length(), ${quote(str)}.end());")
     case DeliteArrayUnion(lhs,rhs) =>
       emitValDef(sym, quote(lhs) + "->arrayunion(" + quote(rhs) + ")")
     case DeliteArrayIntersect(lhs,rhs) =>

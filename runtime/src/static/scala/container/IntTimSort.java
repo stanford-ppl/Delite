@@ -451,6 +451,16 @@ class IntTimSort {
         }
     }
 
+    /*
+     * Merges two sorted halves of an array to complete the sort
+     */
+    static void merge(int[] a, int lo, int mid, int hi, IntComparator c) {
+        IntTimSort ts = new IntTimSort(a, c, null, 0, 0);
+        ts.pushRun(lo, mid-lo);
+        ts.pushRun(mid, hi-mid);
+        ts.mergeForceCollapse();
+    }
+
     /**
      * Merges the two runs at stack indices i and i+1.  Run i must be
      * the penultimate or antepenultimate run on the stack.  In other words,

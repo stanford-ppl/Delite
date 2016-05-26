@@ -1,30 +1,18 @@
 package ppl.delite.framework.codegen.delite
 
+import generators.DeliteGenTaskGraph
+import ppl.delite.framework.Config
+import ppl.delite.framework.ops.DeliteOpsExp
+
+import scala.virtualization.lms.internal.GenericFatCodegen
+import scala.virtualization.lms.common.{BaseGenStaticData, WorklistTransformer}
+
 import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
+import scala.collection.immutable.Seq
 import collection.mutable.{ListBuffer,HashMap}
 import scala.reflect.SourceContext
-import scala.virtualization.lms.internal._
-import scala.virtualization.lms.common._
 
-import generators.{DeliteGenTaskGraph}
-import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
-import ppl.delite.framework.{Config, DeliteApplication}
-import ppl.delite.framework.ops.DeliteOpsExp
 
-import scala.virtualization.lms.internal._
-import scala.virtualization.lms.common._
-
-import ppl.delite.framework.{Config, DeliteApplication}
-import ppl.delite.framework.ops.DeliteOpsExp
-import ppl.delite.framework.analysis.StencilAnalysis
-import generators.{DeliteGenTaskGraph}
-import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
-
-// FIXME: now that syms and friends is in the IR, all this ifGenAgree(..) crap is not necessary.
-
-/**
- * Notice that this is using Effects by default, also we are mixing in the Delite task graph code generator
- */
 trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.delite.framework.codegen.Utils {
   val IR: DeliteOpsExp
   import IR._
@@ -46,34 +34,6 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
 
   // results of stencil analysis, used by DeliteGenTaskGraph
   var allStencils: HashMap[Exp[Any],Stencil] = _
-
-  def ifGenAgree[A](f: Generator => A): A = {
-    //val save = generators map { _.shallow }
-    //generators foreach { _.shallow = shallow }
-    val result = generators map f
-    if (result.distinct.length != 1){
-      sys.error("DeliteCodegen: generators disagree")
-    }
-    //for (i <- 0 until generators.length) {
-    //  generators(i).shallow = save(i)
-    //}
-    result(0)
-  }
-
-  // TODO: move to some other place? --> get rid of duplicate in embedded generators!
-  override def fatten(e: Stm): Stm = ifGenAgree(_.fatten(e))
-
-  // fusion stuff...
-  override def unapplySimpleIndex(e: Def[Any]) = ifGenAgree(_.unapplySimpleIndex(e))
-  override def unapplySimpleDomain(e: Def[Int]) = ifGenAgree(_.unapplySimpleDomain(e))
-  override def unapplySimpleCollect(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollect(e))
-  override def unapplySimpleCollectIf(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollectIf(e))
-
-  override def applyAddCondition(e: Def[Any], c: List[Exp[Boolean]]): Def[Any] = ifGenAgree(_.applyAddCondition(e,c))
-  override def canApplyAddCondition(e: Def[Any]): Boolean = ifGenAgree(_.canApplyAddCondition(e))
-
-  override def shouldApplyFusion(currentScope: List[Stm])(result: List[Exp[Any]]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result))
-
 
   def emitSourceContext(sourceContext: Option[SourceContext], stream: PrintWriter, id: String) {
     // obtain root parent source context (if any)

@@ -548,5 +548,5 @@ class DeliteOpSuite extends DeliteSuite {
   def testDeliteNestedForeach() { compileAndTest(DeliteNestedForeachSuiteRunner, checkMultiLoop = false) }
   def testDeliteGroupBy() { compileAndTest(DeliteGroupBySuiteRunner, checkMultiLoop = false) }
   def testDeliteGroupByReduce() { compileAndTest(DeliteGroupByReduceSuiteRunner, checkMultiLoop = false) }
-  def testDeliteFileReader() { compileAndTest(DeliteFileReaderSuiteRunner, checkMultiLoop = false) }
+  def testDeliteFileReader() { compileAndTest(DeliteFileReaderSuiteRunner, checkMultiLoop = false, enforceFullCoverage = false) }
 }

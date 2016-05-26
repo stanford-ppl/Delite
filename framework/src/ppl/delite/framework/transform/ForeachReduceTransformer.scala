@@ -108,7 +108,7 @@ trait ForeachReduceTransformer extends WorklistTransformer {
   val IR: ForeachReduceTransformExp
   import IR._
 
-  def addToScope(x: Stm) = innerScope ::= x
+  def addToScope(x: Stm) = innerScope +:= x
 
   /*
    * The first thing we do is scrub all references to DeliteReductions from effect lists, now
@@ -127,7 +127,7 @@ trait ForeachReduceTransformer extends WorklistTransformer {
     case _ => true
   })
 
-  def scrubDeliteReductions(x: List[Stm]): List[Stm] = {
+  def scrubDeliteReductions(x: Seq[Stm]): Seq[Stm] = {
     x.map(d => d match {
       case TP(s,Reflect(x,u,es)) =>
         val cleanEs = withoutReductions(es)
@@ -148,9 +148,9 @@ trait ForeachReduceTransformer extends WorklistTransformer {
     })
   }
 
-  override def hasConverged = {
+  override def isDone = {
     if (!globalDefs.exists(e => e.rhs match { case Reflect(x:DeliteOpForeachReduce[_],_,_) => true; case _ => false })) true
-    else super.hasConverged
+    else (runs > 0 && nextSubst.isEmpty)
   }
 
   override def runOnce[A:Manifest](b: Block[A]): Block[A] = {

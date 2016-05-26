@@ -109,8 +109,10 @@ trait CppExecutableGenerator extends ExecutableGenerator {
       out.append("\");\n")
     }
     //add a reference to the singleton of scala.runtime.BoxedUnit for use everywhere required
-    out.append("jclass clsBU = env" + location + "->FindClass(\"scala/runtime/BoxedUnit\");\n")
-    out.append("jobject boxedUnit = env" + location + "->GetStaticObjectField(clsBU, env" + location + "->GetStaticFieldID(clsBU, \"UNIT\", \"Lscala/runtime/BoxedUnit;\"));\n")
+    if (!locations.isEmpty) {
+      out.append("jclass clsBU = env" + location + "->FindClass(\"scala/runtime/BoxedUnit\");\n")
+      out.append("jobject boxedUnit = env" + location + "->GetStaticObjectField(clsBU, env" + location + "->GetStaticFieldID(clsBU, \"UNIT\", \"Lscala/runtime/BoxedUnit;\"));\n")
+    }
   }
 
   protected def writeMethodFooter() {
