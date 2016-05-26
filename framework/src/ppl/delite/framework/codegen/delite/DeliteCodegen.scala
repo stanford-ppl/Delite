@@ -4,7 +4,7 @@ import generators.DeliteGenTaskGraph
 import ppl.delite.framework.Config
 import ppl.delite.framework.ops.DeliteOpsExp
 
-import scala.virtualization.lms.internal.GenericFatCodegen
+import scala.virtualization.lms.internal.{GenericFatCodegen, Traversal}
 import scala.virtualization.lms.common.{BaseGenStaticData, WorklistTransformer}
 
 import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
