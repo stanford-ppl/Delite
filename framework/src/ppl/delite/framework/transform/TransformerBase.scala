@@ -60,10 +60,72 @@ trait DeliteTransforming extends Transforming {
   }
 }
 
+trait SinglePassTransformer extends ForwardTransformer {
+  import IR._
+
+  def f = this.asInstanceOf[Transformer]
+
+  override def transformStm(stm: Stm): Exp[Any] = stm match {
+    case TP(lhs,rhs) => transform(lhs,rhs)(mtype(lhs.tp),mpos(lhs.pos)) match {
+      case Some(e) => e
+      case _ => self_mirror(lhs, rhs)
+    }
+  }
+
+  def transform[A:Manifest](lhs: Sym[A], rhs: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]] = None
+
+  protected def mirrorExp[A](e: Exp[A]) = e match {
+    case Def(d) => self_mirror(e.asInstanceOf[Sym[A]], d.asInstanceOf[Def[A]])
+    case _ => e
+  }
+}
+
+// Adds a rule for what to do if a node already has a substitution rule when it is reached in traversal
+// Given that the IR is hierarchical, this case suggests an outer parent set up a transformation for a child block, then called
+// for a traversal over that block to put the transformation into effect. In this case, the expected behavior is to take the
+// current substitution as if it was the original node and perform mirroring/transformation as usual.
+trait MultiPassTransformer extends SinglePassTransformer {
+  import IR._
+
+  override def traverseStm(stm: Stm): Unit = stm match {
+    case TP(sym, rhs) if apply(sym) == sym =>
+      //debug(s"Encountered $sym = $rhs")
+      val replace = transform(sym, rhs)(mtype(sym.tp),mpos(sym.pos)).getOrElse(self_mirror(sym,rhs))
+      assert(!subst.contains(sym) || subst(sym) == replace)
+      if (sym != replace) subst += (sym -> replace) // record substitution only if result is different
+
+      //debug(s"  replacing with $replace")
+
+    // Someone else has already mirrored/transformed us!
+    // Assumed case: Some higher scope has a block which includes us, and they've already gone through and
+    // mirrored some or all of the nodes in that block before traversing the block
+    // The correct thing to do here is mirror the previously transformed node, then scrub the intermediate node from
+    // the IR def and context lists so it doesn't appear in any effects lists.
+    case TP(sym, rhs) =>
+      //debug(s"$sym = $rhs")
+      //debug(s"already had substitution ${apply(sym)}, mirroring")
+      val sym2 = apply(sym)
+      val replace = mirrorExp(sym2) /*sym2 match {
+        case Def(rhs2) =>
+          transform(sym2.asInstanceOf[Sym[Any]], rhs2)(mtype(sym2.tp),mpos(sym2.pos)).getOrElse(mirrorExp(sym2))
+        case _ => sym2
+      }*/
+      if (replace != sym2 && sym != sym2) scrubSym(sym2.asInstanceOf[Sym[Any]])
+      if (sym != replace) subst += (sym -> replace) // Change substitution from sym -> sym2 to sym -> replace
+  }
+
+  // Should be used within some outer reifyBlock scope
+  def inlineBlock[A:Manifest](blk: Block[A]): Exp[A] = {
+    traverseBlock(blk)
+    apply(getBlockResult(blk))
+  }
+}
+
 
 
 // Modified version of WorklistTransformer
-trait TransformerBase extends ForwardTransformer with IterativeTraversal { self =>
+// FIXME: Buggy - even an identity transformation has issues here
+/*trait TransformerBase extends ForwardTransformer with IterativeTraversal { self =>
   val IR: EffectExp with FatExpressions
   import IR._
 
@@ -90,7 +152,7 @@ trait TransformerBase extends ForwardTransformer with IterativeTraversal { self 
 
   override def traverseStm(stm: Stm) = stm match {
     case TP(lhs, rhs) if apply(lhs) == lhs =>
-      val replace = transformTP(lhs, rhs) match {
+      val replace = transform(lhs, rhs) match {
         case Some(replace) =>
           transferMetadata(replace, lhs)(rhs)
           replace
@@ -120,7 +182,7 @@ trait TransformerBase extends ForwardTransformer with IterativeTraversal { self 
   // Note: Shouldn't be calling transformStm from TransformerBase (slightly modified transformer design)
   override def transformStm(stm: Stm): Exp[Any] = throw new Exception("New transformer design - should not be calling transformStm here")
 
-  def transformTP[A](lhs: Sym[A], rhs: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]]
+  def transform(lhs: Sym[Any], rhs: Def[Any])(implicit ctx: SourceContext): Option[Exp[Any]]
   def transformTTP(lhs: List[Sym[Any]], mhs: List[Def[Any]], rhs: FatDef)(implicit ctx: SourceContext): Option[List[Exp[Any]]] = None
 
   def transferMetadata(dest: Exp[Any], src: Exp[Any])(node: Def[Any]) {
@@ -134,11 +196,11 @@ trait TunnelingTransformer extends TransformerBase {
 
   // TODO: Is this always correct? What happens when we transform something with an effect to something without one?
   // Does that ever happen in practice? Can always special case...
-  override def transformTP[A](lhs: Sym[A], rhs: Def[A])(implicit ctx: SourceContext): Option[Exp[Any]] = rhs match {
+  override def transform(lhs: Sym[Any], rhs: Def[Any])(implicit ctx: SourceContext): Option[Exp[Any]] = rhs match {
     case Reflect(d, u, es) =>
       implicit val ctx: SourceContext = mpos(lhs.pos)
 
-      transformTP(lhs, d) match {
+      transform(lhs, d) match {
         case None => None
         case Some(e: Sym[_]) =>
           transferMetadata(e, lhs)(d)
@@ -163,4 +225,4 @@ trait TunnelingTransformer extends TransformerBase {
       }
     case _ => None
   }
-}
+}*/
