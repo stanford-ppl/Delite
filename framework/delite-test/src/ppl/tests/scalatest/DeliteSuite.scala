@@ -87,6 +87,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     }
 
     //enable strict checking that scala and cpp kernels are actually generated
+    Config.generationFailedWhitelist = Map() //reset from previous tests
     if (enforceFullCoverage) {
       Config.generationFailedWhitelist += "scala" -> Seq() //no exceptions
       Config.generationFailedWhitelist += "cpp" -> cppWhiteList //exclude ops provided by test suite
@@ -132,10 +133,12 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
           case _ => assert(false)
         }
 
+        val resetCache = apps.length > 1 && target != "scala" // HACK: we need to clear the native code cache to compile multiple native apps in the same run (due to naming collisions)
         for (app <- apps) {
           val args = Array(degName(app))
           val outStr = execTest(app, args, target, num)
           checkTest(app, outStr)
+          if (resetCache) org.apache.commons.io.FileUtils.deleteDirectory(new File(ppl.delite.runtime.Config.codeCacheHome))
         }
       }
     }

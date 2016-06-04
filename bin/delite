@@ -12,7 +12,7 @@ import shutil
 from distutils.spawn import find_executable
 
 import delitecommon
-from delitecommon import *
+from delitecommon import err, warn, info
 
 def main():
     usage = "usage: %prog <application runner> [args] [options]"
@@ -176,7 +176,7 @@ def run(deg, params, opts):
     if opts.verbose:
         delitecommon.printEnv()
 
-    print "[" + datetime.datetime.now().isoformat(' ') + "]: executing application: " + deg + " " + ' '.join(params)
+    info("executing application: " + deg + " " + ' '.join(params))
     if opts.verbose:
         print "== with options: " + java_opts + "\n"
 

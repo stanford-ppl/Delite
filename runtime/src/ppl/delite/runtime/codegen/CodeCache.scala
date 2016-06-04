@@ -171,16 +171,16 @@ trait CodeCache {
   protected def sep = File.separator
 
   protected def directoriesMatch(source: File, cache: File): Boolean = {
-    // quick check: see if directory structure & file names match
     assert(source.exists, "source directory does not exist: " + source.getPath)
-    if (!cache.exists)
-      return false
+    if (!cache.exists) return false
 
-    if (!(FileUtils.listFiles(source, null, true).asScala map(_.getName) filterNot { FileUtils.listFiles(cache, null, true).asScala.toList map(_.getName) contains }).isEmpty)
-      return false
-
-    // full check: compare all the files
-    (FileUtils.listFiles(source, null, true).asScala zip FileUtils.listFiles(cache, null, true).asScala) forall { fs => FileUtils.contentEquals(fs._1, fs._2) }
+    val sourceFiles = FileUtils.listFiles(source, null, true).asScala.toSeq.sorted
+    val cacheFiles = FileUtils.listFiles(cache, null, true).asScala.toSeq.sorted
+    if (sourceFiles.length != cacheFiles.length) return false
+    (sourceFiles zip cacheFiles) forall { case (a,b) =>
+      if (a.getName != b.getName) false
+      else FileUtils.contentEquals(a,b) // compares lengths, then bytes
+    }
   }
 
   def printSources() {

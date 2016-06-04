@@ -95,7 +95,7 @@ trait AffineAnalyzer extends HungryTraversal {
 
   var outerIndices = Set[Sym[Index]]()
   var loopIndices = Set[Sym[Index]]()
-  var outerScope: List[Stm] = Nil
+  var outerScope: Seq[Stm] = Nil
 
   def inLoop[T](indices: List[Sym[Index]])(x: => T): T = {
     val prevOuter = outerIndices

@@ -22,7 +22,7 @@ trait QuickTraversal extends Traversal {
 
   // --- Quick resume to a given block
   val allowSaving = true
-  var savedScope: Option[List[Stm]] = None
+  var savedScope: Option[Seq[Stm]] = None
   var savedBlock: Option[Block[Any]] = None
 
   def load() { innerScope = savedScope.get }
@@ -47,7 +47,7 @@ trait QuickTraversal extends Traversal {
   // --- Scheduling
   val useScopeCache = true
   // Save inner and local scopes to avoid repeated recomputation
-  val scopeCache = HashMap[Block[Any],(List[Stm], List[Stm])]()
+  val scopeCache = HashMap[Block[Any],(Seq[Stm], Seq[Stm])]()
 
   override def traverseBlock[A](block: Block[A]): Unit = {
     if (useScopeCache && scopeCache.contains(block)) {
@@ -64,7 +64,7 @@ trait QuickTraversal extends Traversal {
     }
   }
 
-  override def getStmsInBlock[A](block: Block[A]): List[Stm] = {
+  override def getStmsInBlock[A](block: Block[A]): Seq[Stm] = {
     if (scopeCache.contains(block)) scopeCache(block)._2
     else super.getStmsInBlock(block)
   }

@@ -10,15 +10,10 @@ import ConfigParser
 from time import localtime, strftime
 
 import delitecommon
+from delitecommon import err, warn, info
 
 DSLs = ['optiql','multi-dsl']
 LMS_HOME = os.getenv("LMS_HOME") #should be set if LMS is provided directly from class files rather than a lib_managed jar
-
-def err(s):
-    exit("error: " + s)
-
-def warn(s):
-    print("warn: " + s)
 
 def main():
     usage = "usage: %prog <application runner> [staging args] [options]"
@@ -148,7 +143,7 @@ def stage(runner, params, opts):
 
     # add all managed libs
     # caveat: scalatest pulls in some non-virtualized scala dependencies but they conflict with the scala-virtualized versions
-    jars = [os.path.join(d,f) for (d, n, fs) in os.walk(delitecommon.HYPER_HOME + "/lib_managed/") if not (d.count("org.scala-lang") > 0 and d.count("virtualized") == 0) for f in fs]
+    jars = [os.path.join(d,f) for (d, n, fs) in os.walk(delitecommon.HYPER_HOME + "/lib_managed/") if not (d.count("/org.scala-lang/") > 0) for f in fs]
     for j in jars:
       cp = cp + j + os.pathsep
 
@@ -166,7 +161,7 @@ def stage(runner, params, opts):
         print("LMS_HOME is UNDEFINED")
       print(java_opts)
 
-    print "[" + datetime.datetime.now().isoformat(' ') + "]: Generating DEG file with options: " + str(opts)
+    info("Generating DEG file with options: " + str(opts))
     java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " " + runner + " " + ' '.join(params)
     #print java_cmd
     ecode = os.system(java_cmd)

@@ -1,6 +1,6 @@
 # functionality common to delite and delitec
 
-import os, sys
+import os, sys, datetime
 import ConfigParser
 
 USER_HOME = os.getenv("HOME")
@@ -15,12 +15,15 @@ lms_version = "lms_2.11"
 
 props = {}
 
+def info(s):
+    print("[delite info " + datetime.datetime.now().isoformat(' ') + "]: " + s)
+
 def err(s):
-    exit("error: " + s)
+    exit("[delite error " + datetime.datetime.now().isoformat(' ') + "]: " + s)
 
 def warn(s):
-    print("warn: " + s)
- 
+    print("[delite warn " + datetime.datetime.now().isoformat(' ') + "]: " + s)
+
 def initialize():
     checkDeliteEnv()
     loadProps()

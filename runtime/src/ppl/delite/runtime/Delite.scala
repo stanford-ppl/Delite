@@ -83,10 +83,10 @@ object Delite {
       case e => throw new IllegalArgumentException("Requested executor is not recognized ("+e+")")
     }
 
-    def abnormalShutdown() {
+    def abnormalShutdown(wipeCache: Boolean) {
       if (executor != null) executor.shutdown()
       if (SamplerThread.isAlive) SamplerThread.stop()
-      if (!Config.alwaysKeepCache)
+      if (!Config.alwaysKeepCache && wipeCache)
         FileUtils.deleteQuietly(new File(Config.codeCacheHome)) //clear the code cache (could be corrupted)
     }
 
@@ -162,8 +162,8 @@ object Delite {
       executor.shutdown()
     }
     catch {
-      case i: InterruptedException => abnormalShutdown(); throw outstandingException //a worker thread threw the original exception
-      case e: Throwable => abnormalShutdown(); throw e
+      case i: InterruptedException => abnormalShutdown(false); throw outstandingException //a worker thread threw the original exception
+      case e: Throwable => abnormalShutdown(true); throw e
     }
     finally {
       Arguments.args = Nil

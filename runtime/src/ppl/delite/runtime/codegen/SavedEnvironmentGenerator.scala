@@ -17,6 +17,7 @@ object SavedEnvironmentGenerator {
     val eop = graph.result._1.asInstanceOf[EOP]
     val res = eop.outputType
 
+    out.append("package delite.generated\n")
     out.append("import ppl.delite.runtime.{Config,Delite}\n")
     out.append("object "+appName+" extends (("+argTypes.mkString(",")+")=>("+res+")) {\n")
     out.append("def apply("+argNames.zip(argTypes).map(a => a._1+":"+a._2).mkString(", ")+"): "+res+" = {\n")
