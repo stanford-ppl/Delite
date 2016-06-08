@@ -21,21 +21,17 @@ trait DeliteTestConfig {
   // something arbitrary that we should never see in any test's output
   val MAGICDELIMETER = "!~x02$758209"
 
-  val propFile = new File("delite.properties")
-  val props = new java.util.Properties(System.getProperties)
-  if (propFile.exists) props.load(new FileReader(propFile))
-
   // test parameters
-  val verbose = props.getProperty("tests.verbose", "false") != "false"
-  val verboseDefs = props.getProperty("tests.verboseDefs", "false") != "false"
-  val threads = props.getProperty("tests.threads", "1").split(",").map(_.toInt)
-  val cacheSyms = props.getProperty("tests.cacheSyms", "true").toBoolean
-  val javaHome = new File(props.getProperty("java.home", ""))
-  val scalaHome = new File(props.getProperty("scala.vanilla.home", ""))
-  val runtimeClasses = new File(props.getProperty("runtime.classes", ""))
+  val verbose = Config.getProperty("tests.verbose", "false") != "false"
+  val verboseDefs = Config.getProperty("tests.verboseDefs", "false") != "false"
+  val threads = Config.getProperty("tests.threads", "1").split(",").map(_.toInt)
+  val cacheSyms = Config.getProperty("tests.cacheSyms", "true").toBoolean
+  val javaHome = new File(Config.getProperty("java.home", ""))
+  val scalaHome = new File(Config.getProperty("scala.vanilla.home", ""))
+  val runtimeClasses = new File(Config.getProperty("runtime.classes", ""))
   val runtimeExternalProc = false // javaHome, scalaHome and runtimeClasses only required if runtimeExternalProc is true. should this be configurable? or should we just remove execTestExternal?
-  val deliteTestTargets = props.getProperty("tests.targets", "scala").split(",")
-  val useBlas = props.getProperty("tests.extern.blas", "false").toBoolean
+  val deliteTestTargets = Config.getProperty("tests.targets", "scala").split(",")
+  val useBlas = Config.getProperty("tests.extern.blas", "false").toBoolean
 
   var cppWhiteList = Seq("StaticData", "DeliteTestMkString", "DeliteTestAppend", "DeliteTestStrConcat", "DeliteTestFwNew", //test operations are Scala-only by design
                          "DeliteTestBwNew", "DeliteTestBwWrite", "DeliteTestBwClose", "DeliteTestPrintLn", "scala.collection.mutable.ArrayBuffer",

@@ -1,10 +1,17 @@
 package ppl.delite.framework
 
+import java.io.File
+import java.io.FileReader
+
 object Config {
 
-  private def getProperty(prop: String, default: String) = {
-    val p1 = System.getProperty(prop)
-    val p2 = System.getProperty(prop.substring(1))
+  private val propFile = new File("delite.properties")
+  private val props = new java.util.Properties(System.getProperties)
+  if (propFile.exists) props.load(new FileReader(propFile))
+
+  def getProperty(prop: String, default: String) = {
+    val p1 = props.getProperty(prop)
+    val p2 = props.getProperty(prop.substring(1))
     if (p1 != null && p2 != null) {
       assert(p1 == p2, "ERROR: conflicting properties")
       p1
