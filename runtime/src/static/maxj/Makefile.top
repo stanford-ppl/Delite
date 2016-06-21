@@ -1,0 +1,128 @@
+PRJ			=  Top
+# BUILD_TAG		=  _build_tag
+BUILD_CARD		=  MAX4848A
+
+JAVA_HOME = /usr/lib/jvm/java-7-openjdk-amd64
+
+SOURCES                 =       $(wildcard maxj/src/runtime/*.cpp cpp/src/kernels/*.cpp cpp/src/static/cpp/*.cpp)
+OBJECTS                 =       $(SOURCES:.cpp=.o)
+INCLUDES 		=	-I$(MAXELEROSDIR)/include -I$(MAXCOMPILERDIR)/include/slic -Icpp/src/datastructures -Icpp/src/static/cpp -Icpp/src/kernels -Icpp/src/runtime -I$(JAVA_HOME)/include
+CC 			=	gcc
+CXX 			=	g++
+CFLAGS 			=	-g3 -D__DELITE_CPP_STANDALONE__ -fPIC -Wall $(INCLUDES)
+LDFLAGS 		=	-Wl,--hash-style=both -lstdc++
+
+SIM_ID			=	$(PRJ)
+USE_SLIC		=	1
+include $(MAXCOMPILERDIR)/lib/Makefile.include
+CFLAGS			+=	$(MAXCOMPILER_INC)
+LDFLAGS			+=	$(MAXCOMPILER_LIBS)
+
+SIM_PREFIX              = DFE_SIM
+DFE_PREFIX              = DFE
+#MAXFILE_SIM_OBJ		=	maxfile_$(PRJ)_Sim$(BUILD_TAG).o
+#MAXFILE_DFE_OBJ		=	maxfile_$(PRJ)_DFE$(BUILD_TAG).o
+MAXFILE_SIM_OBJ		=	maxobj_$(PRJ)_$(SIM_PREFIX).o
+MAXFILE_DFE_OBJ		=	maxobj_$(PRJ)_$(DFE_PREFIX).o
+
+MAXFILE_SIM_EXE		=	$(PRJ)_sim
+MAXFILE_DFE_EXE		=	$(PRJ)_dfe
+
+OUT_DIR_$(SIM_PREFIX)             =       $(PRJ)_$(BUILD_CARD)_$(SIM_PREFIX)
+OUT_DIR_$(DFE_PREFIX)             =       $(PRJ)_$(BUILD_CARD)_$(DFE_PREFIX)
+# Changes to run on maxnode7795
+	# MAXCARD		=  MAX4848A
+	MAIA_FLAG	=  1
+	SLIC_CONF_DFE = default_wfi_timeout=30
+	enableMPCX = false
+
+
+MAX_BUILDPARAMS_SIM = DFEModel=$(BUILD_CARD)  target=$(SIM_PREFIX)  maxFileName=$(PRJ)  enableMPCX=false     # buildTag=$(BUILD_TAG)
+MAX_BUILDPARAMS_DFE = DFEModel=$(BUILD_CARD)  target=$(DFE_PREFIX)  maxFileName=$(PRJ)  enableMPCX=$(enableMPCX) # buildTag=$(BUILD_TAG)
+SLIC_CONF_SIM	= verbose=false;max_socket=$(SIM_ID)
+
+PRELOAD			= $(MAXCOMPILERDIR)/lib/maxeleros-sim/lib/libmaxeleros.so:$(LD_PRELOAD)
+
+help:
+	@echo "Targets:"
+	@echo "    bitstream-sim  Compile a simulation bitstream"
+	@echo "    bitstream-dfe  Compile a hardware bitstream"
+	@echo "    compile-sim    Compile the CPU code for simulation"
+	@echo "    compile-dfe    Compile the CPU code for hardware"
+	@echo "    run-sim        Run the simulation process"
+	@echo "    stop-sim       Stop the simulation process"
+	@echo "    run-dfe        Run the hardware test"
+	@echo "    stop-dfe       Stop the hardware test"
+	@echo "    clean-sim      Delete all files for simulation"
+	@echo "    clean          Delete all files (simulation and hardware)"
+
+compile-sim: $(MAXFILE_SIM_EXE)
+compile-dfe: $(MAXFILE_DFE_EXE)
+
+bitstream-sim:
+	ant
+	CLASSPATH=bin:$(CLASSPATH) maxJavaRun engine.TopManager $(MAX_BUILDPARAMS_SIM)
+
+bitstream-dfe:
+	ant
+	CLASSPATH=bin:$(CLASSPATH) maxJavaRun engine.TopManager $(MAX_BUILDPARAMS_DFE)
+
+maxobj_%.o:
+	# echo  $(MAXGUESSBUILDDIR) -s $(patsubst maxobj_%.o,%,$@)
+	# @echo '$(SLICCOMPILE) $(shell $(MAXGUESSBUILDDIR) -s $(patsubst maxobj_%.o,%,$@))/results/*.max $@'
+	# $(SLICCOMPILE) $(shell $(MAXGUESSBUILDDIR) -s $(patsubst maxobj_%.o,%,$@))/results/*.max $@ 
+	@echo 'MaxJ outdir: $(OUT_DIR_$(patsubst maxobj_$(PRJ)_%.o,%,$@))'
+	@echo 'Maxfile : $(OUT_DIR_$(patsubst maxobj_$(PRJ)_%.o,%,$@))/results/$(PRJ).max'
+	@echo '$(SLICCOMPILE) $(OUT_DIR_$(patsubst maxobj_$(PRJ)_%.o,%,$@))/results/$(PRJ).max $@'
+	$(SLICCOMPILE) $(OUT_DIR_$(patsubst maxobj_$(PRJ)_%.o,%,$@))/results/$(PRJ).max $@ 
+
+$(MAXFILE_SIM_EXE): $(MAXFILE_SIM_OBJ) $(SOURCES)
+	$(CC) -I$(PRJ)_$(SIM_PREFIX)/results -rdynamic -I$(OUT_DIR_$(SIM_PREFIX))/results $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	#$(CC) -I$(PRJ)_Sim$(BUILD_TAG)/results -rdynamic $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+$(MAXFILE_DFE_EXE): $(MAXFILE_DFE_OBJ) $(SOURCES)
+	$(CC) -I$(PRJ)_$(DFE_PREFIX)/results -rdynamic $(CFLAGS) -I$(OUT_DIR_$(DFE_PREFIX))/results -o $@ $^ $(LDFLAGS)
+	#$(CC) -I$(PRJ)_DFE$(BUILD_TAG)/results -rdynamic $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+run-sim: $(MAXFILE_SIM_EXE)
+	$(MAXCOMPILERDIR)/bin/maxcompilersim -c $(BUILD_CARD) -n $(SIM_ID) restart
+	LD_PRELOAD="$(PRELOAD)" SLIC_CONF="$(SLIC_CONF_SIM)" LD_LIBRARY_PATH="$(MAXCOMPILERDIR)/lib/maxeleros-sim/lib/:$(LD_LIBRARY_PATH)" \
+			   ./$< $(PRJ)_Sim $(MAIA_FLAG)
+			   #./$< $(PRJ)_Sim$(BUILD_TAG) $(MAIA_FLAG)
+	$(MAXCOMPILERDIR)/bin/maxcompilersim -c $(BUILD_CARD) -n $(SIM_ID) stop
+
+stop-sim:
+	$(MAXCOMPILERDIR)/bin/maxcompilersim -c $(BUILD_CARD) -n $(SIM_ID) stop
+
+run-dfe: $(MAXFILE_DFE_EXE)
+	# LD_LIBRARY_PATH="$(MAXELEROSDIR)/lib/" SLIC_CONF="$(SLIC_CONF_DFE)" ./$< $(PRJ)_DFE$(BUILD_TAG) $(MAIA_FLAG)
+	LD_LIBRARY_PATH="$(MAXELEROSDIR)/lib/" SLIC_CONF="$(SLIC_CONF_DFE)" ./$< $(PRJ)_$(DFE_PREFIX) $(MAIA_FLAG)
+
+stop-dfe:
+ifeq ($(MAIA_FLAG), 1)
+	/opt/maxeler/maxeleros/utils/maxforceidle -a -r 192.168.0.10
+else
+	/opt/maxeler/maxeleros/utils/maxforceidle -a
+endif
+
+clean:
+	-$(MAXCOMPILERDIR)/bin/maxcompilersim -n $(SIM_ID) stop
+	rm -f $(MAXFILE_SIM_OBJ)
+	rm -f $(MAXFILE_SIM_EXE)
+	rm -rf bin $(OUT_DIR_$(SIM_PREFIX))
+	rm -f $(OBJECTS)
+	rm -f *.log
+	rm -rf debug*
+
+clean-all:
+	-$(MAXCOMPILERDIR)/bin/maxcompilersim -n $(SIM_ID) stop
+	rm -f *.o 
+	rm -f $(MAXFILE_SIM_EXE) $(MAXFILE_DFE_EXE)
+	rm -rf bin $(OUT_DIR_$(SIM_PREFIX)) $(OUT_DIR_$(DFE_PREFIX))
+	rm -f $(OBJECTS)
+	rm -f *.log
+	rm -rf debug*
+	#rm -r bin $(PRJ)_Sim $(PRJ)_DFE$(BUILD_TAG)
+
+sim: bitstream-sim compile-sim
+dfe: bitstream-dfe compile-dfe

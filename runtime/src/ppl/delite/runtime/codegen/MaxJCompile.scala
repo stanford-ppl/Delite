@@ -90,7 +90,7 @@ object MaxJCompile extends CCompile {
     copyDir(s"""$staticResources/scripts""", s"""$sourceCacheHome/static""")
     copyDir(s"""$staticResources/templates""", s"""$sourceCacheHome/static""")
     copyFile(s"""$staticResources/TopKernel.maxj""", s"""$sourceCacheHome/static/TopKernel.maxj""")
-    copyFile(s"""$staticResources/Makefile""", s"""${Config.codeCacheHome}/Makefile""")
+    copyFile(s"""$staticResources/Makefile.top""", s"""${Config.codeCacheHome}/Makefile""")
     copyFile(s"""$staticResources/build.xml""", s"""${Config.codeCacheHome}/build.xml""")
   }
 
