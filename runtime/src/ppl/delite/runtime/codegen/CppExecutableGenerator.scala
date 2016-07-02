@@ -144,7 +144,8 @@ int main(int argc, char *argv[]) {
   }
 
   protected[codegen] def writeMethodFooter() {
-    out.append(s"clearAll(numThreads, ${activeCppLocations}, ${Config.numThreads}, env$location);\n")
+    val env = if (Config.numMaxJ > 0 && Config.noJVM) "0" else s"env$location"
+    out.append(s"clearAll(numThreads, ${activeCppLocations}, ${Config.numThreads}, $env);\n")
     out.append("}\n")
   }
 
