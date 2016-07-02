@@ -113,7 +113,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
     // Call all generators that emit a single file here
     // Generate a single source output for each generator when in debug mode
     for (g <- generators) {
-      if (g.emitSingleFile || (Config.debug && Config.degFilename.endsWith(".deg"))) {
+      if ((Config.debug && Config.degFilename.endsWith(".deg"))) {
         val baseDir = Config.buildDir + File.separator + g.toString + File.separator
         val buildPath = baseDir + "kernels" + File.separator
         val singleStream = new PrintWriter(new FileWriter(buildPath + Config.degFilename.replace(".deg","." + g.toString)))
