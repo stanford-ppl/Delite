@@ -95,6 +95,11 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     printlog("-- emitSource")
     availableDefs.foreach(printlog(_))
 
+    // Call per-codegen preProcess() methods with body
+    for (g <- generators) {
+      g.preProcess(y)
+    }
+
     withStream(stream) {
       emitBlockHeader(args, className)
       emitBlock(y)
@@ -102,6 +107,12 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     }
 
     stream.flush
+
+    // Call per-codegen postProcess() methods with body
+    for (g <- generators) {
+      g.postProcess(y)
+    }
+
     staticData
   }
 
