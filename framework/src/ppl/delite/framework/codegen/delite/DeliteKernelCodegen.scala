@@ -74,6 +74,7 @@ trait DeliteKernelCodegen extends GenericFatCodegen {
   }
 
   def emitKernel(sym: List[Sym[Any]], rhs: Any, kstream: PrintWriter) = {
+    val realkstream = if (emitSingleFile) getFileStream("")._2 else kstream
     val resultIsVar = rhs match { case NewVar(_) => true case _ => false }
     val external = rhs.isInstanceOf[DeliteOpExternal[_]]
     val kernelName = sym.map(quote).mkString("")
@@ -154,14 +155,14 @@ trait DeliteKernelCodegen extends GenericFatCodegen {
     if (hasOutputSlotTypes(rhs)) {
       // activation record class declaration
       rhs match {
-        case d:Def[Any] =>  withStream(kstream){ emitNodeKernelExtra(sym, d) }
-        case f:FatDef => withStream(kstream){ emitFatNodeKernelExtra(sym, f) }
+        case d:Def[Any] =>  withStream(realkstream){ emitNodeKernelExtra(sym, d) }
+        case f:FatDef => withStream(realkstream){ emitFatNodeKernelExtra(sym, f) }
       }
     }
 
-    withStream(kstream){ emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar, external, hasOutputSlotTypes(rhs)) }
-    kstream.println(bodyString.toString)
-    withStream(kstream){ emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar, external, hasOutputSlotTypes(rhs)) }
+    withStream(realkstream){ emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar, external, hasOutputSlotTypes(rhs)) }
+    realkstream.println(bodyString.toString)
+    withStream(realkstream){ emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar, external, hasOutputSlotTypes(rhs)) }
   }
 
 }
