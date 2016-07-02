@@ -1,7 +1,7 @@
 package ppl.delite.framework.analysis
 
 import scala.reflect.{Manifest,SourceContext}
-import scala.virtualization.lms.internal.FatExpressions
+import scala.virtualization.lms.internal.{Traversal, FatExpressions}
 import scala.virtualization.lms.common.EffectExp
 
 /* Super simple base for detecting 1D affine access patterns
@@ -87,11 +87,11 @@ trait AffineAnalysisExp extends EffectExp with FatExpressions {
   }).asInstanceOf[T]
 }
 
-trait AffineAnalyzer extends HungryTraversal {
+trait AffineAnalyzer extends Traversal {
   val IR: AffineAnalysisExp
   import IR._
 
-  //debugMode = true
+  override val eatReflect = true
 
   var outerIndices = Set[Sym[Index]]()
   var loopIndices = Set[Sym[Index]]()

@@ -9,23 +9,21 @@ trait IRPrinter extends Traversal {
 
   var level = 0
 
-  override def traverseStm(stm: Stm): Unit = {
-    stm match {
-      case TP(s,d) =>
-        println(".."*level + s"$s = $d")
-        level += 1
-        super.traverseStm(stm)
-        level -= 1
-
-      case TTP(syms, mhs, d) =>
-        println(syms.mkString("(", ",", ")") + " = " + d.toString)
-        println("   " + mhs.mkString("\n   "))
-    }
+  override def traverse(lhs: Sym[Any], rhs: Def[Any]) = {
+    msg(".."*level + s"$lhs = $rhs")
+    level += 1
+    super.traverse(lhs, rhs)
+    level -= 1
   }
 
-  override def run[A:Manifest](b: Block[A]) = {
-    println(name + "\n------------------------------------")
-    super.run(b)
+  override def traverse(lhs: List[Sym[Any]], mhs: List[Def[Any]], rhs: FatDef) = {
+    msg(lhs.mkString("(", ",", ")") + " = " + rhs.toString)
+    msg("   " + mhs.mkString("\n   "))
+  }
+
+  override def preprocess[A:Manifest](b: Block[A]): Block[A] = {
+    msg(name + "\n------------------------------------")
+    super.preprocess(b)
   }
 }
 
@@ -36,28 +34,26 @@ trait IRPrinterPlus extends Traversal {
   override val name = "PrinterPlus"
   var level = 0
 
-  override def traverseStm(stm: Stm): Unit = {
-    stm match {
-      case TP(s,d) =>
-        println(".."*level + s"$s = $d")
-        getProps(s).foreach{m => println(".."*level+s"$s" + makeString(m)) }
+  override def traverse(lhs: Sym[Any], rhs: Def[Any]) = {
+    msg(".."*level + s"$lhs = $rhs")
+    getProps(lhs).foreach{m => msg(".."*level+s"$lhs" + makeString(m)) }
 
-        level += 1
-        super.traverseStm(stm)
-        level -= 1
+    level += 1
+    super.traverse(lhs, rhs)
+    level -= 1
+  }
 
-      case TTP(syms, mhs, d) =>
-        println(syms.mkString("(", ",", ")") + " = " + d.toString)
-        println("   " + mhs.mkString("\n   "))
-        syms.foreach{ sym =>
-          getProps(sym).foreach{m => println(s"$sym" + makeString(m)) }
-        }
+  override def traverse(lhs: List[Sym[Any]], mhs: List[Def[Any]], rhs: FatDef) = {
+    msg(".."*level + lhs.mkString("(", ",", ")") + " = " + rhs.toString)
+    msg(".."*level + " - " + mhs.mkString("\n   "))
+    lhs.foreach{ sym =>
+      getProps(sym).foreach{m => msg(s"$sym" + makeString(m)) }
     }
   }
 
-  override def run[A:Manifest](b: Block[A]) = {
-    println(name + "\n------------------------------------")
-    super.run(b)
+  override def preprocess[A:Manifest](b: Block[A]): Block[A] = {
+    msg(name + "\n------------------------------------")
+    super.preprocess(b)
   }
 }
 
@@ -65,7 +61,7 @@ trait HardStop extends Traversal {
   import IR._
 
   override def run[A:Manifest](b: Block[A]) = {
-    println("Hard stop reached during IR traversal")
+    msg("Hard stop reached during IR traversal")
     sys.exit(-1)
   }
 }
