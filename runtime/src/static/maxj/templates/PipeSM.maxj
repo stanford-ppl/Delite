@@ -43,7 +43,7 @@ class PipeSM extends KernelStateMachine {
       this.iterDepth = iterDepth;
 
       // Declare all types required to wire the state machine together
-      DFEsmValueType counterType = dfeUInt(32);
+      DFEsmValueType counterType = dfeInt(32);
       DFEsmValueType wireType = dfeBool();
 
       // Define state machine IO
