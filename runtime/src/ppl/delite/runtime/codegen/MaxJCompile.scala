@@ -92,6 +92,8 @@ object MaxJCompile extends CCompile {
     copyFile(s"""$staticResources/TopKernel.maxj""", s"""$sourceCacheHome/static/TopKernel.maxj""")
     copyFile(s"""$staticResources/Makefile.top""", s"""${Config.codeCacheHome}/Makefile""")
     copyFile(s"""$staticResources/build.xml""", s"""${Config.codeCacheHome}/build.xml""")
+    copyFile(s"""$staticResources/scripts/run.sh""", s"""${Config.codeCacheHome}/run.sh""")
+    copyFile(s"""$staticResources/scripts/run_fpga.sh""", s"""${Config.codeCacheHome}/run_fpga.sh""")
   }
 
   /** Copy static cpp files into a 'static' folder in the runtime cpp directory.
