@@ -124,7 +124,7 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
             val typecastStr = inop.opName match {
               case "ArgOut" => inop.outputType(hostTarget) match {
                 case s if s.contains("int") => "(uint64_t*)"
-                case s if s.contains("float") => "(double)"
+                case s if s.contains("float") => "(double*)"
                 case _ => ""
               }
               case _ => ""
