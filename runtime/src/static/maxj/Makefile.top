@@ -87,7 +87,8 @@ $(MAXFILE_DFE_EXE): $(MAXFILE_DFE_OBJ) $(SOURCES)
 run-sim: $(MAXFILE_SIM_EXE)
 	$(MAXCOMPILERDIR)/bin/maxcompilersim -c $(BUILD_CARD) -n $(SIM_ID) restart
 	LD_PRELOAD="$(PRELOAD)" SLIC_CONF="$(SLIC_CONF_SIM)" LD_LIBRARY_PATH="$(MAXCOMPILERDIR)/lib/maxeleros-sim/lib/:$(LD_LIBRARY_PATH)" \
-			   ./$< $(PRJ)_Sim $(MAIA_FLAG)
+			   ./$< ${ARGS}
+			   #./$< $(PRJ)_Sim $(MAIA_FLAG)
 			   #./$< $(PRJ)_Sim$(BUILD_TAG) $(MAIA_FLAG)
 	$(MAXCOMPILERDIR)/bin/maxcompilersim -c $(BUILD_CARD) -n $(SIM_ID) stop
 
