@@ -203,7 +203,8 @@ int main(int argc, char *argv[]) {
 
     if (!returnsResult) {
       for (name <- op.getOutputs if(op.outputType(Targets.Cpp,name)!="void")) {
-        out.append(op.outputType(Targets.Cpp, name) + addRef(op.outputType(name)))
+        out.append(op.outputType(Targets.Cpp, name))
+//        out.append(op.outputType(Targets.Cpp, name) + addRef(op.outputType(name)))
         out.append(" " + getSymHost(op,name) + " = " + resultName + "->" + name + ";\n")
       }
       // Delete activation record and multiloop header

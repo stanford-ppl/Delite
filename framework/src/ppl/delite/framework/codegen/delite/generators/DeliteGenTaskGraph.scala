@@ -143,7 +143,13 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
       }
 
       if (genReturnType != null) {
-        val retStr = if (hasOutputSlotTypes(rhs)) "activation_" + kernelName else genReturnType
+        val retStr = if (hasOutputSlotTypes(rhs)) {
+          val actType = "activation_" + kernelName
+          gen match {
+            case g: CLikeCodegen => actType + "*"
+            case _ => actType
+          }
+        } else genReturnType
         returnTypes += new JsonPair(gen.toString, retStr)
       }
     }
