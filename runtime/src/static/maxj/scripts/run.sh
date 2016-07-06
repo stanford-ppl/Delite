@@ -1,3 +1,3 @@
 #!/bin/bash
 
-make run-sim ARGS="$@"
+make run-sim ARGS="$(echo $@)"

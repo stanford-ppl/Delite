@@ -1,3 +1,4 @@
 #!/bin/bash
 
-make run-dfe ARGS="$@"
+make run-dfe ARGS="$(echo $@)"
+
