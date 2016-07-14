@@ -2,7 +2,7 @@ package ppl.delite.framework
 
 object Config {
 
-  private def getProperty(prop: String, default: String) = {
+  def getProperty(prop: String, default: String) = {
     val p1 = System.getProperty(prop)
     val p2 = System.getProperty(prop.substring(1))
     if (p1 != null && p2 != null) {
@@ -36,8 +36,6 @@ object Config {
   val enableGPUMultiDim = getProperty("delite.enable.gpu.multidim","false") != "false"
   val nestedParallelism = getProperty("delite.nested_parallelism","false") != "false"
   val intSize = getProperty("delite.integer.size", "default")
-
-  val enableDSE = getProperty("delite.dse","true") != "false"
 
   //Print generationFailedException info
   val dumpException: Boolean = getProperty("delite.dump.exception", "false") != "false"

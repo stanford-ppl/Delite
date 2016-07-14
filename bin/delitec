@@ -39,7 +39,7 @@ def main():
     parser.add_option("--jar", dest="jar_app", action="store_true", default=False, help="save generated output in a jar for distribution")
     parser.add_option("--int64", dest ="long_int", action="store_true", default=False, help="generate code with 64-bit integers")
     parser.add_option("--strict_control", dest ="strict_control", action="store_true", default=False, help="enable LMS control dependencies (may suppress some optimizations)")
-  
+
     parser.add_option("--noDSE", dest="enable_dse", action="store_false", default=True, help="Disable design space exploration")
 
     (opts, args) = parser.parse_args()
@@ -111,8 +111,8 @@ def stage(runner, params, opts):
         java_opts = java_opts + " -Dlms.controldeps=true"
 
     if opts.enable_dse == False:
-        java_opts = java_opts + " -Ddelite.dse=false"            
-  
+        java_opts = java_opts + " -Dspatial.dse=false"  ## TODO: DSL specific config option. Separate out?
+
     java_opts = java_opts + " -Dnested.variants.level=0"
 
     DELITE_HOME = delitecommon.DELITE_HOME
