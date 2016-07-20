@@ -1,7 +1,7 @@
 package ppl.delite.framework.analysis
 
-import scala.virtualization.lms.internal.Traversal
 import scala.virtualization.lms.common.IterativeAnalyzer
+import scala.virtualization.lms.internal.Traversal
 
 import scala.reflect.SourceContext
 import scala.collection.mutable.HashSet
@@ -9,7 +9,11 @@ import scala.collection.mutable.HashSet
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.datastructures._
 
-trait AnalyzerBase extends IterativeAnalyzer {
+/**
+ * Analysis with support for metadata completeness checking and rules for propagation
+ * on DeliteArray atomic write defs
+ **/
+trait DeliteAnalyzer extends IterativeAnalyzer {
   val IR: DeliteOpsExp
   import IR._
 
@@ -21,15 +25,16 @@ trait AnalyzerBase extends IterativeAnalyzer {
   def getIncompleteSyms[A:Manifest](b: Block[A]): List[Exp[Any]] = {
 
     class CompletenessCheck extends Traversal {
-      val IR: AnalyzerBase.this.IR.type = AnalyzerBase.this.IR
+      val IR: DeliteAnalyzer.this.IR.type = DeliteAnalyzer.this.IR
       val incompleteSet = new HashSet[Exp[Any]]()
 
-      override def traverseStm(stm: Stm) = {
-        super.traverseStm(stm)
-        stm match {
-          case TP(sym,_) => if (!completed(sym)) { incompleteSet += sym }
-          case TTP(syms,_,_) => syms foreach {sym => if (!completed(sym)) incompleteSet += sym }
-        }
+      override val recurse = Always
+
+      override def traverse(lhs: Sym[Any], rhs: Def[Any]) {
+        if (!completed(lhs)) incompleteSet += lhs
+      }
+      override def traverse(lhs: List[Sym[Any]], mhs: List[Def[Any]], rhs: FatDef) {
+        lhs foreach {sym => if (!completed(sym)) incompleteSet += sym }
       }
     }
 
@@ -43,17 +48,5 @@ trait AnalyzerBase extends IterativeAnalyzer {
     case DeliteArrayCopy(src,_,_,_,_) => getProps(src)
     case _ => super.getAtomicWriteRHS(d)
   }
-
-  /*def propagateTP[A](lhs: Exp[A], rhs: Def[_])(implicit ctx: SourceContext): Unit = rhs match {
-    // --- Delite Ops
-    // TODO: Fill in the remainder of these ops
-    case op: AbstractLoop[_] => op.body match {
-      case r: DeliteReduceElem[_] =>
-        traverseBlock(r.func)
-        setProps(r.rV._1, getProps(r.func))
-        setProps(r.rV._2, getProps(r.func))
-        traverseBlock(r.rFunc)
-        setProps(lhs, getProps(r.rFunc))
-  }*/
 
 }
