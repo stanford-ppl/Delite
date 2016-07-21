@@ -89,9 +89,15 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
       println(s"""[MaxJExecutableGenerator::makeNestedFunction() Cannot generate '$op')""")
   }
 
+  /**
+   * Delite assumes that any type that isn't a primitive type should be
+   * a pointer type. Hence, all registers are seen as pointers.
+   * For ArgIns, we want to dereference the value of the pointer and
+   * do pass-by-value
+   */
   private def deref(o: DeliteOP, s: String): String = {
-    o.opName match {
-      case "ArgIn" => "*"
+    o.irnode match {
+      case "Argin_new" => "*"
       case _ => ""
     }
   }
@@ -116,13 +122,15 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
           out.append(s"""struct timeval t1, t2;\n""")
           out.append(s"""uint64_t Top_cycles = 0;\n""")
           out.append(s"""Top_actions_t runAct;\n""")
-          val runActValues = op.getInputs.filter { t => t._1.irnode == "Reg_new" }.map { t =>
+          val runActValues = op.getInputs.filter { t =>
+            t._1.irnode == "Argin_new" || t._1.irnode == "Argout_new"
+          }.map { t =>
             val inop = t._1
 
             // MaxJ automatically promotes ArgOut types on the host to uint64_t, for any integer
             // and promotes floats to doubles. Handle this ugly feature with the ugly hack below
-            val typecastStr = inop.opName match {
-              case "ArgOut" => inop.outputType(hostTarget) match {
+            val typecastStr = inop.irnode match {
+              case "Argout_new" => inop.outputType(hostTarget) match {
                 case s if s.contains("int") => "(uint64_t*)"
                 case s if s.contains("float") => "(double*)"
                 case _ => ""
