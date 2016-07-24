@@ -1,7 +1,7 @@
 package ppl.delite.framework.codegen.delite
 
 import java.io.{File, StringWriter, PrintWriter}
-import scala.virtualization.lms.internal.{GenericFatCodegen, GenerationFailedException}
+import scala.virtualization.lms.internal.{GenericFatCodegen, GenerationFailedException, MaxJCodegen}
 import ppl.delite.framework.ops._
 import ppl.delite.framework.Config
 
@@ -144,8 +144,17 @@ trait DeliteKernelCodegen extends GenericFatCodegen {
         case op: AbstractLoop[_] => "void"
         case _ => remap(sym.head.tp)
       }
+      case ("maxj", z) => {
+        val maxjCodegen = this.asInstanceOf[MaxJCodegen]
+        if (maxjCodegen.inHwScope) {
+          assert(sym.length == 1, s"""(${this.toString}, ${rhs}) non-unit sym.length = ${sym.length}!""") // if not set hasOutputSlotTypes and use activation record
+          remap(sym.head.tp)
+        } else {
+          "void" // Non-MaxJ kernel, don't really care
+        }
+      }
       case _ =>
-        assert(sym.length == 1) // if not set hasOutputSlotTypes and use activation record
+        assert(sym.length == 1, s"""(${this.toString}, ${rhs}) non-unit sym.length = ${sym.length}!""") // if not set hasOutputSlotTypes and use activation record
         remap(sym.head.tp)
     }
 
