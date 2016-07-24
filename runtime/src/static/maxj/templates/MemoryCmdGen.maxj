@@ -22,7 +22,7 @@ import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEStructType.S
 import java.util.ArrayList;
 class MemoryCmdGenLib extends KernelLib {
 
-  protected boolean dbg = true;
+  protected boolean dbg = false;
   protected boolean dbgDetail = false;
   protected static int getNumberOfBursts(int num, DFEType type) {
     return MathUtils.ceilDivide(num, getValuesPerBurst(type));
@@ -81,7 +81,7 @@ class MemoryCmdGenLib extends KernelLib {
     DFEVar fifoReadEn, DFEVector<DFEVar> wdata)
   {
     int par = wdata.getSize();
-
+    int delay = 2;
     SMIO sm = addStateMachine(streamName + "ldSM", new MemoryCmdSM(this));
     sm.connectInput("sm_en", en);
     done <== stream.offset(sm.getOutput("sm_done"), -1);
@@ -95,13 +95,13 @@ class MemoryCmdGenLib extends KernelLib {
     Count.Params controlCountParams = control.count.makeParams(16)
                               .withEnable(memStart)
                               .withReset(done)
-                              .withMax(10)
+                              .withMax(delay)
                               .withWrapMode(WrapMode.STOP_AT_MAX);
     Counter controlCounter = control.count.makeCounter(controlCountParams); // Cmd every 10 cycles
-    memDone <== stream.offset(controlCounter.getWrap(), -1);
+    DFEVar counterWrap = controlCounter.getCount() === delay-1;
+    memDone <== stream.offset(counterWrap, -1);
 
     DFEVar ctrl = memStart & (controlCounter.getCount() === 0);
-    //DFEVar size = constant.var(dfeUInt(8), getNumberOfBursts(size));
     DFEVar len = getNumberOfBursts(size).cast(dfeUInt(8));
     DFEVar inc = constant.var(dfeUInt(8), 1);
     DFEVar stream = constant.var(dfeUInt(1), 0);
