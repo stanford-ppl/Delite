@@ -43,7 +43,8 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
     out.append("#include <stdint.h>\n")
     out.append("#include <sys/time.h>\n")
     out.append("#include <MaxSLiCInterface.h>\n")
-    out.append("#include <Top.h>\n")
+
+    out.append(s"""max_engine_t *engine = 0;""")
   }
 
   protected[codegen] def declareGlobals() {
@@ -60,7 +61,7 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
     out.append(s"""// Load max file from disk -> DRAM\n""")
     out.append(s"""max_file_t *maxfile = Top_init();\n""")
     out.append(s"""// Configure the FPGA\n""")
-    out.append(s"""max_engine_t *engine = max_load(maxfile, "local:*");\n""")
+    out.append(s"""engine = max_load(maxfile, "local:*");\n""")
     out.append(s"""int burstSize = max_get_burst_size(maxfile, NULL);\n""")
     out.append(s"""printf("Burst size for architecture: %d bytes\\n", burstSize);\n""")
   }
