@@ -1,0 +1,172 @@
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.Counter;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.WrapMode;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.LMemCommandStream;
+import com.maxeler.maxcompiler.v2.kernelcompiler.Optimization;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.Reductions;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Stream.OffsetExpr;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEStruct;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEStructType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEStructType.StructFieldType;
+import java.util.ArrayList;
+class MemoryCmdStLib extends KernelLib {
+
+  protected boolean dbg = false;
+  protected boolean dbgDetail = false;
+  protected static int getNumberOfBursts(int num, DFEType type) {
+    return MathUtils.ceilDivide(num, getValuesPerBurst(type));
+  }
+
+  protected static int getNumberOfBursts(int num, DFEType[] type) {
+    return MathUtils.ceilDivide(num, getValuesPerBurst(type));
+  }
+
+  protected DFEVar getNumberOfBursts(DFEVar num) {
+    DFEVar numburst = (num / getValuesPerBurst(num.getType()));
+    if (dbgDetail) {
+//      debug.simPrintf("Values per burst for %d: %d\n", num, numburst);
+    }
+    return numburst;
+  }
+
+  protected void printVector(DFEVar en, DFEVector<DFEVar> v) {
+    for (int i=0; i<v.getSize(); i++) {
+      debug.simPrintf(en, "%f ", v[i]);
+    }
+      debug.simPrintf(en, "\n");
+  }
+
+  protected static int getValuesPerBurst(DFEType type) {
+    return getBurstSizeInBits() / type.getTotalBits();
+  }
+
+  protected static int getValuesPerBurst(DFEType[] type) {
+    int totalBits = 0;
+    for (int i=0; i<type.length; i++) {
+      totalBits += type[i].getTotalBits();
+    }
+    return getBurstSizeInBits() / totalBits;
+  }
+
+  protected static int getBurstSizeInBits() {
+    // return 8 * getManager().getManagerConfiguration().dram.getAdjustedBurstSizeInBytes();
+    return 8 * 384;
+  }
+
+  /**
+   * Parallel version which auto-detects type of wdata.
+   * This means that the caller must instantiate the wdata
+   * stream with the correct type.
+   * The 'par' value is inferred from the length of the DFEVector
+   * passed in.
+   * wdata: A vector of elements read from DRAM
+   */
+   void common (
+    KernelLib owner,
+    DFEVar en, DFEVar done,
+    int base, DFEVar offset,
+    String streamName,
+    DFEVar size,
+    DFEVar fifoWriteEn, DFEVector<DFEVar> wdata)
+  {
+    int par = wdata.getSize();
+    int delay = 2;
+    SMIO sm = addStateMachine(streamName + "ldSM", new MemoryCmdSM(this));
+    sm.connectInput("sm_en", en);
+    done <== stream.offset(sm.getOutput("sm_done"), -1);
+
+    DFEVar memDone = dfeBool().newInstance(this);
+    sm.connectInput("memDone", memDone);
+    DFEVar memStart = sm.getOutput("memStart");
+
+    DFEVar burstAddr = base + offset.cast(dfeUInt(32));
+
+    Count.Params controlCountParams = control.count.makeParams(16)
+                              .withEnable(memStart)
+                              .withReset(done)
+                              .withMax(delay)
+                              .withWrapMode(WrapMode.STOP_AT_MAX);
+    Counter controlCounter = control.count.makeCounter(controlCountParams); // Cmd every 10 cycles
+    DFEVar counterWrap = controlCounter.getCount() === delay-1;
+    memDone <== stream.offset(counterWrap, -1);
+
+    DFEVar ctrl = memStart & (controlCounter.getCount() === 0);
+    DFEVar len = getNumberOfBursts(size).cast(dfeUInt(8));
+    DFEVar inc = constant.var(dfeUInt(8), 1);
+    DFEVar stream = constant.var(dfeUInt(1), 0);
+    DFEVar tag = constant.var(false);
+
+    String cmdStreamName = streamName + "_cmd";
+    LMemCommandStream.makeKernelOutput(cmdStreamName,
+        ctrl,
+        burstAddr,
+        len,
+        inc,
+        stream,
+        tag);
+
+//    io.forceExactIOSeparation(streamName, cmdStreamName, -16);  // Arbitrarily picked to handle divides
+
+    io.output(streamName, wdata, wdata.getType(), fifoWriteEn);
+
+    if (dbgDetail) {
+      debug.simPrintf(memStart, "Fetched: ");
+      printVec(wdata, memStart);
+    }
+  }
+
+  MemoryCmdStLib (
+    KernelLib owner,
+    DFEVar en, DFEVar done,
+    int base, DFEVar offset,
+    String streamName,
+    DFEVar size,
+    DFEVar fifoReadEn, DFEVector<DFEVar> wdata)
+  {
+    super(owner);
+    common(owner, en, done, base, offset, streamName, size, fifoReadEn, wdata);
+  }
+
+MemoryCmdStLib (
+    KernelLib owner,
+    DFEVar en, DFEVar done,
+    int base, DFEVar offset,
+    String streamName,
+    DFEVar size,
+    DFEVar fifoReadEn, DFEVar wdata)
+  {
+    super(owner);
+    DFEVectorType<DFEVar> wdataType = new DFEVectorType<DFEVar>(wdata.getType(), 1);
+    DFEVector<DFEVar> wdataVec = wdataType.newInstance(this);
+    wdataVec[0] <== wdata;
+    common(owner, en, done, base, offset, streamName, size, fifoReadEn, wdataVec);
+  }
+
+  void printVec(DFEVector<DFEVar> v, DFEVar en) {
+    for (int i=0; i<v.getSize(); i++) {
+      debug.simPrintf(en, "%d ", v[i]);
+    }
+    debug.simPrintf(en, "\n");
+  }
+
+  /* TODO: Optimized version where D2 is a known constant */
+  /* TODO: Optimized version where entire block is loaded using
+     just one memory command instead of many.
+     This is possible if we know that D2 isn't large
+  */
+  /* TODO: Optimized version where B2 = D2. This would result in
+     just one memory command instead of many.
+     Maybe this can be collapsed into the previous case?
+  */
+}
