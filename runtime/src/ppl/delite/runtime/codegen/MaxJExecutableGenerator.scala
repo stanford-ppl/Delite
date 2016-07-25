@@ -140,7 +140,7 @@ trait MaxJExecutableGenerator extends ExecutableGenerator {
             }
             s"""$typecastStr ${deref(t._1,t._2) + getSymHost(t._1,t._2)}"""
           }
-          val runactInit = runActValues ++ List("&Top_cycles").mkString(",")
+          val runactInit = (runActValues ++ List("&Top_cycles")).mkString(",")
           out.append(s"""runAct = {$runactInit};\n""")
           out.append(s"""gettimeofday(&t1, 0);\n""")
           out.append(s"""Top_run(engine, &runAct); // ${op.task}(engine, &runAct);\n""")
