@@ -81,7 +81,7 @@ class MemoryCmdGenLib extends KernelLib {
     DFEVar fifoReadEn, DFEVector<DFEVar> wdata)
   {
     int par = wdata.getSize();
-    int delay = 2;
+    int delay = 16;
     SMIO sm = addStateMachine(streamName + "ldSM", new MemoryCmdSM(this));
     sm.connectInput("sm_en", en);
     done <== stream.offset(sm.getOutput("sm_done"), -1);
@@ -90,7 +90,7 @@ class MemoryCmdGenLib extends KernelLib {
     sm.connectInput("memDone", memDone);
     DFEVar memStart = sm.getOutput("memStart");
 
-    DFEVar burstAddr = base + offset.cast(dfeUInt(32));
+    DFEVar burstAddr = base + getNumberOfBursts(offset).cast(dfeUInt(32));
 
     Count.Params controlCountParams = control.count.makeParams(16)
                               .withEnable(memStart)
@@ -116,7 +116,8 @@ class MemoryCmdGenLib extends KernelLib {
         stream,
         tag);
 
-//    io.forceExactIOSeparation(streamName, cmdStreamName, -16);  // Arbitrarily picked to handle divides
+    // debug.simPrintf(en, "[MemCmdGen] memStart = %d, ctrl = %d, offset = %d, burstAddr = %d\n", memStart, ctrl, offset, burstAddr);
+    io.forceExactIOSeparation(streamName, cmdStreamName, -16);  // Arbitrarily picked to handle divides
 
     wdata <== io.input(streamName, wdata.getType(), fifoReadEn);
 
