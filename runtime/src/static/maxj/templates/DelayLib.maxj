@@ -5,21 +5,95 @@ import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
 import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
 import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
 import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+import com.maxeler.maxcompiler.v2.utils.Bits;
 
 class DelayLib extends KernelLib {
 
-  DFEVar q;
-  DFEVector<DFEVar> q_vector;
-  public DelayLib(KernelLib owner, DFEVar en, DFEVar d) {
-    super(owner);
-      q = stream.offset(Reductions.streamHold(d, en), -1);
-    // q = Reductions.streamHold(d, en);
+  DFEVar en;
+  DFEVector<DFEVar> d;
+  DFEVar rst_en;
+  Bits rstVal;
+  DFEVector<DFEVar> q;
+
+  void common(DFEVar en, DFEVector<DFEVar> d, DFEVar rst_en, Bits rstVal) {
+    this.en = en;
+    this.d = d;
+    this.rst_en = rst_en;
+    this.rstVal = rstVal;
+
+    q = Reductions.streamHold(d, en, rst_en, rstVal);
   }
 
-  public DelayLib(KernelLib owner, DFEVar en, DFEVector<DFEVar> d) {
+  public DelayLib(KernelLib owner, DFEVar en, DFEVar d, DFEVar rst_en, Bits rstVal) {
     super(owner);
-      q_vector = stream.offset(Reductions.streamHold(d, en), -1);
-    // q = Reductions.streamHold(d, en);
+
+    DFEVector<DFEVar> d_vector = new DFEVectorType<DFEVar>(d.getType(), 1).newInstance(this, d);
+    common(en, d_vector, rst_en, rstVal);
   }
 
+  public DelayLib(KernelLib owner, DFEVar en, DFEVector<DFEVar> d, DFEVar rst_en, Bits rstVal) {
+    super(owner);
+    common(en, d, rst_en, rstVal);
+  }
+
+  public DelayLib(KernelLib owner, DFEType t) {
+    super(owner);
+    common(
+      dfeBool().newInstance(this),
+      new DFEVectorType<DFEVar>(t, 1).newInstance(this),
+      dfeBool().newInstance(this),
+      Bits.allZeros(t.getTotalBits())
+    );
+  }
+
+  public DelayLib(KernelLib owner, DFEType t, Bits rstVal) {
+    super(owner);
+    common(
+      dfeBool().newInstance(this),
+      new DFEVectorType<DFEVar>(t, 1).newInstance(this),
+      dfeBool().newInstance(this),
+      rstVal
+    );
+  }
+
+  void write(DFEVar data) {
+    d <== d.getType().newInstance(this, data);
+    en <== constant.var(true);
+  }
+
+  void write(DFEVar data, DFEVar wen) {
+    d <== d.getType().newInstance(this, data);
+    en <== wen;
+  }
+
+  void write(DFEVar data, DFEVar wen, DFEVar rst) {
+    d <== d.getType().newInstance(this, data);
+    en <== wen;
+    rst_en <== rst;
+  }
+
+  void write(DFEVector<DFEVar> data) {
+    d <== data;
+    en <== constant.var(true);
+  }
+
+  void write(DFEVector<DFEVar> data, DFEVar wen) {
+    d <== data;
+    en <== wen;
+  }
+
+  void write(DFEVector<DFEVar> data, DFEVar wen, DFEVar rst) {
+    d <== data;
+    en <== wen;
+    rst_en <== rst;
+  }
+
+
+  DFEVar read() {
+    return q[0];
+  }
+
+  DFEVector<DFEVar> readv() {
+    return q;
+  }
 }
