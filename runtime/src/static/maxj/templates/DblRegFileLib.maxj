@@ -9,8 +9,9 @@ import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
 import com.maxeler.maxcompiler.v2.kernelcompiler.Optimization;
 import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
 import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+import com.maxeler.maxcompiler.v2.utils.Bits;
 
-class DblRegFileLib extends KernelLib {
+class DblBufReg extends KernelLib {
 
   // All sourceless streams
   DFEVector<DFEVar> rdata;
@@ -19,9 +20,10 @@ class DblRegFileLib extends KernelLib {
   DFEVector<DFEVar> wdata;
   DFEVar wdone;
   DFEVar wen;
+  DFEVar rst_en;
   DFEVar realCurBuf;
 
-  private void common (DFEType type, String smname, int par) {
+  private void common (DFEType type, String smname, int par, Bits rstVal, DFEVar rst_signal) {
     DFEVectorType<DFEVar> vectorType = new DFEVectorType<DFEVar>(type, par);
     rdata = vectorType.newInstance(this);
     wdata = vectorType.newInstance(this);
@@ -29,31 +31,42 @@ class DblRegFileLib extends KernelLib {
     rdone = dfeBool().newInstance(this);
     wdone = dfeBool().newInstance(this);
     wen = dfeBool().newInstance(this);
+    rst_en = rst_signal;
 
     SMIO sm = addStateMachine(smname, new DblBufStateMachine(this));
     sm.connectInput("r_done", rdone);
     sm.connectInput("w_done", wdone);
     realCurBuf = sm.getOutput("curBuf");
 
-    DelayLib r0 = new DelayLib(this, ~realCurBuf & wen, wdata);
-    DelayLib r1 = new DelayLib(this, realCurBuf & wen, wdata);
+    DelayLib r0 = new DelayLib(this, ~realCurBuf & wen, wdata, rst_en, rstVal);
+    DelayLib r1 = new DelayLib(this, realCurBuf & wen, wdata, rst_en, rstVal);
 
     // Kindly finish MUX-ing in one cycle
     optimization.pushPipeliningFactor(0);
-    rdata <== realCurBuf ? r0.q_vector : r1.q_vector;
+    rdata <== realCurBuf ? r0.q : r1.q;
     optimization.popPipeliningFactor();
   }
 
-  DblRegFileLib(KernelLib owner, DFEType type, String smname, int par) {
+  DblBufReg(KernelLib owner, DFEType type, String smname, int par, Bits rstVal) {
     super(owner);
-    common(type, smname, par);
+    common(type, smname, par, rstVal, dfeBool().newInstance(this));
   }
 
-  // DblRegFileLib(KernelLib owner, String smname, int size, int n, DFEVar wd) {
-  DblRegFileLib(KernelLib owner, DFEType type, String smname) {
+  DblBufReg(KernelLib owner, DFEType type, String smname, Bits rstVal) {
     super(owner);
-    common(type, smname, 1);
+    common(type, smname, 1, rstVal, dfeBool().newInstance(this));
   }
+
+  DblBufReg(KernelLib owner, DFEType type, String smname, int par) {
+    super(owner);
+    common(type, smname, par, new Bits(type.getTotalBits()*par, 0), constant.var(false));
+  }
+
+  DblBufReg(KernelLib owner, DFEType type, String smname) {
+    super(owner);
+    common(type, smname, 1, new Bits(type.getTotalBits(), 0), constant.var(false));
+  }
+
 
   DFEVector<DFEVar> readv() {
     return rdata;
@@ -63,14 +76,42 @@ class DblRegFileLib extends KernelLib {
     return rdata[0];
   }
 
+  void write(DFEVar data) {
+    wdata[0] <== data;
+    wen <== constant.var(true);
+    rst_en <== constant.var(false);
+  }
+
   void write(DFEVar data, DFEVar en) {
     wdata[0] <== data;
     wen <== en;
+    rst_en <== constant.var(false);
+  }
+
+
+  void write(DFEVar data, DFEVar en, DFEVar rst) {
+    wdata[0] <== data;
+    wen <== en;
+    rst_en <== rst;
+  }
+
+  void write(DFEVector<DFEVar> data) {
+    wdata <== data;
+    wen <== constant.var(true);
+    rst_en <== constant.var(false);
   }
 
   void write(DFEVector<DFEVar> data, DFEVar en) {
     wdata <== data;
     wen <== en;
+    rst_en <== constant.var(false);
+  }
+
+
+  void write(DFEVector<DFEVar> data, DFEVar en, DFEVar rst) {
+    wdata <== data;
+    wen <== en;
+    rst_en <== en;
   }
 
   void connectRdone(DFEVar done) {
