@@ -50,4 +50,6 @@ object Config {
     }
     else false
   }
+
+  def generateTransferFunctions() = !generateMaxJ
 }
