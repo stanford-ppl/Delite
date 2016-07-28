@@ -131,29 +131,6 @@ trait MaxJGenDeliteOps extends GenericGenDeliteOps {
 
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case s:DeliteOpSingleTask[_] => {
-      //printlog("EMIT single "+s)
-      // always wrap single tasks in methods to reduce JIT compilation unit size
-      val b = s.block
-      stream.println("def " + quote(sym) + "_block = { ")
-      emitBlock(b)
-      stream.println(quote(getBlockResult(b)))
-      stream.println("}")
-      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
-    }
-    case op: AbstractLoop[_] =>
-      // TODO: we'd like to always have fat loops but currently they are not allowed to have effects
-      // if inline, wrap thin loops in methods to reduce JIT compilation unit size
-      if (!deliteKernel && !Config.nestedParallelism) {
-        stream.println("def " + quote(sym) + "_thin = {")
-      }
-      stream.println("// a *thin* loop follows: " + quote(sym))
-      emitFatNode(List(sym), SimpleFatLoop(op.size, op.v, List(op.body)))
-      if (!deliteKernel && !Config.nestedParallelism) {
-        stream.println(quote(sym))
-        stream.println("}")
-        stream.println("val " + quote(sym) + " = " + quote(sym) + "_thin")
-      }
     case _ => super.emitNode(sym,rhs)
   }
 
