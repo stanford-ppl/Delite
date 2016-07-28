@@ -90,7 +90,7 @@ class MemoryCmdStLib extends KernelLib {
     sm.connectInput("memDone", memDone);
     DFEVar memStart = sm.getOutput("memStart");
 
-    DFEVar burstAddr = base + offset.cast(dfeUInt(32));
+    DFEVar burstAddr = base + getNumberOfBursts(offset).cast(dfeUInt(32));
 
     Count.Params controlCountParams = control.count.makeParams(16)
                               .withEnable(memStart)
@@ -117,7 +117,7 @@ class MemoryCmdStLib extends KernelLib {
         tag);
 
 //    io.forceExactIOSeparation(streamName, cmdStreamName, -16);  // Arbitrarily picked to handle divides
-
+    debug.simPrintf(fifoWriteEn, "Writing out %f %f\n", wdata[0], wdata[1]);
     io.output(streamName, wdata, wdata.getType(), fifoWriteEn);
 
     if (dbgDetail) {
