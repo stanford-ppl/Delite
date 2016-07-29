@@ -117,7 +117,7 @@ class MemoryCmdStLib extends KernelLib {
         tag);
 
 //    io.forceExactIOSeparation(streamName, cmdStreamName, -16);  // Arbitrarily picked to handle divides
-    debug.simPrintf(fifoWriteEn, "Writing out %f %f\n", wdata[0], wdata[1]);
+//    debug.simPrintf(fifoWriteEn, "Writing out %f %f\n", wdata[0], wdata[1]);
     io.output(streamName, wdata, wdata.getType(), fifoWriteEn);
 
     if (dbgDetail) {
