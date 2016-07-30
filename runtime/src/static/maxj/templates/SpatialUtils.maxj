@@ -1,0 +1,52 @@
+package engine;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.Counter;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.WrapMode;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.Params;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+import com.maxeler.maxcompiler.v2.kernelcompiler.Kernel;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelParameters;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.utils.Bits;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.KernelMath;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Stream.OffsetExpr;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.Reductions;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.Accumulator;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEFix.SignMode;
+import java.util.Arrays;
+class SpatialUtils extends KernelLib {
+
+  SpatialUtils(KernelLib owner) { super(owner); }
+
+  /**
+   * Register chain for indices in a metapipeline
+   * @param mpName: String name of metapipeline
+   * @param numStages: Number of stages
+   * @param idx: DFEVar corresponding to counter output
+   * @param stageDone: Array of 1-bit 'done' signals of each stage
+   */
+  DblBufReg[] getRegChain(String mpName, int numStages, DFEVar idx, DFEVar[] stageDone) {
+    int numRegs = numStages-1;
+    DblBufReg[] chain = new DblBufReg[numRegs];
+    for(int i=0; i<numRegs; i++) {
+      String regName = mpName + i + "_" + (i+1);
+      chain[i] = new DblBufReg(this, idx.getType(), regName, 1, new Bits(dfeFixOffset( 32,0, SignMode.TWOSCOMPLEMENT).getTotalBits(), 0));
+      if (i == 0) {
+        chain[i].write(idx, stageDone[i], constant.var(false));
+      } else {
+        chain[i].write(chain[i-1].read(), stageDone[i], constant.var(false));
+      }
+      chain[i].connectWdone(stageDone[i]);
+      chain[i].connectRdone(stageDone[i+1]);
+    }
+    return chain;
+  }
+}
