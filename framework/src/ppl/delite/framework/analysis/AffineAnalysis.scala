@@ -95,17 +95,21 @@ trait AffineAnalyzer extends Traversal {
 
   var outerIndices = Set[Sym[Index]]()
   var loopIndices = Set[Sym[Index]]()
-  var outerScope: Seq[Stm] = Nil
+
+  // The list of statements which can be scheduled prior to block traversals
+  // (All statements in all scopes of below this scope)
+  // If a statement is not contained in this set, it must be loop invariant (because it was already scheduled)
+  var loopScope: Seq[Stm] = Nil
 
   def inLoop[T](indices: List[Sym[Index]])(x: => T): T = {
     val prevOuter = outerIndices
-    val prevScope = outerScope
+    val prevScope = loopScope
     outerIndices = loopIndices
-    outerScope = innerScope
+    loopScope = innerScope
     loopIndices ++= indices
     val out = x
     loopIndices = outerIndices
-    outerScope = prevScope
+    loopScope = prevScope
     outerIndices = prevOuter
     out
   }
@@ -120,7 +124,7 @@ trait AffineAnalyzer extends Traversal {
     def unapply(x: Exp[Index]): Option[Exp[Index]] = x match {
       case Const(_) => Some(x)
       case Param(_) => Some(x)
-      case s: Sym[_] if outerScope.exists(stm => (stm defines s).isDefined) => Some(x)
+      case s: Sym[_] if !loopScope.exists(stm => (stm defines s).isDefined) => Some(x)
       case _ => IR.invariantUnapply(x)
     }
   }
@@ -135,14 +139,26 @@ trait AffineAnalyzer extends Traversal {
       }
 
     case MemRead(mem, addresses) =>
-      debug(s"Found read of memory $mem with addresses $addresses")
+      debug(s"Found read $lhs of memory $mem with addresses $addresses")
       debug(s"Current indices are $loopIndices")
+      debug(s"Loop scope: ")
+      loopScope.foreach{
+        case TP(lhs,rhs) => debug(s"  $lhs = $rhs")
+        case _ =>
+      }
       accessPatternOf(lhs) = addresses.map(extractIndexPattern)
+      debug(s"Access pattern is ${accessPatternOf(lhs)}")
 
     case MemWrite(mem, addresses) =>
       debug(s"Found write of memory $mem with addresses $addresses")
       debug(s"Current indices are $loopIndices")
+      debug(s"Loop scope: ")
+      loopScope.foreach{
+        case TP(lhs,rhs) => debug(s"  $lhs = $rhs")
+        case _ =>
+      }
       accessPatternOf(lhs) = addresses.map(extractIndexPattern)
+      debug(s"Access pattern is ${accessPatternOf(lhs)}")
 
     case _ => super.traverse(lhs, rhs)
   }
