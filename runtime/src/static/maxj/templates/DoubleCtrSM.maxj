@@ -1,0 +1,135 @@
+
+package engine;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmInput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmOutput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateEnum;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmValue;
+import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
+import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
+
+class DoubleCtrSM extends KernelStateMachine {
+
+    // States
+    enum States {
+      COUNT,
+      SATURATED
+    }
+
+    private final int max0;
+    private final int start0;
+    private final int stride0;
+    private final int max1;
+    private final int start1;
+    private final int stride1;
+
+    // State IO
+    private final DFEsmOutput[] count;
+
+    private final DFEsmOutput saturated;
+    private final DFEsmOutput done;
+    private final DFEsmInput en;
+    private final DFEsmInput reset;
+
+    // State storage
+    private final DFEsmStateValue[] countFF;
+    private final DFEsmStateEnum<States> stateFF;
+    
+    // Initialize state machine in constructor
+    // NOTE: strides is a constructor argument and max is an io.input
+    //       because old DHDL specifies max as CombNodes and strides as
+    //       ints so this was the easiest way to make this CtrSM
+    public DoubleCtrSM(KernelLib owner, int m0, int m1, int strt0, int strt1, int strd0, int strd1) {
+      super(owner);
+      // Declare all types required to wire the state machine together
+      DFEsmValueType numberType = dfeUInt(32);
+      DFEsmValueType wireType = dfeBool();
+      max0 = m0 == 0 ? strd0 : m0;
+      start0 = strt0;
+      stride0 = strd0;
+      max1 = m1;
+      start1 = strt1;
+      stride1 = strd1;
+
+      // Define state machine IO
+      count = new DFEsmOutput[2];
+      for (int i = 0; i < 2; i++) {
+        count[i] = io.output("counter" + i, numberType);
+      }
+
+      saturated = io.output("saturated", wireType);
+      done = io.output("done", wireType);
+      en = io.input("en", wireType);
+      reset = io.input("reset", wireType);
+
+      // Define state storage elements and initial state
+      stateFF = state.enumerated(States.class, States.COUNT);
+      countFF = new DFEsmStateValue[2];
+      for (int i = 0; i < 2; i++) {
+        countFF[i] = state.value(numberType, 0);
+      }
+    }
+  
+
+    @Override
+    protected void nextState() {
+      IF (reset) {
+        countFF[0].next <== 0;
+        countFF[1].next <== 0;
+        stateFF.next <== States.COUNT;
+      } ELSE {
+          SWITCH(stateFF) {
+            CASE(States.COUNT) {
+              IF(en) {
+                IF (
+                  (countFF[0] >= max0 - stride0) &
+                  (countFF[1] >= max1 - stride1)) {
+                stateFF.next <== States.SATURATED;
+                } ELSE { IF (
+                  (countFF[1] >= max1 - stride1)) {
+                countFF[1].next <== 0;
+                countFF[0].next <== countFF[0] + 1 * stride0;
+                } ELSE {
+                countFF[1].next <== countFF[1] + 1 * stride1;
+}}           } ELSE {
+              stateFF.next <== States.COUNT;
+            }
+            }
+          CASE(States.SATURATED) {
+            stateFF.next <== States.SATURATED;
+          }
+        }
+      }
+    }
+
+
+
+  @Override
+    protected void outputFunction() {     
+      count[0] <== countFF[0];
+      count[1] <== countFF[1];
+
+      saturated <== 0;
+      done <== 0;
+      SWITCH(stateFF){
+        CASE(States.COUNT){
+          IF(en) {
+
+            IF (
+               (countFF[0] >= max0 - stride0) &
+               (countFF[1] >= max1 - stride1)) {
+             saturated <== 1;
+             done <== 1;
+            }
+          }
+        }
+        CASE(States.SATURATED){
+          IF (en) {
+            done <== 1;
+          }
+          saturated <== 1;
+        }
+      }
+    }
+}

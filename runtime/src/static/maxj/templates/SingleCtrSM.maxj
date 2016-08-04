@@ -1,0 +1,111 @@
+
+package engine;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmInput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmOutput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateEnum;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmValue;
+import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
+import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
+
+class SingleCtrSM extends KernelStateMachine {
+
+    // States
+    enum States {
+      COUNT,
+      SATURATED
+    }
+
+    int max;
+    int start;
+    int stride;
+
+    // State IO
+    private final DFEsmOutput count;
+
+    private final DFEsmOutput saturated;
+    private final DFEsmOutput done;
+    private final DFEsmInput en;
+    private final DFEsmInput reset;
+
+    // State storage
+    private final DFEsmStateValue countFF;
+    private final DFEsmStateEnum<States> stateFF;
+    
+    // Initialize state machine in constructor
+    // NOTE: strides is a constructor argument and max is an io.input
+    //       because old DHDL specifies max as CombNodes and strides as
+    //       ints so this was the easiest way to make this CtrSM
+    public SingleCtrSM(KernelLib owner, int m, int strt, int strd) {
+      super(owner);
+      // Declare all types required to wire the state machine together
+      DFEsmValueType numberType = dfeUInt(32);
+      DFEsmValueType wireType = dfeBool();
+      max = m;
+      start = strt;
+      stride = strd;
+
+      // Define state machine IO
+      count = io.output("count", numberType);
+
+      saturated = io.output("saturated", wireType);
+      done = io.output("done", wireType);
+      en = io.input("en", wireType);
+      reset = io.input("reset", wireType);
+
+      // Define state storage elements and initial state
+      stateFF = state.enumerated(States.class, States.COUNT);
+      countFF = state.value(numberType, start);
+    }
+  
+
+    @Override
+    protected void nextState() {
+      IF (reset) {
+        countFF.next <== start;
+        stateFF.next <== States.COUNT;
+      } ELSE {
+          SWITCH(stateFF) {
+            CASE(States.COUNT) {
+              IF(en) {
+                IF (countFF >= max - stride) {
+                  stateFF.next <== States.SATURATED;
+                } ELSE {
+                  countFF.next <== countFF + stride;
+                  stateFF.next <== States.COUNT;
+                }
+              } ELSE {
+                stateFF.next <== States.COUNT;
+              }
+            }
+          CASE(States.SATURATED) {
+            stateFF.next <== States.SATURATED;
+          }
+        }
+      }
+    }
+
+  @Override
+    protected void outputFunction() {     
+      count <== countFF;
+      saturated <== 0;
+      done <== 0;
+      SWITCH(stateFF){
+        CASE(States.COUNT){
+          IF(en) {
+            IF (countFF >= max - stride) {
+             saturated <== 1;
+             done <== 1;
+            }
+          }
+        }
+        CASE(States.SATURATED){
+          IF (en) {
+            done <== 1;
+          }
+          saturated <== 1;
+        }
+      }
+    }
+}
