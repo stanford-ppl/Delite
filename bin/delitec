@@ -111,16 +111,10 @@ def stage(runner, params, opts):
     if opts.strict_control == True:
         java_opts = java_opts + " -Dlms.controldeps=true"
 
-<<<<<<< Updated upstream
-    if opts.enable_dse == True:
-        java_opts = java_opts + " -Dspatial.dse=true"  ## TODO: DSL specific config option. Separate out?
-=======
     if opts.enable_dse == False:
         java_opts = java_opts + " -Dspatial.dse=false"  ## TODO: DSL specific config option. Separate out?
     if opts.enable_pir == False:
         java_opts = java_opts + " -Dspatial.cgra=false"
-
->>>>>>> Stashed changes
 
     java_opts = java_opts + " -Dnested.variants.level=0"
 
