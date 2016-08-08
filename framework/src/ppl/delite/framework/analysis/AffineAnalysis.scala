@@ -141,22 +141,12 @@ trait AffineAnalyzer extends Traversal {
     case MemRead(mem, addresses) =>
       debug(s"Found read $lhs of memory $mem with addresses $addresses")
       debug(s"Current indices are $loopIndices")
-      debug(s"Loop scope: ")
-      loopScope.foreach{
-        case TP(lhs,rhs) => debug(s"  $lhs = $rhs")
-        case _ =>
-      }
       accessPatternOf(lhs) = addresses.map(extractIndexPattern)
       debug(s"Access pattern is ${accessPatternOf(lhs)}")
 
     case MemWrite(mem, addresses) =>
       debug(s"Found write of memory $mem with addresses $addresses")
       debug(s"Current indices are $loopIndices")
-      debug(s"Loop scope: ")
-      loopScope.foreach{
-        case TP(lhs,rhs) => debug(s"  $lhs = $rhs")
-        case _ =>
-      }
       accessPatternOf(lhs) = addresses.map(extractIndexPattern)
       debug(s"Access pattern is ${accessPatternOf(lhs)}")
 
