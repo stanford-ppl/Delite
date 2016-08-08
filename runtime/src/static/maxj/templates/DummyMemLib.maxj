@@ -17,25 +17,23 @@ import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
 class DummyMemLib extends KernelLib {
 
   DFEType type;
-  int banks0;
-  int banks1;
+  int[] banks;
   DFEVector<DFEVar> stream;
-  void common(DFEType type, int banks0, int banks1) {
-    this.banks0 = banks0;
-    this.banks1 = banks1;
+  void common(DFEType type, int[] banks) {
+    this.banks = banks;
     this.type = type;
-    DFEVectorType<DFEVar> vecType = new DFEVectorType<DFEVar>(type, banks0*banks1);
+    DFEVectorType<DFEVar> vecType = new DFEVectorType<DFEVar>(type, banks[0]*banks[1]);
     this.stream = vecType.newInstance(this);
   }
 
-  DummyMemLib(KernelLib owner, DFEType type, int banks0) {
+  DummyMemLib(KernelLib owner, DFEType type, int[] banks) {
     super(owner);
-    common(type, banks0, 1);
+    common(type, banks);
   }
 
-  DummyMemLib(KernelLib owner, DFEType type, int banks0, int banks1) {
+  DummyMemLib(KernelLib owner, DFEType type, int banks) {
     super(owner);
-    common(type, banks0, banks1);
+    common(type, new int[] {1,banks});
   }
 
   DFEVar connectRport(DFEVar srcAddr) {
@@ -47,36 +45,36 @@ class DummyMemLib extends KernelLib {
   }
 
   DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr, int touch) {
-    DFEVectorType<DFEVar> vecType = new DFEVectorType<DFEVar>(type, banks0);
+    DFEVectorType<DFEVar> vecType = new DFEVectorType<DFEVar>(type, banks[0]);
     DFEVector<DFEVar> p = vecType.newInstance(this);
-    for (int i=0; i < banks0; i++) {
-      p[i] <== stream[i + touch*banks0];
+    for (int i=0; i < banks[1]; i++) {
+      p[i] <== stream[i + touch*banks[1]];
     }
     return p;
   }
 
   void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en) {
-    for (int i=0; i<banks0; i++) {
+    for (int i=0; i<banks[1]; i++) {
       stream[i] <== Reductions.streamHold(dstAddr.cast(type) ^ dstData.cast(type), en);
     }
   }
 
   void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en) {
-    for (int i=0; i<banks0; i++) {
+    for (int i=0; i<banks[1]; i++) {
       System.out.println("i = " + i);
       stream[i] <== Reductions.streamHold(dstAddr[i].cast(type) ^ dstData[i].cast(type), en);
     }
   }
 
   void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en, int touch) {
-    for (int i=0; i < banks0; i++) {
+    for (int i=0; i < banks[1]; i++) {
       System.out.println("i = " + i);
-      stream[i + touch*banks0] <== Reductions.streamHold(dstAddr[i].cast(type) ^ dstData[i].cast(type), en);
+      stream[i + touch*banks[1]] <== Reductions.streamHold(dstAddr[i].cast(type) ^ dstData[i].cast(type), en);
     }
   }
 
   void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en, int start, int stride) {
-    for (int i=0; i<banks0; i++) {
+    for (int i=0; i<banks[0]; i++) {
       stream[i] <== Reductions.streamHold(dstAddr.cast(type) ^ dstData.cast(type), en);
     }
   }
