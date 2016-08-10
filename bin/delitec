@@ -110,9 +110,6 @@ def stage(runner, params, opts):
     if opts.strict_control == True:
         java_opts = java_opts + " -Dlms.controldeps=true"
 
-    if opts.enable_dse == True:
-        java_opts = java_opts + " -Dspatial.dse=true"  ## TODO: DSL specific config option. Separate out?
-
     java_opts = java_opts + " -Dnested.variants.level=0"
 
     DELITE_HOME = delitecommon.DELITE_HOME
