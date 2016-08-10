@@ -134,6 +134,11 @@ class DblBufKernelLib extends KernelLib {
     return rdata;
   }
 
+  DFEVector<DFEVar> connectRport(int dummy_int, DFEVector<DFEVar> srcAddr) {
+    return connectRport(srcAddr);
+  }
+
+
   void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en, int start, int stride) {
     m0.connectWport(dstAddr, dstData, ~realCurBuf & en, start, stride);
     m1.connectWport(dstAddr, dstData, realCurBuf & en, start, stride);

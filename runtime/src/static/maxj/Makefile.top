@@ -12,7 +12,9 @@ CXX 			=	g++
 CFLAGS 			=	-g3 -D__DELITE_CPP_STANDALONE__ -fPIC -Wall $(INCLUDES)
 LDFLAGS 		=	-Wl,--hash-style=both -lstdc++
 
-SIM_ID			=	$(PRJ)
+#SIM_ID			=	$$(cat /dev/urandom | tr -dc 'a-zA-Z' | fold -w 5 | head -n 1) # Recomputes @ compile time and runtime 
+#SIM_ID			=	$$(ls -i . | grep Makefile | sed 's/ Makefile//g') # Won't work if copying data to maxeler
+SIM_ID			=   $(PRJ)$$(md5sum ./maxj/src/kernels/TopKernelLib.maxj | cut -c1-5 | sed 's/1/z/g' | sed 's/2/y/g' | sed 's/3/q/g' | sed 's/4/r/g' | sed 's/5/s/g' | sed 's/6/t/g' | sed 's/7/u/g' | sed 's/8/v/g' | sed 's/9/w/g' | sed 's/0/x/g')
 USE_SLIC		=	1
 include $(MAXCOMPILERDIR)/lib/Makefile.include
 CFLAGS			+=	$(MAXCOMPILER_INC)

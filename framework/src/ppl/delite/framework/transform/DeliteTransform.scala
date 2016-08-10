@@ -13,6 +13,7 @@ trait DeliteTransform extends LoweringTransform {
 
   // list of all transformers to be applied
   private var _traversals: List[Traversal] = List(deviceIndependentLowering,deviceDependentLowering)
+  var emitted_consts: Set[(Exp[Any], Def[Any])] = Set.empty // TODO: Put this in the right place in ExternPrimitiveOps.  Matt couldn't figure out how to mix in without errors....
 
   /*
    * return the set of transformers to be applied

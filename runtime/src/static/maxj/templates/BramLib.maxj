@@ -400,7 +400,9 @@ class BramLib extends KernelLib {
 
   }
 
-
+  DFEVector<DFEVar> connectRport(int dummy_int, DFEVector<DFEVar> srcAddr1) {
+    return connectRport(srcAddr1);
+  }
 
   DFEVector<DFEVar> connectRport(DFEVar srcAddr0, DFEVector<DFEVar> srcAddr1) {
     if (this.num_libs == 1) {
