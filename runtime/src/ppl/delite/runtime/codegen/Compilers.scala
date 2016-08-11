@@ -80,7 +80,10 @@ object Compilers {
     if (Config.numCuda>0 && graph.targets(Targets.Cuda)) CudaCompile.compile()
     if (Config.numOpenCL>0 && graph.targets(Targets.OpenCL)) OpenCLCompile.compile()
     if (Config.numMaxJ>0 && graph.targets(Targets.MaxJ)) MaxJCompile.compile()
-    sys.exit(0)
+
+    // TODO: This change exits the runtime after maxj code has been generated,
+    // and skips the rest. Handle this in a cleaner way (using flags perhaps)
+    if (Config.numMaxJ>0 && graph.targets(Targets.MaxJ)) sys.exit(0)
 
     val classLoader = ScalaCompile.compile()
     DeliteMesosExecutor.classLoader = classLoader
