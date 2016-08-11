@@ -27,7 +27,7 @@ class DblBufKernelLib extends KernelLib {
   BramLib m1;
   SMIO sm;
 
-  void common_withsm(SMIO sm, int size0, int size1, DFEType type, int banks, int stride, int maxReaders) {
+  void common_withsm(SMIO sm, int size0, int size1, DFEType type, int[] banks, int[] stride, int maxReaders) {
     this.depth = size0 * size1;
     this.addrBits = MathUtils.bitsToAddress(this.depth);
     this.numRports = -1;
@@ -51,7 +51,7 @@ class DblBufKernelLib extends KernelLib {
     m1 = new BramLib(this, size0, size1, type, banks, stride);
   }
 
-  void common(String smname, int size0, int size1, DFEType type, int banks, int stride, int maxReaders) {
+  void common(String smname, int size0, int size1, DFEType type, int[] banks, int[] stride, int maxReaders) {
     try {
       if (maxReaders > 2) {
         throw new Exception("Unsupported number of maxReaders: " + maxReaders);
@@ -87,24 +87,24 @@ class DblBufKernelLib extends KernelLib {
     m1 = new BramLib(this, size0, size1, type, banks, stride);
   }
 
-  DblBufKernelLib(KernelLib owner, String smname, int size0, int size1, DFEType type, int banks, int stride, int maxReaders) {
+  DblBufKernelLib(KernelLib owner, String smname, int size0, int size1, DFEType type, int[] banks, int[] stride, int maxReaders) {
     super(owner);
     common(smname, size0, size1, type, banks, stride, maxReaders);
   }
 
-  DblBufKernelLib(KernelLib owner, SMIO ctrl, int size0, int size1, DFEType type, int banks, int stride, int maxReaders) {
+  DblBufKernelLib(KernelLib owner, SMIO ctrl, int size0, int size1, DFEType type, int[] banks, int[] stride, int maxReaders) {
     super(owner);
     common_withsm(ctrl, size0, size1, type, banks, stride, maxReaders);
   }
 
-  DblBufKernelLib(KernelLib owner, String smname, int size0, int size1, DFEType type, int banks, int maxReaders) {
+  DblBufKernelLib(KernelLib owner, String smname, int size0, int size1, DFEType type, int[] banks, int maxReaders) {
     super(owner);
-    common(smname, size0, size1, type, banks, 1, maxReaders);
+    common(smname, size0, size1, type, banks, new int[] {1,1}, maxReaders);
   }
 
-  DblBufKernelLib(KernelLib owner, SMIO ctrl, int size0, int size1, DFEType type, int banks, int maxReaders) {
+  DblBufKernelLib(KernelLib owner, SMIO ctrl, int size0, int size1, DFEType type, int[] banks, int maxReaders) {
     super(owner);
-    common_withsm(ctrl, size0, size1, type, banks, 1, maxReaders);
+    common_withsm(ctrl, size0, size1, type, banks, new int[] {1,1}, maxReaders);
   }
 
   void connectRdone(DFEVar done) {
@@ -121,12 +121,19 @@ class DblBufKernelLib extends KernelLib {
     return rdata;
   }
 
-  DFEVar connectRport(DFEVar srcAddr, DFEVar rd) {
-    DFEVar rdata = realCurBuf ? m0.connectRport(srcAddr) : m1.connectRport(srcAddr);
+  DFEVar connectRport(DFEVar srcAddr0, DFEVar srcAddr1) {
     numRports += 1;
-    rdone[nextReader++] <== rd;
+    DFEVar rdata = realCurBuf ? m0.connectRport(srcAddr0, srcAddr1) : m1.connectRport(srcAddr0, srcAddr1);
     return rdata;
   }
+
+  // Do we need this?????
+  // DFEVar connectRport(DFEVar srcAddr, DFEVar rd) {
+  //   DFEVar rdata = realCurBuf ? m0.connectRport(srcAddr) : m1.connectRport(srcAddr);
+  //   numRports += 1;
+  //   rdone[nextReader++] <== rd;
+  //   return rdata;
+  // }
 
   DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr) {
     numRports += 1;
@@ -134,21 +141,68 @@ class DblBufKernelLib extends KernelLib {
     return rdata;
   }
 
+  DFEVector<DFEVar> connectRport(DFEVar srcAddr0, DFEVector<DFEVar> srcAddr1) {
+    numRports += 1;
+    DFEVector<DFEVar> rdata = realCurBuf ? m0.connectRport(srcAddr0, srcAddr1) : m1.connectRport(srcAddr0, srcAddr1);
+    return rdata;
+  }
+
+  DFEVector<DFEVar> connectRport(int dummy_int, DFEVector<DFEVar> srcAddr) {
+    return connectRport(srcAddr);
+  }
+
+  void connectBankWport(int bank, DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> data, DFEVar en) {
+    m0.connectBankWport(bank, dstAddr, data, ~realCurBuf & en);
+    m1.connectBankWport(bank, dstAddr, data, realCurBuf & en);
+
+  }
+
+  void connectBankWport(int bank, DFEVar dstAddr, DFEVar data, DFEVar en) {
+    DFEVector<DFEVar> vaddr = new DFEVectorType<DFEVar>(dstAddr.getType(), 1).newInstance(this);
+    DFEVector<DFEVar> vdata = new DFEVectorType<DFEVar>(data.getType(), 1).newInstance(this);
+    vaddr[0] <== dstAddr;
+    vdata[0] <== data;
+    connectBankWport(bank, vaddr, vdata, en);
+  }
+
   void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en, int start, int stride) {
     m0.connectWport(dstAddr, dstData, ~realCurBuf & en, start, stride);
     m1.connectWport(dstAddr, dstData, realCurBuf & en, start, stride);
+  }
+
+  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en, int start, int stride) {
+    m0.connectWport(dstAddr0, dstAddr1, dstData, ~realCurBuf & en, start, stride, 0);
+    m1.connectWport(dstAddr0, dstAddr1, dstData, realCurBuf & en, start, stride, 0);
+  }
+
+  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en, int start, int stride, int ens) {
+    m0.connectWport(dstAddr0, dstAddr1, dstData, ~realCurBuf & en, start, stride, ens);
+    m1.connectWport(dstAddr0, dstAddr1, dstData, realCurBuf & en, start, stride, 0);
   }
 
   void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en) {
     connectWport(dstAddr, dstData, en, 0, 1);
   }
 
+  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en) {
+    connectWport(dstAddr0, dstAddr1, dstData, en, 0, 1, 0);
+  }
+
   void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en, int start, int stride) {
     connectWport(dstAddr, dstData, en);
+  }
+
+  void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVar en, int start, int stride) {
+    connectWport(dstAddr0, dstAddr1, dstData, en);
   }
 
   void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en) {
     m0.connectWport(dstAddr, dstData, ~realCurBuf & en);
     m1.connectWport(dstAddr, dstData, realCurBuf & en);
+  }
+
+  void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVar en) {
+    m0.connectWport(dstAddr0, dstAddr1, dstData, ~realCurBuf & en, 0);
+    m1.connectWport(dstAddr0, dstAddr1, dstData, realCurBuf & en, 0);
   }
 }
