@@ -32,7 +32,7 @@ trait MultiloopSoATransformer extends WorklistTransformer {
   }
 
   def replace[A](oldExp: Exp[A], newExp: Exp[A]) {
-    subst += this(oldExp) -> newExp
+    register(this(oldExp) -> newExp)
     printlog("replacing " + oldExp.toString + " with " + newExp.toString)
   }
 }

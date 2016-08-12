@@ -92,7 +92,7 @@ trait MultiPassTransformer extends SinglePassTransformer {
       //debug(s"Encountered $sym = $rhs")
       val replace = transform(sym, rhs)(mtype(sym.tp),mpos(sym.pos)).getOrElse(self_mirror(sym,rhs))
       assert(!subst.contains(sym) || subst(sym) == replace)
-      if (sym != replace) subst += (sym -> replace) // record substitution only if result is different
+      if (sym != replace) register(sym -> replace) // record substitution only if result is different
 
       //debug(s"  replacing with $replace")
 
@@ -111,7 +111,8 @@ trait MultiPassTransformer extends SinglePassTransformer {
         case _ => sym2
       }*/
       if (replace != sym2 && sym != sym2) scrubSym(sym2.asInstanceOf[Sym[Any]])
-      if (sym != replace) subst += (sym -> replace) // Change substitution from sym -> sym2 to sym -> replace
+      if (sym != replace)
+        register(sym -> replace) // Change substitution from sym -> sym2 to sym -> replace
   }
 
   // Should be used within some outer reifyBlock scope
@@ -120,109 +121,3 @@ trait MultiPassTransformer extends SinglePassTransformer {
     apply(getBlockResult(blk))
   }
 }
-
-
-
-// Modified version of WorklistTransformer
-// FIXME: Buggy - even an identity transformation has issues here
-/*trait TransformerBase extends ForwardTransformer with IterativeTraversal { self =>
-  val IR: EffectExp with FatExpressions
-  import IR._
-
-  var nextSubst = immutable.Map.empty[Exp[Any], Exp[Any]]
-  def register(x: Exp[Any])(y: Exp[Any]): Unit = {
-    if (nextSubst.contains(x))
-      printdbg(s"Discarding, already have replacement for $x")
-    else {
-      printdbg(s"Register replacement for $x")
-      nextSubst += (x -> y)
-      subst += (x -> y)
-    }
-  }
-
-  override def processBlock[A:Manifest](xs: Block[A]): Block[A] = {
-    subst = subst ++ nextSubst
-    nextSubst = Map.empty
-    transformBlock(xs)
-  }
-
-  protected def f = self.asInstanceOf[Transformer]
-
-  override def hasConverged = runs > 0 && nextSubst.isEmpty
-
-  override def traverseStm(stm: Stm) = stm match {
-    case TP(lhs, rhs) if apply(lhs) == lhs =>
-      val replace = transform(lhs, rhs) match {
-        case Some(replace) =>
-          transferMetadata(replace, lhs)(rhs)
-          replace
-        case None => self_mirror(lhs, rhs)
-      }
-
-    case TP(lhs, rhs) =>
-      // This is actually fine in certain contexts, don't necessarily need a warning for it.
-      printwarn(s"Transformer $name already has a substitution $lhs -> ${apply(lhs)} when encountering statement $stm")
-
-    case TTP(syms, mhs, rhs) if syms.forall{s => apply(s) == s} =>
-      transformTTP(syms, mhs, rhs) match {
-        case Some(replace) =>
-          syms.zip(replace).foreach{case(s,s2) =>
-            assert(!subst.contains(s) || subst(s) == s2)
-            if (s != s2) subst += (s -> s2)
-          }
-        case None => // TODO: Mirroring fat statements?
-      }
-
-    case TTP(lhs, mhs, rhs) =>
-      printwarn(s"Transformer $name already has substitution for symbols in statement $stm")
-
-    case _ => super.traverseStm(stm)
-  }
-
-  // Note: Shouldn't be calling transformStm from TransformerBase (slightly modified transformer design)
-  override def transformStm(stm: Stm): Exp[Any] = throw new Exception("New transformer design - should not be calling transformStm here")
-
-  def transform(lhs: Sym[Any], rhs: Def[Any])(implicit ctx: SourceContext): Option[Exp[Any]]
-  def transformTTP(lhs: List[Sym[Any]], mhs: List[Def[Any]], rhs: FatDef)(implicit ctx: SourceContext): Option[List[Exp[Any]]] = None
-
-  def transferMetadata(dest: Exp[Any], src: Exp[Any])(node: Def[Any]) {
-    setProps(dest, meet(MetaOverwrite, props(dest), props(src)) )
-  }
-}
-
-
-trait TunnelingTransformer extends TransformerBase {
-  import IR._
-
-  // TODO: Is this always correct? What happens when we transform something with an effect to something without one?
-  // Does that ever happen in practice? Can always special case...
-  override def transform(lhs: Sym[Any], rhs: Def[Any])(implicit ctx: SourceContext): Option[Exp[Any]] = rhs match {
-    case Reflect(d, u, es) =>
-      implicit val ctx: SourceContext = mpos(lhs.pos)
-
-      transform(lhs, d) match {
-        case None => None
-        case Some(e: Sym[_]) =>
-          transferMetadata(e, lhs)(d)
-
-          e match {
-            case Def(Reify(_,_,_)) => Some(e)
-            case Def(Reflect(d2, u2, es2)) =>
-              val out = reflectMirrored(Reflect(d2, mapOver(f,u) andAlso u2, (f(es) ++ es2).distinct))(mtype(e.tp), ctx)
-              setProps(out, getProps(e))
-
-              if (out != e) scrubSym(e)
-              Some(out)
-
-            case Def(d2) =>
-              val out = reflectMirrored(Reflect(d2, mapOver(f,u), f(es)))(mtype(e.tp), ctx)
-              setProps(out, getProps(e))
-
-              if (out != e) scrubSym(e)
-              Some(out)
-          }
-        case e => e
-      }
-    case _ => None
-  }
-}*/
