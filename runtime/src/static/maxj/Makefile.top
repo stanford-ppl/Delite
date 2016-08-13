@@ -6,7 +6,7 @@ JAVA_HOME = /usr/lib/jvm/java-7-openjdk-amd64
 
 SOURCES                 =       $(wildcard maxj/src/runtime/*.cpp cpp/src/kernels/*.cpp cpp/src/static/cpp/*.cpp)
 OBJECTS                 =       $(SOURCES:.cpp=.o)
-INCLUDES 		=	-I$(MAXELEROSDIR)/include -I$(MAXCOMPILERDIR)/include/slic -Icpp/src/datastructures -Icpp/src/static/cpp -Icpp/src/kernels -Icpp/src/runtime -I$(JAVA_HOME)/include
+INCLUDES 		=	-I$(MAXELEROSDIR)/include -I$(MAXCOMPILERDIR)/include/slic -Icpp/src/datastructures -Icpp/src/static/cpp -Icpp/src/kernels -Icpp/src/runtime -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
 CC 			=	gcc
 CXX 			=	g++
 CFLAGS 			=	-g3 -D__DELITE_CPP_STANDALONE__ -fPIC -Wall $(INCLUDES)
@@ -97,7 +97,7 @@ stop-sim:
 
 run-dfe: $(MAXFILE_DFE_EXE)
 	# LD_LIBRARY_PATH="$(MAXELEROSDIR)/lib/" SLIC_CONF="$(SLIC_CONF_DFE)" ./$< $(PRJ)_DFE$(BUILD_TAG) $(MAIA_FLAG)
-	LD_LIBRARY_PATH="$(MAXELEROSDIR)/lib/" SLIC_CONF="$(SLIC_CONF_DFE)" ./$< $(PRJ)_$(DFE_PREFIX) $(MAIA_FLAG)
+	LD_LIBRARY_PATH="$(MAXELEROSDIR)/lib/" SLIC_CONF="$(SLIC_CONF_DFE)" ./$< ${ARGS}
 
 stop-dfe:
 ifeq ($(MAIA_FLAG), 1)

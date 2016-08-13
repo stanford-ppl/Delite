@@ -97,6 +97,11 @@ class DblBufKernelLib extends KernelLib {
     common_withsm(ctrl, size0, size1, type, banks, stride, maxReaders);
   }
 
+  DblBufKernelLib(KernelLib owner, SMIO ctrl, int size0, int size1, DFEType type, int banks, int stride, int maxReaders) {
+    super(owner);
+    common_withsm(ctrl, size0, size1, type, new int[] {1,banks}, new int[] {1,stride}, maxReaders);
+  }
+
   DblBufKernelLib(KernelLib owner, String smname, int size0, int size1, DFEType type, int[] banks, int maxReaders) {
     super(owner);
     common(smname, size0, size1, type, banks, new int[] {1,1}, maxReaders);
