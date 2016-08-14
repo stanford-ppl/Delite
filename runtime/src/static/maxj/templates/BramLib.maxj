@@ -567,7 +567,7 @@ class BramLib extends KernelLib {
       connectWport(dstAddr0, dstAddr1[0], dstData[0], en);
     } else {
       if (this.num_libs == 1) { 
-        DFEVector<DFEVar> addr_vec = new DFEVectorType<DFEVar>(this.type, dstAddr1.getSize()).newInstance(this);
+        DFEVector<DFEVar> addr_vec = new DFEVectorType<DFEVar>(dstAddr1[0].getType(), dstAddr1.getSize()).newInstance(this);
         for (int j = 0; j < dstAddr1.getSize(); j++) {
           addr_vec[j] <== dstAddr0 * constant.var(dstAddr0.getType(), this.size1) + dstAddr1[j];
         }
