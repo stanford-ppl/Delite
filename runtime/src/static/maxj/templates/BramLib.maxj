@@ -113,23 +113,25 @@ class BramLib extends KernelLib {
      DIAGONAL
   }
 
-  DFEVar rowAddr(DFEVar srcAddr) {
+  DFEVar rowAddr(DFEVar srcAddrr) {
+    DFEVar srcAddr = srcAddrr.cast(dfeUInt(32));
     int cont_rows_bits = MathUtils.bitsToAddress(this.contiguous_rows);
     int banks_bits = MathUtils.bitsToAddress(this.banks[0]);
     int total_bits = MathUtils.bitsToAddress(this.size0);
     if (MathUtils.isPowerOf2(this.banks[0] * this.contiguous_rows)) {
       DFEVar offset = (cont_rows_bits == 0) ? constant.var(srcAddr.getType(), 0) : srcAddr.slice(0, cont_rows_bits).cast(dfeFixOffset(cont_rows_bits,0, SignMode.UNSIGNED)).cast(srcAddr.getType());
-      return srcAddr.slice(banks_bits + cont_rows_bits, total_bits - (banks_bits + cont_rows_bits)).cast(dfeFixOffset(total_bits - (banks_bits + cont_rows_bits), 0, SignMode.UNSIGNED)).cast(srcAddr.getType()) + offset;
+      return (srcAddr.slice(banks_bits + cont_rows_bits, total_bits - (banks_bits + cont_rows_bits)).cast(dfeFixOffset(total_bits - (banks_bits + cont_rows_bits), 0, SignMode.UNSIGNED)).cast(srcAddr.getType()) + offset).cast(srcAddrr.getType());
     } else { // TODO: Can separate based on power-of-2ability for either property
       KernelMath.DivModResult d = KernelMath.divMod(srcAddr, 
                                           constant.var(srcAddr.getType(), this.contiguous_rows));
       KernelMath.DivModResult e = KernelMath.divMod(srcAddr, 
                                           constant.var(srcAddr.getType(), this.contiguous_rows*this.banks[0]));
-      return d.getRemainder() + e.getRemainder();
+      return (d.getRemainder() + e.getRemainder()).cast(srcAddrr.getType());
     }
   }
 
-  DFEVar ensAddr(DFEVar srcAddr) {
+  DFEVar ensAddr(DFEVar srcAddrr) {
+    DFEVar srcAddr = srcAddrr.cast(dfeUInt(32));
     int cont_rows_bits = MathUtils.bitsToAddress(this.contiguous_rows);
     int banks_bits = MathUtils.bitsToAddress(this.banks[0]);
     if (MathUtils.isPowerOf2(this.banks[0] * this.contiguous_rows)) {
@@ -409,6 +411,33 @@ class BramLib extends KernelLib {
 
   }
 
+  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar data, DFEVar en, int start, int stride) {
+    if (this.num_libs == 1) {
+      DFEVar dstAddr = dstAddr0 * constant.var(dstAddr0.getType(), this.size1) + dstAddr1;
+      if (banks[1] == 1) {
+        m[0].write(dstAddr, data, en);
+      } else {
+        DFEVar bank_local_addr = bankAndLocalAddr(dstAddr, AddrMode.LOCAL);
+        DFEVar bank_addr = bankAndLocalAddr(dstAddr, AddrMode.BANK);
+        if (dbg) {
+            debug.simPrintf(en, "waddr = %d (bank = %d, bank_local_addr = %d), wdata = %d, numBanks = %d, strides[1] = %d\n", dstAddr, bank_addr, bank_local_addr, data, banks[1], this.strides[1]);
+        }
+        for (int i=start; i<banks[1]; i+=stride) {
+          DFEVar wen = en & (bank_addr === i);
+          m[i].write(bank_local_addr, data, wen);
+        }
+      }
+    } else {
+      DFEVar sub_dstAddr0 = rowAddr(dstAddr0);
+      DFEVar ens_dstAddr = ensAddr(dstAddr0).cast(dstAddr0.getType());
+      for (int i = 0; i < this.num_libs; i++) {
+        this.ensemble[i].connectWport(sub_dstAddr0, dstAddr1, data, en & (constant.var(ens_dstAddr.getType(), i) === ens_dstAddr), start, stride, 0);
+      }
+    }
+
+  }
+
+
   DFEVector<DFEVar> connectRport(int dummy_int, DFEVector<DFEVar> srcAddr1) {
     return connectRport(srcAddr1);
   }
@@ -425,15 +454,32 @@ class BramLib extends KernelLib {
       DFEVar sub_bank = ensAddr(srcAddr0);
       DFEVar[][] possible_reads = new DFEVar[srcAddr1.getSize()][this.num_libs];
       for (int i = 0; i < this.num_libs; i++) {
-        DFEVector<DFEVar> this_bank_reads = new DFEVectorType<DFEVar>(this.type, srcAddr1.getSize()).newInstance(this);
-        this_bank_reads = this.ensemble[i].connectRport(sub_srcAddr0, srcAddr1);
+        DFEVector<DFEVar> this_bank_reads = this.ensemble[i].connectRport(sub_srcAddr0, srcAddr1);
         for (int j = 0; j < srcAddr1.getSize(); j++) {
           possible_reads[j][i] = this_bank_reads[j];
         }
       }
       DFEVector<DFEVar> ret_vec = new DFEVectorType<DFEVar>(this.type, srcAddr1.getSize()).newInstance(this);
       for (int j = 0; j < srcAddr1.getSize(); j++) {
-        ret_vec[j] <== control.mux(sub_bank.cast(dfeRawBits(MathUtils.bitsToAddress(this.banks[0]))), possible_reads[j]);
+        ret_vec[j] <== control.mux(sub_bank.cast(dfeRawBits(32)).slice(0,MathUtils.bitsToAddress(this.banks[0])), possible_reads[j]);
+      }
+      return ret_vec;
+    }
+  }
+
+  DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr0, DFEVar srcAddr1) {
+    if (this.num_libs == 1) {
+      DFEVector<DFEVar> addr_vec = new DFEVectorType<DFEVar>(srcAddr1.getType(), srcAddr0.getSize()).newInstance(this);
+      for (int j = 0; j < srcAddr0.getSize(); j++) {
+        addr_vec[j] <== srcAddr0[j] * constant.var(srcAddr1.getType(), this.size1) + srcAddr1;
+      }
+      return connectRport(addr_vec);
+    } else {
+      // ASSUME WE ARE REQUESTING BANKS SEQUENTIALLY
+
+      DFEVector<DFEVar> ret_vec = new DFEVectorType<DFEVar>(this.type, srcAddr0.getSize()).newInstance(this);
+      for (int j = 0; j < srcAddr0.getSize(); j++) {
+        ret_vec[j] <== this.ensemble[j].connectRport(rowAddr(srcAddr0[j]), srcAddr1);
       }
       return ret_vec;
     }
@@ -442,8 +488,8 @@ class BramLib extends KernelLib {
   DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr) {
     DFEVar[] bank_local_rdata = new DFEVar[banks[1]];
     if (banks[1] != srcAddr.getSize()) {
-      System.out.printf("ERROR: #banks[1] = %d, Vector size = %d do not match!", banks[1], srcAddr.getSize());
-      System.exit(-1);
+      // System.out.printf("ERROR: #banks[1] = %d, Vector size = %d do not match!", banks[1], srcAddr.getSize());
+      // System.exit(-1);
     }
 
     // Redirect outputs to appropriate stream slots if necessary
@@ -531,6 +577,11 @@ class BramLib extends KernelLib {
         this.ensemble[ens].connectWport(sub_dstAddr0, dstAddr1, dstData, en, 0);
       }
     }
+  }
+
+  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVar en) {
+    // ASSUME dstData is just 1 element so feed back into proper method, because fuck asplos deadline
+    connectWport(dstAddr0, dstAddr1, dstData[0], en);
   }
 
   void connectBankWport(int bank, DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> data, DFEVar en) {

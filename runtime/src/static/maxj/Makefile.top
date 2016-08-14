@@ -9,7 +9,7 @@ OBJECTS                 =       $(SOURCES:.cpp=.o)
 INCLUDES 		=	-I$(MAXELEROSDIR)/include -I$(MAXCOMPILERDIR)/include/slic -Icpp/src/datastructures -Icpp/src/static/cpp -Icpp/src/kernels -Icpp/src/runtime -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
 CC 			=	gcc
 CXX 			=	g++
-CFLAGS 			=	-g3 -D__DELITE_CPP_STANDALONE__ -fPIC -Wall $(INCLUDES)
+CFLAGS 			=	-g3 -D__DELITE_CPP_STANDALONE__ -fPIC -Wall -Wno-sign-compare -Wno-unused-variable -Wno-return-type $(INCLUDES)
 LDFLAGS 		=	-Wl,--hash-style=both -lstdc++
 
 #SIM_ID			=	$$(cat /dev/urandom | tr -dc 'a-zA-Z' | fold -w 5 | head -n 1) # Recomputes @ compile time and runtime 
