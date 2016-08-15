@@ -10,6 +10,7 @@ import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
 import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
 import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.KernelMath;
 import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEFix.SignMode;
+import java.util.Arrays;
 
 
 /*
@@ -338,7 +339,7 @@ class BramLib extends KernelLib {
       for (int i = 0; i < this.num_libs; i++) {
         possible_reads[i] = this.ensemble[i].connectRport(sub_srcAddr0, srcAddr1);
       }
-      return control.mux(sub_bank, possible_reads);
+      return control.mux(sub_bank.cast(dfeFixOffset(MathUtils.bitsToAddress(this.banks[0]), 0, SignMode.UNSIGNED)), possible_reads);
     }
   }
 
@@ -505,6 +506,8 @@ class BramLib extends KernelLib {
         outstream[i] <== bank_local_rdata[i];
       }
       return outstream;
+    } else if (srcAddr.getSize() == 1) {
+        return new DFEVectorType<DFEVar>(this.type, 1).newInstance(this, Arrays.asList(connectRport(srcAddr[0])));
     } else {
       // If we are reading an element from each row, then srcAddrs MUST be 
       //   multiplexed, as each bank has a different local address:(
@@ -580,6 +583,11 @@ class BramLib extends KernelLib {
   }
 
   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVar en) {
+    // ASSUME dstData is just 1 element so feed back into proper method, because fuck asplos deadline
+    connectWport(dstAddr0, dstAddr1, dstData[0], en);
+  }
+
+  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVar en, int start, int stride) {
     // ASSUME dstData is just 1 element so feed back into proper method, because fuck asplos deadline
     connectWport(dstAddr0, dstAddr1, dstData[0], en);
   }
