@@ -4,7 +4,6 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.datastructures.ScalaGenDeliteStruct
 import ppl.delite.framework.Config
 import scala.virtualization.lms.internal.CLikeCodegen
-import scala.virtualization.lms.internal.DotCodegen
 import scala.virtualization.lms.internal.MaxJCodegen
 
 trait DeliteAllOverridesExp extends DeliteIfThenElseExp /*with DeliteOpMap*/ with DeliteWhileExp {
@@ -13,7 +12,7 @@ trait DeliteAllOverridesExp extends DeliteIfThenElseExp /*with DeliteOpMap*/ wit
 
 trait DeliteScalaGenAllOverrides extends DeliteScalaGenVariables with DeliteScalaGenIfThenElse /*with DeliteScalaGenRange*/ with DeliteScalaGenWhile with ScalaGenDeliteStruct {
   val IR: DeliteAllOverridesExp
-    
+
   /**
    * Avoid remapping Nothing to generated.scala.Nothing
    */
@@ -52,14 +51,6 @@ trait DeliteOpenCLGenAllOverrides extends DeliteOpenCLGenVariables with DeliteOp
   override def initializeGenerator(buildDir:String): Unit = {
     super.initializeGenerator(buildDir)
     headerStream.println("#include \"DeliteOpenCL.h\"")
-  }
-}
-
-trait DeliteDotGenAllOverrides extends DotCodegen {
-  val IR: DeliteAllOverridesExp
-
-  override def initializeGenerator(buildDir:String): Unit = {
-    super.initializeGenerator(buildDir)
   }
 }
 
