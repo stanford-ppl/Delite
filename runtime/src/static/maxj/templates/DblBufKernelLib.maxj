@@ -176,40 +176,23 @@ class DblBufKernelLib extends KernelLib {
     connectBankWport(bank, vaddr, vdata, en);
   }
 
-  void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en, int start, int stride) {
-    m0.connectWport(dstAddr, dstData, ~realCurBuf & en, start, stride);
-    m1.connectWport(dstAddr, dstData, realCurBuf & en, start, stride);
-  }
-
-  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en, int start, int stride) {
-    m0.connectWport(dstAddr0, dstAddr1, dstData, ~realCurBuf & en, start, stride);
-    m1.connectWport(dstAddr0, dstAddr1, dstData, realCurBuf & en, start, stride);
-  }
-
-  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en, int start, int stride, int ens) {
-    m0.connectWport(dstAddr0, dstAddr1, dstData, ~realCurBuf & en, start, stride, ens);
-    m1.connectWport(dstAddr0, dstAddr1, dstData, realCurBuf & en, start, stride, ens);
-  }
-
   void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en) {
-    connectWport(dstAddr, dstData, en, 0, 1);
+    m0.connectWport(dstAddr, dstData, ~realCurBuf & en);
+    m1.connectWport(dstAddr, dstData, realCurBuf & en);
   }
 
   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en) {
-    connectWport(dstAddr0, dstAddr1, dstData, en, 0, 1);
+    m0.connectWport(dstAddr0, dstAddr1, dstData, ~realCurBuf & en);
+    m1.connectWport(dstAddr0, dstAddr1, dstData, realCurBuf & en);
   }
 
-  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en, int start, int stride) {
-    connectWport(dstAddr, dstData, en);
+  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en, int ens) {
+    m0.connectWport(dstAddr0, dstAddr1, dstData, ~realCurBuf & en, ens);
+    m1.connectWport(dstAddr0, dstAddr1, dstData, realCurBuf & en, ens);
   }
 
-  void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVar en, int start, int stride) {
-    connectWport(dstAddr0, dstAddr1, dstData, en);
-  }
-
-  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVar en,  int start, int stride) {
-    // ASSUME dstData is just 1 element so feed back into proper method, because fuck asplos deadline
-    connectWport(dstAddr0, dstAddr1, dstData[0], en, start, stride);
+  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVar en) {
+    connectWport(dstAddr0, dstAddr1, dstData[0], en);
   }
 
   void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en) {
@@ -218,7 +201,7 @@ class DblBufKernelLib extends KernelLib {
   }
 
   void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVar en) {
-    m0.connectWport(dstAddr0, dstAddr1, dstData, ~realCurBuf & en, 0);
-    m1.connectWport(dstAddr0, dstAddr1, dstData, realCurBuf & en, 0);
+    m0.connectWport(dstAddr0, dstAddr1, dstData, ~realCurBuf & en);
+    m1.connectWport(dstAddr0, dstAddr1, dstData, realCurBuf & en);
   }
 }
