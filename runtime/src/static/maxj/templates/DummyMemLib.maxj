@@ -40,6 +40,10 @@ class DummyMemLib extends KernelLib {
     return stream[0];
   }
 
+  DFEVar connectRport(DFEVar srcAddr, int touch) {
+    return stream[touch];
+  }
+
   DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr) {
     return stream;
   }

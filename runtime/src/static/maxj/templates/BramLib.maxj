@@ -546,7 +546,6 @@ class BramLib extends KernelLib {
   }
 
   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVar en) {
-    // ASSUME dstData is just 1 element so feed back into proper method, because fuck asplos deadline
     connectWport(dstAddr0, dstAddr1, dstData[0], en);
   }
 
