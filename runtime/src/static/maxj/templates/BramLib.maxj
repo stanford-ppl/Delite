@@ -356,13 +356,13 @@ class BramLib extends KernelLib {
    *  @param strides[1]: Skip over these many banks[1] when wiring write ports
    */
 
-  DFEVar connectAport(DFEVar dstAddr, DFEVar data, DFEVar en) {
+  DFEVector<DFEVar> connectAport(DFEVar dstAddr, DFEVar data, DFEVar en) {
     if (banks[1] == 1) {
-      return m[0].accum(dstAddr, data, en);
+      return new DFEVectorType<DFEVar>(data.getType(), 1).newInstance(this,m[0].accum(dstAddr, data, en));
     } else {
       System.out.printf("ERROR: Cannot accumulate one element into banked or hierarchical mem (see BramLib)");
       System.exit(-1);
-      return data;    
+      return new DFEVectorType<DFEVar>(data.getType(), 1).newInstance(this,data);    
     }
   }
 
@@ -411,19 +411,19 @@ class BramLib extends KernelLib {
 
   }
 
-  DFEVar connectAport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> data, DFEVar en) {
+  DFEVector<DFEVar> connectAport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> data, DFEVar en) {
     return connectAport(dstAddr0, dstAddr1, data[0], en);
   }
 
-  DFEVar connectAport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar data, DFEVar en) {
+  DFEVector<DFEVar> connectAport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar data, DFEVar en) {
     if (this.num_libs == 1) {
       DFEVar dstAddr = dstAddr0 * constant.var(dstAddr0.getType(), this.size1) + dstAddr1;
       if (banks[1] == 1) {
-        return m[0].accum(dstAddr, data, en);
+        return new DFEVectorType<DFEVar>(data.getType(), 1).newInstance(this,m[0].accum(dstAddr, data, en));
       } else {
         System.out.printf("ERROR: Cannot accumulate into hierarchical banked mem (see BramLib)");
         System.exit(-1);
-        return data;
+        return new DFEVectorType<DFEVar>(data.getType(), 1).newInstance(this,data);
 
         // DFEVar bank_local_addr = bankAndLocalAddr(dstAddr, AddrMode.LOCAL);
         // DFEVar bank_addr = bankAndLocalAddr(dstAddr, AddrMode.BANK);
@@ -435,7 +435,7 @@ class BramLib extends KernelLib {
     } else {
       System.out.printf("ERROR: Cannot accumulate into hierarchical banked mem (see BramLib)");
       System.exit(-1);
-      return data;
+      return new DFEVectorType<DFEVar>(data.getType(), 1).newInstance(this,data);
     }
   }
 
@@ -636,12 +636,12 @@ class BramLib extends KernelLib {
     return new DFEVectorType<DFEVar>(data[0].getType(), data.getSize()).newInstance(this,m[bank].accum(bank_local_addr, data[0], en));
   }
 
-  DFEVar connectBankAport(int bank, DFEVar dstAddr, DFEVar data, DFEVar en) {
+  DFEVector<DFEVar> connectBankAport(int bank, DFEVar dstAddr, DFEVar data, DFEVar en) {
     DFEVector<DFEVar> vaddr = new DFEVectorType<DFEVar>(dstAddr.getType(), 1).newInstance(this);
     DFEVector<DFEVar> vdata = new DFEVectorType<DFEVar>(data.getType(), 1).newInstance(this);
     vaddr[0] <== dstAddr;
     vdata[0] <== data;
-    return connectBankAport(bank, vaddr, vdata, en)[0];
+    return connectBankAport(bank, vaddr, vdata, en);
   }
 
   void connectBankWport(int bank, DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> data, DFEVar en) {
@@ -659,7 +659,7 @@ class BramLib extends KernelLib {
 
   DFEVector<DFEVar> connectAport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en) {
     if (dstAddr.getSize() == 1) {
-      return new DFEVectorType<DFEVar>(dstData[0].getType(), 1).newInstance(this, connectAport(dstAddr[0], dstData[0], en));
+      return connectAport(dstAddr[0], dstData[0], en);
     } else {
       DFEVector<DFEVar> retdata = new DFEVectorType<DFEVar>(dstData[0].getType(), dstData.getSize()).newInstance(this);
       if (banks[1] == 1) { // Not sure why there would ever be vectored input to 1-bank mem
