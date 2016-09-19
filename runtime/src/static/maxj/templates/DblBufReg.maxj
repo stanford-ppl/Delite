@@ -121,4 +121,15 @@ class DblBufReg extends KernelLib {
   void connectWdone(DFEVar done) {
     wdone <== done;
   }
+
+  // TODO: Will make more sense with n-buffer
+  void connectRdone(DFEVar done, int port) {
+    rdone <== done;
+  }
+
+  // TODO: Will make more sense with n-buffer
+  void connectWdone(DFEVar done, int port) {
+    wdone <== done;
+  }
+
 }

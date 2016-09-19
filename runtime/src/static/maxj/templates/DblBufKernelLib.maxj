@@ -120,6 +120,16 @@ class DblBufKernelLib extends KernelLib {
     wdone <== done;
   }
 
+  // TODO: Will make more sense with n-buffer
+  void connectRdone(DFEVar done, int port) {
+    rdone[nextReader++] <== done;
+  }
+
+  // TODO: Will make more sense with n-buffer
+  void connectWdone(DFEVar done, int port) {
+    wdone <== done;
+  }
+
   DFEVar connectRport(DFEVar srcAddr) {
     numRports += 1;
     DFEVar rdata = realCurBuf ? m0.connectRport(srcAddr) : m1.connectRport(srcAddr);

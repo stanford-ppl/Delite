@@ -1,0 +1,335 @@
+package engine;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmInput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmOutput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateEnum;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
+import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
+import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+
+
+class GatherSM extends KernelStateMachine {
+
+  // States
+  enum States {
+    INIT,
+    PACKAGECMDS,
+    PACKAGEDONE,
+    ISSUECMD,
+    STREAMDATA,
+    FLUSHBRAM,
+    PREPAREPACKAGING,
+    DONE
+  }
+
+  /*
+    cmd(burst)  mask       wraddr
+    |-|        |---|      |---|
+    |-|        |---|      |---|
+    |-|        |---|      |---|
+
+
+  */
+  // State IO
+  private final DFEsmInput sm_en; 
+  private final DFEsmOutput stream_en; 
+  private final DFEsmOutput issue_cmd; 
+  private final DFEsmOutput package_done; 
+  private final DFEsmOutput all_done; 
+  private final DFEsmOutput cmd_slot; // Index to store cmd burst addr
+  private final DFEsmOutput slot_wren; // Wren for when we find new unique burst
+  private final DFEsmOutput gather_ctr_en; // Enable for counter that ticks through bram
+  private final DFEsmOutput gather_ctr_rst; 
+  private final DFEsmInput gather_done; // Signal when bram is finished
+  private final DFEsmInput next_burst; 
+  private final DFEsmOutput next_burst_out; 
+  private final DFEsmInput streamDone;
+  private final DFEsmInput mask_addr_offset;
+  private final DFEsmOutput mask_addr_offset_out;
+  private final DFEsmInput gather_addr;
+  private final DFEsmInput delay_package_cmds;
+  private final DFEsmOutput delay_package_cmds_out;
+  private final DFEsmOutput mask_wren;
+  private final DFEsmOutput last_gather_addr;
+  private final DFEsmInput flush_done;
+  private final DFEsmOutput flush_rst;
+  private final DFEsmOutput flush_en;
+
+  private final DFEsmInput forceLdSt; 
+  
+  private final DFEsmOutput isLdStOut;
+
+  // State storage
+  private final DFEsmStateEnum<States> stateFF;
+  private final DFEsmStateValue forceLdStFF;
+  private final DFEsmStateValue[] burstsFF;
+  private final DFEsmStateValue cmdSlotFF;
+  private final DFEsmStateValue nextBurstFF;
+  private final DFEsmStateValue isLdStFF;
+  private final DFEsmStateValue slotWrenFF;
+  private final DFEsmStateValue delayFF;
+  private final DFEsmStateValue gatherCtrEnFF;
+  private final DFEsmStateValue maskAddrOffsetFF;
+  private final DFEsmStateValue maskWrenFF;
+  private final DFEsmStateValue lastGatherAddrFF;
+  private final DFEsmStateValue gatherDoneFF;
+
+  private int delayInitVal = 64;  //TODO: Should be a sm input, and should wait only on stores
+  private int numSlots = 3;
+  public GatherSM(KernelLib owner, int base) {
+    super(owner);
+
+    // Declare all types required to wire the state machine together
+    DFEsmValueType counterType = dfeUInt(32);
+    DFEsmValueType wireType = dfeBool();
+
+    // Define state machine IO
+    stream_en = io.output("stream_en", wireType);
+    issue_cmd = io.output("issue_cmd", wireType);
+    package_done = io.output("package_done", wireType);
+    all_done = io.output("all_done", wireType);
+    slot_wren = io.output("slot_wren", wireType);
+    cmd_slot = io.output("cmd_slot", counterType);
+    gather_ctr_en = io.output("gather_ctr_en", wireType);
+    gather_ctr_rst = io.output("gather_ctr_rst", wireType);
+    gather_done = io.input("gather_done", wireType);
+    mask_wren = io.output("mask_wren", wireType);
+    streamDone = io.input("streamDone", wireType);
+    next_burst = io.input("next_burst", counterType);
+    next_burst_out = io.output("next_burst_out", counterType);
+    last_gather_addr = io.output("last_gather_addr", counterType);
+    mask_addr_offset = io.input("mask_addr_offset", counterType);
+    gather_addr = io.input("gather_addr", counterType);
+    mask_addr_offset_out = io.output("mask_addr_offset_out", counterType);
+    flush_done = io.input("flush_done",wireType);
+    flush_rst = io.output("flush_rst",wireType);
+    flush_en = io.output("flush_en",wireType);
+
+    forceLdSt = io.input("forceLdSt", wireType);
+
+    sm_en = io.input("sm_en", wireType);
+    delay_package_cmds = io.input("delay_package_cmds", wireType);
+    delay_package_cmds_out = io.output("delay_package_cmds_out", wireType);
+    isLdStOut = io.output("isLdStOut", wireType);
+
+    // Define state storage elements and initial state
+    stateFF = state.enumerated(States.class, States.INIT);
+    forceLdStFF = state.value(wireType, 0);
+    nextBurstFF = state.value(counterType, 0);
+    burstsFF = new DFEsmStateValue[numSlots];
+    for (int i = 0; i < numSlots; i++)
+      burstsFF[i] = state.value(counterType, 999);
+    cmdSlotFF = state.value(counterType, 0);
+    isLdStFF = state.value(wireType, 0);
+    slotWrenFF = state.value(wireType, 0);
+    gatherCtrEnFF = state.value(wireType, 0);
+    delayFF = state.value(counterType, delayInitVal);
+    maskAddrOffsetFF = state.value(counterType, 0);
+    lastGatherAddrFF = state.value(counterType, base);
+    maskWrenFF = state.value(wireType, 0);
+    gatherDoneFF = state.value(wireType, 0);
+  }
+
+  @Override
+  protected void nextState() {
+    IF(sm_en) {
+      SWITCH(stateFF) {
+        CASE (States.INIT) {
+          // Latch all input signals
+          forceLdStFF.next <== forceLdSt;
+          delayFF.next <== delayInitVal;
+
+          IF (forceLdSt) {
+            isLdStFF.next <== 1;
+            stateFF.next <== States.PREPAREPACKAGING;
+          } ELSE {
+            isLdStFF.next <== 0;
+            stateFF.next <== States.DONE;
+          }
+        }
+        CASE (States.PACKAGECMDS) {
+          maskAddrOffsetFF.next <== mask_addr_offset;
+          gatherCtrEnFF.next <== 1;
+          IF (next_burst === burstsFF[0]) {
+            cmdSlotFF.next <== 0;
+            slotWrenFF.next <== 0;
+            maskWrenFF.next <== 1;
+            stateFF.next <== States.PACKAGECMDS;
+          } ELSE { IF (burstsFF[0] === 999 & delay_package_cmds) { //delay_package_cmds is a dumb fix for startup transient
+            burstsFF[0].next <== next_burst;
+            cmdSlotFF.next <== 0;
+            slotWrenFF.next <== 1;
+            maskWrenFF.next <== 1;
+            stateFF.next <== States.PACKAGECMDS;
+          } ELSE { IF (next_burst === burstsFF[1]) {
+            cmdSlotFF.next <== 1;
+            slotWrenFF.next <== 0;
+            maskWrenFF.next <== 1;
+            stateFF.next <== States.PACKAGECMDS;
+          } ELSE { IF (burstsFF[1] === 999 & delay_package_cmds) {
+            burstsFF[1].next <== next_burst;
+            cmdSlotFF.next <== 1;
+            slotWrenFF.next <== 1;
+            maskWrenFF.next <== 1;
+            stateFF.next <== States.PACKAGECMDS;
+          } ELSE { IF (next_burst === burstsFF[2]) {
+            cmdSlotFF.next <== 2;
+            slotWrenFF.next <== 0;
+            maskWrenFF.next <== 1;
+            stateFF.next <== States.PACKAGECMDS;
+          } ELSE { IF (burstsFF[2] === 999 & delay_package_cmds) {
+            burstsFF[2].next <== next_burst;
+            cmdSlotFF.next <== 2;
+            slotWrenFF.next <== 1;
+            maskWrenFF.next <== 1;
+            stateFF.next <== States.PACKAGECMDS;
+          } ELSE { IF (delay_package_cmds) {
+            lastGatherAddrFF.next <== gather_addr;
+            gatherCtrEnFF.next <== 0;
+            slotWrenFF.next <== 0;
+            maskWrenFF.next <== 0;
+            stateFF.next <== States.PACKAGEDONE;
+          }}}}}}}
+          IF (gather_done) {
+            gatherDoneFF.next <== 1;
+            gatherCtrEnFF.next <== 0;
+            slotWrenFF.next <== 0;
+            maskWrenFF.next <== 0;
+            stateFF.next <== States.PACKAGEDONE;
+          }
+          nextBurstFF.next <== next_burst;
+        }
+        CASE (States.PACKAGEDONE) {
+          stateFF.next <== States.ISSUECMD;
+          cmdSlotFF.next <== 0;
+        }
+        CASE (States.ISSUECMD) {
+          // Go to done if the next burst is 999
+          IF (cmdSlotFF === 0) {
+            IF (burstsFF[0] === 999) {
+              stateFF.next <== States.DONE;
+            } ELSE {
+              stateFF.next <== States.STREAMDATA;
+            }
+          } ELSE { IF (cmdSlotFF === 1) {
+            IF (burstsFF[1] === 999) {
+              stateFF.next <== States.DONE;
+            } ELSE {
+              stateFF.next <== States.STREAMDATA;
+            }
+          } ELSE { IF (cmdSlotFF === 2) {
+            IF (burstsFF[2] === 999) {
+              stateFF.next <== States.DONE;
+            } ELSE {
+              stateFF.next <== States.STREAMDATA;
+            }
+          }}}
+        }
+        CASE (States.STREAMDATA) {
+          IF (streamDone) {
+            IF (cmdSlotFF === numSlots-1) {
+              IF (gatherDoneFF) {
+                stateFF.next <== States.DONE;
+              } ELSE {
+                stateFF.next <== States.FLUSHBRAM;
+                burstsFF[0].next <== 999;
+                burstsFF[1].next <== 999;
+                burstsFF[2].next <== 999;
+              }
+            } ELSE {
+              stateFF.next <== States.ISSUECMD;
+              cmdSlotFF.next <== cmdSlotFF+1;
+            }
+          } ELSE {
+            stateFF.next <== States.STREAMDATA;
+          }
+        }
+        CASE (States.FLUSHBRAM) {
+          IF (flush_done) {
+            stateFF.next <== States.PREPAREPACKAGING;
+          } ELSE {
+            stateFF.next <== States.FLUSHBRAM;
+          }
+        }
+        CASE (States.PREPAREPACKAGING) {
+          stateFF.next <== States.PACKAGECMDS;
+        }
+        CASE (States.DONE) {
+          stateFF.next <== States.DONE;
+        }
+      }
+    } ELSE {
+      isLdStFF.next <== 0;
+      stateFF.next <== States.INIT;
+    }
+  }
+
+
+  @Override
+  protected void outputFunction() {
+    stream_en <== 0;
+    issue_cmd <== 0;
+    package_done <== 0;
+    slot_wren <== slotWrenFF;
+    all_done <== 0;
+    cmd_slot <== cmdSlotFF;
+    gather_ctr_en <== gatherCtrEnFF;
+    isLdStOut <== isLdStFF;
+    next_burst_out <== nextBurstFF;
+    mask_addr_offset_out <== maskAddrOffsetFF;
+    mask_wren <== maskWrenFF;
+    last_gather_addr <== lastGatherAddrFF;
+    gather_ctr_rst <== 0;
+    flush_en <== 0;
+    flush_rst <== 0;
+
+    IF (sm_en) {
+      SWITCH(stateFF) {
+        CASE(States.PACKAGEDONE){
+          package_done <== 1;
+        }
+        CASE(States.ISSUECMD){
+          IF (cmdSlotFF === 0) {
+            IF (burstsFF[0] === 999) {
+              issue_cmd <== 0;
+            } ELSE {
+              issue_cmd <== 1;
+            }
+          } ELSE { IF (cmdSlotFF === 1) {
+            IF (burstsFF[1] === 999) {
+              issue_cmd <== 0;
+            } ELSE {
+              issue_cmd <== 1;
+            }
+          } ELSE { IF (cmdSlotFF === 2) {
+            IF (burstsFF[2] === 999) {
+              issue_cmd <== 0;
+            } ELSE {
+              issue_cmd <== 1;
+            }
+          }}}
+          delay_package_cmds_out <== 0;
+        }
+        CASE(States.STREAMDATA){
+          stream_en <== 1;
+          IF (streamDone) {
+            stream_en <== 0;
+          }
+        }
+        CASE(States.FLUSHBRAM) {
+          flush_en <== 1;
+        }
+        CASE(States.PREPAREPACKAGING) {
+          delay_package_cmds_out <== 1;
+          flush_rst <== 1;
+          gather_ctr_rst <== 1;
+        }
+        CASE(States.DONE){
+          all_done <== 1;
+        }
+      }
+    }
+
+  }
+}

@@ -1,0 +1,411 @@
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.WrapMode;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.LMemCommandStream;
+import com.maxeler.maxcompiler.v2.kernelcompiler.Optimization;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.Reductions;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Stream.OffsetExpr;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.KernelMath;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEFix.SignMode;
+
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEStruct;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEStructType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEStructType.StructFieldType;
+import java.util.ArrayList;
+class ScatterLib extends KernelLib {
+
+  protected boolean dbg = true;
+  protected boolean dbgDetail = false;
+
+  protected KernelMath.DivModResult getNumberOfBursts(DFEVar num, DFEType type) {
+    KernelMath.DivModResult d = KernelMath.divMod(num, constant.var(dfeUInt(32),getValuesPerBurst(type)));
+    return d;
+  }
+
+
+  protected static int getValuesPerBurst(DFEType type) {
+    return 384 / (type.getTotalBits()/8);
+  }
+
+  void common (
+    DFEVar en, DFEVar done,
+    DFEVar isLdSt, DFEVar forceLdSt,
+    BramLib addrBram, BramLib dataBram, int scatterSize,
+    int sBurstOffset, String streamName
+    )
+  {          
+    int numSlots = 3;
+    int modFix = -50;
+    DFEType dType = dataBram.type;
+    DFEType aType = addrBram.type;
+    int maxAddrSize = MathUtils.bitsToAddress(scatterSize);
+
+    // Get read-data type
+    OffsetExpr doneOffset = stream.makeOffsetAutoLoop(streamName + "doneOffset");
+    SMIO sm = addStateMachine(streamName + "scatterSM", new ScatterSM(this, 0));
+    sm.connectInput("sm_en", en);
+    sm.connectInput("forceLdSt", forceLdSt);
+
+    // Make BRAMs
+    int maxStreamCnt = getValuesPerBurst(dType);
+    BramLib burst_bram = new BramLib(this, numSlots, 1, dfeFixOffset(32, -0, SignMode.UNSIGNED), 1, 1);
+    BramLib wdata_bram = new BramLib(this, numSlots*maxStreamCnt, 1, dType, 1, 1);
+    BramLib waddr_bram = new BramLib(this, numSlots*maxStreamCnt, 1, aType, 1, 1);
+    BramLib staged_bram = new BramLib(this, maxStreamCnt, 1, dType, 1, 1);
+
+    // Hook up SM outputs
+    DFEVar issue_rd_cmd = sm.getOutput("issue_rd_cmd");
+    DFEVar issue_wr_cmd = sm.getOutput("issue_wr_cmd");
+    DFEVar scatter_ctr_en = sm.getOutput("scatter_ctr_en");
+    DFEVar schedule_wren = sm.getOutput("schedule_wren");
+    DFEVar all_done = sm.getOutput("all_done");
+    DFEVar getburst_en = sm.getOutput("getburst_en");
+    DFEVar writeback_en = sm.getOutput("writeback_en");
+    DFEVar package_done = sm.getOutput("package_done");
+    DFEVar cmd_slot = sm.getOutput("cmd_slot");
+    DFEVar slot_wren = sm.getOutput("slot_wren");
+    DFEVar scatter_ctr_rst = sm.getOutput("scatter_ctr_rst");
+    DFEVar last_scatter_addr = sm.getOutput("last_scatter_addr");
+    DFEVar delay_package_cmds = sm.getOutput("delay_package_cmds_out");
+
+    /*
+     PACKAGE COMMANDS PHASE
+    */
+    // Create counter for scatterAddr memory
+    SMIO scatter_ctr = addStateMachine("scatter_ctr", new SingleCtrSM(this, scatterSize, 0, 1));
+    scatter_ctr.connectInput("en", scatter_ctr_en);
+    scatter_ctr.connectInput("reset", scatter_ctr_rst);
+    DFEVar scatterc = scatter_ctr.getOutput("count").cast(dfeUInt(maxAddrSize));
+    DFEVar scatter_done = scatterc + last_scatter_addr.cast(scatterc.getType()) === scatterSize-1;
+    DFEVar scatterCnt = scatter_done ? scatterSize-1 : scatterc + last_scatter_addr.cast(scatterc.getType());
+    sm.connectInput("scatter_done", stream.offset(scatter_done, modFix - 1) & stream.offset(schedule_wren, -1));
+
+    // Write package into brams
+    DFEVar scatterAddr = addrBram.connectRport(scatterCnt.cast(dfeUInt(32)));
+    DFEVar scatterData = stream.offset(dataBram.connectRport(scatterCnt.cast(dfeUInt(32))), modFix - 1);
+    KernelMath.DivModResult mod = getNumberOfBursts(scatterAddr, dType);
+    DFEVar next_burst = stream.offset(mod.getQuotient().cast(dfeUInt(32)), modFix);
+    sm.connectInput("scatter_addr", stream.offset(scatterCnt.cast(dfeUInt(32)), modFix));
+    sm.connectInput("next_burst", next_burst);
+    DFEVar next_burst_out = sm.getOutput("next_burst_out");
+    DFEVar schedule_addr_offset = stream.offset(mod.getRemainder().cast(dfeUInt(32)), modFix - 1);
+    DFEVar schedule_slot = stream.offset(sm.getOutput("schedule_slot"), -1) + cmd_slot * maxStreamCnt;
+    burst_bram.connectWport(cmd_slot, next_burst_out, slot_wren);
+    wdata_bram.connectWport(schedule_slot, scatterData, schedule_wren);
+    waddr_bram.connectWport(schedule_slot, schedule_addr_offset, schedule_wren);
+    sm.connectInput("delay_package_cmds", stream.offset(delay_package_cmds, modFix-2));
+
+    // debug.simPrintf(scatter_ctr_en,// | flush_en,
+    //                 "\npackaging: scatter %d, flush %d\n"
+    //               + "scheduling: %d @%d\n"
+    //               + "burst_bram @%d, %f %d\n"
+    //               + "data_bram @%d, %f %d\n"
+    //               + "addr_bram @%d, %d %d\n",
+    //                 scatter_ctr_en, flush_en,
+    //                 scatterAddr, scatterCnt,
+    //                 cmd_slot, next_burst_out, slot_wren,
+    //                 schedule_slot, scatterData, schedule_wren,
+    //                 schedule_slot, schedule_addr_offset, schedule_wren);
+
+    DFEVar stopCond = stream.offset(all_done, 1);
+
+    /*
+    GET BURST PHASE
+    */
+    Count.Params getburstParams = control.count.makeParams(MathUtils.bitsToAddress(maxStreamCnt))
+                            .withEnable(getburst_en)
+                            .withMax(maxStreamCnt)
+                            .withReset(issue_rd_cmd);
+    Count.Counter getburstc = control.count.makeCounter(getburstParams);
+    DFEVar getburstDone = getburstc.getCount() === maxStreamCnt-1;
+    sm.connectInput("getburstDone", stream.offset(getburstDone,-3));
+    DFEVar burst_offset = burst_bram.connectRport(cmd_slot); // TODO: We can probably use burstFF to provide this value
+    DFEVar burstAddr = sBurstOffset + burst_offset;
+    DFEVar size = constant.var(dfeUInt(8), 1);
+    DFEVar inc = constant.var(dfeUInt(8),0);
+    DFEVar streamNum = constant.var(dfeUInt(1),0);
+    DFEVar tag = constant.var(false);
+
+
+    String cmdStreamNameRd = streamName + "_rd_cmd_0";
+    LMemCommandStream.makeKernelOutput(cmdStreamNameRd,
+        issue_rd_cmd,
+        burstAddr,
+        size,
+        inc,
+        streamNum,
+        tag);
+    DFEVar staged_datastream = io.input(streamName + "_rd_0", dType, (getburst_en & stream.offset(~getburstDone, -1) & stream.offset(~getburstDone, -2) & ~stopCond));
+    io.forceExactIOSeparation(streamName + "_rd_0", cmdStreamNameRd, -16);  // Arbitrarily picked to handle divides
+
+    /*
+    MODIFY BURST PHASE
+    */
+    DFEVar modify_bram_raddr = sm.getOutput("modify_bram_raddr");
+    DFEVar editing = sm.getOutput("editing");
+    DFEVar modify_addr = waddr_bram.connectRport(modify_bram_raddr + maxStreamCnt * editing);
+    DFEVar modify_data = wdata_bram.connectRport(modify_bram_raddr + maxStreamCnt * editing);
+    DFEVar modify_en = sm.getOutput("modify_en");
+
+    DFEVar staged_addr = modify_en ? modify_addr : getburstc.getCount().cast(aType);
+    DFEVar staged_data = modify_en ? modify_data : staged_datastream;
+    DFEVar staged_en = modify_en ? stream.offset(modify_en, -2) & stream.offset(modify_en, 2) : getburst_en & stream.offset(~getburstDone, -1) & stream.offset(~getburstDone, -2) ;
+    staged_bram.connectWport(staged_addr, staged_data, staged_en);
+
+    // debug.simPrintf(getburst_en, "reading: @%d %f %d, gotburstdone? %d\n", 
+    //                       staged_addr, staged_data, staged_en, getburstDone);
+    // debug.simPrintf(modify_en, "modifying: @%d %f %d, extracted from %d\n", 
+    //                       staged_addr, staged_data, staged_en, modify_bram_raddr + maxStreamCnt * editing);
+
+    /*
+    WRITEBACK PHASE
+    */
+    String cmdStreamNameWr = streamName + "_cmd_0";
+
+    Count.Params writebackParams = control.count.makeParams(MathUtils.bitsToAddress(maxStreamCnt))
+                            .withEnable(writeback_en)
+                            .withMax(maxStreamCnt)
+                            .withReset(issue_wr_cmd);
+    Count.Counter writebackc = control.count.makeCounter(writebackParams);
+    DFEVar writebackDone = writebackc.getCount() === maxStreamCnt-1;
+    sm.connectInput("writebackDone", stream.offset(writebackDone, -2));
+    DFEVar writeback_data = staged_bram.connectRport(writebackc.getCount());
+
+    LMemCommandStream.makeKernelOutput(cmdStreamNameWr,
+        issue_wr_cmd,
+        burstAddr,
+        size,
+        inc,
+        streamNum,
+        tag);
+
+    io.output(streamName + "_0", writeback_data, dType, writeback_en & stream.offset(~writebackDone, -1));
+    // debug.simPrintf(writeback_en & stream.offset(~writebackDone, -1), 
+    //                 "writeback: data %f (@%d), en %d\n"
+    //                 + "wr to burst %d (offset = %d, slot = %d)\n", 
+    //                 writeback_data, writebackc.getCount(), writeback_en & stream.offset(~writebackDone, -1),
+    //                 burstAddr, burst_offset, cmd_slot);
+
+
+    /*
+    CONNECT OUTPUTS
+    */
+    isLdSt <== scatterCnt > 0 & ~all_done;
+    done <== stream.offset(all_done, -doneOffset);
+    // debug.simPrintf(~scatter_ctr_en, "\n[cmd %d, strm_en %d, "
+    //               + "streamingdata %f (%d), dst %d]\n"
+    //               + "maskrd %d @ %d, addrRd %d @ %d, burst_offsetRd %d @ %d\n",
+    //   issue_cmd, getburst_en & stream.offset(~streamDone, -1) & stream.offset(~streamDone, -2), 
+    //   wdata[0], wen, waddr[0],
+    //   wren_mask, streamCnt,
+    //   wraddr, streamCnt,
+    //   burst_offset, cmd_slot);
+  }
+
+  ScatterLib (
+    KernelLib owner,
+    DFEVar en, DFEVar done,
+    DFEVar isLdSt, DFEVar forceLdSt,
+    BramLib addrBram, BramLib dataBram, int scatterSize,
+    int sBurstOffset, String streamName
+    )
+  {   
+    super(owner);
+    common(en, done, isLdSt, forceLdSt, addrBram, dataBram, scatterSize, sBurstOffset, streamName);
+  }
+
+  // Parallel version
+  ScatterLib (
+    KernelLib owner,
+    DFEVar en, DFEVar done, int worker, int par,
+    DFEVar isLdSt, DFEVar forceLdSt,
+    BramLib addrBram, BramLib dataBram, int scatterSize,
+    int sBurstOffset, String streamName
+    )
+  {        
+    super(owner);  
+    int numSlots = 3;
+    int modFix = -50;
+    int scatter_cnt_start = scatterSize / par * worker;
+    int max_scatter_cnt = scatterSize / par;
+    int maxAddrSize = MathUtils.bitsToAddress(scatterSize);
+
+
+    DFEType dType = dataBram.type;
+    DFEType aType = addrBram.type;
+
+    // Get read-data type
+    OffsetExpr doneOffset = stream.makeOffsetAutoLoop(streamName + "doneOffset" + worker);
+    SMIO sm = addStateMachine(streamName + "scatterSM" + worker, new ScatterSM(this, scatter_cnt_start));
+    sm.connectInput("sm_en", en);
+    sm.connectInput("forceLdSt", forceLdSt);
+
+    // Make BRAMs
+    int maxStreamCnt = getValuesPerBurst(dType);
+    BramLib burst_bram = new BramLib(this, numSlots, 1, dfeFixOffset(32, -0, SignMode.UNSIGNED), 1, 1);
+    BramLib wdata_bram = new BramLib(this, numSlots*maxStreamCnt, 1, dType, 1, 1);
+    BramLib waddr_bram = new BramLib(this, numSlots*maxStreamCnt, 1, aType, 1, 1);
+    BramLib staged_bram = new BramLib(this, maxStreamCnt, 1, dType, 1, 1);
+
+    // Hook up SM outputs
+    DFEVar issue_rd_cmd = sm.getOutput("issue_rd_cmd");
+    DFEVar issue_wr_cmd = sm.getOutput("issue_wr_cmd");
+    DFEVar scatter_ctr_en = sm.getOutput("scatter_ctr_en");
+    DFEVar schedule_wren = sm.getOutput("schedule_wren");
+    DFEVar all_done = sm.getOutput("all_done");
+    DFEVar getburst_en = sm.getOutput("getburst_en");
+    DFEVar writeback_en = sm.getOutput("writeback_en");
+    DFEVar package_done = sm.getOutput("package_done");
+    DFEVar cmd_slot = sm.getOutput("cmd_slot");
+    DFEVar slot_wren = sm.getOutput("slot_wren");
+    DFEVar scatter_ctr_rst = sm.getOutput("scatter_ctr_rst");
+    DFEVar last_scatter_addr = sm.getOutput("last_scatter_addr");
+    DFEVar delay_package_cmds = sm.getOutput("delay_package_cmds_out");
+
+    /*
+     PACKAGE COMMANDS PHASE
+    */
+    // Create counter for scatterAddr memory
+    SMIO scatter_ctr = addStateMachine("scatter_ctr" + worker, new SingleCtrSM(this, max_scatter_cnt, 0, 1));
+    scatter_ctr.connectInput("en", scatter_ctr_en);
+    scatter_ctr.connectInput("reset", scatter_ctr_rst);
+    DFEVar scatterc = scatter_ctr.getOutput("count").cast(dfeUInt(maxAddrSize));
+    DFEVar scatter_done = scatterc + last_scatter_addr.cast(scatterc.getType()) === scatter_cnt_start + max_scatter_cnt-1;
+    DFEVar scatterCnt = scatter_done ? scatter_cnt_start + max_scatter_cnt-1 : scatterc + last_scatter_addr.cast(scatterc.getType());
+    sm.connectInput("scatter_done", stream.offset(scatter_done, modFix - 1) & stream.offset(schedule_wren, -1));
+
+    // Write package into brams
+    DFEVar scatterAddr = addrBram.connectRport(scatterCnt.cast(dfeUInt(32)));
+    DFEVar scatterData = stream.offset(dataBram.connectRport(scatterCnt.cast(dfeUInt(32))), modFix - 1);
+    KernelMath.DivModResult mod = getNumberOfBursts(scatterAddr, dType);
+    DFEVar next_burst = stream.offset(mod.getQuotient().cast(dfeUInt(32)), modFix);
+    sm.connectInput("scatter_addr", stream.offset(scatterCnt.cast(dfeUInt(32)), modFix));
+    sm.connectInput("next_burst", next_burst);
+    DFEVar next_burst_out = sm.getOutput("next_burst_out");
+    DFEVar schedule_addr_offset = stream.offset(mod.getRemainder().cast(dfeUInt(32)), modFix - 1);
+    DFEVar schedule_slot = stream.offset(sm.getOutput("schedule_slot"), -1) + cmd_slot * maxStreamCnt;
+    burst_bram.connectWport(cmd_slot, next_burst_out, slot_wren);
+    wdata_bram.connectWport(schedule_slot, scatterData, schedule_wren);
+    waddr_bram.connectWport(schedule_slot, schedule_addr_offset, schedule_wren);
+    sm.connectInput("delay_package_cmds", stream.offset(delay_package_cmds, modFix-2));
+
+    // debug.simPrintf(scatter_ctr_en,// | flush_en,
+    //                 "\npackaging: scatter %d, flush %d\n"
+    //               + "scheduling: %d @%d\n"
+    //               + "burst_bram @%d, %f %d\n"
+    //               + "data_bram @%d, %f %d\n"
+    //               + "addr_bram @%d, %d %d\n",
+    //                 scatter_ctr_en, flush_en,
+    //                 scatterAddr, scatterCnt,
+    //                 cmd_slot, next_burst_out, slot_wren,
+    //                 schedule_slot, scatterData, schedule_wren,
+    //                 schedule_slot, schedule_addr_offset, schedule_wren);
+
+    DFEVar stopCond = stream.offset(all_done, 1);
+
+    /*
+    GET BURST PHASE
+    */
+    Count.Params getburstParams = control.count.makeParams(MathUtils.bitsToAddress(maxStreamCnt))
+                            .withEnable(getburst_en)
+                            .withMax(maxStreamCnt)
+                            .withReset(issue_rd_cmd);
+    Count.Counter getburstc = control.count.makeCounter(getburstParams);
+    DFEVar getburstDone = getburstc.getCount() === maxStreamCnt-1;
+    sm.connectInput("getburstDone", stream.offset(getburstDone,-3));
+    DFEVar burst_offset = burst_bram.connectRport(cmd_slot); // TODO: We can probably use burstFF to provide this value
+    DFEVar burstAddr = sBurstOffset + burst_offset;
+    DFEVar size = constant.var(dfeUInt(8), 1);
+    DFEVar inc = constant.var(dfeUInt(8),0);
+    DFEVar streamNum = constant.var(dfeUInt(1),0);
+    DFEVar tag = constant.var(false);
+
+
+    String cmdStreamNameRd = streamName + "_rd_cmd_" + worker;
+    LMemCommandStream.makeKernelOutput(cmdStreamNameRd,
+        issue_rd_cmd,
+        burstAddr,
+        size,
+        inc,
+        streamNum,
+        tag);
+    DFEVar staged_datastream = io.input(streamName + "_rd_" + worker, dType, (getburst_en & stream.offset(~getburstDone, -1) & stream.offset(~getburstDone, -2) & ~stopCond));
+    io.forceExactIOSeparation(streamName + "_rd_" + worker, cmdStreamNameRd, -16);  // Arbitrarily picked to handle divides
+
+    /*
+    MODIFY BURST PHASE
+    */
+    DFEVar modify_bram_raddr = sm.getOutput("modify_bram_raddr");
+    DFEVar editing = sm.getOutput("editing");
+    DFEVar modify_addr = waddr_bram.connectRport(modify_bram_raddr + maxStreamCnt * editing);
+    DFEVar modify_data = wdata_bram.connectRport(modify_bram_raddr + maxStreamCnt * editing);
+    DFEVar modify_en = sm.getOutput("modify_en");
+
+    DFEVar staged_addr = modify_en ? modify_addr : getburstc.getCount().cast(aType);
+    DFEVar staged_data = modify_en ? modify_data : staged_datastream;
+    DFEVar staged_en = modify_en ? stream.offset(modify_en, -2) & stream.offset(modify_en, 2) : getburst_en & stream.offset(~getburstDone, -1) & stream.offset(~getburstDone, -2) ;
+    staged_bram.connectWport(staged_addr, staged_data, staged_en);
+
+    // debug.simPrintf(getburst_en, "reading: @%d %f %d, gotburstdone? %d\n", 
+    //                       staged_addr, staged_data, staged_en, getburstDone);
+    // debug.simPrintf(modify_en, "modifying: @%d %f %d, extracted from %d\n", 
+    //                       staged_addr, staged_data, staged_en, modify_bram_raddr + maxStreamCnt * editing);
+
+    /*
+    WRITEBACK PHASE
+    */
+    String cmdStreamNameWr = streamName + "_cmd_" + worker;
+
+    Count.Params writebackParams = control.count.makeParams(MathUtils.bitsToAddress(maxStreamCnt))
+                            .withEnable(writeback_en)
+                            .withMax(maxStreamCnt)
+                            .withReset(issue_wr_cmd);
+    Count.Counter writebackc = control.count.makeCounter(writebackParams);
+    DFEVar writebackDone = writebackc.getCount() === maxStreamCnt-1;
+    sm.connectInput("writebackDone", stream.offset(writebackDone, -2));
+    DFEVar writeback_data = staged_bram.connectRport(writebackc.getCount());
+
+    LMemCommandStream.makeKernelOutput(cmdStreamNameWr,
+        issue_wr_cmd,
+        burstAddr,
+        size,
+        inc,
+        streamNum,
+        tag);
+
+    io.output(streamName + "_" + worker, writeback_data, dType, writeback_en & stream.offset(~writebackDone, -1));
+    // debug.simPrintf(writeback_en & stream.offset(~writebackDone, -1), 
+    //                 "writeback: data %f (@%d), en %d\n"
+    //                 + "wr to burst %d (offset = %d, slot = %d)\n", 
+    //                 writeback_data, writebackc.getCount(), writeback_en & stream.offset(~writebackDone, -1),
+    //                 burstAddr, burst_offset, cmd_slot);
+
+
+    /*
+    CONNECT OUTPUTS
+    */
+    isLdSt <== scatterCnt > 0 & ~all_done;
+    done <== stream.offset(all_done, -doneOffset);
+    // debug.simPrintf(~scatter_ctr_en, "\n[cmd %d, strm_en %d, "
+    //               + "streamingdata %f (%d), dst %d]\n"
+    //               + "maskrd %d @ %d, addrRd %d @ %d, burst_offsetRd %d @ %d\n",
+    //   issue_cmd, getburst_en & stream.offset(~streamDone, -1) & stream.offset(~streamDone, -2), 
+    //   wdata[0], wen, waddr[0],
+    //   wren_mask, streamCnt,
+    //   wraddr, streamCnt,
+    //   burst_offset, cmd_slot);
+  }
+
+
+}
+      
