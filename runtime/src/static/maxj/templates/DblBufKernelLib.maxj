@@ -121,12 +121,12 @@ class DblBufKernelLib extends KernelLib {
   }
 
   // TODO: Will make more sense with n-buffer
-  void connectRdone(DFEVar done, int port) {
+  void connectRdone(DFEVar done, int[] port) {
     rdone[nextReader++] <== done;
   }
 
   // TODO: Will make more sense with n-buffer
-  void connectWdone(DFEVar done, int port) {
+  void connectWdone(DFEVar done, int[] port) {
     wdone <== done;
   }
 
