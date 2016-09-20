@@ -28,7 +28,7 @@ class ScatterLib extends KernelLib {
   protected boolean dbgDetail = false;
 
   protected KernelMath.DivModResult getNumberOfBursts(DFEVar num, DFEType type) {
-    KernelMath.DivModResult d = KernelMath.divMod(num, constant.var(dfeUInt(32),getValuesPerBurst(type)));
+    KernelMath.DivModResult d = KernelMath.divMod(num.cast(dfeUInt(32)), constant.var(dfeUInt(32),getValuesPerBurst(type)));
     return d;
   }
 
@@ -40,10 +40,11 @@ class ScatterLib extends KernelLib {
   void common (
     DFEVar en, DFEVar done,
     DFEVar isLdSt, DFEVar forceLdSt,
-    BramLib addrBram, BramLib dataBram, int scatterSize,
+    BramLib addrBram, BramLib dataBram,
     int sBurstOffset, String streamName
     )
   {          
+    int scatterSize = addrBram.depth;
     int numSlots = 3;
     int modFix = -50;
     DFEType dType = dataBram.type;
@@ -102,7 +103,7 @@ class ScatterLib extends KernelLib {
     DFEVar schedule_slot = stream.offset(sm.getOutput("schedule_slot"), -1) + cmd_slot * maxStreamCnt;
     burst_bram.connectWport(cmd_slot, next_burst_out, slot_wren);
     wdata_bram.connectWport(schedule_slot, scatterData, schedule_wren);
-    waddr_bram.connectWport(schedule_slot, schedule_addr_offset, schedule_wren);
+    waddr_bram.connectWport(schedule_slot, schedule_addr_offset.cast(dfeInt(32)), schedule_wren);
     sm.connectInput("delay_package_cmds", stream.offset(delay_package_cmds, modFix-2));
 
     // debug.simPrintf(scatter_ctr_en,// | flush_en,
@@ -216,24 +217,27 @@ class ScatterLib extends KernelLib {
     KernelLib owner,
     DFEVar en, DFEVar done,
     DFEVar isLdSt, DFEVar forceLdSt,
-    BramLib addrBram, BramLib dataBram, int scatterSize,
+    BramLib addrBram, BramLib dataBram,
     int sBurstOffset, String streamName
     )
   {   
     super(owner);
-    common(en, done, isLdSt, forceLdSt, addrBram, dataBram, scatterSize, sBurstOffset, streamName);
+    common(en, done, isLdSt, forceLdSt, addrBram, dataBram, sBurstOffset, streamName);
   }
 
-  // Parallel version
+  // Parallel version229
+  
   ScatterLib (
     KernelLib owner,
     DFEVar en, DFEVar done, int worker, int par,
     DFEVar isLdSt, DFEVar forceLdSt,
-    BramLib addrBram, BramLib dataBram, int scatterSize,
+    BramLib addrBram, BramLib dataBram,
     int sBurstOffset, String streamName
     )
   {        
+
     super(owner);  
+    int scatterSize = addrBram.depth;
     int numSlots = 3;
     int modFix = -50;
     int scatter_cnt_start = scatterSize / par * worker;
