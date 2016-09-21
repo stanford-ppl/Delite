@@ -134,7 +134,7 @@ class MemoryCmdGenLib extends KernelLib {
         stream,
         tag);
 
-    // debug.simPrintf(en, "[MemCmdGen] memStart = %d, ctrl = %d, offset = %d, burstAddr = %d\n", memStart, ctrl, offset, burstAddr);
+    // debug.simPrintf(en, "[MemCmdGen] size = %d, realSize = %d, memStart = %d, ctrl = %d, offset = %d, burstAddr = %d\n", size, realSize, memStart, ctrl, offset, burstAddr);
     io.forceExactIOSeparation(streamName, cmdStreamName, -16);  // Arbitrarily picked to handle divides
 
 
@@ -183,7 +183,7 @@ MemoryCmdGenLib (
   {
     super(owner);
     DFEVar sizecheck = upcast(size_int, wdata[0].getType());
-    DFEVar size = constant.var(dfeUInt(32), 96);
+    DFEVar size = upcast(size_int, wdata[0].getType());
     DFEVar realSize = constant.var(dfeUInt(32), size_int);
     boolean aligned = isAligned(size_int, wdata[0].getType());
     common(owner, en, done, base, offset, streamName, size, realSize, fifoReadEn, wdata, aligned);
