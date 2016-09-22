@@ -49,6 +49,7 @@ class GatherSM extends KernelStateMachine {
   private final DFEsmOutput mask_addr_offset_out;
   private final DFEsmInput gather_addr;
   private final DFEsmInput delay_package_cmds;
+  private final DFEsmInput base;
   private final DFEsmOutput delay_package_cmds_out;
   private final DFEsmOutput mask_wren;
   private final DFEsmOutput last_gather_addr;
@@ -77,7 +78,7 @@ class GatherSM extends KernelStateMachine {
 
   private int delayInitVal = 64;  //TODO: Should be a sm input, and should wait only on stores
   private int numSlots = 3;
-  public GatherSM(KernelLib owner, int base) {
+  public GatherSM(KernelLib owner) {
     super(owner);
 
     // Declare all types required to wire the state machine together
@@ -100,6 +101,7 @@ class GatherSM extends KernelStateMachine {
     next_burst_out = io.output("next_burst_out", counterType);
     last_gather_addr = io.output("last_gather_addr", counterType);
     mask_addr_offset = io.input("mask_addr_offset", counterType);
+    base = io.input("base", counterType);
     gather_addr = io.input("gather_addr", counterType);
     mask_addr_offset_out = io.output("mask_addr_offset_out", counterType);
     flush_done = io.input("flush_done",wireType);
@@ -126,7 +128,7 @@ class GatherSM extends KernelStateMachine {
     gatherCtrEnFF = state.value(wireType, 0);
     delayFF = state.value(counterType, delayInitVal);
     maskAddrOffsetFF = state.value(counterType, 0);
-    lastGatherAddrFF = state.value(counterType, base);
+    lastGatherAddrFF = state.value(counterType, 0);
     maskWrenFF = state.value(wireType, 0);
     gatherDoneFF = state.value(wireType, 0);
   }
@@ -139,6 +141,7 @@ class GatherSM extends KernelStateMachine {
           // Latch all input signals
           forceLdStFF.next <== forceLdSt;
           delayFF.next <== delayInitVal;
+          lastGatherAddrFF.next <== base;
 
           IF (forceLdSt) {
             isLdStFF.next <== 1;

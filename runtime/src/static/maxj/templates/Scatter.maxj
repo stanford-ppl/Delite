@@ -40,20 +40,20 @@ class ScatterLib extends KernelLib {
   void common (
     DFEVar en, DFEVar done,
     DFEVar isLdSt, DFEVar forceLdSt,
-    BramLib addrBram, BramLib dataBram,
+    BramLib addrBram, BramLib dataBram, DFEVar scatterSize,
     int sBurstOffset, String streamName
     )
   {          
-    int scatterSize = addrBram.depth;
     int numSlots = 3;
     int modFix = -50;
     DFEType dType = dataBram.type;
     DFEType aType = addrBram.type;
-    int maxAddrSize = MathUtils.bitsToAddress(scatterSize);
+    int maxAddrSize = MathUtils.bitsToAddress(addrBram.depth);
 
     // Get read-data type
     OffsetExpr doneOffset = stream.makeOffsetAutoLoop(streamName + "doneOffset");
-    SMIO sm = addStateMachine(streamName + "scatterSM", new ScatterSM(this, 0));
+    SMIO sm = addStateMachine(streamName + "scatterSM", new ScatterSM(this));
+    sm.connectInput("base", constant.var(dfeUInt(32), 0));
     sm.connectInput("sm_en", en);
     sm.connectInput("forceLdSt", forceLdSt);
 
@@ -83,12 +83,14 @@ class ScatterLib extends KernelLib {
      PACKAGE COMMANDS PHASE
     */
     // Create counter for scatterAddr memory
-    SMIO scatter_ctr = addStateMachine("scatter_ctr", new SingleCtrSM(this, scatterSize, 0, 1));
+    SMIO scatter_ctr = addStateMachine("scatter_ctr", new SingleCtrSM(this, 0, 1));
+    scatter_ctr.connectInput("max", scatterSize.cast(dfeUInt(32)));
     scatter_ctr.connectInput("en", scatter_ctr_en);
     scatter_ctr.connectInput("reset", scatter_ctr_rst);
     DFEVar scatterc = scatter_ctr.getOutput("count").cast(dfeUInt(maxAddrSize));
-    DFEVar scatter_done = scatterc + last_scatter_addr.cast(scatterc.getType()) === scatterSize-1;
-    DFEVar scatterCnt = scatter_done ? scatterSize-1 : scatterc + last_scatter_addr.cast(scatterc.getType());
+    // TODO: Clean up this scatter_done and scatterCnt casting nonsense
+    DFEVar scatter_done = scatterc.cast(dfeInt(maxAddrSize+1)) + last_scatter_addr.cast(dfeInt(maxAddrSize+1)) === scatterSize.cast(dfeInt(maxAddrSize+1))-constant.var(dfeInt(maxAddrSize+1), 1);
+    DFEVar scatterCnt = scatter_done ? (scatterSize.cast(dfeInt(maxAddrSize+1))-constant.var(dfeInt(maxAddrSize+1), 1)).cast(scatterc.getType()) : (scatterc + last_scatter_addr.cast(scatterc.getType()));
     sm.connectInput("scatter_done", stream.offset(scatter_done, modFix - 1) & stream.offset(schedule_wren, -1));
 
     // Write package into brams
@@ -217,12 +219,12 @@ class ScatterLib extends KernelLib {
     KernelLib owner,
     DFEVar en, DFEVar done,
     DFEVar isLdSt, DFEVar forceLdSt,
-    BramLib addrBram, BramLib dataBram,
+    BramLib addrBram, BramLib dataBram, DFEVar scatterSize,
     int sBurstOffset, String streamName
     )
   {   
     super(owner);
-    common(en, done, isLdSt, forceLdSt, addrBram, dataBram, sBurstOffset, streamName);
+    common(en, done, isLdSt, forceLdSt, addrBram, dataBram, scatterSize, sBurstOffset, streamName);
   }
 
   // Parallel version229
@@ -231,18 +233,17 @@ class ScatterLib extends KernelLib {
     KernelLib owner,
     DFEVar en, DFEVar done, int worker, int par,
     DFEVar isLdSt, DFEVar forceLdSt,
-    BramLib addrBram, BramLib dataBram,
+    BramLib addrBram, BramLib dataBram, DFEVar scatterSize,
     int sBurstOffset, String streamName
     )
   {        
 
     super(owner);  
-    int scatterSize = addrBram.depth;
     int numSlots = 3;
     int modFix = -50;
-    int scatter_cnt_start = scatterSize / par * worker;
-    int max_scatter_cnt = scatterSize / par;
-    int maxAddrSize = MathUtils.bitsToAddress(scatterSize);
+    DFEVar scatter_cnt_start = KernelMath.divMod(scatterSize, constant.var(dfeUInt(32), par*worker)).getQuotient();
+    DFEVar max_scatter_cnt = KernelMath.divMod(scatterSize, constant.var(dfeUInt(32), par)).getQuotient();
+    int maxAddrSize = MathUtils.bitsToAddress(addrBram.depth);
 
 
     DFEType dType = dataBram.type;
@@ -250,7 +251,8 @@ class ScatterLib extends KernelLib {
 
     // Get read-data type
     OffsetExpr doneOffset = stream.makeOffsetAutoLoop(streamName + "doneOffset" + worker);
-    SMIO sm = addStateMachine(streamName + "scatterSM" + worker, new ScatterSM(this, scatter_cnt_start));
+    SMIO sm = addStateMachine(streamName + "scatterSM" + worker, new ScatterSM(this));
+    sm.connectInput("base", scatter_cnt_start);
     sm.connectInput("sm_en", en);
     sm.connectInput("forceLdSt", forceLdSt);
 
@@ -280,7 +282,8 @@ class ScatterLib extends KernelLib {
      PACKAGE COMMANDS PHASE
     */
     // Create counter for scatterAddr memory
-    SMIO scatter_ctr = addStateMachine("scatter_ctr" + worker, new SingleCtrSM(this, max_scatter_cnt, 0, 1));
+    SMIO scatter_ctr = addStateMachine("scatter_ctr" + worker, new SingleCtrSM(this, 0, 1));
+    scatter_ctr.connectInput("max", max_scatter_cnt);
     scatter_ctr.connectInput("en", scatter_ctr_en);
     scatter_ctr.connectInput("reset", scatter_ctr_rst);
     DFEVar scatterc = scatter_ctr.getOutput("count").cast(dfeUInt(maxAddrSize));

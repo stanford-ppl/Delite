@@ -50,6 +50,7 @@ class ScatterSM extends KernelStateMachine {
   private final DFEsmOutput schedule_slot;
   private final DFEsmOutput last_scatter_addr;
   private final DFEsmInput writebackDone;
+  private final DFEsmInput base;
   private final DFEsmOutput modify_bram_raddr;
   private final DFEsmOutput modify_en;
   private final DFEsmOutput editing;
@@ -79,7 +80,7 @@ class ScatterSM extends KernelStateMachine {
 
   private int delayInitVal = 64;  //TODO: Should be a sm input, and should wait only on stores
   private int numSlots = 3;
-  public ScatterSM(KernelLib owner, int base) {
+  public ScatterSM(KernelLib owner) {
     super(owner);
 
     // Declare all types required to wire the state machine together
@@ -102,6 +103,7 @@ class ScatterSM extends KernelStateMachine {
     writebackDone = io.input("writebackDone", wireType);
     writeback_en = io.output("writeback_en", wireType);
     next_burst = io.input("next_burst", counterType);
+    base = io.input("base", counterType);
     next_burst_out = io.output("next_burst_out", counterType);
     last_scatter_addr = io.output("last_scatter_addr", counterType);
     scatter_addr = io.input("scatter_addr", counterType);
@@ -132,7 +134,7 @@ class ScatterSM extends KernelStateMachine {
     slotWrenFF = state.value(wireType, 0);
     scatterCtrEnFF = state.value(wireType, 0);
     delayFF = state.value(counterType, delayInitVal);
-    lastscatterAddrFF = state.value(counterType, base);
+    lastscatterAddrFF = state.value(counterType, 0);
     scheduleWrenFF = state.value(wireType, 0);
     scatterDoneFF = state.value(wireType, 0);
     modifyBramRaddrFF = state.value(counterType, 0);
@@ -149,6 +151,7 @@ class ScatterSM extends KernelStateMachine {
           // Latch all input signals
           forceLdStFF.next <== forceLdSt;
           delayFF.next <== delayInitVal;
+          lastscatterAddrFF.next <== base;
 
           IF (forceLdSt) {
             isLdStFF.next <== 1;

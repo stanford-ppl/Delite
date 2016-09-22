@@ -49,7 +49,8 @@ class GroupByReduceLib extends KernelLib {
 
       // Get info from key-value BRAMs
       DFEVar last_working_addr = GBRSM.getOutput("last_working_addr");
-      SMIO itemCtr = addStateMachine("itemCtrSM" + worker, new SingleCtrSM(this, items/par, 0, 1));
+      SMIO itemCtr = addStateMachine("itemCtrSM" + worker, new SingleCtrSM(this, 0, 1));
+      itemCtr.connectInput("max", constant.var(dfeUInt(32), items/par));
       itemCtr.connectInput("en", get_next_item);
       // debug.simPrintf(get_next_item, "Getting next item\n");
       itemCtr.connectInput("reset", stream.offset(result_wren, -fix));
@@ -104,7 +105,8 @@ class GroupByReduceLib extends KernelLib {
         stream.offset(GBRSM.getOutput("sCAMWRITE_delay_out"), -7));
 
       // Write results (copy CAM to BRAM)
-      SMIO resultsCtr = addStateMachine("resultsCtrSM" + worker, new SingleCtrSM(this, buckets, 0, 1));
+      SMIO resultsCtr = addStateMachine("resultsCtrSM" + worker, new SingleCtrSM(this, 0, 1));
+      resultsCtr.connectInput("max", constant.var(dfeUInt(32),buckets));
       resultsCtr.connectInput("en", stream.offset(result_wren, -fix));
       resultsCtr.connectInput("reset", stream.offset(get_next_item, -fix));
       // DFEVar result_ctr_done = resultsCtr.getOutput("done");
@@ -125,7 +127,8 @@ class GroupByReduceLib extends KernelLib {
 
       // Init CAMs
       DFEVar init = GBRSM.getOutput("init");
-      SMIO initCtr = addStateMachine("initCtrSM" + worker, new SingleCtrSM(this, buckets, 0, 1));
+      SMIO initCtr = addStateMachine("initCtrSM" + worker, new SingleCtrSM(this, 0, 1));
+      initCtr.connectInput("max", constant.var(dfeUInt(32),buckets));
       initCtr.connectInput("en", stream.offset(init, -fix));
       initCtr.connectInput("reset", stream.offset(update_wren, -fix));
       DFEVar init_done = initCtr.getOutput("done");
