@@ -20,7 +20,8 @@ class GatherSM extends KernelStateMachine {
     STREAMDATA,
     FLUSHBRAM,
     PREPAREPACKAGING,
-    DONE
+    DONE,
+    RESET_ENGINE
   }
 
   /*
@@ -36,6 +37,7 @@ class GatherSM extends KernelStateMachine {
   private final DFEsmOutput stream_en; 
   private final DFEsmOutput issue_cmd; 
   private final DFEsmOutput package_done; 
+  private final DFEsmOutput reset_engine_en;
   private final DFEsmOutput all_done; 
   private final DFEsmOutput cmd_slot; // Index to store cmd burst addr
   private final DFEsmOutput slot_wren; // Wren for when we find new unique burst
@@ -54,6 +56,7 @@ class GatherSM extends KernelStateMachine {
   private final DFEsmOutput mask_wren;
   private final DFEsmOutput last_gather_addr;
   private final DFEsmInput flush_done;
+  private final DFEsmInput reset_engine_done;
   private final DFEsmOutput flush_rst;
   private final DFEsmOutput flush_en;
 
@@ -92,6 +95,7 @@ class GatherSM extends KernelStateMachine {
     all_done = io.output("all_done", wireType);
     slot_wren = io.output("slot_wren", wireType);
     cmd_slot = io.output("cmd_slot", counterType);
+    reset_engine_done = io.input("reset_engine_done", wireType);
     gather_ctr_en = io.output("gather_ctr_en", wireType);
     gather_ctr_rst = io.output("gather_ctr_rst", wireType);
     gather_done = io.input("gather_done", wireType);
@@ -101,6 +105,7 @@ class GatherSM extends KernelStateMachine {
     next_burst_out = io.output("next_burst_out", counterType);
     last_gather_addr = io.output("last_gather_addr", counterType);
     mask_addr_offset = io.input("mask_addr_offset", counterType);
+    reset_engine_en = io.output("reset_engine_en", wireType);
     base = io.input("base", counterType);
     gather_addr = io.input("gather_addr", counterType);
     mask_addr_offset_out = io.output("mask_addr_offset_out", counterType);
@@ -211,19 +216,19 @@ class GatherSM extends KernelStateMachine {
           // Go to done if the next burst is 999
           IF (cmdSlotFF === 0) {
             IF (burstsFF[0] === 999) {
-              stateFF.next <== States.DONE;
+              stateFF.next <== States.RESET_ENGINE;
             } ELSE {
               stateFF.next <== States.STREAMDATA;
             }
           } ELSE { IF (cmdSlotFF === 1) {
             IF (burstsFF[1] === 999) {
-              stateFF.next <== States.DONE;
+              stateFF.next <== States.RESET_ENGINE;
             } ELSE {
               stateFF.next <== States.STREAMDATA;
             }
           } ELSE { IF (cmdSlotFF === 2) {
             IF (burstsFF[2] === 999) {
-              stateFF.next <== States.DONE;
+              stateFF.next <== States.RESET_ENGINE;
             } ELSE {
               stateFF.next <== States.STREAMDATA;
             }
@@ -233,7 +238,7 @@ class GatherSM extends KernelStateMachine {
           IF (streamDone) {
             IF (cmdSlotFF === numSlots-1) {
               IF (gatherDoneFF) {
-                stateFF.next <== States.DONE;
+                stateFF.next <== States.RESET_ENGINE;
               } ELSE {
                 stateFF.next <== States.FLUSHBRAM;
                 burstsFF[0].next <== 999;
@@ -261,6 +266,19 @@ class GatherSM extends KernelStateMachine {
         CASE (States.DONE) {
           stateFF.next <== States.DONE;
         }
+        CASE (States.RESET_ENGINE) {
+          IF (reset_engine_done) {
+            stateFF.next <== States.DONE;
+          } ELSE {
+            cmdSlotFF.next <== 0;
+            burstsFF[0].next <== 999;
+            burstsFF[1].next <== 999;
+            burstsFF[2].next <== 999;
+            gatherDoneFF.next <== 0;
+            lastGatherAddrFF.next <== 0;
+            stateFF.next <== States.RESET_ENGINE;
+          }
+        }
       }
     } ELSE {
       isLdStFF.next <== 0;
@@ -284,6 +302,7 @@ class GatherSM extends KernelStateMachine {
     mask_wren <== maskWrenFF;
     last_gather_addr <== lastGatherAddrFF;
     gather_ctr_rst <== 0;
+    reset_engine_en <== 0;
     flush_en <== 0;
     flush_rst <== 0;
 
@@ -330,6 +349,9 @@ class GatherSM extends KernelStateMachine {
         }
         CASE(States.DONE){
           all_done <== 1;
+        }
+        CASE(States.RESET_ENGINE) {
+          reset_engine_en <== 1;
         }
       }
     }

@@ -163,39 +163,39 @@ class ScatterSM extends KernelStateMachine {
         }
         CASE (States.PACKAGECMDS) {
           scatterCtrEnFF.next <== 1;
-          IF (next_burst === burstsFF[0]) {
+          IF (next_burst === burstsFF[0] & ~scatter_done) {
             burstNumElFF[0].next <== burstNumElFF[0] + 1;
             cmdSlotFF.next <== 0;
             slotWrenFF.next <== 0;
             scheduleWrenFF.next <== 1;
             stateFF.next <== States.PACKAGECMDS;
-          } ELSE { IF (burstsFF[0] === 999 & delay_package_cmds) { //delay_package_cmds is a dumb fix for startup transient
+          } ELSE { IF (burstsFF[0] === 999 & delay_package_cmds & ~scatter_done) { //delay_package_cmds is a dumb fix for startup transient
             burstsFF[0].next <== next_burst;
             burstNumElFF[0].next <== burstNumElFF[0] + 1;
             cmdSlotFF.next <== 0;
             slotWrenFF.next <== 1;
             scheduleWrenFF.next <== 1;
             stateFF.next <== States.PACKAGECMDS;
-          } ELSE { IF (next_burst === burstsFF[1]) {
+          } ELSE { IF (next_burst === burstsFF[1] & ~scatter_done) {
             burstNumElFF[1].next <== burstNumElFF[1] + 1;
             cmdSlotFF.next <== 1;
             slotWrenFF.next <== 0;
             scheduleWrenFF.next <== 1;
             stateFF.next <== States.PACKAGECMDS;
-          } ELSE { IF (burstsFF[1] === 999 & delay_package_cmds) {
+          } ELSE { IF (burstsFF[1] === 999 & delay_package_cmds & ~scatter_done) {
             burstsFF[1].next <== next_burst;
             burstNumElFF[1].next <== burstNumElFF[1] + 1;
             cmdSlotFF.next <== 1;
             slotWrenFF.next <== 1;
             scheduleWrenFF.next <== 1;
             stateFF.next <== States.PACKAGECMDS;
-          } ELSE { IF (next_burst === burstsFF[2]) {
+          } ELSE { IF (next_burst === burstsFF[2] & ~scatter_done) {
             burstNumElFF[2].next <== burstNumElFF[2] + 1;
             cmdSlotFF.next <== 2;
             slotWrenFF.next <== 0;
             scheduleWrenFF.next <== 1;
             stateFF.next <== States.PACKAGECMDS;
-          } ELSE { IF (burstsFF[2] === 999 & delay_package_cmds) {
+          } ELSE { IF (burstsFF[2] === 999 & delay_package_cmds & ~scatter_done) {
             burstsFF[2].next <== next_burst;
             burstNumElFF[2].next <== burstNumElFF[2] + 1;
             cmdSlotFF.next <== 2;
@@ -336,6 +336,7 @@ class ScatterSM extends KernelStateMachine {
           burstsFF[0].next <== 999;
           burstsFF[1].next <== 999;
           burstsFF[2].next <== 999;
+          scatterDoneFF.next <== 0;
           cmdSlotFF.next <== 0;
           stateFF.next <== States.DONE;
         }
