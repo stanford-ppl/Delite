@@ -116,7 +116,7 @@ class BramLib extends KernelLib {
      DIAGONAL
   }
 
-  DFEVar rowAddr(DFEVar srcAddrr) {
+  DFEVar rowAddr(DFEVar srcAddrr) {  // Given row addr of whole bram, figure out actual row addr when ou go directly to the ensemble
     DFEVar srcAddr = srcAddrr.cast(dfeUInt(32));
     int cont_rows_bits = MathUtils.bitsToAddress(this.contiguous_rows);
     int banks_bits = MathUtils.bitsToAddress(this.banks[0]);
@@ -133,7 +133,7 @@ class BramLib extends KernelLib {
     }
   }
 
-  DFEVar ensAddr(DFEVar srcAddrr) {
+  DFEVar ensAddr(DFEVar srcAddrr) { // Given some row address, decide which top-level ensemble it belongs in
     DFEVar srcAddr = srcAddrr.cast(dfeUInt(32));
     int cont_rows_bits = MathUtils.bitsToAddress(this.contiguous_rows);
     int banks_bits = MathUtils.bitsToAddress(this.banks[0]);
@@ -649,10 +649,14 @@ class BramLib extends KernelLib {
     m[bank].write(bank_local_addr, data[0], en);
   }
 
-  // TODO: MAKE THIS CORRECT!
-  void connectBankWport(int bank, DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> data, DFEVar en) {
-    DFEVar bank_local_addr = bankAndLocalAddr(dstAddr[0], AddrMode.LOCAL);
-    m[bank].write(bank_local_addr, data[0], en);
+  void connectBankWport(int bank, DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> data, DFEVar en) {
+    DFEVar sub_rowAddr0 = rowAddr(dstAddr0);
+    this.ensemble[bank].connectWport(sub_rowAddr0, dstAddr1, data, en);
+  }
+
+  void connectBankWport(int bank, DFEVector<DFEVar> dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> data, DFEVar en) {
+    System.out.printf("BankWport disallowed for column-major writes!");
+    System.exit(-1);
   }
 
   void connectBankWport(int bank, DFEVar dstAddr, DFEVar data, DFEVar en) {
