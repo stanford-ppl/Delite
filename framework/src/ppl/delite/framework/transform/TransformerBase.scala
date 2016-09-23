@@ -65,6 +65,22 @@ trait SinglePassTransformer extends ForwardTransformer {
 
   def f = this.asInstanceOf[Transformer]
 
+  override def traverseStm(stm: Stm): Unit = stm match {
+    case TP(sym, rhs) if apply(sym) == sym =>
+      val replace = transformStm(stm)
+      assert(!subst.contains(sym) || subst(sym) == replace)
+      if (sym != replace) {
+        register(sym -> replace)  // record substitution only if result is different
+      }
+
+    case TP(sym, rhs) =>
+      if (recursive.contains(sym))  // O(n) since recursive is a list!
+        transformStm(stm)
+      else
+        // TODO: What to do when sym already has replacement? Bail out? Look up def and then transform???
+        printerr("warning: transformer already has a substitution " + sym + "->" + apply(sym) + " when encountering stm " + stm)
+  }
+
   override def transformStm(stm: Stm): Exp[Any] = stm match {
     case TP(lhs,rhs) => transform(lhs,rhs)(mtype(lhs.tp),mpos(lhs.pos)) match {
       case Some(e) => e
@@ -91,8 +107,10 @@ trait MultiPassTransformer extends SinglePassTransformer {
     case TP(sym, rhs) if apply(sym) == sym =>
       //debug(s"Encountered $sym = $rhs")
       val replace = transform(sym, rhs)(mtype(sym.tp),mpos(sym.pos)).getOrElse(self_mirror(sym,rhs))
-      assert(!subst.contains(sym) || subst(sym) == replace)
-      if (sym != replace) register(sym -> replace) // record substitution only if result is different
+      assert(!subst.contains(sym) || subst(sym) == replace, s"when transforming $sym, subst already contains $sym => $replace")
+      if (sym != replace) {
+        register(sym -> replace) // record substitution only if result is different
+      }
 
       //debug(s"  replacing with $replace")
 
@@ -102,17 +120,12 @@ trait MultiPassTransformer extends SinglePassTransformer {
     // The correct thing to do here is mirror the previously transformed node, then scrub the intermediate node from
     // the IR def and context lists so it doesn't appear in any effects lists.
     case TP(sym, rhs) =>
-      //debug(s"$sym = $rhs")
-      //debug(s"already had substitution ${apply(sym)}, mirroring")
       val sym2 = apply(sym)
-      val replace = mirrorExp(sym2) /*sym2 match {
-        case Def(rhs2) =>
-          transform(sym2.asInstanceOf[Sym[Any]], rhs2)(mtype(sym2.tp),mpos(sym2.pos)).getOrElse(mirrorExp(sym2))
-        case _ => sym2
-      }*/
+      val replace = mirrorExp(sym2)
       if (replace != sym2 && sym != sym2) scrubSym(sym2.asInstanceOf[Sym[Any]])
-      if (sym != replace)
+      if (sym != replace) {
         register(sym -> replace) // Change substitution from sym -> sym2 to sym -> replace
+      }
   }
 
   // Should be used within some outer reifyBlock scope
