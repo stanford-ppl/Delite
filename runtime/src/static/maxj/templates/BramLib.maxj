@@ -649,6 +649,12 @@ class BramLib extends KernelLib {
     m[bank].write(bank_local_addr, data[0], en);
   }
 
+  // TODO: MAKE THIS CORRECT!
+  void connectBankWport(int bank, DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> data, DFEVar en) {
+    DFEVar bank_local_addr = bankAndLocalAddr(dstAddr[0], AddrMode.LOCAL);
+    m[bank].write(bank_local_addr, data[0], en);
+  }
+
   void connectBankWport(int bank, DFEVar dstAddr, DFEVar data, DFEVar en) {
     DFEVector<DFEVar> vaddr = new DFEVectorType<DFEVar>(dstAddr.getType(), 1).newInstance(this);
     DFEVector<DFEVar> vdata = new DFEVectorType<DFEVar>(data.getType(), 1).newInstance(this);
