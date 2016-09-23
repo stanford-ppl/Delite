@@ -649,6 +649,11 @@ class BramLib extends KernelLib {
     m[bank].write(bank_local_addr, data[0], en);
   }
 
+  void connectBankWport(int bank, DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> data, DFEVar en) {
+    DFEVar sub_rowAddr0 = rowAddr(dstAddr0);
+    this.ensemble[bank].connectWport(sub_rowAddr0, dstAddr1, data, en);
+  }
+
   void connectBankWport(int bank, DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> data, DFEVar en) {
     DFEVar sub_rowAddr0 = rowAddr(dstAddr0);
     this.ensemble[bank].connectWport(sub_rowAddr0, dstAddr1, data, en);
