@@ -1,0 +1,72 @@
+package engine;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmInput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmOutput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateEnum;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
+import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
+import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
+
+class NBufStateMachine extends KernelStateMachine {
+
+  // States
+  enum States {
+    RUNNING
+  }
+
+  private final int n;
+
+  // State IO
+  private final DFEsmInput[] stageDone;
+  private final DFEsmOutput[] curBuf;
+
+  // State storage
+  private final DFEsmStateEnum<States> stateFF;
+  private final DFEsmStateValue[] curBufFF;
+
+  // Initialize state machine in constructor
+  public NBufStateMachine(KernelLib owner, int nn, int bits) {
+    super(owner);
+
+    n = nn; 
+    DFEsmValueType wireType = dfeBool();
+    DFEsmValueType counterType = dfeUInt(bits);
+
+    // Define state machine IO
+    stageDone = new DFEsmInput[n];
+    curBuf = new DFEsmOutput[n];
+    curBufFF = new DFEsmStateValue[n];
+    for (int i = 0; i < n; i++) {
+      stageDone[i] = io.input("stageDone" + i, wireType);
+      curBuf[i] = io.output("curBuf" + i, counterType);
+      curBufFF[i] = state.value(counterType, 0);
+    }
+
+    // Define state storage elements and initial state
+    stateFF = state.enumerated(States.class, States.RUNNING);
+  }
+
+  @Override
+  protected void nextState() {
+    SWITCH(stateFF) {
+      CASE(States.RUNNING) {
+        for (int i = 0; i < n; i++) {
+          IF (stageDone[i]) {
+            IF (curBufFF[i] === n-1) {
+              curBufFF[i].next <== 0;
+            } ELSE {
+              curBufFF[i].next <== curBufFF[i] + 1;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  @Override
+  protected void outputFunction() {
+    for (int i = 0; i < n; i++) {
+      curBuf[i] <== curBufFF[i];
+    }
+  }
+}
