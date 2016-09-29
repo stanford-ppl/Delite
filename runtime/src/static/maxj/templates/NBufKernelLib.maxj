@@ -1,0 +1,243 @@
+// package engine;
+
+// import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+// import com.maxeler.maxcompiler.v2.utils.MathUtils;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.Optimization;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+// import com.maxeler.maxcompiler.v2.utils.Bits;
+
+
+// /*
+                                                                     
+//                             NBuffer                                      
+//                               delay libs
+//                                __                                                         
+//              port __    mux-- |  |   mux  __    port--                                       
+//                     \         |__|          \                                               
+//              port ___   mux-- |  |   mux  ___   port--                                       
+//                               |__|                                                          
+//              port __/   mux-- |  |   mux  __/   port--                                       
+//                               |__|                                       
+                                                                     
+//                             each delay lib maintains its own curBuf
+                                                                     
+                                                                     
+                                                                     
+                                                                     
+                                                                     
+                                                                     
+                                                                     
+// */
+
+
+
+
+// class NBufKernelLib extends KernelLib {
+
+//   DFEVar[] rdataPort;
+//   DFEVar[] stageDone; // For tracking when enabled stages become done
+//   DFEVar[] stageEn; // For tracking which stages were active on this iteration
+//   DFEVar[] wdataPort;
+//   DFEVar[] wdataMux;
+//   DFEVar[] wenMux;
+//   DFEVar[] wenPort;
+//   DFEVar[] curBuf;
+//   DFEType type;
+
+//   int depth;
+//   int addrBits;
+
+//   BramLib[] r;
+
+//   private void common (String smname, int size0, int size1, DFEType ttype, int[] banks, int[] strides, int n) {
+
+//     this.depth = size0 * size1;
+//     this.addrBits = MathUtils.bitsToAddress(this.depth);
+//     this.numRports = -1;
+//     this.type = type;
+
+//     SMIO sm = addStateMachine(smname, new NBufKernelSM(this, n, bits));
+
+//     int bits = MathUtils.bitsToAddress(n);
+
+//     type = ttype;
+//     rdataPort = new DFEVar[n];
+//     stageDone = new DFEVar[n];
+//     stageEn = new DFEVar[n];
+//     wdataPort = new DFEVar[n];
+//     wdataMux = new DFEVar[n];
+//     wenMux = new DFEVar[n];
+//     wenPort = new DFEVar[n];
+//     curBuf = new DFEVar[n];
+//     r = new BramLib[n];
+
+
+//     for (int i = 0; i < n; i++) {
+//       stageDone[i] = dfeBool().newInstance(this);
+//       stageEn[i] = dfeBool().newInstance(this);
+//       wdataPort[i] = type.newInstance(this);
+//       wenPort[i] = dfeBool().newInstance(this);
+//       curBuf[i] = sm.getOutput("curBuf" + i);
+//       sm.connectInput("stageDone" + i, stageDone[i]);
+//       sm.connectInput("stageEn" + i, stageEn[i]);
+//     }
+
+//     for (int i = 0; i < n; i++) {
+//       wdataMux[i] = control.mux(curBuf[i], wdataPort);
+//       wenMux[i] = control.mux(curBuf[i], wenPort);
+//       r[i] = new BramLib(this, size0, size1, type, banks, stride)
+//     }
+
+//     // // Kindly finish MUX-ing in one cycle
+//     // optimization.pushPipeliningFactor(0);
+//     // for (int i = 0; i < n; i++) {
+//     //   rdataPort[i] = control.mux(curBuf[i], rdataMux);
+//     // }
+//     // optimization.popPipeliningFactor();
+
+//     // debug.simPrintf("curBuf %d %d %d\nwdataPort %d %d %d\nwenPort %d %d %d\nwenMux %d %d %d\nwdataMux %d %d %d\nrdataMux %d %d %d\nrdataPort %d %d %d\n",
+//     //   curBuf[0], curBuf[1], curBuf[2],
+//     //   wdataPort[0], wdataPort[1], wdataPort[2],
+//     //   wenPort[0], wenPort[1], wenPort[2],
+//     //   wdataMux[0], wdataMux[1], wdataMux[2],
+//     //   wenMux[0], wenMux[1], wenMux[2],
+//     //   rdataMux[0], rdataMux[1], rdataMux[2],
+//     //   rdataPort[0], rdataPort[1], rdataPort[2]
+//     //   );
+    
+//   }
+
+//   NBufKernelLib(KernelLib owner, String smname, int size0, int size1, DFEType type, int[] banks, int[] strides, int n) {
+//     super(owner);
+//     common(smname, size0, size1, type, banks, strides, n);
+//   }
+
+//   DFEVar connectRport(DFEVar srcAddr, int[] p) {
+//     DFEVar[] rdataMux = DFEVar[n];
+//     for (int i = 0; i < n; i++) {
+//       rdataMux[i] = m[i].connectRport(srcAddr);
+//     }
+//     DFEVar rdataPort = control.mux(curBuf[p[0]], rdataMux);
+//     return rdataPort;
+//   }
+
+//   DFEVar connectRport(DFEVar srcAddr0, DFEVar srcAddr1, int[] p) {
+//     DFEVar[] rdataMux = DFEVar[n];
+//     for (int i = 0; i < n; i++) {
+//       rdataMux[i] = m[i].connectRport(srcAddr0, srcAddr1);
+//     }
+//     DFEVar rdataPort = control.mux(curBuf[p[0]], rdataMux);
+//     return rdataPort;
+//   }
+
+//   DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr, int[] p) {
+//     int m = srcAddr.getSize();
+//     DFEVar[][] rdataMux = DFEVar[m][n];
+//     for (int i = 0; i < n; i++) {
+//       for (int j = 0; j < m; j++) {
+//         rdataMux[j][i] = m[i].connectRport(srcAddr[j]);
+//       }
+//     }
+//     DFEVector<DFEVar> rdataPort = new DFEVectorType<DFEVar>(this.type, m).newInstance(this);
+//     for (int j = 0; j < m; j++) {
+//       rdataPort[j] <== control.mux(curBuf[p[0]], rdataMux[j]);
+//     }
+//     return rdataPort;
+//   }
+
+//   DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr0, DFEVar srcAddr1, int[] p) {
+//     int m = srcAddr0.getSize();
+//     DFEVar[][] rdataMux = DFEVar[m][n];
+//     for (int i = 0; i < n; i++) {
+//       for (int j = 0; j < m; j++) {
+//         rdataMux[j][i] = m[i].connectRport(srcAddr0[j], srcAddr1);
+//       }
+//     }
+//     DFEVector<DFEVar> rdataPort = new DFEVectorType<DFEVar>(this.type, m).newInstance(this);
+//     for (int j = 0; j < m; j++) {
+//       rdataPort[j] <== control.mux(curBuf[p[0]], rdataMux[j]);
+//     }
+//     return rdataPort;
+//   }
+
+//   DFEVector<DFEVar> connectRport(DFEVar srcAddr0, DFEVector<DFEVar> srcAddr1, int[] p) {
+//     int m = srcAddr1.getSize();
+//     DFEVar[][] rdataMux = DFEVar[m][n];
+//     for (int i = 0; i < n; i++) {
+//       for (int j = 0; j < m; j++) {
+//         rdataMux[j][i] = m[i].connectRport(srcAddr0, srcAddr1[j]);
+//       }
+//     }
+//     DFEVector<DFEVar> rdataPort = new DFEVectorType<DFEVar>(this.type, m).newInstance(this);
+//     for (int j = 0; j < m; j++) {
+//       rdataPort[j] <== control.mux(curBuf[p[0]], rdataMux[j]);
+//     }
+//     return rdataPort;
+//   }
+
+//   void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en, int[] p) {
+//     wdataPort[p[0]] <== dstData;
+//     waddrPort[p[0]] <== dstAddr;
+//     wenPort[p[0]] <== en;
+//     for (int i = 0; i < n; i++) {
+//       wdataMux[i] = control.mux(curBuf[i], wdataPort);
+//       wenMux[i] = control.mux(curBuf[i], wenPort);
+//       r[i] = new DelayLib(this, wenMux[i], wdataMux[i], rst_en, rstVal);
+//       rdataMux[i] = r[i].q[0];      
+//     }
+
+//     m0.connectWport(dstAddr, dstData, ~realCurBuf & en);
+//     m1.connectWport(dstAddr, dstData, realCurBuf & en);
+//   }
+
+//   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en) {
+//     m0.connectWport(dstAddr0, dstAddr1, dstData, ~realCurBuf & en);
+//     m1.connectWport(dstAddr0, dstAddr1, dstData, realCurBuf & en);
+//   }
+
+//   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en, int ens) {
+//     m0.connectWport(dstAddr0, dstAddr1, dstData, ~realCurBuf & en, ens);
+//     m1.connectWport(dstAddr0, dstAddr1, dstData, realCurBuf & en, ens);
+//   }
+
+//   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVar en) {
+//     connectWport(dstAddr0, dstAddr1, dstData[0], en);
+//   }
+
+//   void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en) {
+//     m0.connectWport(dstAddr, dstData, ~realCurBuf & en);
+//     m1.connectWport(dstAddr, dstData, realCurBuf & en);
+//   }
+
+//   void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVar en) {
+//     m0.connectWport(dstAddr0, dstAddr1, dstData, ~realCurBuf & en);
+//     m1.connectWport(dstAddr0, dstAddr1, dstData, realCurBuf & en);
+//   }
+
+
+//   void connectUnwrittenPorts(int[] port) {
+//     for (int i = 0; i < port.length; i++) {
+//       wdataPort[port[i]] <== constant.var(type, 0);
+//       wenPort[port[i]] <== constant.var(false);
+//     }
+//   }
+//   void connectUntouchedPorts(int[] port) {
+//     for (int i = 0; i < port.length; i++) {
+//       stageDone[port[i]] <== constant.var(false);
+//       stageEn[port[i]] <== constant.var(false);
+//     }
+//   }
+
+//   void connectStageCtrl(DFEVar done, DFEVar en, int[] port) {
+//     for (int i = 0; i < port.length; i++) {
+//       stageDone[port[i]] <== done;
+//       stageEn[port[i]] <== en;
+//     }
+//   }
+
+// }
