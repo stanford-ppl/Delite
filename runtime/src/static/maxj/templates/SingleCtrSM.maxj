@@ -17,7 +17,6 @@ class SingleCtrSM extends KernelStateMachine {
       SATURATED
     }
 
-    int max;
     int start;
     int stride;
 
@@ -26,6 +25,7 @@ class SingleCtrSM extends KernelStateMachine {
 
     private final DFEsmOutput saturated;
     private final DFEsmOutput done;
+    private final DFEsmInput max;
     private final DFEsmInput en;
     private final DFEsmInput reset;
 
@@ -37,12 +37,11 @@ class SingleCtrSM extends KernelStateMachine {
     // NOTE: strides is a constructor argument and max is an io.input
     //       because old DHDL specifies max as CombNodes and strides as
     //       ints so this was the easiest way to make this CtrSM
-    public SingleCtrSM(KernelLib owner, int m, int strt, int strd) {
+    public SingleCtrSM(KernelLib owner, int strt, int strd) {
       super(owner);
       // Declare all types required to wire the state machine together
       DFEsmValueType numberType = dfeUInt(32);
       DFEsmValueType wireType = dfeBool();
-      max = m;
       start = strt;
       stride = strd;
 
@@ -51,6 +50,7 @@ class SingleCtrSM extends KernelStateMachine {
 
       saturated = io.output("saturated", wireType);
       done = io.output("done", wireType);
+      max = io.input("max", numberType);
       en = io.input("en", wireType);
       reset = io.input("reset", wireType);
 

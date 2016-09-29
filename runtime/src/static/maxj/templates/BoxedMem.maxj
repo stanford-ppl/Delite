@@ -3,6 +3,7 @@ package engine;
 import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
 import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
 import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Mem.RamWriteMode;
 import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
 import com.maxeler.maxcompiler.v2.utils.MathUtils;
 import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
@@ -33,5 +34,9 @@ class BoxedMem extends OnChipMem {
 
   void write(DFEVar dstAddr, DFEVar dstData) {
     write(dstAddr, dstData, constant.var(true));
+  }
+
+  DFEVar accum(DFEVar dstAddr, DFEVar dataIn, DFEVar en) {
+    return m.port(dstAddr.cast(dfeUInt(addrBits)), dataIn, en, RamWriteMode.READ_FIRST);
   }
 }

@@ -55,6 +55,21 @@ class FFMem extends OnChipMem {
     }
   }
 
+  DFEVar accum(DFEVar dstAddr, DFEVar dataIn, DFEVar en) {
+    DFEVar waddr;
+    if (size == 1) {
+      waddr = constant.var(0);
+    } else {
+      waddr = dstAddr.cast(dfeUInt(addrBits));
+    }
+    for (int i=0; i<size; i++) {
+      DFEVar wen = en & (waddr === i);
+      m[i] <== Reductions.streamHold(dataIn, wen);
+    }
+    return m[0];
+
+  }
+
   void write(DFEVar dstAddr, DFEVar dstData) {
     write(dstAddr, dstData, constant.var(true));
   }

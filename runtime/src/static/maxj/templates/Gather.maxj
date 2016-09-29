@@ -1,0 +1,423 @@
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.WrapMode;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.LMemCommandStream;
+import com.maxeler.maxcompiler.v2.kernelcompiler.Optimization;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.Reductions;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Stream.OffsetExpr;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.KernelMath;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEFix.SignMode;
+
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEStruct;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEStructType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEStructType.StructFieldType;
+import java.util.ArrayList;
+
+
+/*          
+
+   outside kernel | inside kernel
+                  | 
+                        waddr_bram             mask_bram   burst_bram                                 
+        addrBram        ___                       _       _____   
+        _____          |   |                     | |     |  1  |                                                  
+       |  3  |         | 4 |(from 4th)           |1|     |  2  |                                                         
+       |  9  |    =>   | 1 |(from 1st)           |1|     |_____|                                                               
+       |  15 |         |   |                     | |                                                         
+       |  2  |         |   |                     | |      [burst cmd]                                                   
+       |  7  |         | 9 |(from 2nd)           |1|                                                                   
+       |  96 |         |   |                     | |                                                         
+       |__97_|         |   |                     | |                                                         
+                       |   |      (...etc...)    | |                                                                  
+                       |   |                     | |                       
+                       |   |                     | |                       
+                       |   |                     | |                       
+                       |   |                     | |                       
+                       |_3_|(from 3rd)           |1|                                 
+                         
+                 [where to write data]       [burst stream mask]
+
+                     numSlots * el_per_burst rows
+
+*/
+
+
+class GatherLib extends KernelLib {
+
+  protected boolean dbg = true;
+  protected boolean dbgDetail = false;
+
+  protected KernelMath.DivModResult getNumberOfBursts(DFEVar num, DFEType type) {
+    KernelMath.DivModResult d = KernelMath.divMod(num.cast(dfeUInt(32)), constant.var(dfeUInt(32),getValuesPerBurst(type)));
+    return d;
+  }
+
+  protected static int getValuesPerBurst(DFEType type) {
+    return 384 / (type.getTotalBits()/8);
+  }
+
+  // TODO: Fix issue when we want to gather the same address multiple times,
+  //       we ignore all but the last address we encounter
+  void common (
+    DFEVar en, DFEVar done,
+    DFEVar isLdSt, DFEVar forceLdSt,
+    BramLib addrBram, DFEVar gatherSize,
+    int sBurstOffset, String streamName,
+    DFEVector<DFEVar> waddr, DFEVector<DFEVar> wdata, DFEVar wen
+    )
+  {          
+    int numSlots = 3;
+    int modFix = -50;
+
+    // Get read-data type
+    DFEType type = wdata[0].getType();
+    OffsetExpr doneOffset = stream.makeOffsetAutoLoop(streamName + "doneOffset");
+    SMIO sm = addStateMachine(streamName + "gatherSM", new GatherSM(this));
+    sm.connectInput("base", constant.var(dfeUInt(32),0));
+    sm.connectInput("sm_en", en);
+    DFEVar delay_package_cmds = sm.getOutput("delay_package_cmds_out"); // Loopback signal for mod reasons
+    sm.connectInput("delay_package_cmds", stream.offset(delay_package_cmds, modFix-2));
+    sm.connectInput("forceLdSt", forceLdSt);
+
+    // Make BRAMs
+    int maxStreamCnt = getValuesPerBurst(wdata[0].getType());
+    BramLib burst_bram = new BramLib(this, numSlots, 1, dfeFixOffset(32, -0, SignMode.UNSIGNED), 1, 1);
+    BramLib mask_bram = new BramLib(this, numSlots*maxStreamCnt, 1, dfeBool(), 1, 1);
+    BramLib waddr_bram = new BramLib(this, numSlots*maxStreamCnt, 1, waddr[0].getType(), 1, 1); 
+
+    // Hook up SM outputs
+    DFEVar issue_cmd = sm.getOutput("issue_cmd");
+    DFEVar reset_engine_en = sm.getOutput("reset_engine_en");
+    DFEVar gather_ctr_en = sm.getOutput("gather_ctr_en");
+    DFEVar package_mask_wren = sm.getOutput("mask_wren");
+    DFEVar all_done = sm.getOutput("all_done");
+    DFEVar stream_en = sm.getOutput("stream_en");
+    DFEVar package_done = sm.getOutput("package_done");
+    DFEVar cmd_slot = sm.getOutput("cmd_slot");
+    DFEVar slot_wren = sm.getOutput("slot_wren");
+    DFEVar gather_ctr_rst = sm.getOutput("gather_ctr_rst");
+    DFEVar last_gather_addr = sm.getOutput("last_gather_addr");
+
+    /* 
+    FLUSH BRAMS PHASE
+    */
+    int maxAddrSize = MathUtils.bitsToAddress(addrBram.depth);
+    DFEVar flush_en = sm.getOutput("flush_en") | reset_engine_en;
+    DFEVar flush_rst = sm.getOutput("flush_rst");
+    SMIO flush_ctr = addStateMachine("gather_flush_ctr", new SingleCtrSM(this, 0, 1));
+    flush_ctr.connectInput("max", constant.var(dfeUInt(32), numSlots*maxStreamCnt));
+    flush_ctr.connectInput("en", flush_en);
+    flush_ctr.connectInput("reset", flush_rst);
+    DFEVar flushc = flush_ctr.getOutput("count");
+    DFEVar flush_done = flush_ctr.getOutput("done");
+    sm.connectInput("reset_engine_done", stream.offset(flush_done, -2));
+    sm.connectInput("flush_done", stream.offset(flush_done, -2));
+
+
+    /*
+     PACKAGE COMMANDS PHASE
+    */
+    // Create counter for gatherAddr memory
+    SMIO gather_ctr = addStateMachine("gather_ctr", new SingleCtrSM(this, 0, 1));
+    gather_ctr.connectInput("max", gatherSize.cast(dfeUInt(32)));
+    gather_ctr.connectInput("en", gather_ctr_en);
+    gather_ctr.connectInput("reset", gather_ctr_rst);
+    DFEVar gatherc = gather_ctr.getOutput("count").cast(dfeUInt(maxAddrSize));
+
+    // Ctr done logic
+    // TODO: Clean up this gather_done and gatherCnt casting nonsense
+    DFEVar gather_done = gatherc.cast(dfeInt(maxAddrSize+1)) + last_gather_addr.cast(dfeInt(maxAddrSize+1)) === gatherSize.cast(dfeInt(maxAddrSize+1))-constant.var(dfeInt(maxAddrSize+1), 1);
+    DFEVar gatherCnt = gather_done ? (gatherSize.cast(dfeInt(maxAddrSize+1))-constant.var(dfeInt(maxAddrSize+1), 1)).cast(gatherc.getType()) : (gatherc + last_gather_addr.cast(gatherc.getType()));
+    sm.connectInput("gather_done", stream.offset(gather_done, modFix - 1) & stream.offset(package_mask_wren, -1));
+
+    // Write package into brams
+    DFEVar gatherAddr = addrBram.connectRport(gatherCnt.cast(dfeUInt(32)));
+    KernelMath.DivModResult mod = getNumberOfBursts(gatherAddr, type);
+    DFEVar next_burst = stream.offset(mod.getQuotient().cast(dfeUInt(32)), modFix);
+    sm.connectInput("gather_addr", stream.offset(gatherCnt.cast(dfeUInt(32)), modFix));
+    sm.connectInput("next_burst", next_burst);
+    DFEVar next_burst_out = sm.getOutput("next_burst_out");
+    DFEVar mask_addr_offset = stream.offset(mod.getRemainder().cast(dfeUInt(32)), modFix);
+    sm.connectInput("mask_addr_offset", mask_addr_offset);
+    DFEVar mask_addr_offset_out = sm.getOutput("mask_addr_offset_out");
+    burst_bram.connectWport(cmd_slot, next_burst_out, slot_wren);
+    DFEVar mask_addr = cmd_slot * constant.var(dfeUInt(32), 96) + 
+                        mask_addr_offset_out;
+    DFEVar mask_wr_data = flush_en ? constant.var(dfeBool(), 0) : constant.var(dfeBool(), 1);
+    DFEVar waddr_wr_data = flush_en ? constant.var(dfeUInt(maxAddrSize), 0) : stream.offset(gatherCnt, modFix - 1);
+    DFEVar mask_wr_addr = flush_en ? flushc : mask_addr;
+    DFEVar mask_wren = flush_en ? flush_en : package_mask_wren;
+    mask_bram.connectWport(mask_wr_addr, mask_wr_data, mask_wren);
+    waddr_bram.connectWport(mask_wr_addr, waddr_wr_data.cast(dfeInt(32)), mask_wren);
+    // debug.simPrintf(gather_ctr_en,// | flush_en,
+    //                 "\ngather %d, flush %d\n"
+    //               + "scheduling @%d (%d + %d), %f, cnten %d\n"
+    //               + "burst_bram @%d, %f %d\n"
+    //               + "mask_bram @%d, %d %d\n"
+    //               + "waddr_bram @%d, %d %d (from %d + %d)\n",
+    //                 gather_ctr_en, flush_en,
+    //                 gatherCnt, gatherc, last_gather_addr, gatherAddr, gather_ctr_en,
+    //                 cmd_slot, next_burst_out, slot_wren,
+    //                 mask_wr_addr, mask_wr_data, mask_wren,
+    //                 mask_wr_addr, waddr_wr_data, mask_wren, stream.offset(gatherc, modFix - 1), stream.offset(last_gather_addr, modFix - 1));
+
+    DFEVar stopCond = stream.offset(all_done, 1);
+
+    // Issue Command Phase
+    Count.Params streamParams = control.count.makeParams(MathUtils.bitsToAddress(numSlots*maxStreamCnt))
+                            .withEnable(stream_en)
+                            .withMax(maxStreamCnt)
+                            .withReset(issue_cmd);
+    Count.Counter streamc = control.count.makeCounter(streamParams);
+    DFEVar streamCnt = streamc.getCount() + cmd_slot.cast(streamc.getCount().getType()) * maxStreamCnt;
+    DFEVar streamDone = streamc.getCount() === maxStreamCnt-1;
+    sm.connectInput("streamDone", stream.offset(streamDone,-3));
+    DFEVar burst_offset = burst_bram.connectRport(cmd_slot); // TODO: We can probably use burstFF to provide this value
+    DFEVar wren_mask = mask_bram.connectRport(streamCnt);
+    DFEVar wraddr = waddr_bram.connectRport(streamCnt);
+
+    /*
+    SEND COMMANDS PHASE
+    */
+    DFEVar burstAddr = sBurstOffset + burst_offset;
+    DFEVar size = constant.var(dfeUInt(8), 1);
+    DFEVar inc = constant.var(dfeUInt(8),0);
+    DFEVar streamNum = constant.var(dfeUInt(1),0);
+    DFEVar tag = constant.var(false);
+
+    String cmdStreamName = streamName + "_cmd_0";
+    LMemCommandStream.makeKernelOutput(cmdStreamName,
+        issue_cmd,
+        burstAddr,
+        size,
+        inc,
+        streamNum,
+        tag);
+
+
+
+    io.forceExactIOSeparation(streamName + "_0", cmdStreamName, -16);  // Arbitrarily picked to handle divides
+
+    /*
+    CONNECT OUTPUTS
+    */
+    isLdSt <== gatherCnt > 0 & ~all_done;
+    done <== stream.offset(all_done, -doneOffset);
+    waddr <== wraddr;
+    wdata <== io.input(streamName + "_0", wdata.getType(), (stream_en & stream.offset(~streamDone, -1) & stream.offset(~streamDone, -2) & ~stopCond));
+    wen <== wren_mask & stream_en & stream.offset(~streamDone, -1) & stream.offset(~streamDone, -2);
+    // debug.simPrintf(~gather_ctr_en, "\n[cmd %d, strm_en %d, "
+    //               + "streamingdata %f (%d), dst %d]\n"
+    //               + "maskrd %d @ %d, addrRd %d @ %d, burst_offsetRd %d @ %d\n",
+    //   issue_cmd, stream_en & stream.offset(~streamDone, -1) & stream.offset(~streamDone, -2), 
+    //   wdata[0], wen, waddr[0],
+    //   wren_mask, streamCnt,
+    //   wraddr, streamCnt,
+    //   burst_offset, cmd_slot);
+  }
+
+
+  GatherLib (
+    KernelLib owner,
+    DFEVar en, DFEVar done,
+    DFEVar isLdSt, DFEVar forceLdSt,
+    BramLib addrBram, DFEVar gatherSize,
+    int sBurstOffset, String streamName,
+    DFEVar waddr, DFEVar wdata, DFEVar wen
+    )
+  {
+    super(owner);
+    DFEVectorType<DFEVar> waddrType = new DFEVectorType<DFEVar>(waddr.getType(), 1);
+    DFEVectorType<DFEVar> wdataType = new DFEVectorType<DFEVar>(wdata.getType(), 1);
+    DFEVector<DFEVar> waddrVec = waddrType.newInstance(this);
+    DFEVector<DFEVar> wdataVec = wdataType.newInstance(this);
+    waddrVec[0] <== waddr;
+    wdataVec[0] <== wdata;
+    common(en, done, isLdSt, forceLdSt, addrBram, gatherSize, sBurstOffset, streamName, waddrVec, wdataVec, wen);
+  }
+
+  GatherLib (
+    KernelLib owner,
+    DFEVar en, DFEVar done,
+    DFEVar isLdSt, DFEVar forceLdSt,
+    BramLib addrBram, DFEVar gatherSize,
+    int sBurstOffset, String streamName,
+    DFEVector<DFEVar> waddr, DFEVector<DFEVar> wdata, DFEVar wen
+    )
+  {
+    super(owner);
+    common(en, done, isLdSt, forceLdSt, addrBram, gatherSize, sBurstOffset, streamName, waddr, wdata, wen);
+  }
+
+  // Parallelized version.  Just do outer-level parallelization
+  GatherLib (
+    KernelLib owner, int worker, int par,
+    DFEVar en, DFEVar done,
+    DFEVar isLdSt, DFEVar forceLdSt,
+    BramLib addrBram, DFEVar gatherSize,
+    int sBurstOffset, String streamName,
+    DFEVector<DFEVar> waddr, DFEVector<DFEVar> wdata, DFEVar wen
+    )
+  {    
+    super(owner);     
+    int numSlots = 3;
+    int modFix = -50;
+
+    DFEVar gather_cnt_start = KernelMath.divMod(gatherSize, constant.var(dfeUInt(32), par*worker)).getQuotient();
+    DFEVar max_gather_cnt = KernelMath.divMod(gatherSize, constant.var(dfeUInt(32), par)).getQuotient();
+    // int gather_cnt_start = gatherSize / par * worker;
+    // int max_gather_cnt = gatherSize / par;
+    // Get read-data type
+    DFEType type = wdata[0].getType();
+    OffsetExpr doneOffset = stream.makeOffsetAutoLoop(streamName + "_" + worker + "doneOffset" + worker);
+    SMIO sm = addStateMachine(streamName + "_" + worker + "gatherSM" + worker, new GatherSM(this));
+    sm.connectInput("base", gather_cnt_start);
+    sm.connectInput("sm_en", en);
+    DFEVar delay_package_cmds = sm.getOutput("delay_package_cmds_out"); // Loopback signal for mod reasons
+    sm.connectInput("delay_package_cmds", stream.offset(delay_package_cmds, modFix-2));
+    sm.connectInput("forceLdSt", forceLdSt);
+
+    // Make BRAMs
+    int maxStreamCnt = getValuesPerBurst(wdata[0].getType());
+    BramLib burst_bram = new BramLib(this, numSlots, 1, dfeFixOffset(32, -0, SignMode.UNSIGNED), 1, 1);
+    BramLib mask_bram = new BramLib(this, numSlots*maxStreamCnt, 1, dfeBool(), 1, 1);
+    BramLib waddr_bram = new BramLib(this, numSlots*maxStreamCnt, 1, waddr[0].getType(), 1, 1);
+
+    // Hook up SM outputs
+    DFEVar issue_cmd = sm.getOutput("issue_cmd");
+    DFEVar gather_ctr_en = sm.getOutput("gather_ctr_en");
+    DFEVar package_mask_wren = sm.getOutput("mask_wren");
+    DFEVar all_done = sm.getOutput("all_done");
+    DFEVar stream_en = sm.getOutput("stream_en");
+    DFEVar package_done = sm.getOutput("package_done");
+    DFEVar cmd_slot = sm.getOutput("cmd_slot");
+    DFEVar slot_wren = sm.getOutput("slot_wren");
+    DFEVar gather_ctr_rst = sm.getOutput("gather_ctr_rst");
+    DFEVar last_gather_addr = sm.getOutput("last_gather_addr");
+
+    /* 
+    FLUSH BRAMS PHASE
+    */
+    int maxAddrSize = MathUtils.bitsToAddress(addrBram.depth);
+    DFEVar flush_en = sm.getOutput("flush_en");
+    DFEVar flush_rst = sm.getOutput("flush_rst");
+    SMIO flush_ctr = addStateMachine("flush_ctr" + worker, new SingleCtrSM(this, 0, 1));
+    flush_ctr.connectInput("max", constant.var(dfeUInt(32), numSlots*maxStreamCnt));
+    flush_ctr.connectInput("en", flush_en);
+    flush_ctr.connectInput("reset", flush_rst);
+    DFEVar flushc = flush_ctr.getOutput("count");
+    DFEVar flush_done = flush_ctr.getOutput("done");
+    sm.connectInput("flush_done", stream.offset(flush_done, -2));
+
+
+    /*
+     PACKAGE COMMANDS PHASE
+    */
+    // Create counter for gatherAddr memory
+    SMIO gather_ctr = addStateMachine("gather_ctr" + worker, new SingleCtrSM(this, 0, 1));
+    gather_ctr.connectInput("max", max_gather_cnt);
+    gather_ctr.connectInput("en", gather_ctr_en);
+    gather_ctr.connectInput("reset", gather_ctr_rst);
+    DFEVar gatherc = gather_ctr.getOutput("count").cast(dfeUInt(maxAddrSize));
+
+    // Ctr done logic
+    DFEVar gather_done = gatherc + last_gather_addr.cast(gatherc.getType()) === gather_cnt_start + max_gather_cnt-1;
+    DFEVar gatherCnt = gather_done ? gather_cnt_start + max_gather_cnt-1 : gatherc + last_gather_addr.cast(gatherc.getType());
+    sm.connectInput("gather_done", stream.offset(gather_done, modFix - 1) & stream.offset(package_mask_wren, -1));
+
+    // Write package into brams
+    DFEVar gatherAddr = addrBram.connectRport(gatherCnt.cast(dfeUInt(32)));
+    KernelMath.DivModResult mod = getNumberOfBursts(gatherAddr, type);
+    DFEVar next_burst = stream.offset(mod.getQuotient().cast(dfeUInt(32)), modFix);
+    sm.connectInput("gather_addr", stream.offset(gatherCnt.cast(dfeUInt(32)), modFix));
+    sm.connectInput("next_burst", next_burst);
+    DFEVar next_burst_out = sm.getOutput("next_burst_out");
+    DFEVar mask_addr_offset = stream.offset(mod.getRemainder().cast(dfeUInt(32)), modFix);
+    sm.connectInput("mask_addr_offset", mask_addr_offset);
+    DFEVar mask_addr_offset_out = sm.getOutput("mask_addr_offset_out");
+    burst_bram.connectWport(cmd_slot, next_burst_out, slot_wren);
+    DFEVar mask_addr = cmd_slot * constant.var(dfeUInt(32), 96) + 
+                        mask_addr_offset_out;
+    DFEVar mask_wr_data = flush_en ? constant.var(dfeBool(), 0) : constant.var(dfeBool(), 1);
+    DFEVar waddr_wr_data = flush_en ? constant.var(dfeUInt(maxAddrSize), 0) : stream.offset(gatherCnt, modFix - 1);
+    DFEVar mask_wr_addr = flush_en ? flushc : mask_addr;
+    DFEVar mask_wren = flush_en ? flush_en : package_mask_wren;
+    mask_bram.connectWport(mask_wr_addr, mask_wr_data, mask_wren);
+    waddr_bram.connectWport(mask_wr_addr, waddr_wr_data, mask_wren);
+    // debug.simPrintf(gather_ctr_en & worker==1,// | flush_en,
+    //                 "\nworker %d: gather %d, flush %d\n"
+    //               + "scheduling @%d (%d + %d), %f, cnten %d\n"
+    //               + "burst_bram @%d, %f %d\n"
+    //               + "mask_bram @%d, %d %d\n"
+    //               + "waddr_bram @%d, %d %d (from %d + %d)\n",
+    //                 worker, gather_ctr_en, flush_en,
+    //                 gatherCnt, gatherc, last_gather_addr, gatherAddr, gather_ctr_en,
+    //                 cmd_slot, next_burst_out, slot_wren,
+    //                 mask_wr_addr, mask_wr_data, mask_wren,
+    //                 mask_wr_addr, waddr_wr_data, mask_wren, stream.offset(gatherc, modFix - 1), stream.offset(last_gather_addr, modFix - 1));
+
+    DFEVar stopCond = stream.offset(all_done, 1);
+
+    // Issue Command Phase
+    Count.Params streamParams = control.count.makeParams(MathUtils.bitsToAddress(numSlots*maxStreamCnt))
+                            .withEnable(stream_en)
+                            .withMax(maxStreamCnt)
+                            .withReset(issue_cmd);
+    Count.Counter streamc = control.count.makeCounter(streamParams);
+    DFEVar streamCnt = streamc.getCount() + cmd_slot.cast(streamc.getCount().getType()) * maxStreamCnt;
+    DFEVar streamDone = streamc.getCount() === maxStreamCnt-1;
+    sm.connectInput("streamDone", stream.offset(streamDone,-3));
+    DFEVar burst_offset = burst_bram.connectRport(cmd_slot); // TODO: We can probably use burstFF to provide this value
+    DFEVar wren_mask = mask_bram.connectRport(streamCnt);
+    DFEVar wraddr = waddr_bram.connectRport(streamCnt);
+
+    /*
+    SEND COMMANDS PHASE
+    */
+    DFEVar burstAddr = sBurstOffset + burst_offset;
+    DFEVar size = constant.var(dfeUInt(8), 1);
+    DFEVar inc = constant.var(dfeUInt(8),0);
+    DFEVar streamNum = constant.var(dfeUInt(1),0);
+    DFEVar tag = constant.var(false);
+
+    String cmdStreamName = streamName + "_cmd_" + worker;
+    LMemCommandStream.makeKernelOutput(cmdStreamName,
+        issue_cmd,
+        burstAddr,
+        size,
+        inc,
+        streamNum,
+        tag);
+
+
+
+    io.forceExactIOSeparation(streamName + "_" + worker, cmdStreamName, -16);  // Arbitrarily picked to handle divides
+
+    /*
+    CONNECT OUTPUTS
+    */
+    isLdSt <== gatherCnt > 0 & ~all_done;
+    done <== stream.offset(all_done, -doneOffset);
+    waddr <== wraddr;
+    wdata <== io.input(streamName + "_" + worker, wdata.getType(), (stream_en & stream.offset(~streamDone, -1) & stream.offset(~streamDone, -2) & ~stopCond));
+    wen <== wren_mask & stream_en & stream.offset(~streamDone, -1) & stream.offset(~streamDone, -2);
+    // debug.simPrintf(~gather_ctr_en & worker==1, "\n[worker %d: cmd %d, strm_en %d, "
+    //               + "incoming data %f (strmen: %d), in-stream addr %d]\n"
+    //               + "addr @%d requested %d, write? %d, burst_offsetRd %d @ %d\n",
+    //   worker, issue_cmd, stream_en & stream.offset(~streamDone, -1) & stream.offset(~streamDone, -2), 
+    //   wdata[0], wen, waddr[0],
+    //   wraddr, streamCnt, wren_mask,
+    //   burst_offset, cmd_slot);
+  }
+
+}

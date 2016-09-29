@@ -28,6 +28,8 @@ abstract class OnChipMem extends KernelLib {
 
   abstract void write(DFEVar dstAddr, DFEVar dstData, DFEVar en);
 
+  abstract DFEVar accum(DFEVar dstAddr, DFEVar dataIn, DFEVar en);
+
   void write(DFEVar dstAddr, DFEVar dstData) {
     write(dstAddr, dstData, constant.var(true));
   }
