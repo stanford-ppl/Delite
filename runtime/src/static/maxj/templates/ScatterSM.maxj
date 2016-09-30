@@ -1,0 +1,436 @@
+package engine;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmInput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmOutput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateEnum;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
+import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
+import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+
+
+class ScatterSM extends KernelStateMachine {
+
+  // States
+  enum States {
+    INIT,
+    PACKAGECMDS,
+    PACKAGEDONE,
+    GETBURST,
+    READBURST,
+    MODIFYBURST,
+    WRITEBURST,
+    ENWR,
+    DONEWRITE,
+    PREPAREPACKAGING,
+    DONE
+  }
+
+
+  // State IO
+  private final DFEsmInput sm_en; 
+  private final DFEsmOutput getburst_en; 
+  private final DFEsmOutput issue_rd_cmd; 
+  private final DFEsmOutput issue_wr_cmd;
+  private final DFEsmOutput package_done; 
+  private final DFEsmOutput all_done; 
+  private final DFEsmOutput cmd_slot; // Index to store cmd burst addr
+  private final DFEsmOutput slot_wren; // Wren for when we find new unique burst
+  private final DFEsmOutput scatter_ctr_en; // Enable for counter that ticks through bram
+  private final DFEsmOutput scatter_ctr_rst; 
+  private final DFEsmInput scatter_done; // Signal when bram is finished
+  private final DFEsmInput next_burst; 
+  private final DFEsmOutput next_burst_out; 
+  private final DFEsmInput getburstDone;
+  private final DFEsmOutput writeback_en;
+  private final DFEsmInput scatter_addr;
+  private final DFEsmInput delay_package_cmds;
+  private final DFEsmOutput delay_package_cmds_out;
+  private final DFEsmOutput schedule_wren;
+  private final DFEsmOutput schedule_slot;
+  private final DFEsmOutput last_scatter_addr;
+  private final DFEsmInput writebackDone;
+  private final DFEsmInput base;
+  private final DFEsmOutput modify_bram_raddr;
+  private final DFEsmOutput modify_en;
+  private final DFEsmOutput editing;
+
+  private final DFEsmInput forceLdSt; 
+  
+  private final DFEsmOutput isLdStOut;
+
+  // State storage
+  private final DFEsmStateEnum<States> stateFF;
+  private final DFEsmStateValue forceLdStFF;
+  private final DFEsmStateValue[] burstsFF;
+  private final DFEsmStateValue[] burstNumElFF;
+  private final DFEsmStateValue cmdSlotFF;
+  private final DFEsmStateValue nextBurstFF;
+  private final DFEsmStateValue isLdStFF;
+  private final DFEsmStateValue slotWrenFF;
+  private final DFEsmStateValue delayFF;
+  private final DFEsmStateValue scatterCtrEnFF;
+  private final DFEsmStateValue scheduleWrenFF;
+  private final DFEsmStateValue lastscatterAddrFF;
+  private final DFEsmStateValue scatterDoneFF;
+  private final DFEsmStateValue modifyBramRaddrFF;
+  private final DFEsmStateValue editingFF;
+  private final DFEsmStateValue editDelayFF;
+  private final DFEsmStateValue modifyEnFF;
+
+  private int delayInitVal = 64;  //TODO: Should be a sm input, and should wait only on stores
+  private int numSlots = 3;
+  public ScatterSM(KernelLib owner) {
+    super(owner);
+
+    // Declare all types required to wire the state machine together
+    DFEsmValueType counterType = dfeUInt(32);
+    DFEsmValueType wireType = dfeBool();
+
+    // Define state machine IO
+    getburst_en = io.output("getburst_en", wireType);
+    issue_rd_cmd = io.output("issue_rd_cmd", wireType);
+    issue_wr_cmd = io.output("issue_wr_cmd", wireType);
+    package_done = io.output("package_done", wireType);
+    all_done = io.output("all_done", wireType);
+    slot_wren = io.output("slot_wren", wireType);
+    cmd_slot = io.output("cmd_slot", counterType);
+    scatter_ctr_en = io.output("scatter_ctr_en", wireType);
+    scatter_ctr_rst = io.output("scatter_ctr_rst", wireType);
+    scatter_done = io.input("scatter_done", wireType);
+    schedule_wren = io.output("schedule_wren", wireType);
+    getburstDone = io.input("getburstDone", wireType);
+    writebackDone = io.input("writebackDone", wireType);
+    writeback_en = io.output("writeback_en", wireType);
+    next_burst = io.input("next_burst", counterType);
+    base = io.input("base", counterType);
+    next_burst_out = io.output("next_burst_out", counterType);
+    last_scatter_addr = io.output("last_scatter_addr", counterType);
+    scatter_addr = io.input("scatter_addr", counterType);
+    schedule_slot = io.output("schedule_slot", counterType);
+    modify_bram_raddr = io.output("modify_bram_raddr", counterType);
+    modify_en = io.output("modify_en", wireType);
+    editing = io.output("editing", counterType);
+
+    forceLdSt = io.input("forceLdSt", wireType);
+
+    sm_en = io.input("sm_en", wireType);
+    delay_package_cmds = io.input("delay_package_cmds", wireType);
+    delay_package_cmds_out = io.output("delay_package_cmds_out", wireType);
+    isLdStOut = io.output("isLdStOut", wireType);
+
+    // Define state storage elements and initial state
+    stateFF = state.enumerated(States.class, States.INIT);
+    forceLdStFF = state.value(wireType, 0);
+    nextBurstFF = state.value(counterType, 0);
+    burstsFF = new DFEsmStateValue[numSlots];
+    burstNumElFF = new DFEsmStateValue[numSlots];
+    for (int i = 0; i < numSlots; i++) {
+      burstsFF[i] = state.value(counterType, 999);
+      burstNumElFF[i] = state.value(counterType, 0);
+    }
+    cmdSlotFF = state.value(counterType, 0);
+    isLdStFF = state.value(wireType, 0);
+    slotWrenFF = state.value(wireType, 0);
+    scatterCtrEnFF = state.value(wireType, 0);
+    delayFF = state.value(counterType, delayInitVal);
+    lastscatterAddrFF = state.value(counterType, 0);
+    scheduleWrenFF = state.value(wireType, 0);
+    scatterDoneFF = state.value(wireType, 0);
+    modifyBramRaddrFF = state.value(counterType, 0);
+    editingFF = state.value(counterType, 0);
+    editDelayFF = state.value(counterType, 1);
+    modifyEnFF = state.value(wireType, 0);
+  }
+
+  @Override
+  protected void nextState() {
+    IF(sm_en) {
+      SWITCH(stateFF) {
+        CASE (States.INIT) {
+          // Latch all input signals
+          forceLdStFF.next <== forceLdSt;
+          delayFF.next <== delayInitVal;
+          lastscatterAddrFF.next <== base;
+
+          IF (forceLdSt) {
+            isLdStFF.next <== 1;
+            stateFF.next <== States.PREPAREPACKAGING;
+          } ELSE {
+            isLdStFF.next <== 0;
+            stateFF.next <== States.DONE;
+          }
+        }
+        CASE (States.PACKAGECMDS) {
+          scatterCtrEnFF.next <== 1;
+          IF (next_burst === burstsFF[0] & ~scatter_done) {
+            burstNumElFF[0].next <== burstNumElFF[0] + 1;
+            cmdSlotFF.next <== 0;
+            slotWrenFF.next <== 0;
+            scheduleWrenFF.next <== 1;
+            stateFF.next <== States.PACKAGECMDS;
+          } ELSE { IF (burstsFF[0] === 999 & delay_package_cmds & ~scatter_done) { //delay_package_cmds is a dumb fix for startup transient
+            burstsFF[0].next <== next_burst;
+            burstNumElFF[0].next <== burstNumElFF[0] + 1;
+            cmdSlotFF.next <== 0;
+            slotWrenFF.next <== 1;
+            scheduleWrenFF.next <== 1;
+            stateFF.next <== States.PACKAGECMDS;
+          } ELSE { IF (next_burst === burstsFF[1] & ~scatter_done) {
+            burstNumElFF[1].next <== burstNumElFF[1] + 1;
+            cmdSlotFF.next <== 1;
+            slotWrenFF.next <== 0;
+            scheduleWrenFF.next <== 1;
+            stateFF.next <== States.PACKAGECMDS;
+          } ELSE { IF (burstsFF[1] === 999 & delay_package_cmds & ~scatter_done) {
+            burstsFF[1].next <== next_burst;
+            burstNumElFF[1].next <== burstNumElFF[1] + 1;
+            cmdSlotFF.next <== 1;
+            slotWrenFF.next <== 1;
+            scheduleWrenFF.next <== 1;
+            stateFF.next <== States.PACKAGECMDS;
+          } ELSE { IF (next_burst === burstsFF[2] & ~scatter_done) {
+            burstNumElFF[2].next <== burstNumElFF[2] + 1;
+            cmdSlotFF.next <== 2;
+            slotWrenFF.next <== 0;
+            scheduleWrenFF.next <== 1;
+            stateFF.next <== States.PACKAGECMDS;
+          } ELSE { IF (burstsFF[2] === 999 & delay_package_cmds & ~scatter_done) {
+            burstsFF[2].next <== next_burst;
+            burstNumElFF[2].next <== burstNumElFF[2] + 1;
+            cmdSlotFF.next <== 2;
+            slotWrenFF.next <== 1;
+            scheduleWrenFF.next <== 1;
+            stateFF.next <== States.PACKAGECMDS;
+          } ELSE { IF (delay_package_cmds) {
+            lastscatterAddrFF.next <== scatter_addr;
+            scatterCtrEnFF.next <== 0;
+            slotWrenFF.next <== 0;
+            scheduleWrenFF.next <== 0;
+            stateFF.next <== States.PACKAGEDONE;
+          }}}}}}}
+          IF (scatter_done) {
+            scatterDoneFF.next <== 1;
+            scatterCtrEnFF.next <== 0;
+            slotWrenFF.next <== 0;
+            scheduleWrenFF.next <== 0;
+            stateFF.next <== States.PACKAGEDONE;
+          }
+          nextBurstFF.next <== next_burst;
+        }
+        CASE (States.PACKAGEDONE) {
+          stateFF.next <== States.GETBURST;
+          cmdSlotFF.next <== 0;
+        }
+        CASE (States.GETBURST) {
+          // Go to done if the next burst is 999
+          editDelayFF.next <== 1;
+          IF (cmdSlotFF === 0) {
+            IF (burstsFF[0] === 999) {
+              stateFF.next <== States.DONE;
+            } ELSE {
+              stateFF.next <== States.READBURST;
+            }
+          } ELSE { IF (cmdSlotFF === 1) {
+            IF (burstsFF[1] === 999) {
+              stateFF.next <== States.DONE;
+            } ELSE {
+              stateFF.next <== States.READBURST;
+            }
+          } ELSE { IF (cmdSlotFF === 2) {
+            IF (burstsFF[2] === 999) {
+              stateFF.next <== States.DONE;
+            } ELSE {
+              stateFF.next <== States.READBURST;
+            }
+          }}}
+        }
+        CASE (States.READBURST) {
+          IF (getburstDone) {
+            stateFF.next <== States.MODIFYBURST; 
+          } ELSE {
+            stateFF.next <== States.READBURST;
+          }
+        }
+        CASE (States.MODIFYBURST) {
+          modifyEnFF.next <== 1;
+          IF (editingFF === 0) {
+            IF (burstNumElFF[0] > 0) {
+              modifyBramRaddrFF.next <== burstNumElFF[0];
+              burstNumElFF[0].next <== burstNumElFF[0] - 1;
+              stateFF.next <== States.MODIFYBURST;
+            } ELSE { IF (editDelayFF === 0) {
+              modifyBramRaddrFF.next <== burstNumElFF[0];
+              editingFF.next <== editingFF + 1;
+              stateFF.next <== States.ENWR;              
+            } ELSE {
+              modifyBramRaddrFF.next <== burstNumElFF[0];
+              editDelayFF.next <== editDelayFF - 1;
+            }}
+          } ELSE { IF (editingFF === 1) {
+            IF (burstNumElFF[1] > 0) {
+              modifyBramRaddrFF.next <== burstNumElFF[1];
+              burstNumElFF[1].next <== burstNumElFF[1] - 1;
+              stateFF.next <== States.MODIFYBURST;
+            } ELSE { IF (editDelayFF === 0) {
+              modifyBramRaddrFF.next <== burstNumElFF[1];
+              editingFF.next <== editingFF + 1;
+              stateFF.next <== States.ENWR;              
+            } ELSE {
+              modifyBramRaddrFF.next <== burstNumElFF[1];
+              editDelayFF.next <== editDelayFF - 1;
+            }}
+          } ELSE {
+            IF (burstNumElFF[2] > 0) {
+              modifyBramRaddrFF.next <== burstNumElFF[2];
+              burstNumElFF[2].next <== burstNumElFF[2] - 1;
+              stateFF.next <== States.MODIFYBURST;
+            } ELSE { IF (editDelayFF === 0) {
+              modifyBramRaddrFF.next <== burstNumElFF[2];
+              editingFF.next <== editingFF + 1;
+              stateFF.next <== States.ENWR;              
+            } ELSE {
+              modifyBramRaddrFF.next <== burstNumElFF[2];
+              editDelayFF.next <== editDelayFF - 1;
+            }}
+          }}
+        }
+        CASE (States.ENWR) {
+          stateFF.next <== States.WRITEBURST;
+        }
+        CASE (States.WRITEBURST) {
+          modifyEnFF.next <== 0;
+          IF (writebackDone) {
+            stateFF.next <== States.DONEWRITE;            
+          } ELSE {
+            stateFF.next <== States.WRITEBURST;
+          }
+        }
+        CASE (States.DONEWRITE) {
+          IF (editingFF === 3) {
+            IF (scatterDoneFF) {
+              stateFF.next <== States.DONE;
+            } ELSE {
+              editingFF.next <== 0;
+              burstNumElFF[0].next <== 0;
+              burstNumElFF[1].next <== 0;
+              burstNumElFF[2].next <== 0;
+              burstsFF[0].next <== 999;
+              burstsFF[1].next <== 999;
+              burstsFF[2].next <== 999;
+              stateFF.next <== States.PREPAREPACKAGING;
+            }
+          } ELSE {
+            cmdSlotFF.next <== cmdSlotFF + 1;
+            stateFF.next <== States.GETBURST;            
+          }
+        }
+        CASE (States.PREPAREPACKAGING) {
+          stateFF.next <== States.PACKAGECMDS;
+        }
+        CASE (States.DONE) {
+          editingFF.next <== 0;
+          burstNumElFF[0].next <== 0;
+          burstNumElFF[1].next <== 0;
+          burstNumElFF[2].next <== 0;
+          burstsFF[0].next <== 999;
+          burstsFF[1].next <== 999;
+          burstsFF[2].next <== 999;
+          scatterDoneFF.next <== 0;
+          cmdSlotFF.next <== 0;
+          stateFF.next <== States.DONE;
+        }
+      }
+    } ELSE {
+      isLdStFF.next <== 0;
+      stateFF.next <== States.INIT;
+    }
+  }
+
+
+  @Override
+  protected void outputFunction() {
+    getburst_en <== 0;
+    issue_rd_cmd <== 0;
+    package_done <== 0;
+    slot_wren <== slotWrenFF;
+    all_done <== 0;
+    cmd_slot <== cmdSlotFF;
+    scatter_ctr_en <== scatterCtrEnFF;
+    isLdStOut <== isLdStFF;
+    next_burst_out <== nextBurstFF;
+    schedule_wren <== scheduleWrenFF;
+    last_scatter_addr <== lastscatterAddrFF;
+    modify_bram_raddr <== modifyBramRaddrFF;
+    scatter_ctr_rst <== 0;
+    modify_en <== modifyEnFF;
+    editing <== editingFF;
+    issue_wr_cmd <== 0;
+
+    IF (sm_en) {
+      SWITCH(stateFF) {
+        CASE (States.PACKAGECMDS) {
+          IF (next_burst === burstsFF[0] | burstsFF[0] === 999 & delay_package_cmds) {
+            schedule_slot <== burstNumElFF[0];
+          } ELSE { IF (next_burst === burstsFF[1] | burstsFF[1] === 999 & delay_package_cmds) {
+            schedule_slot <== burstNumElFF[1];
+          } ELSE { IF (next_burst === burstsFF[2] | burstsFF[2] === 999 & delay_package_cmds) {
+            schedule_slot <== burstNumElFF[2];
+          }}}
+        }
+        CASE(States.PACKAGEDONE){
+          package_done <== 1;
+        }
+        CASE(States.GETBURST){
+          IF (cmdSlotFF === 0) {
+            IF (burstsFF[0] === 999) {
+              issue_rd_cmd <== 0;
+            } ELSE {
+              issue_rd_cmd <== 1;
+            }
+          } ELSE { IF (cmdSlotFF === 1) {
+            IF (burstsFF[1] === 999) {
+              issue_rd_cmd <== 0;
+            } ELSE {
+              issue_rd_cmd <== 1;
+            }
+          } ELSE { IF (cmdSlotFF === 2) {
+            IF (burstsFF[2] === 999) {
+              issue_rd_cmd <== 0;
+            } ELSE {
+              issue_rd_cmd <== 1;
+            }
+          }}}
+          delay_package_cmds_out <== 0;
+        }
+        CASE(States.READBURST){
+          getburst_en <== 1;
+          IF (getburstDone) {
+            getburst_en <== 0;
+          }
+        }
+        CASE(States.MODIFYBURST){
+          modify_en <== 1;
+        }
+        CASE(States.ENWR){
+          issue_wr_cmd <== 1;
+        }
+        CASE(States.WRITEBURST){
+          writeback_en <== 1;
+          IF (writebackDone) {
+            writeback_en <== 0;
+          }
+        }
+        CASE(States.DONEWRITE) {}
+        CASE(States.PREPAREPACKAGING) {
+          delay_package_cmds_out <== 1;
+          scatter_ctr_rst <== 1;
+        }
+        CASE(States.DONE){
+          all_done <== 1;
+        }
+      }
+    }
+
+  }
+}

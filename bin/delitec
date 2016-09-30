@@ -32,6 +32,8 @@ def main():
     parser.add_option("-p", "--profile", dest="profile", action="store_true", default=False, help="enables application profiling")
     parser.add_option("-O", dest="optimize", action="store", default=0, help="sets advanced optimization level")
     parser.add_option("--debug", dest="debug", action="store_true", default=False, help="enables verbose compiler output")
+    parser.add_option("--debuglast", dest="debuglast", action="store_true", default=False, help="enables verbose compiler output on last IR")
+    parser.add_option("--latency", dest="latency", action="store_true", default=False, help="enables latency printer")
     parser.add_option("--Xdebug", dest="xdebug", action="store_true", default=False, help="enables LMS debug output; for compiler writers only")
     parser.add_option("--Xnocache", dest="xnocache", action="store_true", default=False, help="disables caching during staging; may reduce memory footprint but decrease code gen performance")
     parser.add_option("-d", "--dest", action="store", dest="build_dir", default=os.getenv("PWD"), help="output location for generated files")
@@ -98,6 +100,10 @@ def stage(runner, params, opts):
         java_opts = java_opts + " -Ddelite.optimize="+str(opts.optimize)
     if opts.debug == True:
         java_opts = java_opts + " -Ddelite.debug"
+    if opts.debuglast == True:
+        java_opts = java_opts + " -Ddelite.debuglast"
+    if opts.latency == True:
+        java_opts = java_opts + " -Ddelite.latency"
     if opts.xdebug == True:
         java_opts = java_opts + " -Dlms.verbosity=1"
     if opts.xnocache == False:

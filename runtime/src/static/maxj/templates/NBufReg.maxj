@@ -1,0 +1,158 @@
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.Optimization;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+import com.maxeler.maxcompiler.v2.utils.Bits;
+
+
+/*
+                                                                     
+                            NBuffer                                      
+                              delay libs
+                               __                                                         
+             port __    mux-- |  |   mux  __    port--                                       
+                    \         |__|          \                                               
+             port ___   mux-- |  |   mux  ___   port--                                       
+                              |__|                                                          
+             port __/   mux-- |  |   mux  __/   port--                                       
+                              |__|                                       
+                                                                     
+                            each delay lib maintains its own curBuf
+                                                                     
+                                                                     
+                                                                     
+                                                                     
+                                                                     
+                                                                     
+                                                                     
+*/
+
+
+
+
+class NBufReg extends KernelLib {
+
+  // All sourceless streams
+  DFEVar[] rdataPort;
+  DFEVar[] stageDone; // For tracking when enabled stages become done
+  DFEVar[] stageEn; // For tracking which stages were active on this iteration
+  DFEVar[] wdataPort;
+  DFEVar[] wdataMux;
+  DFEVar[] wenMux;
+  DFEVar[] wenPort;
+  DFEVar[] curBuf;
+  DFEType type;
+
+  DFEVar rst_en;
+
+  private void common (DFEType ttype, String smname, int par, Bits rstVal, DFEVar rst_signal, int n) {
+
+    int bits = MathUtils.bitsToAddress(n);
+
+    type = ttype;
+    rdataPort = new DFEVar[n];
+    stageDone = new DFEVar[n];
+    stageEn = new DFEVar[n];
+    wdataPort = new DFEVar[n];
+    wdataMux = new DFEVar[n];
+    wenMux = new DFEVar[n];
+    wenPort = new DFEVar[n];
+    curBuf = new DFEVar[n];
+    DFEVar[] rdataMux = new DFEVar[n];
+    DelayLib[] r = new DelayLib[n];
+
+    rst_en = rst_signal;
+
+    SMIO sm = addStateMachine(smname, new NBufStateMachine(this, n, bits));
+    for (int i = 0; i < n; i++) {
+      stageDone[i] = dfeBool().newInstance(this);
+      stageEn[i] = dfeBool().newInstance(this);
+      wdataPort[i] = type.newInstance(this);
+      wenPort[i] = dfeBool().newInstance(this);
+      curBuf[i] = sm.getOutput("curBuf" + i);
+      sm.connectInput("stageDone" + i, stageDone[i]);
+      sm.connectInput("stageEn" + i, stageEn[i]);
+    }
+
+    for (int i = 0; i < n; i++) {
+      wdataMux[i] = control.mux(curBuf[i], wdataPort);
+      wenMux[i] = control.mux(curBuf[i], wenPort);
+      r[i] = new DelayLib(this, wenMux[i], wdataMux[i], rst_en, rstVal);
+      rdataMux[i] = r[i].q[0];      
+    }
+
+    // Kindly finish MUX-ing in one cycle
+    optimization.pushPipeliningFactor(0);
+    for (int i = 0; i < n; i++) {
+      rdataPort[i] = control.mux(curBuf[i], rdataMux);
+    }
+    optimization.popPipeliningFactor();
+
+    // debug.simPrintf("curBuf %d %d %d\nwdataPort %d %d %d\nwenPort %d %d %d\nwenMux %d %d %d\nwdataMux %d %d %d\nrdataMux %d %d %d\nrdataPort %d %d %d\n",
+    //   curBuf[0], curBuf[1], curBuf[2],
+    //   wdataPort[0], wdataPort[1], wdataPort[2],
+    //   wenPort[0], wenPort[1], wenPort[2],
+    //   wdataMux[0], wdataMux[1], wdataMux[2],
+    //   wenMux[0], wenMux[1], wenMux[2],
+    //   rdataMux[0], rdataMux[1], rdataMux[2],
+    //   rdataPort[0], rdataPort[1], rdataPort[2]
+    //   );
+    
+  }
+
+  NBufReg(KernelLib owner, DFEType type, String smname, int par, Bits rstVal, int n) {
+    super(owner);
+    common(type, smname, par, rstVal, dfeBool().newInstance(this), n);
+  }
+
+  DFEVar read(int port) {
+    return rdataPort[port];
+  }
+
+  void write(DFEVar data, int port) {
+    wdataPort[port] <== data;
+    wenPort[port] <== constant.var(true);
+    rst_en <== constant.var(false);
+  }
+
+  void write(DFEVar data, DFEVar en, int port) {
+    wdataPort[port] <== data;
+    wenPort[port] <== en;
+    rst_en <== constant.var(false);
+  }
+
+
+  void write(DFEVar data, DFEVar en, DFEVar rst, int port) {
+    wdataPort[port] <== data;
+    wenPort[port] <== en;
+    rst_en <== rst;
+  }
+
+  void connectUnwrittenPorts(int[] port) {
+    for (int i = 0; i < port.length; i++) {
+      wdataPort[port[i]] <== constant.var(type, 0);
+      wenPort[port[i]] <== constant.var(false);
+    }
+  }
+  void connectUntouchedPorts(int[] port) {
+    for (int i = 0; i < port.length; i++) {
+      stageDone[port[i]] <== constant.var(false);
+      stageEn[port[i]] <== constant.var(false);
+    }
+  }
+
+  void connectStageCtrl(DFEVar done, DFEVar en, int[] port) {
+    for (int i = 0; i < port.length; i++) {
+      stageDone[port[i]] <== done;
+      stageEn[port[i]] <== en;
+    }
+  }
+
+}

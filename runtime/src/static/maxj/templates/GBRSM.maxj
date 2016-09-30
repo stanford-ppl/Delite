@@ -1,0 +1,271 @@
+
+package engine;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmInput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmOutput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateEnum;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmValue;
+import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
+import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
+
+class GBRSM extends KernelStateMachine {
+
+    // States
+    enum States {
+      INIT,
+      READITEM,
+      TAGLOOKUP,
+      CAMWRITE,
+      WRITERESULTS,
+      DONE
+    }
+
+    int buckets;
+
+    // State IO
+    private final DFEsmOutput get_next_item;
+    private final DFEsmOutput update_wren;
+    private final DFEsmOutput new_entry;
+    private final DFEsmOutput new_entry_addr;
+    private final DFEsmOutput result_wren;
+    private final DFEsmOutput done;
+    private final DFEsmOutput cam_stage;
+    private final DFEsmOutput init;
+    private final DFEsmOutput last_working_addr;
+    private final DFEsmOutput base_st;
+
+    // Timing IO
+    private final DFEsmOutput sREADITEM_delay_out;
+    private final DFEsmInput sREADITEM_delay_in;
+    private final DFEsmOutput sTAGLOOKUP_delay_out;
+    private final DFEsmInput sTAGLOOKUP_delay_in;
+    private final DFEsmOutput sCAMWRITE_delay_out;
+    private final DFEsmInput sCAMWRITE_delay_in;
+
+    // State indicators
+    private final DFEsmOutput sREADITEM;
+    private final DFEsmOutput sTAGLOOKUP;
+    private final DFEsmOutput sCAMWRITE;
+    private final DFEsmOutput sWRITERESULTS;
+
+    private final DFEsmInput en;
+    private final DFEsmInput init_done;
+    private final DFEsmInput working_addr;
+    private final DFEsmInput items_done;
+    private final DFEsmInput match_found;
+    private final DFEsmInput writeback_done;
+    private final DFEsmInput processed;
+
+    // State storage
+    private final DFEsmStateValue newEntryAddrFF;
+    private final DFEsmStateValue newEntryFF;
+    private final DFEsmStateValue one_hot_newEntryAddrFF;
+    private final DFEsmStateValue workingAddrFF;
+    private final DFEsmStateValue workingAddrReleaseFF;
+    private final DFEsmStateValue baseStAddrFF;
+    private final DFEsmStateValue baseAddrSetFF;
+    private final DFEsmStateValue RIcntFF;
+    private final DFEsmStateEnum<States> stateFF;
+    
+
+    // Initialize state machine in constructor
+    public GBRSM(KernelLib owner, int b, int base) {
+      super(owner);
+      // Declare all types required to wire the state machine together
+      DFEsmValueType numberType = dfeUInt(32);
+      DFEsmValueType wireType = dfeBool();
+
+      buckets = b;
+
+      // Define state machine IO
+      get_next_item = io.output("get_next_item", wireType);
+      update_wren = io.output("update_wren", wireType);
+      new_entry = io.output("new_entry", wireType);
+      new_entry_addr = io.output("new_entry_addr", numberType);
+      result_wren = io.output("result_wren", wireType);
+      done = io.output("done", wireType);
+      cam_stage = io.output("cam_stage", wireType);
+      init = io.output("init", wireType);
+      last_working_addr = io.output("last_working_addr", numberType);
+      base_st = io.output("base_st", numberType);
+
+      // Timing IO
+      sREADITEM_delay_out = io.output("sREADITEM_delay_out", wireType);
+      sREADITEM_delay_in = io.input("sREADITEM_delay_in", wireType);
+      sTAGLOOKUP_delay_out = io.output("sTAGLOOKUP_delay_out", wireType);
+      sTAGLOOKUP_delay_in = io.input("sTAGLOOKUP_delay_in", wireType);
+      sCAMWRITE_delay_out = io.output("sCAMWRITE_delay_out", wireType);
+      sCAMWRITE_delay_in = io.input("sCAMWRITE_delay_in", wireType);
+
+      // State indicators
+      sREADITEM = io.output("sREADITEM", wireType);
+      sTAGLOOKUP = io.output("sTAGLOOKUP", wireType);
+      sCAMWRITE = io.output("sCAMWRITE", wireType);
+      sWRITERESULTS = io.output("sWRITERESULTS", wireType);
+
+      en = io.input("en", wireType);
+      items_done = io.input("items_done", wireType);
+      match_found = io.input("match_found", wireType);
+      writeback_done = io.input("writeback_done", wireType);
+      init_done = io.input("init_done", wireType);
+      working_addr = io.input("working_addr", numberType);
+      processed = io.input("processed", wireType);
+
+      // Define state storage elements and initial state
+      stateFF = state.enumerated(States.class, States.INIT);
+      newEntryAddrFF = state.value(numberType, 0);
+      one_hot_newEntryAddrFF = state.value(numberType, 1);
+      baseStAddrFF = state.value(numberType, 0);
+      newEntryFF = state.value(wireType, 0);
+      workingAddrFF = state.value(numberType, base);
+      baseAddrSetFF = state.value(wireType, 0);
+      workingAddrReleaseFF = state.value(numberType, base);
+      RIcntFF = state.value(dfeUInt(2), 0);
+    }
+  
+
+    @Override
+    protected void nextState() {
+      IF (en) {
+        SWITCH(stateFF) {
+          CASE(States.INIT) {
+            IF(init_done){
+              stateFF.next <== States.READITEM;
+            } ELSE {
+              stateFF.next <== States.INIT;
+            }
+          }
+          CASE(States.READITEM) {
+            IF (RIcntFF === 0) {
+              RIcntFF.next <== 1;
+            } ELSE { IF (RIcntFF === 1) {
+              RIcntFF.next <== 2;
+            }}
+            IF (sREADITEM_delay_in) { // Wait for key-val to stabilize
+              stateFF.next <== States.TAGLOOKUP;
+            } ELSE {
+              stateFF.next <== States.READITEM;
+            }
+          }
+          CASE(States.TAGLOOKUP) {
+            RIcntFF.next <== 0;
+            IF (sTAGLOOKUP_delay_in) { // Wait for key-val to stabilize
+              stateFF.next <== States.CAMWRITE;
+            } ELSE {
+              stateFF.next <== States.TAGLOOKUP;
+            }
+            IF (match_found) {
+              newEntryFF.next <== 0;
+            } ELSE {
+              newEntryFF.next <== 1;
+            }
+          }
+          CASE(States.CAMWRITE) {
+            IF (sCAMWRITE_delay_in) { // Wait for key-val to stabilize
+              newEntryFF.next <== 0;
+              IF (newEntryFF === 1 & newEntryAddrFF < buckets & ~processed) { // Schedule for new line
+                // debug.simPrintf("       INCREMENTING! \n");
+                newEntryAddrFF.next <== newEntryAddrFF + 1;
+                one_hot_newEntryAddrFF.next <== one_hot_newEntryAddrFF.shiftLeft(1) + 1;
+              } ELSE { IF (newEntryFF === 1 & newEntryAddrFF === buckets & ~baseAddrSetFF) { 
+                workingAddrFF.next <== working_addr;
+                baseAddrSetFF.next <== 1;
+              }}
+              IF (items_done) {
+                stateFF.next <== States.WRITERESULTS;
+              } ELSE {
+                stateFF.next <== States.READITEM;
+              }
+            } ELSE {
+              stateFF.next <== States.CAMWRITE;
+            }
+
+          }
+          CASE(States.WRITERESULTS) {
+            workingAddrReleaseFF.next <== workingAddrFF;
+            IF (writeback_done) {
+              IF (baseAddrSetFF) {
+                newEntryAddrFF.next <== 0;
+                baseAddrSetFF.next <== 0;
+                baseStAddrFF.next <== baseStAddrFF + 1;
+                stateFF.next <== States.INIT;
+              } ELSE {
+                stateFF.next <== States.DONE;
+              }
+            } ELSE {
+              stateFF.next <== States.WRITERESULTS;
+            }
+          }
+          CASE(States.DONE) {
+            stateFF.next <== States.DONE;
+          }
+        }
+      }
+    }
+
+  @Override
+    protected void outputFunction() {     
+      get_next_item <== 0;
+      update_wren <== 0;
+      cam_stage <== 0;
+      new_entry <== 0;
+      IF (newEntryAddrFF < buckets) {
+        new_entry_addr <== newEntryAddrFF;
+      } ELSE {
+        new_entry_addr <== buckets-1;
+      }
+      result_wren <== 0;
+      done <== 0;
+      init <== 0;
+      last_working_addr <== workingAddrReleaseFF;
+      base_st <== baseStAddrFF;
+
+      sREADITEM <== 0;
+      sTAGLOOKUP <== 0;
+      sCAMWRITE <== 0;
+      sWRITERESULTS <== 0;
+
+      sREADITEM_delay_out <== 0;
+      sTAGLOOKUP_delay_out <== 0;
+      sCAMWRITE_delay_out <== 0;
+
+      IF (en) {
+        SWITCH(stateFF) {
+          CASE(States.INIT){
+            init <== 1;
+          }
+          CASE(States.READITEM) {
+            sREADITEM <== 1;
+            IF (RIcntFF === 1) {
+              sREADITEM_delay_out <== 1;
+            }
+          }
+          CASE(States.TAGLOOKUP) {
+            sTAGLOOKUP <== 1;
+            sTAGLOOKUP_delay_out <== 1;
+          }
+          CASE(States.CAMWRITE) {
+            sCAMWRITE <== 1;
+            sCAMWRITE_delay_out <== 1;
+            IF ((newEntryFF === 1 & newEntryAddrFF === buckets) | (processed)) { 
+              update_wren <== 0;
+            } ELSE {
+              new_entry <== newEntryFF;
+              update_wren <== 1;
+            }
+            IF (sCAMWRITE_delay_in) { // Wait for key-val to stabilize
+              get_next_item <== 1;
+            }
+          }
+          CASE(States.WRITERESULTS) {
+            sWRITERESULTS <== 1;
+            result_wren <== 1;
+          }
+          CASE(States.DONE) {
+            done <== 1;
+          }
+        }
+      }
+    }
+}

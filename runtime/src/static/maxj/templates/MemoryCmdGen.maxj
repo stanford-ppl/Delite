@@ -8,6 +8,7 @@ import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
 import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.WrapMode;
 import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
 import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.KernelMath;
 import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.LMemCommandStream;
 import com.maxeler.maxcompiler.v2.kernelcompiler.Optimization;
 import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.Reductions;
@@ -24,20 +25,35 @@ class MemoryCmdGenLib extends KernelLib {
 
   protected boolean dbg = false;
   protected boolean dbgDetail = false;
-  protected static int getNumberOfBursts(int num, DFEType type) {
-    return MathUtils.ceilDivide(num, getValuesPerBurst(type));
-  }
 
-  protected static int getNumberOfBursts(int num, DFEType[] type) {
-    return MathUtils.ceilDivide(num, getValuesPerBurst(type));
-  }
-
-  protected DFEVar getNumberOfBursts(DFEVar num) {
-    DFEVar numburst = (num / getValuesPerBurst(num.getType()));
-    if (dbgDetail) {
-//      debug.simPrintf("Values per burst for %d: %d\n", num, numburst);
-    }
+  protected DFEVar getNumberOfBursts(DFEVar num, DFEType type) {
+    DFEVar numburst = (num / getValuesPerBurst(type));
     return numburst;
+  }
+  protected DFEVar checkNewBurst(DFEVar num, DFEVar size_real, DFEType type) {
+    int el_per_burst = getValuesPerBurst(type);
+    DFEVar intraburst_start = KernelMath.divMod(num.cast(dfeUInt(32)), constant.var(dfeUInt(32), el_per_burst)).getRemainder();
+    DFEVar sw = (num === constant.var(num.getType(), 0)  |
+        intraburst_start + size_real >= el_per_burst);
+    return sw;
+  }
+
+  protected DFEVar upcast(int size, DFEType type) {
+    int bytes_per = type.getTotalBits()/8;
+    if ((size*bytes_per) % 384 == 0 ) {
+      return constant.var(dfeUInt(32), size);
+    } else {
+      int upcasted = (int)(((Math.floor((size*bytes_per) / 384) + 1)*384) / bytes_per);
+      return constant.var(dfeUInt(32), upcasted);
+    }
+  }
+  protected boolean isAligned(int size, DFEType type) {
+    int bytes_per = type.getTotalBits()/8;
+    if ((size*bytes_per) % 384 == 0 ) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
   protected void printVector(DFEVar en, DFEVector<DFEVar> v) {
@@ -77,8 +93,8 @@ class MemoryCmdGenLib extends KernelLib {
     DFEVar en, DFEVar done,
     int base, DFEVar offset,
     String streamName,
-    DFEVar size,
-    DFEVar fifoReadEn, DFEVector<DFEVar> wdata)
+    DFEVar size, DFEVar realSize,
+    DFEVar fifoReadEn, DFEVector<DFEVar> wdata, boolean aligned)
   {
     int par = wdata.getSize();
     int delay = 16;
@@ -90,7 +106,9 @@ class MemoryCmdGenLib extends KernelLib {
     sm.connectInput("memDone", memDone);
     DFEVar memStart = sm.getOutput("memStart");
 
-    DFEVar burstAddr = base + getNumberOfBursts(offset).cast(dfeUInt(32));
+    DFEVar burstAddr = base + getNumberOfBursts(offset, wdata[0].getType()).cast(dfeUInt(32));
+
+    DFEVar requires_burst = aligned ? constant.var(true) : checkNewBurst(offset, realSize, wdata[0].getType());
 
     Count.Params controlCountParams = control.count.makeParams(16)
                               .withEnable(memStart)
@@ -101,8 +119,8 @@ class MemoryCmdGenLib extends KernelLib {
     DFEVar counterWrap = controlCounter.getCount() === delay-1;
     memDone <== stream.offset(counterWrap, -1);
 
-    DFEVar ctrl = memStart & (controlCounter.getCount() === 0);
-    DFEVar len = getNumberOfBursts(size).cast(dfeUInt(8));
+    DFEVar ctrl = memStart & (controlCounter.getCount() === 0) & requires_burst;
+    DFEVar len = getNumberOfBursts(size, wdata[0].getType()).cast(dfeUInt(8));
     DFEVar inc = constant.var(dfeUInt(8), 1);
     DFEVar stream = constant.var(dfeUInt(1), 0);
     DFEVar tag = constant.var(false);
@@ -116,8 +134,9 @@ class MemoryCmdGenLib extends KernelLib {
         stream,
         tag);
 
-    // debug.simPrintf(en, "[MemCmdGen] memStart = %d, ctrl = %d, offset = %d, burstAddr = %d\n", memStart, ctrl, offset, burstAddr);
+    // debug.simPrintf(en, "[MemCmdGen] size = %d, realSize = %d, memStart = %d, ctrl = %d, offset = %d, burstAddr = %d\n", size, realSize, memStart, ctrl, offset, burstAddr);
     io.forceExactIOSeparation(streamName, cmdStreamName, -16);  // Arbitrarily picked to handle divides
+
 
     wdata <== io.input(streamName, wdata.getType(), fifoReadEn);
 
@@ -136,7 +155,7 @@ class MemoryCmdGenLib extends KernelLib {
     DFEVar fifoReadEn, DFEVector<DFEVar> wdata)
   {
     super(owner);
-    common(owner, en, done, base, offset, streamName, size, fifoReadEn, wdata);
+    common(owner, en, done, base, offset, streamName, size, size, fifoReadEn, wdata, true);
   }
 
 MemoryCmdGenLib (
@@ -151,7 +170,41 @@ MemoryCmdGenLib (
     DFEVectorType<DFEVar> wdataType = new DFEVectorType<DFEVar>(wdata.getType(), 1);
     DFEVector<DFEVar> wdataVec = wdataType.newInstance(this);
     wdataVec[0] <== wdata;
-    common(owner, en, done, base, offset, streamName, size, fifoReadEn, wdataVec);
+    common(owner, en, done, base, offset, streamName, size, size, fifoReadEn, wdataVec, true);
+  }
+
+  MemoryCmdGenLib (
+    KernelLib owner,
+    DFEVar en, DFEVar done,
+    int base, DFEVar offset,
+    String streamName,
+    int size_int,
+    DFEVar fifoReadEn, DFEVector<DFEVar> wdata)
+  {
+    super(owner);
+    DFEVar sizecheck = upcast(size_int, wdata[0].getType());
+    DFEVar size = upcast(size_int, wdata[0].getType());
+    DFEVar realSize = constant.var(dfeUInt(32), size_int);
+    boolean aligned = isAligned(size_int, wdata[0].getType());
+    common(owner, en, done, base, offset, streamName, size, realSize, fifoReadEn, wdata, aligned);
+  }
+
+MemoryCmdGenLib (
+    KernelLib owner,
+    DFEVar en, DFEVar done,
+    int base, DFEVar offset,
+    String streamName,
+    int size_int,
+    DFEVar fifoReadEn, DFEVar wdata)
+  {
+    super(owner);
+    DFEVectorType<DFEVar> wdataType = new DFEVectorType<DFEVar>(wdata.getType(), 1);
+    DFEVector<DFEVar> wdataVec = wdataType.newInstance(this);
+    wdataVec[0] <== wdata;
+    DFEVar size = upcast(size_int, wdata.getType());
+    boolean aligned = isAligned(size_int, wdata.getType());
+    DFEVar realSize = constant.var(dfeUInt(32), size_int);
+    common(owner, en, done, base, offset, streamName, size, realSize, fifoReadEn, wdataVec, aligned);
   }
 
   void printVec(DFEVector<DFEVar> v, DFEVar en) {

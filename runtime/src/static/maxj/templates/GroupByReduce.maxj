@@ -1,0 +1,170 @@
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.KernelMath;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Stream.OffsetExpr;
+
+import java.util.ArrayList;
+
+
+/*
+ * @GroupByReduceLib: Library that creates Content Associative Mem
+ */
+class GroupByReduceLib extends KernelLib {
+
+  int tagBits;
+  int dataBits;
+  DFEType type;
+  DFEVar ctr_en;
+  DFEVar ctr_rst;
+  DFEVar search_done;
+
+  boolean dbg = false;
+
+  void common (int par, int worker, DFEVar en, DFEVar done, 
+    BramLib keyBram, BramLib valueBram, BramLib groupsBram, BramLib accumsBram, DFEVar plug,
+    int items, int buckets)
+    {
+     
+      OffsetExpr fix = stream.makeOffsetAutoLoop("fix" + worker);
+  
+      // Create GroupByReduce SM
+      SMIO GBRSM = addStateMachine("GBRSM" + worker, new GBRSM(this, buckets, (items/par)*worker));
+      GBRSM.connectInput("en", en);
+      DFEVar get_next_item = GBRSM.getOutput("get_next_item");
+      DFEVar update_wren = GBRSM.getOutput("update_wren");
+      DFEVar new_entry = GBRSM.getOutput("new_entry");
+      DFEVar new_entry_addr = GBRSM.getOutput("new_entry_addr"); 
+      DFEVar result_wren = GBRSM.getOutput("result_wren");
+
+      // Create bitmask
+      OnChipMem bm = new FFMem(this, dfeBool(), items/par);
+
+      // Get info from key-value BRAMs
+      DFEVar last_working_addr = GBRSM.getOutput("last_working_addr");
+      SMIO itemCtr = addStateMachine("itemCtrSM" + worker, new SingleCtrSM(this, 0, 1));
+      itemCtr.connectInput("max", constant.var(dfeUInt(32), items/par));
+      itemCtr.connectInput("en", get_next_item);
+      // debug.simPrintf(get_next_item, "Getting next item\n");
+      itemCtr.connectInput("reset", stream.offset(result_wren, -fix));
+      DFEVar item_cnt = itemCtr.getOutput("count");
+      DFEVar itemAddr = item_cnt + last_working_addr;
+      GBRSM.connectInput("working_addr", stream.offset(itemAddr, -1));
+      DFEVar mem_consumed = itemAddr === (items/par)*worker +  (items/par) - 1;
+      DFEVar processed = stream.offset(bm.read(itemAddr), -fix);
+      DFEVar tag = stream.offset(keyBram.connectRport(itemAddr), -fix);
+      DFEVar update = stream.offset(valueBram.connectRport(itemAddr), -fix);
+      // Connect key-value signals to GBRSM
+      GBRSM.connectInput("items_done", stream.offset(mem_consumed, -fix));
+      // debug.simPrintf(GBRSM.getOutput("sREADITEM"), "[Grouping: (@%d) tag %f, val %f, seen? %d (@%d)]\n", 
+      //                 stream.offset(itemAddr, -fix), tag, update, processed, stream.offset(itemAddr, -fix));
+      // READITEM loopback
+      GBRSM.connectInput("sREADITEM_delay_in", 
+        stream.offset(GBRSM.getOutput("sREADITEM_delay_out"), -fix));
+
+      // CAM
+      OnChipMem m = new BoxedMem(this, valueBram.type, buckets);
+      OnChipMem t = new FFMem(this, keyBram.type, buckets);
+      DFEVector<DFEVar> match = new DFEVectorType<DFEVar>(dfeBool(), buckets).newInstance(this);
+      DFEVar[] addrList = new DFEVar[buckets];
+      DFEVar test = constant.var(tag.getType(), 0) === tag;
+      for (int i = 0; i < buckets; i++) {
+        // debug.simPrintf("%d ", t.read(constant.var(dfeUInt(32), i)));
+        match[i] <== t.read(constant.var(dfeUInt(32), i)).cast(tag.getType()) === tag;
+        addrList[i] = constant.var(dfeUInt(32), i);
+      }
+      // debug.simPrintf("^ worker %d\n", worker);
+      DFEVar packed_match = match.pack();
+      DFEVar one_hot = control.oneHotMux(packed_match, addrList);
+      DFEVar match_found = stream.offset(packed_match.cast(dfeUInt(buckets)) > 0, -6);
+      // TAGLOOKUP loopback
+      GBRSM.connectInput("sTAGLOOKUP_delay_in", 
+        stream.offset(GBRSM.getOutput("sTAGLOOKUP_delay_out"), -6));
+      // Connect CAM lookup signals to GBRSM
+      GBRSM.connectInput("match_found", match_found);
+      GBRSM.connectInput("processed", processed);
+      // debug.simPrintf(GBRSM.getOutput("sTAGLOOKUP"),
+      //  "[LOOKUP: hit %d\n"
+      //   + " tag: %f]\n",
+      //           match_found,
+      //           tag);
+
+      // Update
+      DFEVar addrCAM = new_entry ? new_entry_addr : one_hot;
+      DFEVar accum = m.read(addrCAM);
+      DFEVar new_accum = new_entry ? update : update + accum;
+      // CAMWRITE loopback
+      GBRSM.connectInput("sCAMWRITE_delay_in", 
+        stream.offset(GBRSM.getOutput("sCAMWRITE_delay_out"), -7));
+
+      // Write results (copy CAM to BRAM)
+      SMIO resultsCtr = addStateMachine("resultsCtrSM" + worker, new SingleCtrSM(this, 0, 1));
+      resultsCtr.connectInput("max", constant.var(dfeUInt(32),buckets));
+      resultsCtr.connectInput("en", stream.offset(result_wren, -fix));
+      resultsCtr.connectInput("reset", stream.offset(get_next_item, -fix));
+      // DFEVar result_ctr_done = resultsCtr.getOutput("done");
+      DFEVar resultsAddr = resultsCtr.getOutput("count") + GBRSM.getOutput("base_st") * buckets;
+      optimization.pushPipeliningFactor(0);
+      DFEVar result_ctr_done = resultsAddr === plug;
+      optimization.popPipeliningFactor();
+      DFEVar result_key = t.read(resultsCtr.getOutput("count"));
+      DFEVar result_val = m.read(resultsCtr.getOutput("count"));
+      groupsBram.connectWport(resultsAddr, result_key, result_wren);
+      accumsBram.connectWport(resultsAddr, result_val, result_wren);
+      // Connect writeback signals to GBRSM
+      GBRSM.connectInput("writeback_done", stream.offset(result_ctr_done, -2));
+      done <== stream.offset(GBRSM.getOutput("done"), -1);
+      plug <== GBRSM.getOutput("base_st") * buckets + GBRSM.getOutput("new_entry_addr");
+      // debug.simPrintf(result_wren, "[Writeback: (@%d), tag %f, value %f, wren %d, worker %d]\n\n", 
+      //             resultsAddr, result_key, result_val, result_wren, worker);
+
+      // Init CAMs
+      DFEVar init = GBRSM.getOutput("init");
+      SMIO initCtr = addStateMachine("initCtrSM" + worker, new SingleCtrSM(this, 0, 1));
+      initCtr.connectInput("max", constant.var(dfeUInt(32),buckets));
+      initCtr.connectInput("en", stream.offset(init, -fix));
+      initCtr.connectInput("reset", stream.offset(update_wren, -fix));
+      DFEVar init_done = initCtr.getOutput("done");
+      GBRSM.connectInput("init_done", init_done);
+      DFEVar initAddr = initCtr.getOutput("count");
+      DFEVar tagwr = stream.offset((init ? constant.var(keyBram.type, 999) : tag), -7);
+      DFEVar accumwr = stream.offset((init ? constant.var(valueBram.type, 0) : new_accum), -7);
+      DFEVar wraddr = stream.offset((init ? initAddr : addrCAM), -7);
+      DFEVar tagwren = stream.offset((init ? init : new_entry), -7);
+      DFEVar accumwren = stream.offset((init ? init : update_wren), -7);
+      t.write(wraddr, tagwr, tagwren);
+      m.write(wraddr, accumwr, accumwren);
+      // NOTE: I once found a bug where bm.write was refusing to write for no good reason.  Beware!
+      bm.write(itemAddr, constant.var(dfeBool(), 1), update_wren);
+
+      // debug.simPrintf(worker==1 & GBRSM.getOutput("sCAMWRITE"), "mask @%d %d\n", itemAddr, update_wren);
+
+      // debug.simPrintf(GBRSM.getOutput("sCAMWRITE"),
+       // "[CAM: hit %d (new_entry: %d)\n"
+       //  + " tag: @%d %f %d, \n"
+       //  + " value: @%d %f %d]\n", 
+       //          match_found, new_entry,
+       //          wraddr, tagwr, tagwren,
+       //          wraddr, accumwr, accumwren);
+      // debug.simPrintf("tagwr addr %d\n", addrCAM);
+
+
+
+  }
+
+  GroupByReduceLib (KernelLib owner, int par, int worker, DFEVar en, DFEVar done, 
+    BramLib keyBram, BramLib valueBram, BramLib groupsBram, BramLib accumsBram, DFEVar plug,
+    int items, int buckets)
+    {
+      super(owner);
+      common(par, worker, en, done, keyBram, valueBram, groupsBram, accumsBram, plug, items, buckets);
+    }
+
+}
