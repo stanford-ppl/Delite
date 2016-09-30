@@ -7,7 +7,7 @@ import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
 import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
 import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
 
-class NBufStateMachine extends KernelStateMachine {
+class NBufSM extends KernelStateMachine {
 
   // States
   enum States {
@@ -20,6 +20,7 @@ class NBufStateMachine extends KernelStateMachine {
   // State IO
   private final DFEsmInput[] stageDone;
   private final DFEsmInput[] stageEn;
+  private final DFEsmInput broadcast;
   private final DFEsmOutput[] curBuf;
 
   // State storage
@@ -30,7 +31,7 @@ class NBufStateMachine extends KernelStateMachine {
 
 
   // Initialize state machine in constructor
-  public NBufStateMachine(KernelLib owner, int nn, int bits) {
+  public NBufSM(KernelLib owner, int nn, int bits) {
     super(owner);
 
     n = nn; 
@@ -42,6 +43,7 @@ class NBufStateMachine extends KernelStateMachine {
     curBuf = new DFEsmOutput[n];
     curBufFF = new DFEsmStateValue[n];
     stageEn = new DFEsmInput[n];
+    broadcast = io.input("broadcast", wireType);
     for (int i = 0; i < n; i++) {
       stageDone[i] = io.input("stageDone" + i, wireType);
       curBuf[i] = io.output("curBuf" + i, counterType);
@@ -96,7 +98,11 @@ class NBufStateMachine extends KernelStateMachine {
   @Override
   protected void outputFunction() {
     for (int i = 0; i < n; i++) {
-      curBuf[i] <== curBufFF[i];
+      IF (broadcast) {
+        curBuf[i] <== n;
+      } ELSE {
+        curBuf[i] <== curBufFF[i];
+      }
     }
   }
 }

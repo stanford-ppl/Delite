@@ -49,6 +49,7 @@ class NBufReg extends KernelLib {
   DFEVar[] wenPort;
   DFEVar[] curBuf;
   DFEType type;
+  SMIO sm;
 
   DFEVar rst_en;
 
@@ -70,7 +71,7 @@ class NBufReg extends KernelLib {
 
     rst_en = rst_signal;
 
-    SMIO sm = addStateMachine(smname, new NBufStateMachine(this, n, bits));
+    sm = addStateMachine(smname, new NBufSM(this, n, bits+1));
     for (int i = 0; i < n; i++) {
       stageDone[i] = dfeBool().newInstance(this);
       stageEn[i] = dfeBool().newInstance(this);
@@ -82,8 +83,8 @@ class NBufReg extends KernelLib {
     }
 
     for (int i = 0; i < n; i++) {
-      wdataMux[i] = control.mux(curBuf[i], wdataPort);
-      wenMux[i] = control.mux(curBuf[i], wenPort);
+      wdataMux[i] = control.mux(curBuf[i].cast(dfeUInt(bits)), wdataPort);
+      wenMux[i] = control.mux(curBuf[i].cast(dfeUInt(bits)), wenPort);
       r[i] = new DelayLib(this, wenMux[i], wdataMux[i], rst_en, rstVal);
       rdataMux[i] = r[i].q[0];      
     }
@@ -91,7 +92,7 @@ class NBufReg extends KernelLib {
     // Kindly finish MUX-ing in one cycle
     optimization.pushPipeliningFactor(0);
     for (int i = 0; i < n; i++) {
-      rdataPort[i] = control.mux(curBuf[i], rdataMux);
+      rdataPort[i] = control.mux(curBuf[i].cast(dfeUInt(bits)), rdataMux);
     }
     optimization.popPipeliningFactor();
 
@@ -141,6 +142,9 @@ class NBufReg extends KernelLib {
       wenPort[port[i]] <== constant.var(false);
     }
   }
+  void connectUnreadPorts(int[] port) {
+    // Used for NBuf brams
+  }
   void connectUntouchedPorts(int[] port) {
     for (int i = 0; i < port.length; i++) {
       stageDone[port[i]] <== constant.var(false);
@@ -154,5 +158,10 @@ class NBufReg extends KernelLib {
       stageEn[port[i]] <== en;
     }
   }
+
+  void connectDummyBroadcast() {
+    sm.connectInput("broadcast", constant.var(false));
+  }
+
 
 }

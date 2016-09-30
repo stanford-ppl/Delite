@@ -1,243 +1,234 @@
-// package engine;
+package engine;
 
-// import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
-// import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
-// import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
-// import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
-// import com.maxeler.maxcompiler.v2.utils.MathUtils;
-// import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
-// import com.maxeler.maxcompiler.v2.kernelcompiler.Optimization;
-// import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
-// import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
-// import com.maxeler.maxcompiler.v2.utils.Bits;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.Optimization;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+import com.maxeler.maxcompiler.v2.utils.Bits;
+import java.util.Arrays;
 
 
-// /*
+
+/*
                                                                      
-//                             NBuffer                                      
-//                               delay libs
-//                                __                                                         
-//              port __    mux-- |  |   mux  __    port--                                       
-//                     \         |__|          \                                               
-//              port ___   mux-- |  |   mux  ___   port--                                       
-//                               |__|                                                          
-//              port __/   mux-- |  |   mux  __/   port--                                       
-//                               |__|                                       
+                            Brams                                      
+         broadcast__         
+                    \          __                                                         
+             port __    mux-- |  |   mux  __    port--                                       
+                    \         |__|          \                                               
+             port ___   mux-- |  |   mux  ___   port--                                       
+                              |__|                                                          
+             port __/   mux-- |  |   mux  __/   port--                                       
+                              |__|                                       
                                                                      
-//                             each delay lib maintains its own curBuf
-                                                                     
-                                                                     
-                                                                     
-                                                                     
+                            each delay lib maintains its own curBuf
                                                                      
                                                                      
+                                                                                                               
                                                                      
-// */
+                                                                     
+                                                                     
+                                                                     
+*/
 
 
 
 
-// class NBufKernelLib extends KernelLib {
+class NBufKernelLib extends KernelLib {
 
-//   DFEVar[] rdataPort;
-//   DFEVar[] stageDone; // For tracking when enabled stages become done
-//   DFEVar[] stageEn; // For tracking which stages were active on this iteration
-//   DFEVar[] wdataPort;
-//   DFEVar[] wdataMux;
-//   DFEVar[] wenMux;
-//   DFEVar[] wenPort;
-//   DFEVar[] curBuf;
-//   DFEType type;
+  DFEVar[][] rdataPort;
+  DFEVar[] stageDone; // For tracking when enabled stages become done
+  DFEVar[] stageEn; // For tracking which stages were active on this iteration
+  DFEVar[][] wdataPort;
+  DFEVar[][] wdataMux;
+  DFEVar[] wenMux;
+  DFEVar[] wenPort;
+  DFEVar[] curBuf;
+  DFEVar[][] rdataMux;
+  DFEVar[][] waddrPort;
+  DFEVar[][] waddrMux;
+  DFEVar[][] raddrPort;
+  DFEVar[][] raddrMux;
+  SMIO sm;
+  int n;
+  int vecSize;
 
-//   int depth;
-//   int addrBits;
+  DFEType type;
 
-//   BramLib[] r;
+  int depth;
+  int addrBits;
 
-//   private void common (String smname, int size0, int size1, DFEType ttype, int[] banks, int[] strides, int n) {
+  BramLib[] r;
 
-//     this.depth = size0 * size1;
-//     this.addrBits = MathUtils.bitsToAddress(this.depth);
-//     this.numRports = -1;
-//     this.type = type;
+  private void common (String smname, int size0, int size1, DFEType ttype, int[] banks, int[] strides, int nn) {
+    this.vecSize = banks[1];
+    this.n = nn;
+    this.depth = size0 * size1;
+    this.addrBits = MathUtils.bitsToAddress(this.depth);
+    this.type = type;
 
-//     SMIO sm = addStateMachine(smname, new NBufKernelSM(this, n, bits));
+    int bits = MathUtils.bitsToAddress(n);
 
-//     int bits = MathUtils.bitsToAddress(n);
+    sm = addStateMachine(smname, new NBufSM(this, n, bits+1));
 
-//     type = ttype;
-//     rdataPort = new DFEVar[n];
-//     stageDone = new DFEVar[n];
-//     stageEn = new DFEVar[n];
-//     wdataPort = new DFEVar[n];
-//     wdataMux = new DFEVar[n];
-//     wenMux = new DFEVar[n];
-//     wenPort = new DFEVar[n];
-//     curBuf = new DFEVar[n];
-//     r = new BramLib[n];
+    type = ttype;
+    rdataPort = new DFEVar[vecSize][n];
+    rdataMux = new DFEVar[vecSize][n];
+    stageDone = new DFEVar[n];
+    stageEn = new DFEVar[n];
+    wdataPort = new DFEVar[vecSize][n+1];
+    wdataMux = new DFEVar[vecSize][n];
+    wenMux = new DFEVar[n];
+    wenPort = new DFEVar[n+1];
+    waddrPort = new DFEVar[vecSize][n+1];
+    waddrMux = new DFEVar[vecSize][n];
+    raddrPort = new DFEVar[vecSize][n];
+    raddrMux = new DFEVar[vecSize][n];
+
+    curBuf = new DFEVar[n];
+    r = new BramLib[n];
 
 
-//     for (int i = 0; i < n; i++) {
-//       stageDone[i] = dfeBool().newInstance(this);
-//       stageEn[i] = dfeBool().newInstance(this);
-//       wdataPort[i] = type.newInstance(this);
-//       wenPort[i] = dfeBool().newInstance(this);
-//       curBuf[i] = sm.getOutput("curBuf" + i);
-//       sm.connectInput("stageDone" + i, stageDone[i]);
-//       sm.connectInput("stageEn" + i, stageEn[i]);
-//     }
+    for (int i = 0; i < n; i++) {
+      stageDone[i] = dfeBool().newInstance(this);
+      stageEn[i] = dfeBool().newInstance(this);
+      wenPort[i] = dfeBool().newInstance(this);
+      for (int j = 0; j < vecSize; j++) {
+        wdataPort[j][i] = type.newInstance(this);
+        raddrPort[j][i] = dfeInt(32).newInstance(this);
+        waddrPort[j][i] = dfeInt(32).newInstance(this);
+      }
+      curBuf[i] = sm.getOutput("curBuf" + i);
+      sm.connectInput("stageDone" + i, stageDone[i]);
+      sm.connectInput("stageEn" + i, stageEn[i]);
+    }
 
-//     for (int i = 0; i < n; i++) {
-//       wdataMux[i] = control.mux(curBuf[i], wdataPort);
-//       wenMux[i] = control.mux(curBuf[i], wenPort);
-//       r[i] = new BramLib(this, size0, size1, type, banks, stride)
-//     }
+    for (int j = 0; j < vecSize; j++) {
+      wdataPort[j][n] = type.newInstance(this);
+      waddrPort[j][n] = dfeInt(32).newInstance(this);     
+    }
+  wenPort[n] = dfeBool().newInstance(this);
 
-//     // // Kindly finish MUX-ing in one cycle
-//     // optimization.pushPipeliningFactor(0);
-//     // for (int i = 0; i < n; i++) {
-//     //   rdataPort[i] = control.mux(curBuf[i], rdataMux);
-//     // }
-//     // optimization.popPipeliningFactor();
+    for (int i = 0; i < n; i++) {
+      r[i] = new BramLib(this, size0, size1, type, banks, strides, 1);
+      wenMux[i] = control.mux(curBuf[i], wenPort);
+      for (int j = 0; j < vecSize; j++) {
+        wdataMux[j][i] = control.mux(curBuf[i], wdataPort[j]);
+        waddrMux[j][i] = control.mux(curBuf[i], waddrPort[j]);        
+        raddrMux[j][i] = control.mux(curBuf[i].cast(dfeUInt(bits)), raddrPort[j]);
+        rdataMux[j][i] = r[i].connectRport(raddrMux[j][i]);
+      }
+    DFEVector<DFEVar> wdataVec = new DFEVectorType<DFEVar>(this.type, this.vecSize).newInstance(this);
+    DFEVector<DFEVar> waddrVec = new DFEVectorType<DFEVar>(dfeInt(32), this.vecSize).newInstance(this);
+    for (int j = 0; j < vecSize; j++) {
+      wdataVec[j] <== wdataMux[j][i];
+      waddrVec[j] <== waddrMux[j][i];
+    }
+    r[i].connectWport(waddrVec, wdataVec, wenMux[i]);
+    }
 
-//     // debug.simPrintf("curBuf %d %d %d\nwdataPort %d %d %d\nwenPort %d %d %d\nwenMux %d %d %d\nwdataMux %d %d %d\nrdataMux %d %d %d\nrdataPort %d %d %d\n",
-//     //   curBuf[0], curBuf[1], curBuf[2],
-//     //   wdataPort[0], wdataPort[1], wdataPort[2],
-//     //   wenPort[0], wenPort[1], wenPort[2],
-//     //   wdataMux[0], wdataMux[1], wdataMux[2],
-//     //   wenMux[0], wenMux[1], wenMux[2],
-//     //   rdataMux[0], rdataMux[1], rdataMux[2],
-//     //   rdataPort[0], rdataPort[1], rdataPort[2]
-//     //   );
+    for (int i = 0; i < n; i++){
+      for (int j = 0; j < vecSize; j++) {
+        rdataPort[j][i] = control.mux(curBuf[i].cast(dfeUInt(bits)), rdataMux[j]);
+      }
+    }
+    // // Kindly finish MUX-ing in one cycle
+    // optimization.pushPipeliningFactor(0);
+    // for (int i = 0; i < n; i++) {
+    //   rdataPort[i] = control.mux(curBuf[i], rdataMux);
+    // }
+    // optimization.popPipeliningFactor();
+
+    // debug.simPrintf("curBuf %d %d %d\nwdataPort %d %d %d\nwenPort %d %d %d\nwenMux %d %d %d\nwdataMux %d %d %d\nrdataMux %d %d %d\nrdataPort %d %d %d\n",
+    //   curBuf[0], curBuf[1], curBuf[2],
+    //   wdataPort[0], wdataPort[1], wdataPort[2],
+    //   wenPort[0], wenPort[1], wenPort[2],
+    //   wdataMux[0], wdataMux[1], wdataMux[2],
+    //   wenMux[0], wenMux[1], wenMux[2],
+    //   rdataMux[0], rdataMux[1], rdataMux[2],
+    //   rdataPort[0], rdataPort[1], rdataPort[2]
+    //   );
     
-//   }
+  }
+  NBufKernelLib(KernelLib owner, String smname, int size0, int size1, DFEType type, int[] banks, int[] strides, int n) {
+    super(owner);
+    common(smname, size0, size1, type, banks, strides, n);
+  }
 
-//   NBufKernelLib(KernelLib owner, String smname, int size0, int size1, DFEType type, int[] banks, int[] strides, int n) {
-//     super(owner);
-//     common(smname, size0, size1, type, banks, strides, n);
-//   }
+  NBufKernelLib(KernelLib owner, String smname, int size0, int size1, DFEType type, int banks, int strides, int n) {
+    super(owner);
+    common(smname, size0, size1, type, new int[] {1,banks}, new int[] {1,strides}, n);
+  }
 
-//   DFEVar connectRport(DFEVar srcAddr, int[] p) {
-//     DFEVar[] rdataMux = DFEVar[n];
-//     for (int i = 0; i < n; i++) {
-//       rdataMux[i] = m[i].connectRport(srcAddr);
-//     }
-//     DFEVar rdataPort = control.mux(curBuf[p[0]], rdataMux);
-//     return rdataPort;
-//   }
+  DFEVar connectRport(DFEVar srcAddr, int[] p) {
+    DFEVector<DFEVar> redirectVec = new DFEVectorType<DFEVar>(this.type, 1).newInstance(this, Arrays.asList(srcAddr));
+    return connectRport(redirectVec, p)[0];
+  }
 
-//   DFEVar connectRport(DFEVar srcAddr0, DFEVar srcAddr1, int[] p) {
-//     DFEVar[] rdataMux = DFEVar[n];
-//     for (int i = 0; i < n; i++) {
-//       rdataMux[i] = m[i].connectRport(srcAddr0, srcAddr1);
-//     }
-//     DFEVar rdataPort = control.mux(curBuf[p[0]], rdataMux);
-//     return rdataPort;
-//   }
-
-//   DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr, int[] p) {
-//     int m = srcAddr.getSize();
-//     DFEVar[][] rdataMux = DFEVar[m][n];
-//     for (int i = 0; i < n; i++) {
-//       for (int j = 0; j < m; j++) {
-//         rdataMux[j][i] = m[i].connectRport(srcAddr[j]);
-//       }
-//     }
-//     DFEVector<DFEVar> rdataPort = new DFEVectorType<DFEVar>(this.type, m).newInstance(this);
-//     for (int j = 0; j < m; j++) {
-//       rdataPort[j] <== control.mux(curBuf[p[0]], rdataMux[j]);
-//     }
-//     return rdataPort;
-//   }
-
-//   DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr0, DFEVar srcAddr1, int[] p) {
-//     int m = srcAddr0.getSize();
-//     DFEVar[][] rdataMux = DFEVar[m][n];
-//     for (int i = 0; i < n; i++) {
-//       for (int j = 0; j < m; j++) {
-//         rdataMux[j][i] = m[i].connectRport(srcAddr0[j], srcAddr1);
-//       }
-//     }
-//     DFEVector<DFEVar> rdataPort = new DFEVectorType<DFEVar>(this.type, m).newInstance(this);
-//     for (int j = 0; j < m; j++) {
-//       rdataPort[j] <== control.mux(curBuf[p[0]], rdataMux[j]);
-//     }
-//     return rdataPort;
-//   }
-
-//   DFEVector<DFEVar> connectRport(DFEVar srcAddr0, DFEVector<DFEVar> srcAddr1, int[] p) {
-//     int m = srcAddr1.getSize();
-//     DFEVar[][] rdataMux = DFEVar[m][n];
-//     for (int i = 0; i < n; i++) {
-//       for (int j = 0; j < m; j++) {
-//         rdataMux[j][i] = m[i].connectRport(srcAddr0, srcAddr1[j]);
-//       }
-//     }
-//     DFEVector<DFEVar> rdataPort = new DFEVectorType<DFEVar>(this.type, m).newInstance(this);
-//     for (int j = 0; j < m; j++) {
-//       rdataPort[j] <== control.mux(curBuf[p[0]], rdataMux[j]);
-//     }
-//     return rdataPort;
-//   }
-
-//   void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en, int[] p) {
-//     wdataPort[p[0]] <== dstData;
-//     waddrPort[p[0]] <== dstAddr;
-//     wenPort[p[0]] <== en;
-//     for (int i = 0; i < n; i++) {
-//       wdataMux[i] = control.mux(curBuf[i], wdataPort);
-//       wenMux[i] = control.mux(curBuf[i], wenPort);
-//       r[i] = new DelayLib(this, wenMux[i], wdataMux[i], rst_en, rstVal);
-//       rdataMux[i] = r[i].q[0];      
-//     }
-
-//     m0.connectWport(dstAddr, dstData, ~realCurBuf & en);
-//     m1.connectWport(dstAddr, dstData, realCurBuf & en);
-//   }
-
-//   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en) {
-//     m0.connectWport(dstAddr0, dstAddr1, dstData, ~realCurBuf & en);
-//     m1.connectWport(dstAddr0, dstAddr1, dstData, realCurBuf & en);
-//   }
-
-//   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en, int ens) {
-//     m0.connectWport(dstAddr0, dstAddr1, dstData, ~realCurBuf & en, ens);
-//     m1.connectWport(dstAddr0, dstAddr1, dstData, realCurBuf & en, ens);
-//   }
-
-//   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVar en) {
-//     connectWport(dstAddr0, dstAddr1, dstData[0], en);
-//   }
-
-//   void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en) {
-//     m0.connectWport(dstAddr, dstData, ~realCurBuf & en);
-//     m1.connectWport(dstAddr, dstData, realCurBuf & en);
-//   }
-
-//   void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVar en) {
-//     m0.connectWport(dstAddr0, dstAddr1, dstData, ~realCurBuf & en);
-//     m1.connectWport(dstAddr0, dstAddr1, dstData, realCurBuf & en);
-//   }
+  DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr, int[] p) {
+    DFEVector<DFEVar> rdataVec = new DFEVectorType<DFEVar>(this.type, this.vecSize).newInstance(this);
+    for (int j = 0; j < this.vecSize; j++) {
+      raddrPort[j][p[0]] <== srcAddr[j];
+      rdataVec[j] <== rdataPort[j][p[0]];
+    }
+    return rdataVec;
+  }
 
 
-//   void connectUnwrittenPorts(int[] port) {
-//     for (int i = 0; i < port.length; i++) {
-//       wdataPort[port[i]] <== constant.var(type, 0);
-//       wenPort[port[i]] <== constant.var(false);
-//     }
-//   }
-//   void connectUntouchedPorts(int[] port) {
-//     for (int i = 0; i < port.length; i++) {
-//       stageDone[port[i]] <== constant.var(false);
-//       stageEn[port[i]] <== constant.var(false);
-//     }
-//   }
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en, int[] p) {
+    for (int j = 0; j < this.vecSize; j++) {
+      wdataPort[j][p[0]] <== dstData[j];
+      waddrPort[j][p[0]] <== dstAddr[j];
+    }
+  wenPort[p[0]] <== en;     
+  }
 
-//   void connectStageCtrl(DFEVar done, DFEVar en, int[] port) {
-//     for (int i = 0; i < port.length; i++) {
-//       stageDone[port[i]] <== done;
-//       stageEn[port[i]] <== en;
-//     }
-//   }
+  void connectBroadcastWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en, int[] p) {
+    for (int j = 0; j < this.vecSize; j++) {
+      wdataPort[j][n] <== dstData[j];
+      waddrPort[j][n] <== dstAddr[j];
+    }
+  wenPort[n] <== en;
+    sm.connectInput("broadcast", en);
+  }
 
-// }
+  void connectUnwrittenPorts(int[] port) {
+    for (int i = 0; i < port.length; i++) {
+      for (int j = 0; j < this.vecSize; j++) {
+        wdataPort[j][port[i]] <== constant.var(type, 0);  
+        waddrPort[j][port[i]] <== constant.var(dfeInt(32), 0);      
+      }
+      wenPort[port[i]] <== constant.var(false);
+    }
+  }
+  void connectUnreadPorts(int[] port) {
+    for (int i = 0; i < port.length; i++) {
+      for (int j = 0; j < this.vecSize; j++) {
+        raddrPort[j][port[i]] <== constant.var(dfeInt(32), 0);      
+      }
+    }
+  }
+  void connectUntouchedPorts(int[] port) {
+    for (int i = 0; i < port.length; i++) {
+      stageDone[port[i]] <== constant.var(false);
+      stageEn[port[i]] <== constant.var(false);
+    }
+  }
+
+  void connectStageCtrl(DFEVar done, DFEVar en, int[] port) {
+    for (int i = 0; i < port.length; i++) {
+      stageDone[port[i]] <== done;
+      stageEn[port[i]] <== en;
+    }
+  }
+
+  void connectDummyBroadcast() {
+    sm.connectInput("broadcast", constant.var(false));
+  }
+
+}
