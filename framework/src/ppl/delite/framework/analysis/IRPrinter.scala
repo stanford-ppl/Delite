@@ -37,7 +37,9 @@ trait IRPrinterPlus extends Traversal {
 
   override def traverse(lhs: Sym[Any], rhs: Def[Any]) = {
     msg(".."*level + s"$lhs = $rhs")
-    getProps(lhs).foreach{m => debug(".."*level+s"$lhs" + makeString(m)) }
+    level += 1
+    getProps(lhs).foreach{props => props.data.foreach{(k,m) => debug(".."*level + readable(k) + makeString(m)) }}
+    level -= 1
 
     level += 1
     super.traverse(lhs, rhs)
@@ -48,7 +50,7 @@ trait IRPrinterPlus extends Traversal {
     msg(".."*level + lhs.mkString("(", ",", ")") + " = " + rhs.toString)
     msg(".."*level + " - " + mhs.mkString("\n   "))
     lhs.foreach{ sym =>
-      getProps(sym).foreach{m => debug(s"$sym" + makeString(m)) }
+      getProps(sym).foreach{props => props.data.foreach{(k,m) => debug(".."*level + readable(k) + makeString(m)) }}
     }
   }
 
