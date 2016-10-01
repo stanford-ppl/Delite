@@ -335,6 +335,10 @@ class NBufKernelLib extends KernelLib {
     sm.connectInput("broadcast", en);
   }
 
+  void connectBroadcastWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVar en, int[] p) {
+    connectBroadcastWport(dstAddr0, new DFEVectorType<DFEVar>(dfeInt(32),1).newInstance(this, Arrays.asList(dstAddr1)), dstData, en, p);
+  }
+
   void connectUnwrittenPorts(int[] port) {
     for (int i = 0; i < port.length; i++) {
       for (int j = 0; j < this.wpar; j++) {
