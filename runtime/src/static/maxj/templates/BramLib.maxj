@@ -884,7 +884,7 @@ class BramLib extends KernelLib {
     if (dstAddr0.getSize() == 1) {
       connectWport(dstAddr0[0], dstAddr1, dstData, wen);
     } else if (dstAddr1.getSize() == 1) {
-      System.out.printf("ERROR: Cannot write column-major to BRAM!");
+      System.out.printf("ERROR: Cannot write column-major to BRAM! rowpar " + dstAddr0.getSize() + ", colpar " + dstAddr1.getSize());
       System.exit(-1);
     } else {
       System.out.printf("ERROR: Cannot write a 2D tile to BRAM!");
