@@ -72,6 +72,10 @@ class DelayLib extends KernelLib {
     rst_en <== rst;
   }
 
+  void write(DFEVar data, DFEVar wen, DFEVar rst, int p) {
+    write(data,wen,rst);
+  }
+
   void write(DFEVector<DFEVar> data) {
     d <== data;
     en <== constant.var(true);
