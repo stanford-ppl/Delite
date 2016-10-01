@@ -71,7 +71,8 @@ class NBufReg extends KernelLib {
 
     rst_en = rst_signal;
 
-    sm = addStateMachine(smname, new NBufSM(this, n, bits+1));
+    int hack_max_bits = 8;
+    sm = addStateMachine(smname, new NBufSM(this, n, bits+1, hack_max_bits));
     for (int i = 0; i < n; i++) {
       stageDone[i] = dfeBool().newInstance(this);
       stageEn[i] = dfeBool().newInstance(this);
@@ -80,6 +81,10 @@ class NBufReg extends KernelLib {
       curBuf[i] = sm.getOutput("curBuf" + i);
       sm.connectInput("stageDone" + i, stageDone[i]);
       sm.connectInput("stageEn" + i, stageEn[i]);
+    }
+    for (int i = n; i < hack_max_bits; i++) {
+      sm.connectInput("stageDone" + i, constant.var(false));
+      sm.connectInput("stageEn" + i, constant.var(false));
     }
 
     for (int i = 0; i < n; i++) {

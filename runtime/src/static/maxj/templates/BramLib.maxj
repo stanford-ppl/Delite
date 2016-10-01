@@ -879,6 +879,20 @@ class BramLib extends KernelLib {
     connectWport(dstAddr0, dstAddr1, dstData);
   }
 
+  void connectWport(DFEVector<DFEVar> dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVar wen) { // Interface for 2D NBuf write
+    // Let's hope one of them has length of 1
+    if (dstAddr0.getSize() == 1) {
+      connectWport(dstAddr0[0], dstAddr1, dstData, wen);
+    } else if (dstAddr1.getSize() == 1) {
+      System.out.printf("ERROR: Cannot write column-major to BRAM!");
+      System.exit(-1);
+    } else {
+      System.out.printf("ERROR: Cannot write a 2D tile to BRAM!");
+      System.exit(-1);
+    }
+  }
+
+
   void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData) {
     if (dstAddr1.getSize() == 1) {
       connectWport(dstAddr0, dstAddr1[0], dstData[0], constant.var(true));

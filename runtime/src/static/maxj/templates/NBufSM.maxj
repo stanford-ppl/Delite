@@ -6,6 +6,8 @@ import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateEnum;
 import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
 import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
 import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
+import java.util.ArrayList;
+import java.util.List;
 
 class NBufSM extends KernelStateMachine {
 
@@ -16,6 +18,7 @@ class NBufSM extends KernelStateMachine {
   }
 
   private final int n;
+  int max_bits; // Hack so that I don't need to codegen this SM
 
   // State IO
   private final DFEsmInput[] stageDone;
@@ -28,21 +31,25 @@ class NBufSM extends KernelStateMachine {
   private final DFEsmStateValue[] curBufFF;
   private final DFEsmStateValue stageDoneFF;
   private final DFEsmStateValue stageEnFF;
+  private final DFEsmValueType counterType;
+  private final DFEsmValueType maxCounterType;
 
 
   // Initialize state machine in constructor
-  public NBufSM(KernelLib owner, int nn, int bits) {
+  public NBufSM(KernelLib owner, int nn, int bits, int hack_max_bits) {
     super(owner);
 
     n = nn; 
+    max_bits = hack_max_bits;
     DFEsmValueType wireType = dfeBool();
-    DFEsmValueType counterType = dfeUInt(bits);
+    counterType = dfeUInt(bits);
+    maxCounterType = dfeUInt(max_bits);
 
     // Define state machine IO
-    stageDone = new DFEsmInput[n];
+    stageDone = new DFEsmInput[hack_max_bits];
     curBuf = new DFEsmOutput[n];
     curBufFF = new DFEsmStateValue[n];
-    stageEn = new DFEsmInput[n];
+    stageEn = new DFEsmInput[hack_max_bits];
     broadcast = io.input("broadcast", wireType);
     for (int i = 0; i < n; i++) {
       stageDone[i] = io.input("stageDone" + i, wireType);
@@ -50,11 +57,15 @@ class NBufSM extends KernelStateMachine {
       curBufFF[i] = state.value(counterType, nn-i-1); // Reverse order;
       stageEn[i] = io.input("stageEn" + i, wireType);
     }
+    for (int i = n; i < hack_max_bits; i++) {
+      stageDone[i] = io.input("stageDone" + i, wireType);
+      stageEn[i] = io.input("stageEn" + i, wireType);
+    }
 
     // Define state storage elements and initial state
     stateFF = state.enumerated(States.class, States.RUNNING);
-    stageDoneFF = state.value(dfeUInt(n), 0);
-    stageEnFF = state.value(dfeUInt(n), 0);
+    stageDoneFF = state.value(dfeUInt(max_bits), 0);
+    stageEnFF = state.value(dfeUInt(max_bits), 0);
   }
 
   private void resetBitVectors() {
@@ -69,19 +80,33 @@ class NBufSM extends KernelStateMachine {
   protected void nextState() {
     SWITCH(stateFF) {
       CASE(States.RUNNING) {
-        for (int i = 0; i < n; i++) {
-          IF (stageDone[i]) {
-            stageDoneFF.next <== (1 << i) | stageDoneFF;
-          }
-          IF (stageEn[i]) {
-            stageEnFF.next <== (1 << i) | stageEnFF;
-          }
-          IF (stageDoneFF === stageEnFF & stageDoneFF !== 0) {
-            stateFF.next <== States.RESET;
-          }
+        // TODO: Figure out how to reduce a bit vector with | lambda instead of this ugly 8-bit hack
+        stageDoneFF.next <== (stageDone[0].cast(maxCounterType) << 0) |
+                             (stageDone[1].cast(maxCounterType) << 1) |
+                             (stageDone[2].cast(maxCounterType) << 2) |
+                             (stageDone[3].cast(maxCounterType) << 3) |
+                             (stageDone[4].cast(maxCounterType) << 4) |
+                             (stageDone[5].cast(maxCounterType) << 5) |
+                             (stageDone[6].cast(maxCounterType) << 6) |
+                             (stageDone[7].cast(maxCounterType) << 7) |
+                             stageDoneFF;
+        stageEnFF.next <== (stageEn[0].cast(maxCounterType) << 0) |
+                             (stageEn[1].cast(maxCounterType) << 1) |
+                             (stageEn[2].cast(maxCounterType) << 2) |
+                             (stageEn[3].cast(maxCounterType) << 3) |
+                             (stageEn[4].cast(maxCounterType) << 4) |
+                             (stageEn[5].cast(maxCounterType) << 5) |
+                             (stageEn[6].cast(maxCounterType) << 6) |
+                             (stageEn[7].cast(maxCounterType) << 7) |
+                             stageEnFF;
+
+
+        IF (stageDoneFF === stageEnFF & stageEnFF !== 0) {
+          stateFF.next <== States.RESET;
         }
       }
       CASE(States.RESET) {
+        // debug.simPrintf("\n\nSWAPPING BUFFERS\n\n");
         for (int i = 0; i < n; i++) {
           IF (curBufFF[i] === n-1) {
             curBufFF[i].next <== 0;
