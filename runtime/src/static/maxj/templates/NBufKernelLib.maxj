@@ -368,6 +368,7 @@ class NBufKernelLib extends KernelLib {
       stageDone[port[i]] <== constant.var(false);
       stageEn[port[i]] <== constant.var(false);
     }
+    sm.connectInput("numBlanks", constant.var(dfeUInt(MathUtils.bitsToAddress(n)+1), port.length)); // TODO: Use length of consecutive ports before final or else nasty bugs will appear!!!!
   }
 
   void connectStageCtrl(DFEVar done, DFEVar en, int[] port) {

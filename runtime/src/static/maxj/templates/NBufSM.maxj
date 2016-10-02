@@ -23,6 +23,7 @@ class NBufSM extends KernelStateMachine {
   // State IO
   private final DFEsmInput[] stageDone;
   private final DFEsmInput[] stageEn;
+  private final DFEsmInput numBlanks;
   private final DFEsmInput broadcast;
   private final DFEsmOutput[] curBuf;
 
@@ -31,6 +32,7 @@ class NBufSM extends KernelStateMachine {
   private final DFEsmStateValue[] curBufFF;
   private final DFEsmStateValue stageDoneFF;
   private final DFEsmStateValue stageEnFF;
+  private final DFEsmStateValue drainIterFF; // Tracking when to hold stable for last iter
   private final DFEsmValueType counterType;
   private final DFEsmValueType maxCounterType;
 
@@ -51,6 +53,7 @@ class NBufSM extends KernelStateMachine {
     curBufFF = new DFEsmStateValue[n];
     stageEn = new DFEsmInput[hack_max_bits];
     broadcast = io.input("broadcast", wireType);
+    numBlanks = io.input("numBlanks", counterType);
     for (int i = 0; i < n; i++) {
       stageDone[i] = io.input("stageDone" + i, wireType);
       curBuf[i] = io.output("curBuf" + i, counterType);
@@ -64,8 +67,9 @@ class NBufSM extends KernelStateMachine {
 
     // Define state storage elements and initial state
     stateFF = state.enumerated(States.class, States.RUNNING);
-    stageDoneFF = state.value(dfeUInt(max_bits), 0);
-    stageEnFF = state.value(dfeUInt(max_bits), 0);
+    stageDoneFF = state.value(maxCounterType, 0);
+    stageEnFF = state.value(maxCounterType, 0);
+    drainIterFF = state.value(counterType, 0);
   }
 
   private void resetBitVectors() {
@@ -107,8 +111,19 @@ class NBufSM extends KernelStateMachine {
       }
       CASE(States.RESET) {
         // debug.simPrintf("\n\nSWAPPING BUFFERS\n\n");
-        IF (stageEnFF === (1 << (n-1))) { 
-          // If only last stage was enabled on this iter, then metapipe is done, do not inc
+        IF (stageEnFF === (1 << (n-1))) {
+          IF (drainIterFF >= numBlanks) {
+            // If only last stage was enabled on this iter, then metapipe is done, do not inc
+          } ELSE {
+            drainIterFF.next <== drainIterFF + 1;
+            for (int i = 0; i < n; i++) {
+              IF (curBufFF[i] === n-1) {
+                curBufFF[i].next <== 0;
+              } ELSE {
+                curBufFF[i].next <== curBufFF[i] + 1;
+              }          
+            }            
+          }
         } ELSE {
           for (int i = 0; i < n; i++) {
             IF (curBufFF[i] === n-1) {

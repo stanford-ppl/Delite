@@ -50,11 +50,13 @@ class NBufReg extends KernelLib {
   DFEVar[] curBuf;
   DFEType type;
   SMIO sm;
+  int n;
 
   DFEVar rst_en;
 
-  private void common (DFEType ttype, String smname, int par, Bits rstVal, DFEVar rst_signal, int n) {
+  private void common (DFEType ttype, String smname, int par, Bits rstVal, DFEVar rst_signal, int nn) {
 
+    n = nn;
     int bits = MathUtils.bitsToAddress(n);
 
     type = ttype;
@@ -155,6 +157,7 @@ class NBufReg extends KernelLib {
       stageDone[port[i]] <== constant.var(false);
       stageEn[port[i]] <== constant.var(false);
     }
+    sm.connectInput("numBlanks", constant.var(dfeUInt(MathUtils.bitsToAddress(n)+1), port.length)); // TODO: Use length of consecutive ports before final or else nasty bugs will appear!!!!
   }
 
   void connectStageCtrl(DFEVar done, DFEVar en, int[] port) {
