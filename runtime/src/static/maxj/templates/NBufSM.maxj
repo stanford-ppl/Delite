@@ -113,6 +113,7 @@ class NBufSM extends KernelStateMachine {
         // debug.simPrintf("\n\nSWAPPING BUFFERS\n\n");
         IF (stageEnFF === (1 << (n-1))) {
           IF (drainIterFF >= numBlanks) {
+            drainIterFF.next <== 0;
             // If only last stage was enabled on this iter, then metapipe is done, do not inc
           } ELSE {
             drainIterFF.next <== drainIterFF + 1;
