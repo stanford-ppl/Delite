@@ -58,6 +58,7 @@ class NBufReg extends KernelLib {
 
     n = nn;
     int bits = MathUtils.bitsToAddress(n);
+    int bits_w_bcast = MathUtils.bitsToAddress(n+1);
 
     type = ttype;
     rdataPort = new DFEVar[n];
@@ -74,7 +75,7 @@ class NBufReg extends KernelLib {
     rst_en = rst_signal;
 
     int hack_max_bits = 8;
-    sm = addStateMachine(smname, new NBufSM(this, n, bits+1, hack_max_bits));
+    sm = addStateMachine(smname, new NBufSM(this, n, bits_w_bcast, hack_max_bits));
     for (int i = 0; i < n; i++) {
       stageDone[i] = dfeBool().newInstance(this);
       stageEn[i] = dfeBool().newInstance(this);
@@ -157,7 +158,7 @@ class NBufReg extends KernelLib {
       stageDone[port[i]] <== constant.var(false);
       stageEn[port[i]] <== constant.var(false);
     }
-    sm.connectInput("numBlanks", constant.var(dfeUInt(MathUtils.bitsToAddress(n)+1), port.length)); // TODO: Use length of consecutive ports before final or else nasty bugs will appear!!!!
+    sm.connectInput("numBlanks", constant.var(dfeUInt(MathUtils.bitsToAddress(n+1)), port.length)); // TODO: Use length of consecutive ports before final or else nasty bugs will appear!!!!
   }
 
   void connectStageCtrl(DFEVar done, DFEVar en, int[] port) {

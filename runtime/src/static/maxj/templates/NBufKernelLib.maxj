@@ -95,9 +95,10 @@ class NBufKernelLib extends KernelLib {
     this.is2D = (size0 > 1 & size1 > 1) ? true : false;
 
     int bits = MathUtils.bitsToAddress(n);
+    int bits_w_bcast = MathUtils.bitsToAddress(n+1);
 
     int hack_max_bits = 8;
-    sm = addStateMachine(smname, new NBufSM(this, n, bits+1, hack_max_bits));
+    sm = addStateMachine(smname, new NBufSM(this, n, bits_w_bcast, hack_max_bits));
 
     type = ttype;
     rdataPort = new DFEVar[rpar0*rpar1][n]; // Should always be 1*<something>
@@ -368,7 +369,7 @@ class NBufKernelLib extends KernelLib {
       stageDone[port[i]] <== constant.var(false);
       stageEn[port[i]] <== constant.var(false);
     }
-    sm.connectInput("numBlanks", constant.var(dfeUInt(MathUtils.bitsToAddress(n)+1), port.length)); // TODO: Use length of consecutive ports before final or else nasty bugs will appear!!!!
+    sm.connectInput("numBlanks", constant.var(dfeUInt(MathUtils.bitsToAddress(n+1)), port.length)); // TODO: Use length of consecutive ports before final or else nasty bugs will appear!!!!
   }
 
   void connectStageCtrl(DFEVar done, DFEVar en, int[] port) {
