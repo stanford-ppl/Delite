@@ -95,6 +95,7 @@ trait AffineAnalyzer extends Traversal {
 
   var outerIndices = Set[Sym[Index]]()
   var loopIndices = Set[Sym[Index]]()
+  var boundIndexPatterns = Map[Exp[Index], List[IndexPattern]]()
 
   // The list of statements which can be scheduled prior to block traversals
   // (All statements in all scopes of below this scope)
@@ -131,26 +132,40 @@ trait AffineAnalyzer extends Traversal {
 
   override def traverse(lhs: Sym[Any], rhs: Def[Any]): Unit = lhs match {
     case LoopLevels(levels) =>
-      debug(s"Found loop $lhs with ${levels.length} levels")
-      debug(s"Current indices are $loopIndices")
+      debugs(s"[Loop] $lhs = $rhs")
+      debugs(s"  Levels: ${levels.length} ")
+      debugs(s"  Current indices: $loopIndices")
       levels.foreach{ case (indices, blocks) =>
-        debug(s"  Traversing loop level with $indices")
+        debugs(s"  Traversing loop level with $indices")
         inLoop(indices){blocks.foreach{blk => traverseBlock(blk) }}
       }
 
     case MemRead(mem, addresses) =>
-      debug(s"Found read $lhs of memory $mem with addresses $addresses")
-      debug(s"Current indices are $loopIndices")
-      accessPatternOf(lhs) = addresses.map(extractIndexPattern)
-      debug(s"Access pattern is ${accessPatternOf(lhs)}")
+      debugs(s"[Read] $lhs = $rhs")
+      tab += 1
+      debugs(s"Memory: $mem")
+      debugs(s"ND Address: $addresses")
+      debugs(s"Current indices: $loopIndices")
+      accessPatternOf(lhs) = extractAccessPatterns(addresses)
+      debugs(s"Access pattern: ${accessPatternOf(lhs)}")
+      tab -= 1
 
     case MemWrite(mem, addresses) =>
-      debug(s"Found write of memory $mem with addresses $addresses")
-      debug(s"Current indices are $loopIndices")
-      accessPatternOf(lhs) = addresses.map(extractIndexPattern)
-      debug(s"Access pattern is ${accessPatternOf(lhs)}")
+      debugs(s"[Write] $lhs = $rhs")
+      tab += 1
+      debugs(s"Memory: $mem")
+      debugs(s"ND Address: $addresses")
+      debugs(s"Current indices: $loopIndices")
+      accessPatternOf(lhs) = extractAccessPatterns(addresses)
+      debugs(s"Access pattern: ${accessPatternOf(lhs)}")
+      tab -= 1
 
     case _ => super.traverse(lhs, rhs)
+  }
+
+  def extractAccessPatterns(xs: List[Exp[Index]]) = xs.flatMap{
+    case x if boundIndexPatterns.contains(x) => boundIndexPatterns(x)
+    case x => List(extractIndexPattern(x))
   }
 
   def extractIndexPattern(x: Exp[Index]) = x match {

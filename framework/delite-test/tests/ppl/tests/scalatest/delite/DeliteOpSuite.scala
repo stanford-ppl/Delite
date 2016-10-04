@@ -186,10 +186,7 @@ trait DeliteFilter extends DeliteTestBase {
 }
 
 object DeliteForeachRunner extends DeliteTestStandaloneRunner with DeliteTestDSLApplicationRunner with DeliteForeach
-object DeliteForeachSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteForeach { self =>
-  appendTraversal( new IRPrinter{val IR: self.type = self} )
-}
-
+object DeliteForeachSuiteRunner extends DeliteTestRunner with DeliteTestDSLApplicationRunner with DeliteForeach
 trait DeliteForeach extends DeliteTestBase {
   def main() = {
 
