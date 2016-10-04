@@ -17,14 +17,14 @@ import java.util.Arrays;
 /*
                                                                      
                             Brams                                      
-         broadcast__         
+         broadcast__                (v and h)
                     \          __                                                         
-             port __    mux-- |  |   mux  __    port--                                       
-                    \         |__|          \                                               
-             port ___   mux-- |  |   mux  ___   port--                                       
-                              |__|                                                          
-             port __/   mux-- |  |   mux  __/   port--                                       
-                              |__|                                       
+             port __    mux-- |  |  vmux  __    vhmux      port--                                       
+                    \         |__|  hmux    \                                                     
+             port ___   mux-- |  |  vmux  ___   vhmux      port--                                       
+                              |__|  hmux                                                              
+             port __/   mux-- |  |  vmux  __/   vhmux      port--                                       
+                              |__|  hmux                                    
                                                                      
                             each delay lib maintains its own curBuf
                   
@@ -47,6 +47,8 @@ class NBufKernelLib extends KernelLib {
   DFEVar[] wenPort;
   DFEVar[] curBuf;
   DFEVar[][] rdataMux;
+  DFEVar[][] rdataMuxV;
+  DFEVar[][] rdataMuxH;
   DFEVar[][] waddrPort1;
   DFEVar[][] waddrPort0;
   DFEVar[][] waddrMux1;
@@ -55,15 +57,18 @@ class NBufKernelLib extends KernelLib {
   DFEVar[][] raddrPort0;
   DFEVar[][] raddrMux1;
   DFEVar[][] raddrMux0;
+  DFEVar[] raddrPort0H;
+  DFEVar[] raddrPort1V;
+  DFEVar[] raddrMux0H;
+  DFEVar[] raddrMux1V;
   SMIO sm;
   boolean is2D;
-  boolean row_major;
+  boolean[] row_major;
+  boolean all_same;
   int n;
   int wpar;
   int rpar0;
   int rpar1;
-  int vecSizeCol;
-  int vecSizeRow;
 
   DFEType type;
 
@@ -74,20 +79,25 @@ class NBufKernelLib extends KernelLib {
 
   private void common (String smname, int size0, int size1, 
     DFEType ttype, int[] banks, int[] strides, int nn, 
-    boolean row_majorr, 
+    boolean all_samee,
+    boolean[] row_majorr, 
     int wparr, int rparr) {
 
+    this.all_same = all_samee;
     this.row_major = row_majorr;
     this.wpar = wparr;
-    if (row_major) {
-      this.rpar0 = 1;
-      this.rpar1 = rparr;
+    if (all_same) {
+      if (row_major[0]) {
+        this.rpar0 = 1;
+        this.rpar1 = rparr;
+      } else {
+        this.rpar0 = rparr;
+        this.rpar1 = 1;      
+      }
     } else {
       this.rpar0 = rparr;
-      this.rpar1 = 1;      
+      this.rpar1 = rparr;            
     }
-    this.vecSizeRow = banks[0];
-    this.vecSizeCol = banks[1];
     this.n = nn;
     this.depth = size0 * size1;
     this.addrBits = MathUtils.bitsToAddress(this.depth);
@@ -102,7 +112,7 @@ class NBufKernelLib extends KernelLib {
 
     type = ttype;
     rdataPort = new DFEVar[rpar0*rpar1][n]; // Should always be 1*<something>
-    rdataMux = new DFEVar[rpar0*rpar1][n];      
+    rdataMux = new DFEVar[rpar0*rpar1][n];
     stageDone = new DFEVar[n];
     stageEn = new DFEVar[n];
     wdataPort = new DFEVar[wpar][n+1];
@@ -117,6 +127,14 @@ class NBufKernelLib extends KernelLib {
     raddrMux1 = new DFEVar[rpar1][n];
     raddrPort0 = new DFEVar[rpar0][n];
     raddrMux0 = new DFEVar[rpar0][n];
+    if (!all_same) {
+      raddrPort0H = new DFEVar[n];
+      raddrMux0H = new DFEVar[n];
+      raddrPort1V = new DFEVar[n];
+      raddrMux1V = new DFEVar[n];
+      rdataMuxH = new DFEVar[rpar1][n];
+      rdataMuxV = new DFEVar[rpar0][n];
+    }
 
     curBuf = new DFEVar[n];
     r = new BramLib[n];
@@ -135,6 +153,10 @@ class NBufKernelLib extends KernelLib {
       }
       for (int j = 0; j < rpar1; j++) {
         raddrPort1[j][i] = dfeInt(32).newInstance(this);
+      }
+      if (!all_same) {
+        raddrPort0H[i] = dfeInt(32).newInstance(this);
+        raddrPort1V[i] = dfeInt(32).newInstance(this);
       }
       waddrPort0[0][i] = dfeInt(32).newInstance(this);
       curBuf[i] = sm.getOutput("curBuf" + i);
@@ -167,19 +189,32 @@ class NBufKernelLib extends KernelLib {
       for (int j = 0; j < rpar0; j++) {
         raddrMux0[j][i] = control.mux(curBuf[i].cast(dfeUInt(bits)), raddrPort0[j]);          
       } 
+      if (!all_same) {
+        raddrMux0H[i] = control.mux(curBuf[i].cast(dfeUInt(bits)), raddrPort0H);
+        raddrMux1V[i] = control.mux(curBuf[i].cast(dfeUInt(bits)), raddrPort1V);
+      }
       waddrMux0[0][i] = control.mux(curBuf[i], waddrPort0[0]);
       if (is2D) {
-        if (row_major) {
+        if (all_same) {
+          if (row_major[0]) {
+            for (int j = 0; j < rpar1; j++) {
+              rdataMux[j][i] = r[i].connectRport(raddrMux0[0][i], raddrMux1[j][i]);
+            }          
+          } else {
+            for (int j = 0; j < rpar0; j++) {
+              rdataMux[j][i] = r[i].connectRport(raddrMux0[j][i], raddrMux1[0][i]);
+            }          
+          }
+        } else { // Connect both H and V reads
           for (int j = 0; j < rpar1; j++) {
-            rdataMux[j][i] = r[i].connectRport(raddrMux0[0][i], raddrMux1[j][i]);
-          }          
-        } else {
+            rdataMuxH[j][i] = r[i].connectRport(raddrMux0H[i], raddrMux1[j][i]);
+          }
           for (int j = 0; j < rpar0; j++) {
-            rdataMux[j][i] = r[i].connectRport(raddrMux0[j][i], raddrMux1[0][i]);
-          }          
+            rdataMuxV[j][i] = r[i].connectRport(raddrMux0[j][i], raddrMux1V[i]);
+          }
         }
       } else {
-        for (int j = 0; j < vecSizeCol; j++) {
+        for (int j = 0; j < rpar0*rpar1; j++) {
           rdataMux[j][i] = r[i].connectRport(raddrMux1[j][i]);
         }
       }
@@ -200,9 +235,15 @@ class NBufKernelLib extends KernelLib {
     }
 
     for (int i = 0; i < n; i++){
-      for (int j = 0; j < rpar0*rpar1; j++) {
-        rdataPort[j][i] = control.mux(curBuf[i].cast(dfeUInt(bits)), rdataMux[j]);
-      }        
+      if (all_same) {
+        for (int j = 0; j < rpar0*rpar1; j++) {
+          rdataPort[j][i] = control.mux(curBuf[i].cast(dfeUInt(bits)), rdataMux[j]);
+        }                
+      } else {
+        for (int j = 0; j < rpar0/*same as rpar1*/; j++) {
+          rdataPort[j][i] = control.mux(curBuf[i].cast(dfeUInt(bits)), ( (row_major[i]) ? rdataMuxH[j] : rdataMuxV[j] ) );
+        }
+      }
     }
 
     if (!is2D) {
@@ -237,17 +278,19 @@ class NBufKernelLib extends KernelLib {
   NBufKernelLib(KernelLib owner, String smname, 
     int size0, int size1, 
     DFEType type, int[] banks, int[] strides, int n, 
-    boolean row_major, int wpar, int rpar) {
+    boolean all_same,
+    boolean[] row_major, int wpar, int rpar) {
     super(owner);
-    common(smname, size0, size1, type, banks, strides, n, row_major, wpar, rpar);
+    common(smname, size0, size1, type, banks, strides, n, all_same, row_major, wpar, rpar);
   }
 
   NBufKernelLib(KernelLib owner, String smname, 
     int size0, int size1, 
     DFEType type, int banks, int strides, int n, 
-    boolean row_major, int wpar, int rpar) {
+    boolean all_same,
+    boolean[] row_major, int wpar, int rpar) {
     super(owner);
-    common(smname, size0, size1, type, new int[] {1,banks}, new int[] {1,strides}, n, row_major, wpar, rpar);
+    common(smname, size0, size1, type, new int[] {1,banks}, new int[] {1,strides}, n, all_same, row_major, wpar, rpar);
   }
 
   DFEVar connectRport(DFEVar srcAddr, int[] p) {
@@ -256,7 +299,7 @@ class NBufKernelLib extends KernelLib {
   }
 
   DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr, int[] p) {
-    DFEVector<DFEVar> rdataVec = new DFEVectorType<DFEVar>(this.type, this.vecSizeCol).newInstance(this);
+    DFEVector<DFEVar> rdataVec = new DFEVectorType<DFEVar>(this.type, this.rpar1).newInstance(this);
     for (int j = 0; j < this.rpar1; j++) {
       raddrPort1[j][p[0]] <== srcAddr[j];
       rdataVec[j] <== rdataPort[j][p[0]];
@@ -271,8 +314,17 @@ class NBufKernelLib extends KernelLib {
       raddrPort1[j][p[0]] <== srcAddr1[j];
       rdataVec[j] <== rdataPort[j][p[0]];
     }
-    raddrPort0[0][p[0]] <== srcAddr0;
-    return rdataVec;
+    if (all_same) {
+      raddrPort0[0][p[0]] <== srcAddr0;      
+    } else {
+      raddrPort0H[p[0]] <== srcAddr0;
+      // Dummy connect the horizontal reads
+      for (int j = 0; j < this.rpar0; j++) {
+        raddrPort0[j][p[0]] <== constant.var(dfeInt(32), j);
+      }
+      raddrPort1V[p[0]] <== constant.var(dfeInt(32), 0);
+    }
+    return rdataVec;      
   }
 
   DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr0, DFEVar srcAddr1, int[] p) {
@@ -281,10 +333,20 @@ class NBufKernelLib extends KernelLib {
       raddrPort0[j][p[0]] <== srcAddr0[j];
       rdataVec[j] <== rdataPort[j][p[0]];
     }
-    raddrPort1[0][p[0]] <== srcAddr1;
-    return rdataVec;
+    if (all_same) {
+      raddrPort1[0][p[0]] <== srcAddr1;
+    } else {
+      raddrPort1V[p[0]] <== srcAddr1;
+      // Dummy connect the vertical reads
+      for (int j = 0; j < this.rpar1; j++) {
+        raddrPort1[j][p[0]] <== constant.var(dfeInt(32), j);
+      }
+      raddrPort0H[p[0]] <== constant.var(dfeInt(32), 0);
+    }
+    return rdataVec;      
   }
 
+  // TODO: This will need to change when we allow readers of varying par
   DFEVar connectRport(DFEVar srcAddr0, DFEVar srcAddr1, int[] p) {
     raddrPort1[0][p[0]] <== srcAddr1;
     raddrPort0[0][p[0]] <== srcAddr0;
@@ -355,13 +417,26 @@ class NBufKernelLib extends KernelLib {
     }
   }
   void connectUnreadPorts(int[] port) {
-    for (int i = 0; i < port.length; i++) {
-      for (int j = 0; j < this.rpar0; j++) {
-        raddrPort0[j][port[i]] <== constant.var(dfeInt(32), 0);      
-      }
-      for (int j = 0; j < this.rpar1; j++) {
-        raddrPort1[j][port[i]] <== constant.var(dfeInt(32), 0);      
-      }
+    if (all_same) {
+      for (int i = 0; i < port.length; i++) {
+        for (int j = 0; j < this.rpar0; j++) {
+          raddrPort0[j][port[i]] <== constant.var(dfeInt(32), 0);      
+        }
+        for (int j = 0; j < this.rpar1; j++) {
+          raddrPort1[j][port[i]] <== constant.var(dfeInt(32), 0);      
+        }
+      }      
+    } else {
+      for (int i = 0; i < port.length; i++) {
+        for (int j = 0; j < this.rpar0; j++) {
+          raddrPort0[j][port[i]] <== constant.var(dfeInt(32), 0);      
+        }
+        raddrPort0H[port[i]] <== constant.var(dfeInt(32), 0);
+        for (int j = 0; j < this.rpar1; j++) {
+          raddrPort1[j][port[i]] <== constant.var(dfeInt(32), 0);      
+        }
+        raddrPort1V[port[i]] <== constant.var(dfeInt(32), 0);
+      }            
     }
   }
   void connectUntouchedPorts(int[] port) {
