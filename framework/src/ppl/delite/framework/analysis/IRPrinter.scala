@@ -19,9 +19,11 @@ trait IRPrinter extends Traversal {
     getProps(lhs).foreach{props => props.data.foreach{(k,m) => debugs(" -" + readable(k) + makeString(m)) }}
 
     blocks(rhs).zipWithIndex.foreach{case (blk,i) =>
-      msgs(s"  block$i {")
+      tab += 1
+      msgs(s"block $i: $blk {")
       traverseBlock(blk)
-      msgs(s"  } // End of $lhs block$i")
+      msgs(s"} // End of $lhs block #$i")
+      tab -= 1
     }
     if (blocks(rhs).nonEmpty) msgs(s"} // End of $lhs")
   }
