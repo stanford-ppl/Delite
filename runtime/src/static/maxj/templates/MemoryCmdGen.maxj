@@ -40,16 +40,16 @@ class MemoryCmdGenLib extends KernelLib {
 
   protected DFEVar upcast(int size, DFEType type) {
     int bytes_per = type.getTotalBits()/8;
-    if ((size*bytes_per) % 384 == 0 ) {
+    if ((size*bytes_per) % getBurstBytes() == 0 ) {
       return constant.var(dfeUInt(32), size);
     } else {
-      int upcasted = (int)(((Math.floor((size*bytes_per) / 384) + 1)*384) / bytes_per);
+      int upcasted = (int)(((Math.floor((size*bytes_per) / getBurstBytes()) + 1)*getBurstBytes()) / bytes_per);
       return constant.var(dfeUInt(32), upcasted);
     }
   }
   protected boolean isAligned(int size, DFEType type) {
     int bytes_per = type.getTotalBits()/8;
-    if ((size*bytes_per) % 384 == 0 ) {
+    if ((size*bytes_per) % getBurstBytes() == 0 ) {
       return true;
     } else {
       return false;
@@ -63,11 +63,11 @@ class MemoryCmdGenLib extends KernelLib {
       debug.simPrintf(en, "\n");
   }
 
-  protected static int getValuesPerBurst(DFEType type) {
+  protected int getValuesPerBurst(DFEType type) {
     return getBurstSizeInBits() / type.getTotalBits();
   }
 
-  protected static int getValuesPerBurst(DFEType[] type) {
+  protected int getValuesPerBurst(DFEType[] type) {
     int totalBits = 0;
     for (int i=0; i<type.length; i++) {
       totalBits += type[i].getTotalBits();
@@ -75,9 +75,12 @@ class MemoryCmdGenLib extends KernelLib {
     return getBurstSizeInBits() / totalBits;
   }
 
-  protected static int getBurstSizeInBits() {
-    // return 8 * getManager().getManagerConfiguration().dram.getAdjustedBurstSizeInBytes();
-    return 8 * 384;
+  protected int getBurstBytes() {
+    return getManager().getManagerConfiguration().dram.getAdjustedBurstSizeInBytes();
+  }
+  protected int getBurstSizeInBits() {
+    return 8 * getManager().getManagerConfiguration().dram.getAdjustedBurstSizeInBytes();
+    // return 8 * 384;
   }
 
   /**
