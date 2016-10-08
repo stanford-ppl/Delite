@@ -81,7 +81,8 @@ class NBufKernelLib extends KernelLib {
     DFEType ttype, int[] banks, int[] strides, int nn, 
     boolean all_samee,
     boolean[] row_majorr, 
-    int wparr, int rparr) {
+    int wparr, int rparr,
+    boolean samepar, int[] rparrs) {
 
     this.all_same = all_samee;
     this.row_major = row_majorr;
@@ -279,18 +280,21 @@ class NBufKernelLib extends KernelLib {
     int size0, int size1, 
     DFEType type, int[] banks, int[] strides, int n, 
     boolean all_same,
-    boolean[] row_major, int wpar, int rpar) {
+    boolean[] row_major, int wpar, int rpar,
+    boolean samepar, int[] rparrs) {
+
     super(owner);
-    common(smname, size0, size1, type, banks, strides, n, all_same, row_major, wpar, rpar);
+    common(smname, size0, size1, type, banks, strides, n, all_same, row_major, wpar, rpar, samepar, rparrs);
   }
 
   NBufKernelLib(KernelLib owner, String smname, 
     int size0, int size1, 
     DFEType type, int banks, int strides, int n, 
     boolean all_same,
-    boolean[] row_major, int wpar, int rpar) {
+    boolean[] row_major, int wpar, int rpar,
+    boolean samepar, int[] rparrs) {
     super(owner);
-    common(smname, size0, size1, type, new int[] {1,banks}, new int[] {1,strides}, n, all_same, row_major, wpar, rpar);
+    common(smname, size0, size1, type, new int[] {1,banks}, new int[] {1,strides}, n, all_same, row_major, wpar, rpar, samepar, rparrs);
   }
 
   DFEVar connectRport(DFEVar srcAddr, int[] p) {
