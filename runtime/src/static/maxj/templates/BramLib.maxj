@@ -761,32 +761,32 @@ class BramLib extends KernelLib {
     return connectBankAport(bank, vaddr, vdata, en);
   }
 
-  void connectBankWport(int bank, DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> data, DFEVar en) {
+  void connectBankWport(int bank, DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> data, DFEVar en, int[] port) {
     DFEVar bank_local_addr = bankAndLocalAddr(dstAddr[0], AddrMode.LOCAL);
     m[bank].write(bank_local_addr, data[0], en);
   }
 
-  void connectBankWport(int bank, DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> data, DFEVar en) {
+  void connectBankWport(int bank, DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> data, DFEVar en, int[] port) {
     DFEVar sub_rowAddr0 = rowAddr(dstAddr0);
-    this.ensemble[bank].connectWport(sub_rowAddr0, dstAddr1, data, en);
+    this.ensemble[bank].connectWport(sub_rowAddr0, dstAddr1, data, en, port);
   }
 
-  void connectBankWport(int bank, DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> data, DFEVar en) {
+  void connectBankWport(int bank, DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> data, DFEVar en, int[] port) {
     DFEVar sub_rowAddr0 = rowAddr(dstAddr0);
-    this.ensemble[bank].connectWport(sub_rowAddr0, dstAddr1, data, en);
+    this.ensemble[bank].connectWport(sub_rowAddr0, dstAddr1, data, en, port);
   }
 
-  void connectBankWport(int bank, DFEVector<DFEVar> dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> data, DFEVar en) {
+  void connectBankWport(int bank, DFEVector<DFEVar> dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> data, DFEVar en, int[] port) {
     System.out.printf("BankWport disallowed for column-major writes!");
     System.exit(-1);
   }
 
-  void connectBankWport(int bank, DFEVar dstAddr, DFEVar data, DFEVar en) {
+  void connectBankWport(int bank, DFEVar dstAddr, DFEVar data, DFEVar en, int[] port) {
     DFEVector<DFEVar> vaddr = new DFEVectorType<DFEVar>(dstAddr.getType(), 1).newInstance(this);
     DFEVector<DFEVar> vdata = new DFEVectorType<DFEVar>(data.getType(), 1).newInstance(this);
     vaddr[0] <== dstAddr;
     vdata[0] <== data;
-    connectBankWport(bank, vaddr, vdata, en);
+    connectBankWport(bank, vaddr, vdata, en, port);
   }
 
   DFEVector<DFEVar> connectAport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en) {

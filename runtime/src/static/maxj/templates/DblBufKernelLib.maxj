@@ -198,18 +198,18 @@ class DblBufKernelLib extends KernelLib {
     return connectRport(srcAddr);
   }
 
-  void connectBankWport(int bank, DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> data, DFEVar en) {
-    m0.connectBankWport(bank, dstAddr, data, ~realCurBuf & en);
-    m1.connectBankWport(bank, dstAddr, data, realCurBuf & en);
+  void connectBankWport(int bank, DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> data, DFEVar en, int[] p) {
+    m0.connectBankWport(bank, dstAddr, data, ~realCurBuf & en, p);
+    m1.connectBankWport(bank, dstAddr, data, realCurBuf & en, p);
 
   }
 
-  void connectBankWport(int bank, DFEVar dstAddr, DFEVar data, DFEVar en) {
+  void connectBankWport(int bank, DFEVar dstAddr, DFEVar data, DFEVar en, int[] p) {
     DFEVector<DFEVar> vaddr = new DFEVectorType<DFEVar>(dstAddr.getType(), 1).newInstance(this);
     DFEVector<DFEVar> vdata = new DFEVectorType<DFEVar>(data.getType(), 1).newInstance(this);
     vaddr[0] <== dstAddr;
     vdata[0] <== data;
-    connectBankWport(bank, vaddr, vdata, en);
+    connectBankWport(bank, vaddr, vdata, en, p);
   }
 
   void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en) {

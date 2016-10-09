@@ -63,17 +63,30 @@ class DummyMemLib extends KernelLib {
     }
   }
 
-  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en) {
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVar dstData, DFEVar en, int[] trash) {
+    for (int i=0; i<banks[1]; i++) {
+      stream[i] <== Reductions.streamHold(dstAddr[0].cast(type) ^ dstData.cast(type), en);
+    }
+  }
+
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en, int[] trash) {
     for (int i=0; i<banks[1]; i++) {
       System.out.println("i = " + i);
       stream[i] <== Reductions.streamHold(dstAddr[i].cast(type) ^ dstData[i].cast(type), en);
     }
   }
 
-  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en, int touch) {
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en, int touch, int[] trash) {
     for (int i=0; i < banks[1]; i++) {
       System.out.println("i = " + i);
       stream[i + touch*banks[1]] <== Reductions.streamHold(dstAddr[i].cast(type) ^ dstData[i].cast(type), en);
+    }
+  }
+
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVar dstData, DFEVar en, int touch, int[] trash) {
+    for (int i=0; i < banks[1]; i++) {
+      System.out.println("i = " + i);
+      stream[i + touch*banks[1]] <== Reductions.streamHold(dstAddr[0][i].cast(type) ^ dstData[i].cast(type), en);
     }
   }
 
