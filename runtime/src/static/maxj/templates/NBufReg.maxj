@@ -50,12 +50,13 @@ class NBufReg extends KernelLib {
   DFEVar[] curBuf;
   DFEType type;
   SMIO sm;
+  int bits;
   int n;
 
   DFEVar rst_en;
 
   private void common (DFEType ttype, String smname, int par, Bits rstVal, DFEVar rst_signal, int nn) {
-
+    this.bits = ttype.getTotalBits();
     n = nn;
     int bits = MathUtils.bitsToAddress(n);
     int bits_w_bcast = MathUtils.bitsToAddress(n+1);
@@ -119,6 +120,11 @@ class NBufReg extends KernelLib {
   NBufReg(KernelLib owner, DFEType type, String smname, int par, Bits rstVal, int n) {
     super(owner);
     common(type, smname, par, rstVal, dfeBool().newInstance(this), n);
+  }
+
+  NBufReg(KernelLib owner, int bits, String smname, int par, int rstVal, int n) {
+    super(owner);
+    common(dfeRawBits(bits), smname, par, Bits.allZeros(bits), dfeBool().newInstance(this), n);
   }
 
   DFEVar read(int port) {
