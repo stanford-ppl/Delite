@@ -57,7 +57,7 @@ class DummyMemLib extends KernelLib {
     return p;
   }
 
-  void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en) {
+  void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en, int[] trash) {
     for (int i=0; i<banks[1]; i++) {
       stream[i] <== Reductions.streamHold(dstAddr.cast(type) ^ dstData.cast(type), en);
     }
@@ -90,13 +90,13 @@ class DummyMemLib extends KernelLib {
     }
   }
 
-  void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en, int start, int stride) {
+  void connectWport(DFEVar dstAddr, DFEVar dstData, DFEVar en, int start, int stride, int[] trash) {
     for (int i=0; i<banks[0]; i++) {
       stream[i] <== Reductions.streamHold(dstAddr.cast(type) ^ dstData.cast(type), en);
     }
   }
 
-  void connectWport(DFEVar dstAddr, DFEVar dstData) {
+  void connectWport(DFEVar dstAddr, DFEVar dstData, int[] trash) {
     stream[0] <== Reductions.streamHold(dstAddr.cast(type) ^ dstData.cast(type), constant.var(true));
   }
 
