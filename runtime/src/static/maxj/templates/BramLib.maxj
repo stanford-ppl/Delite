@@ -547,6 +547,9 @@ class BramLib extends KernelLib {
   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar data, DFEVar en, int[] p) {
     connectWport(dstAddr0, dstAddr1, data, en);
   }
+  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar data, DFEVar en, DFEVar globalEn, int[] p) {
+    connectWport(dstAddr0, dstAddr1, data, en & globalEn);
+  }
 
   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar data, DFEVar en) {
     if (this.num_libs == 1) {
