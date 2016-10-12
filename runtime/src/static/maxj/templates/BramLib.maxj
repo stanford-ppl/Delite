@@ -528,6 +528,17 @@ class BramLib extends KernelLib {
     }
   
   }
+  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, DFEVar globalEn, int[] p) {
+    if (this.muxSize == 1) {
+      connectWport(dstAddr0, dstAddr1, dstData[0], en[0] & globalEn);
+    } else {
+      this.muxAddrVec[0][muxInt] <== dstAddr0 * constant.var(dstAddr0.getType(), this.size1) + dstAddr1;
+      this.muxDataVec[0][muxInt] <== dstData[0];
+      this.muxWenVec[0][muxInt] <== en[0] & globalEn;
+      muxInt++;
+    }
+  
+  }
 
   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en) {
     connectWport(dstAddr0, dstAddr1, dstData[0], en[0]);
@@ -728,6 +739,70 @@ class BramLib extends KernelLib {
     }
   }
 
+  void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> wen, DFEVar globalEn, int[] p) {
+    DFEVector<DFEVar> en = new DFEVectorType<DFEVar>(dfeBool(), wen.getSize()).newInstance(this);
+    for (int i = 0; i < wen.getSize(); i++) {
+      en[i] <== wen[i] & globalEn;
+    }
+    connectWport(dstAddr0, dstAddr1, dstData, en);
+  }
+
+  void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> wen, DFEVar globalEn) {
+    DFEVector<DFEVar> en = new DFEVectorType<DFEVar>(dfeBool(), wen.getSize()).newInstance(this);
+    for (int i = 0; i < wen.getSize(); i++) {
+      en[i] <== wen[i] & globalEn;
+    }
+    if (this.num_libs == 1) {
+      DFEVector<DFEVar> addr_vec = new DFEVectorType<DFEVar>(dstAddr1[0].getType(), dstAddr1.getSize()).newInstance(this);
+      for (int j = 0; j < dstAddr1.getSize(); j++) {
+        addr_vec[j] <== dstAddr0 * constant.var(dstAddr0.getType(), this.size1) + dstAddr1[j];
+      }
+      connectWport(addr_vec, dstData, en);
+    } else {
+      DFEVar sub_srcAddr0 = rowAddr(dstAddr0);
+      DFEVar sub_bank = ensAddr(dstAddr0);
+      DFEVector<DFEVar> addr_vec = new DFEVectorType<DFEVar>(dstAddr1[0].getType(), dstAddr1.getSize()).newInstance(this);
+      for (int j = 0; j < dstAddr1.getSize(); j++) {
+        addr_vec[j] <== sub_srcAddr0 * constant.var(dstAddr0.getType(), this.size1) + dstAddr1[j];
+      }
+
+      for (int i = 0; i < this.num_libs; i++) {
+        this.ensemble[i].connectWport(addr_vec, dstData, en & constant.var(sub_bank.getType(), i) === sub_bank);
+      }
+      
+    }
+  }
+
+  void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> wen, DFEVar globalEn, int ens, int[] p) {
+    DFEVector<DFEVar> en = new DFEVectorType<DFEVar>(dfeBool(), wen.getSize()).newInstance(this);
+    for (int i = 0; i < wen.getSize(); i++) {
+      en[i] <== wen[i] & globalEn;
+    }
+    connectWport(dstAddr0, dstAddr1, dstData, en, ens);
+  }
+
+  void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> wen, DFEVar globalEn, int ens) {
+    DFEVector<DFEVar> en = new DFEVectorType<DFEVar>(dfeBool(), wen.getSize()).newInstance(this);
+    for (int i = 0; i < wen.getSize(); i++) {
+      en[i] <== wen[i] & globalEn;
+    }
+    if (dstAddr1.getSize() == 1) {
+      connectWport(dstAddr0, dstAddr1[0], dstData[0], en[0]);
+    } else {
+      if (this.num_libs == 1) { 
+        DFEVector<DFEVar> addr_vec = new DFEVectorType<DFEVar>(dstAddr1[0].getType(), dstAddr1.getSize()).newInstance(this);
+        for (int j = 0; j < dstAddr1.getSize(); j++) {
+          addr_vec[j] <== dstAddr0 * constant.var(dstAddr0.getType(), this.size1) + dstAddr1[j];
+        }
+        connectWport(addr_vec, dstData, en);
+      } else {
+        DFEVar sub_dstAddr0 = rowAddr(dstAddr0);
+        this.ensemble[ens].connectWport(sub_dstAddr0, dstAddr1, dstData, en, ens);
+      }
+    }
+  }
+
+
   void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, int ens, int[] p) {
     connectWport(dstAddr0, dstAddr1, dstData, en, ens);
   }
@@ -838,6 +913,23 @@ class BramLib extends KernelLib {
         this.muxAddrVec[j][muxInt] <== dstAddr[j];
         this.muxDataVec[j][muxInt] <== dstData[j];
         this.muxWenVec[j][muxInt] <== en[j];
+      }
+      muxInt++;        
+    }
+  }
+
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, DFEVar globalEn, int[] p) {
+    DFEVector<DFEVar> wen = new DFEVectorType<DFEVar>(dfeBool(), en.getSize()).newInstance(this);
+    for (int i = 0; i < en.getSize(); i++) {
+      wen[i] <== en[i] & globalEn;
+    }
+    if (this.muxSize == 1) {
+      connectWport(dstAddr, dstData, wen);
+    } else {
+      for (int j = 0; j < this.banks[1]; j++) {
+        this.muxAddrVec[j][muxInt] <== dstAddr[j];
+        this.muxDataVec[j][muxInt] <== dstData[j];
+        this.muxWenVec[j][muxInt] <== wen[j];
       }
       muxInt++;        
     }

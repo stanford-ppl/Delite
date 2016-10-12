@@ -366,6 +366,13 @@ class NBufKernelLib extends KernelLib {
       wenPort[j][p[0]] <== en[j];
     }
   }
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, DFEVar globalEn, int[] p) {
+    for (int j = 0; j < this.wpar; j++) {
+      wdataPort[j][p[0]] <== dstData[j];
+      waddrPort1[j][p[0]] <== dstAddr[j];
+      wenPort[j][p[0]] <== en[j] & globalEn;
+    }
+  }
 
   void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, int[] p) {
     for (int j = 0; j < this.wpar; j++) {
@@ -375,9 +382,20 @@ class NBufKernelLib extends KernelLib {
     }
     waddrPort0[0][p[0]] <== dstAddr0;
   }
+  void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, DFEVar globalEn, int[] p) {
+    for (int j = 0; j < this.wpar; j++) {
+      wdataPort[j][p[0]] <== dstData[j];
+      waddrPort1[j][p[0]] <== dstAddr1[j];
+      wenPort[j][p[0]] <== en[j] & globalEn;
+    }
+    waddrPort0[0][p[0]] <== dstAddr0;
+  }
 
   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, int[] p) {
     connectWport(dstAddr0, dstAddr1, dstData[0], en[0], p); 
+  }
+  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, DFEVar globalEn, int[] p) {
+    connectWport(dstAddr0, dstAddr1, dstData[0], en[0] & globalEn, p); 
   }
 
   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en, int[] p) {
@@ -385,6 +403,12 @@ class NBufKernelLib extends KernelLib {
     waddrPort1[0][p[0]] <== dstAddr1;
     waddrPort0[0][p[0]] <== dstAddr0;
     wenPort[0][p[0]] <== en;
+  }
+  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en, DFEVar globalEn, int[] p) {
+    wdataPort[0][p[0]] <== dstData;
+    waddrPort1[0][p[0]] <== dstAddr1;
+    waddrPort0[0][p[0]] <== dstAddr0;
+    wenPort[0][p[0]] <== en & globalEn;
   }
 
   void connectBroadcastWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, int[] p) {
