@@ -923,6 +923,12 @@ class BramLib extends KernelLib {
       muxInt++;        
     }
   }
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVar dstData, DFEVar en, int[] p) {
+    connectWport(dstAddr[0], dstData, en, p);
+  }
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVar dstData, DFEVar en, DFEVar globalEn, int[] p) {
+    connectWport(dstAddr[0], dstData, en & globalEn, p);
+  }
 
   void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, DFEVar globalEn, int[] p) {
     DFEVector<DFEVar> wen = new DFEVectorType<DFEVar>(dfeBool(), en.getSize()).newInstance(this);
