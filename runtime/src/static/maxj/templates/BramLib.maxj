@@ -367,6 +367,9 @@ class BramLib extends KernelLib {
   void connectDirectWport(int bank, DFEVector<DFEVar> srcAddr, DFEVector<DFEVar> srcData, DFEVector<DFEVar> en) { // For scatter gather
     m[bank].write(srcAddr[0], srcData[0], en[0]);
   }
+  void connectDirectWport(int bank, DFEVector<DFEVar> srcAddr, DFEVector<DFEVar> srcData, DFEVar en) { // For scatter gather
+    m[bank].write(srcAddr[0], srcData[0], en);
+  }
 
   DFEVar connectRport(DFEVar srcAddr) {
     DFEVar bank_local_addr = bankAndLocalAddr(srcAddr, AddrMode.LOCAL);
