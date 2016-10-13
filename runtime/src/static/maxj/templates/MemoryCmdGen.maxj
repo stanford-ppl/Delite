@@ -30,6 +30,18 @@ class MemoryCmdGenLib extends KernelLib {
     DFEVar numburst = (num / getValuesPerBurst(type));
     return numburst;
   }
+
+  protected DFEVar getNumberOfAlignedBursts(DFEVar elemStart, DFEVar numel, DFEType type) {
+    KernelMath.DivModResult burstsMod = KernelMath.divMod(elemStart.cast(dfeUInt(32)) + numel.cast(dfeUInt(32)), constant.var(dfeUInt(32), getValuesPerBurst(type)));
+    return (burstsMod.getRemainder() === constant.var(dfeUInt(32), 0)) ? burstsMod.getQuotient() : burstsMod.getQuotient() + constant.var(dfeUInt(32), 1);
+  }
+
+  protected DFEVar getBurstAddr(DFEVar elemAddr, DFEType type) {
+    // Downcast to nearest burst alignment
+    DFEVar burstAddr = KernelMath.divMod(elemAddr.cast(dfeUInt(32)), constant.var(dfeUInt(32), getValuesPerBurst(type))).getQuotient();
+    return burstAddr;
+  }
+
   protected DFEVar checkNewBurst(DFEVar num, DFEVar size_real, DFEType type) {
     int el_per_burst = getValuesPerBurst(type);
     DFEVar intraburst_start = KernelMath.divMod(num.cast(dfeUInt(32)), constant.var(dfeUInt(32), el_per_burst)).getRemainder();
@@ -91,7 +103,68 @@ class MemoryCmdGenLib extends KernelLib {
    * passed in.
    * wdata: A vector of elements read from DRAM
    */
-   void common (
+
+  // Deprecated in order to change behavior if "aligned" is false
+  //   since wrong data sits on fifo if reading multiple memories
+  //  void common ( 
+  //   KernelLib owner,
+  //   DFEVar en, DFEVar done,
+  //   int base, DFEVar offset,
+  //   String streamName,
+  //   DFEVar size, DFEVar realSize,
+  //   DFEVar fifoReadEn, DFEVector<DFEVar> wdata, boolean aligned)
+  // {
+  //   int par = wdata.getSize();
+  //   int delay = 16;
+  //   SMIO sm = addStateMachine(streamName + "ldSM", new MemoryCmdSM(this));
+  //   sm.connectInput("sm_en", en);
+  //   done <== stream.offset(sm.getOutput("sm_done"), -1);
+
+  //   DFEVar memDone = dfeBool().newInstance(this);
+  //   sm.connectInput("memDone", memDone);
+  //   DFEVar memStart = sm.getOutput("memStart");
+
+  //   DFEVar burstAddr = base + getNumberOfBursts(offset, wdata[0].getType()).cast(dfeUInt(32));
+
+  //   DFEVar requires_burst = aligned ? constant.var(true) : checkNewBurst(offset, realSize, wdata[0].getType());
+
+  //   Count.Params controlCountParams = control.count.makeParams(16)
+  //                             .withEnable(memStart)
+  //                             .withReset(done)
+  //                             .withMax(delay)
+  //                             .withWrapMode(WrapMode.STOP_AT_MAX);
+  //   Counter controlCounter = control.count.makeCounter(controlCountParams); // Cmd every 10 cycles
+  //   DFEVar counterWrap = controlCounter.getCount() === delay-1;
+  //   memDone <== stream.offset(counterWrap, -1);
+
+  //   DFEVar ctrl = memStart & (controlCounter.getCount() === 0) & requires_burst;
+  //   DFEVar len = getNumberOfBursts(size, wdata[0].getType()).cast(dfeUInt(8));
+  //   DFEVar inc = constant.var(dfeUInt(8), 1);
+  //   DFEVar stream = constant.var(dfeUInt(1), 0);
+  //   DFEVar tag = constant.var(false);
+
+  //   String cmdStreamName = streamName + "_cmd";
+  //   LMemCommandStream.makeKernelOutput(cmdStreamName,
+  //       ctrl,
+  //       burstAddr,
+  //       len,
+  //       inc,
+  //       stream,
+  //       tag);
+
+  //   debug.simPrintf(en, "[MemCmdGen] size = %d, realSize = %d, memStart = %d, ctrl = %d, offset = %d, burstAddr = %d\n", size, realSize, memStart, ctrl, offset, burstAddr);
+  //   io.forceExactIOSeparation(streamName, cmdStreamName, -16);  // Arbitrarily picked to handle divides
+
+
+  //   wdata <== io.input(streamName, wdata.getType(), fifoReadEn);
+
+  //   if (dbgDetail) {
+  //     debug.simPrintf(memStart, "Fetched: ");
+  //     printVec(wdata, memStart);
+  //   }
+  // }
+
+   void common ( 
     KernelLib owner,
     DFEVar en, DFEVar done,
     int base, DFEVar offset,
@@ -109,9 +182,9 @@ class MemoryCmdGenLib extends KernelLib {
     sm.connectInput("memDone", memDone);
     DFEVar memStart = sm.getOutput("memStart");
 
-    DFEVar burstAddr = base + getNumberOfBursts(offset, wdata[0].getType()).cast(dfeUInt(32));
+    DFEVar burstAddr = base + getBurstAddr(offset, wdata[0].getType()).cast(dfeUInt(32));
 
-    DFEVar requires_burst = aligned ? constant.var(true) : checkNewBurst(offset, realSize, wdata[0].getType());
+    // DFEVar requires_burst = aligned ? constant.var(true) : checkNewBurst(offset, realSize, wdata[0].getType());
 
     Count.Params controlCountParams = control.count.makeParams(16)
                               .withEnable(memStart)
@@ -122,8 +195,8 @@ class MemoryCmdGenLib extends KernelLib {
     DFEVar counterWrap = controlCounter.getCount() === delay-1;
     memDone <== stream.offset(counterWrap, -1);
 
-    DFEVar ctrl = memStart & (controlCounter.getCount() === 0) & requires_burst;
-    DFEVar len = getNumberOfBursts(size, wdata[0].getType()).cast(dfeUInt(8));
+    DFEVar ctrl = memStart & (controlCounter.getCount() === 0);
+    DFEVar len = getNumberOfAlignedBursts(offset, size, wdata[0].getType()).cast(dfeUInt(8));
     DFEVar inc = constant.var(dfeUInt(8), 1);
     DFEVar stream = constant.var(dfeUInt(1), 0);
     DFEVar tag = constant.var(false);
@@ -137,7 +210,7 @@ class MemoryCmdGenLib extends KernelLib {
         stream,
         tag);
 
-    // debug.simPrintf(en, "[MemCmdGen] size = %d, realSize = %d, memStart = %d, ctrl = %d, offset = %d, burstAddr = %d\n", size, realSize, memStart, ctrl, offset, burstAddr);
+    debug.simPrintf(en, "[MemCmdGen] size = %d, realSize = %d, memStart = %d, ctrl = %d, offset = %d, burstAddr = %d\n", size, realSize, memStart, ctrl, offset, burstAddr);
     io.forceExactIOSeparation(streamName, cmdStreamName, -16);  // Arbitrarily picked to handle divides
 
 
