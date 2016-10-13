@@ -210,7 +210,7 @@ class MemoryCmdGenLib extends KernelLib {
         stream,
         tag);
 
-    debug.simPrintf(en, "[MemCmdGen] size = %d, realSize = %d, memStart = %d, ctrl = %d, offset = %d, burstAddr = %d\n", size, realSize, memStart, ctrl, offset, burstAddr);
+    // debug.simPrintf(en, "[MemCmdGen] size = %d, realSize = %d, memStart = %d, ctrl = %d, offset = %d, burstAddr = %d\n", size, realSize, memStart, ctrl, offset, burstAddr);
     io.forceExactIOSeparation(streamName, cmdStreamName, -16);  // Arbitrarily picked to handle divides
 
 

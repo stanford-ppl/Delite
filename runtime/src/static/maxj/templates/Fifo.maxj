@@ -18,7 +18,7 @@ import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.Counter;
  */
 class Fifo extends KernelLib {
 
-  FFMem m;
+  BoxedMem m;
   int par;
   DFEType type;
   DFEVar pop;
@@ -50,7 +50,7 @@ class Fifo extends KernelLib {
     Counter headAddrCounter = control.count.makeCounter(headParams); // Cmd every 10 cycles
     headAddr = headAddrCounter.getCount().cast(dfeInt(32));
 
-    m = new FFMem(this, type, size);
+    m = new BoxedMem(this, type, size);
   }
 
   Fifo(KernelLib owner, DFEType type, int size, int par) {
