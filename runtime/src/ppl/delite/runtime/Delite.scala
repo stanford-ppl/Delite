@@ -100,10 +100,11 @@ object Delite {
       if(Config.numCuda>0 && !graph.targets(Targets.Cuda)) { Config.numCuda = 0; println("[WARNING] No Cuda target op is generated!") }
       if(Config.numOpenCL>0 && !graph.targets(Targets.OpenCL)) { Config.numOpenCL = 0; println("[WARNING] No OpenCL target op is generated!") }
       if(Config.numMaxJ>0 && !graph.targets(Targets.MaxJ)) { Config.numMaxJ= 0; println("[WARNING] No MaxJ target op is generated!") }
+      if(Config.numChisel>0 && !graph.targets(Targets.Chisel)) { Config.numChisel= 0; println("[WARNING] No Chisel target op is generated!") }
 
       val scheduler = Config.scheduler match {
-        case "static" => new AccStaticScheduler(Config.numThreads, Config.numCpp, Config.numCuda, Config.numOpenCL, Config.numMaxJ)
-        case "dynamic" => new AccStaticScheduler(if (Config.numThreads > 0) 1 else 0, if (Config.numCpp > 0) 1 else 0, Config.numCuda, Config.numOpenCL, Config.numMaxJ)
+        case "static" => new AccStaticScheduler(Config.numThreads, Config.numCpp, Config.numCuda, Config.numOpenCL, Config.numMaxJ, Config.numChisel)
+        case "dynamic" => new AccStaticScheduler(if (Config.numThreads > 0) 1 else 0, if (Config.numCpp > 0) 1 else 0, Config.numCuda, Config.numOpenCL, Config.numMaxJ, Config.numChisel)
         case e => throw new IllegalArgumentException("Requested scheduler is not recognized ("+e+")")
       }
 
@@ -128,6 +129,8 @@ object Delite {
       // Multiple accelerators are not currently supported
       if (Config.numMaxJ > 0)
         scheduler.scheduleNativeFPGA(graph)
+      else if (Config.numChisel > 0)
+	scheduler.scheduleNativeFPGA(graph)
       else if (Config.numCuda > 0)
         scheduler.scheduleNativeGPU(graph)
 
@@ -192,7 +195,7 @@ object Delite {
   }
 
   def findExecutables(appName: String): StaticSchedule = {
-    val numResources = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL + Config.numMaxJ
+    val numResources = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL + Config.numMaxJ + Config.numChisel
     Compilers.createSchedule(this.getClass.getClassLoader, appName, numResources, expectedResources)
   }
 

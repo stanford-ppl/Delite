@@ -144,7 +144,8 @@ int main(int argc, char *argv[]) {
   }
 
   protected[codegen] def writeMethodFooter() {
-    val env = if (Config.numMaxJ > 0 && Config.noJVM) "0" else s"env$location"
+    // TODO: Check if the chisel addition here is ok
+    val env = if ((Config.numMaxJ > 0 || Config.numChisel > 0) && Config.noJVM) "0" else s"env$location"
     out.append(s"clearAll(numThreads, ${activeCppLocations}, ${Config.numThreads}, $env);\n")
     out.append("}\n")
   }

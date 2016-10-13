@@ -75,6 +75,7 @@ object OpHelper {
     else if (location < Config.numThreads+Config.numCpp+Config.numCuda) Targets.Cuda
     else if (location < Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL) Targets.OpenCL
     else if (location < Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL+Config.numMaxJ) Targets.MaxJ
+    else if (location < Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL+Config.numMaxJ+Config.numChisel) Targets.Chisel
     else throw new RuntimeException("Cannot find a target for resource ID " + location)
   }
 

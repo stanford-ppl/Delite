@@ -27,6 +27,7 @@ object Compilers {
       case Targets.OpenCL => OpenCLCompile
       case Targets.Cpp => CppCompile
       case Targets.MaxJ => MaxJCompile
+      case Targets.Chisel => ChiselCompile
       case _ => throw new RuntimeException("Undefined target for runtime compilers")
     }
   }
@@ -67,6 +68,14 @@ object Compilers {
         System.err.println("[WARNING]: no kernels scheduled on maxj")
       MaxJExecutableGenerator.makeExecutables(maxjSchedule, graph)
     }
+    
+    if (Config.numChisel > 0) {
+      val chiselSchedule = schedule.slice(Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL,
+        Config.numThreads+Config.numCpp+Config.numCuda+Config.numCuda+Config.numOpenCL+Config.numMaxJ + Config.numChisel)
+      if (chiselSchedule.map(_.size).foldLeft(0)(_ + _) == 0)
+        System.err.println("[WARNING]: no kernels scheduled on chisel")
+      ChiselExecutableGenerator.makeExecutables(chiselSchedule, graph)
+    }
 
     if (Config.printSources) { //DEBUG option
       ScalaCompile.printSources()
@@ -74,16 +83,22 @@ object Compilers {
       CudaCompile.printSources()
       OpenCLCompile.printSources()
       MaxJCompile.printSources()
+      ChiselCompile.printSources()
     }
 
     if (Config.numCpp>0 && graph.targets(Targets.Cpp)) CppCompile.compile()
     if (Config.numCuda>0 && graph.targets(Targets.Cuda)) CudaCompile.compile()
     if (Config.numOpenCL>0 && graph.targets(Targets.OpenCL)) OpenCLCompile.compile()
     if (Config.numMaxJ>0 && graph.targets(Targets.MaxJ)) MaxJCompile.compile()
+    if (Config.numChisel>0 && graph.targets(Targets.Chisel)) ChiselCompile.compile()
 
     // TODO: This change exits the runtime after maxj code has been generated,
     // and skips the rest. Handle this in a cleaner way (using flags perhaps)
     if (Config.numMaxJ>0 && graph.targets(Targets.MaxJ)) sys.exit(0)
+
+    // TODO: This change exits the runtime after chisel code has been generated,
+    // and skips the rest. Handle this in a cleaner way (using flags perhaps)
+    if (Config.numChisel>0 && graph.targets(Targets.Chisel)) sys.exit(0)
 
     val classLoader = ScalaCompile.compile()
     DeliteMesosExecutor.classLoader = classLoader
@@ -99,6 +114,10 @@ object Compilers {
 
     if (Config.numMaxJ > 0) {
       MaxJExecutableGenerator.clear()
+    }
+
+    if (Config.numChisel > 0) {
+      ChiselExecutableGenerator.clear()
     }
 
     val expectedResources = for (i <- 0 until schedule.numResources if !schedule(i).isEmpty) yield i

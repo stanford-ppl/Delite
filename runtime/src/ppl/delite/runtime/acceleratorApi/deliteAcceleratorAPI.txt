@@ -19,13 +19,14 @@ object from host.
     - MaxJ: max_init, max_file_load
     - SDAccel:
     - MyHDL:
-    - Chisel:
+    - Chisel: max_init, max_file_load
 2. Tear down
   GPU:
     - CUDA: cudaDestroy() // I think
     - OpenCL:
   FPGA:
     - MaxJ: max_unload
+    - Chisel: max_unload
 3. Memory Allocation
 4. Memory Free
 5. Memory copy (src -> dst)

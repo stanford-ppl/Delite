@@ -9,7 +9,7 @@ import ppl.delite.runtime.cost._
 import ppl.delite.runtime.codegen.kernels.cuda.SingleTask_GPU_Generator
 import ppl.delite.runtime.codegen.{Compilers,CCompile}
 
-class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: Int, numMaxJ: Int) extends StaticScheduler with ParallelUtilizationCostModel with ScheduleOptimizer {
+class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: Int, numMaxJ: Int, numChisel: Int) extends StaticScheduler with ParallelUtilizationCostModel with ScheduleOptimizer {
   // [COMMENT TODO] What are these variables?
   // Current understanding:
   // totalScala: Number of scala threads
@@ -22,7 +22,7 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
   private val totalCpp = Config.numCpp
   private val gpu = totalScala + totalCpp
   private val fpga = Config.numThreads + Config.numCpp + Config.numCuda + Config.numOpenCL
-  private val numResources = totalScala + totalCpp + Config.numCuda + Config.numOpenCL + Config.numMaxJ
+  private val numResources = totalScala + totalCpp + Config.numCuda + Config.numOpenCL + Config.numMaxJ + Config.numChisel
 
   def schedule(graph: DeliteTaskGraph) {
     //traverse nesting & schedule sub-graphs, starting with outermost graph
@@ -61,6 +61,7 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
       case Targets.Cuda => scheduleGPU(op, graph, schedule)
       case Targets.OpenCL => scheduleGPU(op, graph, schedule)
       case Targets.MaxJ => scheduleFPGA(op, graph, schedule)
+      case Targets.Chisel => scheduleFPGA(op, graph, schedule)
     }
 
     def scheduleMultiLoop(l: OP_MultiLoop) {
@@ -218,7 +219,8 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
   protected def scheduleOnTarget(op: DeliteOP) = {
     if (scheduleOnFPGA(op)) {
       if (op.supportsTarget(Targets.MaxJ)) Targets.MaxJ
-      else sys.error(s"""$op cannot be scheduled on FPGA as it is not supported by MaxJ!""")
+      else if (op.supportsTarget(Targets.Chisel)) Targets.Chisel
+      else sys.error(s"""$op cannot be scheduled on FPGA as it is not supported by MaxJ or Chisel!""")
     }
     else if (scheduleOnGPU(op)) {
       if (op.supportsTarget(Targets.Cuda)) Targets.Cuda else Targets.OpenCL
@@ -249,8 +251,8 @@ class AccStaticScheduler(numScala: Int, numCpp: Int, numCuda: Int, numOpenCL: In
    * @param op: Delite op being scheduled
    */
   protected def scheduleOnFPGA(op:DeliteOP) = {
-    if (numMaxJ == 0) false
-    else if (!op.supportsTarget(Targets.MaxJ)) false
+    if (numMaxJ == 0 && numChisel == 0) false
+    else if (!op.supportsTarget(Targets.MaxJ) && !op.supportsTarget(Targets.Chisel)) false
     else if (op.opName != "Accel") false
     else true
   }

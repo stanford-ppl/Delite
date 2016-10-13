@@ -28,6 +28,7 @@ object Config {
   var numCuda: Int = getProperty("delite.cuda", "0").toInt        /* cuda target threads */
   var numOpenCL: Int = getProperty("delite.opencl", "0").toInt    /* opencl target threads */
   var numMaxJ: Int = getProperty("delite.maxj", "0").toInt    /* maxj target threads */
+  var numChisel: Int = getProperty("delite.chisel", "0").toInt    /* chisel target threads */
   val numSlaves: Int = getProperty("delite.slaves", "0").toInt
   val pinThreads: Boolean = getProperty("delite.pinThreads", "false") != "false"
   val clusterMode: Int = if (getProperty("delite.cluster.isSlave", "false") != "false") 2 else if (numSlaves > 0) 1 else 0
