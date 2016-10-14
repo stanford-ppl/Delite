@@ -50,6 +50,7 @@ class NBufReg extends KernelLib {
   DFEVar[] curBuf;
   DFEType type;
   SMIO sm;
+  String smname;
   int bits;
   int n;
 
@@ -57,6 +58,7 @@ class NBufReg extends KernelLib {
 
   private void common (DFEType ttype, String smname, int par, Bits rstVal, DFEVar rst_signal, int nn) {
     this.bits = ttype.getTotalBits();
+    this.smname = smname;
     n = nn;
     int bits = MathUtils.bitsToAddress(n);
     int bits_w_bcast = MathUtils.bitsToAddress(n+1);
@@ -97,13 +99,21 @@ class NBufReg extends KernelLib {
       r[i] = new DelayLib(this, wenMux[i], wdataMux[i], rst_en, rstVal);
       rdataMux[i] = r[i].q[0];      
     }
-
     // Kindly finish MUX-ing in one cycle
     optimization.pushPipeliningFactor(0);
     for (int i = 0; i < n; i++) {
       rdataPort[i] = control.mux(curBuf[i].cast(dfeUInt(bits)), rdataMux);
     }
     optimization.popPipeliningFactor();
+    // if (smname == "Reg2009_1") {
+    //   debug.simPrintf("    curbufs %d %d %d\n    wdataMux %d %d %d\n    wen %d %d %d\n    rdataMux %d %d %d\n    rdataPort %d %d %d\n", 
+    //     curBuf[0], curBuf[1], curBuf[2],
+    //     wdataMux[0], wdataMux[1], wdataMux[2],
+    //     wenMux[0], wenMux[1], wenMux[2],
+    //     rdataMux[0], rdataMux[1], rdataMux[2],
+    //     rdataPort[0], rdataPort[1], rdataPort[2]);
+    // }
+
 
     // debug.simPrintf("curBuf %d %d %d\nwdataPort %d %d %d\nwenPort %d %d %d\nwenMux %d %d %d\nwdataMux %d %d %d\nrdataMux %d %d %d\nrdataPort %d %d %d\n",
     //   curBuf[0], curBuf[1], curBuf[2],
@@ -124,7 +134,8 @@ class NBufReg extends KernelLib {
 
   NBufReg(KernelLib owner, int bits, String smname, int par, int rstVal, int n) {
     super(owner);
-    common(dfeRawBits(bits), smname, par, Bits.allZeros(bits), dfeBool().newInstance(this), n);
+    long longVal = rstVal;
+    common(dfeRawBits(bits), smname, par, new Bits(bits, longVal), dfeBool().newInstance(this), n);
   }
 
   DFEVar read(int port) {
@@ -159,13 +170,13 @@ class NBufReg extends KernelLib {
   void connectUnreadPorts(int[] port) {
     // Used for NBuf brams
   }
-  void connectUntouchedPorts(int[] port) {
-    for (int i = 0; i < port.length; i++) {
-      stageDone[port[i]] <== constant.var(false);
-      stageEn[port[i]] <== constant.var(false);
-    }
-    sm.connectInput("numBlanks", constant.var(dfeUInt(MathUtils.bitsToAddress(n+1)), port.length)); // TODO: Use length of consecutive ports before final or else nasty bugs will appear!!!!
-  }
+  // void connectUntouchedPorts(int[] port) {
+  //   for (int i = 0; i < port.length; i++) {
+  //     stageDone[port[i]] <== constant.var(false);
+  //     stageEn[port[i]] <== constant.var(false);
+  //   }
+  //   sm.connectInput("numBlanks", constant.var(dfeUInt(MathUtils.bitsToAddress(n+1)), port.length)); // TODO: Use length of consecutive ports before final or else nasty bugs will appear!!!!
+  // }
 
   void connectStageCtrl(DFEVar done, DFEVar en, int[] port) {
     for (int i = 0; i < port.length; i++) {

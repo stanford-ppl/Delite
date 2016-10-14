@@ -23,7 +23,7 @@ class NBufSM extends KernelStateMachine {
   // State IO
   private final DFEsmInput[] stageDone;
   private final DFEsmInput[] stageEn;
-  private final DFEsmInput numBlanks;
+  // private final DFEsmInput numBlanks;
   private final DFEsmInput broadcast;
   private final DFEsmOutput[] curBuf;
 
@@ -53,13 +53,14 @@ class NBufSM extends KernelStateMachine {
     curBufFF = new DFEsmStateValue[n];
     stageEn = new DFEsmInput[hack_max_bits];
     broadcast = io.input("broadcast", wireType);
-    numBlanks = io.input("numBlanks", counterType);
+    // numBlanks = io.input("numBlanks", counterType);
     for (int i = 0; i < n; i++) {
       stageDone[i] = io.input("stageDone" + i, wireType);
       curBuf[i] = io.output("curBuf" + i, counterType);
       curBufFF[i] = state.value(counterType, nn-i-1); // Reverse order;
       stageEn[i] = io.input("stageEn" + i, wireType);
     }
+
     for (int i = n; i < hack_max_bits; i++) {
       stageDone[i] = io.input("stageDone" + i, wireType);
       stageEn[i] = io.input("stageEn" + i, wireType);
@@ -112,19 +113,19 @@ class NBufSM extends KernelStateMachine {
       CASE(States.RESET) {
         // debug.simPrintf("\n\nSWAPPING BUFFERS\n\n");
         IF (stageEnFF === (1 << (n-1))) {
-          IF (drainIterFF >= numBlanks) {
-            drainIterFF.next <== 0;
-            // If only last stage was enabled on this iter, then metapipe is done, do not inc
-          } ELSE {
-            drainIterFF.next <== drainIterFF + 1;
-            for (int i = 0; i < n; i++) {
-              IF (curBufFF[i] === n-1) {
-                curBufFF[i].next <== 0;
-              } ELSE {
-                curBufFF[i].next <== curBufFF[i] + 1;
-              }          
-            }            
-          }
+          // IF (drainIterFF >= numBlanks) {
+            // drainIterFF.next <== 0;
+            // // If only last stage was enabled on this iter, then metapipe is done, do not inc
+          // } ELSE {
+            // drainIterFF.next <== drainIterFF + 1;
+            // for (int i = 0; i < n; i++) {
+            //   IF (curBufFF[i] === n-1) {
+            //     curBufFF[i].next <== 0;
+            //   } ELSE {
+            //     curBufFF[i].next <== curBufFF[i] + 1;
+            //   }          
+            // }            
+          // }
         } ELSE {
           for (int i = 0; i < n; i++) {
             IF (curBufFF[i] === n-1) {
