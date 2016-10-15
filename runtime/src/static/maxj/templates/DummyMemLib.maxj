@@ -120,6 +120,12 @@ class DummyMemLib extends KernelLib {
       stream[i] <== Reductions.streamHold(dstAddr[i].cast(type) ^ dstData[i].cast(type), en & globalEn);
     }
   }
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, DFEVar globalEn, int[] trash) {
+    for (int i=0; i<banks[1]; i++) {
+      System.out.println("i = " + i);
+      stream[i] <== Reductions.streamHold(dstAddr[i].cast(type) ^ dstData[i].cast(type), en[i] & globalEn);
+    }
+  }
 
   void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en, DFEVar globalEn, int touch, int[] trash) {
     for (int i=0; i < banks[1]; i++) {

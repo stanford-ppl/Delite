@@ -441,6 +441,14 @@ class BramLib extends KernelLib {
     }
   }
 
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> data, DFEVar wen) {
+    DFEVector<DFEVar> en = new DFEVectorType<DFEVar>(dfeBool(), dstAddr.getSize()).newInstance(this);
+    for (int i = 0; i < dstAddr.getSize(); i++) {
+      en[i] <== wen;
+    }
+    connectWport(dstAddr, data, en);
+  }
+
   void connectWport(DFEVar dstAddr, DFEVar data, DFEVar en) {
     if (banks[1] == 1) {
       m[0].write(dstAddr, data, en);
