@@ -867,6 +867,14 @@ class BramLib extends KernelLib {
     DFEVar sub_rowAddr0 = rowAddr(dstAddr0);
     this.ensemble[bank].connectWport(sub_rowAddr0, dstAddr1, data, en, port);
   }
+  void connectBankWport(int bank, DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> data, DFEVector<DFEVar> en, DFEVar globalEn, int[] port) {
+    DFEVector<DFEVar> wen = new DFEVectorType<DFEVar>(dfeBool(), en.getSize()).newInstance(this);
+    for (int i = 0; i < en.getSize(); i++) {
+      wen[i] <== en[i] & globalEn;
+    }
+    DFEVar sub_rowAddr0 = rowAddr(dstAddr0);
+    this.ensemble[bank].connectWport(sub_rowAddr0, dstAddr1, data, wen, port);
+  }
 
   void connectBankWport(int bank, DFEVector<DFEVar> dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> data, DFEVector<DFEVar> en, int[] port) {
     System.out.printf("BankWport disallowed for column-major writes!");
