@@ -212,7 +212,7 @@ class GatherLib extends KernelLib {
     CONNECT OUTPUTS
     */
     isLdSt <== gatherCnt > 0 & ~all_done;
-    done <== stream.offset(all_done, -doneOffset);
+    done <== stream.offset(all_done, -1-doneOffset);
     waddr <== wraddr;
     wdata <== io.input(streamName + "_0", wdata.getType(), (stream_en & stream.offset(~streamDone, -1) & stream.offset(~streamDone, -2) & ~stopCond));
     wen <== wren_mask & stream_en & stream.offset(~streamDone, -1) & stream.offset(~streamDone, -2);
@@ -410,7 +410,7 @@ class GatherLib extends KernelLib {
     CONNECT OUTPUTS
     */
     isLdSt <== gatherCnt > 0 & ~all_done;
-    done <== stream.offset(all_done, -doneOffset);
+    done <== stream.offset(all_done, -1-doneOffset);
     waddr <== wraddr;
     wdata <== io.input(streamName + "_" + worker, wdata.getType(), (stream_en & stream.offset(~streamDone, -1) & stream.offset(~streamDone, -2) & ~stopCond));
     wen <== wren_mask & stream_en & stream.offset(~streamDone, -1) & stream.offset(~streamDone, -2);

@@ -204,7 +204,7 @@ class ScatterLib extends KernelLib {
     CONNECT OUTPUTS
     */
     isLdSt <== scatterCnt > 0 & ~all_done;
-    done <== stream.offset(all_done, -doneOffset);
+    done <== stream.offset(all_done, -1-doneOffset);
     // debug.simPrintf(~scatter_ctr_en, "\n[cmd %d, strm_en %d, "
     //               + "streamingdata %f (%d), dst %d]\n"
     //               + "maskrd %d @ %d, addrRd %d @ %d, burst_offsetRd %d @ %d\n",
@@ -403,7 +403,7 @@ class ScatterLib extends KernelLib {
     CONNECT OUTPUTS
     */
     isLdSt <== scatterCnt > 0 & ~all_done;
-    done <== stream.offset(all_done, -doneOffset);
+    done <== stream.offset(all_done, -1-doneOffset);
     // debug.simPrintf(~scatter_ctr_en, "\n[cmd %d, strm_en %d, "
     //               + "streamingdata %f (%d), dst %d]\n"
     //               + "maskrd %d @ %d, addrRd %d @ %d, burst_offsetRd %d @ %d\n",
