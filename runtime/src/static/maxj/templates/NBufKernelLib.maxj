@@ -87,17 +87,21 @@ class NBufKernelLib extends KernelLib {
     this.all_same = all_samee;
     this.row_major = row_majorr;
     this.wpar = wparr;
+    int biggestRpar = -1;
+    for (int i = 0; i < rparrs.length; i++) { // Bullshit that this is the only way to do this
+      if (rparrs[i] > biggestRpar) {biggestRpar = rparrs[i];}
+    }
     if (all_same) {
       if (row_major[0]) {
         this.rpar0 = 1;
-        this.rpar1 = rparr;
+        this.rpar1 = biggestRpar;
       } else {
-        this.rpar0 = rparr;
+        this.rpar0 = biggestRpar;
         this.rpar1 = 1;      
       }
     } else {
-      this.rpar0 = rparr;
-      this.rpar1 = rparr;            
+      this.rpar0 = biggestRpar;
+      this.rpar1 = biggestRpar;
     }
     this.n = nn;
     this.depth = size0 * size1;
