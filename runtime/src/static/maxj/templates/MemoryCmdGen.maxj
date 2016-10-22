@@ -126,7 +126,7 @@ class MemoryCmdGenLib extends KernelLib {
 
     DFEVar burstAddr = base + getNumberOfBursts(offset, wdata[0].getType()).cast(dfeUInt(32));
 
-    DFEVar requires_burst = aligned ? constant.var(true) : checkNewBurst(offset, realSize, wdata[0].getType());
+    // DFEVar requires_burst = aligned ? constant.var(true) : checkNewBurst(offset, realSize, wdata[0].getType());
 
     Count.Params controlCountParams = control.count.makeParams(16)
                               .withEnable(memStart)
@@ -137,7 +137,7 @@ class MemoryCmdGenLib extends KernelLib {
     DFEVar counterWrap = controlCounter.getCount() === delay-1;
     memDone <== stream.offset(counterWrap, -1);
 
-    DFEVar ctrl = memStart & (controlCounter.getCount() === 0) & requires_burst;
+    DFEVar ctrl = memStart & (controlCounter.getCount() === 0) & (size > 0);// & requires_burst;
     DFEVar len = getNumberOfBursts(size, wdata[0].getType()).cast(dfeUInt(8));
     DFEVar inc = constant.var(dfeUInt(8), 1);
     DFEVar stream = constant.var(dfeUInt(1), 0);

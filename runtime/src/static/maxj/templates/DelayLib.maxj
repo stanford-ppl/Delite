@@ -48,13 +48,13 @@ class DelayLib extends KernelLib {
     );
   }
 
-  public DelayLib(KernelLib owner, int bits, int rstVal) {
+  public DelayLib(KernelLib owner, int bits, long rstVal) {
     super(owner);
     common(
       dfeBool().newInstance(this),
       new DFEVectorType<DFEVar>(dfeRawBits(bits), 1).newInstance(this),
       dfeBool().newInstance(this),
-      Bits.allZeros(bits)
+      new Bits(bits, rstVal)
       );
   }
 
