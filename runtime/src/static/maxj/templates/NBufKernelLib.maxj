@@ -300,7 +300,8 @@ class NBufKernelLib extends KernelLib {
     boolean[] row_major, int wpar, int rpar,
     boolean samepar, int[] rparrs) {
     super(owner);
-    common(smname, size0, size1, type, new int[] {1,banks}, new int[] {1,strides}, n, all_same, row_major, wpar, rpar, samepar, rparrs);
+    int patched_banks = Math.max(Math.max(wpar, rpar), banks); // Hotfix to bug where 1D tile loads are considered random access
+    common(smname, size0, size1, type, new int[] {1,patched_banks}, new int[] {1,strides}, n, all_same, row_major, wpar, rpar, samepar, rparrs);
   }
 
   DFEVar connectRport(DFEVar srcAddr, int[] p) {
@@ -338,22 +339,43 @@ class NBufKernelLib extends KernelLib {
   }
 
   DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr0, DFEVar srcAddr1, int[] p) {
-    DFEVector<DFEVar> rdataVec = new DFEVectorType<DFEVar>(this.type, this.rpar0).newInstance(this);
-    for (int j = 0; j < this.rpar0; j++) {
-      raddrPort0[j][p[0]] <== srcAddr0[j];
-      rdataVec[j] <== rdataPort[j][p[0]];
-    }
-    if (all_same) {
-      raddrPort1[0][p[0]] <== srcAddr1;
-    } else {
-      raddrPort1V[p[0]] <== srcAddr1;
-      // Dummy connect the vertical reads
-      for (int j = 0; j < this.rpar1; j++) {
-        raddrPort1[j][p[0]] <== constant.var(dfeInt(32), j);
+    if (srcAddr0.getSize() > this.rpar0) { // TODO: This branch fixes matmult_outer, hack because it is rowmajor read with redundant row addresses
+      DFEVector<DFEVar> rdataVec = new DFEVectorType<DFEVar>(this.type, srcAddr0.getSize()).newInstance(this);
+      raddrPort0[0][p[0]] <== srcAddr0[0];
+      for (int j = 0; j < srcAddr0.getSize(); j++) {
+        rdataVec[j] <== rdataPort[0][p[0]];
       }
-      raddrPort0H[p[0]] <== constant.var(dfeInt(32), 0);
+      if (all_same) {
+        for (int j = 0; j < this.rpar1; j++) {
+          raddrPort1[j][p[0]] <== srcAddr1;   
+        }
+      } else {
+        raddrPort1V[p[0]] <== srcAddr1;
+        // Dummy connect the vertical reads
+        for (int j = 0; j < this.rpar1; j++) {
+          raddrPort1[j][p[0]] <== constant.var(dfeInt(32), j);
+        }
+        raddrPort0H[p[0]] <== constant.var(dfeInt(32), 0);
+      }
+      return rdataVec;      
+    } else { // TODO: This branch fixes matmult_outer
+      DFEVector<DFEVar> rdataVec = new DFEVectorType<DFEVar>(this.type, this.rpar0).newInstance(this);
+      for (int j = 0; j < this.rpar0; j++) {
+        raddrPort0[j][p[0]] <== srcAddr0[j];
+        rdataVec[j] <== rdataPort[j][p[0]];
+      }
+      if (all_same) {
+        raddrPort1[0][p[0]] <== srcAddr1;
+      } else {
+        raddrPort1V[p[0]] <== srcAddr1;
+        // Dummy connect the vertical reads
+        for (int j = 0; j < this.rpar1; j++) {
+          raddrPort1[j][p[0]] <== constant.var(dfeInt(32), j);
+        }
+        raddrPort0H[p[0]] <== constant.var(dfeInt(32), 0);
+      }
+      return rdataVec;      
     }
-    return rdataVec;      
   }
 
   // TODO: This will need to change when we allow readers of varying par
