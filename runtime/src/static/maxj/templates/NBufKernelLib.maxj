@@ -398,35 +398,51 @@ class NBufKernelLib extends KernelLib {
   // }
 
   void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, int[] p) {
-    for (int j = 0; j < this.wpar; j++) {
-      wdataPort[j][p[0]] <== dstData[j];
-      waddrPort1[j][p[0]] <== dstAddr[j];
-      wenPort[j][p[0]] <== en[j];
+    if (p.length == 1) {
+      for (int j = 0; j < this.wpar; j++) {
+        wdataPort[j][p[0]] <== dstData[j];
+        waddrPort1[j][p[0]] <== dstAddr[j];
+        wenPort[j][p[0]] <== en[j];
+      }
+    } else {
+      connectBroadcastWport(dstAddr,dstData,en,p);
     }
   }
   void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, DFEVar globalEn, int[] p) {
-    for (int j = 0; j < this.wpar; j++) {
-      wdataPort[j][p[0]] <== dstData[j];
-      waddrPort1[j][p[0]] <== dstAddr[j];
-      wenPort[j][p[0]] <== en[j] & globalEn;
+    if (p.length == 1) {
+      for (int j = 0; j < this.wpar; j++) {
+        wdataPort[j][p[0]] <== dstData[j];
+        waddrPort1[j][p[0]] <== dstAddr[j];
+        wenPort[j][p[0]] <== en[j] & globalEn;
+      }
+    } else {
+      connectBroadcastWport(dstAddr, dstData, en, globalEn, p);
     }
   }
 
   void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, int[] p) {
-    for (int j = 0; j < this.wpar; j++) {
-      wdataPort[j][p[0]] <== dstData[j];
-      waddrPort1[j][p[0]] <== dstAddr1[j];
-      wenPort[j][p[0]] <== en[j];
+    if (p.length == 1) {
+      for (int j = 0; j < this.wpar; j++) {
+        wdataPort[j][p[0]] <== dstData[j];
+        waddrPort1[j][p[0]] <== dstAddr1[j];
+        wenPort[j][p[0]] <== en[j];
+      }
+      waddrPort0[0][p[0]] <== dstAddr0;
+    } else {
+      connectBroadcastWport(dstAddr0, dstAddr1, dstData, en, p);
     }
-    waddrPort0[0][p[0]] <== dstAddr0;
   }
   void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, DFEVar globalEn, int[] p) {
-    for (int j = 0; j < this.wpar; j++) {
-      wdataPort[j][p[0]] <== dstData[j];
-      waddrPort1[j][p[0]] <== dstAddr1[j];
-      wenPort[j][p[0]] <== en[j] & globalEn;
+    if (p.length == 1) {
+      for (int j = 0; j < this.wpar; j++) {
+        wdataPort[j][p[0]] <== dstData[j];
+        waddrPort1[j][p[0]] <== dstAddr1[j];
+        wenPort[j][p[0]] <== en[j] & globalEn;
+      }
+      waddrPort0[0][p[0]] <== dstAddr0;
+    } else {
+      connectBroadcastWport(dstAddr0, dstAddr1, dstData, en, globalEn, p);
     }
-    waddrPort0[0][p[0]] <== dstAddr0;
   }
 
   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, int[] p) {
@@ -437,16 +453,34 @@ class NBufKernelLib extends KernelLib {
   }
 
   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en, int[] p) {
-    wdataPort[0][p[0]] <== dstData;
-    waddrPort1[0][p[0]] <== dstAddr1;
-    waddrPort0[0][p[0]] <== dstAddr0;
-    wenPort[0][p[0]] <== en;
+    if (p.length == 1) {
+      wdataPort[0][p[0]] <== dstData;
+      waddrPort1[0][p[0]] <== dstAddr1;
+      waddrPort0[0][p[0]] <== dstAddr0;
+      wenPort[0][p[0]] <== en;
+    } else {
+      connectBroadcastWport(
+        dstAddr0,
+        new DFEVectorType<DFEVar>(dstAddr1.getType(), 1).newInstance(this, dstAddr1),
+        new DFEVectorType<DFEVar>(dstData.getType(), 1).newInstance(this, dstData),
+        new DFEVectorType<DFEVar>(en.getType(), 1).newInstance(this, en),
+        p);
+    }
   }
   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en, DFEVar globalEn, int[] p) {
-    wdataPort[0][p[0]] <== dstData;
-    waddrPort1[0][p[0]] <== dstAddr1;
-    waddrPort0[0][p[0]] <== dstAddr0;
-    wenPort[0][p[0]] <== en & globalEn;
+    if (p.length == 1) {
+      wdataPort[0][p[0]] <== dstData;
+      waddrPort1[0][p[0]] <== dstAddr1;
+      waddrPort0[0][p[0]] <== dstAddr0;
+      wenPort[0][p[0]] <== en & globalEn;
+    } else {
+      connectBroadcastWport(
+        dstAddr0,
+        new DFEVectorType<DFEVar>(dstAddr1.getType(), 1).newInstance(this, dstAddr1),
+        new DFEVectorType<DFEVar>(dstData.getType(), 1).newInstance(this, dstData),
+        new DFEVectorType<DFEVar>(en.getType(), 1).newInstance(this, en),
+        globalEn, p);
+    }
   }
 
   void connectBroadcastWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, int[] p) {

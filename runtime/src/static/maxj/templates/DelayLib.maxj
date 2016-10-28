@@ -16,26 +16,51 @@ class DelayLib extends KernelLib {
   int bits;
   DFEVector<DFEVar> q;
 
-  void common(DFEVar en, DFEVector<DFEVar> d, DFEVar rst_en, Bits rstVal) {
-    this.en = en;
-    this.bits = d[0].getType().getTotalBits();
-    this.d = d;
-    this.rst_en = rst_en;
-    this.rstVal = rstVal;
+  int muxSize;
+  int muxInt;
+  DFEVar[] dVec;
+  DFEVar[] enVec;
 
-    q = Reductions.streamHold(d, en, rst_en, rstVal);
+  void common(DFEVar en, DFEVector<DFEVar> d, DFEVar rst_en, Bits rstVal, int muxSize) {
+    this.bits = d[0].getType().getTotalBits();
+    this.muxSize = muxSize;
+    this.rstVal = rstVal;
+    this.rst_en = rst_en;
+    this.muxInt = 0;
+
+    if (muxSize == 1) {
+      this.d = d;
+      this.en = en;
+    } else {
+      DFEVector<DFEVar> sel = new DFEVectorType<DFEVar>(dfeBool(), muxSize).newInstance(this); 
+      this.dVec = new DFEVar[muxSize];
+      this.enVec = new DFEVar[muxSize];
+      for (int i = 0; i < muxSize; i++) {
+        this.dVec[i] = d[0].getType().newInstance(this);
+        this.enVec[i] = dfeBool().newInstance(this);
+        sel[i] <== this.enVec[i];
+      }
+      // Kindly finish MUX-ing in one cycle
+      optimization.pushPipeliningFactor(0);
+      this.d = new DFEVectorType<DFEVar>(d[0].getType(), d.getSize()).newInstance(this, control.oneHotMux(sel.pack(), this.dVec));
+      this.en = control.oneHotMux(sel.pack(), this.enVec);
+      optimization.popPipeliningFactor();
+    }
+
+    q = Reductions.streamHold(this.d, this.en, rst_en, rstVal);
+
   }
 
   public DelayLib(KernelLib owner, DFEVar en, DFEVar d, DFEVar rst_en, Bits rstVal) {
     super(owner);
 
     DFEVector<DFEVar> d_vector = new DFEVectorType<DFEVar>(d.getType(), 1).newInstance(this, d);
-    common(en, d_vector, rst_en, rstVal);
+    common(en, d_vector, rst_en, rstVal, 1);
   }
 
   public DelayLib(KernelLib owner, DFEVar en, DFEVector<DFEVar> d, DFEVar rst_en, Bits rstVal) {
     super(owner);
-    common(en, d, rst_en, rstVal);
+    common(en, d, rst_en, rstVal, 1);
   }
 
   public DelayLib(KernelLib owner, DFEType t) {
@@ -44,7 +69,7 @@ class DelayLib extends KernelLib {
       dfeBool().newInstance(this),
       new DFEVectorType<DFEVar>(t, 1).newInstance(this),
       dfeBool().newInstance(this),
-      Bits.allZeros(t.getTotalBits())
+      Bits.allZeros(t.getTotalBits()), 1
     );
   }
 
@@ -54,7 +79,16 @@ class DelayLib extends KernelLib {
       dfeBool().newInstance(this),
       new DFEVectorType<DFEVar>(dfeRawBits(bits), 1).newInstance(this),
       dfeBool().newInstance(this),
-      new Bits(bits, rstVal)
+      new Bits(bits, rstVal), 1
+      );
+  }
+  public DelayLib(KernelLib owner, int bits, long rstVal, int muxSize) {
+    super(owner);
+    common(
+      dfeBool().newInstance(this),
+      new DFEVectorType<DFEVar>(dfeRawBits(bits), 1).newInstance(this),
+      dfeBool().newInstance(this),
+      new Bits(bits, rstVal), muxSize
       );
   }
 
@@ -64,24 +98,46 @@ class DelayLib extends KernelLib {
       dfeBool().newInstance(this),
       new DFEVectorType<DFEVar>(t, 1).newInstance(this),
       dfeBool().newInstance(this),
-      rstVal
+      rstVal, 1
     );
   }
 
   void write(DFEVar data) {
-    d <== d.getType().newInstance(this, data);
-    en <== constant.var(true);
+    if (this.muxSize == 1) {
+      d <== d.getType().newInstance(this, data);
+      en <== constant.var(true);      
+    } else {
+      this.dVec[muxInt] <== data;
+      this.enVec[muxInt] <== constant.var(true);
+      muxInt++;
+    }
+
   }
 
   void write(DFEVar data, DFEVar wen) {
-    d <== d.getType().newInstance(this, data);
-    en <== wen;
+    if (this.muxSize == 1) {
+      d <== d.getType().newInstance(this, data);
+      en <== wen;
+    } else {
+      this.dVec[muxInt] <== data;
+      this.enVec[muxInt] <== wen;
+      muxInt++;
+    }
+    
   }
 
   void write(DFEVar data, DFEVar wen, DFEVar rst) {
-    d <== d.getType().newInstance(this, data);
-    en <== wen;
-    rst_en <== rst;
+    if (this.muxInt == 0) {
+      rst_en <== rst; // TODO: Figure out how to | the reset signals togetha      
+    }
+    if (this.muxSize == 1) {
+      d <== d.getType().newInstance(this, data);
+      en <== wen;
+    } else {
+      this.dVec[muxInt] <== data;
+      this.enVec[muxInt] <== wen;
+      muxInt++;
+    }
   }
 
   void write(DFEVar data, DFEVar wen, DFEVar rst, int p) {
@@ -89,18 +145,33 @@ class DelayLib extends KernelLib {
   }
 
   void write(DFEVector<DFEVar> data) {
-    d <== data;
-    en <== constant.var(true);
+    if (this.muxSize == 1) {
+      d <== data;
+      en <== constant.var(true);
+    } else {
+      System.out.printf("ERROR: Not sure how to handle vector-write on a muxed-input reg");
+      System.exit(-1);
+    }
   }
 
   void write(DFEVector<DFEVar> data, DFEVar wen) {
-    d <== data;
-    en <== wen;
+    if (this.muxSize == 1) {
+      d <== data; 
+      en <== wen;
+    } else {
+      System.out.printf("ERROR: Not sure how to handle vector-write on a muxed-input reg");
+      System.exit(-1);
+    }
   }
 
   void write(DFEVector<DFEVar> data, DFEVar wen, DFEVar rst) {
-    d <== data;
-    en <== wen;
+    if (this.muxSize == 1) {
+      d <== data; 
+      en <== wen;
+    } else {
+      System.out.printf("ERROR: Not sure how to handle vector-write on a muxed-input reg");
+      System.exit(-1);
+    }
     rst_en <== rst;
   }
 
