@@ -79,6 +79,31 @@ class BramLib extends KernelLib {
           m[i] = new BoxedMem(this, type, depth/banks[1]);
         }
       }
+
+      if (muxSize > 1) {
+        muxAddrVec = new DFEVar[banks[1]][muxSize];
+        muxDataVec = new DFEVar[banks[1]][muxSize];
+        muxWenVec = new DFEVar[banks[1]][muxSize];
+        DFEVector<DFEVar> portAddr = new DFEVectorType<DFEVar>(dfeInt(32), banks[1]).newInstance(this);
+        DFEVector<DFEVar> portData = new DFEVectorType<DFEVar>(type, banks[1]).newInstance(this);
+        DFEVector<DFEVar> portWen = new DFEVectorType<DFEVar>(dfeBool(), banks[1]).newInstance(this);
+        DFEVector<DFEVar> sel = new DFEVectorType<DFEVar>(dfeBool(), muxSize).newInstance(this); 
+        for (int i = 0; i < muxSize; i++) {
+          for (int j = 0; j < banks[1]; j++) {
+            muxAddrVec[j][i] = dfeInt(32).newInstance(this);
+            muxDataVec[j][i] = type.newInstance(this);   
+            muxWenVec[j][i] = dfeBool().newInstance(this);       
+          }
+          sel[i] <== muxWenVec[0][i]; // Hardcode to first wen, because at least this one should be true if writing
+        }
+        for (int j = 0; j < banks[1]; j++) {
+          portAddr[j] <== control.oneHotMux(sel.pack(), muxAddrVec[j]);
+          portData[j] <== control.oneHotMux(sel.pack(), muxDataVec[j]);
+          portWen[j] <== control.oneHotMux(sel.pack(), muxWenVec[j]);
+        }
+        this.connectMuxWport(portAddr, portData, portWen);
+      }
+
     } else {
       this.num_libs = banks[0];
       if ((strides[0] % size1 != 0) | (size0 % banks[0] != 0)) {
@@ -86,35 +111,12 @@ class BramLib extends KernelLib {
       }
       ensemble = new BramLib[this.num_libs];
       for (int i = 0; i < this.num_libs; i++) {
-        ensemble[i] = new BramLib(this, size0/banks[0], size1, type, new int[] {1, banks[1]}, new int[] {1, strides[1]});
+        ensemble[i] = new BramLib(this, size0/banks[0], size1, type, new int[] {1, banks[1]}, new int[] {1, strides[1]}, muxSize);
       }
       this.contiguous_rows = size1 / strides[0];
     }
 
     // Connect mux to bram if this is a multiplexed write
-    if (muxSize > 1) {
-      muxAddrVec = new DFEVar[banks[1]][muxSize];
-      muxDataVec = new DFEVar[banks[1]][muxSize];
-      muxWenVec = new DFEVar[banks[1]][muxSize];
-      DFEVector<DFEVar> portAddr = new DFEVectorType<DFEVar>(dfeInt(32), banks[1]).newInstance(this);
-      DFEVector<DFEVar> portData = new DFEVectorType<DFEVar>(type, banks[1]).newInstance(this);
-      DFEVector<DFEVar> portWen = new DFEVectorType<DFEVar>(dfeBool(), banks[1]).newInstance(this);
-      DFEVector<DFEVar> sel = new DFEVectorType<DFEVar>(dfeBool(), muxSize).newInstance(this); 
-      for (int i = 0; i < muxSize; i++) {
-        for (int j = 0; j < banks[1]; j++) {
-          muxAddrVec[j][i] = dfeInt(32).newInstance(this);
-          muxDataVec[j][i] = type.newInstance(this);   
-          muxWenVec[j][i] = dfeBool().newInstance(this);       
-        }
-        sel[i] <== muxWenVec[0][i]; // Hardcode to first wen, because at least this one should be true if writing
-      }
-      for (int j = 0; j < banks[1]; j++) {
-        portAddr[j] <== control.oneHotMux(sel.pack(), muxAddrVec[j]);
-        portData[j] <== control.oneHotMux(sel.pack(), muxDataVec[j]);
-        portWen[j] <== control.oneHotMux(sel.pack(), muxWenVec[j]);
-      }
-      this.connectWport(portAddr, portData, portWen);
-    }
 
   }
 
@@ -434,9 +436,14 @@ class BramLib extends KernelLib {
     if (this.muxSize == 1) {
       connectWport(dstAddr,data,en);
     } else {
+      if (this.banks[1] > 1) {
+        System.out.println("There are multiplexed writers of different lengths on this bram!");
+        System.exit(-1);
+      }
       this.muxAddrVec[0][muxInt] <== dstAddr;
       this.muxDataVec[0][muxInt] <== data;
       this.muxWenVec[0][muxInt] <== en;
+
       muxInt++;
     }
   }
@@ -532,6 +539,11 @@ class BramLib extends KernelLib {
     if (this.muxSize == 1) {
       connectWport(dstAddr0, dstAddr1, dstData[0], en[0]);
     } else {
+      if (this.banks[1] > 1) {
+        System.out.println("There are multiplexed writers of different lengths on this bram!");
+        System.exit(-1);
+      }
+
       this.muxAddrVec[0][muxInt] <== dstAddr0 * constant.var(dstAddr0.getType(), this.size1) + dstAddr1;
       this.muxDataVec[0][muxInt] <== dstData[0];
       this.muxWenVec[0][muxInt] <== en[0];
@@ -543,6 +555,10 @@ class BramLib extends KernelLib {
     if (this.muxSize == 1) {
       connectWport(dstAddr0, dstAddr1, dstData[0], en[0] & globalEn);
     } else {
+      if (this.banks[1] > 1) {
+        System.out.println("There are multiplexed writers of different lengths on this bram!");
+        System.exit(-1);
+      }
       this.muxAddrVec[0][muxInt] <== dstAddr0 * constant.var(dstAddr0.getType(), this.size1) + dstAddr1;
       this.muxDataVec[0][muxInt] <== dstData[0];
       this.muxWenVec[0][muxInt] <== en[0] & globalEn;
@@ -559,7 +575,19 @@ class BramLib extends KernelLib {
     connectWport(dstAddr0, dstAddr1, data, en);
   }
   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar data, DFEVar en, DFEVar globalEn, int[] p) {
-    connectWport(dstAddr0, dstAddr1, data, en & globalEn);
+    if (this.muxSize == 1) {
+      connectWport(dstAddr0, dstAddr1, data, en & globalEn);
+    } else {
+      if (this.banks[1] > 1) {
+        System.out.println("There are multiplexed writers of different lengths on this bram!");
+        System.exit(-1);
+      }
+      this.muxAddrVec[0][muxInt] <== dstAddr0 * constant.var(dstAddr0.getType(), this.size1) + dstAddr1;
+      this.muxDataVec[0][muxInt] <== data;
+      this.muxWenVec[0][muxInt] <== en & globalEn;
+
+      muxInt++;
+    }
   }
 
   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar data, DFEVar en) {
@@ -650,13 +678,17 @@ class BramLib extends KernelLib {
 
   DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr) {
     DFEVar[] bank_local_rdata = new DFEVar[banks[1]];
-    if (banks[1] != srcAddr.getSize()) {
-      // System.out.printf("ERROR: #banks[1] = %d, Vector size = %d do not match!", banks[1], srcAddr.getSize());
-      // System.exit(-1);
-    }
-
-    // Redirect outputs to appropriate stream slots if necessary
-    if (banks[1] == 1){
+    if (banks[1] == 1 & srcAddr.getSize() > 1) { // Assume this is a broadcast
+      DFEVar bank_addr = bankAndLocalAddr(srcAddr[0], AddrMode.BANK);
+      DFEVar bank_local_addr = bankAndLocalAddr(srcAddr[0], AddrMode.LOCAL);
+      bank_local_rdata[0] = m[0].read(bank_local_addr);
+      DFEVectorType<DFEVar> vectorType = new DFEVectorType<DFEVar>(type, srcAddr.getSize());
+      DFEVector<DFEVar> outstream = vectorType.newInstance(this);
+      for (int i=0; i<srcAddr.getSize(); i++) {
+        outstream[i] <== bank_local_rdata[0];
+      }
+      return outstream;
+    } else if (banks[1] == 1){
       for (int i=0; i<banks[1]; i++) {
         DFEVar bank_addr = bankAndLocalAddr(srcAddr[i], AddrMode.BANK);
         DFEVar bank_local_addr = bankAndLocalAddr(srcAddr[i], AddrMode.LOCAL);
@@ -936,6 +968,7 @@ class BramLib extends KernelLib {
         this.muxDataVec[j][muxInt] <== dstData[j];
         this.muxWenVec[j][muxInt] <== en[j];
       }
+
       muxInt++;        
     }
   }
@@ -964,36 +997,82 @@ class BramLib extends KernelLib {
   }
 
   void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en) {
-    if (dstAddr.getSize() == 1) {
-      connectWport(dstAddr[0], dstData[0], en[0]);
-    } else {
-      if (banks[1] == 1) { // Not sure why there would ever be vectored input to 1-bank mem
-        for (int i=0; i<banks[1]; i++) {
-          DFEVar bank_local_addr = bankAndLocalAddr(dstAddr[i], AddrMode.LOCAL);
-          m[i].write(bank_local_addr, dstData[i], en[i]);
-        }
+    if (this.muxSize == 1) {
+      if (dstAddr.getSize() == 1) {
+        connectWport(dstAddr[0], dstData[0], en[0]);
       } else {
-        DFEVar[] dstAddr_array = new DFEVar[banks[1]];
-        DFEVar[] dstData_array = new DFEVar[banks[1]];
-        DFEVar[] dstEn_array = new DFEVar[banks[1]];
-        for (int i=0; i<banks[1]; i++) {
-          dstAddr_array[i] = dstAddr[i];
-          dstData_array[i] = dstData[i];
-          dstEn_array[i] = en[i];
-        }
+        if (banks[1] == 1) { // Not sure why there would ever be vectored input to 1-bank mem
+          for (int i=0; i<banks[1]; i++) {
+            DFEVar bank_local_addr = bankAndLocalAddr(dstAddr[i], AddrMode.LOCAL);
+            m[i].write(bank_local_addr, dstData[i], en[i]);
+          }
+        } else {
+          DFEVar[] dstAddr_array = new DFEVar[banks[1]];
+          DFEVar[] dstData_array = new DFEVar[banks[1]];
+          DFEVar[] dstEn_array = new DFEVar[banks[1]];
+          for (int i=0; i<banks[1]; i++) {
+            dstAddr_array[i] = dstAddr[i];
+            dstData_array[i] = dstData[i];
+            dstEn_array[i] = en[i];
+          }
 
-        for (int i=0; i<banks[1]; i++) {
-          // All should have same rotation?  As long as we don't read over multiple rows
-          DFEVar bank_addr = bankAndLocalAddr(dstAddr[i], AddrMode.BANK);
-          DFEVar rotation = bankAndLocalAddr(dstAddr[i], AddrMode.ROWROTATION);
-          DFEVar effective_bank = bank_addr - rotation;
-          DFEVar select = effective_bank.slice(0, MathUtils.bitsToAddress(banks[1]));
-          DFEVar waddr = control.mux(select, dstAddr_array);
-          DFEVar wdata = control.mux(select, dstData_array);
-          DFEVar wen = control.mux(select, dstEn_array);
-          DFEVar bank_local_addr = bankAndLocalAddr(waddr, AddrMode.LOCAL);
-          m[i].write(bank_local_addr, wdata, wen);
+          for (int i=0; i<banks[1]; i++) {
+            // All should have same rotation?  As long as we don't read over multiple rows
+            DFEVar bank_addr = bankAndLocalAddr(dstAddr[i], AddrMode.BANK);
+            DFEVar rotation = bankAndLocalAddr(dstAddr[i], AddrMode.ROWROTATION);
+            DFEVar effective_bank = bank_addr - rotation;
+            DFEVar select = effective_bank.slice(0, MathUtils.bitsToAddress(banks[1]));
+            DFEVar waddr = control.mux(select, dstAddr_array);
+            DFEVar wdata = control.mux(select, dstData_array);
+            DFEVar wen = control.mux(select, dstEn_array);
+            DFEVar bank_local_addr = bankAndLocalAddr(waddr, AddrMode.LOCAL);
+            m[i].write(bank_local_addr, wdata, wen);
+          }
         }
+      }
+    } else {
+      for (int j = 0; j < this.banks[1]; j++) {
+        this.muxAddrVec[j][muxInt] <== dstAddr[j];
+        this.muxDataVec[j][muxInt] <== dstData[j];
+        this.muxWenVec[j][muxInt] <== en[j];
+      }
+      // System.out.println("connecting port " + muxInt + "\n");
+      // for (int k = 0; k < Thread.currentThread().getStackTrace().length; k++) {
+      //   System.out.println(Thread.currentThread().getStackTrace()[k].getFileName() + " " + Thread.currentThread().getStackTrace()[k].getLineNumber());
+      // } 
+
+      muxInt++;     
+    }
+  }
+
+  // Internal connection to MemLibs for muxed inputs
+  void connectMuxWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en) {
+    if (banks[1] == 1) { // Not sure why there would ever be vectored input to 1-bank mem
+      for (int i=0; i<banks[1]; i++) {
+        DFEVar bank_local_addr = bankAndLocalAddr(dstAddr[i], AddrMode.LOCAL);
+        m[i].write(bank_local_addr, dstData[i], en[i]);
+      }
+    } else {
+      DFEVar[] dstAddr_array = new DFEVar[banks[1]];
+      DFEVar[] dstData_array = new DFEVar[banks[1]];
+      DFEVar[] dstEn_array = new DFEVar[banks[1]];
+      for (int i=0; i<banks[1]; i++) {
+        dstAddr_array[i] = dstAddr[i];
+        dstData_array[i] = dstData[i];
+        dstEn_array[i] = en[i];
+      }
+
+      for (int i=0; i<banks[1]; i++) {
+        // All should have same rotation?  As long as we don't read over multiple rows
+        DFEVar bank_addr = bankAndLocalAddr(dstAddr[i], AddrMode.BANK);
+        DFEVar rotation = bankAndLocalAddr(dstAddr[i], AddrMode.ROWROTATION);
+        DFEVar effective_bank = bank_addr - rotation;
+        DFEVar select = effective_bank.slice(0, MathUtils.bitsToAddress(banks[1]));
+        DFEVar waddr = control.mux(select, dstAddr_array);
+        DFEVar wdata = control.mux(select, dstData_array);
+        DFEVar wen = control.mux(select, dstEn_array);
+        DFEVar bank_local_addr = bankAndLocalAddr(waddr, AddrMode.LOCAL);
+        m[i].write(bank_local_addr, wdata, wen);
       }
     }
   }
