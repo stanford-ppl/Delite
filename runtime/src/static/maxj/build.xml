@@ -8,6 +8,7 @@
 	<property environment="env"/>
 	<property name="kernellibs" location="maxj/src/kernels"/>
 	<property name="templates" location="maxj/src/static/templates"/>
+	<property name="templates/conv" location="maxj/src/static/templates/conv"/>
 	<property name="kernel" location="maxj/src/static/"/>
 	<property name="build" location="bin"/>
 	<property name="target" value="1.6"/>
@@ -36,6 +37,9 @@
 		<maxjcompiler listfiles="no" failonerror="true" debug="true" debuglevel="${debuglevel}" source="${source}" target="${target}" srcdir="${templates}" destdir="${build}">
 			<classpath refid="maxcompiler_classpath"/>
 		</maxjcompiler>
+                <maxjcompiler listfiles="no" failonerror="true" debug="true" debuglevel="${debuglevel}" source="${source}" target="${target}" srcdir="${templates/conv}" destdir="${build}">
+                        <classpath refid="maxcompiler_classpath"/>
+                </maxjcompiler>
 		<echo message="Compiling kernel"/>
 		<maxjcompiler listfiles="no" failonerror="true" debug="true" debuglevel="${debuglevel}" source="${source}" target="${target}" srcdir="${kernel};${kernellibs}" destdir="${build}">
 			<classpath refid="maxcompiler_classpath"/>

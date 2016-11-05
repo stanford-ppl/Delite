@@ -1,0 +1,94 @@
+/**
+ * ReadWriteSM
+ * Summary: FSM that reads or writes for a multiple of 384 bytes, or e.g. 96 floats (keeps enable high for that long)
+ */
+
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmInput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmOutput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateEnum;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
+import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
+import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+
+
+class ReadWriteSM extends KernelStateMachine {
+ 
+  int image_size;
+ 
+  //states
+  enum States {
+    RUN,
+    ADJUST,
+    DONE
+  }
+
+  // Constants
+
+  private final DFEsmInput in_en;
+  private final DFEsmInput real_len;    // Multiple of 384 (e.g. if image_size=7x7=49 floats, this is 96)
+  private final DFEsmOutput out_en;
+  
+  // State storage
+  private final DFEsmStateEnum<States> stateFF;
+  private final DFEsmStateValue cnt1;
+  private final DFEsmStateValue cnt2;
+
+
+  public ReadWriteSM(KernelLib owner, int _image_size) {
+    super(owner);
+    
+    image_size = _image_size;
+
+    // Declare all types required to wire state machine
+    DFEsmValueType counterType = dfeUInt(32);   // SHADJIS TODO: optimize bitwidth to match real_len size
+    DFEsmValueType wireType = dfeBool();
+ 
+    real_len = io.input("real_len", counterType);
+    in_en = io.input("in_en", wireType);  
+    out_en = io.output("out_en", wireType);  
+
+    //initial state
+    stateFF = state.enumerated(States.class, States.RUN);
+    cnt1 = state.value(counterType, 0);
+    cnt2 = state.value(counterType, 0);
+  }
+
+  @Override
+  protected void nextState() {
+    
+    SWITCH(stateFF) {
+      CASE(States.RUN) {
+        cnt2.next <== image_size;
+        IF (in_en) {
+          IF (cnt1 === image_size-1) {
+            stateFF.next <== States.ADJUST;
+          }
+          cnt1.next <== cnt1 + 1;
+        }
+      }
+      CASE(States.ADJUST) {
+        IF (cnt2 >= (real_len-1)) {
+          stateFF.next <== States.DONE;
+        }
+        cnt2.next <== cnt2 + 1;
+      }
+      CASE(States.DONE) {
+        stateFF.next <== States.RUN;    // Start again. SHADJIS TODO: Can go directly from ADJUST to RUN and save 1 cycle
+        cnt1.next <== 0;
+        cnt2.next <== 0;
+      }
+    }
+  }
+  
+  @Override
+  protected void outputFunction() {
+    out_en <== (stateFF === States.RUN & in_en) | 
+              (stateFF === States.ADJUST & cnt2 < real_len);
+  }
+
+}

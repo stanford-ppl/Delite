@@ -1,0 +1,119 @@
+/**
+ * ShiftRegFSM
+ * Summary:
+ *  - FSM for shift register, keeps track of whether SR is filling or ready to process
+ *  - Also outputs a counter which is the address to read from the current linebuffer BRAM
+ *      - note: this counter could be a maxj counter instead in the shift reg lib
+ */
+
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmInput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmOutput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateEnum;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
+import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
+import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+
+
+
+class ShiftRegFSM extends KernelStateMachine {
+
+  // States
+  enum States {
+    INITIAL_IDLE_STATE,
+    WAITING_FOR_LINEBUFS_TO_FILL,
+    INITIALIZING,
+    PROCESSING
+  }
+
+  // Inputs/Outputs
+  private final DFEsmInput datapath_enable;
+  private final DFEsmInput muxsel_wrap;
+  private final DFEsmInput done_processing_psums;
+  private final DFEsmOutput initializing_shift_reg;
+  private final DFEsmOutput processing_phase;
+  // private final DFEsmOutput initial_idle_state;
+  private final DFEsmOutput linebuf_read_address;
+  
+  // State Storage
+  private final DFEsmStateEnum<States> current_state;
+  private final DFEsmStateValue linebuf_read_address_internal;
+  
+  // Parameters to keep track of shift register capacity
+  int k;
+  int s;
+  int bit_width_linebuf_address;
+
+  public ShiftRegFSM(KernelLib owner, int _k, int _s, int _bit_width_linebuf_address) {
+    super(owner);
+    k = _k;
+    s = _s;
+    bit_width_linebuf_address = _bit_width_linebuf_address;
+    
+    // Declare all types required to wire state machine
+    DFEsmValueType boolType = dfeBool();
+    DFEsmValueType uintType = dfeUInt(bit_width_linebuf_address);
+    
+    datapath_enable = io.input("datapath_enable", boolType);
+    muxsel_wrap = io.input("muxsel_wrap", boolType);
+    done_processing_psums = io.input("done_processing_psums", boolType);
+    initializing_shift_reg = io.output("initializing_shift_reg", boolType);  
+    processing_phase = io.output("processing_phase", boolType);  
+    // initial_idle_state = io.output("initial_idle_state", boolType);  
+    linebuf_read_address = io.output("linebuf_read_address", uintType);  
+
+    //initial state
+    // current_state = state.enumerated(States.class, States.WAITING_FOR_LINEBUFS_TO_FILL);
+    current_state = state.enumerated(States.class, States.INITIAL_IDLE_STATE);
+    linebuf_read_address_internal = state.value(uintType, 0);
+  }
+
+  @Override
+  protected void nextState() {
+
+    SWITCH(current_state) {
+      CASE(States.INITIAL_IDLE_STATE) { // SHADJIS TODO: can maybe remove this state, was needed since dp enable was random 1st cycle (offset -1) but no longer true
+        current_state.next <== States.WAITING_FOR_LINEBUFS_TO_FILL;
+      }
+      CASE(States.WAITING_FOR_LINEBUFS_TO_FILL) {
+        IF (datapath_enable) {
+          current_state.next <== States.INITIALIZING;
+          linebuf_read_address_internal.next <== 0; // SHADJIS TODO: Could this be 1? Save 1 cycle?
+        }
+      }
+      CASE(States.INITIALIZING) {
+        linebuf_read_address_internal.next <== linebuf_read_address_internal + 1;
+        IF (linebuf_read_address_internal === ((k + s - 1)/s - 1)) {
+          current_state.next <== States.PROCESSING;
+        }
+      }
+      CASE(States.PROCESSING) {
+        IF (muxsel_wrap) {
+          linebuf_read_address_internal.next <== linebuf_read_address_internal + 1;
+        }
+        IF (done_processing_psums) {
+          // SHADJIS TODO: ideally would go directly to WAITING_FOR_LINEBUFS_TO_FILL and save a 
+          // cycle here, but done_processing_psums is delayed 1 cycle into global FSM so datapath
+          // enable stays high 1 cycle extra, and therefore cannot go directly to WAITING_FOR_LINEBUFS_TO_FILL
+          // (will exit that state immediately due to delay on datapath_enable)
+          current_state.next <== States.INITIAL_IDLE_STATE;
+
+          linebuf_read_address_internal.next <== 0;
+        }
+      }
+    }
+  }
+  
+  @Override
+  protected void outputFunction() {
+    // initial_idle_state <== (current_state === States.INITIAL_IDLE_STATE); // Only need since 1 tick delay on everything since comb loops
+    initializing_shift_reg <== (current_state === States.INITIALIZING);
+    processing_phase <== (current_state === States.PROCESSING) & ~done_processing_psums;
+    linebuf_read_address <== linebuf_read_address_internal;
+  }
+
+}
