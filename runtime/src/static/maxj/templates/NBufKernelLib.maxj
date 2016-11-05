@@ -43,8 +43,8 @@ class NBufKernelLib extends KernelLib {
   DFEVar[] stageEn; // For tracking which stages were active on this iteration
   DFEVar[][] wdataPort;
   DFEVar[][] wdataMux;
-  DFEVar[] wenMux;
-  DFEVar[] wenPort;
+  DFEVar[][] wenMux;
+  DFEVar[][] wenPort;
   DFEVar[] curBuf;
   DFEVar[][] rdataMux;
   DFEVar[][] rdataMuxV;
@@ -81,22 +81,27 @@ class NBufKernelLib extends KernelLib {
     DFEType ttype, int[] banks, int[] strides, int nn, 
     boolean all_samee,
     boolean[] row_majorr, 
-    int wparr, int rparr) {
+    int wparr, int rparr,
+    boolean samepar, int[] rparrs) {
 
     this.all_same = all_samee;
     this.row_major = row_majorr;
     this.wpar = wparr;
+    int biggestRpar = -1;
+    for (int i = 0; i < rparrs.length; i++) { // Bullshit that this is the only way to do this
+      if (rparrs[i] > biggestRpar) {biggestRpar = rparrs[i];}
+    }
     if (all_same) {
       if (row_major[0]) {
         this.rpar0 = 1;
-        this.rpar1 = rparr;
+        this.rpar1 = biggestRpar;
       } else {
-        this.rpar0 = rparr;
+        this.rpar0 = biggestRpar;
         this.rpar1 = 1;      
       }
     } else {
-      this.rpar0 = rparr;
-      this.rpar1 = rparr;            
+      this.rpar0 = biggestRpar;
+      this.rpar1 = biggestRpar;
     }
     this.n = nn;
     this.depth = size0 * size1;
@@ -117,8 +122,8 @@ class NBufKernelLib extends KernelLib {
     stageEn = new DFEVar[n];
     wdataPort = new DFEVar[wpar][n+1];
     wdataMux = new DFEVar[wpar][n];
-    wenMux = new DFEVar[n];
-    wenPort = new DFEVar[n+1];
+    wenMux = new DFEVar[wpar][n];
+    wenPort = new DFEVar[wpar][n+1];
     waddrPort1 = new DFEVar[wpar][n+1]; 
     waddrMux1 = new DFEVar[wpar][n];
     waddrPort0 = new DFEVar[1][n+1]; // TODO: Just assume no colmajor writes??
@@ -143,8 +148,8 @@ class NBufKernelLib extends KernelLib {
     for (int i = 0; i < n; i++) {
       stageDone[i] = dfeBool().newInstance(this);
       stageEn[i] = dfeBool().newInstance(this);
-      wenPort[i] = dfeBool().newInstance(this);
       for (int j = 0; j < wpar; j++) {
+        wenPort[j][i] = dfeBool().newInstance(this);
         wdataPort[j][i] = type.newInstance(this); // TODO: Decide which direction this belongs in based on stride
         waddrPort1[j][i] = dfeInt(32).newInstance(this);
       }
@@ -172,16 +177,16 @@ class NBufKernelLib extends KernelLib {
     for (int j = 0; j < wpar; j++) {
       wdataPort[j][n] = type.newInstance(this);
       waddrPort1[j][n] = dfeInt(32).newInstance(this);     
+      wenPort[j][n] = dfeBool().newInstance(this);
     }
     waddrPort0[0][n] = dfeInt(32).newInstance(this);     
-    wenPort[n] = dfeBool().newInstance(this);
 
     for (int i = 0; i < n; i++) {
       r[i] = new BramLib(this, size0, size1, type, banks, strides, 1);
-      wenMux[i] = control.mux(curBuf[i], wenPort);
       for (int j = 0; j < wpar; j++) {
         wdataMux[j][i] = control.mux(curBuf[i], wdataPort[j]);
         waddrMux1[j][i] = control.mux(curBuf[i], waddrPort1[j]);        
+        wenMux[j][i] = control.mux(curBuf[i], wenPort[j]);
       }
       for (int j = 0; j < rpar1; j++) {
         raddrMux1[j][i] = control.mux(curBuf[i].cast(dfeUInt(bits)), raddrPort1[j]);
@@ -221,16 +226,18 @@ class NBufKernelLib extends KernelLib {
 
       DFEVector<DFEVar> wdataVec = new DFEVectorType<DFEVar>(this.type, wpar).newInstance(this);
       DFEVector<DFEVar> waddrVec1 = new DFEVectorType<DFEVar>(dfeInt(32), wpar).newInstance(this);
+      DFEVector<DFEVar> wenVec = new DFEVectorType<DFEVar>(dfeBool(), wpar).newInstance(this);
       for (int j = 0; j < wpar; j++) {
         wdataVec[j] <== wdataMux[j][i];
         waddrVec1[j] <== waddrMux1[j][i];
+        wenVec[j] <== wenMux[j][i];
       }
       if (is2D) {
         DFEVector<DFEVar> waddrVec0 = new DFEVectorType<DFEVar>(dfeInt(32), 1).newInstance(this);
         waddrVec0[0] <== waddrMux0[0][i];
-        r[i].connectWport(waddrVec0, waddrVec1, wdataVec, wenMux[i]);
+        r[i].connectWport(waddrVec0, waddrVec1, wdataVec, wenVec);
       } else {
-        r[i].connectWport(waddrVec1, wdataVec, wenMux[i]);
+        r[i].connectWport(waddrVec1, wdataVec, wenVec);
       }
     }
 
@@ -279,18 +286,22 @@ class NBufKernelLib extends KernelLib {
     int size0, int size1, 
     DFEType type, int[] banks, int[] strides, int n, 
     boolean all_same,
-    boolean[] row_major, int wpar, int rpar) {
+    boolean[] row_major, int wpar, int rpar,
+    boolean samepar, int[] rparrs) {
+
     super(owner);
-    common(smname, size0, size1, type, banks, strides, n, all_same, row_major, wpar, rpar);
+    common(smname, size0, size1, type, banks, strides, n, all_same, row_major, wpar, rpar, samepar, rparrs);
   }
 
   NBufKernelLib(KernelLib owner, String smname, 
     int size0, int size1, 
     DFEType type, int banks, int strides, int n, 
     boolean all_same,
-    boolean[] row_major, int wpar, int rpar) {
+    boolean[] row_major, int wpar, int rpar,
+    boolean samepar, int[] rparrs) {
     super(owner);
-    common(smname, size0, size1, type, new int[] {1,banks}, new int[] {1,strides}, n, all_same, row_major, wpar, rpar);
+    int patched_banks = Math.max(Math.max(wpar, rpar), banks); // Hotfix to bug where 1D tile loads are considered random access
+    common(smname, size0, size1, type, new int[] {1,patched_banks}, new int[] {1,strides}, n, all_same, row_major, wpar, rpar, samepar, rparrs);
   }
 
   DFEVar connectRport(DFEVar srcAddr, int[] p) {
@@ -328,22 +339,43 @@ class NBufKernelLib extends KernelLib {
   }
 
   DFEVector<DFEVar> connectRport(DFEVector<DFEVar> srcAddr0, DFEVar srcAddr1, int[] p) {
-    DFEVector<DFEVar> rdataVec = new DFEVectorType<DFEVar>(this.type, this.rpar0).newInstance(this);
-    for (int j = 0; j < this.rpar0; j++) {
-      raddrPort0[j][p[0]] <== srcAddr0[j];
-      rdataVec[j] <== rdataPort[j][p[0]];
-    }
-    if (all_same) {
-      raddrPort1[0][p[0]] <== srcAddr1;
-    } else {
-      raddrPort1V[p[0]] <== srcAddr1;
-      // Dummy connect the vertical reads
-      for (int j = 0; j < this.rpar1; j++) {
-        raddrPort1[j][p[0]] <== constant.var(dfeInt(32), j);
+    if (srcAddr0.getSize() > this.rpar0) { // TODO: This branch fixes matmult_outer, hack because it is rowmajor read with redundant row addresses
+      DFEVector<DFEVar> rdataVec = new DFEVectorType<DFEVar>(this.type, srcAddr0.getSize()).newInstance(this);
+      raddrPort0[0][p[0]] <== srcAddr0[0];
+      for (int j = 0; j < srcAddr0.getSize(); j++) {
+        rdataVec[j] <== rdataPort[0][p[0]];
       }
-      raddrPort0H[p[0]] <== constant.var(dfeInt(32), 0);
+      if (all_same) {
+        for (int j = 0; j < this.rpar1; j++) {
+          raddrPort1[j][p[0]] <== srcAddr1;   
+        }
+      } else {
+        raddrPort1V[p[0]] <== srcAddr1;
+        // Dummy connect the vertical reads
+        for (int j = 0; j < this.rpar1; j++) {
+          raddrPort1[j][p[0]] <== constant.var(dfeInt(32), j);
+        }
+        raddrPort0H[p[0]] <== constant.var(dfeInt(32), 0);
+      }
+      return rdataVec;      
+    } else { // TODO: This branch fixes matmult_outer
+      DFEVector<DFEVar> rdataVec = new DFEVectorType<DFEVar>(this.type, this.rpar0).newInstance(this);
+      for (int j = 0; j < this.rpar0; j++) {
+        raddrPort0[j][p[0]] <== srcAddr0[j];
+        rdataVec[j] <== rdataPort[j][p[0]];
+      }
+      if (all_same) {
+        raddrPort1[0][p[0]] <== srcAddr1;
+      } else {
+        raddrPort1V[p[0]] <== srcAddr1;
+        // Dummy connect the vertical reads
+        for (int j = 0; j < this.rpar1; j++) {
+          raddrPort1[j][p[0]] <== constant.var(dfeInt(32), j);
+        }
+        raddrPort0H[p[0]] <== constant.var(dfeInt(32), 0);
+      }
+      return rdataVec;      
     }
-    return rdataVec;      
   }
 
   // TODO: This will need to change when we allow readers of varying par
@@ -353,55 +385,145 @@ class NBufKernelLib extends KernelLib {
     return rdataPort[0][p[0]];
   }
 
-  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en, int[] p) {
-    for (int j = 0; j < this.wpar; j++) {
-      wdataPort[j][p[0]] <== dstData[j];
-      waddrPort1[j][p[0]] <== dstAddr[j];
+  // void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar wen) { // Gather method
+  //   DFEVector<DFEVar> en = new DFEVectorType<DFEVar>(dfeBool(), dstAddr.getSize()).newInstance(this);
+  //   for (int i = 0; i < dstAddr.getSize(); i++) {
+  //     en[i] <== wen;
+  //   }
+  //   for (int j = 0; j < this.wpar; j++) {
+  //     wdataPort[j][p[0]] <== dstData[j];
+  //     waddrPort1[j][p[0]] <== dstAddr[j];
+  //     wenPort[j][p[0]] <== en[j];
+  //   }
+  // }
+
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, int[] p) {
+    if (p.length == 1) {
+      for (int j = 0; j < this.wpar; j++) {
+        wdataPort[j][p[0]] <== dstData[j];
+        waddrPort1[j][p[0]] <== dstAddr[j];
+        wenPort[j][p[0]] <== en[j];
+      }
+    } else {
+      connectBroadcastWport(dstAddr,dstData,en,p);
     }
-  wenPort[p[0]] <== en;
+  }
+  void connectWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, DFEVar globalEn, int[] p) {
+    if (p.length == 1) {
+      for (int j = 0; j < this.wpar; j++) {
+        wdataPort[j][p[0]] <== dstData[j];
+        waddrPort1[j][p[0]] <== dstAddr[j];
+        wenPort[j][p[0]] <== en[j] & globalEn;
+      }
+    } else {
+      connectBroadcastWport(dstAddr, dstData, en, globalEn, p);
+    }
   }
 
-  void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVar en, int[] p) {
-    for (int j = 0; j < this.wpar; j++) {
-      wdataPort[j][p[0]] <== dstData[j];
-      waddrPort1[j][p[0]] <== dstAddr1[j];
+  void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, int[] p) {
+    if (p.length == 1) {
+      for (int j = 0; j < this.wpar; j++) {
+        wdataPort[j][p[0]] <== dstData[j];
+        waddrPort1[j][p[0]] <== dstAddr1[j];
+        wenPort[j][p[0]] <== en[j];
+      }
+      waddrPort0[0][p[0]] <== dstAddr0;
+    } else {
+      connectBroadcastWport(dstAddr0, dstAddr1, dstData, en, p);
     }
-    waddrPort0[0][p[0]] <== dstAddr0;
-    wenPort[p[0]] <== en;     
+  }
+  void connectWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, DFEVar globalEn, int[] p) {
+    if (p.length == 1) {
+      for (int j = 0; j < this.wpar; j++) {
+        wdataPort[j][p[0]] <== dstData[j];
+        waddrPort1[j][p[0]] <== dstAddr1[j];
+        wenPort[j][p[0]] <== en[j] & globalEn;
+      }
+      waddrPort0[0][p[0]] <== dstAddr0;
+    } else {
+      connectBroadcastWport(dstAddr0, dstAddr1, dstData, en, globalEn, p);
+    }
   }
 
-  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVar en, int[] p) {
-    connectWport(dstAddr0, dstAddr1, dstData[0], en, p); 
+  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, int[] p) {
+    connectWport(dstAddr0, dstAddr1, dstData[0], en[0], p); 
+  }
+  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, DFEVar globalEn, int[] p) {
+    connectWport(dstAddr0, dstAddr1, dstData[0], en[0] & globalEn, p); 
   }
 
   void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en, int[] p) {
-    wdataPort[0][p[0]] <== dstData;
-    waddrPort1[0][p[0]] <== dstAddr1;
-    waddrPort0[0][p[0]] <== dstAddr0;
-    wenPort[p[0]] <== en;     
+    if (p.length == 1) {
+      wdataPort[0][p[0]] <== dstData;
+      waddrPort1[0][p[0]] <== dstAddr1;
+      waddrPort0[0][p[0]] <== dstAddr0;
+      wenPort[0][p[0]] <== en;
+    } else {
+      connectBroadcastWport(
+        dstAddr0,
+        new DFEVectorType<DFEVar>(dstAddr1.getType(), 1).newInstance(this, dstAddr1),
+        new DFEVectorType<DFEVar>(dstData.getType(), 1).newInstance(this, dstData),
+        new DFEVectorType<DFEVar>(en.getType(), 1).newInstance(this, en),
+        p);
+    }
+  }
+  void connectWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVar dstData, DFEVar en, DFEVar globalEn, int[] p) {
+    if (p.length == 1) {
+      wdataPort[0][p[0]] <== dstData;
+      waddrPort1[0][p[0]] <== dstAddr1;
+      waddrPort0[0][p[0]] <== dstAddr0;
+      wenPort[0][p[0]] <== en & globalEn;
+    } else {
+      connectBroadcastWport(
+        dstAddr0,
+        new DFEVectorType<DFEVar>(dstAddr1.getType(), 1).newInstance(this, dstAddr1),
+        new DFEVectorType<DFEVar>(dstData.getType(), 1).newInstance(this, dstData),
+        new DFEVectorType<DFEVar>(en.getType(), 1).newInstance(this, en),
+        globalEn, p);
+    }
   }
 
-  void connectBroadcastWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en, int[] p) {
+  void connectBroadcastWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, int[] p) {
     for (int j = 0; j < this.wpar; j++) {
       wdataPort[j][n] <== dstData[j];
       waddrPort1[j][n] <== dstAddr[j];
+      wenPort[j][n] <== en[j];
     }
-    wenPort[n] <== en;
-    sm.connectInput("broadcast", en);
+    sm.connectInput("broadcast", en[0]);
+  }
+  void connectBroadcastWport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, DFEVar globalEn, int[] p) {
+    for (int j = 0; j < this.wpar; j++) {
+      wdataPort[j][n] <== dstData[j];
+      waddrPort1[j][n] <== dstAddr[j];
+      wenPort[j][n] <== en[j] & globalEn;
+    }
+    sm.connectInput("broadcast", en[0]);
   }
 
-  void connectBroadcastWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVar en, int[] p) {
+  void connectBroadcastWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, int[] p) {
     for (int j = 0; j < this.wpar; j++) {
       wdataPort[j][n] <== dstData[j];
       waddrPort1[j][n] <== dstAddr1[j];
+      wenPort[j][n] <== en[j];
     }
     waddrPort0[0][n] <== dstAddr0;
-    wenPort[n] <== en;
-    sm.connectInput("broadcast", en);
+    sm.connectInput("broadcast", en[0]);
+  }
+  void connectBroadcastWport(DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, DFEVar globalEn, int[] p) {
+    for (int j = 0; j < this.wpar; j++) {
+      wdataPort[j][n] <== dstData[j];
+      waddrPort1[j][n] <== dstAddr1[j];
+      wenPort[j][n] <== en[j] & globalEn;
+    }
+    waddrPort0[0][n] <== dstAddr0;
+    sm.connectInput("broadcast", en[0]);
   }
 
-  void connectBroadcastWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVar en, int[] p) {
+  void connectBroadcastWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, int[] p) {
     connectBroadcastWport(dstAddr0, new DFEVectorType<DFEVar>(dfeInt(32),1).newInstance(this, Arrays.asList(dstAddr1)), dstData, en, p);
+  }
+  void connectBroadcastWport(DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> dstData, DFEVector<DFEVar> en, DFEVar globalEn, int[] p) {
+    connectBroadcastWport(dstAddr0, new DFEVectorType<DFEVar>(dfeInt(32),1).newInstance(this, Arrays.asList(dstAddr1)), dstData, en & globalEn, p);
   }
 
   void connectUnwrittenPorts(int[] port) {
@@ -409,11 +531,11 @@ class NBufKernelLib extends KernelLib {
       for (int j = 0; j < this.wpar; j++) {
         wdataPort[j][port[i]] <== constant.var(type, 0);  
         waddrPort1[j][port[i]] <== constant.var(dfeInt(32), 0);      
+        wenPort[j][port[i]] <== constant.var(false);
       }
       if (is2D) {
         waddrPort0[0][port[i]] <== constant.var(dfeInt(32), 0);
       }
-      wenPort[port[i]] <== constant.var(false);
     }
   }
   void connectUnreadPorts(int[] port) {
@@ -439,13 +561,13 @@ class NBufKernelLib extends KernelLib {
       }            
     }
   }
-  void connectUntouchedPorts(int[] port) {
-    for (int i = 0; i < port.length; i++) {
-      stageDone[port[i]] <== constant.var(false);
-      stageEn[port[i]] <== constant.var(false);
-    }
-    sm.connectInput("numBlanks", constant.var(dfeUInt(MathUtils.bitsToAddress(n+1)), port.length)); // TODO: Use length of consecutive ports before final or else nasty bugs will appear!!!!
-  }
+  // void connectUntouchedPorts(int[] port) {
+  //   for (int i = 0; i < port.length; i++) {
+  //     stageDone[port[i]] <== constant.var(false);
+  //     stageEn[port[i]] <== constant.var(false);
+  //   }
+  //   sm.connectInput("numBlanks", constant.var(dfeUInt(MathUtils.bitsToAddress(n+1)), port.length)); // TODO: Use length of consecutive ports before final or else nasty bugs will appear!!!!
+  // }
 
   void connectStageCtrl(DFEVar done, DFEVar en, int[] port) {
     for (int i = 0; i < port.length; i++) {
@@ -459,11 +581,11 @@ class NBufKernelLib extends KernelLib {
     for (int j = 0; j < this.wpar; j++) {
       wdataPort[j][n] <== constant.var(this.type,0);
       waddrPort1[j][n] <== constant.var(dfeInt(32),0);
+      wenPort[j][n] <== constant.var(false);
     }
     if (is2D) {
       waddrPort0[0][n] <== constant.var(dfeInt(32),0);
     }
-    wenPort[n] <== constant.var(false);
 
   }
 

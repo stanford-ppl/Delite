@@ -90,6 +90,9 @@ class PipeSM extends KernelStateMachine {
 
           CASE (States.RSET) {
             IF (rst_done) {
+              for (int i=0; i<iterDepth; i++) {
+                maxFF[i].next <== sm_maxIn[i];
+              }
               stateFF.next <== States.RUN;
             }
           }
