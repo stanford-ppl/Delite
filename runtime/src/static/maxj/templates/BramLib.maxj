@@ -33,6 +33,7 @@ class BramLib extends KernelLib {
   int num_libs;
   int contiguous_rows;
   int muxSize;
+  int wrSize;
 
   // For parallelized writes
   DFEVar[][] muxAddrVec;
@@ -47,7 +48,7 @@ class BramLib extends KernelLib {
 
   boolean dbg = false;
 
-  void common(int size0, int size1, DFEType type, int[] banks, int[] strides, int muxSize) {
+  void common(int size0, int size1, DFEType type, int[] banks, int[] strides, int muxSize, int wrsize) {
     this.muxSize = muxSize;
     this.type = type;
     this.muxInt = 0;
@@ -57,6 +58,7 @@ class BramLib extends KernelLib {
     this.addrBits = MathUtils.bitsToAddress(this.depth);
     this.banks = banks;
     this.strides = strides;
+    this.wrSize = wrsize;
 
     if (banks[0] == 1) {
       this.num_libs = 1;
@@ -78,25 +80,24 @@ class BramLib extends KernelLib {
         for (int i=0; i<banks[1]; i++) {
           m[i] = new BoxedMem(this, type, depth/banks[1]);
         }
-      }
-
+      } 
       if (muxSize > 1) {
-        muxAddrVec = new DFEVar[banks[1]][muxSize];
-        muxDataVec = new DFEVar[banks[1]][muxSize];
-        muxWenVec = new DFEVar[banks[1]][muxSize];
-        DFEVector<DFEVar> portAddr = new DFEVectorType<DFEVar>(dfeInt(32), banks[1]).newInstance(this);
-        DFEVector<DFEVar> portData = new DFEVectorType<DFEVar>(type, banks[1]).newInstance(this);
-        DFEVector<DFEVar> portWen = new DFEVectorType<DFEVar>(dfeBool(), banks[1]).newInstance(this);
+        muxAddrVec = new DFEVar[wrSize][muxSize];
+        muxDataVec = new DFEVar[wrSize][muxSize];
+        muxWenVec = new DFEVar[wrSize][muxSize];
+        DFEVector<DFEVar> portAddr = new DFEVectorType<DFEVar>(dfeInt(32), wrSize).newInstance(this);
+        DFEVector<DFEVar> portData = new DFEVectorType<DFEVar>(type, wrSize).newInstance(this);
+        DFEVector<DFEVar> portWen = new DFEVectorType<DFEVar>(dfeBool(), wrSize).newInstance(this);
         DFEVector<DFEVar> sel = new DFEVectorType<DFEVar>(dfeBool(), muxSize).newInstance(this); 
         for (int i = 0; i < muxSize; i++) {
-          for (int j = 0; j < banks[1]; j++) {
+          for (int j = 0; j < wrSize; j++) {
             muxAddrVec[j][i] = dfeInt(32).newInstance(this);
             muxDataVec[j][i] = type.newInstance(this);   
             muxWenVec[j][i] = dfeBool().newInstance(this);       
           }
           sel[i] <== muxWenVec[0][i]; // Hardcode to first wen, because at least this one should be true if writing
         }
-        for (int j = 0; j < banks[1]; j++) {
+        for (int j = 0; j < wrSize; j++) {
           portAddr[j] <== control.oneHotMux(sel.pack(), muxAddrVec[j]);
           portData[j] <== control.oneHotMux(sel.pack(), muxDataVec[j]);
           portWen[j] <== control.oneHotMux(sel.pack(), muxWenVec[j]);
@@ -111,7 +112,7 @@ class BramLib extends KernelLib {
       }
       ensemble = new BramLib[this.num_libs];
       for (int i = 0; i < this.num_libs; i++) {
-        ensemble[i] = new BramLib(this, size0/banks[0], size1, type, new int[] {1, banks[1]}, new int[] {1, strides[1]}, muxSize);
+        ensemble[i] = new BramLib(this, size0/banks[0], size1, type, new int[] {1, banks[1]}, new int[] {1, strides[1]}, muxSize, wrsize);
       }
       this.contiguous_rows = size1 / strides[0];
     }
@@ -122,22 +123,41 @@ class BramLib extends KernelLib {
 
   BramLib(KernelLib owner, int size0, int size1, DFEType type, int banks, int strides) {
     super(owner);
-    common(size0, size1, type, new int[] {1, banks}, new int[] {1, strides}, 1);
+    common(size0, size1, type, new int[] {1, banks}, new int[] {1, strides}, 1, 1);
   }
 
   BramLib(KernelLib owner, int size0, int size1, DFEType type, int[] banks, int[] strides) {
     super(owner);
-    common(size0, size1, type, banks, strides, 1);
+    common(size0, size1, type, banks, strides, 1, 1);
   }
 
   BramLib(KernelLib owner, int size0, int size1, DFEType type, int banks, int strides, int muxSize) {
     super(owner);
-    common(size0, size1, type, new int[] {1, banks}, new int[] {1, strides}, muxSize);
+    common(size0, size1, type, new int[] {1, banks}, new int[] {1, strides}, muxSize, 1);
   }
 
   BramLib(KernelLib owner, int size0, int size1, DFEType type, int[] banks, int[] strides, int muxSize) {
     super(owner);
-    common(size0, size1, type, banks, strides, muxSize);
+    common(size0, size1, type, banks, strides, muxSize, 1);
+  }
+  // BramLib(KernelLib owner, int size0, int size1, DFEType type, int banks, int strides, int wrsize) { // If we have wrsize, assume we have muxSize too
+  //   super(owner);
+  //   common(size0, size1, type, new int[] {1, banks}, new int[] {1, strides}, 1, wrsize);
+  // }
+
+  // BramLib(KernelLib owner, int size0, int size1, DFEType type, int[] banks, int[] strides, int wrsize) {
+  //   super(owner);
+  //   common(size0, size1, type, banks, strides, 1, wrsize);
+  // }
+
+  BramLib(KernelLib owner, int size0, int size1, DFEType type, int banks, int strides, int muxSize, int wrsize) {
+    super(owner);
+    common(size0, size1, type, new int[] {1, banks}, new int[] {1, strides}, muxSize, wrsize);
+  }
+
+  BramLib(KernelLib owner, int size0, int size1, DFEType type, int[] banks, int[] strides, int muxSize, int wrsize) {
+    super(owner);
+    common(size0, size1, type, banks, strides, muxSize, wrsize);
   }
 
 
@@ -164,7 +184,7 @@ class BramLib extends KernelLib {
      DIAGONAL
   }
 
-  DFEVar rowAddr(DFEVar srcAddrr) {  // Given row addr of whole bram, figure out actual row addr when ou go directly to the ensemble
+  DFEVar rowAddr(DFEVar srcAddrr) {  // Given row addr of whole bram, figure out actual row addr when you go directly to the ensemble
     DFEVar srcAddr = srcAddrr.cast(dfeUInt(32));
     int cont_rows_bits = MathUtils.bitsToAddress(this.contiguous_rows);
     int banks_bits = MathUtils.bitsToAddress(this.banks[0]);
@@ -363,7 +383,33 @@ class BramLib extends KernelLib {
     return connectRport(srcAddr);
   }
 
-  DFEVar connectDirectRport(int bank, DFEVar srcAddr) { // For scatter gather
+  // Hardcoding bank reader
+  DFEVar connectDirectRport(int bank, DFEVar srcAddr) {
+    DFEVar local_addr = bankAndLocalAddr(srcAddr, AddrMode.LOCAL);
+    return m[bank].read(local_addr);
+  }
+  DFEVar connectDirectRport(int bank, DFEVar srcAddr, int[] p) {return connectDirectRport(bank, srcAddr);}
+  DFEVar connectDirectRport(int bank, DFEVar srcAddr0, DFEVar srcAddr1) {
+    DFEVar local_addr0 = rowAddr(srcAddr0);
+    return this.ensemble[bank].connectRport(local_addr0, srcAddr1);
+  }
+  DFEVar connectDirectRport(int bank, DFEVar srcAddr0, DFEVar srcAddr1, int[] p) {return connectDirectRport(bank, srcAddr0, srcAddr1);}
+  DFEVector<DFEVar> connectDirectRport(int bank, DFEVar srcAddr0, DFEVector<DFEVar> srcAddr1) {
+    DFEVar local_addr0 = rowAddr(srcAddr0);
+    return this.ensemble[bank].connectRport(local_addr0, srcAddr1);
+  }
+  DFEVector<DFEVar> connectDirectRport(int bank, DFEVar srcAddr0, DFEVector<DFEVar> srcAddr1, int[] p) { return connectDirectRport(bank, srcAddr0, srcAddr1);}
+  DFEVector<DFEVar> connectDirectRport(int bank, DFEVector<DFEVar> srcAddr, int[] p) {
+    DFEVector<DFEVar> ret_data = new DFEVectorType<DFEVar>(this.type, srcAddr.getSize()).newInstance(this);
+    for (int i = 0; i < srcAddr.getSize(); i++) {
+      ret_data[i] <== m[bank].read(srcAddr[i]);
+    }
+    return ret_data;
+  }
+  DFEVector<DFEVar> connectDirectRport(int bank, DFEVector<DFEVar> srcAddr) {return connectDirectRport(bank, srcAddr, new int[] {0});}
+
+  // For scatter gather, where each bank has its own ctr starting from 0
+  DFEVar connectDirectSparseRport(int bank, DFEVar srcAddr) { // For scatter gather
     return m[bank].read(srcAddr);
   }
   void connectDirectWport(int bank, DFEVector<DFEVar> srcAddr, DFEVector<DFEVar> srcData, DFEVector<DFEVar> en) { // For scatter gather
@@ -436,8 +482,11 @@ class BramLib extends KernelLib {
     if (this.muxSize == 1) {
       connectWport(dstAddr,data,en);
     } else {
-      if (this.banks[1] > 1) {
+      if (this.wrSize > 1) {
         System.out.println("There are multiplexed writers of different lengths on this bram!");
+        for (int k = 0; k < Thread.currentThread().getStackTrace().length; k++) {
+          System.out.println(Thread.currentThread().getStackTrace()[k].getFileName() + " " + Thread.currentThread().getStackTrace()[k].getLineNumber());
+        } 
         System.exit(-1);
       }
       this.muxAddrVec[0][muxInt] <== dstAddr;
@@ -885,27 +934,34 @@ class BramLib extends KernelLib {
     return connectBankAport(bank, vaddr, vdata, wen);
   }
 
-  void connectBankWport(int bank, DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> data, DFEVector<DFEVar> en, int[] port) {
+  void connectBankWport(int bank, DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> data, DFEVector<DFEVar> en, int[] port) {this.connectBankWport(bank, dstAddr, data, en);}
+  void connectBankWport(int bank, DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> data, DFEVector<DFEVar> en) {
     DFEVar bank_local_addr = bankAndLocalAddr(dstAddr[0], AddrMode.LOCAL);
     m[bank].write(bank_local_addr, data[0], en[0]);
   }
 
-  void connectBankWport(int bank, DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> data, DFEVector<DFEVar> en, int[] port) {
+  void connectBankWport(int bank, DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> data, DFEVector<DFEVar> en, int[] port) {this.connectBankWport(bank, dstAddr0, dstAddr1, data[0], en[0]);}
+  void connectBankWport(int bank, DFEVar dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> data, DFEVector<DFEVar> en) {this.connectBankWport(bank, dstAddr0, dstAddr1, data[0], en[0]);}
+  void connectBankWport(int bank, DFEVar dstAddr0, DFEVar dstAddr1, DFEVar data, DFEVar en, int[] port) {this.connectBankWport(bank, dstAddr0, dstAddr1, data, en);}
+  void connectBankWport(int bank, DFEVar dstAddr0, DFEVar dstAddr1, DFEVar data, DFEVar en, DFEVar globalEn, int[] port) {this.connectBankWport(bank, dstAddr0, dstAddr1, data, en & globalEn);}
+  void connectBankWport(int bank, DFEVar dstAddr0, DFEVar dstAddr1, DFEVar data, DFEVar en) {
     DFEVar sub_rowAddr0 = rowAddr(dstAddr0);
-    this.ensemble[bank].connectWport(sub_rowAddr0, dstAddr1, data, en, port);
+    this.ensemble[bank].connectWport(sub_rowAddr0, dstAddr1, data, en);
   }
 
-  void connectBankWport(int bank, DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> data, DFEVector<DFEVar> en, int[] port) {
+  void connectBankWport(int bank, DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> data, DFEVector<DFEVar> en, int[] port) {this.connectBankWport(bank, dstAddr0, dstAddr1, data, en);}
+  void connectBankWport(int bank, DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> data, DFEVector<DFEVar> en) {
     DFEVar sub_rowAddr0 = rowAddr(dstAddr0);
-    this.ensemble[bank].connectWport(sub_rowAddr0, dstAddr1, data, en, port);
+    this.ensemble[bank].connectWport(sub_rowAddr0, dstAddr1, data, en);
   }
-  void connectBankWport(int bank, DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> data, DFEVector<DFEVar> en, DFEVar globalEn, int[] port) {
+  void connectBankWport(int bank, DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> data, DFEVector<DFEVar> en, DFEVar globalEn, int[] port) {this.connectBankWport(bank, dstAddr0, dstAddr1, data, en, globalEn);}
+  void connectBankWport(int bank, DFEVar dstAddr0, DFEVector<DFEVar> dstAddr1, DFEVector<DFEVar> data, DFEVector<DFEVar> en, DFEVar globalEn) {
     DFEVector<DFEVar> wen = new DFEVectorType<DFEVar>(dfeBool(), en.getSize()).newInstance(this);
     for (int i = 0; i < en.getSize(); i++) {
       wen[i] <== en[i] & globalEn;
     }
     DFEVar sub_rowAddr0 = rowAddr(dstAddr0);
-    this.ensemble[bank].connectWport(sub_rowAddr0, dstAddr1, data, wen, port);
+    this.ensemble[bank].connectWport(sub_rowAddr0, dstAddr1, data, wen);
   }
 
   void connectBankWport(int bank, DFEVector<DFEVar> dstAddr0, DFEVar dstAddr1, DFEVector<DFEVar> data, DFEVector<DFEVar> en, int[] port) {
@@ -913,14 +969,15 @@ class BramLib extends KernelLib {
     System.exit(-1);
   }
 
-  void connectBankWport(int bank, DFEVar dstAddr, DFEVar data, DFEVar en, int[] port) {
+  void connectBankWport(int bank, DFEVar dstAddr, DFEVar data, DFEVar en, int[] port) {this.connectBankWport(bank, dstAddr, data, en);}
+  void connectBankWport(int bank, DFEVar dstAddr, DFEVar data, DFEVar en) {
     DFEVector<DFEVar> vaddr = new DFEVectorType<DFEVar>(dstAddr.getType(), 1).newInstance(this);
     DFEVector<DFEVar> vdata = new DFEVectorType<DFEVar>(data.getType(), 1).newInstance(this);
     DFEVector<DFEVar> wen = new DFEVectorType<DFEVar>(dfeBool(), 1).newInstance(this);
     vaddr[0] <== dstAddr;
     vdata[0] <== data;
     wen[0] <== en;
-    connectBankWport(bank, vaddr, vdata, wen, port);
+    connectBankWport(bank, vaddr, vdata, wen);
   }
 
   DFEVector<DFEVar> connectAport(DFEVector<DFEVar> dstAddr, DFEVector<DFEVar> dstData, DFEVar en) {
@@ -987,7 +1044,7 @@ class BramLib extends KernelLib {
     if (this.muxSize == 1) {
       connectWport(dstAddr, dstData, wen);
     } else {
-      for (int j = 0; j < this.banks[1]; j++) {
+      for (int j = 0; j < this.wrSize; j++) {
         this.muxAddrVec[j][muxInt] <== dstAddr[j];
         this.muxDataVec[j][muxInt] <== dstData[j];
         this.muxWenVec[j][muxInt] <== wen[j];
@@ -1052,11 +1109,18 @@ class BramLib extends KernelLib {
         DFEVar bank_local_addr = bankAndLocalAddr(dstAddr[i], AddrMode.LOCAL);
         m[i].write(bank_local_addr, dstData[i], en[i]);
       }
+    } else if (this.wrSize < banks[1]) { // wrSize is 1 but we have multiple banks
+      for (int i = 0; i < banks[1]; i++) {
+        DFEVar bank_local_addr = bankAndLocalAddr(dstAddr[0], AddrMode.LOCAL);
+        DFEVar bank_addr = bankAndLocalAddr(dstAddr[0], AddrMode.BANK);
+        DFEVar wen = en[0] & (bank_addr === i);
+        m[i].write(bank_local_addr, dstData[0], wen);
+      }
     } else {
       DFEVar[] dstAddr_array = new DFEVar[banks[1]];
       DFEVar[] dstData_array = new DFEVar[banks[1]];
       DFEVar[] dstEn_array = new DFEVar[banks[1]];
-      for (int i=0; i<banks[1]; i++) {
+      for (int i=0; i<this.wrSize; i++) {
         dstAddr_array[i] = dstAddr[i];
         dstData_array[i] = dstData[i];
         dstEn_array[i] = en[i];

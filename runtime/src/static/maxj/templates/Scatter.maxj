@@ -293,8 +293,8 @@ class ScatterLib extends KernelLib {
     sm.connectInput("scatter_done", stream.offset(scatter_done, modFix - 1) & stream.offset(schedule_wren, -1));
 
     // Write package into brams
-    DFEVar scatterAddr = addrBram.connectDirectRport(worker, scatterCnt.cast(dfeUInt(32)));
-    DFEVar scatterData = stream.offset(dataBram.connectDirectRport(worker, scatterCnt.cast(dfeUInt(32))), modFix - 1);
+    DFEVar scatterAddr = addrBram.connectDirectSparseRport(worker, scatterCnt.cast(dfeUInt(32)));
+    DFEVar scatterData = stream.offset(dataBram.connectDirectSparseRport(worker, scatterCnt.cast(dfeUInt(32))), modFix - 1);
     KernelMath.DivModResult mod = getNumberOfBursts(scatterAddr, dType);
     DFEVar next_burst = stream.offset(mod.getQuotient().cast(dfeUInt(32)), modFix);
     sm.connectInput("scatter_addr", stream.offset(scatterCnt.cast(dfeUInt(32)), modFix));

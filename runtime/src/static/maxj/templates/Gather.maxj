@@ -114,7 +114,7 @@ class GatherLib extends KernelLib {
     int maxAddrSize = MathUtils.bitsToAddress(addrBram.depth);
     DFEVar flush_en = sm.getOutput("flush_en") | reset_engine_en;
     DFEVar flush_rst = sm.getOutput("flush_rst");
-    SMIO flush_ctr = addStateMachine(streamName+"gather_flush_ctr", new SingleCtrSM(this, 0, 1));
+    SMIO flush_ctr = addStateMachine(streamName + "gather_flush_ctr", new SingleCtrSM(this, 0, 1));
     flush_ctr.connectInput("max", constant.var(dfeUInt(32), numSlots*maxStreamCnt));
     flush_ctr.connectInput("en", flush_en);
     flush_ctr.connectInput("reset", flush_rst);
@@ -312,7 +312,7 @@ class GatherLib extends KernelLib {
     int maxAddrSize = MathUtils.bitsToAddress(addrBram.depth);
     DFEVar flush_en = sm.getOutput("flush_en") | reset_engine_en;
     DFEVar flush_rst = sm.getOutput("flush_rst");
-    SMIO flush_ctr = addStateMachine("flush_ctr" + worker, new SingleCtrSM(this, 0, 1));
+    SMIO flush_ctr = addStateMachine(streamName + "flush_ctr" + worker, new SingleCtrSM(this, 0, 1));
     flush_ctr.connectInput("max", constant.var(dfeUInt(32), numSlots*maxStreamCnt));
     flush_ctr.connectInput("en", flush_en);
     flush_ctr.connectInput("reset", flush_rst);
@@ -326,7 +326,7 @@ class GatherLib extends KernelLib {
      PACKAGE COMMANDS PHASE
     */
     // Create counter for gatherAddr memory
-    SMIO gather_ctr = addStateMachine("gather_ctr" + worker, new SingleCtrSM(this, 0, 1));
+    SMIO gather_ctr = addStateMachine(streamName + "gather_ctr" + worker, new SingleCtrSM(this, 0, 1));
     gather_ctr.connectInput("max", max_gather_cnt);
     gather_ctr.connectInput("en", gather_ctr_en);
     gather_ctr.connectInput("reset", gather_ctr_rst);
@@ -338,7 +338,7 @@ class GatherLib extends KernelLib {
     sm.connectInput("gather_done", stream.offset(gather_done, modFix - 1) & stream.offset(package_mask_wren, -1));
 
     // Write package into brams
-    DFEVar gatherAddr = addrBram.connectDirectRport(worker, gatherCnt.cast(dfeUInt(32)));
+    DFEVar gatherAddr = addrBram.connectDirectSparseRport(worker, gatherCnt.cast(dfeUInt(32)));
     KernelMath.DivModResult mod = getNumberOfBursts(gatherAddr, type);
     DFEVar next_burst = stream.offset(mod.getQuotient().cast(dfeUInt(32)), modFix);
     sm.connectInput("gather_addr", stream.offset(gatherCnt.cast(dfeUInt(32)), modFix));
