@@ -10,7 +10,7 @@ import scala.virtualization.lms.common.{BaseGenStaticData, WorklistTransformer}
 import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
 import scala.collection.immutable.Seq
 import collection.mutable.{ListBuffer,HashMap}
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 
 
 trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.delite.framework.codegen.Utils {

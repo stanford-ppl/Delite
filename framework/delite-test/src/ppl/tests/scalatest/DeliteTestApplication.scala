@@ -2,12 +2,13 @@ package ppl.tests.scalatest
 
 import ppl.delite.framework.datastructures._
 import scala.virtualization.lms.common.Record
+import org.scala_lang.virtualized.SourceContext
 
 //TODO: move this into test suite (need to be able to provide sample inputs)
 object DeliteTestMainRunner extends DeliteTestDSLApplicationRunner with DeliteTestFunction
 object DeliteTestFunctionRunner extends DeliteTestDSLApplicationRunner with DeliteTestFunction {
   override def functionName = "DeliteTestFunction"
-  registerFunction(testFunction _) 
+  registerFunction(testFunction _)
 }
 
 trait DeliteTestFunction extends DeliteTestDSLApplication {

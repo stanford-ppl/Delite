@@ -1,10 +1,13 @@
 package ppl.tests.scalatest.firstdsl
 
-import reflect.{Manifest, SourceContext}
+import reflect.Manifest
+import org.scala_lang.virtualized.SourceContext
+import org.scala_lang.virtualized.virtualize
 import scala.virtualization.lms.common.{Base, NumericOpsExp, FractionalOpsExp, PrimitiveOpsExp}
 import scala.virtualization.lms.common.ScalaGenBase
 import ppl.delite.framework.ops.{DeliteCollectionOpsExp,DeliteOpsExp}
 import ppl.delite.framework.ops.DeliteCollection
+import ppl.tests.scalatest.firstdsl.datastruct.scala.ProfileArray
 
 trait ProfileArrayOps extends Base {
   // a simple way of enumerating choices in our syntax
@@ -12,15 +15,17 @@ trait ProfileArrayOps extends Base {
   object average extends Reporter
   object median extends Reporter
 
-  // add report and length methods to Rep[ProfileArray]
-  def infix_report(x: Rep[ProfileArray], y: Reporter) = profile_report(x, y)
-  def infix_length(x: Rep[ProfileArray]) = profile_length(x)
+  implicit class ProfileArrayCls(x: Rep[ProfileArray]) {
+    def report(rep:Reporter) = profile_report(x, rep)
+    def length = profile_length(x)
+  }
 
   // implementation
   def profile_report(x: Rep[ProfileArray], y: Reporter): Rep[Double]
   def profile_length(x: Rep[ProfileArray]): Rep[Int]
 }
 
+//@virtualize
 trait ProfileArrayOpsExp extends ProfileArrayOps with NumericOpsExp with PrimitiveOpsExp
   with FractionalOpsExp with DeliteCollectionOpsExp with DeliteOpsExp {
 
@@ -69,7 +74,7 @@ trait ProfileArrayOpsExp extends ProfileArrayOps with NumericOpsExp with Primiti
   }
 
   def profile_report(x: Exp[ProfileArray], y: Reporter) = y match {
-    case this.average => ReportSum(x) / x.length   // inline
+    case this.average => ReportSum(x) // TODO(how did this work?) / x.length // inline
     case this.median => ReportMedian(x)
     case _ => throw new IllegalArgumentException("unknown report type")
   }

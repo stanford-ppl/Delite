@@ -64,7 +64,9 @@ def checkLMSEnv():
 
 def stage(runner, params, opts):
     java_opts = os.getenv("JAVA_OPTS", "")
-
+    print(runner)
+    print(params)
+    print(opts)
     build_dir = opts.build_dir + os.sep + "generated" + os.sep + runner + os.sep
     java_opts = java_opts + " -server" + " -Ddelite.home.dir=" + delitecommon.DELITE_HOME + " -Ddelite.build.dir=" + build_dir + " -Ddelite.deg.filename=" + runner + ".deg"
     if opts.no_blas == False:
@@ -113,6 +115,7 @@ def stage(runner, params, opts):
     if LMS_HOME:
         cp = cp + LMS_HOME + "/target/" + scala_major_id + "/classes" + os.pathsep
     cp = cp + DELITE_HOME + "/framework/target/" + scala_major_id + "/classes" + os.pathsep
+    #print cp
 
     #DSL cps
     for dsl in DSLs:
@@ -130,8 +133,8 @@ def stage(runner, params, opts):
     cp = cp + DELITE_HOME + "/target/" + scala_major_id + "/test-classes" + os.pathsep
 
     # add all managed libs
-    # caveat: scalatest pulls in some non-virtualized scala dependencies but they conflict with the scala-virtualized versions
-    jars = [os.path.join(d,f) for (d, n, fs) in os.walk(delitecommon.HYPER_HOME + "/lib_managed/") if not (d.count("/org.scala-lang/") > 0) for f in fs]
+    jars = [os.path.join(d,f) for (d, n, fs) in os.walk(delitecommon.HYPER_HOME + "/lib_managed/") for f in fs]
+
     for j in jars:
       cp = cp + j + os.pathsep
 

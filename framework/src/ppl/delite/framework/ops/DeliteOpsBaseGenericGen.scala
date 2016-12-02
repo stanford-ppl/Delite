@@ -7,7 +7,7 @@ import scala.virtualization.lms.internal.CCodegen
 
 import java.io.{StringWriter, PrintWriter}
 import scala.collection.mutable.HashMap
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 
 
 trait BaseDeliteOpsTraversalFat extends BaseLoopsTraversalFat {
@@ -1409,23 +1409,23 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
 
     if (Config.nestedParallelism) {
       stm match {
-        case TP(lhs, rhs:AbstractLoop[_]) => 
+        case TP(lhs, rhs:AbstractLoop[_]) =>
           kernelCall(List(lhs), rhs)
           emitKernel(List(lhs), rhs)
         case TP(lhs, Reflect(rhs:AbstractLoop[_],_,_)) =>
           kernelCall(List(lhs), rhs)
           emitKernel(List(lhs), rhs)
-        case TTP(lhs, mhs, rhs:AbstractFatLoop) => 
+        case TTP(lhs, mhs, rhs:AbstractFatLoop) =>
           kernelCall(lhs, rhs)
           emitKernel(lhs, rhs)
         case _ => super.traverseStm(stm)
       }
-    } 
-    else super.traverseStm(stm)  
+    }
+    else super.traverseStm(stm)
   }
 
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef) = rhs match {
-    case op: AbstractFatLoop => 
+    case op: AbstractFatLoop =>
       loopLevel += 1
       if (!deliteKernel && !Config.nestedParallelism) emitInlineAbstractFatLoop(op, symList)
       else emitKernelAbstractFatLoop(op, symList)
@@ -1443,5 +1443,5 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
       sc.fileName + ":" + sc.line
     }
   }
-  
+
 }

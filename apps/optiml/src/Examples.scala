@@ -9,7 +9,7 @@
 
 import ppl.dsl.optiml._
 import scala.virtualization.lms.common.Record
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 
 // DenseVector, DenseMatrix
 object Example1Runner extends OptiMLApplicationRunner with Example1
@@ -381,10 +381,10 @@ trait Example13 extends OptiMLApplication {
     // method to construct a new instance of MyStruct, also for convenience    
     def newMyStruct(_data: Rep[Int], _name: Rep[String]) = 
       // a user-defined struct instance is declared as a new Record
-      new Record {
-        val data = _data
-        val name = _name
-      }
+      Record (
+        data = _data,
+        name = _name
+      )
     
     // we can use our struct with normal OptiML data types
     val v1 = (0::100) { i => newMyStruct(i, "struct " + i) }

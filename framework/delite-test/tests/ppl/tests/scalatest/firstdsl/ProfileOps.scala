@@ -1,6 +1,7 @@
 package ppl.tests.scalatest.firstdsl
 
 import scala.virtualization.lms.common.{ScalaGenEffect, Base, EffectExp}
+import org.scala_lang.virtualized.SourceContext
 
 // this is the abstract interface of our profiling methods
 trait ProfileOps extends Base {

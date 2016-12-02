@@ -5,7 +5,7 @@ import ppl.delite.framework.datastructures._
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.Util._
 import scala.virtualization.lms.common._
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 
 
 //NOTE: unwrapping reduces isn't always safe (rFunc may not be separable); only for use in DSLs with appropriate restrictions

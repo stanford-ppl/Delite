@@ -5,7 +5,9 @@ import ppl.dsl.optiql.{OptiQL, OptiQLExp}
 import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.datastructures.{DeliteArray, DeliteArrayBuffer, DeliteMap, DeliteStructsExp}
 import scala.virtualization.lms.common.{Base, EffectExp, ScalaGenFat, BaseFatExp}
-import scala.reflect.{RefinedManifest, SourceContext}
+import org.scala_lang.virtualized.SourceContext
+import org.scala_lang.virtualized.RefinedManifest
+import org.scala_lang.virtualized.virtualize
 
 trait QueryableOps extends Base { this: OptiQL =>
   
@@ -44,7 +46,9 @@ trait QueryableOps extends Base { this: OptiQL =>
   }
   
   //Grouping
-  def infix_key[K:Manifest, T:Manifest](g: Rep[Grouping[K, T]]) = queryable_grouping_key(g) 
+  implicit class GroupingCls[K:Manifest, T:Manifest](g: Rep[Grouping[K, T]]) {
+    def key() = queryable_grouping_key(g)
+  }
 
   def queryable_where[T:Manifest](s: Rep[Table[T]], predicate: Rep[T] => Rep[Boolean]): Rep[Table[T]]
   def queryable_groupby[T:Manifest, K:Manifest](s: Rep[Table[T]], keySelector: Rep[T] => Rep[K]): Rep[Table[Grouping[K, T]]]
@@ -72,7 +76,7 @@ trait QueryableOps extends Base { this: OptiQL =>
   
 }
 
-trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with DeliteStructsExp { this: OptiQLExp =>
+trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with DeliteStructsExp with OptiQLMiscOpsExp{ this: OptiQLExp =>
   
   case class QueryableWhere[T:Manifest](in: Exp[Table[T]], cond: Exp[T] => Exp[Boolean]) extends DeliteOpFilter[T, T, Table[T]] {
     override def alloc(len: Exp[Int]) = Table(len)
@@ -241,6 +245,7 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
     Table(darray_buffer_unsafe_result(buf), buf.length)
   }
 
+  @virtualize
   def queryable_join2[T1:Manifest, T2:Manifest, K:Manifest, R:Manifest](first: Exp[Table[T1]], firstKeySelector: Exp[T1] => Exp[K], 
     second: Exp[Table[T2]], secondKeySelector: Exp[T2] => Exp[K], resultSelector: (Exp[T1], Exp[T2]) => Exp[R]): Exp[Table[R]] = {
 
@@ -250,14 +255,15 @@ trait QueryableOpsExp extends QueryableOps with EffectExp with BaseFatExp with D
       val firstGrouped = queryable_groupby_internal(first, firstKeySelector)
       val empty = DeliteArrayBuffer(DeliteArray.imm[R](unit(0)),unit(0)) //note: control effects on IfThenElse require some manual hoisting
       queryable_flatmap_internal(second, (x2:Exp[T2]) => {
-        if (firstGrouped.contains(secondKeySelector(x2))) firstGrouped.get(secondKeySelector(x2)).map(x1 => resultSelector(x1,x2))
-        else empty //no matches
+        if (firstGrouped.contains(secondKeySelector(x2))) {
+          firstGrouped.get(secondKeySelector(x2)).map(x1 => resultSelector(x1, x2))
+        } else empty //no matches
       })
     /*} else {
       val secondGrouped = queryable_groupby_internal(second, secondKeySelector)
       queryable_flatmap_internal(first, (x1:Exp[T1]) => secondGrouped.get(firstKeySelector(x1)).map(x2 => resultSelector(x1,x2)))
     }*/
-  }
+      }
   
 
   def queryable_sum[T:Manifest, N:Numeric:Manifest](s: Exp[Table[T]], sumSelector: Exp[T] => Exp[N]) = QueryableSum(s, sumSelector)

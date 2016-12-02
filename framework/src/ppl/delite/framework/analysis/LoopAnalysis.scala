@@ -4,7 +4,7 @@ import java.io._
 import scala.collection.mutable.{HashMap,HashSet,ArrayBuffer}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{Expressions,AbstractSubstTransformer,Transforming,FatBlockTraversal}
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 import scala.io.Source
 
 import ppl.delite.framework.DeliteApplication
@@ -19,16 +19,20 @@ import ppl.delite.framework.ops.BaseDeliteOpsTraversalFat
 
 trait NestedLoopMappingExp extends Expressions {
 
-  case class LoopConstraint(d: Dimension => Boolean, b: Int => Boolean, s: Span => Boolean, w: Double = 1.0)
+  case class LoopConstraint(d: Dimension => Boolean, b: Int => Boolean, s: Span => Boolean, w: Double = 1.0) {
+    def and(c2: LoopConstraint) = loopcons_and(this, c2)
+    def or(c2: LoopConstraint) = loopcons_or(this, c2)
+    def withWeight(w: Double) = loopcons_withWeight(this, w)
+  }
 
-  def infix_and(c1: LoopConstraint, c2: LoopConstraint) = LoopConstraint(c => c1.d(c) && c2.d(c),
+  def loopcons_and(c1: LoopConstraint, c2: LoopConstraint) = LoopConstraint(c => c1.d(c) && c2.d(c),
                                                                          c => c1.b(c) && c2.b(c),
                                                                          c => c1.s(c) && c2.s(c))
-  def infix_or(c1: LoopConstraint, c2: LoopConstraint) = LoopConstraint(c => c1.d(c) || c2.d(c),
+  def loopcons_or(c1: LoopConstraint, c2: LoopConstraint) = LoopConstraint(c => c1.d(c) || c2.d(c),
                                                                         c => c1.b(c) || c2.b(c),
                                                                         c => c1.s(c) || c2.s(c))
 
-  def infix_withWeight(c: LoopConstraint, w: Double) = LoopConstraint(c.d, c.b, c.s, w)
+  def loopcons_withWeight(c: LoopConstraint, w: Double) = LoopConstraint(c.d, c.b, c.s, w)
 
   // Dimension Constraints
   abstract class Dimension
@@ -103,51 +107,49 @@ trait NestedLoopMappingAnalysis extends FatBlockTraversal with LoopFusionOpt wit
     }
   }
 
-  private def infix_size(m: LoopInfo): Exp[Int] = {
-    m.loop match {
-      case SimpleFatLoop(sz,_,_) => sz
-      case SimpleLoop(sz,_,_) => sz
-      case Reflect(l:AbstractLoop[_],u,es) => l.size
-      case l:AbstractLoop[_] => l.size
-      case _ => throw new RuntimeException("Cannot match loop for size")
+
+  case class LoopInfo(sym: List[Sym[Any]], loop: Any, level: Int, nest: ArrayBuffer[LoopInfo]) {
+    def size: Exp[Int] = {
+      loop match {
+        case SimpleFatLoop(sz,_,_) => sz
+        case SimpleLoop(sz,_,_) => sz
+        case Reflect(l:AbstractLoop[_],u,es) => l.size
+        case l:AbstractLoop[_] => l.size
+        case _ => throw new RuntimeException("Cannot match loop for size")
+      }
+    }
+    def index: Exp[Int] = {
+      loop match {
+        case SimpleFatLoop(_,v,_) => v
+        case SimpleLoop(_,v,_) => v
+        case Reflect(l:AbstractLoop[_],u,es) => l.v
+        case l:AbstractLoop[_] => l.v
+        case _ => throw new RuntimeException("Cannot match loop for index")
+      }
+    }
+    def elems: List[Def[Any]] = {
+      loop match {
+        case SimpleFatLoop(_,_,body) => body
+        case SimpleLoop(_,_,body) => List(body)
+        case Reflect(l:AbstractLoop[_],u,es) => List(l.body)
+        case l:AbstractLoop[_] => List(l.body)
+        case _ => throw new RuntimeException("Cannot match loop for elems")
+      }
+    }
+    def bodies: List[Block[Any]] = {
+      loop match {
+        case SimpleFatLoop(_,_,body) => collectLoopBodyFat(body)
+        case SimpleLoop(_,_,body) => collectLoopBody(body)
+        case Reflect(l:AbstractLoop[_],u,es) => collectLoopBody(l.body)
+        case l:AbstractLoop[_] => collectLoopBody(l.body)
+        case _ => throw new RuntimeException("Cannot match loop for body")
+      }
     }
   }
-
-  private def infix_index(m: LoopInfo): Exp[Int] = {
-    m.loop match {
-      case SimpleFatLoop(_,v,_) => v
-      case SimpleLoop(_,v,_) => v
-      case Reflect(l:AbstractLoop[_],u,es) => l.v
-      case l:AbstractLoop[_] => l.v
-      case _ => throw new RuntimeException("Cannot match loop for index")
-    }
-  }
-
-  private def infix_elems(m: LoopInfo): List[Def[Any]] = {
-    m.loop match {
-      case SimpleFatLoop(_,_,body) => body
-      case SimpleLoop(_,_,body) => List(body)
-      case Reflect(l:AbstractLoop[_],u,es) => List(l.body)
-      case l:AbstractLoop[_] => List(l.body)
-      case _ => throw new RuntimeException("Cannot match loop for elems")
-    }
-  }
-
-  private def infix_bodies(m: LoopInfo): List[Block[Any]] = {
-    m.loop match {
-      case SimpleFatLoop(_,_,body) => collectLoopBodyFat(body)
-      case SimpleLoop(_,_,body) => collectLoopBody(body)
-      case Reflect(l:AbstractLoop[_],u,es) => collectLoopBody(l.body)
-      case l:AbstractLoop[_] => collectLoopBody(l.body)
-      case _ => throw new RuntimeException("Cannot match loop for body")
-    }
-  }
-
-  case class LoopInfo(sym: List[Sym[Any]], loop: Any, level: Int, nest: ArrayBuffer[LoopInfo])
 
   var currentLevel: Int = 0
   var currentLoop: LoopInfo = null
-  val loopInfoRoot: LoopInfo = null
+  var loopInfoRoot: LoopInfo = null
 
   private def allLoops(st: LoopInfo): List[LoopInfo] = {
     List(st) ++ st.nest.flatMap(allLoops(_)).toList

@@ -5,7 +5,7 @@ import scala.virtualization.lms.common.{Base, ScalaGenFat, CLikeGenFat, CudaGenF
 import scala.virtualization.lms.internal.GenericFatCodegen
 import ppl.dsl.optiql.OptiQLExp
 import ppl.delite.framework.datastructures.DeliteArray
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 
 trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with IfThenElseFatExp { this: OptiQLExp =>
   /*

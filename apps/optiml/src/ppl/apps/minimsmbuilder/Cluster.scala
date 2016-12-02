@@ -21,7 +21,8 @@ package ppl.apps.minimsmbuilder
  * 
  */
 
-import reflect.{Manifest, SourceContext}
+import reflect.Manifest
+import org.scala_lang.virtualized.SourceContext
 import scala.virtualization.lms.common.Record
 import ppl.dsl.optiml._
 
@@ -386,15 +387,15 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
     val nAtoms = readVector(pathToTheoData + "_numAtoms.dat")
     val pathToXyz = pathToTheoData + "_xyz.dat"
     val pathToG = pathToTheoData + "_G.dat" 
-    val theoData = new Record {
+    val theoData = Record (
       // FIXME: erroneous or inaccessible type from string infix_+ inside Record
       // val XYZData = readMatrix[XYZ](pathToTheoData + "_xyz.dat", line => lineToXYZ(line))
       // val G = readVector[Float](pathToTheoData + "_G.dat"), l => l(0).toFloat)
-      val XYZData = readMatrix[XYZ](pathToXyz, line => lineToXYZ(line))
-      val G = readVector[Float](pathToG, l => l(0).toFloat)      
-      val numAtoms = nAtoms(0).AsInstanceOf[Int]
-      val numAtomsWithPadding = nAtoms(1).AsInstanceOf[Int]      
-    }
+      XYZData = readMatrix[XYZ](pathToXyz, line => lineToXYZ(line)),
+      G = readVector[Float](pathToG, l => l(0).toFloat),
+      numAtoms = nAtoms(0).AsInstanceOf[Int],
+      numAtomsWithPadding = nAtoms(1).AsInstanceOf[Int]
+    )
     
     /*
      * input testing

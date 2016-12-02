@@ -1,7 +1,7 @@
 package ppl.dsl.assignment2
 
 import virtualization.lms.common.{Variables, VariablesExp, BaseFatExp}
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 import ppl.delite.framework.ops._
 import ppl.delite.framework.ops.DeliteCollection
 import ppl.delite.framework.datastructures._
@@ -99,7 +99,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with DeliteStru
 
 
   def vectorNew[A:Manifest](length: Exp[Int]) = reflectMutable(VectorNew(length))
-  private def infix_data[A:Manifest](x: Exp[Vector[A]]) = field[DeliteArrayBuffer[A]](x, "data")
+  private def vector_data[A:Manifest](x: Exp[Vector[A]]) = field[DeliteArrayBuffer[A]](x, "data")
   def vectorLength[A:Manifest](x: Exp[Vector[A]]) = x.data.length
   def vectorApply[A:Manifest](x: Exp[Vector[A]], idx: Exp[Int]) = x.data.apply(idx) 
   def vectorPlus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectPure(VectorPlus(x,y))

@@ -2,20 +2,20 @@ import sbt._
 import Keys._
 
 object DeliteBuild extends Build {
-  val virtualization_lms_core = "EPFL" % "lms_2.11" % "0.3-SNAPSHOT"
+  val virtualization_lms_core = "EPFL" % "macro-lms_2.11" % "1.0.0-wip-macro"
 
   System.setProperty("showSuppressedErrors", "false")
 
-  val scalaOrg = "org.scala-lang.virtualized"
   val virtScala = Option(System.getenv("SCALA_VIRTUALIZED_VERSION")).getOrElse("2.11.2")
+  val paradiseVersion = "2.0.1"
   val virtBuildSettingsBase = Defaults.defaultSettings ++ Seq(
     organization := "stanford-ppl",
-    scalaOrganization := scalaOrg,
     scalaVersion := virtScala,
     publishArtifact in (Compile, packageDoc) := false,
+    libraryDependencies += "org.scala-lang.virtualized" %% "scala-virtualized" % "1.0.0-macrovirt",
     libraryDependencies += virtualization_lms_core,
-    libraryDependencies += scalaOrg % "scala-library" % virtScala,
-    libraryDependencies += scalaOrg % "scala-compiler" % virtScala,
+    libraryDependencies += "org.scala-lang" % "scala-library" % virtScala,
+    libraryDependencies += "org.scala-lang" % "scala-compiler" % virtScala,
     libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.2",
 
     libraryDependencies += "org.apache.commons" % "commons-math" % "2.2",
@@ -27,7 +27,16 @@ object DeliteBuild extends Build {
 
     retrieveManaged := true,
     scalacOptions += "-Yno-generic-signatures",
-    scalacOptions += "-Yvirtualize"
+
+
+    libraryDependencies ++= (
+      if (scalaVersion.value.startsWith("2.10")) List("org.scalamacros" %% "quasiquotes" % paradiseVersion)
+      else Nil
+      ),
+
+    libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value % "compile",
+
+    addCompilerPlugin("org.scalamacros" % "paradise" % paradiseVersion cross CrossVersion.full)
   )
 
   val virtBuildSettings = virtBuildSettingsBase ++ Seq(

@@ -1,7 +1,8 @@
 package ppl.delite.framework.datastructures
 
 import java.io.{File,FileWriter,PrintWriter}
-import scala.reflect.{RefinedManifest, SourceContext}
+import org.scala_lang.virtualized.SourceContext
+import org.scala_lang.virtualized.RefinedManifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{CudaCodegen,OpenCLCodegen,CCodegen,CLikeCodegen,GenerationFailedException}
 import scala.virtualization.lms.internal.Targets._
@@ -9,7 +10,6 @@ import ppl.delite.framework.ops.{DeliteOpsExp,CudaGenDeliteOps}
 import ppl.delite.framework.Config
 import ppl.delite.framework.Util._
 import ppl.delite.framework.extern.lib.ProtoBuf
-import scala.reflect.SourceContext
 import scala.collection.mutable.HashSet
 
 trait DeliteStructsExp extends StructExp { this: DeliteOpsExp =>

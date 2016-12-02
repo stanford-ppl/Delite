@@ -6,7 +6,7 @@ import scala.virtualization.lms.common.LoopFusionOpt
 import scala.virtualization.lms.internal.{GenericCodegen, CLikeCodegen, GPUCodegen, ScalaCodegen, GenerationFailedException}
 import scala.virtualization.lms.internal.Targets._
 import ppl.delite.framework.ops.DeliteCollection
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 
 import ppl.delite.framework.codegen.delite.{DeliteCodegen, DeliteKernelCodegen}
 import ppl.delite.framework.ops._

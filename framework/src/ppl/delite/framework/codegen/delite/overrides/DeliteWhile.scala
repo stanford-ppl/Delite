@@ -4,9 +4,8 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common.{WhileExp}
 import scala.virtualization.lms.common.{ScalaGenEffect, CudaGenEffect, OpenCLGenEffect, CGenEffect}
 import scala.virtualization.lms.internal.{GenericNestedCodegen}
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 import java.io.PrintWriter
-import scala.reflect.SourceContext
 
 trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
 

@@ -16,19 +16,19 @@ trait TopN extends OptiMLApplication {
    * Application-specific data structures
    */
   type PairwiseRating = Record{val profileA: Int; val profileB: Int; val scoreA: Int; val scoreB: Int}  
-  def NewPairwiseRating(pa: Rep[Int], pb: Rep[Int], sa: Rep[Int], sb: Rep[Int]) = new Record {
-    val profileA = pa
-    val profileB = pb
-    val scoreA = sa
-    val scoreB = sb
-  }
+  def NewPairwiseRating(pa: Rep[Int], pb: Rep[Int], sa: Rep[Int], sb: Rep[Int]) = Record (
+    profileA = pa,
+    profileB = pb,
+    scoreA = sa,
+    scoreB = sb
+  )
   
   type Similarity = Record{val a: Int; val b: Int; val value: Double}
-  def NewSimilarity(sa: Rep[Int], sb: Rep[Int], sv: Rep[Double]) = new Record {
-    val a = sa
-    val b = sb
-    val value = sv
-  }  
+  def NewSimilarity(sa: Rep[Int], sb: Rep[Int], sv: Rep[Double]) = Record (
+    a = sa,
+    b = sb,
+    value = sv
+  )
   
   /**
    * Pearson correlation 

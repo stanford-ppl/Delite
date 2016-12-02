@@ -13,7 +13,7 @@ package ppl.apps.ml.svm
 
 import ppl.delite.framework.DeliteApplication
 import ppl.dsl.optiml._
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 
 trait SVMRelaxedModels { this: OptiMLApplication =>
   

@@ -56,20 +56,24 @@ trait OptiCollections extends OptiMLApplication {
   def map_filter[K:Manifest,V:Manifest](x: Rep[CMap[K,V]], f: Rep[(K,V)] => Rep[Boolean]): Rep[CMap[K,V]]
   def map_find[K:Manifest,V:Manifest](x: Rep[CMap[K,V]], f: Rep[(K,V)] => Rep[Boolean]): Rep[(K,V)]
 
-  def infix_key[K:Manifest,V:Manifest](x: Rep[(K,V)]): Rep[K]
-  def infix_value[K:Manifest,V:Manifest](x: Rep[(K,V)]): Rep[V]
+  implicit class TupleKVCls[K:Manifest,V:Manifest](x: Rep[(K,V)]) {
+    def key = tuplekv_key(x)
+    def value = tuplekv_value(x)
+  }
 
+  def tuplekv_key[K:Manifest,V:Manifest](x: Rep[(K,V)]): Rep[K]
+  def tuplekv_value[K:Manifest,V:Manifest](x: Rep[(K,V)]): Rep[V]
 }
 
 trait OptiCollectionsExp extends OptiCollections with OptiMLApplicationRunner {
   
-  private def infix_data[A:Manifest](x: Rep[CSeq[A]]) = field[DeliteArray[A]](x, "data")
+  private def sequence_data[A:Manifest](x: Rep[CSeq[A]]) = field[DeliteArray[A]](x, "data")
   def sequence_apply[A:Manifest](x: Rep[CSeq[A]], n: Rep[Int]) = x.data.apply(n)
   def sequence_fromArray[A:Manifest](x: Rep[DeliteArray[A]]) = struct(classTag[CSeq[A]], "data" -> x)
   def sequence_map[A:Manifest,B:Manifest](x: Rep[CSeq[A]], f: Rep[A] => Rep[B]) = CSeq.fromArray(x.data.map(f))
   def sequence_reduce[A:Manifest](x: Rep[CSeq[A]], f: (Rep[A],Rep[A]) => Rep[A], zero: Rep[A]) = x.data.reduce(f,zero)
 
-  private def infix_data[K:Manifest,V:Manifest](x: Rep[CMap[K,V]]) = field[DeliteArray[(K,V)]](x, "data")
+  private def map_data[K:Manifest,V:Manifest](x: Rep[CMap[K,V]]) = field[DeliteArray[(K,V)]](x, "data")
   def map_fromArray[K:Manifest,V:Manifest](data: Rep[DeliteArray[(K,V)]]) = struct(classTag[CMap[K,V]], "data" -> data)
   def map_head[K:Manifest,V:Manifest](x: Rep[CMap[K,V]]) = x.data.apply(0)
   def map_keys[K:Manifest,V:Manifest](x: Rep[CMap[K,V]]) = CSeq.fromArray(x.data.map(_._1))
@@ -79,8 +83,8 @@ trait OptiCollectionsExp extends OptiCollections with OptiMLApplicationRunner {
   def map_filter[K:Manifest,V:Manifest](x: Rep[CMap[K,V]], f: Rep[(K,V)] => Rep[Boolean]) = CMap.fromArray(x.data.filter(f))
   def map_find[K:Manifest,V:Manifest](x: Rep[CMap[K,V]], f: Rep[(K,V)] => Rep[Boolean]) = x.filter(f).head
 
-  def infix_key[K:Manifest,V:Manifest](x: Rep[(K,V)]) = x._1
-  def infix_value[K:Manifest,V:Manifest](x: Rep[(K,V)]) = x._2
+  def tuplekv_key[K:Manifest,V:Manifest](x: Rep[(K,V)]) = x._1
+  def tuplekv_value[K:Manifest,V:Manifest](x: Rep[(K,V)]) = x._2
 
 }
 

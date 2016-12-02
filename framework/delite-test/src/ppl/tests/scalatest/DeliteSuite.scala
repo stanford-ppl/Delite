@@ -14,7 +14,7 @@ import ppl.delite.runtime.graph.targets.Targets
 import java.io.{FileWriter, BufferedWriter}
 import java.io.{ File, Console => _, _ }
 import java.io.FileSystem
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 import scala.collection.mutable.{ ArrayBuffer, SynchronizedBuffer }
 
 trait DeliteTestConfig {
@@ -26,7 +26,9 @@ trait DeliteTestConfig {
   if (propFile.exists) props.load(new FileReader(propFile))
 
   // test parameters
-  val verbose = props.getProperty("tests.verbose", "false") != "false"
+  val verbose =
+    //true
+    props.getProperty("tests.verbose", "false") != "false"
   val verboseDefs = props.getProperty("tests.verboseDefs", "false") != "false"
   val threads = props.getProperty("tests.threads", "1").split(",").map(_.toInt)
   val cacheSyms = props.getProperty("tests.cacheSyms", "true").toBoolean
@@ -78,10 +80,10 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     // Enable specified target code generators
     for(t <- deliteTestTargets) {
       t match {
-        case "scala" =>
-        case "cuda" => Config.generateCUDA = true; Config.generateCpp = true
-        case "cpp" => Config.generateCpp = true
-        case "opencl" => Config.generateOpenCL = true; Config.generateCpp = true
+        case "scala" => //by default?
+        //case "cuda" => Config.generateCUDA = true; Config.generateCpp = true
+        //case "cpp" => Config.generateCpp = true
+        //case "opencl" => Config.generateOpenCL = true; Config.generateCpp = true
         case _ => println("Unknown test target: " + t)
       }
     }
@@ -127,9 +129,9 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
 
         target match {
           case "scala" => runtimeConfig(numScala = num)
-          case "cpp" => runtimeConfig(numCpp = num)
-          case "cuda" => runtimeConfig(numScala = num, numCpp = 1, numCuda = 1) // C++ kernels launched on GPU host
-          case "opencl" => runtimeConfig(numScala = num, numOpenCL = 1)
+          //case "cpp" => runtimeConfig(numCpp = num)
+          //case "cuda" => runtimeConfig(numScala = num, numCpp = 1, numCuda = 1) // C++ kernels launched on GPU host
+          //case "opencl" => runtimeConfig(numScala = num, numOpenCL = 1)
           case _ => assert(false)
         }
 
@@ -159,7 +161,11 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
         app.main(Array())
         if (verboseDefs) app.globalDefs.foreach { d => //TR print all defs
           println(d)
-          val s = d match { case app.TP(sym,_) => sym; case app.TTP(syms,_,_) => syms(0); case _ => sys.error("unknown Stm type: " + d) }
+          val s = d match {
+            case app.TP(sym,_) => sym;
+            case app.TTP(syms,_,_) => syms(0);
+            case _ => sys.error("unknown Stm type: " + d)
+          }
           val info = s.pos.drop(3).takeWhile(_.methodName != "main")
           println(info.map(s => s.fileName + ":" + s.line).distinct.mkString(","))
         }
@@ -178,7 +184,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val name = "test.tmp"
     // Changed mkReport to directly write to a file instead of trying to capture the output stream here.
     // This is to make the C target testing work, because native C stdout is not captured by this.
-    val screenOrVoid = if (verbose) System.out else new PrintStream(new ByteArrayOutputStream())
+    val screenOrVoid = System.out //if (verbose) System.out else new PrintStream(new ByteArrayOutputStream())
     Console.withOut(screenOrVoid) {
       println("test output for: " + app.toString)
       ppl.delite.runtime.Delite.embeddedMain(args, app.staticDataMap)
@@ -268,7 +274,7 @@ trait DeliteTestRunner extends DeliteTestModule with DeliteTestConfig with Delit
     delite_test_bw_write(out, s2)
     delite_test_bw_close(out)
   }
-  
+
 }
 
 trait DeliteTestModule extends Base {

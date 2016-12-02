@@ -3,13 +3,15 @@ package ppl.delite.framework.datastructures
 import ppl.delite.framework.Config
 import ppl.delite.framework.ops._
 import ppl.delite.framework.Util._
+
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 
 import java.io.{PrintWriter,StringWriter}
 import scala.collection.mutable.HashSet
-import scala.reflect.{SourceContext, RefinedManifest}
-
+import org.scala_lang.virtualized.virtualize
+import org.scala_lang.virtualized.SourceContext
+import org.scala_lang.virtualized.RefinedManifest
 
 trait DeliteArray[T] extends DeliteCollection[T]
 
@@ -24,9 +26,7 @@ trait DeliteArrayOps extends Base {
     def sortIndices(length: Rep[Int])(comparator: (Rep[Int],Rep[Int]) => Rep[Int])(implicit ctx: SourceContext) = darray_sortIndices(length, comparator)
   }
 
-  implicit def repDArrayToDArrayOps[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext) = new DeliteArrayOpsCls(da)
-
-  class DeliteArrayOpsCls[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext) {
+  implicit class DeliteArrayOpsCls[T:Manifest](da: Rep[DeliteArray[T]])(implicit ctx: SourceContext) {
     def length: Rep[Int] = darray_length(da)
     def apply(i: Rep[Int]): Rep[T] = darray_apply(da,i)
     def update(i: Rep[Int], x: Rep[T]): Rep[Unit] = darray_update(da,i,x)
@@ -192,6 +192,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
     else super.dc_update(x,n,y)
   }
 
+  @virtualize
   override def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext) = {
     if (isDeliteArray(x)) {
       val arr = asDeliteArray(x)
@@ -210,13 +211,21 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteArrayStructTag
     else super.dc_appendable(x,i,y)
   }
 
+  @virtualize
   override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
     if (isDeliteArray(x)) {
       val arr = asDeliteArray(x)
       val size = darray_unsafe_get_act_size
       val length = arr.length
       if (delite_greater_than(size, delite_int_minus(length, unit(1)))) {
-        val n = if (delite_less_than(length, unit(16))) unit(16) else { if (delite_less_than(delite_int_times(length,unit(2)),unit(0))) unit(2147483647) else delite_int_times(length,unit(2)) }
+        val n =
+          if (delite_less_than(length, unit(16)))
+            unit(16)
+          else {
+            if (delite_less_than(delite_int_times(length,unit(2)),unit(0)))
+              unit(2147483647)
+            else
+              delite_int_times(length,unit(2)) }
         val newArr = DeliteArray[A](n)
         darray_copy(arr, unit(0), newArr, unit(0), length)
         newArr(size) = y
@@ -536,7 +545,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with DeliteArrayStructTags 
       case Def(Struct(_,es)) => //struct of apply nodes
         var sArr: Exp[DeliteArray[T]] = null
         var sj: Exp[Int] = null
-        def ifEqual(a: Exp[Any], j: Exp[Any]) {
+        def ifEqual(a: Exp[DeliteArray[T]], j: Exp[Int]) {
           if (sArr eq null) { sArr = a; sj = j }
           else if (sArr != a || sj != j) super.field_update(struct, index, rhs) //fields not consistent
         }

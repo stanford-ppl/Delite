@@ -3,13 +3,16 @@ package ppl.dsl.optiql.ops
 import scala.virtualization.lms.common.{ScalaGenEffect, EffectExp, Base}
 import java.io.PrintWriter
 import ppl.dsl.optiql.{OptiQLExp,OptiQL}
-import reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 
 trait OptiQLMiscOps extends Base {  this : OptiQL =>
 
   def tic(deps: Rep[Any]*) = optiql_profile_start(deps)
   def toc(deps: Rep[Any]*) = optiql_profile_stop(deps)
-  def infix_printAsTable[T:Manifest](t: Rep[Table[T]], max_rows: Rep[Int] = unit(100)): Rep[Unit] = tablePrintAsTable(t, max_rows)
+
+  implicit class TableCls[T:Manifest](t: Rep[Table[T]]) {
+    def printAsTable(max_rows: Rep[Int] = unit(100)): Rep[Unit] = tablePrintAsTable(t, max_rows)
+  }
 
   def optiql_profile_start(deps: Seq[Rep[Any]]): Rep[Unit]
   def optiql_profile_stop(deps: Seq[Rep[Any]]): Rep[Unit]

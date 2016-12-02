@@ -3,6 +3,7 @@ package ppl.delite.framework.transform
 import ppl.delite.framework.ops.{BaseDeliteOpsTraversalFat, DeliteOpsExp}
 
 import scala.virtualization.lms.common._
+import org.scala_lang.virtualized.SourceContext
 
 /*
  * This transformer is intended to be used to lower IR nodes from an abstract representation 
@@ -30,12 +31,12 @@ import scala.virtualization.lms.common._
  */
  
  /* adapted from LMS TestWorklistTransform2.scala */
-trait LoweringTransform extends BaseFatExp with EffectExp with IfThenElseFatExp with LoopsFatExp with DeliteOpsExp { self =>  
+trait LoweringTransform extends BaseFatExp with EffectExp with IfThenElseFatExp with LoopsFatExp with DeliteOpsExp { self =>
   /* class to extend for a custom LoweringTransformer, most likely to ensure a particular phase ordering */
   class LoweringTransformer extends WorklistTransformer /*with BaseDeliteOpsTraversalFat*/ { val IR: self.type = self }
   
   // ---------- Exp api
-  
+
   implicit def toAfter[A:Manifest](x: Def[A]) = new { def atPhase(t: LoweringTransformer)(y: => Exp[A]) = transformAtPhase(x)(t)(y) }
   implicit def toAfter[A](x: Exp[A]) = new { def atPhase(t: LoweringTransformer)(y: => Exp[A]) = transformAtPhase(x)(t)(y) }
 

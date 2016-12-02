@@ -4,7 +4,7 @@ import ppl.delite.framework.analysis.{StencilExp,NestedLoopMappingExp}
 import ppl.delite.framework.Config
 import ppl.delite.framework.datastructures._
 import scala.collection.mutable.HashMap
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 import scala.virtualization.lms.common._
 
 

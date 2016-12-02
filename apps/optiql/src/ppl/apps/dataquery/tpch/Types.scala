@@ -2,8 +2,9 @@ package ppl.apps.dataquery.tpch
 
 import ppl.dsl.optiql.OptiQLApplication
 import scala.virtualization.lms.common.Record
+import scala.virtualization.lms.common.RecordOps
 
-trait Types { this: OptiQLApplication =>
+trait Types extends RecordOps { this: OptiQLApplication =>
 
   type LineItem = Record {
     val l_orderkey: Int
@@ -27,24 +28,24 @@ trait Types { this: OptiQLApplication =>
   def LineItem(orderKey: Rep[Int], partKey: Rep[Int], supplierKey: Rep[Int], lineNumber: Rep[Int], quantity: Rep[Double],
                extendedPrice: Rep[Double], discount: Rep[Double], tax: Rep[Double], returnFlag: Rep[Char],
                lineStatus: Rep[Char], shipDate: Rep[Date], commitDate: Rep[Date], receiptDate: Rep[Date],
-               shipInstructions: Rep[String], shipMode: Rep[String], comment: Rep[String]): Rep[LineItem] = new Record {
-    val l_orderkey = orderKey
-    val l_partkey = partKey
-    val l_suppkey = supplierKey
-    val l_linenumber = lineNumber
-    val l_quantity = quantity
-    val l_extendedprice = extendedPrice
-    val l_discount = discount
-    val l_tax = tax
-    val l_returnflag = returnFlag
-    val l_linestatus = lineStatus
-    val l_shipdate = shipDate
-    val l_commitdate = commitDate
-    val l_receiptdate = receiptDate
-    val l_shipinstruct = shipInstructions
-    val l_shipmode = shipMode
-    val l_comment = comment
-  }
+               shipInstructions: Rep[String], shipMode: Rep[String], comment: Rep[String]): Rep[LineItem] = Record (
+    l_orderkey = orderKey,
+    l_partkey = partKey,
+    l_suppkey = supplierKey,
+    l_linenumber = lineNumber,
+    l_quantity = quantity,
+    l_extendedprice = extendedPrice,
+    l_discount = discount,
+    l_tax = tax,
+    l_returnflag = returnFlag,
+    l_linestatus = lineStatus,
+    l_shipdate = shipDate,
+    l_commitdate = commitDate,
+    l_receiptdate = receiptDate,
+    l_shipinstruct = shipInstructions,
+    l_shipmode = shipMode,
+    l_comment = comment
+  )
 
   type Customer = Record {
     val c_custkey: Int
@@ -58,16 +59,16 @@ trait Types { this: OptiQLApplication =>
   }
 
   def Customer(key: Rep[Int], name: Rep[String], address: Rep[String], nationKey: Rep[Int], phone: Rep[String],
-               acctBal: Rep[Double], marketSegment: Rep[String], comment: Rep[String]): Rep[Customer] = new Record {
-    val c_custkey = key
-    val c_name = name
-    val c_address = address
-    val c_nationkey = nationKey
-    val c_phone = phone
-    val c_acctbal = acctBal
-    val c_mktsegment = marketSegment
-    val c_comment = comment
-  }
+               acctBal: Rep[Double], marketSegment: Rep[String], comment: Rep[String]): Rep[Customer] = Record (
+    c_custkey = key,
+    c_name = name,
+    c_address = address,
+    c_nationkey = nationKey,
+    c_phone = phone,
+    c_acctbal = acctBal,
+    c_mktsegment = marketSegment,
+    c_comment = comment
+  )
 
   type Nation = Record {
     val n_nationkey: Int
@@ -76,12 +77,12 @@ trait Types { this: OptiQLApplication =>
     val n_comment: String
   }
 
-  def Nation(key: Rep[Int], name: Rep[String], regionKey: Rep[Int], comment: Rep[String]): Rep[Nation] = new Record {
-    val n_nationkey = key
-    val n_name = name
-    val n_regionkey = regionKey
-    val n_comment = comment
-  }
+  def Nation(key: Rep[Int], name: Rep[String], regionKey: Rep[Int], comment: Rep[String]): Rep[Nation] = Record (
+    n_nationkey = key,
+    n_name = name,
+    n_regionkey = regionKey,
+    n_comment = comment
+  )
 
   type Order = Record {
     val o_orderkey: Int
@@ -97,17 +98,17 @@ trait Types { this: OptiQLApplication =>
 
   def Order(key: Rep[Int], customerKey: Rep[Int], orderStatus: Rep[Char], totalPrice: Rep[Double],
             orderDate: Rep[Date], orderPriority: Rep[String], clerk: Rep[String], shipPriority: Rep[Int],
-            comment: Rep[String]): Rep[Order] = new Record {
-    val o_orderkey = key
-    val o_custkey = customerKey
-    val o_orderstatus = orderStatus
-    val o_totalprice = totalPrice
-    val o_orderdate = orderDate
-    val o_orderpriority = orderPriority
-    val o_clerk = clerk
-    val o_shippriority = shipPriority
-    val o_comment = comment
-  }
+            comment: Rep[String]): Rep[Order] = Record (
+    o_orderkey = key,
+    o_custkey = customerKey,
+    o_orderstatus = orderStatus,
+    o_totalprice = totalPrice,
+    o_orderdate = orderDate,
+    o_orderpriority = orderPriority,
+    o_clerk = clerk,
+    o_shippriority = shipPriority,
+    o_comment = comment
+  )
 
   type Part = Record {
     val p_partkey: Int
@@ -122,17 +123,17 @@ trait Types { this: OptiQLApplication =>
   }
 
   def Part(key: Rep[Int], name: Rep[String], manufacturer: Rep[String], brand: Rep[String], partType: Rep[String],
-           size: Rep[Int], container: Rep[String], retailPrice: Rep[Double], comment: Rep[String]): Rep[Part] = new Record {
-    val p_partkey = key
-    val p_name = name
-    val p_mfgr = manufacturer
-    val p_brand = brand
-    val p_type = partType
-    val p_size = size
-    val p_container = container
-    val p_retailprice = retailPrice
-    val p_comment = comment
-  }
+           size: Rep[Int], container: Rep[String], retailPrice: Rep[Double], comment: Rep[String]): Rep[Part] = Record (
+    p_partkey = key,
+    p_name = name,
+    p_mfgr = manufacturer,
+    p_brand = brand,
+    p_type = partType,
+    p_size = size,
+    p_container = container,
+    p_retailprice = retailPrice,
+    p_comment = comment
+  )
 
   type PartSupplier = Record {
     val ps_partkey: Int
@@ -143,13 +144,13 @@ trait Types { this: OptiQLApplication =>
   }
 
   def PartSupplier(partKey: Rep[Int], supplierKey: Rep[Int], availableQty: Rep[Int],
-                   supplyCost: Rep[Double], comment: Rep[String]): Rep[PartSupplier] = new Record {
-    val ps_partkey = partKey
-    val ps_suppkey = supplierKey
-    val ps_availqty = availableQty
-    val ps_supplycost = supplyCost
-    val ps_comment = comment
-  }
+                   supplyCost: Rep[Double], comment: Rep[String]): Rep[PartSupplier] = Record (
+    ps_partkey = partKey,
+    ps_suppkey = supplierKey,
+    ps_availqty = availableQty,
+    ps_supplycost = supplyCost,
+    ps_comment = comment
+  )
 
   type Region = Record {
     val r_regionkey: Int
@@ -157,11 +158,11 @@ trait Types { this: OptiQLApplication =>
     val r_comment: String
   }
 
-  def Region(key: Rep[Int], name: Rep[String], comment: Rep[String]): Rep[Region] = new Record {
-    val r_regionkey = key
-    val r_name = name
-    val r_comment = comment
-  }
+  def Region(key: Rep[Int], name: Rep[String], comment: Rep[String]): Rep[Region] = Record (
+    r_regionkey = key,
+    r_name = name,
+    r_comment = comment
+  )
 
   type Supplier = Record {
     val s_suppkey: Int
@@ -174,14 +175,14 @@ trait Types { this: OptiQLApplication =>
   }
 
   def Supplier(key: Rep[Int], name: Rep[String], address: Rep[String], nationKey: Rep[Int],
-               phone: Rep[String], acctBal: Rep[Double], comment: Rep[String]): Rep[Supplier] = new Record {
-    val s_suppkey = key
-    val s_name = name
-    val s_address = address
-    val s_nationkey = nationKey
-    val s_phone = phone
-    val s_acctbal = acctBal
-    val s_comment = comment
-  }
+               phone: Rep[String], acctBal: Rep[Double], comment: Rep[String]): Rep[Supplier] = Record (
+    s_suppkey = key,
+    s_name = name,
+    s_address = address,
+    s_nationkey = nationKey,
+    s_phone = phone,
+    s_acctbal = acctBal,
+    s_comment = comment
+  )
 
 }

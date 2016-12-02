@@ -2,9 +2,13 @@ package ppl.apps.traceroute
 
 import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
 import scala.virtualization.lms.common.Record
+import scala.virtualization.lms.common.RecordOps
+import org.scala_lang.virtualized.virtualize
+import org.scala_lang.virtualized.SourceContext
 
 object TraceRouteGraphRunner extends OptiQLApplicationRunner with TraceRouteGraph
-trait TraceRouteGraph extends OptiQLApplication {
+@virtualize
+trait TraceRouteGraph extends OptiQLApplication with RecordOps {
 
   type TraceRoute = Record {
     val traceType: String
@@ -21,21 +25,21 @@ trait TraceRouteGraph extends OptiQLApplication {
     val latency: Float
   }
 
-  def Hop(_id: Rep[Int], _ip: Rep[String], _latency: Rep[Float]): Rep[Hop] = new Record {
-    val id = _id
-    val ip = _ip
-    val latency = _latency
-  }
+  def Hop(_id: Rep[Int], _ip: Rep[String], _latency: Rep[Float]): Rep[Hop] = Record (
+    id = _id,
+    ip = _ip,
+    latency = _latency
+  )
 
   type Edge = Record {
     val src: Int
     val dst: Int
   }
 
-  def Edge(source: Rep[Int], destination: Rep[Int]): Rep[Edge] = new Record {
-    val src = source
-    val dst = destination
-  }
+  def Edge(source: Rep[Int], destination: Rep[Int]): Rep[Edge] = Record (
+    src = source,
+    dst = destination
+  )
 
   def printUsage() = {
     println("Usage: TraceRouteGraph <input Akamai Traceroute file or directory> [link filter threshhold]")
@@ -61,10 +65,10 @@ trait TraceRouteGraph extends OptiQLApplication {
       }
     }
 
-    val edgeCounts = allEdges GroupBy(e => e) Select(g => new Record {
-      val edge = g.key
-      val count = g.Count
-    })
+    val edgeCounts = allEdges GroupBy(e => e) Select(g => Record (
+      edge = g.key,
+      count = g.Count
+    ))
     
     val edges = edgeCounts Where(_.count > threshhold) Select(_.edge)
 

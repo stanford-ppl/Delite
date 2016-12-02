@@ -2,7 +2,7 @@ package ppl.delite.framework
 
 import java.io.{FileWriter, File, PrintWriter}
 import scala.tools.nsc.io._
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 import scala.collection.mutable.ArrayBuffer
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
@@ -145,7 +145,7 @@ trait DeliteRestageRunner[R] extends DeliteApplication with DeliteRestageOpsExp 
     
     // curScopeId += 1    
     generator.emitHeader(stream, append)
-    generator.transformers = transformers        
+    generator.transformers = transformers.asInstanceOf[List[Nothing]]
     generator.emitSource(liftedMain, "Application", stream)     
     stream.println("}")
     stream.close()

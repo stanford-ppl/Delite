@@ -2,7 +2,9 @@ package ppl.delite.framework.datastructures
 
 import scala.virtualization.lms.common._
 import java.io.PrintWriter
-import reflect.{SourceContext, RefinedManifest}
+import org.scala_lang.virtualized.virtualize
+import org.scala_lang.virtualized.SourceContext
+import org.scala_lang.virtualized.RefinedManifest
 import ppl.delite.framework.Config
 import ppl.delite.framework.ops._
 import ppl.delite.framework.Util._
@@ -41,7 +43,7 @@ trait DeliteArrayBufferOps extends Base {
     def map[B:Manifest](func: Rep[A] => Rep[B])(implicit ctx: SourceContext) = darray_buffer_map(d,func)
     def filter(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = darray_buffer_filter(d,pred)
     def zip[B:Manifest,R:Manifest](that: Rep[DeliteArrayBuffer[B]])(func: (Rep[A],Rep[B]) => Rep[R])(implicit ctx: SourceContext) = darray_buffer_zip(d,that,func)
-    def reduce(func: (Rep[A],Rep[A]) => Rep[A])(zero: Rep[A])(implicit ctx: SourceContext) = darray_buffer_reduce(d,func,zero)
+    def reduce(func: (Rep[A],Rep[A]) => Rep[A])(zero: Rep[A])(implicit ctx: SourceContext):Rep[A] = darray_buffer_reduce(d,func,zero)
     def foreach(func: Rep[A] => Rep[Unit])(implicit ctx: SourceContext) = darray_buffer_foreach(d,func)
     def forIndices(func: Rep[Int] => Rep[Unit])(implicit ctx: SourceContext) = darray_buffer_forIndices(d,func)
     def groupBy[K:Manifest](key: Rep[A] => Rep[K])(implicit ctx: SourceContext) = darray_buffer_groupBy(d,key)
@@ -153,6 +155,7 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     darray_buffer_set_length(d, delite_int_plus(d.length, len))
   }
 
+  @virtualize
   protected def darray_buffer_ensureextra[A:Manifest](d: Exp[DeliteArrayBuffer[A]], extra: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
     val data = darray_buffer_raw_data(d)
     if (delite_less_than(delite_int_minus(data.length, d.length), extra)) {    
@@ -160,6 +163,7 @@ trait DeliteArrayBufferOpsExp extends DeliteArrayBufferOps with DeliteCollection
     }
   }
 
+  @virtualize
   protected def darray_buffer_realloc[A:Manifest](d: Exp[DeliteArrayBuffer[A]], minLen: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {  
     val oldData = darray_buffer_raw_data(d)
     val doubleLength = delite_int_times(oldData.length, unit(2))

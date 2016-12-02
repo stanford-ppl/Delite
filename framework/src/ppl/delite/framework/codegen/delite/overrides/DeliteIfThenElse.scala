@@ -4,7 +4,7 @@ import scala.virtualization.lms.common._
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
 import scala.virtualization.lms.internal.{GenericNestedCodegen,GenerationFailedException}
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 
 trait DeliteIfThenElseExp extends IfThenElseFatExp with DeliteOpsExp {
 

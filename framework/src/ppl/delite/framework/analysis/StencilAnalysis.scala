@@ -4,7 +4,7 @@ import java.io._
 import scala.collection.mutable.HashMap
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{AbstractSubstTransformer,Transforming,FatBlockTraversal}
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.SourceContext
 
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollection}
