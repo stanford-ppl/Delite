@@ -1,0 +1,109 @@
+import Chisel._
+
+class PipeSM(iter_depth : Int) extends Module {
+
+    // States
+    val pipeInit :: pipeReset :: pipeRun :: pipeDone :: pipeSpinWait :: Nil = Enum(UInt(), 5)
+
+    // Module IO
+    val io = new Bundle {
+      
+      // State machine IO
+      val sm_done = Bool(OUTPUT)
+      val sm_en = Bool(INPUT)
+
+      // Counter IO
+      val ctr_done = Bool(INPUT)
+      val ctr_en = Bool(OUTPUT)
+
+      // Reset IO
+      val rst_done = Bool(INPUT)
+      val rst_en = Bool(OUTPUT)
+
+      // Max In
+      val sm_maxIn = Vec.fill(iter_depth) {UInt(INPUT, 32)}
+
+
+      // Counter Out
+      val ctr_maxOut = Vec.fill(iter_depth) {UInt(OUTPUT, 32)} 
+    }
+
+    // Defaults
+    io.sm_done := Bool(false)
+    io.ctr_en := Bool(false)
+    io.rst_en := Bool(false)
+    io.ctr_maxOut := Vec.fill(iter_depth) {UInt(0)}
+
+    // Initialize state and maxFF
+    val state = Reg(init = pipeInit)
+    val maxFF = Vec.fill(iter_depth) {Reg(init = UInt(0, 32))} 
+    
+    
+    // Only start the state machine when the enable signal is set
+    when (io.sm_en)
+    {
+      // Change states
+      switch (state) {
+
+        // INIT state
+        is (pipeInit) {
+
+          // Set max
+          (0 until iter_depth) foreach { i => maxFF(i) := io.sm_maxIn(i) }
+
+          // Next state
+          state := pipeReset
+        }
+
+        // RESET state
+        is (pipeReset) {
+
+          // Set the reset enable
+          io.rst_en := Bool(true) & ~io.rst_done;
+          
+          // Next state
+          when (io.rst_done) {
+            state := pipeRun
+          }
+
+        }
+
+        // RUN state
+        is (pipeRun) {
+
+          // Set the counter enable
+          io.ctr_en := Bool(true) & ~io.ctr_done;
+
+          // Set max
+          (0 until iter_depth) foreach { i => io.ctr_maxOut(i) := maxFF(i) }
+
+          // Next state
+          when (io.ctr_done) {
+          	(0 until iter_depth) foreach { i => maxFF(0) := UInt(0) }
+            state := pipeDone
+          }
+          .otherwise {
+            state := pipeRun
+          }
+        }
+
+        // DONE state
+        is (pipeDone) {
+
+          // Set the done signal
+          io.sm_done := Bool(true)
+
+          // Next state
+          state := pipeSpinWait
+        }
+
+        //SPIN_WAIT state
+        is (pipeSpinWait) {
+            state := pipeSpinWait;
+        } 
+
+      }
+    }
+
+}
+
