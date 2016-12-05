@@ -54,7 +54,7 @@ object ChiselCompile extends CCompile {
    * @param srcDir: Path to source directory
    * @param dstDir: Path to destination directory
    */
-  def copyDir(srcDir: String, dstDir: String): Unit = {
+  def copyDir(srcDir: String, dstDir: String, ext: String = ""): Unit = {
     val srcDirFile = new File(srcDir)
     val srcDirName = srcDir.split("/").last
     val dstDirFile = new File(s"$dstDir/$srcDirName")
@@ -66,7 +66,7 @@ object ChiselCompile extends CCompile {
         dstDir.mkdirs()
         copyDir(f, dstDir)
       } else {
-        val dst = s"${dstDirFile.getAbsolutePath()}/${f.getName}"
+      	val dst = if (ext == "") s"${dstDirFile.getAbsolutePath()}/${f.getName}" else s"${dstDirFile.getAbsolutePath()}/${f.getName}.${ext}" 
         val src = f.getAbsolutePath()
         copyFile(src, dst)
       }
@@ -83,17 +83,17 @@ object ChiselCompile extends CCompile {
     sourceBuffer.clear()
   }
 
-  /** Copies static MaxJ and build files to MaxJ's runtime directory
+  /** Copies static Chisel and build files to Chisel's runtime directory
    * The destination locations are important, as the build files rely on them.
    */
   def copyStaticFiles() {
-    copyDir(s"""$staticResources/scripts""", s"""$sourceCacheHome/static""")
-    copyDir(s"""$staticResources/templates""", s"""$sourceCacheHome/static""")
-    copyFile(s"""$staticResources/TopKernel.chisel""", s"""$sourceCacheHome/static/TopKernel.chisel""")
-    copyFile(s"""$staticResources/Makefile.top""", s"""${Config.codeCacheHome}/Makefile""")
-    copyFile(s"""$staticResources/build.xml""", s"""${Config.codeCacheHome}/build.xml""")
-    copyFile(s"""$staticResources/scripts/run.sh""", s"""${Config.codeCacheHome}/run.sh""")
-    copyFile(s"""$staticResources/scripts/run_fpga.sh""", s"""${Config.codeCacheHome}/run_fpga.sh""")
+    //copyDir(s"""$staticResources/scripts""", s"""$sourceCacheHome/static""")
+    copyDir(s"""$staticResources/templates""", s"""$sourceCacheHome/static""", "scala")
+    //copyFile(s"""$staticResources/TopKernel.scala""", s"""$sourceCacheHome/static/TopKernel.scala""")
+    //copyFile(s"""$staticResources/Makefile.top""", s"""${Config.codeCacheHome}/Makefile""")
+    copyFile(s"""$staticResources/build""", s"""${sourceCacheHome}/build.sbt""")
+    //copyFile(s"""$staticResources/scripts/run.sh""", s"""${Config.codeCacheHome}/run.sh""")
+    //copyFile(s"""$staticResources/scripts/run_fpga.sh""", s"""${Config.codeCacheHome}/run_fpga.sh""")
   }
 
   /** Copy static cpp files into a 'static' folder in the runtime cpp directory.
