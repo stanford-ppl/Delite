@@ -1,0 +1,25 @@
+/**
+ * FastModLib
+ * Summary: Returns x % m, where m is max.
+ *  IMPORTANT: Requires x < 2m
+ */
+
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+
+class FastMod extends KernelLib {
+
+  int m;
+
+  public FastMod(KernelLib owner, int _m) {
+    super(owner);
+    m = _m;
+  }
+   
+  // IMPORTANT: Requires x < 2m   
+  DFEVar mod(DFEVar x) {
+    return (x >= m) ? (x-m) : x;
+  }
+}

@@ -1,0 +1,508 @@
+/**
+ * ShiftReg
+ * Summary: BRAM -> shift registers and then MACs for datapath
+ */
+
+package engine;
+
+import java.util.Arrays;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.KernelParameters;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Stream.OffsetExpr;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.WrapMode;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.Counter;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.LMemCommandStream;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Mem;
+// import com.maxeler.maxcompiler.v2.managers.engine_interfaces.CPUTypes;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.Reductions;
+// import com.maxeler.maxcompiler.v2.utils.Bits;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.Accumulator;
+
+
+class ShiftReg extends KernelLib {
+  
+  int row_size, nBuffers, s, p, k, number_of_windows_for_this_row, ifmap_depth, ofmap_depth, psum_scratchpad_size;
+  boolean print_debug;
+
+  public ShiftReg(KernelLib owner,
+    int _row_size, int _nBuffers,
+    int _s, int _p, int _k, int _number_of_windows_for_this_row, int _ifmap_depth, int _ofmap_depth,
+    int _psum_scratchpad_size, boolean _print_debug
+  ) {
+    super(owner);
+    row_size = _row_size;
+    nBuffers = _nBuffers;
+    s = _s;
+    p = _p;
+    k = _k;
+    ifmap_depth = _ifmap_depth;
+    ofmap_depth = _ofmap_depth;
+    psum_scratchpad_size = _psum_scratchpad_size;
+    number_of_windows_for_this_row = _number_of_windows_for_this_row;
+    print_debug = _print_debug;
+  }
+
+  // datapath_enable is set to low by FSM once psums are finished processing
+  // This stops the outer mux counter from counting (i.e. it preserves buffer rows)
+  // It also prevents the row size counter from incrementing
+  DFEVar doIt(Memory<DFEVar>[] linebuffer, DFEVar datapath_enable, DFEVar done_processing_psums,
+                DFEVar DRAM_write_en, DFEVar[] kernel, DFEVar last_ifmap, DFEVar first_ifmap, 
+                DFEVar new_ifmap) {
+  
+    // Output control signals from FSM (which is instantiated below)
+    DFEVar initializing_shift_reg = dfeBool().newInstance(this);
+    DFEVar processing_phase = dfeBool().newInstance(this);
+    
+    // Make a counter which counts 0 1 1 1 (needed because of offsets to fix combinational loops)
+    Count.Params paramsCombLoopFix = control.count.makeParams(2) // SHADJIS TODO: Should be 1
+      .withMax(2)
+      .withWrapMode(WrapMode.STOP_AT_MAX);
+    Counter countCombLoopFix = control.count.makeCounter(paramsCombLoopFix);
+    DFEVar initial_idle_state = countCombLoopFix.getCount() === 0;
+    
+    // SHADJIS TODO: for now we assume stride perfectly divides row size, see ReaderKernelLib.maxj
+    int RAM_DEPTH = (row_size + s - 1)/s;
+    int bit_width_linebuf_address = MathUtils.bitsToAddress(RAM_DEPTH);
+    DFEVar linebuf_read_address = dfeUInt(bit_width_linebuf_address).newInstance(this);
+    
+    // There are 3 counters:
+    // - outer most counter is for the muxes from the line buffers, 
+    //   i.e. which row we are doing convolution on
+    //      - this counts up to the # line buffers, i.e. nBuffers
+    // - middle counter is over the horizontal sliding window, i.e.
+    //   it counts every time one of the window operations is done
+    //      - this counts up to (n-k)/s + 1
+    //      - for now padding is ignored like in Eyeriss -- later this
+    //        can be handled as data is streaming (not hard, add a mux)
+    // - inner-most counter is responsible for each window operation
+    //      - this is the only loop counter which depends on the amount
+    //        of parallelism -- it counts up to ceil(k/p)
+    //      - if p=1, then it takes k cycles, etc.
+    // The outer counter is enabled when the middle counter wraps. The
+    // same should be true for the middle counter (counts when inner-most
+    // counter wraps), but in the case of p=k there is no counter needed
+    // so we can just omit the inner-counter
+    //
+    // Edit: actually the inner counter is not needed because we can just
+    // increase the max of the middle counter to be  ((n-k)/s + 1) * ceil(k/p)
+    // That way if there is no inner counter (because p = k) it isn't a problem
+    
+    // Middle counter:
+    // Make a counter to count the number of cycles before this row is done
+    int number_of_cycles_for_per_window = (k+p-1)/p;
+    Count.Params paramsSlidingWindow = control.count.makeParams(32) // SHADJIS TODO: optimize bitwidth
+      .withMax(number_of_windows_for_this_row * number_of_cycles_for_per_window)
+      .withEnable(processing_phase & ~initial_idle_state);
+    Counter countSlidingWindow = control.count.makeCounter(paramsSlidingWindow);
+
+    // Outer counter:
+    // Make a counter to select which buffer each mux should read
+    DFEVar[] crossbar_mux_counters = new DFEVar[k];
+    
+    // ---------------------------------------------------------------------
+    // Counter note
+    // ---------------------------------------------------------------------
+    // Each of the k crossbar muxes needs a counter to select from 1 of (k+s) linebuffer BRAMs.
+    // This is accomplished currently by having k counters. Each counts to a max of (k+s)
+    // (but not including k+s), however they start 1 apart, i.e. start @ 0, 1, 2, ..., k-1.
+    // Then they count to (k+s-1) and (modulo) wrap with a stride of s.
+    // E.g. if s=2, and k = 3, there are 3 counters (horizontal axis = ticks i.e. cycles)
+    //      C0: 0 2 4 1 3
+    //      C1: 1 3 0 2 4
+    //      C2: 2 4 1 3 0
+    // etc. This works fine for a 2D convolution, however when doing 3D convolution, it is necessary to reset this kernel.
+    // But in maxj, resetting the counters does not restart them at initial values 0 1 2, it resets
+    // them all to 0. There are a number of solutions:
+    //  - reset the kernel (seems like overkill)
+    //  - use the FSM counter template (supports reset to init value, but currently not modulo wrap)
+    // A final solution is to have 1 counter, but use C + 0, C + 1, etc. everywhere, and then modulus too, i.e.
+    // C0 --> (C + 0)%(k+s), C1 --> (C + 1)%(k+s), etc.
+    // For now I do that one (when ifmap_depth != 1 or ifmap_depth != 1)
+    //
+    // Finally, resetting 2D is not the only way to implement 3D: another (more optimized, see GlobalFSM for 
+    // details) method would instead require each counter to jump by k (rather than reset). This avoids the issue
+    // above but is also unsupported by maxj counters (variable max is allowed, not reset) so for now I am
+    // just going to reset to 0 as described above.
+    
+    // Note (see above): If ifmap and ofmap depth is 1, then we never need to reset these
+    // So we can keep multiple counters, because they will always be appropriately spaced
+    // (though there isn't much benefit to it probably, maybe save some logic for the modulus)
+    if (ifmap_depth == 1 && ofmap_depth == 1) {
+      for(int i=0; i<k; i++) {
+        Count.Params paramsCrossbarMuxSel = control.count.makeParams(MathUtils.bitsToAddress(nBuffers))
+          .withMax(nBuffers)
+          .withEnable(stream.offset(countSlidingWindow.getWrap(), -1) & ~initial_idle_state)
+          .withInc(s)
+          .withWrapMode(Count.WrapMode.MODULO_MAX_OF_COUNT)
+          .withInitValue(i);
+        Counter crossbarCountMuxSel = control.count.makeCounter(paramsCrossbarMuxSel);
+        crossbar_mux_counters[i] = crossbarCountMuxSel.getCount();
+      }
+    }
+    else {
+      Count.Params paramsCrossbarMuxSel = control.count.makeParams(MathUtils.bitsToAddress(nBuffers))
+        .withMax(nBuffers)
+        .withEnable(stream.offset(countSlidingWindow.getWrap(), -1) & ~initial_idle_state)
+        .withInc(s)
+        .withReset(new_ifmap)   // SHADJIS TODO: Eventually won't reset, will just jump k
+        .withWrapMode(Count.WrapMode.MODULO_MAX_OF_COUNT)
+        .withInitValue(0);
+      Counter crossbarCountMuxSel = control.count.makeCounter(paramsCrossbarMuxSel);
+      for(int i=0; i<k; i++) {
+        FastMod modNBuf = new FastMod(this, nBuffers);
+        // SHADJIS TODO: Adding cast since adding i might go over bit width of counter
+        // Might be more area-efficient way to do this, e.g. increasing counter width above
+        crossbar_mux_counters[i] = modNBuf.mod(crossbarCountMuxSel.getCount().cast(dfeUInt(32)) + i).cast(dfeUInt(MathUtils.bitsToAddress(nBuffers)));
+      }
+    }
+///////////////////////////////////////////////
+if (print_debug)
+{
+    // Debugging
+    for(int i=0; i<k; i++) {
+      debug.simPrintf("    Counter %d        %d\n", i, crossbar_mux_counters[i]);
+    }
+    debug.simPrintf("  nBuffers = %d\n", nBuffers);
+}
+///////////////////////////////////////////////
+    
+    // Inner counter:
+    // See comment below, refactored this out even though no mux when k == p
+    // SHADJIS TODO: Remove counter when k == p (modify places where countMuxSel.getWrap() is called to always just return a high signal)
+    int mux_size = number_of_cycles_for_per_window; // = ceil(k/p)
+    Count.Params paramsMuxSel = control.count.makeParams(MathUtils.bitsToAddress(mux_size) + ((k==p) ? 1 : 0))
+      .withMax(mux_size)
+      .withEnable(processing_phase & ~initial_idle_state);
+    Counter countMuxSel = control.count.makeCounter(paramsMuxSel);
+    DFEVar MuxSel = countMuxSel.getCount();
+    DFEVar MuxSelWrap_Delay1 = stream.offset(countMuxSel.getWrap(), -1);
+    
+    // Below we make muxes which each read from all buffers (crossbar)
+    // so here get all wires coming out of BRAMs
+    // We delay the SR by 1 so that we can write then shift (alternating)
+    DFEVar shift_reg_enable = (initializing_shift_reg | /*countMuxSel.getWrap()*/MuxSelWrap_Delay1) & datapath_enable;
+    DFEVar[] BRAM_to_mux = new DFEVar[nBuffers];
+    for(int lb=0; lb<nBuffers; lb++) {
+      BRAM_to_mux[lb] = linebuffer[lb].read(linebuf_read_address/*, shift_reg_enable*/); // SHADJIS TODO: No enable input, so reads each cycle (bad for power?)
+    }
+    
+    // The shift register size is the first multiple of s that is >= the kernel size
+    int shift_reg_size = ( (k + s - 1) / s ) * s;
+    
+    // FSM which keeps track of BRAM read address
+    SMIO sm = addStateMachine("shiftRegFSM", new ShiftRegFSM(this, k, s, bit_width_linebuf_address));
+    sm.connectInput("datapath_enable", datapath_enable.cast(dfeBool()));
+    // sm.connectInput("muxsel_wrap", /*countMuxSel.getWrap()*/MuxSelWrap_Delay1.cast(dfeBool()));
+    sm.connectInput("muxsel_wrap", countMuxSel.getWrap());
+    sm.connectInput("done_processing_psums", done_processing_psums.cast(dfeBool()));
+    
+    // SHADJIS TODO: optimize latency. I just delay all these to avoid illegal loops but
+    // likely ways to refactor code without having to change latency
+    initializing_shift_reg <== //sm.getOutput("initializing_shift_reg");                    // Note: This output does not need to be delayed (maxj does not complain)
+                            stream.offset(sm.getOutput("initializing_shift_reg"), -1);
+    linebuf_read_address <== //sm.getOutput("linebuf_read_address");                        // Note: This output does not need to be delayed (maxj does not complain)
+                            stream.offset(sm.getOutput("linebuf_read_address"), -1);
+    // Only this needs the delay: it enables both counters. Muxsel counter is delayed 1 anyway,
+    // but it also enables also the window counter which sets psums enabled, etc., so delay needed currently
+    processing_phase <==  //sm.getOutput("processing_phase");
+                            stream.offset(sm.getOutput("processing_phase"), -1);
+    // initial_idle_state <==  sm.getOutput("initial_idle_state");
+      
+    // Make k muxes selecting from each BRAM in line buffer
+    DFEVar partial_sum = constant.var(dfeFloat(8, 24), 0);
+    
+    for(int mux=0; mux<k; mux++) {
+      // Make the mux
+      DFEVar mux_output = control.mux(crossbar_mux_counters[mux], Arrays.asList(BRAM_to_mux));
+      
+      // Now depending on p, generate different hardware (p is constant @ HW gen time)
+      // Note we parallelize the inner loop since this saves area
+      
+      // For p = 1, we have 3 possible implementations:
+      //    a) no shift register, load from BRAM each cycle. This has least delays but maybe worst power
+      //    b) shift register, shifts each cycle, and input of shift register has 2-1 mux from output
+      //       and BRAM to optionally recycle. Some delay but potentially better power than (a).
+      //    c) shift register that shifts only once 1D filter is done, requires k-1 mux into MAC.
+      //       Most delay (k-1 mux) but potentially least power
+      // Latency of all 3 is same, only difference is in power / combinational delays (also area).
+      /*
+      if (p == 1) {
+        // For now I just implement (c), which is a special case of the 1 < p < k case, so I just
+        // let that case handle p==1 too (the hardware generated is the same)
+        // SHADJIS TODO: Later can generate (a) or (b)
+      }
+      */
+      // For 1 < p < k, now a shift register is needed, i.e. option (a) above is not possible
+      // (shift reg is needed because if p > bandwidth of a BRAM we can't do p multiplies in parallel).
+      // And (b) is complicated because it requires shifting either p or s in the register (extra logic).
+      // So this is a more general case of option (c).
+      /*else */if (p < k) {
+        // SHADJIS TODO: Now all cases make this shift register so can factor it out
+        // (hardware generated is the same but this way there is less java)
+        
+        // Read the mux output into a shift register
+        // Handle stride (currently we assume all s new pixels can be read in 1 cycle)
+        DFEVar[] shift_reg = new DFEVar[shift_reg_size];
+        for(int i=0; i<s; i++) {
+          shift_reg[i] = dfeFloat(8,24).newInstance(this);
+          shift_reg[i] = Reductions.streamHold(mux_output.slice((s-1-i)*32, 32).cast(dfeFloat(8, 24)), shift_reg_enable);
+        }
+        for(int i=s; i<shift_reg_size; i++) {
+          shift_reg[i] = dfeFloat(8,24).newInstance(this);
+          shift_reg[i] = Reductions.streamHold(stream.offset(shift_reg[i-s], -1), shift_reg_enable);
+        }
+        
+        // Now connect shift register outputs to muxes and multipliers
+        // There are p muxes, and each mux is a ceil(k/p)-to-1 mux
+        // If k/p != 0, then add in 0's to final mux
+        // int mux_size = number_of_cycles_for_per_window; // = ceil(k/p)
+        //
+        // make a counter for the mux select
+        // Edit: This is used all the time so it was refactored out above (DFEVar MuxSel)
+        // since the muxsel is same for all line buffers (although unnneeded when k == p)
+      
+        // Create p muxes
+        for (int m=0; m<p; m++) {
+          // Create mux inputs
+          DFEVar[] mux_inputs = new DFEVar[mux_size];
+          DFEVar[] mux_inputs_filter = new DFEVar[mux_size];
+          for (int i=0; i<mux_size; i++) {
+            if (m + p*i < k) {
+              mux_inputs[i] = shift_reg[m + p*i    + (shift_reg_size-k)];
+              mux_inputs_filter[i] = kernel[(k-1-mux)*k + m + p*i]; 
+            }
+            else {
+              mux_inputs[i] = constant.var(dfeFloat(8, 24), 0); // SHADJIS TODO: Can use lower precision, or e.g. uint8 for data in layer 1
+              mux_inputs_filter[i] = constant.var(dfeFloat(8, 24), 0);
+            }
+          }
+
+///////////////////////////////////////////////
+if (print_debug)
+{
+    // Debugging
+    debug.simPrintf("    Data row %d", mux);
+    for(int i=0; i<mux_size; i++) {
+      debug.simPrintf("         %f, ", mux_inputs[i]);
+    }
+    debug.simPrintf("\n");
+    //debug.simPrintf("    Kernels row %d", mux);
+    //for(int i=0; i<mux_size; i++) {
+    //  debug.simPrintf("         %f, ", mux_inputs_filter[i]);
+    //}
+    // debug.simPrintf("\n");
+}
+///////////////////////////////////////////////
+        
+          // SHADJIS TODO: make a tree instead, see MaxPower template
+          // (fill into array and call that to do tree reduction)
+          partial_sum = partial_sum + control.mux(MuxSel, Arrays.asList(mux_inputs)) * control.mux(MuxSel, Arrays.asList(mux_inputs_filter));
+        }
+      }
+      // Otherwise fix p = k
+      // Again (a) is not possible and (b) is irrelevant because all MACs finish in 1 cycle so no need
+      // to process by shifting. So again this is like option (c).
+      // This could also be handled by the hardware above for 1 < p < k but the code above might give
+      // an error because there would be p muxes generated each with a single input and a select from
+      // a counter with max 1 (i.e. stuck at 0), so just handle this case separately
+      else {
+      
+        // Read the mux output into a shift register
+        // Handle stride (currently we assume all s new pixels can be read in 1 cycle)
+        DFEVar[] shift_reg = new DFEVar[shift_reg_size];
+        for(int i=0; i<s; i++) {
+          shift_reg[i] = dfeFloat(8,24).newInstance(this);
+          shift_reg[i] = Reductions.streamHold(mux_output.slice((s-1-i)*32, 32).cast(dfeFloat(8, 24)), shift_reg_enable);
+        }
+        for(int i=s; i<shift_reg_size; i++) {
+          shift_reg[i] = dfeFloat(8,24).newInstance(this);
+          shift_reg[i] = Reductions.streamHold(stream.offset(shift_reg[i-s], -1), shift_reg_enable);
+        }
+        // Connect the shift register to each multiplier,
+        // perform the multiplications, then sum the products.
+        // Note: only the last k are connected to the multipliers
+        // Also accumulate the partial sums
+        // SHADJIS TODO: make a tree instead, see MaxPower template
+        // (fill into array and call that to do tree reduction)
+        for (int i=0; i<k; i++) {
+          partial_sum = partial_sum + kernel[(k-1-mux)*k + i]*shift_reg[i    + (shift_reg_size-k)];
+        }
+
+///////////////////////////////////////////////
+if (print_debug)
+{
+  // Debugging
+  debug.simPrintf("    Data row %d", mux);
+  for(int i=0; i<k; i++) {
+    debug.simPrintf("         %f, ", shift_reg[i+(shift_reg_size-k)]);
+  }
+  debug.simPrintf("\n");
+}
+///////////////////////////////////////////////
+
+      }
+    }
+///////////////////////////////////////////////
+if (print_debug)
+{
+  // Debugging
+  debug.simPrintf("           SELECT  = %d\n", MuxSel);
+  debug.simPrintf("           WRAP    = %d\n", countMuxSel.getWrap());
+  debug.simPrintf("           WRAP_D1 = %d\n", MuxSelWrap_Delay1);
+  debug.simPrintf(" countSlidingWindow = %d\n", countSlidingWindow.getCount());
+}
+///////////////////////////////////////////////
+
+    // Want to accumulate partial sums below, but get illegal loop error. Also MaxJ accumulator does not support floating point.
+    // For now I insert into shift register and add them (takes up more area). Could also have used autoloop offset.
+    // SHADJIS TODO: Replace this with accumulator tree from MaxPower
+
+/** Illegal implementation 1: Illegal loop (needs autoloop offset)
+
+    DFEVar previous_partial_sum = dfeFloat(8,24).newInstance(this);
+    DFEVar sum = dfeFloat(8,24).newInstance(this);
+    sum <== partial_sum + previous_partial_sum;
+    if (p != k) {
+      previous_partial_sum <== stream.offset( sum, -1);
+      // previous_partial_sum <== Reductions.streamHold(sum, processing_phase, countMuxSel.getWrap(), Bits.allZeros(32));
+    } else {
+      previous_partial_sum = constant.var(dfeFloat(8, 24), 0);
+    }
+*/
+/** Illegal implementation 2: "AccumulatorFactory does not support floating-point types."
+
+    Accumulator.Params psumParams = Reductions.accumulator.makeAccumulatorConfig(dfeFloat(8, 24))
+                                                      .withClear(countMuxSel.getWrap())
+                                                      .withEnable(processing_phase);
+    DFEVar sum = Reductions.accumulator.makeAccumulator(partial_sum, psumParams);
+*/
+    // Instead inserting into shift register
+    // SHADJIS TODO: use maxpower adder tree
+    DFEVar sum = dfeFloat(8,24).newInstance(this);
+    if (p != k) {
+      DFEVar[] shift_reg = new DFEVar[mux_size];
+      shift_reg[0] = dfeFloat(8,24).newInstance(this);
+      shift_reg[0] = Reductions.streamHold(partial_sum, processing_phase);
+      for(int i=1; i<mux_size; i++) {
+        shift_reg[i] = dfeFloat(8,24).newInstance(this);
+        shift_reg[i] = Reductions.streamHold(stream.offset(shift_reg[i-1], -1), processing_phase);
+      }
+      sum = constant.var(dfeFloat(8, 24), 0);
+      for(int i=0; i<mux_size; i++) {
+        sum = sum + shift_reg[i];
+      }
+///////////////////////////////////////////////
+if (print_debug)
+{
+  // Debugging
+  debug.simPrintf("         %f\n", partial_sum);
+  for(int i=0; i<mux_size; i++) {
+    debug.simPrintf("         %f, ", shift_reg[i]);
+  }
+  debug.simPrintf("\n");
+}
+///////////////////////////////////////////////
+    } else {
+      sum <== partial_sum;
+///////////////////////////////////////////////
+if (print_debug)
+{
+  // Debugging
+  debug.simPrintf("         %f\n", partial_sum);
+}
+///////////////////////////////////////////////
+    }
+    
+    // Set a signal high when we are done processing sums
+    done_processing_psums <== countSlidingWindow.getWrap();
+    
+    // Now add this sum to previous partial sum stored in BRAM
+    // Special-case: if depth is 1, no need for stratch pad
+    // Save area in that case
+    DFEVar total_output_sum_across_depth = dfeFloat(8,24).newInstance(this);
+    if (ifmap_depth == 1) {
+      DRAM_write_en <== processing_phase & ~initial_idle_state & countMuxSel.getWrap();
+      total_output_sum_across_depth <== sum;
+    }
+    else {
+      // General case: we have 2 enables, one for DRAM and one for the scratchpad BRAM
+      DFEVar write_enable_general = dfeBool().newInstance(this);
+      DFEVar scratchpad_write_en  = dfeBool().newInstance(this);
+      
+      write_enable_general <== processing_phase & ~initial_idle_state & countMuxSel.getWrap();
+      DRAM_write_en        <== write_enable_general & last_ifmap;
+      scratchpad_write_en  <== write_enable_general & ~last_ifmap;
+      
+      // Make BRAM for ifmap psums
+      Memory<DFEVar> scratchpad_for_ifmap_psums = mem.alloc(dfeFloat(8,24),psum_scratchpad_size);
+      
+      // Generate read address (also used as write address in the next tick)
+      Count.Params paramsPsumScratchAddr = control.count.makeParams(MathUtils.bitsToAddress(psum_scratchpad_size))
+        .withMax(psum_scratchpad_size)
+        .withEnable(write_enable_general);
+      Counter countPsumScratchAddr = control.count.makeCounter(paramsPsumScratchAddr);
+      
+      // Calculate psum by reading from BRAM
+      // Add mux before write since BRAM content is initially undefined:
+      //  "The content of a memory is undefined when the dataflow engine is first loaded. Once the
+      //   content is set by the user, the data in the memory persists when the Kernel is reset."
+      total_output_sum_across_depth <== first_ifmap ? sum : sum + scratchpad_for_ifmap_psums.read(countPsumScratchAddr.getCount());
+
+///////////////////////////////////////////////
+if (print_debug)
+{
+  // Debugging
+  debug.simPrintf("\n");
+  debug.simPrintf("         %f\n", sum);
+  debug.simPrintf("       + RAM @ %d\n", countPsumScratchAddr.getCount());
+  debug.simPrintf("       = %f\n", total_output_sum_across_depth);
+  debug.simPrintf("BRAM Write EN: %d, DRAM Write EN: %d\n", scratchpad_write_en, DRAM_write_en);
+}
+///////////////////////////////////////////////
+
+      // Write back sum
+      // Note: Need to delay write by 1 tick since:
+      //  "If you write to a memory address in a kernel tick you can not call read with the same address in
+      //   the same tick. Attempting to do so will return undefined data."
+      // Also FYI:
+      //  "You are limited to either a maximum of 2 calls to write and no calls to read on a memory, or 1
+      //   call to write and any number of calls to read."
+      OffsetExpr fix = stream.makeOffsetAutoLoop("fix");
+      //Count.Params paramsAccumulatorFix = control.count.makeParams(MathUtils.bitsToAddress(fix))
+      //  .withMax(fix)
+      //  .withWrapMode(WrapMode.STOP_AT_MAX);
+      //Counter countAccumulatorFix = control.count.makeCounter(paramsAccumulatorFix);
+      //DFEVar initial_autoloop_states = countAccumulatorFix.getCount() < fix;
+      scratchpad_for_ifmap_psums.write(
+        stream.offset(countPsumScratchAddr.getCount(), -fix),
+        stream.offset(total_output_sum_across_depth, -fix),
+        stream.offset(scratchpad_write_en, -fix) //& ~initial_autoloop_states // SHADJIS TODO: implement initial enable low so not writing to random places
+      );
+    }
+    
+///////////////////////////////////////////////
+if (print_debug)
+{
+  // Debugging
+  DFEVar tick = control.count.simpleCounter(32,1000);
+  debug.simPrintf("%d: initializing_shift_reg=%d, linebuf_read_address=%d, processing_phase=%d, initial_idle_state=%d", tick, initializing_shift_reg, linebuf_read_address, processing_phase, initial_idle_state);
+  debug.simPrintf("\n");
+}
+///////////////////////////////////////////////
+    
+    // This sum represents (each cycle) the total sum for that entire window
+    // I.e. this is not a partial sum, it is the entire sum for the window each cycle
+    // (once pipeline is done). So each cycle we return a pixel of the output fmap
+    // EDIT: Now it is also summed to previous ifmaps
+    // return sum;
+    return total_output_sum_across_depth;
+  }
+
+}

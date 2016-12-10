@@ -1,0 +1,213 @@
+/**
+ * GlobalFSM
+ * Summary:
+ *  - Whether we are initially filling buffers, or in steady state
+ *  - Which buffers are ready to be read (valid bit per BRAM)
+ */
+
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmInput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmOutput;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateEnum;
+import com.maxeler.maxcompiler.v2.statemachine.DFEsmStateValue;
+import com.maxeler.maxcompiler.v2.statemachine.kernel.KernelStateMachine;
+import com.maxeler.maxcompiler.v2.statemachine.types.DFEsmValueType;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+
+
+
+class GlobalFSM extends KernelStateMachine {
+ 
+  // States
+  enum States {
+    INITIALIZING,
+    STEADY_STATE,
+    WAITING_FOR_DRAM_BURST_TO_FINISH,
+    DONE
+  }
+
+  // Inputs/Outputs
+  private final DFEsmInput new_row_in_FMEM;
+  private final DFEsmInput burst_adjusted_DRAM_read_en;
+  private final DFEsmInput done_processing_psums;
+  private final DFEsmOutput datapath_enable;
+  private final DFEsmOutput linebuf_read_enable;
+  private final DFEsmOutput new_ifmap;
+  private final DFEsmOutput last_ifmap;
+  private final DFEsmOutput convlayer_done;
+  private final DFEsmOutput first_ifmap;
+  
+  // State Storage
+  private final DFEsmStateValue psums_complete;
+  private final DFEsmStateValue num_rows_buffered;
+  private final DFEsmStateValue num_rows_processed;
+  private final DFEsmStateValue num_ifmaps_processed;
+  private final DFEsmStateValue num_ofmaps_processed;
+  private final DFEsmStateEnum<States> global_state;
+  
+  // Parameters to keep track of current row
+  int num_rows_initial;
+  int num_rows_prefetch;
+  int num_rows_to_process_total;
+  int num_ifmaps_total;
+  int num_ofmaps_total;
+
+  public GlobalFSM(KernelLib owner, int _num_rows_initial, int _num_rows_prefetch, int _num_rows_to_process_total,
+      int _num_ifmaps_total, int _num_ofmaps_total) {
+    super(owner);
+    num_rows_initial = _num_rows_initial;
+    num_rows_prefetch = _num_rows_prefetch;
+    num_rows_to_process_total = _num_rows_to_process_total;
+    num_ifmaps_total = _num_ifmaps_total;
+    num_ofmaps_total = _num_ofmaps_total;
+    
+    // Declare all types required to wire state machine
+    DFEsmValueType boolType = dfeBool();
+    DFEsmValueType u32Type = dfeUInt(32);   // SHADJIS TODO: optimize bitwidth to MathUtils.bitsToAddress(k or outH)
+    
+    // Note: new_row_in_FMEM is high the cycle before the wrap
+    new_row_in_FMEM = io.input("new_row_in_FMEM", boolType);
+    burst_adjusted_DRAM_read_en = io.input("burst_adjusted_DRAM_read_en", boolType);
+    done_processing_psums = io.input("done_processing_psums", boolType);
+    datapath_enable = io.output("datapath_enable", boolType);  
+    linebuf_read_enable = io.output("linebuf_read_enable", boolType);  
+    new_ifmap = io.output("new_ifmap", boolType);  
+    last_ifmap = io.output("last_ifmap", boolType);  
+    convlayer_done = io.output("convlayer_done", boolType);  
+    first_ifmap = io.output("first_ifmap", boolType);  
+
+    //initial state
+    global_state = state.enumerated(States.class, States.INITIALIZING);
+    num_rows_buffered = state.value(u32Type, 0);
+    num_rows_processed = state.value(u32Type, 0);
+    num_ifmaps_processed = state.value(u32Type, 0);
+    num_ofmaps_processed = state.value(u32Type, 0);
+    psums_complete = state.value(boolType, 1);      // Init to 1 so datapath enable initially low
+  }
+
+  @Override
+  protected void nextState() {
+
+    SWITCH(global_state) {
+      CASE(States.INITIALIZING) {
+        // If a row just finished
+        IF (new_row_in_FMEM) {
+          num_rows_buffered.next <== num_rows_buffered + 1;
+          // Takes precedence, so this goes last
+          // Moved this in to save a cycle, but still 1 cycle slow because
+          // of offset -1, see comment in output logic
+          IF (num_rows_buffered >= num_rows_initial-1) {
+            global_state.next <== States.STEADY_STATE;
+            num_rows_buffered.next <== 0;
+            psums_complete.next <== 0;
+          }
+        }
+      }
+      CASE(States.STEADY_STATE) {
+        // If a row just finished
+        IF (new_row_in_FMEM) {
+          num_rows_buffered.next <== num_rows_buffered + 1;
+        }
+        IF (done_processing_psums) {
+          psums_complete.next <== 1;
+          num_rows_processed.next <== num_rows_processed + 1;
+        }
+        // Takes precedence, so this goes after 2 above
+        // SHADJIS TODO: Right now we wait until both conditions are true, then in the
+        // next cycle we restart and set the restart output signal high
+        // Can save a cycle by also checking if num_rows_buffered === num_rows_prefetch-1
+        // and new_row_in_FMEM and also checking done_processing_psums (i.e. check signals directly)
+        IF ((num_rows_buffered === num_rows_prefetch) & psums_complete) {
+          // Can add an extra state here (resetting steady state) but currently not needed, just adds delay
+          num_rows_buffered.next <== 0;
+          psums_complete.next <== 0;
+        }
+        // Final check -- if all rows are complete, either move to next ifmap/ofmap or to DONE state.
+        // If DONE state, psums_complete does not get reset and we are in the DONE state so
+        // output enables will not be set high again
+        IF (num_rows_processed === num_rows_to_process_total) {
+          num_ifmaps_processed.next <== num_ifmaps_processed + 1;
+          global_state.next <== States.INITIALIZING;
+          // SHADJIS TODO: Below I reset num_rows_buffered to 0 but I should reset to num_rows_prefetch
+          // and not waste the prefetching below. This is a bigger saving for higher stride.
+          // But then I need some extra logic in shift reg lib
+          // to make crossbar_mux_counters count by k then instead of by s that 1 cycle (can do in FSM, but not
+          // maxj counters, since they don't support variable stride) so for now just starting entire 2D conv over
+          num_rows_buffered.next <== 0; 
+          num_rows_processed.next <== 0;
+          psums_complete.next <== 1;
+          // If we've also just finished the ofmap, reset # ifmaps processed
+          IF (num_ifmaps_processed === num_ifmaps_total-1) {
+            num_ifmaps_processed.next <== 0;
+            num_ofmaps_processed.next <== num_ofmaps_processed + 1;
+            global_state.next <== States.WAITING_FOR_DRAM_BURST_TO_FINISH;
+            // If the entire 3D conv is finished, now move to DONE state
+            IF (num_ofmaps_processed === num_ofmaps_total-1) {
+              global_state.next <== States.DONE;
+            }
+          }
+        }
+      }
+      // Wait until the DRAM read enable is low, i.e. burst finished,
+      // then start next iteration
+      CASE(States.WAITING_FOR_DRAM_BURST_TO_FINISH) {
+        IF (~burst_adjusted_DRAM_read_en) {
+          global_state.next <== States.INITIALIZING;
+        }
+      }
+    }
+  }
+  
+  @Override
+  protected void outputFunction() {
+  
+    datapath_enable <== ~psums_complete;
+    
+    first_ifmap <== num_ifmaps_processed === 0;
+    
+    // this logic is complicated since we don't want to reset the enable at the very end, since this will try to read 
+    // a kernel from DRAM on very last ifmap when there is nothing left in DRAM to read (can hang)
+    new_ifmap <== (num_rows_processed === num_rows_to_process_total) // Normal check
+               & ~((num_ifmaps_processed === num_ifmaps_total-1) & (num_ofmaps_processed === num_ofmaps_total-1)); // the very last time, don't set signal
+    
+    last_ifmap <== num_ifmaps_processed === num_ifmaps_total-1;
+    
+    convlayer_done <== (global_state === States.DONE);
+    
+        // This output logic is complicated but can be simplified if needed, see comments below
+    linebuf_read_enable <==
+      // The real part of this logic is this:
+      //      linebuf_read_enable <== ((global_state === States.INITIALIZING) & (num_rows_buffered < num_rows_initial )) |
+      //                              ((global_state === States.STEADY_STATE) & (num_rows_buffered < num_rows_prefetch))
+      // i.e. it says to keep reading until we've read the right number of rows
+      // But then it becomes more complicated because of the offet -1 on the output of this enable signal -- it should be 
+      // that as soon as new_row_in_FMEM goes high, next cycle linebuf_read_enable goes low. But it goes low 2 cycles
+      // later because of the MaxJ counter problem, so I am fixing this by setting linebuf_read_enable low 1 cycle earlier.
+      // This adds the following conditions to the  simple check above:
+      //     | (num_rows_buffered === num_rows_...-1  & ~new_row_in_FMEM)
+      // Another solution to this would be to set new row in FMEM 1 cycle sooner (in linebuf lib)
+      // Also ideally the FSM output would not depend on the input new_row_in_FMEM at all, it would contain its 
+      // own internal counter.
+      ( (global_state === States.INITIALIZING) & 
+        (num_rows_buffered < num_rows_initial-1   | (num_rows_buffered === num_rows_initial-1  & ~new_row_in_FMEM)) ) |
+      ( (global_state === States.STEADY_STATE) & 
+        (num_rows_buffered < num_rows_prefetch-1  | (num_rows_buffered === num_rows_prefetch-1 & ~new_row_in_FMEM)) &
+        
+        // There is one final part of the check: Recall that asynchronously 2 things are happening: we are pre-loading 
+        // the next s (s=stride) lines from DRAM and also processing the previous k (k=kernel size) lines. The final check is
+        // saying: do not pre-load the next s when the entire image has been read already. This should be done with a simple 
+        // counter that just counts the number of rows but currently I do it by checking other, already existing signals. Should
+        // simplify this to just count to the right # and stop once we read that many. But right now we check that there are either
+        // 2 rows or more to process (in which case pre-loading is ok), or 1 more to process only but pre-fetching is done for
+        // it already.
+        // SHADJIS TODO: ideally we would pre-fetch for the next ifmap (saves some cycles) but this requires incrementing the
+        // counts in shift reg lib by k (which is easy to do in an FSM) but for now we don't do that. See comment above in state logic.
+        ( (  num_rows_processed < num_rows_to_process_total-2  ) |
+          ( (num_rows_processed === num_rows_to_process_total-2) & (num_rows_buffered < num_rows_prefetch) ) |      // I think this line can be omitted
+          ( (num_rows_processed === num_rows_to_process_total-1) & (num_rows_buffered < num_rows_prefetch) & psums_complete ) ) );  // Can simplify this?
+  }
+
+}

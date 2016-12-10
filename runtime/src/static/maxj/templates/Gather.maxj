@@ -69,7 +69,7 @@ class GatherLib extends KernelLib {
   // TODO: Fix issue when we want to gather the same address multiple times,
   //       we ignore all but the last address we encounter
   void common (
-    DFEVar en, DFEVar done,
+    DFEVar en, DFEVar done, int worker,
     DFEVar isLdSt, DFEVar forceLdSt,
     BramLib addrBram, DFEVar gatherSize,
     int sBurstOffset, String streamName,
@@ -114,7 +114,7 @@ class GatherLib extends KernelLib {
     int maxAddrSize = MathUtils.bitsToAddress(addrBram.depth);
     DFEVar flush_en = sm.getOutput("flush_en") | reset_engine_en;
     DFEVar flush_rst = sm.getOutput("flush_rst");
-    SMIO flush_ctr = addStateMachine("gather_flush_ctr", new SingleCtrSM(this, 0, 1));
+    SMIO flush_ctr = addStateMachine(streamName + "gather_flush_ctr", new SingleCtrSM(this, 0, 1));
     flush_ctr.connectInput("max", constant.var(dfeUInt(32), numSlots*maxStreamCnt));
     flush_ctr.connectInput("en", flush_en);
     flush_ctr.connectInput("reset", flush_rst);
@@ -128,7 +128,7 @@ class GatherLib extends KernelLib {
      PACKAGE COMMANDS PHASE
     */
     // Create counter for gatherAddr memory
-    SMIO gather_ctr = addStateMachine("gather_ctr", new SingleCtrSM(this, 0, 1));
+    SMIO gather_ctr = addStateMachine(streamName+"gather_ctr", new SingleCtrSM(this, 0, 1));
     gather_ctr.connectInput("max", gatherSize.cast(dfeUInt(32)));
     gather_ctr.connectInput("en", gather_ctr_en);
     gather_ctr.connectInput("reset", gather_ctr_rst);
@@ -212,7 +212,7 @@ class GatherLib extends KernelLib {
     CONNECT OUTPUTS
     */
     isLdSt <== gatherCnt > 0 & ~all_done;
-    done <== stream.offset(all_done, -doneOffset);
+    done <== stream.offset(all_done, -1-doneOffset);
     waddr <== wraddr;
     wdata <== io.input(streamName + "_0", wdata.getType(), (stream_en & stream.offset(~streamDone, -1) & stream.offset(~streamDone, -2) & ~stopCond));
     wen <== wren_mask & stream_en & stream.offset(~streamDone, -1) & stream.offset(~streamDone, -2);
@@ -229,7 +229,7 @@ class GatherLib extends KernelLib {
 
   GatherLib (
     KernelLib owner,
-    DFEVar en, DFEVar done,
+    DFEVar en, DFEVar done, int worker,
     DFEVar isLdSt, DFEVar forceLdSt,
     BramLib addrBram, DFEVar gatherSize,
     int sBurstOffset, String streamName,
@@ -243,12 +243,12 @@ class GatherLib extends KernelLib {
     DFEVector<DFEVar> wdataVec = wdataType.newInstance(this);
     waddrVec[0] <== waddr;
     wdataVec[0] <== wdata;
-    common(en, done, isLdSt, forceLdSt, addrBram, gatherSize, sBurstOffset, streamName, waddrVec, wdataVec, wen);
+    common(en, done, worker, isLdSt, forceLdSt, addrBram, gatherSize, sBurstOffset, streamName, waddrVec, wdataVec, wen);
   }
 
   GatherLib (
     KernelLib owner,
-    DFEVar en, DFEVar done,
+    DFEVar en, DFEVar done, int worker,
     DFEVar isLdSt, DFEVar forceLdSt,
     BramLib addrBram, DFEVar gatherSize,
     int sBurstOffset, String streamName,
@@ -256,13 +256,13 @@ class GatherLib extends KernelLib {
     )
   {
     super(owner);
-    common(en, done, isLdSt, forceLdSt, addrBram, gatherSize, sBurstOffset, streamName, waddr, wdata, wen);
+    common(en, done, worker, isLdSt, forceLdSt, addrBram, gatherSize, sBurstOffset, streamName, waddr, wdata, wen);
   }
 
   // Parallelized version.  Just do outer-level parallelization
   GatherLib (
-    KernelLib owner, int worker, int par,
-    DFEVar en, DFEVar done,
+    KernelLib owner, 
+    DFEVar en, DFEVar done, int worker, int par,
     DFEVar isLdSt, DFEVar forceLdSt,
     BramLib addrBram, DFEVar gatherSize,
     int sBurstOffset, String streamName,
@@ -273,8 +273,8 @@ class GatherLib extends KernelLib {
     int numSlots = 3;
     int modFix = -50;
 
-    DFEVar gather_cnt_start = KernelMath.divMod(gatherSize, constant.var(dfeUInt(32), par*worker)).getQuotient();
-    DFEVar max_gather_cnt = KernelMath.divMod(gatherSize, constant.var(dfeUInt(32), par)).getQuotient();
+    DFEVar gather_cnt_start = constant.var(dfeUInt(32), 0);//KernelMath.divMod(gatherSize.cast(dfeUInt(32)), constant.var(dfeUInt(32), par*worker)).getQuotient();
+    DFEVar max_gather_cnt = KernelMath.divMod(gatherSize.cast(dfeUInt(32)), constant.var(dfeUInt(32), par)).getQuotient();
     // int gather_cnt_start = gatherSize / par * worker;
     // int max_gather_cnt = gatherSize / par;
     // Get read-data type
@@ -296,6 +296,7 @@ class GatherLib extends KernelLib {
     // Hook up SM outputs
     DFEVar issue_cmd = sm.getOutput("issue_cmd");
     DFEVar gather_ctr_en = sm.getOutput("gather_ctr_en");
+    DFEVar reset_engine_en = sm.getOutput("reset_engine_en");
     DFEVar package_mask_wren = sm.getOutput("mask_wren");
     DFEVar all_done = sm.getOutput("all_done");
     DFEVar stream_en = sm.getOutput("stream_en");
@@ -309,14 +310,15 @@ class GatherLib extends KernelLib {
     FLUSH BRAMS PHASE
     */
     int maxAddrSize = MathUtils.bitsToAddress(addrBram.depth);
-    DFEVar flush_en = sm.getOutput("flush_en");
+    DFEVar flush_en = sm.getOutput("flush_en") | reset_engine_en;
     DFEVar flush_rst = sm.getOutput("flush_rst");
-    SMIO flush_ctr = addStateMachine("flush_ctr" + worker, new SingleCtrSM(this, 0, 1));
+    SMIO flush_ctr = addStateMachine(streamName + "flush_ctr" + worker, new SingleCtrSM(this, 0, 1));
     flush_ctr.connectInput("max", constant.var(dfeUInt(32), numSlots*maxStreamCnt));
     flush_ctr.connectInput("en", flush_en);
     flush_ctr.connectInput("reset", flush_rst);
     DFEVar flushc = flush_ctr.getOutput("count");
     DFEVar flush_done = flush_ctr.getOutput("done");
+    sm.connectInput("reset_engine_done", stream.offset(flush_done, -2));
     sm.connectInput("flush_done", stream.offset(flush_done, -2));
 
 
@@ -324,19 +326,19 @@ class GatherLib extends KernelLib {
      PACKAGE COMMANDS PHASE
     */
     // Create counter for gatherAddr memory
-    SMIO gather_ctr = addStateMachine("gather_ctr" + worker, new SingleCtrSM(this, 0, 1));
+    SMIO gather_ctr = addStateMachine(streamName + "gather_ctr" + worker, new SingleCtrSM(this, 0, 1));
     gather_ctr.connectInput("max", max_gather_cnt);
     gather_ctr.connectInput("en", gather_ctr_en);
     gather_ctr.connectInput("reset", gather_ctr_rst);
     DFEVar gatherc = gather_ctr.getOutput("count").cast(dfeUInt(maxAddrSize));
 
     // Ctr done logic
-    DFEVar gather_done = gatherc + last_gather_addr.cast(gatherc.getType()) === gather_cnt_start + max_gather_cnt-1;
-    DFEVar gatherCnt = gather_done ? gather_cnt_start + max_gather_cnt-1 : gatherc + last_gather_addr.cast(gatherc.getType());
+    DFEVar gather_done = gatherc.cast(dfeInt(maxAddrSize+1)) + last_gather_addr.cast(dfeInt(maxAddrSize+1)) === gather_cnt_start.cast(dfeInt(maxAddrSize+1)) + max_gather_cnt.cast(dfeInt(maxAddrSize+1))-1;
+    DFEVar gatherCnt = gather_done ? (gather_cnt_start.cast(dfeInt(maxAddrSize+1)) + max_gather_cnt.cast(dfeInt(maxAddrSize+1))-1).cast(gatherc.getType()) : gatherc + last_gather_addr.cast(gatherc.getType());
     sm.connectInput("gather_done", stream.offset(gather_done, modFix - 1) & stream.offset(package_mask_wren, -1));
 
     // Write package into brams
-    DFEVar gatherAddr = addrBram.connectRport(gatherCnt.cast(dfeUInt(32)));
+    DFEVar gatherAddr = addrBram.connectDirectSparseRport(worker, gatherCnt.cast(dfeUInt(32)));
     KernelMath.DivModResult mod = getNumberOfBursts(gatherAddr, type);
     DFEVar next_burst = stream.offset(mod.getQuotient().cast(dfeUInt(32)), modFix);
     sm.connectInput("gather_addr", stream.offset(gatherCnt.cast(dfeUInt(32)), modFix));
@@ -349,11 +351,12 @@ class GatherLib extends KernelLib {
     DFEVar mask_addr = cmd_slot * constant.var(dfeUInt(32), 96) + 
                         mask_addr_offset_out;
     DFEVar mask_wr_data = flush_en ? constant.var(dfeBool(), 0) : constant.var(dfeBool(), 1);
-    DFEVar waddr_wr_data = flush_en ? constant.var(dfeUInt(maxAddrSize), 0) : stream.offset(gatherCnt, modFix - 1);
+    DFEVar waddr_wr_data = flush_en ? constant.var(dfeInt(maxAddrSize), 0) : stream.offset(gatherCnt.cast(dfeInt(maxAddrSize)), modFix - 1);
     DFEVar mask_wr_addr = flush_en ? flushc : mask_addr;
     DFEVar mask_wren = flush_en ? flush_en : package_mask_wren;
     mask_bram.connectWport(mask_wr_addr, mask_wr_data, mask_wren);
-    waddr_bram.connectWport(mask_wr_addr, waddr_wr_data, mask_wren);
+    waddr_bram.connectWport(mask_wr_addr.cast(dfeInt(32)), waddr_wr_data.cast(dfeInt(32)), mask_wren);
+
     // debug.simPrintf(gather_ctr_en & worker==1,// | flush_en,
     //                 "\nworker %d: gather %d, flush %d\n"
     //               + "scheduling @%d (%d + %d), %f, cnten %d\n"
@@ -407,7 +410,7 @@ class GatherLib extends KernelLib {
     CONNECT OUTPUTS
     */
     isLdSt <== gatherCnt > 0 & ~all_done;
-    done <== stream.offset(all_done, -doneOffset);
+    done <== stream.offset(all_done, -1-doneOffset);
     waddr <== wraddr;
     wdata <== io.input(streamName + "_" + worker, wdata.getType(), (stream_en & stream.offset(~streamDone, -1) & stream.offset(~streamDone, -2) & ~stopCond));
     wen <== wren_mask & stream_en & stream.offset(~streamDone, -1) & stream.offset(~streamDone, -2);

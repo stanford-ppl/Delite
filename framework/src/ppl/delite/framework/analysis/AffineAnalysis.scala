@@ -45,8 +45,6 @@ trait AffineAnalysisExp extends EffectExp with FatExpressions {
   def readUnapply(x: Exp[Any]): Option[(Exp[Any], List[Exp[Index]])]
   // Memory being written + list of addresses (for N-D access)
   def writeUnapply(x: Exp[Any]): Option[(Exp[Any], List[Exp[Index]])]
-  // Usually None, but allows other exceptions for symbols being loop invariant
-  def invariantUnapply(x: Exp[Index]): Option[Exp[Index]] = None
 
   object Plus {
     def unapply(x: Exp[Index]) = indexPlusUnapply(x)
@@ -98,20 +96,44 @@ trait AffineAnalyzer extends Traversal {
   var boundIndexPatterns = Map[Exp[Index], List[IndexPattern]]()
 
   // The list of statements which can be scheduled prior to block traversals
-  // (All statements in all scopes of below this scope)
+  // (All statements in all scopes below this scope)
   // If a statement is not contained in this set, it must be loop invariant (because it was already scheduled)
+  var allLoopScopes: Seq[Stm] = Nil
+
+  // The exact scope of the current loop
+  // FIXME: This is currently unsafe, as multiple blocks can cause a value to appear invariant when it is not
   var loopScope: Seq[Stm] = Nil
 
+  override def traverseStmsInBlock[A](stms: Seq[Stm]): Unit = {
+    val outerLoopScope = loopScope
+    loopScope = stms
+
+    super.traverseStmsInBlock(stms)
+
+    loopScope = outerLoopScope
+  }
+
+  // Usually None, but allows other exceptions for symbols being loop invariant
+  // Note: can be context dependent
+  def invariantUnapply(x: Exp[Index]): Option[Exp[Index]] = x match {
+    case Const(_) => Some(x)
+    case Param(_) => Some(x)
+    case s: Sym[_] if !allLoopScopes.exists(stm => (stm defines s).isDefined) => Some(x)
+    case _ => None
+  }
+
   def inLoop[T](indices: List[Sym[Index]])(x: => T): T = {
-    val prevOuter = outerIndices
-    val prevScope = loopScope
-    outerIndices = loopIndices
-    loopScope = innerScope
+    val prevOuter  = outerIndices
+    val prevScopes = allLoopScopes
+    outerIndices   = loopIndices
+
+    allLoopScopes = innerScope
     loopIndices ++= indices
     val out = x
-    loopIndices = outerIndices
-    loopScope = prevScope
-    outerIndices = prevOuter
+
+    loopIndices   = outerIndices
+    allLoopScopes = prevScopes
+    outerIndices  = prevOuter
     out
   }
 
@@ -122,12 +144,7 @@ trait AffineAnalyzer extends Traversal {
     }
   }
   object Invariant {
-    def unapply(x: Exp[Index]): Option[Exp[Index]] = x match {
-      case Const(_) => Some(x)
-      case Param(_) => Some(x)
-      case s: Sym[_] if !loopScope.exists(stm => (stm defines s).isDefined) => Some(x)
-      case _ => IR.invariantUnapply(x)
-    }
+    def unapply(x: Exp[Index]): Option[Exp[Index]] = invariantUnapply(x)
   }
 
   override def traverse(lhs: Sym[Any], rhs: Def[Any]): Unit = lhs match {

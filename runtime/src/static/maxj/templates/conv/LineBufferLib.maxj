@@ -1,0 +1,90 @@
+/**
+ * LineBufferLib
+ * Summary: Instantiates BRAMs (1 per row)
+ */
+
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.KernelParameters;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Stream.OffsetExpr;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.Counter;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.LMemCommandStream;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Mem;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+// import com.maxeler.maxcompiler.v2.managers.engine_interfaces.CPUTypes;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+
+
+class LineBuffer extends KernelLib {
+
+  // The row size in pixels
+  int row_size;
+  
+  // E.g. for the image data buffer, nBuffers would be k+s (or k + min(k,s))
+  int nBuffers;
+  
+  // stride (so we know how many to shift in)
+  int s;
+  boolean print_debug;
+
+  public LineBuffer(KernelLib owner,
+    int _row_size, int _nBuffers, int _s, boolean _print_debug
+  ) {
+    super(owner);
+    row_size = _row_size;
+    nBuffers = _nBuffers;
+    s = _s;
+    print_debug = _print_debug;
+  }
+   
+  // linebuf_read_enable is set when new data is ready to be read from LMEM (DRAM)
+  // E.g. if we are reading 3 image rows, then linebuf_read_enable is high until
+  // all of the input pixels for these 3 rows have been streamed in
+  Memory<DFEVar>[] doIt(DFEVar linebuf_read_enable, DFEVar new_row_in_FMEM, DFEVar us_data, DFEVar new_ifmap) {
+
+    // SHADJIS TODO: can use counter chain instead
+  
+    // Inner counter is over row width
+    // SHADJIS TODO: for now we assume stride perfectly divides row size, see ReaderKernelLib.maxj
+    int RAM_DEPTH = (row_size + s - 1)/s;
+    Count.Params paramsRowPx = control.count.makeParams(MathUtils.bitsToAddress(RAM_DEPTH))
+      .withMax(RAM_DEPTH)
+      .withEnable(linebuf_read_enable);
+    Counter countRowPx = control.count.makeCounter(paramsRowPx);
+    DFEVar px = countRowPx.getCount();
+    
+    // Outer counter is over number of BRAMs
+    Count.Params paramsRowNum = control.count.makeParams(32)   // SHADJIS TODO: optimize bit width (max = nbuffers), MathUtils.bitsToAddress(nbuffers)
+      .withMax(nBuffers)
+      .withReset(new_ifmap) // SHADJIS TODO: Not needed once optimization described in GlobalFSM is complete
+      .withEnable(countRowPx.getWrap());
+    Counter countRowNum = control.count.makeCounter(paramsRowNum);
+    DFEVar row = countRowNum.getCount();
+
+///////////////////////////////////////////////
+if (print_debug)
+{
+    // Debugging
+    debug.simPrintf("   Current ROW,PX = %d,%d\n", row, px);
+}
+///////////////////////////////////////////////
+
+    // Make the array of 1D line buffers
+    Memory<DFEVar>[] linebuffer = new Memory[nBuffers];
+    for(int i=0; i<nBuffers; i++) {
+      // Make the 1D line buffer for this row
+      // SHADJIS TODO: should be float eventually, not rawbits
+      linebuffer[i] = mem.alloc(dfeRawBits(32*s),RAM_DEPTH);
+      linebuffer[i].write(px, us_data.cast(dfeRawBits(32*s)), (row === i) & linebuf_read_enable);
+    }
+    
+    new_row_in_FMEM <== countRowPx.getWrap();
+    
+    // Return an array of BRAMs
+    return linebuffer;
+  }
+}

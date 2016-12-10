@@ -1,0 +1,95 @@
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+import com.maxeler.maxcompiler.v2.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.Reductions;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Count.Counter;
+
+/**
+ * Fifo: Implement addressable memory using flip-flops.
+ * This is so that small memories (typically created when an array is banked
+ * by a large factor) do not waste precious BRAMs.
+ */
+class Fifo extends KernelLib {
+
+  BoxedMem[] m;
+  int par;
+  DFEType type;
+  DFEVar pop;
+  DFEVar push;
+  DFEVar addrDelay;
+  DFEVar headAddr;
+  DFEVar tailAddr;
+
+  /**
+   * Create a new Fifo of 'size' words of type 'type'
+   * @param type: Type of each word
+   * @param size: Number of words
+   */
+  void common(DFEType type, int size, int par) {
+    this.type = type;
+    this.par = par;
+    pop = dfeBool().newInstance(this);
+    push = dfeBool().newInstance(this);
+    Count.Params tailParams = control.count.makeParams(32)
+                              .withEnable(pop)
+                              .withMax(size/par);
+                              // .withStride(par);
+    Counter tailAddrCounter = control.count.makeCounter(tailParams); // Cmd every 10 cycles
+    tailAddr = tailAddrCounter.getCount().cast(dfeInt(32));
+    Count.Params headParams = control.count.makeParams(32)
+                              .withEnable(push)
+                              .withMax(size/par);
+                              // .withStride(par);
+    Counter headAddrCounter = control.count.makeCounter(headParams); // Cmd every 10 cycles
+    headAddr = headAddrCounter.getCount().cast(dfeInt(32));
+
+    m = new BoxedMem[par];
+    for (int i = 0; i<par; i++) {
+      m[i] = new BoxedMem(this, type, size/par);  
+    }
+    
+  }
+
+  Fifo(KernelLib owner, DFEType type, int size, int par) {
+    super(owner);
+    common(type, size, par);
+  }
+
+  DFEVar popSingle(DFEVar en) {
+    pop <== en;
+    // debug.simPrintf(en, "                    rding %d @ %d (m = %d %d %d)\n", m.read(tailAddr), tailAddr, m.read(constant.var(dfeInt(32), 0)), m.read(constant.var(dfeInt(32), 1)), m.read(constant.var(dfeInt(32), 2)));
+
+    return m[0].read(tailAddr);
+  }
+
+  DFEVector<DFEVar> pop(DFEVar en) {
+    pop <== en;
+    DFEVector<DFEVar> result = new DFEVectorType<DFEVar>(this.type, par).newInstance(this);
+    for (int i = 0; i < par; i++) {
+      result[i] <== m[i].read(tailAddr);
+    }
+    return result;
+  }
+
+  void push(DFEVar data, DFEVar en) {
+    push <== en;
+    // debug.simPrintf(en, "writing %d @ %d\n", data, headAddr);
+    m[0].write(stream.offset(headAddr,-1), stream.offset(data, -1), stream.offset(en,-1));
+  }
+  void push(DFEVector<DFEVar> data, DFEVector<DFEVar> en, DFEVar globalEn) {
+    push <== en[0] & globalEn;
+    // debug.simPrintf(en, "writing %d @ %d\n", data[0], headAddr[0]);
+    for (int i = 0; i < par; i++) {
+      m[i].write(stream.offset(headAddr,-1), stream.offset(data[i], -1), stream.offset(en[i] & globalEn,-1));
+    }
+  }
+
+}

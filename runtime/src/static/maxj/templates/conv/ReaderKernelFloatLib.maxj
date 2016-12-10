@@ -1,0 +1,45 @@
+/**
+ * ReaderKernelFloatLib
+ * Summary: Issue a read from DRAM (set enable high for nearest multiple of 384 bytes, or e.g. 96 floats)
+ *  - needed or else simulation does not complete (buffers not empty)
+ */
+
+package engine;
+
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelLib;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.KernelParameters;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Stream.OffsetExpr;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+import com.maxeler.maxcompiler.v2.kernelcompiler.SMIO;
+// import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.LMemCommandStream;
+// import com.maxeler.maxcompiler.v2.managers.engine_interfaces.CPUTypes;
+
+
+class ReaderKernelFloat extends KernelLib {
+ 
+  int image_size;
+ 
+  public ReaderKernelFloat(KernelLib owner, int _image_size) {
+    super(owner);
+    image_size = _image_size;
+  }
+
+  // SHADJIS TODO: This class should be combined with ReaderKernelLib.maxj
+  void doIt(String inDataName, DFEVar real_len, DFEVar read_en, DFEVar inData) { 
+
+    DFEVar out_en = dfeBool().newInstance(this);
+    
+    inData <== io.input(inDataName, dfeFloat(8,24),out_en); // SHADJIS TODO: pass type as parameter
+    
+    SMIO sm = addStateMachine("smReadFloat", new ReadWriteSM(this, image_size));
+    sm.connectInput("in_en", read_en.cast(dfeBool()));
+    sm.connectInput("real_len", real_len.cast(dfeUInt(32)) ); // SHADJIS TODO: optimize bit width
+    out_en <== sm.getOutput("out_en");  
+    
+    //DFEVar tick = control.count.simpleCounter(32,1000);
+    //debug.simPrintf("%d: read_en=%d,out_en=%d,inData=%f\n",tick,read_en,out_en,inData);
+  
+  }
+
+}

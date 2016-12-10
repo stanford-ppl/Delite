@@ -38,7 +38,7 @@ class ScatterLib extends KernelLib {
   }
 
   void common (
-    DFEVar en, DFEVar done,
+    DFEVar en, DFEVar done, int worker,
     DFEVar isLdSt, DFEVar forceLdSt,
     BramLib addrBram, BramLib dataBram, DFEVar scatterSize,
     int sBurstOffset, String streamName
@@ -204,7 +204,7 @@ class ScatterLib extends KernelLib {
     CONNECT OUTPUTS
     */
     isLdSt <== scatterCnt > 0 & ~all_done;
-    done <== stream.offset(all_done, -doneOffset);
+    done <== stream.offset(all_done, -1-doneOffset);
     // debug.simPrintf(~scatter_ctr_en, "\n[cmd %d, strm_en %d, "
     //               + "streamingdata %f (%d), dst %d]\n"
     //               + "maskrd %d @ %d, addrRd %d @ %d, burst_offsetRd %d @ %d\n",
@@ -217,14 +217,14 @@ class ScatterLib extends KernelLib {
 
   ScatterLib (
     KernelLib owner,
-    DFEVar en, DFEVar done,
+    DFEVar en, DFEVar done, int worker,
     DFEVar isLdSt, DFEVar forceLdSt,
     BramLib addrBram, BramLib dataBram, DFEVar scatterSize,
     int sBurstOffset, String streamName
     )
   {   
     super(owner);
-    common(en, done, isLdSt, forceLdSt, addrBram, dataBram, scatterSize, sBurstOffset, streamName);
+    common(en, done, worker, isLdSt, forceLdSt, addrBram, dataBram, scatterSize, sBurstOffset, streamName);
   }
 
   // Parallel version229
@@ -241,8 +241,8 @@ class ScatterLib extends KernelLib {
     super(owner);  
     int numSlots = 3;
     int modFix = -50;
-    DFEVar scatter_cnt_start = KernelMath.divMod(scatterSize, constant.var(dfeUInt(32), par*worker)).getQuotient();
-    DFEVar max_scatter_cnt = KernelMath.divMod(scatterSize, constant.var(dfeUInt(32), par)).getQuotient();
+    DFEVar scatter_cnt_start = constant.var(dfeUInt(32), 0);//KernelMath.divMod(scatterSize.cast(dfeUInt(32)), constant.var(dfeUInt(32), par*worker)).getQuotient();
+    DFEVar max_scatter_cnt = KernelMath.divMod(scatterSize.cast(dfeUInt(32)), constant.var(dfeUInt(32), par)).getQuotient();
     int maxAddrSize = MathUtils.bitsToAddress(addrBram.depth);
 
 
@@ -286,14 +286,15 @@ class ScatterLib extends KernelLib {
     scatter_ctr.connectInput("max", max_scatter_cnt);
     scatter_ctr.connectInput("en", scatter_ctr_en);
     scatter_ctr.connectInput("reset", scatter_ctr_rst);
+
     DFEVar scatterc = scatter_ctr.getOutput("count").cast(dfeUInt(maxAddrSize));
-    DFEVar scatter_done = scatterc + last_scatter_addr.cast(scatterc.getType()) === scatter_cnt_start + max_scatter_cnt-1;
-    DFEVar scatterCnt = scatter_done ? scatter_cnt_start + max_scatter_cnt-1 : scatterc + last_scatter_addr.cast(scatterc.getType());
+    DFEVar scatter_done = scatterc.cast(dfeInt(maxAddrSize+1)) + last_scatter_addr.cast(dfeInt(maxAddrSize+1)) === scatter_cnt_start.cast(dfeInt(maxAddrSize+1)) + max_scatter_cnt.cast(dfeInt(maxAddrSize+1))-1;
+    DFEVar scatterCnt = scatter_done ? (scatter_cnt_start.cast(dfeInt(maxAddrSize+1)) + max_scatter_cnt.cast(dfeInt(maxAddrSize+1))-1).cast(scatterc.getType()) : scatterc + last_scatter_addr.cast(scatterc.getType());
     sm.connectInput("scatter_done", stream.offset(scatter_done, modFix - 1) & stream.offset(schedule_wren, -1));
 
     // Write package into brams
-    DFEVar scatterAddr = addrBram.connectRport(scatterCnt.cast(dfeUInt(32)));
-    DFEVar scatterData = stream.offset(dataBram.connectRport(scatterCnt.cast(dfeUInt(32))), modFix - 1);
+    DFEVar scatterAddr = addrBram.connectDirectSparseRport(worker, scatterCnt.cast(dfeUInt(32)));
+    DFEVar scatterData = stream.offset(dataBram.connectDirectSparseRport(worker, scatterCnt.cast(dfeUInt(32))), modFix - 1);
     KernelMath.DivModResult mod = getNumberOfBursts(scatterAddr, dType);
     DFEVar next_burst = stream.offset(mod.getQuotient().cast(dfeUInt(32)), modFix);
     sm.connectInput("scatter_addr", stream.offset(scatterCnt.cast(dfeUInt(32)), modFix));
@@ -303,7 +304,7 @@ class ScatterLib extends KernelLib {
     DFEVar schedule_slot = stream.offset(sm.getOutput("schedule_slot"), -1) + cmd_slot * maxStreamCnt;
     burst_bram.connectWport(cmd_slot, next_burst_out, slot_wren);
     wdata_bram.connectWport(schedule_slot, scatterData, schedule_wren);
-    waddr_bram.connectWport(schedule_slot, schedule_addr_offset, schedule_wren);
+    waddr_bram.connectWport(schedule_slot.cast(dfeInt(32)), schedule_addr_offset.cast(dfeInt(32)), schedule_wren);
     sm.connectInput("delay_package_cmds", stream.offset(delay_package_cmds, modFix-2));
 
     // debug.simPrintf(scatter_ctr_en,// | flush_en,
@@ -402,7 +403,7 @@ class ScatterLib extends KernelLib {
     CONNECT OUTPUTS
     */
     isLdSt <== scatterCnt > 0 & ~all_done;
-    done <== stream.offset(all_done, -doneOffset);
+    done <== stream.offset(all_done, -1-doneOffset);
     // debug.simPrintf(~scatter_ctr_en, "\n[cmd %d, strm_en %d, "
     //               + "streamingdata %f (%d), dst %d]\n"
     //               + "maskrd %d @ %d, addrRd %d @ %d, burst_offsetRd %d @ %d\n",
