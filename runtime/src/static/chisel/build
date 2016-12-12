@@ -1,3 +1,4 @@
 
 libraryDependencies += "edu.berkeley.cs" %% "chisel" % "latest.release"
-
+unmanagedSourceDirectories in Compile += baseDirectory.value / "kernels"
+unmanagedSourceDirectories in Compile += baseDirectory.value / "static" / "templates"
