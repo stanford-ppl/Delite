@@ -13,6 +13,7 @@ import codegen.delite.overrides.DeliteAllOverridesExp
 import codegen.opencl.TargetOpenCL
 import codegen.dot.TargetDot
 import codegen.maxj.TargetMaxJ
+import codegen.chisel.TargetChisel
 import codegen.scala.TargetScala
 import codegen.restage.TargetRestage
 import codegen.Target
@@ -33,6 +34,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
   lazy val openclTarget = new TargetOpenCL{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val dotTarget = new TargetDot{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val maxjTarget = new TargetMaxJ{val IR: DeliteApplication.this.type = DeliteApplication.this}
+  lazy val chiselTarget = new TargetChisel{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val restageTarget = new TargetRestage{val IR: DeliteApplication.this.type = DeliteApplication.this}
 
   def targets = {
@@ -47,6 +49,8 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       target = dotTarget :: target
     if(Config.generateMaxJ)
       target = maxjTarget :: target
+    if(Config.generateChisel)
+      target = chiselTarget :: target
     target
   }
   lazy val generators: List[GenericFatCodegen{ val IR: DeliteApplication.this.type }] = targets.reverse.map(getCodeGenPkg(_))

@@ -1,7 +1,7 @@
 package ppl.delite.framework.codegen.delite
 
 import java.io.{File, StringWriter, PrintWriter}
-import scala.virtualization.lms.internal.{GenericFatCodegen, GenerationFailedException, MaxJCodegen}
+import scala.virtualization.lms.internal.{GenericFatCodegen, GenerationFailedException, MaxJCodegen, ChiselCodegen}
 import ppl.delite.framework.ops._
 import ppl.delite.framework.Config
 
@@ -151,6 +151,15 @@ trait DeliteKernelCodegen extends GenericFatCodegen {
           remap(sym.head.tp)
         } else {
           "void" // Non-MaxJ kernel, don't really care
+        }
+      }
+      case ("chisel", z) => {
+        val chiselCodegen = this.asInstanceOf[ChiselCodegen]
+        if (chiselCodegen.inHwScope) {
+          assert(sym.length == 1, s"""(${this.toString}, ${rhs}) non-unit sym.length = ${sym.length}!""") // if not set hasOutputSlotTypes and use activation record
+          remap(sym.head.tp)
+        } else {
+          "void" // Non-Chisel kernel, don't really care
         }
       }
       case _ =>

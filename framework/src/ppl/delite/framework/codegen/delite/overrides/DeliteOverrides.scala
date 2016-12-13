@@ -5,6 +5,7 @@ import ppl.delite.framework.datastructures.ScalaGenDeliteStruct
 import ppl.delite.framework.Config
 import scala.virtualization.lms.internal.CLikeCodegen
 import scala.virtualization.lms.internal.MaxJCodegen
+import scala.virtualization.lms.internal.ChiselCodegen
 
 trait DeliteAllOverridesExp extends DeliteIfThenElseExp /*with DeliteOpMap*/ with DeliteWhileExp {
   this: DeliteOpsExp =>
@@ -55,6 +56,14 @@ trait DeliteOpenCLGenAllOverrides extends DeliteOpenCLGenVariables with DeliteOp
 }
 
 trait DeliteMaxJGenAllOverrides extends MaxJCodegen {
+  val IR: DeliteAllOverridesExp
+
+  override def initializeGenerator(buildDir:String): Unit = {
+    super.initializeGenerator(buildDir)
+  }
+}
+
+trait DeliteChiselGenAllOverrides extends ChiselCodegen {
   val IR: DeliteAllOverridesExp
 
   override def initializeGenerator(buildDir:String): Unit = {

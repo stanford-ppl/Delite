@@ -17,6 +17,7 @@ object Targets extends Enumeration {
   val OpenCL = Value("opencl")
   val Cpp = Value("cpp")
   val MaxJ = Value("maxj")
+  val Chisel = Value("chisel")
 
   val GPU = List(Cuda, OpenCL)
 
@@ -29,6 +30,7 @@ object Targets extends Enumeration {
     case "opencl" => OpenCL
     case "cpp" => Cpp
     case "maxj" => MaxJ
+    case "chisel" => Chisel
     case _ => throw new IllegalArgumentException("unsupported target: " + s)
   }
 
@@ -105,6 +107,7 @@ object Targets extends Enumeration {
     case Targets.Cuda => Targets.Cpp
     case Targets.OpenCL => Targets.Cpp
     case Targets.MaxJ => Targets.Cpp
+    case Targets.Chisel => Targets.Cpp
     case _ => throw new IllegalArgumentException("Cannot find a host target for target " + target)
   }
 
@@ -129,6 +132,7 @@ object Targets extends Enumeration {
     case Targets.Cuda => Config.numThreads+Config.numCpp until Config.numThreads+Config.numCpp+Config.numCuda
     case Targets.OpenCL => Config.numThreads+Config.numCpp+Config.numCuda until Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL
     case Targets.MaxJ => Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL until Config.numThreads+Config.numCpp+Config.numCuda+Config.numMaxJ
+    case Targets.Chisel => Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL until Config.numThreads+Config.numCpp+Config.numCuda+Config.numChisel
     case t => throw new RuntimeException("unkown resource type (" + t + ")") 
   }
 
@@ -142,6 +146,7 @@ object Targets extends Enumeration {
     else if (location < Config.numThreads+Config.numCpp+Config.numCuda) Cuda
     else if (location < Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL) OpenCL
     else if (location < Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL+Config.numMaxJ) MaxJ
+    else if (location < Config.numThreads+Config.numCpp+Config.numCuda+Config.numOpenCL+Config.numChisel) Chisel
     else throw new RuntimeException("requested location " + location + " is not in the range of available resources.")
   }
 
@@ -155,6 +160,7 @@ object Targets extends Enumeration {
     case Targets.Cuda => location - Config.numThreads - Config.numCpp
     case Targets.OpenCL => location - Config.numThreads - Config.numCpp - Config.numCuda
     case Targets.MaxJ => location - Config.numThreads - Config.numCpp - Config.numCuda - Config.numOpenCL
+    case Targets.Chisel => location - Config.numThreads - Config.numCpp - Config.numCuda - Config.numOpenCL
     case t => throw new RuntimeException("unkown resource type (" + t + ") for location " + location)
   }
 

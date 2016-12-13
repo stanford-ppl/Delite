@@ -218,6 +218,7 @@ object Sync {
     case Targets.Cuda => resource //every GPU is it's own node
     case Targets.OpenCL => resource
     case Targets.MaxJ => resource  // Every FPGA is its own node
+    case Targets.Chisel => resource  // Every FPGA is its own node
   }
 
   def dataDeps(op: DeliteOP) = op.getInputSet -- _graph.inputs
