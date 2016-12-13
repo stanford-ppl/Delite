@@ -162,7 +162,7 @@ trait ScheduleOptimizer {
   def scheduleNativeFPGA(graph: DeliteTaskGraph) {
     println(s"""numMaxJ = ${Config.numMaxJ}""")
     println(s"""scheduler = ${Config.scheduler}""")
-    assert(Config.numMaxJ == 1 && Config.scheduler=="dynamic")
+    assert((Config.numChisel == 1 || Config.numMaxJ == 1) && Config.scheduler=="dynamic")
     
     // TODO: FIgure out how to deal with both MaxJ and Chisel
     // assert(Config.numChisel == 1 && Config.scheduler=="dynamic")
@@ -265,11 +265,12 @@ trait ScheduleOptimizer {
     val sortedSchedule = GraphUtil.stronglyConnectedComponents[DeliteOP](ops.toList,
                          op => op.getConsumers.toList ++ getDependency(op)).flatMap(l => l.filterNot(o => o.scheduledOn(Targets.Scala)))
 
-    val combinedResource = schedule(Targets.resourceIDs(Targets.MaxJ).head)
     
     // TODO: Figure out how to deal with both MaxJ and Chisel
-    // val combinedResource = schedule(Targets.resourceIDs(Targets.Chisel).head)
-
+    //val combinedResource = schedule(Targets.resourceIDs(Targets.MaxJ).head)
+    val combinedResource = if (Config.numMaxJ == 1) schedule(Targets.resourceIDs(Targets.MaxJ).head) else schedule(Targets.resourceIDs(Targets.Chisel).head)
+    
+    
     val nests = HashSet[DeliteOP]()
 
     sortedSchedule.foreach { _ match {
