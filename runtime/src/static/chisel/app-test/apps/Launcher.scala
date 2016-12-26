@@ -6,9 +6,9 @@ import utils.AppRunner
 
 object Launcher {
   val templates = Map(
-	  "TopKernelLib" -> { (backendName: String) =>
-	    Driver(() => new TopKernelLib(), "verilator") {
-	      (c) => new TopKernelLibTests(c)
+	  "TopModule" -> { (backendName: String) =>
+	    Driver(() => new TopModule(), "verilator") {
+	      (c) => new TopModuleTests(c)
 	    }
 	  }
  )
