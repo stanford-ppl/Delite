@@ -89,7 +89,8 @@ object ChiselCompile extends CCompile {
   def copyStaticFiles() {
     copyDir(s"""$staticResources/app-test""", s"""$sourceCacheHome""")
     copyDir(s"""$staticResources/templates""", s"""$sourceCacheHome/static""")
-    copyFile(s"""$staticResources/app-build""", s"""${sourceCacheHome}/build.sbt""")
+    copyFile(s"""$staticResources/app-build""", s"""${sourceCacheHome}/../../build.sbt""")
+    copyFile(s"""$staticResources/test-app.sh""", s"""${sourceCacheHome}/../../test-app.sh""")
   }
 
   /** Copy static cpp files into a 'static' folder in the runtime cpp directory.

@@ -25,11 +25,12 @@ resolvers ++= Seq(
   Resolver.sonatypeRepo("releases")
 )
 
-scalaSource in Compile := baseDirectory.value
+scalaSource in Compile := baseDirectory.value / "chisel" / "src"
 
-scalaSource in Test := baseDirectory.value / "tests"
+scalaSource in Test := baseDirectory.value / "chisel" / "src" / "app-tests"
 
-excludeFilter in (Compile, unmanagedSources) := "*tests*"
+excludeFilter in (Compile, unmanagedSources) := "*app-tests*"
+
 
 
 // Recommendations from http://www.scalatest.org/user_guide/using_scalatest_with_sbt
