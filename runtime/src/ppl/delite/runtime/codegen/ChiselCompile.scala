@@ -87,13 +87,9 @@ object ChiselCompile extends CCompile {
    * The destination locations are important, as the build files rely on them.
    */
   def copyStaticFiles() {
-    //copyDir(s"""$staticResources/scripts""", s"""$sourceCacheHome/static""")
-    copyDir(s"""$staticResources/templates""", s"""$sourceCacheHome/static""", "scala")
-    //copyFile(s"""$staticResources/TopKernel.scala""", s"""$sourceCacheHome/static/TopKernel.scala""")
-    //copyFile(s"""$staticResources/Makefile.top""", s"""${Config.codeCacheHome}/Makefile""")
-    copyFile(s"""$staticResources/build""", s"""${sourceCacheHome}/build.sbt""")
-    //copyFile(s"""$staticResources/scripts/run.sh""", s"""${Config.codeCacheHome}/run.sh""")
-    //copyFile(s"""$staticResources/scripts/run_fpga.sh""", s"""${Config.codeCacheHome}/run_fpga.sh""")
+    copyDir(s"""$staticResources/app-test""", s"""$sourceCacheHome""")
+    copyDir(s"""$staticResources/templates""", s"""$sourceCacheHome/static""")
+    copyFile(s"""$staticResources/app-build.sbt""", s"""${sourceCacheHome}/build.sbt""")
   }
 
   /** Copy static cpp files into a 'static' folder in the runtime cpp directory.
