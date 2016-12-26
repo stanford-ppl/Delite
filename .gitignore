@@ -36,4 +36,3 @@ run-templates.sh
 runtime/src/static/chisel/target
 runtime/src/static/chisel/project
 runtime/src/static/chisel/test_run_dir
-runtime/src/static/chisel/tests
