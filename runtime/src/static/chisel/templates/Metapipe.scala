@@ -15,6 +15,7 @@ class Metapipe(val n: Int) extends Module {
     val output = new Bundle {
       val done = Bool().asOutput
       val stageEnable = Vec(n, Bool().asOutput)
+      val rst_en = Bool().asOutput
     }
   })
 
@@ -55,6 +56,8 @@ class Metapipe(val n: Int) extends Module {
   ctr.io.input.saturate := true.B
   ctr.io.input.max := max
   ctr.io.input.stride := 1.U
+  io.output.rst_en := (state === resetState.U)
+
 
   // Counter for handling drainage while in fill state
   val cycsSinceDone = Module(new FF(bitsToAddress(n)))

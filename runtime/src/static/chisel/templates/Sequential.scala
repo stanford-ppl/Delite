@@ -15,6 +15,7 @@ class Sequential(val n: Int) extends Module {
     val output = new Bundle {
       val done = Bool().asOutput
       val stageEnable = Vec(n, Bool().asOutput)
+      val rst_en = Bool().asOutput
     }
   })
 
@@ -43,27 +44,8 @@ class Sequential(val n: Int) extends Module {
   ctr.io.input.max := max
   ctr.io.input.stride := 1.U
   val iter = ctr.io.output.count(0)
+  io.output.rst_en := (state === resetState.U)
 
-  // Next state logic
-//  val nextStateMux = Module(new MuxNOH(n+3, 1))
-//  val states = Vec.tabulate(n+3) { i => UInt(i) }
-//  val muxSel = Vec.tabulate(n+3) { i =>
-//    if (i == initState) {  // INIT enable logic
-//     ~io.enable | (io.enable & (state === UInt(doneState)))
-//    } else if (i == resetState) { // RESET logic
-//      io.enable & (state === initState.U)
-//    } else if (i == firstState) { // First state
-//      io.enable &
-//          ((state === UInt(resetState)) |
-//           ((state === UInt(lastState)) & io.input.stageDone.last & ~ctr.io.done))
-//    } else if (i < 2+n) { // Worker state logic
-//      io.enable & (state === UInt(i-2-1)) & io.input.stageDone(i-2-1)
-//    } else { // Done state logic
-//      io.enable & (state === UInt(lastState)) & ctr.io.done
-//    }
-//  }
-//  nextStateMux.io.ins := states
-//  nextStateMux.io.sel := muxSel
   when(io.input.enable) {
     when(state === initState.U) {
       stateFF.io.input.data := resetState.U
