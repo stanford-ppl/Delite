@@ -142,8 +142,8 @@ class CounterTests(c: Counter) extends PeekPokeTester(c) {
   // var expectedDones = List(0,0,0)
 
   val gap = List(0,0,0)
-  val maxes = List(List(8,12,8), List(4,8,16), List(8,20,200))
-  val strides = List(List(3,3,3),List(1,1,1), List(3, 6, 5))
+  val maxes = List(List(10,12,15), List(11,13,16), List(12,14,50))
+  val strides = List(List(3,3,3),List(1,1,1), List(3, 4, 5))
   val start = List(0,0,0) // TODO: Test new starts
   var enable = 1
   var saturate = 1
@@ -157,19 +157,13 @@ class CounterTests(c: Counter) extends PeekPokeTester(c) {
       if (m % (s*p) == 0) m else m - (m % (s*p)) + (s*p) 
     }
     numEnabledCycles = 0
-    val totalTicks = alignedMax.reduce{_*_} / stride.reduce{_*_} // TODO: Incorporate stride/par/starts
     val stepSizes = c.par.zipWithIndex.map{case (p,i) => p*stride(i) + gap(i)}
+    val totalTicks = alignedMax.reduce{_*_} / stepSizes.reduce{_*_}
 
     def testOneStep() = {
         step(1)
         if (enable == 1) numEnabledCycles += 1
-        val baseCnts = (0 until depth).map { i => 
-          peek(c.io.output.countBases(i))
-        }
-        val cksum = baseCnts.drop(1).zipWithIndex.map{ case (cnt, i) => 
-          max.take(i+1).reduce{_*_} * cnt
-        }.reduce{_+_} + baseCnts(0)
-        val expectedCksum = numEnabledCycles // TODO: Incorporate stride/par/starts
+        val expectedCksum = numEnabledCycles 
         val done = if (numEnabledCycles == max.reduce{_*_}) 1 else 0
 
         c.par.zipWithIndex.foreach{ case (p,i) => 
@@ -187,14 +181,14 @@ class CounterTests(c: Counter) extends PeekPokeTester(c) {
           }
           val ctrAddr = c.par.take(i+1).reduce{_+_} - c.par(i)
           (0 until p).foreach{ k => 
-//             val test = peek(c.io.output.counts(ctrAddr+k))
-//             if (test != base + k*stride(i)) {
-//               println(s"""Step ${numEnabledCycles}: (checking ctr${i}.${k} @ ${ctrAddr+k} (hw: ${test} =? ${base+k*stride(i)})
-//   tic each ${ticksToInc} from ${alignedMax.take(i+1).reduce{_*_}} / ${alignedMax(i)}), 
-//     increments = ${increments}
-//       base = ${base} (incs % ${alignedMax(i)})
-// """)
-//             }
+            val test = peek(c.io.output.counts(ctrAddr+k))
+            if (test != base + k*stride(i)) {
+              println(s"""Step ${numEnabledCycles}: (checking ctr${i}.${k} @ ${ctrAddr+k} (hw: ${test} =? ${base+k*stride(i)})
+  tic each ${ticksToInc} from ${alignedMax.take(i+1).reduce{_*_}} / ${alignedMax(i)}), 
+    increments = ${increments}
+      base = ${base} (incs % ${alignedMax(i)})
+""")
+            }
             expect(c.io.output.counts(ctrAddr+k), base + k*stride(i))
           }
         }
@@ -244,7 +238,7 @@ class CounterTester extends ChiselFlatSpec {
   behavior of "Counter"
   backends foreach {backend =>
     it should s"correctly add randomly generated numbers $backend" in {
-      Driver(() => new Counter(List(1,1,1)))(c => new CounterTests(c)) should be (true)
+      Driver(() => new Counter(List(2,2,2)))(c => new CounterTests(c)) should be (true)
     }
   }
 }

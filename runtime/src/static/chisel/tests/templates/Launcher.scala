@@ -42,7 +42,7 @@ object Launcher {
         }
       },
       "Counter" -> { (backendName: String) =>
-        Driver(() => new Counter(List(1,1,1)), "verilator") {
+        Driver(() => new Counter(List(2,2,2)), "verilator") {
           (c) => new CounterTests(c)
         }
       },

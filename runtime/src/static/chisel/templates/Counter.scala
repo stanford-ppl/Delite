@@ -84,7 +84,7 @@ class Counter(val par: List[Int]) extends Module {
     }
     val output = new Bundle {
       val counts      = Vec(numWires, UInt(32.W).asOutput) 
-      val countBases  = Vec(depth, UInt(32.W).asOutput) // For debugging the base of each ctr
+      // val countBases  = Vec(depth, UInt(32.W).asOutput) // For debugging the base of each ctr
       val done   = Bool().asOutput
       val extendedDone   = Bool().asOutput // Tool for ensuring done signal is stable for one rising edge
       val saturated = Bool().asOutput
@@ -121,10 +121,10 @@ class Counter(val par: List[Int]) extends Module {
     (0 until p).foreach { k => io.output.counts(addr+k) := ctrs(i).io.output.count(k) }
   }
 
-  // Wire up countBases for easy debugging
-  ctrs.zipWithIndex.map { case (ctr,i) => 
-    io.output.countBases(i) := ctr.io.output.count(0)
-  }
+  // // Wire up countBases for easy debugging
+  // ctrs.zipWithIndex.map { case (ctr,i) => 
+  //   io.output.countBases(i) := ctr.io.output.count(0)
+  // }
 
   // Wire up the done, saturated, and extendedDone signals
   val isDone = ctrs.map{_.io.output.done}.reduce{_&_}
