@@ -14,7 +14,7 @@ class PipeTests(c: Pipe) extends PeekPokeTester(c) {
   maxes.map { a => println("max of ctr = " + a) }
   var cnts = Array.tabulate(c.ctrDepth) { i => 0 }
 
-  (0 until c.ctrDepth).foreach { i => poke(c.io.input.sm_maxIn(i), maxes(i))}
+  (0 until c.ctrDepth).foreach { i => poke(c.io.input.ctr_maxIn(i), maxes(i))}
 
   def handleStep {
     val cnt_en = peek(c.io.output.ctr_en).toInt

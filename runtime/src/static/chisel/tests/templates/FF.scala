@@ -183,6 +183,8 @@ class SRFFTests(c: SRFF) extends PeekPokeTester(c) {
   }
 
   poke(c.io.input.asyn_reset, 1)
+  poke(c.io.input.set, 0)
+  poke(c.io.input.reset, 0)
   expect(c.io.output.data, 0)
   step(1)
   expect(c.io.output.data, 0)

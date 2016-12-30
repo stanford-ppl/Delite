@@ -36,8 +36,13 @@ object Launcher {
           (c) => new SRFFTests(c)
         }
       },
+      "SingleCounter" -> { (backendName: String) =>
+        Driver(() => new SingleCounter(3), "verilator") {
+          (c) => new SingleCounterTests(c)
+        }
+      },
       "Counter" -> { (backendName: String) =>
-        Driver(() => new Counter(3), "verilator") {
+        Driver(() => new Counter(List(1,1,1)), "verilator") {
           (c) => new CounterTests(c)
         }
       },

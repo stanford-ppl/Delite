@@ -19,13 +19,13 @@ class Pipe(val ctrDepth : Int) extends Module {
     val input = new Bundle {
       val enable = Bool().asInput
       val ctr_done = Bool().asInput
-      val sm_maxIn = Vec(ctrDepth, UInt(32).asInput)
+      val ctr_maxIn = Vec(ctrDepth, UInt(32).asInput) // TODO: Deprecate this maxIn/maxOut business if all is well without it
     }
     val output = new Bundle {
       val done = Bool().asOutput
       val ctr_en = Bool().asOutput
       val rst_en = Bool().asOutput
-      val ctr_maxOut = Vec(ctrDepth, UInt(32).asOutput) 
+      val ctr_maxOut = Vec(ctrDepth, UInt(32).asOutput)
     }
   })
 
@@ -33,7 +33,7 @@ class Pipe(val ctrDepth : Int) extends Module {
   val maxFF = List.tabulate(ctrDepth) { i => Reg(init = 0.U) }
 
   // Initialize state and maxFF
-  val rstCtr = Module(new Counter(1))
+  val rstCtr = Module(new SingleCounter(1))
   rstCtr.io.input.enable := state === pipeReset.U
   rstCtr.io.input.reset := (state != pipeReset.U)
   rstCtr.io.input.saturate := true.B
@@ -47,7 +47,7 @@ class Pipe(val ctrDepth : Int) extends Module {
       io.output.done := false.B
       io.output.ctr_en := false.B
       io.output.rst_en := false.B
-      (0 until ctrDepth) foreach { i => maxFF(i) := io.input.sm_maxIn(i) }
+      (0 until ctrDepth) foreach { i => maxFF(i) := io.input.ctr_maxIn(i) }
       state := pipeReset.U
     }.elsewhen( state === pipeReset.U ) {
       io.output.rst_en := true.B;

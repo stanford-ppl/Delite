@@ -30,7 +30,7 @@ class TopModuleTests(c: TopModule) extends PeekPokeTester(c) {
     poke(c.io.ArgIn.Reg160, input1)
   }
   def MemTest1DCheck() {
-    expect(c.io.ArgOut.Reg161, (input1*2+4)-1)
+    expect(c.io.ArgOut.Reg161, (input1+383)
   }
 
 

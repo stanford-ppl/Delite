@@ -37,7 +37,7 @@ class Sequential(val n: Int) extends Module {
   maxFF.io.input.data := io.input.numIter
   val max = maxFF.io.output.data
 
-  val ctr = Module(new Counter(1))
+  val ctr = Module(new SingleCounter(1))
   ctr.io.input.enable := io.input.enable & io.input.stageDone(lastState-2) // TODO: Is this wrong? It still works...  
   ctr.io.input.reset := (state === doneState.U)
   ctr.io.input.saturate := false.B

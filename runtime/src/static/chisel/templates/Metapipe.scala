@@ -50,7 +50,7 @@ class Metapipe(val n: Int) extends Module {
   }
   val doneMask = doneFF.map { _.io.output.data }
 
-  val ctr = Module(new Counter(1))
+  val ctr = Module(new SingleCounter(1))
   ctr.io.input.enable := doneClear
   ctr.io.input.reset := (state === doneState.U)
   ctr.io.input.saturate := true.B
