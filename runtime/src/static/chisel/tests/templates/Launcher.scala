@@ -61,6 +61,16 @@ object Launcher {
           (c) => new DelayTests(c)
         }
       },
+      "Mem1D" -> { (backendName: String) =>
+        Driver(() => new Mem1D(1024), "verilator") {
+          (c) => new Mem1DTests(c)
+        }
+      },
+      "MemND" -> { (backendName: String) =>
+        Driver(() => new MemND(List(4,8)), "verilator") {
+          (c) => new MemNDTests(c)
+        }
+      },
       "Pipe" -> { (backendName: String) =>
         Driver(() => new Pipe(2), "verilator") {
           (c) => new PipeTests(c)
