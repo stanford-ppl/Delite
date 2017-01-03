@@ -4,8 +4,15 @@ package utils
 
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Properties.envOrElse
+import java.io.File
 
 object TemplateRunner {
+  def deleteRecursively(file: File): Unit = {
+    if (file.isDirectory)
+      file.listFiles.foreach(deleteRecursively)
+    if (file.exists && !file.delete)
+      throw new Exception(s"Unable to delete ${file.getAbsolutePath}")   
+  }
   def apply(templateMap: Map[String, String => Boolean], args: Array[String]): Unit = {
     // Choose the default backend based on what is available.
     lazy val firrtlTerpBackendAvailable: Boolean = {
@@ -22,6 +29,7 @@ object TemplateRunner {
       ""
     }
     val backendName = envOrElse("TESTER_BACKENDS", defaultBackend).split(" ").head
+    val tempDir = s"""${envOrElse("DELITE_HOME", "tmp")}/runtime/src/static/chisel/test_run_dir/"""
     val problemsToRun = if(args.isEmpty || args.head == "all" ) {
       templateMap.keys.toSeq.sorted.toArray
     }
@@ -53,7 +61,8 @@ object TemplateRunner {
         case _ =>
           errors += s"Bad template name: $testName"
       }
-
+      // Wipe tempdir for consecutive tests of same module
+      deleteRecursively(new File(tempDir))
     }
     if(successful > 0) {
       println(s"Templates passing: $successful")

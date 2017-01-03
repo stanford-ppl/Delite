@@ -76,7 +76,7 @@ class FFNoInitTests(c: FFNoInit) extends PeekPokeTester(c) {
   }
 }
 
-class FFNoInitNoResetTests(c: FFNoInit) extends PeekPokeTester(c) {
+class FFNoInitNoResetTests(c: FFNoInitNoReset) extends PeekPokeTester(c) {
   step(1)
   reset(1)
 
@@ -98,7 +98,7 @@ class FFNoInitNoResetTests(c: FFNoInit) extends PeekPokeTester(c) {
   }
 }
 
-class FFNoResetTests(c: FFNoInit) extends PeekPokeTester(c) {
+class FFNoResetTests(c: FFNoReset) extends PeekPokeTester(c) {
   step(1)
   reset(1)
 
@@ -194,14 +194,14 @@ class SRFFTests(c: SRFF) extends PeekPokeTester(c) {
 
 }
 
-class FFTester extends ChiselFlatSpec {
-  behavior of "FF"
-  backends foreach {backend =>
-    it should s"correctly add randomly generated numbers $backend" in {
-      Driver(() => new FF(32))(c => new FFTests(c)) should be (true)
-    }
-  }
-}
+// class FFTester extends ChiselFlatSpec {
+//   behavior of "FF"
+//   backends foreach {backend =>
+//     it should s"correctly add randomly generated numbers $backend" in {
+//       Driver(() => new FF(32))(c => new FFTests(c)) should be (true)
+//     }
+//   }
+// }
 
 class FFNoInitTester extends ChiselFlatSpec {
   behavior of "FFNoInit"

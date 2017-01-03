@@ -129,6 +129,10 @@ class SRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
            val wPar: Int, val rPar: Int, val bankingMode: String) extends Module { 
 
   // Overloaded construters
+  // Tuple unpacker
+  def this(tuple: (List[Int], Int, Int, List[Int], List[Int], Int, Int,
+           Int, Int, String)) = this(tuple._1,tuple._2,tuple._3,tuple._4,tuple._5,tuple._6,tuple._7,tuple._8,tuple._9,tuple._10)
+  // Bankmode-less
   def this(logicalDims: List[Int], numBufs: Int, w: Int, 
            banks: List[Int], strides: List[Int], numWriters: Int, numReaders: Int,
            wPar: Int, rPar: Int) = this(logicalDims, numBufs, w, banks, strides, numWriters, numReaders, wPar, rPar, "strided")

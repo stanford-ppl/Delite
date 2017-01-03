@@ -183,11 +183,11 @@ class CounterTests(c: Counter) extends PeekPokeTester(c) {
           (0 until p).foreach{ k => 
             val test = peek(c.io.output.counts(ctrAddr+k))
             if (test != base + k*stride(i)) {
-              println(s"""Step ${numEnabledCycles}: (checking ctr${i}.${k} @ ${ctrAddr+k} (hw: ${test} =? ${base+k*stride(i)})
-  tic each ${ticksToInc} from ${alignedMax.take(i+1).reduce{_*_}} / ${alignedMax(i)}), 
-    increments = ${increments}
-      base = ${base} (incs % ${alignedMax(i)})
-""")
+//               println(s"""Step ${numEnabledCycles}: (checking ctr${i}.${k} @ ${ctrAddr+k} (hw: ${test} =? ${base+k*stride(i)})
+//   tic each ${ticksToInc} from ${alignedMax.take(i+1).reduce{_*_}} / ${alignedMax(i)}), 
+//     increments = ${increments}
+//       base = ${base} (incs % ${alignedMax(i)})
+// """)
             }
             expect(c.io.output.counts(ctrAddr+k), base + k*stride(i))
           }

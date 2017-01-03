@@ -135,25 +135,25 @@ class SRAMTests(c: SRAM) extends PeekPokeTester(c) {
 class Mem1DTester extends ChiselFlatSpec {
   behavior of "Mem1D"
   backends foreach {backend =>
-    it should s"correctly add randomly generated numbers $backend" in {
+    it should s"correctly do $backend" in {
       Driver(() => new Mem1D(1024))(c => new Mem1DTests(c)) should be (true)
     }
   }
 }
 
-class MemNDTester extends ChiselFlatSpec {
-  behavior of "MemND"
-  backends foreach {backend =>
-    it should s"correctly add randomly generated numbers $backend" in {
-      Driver(() => new MemND(List(4,8)))(c => new MemNDTests(c)) should be (true)
-    }
-  }
-}
+// class MemNDTester extends ChiselFlatSpec {
+//   behavior of "MemND"
+//   backends foreach {backend =>
+//     it should s"correctly do $backend" in {
+//       Drivera(() => new MemND(List(4,8)))(c => new MemNDTests(c)) should be (true)
+//     }
+//   }
+// }
 
 class SRAMTester extends ChiselFlatSpec {
   behavior of "SRAM"
   backends foreach {backend =>
-    it should s"correctly add randomly generated numbers $backend" in {
+    it should s"correctly do $backend" in {
       Driver(() => new SRAM(List(16,16), 1, 32, 
                               List(1,2), List(1,1), 1, 1,
                               2, 2, "strided"))(c => new SRAMTests(c)) should be (true)

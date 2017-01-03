@@ -62,6 +62,10 @@ class FFNoReset(val w: Int) extends Module {
 }
 
 class TFF() extends Module {
+
+  // Overload with null string input for testing
+  def this(n: String) = this()
+
   val io = IO(new Bundle {
     val input = new Bundle {
       val enable = Bool().asInput
@@ -77,6 +81,10 @@ class TFF() extends Module {
 }
 
 class SRFF() extends Module {
+
+  // Overload with null string input for testing
+  def this(n: String) = this()
+
   val io = IO(new Bundle {
     val input = new Bundle {
       val set = Bool().asInput // Set overrides reset.  Asyn_reset overrides both
