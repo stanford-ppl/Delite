@@ -71,6 +71,13 @@ object Launcher {
           (c) => new MemNDTests(c)
         }
       },
+      "SRAM" -> { (backendName: String) =>
+        Driver(() => new SRAM(List(16,16), 1, 32, 
+                              List(1,2), List(1,1), 1, 1,
+                              2, 2, "strided"), "verilator") {
+          (c) => new SRAMTests(c)
+        }
+      },
       "Pipe" -> { (backendName: String) =>
         Driver(() => new Pipe(2), "verilator") {
           (c) => new PipeTests(c)
