@@ -40,6 +40,9 @@ object TemplateRunner {
     var successful = 0
     val errors = new ArrayBuffer[String]
     for(testName <- problemsToRun) {
+      // Wipe tempdir for consecutive tests of same module
+      deleteRecursively(new File(tempDir))
+
       templateMap.get(testName) match {
         case Some(test) =>
           println(s"Starting template $testName")
@@ -61,8 +64,6 @@ object TemplateRunner {
         case _ =>
           errors += s"Bad template name: $testName"
       }
-      // Wipe tempdir for consecutive tests of same module
-      deleteRecursively(new File(tempDir))
     }
     if(successful > 0) {
       println(s"Templates passing: $successful")
