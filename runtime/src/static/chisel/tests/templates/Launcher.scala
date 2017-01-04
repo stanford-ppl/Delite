@@ -79,6 +79,12 @@ object Arguments {
     List(5,9)
   )
   val SRAM = List( // Contain each set of args in its own list
+           ( List(1,16), 1, 32, 
+             List(1,1), List(1,1), 1, 1,
+             1, 1, "strided"),
+           ( List(1,16), 1, 32, 
+             List(1,2), List(1,1), 1, 1,
+             1, 2, "strided"),
            ( List(16,16), 1, 32, 
              List(1,2), List(1,1), 1, 1,
              2, 2, "strided"),

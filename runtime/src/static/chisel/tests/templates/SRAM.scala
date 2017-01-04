@@ -42,6 +42,8 @@ class MemNDTests(c: MemND) extends PeekPokeTester(c) {
 
   step(1)
   reset(1)
+  poke(c.io.wMask, 1) // Do not mask at all when testing this template directly
+  poke(c.io.rMask, 1) // Do not mask at all when testing this template directly
   // Assume only 2D
   for (i <- 0 until c.dims(0)+1 ) {
     for (j <- 0 until c.dims(1) ) {
@@ -77,13 +79,15 @@ class SRAMTests(c: SRAM) extends PeekPokeTester(c) {
   val numBufs = c.numBufs
 
   reset(1)
-  poke(c.io.sel(0),1) // Select 0th writer
+  poke(c.io.wSel(0),1) // Select 0th writer
+  poke(c.io.rSel(0),1) // Select 0th writer
 
   // Write to each address
   for (i <- 0 until c.logicalDims(0)) { // Each row
     for (j <- 0 until c.logicalDims(1) by c.wPar) {
       // Set addrs
       (0 until c.numWriters).foreach{ writer => 
+        poke(c.io.globalWEn(writer), true)
         (0 until c.wPar).foreach { kdim => 
           poke(c.io.w(writer*c.wPar+kdim).addr(0), i)
           poke(c.io.w(writer*c.wPar+kdim).addr(1), j+kdim)
@@ -96,6 +100,7 @@ class SRAMTests(c: SRAM) extends PeekPokeTester(c) {
   }
   // Turn off wEn
   (0 until c.numWriters).foreach{ writer => 
+    poke(c.io.globalWEn(writer), false)
     (0 until c.wPar).foreach { kdim => 
       poke(c.io.w(writer*c.wPar+kdim).en, false)
     }
@@ -105,13 +110,13 @@ class SRAMTests(c: SRAM) extends PeekPokeTester(c) {
 
   // Check each address
   for (i <- 0 until c.logicalDims(0)) { // Each row
-    for (j <- 0 until c.logicalDims(1) by c.wPar) {
+    for (j <- 0 until c.logicalDims(1) by c.rPar) {
       // Set addrs
-      (0 until c.numReaders).foreach{ writer => 
+      (0 until c.numReaders).foreach{ reader => 
         (0 until c.rPar).foreach { kdim => 
-          poke(c.io.r(kdim).addr(0), i)
-          poke(c.io.r(kdim).addr(1), j+kdim)
-          poke(c.io.r(kdim).en, true)
+          poke(c.io.r(reader*c.rPar+kdim).addr(0), i)
+          poke(c.io.r(reader*c.rPar+kdim).addr(1), j+kdim)
+          poke(c.io.r(reader*c.rPar+kdim).en, true)
         }
       }
       step(1)

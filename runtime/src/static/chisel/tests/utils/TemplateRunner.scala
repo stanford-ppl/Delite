@@ -30,14 +30,21 @@ object TemplateRunner {
     }
     val backendName = envOrElse("TESTER_BACKENDS", defaultBackend).split(" ").head
     val tempDir = s"""${envOrElse("DELITE_HOME", "tmp")}/runtime/src/static/chisel/test_run_dir/"""
-    val problemsToRun = if(args.isEmpty || args.head == "all" ) {
-      templateMap.keys.toSeq.sorted.toArray
-    }
-    else {
-      args
+    val specificRegex = "(.*[0-9]+)".r
+    val problemsToRun = if (args.isEmpty) {
+      templateMap.keys.toSeq.sorted.toArray // Run all by default
+    } else {
+      args.map { arg => arg match {
+        case "all" => templateMap.keys.toSeq.sorted // Run all
+        case specificRegex(c) => List(c).toSeq // Run specific test
+        case _ => // Figure out tests that match this template and run all
+          val tempRegex = s"(${arg}[0-9]+)".r
+          templateMap.keys.toSeq.sorted.filter(tempRegex.pattern.matcher(_).matches)
+      }}.flatten.toArray
     }
 
     var successful = 0
+    var passedTests:List[String] = List()
     val errors = new ArrayBuffer[String]
     for(testName <- problemsToRun) {
       // Wipe tempdir for consecutive tests of same module
@@ -49,6 +56,7 @@ object TemplateRunner {
           try {
             if(test(backendName)) {
               successful += 1
+              passedTests = passedTests :+ s"$testName"
             }
             else {
               errors += s"Template $testName: test error occurred"
@@ -66,7 +74,7 @@ object TemplateRunner {
       }
     }
     if(successful > 0) {
-      println(s"Templates passing: $successful")
+      println(s"""Templates passing: $successful (${passedTests.mkString(", ")})""")
     }
     if(errors.nonEmpty) {
       println("=" * 80)
