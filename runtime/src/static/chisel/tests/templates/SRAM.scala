@@ -83,21 +83,21 @@ class SRAMTests(c: SRAM) extends PeekPokeTester(c) {
   for (i <- 0 until c.logicalDims(0)) { // Each row
     for (j <- 0 until c.logicalDims(1) by c.wPar) {
       // Set addrs
-      (0 until numBufs).foreach{ writer => 
-        (0 until N).foreach { kdim => 
-          poke(c.io.w(writer)(kdim).addr(0), i)
-          poke(c.io.w(writer)(kdim).addr(1), j+kdim)
-          poke(c.io.w(writer)(kdim).data, (i*c.logicalDims(0) + j + kdim)*2)
-          poke(c.io.w(writer)(kdim).en, true)
+      (0 until c.numWriters).foreach{ writer => 
+        (0 until c.wPar).foreach { kdim => 
+          poke(c.io.w(writer*c.wPar+kdim).addr(0), i)
+          poke(c.io.w(writer*c.wPar+kdim).addr(1), j+kdim)
+          poke(c.io.w(writer*c.wPar+kdim).data, (i*c.logicalDims(0) + j + kdim)*2)
+          poke(c.io.w(writer*c.wPar+kdim).en, true)
         }
       }
       step(1)
     }
   }
   // Turn off wEn
-  (0 until numBufs).foreach{ writer => 
-    (0 until N).foreach { kdim => 
-      poke(c.io.w(writer)(kdim).en, false)
+  (0 until c.numWriters).foreach{ writer => 
+    (0 until c.wPar).foreach { kdim => 
+      poke(c.io.w(writer*c.wPar+kdim).en, false)
     }
   }
 
@@ -107,22 +107,22 @@ class SRAMTests(c: SRAM) extends PeekPokeTester(c) {
   for (i <- 0 until c.logicalDims(0)) { // Each row
     for (j <- 0 until c.logicalDims(1) by c.wPar) {
       // Set addrs
-      (0 until numBufs).foreach{ writer => 
-        (0 until N).foreach { kdim => 
+      (0 until c.numReaders).foreach{ writer => 
+        (0 until c.rPar).foreach { kdim => 
           poke(c.io.r(kdim).addr(0), i)
           poke(c.io.r(kdim).addr(1), j+kdim)
           poke(c.io.r(kdim).en, true)
         }
       }
       step(1)
-      (0 until N).foreach { kdim => 
+      (0 until c.rPar).foreach { kdim => 
         expect(c.io.output.data(kdim), (i*c.logicalDims(0) + j + kdim)*2)
       }
     }
   }
   // Turn off rEn
   (0 until numBufs).foreach{ writer => 
-    (0 until N).foreach { kdim => 
+    (0 until c.rPar).foreach { kdim => 
       poke(c.io.r(kdim).en, true)
     }
   }

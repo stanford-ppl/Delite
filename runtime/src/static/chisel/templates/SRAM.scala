@@ -141,7 +141,10 @@ class SRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
   val N = logicalDims.length // Number of dimensions
 
   val io = IO( new Bundle {
-    val w = Vec(numWriters, Vec(wPar, new multidimW(N, 32).asInput))
+    // TODO: w bundle gets forcefully generated as output in verilog
+    //       so the only way to make it an input seems to flatten the
+    //       Vec(numWriters, Vec(wPar, _)) to a 1D vector and then reconstruct it
+    val w = Vec(numWriters*wPar, new multidimW(N, 32).asInput)
     val r = Vec(rPar,new multidimR(N, 32).asInput) // TODO: Spatial allows only one reader per mem
     val sel = Vec(numWriters, Bool().asInput) // Selects between multiple write bundles
     val globalWEn = Bool().asInput
@@ -150,9 +153,7 @@ class SRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
       val invalidRAddr = Bool().asOutput
       val invalidWAddr = Bool().asOutput
     }
-    val dddd = Vec(wPar, UInt(32.W).asOutput)
   })
-
 
   // Get info on physical dims
   // TODO: Upcast dims to evenly bank
@@ -162,13 +163,15 @@ class SRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
   // Create physical mems
   val m = (0 until numMems).map{ i => Module(new MemND(physicalDims))}
 
+  // Reconstruct io.w as 2d vector
+  val reconstructed = (0 until numWriters).map{ i => 
+    Vec((0 until wPar).map { j => io.w(i*wPar + j) })
+  }
   // Mux wrideBundles and connect to internal
-  // MATT: Choose one vec(multidimW) from the vec(vec(multidimW))
-  val selectedWVec = chisel3.util.Mux1H(io.sel, io.w)
+  val selectedWVec = chisel3.util.Mux1H(io.sel, reconstructed)
 
   // TODO: Should connect multidimW's directly to their banks rather than all-to-all connections
   // Convert selectedWVec to translated physical addresses
-  // MATT: Convert each multidimW in the selected vec to a new multidimW with converted addresses
   val converted = selectedWVec.zip(io.r).map{ case (wbundle, rbundle) => 
     // Writer conversion
     val convertedW = Wire(new multidimW(N,w))
@@ -180,13 +183,12 @@ class SRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
     val bankCoordW = bankCoordsW.zipWithIndex.map{ case (c, i) => c*UInt(banks.drop(i).reduce{_*_}/banks(i)) }.reduce{_+_}
 
     // Reader conversion
-    // MATT: Ignore this section, where I do the same conversion for the single reader
     val convertedR = Wire(new multidimR(N,w))
     val physicalAddrs = rbundle.addr.zip(banks).map{ case (logical, b) => logical / UInt(b) }
     physicalAddrs.zipWithIndex.foreach { case (calculatedAddr, i) => convertedR.addr(i) := calculatedAddr}
     convertedR.en := rbundle.en
     val bankCoordsR = rbundle.addr.zip(banks).map{ case (logical, b) => logical % UInt(b) }
-    val bankCoordR = bankCoordsR.zipWithIndex.map{ case (c, i) => c*UInt(banks.drop(i).reduce{_*_}/banks(i)) }
+    val bankCoordR = bankCoordsR.zipWithIndex.map{ case (c, i) => c*UInt(banks.drop(i).reduce{_*_}/banks(i)) }.reduce{_+_}
 
     (convertedW, bankCoordW, convertedR, bankCoordR)
   }
@@ -197,38 +199,28 @@ class SRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
 
   // TODO: Doing inefficient thing here of all-to-all connection between bundlesNDs and MemNDs
   // Convert bankCoords for each bundle to a bit vector
-  // MATT: Compute bit vector to decide which internal bank each convertedWVec should go to
   // TODO: Probably need to have a dummy multidimW port to default to for unused banks so we don't overwrite anything
   m.zipWithIndex.foreach{ case (mem, i) => 
-    val bundleSelect = bankIdW.map{ b => (b == UInt(i)).B }
-    // MATT: The interface of the mem's seems ok sometimes, but sometimes reads 
-    //       straight 0's.  Invariably, by the time these mems pass their
-    //       flattened addresses to their respective flattened mems,
-    //       the actual memory interfaces read straight 0s.
-    //       Also noticed that if I connect mem.io.en to some signals, a & b,
-    //       mem.io.en stays 0 even when a & b = 1.  But if I create two 
-    //       ports, mem.io.a and mem.io.b and feed them seperately and &
-    //       inside the module, it works as expected.  Chisel3 is acting strange
-    //       all around...
-    mem.io.w := chisel3.util.Mux1H(bundleSelect, convertedWVec)
+    val bundleSelect = bankIdW.map{ b => b === i.U }
+    mem.io.w := chisel3.util.PriorityMux(bundleSelect, convertedWVec)
   }
 
-  var wId = 0
-  def connectWPort(wBundle: Vec[multidimW]) {
-    io.w(wId).zip(wBundle).foreach { case (p, b) => p := wBundle }
-    wId = wId + 1
-  }
+  // var wId = 0
+  // def connectWPort(wBundle: Vec[multidimW]) {
+  //   io.w(wId).zip(wBundle).foreach { case (p, b) => p := wBundle }
+  //   wId = wId + 1
+  // }
 
   // TODO: Doing inefficient thing here of all-to-all connection between bundlesNDs and MemNDs
   // Convert bankCoords for each bundle to a bit vector
   m.zipWithIndex.foreach{ case (mem, i) => 
-    val bundleSelect = bankIdR.map{ b => (b == UInt(i)).B }
+    val bundleSelect = bankIdR.map{ b => (b === i.U) }
     mem.io.r := chisel3.util.PriorityMux(bundleSelect, convertedRVec)
   }
 
   // Connect read data to output
   io.output.data.zip(bankIdR).foreach { case (wire, id) => 
-    val sel = (0 until numMems).map{ i => (id == UInt(i)).B}
+    val sel = (0 until numMems).map{ i => (id === i.U)}
     val datas = m.map{ _.io.output.data }
     val d = chisel3.util.Mux1H(sel, datas)
     wire := d
