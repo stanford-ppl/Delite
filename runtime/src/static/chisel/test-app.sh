@@ -13,10 +13,12 @@ if [[ $ok != 2 ]]; then
   echo "ERROR: Missing poke (${pokeExists}) or peek (${peekExists}) tests for $appName"
   exit 1
 fi
+
 # Swap function calls in main test
 sed -i "s/.*() \/\/ Poke inputs/${appName}() \/\/ Poke inputs/g" chisel/src/app-test/apps/TopModule.scala
 sed -i "s/.*() \/\/ Expect outputs/${appName}Check() \/\/ Expect outputs/g" chisel/src/app-test/apps/TopModule.scala
 # Edit input args
+
 for i in `seq 1 6`; do
   argtag=$(echo "\$$i")
   cmd="echo $argtag"
@@ -29,11 +31,14 @@ for i in `seq 1 6`; do
   cmd="sed -i \"s/val input${i} = [0-9]\+/val input${i} = $input/g\" chisel/src/app-test/apps/TopModule.scala"
   eval "$cmd"
 done
+
 # Get TopModule input/output names
-#  (Assumes only one in and one out)
-inputName=(`cat chisel/src/kernels/IOBundle.scala | grep "Input" | cut -d ' ' -f 4`)
+inputNames=(`cat chisel/src/kernels/IOBundle.scala | grep "Input" | cut -d ' ' -f 4`)
 outputName=(`cat chisel/src/kernels/IOBundle.scala | grep "Output" | cut -d ' ' -f 4`)
-sed -i "s/poke(c\.io\.ArgIn\..*,/poke(c\.io\.ArgIn\.${inputName},/g" chisel/src/app-test/apps/TopModule.scala
+
+for n in `seq 1 ${#inputNames[@]}`; do
+  sed -i "s/poke(c\.io\.ArgIn\..*, input${n})/poke(c\.io\.ArgIn\.${inputNames[$((n-1))]}, input${n})/g" chisel/src/app-test/apps/TopModule.scala
+done
 sed -i "s/expect(c\.io\.ArgOut\..*,/expect(c\.io\.ArgOut\.${outputName},/g" chisel/src/app-test/apps/TopModule.scala
 
 sbt "test:run-main app.Launcher TopModule"
