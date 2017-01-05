@@ -144,6 +144,10 @@ class SRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
   def this(logicalDims: List[Int], numBufs: Int, w: Int, 
            banks: List[Int], strides: List[Int], numWriters: Int, numReaders: Int,
            wPar: Int, rPar: Int) = this(logicalDims, numBufs, w, banks, strides, numWriters, numReaders, wPar, rPar, "strided")
+  // If 1D, spatial will make banks and strides scalars instead of lists
+  def this(logicalDims: List[Int], numBufs: Int, w: Int, 
+           banks: Int, strides: Int, numWriters: Int, numReaders: Int,
+           wPar: Int, rPar: Int) = this(logicalDims, numBufs, w, List(banks), List(strides), numWriters, numReaders, wPar, rPar, "strided")
 
   val depth = logicalDims.reduce{_*_} // Size of memory
   val N = logicalDims.length // Number of dimensions
@@ -231,6 +235,22 @@ class SRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
     mem.io.w := chisel3.util.PriorityMux(bundleSelect, convertedWVec)
   }
 
+  // TODO: Doing inefficient thing here of all-to-all connection between bundlesNDs and MemNDs
+  // Convert bankCoords for each bundle to a bit vector
+  m.zipWithIndex.foreach{ case (mem, i) => 
+    val bundleSelect = bankIdR.map{ b => (b === i.U) }
+    mem.io.rMask := bundleSelect.reduce{_|_}
+    mem.io.r := chisel3.util.PriorityMux(bundleSelect, convertedRVec)
+  }
+
+  // Connect read data to output
+  io.output.data.zip(bankIdR).foreach { case (wire, id) => 
+    val sel = (0 until numMems).map{ i => (id === i.U)}
+    val datas = m.map{ _.io.output.data }
+    val d = chisel3.util.PriorityMux(sel, datas)
+    wire := d
+  }
+
   var wId = 0
   def connectWPort(wBundle: Vec[multidimW], en: Bool) {
     (0 until wPar).foreach{ i => 
@@ -249,22 +269,22 @@ class SRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
     }
     wId = wId + 1
   }
-
-  // TODO: Doing inefficient thing here of all-to-all connection between bundlesNDs and MemNDs
-  // Convert bankCoords for each bundle to a bit vector
-  m.zipWithIndex.foreach{ case (mem, i) => 
-    val bundleSelect = bankIdR.map{ b => (b === i.U) }
-    mem.io.rMask := bundleSelect.reduce{_|_}
-    mem.io.r := chisel3.util.PriorityMux(bundleSelect, convertedRVec)
+  var rId = 0
+  def connectRPort(rBundle: Vec[multidimR]) {
+    (0 until rPar).foreach{ i => 
+      io.r(i + rId*rPar) := rBundle(i) 
+    }
+    rId = rId + 1
+  }
+  def connectRPort(addr: List[UInt]) {
+    (0 until rPar).foreach{ i => 
+      (0 until N).foreach { j =>
+        io.r(i*N + rId*rPar + j) := addr(j + i*N)
+      }
+    }
+    rId = rId + 1
   }
 
-  // Connect read data to output
-  io.output.data.zip(bankIdR).foreach { case (wire, id) => 
-    val sel = (0 until numMems).map{ i => (id === i.U)}
-    val datas = m.map{ _.io.output.data }
-    val d = chisel3.util.PriorityMux(sel, datas)
-    wire := d
-  }
 
   // Connect debug signals
   val wInBound = selectedWVec.map{ v => v.addr.zip(logicalDims).map { case (addr, bound) => addr < UInt(bound) }.reduce{_&_}}.reduce{_&_}

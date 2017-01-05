@@ -32,9 +32,15 @@ class TopModuleTests(c: TopModule) extends PeekPokeTester(c) {
   def MemTest1DCheck() {
     expect(c.io.ArgOut.Reg161, (input1+383))
   }
+  def MemTest2D() {
+    poke(c.io.ArgIn.Reg160, input1)
+  }
+  def MemTest2DCheck() {
+    expect(c.io.ArgOut.Reg161, (input1+63*128+127))
+  }
 
 
-  val timeout = 300
+  val timeout = 10000
 
   step(1)
   reset(1)
