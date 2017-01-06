@@ -54,6 +54,10 @@ class FFTests(c: FF) extends PeekPokeTester(c) {
   expect(c.io.output.data, initval)
 }
 
+class NBufFFTests(c: NBufFF) extends PeekPokeTester(c) {
+  step(1)
+}
+
 class FFNoInitTests(c: FFNoInit) extends PeekPokeTester(c) {
   step(1)
   reset(1)
@@ -203,47 +207,47 @@ class SRFFTests(c: SRFF) extends PeekPokeTester(c) {
 //   }
 // }
 
-class FFNoInitTester extends ChiselFlatSpec {
-  behavior of "FFNoInit"
-  backends foreach {backend =>
-    it should s"correctly add randomly generated numbers $backend" in {
-      Driver(() => new FFNoInit(32))(c => new FFNoInitTests(c)) should be (true)
-    }
-  }
-}
+// class FFNoInitTester extends ChiselFlatSpec {
+//   behavior of "FFNoInit"
+//   backends foreach {backend =>
+//     it should s"correctly add randomly generated numbers $backend" in {
+//       Driver(() => new FFNoInit(32))(c => new FFNoInitTests(c)) should be (true)
+//     }
+//   }
+// }
 
-class FFNoInitNoResetTester extends ChiselFlatSpec {
-  behavior of "FFNoInit"
-  backends foreach {backend =>
-    it should s"correctly add randomly generated numbers $backend" in {
-      Driver(() => new FFNoInit(32))(c => new FFNoInitTests(c)) should be (true)
-    }
-  }
-}
+// class FFNoInitNoResetTester extends ChiselFlatSpec {
+//   behavior of "FFNoInit"
+//   backends foreach {backend =>
+//     it should s"correctly add randomly generated numbers $backend" in {
+//       Driver(() => new FFNoInit(32))(c => new FFNoInitTests(c)) should be (true)
+//     }
+//   }
+// }
 
-class FFNoResetTester extends ChiselFlatSpec {
-  behavior of "FFNoInit"
-  backends foreach {backend =>
-    it should s"correctly add randomly generated numbers $backend" in {
-      Driver(() => new FFNoInit(32))(c => new FFNoInitTests(c)) should be (true)
-    }
-  }
-}
+// class FFNoResetTester extends ChiselFlatSpec {
+//   behavior of "FFNoInit"
+//   backends foreach {backend =>
+//     it should s"correctly add randomly generated numbers $backend" in {
+//       Driver(() => new FFNoInit(32))(c => new FFNoInitTests(c)) should be (true)
+//     }
+//   }
+// }
 
-class TFFTester extends ChiselFlatSpec {
-  behavior of "TFF"
-  backends foreach {backend =>
-    it should s"correctly add randomly generated numbers $backend" in {
-      Driver(() => new TFF())(c => new TFFTests(c)) should be (true)
-    }
-  }
-}
+// class TFFTester extends ChiselFlatSpec {
+//   behavior of "TFF"
+//   backends foreach {backend =>
+//     it should s"correctly add randomly generated numbers $backend" in {
+//       Driver(() => new TFF())(c => new TFFTests(c)) should be (true)
+//     }
+//   }
+// }
 
-class SRFFTester extends ChiselFlatSpec {
-  behavior of "SRFF"
-  backends foreach {backend =>
-    it should s"correctly add randomly generated numbers $backend" in {
-      Driver(() => new SRFF())(c => new SRFFTests(c)) should be (true)
-    }
-  }
-}
+// class SRFFTester extends ChiselFlatSpec {
+//   behavior of "SRFF"
+//   backends foreach {backend =>
+//     it should s"correctly add randomly generated numbers $backend" in {
+//       Driver(() => new SRFF())(c => new SRFFTests(c)) should be (true)
+//     }
+//   }
+// }

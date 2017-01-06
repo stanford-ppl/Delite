@@ -76,7 +76,6 @@ class MemNDTests(c: MemND) extends PeekPokeTester(c) {
 class SRAMTests(c: SRAM) extends PeekPokeTester(c) {
   val depth = c.logicalDims.reduce{_*_}
   val N = c.logicalDims.length
-  val numBufs = c.numBufs
 
   reset(1)
   poke(c.io.wSel(0),1) // Select 0th writer
@@ -126,7 +125,7 @@ class SRAMTests(c: SRAM) extends PeekPokeTester(c) {
     }
   }
   // Turn off rEn
-  (0 until numBufs).foreach{ writer => 
+  (0 until c.numReaders).foreach{ writer => 
     (0 until c.rPar).foreach { kdim => 
       poke(c.io.r(kdim).en, true)
     }
@@ -159,7 +158,7 @@ class SRAMTester extends ChiselFlatSpec {
   behavior of "SRAM"
   backends foreach {backend =>
     it should s"correctly do $backend" in {
-      Driver(() => new SRAM(List(16,16), 1, 32, 
+      Driver(() => new SRAM(List(16,16), 32, 
                               List(1,2), List(1,1), 1, 1,
                               2, 2, "strided"))(c => new SRAMTests(c)) should be (true)
     }

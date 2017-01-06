@@ -37,6 +37,9 @@ object Arguments {
     32,
     64
   )
+  val NBufFF = List(
+    (2,32)
+  )
   val FFNoInit = List(
     32
   )
@@ -79,16 +82,16 @@ object Arguments {
     List(5,9)
   )
   val SRAM = List( // Contain each set of args in its own list
-           ( List(1,16), 1, 32, 
+           ( List(1,16), 32, 
              List(1,1), List(1,1), 1, 1,
              1, 1, "strided"),
-           ( List(1,16), 1, 32, 
+           ( List(1,16), 32, 
              List(1,2), List(1,1), 1, 1,
              1, 2, "strided"),
-           ( List(16,16), 1, 32, 
+           ( List(16,16), 32, 
              List(1,2), List(1,1), 1, 1,
              2, 2, "strided"),
-           ( List(16,16), 1, 32, 
+           ( List(16,16), 32, 
              List(1,1), List(1,1), 1, 1,
              1, 1, "strided")
         )
@@ -110,6 +113,14 @@ object Launcher {
     (s"FF$i" -> { (backendName: String) =>
         Driver(() => new FF(arg), "verilator") {
           (c) => new FFTests(c)
+        }
+      }) 
+  }.toMap
+
+  templates = templates ++ Arguments.NBufFF.zipWithIndex.map{ case(arg,i) => 
+    (s"NBufFF$i" -> { (backendName: String) =>
+        Driver(() => new NBufFF(arg), "verilator") {
+          (c) => new NBufFFTests(c)
         }
       }) 
   }.toMap

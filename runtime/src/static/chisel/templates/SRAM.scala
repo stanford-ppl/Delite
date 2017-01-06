@@ -132,7 +132,179 @@ class MemND(val dims: List[Int]) extends Module {
                                                                         
                                                                     
 */
-class SRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int, 
+class SRAM(val logicalDims: List[Int], val w: Int, 
+           val banks: List[Int], val strides: List[Int], val numWriters: Int, val numReaders: Int,
+           val wPar: Int, val rPar: Int, val bankingMode: String) extends Module { 
+
+  // Overloaded construters
+  // Tuple unpacker
+  def this(tuple: (List[Int], Int, List[Int], List[Int], Int, Int,
+           Int, Int, String)) = this(tuple._1,tuple._2,tuple._3,tuple._4,tuple._5,tuple._6,tuple._7,tuple._8,tuple._9)
+  // Bankmode-less
+  def this(logicalDims: List[Int], w: Int, 
+           banks: List[Int], strides: List[Int], numWriters: Int, numReaders: Int,
+           wPar: Int, rPar: Int) = this(logicalDims, w, banks, strides, numWriters, numReaders, wPar, rPar, "strided")
+  // If 1D, spatial will make banks and strides scalars instead of lists
+  def this(logicalDims: List[Int], w: Int, 
+           banks: Int, strides: Int, numWriters: Int, numReaders: Int,
+           wPar: Int, rPar: Int) = this(logicalDims, w, List(banks), List(strides), numWriters, numReaders, wPar, rPar, "strided")
+
+  val depth = logicalDims.reduce{_*_} // Size of memory
+  val N = logicalDims.length // Number of dimensions
+
+  val io = IO( new Bundle {
+    // TODO: w bundle gets forcefully generated as output in verilog
+    //       so the only way to make it an input seems to flatten the
+    //       Vec(numWriters, Vec(wPar, _)) to a 1D vector and then reconstruct it
+    val w = Vec(numWriters*wPar, new multidimW(N, 32).asInput)
+    val globalWEn = Vec(numWriters, Bool().asInput)
+    val wSel = Vec(numWriters, Bool().asInput) // Selects between multiple write bundles
+    val r = Vec(numReaders*rPar,new multidimR(N, 32).asInput) // TODO: Spatial allows only one reader per mem
+    val rSel = Vec(numReaders, Bool().asInput)
+    val output = new Bundle {
+      val data  = Vec(rPar, UInt(32.W).asOutput)
+    }
+    val debug = new Bundle {
+      val invalidRAddr = Bool().asOutput
+      val invalidWAddr = Bool().asOutput
+      val rwOn = Bool().asOutput
+      val readCollision = Bool().asOutput
+      val writeCollision = Bool().asOutput
+      val error = Bool().asOutput
+    }
+  })
+
+  // Get info on physical dims
+  // TODO: Upcast dims to evenly bank
+  val physicalDims = logicalDims.zip(banks).map { case (dim, b) => dim/b}
+  val numMems = banks.reduce{_*_}
+
+  // Create physical mems
+  val m = (0 until numMems).map{ i => Module(new MemND(physicalDims))}
+
+  // Reconstruct io.w as 2d vector
+  val reconstructedW = (0 until numWriters).map{ i => 
+    Vec((0 until wPar).map { j => io.w(i*wPar + j) })
+  }
+  val reconstructedR = (0 until numReaders).map{ i => 
+    Vec((0 until rPar).map { j => io.r(i*rPar + j) })
+  }
+
+  // Mux wrideBundles and connect to internal
+  val selectedWVec = chisel3.util.Mux1H(io.wSel, reconstructedW)
+  val selectedRVec = chisel3.util.Mux1H(io.rSel, reconstructedR)
+  val selectedGlobalWen = chisel3.util.Mux1H(io.wSel, io.globalWEn)
+
+  // TODO: Should connect multidimW's directly to their banks rather than all-to-all connections
+  // Convert selectedWVec to translated physical addresses
+  val wConversions = selectedWVec.map{ wbundle => 
+    // Writer conversion
+    val convertedW = Wire(new multidimW(N,w))
+    val physicalAddrsW = wbundle.addr.zip(banks).map{ case (logical, b) => logical / UInt(b) }
+    physicalAddrsW.zipWithIndex.foreach { case (calculatedAddr, i) => convertedW.addr(i) := calculatedAddr}
+    convertedW.data := wbundle.data
+    convertedW.en := wbundle.en & selectedGlobalWen
+    val bankCoordsW = wbundle.addr.zip(banks).map{ case (logical, b) => logical % UInt(b) }
+    val bankCoordW = bankCoordsW.zipWithIndex.map{ case (c, i) => c*UInt(banks.drop(i).reduce{_*_}/banks(i)) }.reduce{_+_}
+
+    (convertedW, bankCoordW)
+  }
+  val convertedWVec = wConversions.map{_._1}
+  val bankIdW = wConversions.map{_._2}
+
+  val rConversions = selectedRVec.map{ rbundle => 
+    // Reader conversion
+    val convertedR = Wire(new multidimR(N,w))
+    val physicalAddrs = rbundle.addr.zip(banks).map{ case (logical, b) => logical / UInt(b) }
+    physicalAddrs.zipWithIndex.foreach { case (calculatedAddr, i) => convertedR.addr(i) := calculatedAddr}
+    convertedR.en := rbundle.en
+    val bankCoordsR = rbundle.addr.zip(banks).map{ case (logical, b) => logical % UInt(b) }
+    val bankCoordR = bankCoordsR.zipWithIndex.map{ case (c, i) => c*UInt(banks.drop(i).reduce{_*_}/banks(i)) }.reduce{_+_}
+
+    (convertedR, bankCoordR)
+  }
+  val convertedRVec = rConversions.map{_._1}
+  val bankIdR = rConversions.map{_._2}
+
+  // TODO: Doing inefficient thing here of all-to-all connection between bundlesNDs and MemNDs
+  // Convert bankCoords for each bundle to a bit vector
+  // TODO: Probably need to have a dummy multidimW port to default to for unused banks so we don't overwrite anything
+  m.zipWithIndex.foreach{ case (mem, i) => 
+    val bundleSelect = bankIdW.map{ b => b === i.U }
+    mem.io.wMask := bundleSelect.reduce{_|_}
+    mem.io.w := chisel3.util.PriorityMux(bundleSelect, convertedWVec)
+  }
+
+  // TODO: Doing inefficient thing here of all-to-all connection between bundlesNDs and MemNDs
+  // Convert bankCoords for each bundle to a bit vector
+  m.zipWithIndex.foreach{ case (mem, i) => 
+    val bundleSelect = bankIdR.map{ b => (b === i.U) }
+    mem.io.rMask := bundleSelect.reduce{_|_}
+    mem.io.r := chisel3.util.PriorityMux(bundleSelect, convertedRVec)
+  }
+
+  // Connect read data to output
+  io.output.data.zip(bankIdR).foreach { case (wire, id) => 
+    val sel = (0 until numMems).map{ i => (id === i.U)}
+    val datas = m.map{ _.io.output.data }
+    val d = chisel3.util.PriorityMux(sel, datas)
+    wire := d
+  }
+
+  var wId = 0
+  def connectWPort(wBundle: Vec[multidimW], en: Bool) {
+    (0 until wPar).foreach{ i => 
+      io.w(i + wId*wPar) := wBundle(i) 
+    }
+    io.globalWEn(wId) := en
+    wId = wId + 1
+  }
+  def connectWPort(addr: List[UInt], data: List[UInt], en: List[Bool]) {
+    (0 until wPar).foreach{ i => 
+      io.w(i + wId*wPar).data := data(i)
+      io.w(i + wId*wPar).en := en(i) 
+      (0 until N).foreach { j =>
+        io.w(i*N + wId*wPar + j) := addr(j + i*N)
+      }
+    }
+    wId = wId + 1
+  }
+  var rId = 0
+  def connectRPort(rBundle: Vec[multidimR]) {
+    (0 until rPar).foreach{ i => 
+      io.r(i + rId*rPar) := rBundle(i) 
+    }
+    rId = rId + 1
+  }
+  def connectRPort(addr: List[UInt]) {
+    (0 until rPar).foreach{ i => 
+      (0 until N).foreach { j =>
+        io.r(i*N + rId*rPar + j) := addr(j + i*N)
+      }
+    }
+    rId = rId + 1
+  }
+
+
+  // Connect debug signals
+  val wInBound = selectedWVec.map{ v => v.addr.zip(logicalDims).map { case (addr, bound) => addr < UInt(bound) }.reduce{_&_}}.reduce{_&_}
+  val rInBound = selectedRVec.map{ v => v.addr.zip(logicalDims).map { case (addr, bound) => addr < UInt(bound) }.reduce{_&_}}.reduce{_&_}
+  val writeOn = selectedWVec.map{ v => v.en }
+  val readOn = selectedRVec.map{ v => v.en }
+  val rwOn = writeOn.zip(readOn).map{ case(a,b) => a&b}.reduce{_|_}
+  val rCollide = bankIdR.zip( readOn).map{ case(id1,en1) => bankIdR.zip( readOn).map{ case(id2,en2) => Mux((id1 === id2) & en1 & en2, 1.U, 0.U)}.reduce{_+_} }.reduce{_+_} !=  readOn.map{Mux(_, 1.U, 0.U)}.reduce{_+_}
+  val wCollide = bankIdW.zip(writeOn).map{ case(id1,en1) => bankIdW.zip(writeOn).map{ case(id2,en2) => Mux((id1 === id2) & en1 & en2, 1.U, 0.U)}.reduce{_+_} }.reduce{_+_} != writeOn.map{Mux(_, 1.U, 0.U)}.reduce{_+_}
+  io.debug.invalidWAddr := ~wInBound
+  io.debug.invalidRAddr := ~rInBound
+  io.debug.rwOn := rwOn
+  io.debug.readCollision := rCollide
+  io.debug.writeCollision := wCollide
+  io.debug.error := ~wInBound | ~rInBound | rwOn | rCollide | wCollide
+
+}
+
+
+class NBufSRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int, 
            val banks: List[Int], val strides: List[Int], val numWriters: Int, val numReaders: Int,
            val wPar: Int, val rPar: Int, val bankingMode: String) extends Module { 
 

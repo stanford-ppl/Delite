@@ -11,7 +11,7 @@ import chisel3._
 class SingleCounter(val par: Int) extends Module {
   val io = IO(new Bundle {
     val input = new Bundle {
-      val start    = UInt(32.W).asInput
+      val start    = UInt(32.W).asInput // TODO: Currently resets to "start" but wraps to 0, is this normal behavior?
       val max      = UInt(32.W).asInput
       val stride   = UInt(32.W).asInput
       val gap      = UInt(32).asInput
@@ -42,7 +42,7 @@ class SingleCounter(val par: Int) extends Module {
   val isMax = newval >= io.input.max
   val wasMax = Reg(next = isMax, init = Bool(false))
   val wasEnabled = Reg(next = io.input.enable, init = Bool(false))
-  val next = Mux(isMax, Mux(io.input.saturate, count, init), newval)
+  val next = Mux(isMax, Mux(io.input.saturate, count, 0.U), newval)
   base.io.input.data := Mux(io.input.reset, init, next)
 
   (0 until par).foreach { i => io.output.count(i) := count + UInt(i)*io.input.stride }
