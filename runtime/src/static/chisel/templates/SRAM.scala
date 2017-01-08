@@ -259,28 +259,10 @@ class SRAM(val logicalDims: List[Int], val w: Int,
     io.globalWEn(wId) := en
     wId = wId + 1
   }
-  def connectWPort(addr: List[UInt], data: List[UInt], en: List[Bool]) {
-    (0 until wPar).foreach{ i => 
-      io.w(i + wId*wPar).data := data(i)
-      io.w(i + wId*wPar).en := en(i) 
-      (0 until N).foreach { j =>
-        io.w(i*N + wId*wPar + j) := addr(j + i*N)
-      }
-    }
-    wId = wId + 1
-  }
   var rId = 0
   def connectRPort(rBundle: Vec[multidimR]) {
     (0 until rPar).foreach{ i => 
       io.r(i + rId*rPar) := rBundle(i) 
-    }
-    rId = rId + 1
-  }
-  def connectRPort(addr: List[UInt]) {
-    (0 until rPar).foreach{ i => 
-      (0 until N).foreach { j =>
-        io.r(i*N + rId*rPar + j) := addr(j + i*N)
-      }
     }
     rId = rId + 1
   }
@@ -429,6 +411,22 @@ class NBufSRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
     val sel = (0 until numBufs).map{ i => s.io.output.count === i.U }
     wire := chisel3.util.Mux1H(sel, Vec(srams.map{f => f.io.output.data}))
   }
+
+  // var wId = (0 until numBufs).map{ i => 0 }
+  // def connectWPort(wBundle: Vec[multidimW], port: Int, en: Bool) {
+  //   (0 until wPar).foreach{ i => 
+  //     io.w(i + wId(port)*wPar + port*numBufs*wPar) := wBundle(i) 
+  //   }
+  //   io.globalWEn(wId(port)) := en
+  //   wId(port) = wId(port) + 1
+  // }
+  // var rId = (0 until numBufs).map{ i => 0 }
+  // def connectRPort(rBundle: Vec[multidimR], port: Int) {
+  //   (0 until rPar).foreach{ i => 
+  //     io.r(i + rId(port)*rPar + port*numBufs*rPar) := rBundle(i) 
+  //   }
+  //   rId(port) = rId(port) + 1
+  // }
 
 
 }

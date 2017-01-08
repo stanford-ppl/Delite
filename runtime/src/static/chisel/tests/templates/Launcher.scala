@@ -32,6 +32,11 @@ object Inst {
 
 // Start args
 object Arguments {
+  val UIntAccum = List(
+    (32, "add"),
+    (32, "min"),
+    (32, "max")
+  )
   val FF = List(
     16,
     32,
@@ -122,6 +127,14 @@ object Launcher {
   var templates:Map[String,String => Boolean] = Map() 
 
   // Start launcher
+  templates = templates ++ Arguments.UIntAccum.zipWithIndex.map{ case(arg,i) => 
+    (s"UIntAccum$i" -> { (backendName: String) =>
+        Driver(() => new UIntAccum(arg), "verilator") {
+          (c) => new UIntAccumTests(c)
+        }
+      }) 
+  }.toMap
+
   templates = templates ++ Arguments.FF.zipWithIndex.map{ case(arg,i) => 
     (s"FF$i" -> { (backendName: String) =>
         Driver(() => new FF(arg), "verilator") {

@@ -104,6 +104,13 @@ class NBufFF(val numBufs: Int, val w: Int) extends Module {
     val sel = (0 until numBufs).map{ i => s.io.output.count === i.U }
     wire.data := chisel3.util.Mux1H(sel, Vec(ff.map{f => f.io.output.data}))
   }
+
+  def write(data: UInt, en: Bool, reset: Bool, port: Int) {
+    io.input(port).data := data
+    io.input(port).enable := en
+    io.input(port).reset := reset
+  }
+
 }
 
 class FFNoInit(val w: Int) extends Module {
