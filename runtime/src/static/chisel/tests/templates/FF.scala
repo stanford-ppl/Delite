@@ -55,7 +55,83 @@ class FFTests(c: FF) extends PeekPokeTester(c) {
 }
 
 class NBufFFTests(c: NBufFF) extends PeekPokeTester(c) {
+  val timeout = 400
+  val initvals = (0 until c.numBufs).map { i => i+1}
+  var stageActives = Array.tabulate(c.numBufs) { i => 0 }
+  val latencies = (0 until c.numBufs).map { i => math.abs(rnd.nextInt(15)) + 5 } 
+  (0 until c.numBufs).foreach { i => poke(c.io.input(i).init, initvals(i)) }
+  var stageCounts = Array.tabulate(c.numBufs) { i => 0 }
+  var stagesDone = 0
+  step(5)
+  (0 until c.numBufs).foreach{ i => poke(c.io.input(i).reset, 1)}
   step(1)
+  (0 until c.numBufs).foreach{ i => poke(c.io.input(i).reset, 0)}
+
+  def executeStage(s: Int) {
+    // println(s" Stage $s active count ${stageCounts(s)}, numcicles $numCycles")
+    if (stageActives(s) == 1) stageCounts(s) += 1 else stageCounts(s) = 0
+    if (stageCounts(s) == latencies(s)) {
+      poke(c.io.sDone(s), 1)
+    } else if (stageCounts(s) == latencies(s) + 1) {
+      poke(c.io.sEn(s), 0)
+      poke(c.io.sDone(s), 0)
+      stageCounts(s) = 0
+      stagesDone = stagesDone + 1
+      stageActives(s) = 0
+    } else {
+      poke(c.io.sDone(s), 0)
+    }
+  }
+  def handleStageEnables = {
+    (0 until c.numBufs).foreach { i => 
+      executeStage(i)
+    }
+  }
+  def handleRW(parity: Int) {
+    if (parity == 0) { // Write step
+      (0 until c.numBufs).foreach { i => 
+        poke(c.io.input(i).data, i+1)
+        if (numCycles < 2) poke(c.io.input(i).enable, 1) else poke(c.io.input(i).enable, 0) 
+      }
+    } else { // Read step
+      val check = rotate(initvals.toList, 1)
+      (0 until c.numBufs).foreach { i => 
+        poke(c.io.input(i).enable, 0)
+        // poke(c.io.input(i).data, 0)
+
+        val p = peek(c.io.output(i).data)
+        // if (numCycles < 2) println(s"expected wire$i : $p to be ${check(i)}")
+        if (numCycles < 2) expect(c.io.output(i).data, check(i))
+      }
+    }
+  }
+  def rotate(x:List[Int], i:Int) = {x.drop(i)++x.take(i)}
+
+  var numCycles = 0
+  for (k <- 0 until 10) { // run 10 swaps
+    var swapReady = 0
+    numCycles = 0
+    stagesDone = 0
+    (0 until c.numBufs).foreach{ i => 
+      poke(c.io.sEn(i), 1)
+      stageActives(i) = 1 
+    }
+    while (!(stagesDone == c.numBufs) & numCycles < timeout) {
+      handleStageEnables
+      val rwState = k % 2
+      handleRW(rwState)
+      step(1)
+      numCycles = numCycles+1
+    }
+    
+    step(5)
+  }
+
+  if ( (numCycles > timeout) | (numCycles < 2) ) {
+    expect(c.io.output(0).data, 999) // TODO: Figure out how to "expect" signals that are not hw IO
+  }
+
+  step(5)
 }
 
 class FFNoInitTests(c: FFNoInit) extends PeekPokeTester(c) {

@@ -136,14 +136,139 @@ class SRAMTests(c: SRAM) extends PeekPokeTester(c) {
 
 }
 
-class Mem1DTester extends ChiselFlatSpec {
-  behavior of "Mem1D"
-  backends foreach {backend =>
-    it should s"correctly do $backend" in {
-      Driver(() => new Mem1D(1024))(c => new Mem1DTests(c)) should be (true)
+
+/**
+ * SRAM test harness
+ */
+class NBufSRAMTests(c: NBufSRAM) extends PeekPokeTester(c) {
+
+  val timeout = 400
+  val initvals = (0 until c.numBufs).map { i => i+1}
+  var stageActives = Array.tabulate(c.numBufs) { i => 0 }
+  val latencies = (0 until c.numBufs).map { i => math.abs(rnd.nextInt(15)) + 5 } 
+  var stageCounts = Array.tabulate(c.numBufs) { i => 0 }
+  var stagesDone = 0
+
+  reset(1)
+
+  def fillSRAM(wPort: Int, dat: Int) {
+    poke(c.io.wSel(wPort*c.numWriters + 0),1) // Select 0th writer for this port
+    poke(c.io.globalWEn(wPort*c.numWriters + 0),1) // Select 0th writer for this port
+
+    // Write to each address
+    for (i <- 0 until c.logicalDims(0)) { // Each row
+      for (j <- 0 until c.logicalDims(1) by c.wPar) {
+        // Set addrs
+        (0 until c.numWriters).foreach{ writer => 
+          poke(c.io.globalWEn(writer), true)
+          (0 until c.wPar).foreach { kdim => 
+            poke(c.io.w(wPort*c.wPar*c.numWriters + writer*c.wPar + kdim).addr(0), i)
+            poke(c.io.w(wPort*c.wPar*c.numWriters + writer*c.wPar + kdim).addr(1), j+kdim)
+            poke(c.io.w(wPort*c.wPar*c.numWriters + writer*c.wPar + kdim).data, 1000*dat + i*c.logicalDims(0) + j + kdim)
+            poke(c.io.w(wPort*c.wPar*c.numWriters + writer*c.wPar + kdim).en, true)
+          }
+        }
+        step(1)
+      }
+    }
+    // Turn off wEn
+    (0 until c.numWriters).foreach{ writer => 
+      poke(c.io.globalWEn(wPort*c.numWriters + writer), false) // No idea if this is right
+      (0 until c.wPar).foreach { kdim => 
+        poke(c.io.w(wPort*c.wPar*c.numWriters + writer*c.wPar+kdim).en, false)
+      }
+    }
+
+    step(30)
+  }
+
+  def readSRAM(rPort: Int, dat: Int) {
+    poke(c.io.rSel(rPort*c.numReaders + 0),1) // Select 0th writer for this port
+
+    // Write to each address
+    for (i <- 0 until c.logicalDims(0)) { // Each row
+      for (j <- 0 until c.logicalDims(1) by c.rPar) {
+        // Set addrs
+        (0 until c.numReaders).foreach{ readers => 
+          (0 until c.rPar).foreach { kdim => 
+            poke(c.io.r(rPort*c.rPar*c.numReaders + readers*c.rPar + kdim).addr(0), i)
+            poke(c.io.r(rPort*c.rPar*c.numReaders + readers*c.rPar + kdim).addr(1), j+kdim)
+            poke(c.io.r(rPort*c.rPar*c.numReaders + readers*c.rPar + kdim).en, true)
+          }
+        }
+        step(1)
+        (0 until c.rPar).foreach {kdim => 
+          expect(c.io.data(rPort*c.rPar*c.numReaders + kdim), 1000*dat + i*c.logicalDims(0) + j + kdim)
+        }
+      }
+    }
+    // Turn off wEn
+    (0 until c.numReaders).foreach{ writer => 
+      (0 until c.rPar).foreach { kdim => 
+        poke(c.io.r(rPort*c.rPar*c.numReaders + writer*c.rPar+kdim).en, false)
+      }
+    }
+
+    step(30)
+
+  }
+
+  def executeStage(s: Int) {
+    // println(s" Stage $s active count ${stageCounts(s)}, numcicles $numCycles")
+    if (stageActives(s) == 1) stageCounts(s) += 1 else stageCounts(s) = 0
+    if (stageCounts(s) == latencies(s)) {
+      poke(c.io.sDone(s), 1)
+    } else if (stageCounts(s) == latencies(s) + 1) {
+      poke(c.io.sEn(s), 0)
+      poke(c.io.sDone(s), 0)
+      stageCounts(s) = 0
+      stagesDone = stagesDone + 1
+      stageActives(s) = 0
+    } else {
+      poke(c.io.sDone(s), 0)
     }
   }
+  def handleStageEnables = {
+    (0 until c.numBufs).foreach { i => 
+      executeStage(i)
+    }
+  }
+
+  var numCycles = 0
+  var iter = 1
+  var writingPort = 0
+  var readingPort = c.numBufs-1
+  for (k <- 0 until 10) { // run 10 swaps
+    numCycles = 0
+    stagesDone = 0
+    (0 until c.numBufs).foreach{ i => 
+      poke(c.io.sEn(i), 1)
+      stageActives(i) = 1 
+    }
+    fillSRAM(writingPort, iter)
+    if (iter > 1) readSRAM(readingPort, iter-1)
+    while (!(stagesDone == c.numBufs) & numCycles < timeout) {
+      handleStageEnables
+      step(1)
+      numCycles = numCycles+1
+    }
+    iter += 1
+
+    step(5)
+  }
+
+
+  step(5)
 }
+
+// class Mem1DTester extends ChiselFlatSpec {
+//   behavior of "Mem1D"
+//   backends foreach {backend =>
+//     it should s"correctly do $backend" in {
+//       Driver(() => new Mem1D(1024))(c => new Mem1DTests(c)) should be (true)
+//     }
+//   }
+// }
 
 // class MemNDTester extends ChiselFlatSpec {
 //   behavior of "MemND"
@@ -154,13 +279,13 @@ class Mem1DTester extends ChiselFlatSpec {
 //   }
 // }
 
-class SRAMTester extends ChiselFlatSpec {
-  behavior of "SRAM"
-  backends foreach {backend =>
-    it should s"correctly do $backend" in {
-      Driver(() => new SRAM(List(16,16), 32, 
-                              List(1,2), List(1,1), 1, 1,
-                              2, 2, "strided"))(c => new SRAMTests(c)) should be (true)
-    }
-  }
-}
+// class SRAMTester extends ChiselFlatSpec {
+//   behavior of "SRAM"
+//   backends foreach {backend =>
+//     it should s"correctly do $backend" in {
+//       Driver(() => new SRAM(List(16,16), 32, 
+//                               List(1,2), List(1,1), 1, 1,
+//                               2, 2, "strided"))(c => new SRAMTests(c)) should be (true)
+//     }
+//   }
+// }

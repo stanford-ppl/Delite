@@ -3,6 +3,35 @@ package templates
 
 import chisel3._
 
+
+/**
+ * NBufCtr: 1-dimensional counter. Basically a cheap, wrapping counter because  
+             chisel is retarted and optimizes away a Vec(1) to a single val,
+             but still forces you to index the thing and hence only gets the
+             first bit
+ */
+class NBufCtr() extends Module {
+  val io = IO(new Bundle {
+    val input = new Bundle {
+      val start    = UInt(32.W).asInput // TODO: Currently resets to "start" but wraps to 0, is this normal behavior?
+      val max      = UInt(32.W).asInput
+      val countUp  = Bool().asInput
+      val enable = Bool().asInput
+    }
+    val output = new Bundle {
+      val count      = UInt(32.W).asOutput
+    }
+  })
+
+  val cnt = Reg(init = io.input.start)
+
+  val nextCntDown = Mux(io.input.enable, Mux(cnt === 0.U, io.input.max-1.U, cnt-1.U), cnt)
+  val nextCntUp = Mux(io.input.enable, Mux(cnt + 1.U === io.input.max, 0.U, cnt+1.U), cnt)
+  cnt := Mux(io.input.countUp, nextCntUp, nextCntDown)
+
+  io.output.count := cnt
+}
+
 /**
  * SingleCounter: 1-dimensional counter. Counts upto 'max', each time incrementing
  * by 'stride', beginning at zero.
@@ -42,7 +71,7 @@ class SingleCounter(val par: Int) extends Module {
   val isMax = newval >= io.input.max
   val wasMax = Reg(next = isMax, init = Bool(false))
   val wasEnabled = Reg(next = io.input.enable, init = Bool(false))
-  val next = Mux(isMax, Mux(io.input.saturate, count, 0.U), newval)
+  val next = Mux(isMax, Mux(io.input.saturate, count, init), newval)
   base.io.input.data := Mux(io.input.reset, init, next)
 
   (0 until par).foreach { i => io.output.count(i) := count + UInt(i)*io.input.stride }
