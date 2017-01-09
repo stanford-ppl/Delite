@@ -398,12 +398,14 @@ class NBufSRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
     c
   }
 
+  val broadcastDummyEn = Vec((0 until numWriters).map { j =>
+    if (j==0) true.B else false.B
+  }) // Shouldn't have multiple broadcasters anyway?
   srams.zip(statesIn).foreach{ case (f,s) => 
     val sel = (0 until numBufs).map{ i => s.io.output.count === i.U }
-    val normalW =  chisel3.util.Mux1H(sel, reconstructedW)
-    f.io.w := Mux(io.broadcastEn, io.broadcast, normalW)
-    f.io.wSel := chisel3.util.Mux1H(sel, reconstructedWSel)
-    f.io.globalWEn := chisel3.util.Mux1H(sel, reconstructedGlobalWEn)
+    f.io.w := Mux(io.broadcastEn, io.broadcast, chisel3.util.Mux1H(sel, reconstructedW))
+    f.io.wSel := Mux(io.broadcastEn, broadcastDummyEn, chisel3.util.Mux1H(sel, reconstructedWSel))
+    f.io.globalWEn := Mux(io.broadcastEn, broadcastDummyEn, chisel3.util.Mux1H(sel, reconstructedGlobalWEn))
     f.io.r := chisel3.util.Mux1H(sel, reconstructedR)
   }
 

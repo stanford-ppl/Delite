@@ -181,8 +181,28 @@ class NBufSRAMTests(c: NBufSRAM) extends PeekPokeTester(c) {
 
     step(30)
   }
+  def broadcastFillSRAM(dat: Int) {
+    poke(c.io.broadcastEn, 1)
 
-  def readSRAM(rPort: Int, dat: Int) {
+    // Write to each address
+    for (i <- 0 until c.logicalDims(0)) { // Each row
+      for (j <- 0 until c.logicalDims(1) by c.wPar) {
+        // Set addrs
+        (0 until c.wPar).foreach { kdim => 
+          poke(c.io.broadcast(kdim).addr(0), i)
+          poke(c.io.broadcast(kdim).addr(1), j+kdim)
+          poke(c.io.broadcast(kdim).data, dat + i*c.logicalDims(0) + j + kdim)
+          poke(c.io.broadcast(kdim).en, true)
+        }
+        step(1)
+      }
+    }
+    // Turn off wEn
+    poke(c.io.broadcastEn, 0)
+    step(30)
+  }
+
+  def readSRAM(rPort: Int, dat: Int, base: Int = 1000) {
     poke(c.io.rSel(rPort*c.numReaders + 0),1) // Select 0th writer for this port
 
     // Write to each address
@@ -198,7 +218,7 @@ class NBufSRAMTests(c: NBufSRAM) extends PeekPokeTester(c) {
         }
         step(1)
         (0 until c.rPar).foreach {kdim => 
-          expect(c.io.data(rPort*c.rPar*c.numReaders + kdim), 1000*dat + i*c.logicalDims(0) + j + kdim)
+          expect(c.io.data(rPort*c.rPar*c.numReaders + kdim), base*dat + i*c.logicalDims(0) + j + kdim)
         }
       }
     }
@@ -256,6 +276,27 @@ class NBufSRAMTests(c: NBufSRAM) extends PeekPokeTester(c) {
 
     step(5)
   }
+
+  // test broadcast
+  broadcastFillSRAM(20)
+  for (k <- 0 until c.numBufs) { 
+    numCycles = 0
+    stagesDone = 0
+    (0 until c.numBufs).foreach{ i => 
+      poke(c.io.sEn(i), 1)
+      stageActives(i) = 1 
+    }
+    readSRAM(readingPort, 20, 1)
+    while (!(stagesDone == c.numBufs) & numCycles < timeout) {
+      handleStageEnables
+      step(1)
+      numCycles = numCycles+1
+    }
+    iter += 1
+
+    step(5)
+  }
+ 
 
 
   step(5)

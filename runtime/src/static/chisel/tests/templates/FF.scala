@@ -87,6 +87,11 @@ class NBufFFTests(c: NBufFF) extends PeekPokeTester(c) {
       executeStage(i)
     }
   }
+  def handleBcast(expected: Int) {
+    (0 until c.numBufs).foreach { i => 
+      expect(c.io.output(i).data, expected)
+    }
+  }
   def handleRW(parity: Int) {
     if (parity == 0) { // Write step
       (0 until c.numBufs).foreach { i => 
@@ -108,7 +113,7 @@ class NBufFFTests(c: NBufFF) extends PeekPokeTester(c) {
   def rotate(x:List[Int], i:Int) = {x.drop(i)++x.take(i)}
 
   var numCycles = 0
-  for (k <- 0 until 10) { // run 10 swaps
+  for (k <- 0 until 2*c.numBufs) { // run 10 swaps
     var swapReady = 0
     numCycles = 0
     stagesDone = 0
@@ -126,10 +131,36 @@ class NBufFFTests(c: NBufFF) extends PeekPokeTester(c) {
     
     step(5)
   }
+  (0 until c.numBufs).foreach{ i => 
+    poke(c.io.sEn(i), 0)
+  }
 
   if ( (numCycles > timeout) | (numCycles < 2) ) {
     expect(c.io.output(0).data, 999) // TODO: Figure out how to "expect" signals that are not hw IO
   }
+
+  // Check broadcast system
+  poke(c.io.broadcast.enable, 1)
+  poke(c.io.broadcast.data, 666)
+  step(1)
+  poke(c.io.broadcast.enable,0)
+  step(1)
+  for (k <- 0 until c.numBufs) {
+    numCycles = 0
+    stagesDone = 0
+    while (!(stagesDone == c.numBufs) & numCycles < timeout) {
+      handleStageEnables
+      handleBcast(666)
+      step(1)
+      numCycles = numCycles+1
+    }
+    step(5)
+  }
+
+  if ( (numCycles > timeout) | (numCycles < 2) ) {
+    expect(c.io.output(0).data, 999) // TODO: Figure out how to "expect" signals that are not hw IO
+  }
+
 
   step(5)
 }

@@ -36,6 +36,8 @@ done
 inputNames=(`cat chisel/src/kernels/IOBundle.scala | grep "Input" | cut -d ' ' -f 4`)
 outputName=(`cat chisel/src/kernels/IOBundle.scala | grep "Output" | cut -d ' ' -f 4`)
 
+# First pass, change names of ALL input args because sbt will compile all methods
+sed -i "s/poke(c\.io\.ArgIn\..*, input/poke(c\.io\.ArgIn\.${inputNames[0]}, input/g" chisel/src/app-test/apps/TopModule.scala
 for n in `seq 1 ${#inputNames[@]}`; do
   sed -i "s/poke(c\.io\.ArgIn\..*, input${n})/poke(c\.io\.ArgIn\.${inputNames[$((n-1))]}, input${n})/g" chisel/src/app-test/apps/TopModule.scala
 done

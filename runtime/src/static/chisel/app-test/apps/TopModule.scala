@@ -49,7 +49,7 @@ class TopModuleTests(c: TopModule) extends PeekPokeTester(c) {
     poke(c.io.ArgIn.Reg160, input2)
   }
   def NiterCheck() {
-    val b1 = Array.tabulate[SInt](input1) { i => i }
+    val b1 = Array.tabulate(input1) { i => i }
     val gold = b1.reduce {_+_} - ((input1-96) * (input1-96-1))/2
     expect(c.io.ArgOut.Reg161, (input1*input2))
   }
