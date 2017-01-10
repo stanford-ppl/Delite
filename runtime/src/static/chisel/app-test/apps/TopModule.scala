@@ -6,52 +6,53 @@ import org.scalatest.Assertions._
 
 class TopModuleTests(c: TopModule) extends PeekPokeTester(c) {
 
-  val input1 = 5
-  val input2 = 5
-  val input3 = 5
-  val input4 = 5
-  val input5 = 5
-  val input6 = 5
+  val input1 = 288
+  val input2 = 999
+  val input3 = 999
+  val input4 = 999
+  val input5 = 999
+  val input6 = 999
 
   // Define 
   def InOutArg() {
-    poke(c.io.ArgIn.Reg142, input1)
+    poke(c.io.ArgIn.Reg590, input1)
   }
   def InOutArgCheck() {
-    expect(c.io.ArgOut.Reg143, input1+4)
+    expect(c.io.ArgOut.Reg591, input1+4)
   }
   def ScalarMath() {
-    poke(c.io.ArgIn.Reg160, input1)
+    poke(c.io.ArgIn.Reg590, input1)
   }
   def ScalarMathCheck() {
-    expect(c.io.ArgOut.Reg161, (input1*2+4)-1)
+    expect(c.io.ArgOut.Reg591, (input1*2+4)-1)
   }
   def MemTest1D() {
-    poke(c.io.ArgIn.Reg160, input1)
+    poke(c.io.ArgIn.Reg590, input1)
   }
   def MemTest1DCheck() {
-    expect(c.io.ArgOut.Reg161, (input1+383))
+    expect(c.io.ArgOut.Reg591, (input1+383))
   }
   def MemTest2D() {
-    poke(c.io.ArgIn.Reg160, input1)
+    poke(c.io.ArgIn.Reg590, input1)
   }
   def MemTest2DCheck() {
-    expect(c.io.ArgOut.Reg161, (input1+63*128+127))
+    expect(c.io.ArgOut.Reg591, (input1+63*128+127))
   }
   def SimpleSequential() {
-    poke(c.io.ArgIn.Reg160, input1)
-    poke(c.io.ArgIn.Reg160, input2)
+    poke(c.io.ArgIn.Reg590, input1)
+    poke(c.io.ArgIn.Reg590, input2)
   }
   def SimpleSequentialCheck() {
-    expect(c.io.ArgOut.Reg161, (input1*input2))
+    expect(c.io.ArgOut.Reg591, (input1*input2))
   }
   def Niter() {
-    poke(c.io.ArgIn.Reg160, input2)
+    poke(c.io.ArgIn.Reg590, input1)
   }
   def NiterCheck() {
     val b1 = Array.tabulate(input1) { i => i }
     val gold = b1.reduce {_+_} - ((input1-96) * (input1-96-1))/2
-    expect(c.io.ArgOut.Reg161, (input1*input2))
+    println(s"expect $gold" )
+    expect(c.io.ArgOut.Reg591, gold)
   }
 
 
@@ -62,7 +63,7 @@ class TopModuleTests(c: TopModule) extends PeekPokeTester(c) {
 
   // Enable hw accel
   poke(c.io.top_en, 1)
-  InOutArg() // Poke inputs
+Niter() // Poke inputs
 
   // Wait until done or timeout
   var done = peek(c.io.top_done)
@@ -79,7 +80,7 @@ class TopModuleTests(c: TopModule) extends PeekPokeTester(c) {
     expect(c.io.top_done, 999) // TODO: Figure out how to "expect" signals that are not hw IO
   }
 
-  InOutArgCheck() // Expect outputs
+NiterCheck() // Expect outputs
 
 }
 

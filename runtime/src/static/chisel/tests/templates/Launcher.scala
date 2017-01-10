@@ -77,8 +77,11 @@ object Arguments {
     1,
     5
   )
-  val Delay = List(
-    10
+  val Delayer = List(
+    10,
+    3,
+    1,
+    0
   )
   val Mem1D = List(
     50,
@@ -223,10 +226,10 @@ object Launcher {
       }) 
   }.toMap
 
-  templates = templates ++ Arguments.Delay.zipWithIndex.map{ case(arg,i) => 
-    (s"Delay$i" -> { (backendName: String) =>
-        Driver(() => new Delay(arg), "verilator") {
-          (c) => new DelayTests(c)
+  templates = templates ++ Arguments.Delayer.zipWithIndex.map{ case(arg,i) => 
+    (s"Delayer$i" -> { (backendName: String) =>
+        Driver(() => new Delayer(arg), "verilator") {
+          (c) => new DelayerTests(c)
         }
       }) 
   }.toMap

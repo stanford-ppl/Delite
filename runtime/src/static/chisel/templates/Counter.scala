@@ -46,12 +46,12 @@ class RedxnCtr() extends Module {
     }
   })
 
-  val cnt = Reg(init = 0.U)
+  val cnt = Reg(init = UInt(0, 32.W))
 
   val nextCntUp = Mux(io.input.enable, Mux(cnt + 1.U === io.input.max, 0.U, cnt+1.U), cnt)
   cnt := nextCntUp
 
-  io.output.done := cnt === io.input.max
+  io.output.done := cnt + 1.U === io.input.max
 }
 
 /**

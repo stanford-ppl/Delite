@@ -4,12 +4,12 @@ package templates
 import chisel3.iotesters.{PeekPokeTester, Driver, ChiselFlatSpec}
 import org.scalatest.Assertions._
 
-class DelayTests(c: Delay) extends PeekPokeTester(c) {
+class DelayerTests(c: Delayer) extends PeekPokeTester(c) {
   step(1)
   reset(1)
-  var memory = Array.tabulate(c.length) { i => 0 }
+  var memory = Array.tabulate(c.length+1) { i => 0 }
   var head = 0
-  var tail = 1
+  var tail = if (c.length > 0) 1 else 0
   for (i <- 0 until 100) {
     val data = rnd.nextInt(10)
     memory(head) = data
@@ -19,19 +19,19 @@ class DelayTests(c: Delay) extends PeekPokeTester(c) {
     // println(s"expect ${memory(tail)} in slot $tail and seeing $a")
     // println(s"")
     expect(c.io.output.data, memory(tail))
-    head = if (head == c.length-1) 0 else head + 1
-    tail = if (tail == c.length-1) 0 else tail + 1
+    head = if (head == c.length) 0 else head + 1
+    tail = if (tail == c.length) 0 else tail + 1
     step(1)
   }
 
 
 }
 
-class DelayTester extends ChiselFlatSpec {
-  behavior of "Delay"
+class DelayerTester extends ChiselFlatSpec {
+  behavior of "Delayer"
   backends foreach {backend =>
     it should s"correctly add randomly generated numbers $backend" in {
-      Driver(() => new Delay(10))(c => new DelayTests(c)) should be (true)
+      Driver(() => new Delayer(10))(c => new DelayerTests(c)) should be (true)
     }
   }
 }
