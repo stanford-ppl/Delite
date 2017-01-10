@@ -33,6 +33,28 @@ class NBufCtr() extends Module {
 }
 
 /**
+ * RedxnCtr: 1-dimensional counter. Basically a cheap, wrapping for reductions
+ */
+class RedxnCtr() extends Module {
+  val io = IO(new Bundle {
+    val input = new Bundle {
+      val max      = UInt(32.W).asInput
+      val enable = Bool().asInput
+    }
+    val output = new Bundle {
+      val done      = Bool().asOutput
+    }
+  })
+
+  val cnt = Reg(init = 0.U)
+
+  val nextCntUp = Mux(io.input.enable, Mux(cnt + 1.U === io.input.max, 0.U, cnt+1.U), cnt)
+  cnt := nextCntUp
+
+  io.output.done := cnt === io.input.max
+}
+
+/**
  * SingleCounter: 1-dimensional counter. Counts upto 'max', each time incrementing
  * by 'stride', beginning at zero.
  * @param w: Word width
