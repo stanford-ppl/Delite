@@ -26,17 +26,3 @@ class Delayer(val length: Int) extends Module {
 
 }
 
-object Delay {
-  def delay(sig: Bool, length: Int) = {
-    if (length == 0) {
-      sig
-    } else {
-      val regs = (0 until length).map { i => Reg(init = 0.U) }
-      regs(0) := sig
-      (length-1 until 0 by -1).map { i => 
-        regs(i) := regs(i-1)
-      }
-      regs(length-1)
-    }
-  }
-}

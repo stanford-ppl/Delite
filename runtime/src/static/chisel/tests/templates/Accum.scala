@@ -23,11 +23,11 @@ class UIntAccumTests(c: UIntAccum) extends PeekPokeTester(c) {
     }
     count = if(en == 1) next else count
     poke(c.io.next, acc)
-    poke(c.io.en, en)
+    poke(c.io.enable, en)
     step(1)
     expect(c.io.output, count)
   }
-  poke(c.io.en, 0)
+  poke(c.io.enable, 0)
   step(3)
   poke(c.io.reset, 1)
   step(1)
@@ -45,7 +45,7 @@ class UIntAccumTests(c: UIntAccum) extends PeekPokeTester(c) {
     }
     count = if(en == 1) next else count
     poke(c.io.next, acc)
-    poke(c.io.en, en)
+    poke(c.io.enable, en)
     step(1)
     expect(c.io.output, count)
   }
