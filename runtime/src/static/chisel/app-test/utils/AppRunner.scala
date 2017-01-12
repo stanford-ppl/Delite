@@ -6,7 +6,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.Properties.envOrElse
 
 object AppRunner {
-  def apply(templateMap: Map[String, String => Boolean], args: Array[String]): Unit = {
+  def apply(templateMap: Map[String, (String,String,Int) => Boolean], args: Array[String]): Unit = {
     // Choose the default backend based on what is available.
     lazy val firrtlTerpBackendAvailable: Boolean = {
       try {
@@ -22,46 +22,43 @@ object AppRunner {
       ""
     }
     val backendName = envOrElse("TESTER_BACKENDS", defaultBackend).split(" ").head
-    val problemsToRun = if(args.isEmpty || args.head == "all" ) {
-      templateMap.keys.toSeq.sorted.toArray
+    if(args.isEmpty) {
+      println(s"Error: Must specify module to test!")
+      System.exit(1)
     }
-    else {
-      args
-    }
+    val testName = args(0)
+    val inputArgs = args.drop(1).mkString(" ")
+    val TIMEOUT = 1000000
 
-    var successful = 0
     val errors = new ArrayBuffer[String]
-    for(testName <- problemsToRun) {
-      templateMap.get(testName) match {
-        case Some(test) =>
-          println(s"Starting template $testName")
-          try {
-            if(test(backendName)) {
-              successful += 1
-            }
-            else {
-              errors += s"App $testName: test error occurred"
-            }
-          }
-          catch {
-            case exception: Exception =>
-              exception.printStackTrace()
-              errors += s"App $testName: exception ${exception.getMessage}"
-            case t : Throwable =>
-              errors += s"App $testName: throwable ${t.getMessage}"
-          }
-        case _ =>
-          errors += s"Bad template name: $testName"
-      }
 
+    val message = templateMap.get(testName) match {
+      case Some(test) =>
+        println(s"Starting template $testName")
+        try {
+          if(test(backendName, inputArgs, TIMEOUT)) {
+            "Success"
+          }
+          else {
+            s"App $testName: test error occurred"
+          }
+        }
+        catch {
+          case exception: Exception =>
+            exception.printStackTrace()
+            s"App $testName: exception ${exception.getMessage}"
+          case t : Throwable =>
+            s"App $testName: throwable ${t.getMessage}"
+        }
+      case _ =>
+        s"Bad template name: $testName"
     }
-    if(successful > 0) {
-      println(s"Apps passing: $successful")
-    }
-    if(errors.nonEmpty) {
+
+    if(message == "Success") {
+      println(s"Module passed!")
+    } else {
       println("=" * 80)
-      println(s"Errors: ${errors.length}: in the following templates")
-      println(errors.mkString("\n"))
+      println(s"Error: ${message}")
       println("=" * 80)
       System.exit(1)
     }

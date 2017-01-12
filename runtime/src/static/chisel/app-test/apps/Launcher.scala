@@ -6,9 +6,9 @@ import utils.AppRunner
 
 object Launcher {
   val templates = Map(
-	  "TopModule" -> { (backendName: String) =>
+	  "TopModule" -> { (backendName: String, inputArgs: String, timeout: Int) =>
 	    Driver(() => new TopModule(), "verilator") {
-	      (c) => new TopModuleTests(c)
+	      (c) => new TopModuleTests(c, inputArgs, timeout)
 	    }
 	  }
  )
