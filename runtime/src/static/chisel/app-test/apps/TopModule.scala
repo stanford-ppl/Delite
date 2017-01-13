@@ -27,7 +27,7 @@ class TopModuleTests(c: TopModule, in: String, timeout: Int) extends PeekPokeTes
     now = System.currentTimeMillis
     numCycles += stepSize
     done = peek(c.io.top_done)
-    if (numCycles % 100 == 0) println(s"[Sim Status] On cycle $numCycles (${(now-startTime)/numCycles}ms/cyc)")
+    if (numCycles % 10000 == 0) println(s"[Sim Status] On cycle $numCycles (${(now-startTime)/numCycles}ms/cyc)")
   }
   poke(c.io.top_en, 0)
 

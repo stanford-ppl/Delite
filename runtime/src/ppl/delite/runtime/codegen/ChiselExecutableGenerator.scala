@@ -47,6 +47,8 @@ trait ChiselExecutableGenerator extends ExecutableGenerator {
 #include <fstream>
 #include <string> 
 #include <sstream> 
+#include <signal.h>
+#include <sys/wait.h>
 
 void Top_run( Interface_t *args )
 {
@@ -60,9 +62,45 @@ void Top_run( Interface_t *args )
   }
 
   // TODO: Figure out how to get Makefile to compile verilator in when we make bitstream-cpu
-  std::string cmdStr = "sbt \\"test:run-main app.Launcher TopModule " + argString + "\\"";
-  const char * cmd = cmdStr.c_str();
-  system(cmd);
+  // TODO: Figure out why verilator runs 1000x slower when launched from syscall
+  // // std::string cmdStr = "sbt \"test:run-main app.Launcher TopModule " + argString + "\"";
+  // // const char * cmd = cmdStr.c_str();
+  // std::string cmdStr = "test:run-main app.Launcher TopModule " + argString;
+  // char * cmd = (char*)cmdStr.c_str();
+  // char *argv[] = { "sbt", cmd, 0 };
+
+  // // Make fork with timeout
+  // int timeout_time=40;
+  // pid_t intermediate_pid = fork();
+  // if (intermediate_pid == 0) {
+  //   pid_t worker_pid = fork();
+  //   if (worker_pid == 0) {
+  //     execvp(argv[0], argv);
+  //     printf("Simulation success!\n");
+  //       _exit(0);
+  //   }
+
+  //   pid_t timeout_pid = fork();
+  //   if (timeout_pid == 0) {
+  //       sleep(timeout_time);
+  //       printf("============================\n");
+  //       printf("ERROR: Simulation timeout!!\n");
+  //       printf("============================\n");
+  //       _exit(0);
+  //   }
+
+  //   pid_t exited_pid = wait(NULL);
+  //   if (exited_pid == worker_pid) {
+  //       kill(timeout_pid, SIGKILL);
+  //   } else {
+  //       kill(worker_pid, SIGKILL); // Or something less violent if you prefer
+  //   }
+  //   wait(NULL); // Collect the other process
+  //   _exit(0); // Or some more informative status
+  // }
+  // waitpid(intermediate_pid, 0, 0);
+
+  // system(cmd);
 
   std::ifstream result_file( "/tmp/chisel_test_result" );
   int32_t result;
