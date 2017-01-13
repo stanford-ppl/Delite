@@ -22,6 +22,7 @@ object Config {
   var generateOpenCL = getProperty("delite.generate.opencl", "false") != "false"
   var generateDot = getProperty("delite.generate.dot", "false") != "false"
   var generateMaxJ = getProperty("delite.generate.maxj", "false") != "false"
+  // lazy val generateMaxJ: Boolean = getProperty("delite.generate.maxj", "false") != "false"
   var generateChisel = getProperty("delite.generate.chisel", "false") != "false"
   var generateSerializable = getProperty("delite.generate.serializable", "false") != "false"
   var homeDir = getProperty("delite.home.dir", sys.env.getOrElse("DELITE_HOME",System.getProperty("user.dir")))
@@ -52,5 +53,5 @@ object Config {
     else false
   }
 
-  def generateTransferFunctions() = !generateMaxJ
+  def generateTransferFunctions() = !(generateMaxJ | generateChisel)
 }

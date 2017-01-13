@@ -90,7 +90,9 @@ object ChiselCompile extends CCompile {
     copyDir(s"""$staticResources/app-test""", s"""$sourceCacheHome""")
     copyDir(s"""$staticResources/templates""", s"""$sourceCacheHome/static""")
     copyFile(s"""$staticResources/app-build""", s"""${sourceCacheHome}/../../build.sbt""")
-    copyFile(s"""$staticResources/test-app.sh""", s"""${sourceCacheHome}/../../test-app.sh""")
+    copyFile(s"""$staticResources/direct-test.sh""", s"""${sourceCacheHome}/../../direct-test.sh""")
+    copyFile(s"""$staticResources/run.sh""", s"""${sourceCacheHome}/../../run.sh""")
+    copyFile(s"""$staticResources/Makefile.top""", s"""${sourceCacheHome}/../../Makefile""")
   }
 
   /** Copy static cpp files into a 'static' folder in the runtime cpp directory.

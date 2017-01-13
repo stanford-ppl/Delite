@@ -161,7 +161,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile with DeliteTransf
       }
     }
 
-    // Transfer functions not emitted currently when MaxJ code generation
+    // Transfer functions not emitted currently when MaxJ or Chisel code generation
     // is enabled
     if (Config.generateTransferFunctions) {
       generators foreach { _.emitTransferFunctions()}

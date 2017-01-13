@@ -40,11 +40,40 @@ trait ChiselExecutableGenerator extends ExecutableGenerator {
 
   protected[codegen] def writeHeader() {
     hostGenerator.writeHeader()
+    out.append("#include \"interface.h\"\n")
     out.append("#include <stdint.h>\n")
     out.append("#include <sys/time.h>\n")
-    out.append("#include <MaxSLiCInterface.h>\n")
+    out.append(s"""#include <iostream>
+#include <fstream>
+#include <string> 
+#include <sstream> 
 
-    out.append(s"""max_engine_t *engine = 0;""")
+void Top_run( Interface_t *args )
+{
+  int numInputs = sizeof(args->ArgIns) / sizeof(args->ArgIns[0]);
+  std::string argString = "";
+  for (int i=0; i < numInputs; i++) {
+    argString += " ";
+    std::ostringstream ss;
+    ss << *args->ArgIns[i];
+    argString += ss.str();
+  }
+
+  // TODO: Figure out how to get Makefile to compile verilator in when we make bitstream-cpu
+  std::string cmdStr = "sbt \\"test:run-main app.Launcher TopModule " + argString + "\\"";
+  const char * cmd = cmdStr.c_str();
+  system(cmd);
+
+  std::ifstream result_file( "/tmp/chisel_test_result" );
+  int32_t result;
+  uint64_t cycles;
+  result_file >> result >> cycles;
+  *args->ArgOuts[0] = result;
+  *args->cycles = cycles;
+}
+""")
+
+    // out.append(s"""max_engine_t *engine = 0;""")
   }
 
   protected[codegen] def declareGlobals() {
@@ -58,17 +87,17 @@ trait ChiselExecutableGenerator extends ExecutableGenerator {
     hostGenerator.writeMethodHeader()
     declareGlobals()
     initializeGlobals()
-    out.append(s"""// Load max file from disk -> DRAM\n""")
-    out.append(s"""max_file_t *maxfile = Top_init();\n""")
+    // out.append(s"""// Load max file from disk -> DRAM\n""")
+    // out.append(s"""max_file_t *maxfile = Top_init();\n""")
     out.append(s"""// Configure the FPGA\n""")
-    out.append(s"""engine = max_load(maxfile, "local:*");\n""")
-    out.append(s"""int burstSize = max_get_burst_size(maxfile, NULL);\n""")
-    out.append(s"""printf("Burst size for architecture: %d bytes\\n", burstSize);\n""")
+    // out.append(s"""engine = max_load(maxfile, "local:*");\n""")
+    // out.append(s"""int burstSize = max_get_burst_size(maxfile, NULL);\n""")
+    // out.append(s"""printf("Burst size for architecture: %d bytes\\n", burstSize);\n""")
   }
 
   protected def writeMethodFooter() {
     out.append("// Chisel writeMethodFooter();\n")
-    out.append(s"""max_unload(engine);\n""")
+    // out.append(s"""max_unload(engine);\n""")
     hostGenerator.writeMethodFooter()
   }
 
@@ -122,32 +151,38 @@ trait ChiselExecutableGenerator extends ExecutableGenerator {
           assert(op.getOutputs.filter(o=>op.outputType(o)!="Unit").isEmpty)
           out.append(s"""struct timeval t1, t2;\n""")
           out.append(s"""uint64_t Top_cycles = 0;\n""")
-          out.append(s"""Top_actions_t runAct;\n""")
-          val runActValues = op.getInputs.filter { t =>
-            t._1.irnode == "Argin_new" || t._1.irnode == "Argout_new"
+          out.append(s"""Interface_t interface;\n""")
+          val interfaceOuts = op.getInputs.filter { t =>
+            t._1.irnode == "Argout_new"
           }.map { t =>
             val inop = t._1
-
-            // MaxJ automatically promotes ArgOut types on the host to uint64_t, for any integer
-            // and promotes floats to doubles. Handle this ugly feature with the ugly hack below
             val typecastStr = inop.irnode match {
+              //legacy thing from maxj
               case "Argout_new" => inop.outputType(hostTarget) match {
-                case s if s.contains("int") => "(uint64_t*)"
-                case s if s.contains("float") => "(double*)"
+                case s if s.contains("int") => "(int32_t*)"//"(uint64_t*)"
+                case s if s.contains("float") => ""//"(double*)"
                 case _ => ""
               }
               case _ => ""
             }
             s"""$typecastStr ${deref(t._1,t._2) + getSymHost(t._1,t._2)}"""
           }
-          val runactInit = (runActValues ++ List("&Top_cycles")).mkString(",")
-          out.append(s"""runAct = {$runactInit};\n""")
+          val interfaceIns = op.getInputs.filter { t =>
+            t._1.irnode == "Argin_new"
+          }.map { t =>
+            val inop = t._1
+            s"""${deref(t._1,t._2) + getSymHost(t._1,t._2)}"""
+          }
+          val interfaceMem = List() // TODO: Register mem interfaces too
+          out.append(s"""interface.cycles = &Top_cycles;\n""")
+          interfaceOuts.zipWithIndex.foreach{ case(a,i) => out.append(s"""interface.ArgOuts[$i] = $a;\n""")}
+          interfaceIns.zipWithIndex.foreach{ case(a,i) => out.append(s"""*interface.ArgIns[$i] = $a;\n""")}
           out.append(s"""gettimeofday(&t1, 0);\n""")
-          out.append(s"""Top_run(engine, &runAct); // ${op.task}(engine, &runAct);\n""")
+          out.append(s"""Top_run(&interface); // ${op.task}(engine, &interface);\n""")
           out.append(s"""gettimeofday(&t2, 0);\n""")
           out.append(s"""double elapsed = (t2.tv_sec-t1.tv_sec)*1000000 + t2.tv_usec-t1.tv_usec;\n""")
-          out.append(s"""fprintf(stderr, "Kernel done, elapsed time = %lf\\n", elapsed/1000000);\n""")
-          out.append(s"""fprintf(stderr, "Kernel done, cycles = %lu\\n", Top_cycles);\n""")
+          out.append(s"""fprintf(stderr, "Kernel done, test run time = %lf\\n", elapsed/1000000);\n""")
+          out.append(s"""fprintf(stderr, "Kernel done, hw cycles = %lu \\n", Top_cycles);\n""")
         case _ =>
           sys.error(s"""ERROR: Unsupported op '$op' for Chisel writeFunctionCall()""")
       }

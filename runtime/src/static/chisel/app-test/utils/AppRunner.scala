@@ -28,7 +28,7 @@ object AppRunner {
     }
     val testName = args(0)
     val inputArgs = args.drop(1).mkString(" ")
-    val TIMEOUT = 1000000
+    val TIMEOUT = 50000
 
     val errors = new ArrayBuffer[String]
 

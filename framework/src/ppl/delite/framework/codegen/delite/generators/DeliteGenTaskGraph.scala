@@ -392,7 +392,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
       throw new RuntimeException("Delite conditional with different then and else return types: " + thenp + ", " + remap(thenp.tp) + " and " + elsep + ", " + remap(elsep.tp))
     if (thenp.tp == manifest[Any]) System.err.println("[delite] WARNING: returning type Any from IfThenElse is only supported in Scala")
 
-    stream.println("  \"return-types\":{" + returnTypes.mkString(",") + "}" + "\",")
+    stream.println("  \"return-types\":{" + returnTypes.mkString(",") + "},")
     stream.println("  \"irnode\" : \"" + irnode + "\"")
     stream.println("},")
   }
