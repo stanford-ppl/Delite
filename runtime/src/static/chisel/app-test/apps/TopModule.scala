@@ -8,6 +8,8 @@ import java.io._
 class TopModuleTests(c: TopModule, in: String, timeout: Int) extends PeekPokeTester(c) {
 
   val args = if (in.trim().length() > 0) in.split(" ").toList else List()
+  val startTime = System.currentTimeMillis
+  var now = System.currentTimeMillis
 
   step(1)
   reset(1)
@@ -19,10 +21,13 @@ class TopModuleTests(c: TopModule, in: String, timeout: Int) extends PeekPokeTes
   // Wait until done or timeout
   var done = peek(c.io.top_done)
   var numCycles = 0
+  val stepSize = 100
   while ((done != 1) & (numCycles < timeout)) {
-    step(1)
-    numCycles += 1
+    step(stepSize)
+    now = System.currentTimeMillis
+    numCycles += stepSize
     done = peek(c.io.top_done)
+    if (numCycles % 100 == 0) println(s"[Sim Status] On cycle $numCycles (${(now-startTime)/numCycles}ms/cyc)")
   }
   poke(c.io.top_en, 0)
 
