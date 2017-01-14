@@ -62,6 +62,12 @@ object Arguments {
   val SRFF = List(
     "null"
   )
+  val MemController = List(
+    1
+  )
+  val FIFO = List(
+    (1,10)
+  )
   val SingleCounter = List(
     1,3
   )
@@ -190,6 +196,22 @@ object Launcher {
     (s"SRFF$i" -> { (backendName: String) =>
         Driver(() => new SRFF(arg), "verilator") {
           (c) => new SRFFTests(c)
+        }
+      }) 
+  }.toMap
+
+  templates = templates ++ Arguments.MemController.zipWithIndex.map{ case(arg,i) => 
+    (s"MemController$i" -> { (backendName: String) =>
+        Driver(() => new MemController(arg), "verilator") {
+          (c) => new MemControllerTests(c)
+        }
+      }) 
+  }.toMap
+
+  templates = templates ++ Arguments.FIFO.zipWithIndex.map{ case(arg,i) => 
+    (s"FIFO$i" -> { (backendName: String) =>
+        Driver(() => new FIFO(arg), "verilator") {
+          (c) => new FIFOTests(c)
         }
       }) 
   }.toMap

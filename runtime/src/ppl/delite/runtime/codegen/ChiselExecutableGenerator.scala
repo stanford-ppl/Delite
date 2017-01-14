@@ -52,14 +52,14 @@ trait ChiselExecutableGenerator extends ExecutableGenerator {
 
 void Top_run( Interface_t *args )
 {
-  int numInputs = sizeof(args->ArgIns) / sizeof(args->ArgIns[0]);
-  std::string argString = "";
-  for (int i=0; i < numInputs; i++) {
-    argString += " ";
-    std::ostringstream ss;
-    ss << *args->ArgIns[i];
-    argString += ss.str();
-  }
+  // int numInputs = sizeof(args->ArgIns) / sizeof(args->ArgIns[0]);
+  // std::string argString = "";
+  // for (int i=0; i < numInputs; i++) {
+  //   argString += " ";
+  //   std::ostringstream ss;
+  //   ss << *args->ArgIns[i];
+  //   argString += ss.str();
+  // }
 
   // TODO: Figure out how to get Makefile to compile verilator in when we make bitstream-cpu
   // TODO: Figure out why verilator runs 1000x slower when launched from syscall
@@ -76,16 +76,16 @@ void Top_run( Interface_t *args )
   //   pid_t worker_pid = fork();
   //   if (worker_pid == 0) {
   //     execvp(argv[0], argv);
-  //     printf("Simulation success!\n");
+  //     printf("Simulation success!\\n");
   //       _exit(0);
   //   }
 
   //   pid_t timeout_pid = fork();
   //   if (timeout_pid == 0) {
   //       sleep(timeout_time);
-  //       printf("============================\n");
-  //       printf("ERROR: Simulation timeout!!\n");
-  //       printf("============================\n");
+  //       printf("============================\\n");
+  //       printf("ERROR: Simulation timeout!!\\n");
+  //       printf("============================\\n");
   //       _exit(0);
   //   }
 
