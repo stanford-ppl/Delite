@@ -26,6 +26,7 @@ class FromDRAM(val p: Int) extends Bundle {
 }
 class ToDRAM(val p: Int) extends Bundle {
   val addr   = UInt(32.W)
+  val size  = UInt(32.W)
   val data = Vec(p, UInt(32.W))
   val tag = UInt(32.W)
   val valid = Bool()
@@ -41,7 +42,17 @@ class MemController(val p: Int) extends Module {
     val DRAMIn = new FromDRAM(p).asInput
     val DRAMOut = new ToDRAM(p).asOutput
   })
-  
+
+  // TODO: Implement full memory controller that interfaces with DRAM or DRAMSim
+
+  // Temporarily pass through signals from hw to test harness
+  io.DRAMOut.addr := io.AccelIn.addr
+  io.DRAMOut.data := io.AccelIn.data
+  io.DRAMOut.valid := io.AccelIn.valid
+  io.DRAMOut.size := io.AccelIn.size
+
+  io.AccelOut.data := io.DRAMIn.data
+  io.AccelOut.valid := io.DRAMIn.valid
 
 }
 

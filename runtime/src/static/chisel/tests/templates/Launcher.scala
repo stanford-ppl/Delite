@@ -66,7 +66,8 @@ object Arguments {
     1
   )
   val FIFO = List(
-    (1,10)
+    (1,10),
+    (2,30)
   )
   val SingleCounter = List(
     1,3

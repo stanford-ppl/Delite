@@ -209,12 +209,13 @@ void Top_run( Interface_t *args )
             t._1.irnode == "Argin_new"
           }.map { t =>
             val inop = t._1
-            s"""${deref(t._1,t._2) + getSymHost(t._1,t._2)}"""
+            // s"""${deref(t._1,t._2) + getSymHost(t._1,t._2)}"""
+            s"""${getSymHost(t._1,t._2)}"""
           }
           val interfaceMem = List() // TODO: Register mem interfaces too
           out.append(s"""interface.cycles = &Top_cycles;\n""")
           interfaceOuts.zipWithIndex.foreach{ case(a,i) => out.append(s"""interface.ArgOuts[$i] = $a;\n""")}
-          interfaceIns.zipWithIndex.foreach{ case(a,i) => out.append(s"""*interface.ArgIns[$i] = $a;\n""")}
+          interfaceIns.zipWithIndex.foreach{ case(a,i) => out.append(s"""interface.ArgIns[$i] = $a;\n""")}
           out.append(s"""gettimeofday(&t1, 0);\n""")
           out.append(s"""Top_run(&interface); // ${op.task}(engine, &interface);\n""")
           out.append(s"""gettimeofday(&t2, 0);\n""")

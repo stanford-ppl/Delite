@@ -25,10 +25,10 @@ class FIFO(val p: Int, val depth: Int) extends Module {
   val writer = Module(new SingleCounter(1))
   val reader = Module(new SingleCounter(1))
   writer.io.input.max := (depth/p).U
-  reader.io.input.max := (depth/p).U
   writer.io.input.enable := io.push
-  reader.io.input.enable := io.pop
   writer.io.input.stride := 1.U
+  reader.io.input.max := (depth/p).U
+  reader.io.input.enable := io.pop
   reader.io.input.stride := 1.U
 
   // Connect pusher
@@ -47,8 +47,8 @@ class FIFO(val p: Int, val depth: Int) extends Module {
 
   // Debugger
   val ov = Module(new SRFF())
-  val overflowing = (writer.io.output.count(0) === reader.io.output.count(0)) & io.push
-  val fixed_overflow = (writer.io.output.count(0) === reader.io.output.count(0)) & io.pop
+  val overflowing = (writer.io.output.count(0) === reader.io.output.count(0)) & io.pop
+  val fixed_overflow = (writer.io.output.count(0) + 1.U === reader.io.output.count(0)) & io.push // TODO: Need to consider wrap
   ov.io.input.set := overflowing
   ov.io.input.reset := fixed_overflow
   io.debug.overflow := ov.io.output.data
