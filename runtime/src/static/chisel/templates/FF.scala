@@ -111,6 +111,28 @@ class NBufFF(val numBufs: Int, val w: Int) extends Module {
     io.input(port).reset := reset
   }
 
+  def connectStageCtrl(done: Bool, en: Bool, ports: List[Int]) {
+    ports.foreach{ port => 
+      io.sEn(port) := en
+      io.sDone(port) := done
+    }
+  }
+
+  def connectUnwrittenPorts(ports: List[Int]) {
+    ports.foreach{ port => 
+      io.sEn(port) := false.B
+      io.sDone(port) := false.B
+    }
+  }
+
+  def connectUntouchedPorts(ports: List[Int]) {
+    // Used for SRAMs
+  }
+
+  def connectDummyBroadcast() {
+    io.broadcast.enable := false.B
+  }
+
 }
 
 class FFNoInit(val w: Int) extends Module {
