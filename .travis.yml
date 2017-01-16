@@ -4,4 +4,6 @@ branches:
   only:
   - spatial
 install: true
-script: ./runtime/src/static/chisel/run-templates.sh all
+script: 
+  - cd runtime/src/static/chisel
+  - ./runtime/src/static/chisel/run-templates.sh all
