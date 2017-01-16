@@ -12,6 +12,6 @@ install:
   - make
   - sudo make install
 before_script:
-  - cd ~/runtime/src/static/chisel
+  - cd ${DELITE_HOME}/runtime/src/static/chisel
 script: 
   - bash ./run-templates.sh all
