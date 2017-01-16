@@ -3,7 +3,15 @@ scala: 2.11.7
 branches:
   only:
   - spatial
-install: true
+install: 
+  - wget https://www.veripool.org/ftp/verilator-3.900.tgz
+  - unset VERILATOR_ROOT  # For bash
+  - tar xvzf verilator*.t*gz
+  - cd verilator*
+  - ./configure
+  - make
+  - sudo make install
+before_script:
+  - cd ~/runtime/src/static/chisel
 script: 
-  - cd runtime/src/static/chisel
-  - ./run-templates.sh all
+  - bash ./run-templates.sh all
