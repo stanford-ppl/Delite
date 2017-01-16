@@ -6,4 +6,4 @@ branches:
 install: true
 script: 
   - cd runtime/src/static/chisel
-  - ./runtime/src/static/chisel/run-templates.sh all
+  - ./run-templates.sh all
