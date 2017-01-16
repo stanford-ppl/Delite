@@ -9,7 +9,7 @@ class Sequential(val n: Int) extends Module {
   val io = IO(new Bundle {
     val input = new Bundle {
       val enable = Bool().asInput
-      val numIter = UInt(32).asInput
+      val numIter = UInt(32.W).asInput
       val stageDone = Vec(n, Bool().asInput)
     }
     val output = new Bundle {
