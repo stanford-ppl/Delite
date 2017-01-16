@@ -5,7 +5,7 @@ import chisel3._
 class FromAccel(val p: Int) extends Bundle {
   val addr   = UInt(32.W)
   val size = UInt(32.W)
-  val data = UInt(32.W) // TODO: Probably a vec
+  val data = Vec(p, UInt(32.W))
   val valid = Bool()
   val read = Bool() // For acknowledging data going ToAccel
 
@@ -47,11 +47,11 @@ class MemController(val p: Int) extends Module {
 
   // Temporarily pass through signals from hw to test harness
   io.DRAMOut.addr := io.AccelIn.addr
-  io.DRAMOut.data := io.AccelIn.data
+  io.DRAMOut.data.zip(io.AccelIn.data).foreach{ case (data, port) => data := port }
   io.DRAMOut.valid := io.AccelIn.valid
   io.DRAMOut.size := io.AccelIn.size
 
-  io.AccelOut.data := io.DRAMIn.data
+  io.AccelOut.data.zip(io.DRAMIn.data).foreach{ case (data, port) => data := port }
   io.AccelOut.valid := io.DRAMIn.valid
 
 }
