@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/stanford-ppl/Delite.svg?branch=spatial)](https://travis-ci.org/stanford-ppl/Delite)
+Chisel Templates: [![Build Status](https://travis-ci.org/stanford-ppl/Delite.svg?branch=spatial)](https://travis-ci.org/stanford-ppl/Delite)
 
 Delite 2.0
 ==========

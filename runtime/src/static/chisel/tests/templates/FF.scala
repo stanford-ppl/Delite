@@ -29,28 +29,28 @@ class FFTests(c: FF) extends PeekPokeTester(c) {
     poke(c.io.input.enable, newenable)
     step(1)
     if (newenable == 1) {
-      val a = peek(c.io.output.data)
-      println(s"expect $a to be $i")
+      // val a = peek(c.io.output.data)
+      // println(s"expect $a to be $i")
       expect(c.io.output.data, i)
     } else {
-      val a = peek(c.io.output.data)
-      println(s"expect $a to be $oldout")
+      // val a = peek(c.io.output.data)
+      // println(s"expect $a to be $oldout")
       expect(c.io.output.data, oldout)
     }
   }
   poke(c.io.input.reset, 1)
   poke(c.io.input.enable, 0)
-  val b = peek(c.io.output.data)
-  println(s"expect $b to be $initval")
+  // val b = peek(c.io.output.data)
+  // println(s"expect $b to be $initval")
   expect(c.io.output.data, initval)
   step(1)
-  val cc = peek(c.io.output.data)
-  println(s"expect $cc to be $initval")
+  // val cc = peek(c.io.output.data)
+  // println(s"expect $cc to be $initval")
   expect(c.io.output.data, initval)
   poke(c.io.input.reset, 0)
   step(1)
-  val d = peek(c.io.output.data)
-  println(s"expect $d to be $initval")
+  // val d = peek(c.io.output.data)
+  // println(s"expect $d to be $initval")
   expect(c.io.output.data, initval)
 }
 
