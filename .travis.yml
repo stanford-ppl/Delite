@@ -1,0 +1,7 @@
+language: scala
+scala: 2.11.7
+branches:
+  only:
+  - spatial
+install: true
+script: ./runtime/src/static/chisel/run-templates.sh all
