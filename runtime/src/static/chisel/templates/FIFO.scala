@@ -13,6 +13,7 @@ class FIFO(val p: Int, val depth: Int) extends Module {
     val out = Vec(p, UInt(32.W).asOutput)
     val push = Bool().asInput
     val pop = Bool().asInput
+    val empty = Bool().asOutput
     val debug = new Bundle {
       val overflow = Bool().asOutput
     }
@@ -44,6 +45,11 @@ class FIFO(val p: Int, val depth: Int) extends Module {
     mem.io.r.en := io.pop
     data := mem.io.output.data
   }
+
+  val hasData = Module(new SRFF())
+  hasData.io.input.set := (writer.io.output.count(0) === reader.io.output.count(0)) & io.push
+  hasData.io.input.reset := (reader.io.output.count(0) + 1.U === writer.io.output.count(0)) & io.pop // TODO: Need to handle wrap
+  io.empty := !hasData.io.output.data
 
   // Debugger
   val ov = Module(new SRFF())

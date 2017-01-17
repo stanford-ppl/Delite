@@ -1,5 +1,10 @@
 language: scala
 scala: 2.11.7
+notifications:
+  email:
+    recipients: mattfel@stanford.edu
+    on_success: never # default: change
+    on_failure: always # default: always
 branches:
   only:
   - spatial
@@ -14,5 +19,5 @@ install:
 before_script:
   - cd ${DELITE_HOME}/runtime/src/static/chisel
 script: 
-  - free -h
+  - free -k
   - bash ./run-templates.sh all

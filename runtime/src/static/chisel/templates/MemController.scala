@@ -3,17 +3,22 @@ package templates
 import chisel3._
 
 class FromAccel(val p: Int) extends Bundle {
-  val addr   = UInt(32.W)
+  // Command signals
+  val base   = UInt(32.W)
+  val offset   = UInt(32.W)
   val size = UInt(32.W)
+  val en = Bool()
+
+  // Data signals  
   val data = Vec(p, UInt(32.W))
-  val valid = Bool()
-  val read = Bool() // For acknowledging data going ToAccel
+  val pop = Bool()
 
   override def cloneType = (new FromAccel(p)).asInstanceOf[this.type] // See chisel3 bug 358
 }
 class ToAccel(val p: Int) extends Bundle {
   val data   = Vec(p, UInt(32.W))
   val valid = Bool()
+  val done = Bool()
 
   override def cloneType = (new ToAccel(p)).asInstanceOf[this.type] // See chisel3 bug 358
 }
@@ -37,22 +42,30 @@ class ToDRAM(val p: Int) extends Bundle {
 
 class MemController(val p: Int) extends Module {
   val io = IO(new Bundle{
-    val AccelIn = new FromAccel(p).asInput
-    val AccelOut = new ToAccel(p).asOutput
-    val DRAMIn = new FromDRAM(p).asInput
-    val DRAMOut = new ToDRAM(p).asOutput
+    val AccelToCtrl = new FromAccel(p).asInput
+    val CtrlToAccel = new ToAccel(p).asOutput
+    val DRAMToCtrl = new FromDRAM(p).asInput
+    val CtrlToDRAM = new ToDRAM(p).asOutput
   })
 
   // TODO: Implement full memory controller that interfaces with DRAM or DRAMSim
 
   // Temporarily pass through signals from hw to test harness
-  io.DRAMOut.addr := io.AccelIn.addr
-  io.DRAMOut.data.zip(io.AccelIn.data).foreach{ case (data, port) => data := port }
-  io.DRAMOut.valid := io.AccelIn.valid
-  io.DRAMOut.size := io.AccelIn.size
+  io.CtrlToDRAM.addr := io.AccelToCtrl.offset + io.AccelToCtrl.base
+  io.CtrlToDRAM.data.zip(io.AccelToCtrl.data).foreach{ case (data, port) => data := port }
+  io.CtrlToDRAM.size := io.AccelToCtrl.size
 
-  io.AccelOut.data.zip(io.DRAMIn.data).foreach{ case (data, port) => data := port }
-  io.AccelOut.valid := io.DRAMIn.valid
+  io.CtrlToAccel.data.zip(io.DRAMToCtrl.data).foreach{ case (data, port) => data := port }
+  io.CtrlToAccel.valid := io.DRAMToCtrl.valid
+
+  // Create FIFO to hold data from DRAM
+  val burstSize = 64
+  val fifo = Module(new FIFO(p, burstSize))
+  fifo.io.in := io.DRAMToCtrl.data
+  fifo.io.push := io.DRAMToCtrl.valid
+  fifo.io.pop := io.AccelToCtrl.pop
+  io.CtrlToAccel.data := fifo.io.out
+  io.CtrlToAccel.valid := !fifo.io.empty
 
 }
 

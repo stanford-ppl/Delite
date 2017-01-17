@@ -31,6 +31,11 @@ class TopModuleTests(c: TopModule, in: String, timeout: Int) extends PeekPokeTes
   }
   poke(c.io.top_en, 0)
 
+  if (numCycles >= timeout) {
+    println(s"ERROR: Timeout ($numCycles cycles)")
+    expect(c.io.top_en, -999)
+  }
+
   val result = peek(c.io.ArgOut.ports(0))
 
   println(s"Hardware result: $result")

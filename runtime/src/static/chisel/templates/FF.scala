@@ -120,17 +120,27 @@ class NBufFF(val numBufs: Int, val w: Int) extends Module {
 
   def connectUnwrittenPorts(ports: List[Int]) {
     ports.foreach{ port => 
+      io.input(port).enable := false.B
+    }
+  }
+
+  def connectUnreadPorts(ports: List[Int]) {
+    // Used for SRAMs
+  }
+
+  def connectUntouchedPorts(ports: List[Int]) {
+    ports.foreach{ port => 
       io.sEn(port) := false.B
       io.sDone(port) := false.B
     }
   }
 
-  def connectUntouchedPorts(ports: List[Int]) {
-    // Used for SRAMs
-  }
-
   def connectDummyBroadcast() {
     io.broadcast.enable := false.B
+  }
+
+  def read(port: Int) = {
+    io.output(port).data
   }
 
 }
