@@ -50,8 +50,8 @@ class Mem1D(val size: Int) extends Module { // Unbanked, inner 1D mem
   // We can do better than MaxJ by forcing mems to be single-ported since
   //   we know how to properly schedule reads and writes
   val m = Mem(UInt(width = 32), size /*, seqRead = true deprecated? */)
-  val wInBound = io.w.addr < UInt(size)
-  val rInBound = io.r.addr < UInt(size)
+  val wInBound = io.w.addr < (size).U
+  val rInBound = io.r.addr < (size).U
 
   val reg_rAddr = Reg(UInt())
   when (io.w.en & wInBound) {m(io.w.addr) := io.w.data}
@@ -115,7 +115,7 @@ class MemND(val dims: List[Int]) extends Module {
   io.output.data := m.io.output.data
   io.debug.invalidWAddr := ~wInBound
   io.debug.invalidRAddr := ~rInBound
-  io.debug.rwOn := io.w.en & io.r.en
+  io.debug.rwOn := io.w.en & wMask & io.r.en & rMask
   io.debug.error := ~wInBound | ~rInBound | (io.w.en & io.r.en)
 }
 
@@ -273,7 +273,7 @@ class SRAM(val logicalDims: List[Int], val w: Int,
   val rInBound = selectedRVec.map{ v => v.addr.zip(logicalDims).map { case (addr, bound) => addr < UInt(bound) }.reduce{_&_}}.reduce{_&_}
   val writeOn = selectedWVec.map{ v => v.en }
   val readOn = selectedRVec.map{ v => v.en }
-  val rwOn = writeOn.zip(readOn).map{ case(a,b) => a&b}.reduce{_|_}
+  val rwOn = writeOn.zip(readOn).map{ case(a,b) => a&b}.reduce{_|_} & selectedGlobalWen
   val rCollide = bankIdR.zip( readOn).map{ case(id1,en1) => bankIdR.zip( readOn).map{ case(id2,en2) => Mux((id1 === id2) & en1 & en2, 1.U, 0.U)}.reduce{_+_} }.reduce{_+_} !=  readOn.map{Mux(_, 1.U, 0.U)}.reduce{_+_}
   val wCollide = bankIdW.zip(writeOn).map{ case(id1,en1) => bankIdW.zip(writeOn).map{ case(id2,en2) => Mux((id1 === id2) & en1 & en2, 1.U, 0.U)}.reduce{_+_} }.reduce{_+_} != writeOn.map{Mux(_, 1.U, 0.U)}.reduce{_+_}
   io.debug.invalidWAddr := ~wInBound

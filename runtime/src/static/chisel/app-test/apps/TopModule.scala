@@ -19,11 +19,29 @@ class TopModuleTests(c: TopModule, in: String, timeout: Int) extends PeekPokeTes
   (0 until args.length).foreach{ i => poke(c.io.ArgIn.ports(i), args(i).toInt) } // Poke inputs
 
   // Wait until done or timeout
+  val numLoaders = c.io.MemStreams.inPorts.length
   var done = peek(c.io.top_done)
   var numCycles = 0
-  val stepSize = 100
+  val stepSize = 50
+  var memRequests = (0 until numLoaders).map{i => 0}
   while ((done != 1) & (numCycles < timeout)) {
     step(stepSize)
+    (0 until numLoaders).foreach { i =>
+      val req = (peek(c.io.MemStreams.outPorts(i).valid) == 1)
+      val size = peek(c.io.MemStreams.outPorts(i).size).toInt
+      val base = peek(c.io.MemStreams.outPorts(i).base).toInt
+      val addr = peek(c.io.MemStreams.outPorts(i).addr).toInt
+      val par = c.io.MemStreams.inPorts(i).data.length
+      if (req) {
+        for (j <- 0 until size) {
+          (0 until par).foreach { k => poke(c.io.MemStreams.inPorts(i).data(k), addr-base+j+k) }  
+          poke(c.io.MemStreams.inPorts(i).valid, 1)
+          step(1)
+        }
+        poke(c.io.MemStreams.inPorts(i).valid, 0)
+        step(1)
+      }
+    }
     now = System.currentTimeMillis
     numCycles += stepSize
     done = peek(c.io.top_done)

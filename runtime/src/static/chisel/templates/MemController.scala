@@ -33,6 +33,7 @@ class ToDRAM(val p: Int) extends Bundle {
   val addr   = UInt(32.W)
   val size  = UInt(32.W)
   val data = Vec(p, UInt(32.W))
+  val base = UInt(32.W)
   val tag = UInt(32.W)
   val valid = Bool()
 
@@ -51,9 +52,11 @@ class MemController(val p: Int) extends Module {
   // TODO: Implement full memory controller that interfaces with DRAM or DRAMSim
 
   // Temporarily pass through signals from hw to test harness
+  io.CtrlToDRAM.base := io.AccelToCtrl.base // Only used for the janky mem controller
   io.CtrlToDRAM.addr := io.AccelToCtrl.offset + io.AccelToCtrl.base
   io.CtrlToDRAM.data.zip(io.AccelToCtrl.data).foreach{ case (data, port) => data := port }
   io.CtrlToDRAM.size := io.AccelToCtrl.size
+  io.CtrlToDRAM.valid := io.AccelToCtrl.en
 
   io.CtrlToAccel.data.zip(io.DRAMToCtrl.data).foreach{ case (data, port) => data := port }
   io.CtrlToAccel.valid := io.DRAMToCtrl.valid
@@ -65,7 +68,7 @@ class MemController(val p: Int) extends Module {
   fifo.io.push := io.DRAMToCtrl.valid
   fifo.io.pop := io.AccelToCtrl.pop
   io.CtrlToAccel.data := fifo.io.out
-  io.CtrlToAccel.valid := !fifo.io.empty
+  io.CtrlToAccel.valid := !fifo.io.empty | (io.AccelToCtrl.en & io.CtrlToDRAM.size === 0.U)
 
 }
 
