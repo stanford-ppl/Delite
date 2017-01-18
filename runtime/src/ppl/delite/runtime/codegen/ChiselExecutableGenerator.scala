@@ -49,6 +49,7 @@ trait ChiselExecutableGenerator extends ExecutableGenerator {
 #include <sstream> 
 #include <signal.h>
 #include <sys/wait.h>
+#include <pwd.h>
 
 void Top_run( Interface_t *args )
 {
@@ -102,12 +103,19 @@ void Top_run( Interface_t *args )
 
   // system(cmd);
 
-  std::ifstream result_file( "/tmp/chisel_test_result" );
+  uid_t uid = geteuid();
+  struct passwd *pw = getpwuid (uid);
+  std::ostringstream stringStream;
+  stringStream << "/tmp/chisel_test_result_" << pw->pw_name;
+  std::string fname = stringStream.str();
+  std::ifstream result_file;
+  result_file.open( fname.c_str() );
   int32_t result;
   uint64_t cycles;
   result_file >> result >> cycles;
   *args->ArgOuts[0] = result;
   *args->cycles = cycles;
+
 }
 """)
 

@@ -54,11 +54,16 @@ class TopModuleTests(c: TopModule, in: String, timeout: Int) extends PeekPokeTes
     expect(c.io.top_en, -999)
   }
 
-  val result = peek(c.io.ArgOut.ports(0))
+  val result = if (c.io.ArgOut.ports.length > 0) { 
+    List(peek(c.io.ArgOut.ports(0))) // Arg result
+  } else { // Mem result
+    List(0)
+  }
 
   println(s"Hardware result: $result")
 
-  val pw = new PrintWriter(new File("/tmp/chisel_test_result" ))
-  pw.write(s"$result\n$numCycles")
+  val user = System.getProperty("user.name")
+  val pw = new PrintWriter(new File(s"/tmp/chisel_test_result_${user}" ))
+  pw.write(s"""${result.mkString("\n")}\n$numCycles""")
   pw.close
 }
