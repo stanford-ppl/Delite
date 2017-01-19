@@ -32,6 +32,35 @@ class NBufCtr() extends Module {
   io.output.count := cnt
 }
 
+
+/**
+ * IncDincCtr: 1-dimensional counter, used in tracking number of elements when you push and pop
+               from a fifo
+ */
+class IncDincCtr(inc: Int, dinc: Int, max: Int) extends Module {
+  val io = IO(new Bundle {
+    val input = new Bundle {
+      val inc_en     = Bool().asInput
+      val dinc_en    = Bool().asInput
+    }
+    val output = new Bundle {
+      val overread      = Bool().asOutput
+      val overwrite      = Bool().asOutput
+      val empty         = Bool().asOutput
+    }
+  })
+
+  val cnt = Reg(init = SInt(0,32.W))
+
+  val numPushed = Mux(io.input.inc_en, inc.S, 0.S)
+  val numPopped = Mux(io.input.dinc_en, dinc.S, 0.S)
+  cnt := cnt + numPushed - numPopped
+
+  io.output.overread := cnt < 0.S
+  io.output.overwrite := cnt > max.S
+  io.output.empty := cnt === 0.S
+}
+
 /**
  * RedxnCtr: 1-dimensional counter. Basically a cheap, wrapping for reductions
  */
@@ -77,6 +106,7 @@ class SingleCounter(val par: Int) extends Module {
     }
     val output = new Bundle {
       val count      = Vec(par, UInt(32.W).asOutput)
+      val countWithoutWrap = Vec(par, UInt(32.W).asOutput) // Rough estimate of next val without wrap, used in FIFO
       val done   = Bool().asOutput
       val extendedDone = Bool().asOutput
       val saturated = Bool().asOutput
@@ -89,14 +119,17 @@ class SingleCounter(val par: Int) extends Module {
   base.io.input.enable := io.input.reset | io.input.enable
 
   val count = base.io.output.data
-  val newval = count + (io.input.stride * UInt(par)) + io.input.gap
+  val newval = count + (io.input.stride * par.U) + io.input.gap
   val isMax = newval >= io.input.max
   val wasMax = Reg(next = isMax, init = Bool(false))
   val wasEnabled = Reg(next = io.input.enable, init = Bool(false))
   val next = Mux(isMax, Mux(io.input.saturate, count, init), newval)
   base.io.input.data := Mux(io.input.reset, init, next)
 
-  (0 until par).foreach { i => io.output.count(i) := count + UInt(i)*io.input.stride }
+  (0 until par).foreach { i => io.output.count(i) := count + i.U*io.input.stride }
+  (0 until par).foreach { i => 
+    io.output.countWithoutWrap(i) := Mux(count === 0.U, io.input.max, count) + i.U*io.input.stride
+  }
   io.output.done := io.input.enable & isMax
   io.output.saturated := io.input.saturate & isMax
   io.output.extendedDone := (io.input.enable | wasEnabled) & (isMax | wasMax)

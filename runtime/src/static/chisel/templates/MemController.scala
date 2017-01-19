@@ -63,7 +63,7 @@ class MemController(val p: Int) extends Module {
 
   // Create FIFO to hold data from DRAM
   val burstSize = 64
-  val fifo = Module(new FIFO(p, burstSize))
+  val fifo = Module(new FIFO(p, p, burstSize))
   fifo.io.in := io.DRAMToCtrl.data
   fifo.io.push := io.DRAMToCtrl.valid
   fifo.io.pop := io.AccelToCtrl.pop
