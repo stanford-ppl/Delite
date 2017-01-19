@@ -7,6 +7,7 @@ import chisel3.util
 
 class FIFO(val pR: Int, val pW: Int, val depth: Int) extends Module {
   def this(tuple: (Int, Int, Int)) = this(tuple._1, tuple._2, tuple._3)
+  def this(p: Int, depth: Int) = this(p, p, depth)
 
   val io = IO( new Bundle {
     val in = Vec(pW, UInt(32.W).asInput)
