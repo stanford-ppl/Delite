@@ -7,27 +7,11 @@ import java.io._
 
 class TopModuleTests(c: TopModule, in: String, timeout: Int) extends PeekPokeTester(c) {
 
-  val args = if (in.trim().length() > 0) in.split(" ").toList else List()
-  val startTime = System.currentTimeMillis
-  var now = System.currentTimeMillis
+  var offchipMem = List[BigInt]()
 
-  step(1)
-  reset(1)
-
-  // Enable hw accel
-  poke(c.io.top_en, 1)
-  (0 until args.length).foreach{ i => poke(c.io.ArgIn.ports(i), args(i).toInt) } // Poke inputs
-
-  // Wait until done or timeout
-  val numLoaders = c.io.MemStreams.inPorts.length
-  var done = peek(c.io.top_done)
-  var numCycles = 0
-  val stepSize = 50
-  var memRequests = (0 until numLoaders).map{i => 0}
-  while ((done != 1) & (numCycles < timeout)) {
-    step(stepSize)
-    (0 until numLoaders).foreach { i =>
-      val req = (peek(c.io.MemStreams.outPorts(i).valid) == 1)
+  def handleLoaders() {
+    (0 until numMemCtrls).foreach { i =>
+      val req = (peek(c.io.MemStreams.outPorts(i).receiveBurst) == 1)
       val size = peek(c.io.MemStreams.outPorts(i).size).toInt
       val base = peek(c.io.MemStreams.outPorts(i).base).toInt
       val addr = peek(c.io.MemStreams.outPorts(i).addr).toInt
@@ -42,6 +26,51 @@ class TopModuleTests(c: TopModule, in: String, timeout: Int) extends PeekPokeTes
         step(1)
       }
     }
+  }
+
+  def handleStorers() {
+    (0 until numMemCtrls).foreach { i =>
+      val req = (peek(c.io.MemStreams.outPorts(i).sendBurst) == 1)
+      val size = peek(c.io.MemStreams.outPorts(i).size).toInt
+      val base = peek(c.io.MemStreams.outPorts(i).base).toInt
+      val addr = peek(c.io.MemStreams.outPorts(i).addr).toInt
+      val par = c.io.MemStreams.outPorts(i).data.length
+      if (req) {
+        for (j <- 0 until size) {
+          (0 until par).foreach { k => 
+            offchipMem = offchipMem :+ peek(c.io.MemStreams.outPorts(i).data(k)) 
+          }  
+          poke(c.io.MemStreams.inPorts(i).pop, 1)
+          step(1)
+        }
+        poke(c.io.MemStreams.inPorts(i).pop, 0)
+        step(1)
+      }
+    }
+  }
+
+  val args = if (in.trim().length() > 0) in.split(" ").toList else List()
+  val startTime = System.currentTimeMillis
+  var now = System.currentTimeMillis
+
+  step(1)
+  reset(1)
+
+  // Enable hw accel
+  poke(c.io.top_en, 1)
+  (0 until args.length).foreach{ i => poke(c.io.ArgIn.ports(i), args(i).toInt) } // Poke inputs
+
+  // Wait until done or timeout
+  val numMemCtrls = c.io.MemStreams.inPorts.length
+  var done = peek(c.io.top_done)
+  var numCycles = 0
+  val stepSize = 50
+  while ((done != 1) & (numCycles < timeout)) {
+    step(stepSize)
+
+    handleLoaders()
+    handleStorers()
+
     now = System.currentTimeMillis
     numCycles += stepSize
     done = peek(c.io.top_done)
@@ -57,10 +86,10 @@ class TopModuleTests(c: TopModule, in: String, timeout: Int) extends PeekPokeTes
   val result = if (c.io.ArgOut.ports.length > 0) { 
     List(peek(c.io.ArgOut.ports(0))) // Arg result
   } else { // Mem result
-    List(0)
+    offchipMem
   }
 
-  println(s"Hardware result: $result")
+  // println(s"Hardware result: $result")
 
   val user = System.getProperty("user.name")
   val pw = new PrintWriter(new File(s"/tmp/chisel_test_result_${user}" ))

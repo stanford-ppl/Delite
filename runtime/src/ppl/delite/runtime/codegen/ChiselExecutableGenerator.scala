@@ -110,11 +110,36 @@ void Top_run( Interface_t *args )
   std::string fname = stringStream.str();
   std::ifstream result_file;
   result_file.open( fname.c_str() );
-  int32_t result;
-  uint64_t cycles;
-  result_file >> result >> cycles;
-  *args->ArgOuts[0] = result;
-  *args->cycles = cycles;
+
+  std::string line;
+  std::vector<int64_t> results;
+  int lenMemOut = 0;
+  while (std::getline(result_file, line))
+  {
+    lenMemOut += 1;
+    std::istringstream buffer(line);
+    int value;
+    buffer >> value;   // value = 45
+    results.push_back(value);
+  }
+
+  int numArgOuts = sizeof(args->ArgOuts)/sizeof(args->ArgOuts[0]);
+  if (numArgOuts > 0) {
+    for ( int i = 0; i < numArgOuts; i++) {
+      *args->ArgOuts[i] = results[i];
+    }
+  } else {
+    for ( int i = 0; i < lenMemOut - 1; i++) {
+      args->add_mem(results[i]);
+    }    
+  }
+
+  *args->cycles = results[results.size()-1];
+  // int32_t result;
+  // uint64_t cycles;
+  // result_file >> result >> cycles;
+  // *args->ArgOuts[0] = result;
+  // *args->cycles = cycles;
 
 }
 """)
@@ -220,13 +245,25 @@ void Top_run( Interface_t *args )
             // s"""${deref(t._1,t._2) + getSymHost(t._1,t._2)}"""
             s"""${getSymHost(t._1,t._2)}"""
           }
-          val interfaceMem = List() // TODO: Register mem interfaces too
+          val interfaceMem = op.getInputs.filter { t => 
+            t._1.irnode == "Dram_new"
+          }.map { t =>
+            val inop = t._1
+            s"""${getSymHost(t._1,t._2)}"""
+          } // MAJOR HACK: Assume last Dram_new is where results are stored
           out.append(s"""interface.cycles = &Top_cycles;\n""")
           interfaceOuts.zipWithIndex.foreach{ case(a,i) => out.append(s"""interface.ArgOuts[$i] = $a;\n""")}
           interfaceIns.zipWithIndex.foreach{ case(a,i) => out.append(s"""interface.ArgIns[$i] = $a;\n""")}
           out.append(s"""gettimeofday(&t1, 0);\n""")
           out.append(s"""Top_run(&interface); // ${op.task}(engine, &interface);\n""")
           out.append(s"""gettimeofday(&t2, 0);\n""")
+          if (interfaceMem.length > 0) {
+            out.append(s"""
+for (int i = 0; i < interface.memOut_length(); i++) { // Will be 0 if this app has an argout
+  ${interfaceMem.last}->add_mem(interface.get_mem(i));
+}
+""")
+          }
           out.append(s"""double elapsed = (t2.tv_sec-t1.tv_sec)*1000000 + t2.tv_usec-t1.tv_usec;\n""")
           out.append(s"""fprintf(stderr, "Kernel done, test run time = %lf\\n", elapsed/1000000);\n""")
           out.append(s"""fprintf(stderr, "Kernel done, hw cycles = %lu \\n", Top_cycles);\n""")
