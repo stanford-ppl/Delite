@@ -70,7 +70,7 @@ class MemController(val pLoadAccel: Int, val pStoreAccel: Int, val pStoreDRAM: I
 
   io.CtrlToAccel.data.zip(io.DRAMToCtrl.data).foreach{ case (data, port) => data := port }
 
-  val burstSize = 64
+  val burstSize = 512 // TODO: Should probably be an input argument to the constructor
 
   // Create FIFO to hold data from DRAM
   val loadFifo = Module(new FIFO(pLoadAccel, pLoadDRAM, burstSize))
