@@ -38,10 +38,10 @@ class TopModuleTests(c: TopModule, in: String, timeout: Int) extends PeekPokeTes
       if (req) {
         for (j <- 0 until size) {
           poke(c.io.MemStreams.inPorts(i).pop, 1)
-          step(1)
           (0 until par).foreach { k => 
             offchipMem = offchipMem :+ peek(c.io.MemStreams.outPorts(i).data(k)) 
           }  
+          step(1)
         }
         poke(c.io.MemStreams.inPorts(i).pop, 0)
         step(1)

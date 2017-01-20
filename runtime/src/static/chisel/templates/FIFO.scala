@@ -31,7 +31,7 @@ class FIFO(val pR: Int, val pW: Int, val depth: Int) extends Module {
   elements.io.input.dinc_en := io.pop
 
   // Create physical mems
-  val m = (0 until p).map{ i => Module(new Mem1D(depth/p))}
+  val m = (0 until p).map{ i => Module(new Mem1D(depth/p, true))}
 
   // Create head and reader sub counters
   val subWriter = Module(new SingleCounter(1))
@@ -84,11 +84,12 @@ class FIFO(val pR: Int, val pW: Int, val depth: Int) extends Module {
       (0 until (p / pR)).foreach { i => 
         m(r_i + i*pR).io.r.addr := reader.io.output.count(0)
         m(r_i + i*pR).io.r.en := io.pop & (subReader.io.output.count(0) === i.U)
-        if (i == 0) { // Strangeness from inc-then-read nuisance
-          rSel((p/pR)-1) := subReader.io.output.count(0) === i.U
-        } else {
-          rSel(i-1) := subReader.io.output.count(0) === i.U
-        }
+        rSel(i) := subReader.io.output.count(0) === i.U
+        // if (i == 0) { // Strangeness from inc-then-read nuisance
+        //   rSel((p/pR)-1) := subReader.io.output.count(0) === i.U
+        // } else {
+        //   rSel(i-1) := subReader.io.output.count(0) === i.U
+        // }
         rData(i) := m(r_i + i*pR).io.output.data
       }
       io.out(r_i) := chisel3.util.PriorityMux(rSel, rData)

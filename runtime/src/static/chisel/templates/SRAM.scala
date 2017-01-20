@@ -32,7 +32,9 @@ class multidimR(val N: Int, val w: Int) extends Bundle {
 }
 
 
-class Mem1D(val size: Int) extends Module { // Unbanked, inner 1D mem
+class Mem1D(val size: Int, val isFifo: Boolean) extends Module { // Unbanked, inner 1D mem
+  def this(size: Int) = this(size, true)
+
   val io = IO( new Bundle {
     val w = new flatW(32).asInput
     val r = new flatR(32).asInput
@@ -54,11 +56,16 @@ class Mem1D(val size: Int) extends Module { // Unbanked, inner 1D mem
   val wInBound = io.w.addr < (size).U
   val rInBound = io.r.addr < (size).U
 
-  val reg_rAddr = Reg(UInt())
-  when (io.w.en & wInBound) {m(io.w.addr) := io.w.data}
-  .elsewhen (io.r.en & rInBound) {reg_rAddr := io.r.addr}
+  if (isFifo) { // Fifos need to be dual port to avoid strangeness
+    when (io.w.en & wInBound) {m(io.w.addr) := io.w.data}
+    io.output.data := m(io.r.addr)
+  } else {
+    val reg_rAddr = Reg(UInt())
+    when (io.w.en & wInBound) {m(io.w.addr) := io.w.data}
+    .elsewhen (io.r.en & rInBound) {reg_rAddr := io.r.addr}
+    io.output.data := m(reg_rAddr)
+  }
 
-  io.output.data := m(reg_rAddr)
   io.debug.invalidRAddr := ~rInBound
   io.debug.invalidWAddr := ~wInBound
   io.debug.rwOn := io.w.en & io.r.en
