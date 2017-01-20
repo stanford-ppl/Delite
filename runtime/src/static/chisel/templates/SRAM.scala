@@ -44,6 +44,7 @@ class Mem1D(val size: Int) extends Module { // Unbanked, inner 1D mem
       val invalidWAddr = Bool().asOutput
       val rwOn = Bool().asOutput
       val error = Bool().asOutput
+      // val addrProbe = UInt(32.W).asOutput
     }
   })
 
@@ -62,6 +63,7 @@ class Mem1D(val size: Int) extends Module { // Unbanked, inner 1D mem
   io.debug.invalidWAddr := ~wInBound
   io.debug.rwOn := io.w.en & io.r.en
   io.debug.error := ~rInBound | ~wInBound | (io.w.en & io.r.en)
+  // io.debug.addrProbe := m(0.U)
 
 }
 
