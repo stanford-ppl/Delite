@@ -15,6 +15,7 @@ class FIFO(val pR: Int, val pW: Int, val depth: Int) extends Module {
     val push = Bool().asInput
     val pop = Bool().asInput
     val empty = Bool().asOutput
+    val full = Bool().asOutput
     val debug = new Bundle {
       val overwrite = Bool().asOutput
       val overread = Bool().asOutput
@@ -98,6 +99,7 @@ class FIFO(val pR: Int, val pW: Int, val depth: Int) extends Module {
 
   // Check if there is data
   io.empty := elements.io.output.empty
+  io.full := elements.io.output.full
 
   // Debug signals
   io.debug.overread := elements.io.output.overread

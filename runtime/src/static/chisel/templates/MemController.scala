@@ -21,6 +21,7 @@ class ToAccel(val p: Int) extends Bundle {
   val data   = Vec(p, UInt(32.W))
   val pop   = Bool()
   val valid = Bool()
+  val cmdIssued = Bool() // Indicates when command is issued and data has started filling LoadFIFO
   val doneStore = Bool()
   val done = Bool()
 
@@ -68,7 +69,6 @@ class MemController(val pLoadAccel: Int, val pStoreAccel: Int, val pStoreDRAM: I
   io.CtrlToDRAM.size := io.AccelToCtrl.size
 
   io.CtrlToAccel.data.zip(io.DRAMToCtrl.data).foreach{ case (data, port) => data := port }
-  io.CtrlToAccel.valid := io.DRAMToCtrl.valid
 
   val burstSize = 64
 
@@ -79,6 +79,7 @@ class MemController(val pLoadAccel: Int, val pStoreAccel: Int, val pStoreDRAM: I
   loadFifo.io.pop := io.AccelToCtrl.pop
   io.CtrlToAccel.data := loadFifo.io.out
   io.CtrlToAccel.valid := !loadFifo.io.empty | (io.AccelToCtrl.enLoad & io.CtrlToDRAM.size === 0.U)
+  io.CtrlToAccel.cmdIssued := !loadFifo.io.empty & Utils.delay(loadFifo.io.empty, 1) // TODO: May cause bug if fifo drains faster than it loads
   io.CtrlToDRAM.receiveBurst := io.AccelToCtrl.enLoad
 
   // Create FIFO to hold data from Accel

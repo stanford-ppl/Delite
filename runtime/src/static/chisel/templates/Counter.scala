@@ -47,6 +47,7 @@ class IncDincCtr(inc: Int, dinc: Int, max: Int) extends Module {
       val overread      = Bool().asOutput
       val overwrite      = Bool().asOutput
       val empty         = Bool().asOutput
+      val full          = Bool().asOutput
     }
   })
 
@@ -59,6 +60,7 @@ class IncDincCtr(inc: Int, dinc: Int, max: Int) extends Module {
   io.output.overread := cnt < 0.S
   io.output.overwrite := cnt > max.S
   io.output.empty := cnt === 0.S
+  io.output.full := cnt === max.S
 }
 
 /**

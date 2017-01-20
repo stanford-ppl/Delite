@@ -25,7 +25,55 @@
 //  MODIFICATIONS.
 // */
 
-// package types
+package types
+
+import chisel3._
+import chisel3.util
+
+
+class RawBits(b: Int) extends Bundle { 
+	val number = UInt(b.W)
+
+	// Conversions
+	def toFixedPoint(s: Boolean, d: Int, f: Int) = { 
+	  val converted = new FixedPoint(s, d, f) 
+	  // (0 until d).foreach { i => converted.dec(i) = number(f + i) } 
+	  // (0 until f).foreach { i => converted.frac(i) := number(i) } 
+	  converted
+	}
+
+  override def cloneType = (new RawBits(b)).asInstanceOf[this.type] // See chisel3 bug 358
+}
+
+class FixedPoint(s: Boolean, d: Int, f: Int) extends Bundle {
+	// Overloaded
+	def this(s: Int, d: Int, f: Int) = this(s == 1, d, f)
+
+	val dec = UInt(d.W)
+	val frac = UInt(f.W)
+	val raw = UInt((d+f).W)
+
+  override def cloneType = (new FixedPoint(s,d,f)).asInstanceOf[this.type] // See chisel3 bug 358
+
+}
+
+class FixedPointTester(s: Boolean, d: Int, f: Int) extends Module {
+	def this(tuple: (Boolean, Int, Int)) = this(tuple._1, tuple._2, tuple._3)
+	val io = IO( new Bundle {
+		val num1 = new RawBits(d+f).asInput
+		val num2 = new RawBits(d+f).asInput
+
+		val add_en = Bool().asInput
+		val add_result = new RawBits(d+f).asOutput
+	})
+
+	val fix1 = io.num1.toFixedPoint(true, d, f)
+
+
+}
+
+
+
 
 // import Node._
 // import ChiselError._

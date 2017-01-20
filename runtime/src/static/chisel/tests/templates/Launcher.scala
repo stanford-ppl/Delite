@@ -1,6 +1,7 @@
 // See LICENSE.txt for license details.
 package templates
 
+import types._
 import chisel3.iotesters.{PeekPokeTester, Driver, ChiselFlatSpec}
 import utils.TemplateRunner
 import scala.reflect.runtime._ 
@@ -77,6 +78,9 @@ object Arguments {
   )
   val SingleCounter = List(
     1,3
+  )
+  val FixedPointTester = List(
+    (false,16,16)
   )
   val Counter = List(
     List(2,2,2),
@@ -227,6 +231,14 @@ object Launcher {
     (s"SingleCounter$i" -> { (backendName: String) =>
         Driver(() => new SingleCounter(arg), "verilator") {
           (c) => new SingleCounterTests(c)
+        }
+      }) 
+  }.toMap
+
+  templates = templates ++ Arguments.FixedPointTester.zipWithIndex.map{ case(arg,i) => 
+    (s"FixedPointTester$i" -> { (backendName: String) =>
+        Driver(() => new FixedPointTester(arg), "verilator") {
+          (c) => new FixedPointTesterTests(c)
         }
       }) 
   }.toMap

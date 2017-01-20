@@ -31,7 +31,6 @@ class multidimR(val N: Int, val w: Int) extends Bundle {
   override def cloneType = (new multidimR(N, w)).asInstanceOf[this.type] // See chisel3 bug 358
 }
 
-
 class Mem1D(val size: Int, val isFifo: Boolean) extends Module { // Unbanked, inner 1D mem
   def this(size: Int) = this(size, true)
 
