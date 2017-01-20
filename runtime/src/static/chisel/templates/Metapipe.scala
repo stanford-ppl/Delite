@@ -91,7 +91,7 @@ class Metapipe(val n: Int) extends Module {
             if (i+1 == steadyState) { // If moving to steady state
               stateFF.io.input.data := Mux(cycsSinceDone.io.output.data === 0.U & ctr.io.output.count(0) + 1.U < max , 
                           steadyState.U, 
-                          cycsSinceDone.io.input.data + 1.U + stateFF.io.output.data
+                          cycsSinceDone.io.input.data + 1.U + stateFF.io.output.data + {if (n == 2) 1.U else 0.U} // ODO: HACK FOR 2 STAGE, 1 ITER!! FIX ASAP!!!!!!
                         ) // If already in drain step, bypass steady state
             } else {
               cycsSinceDone.io.input.data := cycsSinceDone.io.output.data + 1.U

@@ -92,7 +92,9 @@ object Arguments {
   )
   val Metapipe = List(
     1,
-    5
+    2,
+    5,
+    8
   )
   val Delayer = List(
     10,

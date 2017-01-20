@@ -5,7 +5,7 @@ import chisel3.iotesters.{PeekPokeTester, Driver, ChiselFlatSpec}
 import org.scalatest.Assertions._
 
 class MetapipeTests(c: Metapipe) extends PeekPokeTester(c) {
-  val numIters = List(0,3,4,5,6,7,8)
+  val numIters = List(0,1,3,4,5,6,7,8)
   val latencies = (0 until c.n).map { i => math.abs(rnd.nextInt(10)) + 2 } 
   var stageCounts = Array.tabulate(c.n) { i => 0 }
   var stageDones = Array.tabulate(c.n) { i => 0 }
