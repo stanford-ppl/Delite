@@ -205,7 +205,7 @@ class NBufSRAMTests(c: NBufSRAM) extends PeekPokeTester(c) {
   def readSRAM(rPort: Int, dat: Int, base: Int = 1000) {
     poke(c.io.rSel(rPort*c.numReaders + 0),1) // Select 0th writer for this port
 
-    // Write to each address
+    // Read at each address
     for (i <- 0 until c.logicalDims(0)) { // Each row
       for (j <- 0 until c.logicalDims(1) by c.rPar) {
         // Set addrs
@@ -218,7 +218,10 @@ class NBufSRAMTests(c: NBufSRAM) extends PeekPokeTester(c) {
         }
         step(1)
         (0 until c.rPar).foreach {kdim => 
-          expect(c.io.data(rPort*c.rPar*c.numReaders + kdim), base*dat + i*c.logicalDims(0) + j + kdim)
+          val gold = base*dat + i*c.logicalDims(0) + j + kdim
+          // val a = peek(c.io.data(rPort*c.rPar*c.numReaders+kdim))
+          // println(s"Expecting $gold but got $a (${a == gold})")
+          expect(c.io.data(rPort*c.rPar*c.numReaders + kdim), gold)
         }
       }
     }
@@ -258,7 +261,7 @@ class NBufSRAMTests(c: NBufSRAM) extends PeekPokeTester(c) {
   var iter = 1
   var writingPort = 0
   var readingPort = c.numBufs-1
-  for (k <- 0 until 10) { // run 10 swaps
+  for (k <- 0 until c.numBufs*5) { 
     numCycles = 0
     stagesDone = 0
     (0 until c.numBufs).foreach{ i => 
@@ -266,7 +269,7 @@ class NBufSRAMTests(c: NBufSRAM) extends PeekPokeTester(c) {
       stageActives(i) = 1 
     }
     fillSRAM(writingPort, iter)
-    if (iter > 1) readSRAM(readingPort, iter-1)
+    if (iter >= c.numBufs) readSRAM(readingPort, iter-c.numBufs+1)
     while (!(stagesDone == c.numBufs) & numCycles < timeout) {
       handleStageEnables
       step(1)

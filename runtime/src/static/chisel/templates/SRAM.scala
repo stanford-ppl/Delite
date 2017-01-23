@@ -317,11 +317,11 @@ class NBufSRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
   val io = IO( new Bundle {
     val sEn = Vec(numBufs, Bool().asInput)
     val sDone = Vec(numBufs, Bool().asInput)
-    val w = Vec(numBufs* numWriters*wPar, new multidimW(N, 32).asInput)
+    val w = Vec(numWriters*wPar, new multidimW(N, 32).asInput)
     val broadcast = Vec(numWriters*wPar, new multidimW(N, 32).asInput)
     val broadcastEn = Bool().asInput
-    val globalWEn = Vec(numBufs* numWriters, Bool().asInput) // Bit wen for entire multidimW
-    val wSel = Vec(numBufs* numWriters, Bool().asInput) // Selects between multiple write bundles
+    val globalWEn = Vec(numWriters, Bool().asInput) // Bit wen for entire multidimW
+    val wSel = Vec(numWriters, Bool().asInput) // Selects between multiple write bundles
     val r = Vec(numBufs* numReaders*rPar,new multidimR(N, 32).asInput) // TODO: Spatial allows only one reader per mem
     val rSel = Vec(numBufs* numReaders, Bool().asInput)
     val data  = Vec(numBufs* rPar, UInt(32.W).asOutput)
@@ -336,21 +336,9 @@ class NBufSRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
   })
 
   // Reconstruct input signals as 3d vectors
-  val reconstructedW = (0 until numBufs).map{ h => 
-      Vec((0 until numWriters*wPar).map { 
-        j => io.w(h*wPar*numWriters + j) 
-      })
-  }
-  val reconstructedWSel = (0 until numBufs).map{ h => 
-      Vec((0 until numWriters).map { 
-        j => io.wSel(h*numWriters + j) 
-      })
-  }
-  val reconstructedGlobalWEn = (0 until numBufs).map{ h => 
-      Vec((0 until numWriters).map { 
-        j => io.globalWEn(h*numWriters + j) 
-      })
-  }
+  val reconstructedW = io.w
+  val reconstructedWSel = io.wSel
+  val reconstructedGlobalWEn = io.globalWEn
   val reconstructedR = (0 until numBufs).map{ h => 
     Vec((0 until numReaders*rPar).map { 
       j => io.r(h*rPar*numReaders + j) 
@@ -389,31 +377,40 @@ class NBufSRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
   val anyEnabled = sEn_latch.map{ en => en.io.output.data }.reduce{_|_}
   swap := sEn_latch.zip(sDone_latch).map{ case (en, done) => en.io.output.data === done.io.output.data }.reduce{_&_} & anyEnabled
 
-  val statesIn = (0 until numBufs).map{  i => 
+  val stateIn = Module(new NBufCtr())
+  stateIn.io.input.start := 0.U
+  stateIn.io.input.max := numBufs.U
+  stateIn.io.input.enable := swap
+  stateIn.io.input.countUp := false.B
+  val statesInR = (0 until numBufs).map{  i => 
     val c = Module(new NBufCtr())
-    c.io.input.start := i.U // WAS DECIDING WHAT TO DO ABOUT START SIGNAL
-    c.io.input.max := numBufs.U
-    c.io.input.enable := swap
-    c.io.input.countUp := false.B
-    c
-  }
-  val statesOut = (0 until numBufs).map{  i => 
-    val c = Module(new NBufCtr())
-    c.io.input.start := i.U // WAS DECIDING WHAT TO DO ABOUT START SIGNAL
+    c.io.input.start := i.U 
     c.io.input.max := numBufs.U
     c.io.input.enable := swap
     c.io.input.countUp := true.B
     c
   }
 
+  val statesOut = (0 until numBufs).map{  i => 
+    val c = Module(new NBufCtr())
+    c.io.input.start := i.U 
+    c.io.input.max := numBufs.U
+    c.io.input.enable := swap
+    c.io.input.countUp := false.B
+    c
+  }
+
   val broadcastDummyEn = Vec((0 until numWriters).map { j =>
     if (j==0) true.B else false.B
   }) // Shouldn't have multiple broadcasters anyway?
-  srams.zip(statesIn).foreach{ case (f,s) => 
-    val sel = (0 until numBufs).map{ i => s.io.output.count === i.U }
-    f.io.w := Mux(io.broadcastEn, io.broadcast, chisel3.util.Mux1H(sel, reconstructedW))
-    f.io.wSel := Mux(io.broadcastEn, broadcastDummyEn, chisel3.util.Mux1H(sel, reconstructedWSel))
-    f.io.globalWEn := Mux(io.broadcastEn, broadcastDummyEn, chisel3.util.Mux1H(sel, reconstructedGlobalWEn))
+  srams.zipWithIndex.foreach{ case (f,i) => 
+    val sel = (0 until numBufs).map{ q => statesInR(i).io.output.count === q.U }
+    val wMask = stateIn.io.output.count === i.U
+    val globalWEn = Wire(Vec(numWriters, Bool()))
+    globalWEn.zip(reconstructedGlobalWEn).foreach{ case(g,x) => g := x & wMask}
+    f.io.w := Mux(io.broadcastEn, io.broadcast,reconstructedW)
+    f.io.wSel := Mux(io.broadcastEn, broadcastDummyEn, reconstructedWSel)
+    f.io.globalWEn := Mux(io.broadcastEn, broadcastDummyEn, globalWEn)
     f.io.r := chisel3.util.Mux1H(sel, reconstructedR)
   }
 
