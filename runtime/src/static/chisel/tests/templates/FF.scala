@@ -55,114 +55,111 @@ class FFTests(c: FF) extends PeekPokeTester(c) {
 }
 
 class NBufFFTests(c: NBufFF) extends PeekPokeTester(c) {
-  // val timeout = 400
-  // val initval = 1 //(0 until c.numBufs).map { i => i+1}
-  // var stageActives = Array.tabulate(c.numBufs) { i => 0 }
-  // val latencies = (0 until c.numBufs).map { i => math.abs(rnd.nextInt(15)) + 5 } 
-  // poke(c.io.input.init, initval)
-  // var stageCounts = Array.tabulate(c.numBufs) { i => 0 }
-  // var stagesDone = 0
-  // step(5)
-  // // poke(c.io.input.reset, 1)
-  // // step(1)
-  // // poke(c.io.input.reset, 0)
+  val timeout = 400
+  val initval = 1 //(0 until c.numBufs).map { i => i+1}
+  var stageActives = Array.tabulate(c.numBufs) { i => 0 }
+  val latencies = (0 until c.numBufs).map { i => math.abs(rnd.nextInt(15)) + 5 } 
+  val shortestLatency = latencies.min
+  poke(c.io.input.init, initval)
+  var stageCounts = Array.tabulate(c.numBufs) { i => 0 }
+  var stagesDone = 0
+  step(5)
 
-  // def executeStage(s: Int) {
-  //   // println(s" Stage $s active count ${stageCounts(s)}, numcicles $numCycles")
-  //   if (stageActives(s) == 1) stageCounts(s) += 1 else stageCounts(s) = 0
-  //   if (stageCounts(s) == latencies(s)) {
-  //     poke(c.io.sDone(s), 1)
-  //   } else if (stageCounts(s) == latencies(s) + 1) {
-  //     poke(c.io.sEn(s), 0)
-  //     poke(c.io.sDone(s), 0)
-  //     stageCounts(s) = 0
-  //     stagesDone = stagesDone + 1
-  //     stageActives(s) = 0
-  //   } else {
-  //     poke(c.io.sDone(s), 0)
-  //   }
-  //   step(1)
-  //   poke(c.io.sDone(s), 0)
+  def executeStage(s: Int) {
+    // println(s" Stage $s active count ${stageCounts(s)}, numcicles $numCycles")
+    if (stageActives(s) == 1) stageCounts(s) += 1 else stageCounts(s) = 0
+    if (stageCounts(s) == latencies(s)) {
+      poke(c.io.sDone(s), 1)
+      poke(c.io.sEn(s), 0)
+    } else if (stageCounts(s) == latencies(s) + 1) {
+      poke(c.io.sEn(s), 0)
+      poke(c.io.sDone(s), 0)
+      stageCounts(s) = 0
+      stagesDone = stagesDone + 1
+      stageActives(s) = 0
+    } else {
+      poke(c.io.sDone(s), 0)
+    }
+    step(1)
+    poke(c.io.sDone(s), 0)
 
-  // }
-  // def handleStageEnables = {
-  //   (0 until c.numBufs).foreach { i => 
-  //     executeStage(i)
-  //   }
-  // }
-  // def handleBcast(expected: Int) {
-  //   (0 until c.numBufs).foreach { i => 
-  //     expect(c.io.output(i).data, expected)
-  //   }
-  // }
-  // def handleRW(parity: Int) {
-  //   if (parity == 0) { // Write step
-  //       poke(c.io.input.data, numCycles)
-  //       poke(c.io.input.enable, 1)
-  //       step(1)
-  //       poke(c.io.input.enable, 0)
-  //   } else { // Read step
-  //     val check = numCycles-1
-  //     poke(c.io.input.enable, 0)
-  //     (0 until c.numBufs).foreach { i => 
-  //       // poke(c.io.input(i).data, 0)
+  }
+  def handleStageEnables = {
+    (0 until c.numBufs).foreach { i => 
+      executeStage(i)
+    }
+  }
+  def handleBcast(expected: Int) {
+    (0 until c.numBufs).foreach { i => 
+      expect(c.io.output(i).data, expected)
+    }
+  }
+  def write(data: Int = 0) {
+    poke(c.io.input.data, data)
+    poke(c.io.input.enable, 1)
+    step(1)
+    poke(c.io.input.enable, 0)
+  }
+  def read(stage: Int, data: Int) {
+    (0 until c.numBufs).foreach { i => 
+      val gold = if (data - i < 0) 0 else data - i
+      // val a = peek(c.io.output(i).data)
+      // println(s"Expecting stage $i to report $gold, reporting $a (${a == gold})")
+      expect(c.io.output(i).data, gold)
+    }
 
-  //       // val p = peek(c.io.output(i).data)
-  //       // if (numCycles < 2) println(s"expected wire$i : $p to be ${check(i)}")
-  //       // expect(c.io.output(i).data, check)
-  //     }
-  //   }
-  // }
-  // def rotate(x:List[Int], i:Int) = {x.drop(i)++x.take(i)}
+  }
+  def rotate(x:List[Int], i:Int) = {x.drop(i)++x.take(i)}
 
-  // var numCycles = 0
-  // for (k <- 0 until 2*c.numBufs) { // run 10 swaps
-  //   var swapReady = 0
-  //   numCycles = 0
-  //   stagesDone = 0
-  //   (0 until c.numBufs).foreach{ i => 
-  //     poke(c.io.sEn(i), 1)
-  //     stageActives(i) = 1 
-  //   }
-  //   while (!(stagesDone == c.numBufs) & numCycles < timeout) {
-  //     handleStageEnables
-  //     val rwState = k % 2
-  //     handleRW(rwState)
-  //     step(1)
-  //     numCycles = numCycles+1
-  //   }
+  var numCycles = 0
+  var data = 0
+  for (k <- 1 until 10) { // run 10 writes
+    numCycles = 0
+    stagesDone = 0
+    (0 until c.numBufs).foreach{ i => 
+      poke(c.io.sEn(i), 1)
+      stageActives(i) = 1 
+    }
+    val stage = (k - 1) % c.numBufs
+    write(k)
+    var cyclesChecking = 0
+    while (!(stagesDone == c.numBufs) & numCycles < timeout) {
+      if (cyclesChecking < shortestLatency) read(stage, k)
+      handleStageEnables
+      numCycles = numCycles+1
+      cyclesChecking = cyclesChecking+1
+    }
     
-  //   step(5)
-  // }
-  // (0 until c.numBufs).foreach{ i => 
-  //   poke(c.io.sEn(i), 0)
-  // }
+    step(5)
+  }
+  (0 until c.numBufs).foreach{ i => 
+    poke(c.io.sEn(i), 0)
+  }
 
-  // if ( (numCycles > timeout) | (numCycles < 2) ) {
-  //   expect(c.io.output(0).data, 999) // TODO: Figure out how to "expect" signals that are not hw IO
-  // }
+  if ( (numCycles > timeout) | (numCycles < 2) ) {
+    expect(c.io.output(0).data, 999) // TODO: Figure out how to "expect" signals that are not hw IO
+  }
 
-  // // Check broadcast system
-  // poke(c.io.broadcast.enable, 1)
-  // poke(c.io.broadcast.data, 666)
-  // step(1)
-  // poke(c.io.broadcast.enable,0)
-  // step(1)
-  // for (k <- 0 until c.numBufs) {
-  //   numCycles = 0
-  //   stagesDone = 0
-  //   while (!(stagesDone == c.numBufs) & numCycles < timeout) {
-  //     handleStageEnables
-  //     handleBcast(666)
-  //     step(1)
-  //     numCycles = numCycles+1
-  //   }
-  //   step(5)
-  // }
+  // Check broadcast system
+  poke(c.io.broadcast.enable, 1)
+  poke(c.io.broadcast.data, 666)
+  step(1)
+  poke(c.io.broadcast.enable,0)
+  step(1)
+  for (k <- 0 until c.numBufs) {
+    numCycles = 0
+    stagesDone = 0
+    while (!(stagesDone == c.numBufs) & numCycles < timeout) {
+      handleBcast(666)
+      handleStageEnables
+      numCycles = numCycles+1
+    }
+    step(5)
+  }
 
-  // if ( (numCycles > timeout) | (numCycles < 2) ) {
-  //   expect(c.io.output(0).data, 999) // TODO: Figure out how to "expect" signals that are not hw IO
-  // }
+  if ( (numCycles > timeout) | (numCycles < 2) ) {
+    expect(c.io.output(0).data, 999) // TODO: Figure out how to "expect" signals that are not hw IO
+  }
 
 
   step(5)

@@ -49,7 +49,8 @@ class NBufFF(val numBufs: Int, val w: Int) extends Module {
     val sEn = Vec(numBufs, Bool().asInput)
     val sDone = Vec(numBufs, Bool().asInput)
     val broadcast = new FFIn(w).asInput
-    val input = Vec(numBufs, new FFIn(w).asInput)
+    val input = new FFIn(w).asInput
+    // val writerStage = UInt(5.W).asInput // TODO: Safe to assume we only write to buf0?
     val output = Vec(numBufs, new FFOut(w).asOutput)
   })
 
@@ -77,26 +78,28 @@ class NBufFF(val numBufs: Int, val w: Int) extends Module {
   val anyEnabled = sEn_latch.map{ en => en.io.output.data }.reduce{_|_}
   swap := sEn_latch.zip(sDone_latch).map{ case (en, done) => en.io.output.data === done.io.output.data }.reduce{_&_} & anyEnabled
 
-  val statesIn = (0 until numBufs).map{  i => 
+  val stateIn = Module(new NBufCtr())
+  stateIn.io.input.start := 0.U 
+  stateIn.io.input.max := numBufs.U
+  stateIn.io.input.enable := swap
+  stateIn.io.input.countUp := false.B
+
+  val statesOut = (0 until numBufs).map{  i => 
     val c = Module(new NBufCtr())
-    c.io.input.start := i.U 
+    c.io.input.start := i.U
     c.io.input.max := numBufs.U
     c.io.input.enable := swap
     c.io.input.countUp := false.B
     c
   }
-  val statesOut = (0 until numBufs).map{  i => 
-    val c = Module(new NBufCtr())
-    c.io.input.start := ((numBufs-i)%numBufs).U // WAS DECIDING WHAT TO DO ABOUT START SIGNAL
-    c.io.input.max := numBufs.U
-    c.io.input.enable := swap
-    c.io.input.countUp := true.B
-    c
-  }
 
-  ff.zip(statesIn).foreach{ case (f,s) => 
-    val sel = (0 until numBufs).map{ i => s.io.output.count === i.U }
-    val normal =  chisel3.util.Mux1H(sel, io.input)
+  ff.zipWithIndex.foreach{ case (f,i) => 
+    val wrMask = stateIn.io.output.count === i.U
+    val normal =  Wire(new FFIn(w))
+    normal.data := io.input.data
+    normal.init := io.input.init
+    normal.enable := io.input.enable & wrMask
+    normal.reset := io.input.reset
     f.io.input := Mux(io.broadcast.enable, io.broadcast, normal)
   }
 
@@ -106,9 +109,9 @@ class NBufFF(val numBufs: Int, val w: Int) extends Module {
   }
 
   def write(data: UInt, en: Bool, reset: Bool, port: Int) {
-    io.input(port).data := data
-    io.input(port).enable := en
-    io.input(port).reset := reset
+    io.input.data := data
+    io.input.enable := en
+    io.input.reset := reset
   }
 
   def connectStageCtrl(done: Bool, en: Bool, ports: List[Int]) {
@@ -119,9 +122,9 @@ class NBufFF(val numBufs: Int, val w: Int) extends Module {
   }
 
   def connectUnwrittenPorts(ports: List[Int]) {
-    ports.foreach{ port => 
-      io.input(port).enable := false.B
-    }
+    // ports.foreach{ port => 
+    //   io.input(port).enable := false.B
+    // }
   }
 
   def connectUnreadPorts(ports: List[Int]) {
