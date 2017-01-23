@@ -79,7 +79,7 @@ class NBufFF(val numBufs: Int, val w: Int) extends Module {
 
   val statesIn = (0 until numBufs).map{  i => 
     val c = Module(new NBufCtr())
-    c.io.input.start := i.U // WAS DECIDING WHAT TO DO ABOUT START SIGNAL
+    c.io.input.start := i.U 
     c.io.input.max := numBufs.U
     c.io.input.enable := swap
     c.io.input.countUp := false.B
@@ -87,7 +87,7 @@ class NBufFF(val numBufs: Int, val w: Int) extends Module {
   }
   val statesOut = (0 until numBufs).map{  i => 
     val c = Module(new NBufCtr())
-    c.io.input.start := i.U // WAS DECIDING WHAT TO DO ABOUT START SIGNAL
+    c.io.input.start := ((numBufs-i)%numBufs).U // WAS DECIDING WHAT TO DO ABOUT START SIGNAL
     c.io.input.max := numBufs.U
     c.io.input.enable := swap
     c.io.input.countUp := true.B

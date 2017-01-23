@@ -106,10 +106,10 @@ class MemND(val dims: List[Int]) extends Module {
 
   // Address flattening
   m.io.w.addr := io.w.addr.zipWithIndex.map{ case (addr, i) =>
-    addr * UInt(dims.drop(i).reduce{_*_}/dims(i))
+    addr * (dims.drop(i).reduce{_*_}/dims(i)).U
   }.reduce{_+_}
   m.io.r.addr := io.r.addr.zipWithIndex.map{ case (addr, i) =>
-    addr * UInt(dims.drop(i).reduce{_*_}/dims(i))
+    addr * (dims.drop(i).reduce{_*_}/dims(i)).U
   }.reduce{_+_}
 
   // Check if read/write is in bounds
