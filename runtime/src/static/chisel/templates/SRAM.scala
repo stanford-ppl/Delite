@@ -260,7 +260,7 @@ class SRAM(val logicalDims: List[Int], val w: Int,
   }
 
   var wId = 0
-  def connectWPort(wBundle: Vec[multidimW], en: Bool) {
+  def connectWPort(wBundle: Vec[multidimW], en: Bool, port: Int) {
     (0 until wPar).foreach{ i => 
       io.w(i + wId*wPar) := wBundle(i) 
     }

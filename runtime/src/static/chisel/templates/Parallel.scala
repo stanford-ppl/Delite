@@ -13,6 +13,7 @@ class Parallel(val n: Int) extends Module {
     val output = new Bundle {
       val done = Bool().asOutput
       val stageEnable = Vec(n, Bool().asOutput)
+      val rst_en = Bool().asOutput
     }
   })
 
@@ -40,10 +41,13 @@ class Parallel(val n: Int) extends Module {
   // // Provide default value for enable and doneClear
   // io.output.stageEnable.foreach { _ := Bool(false) }
 
+  io.output.rst_en := false.B
+
   // State Machine
   when(io.input.enable) {
     when(state === UInt(initState)) {   // INIT -> RESET
       stateFF.io.input.data := UInt(runningState)
+      io.output.rst_en := true.B
     }.elsewhen (state === UInt(runningState)) {  // STEADY
       (0 until n).foreach { i => io.output.stageEnable(i) := ~doneMask(i) }
 
