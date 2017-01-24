@@ -50,7 +50,7 @@ class NBufFF(val numBufs: Int, val w: Int) extends Module {
     val sDone = Vec(numBufs, Bool().asInput)
     val broadcast = new FFIn(w).asInput
     val input = new FFIn(w).asInput
-    // val writerStage = UInt(5.W).asInput // TODO: Safe to assume we only write to buf0?
+    val writerStage = UInt(5.W).asInput // TODO: Not implemented anywhere, not sure if needed
     val output = Vec(numBufs, new FFOut(w).asOutput)
   })
 
@@ -112,6 +112,7 @@ class NBufFF(val numBufs: Int, val w: Int) extends Module {
     io.input.data := data
     io.input.enable := en
     io.input.reset := reset
+    io.writerStage := port.U
   }
 
   def connectStageCtrl(done: Bool, en: Bool, ports: List[Int]) {
@@ -121,13 +122,13 @@ class NBufFF(val numBufs: Int, val w: Int) extends Module {
     }
   }
 
-  def connectUnwrittenPorts(ports: List[Int]) {
+  def connectUnwrittenPorts(ports: List[Int]) { // TODO: Remnant from maxj?
     // ports.foreach{ port => 
     //   io.input(port).enable := false.B
     // }
   }
-
-  def connectUnreadPorts(ports: List[Int]) {
+ 
+  def connectUnreadPorts(ports: List[Int]) { // TODO: Remnant from maxj?
     // Used for SRAMs
   }
 

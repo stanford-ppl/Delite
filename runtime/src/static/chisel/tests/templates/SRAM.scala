@@ -219,9 +219,9 @@ class NBufSRAMTests(c: NBufSRAM) extends PeekPokeTester(c) {
         step(1)
         (0 until c.rPar).foreach {kdim => 
           val gold = base*dat + i*c.logicalDims(0) + j + kdim
-          // val a = peek(c.io.data(rPort*c.rPar*c.numReaders+kdim))
+          // val a = peek(c.io.output.data(rPort*c.rPar*c.numReaders+kdim))
           // println(s"Expecting $gold but got $a (${a == gold})")
-          expect(c.io.data(rPort*c.rPar*c.numReaders + kdim), gold)
+          expect(c.io.output.data(rPort*c.rPar*c.numReaders + kdim), gold)
         }
       }
     }

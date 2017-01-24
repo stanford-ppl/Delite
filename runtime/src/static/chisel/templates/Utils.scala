@@ -4,16 +4,25 @@ package templates
 import chisel3._
 
 object Utils {
-  def delay(sig: Bool, length: Int) = {
+  def delay[T <: chisel3.core.Data](sig: T, length: Int):T = {
     if (length == 0) {
       sig
     } else {
-      val regs = (0 until length).map { i => Reg(init = 0.U) }
-      regs(0) := sig
-      (length-1 until 0 by -1).map { i => 
-        regs(i) := regs(i-1)
+      val regs = (0 until length).map { i => Reg(init = 0.U) } // TODO: Make this type T
+      sig match {
+        case s:Bool => 
+          regs(0) := Mux(s, 1.U, 0.U)
+          (length-1 until 0 by -1).map { i => 
+            regs(i) := regs(i-1)
+          }
+          (regs(length-1) === 1.U).asInstanceOf[T]
+        case s:UInt => 
+          regs(0) := s
+          (length-1 until 0 by -1).map { i => 
+            regs(i) := regs(i-1)
+          }
+          (regs(length-1)).asInstanceOf[T]
       }
-      regs(length-1)
     }
   }
 

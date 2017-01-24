@@ -268,7 +268,7 @@ class SRAM(val logicalDims: List[Int], val w: Int,
     wId = wId + 1
   }
   var rId = 0
-  def connectRPort(rBundle: Vec[multidimR]) {
+  def connectRPort(rBundle: Vec[multidimR], port: Int) {
     (0 until rPar).foreach{ i => 
       io.r(i + rId*rPar) := rBundle(i) 
     }
@@ -320,11 +320,14 @@ class NBufSRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
     val w = Vec(numWriters*wPar, new multidimW(N, 32).asInput)
     val broadcast = Vec(numWriters*wPar, new multidimW(N, 32).asInput)
     val broadcastEn = Bool().asInput
+    val writerStage = UInt(5.W).asInput // TODO: Not implemented anywhere, not sure if needed
     val globalWEn = Vec(numWriters, Bool().asInput) // Bit wen for entire multidimW
     val wSel = Vec(numWriters, Bool().asInput) // Selects between multiple write bundles
     val r = Vec(numBufs* numReaders*rPar,new multidimR(N, 32).asInput) // TODO: Spatial allows only one reader per mem
-    val rSel = Vec(numBufs* numReaders, Bool().asInput)
-    val data  = Vec(numBufs* rPar, UInt(32.W).asOutput)
+    val rSel = Vec(numBufs* numReaders, Bool().asInput) // TODO: Implement this for multiple readers on a buffer
+    val output = new Bundle {
+      val data  = Vec(numBufs* rPar, UInt(32.W).asOutput)  
+    }
     val debug = new Bundle {
       val invalidRAddr = Bool().asOutput
       val invalidWAddr = Bool().asOutput
@@ -346,7 +349,7 @@ class NBufSRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
   }
   val reconstructedOut = (0 until numBufs).map{ h =>
     Vec((0 until rPar).map {
-      j => io.data(h*rPar + j)
+      j => io.output.data(h*rPar + j)
     })
   }
 
@@ -419,21 +422,51 @@ class NBufSRAM(val logicalDims: List[Int], val numBufs: Int, val w: Int,
     wire := chisel3.util.Mux1H(sel, Vec(srams.map{f => f.io.output.data}))
   }
 
-  // var wId = (0 until numBufs).map{ i => 0 }
-  // def connectWPort(wBundle: Vec[multidimW], port: Int, en: Bool) {
-  //   (0 until wPar).foreach{ i => 
-  //     io.w(i + wId(port)*wPar + port*numBufs*wPar) := wBundle(i) 
-  //   }
-  //   io.globalWEn(wId(port)) := en
-  //   wId(port) = wId(port) + 1
-  // }
-  // var rId = (0 until numBufs).map{ i => 0 }
-  // def connectRPort(rBundle: Vec[multidimR], port: Int) {
-  //   (0 until rPar).foreach{ i => 
-  //     io.r(i + rId(port)*rPar + port*numBufs*rPar) := rBundle(i) 
-  //   }
-  //   rId(port) = rId(port) + 1
-  // }
+  var wId = 0
+  def connectWPort(wBundle: Vec[multidimW], en: Bool, port: Int) {
+    (0 until wPar).foreach{ i => 
+      io.w(i + wId*wPar) := wBundle(i) 
+    }
+    io.writerStage := port.U
+    io.globalWEn(wId) := en
+    wId = wId + 1
+  }
+  var rId = 0
+  def connectRPort(rBundle: Vec[multidimR], port: Int) {
+    (0 until rPar).foreach{ i => 
+      io.r(i + rId*rPar + port*numReaders*rPar) := rBundle(i) 
+    }
+    rId = rId + 1
+  }
+
+  def connectStageCtrl(done: Bool, en: Bool, ports: List[Int]) {
+    ports.foreach{ port => 
+      io.sEn(port) := en
+      io.sDone(port) := done
+    }
+  }
+
+  def connectUnwrittenPorts(ports: List[Int]) { // TODO: Remnant from maxj?
+    // ports.foreach{ port => 
+    //   io.input(port).enable := false.B
+    // }
+  }
+ 
+  def connectUnreadPorts(ports: List[Int]) { // TODO: Remnant from maxj?
+    // Used for SRAMs
+  }
+
+  def connectUntouchedPorts(ports: List[Int]) {
+    ports.foreach{ port => 
+      io.sEn(port) := false.B
+      io.sDone(port) := false.B
+    }
+  }
+
+  def connectDummyBroadcast() {
+    io.broadcastEn := false.B
+  }
+
 
 
 }
