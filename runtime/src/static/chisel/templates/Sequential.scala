@@ -27,7 +27,7 @@ class Sequential(val n: Int) extends Module {
   val lastState = doneState - 1
 
   val stateFF = Module(new FF(32))
-  stateFF.io.input.enable := Bool(true) // TODO: Do we need this line?
+  stateFF.io.input.enable := true.B // TODO: Do we need this line?
   stateFF.io.input.init := 0.U
   val state = stateFF.io.output.data
 
@@ -94,5 +94,5 @@ class Sequential(val n: Int) extends Module {
 
   // Output logic
   io.output.done := state === doneState.U
-  io.output.stageEnable.zipWithIndex.foreach { case (en, i) => en := (state === UInt(i+2)) }
+  io.output.stageEnable.zipWithIndex.foreach { case (en, i) => en := (state === (i+2).U) }
 }

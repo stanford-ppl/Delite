@@ -208,12 +208,12 @@ class SRAM(val logicalDims: List[Int], val w: Int,
   val wConversions = selectedWVec.map{ wbundle => 
     // Writer conversion
     val convertedW = Wire(new multidimW(N,w))
-    val physicalAddrsW = wbundle.addr.zip(banks).map{ case (logical, b) => logical / UInt(b) }
+    val physicalAddrsW = wbundle.addr.zip(banks).map{ case (logical, b) => logical / b.U }
     physicalAddrsW.zipWithIndex.foreach { case (calculatedAddr, i) => convertedW.addr(i) := calculatedAddr}
     convertedW.data := wbundle.data
     convertedW.en := wbundle.en & selectedGlobalWen
-    val bankCoordsW = wbundle.addr.zip(banks).map{ case (logical, b) => logical % UInt(b) }
-    val bankCoordW = bankCoordsW.zipWithIndex.map{ case (c, i) => c*UInt(banks.drop(i).reduce{_*_}/banks(i)) }.reduce{_+_}
+    val bankCoordsW = wbundle.addr.zip(banks).map{ case (logical, b) => logical % b.U }
+    val bankCoordW = bankCoordsW.zipWithIndex.map{ case (c, i) => c*(banks.drop(i).reduce{_*_}/banks(i)).U }.reduce{_+_}
 
     (convertedW, bankCoordW)
   }
@@ -223,11 +223,11 @@ class SRAM(val logicalDims: List[Int], val w: Int,
   val rConversions = selectedRVec.map{ rbundle => 
     // Reader conversion
     val convertedR = Wire(new multidimR(N,w))
-    val physicalAddrs = rbundle.addr.zip(banks).map{ case (logical, b) => logical / UInt(b) }
+    val physicalAddrs = rbundle.addr.zip(banks).map{ case (logical, b) => logical / b.U }
     physicalAddrs.zipWithIndex.foreach { case (calculatedAddr, i) => convertedR.addr(i) := calculatedAddr}
     convertedR.en := rbundle.en
-    val bankCoordsR = rbundle.addr.zip(banks).map{ case (logical, b) => logical % UInt(b) }
-    val bankCoordR = bankCoordsR.zipWithIndex.map{ case (c, i) => c*UInt(banks.drop(i).reduce{_*_}/banks(i)) }.reduce{_+_}
+    val bankCoordsR = rbundle.addr.zip(banks).map{ case (logical, b) => logical % b.U }
+    val bankCoordR = bankCoordsR.zipWithIndex.map{ case (c, i) => c*(banks.drop(i).reduce{_*_}/banks(i)).U }.reduce{_+_}
 
     (convertedR, bankCoordR)
   }

@@ -172,7 +172,7 @@ class FFNoInitNoReset(val w: Int) extends Module {
   val ff = Module(new FF(w))
   ff.io.input.data := io.input.data
   ff.io.input.enable := io.input.enable
-  ff.io.input.reset := Bool(false)
+  ff.io.input.reset := false.B
   ff.io.input.init := UInt(0, w.W)
   io.output.data := ff.io.output.data
 }
@@ -205,7 +205,7 @@ class TFF() extends Module {
     }
   })
 
-  val ff = Reg(init = Bool(false))
+  val ff = Reg(init = false.B)
   ff := Mux(io.input.enable, ~ff, ff)
   io.output.data := ff
 }
@@ -226,10 +226,10 @@ class SRFF() extends Module {
     }
   })
 
-  val ff = Reg(init = Bool(false))
-  ff := Mux(io.input.asyn_reset, Bool(false), Mux(io.input.set, 
-                                  Bool(true), Mux(io.input.reset, Bool(false), ff)))
-  io.output.data := Mux(io.input.asyn_reset, Bool(false), ff)
+  val ff = Reg(init = false.B)
+  ff := Mux(io.input.asyn_reset, false.B, Mux(io.input.set, 
+                                  true.B, Mux(io.input.reset, false.B, ff)))
+  io.output.data := Mux(io.input.asyn_reset, false.B, ff)
 }
 
 

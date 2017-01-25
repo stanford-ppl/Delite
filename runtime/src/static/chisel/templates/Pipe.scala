@@ -59,7 +59,7 @@ class Pipe(val ctrDepth : Int) extends Module {
     }.elsewhen( state === pipeRun.U ) {
       io.output.ctr_en := true.B;
       when (io.input.ctr_done) {
-      	(0 until ctrDepth) foreach { i => maxFF(0) := UInt(0) } // TODO: Why do we reset these instead of leaving them?
+      	(0 until ctrDepth) foreach { i => maxFF(0) := 0.U } // TODO: Why do we reset these instead of leaving them?
         state := pipeDone.U
       }.otherwise {
         state := pipeRun.U
