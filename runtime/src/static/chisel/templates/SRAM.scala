@@ -51,7 +51,7 @@ class Mem1D(val size: Int, val isFifo: Boolean) extends Module { // Unbanked, in
 
   // We can do better than MaxJ by forcing mems to be single-ported since
   //   we know how to properly schedule reads and writes
-  val m = Mem(UInt(width = 32), size /*, seqRead = true deprecated? */)
+  val m = Mem(UInt(32.W), size /*, seqRead = true deprecated? */)
   val wInBound = io.w.addr < (size).U
   val rInBound = io.r.addr < (size).U
 
@@ -113,8 +113,8 @@ class MemND(val dims: List[Int]) extends Module {
   }.reduce{_+_}
 
   // Check if read/write is in bounds
-  val rInBound = io.r.addr.zip(dims).map { case (addr, bound) => addr < UInt(bound) }.reduce{_&_}
-  val wInBound = io.w.addr.zip(dims).map { case (addr, bound) => addr < UInt(bound) }.reduce{_&_}
+  val rInBound = io.r.addr.zip(dims).map { case (addr, bound) => addr < bound.U }.reduce{_&_}
+  val wInBound = io.w.addr.zip(dims).map { case (addr, bound) => addr < bound.U }.reduce{_&_}
 
   // Connect the other ports
   m.io.w.data := io.w.data
@@ -279,8 +279,8 @@ class SRAM(val logicalDims: List[Int], val w: Int,
 
 
   // Connect debug signals
-  val wInBound = selectedWVec.map{ v => v.addr.zip(logicalDims).map { case (addr, bound) => addr < UInt(bound) }.reduce{_&_}}.reduce{_&_}
-  val rInBound = selectedRVec.map{ v => v.addr.zip(logicalDims).map { case (addr, bound) => addr < UInt(bound) }.reduce{_&_}}.reduce{_&_}
+  val wInBound = selectedWVec.map{ v => v.addr.zip(logicalDims).map { case (addr, bound) => addr < bound.U }.reduce{_&_}}.reduce{_&_}
+  val rInBound = selectedRVec.map{ v => v.addr.zip(logicalDims).map { case (addr, bound) => addr < bound.U }.reduce{_&_}}.reduce{_&_}
   val writeOn = selectedWVec.map{ v => v.en }
   val readOn = selectedRVec.map{ v => v.en }
   val rwOn = writeOn.zip(readOn).map{ case(a,b) => a&b}.reduce{_|_} & selectedGlobalWen

@@ -159,7 +159,7 @@ class FFNoInit(val w: Int) extends Module {
   ff.io.input.data := io.input.data
   ff.io.input.enable := io.input.enable
   ff.io.input.reset := io.input.reset
-  ff.io.input.init := UInt(0, w.W)
+  ff.io.input.init := 0.U(w.W)
   io.output.data := ff.io.output.data
 }
 
@@ -173,7 +173,7 @@ class FFNoInitNoReset(val w: Int) extends Module {
   ff.io.input.data := io.input.data
   ff.io.input.enable := io.input.enable
   ff.io.input.reset := false.B
-  ff.io.input.init := UInt(0, w.W)
+  ff.io.input.init := 0.U(w.W)
   io.output.data := ff.io.output.data
 }
 
@@ -186,7 +186,7 @@ class FFNoReset(val w: Int) extends Module {
   val ff = Module(new FF(w))
   ff.io.input.data := io.input.data
   ff.io.input.enable := io.input.enable
-  ff.io.input.reset := Bool(false)
+  ff.io.input.reset := false.B
   ff.io.input.init := io.input.init
   io.output.data := ff.io.output.data
 }

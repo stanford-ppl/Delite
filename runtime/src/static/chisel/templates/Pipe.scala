@@ -19,13 +19,13 @@ class Pipe(val ctrDepth : Int) extends Module {
     val input = new Bundle {
       val enable = Bool().asInput
       val ctr_done = Bool().asInput
-      val ctr_maxIn = Vec(ctrDepth, UInt(32).asInput) // TODO: Deprecate this maxIn/maxOut business if all is well without it
+      val ctr_maxIn = Vec(ctrDepth, UInt(32.W).asInput) // TODO: Deprecate this maxIn/maxOut business if all is well without it
     }
     val output = new Bundle {
       val done = Bool().asOutput
       val ctr_en = Bool().asOutput
       val rst_en = Bool().asOutput
-      val ctr_maxOut = Vec(ctrDepth, UInt(32).asOutput)
+      val ctr_maxOut = Vec(ctrDepth, UInt(32.W).asOutput)
     }
   })
 

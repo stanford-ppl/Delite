@@ -82,7 +82,7 @@ class Metapipe(val n: Int) extends Module {
               en := ~done & (ii.U >= cycsSinceDone.io.output.data) & (io.input.numIter != 0.U)
           }
           io.output.stageEnable.drop(fillStateID+1).foreach { en => en := 0.U }
-          val doneMaskInts = doneMask.take(fillStateID+1).map {Mux(_, UInt(1, bitsToAddress(n).W), UInt(0, bitsToAddress(n).W))}
+          val doneMaskInts = doneMask.take(fillStateID+1).map {Mux(_, 1.U(bitsToAddress(n).W), 0.U(bitsToAddress(n).W))}
           val doneTree = doneMaskInts.reduce {_ + _} + cycsSinceDone.io.output.data === (fillStateID+1).U
           // val doneTree = doneMask.take(fillStateID+1).reduce {_ & _}
           doneClear := doneTree

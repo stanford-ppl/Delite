@@ -51,7 +51,7 @@ class IncDincCtr(inc: Int, dinc: Int, max: Int) extends Module {
     }
   })
 
-  val cnt = Reg(init = SInt(0,32.W))
+  val cnt = Reg(init = 0.S(32.W))
 
   val numPushed = Mux(io.input.inc_en, inc.S, 0.S)
   val numPopped = Mux(io.input.dinc_en, dinc.S, 0.S)
@@ -78,7 +78,7 @@ class RedxnCtr() extends Module {
     }
   })
 
-  val cnt = Reg(init = UInt(0, 32.W))
+  val cnt = Reg(init = 0.U(32.W))
 
   val nextCntUp = Mux(io.input.enable, Mux(cnt + 1.U === io.input.max, 0.U, cnt+1.U), cnt)
   cnt := Mux(io.input.reset, 0.U, nextCntUp)
@@ -97,7 +97,7 @@ class SingleCounter(val par: Int) extends Module {
       val start    = UInt(32.W).asInput // TODO: Currently resets to "start" but wraps to 0, is this normal behavior?
       val max      = UInt(32.W).asInput
       val stride   = UInt(32.W).asInput
-      val gap      = UInt(32).asInput
+      val gap      = UInt(32.W).asInput
       // val wrap     = Bool().asInput // TODO: This should let 
       //                                   user specify (8 by 3) ctr to go
       //                                   0,3,6 (wrap) 1,4,7 (wrap) 2,5...
