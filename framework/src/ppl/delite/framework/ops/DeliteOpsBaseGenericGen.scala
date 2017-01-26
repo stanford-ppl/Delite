@@ -1437,9 +1437,10 @@ trait GenericGenDeliteOps extends BaseGenLoopsFat with BaseGenStaticData with Ba
     if (sourceContexts.size == 0) "NoSourceContext"
     else {
       var sc = sourceContexts(0)
-      while(!sc.parent.isEmpty) {
+      // [macrovirt] - only sourceContext is currently the top (no stack)
+      /*while(!sc.parent.isEmpty) {
         sc = sc.parent.get
-      }
+      }*/
       sc.fileName + ":" + sc.line
     }
   }

@@ -12,7 +12,7 @@ object DeliteBuild extends Build {
     organization := "stanford-ppl",
     scalaVersion := virtScala,
     publishArtifact in (Compile, packageDoc) := false,
-    libraryDependencies += "org.scala-lang.virtualized" %% "scala-virtualized" % "1.0.0-macrovirt",
+    libraryDependencies += "org.scala-lang.virtualized" %% "scala-virtualized" % "0.1",
     libraryDependencies += virtualization_lms_core,
     libraryDependencies += "org.scala-lang" % "scala-library" % virtScala,
     libraryDependencies += "org.scala-lang" % "scala-compiler" % virtScala,

@@ -1,8 +1,8 @@
 package ppl.apps.dataquery.tpch
 
 import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
-import scala.virtualization.lms.common.Record
-import scala.virtualization.lms.common.RecordOps
+import org.scala_lang.virtualized.Record
+import org.scala_lang.virtualized.RecordOps
 import org.scala_lang.virtualized.virtualize
 import org.scala_lang.virtualized.SourceContext
 

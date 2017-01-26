@@ -3,6 +3,7 @@ package ppl.delite.framework.datastructures
 import java.io.{File,FileWriter,PrintWriter}
 import org.scala_lang.virtualized.SourceContext
 import org.scala_lang.virtualized.RefinedManifest
+import org.scala_lang.virtualized.Record
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{CudaCodegen,OpenCLCodegen,CCodegen,CLikeCodegen,GenerationFailedException}
 import scala.virtualization.lms.internal.Targets._

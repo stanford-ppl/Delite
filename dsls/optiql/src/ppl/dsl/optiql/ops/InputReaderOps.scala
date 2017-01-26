@@ -7,18 +7,19 @@ import java.io.PrintWriter
 import org.scala_lang.virtualized.RefinedManifest
 import org.scala_lang.virtualized.SourceContext
 import org.scala_lang.virtualized.virtualize
+import org.scala_lang.virtualized.Record
 
 trait InputReaderOps extends Base { this: OptiQL =>
 
   object TableInputReader {
     def apply(path: Rep[String]) = optiql_table_line_reader(path)
-    def apply[T<:Record:Manifest](path: Rep[String], separator: Rep[String]): Rep[Table[T]] = optiql_table_input_reader(path, separator)
+    def apply[T:RefinedManifest](path: Rep[String], separator: Rep[String]): Rep[Table[T]] = optiql_table_input_reader(path, separator)
   }
 
-  def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], separator: Rep[String]): Rep[Table[T]]
+  def optiql_table_input_reader[T:RefinedManifest](path: Rep[String], separator: Rep[String]): Rep[Table[T]]
   def optiql_table_line_reader(path: Rep[String]): Rep[Table[String]]
   def optiql_table_from_seq[T:Manifest](elems: Seq[Rep[T]]): Rep[Table[T]]
-  def optiql_table_from_string[T<:Record:Manifest](data: Rep[String], rowSep: Rep[String], colSep: Rep[String]): Rep[Table[T]]
+  def optiql_table_from_string[T:RefinedManifest](data: Rep[String], rowSep: Rep[String], colSep: Rep[String]): Rep[Table[T]]
 
 }
 
@@ -27,7 +28,7 @@ trait InputReaderOpsExp extends InputReaderOps with BaseFatExp { this: OptiQLExp
   case class OptiQLTableInputReader[T:Manifest](readBlock: Block[Table[T]]) extends DeliteOpSingleWithManifest[T,Table[T]](readBlock)
   case class OptiQLTableFromSeq[T:Manifest](readBlock: Block[Table[T]]) extends DeliteOpSingleWithManifest[T,Table[T]](readBlock)
 
-  def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], separator: Rep[String]) = {
+  def optiql_table_input_reader[T:RefinedManifest](path: Rep[String], separator: Rep[String]) = {
     Table(DeliteFileReader.readLines(path){ line => optiql_table_record_parser_impl[T](line, separator) })
   }
 
@@ -40,7 +41,7 @@ trait InputReaderOpsExp extends InputReaderOps with BaseFatExp { this: OptiQLExp
   }
 
   //TODO: it's unfortunate that string split returns an Array rather than a DeliteArray, should we change the signature or have a conversion method?
-  def optiql_table_from_string[T<:Record:Manifest](data: Rep[String], rowSep: Rep[String], colSep: Rep[String]) = {
+  def optiql_table_from_string[T:RefinedManifest](data: Rep[String], rowSep: Rep[String], colSep: Rep[String]) = {
     val jarray = data.split(rowSep)
     Table(DeliteArray.fromFunction(jarray.length)(i => optiql_table_record_parser_impl[T](jarray(i), colSep)))
   }
@@ -56,19 +57,19 @@ trait InputReaderOpsExp extends InputReaderOps with BaseFatExp { this: OptiQLExp
 }
 
 trait InputReaderImplOps { this: OptiQL =>
-  def optiql_table_record_parser_impl[T<:Record:Manifest](record: Rep[String], separator: Rep[String]): Rep[T]
+  def optiql_table_record_parser_impl[T:RefinedManifest](record: Rep[String], separator: Rep[String]): Rep[T]
   def optiql_table_from_seq[T:Manifest](elems: Seq[Rep[T]]): Rep[Table[T]]
 }
 
 @virtualize
 trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift with OptiQLExp =>
 
-  def optiql_table_record_parser_impl[T<:Record:Manifest](record: Rep[String], separator: Rep[String]) = {
+  def optiql_table_record_parser_impl[T:RefinedManifest](record: Rep[String], separator: Rep[String]): Rep[T] = {
     val fields = record.split(separator,-1)
-    createRecord(fields)
+    createRecord[T](fields)
   }
 
-  private def createRecord[T<:Record:Manifest](record: Rep[Array[String]]) = {
+  private def createRecord[T:RefinedManifest](record: Rep[Array[String]]): Rep[T] = {
     val rm = manifest[T] match {
       case rm: RefinedManifest[T] => rm
       case m => throw new RuntimeException("No RefinedManifest for type " + m.toString)
@@ -93,7 +94,7 @@ trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLLift w
   }
 
   //TODO: this is a map
-  def optiql_table_from_seq_impl[T:Manifest](elems: Seq[Rep[T]]) = {
+  def optiql_table_from_seq_impl[T:Manifest](elems: Seq[Rep[T]]): Rep[Table[T]] = {
     val array = DeliteArray[T](elems.length)
     for (i <- (0 until elems.length): Range) {
       array(i) = elems(i)

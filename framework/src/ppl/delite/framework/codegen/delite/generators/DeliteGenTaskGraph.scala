@@ -20,6 +20,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with DeliteKernelCodegen with Loo
   val IR: DeliteOpsExp
   import IR.{ __newVar => _, __assign => _, __ifThenElse => _ , _ }
 
+  def quoteDouble(x: Double): String = throw new Exception("Cannot quote Double in DeliteGenTaskGraph")
+  def quoteFloat(x: Float): String = throw new Exception("Cannot quote Float in DeliteGenTaskGraph")
+
   private def mutating(kernelContext: State, sym: Sym[Any]) : List[Sym[Any]] = kernelContext flatMap {
     case Def(Reflect(x,u,effects)) => if (u.mayWrite contains sym) List(sym) else Nil
     case _ => Nil

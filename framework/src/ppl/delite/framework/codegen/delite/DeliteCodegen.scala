@@ -37,14 +37,15 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
 
   def emitSourceContext(sourceContext: Option[SourceContext], stream: PrintWriter, id: String) {
     // obtain root parent source context (if any)
-    val parentContext: Option[SourceContext] =
-      if (!sourceContext.isEmpty) {
+    val parentContext: Option[SourceContext] = sourceContext
+    // [macrovirt] - no parent source context yet
+      /*if (!sourceContext.isEmpty) {
         var current = sourceContext.get
         while (!current.parent.isEmpty)
           current = current.parent.get
         Some(current)
       } else
-        sourceContext
+        sourceContext*/
 
     stream.print("  \"sourceContext\": {\n    ")
     val (fileName, line, opName) =

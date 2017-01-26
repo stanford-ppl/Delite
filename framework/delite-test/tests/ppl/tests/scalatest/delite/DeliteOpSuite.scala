@@ -2,8 +2,8 @@ package ppl.tests.scalatest.delite
 
 import ppl.tests.scalatest._
 import ppl.delite.framework.datastructures._
-import scala.virtualization.lms.common.Record
-import scala.virtualization.lms.common.RecordOps
+import org.scala_lang.virtualized.Record
+import org.scala_lang.virtualized.RecordOps
 import org.scala_lang.virtualized.virtualize
 import org.scala_lang.virtualized.SourceContext
 
@@ -463,7 +463,7 @@ trait DeliteIfThenElse extends DeliteTestBase {
     }
 
     //check quoting different constant types in kernels
-    for (i <- 0 until 10) {
+    for (i <- 0 until unit(10)) {
       checkConstants(i)
     }
 

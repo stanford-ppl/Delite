@@ -2,7 +2,7 @@ package ppl.tests.scalatest.dsl.optiql
 
 import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
 import ppl.tests.scalatest._
-import scala.virtualization.lms.common.{Record, RecordOps}
+import org.scala_lang.virtualized.{Record, RecordOps}
 import org.scala_lang.virtualized.{RefinedManifest, SourceContext, virtualize}
 
 @virtualize

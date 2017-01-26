@@ -1,10 +1,10 @@
 package ppl.apps.cidr
 
 import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
-import scala.virtualization.lms.common.RecordOps
 import scala.virtualization.lms.common._
 import org.scala_lang.virtualized.virtualize
 import org.scala_lang.virtualized.SourceContext
+import org.scala_lang.virtualized.{RecordOps, Record}
 
 object ExampleRunner extends OptiQLApplicationRunner with Example
 trait Example extends OptiQLApplication with RecordOps {

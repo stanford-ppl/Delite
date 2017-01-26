@@ -3,6 +3,7 @@ package ppl.delite.framework
 import java.io.{FileWriter, File, PrintWriter}
 import scala.tools.nsc.io._
 import org.scala_lang.virtualized.SourceContext
+import org.scala_lang.virtualized.Record
 import scala.collection.mutable.ArrayBuffer
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
@@ -153,7 +154,7 @@ trait DeliteILOpsExp extends DeliteILOps with DeliteOpsExp with DeliteArrayFatEx
   }
   
   def foreach[A:Manifest](size: Exp[Int], func: Exp[Int] => Exp[Unit]) = {
-    val f = DeliteILForeach(size,func)
+    val f = DeliteILForeach[A](size,func)
     val u = summarizeEffects(f.body.asInstanceOf[DeliteForeachElem[A]].func).star
     reflectEffect(f, summarizeEffects(f.body.asInstanceOf[DeliteForeachElem[A]].func).star andAlso Simple()) // TODO: don't want Simple()
   }

@@ -1,12 +1,13 @@
 package ppl.dsl.optiql.ops
 
-import scala.virtualization.lms.common.{ScalaGenFat, BaseFatExp, Base, Record}
+import scala.virtualization.lms.common.{ScalaGenFat, BaseFatExp, Base}
 import ppl.dsl.optiql.{OptiQL, OptiQLExp}
 import ppl.delite.framework.ops.{DeliteCollection, DeliteCollectionOpsExp}
 import ppl.delite.framework.datastructures.{DeliteArray, DeliteArrayBuffer, DeliteStructsExp}
 import ppl.delite.framework.Util._
 import java.io.PrintWriter
 import org.scala_lang.virtualized.SourceContext
+import org.scala_lang.virtualized.Record
 
 trait TableOps extends Base { this: OptiQL =>
 

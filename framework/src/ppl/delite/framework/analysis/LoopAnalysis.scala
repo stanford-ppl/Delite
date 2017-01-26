@@ -62,6 +62,10 @@ trait NestedLoopMappingAnalysis extends FatBlockTraversal with LoopFusionOpt wit
   val IR: DeliteOpsExp
   import IR._
 
+  // Why does this even extend generation traits?
+  def quoteDouble(x: Double): String = throw new Exception("Cannot quote Double in NestedLoopMappingAnalysis")
+  def quoteFloat(x: Float): String = throw new Exception("Cannot quote Float in NestedLoopMappingAnalysis")
+
   class MultiDimMappingFailedException(val msg: String) extends Exception(msg)
 
   var kernelInputs: List[Sym[Any]] = null

@@ -12,6 +12,7 @@ import scala.collection.mutable.HashSet
 import org.scala_lang.virtualized.virtualize
 import org.scala_lang.virtualized.SourceContext
 import org.scala_lang.virtualized.RefinedManifest
+import org.scala_lang.virtualized.Record
 
 trait DeliteArray[T] extends DeliteCollection[T]
 
