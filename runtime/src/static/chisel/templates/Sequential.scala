@@ -11,6 +11,7 @@ class Sequential(val n: Int) extends Module {
       val enable = Bool().asInput
       val numIter = UInt(32.W).asInput
       val stageDone = Vec(n, Bool().asInput)
+      val rst = Bool().asInput
     }
     val output = new Bundle {
       val done = Bool().asOutput
@@ -29,6 +30,7 @@ class Sequential(val n: Int) extends Module {
   val stateFF = Module(new FF(32))
   stateFF.io.input.enable := true.B // TODO: Do we need this line?
   stateFF.io.input.init := 0.U
+  stateFF.io.input.reset := io.input.rst
   val state = stateFF.io.output.data
 
   // Counter for num iterations

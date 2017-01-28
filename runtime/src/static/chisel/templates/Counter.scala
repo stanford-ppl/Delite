@@ -164,7 +164,7 @@ class Counter(val par: List[Int]) extends Module {
       val starts    = Vec(depth, UInt(32.W).asInput)
       val maxes      = Vec(depth, UInt(32.W).asInput)
       val strides   = Vec(depth, UInt(32.W).asInput)
-      val gaps      = Vec(depth, UInt(32).asInput)
+      val gaps      = Vec(depth, UInt(32.W).asInput)
       val reset  = Bool().asInput
       val enable = Bool().asInput
       val saturate = Bool().asInput
